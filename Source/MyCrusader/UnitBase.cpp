@@ -74,7 +74,6 @@ void AUnitBase::Tick(float DeltaTime)
 
 void AUnitBase::SetSelected()
 {
-	if (authority)
 		CursorToWorld->SetVisibility(true);
 }
 

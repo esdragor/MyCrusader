@@ -32,12 +32,21 @@ void ASelectionUnitHUD::UnitsSelected()
 {
 	GetUnitsDeselected();
 	GetActorsInSelectionRectangle<AUnitBase>(StartSelectionSquare, CurrentSelectionSquare, TmpSelection, false, false);
+	GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, FString::Printf(TEXT("%i"), UnitSelection.Num()));
+
 	for (int i = 0; i < TmpSelection.Num(); i++)
 	{
 		//if (TmpSelection[i]->authority)
 		//{
 		//	SelectSquadron(i);
 		//}
+		if (!UnitSelection.Contains(TmpSelection[i]))
+		{
+			UnitSelection.Add(TmpSelection[i]);
+			UnitSelection.Last()->SetSelected();
+			//TmpSelection[0][i]->SetSelected();
+		}
+
 	}
 }
 

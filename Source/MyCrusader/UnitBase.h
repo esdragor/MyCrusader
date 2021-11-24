@@ -15,16 +15,10 @@ public :
 	/** Returns CursorToWorld subobject **/
 	FORCEINLINE class UStaticMeshComponent* GetCursorToWorld() { return CursorToWorld; }
 
-	UPROPERTY()
-		bool authority = false;
 	UPROPERTY(VisibleAnywhere)
 		int IndexPlayer = 0;
 	void SetSelected();
 	void SetDeselected();
-	UFUNCTION(BlueprintCallable)
-		bool GetAuthority() { return authority; }
-	UFUNCTION(BlueprintCallable)
-		void SetAuthority(bool _auth) { authority = _auth; }
 	UFUNCTION(BlueprintCallable)
 		void AddTargetEndOverlap(AActor* actorEnd);
 	UFUNCTION(BlueprintCallable)
