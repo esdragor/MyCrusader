@@ -32,7 +32,6 @@ void ASelectionUnitHUD::UnitsSelected()
 {
 	GetUnitsDeselected();
 	GetActorsInSelectionRectangle<AUnitBase>(StartSelectionSquare, CurrentSelectionSquare, TmpSelection, false, false);
-	GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, FString::Printf(TEXT("%i"), UnitSelection.Num()));
 
 	for (int i = 0; i < TmpSelection.Num(); i++)
 	{
@@ -52,7 +51,6 @@ void ASelectionUnitHUD::UnitsSelected()
 
 void ASelectionUnitHUD::GetUnitsDeselected()
 {
-	int a = UnitSelection.Num();
 	for (int i = 0; i < UnitSelection.Num(); i++)
 	{
 		if (UnitSelection[i]->getHealthPercent() > 0)
@@ -60,7 +58,6 @@ void ASelectionUnitHUD::GetUnitsDeselected()
 	}
 	UnitSelection.Empty();
 	TmpSelection.Empty();
-	a = UnitSelection.Num();
 }
 
 //void ASelectionUnitHUD::SelectSquadron(int index)

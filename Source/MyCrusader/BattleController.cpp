@@ -14,6 +14,7 @@
 
 
 
+
 ABattleController::ABattleController()
 {
 	bShowMouseCursor = true;
@@ -31,6 +32,9 @@ void ABattleController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
 
+	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Blue, FString::Printf(TEXT("%i"), HUDSelection->UnitSelection.Num()));
+
+
 	// keep updating the destination every tick while desired
 	if (bMoveToMouseCursor)
 	{
@@ -45,10 +49,6 @@ void ABattleController::SetupInputComponent()
 
 	InputComponent->BindAction("SetDestination", IE_Pressed, this, &ABattleController::OnSetDestinationPressed);
 	InputComponent->BindAction("SetDestination", IE_Released, this, &ABattleController::OnSetDestinationReleased);
-
-	// support touch devices 
-	InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &ABattleController::MoveToTouchLocation);
-	InputComponent->BindTouch(EInputEvent::IE_Repeat, this, &ABattleController::MoveToTouchLocation);
 
 	InputComponent->BindAction("ZoomIn", IE_Pressed, this, &ABattleController::ZoomIn);
 	InputComponent->BindAction("ZoomOut", IE_Pressed, this, &ABattleController::ZoomOut);
@@ -138,9 +138,12 @@ void ABattleController::MoveUnitsSelected()
 		{
 			AController *controller = UnitsSelected[i]->GetController();
 			if (controller)
+			{
 				//UAIBlueprintHelperLibrary::SimpleMoveToLocation(controller, TargetLocation);
 				MoveToL(controller, TargetLocation);
-			//UAIBlueprintHelperLibrary::SimpleMoveToLocation(controller, TargetLocation);
+				//UAIBlueprintHelperLibrary::SimpleMoveToLocation(controller, TargetLocation);
+			}
+
 		}
 	}
 }
