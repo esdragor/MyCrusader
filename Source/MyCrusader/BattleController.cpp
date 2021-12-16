@@ -124,6 +124,17 @@ void ABattleController::SelectUnitsEnd()
 	HUDSelection->onSelection = false;
 }
 
+void ABattleController::GetUnitsDeselected()
+{
+	HUDSelection->GetUnitsDeselected();
+}
+
+void ABattleController::FUnitsSelected()
+{
+	HUDSelection->UnitsSelected();
+
+}
+
 void ABattleController::MoveUnitsSelected()
 {
 	SelectUnitsEnd();
@@ -147,3 +158,4 @@ void ABattleController::MoveUnitsSelected()
 		}
 	}
 }
+

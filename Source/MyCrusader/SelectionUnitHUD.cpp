@@ -2,6 +2,7 @@
 
 
 #include "SelectionUnitHUD.h"
+#include "BattleController.h"
 
 void ASelectionUnitHUD::DrawHUD()
 {
@@ -20,9 +21,9 @@ FVector2D ASelectionUnitHUD::GetMousePosOnScreen()
 {
 	FVector2D pos;
 
-	if (PC == nullptr)
-		PC = GetOwningPlayerController();
-	PC->GetMousePosition(pos.X, pos.Y);
+	if (BattleCont == nullptr)
+		BattleCont = Cast<ABattleController> (GetOwningPlayerController());
+	BattleCont->GetMousePosition(pos.X, pos.Y);
 
 	return pos;
 }

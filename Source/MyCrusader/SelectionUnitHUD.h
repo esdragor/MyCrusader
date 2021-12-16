@@ -7,6 +7,8 @@
 #include "UnitBase.h"
 #include "SelectionUnitHUD.generated.h"
 
+class ABattleController;
+
 /**
  * 
  */
@@ -19,7 +21,7 @@ public:
 	FVector2D StartSelectionSquare;
 	FVector2D CurrentSelectionSquare;
 	bool onSelection = false;
-	APlayerController *PC;
+	ABattleController *BattleCont = nullptr;
 	TArray<AUnitBase *> TmpSelection;
 	TArray<AUnitBase*> UnitSelection;
 

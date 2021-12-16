@@ -4,11 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
-#include "SelectionUnitHUD.h"
 #include "UnitBase.h"
 #include "BattleController.generated.h"
+
+class ASelectionUnitHUD;
 /**
- * 
+ *
  */
 UCLASS()
 class MYCRUSADER_API ABattleController : public APlayerController
@@ -18,6 +19,10 @@ class MYCRUSADER_API ABattleController : public APlayerController
 public:
 	ABattleController();
 	void SelectUnitsEnd();
+		UFUNCTION(BlueprintCallable)
+		void FUnitsSelected();
+	UFUNCTION(BlueprintCallable)
+		void GetUnitsDeselected();
 
 protected:
 	/** True if the controlled character should navigate to the mouse cursor. */
@@ -55,4 +60,5 @@ protected:
 	void MoveUnitsSelected();
 	UFUNCTION(BlueprintImplementableEvent)
 		bool MoveToL(AController *controller, FVector TargetLocation);
+
 };

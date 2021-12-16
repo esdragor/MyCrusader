@@ -58,7 +58,7 @@ protected:
 		bool TakeAHitBP();
 	void Death();
 
-private:
+protected:
 
 	/** A decal that projects to the cursor location. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
