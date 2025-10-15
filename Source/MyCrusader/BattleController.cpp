@@ -2,21 +2,15 @@
 
 
 #include "BattleController.h"
-#include "Blueprint/AIBlueprintHelperLibrary.h"
-#include "Runtime/Engine/Classes/Components/DecalComponent.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
 #include "UnitBase.h"
-#include "UObject/UObjectGlobals.h"
-#include "Engine/World.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "AI/NavigationSystemBase.h"
 #include "SelectionUnitHUD.h"
-
+#include "GameFramework/SpringArmComponent.h"
 
 
 
 ABattleController::ABattleController()
 {
+	
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Crosshairs;
 }

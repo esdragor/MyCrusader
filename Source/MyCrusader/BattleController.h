@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/PlayerController.h"
 #include "UnitBase.h"
 #include "BattleController.generated.h"
 
