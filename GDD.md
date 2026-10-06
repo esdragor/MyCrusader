@@ -1,6 +1,6 @@
 # GAME DESIGN DOCUMENT — RTS FANTASY
 
-**Version 0.3** — Préproduction
+**Version 0.4** — Préproduction
 Remplace `RTS_Fantasy_GDD_v0.1.txt`, `v0.2_CORRIGE.txt` et `v0.2_FINAL.txt`.
 
 > **Convention :** les points marqués ⚠️ **[Qxx]** ne sont pas encore tranchés. Ils renvoient à la liste des questions ouvertes (§ 20). Chaque réponse validée est consignée dans le **journal des décisions** (§ 21), puis reportée dans le corps du document.
@@ -872,7 +872,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 |---|---|---|
 | Ordre de l'Aube | Honneur | **Sanctuaire** *(D67)* : les fermes dans son rayon produisent plus (économie compacte et défendable) |
 | Légions Noires | Cadavres / Nécroflux | **Zombie** *(D66)* : travailleur bon marché, sans nourriture, plus lent ; unités des Légions moins chères |
-| Enfants du Dragon | Adaptation élémentaire | **Économie élémentaire** *(D68)* : l'élément choisi bonifie la collecte d'une ressource |
+| Enfants du Dragon | Adaptation élémentaire | **Économie élémentaire** *(D68, D72)* : chaque *Nid élémentaire* bonifie la collecte de la ressource de son élément ; effets cumulés, élément changeable gratuitement avec délai |
 | Cercle de l'Ombre | Subversion | **Marché noir** *(D69)* : échange de ressources au marché à un meilleur taux |
 | Héritiers du Feu | Élite globale *(D39)* : toute la faction fait la même chose, en mieux | peu de travailleurs, mais chacun collecte nettement plus |
 
@@ -974,7 +974,15 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | **Mage Élémentaire** | dégâts / contrôle à distance | choix feu, glace ou foudre, zones élémentaires, effets selon l'élément |
 | **Dompteur de Bêtes** | hybride / soutien | arme courte, compagnon contrôlable (wyverne, dracogriffe), ordres attaquer / distraire / protéger |
 
-**Économie *(D68)* : économie élémentaire.** L'élément choisi par le joueur (feu, glace ou foudre) **bonifie la collecte d'une ressource** ; changer d'élément rééquilibre l'économie. Pas d'affinité de terrain (D40). ⚠️ À définir : correspondance élément → ressource (proposition : feu → or, glace → pierre, foudre → bois ; la nourriture n'est jamais bonifiée) et coût d'un changement d'élément.
+**Économie *(D68, D72, D73)* : économie élémentaire.** Pas d'affinité de terrain (D40).
+
+- **Le *Nid élémentaire* *(D72, nom temporaire)*** : bâtiment propre à la faction, réglé sur **un élément** (feu, glace ou foudre). Chaque Nid **bonifie la collecte de la ressource liée à son élément** (~ +10 % par Nid, valeur indicative).
+- **Plusieurs Nids, effets cumulés :** le bonus s'additionne d'un Nid à l'autre (3 Nids en feu ≈ +30 % sur la ressource du feu). Le joueur peut **répartir** ses Nids entre plusieurs éléments ou tout miser sur un seul.
+- **Changer l'élément d'un Nid est gratuit, mais pas immédiat** (façon citernes byzantines d'AoE4) : le nouveau réglage ne devient actif qu'après **X s** (à régler en test) ; **pendant ce délai, l'ancien réglage continue de produire**. La faction s'adapte sans trou de production, mais jamais instantanément.
+- Les Nids sont des **cibles** : en raser un retire son bonus.
+- L'élément des Nids ne touche que l'économie : l'élément du héros (*Souffle*, *Aura draconique*) et celui de chaque Mage Élémentaire restent indépendants.
+- **Correspondance *(D73)* :** **feu → or**, **glace → pierre**, **foudre → bois** ; la **nourriture n'est jamais bonifiée** (pas de spam d'unités de base nourri par les Nids). Elle reprend les postures du duel (D49) : la glace défensive bâtit les fortifications, le feu offensif paie les unités avancées, la foudre rapide alimente production et expansion. La pierre reste à conquérir : le bonus multiplie une collecte existante, il faut toujours tenir les gisements.
+- ⚠️ Vigilance : le cumul est sans plafond ; le coût d'un Nid (ou un plafond) devra empêcher qu'une ressource soit démultipliée. À régler en test.
 
 **Mécanique à prototyper : ADAPTATION ÉLÉMENTAIRE.** La faction modifie son style selon l'élément choisi, le terrain, le climat et les bâtiments construits.
 
@@ -1471,6 +1479,8 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D69 | 2026-10-06 | Économie du Cercle de l'Ombre | **Marché noir** : le Cercle échange ses ressources au marché à un meilleur taux. Remplace la piste du pillage. Existence d'un marché à préciser. | § 13.1, § 13.5 |
 | D70 | 2026-10-06 | Marché | **Marché commun à toutes les factions**, façon AoE : achat et vente, taux évolutifs ; le Cercle y a un meilleur taux (D69). | § 5.5, § 13.5 |
 | D71 | 2026-10-06 | Déconnexion d'un joueur | **Fenêtre de reconnexion** (~2-3 min) tenue par une IA, retour possible ; ensuite défaite en 1v1 classé, IA jusqu'au bout en équipe. | § 14.4, § 16.4 |
+| D72 | 2026-10-06 | Élément de faction des Enfants du Dragon | **Option A, élargie** : l'élément est porté par un bâtiment, le *Nid élémentaire* (nom temporaire). **Plusieurs Nids possibles**, chacun réglé sur un élément ; bonus de collecte **cumulés** (~ +10 % par Nid sur la ressource de son élément). Changement d'élément **gratuit mais différé** (façon citernes byzantines d'AoE4) : actif après X s, l'ancien réglage tourne pendant le délai. L'élément du héros reste indépendant. Règle le « coût d'un changement d'élément » laissé ouvert par D68. | § 13.1, § 13.4 |
+| D73 | 2026-10-06 | Correspondance élément → ressource (Enfants du Dragon) | **Feu → or, glace → pierre, foudre → bois ; nourriture jamais bonifiée.** Cohérent avec les postures du duel (D49) et lisible par l'adversaire. Clôt le reliquat de D68. | § 13.4 |
 
 ---
 
@@ -1478,7 +1488,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D72**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D74**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -1488,9 +1498,10 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 4. ~~**Ossuaire**~~ → **tranché (D65)** : collecte globale, non rétroactive, dépense automatique.
 5. ~~**Économie des factions**~~ → **tranché (D66 à D70)** : Zombie, Sanctuaire, économie élémentaire, marché noir ; marché commun (§ 5.5).
 6. ~~**Déconnexion**~~ → **tranché (D71)** : fenêtre de reconnexion tenue par une IA.
+7. ~~**Reliquat de D68 (Enfants du Dragon)**~~ → **tranché (D72, D73)** : *Nids élémentaires* cumulables, changement gratuit mais différé ; feu → or, glace → pierre, foudre → bois.
 
 **Bilan terminé.** Plus aucune question de design en cours. Pistes pour la suite : relecture de cohérence globale du GDD ; valeurs à régler en test (ci-dessous) ; premier chantier de code.
 
-**À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33).
+**À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72).
 
 **Premier chantier de code identifié :** remplacer `AUnitBase : ACharacter` par le système d'unités légères (D29, § 16.4).
