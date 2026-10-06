@@ -164,6 +164,16 @@ Une expansion comporte un risque : plus elle est éloignée, plus elle est diffi
 
 Le joueur choisit entre investir dans sa base, prendre une expansion, investir dans l'armée ou accélérer sa technologie. Aucune option ne doit être systématiquement optimale.
 
+### 5.5 Marché *(décision D70)*
+
+**Un marché commun à toutes les factions**, façon AoE.
+
+- Bâtiment économique standard : achat et vente de ressources contre de l'or.
+- **Taux évolutifs :** plus une ressource est vendue, moins elle rapporte ; plus elle est achetée, plus elle coûte. Les taux reviennent lentement à l'équilibre.
+- **Rôle :** compenser un manque, notamment de pierre, ressource contestable (§ 5.1), sans supprimer l'intérêt de la contester.
+- **Cercle de l'Ombre :** meilleur taux, grâce au *marché noir* (D69, § 13.5).
+- C'est un bâtiment à protéger et à cibler. L'IA doit savoir s'en servir.
+
 ---
 
 ## 6. Construction et base
@@ -197,8 +207,9 @@ La base doit être plus qu'un amas de bâtiments : défense, production, économ
 | **Mangonneau / Catapulte** | 2 | groupes et murs, longue portée | Cavalier léger, corps à corps |
 | **Trébuchet** | 3 | fortifications de loin ; doit être monté et démonté | Cavalier léger, corps à corps |
 | **Canon** *(D38)* | 3, technologie « Armes à poudre » | courte portée, gros dégâts, plus mobile que le Trébuchet | Cavalier léger, corps à corps |
+| *Cracheur de bile* *(D59, Légions Noires, à la place du Canon)* | 3 | projectile d'acide : dégâts à l'impact, puis **flaque d'acide** qui inflige des dégâts sur la durée pendant un court temps | Cavalier léger, corps à corps |
 
-- **Poudre (D38) :** le Canon s'ajoute aux autres engins, il ne remplace rien. Variante des Héritiers du Feu : la *Bombarde*. Les Légions Noires n'ont pas de poudre (§ 13.3).
+- **Poudre (D38) :** le Canon s'ajoute aux autres engins, il ne remplace rien. Variante des Héritiers du Feu : la *Bombarde*. Les Légions Noires n'ont pas de poudre : leur variante est le *Cracheur de bile* (D59, § 13.3).
 
 - **Murs, portes et tours sont solides** : percer une base fortifiée demande du siège.
 - **Arbitrage économique :** le bois et l'or du siège ne vont pas dans l'armée.
@@ -244,7 +255,6 @@ Chaque unité possède au minimum : rôle, coût, population, temps de productio
 | Cavalerie légère | Cavalier léger | cavalerie légère |
 | Cavalerie lourde | Cavalier lourd | cavalerie lourde |
 | Siège | Bélier, Mangonneau, Trébuchet, Canon (§ 6.1) | siège |
-| Contre-mesure anti-héros | proposition : l'Arbalétrier (§ 7.2) | — |
 
 Les détails des contres sont au § 7.2 (D21).
 
@@ -252,9 +262,9 @@ Les détails des contres sont au § 7.2 (D21).
 
 - La technologie commune **« Armes à poudre »** (palier 3) débloque deux nouvelles unités du socle : l'**Arquebusier** (tireur, catégorie d'armure distance) et le **Canon** (siège, § 6.1). Elles s'ajoutent à l'Arbalétrier et aux engins existants.
 - **Exceptions de faction** (règle des variantes ci-dessous) :
-  - **Légions Noires :** pas de poudre. ⚠️ Une réponse équivalente de fin de partie reste à définir pour ne pas les désavantager.
-  - **Héritiers du Feu :** *Bombarde* à la place du Canon, et une variante de l'Arquebusier (nom et spécificité à définir). Ce sont leurs deux variantes du socle.
-- ⚠️ **Points de vigilance :** l'Arquebusier chevauche l'Arbalétrier (tireur anti-armure) : place dans la matrice de contres (§ 7.2) à définir. Il ne doit pas devenir un anti-héros trop fort (D17).
+  - **Légions Noires :** pas de poudre *(D59)*. À la place du Canon : le ***Cracheur de bile***, engin de siège à acide (§ 6.1). Pas d'équivalent de l'Arquebusier ; en compensation, un bâtiment propre en plus au palier 3 : l'***Ossuaire*** (D60, § 13.3).
+  - **Héritiers du Feu :** *Bombarde* à la place du Canon, et l'***Arquebusier de la Forge*** (nom temporaire, D61) à la place de l'Arquebusier : il **tire plus vite et plus loin**. Ce sont leurs deux variantes du socle. ⚠️ Vigilance : l'Archer ne le dépasse plus en portée ; il reste vulnérable à la cavalerie, et la règle d'élite (coût ×2) limite leur nombre.
+- **Place de l'Arquebusier *(D58)* :** tireur lourd de fin de partie, façon Handcannoneer d'AoE4 (§ 7.2). L'Arbalétrier reste le spécialiste rentable contre l'armure lourde ; l'Arquebusier est la puissance brute chère. Aucun des deux n'est une unité anti-héros (D62).
 
 **Amélioration et déblocage *(décision D38)* : une unité n'est jamais remplacée en cours de partie.**
 
@@ -270,7 +280,8 @@ Les détails des contres sont au § 7.2 (D21).
 
 **Exemples :**
 
-- **Légions Noires — Zombie** à la place du Paysan : coûte moins cher (spécificité exacte à définir, par exemple pas de nourriture mais plus lent à la collecte).
+- **Légions Noires — Zombie** à la place du Paysan *(D66)* : moins cher, **sans nourriture**, **collecte plus lente**, 1 place de population. Ce n'est pas un handicap de population : **les unités des Légions coûtent moins cher**, donc la faction a besoin de moins de revenu, et donc de moins de travailleurs.
+- **Légions Noires — *Cracheur de bile*** à la place du Canon *(D59)* : leur seconde variante (2 au maximum respecté). Le rôle « Canon » a ainsi deux variantes : *Bombarde* (Héritiers) et *Cracheur de bile* (Légions).
 - **Une autre faction — Hallebardier** à la place du Lancier : anti-cavalerie avec, en plus, une efficacité contre l'infanterie lourde, mais plus cher.
 
 **Unités emblématiques :** les 3 unités décrites pour chaque faction au § 13 **s'ajoutent** au socle commun. Exceptionnellement, l'une d'elles peut tenir lieu de variante d'un rôle (par exemple, l'Archer de l'Aube à la place de l'Archer).
@@ -292,14 +303,15 @@ Les contres reposent sur des **bonus de dégâts par catégorie d'armure**, comm
 | **Lancier** | anti-cavalerie bon marché | **toute la cavalerie** | Archer, Homme d'armes |
 | **Homme d'armes** | infanterie lourde, **tank** : pas de bonus, une forte armure | — (gagne à l'usure contre Lanciers et Archers) | **Arbalétrier** |
 | **Archer** | tireur léger de masse | **infanterie légère** (Lancier, Paysan…) | Cavalerie légère, Cavalerie lourde ; peu efficace contre les armures |
-| **Arbalétrier** | tireur anti-armure | **armures lourdes** (Homme d'armes, Cavalerie lourde) ; proposition : aussi **anti-héros** | Cavalerie légère, Cavalerie lourde |
+| **Arbalétrier** | tireur anti-armure | **armures lourdes** (Homme d'armes, Cavalerie lourde) | Cavalerie légère, Cavalerie lourde |
+| **Arquebusier** *(D58, palier 3)* | tireur **lourd** de fin de partie : gros dégâts par tir, recharge lente, courte portée, cher en or | aucun bonus de catégorie, mais **ignore une partie de l'armure** de toutes les cibles  | Cavalerie légère, Cavalerie lourde, Archer (plus longue portée) |
 | **Cavalier léger** | raid, harcèlement, éclairage | **tireurs** et **siège** | Lancier, Cavalier lourd |
 | **Cavalier lourd** | choc, **charge** dévastatrice | infanterie légère et tireurs (bonus de charge) | Lancier, Arbalétrier |
 | **Siège** | anti-bâtiments, anti-groupes | bâtiments, formations serrées | toute unité au contact, Cavalier léger |
 
-**Lecture pour le joueur :** cavalerie → lanciers ; tireurs → cavalerie ; armure lourde → arbalétriers ; masse d'infanterie légère → archers ; lanciers et archers → hommes d'armes ou cavalerie lourde.
+**Lecture pour le joueur :** cavalerie → lanciers ; tireurs → cavalerie ; armure lourde → arbalétriers (ou arquebusiers, plus chers, en fin de partie) ; masse d'infanterie légère → archers ; lanciers et archers → hommes d'armes ou cavalerie lourde.
 
-**Proposition anti-héros (D17) :** l'Arbalétrier ignore une partie de la résistance héroïque. Il est la contre-mesure anti-héros **du socle commun**. Une faction peut en avoir une variante propre (règle D20).
+**Pas d'unité anti-héros *(D62)* :** aucune unité n'a de bonus contre les héros, et la résistance héroïque (×0,3, D17) s'applique à toutes les troupes. L'Arbalétrier et l'Arquebusier font simplement **beaucoup de dégâts de base** : un grand nombre d'entre eux finit par blesser sérieusement un héros, même réduit à ×0,3.
 
 **Unités emblématiques et variantes :** chacune se rattache à une catégorie d'armure et à une ligne de la matrice, avec une spécificité. Par exemple : Chevalier Vertueux = infanterie lourde à redirection de dégâts ; Spectre Assassin = unité rapide anti-tireurs ; Hallebardier = anti-cavalerie avec un bonus contre l'infanterie lourde.
 
@@ -405,9 +417,7 @@ Les créatures neutres peuvent protéger des ressources, occuper des ruines, blo
 
 **Capacité ultime *(décision D36)* :** voir § 9.5. Ultimes du prototype décrits aux § 13.2 et § 13.3.
 
-**Héros hors prototype :** Seigneur-Dragon des Enfants du Dragon (§ 13.4, D41).
-
-⚠️ Héros du Cercle de l'Ombre et des Héritiers du Feu (et leurs ultimes) non décrits **[Q08]**.
+**Héros hors prototype :** Seigneur-Dragon des Enfants du Dragon (§ 13.4, D41), la Voix du Cercle de l'Ombre (§ 13.5, D44), le Champion Héritier des Héritiers du Feu (§ 13.6, D46).
 
 ### 9.1 Rôle
 
@@ -429,7 +439,7 @@ Un héros peut être moyen en combat mais extrêmement puissant comme commandant
 |---|---|
 | **Puissance offensive** | Environ **5 à 6 unités standard**, mesurée en équivalent d'unités standard, identique pour toutes les factions (≈ 3 unités des Héritiers du Feu). Le héros **ne peut pas raser une armée** et fait peu de dégâts aux bâtiments : pas de raid solitaire sur une base. |
 | **Défense face aux troupes** | **Dégâts fortement réduits** de la part des unités ordinaires (indicatif ×0,3). Une armée *peut* tuer un héros, mais il lui faut beaucoup d'unités concentrées sur lui pendant longtemps (~20-30 s), avec des pertes. |
-| **Dégâts normaux reçus de** | autres héros, tours, siège, et **contre-mesures dédiées** : une unité ou une technologie « tueuse de héros » par faction (à définir). |
+| **Dégâts normaux reçus de** | autres héros, tours, siège. **Pas de contre-mesure dédiée** *(D62)* : aucune unité n'est « tueuse de héros » ; les tireurs à gros dégâts de base (Arbalétrier, Arquebusier) font mal en nombre, malgré la réduction. Exception : le Seigneur-Dragon monté reçoit les dégâts normaux des tireurs (D41). |
 | **Héros contre héros hors duel** | Un héros frappe un autre héros plus fort qu'un homme d'armes, mais **ce sont les compétences de duel qui font la différence**. Hors duel, deux héros s'usent lentement ; en duel, ils peuvent se vaincre. |
 
 **Conséquences :**
@@ -462,6 +472,20 @@ Le compromis : **héros près du front** = plus de puissance mais plus de risque
 Capacités possibles : aura, charge, cri de guerre, soin, renforcement, mobilité, reconnaissance, invocation, capacité de faction.
 
 Toutes les capacités ont des temps de recharge. Le héros ne doit pas pouvoir enchaîner ses capacités jusqu'à résoudre tous les combats.
+
+**Déblocage *(décision D42)* : progressif, façon BFME, en décalé des paliers.**
+
+| Niveau | Kit RTS | Moment indicatif (1v1) |
+|---|---|---|
+| 1 | **aura + capacité 1** | début |
+| 4 | **capacité 2** | ~ 9-11 min |
+| 7 | **capacité 3** | ~ 16-18 min |
+| 10 | **ultime** (D36) | ~ 25 min et plus |
+
+- **Kit RTS cible :** une aura, 3 capacités actives et un ultime, pour tous les héros. Exception : le Seigneur-Dragon (aura + 4 capacités réparties sur deux formes exclusives, D51).
+- **Rythme :** la civilisation progresse aux niveaux 3, 6 et 9 (paliers), le héros aux niveaux 1, 4, 7 et 10. Les deux types de moments forts ne tombent jamais au même niveau : le choix de spécialisation de palier (D07) n'est pas noyé sous une nouvelle capacité, et il se passe quelque chose de marquant entre deux paliers.
+- **Prototype (niveaux 1 à 6) :** aura + capacités 1 et 2, soit les kits déjà décrits pour le Paladin-Commandant et le Seigneur Damné. La capacité 3 et l'ultime viennent après le prototype ; ils sont prévus dans `HeroData` dès le départ.
+- Les déblocages sont conditionnés par l'attribut `Level` du héros (§ 16.1).
 
 ### 9.4 Sources d'XP
 
@@ -502,31 +526,31 @@ La progression du **héros** et celle de la **civilisation** sont distinctes :
 
 - **Chaque niveau** fait grandir le héros : point de talent, statistiques, capacités. Sensation de progression fréquente, environ toutes les 2 à 3 minutes.
 - **Les niveaux 3, 6 et 9** ouvrent en plus un **palier de civilisation** (accès à de nouveaux bâtiments et technologies).
-- **Le niveau 10** débloque la capacité ultime du héros.
+- **Le niveau 10** débloque la capacité ultime du héros et son ultime de duel (D43).
 
 **Forme de l'ultime *(décision D36)* : une capacité de bataille active du kit RTS.**
 
 - Effet massif sur une zone, de courte durée, avec une longue recharge (indicatif : 3 à 4 min).
 - **Annoncé et contrable :** un signal visuel clair au lancement, et une réponse possible pour l'adversaire (reculer, changer de terrain, etc.).
 - Le héros doit être sur place : pas d'effet à l'échelle de la carte, pas de transformation (pour garder le repère de D17).
-- **L'ultime de duel est distinct :** il reste dans le kit de duel (§ 10.3) et n'est pas lié au niveau 10, pour qu'un héros de niveau 10 ne gagne pas presque tous ses duels contre un héros de niveau inférieur.
+- **L'ultime de duel est distinct :** c'est une capacité du kit de duel (§ 10.3), séparée de l'ultime RTS. *Révision D43 :* il se débloque lui aussi au niveau 10 (D36 le prévoyait indépendant du niveau).
 - **Serviteurs temporaires** créés par un ultime : hors population, mais plafonnés (proposition, à confirmer en test).
 - Hors prototype (niveaux 1 à 6) ; la capacité est prévue dans `HeroData` dès le départ.
 
 | Niveau | Héros | Civilisation (noms temporaires) | Moment indicatif (1v1, joueur actif) |
 |---|---|---|---|
-| 1 | kit de départ | **Palier 0 — Fondation** : technologies fondamentales, bâtiments de départ, unités de base | début |
+| 1 | aura + capacité 1 | **Palier 0 — Fondation** : technologies fondamentales, bâtiments de départ, unités de base | début |
 | 2 | talent | — | |
 | 3 | talent | **Palier 1 — Essor** : premières infrastructures avancées, nouvelles améliorations, nouvelles unités | ~ 6-8 min |
-| 4 | talent | — | |
-| 5 | talent, nouvelle capacité | — | |
+| 4 | talent, **capacité 2** (D42) | — | ~ 9-11 min |
+| 5 | talent | — | |
 | 6 | talent | **Palier 2 — Puissance** : bâtiments avancés, technologies spécialisées, unités élites | ~ 13-15 min |
-| 7 | talent | — | |
+| 7 | talent, **capacité 3** (D42) | — | ~ 16-18 min |
 | 8 | talent | — | |
 | 9 | talent | **Palier 3 — Légende** : technologies finales, bâtiments majeurs, options de fin de partie | ~ 20-23 min |
-| 10 | **ultime** | — | ~ 25 min et plus |
+| 10 | **ultime** + ultime de duel (D43) | — | ~ 25 min et plus |
 
-Ce qui est gagné à chaque niveau de héros (talent, statistiques, capacité) n'est pas encore figé : le tableau est indicatif.
+Le calendrier des capacités est fixé (D42, § 9.3) ; les gains de statistiques par niveau et les moments indicatifs restent à régler en test.
 
 **Important :** un palier ne donne rien automatiquement. Il ouvre un niveau d'accès ; le joueur doit encore construire et rechercher.
 
@@ -686,11 +710,18 @@ Le duel a lieu directement sur la carte, pour éviter d'en faire un mini-jeu sé
 - les **capacités RTS actives** du héros sont remplacées par son **kit de duel** ;
 - son **aura de commandement reste active**, puisqu'il est physiquement sur la carte.
 
-**Contenu du kit** (catégories) : attaques, défenses, mobilité, contrôle, ultime de duel. Le kit de duel est séparé du kit RTS. L'ultime de duel n'est pas lié au niveau 10 du héros (D36).
+**Contenu du kit** (catégories) : attaques, défenses, mobilité, contrôle, ultime de duel. Le kit de duel est séparé du kit RTS.
+
+**Déblocage *(décision D43)* : kit de duel complet dès le niveau 1, sauf l'ultime de duel, débloqué au niveau 10.**
+
+- Du niveau 1 au niveau 9, le niveau donne un avantage de **statistiques** en duel, pas d'**outils** : un héros en retard de quelques niveaux garde une vraie chance s'il lit mieux son adversaire.
+- Au niveau 10, l'ultime de duel s'ajoute : c'est la récompense de fin de progression, en miroir de l'ultime RTS.
+- Le prototype (niveaux 1 à 6) teste donc le kit de duel complet, sans ultime de duel.
+- ⚠️ **Point de vigilance :** un héros de niveau 10 a un outil de plus que son adversaire. L'ultime de duel doit rester puissant mais lisible et contrable (annoncé, comme les attaques fortes), pour ne pas décider seul l'issue d'un duel. À régler en test.
 
 **Le duel teste :** timing, lecture de l'adversaire, gestion des temps de recharge et de la posture, connaissance du héros.
 
-**Exemple sur les héros du prototype :** le Paladin-Commandant (riposte) gagne en posture défensive en contrant les attaques annoncées. Le Seigneur Damné (agression, drain de vie) gagne en maintenant la pression sans s'exposer aux contres.
+**Exemple sur les héros du prototype :** le Paladin-Commandant (riposte) gagne en posture défensive en contrant les attaques annoncées. Le Seigneur Damné (agression, drain de vie) gagne en maintenant la pression sans s'exposer aux contres. Hors prototype, la Voix du Cercle de l'Ombre (feintes, D45) ferme un triangle : la feinte bat la riposte, l'agression bat la feinte, la riposte bat l'agression. Les autres styles : montée en Chaleur pour le Champion Héritier (D47), duel élémentaire pour le Seigneur-Dragon (D49).
 
 ### 10.4 Durée
 
@@ -716,7 +747,9 @@ La valeur principale du duel vient de D17 : c'est la manière normale et la plus
 - **Effet de victoire propre à la faction** du vainqueur, un seul par faction :
   - **Ordre de l'Aube :** gros gain d'Honneur et recharge immédiate de la *Bannière de l'Aube*.
   - **Légions Noires :** le corps du héros vaincu relève un *Champion damné* temporaire (~45 s), et la *Moisson* est portée immédiatement à son maximum de cumuls.
-  - **Enfants du Dragon, Cercle de l'Ombre, Héritiers du Feu :** à définir avec leurs héros (Q08).
+  - **Cercle de l'Ombre *(D45)* :** *Voix usurpée*, la Voix prend l'aura du héros vaincu pour sa propre armée (~45 s).
+  - **Héritiers du Feu *(D47)* :** *Armes chauffées à blanc*, les alliés proches du Champion Héritier ont des armes incandescentes (~45 s).
+  - **Enfants du Dragon *(D49)* :** *Furie du wyrm*, le dragon fond sur l'armée adverse proche et combat seul (~30 s, plafonné), puis le Seigneur-Dragon peut remonter sans délai de bascule.
 - **Garde-fous :** effets temporaires (§ 10.6) et de valeur comparable d'une faction à l'autre ; le Champion damné a une puissance plafonnée et une durée courte, pour ne pas faire boule de neige. Valeurs à régler en test.
 - **Technique :** l'effet de victoire est un `GameplayEffect` (ou une capacité) référencé dans le HeroData de chaque faction, appliqué par le serveur à la fin du duel.
 - **Usage visé :** le duel est un outil tactique, idéalement lancé juste avant ou pendant une bataille.
@@ -837,10 +870,10 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 | Faction | Mécanique signature | Particularité économique *(pistes)* |
 |---|---|---|
-| Ordre de l'Aube | Honneur | les fermes proches d'un sanctuaire produisent plus (économie compacte et défendable) |
-| Légions Noires | Cadavres / Nécroflux | Zombie : travailleur bon marché, sans nourriture, plus lent |
-| Enfants du Dragon | Adaptation élémentaire | collecte bonifiée selon le terrain ou le climat |
-| Cercle de l'Ombre | Subversion | pillage : voler une partie des ressources en tuant des travailleurs ennemis |
+| Ordre de l'Aube | Honneur | **Sanctuaire** *(D67)* : les fermes dans son rayon produisent plus (économie compacte et défendable) |
+| Légions Noires | Cadavres / Nécroflux | **Zombie** *(D66)* : travailleur bon marché, sans nourriture, plus lent ; unités des Légions moins chères |
+| Enfants du Dragon | Adaptation élémentaire | **Économie élémentaire** *(D68)* : l'élément choisi bonifie la collecte d'une ressource |
+| Cercle de l'Ombre | Subversion | **Marché noir** *(D69)* : échange de ressources au marché à un meilleur taux |
 | Héritiers du Feu | Élite globale *(D39)* : toute la faction fait la même chose, en mieux | peu de travailleurs, mais chacun collecte nettement plus |
 
 **Prototype :** Honneur + règle économique de l'Aube ; cadavres + Zombie pour les Légions.
@@ -865,6 +898,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - **Contre-jeu :** unités perforantes ou anti-lourdes, dégâts de zone (qui frappent aussi le Chevalier, plusieurs fois), et éliminer le Moine en priorité.
 - À régler en test : le pourcentage redirigé (passif partiel contre actif total), le rayon de la zone et le temps de recharge.
 
+**Économie *(D67)* : le Sanctuaire.** Les fermes situées dans le rayon d'un Sanctuaire produisent plus de nourriture. L'Aube a intérêt à bâtir une économie **compacte et défendable**, fidèle à son identité. ⚠️ Vigilance : une expansion lointaine lui rapporte moins qu'aux autres factions ; à surveiller sur les grandes cartes.
+
 **Mécanique à prototyper : HONNEUR.** Récompense les actions cohérentes avec l'identité de la faction : duels, défense, protection d'alliés, objectifs militaires. Ce n'est pas encore une ressource obligatoire.
 
 **Héros *(décision D12)* : LE PALADIN-COMMANDANT** *(nom temporaire)*
@@ -878,6 +913,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - *Aura de l'Aube* : large aura défensive (armure, moral).
   - *Bannière de l'Aube* : plante un point de commandement fixe qui prolonge son aura dans une zone pendant qu'il se déplace ailleurs. Cela donne une réponse partielle au problème des fronts multiples.
   - *Serrez les rangs* : cri de guerre qui réduit les dégâts reçus et met les unités en formation défensive.
+  - *Charge de l'Aube* *(D52)* : façon Gandalf et les Rohirrim à l'aube au Gouffre de Helm. Le Paladin mène une charge ; les cavaliers et fantassins proches le suivent avec un bonus d'impact, et les ennemis au point d'impact sont brièvement aveuglés. Tenir la ligne, puis contre-attaquer. Contre-jeu : charge visible au départ, piquiers (D21), repli.
+  - **Déblocage *(D42, D52)* :** niveau 1 : *Aura de l'Aube* + *Serrez les rangs* ; niveau 4 : *Bannière de l'Aube* (plus stratégique, utile quand l'armée se bat sur plusieurs fronts) ; niveau 7 (hors prototype) : *Charge de l'Aube* ; niveau 10 : *Dernier Rempart*.
 - **Kit de duel :** style **défensif à riposte**. Blocages, contres et punition des erreurs de l'adversaire. Un duelliste patient, fidèle à la discipline de la faction.
 - **Lien avec l'Honneur :** gagne de l'Honneur en *acceptant* les duels et en tenant des positions sous pression.
 - **Victoire en duel *(D35)* :** gros gain d'Honneur et recharge immédiate de la *Bannière de l'Aube*.
@@ -894,6 +931,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | **Nécromancien** | soutien / invocation | squelettes, goules, malédictions, drain de vie |
 | **Spectre Assassin** | furtivité / DPS | dagues spectrales, dématérialisation, marquage de cibles, mobilité |
 
+**Économie *(D66)* :** les unités des Légions **coûtent moins cher** que celles des autres factions (valeur à régler en test, en tenant compte de la réduction de l'*Ossuaire*). Leurs travailleurs, les Zombies, collectent plus lentement : la faction vit avec moins de revenu.
+
 **Mécanique à prototyper : CADAVRES / NÉCROFLUX.** Les cadavres servent à créer des serviteurs, renforcer des unités, alimenter des capacités, corrompre une zone. Pas nécessairement une ressource économique traditionnelle.
 
 **Héros *(décision D13)* : LE SEIGNEUR DAMNÉ** *(nom temporaire)*
@@ -907,12 +946,22 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - *Aura de terreur* : réduit le moral et l'efficacité des ennemis proches.
   - *Moisson* : se renforce à chaque mort autour de lui, alliée ou ennemie (cumuls temporaires).
   - *Sacrifice* : consomme une unité alliée ou un cadavre pour se soigner, ou fait exploser un cadavre en dégâts de zone.
+  - *Relève impie* *(D53, nom temporaire)* : **passif**. Chaque mort dans une zone autour du Seigneur a une **chance de se relever de son côté**. Seules les unités vivantes ou mortes-vivantes peuvent se relever : jamais le siège, ni les bâtiments. **Jamais les héros** *(D57, cohérent avec D37)*. **Unité relevée *(D54, D55)* :** l'unité se relève **sous sa forme de base** (un Arbalétrier mort se relève en Arbalétrier, sans les améliorations de son ancien propriétaire, avec un visuel mort-vivant), en **serviteur temporaire** (~30-45 s), hors population, nombre plafonné. Chance et plafond à régler en test.
+  - **Unités emblématiques et d'élite *(D56)* :** elles se relèvent **telles quelles** (un Chevalier Vertueux en Chevalier Vertueux). **Pas de modèle mort-vivant par unité :** l'état « relevé » passe par des **FX et une teinte** communs (shader, particules), appliqués au modèle d'origine. ⚠️ Vigilance : face aux Héritiers du Feu, chaque serviteur relevé est une unité d'élite ; la chance et le plafond devront peut-être être pondérés par le coût de l'unité.
+  - **Déblocage *(D42, D53)* :** niveau 1 : *Aura de terreur* + *Moisson* (son identité) ; niveau 4 : *Sacrifice* (plus de décisions, et plus de cadavres disponibles) ; niveau 7 (hors prototype) : *Relève impie* ; niveau 10 : *Grande Moisson* *(D57)*.
 - **Kit de duel :** style **agressif à drain de vie**. Pression constante, soin en frappant, mais exposé aux ripostes.
 - **Contraste avec le Paladin-Commandant :** l'agresseur contre le riposteur. Chaque duel entre les deux factions du prototype repose sur la lecture de l'adversaire : frapper ou laisser venir.
 - **Lien avec les cadavres :** il est le premier consommateur de la mécanique de faction.
-- **Pas de poudre *(D38)* :** les Légions n'ont accès ni à l'Arquebusier ni au Canon. ⚠️ Réponse équivalente de fin de partie à définir.
+- **Pas de poudre *(D38, D59)* :** les Légions n'ont accès ni à l'Arquebusier ni au Canon. Réponse de fin de partie :
+  - ***Cracheur de bile*** (palier 3, à la place du Canon) : engin de siège ; l'acide inflige des dégâts à l'impact, puis reste un court temps au sol et inflige des dégâts sur la durée.
+  - ***Ossuaire*** *(D60, D65)* : bâtiment économique propre aux Légions, au palier 3. Il transforme les morts des batailles en **réduction du coût de production**. Plus les combats durent, plus les Légions produisent à bas prix (identité d'attrition).
+    - **Collecte globale *(D65)* :** chaque mort sur la carte, alliée ou ennemie, remplit une **jauge plafonnée**. Le cadavre **reste sur le terrain** : aucune concurrence avec *Sacrifice*, le Nécromancien et *Relève impie*.
+    - **Pas de rétroactivité :** une mort survenue sans Ossuaire construit, ou quand la jauge est pleine, n'est pas comptée. Chaque Ossuaire a sa propre capacité ; en construire plusieurs augmente le plafond total.
+    - **Dépense automatique :** au clic de recrutement, la réduction s'applique d'elle-même, puisée dans la jauge. Aucune action du joueur.
+    - ⚠️ Vigilance : l'Ossuaire ne répond pas directement aux armures lourdes ; en fin de partie, les Légions comptent sur l'Arbalétrier du socle et le *Cracheur de bile*.
 - **Victoire en duel *(D35)* :** le corps du héros vaincu relève un *Champion damné* temporaire (~45 s, puissance plafonnée) et la *Moisson* est portée à son maximum.
-- **Capacité ultime (niveau 10) *(D36)* : *Marée des damnés*.** Les unités mortes récemment dans une large zone, alliées comme ennemies, se relèvent en serviteurs temporaires (~30 s, plafond ~15 à 20, hors population). Contre : éviter de se battre sur un charnier, s'éloigner le temps de l'effet. Valeurs à régler en test.
+- **Capacité ultime (niveau 10) *(D36, D55)* : *Grande Moisson*.** Zone annoncée ; les unités ennemies ordinaires sous ~25 % de PV y sont **exécutées**, la *Moisson* passe au maximum et le Seigneur se soigne à chaque exécution. Ces morts déclenchent *Relève impie* normalement : l'ultime nourrit le passif sans le dupliquer. Elle achève ce que la bataille a commencé (identité « attrition »). Contre : retirer ses unités blessées de la zone avant l'impact. Valeurs à régler en test.
+  - *Remplace* *Marée des damnés* (D36), qui faisait doublon avec *Relève impie* (D54).
 
 ### 13.4 Enfants du Dragon
 
@@ -924,6 +973,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | **Champion Draconique** | frontline / dégâts | épée à deux mains, feu ou foudre, attaque en cône, forte présence au corps-à-corps |
 | **Mage Élémentaire** | dégâts / contrôle à distance | choix feu, glace ou foudre, zones élémentaires, effets selon l'élément |
 | **Dompteur de Bêtes** | hybride / soutien | arme courte, compagnon contrôlable (wyverne, dracogriffe), ordres attaquer / distraire / protéger |
+
+**Économie *(D68)* : économie élémentaire.** L'élément choisi par le joueur (feu, glace ou foudre) **bonifie la collecte d'une ressource** ; changer d'élément rééquilibre l'économie. Pas d'affinité de terrain (D40). ⚠️ À définir : correspondance élément → ressource (proposition : feu → or, glace → pierre, foudre → bois ; la nourriture n'est jamais bonifiée) et coût d'un changement d'élément.
 
 **Mécanique à prototyper : ADAPTATION ÉLÉMENTAIRE.** La faction modifie son style selon l'élément choisi, le terrain, le climat et les bâtiments construits.
 
@@ -944,10 +995,27 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - **À pied (kit RTS, pistes) :**
   - *Aura draconique* : aura de commandement ; l'armée proche prend l'élément du héros (lien avec l'Adaptation élémentaire).
   - *Lame draconique* : frappe de corps à corps de l'élément du héros.
-- **Duel :** **toujours à pied.** Le dragon se pose ou s'éloigne. ⚠️ À préciser : défi lancé ou reçu en vol (accepter fait-il atterrir automatiquement ?), style du kit de duel.
+- **Déblocage *(D42, D51)* : les deux formes dès le niveau 1.**
+
+  | Niveau | À pied | Monté |
+  |---|---|---|
+  | 1 | bascule, *Aura draconique*, *Lame draconique* | bascule, *Souffle* |
+  | 4 | — | *Piqué* |
+  | 7 | — | *Cri du wyrm* |
+  | 10 | *Appel de la Couvée* | *Appel de la Couvée* |
+
+  - **Exception assumée au kit cible (§ 9.3) :** aura + 4 capacités au lieu de 3, justifiée par l'exclusivité des formes (jamais plus de 2-3 boutons actifs à la fois).
+  - La décision « ciel ou sol » existe dès la première minute. Le harcèlement aérien de début de partie reste limité : dragonnet faible, pas d'aura en vol, dégâts normaux des tireurs.
+- **Duel :** **toujours à pied.** Le dragon se pose ou s'éloigne. **Défi en vol *(D50)* : atterrissage de défi.**
+  - Lancer ou accepter un défi en vol déclenche une **descente annoncée** du dragon vers le lieu du duel ; le héros saute à terre et le duel commence.
+  - La bascule est **absorbée par le début du duel**, protégé (D18) : pas de vulnérabilité supplémentaire.
+  - **Refuser en vol coûte l'*Hésitation*** comme au sol (D16) : le vol ne permet jamais de fuir un duel gratuitement.
+  - En vol, la distance de défi (D18) se mesure depuis le sol, à la verticale du dragon.
+- **Kit de duel *(D49)* : duel élémentaire.** Les 3 postures de D14 deviennent 3 éléments : **feu** = offensive (dégâts sur la durée), **glace** = défensive (ralentit, protège), **foudre** = équilibrée et rapide (interruptions). Le duel teste la lecture de la posture adverse et le changement d'élément au bon moment (court délai à chaque changement). C'est l'Adaptation élémentaire de la faction, appliquée au duel.
 - **Capacité ultime (niveau 10) *(D36)* : *Appel de la Couvée*.** 2 à 3 dragons adultes descendent sur une zone annoncée pendant ~20 s (plafonnés, hors population).
-- ⚠️ **Points de vigilance :** le vol au-dessus des murs (proposition : le dragon ne franchit pas les murs, ou les tours lui infligent des dégâts normaux) ; une couche de déplacement aérien pour un seul acteur ; lisibilité (le dragon ne doit pas masquer le champ de bataille).
-- **Victoire en duel (D35) :** à définir.
+- **Murs *(D64)* : survol libre.** Le dragon survole murs et remparts comme le reste du relief. Les bases se défendent par les tours et les tireurs postés sur les remparts (bonus de hauteur, D23). **En vol, il prend plus de dégâts à distance que le héros à pied** : dégâts normaux des tireurs et des tours, contre ×0,3 à pied (D17, D41). Le héros ne rasant pas une base (D17), le survol sert surtout à l'éclairage et au harcèlement, et coûte cher face à une base défendue.
+- ⚠️ **Points de vigilance :** une couche de déplacement aérien pour un seul acteur ; lisibilité (le dragon ne doit pas masquer le champ de bataille).
+- **Victoire en duel *(D35, D49)* : *Furie du wyrm*.** Le dragon fond sur l'armée adverse proche et **combat seul ~30 s** (puissance plafonnée, dégâts normaux des tireurs comme en forme montée). Ensuite, le héros peut **remonter sans délai de bascule**. Valeurs à régler en test.
 
 ### 13.5 Cercle de l'Ombre
 
@@ -959,6 +1027,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | **Maître des Ombres** | assassin | camouflage, invisibilité temporaire, attaques éclair, forte mobilité |
 | **Piégeur** | contrôle / soutien | arbalète, mines, filets, poison, pièges tactiques |
 | **Illusionniste** | contrôle / confusion | copies illusoires, perturbation des ordres, confusion, fuite ou retournement temporaire |
+
+**Économie *(D69)* : le marché noir.** Le Cercle échange ses ressources au marché à un **meilleur taux** que les autres factions : une économie souple, qui s'adapte aux besoins du moment. Le marché est commun à toutes les factions (D70, § 5.5).
 
 **Mécanique à prototyper : SUBVERSION.** Sabotage, fausses informations, perturbation des ordres, contrôle temporaire, vision avancée.
 
@@ -976,11 +1046,31 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 **Conversion définitive (façon conversion d'AoE) :**
 
-- Réservée au **héros du Cercle de l'Ombre**, sous forme de compétence ou de capacité ultime (à fixer avec ce héros, Q08).
+- Réservée au **héros du Cercle de l'Ombre** : c'est sa capacité 3, *Serment de l'Ombre*, débloquée au niveau 7 (D44, voir ci-dessous).
 - **Esquivable :** la conversion vise une zone annoncée et ne prend effet qu'après un délai de canalisation. Les unités qui sortent de la zone avant la fin y échappent ; interrompre le héros l'annule.
-- Mêmes exclusions que le retournement *(proposition, à confirmer)* : jamais de héros, siège, bâtiment ni unité d'élite ; nombre d'unités et coût plafonnés ; longue recharge.
+- **Cibles *(D63)* :** jamais les héros ni les bâtiments. **Le siège est convertible** (comme les moines d'AoE4) : c'est la réponse au siège d'une faction faible en combat frontal. **Pas d'exclusion d'élite**, mais un **plafond de coût total** : une unité des Héritiers, deux fois plus chère, compte double. Longue recharge.
+- ⚠️ Vigilance : le siège, lent, sort difficilement de la zone de conversion. La canalisation et le plafond de coût devront être réglés en test pour que la conversion d'un Trébuchet, d'une Bombarde ou d'un *Cracheur de bile* reste une prise forte, pas une certitude.
 
 **Technique :** tags GAS de contrôle (`State.CC.Fear`, `State.CC.Confused`, `State.CC.Charmed`…) et effet d'immunité temporaire appliqué à la fin de chaque perte de contrôle ; la conversion définitive change le propriétaire de l'unité côté serveur. Valeurs à régler en test.
+
+**Héros *(décision D44)* : LA VOIX** *(nom temporaire ; inspirée de Saruman et de Langue de Serpent dans BFME)*
+
+| Combat personnel | Commandement | Valeur stratégique |
+|---|---|---|
+| ★☆☆ | ★★☆ | ★★★ |
+
+- **Rôle :** orateur corrupteur. Il ne gagne pas les batailles par la force, mais en retournant, figeant et trompant l'armée adverse.
+- **Signature : les discours.** Ses capacités principales sont **canalisées en zone** : puissantes, mais annoncées et interruptibles. La Voix doit s'exposer pour parler, ce qui crée le risque et le contre-jeu.
+- **Kit RTS (pistes, calendrier D42) :**
+  - *Murmures* (aura, niveau 1) : réduit le moral des ennemis proches ; les alliés infligent plus de dégâts aux unités affaiblies ou sous contrôle.
+  - *Mot d'arrêt* (niveau 1) : peur brève en zone (limites de D37).
+  - *Mensonge* (niveau 4) : fait apparaître une fausse armée, visible sur la carte et la mini-carte (objet du monde, autorisé par D37).
+  - *Serment de l'Ombre* (niveau 7, hors prototype) : la **conversion définitive** de D37. Zone annoncée, canalisation, 2 à 4 unités, plafond de coût, longue recharge ; esquivable en sortant de la zone, annulée si la Voix est interrompue.
+- **Capacité ultime (niveau 10) *(D36)* : *Discours du Maître*.** Longue canalisation annoncée, puis confusion de masse sur une armée entière (durées de D37) et retournement temporaire des quelques unités les plus proches. Contre : l'interrompre pendant la canalisation, ou disperser l'armée. Valeurs à régler en test.
+- **Contre-jeu général :** tireurs et charges pour interrompre les discours ; dispersion face aux zones ; éclairage pour démasquer les *Mensonges*.
+- **Kit de duel *(D45)* :** style **à feintes**. Certaines attaques annoncées sont des feintes : l'annonce part, le coup ne vient pas. Chaque feinte porte un **indice subtil**, lisible par un joueur attentif (D14), et coûte un temps de recharge : pas de feinte en continu. Ses Combat ★☆☆ valent hors duel ; en duel, la lecture prime.
+- **Triangle de duel avec le prototype :** la feinte bat la riposte du Paladin (qui se met en garde pour rien puis s'expose) ; l'agression du Seigneur Damné bat la feinte (pas le temps de l'installer) ; la riposte bat l'agression.
+- **Victoire en duel *(D35, D45)* : *Voix usurpée*.** Pendant ~45 s, la Voix prend l'**aura du héros vaincu** et l'applique à sa propre armée. Technique : application du `GameplayEffect` d'aura tiré du `HeroData` du vaincu. Valeurs à régler en test.
 
 ### 13.6 Héritiers du Feu
 
@@ -1007,7 +1097,26 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | **Lame Ardente** | DPS mobile | charge, arme incandescente qui inflige de la brûlure, exigeante en micro |
 | **Prêtre de la Flamme** | soutien | bénit les armes, confère de la résistance, protège des unités précieuses ; pas de magie élémentaire |
 
-**Poudre (D38) :** commune à toutes les factions au palier 3 (§ 7.1). Les Héritiers en ont leurs propres versions, forgées : la *Bombarde* à la place du Canon et une variante de l'Arquebusier (nom et spécificité à définir). Ce sont leurs deux variantes du socle (D20).
+**Poudre (D38) :** commune à toutes les factions au palier 3 (§ 7.1). Les Héritiers en ont leurs propres versions, forgées : la *Bombarde* à la place du Canon et l'*Arquebusier de la Forge* (D61), qui tire plus vite et plus loin. Ce sont leurs deux variantes du socle (D20).
+
+**Héros *(décision D46)* : LE CHAMPION HÉRITIER** *(nom temporaire ; inspiré de Boromir et de Théoden en première ligne dans BFME)*
+
+| Combat personnel | Commandement | Valeur stratégique |
+|---|---|---|
+| ★★★ | ★☆☆ | ★☆☆ |
+
+- **Rôle :** duelliste de première ligne, porteur de l'arme forgée par sa lignée. Dans une armée de ~45-50 unités, ses ~5-6 unités de puissance offensive (D17) pèsent proportionnellement plus que chez les autres factions.
+- **Signature : l'arme héritée et la *Chaleur*.** Chaque coup porté fait monter la *Chaleur* de l'arme ; le joueur la **libère** en frappes chargées. Rythme : accumuler, puis décharger au bon moment.
+- **Kit RTS (pistes, calendrier D42) :**
+  - Aura (niveau 1, piste) : *Exemple* — les alliés proches gagnent en moral et en cadence tant que le Champion combat.
+  - Capacité 1 (niveau 1, piste) : *Frappe de forge* — libère la Chaleur en un coup puissant.
+  - Capacité 2 (niveau 4) *(D48)* : *Transmission* — dépense la Chaleur pour embraser pendant quelques secondes les armes d'un groupe allié proche.
+  - Capacité 3 (niveau 7, hors prototype) *(D48)* : *Cor de l'Héritage* (façon cor de Gondor de Boromir) — peur brève en zone (limites de D37) et regain de moral pour les alliés.
+  - **La Chaleur devient une décision :** la dépenser pour soi (*Frappe de forge*) ou pour l'armée (*Transmission*). C'est ce qui distingue le Champion du Seigneur Damné, dont la Moisson ne fait que s'accumuler, et qui lui donne un peu de commandement. *Transmission* annonce aussi son effet de victoire (*Armes chauffées à blanc*).
+- **Capacité ultime (niveau 10) *(D36)* : *Jugement de flamme*.** Bond sur une zone annoncée, puis impact de zone. Valeurs à régler en test.
+- ⚠️ **Point de vigilance : proximité avec le Seigneur Damné** (même profil ★★★ en combat ; Chaleur proche de la Moisson). Distinction à tenir : la Moisson se nourrit des **morts autour** du Seigneur (attrition, soutien) ; la Chaleur ne vient que des **coups portés** par le Champion et se **dépense** (accumulation puis décharge). Thème forge et flamme sacrée, jamais nécromancie ni magie élémentaire (D38).
+- **Kit de duel *(D47)* :** style **à montée en Chaleur**. La Chaleur monte à chaque coup porté ; le Champion la libère en **frappes chargées**, les attaques annoncées les plus puissantes du jeu, donc les plus lisibles et contrables. L'adversaire doit gagner tôt ou parer la décharge. Différence avec le Seigneur Damné : pression constante et soin en frappant pour l'un, accumulation puis décharge pour l'autre.
+- **Victoire en duel *(D35, D47)* : *Armes chauffées à blanc*.** Pendant ~45 s, les alliés proches ont des armes incandescentes (bonus de dégâts et brûlure). L'effet profite à l'armée et compense son aura faible. Valeurs à régler en test.
 
 ---
 
@@ -1047,7 +1156,8 @@ Les modes secondaires seront développés après validation du mode standard.
 - Les règles sont pensées dès le départ pour le **1v1 compétitif** : symétrie, lisibilité, pas d'aléatoire injuste. Le 1v1 sert de référence d'équilibrage.
 - Le **prototype** se joue contre une IA simple ou en hotseat, pour tester le plaisir de jeu avant d'investir dans le réseau.
 - **Cartes jusqu'à 8 joueurs**, dans n'importe quel mélange d'humains et d'IA : 1v1, équipes (2v2 à 4v4, équipes asymétriques), chacun pour soi.
-- **Chaque emplacement peut être tenu par un humain ou une IA.** Une IA peut prendre le relais d'un joueur qui se déconnecte *(interprétation à confirmer)*.
+- **Chaque emplacement peut être tenu par un humain ou une IA.**
+- **Déconnexion *(décision D71)* : fenêtre de reconnexion.** Pendant ~2-3 min, une IA tient la position (défense, économie de base) et le joueur peut revenir et reprendre la main. Ensuite : en **1v1 classé**, défaite ; en **équipe**, l'IA continue la partie jusqu'au bout, pour ne pas laisser les alliés en infériorité.
 
 **Conséquences de design :**
 
@@ -1123,7 +1233,7 @@ Le multijoueur jusqu'à 8 joueurs, humains et IA mélangés, est une cible dès 
 
 **Modèle retenu : client-serveur, avec des unités légères.**
 
-- **Le serveur fait autorité.** Il peut être hébergé par un joueur, puis devenir un serveur dédié plus tard. L'IA tourne sur le serveur, ce qui facilite les emplacements IA et la reprise d'un joueur déconnecté.
+- **Le serveur fait autorité.** Il peut être hébergé par un joueur, puis devenir un serveur dédié plus tard. L'IA tourne sur le serveur, ce qui facilite les emplacements IA et la reprise d'un joueur déconnecté (fenêtre de reconnexion, D71, § 14.4).
 - **Unités ordinaires = entités légères**, pas des `ACharacter` :
   - simulées sur le serveur (piste : **Mass Entity** d'Unreal, ou un gestionnaire maison) ;
   - répliquées sous forme compacte (positions et états compressés), interpolées côté client ;
@@ -1246,10 +1356,10 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 - ~~**Q05** — Répartition de l'XP~~ → **tranchée (D05)**.
 - ~~**Q06** — XP pendant la récupération~~ → **tranchée (D06)**.
 - ~~**Q07** — Paliers, talents, équipement~~ → **tranchée (D07, D08, D09)**.
-- **Q08** — ~~Nombre de héros par faction~~ (D10 : un seul) ; ~~héros du prototype~~ (D12, D13) ; ~~capacités ultimes~~ (D36) ; ~~héros des Enfants du Dragon~~ (D41) ; reste : héros du Cercle de l'Ombre et des Héritiers du Feu, avec leurs ultimes, et les effets de victoire en duel des 3 factions hors prototype.
+- ~~**Q08** — Héros des factions~~ → **tranchée (D10 à D57)** : ~~Nombre de héros par faction~~ (D10 : un seul) ; ~~héros du prototype~~ (D12, D13) ; ~~capacités ultimes~~ (D36) ; ~~héros des Enfants du Dragon~~ (D41) ; ~~déblocage des capacités RTS~~ (D42) ; ~~déblocage du kit de duel~~ (D43) ; ~~héros du Cercle de l'Ombre~~ (D44, D45) ; ~~héros des Héritiers du Feu~~ (D46) ; ~~duel du Seigneur-Dragon~~ (D49, D50) ; ~~répartition des capacités du Seigneur-Dragon~~ (D51) ; ~~déblocage et 3ᵉ capacité du Paladin~~ (D52) ; ~~3ᵉ capacité et ultime du Seigneur Damné~~ (D53 à D55) ; ~~unités emblématiques relevées~~ (D56) ; ~~ordre *Moisson* / *Sacrifice*, héros jamais relevés~~ (D57).
 
 **Armée et base**
-- ~~**Q09** — Socle et matrice de contres~~ → **tranchée (D20, D21)**. À confirmer : l'Arbalétrier comme contre-mesure anti-héros du socle.
+- ~~**Q09** — Socle et matrice de contres~~ → **tranchée (D20, D21, D62)** : pas d'unité anti-héros.
 - ~~**Q10** — Modèle de construction~~ → **tranchée (D22)**.
 - ~~**Q11** — Place du siège~~ → **tranchée (D23, D24)**.
 
@@ -1260,7 +1370,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 **Duel**
 - ~~**Q14** — Contrôle du duel~~ → **tranchée (D14)**.
 - ~~**Q15** — Coût d'un refus de duel~~ → **tranchée (D16)**.
-- ~~**Q16** — Bénéfice propre au duel~~ → **tranchée (D15, D17, D35)**. Restent : effets de victoire des 3 autres factions (avec leurs héros, Q08).
+- ~~**Q16** — Bénéfice propre au duel~~ → **tranchée (D15, D17, D35)**. Effets de victoire des 5 factions tranchés (D35, D45, D47, D49).
 - ~~**Q17** — Zone compatible et interventions~~ → **tranchée (D18)**.
 - ~~**Q18** — Défi du Chevalier Vertueux~~ → **tranchée (D19)**.
 
@@ -1270,7 +1380,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 **Factions**
 - ~~**Q21** — Identité mécanique et économique~~ → **tranchée (D31)**. Les règles économiques précises restent des pistes.
-- ~~**Q22** — Limites des effets de perte de contrôle (Cercle de l'Ombre)~~ → **tranchée (D37)**. Reste : conversion définitive en compétence ou en ultime, à fixer avec le héros du Cercle (Q08).
+- ~~**Q22** — Limites des effets de perte de contrôle (Cercle de l'Ombre)~~ → **tranchée (D37, D44)** : conversion définitive = capacité 3 de la Voix, *Serment de l'Ombre*.
 - ~~**Q23** — Unités des Héritiers du Feu ; Ferveur nécessaire ?~~ → **tranchée (D38, D39)**.
 - ~~**Q24** — Factions du prototype~~ → **tranchée (D11)**.
 
@@ -1282,7 +1392,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 - ~~**Q27** — Contrôles et raccourcis~~ → **tranchée (D30)**.
 - ~~**Q28** — Niveau du héros dans GAS~~ → **tranchée (D34)**.
 - ~~**Q29** — Modèle réseau~~ → **tranchée (D29)**.
-- ~~**Q30** — Résistance du héros face aux unités~~ → **tranchée (D17)**. Reste à définir : les contre-mesures « tueuses de héros » de chaque faction.
+- ~~**Q30** — Résistance du héros face aux unités~~ → **tranchée (D17, D62)** : pas de contre-mesure « tueuse de héros ».
 
 ---
 
@@ -1306,11 +1416,11 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D14 | 2026-10-05 | Q14 — Contrôle du duel | Semi-automatique tactique : attaque automatique, posture + 4 à 6 capacités, attaques fortes annoncées. Pendant un duel, capacités RTS remplacées par le kit de duel ; aura maintenue. | § 10.3 |
 | D15 | 2026-10-05 | Q16 — Récompense du duel *(provisoire)* | Base : basculement de moral (Triomphe / Démoralisé, 30-45 s) + XP de duel. **À retravailler** : jugé insuffisant. | § 10.5 |
 | D16 | 2026-10-05 | Q15 — Coût du refus | *Hésitation* (petit malus de moral, 20-30 s) ; temps de recharge des défis 2-3 min ; modulé par faction (Aube perd de l'Honneur). | § 10.1 |
-| D17 | 2026-10-05 | Q30 — Résistance héroïque | Héros ≈ 5-6 unités standard en puissance offensive (valeur absolue, toutes factions) ; dégâts reçus des troupes fortement réduits (~×0,3) ; dégâts normaux des héros, tours, siège et contre-mesures dédiées ; hors duel, héros contre héros = usure, les compétences de duel font la différence. | § 9.1 bis, § 18 |
+| D17 | 2026-10-05 | Q30 — Résistance héroïque | Héros ≈ 5-6 unités standard en puissance offensive (valeur absolue, toutes factions) ; dégâts reçus des troupes fortement réduits (~×0,3) ; dégâts normaux des héros, tours, siège et contre-mesures dédiées *(contre-mesures abandonnées, D62)* ; hors duel, héros contre héros = usure, les compétences de duel font la différence. | § 9.1 bis, § 18 |
 | D18 | 2026-10-05 | Q17 — Autour du duel | Duel protégé : seuls les deux duellistes peuvent se toucher ; cercle de duel ; un seul duel par héros, pas de 2 contre 1 ; zone : courte distance, visibles, hors rayon d'un centre principal ; temps écoulé = pas de vainqueur. | § 10.2, § 10.4, § 10.5, § 14.4 |
 | D19 | 2026-10-05 | Q18 — Défi du Chevalier Vertueux | Redirection vers le Chevalier d'une partie des dégâts subis par les alliés dans une zone (totalité en version active, quelques secondes) + provocation des ennemis proches. Héros exclus. Pas de duel unité contre héros. | § 13.2 |
-| D20 | 2026-10-05 | Q09 (partie 1) — Socle d'unités | Socle commun à toutes les factions (Paysan, Homme d'armes, Piquier, Archer, Cavalier, siège, anti-héros). Variantes rares : 1 faction (2 max) par rôle, 1-2 variantes max par faction (ex. Zombie des Légions, Hallebardier). Emblématiques en plus du socle. Héritiers : règle d'élite sur tout le socle. | § 7.1 |
-| D21 | 2026-10-05 | Q09 (partie 2) — Matrice de contres | Modèle AoE4 : bonus par catégorie d'armure. Socle étendu : Lancier, Homme d'armes, Archer, Arbalétrier, Cavalier léger, Cavalier lourd. Arbalétrier proposé comme anti-héros. | § 7.1, § 7.2, § 17 |
+| D20 | 2026-10-05 | Q09 (partie 1) — Socle d'unités | Socle commun à toutes les factions (Paysan, Homme d'armes, Piquier, Archer, Cavalier, siège, anti-héros *(retiré, D62)*). Variantes rares : 1 faction (2 max) par rôle, 1-2 variantes max par faction (ex. Zombie des Légions, Hallebardier). Emblématiques en plus du socle. Héritiers : règle d'élite sur tout le socle. | § 7.1 |
+| D21 | 2026-10-05 | Q09 (partie 2) — Matrice de contres | Modèle AoE4 : bonus par catégorie d'armure. Socle étendu : Lancier, Homme d'armes, Archer, Arbalétrier, Cavalier léger, Cavalier lourd. Arbalétrier proposé comme anti-héros *(écarté, D62)*. | § 7.1, § 7.2, § 17 |
 | D22 | 2026-10-05 | Q10 — Modèle de construction | Libre façon AoE / Stronghold (vision requise, murs libres) ; pas de construction près d'un centre principal ennemi ; territoire = points stratégiques et centres secondaires. | § 6 |
 | D23 | 2026-10-05 | Q11 — Siège | Siège léger : Bélier (palier 1), Mangonneau (palier 2), Trébuchet (palier 3) ; fortifications solides. Bonus de hauteur pour les tireurs plus hauts que leur cible (collines, tours, remparts). | § 6.1, § 6.2, § 7.1, § 8.1 |
 | D24 | 2026-10-05 | Remparts | Murs de pierre praticables dès le prototype (accès par tours et portes ; murs de bois non praticables). Échelles, douves, huile hors périmètre. | § 6.2, § 16.5, § 17 |
@@ -1325,12 +1435,42 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D33 | 2026-10-05 | Q25 — Terrain | Forêt (vision, couvert), marais (anti-charge), gué, route, hauteur, zones sacrées et corrompues. Points de vigilance : symétrie des cartes, affinités pour toutes les factions, valeurs modérées. | § 8.1 |
 | D34 | 2026-10-05 | Q28 — Niveau dans GAS | Attributs `Level` et `XP` sur le héros ; tags `Civ.Tier.1-3` portés par le joueur, jamais retirés ; conditions de déblocage sur les tags de palier. | § 16.1 |
 | D35 | 2026-10-05 | Q16 — Récompense du duel | Basculement de moral commun (D15) + XP de duel + **un effet de victoire propre à chaque faction**. Aube : gros gain d'Honneur, recharge immédiate de la Bannière. Légions : Champion damné temporaire (~45 s, plafonné) relevé du corps du vaincu, Moisson au maximum. Effets temporaires, de valeur comparable. Enjeux déclarés écartés pour le moment. | § 10.1, § 10.5, § 13.2, § 13.3 |
-| D36 | 2026-10-05 | Q08 (partie 4) — Capacités ultimes | Capacité de bataille active du kit RTS : zone, courte durée, recharge ~3-4 min, annoncée et contrable ; pas de transformation ni d'effet global. Paladin : *Dernier Rempart* (~10 s, alliés pas sous 1 PV, puis soin partiel). Seigneur : *Marée des damnés* (morts récents relevés, ~30 s, plafond ~15-20, hors population). Ultime de duel séparé, non lié au niveau 10. Hors prototype. | § 9, § 9.5, § 10.3, § 13.2, § 13.3 |
+| D36 | 2026-10-05 | Q08 (partie 4) — Capacités ultimes | Capacité de bataille active du kit RTS : zone, courte durée, recharge ~3-4 min, annoncée et contrable ; pas de transformation ni d'effet global. Paladin : *Dernier Rempart* (~10 s, alliés pas sous 1 PV, puis soin partiel). Seigneur : *Marée des damnés* (morts récents relevés, ~30 s, plafond ~15-20, hors population) *(remplacée par *Grande Moisson*, D55)*. Ultime de duel séparé, non lié au niveau 10 *(révisé par D43 : débloqué au niveau 10)*. Hors prototype. | § 9, § 9.5, § 10.3, § 13.2, § 13.3 |
 | D37 | 2026-10-05 | Q22 — Perte de contrôle (Cercle de l'Ombre) | Effets courts et encadrés : peur 2-4 s ; confusion 3-5 s (remplace la perturbation des ordres, jamais d'action sur les ordres ni l'interface adverses) ; retournement temporaire d'unités ordinaires, ~8-10 s, 1-3 unités, plafond de coût ; immunité ~10-15 s après chaque effet ; héros jamais pris ; fausses informations via des objets du monde uniquement. **Plus** une conversion définitive façon AoE, réservée au héros du Cercle (compétence ou ultime), esquivable en sortant de la zone avant la fin de la canalisation. | § 13.5 |
 | D38 | 2026-10-05 | Q23 (partie 1) — Unités des Héritiers du Feu | Thème : feu de la forge et flamme sacrée (pas élémentaire). Emblématiques : Gardien de la Forge, Lame Ardente, Prêtre de la Flamme. **Poudre commune à toutes les factions, sauf contre-ordre** : la technologie commune « Armes à poudre » (palier 3) débloque l'Arquebusier et le Canon. Exceptions : Légions Noires sans poudre (réponse équivalente à définir) ; Héritiers avec leurs variantes (Bombarde à la place du Canon, variante de l'Arquebusier). **Règle générale :** une unité n'est jamais remplacée en cours de partie ; les améliorations ne touchent que les statistiques et le visuel ; la nouveauté passe par le déblocage de nouvelles unités. | § 6.1, § 7.1, § 11, § 13.3, § 13.6 |
 | D39 | 2026-10-05 | Q23 (partie 2) — Ferveur / Prestige | Pas de mécanique supplémentaire : la signature des Héritiers est l'élite globale. Toute la faction fait la même chose en mieux (collecte, cadence, dégâts) ; ce ne sont que des statistiques, appliquées à tout. Les décisions viennent de la rareté des unités (exception assumée à D31). | § 13.1, § 13.6 |
 | D40 | 2026-10-05 | Q25 (suite) — Zones alignées | Cartes compétitives neutres : aucune zone sacrée ou corrompue posée par la carte ; ces zones ne sont créées que par des capacités de faction (temporaires, visibles, contrables). Zones de carte possibles hors compétitif et en scénario. Pas d'affinité de terrain par faction. | § 8.1 |
 | D41 | 2026-10-05 | Q08 (partie 5) — Héros des Enfants du Dragon | **Seigneur-Dragon**, façon Roi-Sorcier de BFME : bascule monté / à pied. Monté : vol, *Souffle*, *Cri du wyrm*, *Piqué* annoncé par l'ombre ; pas d'aura, dégâts normaux des tireurs et des tours. À pied : aura élémentaire, *Lame draconique*, duel (toujours à pied). Le dragon grandit avec les niveaux. Ultime : *Appel de la Couvée* (2-3 dragons, ~20 s). | § 9, § 13.4 |
+| D42 | 2026-10-06 | Q08 (partie 6) — Déblocage des capacités RTS | Progressif façon BFME, en décalé des paliers : aura + capacité 1 au niveau 1, capacité 2 au niveau 4, capacité 3 au niveau 7, ultime au niveau 10. Kit cible : aura + 3 capacités + ultime. Prototype (niveaux 1 à 6) : aura + 2 capacités. Bascule du Seigneur-Dragon dès le niveau 1. | § 9.3, § 9.5, § 13.2, § 13.3, § 13.4 |
+| D43 | 2026-10-06 | Q08 (partie 7) — Déblocage du kit de duel | Kit de duel complet dès le niveau 1, **sauf l'ultime de duel, débloqué au niveau 10** (révise D36 sur ce point). Point de vigilance : l'ultime de duel doit rester lisible et contrable. | § 9.5, § 10.3, § 21 (D36) |
+| D44 | 2026-10-06 | Q08 (partie 8) — Héros du Cercle de l'Ombre | **La Voix**, façon Saruman et Langue de Serpent : orateur corrupteur (★☆☆ / ★★☆ / ★★★), capacités canalisées en zone, annoncées et interruptibles. Aura *Murmures* ; *Mot d'arrêt* (niv. 1) ; *Mensonge* (fausse armée, niv. 4) ; *Serment de l'Ombre* = conversion définitive de D37 (niv. 7). Ultime : *Discours du Maître* (confusion de masse + retournement temporaire). | § 9, § 13.5, § 20 (Q22) |
+| D45 | 2026-10-06 | Q08 (partie 9) — Duel de la Voix | Style **à feintes** : attaques annoncées parfois feintes, avec indice subtil et coût en recharge ; triangle feinte > riposte > agression > feinte. Victoire en duel : ***Voix usurpée***, la Voix prend l'aura du héros vaincu pour son armée (~45 s). | § 10.3, § 10.5, § 13.5 |
+| D46 | 2026-10-06 | Q08 (partie 10) — Héros des Héritiers du Feu | **Champion Héritier**, façon Boromir / Théoden : duelliste de première ligne (★★★ / ★☆☆ / ★☆☆). Arme héritée qui accumule de la *Chaleur* à chaque coup, libérée en frappes chargées. Ultime : *Jugement de flamme* (bond, impact de zone). Vigilance : se distinguer du Seigneur Damné (Chaleur = coups portés et dépense, Moisson = morts autour). | § 9, § 13.6 |
+| D47 | 2026-10-06 | Q08 (partie 11) — Duel du Champion Héritier | Style **à montée en Chaleur** : accumulation à chaque coup, décharge en frappes chargées annoncées (les plus fortes du jeu, donc contrables). Victoire en duel : ***Armes chauffées à blanc***, armes incandescentes pour les alliés proches (~45 s). | § 10.5, § 13.6 |
+| D48 | 2026-10-06 | Q08 (partie 12) — Capacités 2 et 3 du Champion Héritier | **Chaleur partagée** : *Transmission* (niv. 4, dépense la Chaleur pour embraser les armes d'un groupe allié) ; *Cor de l'Héritage* (niv. 7, peur brève en zone et moral allié). La Chaleur se dépense pour soi ou pour l'armée. | § 13.6 |
+| D49 | 2026-10-06 | Q08 (partie 13) — Duel du Seigneur-Dragon | **Duel élémentaire** : les 3 postures deviennent feu (offensive), glace (défensive), foudre (équilibrée) ; changement d'élément avec court délai. Victoire en duel : ***Furie du wyrm***, le dragon combat seul ~30 s (plafonné), puis remontée sans délai de bascule. | § 10.3, § 10.5, § 13.4, § 20 (Q16) |
+| D50 | 2026-10-06 | Q08 (partie 14) — Défi en vol | **Atterrissage de défi** : lancer ou accepter un défi en vol fait descendre le dragon (annoncé) ; la bascule est absorbée par le début du duel protégé ; refuser en vol coûte l'*Hésitation*. Distance de défi mesurée depuis le sol, à la verticale du dragon. | § 13.4 |
+| D51 | 2026-10-06 | Q08 (partie 15) — Déblocage du Seigneur-Dragon | Deux formes dès le niveau 1. Niv. 1 : bascule, *Aura draconique*, *Lame draconique* (à pied), *Souffle* (monté) ; niv. 4 : *Piqué* ; niv. 7 : *Cri du wyrm* ; niv. 10 : *Appel de la Couvée* (deux formes). Exception assumée au kit cible : aura + 4 capacités, formes exclusives. | § 9.3, § 13.4 |
+| D52 | 2026-10-06 | Q08 (partie 16) — Déblocage du Paladin-Commandant | Niv. 1 : *Aura de l'Aube* + *Serrez les rangs* ; niv. 4 : *Bannière de l'Aube* ; niv. 7 : ***Charge de l'Aube*** (charge menée par le Paladin, bonus d'impact des alliés qui le suivent, aveuglement bref au point d'impact) ; niv. 10 : *Dernier Rempart*. | § 13.2 |
+| D53 | 2026-10-06 | Q08 (partie 17) — 3ᵉ capacité du Seigneur Damné | Proposition de l'utilisateur : ***Relève impie*** (nom temporaire), passif au niveau 7. Chaque mort dans une zone autour du Seigneur a une chance de se relever de son côté ; unités vivantes ou mortes-vivantes uniquement (pas de siège ni de bâtiment). Détails (forme, durée, chance, plafond) à préciser. | § 13.3 |
+| D54 | 2026-10-06 | *Relève impie* — unité relevée | **Serviteur temporaire** (~30-45 s), hors population, plafonné. Conséquence relevée par l'utilisateur : l'ultime *Marée des damnés* fait doublon et est à revoir (conversion permanente, éventuellement d'unités vivantes, ou autre ultime). | § 13.3 |
+| D55 | 2026-10-06 | Ultime du Seigneur Damné ; forme de *Relève impie* | Ultime : ***Grande Moisson*** (exécution des ennemis ordinaires sous ~25 % de PV dans une zone annoncée, *Moisson* au maximum, soin par exécution) ; remplace *Marée des damnés*. *Relève impie* : l'unité se relève sous sa forme de base (un Arbalétrier en Arbalétrier), en serviteur temporaire. | § 13.3 |
+| D56 | 2026-10-06 | *Relève impie* — unités emblématiques et d'élite | Elles se relèvent **telles quelles**. Pas de version mort-vivante de chaque unité : FX et teinte communs appliqués au modèle d'origine. Vigilance : serviteurs d'élite face aux Héritiers du Feu. | § 13.3 |
+| D57 | 2026-10-06 | Seigneur Damné — derniers points | Déblocage : *Aura de terreur* + *Moisson* au niveau 1, *Sacrifice* au niveau 4. *Relève impie* ne relève jamais les héros. | § 13.3 |
+| D58 | 2026-10-06 | D38 (suite) — Arquebusier dans la matrice | **Tireur lourd de fin de partie** (façon Handcannoneer d'AoE4) : gros dégâts, ignore une partie de l'armure sans bonus de catégorie, recharge lente, courte portée, cher en or ; vulnérable à la cavalerie et aux Archers. Résistance héroïque normale : l'Arbalétrier reste l'anti-héros du socle *(révisé, D62 : pas d'anti-héros)*. | § 7.1, § 7.2 |
+| D59 | 2026-10-06 | D38 (suite) — Légions sans poudre | ***Cracheur de bile*** : **engin de siège** à la place du Canon (palier 3) ; acide = dégâts à l'impact + flaque au sol, dégâts sur la durée, courte durée. Seconde variante des Légions (D20 respecté). Pas d'équivalent de l'Arquebusier : **un bâtiment propre en plus** à la place (à définir). *Catapulte à cadavres* écartée. | § 6.1, § 7.1, § 13.3 |
+| D60 | 2026-10-06 | D59 (suite) — Bâtiment des Légions | ***Ossuaire*** : bâtiment économique (palier 3) qui transforme les cadavres des batailles en réduction du coût ou du temps de production. Récupération des cadavres à définir. Vigilance : pas de réponse directe aux armures lourdes. | § 7.1, § 13.3 |
+| D61 | 2026-10-06 | D38 (suite) — Arquebusier des Héritiers | Réponse de l'utilisateur : l'***Arquebusier de la Forge*** (nom temporaire) **tire plus vite et plus loin** que l'Arquebusier (cohérent avec D39 : même chose, en mieux). Vigilance : l'Archer ne le dépasse plus en portée. | § 7.1, § 13.6 |
+| D62 | 2026-10-06 | Contre-mesures anti-héros (D17, Q09, Q30) | **Aucune unité anti-héros**, ni commune ni de faction. La résistance héroïque (×0,3) s'applique à toutes les troupes ; l'Arbalétrier et l'Arquebusier font beaucoup de dégâts de base, donc un grand nombre blesse un héros. Révise D17 (contre-mesures dédiées) et D21 (Arbalétrier anti-héros). | § 7.1, § 7.2, § 9.1 bis, § 20 |
+| D63 | 2026-10-06 | Conversion de la Voix — cibles | Jamais les héros ni les bâtiments ; **siège convertible** (façon moines d'AoE4) ; pas d'exclusion d'élite, **plafond de coût total** (une unité des Héritiers compte double). Vigilance : conversion du siège à régler en test. | § 13.5 |
+| D64 | 2026-10-06 | Seigneur-Dragon et murs | **Survol libre** des murs ; défense par tours et tireurs sur les remparts. En vol, le dragon prend plus de dégâts à distance que le héros à pied (dégâts normaux contre ×0,3, confirmé). | § 13.4 |
+| D65 | 2026-10-06 | Ossuaire — collecte | **Collecte globale** : chaque mort sur la carte remplit une jauge plafonnée, le cadavre reste sur le terrain. **Pas de rétroactivité** (pas d'Ossuaire ou jauge pleine = mort non comptée) ; capacité par Ossuaire. **Dépense automatique** : réduction appliquée au clic de recrutement. | § 13.3 |
+| D66 | 2026-10-06 | Zombie — particularité économique | **Piste actuelle confirmée** : moins cher, sans nourriture, collecte plus lente, 1 place de population. Pas de handicap de population, car **les unités des Légions coûtent moins cher** : moins de revenu nécessaire, donc moins de travailleurs. | § 7.1, § 13.1, § 13.3 |
+| D67 | 2026-10-06 | Économie de l'Ordre de l'Aube | **Sanctuaire** (piste confirmée) : les fermes dans son rayon produisent plus. Économie compacte et défendable. Vigilance : expansions lointaines moins rentables. | § 13.1, § 13.2 |
+| D68 | 2026-10-06 | Économie des Enfants du Dragon | **Économie élémentaire** : l'élément choisi bonifie la collecte d'une ressource ; changer d'élément rééquilibre l'économie. Remplace la piste « collecte selon le terrain » (contraire à D40). Correspondance élément → ressource à définir. | § 13.1, § 13.4 |
+| D69 | 2026-10-06 | Économie du Cercle de l'Ombre | **Marché noir** : le Cercle échange ses ressources au marché à un meilleur taux. Remplace la piste du pillage. Existence d'un marché à préciser. | § 13.1, § 13.5 |
+| D70 | 2026-10-06 | Marché | **Marché commun à toutes les factions**, façon AoE : achat et vente, taux évolutifs ; le Cercle y a un meilleur taux (D69). | § 5.5, § 13.5 |
+| D71 | 2026-10-06 | Déconnexion d'un joueur | **Fenêtre de reconnexion** (~2-3 min) tenue par une IA, retour possible ; ensuite défaite en 1v1 classé, IA jusqu'au bout en équipe. | § 14.4, § 16.4 |
 
 ---
 
@@ -1338,20 +1478,18 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D42**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D72**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
-**Question en cours — Déblocage des capacités RTS des héros, façon BFME** (pas encore posée ; à poser en premier, car elle structure les kits des deux héros restants). Concerne tous les héros, y compris le Paladin et le Seigneur Damné :
+**Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
-- **A.** *(recommandée)* **Déblocage progressif, façon BFME**, aligné sur les paliers : aura (et une première capacité) au niveau 1, une capacité de plus au niveau 3, puis au niveau 6, ultime au niveau 10. Le prototype (niveaux 1 à 6) a donc tout le kit RTS sauf l'ultime. Progression ressentie forte ; début de partie plus simple à lire.
-- **B.** **Kit RTS complet dès le niveau 1** ; la progression passe par les talents, les statistiques et l'ultime. Plus simple, mais moins de moments « nouvelle capacité ».
-- **C.** **Déblocage par choix** : à chaque palier, le joueur choisit une capacité parmi deux (lien avec la spécialisation de palier, D07). Plus de variété, mais plus de contenu à produire et à équilibrer.
-- Sous-question à traiter avec : le **kit de duel** est-il complet dès le niveau 1 (duels équitables quel que soit le niveau) ou suit-il le même déblocage ?
+1. ~~**Contre-mesures anti-héros**~~ → **tranché (D62)** : aucune unité anti-héros.
+2. ~~**Conversion de la Voix**~~ → **tranché (D63)** : siège convertible, plafond de coût total.
+3. ~~**Seigneur-Dragon et murs**~~ → **tranché (D64)** : survol libre ; plus de dégâts à distance en vol.
+4. ~~**Ossuaire**~~ → **tranché (D65)** : collecte globale, non rétroactive, dépense automatique.
+5. ~~**Économie des factions**~~ → **tranché (D66 à D70)** : Zombie, Sanctuaire, économie élémentaire, marché noir ; marché commun (§ 5.5).
+6. ~~**Déconnexion**~~ → **tranché (D71)** : fenêtre de reconnexion tenue par une IA.
 
-**Prochaines questions, dans l'ordre :**
-
-1. Q08 (suite) : héros du Cercle de l'Ombre (dont la conversion définitive, D37), puis des Héritiers du Feu ; pour chacun, ultime et effet de victoire en duel (D35, D36). S'inspirer des kits de BFME.
-2. D41 (suite) : effet de victoire en duel du Seigneur-Dragon ; défi en vol ; style de son kit de duel.
-3. D38 (suite) : réponse de fin de partie des Légions Noires sans poudre ; place de l'Arquebusier dans la matrice de contres ; variante d'Arquebusier des Héritiers.
+**Bilan terminé.** Plus aucune question de design en cours. Pistes pour la suite : relecture de cohérence globale du GDD ; valeurs à régler en test (ci-dessous) ; premier chantier de code.
 
 **À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33).
 
