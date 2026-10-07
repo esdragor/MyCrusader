@@ -1,6 +1,6 @@
 # GAME DESIGN DOCUMENT — RTS FANTASY
 
-**Version 0.4** — Préproduction
+**Version 0.5** — Préproduction
 Remplace `RTS_Fantasy_GDD_v0.1.txt`, `v0.2_CORRIGE.txt` et `v0.2_FINAL.txt`.
 
 > **Convention :** les points marqués ⚠️ **[Qxx]** ne sont pas encore tranchés. Ils renvoient à la liste des questions ouvertes (§ 20). Chaque réponse validée est consignée dans le **journal des décisions** (§ 21), puis reportée dans le corps du document.
@@ -287,6 +287,7 @@ Les détails des contres sont au § 7.2 (D21).
 
 - **Légions Noires — Zombie** à la place du Paysan *(D66)* : moins cher, **sans nourriture**, **collecte plus lente**, 1 place de population. Ce n'est pas un handicap de population : **les unités des Légions coûtent moins cher**, donc la faction a besoin de moins de revenu, et donc de moins de travailleurs.
 - **Légions Noires — *Cracheur de bile*** à la place du Canon *(D59)* : leur seconde variante (2 au maximum respecté). Le rôle « Canon » a ainsi deux variantes : *Bombarde* (Héritiers) et *Cracheur de bile* (Légions).
+- **Templiers — Frère convers** à la place du Paysan *(D91)* : se défend bien ; collecte plus vite pendant une croisade. Le rôle « Travailleur » a ainsi deux variantes (Zombie, Frère convers), le maximum de D20.
 - **Ordre de l'Aube — Hallebardier** à la place du Lancier *(D79)* : anti-cavalerie avec, en plus, une efficacité contre l'infanterie lourde, mais plus cher. Un « mur de piques » qui tient la ligne, fidèle à l'identité défensive de l'Aube ; son coût ralentit l'armée de l'Aube en compensation.
 
 **Unités emblématiques :** les 3 unités décrites pour chaque faction au § 13 **s'ajoutent** au socle commun. Exceptionnellement, l'une d'elles peut tenir lieu de variante d'un rôle (par exemple, l'Archer de l'Aube à la place de l'Archer).
@@ -406,7 +407,7 @@ La reconnaissance est une ressource stratégique. Le Cercle de l'Ombre doit exce
 
 La carte contient : ressources, passages, points élevés, objectifs, ruines, monstres, événements, ressources contestées.
 
-Explorer donne : information, XP potentielle, opportunités, accès à des ressources, et (hors prototype) des reliques uniques de héros cachées dans les ruines (§ 9.7). Le scouting doit être une activité stratégique réelle.
+Explorer donne : information, XP potentielle, opportunités, accès à des ressources. Le scouting doit être une activité stratégique réelle.
 
 ### 8.4 Unités neutres et monstres
 
@@ -418,7 +419,7 @@ Les créatures neutres peuvent protéger des ressources, occuper des ruines, blo
 
 **Présence légère et ciblée *(décision D32)*, après le prototype :**
 
-- **Quelques camps par carte**, placés symétriquement, qui **gardent quelque chose de précieux** : gisement riche, ruine avec relique (D09), passage stratégique.
+- **Quelques camps par carte**, placés symétriquement, qui **gardent quelque chose de précieux** : gisement riche, passage stratégique.
 - **Pas de réapparition :** un camp nettoyé l'est pour la partie.
 - **XP modérée**, comptée dans la part « Exploration + Événements » (~15 %, D05).
 - Point d'appui pour les mécaniques de faction : apprivoisement (Enfants du Dragon), cadavres (Légions Noires), diversion (Cercle de l'Ombre).
@@ -428,13 +429,13 @@ Les créatures neutres peuvent protéger des ressources, occuper des ruines, blo
 
 ## 9. Le héros
 
-**Un héros unique par faction *(décision D10)*.** Le héros incarne sa faction. La variété entre parties vient des spécialisations de palier (D07), des talents (D08) et de l'équipement (D09). Les fiches `HeroData` permettront d'ajouter d'autres héros plus tard sans refonte.
+**Un héros unique par faction *(décision D10)*.** Le héros incarne sa faction. La variété entre parties vient des spécialisations de palier (D07) et des talents (D08). L'équipement a été supprimé (D102). Les fiches `HeroData` permettront d'ajouter d'autres héros plus tard sans refonte.
 
 **Héros du prototype :** Paladin-Commandant de l'Ordre de l'Aube (§ 13.2, D12) et Seigneur Damné des Légions Noires (§ 13.3, D13).
 
 **Capacité ultime *(décision D36)* :** voir § 9.5. Ultimes du prototype décrits aux § 13.2 et § 13.3.
 
-**Héros hors prototype :** Seigneur-Dragon des Enfants du Dragon (§ 13.4, D41), la Voix du Cercle de l'Ombre (§ 13.5, D44), le Champion Héritier des Héritiers du Feu (§ 13.6, D46).
+**Héros hors prototype :** Seigneur-Dragon des Enfants du Dragon (§ 13.4, D41), la Voix du Cercle de l'Ombre (§ 13.5, D44), le Champion Héritier des Héritiers du Feu (§ 13.6, D46). Héros des Templiers : ⚠️ à concevoir (§ 13.7, D87).
 
 ### 9.1 Rôle
 
@@ -479,7 +480,7 @@ Le compromis : **héros près du front** = plus de puissance mais plus de risque
 | Élément | Valeur indicative |
 |---|---|
 | Bonus de base | **+10 à 15 %** sur 1 ou 2 statistiques, selon la faction (Aube : armure et moral ; Légions : dégâts et terreur) |
-| Fin de partie | jusqu'à **+20 à 25 %** avec les talents et l'équipement |
+| Fin de partie | jusqu'à **+20 à 25 %** avec les talents |
 | Rayon | un **groupe de bataille** (~20 à 30 unités), pas toute l'armée |
 
 **Valeur totale du héros :** sur une armée d'environ 90 places de population, +15 % vaut environ 13 unités. Ajoutée à sa puissance personnelle (~5-6 unités, D17), elle donne un héros qui vaut **environ 20 unités**. Il est important sans être indispensable : sa mort se ressent dans une bataille sans la décider à elle seule.
@@ -576,7 +577,7 @@ Le calendrier des capacités est fixé (D42, § 9.3) ; les gains de statistiques
 Chaque palier (1, 2 et 3) ouvre :
 
 1. **Un tronc commun**, garanti pour toute la faction : bâtiments et technologies essentiels, dont **les réponses de base aux contres**. Un joueur n'est jamais privé de réponse à cause d'un choix de spécialisation.
-2. **Le choix d'une spécialisation parmi 2** : un bâtiment majeur, ou une branche de technologies et d'unités. Ce choix est définitif pour la partie.
+2. **Le choix d'une spécialisation parmi 2** : un bâtiment majeur, ou une branche de technologies et d'unités. Ce choix est définitif pour la partie. *Templiers :* la spécialisation est le choix d'une commanderie (D90, § 13.7).
 
 Conséquences :
 
@@ -589,18 +590,18 @@ Conséquences :
 
 ### 9.6 Arbre de talents
 
-**Décision D08 : un arbre de talents entièrement propre à chaque faction.** Les familles, la structure et le contenu sont spécifiques. Exemple indicatif pour les Légions Noires : Nécromancie / Terreur / Sacrifice.
+**Décision D08 : un arbre de talents entièrement propre à chaque faction.** Les familles, la structure et le contenu sont spécifiques. Exemple indicatif pour les Légions Noires : Nécromancie / Terreur / Sacrifice. Templiers *(D101)* : Croisade / Chevalerie / Trésor / Les Citadelles.
 
 Le héros gagne environ **8 points de talent** par partie (niveaux 2 à 9, D04). Il ne peut pas prendre toutes les améliorations : le choix crée une spécialisation.
 
-**Garde-fous proposés**, pour que 5 arbres différents restent lisibles et équilibrables :
+**Garde-fous proposés**, pour que 6 arbres différents restent lisibles et équilibrables :
 
 - même nombre de points disponibles et même présentation à l'écran pour toutes les factions ;
 - chaque arbre permet au moins un build orienté **commandement** (le héros comme multiplicateur, pilier 2) et un build orienté **duel / combat personnel** ;
 - chaque arbre propose au moins une voie **stratégique** : vision, économie, mobilité ou autre, selon l'identité de la faction ;
 - chaque arbre reflète la mécanique signature de sa faction (§ 13).
 
-Ancienne proposition commune, à garder comme grille de référence pour vérifier les 5 arbres :
+Ancienne proposition commune, à garder comme grille de référence pour vérifier les 6 arbres :
 
 - **Commandant :** auras, efficacité des formations, vitesse de déplacement de l'armée, moral, résistance.
 - **Guerrier :** survie, dégâts, duel, capacités personnelles.
@@ -608,25 +609,16 @@ Ancienne proposition commune, à garder comme grille de référence pour vérifi
 
 Au prototype, seuls les arbres des 2 factions retenues sont conçus : Ordre de l'Aube et Légions Noires (D11).
 
-### 9.7 Équipement *(décision D09)*
+### 9.7 Équipement *(supprimé, décision D102)*
 
-**Équipement forgé par la civilisation.** Le héros est le reflet de sa civilisation : son équipement vient de l'économie, pas du hasard.
-
-- **3 emplacements :** arme, armure, relique.
-- Chaque objet se **recherche ou s'achète** dans un bâtiment (forge, bâtiment de faction…) contre des ressources, avec une condition de palier.
-- **Plusieurs objets possibles par emplacement, avec un choix exclusif.** Par exemple, une lame de duel contre un étendard de commandement. Changer d'objet est possible, mais l'objet remplacé est perdu.
-- **Arbitrage économique :** l'or et la pierre investis dans le héros ne vont pas dans l'armée.
-- L'équipement est **conservé à la mort** (§ 9.8).
-- L'IA achète son équipement selon des règles simples, liées à son profil de build.
-
-**Reliques uniques de carte** *(hors prototype)* : quelques reliques uniques peuvent se trouver dans des ruines ou être gardées par des monstres neutres (§ 8.3, § 8.4). Elles occupent l'emplacement relique. Elles sont liées au mode Reliques (§ 14.3), mais peuvent exister en mode standard en nombre très limité, pour récompenser l'exploration sans créer d'effet boule de neige.
+**Pas d'équipement de héros.** Le système d'équipement de D09 (3 emplacements, objets achetés en bâtiment, reliques uniques de carte) est supprimé. La progression du héros passe par ses niveaux, ses capacités (D42) et son arbre de talents (D08). Les reliques n'existent plus que comme objectifs du mode Reliques (§ 14.3).
 
 ### 9.8 Présence, mort et résurrection
 
 **Héros actif :** bonus de commandement et capacités disponibles.
 **Héros absent ou mort :** l'armée reste fonctionnelle, mais les bonus et capacités du héros sont indisponibles. Le joueur ne doit jamais être complètement paralysé par la mort du héros.
 
-**À la mort, sont conservés :** niveau, XP, talents, déblocages, équipement, progression de la civilisation.
+**À la mort, sont conservés :** niveau, XP, talents, déblocages, progression de la civilisation.
 
 **Pendant la récupération :** pas de contrôle du héros, pas d'aura, pas de capacités de héros, certains bonus d'armée disparaissent. Puis le héros revient.
 
@@ -739,7 +731,7 @@ Le duel a lieu directement sur la carte, pour éviter d'en faire un mini-jeu sé
 
 **Le duel teste :** timing, lecture de l'adversaire, gestion des temps de recharge et de la posture, connaissance du héros.
 
-**Exemple sur les héros du prototype :** le Paladin-Commandant (riposte) gagne en posture défensive en contrant les attaques annoncées. Le Seigneur Damné (agression, drain de vie) gagne en maintenant la pression sans s'exposer aux contres. Hors prototype, la Voix du Cercle de l'Ombre (feintes, D45) ferme un triangle : la feinte bat la riposte, l'agression bat la feinte, la riposte bat l'agression. Les autres styles : montée en Chaleur pour le Champion Héritier (D47), duel élémentaire pour le Seigneur-Dragon (D49).
+**Exemple sur les héros du prototype :** le Paladin-Commandant (riposte) gagne en posture défensive en contrant les attaques annoncées. Le Seigneur Damné (agression, drain de vie) gagne en maintenant la pression sans s'exposer aux contres. Hors prototype, la Voix du Cercle de l'Ombre (feintes, D45) ferme un triangle : la feinte bat la riposte, l'agression bat la feinte, la riposte bat l'agression. Les autres styles : montée en Chaleur pour le Champion Héritier (D47), duel élémentaire pour le Seigneur-Dragon (D49), *La Règle* (l'inébranlable) pour le Grand Maître des Templiers (D99).
 
 ### 10.4 Durée
 
@@ -767,6 +759,7 @@ La valeur principale du duel vient de D17 : c'est la manière normale et la plus
   - **Légions Noires :** un *Champion damné* temporaire (~45 s) surgit du corps du héros vaincu, et la *Moisson* est portée immédiatement à son maximum de cumuls. Le Champion damné est un serviteur générique, pas le héros vaincu : la règle « jamais les héros » (D37, D57) est respectée.
   - **Cercle de l'Ombre *(D45)* :** *Voix usurpée*, la Voix prend l'aura du héros vaincu pour sa propre armée (~45 s).
   - **Héritiers du Feu *(D47)* :** *Armes chauffées à blanc*, les alliés proches du Champion Héritier ont des armes incandescentes (~45 s).
+  - **Templiers *(D100)* :** *La gloire du Temple*, un rang de gloire pour un contingent de la croisade (permanent, plafonné ; sans or).
   - **Enfants du Dragon *(D49)* :** *Furie du wyrm*, le dragon fond sur l'armée adverse proche et combat seul (~30 s, plafonné), puis le Seigneur-Dragon peut remonter sans délai de bascule.
 - **Garde-fous :** effets temporaires (§ 10.6) et de valeur comparable d'une faction à l'autre ; le Champion damné a une puissance plafonnée et une durée courte, pour ne pas faire boule de neige. Valeurs à régler en test.
 - **Technique :** l'effet de victoire est un `GameplayEffect` (ou une capacité) référencé dans le HeroData de chaque faction, appliqué par le serveur à la fin du duel.
@@ -806,7 +799,7 @@ Cela évite le schéma : « Je monte d'âge et tout est instantanément débloqu
 | Économie | collecte, stockage, agriculture, commerce, rendement |
 | Militaire | dégâts, armure, portée, vitesse, capacités (statistiques et visuel uniquement, jamais de remplacement d'unité, D38) ; déblocage de nouvelles unités |
 | Infrastructure | bâtiments, défenses, production, population |
-| Héros | capacités, commandement, récupération, duel, équipement (§ 9.7) |
+| Héros | capacités, commandement, récupération, duel |
 | Faction | mécanique signature, unités spécialisées, technologies propres |
 
 **Mécanisme de déblocage :** un palier ouvre des **bâtiments** (tronc commun + spécialisation, D07). Chaque **technologie** demande un palier minimum, un bâtiment et des ressources.
@@ -814,7 +807,7 @@ Cela évite le schéma : « Je monte d'âge et tout est instantanément débloqu
 **Répartition *(décision D27)* : arbre commun, technologies de faction ciblées.**
 
 - **~70 à 80 % commun à toutes les factions :** forge (dégâts et armures par catégorie d'unités), économie (collecte, rendement), infrastructures (solidité des murs, population), siège.
-- **~20 à 30 % propres à la faction :** mécanique signature (Honneur, cadavres…), unités emblématiques et variantes, **spécialisations de palier** (D07), technologies héros et équipement (D09).
+- **~20 à 30 % propres à la faction :** mécanique signature (Honneur, cadavres…), unités emblématiques et variantes, **spécialisations de palier** (D07), technologies héros.
 - L'identité se concentre là où elle se voit. Un joueur qui connaît une faction se repère dans les autres (pilier 1). C'est le modèle d'AoE4 : forge commune, monuments et technologies uniques.
 
 ---
@@ -869,13 +862,14 @@ Chaque faction possède une **identité mécanique principale** :
 
 | Faction | Identité | Point fort (timing) |
 |---|---|---|
-| Ordre de l'Aube | discipline / honneur / défense | forte défense, milieu de partie |
+| Ordre de l'Aube | discipline / honneur / défense : **tenir et protéger** (D87) | forte défense, milieu de partie |
 | Légions Noires | mort / corruption / recyclage des pertes | attrition, combats prolongés |
 | Enfants du Dragon | adaptation / éléments / créatures | adaptation, contrôle |
 | Cercle de l'Ombre | information / subversion / pièges | information, harcèlement |
 | Héritiers du Feu | élite / qualité / faible population | armée réduite, puissance individuelle |
+| Templiers *(D87)* | croisade / guerre sainte : **partir en croisade** | offensive (⚠️ à préciser) |
 
-**Question de validation pour chaque faction :** « Qu'est-ce que cette faction fait que les quatre autres ne font pas ? »
+**Question de validation pour chaque faction :** « Qu'est-ce que cette faction fait que les cinq autres ne font pas ? »
 
 Une mécanique de faction doit modifier les décisions du joueur, pas seulement ajouter des statistiques ou une ressource.
 
@@ -893,6 +887,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | Enfants du Dragon | Adaptation élémentaire | **Économie élémentaire** *(D68, D72)* : chaque *Nid élémentaire* bonifie la collecte de la ressource de son élément ; effets cumulés, élément changeable gratuitement avec délai |
 | Cercle de l'Ombre | Subversion | **Marché noir** *(D69)* : échange de ressources au marché à un meilleur taux |
 | Héritiers du Feu | Élite globale *(D39)* : toute la faction fait la même chose, en mieux | peu de travailleurs, mais chacun collecte nettement plus |
+| Templiers *(D87)* | **Appel à la croisade** *(D88)* : une cible annoncée, une armée de croisade composée selon les commanderies | **Frère convers** *(D91)* : travailleur qui se défend bien et collecte plus vite pendant une croisade ; une croisade réussie rapporte énormément d'or |
 
 **Prototype :** Honneur + règle économique de l'Aube ; cadavres + Zombie pour les Légions.
 
@@ -1153,7 +1148,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 **Signature *(décision D39)* : l'élite globale, sans mécanique supplémentaire.** Les Héritiers font tout simplement la même chose que les autres, mais en mieux : ils collectent plus vite, tirent plus vite, frappent plus fort. Ce ne sont que des statistiques, mais **toute la faction** est construite ainsi (travailleurs, socle, emblématiques, siège).
 
-- **Pas de Ferveur, pas de Prestige, pas de vétérance.** L'identité est la plus simple à lire des 5 factions, et la plus facile à prendre en main.
+- **Pas de Ferveur, pas de Prestige, pas de vétérance.** L'identité est la plus simple à lire des 6 factions, et la plus facile à prendre en main.
 - **Les décisions viennent de la rareté :** peu d'unités, chaque perte coûte cher, impossible de couvrir plusieurs fronts. C'est une exception assumée à la règle de D31 (une signature qui modifie les décisions) : la règle d'élite les modifie indirectement.
 - Le ratio ≈ ×2 est une direction ; il peut varier selon les statistiques (collecte, cadence, dégâts) et sera réglé en test.
 
@@ -1185,6 +1180,87 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - ⚠️ **Point de vigilance : proximité avec le Seigneur Damné** (même profil ★★★ en combat ; Chaleur proche de la Moisson). Distinction à tenir : la Moisson se nourrit des **morts autour** du Seigneur (attrition, soutien) ; la Chaleur ne vient que des **coups portés** par le Champion et se **dépense** (accumulation puis décharge). Thème forge et flamme sacrée, jamais nécromancie ni magie élémentaire (D38).
 - **Kit de duel *(D47)* :** style **à montée en Chaleur**. La Chaleur monte à chaque coup porté ; le Champion la libère en **frappes chargées**, les attaques annoncées les plus puissantes du jeu, donc les plus lisibles et contrables. L'adversaire doit gagner tôt ou parer la décharge. Différence avec le Seigneur Damné : pression constante et soin en frappant pour l'un, accumulation puis décharge pour l'autre.
 - **Victoire en duel *(D35, D47)* : *Armes chauffées à blanc*.** Pendant ~45 s, les alliés proches ont des armes incandescentes (bonus de dégâts et brûlure). L'effet profite à l'armée et compense son aura faible. Valeurs à régler en test.
+
+---
+
+### 13.7 Templiers *(décision D87)*
+
+**Sixième faction, à part entière.** Ordre militaire et religieux, fondé entre autres sur l'**appel à la croisade**.
+
+**Principe *(décision D93)* : une faction « lore accurate », quasiment sans fantasy.** Les Templiers sont l'ordre historique : pas de magie, pas de surnaturel, pas de créatures. Leur foi s'exprime par le **moral** (D74), la **discipline**, l'**organisation** (commanderies, or, frères convers) et des faits d'armes historiques. Dans un monde de dragons, de morts-vivants et de magie, c'est ce réalisme qui les rend reconnaissables (pilier 5). Tout élément de conception templier doit passer ce filtre.
+
+**Distinction avec l'Ordre de l'Aube :** deux factions de chevaliers saints, deux doctrines. L'Aube **tient et protège** (défense, Honneur, remparts) ; les Templiers **partent en croisade** (offensive, guerre sainte). La différence doit se lire au rythme de jeu **et à l'œil** : silhouettes, couleurs et architecture nettement distinctes de l'Aube (⚠️ point de vigilance, pilier 5).
+
+**Mécanique signature : L'APPEL À LA CROISADE *(décision D88)* — une cible, un enjeu.**
+
+- Le joueur **désigne une cible** : bâtiment ou centre ennemi, ou point stratégique. La croisade est **annoncée à l'adversaire**, qui voit la cible.
+- L'appel **réunit une armée de croisade** au centre principal ou à la citadelle la plus proche de la cible (D96), qui marche vers la cible. L'armée qui avance vers la cible reçoit un effet de moral (D74).
+- **Succès** (cible détruite ou prise) : récompense, dont un **rang de gloire** (D90) ; autres récompenses (XP, recharge de l'appel) à préciser. **Échec** (délai écoulé) : contrecoup (par exemple *Désillusion*, malus de moral) et longue recharge.
+- **Les commanderies définissent la croisade *(précision de l'utilisateur)* :** au fil de la partie, le Templier **débloque des commanderies** ; ce sont elles qui déterminent **la composition** de l'armée de croisade. Deux Templiers n'appellent pas la même croisade.
+- Contre-jeu : défendre la cible, tenir jusqu'à la fin du délai, intercepter l'armée en marche.
+- **Troupes de croisade *(D89)* : autonomes, hors population, éphémères.**
+  - Elles **marchent au plus court vers la cible**, sans ordres possibles, et **disparaissent** à la victoire ou à l'échec de la croisade.
+  - Le joueur accompagne la croisade avec sa vraie armée : c'est la combinaison des deux qui fait la force.
+  - Contre-jeu lisible : colonne et chemin visibles ; embuscade, ralentissement par les murs, ou tenir jusqu'à la fin du délai.
+  - Distinction avec l'Aube : l'Aube appelle des renforts qu'elle dirige (*Renforts de l'Aube*, D85) ; les Templiers déclenchent une croisade qu'ils ne retiennent plus.
+  - ⚠️ À régler : **plafond** de troupes (elles dépassent la population de 175 et pèsent sur la cible de performance, D03) ; **comportement face aux murs** (passer par une porte ou attaquer le mur) ; la perte de contrôle est assumée, comme pour une invocation temporaire.
+  - Piste : un talent ou une capacité du héros templier pour que les croisés le suivent.
+- **Commanderies *(D90)* : les paliers donnent l'accès, les victoires donnent la gloire.**
+  - **Palier 0 :** la croisade n'a qu'une base, par exemple des *Pèlerins armés* (masse légère).
+  - **Paliers 1, 2 et 3 :** le Templier choisit **une commanderie parmi 2 ou 3**, définitivement. Chacune **ajoute un contingent** à la croisade. Pour les Templiers, **ce choix tient lieu de spécialisation de palier** (D07) : pas de double choix.
+  - Exemples (noms et rôles provisoires) : commanderie **du Temple** (chevaliers lourds, choc) ; **de l'Hôpital** (frères hospitaliers, soin de la colonne) ; **des Arbalétriers** (tireurs anti-armure) ; **des Bâtisseurs** (engins de siège pour abattre la cible).
+  - **Gloire :** chaque croisade **réussie** donne un **rang de gloire** à un contingent existant (plus de troupes, ou version vétérane). **Plafond** : ~2 rangs par contingent (indicatif). Un échec ne retire rien.
+  - Une croisade de fin de partie compte jusqu'à 4 contingents (base + 3 commanderies) qui reflètent le build ; l'éclairage permet de la lire.
+
+**Économie *(D91)* : les frères convers et l'or de la croisade.**
+
+- **Frère convers** (variante du Paysan, D20) : il **se défend bien** (armure et attaque correctes), ce qui rend les raids coûteux pendant que l'armée part en croisade ; et **pendant une croisade, il collecte plus vite** (*Deus vult*, ~ +15 à 20 %, indicatif).
+- **Une croisade réussie rapporte énormément d'or** *(précision de l'utilisateur)* : la victoire finance la suivante. Montant à régler en test (fixe ou selon la valeur de la cible).
+- ⚠️ Vigilance : un succès rapporte à la fois un rang de gloire (D90) et beaucoup d'or ; à surveiller pour l'effet boule de neige (§ 14.2). Contre-jeu : défendre la cible ou tenir jusqu'à la fin du délai prive les Templiers des deux.
+
+**Unités propres *(D92)* : un noyau fixe, plus des commanderies.**
+
+| Unité | Disponibilité | Rôle | Traits (provisoires) |
+|---|---|---|---|
+| ***Chevalier du Temple*** | toujours | cavalerie lourde de choc | charge ; « on ne recule pas » : frappe plus fort quand il est en infériorité numérique autour de lui |
+| ***Porte-gonfanon*** | toujours | soutien / étendard | porte le *Beauséant* : effet de moral (D74) pour les Templiers proches tant que l'étendard est levé ; s'il tombe, *Désarroi* (malus bref). Cible prioritaire pour l'adversaire |
+
+- **Les autres unités templières viennent des commanderies (D90) :** chaque commanderie choisie **débloque une unité recrutable** et **ajoute le même type de troupe à la croisade**.
+- **Réserve de commanderies** (~8, noms et unités provisoires ; 2 à 3 proposées à chaque palier) : du Temple (renforts lourds), de l'Hôpital (*Frère hospitalier*, soin), des Sergents (*Sergent du Temple*, infanterie robuste), de la Chapelle (*Frère chapelain*, ferveur au combat), des Zélotes (*Zélote*, infanterie fanatique, puissante mais fragile), des Arbalétriers (arbalétriers d'élite), des Bâtisseurs (engins de siège)… Chaque partie montre une armée templière différente.
+- **Exception assumée** à « 3 emblématiques par faction » : 2 fixes + 3 débloquées par les commanderies (une par palier).
+- **Écarté :** archer monté (*Turcopole*), à la demande de l'utilisateur.
+- ⚠️ Vigilance : beaucoup d'unités à concevoir (~8 + 2), et à distinguer du socle commun et de l'Aube (Sergent ≠ Homme d'armes, Frère hospitalier ≠ Moine Lumineux).
+
+**Citadelles templières *(D95)* :** bâtiment propre aux Templiers, **construit librement** (règles de construction de D22). C'est une **place forte** (solide, garnison) **et** elle a un **effet sur la civilisation** :
+  - **Les citadelles nourrissent la croisade *(D96)* :** chaque citadelle **grossit chaque appel** (+X croisés par citadelle, plafonné ; valeurs à régler en test).
+  - **Les croisades se rassemblent à la citadelle la plus proche de la cible** (à défaut, au centre principal, D88).
+  - Raser une citadelle affaiblit toutes les croisades suivantes : c'est une cible stratégique claire pour l'adversaire.
+  - ⚠️ Vigilance : le plafond de troupes de croisade (D89, performance) doit inclure le bonus des citadelles. Pistes écartées : citadelle fondée par une croisade réussie ; citadelle-trésor.
+
+**Héros *(D94, D97, D98)* : LE GRAND MAÎTRE** *(nom temporaire)*
+
+- ***La Règle du Temple*** (aura) : les Templiers proches gagnent de l'armure et sont immunisés à la peur (D37).
+- ***Prendre la croix*** *(D97)* : les unités contrôlées dans une zone autour du héros **rejoignent la croisade en cours** ; elles deviennent autonomes, marchent sur la cible avec les bonus de croisade et partagent la gloire ; le joueur en reprend le contrôle à la fin de la croisade. Décision : renoncer au contrôle pour la puissance de la croisade.
+- ***Compagnie franche*** : le héros **achète une compagnie de mercenaires** (sergents, arbalétriers…) qui arrive immédiatement près de lui ; dans la population, payée en or seulement.
+- ***Sortie*** *(D97)* : la citadelle la plus proche du héros lance une sortie : sa garnison sort combattre ~30 s (troupes temporaires, hors population), puis rentre.
+- **Capacité ultime (niveau 10) *(D98)* : *Deus lo vult !*** Une **grande zone** autour du héros (assez grande pour qu'aucun cavalier ne soit exclu pour quelques mètres) : pendant quelques secondes, **la cavalerie alliée gagne une charge non interruptible**, avec une **réduction des dégâts reçus pendant la charge**. Les Lanciers et Hallebardiers **n'annulent pas** cette charge ; les troupes traversées sont probablement **renversées** (proposition de l'utilisateur, à valider en test).
+  - Annoncé (cri visible et sonore). Contre-jeu : se disperser, s'écarter de l'axe de charge ; durée courte et longue recharge (D36).
+  - ⚠️ Vigilance : neutralise brièvement le contre anti-cavalerie (D21), à garder court. Marais (D33) : la charge y reste-t-elle impossible ? À trancher en test. Distinction avec la *Charge de l'Aube* (D52), capacité menée par le Paladin : *Deus lo vult !* rend toute la cavalerie d'une zone inarrêtable.
+
+  | Niveau | Kit RTS |
+  |---|---|
+  | 1 | *La Règle du Temple* (aura) + *Prendre la croix* |
+  | 4 | *Compagnie franche* |
+  | 7 | *Sortie* |
+  | 10 | *Deus lo vult !* |
+
+- Écartés : *Solde*, *Mise à prix*, *Trésor du Temple*, *Rançon*, *La Brèche*. Piste pour l'arbre de talents : *Camp retranché* (palissade et pieux instantanés, ~60 s).
+- **Kit de duel *(D99)* : style *La Règle*, l'inébranlable.** La Règle interdisait de fuir : le Grand Maître **ne peut être ni repoussé ni interrompu** par les attaques fortes adverses ; il encaisse et continue. **Plus ses PV baissent, plus il frappe fort** (comme le Chevalier du Temple). Le duel se joue sur l'usure : l'adversaire doit le finir vite ou ne pas le laisser au seuil dangereux. Distinction : le Paladin **pare** (riposte), le Grand Maître **encaisse** ; le Champion Héritier accumule par ses coups, le Grand Maître devient dangereux en en recevant.
+- **Victoire en duel *(D100)* : *La gloire du Temple*.** Le duel gagné donne **un rang de gloire** à un contingent de la croisade, comme une croisade réussie (D90), **sans l'or** (D91). Effet permanent, mais borné par le plafond de gloire : exception mesurée au § 10.6 (gain temporaire).
+
+**Arbre de talents *(D101)* : quatre familles**, **Croisade** (taille, vitesse et gloire des croisades, *Prendre la croix*), **Chevalerie** (combat, duel *La Règle*, Chevaliers du Temple, *Deus lo vult !*), **Trésor** (or des croisades, *Compagnie franche*, frères convers) et **Les Citadelles** (solidité, *Sortie*, *Camp retranché*). Contenu des talents à concevoir plus tard (D08).
+
+- ⚠️ Vigilance (garde-fous de D08) : ~8 points répartis sur 4 familles, contre 3 dans l'exemple des Légions. « Même présentation pour toutes les factions » : soit tous les arbres passent à 4 familles, soit c'est une exception templière. À trancher à la conception des arbres.
 
 ---
 
@@ -1306,11 +1382,11 @@ Le multijoueur jusqu'à 8 joueurs, humains et IA mélangés, est une cible dès 
   - simulées sur le serveur (piste : **Mass Entity** d'Unreal, ou un gestionnaire maison) ;
   - répliquées sous forme compacte (positions et états compressés), interpolées côté client ;
   - affichées en **instances** avec des animations optimisées (animation par textures de sommets, ou équivalent).
-- **Héros, bâtiments et engins de siège = acteurs classiques avec GAS.** Ils sont peu nombreux : GAS reste utilisé là où il compte (capacités, duels, auras, équipement).
+- **Héros, bâtiments et engins de siège = acteurs classiques avec GAS.** Ils sont peu nombreux : GAS reste utilisé là où il compte (capacités, duels, auras).
 - **Le brouillard de guerre est appliqué par le serveur**, qui n'envoie à chaque client que ce qu'il voit. Cela protège contre la triche « maphack » et réduit la bande passante.
 - **Cible de performance :** ~1 400 unités (8 × 175, D03).
 
-**Conséquence immédiate sur le code :** l'implémentation actuelle (`AUnitBase : ACharacter` avec un `AAIController` par unité) est à remplacer par le système d'unités légères. Les ordres de déplacement, la sélection et le combat de base sont à porter dessus.
+**Conséquence sur le code :** l'ancien code hérité d'un autre projet (`AUnitBase : ACharacter` avec un `AAIController` par unité, et ses Blueprints) a été **supprimé le 2026-10-07**. Le système d'unités légères part de zéro ; les ordres de déplacement, la sélection et le combat de base seront construits dessus.
 
 L'IA joue avec les mêmes règles et les mêmes informations qu'un joueur (brouillard de guerre compris), sauf dans les niveaux de difficulté explicitement « tricheurs ».
 
@@ -1327,7 +1403,7 @@ Les remparts praticables (D24) imposent une navigation à deux niveaux : le sol 
 
 ## 17. Prototype minimum viable
 
-Avant de créer les cinq factions complètes :
+Avant de créer les six factions complètes :
 
 | Élément | Quantité |
 |---|---|
@@ -1377,7 +1453,7 @@ Avant de créer les cinq factions complètes :
 8. Premier événement mondial (après validation du prototype).
 9. Deuxième faction complète.
 10. Tests de matchup.
-11. Cinq factions.
+11. Six factions.
 12. Polish, UI, effets, audio, contenu.
 
 ---
@@ -1426,7 +1502,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 - **Q04** — ~~Nombre de niveaux~~ (tranché, D04) ; reste la courbe d'XP par niveau, à régler en test.
 - ~~**Q05** — Répartition de l'XP~~ → **tranchée (D05)**.
 - ~~**Q06** — XP pendant la récupération~~ → **tranchée (D06)**.
-- ~~**Q07** — Paliers, talents, équipement~~ → **tranchée (D07, D08, D09)**.
+- ~~**Q07** — Paliers, talents, équipement~~ → **tranchée (D07, D08, D09)** ; équipement supprimé (D102).
 - ~~**Q08** — Héros des factions~~ → **tranchée (D10 à D57)** : ~~Nombre de héros par faction~~ (D10 : un seul) ; ~~héros du prototype~~ (D12, D13) ; ~~capacités ultimes~~ (D36) ; ~~héros des Enfants du Dragon~~ (D41) ; ~~déblocage des capacités RTS~~ (D42) ; ~~déblocage du kit de duel~~ (D43) ; ~~héros du Cercle de l'Ombre~~ (D44, D45) ; ~~héros des Héritiers du Feu~~ (D46) ; ~~duel du Seigneur-Dragon~~ (D49, D50) ; ~~répartition des capacités du Seigneur-Dragon~~ (D51) ; ~~déblocage et 3ᵉ capacité du Paladin~~ (D52) ; ~~3ᵉ capacité et ultime du Seigneur Damné~~ (D53 à D55) ; ~~unités emblématiques relevées~~ (D56) ; ~~ordre *Moisson* / *Sacrifice*, héros jamais relevés~~ (D57).
 
 **Armée et base**
@@ -1479,7 +1555,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D06 | 2026-10-05 | Q06 — XP pendant la mort | Les sources liées à la civilisation continuent ; combat et commandement s'arrêtent. Montée de niveau possible pendant la mort. | § 9.4, § 9.8 |
 | D07 | 2026-10-05 | Q07 (partie 1) — Ouverture d'un palier | Tronc commun garanti (dont réponses aux contres) + choix définitif d'une spécialisation parmi 2. | § 9.5, § 18 |
 | D08 | 2026-10-05 | Q07 (partie 2) — Arbre de talents | Arbre entièrement propre à chaque faction. Garde-fous : mêmes points et même présentation ; au moins un build commandement, un build duel, une voie stratégique. | § 9.6 |
-| D09 | 2026-10-05 | Q07 (partie 3) — Équipement | Forgé par la civilisation : 3 emplacements (arme, armure, relique), objets achetés en bâtiment, choix exclusifs, conservé à la mort. Reliques uniques de carte hors prototype. | § 8.3, § 9.7, § 11 |
+| D09 | 2026-10-05 | Q07 (partie 3) — Équipement *(supprimé, D102)* | Forgé par la civilisation : 3 emplacements (arme, armure, relique), objets achetés en bâtiment, choix exclusifs, conservé à la mort. Reliques uniques de carte hors prototype. | § 8.3, § 9.7, § 11 |
 | D10 | 2026-10-05 | Q08 (partie 1) — Héros par faction | Un héros unique par faction ; extensible plus tard via HeroData. | § 9 |
 | D11 | 2026-10-05 | Q24 — Factions du prototype | Ordre de l'Aube et Légions Noires. | § 9.6, § 17 |
 | D12 | 2026-10-05 | Q08 (partie 2) — Héros de l'Ordre de l'Aube | Paladin-Commandant : commandement ★★★ ; Aura, Bannière, Serrez les rangs ; duel défensif à riposte ; Honneur gagné en acceptant les duels. | § 13.2 |
@@ -1556,6 +1632,22 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D84 | 2026-10-07 | Cohérence — Marché | **Marché au prototype.** Précision de l'utilisateur : toutes les ressources s'achètent et se vendent contre de l'or, avec un **cours commun à tous les joueurs** (alliés comme ennemis), qui évolue avec les achats et les ventes de chacun. Le rôle « compenser la pierre » est retiré : le marché sert à tout surplus ou manque. | § 5.5, § 17 |
 | D85 | 2026-10-07 | Pouvoirs d'Honneur | **Un pouvoir par palier, coût croissant** : *Lumière sacrée* (palier 0, soin et purification), *Rempart béni* (palier 1, segment de mur invulnérable), *Renforts de l'Aube* (palier 2, escouade de Chevaliers Vertueux, dans la population), *Jugement* (palier 3, frappe annoncée). Livre à choix façon BFME : piste pour plus tard. | § 13.2 |
 | D86 | 2026-10-07 | Cadavres des Légions | **Cadavres au sol** (~60-90 s, plafonnés ; pas de cadavre après *Relève impie*). Le **Nécromancien consomme un cadavre pour lever un Squelette permanent**, faible, gratuit, dans la population. *Sacrifice* consomme aussi des cadavres. Nuance de l'utilisateur : **pas de déni**, le Moine ne purifie pas les cadavres. | § 13.3 |
+| D87 | 2026-10-07 | Nouvelle faction — Templiers | **Sixième faction à part entière**, fondée entre autres sur l'appel à la croisade. L'Ordre de l'Aube est recentré sur « tenir et protéger » ; les Templiers « partent en croisade ». Vigilance : distinction visuelle forte entre les deux factions de chevaliers. | § 9, § 9.6, § 13.1, § 13.7, § 17 |
+| D88 | 2026-10-07 | Templiers — Appel à la croisade | **Croisade déclarée** : une cible désignée et annoncée, une armée de croisade qui marche dessus, succès récompensé, échec sanctionné (contrecoup, longue recharge). Précision de l'utilisateur : les **commanderies** débloquées pendant la partie **définissent la composition** de la croisade. | § 13.1, § 13.7 |
+| D89 | 2026-10-07 | Templiers — Troupes de croisade | **Autonomes, hors population, éphémères** : elles marchent au plus court vers la cible, sans ordres, et disparaissent à la victoire ou à l'échec. À régler : plafond (performance), comportement face aux murs. Piste : talent du héros pour être suivi. | § 13.7 |
+| D90 | 2026-10-07 | Templiers — Commanderies | **Mélange accès par palier + gloire** : palier 0 = base (*Pèlerins armés*) ; paliers 1-3 = une commanderie choisie parmi 2-3, qui tient lieu de spécialisation (D07) et ajoute un contingent. Chaque croisade réussie donne un rang de gloire à un contingent (plus de troupes ou vétérans), plafonné (~2 par contingent) ; l'échec ne retire rien. | § 9.5, § 13.7 |
+| D91 | 2026-10-07 | Templiers — Économie | **Frère convers** (variante du Paysan) : se défend bien, collecte plus vite pendant une croisade. Précision de l'utilisateur : **une croisade réussie rapporte énormément d'or**. Vigilance : gloire + or sur un même succès (effet boule de neige). Donations passives écartées. | § 7.1, § 13.1, § 13.7 |
+| D92 | 2026-10-07 | Templiers — Unités propres | **Noyau fixe + commanderies** : *Chevalier du Temple* (cavalerie de choc, « on ne recule pas ») et *Porte-gonfanon* (*Beauséant*, effet de moral, *Désarroi* s'il tombe) toujours disponibles ; chaque commanderie débloque une unité recrutable et ajoute le même type à la croisade (réserve ~8). Exception à « 3 emblématiques ». Archer monté écarté. | § 13.7 |
+| D93 | 2026-10-07 | Templiers — Principe | **Faction « lore accurate », quasiment sans fantasy** : ordre historique, sans magie ni surnaturel ; la foi passe par le moral, la discipline, l'organisation et des faits d'armes historiques. Filtre pour toute la conception templière. | § 13.7 |
+| D94 | 2026-10-07 | Templiers — Héros (partiel) | **Grand Maître** (nom temporaire). Retenus : aura ***La Règle du Temple*** (armure, immunité à la peur) et ***Compagnie franche*** (achat de mercenaires en or, dans la population). Écartés : *Solde*, *Mise à prix*, *Trésor du Temple*, *Rançon*. Mots-clés de l'utilisateur : croisades, chevaliers, Jérusalem, ordre religieux et militaire, militaire, richesse, **citadelles templières**. | § 13.7 |
+| D95 | 2026-10-07 | Templiers — Citadelles (principe) | Décision de l'utilisateur : **les citadelles se construisent librement**, sont des **places fortes** et ont **un effet sur la civilisation** (à définir). Écartés : citadelle fondée par la croisade (problème des cibles dans la base ennemie), citadelle-trésor. Production d'unités : non prévue. | § 13.7 |
+| D96 | 2026-10-07 | Templiers — Effet des citadelles | **Les citadelles nourrissent la croisade** : chaque citadelle ajoute des croisés à chaque appel (plafonné) ; les croisades se rassemblent à la citadelle la plus proche de la cible. Raser une citadelle affaiblit les croisades suivantes. | § 13.7 |
+| D97 | 2026-10-07 | Templiers — Capacités du Grand Maître | Niveau 1 : ***Prendre la croix*** (des unités contrôlées rejoignent la croisade en cours, contrôle rendu à la fin) ; niveau 4 : *Compagnie franche* ; niveau 7 : ***Sortie*** (la garnison de la citadelle la plus proche combat ~30 s). *Camp retranché* : piste de talent. | § 13.7 |
+| D98 | 2026-10-07 | Templiers — Ultime du Grand Maître | ***Deus lo vult !*** (nom retenu par l'utilisateur) : grande zone autour du héros ; la cavalerie alliée gagne une **charge non interruptible** avec réduction des dégâts pendant la charge ; les Lanciers ne l'annulent pas ; les troupes traversées sont probablement renversées (à valider en test). Vigilance : contre anti-cavalerie neutralisé brièvement, marais. | § 13.7 |
+| D99 | 2026-10-07 | Templiers — Duel du Grand Maître | Style ***La Règle***, l'inébranlable : ni repoussé ni interrompu par les attaques fortes ; frappe plus fort à mesure que ses PV baissent. Duel d'usure, distinct de la riposte (Paladin) et de la Chaleur (Héritier). | § 10.3, § 13.7 |
+| D100 | 2026-10-07 | Templiers — Victoire en duel | ***La gloire du Temple*** : un rang de gloire pour un contingent (D90), comme une croisade réussie, **mais sans l'or** (nuance de l'utilisateur). Permanent mais plafonné : exception mesurée au § 10.6. | § 10.5, § 13.7 |
+| D101 | 2026-10-07 | Templiers — Arbre de talents | **Quatre familles** (choix de l'utilisateur) : Croisade, Chevalerie, Trésor, Les Citadelles. Vigilance : 4 familles contre 3 ailleurs (garde-fou « même présentation », D08). | § 9.6, § 13.7 |
+| D102 | 2026-10-07 | Équipement du héros | **Supprimé** (demande de l'utilisateur). Le héros progresse par ses niveaux, ses capacités et ses talents. Conséquences : plus de reliques uniques de carte en mode standard (camps neutres : gisement ou passage) ; reliques réservées au mode Reliques ; références retirées (§ 8.3, § 8.4, § 9, § 9.2, § 9.8, § 11, § 16.4). Révise D09. | § 8.3, § 8.4, § 9, § 9.2, § 9.7, § 9.8, § 11, § 16.4 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -1564,7 +1656,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D87**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D103**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -1601,8 +1693,41 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 1. ~~**Pouvoirs d'Honneur**~~ → **tranché (D85)** : un par palier, coût croissant.
 2. ~~**Cadavres des Légions**~~ → **tranché (D86)** : cadavres au sol, Squelettes permanents du Nécromancien, pas de déni.
 
-Plus aucune question de design en cours. Pistes pour la suite : valeurs à régler en test (ci-dessous) ; premier chantier de code.
+**Nouvelle faction demandée (2026-10-07) : les Templiers**, fondés entre autres sur l'**appel à la croisade**.
 
-**À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72).
+1. ~~**Place des Templiers**~~ → **tranché (D87)** : sixième faction à part entière ; l'Aube recentrée sur la défense.
+2. ~~**L'appel à la croisade**~~ → **tranché (D88)** : croisade déclarée sur une cible annoncée ; composition définie par les commanderies.
+   - ~~Troupes de croisade~~ → **tranché (D89)** : autonomes, hors population, disparaissent à la fin.
+   - ~~Commanderies~~ → **tranché (D90)** : une par palier (= spécialisation), rangs de gloire plafonnés par croisade réussie.
+3. ~~**Particularité économique**~~ → **tranché (D91)** : frère convers ; une croisade réussie rapporte énormément d'or.
+4. ~~**Unités emblématiques**~~ → **tranché (D92)** : Chevalier du Temple + Porte-gonfanon fixes ; autres unités débloquées par les commanderies.
+5. ~~**Principe de la faction**~~ → **tranché (D93)** : « lore accurate », quasiment sans fantasy.
+6. **Héros des Templiers** (sous le filtre de D93) :
+   - ~~Premières capacités~~ → **tranché (D94)** : Grand Maître ; *La Règle du Temple* (aura) et *Compagnie franche* (mercenaires).
+   - ~~Citadelles templières (principe)~~ → **tranché (D95)** : construites librement, places fortes, avec un effet sur la civilisation.
+   - ~~Effet des citadelles~~ → **tranché (D96)** : elles grossissent chaque croisade et en sont le point de rassemblement.
+   - ~~Capacités restantes et ultime~~ → **tranché (D97, D98)** : *Prendre la croix*, *Sortie* ; ultime *Deus lo vult !*.
+   - ~~Kit de duel~~ → **tranché (D99)** : *La Règle*, l'inébranlable.
+   - ~~Effet de victoire en duel~~ → **tranché (D100)** : un rang de gloire, sans or.
+7. ~~**Arbre de talents**~~ → **tranché (D101)** : Croisade, Chevalerie, Trésor, Les Citadelles.
 
-**Premier chantier de code identifié :** remplacer `AUnitBase : ACharacter` par le système d'unités légères (D29, § 16.4).
+**Équipement du héros :** supprimé (D102), à la demande de l'utilisateur.
+
+**Conception des Templiers terminée** (D87 à D101), hors contenu détaillé (unités des commanderies, talents, valeurs).
+
+---
+
+**ÉTAT AU 2026-10-07 — point de reprise pour la prochaine séance**
+
+- **Décisions prises :** D01 à D102. Prochain numéro : **D103**.
+- **Aucune question de design en cours.**
+- **Code :** l'ancien code (classes C++ de gameplay et `Content/Blueprints`) a été supprimé et commité. Le module `MyCrusader` est vide et compile. À la première ouverture dans l'éditeur, `BattleMap` peut signaler des acteurs dont la classe n'existe plus : les supprimer et enregistrer la carte.
+- **Pistes pour la suite, au choix de l'utilisateur :**
+  1. **Premier chantier de code :** système d'unités légères (D29, § 16.4) : lire le projet, rédiger un plan (Mass Entity ou gestionnaire maison), le valider avant d'écrire du code.
+  2. **Contenu détaillé des Templiers :** les ~8 commanderies et leurs unités (D90, D92), valeurs de la croisade (délai, plafond, or, gloire).
+  3. **Arbres de talents** (D08) : 3 ou 4 familles pour toutes les factions (vigilance de D101), puis contenu des arbres de l'Aube et des Légions (prototype).
+  4. **Fiche de valeurs de départ** pour tout ce qui est « à régler en test » (ci-dessous).
+
+**À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72), coût et nombre des pouvoirs d'Honneur (D75, D85), cadavres et Squelettes (D86), croisade : délai, plafond de troupes, or, gloire, bonus des citadelles (D88 à D96).
+
+**Premier chantier de code identifié :** construire le système d'unités légères (D29, § 16.4). L'ancien code (`AUnitBase : ACharacter` et ses Blueprints) a été supprimé le 2026-10-07.
