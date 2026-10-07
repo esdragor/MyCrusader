@@ -930,8 +930,17 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - **Gagner un duel :** gros gain (D35).
 - **Perte *(D76)* : refuser un duel coûte de l'Honneur**, en plus de l'*Hésitation* (D16). C'est le code d'honneur de la faction.
 - ⚠️ **Vigilance (§ 10.6) :** l'Aube est la seule faction pour qui refuser coûte plus cher ; l'adversaire peut la défier au pire moment. La perte doit rester **modérée** (inférieure au gain d'une acceptation, par exemple), pour que refuser reste un choix viable. Exception assumée au principe « le duel ne doit pas devenir une obligation ». À régler en test.
-- **Dépense :** l'Honneur se **dépense** dans des **pouvoirs de faction** (3 à 4), débloqués avec les paliers (D07). La décision porte sur le moment : économiser ou dépenser maintenant.
-- **Pistes de pouvoirs** (à confirmer) : *Renforts de l'Aube* (une escouade de chevaliers arrive au centre principal) ; *Lumière sacrée* (soin et purification des effets de moral négatifs sur une zone, D74) ; *Rempart béni* (un segment de mur invulnérable quelques secondes) ; *Jugement* (frappe de lumière annoncée).
+- **Dépense :** l'Honneur se **dépense** dans des **pouvoirs de faction**. La décision porte sur le moment : économiser ou dépenser maintenant.
+- **Pouvoirs *(D85)* : un par palier, coût en Honneur croissant** (valeurs à régler en test).
+
+  | Palier | Pouvoir | Rôle |
+  |---|---|---|
+  | 0 | *Lumière sacrée* : soin et purification des effets de moral négatifs (D74) sur une zone | soutien : sauver une ligne qui tient |
+  | 1 | *Rempart béni* : un segment de mur devient invulnérable quelques secondes | défense : tenir une brèche face au siège |
+  | 2 | *Renforts de l'Aube* : une escouade de Chevaliers Vertueux arrive au centre principal (comptée dans la population) | renfort |
+  | 3 | *Jugement* : frappe de lumière annoncée sur une zone, contrable | offensive |
+
+  Le prototype (paliers 0 à 2) teste les trois premiers. Un livre à choix façon BFME (un pouvoir parmi deux par palier) reste une piste si l'Aube manque de variété.
 - **Pas une ressource économique** (§ 5.2) : l'Honneur ne se récolte pas et ne paie ni unités, ni bâtiments, ni technologies.
 - Interface : une barre d'Honneur et les pouvoirs dans le HUD de l'Aube. L'IA doit savoir quand dépenser.
 
@@ -961,12 +970,19 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | Unité | Rôle | Traits |
 |---|---|---|
 | **Guerrier Damné** | frontline / berserker | massue ou hache, dégâts élevés, rage nécrotique, se consume au combat |
-| **Nécromancien** | soutien / invocation | squelettes, goules, malédictions, drain de vie |
+| **Nécromancien** | soutien / invocation | lève des Squelettes à partir des cadavres (D86), malédictions, drain de vie |
 | **Spectre Assassin** | furtivité / DPS | dagues spectrales, dématérialisation, marquage de cibles, mobilité |
 
 **Économie *(D66)* :** les unités des Légions **coûtent moins cher** que celles des autres factions (valeur à régler en test, en tenant compte de la réduction de l'*Ossuaire*). Leurs travailleurs, les Zombies, collectent plus lentement : la faction vit avec moins de revenu.
 
-**Mécanique à prototyper : CADAVRES / NÉCROFLUX.** Les cadavres servent à créer des serviteurs, renforcer des unités, alimenter des capacités, corrompre une zone. Pas nécessairement une ressource économique traditionnelle.
+**Mécanique signature : CADAVRES *(décision D86)*.** Pas une ressource économique : une ressource de champ de bataille.
+
+- **Cadavres au sol :** chaque unité morte (alliée ou ennemie) laisse un **cadavre** pendant un temps limité (~60 à 90 s, indicatif), avec un **plafond** de cadavres sur la carte pour la performance. Une unité relevée par *Relève impie* ne laisse pas de cadavre.
+- **Le Nécromancien consomme un cadavre pour lever un Squelette :** unité **permanente**, faible, gratuite, qui **compte dans la population**. Les Légions bâtissent une armée durable à partir de l'attrition ; la population limite l'effet boule de neige.
+- **Autres consommateurs :** *Sacrifice* du Seigneur Damné. L'Ossuaire compte les morts sans consommer les cadavres (D65).
+- **Pas de déni :** aucune unité adverse ne peut détruire ou purifier les cadavres (le Moine Lumineux purifie les effets de moral, D74, pas les cadavres).
+- **Rôles distincts :** le Seigneur crée des serviteurs **temporaires** sur le moment (*Relève impie*) ; le Nécromancien bâtit une armée **permanente**.
+- Pistes pour plus tard : goules (amélioration du Squelette ou capacité), corruption de zone (D40).
 
 **Héros *(décision D13)* : LE SEIGNEUR DAMNÉ** *(nom temporaire)*
 
@@ -1538,6 +1554,8 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D82 | 2026-10-07 | Cohérence — Emblématiques du prototype | **Au moins 2 par faction** : Chevalier Vertueux + Moine Lumineux (Aube), Guerrier Damné + Nécromancien (Légions). Pas un plafond : d'autres possibles si de bonnes idées apparaissent. Permet de tester D19, D74, D76 et les cadavres. | § 17 |
 | D83 | 2026-10-07 | Cohérence — Population | **Maisons façon AoE** (~ +10 chacune, en bois) ; base de population donnée par les centres ; plafond 175 (D03). Bâtiments économiques du prototype : maison, camps de collecte, ferme, *Sanctuaire* (Aube). | § 5.3, § 17 |
 | D84 | 2026-10-07 | Cohérence — Marché | **Marché au prototype.** Précision de l'utilisateur : toutes les ressources s'achètent et se vendent contre de l'or, avec un **cours commun à tous les joueurs** (alliés comme ennemis), qui évolue avec les achats et les ventes de chacun. Le rôle « compenser la pierre » est retiré : le marché sert à tout surplus ou manque. | § 5.5, § 17 |
+| D85 | 2026-10-07 | Pouvoirs d'Honneur | **Un pouvoir par palier, coût croissant** : *Lumière sacrée* (palier 0, soin et purification), *Rempart béni* (palier 1, segment de mur invulnérable), *Renforts de l'Aube* (palier 2, escouade de Chevaliers Vertueux, dans la population), *Jugement* (palier 3, frappe annoncée). Livre à choix façon BFME : piste pour plus tard. | § 13.2 |
+| D86 | 2026-10-07 | Cadavres des Légions | **Cadavres au sol** (~60-90 s, plafonnés ; pas de cadavre après *Relève impie*). Le **Nécromancien consomme un cadavre pour lever un Squelette permanent**, faible, gratuit, dans la population. *Sacrifice* consomme aussi des cadavres. Nuance de l'utilisateur : **pas de déni**, le Moine ne purifie pas les cadavres. | § 13.3 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -1546,7 +1564,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D85**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D87**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -1576,7 +1594,14 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
    - ~~Population~~ → **tranché (D83)** : maisons façon AoE ; bâtiments économiques du prototype listés au § 17.
    - ~~Marché au prototype~~ → **tranché (D84)** : oui ; cours commun à tous les joueurs, toutes ressources.
 
-**Relecture de cohérence terminée (D74 à D84).** Plus aucune question de design en cours. Pistes pour la suite : valeurs à régler en test (ci-dessous) ; premier chantier de code.
+**Relecture de cohérence terminée (D74 à D84).**
+
+**Mécaniques du prototype encore au stade de pistes (2026-10-07) :**
+
+1. ~~**Pouvoirs d'Honneur**~~ → **tranché (D85)** : un par palier, coût croissant.
+2. ~~**Cadavres des Légions**~~ → **tranché (D86)** : cadavres au sol, Squelettes permanents du Nécromancien, pas de déni.
+
+Plus aucune question de design en cours. Pistes pour la suite : valeurs à régler en test (ci-dessous) ; premier chantier de code.
 
 **À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72).
 
