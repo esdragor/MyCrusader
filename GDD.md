@@ -134,7 +134,11 @@ La population représente la capacité économique et militaire maximale du joue
 
 Le joueur arbitre en permanence : **plus de travailleurs = meilleure économie** ; **plus d'armée = plus de puissance immédiate**.
 
-La population maximale augmente grâce à certains bâtiments et technologies.
+**Augmentation de la population *(décision D83)* : des maisons, façon AoE.**
+
+- Le centre principal et les centres secondaires donnent une **base** de population.
+- La **maison**, petit bâtiment en bois, ajoute **~ +10** de population (valeurs indicatives, à régler en test), jusqu'au plafond de 175.
+- Arbitrage bois / population ; les maisons sont des cibles de raid et peuvent servir d'obstacles autour de la base. Une faction pourra plus tard avoir sa propre version de la maison.
 
 Règle spéciale des Héritiers du Feu : une unité d'élite coûte environ 2 places de population.
 
@@ -168,9 +172,10 @@ Le joueur choisit entre investir dans sa base, prendre une expansion, investir d
 
 **Un marché commun à toutes les factions**, façon AoE.
 
-- Bâtiment économique standard : achat et vente de ressources contre de l'or.
-- **Taux évolutifs :** plus une ressource est vendue, moins elle rapporte ; plus elle est achetée, plus elle coûte. Les taux reviennent lentement à l'équilibre.
-- **Rôle :** compenser un manque, notamment de pierre, ressource contestable (§ 5.1), sans supprimer l'intérêt de la contester.
+- Bâtiment économique standard : achat et vente de **toutes les ressources** (nourriture, bois, pierre) contre de l'or.
+- **Taux évolutifs et communs *(D84)* :** un seul cours par ressource, **partagé par tous les joueurs, alliés comme ennemis**. Plus une ressource est vendue (par n'importe qui), moins elle rapporte ; plus elle est achetée, plus elle coûte. Les taux reviennent lentement à l'équilibre.
+- **Rôle :** convertir un surplus en ce qui manque, quelle que soit la ressource. Le cours commun crée une interaction indirecte : vider le marché d'une ressource la rend plus chère pour l'adversaire.
+- **Au prototype *(D84)* :** oui, pour régler les taux avant d'y ajouter le *marché noir* du Cercle.
 - **Cercle de l'Ombre :** meilleur taux, grâce au *marché noir* (D69, § 13.5).
 - C'est un bâtiment à protéger et à cibler. L'IA doit savoir s'en servir.
 
@@ -282,7 +287,7 @@ Les détails des contres sont au § 7.2 (D21).
 
 - **Légions Noires — Zombie** à la place du Paysan *(D66)* : moins cher, **sans nourriture**, **collecte plus lente**, 1 place de population. Ce n'est pas un handicap de population : **les unités des Légions coûtent moins cher**, donc la faction a besoin de moins de revenu, et donc de moins de travailleurs.
 - **Légions Noires — *Cracheur de bile*** à la place du Canon *(D59)* : leur seconde variante (2 au maximum respecté). Le rôle « Canon » a ainsi deux variantes : *Bombarde* (Héritiers) et *Cracheur de bile* (Légions).
-- **Une autre faction — Hallebardier** à la place du Lancier : anti-cavalerie avec, en plus, une efficacité contre l'infanterie lourde, mais plus cher.
+- **Ordre de l'Aube — Hallebardier** à la place du Lancier *(D79)* : anti-cavalerie avec, en plus, une efficacité contre l'infanterie lourde, mais plus cher. Un « mur de piques » qui tient la ligne, fidèle à l'identité défensive de l'Aube ; son coût ralentit l'armée de l'Aube en compensation.
 
 **Unités emblématiques :** les 3 unités décrites pour chaque faction au § 13 **s'ajoutent** au socle commun. Exceptionnellement, l'une d'elles peut tenir lieu de variante d'un rôle (par exemple, l'Archer de l'Aube à la place de l'Archer).
 
@@ -316,6 +321,18 @@ Les contres reposent sur des **bonus de dégâts par catégorie d'armure**, comm
 **Unités emblématiques et variantes :** chacune se rattache à une catégorie d'armure et à une ligne de la matrice, avec une spécificité. Par exemple : Chevalier Vertueux = infanterie lourde à redirection de dégâts ; Spectre Assassin = unité rapide anti-tireurs ; Hallebardier = anti-cavalerie avec un bonus contre l'infanterie lourde.
 
 **Mise en œuvre :** types de dégâts et catégories d'armure dans les fiches `UnitData` (multiplicateurs de bonus).
+
+#### Moral *(décision D74)*
+
+**Le moral est une famille d'effets, pas une jauge** (façon AoE4 / BFME).
+
+- Aucune statistique « moral » sur les unités. Les effets de moral sont des **effets nommés et temporaires** qui modifient attaque, armure et/ou cadence : *Triomphe*, *Démoralisé* (D15), *Hésitation* (D16), les auras de commandement (D26), *Aura de terreur*, *Murmures*, *Cor de l'Héritage*, etc.
+- « Moral » est une **catégorie** commune à ces effets : même affichage (icône sur l'unité), mêmes règles de cumul, même traitement par les capacités qui purifient.
+- **Cumul (indicatif, à régler en test) :** un même effet ne se cumule pas avec lui-même (il est rafraîchi) ; des effets différents s'additionnent, dans un **plafond global** de bonus et de malus de moral.
+- **Purification :** le Moine Lumineux retire les effets de moral négatifs (lien avec « suppression de malédictions »).
+- **Jamais de déroute :** le moral ne fait pas fuir les unités et ne retire pas le contrôle au joueur. La peur reste un contrôle bref, encadré par D37.
+- **Technique :** catégorie d'effet (tag `Effect.Morale.*`) dans le système d'effets des unités légères (D29) ; mêmes tags pour les acteurs GAS.
+- Un moral de groupe à états (Exalté / Stable / Ébranlé) reste une extension possible après le prototype, si le moral paraît trop abstrait en test.
 
 ### 7.3 Contrôle
 
@@ -596,7 +613,7 @@ Au prototype, seuls les arbres des 2 factions retenues sont conçus : Ordre de l
 **Équipement forgé par la civilisation.** Le héros est le reflet de sa civilisation : son équipement vient de l'économie, pas du hasard.
 
 - **3 emplacements :** arme, armure, relique.
-- Chaque objet se **recherche ou s'achète** dans un bâtiment (forge, sanctuaire, bâtiment de faction…) contre des ressources, avec une condition de palier.
+- Chaque objet se **recherche ou s'achète** dans un bâtiment (forge, bâtiment de faction…) contre des ressources, avec une condition de palier.
 - **Plusieurs objets possibles par emplacement, avec un choix exclusif.** Par exemple, une lame de duel contre un étendard de commandement. Changer d'objet est possible, mais l'objet remplacé est perdu.
 - **Arbitrage économique :** l'or et la pierre investis dans le héros ne vont pas dans l'armée.
 - L'équipement est **conservé à la mort** (§ 9.8).
@@ -663,18 +680,19 @@ Un héros peut cibler un héros adverse et lancer un défi. Le duel est une prop
 - un héros déjà en duel ne peut pas être défié ;
 - certaines capacités ou certains événements peuvent empêcher temporairement un duel.
 
-**L'adversaire peut :**
+**L'adversaire peut accepter ou refuser *(décision D80)*.** La réponse est définitive : pas de retrait après coup.
 
-1. accepter ;
-2. refuser ;
-3. se retirer avant l'engagement définitif (si le design final le permet).
+- **Fenêtre de réponse :** ~5 à 8 s (indicatif), signalée par une alerte sonore et visuelle.
+- **Accepter :** le duel commence immédiatement ; le cercle de duel (D18) se pose entre les deux héros.
+- **Refuser, ou ne pas répondre à temps :** c'est un **refus**, avec ses coûts (*Hésitation*, Honneur pour l'Aube). Ignorer un défi n'est jamais gratuit.
+- **Celui qui défie ne peut pas annuler** son défi : son temps de recharge de défi est consommé.
 
 **Coût du refus *(décision D16)* : une petite pénalité de moral.**
 
 - Refuser applique *Hésitation* aux unités de celui qui refuse, autour de son héros : un malus de moral **nettement plus faible que *Démoralisé*** (§ 10.5), pendant environ 20 à 30 s.
 - La hiérarchie est : **duel perdu > refus > duel gagné**. On refuse quand on pense perdre le duel, on accepte quand on pense le gagner ou quand le malus tomberait au pire moment.
 - **Anti-harcèlement :** chaque héros a un temps de recharge sur ses défis (indicatif : 2 à 3 min), pour qu'on ne puisse pas cumuler les refus imposés à l'adversaire.
-- **Selon la faction :** l'Ordre de l'Aube perd en plus de l'Honneur s'il refuse. D'autres factions peuvent avoir un refus moins coûteux (le Cercle de l'Ombre, pour qui la fuite fait partie de l'identité).
+- **Selon la faction *(D81)* :** une seule exception : l'Ordre de l'Aube perd en plus de l'Honneur s'il refuse (D76). Toutes les autres factions, Cercle de l'Ombre compris, paient la même *Hésitation*.
 
 **Bénéfice propre au duel *(décision D35)* :** basculement de moral commun + effet de victoire propre à chaque faction (§ 10.5).
 
@@ -746,7 +764,7 @@ La valeur principale du duel vient de D17 : c'est la manière normale et la plus
 - **Bonus d'XP de duel** modéré pour le vainqueur.
 - **Effet de victoire propre à la faction** du vainqueur, un seul par faction :
   - **Ordre de l'Aube :** gros gain d'Honneur et recharge immédiate de la *Bannière de l'Aube*.
-  - **Légions Noires :** le corps du héros vaincu relève un *Champion damné* temporaire (~45 s), et la *Moisson* est portée immédiatement à son maximum de cumuls.
+  - **Légions Noires :** un *Champion damné* temporaire (~45 s) surgit du corps du héros vaincu, et la *Moisson* est portée immédiatement à son maximum de cumuls. Le Champion damné est un serviteur générique, pas le héros vaincu : la règle « jamais les héros » (D37, D57) est respectée.
   - **Cercle de l'Ombre *(D45)* :** *Voix usurpée*, la Voix prend l'aura du héros vaincu pour sa propre armée (~45 s).
   - **Héritiers du Feu *(D47)* :** *Armes chauffées à blanc*, les alliés proches du Champion Héritier ont des armes incandescentes (~45 s).
   - **Enfants du Dragon *(D49)* :** *Furie du wyrm*, le dragon fond sur l'armée adverse proche et combat seul (~30 s, plafonné), puis le Seigneur-Dragon peut remonter sans délai de bascule.
@@ -763,7 +781,7 @@ Le duel doit être : risqué, lisible, court, spectaculaire, optionnel, importan
 
 Le joueur doit toujours peser : « Est-ce que je peux me permettre de risquer mon héros maintenant ? »
 
-Le duel ne doit pas devenir une obligation de build. Le joueur doit pouvoir gagner sans duel.
+Le duel ne doit pas devenir une obligation de build. Le joueur doit pouvoir gagner sans duel. *Exception assumée et mesurée :* l'Aube perd de l'Honneur en refusant (D76) ; cette perte reste modérée.
 
 Le gain principal doit être **temporaire** (« j'ai gagné un avantage maintenant ») et non permanent (« j'ai supprimé définitivement ton développement »).
 
@@ -868,7 +886,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - **Mécanique signature :** le cœur de la faction. Elle modifie les décisions militaires et stratégiques.
 - **Particularité économique :** **une seule règle**, légère, souvent portée par une variante (D20) ou un bâtiment. Ce n'est ni un système, ni une ressource (§ 5.2).
 
-| Faction | Mécanique signature | Particularité économique *(pistes)* |
+| Faction | Mécanique signature | Particularité économique *(D39, D66 à D73)* |
 |---|---|---|
 | Ordre de l'Aube | Honneur | **Sanctuaire** *(D67)* : les fermes dans son rayon produisent plus (économie compacte et défendable) |
 | Légions Noires | Cadavres / Nécroflux | **Zombie** *(D66)* : travailleur bon marché, sans nourriture, plus lent ; unités des Légions moins chères |
@@ -889,6 +907,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | **Moine Lumineux** | soutien | soins, purification, suppression de malédictions, sceaux lumineux ralentissant les ennemis |
 | **Archer de l'Aube** | distance / contrôle | arc long sacré, tirs précis, flèches de lumière, zones réduisant l'efficacité offensive ennemie |
 
+**Variante du socle *(D79)* :** le **Hallebardier** remplace le Lancier (anti-cavalerie, bonus contre l'infanterie lourde, plus cher ; § 7.1).
+
 **Défi du Chevalier *(décision D19)* : le Chevalier prend les coups à la place des autres.**
 
 - Dans une zone autour du Chevalier, **une partie des dégâts subis par les unités alliées est redirigée vers lui**. Une version active peut rediriger **la totalité** des dégâts pendant quelques secondes.
@@ -900,7 +920,20 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 **Économie *(D67)* : le Sanctuaire.** Les fermes situées dans le rayon d'un Sanctuaire produisent plus de nourriture. L'Aube a intérêt à bâtir une économie **compacte et défendable**, fidèle à son identité. ⚠️ Vigilance : une expansion lointaine lui rapporte moins qu'aux autres factions ; à surveiller sur les grandes cartes.
 
-**Mécanique à prototyper : HONNEUR.** Récompense les actions cohérentes avec l'identité de la faction : duels, défense, protection d'alliés, objectifs militaires. Ce n'est pas encore une ressource obligatoire.
+**Mécanique signature : HONNEUR *(décision D75)* — une monnaie de pouvoirs, façon livre de pouvoirs de BFME.** Propre à l'Aube : aucune autre faction n'a d'Honneur.
+
+- **Sources *(D76)* : des actes honorables précis.**
+  - **Défendre :** ennemis tués près de ses bâtiments, murs ou points stratégiques.
+  - **Protéger :** dégâts absorbés par le *Défi du Chevalier*, soins du Moine Lumineux.
+  - **Tenir** un point stratégique dans la durée.
+  - **Accepter un duel :** petit gain, quelle que soit l'issue.
+  - **Gagner un duel :** gros gain (D35).
+- **Perte *(D76)* : refuser un duel coûte de l'Honneur**, en plus de l'*Hésitation* (D16). C'est le code d'honneur de la faction.
+- ⚠️ **Vigilance (§ 10.6) :** l'Aube est la seule faction pour qui refuser coûte plus cher ; l'adversaire peut la défier au pire moment. La perte doit rester **modérée** (inférieure au gain d'une acceptation, par exemple), pour que refuser reste un choix viable. Exception assumée au principe « le duel ne doit pas devenir une obligation ». À régler en test.
+- **Dépense :** l'Honneur se **dépense** dans des **pouvoirs de faction** (3 à 4), débloqués avec les paliers (D07). La décision porte sur le moment : économiser ou dépenser maintenant.
+- **Pistes de pouvoirs** (à confirmer) : *Renforts de l'Aube* (une escouade de chevaliers arrive au centre principal) ; *Lumière sacrée* (soin et purification des effets de moral négatifs sur une zone, D74) ; *Rempart béni* (un segment de mur invulnérable quelques secondes) ; *Jugement* (frappe de lumière annoncée).
+- **Pas une ressource économique** (§ 5.2) : l'Honneur ne se récolte pas et ne paie ni unités, ni bâtiments, ni technologies.
+- Interface : une barre d'Honneur et les pouvoirs dans le HUD de l'Aube. L'IA doit savoir quand dépenser.
 
 **Héros *(décision D12)* : LE PALADIN-COMMANDANT** *(nom temporaire)*
 
@@ -913,10 +946,10 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - *Aura de l'Aube* : large aura défensive (armure, moral).
   - *Bannière de l'Aube* : plante un point de commandement fixe qui prolonge son aura dans une zone pendant qu'il se déplace ailleurs. Cela donne une réponse partielle au problème des fronts multiples.
   - *Serrez les rangs* : cri de guerre qui réduit les dégâts reçus et met les unités en formation défensive.
-  - *Charge de l'Aube* *(D52)* : façon Gandalf et les Rohirrim à l'aube au Gouffre de Helm. Le Paladin mène une charge ; les cavaliers et fantassins proches le suivent avec un bonus d'impact, et les ennemis au point d'impact sont brièvement aveuglés. Tenir la ligne, puis contre-attaquer. Contre-jeu : charge visible au départ, piquiers (D21), repli.
+  - *Charge de l'Aube* *(D52)* : façon Gandalf et les Rohirrim à l'aube au Gouffre de Helm. Le Paladin mène une charge ; les cavaliers et fantassins proches le suivent avec un bonus d'impact, et les ennemis au point d'impact sont brièvement aveuglés. Tenir la ligne, puis contre-attaquer. Contre-jeu : charge visible au départ, Lanciers (D21), repli.
   - **Déblocage *(D42, D52)* :** niveau 1 : *Aura de l'Aube* + *Serrez les rangs* ; niveau 4 : *Bannière de l'Aube* (plus stratégique, utile quand l'armée se bat sur plusieurs fronts) ; niveau 7 (hors prototype) : *Charge de l'Aube* ; niveau 10 : *Dernier Rempart*.
 - **Kit de duel :** style **défensif à riposte**. Blocages, contres et punition des erreurs de l'adversaire. Un duelliste patient, fidèle à la discipline de la faction.
-- **Lien avec l'Honneur :** gagne de l'Honneur en *acceptant* les duels et en tenant des positions sous pression.
+- **Lien avec l'Honneur *(D76)* :** gagne de l'Honneur en *acceptant* les duels (quelle que soit l'issue), en les gagnant et en tenant des positions sous pression ; en perd en refusant.
 - **Victoire en duel *(D35)* :** gros gain d'Honneur et recharge immédiate de la *Bannière de l'Aube*.
 - **Capacité ultime (niveau 10) *(D36)* : *Dernier Rempart*.** Pendant ~10 s, les alliés dans une large zone autour du héros ne peuvent pas descendre sous 1 PV ; à la fin, ils récupèrent une partie des dégâts subis pendant l'effet. Contre : reculer et attendre la fin au lieu de frapper. Valeurs à régler en test.
 
@@ -970,8 +1003,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 | Unité | Rôle | Traits |
 |---|---|---|
-| **Champion Draconique** | frontline / dégâts | épée à deux mains, feu ou foudre, attaque en cône, forte présence au corps-à-corps |
-| **Mage Élémentaire** | dégâts / contrôle à distance | choix feu, glace ou foudre, zones élémentaires, effets selon l'élément |
+| **Champion Draconique** | frontline / dégâts | épée à deux mains, feu ou foudre (choisi par unité, D78), attaque en cône, forte présence au corps-à-corps |
+| **Mage Élémentaire** | dégâts / contrôle à distance | feu, glace ou foudre (choisi par unité, D78), zones élémentaires, effets selon l'élément |
 | **Dompteur de Bêtes** | hybride / soutien | arme courte, compagnon contrôlable (wyverne, dracogriffe), ordres attaquer / distraire / protéger |
 
 **Économie *(D68, D72, D73)* : économie élémentaire.** Pas d'affinité de terrain (D40).
@@ -984,7 +1017,18 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - **Correspondance *(D73)* :** **feu → or**, **glace → pierre**, **foudre → bois** ; la **nourriture n'est jamais bonifiée** (pas de spam d'unités de base nourri par les Nids). Elle reprend les postures du duel (D49) : la glace défensive bâtit les fortifications, le feu offensif paie les unités avancées, la foudre rapide alimente production et expansion. La pierre reste à conquérir : le bonus multiplie une collecte existante, il faut toujours tenir les gisements.
 - ⚠️ Vigilance : le cumul est sans plafond ; le coût d'un Nid (ou un plafond) devra empêcher qu'une ressource soit démultipliée. À régler en test.
 
-**Mécanique à prototyper : ADAPTATION ÉLÉMENTAIRE.** La faction modifie son style selon l'élément choisi, le terrain, le climat et les bâtiments construits.
+**Mécanique signature : ADAPTATION ÉLÉMENTAIRE *(décision D78)* — l'élément du héros commande l'armée.** C'est le duel élémentaire (D49) transposé au RTS.
+
+- **Élément actif du héros :** le Seigneur-Dragon a **un élément actif** (feu, glace ou foudre). Il en change **gratuitement, avec un délai** (même règle que les Nids, D72) : l'ancien élément reste actif pendant la transition.
+- **Effet sur l'armée :** l'*Aura draconique* donne aux unités proches l'effet de cet élément (valeurs à régler en test) :
+  - **feu** : brûlure, plus de dégâts ;
+  - **glace** : ralentit les ennemis touchés, plus d'armure ;
+  - **foudre** : plus de cadence, coups en chaîne.
+- Le *Souffle* et la *Lame draconique* utilisent aussi cet élément. Pendant un duel, le kit de duel élémentaire (D49) prend le relais (D14) ; l'élément actif reprend à la sortie.
+- **Unités emblématiques :** le Mage Élémentaire (feu, glace, foudre) et le Champion Draconique (feu, foudre) choisissent leur élément **unité par unité** (bouton, même délai). Micro réservé aux emblématiques.
+- **Une seule règle pour toute la faction :** changer d'élément, avec un délai, sert à l'économie (Nids), à la bataille (héros, emblématiques) et au duel.
+- Pas d'affinité de terrain (D40). Le lien avec le climat et les événements mondiaux (§ 12.2 bis) reste une piste d'après prototype.
+- **Piste écartée pour l'instant :** réactions entre éléments (feu + glace = vapeur, etc.), possible plus tard en technologie de faction.
 
 **Héros *(décision D41)* : LE SEIGNEUR-DRAGON** *(nom temporaire ; inspiré du Roi-Sorcier sur sa Bête ailée dans BFME)*
 
@@ -1001,7 +1045,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - *Piqué* : zone annoncée par l'ombre du dragon (~1-2 s), puis impact ; esquivable.
   - **Contreparties :** pas d'aura de commandement ; **dégâts normaux reçus des tireurs** (exception à la résistance héroïque de D17 : les tireurs sont la réponse à la monture volante, comme dans BFME) et des tours.
 - **À pied (kit RTS, pistes) :**
-  - *Aura draconique* : aura de commandement ; l'armée proche prend l'élément du héros (lien avec l'Adaptation élémentaire).
+  - *Aura draconique* : aura de commandement ; l'armée proche prend l'effet de l'élément actif du héros (Adaptation élémentaire, D78).
   - *Lame draconique* : frappe de corps à corps de l'élément du héros.
 - **Déblocage *(D42, D51)* : les deux formes dès le niveau 1.**
 
@@ -1034,11 +1078,11 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 |---|---|---|
 | **Maître des Ombres** | assassin | camouflage, invisibilité temporaire, attaques éclair, forte mobilité |
 | **Piégeur** | contrôle / soutien | arbalète, mines, filets, poison, pièges tactiques |
-| **Illusionniste** | contrôle / confusion | copies illusoires, perturbation des ordres, confusion, fuite ou retournement temporaire |
+| **Illusionniste** | contrôle / confusion | copies illusoires, confusion (D37), peur ou retournement temporaire |
 
 **Économie *(D69)* : le marché noir.** Le Cercle échange ses ressources au marché à un **meilleur taux** que les autres factions : une économie souple, qui s'adapte aux besoins du moment. Le marché est commun à toutes les factions (D70, § 5.5).
 
-**Mécanique à prototyper : SUBVERSION.** Sabotage, fausses informations, perturbation des ordres, contrôle temporaire, vision avancée.
+**Mécanique à prototyper : SUBVERSION.** Sabotage, fausses informations (objets du monde uniquement), confusion, contrôle temporaire, vision avancée. Limites fixées par D37 ci-dessous.
 
 **Limites de la perte de contrôle *(décision D37)* : effets courts, encadrés par des règles fixes, plus une conversion définitive réservée au héros.**
 
@@ -1085,7 +1129,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 **Thème :** élite, puissance, qualité plutôt que quantité. Leur feu est celui de la **forge et de la flamme sacrée** (artisanat, qualité des armes, héritage), pas un élément magique : c'est ce qui les distingue des Enfants du Dragon *(D38)*.
 **Style :** très peu d'unités, chaque unité est précieuse, recrutement lent, forte dépendance à la micro et au positionnement, économie exigeante.
 
-**Règle de prototype** (direction, pas formule définitive) : coût ≈ ×2, population ≈ ×2, efficacité ≈ ×2, recrutement plus long.
+**Règle d'élite** (direction, pas formule définitive) : coût ≈ ×2, population ≈ ×2, efficacité ≈ ×2, recrutement plus long.
 
 **Principes de balance :** équilibrer autour de la population, de l'économie, du temps de production, des pertes, de la mobilité et de la qualité des unités. Une unité 2× plus efficace n'est pas 2× meilleure partout : elle peut être 2× meilleure en combat frontal, mais moins nombreuse, plus lente à produire, plus chère, vulnérable au contrôle, incapable de couvrir plusieurs fronts.
 
@@ -1273,9 +1317,12 @@ Avant de créer les cinq factions complètes :
 |---|---|
 | Factions | 2 |
 | Héros | 1 par faction |
-| Unités | *proposition* : Paysan, Lancier, Homme d'armes, Archer, Arbalétrier, Cavalier léger + 1 unité emblématique par faction (Cavalier lourd et siège hors prototype, sauf besoin) |
+| Unités | *proposition* : Paysan, Lancier, Homme d'armes, Archer, Arbalétrier, Cavalier léger (Cavalier lourd hors prototype, sauf besoin). Variantes : Zombie (Légions, D66), Hallebardier (Aube, D79) |
+| Unités emblématiques *(D82)* | **au moins 2 par faction** : Chevalier Vertueux + Moine Lumineux (Aube) ; Guerrier Damné + Nécromancien (Légions). Ce n'est pas un plafond : d'autres peuvent s'ajouter si de bonnes idées apparaissent. Archer de l'Aube et Spectre Assassin prévus après. |
+| Siège *(D77)* | **Bélier** (palier 1) + **Mangonneau** (palier 2) : de quoi tester toute la boucle fortifications / siège de D23 et D24 (portes, segments abattus, cible prioritaire sur rempart, chute des occupants) |
 | Ressources | 4 |
 | Centre principal | 1 |
+| Bâtiments économiques *(D83, D84)* | maison, camps de collecte (bois, pierre, or), ferme, marché (D70) ; *Sanctuaire* pour l'Aube (D67) |
 | Bâtiment militaire | 1 |
 | Bâtiment technologique | 1 |
 | Fortifications | murs de pierre praticables, porte, tour (D24) |
@@ -1460,14 +1507,14 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D50 | 2026-10-06 | Q08 (partie 14) — Défi en vol | **Atterrissage de défi** : lancer ou accepter un défi en vol fait descendre le dragon (annoncé) ; la bascule est absorbée par le début du duel protégé ; refuser en vol coûte l'*Hésitation*. Distance de défi mesurée depuis le sol, à la verticale du dragon. | § 13.4 |
 | D51 | 2026-10-06 | Q08 (partie 15) — Déblocage du Seigneur-Dragon | Deux formes dès le niveau 1. Niv. 1 : bascule, *Aura draconique*, *Lame draconique* (à pied), *Souffle* (monté) ; niv. 4 : *Piqué* ; niv. 7 : *Cri du wyrm* ; niv. 10 : *Appel de la Couvée* (deux formes). Exception assumée au kit cible : aura + 4 capacités, formes exclusives. | § 9.3, § 13.4 |
 | D52 | 2026-10-06 | Q08 (partie 16) — Déblocage du Paladin-Commandant | Niv. 1 : *Aura de l'Aube* + *Serrez les rangs* ; niv. 4 : *Bannière de l'Aube* ; niv. 7 : ***Charge de l'Aube*** (charge menée par le Paladin, bonus d'impact des alliés qui le suivent, aveuglement bref au point d'impact) ; niv. 10 : *Dernier Rempart*. | § 13.2 |
-| D53 | 2026-10-06 | Q08 (partie 17) — 3ᵉ capacité du Seigneur Damné | Proposition de l'utilisateur : ***Relève impie*** (nom temporaire), passif au niveau 7. Chaque mort dans une zone autour du Seigneur a une chance de se relever de son côté ; unités vivantes ou mortes-vivantes uniquement (pas de siège ni de bâtiment). Détails (forme, durée, chance, plafond) à préciser. | § 13.3 |
+| D53 | 2026-10-06 | Q08 (partie 17) — 3ᵉ capacité du Seigneur Damné | Proposition de l'utilisateur : ***Relève impie*** (nom temporaire), passif au niveau 7. Chaque mort dans une zone autour du Seigneur a une chance de se relever de son côté ; unités vivantes ou mortes-vivantes uniquement (pas de siège ni de bâtiment). Détails (forme, durée, chance, plafond) à préciser *(précisés par D54 à D57)*. | § 13.3 |
 | D54 | 2026-10-06 | *Relève impie* — unité relevée | **Serviteur temporaire** (~30-45 s), hors population, plafonné. Conséquence relevée par l'utilisateur : l'ultime *Marée des damnés* fait doublon et est à revoir (conversion permanente, éventuellement d'unités vivantes, ou autre ultime). | § 13.3 |
 | D55 | 2026-10-06 | Ultime du Seigneur Damné ; forme de *Relève impie* | Ultime : ***Grande Moisson*** (exécution des ennemis ordinaires sous ~25 % de PV dans une zone annoncée, *Moisson* au maximum, soin par exécution) ; remplace *Marée des damnés*. *Relève impie* : l'unité se relève sous sa forme de base (un Arbalétrier en Arbalétrier), en serviteur temporaire. | § 13.3 |
 | D56 | 2026-10-06 | *Relève impie* — unités emblématiques et d'élite | Elles se relèvent **telles quelles**. Pas de version mort-vivante de chaque unité : FX et teinte communs appliqués au modèle d'origine. Vigilance : serviteurs d'élite face aux Héritiers du Feu. | § 13.3 |
 | D57 | 2026-10-06 | Seigneur Damné — derniers points | Déblocage : *Aura de terreur* + *Moisson* au niveau 1, *Sacrifice* au niveau 4. *Relève impie* ne relève jamais les héros. | § 13.3 |
 | D58 | 2026-10-06 | D38 (suite) — Arquebusier dans la matrice | **Tireur lourd de fin de partie** (façon Handcannoneer d'AoE4) : gros dégâts, ignore une partie de l'armure sans bonus de catégorie, recharge lente, courte portée, cher en or ; vulnérable à la cavalerie et aux Archers. Résistance héroïque normale : l'Arbalétrier reste l'anti-héros du socle *(révisé, D62 : pas d'anti-héros)*. | § 7.1, § 7.2 |
-| D59 | 2026-10-06 | D38 (suite) — Légions sans poudre | ***Cracheur de bile*** : **engin de siège** à la place du Canon (palier 3) ; acide = dégâts à l'impact + flaque au sol, dégâts sur la durée, courte durée. Seconde variante des Légions (D20 respecté). Pas d'équivalent de l'Arquebusier : **un bâtiment propre en plus** à la place (à définir). *Catapulte à cadavres* écartée. | § 6.1, § 7.1, § 13.3 |
-| D60 | 2026-10-06 | D59 (suite) — Bâtiment des Légions | ***Ossuaire*** : bâtiment économique (palier 3) qui transforme les cadavres des batailles en réduction du coût ou du temps de production. Récupération des cadavres à définir. Vigilance : pas de réponse directe aux armures lourdes. | § 7.1, § 13.3 |
+| D59 | 2026-10-06 | D38 (suite) — Légions sans poudre | ***Cracheur de bile*** : **engin de siège** à la place du Canon (palier 3) ; acide = dégâts à l'impact + flaque au sol, dégâts sur la durée, courte durée. Seconde variante des Légions (D20 respecté). Pas d'équivalent de l'Arquebusier : **un bâtiment propre en plus** à la place (à définir) *(l'Ossuaire, D60)*. *Catapulte à cadavres* écartée. | § 6.1, § 7.1, § 13.3 |
+| D60 | 2026-10-06 | D59 (suite) — Bâtiment des Légions | ***Ossuaire*** : bâtiment économique (palier 3) qui transforme les cadavres des batailles en réduction du coût ou du temps de production. Récupération des cadavres à définir *(collecte globale, D65)*. Vigilance : pas de réponse directe aux armures lourdes. | § 7.1, § 13.3 |
 | D61 | 2026-10-06 | D38 (suite) — Arquebusier des Héritiers | Réponse de l'utilisateur : l'***Arquebusier de la Forge*** (nom temporaire) **tire plus vite et plus loin** que l'Arquebusier (cohérent avec D39 : même chose, en mieux). Vigilance : l'Archer ne le dépasse plus en portée. | § 7.1, § 13.6 |
 | D62 | 2026-10-06 | Contre-mesures anti-héros (D17, Q09, Q30) | **Aucune unité anti-héros**, ni commune ni de faction. La résistance héroïque (×0,3) s'applique à toutes les troupes ; l'Arbalétrier et l'Arquebusier font beaucoup de dégâts de base, donc un grand nombre blesse un héros. Révise D17 (contre-mesures dédiées) et D21 (Arbalétrier anti-héros). | § 7.1, § 7.2, § 9.1 bis, § 20 |
 | D63 | 2026-10-06 | Conversion de la Voix — cibles | Jamais les héros ni les bâtiments ; **siège convertible** (façon moines d'AoE4) ; pas d'exclusion d'élite, **plafond de coût total** (une unité des Héritiers compte double). Vigilance : conversion du siège à régler en test. | § 13.5 |
@@ -1475,12 +1522,23 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D65 | 2026-10-06 | Ossuaire — collecte | **Collecte globale** : chaque mort sur la carte remplit une jauge plafonnée, le cadavre reste sur le terrain. **Pas de rétroactivité** (pas d'Ossuaire ou jauge pleine = mort non comptée) ; capacité par Ossuaire. **Dépense automatique** : réduction appliquée au clic de recrutement. | § 13.3 |
 | D66 | 2026-10-06 | Zombie — particularité économique | **Piste actuelle confirmée** : moins cher, sans nourriture, collecte plus lente, 1 place de population. Pas de handicap de population, car **les unités des Légions coûtent moins cher** : moins de revenu nécessaire, donc moins de travailleurs. | § 7.1, § 13.1, § 13.3 |
 | D67 | 2026-10-06 | Économie de l'Ordre de l'Aube | **Sanctuaire** (piste confirmée) : les fermes dans son rayon produisent plus. Économie compacte et défendable. Vigilance : expansions lointaines moins rentables. | § 13.1, § 13.2 |
-| D68 | 2026-10-06 | Économie des Enfants du Dragon | **Économie élémentaire** : l'élément choisi bonifie la collecte d'une ressource ; changer d'élément rééquilibre l'économie. Remplace la piste « collecte selon le terrain » (contraire à D40). Correspondance élément → ressource à définir. | § 13.1, § 13.4 |
-| D69 | 2026-10-06 | Économie du Cercle de l'Ombre | **Marché noir** : le Cercle échange ses ressources au marché à un meilleur taux. Remplace la piste du pillage. Existence d'un marché à préciser. | § 13.1, § 13.5 |
+| D68 | 2026-10-06 | Économie des Enfants du Dragon | **Économie élémentaire** : l'élément choisi bonifie la collecte d'une ressource ; changer d'élément rééquilibre l'économie. Remplace la piste « collecte selon le terrain » (contraire à D40). Correspondance élément → ressource à définir *(précisée par D72, D73)*. | § 13.1, § 13.4 |
+| D69 | 2026-10-06 | Économie du Cercle de l'Ombre | **Marché noir** : le Cercle échange ses ressources au marché à un meilleur taux. Remplace la piste du pillage. Existence d'un marché à préciser *(marché commun, D70)*. | § 13.1, § 13.5 |
 | D70 | 2026-10-06 | Marché | **Marché commun à toutes les factions**, façon AoE : achat et vente, taux évolutifs ; le Cercle y a un meilleur taux (D69). | § 5.5, § 13.5 |
 | D71 | 2026-10-06 | Déconnexion d'un joueur | **Fenêtre de reconnexion** (~2-3 min) tenue par une IA, retour possible ; ensuite défaite en 1v1 classé, IA jusqu'au bout en équipe. | § 14.4, § 16.4 |
 | D72 | 2026-10-06 | Élément de faction des Enfants du Dragon | **Option A, élargie** : l'élément est porté par un bâtiment, le *Nid élémentaire* (nom temporaire). **Plusieurs Nids possibles**, chacun réglé sur un élément ; bonus de collecte **cumulés** (~ +10 % par Nid sur la ressource de son élément). Changement d'élément **gratuit mais différé** (façon citernes byzantines d'AoE4) : actif après X s, l'ancien réglage tourne pendant le délai. L'élément du héros reste indépendant. Règle le « coût d'un changement d'élément » laissé ouvert par D68. | § 13.1, § 13.4 |
 | D73 | 2026-10-06 | Correspondance élément → ressource (Enfants du Dragon) | **Feu → or, glace → pierre, foudre → bois ; nourriture jamais bonifiée.** Cohérent avec les postures du duel (D49) et lisible par l'adversaire. Clôt le reliquat de D68. | § 13.4 |
+| D75 | 2026-10-06 | Cohérence — L'Honneur | **Monnaie de pouvoirs, façon livre de pouvoirs de BFME, propre à l'Aube.** L'Honneur se gagne par des actions honorables et se dépense dans 3 à 4 pouvoirs de faction débloqués avec les paliers (pistes : *Renforts de l'Aube*, *Lumière sacrée*, *Rempart béni*, *Jugement*). Pas une ressource économique. Sources de gain et de perte à préciser *(D76)*. | § 13.2 |
+| D76 | 2026-10-06 | Cohérence — Sources d'Honneur | **Actes honorables précis** : défendre (ennemis tués près de ses bâtiments, murs, points), protéger (*Défi du Chevalier*, soins du Moine), tenir un point, accepter un duel (petit gain quelle que soit l'issue), gagner un duel (gros gain). **Refuser un duel coûte de l'Honneur** (code d'honneur, confirme D16). Vigilance § 10.6 : perte modérée, exception assumée. | § 10.6, § 13.2 |
+| D77 | 2026-10-06 | Cohérence — Siège au prototype | **Bélier + Mangonneau** (paliers 1 et 2) dans le prototype : murs solides (D23), remparts praticables (D24), héros qui ne rasent pas (D17) et victoire par le centre principal rendent le siège indispensable ; le Mangonneau teste les interactions des remparts. Cavalier lourd toujours hors prototype. | § 17 |
+| D78 | 2026-10-06 | Cohérence — Adaptation élémentaire | **L'élément du héros commande l'armée** : le Seigneur-Dragon a un élément actif, changé gratuitement avec délai (règle des Nids) ; l'*Aura draconique* donne aux unités proches l'effet de cet élément (feu : brûlure/dégâts ; glace : ralentissement/armure ; foudre : cadence/chaîne). Mage et Champion choisissent leur élément unité par unité. Plus de terrain (D40). Réactions élémentaires écartées pour l'instant. | § 13.4 |
+| D79 | 2026-10-06 | Cohérence — Hallebardier | **Variante de l'Ordre de l'Aube** à la place du Lancier : « mur de piques », anti-cavalerie + bonus contre l'infanterie lourde, plus cher. Au prototype, chaque faction teste une variante (Zombie, Hallebardier). | § 7.1, § 13.2, § 17 |
+| D80 | 2026-10-06 | Cohérence — Réponse à un défi | **Réponse définitive** : accepter ou refuser, pas de retrait. Fenêtre de réponse ~5-8 s ; **le silence vaut refus** (avec ses coûts). Acceptation = duel immédiat. Celui qui défie ne peut pas annuler (recharge consommée). | § 10.1 |
+| D81 | 2026-10-07 | Cohérence — Refus du Cercle de l'Ombre | **Pas d'exception** : le Cercle paie la même *Hésitation* que les autres ; seule l'Aube a un coût de refus supplémentaire (Honneur). Depuis D45, la Voix est une vraie duelliste ; la piste du refus allégé est retirée. | § 10.1 |
+| D82 | 2026-10-07 | Cohérence — Emblématiques du prototype | **Au moins 2 par faction** : Chevalier Vertueux + Moine Lumineux (Aube), Guerrier Damné + Nécromancien (Légions). Pas un plafond : d'autres possibles si de bonnes idées apparaissent. Permet de tester D19, D74, D76 et les cadavres. | § 17 |
+| D83 | 2026-10-07 | Cohérence — Population | **Maisons façon AoE** (~ +10 chacune, en bois) ; base de population donnée par les centres ; plafond 175 (D03). Bâtiments économiques du prototype : maison, camps de collecte, ferme, *Sanctuaire* (Aube). | § 5.3, § 17 |
+| D84 | 2026-10-07 | Cohérence — Marché | **Marché au prototype.** Précision de l'utilisateur : toutes les ressources s'achètent et se vendent contre de l'or, avec un **cours commun à tous les joueurs** (alliés comme ennemis), qui évolue avec les achats et les ventes de chacun. Le rôle « compenser la pierre » est retiré : le marché sert à tout surplus ou manque. | § 5.5, § 17 |
+| D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
 
@@ -1488,7 +1546,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D74**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D85**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -1500,7 +1558,25 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 6. ~~**Déconnexion**~~ → **tranché (D71)** : fenêtre de reconnexion tenue par une IA.
 7. ~~**Reliquat de D68 (Enfants du Dragon)**~~ → **tranché (D72, D73)** : *Nids élémentaires* cumulables, changement gratuit mais différé ; feu → or, glace → pierre, foudre → bois.
 
-**Bilan terminé.** Plus aucune question de design en cours. Pistes pour la suite : relecture de cohérence globale du GDD ; valeurs à régler en test (ci-dessous) ; premier chantier de code.
+**Relecture de cohérence (2026-10-06).** Corrections rédactionnelles déjà appliquées (sans décision nouvelle) : « piquiers » → Lanciers (§ 13.2) ; « perturbation des ordres » → confusion (§ 13.5, D37) ; en-tête « pistes » retiré du tableau économique (§ 13.1) ; renvois ajoutés dans le journal (D53, D59, D60, D68, D69) ; « Règle de prototype » des Héritiers → « Règle d'élite ».
+
+Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D74**) :
+
+1. ~~**Le moral**~~ → **tranché (D74)** : famille d'effets nommés, sans jauge ni déroute (§ 7.2).
+2. ~~**L'Honneur**~~ → **tranché (D75)** : monnaie de pouvoirs façon BFME, propre à l'Aube.
+   - ~~Sources d'Honneur~~ → **tranché (D76)** : actes honorables ; refuser un duel coûte de l'Honneur (perte modérée).
+3. ~~**Siège au prototype**~~ → **tranché (D77)** : Bélier + Mangonneau.
+4. ~~**Adaptation élémentaire**~~ → **tranché (D78)** : l'élément actif du héros commande l'armée ; emblématiques réglées unité par unité.
+5. ~~**Hallebardier**~~ → **tranché (D79)** : variante de l'Ordre de l'Aube.
+6. ~~**Refus et retrait de duel**~~ → **tranché (D80, D81)** : réponse définitive, le silence vaut refus ; pas de refus allégé pour le Cercle.
+7. ~~**Unités emblématiques du prototype**~~ → **tranché (D82)** : au moins 2 par faction (Chevalier + Moine ; Guerrier Damné + Nécromancien).
+8. **Petits points :**
+   - ~~*Champion damné* face à « jamais les héros »~~ → corrigé (rédactionnel) : serviteur générique, pas le héros vaincu (§ 10.5).
+   - ~~« sanctuaire » comme lieu d'achat d'équipement~~ → corrigé (rédactionnel) : retiré du § 9.7, pour ne pas confondre avec le *Sanctuaire* de l'Aube.
+   - ~~Population~~ → **tranché (D83)** : maisons façon AoE ; bâtiments économiques du prototype listés au § 17.
+   - ~~Marché au prototype~~ → **tranché (D84)** : oui ; cours commun à tous les joueurs, toutes ressources.
+
+**Relecture de cohérence terminée (D74 à D84).** Plus aucune question de design en cours. Pistes pour la suite : valeurs à régler en test (ci-dessous) ; premier chantier de code.
 
 **À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72).
 
