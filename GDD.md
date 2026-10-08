@@ -590,13 +590,35 @@ Conséquences :
 
 ### 9.6 Arbre de talents
 
-**Décision D08 : un arbre de talents entièrement propre à chaque faction.** Les familles, la structure et le contenu sont spécifiques. Exemple indicatif pour les Légions Noires : Nécromancie / Terreur / Sacrifice. Templiers *(D101)* : Croisade / Chevalerie / Trésor / Les Citadelles.
+**Décision D08 : un arbre de talents entièrement propre à chaque faction.** Les familles, la structure et le contenu sont spécifiques. Ordre de l'Aube *(D106)* : les trois Serments, Gardien / Capitaine / Champion (§ 13.2). Légions Noires *(D112)* : les trois Rites, Moisson / Charnier / Effroi (§ 13.3). Templiers *(D101)* : Croisade / Chevalerie / Trésor / Les Citadelles.
 
 Le héros gagne environ **8 points de talent** par partie (niveaux 2 à 9, D04). Il ne peut pas prendre toutes les améliorations : le choix crée une spécialisation.
 
+**Forme de l'arbre *(décision D103)* : des rangées avec seuils de famille** (hybride entre *Heroes of the Storm* et un arbre à profondeur).
+
+- **Une rangée par niveau** (niveaux 2 à 9) : le joueur y choisit **1 talent parmi 3**, chacun rattaché à une famille (code couleur). Le choix est rapide et lisible, même en plein combat.
+- **Les familles récompensent la constance :**
+  - **3 talents** pris dans une même famille donnent son **sceau**, un bonus passif marquant ;
+  - **5 talents** donnent son **talent clé**, qui transforme une capacité ou l'aura du héros (exemple indicatif : *Relève impie* lève aussi des Squelettes).
+- **Le dilemme de chaque niveau :** prendre le meilleur talent de la rangée, ou rester fidèle à sa famille pour atteindre le sceau puis le talent clé.
+- Avec 8 points, le maximum est **un talent clé et un sceau** (5 + 3), ou deux sceaux et deux talents isolés.
+- **Prototype (niveaux 1 à 6, 5 points) :** le talent clé n'est atteignable qu'en restant dans une seule famille du niveau 2 au niveau 6.
+- **Lisibilité pour l'adversaire :** les sceaux et talents clés obtenus sont signalés (à l'écran, sur le héros), ce qui donne de la valeur à l'éclairage, comme les spécialisations de palier (D07).
+- **IA :** un profil de build désigne une famille principale et une famille secondaire.
+- Contenu à écrire par faction : environ 24 talents (8 rangées × 3), 3 sceaux et 3 talents clés.
+
+**Nombre de familles *(décision D104)* : 3, sauf exception templière.** Les Templiers gardent leurs 4 familles (D101) : leurs rangées proposent **4 talents**, un par famille, avec les mêmes seuils (3 et 5). Contenu templier : 32 talents, 4 sceaux, 4 talents clés. Vigilance : plus d'options par rangée, plus de risque d'une option dominante, à surveiller en test.
+
+**Moment du choix *(décision D105)* : réserve libre.**
+
+- Le point de talent reste **en réserve sans limite de temps** et se dépense quand le joueur le veut, y compris pendant la récupération du héros mort.
+- Les rangées se remplissent **dans l'ordre** (celle du niveau 2 avant celle du niveau 3). L'effet est immédiat.
+- Un **rappel** reste affiché tant qu'un point n'est pas dépensé, avec un bouton **« choix conseillé »** qui prend en un clic le talent de la famille la plus remplie.
+- Garder un point permet de **s'adapter** après avoir éclairé l'adversaire (spécialisation, sceau, talent clé), ce qui renforce la valeur de l'éclairage voulue par D103.
+
 **Garde-fous proposés**, pour que 6 arbres différents restent lisibles et équilibrables :
 
-- même nombre de points disponibles et même présentation à l'écran pour toutes les factions ;
+- même nombre de points disponibles et **même structure** pour toutes les factions : rangées par niveau, seuils de sceau et de talent clé (D103). Seul le nombre de talents par rangée varie : 3, ou 4 chez les Templiers (D104) ;
 - chaque arbre permet au moins un build orienté **commandement** (le héros comme multiplicateur, pilier 2) et un build orienté **duel / combat personnel** ;
 - chaque arbre propose au moins une voie **stratégique** : vision, économie, mobilité ou autre, selon l'identité de la faction ;
 - chaque arbre reflète la mécanique signature de sa faction (§ 13).
@@ -956,6 +978,41 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - **Lien avec l'Honneur *(D76)* :** gagne de l'Honneur en *acceptant* les duels (quelle que soit l'issue), en les gagnant et en tenant des positions sous pression ; en perd en refusant.
 - **Victoire en duel *(D35)* :** gros gain d'Honneur et recharge immédiate de la *Bannière de l'Aube*.
 - **Capacité ultime (niveau 10) *(D36)* : *Dernier Rempart*.** Pendant ~10 s, les alliés dans une large zone autour du héros ne peuvent pas descendre sous 1 PV ; à la fin, ils récupèrent une partie des dégâts subis pendant l'effet. Contre : reculer et attendre la fin au lieu de frapper. Valeurs à régler en test.
+- **Arbre de talents *(D106)* : les trois Serments.** Chaque famille correspond à une grande source d'Honneur (D76) : choisir un Serment, c'est choisir **comment son Aube gagne l'Honneur**.
+
+  | Serment | Rôle (garde-fous D08) | Contenu | Talent clé (piste, à valider) |
+  |---|---|---|---|
+  | **Serment du Gardien** | stratégique : défendre et tenir | *Bannière de l'Aube*, murs et tours, *Sanctuaire* ; plus d'Honneur en tenant un point et en défendant | ***Bannière inébranlable*** (D107) |
+  | **Serment du Capitaine** | commandement : protéger | *Aura de l'Aube*, *Serrez les rangs*, Chevaliers Vertueux, Moines ; plus d'Honneur par les dégâts absorbés et les soins | ***Mur de boucliers*** (D108) |
+  | **Serment du Champion** | duel : combattre avec honneur | riposte, survie ; plus d'Honneur en duel | ***Ordalie*** (D109) |
+
+  - **Serment du Gardien *(D107)* : « On ne passe pas ».**
+    - Sceau ***Pierres de l'Aube*** : murs et tours gagnent des PV, les paysans les réparent plus vite ; tenir un point rapporte plus d'Honneur.
+    - Talent clé ***Bannière inébranlable*** : la Bannière ne disparaît plus tant que des alliés se tiennent dans sa zone ; plus ils y restent, plus ils gagnent d'armure (cumuls plafonnés) ; la zone produit de l'Honneur en continu. Crée un objectif visible à briser. Contre-jeu : déloger les troupes, siège ou dégâts de zone, contourner.
+    - ⚠️ Vigilance : Aube « tortue » trop solide ; le plafond des cumuls et le contournement doivent l'empêcher. Valeurs à régler en test.
+  - **Serment du Capitaine *(D108)* : « Un pour tous ».**
+    - Sceau ***Discipline de l'Aube*** : les unités dans l'aura résistent aux effets de moral négatifs (durée réduite d'environ moitié) ; les dégâts absorbés rapportent plus d'Honneur. Répond à l'*Aura de terreur* des Légions.
+    - Talent clé ***Mur de boucliers*** : pendant *Serrez les rangs*, les dégâts subis par une unité de la formation sont **répartis entre toutes les unités de la formation** ; aucune ne tombe seule. Contre la concentration de tirs et les assassins. Contre-jeu : les dégâts de zone, répartis à chaque coup, deviennent redoutables (*Sacrifice*, *Cracheur de bile*). Distinct du *Défi du Chevalier* (une unité encaisse) et de *Dernier Rempart* (plancher à 1 PV).
+  - **Serment du Champion *(D109)* : « Jugement des armes ».**
+    - Sceau ***Vœu du Champion*** : le temps de recharge du défi est réduit d'environ un tiers ; accepter et gagner un duel rapportent plus d'Honneur.
+    - Talent clé ***Ordalie*** (le jugement par les armes) : pendant un duel du Paladin, chaque riposte réussie donne un cumul de *Ferveur* (attaque et moral, cumuls plafonnés) aux alliés autour du cercle de duel ; en cas de victoire, le *Triomphe* (§ 10.5) dure plus longtemps et touche une zone plus large. Le duel devient un événement de bataille. Contre-jeu : refuser le défi (avec *Hésitation*), attaquer sans coups annoncés pour ne rien offrir à riposter, frapper les troupes spectatrices. La Voix (feintes) le contre naturellement (triangle du § 10.3).
+    - ⚠️ Vigilance : le défi plus fréquent multiplie les refus imposés à l'adversaire ; l'anti-harcèlement de D16 doit tenir. Valeurs à régler en test.
+    - ⚠️ Vigilance : le build est faible entre deux duels (recharge du défi, refus toujours possible). Les talents des rangées de la famille devront lui donner une utilité hors duel (piste : riposte contre les troupes).
+  - Un Serment **ajoute** un bonus à une source d'Honneur, sans jamais retirer les autres.
+  - Le sceau adverse visible (D103) annonce quel comportement l'Aube va chercher.
+  - **Talents des rangées 2 à 6 (prototype) *(D110)* :** grille complète proposée d'un bloc, puis amendée case par case. Règles : les rangées 2 et 3 donnent des bonus simples et lisibles ; les rangées 4 à 6 modifient des capacités (la *Bannière* arrive au niveau 4, le talent clé au niveau 6) ; les trois talents d'une rangée ont une valeur comparable.
+
+    **Grille validée *(D111)*** (valeurs indicatives, à régler en test) :
+
+    | Rangée | Gardien | Capitaine | Champion |
+    |---|---|---|---|
+    | 2 | ***Moisson bénie*** : rayon du *Sanctuaire* +25 % | ***Boucliers levés*** : +1 armure dans l'*Aura de l'Aube* | ***Lame bénie*** : hors duel, ~1 attaque de mêlée sur 4 contre le Paladin est contrée automatiquement |
+    | 3 | ***Vigie de l'Aube*** : tours +15 % vision, +10 % portée | ***Mains du guérisseur*** : Moines dans l'aura +20 % de soins | ***Endurance du croisé*** : +10 % PV, régénération hors combat doublée |
+    | 4 | ***Étendard du rempart*** : murs et tours dans la zone de la *Bannière* gagnent de l'armure, tours plus rapides | ***Pas de l'Aube*** : la formation de *Serrez les rangs* peut avancer à vitesse réduite sans perdre sa réduction de dégâts | ***Cri du défi*** : lancer un défi donne 1 cumul de *Ferveur* (~15 s) aux alliés proches, quelle que soit la réponse (remplace *Marque du parjure*, jugée trop forte : elle rendait le refus presque impossible, § 10.6) |
+    | 5 | ***Remparts de lumière*** : *Rempart béni* protège aussi les segments et tours adjacents | ***Grâce abondante*** : *Lumière sacrée* a une seconde charge | ***Contre parfait*** : en duel, une riposte sur une attaque forte annoncée étourdit ~0,5 s et compte double pour *Ordalie* |
+    | 6 | ***Double étendard*** : deux *Bannières* en même temps | ***Frères d'armes*** : dans l'aura, le passif du *Défi du Chevalier* redirige deux fois plus de dégâts | ***Escorte du champion*** : les Chevaliers de *Renforts de l'Aube* arrivent auprès du Paladin |
+
+    ⚠️ Vigilances : *Double étendard* + *Bannière inébranlable* (Aube « tortue », D107) ; *Escorte du champion* faible tant que *Renforts de l'Aube* (palier 2) n'est pas disponible.
 
 ### 13.3 Légions Noires
 
@@ -1006,6 +1063,43 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - **Victoire en duel *(D35)* :** le corps du héros vaincu relève un *Champion damné* temporaire (~45 s, puissance plafonnée) et la *Moisson* est portée à son maximum.
 - **Capacité ultime (niveau 10) *(D36, D55)* : *Grande Moisson*.** Zone annoncée ; les unités ennemies ordinaires sous ~25 % de PV y sont **exécutées**, la *Moisson* passe au maximum et le Seigneur se soigne à chaque exécution. Ces morts déclenchent *Relève impie* normalement : l'ultime nourrit le passif sans le dupliquer. Elle achève ce que la bataille a commencé (identité « attrition »). Contre : retirer ses unités blessées de la zone avant l'impact. Valeurs à régler en test.
   - *Remplace* *Marée des damnés* (D36), qui faisait doublon avec *Relève impie* (D54).
+- **Arbre de talents *(D112)* : les trois Rites.** Pendant des Serments de l'Aube : chaque famille décide **à quoi servent les morts** du champ de bataille (cadavres, D86). Choisir un Rite, c'est choisir ce que rapporte chaque mort.
+
+  | Rite | Rôle (garde-fous D08) | Contenu | Principe |
+  |---|---|---|---|
+  | **Rite de la Moisson** | duel / combat personnel | *Moisson*, drain de vie, *Sacrifice* sur soi | la mort nourrit le Seigneur |
+  | **Rite du Charnier** | commandement | cadavres plus durables, Nécromanciens, Squelettes, *Sacrifice* explosif ; *Relève impie* hors prototype | la mort grossit l'armée |
+  | **Rite de l'Effroi** | stratégique | *Aura de terreur*, Spectres (vision, marquage, harcèlement des travailleurs) | la mort répand la peur, qui précède l'armée |
+
+  - **Rite de la Moisson *(D113)* : « Le Festin du duel ».**
+    - Sceau ***Faim insatiable*** : les cumuls de *Moisson* durent plus longtemps et leur plafond monte (~+2). Garde la famille utile hors duel.
+    - Talent clé ***Festin*** : en entrant en duel, le Seigneur **conserve ses cumuls de *Moisson***, convertis en puissance de duel (dégâts et drain) ; chaque coup porté en duel en ajoute un. La bataille se paie en duel : miroir d'*Ordalie* (Aube), qui porte le duel dans la bataille.
+    - Lecture pour l'adversaire : un Seigneur chargé de cumuls se voit. Refuser (*Hésitation*) ou affronter un monstre ; le défier tôt, avant le carnage, devient une stratégie.
+    - ⚠️ Vigilance : face à un Seigneur chargé, le refus devient la réponse évidente (sain au regard du § 10.6) ; le talent ne doit pas pour autant devenir faible. Plafond des cumuls et conversion à régler en test.
+  - **Rite du Charnier *(D114)* : « La Légion d'os ».**
+    - Sceau ***Os durcis*** : les Squelettes ont ~+20 % de PV ; les Nécromanciens lèvent plus vite.
+    - Talent clé ***Légion d'os*** : dans l'aura du Seigneur, chaque Squelette gagne de l'attaque et de l'armure **selon le nombre de Squelettes proches** (cumuls plafonnés). Une horde faible devient un mur d'os tant qu'elle reste groupée autour de son maître : multiplicateur de commandement. Respecte les rôles de D86 (le Seigneur renforce, le Nécromancien lève).
+    - Contre-jeu : dégâts de zone (comme pour *Mur de boucliers*), disperser la horde, l'attirer hors de l'aura. Valeurs à régler en test.
+  - Le sceau adverse visible (D103) annonce ce que les Légions vont faire des morts.
+  - **Rite de l'Effroi *(D115)* : « Terre maudite ».** Les batailles marquent la carte.
+    - Sceau ***Sol profané*** : là où beaucoup sont morts (seuil de morts dans une zone), le sol devient **maudit** ~90 s ; les **unités militaires** ennemies y subissent un léger malus de moral (catégorie D74). Les travailleurs ne sont jamais touchés.
+    - Talent clé ***Champ des lamentations*** : sur une terre maudite, l'*Aura de terreur* double de rayon et les morts-vivants des Légions régénèrent leurs PV. Les Légions se battent « chez elles » sur les ruines des batailles passées.
+    - Effet stratégique : la carte garde la mémoire des combats ; l'adversaire évite ces zones ou doit les reprendre.
+    - Contre-jeu : purification par le Moine Lumineux et *Lumière sacrée* (effet de moral, D74) ; combattre ailleurs.
+    - ⚠️ Vigilance : nombre de zones maudites plafonné (performance, lisibilité). Une bataille au pied des murs de l'Aube maudit son propre terrain : tension voulue, à surveiller. Valeurs à régler en test.
+  - **Rite de l'Effroi — pistes écartées** (choix de l'utilisateur, 2026-10-08) : vision forte (cadavres qui voient), panique des travailleurs ou des villages (jugée ultra frustrante), *Aura de terreur* portée par un Spectre, saut du Seigneur vers un cadavre.
+  - ⚠️ Vigilance : au prototype, l'Effroi n'a ni l'*Ossuaire* (palier 3) ni la corruption de zone ; son contenu repose sur l'*Aura de terreur* et les Spectres.
+  - **Talents des rangées 2 à 6 (prototype)** : méthode D110. **Grille validée *(D116)*** (valeurs indicatives, à régler en test) :
+
+    | Rangée | Moisson | Charnier | Effroi |
+    |---|---|---|---|
+    | 2 | ***Lame avide*** : hors duel, le Seigneur se soigne de ~10 % des dégâts qu'il inflige | ***Charnier fertile*** : les cadavres restent ~30 % plus longtemps au sol | ***Voix sépulcrale*** : rayon de l'*Aura de terreur* +20 % |
+    | 3 | ***Carapace de chair*** : chaque cumul de *Moisson* donne aussi un peu d'armure | ***Maîtres des tombes*** : Nécromanciens +20 % PV, levée à plus grande distance | ***Lames spectrales*** : les Spectres Assassins infligent plus de dégâts aux ennemis sous un effet de moral négatif |
+    | 4 | ***Sacrifice vorace*** : *Sacrifice* sur une unité alliée donne en plus 3 cumuls de *Moisson* | ***Éclats d'os*** : l'explosion de *Sacrifice* fait surgir 2 Squelettes **temporaires** (~20 s, serviteurs du Seigneur, D86) | ***Sacrifice maudit*** : l'explosion de *Sacrifice* maudit le sol dans un petit rayon (terre maudite sans seuil de morts) |
+    | 5 | ***Exécuteur*** : plus de dégâts contre les ennemis sous 30 % de PV ; chaque achèvement donne 2 cumuls | ***Levée prompte*** : dans l'aura, les Nécromanciens lèvent sans temps de canalisation | ***Effroi tenace*** : les malus de l'*Aura de terreur* persistent ~5 s après la sortie de l'aura |
+    | 6 | ***Curée*** : en duel, sous 50 % de PV adverse, le drain de vie du Seigneur double | ***Commandant des morts*** : dans l'aura, l'explosion de *Sacrifice* ne consomme plus le cadavre | ***Hurlement funèbre*** : quand le Seigneur tue une unité, les ennemis militaires proches subissent un bref malus d'attaque (~5 s, cumul plafonné D74) |
+
+    ⚠️ Vigilances : *Éclats d'os* puis *Relève impie* (hors prototype) multiplient les serviteurs temporaires (plafond commun) ; *Sacrifice maudit* + *Champ des lamentations* forment une synergie forte ; *Commandant des morts* fait de chaque cadavre une bombe puis un Squelette.
 
 ### 13.4 Enfants du Dragon
 
@@ -1260,7 +1354,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 **Arbre de talents *(D101)* : quatre familles**, **Croisade** (taille, vitesse et gloire des croisades, *Prendre la croix*), **Chevalerie** (combat, duel *La Règle*, Chevaliers du Temple, *Deus lo vult !*), **Trésor** (or des croisades, *Compagnie franche*, frères convers) et **Les Citadelles** (solidité, *Sortie*, *Camp retranché*). Contenu des talents à concevoir plus tard (D08).
 
-- ⚠️ Vigilance (garde-fous de D08) : ~8 points répartis sur 4 familles, contre 3 dans l'exemple des Légions. « Même présentation pour toutes les factions » : soit tous les arbres passent à 4 familles, soit c'est une exception templière. À trancher à la conception des arbres.
+- **Forme *(D103, D104)* :** rangées de **4 talents** (une par famille), contre 3 dans les autres factions ; mêmes seuils (sceau à 3, talent clé à 5). Exception assumée au garde-fou « même structure » (§ 9.6). Vigilance : risque d'une option dominante, à surveiller en test.
 
 ---
 
@@ -1648,6 +1742,20 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D100 | 2026-10-07 | Templiers — Victoire en duel | ***La gloire du Temple*** : un rang de gloire pour un contingent (D90), comme une croisade réussie, **mais sans l'or** (nuance de l'utilisateur). Permanent mais plafonné : exception mesurée au § 10.6. | § 10.5, § 13.7 |
 | D101 | 2026-10-07 | Templiers — Arbre de talents | **Quatre familles** (choix de l'utilisateur) : Croisade, Chevalerie, Trésor, Les Citadelles. Vigilance : 4 familles contre 3 ailleurs (garde-fou « même présentation », D08). | § 9.6, § 13.7 |
 | D102 | 2026-10-07 | Équipement du héros | **Supprimé** (demande de l'utilisateur). Le héros progresse par ses niveaux, ses capacités et ses talents. Conséquences : plus de reliques uniques de carte en mode standard (camps neutres : gisement ou passage) ; reliques réservées au mode Reliques ; références retirées (§ 8.3, § 8.4, § 9, § 9.2, § 9.8, § 11, § 16.4). Révise D09. | § 8.3, § 8.4, § 9, § 9.2, § 9.7, § 9.8, § 11, § 16.4 |
+| D103 | 2026-10-07 | Arbres de talents — Forme | **Rangées avec seuils de famille** : à chaque niveau (2 à 9), 1 talent parmi 3, chacun rattaché à une famille ; 3 talents d'une famille donnent son **sceau** (bonus passif), 5 son **talent clé** (transforme une capacité ou l'aura). Maximum : un talent clé et un sceau. Sceaux et talents clés visibles par l'adversaire. Précise D08. | § 9.6 |
+| D104 | 2026-10-07 | Arbres de talents — Nombre de familles | **3 familles, exception templière** : les Templiers gardent leurs 4 familles (D101), avec des rangées de 4 talents et les mêmes seuils. Le garde-fou « même présentation » de D08 devient « même structure ». Clôt la vigilance de D101. | § 9.6, § 13.7 |
+| D105 | 2026-10-07 | Arbres de talents — Moment du choix | **Réserve libre** : point gardé sans limite de temps, dépensé à tout moment (même héros mort), rangées remplies dans l'ordre, effet immédiat. Rappel affiché et bouton « choix conseillé » (famille la plus remplie). | § 9.6 |
+| D106 | 2026-10-07 | Arbre de l'Aube — Familles | **Les trois Serments**, chacun lié à une source d'Honneur (D76) : **Gardien** (stratégique : défendre, tenir, *Bannière*, murs, *Sanctuaire*), **Capitaine** (commandement : protéger, aura, *Serrez les rangs*, Chevaliers, Moines), **Champion** (duel : riposte, survie, Honneur en duel). Un Serment ajoute un bonus à une source sans retirer les autres. Talents clés proposés comme pistes. | § 9.6, § 13.2 |
+| D107 | 2026-10-07 | Arbre de l'Aube — Serment du Gardien | **« On ne passe pas »** : sceau *Pierres de l'Aube* (murs et tours plus solides, réparation plus rapide, plus d'Honneur en tenant un point) ; talent clé *Bannière inébranlable* (Bannière maintenue tant que des alliés tiennent sa zone, cumuls d'armure plafonnés, Honneur en continu). Vigilance : Aube « tortue ». | § 13.2 |
+| D108 | 2026-10-07 | Arbre de l'Aube — Serment du Capitaine | **« Un pour tous »** : sceau *Discipline de l'Aube* (résistance aux effets de moral négatifs, plus d'Honneur par les dégâts absorbés) ; talent clé *Mur de boucliers* (pendant *Serrez les rangs*, dégâts répartis entre toutes les unités de la formation ; contré par les dégâts de zone). | § 13.2 |
+| D109 | 2026-10-08 | Arbre de l'Aube — Serment du Champion | **« Jugement des armes »** (option A, sans le sceau hybride recommandé) : sceau *Vœu du Champion* (défi rechargé ~1/3 plus vite, plus d'Honneur en acceptant et en gagnant) ; talent clé *Ordalie* (chaque riposte réussie en duel donne un cumul de *Ferveur* aux alliés autour du cercle, *Triomphe* prolongé et élargi en cas de victoire). Vigilances : anti-harcèlement (D16) ; build faible entre deux duels, à compenser par les talents des rangées. | § 13.2 |
+| D110 | 2026-10-08 | Arbre de l'Aube — Méthode des rangées | **Grille complète des 15 talents (rangées 2 à 6) proposée d'un bloc puis amendée**. Règles : rangées 2-3 en bonus simples, rangées 4-6 en modifications de capacités, valeur comparable au sein d'une rangée. | § 13.2 |
+| D111 | 2026-10-08 | Arbre de l'Aube — Rangées 2 à 6 | **Grille validée** (15 talents, § 13.2). Gardien : *Moisson bénie*, *Vigie de l'Aube*, *Étendard du rempart*, *Remparts de lumière*, *Double étendard*. Capitaine : *Boucliers levés*, *Mains du guérisseur*, *Pas de l'Aube*, *Grâce abondante*, *Frères d'armes*. Champion : *Lame bénie*, *Endurance du croisé*, *Cri du défi* (remplace *Marque du parjure*, jugée trop forte), *Contre parfait*, *Escorte du champion*. Vigilances : Aube « tortue », *Escorte* faible avant le palier 2. | § 13.2 |
+| D112 | 2026-10-08 | Arbre des Légions — Familles | **Les trois Rites**, chacun décidant à quoi servent les morts (D86) : **Moisson** (duel / combat : la mort nourrit le Seigneur), **Charnier** (commandement : la mort grossit l'armée), **Effroi** (stratégique : la mort répand la peur ; Spectres, *Aura de terreur*). Remplace l'exemple indicatif Nécromancie / Terreur / Sacrifice. Vigilance : contenu de l'Effroi au prototype. | § 9.6, § 13.3 |
+| D113 | 2026-10-08 | Arbre des Légions — Rite de la Moisson | **« Le Festin du duel »** : sceau *Faim insatiable* (cumuls de *Moisson* plus durables, plafond ~+2) ; talent clé *Festin* (cumuls conservés en entrant en duel et convertis en dégâts et drain, chaque coup de duel en ajoute un). Miroir d'*Ordalie*. Vigilance : le refus devient évident face à un Seigneur chargé. | § 13.3 |
+| D114 | 2026-10-08 | Arbre des Légions — Rite du Charnier | **« La Légion d'os »** : sceau *Os durcis* (Squelettes ~+20 % PV, levée plus rapide) ; talent clé *Légion d'os* (dans l'aura, chaque Squelette gagne attaque et armure selon le nombre de Squelettes proches, plafonné). Contre-jeu : dégâts de zone, dispersion. | § 13.3 |
+| D115 | 2026-10-08 | Arbre des Légions — Rite de l'Effroi | **« Terre maudite »** (2e série d'options ; la 1re, vision forte, panique des travailleurs, aura portée par un Spectre, saut vers un cadavre, a été rejetée) : sceau *Sol profané* (là où beaucoup sont morts, sol maudit ~90 s, malus de moral léger aux unités militaires ennemies, jamais aux travailleurs) ; talent clé *Champ des lamentations* (sur terre maudite, *Aura de terreur* doublée et régénération des morts-vivants). Contre-jeu : purification (Moine, *Lumière sacrée*). | § 13.3 |
+| D116 | 2026-10-08 | Arbre des Légions — Rangées 2 à 6 | **Grille validée** (15 talents, § 13.3). Moisson : *Lame avide*, *Carapace de chair*, *Sacrifice vorace*, *Exécuteur*, *Curée*. Charnier : *Charnier fertile*, *Maîtres des tombes*, *Éclats d'os*, *Levée prompte*, *Commandant des morts*. Effroi : *Voix sépulcrale*, *Lames spectrales*, *Sacrifice maudit*, *Effroi tenace*, *Hurlement funèbre*. Rangée 4 entièrement consacrée à *Sacrifice*. Vigilances : plafond commun des serviteurs temporaires, synergies *Sacrifice maudit* + *Champ des lamentations* et *Commandant des morts*. | § 13.3 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -1656,7 +1764,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D103**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D109**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -1719,13 +1827,18 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 
 **ÉTAT AU 2026-10-07 — point de reprise pour la prochaine séance**
 
-- **Décisions prises :** D01 à D102. Prochain numéro : **D103**.
-- **Aucune question de design en cours.**
+- **Décisions prises :** D01 à D116. Prochain numéro : **D117**.
+- **Séance du 2026-10-07 (suite) : piste 3, arbres de talents (D08), choisie par l'utilisateur.** Questions dans l'ordre :
+  1. ~~**Forme de l'arbre**~~ → **tranché (D103)** : rangées de 3 talents par niveau, sceau à 3 talents d'une famille, talent clé à 5.
+  2. ~~**Nombre de familles**~~ → **tranché (D104)** : 3, sauf les Templiers (4, rangées de 4 talents).
+  3. ~~**Moment du choix**~~ → **tranché (D105)** : réserve libre, rangées dans l'ordre, bouton « choix conseillé ».
+  4. **Arbre de l'Ordre de l'Aube** : ~~familles~~ → **tranché (D106)** : les trois Serments (Gardien, Capitaine, Champion). Ensuite : sceau et talent clé de chaque Serment (~~Gardien~~ → D107 ; ~~Capitaine~~ → D108 ; ~~Champion~~ → D109), puis talents des rangées 2 à 6 (prototype) : méthode → D110 ; ~~grille des 15 talents~~ → **tranché (D111)**. Talents des rangées 7 à 9 (hors prototype) : plus tard.
+  5. **Arbre des Légions Noires** : mêmes étapes (familles, sceaux et talents clés, rangées 2 à 6). ~~Familles~~ → **tranché (D112)** : les trois Rites (Moisson, Charnier, Effroi). Ensuite : sceau et talent clé de chaque Rite (~~Moisson~~ → D113 ; ~~Charnier~~ → D114 ; ~~Effroi~~ → D115), ~~grille des rangées 2 à 6~~ → **tranché (D116)**. **Les arbres des deux factions du prototype sont complets** (rangées 7 à 9 hors prototype : plus tard).
 - **Code :** l'ancien code (classes C++ de gameplay et `Content/Blueprints`) a été supprimé et commité. Le module `MyCrusader` est vide et compile. À la première ouverture dans l'éditeur, `BattleMap` peut signaler des acteurs dont la classe n'existe plus : les supprimer et enregistrer la carte.
 - **Pistes pour la suite, au choix de l'utilisateur :**
   1. **Premier chantier de code :** système d'unités légères (D29, § 16.4) : lire le projet, rédiger un plan (Mass Entity ou gestionnaire maison), le valider avant d'écrire du code.
   2. **Contenu détaillé des Templiers :** les ~8 commanderies et leurs unités (D90, D92), valeurs de la croisade (délai, plafond, or, gloire).
-  3. **Arbres de talents** (D08) : 3 ou 4 familles pour toutes les factions (vigilance de D101), puis contenu des arbres de l'Aube et des Légions (prototype).
+  3. ~~**Arbres de talents**~~ → fait (D103 à D116) pour le prototype. Restent : rangées 7 à 9, et les arbres des quatre autres factions (Cercle de l'Ombre, Héritiers du Feu, Enfants du Dragon, Templiers).
   4. **Fiche de valeurs de départ** pour tout ce qui est « à régler en test » (ci-dessous).
 
 **À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72), coût et nombre des pouvoirs d'Honneur (D75, D85), cadavres et Squelettes (D86), croisade : délai, plafond de troupes, or, gloire, bonus des citadelles (D88 à D96).
