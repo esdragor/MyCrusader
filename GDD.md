@@ -200,6 +200,8 @@ Le joueur choisit entre investir dans sa base, prendre une expansion, investir d
 
 Les bâtiments ont des rôles lisibles et participent directement à la progression technologique.
 
+**Production militaire *(décision D128)* : un bâtiment par catégorie, façon AoE4.** ***Caserne*** (Lancier ou Hallebardier, Homme d'armes), ***Champ de tir*** (Archer, Arbalétrier), ***Écurie*** (cavaliers), ***Atelier de siège*** (Bélier, Mangonneau…). Les unités emblématiques sortent du bâtiment de leur catégorie ou d'un bâtiment propre à la faction. L'éclairage lit la composition (voir trois écuries, c'est voir venir la cavalerie, D07), la production se fait en parallèle, et raser un bâtiment militaire a un effet réel. *Prototype :* il peut commencer avec un bâtiment militaire unique (§ 17), à condition que les données (`BuildingData`) soient conçues pour ce découpage dès le départ.
+
 La base doit être plus qu'un amas de bâtiments : défense, production, économie, projection. Certaines factions doivent être meilleures en défense que d'autres.
 
 ### 6.1 Siège *(décision D23)*
@@ -328,9 +330,9 @@ Les contres reposent sur des **bonus de dégâts par catégorie d'armure**, comm
 **Le moral est une famille d'effets, pas une jauge** (façon AoE4 / BFME).
 
 - Aucune statistique « moral » sur les unités. Les effets de moral sont des **effets nommés et temporaires** qui modifient attaque, armure et/ou cadence : *Triomphe*, *Démoralisé* (D15), *Hésitation* (D16), les auras de commandement (D26), *Aura de terreur*, *Murmures*, *Cor de l'Héritage*, etc.
-- « Moral » est une **catégorie** commune à ces effets : même affichage (icône sur l'unité), mêmes règles de cumul, même traitement par les capacités qui purifient.
+- « Moral » est une **catégorie** commune à ces effets : même affichage (icône sur l'unité), mêmes règles de cumul, même traitement par les capacités qui les atténuent.
 - **Cumul (indicatif, à régler en test) :** un même effet ne se cumule pas avec lui-même (il est rafraîchi) ; des effets différents s'additionnent, dans un **plafond global** de bonus et de malus de moral.
-- **Purification :** le Moine Lumineux retire les effets de moral négatifs (lien avec « suppression de malédictions »).
+- **Atténuation, pas de purification *(décision D125)* :** le Moine Lumineux **atténue** les effets de moral négatifs et les malédictions (intensité et/ou durée réduites) **sans les retirer**. Seule *Lumière sacrée* pourrait les retirer : ⚠️ à trancher en test. Le sol maudit (*Sol profané*, D115) ne se purifie pas.
 - **Jamais de déroute :** le moral ne fait pas fuir les unités et ne retire pas le contrôle au joueur. La peur reste un contrôle bref, encadré par D37.
 - **Technique :** catégorie d'effet (tag `Effect.Morale.*`) dans le système d'effets des unités légères (D29) ; mêmes tags pour les acteurs GAS.
 - Un moral de groupe à états (Exalté / Stable / Ébranlé) reste une extension possible après le prototype, si le moral paraît trop abstrait en test.
@@ -435,7 +437,7 @@ Les créatures neutres peuvent protéger des ressources, occuper des ruines, blo
 
 **Capacité ultime *(décision D36)* :** voir § 9.5. Ultimes du prototype décrits aux § 13.2 et § 13.3.
 
-**Héros hors prototype :** Seigneur-Dragon des Enfants du Dragon (§ 13.4, D41), la Voix du Cercle de l'Ombre (§ 13.5, D44), le Champion Héritier des Héritiers du Feu (§ 13.6, D46). Héros des Templiers : ⚠️ à concevoir (§ 13.7, D87).
+**Héros hors prototype :** Seigneur-Dragon des Enfants du Dragon (§ 13.4, D41), la Voix du Cercle de l'Ombre (§ 13.5, D44), le Champion Héritier des Héritiers du Feu (§ 13.6, D46). le Grand Maître des Templiers (§ 13.7, D94).
 
 ### 9.1 Rôle
 
@@ -697,6 +699,11 @@ Un héros peut cibler un héros adverse et lancer un défi. Le duel est une prop
 **L'adversaire peut accepter ou refuser *(décision D80)*.** La réponse est définitive : pas de retrait après coup.
 
 - **Fenêtre de réponse :** ~5 à 8 s (indicatif), signalée par une alerte sonore et visuelle.
+- **Fenêtre de défi à l'écran *(décision D117, demande de l'utilisateur)* :** un défi reçu ouvre une **fenêtre dans l'interface** (popup), impossible à manquer.
+  - Contenu : portrait et niveau du héros qui défie, ses sceaux et talents clés visibles (D103), barre du temps de réponse restant ; boutons **Accepter** et **Refuser**, chacun avec un raccourci clavier.
+  - La fenêtre **ne met pas le jeu en pause** et ne bloque pas le reste de l'écran : le joueur peut continuer à donner des ordres pendant qu'il décide. Un bouton ou un raccourci centre la caméra sur le duel proposé.
+  - Le défi est aussi signalé sur la minimap. Le joueur qui défie voit de son côté un indicateur « défi envoyé » avec le même compte à rebours.
+  - Détails de présentation indicatifs, à valider en test.
 - **Accepter :** le duel commence immédiatement ; le cercle de duel (D18) se pose entre les deux héros.
 - **Refuser, ou ne pas répondre à temps :** c'est un **refus**, avec ses coûts (*Hésitation*, Honneur pour l'Aube). Ignorer un défi n'est jamais gratuit.
 - **Celui qui défie ne peut pas annuler** son défi : son temps de recharge de défi est consommé.
@@ -732,7 +739,7 @@ Le duel a lieu directement sur la carte, pour éviter d'en faire un mini-jeu sé
 
 - **Le héros attaque automatiquement.** Le joueur gère :
   - une **posture** : offensive / défensive / équilibrée ;
-  - **4 à 6 capacités de duel** avec temps de recharge.
+  - **4 capacités de duel** avec temps de recharge : la parade commune et 3 capacités propres, plus l'ultime de duel au niveau 10 (D119).
 - **Les attaques fortes sont annoncées** par une animation de préparation (~0,5 à 1 s). Cela permet de lire et de contrer malgré la latence du réseau (modèle client-serveur, D29).
 - **Arbitrage d'attention :** le joueur peut détourner les yeux pour gérer sa base pendant le duel, mais un duel suivi attentivement se gagne plus souvent.
 - **L'IA** joue les duels avec les mêmes temps de réaction qu'un humain, sans réflexes surhumains.
@@ -742,7 +749,17 @@ Le duel a lieu directement sur la carte, pour éviter d'en faire un mini-jeu sé
 - les **capacités RTS actives** du héros sont remplacées par son **kit de duel** ;
 - son **aura de commandement reste active**, puisqu'il est physiquement sur la carte.
 
-**Contenu du kit** (catégories) : attaques, défenses, mobilité, contrôle, ultime de duel. Le kit de duel est séparé du kit RTS.
+**Gabarit commun des kits *(décision D119)* : une parade commune, 3 capacités propres, l'ultime.**
+
+- **Parade (commune aux six héros) :** touche fixe, courte fenêtre ; elle **réduit fortement** une attaque forte annoncée, **sans l'annuler**, et a une courte recharge. Sa fenêtre dépend de la posture (D118). Toute attaque annoncée peut donc être lue et contrée, quel que soit le héros, IA comprise.
+- **3 capacités propres :** elles portent le style du héros (attaques, défenses, mobilité, contrôle, au choix de chaque héros). Une capacité propre peut **améliorer la parade** (riposte du Paladin) ou **la tromper** (feintes de la Voix).
+- **Ultime de duel :** au niveau 10 (D43).
+- **Le triangle repose sur la parade :** la feinte trompe la parade, la riposte l'améliore, l'agression la sature.
+- ⚠️ Vigilance : la parade commune ne doit pas éclipser les défenses propres ; elle reste imparfaite (réduction partielle, recharge).
+
+**Déplacement *(décision D120)* : contact automatique.** Les deux héros restent au corps à corps sans action du joueur ; on ne se déplace dans le cercle qu'avec une **capacité propre** (bond, recul, charge). Regarder sa base ne coûte pas de terrain ; la mobilité devient une signature de certains héros (la Voix, le Dragon), pas un acquis de tous.
+
+Le kit de duel est séparé du kit RTS.
 
 **Déblocage *(décision D43)* : kit de duel complet dès le niveau 1, sauf l'ultime de duel, débloqué au niveau 10.**
 
@@ -750,6 +767,16 @@ Le duel a lieu directement sur la carte, pour éviter d'en faire un mini-jeu sé
 - Au niveau 10, l'ultime de duel s'ajoute : c'est la récompense de fin de progression, en miroir de l'ultime RTS.
 - Le prototype (niveaux 1 à 6) teste donc le kit de duel complet, sans ultime de duel.
 - ⚠️ **Point de vigilance :** un héros de niveau 10 a un outil de plus que son adversaire. L'ultime de duel doit rester puissant mais lisible et contrable (annoncé, comme les attaques fortes), pour ne pas décider seul l'issue d'un duel. À régler en test.
+
+**Postures *(décision D118)* :** on change de posture en un clic, à tout moment ; c'est le geste de base du duel, même quand le joueur regarde ailleurs (« je gère ma base, je passe en défensive »).
+
+| Posture | Effet |
+|---|---|
+| **Offensive** | plus de dégâts, fenêtres de défense (parade, riposte) plus courtes |
+| **Équilibrée** | valeurs de référence |
+| **Défensive** | moins de dégâts, fenêtres de défense plus larges |
+
+Valeurs à régler en test. Exception : le Seigneur-Dragon remplace les trois postures par trois éléments (D49).
 
 **Le duel teste :** timing, lecture de l'adversaire, gestion des temps de recharge et de la posture, connaissance du héros.
 
@@ -831,6 +858,39 @@ Cela évite le schéma : « Je monte d'âge et tout est instantanément débloqu
 - **~70 à 80 % commun à toutes les factions :** forge (dégâts et armures par catégorie d'unités), économie (collecte, rendement), infrastructures (solidité des murs, population), siège.
 - **~20 à 30 % propres à la faction :** mécanique signature (Honneur, cadavres…), unités emblématiques et variantes, **spécialisations de palier** (D07), technologies héros.
 - L'identité se concentre là où elle se voit. Un joueur qui connaît une faction se repère dans les autres (pilier 1). C'est le modèle d'AoE4 : forge commune, monuments et technologies uniques.
+
+### 11.1 Tronc commun des paliers 0 à 2 (prototype)
+
+**Grille validée *(décision D129)*** (noms, coûts et valeurs indicatifs, à régler en test). Méthode : grille complète amendée (comme D110).
+
+**Bâtiments et unités par palier**
+
+| Palier | Bâtiments débloqués | Unités du socle débloquées | Emblématiques (prototype) |
+|---|---|---|---|
+| **0 — Fondation** | Centre principal, Maison, Camps de collecte (bois, pierre, or), Ferme, **Caserne**, **Champ de tir**, Palissade, Tour de guet en bois ; *Sanctuaire* (Aube) | Paysan / Zombie, Lancier / Hallebardier, Archer | — |
+| **1 — Essor** | **Écurie**, **Forge**, Marché, **Atelier de siège**, Centre secondaire, Murs de pierre, Porte, Tour de pierre ; spécialisation (D123, D126) | Homme d'armes, Arbalétrier, Cavalier léger, Bélier | Chevalier Vertueux, Moine Lumineux ; Guerrier Damné, Nécromancien |
+| **2 — Puissance** | **Académie** (technologies avancées), Tour renforcée ; spécialisation (D124, D127) | Cavalier lourd (hors prototype), Mangonneau | — |
+
+Réponses aux contres garanties (D07) : le Lancier (anti-cavalerie) dès le palier 0, l'Arbalétrier (anti-armure) et l'Homme d'armes au palier 1.
+
+**Technologies communes**
+
+| Bâtiment | Palier 1 | Palier 2 |
+|---|---|---|
+| **Forge** | Lames affûtées (attaque mêlée I), Empennage (attaque à distance I), Maille (armure infanterie I), Barde (armure cavalerie I) | les mêmes en II |
+| **Camps et ferme** | Haches doubles (bois), Pics de mineur (pierre et or), Charrue (nourriture), Brouette (vitesse et capacité des travailleurs) | les mêmes en II |
+| **Centre principal** | Milice de défense (les travailleurs se défendent mieux près des centres) | Cloche d'alarme améliorée (garnison plus rapide) |
+| **Académie** | — | Maçonnerie (murs et tours +PV), Vétérans (unités du socle +PV), Logistique (vitesse hors combat de l'armée) |
+| **Atelier de siège** | Bélier renforcé | Munitions lourdes (dégâts du Mangonneau) |
+
+**Technologies propres (D27 : ~20-30 %)**, hors spécialisations :
+
+| Faction | Palier 1 | Palier 2 |
+|---|---|---|
+| **Aube** | *Liturgie* (gains d'Honneur +10 %) ; *Hallebardes trempées* (Hallebardier : bonus contre l'infanterie lourde accru) | *Bénédiction des armes* (Chevaliers et Hallebardiers +attaque contre les morts-vivants et les créatures) ; *Vœu de pauvreté* (Moines moins chers) |
+| **Légions** | *Os taillés* (Squelettes +armure) ; *Chair putride* (Zombies +PV) | *Rites funèbres* (cadavres au sol +20 s) ; *Lames empoisonnées* (Guerriers Damnés : dégâts sur la durée) |
+
+⚠️ Vigilance : *Bénédiction des armes* est un bonus contre une catégorie de factions ; *Os taillés*, *Rites funèbres* et *Liturgie* recoupent des talents (*Os durcis*, *Charnier fertile*, Serments). À arbitrer à la validation.
 
 ---
 
@@ -921,7 +981,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | Unité | Rôle | Traits |
 |---|---|---|
 | **Chevalier Vertueux** | frontline / tank | armure lourde, épée et bouclier, aura défensive, *Défi du Chevalier* (voir ci-dessous) |
-| **Moine Lumineux** | soutien | soins, purification, suppression de malédictions, sceaux lumineux ralentissant les ennemis |
+| **Moine Lumineux** | soutien | soins, **atténuation** des malus de moral et des malédictions (sans les retirer, D125), sceaux lumineux ralentissant les ennemis |
 | **Archer de l'Aube** | distance / contrôle | arc long sacré, tirs précis, flèches de lumière, zones réduisant l'efficacité offensive ennemie |
 
 **Variante du socle *(D79)* :** le **Hallebardier** remplace le Lancier (anti-cavalerie, bonus contre l'infanterie lourde, plus cher ; § 7.1).
@@ -936,6 +996,17 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 - À régler en test : le pourcentage redirigé (passif partiel contre actif total), le rayon de la zone et le temps de recharge.
 
 **Économie *(D67)* : le Sanctuaire.** Les fermes situées dans le rayon d'un Sanctuaire produisent plus de nourriture. L'Aube a intérêt à bâtir une économie **compacte et défendable**, fidèle à son identité. ⚠️ Vigilance : une expansion lointaine lui rapporte moins qu'aux autres factions ; à surveiller sur les grandes cartes.
+
+**Spécialisations de palier *(D07)* :**
+
+| Palier | Choix (définitif) | Rôle |
+|---|---|---|
+| **1 — Essor** *(D123)* | ***Bastion de l'Aube*** : murs et tours plus solides ; les **tours bénies** soignent lentement les alliés proches | **repli** : une base imprenable |
+| | ***Chapelle de campagne*** : petit bâtiment constructible loin de la base ; étend l'effet du *Sanctuaire* aux fermes proches, sert de point de ralliement et forme des Moines | **projection** : l'Aube s'étend (répond à la vigilance de D67) |
+| **2 — Puissance** *(D124)* | ***Lices de l'Aube*** : Chevaliers Vertueux formés plus vite, *Défi du Chevalier* renforcé | **l'Acier** |
+| | ***Monastère*** : Moines Lumineux qui soignent mieux, atténuent plus fortement les malus de moral et les malédictions (D125), et dont les soins rapportent plus d'Honneur | **la Foi** |
+
+Le palier 1 décide de la forme de la partie (repli ou expansion), le palier 2 de la composition de l'armée. Les deux se lisent à l'éclairage. Valeurs à régler en test.
 
 **Mécanique signature : HONNEUR *(décision D75)* — une monnaie de pouvoirs, façon livre de pouvoirs de BFME.** Propre à l'Aube : aucune autre faction n'a d'Honneur.
 
@@ -952,7 +1023,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
   | Palier | Pouvoir | Rôle |
   |---|---|---|
-  | 0 | *Lumière sacrée* : soin et purification des effets de moral négatifs (D74) sur une zone | soutien : sauver une ligne qui tient |
+  | 0 | *Lumière sacrée* : soin sur une zone ; retrait possible des effets de moral négatifs (D74), ⚠️ à trancher en test (D125) | soutien : sauver une ligne qui tient |
   | 1 | *Rempart béni* : un segment de mur devient invulnérable quelques secondes | défense : tenir une brèche face au siège |
   | 2 | *Renforts de l'Aube* : une escouade de Chevaliers Vertueux arrive au centre principal (comptée dans la population) | renfort |
   | 3 | *Jugement* : frappe de lumière annoncée sur une zone, contrable | offensive |
@@ -975,6 +1046,12 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - *Charge de l'Aube* *(D52)* : façon Gandalf et les Rohirrim à l'aube au Gouffre de Helm. Le Paladin mène une charge ; les cavaliers et fantassins proches le suivent avec un bonus d'impact, et les ennemis au point d'impact sont brièvement aveuglés. Tenir la ligne, puis contre-attaquer. Contre-jeu : charge visible au départ, Lanciers (D21), repli.
   - **Déblocage *(D42, D52)* :** niveau 1 : *Aura de l'Aube* + *Serrez les rangs* ; niveau 4 : *Bannière de l'Aube* (plus stratégique, utile quand l'armée se bat sur plusieurs fronts) ; niveau 7 (hors prototype) : *Charge de l'Aube* ; niveau 10 : *Dernier Rempart*.
 - **Kit de duel :** style **défensif à riposte**. Blocages, contres et punition des erreurs de l'adversaire. Un duelliste patient, fidèle à la discipline de la faction.
+  - **Kit *(décision D121)* : « Le Juge », chaque faute se paie.** Parade commune (D119) +
+    - ***Riposte*** : parade améliorée ; réussie, elle contre-attaque et inflige une **Faute** à l'adversaire (cumuls visibles au-dessus de lui). **Ratée** (par exemple sur une feinte), elle laisse le Paladin brièvement exposé : c'est ce qui permet à la feinte de battre la riposte.
+    - ***Coup de bouclier*** : coup rapide qui **interrompt** une attaque forte en préparation. Seconde réponse, plus risquée que la parade (il faut viser le bon moment). Sans effet sur le Grand Maître, qu'on ne peut interrompre (D99) : contre voulu.
+    - ***Sentence*** : consomme toutes les Fautes en dégâts, croissants avec le nombre de cumuls.
+    - Ultime de duel (niveau 10) ***Verdict*** : attaque forte annoncée **impossible à parer**, dont les dégâts dépendent des Fautes. Contre-jeu : jouer proprement pour ne pas offrir de Fautes, ou s'éloigner par une capacité de mobilité.
+  - Arc du duel : encaisser, accumuler les Fautes, rendre la sentence. L'adversaire voit les cumuls monter et doit choisir : continuer d'attaquer ou ralentir. Synergies : *Ordalie* (chaque riposte donne de la *Ferveur*), *Contre parfait* (la riposte étourdit). Valeurs à régler en test.
 - **Lien avec l'Honneur *(D76)* :** gagne de l'Honneur en *acceptant* les duels (quelle que soit l'issue), en les gagnant et en tenant des positions sous pression ; en perd en refusant.
 - **Victoire en duel *(D35)* :** gros gain d'Honneur et recharge immédiate de la *Bannière de l'Aube*.
 - **Capacité ultime (niveau 10) *(D36)* : *Dernier Rempart*.** Pendant ~10 s, les alliés dans une large zone autour du héros ne peuvent pas descendre sous 1 PV ; à la fin, ils récupèrent une partie des dégâts subis pendant l'effet. Contre : reculer et attendre la fin au lieu de frapper. Valeurs à régler en test.
@@ -1027,12 +1104,23 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 
 **Économie *(D66)* :** les unités des Légions **coûtent moins cher** que celles des autres factions (valeur à régler en test, en tenant compte de la réduction de l'*Ossuaire*). Leurs travailleurs, les Zombies, collectent plus lentement : la faction vit avec moins de revenu.
 
+**Spécialisations de palier *(D07)* :**
+
+| Palier | Choix (définitif) | Rôle |
+|---|---|---|
+| **1 — Essor** *(D126)* | ***Fosses de labeur*** : les Zombies collectent plus vite et coûtent moins cher | **le Labeur** : une Légion qui gonfle lentement |
+| | ***Autel de sang*** : bâtiment **avancé**, constructible loin de la base (hors du rayon anti-rush de D22) ; forme des Guerriers Damnés et l'infanterie du socle près du front ; les cadavres durent plus longtemps dans son rayon | **l'Assaut** : une Légion qui frappe tôt |
+| **2 — Puissance** *(D127)* | ***Fosse des damnés*** : Guerriers Damnés moins chers, *rage nécrotique* plus longue | **la chair** |
+| | ***Tour des nécromanciens*** : Nécromanciens qui lèvent plus vite, malédictions plus fortes (distinct du Rite du Charnier, qui renforce les Squelettes) | **la nécromancie** |
+
+Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les Légions entre bâtir et frapper. ⚠️ Vigilance : pas de rush depuis un bâtiment avancé (règle anti-rush de D22, *Autel de sang* fragile). Valeurs à régler en test.
+
 **Mécanique signature : CADAVRES *(décision D86)*.** Pas une ressource économique : une ressource de champ de bataille.
 
 - **Cadavres au sol :** chaque unité morte (alliée ou ennemie) laisse un **cadavre** pendant un temps limité (~60 à 90 s, indicatif), avec un **plafond** de cadavres sur la carte pour la performance. Une unité relevée par *Relève impie* ne laisse pas de cadavre.
 - **Le Nécromancien consomme un cadavre pour lever un Squelette :** unité **permanente**, faible, gratuite, qui **compte dans la population**. Les Légions bâtissent une armée durable à partir de l'attrition ; la population limite l'effet boule de neige.
 - **Autres consommateurs :** *Sacrifice* du Seigneur Damné. L'Ossuaire compte les morts sans consommer les cadavres (D65).
-- **Pas de déni :** aucune unité adverse ne peut détruire ou purifier les cadavres (le Moine Lumineux purifie les effets de moral, D74, pas les cadavres).
+- **Pas de déni :** aucune unité adverse ne peut détruire ou purifier les cadavres (le Moine Lumineux atténue les effets de moral, D74, D125 ; il n'agit pas sur les cadavres).
 - **Rôles distincts :** le Seigneur crée des serviteurs **temporaires** sur le moment (*Relève impie*) ; le Nécromancien bâtit une armée **permanente**.
 - Pistes pour plus tard : goules (amélioration du Squelette ou capacité), corruption de zone (D40).
 
@@ -1051,6 +1139,13 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
   - **Unités emblématiques et d'élite *(D56)* :** elles se relèvent **telles quelles** (un Chevalier Vertueux en Chevalier Vertueux). **Pas de modèle mort-vivant par unité :** l'état « relevé » passe par des **FX et une teinte** communs (shader, particules), appliqués au modèle d'origine. ⚠️ Vigilance : face aux Héritiers du Feu, chaque serviteur relevé est une unité d'élite ; la chance et le plafond devront peut-être être pondérés par le coût de l'unité.
   - **Déblocage *(D42, D53)* :** niveau 1 : *Aura de terreur* + *Moisson* (son identité) ; niveau 4 : *Sacrifice* (plus de décisions, et plus de cadavres disponibles) ; niveau 7 (hors prototype) : *Relève impie* ; niveau 10 : *Grande Moisson* *(D57)*.
 - **Kit de duel :** style **agressif à drain de vie**. Pression constante, soin en frappant, mais exposé aux ripostes.
+  - **Kit *(décision D122)* : « Le Boucher », saturer, drainer, recommencer.** Parade commune (D119) +
+    - Passif : chaque coup **draine** un peu de PV.
+    - ***Enchaînement*** : deux coups rapides, puis un coup final **annoncé**. Lancé pendant la recharge de la parade adverse, il sature la défense ; le coup final reste ripostable.
+    - ***Frappe dévorante*** : attaque forte annoncée qui draine ~50 % des dégâts infligés.
+    - ***Rage nécrotique*** : ~6 s de cadence et de drain accrus, mais le Seigneur **subit plus de dégâts** (exposition voulue, fenêtre pour une *Sentence* adverse).
+    - Ultime de duel (niveau 10) ***Faim des damnés*** : ~8 s pendant lesquelles tous ses coups drainent fortement et ses attaques fortes ne peuvent plus être interrompues (elles restent annoncées).
+  - Face au Juge (D121) : quand le Seigneur entre en rage, le Paladin tient, accumule ses Fautes et le punit. Synergies : *Festin* (chaque coup ajoute un cumul de *Moisson*), *Curée* (drain doublé sous 50 % de PV adverse). Valeurs à régler en test.
 - **Contraste avec le Paladin-Commandant :** l'agresseur contre le riposteur. Chaque duel entre les deux factions du prototype repose sur la lecture de l'adversaire : frapper ou laisser venir.
 - **Lien avec les cadavres :** il est le premier consommateur de la mécanique de faction.
 - **Pas de poudre *(D38, D59)* :** les Légions n'ont accès ni à l'Arquebusier ni au Canon. Réponse de fin de partie :
@@ -1085,7 +1180,7 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
     - Sceau ***Sol profané*** : là où beaucoup sont morts (seuil de morts dans une zone), le sol devient **maudit** ~90 s ; les **unités militaires** ennemies y subissent un léger malus de moral (catégorie D74). Les travailleurs ne sont jamais touchés.
     - Talent clé ***Champ des lamentations*** : sur une terre maudite, l'*Aura de terreur* double de rayon et les morts-vivants des Légions régénèrent leurs PV. Les Légions se battent « chez elles » sur les ruines des batailles passées.
     - Effet stratégique : la carte garde la mémoire des combats ; l'adversaire évite ces zones ou doit les reprendre.
-    - Contre-jeu : purification par le Moine Lumineux et *Lumière sacrée* (effet de moral, D74) ; combattre ailleurs.
+    - Contre-jeu *(révisé par D125)* : le sol maudit **ne se purifie pas** ; le Moine Lumineux atténue le malus sur les unités, *Lumière sacrée* pourrait le retirer (à trancher en test) ; sinon, combattre ailleurs ou attendre la fin (~90 s).
     - ⚠️ Vigilance : nombre de zones maudites plafonné (performance, lisibilité). Une bataille au pied des murs de l'Aube maudit son propre terrain : tension voulue, à surveiller. Valeurs à régler en test.
   - **Rite de l'Effroi — pistes écartées** (choix de l'utilisateur, 2026-10-08) : vision forte (cadavres qui voient), panique des travailleurs ou des villages (jugée ultra frustrante), *Aura de terreur* portée par un Spectre, saut du Seigneur vers un cadavre.
   - ⚠️ Vigilance : au prototype, l'Effroi n'a ni l'*Ossuaire* (palier 3) ni la corruption de zone ; son contenu repose sur l'*Aura de terreur* et les Spectres.
@@ -1411,6 +1506,8 @@ Les modes secondaires seront développés après validation du mode standard.
 
 **HUD principal :** ressources, population, minimap, sélection, commandes, production, technologies, niveau du héros, XP du héros, état du héros, temps de récupération.
 
+**Duel :** fenêtre de défi reçu (Accepter / Refuser, compte à rebours, sans pause, D117), indicateur de défi envoyé, recharge du défi, posture active et kit de duel pendant l'affrontement.
+
 Le joueur doit comprendre immédiatement :
 
 1. ce qu'il peut construire ;
@@ -1509,7 +1606,7 @@ Avant de créer les six factions complètes :
 | Ressources | 4 |
 | Centre principal | 1 |
 | Bâtiments économiques *(D83, D84)* | maison, camps de collecte (bois, pierre, or), ferme, marché (D70) ; *Sanctuaire* pour l'Aube (D67) |
-| Bâtiment militaire | 1 |
+| Bâtiment militaire | 1 au départ, puis le découpage par catégorie (D128) une fois les combats validés |
 | Bâtiment technologique | 1 |
 | Fortifications | murs de pierre praticables, porte, tour (D24) |
 | Niveaux de héros | 1 à 6 (paliers 0, 1 et 2) |
@@ -1756,6 +1853,19 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D114 | 2026-10-08 | Arbre des Légions — Rite du Charnier | **« La Légion d'os »** : sceau *Os durcis* (Squelettes ~+20 % PV, levée plus rapide) ; talent clé *Légion d'os* (dans l'aura, chaque Squelette gagne attaque et armure selon le nombre de Squelettes proches, plafonné). Contre-jeu : dégâts de zone, dispersion. | § 13.3 |
 | D115 | 2026-10-08 | Arbre des Légions — Rite de l'Effroi | **« Terre maudite »** (2e série d'options ; la 1re, vision forte, panique des travailleurs, aura portée par un Spectre, saut vers un cadavre, a été rejetée) : sceau *Sol profané* (là où beaucoup sont morts, sol maudit ~90 s, malus de moral léger aux unités militaires ennemies, jamais aux travailleurs) ; talent clé *Champ des lamentations* (sur terre maudite, *Aura de terreur* doublée et régénération des morts-vivants). Contre-jeu : purification (Moine, *Lumière sacrée*). | § 13.3 |
 | D116 | 2026-10-08 | Arbre des Légions — Rangées 2 à 6 | **Grille validée** (15 talents, § 13.3). Moisson : *Lame avide*, *Carapace de chair*, *Sacrifice vorace*, *Exécuteur*, *Curée*. Charnier : *Charnier fertile*, *Maîtres des tombes*, *Éclats d'os*, *Levée prompte*, *Commandant des morts*. Effroi : *Voix sépulcrale*, *Lames spectrales*, *Sacrifice maudit*, *Effroi tenace*, *Hurlement funèbre*. Rangée 4 entièrement consacrée à *Sacrifice*. Vigilances : plafond commun des serviteurs temporaires, synergies *Sacrifice maudit* + *Champ des lamentations* et *Commandant des morts*. | § 13.3 |
+| D117 | 2026-10-08 | Duel — Fenêtre de défi | **Popup dans l'interface** à la réception d'un défi (demande de l'utilisateur) : portrait, niveau, sceaux et talents clés du héros qui défie, compte à rebours, boutons Accepter / Refuser avec raccourcis ; sans pause ni blocage de l'écran ; centrage caméra et signal minimap. Indicateur « défi envoyé » chez celui qui défie. | § 10.1, § 15 |
+| D118 | 2026-10-08 | Duel — Postures | Description du duel validée (« c'est parfait »). **Offensive** : plus de dégâts, fenêtres de défense plus courtes ; **équilibrée** : référence ; **défensive** : moins de dégâts, fenêtres de défense plus larges. Changement en un clic, à tout moment. | § 10.3 |
+| D119 | 2026-10-08 | Duel — Gabarit des kits | **Parade commune + 3 capacités propres + ultime (niveau 10)**. La parade, identique pour les six héros, réduit fortement une attaque forte annoncée sans l'annuler (courte recharge, fenêtre selon la posture). Les capacités propres portent le style (la riposte améliore la parade, la feinte la trompe). Remplace « 4 à 6 capacités » (D14). | § 10.3 |
+| D120 | 2026-10-08 | Duel — Déplacement | **Contact automatique** : pas de déplacement libre dans le cercle ; la mobilité passe uniquement par des capacités propres (bond, recul, charge), signature de certains héros. | § 10.3 |
+| D121 | 2026-10-08 | Kit de duel du Paladin | **« Le Juge »** : *Riposte* (parade améliorée, inflige une Faute ; ratée, expose le Paladin), *Coup de bouclier* (interrompt une attaque forte en préparation ; sans effet sur le Grand Maître), *Sentence* (consomme les Fautes en dégâts) ; ultime de duel *Verdict* (attaque forte annoncée imparable, dégâts selon les Fautes). | § 13.2 |
+| D122 | 2026-10-08 | Kit de duel du Seigneur Damné | **« Le Boucher »** : passif de drain ; *Enchaînement* (2 coups rapides + coup final annoncé, sature la parade), *Frappe dévorante* (attaque forte annoncée, draine ~50 %), *Rage nécrotique* (cadence et drain accrus, dégâts subis accrus) ; ultime de duel *Faim des damnés* (drain fort, attaques fortes ininterruptibles mais annoncées). | § 13.3 |
+| D123 | 2026-10-08 | Aube — Spécialisation palier 1 | **Repli ou projection** : *Bastion de l'Aube* (murs et tours plus solides, tours bénies qui soignent) ou *Chapelle de campagne* (bâtiment lointain qui étend l'effet du *Sanctuaire*, ralliement, forme des Moines). | § 13.2 |
+| D124 | 2026-10-08 | Aube — Spécialisation palier 2 | **L'Acier ou la Foi** : *Lices de l'Aube* (Chevaliers plus rapides à former, *Défi* renforcé) ou *Monastère* (Moines : meilleurs soins, purification plus large, plus d'Honneur par les soins). | § 13.2 |
+| D125 | 2026-10-08 | Moral — Purification supprimée | **Le Moine atténue, il ne retire pas** : les effets de moral négatifs et les malédictions sont atténués (intensité ou durée), jamais retirés. *Lumière sacrée* pourrait les retirer : à trancher en test. Le sol maudit ne se purifie pas. Révise D74 (purification), D85 (*Lumière sacrée*) et le contre-jeu de D115. | § 7.2, § 13.2, § 13.3 |
+| D126 | 2026-10-08 | Légions — Spécialisation palier 1 | **Le Labeur ou l'Assaut** : *Fosses de labeur* (Zombies plus rapides et moins chers) ou *Autel de sang* (bâtiment avancé qui forme Guerriers Damnés et infanterie près du front, cadavres plus durables dans son rayon). | § 13.3 |
+| D127 | 2026-10-08 | Légions — Spécialisation palier 2 | **La chair ou la nécromancie** : *Fosse des damnés* (Guerriers moins chers, rage plus longue) ou *Tour des nécromanciens* (levée plus rapide, malédictions plus fortes). | § 13.3 |
+| D128 | 2026-10-08 | Bâtiments — Production militaire | **Un bâtiment par catégorie** (façon AoE4) : Caserne, Champ de tir, Écurie, Atelier de siège ; emblématiques depuis leur catégorie ou un bâtiment de faction. Prototype : bâtiment unique possible au départ, données conçues pour le découpage. | § 6, § 17 |
+| D129 | 2026-10-08 | Tronc commun des paliers 0 à 2 | **Grille validée** (§ 11.1) : bâtiments et unités par palier (Caserne et Champ de tir au palier 0 ; Écurie, Forge, Marché, Atelier, Centre secondaire, murs de pierre au palier 1 ; Académie au palier 2), technologies communes (Forge I/II, collecte, Centre, Académie, Atelier) et technologies propres de l'Aube et des Légions. Vigilances : *Bénédiction des armes* (bonus contre une catégorie de factions), recoupements technologies / talents. | § 11.1 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -1764,7 +1874,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D109**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D130**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -1827,13 +1937,19 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 
 **ÉTAT AU 2026-10-07 — point de reprise pour la prochaine séance**
 
-- **Décisions prises :** D01 à D116. Prochain numéro : **D117**.
+- **Décisions prises :** D01 à D129. Prochain numéro : **D130**.
 - **Séance du 2026-10-07 (suite) : piste 3, arbres de talents (D08), choisie par l'utilisateur.** Questions dans l'ordre :
   1. ~~**Forme de l'arbre**~~ → **tranché (D103)** : rangées de 3 talents par niveau, sceau à 3 talents d'une famille, talent clé à 5.
   2. ~~**Nombre de familles**~~ → **tranché (D104)** : 3, sauf les Templiers (4, rangées de 4 talents).
   3. ~~**Moment du choix**~~ → **tranché (D105)** : réserve libre, rangées dans l'ordre, bouton « choix conseillé ».
   4. **Arbre de l'Ordre de l'Aube** : ~~familles~~ → **tranché (D106)** : les trois Serments (Gardien, Capitaine, Champion). Ensuite : sceau et talent clé de chaque Serment (~~Gardien~~ → D107 ; ~~Capitaine~~ → D108 ; ~~Champion~~ → D109), puis talents des rangées 2 à 6 (prototype) : méthode → D110 ; ~~grille des 15 talents~~ → **tranché (D111)**. Talents des rangées 7 à 9 (hors prototype) : plus tard.
   5. **Arbre des Légions Noires** : mêmes étapes (familles, sceaux et talents clés, rangées 2 à 6). ~~Familles~~ → **tranché (D112)** : les trois Rites (Moisson, Charnier, Effroi). Ensuite : sceau et talent clé de chaque Rite (~~Moisson~~ → D113 ; ~~Charnier~~ → D114 ; ~~Effroi~~ → D115), ~~grille des rangées 2 à 6~~ → **tranché (D116)**. **Les arbres des deux factions du prototype sont complets** (rangées 7 à 9 hors prototype : plus tard).
+- **Séance du 2026-10-08 : finir entièrement le GDD avant le code** (demande de l'utilisateur). Ordre choisi : **le prototype d'abord** (option A).
+  1. **Bloc 1 — Prototype (Aube, Légions) :** description du duel validée par l'utilisateur (D117 fenêtre de défi, D118 postures) ; ~~structure commune des kits de duel~~ → **tranché (D119)** ; ~~déplacement dans le cercle~~ → **tranché (D120)** ; ~~kit de duel du Paladin~~ → **tranché (D121)** ; ~~kit de duel du Seigneur~~ → **tranché (D122)** ; ~~spécialisations de l'Aube~~ → **tranché (D123, D124)** ; ~~purification~~ → **D125** (atténuation) ; ~~spécialisations des Légions~~ → **tranché (D126, D127)** ; ~~production militaire~~ → **tranché (D128)** ; ~~tronc commun des paliers 0 à 2~~ → **tranché (D129)**. **Bloc 1 terminé.** ; spécialisations des paliers 1 et 2 (D07) des deux factions ; bâtiments (tronc commun et propres) et arbre des technologies des paliers 0 à 2.
+  2. **Bloc 2 — Templiers** (*en cours ; question en cours : point fort (timing) des Templiers au § 13.1, options proposées : A par pics (fort pendant la croisade, vulnérable pendant la recharge, recommandée), B fin de partie, C début de partie*) : ~8 commanderies et leurs unités, récompenses de croisade (XP, recharge), plafond de troupes, comportement face aux murs, identité « offensive (à préciser) » du § 13.1.
+  3. **Bloc 3 — Autres factions** (Dragon, Ombre, Feu, Templiers) : arbres de talents, kits de duel détaillés, spécialisations de palier.
+  4. **Bloc 4 — Fin de partie et transversal :** rangées 7 à 9, palier 3, interface (§ 15), modes secondaires (§ 14.3), événements futurs (§ 12.3).
+  - Les valeurs chiffrées restent pour la fiche de valeurs (à régler en test).
 - **Code :** l'ancien code (classes C++ de gameplay et `Content/Blueprints`) a été supprimé et commité. Le module `MyCrusader` est vide et compile. À la première ouverture dans l'éditeur, `BattleMap` peut signaler des acteurs dont la classe n'existe plus : les supprimer et enregistrer la carte.
 - **Pistes pour la suite, au choix de l'utilisateur :**
   1. **Premier chantier de code :** système d'unités légères (D29, § 16.4) : lire le projet, rédiger un plan (Mass Entity ou gestionnaire maison), le valider avant d'écrire du code.
