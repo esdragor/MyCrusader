@@ -1879,6 +1879,8 @@ Le joueur doit comprendre immédiatement :
 
 ## 16. Orientation technique
 
+**Version du moteur *(décision D214)* : Unreal Engine 5.8** (dernière version d'Unreal 5). Le projet, créé en 5.4, est migré avant le premier chantier de code.
+
 ### 16.1 Unreal Engine + Gameplay Ability System
 
 Architecture conceptuelle :
@@ -2310,6 +2312,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D211 | 2026-10-10 | Soigneur commun — Bâtiment de production | **Une *Chapelle* commune** (nom provisoire), façon Monastère d'AoE4 : produit le soigneur, une ou deux technologies de soin, apparence par faction, absente chez les Légions. Palier : voir D212 (palier 1). Écartés : Caserne, centre principal. | § 7.1, § 11.1 |
 | D212 | 2026-10-10 | Soin — Palier | **Le soin commence au palier 1 (~6-8 min), jamais au palier 0** : la **Chapelle** est au **palier 1**, comme le Moine et le Moine Lumineux (D129, D134 inchangés sur ce point). Correction : l'utilisateur avait d'abord dit « palier 2 ou 3 », puis « pas de soin au palier 1, tout décalé au palier 2 », en comptant les paliers à partir de 1 ; après rappel du numérotage (palier 0 = début), il confirme le palier 1. Précise D211. | § 7.1, § 11.1 |
 | D213 | 2026-10-10 | Aube — *Lumière sacrée* au palier 0 | **Exception assumée** (l'utilisateur a d'abord répondu A, puis B) : *Lumière sacrée* **soigne dès le palier 0**, seule exception à « aucun soin au palier 0 » (D212). Pouvoir payé en Honneur, qui se gagne lentement en ouverture : effet rare ; identité défensive de l'Aube dès le début. Écarté : soin repoussé au palier 1. | § 13.2 |
+| D214 | 2026-10-10 | Technique — Version du moteur | **Migration vers Unreal Engine 5.8** (dernier correctif 5.8.x) avant le premier chantier de code, puisque le module de code est vide : Iris (réplication) prêt pour la production, Mass refondu avec suivi de chemin sur le navmesh, navmesh plus économe. 5.8 est la dernière version d'Unreal 5 (accès anticipé à Unreal 6 annoncé fin 2027) : c'est la version de travail du prototype. Assets réenregistrés au format 5.8 (irréversible, historique dans git). Rouvre la question Mass ou gestionnaire maison. | § 16 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2318,7 +2321,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D214**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D215**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -2408,3 +2411,5 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 **À régler en test plutôt qu'en discussion :** courbe d'XP (Q04), valeurs de récupération et de prix de résurrection (D25), pourcentages d'aura (D26), valeurs de terrain (D33), bonus, coût et délai de changement des *Nids élémentaires* (D72), coût et nombre des pouvoirs d'Honneur (D75, D85), cadavres et Squelettes (D86), croisade : délai, plafond de troupes, or, gloire, bonus des citadelles (D88 à D96).
 
 **Premier chantier de code identifié :** construire le système d'unités légères (D29, § 16.4). L'ancien code (`AUnitBase : ACharacter` et ses Blueprints) a été supprimé le 2026-10-07.
+
+**Séance du 2026-10-10 (suite) : chantier de code ouvert.** L'utilisateur a choisi le premier chantier de code (unités légères, D29), avec la batterie de stress tests (D190) intégrée au plan, plutôt que la fiche de valeurs (gardée pour quand le prototype tournera, avec des valeurs provisoires dans les Data Tables). Plan technique en cours de validation, question par question : ~~version du moteur~~ → **tranché (D214)** : migration vers Unreal 5.8 ; **moteur de simulation** (Mass Entity, gestionnaire maison ou hybride, à revoir avec la 5.8 ; recommandation : hybride validé par un essai court) *(en cours)*, puis calendrier du réseau, fréquence de simulation, machine de référence et seuils des stress tests.
