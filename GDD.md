@@ -152,7 +152,7 @@ Répartition indicative en milieu et fin de partie (à valider en test) :
 | Armée | ~ 85 à 105 |
 | Armée des Héritiers du Feu (unités à 2 places) | ~ 45 à 50 unités |
 
-Pire cas sur une carte à 8 joueurs : **environ 1 400 unités simulées**. Ce chiffre sert de cible de performance (§ 16.4).
+Pire cas sur une carte à 8 joueurs : **environ 1 400 unités simulées** (population seule). **Plancher de sécurité *(D190)* : le jeu doit tenir au minimum 2 000 unités**, même si cette valeur ne sera jamais atteinte en partie (§ 16.4).
 
 ### 5.4 Expansion
 
@@ -213,7 +213,7 @@ La base doit être plus qu'un amas de bâtiments : défense, production, économ
 | **Bélier** | 1 | bâtiments et portes | corps à corps |
 | **Mangonneau / Catapulte** | 2 | groupes et murs, longue portée | Cavalier léger, corps à corps |
 | **Trébuchet** | 3 | fortifications de loin ; doit être monté et démonté | Cavalier léger, corps à corps |
-| **Canon** *(D38)* | 3, technologie « Armes à poudre » | courte portée, gros dégâts, plus mobile que le Trébuchet | Cavalier léger, corps à corps |
+| **Canon** *(D38)* | 3 (débloqué avec le palier, D180) | courte portée, gros dégâts, plus mobile que le Trébuchet | Cavalier léger, corps à corps |
 | *Cracheur de bile* *(D59, Légions Noires, à la place du Canon)* | 3 | projectile d'acide : dégâts à l'impact, puis **flaque d'acide** qui inflige des dégâts sur la durée pendant un court temps | Cavalier léger, corps à corps |
 
 - **Poudre (D38) :** le Canon s'ajoute aux autres engins, il ne remplace rien. Variante des Héritiers du Feu : la *Bombarde*. Les Légions Noires n'ont pas de poudre : leur variante est le *Cracheur de bile* (D59, § 13.3).
@@ -266,17 +266,19 @@ Chaque unité possède au minimum : rôle, coût, population, temps de productio
 
 Les détails des contres sont au § 7.2 (D21).
 
-**Moine *(décision D134)* : soigneur commun, façon AoE4.** Toutes les factions disposent d'un soigneur qui **soigne en combat** (palier 1, aligné sur le Moine Lumineux, D129). Il ne convertit pas : la conversion reste propre au Cercle de l'Ombre (D44, D63).
+**Moine *(décision D134)* : soigneur commun, façon AoE4.** Toutes les factions disposent d'un soigneur qui **soigne en combat** (**palier 1**, Moine Lumineux compris ; *D212 : aucun soin au palier 0, sauf *Lumière sacrée*, D213*). Il ne convertit pas : la conversion reste propre au Cercle de l'Ombre (D44, D63).
 - **Exception à la règle des variantes :** pour ce rôle seulement, **plusieurs factions** peuvent remplacer le Moine par une unité différente (à la manière des éléphants guérisseurs des Tughlaq dans AoE4).
 - **Ordre de l'Aube :** le **Moine Lumineux** (emblématique) tient lieu de variante (soin + atténuation, D125). Avec le Hallebardier, l'Aube atteint 2 variantes, le maximum.
 - **Templiers :** Moine commun ; le *Frère infirmier* (D133, soin hors combat) le complète.
-- ⚠️ À préciser : soigneur des Légions Noires (aucun, ou variante macabre), des autres factions ; bâtiment de production (D128). Vigilance : le soin généralisé allonge les combats et peut empiéter sur l'attrition, identité des Légions.
+- **Autres factions *(D210)* :** **Légions Noires : aucun soigneur** ; elles ne soignent pas, elles recyclent (Squelettes, *Sacrifice*), et leurs unités sont moins chères (D66). **Enfants du Dragon et Cercle de l'Ombre :** Moine commun, apparence propre à la faction. **Héritiers du Feu :** Moine commun en **version élite** (règle ×2) ; le Prêtre de la Flamme reste un soutien qui bénit et protège, sans soin direct.
+- **Bâtiment de production *(D211)* : une *Chapelle* commune** (nom provisoire, à distinguer de la *Chapelle de campagne* de l'Aube), comme le Monastère d'AoE4 : elle produit le soigneur et accueille une ou deux technologies de soin ; apparence propre à chaque faction ; **absente chez les Légions** (D210). **Palier 1** *(D212, après correction d'un malentendu sur le numérotage des paliers)* ; le Moine Lumineux de l'Aube sort aussi de la Chapelle de l'Aube. Vigilance : le soin généralisé allonge les combats.
 
 **Poudre *(décision D38)* : commune à toutes les factions, sauf contre-ordre, au palier 3.**
 
-- La technologie commune **« Armes à poudre »** (palier 3) débloque deux nouvelles unités du socle : l'**Arquebusier** (tireur, catégorie d'armure distance) et le **Canon** (siège, § 6.1). Elles s'ajoutent à l'Arbalétrier et aux engins existants.
+- Le **palier 3** débloque automatiquement deux nouvelles unités du socle *(D180 : la technologie « Armes à poudre » est supprimée, aucune unité ne demande de recherche)* : l'**Arquebusier** (tireur, catégorie d'armure distance) et le **Canon** (siège, § 6.1). Elles s'ajoutent à l'Arbalétrier et aux engins existants.
 - **Exceptions de faction** (règle des variantes ci-dessous) :
   - **Légions Noires :** pas de poudre *(D59)*. À la place du Canon : le ***Cracheur de bile***, engin de siège à acide (§ 6.1). Pas d'équivalent de l'Arquebusier ; en compensation, un bâtiment propre en plus au palier 3 : l'***Ossuaire*** (D60, § 13.3).
+  - **Templiers *(D187)* :** poudre **maltaise** *(nuance de l'utilisateur ; justification : l'Ordre de Malte, ordre militaire voisin, a connu la poudre)* : *Arquebusier maltais* et *Canon maltais* (noms provisoires), **version plus primitive que le socle**, donc moins forte ; ils **s'intègrent aussi à la croisade**. **Statut *(D188)* : un écart de statistiques, pas une variante** (comme la règle d'élite des Héritiers, D39) : unités du socle aux statistiques plus basses, **moins chères**, avec nom et visuel propres, sans capacité en plus. La règle des variantes est respectée.
   - **Héritiers du Feu :** *Bombarde* à la place du Canon, et l'***Arquebusier de la Forge*** (nom temporaire, D61) à la place de l'Arquebusier : il **tire plus vite et plus loin**. Ce sont leurs deux variantes du socle. ⚠️ Vigilance : l'Archer ne le dépasse plus en portée ; il reste vulnérable à la cavalerie, et la règle d'élite (coût ×2) limite leur nombre.
 - **Place de l'Arquebusier *(D58)* :** tireur lourd de fin de partie, façon Handcannoneer d'AoE4 (§ 7.2). L'Arbalétrier reste le spécialiste rentable contre l'armure lourde ; l'Arquebusier est la puissance brute chère. Aucun des deux n'est une unité anti-héros (D62).
 
@@ -595,13 +597,20 @@ Conséquences :
 - Au prototype, chaque palier ouvre son tronc commun et 2 spécialisations.
 - L'IA choisit ses spécialisations selon des profils de build.
 
+**Palier 3 *(décision D179)* : « Finir ou renverser ».** Le tronc commun du palier 3 donne à toutes les factions les outils de fin de partie (siège lourd, poudre, technologies finales). Les deux spécialisations de chaque faction sont **opposées** : l'une sert à **conclure** (percée, siège, pression), l'autre à **renverser** (tenir, contre-attaquer, reprendre l'avantage). Le joueur choisit en lisant l'état de la partie ; l'éclairage de l'adversaire gagne encore en valeur. C'est l'application directe des leviers de retour du § 14.2.
+
+- **Exception *(D193)* :** les Héritiers du Feu n'ont pas de spécialisation au palier 3 (tronc commun seul).
+- ⚠️ Vigilance : la voie « renverser » n'est jamais un *rubber band* frustrant pour celui qui mène. Elle aide à tenir et à contre-attaquer, sans punir l'avance adverse (pas de bonus indexé sur le retard).
+
 ⚠️ Courbe d'XP par niveau à définir en test **[Q04]**.
 
 ### 9.6 Arbre de talents
 
 **Décision D08 : un arbre de talents entièrement propre à chaque faction.** Les familles, la structure et le contenu sont spécifiques. Ordre de l'Aube *(D106)* : les trois Serments, Gardien / Capitaine / Champion (§ 13.2). Légions Noires *(D112)* : les trois Rites, Moisson / Charnier / Effroi (§ 13.3). Templiers *(D101)* : Croisade / Chevalerie / Trésor / Les Citadelles. Enfants du Dragon *(D153)* : Le Ciel / La Lignée / La Mue (§ 13.4). Cercle de l'Ombre *(D163)* : La Lame / Le Miroir / La Toile (§ 13.5). Héritiers du Feu *(D173)* : Le Marteau / L'Enclume / La Flamme (§ 13.6).
 
-Le héros gagne environ **8 points de talent** par partie (niveaux 2 à 9, D04). Il ne peut pas prendre toutes les améliorations : le choix crée une spécialisation.
+Le héros gagne environ **8 points de talent** par partie (niveaux 2 à 9, D04).
+
+**Rangées 7 à 9 *(décision D194)* : continuité des rangées 4 à 6.** Elles modifient des capacités, avec une valeur comparable dans chaque rangée. Cibles : la **capacité 3** (niveau 7), les capacités plus anciennes et le **contenu fixe** de la faction (jamais une spécialisation). **Aucun talent sur l'ultime** (inactif avant le niveau 10). Le contenu du palier 3 ne peut être visé qu'à partir de la rangée 9 (niveau 9). Pas de talent mort. Il ne peut pas prendre toutes les améliorations : le choix crée une spécialisation.
 
 **Forme de l'arbre *(décision D103)* : des rangées avec seuils de famille** (hybride entre *Heroes of the Storm* et un arbre à profondeur).
 
@@ -853,12 +862,12 @@ Cela évite le schéma : « Je monte d'âge et tout est instantanément débloqu
 | Catégorie | Contenu |
 |---|---|
 | Économie | collecte, stockage, agriculture, commerce, rendement |
-| Militaire | dégâts, armure, portée, vitesse, capacités (statistiques et visuel uniquement, jamais de remplacement d'unité, D38) ; déblocage de nouvelles unités |
+| Militaire | dégâts, armure, portée, vitesse, capacités (statistiques et visuel uniquement, jamais de remplacement d'unité, D38). Les unités ne se débloquent **jamais par une recherche** mais avec le palier (D180, sauf contre-ordre) |
 | Infrastructure | bâtiments, défenses, production, population |
 | Héros | capacités, commandement, récupération, duel |
 | Faction | mécanique signature, unités spécialisées, technologies propres |
 
-**Mécanisme de déblocage :** un palier ouvre des **bâtiments** (tronc commun + spécialisation, D07). Chaque **technologie** demande un palier minimum, un bâtiment et des ressources.
+**Mécanisme de déblocage :** un palier ouvre des **bâtiments** (tronc commun + spécialisation, D07) et **débloque automatiquement ses unités**, sans recherche (D180, sauf contre-ordre). Chaque **technologie** demande un palier minimum, un bâtiment et des ressources.
 
 **Répartition *(décision D27)* : arbre commun, technologies de faction ciblées.**
 
@@ -875,7 +884,7 @@ Cela évite le schéma : « Je monte d'âge et tout est instantanément débloqu
 | Palier | Bâtiments débloqués | Unités du socle débloquées | Emblématiques (prototype) |
 |---|---|---|---|
 | **0 — Fondation** | Centre principal, Maison, Camps de collecte (bois, pierre, or), Ferme, **Caserne**, **Champ de tir**, Palissade, Tour de guet en bois ; *Sanctuaire* (Aube) | Paysan / Zombie, Lancier / Hallebardier, Archer | — |
-| **1 — Essor** | **Écurie**, **Forge**, Marché, **Atelier de siège**, Centre secondaire, Murs de pierre, Porte, Tour de pierre ; spécialisation (D123, D126) | Homme d'armes, Arbalétrier, Cavalier léger, Bélier, Moine / Moine Lumineux *(D134 ; bâtiment de production ⚠️ à préciser)* | Chevalier Vertueux ; Guerrier Damné, Nécromancien |
+| **1 — Essor** | **Écurie**, **Forge**, Marché, **Atelier de siège**, Centre secondaire, Murs de pierre, Porte, Tour de pierre, ***Chapelle*** *(D211, D212 ; sauf Légions)* ; spécialisation (D123, D126) | Homme d'armes, Arbalétrier, Cavalier léger, Bélier, **Moine** *(D134, D212 ; Chapelle)* | Chevalier Vertueux, Moine Lumineux ; Guerrier Damné, Nécromancien |
 | **2 — Puissance** | **Académie** (technologies avancées), Tour renforcée ; spécialisation (D124, D127) | Cavalier lourd (hors prototype), Mangonneau | — |
 
 Réponses aux contres garanties (D07) : le Lancier (anti-cavalerie) dès le palier 0, l'Arbalétrier (anti-armure) et l'Homme d'armes au palier 1.
@@ -898,6 +907,32 @@ Réponses aux contres garanties (D07) : le Lancier (anti-cavalerie) dès le pali
 | **Légions** | *Os taillés* (Squelettes +armure) ; *Chair putride* (Zombies +PV) | *Rites funèbres* (cadavres au sol +20 s) ; *Lames empoisonnées* (Guerriers Damnés : dégâts sur la durée) |
 
 ⚠️ Vigilance : *Bénédiction des armes* est un bonus contre une catégorie de factions ; *Os taillés*, *Rites funèbres* et *Liturgie* recoupent des talents (*Os durcis*, *Charnier fertile*, Serments). À arbitrer à la validation.
+
+### 11.2 Tronc commun du palier 3 *(décision D180)*
+
+**Grille validée avec amendements** (noms, coûts et valeurs indicatifs, à régler en test). Principe du palier : « Finir ou renverser » (D179). Le tronc commun penche volontairement vers la défense (*Bastion*, *Fortifications*, *Levée de la garnison*) : c'est le socle de « renverser », garanti à tous ; le siège lourd et la poudre forment le socle de « finir ».
+
+**Règle *(D180)* : aucune unité ne demande de recherche pour être débloquée** (sauf contre-ordre). Les unités du palier sont disponibles dès qu'il est atteint, dans leur bâtiment de production. La technologie « Armes à poudre » de D38 est supprimée, et avec elle la *Fonderie* (D181).
+
+| Palier | Bâtiments débloqués | Unités du socle débloquées (automatiquement) |
+|---|---|---|
+| **3 — Légende** | ***Bastion*** (tour lourde, défense de fin de partie) ; spécialisation (D179) | **Trébuchet** et **Canon** (Atelier de siège) ; **Arquebusier** (Champ de tir) |
+
+- **Légions :** pas de poudre (D59) ; le *Cracheur de bile* remplace le Canon à l'Atelier de siège, débloqué avec le palier ; l'*Ossuaire* (D60) est leur bâtiment en plus.
+- **Héritiers :** *Bombarde* et *Arquebusier de la Forge* (D61) à la place du Canon et de l'Arquebusier, débloqués avec le palier.
+- **Templiers *(D187)* :** poudre **maltaise** (*Arquebusier maltais*, *Canon maltais*, noms provisoires) : plus primitive que le socle, donc moins forte ; intégrée à la croisade. Justification : l'Ordre de Malte (les Hospitaliers, ordre militaire voisin) a connu la poudre à canon (sièges de Rhodes en 1480 et 1522, de Malte en 1565). Voir § 7.1.
+
+**Technologies communes du palier 3**
+
+| Bâtiment | Technologies |
+|---|---|
+| **Forge** | les quatre technologies de Forge en **III** (attaque mêlée, attaque à distance, armure infanterie, armure cavalerie) ; *Poudre raffinée* (armes à poudre +dégâts ; sans objet pour les Légions) *(D181)* |
+| **Camps et ferme** | collecte et Brouette en **III** |
+| **Académie** | *Fortifications* (murs, portes et Bastions +PV) ; *Balistique* (tireurs et tours touchent mieux les cibles en mouvement) |
+| **Atelier de siège** | *Contrepoids* (Trébuchet monté et démonté plus vite) |
+| **Centre principal** | *Levée de la garnison* (centres et Bastions garnis tirent plus de projectiles) |
+
+Technologies propres du palier 3 : vues avec la spécialisation de chaque faction.
 
 ---
 
@@ -935,11 +970,22 @@ Le joueur doit pouvoir dire « J'ai perdu cette position parce que j'ai mal anti
 - **Déclenchement volontaire :** certains sites peuvent être réveillés plus tôt par un joueur qui remplit un **objectif** (par exemple, contrôler un autel ancien pendant 60 s). Le préavis reste obligatoire, même dans ce cas.
 - Les Enfants du Dragon pourraient avoir un accès privilégié à ces déclenchements (climat, éléments).
 
-**Calendrier : les événements mondiaux arrivent après le prototype.** Le prototype se concentre sur le socle RTS, le héros, le duel et les fortifications. L'architecture (World State Manager, § 16.2) est tout de même prévue dès le départ, pour accueillir les événements sans refonte.
+**Calendrier : ~~les événements mondiaux arrivent après le prototype~~** → *révisé par D205* : l'option **Catastrophe** entre dans le prototype, donc le **système d'événements mondiaux et le volcan** (§ 12.1, seul événement défini) aussi. Les autres événements (§ 12.3) restent pour après. **Option Catastrophe au prototype *(D208)* : le volcan seul, sur plus de sites** : 3 à 4 éruptions par partie, sur plusieurs sites volcaniques, fenêtres de déclenchement plus précoces ; **préavis inchangé** (60 à 90 s) : plus fréquent ne veut jamais dire moins prévisible (§ 12.2). Le prototype se concentre sur le socle RTS, le héros, le duel et les fortifications. L'architecture (World State Manager, § 16.2) est tout de même prévue dès le départ, pour accueillir les événements sans refonte.
 
 ### 12.3 Événements futurs
 
-Volcan, tempête, séisme, inondation, incendie, invasion de monstres, ouverture d'une faille, apparition d'une créature, corruption magique, changement temporaire du climat.
+~~Volcan, tempête, séisme, inondation, incendie, invasion de monstres, ouverture d'une faille, apparition d'une créature, corruption magique, changement temporaire du climat.~~
+
+**Choix et ordre après le prototype *(décision D209)* : quatre événements contrastés.** Le volcan est au prototype (D205, D208).
+
+1. **Inondation** : lente ; coupe les routes basses et noie les champs, sans rien détruire. L'opposé du volcan.
+2. **Invasion de monstres** : vagues neutres qui attaquent tout le monde près d'un site ; s'appuie sur les camps neutres (D32) ; la défense devient un enjeu commun.
+3. **Ouverture d'une faille** : une **opportunité** (gisement rare ou passage nouveau à disputer) : on se bat pour quelque chose, pas contre la carte.
+4. **Tempête** : sur une zone, portée des tireurs et vitesse réduites ; **aucune vision retirée**.
+
+- **Reportés :** séisme, incendie, apparition d'une créature, changement temporaire du climat.
+- **Retirée :** corruption magique (contraire à D40 : pas de zone corrompue posée par la carte en compétitif).
+- Tous suivent le § 12.2 et D28 (sites neutres et symétriques, préavis de 60 à 90 s).
 
 ---
 
@@ -1012,6 +1058,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | | ***Chapelle de campagne*** : petit bâtiment constructible loin de la base ; étend l'effet du *Sanctuaire* aux fermes proches, sert de point de ralliement et forme des Moines | **projection** : l'Aube s'étend (répond à la vigilance de D67) |
 | **2 — Puissance** *(D124)* | ***Lices de l'Aube*** : Chevaliers Vertueux formés plus vite, *Défi du Chevalier* renforcé | **l'Acier** |
 | | ***Monastère*** : Moines Lumineux qui soignent mieux, atténuent plus fortement les malus de moral et les malédictions (D125), et dont les soins rapportent plus d'Honneur | **la Foi** |
+| **3 — Légende** *(D182)* | ***Autel du Jugement*** : le pouvoir *Jugement* (D85) coûte moins d'Honneur, frappe une zone plus large et fait de gros dégâts aux bâtiments | **finir** (D179) : la lumière qui conclut |
+| | ***Crypte des saints*** : un second pouvoir d'Honneur au palier 3, ***Veille des saints*** *(D183)* : pendant ~10 s, aucun bâtiment de la zone (centre principal compris) ne descend sous 1 PV, et les paysans y réparent ~50 % plus vite. Zone annoncée ; ne touche jamais les unités (distinct de *Dernier Rempart*) | **renverser** (D179) : tenir le temps que l'armée revienne |
 
 Le palier 1 décide de la forme de la partie (repli ou expansion), le palier 2 de la composition de l'armée. Les deux se lisent à l'éclairage. Valeurs à régler en test.
 
@@ -1030,10 +1078,11 @@ Le palier 1 décide de la forme de la partie (repli ou expansion), le palier 2 d
 
   | Palier | Pouvoir | Rôle |
   |---|---|---|
-  | 0 | *Lumière sacrée* : soin sur une zone ; retrait possible des effets de moral négatifs (D74), ⚠️ à trancher en test (D125) | soutien : sauver une ligne qui tient |
+  | 0 | *Lumière sacrée* : soin sur une zone, **dès le palier 0** *(D213 : exception assumée à « aucun soin au palier 0 », D212 ; pouvoir payé en Honneur, donc rare en ouverture)* ; retrait possible des effets de moral négatifs (D74), ⚠️ à trancher en test (D125) | soutien : sauver une ligne qui tient |
   | 1 | *Rempart béni* : un segment de mur devient invulnérable quelques secondes | défense : tenir une brèche face au siège |
   | 2 | *Renforts de l'Aube* : une escouade de Chevaliers Vertueux arrive au centre principal (comptée dans la population) | renfort |
   | 3 | *Jugement* : frappe de lumière annoncée sur une zone, contrable | offensive |
+  | 3 *(Crypte des saints, D183)* | *Veille des saints* : ~10 s, les bâtiments d'une zone ne descendent pas sous 1 PV ; réparation ~50 % plus rapide | défense : sauver la base d'une percée |
 
   Le prototype (paliers 0 à 2) teste les trois premiers. Un livre à choix façon BFME (un pouvoir parmi deux par palier) reste une piste si l'Aube manque de variété.
 - **Pas une ressource économique** (§ 5.2) : l'Honneur ne se récolte pas et ne paie ni unités, ni bâtiments, ni technologies.
@@ -1098,6 +1147,16 @@ Le palier 1 décide de la forme de la partie (repli ou expansion), le palier 2 d
 
     ⚠️ Vigilances : *Double étendard* + *Bannière inébranlable* (Aube « tortue », D107) ; *Escorte du champion* faible tant que *Renforts de l'Aube* (palier 2) n'est pas disponible.
 
+    **Rangées 7 à 9 *(D195)*** (règles D194 ; valeurs indicatives, à régler en test) :
+
+    | Rangée | Gardien | Capitaine | Champion |
+    |---|---|---|---|
+    | 7 | ***Bannière bénie*** (*Bannière*) : hors combat, les alliés dans sa zone régénèrent lentement leurs PV | ***Charge disciplinée*** (*Charge de l'Aube*) : les unités qui ont suivi la charge subissent ~−15 % de dégâts ~8 s après l'impact | ***Fer de lance*** (*Charge de l'Aube*) : impact du Paladin +30 % de dégâts |
+    | 8 | ***Rempart éternel*** (*Rempart béni*) : durée +30 % | ***Ordre serré*** (*Serrez les rangs*) : recharge −20 % | ***Sentence publique*** (duel, *Sentence*) : chaque Faute consommée rapporte un peu d'Honneur |
+    | 9 | ***Jugement des assiégeants*** (*Jugement*) : +50 % de dégâts aux engins de siège | ***Renforts aguerris*** (*Renforts de l'Aube*) : +1 Chevalier Vertueux dans l'escouade | ***Verdict des armes*** (*Jugement*) : lancé dans les ~30 s après un duel gagné, coûte ~50 % d'Honneur en moins |
+
+    ⚠️ Vigilance : *Jugement des assiégeants* renforce l'Aube « tortue » (D107) ; contre-jeu par le contournement et les unités. *Fer de lance* et *Verdict des armes* donnent au Champion une utilité hors duel (vigilance D109).
+
 ### 13.3 Légions Noires
 
 **Thème :** morts-vivants, nécromancie, sacrifice, terreur, corruption.
@@ -1119,6 +1178,8 @@ Le palier 1 décide de la forme de la partie (repli ou expansion), le palier 2 d
 | | ***Autel de sang*** : bâtiment **avancé**, constructible loin de la base (hors du rayon anti-rush de D22) ; forme des Guerriers Damnés et l'infanterie du socle près du front ; les cadavres durent plus longtemps dans son rayon | **l'Assaut** : une Légion qui frappe tôt |
 | **2 — Puissance** *(D127)* | ***Fosse des damnés*** : Guerriers Damnés moins chers, *rage nécrotique* plus longue | **la chair** |
 | | ***Tour des nécromanciens*** : Nécromanciens qui lèvent plus vite, malédictions plus fortes (distinct du Rite du Charnier, qui renforce les Squelettes) | **la nécromancie** |
+| **3 — Légende** *(D184)* | ***Fosse de suture*** : débloque l'***Abomination***, colosse de chair cousue, lent et cher, qui frappe fort les bâtiments et les murs (siège vivant) ; **à sa mort, il éclate en plusieurs cadavres** (Nécromanciens, *Sacrifice*). Contre : Arbalétriers, tir concentré, le tuer loin des Nécromanciens | **finir** (D179) : l'assaut qui se nourrit de ses propres pertes |
+| | ***Cimetière maudit*** : zone fixe autour de la base ; **chaque unité ennemie qui y meurt se relève en Squelette temporaire** (~30 s, plafonné) du côté des Légions. Contre : siège à distance, repli. Distinct de *Relève impie* (rayon mobile du héros, chance, alliés et ennemis) | **renverser** (D179) : attaquer les Légions chez elles leur offre une armée |
 
 Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les Légions entre bâtir et frapper. ⚠️ Vigilance : pas de rush depuis un bâtiment avancé (règle anti-rush de D22, *Autel de sang* fragile). Valeurs à régler en test.
 
@@ -1203,6 +1264,16 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
 
     ⚠️ Vigilances : *Éclats d'os* puis *Relève impie* (hors prototype) multiplient les serviteurs temporaires (plafond commun) ; *Sacrifice maudit* + *Champ des lamentations* forment une synergie forte ; *Commandant des morts* fait de chaque cadavre une bombe puis un Squelette.
 
+    **Rangées 7 à 9 *(D196)*** (règles D194 ; valeurs indicatives, à régler en test) :
+
+    | Rangée | Moisson | Charnier | Effroi |
+    |---|---|---|---|
+    | 7 | ***Moisson des relevés*** (*Relève impie*) : chaque unité relevée donne 1 cumul de *Moisson* | ***Relève nombreuse*** (*Relève impie*) : plafond de serviteurs relevés +2 | ***Relevés effrayants*** (*Relève impie*) : les unités relevées portent une petite aura de malus de moral (rayon court, sans cumul avec l'*Aura de terreur*) |
+    | 8 | ***Frappe insatiable*** (duel, *Frappe dévorante*) : drain ~50 % → ~65 % | ***Linceul*** (*Sacrifice*) : une unité alliée sacrifiée laisse un cadavre | ***Marque funeste*** (marquage des Spectres Assassins) : une cible marquée qui meurt maudit le sol autour d'elle |
+    | 9 | ***Grand festin*** (*Sacrifice*) : soin du Seigneur +50 % | ***Ossuaire profond*** (*Ossuaire*) : capacité de la jauge +30 % | ***Bile maudite*** (*Cracheur de bile*) : la flaque d'acide maudit le sol pendant sa durée |
+
+    ⚠️ Vigilances : *Relève nombreuse* et le plafond commun des serviteurs temporaires (performance, D190) ; *Linceul* + *Commandant des morts* (recyclage très fort) ; *Marque funeste* et *Bile maudite* dans le plafond des terres maudites (D115), travailleurs jamais touchés.
+
 ### 13.4 Enfants du Dragon
 
 **Thème :** dragons, élémentalisme, adaptation. **Aucune bête dans la faction *(décision D149)*** : ni Dompteur ni compagnons ; les seuls dragons sont celui du héros et ceux de l'*Appel de la Couvée*.
@@ -1232,6 +1303,8 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
 | | ***Forge d'écailles*** : Champions Draconiques et Gardes d'écailles formés ~20 % plus vite, +1 armure ; *Écailles adaptatives* ~40 % plus rapides | **les écailles** : des guerriers qui encaissent en s'adaptant |
 | **2 — Puissance** *(D152)* | ***Perchoir du dragon*** : le dragon a les statistiques de 2 niveaux de plus ; bascule plus rapide ; recharge du *Souffle* ~−20 % | **le ciel** : le héros monté |
 | | ***Pierre de résonance*** : *Aura draconique* ~+30 % de rayon, effet élémentaire ~+30 % | **le sol** : le héros à pied qui commande |
+| **3 — Légende** *(D191)* | ***Cercle des invocateurs*** : les Mages Élémentaires gagnent le rituel ***Météore*** : trois Mages proches canalisent ~5 s, puis un bolide frappe une **zone annoncée** (gros dégâts aux bâtiments et aux murs, plus l'effet de l'élément des Mages). Contre : tuer ou interrompre les Mages, sortir de la zone | **finir** (D179) : le siège du Dragon, par ses arcanes |
+| | ***Nids gardiens*** : les *Nids élémentaires* projettent leur élément sur les ennemis proches (feu : brûlure ; glace : ralentissement, jamais d'immobilisation ; foudre : chaîne). Changer l'élément d'un Nid change sa défense (délai D72). Contre : siège à distance ; raser un Nid retire aussi son bonus économique | **renverser** (D179) : l'économie devient défense adaptable |
 
 **Mécanique signature : ADAPTATION ÉLÉMENTAIRE *(décision D78)* — l'élément du héros commande l'armée.** C'est le duel élémentaire (D49) transposé au RTS.
 
@@ -1311,6 +1384,16 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
 
   - Garde-fous : rien ne réduit les dégâts des tireurs contre le dragon en vol ; ni vision ni harcèlement ; la règle du délai d'élément est réduite, jamais contournée (sauf le talent clé *Mue instinctive*, pour le héros).
 
+- **Rangées 7 à 9 *(décision D198)*** (règles D194 ; valeurs indicatives, à régler en test) :
+
+  | Rangée | **Le Ciel** | **La Lignée** | **La Mue** |
+  |---|---|---|---|
+  | **7** | ***Cri perçant*** (*Cri du wyrm*) : rayon +20 % | ***Lame du wyrm*** (*Lame draconique*) : la frappe touche en arc 2 cibles de plus | ***Cri élémentaire*** (*Cri du wyrm*) : le Cri applique aussi l'effet de l'élément actif |
+  | **8** | ***Piqué foudroyant*** (*Piqué*) : recharge −20 % | ***Garde d'honneur*** (*Aura draconique*) : dans l'aura, les *Écailles adaptatives* des Gardes montent d'un cran de plus | ***Mages harmoniques*** (Mages Élémentaires) : les Mages réglés sur l'élément actif du héros +10 % de dégâts |
+  | **9** | ***Souffle adulte*** (*Souffle*) : dégâts +15 % | ***Champions de la couvée*** (*Aura draconique*) : dans l'aura, attaque en cône des Champions Draconiques +15 % de dégâts | ***Bond élémentaire*** (duel, *Bond draconique*) : recharge −20 % |
+
+  - Aucun nouveau talent de délai de changement d'élément (cumul avec *Esprit vif* et *Foyer élémentaire*, D72). ⚠️ Vigilance : *Souffle adulte* renforce le harcèlement en vol (D41), contre des tireurs intact.
+
 ### 13.5 Cercle de l'Ombre
 
 **Thème :** assassins, espionnage, manipulation, ruse.
@@ -1346,6 +1429,8 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
 | | ***Atelier du piégeur*** : Piégeurs formés plus vite ; +1 piège actif par Piégeur ; pièges posés plus vite ; poison plus long | **le terrain** : l'Ombre qui tient la carte (passages piégés, embuscades préparées, expansion protégée) |
 | **2 — Puissance** *(D160, D162)* | ***Repaire des assassins*** : Maîtres des Ombres formés plus vite ; ***Coup de grâce*** : gros dégâts contre les unités sous contrôle (ralenties par un piège, confuses, effrayées). Camouflage **non** allongé | **la lame** : l'assassin achève ce que le contrôle a préparé |
 | | ***Salle des miroirs*** : Illusionnistes formés plus vite ; ***Reflets multipliés*** : +1 copie illusoire par Illusionniste, copies plus durables | **l'esprit** : plus d'illusions, plus longtemps |
+| **3 — Légende** *(D192)* | ***Chambre des traîtres*** : les Maîtres des Ombres gagnent ***Tour livrée*** (d'après Antioche, 1098) : canalisation ~8 s au contact d'une **porte, tour ou mur** ennemi (Maître révélé), signal annoncé ~5 s, puis la porte **s'ouvre** ou la tour **se tait** ~20 s. Jamais les bâtiments économiques ni les travailleurs. Contre : tuer le Maître pendant la canalisation, garder ses portes | **finir** (D179) : la brèche par la ruse |
+| | ***Passages secrets*** : réseau de souterrains entre les bâtiments du Cercle ; les unités entrent dans l'un et ressortent d'un autre après un court délai. Sorties visibles par tous, aucune vision. Contre : raser les entrées, attendre à la sortie | **renverser** (D179) : défendre à temps, ressortir dans le dos de l'assaillant |
 
 Même logique que l'Aube : le palier 1 décide de la forme de la partie, le palier 2 de la composition de l'armée. Le Maître des Ombres n'est renforcé qu'au palier 2 : pas de harcèlement précoce. Valeurs à régler en test.
 
@@ -1429,6 +1514,16 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 
   - Garde-fous : ni camouflage prolongé, ni vision, ni durée de contrôle allongée (D37), ni nouveau bonus contre les unités sous contrôle (vigilance D165) ; aucun gain de dégâts précoce pour le Maître des Ombres (D162) ; travailleurs jamais touchés. Pas de cumul de taux au marché (D161) : le *Comptoir* n'est servi que par *Fils tendus*.
 
+- **Rangées 7 à 9 *(décision D199)*** (règles D194 ; valeurs indicatives, à régler en test) :
+
+  | Rangée | **La Lame** | **Le Miroir** | **La Toile** |
+  |---|---|---|---|
+  | **7** | ***Sang-froid du Menteur*** (*Serment de l'Ombre*) : pendant la canalisation, la Voix subit ~−20 % de dégâts (toujours interruptible) | ***Serment élargi*** (*Serment de l'Ombre*) : +1 unité convertible, plafond de coût total inchangé | ***Pose à distance*** (pièges) : le Piégeur peut lancer un piège à courte distance (~6 m) |
+  | **8** | ***Lames promptes*** (attaques éclair des Maîtres des Ombres) : recharge −15 % | ***Reflets tenaces*** (copies des Illusionnistes) : +15 % PV | ***Poison lent*** (pièges) : durée du poison +30 % (dégâts, pas contrôle) |
+  | **9** | ***Vraie menace aiguisée*** (duel, *Vraie menace*) : +15 % de dégâts | ***Mensonge mouvant*** (*Mensonge*) : un ordre de déplacement possible pour la fausse armée | ***Pièges de siège*** (pièges) : +50 % de dégâts aux engins de siège |
+
+  - Garde-fous de D167 respectés ; *Serment élargi* garde le plafond de coût (D63) ; *Mensonge mouvant* reste un objet du monde démasqué par l'éclairage (D37) ; *Pièges de siège* prépare la conversion du siège sans le détruire.
+
 - ⚠️ Vigilance *(D166)* : l'enchaînement complet (*L'Appât*, pièges, *Signal de la Voix*, *Coup de grâce*) peut devenir mortel. Chaque étape reste annoncée et esquivable ; vérifier en test qu'il ne paraît pas injuste.
 - ⚠️ Vigilance *(D165)* : les bonus contre les unités sous contrôle s'additionnent (*Murmures*, *Coup de grâce*, *Confrérie*) ; plafond à régler en test.
 - ⚠️ Vigilance : le Miroir est la famille la plus riche (aura, discours, illusions, conversion) ; son talent clé devra rester mesuré. La Toile ne doit pas devenir une voie de vision : ses talents portent sur les pièges et l'économie, pas sur l'éclairage.
@@ -1468,8 +1563,10 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 | | ***Halle des serments*** : toute la faction ~+20 % de PV ; ***Résistance légendaire*** *(D170)* pour les **Gardiens de la Forge** : sous ~20 % de PV, ils subissent moins de dégâts | **l'enclume** : on encaisse tout, on ne perd personne |
 | **2 — Puissance** *(D172)* | ***Salle des Lames*** : Lames Ardentes formées ~20 % plus vite ; charge ~+25 % de dégâts ; brûlure cumulable jusqu'à 3 fois | **la lame** : une charge de Lames efface une unité |
 | | ***Temple de la Flamme*** : bénédictions des Prêtres de la Flamme ~+30 % (résistance, armes bénies) ; ***Garde sacrée*** : le Prêtre protège une unité précieuse, qui subit ~−30 % de dégâts pendant quelques secondes (annoncé, recharge) | **la flamme** : on ne perd personne parce qu'on est protégé |
+| **3 — Légende** *(D193)* | **Aucune spécialisation** : tronc commun seul (§ 11.2) | **les statistiques font la différence** |
 
 - **Principe du palier 1 *(D169)* : amplifier l'élite, jamais adoucir les pertes.** La faction est chère et peu nombreuse, chaque perte doit coûter ; en contrepartie, chaque unité est très forte. Les deux voies renforcent une moitié de ce principe : frapper plus fort ou ne pas tomber.
+- **Palier 3 *(D193)* : aucune spécialisation** *(choix de l'utilisateur)*. Les Héritiers n'ont « rien de plus » : ils reçoivent le tronc commun du palier 3 (dont *Bombarde* et *Arquebusier de la Forge*), et leurs statistiques d'élite font la différence. Exception assumée à D07 et D179 (4 combinaisons de spécialisations au lieu de 8), cohérente avec D39. ⚠️ Vigilance : les autres factions gagnent un outil de fin de partie au palier 3 ; l'équilibrage de fin de partie des Héritiers repose sur leurs statistiques, à vérifier en test.
 - **Principe du palier 2 *(D172)* : « La lame ou la flamme ».** Choix de composition, comme pour l'Aube et les Légions : l'élite qui frappe ou l'élite protégée. ⚠️ Vigilance : cumul *Halle des serments* + *Temple de la Flamme* sur un Gardien de la Forge (PV, *Résistance légendaire*, *Garde sacrée*) ; valeurs à régler en test.
 - *Résistance légendaire* : réservée au Gardien de la Forge (D170), la frontline qui tient seule une ligne ; c'est une statistique, sans mécanique supplémentaire (D39). La réduction de dégâts sous le seuil est visible (l'armure rougeoie), pour que l'adversaire sache pourquoi l'unité tient. Seuil et réduction à régler en test.
 
@@ -1520,6 +1617,16 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 
   - ⚠️ Vigilances : *Braises* rend la *Frappe fendante* plus vite disponible (voulu, à surveiller) ; *Mur de la lignée* s'ajoute à la *Halle des serments* et au *Temple de la Flamme* sur le Gardien (D172).
 
+- **Rangées 7 à 9 *(décision D200)*** (règles D194 ; valeurs indicatives, à régler en test) :
+
+  | Rangée | **Le Marteau** | **L'Enclume** | **La Flamme** |
+  |---|---|---|---|
+  | **7** | ***Cor de guerre*** (*Cor de l'Héritage*) : le Cor remplit ~30 % de la Chaleur | ***Cor du rempart*** (*Cor de l'Héritage*) : les alliés touchés par le regain de moral subissent ~−10 % de dégâts ~8 s | ***Cor de la flamme*** (*Cor de l'Héritage*) : le Cor embrase ~5 s les armes des alliés touchés, sans dépenser de Chaleur |
+  | **8** | ***Frappe chauffée à blanc*** (*Frappe de forge*) : à pleine Chaleur, la frappe applique une brûlure | ***Serment tenu*** (Gardiens de la Forge) : hors combat, régénération lente des PV | ***Bénédiction de la forge*** (bénédictions des Prêtres) : unités bénies ~+10 % de cadence |
+  | **9** | ***Bombarde de lignée*** (*Bombarde*) : +15 % de dégâts aux bâtiments | ***Arquebusiers gardés*** (*Arquebusier de la Forge*) : près d'un Gardien de la Forge, ~−15 % des dégâts des tirs | ***Salve embrasée*** (*Transmission*) : sur des Arquebusiers de la Forge, leurs tirs brûlent |
+
+  - Fidèle à D169 : protéger avant la chute, jamais rembourser une perte ; ni mobilité ni couverture de plusieurs fronts. ⚠️ *Cor de la flamme* recoupe un peu *Transmission* (plus court, lié au Cor).
+
 ---
 
 ### 13.7 Templiers *(décision D87)*
@@ -1546,6 +1653,7 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
   - Le joueur accompagne la croisade avec sa vraie armée : c'est la combinaison des deux qui fait la force.
   - Contre-jeu lisible : colonne et chemin visibles ; embuscade, ralentissement par les murs, ou tenir jusqu'à la fin du délai.
   - Distinction avec l'Aube : l'Aube appelle des renforts qu'elle dirige (*Renforts de l'Aube*, D85) ; les Templiers déclenchent une croisade qu'ils ne retiennent plus.
+  - **Contingent maltais *(D189)* :** au palier 3, +3 Canons maltais et +5 Arquebusiers maltais par croisade, **hors enveloppe** (maximum ~48).
   - **Taille de la croisade *(décision D139)* :** une **population propre**, totalement indépendante de celle du joueur, fondée sur le **nombre de commanderies** : **~10 croisés par commanderie** *(précision de l'utilisateur ; indicatif, à régler en test)*. Hypothèse de travail : le socle de *Pèlerins armés* (palier 0) compte comme une commanderie, soit ~40 croisés au maximum en fin de partie (socle + 3) ; le Sénéchal, sans contingent (D135), n'ajoute rien. Ce plafond borne aussi la cible de performance (D03).
   - **Les bonus remplissent l'enveloppe *(décision D140)* :** les ~10 par commanderie sont un **maximum**. Un contingent de base arrive **en dessous** (par exemple 6 sur 10, indicatif) ; les **citadelles** (D96), le **Prêcheur** (D135) et la **gloire** (D90) le complètent jusqu'au maximum ; **au-delà, le surplus devient de la vétérance** (PV et attaque accrus, visuel de vétéran). Chaque bonus garde ainsi son intérêt jusqu'en fin de partie, et raser une citadelle fait vraiment maigrir les croisades.
   - **Face aux murs *(décision D141)* :** les croisés prennent le **chemin existant le plus court** (brèche, porte ouverte). À défaut, ils attaquent **la porte ou le pan de mur le plus proche de la cible** ; les engins et les contingents de la voie Pierre s'en chargent en priorité (le *Beffroi* se colle au mur, le *Frère maçon* sape). Les murs font perdre du temps sur le délai (contre-jeu), sans rendre la croisade inutile ; la voie Pierre est précieuse contre un adversaire fortifié, pas obligatoire.
@@ -1586,17 +1694,24 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
   - ***Maréchal du Temple*** (officier unique, cavalerie lourde) *(D133, D137)* :
     - **Recruté :** *Escadron* : les Chevaliers du Temple autour de lui chargent ensemble, avec un bonus. S'il accompagne une croisade, **les croisés le suivent** au lieu de marcher seuls vers la cible (répond à la piste de D89) ; s'il meurt, la croisade reprend sa marche automatique.
     - **Contingent *(D137)* :** un **escadron de Chevaliers du Temple vétérans** qui chargent ensemble (*Escadron*) dans chaque croisade.
-    - Au palier 3, trois choix nettement opposés : Maréchal (croisade plus forte et dirigeable), Sénéchal (second front), Beffroi (prise des murs).
+    - Au palier 3, trois choix nettement opposés : Maréchal (croisade plus forte et dirigeable), Sénéchal (second front), Beffroi (prise des murs). *(D185, « Finir ou renverser », D179)* : **Maréchal et Beffroi pour finir, Sénéchal pour renverser** (*Contre-croisade*).
   - ***Frère infirmier*** (soin) : ne soigne que les unités **hors combat depuis quelques secondes**, mais vite, y compris la colonne de croisade en marche. Pas de magie.
   - ***Prêcheur de croisade*** *(D135)* (soutien) : **contingent** : toutes les croisades **grossissent en marchant** (des pèlerins rejoignent la colonne) ; c'est la valeur de cette commanderie. Favorise les cibles lointaines ; contre-jeu : intercepter tôt, tuer le Prêcheur de la colonne. **Recruté** : *Sermon*, effet de moral bref sur un groupe. ⚠️ Plafond commun avec le bonus des citadelles (D96) dans le plafond de croisade (D89).
   - ***Sénéchal*** *(D135)* (officier unique, second du Grand Maître) : **exception à la règle du contingent : il n'entre pas dans la croisade.** Son pouvoir : ***Mini-croisade*** *(proposition de l'utilisateur)* : il prend avec lui **une partie de l'armée** et lance sa propre croisade ; les troupes engagées deviennent autonomes ; **en cas de victoire, elles redeviennent contrôlables**. Distinction avec *Prendre la croix* (héros, D97) : celle-ci rejoint la croisade en cours, le Sénéchal en crée une seconde, plus petite.
     - **Règles *(décision D136)* : une croisade en miniature.** **Taille :** au plus **~30 % du maximum d'une croisade** *(précision de l'utilisateur ; indicatif, à régler en test)*. Les troupes de la mini-croisade **restent dans la population du joueur** (D139) : ce sont ses propres unités. **Annonce :** cible annoncée à l'adversaire, comme l'appel (D88). **Succès :** or réduit, **sans rang de gloire** (réservé à l'appel principal, D90) ; troupes de nouveau contrôlables. **Échec** (délai écoulé ou Sénéchal tué) : troupes **rendues au joueur** avec *Désillusion*, longue recharge. **Recharge propre**, indépendante de l'appel : deux fronts possibles.
     - Conséquence : choisir le Sénéchal au palier 3, c'est échanger un contingent de plus dans la grande croisade contre un second front.
+  - **Poudre maltaise *(décision D187)* :** au palier 3, les Templiers ont l'*Arquebusier maltais* et le *Canon maltais* (noms provisoires), plus primitifs que la poudre du socle, donc moins forts. Ils **s'intègrent à la croisade** *(D189)* : à partir du palier 3, chaque croisade reçoit un **contingent maltais hors enveloppe** de **3 Canons maltais et 5 Arquebusiers maltais** *(précision de l'utilisateur)*, soit ~48 croisés au maximum. ⚠️ Vigilance : la croisade grossit à son sommet (D130) et le plafond de performance (D139) recule ; valeurs à régler en test. **Statut *(D188)* :** écart de statistiques (moins forts **et moins chers**), pas une variante (§ 7.1).
+  - ***Reliquaire*** *(décision D186)* : **unité fixe du palier 3, hors commanderies**, débloquée automatiquement (D180) pour tous les Templiers. Char processionnel **unique, lent et cher**, portant une relique (une relique de l'Ordre, **pas la Vraie Croix**, *précision de l'utilisateur*).
+    - **Effet :** les alliés proches gagnent **de l'armure** et **~+25 % de dégâts aux bâtiments et aux murs**. Pas de moral : il reste au Porte-gonfanon (distinction).
+    - **Procession :** s'il accompagne une croisade, celle-ci marche un peu plus lentement mais son **délai est allongé** (~+20 %) : cibles lointaines ou fortifiées.
+    - **Non réparable** *(nuance de l'utilisateur)* : ses PV perdus ne reviennent pas (ni frères convers, ni Frère maçon, ni soins). Détruit, il peut être reconstruit après un long délai ; **sa perte n'applique pas *Désillusion*** *(nuance de l'utilisateur)*.
+    - Contre-jeu : l'abattre (lent, visible, chaque dégât compte). Rôle : surtout **finir**, chaque commanderie l'utilise à sa manière.
+    - ***Contre-croisade*** *(décision D185, « les cloches »)* : quand les Templiers **repoussent un assaut** contre une citadelle ou leur base, la mini-croisade du Sénéchal est **aussitôt disponible** (recharge remise à zéro), avec pour cible le camp ou la base de l'attaquant. Déclencheur : un succès défensif, jamais un retard (pas de *rubber band*, D179).
   - ***Arbalétrier à pavois*** (tir) : *Planter le pavois* : immobile et très résistant aux tirs. Fort en siège et pour tenir une ligne ; plus lent que l'Arbalétrier du socle.
   - ***Frère maçon*** (ingénieur) : *Sape* : creuse sous un mur ou une tour, qui s'effondre après un délai visible ; l'adversaire l'interrompt en tuant les sapeurs. Répare aussi.
   - ***Beffroi*** (tour de siège mobile, absente du socle) : collé à un mur, il laisse les troupes **passer par-dessus**. Avec le Frère maçon, piste de réponse au comportement de la croisade face aux murs (D89).
   - **Règle de conception *(rappel de l'utilisateur, D90, D92)* :** la croisade se compose **automatiquement** à partir des commanderies choisies. Chaque unité de commanderie se conçoit donc **sous deux formes** : **recrutée** (contrôlée, dans la population) et **contingent** (autonome, présent dans **chaque** croisade). Un effet porté par le contingent devient un effet permanent de toutes les croisades.
-  - Écartés *(D133, D135)* : *Frère chapelain* (*Confession*), *Frère pénitent* (*Rachat*), *Vraie Croix* (trop proche du Porte-gonfanon ; relique non recrutable), *Frère drapier*. Anciens noms de travail abandonnés : commanderies de l'Hôpital (autre ordre), des Zélotes (non historique), des Arbalétriers et des Bâtisseurs (unités du socle).
+  - Écartés *(D133, D135)* : *Frère chapelain* (*Confession*), *Frère pénitent* (*Rachat*), *Vraie Croix* (trop proche du Porte-gonfanon ; relique non recrutable ; *revue par D185 et D186 : un **Reliquaire** (une relique, pas la Vraie Croix) est retenu comme unité fixe du palier 3, sans moral*), *Frère drapier*. Anciens noms de travail abandonnés : commanderies de l'Hôpital (autre ordre), des Zélotes (non historique), des Arbalétriers et des Bâtisseurs (unités du socle).
 - **Exception assumée** à « 3 emblématiques par faction » : 2 fixes + 3 débloquées par les commanderies (une par palier).
 - **Écarté :** archer monté (*Turcopole*), à la demande de l'utilisateur.
 - ⚠️ Vigilance : beaucoup d'unités à concevoir (9 + 2), et à distinguer du socle commun et de l'Aube (Sergent du Temple ≠ Homme d'armes, Frère infirmier ≠ Moine Lumineux).
@@ -1658,6 +1773,17 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 
   - Garde-fous : *Foi éprouvée* adoucit l'échec sans accélérer les succès (D138) ; ni vision ni harcèlement des travailleurs ; pas de citadelle-trésor (écartée avec D96).
 
+- **Rangées 7 à 9 *(décision D197)*** (règles D194 ; valeurs indicatives, à régler en test) :
+
+  | Rangée | **Croisade** | **Chevalerie** | **Trésor** | **Citadelles** |
+  |---|---|---|---|---|
+  | **7** | ***Croix de rappel*** (*Prendre la croix*) : après une croisade **réussie**, les unités qui ont pris la croix reviennent avec tous leurs PV | ***Sortie des chevaliers*** (*Sortie*) : la garnison sort avec 2 Chevaliers du Temple en plus | ***Compagnie aguerrie*** (*Compagnie franche*) : +2 hommes dans la compagnie | ***Sortie prolongée*** (*Sortie*) : durée ~30 s → ~40 s |
+  | **8** | ***Haltes de pèlerins*** (croisade) : les croisés régénèrent lentement leurs PV pendant la marche, hors combat | ***Gonfanon haut*** (Porte-gonfanon) : rayon du *Beauséant* +20 % | ***Frères de la commanderie*** (frères convers) : pendant une croisade, bonus de collecte ~+15-20 % → ~+25 % | ***Mâchicoulis*** (citadelles) : +30 % de dégâts aux unités au pied de leurs murs |
+  | **9** | ***Grande procession*** (*Reliquaire*) : avec une croisade, délai gagné ~+20 % → ~+30 % | ***Règle de fer*** (duel, *Frappe de la Règle*) : +15 % de dégâts | ***Poudre payée comptant*** (poudre maltaise) : Arquebusiers et Canons maltais ~−15 % d'or | ***Arsenal de la citadelle*** (poudre maltaise) : les citadelles peuvent former les unités de poudre maltaises |
+
+  - **La *Sortie* reste défensive** *(nuance de l'utilisateur)* : aucun talent ne la fait rejoindre la croisade (*Sortie croisée* écartée).
+  - ⚠️ Vigilances : *Frères de la commanderie* + or des croisades (boule de neige, D91) ; *Poudre payée comptant* sur une poudre déjà moins chère (D188) ; *Croix de rappel* recoupe en partie *Croix cousue* et *Pèlerinage armé*.
+
 ---
 
 ## 14. Victoire, modes et momentum
@@ -1689,6 +1815,15 @@ Le but est **Avantage → pression → possibilité de victoire**, et non **Avan
 
 Les modes secondaires seront développés après validation du mode standard.
 
+**Modes et options *(décision D204)* :** le mode **Standard** reçoit des **options de partie** *(choix de l'utilisateur)* :
+
+- **Nomade *(D207)*** (façon AoE2) : départ **sans centre principal** ; les travailleurs sont **dispersés en petits groupes à des endroits aléatoires de la carte**, et chaque joueur a de quoi construire un centre. **Le héros apparaît avec l'un des groupes.** Avec Régicide, **le Roi apparaît avec un travailleur** *(nuance de l'utilisateur)*, pas forcément avec le héros. ⚠️ Vigilance : distance minimale entre les groupes de joueurs différents (surtout à 8 joueurs).
+- **Régicide *(D206)*** (façon AoE2) : au début de la partie, un **Roi** apparaît près du centre principal. C'est une **unité, pas le héros** : elle **ne coûte pas de population** et n'a qu'**une attaque de 1** (elle peut attaquer, mais ne fait presque rien). **Si le Roi meurt, le joueur a perdu.** Le héros, le duel et la résurrection suivent les règles normales.
+  - Par défaut *(à confirmer)* : le Roi n'est **jamais converti, retourné ni relevé** (comme les héros, D37, D57, D63). PV et vitesse à régler en test.
+- **Catastrophe** : événements mondiaux plus fréquents (dépend du système d'événements, D28).
+
+**Domination, Reliques et Scénario** sont repoussés **après la création du prototype**. **Les trois options sont dans le prototype *(D205)*.**
+
 ### 14.4 Cible joueurs et formats *(décision D01)*
 
 **Conçu pour le multijoueur, prototypé en solo.**
@@ -1712,6 +1847,23 @@ Les modes secondaires seront développés après validation du mode standard.
 ## 15. Interface
 
 **HUD principal :** ressources, population, minimap, sélection, commandes, production, technologies, niveau du héros, XP du héros, état du héros, temps de récupération.
+
+**Structure du HUD *(décision D201)* : base AoE4, avec un emplacement de faction fixe.**
+
+- **En bas :** mini-carte à gauche, sélection au centre, commandes et production à droite (grille de raccourcis de D30).
+- **En haut :** ressources, population, palier.
+- **Bloc du héros, permanent**, près de la mini-carte : portrait, niveau et XP, barre de vie, capacités, indicateur de récupération ou de duel. Clic sur le portrait : sélection du héros ; double-clic : caméra centrée sur lui (comme `F4`, D30).
+- **Emplacement de faction : le même pour les 6 factions**, juste au-dessus du bloc du héros. Il accueille la mécanique de chaque faction : barre d'Honneur et pouvoirs (Aube), panneau de croisade (Templiers : cible, délai, contingents), jauge de l'*Ossuaire* (Légions), élément actif (Dragon), ordres du marché noir (Ombre), Chaleur (Héritiers). Un joueur qui connaît une faction sait où regarder dans les autres (pilier 1).
+
+**Alertes *(décision D202)* : deux niveaux, doublés de signaux dans le monde** *(choix de l'utilisateur : options A et C)*.
+
+- **Majeures** (ce qui vous vise directement : croisade ou mini-croisade contre vous, événement mondial, *Tour livrée* sur vos murs, attaque de votre centre) : **bandeau bref en haut de l'écran**, **voix d'un héraut propre à la faction**, **ping sur la mini-carte** ; clic ou raccourci pour centrer la caméra.
+- **Mineures** (unité ou bâtiment attaqué ailleurs, recherche terminée, population pleine…) : **fil discret** sur le côté, ping et **son court** propre à chaque type.
+- **Signaux dans le monde et sur la mini-carte**, en plus des deux niveaux : icônes animées sur la mini-carte (cible de croisade, zone d'événement), et signaux visibles sur le terrain (colonne et bannières de croisade, fumée ou grondement d'un événement, signal de la *Tour livrée* sur la porte visée). Le joueur qui regarde la bataille perçoit l'annonce sans quitter le terrain des yeux.
+- Le défi de duel garde sa fenêtre propre (D117).
+- But : les mécaniques « annoncées, donc contrables » n'ont de sens que si l'annonce est perçue.
+
+**Lecture de l'adversaire *(décision D203)* : l'inspection seulement.** Un clic sur un héros, une unité ou un bâtiment adverse **visible** affiche sa fiche (héros : niveau, sceaux et talents clés, D103, état). La spécialisation adverse se reconnaît à son bâtiment ou à son unité propre. Sans vision, aucune information : pas de carnet de renseignements, pas d'information publique sur le palier ou les spécialisations. L'éclairage garde toute sa valeur (D07).
 
 **Duel :** fenêtre de défi reçu (Accepter / Refuser, compte à rebours, sans pause, D117), indicateur de défi envoyé, recharge du défi, posture active et kit de duel pendant l'affrontement.
 
@@ -1782,7 +1934,8 @@ Le multijoueur jusqu'à 8 joueurs, humains et IA mélangés, est une cible dès 
   - affichées en **instances** avec des animations optimisées (animation par textures de sommets, ou équivalent).
 - **Héros, bâtiments et engins de siège = acteurs classiques avec GAS.** Ils sont peu nombreux : GAS reste utilisé là où il compte (capacités, duels, auras).
 - **Le brouillard de guerre est appliqué par le serveur**, qui n'envoie à chaque client que ce qu'il voit. Cela protège contre la triche « maphack » et réduit la bande passante.
-- **Cible de performance :** ~1 400 unités (8 × 175, D03).
+- **Cible de performance *(D190)* : au minimum 2 000 unités simultanées**, comme marge de sécurité *(exigence de l'utilisateur)*. Le pire cas de population est de ~1 400 (8 × 175, D03), auquel s'ajoutent les unités hors population (croisades jusqu'à ~48, contingent maltais compris, D189 ; serviteurs, Squelettes temporaires, invocations, troupes de *Sortie*). Cette valeur ne sera jamais atteinte en partie : c'est une sécurité.
+- **Stress tests *(D190)* :** une **batterie de tests de charge** accompagnera tout le développement pour garantir ce plancher (à concevoir le moment venu).
 
 **Conséquence sur le code :** l'ancien code hérité d'un autre projet (`AUnitBase : ACharacter` avec un `AAIController` par unité, et ses Blueprints) a été **supprimé le 2026-10-07**. Le système d'unités légères part de zéro ; les ordres de déplacement, la sélection et le combat de base seront construits dessus.
 
@@ -1819,8 +1972,8 @@ Avant de créer les six factions complètes :
 | Niveaux de héros | 1 à 6 (paliers 0, 1 et 2) |
 | Duel | 1 |
 | Système de mort / résurrection | 1 |
-| Événement volcanique | ~~1~~ → **après le prototype** (D28) |
-| Condition de victoire | 1 |
+| Événement volcanique | **1** *(D205, revient au prototype pour l'option Catastrophe ; révise D28)* |
+| Mode et options *(D205)* | mode **Standard** (destruction du centre principal) + options **Nomade**, **Régicide** et **Catastrophe** (D204) |
 
 **Objectif :** tester si le jeu est amusant AVANT d'investir dans le contenu.
 
@@ -1835,7 +1988,7 @@ Avant de créer les six factions complètes :
 5. **Progression :** le niveau donne-t-il une sensation de progression sans ressembler à un système d'âges ?
 6. **Économie :** les ressources créent-elles suffisamment de décisions ?
 7. **Armée :** les combats restent-ils intéressants sans le héros ?
-8. **Volcan** *(après le prototype)* **:** l'événement crée-t-il une opportunité plutôt qu'une frustration ?
+8. **Volcan** *(au prototype, D205)* **:** l'événement crée-t-il une opportunité plutôt qu'une frustration ?
 9. **Snowball :** un avantage est-il puissant sans devenir irréversible ?
 10. **Factions :** chaque faction offre-t-elle une façon réellement différente de jouer ?
 
@@ -2121,6 +2274,42 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D175 | 2026-10-10 | Arbre des Héritiers — L'Enclume | **« La lignée tient »** : sceau *Trempe des serments* (Gardiens +1 armure ; Champion ~+10 % PV) ; talent clé *Exemple inébranlable* (l'aura *Exemple* donne aux alliés proches une *Résistance légendaire* atténuée, sans cumul avec celle des Gardiens ; jouable au prototype). La Flamme garde *Transmission* pour son talent clé. Écartés : *Cor des serments* (inutile avant le niveau 7, hors prototype), *Dernier debout* (héros seul, comeback frustrant). | § 13.6 |
 | D176 | 2026-10-10 | Arbre des Héritiers — La Flamme | **« La Chaleur qui circule »** : sceau *Flamme des pères* (Prêtres ~15 % plus vite formés ; *Transmission* ~−15 % de recharge) ; talent clé *Héritage vivant* (armes embrasées tant que l'unité combat, plafond ~15 s ; chaque coup rend un peu de Chaleur au Champion). Écartés : *Feu de la victoire* (banalise la récompense du duel, D47), *Flamme sacrée* (dépend des Prêtres). | § 13.6 |
 | D177 | 2026-10-10 | Arbre des Héritiers — Rangées 2 à 6 | **Grille validée avec amendements** (15 talents, § 13.6). Marteau : *Poigne héritée*, *Élan des Lames*, *Trempe rapide*, *Ascendant précoce*, *Braises*. Enclume : *Cuir de forge*, *Plates de lignée*, *Exemple tenace*, *Mépris d'acier*, *Mur de la lignée*. Flamme : *Encens de la forge*, *Prières ferventes*, *Flamme large*, *Gloire de la lignée*, *Feu des Prêtres*. Amendements de l'utilisateur : *Encens de la forge* donne +1 cible bénie à la fois (les bénédictions du Prêtre visent un nombre de cibles à sa portée, pas une zone) ; *Élan des Lames* passe de la distance de charge (« ne sert à rien ») aux dégâts de charge. | § 13.6 |
+| D178 | 2026-10-10 | Bloc 4 — Ordre | **Palier 3, puis rangées 7 à 9, puis transversal** : rôle du palier 3, tronc commun, spécialisations des 6 factions ; ensuite rangées 7 à 9 faction par faction (elles s'appuient sur le *Cor*, les capacités 3 et l'ultime) ; enfin interface (§ 15), modes secondaires (§ 14.3), événements futurs (§ 12.3). Écartés : rangées 7 à 9 d'abord, transversal d'abord. | § 22 |
+| D179 | 2026-10-10 | Palier 3 — Rôle | **« Finir ou renverser »** : tronc commun de fin de partie (siège lourd, poudre, technologies finales) ; pour chaque faction, deux spécialisations opposées, l'une pour conclure (percée, siège, pression), l'autre pour renverser (tenir, contre-attaquer). Choix fait en lisant l'état de la partie (§ 14.2). Vigilance : jamais de *rubber band* indexé sur le retard. Écartés : « Finir la partie » (boule de neige), « L'apogée de l'identité » (Héritiers sans signature, montée en puissance). | § 9.5, § 14.2 |
+| D180 | 2026-10-10 | Palier 3 — Tronc commun | **Grille validée avec amendements** (§ 11.2) : Bastion, Trébuchet, Canon, Arquebusier ; Forge III, collecte III, *Fortifications*, *Balistique*, *Contrepoids*, *Levée de la garnison*, *Poudre raffinée*. **Règle (amendement de l'utilisateur) : aucune unité ne demande de recherche pour être débloquée, sauf contre-ordre** ; les unités arrivent avec le palier. **Révise D38** : la technologie « Armes à poudre » est supprimée. Rôle de la Fonderie à trancher. Poudre des Templiers : pas encore décidée. | § 6.1, § 7.1, § 11, § 11.2 |
+| D181 | 2026-10-10 | Palier 3 — Fonderie | **Supprimée** : sans la recherche « Armes à poudre » (D180), elle n'avait plus de rôle. *Poudre raffinée* passe à la Forge. Le palier 3 ouvre le *Bastion* et la spécialisation. Écartés : Fonderie bâtiment de production de la poudre (exception à D128), Fonderie bâtiment de technologies de la poudre (peu de contenu). | § 11.2 |
+| D182 | 2026-10-10 | Aube — Spécialisation palier 3 | **Le Jugement ou le Rempart** : *Autel du Jugement* (finir : *Jugement* moins cher, plus large, gros dégâts aux bâtiments) ou *Crypte des saints* (renverser : second pouvoir d'Honneur défensif au palier 3, contenu à préciser). Écartés pour l'Aube : « La procession ou les cloches » (*Reliquaire*, *Riposte de l'Aube*), **gardée comme piste pour les Templiers** ; « Le soleil ou le seuil » (choix de composition). | § 13.2 |
+| D183 | 2026-10-10 | Aube — Pouvoir de la *Crypte des saints* | ***Veille des saints*** : pendant ~10 s, aucun bâtiment d'une zone (centre compris) ne descend sous 1 PV ; paysans ~50 % plus rapides à réparer. Zone annoncée ; jamais les unités (distinct de *Dernier Rempart*). Écartés : *Rappel des fidèles* (mobilité forte, tension avec la *Bannière*), *Lumière des reliques* (proche de l'Archer de l'Aube et de la *Charge*). | § 13.2 |
+| D184 | 2026-10-10 | Légions — Spécialisation palier 3 | **L'Abomination ou le Cimetière** : *Fosse de suture* (finir : *Abomination*, siège vivant lent et cher, éclate en plusieurs cadavres à sa mort) ou *Cimetière maudit* (renverser : les ennemis morts dans une zone fixe autour de la base se relèvent en Squelettes temporaires, plafonnés). Écartés : « La marée ou la crypte » (recoupe la *Tour des nécromanciens*, héros seul), « La terre morte ou le cimetière » (corruption diffuse, proche de l'*Autel de sang*). | § 13.3 |
+| D185 | 2026-10-10 | Templiers — Palier 3 face à « Finir ou renverser » | **Maréchal et Beffroi pour finir, Sénéchal pour renverser** : le Sénéchal gagne la ***Contre-croisade*** (« les cloches ») : après un assaut repoussé contre une citadelle ou la base, sa mini-croisade est aussitôt disponible, ciblant le camp ou la base de l'attaquant. **Nuance de l'utilisateur : le *Reliquaire* en plus** (revient sur le rejet de la *Vraie Croix*, D133) ; emplacement et distinction avec le Porte-gonfanon à préciser. Écartés : exception « trois façons de finir », Reliquaire à la place du Beffroi. | § 13.7 |
+| D186 | 2026-10-10 | Templiers — Reliquaire | **Unité fixe du palier 3, hors commanderies** (débloquée avec le palier, D180) : char processionnel unique, lent, cher ; alliés proches +armure et ~+25 % de dégâts aux bâtiments et aux murs (pas de moral, distinct du Porte-gonfanon) ; avec une croisade, marche plus lente mais délai ~+20 %. **Nuances de l'utilisateur : non réparable ; sa perte n'applique pas *Désillusion*** (une relique, pas la Vraie Croix). Reconstructible après un long délai. Écartés : contingent automatique des croisades, capacité de citadelle. | § 13.7 |
+| D187 | 2026-10-10 | Templiers — Poudre | **Oui, poudre « maltaise »** (nuances de l'utilisateur) : *Arquebusier maltais* et *Canon maltais* (noms provisoires), **plus primitifs que le socle, donc moins forts**, et **intégrés à la croisade**. Justification : l'Ordre de Malte a connu la poudre. À préciser : statut (variante ou écart de statistiques) et forme de l'intégration à la croisade. Écartés : canon seul, pas de poudre. | § 7.1, § 11.2, § 13.7 |
+| D188 | 2026-10-10 | Templiers — Statut de la poudre maltaise | **Écart de statistiques, pas une variante** : unités du socle moins fortes et, *nuance de l'utilisateur*, **moins chères** ; nom et visuel propres, aucune capacité en plus (même procédé que la règle d'élite, D39). Règle des variantes respectée (Templiers : Frère convers seul ; rôle « Canon » : 2 variantes). Écartés : vraies variantes en exception, Arquebusier seul en variante. | § 7.1, § 13.7 |
+| D189 | 2026-10-10 | Templiers — Poudre maltaise dans la croisade | **Contingent maltais hors enveloppe** : à partir du palier 3, chaque croisade reçoit **3 Canons maltais et 5 Arquebusiers maltais** (*précision de l'utilisateur*), en plus de l'enveloppe de D139 (maximum ~48). Vigilance : croisade plus grosse à son sommet (D130), plafond de performance. Écartés : poudre dans l'enveloppe des Pèlerins, seulement par *Prendre la croix*. | § 13.7 |
+| D190 | 2026-10-10 | Performance — Plancher de sécurité | **Au minimum 2 000 unités simultanées** (exigence de l'utilisateur), même si cette valeur ne sera jamais atteinte : marge au-dessus du pire cas de population (~1 400, D03) et des unités hors population (croisades, serviteurs, invocations). **Batterie de stress tests** pendant tout le développement ; à détailler le moment venu. Complète D03 et D29. | § 5.3, § 16.4 |
+| D191 | 2026-10-10 | Dragon — Spécialisation palier 3 | **La tempête ou le nid** : *Cercle des invocateurs* (finir : rituel ***Météore***, trois Mages canalisent ~5 s, zone annoncée, gros dégâts aux bâtiments et aux murs, effet de l'élément des Mages) ou *Nids gardiens* (renverser : les Nids élémentaires projettent leur élément sur les ennemis proches ; feu brûle, glace ralentit sans immobiliser, foudre en chaîne ; changer l'élément change la défense, délai D72). Écartés : *Aire du wyrm* (largage aérien, transport), *Rempart de givre* (proche du *Rempart béni*). | § 13.4 |
+| D192 | 2026-10-10 | Ombre — Spécialisation palier 3 | **La tour livrée ou les passages** : *Chambre des traîtres* (finir : ***Tour livrée***, canalisation ~8 s d'un Maître des Ombres révélé contre une porte, tour ou mur, signal ~5 s, porte ouverte ou tour muette ~20 s ; jamais l'économie) ou *Passages secrets* (renverser : souterrains entre bâtiments du Cercle, sorties visibles, aucune vision). Écartés : *Base piégée* (recoupe l'*Atelier du piégeur*), « Le discours ou la retraite » (héros seul, camouflage de masse). | § 13.5 |
+| D193 | 2026-10-10 | Héritiers — Palier 3 | **Aucune spécialisation** (choix de l'utilisateur : « ils n'ont rien de plus, leurs stats feront la différence ») : tronc commun seul. Exception assumée à D07 et D179, cohérente avec D39 (4 combinaisons au lieu de 8). Vigilance : équilibrage de fin de partie par les seules statistiques. Écartés : « Le Cercle des Pairs ou le Foyer », « La Grande Bombarde ou le Foyer ». | § 9.5, § 13.6 |
+| D194 | 2026-10-10 | Arbres de talents — Règles des rangées 7 à 9 | **Continuité des rangées 4 à 6** : modifications de capacités, valeur comparable par rangée ; cibles : capacité 3 (niveau 7), capacités antérieures, contenu fixe de la faction ; jamais une spécialisation ; aucun talent sur l'ultime ; contenu du palier 3 seulement à la rangée 9. Écartés : « rangée de légende » sur l'ultime, transformation de la capacité 3 à la rangée 7. | § 9.6 |
+| D195 | 2026-10-10 | Arbre de l'Aube — Rangées 7 à 9 | **Grille validée** (9 talents, § 13.2). Gardien : *Bannière bénie*, *Rempart éternel*, *Jugement des assiégeants*. Capitaine : *Charge disciplinée*, *Ordre serré*, *Renforts aguerris*. Champion : *Fer de lance*, *Sentence publique*, *Verdict des armes*. | § 13.2 |
+| D196 | 2026-10-10 | Arbre des Légions — Rangées 7 à 9 | **Grille validée** (9 talents, § 13.3). Moisson : *Moisson des relevés*, *Frappe insatiable*, *Grand festin*. Charnier : *Relève nombreuse*, *Linceul*, *Ossuaire profond*. Effroi : *Relevés effrayants*, *Marque funeste*, *Bile maudite*. | § 13.3 |
+| D197 | 2026-10-10 | Arbre des Templiers — Rangées 7 à 9 | **Grille validée avec amendement** (12 talents, § 13.7). Croisade : *Croix de rappel*, *Haltes de pèlerins*, *Grande procession*. Chevalerie : *Sortie des chevaliers*, *Gonfanon haut*, *Règle de fer*. Trésor : *Compagnie aguerrie*, *Frères de la commanderie*, *Poudre payée comptant*. Citadelles : *Sortie prolongée*, *Mâchicoulis*, *Arsenal de la citadelle*. Amendement de l'utilisateur : *Sortie croisée* écartée (« la Sortie sert de défense ») ; *Colonne serrée* écartée au profit de *Croix de rappel*. | § 13.7 |
+| D198 | 2026-10-10 | Arbre du Dragon — Rangées 7 à 9 | **Grille validée** (9 talents, § 13.4). Le Ciel : *Cri perçant*, *Piqué foudroyant*, *Souffle adulte*. La Lignée : *Lame du wyrm*, *Garde d'honneur*, *Champions de la couvée*. La Mue : *Cri élémentaire*, *Mages harmoniques*, *Bond élémentaire*. | § 13.4 |
+| D199 | 2026-10-10 | Arbre de l'Ombre — Rangées 7 à 9 | **Grille validée** (9 talents, § 13.5). La Lame : *Sang-froid du Menteur*, *Lames promptes*, *Vraie menace aiguisée*. Le Miroir : *Serment élargi*, *Reflets tenaces*, *Mensonge mouvant*. La Toile : *Pose à distance*, *Poison lent*, *Pièges de siège*. | § 13.5 |
+| D200 | 2026-10-10 | Arbre des Héritiers — Rangées 7 à 9 | **Grille validée** (9 talents, § 13.6). Le Marteau : *Cor de guerre*, *Frappe chauffée à blanc*, *Bombarde de lignée*. L'Enclume : *Cor du rempart*, *Serment tenu*, *Arquebusiers gardés*. La Flamme : *Cor de la flamme*, *Bénédiction de la forge*, *Salve embrasée*. | § 13.6 |
+| D201 | 2026-10-10 | Interface — Structure du HUD | **Base AoE4 avec un emplacement de faction fixe** : barre du bas (mini-carte, sélection, commandes), ressources en haut, **bloc du héros permanent** (portrait, niveau, XP, vie, capacités, récupération ou duel), **emplacement de faction au même endroit pour les 6 factions** (Honneur, croisade, Ossuaire, élément, ordres, Chaleur). Écartés : livre de pouvoirs façon BFME, HUD minimal contextuel. | § 15 |
+| D202 | 2026-10-10 | Interface — Alertes | **Deux niveaux, plus signaux dans le monde** (options A et C retenues ensemble) : majeures (croisade contre vous, événement mondial, *Tour livrée*, attaque du centre) = bandeau en haut, voix d'un héraut de faction, ping, caméra au clic ; mineures = fil discret, ping, son par type. En plus : icônes animées sur la mini-carte et signaux sur le terrain (colonne de croisade, fumée d'événement, signal de *Tour livrée*). Le défi garde sa fenêtre (D117). Écarté : fil unique sans hiérarchie. | § 15 |
+| D203 | 2026-10-10 | Interface — Lecture de l'adversaire | **Inspection seulement** : fiche d'un héros, d'une unité ou d'un bâtiment adverse visible (héros : niveau, sceaux, talents clés) ; spécialisation reconnue à son bâtiment ou à son unité. Sans vision, rien. Écartés : carnet de renseignements (mémoire des observations), informations publiques (palier, spécialisations). | § 15 |
+| D204 | 2026-10-10 | Modes de jeu | **Standard avec options Nomade, Régicide et Catastrophe** (choix de l'utilisateur) ; Domination, Reliques et Scénario **après la création du prototype**. Règles de Nomade et de Régicide, calendrier des options : à préciser (Régicide : D206). | § 14.1, § 14.3 |
+| D205 | 2026-10-10 | Options de partie — Calendrier | **Nomade, Régicide et Catastrophe dans le prototype** (choix de l'utilisateur). **Révise D28** : le système d'événements mondiaux et le volcan (seul événement défini) entrent dans le prototype ; les autres événements restent pour après. Écartés : options conçues maintenant et développées après le prototype ; Nomade et Régicide seuls dans le prototype. | § 12.2 bis, § 14.3, § 17 |
+| D206 | 2026-10-10 | Option Régicide | **Un Roi façon AoE2** (définition de l'utilisateur) : unité qui apparaît près du centre principal au début de la partie, hors population, attaque de 1 ; **sa mort fait perdre le joueur**. Ce n'est pas le héros : héros, duel et résurrection inchangés (pas d'exception au § 14.1). Par défaut, à confirmer : jamais converti, retourné ni relevé. Écartés : « Trois couronnes », « Le roi tombe » (héros), « pas en duel ». | § 14.3 |
+| D207 | 2026-10-10 | Option Nomade | **Façon AoE2** : sans centre principal, travailleurs dispersés en petits groupes à des endroits aléatoires, de quoi construire un centre ; le héros apparaît avec un groupe ; en Régicide, **le Roi apparaît avec un travailleur** (nuance de l'utilisateur). Vigilance : distance minimale entre joueurs. Écarté : Nomade d'AoE4 (départ à la position habituelle). | § 14.3 |
+| D208 | 2026-10-10 | Option Catastrophe au prototype | **Le volcan seul, sur plus de sites** : 3 à 4 éruptions par partie, fenêtres plus précoces, **préavis inchangé** (60 à 90 s). Écartés : second événement au prototype (inondation), préavis raccourci (contraire au § 12.2). | § 12.2 bis, § 14.3 |
+| D209 | 2026-10-10 | Événements futurs | **Quatre événements contrastés, dans l'ordre** : inondation, invasion de monstres, ouverture d'une faille, tempête (sans retrait de vision). Reportés : séisme, incendie, créature, climat. **Retirée : corruption magique** (contraire à D40). Écartés : liste entière sans ordre ; événements d'opportunité seulement. | § 12.3 |
+| D210 | 2026-10-10 | Soigneur commun — Autres factions | **Légions sans soigneur** (elles recyclent : Squelettes, *Sacrifice* ; unités moins chères) ; **Dragon et Ombre : Moine commun** (apparence propre) ; **Héritiers : Moine commun en version élite** (×2), le Prêtre de la Flamme ne soigne pas directement. Complète D134. Écartés : *Embaumeur* (variante macabre des Légions), Moine commun pour tous. | § 7.1 |
+| D211 | 2026-10-10 | Soigneur commun — Bâtiment de production | **Une *Chapelle* commune** (nom provisoire), façon Monastère d'AoE4 : produit le soigneur, une ou deux technologies de soin, apparence par faction, absente chez les Légions. Palier : voir D212 (palier 1). Écartés : Caserne, centre principal. | § 7.1, § 11.1 |
+| D212 | 2026-10-10 | Soin — Palier | **Le soin commence au palier 1 (~6-8 min), jamais au palier 0** : la **Chapelle** est au **palier 1**, comme le Moine et le Moine Lumineux (D129, D134 inchangés sur ce point). Correction : l'utilisateur avait d'abord dit « palier 2 ou 3 », puis « pas de soin au palier 1, tout décalé au palier 2 », en comptant les paliers à partir de 1 ; après rappel du numérotage (palier 0 = début), il confirme le palier 1. Précise D211. | § 7.1, § 11.1 |
+| D213 | 2026-10-10 | Aube — *Lumière sacrée* au palier 0 | **Exception assumée** (l'utilisateur a d'abord répondu A, puis B) : *Lumière sacrée* **soigne dès le palier 0**, seule exception à « aucun soin au palier 0 » (D212). Pouvoir payé en Honneur, qui se gagne lentement en ouverture : effet rare ; identité défensive de l'Aube dès le début. Écarté : soin repoussé au palier 1. | § 13.2 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2129,7 +2318,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D178**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D214**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -2192,7 +2381,7 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 
 **ÉTAT AU 2026-10-07 — point de reprise pour la prochaine séance**
 
-- **Décisions prises :** D01 à D177. Prochain numéro : **D178**.
+- **Décisions prises :** D01 à D213. Prochain numéro : **D214**.
 - **Séance du 2026-10-07 (suite) : piste 3, arbres de talents (D08), choisie par l'utilisateur.** Questions dans l'ordre :
   1. ~~**Forme de l'arbre**~~ → **tranché (D103)** : rangées de 3 talents par niveau, sceau à 3 talents d'une famille, talent clé à 5.
   2. ~~**Nombre de familles**~~ → **tranché (D104)** : 3, sauf les Templiers (4, rangées de 4 talents).
@@ -2202,9 +2391,13 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 - **Séance du 2026-10-08 : finir entièrement le GDD avant le code** (demande de l'utilisateur). Ordre choisi : **le prototype d'abord** (option A).
   1. **Bloc 1 — Prototype (Aube, Légions) :** description du duel validée par l'utilisateur (D117 fenêtre de défi, D118 postures) ; ~~structure commune des kits de duel~~ → **tranché (D119)** ; ~~déplacement dans le cercle~~ → **tranché (D120)** ; ~~kit de duel du Paladin~~ → **tranché (D121)** ; ~~kit de duel du Seigneur~~ → **tranché (D122)** ; ~~spécialisations de l'Aube~~ → **tranché (D123, D124)** ; ~~purification~~ → **D125** (atténuation) ; ~~spécialisations des Légions~~ → **tranché (D126, D127)** ; ~~production militaire~~ → **tranché (D128)** ; ~~tronc commun des paliers 0 à 2~~ → **tranché (D129)**. **Bloc 1 terminé.** ; spécialisations des paliers 1 et 2 (D07) des deux factions ; bâtiments (tronc commun et propres) et arbre des technologies des paliers 0 à 2.
   2. **Bloc 2 — Templiers** (*en cours*) : ~~point fort (timing)~~ → **tranché (D130)** : solides en continu, sommet pendant une croisade. Commanderies : ~~mode de proposition~~ → **tranché (D131)** : 3 fixes par palier, 9 au total ; ~~structure~~ → **tranché (D132)** : trois voies Fer / Foi / Pierre, unités propres aux Templiers ; ~~grille des unités~~ → **D133** : 7 validées, Foi paliers 2 et 3 à remplacer ; ~~moine soigneur au socle~~ → **tranché (D134)** : oui, variantes multiples autorisées ; ~~voie de la Foi 2 et 3~~ → **tranché (D135)** : Prêcheur + Sénéchal (mini-croisade) ; ~~mini-croisade~~ → **tranché (D136)** : croisade en miniature, ~30 % max ; ~~cohérence du Maréchal~~ → **tranché (D137)** : contingent d'Escadron, recruté suivi par la croisade. **Grille des commanderies terminée.** ~~Récompenses de croisade~~ → **tranché (D138)** : XP modérée, recharge normale. ~~Plafond de croisade~~ → **tranché (D139)** : ~10 par commanderie, population propre ; mini-croisade dans la population du joueur. ~~Place des bonus~~ → **tranché (D140)** : enveloppe, surplus en vétérance. ~~Murs~~ → **tranché (D141)** : chemin normal, sinon attaque du mur. **Bloc 2 terminé (D130 à D141).** Valeurs (délai, or, tailles de contingent, % de mini-croisade) : fiche de valeurs, à régler en test.
-  3. **Bloc 3 — Autres factions** (Dragon, Ombre, Feu, Templiers) : arbres de talents, kits de duel détaillés, spécialisations de palier. **Ordre choisi (option A) : faction par faction, Templiers d'abord**, puis Dragon, Ombre, Feu. Templiers : kit de duel détaillé (gabarit D119), puis talents des 4 familles (D101). ~~Kit de duel du Grand Maître~~ → **tranché (D142)** : « Le Martyr ». Ensuite, arbre des Templiers, mêmes étapes que l'Aube : sceau et talent clé de chaque famille (Croisade, Chevalerie, Trésor, Citadelles), puis grille des rangées 2 à 6 (20 talents). ~~Croisade~~ → **D143** (« Dieu le veut »). ~~Chevalerie~~ → **D144** (« Frères du Temple »). ~~Trésor~~ → **D145** (« Les banquiers de la chrétienté »). ~~Les Citadelles~~ → **D146** (« Le réseau du Temple », camp hors croisades). **Sceaux et talents clés terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D147)**. **Templiers terminés (D142 à D147)**, hors rangées 7 à 9. **Enfants du Dragon (en cours)** : kit de duel détaillé (gabarit D119, éléments à la place des postures), puis spécialisations des paliers 1 et 2, puis arbre de talents (familles, sceaux et talents clés, rangées 2 à 6). ~~Kit de duel du Seigneur-Dragon~~ → **tranché (D148)** : « Le wyrm veille ». ~~Bêtes~~ → **tranché (D149)** : aucune bête dans la faction (spécialisations A et B du palier 1 à reproposer sans *Enclos des drakes*). ~~Troisième emblématique~~ → **tranché (D150)** : Garde d'écailles. ~~Palier 1~~ → **tranché (D151)** : les arcanes ou les écailles. ~~Palier 2~~ → **tranché (D152)** : le ciel ou le sol. **Spécialisations du Dragon terminées.** Ensuite, arbre de talents. ~~Familles~~ → **tranché (D153)** : Le Ciel, La Lignée, La Mue. ~~Le Ciel~~ → **D154** (« La Bête ailée »). ~~La Lignée~~ → **D155** (« Le sang du wyrm »). ~~La Mue~~ → **D156** (« L'instinct du wyrm »). **Sceaux et talents clés du Dragon terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D157)**. **Enfants du Dragon terminés (D148 à D157)**, hors rangées 7 à 9. **Cercle de l'Ombre (en cours)** : kit de duel détaillé, spécialisations des paliers 1 et 2, arbre de talents. ~~Kit de duel de la Voix~~ → **tranché (D158)** : « Le Menteur ». ~~Piégeur (unité jugée frustrante par l'utilisateur)~~ → **tranché (D159)** : « L'embuscade annoncée ». ~~Palier 1~~ → **tranché (D160)** : la bourse ou le terrain (palier 2 : la lame ou l'esprit). ~~Effet du *Comptoir*~~ → **tranché (D161)** : « Les ordres ». ~~Palier 2~~ → **tranché (D162)** : « Finir le travail ». **Spécialisations de l'Ombre terminées.** Arbre de talents : ~~familles~~ → **tranché (D163)** : La Lame, le Miroir, la Toile. ~~La Lame~~ → **D164** (« Le signal » ; *Mot d'arrêt* passe à la Lame). ~~Le Miroir~~ → **D165** (« La rumeur »). ~~La Toile~~ → **D166** (« L'appât »). **Sceaux et talents clés de l'Ombre terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D167)**. **Cercle de l'Ombre terminé (D158 à D167)**, hors rangées 7 à 9. **Héritiers du Feu (en cours)** : kit de duel détaillé (gabarit D119), spécialisations des paliers 1 et 2, arbre de talents (familles, sceaux et talents clés, rangées 2 à 6). ~~Kit de duel du Champion Héritier~~ → **tranché (D168)** : « Le Sans-pair ». ~~Palier 1~~ → **tranché (D169)** : le marteau ou l'enclume. ~~Cible de la *Résistance légendaire*~~ → **tranché (D170)** : le Gardien de la Forge. ~~Lame Ardente~~ → **tranché (D171)** : homme d'armes rapide avec une charge. ~~Palier 2~~ → **tranché (D172)** : la lame ou la flamme. **Spécialisations des Héritiers terminées.** Ensuite, arbre de talents. ~~Familles~~ → **tranché (D173)** : le Marteau, l'Enclume, la Flamme. Ensuite : sceau et talent clé de chaque famille, puis grille des rangées 2 à 6. ~~Le Marteau~~ → **D174** (« Le coup qui décide »). ~~L'Enclume~~ → **D175** (« La lignée tient »). ~~La Flamme~~ → **D176** (« La Chaleur qui circule »). **Sceaux et talents clés des Héritiers terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D177)**. **Héritiers du Feu terminés (D168 à D177)**, hors rangées 7 à 9. **Bloc 3 terminé.** *Question en cours : ordre du bloc 4*.
-  4. **Bloc 4 — Fin de partie et transversal :** rangées 7 à 9, palier 3, interface (§ 15), modes secondaires (§ 14.3), événements futurs (§ 12.3).
+  3. **Bloc 3 — Autres factions** (Dragon, Ombre, Feu, Templiers) : arbres de talents, kits de duel détaillés, spécialisations de palier. **Ordre choisi (option A) : faction par faction, Templiers d'abord**, puis Dragon, Ombre, Feu. Templiers : kit de duel détaillé (gabarit D119), puis talents des 4 familles (D101). ~~Kit de duel du Grand Maître~~ → **tranché (D142)** : « Le Martyr ». Ensuite, arbre des Templiers, mêmes étapes que l'Aube : sceau et talent clé de chaque famille (Croisade, Chevalerie, Trésor, Citadelles), puis grille des rangées 2 à 6 (20 talents). ~~Croisade~~ → **D143** (« Dieu le veut »). ~~Chevalerie~~ → **D144** (« Frères du Temple »). ~~Trésor~~ → **D145** (« Les banquiers de la chrétienté »). ~~Les Citadelles~~ → **D146** (« Le réseau du Temple », camp hors croisades). **Sceaux et talents clés terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D147)**. **Templiers terminés (D142 à D147)**, hors rangées 7 à 9. **Enfants du Dragon (en cours)** : kit de duel détaillé (gabarit D119, éléments à la place des postures), puis spécialisations des paliers 1 et 2, puis arbre de talents (familles, sceaux et talents clés, rangées 2 à 6). ~~Kit de duel du Seigneur-Dragon~~ → **tranché (D148)** : « Le wyrm veille ». ~~Bêtes~~ → **tranché (D149)** : aucune bête dans la faction (spécialisations A et B du palier 1 à reproposer sans *Enclos des drakes*). ~~Troisième emblématique~~ → **tranché (D150)** : Garde d'écailles. ~~Palier 1~~ → **tranché (D151)** : les arcanes ou les écailles. ~~Palier 2~~ → **tranché (D152)** : le ciel ou le sol. **Spécialisations du Dragon terminées.** Ensuite, arbre de talents. ~~Familles~~ → **tranché (D153)** : Le Ciel, La Lignée, La Mue. ~~Le Ciel~~ → **D154** (« La Bête ailée »). ~~La Lignée~~ → **D155** (« Le sang du wyrm »). ~~La Mue~~ → **D156** (« L'instinct du wyrm »). **Sceaux et talents clés du Dragon terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D157)**. **Enfants du Dragon terminés (D148 à D157)**, hors rangées 7 à 9. **Cercle de l'Ombre (en cours)** : kit de duel détaillé, spécialisations des paliers 1 et 2, arbre de talents. ~~Kit de duel de la Voix~~ → **tranché (D158)** : « Le Menteur ». ~~Piégeur (unité jugée frustrante par l'utilisateur)~~ → **tranché (D159)** : « L'embuscade annoncée ». ~~Palier 1~~ → **tranché (D160)** : la bourse ou le terrain (palier 2 : la lame ou l'esprit). ~~Effet du *Comptoir*~~ → **tranché (D161)** : « Les ordres ». ~~Palier 2~~ → **tranché (D162)** : « Finir le travail ». **Spécialisations de l'Ombre terminées.** Arbre de talents : ~~familles~~ → **tranché (D163)** : La Lame, le Miroir, la Toile. ~~La Lame~~ → **D164** (« Le signal » ; *Mot d'arrêt* passe à la Lame). ~~Le Miroir~~ → **D165** (« La rumeur »). ~~La Toile~~ → **D166** (« L'appât »). **Sceaux et talents clés de l'Ombre terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D167)**. **Cercle de l'Ombre terminé (D158 à D167)**, hors rangées 7 à 9. **Héritiers du Feu (en cours)** : kit de duel détaillé (gabarit D119), spécialisations des paliers 1 et 2, arbre de talents (familles, sceaux et talents clés, rangées 2 à 6). ~~Kit de duel du Champion Héritier~~ → **tranché (D168)** : « Le Sans-pair ». ~~Palier 1~~ → **tranché (D169)** : le marteau ou l'enclume. ~~Cible de la *Résistance légendaire*~~ → **tranché (D170)** : le Gardien de la Forge. ~~Lame Ardente~~ → **tranché (D171)** : homme d'armes rapide avec une charge. ~~Palier 2~~ → **tranché (D172)** : la lame ou la flamme. **Spécialisations des Héritiers terminées.** Ensuite, arbre de talents. ~~Familles~~ → **tranché (D173)** : le Marteau, l'Enclume, la Flamme. Ensuite : sceau et talent clé de chaque famille, puis grille des rangées 2 à 6. ~~Le Marteau~~ → **D174** (« Le coup qui décide »). ~~L'Enclume~~ → **D175** (« La lignée tient »). ~~La Flamme~~ → **D176** (« La Chaleur qui circule »). **Sceaux et talents clés des Héritiers terminés.** ~~Grille des rangées 2 à 6~~ → **tranché (D177)**. **Héritiers du Feu terminés (D168 à D177)**, hors rangées 7 à 9. **Bloc 3 terminé.**
+  4. **Bloc 4 — Fin de partie et transversal** (*en cours*) : rangées 7 à 9, palier 3, interface (§ 15), modes secondaires (§ 14.3), événements futurs (§ 12.3). ~~Ordre~~ → **tranché (D178)** : palier 3 d'abord (rôle du palier, tronc commun, puis spécialisation des 6 factions), puis rangées 7 à 9 faction par faction, puis interface, modes et événements. ~~Rôle du palier 3~~ → **tranché (D179)** : « Finir ou renverser ». ~~Tronc commun du palier 3~~ → **tranché (D180)** : grille validée (§ 11.2) ; unités débloquées avec le palier, sans recherche. ~~Fonderie~~ → **tranché (D181)** : supprimée, *Poudre raffinée* à la Forge. Ensuite, spécialisations du palier 3, faction par faction : Aube, Légions, Templiers (avec leur poudre), Dragon, Ombre, Feu. ~~Aube, palier 3~~ → **tranché (D182)** : le Jugement ou le Rempart. ~~Pouvoir de la Crypte~~ → **tranché (D183)** : *Veille des saints*. ~~Légions, palier 3~~ → **tranché (D184)** : l'Abomination ou le Cimetière. ~~Templiers, palier 3~~ → **tranché (D185)** : Maréchal et Beffroi pour finir, Sénéchal pour renverser (*Contre-croisade*), avec le *Reliquaire* en plus. ~~Emplacement du Reliquaire~~ → **tranché (D186)** : unité fixe du palier 3, non réparable, sans *Désillusion*. ~~Poudre des Templiers~~ → **tranché (D187)** : poudre maltaise, plus primitive, intégrée à la croisade. ~~Statut de la poudre maltaise~~ → **tranché (D188)** : écart de statistiques, moins chère. ~~Poudre maltaise dans la croisade~~ → **tranché (D189)** : contingent hors enveloppe, 3 Canons et 5 Arquebusiers. **Templiers, palier 3 terminé.** ~~Dragon, palier 3~~ → **tranché (D191)** : la tempête ou le nid. ~~Ombre, palier 3~~ → **tranché (D192)** : la tour livrée ou les passages. ~~Héritiers, palier 3~~ → **tranché (D193)** : aucune spécialisation, leurs statistiques font la différence. **Spécialisations du palier 3 terminées (D179 à D193).** Ensuite, rangées 7 à 9, faction par faction (Aube, Légions, Templiers, Dragon, Ombre, Feu). ~~Règles des rangées 7 à 9~~ → **tranché (D194)** : continuité des rangées 4 à 6 (§ 9.6). ~~Aube, rangées 7 à 9~~ → **tranché (D195)**. ~~Légions, rangées 7 à 9~~ → **tranché (D196)**. ~~Templiers, rangées 7 à 9~~ → **tranché (D197)**. ~~Dragon, rangées 7 à 9~~ → **tranché (D198)**. ~~Ombre, rangées 7 à 9~~ → **tranché (D199)**. ~~Héritiers, rangées 7 à 9~~ → **tranché (D200)**. **Arbres de talents complets pour les 6 factions (rangées 2 à 9).** Ensuite, transversal : interface (§ 15), modes secondaires (§ 14.3), événements futurs (§ 12.3). Interface : ~~structure du HUD~~ → **tranché (D201)**. ~~Alertes~~ → **tranché (D202)** : deux niveaux, héraut de faction, plus signaux dans le monde et sur la mini-carte. ~~Lecture de l'adversaire~~ → **tranché (D203)** : inspection seulement. ~~Modes~~ → **tranché (D204)** : Standard avec options Nomade, Régicide, Catastrophe ; le reste après le prototype. ~~Calendrier des options~~ → **tranché (D205)** : les trois dans le prototype (révise D28 : système d'événements et volcan au prototype). ~~Régicide~~ → **tranché (D206)** : un Roi près du centre, hors population, attaque 1 ; sa mort fait perdre. ~~Nomade~~ → **tranché (D207)** : façon AoE2, le Roi apparaît avec un travailleur. **Options de partie terminées.** ~~Catastrophe au prototype~~ → **tranché (D208)** : volcan seul, 3 à 4 éruptions, préavis inchangé. ~~Événements futurs~~ → **tranché (D209)** : inondation, invasion de monstres, faille, tempête. **Bloc 4 terminé (D178 à D209). Les 4 blocs de conception sont terminés.** **Pistes notées pour les Templiers (palier 3)** : « La procession ou les cloches » (*Reliquaire*, *Cloches* et *Riposte*, proposée pour l'Aube, jugée « parfaite pour les Templiers » par l'utilisateur), à confronter aux commanderies du palier 3 déjà fixées (Maréchal, Sénéchal, Beffroi, D133, D135) et au principe D179 ; poudre : Ordre de Malte (voir § 11.2).
   - Les valeurs chiffrées restent pour la fiche de valeurs (à régler en test).
+- **Séance du 2026-10-10 : blocs 3 et 4 terminés (D168 à D209).** Héritiers du Feu (D168 à D177) ; palier 3 « Finir ou renverser » (D179 à D193) ; rangées 7 à 9 des 6 factions (D194 à D200) ; interface (D201 à D203) ; modes et options (D204 à D208) ; événements futurs (D209) ; performance : plancher de 2 000 unités et stress tests (D190). **Toute la conception prévue est faite.** Restes ouverts :
+  1. ~~Soigneur des autres factions~~ → **tranché (D210)** : Légions sans soigneur, Moine commun ailleurs (élite chez les Héritiers). ~~Bâtiment du Moine~~ → **tranché (D211)** : une *Chapelle* commune. ~~Palier de la Chapelle~~ → **tranché (D212)** : soin à partir du palier 1, Chapelle au palier 1. ~~Lumière sacrée~~ → **tranché (D213)** : exception assumée, elle soigne dès le palier 0. **Plus aucun point de conception ouvert** (hors valeurs à régler en test).
+  2. Courbe d'XP (Q04) et toutes les valeurs « à régler en test » : fiche de valeurs.
+  3. Batterie de stress tests (D190) : à concevoir le moment venu.
 - **Code :** l'ancien code (classes C++ de gameplay et `Content/Blueprints`) a été supprimé et commité. Le module `MyCrusader` est vide et compile. À la première ouverture dans l'éditeur, `BattleMap` peut signaler des acteurs dont la classe n'existe plus : les supprimer et enregistrer la carte.
 - **Pistes pour la suite, au choix de l'utilisateur :**
   1. **Premier chantier de code :** système d'unités légères (D29, § 16.4) : lire le projet, rédiger un plan (Mass Entity ou gestionnaire maison), le valider avant d'écrire du code.
