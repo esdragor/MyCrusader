@@ -1931,7 +1931,7 @@ Le multijoueur jusqu'à 8 joueurs, humains et IA mélangés, est une cible dès 
 
 - **Le serveur fait autorité.** Il peut être hébergé par un joueur, puis devenir un serveur dédié plus tard. L'IA tourne sur le serveur, ce qui facilite les emplacements IA et la reprise d'un joueur déconnecté (fenêtre de reconnexion, D71, § 14.4).
 - **Unités ordinaires = entités légères**, pas des `ACharacter` :
-  - simulées sur le serveur (piste : **Mass Entity** d'Unreal, ou un gestionnaire maison) ;
+  - simulées sur le serveur, avec une **architecture hybride *(D215)*** : **Mass** pour le cœur (stockage des entités, traitements multicœurs, suivi de chemin sur le navmesh, évitement, représentation en instances avec niveaux de détail, StateTree pour les comportements) et une **couche RTS maison** (ordres de groupe et formations, combat, réplication compacte via Iris, brouillard de guerre). Garde-fou : un essai d'environ deux jours ouvre le chantier (2 000 entités en mouvement sur le navmesh, affichées en instances) ; si Mass résiste trop, repli sur un gestionnaire maison orienté données ;
   - répliquées sous forme compacte (positions et états compressés), interpolées côté client ;
   - affichées en **instances** avec des animations optimisées (animation par textures de sommets, ou équivalent).
 - **Héros, bâtiments et engins de siège = acteurs classiques avec GAS.** Ils sont peu nombreux : GAS reste utilisé là où il compte (capacités, duels, auras).
@@ -1951,6 +1951,39 @@ Les remparts praticables (D24) imposent une navigation à deux niveaux : le sol 
 - Cette navigation est **mise à jour dynamiquement** à la construction et à la destruction de chaque segment.
 - Elle doit fonctionner avec les **unités légères** (D29), pas seulement avec les `ACharacter` d'Unreal.
 - C'est un chantier technique prioritaire du prototype, à valider tôt : performance avec ~1 400 unités et des murs étendus.
+
+### 16.6 Premier chantier : unités légères *(D214 à D218, plan validé)*
+
+Principe : la **simulation** fait autorité (serveur) et reste séparée de la **présentation** (ce que voit le client, interpolé). Les ordres passent toujours par une file de commandes, même en solo.
+
+**Fréquence *(D217)* :** la simulation (Mass et couche RTS) tourne à **pas fixe de 20 Hz**, indépendamment des images par seconde de l'hôte ; le client interpole à la fréquence de l'écran. Les états sont envoyés à 10 ou 20 Hz selon le budget mesuré à M2.5. La fréquence est un réglage de configuration.
+
+| Étape | Contenu | Stress test |
+|---|---|---|
+| **M0** | Migration en 5.8 (D214), modules et plugins, carte de test, nettoyage de `BattleMap` | |
+| **M1** | Essai Mass (~2 jours, D215), puis cœur de la simulation : entités, identifiants stables, apparition et disparition, `UnitData` | S1 : 2 000 unités immobiles |
+| **M2** | Rendu : instances par type et par joueur, animations cuites dans des textures, interpolation | S2 : 2 000 unités en marche |
+| **M2.5** | Tranche réseau (D216) : réplication des positions et états via Iris, serveur hébergé + 2 clients | S5 : bande passante à 2 000 unités en mouvement |
+| **M3** | Déplacement : chemins sur le navmesh, ordres de groupe et formations, évitement | S2 |
+| **M4** | Sélection, ordres de déplacement et d'attaque, groupes de contrôle | |
+| **M5** | Combat de base : cible, mêlée, tir, dégâts et armure, mort, cadavres (D86) | S3 : 1 000 contre 1 000 en mêlée ; S4 : armées mixtes |
+| **M6** | Réseau complet : ordres, interpolation, 8 clients | S5 à 8 clients |
+| **M7** | Brouillard de guerre appliqué par le serveur | |
+| **M8** | Remparts : navigation sur deux niveaux (§ 16.5) | S6 : siège avec murs étendus |
+
+**Seuils des stress tests *(D218, niveau exigeant)*** — machine de référence : le poste de développement (Ryzen 7 5700X, RTX 5060 Ti, 64 Go) ; scénarios S1 à S6 à 2 000 unités :
+
+| Mesure | Seuil |
+|---|---|
+| Simulation serveur (tick de 50 ms) | ≤ 3 ms en moyenne |
+| Rendu client (1080p, qualité haute, 2 000 unités à l'écran) | ≥ 144 i/s |
+| Bande passante par client | ≤ 32 Ko/s |
+| Envoi de l'hôte (7 clients) | ≤ ~225 Ko/s |
+| Mémoire | mesurée et suivie, sans seuil |
+
+Un seuil dépassé bloque l'étape. Un seuil ne se révise que par une décision consignée au journal, jamais en silence. Valeurs indicatives, à régler en test.
+
+À partir de M2.5, une vérification à 2 clients doit passer à la fin de chaque étape. Les stress tests se lancent par une commande console sur une carte dédiée ; ils mesurent le temps de simulation par tick, les images par seconde, la bande passante par client et la mémoire. Héros, bâtiments et passerelle avec GAS viennent après M8.
 
 ---
 
@@ -2313,6 +2346,10 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D212 | 2026-10-10 | Soin — Palier | **Le soin commence au palier 1 (~6-8 min), jamais au palier 0** : la **Chapelle** est au **palier 1**, comme le Moine et le Moine Lumineux (D129, D134 inchangés sur ce point). Correction : l'utilisateur avait d'abord dit « palier 2 ou 3 », puis « pas de soin au palier 1, tout décalé au palier 2 », en comptant les paliers à partir de 1 ; après rappel du numérotage (palier 0 = début), il confirme le palier 1. Précise D211. | § 7.1, § 11.1 |
 | D213 | 2026-10-10 | Aube — *Lumière sacrée* au palier 0 | **Exception assumée** (l'utilisateur a d'abord répondu A, puis B) : *Lumière sacrée* **soigne dès le palier 0**, seule exception à « aucun soin au palier 0 » (D212). Pouvoir payé en Honneur, qui se gagne lentement en ouverture : effet rare ; identité défensive de l'Aube dès le début. Écarté : soin repoussé au palier 1. | § 13.2 |
 | D214 | 2026-10-10 | Technique — Version du moteur | **Migration vers Unreal Engine 5.8** (dernier correctif 5.8.x) avant le premier chantier de code, puisque le module de code est vide : Iris (réplication) prêt pour la production, Mass refondu avec suivi de chemin sur le navmesh, navmesh plus économe. 5.8 est la dernière version d'Unreal 5 (accès anticipé à Unreal 6 annoncé fin 2027) : c'est la version de travail du prototype. Assets réenregistrés au format 5.8 (irréversible, historique dans git). Rouvre la question Mass ou gestionnaire maison. | § 16 |
+| D215 | 2026-10-10 | Technique — Moteur de simulation des unités | **Hybride** : Mass (cœur : entités, traitements, suivi de navmesh, évitement, représentation en instances, StateTree) + couche RTS maison (ordres de groupe et formations, combat, réplication via Iris, brouillard de guerre). Tout-Mass écarté (MassReplication sans filtrage par brouillard) ; tout-maison gardé en repli si l'essai de départ (~2 jours, 2 000 entités sur le navmesh, rendu en instances) échoue. Précise D29. | § 16.4 |
+| D216 | 2026-10-10 | Technique — Calendrier du réseau | **Tranche réseau minimale tôt, puis gardée en vie** : architecture prête pour le réseau dès M1 (simulation séparée de la présentation, file de commandes) ; étape **M2.5** juste après le rendu : réplication des positions et états via Iris, serveur hébergé + 2 clients, mesure de bande passante à 2 000 unités en mouvement. Ensuite, développement en solo, mais une vérification à 2 clients doit passer à la fin de chaque étape. Le brouillard (M7) se branche sur ce socle. | § 16.6 |
+| D217 | 2026-10-10 | Technique — Fréquence de simulation | **Pas fixe à 20 Hz** (50 ms) pour toute la simulation (Mass et couche RTS), piloté par un accumulateur et indépendant des images par seconde de l'hôte ; le client interpole à la fréquence de l'écran ; envoi des états à 10 ou 20 Hz selon le budget mesuré à M2.5. Fréquence réglable en configuration (essais à 15 ou 30 Hz possibles). Stress tests mesurés en millisecondes par tick. | § 16.6 |
+| D218 | 2026-10-10 | Technique — Seuils des stress tests | **Niveau exigeant** (choix de l'utilisateur, contre la recommandation « avec marge ») ; machine de référence = poste de développement (Ryzen 7 5700X, RTX 5060 Ti, 64 Go), scénarios S1 à S6 à 2 000 unités : simulation serveur **≤ 3 ms** en moyenne par tick de 50 ms ; rendu client **≥ 144 i/s** (1080p, qualité haute, 2 000 unités à l'écran) ; bande passante **≤ 32 Ko/s** par client ; envoi de l'hôte **≤ ~225 Ko/s** (7 clients). Un seuil dépassé bloque l'étape ; un seuil ne se révise que par une décision consignée au journal. Mémoire mesurée et suivie, sans seuil. Valeurs indicatives, à régler en test. | § 16.6 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2321,7 +2358,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D215**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D219**), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 
@@ -2412,4 +2449,4 @@ Questions de cohérence à trancher, dans cet ordre (numéros D à partir de **D
 
 **Premier chantier de code identifié :** construire le système d'unités légères (D29, § 16.4). L'ancien code (`AUnitBase : ACharacter` et ses Blueprints) a été supprimé le 2026-10-07.
 
-**Séance du 2026-10-10 (suite) : chantier de code ouvert.** L'utilisateur a choisi le premier chantier de code (unités légères, D29), avec la batterie de stress tests (D190) intégrée au plan, plutôt que la fiche de valeurs (gardée pour quand le prototype tournera, avec des valeurs provisoires dans les Data Tables). Plan technique en cours de validation, question par question : ~~version du moteur~~ → **tranché (D214)** : migration vers Unreal 5.8 ; **moteur de simulation** (Mass Entity, gestionnaire maison ou hybride, à revoir avec la 5.8 ; recommandation : hybride validé par un essai court) *(en cours)*, puis calendrier du réseau, fréquence de simulation, machine de référence et seuils des stress tests.
+**Séance du 2026-10-10 (suite) : chantier de code ouvert.** L'utilisateur a choisi le premier chantier de code (unités légères, D29), avec la batterie de stress tests (D190) intégrée au plan, plutôt que la fiche de valeurs (gardée pour quand le prototype tournera, avec des valeurs provisoires dans les Data Tables). Plan technique en cours de validation, question par question : ~~version du moteur~~ → **tranché (D214)** : migration vers Unreal 5.8 ; ~~moteur de simulation~~ → **tranché (D215)** : hybride Mass + couche RTS maison, validé par un essai de départ ; ~~calendrier du réseau~~ → **tranché (D216)** : tranche réseau M2.5, plan au § 16.6 ; ~~fréquence de simulation~~ → **tranché (D217)** : pas fixe à 20 Hz ; ~~machine de référence et seuils des stress tests~~ → **tranché (D218)** : niveau exigeant. **Plan validé (D214 à D218, § 16.6).** Migration en 5.8.2 faite (moteur installé dans `C:/UE/UE_5.8_AS_1`, `Target.cs` passés en `BuildSettingsVersion.V7` et `Unreal5_8`), l'éditeur s'ouvre. Prochaine étape : fin de M0 (modules et plugins Mass, carte de test), puis l'essai Mass de M1.
