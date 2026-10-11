@@ -1,0 +1,3 @@
+Name,DisplayName,Radius,Speed,MaxHealth,AvoidanceDistance,Mesh,MeshYawOffset
+LightInfantry,Light infantry,40,300,100,250,/Game/Units/Mannequin/SM_Mannequin.SM_Mannequin,-90
+Archer,Archer,35,280,80,220,/Game/Units/Mannequin/SM_Mannequin.SM_Mannequin,-90

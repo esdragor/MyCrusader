@@ -30,8 +30,18 @@ struct FMCSimulationStepStats
 	int32 NumDroppedFrames = 0;
 	/** Per processor, in pipeline order. */
 	TArray<FMCSimulationProcessorStats> Processors;
+	/**
+	 * Births and destructions (D224): they are not processors, they run at the head and the tail of the step
+	 * because Mass forbids the synchronous entity API inside a processor's execution scope.
+	 */
+	double TotalBirthMs = 0.0;
+	int32 NumUnitsBorn = 0;
+	double TotalDestructionMs = 0.0;
+	int32 NumUnitsDestroyed = 0;
 
 	double GetAverageMs() const { return NumSteps > 0 ? TotalMs / NumSteps : 0.0; }
+	double GetAverageBirthMs() const { return NumSteps > 0 ? TotalBirthMs / NumSteps : 0.0; }
+	double GetAverageDestructionMs() const { return NumSteps > 0 ? TotalDestructionMs / NumSteps : 0.0; }
 };
 
 /**

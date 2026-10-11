@@ -13,6 +13,7 @@
 #include "MassSimulationSubsystem.h"
 #include "MyCrusaderLog.h"
 #include "Simulation/MCSimulationSettings.h"
+#include "Simulation/MCUnitSubsystem.h"
 
 namespace UE::MyCrusader::Simulation
 {
@@ -138,6 +139,14 @@ void UMCSimulationSubsystem::RunStep()
 {
 	const double StartSeconds = FPlatformTime::Seconds();
 
+	// Births are served at the head of the step and destructions applied at its tail (D224): neither is a
+	// processor, because Mass forbids the synchronous entity API inside a processor's execution scope. The
+	// step is the unit of the simulation (D219), so they belong to it.
+	UMCUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UMCUnitSubsystem>() : nullptr;
+	const double BirthStartSeconds = FPlatformTime::Seconds();
+	const int32 NumUnitsBorn = Units ? Units->ServeBirthRequests() : 0;
+	const double BirthMs = (FPlatformTime::Seconds() - BirthStartSeconds) * 1000.0;
+
 	{
 		FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
 		const TConstArrayView<TObjectPtr<UMassProcessor>> Processors = StepPipeline.GetProcessors();
@@ -159,11 +168,19 @@ void UMCSimulationSubsystem::RunStep()
 		}
 	}
 
+	const double DestructionStartSeconds = FPlatformTime::Seconds();
+	const int32 NumUnitsDestroyed = Units ? Units->FlushDestructions() : 0;
+	const double DestructionMs = (FPlatformTime::Seconds() - DestructionStartSeconds) * 1000.0;
+
 	const double StepMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.0;
 	++StepIndex;
 	++StepStats.NumSteps;
 	StepStats.TotalMs += StepMs;
 	StepStats.MaxMs = FMath::Max(StepStats.MaxMs, StepMs);
+	StepStats.TotalBirthMs += BirthMs;
+	StepStats.NumUnitsBorn += NumUnitsBorn;
+	StepStats.TotalDestructionMs += DestructionMs;
+	StepStats.NumUnitsDestroyed += NumUnitsDestroyed;
 }
 
 void UMCSimulationSubsystem::RegisterProcessorStats(const TConstArrayView<TObjectPtr<UMassProcessor>> Processors)

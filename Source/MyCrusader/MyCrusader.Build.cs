@@ -32,7 +32,6 @@ public class MyCrusader : ModuleRules
 			"StateTreeModule",
 			"MassAIBehavior",
 			"NavigationSystem",
-			"NavCorridor",
 			"AIModule",
 		});
 

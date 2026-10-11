@@ -2,49 +2,53 @@
 
 #include "StressTest/MCStressTestSubsystem.h"
 
-#include "Avoidance/MassNavigationObstacleTrait.h"
+#include "Commands/MCCommandSubsystem.h"
+#include "DynamicRHI.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
-#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
-#include "DynamicRHI.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformMemory.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "MassEntityConfigAsset.h"
-#include "MassEntitySubsystem.h"
-#include "MassLODTrait.h"
-#include "MassMovableVisualizationTrait.h"
-#include "MassNavMeshNavigationTrait.h"
-#include "MassNavigationFragments.h"
-#include "MassSpawnerSubsystem.h"
-#include "MassSpawnerTypes.h"
-#include "MassSpawnLocationProcessor.h"
 #include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
+#include "MassNavigationFragments.h"
 #include "MassRepresentationFragments.h"
-#include "Movement/MassMovementTrait.h"
 #include "MyCrusaderLog.h"
 #include "NavigationSystem.h"
 #include "RenderTimer.h"
-#include "Simulation/MCLightUnitAvoidanceTrait.h"
-#include "Simulation/MCLightUnitTrait.h"
 #include "Simulation/MCSimulationFragments.h"
 #include "Simulation/MCSimulationSubsystem.h"
-#include "SmoothOrientation/MassSmoothOrientationTrait.h"
-#include "Steering/MassSteeringTrait.h"
+#include "Simulation/MCUnitSubsystem.h"
 #include "UnrealClient.h"
 #include "Widgets/SWindow.h"
 
 namespace UE::MyCrusader::StressTest
 {
 	constexpr float WarmUpSeconds = 3.f;
+	/** Time granted to the last fixed steps after the run asked to quit, so the units are destroyed (D224). */
+	constexpr float QuitDelaySeconds = 0.5f;
 	/** Units appear on the navmesh within this radius of the map centre. */
 	float SpawnRadius = 8000.f;
 	FAutoConsoleVariableRef CVarSpawnRadius(TEXT("mc.StressTest.SpawnRadius"), SpawnRadius,
 		TEXT("Radius (cm) around the map centre where stress test units appear: sets the crowd density"));
-	const TCHAR* MeshPath = TEXT("/Game/Units/Mannequin/SM_Mannequin.SM_Mannequin");
+
+	/** Type of the units of a run: a row of the unit type table (D221). */
+	FString UnitType = TEXT("LightInfantry");
+	FAutoConsoleVariableRef CVarUnitType(TEXT("mc.StressTest.UnitType"), UnitType,
+		TEXT("Row of /Game/Units/UnitTypes used by the stress test"));
+
+	/** S2 walks by move orders (D229): a unit is ordered a new destination within this radius of itself. */
+	float OrderRadius = 3000.f;
+	FAutoConsoleVariableRef CVarOrderRadius(TEXT("mc.StressTest.OrderRadius"), OrderRadius,
+		TEXT("Radius (cm) within which S2 picks the destination of a new move order"));
+
+	/** Orders issued per frame at most: the birth of 2 000 units must not order them all in one frame. */
+	int32 MaxOrdersPerFrame = 200;
+	FAutoConsoleVariableRef CVarMaxOrdersPerFrame(TEXT("mc.StressTest.MaxOrdersPerFrame"), MaxOrdersPerFrame,
+		TEXT("Move orders the stress test issues per frame at most"));
 
 	// D218 thresholds.
 	constexpr double MaxSimulationMs = 3.0;
@@ -65,7 +69,7 @@ namespace UE::MyCrusader::StressTest
 
 	FAutoConsoleCommandWithWorldAndArgs StartCommand(
 		TEXT("mc.StressTest"),
-		TEXT("mc.StressTest S1|S2 [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking on the navmesh (D190, D218)"),
+		TEXT("mc.StressTest S1|S2 [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UMCStressTestSubsystem* Subsystem = FindSubsystem(World);
@@ -110,16 +114,20 @@ bool UMCStressTestSubsystem::DoesSupportWorldType(const EWorldType::Type WorldTy
 
 void UMCStressTestSubsystem::Deinitialize()
 {
-	Units.Reset();
-	IdleConfig.Reset();
-	WanderConfig.Reset();
-	Traits.Reset();
+	UnitIds.Reset();
+	FrameTimes.Reset();
+	LocationsAtMeasureStart.Reset();
 	Super::Deinitialize();
 }
 
 TStatId UMCStressTestSubsystem::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UMCStressTestSubsystem, STATGROUP_Tickables);
+}
+
+UMCUnitSubsystem* UMCStressTestSubsystem::GetUnitSubsystem() const
+{
+	return GetWorld() ? GetWorld()->GetSubsystem<UMCUnitSubsystem>() : nullptr;
 }
 
 void UMCStressTestSubsystem::StartTest(const EMCStressScenario InScenario, const int32 InCount, const float InMeasureSeconds, const bool bInQuitWhenDone)
@@ -130,6 +138,7 @@ void UMCStressTestSubsystem::StartTest(const EMCStressScenario InScenario, const
 	Count = InCount;
 	MeasureSeconds = InMeasureSeconds;
 	bQuitWhenDone = bInQuitWhenDone;
+	UnitTypeName = FName(*UE::MyCrusader::StressTest::UnitType);
 
 	UsedPhysicalBeforeSpawn = FPlatformMemory::GetStats().UsedPhysical;
 	SpawnUnits();
@@ -137,8 +146,14 @@ void UMCStressTestSubsystem::StartTest(const EMCStressScenario InScenario, const
 
 	Phase = EPhase::WarmingUp;
 	PhaseElapsed = 0.f;
-	UE_LOG(LogMCStressTest, Display, TEXT("Stress test %s: %d units spawned, measuring for %.0f s after %.0f s of warm-up"),
-		UE::MyCrusader::StressTest::ToString(Scenario), Units.Num(), MeasureSeconds, UE::MyCrusader::StressTest::WarmUpSeconds);
+	if (UMCUnitSubsystem* Units = GetUnitSubsystem())
+	{
+		UnitIds = TArray<uint32>();
+		UE_LOG(LogMCStressTest, Display, TEXT("Stress test %s: %d units of type %s requested (D224: they are born on the following steps), measuring for %.0f s after %.0f s of warm-up"),
+			UE::MyCrusader::StressTest::ToString(Scenario), Count, *UnitTypeName.ToString(), MeasureSeconds, UE::MyCrusader::StressTest::WarmUpSeconds);
+		return;
+	}
+	UE_LOG(LogMCStressTest, Error, TEXT("No unit subsystem: nothing spawned"));
 }
 
 void UMCStressTestSubsystem::StopTest()
@@ -151,9 +166,32 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (bQuitPending)
+	{
+		// The units of the run were queued for destruction (D224), applied at the tail of the next fixed step:
+		// give the steps the time to do it, then report and leave.
+		QuitDelayElapsed += DeltaTime;
+		if (QuitDelayElapsed >= UE::MyCrusader::StressTest::QuitDelaySeconds)
+		{
+			bQuitPending = false;
+			if (const UMCUnitSubsystem* Units = GetUnitSubsystem())
+			{
+				UE_LOG(LogMCStressTest, Display, TEXT("Units left after the run: %d (D224: the queued destructions are applied at the tail of the step)"), Units->GetNumUnits());
+			}
+			UKismetSystemLibrary::QuitGame(GetWorld(), GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, /*bIgnorePlatformRestrictions*/ false);
+		}
+		return;
+	}
+
 	if (Phase == EPhase::Idle)
 	{
 		return;
+	}
+
+	// S2 walks by orders (D229): the units that arrived are given a new destination, warm-up included.
+	if (Scenario == EMCStressScenario::S2_Moving)
+	{
+		KeepUnitsWalking();
 	}
 
 	PhaseElapsed += DeltaTime;
@@ -193,109 +231,127 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 	}
 }
 
-const FMassEntityConfig& UMCStressTestSubsystem::GetOrCreateConfig(const bool bWander)
-{
-	TSharedPtr<FMassEntityConfig>& Config = bWander ? WanderConfig : IdleConfig;
-	if (Config.IsValid())
-	{
-		return *Config;
-	}
-
-	Config = MakeShared<FMassEntityConfig>(*this);
-
-	UMCLightUnitTrait* LightUnitTrait = NewObject<UMCLightUnitTrait>(this);
-	LightUnitTrait->bWander = bWander;
-
-	UMassMovableVisualizationTrait* VisualizationTrait = NewObject<UMassMovableVisualizationTrait>(this);
-	FMassStaticMeshInstanceVisualizationMeshDesc& MeshDesc = VisualizationTrait->StaticMeshInstanceDesc.Meshes.AddDefaulted_GetRef();
-	MeshDesc.Mesh = LoadObject<UStaticMesh>(nullptr, UE::MyCrusader::StressTest::MeshPath);
-	MeshDesc.bCastShadows = true;
-	// The mannequin faces +Y, Mass moves along +X.
-	VisualizationTrait->StaticMeshInstanceDesc.bUseTransformOffset = true;
-	VisualizationTrait->StaticMeshInstanceDesc.TransformOffset = FTransform(FRotator(0.f, -90.f, 0.f));
-	// Instances at every distance: D218 measures 2 000 units on screen.
-	for (int32 LODIndex = 0; LODIndex < EMassLOD::Max; ++LODIndex)
-	{
-		VisualizationTrait->Params.LODRepresentation[LODIndex] = LODIndex == EMassLOD::Off ? EMassRepresentationType::None : EMassRepresentationType::StaticMeshInstance;
-		VisualizationTrait->LODParams.LODMaxCount[LODIndex] = 5000; // above the 2 000 floor (D190)
-	}
-	VisualizationTrait->LODParams.BaseLODDistance[EMassLOD::Off] = 1000000.f;
-	VisualizationTrait->LODParams.VisibleLODDistance[EMassLOD::Off] = 1000000.f;
-
-	const TArray<UMassEntityTraitBase*> ConfigTraits = { LightUnitTrait,
-		NewObject<UMassMovementTrait>(this),
-		NewObject<UMassSteeringTrait>(this),
-		NewObject<UMCLightUnitAvoidanceTrait>(this),
-		NewObject<UMassNavigationObstacleTrait>(this),
-		NewObject<UMassSmoothOrientationTrait>(this),
-		NewObject<UMassNavMeshNavigationTrait>(this),
-		NewObject<UMassLODCollectorTrait>(this),
-		VisualizationTrait };
-	for (UMassEntityTraitBase* Trait : ConfigTraits)
-	{
-		Config->AddTrait(*Trait);
-		Traits.Add(Trait);
-	}
-	return *Config;
-}
-
 void UMCStressTestSubsystem::SpawnUnits()
 {
-	UWorld* World = GetWorld();
-	UMassSpawnerSubsystem* Spawner = World->GetSubsystem<UMassSpawnerSubsystem>();
-	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
-	UNavigationSystemV1* NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
-	if (!Spawner || !EntitySubsystem || !NavSystem)
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	if (Units == nullptr)
 	{
-		UE_LOG(LogMCStressTest, Error, TEXT("Mass or navigation missing: nothing spawned"));
 		return;
 	}
 
-	const FMassEntityTemplate& Template = GetOrCreateConfig(Scenario == EMCStressScenario::S2_Moving).GetOrCreateEntityTemplate(*World);
-
-	FMassTransformsSpawnData SpawnData;
-	SpawnData.bRandomize = false;
-	SpawnData.Transforms.Reserve(Count);
-	FRandomStream Random(/*Seed*/ 1066);
-	for (int32 Index = 0; Index < Count; ++Index)
-	{
-		FNavLocation Location;
-		if (!NavSystem->GetRandomPointInNavigableRadius(FVector::ZeroVector, UE::MyCrusader::StressTest::SpawnRadius, Location))
-		{
-			continue;
-		}
-		SpawnData.Transforms.Emplace(FRotator(0.f, Random.FRandRange(-180.f, 180.f), 0.f), Location.Location);
-	}
-
-	{
-		TSharedPtr<FMassEntityManager::FEntityCreationContext> CreationContext = Spawner->SpawnEntities(
-			Template.GetTemplateID(), SpawnData.Transforms.Num(), FConstStructView::Make(SpawnData), UMassSpawnLocationProcessor::StaticClass(), Units);
-	}
-
-	// Start interpolating from the spawn location, not from the origin.
-	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
-	for (const FMassEntityHandle Unit : Units)
-	{
-		EntityManager.GetFragmentDataChecked<FMCPreviousTransformFragment>(Unit).Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Unit).GetTransform();
-		// An immobile unit stands still, it does not walk at a null speed: Mass' moving avoidance skips the
-		// Stand action, so S1 measures what an idle unit really costs (Mass avoids the walkers instead).
-		if (Scenario == EMCStressScenario::S1_Idle)
-		{
-			EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Unit).CreateNewAction(EMassMovementAction::Stand, *World);
-		}
-	}
+	// The authority creates the units, spread over the following steps by the per-step budget (D224). The S1
+	// units are born standing still, which is what an immobile unit means (D220).
+	Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, Count, FVector::ZeroVector, UE::MyCrusader::StressTest::SpawnRadius });
 }
 
 void UMCStressTestSubsystem::DestroyUnits()
 {
-	if (Units.Num() > 0)
+	if (UnitIds.Num() > 0)
 	{
-		if (UMassSpawnerSubsystem* Spawner = GetWorld()->GetSubsystem<UMassSpawnerSubsystem>())
+		if (UMCUnitSubsystem* Units = GetUnitSubsystem())
 		{
-			Spawner->DestroyEntities(Units);
+			// Destruction is deferred to the end of the step (D224): the units disappear on the next step.
+			Units->RequestDestroyUnits(UnitIds);
 		}
 	}
-	Units.Reset();
+	UnitIds.Reset();
+}
+
+void UMCStressTestSubsystem::KeepUnitsWalking()
+{
+	using namespace UE::MyCrusader::StressTest;
+
+	UWorld* World = GetWorld();
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	UMCCommandSubsystem* Commands = World ? World->GetSubsystem<UMCCommandSubsystem>() : nullptr;
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UNavigationSystemV1* NavSystem = World ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr;
+	if (Units == nullptr || Commands == nullptr || EntitySubsystem == nullptr || NavSystem == nullptr)
+	{
+		return;
+	}
+
+	// Orders sit in the queue until the next fixed step applies them (D216, D219): one pass per step, otherwise
+	// a unit still standing would be given a new destination every frame until the step walks it.
+	const UMCSimulationSubsystem* Simulation = World->GetSubsystem<UMCSimulationSubsystem>();
+	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
+	if (StepIndex == LastOrderStepIndex)
+	{
+		return;
+	}
+	LastOrderStepIndex = StepIndex;
+
+	// While the births are served (D224), refresh the identifiers of this run: afterwards the list is stable
+	// and the measure compares the same units from start to end.
+	if (UnitIds.Num() < Count)
+	{
+		Units->GetUnitIdsOfType(UnitTypeName, UnitIds);
+	}
+
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	int32 OrdersLeft = MaxOrdersPerFrame;
+	for (const uint32 UnitId : UnitIds)
+	{
+		if (OrdersLeft <= 0)
+		{
+			break;
+		}
+
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		const FMCUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FMCUnitStateFragment>(Entity);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		if (State == nullptr || Transform == nullptr || State->Activity != EMCUnitActivity::Idle)
+		{
+			continue;
+		}
+
+		FNavLocation Destination;
+		if (NavSystem->GetRandomPointInNavigableRadius(Transform->GetTransform().GetLocation(), OrderRadius, Destination))
+		{
+			// An order goes through the queue (D216, D226) and its destination is brought back to the navmesh
+			// by the command subsystem (D228) — the test does not walk the unit itself.
+			Commands->IssueMoveOrder(MakeArrayView(&UnitId, 1), Destination.Location);
+			--OrdersLeft;
+			++NumOrdersIssued;
+		}
+	}
+}
+
+TArray<FMassEntityHandle> UMCStressTestSubsystem::GetUnitEntities() const
+{
+	TArray<FMassEntityHandle> Entities;
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	if (Units == nullptr)
+	{
+		return Entities;
+	}
+	Entities.Reserve(UnitIds.Num());
+	for (const uint32 UnitId : UnitIds)
+	{
+		Entities.Add(Units->FindEntity(UnitId));
+	}
+	return Entities;
+}
+
+TArray<FVector> UMCStressTestSubsystem::GetUnitLocations() const
+{
+	TArray<FVector> Locations;
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (EntitySubsystem == nullptr)
+	{
+		return Locations;
+	}
+
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	const TArray<FMassEntityHandle> Entities = GetUnitEntities();
+	Locations.Reserve(Entities.Num());
+	for (const FMassEntityHandle Entity : Entities)
+	{
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		Locations.Add(Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector);
+	}
+	return Locations;
 }
 
 void UMCStressTestSubsystem::PlaceViewer() const
@@ -322,6 +378,17 @@ void UMCStressTestSubsystem::BeginMeasure()
 	FrameTimes.Reset();
 	GameThreadMsSum = RenderThreadMsSum = GpuMsSum = 0.0;
 	bScreenshotTaken = false;
+	NumOrdersIssued = 0;
+	LastOrderStepIndex = -1;
+
+	if (UMCUnitSubsystem* Units = GetUnitSubsystem())
+	{
+		Units->GetUnitIdsOfType(UnitTypeName, UnitIds);
+	}
+	if (UnitIds.Num() < Count)
+	{
+		UE_LOG(LogMCStressTest, Warning, TEXT("Only %d of the %d requested units exist at the start of the measure"), UnitIds.Num(), Count);
+	}
 	LocationsAtMeasureStart = GetUnitLocations();
 	if (UMCSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UMCSimulationSubsystem>())
 	{
@@ -329,35 +396,20 @@ void UMCStressTestSubsystem::BeginMeasure()
 	}
 }
 
-TArray<FVector> UMCStressTestSubsystem::GetUnitLocations() const
-{
-	TArray<FVector> Locations;
-	if (const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>())
-	{
-		const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
-		Locations.Reserve(Units.Num());
-		for (const FMassEntityHandle Unit : Units)
-		{
-			const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Unit);
-			Locations.Add(Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector);
-		}
-	}
-	return Locations;
-}
-
 void UMCStressTestSubsystem::LogRepresentationSummary() const
 {
-	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
-	if (!EntitySubsystem)
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (EntitySubsystem == nullptr)
 	{
 		return;
 	}
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
 	TMap<FString, int32> Histogram;
-	for (const FMassEntityHandle Unit : Units)
+	for (const FMassEntityHandle Entity : GetUnitEntities())
 	{
-		const FMassRepresentationFragment* Representation = EntityManager.GetFragmentDataPtr<FMassRepresentationFragment>(Unit);
-		const FMassRepresentationLODFragment* LOD = EntityManager.GetFragmentDataPtr<FMassRepresentationLODFragment>(Unit);
+		const FMassRepresentationFragment* Representation = EntityManager.GetFragmentDataPtr<FMassRepresentationFragment>(Entity);
+		const FMassRepresentationLODFragment* LOD = EntityManager.GetFragmentDataPtr<FMassRepresentationLODFragment>(Entity);
 		const FString Key = FString::Printf(TEXT("%s / LOD %d"),
 			Representation ? *UEnum::GetValueAsString(Representation->CurrentRepresentation) : TEXT("no representation"),
 			LOD ? static_cast<int32>(LOD->LOD) : -1);
@@ -369,25 +421,60 @@ void UMCStressTestSubsystem::LogRepresentationSummary() const
 	}
 }
 
-void UMCStressTestSubsystem::LogMovementActionSummary() const
+void UMCStressTestSubsystem::LogUnitStateSummary() const
 {
-	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
-	if (!EntitySubsystem)
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (EntitySubsystem == nullptr)
 	{
 		return;
 	}
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
-	TMap<FString, int32> Histogram;
-	for (const FMassEntityHandle Unit : Units)
+	TMap<FString, int32> MoveActions;
+	TMap<FString, int32> UnitStates;
+	for (const FMassEntityHandle Entity : GetUnitEntities())
 	{
-		const FMassMoveTargetFragment* MoveTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Unit);
-		const FString Key = MoveTarget ? UEnum::GetDisplayValueAsText(MoveTarget->GetCurrentAction()).ToString() : TEXT("no move target");
-		++Histogram.FindOrAdd(Key);
+		const FMassMoveTargetFragment* MoveTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Entity);
+		const FString MoveAction = MoveTarget ? UEnum::GetDisplayValueAsText(MoveTarget->GetCurrentAction()).ToString() : TEXT("no move target");
+		++MoveActions.FindOrAdd(MoveAction);
+
+		const FMCUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FMCUnitStateFragment>(Entity);
+		const FString UnitState = State ? UEnum::GetDisplayValueAsText(State->Activity).ToString() : TEXT("no unit state");
+		++UnitStates.FindOrAdd(UnitState);
 	}
-	for (const TPair<FString, int32>& Entry : Histogram)
+	for (const TPair<FString, int32>& Entry : MoveActions)
 	{
 		UE_LOG(LogMCStressTest, Display, TEXT("  Move action: %s x %d"), *Entry.Key, Entry.Value);
 	}
+	for (const TPair<FString, int32>& Entry : UnitStates)
+	{
+		UE_LOG(LogMCStressTest, Display, TEXT("  Unit state: %s x %d"), *Entry.Key, Entry.Value);
+	}
+}
+
+void UMCStressTestSubsystem::LogUnitRegistrySummary() const
+{
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	if (EntitySubsystem == nullptr || Units == nullptr)
+	{
+		return;
+	}
+
+	// The identifier of a unit is its own, not Mass' handle (D223): the table must agree with the fragments.
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	int32 NumMismatched = 0;
+	for (const uint32 UnitId : UnitIds)
+	{
+		const FMCUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FMCUnitStateFragment>(Units->FindEntity(UnitId));
+		if (State == nullptr || State->UnitId != UnitId)
+		{
+			++NumMismatched;
+		}
+	}
+	UE_LOG(LogMCStressTest, Display, TEXT("  Unit registry (D223/D224): %d units of %d requested, %d births waiting, identifier table checked on %d units, %d mismatch"),
+		Units->GetNumUnits(), Count, Units->GetNumPendingBirths(), UnitIds.Num(), NumMismatched);
 }
 
 void UMCStressTestSubsystem::FinishMeasure()
@@ -432,18 +519,18 @@ void UMCStressTestSubsystem::FinishMeasure()
 	const bool bRenderPassed = AverageFps >= MinFramesPerSecond;
 
 	const FString Report = FString::Printf(
-		TEXT("Stress test %s, %d units, %.0f s\n")
+		TEXT("Stress test %s, %d units of type %s, %.0f s\n")
 		TEXT("  Simulation: %.3f ms average per step (max %.3f ms, %d steps, %d frames dropped time) - threshold %.1f ms: %s\n")
 		TEXT("  Rendering: %.1f fps average (1%% low %.1f fps, %d frames) - threshold %.0f fps: %s\n")
 		TEXT("  Frame: game thread %.2f ms, render thread %.2f ms, GPU %.2f ms\n")
 		TEXT("  Memory: %.0f MB used (%+.0f MB since spawn)\n")
-		TEXT("  Movement: units moved %.1f m on average during the measure"),
-		ToString(Scenario), Units.Num(), MeasureSeconds,
+		TEXT("  Movement: units moved %.1f m on average during the measure, %d move orders issued (D229)"),
+		ToString(Scenario), UnitIds.Num(), *UnitTypeName.ToString(), MeasureSeconds,
 		StepStats.GetAverageMs(), StepStats.MaxMs, StepStats.NumSteps, StepStats.NumDroppedFrames, MaxSimulationMs, Verdict(bSimulationPassed),
 		AverageFps, OnePercentLowFps, FrameTimes.Num(), MinFramesPerSecond, Verdict(bRenderPassed),
 		GameThreadMs, RenderThreadMs, GpuMs,
 		UsedPhysicalMB, UnitsDeltaMB,
-		AverageDisplacementM);
+		AverageDisplacementM, NumOrdersIssued);
 
 	UE_LOG(LogMCStressTest, Display, TEXT("%s"), *Report);
 	for (const FMCSimulationProcessorStats& Processor : StepStats.Processors)
@@ -451,8 +538,16 @@ void UMCStressTestSubsystem::FinishMeasure()
 		const FString Throttled = Processor.StepInterval > 1 ? FString::Printf(TEXT(" (1 step out of %d)"), Processor.StepInterval) : FString();
 		UE_LOG(LogMCStressTest, Display, TEXT("  Step breakdown: %s %.3f ms%s"), *Processor.Name, Processor.GetAverageMs(), *Throttled);
 	}
+	// Births and destructions are part of the step but not processors (D224): worth a line only in a run that
+	// creates or destroys units while measuring.
+	if (StepStats.NumUnitsBorn > 0 || StepStats.NumUnitsDestroyed > 0)
+	{
+		UE_LOG(LogMCStressTest, Display, TEXT("  Step breakdown: unit births %.3f ms (%d born), unit destructions %.3f ms (%d destroyed)"),
+			StepStats.GetAverageBirthMs(), StepStats.NumUnitsBorn, StepStats.GetAverageDestructionMs(), StepStats.NumUnitsDestroyed);
+	}
 	LogRepresentationSummary();
-	LogMovementActionSummary();
+	LogUnitStateSummary();
+	LogUnitRegistrySummary();
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 30.f, bSimulationPassed && bRenderPassed ? FColor::Green : FColor::Red, Report);
@@ -460,6 +555,9 @@ void UMCStressTestSubsystem::FinishMeasure()
 
 	if (bQuitWhenDone)
 	{
-		UKismetSystemLibrary::QuitGame(GetWorld(), GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, /*bIgnorePlatformRestrictions*/ false);
+		// Leave the world clean: the units are queued for destruction and the step applies it, then Tick quits.
+		StopTest();
+		bQuitPending = true;
+		QuitDelayElapsed = 0.f;
 	}
 }

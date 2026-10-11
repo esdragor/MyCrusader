@@ -22,9 +22,24 @@ struct MYCRUSADER_API FMCLightUnitTag : public FMassTag
 	GENERATED_BODY()
 };
 
-/** Stress test behaviour: walk to random reachable points, forever (M1 trial). */
+/** What the RTS layer sees a unit doing (D226): standing, or walking to its current order. */
+UENUM()
+enum class EMCUnitActivity : uint8
+{
+	Idle,
+	Moving,
+};
+
+/** Per-entity state of a unit (D222), the values that change: identifier, health, activity. */
 USTRUCT()
-struct MYCRUSADER_API FMCWanderTag : public FMassTag
+struct MYCRUSADER_API FMCUnitStateFragment : public FMassFragment
 {
 	GENERATED_BODY()
+
+	/** Stable identifier (D223), attributed by the server and never recycled during a match. */
+	uint32 UnitId = 0;
+
+	int32 CurrentHealth = 0;
+
+	EMCUnitActivity Activity = EMCUnitActivity::Idle;
 };
