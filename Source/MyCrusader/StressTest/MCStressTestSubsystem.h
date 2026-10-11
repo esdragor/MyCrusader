@@ -49,6 +49,8 @@ private:
 	void BeginMeasure();
 	void FinishMeasure();
 	void LogRepresentationSummary() const;
+	/** Counts by movement action: shows whether the units are walking or standing (M1). */
+	void LogMovementActionSummary() const;
 	TArray<FVector> GetUnitLocations() const;
 	const FMassEntityConfig& GetOrCreateConfig(bool bWander);
 

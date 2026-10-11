@@ -18,6 +18,7 @@
 #include "MassLODTrait.h"
 #include "MassMovableVisualizationTrait.h"
 #include "MassNavMeshNavigationTrait.h"
+#include "MassNavigationFragments.h"
 #include "MassSpawnerSubsystem.h"
 #include "MassSpawnerTypes.h"
 #include "MassSpawnLocationProcessor.h"
@@ -276,6 +277,12 @@ void UMCStressTestSubsystem::SpawnUnits()
 	for (const FMassEntityHandle Unit : Units)
 	{
 		EntityManager.GetFragmentDataChecked<FMCPreviousTransformFragment>(Unit).Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Unit).GetTransform();
+		// An immobile unit stands still, it does not walk at a null speed: Mass' moving avoidance skips the
+		// Stand action, so S1 measures what an idle unit really costs (Mass avoids the walkers instead).
+		if (Scenario == EMCStressScenario::S1_Idle)
+		{
+			EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Unit).CreateNewAction(EMassMovementAction::Stand, *World);
+		}
 	}
 }
 
@@ -362,6 +369,27 @@ void UMCStressTestSubsystem::LogRepresentationSummary() const
 	}
 }
 
+void UMCStressTestSubsystem::LogMovementActionSummary() const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	if (!EntitySubsystem)
+	{
+		return;
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TMap<FString, int32> Histogram;
+	for (const FMassEntityHandle Unit : Units)
+	{
+		const FMassMoveTargetFragment* MoveTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Unit);
+		const FString Key = MoveTarget ? UEnum::GetDisplayValueAsText(MoveTarget->GetCurrentAction()).ToString() : TEXT("no move target");
+		++Histogram.FindOrAdd(Key);
+	}
+	for (const TPair<FString, int32>& Entry : Histogram)
+	{
+		UE_LOG(LogMCStressTest, Display, TEXT("  Move action: %s x %d"), *Entry.Key, Entry.Value);
+	}
+}
+
 void UMCStressTestSubsystem::FinishMeasure()
 {
 	using namespace UE::MyCrusader::StressTest;
@@ -424,6 +452,7 @@ void UMCStressTestSubsystem::FinishMeasure()
 		UE_LOG(LogMCStressTest, Display, TEXT("  Step breakdown: %s %.3f ms%s"), *Processor.Name, Processor.GetAverageMs(), *Throttled);
 	}
 	LogRepresentationSummary();
+	LogMovementActionSummary();
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 30.f, bSimulationPassed && bRenderPassed ? FColor::Green : FColor::Red, Report);
