@@ -14,6 +14,7 @@ enum class EMCStressScenario : uint8
 {
 	S1_Idle,	// units standing still
 	S2_Moving,	// units walking on the navmesh
+	Crossing,	// two units ordered to swap places: shows whether the avoidance makes them step aside
 };
 
 /**
@@ -51,6 +52,10 @@ private:
 	void FinishMeasure();
 	/** S2 (D229): orders a new destination to the units that arrived, within a per-frame budget. */
 	void KeepUnitsWalking();
+	/** Crossing: the two units swap places again once they stand, and the closest they came is recorded. */
+	void MaintainCrossing();
+	/** Closest distance the two crossing units came to each other, for the avoidance check (D228). */
+	void LogCrossingSummary() const;
 	TArray<FMassEntityHandle> GetUnitEntities() const;
 	TArray<FVector> GetUnitLocations() const;
 	UMCUnitSubsystem* GetUnitSubsystem() const;
@@ -59,6 +64,12 @@ private:
 	void LogUnitStateSummary() const;
 	/** Counts the units and checks the identifier table against the fragments (D223). */
 	void LogUnitRegistrySummary() const;
+	/** Constants the units really carry (D222): catches a shared fragment both types would share. */
+	void LogUnitConstantsSummary() const;
+	/** Interpenetration count and smallest gap between two bodies, over every living unit. */
+	void CountInterpenetration(int32& OutNumPairs, double& OutSmallestGap) const;
+	/** Interpenetration before and after the walk: a plateau means the avoidance is not doing its job (D228). */
+	void LogAvoidanceSummary() const;
 
 	/** Identifiers of the units of this run (D223): the stress test never holds Mass entities itself. */
 	TArray<uint32> UnitIds;
@@ -72,10 +83,22 @@ private:
 	bool bScreenshotTaken = false;
 	/** Unit locations when the measure starts, to check that S2 units really move. */
 	TArray<FVector> LocationsAtMeasureStart;
+	/** Interpenetrating pairs and smallest gap between two bodies when the measure starts (report calibration). */
+	int32 InterpenetrationAtMeasureStart = 0;
+	double SmallestGapAtMeasureStart = 0.0;
 	/** Move orders issued during the run: shows that S2 walks by orders and not by a test behaviour (D229). */
 	int32 NumOrdersIssued = 0;
 	/** Step the last order pass belongs to: orders are applied at the fixed step, not every frame (D216, D219). */
 	int64 LastOrderStepIndex = -1;
+	/** Crossing: how close the two units came to each other (cm), and how many swaps were ordered. */
+	double CrossingClosestDistance = TNumericLimits<double>::Max();
+	int32 CrossingSwaps = 0;
+	/** Crossing: the two units' birth positions (the ends of their perpendicular axes). */
+	FVector CrossingStart[2] = { FVector::ZeroVector, FVector::ZeroVector };
+	bool bCrossingStartRead = false;
+	bool bCrossingFarEnd = true;
+	/** Destination draw of S2: a fixed seed keeps two runs comparable (D230). */
+	FRandomStream OrderRandom{ 1066 };
 
 	EMCStressScenario Scenario = EMCStressScenario::S1_Idle;
 	EPhase Phase = EPhase::Idle;

@@ -18,24 +18,25 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 |---|---|
 | M0 — migration 5.8, modules, plugins, carte de test | **fait** (2026-10-11) |
 | M1 — essai Mass (D215) | **fait** (2026-10-11) : seuils D218 tenus sur S1 et S2 après **D220**, hypothèse `Stand` vérifiée |
-| M1 — cœur de la simulation (`UnitData`, identifiants, apparition/disparition, file de commandes) | **fait** (2026-10-11) : D221 à D229 implémentés, S1 2,096 ms (2,040 ms sur un 2ᵉ type) et S2 2,158 ms ✅, seuil 3 ms ; identifiants et destruction différée vérifiés |
+| M1 — cœur de la simulation (`UnitData`, identifiants, apparition/disparition, file de commandes) | **fait** (2026-10-11) : D221 à D229 implémentés ; **revue traitée le 2026-10-12** (deux bugs corrigés, D230) ; S1 2,25/2,10 ms, S2 2,21/2,25 ms ✅, croisement 2,7 cm (limitation connue) |
 | M2 — rendu (instances par type et par joueur, animations, interpolation) | à faire |
 | M2.5 — tranche réseau Iris (D216) | à faire |
 
 ## Prochaine étape exacte
 
-1. ~~Table de données, fabrique, identifiants, naissances/destructions, file de commandes~~ → **fait (2026-10-11)**, voir le journal.
-2. ~~Remettre S1 et S2 en non-régression~~ → **fait** : S1 2,096 ms, S2 2,158 ms (requalifié par D229), rendu ≥ 144 i/s.
-3. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations cuites en textures
+1. ~~Table de données, fabrique, identifiants, naissances/destructions, file de commandes~~ → **fait (2026-10-11)**.
+2. ~~S1 et S2 en non-régression~~ → **fait** : S1 2,25 et 2,10 ms, S2 2,21 et 2,25 ms, rendu ≥ 144 i/s.
+3. ~~Revue de l'utilisateur : deux bugs, dette inexistante, axes d'amélioration~~ → **fait (2026-10-12)** : bugs corrigés et
+   mesurés, journée d'évitement instruite (**D230**), journaux dédoublonnés, graine fixée, test de croisement ajouté.
+4. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations cuites en textures
    (`AnimToTexture`), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1 et S2 au vert, et
    une vérification à 2 clients dès M2.5 (D216).
-4. **Dette à traiter avant M5** : la table identifiant ↔ entité (D223) doit être rafraîchie si une unité change
-   d'**archétype** en cours de partie (combat, mort, entrée en état). Rien ne le fait aujourd'hui ; M1 ne change
-   jamais l'archétype d'une unité après sa naissance. À trancher : observateur Mass ou appel explicite au moment
-   du changement.
-5. Proposer avant d'écrire tout choix d'implémentation non trivial qui n'est pas déjà couvert par D221 à D229.
-6. **S2 est requalifié par D229** (ordres de M1 au lieu de l'errance d'essai) : sa mesure n'est plus comparable à
-   l'historique (2,80 ms avec chemins) ; la nouvelle mesure est consignée comme telle, sans écraser l'ancienne.
+5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement frontal** (comportement
+   non expliqué, test à durcir) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
+   d'unités immobiles.
+6. **M4 — à prévoir** : un ordre de groupe vers un **même point** ne verra jamais ses unités s'arrêter (tolérance
+   d'arrivée de 50 cm pour toutes) : il faudra une formation ou une tolérance liée à la taille du groupe.
+7. Proposer avant d'écrire tout choix d'implémentation non trivial qui n'est pas déjà couvert par D221 à D230.
 
 ## Choix d'implémentation tranchés (détail au GDD, journal § 21)
 
@@ -44,6 +45,7 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 | D227 | **Fabrication de la table des types** : un `.uasset` ne s'écrit pas à la main. | **tranché** : CSV source `Tools/Data/UnitTypes.csv` + script d'éditeur `Tools/Editor/make_unit_types.py` → `/Game/Units/UnitTypes`, lu par configuration |
 | D228 | **Mouvement de l'ordre** « va à cet endroit ». | **tranché** : cible directe (`FMassMoveTargetFragment`, action `Move`, arrivée détectée par nous), destination ramenée au navmesh **à l'émission** (une requête de point par ordre) ; chemins à M3 |
 | D229 | **S2 du stress test**. | **tranché** : S2 passe aux ordres de M1, l'errance d'essai est supprimée, le scénario est requalifié (M3 le rendra exigeant) |
+| D230 | **Cadence de l'évitement** (revue du 2026-10-12). | **tranché** : cadence de D220 conservée **et** impulsion d'évitement retenue 5 pas, sans décroissance ; croisement frontal consigné comme limitation **non expliquée** ; graine fixée |
 
 ## Plan de M1 (à valider question par question)
 
@@ -73,22 +75,113 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
 
 ## Questions ouvertes
 
-- **Table identifiant ↔ entité et changement d'archétype (D223)** : la table rend l'identifiant → entité
-  (et l'inverse). Elle n'est jamais rafraîchie si une unité **change d'archétype** après sa naissance —
-  son `FMassEntityHandle` (index + numéro de série) peut alors devenir périmé. M1 ne change jamais
-  l'archétype d'une unité ; **M5 (combat, mort, états) le fera**. À trancher avant M5 : observateur Mass
-  sur le changement d'archétype, ou appel explicite de rafraîchissement au moment du changement.
-- **Marge de rendu** : 145 à 171 i/s pour un seuil de 144, 1 % bas entre 72 et 93 i/s (mieux qu'avant M1 :
-  le 1 % bas était à 50-87). Passe, mais mince et bruité ; à surveiller quand le contenu s'ajoute
-  (animations, effets, bâtiments).
-- **S2 requalifié (D229)** : 2,158 ms mesure l'ordre et le déplacement direct, sans suivi de navmesh — il
-  n'est plus comparable au 2,80 ms de D220. M3 doit le rendre exigeant en ajoutant les chemins.
-- **Réserve si un seuil casse** (mêlées de M5, unités plus rapides ou plus nombreuses) : paralléliser
-  l'évitement de Mass (option B1) ou l'écrire dans la couche RTS (option A). Non nécessaires aujourd'hui.
+- **Croisement frontal de deux unités — comportement non expliqué (2026-10-12)** : avec l'évitement à **chaque
+  pas**, deux unités ordonnées à travers le même point se frôlent à 66,5 cm (somme des rayons 80 cm) ; à 1 pas
+  sur 2, 3 ou 6, l'écart tombe à 1,3 / 3,0 / 4,7 cm — **il ne suit donc pas la fréquence** — et la force retenue
+  le dégrade (2,4 à 7,4 cm). L'explication par le nombre d'impulsions est fausse. À instruire **avant M5** :
+  durcir le test (plusieurs décalages de phase, angles, graines — le test actuel est un croisement unique) et
+  regarder ce qui se passe sur les pas **sans** solveur (force, vitesse désirée, pilotage).
+- **Séparation des unités immobiles** : `MassStandingAvoidanceProcessor` pousse un **fantôme** et la conduite
+  d'arrêt déplace le corps **en appliquant `MoveTarget.DesiredSpeed`** — que la naissance met à 0 pour une unité
+  immobile : le fantôme s'écarte, le corps ne bouge pas (les recouvrements de S1, ~215 paires à la naissance,
+  restent inchangés). Piste à mesurer : une vitesse d'arrêt non nulle, ou une résorption explicite des
+  chevauchements à la naissance (répulsion de spawn).
+- **Rendu : écart de mesure inexpliqué** : les passages du 2026-10-11 donnaient 145 à 170 i/s à 2 000 unités, ceux
+  du 2026-10-12 (mêmes unités, même carte, même commande) 247 à 258 i/s, pour un plafond de scène vide de 284 i/s
+  (scénario de croisement à 2 unités). Le seuil de 144 i/s passe dans les deux cas ; l'écart (état de la fenêtre de
+  jeu ? charge de la machine ?) reste à comprendre avant de s'appuyer sur la marge de rendu.
+- **Marge de rendu** : le seuil de 144 i/s est tenu avec une marge désormais confortable dans les derniers passages,
+  mais l'écart ci-dessus invite à la prudence avant de conclure ; à surveiller quand le contenu s'ajoute (animations,
+  effets, bâtiments).
+- **Réserve si un seuil casse** (mêlées de M5, unités plus rapides ou plus nombreuses) : paralléliser l'évitement de
+  Mass (option B1) ou l'écrire dans la couche RTS (option A). Non nécessaires aujourd'hui.
+- ~~**Table identifiant ↔ entité et changement d'archétype**~~ → **n'existe pas (2026-10-12)** : le
+  `FMassEntityHandle` d'une entité **reste valide** quand elle change d'archétype (`FMassArchetypeData::MoveEntityToAnotherArchetype`
+  réinsère le même handle, seul l'emplacement mémoire change) ; il ne devient invalide qu'à la destruction. La
+  table n'a donc rien à rafraîchir. Le motif de D223 a été corrigé en conséquence (recyclage des index).
 - ~~Hypothèse `Stand`~~ → **résolue (2026-10-11)** : voir le journal. Ce n'était pas un gain mais un transfert
   de coût ; les deux solveurs d'évitement sont désormais ralentis (D220).
 
 ## Journal d'avancement
+
+### 2026-10-12 — Revue traitée : deux bugs corrigés, cadence d'évitement instruite (D230), mesures rapatriées ici
+
+- **Bug 1 — un seul template pour tous les types d'unité** (signalé par la revue, cause trouvée dans le moteur).
+  `FMassEntityConfig(UObject& InOwner)` dérive son identité (`ConfigGuid`) du **chemin de son propriétaire**
+  (`MassEntityConfigAsset.cpp:30-34`) : mes configs partageaient le sous-système pour propriétaire, donc le même
+  identifiant de template, et le registre répondait le **premier** template à tous les types (l'Archer naissait
+  avec les constantes de l'infanterie). Reproduit en faisant naître **les deux types dans le même processus**
+  (un seul passage de type ne pouvait pas le montrer) : `Unit constants: LightInfantry … x 1000` alors que
+  500 Archer étaient vivants. Corrigé par un **GUID neuf par type** (`MakeShared<FMassEntityConfig>()` puis
+  `SetOwner`). Avant correctif, le log de la fabrique montrait `birth Archer … template values speed 300`
+  (au lieu de 280).
+- **Bug 2 — champs de fragment partagé sans `UPROPERTY`** (signalé, confirmé et **indépendant** du premier) :
+  Mass identifie une instance partagée par une empreinte calculée sur les champs **réfléchis**
+  (`GetStructInstanceCrc32` → `SerializeItem`) puis compare **ces mêmes** champs (`CompareScriptStruct`) : sans
+  `UPROPERTY`, l'empreinte est constante et la comparaison ne compare rien, donc deux types partagent une copie.
+  Prouvé en deux temps : (a) avec le bug 1 corrigé et les `UPROPERTY` retirés, l'Archer reprend la vitesse 300 et
+  le garde-fou journalise `Unit types 'LightInfantry' and 'Archer' have the same constants fingerprint` ;
+  (b) avec les `UPROPERTY`, chaque type porte les siennes (`Archer: radius 35, speed 280, 80 HP, avoidance 220 x 500`).
+  Corrigé (7 champs en `UPROPERTY`) **et gardé** : la fabrique compare l'empreinte de chaque type et journalise
+  une erreur si deux types se ressemblent. Outillage associé : le rapport affiche les **constantes réellement
+  portées** par les unités (lues dans le fragment, pas dans la table) — c'est cette ligne qui a révélé les deux bugs.
+- **Bug 3 — `DistanceToGoal` jamais entretenu** (signalé, confirmé) : l'ordre posait `DistanceToGoal = 0` et rien
+  ne le maintenait ; Mass ne l'entretient que derrière un chemin navmesh, donc il croyait l'unité **arrivée** et
+  ramenait la force d'évitement à 10 % (`EndOfPathAvoidanceScale`, `MassAvoidanceProcessors.cpp:439`) pendant
+  toute la marche. Corrigé dans `MCUnitOrderProcessor::StopArrivedUnits` : distance et direction vers la cible
+  réécrites à chaque pas. Effet isolé par un nouveau **test de croisement** (deux unités ordonnées à travers le
+  même point, écart minimal rapporté, scénario `C`) : avec l'évitement à chaque pas, l'écart passe de **2,2 cm**
+  (avant) à **66,5 cm** (après) — somme des rayons 80 cm.
+- **D230 — cadence de l'évitement** (choix de l'utilisateur : garder D220 + retenir l'impulsion). Mesures,
+  2 000 unités, seuil de pas 3 ms, écart au croisement pour une somme de rayons de 80 cm :
+
+  | Variante | Croisement | Pas S2 | Recouvrements S2 (début → fin) |
+  |---|---|---|---|
+  | solveur **à chaque pas** | **66,5 cm** ✅ | ≈ 6,9 ms ❌ | — |
+  | 1 pas sur 2 | 1,3 cm ❌ | 4,299 ms ❌ | 114 → 103 |
+  | 1 pas sur 3 | 3,0 cm ❌ | 3,295 ms ❌ | 121 → 122 |
+  | 1 pas sur 6 (D220) | 4,7 cm ❌ | ≈ 2,2 ms ✅ | 135 → 137 |
+  | 1 sur 6 + **impulsion retenue 5 pas**, sans décroissance | 2,4 cm ❌ | 2,438 ms ✅ | **101 → 58** |
+  | 1 sur 6 + impulsion retenue, décroissance 0,6 | 7,4 cm ❌ | 2,173 ms ✅ | 126 → 92 |
+  | 1 sur 6 + impulsion retenue, décroissance 0,3 | 4,1 cm ❌ | (non mesuré) | — |
+
+  Retenu : **cadence de D220 conservée + impulsion retenue 5 pas, sans décroissance** (`AvoidanceHoldSteps = 5`,
+  `AvoidanceHoldDecay = 1`) — seuil tenu et foule qui se sépare (137 → 58 recouvrements) pour +0,2 ms de pas.
+  Implémentation : `FMCAvoidanceHoldFragment` + deux processeurs nôtres encadrant les solveurs
+  (`MCAvoidanceSnapshotProcessor` après le pilotage, `MCAvoidanceHoldProcessor` avant l'application des forces) ;
+  Mass **remet la force à zéro** après application (`MassApplyForceProcessor`, « Reset to zero after force is
+  applied »), d'où la nécessité de la réinjecter. Le savoir en clair est aussi consigné au GDD (§ 16.6, D230).
+- **Limitation consignée, cause non élucidée** : l'écart au croisement **ne suit pas** la fréquence du solveur
+  (1 sur 2 : 1,3 ; 1 sur 3 : 3,0 ; 1 sur 6 : 4,7 ; chaque pas : 66,5 cm) et l'impulsion retenue le **dégrade**
+  (2,4 à 7,4 cm) : l'explication par le nombre d'impulsions est fausse. À instruire **avant M5** — durcir le test
+  (décalages de phase, angles, graines) et instrumenter les pas **sans** solveur (force, vitesse désirée, pilotage).
+- **Séparation** (question de la revue) : ce n'est pas un mécanisme distinct. Côté **marche**, la séparation est
+  **dans** le solveur d'évitement (`SeparationRadiusScale`/`SeparationStiffness`), donc soumise à la même cadence.
+  Côté **arrêt**, `MassStandingAvoidanceProcessor` pousse un **fantôme** (`FMassGhostLocationFragment`) et c'est
+  la conduite d'arrêt qui déplace le corps — or elle applique `MoveTarget.DesiredSpeed`, que la naissance met à
+  **0** pour une unité immobile : le fantôme s'écarte, le corps ne bouge pas. D'où les recouvrements de S1
+  inchangés (~215 paires, soit la valeur théorique du tirage aléatoire). Piste à mesurer plus tard : vitesse
+  d'arrêt non nulle, ou résorption explicite à la naissance.
+- **Outillage et reproductibilité** : scénario **C (croisement)** au rapport du stress test ; **graine fixée** sur
+  la nuée (`MCUnitSubsystem::SpawnRandom`) et sur les destinations de S2 (`OrderRandom`). Deux passages identiques
+  le confirment : S1 215 → 215 recouvrements deux fois, S2 100 → 87 deux fois, 2 352 ordres, 19,3 m parcourus.
+  Piège trouvé en route : `ProjectPointToNavigation` avec une **boîte de recherche large** (8 000 cm) accroche les
+  positions sur une grille grossière du navmesh de la carte de test — les Y sortaient en multiples de 988 cm et le
+  spawn passait de 215 à 1 555 recouvrements ; boîte serrée en XY et large en Z pour ne corriger que la hauteur.
+  Vérifié au passage : la projection des **ordres** (boîte de 1 000 cm) ne déplace aucun point sur ce plan.
+- **Corrections de nos propres écrits** (jamais silencieuses) :
+  - la « dette » de la table identifiant ↔ entité **n'existait pas** : `FMassArchetypeData::MoveEntityToAnotherArchetype`
+    réinsère le **même** `FMassEntityHandle` — vérifié dans le moteur — donc rien à rafraîchir ; ligne retirée et
+    **motif de D223 corrigé** (le vrai motif est le recyclage des index après destruction) ;
+  - les **mesures de l'essai Mass** (coût de l'évitement ~7-10 ms par pas à 2 000 unités, **par unité** et mono-fil,
+    insensible à la densité et aux bords du navmesh ; deux solveurs, marche et arrêt) ont été **rapatriées ici** :
+    le § 22 du GDD ne garde plus que les décisions et une synthèse chiffrée, la mesure vivant dans ce journal.
+- **Mesures finales de l'état livré** (`AvoidanceHoldSteps=5`, graine fixe, 2 000 unités, seuil de pas 3 ms,
+  rendu 144 i/s) : S1 **2,251 et 2,095 ms** ✅ (215 recouvrements, inchangés), S2 **2,248 et 2,209 ms** ✅
+  (100 → 87), croisement **2,7 cm** ❌ (limitation connue) ; rendu **247 à 258 i/s** ✅.
+  *Écart à surveiller* : les passages de la veille donnaient 145 à 170 i/s pour la même scène (scène vide : 284 i/s) —
+  différence inexpliquée, probablement l'état de la fenêtre de jeu ; consigné en question ouverte, aucune conclusion
+  tirée sur la marge de rendu.
 
 ### 2026-10-11 (suite) — M1 : cœur de la simulation implémenté, mesuré et vérifié
 
@@ -305,11 +398,14 @@ Leviers de mesure (ligne de commande ou console) :
 
 | Levier | Effet |
 |---|---|
-| `mc.StressTest S1\|S2 [Count] [Seconds] [quit]` | lance le scénario (S1 immobiles, S2 en marche par ordres, D229) |
+| `mc.StressTest S1\|S2\|C [Count] [Seconds] [quit]` | lance le scénario (S1 immobiles, S2 en marche par ordres D229, C croisement de deux unités D230) |
 | `mc.StressTest.SpawnRadius` | rayon de la nuée, en cm (densité) |
 | `mc.StressTest.UnitType` | ligne de table utilisée par le test (`LightInfantry`, `Archer` — D221, D225) |
 | `mc.StressTest.OrderRadius` | rayon (cm) des destinations de S2 (D229) |
 | `mc.StressTest.MaxOrdersPerFrame` | ordres émis par pas au plus (D229) |
+| `mc.StressTest.CrossingHalfDistance` | distance (cm) des deux unités du scénario C à l'origine (D230) |
 | `mc.Units.SpawnBudget` | naissances par pas (D224) : 0 = réglage, −1 = tout en un pas (stress test) |
+| `mc.Units.AvoidanceHold` | pas pendant lesquels l'impulsion d'évitement est ré-appliquée (D230) : 0 = réglage, négatif = éteint |
+| `mc.Units.AvoidanceHoldDecay` | décroissance par pas de l'impulsion retenue (D230) : 0 = réglage, 1 = aucune |
 | `mc.Simulation.ThrottledStepInterval` | cadence des processeurs ralentis (0 = valeur de la configuration) |
 | `mc.Avoidance.ObstacleDetectionDistance` | distance de détection des unités, en cm (0 = valeur de la ligne de table) |

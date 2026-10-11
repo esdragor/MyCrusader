@@ -66,5 +66,18 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "1", ForceUnits = "cm"))
 	float OrderTargetProjectionExtent = 1000.f;
 
+	/**
+	 * Steps an avoidance impulse is kept and re-applied for after the solver computed it (D230). The solver runs
+	 * one step out of ThrottledProcessorStepInterval and Mass resets the force after applying it, so keeping the
+	 * impulse is what separates the units of a crowd: the overlapping pairs of S2 fall from 137 to 58 (measured,
+	 * 2 000 units). A head-on crossing of two units stays uncorrected (see the crossing measure, D230).
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "0"))
+	int32 AvoidanceHoldSteps = 5;
+
+	/** Decay applied to the kept impulse at every step: 1 keeps it as it was until the next solver run (D230). */
+	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "0", ClampMax = "1"))
+	float AvoidanceHoldDecay = 1.f;
+
 	float GetStepSeconds() const { return 1.f / static_cast<float>(SimulationRateHz); }
 };

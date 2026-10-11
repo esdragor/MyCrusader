@@ -27,6 +27,7 @@
 #include "Simulation/MCUnitTrait.h"
 #include "SmoothOrientation/MassSmoothOrientationTrait.h"
 #include "Steering/MassSteeringTrait.h"
+#include "StructUtils/StructUtilsTypes.h"
 
 namespace UE::MyCrusader::Units
 {
@@ -106,7 +107,28 @@ const FMassEntityTemplate* UMCUnitSubsystem::FindTemplate(const FName TypeName)
 	}
 
 	const FMCUnitTypeConstants Constants = Row->ToConstants(TypeName);
-	TSharedPtr<FMassEntityConfig> Config = MakeShared<FMassEntityConfig>(*this);
+
+	// Mass identifies a shared fragment by the CRC of its reflected (UPROPERTY) fields, then compares the values
+	// through that same reflection: a field left out of the reflection is invisible to both, and the second type
+	// silently gets the first one's constants — an archer walking at the infantry's speed. Two types never share
+	// their constants (the type name is one of them), so a fingerprint already taken is a mistake, not a hit.
+	const uint32 ConstantsCrc = UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Constants));
+	if (const FName* ExistingType = ConstantsCrcToType.Find(ConstantsCrc))
+	{
+		UE_LOG(LogMCSimulation, Error, TEXT("Unit types '%s' and '%s' have the same constants fingerprint: check that every field of FMCUnitTypeConstants is a UPROPERTY (D221, D222)"),
+			*ExistingType->ToString(), *TypeName.ToString());
+	}
+	else
+	{
+		ConstantsCrcToType.Add(ConstantsCrc, TypeName);
+	}
+
+	TSharedPtr<FMassEntityConfig> Config = MakeShared<FMassEntityConfig>();
+	// The config's identity is its ConfigGuid: the constructor taking an owner derives it from the owner's path
+	// name, so one owner for every type would give every type the same template id and the registry would answer
+	// the first template built for the other types too (an archer walking with the infantry's constants). A
+	// fresh guid per type, as the table wants one configuration (so one template) per type (D225).
+	Config->SetOwner(*this);
 
 	// Fragments common to every type, posed here and not by each type (D225).
 	UMCUnitTrait* UnitTrait = NewObject<UMCUnitTrait>(this);
@@ -250,10 +272,18 @@ void UMCUnitSubsystem::CreateUnitEntities(const FMCUnitSpawnRequest& Request, co
 		FVector Location = Request.Center;
 		if (Request.Radius > 0.f && NavSystem)
 		{
-			FNavLocation NavLocation;
-			if (NavSystem->GetRandomPointInNavigableRadius(Request.Center, Request.Radius, NavLocation))
+			// Own draw then projection onto the navmesh: the engine's random navigable point uses a global
+			// generator, which would make two runs of the same stress test incomparable (D230: the overlaps of
+			// the crowd start at the spawn pattern).
+			const float Angle = SpawnRandom.FRandRange(0.f, 2.f * PI);
+			const float Distance = Request.Radius * FMath::Sqrt(SpawnRandom.FRand());
+			const FVector Proposed = Request.Center + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.f);
+			// Narrow horizontal box: the point is already where it should be, only its height has to come from the
+			// navmesh. A wide box makes the query snap the position onto a coarse grid of the navmesh.
+			FNavLocation Projected;
+			if (NavSystem->ProjectPointToNavigation(Proposed, Projected, FVector(10.f, 10.f, 500.f)))
 			{
-				Location = NavLocation.Location;
+				Location = Projected.Location;
 			}
 		}
 
@@ -362,6 +392,17 @@ void UMCUnitSubsystem::GetUnitIdsOfType(const FName TypeName, TArray<uint32>& Ou
 	OutUnitIds.Sort();
 }
 
+void UMCUnitSubsystem::GetAllUnitIds(TArray<uint32>& OutUnitIds) const
+{
+	OutUnitIds.Reset();
+	OutUnitIds.Reserve(Units.Num());
+	for (const TPair<uint32, FMCUnitRecord>& Unit : Units)
+	{
+		OutUnitIds.Add(Unit.Key);
+	}
+	OutUnitIds.Sort();
+}
+
 void UMCUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 {
 	OutCounts.Reset();
@@ -370,3 +411,5 @@ void UMCUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 		++OutCounts.FindOrAdd(Unit.Value.TypeName);
 	}
 }
+
+

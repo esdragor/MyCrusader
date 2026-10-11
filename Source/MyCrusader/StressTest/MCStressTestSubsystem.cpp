@@ -20,8 +20,10 @@
 #include "NavigationSystem.h"
 #include "RenderTimer.h"
 #include "Simulation/MCSimulationFragments.h"
+#include "Simulation/MCSimulationSettings.h"
 #include "Simulation/MCSimulationSubsystem.h"
 #include "Simulation/MCUnitSubsystem.h"
+#include "Simulation/MCUnitTypes.h"
 #include "UnrealClient.h"
 #include "Widgets/SWindow.h"
 
@@ -50,6 +52,11 @@ namespace UE::MyCrusader::StressTest
 	FAutoConsoleVariableRef CVarMaxOrdersPerFrame(TEXT("mc.StressTest.MaxOrdersPerFrame"), MaxOrdersPerFrame,
 		TEXT("Move orders the stress test issues per frame at most"));
 
+	/** The two units of the crossing scenario start this far from the origin, on two perpendicular axes (cm). */
+	float CrossingHalfDistance = 1500.f;
+	FAutoConsoleVariableRef CVarCrossingHalfDistance(TEXT("mc.StressTest.CrossingHalfDistance"), CrossingHalfDistance,
+		TEXT("Distance (cm) between a crossing unit and the origin it walks through"));
+
 	// D218 thresholds.
 	constexpr double MaxSimulationMs = 3.0;
 	constexpr double MinFramesPerSecond = 144.0;
@@ -69,17 +76,28 @@ namespace UE::MyCrusader::StressTest
 
 	FAutoConsoleCommandWithWorldAndArgs StartCommand(
 		TEXT("mc.StressTest"),
-		TEXT("mc.StressTest S1|S2 [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229)"),
+		TEXT("mc.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units swapping places (avoidance check)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UMCStressTestSubsystem* Subsystem = FindSubsystem(World);
 			if (!Subsystem || Args.Num() < 1)
 			{
-				UE_LOG(LogMCStressTest, Warning, TEXT("Usage: mc.StressTest S1|S2 [Count=2000] [Seconds=20] [quit] (in a game world)"));
+				UE_LOG(LogMCStressTest, Warning, TEXT("Usage: mc.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit] (in a game world)"));
 				return;
 			}
-			const EMCStressScenario Scenario = Args[0].Equals(TEXT("S2"), ESearchCase::IgnoreCase) ? EMCStressScenario::S2_Moving : EMCStressScenario::S1_Idle;
-			const int32 Count = Args.Num() > 1 ? FMath::Max(1, FCString::Atoi(*Args[1])) : 2000;
+			EMCStressScenario Scenario = EMCStressScenario::S1_Idle;
+			if (Args[0].Equals(TEXT("S2"), ESearchCase::IgnoreCase))
+			{
+				Scenario = EMCStressScenario::S2_Moving;
+			}
+			else if (Args[0].Equals(TEXT("C"), ESearchCase::IgnoreCase) || Args[0].Equals(TEXT("Crossing"), ESearchCase::IgnoreCase))
+			{
+				Scenario = EMCStressScenario::Crossing;
+			}
+			// The crossing needs exactly two units, at two known places.
+			const int32 Count = Scenario == EMCStressScenario::Crossing
+				? 2
+				: (Args.Num() > 1 ? FMath::Max(1, FCString::Atoi(*Args[1])) : 2000);
 			const float Seconds = Args.Num() > 2 ? FMath::Max(1.f, FCString::Atof(*Args[2])) : 20.f;
 			const bool bQuit = Args.ContainsByPredicate([](const FString& Arg) { return Arg.Equals(TEXT("quit"), ESearchCase::IgnoreCase); });
 			Subsystem->StartTest(Scenario, Count, Seconds, bQuit);
@@ -98,7 +116,12 @@ namespace UE::MyCrusader::StressTest
 
 	const TCHAR* ToString(const EMCStressScenario Scenario)
 	{
-		return Scenario == EMCStressScenario::S2_Moving ? TEXT("S2 (moving)") : TEXT("S1 (idle)");
+		switch (Scenario)
+		{
+		case EMCStressScenario::S2_Moving: return TEXT("S2 (moving)");
+		case EMCStressScenario::Crossing: return TEXT("C (crossing)");
+		default: return TEXT("S1 (idle)");
+		}
 	}
 
 	const TCHAR* Verdict(const bool bPassed)
@@ -193,6 +216,10 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 	{
 		KeepUnitsWalking();
 	}
+	else if (Scenario == EMCStressScenario::Crossing)
+	{
+		MaintainCrossing();
+	}
 
 	PhaseElapsed += DeltaTime;
 	if (Phase == EPhase::WarmingUp)
@@ -239,9 +266,105 @@ void UMCStressTestSubsystem::SpawnUnits()
 		return;
 	}
 
+	if (Scenario == EMCStressScenario::Crossing)
+	{
+		// Two units 30 m from the origin, on two perpendicular axes: each is ordered to the opposite end of its
+		// own axis, so both reach the origin at the same instant — the case where avoidance has to give way.
+		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(-UE::MyCrusader::StressTest::CrossingHalfDistance, 0.f, 0.f), 1.f });
+		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(0.f, -UE::MyCrusader::StressTest::CrossingHalfDistance, 0.f), 1.f });
+		return;
+	}
+
 	// The authority creates the units, spread over the following steps by the per-step budget (D224). The S1
 	// units are born standing still, which is what an immobile unit means (D220).
 	Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, Count, FVector::ZeroVector, UE::MyCrusader::StressTest::SpawnRadius });
+}
+
+void UMCStressTestSubsystem::MaintainCrossing()
+{
+	using namespace UE::MyCrusader::StressTest;
+
+	UWorld* World = GetWorld();
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	UMCCommandSubsystem* Commands = World ? World->GetSubsystem<UMCCommandSubsystem>() : nullptr;
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (Units == nullptr || Commands == nullptr || EntitySubsystem == nullptr)
+	{
+		return;
+	}
+
+	if (UnitIds.Num() < 2)
+	{
+		Units->GetUnitIdsOfType(UnitTypeName, UnitIds); // the two births are served at the head of a step (D224)
+		return;
+	}
+
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	const FMassEntityHandle First = Units->FindEntity(UnitIds[0]);
+	const FMassEntityHandle Second = Units->FindEntity(UnitIds[1]);
+	const FTransformFragment* FirstTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(First);
+	const FTransformFragment* SecondTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Second);
+	const FMCUnitStateFragment* FirstState = EntityManager.GetFragmentDataPtr<FMCUnitStateFragment>(First);
+	const FMCUnitStateFragment* SecondState = EntityManager.GetFragmentDataPtr<FMCUnitStateFragment>(Second);
+	if (FirstTransform == nullptr || SecondTransform == nullptr || FirstState == nullptr || SecondState == nullptr)
+	{
+		return;
+	}
+
+	const FVector FirstLocation = FirstTransform->GetTransform().GetLocation();
+	const FVector SecondLocation = SecondTransform->GetTransform().GetLocation();
+	CrossingClosestDistance = FMath::Min<double>(CrossingClosestDistance, FVector::Dist(FirstLocation, SecondLocation));
+
+	// The map is centred on the origin: the two ends of each unit's axis are its birth position and its mirror.
+	if (!bCrossingStartRead)
+	{
+		CrossingStart[0] = FirstLocation;
+		CrossingStart[1] = SecondLocation;
+		bCrossingStartRead = true;
+	}
+
+	// One pass per step, and only once both units stand: they then walk to the other end of their axis (D216:
+	// orders go through the queue and are applied at the fixed step), so both reach the origin at the same time.
+	const UMCSimulationSubsystem* Simulation = World->GetSubsystem<UMCSimulationSubsystem>();
+	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
+	if (StepIndex == LastOrderStepIndex
+		|| FirstState->Activity != EMCUnitActivity::Idle || SecondState->Activity != EMCUnitActivity::Idle)
+	{
+		return;
+	}
+	LastOrderStepIndex = StepIndex;
+
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const uint32 UnitId = UnitIds[Index];
+		const FVector Target = bCrossingFarEnd ? -CrossingStart[Index] : CrossingStart[Index];
+		Commands->IssueMoveOrder(MakeArrayView(&UnitId, 1), Target);
+		++NumOrdersIssued;
+	}
+	bCrossingFarEnd = !bCrossingFarEnd;
+	++CrossingSwaps;
+}
+
+void UMCStressTestSubsystem::LogCrossingSummary() const
+{
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	if (EntitySubsystem == nullptr || Units == nullptr || UnitIds.Num() < 2)
+	{
+		return;
+	}
+
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	const FAgentRadiusFragment* FirstRadius = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(Units->FindEntity(UnitIds[0]));
+	const FAgentRadiusFragment* SecondRadius = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(Units->FindEntity(UnitIds[1]));
+	const double RadiusSum = (FirstRadius ? FirstRadius->Radius : 0.0) + (SecondRadius ? SecondRadius->Radius : 0.0);
+	const double Closest = CrossingClosestDistance == TNumericLimits<double>::Max() ? 0.0 : CrossingClosestDistance;
+
+	// Two units that walk through each other come closer than the sum of their radii; if they step aside, they
+	// graze past each other around that distance. This is the check the fixed-step chrono cannot make (D228).
+	UE_LOG(LogMCStressTest, Display, TEXT("  Crossing (D228): %d swaps ordered, closest the two units came to each other %.1f cm, their two radii sum %.1f cm - %s"),
+		CrossingSwaps, Closest, RadiusSum, Closest < RadiusSum ? TEXT("they walk through each other, the avoidance is not doing its job") : TEXT("they step aside"));
 }
 
 void UMCStressTestSubsystem::DestroyUnits()
@@ -265,8 +388,7 @@ void UMCStressTestSubsystem::KeepUnitsWalking()
 	UMCUnitSubsystem* Units = GetUnitSubsystem();
 	UMCCommandSubsystem* Commands = World ? World->GetSubsystem<UMCCommandSubsystem>() : nullptr;
 	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
-	UNavigationSystemV1* NavSystem = World ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr;
-	if (Units == nullptr || Commands == nullptr || EntitySubsystem == nullptr || NavSystem == nullptr)
+	if (Units == nullptr || Commands == nullptr || EntitySubsystem == nullptr)
 	{
 		return;
 	}
@@ -305,15 +427,15 @@ void UMCStressTestSubsystem::KeepUnitsWalking()
 			continue;
 		}
 
-		FNavLocation Destination;
-		if (NavSystem->GetRandomPointInNavigableRadius(Transform->GetTransform().GetLocation(), OrderRadius, Destination))
-		{
-			// An order goes through the queue (D216, D226) and its destination is brought back to the navmesh
-			// by the command subsystem (D228) — the test does not walk the unit itself.
-			Commands->IssueMoveOrder(MakeArrayView(&UnitId, 1), Destination.Location);
-			--OrdersLeft;
-			++NumOrdersIssued;
-		}
+		// Destination drawn from our own stream, so two runs of the same scenario are comparable (D230); the
+		// command subsystem brings the point back onto the navmesh (D228) — the test does not walk the unit.
+		const FVector Location = Transform->GetTransform().GetLocation();
+		const float Angle = OrderRandom.FRandRange(0.f, 2.f * PI);
+		const float Distance = OrderRadius * FMath::Sqrt(OrderRandom.FRand());
+		const FVector Target = Location + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.f);
+		Commands->IssueMoveOrder(MakeArrayView(&UnitId, 1), Target);
+		--OrdersLeft;
+		++NumOrdersIssued;
 	}
 }
 
@@ -380,6 +502,11 @@ void UMCStressTestSubsystem::BeginMeasure()
 	bScreenshotTaken = false;
 	NumOrdersIssued = 0;
 	LastOrderStepIndex = -1;
+	CrossingClosestDistance = TNumericLimits<double>::Max();
+	CrossingSwaps = 0;
+	bCrossingStartRead = false;
+	bCrossingFarEnd = true;
+		OrderRandom.Initialize(1066);
 
 	if (UMCUnitSubsystem* Units = GetUnitSubsystem())
 	{
@@ -390,6 +517,7 @@ void UMCStressTestSubsystem::BeginMeasure()
 		UE_LOG(LogMCStressTest, Warning, TEXT("Only %d of the %d requested units exist at the start of the measure"), UnitIds.Num(), Count);
 	}
 	LocationsAtMeasureStart = GetUnitLocations();
+	CountInterpenetration(InterpenetrationAtMeasureStart, SmallestGapAtMeasureStart);
 	if (UMCSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UMCSimulationSubsystem>())
 	{
 		Simulation->ResetStepStats();
@@ -450,6 +578,132 @@ void UMCStressTestSubsystem::LogUnitStateSummary() const
 	{
 		UE_LOG(LogMCStressTest, Display, TEXT("  Unit state: %s x %d"), *Entry.Key, Entry.Value);
 	}
+}
+
+void UMCStressTestSubsystem::LogUnitConstantsSummary() const
+{
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	if (EntitySubsystem == nullptr || Units == nullptr)
+	{
+		return;
+	}
+
+	// Every living unit, not only this run's (two types coexist easily), and the values the units really carry
+	// rather than the table: Mass looks a shared fragment up by the CRC of its reflected fields, so a fragment
+	// with fields that are not UPROPERTY would be shared between two types and the second type would silently
+	// walk at the first one's speed (D221, D222).
+	TArray<uint32> AllUnitIds;
+	Units->GetAllUnitIds(AllUnitIds);
+
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TMap<FString, int32> Histogram;
+	for (const uint32 UnitId : AllUnitIds)
+	{
+		const FMCUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FMCUnitTypeConstants>(Units->FindEntity(UnitId));
+		const FString Key = Constants
+			? FString::Printf(TEXT("%s: radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm"), *Constants->TypeName.ToString(), Constants->Radius, Constants->Speed, Constants->MaxHealth, Constants->AvoidanceDistance)
+			: TEXT("no unit constants");
+		++Histogram.FindOrAdd(Key);
+	}
+	for (const TPair<FString, int32>& Entry : Histogram)
+	{
+		UE_LOG(LogMCStressTest, Display, TEXT("  Unit constants: %s x %d"), *Entry.Key, Entry.Value);
+	}
+}
+
+void UMCStressTestSubsystem::CountInterpenetration(int32& OutNumPairs, double& OutSmallestGap) const
+{
+	OutNumPairs = 0;
+	OutSmallestGap = 0.0;
+
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UMCUnitSubsystem* Units = GetUnitSubsystem();
+	if (EntitySubsystem == nullptr || Units == nullptr)
+	{
+		return;
+	}
+
+	TArray<uint32> AllUnitIds;
+	Units->GetAllUnitIds(AllUnitIds);
+
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TArray<FVector> Locations;
+	TArray<float> Radii;
+	float MaxRadius = 0.f;
+	for (const uint32 UnitId : AllUnitIds)
+	{
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		const FAgentRadiusFragment* Radius = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(Entity);
+		if (Transform == nullptr || Radius == nullptr)
+		{
+			continue;
+		}
+		Locations.Add(Transform->GetTransform().GetLocation());
+		Radii.Add(Radius->Radius);
+		MaxRadius = FMath::Max(MaxRadius, Radius->Radius);
+	}
+	if (Locations.Num() < 2)
+	{
+		return;
+	}
+
+	// Uniform grid of one cell per two radii: any pair that could touch is among the nine neighbouring cells.
+	const float CellSize = FMath::Max(2.f * MaxRadius, 1.f);
+	TMap<FIntPoint, TArray<int32>> Grid;
+	Grid.Reserve(Locations.Num());
+	for (int32 Index = 0; Index < Locations.Num(); ++Index)
+	{
+		const FIntPoint Cell(FMath::FloorToInt(Locations[Index].X / CellSize), FMath::FloorToInt(Locations[Index].Y / CellSize));
+		Grid.FindOrAdd(Cell).Add(Index);
+	}
+
+	double SmallestGap = TNumericLimits<double>::Max();
+	for (int32 Index = 0; Index < Locations.Num(); ++Index)
+	{
+		const FIntPoint Cell(FMath::FloorToInt(Locations[Index].X / CellSize), FMath::FloorToInt(Locations[Index].Y / CellSize));
+		for (int32 DeltaX = -1; DeltaX <= 1; ++DeltaX)
+		{
+			for (int32 DeltaY = -1; DeltaY <= 1; ++DeltaY)
+			{
+				const TArray<int32>* Neighbours = Grid.Find(FIntPoint(Cell.X + DeltaX, Cell.Y + DeltaY));
+				if (Neighbours == nullptr)
+				{
+					continue;
+				}
+				for (const int32 Other : *Neighbours)
+				{
+					if (Other <= Index)
+					{
+						continue; // each pair once
+					}
+					const double Gap = FVector::Dist2D(Locations[Index], Locations[Other]) - Radii[Index] - Radii[Other];
+					SmallestGap = FMath::Min(SmallestGap, Gap);
+					if (Gap < 0.0)
+					{
+						++OutNumPairs;
+					}
+				}
+			}
+		}
+	}
+	OutSmallestGap = SmallestGap == TNumericLimits<double>::Max() ? 0.0 : SmallestGap;
+}
+
+void UMCStressTestSubsystem::LogAvoidanceSummary() const
+{
+	int32 NumPairsAtEnd = 0;
+	double SmallestGapAtEnd = 0.0;
+	CountInterpenetration(NumPairsAtEnd, SmallestGapAtEnd);
+
+	// Overlapping units are normal after a random spawn; what matters is whether walking makes it worse, which
+	// is what a dead avoidance force looks like (D228: Mass scales it down to 10 % when it believes the unit has
+	// arrived). A negative gap means two bodies are inside each other.
+	UE_LOG(LogMCStressTest, Display, TEXT("  Avoidance (D228): at the start of the measure %d pairs over each other (smallest gap %.1f cm), at the end %d pairs (smallest gap %.1f cm)"),
+		InterpenetrationAtMeasureStart, SmallestGapAtMeasureStart, NumPairsAtEnd, SmallestGapAtEnd);
 }
 
 void UMCStressTestSubsystem::LogUnitRegistrySummary() const
@@ -547,7 +801,13 @@ void UMCStressTestSubsystem::FinishMeasure()
 	}
 	LogRepresentationSummary();
 	LogUnitStateSummary();
+	LogUnitConstantsSummary();
+	LogAvoidanceSummary();
 	LogUnitRegistrySummary();
+	if (Scenario == EMCStressScenario::Crossing)
+	{
+		LogCrossingSummary();
+	}
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 30.f, bSimulationPassed && bRenderPassed ? FColor::Green : FColor::Red, Report);

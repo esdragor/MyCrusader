@@ -64,6 +64,11 @@ public:
 	const FMCSimulationStepStats& GetStepStats() const { return StepStats; }
 	void ResetStepStats() { StepStats = FMCSimulationStepStats(); }
 
+	/** Whether the throttled processors (the avoidance solvers, D220) run during the step being built (D230). */
+	bool DidThrottledProcessorsRunThisStep() const { return (StepIndex % GetThrottledStepInterval()) == 0; }
+	/** One run out of this many steps for the throttled processors, override of D220 included. */
+	int32 GetThrottledStepInterval() const;
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

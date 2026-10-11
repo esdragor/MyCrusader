@@ -54,6 +54,8 @@ public:
 
 	/** Identifiers of the units of a type, in creation order. */
 	void GetUnitIdsOfType(FName TypeName, TArray<uint32>& OutUnitIds) const;
+	/** Identifiers of every living unit, in creation order. */
+	void GetAllUnitIds(TArray<uint32>& OutUnitIds) const;
 
 	int32 GetNumUnits() const { return Units.Num(); }
 	int32 GetNumPendingBirths() const { return BirthQueue.Num(); }
@@ -90,6 +92,8 @@ private:
 
 	/** One Mass entity configuration, so one archetype, per type, built from the table (D225). */
 	TMap<FName, TSharedPtr<struct FMassEntityConfig>> TemplateCache;
+	/** Fingerprint of each type's constants (D222), to catch two types sharing one copy. */
+	TMap<uint32, FName> ConstantsCrcToType;
 	/** Keeps the traits alive: FMassEntityConfig is held outside of a UPROPERTY. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMassEntityTraitBase>> Traits;
@@ -97,5 +101,5 @@ private:
 	mutable TObjectPtr<const UDataTable> CachedTypeTable = nullptr;
 	mutable bool bTypeTableLookedUp = false;
 
-	FRandomStream SpawnRandom;
+	FRandomStream SpawnRandom{ 1066 };
 };

@@ -204,11 +204,15 @@ int32 UMCSimulationSubsystem::GetStepInterval(const UMassProcessor& Processor) c
 	{
 		if (Throttled && Processor.GetClass()->IsChildOf(Throttled.Get()))
 		{
-			const int32 Interval = UE::MyCrusader::Simulation::ThrottledStepIntervalOverride > 0
-				? UE::MyCrusader::Simulation::ThrottledStepIntervalOverride
-				: ThrottledStepInterval;
-			return FMath::Max(1, Interval);
+			return GetThrottledStepInterval();
 		}
 	}
 	return 1;
+}
+
+int32 UMCSimulationSubsystem::GetThrottledStepInterval() const
+{
+	using namespace UE::MyCrusader::Simulation;
+	const int32 Interval = ThrottledStepIntervalOverride > 0 ? ThrottledStepIntervalOverride : ThrottledStepInterval;
+	return FMath::Max(1, Interval);
 }

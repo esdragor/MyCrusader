@@ -37,9 +37,12 @@ struct MYCRUSADER_API FMCUnitStateFragment : public FMassFragment
 	GENERATED_BODY()
 
 	/** Stable identifier (D223), attributed by the server and never recycled during a match. */
+	UPROPERTY()
 	uint32 UnitId = 0;
 
+	UPROPERTY()
 	int32 CurrentHealth = 0;
 
+	UPROPERTY()
 	EMCUnitActivity Activity = EMCUnitActivity::Idle;
 };

@@ -103,13 +103,26 @@ void UMCUnitOrderProcessor::StopArrivedUnits(FMassEntityManager& EntityManager, 
 				continue;
 			}
 
-			const FVector ToGoal = MoveTargets[EntityIt].Center - Transforms[EntityIt].GetTransform().GetLocation();
-			if (ToGoal.SizeSquared2D() > FMath::Square(Tolerance))
+			FMassMoveTargetFragment& MoveTarget = MoveTargets[EntityIt];
+			const FVector ToGoal = MoveTarget.Center - Transforms[EntityIt].GetTransform().GetLocation();
+			const FVector::FReal DistanceToGoal2D = FVector(ToGoal.X, ToGoal.Y, 0.).Size();
+
+			// Mass only maintains the distance to the goal while a navmesh path is followed. Without one (no path
+			// before M3, D228) it believes the unit has arrived and scales the avoidance force down to
+			// EndOfPathAvoidanceScale (10 %): the walkers would cross each other. Keep the goal up to date here.
+			MoveTarget.DistanceToGoal = static_cast<float>(DistanceToGoal2D);
+			const FVector Direction(ToGoal.X, ToGoal.Y, 0.);
+			if (!Direction.IsNearlyZero())
+			{
+				MoveTarget.Forward = Direction.GetSafeNormal();
+			}
+
+			if (DistanceToGoal2D > Tolerance)
 			{
 				continue;
 			}
 
-			MoveTargets[EntityIt].CreateNewAction(EMassMovementAction::Stand, *World);
+			MoveTarget.CreateNewAction(EMassMovementAction::Stand, *World);
 			States[EntityIt].Activity = EMCUnitActivity::Idle;
 		}
 	});

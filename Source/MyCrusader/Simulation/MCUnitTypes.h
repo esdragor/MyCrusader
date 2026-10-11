@@ -12,18 +12,36 @@ class UStaticMesh;
 /**
  * Runtime cache of one unit type (D222): a single copy per type, shared by all its units, so the static values
  * are not duplicated 2 000 times and balancing them in the table reaches every unit of the type.
+ *
+ * Every field must be a UPROPERTY: Mass identifies a shared fragment by the CRC of its reflected fields, then
+ * compares the values through that same reflection, so a field left out of the reflection is invisible to both
+ * and two types would silently share one copy (the second type walking at the first one's speed). The factory
+ * checks the fingerprint of each type for exactly that.
  */
 USTRUCT()
 struct MYCRUSADER_API FMCUnitTypeConstants : public FMassConstSharedFragment
 {
 	GENERATED_BODY()
 
+	UPROPERTY()
 	FName TypeName;
+
+	UPROPERTY()
 	float Radius = 40.f;
+
+	UPROPERTY()
 	float Speed = 300.f;
+
+	UPROPERTY()
 	int32 MaxHealth = 100;
+
+	UPROPERTY()
 	float AvoidanceDistance = 250.f;
+
+	UPROPERTY()
 	FSoftObjectPath Mesh;
+
+	UPROPERTY()
 	float MeshYawOffset = -90.f;
 };
 

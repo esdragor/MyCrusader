@@ -6,6 +6,7 @@
 #include "MassCommonFragments.h"
 #include "MassEntityTemplateRegistry.h"
 #include "MassEntityUtils.h"
+#include "Simulation/MCAvoidanceHoldFragments.h"
 #include "Simulation/MCSimulationFragments.h"
 
 void UMCUnitTrait::Setup(const FName InTypeName, const FMCUnitTypeConstants& InConstants)
@@ -22,6 +23,8 @@ void UMCUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, 
 	// Required by the visualization trait; light units never get an actor.
 	BuildContext.AddFragment<FMassActorFragment>();
 	BuildContext.AddFragment<FMCUnitStateFragment>();
+	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
+	BuildContext.AddFragment<FMCAvoidanceHoldFragment>();
 
 	FMassEntityManager& EntityManager = UE::Mass::Utils::GetEntityManagerChecked(World);
 	BuildContext.AddConstSharedFragment(EntityManager.GetOrCreateConstSharedFragment(Constants));
