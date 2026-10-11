@@ -7,17 +7,37 @@ public class MyCrusader : ModuleRules
 	public MyCrusader(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
+
+		// Code tree (folders created with their first file): Simulation (authoritative, server),
+		// Presentation (client view), Commands (order queue), StressTest (load tests, D190 / D218).
+		PublicIncludePaths.Add(ModuleDirectory);
+
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
+		// Light units (D29, D215): Mass core + navmesh path following + instanced representation.
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"MassEntity",
+			"MassCore",
+			"MassSignals",
+			"MassCommon",
+			"MassSpawner",
+			"MassMovement",
+			"MassNavigation",
+			"MassNavMeshNavigation",
+			"MassRepresentation",
+			"MassLOD",
+			"MassSimulation",
+			"MassActors",
+			"StateTreeModule",
+			"MassAIBehavior",
+			"NavigationSystem",
+			"AIModule",
+		});
 
-		// Uncomment if you are using Slate UI
-		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
-		
-		// Uncomment if you are using online features
-		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
+		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore" });
 
-		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
+		// Iris replication (D29, M2.5).
+		SetupIrisSupport(Target);
 	}
 }

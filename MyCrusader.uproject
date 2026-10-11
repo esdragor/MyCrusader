@@ -13,5 +13,31 @@
 				"AIModule"
 			]
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "MassGameplay",
+			"Enabled": true
+		},
+		{
+			"Name": "MassAI",
+			"Enabled": true
+		},
+		{
+			"Name": "StateTree",
+			"Enabled": true
+		},
+		{
+			"Name": "AnimToTexture",
+			"Enabled": true
+		},
+		{
+			"Name": "Iris",
+			"Enabled": true
+		},
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		}
 	]
 }
