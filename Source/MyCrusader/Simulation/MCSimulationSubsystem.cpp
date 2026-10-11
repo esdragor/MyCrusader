@@ -3,6 +3,7 @@
 #include "Simulation/MCSimulationSubsystem.h"
 
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "HAL/PlatformTime.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
@@ -12,6 +13,14 @@
 #include "MassSimulationSubsystem.h"
 #include "MyCrusaderLog.h"
 #include "Simulation/MCSimulationSettings.h"
+
+namespace UE::MyCrusader::Simulation
+{
+	/** Stress test knob (D220): overrides the settings' interval when > 0. */
+	int32 ThrottledStepIntervalOverride = 0;
+	FAutoConsoleVariableRef CVarThrottledStepInterval(TEXT("mc.Simulation.ThrottledStepInterval"), ThrottledStepIntervalOverride,
+		TEXT("Steps between two runs of the throttled processors, 0 = UMCSimulationSettings value"));
+}
 
 bool UMCSimulationSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
@@ -39,6 +48,8 @@ void UMCSimulationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	const UMCSimulationSettings* Settings = GetDefault<UMCSimulationSettings>();
 	StepSeconds = Settings->GetStepSeconds();
 	MaxStepsPerFrame = Settings->MaxStepsPerFrame;
+	ThrottledProcessors = Settings->ThrottledProcessors;
+	ThrottledStepInterval = FMath::Max(1, Settings->ThrottledProcessorStepInterval);
 	EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
 
 	TArray<UMassProcessor*> Processors;
@@ -130,20 +141,21 @@ void UMCSimulationSubsystem::RunStep()
 	{
 		FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
 		const TConstArrayView<TObjectPtr<UMassProcessor>> Processors = StepPipeline.GetProcessors();
-		if (StepStats.ProcessorTotalMs.Num() != Processors.Num())
-		{
-			StepStats.ProcessorTotalMs.Reset();
-			for (const UMassProcessor* Processor : Processors)
-			{
-				StepStats.ProcessorTotalMs.Emplace(Processor->GetClass()->GetName(), 0.0);
-			}
-		}
-		// Run one by one to time each processor (stress test breakdown).
+		RegisterProcessorStats(Processors);
+		// Run one by one to time each processor (stress test breakdown). A throttled processor keeps its own
+		// runs and total (D220), so its breakdown stays a per-run cost.
 		for (int32 Index = 0; Index < Processors.Num(); ++Index)
 		{
+			FMCSimulationProcessorStats& ProcessorStats = StepStats.Processors[Index];
+			const int32 StepInterval = FMath::Max(1, ProcessorStats.StepInterval);
+			if (StepInterval > 1 && (StepIndex % StepInterval) != 0)
+			{
+				continue;
+			}
 			const double ProcessorStartSeconds = FPlatformTime::Seconds();
 			UE::Mass::Executor::Run(*Processors[Index], ProcessingContext);
-			StepStats.ProcessorTotalMs[Index].Value += (FPlatformTime::Seconds() - ProcessorStartSeconds) * 1000.0;
+			ProcessorStats.TotalMs += (FPlatformTime::Seconds() - ProcessorStartSeconds) * 1000.0;
+			++ProcessorStats.Runs;
 		}
 	}
 
@@ -152,4 +164,34 @@ void UMCSimulationSubsystem::RunStep()
 	++StepStats.NumSteps;
 	StepStats.TotalMs += StepMs;
 	StepStats.MaxMs = FMath::Max(StepStats.MaxMs, StepMs);
+}
+
+void UMCSimulationSubsystem::RegisterProcessorStats(const TConstArrayView<TObjectPtr<UMassProcessor>> Processors)
+{
+	if (StepStats.Processors.Num() == Processors.Num())
+	{
+		return;
+	}
+	StepStats.Processors.Reset();
+	for (const UMassProcessor* Processor : Processors)
+	{
+		FMCSimulationProcessorStats& Stats = StepStats.Processors.AddDefaulted_GetRef();
+		Stats.Name = Processor->GetClass()->GetName();
+		Stats.StepInterval = GetStepInterval(*Processor);
+	}
+}
+
+int32 UMCSimulationSubsystem::GetStepInterval(const UMassProcessor& Processor) const
+{
+	for (const TSubclassOf<UMassProcessor>& Throttled : ThrottledProcessors)
+	{
+		if (Throttled && Processor.GetClass()->IsChildOf(Throttled.Get()))
+		{
+			const int32 Interval = UE::MyCrusader::Simulation::ThrottledStepIntervalOverride > 0
+				? UE::MyCrusader::Simulation::ThrottledStepIntervalOverride
+				: ThrottledStepInterval;
+			return FMath::Max(1, Interval);
+		}
+	}
+	return 1;
 }

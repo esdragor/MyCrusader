@@ -2,9 +2,9 @@
 
 #include "StressTest/MCStressTestSubsystem.h"
 
-#include "Avoidance/MassAvoidanceTrait.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "DynamicRHI.h"
@@ -27,12 +27,14 @@
 #include "MyCrusaderLog.h"
 #include "NavigationSystem.h"
 #include "RenderTimer.h"
+#include "Simulation/MCLightUnitAvoidanceTrait.h"
 #include "Simulation/MCLightUnitTrait.h"
 #include "Simulation/MCSimulationFragments.h"
 #include "Simulation/MCSimulationSubsystem.h"
 #include "SmoothOrientation/MassSmoothOrientationTrait.h"
 #include "Steering/MassSteeringTrait.h"
 #include "UnrealClient.h"
+#include "Widgets/SWindow.h"
 
 namespace UE::MyCrusader::StressTest
 {
@@ -50,6 +52,14 @@ namespace UE::MyCrusader::StressTest
 	UMCStressTestSubsystem* FindSubsystem(UWorld* World)
 	{
 		return World ? World->GetSubsystem<UMCStressTestSubsystem>() : nullptr;
+	}
+
+	/** A minimized window keeps a placeholder back buffer, and capturing it crashes the D3D12 RHI. */
+	bool IsGameWindowMinimized(const UWorld* World)
+	{
+		const UGameViewportClient* GameViewport = World ? World->GetGameViewport() : nullptr;
+		const TSharedPtr<SWindow> Window = GameViewport ? GameViewport->GetWindow() : nullptr;
+		return Window.IsValid() && Window->IsWindowMinimized();
 	}
 
 	FAutoConsoleCommandWithWorldAndArgs StartCommand(
@@ -160,11 +170,20 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 	RenderThreadMsSum += FPlatformTime::ToMilliseconds(GRenderThreadTime);
 	GpuMsSum += FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles());
 
+	// One capture per run, at half of the measure. Skipped while the window is minimized: the capture would
+	// be lost, and its placeholder back buffer trips a D3D12 assert (hence no retry later in the run).
 	if (!bScreenshotTaken && PhaseElapsed >= MeasureSeconds * 0.5f)
 	{
 		bScreenshotTaken = true;
-		FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("StressTest_%s.png"), Scenario == EMCStressScenario::S2_Moving ? TEXT("S2") : TEXT("S1")),
-			/*bInShowUI*/ false, /*bAddFilenameSuffix*/ false);
+		if (UE::MyCrusader::StressTest::IsGameWindowMinimized(GetWorld()))
+		{
+			UE_LOG(LogMCStressTest, Warning, TEXT("No capture for this run: the game window is minimized"));
+		}
+		else
+		{
+			FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("StressTest_%s.png"), Scenario == EMCStressScenario::S2_Moving ? TEXT("S2") : TEXT("S1")),
+				/*bInShowUI*/ false, /*bAddFilenameSuffix*/ false);
+		}
 	}
 
 	if (PhaseElapsed >= MeasureSeconds)
@@ -205,7 +224,7 @@ const FMassEntityConfig& UMCStressTestSubsystem::GetOrCreateConfig(const bool bW
 	const TArray<UMassEntityTraitBase*> ConfigTraits = { LightUnitTrait,
 		NewObject<UMassMovementTrait>(this),
 		NewObject<UMassSteeringTrait>(this),
-		NewObject<UMassObstacleAvoidanceTrait>(this),
+		NewObject<UMCLightUnitAvoidanceTrait>(this),
 		NewObject<UMassNavigationObstacleTrait>(this),
 		NewObject<UMassSmoothOrientationTrait>(this),
 		NewObject<UMassNavMeshNavigationTrait>(this),
@@ -399,9 +418,10 @@ void UMCStressTestSubsystem::FinishMeasure()
 		AverageDisplacementM);
 
 	UE_LOG(LogMCStressTest, Display, TEXT("%s"), *Report);
-	for (const TPair<FString, double>& Processor : StepStats.ProcessorTotalMs)
+	for (const FMCSimulationProcessorStats& Processor : StepStats.Processors)
 	{
-		UE_LOG(LogMCStressTest, Display, TEXT("  Step breakdown: %s %.3f ms"), *Processor.Key, StepStats.NumSteps > 0 ? Processor.Value / StepStats.NumSteps : 0.0);
+		const FString Throttled = Processor.StepInterval > 1 ? FString::Printf(TEXT(" (1 step out of %d)"), Processor.StepInterval) : FString();
+		UE_LOG(LogMCStressTest, Display, TEXT("  Step breakdown: %s %.3f ms%s"), *Processor.Name, Processor.GetAverageMs(), *Throttled);
 	}
 	LogRepresentationSummary();
 	if (GEngine)

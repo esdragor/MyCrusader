@@ -31,5 +31,17 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Simulation")
 	TArray<TSubclassOf<UMassProcessor>> SimulationProcessors;
 
+	/**
+	 * Processors of SimulationProcessors that only need one step out of ThrottledProcessorStepInterval (D220).
+	 * The Mass avoidance solver is nearly the whole simulation cost at 2 000 units (about 4 µs per unit, single
+	 * threaded) and its result hardly changes within a 20 Hz step.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Simulation")
+	TArray<TSubclassOf<UMassProcessor>> ThrottledProcessors;
+
+	/** Steps between two runs of the throttled processors: 4 = 5 Hz at the 20 Hz step (D220). */
+	UPROPERTY(config, EditAnywhere, Category = "Simulation", meta = (ClampMin = "1"))
+	int32 ThrottledProcessorStepInterval = 4;
+
 	float GetStepSeconds() const { return 1.f / static_cast<float>(SimulationRateHz); }
 };

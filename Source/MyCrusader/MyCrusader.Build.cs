@@ -36,7 +36,8 @@ public class MyCrusader : ModuleRules
 			"AIModule",
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore" });
+		// SlateCore: the stress test checks the game window state before asking for a capture (D190).
+		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore", "SlateCore" });
 
 		// Iris replication (D29, M2.5).
 		SetupIrisSupport(Target);
