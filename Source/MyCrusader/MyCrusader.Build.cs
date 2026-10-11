@@ -32,10 +32,11 @@ public class MyCrusader : ModuleRules
 			"StateTreeModule",
 			"MassAIBehavior",
 			"NavigationSystem",
+			"NavCorridor",
 			"AIModule",
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore" });
 
 		// Iris replication (D29, M2.5).
 		SetupIrisSupport(Target);
