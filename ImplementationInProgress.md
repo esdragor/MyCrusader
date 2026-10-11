@@ -120,6 +120,9 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
   table identifiant ↔ entité **0 écart** sur 2 000 unités, `Move action` et `Unit state` concordent
   (`Stand`/`Idle` en S1, `Move`/`Moving` x 1991 en S2), `Units left after the run: 0` (destruction différée
   appliquée à la queue du pas), et le second type crée bien son propre archétype.
+- **Budget par pas vérifié (D224)** : sans `mc.Units.SpawnBudget -1`, les 2 000 unités demandées sont servies
+  **500 par pas** (valeur des réglages) et arrivent toutes (rapport : `2000 units of 2000 requested, 0 births
+  waiting`) — la file est bien servie partiellement sur plusieurs pas, pas seulement en mode « tout d'un coup ».
 - **Mesures (2026-10-11, éditeur en `-game` non cuit, 2 000 unités, `mc.Units.SpawnBudget -1`)** — seuils
   D218 : simulation ≤ 3 ms, rendu ≥ 144 i/s :
 
@@ -128,6 +131,7 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
   | S1 immobiles, `LightInfantry` | **2,096 ms ✅** | 145,8 i/s (72,8) ✅ | `Stand`/`Idle` x 2000 |
   | S1 immobiles, `Archer` (2ᵉ archétype) | **2,040 ms ✅** | 167,7 i/s (81,4) ✅ | `Stand`/`Idle` x 2000 |
   | S2 en marche, ordres (D229) | **2,158 ms ✅** | 167,0 i/s (89,7) ✅ | `Move`/`Moving` x 1991, `Stand`/`Idle` x 9 |
+  | S1 immobiles, budget par pas par défaut (500/pas) | **1,935 ms ✅** | 163,5 i/s (83,1) ✅ | `Stand`/`Idle` x 2000 |
   | S1 500 unités (contrôle de destruction) | **0,542 ms ✅** | 171,5 i/s (92,9) ✅ | `0 unit left` après l'arrêt |
 
   Détail du pas en S1 à 2 000 unités : évitement d'arrêt 7,37 ms ramené à 1/6 (1,23 ms), transform précédent
