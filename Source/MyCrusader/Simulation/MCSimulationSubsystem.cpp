@@ -80,6 +80,7 @@ void UMCSimulationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		if (Info.NodeType == FMassProcessorOrderInfo::EDependencyNodeType::Processor && Info.Processor)
 		{
 			StepPipeline.AppendProcessor(*Info.Processor);
+			ProcessorThrottled.Add(IsThrottled(*Info.Processor));
 		}
 	}
 
@@ -109,7 +110,9 @@ void UMCSimulationSubsystem::Deinitialize()
 		}
 	}
 	PhaseStartedHandle.Reset();
+	OnStepStarted.Clear();
 	StepPipeline.Reset();
+	ProcessorThrottled.Reset();
 	EntityManager.Reset();
 
 	Super::Deinitialize();
@@ -137,6 +140,9 @@ void UMCSimulationSubsystem::OnPrePhysicsPhaseStarted(const float DeltaSeconds)
 
 void UMCSimulationSubsystem::RunStep()
 {
+	// Listeners (the stress test) run before the step's chrono: their orders belong to this step, their cost does not.
+	OnStepStarted.Broadcast(StepIndex);
+
 	const double StartSeconds = FPlatformTime::Seconds();
 
 	// Births are served at the head of the step and destructions applied at its tail (D224): neither is a
@@ -151,13 +157,18 @@ void UMCSimulationSubsystem::RunStep()
 		FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
 		const TConstArrayView<TObjectPtr<UMassProcessor>> Processors = StepPipeline.GetProcessors();
 		RegisterProcessorStats(Processors);
+		// One decision per step (D220), read live so the console override applies at once, and published for the
+		// processors that depend on it (D230).
+		const int32 ThrottledInterval = GetThrottledStepInterval();
+		bThrottledProcessorsRunThisStep = (StepIndex % ThrottledInterval) == 0;
 		// Run one by one to time each processor (stress test breakdown). A throttled processor keeps its own
 		// runs and total (D220), so its breakdown stays a per-run cost.
 		for (int32 Index = 0; Index < Processors.Num(); ++Index)
 		{
 			FMCSimulationProcessorStats& ProcessorStats = StepStats.Processors[Index];
-			const int32 StepInterval = FMath::Max(1, ProcessorStats.StepInterval);
-			if (StepInterval > 1 && (StepIndex % StepInterval) != 0)
+			const bool bThrottled = ProcessorThrottled.IsValidIndex(Index) && ProcessorThrottled[Index];
+			ProcessorStats.StepInterval = bThrottled ? ThrottledInterval : 1;
+			if (bThrottled && !bThrottledProcessorsRunThisStep)
 			{
 				continue;
 			}
@@ -194,20 +205,19 @@ void UMCSimulationSubsystem::RegisterProcessorStats(const TConstArrayView<TObjec
 	{
 		FMCSimulationProcessorStats& Stats = StepStats.Processors.AddDefaulted_GetRef();
 		Stats.Name = Processor->GetClass()->GetName();
-		Stats.StepInterval = GetStepInterval(*Processor);
 	}
 }
 
-int32 UMCSimulationSubsystem::GetStepInterval(const UMassProcessor& Processor) const
+bool UMCSimulationSubsystem::IsThrottled(const UMassProcessor& Processor) const
 {
 	for (const TSubclassOf<UMassProcessor>& Throttled : ThrottledProcessors)
 	{
 		if (Throttled && Processor.GetClass()->IsChildOf(Throttled.Get()))
 		{
-			return GetThrottledStepInterval();
+			return true;
 		}
 	}
-	return 1;
+	return false;
 }
 
 int32 UMCSimulationSubsystem::GetThrottledStepInterval() const

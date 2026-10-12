@@ -61,6 +61,9 @@ public:
 	int32 GetNumPendingBirths() const { return BirthQueue.Num(); }
 	void GetUnitCountsByType(TMap<FName, int32>& OutCounts) const;
 
+	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
+	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }
+
 	/** Mass entity template of a type, built once from its row and cached (D225); nullptr for an unknown type. */
 	const FMassEntityTemplate* FindTemplate(FName TypeName);
 
@@ -101,5 +104,7 @@ private:
 	mutable TObjectPtr<const UDataTable> CachedTypeTable = nullptr;
 	mutable bool bTypeTableLookedUp = false;
 
-	FRandomStream SpawnRandom{ 1066 };
+	/** Birth positions come from a fixed seed, so two runs of a stress test are comparable (D230). */
+	static constexpr int32 SpawnSeed = 1066;
+	FRandomStream SpawnRandom{ SpawnSeed };
 };

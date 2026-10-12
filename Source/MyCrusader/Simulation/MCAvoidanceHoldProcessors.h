@@ -10,8 +10,8 @@
 /**
  * The avoidance solver is the whole cost of a step at 2 000 units (D220), so it only runs one step out of
  * several - and an avoidance impulse applied one step in six and forgotten the next is not avoidance at all:
- * two units on a collision course walk through each other (measured 1.3 to 4.7 cm apart at one run in two,
- * three or six against 66.5 cm with the solver running every step). Mass does not keep the force either:
+ * two units crossing at right angles walk through each other (0.9 to 5.2 cm apart at one run in two, three or
+ * six, against 65.9 cm with the solver running every step; scenario C). Mass does not keep the force either:
  * UMassApplyForceProcessor resets the force fragment to zero after applying it. These two processors keep the
  * last avoidance impulse alive between the solver's runs: continuity without paying for the solver (D230).
  */
@@ -30,7 +30,10 @@ protected:
 	FMassEntityQuery EntityQuery;
 };
 
-/** Re-applies the held avoidance impulse on the steps the solver does not run. */
+/**
+ * Remembers the impulse on the step the solver runs, then re-applies it on exactly AvoidanceHoldSteps of the
+ * following steps, the total capped at the type's MaxAcceleration as the solver caps its own result.
+ */
 UCLASS()
 class MYCRUSADER_API UMCAvoidanceHoldProcessor : public UMassProcessor
 {
@@ -39,9 +42,19 @@ class MYCRUSADER_API UMCAvoidanceHoldProcessor : public UMassProcessor
 public:
 	UMCAvoidanceHoldProcessor();
 
+	/** Re-applications after each solver run, console override included (D230); 0 = off. */
+	static int32 GetHoldSteps();
+	/** Factor applied to the held impulse after each re-application, console override included (D230). */
+	static float GetHoldDecay();
+
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 
+private:
+	/** Appends the traced units' rows of this step to Saved/AvoidanceTrace.csv (mc.Units.AvoidanceTrace). */
+	void WriteTraceRows(TArray<FString>& Rows);
+
 	FMassEntityQuery EntityQuery;
+	bool bTraceFileStarted = false;
 };

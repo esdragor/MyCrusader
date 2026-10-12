@@ -67,15 +67,20 @@ public:
 	float OrderTargetProjectionExtent = 1000.f;
 
 	/**
-	 * Steps an avoidance impulse is kept and re-applied for after the solver computed it (D230). The solver runs
-	 * one step out of ThrottledProcessorStepInterval and Mass resets the force after applying it, so keeping the
-	 * impulse is what separates the units of a crowd: the overlapping pairs of S2 fall from 137 to 58 (measured,
-	 * 2 000 units). A head-on crossing of two units stays uncorrected (see the crossing measure, D230).
+	 * Steps an avoidance impulse is re-applied on after the solver computed it (D230), the total capped at the
+	 * type's MaxAcceleration. The solver runs one step out of ThrottledProcessorStepInterval and Mass resets the
+	 * force after applying it, so keeping the impulse is what separates the units of a crowd: S2 overlapping pairs
+	 * 102 -> 68 with it against 173 -> 120 without (2 000 units, fixed seed, step-driven runs; the 137 -> 58 first
+	 * given here compared unrepeatable runs of a faulty hold). Two units crossing head-on or at right angles still
+	 * walk through each other (scenario C, D230). Console override: mc.Units.AvoidanceHold (negative = this value).
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "0"))
 	int32 AvoidanceHoldSteps = 5;
 
-	/** Decay applied to the kept impulse at every step: 1 keeps it as it was until the next solver run (D230). */
+	/**
+	 * Factor applied to the kept impulse after each re-application (D230): 1 keeps it as it was until the next
+	 * solver run, 0 re-applies it once. Console override: mc.Units.AvoidanceHoldDecay (negative = this value).
+	 */
 	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "0", ClampMax = "1"))
 	float AvoidanceHoldDecay = 1.f;
 

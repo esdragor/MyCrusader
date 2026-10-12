@@ -14,7 +14,7 @@ struct FMCSimulationProcessorStats
 	double TotalMs = 0.0;
 	/** Steps the processor actually ran: a throttled one runs less often than the simulation does. */
 	int32 Runs = 0;
-	/** One run out of this many steps (D220: 1 = every step). */
+	/** One run out of this many steps at the last step (D220: 1 = every step), for the report only. */
 	int32 StepInterval = 1;
 
 	double GetAverageMs() const { return Runs > 0 ? TotalMs / Runs : 0.0; }
@@ -44,6 +44,9 @@ struct FMCSimulationStepStats
 	double GetAverageDestructionMs() const { return NumSteps > 0 ? TotalDestructionMs / NumSteps : 0.0; }
 };
 
+/** Head of a fixed step, before births and processors: what is issued here is applied by this very step. */
+DECLARE_MULTICAST_DELEGATE_OneParam(FMCOnSimulationStepStarted, int64 /*StepIndex*/);
+
 /**
  * Runs the authoritative simulation at a fixed step (D217, D219): at the start of Mass' PrePhysics phase,
  * the accumulator runs 0 to N steps of the simulation pipeline; per-frame processors run afterwards and
@@ -61,11 +64,17 @@ public:
 	float GetStepSeconds() const { return StepSeconds; }
 	int64 GetStepIndex() const { return StepIndex; }
 
+	/** Fires at the head of every fixed step: a stress test drives its orders and its phases by steps, not by frames. */
+	FMCOnSimulationStepStarted& GetOnStepStarted() { return OnStepStarted; }
+
 	const FMCSimulationStepStats& GetStepStats() const { return StepStats; }
 	void ResetStepStats() { StepStats = FMCSimulationStepStats(); }
 
-	/** Whether the throttled processors (the avoidance solvers, D220) run during the step being built (D230). */
-	bool DidThrottledProcessorsRunThisStep() const { return (StepIndex % GetThrottledStepInterval()) == 0; }
+	/**
+	 * Whether the throttled processors (the avoidance solvers, D220) run during the step being built (D230). Set
+	 * by RunStep from the same decision that runs them, so a reader cannot disagree with the pipeline.
+	 */
+	bool AreThrottledProcessorsRunningThisStep() const { return bThrottledProcessorsRunThisStep; }
 	/** One run out of this many steps for the throttled processors, override of D220 included. */
 	int32 GetThrottledStepInterval() const;
 
@@ -77,10 +86,10 @@ protected:
 private:
 	void OnPrePhysicsPhaseStarted(const float DeltaSeconds);
 	void RunStep();
-	/** Fills StepStats.Processors with the pipeline's processors, their run interval included (D220). */
+	/** Fills StepStats.Processors with the pipeline's processors, after a reset of the statistics. */
 	void RegisterProcessorStats(const TConstArrayView<TObjectPtr<UMassProcessor>> Processors);
-	/** One run out of this many steps for this processor (D220), from the throttled processor list. */
-	int32 GetStepInterval(const UMassProcessor& Processor) const;
+	/** Whether this processor is in the throttled processor list (D220). */
+	bool IsThrottled(const UMassProcessor& Processor) const;
 
 	/** Simulation processors in dependency order, run at each fixed step. */
 	UPROPERTY(Transient)
@@ -89,6 +98,10 @@ private:
 	/** Processors that only need one step out of ThrottledStepInterval (D220). */
 	TArray<TSubclassOf<UMassProcessor>> ThrottledProcessors;
 	int32 ThrottledStepInterval = 1;
+	/** Per processor of StepPipeline, in its order: whether it is throttled. Part of the pipeline, not of the stats. */
+	TArray<bool> ProcessorThrottled;
+	/** Decided at the head of each step, read by UMCAvoidanceHoldProcessor (D230). */
+	bool bThrottledProcessorsRunThisStep = false;
 
 	TSharedPtr<struct FMassEntityManager> EntityManager;
 	FDelegateHandle PhaseStartedHandle;
@@ -98,4 +111,5 @@ private:
 	float Accumulator = 0.f;
 	int64 StepIndex = 0;
 	FMCSimulationStepStats StepStats;
+	FMCOnSimulationStepStarted OnStepStarted;
 };

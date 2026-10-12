@@ -35,6 +35,9 @@ namespace UE::MyCrusader::Units
 	int32 SpawnBudgetOverride = 0;
 	FAutoConsoleVariableRef CVarSpawnBudget(TEXT("mc.Units.SpawnBudget"), SpawnBudgetOverride,
 		TEXT("Units created per step at most, 0 = UMCSimulationSettings value, -1 = the whole queue in one step"));
+
+	/** Draws of a birth position before giving up on finding the navmesh under it. */
+	constexpr int32 MaxSpawnProjectionAttempts = 4;
 }
 
 bool UMCUnitSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -110,7 +113,7 @@ const FMassEntityTemplate* UMCUnitSubsystem::FindTemplate(const FName TypeName)
 
 	// Mass identifies a shared fragment by the CRC of its reflected (UPROPERTY) fields, then compares the values
 	// through that same reflection: a field left out of the reflection is invisible to both, and the second type
-	// silently gets the first one's constants — an archer walking at the infantry's speed. Two types never share
+	// silently gets the first one's constants â€” an archer walking at the infantry's speed. Two types never share
 	// their constants (the type name is one of them), so a fingerprint already taken is a mistake, not a hit.
 	const uint32 ConstantsCrc = UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Constants));
 	if (const FName* ExistingType = ConstantsCrcToType.Find(ConstantsCrc))
@@ -255,6 +258,7 @@ void UMCUnitSubsystem::CreateUnitEntities(const FMCUnitSpawnRequest& Request, co
 	UNavigationSystemV1* NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 	const FMCUnitTypeConstants Constants = Row->ToConstants(Request.TypeName);
 
+	int32 NumProjectionFailures = 0;
 	TArray<FMassEntityHandle> Created;
 	{
 		TSharedRef<FMassEntityManager::FEntityCreationContext> CreationContext =
@@ -275,16 +279,24 @@ void UMCUnitSubsystem::CreateUnitEntities(const FMCUnitSpawnRequest& Request, co
 			// Own draw then projection onto the navmesh: the engine's random navigable point uses a global
 			// generator, which would make two runs of the same stress test incomparable (D230: the overlaps of
 			// the crowd start at the spawn pattern).
-			const float Angle = SpawnRandom.FRandRange(0.f, 2.f * PI);
-			const float Distance = Request.Radius * FMath::Sqrt(SpawnRandom.FRand());
-			const FVector Proposed = Request.Center + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.f);
 			// Narrow horizontal box: the point is already where it should be, only its height has to come from the
-			// navmesh. A wide box makes the query snap the position onto a coarse grid of the navmesh.
-			FNavLocation Projected;
-			if (NavSystem->ProjectPointToNavigation(Proposed, Projected, FVector(10.f, 10.f, 500.f)))
+			// navmesh. A wide box makes the query snap the position onto a coarse grid of the navmesh. A point
+			// drawn off the navmesh (edge, hole, obstacle) is drawn again; after the last draw the unit keeps that
+			// point rather than the centre, where every failure would pile up.
+			bool bProjected = false;
+			for (int32 Attempt = 0; Attempt < UE::MyCrusader::Units::MaxSpawnProjectionAttempts && !bProjected; ++Attempt)
 			{
-				Location = Projected.Location;
+				const float Angle = SpawnRandom.FRandRange(0.f, 2.f * PI);
+				const float Distance = Request.Radius * FMath::Sqrt(SpawnRandom.FRand());
+				Location = Request.Center + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.f);
+				FNavLocation Projected;
+				if (NavSystem->ProjectPointToNavigation(Location, Projected, FVector(10.f, 10.f, 500.f)))
+				{
+					Location = Projected.Location;
+					bProjected = true;
+				}
 			}
+			NumProjectionFailures += bProjected ? 0 : 1;
 		}
 
 		FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity);
@@ -311,6 +323,12 @@ void UMCUnitSubsystem::CreateUnitEntities(const FMCUnitSpawnRequest& Request, co
 
 		Units.Add(UnitId, FMCUnitRecord{Entity, Request.TypeName});
 		EntityToId.Add(Entity, UnitId);
+	}
+
+	if (NumProjectionFailures > 0)
+	{
+		UE_LOG(LogMCSimulation, Warning, TEXT("%d of %d '%s' units found no navmesh under their birth position after %d draws: born off the navmesh, at their last draw"),
+			NumProjectionFailures, Created.Num(), *Request.TypeName.ToString(), UE::MyCrusader::Units::MaxSpawnProjectionAttempts);
 	}
 }
 
