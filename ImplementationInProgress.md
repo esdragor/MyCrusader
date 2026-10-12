@@ -18,7 +18,7 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 |---|---|
 | M0 — migration 5.8, modules, plugins, carte de test | **fait** (2026-10-11) |
 | M1 — essai Mass (D215) | **fait** (2026-10-11) : seuils D218 tenus sur S1 et S2 après **D220**, hypothèse `Stand` vérifiée |
-| M1 — cœur de la simulation (`UnitData`, identifiants, apparition/disparition, file de commandes) | **fait** (2026-10-11) : D221 à D229 implémentés ; **revue traitée le 2026-10-12** (deux bugs corrigés, D230) ; S1 2,25/2,10 ms, S2 2,21/2,25 ms ✅, croisement 2,7 cm (limitation connue) |
+| M1 — cœur de la simulation (`UnitData`, identifiants, apparition/disparition, file de commandes) | **fait** (2026-10-11) : D221 à D229 implémentés ; **revue traitée le 2026-10-12** (deux bugs corrigés, D230) puis **suites de la revue** (maintien corrigé, A/B reproductible) ; S1 2,42 ms, S2 2,48/2,58 ms ✅, recouvrements S2 102 → 68 (173 → 120 sans maintien), croisement 3,5 cm de face, 6,1 cm à angle droit (limitation connue) |
 | M2 — rendu (instances par type et par joueur, animations, interpolation) | à faire |
 | M2.5 — tranche réseau Iris (D216) | à faire |
 
@@ -28,11 +28,15 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 2. ~~S1 et S2 en non-régression~~ → **fait** : S1 2,25 et 2,10 ms, S2 2,21 et 2,25 ms, rendu ≥ 144 i/s.
 3. ~~Revue de l'utilisateur : deux bugs, dette inexistante, axes d'amélioration~~ → **fait (2026-10-12)** : bugs corrigés et
    mesurés, journée d'évitement instruite (**D230**), journaux dédoublonnés, graine fixée, test de croisement ajouté.
+3b. ~~Suites de la revue (`ReviewM1Followup.md`)~~ → **fait (2026-10-12)** : maintien de l'impulsion corrigé et vérifié,
+   A/B reproductible de D230 (gain net confirmé), spawn robuste, scénario C paramétré par angle, drapeau « solveur actif »
+   posé par le pas, stress test avancé par pas. Détail dans le journal.
 4. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations cuites en textures
    (`AnimToTexture`), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1 et S2 au vert, et
    une vérification à 2 clients dès M2.5 (D216).
-5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement frontal** (comportement
-   non expliqué, test à durcir) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
+5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
+   même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `mc.StressTest.CrossingAngle`,
+   `mc.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
    d'unités immobiles.
 6. **M4 — à prévoir** : un ordre de groupe vers un **même point** ne verra jamais ses unités s'arrêter (tolérance
    d'arrivée de 50 cm pour toutes) : il faudra une formation ou une tolérance liée à la taille du groupe.
@@ -45,7 +49,7 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 | D227 | **Fabrication de la table des types** : un `.uasset` ne s'écrit pas à la main. | **tranché** : CSV source `Tools/Data/UnitTypes.csv` + script d'éditeur `Tools/Editor/make_unit_types.py` → `/Game/Units/UnitTypes`, lu par configuration |
 | D228 | **Mouvement de l'ordre** « va à cet endroit ». | **tranché** : cible directe (`FMassMoveTargetFragment`, action `Move`, arrivée détectée par nous), destination ramenée au navmesh **à l'émission** (une requête de point par ordre) ; chemins à M3 |
 | D229 | **S2 du stress test**. | **tranché** : S2 passe aux ordres de M1, l'errance d'essai est supprimée, le scénario est requalifié (M3 le rendra exigeant) |
-| D230 | **Cadence de l'évitement** (revue du 2026-10-12). | **tranché** : cadence de D220 conservée **et** impulsion d'évitement retenue 5 pas, sans décroissance ; croisement frontal consigné comme limitation **non expliquée** ; graine fixée |
+| D230 | **Cadence de l'évitement** (revue du 2026-10-12). | **tranché** : cadence de D220 conservée **et** impulsion d'évitement ré-appliquée exactement 5 pas, sans décroissance, bornée à `MaxAcceleration` ; gain confirmé par un A/B reproductible (102 → 68 contre 173 → 120) ; croisement consigné comme limitation **non expliquée** ; graine fixée, stress test par pas |
 
 ## Plan de M1 (à valider question par question)
 
@@ -75,12 +79,24 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
 
 ## Questions ouvertes
 
-- **Croisement frontal de deux unités — comportement non expliqué (2026-10-12)** : avec l'évitement à **chaque
-  pas**, deux unités ordonnées à travers le même point se frôlent à 66,5 cm (somme des rayons 80 cm) ; à 1 pas
-  sur 2, 3 ou 6, l'écart tombe à 1,3 / 3,0 / 4,7 cm — **il ne suit donc pas la fréquence** — et la force retenue
-  le dégrade (2,4 à 7,4 cm). L'explication par le nombre d'impulsions est fausse. À instruire **avant M5** :
-  durcir le test (plusieurs décalages de phase, angles, graines — le test actuel est un croisement unique) et
-  regarder ce qui se passe sur les pas **sans** solveur (force, vitesse désirée, pilotage).
+- **Croisement de deux unités — comportement non expliqué (2026-10-12, remesuré à passages reproductibles)** : écart
+  minimal pour une somme des rayons de 80 cm, maintien coupé sauf mention :
+
+  | Cadence du solveur | 0° (face-à-face) | 90° | 135° |
+  |---|---|---|---|
+  | chaque pas | 4,5 cm ❌ | **65,9 cm** ✅ | — |
+  | 1 sur 2 | 9,2 ❌ | 0,9 ❌ | — |
+  | 1 sur 3 | 7,3 ❌ | 3,8 ❌ | — |
+  | 1 sur 6 (D220) | 10,7 ❌ | 5,2 ❌ | 1,0 ❌ |
+  | 1 sur 6 + maintien 5 pas (D230) | 3,5 ❌ | 6,1 ❌ | **88,9** ✅ |
+
+  Ce qu'on sait : **de face**, l'échec ne vient pas de la cadence (même chaque pas échoue) ; la trace montre une
+  impulsion de pur **freinage** (−250 sur l'axe de marche, composante latérale inférieure à 0,1 cm/s²), dans une
+  géométrie parfaitement symétrique. **À angle droit**, toute cadence ralentie échoue. Entre deux passages du solveur,
+  le **pilotage ramène la vitesse** vers la vitesse voulue (trace : force de pilotage +42, +76, +105… cm/s² pendant
+  que l'impulsion freine), hypothèse 1 de la revue confirmée. Reste à instruire **avant M5** : décalages de phase de
+  l'ordre (0 à 5 pas), angles intermédiaires, effet d'une légère dissymétrie de face ; la trace par pas existe
+  (`mc.Units.AvoidanceTrace 1+2`).
 - **Séparation des unités immobiles** : `MassStandingAvoidanceProcessor` pousse un **fantôme** et la conduite
   d'arrêt déplace le corps **en appliquant `MoveTarget.DesiredSpeed`** — que la naissance met à 0 pour une unité
   immobile : le fantôme s'écarte, le corps ne bouge pas (les recouvrements de S1, ~215 paires à la naissance,
@@ -102,7 +118,95 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
 - ~~Hypothèse `Stand`~~ → **résolue (2026-10-11)** : voir le journal. Ce n'était pas un gain mais un transfert
   de coût ; les deux solveurs d'évitement sont désormais ralentis (D220).
 
+## Pièges de Mass connus
+
+Savoir d'implémentation (déplacé du GDD le 2026-10-12, où il ne reste qu'un renvoi). Chaque piège a coûté une
+erreur silencieuse ; la plupart sont désormais gardés par le code.
+
+- **Fragment partagé : tous les champs en `UPROPERTY`.** Mass identifie une instance partagée par une empreinte
+  calculée sur les champs **réfléchis**, puis compare ces mêmes champs : des champs ordinaires rendent deux types
+  d'unité interchangeables (l'archer héritait des constantes de l'infanterie). Garde-fou : la fabrique compare
+  l'empreinte de chaque type et journalise une erreur si deux types se ressemblent.
+- **Identité d'un `FMassEntityConfig`** : un GUID **dérivé du chemin de son propriétaire** ; une fabrique qui donne
+  le même propriétaire à tous les types les fait répondre par un seul template. Un GUID neuf par type
+  (`MakeShared<FMassEntityConfig>()` puis `SetOwner`).
+- **`ProjectPointToNavigation` avec une boîte large** accroche la position sur une grille grossière du navmesh de la
+  carte de test (le spawn y perdait sa répartition) : boîte serrée en horizontal, large en Z.
+- **`DistanceToGoal` n'est entretenu par Mass que derrière un chemin navmesh.** En cible directe il reste à 0 : Mass
+  croit l'unité arrivée et ramène l'évitement à 10 % (`EndOfPathAvoidanceScale`). Nous le réécrivons à chaque pas.
+- **`MoveTarget.Forward` décide du pilotage** : `MassSteerToMoveTargetProcessor` ramène l'unité sur la ligne
+  `Center` / `Forward`. Réécrit à chaque pas vers la cible (ce que nous faisons), l'écart latéral est toujours nul
+  et l'unité va droit vers la cible (D228).
+- **Mass remet la force à zéro après l'avoir appliquée** (`MassApplyForceProcessor`) : un évitement ralenti est
+  oublié au pas suivant, d'où le maintien de l'impulsion (D230).
+- **Seul le solveur d'évitement borne la force** à `MaxAcceleration` ; le pilotage ne la borne pas
+  (`(vitesse voulue − vitesse) / ReactionTime` : 1 000 cm/s² au départ d'une unité à 300 cm/s). Le maintien de D230
+  borne sa propre somme comme le fait le solveur.
+- **API synchrone d'entités interdite pendant un processeur** (`IsProcessing()`, assertion de
+  `FMassEntityManager`) : naissances et destructions se font à la tête et à la queue du pas (D224).
+- **Une graine fixe ne suffit pas à rendre un test reproductible** : tout ce qui pilote la simulation (ordres,
+  phases du test) doit avancer **par pas**, jamais par image.
+
 ## Journal d'avancement
+
+### 2026-10-12 (suite) — Suites de la revue de M1 (`ReviewM1Followup.md`) : maintien corrigé, A/B reproductible de D230
+
+- **Tâche 1 — maintien de l'impulsion corrigé** (`MCAvoidanceHoldProcessors.cpp`). Défaut confirmé : au pas du solveur,
+  l'impulsion (déjà dans la force) était **ajoutée une seconde fois**, puis ré-appliquée **4 pas** au lieu de 5, et la
+  somme dépassait le plafond `MaxAcceleration` que le solveur pose lui-même (`MassAvoidanceProcessors.cpp:1078`). Le
+  solveur muet laissait en outre courir l'ancienne impulsion. Désormais : au pas du solveur, on mémorise (ou on efface)
+  sans rien ajouter ; aux autres pas, on ajoute, on borne à `MaxAcceleration` (fragment partagé `FMassMovementParameters`),
+  puis on applique la décroissance. **Vérifié par trace** (`mc.Units.AvoidanceTrace 1+2`, scénario C) : 8 cycles avec
+  impulsion → **exactement 5 ré-applications** chacun, 32 cycles sans → 0 ; force ≤ 250 sur **tous** les pas ré-appliqués.
+  Les seuls pas au-delà du plafond sont ceux du **pilotage** de Mass au départ (1 000 = 300 / 0,3 s), qui ne nous
+  appartiennent pas (voir « Pièges de Mass connus »).
+- **Conventions des CVars alignées** (corrections mineures) : `mc.Units.AvoidanceHold` et `mc.Units.AvoidanceHoldDecay`
+  valent **négatif = réglage** (défaut) ; `AvoidanceHold 0` coupe le maintien, `AvoidanceHoldDecay 0` force une décroissance
+  totale (impossible avant). `GetDefault` n'est plus appelé deux fois.
+- **Découverte en route : les passages n'étaient pas reproductibles**, graine fixe ou non. Premier A/B (même binaire,
+  mêmes réglages) : S2 sans maintien 171 → 135 puis 179 → 151, avec maintien 104 → 67 puis 104 → 108 ; croisement de
+  face 3,5 puis 11,6 cm. Cause : ordres, échauffement et mesure du stress test suivaient les **images** ; une image lente
+  fait tourner deux pas d'un coup et saute une passe d'ordres. **Corrigé** : `UMCSimulationSubsystem` diffuse le début de
+  chaque pas (`GetOnStepStarted`, avant le chrono du pas), et le stress test y émet ses ordres, surveille le croisement et
+  compte ses phases **en pas** (3 s → 60, 10 s → 200). Vérifié : deux S2 de suite donnent **102 → 68 deux fois**, deux
+  croisements **3,5 cm deux fois**. Les mesures antérieures de D230 sont marquées invalides dans l'entrée précédente.
+- **Tâche 2 — A/B de D230 à graine et pas égaux** (2 000 unités, `LightInfantry`, seuil de pas 3 ms ; passages alternés) :
+
+  | Variante | Pas S2 | Évitement de marche (par passage) | Recouvrements S2 (début → fin) | Rendu |
+  |---|---|---|---|---|
+  | sans maintien (`AvoidanceHold 0`) | 2,331 / 2,425 ms ✅ (2,807 / 2,849 dans une série antérieure) | 6,31 / 6,67 ms | **173 → 120** (identique aux 4 passages) | 223-235 i/s |
+  | maintien 5 pas (réglage) | 2,581 / 2,481 ms ✅ | 7,30 / 6,86 ms | **102 → 68** (identique aux 4 passages) | 204-218 i/s |
+
+  Le « début » est l'état après 60 pas de marche depuis la même nuée (215 recouvrements à la naissance). **Gain net
+  confirmé** : −41 % de recouvrements après l'échauffement, −43 % en fin de mesure. **Coût** : non distinguable du bruit
+  (± 0,3 ms d'un passage à l'autre ; les deux processeurs de maintien coûtent ~0,08 ms chacun et tournent aussi quand le
+  maintien est coupé). D230 n'est donc **pas** remise en question. S1 (référence, même binaire) : 2,423 et 2,637 ms
+  avec maintien, 2,403 sans, 215 → 215 recouvrements dans les trois cas.
+  « 137 → 58 » remplacé partout avec explication : GDD § 16.6 et D230, `DefaultGame.ini`, `MCSimulationSettings.h`,
+  ce journal.
+- **Tâche 3 — naissance hors navmesh** (`MCUnitSubsystem::CreateUnitEntities`) : jusqu'à **4 tirages** par unité ; après le
+  dernier, l'unité naît au point tiré (plus jamais empilée au centre) ; les échecs sont comptés et journalisés **une fois
+  par lot** (`LogMCSimulation` Warning). Sur la carte de test : **aucun échec**, S1 garde ses 215 recouvrements (même nuée).
+  La graine est réinitialisée à chaque test (`ResetSpawnSeed`, appelé par le stress test).
+- **Tâche 4 — scénario C paramétré** : `mc.StressTest.CrossingAngle` (0° = face-à-face, **défaut** ; 90° = l'ancien
+  scénario ; 150° au plus), affiché dans le rapport ; commentaires corrigés (« 30 m » → 15 m, « swap places » →
+  croisement sous un angle). Mesures 0°, 90° et 135° : voir « Questions ouvertes ». Les anciens chiffres de croisement
+  (1,3 à 4,7 cm, 66,5 cm) étaient des passages uniques **à 90°**.
+- **Tâche 5 — une seule source pour « le solveur tourne à ce pas »** : le pipeline garde le statut ralenti de chaque
+  processeur (`ProcessorThrottled`), hors des statistiques ; `RunStep` décide une fois par pas, à partir de la CVar lue en
+  direct, et publie la décision (`AreThrottledProcessorsRunningThisStep`) que lit le processeur de maintien. La statistique
+  `StepInterval` n'est plus qu'un affichage.
+- **Rapport du stress test** : nouvelle ligne `Avoidance cadence` (cadence du solveur, pas de maintien, décroissance) pour
+  que deux rapports d'un A/B se distinguent ; capture nommée `StressTest_C.png` pour le croisement.
+- **Corrections mineures** : indentation de `OrderRandom.Initialize` ; changement de pilotage dû à `Forward` consigné
+  (D228 et « Pièges de Mass connus ») ; GDD : titre « en cours de planification » → « implémenté », bloc « Pièges de Mass »
+  déplacé ici (renvoi d'une ligne au GDD), D230 « cinq pas » désormais exact. Trailer `Co-authored-by: Copilot` : déjà
+  retiré (`8464f4c` est `a49aed7` réécrit, même arbre, sans trailer).
+- **Commandes qui ont servi** : compilation et lancement habituels (voir « Commandes utiles ») ; A/B :
+  `-ExecCmds="…,mc.Units.AvoidanceHold 0,mc.StressTest S2 2000 10 quit"` contre la même commande sans `AvoidanceHold` ;
+  croisement : `…,mc.StressTest.CrossingAngle 90,mc.Simulation.ThrottledStepInterval 1,mc.StressTest C 2 10 quit` ;
+  trace : `…,mc.Units.AvoidanceTrace 1+2,mc.StressTest C 2 10 quit` (CSV dans `Saved/AvoidanceTrace.csv`).
+- **Prochaine étape** : M2 (rendu) ; le croisement reste à instruire avant M5.
 
 ### 2026-10-12 — Revue traitée : deux bugs corrigés, cadence d'évitement instruite (D230), mesures rapatriées ici
 
@@ -141,12 +245,19 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
   | 1 pas sur 2 | 1,3 cm ❌ | 4,299 ms ❌ | 114 → 103 |
   | 1 pas sur 3 | 3,0 cm ❌ | 3,295 ms ❌ | 121 → 122 |
   | 1 pas sur 6 (D220) | 4,7 cm ❌ | ≈ 2,2 ms ✅ | 135 → 137 |
-  | 1 sur 6 + **impulsion retenue 5 pas**, sans décroissance | 2,4 cm ❌ | 2,438 ms ✅ | **101 → 58** |
+  | 1 sur 6 + **impulsion retenue 5 pas**, sans décroissance | 2,4 cm ❌ | 2,438 ms ✅ | ~~**101 → 58**~~ *(invalide, voir l'entrée suivante)* |
   | 1 sur 6 + impulsion retenue, décroissance 0,6 | 7,4 cm ❌ | 2,173 ms ✅ | 126 → 92 |
   | 1 sur 6 + impulsion retenue, décroissance 0,3 | 4,1 cm ❌ | (non mesuré) | — |
 
   Retenu : **cadence de D220 conservée + impulsion retenue 5 pas, sans décroissance** (`AvoidanceHoldSteps = 5`,
-  `AvoidanceHoldDecay = 1`) — seuil tenu et foule qui se sépare (137 → 58 recouvrements) pour +0,2 ms de pas.
+  `AvoidanceHoldDecay = 1`) — seuil tenu et foule qui se sépare (~~137 → 58 recouvrements~~) pour +0,2 ms de pas.
+
+  > **Correction (2026-10-12, suite de la revue)** : toutes les lignes de ce tableau sont des passages uniques **non
+  > reproductibles** (le stress test avançait par images, pas par pas), et les lignes « impulsion retenue » ont été
+  > mesurées avec une version **fautive** du maintien (impulsion ajoutée deux fois au pas du solveur, puis quatre pas
+  > seulement, plafond d'accélération contourné). « 137 → 58 » comparait en outre deux points de départ différents
+  > (135 → 137 et 101 → 58). Chiffres comparables : **173 → 120 sans maintien, 102 → 68 avec** (entrée suivante).
+
   Implémentation : `FMCAvoidanceHoldFragment` + deux processeurs nôtres encadrant les solveurs
   (`MCAvoidanceSnapshotProcessor` après le pilotage, `MCAvoidanceHoldProcessor` avant l'application des forces) ;
   Mass **remet la force à zéro** après application (`MassApplyForceProcessor`, « Reset to zero after force is
@@ -165,6 +276,12 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
 - **Outillage et reproductibilité** : scénario **C (croisement)** au rapport du stress test ; **graine fixée** sur
   la nuée (`MCUnitSubsystem::SpawnRandom`) et sur les destinations de S2 (`OrderRandom`). Deux passages identiques
   le confirment : S1 215 → 215 recouvrements deux fois, S2 100 → 87 deux fois, 2 352 ordres, 19,3 m parcourus.
+
+  > **Correction (2026-10-12, suite de la revue)** : la graine ne suffisait pas. Deux S2 de suite donnaient 171 → 135
+  > puis 179 → 151 (sans maintien), 104 → 67 puis 104 → 108 (avec) : les ordres, l'échauffement et la mesure suivaient
+  > les **images**, et une image lente (naissance, capture) fait tourner deux pas d'un coup en sautant une passe
+  > d'ordres. L'accord « 100 → 87 deux fois » était une coïncidence. Corrigé : le stress test avance **par pas**.
+
   Piège trouvé en route : `ProjectPointToNavigation` avec une **boîte de recherche large** (8 000 cm) accroche les
   positions sur une grille grossière du navmesh de la carte de test — les Y sortaient en multiples de 988 cm et le
   spawn passait de 215 à 1 555 recouvrements ; boîte serrée en XY et large en Z pour ne corriger que la hauteur.
@@ -179,6 +296,7 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
 - **Mesures finales de l'état livré** (`AvoidanceHoldSteps=5`, graine fixe, 2 000 unités, seuil de pas 3 ms,
   rendu 144 i/s) : S1 **2,251 et 2,095 ms** ✅ (215 recouvrements, inchangés), S2 **2,248 et 2,209 ms** ✅
   (100 → 87), croisement **2,7 cm** ❌ (limitation connue) ; rendu **247 à 258 i/s** ✅.
+  *(Version fautive du maintien et passages non reproductibles : remplacées par les mesures de l'entrée suivante.)*
   *Écart à surveiller* : les passages de la veille donnaient 145 à 170 i/s pour la même scène (scène vide : 284 i/s) —
   différence inexpliquée, probablement l'état de la fenêtre de jeu ; consigné en question ouverte, aucune conclusion
   tirée sur la marge de rendu.
@@ -398,14 +516,16 @@ Leviers de mesure (ligne de commande ou console) :
 
 | Levier | Effet |
 |---|---|
-| `mc.StressTest S1\|S2\|C [Count] [Seconds] [quit]` | lance le scénario (S1 immobiles, S2 en marche par ordres D229, C croisement de deux unités D230) |
+| `mc.StressTest S1\|S2\|C [Count] [Seconds] [quit]` | lance le scénario (S1 immobiles, S2 en marche par ordres D229, C croisement de deux unités D230) ; échauffement et mesure comptés **en pas** (3 s → 60 pas, 10 s → 200 pas), donc deux passages identiques donnent les mêmes recouvrements |
 | `mc.StressTest.SpawnRadius` | rayon de la nuée, en cm (densité) |
 | `mc.StressTest.UnitType` | ligne de table utilisée par le test (`LightInfantry`, `Archer` — D221, D225) |
 | `mc.StressTest.OrderRadius` | rayon (cm) des destinations de S2 (D229) |
-| `mc.StressTest.MaxOrdersPerFrame` | ordres émis par pas au plus (D229) |
-| `mc.StressTest.CrossingHalfDistance` | distance (cm) des deux unités du scénario C à l'origine (D230) |
+| `mc.StressTest.MaxOrdersPerFrame` | ordres émis par pas au plus (D229 ; le nom date de la passe par image) |
+| `mc.StressTest.CrossingHalfDistance` | distance (cm) des deux unités du scénario C à l'origine (D230 ; 1 500 = 15 m) |
+| `mc.StressTest.CrossingAngle` | angle (°) entre les deux trajectoires du scénario C : 0 = face-à-face (défaut), 90 = angle droit, 150 au plus |
 | `mc.Units.SpawnBudget` | naissances par pas (D224) : 0 = réglage, −1 = tout en un pas (stress test) |
-| `mc.Units.AvoidanceHold` | pas pendant lesquels l'impulsion d'évitement est ré-appliquée (D230) : 0 = réglage, négatif = éteint |
-| `mc.Units.AvoidanceHoldDecay` | décroissance par pas de l'impulsion retenue (D230) : 0 = réglage, 1 = aucune |
+| `mc.Units.AvoidanceHold` | pas pendant lesquels l'impulsion d'évitement est ré-appliquée (D230) : négatif = réglage (défaut), **0 = éteint** |
+| `mc.Units.AvoidanceHoldDecay` | facteur appliqué à l'impulsion retenue après chaque ré-application (D230) : négatif = réglage (défaut), 1 = aucune décroissance, 0 = une seule ré-application |
+| `mc.Units.AvoidanceTrace` | identifiants d'unités séparés par `+` (ex. `1+2`, les deux unités du scénario C) : forces d'évitement écrites à chaque pas dans `Saved/AvoidanceTrace.csv` (outil de diagnostic : l'écriture coûte ~3 ms de pas) |
 | `mc.Simulation.ThrottledStepInterval` | cadence des processeurs ralentis (0 = valeur de la configuration) |
 | `mc.Avoidance.ObstacleDetectionDistance` | distance de détection des unités, en cm (0 = valeur de la ligne de table) |
