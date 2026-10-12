@@ -14,12 +14,12 @@ enum class EMCStressScenario : uint8
 {
 	S1_Idle,	// units standing still
 	S2_Moving,	// units walking on the navmesh
-	Crossing,	// two units ordered to swap places: shows whether the avoidance makes them step aside
+	Crossing,	// two units ordered through the same point at mc.StressTest.CrossingAngle: does the avoidance make them step aside?
 };
 
 /**
  * Load tests launched from the console on the StressTest map:
- *   mc.StressTest S1|S2 [Count=2000] [Seconds=20] [quit]
+ *   mc.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit]
  *   mc.StressTest.Stop
  * Measures the fixed-step simulation time, the frame rate and the memory, and checks them against D218.
  * Since M1 the units are created by the unit subsystem (D224) and S2 walks by move orders (D229): this
@@ -45,14 +45,19 @@ protected:
 private:
 	enum class EPhase : uint8 { Idle, WarmingUp, Measuring };
 
+	/**
+	 * Head of every fixed step: phases, orders and the crossing's watch advance by steps, not by frames, so two
+	 * runs of a scenario see the same orders at the same steps whatever the frame rate does (D230).
+	 */
+	void OnSimulationStep(int64 StepIndex);
 	void SpawnUnits();
 	void DestroyUnits();
 	void PlaceViewer() const;
 	void BeginMeasure();
 	void FinishMeasure();
-	/** S2 (D229): orders a new destination to the units that arrived, within a per-frame budget. */
+	/** S2 (D229): orders a new destination to the units that arrived, within a per-step budget. */
 	void KeepUnitsWalking();
-	/** Crossing: the two units swap places again once they stand, and the closest they came is recorded. */
+	/** Crossing: the two units walk back to their start once they stand, and the closest they came is recorded. */
 	void MaintainCrossing();
 	/** Closest distance the two crossing units came to each other, for the avoidance check (D228). */
 	void LogCrossingSummary() const;
@@ -88,12 +93,10 @@ private:
 	double SmallestGapAtMeasureStart = 0.0;
 	/** Move orders issued during the run: shows that S2 walks by orders and not by a test behaviour (D229). */
 	int32 NumOrdersIssued = 0;
-	/** Step the last order pass belongs to: orders are applied at the fixed step, not every frame (D216, D219). */
-	int64 LastOrderStepIndex = -1;
 	/** Crossing: how close the two units came to each other (cm), and how many swaps were ordered. */
 	double CrossingClosestDistance = TNumericLimits<double>::Max();
 	int32 CrossingSwaps = 0;
-	/** Crossing: the two units' birth positions (the ends of their perpendicular axes). */
+	/** Crossing: the two units' birth positions (one end of each path, the other being its mirror). */
 	FVector CrossingStart[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	bool bCrossingStartRead = false;
 	bool bCrossingFarEnd = true;
@@ -104,7 +107,11 @@ private:
 	EPhase Phase = EPhase::Idle;
 	int32 Count = 0;
 	float MeasureSeconds = 0.f;
-	float PhaseElapsed = 0.f;
+	/** Fixed steps of the current phase, and the length of each phase in steps (from seconds at the step rate). */
+	int32 PhaseSteps = 0;
+	int32 WarmUpSteps = 0;
+	int32 MeasureSteps = 0;
+	FDelegateHandle StepStartedHandle;
 	bool bQuitWhenDone = false;
 	/** The run asked to quit: its units are destroyed at the tail of the next step (D224) before leaving. */
 	bool bQuitPending = false;

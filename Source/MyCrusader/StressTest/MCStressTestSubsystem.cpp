@@ -19,6 +19,7 @@
 #include "MyCrusaderLog.h"
 #include "NavigationSystem.h"
 #include "RenderTimer.h"
+#include "Simulation/MCAvoidanceHoldProcessors.h"
 #include "Simulation/MCSimulationFragments.h"
 #include "Simulation/MCSimulationSettings.h"
 #include "Simulation/MCSimulationSubsystem.h"
@@ -47,15 +48,26 @@ namespace UE::MyCrusader::StressTest
 	FAutoConsoleVariableRef CVarOrderRadius(TEXT("mc.StressTest.OrderRadius"), OrderRadius,
 		TEXT("Radius (cm) within which S2 picks the destination of a new move order"));
 
-	/** Orders issued per frame at most: the birth of 2 000 units must not order them all in one frame. */
+	/** Orders issued per step at most (the name predates the step pass): 2 000 births must not all be ordered at once. */
 	int32 MaxOrdersPerFrame = 200;
 	FAutoConsoleVariableRef CVarMaxOrdersPerFrame(TEXT("mc.StressTest.MaxOrdersPerFrame"), MaxOrdersPerFrame,
-		TEXT("Move orders the stress test issues per frame at most"));
+		TEXT("Move orders the stress test issues per fixed step at most"));
 
-	/** The two units of the crossing scenario start this far from the origin, on two perpendicular axes (cm). */
+	/** The two units of the crossing scenario start this far from the origin they both walk through (cm). */
 	float CrossingHalfDistance = 1500.f;
 	FAutoConsoleVariableRef CVarCrossingHalfDistance(TEXT("mc.StressTest.CrossingHalfDistance"), CrossingHalfDistance,
 		TEXT("Distance (cm) between a crossing unit and the origin it walks through"));
+
+	/** Angle between the two crossing paths: 0 = head-on, 90 = at right angles, beyond 90 = converging (D230). */
+	float CrossingAngle = 0.f;
+	FAutoConsoleVariableRef CVarCrossingAngle(TEXT("mc.StressTest.CrossingAngle"), CrossingAngle,
+		TEXT("Crossing scenario: angle in degrees between the two units' paths, 0 = head-on, 90 = at right angles, at most 150"));
+	constexpr float MaxCrossingAngle = 150.f;
+
+	float GetCrossingAngle()
+	{
+		return FMath::Clamp(CrossingAngle, 0.f, MaxCrossingAngle);
+	}
 
 	// D218 thresholds.
 	constexpr double MaxSimulationMs = 3.0;
@@ -76,7 +88,7 @@ namespace UE::MyCrusader::StressTest
 
 	FAutoConsoleCommandWithWorldAndArgs StartCommand(
 		TEXT("mc.StressTest"),
-		TEXT("mc.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units swapping places (avoidance check)"),
+		TEXT("mc.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units crossing at mc.StressTest.CrossingAngle (avoidance check)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UMCStressTestSubsystem* Subsystem = FindSubsystem(World);
@@ -137,6 +149,11 @@ bool UMCStressTestSubsystem::DoesSupportWorldType(const EWorldType::Type WorldTy
 
 void UMCStressTestSubsystem::Deinitialize()
 {
+	if (UMCSimulationSubsystem* Simulation = GetWorld() ? GetWorld()->GetSubsystem<UMCSimulationSubsystem>() : nullptr)
+	{
+		Simulation->GetOnStepStarted().Remove(StepStartedHandle);
+	}
+	StepStartedHandle.Reset();
 	UnitIds.Reset();
 	FrameTimes.Reset();
 	LocationsAtMeasureStart.Reset();
@@ -163,12 +180,31 @@ void UMCStressTestSubsystem::StartTest(const EMCStressScenario InScenario, const
 	bQuitWhenDone = bInQuitWhenDone;
 	UnitTypeName = FName(*UE::MyCrusader::StressTest::UnitType);
 
+	UMCSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UMCSimulationSubsystem>();
+	if (Simulation == nullptr)
+	{
+		UE_LOG(LogMCStressTest, Error, TEXT("No fixed-step simulation: the stress test cannot run"));
+		return;
+	}
+	if (!StepStartedHandle.IsValid())
+	{
+		StepStartedHandle = Simulation->GetOnStepStarted().AddUObject(this, &UMCStressTestSubsystem::OnSimulationStep);
+	}
+	const float StepSeconds = GetDefault<UMCSimulationSettings>()->GetStepSeconds();
+	WarmUpSteps = FMath::CeilToInt32(UE::MyCrusader::StressTest::WarmUpSeconds / StepSeconds);
+	MeasureSteps = FMath::Max(1, FMath::RoundToInt32(MeasureSeconds / StepSeconds));
+
 	UsedPhysicalBeforeSpawn = FPlatformMemory::GetStats().UsedPhysical;
+	if (UMCUnitSubsystem* Units = GetUnitSubsystem())
+	{
+		// Same crowd for every run, even several in one process (D230).
+		Units->ResetSpawnSeed();
+	}
 	SpawnUnits();
 	PlaceViewer();
 
 	Phase = EPhase::WarmingUp;
-	PhaseElapsed = 0.f;
+	PhaseSteps = 0;
 	if (UMCUnitSubsystem* Units = GetUnitSubsystem())
 	{
 		UnitIds = TArray<uint32>();
@@ -206,28 +242,9 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 		return;
 	}
 
-	if (Phase == EPhase::Idle)
+	// The phases advance with the fixed steps (OnSimulationStep); the frames are only measured here.
+	if (Phase != EPhase::Measuring)
 	{
-		return;
-	}
-
-	// S2 walks by orders (D229): the units that arrived are given a new destination, warm-up included.
-	if (Scenario == EMCStressScenario::S2_Moving)
-	{
-		KeepUnitsWalking();
-	}
-	else if (Scenario == EMCStressScenario::Crossing)
-	{
-		MaintainCrossing();
-	}
-
-	PhaseElapsed += DeltaTime;
-	if (Phase == EPhase::WarmingUp)
-	{
-		if (PhaseElapsed >= UE::MyCrusader::StressTest::WarmUpSeconds)
-		{
-			BeginMeasure();
-		}
 		return;
 	}
 
@@ -238,7 +255,7 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 
 	// One capture per run, at half of the measure. Skipped while the window is minimized: the capture would
 	// be lost, and its placeholder back buffer trips a D3D12 assert (hence no retry later in the run).
-	if (!bScreenshotTaken && PhaseElapsed >= MeasureSeconds * 0.5f)
+	if (!bScreenshotTaken && PhaseSteps >= MeasureSteps / 2)
 	{
 		bScreenshotTaken = true;
 		if (UE::MyCrusader::StressTest::IsGameWindowMinimized(GetWorld()))
@@ -247,14 +264,42 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 		}
 		else
 		{
-			FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("StressTest_%s.png"), Scenario == EMCStressScenario::S2_Moving ? TEXT("S2") : TEXT("S1")),
+			const TCHAR* ScenarioName = Scenario == EMCStressScenario::S2_Moving ? TEXT("S2") : (Scenario == EMCStressScenario::Crossing ? TEXT("C") : TEXT("S1"));
+			FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("StressTest_%s.png"), ScenarioName),
 				/*bInShowUI*/ false, /*bAddFilenameSuffix*/ false);
 		}
 	}
 
-	if (PhaseElapsed >= MeasureSeconds)
+}
+
+void UMCStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
+{
+	if (Phase == EPhase::Idle)
 	{
+		return;
+	}
+
+	++PhaseSteps;
+	if (Phase == EPhase::WarmingUp && PhaseSteps >= WarmUpSteps)
+	{
+		BeginMeasure();
+	}
+	else if (Phase == EPhase::Measuring && PhaseSteps >= MeasureSteps)
+	{
+		// MeasureSteps whole steps measured: report before this step runs.
 		FinishMeasure();
+		return;
+	}
+
+	// S2 walks by orders (D229): the units that arrived are given a new destination, warm-up included. Issued at
+	// the head of the step, the orders are applied by this very step (D216).
+	if (Scenario == EMCStressScenario::S2_Moving)
+	{
+		KeepUnitsWalking();
+	}
+	else if (Scenario == EMCStressScenario::Crossing)
+	{
+		MaintainCrossing();
 	}
 }
 
@@ -268,10 +313,14 @@ void UMCStressTestSubsystem::SpawnUnits()
 
 	if (Scenario == EMCStressScenario::Crossing)
 	{
-		// Two units 30 m from the origin, on two perpendicular axes: each is ordered to the opposite end of its
-		// own axis, so both reach the origin at the same instant — the case where avoidance has to give way.
-		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(-UE::MyCrusader::StressTest::CrossingHalfDistance, 0.f, 0.f), 1.f });
-		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(0.f, -UE::MyCrusader::StressTest::CrossingHalfDistance, 0.f), 1.f });
+		// Two units CrossingHalfDistance from the origin (15 m by default): the first walks along +X, the second
+		// along a path CrossingAngle away from the first's opposite direction (0 = head-on, 90 = at right angles).
+		// Each is ordered to the mirror of its start, so both reach the origin at the same instant — the case where
+		// avoidance has to give way.
+		const float HalfDistance = UE::MyCrusader::StressTest::CrossingHalfDistance;
+		const float AngleRadians = FMath::DegreesToRadians(UE::MyCrusader::StressTest::GetCrossingAngle());
+		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(-HalfDistance, 0.f, 0.f), 1.f });
+		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(HalfDistance * FMath::Cos(AngleRadians), -HalfDistance * FMath::Sin(AngleRadians), 0.f), 1.f });
 		return;
 	}
 
@@ -315,7 +364,7 @@ void UMCStressTestSubsystem::MaintainCrossing()
 	const FVector SecondLocation = SecondTransform->GetTransform().GetLocation();
 	CrossingClosestDistance = FMath::Min<double>(CrossingClosestDistance, FVector::Dist(FirstLocation, SecondLocation));
 
-	// The map is centred on the origin: the two ends of each unit's axis are its birth position and its mirror.
+	// The map is centred on the origin: the two ends of each unit's path are its birth position and its mirror.
 	if (!bCrossingStartRead)
 	{
 		CrossingStart[0] = FirstLocation;
@@ -323,16 +372,12 @@ void UMCStressTestSubsystem::MaintainCrossing()
 		bCrossingStartRead = true;
 	}
 
-	// One pass per step, and only once both units stand: they then walk to the other end of their axis (D216:
-	// orders go through the queue and are applied at the fixed step), so both reach the origin at the same time.
-	const UMCSimulationSubsystem* Simulation = World->GetSubsystem<UMCSimulationSubsystem>();
-	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
-	if (StepIndex == LastOrderStepIndex
-		|| FirstState->Activity != EMCUnitActivity::Idle || SecondState->Activity != EMCUnitActivity::Idle)
+	// Only once both units stand: they then walk to the other end of their path (D216: orders go through the
+	// queue and are applied at the fixed step), so both reach the origin at the same time.
+	if (FirstState->Activity != EMCUnitActivity::Idle || SecondState->Activity != EMCUnitActivity::Idle)
 	{
 		return;
 	}
-	LastOrderStepIndex = StepIndex;
 
 	for (int32 Index = 0; Index < 2; ++Index)
 	{
@@ -363,8 +408,9 @@ void UMCStressTestSubsystem::LogCrossingSummary() const
 
 	// Two units that walk through each other come closer than the sum of their radii; if they step aside, they
 	// graze past each other around that distance. This is the check the fixed-step chrono cannot make (D228).
-	UE_LOG(LogMCStressTest, Display, TEXT("  Crossing (D228): %d swaps ordered, closest the two units came to each other %.1f cm, their two radii sum %.1f cm - %s"),
-		CrossingSwaps, Closest, RadiusSum, Closest < RadiusSum ? TEXT("they walk through each other, the avoidance is not doing its job") : TEXT("they step aside"));
+	UE_LOG(LogMCStressTest, Display, TEXT("  Crossing (D228, D230): paths %.0f degrees apart (0 = head-on), %d swaps ordered, closest the two units came to each other %.1f cm, their two radii sum %.1f cm - %s"),
+		UE::MyCrusader::StressTest::GetCrossingAngle(), CrossingSwaps, Closest, RadiusSum,
+		Closest < RadiusSum ? TEXT("they walk through each other, the avoidance is not doing its job") : TEXT("they step aside"));
 }
 
 void UMCStressTestSubsystem::DestroyUnits()
@@ -392,16 +438,6 @@ void UMCStressTestSubsystem::KeepUnitsWalking()
 	{
 		return;
 	}
-
-	// Orders sit in the queue until the next fixed step applies them (D216, D219): one pass per step, otherwise
-	// a unit still standing would be given a new destination every frame until the step walks it.
-	const UMCSimulationSubsystem* Simulation = World->GetSubsystem<UMCSimulationSubsystem>();
-	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
-	if (StepIndex == LastOrderStepIndex)
-	{
-		return;
-	}
-	LastOrderStepIndex = StepIndex;
 
 	// While the births are served (D224), refresh the identifiers of this run: afterwards the list is stable
 	// and the measure compares the same units from start to end.
@@ -496,17 +532,16 @@ void UMCStressTestSubsystem::PlaceViewer() const
 void UMCStressTestSubsystem::BeginMeasure()
 {
 	Phase = EPhase::Measuring;
-	PhaseElapsed = 0.f;
+	PhaseSteps = 0;
 	FrameTimes.Reset();
 	GameThreadMsSum = RenderThreadMsSum = GpuMsSum = 0.0;
 	bScreenshotTaken = false;
 	NumOrdersIssued = 0;
-	LastOrderStepIndex = -1;
 	CrossingClosestDistance = TNumericLimits<double>::Max();
 	CrossingSwaps = 0;
 	bCrossingStartRead = false;
 	bCrossingFarEnd = true;
-		OrderRandom.Initialize(1066);
+	OrderRandom.Initialize(1066);
 
 	if (UMCUnitSubsystem* Units = GetUnitSubsystem())
 	{
@@ -798,6 +833,12 @@ void UMCStressTestSubsystem::FinishMeasure()
 	{
 		UE_LOG(LogMCStressTest, Display, TEXT("  Step breakdown: unit births %.3f ms (%d born), unit destructions %.3f ms (%d destroyed)"),
 			StepStats.GetAverageBirthMs(), StepStats.NumUnitsBorn, StepStats.GetAverageDestructionMs(), StepStats.NumUnitsDestroyed);
+	}
+	// The avoidance settings of the run, so two reports of an A/B tell themselves apart (D220, D230).
+	if (const UMCSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UMCSimulationSubsystem>())
+	{
+		UE_LOG(LogMCStressTest, Display, TEXT("  Avoidance cadence (D220, D230): solver 1 step out of %d, impulse re-applied on %d steps after each run, decay %.2f"),
+			Simulation->GetThrottledStepInterval(), UMCAvoidanceHoldProcessor::GetHoldSteps(), UMCAvoidanceHoldProcessor::GetHoldDecay());
 	}
 	LogRepresentationSummary();
 	LogUnitStateSummary();
