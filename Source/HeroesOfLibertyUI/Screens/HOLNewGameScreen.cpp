@@ -80,12 +80,6 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 		return { LOCTEXT("Off", "Non"), LOCTEXT("On", "Oui") };
 	}
 
-	/** +1 or -1: the way a rotator of Count values went from Old to New. */
-	int32 RotationStep(const int32 Old, const int32 New, const int32 Count)
-	{
-		return (New - Old + Count) % Count == 1 ? 1 : -1;
-	}
-
 	FName SlotWidgetName(const TCHAR* Prefix, const int32 SlotIndex)
 	{
 		return FName(FString::Printf(TEXT("%s%d"), Prefix, SlotIndex));
@@ -340,7 +334,7 @@ void UHOLNewGameScreen::HandleStateRotated(const int32 SlotIndex, const int32 Va
 	if (State == static_cast<int32>(EHOLSlotState::AI))
 	{
 		// Greyed (D240): AI players are not in the game yet, the rotator passes over them.
-		State = (State + RotationStep(static_cast<int32>(SlotConfig.State), Value, NumStates) + NumStates) % NumStates;
+		State = (State + UHOLRotator::GetStep(static_cast<int32>(SlotConfig.State), Value, NumStates) + NumStates) % NumStates;
 	}
 	SlotConfig.State = static_cast<EHOLSlotState>(State);
 	if (SlotConfig.State != EHOLSlotState::Closed && IsColorTaken(SlotIndex, SlotConfig.ColorIndex))
@@ -355,7 +349,7 @@ void UHOLNewGameScreen::HandleColorRotated(const int32 SlotIndex, const int32 Va
 	using namespace UE::HeroesOfLiberty::UI::NewGame;
 
 	FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
-	const int32 Step = RotationStep(SlotConfig.ColorIndex, Value, HOLPlayerColors::NumColors);
+	const int32 Step = UHOLRotator::GetStep(SlotConfig.ColorIndex, Value, HOLPlayerColors::NumColors);
 	SlotConfig.ColorIndex = FindFreeColor(SlotIndex, Value, Step);
 	Refresh();
 }

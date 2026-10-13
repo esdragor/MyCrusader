@@ -19,6 +19,9 @@ public:
 	/** Values and the one shown first. */
 	void SetOptions(const TArray<FText>& Options, int32 InSelectedIndex = 0);
 
+	/** +1 or -1: the way a rotator of Count values went from Old to New (to pass over a value that cannot be chosen). */
+	static int32 GetStep(int32 Old, int32 New, int32 Count);
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeOnCurrentTextStyleChanged() override;

@@ -18,8 +18,6 @@
 
 namespace UE::HeroesOfLiberty::UI
 {
-	constexpr float LabelWidth = 280.f;
-	constexpr float RotatorWidth = 380.f;
 	constexpr float RowButtonWidth = 220.f;
 }
 
@@ -120,10 +118,8 @@ UHOLButton* UHOLScreen::AddButton(UHorizontalBox* Row, const FName Name, const F
 }
 
 UHOLRotator* UHOLScreen::AddRotatorRow(UVerticalBox* Column, const FName Name, const FText& Label,
-	const TArray<FText>& Options, const int32 SelectedIndex)
+	const TArray<FText>& Options, const int32 SelectedIndex, const float LabelWidth, const float RotatorWidth)
 {
-	using namespace UE::HeroesOfLiberty::UI;
-
 	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 	UVerticalBoxSlot* RowSlot = Column->AddChildToVerticalBox(Row);
 	RowSlot->SetHorizontalAlignment(HAlign_Center);

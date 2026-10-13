@@ -22,24 +22,23 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
 | 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
-| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **en cours** : parties 1 (focus, sélecteur, titre, confirmation de sortie) et 2 (Nouvelle partie, lancement) faites ; partie 3 (Réglages) à faire |
+| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **fait** (2026-10-13) : titre, confirmation de sortie, Nouvelle partie avec lancement, Réglages ; captures et touches vérifiées |
 | 5. Localisation (français, anglais, japonais) | à faire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
 | 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
 
 ## Prochaine étape exacte
 
-**Étape 4, partie 3 — écran « Réglages »** (D245), dans `HeroesOfLibertyUI`, construit en code (D242) :
-1. `UHOLGameUserSettings` (dérivée de `UGameUserSettings`, déclarée dans `DefaultEngine.ini`) : volumes général,
-   musique, effets, voix, enregistrés ; le général agit tout de suite, les trois autres par des classes de son et un
-   mélange créés par script d'éditeur (`Tools/Editor/`), actifs dès qu'il y aura des sons.
-2. Écran à onglets (rangée de boutons + `UWidgetSwitcher`) : **Vidéo** (résolution, mode fenêtre, synchro verticale,
-   limite d'i/s, qualité globale puis par groupe, échelle de rendu), **Son**, **Commandes** (grisé jusqu'à M4 :
-   remappage D30, vitesse de caméra, défilement au bord), **Langue** (français, anglais, japonais, bascule en direct et
-   enregistrée par la culture du moteur). Application immédiate de chaque changement.
-3. Activer « Réglages » sur l'écran titre ; `hol.UI.Open Settings`.
-4. Vérifier : captures de chaque onglet, réglage changé puis relu après redémarrage, S2 court (garde-fou D245 :
-   `GameUserSettings.ini` est relu par le stress test).
+**Étape 5 — localisation** (D245) :
+1. Cible de localisation du jeu (`Config/Localization/Game.ini` ou par script) : langue source **français**, cultures
+   anglais et japonais ; collecte des textes du code (`LOCTEXT` de `HeroesOfLibertyUI` et `HeroesOfLiberty`, dont
+   les noms de couleurs) par commandlet ; `.po` anglais et japonais écrits par l'assistant (provisoires) ; compilation.
+2. Langue native du jeu = français : aujourd'hui, sans cible, le moteur part de l'anglais (« No localization for 'ja'
+   exists, so 'en' will be used ») et le sélecteur affiche English au premier lancement.
+3. Bascule en direct depuis l'onglet Langue (textes déjà affichés mis à jour), choix relu au redémarrage (déjà vérifié
+   pour l'enregistrement : `[Internationalization] Language=` dans `GameUserSettings.ini`).
+4. Captures des écrans dans les trois langues (texte coupé, caractère manquant, chaîne restée en français) ; les
+   largeurs fixes des colonnes devront peut-être grandir pour l'anglais ou le japonais.
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -64,13 +63,17 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 #   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"
 #   (Enter et Gamepad_FaceButton_Bottom ouvrent la confirmation de sortie ; Left puis Enter quittent :
 #   journal « LogHOLUI: Title screen: Quit »)
-# Ouvrir un écran par le même chemin que son bouton (D246) : hol.UI.Open NewGame|Quit [Délai]
+# Ouvrir un écran par le même chemin que son bouton (D246) : hol.UI.Open NewGame|Settings[:Onglet]|Quit [Délai]
+#   (onglets : 0 Vidéo, 1 Son, 2 Commandes, 3 Langue ; un écran Réglages déjà ouvert est réutilisé)
+# Les tests qui changent des réglages réécrivent Saved/Config/WindowsEditor/GameUserSettings.ini (relu par le stress
+# test, D245) : le sauvegarder avant, le restaurer après.
 # Lancer une partie comme le bouton « Lancer », éventuellement depuis un fichier JSON (format de -MatchConfig=) :
 #   hol.UI.NewGame.Launch [Fichier] [Délai]  -> journal « LogHOLMatch: Match on BattleMap: given configuration »
 
 # Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
 #   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
 #   UnrealEditor.exe <uproject> -nosplash -ExecCmds="py <projet>/Tools/Editor/create_main_menu_map.py"
+# Classes de son et mélange des volumes (commandlet) : -run=pythonscript -script=<projet>\Tools\Editor\make_sound_classes.py
 
 # Lancer une partie depuis une configuration JSON (comme un serveur dédié sans salon, D243)
 #   ... HeroesOfLiberty.uproject /Game/Level/BattleMap -game -MatchConfig=C:\chemin\match.json
@@ -252,3 +255,33 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
 - **Limite connue** (écrans provisoires, D242) : Gauche / Droite changent la valeur d'un sélecteur, donc ne font pas
   changer de colonne ; au clavier Tab le fait, à la manette chaque colonne active s'atteint par Haut depuis le bouton
   du dessous (Retour → Emplacement, Lancer → Couleur). À reprendre à la finition.
+
+### 2026-10-13 (suite) — Étape 4, partie 3 : écran « Réglages » ; étape 4 faite
+
+- **`UHOLGameUserSettings`** (module principal, `Settings/`, déclarée par `GameUserSettingsClassName` dans
+  `DefaultEngine.ini`) : volumes général, musique, effets, voix enregistrés ; le général agit sur le périphérique audio
+  (`SetTransientPrimaryVolume`), les trois autres par des surcharges de classe dans le mélange `SCM_Volumes`, poussé
+  une fois. Ressources `/Game/Audio/SC_Music`, `SC_Effects`, `SC_Voice`, `SCM_Volumes` créées par
+  `Tools/Editor/make_sound_classes.py`. Volumes appliqués à l'ouverture du menu et à chaque changement.
+- **`UHOLSettingsScreen`** : onglets (boutons sélectionnables et basculables, sans quoi un onglet ne se désélectionne
+  pas) et `UWidgetSwitcher`. **Vidéo** en deux colonnes : résolution (plein écran prises en charge, ≥ 1280 × 720),
+  affichage, synchro verticale, images par seconde (30 à 240, illimitée), échelle de rendu (50 à 100 %) ; qualité
+  globale (« Personnalisée » affichée quand les groupes diffèrent, jamais choisie) et 11 groupes. **Son** : 4 volumes
+  par pas de 10 %. **Commandes** : grisé (changer les touches, vitesse de caméra, défilement au bord). **Langue** :
+  Français, English, 日本語 (noms jamais traduits), `SetCurrentLanguage(…, enregistré)`.
+- **Piège corrigé** : appliquer tous les réglages à chaque changement (`ApplySettings`) remettait la résolution et le
+  mode d'affichage enregistrés (fenêtre de test passée en 2560 × 1440 sans bordure, possiblement sur l'écran principal
+  de l'utilisateur). La résolution et le mode ne sont appliqués que quand ce sont eux qui changent ; le reste par
+  `ApplyNonResolutionSettings` + `SaveSettings`.
+- « Réglages » activé sur l'écran titre ; `hol.UI.Open Settings[:Onglet]`.
+- **Vérifié** (captures `s_*.png`, fenêtre restée en 1600 × 900) : quatre onglets lisibles, un seul sélectionné ;
+  volume général 100 → 90 % (journal `LogHOLSettings: Volumes: master 0.90`) et relu au redémarrage ; langue passée au
+  japonais, enregistrée et relue au démarrage (`Overriding language … (ja)`, retombe sur l'anglais faute de
+  traduction, étape 5) ; « 日本語 » affiché (la police de secours couvre le japonais) ; Échap revient au titre.
+  S2 court : complet, 0 unité restante (3,62 ms, 115 i/s, processeur toujours chargé par un autre projet, même ordre
+  que le matin) ; 7 tests verts. `GameUserSettings.ini` restauré après les essais.
+- **Constat pour la clôture (garde-fou D245)** : avec la classe dérivée, les réglages vont dans la section
+  `[/Script/HeroesOfLiberty.HOLGameUserSettings]` ; l'ancienne `[/Script/Engine.GameUserSettings]` n'est plus lue
+  (réglages vidéo enregistrés remis à zéro une fois). `[ScalabilityGroups]` reste commune, et le stress test force sa
+  résolution et sa qualité ; il devra aussi forcer et rapporter l'échelle de rendu et la synchro (étape 7).
+- **Limite connue** : « Affichage » montre le mode enregistré, pas celui imposé par `-windowed` en ligne de commande.

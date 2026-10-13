@@ -6,6 +6,7 @@
 #include "Input/HOLUIInputData.h"
 #include "InputMappingContext.h"
 #include "Screens/HOLTitleScreen.h"
+#include "Settings/HOLGameUserSettings.h"
 #include "Widgets/HOLRootLayout.h"
 
 AHOLMenuPlayerController::AHOLMenuPlayerController()
@@ -31,6 +32,12 @@ void AHOLMenuPlayerController::BeginPlay()
 		{
 			UE_LOG(LogHOLUI, Error, TEXT("Interface keys missing (/Game/UI/Input/IMC_UI): run Tools/Editor/make_ui_input.py"));
 		}
+	}
+
+	// The saved volumes (D245), once the audio device is up.
+	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
+	{
+		Settings->ApplySound();
 	}
 
 	RootLayout = CreateWidget<UHOLRootLayout>(this, UHOLRootLayout::StaticClass());

@@ -42,7 +42,8 @@ protected:
 	UHorizontalBox* AddButtonRow(UVerticalBox* Column);
 	UHOLButton* AddButton(UHorizontalBox* Row, FName Name, const FText& Label);
 	/** A label and its rotator on one line. */
-	UHOLRotator* AddRotatorRow(UVerticalBox* Column, FName Name, const FText& Label, const TArray<FText>& Options, int32 SelectedIndex);
+	UHOLRotator* AddRotatorRow(UVerticalBox* Column, FName Name, const FText& Label, const TArray<FText>& Options, int32 SelectedIndex,
+		float LabelWidth = 360.f, float RotatorWidth = 380.f);
 	/** A rotator of the given width, added to a row. */
 	UHOLRotator* AddRotator(UHorizontalBox* Row, FName Name, const TArray<FText>& Options, int32 SelectedIndex, float Width);
 

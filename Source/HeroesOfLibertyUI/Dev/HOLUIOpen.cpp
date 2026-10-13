@@ -4,12 +4,13 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Misc/FileHelper.h"
 #include "Screens/HOLNewGameScreen.h"
+#include "Screens/HOLSettingsScreen.h"
 #include "Screens/HOLTitleScreen.h"
 
 /**
  * Opens a menu screen or launches a match by the same path as their buttons, for the scripted end-to-end checks
  * (D246).
- *   hol.UI.Open <NewGame|Quit> [DelaySeconds=0]
+ *   hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]   (Tab: 0 Video, 1 Sound, 2 Controls, 3 Language)
  *   hol.UI.NewGame.Launch [ConfigFile] [DelaySeconds=0]   (the file, JSON as for -MatchConfig=, is shown on the screen first)
  */
 namespace UE::HeroesOfLiberty::UI
@@ -32,7 +33,7 @@ namespace UE::HeroesOfLiberty::UI
 	{
 		if (Args.IsEmpty())
 		{
-			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Open <NewGame|Quit> [DelaySeconds=0]"));
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]"));
 			return;
 		}
 		const FString Screen = Args[0];
@@ -43,6 +44,17 @@ namespace UE::HeroesOfLiberty::UI
 			if (Screen == TEXT("NewGame"))
 			{
 				UHOLNewGameScreen::Open(PlayerController);
+			}
+			else if (Screen.StartsWith(TEXT("Settings")))
+			{
+				// The settings screen already open is reused, so that a script can go through the tabs.
+				UHOLSettingsScreen* Settings = UHOLSettingsScreen::Find(PlayerController);
+				Settings = Settings ? Settings : UHOLSettingsScreen::Open(PlayerController);
+				FString Tab;
+				if (Settings && Screen.Split(TEXT(":"), nullptr, &Tab))
+				{
+					Settings->SelectTab(FCString::Atoi(*Tab));
+				}
 			}
 			else if (Screen == TEXT("Quit"))
 			{
@@ -92,7 +104,7 @@ namespace UE::HeroesOfLiberty::UI
 
 	FAutoConsoleCommandWithWorldAndArgs OpenCommand(
 		TEXT("hol.UI.Open"),
-		TEXT("hol.UI.Open <NewGame|Quit> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
+		TEXT("hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Open));
 
 	FAutoConsoleCommandWithWorldAndArgs LaunchCommand(

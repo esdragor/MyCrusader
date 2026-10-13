@@ -54,6 +54,11 @@ void UHOLRotator::NativeOnClicked()
 	ShiftTextRight();
 }
 
+int32 UHOLRotator::GetStep(const int32 Old, const int32 New, const int32 Count)
+{
+	return Count > 0 && (New - Old + Count) % Count == 1 ? 1 : -1;
+}
+
 void UHOLRotator::SetOptions(const TArray<FText>& Options, const int32 InSelectedIndex)
 {
 	PopulateTextLabels(Options);

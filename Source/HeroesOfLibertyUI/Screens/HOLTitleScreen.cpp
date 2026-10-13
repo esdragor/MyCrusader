@@ -6,6 +6,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Screens/HOLConfirmDialog.h"
 #include "Screens/HOLNewGameScreen.h"
+#include "Screens/HOLSettingsScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
 #include "Widgets/HOLRootLayout.h"
@@ -37,8 +38,6 @@ void UHOLTitleScreen::NativeOnInitialized()
 	if (SettingsButton)
 	{
 		SettingsButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleSettings);
-		// The Settings screen comes next (front-end step 4, part 3).
-		SettingsButton->SetIsEnabled(false);
 	}
 	if (QuitButton)
 	{
@@ -58,6 +57,7 @@ void UHOLTitleScreen::HandlePlay()
 
 void UHOLTitleScreen::HandleSettings()
 {
+	UHOLSettingsScreen::Open(GetOwningPlayer());
 }
 
 void UHOLTitleScreen::HandleQuit()
