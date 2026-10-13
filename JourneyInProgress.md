@@ -23,21 +23,16 @@ vérifier sur S1 et S2.
 | J1.2 Carte : emplacement de départ, limites, carte neuve par script, caméra au-dessus de son emplacement | **fait** (2026-10-13) : `Plain`, caméra essayée (placement, flèches, molette, bord, borne) |
 | J1.3 Réglages > Commandes : vitesse de caméra et défilement au bord dégrisés | **fait** (2026-10-13) |
 | D258 appliquée (aucune ombre) | **fait** (2026-10-13) |
-| J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | **en cours** : tests 14/14, `check_camera.ps1` PASS à 2 et 8, menu PASS en fr / en / ja ; reste l'essai de l'utilisateur et S1 / S2 au repos |
-| J1.5 Clôture : D253 à D257 au GDD | à faire |
+| J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | **fait** (2026-10-13) : tests 14/14, `check_camera.ps1` PASS à 2 et 8, menu PASS en fr / en / ja, essai de l'utilisateur validé (repères d'échelle) ; **S1 / S2 au repos reportés** (machine occupée) |
+| J1.5 Clôture : D253 à D257 au GDD | **fait** (2026-10-13) : D253 à D257 et paragraphe J1 au GDD, tests 14/14 sur la carte recréée, mémoire à jour |
 
 ## Prochaine étape exacte
 
-**Reprise (session suivante) — J1.4, fin**, dans cet ordre :
-1. **Essai de l'utilisateur** (il testera plus tard, demandé le 2026-10-13) : lui ouvrir une session sur le deuxième
-   écran (« Lancer une session d'essai » ci-dessous), puis Jouer → Lancer sur « Plaine » ; à essayer : flèches, molette
-   (15 à 70 m), glisser au clic molette, bord de la fenêtre, limites de la carte (400 m), Réglages > Commandes (vitesse,
-   bord) depuis le menu titre ; pas de menu pause en partie (Alt+F4). Recueillir ses retours sur les valeurs (40 m/s à
-   35 m, 55°, zoom) et les intégrer (constantes de `Player/HOLRTSCamera.h` et `.cpp`).
-2. **S1 et S2 courts au repos** (aucune compilation du moteur 5.8.3 ni autre `cl.exe` en cours : vérifier la liste des
-   processus) : nouvelle référence sans ombres (D258) ; chiffres consignés ici et dans `ImplementationInProgress.md`.
-3. **J1.5, clôture** : D253 à D257 au journal du GDD (§ 21) et un paragraphe J1 au § 16.6 ; mémoire à jour ; puis plan
-   de **J2** (centre principal par joueur, à sa couleur, sélectionnable — D252), question par question.
+**J1 close.** Suite :
+1. Plan de **J2** (centre principal par joueur, à sa couleur, sélectionnable — D252), question par question ; le centre
+   principal remplace le repère de l'emplacement, et les repères d'échelle partent.
+2. **En attente, dès que la machine est au repos** (aucune compilation du moteur 5.8.3 ni autre `cl.exe`) : S1 et S2
+   courts, nouvelle référence sans ombres (D258) ; chiffres consignés ici et dans `ImplementationInProgress.md`.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -214,3 +209,23 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
   grande à 40 m), aucune erreur ; **PASS** dans les deux cas.
 - **`capture_screens.ps1`** : contrôle de lancement généralisé (« Match on <carte> ») ; **PASS** en fr, en, ja ; planche
   relue (Plaine, plus d'onglet Ombres, Commandes actif, bataille sans ombre).
+
+### 2026-10-13 (suite) — J1.4 : session d'essai de l'utilisateur ouverte
+
+- Machine pas au repos (compilation du moteur 5.8.3, compilations et éditeurs d'un autre projet) : S1 et S2 au repos
+  reportés. Session d'essai lancée sur le deuxième écran ; retours de l'utilisateur attendus.
+- Retour : « tout est bien », mais sans unité de mesure à l'écran le zoom ne se juge pas. Choix de l'utilisateur :
+  **repères d'échelle sur `Plain`** à côté de l'emplacement 0 (jusqu'au centre principal de J2) : bloc de 4 × 5
+  mannequins de 1,8 m espacés de 1,2 m (`SM_Mannequin`, l'unité du stress test), maison FantasyVillage (rez-de-chaussée
+  3,1 × 6,2 × 3 m et toit 5,3 × 7,8 × 3,2 m, approximative). `create_match_map.py` complété, `Plain` recréée (ancienne
+  copie dans le dossier temporaire de la session). Captures `scale_35m`, `scale_15m`, `scale_70m` : au départ (35 m,
+  ~85 m de sol en largeur), un soldat fait ~20-30 px de haut sur 1600 px ; à 70 m, quelques pixels, et les emplacements
+  voisins entrent dans le cadre. Nouvelle session d'essai ouverte.
+
+### 2026-10-13 (suite) — J1.4 fait (essai de l'utilisateur) ; J1.5 commencée
+
+- Essai sur les repères : « ça marche bien oui » ; valeurs de la caméra gardées (35 m au départ, 15 à 70 m, 55°, 90°
+  de champ horizontal, ~40 m/s à 35 m, bord à 1 %).
+- Machine toujours occupée (compilation du moteur 5.8.3, autre projet) : S1 et S2 au repos reportés, sans bloquer J2.
+- **J1.5** : D253 à D257 reportées au journal du GDD (§ 21) et paragraphe « Parcours J1 » au § 16.6.
+- Tests d'automatisation relancés sur `Plain` recréée : **14/14 verts**. **J1 close.**

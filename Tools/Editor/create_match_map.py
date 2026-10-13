@@ -6,6 +6,8 @@ map bounds. Provisional: no terrain nor resources yet; a marker shows each start
   navmesh      over the bounds (NavMeshBoundsVolume)
   start slots  AHOLStartSlot 0 to 7 on a circle of 150 m, facing the centre; the first ones far apart (slot 0 and 1
                face to face for one against one, 0 to 3 at the four points of the compass...)
+  scale        beside slot 0, a block of 20 mannequins of 1.8 m (the stress test's unit) and a FantasyVillage house, to
+               judge the camera's zoom (J1.4); removed when the main centre of J2 stands on the slot
 
 Needs the HeroesOfLiberty module compiled. Run in a full editor session (the editor quits when done):
   UnrealEditor.exe <project> -nosplash -unattended -ExecCmds="py <this file>"
@@ -24,6 +26,12 @@ SLOT_ANGLES = [180.0, 0.0, 270.0, 90.0, 225.0, 45.0, 315.0, 135.0]
 MARKER_DIAMETER = 800.0
 MARKER_HEIGHT = 200.0
 PLAYER_START_HALF_HEIGHT = 92.0
+# Scale references beside slot 0 (at -150 m, 0, facing +X).
+MANNEQUIN_MESH = "/Game/Units/Mannequin/SM_Mannequin"
+MANNEQUIN_ROWS, MANNEQUIN_COLUMNS, MANNEQUIN_SPACING = 4, 5, 120.0
+MANNEQUIN_BLOCK_ORIGIN = unreal.Vector(-14400.0, 800.0, 0.0)
+HOUSE_MESHES = ["/Game/FantasyVillage/Meshes/SM_House1stFloor01", "/Game/FantasyVillage/Meshes/SM_HouseRoof01"]
+HOUSE_CENTRE = unreal.Vector(-15000.0, -1400.0, 0.0)
 
 
 def spawn(actor_class, location=unreal.Vector(0, 0, 0), rotation=unreal.Rotator(0, 0, 0), label=None):
@@ -44,6 +52,20 @@ def spawn_mesh(mesh_path, location, scale, label, material_path=None):
         component.set_material(0, unreal.load_asset(material_path))
     actor.set_actor_scale3d(scale)
     return actor
+
+
+def spawn_on_ground(mesh_path, centre, base_z, label, yaw=0.0):
+    """A mesh whose bounding box is centred on centre (x, y) with its bottom at base_z; returns the top of the box."""
+    mesh = unreal.load_asset(mesh_path)
+    if mesh is None:
+        raise RuntimeError("Missing mesh " + mesh_path)
+    bounds = mesh.get_bounds()
+    origin, extent = bounds.origin, bounds.box_extent
+    location = unreal.Vector(centre.x - origin.x, centre.y - origin.y, base_z - (origin.z - extent.z))
+    actor = spawn(unreal.StaticMeshActor, location, unreal.Rotator(roll=0, pitch=0, yaw=yaw), label)
+    actor.get_editor_property("static_mesh_component").set_static_mesh(mesh)
+    unreal.log("Scale reference %s: %.1f x %.1f x %.1f m" % (label, 2 * extent.x / 100, 2 * extent.y / 100, 2 * extent.z / 100))
+    return base_z + 2 * extent.z
 
 
 def movable_light(actor):
@@ -96,6 +118,16 @@ def main():
         # The engine's cylinder is 1 m high, centred on its location.
         spawn_mesh("/Engine/BasicShapes/Cylinder", unreal.Vector(x, y, MARKER_HEIGHT / 2),
                    unreal.Vector(MARKER_DIAMETER / 100, MARKER_DIAMETER / 100, MARKER_HEIGHT / 100), "SlotMarker%d" % index)
+
+    # Scale references beside slot 0 (J1.4), until the main centre of J2.
+    for row in range(MANNEQUIN_ROWS):
+        for column in range(MANNEQUIN_COLUMNS):
+            centre = unreal.Vector(MANNEQUIN_BLOCK_ORIGIN.x + row * MANNEQUIN_SPACING,
+                                   MANNEQUIN_BLOCK_ORIGIN.y + column * MANNEQUIN_SPACING, 0)
+            spawn_on_ground(MANNEQUIN_MESH, centre, 0.0, "ScaleMannequin%d" % (row * MANNEQUIN_COLUMNS + column))
+    base_z = 0.0
+    for index, mesh_path in enumerate(HOUSE_MESHES):
+        base_z = spawn_on_ground(mesh_path, HOUSE_CENTRE, base_z, "ScaleHouse%d" % index)
 
     if not level_subsystem.save_current_level():
         raise RuntimeError("Could not save " + MAP_PATH)
