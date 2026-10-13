@@ -28,13 +28,49 @@ vérifier sur S1 et S2.
 
 ## Prochaine étape exacte
 
-**J1.4, fin** : session d'essai de l'utilisateur (partie lancée depuis le menu, deuxième écran) ; S1 et S2 à refaire
-sur une machine au repos pour la référence sans ombres (D258). Puis **J1.5** : D253 à D257 au GDD. **Règle de cohabitation avec le stress test** : seule une carte qui a des
-emplacements de départ reçoit la caméra RTS ; une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par
-défaut, donc le stress test et son fichier (chantier M2) ne changent pas.
+**Reprise (session suivante) — J1.4, fin**, dans cet ordre :
+1. **Essai de l'utilisateur** (il testera plus tard, demandé le 2026-10-13) : lui ouvrir une session sur le deuxième
+   écran (« Lancer une session d'essai » ci-dessous), puis Jouer → Lancer sur « Plaine » ; à essayer : flèches, molette
+   (15 à 70 m), glisser au clic molette, bord de la fenêtre, limites de la carte (400 m), Réglages > Commandes (vitesse,
+   bord) depuis le menu titre ; pas de menu pause en partie (Alt+F4). Recueillir ses retours sur les valeurs (40 m/s à
+   35 m, 55°, zoom) et les intégrer (constantes de `Player/HOLRTSCamera.h` et `.cpp`).
+2. **S1 et S2 courts au repos** (aucune compilation du moteur 5.8.3 ni autre `cl.exe` en cours : vérifier la liste des
+   processus) : nouvelle référence sans ombres (D258) ; chiffres consignés ici et dans `ImplementationInProgress.md`.
+3. **J1.5, clôture** : D253 à D257 au journal du GDD (§ 21) et un paragraphe J1 au § 16.6 ; mémoire à jour ; puis plan
+   de **J2** (centre principal par joueur, à sa couleur, sélectionnable — D252), question par question.
+
+**Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
+une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
+(chantier M2) ne changent pas.
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
+
+## Commandes utiles
+
+Compilation, tests d'automatisation, traductions, `capture_screens.ps1` : voir `FrontEndInProgress.md` (« Commandes
+utiles »). Toujours depuis **PowerShell** (Git Bash réécrit `/Game/...`), aucun éditeur du projet ouvert.
+
+```powershell
+# Lancer une session d'essai (deuxième écran, réglages de test) ; Jouer → Lancer
+Start-Process "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList '"C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash'
+
+# Bout en bout de la caméra (D257) : 2 et 8 joueurs, PASS / FAIL par cas, captures cam_*.png
+powershell -ExecutionPolicy Bypass -File Tools\Tests\check_camera.ps1
+
+# Stress test court sur le deuxième écran (S1 puis S2), rapport dans Saved_Tests\Logs\HeroesOfLiberty.log
+& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" /Game/Maps/StressTest `
+  -game -windowed -ResX=1920 -ResY=1080 -WinX=3840 -WinY=0 -saveddirsuffix=Tests -nosplash `
+  -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,hol.StressTest S1 2000 3 quit"
+
+# Refaire les ressources (éditeur complet pour la carte, commandlet pour les touches)
+#   UnrealEditor.exe <uproject> -nosplash -unattended -ExecCmds="py <projet>/Tools/Editor/create_match_map.py"   (supprimer Content/Maps/Plain.umap avant)
+#   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_game_input.py -unattended -nop4 -nosplash
+```
+
+Commandes de jeu pour les essais par script : `hol.Camera.Report [délai]`, `hol.Camera.TestCursor X Y` (curseur simulé
+du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`, `hol.UI.Key <touche> [délai] [durée]`
+(`MouseScrollUp` / `MouseScrollDown` = un cran de molette), `hol.UI.NewGame.Launch <fichier JSON|-> [délai]`.
 
 ## Plan de J1 (à valider question par question)
 

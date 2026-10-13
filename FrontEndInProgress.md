@@ -41,8 +41,9 @@ compris, les noms français venant du GDD, § 13) et le nom de la carte `BattleM
 nommant aucune carte.
 
 Autres reprises possibles, chacune à décider :
-- **M4** : onglet Commandes (remappage D30, vitesse de caméra, défilement au bord) et HUD de D201 sur la même base
-  Common UI (couches, routage des entrées) ; menu pause et retour au menu depuis une partie.
+- ~~M4~~ : remplacé par le **parcours du joueur (D252, `JourneyInProgress.md`)** ; vitesse de caméra et défilement au
+  bord faits en J1 ; restent à venir par ce chantier : remappage (D30), HUD de D201, menu pause et retour au menu.
+  (Correction : au GDD, M4 = sélection, ordres et groupes de contrôle ; l'interface n'en est que le côté visible.)
 - **M2** : `OwnerPlayer` des unités = `AHOLPlayerState::GetPlayerIndex()` (note dans `ImplementationInProgress.md`).
 - **M2.5** : le salon remplit `UHOLMatchSubsystem` côté serveur (D243).
 
