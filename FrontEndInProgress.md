@@ -21,7 +21,7 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | Plan (Q1 à Q9, D240 à D248) | **fait** (2026-10-13) |
 | 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
-| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **en cours** : code fait et compilé, vérifications restantes (voir ci-dessous) |
+| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | à faire |
 | 5. Localisation (français, anglais, japonais) | à faire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
@@ -29,22 +29,17 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 
 ## Prochaine étape exacte
 
-**Reprise (session interrompue le 2026-10-13 au milieu de l'étape 3).** Le code de l'étape 3 est écrit, compile et
-est committé ; le jeu démarre sur `MainMenu` et affiche l'écran titre provisoire (journal : mode de jeu
-`HOLMenuGameMode`, `HOLTitleScreen` activé en mode menu, focus sur `QuitButton`, plus d'erreur `LogUIActionRouter`).
-Restent, dans l'ordre :
-1. **Regarder la capture** `Saved/Screenshots/WindowsEditor/HOL/title_step3.png` (prise par `hol.UI.Capture`, 1600 x
-   900) : titre « Heroes of Liberty » centré en couleur d'accent, bouton « Quitter » stylé, fond sombre. Corriger le
-   style si besoin. (Attention : `FPaths::ScreenShotDir()` ajoute `WindowsEditor/` au chemin.)
-2. **Stress test** : le client de viewport Common UI est un réglage **global** → S1 et S2 courts (commande dans
-   `ImplementationInProgress.md`, carte explicite `/Game/Maps/StressTest`, donc `GameDefaultMap` ne les touche pas) ;
-   vérifier qu'ils tournent et que le rapport est complet. Les chiffres restent non significatifs tant que la
-   compilation du moteur 5.8.3 occupe le processeur.
-3. **Tests d'automatisation** : relancer `HeroesOfLiberty` (7 tests de l'étape 2 doivent rester verts).
-4. Vérifier à la main (ou par capture) que **Échap** et le bouton B de la manette ne font rien sur l'écran titre et que
-   **Entrée** active « Quitter » (action `IA_UI_Confirm`).
-5. Mettre ce fichier à jour (étape 3 faite), committer, puis passer à l'étape 4 (écrans : titre complet avec Jouer et
-   Réglages, Nouvelle partie D244, Réglages D245, confirmation de sortie en modale).
+**Étape 4 — écrans** (D240, D244, D245), dans `HeroesOfLibertyUI`, construits en code (D242) :
+1. **Focus visible au clavier** : aujourd'hui seul le passage à la manette met le bouton qui a le focus en surbrillance
+   (capture `keys_after_back.png`) ; au clavier et à la souris, le focus ne se voit pas (`title_step3.png`). Style de
+   focus à ajouter à `UHOLButton` avant d'avoir plusieurs boutons.
+2. **Titre complet** : Jouer, Réglages, Quitter ; « Quitter » ouvre une **confirmation de sortie** dans la couche
+   modale (`ModalLayer`), Échap / B la ferment (premier écran avec retour arrière : `bIsBackHandler`).
+3. **Nouvelle partie** (D244) : carte, 8 emplacements (état, faction, couleur, équipe), mode et options ; carte,
+   emplacements occupés et couleur actifs, le reste grisé ; « Lancer » remplit `UHOLMatchSubsystem` et ouvre la carte.
+   Une commande console doit prendre le même chemin que le bouton (D246).
+4. **Réglages** (D245) : onglets Vidéo, Son, Commandes (grisé), Langue ; classe dérivée de `UGameUserSettings`.
+5. Captures de chaque écran (`hol.UI.Capture`), touches par `hol.UI.Key`, S2 court, tests ; mettre ce fichier à jour.
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -63,6 +58,10 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -game -windowed -ResX=1600 -ResY=900 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
 # -> Saved/Screenshots/WindowsEditor/HOL/title.png
+
+# Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
+#   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"
+#   (Enter et Gamepad_FaceButton_Bottom ferment le jeu par « Quitter » : journal « LogHOLUI: Title screen: Quit »)
 
 # Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
 #   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
@@ -191,3 +190,20 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   (fenêtre de jeu et interface seulement) dans `Saved/Screenshots/WindowsEditor/HOL/`. Une première capture du bureau
   par PowerShell avait pris la mauvaise zone (mise à l'échelle de Windows) et une partie du bureau de l'utilisateur :
   supprimée, méthode abandonnée — **ne jamais capturer le bureau**.
+
+### 2026-10-13 (suite) — Étape 3 faite : vérifications du socle Common UI
+
+- **Capture** `title_step3.png` conforme : titre centré en couleur d'accent, bouton « Quitter » stylé, fond sombre.
+  Défaut relevé : au clavier et à la souris, le bouton qui a le focus ne se distingue pas (à faire à l'étape 4).
+- **Stress test** avec le client de viewport Common UI : S1 et S2 courts (2 000 unités, 3 s) tournent jusqu'au bout,
+  rapport complet, 0 unité restante, plus d'erreur `LogUIActionRouter`. Chiffres non significatifs : sept `cl.exe` d'un
+  autre projet occupaient le processeur (S1 3,32 ms et 115 i/s, S2 3,56 ms et 109 i/s, seuils en échec).
+- **Tests d'automatisation** : 7/7 verts.
+- **Touches** : nouvelle commande `hol.UI.Key <Touche> [Délai]` (`Dev/HOLUIKey.cpp`) qui envoie un appui à Slate (même
+  chemin qu'une vraie touche : widget qui a le focus, client de viewport, routeur d'actions), relâché 0,1 s après.
+  Échap et B de la manette ne font rien sur l'écran titre (écran racine, pas de retour arrière). **Entrée ne faisait
+  rien** : Common UI a un réglage `CommonButtonAcceptKeyHandling` dont la valeur codée, `Ignore`, fait ignorer à un
+  bouton qui a le focus les touches de validation de Slate (Entrée, Espace, A) ; Epic met `TriggerClick` dans les
+  projets créés depuis la 5.6, le nôtre est plus ancien. Passé à **`TriggerClick`** (`DefaultGame.ini`) : Entrée et A
+  activent « Quitter » (journal `Title screen: Quit`, sortie propre). `IA_UI_Confirm` reste l'action affichée comme
+  icône de clic et routée pour la manette ; ce n'est pas elle qui clique au clavier.

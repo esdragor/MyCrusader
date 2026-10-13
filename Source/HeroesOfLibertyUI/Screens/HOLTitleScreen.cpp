@@ -2,6 +2,7 @@
 
 #include "CommonTextBlock.h"
 #include "Components/VerticalBox.h"
+#include "HeroesOfLibertyUILog.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
@@ -32,6 +33,7 @@ UWidget* UHOLTitleScreen::NativeGetDesiredFocusTarget() const
 
 void UHOLTitleScreen::HandleQuit()
 {
+	UE_LOG(LogHOLUI, Display, TEXT("Title screen: Quit"));
 	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
 }
 
