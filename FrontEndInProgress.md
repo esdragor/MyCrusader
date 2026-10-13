@@ -1,7 +1,7 @@
 # Front-end in progress
 
 **Journal du chantier du menu — TERMINÉ le 2026-10-13** (étapes 1 à 7). Décisions D240 à D249 reportées au GDD (§ 21, résumé au § 15). Ce fichier reste comme mémoire du chantier : commandes utiles, pièges, liste de finition.
-**Reprise « Finition » ouverte le 2026-10-13** (étapes F1 à F5 ci-dessous), décisions D250 et D251.
+**Reprise « Finition » ouverte et terminée le 2026-10-13** (étapes F1 à F5 ci-dessous), décisions D250 et D251 reportées au GDD.
 
 Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Server (D231). Pour ne pas se marcher dessus :
 - décisions numérotées **D240 et suivantes** (D237 à D239 restent à M2) ;
@@ -32,13 +32,13 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | F2. Nom affichable et traduit des cartes (plus le nom de l'asset) | **fait** (2026-10-13) |
 | F3. Manette : LB / RB changent de colonne (Nouvelle partie, Réglages > Vidéo), aide affichée (D250) | **fait** (2026-10-13) |
 | F4. Police composite Roboto + Noto Sans JP normal et gras, importée par script (D251) | **fait** (2026-10-13) |
-| F5. Vérification (tests, bout en bout fr / en / ja, captures), D250 et D251 au GDD | à faire |
+| F5. Vérification (tests, bout en bout fr / en / ja, captures), D250 et D251 au GDD | **fait** (2026-10-13) |
 
 ## Prochaine étape exacte
 
-**Finition, F5** : vérification complète (tests d'automatisation, `capture_screens.ps1` en fr, en, ja, planches relues),
-D250 et D251 reportées au GDD (§ 21, et § 15), clôture de la reprise. Les noms français des factions viennent du GDD (§ 13) : seules leurs traductions anglaise et
-japonaise restent provisoires (rien à faire à la finition).
+**Aucune : finition terminée.** Restent provisoires : les traductions anglaise et japonaise (noms des factions
+compris, les noms français venant du GDD, § 13) et le nom de la carte `BattleMap` (« Champ de bataille »), le GDD ne
+nommant aucune carte.
 
 Autres reprises possibles, chacune à décider :
 - **M4** : onglet Commandes (remappage D30, vitesse de caméra, défilement au bord) et HUD de D201 sur la même base
@@ -438,3 +438,12 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   absent) ; le script tourne dans l'éditeur complet et le ferme à la fin, même en cas d'erreur.
 - **Vérifié** (captures `f4_*.png`) : en japonais, titres en gras (« 新しいゲーム »), texte courant en Noto Sans JP
   normal, note en italique rendue en normal (pas d'italique japonais) ; en français, rien ne change (Roboto, italique).
+
+### 2026-10-13 (suite) — Finition F5 faite : vérification, D250 et D251 au GDD ; finition terminée
+
+- **Tests d'automatisation** : 9/9 verts (dont `Localization.Translations` sur les 94 textes).
+- **Bout en bout** (`capture_screens.ps1`) : **PASS** en fr, en, ja ; planches relues : aucun texte coupé ni caractère
+  manquant, rien resté en français, titres japonais en gras, « Battlefield » / « 戦場 » affichés.
+- **GDD** : D250 et D251 ajoutées au journal (§ 21), paragraphe « Menu et réglages » du § 15 complété (manette, police) ;
+  fins de ligne CRLF conservées.
+- Stress test non relancé : rien de global n'a changé (police et écrans du module d'interface seulement).
