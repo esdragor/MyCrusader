@@ -20,6 +20,7 @@ public class HeroesOfLibertyUI : ModuleRules
 			"UMG",
 			"CommonUI",
 			"CommonInput",
+			"EnhancedInput",
 		});
 	}
 }

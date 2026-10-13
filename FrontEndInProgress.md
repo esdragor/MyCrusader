@@ -21,7 +21,7 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | Plan (Q1 à Q9, D240 à D248) | **fait** (2026-10-13) |
 | 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
-| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **en cours** |
+| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **en cours** : code fait et compilé, vérifications restantes (voir ci-dessous) |
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | à faire |
 | 5. Localisation (français, anglais, japonais) | à faire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
@@ -29,24 +29,22 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 
 ## Prochaine étape exacte
 
-Étape 3, socle Common UI (module `HeroesOfLibertyUI`, sauf mention) :
-1. **Client de viewport** : `GameViewportClientClassName=/Script/CommonUI.CommonGameViewportClient` dans
-   `DefaultEngine.ini` (fait disparaître l'erreur `LogUIActionRouter` de l'étape 1). Réglage **global** : vérifier sur
-   un S1 et un S2 courts que le stress test n'est pas touché.
-2. **Données d'entrée** Common UI : actions « valider » et « retour » (souris, clavier, manette) ; regarder d'abord
-   dans le moteur 5.8 si Common UI s'appuie sur Enhanced Input (`bEnableEnhancedInputSupport`, ressources
-   `UInputAction` créées par script) ou sur une table `FCommonInputActionDataBase` ; classe dérivée de
-   `UCommonUIInputData` en C++, déclarée dans `DefaultGame.ini` (`CommonInputSettings`).
-3. **Police** couvrant le japonais (D245) : chercher dans le moteur si un `FSlateFontInfo` peut porter une police
-   composite construite en code (Roboto + `DroidSansFallback.ttf` pour le japonais) ; sinon ressource `UFont`
-   composite créée par script d'éditeur (`Tools/Editor/`). Vérifier que la police suit en jeu empaqueté.
-4. **Styles** en C++ (D242) : `UCommonTextStyle` (titre, corps, grisé), `UCommonButtonStyle` (normal, survolé,
-   désactivé) avec la police ci-dessus.
-5. **Disposition racine** construite en C++ (`BindWidgetOptional`, D242) : deux couches `UCommonActivatableWidgetStack`
-   (menu, modale), poussée à l'écran par le PlayerController de menu.
-6. **Carte `MainMenu`** créée par script (`Tools/Editor/create_main_menu_map.py`), GameMode de menu
-   (`AHOLMenuGameMode`, module UI) en surcharge de la carte ; `GameDefaultMap` → `MainMenu` (l'éditeur s'ouvre toujours
-   sur `BattleMap`). Écran titre provisoire vide pour vérifier la chaîne ; compiler, tests, S1/S2 courts, committer.
+**Reprise (session interrompue le 2026-10-13 au milieu de l'étape 3).** Le code de l'étape 3 est écrit, compile et
+est committé ; le jeu démarre sur `MainMenu` et affiche l'écran titre provisoire (journal : mode de jeu
+`HOLMenuGameMode`, `HOLTitleScreen` activé en mode menu, focus sur `QuitButton`, plus d'erreur `LogUIActionRouter`).
+Restent, dans l'ordre :
+1. **Regarder la capture** `Saved/Screenshots/WindowsEditor/HOL/title_step3.png` (prise par `hol.UI.Capture`, 1600 x
+   900) : titre « Heroes of Liberty » centré en couleur d'accent, bouton « Quitter » stylé, fond sombre. Corriger le
+   style si besoin. (Attention : `FPaths::ScreenShotDir()` ajoute `WindowsEditor/` au chemin.)
+2. **Stress test** : le client de viewport Common UI est un réglage **global** → S1 et S2 courts (commande dans
+   `ImplementationInProgress.md`, carte explicite `/Game/Maps/StressTest`, donc `GameDefaultMap` ne les touche pas) ;
+   vérifier qu'ils tournent et que le rapport est complet. Les chiffres restent non significatifs tant que la
+   compilation du moteur 5.8.3 occupe le processeur.
+3. **Tests d'automatisation** : relancer `HeroesOfLiberty` (7 tests de l'étape 2 doivent rester verts).
+4. Vérifier à la main (ou par capture) que **Échap** et le bouton B de la manette ne font rien sur l'écran titre et que
+   **Entrée** active « Quitter » (action `IA_UI_Confirm`).
+5. Mettre ce fichier à jour (étape 3 faite), committer, puis passer à l'étape 4 (écrans : titre complet avec Jouer et
+   Réglages, Nouvelle partie D244, Réglages D245, confirmation de sortie en modale).
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -60,6 +58,15 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 # Tests d'automatisation du projet, sans affichage (D246) ; résultat dans Saved/Logs/HeroesOfLiberty.log, lignes « Test Completed »
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -unattended -nullrhi -nosplash -nosound -log
+
+# Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau
+& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
+  -game -windowed -ResX=1600 -ResY=900 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
+# -> Saved/Screenshots/WindowsEditor/HOL/title.png
+
+# Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
+#   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
+#   UnrealEditor.exe <uproject> -nosplash -ExecCmds="py <projet>/Tools/Editor/create_main_menu_map.py"
 
 # Lancer une partie depuis une configuration JSON (comme un serveur dédié sans salon, D243)
 #   ... HeroesOfLiberty.uproject /Game/Level/BattleMap -game -MatchConfig=C:\chemin\match.json
@@ -159,3 +166,28 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
 - **Bout en bout** : S2 court sans configuration → « default configuration », joueur en emplacement 0 ; avec
   `-MatchConfig=` (emplacement 0 en IA) → « given configuration », joueur en emplacement 1, couleur 4. Stress test
   inchangé dans les deux cas.
+
+### 2026-10-13 (suite) — Étape 3 en cours : socle Common UI (interrompue avant les vérifications)
+
+- **Entrées** (D241) : Common UI passe par **Enhanced Input** (`bEnableEnhancedInputSupport=True`), système que
+  l'onglet Commandes remappera à M4 (D245). Ressources créées par `Tools/Editor/make_ui_input.py` (commandlet) :
+  `/Game/UI/Input/IA_UI_Confirm` (Entrée, Espace, A de la manette), `IA_UI_Back` (Échap, B de la manette), `IMC_UI`.
+  `UHOLUIInputData` (dérivée de `UCommonUIInputData`) les référence ; déclarée dans `DefaultGame.ini`.
+  Le contexte `IMC_UI` est ajouté au joueur local par `AHOLMenuPlayerController`.
+- **Client de viewport** : `GameViewportClientClassName=/Script/CommonUI.CommonGameViewportClient`
+  (`DefaultEngine.ini`) ; l'erreur `LogUIActionRouter` de l'étape 1 a disparu. **S1/S2 pas encore revérifiés.**
+- **Police** : la police `Roboto` du moteur (`/Engine/EngineFonts/Roboto`) a déjà `DroidSansFallback` en police de
+  secours, qui couvre le japonais : rien à importer. À confirmer à l'étape 5 (affichage japonais réel).
+- **Styles** en C++ (`Style/HOLUIStyles`) : textes titre, intertitre, corps, grisé ; bouton arrondi, accent au survol.
+- **Widgets** construits en code si aucun Blueprint ne fournit de mise en page (D242) : `UHOLButton` (libellé),
+  `UHOLRootLayout` (fond + couches `MenuLayer` et `ModalLayer`, `UCommonActivatableWidgetStack`), `UHOLScreen` (base
+  des écrans, mode d'entrée menu, `BuildLayout()`), `UHOLTitleScreen` provisoire (titre + « Quitter »).
+  Piège : `UCommonButtonBase::Initialize` enveloppe la racine de l'arbre dans son bouton interne juste après
+  `NativeOnInitialized` ; l'arbre du bouton doit donc être construit là, avant `Super`.
+- **Carte** `/Game/Maps/MainMenu` créée par `Tools/Editor/create_main_menu_map.py` (éditeur complet), surcharge de mode
+  de jeu `AHOLMenuGameMode` (pas de pion, `AHOLMenuPlayerController`) ; `GameDefaultMap` → `MainMenu` (l'éditeur
+  s'ouvre toujours sur `BattleMap`).
+- **Capture** : commande `hol.UI.Capture <Nom> [Délai=3] [quit]` (`Dev/HOLUICapture.cpp`) : capture faite par le jeu
+  (fenêtre de jeu et interface seulement) dans `Saved/Screenshots/WindowsEditor/HOL/`. Une première capture du bureau
+  par PowerShell avait pris la mauvaise zone (mise à l'échelle de Windows) et une partie du bureau de l'utilisateur :
+  supprimée, méthode abandonnée — **ne jamais capturer le bureau**.
