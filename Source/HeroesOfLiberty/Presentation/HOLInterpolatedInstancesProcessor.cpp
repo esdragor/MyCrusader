@@ -11,6 +11,7 @@
 #include "MassUpdateISMProcessor.h"
 #include "MassUpdateSkinnedMeshProcessor.h"
 #include "MassVisualizationComponent.h"
+#include "Match/HOLPlayerColors.h"
 #include "Presentation/HOLPresentationFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -25,32 +26,13 @@ namespace UE::HeroesOfLiberty::Presentation
 	constexpr float AnimationBlendSeconds = 0.2f;
 
 	/**
-	 * Player colours (D233), chosen by the client: the units only carry their owner's index. Index 8 and above
-	 * wrap. Written as linear base colour into the instance's custom data 0-2 (M_UnitPlayerColor).
+	 * Player colours (D233), chosen by the client: the units only carry their owner's index. The palette is shared
+	 * with the menu (HOLPlayerColors). Written as linear base colour into the instance's custom data 0-2
+	 * (M_UnitPlayerColor).
 	 */
 	const FVector3f& GetPlayerColor(const uint8 OwnerPlayer)
 	{
-		static const TArray<FVector3f> Palette = []
-		{
-			const FColor Colors[] = {
-				FColor(40, 90, 220),	// blue
-				FColor(210, 40, 40),	// red
-				FColor(40, 170, 60),	// green
-				FColor(230, 200, 40),	// yellow
-				FColor(40, 190, 200),	// teal
-				FColor(150, 60, 190),	// purple
-				FColor(230, 120, 30),	// orange
-				FColor(230, 120, 170),	// pink
-			};
-			TArray<FVector3f> Linear;
-			for (const FColor& Color : Colors)
-			{
-				const FLinearColor Converted(Color);
-				Linear.Add(FVector3f(Converted.R, Converted.G, Converted.B));
-			}
-			return Linear;
-		}();
-		return Palette[OwnerPlayer % Palette.Num()];
+		return HOLPlayerColors::GetLinearColor(OwnerPlayer);
 	}
 
 	/** Start offset (s) of a unit in a sequence: stable per unit and sequence, so 2 000 units do not step in time. */
