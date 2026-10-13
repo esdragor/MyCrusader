@@ -31,13 +31,13 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | F1. « Affichage » montre le mode réel (imposé par la ligne de commande) | **fait** (2026-10-13) |
 | F2. Nom affichable et traduit des cartes (plus le nom de l'asset) | **fait** (2026-10-13) |
 | F3. Manette : LB / RB changent de colonne (Nouvelle partie, Réglages > Vidéo), aide affichée (D250) | **fait** (2026-10-13) |
-| F4. Police composite Roboto + Noto Sans JP normal et gras, importée par script (D251) | à faire |
+| F4. Police composite Roboto + Noto Sans JP normal et gras, importée par script (D251) | **fait** (2026-10-13) |
 | F5. Vérification (tests, bout en bout fr / en / ja, captures), D250 et D251 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**Finition, F4** : police composite du projet, Roboto + Noto Sans JP normal et gras (D251), importée par script ;
-puis F5 (tableau). Les noms français des factions viennent du GDD (§ 13) : seules leurs traductions anglaise et
+**Finition, F5** : vérification complète (tests d'automatisation, `capture_screens.ps1` en fr, en, ja, planches relues),
+D250 et D251 reportées au GDD (§ 21, et § 15), clôture de la reprise. Les noms français des factions viennent du GDD (§ 13) : seules leurs traductions anglaise et
 japonaise restent provisoires (rien à faire à la finition).
 
 Autres reprises possibles, chacune à décider :
@@ -98,6 +98,8 @@ powershell -ExecutionPolicy Bypass -File Tools\Tests\capture_screens.ps1
 #   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
 #   UnrealEditor.exe <uproject> -nosplash -ExecCmds="py <projet>/Tools/Editor/create_main_menu_map.py"
 # Classes de son et mélange des volumes (commandlet) : -run=pythonscript -script=<projet>\Tools\Editor\make_sound_classes.py
+# Police de l'interface F_HOL = Roboto + Noto Sans JP (D251), éditeur complet (l'import de police plante en commandlet) :
+#   UnrealEditor.exe <uproject> -nosplash -unattended -ExecCmds="py <projet>/Tools/Editor/make_ui_fonts.py"
 
 # Lancer une partie depuis une configuration JSON (comme un serveur dédié sans salon, D243)
 #   ... HeroesOfLiberty.uproject /Game/Level/BattleMap -game -MatchConfig=C:\chemin\match.json
@@ -421,3 +423,18 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   `make_ui_input.py` force désormais l'enregistrement. Diagnostic utile : `QueryKeysMappedToAction` vide.
 - **Piège** : `hol.UI.Key` n'accepte pas `quit` (seul `hol.UI.Capture` le fait) : une session lancée ainsi ne se ferme
   pas ; les lancements de test attendent maintenant au plus 2 minutes puis ferment le jeu.
+
+### 2026-10-13 (suite) — Finition F4 faite : police de l'interface (D251)
+
+- **Noto Sans JP** normal et gras (sous-ensemble japonais, SIL OFL 1.1) téléchargés depuis `notofonts/noto-cjk` à la
+  version figée `Sans2.004` (fichiers OpenType vérifiés, 4,3 et 4,4 Mo) ; sources dans `Intermediate/FontSources`
+  (non suivi), licence copiée dans `Content/UI/Fonts/NotoSansJP-LICENSE.txt`.
+- `Tools/Editor/make_ui_fonts.py` importe les deux faces (`/Game/UI/Fonts/NotoSansJP_Regular`, `_Bold`, 4,5 et 4,7 Mo)
+  et fait **`/Game/UI/Fonts/F_HOL`** : les typographies de Roboto du moteur (et sa police de secours pour les autres
+  écritures), plus une sous-police japonaise (kana, kanji, ponctuation japonaise, formes pleine chasse). Les
+  sous-polices d'une police composite ne sont pas accessibles en Python : fonction C++ `UHOLFonts::MakeCompositeFont`
+  appelée par le script. Les styles de texte prennent `F_HOL`.
+- **Piège** : l'import d'une police plante en commandlet (`Assertion failed: CurrentApplication.IsValid()`, Slate
+  absent) ; le script tourne dans l'éditeur complet et le ferme à la fin, même en cas d'erreur.
+- **Vérifié** (captures `f4_*.png`) : en japonais, titres en gras (« 新しいゲーム »), texte courant en Noto Sans JP
+  normal, note en italique rendue en normal (pas d'italique japonais) ; en français, rien ne change (Roboto, italique).

@@ -7,7 +7,7 @@
 
 /**
  * Interface styles, written in C++ (D242): provisional looks until there is an art direction. The font is the
- * engine's Roboto, whose fallback typeface (DroidSansFallback) covers Japanese (D245).
+ * project's composite font F_HOL: the engine's Roboto, with Noto Sans JP in regular and bold for Japanese (D245, D251).
  */
 namespace HOLUIStyle
 {
@@ -24,7 +24,7 @@ namespace HOLUIStyle
 	HEROESOFLIBERTYUI_API void ShowFocus(UCommonButtonBase& Button);
 }
 
-/** Base of the text styles: Roboto at a given size and typeface. */
+/** Base of the text styles: the interface font (F_HOL) at a given size and typeface. */
 UCLASS(Abstract)
 class HEROESOFLIBERTYUI_API UHOLTextStyle : public UCommonTextStyle
 {

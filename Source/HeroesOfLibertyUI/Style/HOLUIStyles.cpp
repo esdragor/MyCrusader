@@ -6,8 +6,9 @@
 
 void UHOLTextStyle::SetFont(const float Size, const FName Typeface, const FLinearColor& InColor)
 {
-	static ConstructorHelpers::FObjectFinder<UFont> Roboto(TEXT("/Engine/EngineFonts/Roboto.Roboto"));
-	Font = FSlateFontInfo(Roboto.Object, Size, Typeface);
+	// Roboto of the engine with Noto Sans JP for Japanese (D251), made by Tools/Editor/make_ui_fonts.py.
+	static ConstructorHelpers::FObjectFinder<UFont> InterfaceFont(TEXT("/Game/UI/Fonts/F_HOL.F_HOL"));
+	Font = FSlateFontInfo(InterfaceFont.Object, Size, Typeface);
 	Color = InColor;
 }
 
