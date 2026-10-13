@@ -675,3 +675,9 @@ Leviers de mesure (ligne de commande ou console) :
   ou `-WinX=3940 -WinY=100` (1600 x 900) : fenêtre sur le deuxième écran de l'utilisateur, et dossier `Saved_Tests/`
   qui ne touche pas ses réglages (journal et captures y vont aussi). Sans le dossier de test, le moteur recentre la
   fenêtre sur l'écran principal ~15 s après le démarrage. Détail dans `FrontEndInProgress.md` (« Commandes utiles »).
+
+**Ordre d'avancement après M2 (D252, 2026-10-13, `JourneyInProgress.md`)** : le plan suit désormais le parcours du
+joueur, **J1** emplacement de départ et caméra RTS, **J2** centre principal par joueur et sélection, puis **M2.5**
+réseau, **J3** production d'un Paysan, **J4** ordres de déplacement et chemins (M3), **J5** récolte… Le plan de J1 est
+en cours dans une autre session : il remplacera le pion par défaut de la carte de bataille par une caméra RTS ; les vues
+de mesure du stress test (D236, D237) seront gardées, et vérifiées sur S1 et S2.
