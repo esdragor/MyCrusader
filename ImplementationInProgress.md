@@ -685,3 +685,10 @@ de mesure du stress test (D236, D237) seront gardées, et vérifiées sur S1 et 
 **D258 (2026-10-13, demande de l'utilisateur) : aucune ombre dans le jeu**, pour éviter tout problème de performances.
 Consigné au GDD (§ 16.6, § 21). **Pas encore appliqué** au moteur : quand il le sera (réglage global), les mesures S1 à
 S6 faites avec ombres ne se compareront plus ; une nouvelle référence sera à prendre.
+**Appliqué le 2026-10-13** (choix de l'utilisateur : tout de suite, partout) : `[SystemSettings]` de `DefaultEngine.ini`
+(`r.ShadowQuality=0`, `r.Shadow.Virtual.Enable=0`, `r.DistanceFieldShadowing=0`, `r.CapsuleShadows=0`,
+`r.ContactShadows=0`), au-dessus des niveaux de qualité. Le rapport du stress test écrit encore `Shadow 2` dans la ligne
+`Display (D245)` : c'est le niveau du groupe, sans effet désormais ; à remplacer par `r.ShadowQuality` si utile.
+Premiers passages courts sans ombres (machine chargée par la compilation du moteur 5.8.3, chiffres non significatifs) :
+S1 3,53 ms, 110 i/s, GPU 3,98 ms, fil de jeu 8,93 ms ; S2 3,38 ms, 119 i/s, GPU 3,92 ms, fil de jeu 7,90 ms ; complets,
+0 unité restante.

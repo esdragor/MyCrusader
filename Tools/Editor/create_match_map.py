@@ -69,12 +69,16 @@ def main():
     spawn_mesh("/Engine/BasicShapes/Plane", unreal.Vector(0, 0, 0), unreal.Vector(GROUND_SIZE / 100, GROUND_SIZE / 100, 1),
                "Ground", "/Engine/EngineMaterials/WorldGridMaterial")
 
-    # Light and sky, all movable: nothing to build.
+    # Light and sky, all movable: nothing to build. No shadows in the game (D258).
     sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 1000), unreal.Rotator(roll=0, pitch=-50, yaw=30), "Sun")
-    movable_light(sun).set_editor_property("atmosphere_sun_light", True)
+    sun_light = movable_light(sun)
+    sun_light.set_editor_property("atmosphere_sun_light", True)
+    sun_light.set_editor_property("cast_shadows", False)
     spawn(unreal.SkyAtmosphere, label="SkyAtmosphere")
     sky_light = spawn(unreal.SkyLight, label="SkyLight")
-    movable_light(sky_light).set_editor_property("real_time_capture", True)
+    sky = movable_light(sky_light)
+    sky.set_editor_property("real_time_capture", True)
+    sky.set_editor_property("cast_shadows", False)
     spawn(unreal.ExponentialHeightFog, label="HeightFog")
 
     # Bounds of the camera, and the navmesh over them (the default volume brush is a 2 m cube).

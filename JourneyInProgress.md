@@ -21,14 +21,16 @@ vérifier sur S1 et S2.
 | J1 — plan (Q1 à Q5, D253 à D257) | **fait** (2026-10-13) |
 | J1.1 Socle : contrôleur de partie, caméra locale, `IMC_Game`, réglages caméra | **fait** (2026-10-13) : compile, non essayé (pas encore de carte à emplacements) |
 | J1.2 Carte : emplacement de départ, limites, carte neuve par script, caméra au-dessus de son emplacement | **fait** (2026-10-13) : `Plain`, caméra essayée (placement, flèches, molette, bord, borne) |
-| J1.3 Réglages > Commandes : vitesse de caméra et défilement au bord dégrisés | à faire |
+| J1.3 Réglages > Commandes : vitesse de caméra et défilement au bord dégrisés | **fait** (2026-10-13) |
+| D258 appliquée (aucune ombre) | **fait** (2026-10-13) |
 | J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | à faire |
 | J1.5 Clôture : D253 à D257 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**J1.3** : Réglages > Commandes, vitesse de la caméra et défilement au bord dégrisés et branchés sur
-`UHOLGameUserSettings` ; « Changer les touches » reste grisé. **Règle de cohabitation avec le stress test** : seule une carte qui a des
+**J1.4** : vérification (D257) — tests d'automatisation (bornes, vitesse, réglages caméra, emplacements de `Plain` lus
+dans la carte), bout en bout à 2 et 8 joueurs (caméra au-dessus du bon emplacement, flèches, molette, bord), puis essai
+de l'utilisateur ; S1 et S2 à refaire sur une machine au repos pour la référence sans ombres. **Règle de cohabitation avec le stress test** : seule une carte qui a des
 emplacements de départ reçoit la caméra RTS ; une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par
 défaut, donc le stress test et son fichier (chantier M2) ne changent pas.
 
@@ -146,3 +148,19 @@ exacte, entrée de journal — avant de passer à la suivante.
 - Demande de l'utilisateur pendant J1.3 : « afin de ne pas avoir de problèmes de perfs, écris-le maintenant, aucune
   ombre dans le jeu ». Consigné directement au GDD (§ 16.6 et § 21, D258), comme D252, car il touche tous les chantiers ;
   note laissée à M2 (les mesures du stress test changent quand le réglage sera appliqué).
+
+### 2026-10-13 (suite) — J1.3 fait, D258 appliquée
+
+- **J1.3** : onglet Commandes, vitesse de la caméra et défilement au bord **dégrisés**, lus et enregistrés dans
+  `UHOLGameUserSettings` ; « Changer les touches » reste grisé, note « Changer les touches : pas encore dans le jeu. »
+  (traduite). Vérifié aux touches (capture `j1_controls_changed.png`, `CameraSpeed=0` enregistré puis remis à 1 dans
+  le fichier de test).
+- **D258 appliquée** (choix de l'utilisateur : maintenant, partout) : `DefaultEngine.ini` `[SystemSettings]` coupe
+  toutes les ombres au-dessus des niveaux de qualité (`r.ShadowQuality = "0" LastSetBy: SystemSettingsIni` vérifié en
+  partie) ; soleil et ciel de `Plain` sans ombres (carte recréée) ; groupe « Ombres » retiré de Réglages > Vidéo
+  (93 textes). Capture `j1_noshadow.png` : le repère ne projette plus d'ombre.
+- **S1 et S2 courts** sur `StressTest` (deuxième écran, `-saveddirsuffix=Tests`) : complets, 2 000 unités, 0 restante,
+  registre sans écart ; la carte sans emplacements garde le pion par défaut (aucune ligne `Match map`). Chiffres hors
+  seuils mais non significatifs (compilation du moteur 5.8.3 en parallèle, fil de jeu limitant) : S1 3,53 ms / 110 i/s,
+  S2 3,38 ms / 119 i/s, GPU ~3,9 ms. Référence sans ombres à reprendre au repos.
+- Constat : « Réglages » ne s'ouvre pas en partie (pas encore de menu pause, prévu plus tard).

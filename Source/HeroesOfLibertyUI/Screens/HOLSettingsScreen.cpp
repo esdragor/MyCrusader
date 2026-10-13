@@ -29,7 +29,7 @@ namespace UE::HeroesOfLiberty::UI::Settings
 	constexpr int32 NumVolumeSteps = 10;
 	const FIntPoint MinResolution(1280, 720);
 
-	/** A scalability group of the Video tab. */
+	/** A scalability group of the Video tab. No Shadows group: the game has none (D258). */
 	struct FGroup
 	{
 		const TCHAR* Name;
@@ -43,7 +43,6 @@ namespace UE::HeroesOfLiberty::UI::Settings
 		return {
 			{ TEXT("ViewDistance"), LOCTEXT("ViewDistance", "Distance d'affichage"), &UGameUserSettings::GetViewDistanceQuality, &UGameUserSettings::SetViewDistanceQuality },
 			{ TEXT("AntiAliasing"), LOCTEXT("AntiAliasing", "Anticrénelage"), &UGameUserSettings::GetAntiAliasingQuality, &UGameUserSettings::SetAntiAliasingQuality },
-			{ TEXT("Shadow"), LOCTEXT("Shadow", "Ombres"), &UGameUserSettings::GetShadowQuality, &UGameUserSettings::SetShadowQuality },
 			{ TEXT("GlobalIllumination"), LOCTEXT("GlobalIllumination", "Éclairage global"), &UGameUserSettings::GetGlobalIlluminationQuality, &UGameUserSettings::SetGlobalIlluminationQuality },
 			{ TEXT("Reflection"), LOCTEXT("Reflection", "Réflexions"), &UGameUserSettings::GetReflectionQuality, &UGameUserSettings::SetReflectionQuality },
 			{ TEXT("PostProcessing"), LOCTEXT("PostProcessing", "Post-traitement"), &UGameUserSettings::GetPostProcessingQuality, &UGameUserSettings::SetPostProcessingQuality },
@@ -249,7 +248,7 @@ void UHOLSettingsScreen::BuildLayout()
 	CameraSpeedRotator = AddRotatorRow(Controls, TEXT("CameraSpeedRotator"), LOCTEXT("CameraSpeed", "Vitesse de la caméra"),
 		{ LOCTEXT("Slow", "Lente"), LOCTEXT("Normal", "Normale"), LOCTEXT("Fast", "Rapide") }, 1);
 	EdgeScrollRotator = AddRotatorRow(Controls, TEXT("EdgeScrollRotator"), LOCTEXT("EdgeScroll", "Défilement au bord de l'écran"), OffOn(), 1);
-	AddText(Controls, TEXT("ControlsNote"), LOCTEXT("ControlsNote", "Grisé : pas encore dans le jeu."), UHOLTextStyleNote::StaticClass(), 0.f);
+	AddText(Controls, TEXT("ControlsNote"), LOCTEXT("RemapNote", "Changer les touches : pas encore dans le jeu."), UHOLTextStyleNote::StaticClass(), 0.f);
 
 	UVerticalBox* Language = AddPage();
 	LanguageRotator = AddRotatorRow(Language, TEXT("LanguageRotator"), LOCTEXT("LanguageLabel", "Langue"), LanguageNames(), 0);
@@ -278,6 +277,8 @@ void UHOLSettingsScreen::NativeOnInitialized()
 	Bind(RenderScaleRotator, &UHOLSettingsScreen::HandleRenderScale);
 	Bind(QualityRotator, &UHOLSettingsScreen::HandleQuality);
 	Bind(LanguageRotator, &UHOLSettingsScreen::HandleLanguage);
+	Bind(CameraSpeedRotator, &UHOLSettingsScreen::HandleCameraSpeed);
+	Bind(EdgeScrollRotator, &UHOLSettingsScreen::HandleEdgeScroll);
 
 	const TArray<FGroup> AllGroups = Groups();
 	for (int32 Group = 0; Group < AllGroups.Num(); ++Group)
@@ -300,14 +301,10 @@ void UHOLSettingsScreen::NativeOnInitialized()
 		}
 	}
 
-	// Greyed until M4 (D245).
-	for (UWidget* Greyed : { static_cast<UWidget*>(RemapButton.Get()), static_cast<UWidget*>(CameraSpeedRotator.Get()),
-		static_cast<UWidget*>(EdgeScrollRotator.Get()) })
+	// Greyed until the game has enough actions to remap (D253); camera speed and edge scrolling act since J1.
+	if (RemapButton)
 	{
-		if (Greyed)
-		{
-			Greyed->SetIsEnabled(false);
-		}
+		RemapButton->SetIsEnabled(false);
 	}
 
 	const UHOLButton* const Tabs[] = { VideoTab, SoundTab, ControlsTab, LanguageTab };
@@ -432,6 +429,14 @@ void UHOLSettingsScreen::Refresh()
 		}
 		LanguageRotator->SetSelectedItem(Selected);
 	}
+	if (CameraSpeedRotator)
+	{
+		CameraSpeedRotator->SetSelectedItem(static_cast<int32>(Settings->GetCameraSpeed()));
+	}
+	if (EdgeScrollRotator)
+	{
+		EdgeScrollRotator->SetSelectedItem(Settings->IsEdgeScrollEnabled() ? 1 : 0);
+	}
 }
 
 void UHOLSettingsScreen::ApplyAndRefresh(const bool bResolutionChanged)
@@ -550,6 +555,24 @@ void UHOLSettingsScreen::HandleVolume(const int32 Volume, const int32 Value)
 	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
 	{
 		Settings->SetVolume(static_cast<EHOLVolume>(Volume), static_cast<float>(Value) / NumVolumeSteps);
+	}
+	ApplyAndRefresh();
+}
+
+void UHOLSettingsScreen::HandleCameraSpeed(const int32 Value)
+{
+	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
+	{
+		Settings->SetCameraSpeed(static_cast<EHOLCameraSpeed>(FMath::Clamp(Value, 0, 2)));
+	}
+	ApplyAndRefresh();
+}
+
+void UHOLSettingsScreen::HandleEdgeScroll(const int32 Value)
+{
+	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
+	{
+		Settings->SetEdgeScrollEnabled(Value == 1);
 	}
 	ApplyAndRefresh();
 }

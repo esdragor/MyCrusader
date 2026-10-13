@@ -7,8 +7,8 @@
 class UWidgetSwitcher;
 
 /**
- * Settings screen (D245): tabs Video, Sound, Controls (greyed until M4: remapping of D30, camera speed, edge scrolling)
- * and Language (French, English, Japanese). Each change is applied and saved at once (UHOLGameUserSettings,
+ * Settings screen (D245): tabs Video, Sound, Controls (camera speed and edge scrolling since J1, D253; remapping greyed
+ * until the game has enough actions) and Language (French, English, Japanese). Each change is applied and saved at once (UHOLGameUserSettings,
  * GameUserSettings.ini); the language is switched live and saved by the engine.
  */
 UCLASS()
@@ -108,6 +108,8 @@ private:
 	void HandleGroup(int32 Group, int32 Value);
 	void HandleVolume(int32 Volume, int32 Value);
 	void HandleLanguage(int32 Value);
+	void HandleCameraSpeed(int32 Value);
+	void HandleEdgeScroll(int32 Value);
 
 	TArray<FIntPoint> Resolutions;
 	TArray<float> FrameRates;
