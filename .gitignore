@@ -7,6 +7,9 @@ Intermediate/
 
 Saved/
 
+# Saved folder of the test launches (-saveddirsuffix=Tests: own settings, logs, screenshots)
+Saved_*/
+
 .vsconfig
 
 HeroesOfLiberty.sln

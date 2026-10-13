@@ -23,22 +23,20 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
 | 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **fait** (2026-10-13) : titre, confirmation de sortie, Nouvelle partie avec lancement, Réglages ; captures et touches vérifiées |
-| 5. Localisation (français, anglais, japonais) | **en cours** : cible `Game` créée, collectée et compilée (92 textes, fr natif) ; traductions anglaise et japonaise à écrire |
+| 5. Localisation (français, anglais, japonais) | **fait** (2026-10-13) : 92 textes traduits en anglais et japonais (provisoires), bascule en direct vérifiée, captures dans les trois langues |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
 | 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
 
 ## Prochaine étape exacte
 
-**Étape 5 — localisation, suite** (D245, D249). La cible `Game` existe (`Config/Localization/Game.ini`, français
-natif, anglais et japonais) et se collecte et compile par le commandlet `GatherText` (voir « Commandes utiles ») :
-1. Écrire les traductions **anglaise** et **japonaise** (provisoires, par l'assistant) dans
-   `Content/Localization/Game/en/Game.po` et `ja/Game.po` (`msgstr`), puis relancer `GatherText` (import des `.po`,
-   compilation des `.locres`, réexport).
-2. Vérifier la bascule en direct depuis l'onglet Langue (textes déjà affichés mis à jour, y compris les sélecteurs) et
-   la relecture au redémarrage.
-3. Captures de chaque écran dans les trois langues (texte coupé, caractère manquant, chaîne restée en français) ;
-   élargir les colonnes si l'anglais ou le japonais débordent.
-4. Test d'automatisation D246 « toutes les clés de texte présentes dans les trois langues » (étape 6).
+**Étape 6 — vérification** (D246) :
+1. Tests d'automatisation à ajouter (module `HeroesOfLibertyUI` ou `HeroesOfLiberty`) : réglages enregistrés puis
+   relus (`UHOLGameUserSettings`, volumes) ; toutes les clés de texte présentes et traduites dans les trois langues
+   (lecture des archives ou des `.locres` de `Content/Localization/Game`) ; GameMode avec configuration lancée depuis
+   l'écran (chemin de `hol.UI.NewGame.Launch`).
+2. Script de bout en bout (`Tools/Tests/`) qui enchaîne les lancements de capture dans les trois langues (comme ci-dessous
+   « Commandes utiles ») et produit une planche par langue ; liste courte de finition à juger par l'utilisateur.
+3. **Toujours** lancer les fenêtres de test avec `-WinX=3940 -WinY=100 -saveddirsuffix=Tests` (voir « Commandes utiles »).
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -53,11 +51,19 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -unattended -nullrhi -nosplash -nosound -log
 
-# Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau ;
-# fenêtre sur le DEUXIÈME écran de l'utilisateur (-WinX=3940 -WinY=100), jamais sur l'écran principal
+# Lancements de TEST : toujours -saveddirsuffix=Tests et la fenêtre sur le DEUXIÈME écran de l'utilisateur.
+#  - -saveddirsuffix=Tests : dossier Saved_Tests/ à part (réglages, journaux, captures ; ignoré par git), les tests ne
+#    touchent jamais le GameUserSettings.ini de l'utilisateur (relu par le stress test, D245) ;
+#  - Saved_Tests/Config/WindowsEditor/GameUserSettings.ini = copie de Tools/Tests/GameUserSettings.ini (fenêtré
+#    1600 x 900, DisplayIndex=1) : le moteur réapplique la résolution enregistrée ~15 s après le démarrage et recentre
+#    la fenêtre sur l'écran enregistré, -WinX seul ne suffit pas ;
+#  - -WinX/-WinY sont en coordonnées logiques (Windows à 150 %) : 3940 = deuxième écran.
+# Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau.
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
-  -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
-# -> Saved/Screenshots/WindowsEditor/HOL/title.png
+  -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash -culture=fr `
+  -ExecCmds="hol.UI.Capture title 5 quit"
+# -> Saved_Tests/Screenshots/WindowsEditor/HOL/title.png ; journal Saved_Tests/Logs/HeroesOfLiberty.log
+# Langue imposée au lancement : -culture=fr|en|ja
 
 # Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
 #   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"
@@ -65,12 +71,13 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 #   journal « LogHOLUI: Title screen: Quit »)
 # Ouvrir un écran par le même chemin que son bouton (D246) : hol.UI.Open NewGame|Settings[:Onglet]|Quit [Délai]
 #   (onglets : 0 Vidéo, 1 Son, 2 Commandes, 3 Langue ; un écran Réglages déjà ouvert est réutilisé)
-# Les tests qui changent des réglages réécrivent Saved/Config/WindowsEditor/GameUserSettings.ini (relu par le stress
-# test, D245) : le sauvegarder avant, le restaurer après.
+# Avec -saveddirsuffix=Tests, les réglages changés par un test restent dans Saved_Tests.
 # Lancer une partie comme le bouton « Lancer », éventuellement depuis un fichier JSON (format de -MatchConfig=) :
 #   hol.UI.NewGame.Launch [Fichier] [Délai]  -> journal « LogHOLMatch: Match on BattleMap: given configuration »
 
-# Localisation (D245) : collecte des textes du code, import des .po, compilation des .locres, réexport des .po
+# Localisation (D245) : traductions provisoires de Tools/Localization/fill_po.py écrites dans les .po (signale les
+# clés inconnues, c.-à-d. les textes ajoutés depuis), puis collecte, import des .po, .locres, réexport des .po
+#   python Tools/Localization/fill_po.py
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -run=GatherText -config="C:\Users\baudo\Documents\MyCrusader\Config\Localization\Game.ini" -unattended -nop4 -nosplash
 
@@ -307,3 +314,25 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   exclus), manifeste, archives, import des `.po`, `.locres`, réexport des `.po` ; français natif, anglais et japonais.
   Premier passage : 92 textes, `Content/Localization/Game/{fr,en,ja}` (archives, `.po`, `.locres`) et
   `Game.locmeta`. Au démarrage : `No specific localization for 'en-US' exists, so 'en' will be used`.
+
+### 2026-10-13 (suite) — Étape 5 faite : traductions ; fenêtres de test enfin sur le deuxième écran
+
+- **Traductions** anglaise et japonaise **provisoires** des 92 textes, dans une table clé → (anglais, japonais) de
+  `Tools/Localization/fill_po.py`, qui remplit les `msgstr` des `.po` et signale les clés inconnues ; `GatherText`
+  importe, compile et réexporte (traductions conservées). Noms de factions inventés pour l'occasion (le GDD n'a que
+  les identifiants `Faction.OrderOfDawn`…) : Order of the Dawn / 暁の騎士団, Black Legions / 黒の軍団, Children of the
+  Dragon / 竜の子ら, Circle of Shadow / 影の結社, Heirs of Fire / 炎の継承者, Templars / テンプル騎士団 ; options en
+  transcription façon AoE (ノマド, レジサイド, カタストロフィ).
+- **Vérifié** : captures de chaque écran en anglais, japonais et français (`-culture=`), aucun texte resté en français,
+  aucun caractère manquant (la police de secours du moteur couvre le japonais, sans gras) ; **bascule en direct**
+  français → anglais depuis l'onglet Langue : onglets, libellés, sélecteurs et écran titre passent en anglais sans
+  redémarrer. Débordements corrigés : libellés Vidéo 280 → 320, libellés d'options 130 → 170, sélecteur de mode
+  170 → 200, « ボーダーレスウィンドウ » → « ボーダーレス ».
+- **Fenêtre de test sur l'écran principal, deuxième fois** (signalé par l'utilisateur). Mesure de la position de la
+  fenêtre dans le temps : créée sur le deuxième écran, puis **recentrée sur l'écran principal vers 15 s**. Le moteur
+  réapplique la résolution enregistrée au démarrage (`ApplyResolutionSettings` → `FSceneViewport::ResizeFrame`) ; en
+  mode fenêtré, toute demande recentre la fenêtre sur l'écran enregistré (`DisplayIndex`, le principal par défaut).
+  Correction : les lancements de test passent par **`-saveddirsuffix=Tests`** (dossier `Saved_Tests/` ignoré par git)
+  avec un `GameUserSettings.ini` qui désigne le deuxième écran (`DisplayIndex=1`, modèle suivi
+  `Tools/Tests/GameUserSettings.ini`) ; vérifié : la fenêtre reste sur le deuxième écran pendant 25 s. Bénéfice
+  annexe : les tests ne réécrivent plus le `GameUserSettings.ini` de l'utilisateur.

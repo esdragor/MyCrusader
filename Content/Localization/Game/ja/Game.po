@@ -18,642 +18,642 @@ msgstr ""
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(52)
 msgctxt "HOLPlayerColors,Blue"
 msgid "Bleu"
-msgstr ""
+msgstr "青"
 
 #. Key:	Red
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(53)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(53)
 msgctxt "HOLPlayerColors,Red"
 msgid "Rouge"
-msgstr ""
+msgstr "赤"
 
 #. Key:	Green
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(54)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(54)
 msgctxt "HOLPlayerColors,Green"
 msgid "Vert"
-msgstr ""
+msgstr "緑"
 
 #. Key:	Yellow
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(55)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(55)
 msgctxt "HOLPlayerColors,Yellow"
 msgid "Jaune"
-msgstr ""
+msgstr "黄"
 
 #. Key:	Teal
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(56)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(56)
 msgctxt "HOLPlayerColors,Teal"
 msgid "Turquoise"
-msgstr ""
+msgstr "ターコイズ"
 
 #. Key:	Purple
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(57)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(57)
 msgctxt "HOLPlayerColors,Purple"
 msgid "Violet"
-msgstr ""
+msgstr "紫"
 
 #. Key:	Orange
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(58)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(58)
 msgctxt "HOLPlayerColors,Orange"
 msgid "Orange"
-msgstr ""
+msgstr "オレンジ"
 
 #. Key:	Pink
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(59)
 #: Source/HeroesOfLiberty/Match/HOLPlayerColors.cpp(59)
 msgctxt "HOLPlayerColors,Pink"
 msgid "Rose"
-msgstr ""
+msgstr "ピンク"
 
 #. Key:	Yes
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLConfirmDialog.cpp(20)
 #: Source/HeroesOfLibertyUI/Screens/HOLConfirmDialog.cpp(20)
 msgctxt "HOLConfirmDialog,Yes"
 msgid "Oui"
-msgstr ""
+msgstr "はい"
 
 #. Key:	No
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLConfirmDialog.cpp(21)
 #: Source/HeroesOfLibertyUI/Screens/HOLConfirmDialog.cpp(21)
 msgctxt "HOLConfirmDialog,No"
 msgid "Non"
-msgstr ""
+msgstr "いいえ"
 
 #. Key:	Heading
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(106)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(106)
 msgctxt "HOLNewGameScreen,Heading"
 msgid "Nouvelle partie"
-msgstr ""
+msgstr "新しいゲーム"
 
 #. Key:	Map
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(142)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(142)
 msgctxt "HOLNewGameScreen,Map"
 msgid "Carte"
-msgstr ""
+msgstr "マップ"
 
 #. Key:	Player
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(146)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(146)
 msgctxt "HOLNewGameScreen,Player"
 msgid "Joueur"
-msgstr ""
+msgstr "プレイヤー"
 
 #. Key:	Slot
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(147)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(147)
 msgctxt "HOLNewGameScreen,Slot"
 msgid "Emplacement"
-msgstr ""
+msgstr "スロット"
 
 #. Key:	Faction
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(148)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(148)
 msgctxt "HOLNewGameScreen,Faction"
 msgid "Faction"
-msgstr ""
+msgstr "勢力"
 
 #. Key:	Colour
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(149)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(149)
 msgctxt "HOLNewGameScreen,Colour"
 msgid "Couleur"
-msgstr ""
+msgstr "色"
 
 #. Key:	Team
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(150)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(150)
 msgctxt "HOLNewGameScreen,Team"
 msgid "Équipe"
-msgstr ""
+msgstr "チーム"
 
 #. Key:	PlayerN
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(155)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(155)
 msgctxt "HOLNewGameScreen,PlayerN"
 msgid "Joueur {0}"
-msgstr ""
+msgstr "プレイヤー{0}"
 
 #. Key:	You
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(158)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(158)
 msgctxt "HOLNewGameScreen,You"
 msgid "Vous"
-msgstr ""
+msgstr "あなた"
 
 #. Key:	Mode
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(173)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(173)
 msgctxt "HOLNewGameScreen,Mode"
 msgid "Mode"
-msgstr ""
+msgstr "モード"
 
 #. Key:	Standard
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(174)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(174)
 msgctxt "HOLNewGameScreen,Standard"
 msgid "Standard"
-msgstr ""
+msgstr "スタンダード"
 
 #. Key:	Nomad
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(175)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(175)
 msgctxt "HOLNewGameScreen,Nomad"
 msgid "Nomade"
-msgstr ""
+msgstr "ノマド"
 
 #. Key:	Regicide
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(177)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(177)
 msgctxt "HOLNewGameScreen,Regicide"
 msgid "Régicide"
-msgstr ""
+msgstr "レジサイド"
 
 #. Key:	Catastrophe
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(179)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(179)
 msgctxt "HOLNewGameScreen,Catastrophe"
 msgid "Catastrophe"
-msgstr ""
+msgstr "カタストロフィ"
 
 #. Key:	Greyed
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(182)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(182)
 msgctxt "HOLNewGameScreen,Greyed"
 msgid "Grisé : pas encore dans le jeu (IA, factions, équipes, mode et options)."
-msgstr ""
+msgstr "グレー表示：まだゲームにありません（AI、勢力、チーム、モード、オプション）。"
 
 #. Key:	Back
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(185)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(185)
 msgctxt "HOLNewGameScreen,Back"
 msgid "Retour"
-msgstr ""
+msgstr "戻る"
 
 #. Key:	Launch
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(186)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(186)
 msgctxt "HOLNewGameScreen,Launch"
 msgid "Lancer"
-msgstr ""
+msgstr "開始"
 
 #. Key:	AI
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(42)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(42)
 msgctxt "HOLNewGameScreen,AI"
 msgid "IA"
-msgstr ""
+msgstr "AI"
 
 #. Key:	Closed
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(42)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(42)
 msgctxt "HOLNewGameScreen,Closed"
 msgid "Fermé"
-msgstr ""
+msgstr "クローズ"
 
 #. Key:	Human
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(42)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(42)
 msgctxt "HOLNewGameScreen,Human"
 msgid "Humain"
-msgstr ""
+msgstr "人間"
 
 #. Key:	DawnOrder
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(49)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(49)
 msgctxt "HOLNewGameScreen,DawnOrder"
 msgid "Ordre de l'Aube"
-msgstr ""
+msgstr "暁の騎士団"
 
 #. Key:	BlackLegions
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(50)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(50)
 msgctxt "HOLNewGameScreen,BlackLegions"
 msgid "Légions Noires"
-msgstr ""
+msgstr "黒の軍団"
 
 #. Key:	DragonChildren
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(51)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(51)
 msgctxt "HOLNewGameScreen,DragonChildren"
 msgid "Enfants du Dragon"
-msgstr ""
+msgstr "竜の子ら"
 
 #. Key:	ShadowCircle
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(52)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(52)
 msgctxt "HOLNewGameScreen,ShadowCircle"
 msgid "Cercle de l'Ombre"
-msgstr ""
+msgstr "影の結社"
 
 #. Key:	FireHeirs
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(53)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(53)
 msgctxt "HOLNewGameScreen,FireHeirs"
 msgid "Héritiers du Feu"
-msgstr ""
+msgstr "炎の継承者"
 
 #. Key:	Templars
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(54)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(54)
 msgctxt "HOLNewGameScreen,Templars"
 msgid "Templiers"
-msgstr ""
+msgstr "テンプル騎士団"
 
 #. Key:	NoTeam
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(60)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(60)
 msgctxt "HOLNewGameScreen,NoTeam"
 msgid "Aucune"
-msgstr ""
+msgstr "なし"
 
 #. Key:	Off
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(80)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(80)
 msgctxt "HOLNewGameScreen,Off"
 msgid "Non"
-msgstr ""
+msgstr "オフ"
 
 #. Key:	On
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(80)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(80)
 msgctxt "HOLNewGameScreen,On"
 msgid "Oui"
-msgstr ""
+msgstr "オン"
 
 #. Key:	Unlimited
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(140)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(140)
 msgctxt "HOLSettingsScreen,Unlimited"
 msgid "Illimitée"
-msgstr ""
+msgstr "無制限"
 
 #. Key:	Heading
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(154)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(154)
 msgctxt "HOLSettingsScreen,Heading"
 msgid "Réglages"
-msgstr ""
+msgstr "設定"
 
 #. Key:	Video
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(157)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(157)
 msgctxt "HOLSettingsScreen,Video"
 msgid "Vidéo"
-msgstr ""
+msgstr "グラフィック"
 
 #. Key:	Sound
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(158)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(158)
 msgctxt "HOLSettingsScreen,Sound"
 msgid "Son"
-msgstr ""
+msgstr "サウンド"
 
 #. Key:	Controls
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(159)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(159)
 msgctxt "HOLSettingsScreen,Controls"
 msgid "Commandes"
-msgstr ""
+msgstr "操作"
 
 #. Key:	Language
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(160)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(160)
 msgctxt "HOLSettingsScreen,Language"
 msgid "Langue"
-msgstr ""
+msgstr "言語"
 
 #. Key:	Resolution
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(180)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(180)
 msgctxt "HOLSettingsScreen,Resolution"
 msgid "Résolution"
-msgstr ""
+msgstr "解像度"
 
 #. Key:	WindowMode
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(181)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(181)
 msgctxt "HOLSettingsScreen,WindowMode"
 msgid "Affichage"
-msgstr ""
+msgstr "表示モード"
 
 #. Key:	Fullscreen
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(182)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(182)
 msgctxt "HOLSettingsScreen,Fullscreen"
 msgid "Plein écran"
-msgstr ""
+msgstr "フルスクリーン"
 
 #. Key:	Windowed
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(182)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(182)
 msgctxt "HOLSettingsScreen,Windowed"
 msgid "Fenêtre"
-msgstr ""
+msgstr "ウィンドウ"
 
 #. Key:	WindowedFullscreen
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(182)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(182)
 msgctxt "HOLSettingsScreen,WindowedFullscreen"
 msgid "Fenêtre sans bordure"
-msgstr ""
+msgstr "ボーダーレス"
 
 #. Key:	VSync
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(184)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(184)
 msgctxt "HOLSettingsScreen,VSync"
 msgid "Synchronisation verticale"
-msgstr ""
+msgstr "垂直同期"
 
 #. Key:	FrameRate
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(185)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(185)
 msgctxt "HOLSettingsScreen,FrameRate"
 msgid "Images par seconde"
-msgstr ""
+msgstr "フレームレート上限"
 
 #. Key:	RenderScale
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(186)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(186)
 msgctxt "HOLSettingsScreen,RenderScale"
 msgid "Échelle de rendu"
-msgstr ""
+msgstr "レンダースケール"
 
 #. Key:	Custom
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(188)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(188)
 msgctxt "HOLSettingsScreen,Custom"
 msgid "Personnalisée"
-msgstr ""
+msgstr "カスタム"
 
 #. Key:	Quality
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(189)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(189)
 msgctxt "HOLSettingsScreen,Quality"
 msgid "Qualité"
-msgstr ""
+msgstr "品質"
 
 #. Key:	SoundNote
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(202)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(202)
 msgctxt "HOLSettingsScreen,SoundNote"
 msgid "Musique, effets et voix agiront dès que le jeu aura des sons."
-msgstr ""
+msgstr "音楽・効果音・ボイスは、ゲームにサウンドが入ってから反映されます。"
 
 #. Key:	Remap
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(207)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(207)
 msgctxt "HOLSettingsScreen,Remap"
 msgid "Changer les touches"
-msgstr ""
+msgstr "キー割り当て"
 
 #. Key:	CameraSpeed
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(208)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(208)
 msgctxt "HOLSettingsScreen,CameraSpeed"
 msgid "Vitesse de la caméra"
-msgstr ""
+msgstr "カメラ速度"
 
 #. Key:	Fast
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(209)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(209)
 msgctxt "HOLSettingsScreen,Fast"
 msgid "Rapide"
-msgstr ""
+msgstr "速い"
 
 #. Key:	Normal
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(209)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(209)
 msgctxt "HOLSettingsScreen,Normal"
 msgid "Normale"
-msgstr ""
+msgstr "普通"
 
 #. Key:	Slow
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(209)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(209)
 msgctxt "HOLSettingsScreen,Slow"
 msgid "Lente"
-msgstr ""
+msgstr "遅い"
 
 #. Key:	EdgeScroll
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(210)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(210)
 msgctxt "HOLSettingsScreen,EdgeScroll"
 msgid "Défilement au bord de l'écran"
-msgstr ""
+msgstr "画面端スクロール"
 
 #. Key:	ControlsNote
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(211)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(211)
 msgctxt "HOLSettingsScreen,ControlsNote"
 msgid "Grisé : pas encore dans le jeu."
-msgstr ""
+msgstr "グレー表示：まだゲームにありません。"
 
 #. Key:	LanguageLabel
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(214)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(214)
 msgctxt "HOLSettingsScreen,LanguageLabel"
 msgid "Langue"
-msgstr ""
+msgstr "言語"
 
 #. Key:	Back
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(217)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(217)
 msgctxt "HOLSettingsScreen,Back"
 msgid "Retour"
-msgstr ""
+msgstr "戻る"
 
 #. Key:	ViewDistance
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(43)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(43)
 msgctxt "HOLSettingsScreen,ViewDistance"
 msgid "Distance d'affichage"
-msgstr ""
+msgstr "描画距離"
 
 #. Key:	AntiAliasing
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(44)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(44)
 msgctxt "HOLSettingsScreen,AntiAliasing"
 msgid "Anticrénelage"
-msgstr ""
+msgstr "アンチエイリアス"
 
 #. Key:	Shadow
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(45)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(45)
 msgctxt "HOLSettingsScreen,Shadow"
 msgid "Ombres"
-msgstr ""
+msgstr "影"
 
 #. Key:	GlobalIllumination
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(46)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(46)
 msgctxt "HOLSettingsScreen,GlobalIllumination"
 msgid "Éclairage global"
-msgstr ""
+msgstr "グローバルイルミネーション"
 
 #. Key:	Reflection
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(47)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(47)
 msgctxt "HOLSettingsScreen,Reflection"
 msgid "Réflexions"
-msgstr ""
+msgstr "反射"
 
 #. Key:	PostProcessing
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(48)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(48)
 msgctxt "HOLSettingsScreen,PostProcessing"
 msgid "Post-traitement"
-msgstr ""
+msgstr "ポストプロセス"
 
 #. Key:	Texture
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(49)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(49)
 msgctxt "HOLSettingsScreen,Texture"
 msgid "Textures"
-msgstr ""
+msgstr "テクスチャ"
 
 #. Key:	VisualEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(50)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(50)
 msgctxt "HOLSettingsScreen,VisualEffect"
 msgid "Effets"
-msgstr ""
+msgstr "エフェクト"
 
 #. Key:	Foliage
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(51)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(51)
 msgctxt "HOLSettingsScreen,Foliage"
 msgid "Végétation"
-msgstr ""
+msgstr "植生"
 
 #. Key:	Shading
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(52)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(52)
 msgctxt "HOLSettingsScreen,Shading"
 msgid "Matériaux"
-msgstr ""
+msgstr "シェーディング"
 
 #. Key:	Landscape
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(53)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(53)
 msgctxt "HOLSettingsScreen,Landscape"
 msgid "Terrain"
-msgstr ""
+msgstr "地形"
 
 #. Key:	Epic
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 msgctxt "HOLSettingsScreen,Epic"
 msgid "Épique"
-msgstr ""
+msgstr "最高"
 
 #. Key:	High
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 msgctxt "HOLSettingsScreen,High"
 msgid "Haute"
-msgstr ""
+msgstr "高"
 
 #. Key:	Low
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 msgctxt "HOLSettingsScreen,Low"
 msgid "Basse"
-msgstr ""
+msgstr "低"
 
 #. Key:	Medium
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
 msgctxt "HOLSettingsScreen,Medium"
 msgid "Moyenne"
-msgstr ""
+msgstr "中"
 
 #. Key:	Cinematic
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
 msgctxt "HOLSettingsScreen,Cinematic"
 msgid "Cinématique"
-msgstr ""
+msgstr "シネマティック"
 
 #. Key:	EffectsVolume
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
 msgctxt "HOLSettingsScreen,EffectsVolume"
 msgid "Effets"
-msgstr ""
+msgstr "効果音"
 
 #. Key:	MasterVolume
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
 msgctxt "HOLSettingsScreen,MasterVolume"
 msgid "Volume général"
-msgstr ""
+msgstr "マスター音量"
 
 #. Key:	MusicVolume
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
 msgctxt "HOLSettingsScreen,MusicVolume"
 msgid "Musique"
-msgstr ""
+msgstr "音楽"
 
 #. Key:	VoiceVolume
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
 msgctxt "HOLSettingsScreen,VoiceVolume"
 msgid "Voix"
-msgstr ""
+msgstr "ボイス"
 
 #. Key:	Off
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
 msgctxt "HOLSettingsScreen,Off"
 msgid "Non"
-msgstr ""
+msgstr "オフ"
 
 #. Key:	On
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
 #: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
 msgctxt "HOLSettingsScreen,On"
 msgid "Oui"
-msgstr ""
+msgstr "オン"
 
 #. Key:	Play
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(26)
 #: Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(26)
 msgctxt "HOLTitleScreen,Play"
 msgid "Jouer"
-msgstr ""
+msgstr "プレイ"
 
 #. Key:	Settings
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(27)
 #: Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(27)
 msgctxt "HOLTitleScreen,Settings"
 msgid "Réglages"
-msgstr ""
+msgstr "設定"
 
 #. Key:	Quit
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(28)
 #: Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(28)
 msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
-msgstr ""
+msgstr "終了"
 
 #. Key:	QuitConfirm
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(77)
 #: Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(77)
 msgctxt "HOLTitleScreen,QuitConfirm"
 msgid "Quitter"
-msgstr ""
+msgstr "終了"
 
 #. Key:	QuitQuestion
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(77)
 #: Source/HeroesOfLibertyUI/Screens/HOLTitleScreen.cpp(77)
 msgctxt "HOLTitleScreen,QuitQuestion"
 msgid "Quitter le jeu ?"
-msgstr ""
+msgstr "ゲームを終了しますか？"
 

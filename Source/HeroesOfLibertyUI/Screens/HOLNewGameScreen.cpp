@@ -31,9 +31,9 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	constexpr float SwatchSize = 28.f;
 	constexpr float ColorWidth = 200.f;
 	constexpr float TeamWidth = 160.f;
-	constexpr float OptionWidth = 170.f;
+	constexpr float OptionWidth = 200.f;
 	constexpr float ToggleWidth = 120.f;
-	constexpr float OptionLabelWidth = 130.f;
+	constexpr float OptionLabelWidth = 170.f;
 	constexpr float ClosedSwatchOpacity = 0.2f;
 
 	/** Rotator values in the order of EHOLSlotState. */

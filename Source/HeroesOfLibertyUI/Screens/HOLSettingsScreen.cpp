@@ -20,7 +20,7 @@
 
 namespace UE::HeroesOfLiberty::UI::Settings
 {
-	constexpr float VideoLabelWidth = 280.f;
+	constexpr float VideoLabelWidth = 320.f;
 	constexpr float DisplayRotatorWidth = 340.f;
 	constexpr float QualityRotatorWidth = 260.f;
 	constexpr int32 NumLevels = 5;
