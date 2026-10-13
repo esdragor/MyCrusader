@@ -26,7 +26,7 @@ vérifier sur S1 et S2.
 | J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | **fait** (2026-10-13) : tests 14/14, `check_camera.ps1` PASS à 2 et 8, menu PASS en fr / en / ja, essai de l'utilisateur validé (repères d'échelle) ; **S1 / S2 au repos reportés** (machine occupée) |
 | J1.5 Clôture : D253 à D257 au GDD | **fait** (2026-10-13) : D253 à D257 et paragraphe J1 au GDD, tests 14/14 sur la carte recréée, mémoire à jour |
 | J2 — plan (Q1 à Q5, D259 à D264) | **fait** (2026-10-13) |
-| J2.1 Base des bâtiments : classe C++ répliquée, table des types depuis un CSV | à faire |
+| J2.1 Base des bâtiments : classe C++ répliquée, table des types depuis un CSV | **fait** (2026-10-13) : compile sans avertissement, `Buildings.Types` et `Buildings.Appearance` verts (16 tests) |
 | J2.2 Centre principal : apparition sur les emplacements occupés, couleur, repères de J1 retirés | à faire |
 | J2.3 Sélection : canal, clic, Échap, cercle, survol | à faire |
 | J2.4 Vérification (D264) | à faire |
@@ -34,10 +34,12 @@ vérifier sur S1 et S2.
 
 ## Prochaine étape exacte
 
-**Plan de J2 complet (D259 à D264), tout en C++ (D263).** Suite :
-1. **J2.1, base des bâtiments** : classe C++ commune répliquée (propriétaire = numéro du joueur), table des types de
-   bâtiment depuis un CSV par script (comme `UnitTypes`, D227), ligne « centre principal » (~15 × 15 m, ~10 m).
-2. J2.2 à J2.5 dans l'ordre du tableau.
+**J2.1 faite.** Suite :
+1. **J2.2, centre principal** : le mode de jeu fait apparaître un `AHOLBuilding` de type `MainCentre` sur chaque
+   emplacement occupé (humain ou IA) au début de la partie, `Setup(type, emplacement, couleur de l'emplacement)` ;
+   repères de `Plain` retirés de `create_match_map.py` (cylindres des emplacements et repères d'échelle), carte
+   recréée ; caméra toujours au-dessus de l'emplacement ; captures pour juger la forme et les couleurs.
+2. J2.3 à J2.5 dans l'ordre du tableau.
 3. **En attente** : S1 et S2 au repos (machine occupée).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
@@ -297,3 +299,20 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
   Mass et la réplication compacte restent en C++ de toute façon ; coûts : moteur du serveur depuis les sources de
   Hazelight, deux langages, suivi des versions. Décision : **« on abandonne AS »** ; D263 réécrite (tout en C++), D264
   sans essai Angelscript, J2.0 retirée ; note de `TMP.md` retirée (le build Epic 5.8.3 convient au serveur).
+
+### 2026-10-13 (suite) — J2.1 faite : base des bâtiments
+
+- **`Buildings/HOLBuildingTypes`** : `FHOLBuildingTypeRow` (nom affiché en texte traduisible, emprise, hauteur, points
+  de vie, maillage final en référence souple ; vide = forme provisoire) et `UHOLBuildingSettings` (réglage
+  `BuildingTypesTable` dans `DefaultGame.ini`, recherche d'une ligne avec erreur au journal si elle manque).
+- **`Buildings/HOLBuilding`** : acteur répliqué (sans mouvement, toujours pertinent jusqu'au brouillard de M7, une mise
+  à jour par seconde) ; seuls le type, le propriétaire et la couleur voyagent, chaque machine construit l'apparence
+  depuis la table. Forme provisoire (D261) en formes de base du moteur, chacune ajustée à sa taille par ses bornes :
+  bloc de 45 % de la hauteur, dessus du bloc à la couleur du joueur, tour de 40 % de l'emprise sur 80 % de la hauteur,
+  toit conique à la couleur ; pas d'ombre (D258) ; formes et matériau en références dures (emballés avec le jeu).
+- **Table** : `Tools/Data/BuildingTypes.csv` → `/Game/Buildings/BuildingTypes` par `Tools/Editor/make_building_types.py`
+  (calqué sur les unités) ; une ligne `MainCentre` « Centre principal », 15 × 15 m, 10 m, 2 400 points de vie
+  (provisoires).
+- **Tests** : `Buildings.Types` (ligne présente et valeurs) et `Buildings.Appearance` (acteur répliqué, quatre pièces,
+  boîte de 15 × 15 × 10 m posée au sol et centrée, deux pièces à la couleur du joueur, repeintes sans reconstruction).
+  Piège : dans un monde de test, `InitializeActorsForPlay` est nécessaire pour que les acteurs soient initialisés.
