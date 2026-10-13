@@ -140,3 +140,9 @@ exacte, entrée de journal — avant de passer à la suivante.
 - Outils d'essai : `hol.Delay <secondes> <commande>` (commande différée), `hol.Camera.Report [délai]`, `hol.UI.Key
   <touche> [délai] [durée d'appui]`, `MouseScrollUp` / `MouseScrollDown` envoient un cran de molette au milieu de la
   fenêtre de jeu.
+
+### 2026-10-13 (suite) — D258 : aucune ombre dans le jeu
+
+- Demande de l'utilisateur pendant J1.3 : « afin de ne pas avoir de problèmes de perfs, écris-le maintenant, aucune
+  ombre dans le jeu ». Consigné directement au GDD (§ 16.6 et § 21, D258), comme D252, car il touche tous les chantiers ;
+  note laissée à M2 (les mesures du stress test changent quand le réglage sera appliqué).

@@ -681,3 +681,7 @@ joueur, **J1** emplacement de départ et caméra RTS, **J2** centre principal pa
 réseau, **J3** production d'un Paysan, **J4** ordres de déplacement et chemins (M3), **J5** récolte… Le plan de J1 est
 en cours dans une autre session : il remplacera le pion par défaut de la carte de bataille par une caméra RTS ; les vues
 de mesure du stress test (D236, D237) seront gardées, et vérifiées sur S1 et S2.
+
+**D258 (2026-10-13, demande de l'utilisateur) : aucune ombre dans le jeu**, pour éviter tout problème de performances.
+Consigné au GDD (§ 16.6, § 21). **Pas encore appliqué** au moteur : quand il le sera (réglage global), les mesures S1 à
+S6 faites avec ombres ne se compareront plus ; une nouvelle référence sera à prendre.
