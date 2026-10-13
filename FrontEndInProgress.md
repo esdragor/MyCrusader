@@ -20,8 +20,8 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 |---|---|
 | Plan (Q1 à Q9, D240 à D248) | **fait** (2026-10-13) |
 | 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
-| 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **en cours** |
-| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | à faire |
+| 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
+| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **en cours** |
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | à faire |
 | 5. Localisation (français, anglais, japonais) | à faire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
@@ -29,21 +29,24 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 
 ## Prochaine étape exacte
 
-Étape 2, configuration de partie, dans le module `HeroesOfLiberty`, dossier `Match/` :
-1. **Palette partagée** : sortir la palette de D233 de `Presentation/HOLInterpolatedInstancesProcessor.cpp`
-   (`GetPlayerColor`, 8 couleurs) vers `Match/HOLPlayerColors.h/.cpp` (couleurs + nom localisable de chaque couleur),
-   le processeur l'appelant sans changer de comportement (toujours indexée par `OwnerPlayer`). Le lien « couleur choisie
-   par l'emplacement » ↔ `OwnerPlayer` se fait à l'étape 7.
-2. `HOLMatchConfig.h` : `EHOLSlotState` (fermé, humain, IA), `EHOLFaction` (les 6 factions du § 13), `EHOLMatchMode`
-   (Standard), `FHOLMatchSlot` (état, faction, couleur, équipe 0 = aucune, 1 à 4), `FHOLMatchConfig` (version, graine,
-   carte en `FSoftObjectPath`, 8 emplacements, mode, options Nomade / Régicide / Catastrophe) ; lecture et écriture
-   JSON (`FJsonObjectConverter`), avec numéro de version (D243, D244).
-3. `UHOLMatchSubsystem` (`UGameInstanceSubsystem`) : porte la configuration ; lit `-MatchConfig=<fichier JSON>` à
-   l'initialisation ; `HasConfig()`.
-4. `AHeroesOfLibertyGameModeBase` lit la configuration (ou des valeurs par défaut : un emplacement humain, D243) et
-   donne à chaque joueur un `AHOLPlayerState` (index de joueur, index de couleur).
-5. Tests d'automatisation (`Tests/`, `WITH_DEV_AUTOMATION_TESTS`) : aller-retour JSON, version antérieure, GameMode
-   sans configuration. Compiler, lancer les tests en ligne de commande, S2 court, committer.
+Étape 3, socle Common UI (module `HeroesOfLibertyUI`, sauf mention) :
+1. **Client de viewport** : `GameViewportClientClassName=/Script/CommonUI.CommonGameViewportClient` dans
+   `DefaultEngine.ini` (fait disparaître l'erreur `LogUIActionRouter` de l'étape 1). Réglage **global** : vérifier sur
+   un S1 et un S2 courts que le stress test n'est pas touché.
+2. **Données d'entrée** Common UI : actions « valider » et « retour » (souris, clavier, manette) ; regarder d'abord
+   dans le moteur 5.8 si Common UI s'appuie sur Enhanced Input (`bEnableEnhancedInputSupport`, ressources
+   `UInputAction` créées par script) ou sur une table `FCommonInputActionDataBase` ; classe dérivée de
+   `UCommonUIInputData` en C++, déclarée dans `DefaultGame.ini` (`CommonInputSettings`).
+3. **Police** couvrant le japonais (D245) : chercher dans le moteur si un `FSlateFontInfo` peut porter une police
+   composite construite en code (Roboto + `DroidSansFallback.ttf` pour le japonais) ; sinon ressource `UFont`
+   composite créée par script d'éditeur (`Tools/Editor/`). Vérifier que la police suit en jeu empaqueté.
+4. **Styles** en C++ (D242) : `UCommonTextStyle` (titre, corps, grisé), `UCommonButtonStyle` (normal, survolé,
+   désactivé) avec la police ci-dessus.
+5. **Disposition racine** construite en C++ (`BindWidgetOptional`, D242) : deux couches `UCommonActivatableWidgetStack`
+   (menu, modale), poussée à l'écran par le PlayerController de menu.
+6. **Carte `MainMenu`** créée par script (`Tools/Editor/create_main_menu_map.py`), GameMode de menu
+   (`AHOLMenuGameMode`, module UI) en surcharge de la carte ; `GameDefaultMap` → `MainMenu` (l'éditeur s'ouvre toujours
+   sur `BattleMap`). Écran titre provisoire vide pour vérifier la chaîne ; compiler, tests, S1/S2 courts, committer.
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -52,6 +55,15 @@ exacte, entrée de journal — avant de passer à la suivante.
 
 Voir `ImplementationInProgress.md` (« Commandes utiles ») : compilation `HeroesOfLibertyEditor`, lancement du stress
 test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversion des chemins `/Game/...`).
+
+```powershell
+# Tests d'automatisation du projet, sans affichage (D246) ; résultat dans Saved/Logs/HeroesOfLiberty.log, lignes « Test Completed »
+& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
+  -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -unattended -nullrhi -nosplash -nosound -log
+
+# Lancer une partie depuis une configuration JSON (comme un serveur dédié sans salon, D243)
+#   ... HeroesOfLiberty.uproject /Game/Level/BattleMap -game -MatchConfig=C:\chemin\match.json
+```
 
 ---
 
@@ -129,3 +141,21 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   CommonGameViewportClient derived game viewport client`. Elle disparaîtra avec le client de viewport Common UI (à
   vérifier alors sur S1, car c'est un réglage global qui touche aussi le stress test).
 - Constat pour l'étape 2 : la palette de D233 est locale au processeur de rendu de M2, indexée par `OwnerPlayer`.
+
+### 2026-10-13 (suite) — Étape 2 faite : configuration de partie
+
+- `Match/HOLPlayerColors` : la palette de D233 sort du processeur de rendu de M2 (mêmes 8 couleurs, même indexation
+  par `OwnerPlayer`, rendu inchangé) et gagne un nom localisable par couleur (textes source en français, D245).
+- `Match/HOLMatchConfig` : `FHOLMatchConfig` (version 1, graine, carte, 8 emplacements état / faction / couleur /
+  équipe, mode Standard, options Nomade, Régicide, Catastrophe), `MakeDefault()` (un humain en emplacement 0, couleurs
+  distinctes), `Normalize()`, `FindFreeHumanSlot()`, JSON par `FJsonObjectConverter` (noms de champs sans casse,
+  énumérations par leur nom) ; un fichier sans version est lu comme version 1, une version plus récente est refusée.
+- `Match/HOLMatchSubsystem` (`UGameInstanceSubsystem`) : porte la configuration, lit `-MatchConfig=<fichier>`.
+- `Match/HOLPlayerState` : index de joueur (= emplacement, futur `OwnerPlayer`) et index de couleur, répliqués.
+- `AHeroesOfLibertyGameModeBase` : lit la configuration à `InitGame` (sinon défaut), donne à chaque humain qui se
+  connecte le premier emplacement humain libre. Catégorie de log `LogHOLMatch`.
+- **Tests** (`Tests/HOLMatchConfigTests.cpp`, `HeroesOfLiberty.Match.*`) : 7/7 verts — défaut, aller-retour JSON,
+  fichier ancien, refus (version future, JSON cassé), emplacements humains, fichier lu par le sous-système, palette.
+- **Bout en bout** : S2 court sans configuration → « default configuration », joueur en emplacement 0 ; avec
+  `-MatchConfig=` (emplacement 0 en IA) → « given configuration », joueur en emplacement 1, couleur 4. Stress test
+  inchangé dans les deux cas.
