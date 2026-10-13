@@ -530,6 +530,30 @@ TArray<FMassEntityHandle> UMCStressTestSubsystem::GetUnitEntities() const
 	return Entities;
 }
 
+int32 UMCStressTestSubsystem::CountLocationsInFrame(const TArray<FVector>& Locations) const
+{
+	const APlayerController* PlayerController = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (PlayerController == nullptr)
+	{
+		return 0;
+	}
+	int32 ViewportX = 0;
+	int32 ViewportY = 0;
+	PlayerController->GetViewportSize(ViewportX, ViewportY);
+
+	int32 NumInFrame = 0;
+	for (const FVector& Location : Locations)
+	{
+		FVector2D ScreenLocation;
+		if (PlayerController->ProjectWorldLocationToScreen(Location, ScreenLocation)
+			&& ScreenLocation.X >= 0.0 && ScreenLocation.X < ViewportX && ScreenLocation.Y >= 0.0 && ScreenLocation.Y < ViewportY)
+		{
+			++NumInFrame;
+		}
+	}
+	return NumInFrame;
+}
+
 TArray<FVector> UMCStressTestSubsystem::GetUnitLocations() const
 {
 	TArray<FVector> Locations;
@@ -553,17 +577,18 @@ TArray<FVector> UMCStressTestSubsystem::GetUnitLocations() const
 
 void UMCStressTestSubsystem::PlaceViewer() const
 {
-	// Three-quarter view over the spawn area, all units on screen (D218), from the distance of the view (D236):
-	// "Wide" at ~70 m (a soldier ~25 pixels high at 1080p, against ~13 from the former 136 m), "Game" at an RTS
-	// camera height (~43 m above the ground, steeper, so the whole tighter crowd stays in frame).
+	// Three-quarter view over the spawn area, from the distance of the view (D236, D237): "Wide" at ~100 m keeps the
+	// whole crowd in frame (D218; the 59 degree vertical field of view sets that distance, a soldier ~18 pixels high
+	// at 1080p against ~13 from the former 136 m), "Game" at an RTS camera height (~38 m above the ground), part of
+	// the tighter crowd out of frame: what a player zoomed on a big melee sees.
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	if (!PlayerController)
 	{
 		return;
 	}
 	const bool bGameView = UE::MyCrusader::StressTest::IsGameView();
-	const float PitchRadians = FMath::DegreesToRadians(bGameView ? 60.f : 50.f);
-	const float Distance = bGameView ? 5000.f : 7000.f;
+	const float PitchRadians = FMath::DegreesToRadians(bGameView ? 55.f : 45.f);
+	const float Distance = bGameView ? 4600.f : 10000.f;
 	const FVector ViewLocation(-Distance * FMath::Cos(PitchRadians), 0.f, Distance * FMath::Sin(PitchRadians));
 	const FRotator ViewRotation = (FVector::ZeroVector - ViewLocation).Rotation();
 	if (APawn* Pawn = PlayerController->GetPawn())
@@ -849,6 +874,7 @@ void UMCStressTestSubsystem::FinishMeasure()
 		TotalDisplacement += FVector::Dist(LocationsAtMeasureStart[Index], LocationsAtMeasureEnd[Index]);
 	}
 	const double AverageDisplacementM = LocationsAtMeasureEnd.Num() > 0 ? TotalDisplacement / LocationsAtMeasureEnd.Num() / 100.0 : 0.0;
+	const int32 NumUnitsInFrame = CountLocationsInFrame(LocationsAtMeasureEnd);
 
 	const bool bSimulationPassed = StepStats.GetAverageMs() <= MaxSimulationMs;
 	const bool bRenderPassed = AverageFps >= MinFramesPerSecond;
@@ -858,14 +884,14 @@ void UMCStressTestSubsystem::FinishMeasure()
 		TEXT("  Simulation: %.3f ms average per step (max %.3f ms, %d steps, %d frames dropped time) - threshold %.1f ms: %s\n")
 		TEXT("  Rendering: %.1f fps average (1%% low %.1f fps, %d frames) - threshold %.0f fps: %s\n")
 		TEXT("  Frame: game thread %.2f ms, render thread %.2f ms, GPU %.2f ms\n")
-		TEXT("  Draw: %.0f draw calls per frame\n")
+		TEXT("  Draw: %.0f draw calls per frame, %d of %d units in frame at the end of the measure (D237)\n")
 		TEXT("  Memory: %.0f MB used (%+.0f MB since spawn)\n")
 		TEXT("  Movement: units moved %.1f m on average during the measure, %d move orders issued (D229)"),
 		ToString(Scenario), UnitIds.Num(), *UnitTypeName.ToString(), MeasureSeconds, IsGameView() ? TEXT("Game") : TEXT("Wide"), GetSpawnRadius() / 100.f,
 		StepStats.GetAverageMs(), StepStats.MaxMs, StepStats.NumSteps, StepStats.NumDroppedFrames, MaxSimulationMs, Verdict(bSimulationPassed),
 		AverageFps, OnePercentLowFps, FrameTimes.Num(), MinFramesPerSecond, Verdict(bRenderPassed),
 		GameThreadMs, RenderThreadMs, GpuMs,
-		DrawCalls,
+		DrawCalls, NumUnitsInFrame, LocationsAtMeasureEnd.Num(),
 		UsedPhysicalMB, UnitsDeltaMB,
 		AverageDisplacementM, NumOrdersIssued);
 

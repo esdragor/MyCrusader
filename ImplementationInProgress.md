@@ -35,8 +35,8 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    à l'essai (D232, `AnimToTexture` en repli), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1
    et S2 au vert, et une vérification à 2 clients dès M2.5 (D216). **En cours : plan de M2, question par question**
    (voir « Plan de M2 ») ; **plan complet (D232 à D236)** ; étapes 1 à 3 faites (squelettes instanciés animés et
-   colorés, voir le journal) ; **en cours : étape 4**, cadrage des vues de D236 à reprendre avec l'utilisateur, puis
-   mesures machine libre.
+   colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237) ; reste à mesurer machine libre
+   (classique contre Nanite) et à régler la foulée.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
    même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `mc.StressTest.CrossingAngle`,
    `mc.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -67,7 +67,7 @@ Numérotation : **D231 est réservé** au serveur dédié (relais `TMP.md`, autr
 | Q2 | **Joueur propriétaire** : où vit l'appartenance d'une unité, et comment le rendu la montre (couleur par instance, ou instances séparées par joueur). | **tranché (D233)** : octet `OwnerPlayer` dans `FMCUnitStateFragment`, couleur par valeur d'instance et palette côté client, un composant par type |
 | Q3 | **Animations jouées** : lesquelles en M2 (repos, marche), qui les choisit (état d'activité, vitesse), décalage pour désynchroniser. | **tranché (D234)** : repos et marche, choisis par le client d'après la vitesse affichée (seuil ~15 % avec hystérésis), fondu ~0,2 s, départ décalé au hasard, vitesse de lecture par type |
 | Q4 | **Ressources de test et niveaux de détail** : mannequin du pack Third Person, Nanite ou non, maillages par distance. | **tranché (D235)** : mannequin squelettique en deux copies (Nanite, classique), deux lignes de la table des types, chemin tranché sur mesure |
-| Q5 | **Mesure** : ce que le stress test montre et mesure pour « 2 000 unités à l'écran » (caméra, scénario). | **tranché (D236)** : deux vues fixes (large rapprochée ~70 m sur une nuée S2 de ~45 m ; vue de jeu à hauteur de RTS sur une nuée de ~30 m), triangles et appels de dessin au rapport, S2 requalifié |
+| Q5 | **Mesure** : ce que le stress test montre et mesure pour « 2 000 unités à l'écran » (caméra, scénario). | **tranché (D236, cadrage corrigé par D237)** : vue large à ~100 m, 2 000 unités entières sur une nuée S2 de ~45 m ; vue de jeu à hauteur de RTS sur une nuée de ~30 m, en partie hors cadre, unités à l'écran comptées ; appels de dessin au rapport (triangles non mesurables) ; S2 requalifié |
 
 **Plan complet (D232 à D236).** Ordre d'implémentation proposé :
 1. **Ressources** : importer le mannequin squelettique et ses animations de repos et de marche (`TP_ThirdPerson.upack`) par
@@ -235,8 +235,14 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   16:9), voir **en entier** une nuée de 45 m de rayon (~50 m après la marche) demande ~100 m de recul, pas 70 m
   (estimation faite sur le champ horizontal) ; à hauteur de RTS (~40 m), 2 000 unités ne tiennent dans le cadre qu'à
   ~1 m² chacune. Les deux captures coupent le bas de la nuée.
-- **Prochaine étape** : trancher le cadrage avec l'utilisateur, puis mesurer machine libre (S1, S2 dans les deux vues,
-  classique contre Nanite) et régler `WalkPlayRate`.
+- **Cadrage tranché (D237)** : vue large à 100 m, tangage 45° (2 000 unités entières) ; vue de jeu à 46 m, tangage 55°
+  (~38 m de hauteur), nuée en partie hors cadre. Le rapport compte les unités à l'écran (projection des pieds dans la
+  vue du joueur, fin de la mesure). Vérifié : vue large **1 994 / 2 000** à l'écran (quelques isolés sortent par le bas
+  en marchant), vue de jeu **1 838 / 2 000** ; 61 et 94 appels de dessin. Toujours sous compilation du moteur
+  (126 et 119 i/s, GPU 4,1 ms, fil jeu 7,8-8,4 ms) : non recevable.
+- **Prochaine étape** : mesurer **machine libre** (fin de la compilation du moteur 5.8.3) : S1 et S2 dans les deux vues,
+  `LightInfantry` (classique) contre `LightInfantryNanite`, deux passages chacun ; nouvelle référence de S2 (D236) ;
+  trancher le chemin de rendu (D235) ; régler `WalkPlayRate` à l'œil.
 
 ### 2026-10-13 — Plan de M2 ouvert : technique d'animation tranchée (D232)
 

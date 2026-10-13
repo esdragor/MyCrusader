@@ -63,6 +63,8 @@ private:
 	void LogCrossingSummary() const;
 	TArray<FMassEntityHandle> GetUnitEntities() const;
 	TArray<FVector> GetUnitLocations() const;
+	/** Locations (unit feet) inside the player's view (D237: the game view leaves part of the crowd out of frame). */
+	int32 CountLocationsInFrame(const TArray<FVector>& Locations) const;
 	UMCUnitSubsystem* GetUnitSubsystem() const;
 	void LogRepresentationSummary() const;
 	/** Mass' movement action and our own unit state (D226), side by side in the report. */
