@@ -32,14 +32,14 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    A/B reproductible de D230 (gain net confirmé), spawn robuste, scénario C paramétré par angle, drapeau « solveur actif »
    posé par le pas, stress test avancé par pas. Détail dans le journal.
 4. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations en **squelettes instanciés**
-   à l'essai (D232, `AnimToTexture` en repli), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1
+   à l'essai (D232, `AnimToTexture` en repli), interpolation déjà en place (`UHOLInterpolatedISMProcessor`) ; garder S1
    et S2 au vert, et une vérification à 2 clients dès M2.5 (D216). **En cours : plan de M2, question par question**
    (voir « Plan de M2 ») ; **plan complet (D232 à D236)** ; étapes 1 à 3 faites (squelettes instanciés animés et
    colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237) ; reste à mesurer machine libre
    (classique contre Nanite) et à régler la foulée.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
-   même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `mc.StressTest.CrossingAngle`,
-   `mc.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
+   même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `hol.StressTest.CrossingAngle`,
+   `hol.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
    d'unités immobiles.
 6. **M4 — à prévoir** : un ordre de groupe vers un **même point** ne verra jamais ses unités s'arrêter (tolérance
    d'arrivée de 50 cm pour toutes) : il faudra une formation ou une tolérance liée à la taille du groupe.
@@ -58,13 +58,13 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 
 Rappel de l'étape (§ 16.6) : *« rendu : instances par type et par joueur, animations, interpolation »*, mesuré sur S2.
 État de départ : une instance **statique** par type (`SM_Mannequin`, `UMassMovableVisualizationTrait` posé par la
-fabrique), interpolée entre deux pas (`UMCInterpolatedISMProcessor`) ; ni joueur propriétaire, ni animation.
+fabrique), interpolée entre deux pas (`UHOLInterpolatedISMProcessor`) ; ni joueur propriétaire, ni animation.
 Numérotation : **D231 est réservé** au serveur dédié (relais `TMP.md`, autre chantier), d'où D232 pour M2.
 
 | # | Question | État |
 |---|---|---|
 | Q1 | **Technique d'animation** : squelettes instanciés natifs de Mass, textures d'animation (`AnimToTexture`) ou acteurs près de la caméra ? | **tranché (D232)** : squelettes instanciés à l'essai borné, `AnimToTexture` en repli |
-| Q2 | **Joueur propriétaire** : où vit l'appartenance d'une unité, et comment le rendu la montre (couleur par instance, ou instances séparées par joueur). | **tranché (D233)** : octet `OwnerPlayer` dans `FMCUnitStateFragment`, couleur par valeur d'instance et palette côté client, un composant par type |
+| Q2 | **Joueur propriétaire** : où vit l'appartenance d'une unité, et comment le rendu la montre (couleur par instance, ou instances séparées par joueur). | **tranché (D233)** : octet `OwnerPlayer` dans `FHOLUnitStateFragment`, couleur par valeur d'instance et palette côté client, un composant par type |
 | Q3 | **Animations jouées** : lesquelles en M2 (repos, marche), qui les choisit (état d'activité, vitesse), décalage pour désynchroniser. | **tranché (D234)** : repos et marche, choisis par le client d'après la vitesse affichée (seuil ~15 % avec hystérésis), fondu ~0,2 s, départ décalé au hasard, vitesse de lecture par type |
 | Q4 | **Ressources de test et niveaux de détail** : mannequin du pack Third Person, Nanite ou non, maillages par distance. | **tranché (D235)** : mannequin squelettique en deux copies (Nanite, classique), deux lignes de la table des types, chemin tranché sur mesure |
 | Q5 | **Mesure** : ce que le stress test montre et mesure pour « 2 000 unités à l'écran » (caméra, scénario). | **tranché (D236, cadrage corrigé par D237)** : vue large à ~100 m, 2 000 unités entières sur une nuée S2 de ~45 m ; vue de jeu à hauteur de RTS sur une nuée de ~30 m, en partie hors cadre, unités à l'écran comptées ; appels de dessin au rapport (triangles non mesurables) ; S2 requalifié |
@@ -76,9 +76,9 @@ Numérotation : **D231 est réservé** au serveur dédié (relais `TMP.md`, autr
    d'instance (palette de joueurs).
 2. **Table des types** : colonnes squelette (maillage, fournisseur, indices des séquences, vitesse de référence de la
    marche) ; deux lignes d'essai (Nanite, classique) dans `Tools/Data/UnitTypes.csv`.
-3. **Code** : `OwnerPlayer` dans `FMCUnitStateFragment` (D233) ; la fabrique pose `SkinnedMeshInstanceDesc` et la
+3. **Code** : `OwnerPlayer` dans `FHOLUnitStateFragment` (D233) ; la fabrique pose `SkinnedMeshInstanceDesc` et la
    représentation `SkinnedMeshInstance` ; variante interpolée de `UMassUpdateSkinnedMeshProcessor` (comme
-   `UMCInterpolatedISMProcessor`) ; processeur de présentation qui choisit l'animation d'après la vitesse affichée
+   `UHOLInterpolatedISMProcessor`) ; processeur de présentation qui choisit l'animation d'après la vitesse affichée
    (D234) et écrit la couleur du joueur ; le stress test répartit les unités entre joueurs.
 4. **Stress test** : nuée de S2 à ~45 m, deux vues (D236), triangles et appels de dessin au rapport ; nouvelle référence
    de S1/S2, puis mesures Nanite contre classique et décision consignée (D235). Bascule sur `AnimToTexture` si
@@ -111,11 +111,11 @@ fragments, fabrique, identifiants, file de naissances/destructions, file de comm
 d'implémentation est consignée dans le journal ci-dessous, et les valeurs chiffrées restent provisoires
 (fiche de valeurs, à régler en test).
 
-**Cœur de M1 implémenté (2026-10-11).** Fichiers créés : `Simulation/MCUnitTypes.h`, `Simulation/MCUnitTrait.*`,
-`Simulation/MCUnitMovementTrait.h`, `Simulation/MCUnitSubsystem.*`, `Commands/MCUnitCommand.h`,
-`Commands/MCCommandSubsystem.*`, `Commands/MCUnitOrderProcessor.*`, `Tools/Data/UnitTypes.csv`,
-`Tools/Editor/make_unit_types.py`. Fichiers supprimés : `Simulation/MCLightUnitTrait.*`,
-`UMCWanderProcessor` (+ `FMCWanderTag`), dépendance `NavCorridor`.
+**Cœur de M1 implémenté (2026-10-11).** Fichiers créés : `Simulation/HOLUnitTypes.h`, `Simulation/HOLUnitTrait.*`,
+`Simulation/HOLUnitMovementTrait.h`, `Simulation/HOLUnitSubsystem.*`, `Commands/HOLUnitCommand.h`,
+`Commands/HOLCommandSubsystem.*`, `Commands/HOLUnitOrderProcessor.*`, `Tools/Data/UnitTypes.csv`,
+`Tools/Editor/make_unit_types.py`. Fichiers supprimés : `Simulation/HOLLightUnitTrait.*`,
+`UHOLWanderProcessor` (+ `FHOLWanderTag`), dépendance `NavCorridor`.
 
 ## Questions ouvertes
 
@@ -136,7 +136,7 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
   le **pilotage ramène la vitesse** vers la vitesse voulue (trace : force de pilotage +42, +76, +105… cm/s² pendant
   que l'impulsion freine), hypothèse 1 de la revue confirmée. Reste à instruire **avant M5** : décalages de phase de
   l'ordre (0 à 5 pas), angles intermédiaires, effet d'une légère dissymétrie de face ; la trace par pas existe
-  (`mc.Units.AvoidanceTrace 1+2`).
+  (`hol.Units.AvoidanceTrace 1+2`).
 - **Séparation des unités immobiles** : `MassStandingAvoidanceProcessor` pousse un **fantôme** et la conduite
   d'arrêt déplace le corps **en appliquant `MoveTarget.DesiredSpeed`** — que la naissance met à 0 pour une unité
   immobile : le fantôme s'écarte, le corps ne bouge pas (les recouvrements de S1, ~215 paires à la naissance,
@@ -188,7 +188,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   phases du test) doit avancer **par pas**, jamais par image.
 - **Squelettes instanciés : position, animation et valeurs d'instance sont appariées par leur ordre d'ajout**
   (`MassVisualizationComponent.cpp`, `EndVisualChanges` : un même index dans les trois tableaux). Les ajouter dans
-  **une seule boucle** (`UMCInterpolatedInstancesProcessor`) ; les processeurs de Mass séparés
+  **une seule boucle** (`UHOLInterpolatedInstancesProcessor`) ; les processeurs de Mass séparés
   (`UMassUpdateInstancedSkinnedMeshProcessor`, `UMassConsumeInstancedSkinnedMeshAnimationProcessor`, ce dernier sans
   filtre de visibilité) peuvent les désaligner — désactivés dans `DefaultMass.ini`.
 - **Mass ne transmet l'animation d'une instance que si sa séquence change** (vitesse de lecture fixée au changement, D234).
@@ -199,6 +199,17 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   dessins indirects pilotés par le GPU, dont le processeur ne connaît pas la taille.
 
 ## Journal d'avancement
+
+### 2026-10-13 (suite) — Projet renommé en Heroes of Liberty (D248)
+
+- Renommage scripté (46 fichiers modifiés, 40 renommés), correspondance complète dans D248 : module `HeroesOfLiberty`,
+  préfixe **`HOL`** (classes, fichiers, `LogHOL…`), variables console **`hol.*`**. Dossier du projet et historique git
+  inchangés. `Binaries` et `Intermediate` supprimés puis recompilés (365 s) ; `UnitTypes` régénérée depuis le CSV.
+- Vérification : S2 court (2 000 unités, 5 s) lancé sur le projet renommé : module chargé, constantes de type lues
+  dans la table régénérée, squelettes instanciés affichés, aucune erreur du projet. **Chiffres non significatifs** (la
+  compilation du moteur 5.8.3 occupait le processeur) : pas de nouvelle référence.
+- Piège : lancer l'éditeur depuis **PowerShell** ; Git Bash convertit `/Game/Maps/StressTest` en chemin Windows et
+  l'éditeur se bloque sur « carte introuvable ».
 
 ### 2026-10-13 (suite) — M2, étapes 1 à 3 : squelettes instanciés animés et colorés, vues de D236 en cours
 
@@ -216,16 +227,16 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   (constantes du type, D222, plus les durées des séquences lues par la fabrique) ; lignes `LightInfantry` et `Archer`
   en classique, **`LightInfantryNanite`** pour la comparaison de D235. Sans squelette valide, la fabrique retombe sur
   le maillage statique (repli de D232).
-- **Code** : `OwnerPlayer` dans `FMCUnitStateFragment` et dans la requête de naissance (D233) ; la fabrique pose
-  `SkinnedMeshInstanceDesc` et la représentation `SkinnedMeshInstance` ; `UMCInterpolatedISMProcessor` renommé
-  **`UMCInterpolatedInstancesProcessor`** : interpolation des instances statiques et squelettiques, choix repos/marche
+- **Code** : `OwnerPlayer` dans `FHOLUnitStateFragment` et dans la requête de naissance (D233) ; la fabrique pose
+  `SkinnedMeshInstanceDesc` et la représentation `SkinnedMeshInstance` ; `UHOLInterpolatedISMProcessor` renommé
+  **`UHOLInterpolatedInstancesProcessor`** : interpolation des instances statiques et squelettiques, choix repos/marche
   d'après la vitesse affichée (seuils 15 % / 10 % de la vitesse du type, fondu 0,2 s, départ décalé par une empreinte
-  de l'identifiant), couleur du joueur (palette de 8 couleurs côté client) ; fragment `FMCUnitAnimationStateFragment`
-  (animation démarrée ou non). Le stress test répartit ses unités entre **8 joueurs** (`mc.StressTest.Players`), en
+  de l'identifiant), couleur du joueur (palette de 8 couleurs côté client) ; fragment `FHOLUnitAnimationStateFragment`
+  (animation démarrée ou non). Le stress test répartit ses unités entre **8 joueurs** (`hol.StressTest.Players`), en
   une requête par joueur : même nuée qu'avant (102 recouvrements au début de S2, comme l'historique).
 - **Vérifié visuellement** (captures S2) : 2 000 squelettes instanciés, animés, désynchronisés, aux 8 couleurs ; aucun
   `ensure`. `WalkPlayRate` reste à 1,0, à régler à l'œil (foulée).
-- **Stress test** : `mc.StressTest.View Wide|Game` (D236) avec la nuée de chaque vue (`mc.StressTest.SpawnRadius`
+- **Stress test** : `hol.StressTest.View Wide|Game` (D236) avec la nuée de chaque vue (`hol.StressTest.SpawnRadius`
   négatif = 45 m / 30 m), ligne `Draw` (appels de dessin) au rapport. **Triangles retirés** : compteur du RHI à 0 pour
   ces dessins (voir les pièges) — écart à D236, à signaler.
 - **Mesures provisoires, non recevables** (le moteur 5.8.3 compile en parallèle, 3 `cl.exe`) : S2 classique, vue de
@@ -252,7 +263,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
 - **D232** : squelettes instanciés natifs de Mass dans un **essai borné** (2 000 unités en marche et à l'arrêt sur S2),
   bascule sur `AnimToTexture` si 144 i/s ne tient pas ou si la technologie résiste trop. Consigné au GDD (§ 16.4,
   § 16.6, journal).
-- **D233** : propriétaire = octet `OwnerPlayer` de `FMCUnitStateFragment` ; couleur par valeur d'instance, palette choisie
+- **D233** : propriétaire = octet `OwnerPlayer` de `FHOLUnitStateFragment` ; couleur par valeur d'instance, palette choisie
   par le client, un seul composant d'instances par type. Consigné au GDD (§ 16.6, journal).
 - **D234** : repos et marche, choisis par le client d'après la vitesse affichée ; fondu, départ décalé, vitesse de
   lecture par type. **Contrainte vérifiée dans le moteur** : `UMassVisualizationComponent` (`MassVisualizationComponent.cpp`,
@@ -260,7 +271,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   la vitesse instantanée sans chemin à nous (`UAnimSequenceTransformProviderDataInstance::SetPlayRate`). Les fondus de
   `BlendSpace` existent dans le fournisseur, mais le chemin de Mass ne les utilise pas.
 - **D235** : mannequin squelettique du pack Third Person en deux copies (Nanite, classique), deux lignes de
-  `Tools/Data/UnitTypes.csv`, comparaison par `mc.StressTest.UnitType` ; chemin tranché sur mesure, remesuré avec les
+  `Tools/Data/UnitTypes.csv`, comparaison par `hol.StressTest.UnitType` ; chemin tranché sur mesure, remesuré avec les
   modèles définitifs. Le projet n'a aucun réglage de rendu dans `DefaultEngine.ini` (réglages par défaut du moteur ;
   le log montre Lumen et Nanite actifs).
 - **D236** (précision de l'utilisateur : caméra rapprochée) : vue large à ~70 m sur une nuée S2 resserrée à ~45 m,
@@ -271,22 +282,22 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
 
 ### 2026-10-12 (suite) — Suites de la revue de M1 (`ReviewM1Followup.md`) : maintien corrigé, A/B reproductible de D230
 
-- **Tâche 1 — maintien de l'impulsion corrigé** (`MCAvoidanceHoldProcessors.cpp`). Défaut confirmé : au pas du solveur,
+- **Tâche 1 — maintien de l'impulsion corrigé** (`HOLAvoidanceHoldProcessors.cpp`). Défaut confirmé : au pas du solveur,
   l'impulsion (déjà dans la force) était **ajoutée une seconde fois**, puis ré-appliquée **4 pas** au lieu de 5, et la
   somme dépassait le plafond `MaxAcceleration` que le solveur pose lui-même (`MassAvoidanceProcessors.cpp:1078`). Le
   solveur muet laissait en outre courir l'ancienne impulsion. Désormais : au pas du solveur, on mémorise (ou on efface)
   sans rien ajouter ; aux autres pas, on ajoute, on borne à `MaxAcceleration` (fragment partagé `FMassMovementParameters`),
-  puis on applique la décroissance. **Vérifié par trace** (`mc.Units.AvoidanceTrace 1+2`, scénario C) : 8 cycles avec
+  puis on applique la décroissance. **Vérifié par trace** (`hol.Units.AvoidanceTrace 1+2`, scénario C) : 8 cycles avec
   impulsion → **exactement 5 ré-applications** chacun, 32 cycles sans → 0 ; force ≤ 250 sur **tous** les pas ré-appliqués.
   Les seuls pas au-delà du plafond sont ceux du **pilotage** de Mass au départ (1 000 = 300 / 0,3 s), qui ne nous
   appartiennent pas (voir « Pièges de Mass connus »).
-- **Conventions des CVars alignées** (corrections mineures) : `mc.Units.AvoidanceHold` et `mc.Units.AvoidanceHoldDecay`
+- **Conventions des CVars alignées** (corrections mineures) : `hol.Units.AvoidanceHold` et `hol.Units.AvoidanceHoldDecay`
   valent **négatif = réglage** (défaut) ; `AvoidanceHold 0` coupe le maintien, `AvoidanceHoldDecay 0` force une décroissance
   totale (impossible avant). `GetDefault` n'est plus appelé deux fois.
 - **Découverte en route : les passages n'étaient pas reproductibles**, graine fixe ou non. Premier A/B (même binaire,
   mêmes réglages) : S2 sans maintien 171 → 135 puis 179 → 151, avec maintien 104 → 67 puis 104 → 108 ; croisement de
   face 3,5 puis 11,6 cm. Cause : ordres, échauffement et mesure du stress test suivaient les **images** ; une image lente
-  fait tourner deux pas d'un coup et saute une passe d'ordres. **Corrigé** : `UMCSimulationSubsystem` diffuse le début de
+  fait tourner deux pas d'un coup et saute une passe d'ordres. **Corrigé** : `UHOLSimulationSubsystem` diffuse le début de
   chaque pas (`GetOnStepStarted`, avant le chrono du pas), et le stress test y émet ses ordres, surveille le croisement et
   compte ses phases **en pas** (3 s → 60, 10 s → 200). Vérifié : deux S2 de suite donnent **102 → 68 deux fois**, deux
   croisements **3,5 cm deux fois**. Les mesures antérieures de D230 sont marquées invalides dans l'entrée précédente.
@@ -302,13 +313,13 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   (± 0,3 ms d'un passage à l'autre ; les deux processeurs de maintien coûtent ~0,08 ms chacun et tournent aussi quand le
   maintien est coupé). D230 n'est donc **pas** remise en question. S1 (référence, même binaire) : 2,423 et 2,637 ms
   avec maintien, 2,403 sans, 215 → 215 recouvrements dans les trois cas.
-  « 137 → 58 » remplacé partout avec explication : GDD § 16.6 et D230, `DefaultGame.ini`, `MCSimulationSettings.h`,
+  « 137 → 58 » remplacé partout avec explication : GDD § 16.6 et D230, `DefaultGame.ini`, `HOLSimulationSettings.h`,
   ce journal.
-- **Tâche 3 — naissance hors navmesh** (`MCUnitSubsystem::CreateUnitEntities`) : jusqu'à **4 tirages** par unité ; après le
+- **Tâche 3 — naissance hors navmesh** (`HOLUnitSubsystem::CreateUnitEntities`) : jusqu'à **4 tirages** par unité ; après le
   dernier, l'unité naît au point tiré (plus jamais empilée au centre) ; les échecs sont comptés et journalisés **une fois
-  par lot** (`LogMCSimulation` Warning). Sur la carte de test : **aucun échec**, S1 garde ses 215 recouvrements (même nuée).
+  par lot** (`LogHOLSimulation` Warning). Sur la carte de test : **aucun échec**, S1 garde ses 215 recouvrements (même nuée).
   La graine est réinitialisée à chaque test (`ResetSpawnSeed`, appelé par le stress test).
-- **Tâche 4 — scénario C paramétré** : `mc.StressTest.CrossingAngle` (0° = face-à-face, **défaut** ; 90° = l'ancien
+- **Tâche 4 — scénario C paramétré** : `hol.StressTest.CrossingAngle` (0° = face-à-face, **défaut** ; 90° = l'ancien
   scénario ; 150° au plus), affiché dans le rapport ; commentaires corrigés (« 30 m » → 15 m, « swap places » →
   croisement sous un angle). Mesures 0°, 90° et 135° : voir « Questions ouvertes ». Les anciens chiffres de croisement
   (1,3 à 4,7 cm, 66,5 cm) étaient des passages uniques **à 90°**.
@@ -323,9 +334,9 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   déplacé ici (renvoi d'une ligne au GDD), D230 « cinq pas » désormais exact. Trailer `Co-authored-by: Copilot` : déjà
   retiré (`8464f4c` est `a49aed7` réécrit, même arbre, sans trailer).
 - **Commandes qui ont servi** : compilation et lancement habituels (voir « Commandes utiles ») ; A/B :
-  `-ExecCmds="…,mc.Units.AvoidanceHold 0,mc.StressTest S2 2000 10 quit"` contre la même commande sans `AvoidanceHold` ;
-  croisement : `…,mc.StressTest.CrossingAngle 90,mc.Simulation.ThrottledStepInterval 1,mc.StressTest C 2 10 quit` ;
-  trace : `…,mc.Units.AvoidanceTrace 1+2,mc.StressTest C 2 10 quit` (CSV dans `Saved/AvoidanceTrace.csv`).
+  `-ExecCmds="…,hol.Units.AvoidanceHold 0,hol.StressTest S2 2000 10 quit"` contre la même commande sans `AvoidanceHold` ;
+  croisement : `…,hol.StressTest.CrossingAngle 90,hol.Simulation.ThrottledStepInterval 1,hol.StressTest C 2 10 quit` ;
+  trace : `…,hol.Units.AvoidanceTrace 1+2,hol.StressTest C 2 10 quit` (CSV dans `Saved/AvoidanceTrace.csv`).
 - **Prochaine étape** : M2 (rendu) ; le croisement reste à instruire avant M5.
 
 ### 2026-10-12 — Revue traitée : deux bugs corrigés, cadence d'évitement instruite (D230), mesures rapatriées ici
@@ -352,7 +363,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
 - **Bug 3 — `DistanceToGoal` jamais entretenu** (signalé, confirmé) : l'ordre posait `DistanceToGoal = 0` et rien
   ne le maintenait ; Mass ne l'entretient que derrière un chemin navmesh, donc il croyait l'unité **arrivée** et
   ramenait la force d'évitement à 10 % (`EndOfPathAvoidanceScale`, `MassAvoidanceProcessors.cpp:439`) pendant
-  toute la marche. Corrigé dans `MCUnitOrderProcessor::StopArrivedUnits` : distance et direction vers la cible
+  toute la marche. Corrigé dans `HOLUnitOrderProcessor::StopArrivedUnits` : distance et direction vers la cible
   réécrites à chaque pas. Effet isolé par un nouveau **test de croisement** (deux unités ordonnées à travers le
   même point, écart minimal rapporté, scénario `C`) : avec l'évitement à chaque pas, l'écart passe de **2,2 cm**
   (avant) à **66,5 cm** (après) — somme des rayons 80 cm.
@@ -378,8 +389,8 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   > seulement, plafond d'accélération contourné). « 137 → 58 » comparait en outre deux points de départ différents
   > (135 → 137 et 101 → 58). Chiffres comparables : **173 → 120 sans maintien, 102 → 68 avec** (entrée suivante).
 
-  Implémentation : `FMCAvoidanceHoldFragment` + deux processeurs nôtres encadrant les solveurs
-  (`MCAvoidanceSnapshotProcessor` après le pilotage, `MCAvoidanceHoldProcessor` avant l'application des forces) ;
+  Implémentation : `FHOLAvoidanceHoldFragment` + deux processeurs nôtres encadrant les solveurs
+  (`HOLAvoidanceSnapshotProcessor` après le pilotage, `HOLAvoidanceHoldProcessor` avant l'application des forces) ;
   Mass **remet la force à zéro** après application (`MassApplyForceProcessor`, « Reset to zero after force is
   applied »), d'où la nécessité de la réinjecter. Le savoir en clair est aussi consigné au GDD (§ 16.6, D230).
 - **Limitation consignée, cause non élucidée** : l'écart au croisement **ne suit pas** la fréquence du solveur
@@ -394,7 +405,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   inchangés (~215 paires, soit la valeur théorique du tirage aléatoire). Piste à mesurer plus tard : vitesse
   d'arrêt non nulle, ou résorption explicite à la naissance.
 - **Outillage et reproductibilité** : scénario **C (croisement)** au rapport du stress test ; **graine fixée** sur
-  la nuée (`MCUnitSubsystem::SpawnRandom`) et sur les destinations de S2 (`OrderRandom`). Deux passages identiques
+  la nuée (`HOLUnitSubsystem::SpawnRandom`) et sur les destinations de S2 (`OrderRandom`). Deux passages identiques
   le confirment : S1 215 → 215 recouvrements deux fois, S2 100 → 87 deux fois, 2 352 ordres, 19,3 m parcourus.
 
   > **Correction (2026-10-12, suite de la revue)** : la graine ne suffisait pas. Deux S2 de suite donnaient 171 → 135
@@ -423,24 +434,24 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
 
 ### 2026-10-11 (suite) — M1 : cœur de la simulation implémenté, mesuré et vérifié
 
-- **Implémenté dans l'ordre de D226.** Table de données : `FMCUnitTypeRow` (`FTableRowBase`) et cache partagé
-  `FMCUnitTypeConstants` (`FMassConstSharedFragment`), plus `FMCUnitStateFragment` (identifiant, points de vie
-  courants, état marche/arrêt) — D221, D222, D226. Fabrique : `UMCUnitSubsystem` construit et met en cache une
+- **Implémenté dans l'ordre de D226.** Table de données : `FHOLUnitTypeRow` (`FTableRowBase`) et cache partagé
+  `FHOLUnitTypeConstants` (`FMassConstSharedFragment`), plus `FHOLUnitStateFragment` (identifiant, points de vie
+  courants, état marche/arrêt) — D221, D222, D226. Fabrique : `UHOLUnitSubsystem` construit et met en cache une
   `FMassEntityConfig` **par type** à partir de la ligne de table, les fragments communs étant posés par
-  `UMCUnitTrait` (identifiant d'état, transform précédent, cache du type) et les valeurs du type par
-  `UMCUnitMovementTrait` (vitesse) et `UMCLightUnitAvoidanceTrait` (distance d'évitement, sortie du trait pour
+  `UHOLUnitTrait` (identifiant d'état, transform précédent, cache du type) et les valeurs du type par
+  `UHOLUnitMovementTrait` (vitesse) et `UHOLLightUnitAvoidanceTrait` (distance d'évitement, sortie du trait pour
   entrer dans la table, D220 → D221) — D225. Identifiants : compteur 32 bits jamais recyclé, table
   identifiant ↔ entité **et** l'inverse — D223. Naissances et destructions : file avec budget par pas, et
-  commandes de destruction vidées à la queue du pas — D224. Ordres : `Commands/MCCommandSubsystem`
+  commandes de destruction vidées à la queue du pas — D224. Ordres : `Commands/HOLCommandSubsystem`
   (file + destination ramenée au navmesh par une requête de point **par ordre**) et
-  `Commands/MCUnitOrderProcessor` (pose du `FMassMoveTargetFragment`, action `Move`, arrivée sous tolérance →
-  `Stand` + état `Idle`) — D226, D228. L'errance d'essai et `UMCLightUnitTrait` sont **supprimés** (D229).
+  `Commands/HOLUnitOrderProcessor` (pose du `FMassMoveTargetFragment`, action `Move`, arrivée sous tolérance →
+  `Stand` + état `Idle`) — D226, D228. L'errance d'essai et `UHOLLightUnitTrait` sont **supprimés** (D229).
 - **Écart d'implémentation mesuré, corrigé : naissances et destructions ne peuvent pas être des processeurs.**
   Première tentative avec deux processeurs (naissance à la tête, destruction à la queue) : **crash** au premier
   pas — `Assertion failed: IsProcessing() == false` dans `FMassEntityManager::BatchCreateEntities` (« Use
   asynchronous API instead »). Vérifié dans le moteur : `MassExecutor` ouvre une portée de traitement autour de
   **chaque** processeur, et `FlushCommands` refuse lui aussi de tourner pendant ce temps. Les deux opérations
-  sont donc portées par le **pas**, dans `UMCSimulationSubsystem` (tête et queue, hors des processeurs), et
+  sont donc portées par le **pas**, dans `UHOLSimulationSubsystem` (tête et queue, hors des processeurs), et
   chronométrées à part dans le rapport. Consigné au GDD (§ 16.6).
 - **Défaut du stress test corrigé au passage :** S2 réémettait un ordre **à chaque image** aux unités encore
   `Idle` (l'ordre n'est appliqué qu'au pas suivant), donc leur destination changeait en boucle — 20 984 ordres
@@ -451,10 +462,10 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   table identifiant ↔ entité **0 écart** sur 2 000 unités, `Move action` et `Unit state` concordent
   (`Stand`/`Idle` en S1, `Move`/`Moving` x 1991 en S2), `Units left after the run: 0` (destruction différée
   appliquée à la queue du pas), et le second type crée bien son propre archétype.
-- **Budget par pas vérifié (D224)** : sans `mc.Units.SpawnBudget -1`, les 2 000 unités demandées sont servies
+- **Budget par pas vérifié (D224)** : sans `hol.Units.SpawnBudget -1`, les 2 000 unités demandées sont servies
   **500 par pas** (valeur des réglages) et arrivent toutes (rapport : `2000 units of 2000 requested, 0 births
   waiting`) — la file est bien servie partiellement sur plusieurs pas, pas seulement en mode « tout d'un coup ».
-- **Mesures (2026-10-11, éditeur en `-game` non cuit, 2 000 unités, `mc.Units.SpawnBudget -1`)** — seuils
+- **Mesures (2026-10-11, éditeur en `-game` non cuit, 2 000 unités, `hol.Units.SpawnBudget -1`)** — seuils
   D218 : simulation ≤ 3 ms, rendu ≥ 144 i/s :
 
   | Scénario | Simulation | Rendu (1 % bas) | Action / état |
@@ -472,9 +483,9 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   suivi de navmesh ; la nouvelle (2,158 ms) mesure l'**ordre** en cible directe (D229). Les deux ne sont pas
   comparables ; aucune n'est écrasée. Le rendu, lui, s'améliore (145→167 i/s, 1 % bas 72→90) : mêmes unités,
   comportement de marche différent.
-- **Commandes qui ont servi** : compilation `Build.bat MyCrusaderEditor Win64 Development -project=…` ;
+- **Commandes qui ont servi** : compilation `Build.bat HeroesOfLibertyEditor Win64 Development -project=…` ;
   création de l'asset `UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script="Tools/Editor/make_unit_types.py" -unattended -nop4 -nosplash` ;
-  tests `UnrealEditor.exe <uproject> /Game/Maps/StressTest -game -windowed -ResX=1920 -ResY=1080 -nosplash -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,mc.Units.SpawnBudget -1,mc.StressTest S1|S2 2000 10 quit"`.
+  tests `UnrealEditor.exe <uproject> /Game/Maps/StressTest -game -windowed -ResX=1920 -ResY=1080 -nosplash -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,hol.StressTest S1|S2 2000 10 quit"`.
 - **Prochaine étape** : M2 (rendu), dette de la table identifiant ↔ entité notée dans « Questions ouvertes » à
   traiter avant M5.
 
@@ -493,7 +504,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   moteur : `MassNavMeshPathFollowProcessor` n'agit que s'il y a un chemin court (≥ 2 points), donc une cible
   directe n'est pas écrasée.
 - **D229 — S2 passe aux ordres de M1** : les unités de S2 marchent par ordres réémis à l'arrêt, l'errance
-  d'essai (`UMCWanderProcessor` et son étiquette) est supprimée. Conséquence assumée : **S2 change de nature**
+  d'essai (`UHOLWanderProcessor` et son étiquette) est supprimée. Conséquence assumée : **S2 change de nature**
   (plus de suivi de navmesh, coût plus bas), sa mesure n'est plus comparable aux 2,80 ms de D220, et M3 devra
   le rendre exigeant en ajoutant les chemins. Seuil D218 inchangé.
 - Tous trois consignés au GDD : journal **§ 21 (D227 à D229)**, corps du **§ 16.6**, et point de reprise du
@@ -606,7 +617,7 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   le pas fixe ; coût **par unité** (≈ 4 µs, linéaire, quasi indépendant de la densité et des bords du
   navmesh), mono-fil.
 - Règlé par `ThrottledProcessors` / `ThrottledProcessorStepInterval` (un pas sur **six**, 3,33 Hz) dans
-  `UMCSimulationSettings` et une distance de détection resserrée à **250 cm** dans `UMCLightUnitAvoidanceTrait`.
+  `UHOLSimulationSettings` et une distance de détection resserrée à **250 cm** dans `UHOLLightUnitAvoidanceTrait`.
 - Résultat : S1 11,5 → **1,9 à 2,3 ms ✅**, S2 10,9-12,2 → **2,6 à 2,8 ms ✅** (seuil 3 ms). Rendu inchangé.
 - Défaut d'outillage corrigé au passage : la capture d'écran du stress test plantait le processus (assertion
   D3D12) quand la fenêtre de jeu était minimisée ; capture sautée avec un avertissement, vérifié sur trois
@@ -616,19 +627,19 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
 
 ```powershell
 # Compiler (éditeur fermé, sinon Live Coding bloque)
-& "C:\UE\UE_5.8_AS_1\Engine\Build\BatchFiles\Build.bat" MyCrusaderEditor Win64 Development -Project="C:\Users\baudo\Documents\MyCrusader\MyCrusader.uproject"
+& "C:\UE\UE_5.8_AS_1\Engine\Build\BatchFiles\Build.bat" HeroesOfLibertyEditor Win64 Development -Project="C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject"
 
 # Lancer un stress test : la valeur de -ExecCmds DOIT être entre guillemets,
 # sinon la ligne de commande est coupée au premier espace et le test ne démarre pas.
 # Ne pas minimiser la fenêtre pendant la mesure (la capture est sautée, avec un avertissement).
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" `
-  "C:\Users\baudo\Documents\MyCrusader\MyCrusader.uproject" /Game/Maps/StressTest -game -windowed `
-  -ResX=1920 -ResY=1080 -nosplash -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,mc.Units.SpawnBudget -1,mc.StressTest S2 2000 10 quit"
-# Rapport : Saved/Logs/MyCrusader.log, lignes LogMCStressTest ; capture : Saved/Screenshots/WindowsEditor/
+  "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" /Game/Maps/StressTest -game -windowed `
+  -ResX=1920 -ResY=1080 -nosplash -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,hol.StressTest S2 2000 10 quit"
+# Rapport : Saved/Logs/HeroesOfLiberty.log, lignes LogHOLStressTest ; capture : Saved/Screenshots/WindowsEditor/
 
 # Créer/remplacer la table des types d'unité depuis le CSV (D227), éditeur fermé
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
-  "C:\Users\baudo\Documents\MyCrusader\MyCrusader.uproject" -run=pythonscript `
+  "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -run=pythonscript `
   -script="C:\Users\baudo\Documents\MyCrusader\Tools\Editor\make_unit_types.py" -unattended -nop4 -nosplash
 ```
 
@@ -636,16 +647,16 @@ Leviers de mesure (ligne de commande ou console) :
 
 | Levier | Effet |
 |---|---|
-| `mc.StressTest S1\|S2\|C [Count] [Seconds] [quit]` | lance le scénario (S1 immobiles, S2 en marche par ordres D229, C croisement de deux unités D230) ; échauffement et mesure comptés **en pas** (3 s → 60 pas, 10 s → 200 pas), donc deux passages identiques donnent les mêmes recouvrements |
-| `mc.StressTest.SpawnRadius` | rayon de la nuée, en cm (densité) |
-| `mc.StressTest.UnitType` | ligne de table utilisée par le test (`LightInfantry`, `Archer` — D221, D225) |
-| `mc.StressTest.OrderRadius` | rayon (cm) des destinations de S2 (D229) |
-| `mc.StressTest.MaxOrdersPerFrame` | ordres émis par pas au plus (D229 ; le nom date de la passe par image) |
-| `mc.StressTest.CrossingHalfDistance` | distance (cm) des deux unités du scénario C à l'origine (D230 ; 1 500 = 15 m) |
-| `mc.StressTest.CrossingAngle` | angle (°) entre les deux trajectoires du scénario C : 0 = face-à-face (défaut), 90 = angle droit, 150 au plus |
-| `mc.Units.SpawnBudget` | naissances par pas (D224) : 0 = réglage, −1 = tout en un pas (stress test) |
-| `mc.Units.AvoidanceHold` | pas pendant lesquels l'impulsion d'évitement est ré-appliquée (D230) : négatif = réglage (défaut), **0 = éteint** |
-| `mc.Units.AvoidanceHoldDecay` | facteur appliqué à l'impulsion retenue après chaque ré-application (D230) : négatif = réglage (défaut), 1 = aucune décroissance, 0 = une seule ré-application |
-| `mc.Units.AvoidanceTrace` | identifiants d'unités séparés par `+` (ex. `1+2`, les deux unités du scénario C) : forces d'évitement écrites à chaque pas dans `Saved/AvoidanceTrace.csv` (outil de diagnostic : l'écriture coûte ~3 ms de pas) |
-| `mc.Simulation.ThrottledStepInterval` | cadence des processeurs ralentis (0 = valeur de la configuration) |
-| `mc.Avoidance.ObstacleDetectionDistance` | distance de détection des unités, en cm (0 = valeur de la ligne de table) |
+| `hol.StressTest S1\|S2\|C [Count] [Seconds] [quit]` | lance le scénario (S1 immobiles, S2 en marche par ordres D229, C croisement de deux unités D230) ; échauffement et mesure comptés **en pas** (3 s → 60 pas, 10 s → 200 pas), donc deux passages identiques donnent les mêmes recouvrements |
+| `hol.StressTest.SpawnRadius` | rayon de la nuée, en cm (densité) |
+| `hol.StressTest.UnitType` | ligne de table utilisée par le test (`LightInfantry`, `Archer` — D221, D225) |
+| `hol.StressTest.OrderRadius` | rayon (cm) des destinations de S2 (D229) |
+| `hol.StressTest.MaxOrdersPerFrame` | ordres émis par pas au plus (D229 ; le nom date de la passe par image) |
+| `hol.StressTest.CrossingHalfDistance` | distance (cm) des deux unités du scénario C à l'origine (D230 ; 1 500 = 15 m) |
+| `hol.StressTest.CrossingAngle` | angle (°) entre les deux trajectoires du scénario C : 0 = face-à-face (défaut), 90 = angle droit, 150 au plus |
+| `hol.Units.SpawnBudget` | naissances par pas (D224) : 0 = réglage, −1 = tout en un pas (stress test) |
+| `hol.Units.AvoidanceHold` | pas pendant lesquels l'impulsion d'évitement est ré-appliquée (D230) : négatif = réglage (défaut), **0 = éteint** |
+| `hol.Units.AvoidanceHoldDecay` | facteur appliqué à l'impulsion retenue après chaque ré-application (D230) : négatif = réglage (défaut), 1 = aucune décroissance, 0 = une seule ré-application |
+| `hol.Units.AvoidanceTrace` | identifiants d'unités séparés par `+` (ex. `1+2`, les deux unités du scénario C) : forces d'évitement écrites à chaque pas dans `Saved/AvoidanceTrace.csv` (outil de diagnostic : l'écriture coûte ~3 ms de pas) |
+| `hol.Simulation.ThrottledStepInterval` | cadence des processeurs ralentis (0 = valeur de la configuration) |
+| `hol.Avoidance.ObstacleDetectionDistance` | distance de détection des unités, en cm (0 = valeur de la ligne de table) |

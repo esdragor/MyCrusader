@@ -11,7 +11,7 @@ import unreal
 
 CSV_PATH = os.path.join(unreal.Paths.project_dir(), "Tools", "Data", "UnitTypes.csv")
 TARGET_PATH = "/Game/Units/UnitTypes"
-ROW_STRUCT_PATH = "/Script/MyCrusader.MCUnitTypeRow"
+ROW_STRUCT_PATH = "/Script/HeroesOfLiberty.HOLUnitTypeRow"
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
 
     row_struct = unreal.load_object(None, ROW_STRUCT_PATH)
     if row_struct is None:
-        raise RuntimeError("Missing " + ROW_STRUCT_PATH + " (is the MyCrusader module compiled?)")
+        raise RuntimeError("Missing " + ROW_STRUCT_PATH + " (is the HeroesOfLiberty module compiled?)")
 
     # An existing table is refilled in place: deleting it can leave the loaded object behind, and the creation that
     # follows then fails. Filling from the CSV replaces every row, so the CSV stays the only source.
