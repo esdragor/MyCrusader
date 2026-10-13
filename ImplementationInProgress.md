@@ -660,3 +660,18 @@ Leviers de mesure (ligne de commande ou console) :
 | `hol.Units.AvoidanceTrace` | identifiants d'unités séparés par `+` (ex. `1+2`, les deux unités du scénario C) : forces d'évitement écrites à chaque pas dans `Saved/AvoidanceTrace.csv` (outil de diagnostic : l'écriture coûte ~3 ms de pas) |
 | `hol.Simulation.ThrottledStepInterval` | cadence des processeurs ralentis (0 = valeur de la configuration) |
 | `hol.Avoidance.ObstacleDetectionDistance` | distance de détection des unités, en cm (0 = valeur de la ligne de table) |
+| `hol.StressTest.ResolutionQuality` | échelle de rendu (`sg.ResolutionQuality`, %) imposée par un passage au-dessus des réglages enregistrés : 87 par défaut, la valeur de toutes les mesures d'avant le menu ; négatif = garder le réglage enregistré (D245) |
+
+**Du chantier menu (2026-10-13, `FrontEndInProgress.md`)**, à connaître pour M2 :
+- **Garde-fou D245** : l'écran Réglages enregistre maintenant échelle de rendu, synchro, limite d'i/s et qualité dans
+  `GameUserSettings.ini` (section `[/Script/HeroesOfLiberty.HOLGameUserSettings]`, plus `[ScalabilityGroups]`). Un
+  passage impose l'échelle de rendu (`hol.StressTest.ResolutionQuality`) ; la ligne de commande habituelle impose déjà
+  synchro, limite d'i/s et `scalability 2`. Le rapport a une ligne `Display (D245)` (échelle, synchro, limite, viewport,
+  niveau de chaque groupe) : deux rapports se comparent seulement si ces lignes sont identiques.
+- **`OwnerPlayer` (D233)** : quand une unité naîtra pour un joueur, son `OwnerPlayer` est
+  `AHOLPlayerState::GetPlayerIndex()`, l'emplacement que le mode de jeu a donné au joueur dans la configuration de partie
+  (D243, D244) ; la palette commune est `Match/HOLPlayerColors` (index de couleur dans `GetColorIndex()`).
+- **Lancements visibles** (stress test compris) : ajouter `-saveddirsuffix=Tests` et `-WinX=3840 -WinY=0` (1920 x 1080)
+  ou `-WinX=3940 -WinY=100` (1600 x 900) : fenêtre sur le deuxième écran de l'utilisateur, et dossier `Saved_Tests/`
+  qui ne touche pas ses réglages (journal et captures y vont aussi). Sans le dossier de test, le moteur recentre la
+  fenêtre sur l'écran principal ~15 s après le démarrage. Détail dans `FrontEndInProgress.md` (« Commandes utiles »).

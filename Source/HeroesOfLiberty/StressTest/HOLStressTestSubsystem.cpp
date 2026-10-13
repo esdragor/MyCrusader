@@ -63,6 +63,53 @@ namespace UE::HeroesOfLiberty::StressTest
 	FAutoConsoleVariableRef CVarUnitType(TEXT("hol.StressTest.UnitType"), UnitType,
 		TEXT("Row of /Game/Units/UnitTypes used by the stress test"));
 
+	/**
+	 * Render scale of the measure (D245 guard): the Settings screen of the menu saves its own render scale, which the
+	 * engine applies at start-up and "scalability" leaves alone. A run forces this one (sg.ResolutionQuality, % of the
+	 * screen resolution), the value of every measure until the menu existed (GameUserSettings.ini of the test machine,
+	 * 2026-10-13). Negative = keep the saved setting.
+	 */
+	float ResolutionQuality = 87.f;
+	FAutoConsoleVariableRef CVarResolutionQuality(TEXT("hol.StressTest.ResolutionQuality"), ResolutionQuality,
+		TEXT("Render scale (sg.ResolutionQuality, %) forced by a stress test run over the saved settings; negative = keep the saved one (D245)"));
+
+	/** Forces what the menu can change and the usual command line does not (D245). */
+	void ForceDisplaySettings()
+	{
+		if (ResolutionQuality >= 0.f)
+		{
+			if (IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("sg.ResolutionQuality")))
+			{
+				// Above the saved settings (ECVF_SetByGameSetting), so the menu cannot change a measure.
+				CVar->Set(ResolutionQuality, ECVF_SetByCode);
+			}
+		}
+	}
+
+	/** What the menu can change, as the run saw it, for the report (D245). */
+	FString DescribeDisplaySettings()
+	{
+		const auto Value = [](const FString& Name)
+		{
+			const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(*Name);
+			return CVar ? CVar->GetString() : FString(TEXT("?"));
+		};
+		FString Groups;
+		for (const TCHAR* Group : { TEXT("ViewDistance"), TEXT("AntiAliasing"), TEXT("Shadow"), TEXT("GlobalIllumination"), TEXT("Reflection"),
+			TEXT("PostProcess"), TEXT("Texture"), TEXT("Effects"), TEXT("Foliage"), TEXT("Shading"), TEXT("Landscape") })
+		{
+			Groups += FString::Printf(TEXT(" %s %s"), Group, *Value(FString::Printf(TEXT("sg.%sQuality"), Group)));
+		}
+		FIntPoint Viewport = FIntPoint::ZeroValue;
+		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+		{
+			Viewport = GEngine->GameViewport->Viewport->GetSizeXY();
+		}
+		return FString::Printf(TEXT("render scale %s %% (r.ScreenPercentage %s), vsync %s, frame limit %s, viewport %dx%d, quality groups:%s"),
+			*Value(TEXT("sg.ResolutionQuality")), *Value(TEXT("r.ScreenPercentage")), *Value(TEXT("r.VSync")), *Value(TEXT("t.MaxFPS")),
+			Viewport.X, Viewport.Y, *Groups);
+	}
+
 	/** Players the units are shared between, so the drawn colours are the ones of a full match (D01, D233). */
 	int32 Players = 8;
 	FAutoConsoleVariableRef CVarPlayers(TEXT("hol.StressTest.Players"), Players,
@@ -199,6 +246,7 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 {
 	StopTest();
 
+	UE::HeroesOfLiberty::StressTest::ForceDisplaySettings();
 	Scenario = InScenario;
 	Count = InCount;
 	MeasureSeconds = InMeasureSeconds;
@@ -896,6 +944,7 @@ void UHOLStressTestSubsystem::FinishMeasure()
 		AverageDisplacementM, NumOrdersIssued);
 
 	UE_LOG(LogHOLStressTest, Display, TEXT("%s"), *Report);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Display (D245): %s"), *UE::HeroesOfLiberty::StressTest::DescribeDisplaySettings());
 	for (const FHOLSimulationProcessorStats& Processor : StepStats.Processors)
 	{
 		const FString Throttled = Processor.StepInterval > 1 ? FString::Printf(TEXT(" (1 step out of %d)"), Processor.StepInterval) : FString();

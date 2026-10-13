@@ -1,6 +1,6 @@
 # Front-end in progress
 
-**Journal de reprise du chantier du menu.** Reprise : **« continue FrontEndInProgress »**.
+**Journal du chantier du menu — TERMINÉ le 2026-10-13** (étapes 1 à 7). Décisions D240 à D249 reportées au GDD (§ 21, résumé au § 15). Ce fichier reste comme mémoire du chantier : commandes utiles, pièges, liste de finition.
 
 Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Server (D231). Pour ne pas se marcher dessus :
 - décisions numérotées **D240 et suivantes** (D237 à D239 restent à M2) ;
@@ -25,20 +25,17 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **fait** (2026-10-13) : titre, confirmation de sortie, Nouvelle partie avec lancement, Réglages ; captures et touches vérifiées |
 | 5. Localisation (français, anglais, japonais) | **fait** (2026-10-13) : 92 textes traduits en anglais et japonais (provisoires), bascule en direct vérifiée, captures dans les trois langues |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | **fait** (2026-10-13) : 9 tests verts, `Tools/Tests/capture_screens.ps1` PASS en fr, en, ja |
-| 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
+| 7. Clôture (D240 à D249 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | **fait** (2026-10-13) |
 
 ## Prochaine étape exacte
 
-**Étape 7 — clôture** :
-1. Reporter **D240 à D247 et D249** au journal du GDD (§ 21 ; D248 y est déjà), avec les renvois utiles (§ 15 pour
-   l'interface, § 16.6 pour la séparation simulation / présentation, D247). Vérifier d'abord que `GDD.md` n'a pas de
-   modification en cours d'une autre session (`git status`, `git diff GDD.md`).
-2. **Garde-fou du stress test** (D245) : le stress test doit forcer et écrire dans son rapport ce que le menu règle
-   (échelle de rendu, synchro verticale, limite d'i/s, qualité) ; fichier du chantier M2
-   (`StressTest/HOLStressTestSubsystem.cpp`) : changement minimal, compilé, S1 et S2 relancés.
-3. Lien `OwnerPlayer` (D233) ↔ index de joueur du `AHOLPlayerState` si M2 l'a posé ; sinon le noter pour M2.
-4. Commandes utiles reportées dans `ImplementationInProgress.md` ; mémoire du chantier mise à jour ; ce fichier archivé
-   ou marqué terminé.
+**Aucune : chantier terminé.** Reprises possibles, chacune à décider :
+- **Finition** (liste courte de l'étape 6) : noms des factions et des cartes, navigation manette entre les colonnes de
+  Nouvelle partie, police japonaise grasse, mode d'affichage réel quand la ligne de commande l'impose.
+- **M4** : onglet Commandes (remappage D30, vitesse de caméra, défilement au bord) et HUD de D201 sur la même base
+  Common UI (couches, routage des entrées) ; menu pause et retour au menu depuis une partie.
+- **M2** : `OwnerPlayer` des unités = `AHOLPlayerState::GetPlayerIndex()` (note dans `ImplementationInProgress.md`).
+- **M2.5** : le salon remplit `UHOLMatchSubsystem` côté serveur (D243).
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -364,3 +361,17 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
 - **Liste courte de finition pour l'utilisateur** : noms provisoires des factions et des cartes (nom de l'asset) ;
   navigation manette entre colonnes de Nouvelle partie ; polices japonaises sans gras (police de secours du moteur) ;
   « Affichage » montre le mode enregistré, pas celui imposé en ligne de commande.
+
+### 2026-10-13 (suite) — Étape 7 faite : clôture du chantier menu
+
+- **GDD** : D240 à D247 et D249 reportés au journal (§ 21, colonne des sections remplie ; D242 sans la mention du
+  worktree, abandonné) ; paragraphe « Menu et réglages » au § 15. 11 lignes ajoutées, fins de ligne CRLF conservées.
+- **Garde-fou du stress test (D245)** : `hol.StressTest.ResolutionQuality` (87 par défaut, la valeur de toutes les
+  mesures d'avant le menu) imposée au début de chaque passage au-dessus des réglages enregistrés ; ligne de rapport
+  `Display (D245)` (échelle, `r.ScreenPercentage`, synchro, limite d'i/s, viewport, niveau de chaque groupe). Vérifié
+  avec le dossier de test (qui n'enregistre aucune échelle) : `render scale 87 % (r.ScreenPercentage 87)`. S1 et S2
+  courts : complets, 0 unité restante (S1 2,88 ms PASS, 134 i/s ; S2 3,70 ms, 111 i/s ; un `cl.exe` d'un autre projet
+  tournait encore, chiffres non significatifs).
+- **`OwnerPlayer`** : pas encore d'unité née pour un joueur depuis le mode de jeu ; consigne laissée à M2 dans
+  `ImplementationInProgress.md` (avec le nouveau levier et les lancements sur le deuxième écran).
+- **Mémoire** du chantier mise à jour (terminé).
