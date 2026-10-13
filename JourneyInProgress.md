@@ -23,14 +23,13 @@ vérifier sur S1 et S2.
 | J1.2 Carte : emplacement de départ, limites, carte neuve par script, caméra au-dessus de son emplacement | **fait** (2026-10-13) : `Plain`, caméra essayée (placement, flèches, molette, bord, borne) |
 | J1.3 Réglages > Commandes : vitesse de caméra et défilement au bord dégrisés | **fait** (2026-10-13) |
 | D258 appliquée (aucune ombre) | **fait** (2026-10-13) |
-| J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | à faire |
+| J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | **en cours** : tests 14/14, `check_camera.ps1` PASS à 2 et 8, menu PASS en fr / en / ja ; reste l'essai de l'utilisateur et S1 / S2 au repos |
 | J1.5 Clôture : D253 à D257 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**J1.4** : vérification (D257) — tests d'automatisation (bornes, vitesse, réglages caméra, emplacements de `Plain` lus
-dans la carte), bout en bout à 2 et 8 joueurs (caméra au-dessus du bon emplacement, flèches, molette, bord), puis essai
-de l'utilisateur ; S1 et S2 à refaire sur une machine au repos pour la référence sans ombres. **Règle de cohabitation avec le stress test** : seule une carte qui a des
+**J1.4, fin** : session d'essai de l'utilisateur (partie lancée depuis le menu, deuxième écran) ; S1 et S2 à refaire
+sur une machine au repos pour la référence sans ombres (D258). Puis **J1.5** : D253 à D257 au GDD. **Règle de cohabitation avec le stress test** : seule une carte qui a des
 emplacements de départ reçoit la caméra RTS ; une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par
 défaut, donc le stress test et son fichier (chantier M2) ne changent pas.
 
@@ -164,3 +163,18 @@ exacte, entrée de journal — avant de passer à la suivante.
   seuils mais non significatifs (compilation du moteur 5.8.3 en parallèle, fil de jeu limitant) : S1 3,53 ms / 110 i/s,
   S2 3,38 ms / 119 i/s, GPU ~3,9 ms. Référence sans ombres à reprendre au repos.
 - Constat : « Réglages » ne s'ouvre pas en partie (pas encore de menu pause, prévu plus tard).
+
+### 2026-10-13 (suite) — J1.4 : vérifications automatiques
+
+- **Tests d'automatisation** (`Tests/HOLCameraTests.cpp`) : `Camera.Bounds`, `Camera.PanSpeed`, `Camera.Zoom` (caméra
+  dans un monde de test : bornes du zoom, cran de molette, écran droite = +Y, écran haut = +X, bornes), `Settings.Camera`
+  (aller-retour par un `.ini` temporaire), `Map.StartSlots` (`Plain` lue sans la démarrer : 8 emplacements uniques,
+  à égale distance du centre, dans les limites, 0 et 1 face à face, 2 et 3 face à face, 2 à un quart de tour de 0 ;
+  positions lues dans les transformations relatives, les composants d'une carte non démarrée n'étant pas enregistrés).
+  **14/14 verts.**
+- **`Tools/Tests/check_camera.ps1`** : partie lancée depuis l'écran avec une configuration JSON, à 2 joueurs (joueur
+  local en emplacement 0) et à 8 (sept IA, joueur local en emplacement 7) : caméra au-dessus du bon emplacement
+  (-150, 0) et (-106, 106) m, flèche 1 s → +40 m, molette → 40 m de haut, bord droit 1 s → +46 m (vitesse plus
+  grande à 40 m), aucune erreur ; **PASS** dans les deux cas.
+- **`capture_screens.ps1`** : contrôle de lancement généralisé (« Match on <carte> ») ; **PASS** en fr, en, ja ; planche
+  relue (Plaine, plus d'onglet Ombres, Commandes actif, bataille sans ombre).

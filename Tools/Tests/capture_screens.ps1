@@ -46,7 +46,7 @@ foreach ($Culture in $Cultures) {
     if (-not $Process.WaitForExit(180000)) { $Process.Kill(); Write-Host "$Culture : FAIL (timeout)"; $Allok = $false; continue }
 
     $Missing = @($Screens + "battle" | Where-Object { -not (Test-Path (Join-Path $Shots "$(& $Name $_).png")) })
-    $Launched = Select-String -Path $Log -Pattern "Match on BattleMap: given configuration" -Quiet
+    $Launched = Select-String -Path $Log -Pattern "Match on \w+: given configuration" -Quiet
     $Errors = @(Select-String -Path $Log -Pattern "LogHOLUI: (Error|Warning)|LogHOLMatch: (Error|Warning)" | ForEach-Object { $_.Line })
     $Ok = ($Missing.Count -eq 0) -and $Launched -and ($Errors.Count -eq 0)
     $Allok = $Allok -and $Ok
