@@ -75,9 +75,9 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 # -> Saved_Tests/Screenshots/WindowsEditor/HOL/title.png ; journal Saved_Tests/Logs/HeroesOfLiberty.log
 # Langue imposée au lancement : -culture=fr|en|ja
 
-# Bout en bout (D246) : chaque écran capturé en fr, en, ja + partie lancée depuis l'écran, PASS / FAIL par langue,
-# planches Saved_Tests\Screenshots\WindowsEditor\HOL\e2e_<langue>.png (Pillow)
-powershell -ExecutionPolicy Bypass -File Tools\Tests\capture_screens.ps1
+# Bout en bout (D246) : remplacé par Tools\Tests\quick_check.ps1 (D267, voir JourneyInProgress.md), planches
+# Saved_Tests\Screenshots\WindowsEditor\HOL\qc_<langue>.png (Pillow)
+powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 -Parts menu
 
 # Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
 #   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"

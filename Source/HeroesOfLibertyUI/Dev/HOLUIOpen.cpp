@@ -3,6 +3,7 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
+#include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/FileHelper.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
@@ -17,6 +18,7 @@
  *   first; - launches what the screen shows)
  *   hol.UI.Focus <WidgetName> [DelaySeconds=0]   (gives the focus to a widget of the open menu screen, found by its name,
  *   as the keyboard would; then hol.UI.Key drives it)
+ *   hol.UI.Language <fr|en|ja>   (switches the language live and saves it, as Settings > Language does)
  */
 namespace UE::HeroesOfLiberty::UI
 {
@@ -131,6 +133,17 @@ namespace UE::HeroesOfLiberty::UI
 		});
 	}
 
+	void SetLanguage(const TArray<FString>& Args)
+	{
+		if (Args.IsEmpty())
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Language <fr|en|ja>"));
+			return;
+		}
+		const bool bSet = UKismetInternationalizationLibrary::SetCurrentLanguage(Args[0], /*SaveToConfig*/ true);
+		UE_LOG(LogHOLUI, Display, TEXT("Language %s%s"), *Args[0], bSet ? TEXT("") : TEXT(" refused"));
+	}
+
 	FAutoConsoleCommandWithWorldAndArgs OpenCommand(
 		TEXT("hol.UI.Open"),
 		TEXT("hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
@@ -145,4 +158,9 @@ namespace UE::HeroesOfLiberty::UI
 		TEXT("hol.UI.Focus"),
 		TEXT("hol.UI.Focus <WidgetName> [DelaySeconds=0]: gives the focus to a widget of the open menu screen, found by its name"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Focus));
+
+	FAutoConsoleCommand LanguageCommand(
+		TEXT("hol.UI.Language"),
+		TEXT("hol.UI.Language <fr|en|ja>: switches the interface language live and saves it, as Settings > Language does"),
+		FConsoleCommandWithArgsDelegate::CreateStatic(&SetLanguage));
 }

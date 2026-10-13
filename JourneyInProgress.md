@@ -28,6 +28,7 @@ vérifier sur S1 et S2.
 | J2 — plan (Q1 à Q5, D259 à D264) | **fait** (2026-10-13) |
 | J2.1 Base des bâtiments : classe C++ répliquée, table des types depuis un CSV | **fait** (2026-10-13) : compile sans avertissement, `Buildings.Types` et `Buildings.Appearance` verts (16 tests) |
 | J2.2 Centre principal : apparition sur les emplacements occupés, couleur, repères de J1 retirés | **fait** (2026-10-13) : centres sur les 8 emplacements, D265 appliquée, forme reprise (toit plat, couleur non éclairée, deux tons) ; tests 16/16, caméra PASS à 2 et 8, menu PASS fr / en / ja, S1 et S2 complets |
+| D266 (listes déroulantes dans « Nouvelle partie ») et D267 (vérification rapide `quick_check.ps1`) | **fait** (2026-10-13) : tests 16/16, `quick_check.ps1` PASS en ~30 s |
 | J2.3 Sélection : canal, clic, Échap, cercle, survol | à faire |
 | J2.4 Vérification (D264) | à faire |
 | J2.5 Clôture : D259 à D264 au GDD | à faire |
@@ -51,15 +52,21 @@ exacte, entrée de journal — avant de passer à la suivante.
 
 ## Commandes utiles
 
-Compilation, tests d'automatisation, traductions, `capture_screens.ps1` : voir `FrontEndInProgress.md` (« Commandes
-utiles »). Toujours depuis **PowerShell** (Git Bash réécrit `/Game/...`), aucun éditeur du projet ouvert.
+Compilation, traductions : voir `FrontEndInProgress.md` (« Commandes utiles »). Toujours depuis **PowerShell** (Git
+Bash réécrit `/Game/...`), aucun éditeur du projet ouvert.
+
+**Vérification de tous les jours (D267) : `quick_check.ps1`**, ~30 s : tests d'automatisation en parallèle d'un seul
+lancement du jeu (menu fr / en / ja avec bascule de langue en direct, liste déroulante, partie à 2 puis 8 joueurs avec
+les contrôles de caméra de D257). Chaque étape part dès que la précédente est finie (`hol.Test.Run`), chaque capture est
+vérifiée (écran affiché au moment de la prendre). Une ligne PASS / FAIL par partie. **S1 et S2 seulement** quand on
+touche aux unités, à la simulation ou au rendu, et à la clôture d'une étape.
 
 ```powershell
+# Vérification rapide (D267) ; -Parts tests,menu,camera pour n'en lancer qu'une partie
+powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1
+
 # Lancer une session d'essai (deuxième écran, réglages de test) ; Jouer → Lancer
 Start-Process "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList '"C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash'
-
-# Bout en bout de la caméra (D257) : 2 et 8 joueurs, PASS / FAIL par cas, captures cam_*.png
-powershell -ExecutionPolicy Bypass -File Tools\Tests\check_camera.ps1
 
 # Stress test court sur le deuxième écran (S1 puis S2), rapport dans Saved_Tests\Logs\HeroesOfLiberty.log
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" /Game/Maps/StressTest `
@@ -74,7 +81,9 @@ powershell -ExecutionPolicy Bypass -File Tools\Tests\check_camera.ps1
 Commandes de jeu pour les essais par script : `hol.Camera.Report [délai]`, `hol.Camera.TestCursor X Y` (curseur simulé
 du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`, `hol.UI.Key <touche> [délai] [durée]`
 (`MouseScrollUp` / `MouseScrollDown` = un cran de molette), `hol.UI.NewGame.Launch <fichier JSON|-> [délai]`,
-`hol.UI.Focus <nom du widget> [délai]` (focus sur un widget nommé de l'écran de menu ouvert, puis `hol.UI.Key`).
+`hol.UI.Focus <nom du widget> [délai]` (focus sur un widget nommé de l'écran de menu ouvert, puis `hol.UI.Key`),
+`hol.UI.Language <fr|en|ja>`, `hol.Test.Run <fichier>` (enchaîneur d'étapes : `frames`, `wait`, `waitlog`, `waitmap`,
+`waitui`, `capture`, `mark`, commandes ; voir `Source/HeroesOfLiberty/Dev/HOLTestSequence.cpp`).
 
 ## Plan de J1 (à valider question par question)
 
@@ -370,3 +379,16 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
   remet alors le focus sur la cible de l'écran (la liste se ferme) et la touche atteint l'écran (Échap ferme l'écran,
   A lance la partie). Toujours rester dans un seul mode d'entrée par essai, ou envoyer d'abord une touche du mode voulu.
 - Remarque de l'utilisateur : les tests prennent énormément de temps, à accélérer au maximum (à traiter avant J2.3).
+
+### 2026-10-13 (suite) — Vérification rapide (D267)
+
+- Mesures avant : tests d'automatisation ~43 s dont ~40 s de démarrage (les 16 tests prennent moins d'une seconde) ;
+  bout en bout du menu ~40 s par langue (démarrage ~12-15 s, attentes fixes ~25 s) ; caméra, deux lancements de même.
+- Option A choisie par l'utilisateur : **D267** consignée directement au GDD (§ 21), comme D252.
+- Fait : `hol.Test.Run` (`Source/HeroesOfLiberty/Dev/HOLTestSequence.cpp`, catégorie de journal `LogHOLTest`),
+  crochets `HOLTestHooks` (fondus en cours, écrans affichés) renseignés par `UHOLRootLayout`, `hol.UI.Language`,
+  `Tools/Tests/quick_check.ps1` ; `capture_screens.ps1` et `check_camera.ps1` retirés.
+- **Piège** : les piles d'écrans de Common UI ont un **fondu de 0,4 s** ; une capture prise quelques images après
+  l'ouverture montre l'écran précédent qui s'efface. Le premier passage disait PASS avec des captures fausses (il ne
+  vérifiait que l'existence des fichiers) : d'où `waitui` et le contrôle de l'écran affiché à chaque capture.
+- Résultat : `quick_check.ps1` PASS en 30-33 s (jeu fini à ~30 s, tests en parallèle), planches `qc_fr/en/ja.png` relues.

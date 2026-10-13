@@ -35,4 +35,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonActivatableWidgetStack> ModalLayer;
+
+private:
+	/** A screen of the layer is fading in or out (scripted checks: HOLTestHooks). */
+	bool bMenuFading = false;
+	bool bModalFading = false;
 };

@@ -5,6 +5,7 @@
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Dev/HOLTestHooks.h"
 #include "Menu/HOLMenuPlayerController.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
@@ -29,6 +30,36 @@ void UHOLRootLayout::NativeOnInitialized()
 		}
 	}
 	Super::NativeOnInitialized();
+
+	// For the scripted checks (hol.Test.Run): wait for the screens to stop fading, name the screens shown.
+	for (UCommonActivatableWidgetStack* Layer : { MenuLayer.Get(), ModalLayer.Get() })
+	{
+		if (Layer)
+		{
+			Layer->OnTransitioningChanged.AddWeakLambda(this, [this](const UCommonActivatableWidgetContainerBase* Changed, const bool bIsTransitioning)
+			{
+				(Changed == MenuLayer ? bMenuFading : bModalFading) = bIsTransitioning;
+			});
+		}
+	}
+	const TWeakObjectPtr<UHOLRootLayout> WeakThis(this);
+	HOLTestHooks::IsInterfaceBusy() = [WeakThis]()
+	{
+		return WeakThis.IsValid() && (WeakThis->bMenuFading || WeakThis->bModalFading);
+	};
+	HOLTestHooks::DescribeInterface() = [WeakThis]()
+	{
+		if (!WeakThis.IsValid())
+		{
+			return FString(TEXT("no interface"));
+		}
+		const auto Top = [](const UCommonActivatableWidgetStack* Layer)
+		{
+			const UCommonActivatableWidget* Screen = Layer ? Layer->GetActiveWidget() : nullptr;
+			return Screen ? Screen->GetClass()->GetName() : FString(TEXT("none"));
+		};
+		return FString::Printf(TEXT("menu=%s modal=%s"), *Top(WeakThis->MenuLayer), *Top(WeakThis->ModalLayer));
+	};
 }
 
 UCommonActivatableWidget* UHOLRootLayout::PushMenu(const TSubclassOf<UCommonActivatableWidget> ScreenClass)
