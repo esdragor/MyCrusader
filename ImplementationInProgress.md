@@ -34,7 +34,9 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 4. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations en **squelettes instanciés**
    à l'essai (D232, `AnimToTexture` en repli), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1
    et S2 au vert, et une vérification à 2 clients dès M2.5 (D216). **En cours : plan de M2, question par question**
-   (voir « Plan de M2 ») ; **plan complet (D232 à D236)**, prochaine étape : implémenter dans l'ordre du plan.
+   (voir « Plan de M2 ») ; **plan complet (D232 à D236)** ; étapes 1 à 3 faites (squelettes instanciés animés et
+   colorés, voir le journal) ; **en cours : étape 4**, cadrage des vues de D236 à reprendre avec l'utilisateur, puis
+   mesures machine libre.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
    même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `mc.StressTest.CrossingAngle`,
    `mc.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -184,8 +186,57 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   `FMassEntityManager`) : naissances et destructions se font à la tête et à la queue du pas (D224).
 - **Une graine fixe ne suffit pas à rendre un test reproductible** : tout ce qui pilote la simulation (ordres,
   phases du test) doit avancer **par pas**, jamais par image.
+- **Squelettes instanciés : position, animation et valeurs d'instance sont appariées par leur ordre d'ajout**
+  (`MassVisualizationComponent.cpp`, `EndVisualChanges` : un même index dans les trois tableaux). Les ajouter dans
+  **une seule boucle** (`UMCInterpolatedInstancesProcessor`) ; les processeurs de Mass séparés
+  (`UMassUpdateInstancedSkinnedMeshProcessor`, `UMassConsumeInstancedSkinnedMeshAnimationProcessor`, ce dernier sans
+  filtre de visibilité) peuvent les désaligner — désactivés dans `DefaultMass.ini`.
+- **Mass ne transmet l'animation d'une instance que si sa séquence change** (vitesse de lecture fixée au changement, D234).
+- **Le fournisseur d'animation exige « Optimize for Instancing »** sur chaque niveau de détail du maillage squelettique
+  (carte d'os unifiée), et le matériau les usages `SkeletalMesh` **et** `InstancedSkinnedMesh` — sinon matériau par
+  défaut, avec un avertissement `Material with missing usage flag` au lancement.
+- **Le compteur de triangles du RHI (`GNumPrimitivesDrawnRHI`) vaut 0** pour les squelettes instanciés et Nanite :
+  dessins indirects pilotés par le GPU, dont le processeur ne connaît pas la taille.
 
 ## Journal d'avancement
+
+### 2026-10-13 (suite) — M2, étapes 1 à 3 : squelettes instanciés animés et colorés, vues de D236 en cours
+
+- **Ressources** (`Tools/Editor/make_skinned_mannequin.py`, idempotent) : le **mannequin UE4 du projet**
+  (`CloseCombat/Character/UE4Mannequin`, source de `SM_Mannequin`) plutôt que Manny du pack Third Person — même
+  modèle que l'historique, animations d'**épéiste** (repos `A_SW_Idle` 11,33 s, marche `A_SW_Walk_F` 0,87 s, **sans
+  déplacement de la racine**), rien à importer ; précision consignée dans D235. Deux copies : `SKM_Mannequin_Classic`
+  (4 niveaux de détail : 23 309 / 6 733 / 3 803 / 2 152 sommets) et `SKM_Mannequin_Nanite` ; fournisseurs
+  `TP_Mannequin_*` (séquence 0 = repos, 1 = marche) ; matériau `M_UnitPlayerColor` (couleur de base = valeurs
+  d'instance 0-2, gris clair par défaut). Pièges rencontrés : voir « Pièges de Mass connus » ; en Python, modifier les
+  `SkeletalMaterial` renvoyés par `get_editor_property` ne change que des copies (il faut des structures neuves), et
+  supprimer puis recréer un asset référencé échoue (l'objet reste chargé) — d'où la mise à jour en place, y compris
+  dans `make_unit_types.py`.
+- **Table des types** : colonnes `SkinnedMesh`, `AnimationProvider`, `IdleSequence`, `WalkSequence`, `WalkPlayRate`
+  (constantes du type, D222, plus les durées des séquences lues par la fabrique) ; lignes `LightInfantry` et `Archer`
+  en classique, **`LightInfantryNanite`** pour la comparaison de D235. Sans squelette valide, la fabrique retombe sur
+  le maillage statique (repli de D232).
+- **Code** : `OwnerPlayer` dans `FMCUnitStateFragment` et dans la requête de naissance (D233) ; la fabrique pose
+  `SkinnedMeshInstanceDesc` et la représentation `SkinnedMeshInstance` ; `UMCInterpolatedISMProcessor` renommé
+  **`UMCInterpolatedInstancesProcessor`** : interpolation des instances statiques et squelettiques, choix repos/marche
+  d'après la vitesse affichée (seuils 15 % / 10 % de la vitesse du type, fondu 0,2 s, départ décalé par une empreinte
+  de l'identifiant), couleur du joueur (palette de 8 couleurs côté client) ; fragment `FMCUnitAnimationStateFragment`
+  (animation démarrée ou non). Le stress test répartit ses unités entre **8 joueurs** (`mc.StressTest.Players`), en
+  une requête par joueur : même nuée qu'avant (102 recouvrements au début de S2, comme l'historique).
+- **Vérifié visuellement** (captures S2) : 2 000 squelettes instanciés, animés, désynchronisés, aux 8 couleurs ; aucun
+  `ensure`. `WalkPlayRate` reste à 1,0, à régler à l'œil (foulée).
+- **Stress test** : `mc.StressTest.View Wide|Game` (D236) avec la nuée de chaque vue (`mc.StressTest.SpawnRadius`
+  négatif = 45 m / 30 m), ligne `Draw` (appels de dessin) au rapport. **Triangles retirés** : compteur du RHI à 0 pour
+  ces dessins (voir les pièges) — écart à D236, à signaler.
+- **Mesures provisoires, non recevables** (le moteur 5.8.3 compile en parallèle, 3 `cl.exe`) : S2 classique, vue de
+  jeu 135 i/s, vue large 107 i/s ; **GPU 4,1-4,2 ms** dans les deux (sous les 6,9 ms de 144 i/s), fil jeu 7,3-9,3 ms,
+  fil de rendu 3,6-3,9 ms ; 88-95 appels de dessin. Tendance : le GPU tient, le fil jeu limite — à remesurer machine libre.
+- **Problème de cadrage (D236 à reprendre avec l'utilisateur)** : avec un champ vertical de 59° (90° horizontal en
+  16:9), voir **en entier** une nuée de 45 m de rayon (~50 m après la marche) demande ~100 m de recul, pas 70 m
+  (estimation faite sur le champ horizontal) ; à hauteur de RTS (~40 m), 2 000 unités ne tiennent dans le cadre qu'à
+  ~1 m² chacune. Les deux captures coupent le bas de la nuée.
+- **Prochaine étape** : trancher le cadrage avec l'utilisateur, puis mesurer machine libre (S1, S2 dans les deux vues,
+  classique contre Nanite) et régler `WalkPlayRate`.
 
 ### 2026-10-13 — Plan de M2 ouvert : technique d'animation tranchée (D232)
 

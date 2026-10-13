@@ -7,6 +7,8 @@
 #include "MassEntityTypes.h"
 #include "MCUnitTypes.generated.h"
 
+class UAnimSequenceTransformProviderData;
+class USkeletalMesh;
 class UStaticMesh;
 
 /**
@@ -43,6 +45,29 @@ struct MYCRUSADER_API FMCUnitTypeConstants : public FMassConstSharedFragment
 
 	UPROPERTY()
 	float MeshYawOffset = -90.f;
+
+	/** Instanced skeletal mesh and its animation provider (D232); the static Mesh is the fallback. */
+	UPROPERTY()
+	FSoftObjectPath SkinnedMesh;
+
+	UPROPERTY()
+	FSoftObjectPath AnimationProvider;
+
+	UPROPERTY()
+	int32 IdleSequence = 0;
+
+	UPROPERTY()
+	int32 WalkSequence = 1;
+
+	UPROPERTY()
+	float WalkPlayRate = 1.f;
+
+	/** Lengths (s) of the two sequences, read from the provider by the factory: random start offsets (D234). */
+	UPROPERTY()
+	float IdleLength = 0.f;
+
+	UPROPERTY()
+	float WalkLength = 0.f;
 };
 
 /**
@@ -86,6 +111,29 @@ struct MYCRUSADER_API FMCUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation")
 	float MeshYawOffset = -90.f;
 
+	/**
+	 * Instanced skeletal mesh (D232): when set, the unit is drawn animated and Mesh is not used. Its mesh must be
+	 * built with "Optimize for Instancing" (Tools/Editor/make_skinned_mannequin.py).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	TSoftObjectPtr<USkeletalMesh> SkinnedMesh;
+
+	/** GPU animation of SkinnedMesh: its sequences are the ones the presentation plays (D234). */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	TSoftObjectPtr<UAnimSequenceTransformProviderData> AnimationProvider;
+
+	/** Index of the idle sequence in AnimationProvider. */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0"))
+	int32 IdleSequence = 0;
+
+	/** Index of the walk sequence in AnimationProvider. */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0"))
+	int32 WalkSequence = 1;
+
+	/** Play rate of the walk, so the stride matches Speed and the feet do not slide (D234). */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
+	float WalkPlayRate = 1.f;
+
 	FMCUnitTypeConstants ToConstants(FName TypeName) const;
 };
 
@@ -99,5 +147,10 @@ inline FMCUnitTypeConstants FMCUnitTypeRow::ToConstants(const FName TypeName) co
 	Constants.AvoidanceDistance = AvoidanceDistance;
 	Constants.Mesh = Mesh.ToSoftObjectPath();
 	Constants.MeshYawOffset = MeshYawOffset;
+	Constants.SkinnedMesh = SkinnedMesh.ToSoftObjectPath();
+	Constants.AnimationProvider = AnimationProvider.ToSoftObjectPath();
+	Constants.IdleSequence = IdleSequence;
+	Constants.WalkSequence = WalkSequence;
+	Constants.WalkPlayRate = WalkPlayRate;
 	return Constants;
 }

@@ -19,6 +19,8 @@ struct FMCUnitSpawnRequest
 	int32 Count = 0;
 	FVector Center = FVector::ZeroVector;
 	float Radius = 0.f;
+	/** Player the units belong to (D233). */
+	uint8 OwnerPlayer = 0;
 };
 
 /**

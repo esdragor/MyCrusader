@@ -45,4 +45,8 @@ struct MYCRUSADER_API FMCUnitStateFragment : public FMassFragment
 
 	UPROPERTY()
 	EMCUnitActivity Activity = EMCUnitActivity::Idle;
+
+	/** Player the unit belongs to (D233): a conversion (D37) rewrites it. The client turns it into a colour. */
+	UPROPERTY()
+	uint8 OwnerPlayer = 0;
 };

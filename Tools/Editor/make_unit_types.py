@@ -1,7 +1,7 @@
 """Creates /Game/Units/UnitTypes, the unit type table, from Tools/Data/UnitTypes.csv (D221, D227).
 
 The CSV is the readable source: the table is imported from it, never typed in the editor. Re-running the
-script replaces the asset, so the CSV stays the single place to balance the types.
+script replaces every row, so the CSV stays the single place to balance the types.
 Run (the editor quits when done):
   UnrealEditor.exe <project> -ExecutePythonScript=<this file>
 """
@@ -22,16 +22,20 @@ def main():
     if row_struct is None:
         raise RuntimeError("Missing " + ROW_STRUCT_PATH + " (is the MyCrusader module compiled?)")
 
+    # An existing table is refilled in place: deleting it can leave the loaded object behind, and the creation that
+    # follows then fails. Filling from the CSV replaces every row, so the CSV stays the only source.
+    table = None
     if unreal.EditorAssetLibrary.does_asset_exist(TARGET_PATH):
-        if not unreal.EditorAssetLibrary.delete_asset(TARGET_PATH):
-            raise RuntimeError("Could not replace " + TARGET_PATH)
-
-    factory = unreal.DataTableFactory()
-    factory.set_editor_property("struct", row_struct)
-    asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-    table = asset_tools.create_asset("UnitTypes", "/Game/Units", unreal.DataTable, factory)
-    if table is None:
-        raise RuntimeError("Could not create " + TARGET_PATH)
+        table = unreal.load_asset(TARGET_PATH)
+        if table is None or table.get_editor_property("row_struct") != row_struct:
+            raise RuntimeError(TARGET_PATH + " exists with another row struct: delete it first")
+    else:
+        factory = unreal.DataTableFactory()
+        factory.set_editor_property("struct", row_struct)
+        asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
+        table = asset_tools.create_asset("UnitTypes", "/Game/Units", unreal.DataTable, factory)
+        if table is None:
+            raise RuntimeError("Could not create " + TARGET_PATH)
 
     with open(CSV_PATH, "r", encoding="utf-8") as csv_file:
         csv_text = csv_file.read()

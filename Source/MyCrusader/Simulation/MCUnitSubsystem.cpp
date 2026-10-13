@@ -3,7 +3,9 @@
 #include "Simulation/MCUnitSubsystem.h"
 
 #include "Avoidance/MassNavigationObstacleTrait.h"
+#include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/DataTable.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -109,7 +111,30 @@ const FMassEntityTemplate* UMCUnitSubsystem::FindTemplate(const FName TypeName)
 		return nullptr;
 	}
 
-	const FMCUnitTypeConstants Constants = Row->ToConstants(TypeName);
+	FMCUnitTypeConstants Constants = Row->ToConstants(TypeName);
+
+	// Instanced skeletal mesh (D232), drawn when the type has one and its animation provider loads; the static mesh
+	// stays the fallback (AnimToTexture, D232).
+	USkeletalMesh* SkinnedMesh = Cast<USkeletalMesh>(Constants.SkinnedMesh.TryLoad());
+	UAnimSequenceTransformProviderData* AnimationProvider = Cast<UAnimSequenceTransformProviderData>(Constants.AnimationProvider.TryLoad());
+	const bool bSkinned = SkinnedMesh && AnimationProvider;
+	if (bSkinned)
+	{
+		const int32 NumSequences = AnimationProvider->GetSequences().Num();
+		if (!ensureMsgf(Constants.IdleSequence < NumSequences && Constants.WalkSequence < NumSequences,
+			TEXT("Unit type '%s': idle/walk sequence %d/%d out of the %d sequences of %s"),
+			*TypeName.ToString(), Constants.IdleSequence, Constants.WalkSequence, NumSequences, *Constants.AnimationProvider.ToString()))
+		{
+			Constants.IdleSequence = Constants.WalkSequence = 0;
+		}
+		Constants.IdleLength = AnimationProvider->GetSequencePlayLength(Constants.IdleSequence);
+		Constants.WalkLength = AnimationProvider->GetSequencePlayLength(Constants.WalkSequence);
+	}
+	else if (!Constants.SkinnedMesh.IsNull())
+	{
+		UE_LOG(LogMCSimulation, Warning, TEXT("Unit type '%s': skinned mesh %s or animation provider %s missing, drawn as a static mesh"),
+			*TypeName.ToString(), *Constants.SkinnedMesh.ToString(), *Constants.AnimationProvider.ToString());
+	}
 
 	// Mass identifies a shared fragment by the CRC of its reflected (UPROPERTY) fields, then compares the values
 	// through that same reflection: a field left out of the reflection is invisible to both, and the second type
@@ -150,22 +175,33 @@ const FMassEntityTemplate* UMCUnitSubsystem::FindTemplate(const FName TypeName)
 	AvoidanceTrait->SetObstacleDetectionDistance(Constants.AvoidanceDistance);
 
 	UMassMovableVisualizationTrait* VisualizationTrait = NewObject<UMassMovableVisualizationTrait>(this);
-	if (UStaticMesh* Mesh = Cast<UStaticMesh>(Constants.Mesh.TryLoad()))
+	const FTransform MeshOffset(FRotator(0.f, Constants.MeshYawOffset, 0.f));
+	if (bSkinned)
+	{
+		FMassSkinnedMeshInstanceVisualizationMeshDesc& MeshDesc = VisualizationTrait->SkinnedMeshInstanceDesc.Meshes.AddDefaulted_GetRef();
+		MeshDesc.Asset = SkinnedMesh;
+		MeshDesc.TransformProvider = AnimationProvider;
+		MeshDesc.bCastShadows = true;
+		VisualizationTrait->SkinnedMeshInstanceDesc.bUseTransformOffset = true;
+		VisualizationTrait->SkinnedMeshInstanceDesc.TransformOffset = MeshOffset;
+	}
+	else if (UStaticMesh* Mesh = Cast<UStaticMesh>(Constants.Mesh.TryLoad()))
 	{
 		FMassStaticMeshInstanceVisualizationMeshDesc& MeshDesc = VisualizationTrait->StaticMeshInstanceDesc.Meshes.AddDefaulted_GetRef();
 		MeshDesc.Mesh = Mesh;
 		MeshDesc.bCastShadows = true;
 		VisualizationTrait->StaticMeshInstanceDesc.bUseTransformOffset = true;
-		VisualizationTrait->StaticMeshInstanceDesc.TransformOffset = FTransform(FRotator(0.f, Constants.MeshYawOffset, 0.f));
+		VisualizationTrait->StaticMeshInstanceDesc.TransformOffset = MeshOffset;
 	}
 	else
 	{
 		UE_LOG(LogMCSimulation, Warning, TEXT("Unit type '%s' has no mesh (%s): it stays invisible"), *TypeName.ToString(), *Constants.Mesh.ToString());
 	}
 	// Instances at every distance: D218 measures 2 000 units on screen.
+	const EMassRepresentationType InstanceRepresentation = bSkinned ? EMassRepresentationType::SkinnedMeshInstance : EMassRepresentationType::StaticMeshInstance;
 	for (int32 LODIndex = 0; LODIndex < EMassLOD::Max; ++LODIndex)
 	{
-		VisualizationTrait->Params.LODRepresentation[LODIndex] = LODIndex == EMassLOD::Off ? EMassRepresentationType::None : EMassRepresentationType::StaticMeshInstance;
+		VisualizationTrait->Params.LODRepresentation[LODIndex] = LODIndex == EMassLOD::Off ? EMassRepresentationType::None : InstanceRepresentation;
 		VisualizationTrait->LODParams.LODMaxCount[LODIndex] = 5000; // above the 2 000 floor (D190)
 	}
 	VisualizationTrait->LODParams.BaseLODDistance[EMassLOD::Off] = 1000000.f;
@@ -186,8 +222,9 @@ const FMassEntityTemplate* UMCUnitSubsystem::FindTemplate(const FName TypeName)
 	}
 
 	TemplateCache.Add(TypeName, Config);
-	UE_LOG(LogMCSimulation, Log, TEXT("Unit type '%s' (%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm"),
-		*TypeName.ToString(), *Row->DisplayName, Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance);
+	UE_LOG(LogMCSimulation, Log, TEXT("Unit type '%s' (%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm, drawn as %s"),
+		*TypeName.ToString(), *Row->DisplayName, Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
+		bSkinned ? *FString::Printf(TEXT("skinned instances of %s"), *SkinnedMesh->GetName()) : TEXT("static instances"));
 
 	return &Config->GetOrCreateEntityTemplate(*GetWorld());
 }
@@ -309,6 +346,7 @@ void UMCUnitSubsystem::CreateUnitEntities(const FMCUnitSpawnRequest& Request, co
 		State.UnitId = UnitId;
 		State.CurrentHealth = Constants.MaxHealth;
 		State.Activity = EMCUnitActivity::Idle;
+		State.OwnerPlayer = Request.OwnerPlayer;
 
 		// An immobile unit stands still, it does not walk at a null speed: Mass' moving avoidance skips the Stand
 		// action, so an idle unit measures what an idle unit really costs (D220). Its target is its own position,

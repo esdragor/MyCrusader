@@ -85,6 +85,8 @@ private:
 	double GameThreadMsSum = 0.0;
 	double RenderThreadMsSum = 0.0;
 	double GpuMsSum = 0.0;
+	/** Sum of the RHI draw calls over the measured frames (D236). */
+	double DrawCallsSum = 0.0;
 	bool bScreenshotTaken = false;
 	/** Unit locations when the measure starts, to check that S2 units really move. */
 	TArray<FVector> LocationsAtMeasureStart;

@@ -19,6 +19,7 @@
 #include "MyCrusaderLog.h"
 #include "NavigationSystem.h"
 #include "RenderTimer.h"
+#include "RHIStats.h"
 #include "Simulation/MCAvoidanceHoldProcessors.h"
 #include "Simulation/MCSimulationFragments.h"
 #include "Simulation/MCSimulationSettings.h"
@@ -33,15 +34,39 @@ namespace UE::MyCrusader::StressTest
 	constexpr float WarmUpSeconds = 3.f;
 	/** Time granted to the last fixed steps after the run asked to quit, so the units are destroyed (D224). */
 	constexpr float QuitDelaySeconds = 0.5f;
-	/** Units appear on the navmesh within this radius of the map centre. */
-	float SpawnRadius = 8000.f;
+	/**
+	 * Camera of the measure (D236), 2 000 units on screen in both: "Wide" frames the whole crowd from ~70 m,
+	 * "Game" looks from an RTS camera height on a tighter crowd (the big melee seen up close).
+	 */
+	FString View = TEXT("Wide");
+	FAutoConsoleVariableRef CVarView(TEXT("mc.StressTest.View"), View,
+		TEXT("Camera of the stress test: Wide (whole crowd, ~70 m) or Game (RTS camera height on a tighter crowd), D236"));
+
+	bool IsGameView()
+	{
+		return View.Equals(TEXT("Game"), ESearchCase::IgnoreCase);
+	}
+
+	/** Units appear on the navmesh within this radius of the map centre; negative = the view's crowd (D236). */
+	float SpawnRadius = -1.f;
 	FAutoConsoleVariableRef CVarSpawnRadius(TEXT("mc.StressTest.SpawnRadius"), SpawnRadius,
-		TEXT("Radius (cm) around the map centre where stress test units appear: sets the crowd density"));
+		TEXT("Radius (cm) around the map centre where stress test units appear (crowd density), negative = the view's crowd: Wide 4500, Game 3000 (D236)"));
+
+	float GetSpawnRadius()
+	{
+		// D236: the wide crowd shrank from 80 to 45 m so 2 000 units stay in frame with the camera at ~70 m.
+		return SpawnRadius >= 0.f ? SpawnRadius : IsGameView() ? 3000.f : 4500.f;
+	}
 
 	/** Type of the units of a run: a row of the unit type table (D221). */
 	FString UnitType = TEXT("LightInfantry");
 	FAutoConsoleVariableRef CVarUnitType(TEXT("mc.StressTest.UnitType"), UnitType,
 		TEXT("Row of /Game/Units/UnitTypes used by the stress test"));
+
+	/** Players the units are shared between, so the drawn colours are the ones of a full match (D01, D233). */
+	int32 Players = 8;
+	FAutoConsoleVariableRef CVarPlayers(TEXT("mc.StressTest.Players"), Players,
+		TEXT("Players the stress test units are shared between (owner colours, D233)"));
 
 	/** S2 walks by move orders (D229): a unit is ordered a new destination within this radius of itself. */
 	float OrderRadius = 3000.f;
@@ -252,6 +277,9 @@ void UMCStressTestSubsystem::Tick(const float DeltaTime)
 	GameThreadMsSum += FPlatformTime::ToMilliseconds(GGameThreadTime);
 	RenderThreadMsSum += FPlatformTime::ToMilliseconds(GRenderThreadTime);
 	GpuMsSum += FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles());
+	// Last finished frame's RHI draw calls (D236). Its triangle counter is left out: it only counts the draws whose
+	// size the CPU knows, and skinned instances and Nanite are drawn indirectly, driven by the GPU (always 0 here).
+	DrawCallsSum += GNumDrawCallsRHI[0];
 
 	// One capture per run, at half of the measure. Skipped while the window is minimized: the capture would
 	// be lost, and its placeholder back buffer trips a D3D12 assert (hence no retry later in the run).
@@ -319,14 +347,25 @@ void UMCStressTestSubsystem::SpawnUnits()
 		// avoidance has to give way.
 		const float HalfDistance = UE::MyCrusader::StressTest::CrossingHalfDistance;
 		const float AngleRadians = FMath::DegreesToRadians(UE::MyCrusader::StressTest::GetCrossingAngle());
-		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(-HalfDistance, 0.f, 0.f), 1.f });
-		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(HalfDistance * FMath::Cos(AngleRadians), -HalfDistance * FMath::Sin(AngleRadians), 0.f), 1.f });
+		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(-HalfDistance, 0.f, 0.f), 1.f, 0 });
+		Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, 1, FVector(HalfDistance * FMath::Cos(AngleRadians), -HalfDistance * FMath::Sin(AngleRadians), 0.f), 1.f, 1 });
 		return;
 	}
 
 	// The authority creates the units, spread over the following steps by the per-step budget (D224). The S1
-	// units are born standing still, which is what an immobile unit means (D220).
-	Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, Count, FVector::ZeroVector, UE::MyCrusader::StressTest::SpawnRadius });
+	// units are born standing still, which is what an immobile unit means (D220). One request per player: the
+	// births are served in order and draw their positions one after the other, so the crowd does not depend on
+	// how it is shared.
+	const int32 NumPlayers = FMath::Clamp(UE::MyCrusader::StressTest::Players, 1, 255);
+	for (int32 Player = 0; Player < NumPlayers; ++Player)
+	{
+		const int32 PlayerCount = Count / NumPlayers + (Player < Count % NumPlayers ? 1 : 0);
+		if (PlayerCount > 0)
+		{
+			Units->RequestUnits(FMCUnitSpawnRequest{ UnitTypeName, PlayerCount, FVector::ZeroVector, UE::MyCrusader::StressTest::GetSpawnRadius(),
+				static_cast<uint8>(Player) });
+		}
+	}
 }
 
 void UMCStressTestSubsystem::MaintainCrossing()
@@ -514,13 +553,18 @@ TArray<FVector> UMCStressTestSubsystem::GetUnitLocations() const
 
 void UMCStressTestSubsystem::PlaceViewer() const
 {
-	// High three-quarter view over the spawn area: all units on screen (D218).
+	// Three-quarter view over the spawn area, all units on screen (D218), from the distance of the view (D236):
+	// "Wide" at ~70 m (a soldier ~25 pixels high at 1080p, against ~13 from the former 136 m), "Game" at an RTS
+	// camera height (~43 m above the ground, steeper, so the whole tighter crowd stays in frame).
 	APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 	if (!PlayerController)
 	{
 		return;
 	}
-	const FVector ViewLocation(-11000.f, 0.f, 8000.f);
+	const bool bGameView = UE::MyCrusader::StressTest::IsGameView();
+	const float PitchRadians = FMath::DegreesToRadians(bGameView ? 60.f : 50.f);
+	const float Distance = bGameView ? 5000.f : 7000.f;
+	const FVector ViewLocation(-Distance * FMath::Cos(PitchRadians), 0.f, Distance * FMath::Sin(PitchRadians));
 	const FRotator ViewRotation = (FVector::ZeroVector - ViewLocation).Rotation();
 	if (APawn* Pawn = PlayerController->GetPawn())
 	{
@@ -535,6 +579,7 @@ void UMCStressTestSubsystem::BeginMeasure()
 	PhaseSteps = 0;
 	FrameTimes.Reset();
 	GameThreadMsSum = RenderThreadMsSum = GpuMsSum = 0.0;
+	DrawCallsSum = 0.0;
 	bScreenshotTaken = false;
 	NumOrdersIssued = 0;
 	CrossingClosestDistance = TNumericLimits<double>::Max();
@@ -795,6 +840,7 @@ void UMCStressTestSubsystem::FinishMeasure()
 	const double GameThreadMs = GameThreadMsSum / NumFrames;
 	const double RenderThreadMs = RenderThreadMsSum / NumFrames;
 	const double GpuMs = GpuMsSum / NumFrames;
+	const double DrawCalls = DrawCallsSum / NumFrames;
 
 	const TArray<FVector> LocationsAtMeasureEnd = GetUnitLocations();
 	double TotalDisplacement = 0.0;
@@ -808,16 +854,18 @@ void UMCStressTestSubsystem::FinishMeasure()
 	const bool bRenderPassed = AverageFps >= MinFramesPerSecond;
 
 	const FString Report = FString::Printf(
-		TEXT("Stress test %s, %d units of type %s, %.0f s\n")
+		TEXT("Stress test %s, %d units of type %s, %.0f s, %s view (crowd radius %.0f m, D236)\n")
 		TEXT("  Simulation: %.3f ms average per step (max %.3f ms, %d steps, %d frames dropped time) - threshold %.1f ms: %s\n")
 		TEXT("  Rendering: %.1f fps average (1%% low %.1f fps, %d frames) - threshold %.0f fps: %s\n")
 		TEXT("  Frame: game thread %.2f ms, render thread %.2f ms, GPU %.2f ms\n")
+		TEXT("  Draw: %.0f draw calls per frame\n")
 		TEXT("  Memory: %.0f MB used (%+.0f MB since spawn)\n")
 		TEXT("  Movement: units moved %.1f m on average during the measure, %d move orders issued (D229)"),
-		ToString(Scenario), UnitIds.Num(), *UnitTypeName.ToString(), MeasureSeconds,
+		ToString(Scenario), UnitIds.Num(), *UnitTypeName.ToString(), MeasureSeconds, IsGameView() ? TEXT("Game") : TEXT("Wide"), GetSpawnRadius() / 100.f,
 		StepStats.GetAverageMs(), StepStats.MaxMs, StepStats.NumSteps, StepStats.NumDroppedFrames, MaxSimulationMs, Verdict(bSimulationPassed),
 		AverageFps, OnePercentLowFps, FrameTimes.Num(), MinFramesPerSecond, Verdict(bRenderPassed),
 		GameThreadMs, RenderThreadMs, GpuMs,
+		DrawCalls,
 		UsedPhysicalMB, UnitsDeltaMB,
 		AverageDisplacementM, NumOrdersIssued);
 
