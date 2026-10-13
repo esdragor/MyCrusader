@@ -23,22 +23,22 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
 | 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **fait** (2026-10-13) : titre, confirmation de sortie, Nouvelle partie avec lancement, Réglages ; captures et touches vérifiées |
-| 5. Localisation (français, anglais, japonais) | à faire |
+| 5. Localisation (français, anglais, japonais) | **en cours** : cible `Game` créée, collectée et compilée (92 textes, fr natif) ; traductions anglaise et japonaise à écrire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
 | 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
 
 ## Prochaine étape exacte
 
-**Étape 5 — localisation** (D245) :
-1. Cible de localisation du jeu (`Config/Localization/Game.ini` ou par script) : langue source **français**, cultures
-   anglais et japonais ; collecte des textes du code (`LOCTEXT` de `HeroesOfLibertyUI` et `HeroesOfLiberty`, dont
-   les noms de couleurs) par commandlet ; `.po` anglais et japonais écrits par l'assistant (provisoires) ; compilation.
-2. Langue native du jeu = français : aujourd'hui, sans cible, le moteur part de l'anglais (« No localization for 'ja'
-   exists, so 'en' will be used ») et le sélecteur affiche English au premier lancement.
-3. Bascule en direct depuis l'onglet Langue (textes déjà affichés mis à jour), choix relu au redémarrage (déjà vérifié
-   pour l'enregistrement : `[Internationalization] Language=` dans `GameUserSettings.ini`).
-4. Captures des écrans dans les trois langues (texte coupé, caractère manquant, chaîne restée en français) ; les
-   largeurs fixes des colonnes devront peut-être grandir pour l'anglais ou le japonais.
+**Étape 5 — localisation, suite** (D245, D249). La cible `Game` existe (`Config/Localization/Game.ini`, français
+natif, anglais et japonais) et se collecte et compile par le commandlet `GatherText` (voir « Commandes utiles ») :
+1. Écrire les traductions **anglaise** et **japonaise** (provisoires, par l'assistant) dans
+   `Content/Localization/Game/en/Game.po` et `ja/Game.po` (`msgstr`), puis relancer `GatherText` (import des `.po`,
+   compilation des `.locres`, réexport).
+2. Vérifier la bascule en direct depuis l'onglet Langue (textes déjà affichés mis à jour, y compris les sélecteurs) et
+   la relecture au redémarrage.
+3. Captures de chaque écran dans les trois langues (texte coupé, caractère manquant, chaîne restée en français) ;
+   élargir les colonnes si l'anglais ou le japonais débordent.
+4. Test d'automatisation D246 « toutes les clés de texte présentes dans les trois langues » (étape 6).
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -54,9 +54,9 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
   -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -unattended -nullrhi -nosplash -nosound -log
 
 # Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau ;
-# fenêtre sur le DEUXIÈME écran de l'utilisateur (-WinX=5900 -WinY=150), jamais sur l'écran principal
+# fenêtre sur le DEUXIÈME écran de l'utilisateur (-WinX=3940 -WinY=100), jamais sur l'écran principal
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
-  -game -windowed -ResX=1600 -ResY=900 -WinX=5900 -WinY=150 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
+  -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
 # -> Saved/Screenshots/WindowsEditor/HOL/title.png
 
 # Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
@@ -69,6 +69,10 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 # test, D245) : le sauvegarder avant, le restaurer après.
 # Lancer une partie comme le bouton « Lancer », éventuellement depuis un fichier JSON (format de -MatchConfig=) :
 #   hol.UI.NewGame.Launch [Fichier] [Délai]  -> journal « LogHOLMatch: Match on BattleMap: given configuration »
+
+# Localisation (D245) : collecte des textes du code, import des .po, compilation des .locres, réexport des .po
+& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
+  -run=GatherText -config="C:\Users\baudo\Documents\MyCrusader\Config\Localization\Game.ini" -unattended -nop4 -nosplash
 
 # Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
 #   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
@@ -126,6 +130,7 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 | D245 | 2026-10-13 | Technique — Réglages | **Vidéo, son, commandes et langue** (choix de l'utilisateur : option B, avec deux précisions). **Vidéo** : résolution, mode fenêtre, synchronisation verticale, limite d'i/s, qualité globale puis par groupe, échelle de rendu ; **son** : volumes général, musique, effets, voix (le général agit tout de suite, les trois autres passent par des classes de son créées par script et agissent dès qu'il y a des sons) ; enregistrés par une classe dérivée de `UGameUserSettings`. **Commandes** *(précision 1, option b, contre la recommandation)* : onglet présent mais **grisé jusqu'à M4** — remappage des actions de D30 (« tout est reconfigurable »), vitesse de la caméra et défilement au bord de l'écran ; les actions Enhanced Input seront déclarées à M4. **Langues** *(précision 2, nuance de l'utilisateur)* : **français** (langue source), **anglais** et **japonais**, « pour tester aussi un alphabet non latin » ; sélecteur actif, bascule en direct, choix enregistré ; tout texte affiché passe par la localisation d'Unreal (`FText`, `LOCTEXT`), collecte par script, traductions en fichiers `.po` relisibles ; la police doit couvrir le japonais (police composite avec une sous-police japonaise sous licence libre, importée par script, D242). Traductions anglaise et japonaise **provisoires**, écrites par l'assistant. Garde-fou du stress test : `GameUserSettings.ini` est relu par le stress test, qui devra **forcer et écrire dans son rapport** tout ce que le menu règle (en particulier l'échelle de rendu), modification faite à la fusion car le fichier appartient à l'autre chantier. Écartés : vidéo et son seuls (recommandation initiale), vidéo seule, onglet Commandes actif dès maintenant (recommandation de la précision 1), français seul avec sélecteur grisé. |
 | D246 | 2026-10-13 | Technique — Vérification du chantier menu | **Tests automatiques sur la logique, captures par script pour l'aspect** (choix de l'utilisateur, conforme à la recommandation). **Tests d'automatisation Unreal**, en ligne de commande sans affichage : aller-retour JSON de la configuration et lecture d'une version antérieure du format ; GameMode **sans** configuration (valeurs par défaut, protège le stress test) ; GameMode **avec** configuration (nombre de joueurs, couleur, index de joueur) ; réglages enregistrés puis relus ; toutes les clés de texte présentes dans les trois langues. **Bout en bout par script** : des commandes console ouvrent chaque écran et lancent une partie depuis une configuration par le même chemin que le bouton « Lancer » ; le jeu est lancé en français, en anglais et en japonais et chaque écran est **capturé** ; l'assistant lit les captures (texte coupé, caractère manquant, chaîne restée en français) et les joint au compte rendu ; la finition se juge à l'œil par l'utilisateur sur une courte liste. Écartés : **vérification manuelle seule** (rien de rejouable, contrat JSON et GameMode sans configuration non protégés) et **pilotage de l'interface par clics simulés** (Automation Driver : fragile à chaque changement de mise en page, peu documenté, coût permanent pour des écrans provisoires, D242). Clôt le plan du chantier menu (D240 à D246). |
 | D247 | 2026-10-13 | Technique — Module de l'interface | **Un module à part pour l'interface** (choix de l'utilisateur, conforme à la recommandation) : la configuration de partie, son sous-système, le GameMode et le PlayerState restent dans `HeroesOfLiberty` (le serveur en a besoin) ; Common UI, styles, écrans et leurs tests vont dans un module **`HeroesOfLibertyUI`**, qui dépend de `HeroesOfLiberty` et jamais l'inverse, et qui pourra être **exclu de la cible Server** dans le `.uproject` (le serveur dédié de D231 ne charge ni Common UI ni écrans). Motif : sans worktree, c'est l'isolation qui reste face au chantier M2 (même module sinon : même `Build.cs`, une erreur de compilation bloque l'autre session), et la séparation simulation / présentation du § 16.6 s'étend à l'interface. Écarté : un sous-dossier `UI/` de `HeroesOfLiberty` (Common UI chargé par le serveur, `Build.cs` partagé). |
+| D249 | 2026-10-13 | Technique — Langue au premier lancement | **Langue de Windows** (choix de l'utilisateur, conforme à la recommandation) : tant que le joueur n'a rien choisi, le jeu prend la langue du système si elle est traduite (anglais, japonais), sinon le français, langue source (repli du moteur sur la culture native de la cible `Game`) ; le choix fait dans Réglages > Langue est enregistré et passe ensuite avant. Comportement standard d'Unreal. Conséquence constatée : sur le Windows anglais de l'utilisateur, le jeu démarre en anglais, et tant que la traduction anglaise n'existe pas, le sélecteur indique English sur des textes français (incohérence levée à l'étape 5). Écarté : toujours le français au premier lancement (un joueur anglophone ou japonais doit chercher sa langue). |
 
 ## Journal d'avancement
 
@@ -285,3 +290,20 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   (réglages vidéo enregistrés remis à zéro une fois). `[ScalabilityGroups]` reste commune, et le stress test force sa
   résolution et sa qualité ; il devra aussi forcer et rapporter l'échelle de rendu et la synchro (étape 7).
 - **Limite connue** : « Affichage » montre le mode enregistré, pas celui imposé par `-windowed` en ligne de commande.
+
+### 2026-10-13 (suite) — Essai de l'utilisateur : fenêtre de test mal placée, langue ; étape 5 commencée
+
+- **Session ouverte pour l'utilisateur** (menu complet). Retours : « on est bon » sauf deux points.
+- **La fenêtre de test s'ouvrait au milieu de l'écran principal**, pour tous les essais lancés avec `-WinX=5900`
+  depuis la demande de l'utilisateur. Cause : Unreal place la fenêtre en coordonnées **logiques** (Windows à 150 %
+  sur les deux écrans : deuxième écran logique de x = 3840 à 5760), et une position hors de tout écran est recentrée
+  sur l'écran principal. Vérifié en lisant le rectangle de la fenêtre (sans capture du bureau) : `-WinX=4000` → x
+  physique 5988. Valeur corrigée : **`-WinX=3940 -WinY=100`**.
+- **Réglages > Langue affichait English** alors que les textes sont en français : Windows est en anglais (`Using OS
+  detected language (en-US)`), et sans données de localisation le moteur retombait sur `en` de toute façon. Décision
+  **D249** (langue de Windows au premier lancement). La session de l'utilisateur avait enregistré `Language=en` dans
+  `GameUserSettings.ini` : ligne retirée (rien d'autre touché), pour que la règle de D249 s'applique.
+- **Cible de localisation `Game`** (`Config/Localization/Game.ini`) : collecte des `LOCTEXT` de `Source/` (tests
+  exclus), manifeste, archives, import des `.po`, `.locres`, réexport des `.po` ; français natif, anglais et japonais.
+  Premier passage : 92 textes, `Content/Localization/Game/{fr,en,ja}` (archives, `.po`, `.locres`) et
+  `Game.locmeta`. Au démarrage : `No specific localization for 'en-US' exists, so 'en' will be used`.
