@@ -419,11 +419,11 @@ void UHOLNewGameScreen::Launch()
 	UE_LOG(LogHOLUI, Display, TEXT("New game: launching %s, %d occupied slots, seed %d"), *Launched.Map.ToString(),
 		Launched.GetNumOccupiedSlots(), Launched.Seed);
 
-	// The menu's input config (menu mode, mouse not captured) would linger on the viewport once its screens are gone:
-	// the battle starts with the game's, as when its map is opened directly.
+	// The menu's input config (menu mode) would linger on the viewport once its screens are gone: the match starts in
+	// game mode, the mouse free and its cursor shown, as the RTS camera and its edge scrolling want (D254, D255).
 	if (UCommonUIActionRouterBase* Router = ULocalPlayer::GetSubsystem<UCommonUIActionRouterBase>(GetOwningLocalPlayer()))
 	{
-		Router->SetActiveUIInputConfig(FUIInputConfig(ECommonInputMode::Game, EMouseCaptureMode::CapturePermanently), this);
+		Router->SetActiveUIInputConfig(FUIInputConfig(ECommonInputMode::Game, EMouseCaptureMode::NoCapture), this);
 	}
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TSoftObjectPtr<UWorld>(Launched.Map));
 }

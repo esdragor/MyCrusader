@@ -19,7 +19,7 @@ vérifier sur S1 et S2.
 |---|---|
 | D252 : ordre d'avancement par le parcours du joueur | **fait** (2026-10-13, au GDD § 16.6 et § 21) |
 | J1 — plan (Q1 à Q5, D253 à D257) | **fait** (2026-10-13) |
-| J1.1 Socle : contrôleur de partie, caméra locale, `IMC_Game`, réglages caméra | à faire |
+| J1.1 Socle : contrôleur de partie, caméra locale, `IMC_Game`, réglages caméra | **fait** (2026-10-13) : compile, non essayé (pas encore de carte à emplacements) |
 | J1.2 Carte : emplacement de départ, limites, carte neuve par script, caméra au-dessus de son emplacement | à faire |
 | J1.3 Réglages > Commandes : vitesse de caméra et défilement au bord dégrisés | à faire |
 | J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | à faire |
@@ -27,8 +27,9 @@ vérifier sur S1 et S2.
 
 ## Prochaine étape exacte
 
-**J1.1** : contrôleur de partie `AHOLPlayerController`, acteur caméra local, actions et `IMC_Game` par script, réglages
-caméra dans `UHOLGameUserSettings`. **Règle de cohabitation avec le stress test** : seule une carte qui a des
+**J1.2** : carte de partie neuve par script (sol ~400 m, navmesh, lumière, 8 emplacements symétriques, limites,
+repères visibles en attendant le centre principal de J2), proposée par « Nouvelle partie » avec un nom traduit ; essai
+de la caméra dessus. **Règle de cohabitation avec le stress test** : seule une carte qui a des
 emplacements de départ reçoit la caméra RTS ; une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par
 défaut, donc le stress test et son fichier (chantier M2) ne changent pas.
 
@@ -99,3 +100,25 @@ exacte, entrée de journal — avant de passer à la suivante.
   avant. Le fichier du stress test (chantier M2, en cours) n'est donc pas touché, et la « fonction dédiée » de D255
   n'est pas nécessaire pour l'instant.
 - Ordre d'implémentation : J1.1 socle, J1.2 carte, J1.3 réglages, J1.4 vérification, J1.5 clôture.
+
+### 2026-10-13 (suite) — J1.1 fait : socle de la caméra
+
+- **`Map/HOLStartSlot`** (dérivé de `APlayerStart`, numéro 0 à 7) et **`Map/HOLMapBounds`** (boîte vue de dessus, visible
+  dans l'éditeur seulement) ; `AHOLStartSlot::WorldHasSlots` dit si une carte est une carte de partie.
+- **`Player/HOLRTSCamera`** : acteur local non répliqué (racine = point visé au sol, bras sans collision ni retard,
+  caméra) ; plongée 55°, hauteur 15 à 70 m (35 m au départ), 5 m par cran de molette ; vitesse de déplacement
+  proportionnelle à la hauteur (~40 m/s à 35 m en vitesse normale ; lente ×0,6, rapide ×1,6) ; point visé borné aux
+  limites. Règles pures (`ClampFocus`, `GetPanSpeed`) pour les tests.
+- **`Player/HOLPlayerController`** : curseur visible, souris libre, pas de pion ; ajoute `IMC_Game`, fait apparaître la
+  caméra chez le joueur seul, la place au pied de l'emplacement du joueur dès que l'index de joueur est connu (journal
+  `Camera above the start of slot N`) ; flèches, molette, glisser au clic molette (le point saisi reste sous le
+  curseur), défilement au bord (1 % de la largeur ; position simulée par `hol.Camera.TestCursor "X Y"` pour les essais
+  par script) ; `hol.Camera.Report` écrit le point visé et la hauteur.
+- **Mode de jeu** : sur une carte à emplacements, contrôleur de partie et aucun pion ; sinon rien ne change.
+- **Réglages** : `CameraSpeed` et `bEdgeScroll` dans `UHOLGameUserSettings` (onglet Commandes branché à J1.3).
+- **Lancement depuis le menu** : routeur de Common UI en mode jeu **souris libre** (avant : capturée, ce qui cachait le
+  curseur).
+- `Tools/Editor/make_game_input.py` : `/Game/Input/IA_Camera_Left`, `_Right`, `_Up`, `_Down` (flèches), `_Zoom` (molette),
+  `_Drag` (clic molette), `IMC_Game`.
+- Au passage : `HOLFonts.cpp` passe aux accesseurs non dépréciés de la police composite (avertissement C4996 manqué en
+  F4 du chantier menu, le filtre de compilation ne montrait que les erreurs).

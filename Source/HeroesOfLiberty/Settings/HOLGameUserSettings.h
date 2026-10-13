@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Player/HOLRTSCamera.h"
 #include "HOLGameUserSettings.generated.h"
 
 /** Volumes of the Sound tab (D245). */
@@ -18,7 +19,7 @@ enum class EHOLVolume : uint8
 
 /**
  * Player settings (D245), saved in GameUserSettings.ini next to the engine's video settings, which it keeps: the four
- * volumes. The master volume acts on the audio device; music, effects and voice go through the sound classes and the
+ * volumes, the camera speed and edge scrolling (D253). The master volume acts on the audio device; music, effects and voice go through the sound classes and the
  * mix made by Tools/Editor/make_sound_classes.py (/Game/Audio), heard once sounds use those classes. The language is
  * the engine's own setting ([Internationalization] in the same file). Declared in DefaultEngine.ini
  * (GameUserSettingsClassName); in the main module because the engine creates it early, dedicated server included.
@@ -42,6 +43,11 @@ public:
 	/** Gives the volumes to the audio device (nothing without one: dedicated server, -nosound). */
 	void ApplySound();
 
+	EHOLCameraSpeed GetCameraSpeed() const { return static_cast<EHOLCameraSpeed>(FMath::Clamp<int32>(CameraSpeed, 0, 2)); }
+	void SetCameraSpeed(EHOLCameraSpeed Speed) { CameraSpeed = static_cast<int32>(Speed); }
+	bool IsEdgeScrollEnabled() const { return bEdgeScroll; }
+	void SetEdgeScrollEnabled(bool bEnabled) { bEdgeScroll = bEnabled; }
+
 private:
 	float& VolumeRef(EHOLVolume Volume);
 
@@ -56,6 +62,13 @@ private:
 
 	UPROPERTY(Config)
 	float VoiceVolume = 1.f;
+
+	/** EHOLCameraSpeed, saved as a number. */
+	UPROPERTY(Config)
+	int32 CameraSpeed = static_cast<int32>(EHOLCameraSpeed::Normal);
+
+	UPROPERTY(Config)
+	bool bEdgeScroll = true;
 
 	/** The mix is pushed once on the audio device, which outlives the maps. */
 	bool bMixPushed = false;

@@ -52,6 +52,8 @@ void UHOLGameUserSettings::SetToDefaults()
 {
 	Super::SetToDefaults();
 	MasterVolume = MusicVolume = EffectsVolume = VoiceVolume = 1.f;
+	CameraSpeed = static_cast<int32>(EHOLCameraSpeed::Normal);
+	bEdgeScroll = true;
 }
 
 void UHOLGameUserSettings::ApplyNonResolutionSettings()

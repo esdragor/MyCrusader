@@ -6,8 +6,10 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLStartSlot.h"
 #include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLPlayerController.h"
 
 AHeroesOfLibertyGameModeBase::AHeroesOfLibertyGameModeBase()
 {
@@ -23,6 +25,14 @@ void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FStrin
 	MatchConfig = bHasConfig ? Match->GetConfigOrDefault() : FHOLMatchConfig::MakeDefault();
 	UE_LOG(LogHOLMatch, Log, TEXT("Match on %s: %s configuration, %d occupied slots"), *MapName,
 		bHasConfig ? TEXT("given") : TEXT("default"), MatchConfig.GetNumOccupiedSlots());
+
+	// Before any player logs in: the classes are read when each controller is made.
+	if (AHOLStartSlot::WorldHasSlots(GetWorld()))
+	{
+		PlayerControllerClass = AHOLPlayerController::StaticClass();
+		DefaultPawnClass = nullptr;
+		UE_LOG(LogHOLMatch, Log, TEXT("Match map: RTS camera, no pawn"));
+	}
 }
 
 void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)

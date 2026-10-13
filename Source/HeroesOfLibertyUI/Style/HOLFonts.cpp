@@ -30,9 +30,10 @@ bool UHOLFonts::MakeCompositeFont(UFont* Font, const UFont* Base, const UFontFac
 	}
 	Font->Modify();
 	Font->FontCacheType = EFontCacheType::Runtime;
-	Font->CompositeFont = Base->CompositeFont;
+	FCompositeFont& Composite = Font->GetMutableInternalCompositeFont();
+	Composite = Base->GetInternalCompositeFont();
 
-	FCompositeSubFont& Japanese = Font->CompositeFont.SubTypefaces.AddDefaulted_GetRef();
+	FCompositeSubFont& Japanese = Composite.SubTypefaces.AddDefaulted_GetRef();
 	// Slate looks a face up by name, else by the attributes (bold, italic) of the base's face of that name: italic text
 	// gets the regular face.
 	Japanese.Typeface.Fonts.Add(FTypefaceEntry(TEXT("Regular")));

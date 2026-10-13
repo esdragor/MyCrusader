@@ -9,7 +9,8 @@ public class HeroesOfLiberty : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		// Code tree (folders created with their first file): Simulation (authoritative, server),
-		// Presentation (client view), Commands (order queue), StressTest (load tests, D190 / D218).
+		// Presentation (client view), Commands (order queue), StressTest (load tests, D190 / D218),
+		// Match (configuration, players), Map (start slots, bounds), Player (controller, RTS camera), Settings.
 		PublicIncludePaths.Add(ModuleDirectory);
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
@@ -37,6 +38,9 @@ public class HeroesOfLiberty : ModuleRules
 
 		// SlateCore: the stress test checks the game window state before asking for a capture (D190).
 		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore", "SlateCore", "Json", "JsonUtilities" });
+
+		// The match controller's camera keys (D255).
+		PrivateDependencyModuleNames.Add("EnhancedInput");
 
 		// Iris replication (D29, M2.5).
 		SetupIrisSupport(Target);
