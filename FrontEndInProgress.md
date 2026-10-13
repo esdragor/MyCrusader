@@ -447,3 +447,4 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
 - **GDD** : D250 et D251 ajoutées au journal (§ 21), paragraphe « Menu et réglages » du § 15 complété (manette, police) ;
   fins de ligne CRLF conservées.
 - Stress test non relancé : rien de global n'a changé (police et écrans du module d'interface seulement).
+- **Finition validée par l'utilisateur** (2026-10-13).
