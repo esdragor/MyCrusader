@@ -336,3 +336,4 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   avec un `GameUserSettings.ini` qui désigne le deuxième écran (`DisplayIndex=1`, modèle suivi
   `Tools/Tests/GameUserSettings.ini`) ; vérifié : la fenêtre reste sur le deuxième écran pendant 25 s. Bénéfice
   annexe : les tests ne réécrivent plus le `GameUserSettings.ini` de l'utilisateur.
+- **Essai de l'utilisateur après l'étape 5** (session de test sur le deuxième écran, `-saveddirsuffix=Tests`) : « tout est bon » — fenêtre restée sur le deuxième écran, langues et écrans validés.
