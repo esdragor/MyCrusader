@@ -35,8 +35,10 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    à l'essai (D232, `AnimToTexture` en repli), interpolation déjà en place (`UHOLInterpolatedISMProcessor`) ; garder S1
    et S2 au vert, et une vérification à 2 clients dès M2.5 (D216). **En cours : plan de M2, question par question**
    (voir « Plan de M2 ») ; **plan complet (D232 à D236)** ; étapes 1 à 3 faites (squelettes instanciés animés et
-   colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237) ; reste à mesurer machine libre
-   (classique contre Nanite) et à régler la foulée.
+   colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237), **mesuré machine libre le
+   2026-10-14** (classique 221-231 i/s et GPU 3,5 ms, Nanite 30-32 i/s et GPU ~31 ms : voir le journal) ; reste à
+   faire trancher **D235** (recommandation : classique) et le sens du seuil de 144 i/s (moyenne ou 1 % bas, le 1 % bas
+   est à 74-85 i/s), puis à régler la foulée (`WalkPlayRate`) avec l'utilisateur.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
    même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `hol.StressTest.CrossingAngle`,
    `hol.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -199,6 +201,56 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   dessins indirects pilotés par le GPU, dont le processeur ne connaît pas la taille.
 
 ## Journal d'avancement
+
+### 2026-10-14 — M2, étape 4 : mesures machine libre, classique contre Nanite (D235 à trancher), matériau mat (D265)
+
+- **D265 appliqué à M2** : `M_UnitPlayerColor` passe en spéculaire 0, rugosité 1 (0,7 avant), métal 0
+  (`Tools/Editor/make_skinned_mannequin.py`, nouvelle option `--material-only` pour ne refaire que le matériau, sans
+  re-générer les maillages ni leurs niveaux de détail). Lancé dans l'éditeur (`-ExecutePythonScript="… --material-only"
+  -unattended -saveddirsuffix=Tests`) : 27 s, matériau recompilé et enregistré, aucune erreur.
+- **Conditions** : machine libre — compilation du moteur 5.8.3 mise en pause pendant la série, session J2 sans
+  compilation ni lancement (accord entre sessions) ; restaient ouverts trois éditeurs inactifs d'un autre projet
+  (ProjectShiva, ~1,5 Go chacun, processeur à 28 % avant la série). Binaire du commit `5b6d80e` (J2.3), sans ombres
+  (D258), sans traitement (D265), matériau mat. Ligne `Display (D245)` identique partout : échelle 87 %, synchro 0,
+  limite 0, 1920 x 1080, qualité 2. 2 000 unités, mesure 10 s (200 pas) après 3 s, **deux passages** de chaque, en
+  alternance (série complète puis seconde série).
+- **Résultats** (pas de simulation moyen ; i/s moyen et 1 % bas ; fils en ms ; appels de dessin ; unités dans le cadre) :
+
+  | Scénario | Vue | Maillage | Pas (ms) | i/s (1 % bas) | Jeu / rendu / GPU (ms) | Dessins | Cadre | Recouvrements |
+  |---|---|---|---|---|---|---|---|---|
+  | S1 | large | classique | 2,23 / 2,21 ✅ | **226 / 226** (79 / 82) | 4,1 / 3,1 / **3,5** | 16 | 2 000 | 649 → 649 |
+  | S1 | large | Nanite | 1,97 / 2,02 ✅ | **30 / 30** ❌ (30) | 5,7 / 31,7 / **31,2** | 16 | 2 000 | 649 → 649 |
+  | S1 | jeu | classique | 2,36 / 2,33 ✅ | **225 / 223** (74 / 77) | 4,2 / 3,1 / **3,6** | 24 | 1 990 | 1 399 → 1 399 |
+  | S1 | jeu | Nanite | 2,12 / 2,20 ✅ | **30 / 30** ❌ (30) | 6,1 / 31,7 / **31,2** | 16 | 1 990 | 1 399 → 1 399 |
+  | S2 | large | classique | 2,15 / 2,26 ✅ | **230 / 225** (85 / 80) | 4,1 / 3,2 / **3,5** | 21-22 | 1 984 | 337 → 227 |
+  | S2 | large | Nanite | 2,00 / 2,08 ✅ | **31 / 30** ❌ (30) | 5,9 / 31,7 / **31,1** | 16 | 1 984 | 337 → 227 |
+  | S2 | jeu | classique | 2,36 / 2,47 ✅ | **231 / 221** (79 / 77) | 4,2 / 2,9 / **3,5** | 28 | 1 777 | 846 → 390 |
+  | S2 | jeu | Nanite | 2,23 / 2,11 ✅ | **32 / 32** ❌ (31) | 6,1 / 30,1 / **29,5** | 16 | 1 777 | 846 → 390 |
+
+  Les deux passages de chaque ligne donnent les **mêmes recouvrements** et le même nombre d'unités dans le cadre
+  (reproductibles, D230) ; les temps varient de quelques pour cent.
+- **Constat** : le chemin **Nanite** des squelettes instanciés coûte **~31 ms de GPU** pour 2 000 unités (30 i/s,
+  seuil de 144 i/s **raté d'un facteur 5**), contre **3,5 ms** en classique (225 i/s, marge de ~60 %). Ce n'est pas un
+  artefact : même écart aux deux passages, mêmes captures à l'œil (`Saved_Tests/Measures_M2/*.png`, rendus identiques),
+  aucune compilation de shaders dans le journal. Le pas de simulation est un peu plus bas en Nanite (~2,0-2,2 ms) parce
+  que le fil de jeu attend le GPU, pas parce que la simulation coûte moins. **D235 reste à trancher par
+  l'utilisateur** ; la mesure plaide pour le **classique**.
+- **Nouvelle référence de S2 (D236), classique** : vue large 2,15-2,26 ms et 225-230 i/s ; vue de jeu 2,36-2,47 ms et
+  221-231 i/s ; S1 2,21-2,36 ms. Remplace, pour la suite de M2, les références sans squelettes instanciés (S1 2,42 ms,
+  S2 2,48/2,58 ms, avec ombres) et les passages provisoires sous compilation (107-135 i/s).
+- **Point à signaler** : le **1 % bas** du classique est à **74-85 i/s**, sous le seuil de 144 i/s, que le rapport
+  compare à la **moyenne**. Le GDD ne dit pas si le seuil porte sur la moyenne ou sur le 1 % bas ; les pas les plus
+  longs (max 11-14 ms par passage, `Simulation … max`) coïncident probablement avec le pas où tourne le solveur
+  d'évitement (1 pas sur 6, ~8,6 ms en S2). À instruire avec l'utilisateur.
+- **Recouvrements** : la nuée de chaque vue n'a pas la même densité (rayon 45 m en vue large, 30 m en vue de jeu,
+  D236) : S1 649 en vue large contre 1 399 en vue de jeu ; S2 337 → 227 et 846 → 390. Pas comparables aux 102 → 68 de
+  l'ancienne nuée de S2.
+- **Commandes** : script de série (hors dépôt) qui lance, pour chaque ligne, `UnrealEditor.exe … /Game/Maps/StressTest
+  -game -windowed -ResX=1920 -ResY=1080 -WinX=3840 -WinY=0 -nosplash -saveddirsuffix=Tests
+  -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,hol.StressTest.View <Wide|Game>,hol.StressTest.UnitType <LightInfantry|LightInfantryNanite>,hol.StressTest <S1|S2> 2000 10 quit"`,
+  puis copie le journal, le rapport et la capture dans `Saved_Tests/Measures_M2/` (~26 s par passage).
+- **Prochaine étape** : faire trancher **D235** (recommandation : classique) et le sens du seuil de 144 i/s (moyenne
+  ou 1 % bas) ; régler `WalkPlayRate` à l'œil avec l'utilisateur ; puis clore M2.
 
 ### 2026-10-13 (suite) — Projet renommé en Heroes of Liberty (D248)
 

@@ -1,7 +1,7 @@
 """Creates the M2 trial assets: instanced skeletal mannequins and their animation providers (D232 to D235).
 
 From the project's UE4 mannequin (/Game/CloseCombat/Character/UE4Mannequin, the source of SM_Mannequin):
-  /Game/Units/Materials/M_UnitPlayerColor           flat material tinted by the instance's custom data 0-2 (D233)
+  /Game/Units/Materials/M_UnitPlayerColor           matte material tinted by the instance's custom data 0-2 (D233, D265)
   /Game/Units/Mannequin/SKM_Mannequin_Classic       copy with a generated LOD chain (D235)
   /Game/Units/Mannequin/SKM_Mannequin_Nanite        copy built as Nanite (D235)
   /Game/Units/Mannequin/TP_Mannequin_Classic        animation provider of each copy: sequence 0 = idle, 1 = walk (D234)
@@ -9,8 +9,11 @@ From the project's UE4 mannequin (/Game/CloseCombat/Character/UE4Mannequin, the 
 Re-running the script updates these assets in place (deleting a referenced asset can leave it loaded, and the
 creation that follows then fails); delete a mesh by hand to copy it again from the source.
 Run (the editor quits when done):
-  UnrealEditor.exe <project> -ExecutePythonScript=<this file>
+  UnrealEditor.exe <project> -ExecutePythonScript="<this file>"
+  UnrealEditor.exe <project> -ExecutePythonScript="<this file> --material-only"   (the material alone)
 """
+import sys
+
 import unreal
 
 SOURCE_MESH = "/Game/CloseCombat/Character/UE4Mannequin/Meshes/SK_Mannequin"
@@ -59,8 +62,12 @@ def make_material():
     # Light grey when no colour is written (a unit with no owner stays readable).
     color.set_editor_property("const_default_value", unreal.LinearColor(0.6, 0.6, 0.6, 1.0))
     lib.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    roughness = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -400, 200)
-    roughness.set_editor_property("r", 0.7)
+    # Matte (D265): no specular highlight, full roughness; metallic stays 0.
+    specular = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -400, 200)
+    specular.set_editor_property("r", 0.0)
+    lib.connect_material_property(specular, "", unreal.MaterialProperty.MP_SPECULAR)
+    roughness = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -400, 300)
+    roughness.set_editor_property("r", 1.0)
     lib.connect_material_property(roughness, "", unreal.MaterialProperty.MP_ROUGHNESS)
     lib.recompile_material(material)
     assets.save_loaded_asset(material)
@@ -141,6 +148,10 @@ def log_sequence(sequence):
 
 
 def main():
+    if "--material-only" in sys.argv[1:]:
+        make_material()
+        unreal.log("Player colour material updated")
+        return
     sequences = [load(path) for path in SEQUENCES]
     for sequence in sequences:
         log_sequence(sequence)
