@@ -18,8 +18,8 @@
 #include "Match/HOLPlayerColors.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
+#include "Widgets/HOLDropdown.h"
 #include "Widgets/HOLRootLayout.h"
-#include "Widgets/HOLRotator.h"
 
 #define LOCTEXT_NAMESPACE "HOLNewGameScreen"
 
@@ -36,13 +36,13 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	constexpr float OptionLabelWidth = 170.f;
 	constexpr float ClosedSwatchOpacity = 0.2f;
 
-	/** Rotator values in the order of EHOLSlotState. */
+	/** List values in the order of EHOLSlotState. */
 	TArray<FText> StateNames()
 	{
 		return { LOCTEXT("Closed", "Fermé"), LOCTEXT("Human", "Humain"), LOCTEXT("AI", "IA") };
 	}
 
-	/** Rotator values in the order of EHOLFaction (§ 13). */
+	/** List values in the order of EHOLFaction (§ 13). */
 	TArray<FText> FactionNames()
 	{
 		return {
@@ -73,6 +73,16 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 			Names.Add(HOLPlayerColors::GetColorName(Color));
 		}
 		return Names;
+	}
+
+	TArray<FLinearColor> ColorSwatches()
+	{
+		TArray<FLinearColor> Swatches;
+		for (int32 Color = 0; Color < HOLPlayerColors::NumColors; ++Color)
+		{
+			Swatches.Add(FLinearColor(HOLPlayerColors::GetColor(Color)));
+		}
+		return Swatches;
 	}
 
 	TArray<FText> OffOn()
@@ -150,7 +160,7 @@ void UHOLNewGameScreen::BuildLayout()
 
 	UHorizontalBox* MapLine = AddLine(0.f);
 	AddCell(MapLine, MakeText(LOCTEXT("Map", "Carte"), UHOLTextStyleBody::StaticClass()), NameWidth);
-	MapRotator = AddRotator(MapLine, TEXT("MapRotator"), MapNames, 0, StateWidth + FactionWidth + 8.f);
+	MapDropdown = AddDropdown(MapLine, TEXT("MapDropdown"), MapNames, 0, StateWidth + FactionWidth + 8.f);
 
 	UHorizontalBox* Headings = AddLine(16.f);
 	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass()), NameWidth);
@@ -169,25 +179,25 @@ void UHOLNewGameScreen::BuildLayout()
 		}
 		else
 		{
-			AddRotator(Row, SlotWidgetName(TEXT("SlotState"), SlotIndex), StateNames(), 0, StateWidth);
+			AddDropdown(Row, SlotWidgetName(TEXT("SlotState"), SlotIndex), StateNames(), 0, StateWidth);
 		}
-		AddRotator(Row, SlotWidgetName(TEXT("SlotFaction"), SlotIndex), FactionNames(), 0, FactionWidth);
+		AddDropdown(Row, SlotWidgetName(TEXT("SlotFaction"), SlotIndex), FactionNames(), 0, FactionWidth);
 		UImage* Swatch = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), SlotWidgetName(TEXT("SlotSwatch"), SlotIndex));
 		Swatch->SetDesiredSizeOverride(FVector2D(SwatchSize, SwatchSize));
 		AddCell(Row, Swatch, SwatchSize);
-		AddRotator(Row, SlotWidgetName(TEXT("SlotColor"), SlotIndex), ColorNames(), 0, ColorWidth);
-		AddRotator(Row, SlotWidgetName(TEXT("SlotTeam"), SlotIndex), TeamNames(), 0, TeamWidth);
+		AddDropdown(Row, SlotWidgetName(TEXT("SlotColor"), SlotIndex), ColorNames(), 0, ColorWidth)->SetOptionSwatches(ColorSwatches());
+		AddDropdown(Row, SlotWidgetName(TEXT("SlotTeam"), SlotIndex), TeamNames(), 0, TeamWidth);
 	}
 
 	UHorizontalBox* Options = AddLine(16.f);
 	AddCell(Options, MakeText(LOCTEXT("Mode", "Mode"), UHOLTextStyleBody::StaticClass()), NameWidth);
-	ModeRotator = AddRotator(Options, TEXT("ModeRotator"), { LOCTEXT("Standard", "Standard") }, 0, OptionWidth);
+	ModeDropdown = AddDropdown(Options, TEXT("ModeDropdown"), { LOCTEXT("Standard", "Standard") }, 0, OptionWidth);
 	AddCell(Options, MakeText(LOCTEXT("Nomad", "Nomade"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	NomadRotator = AddRotator(Options, TEXT("NomadRotator"), OffOn(), 0, ToggleWidth);
+	NomadDropdown = AddDropdown(Options, TEXT("NomadDropdown"), OffOn(), 0, ToggleWidth);
 	AddCell(Options, MakeText(LOCTEXT("Regicide", "Régicide"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	RegicideRotator = AddRotator(Options, TEXT("RegicideRotator"), OffOn(), 0, ToggleWidth);
+	RegicideDropdown = AddDropdown(Options, TEXT("RegicideDropdown"), OffOn(), 0, ToggleWidth);
 	AddCell(Options, MakeText(LOCTEXT("Catastrophe", "Catastrophe"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	CatastropheRotator = AddRotator(Options, TEXT("CatastropheRotator"), OffOn(), 0, ToggleWidth);
+	CatastropheDropdown = AddDropdown(Options, TEXT("CatastropheDropdown"), OffOn(), 0, ToggleWidth);
 
 	AddText(Column, TEXT("Note"), LOCTEXT("Greyed", "Grisé : pas encore dans le jeu (IA, factions, équipes, mode et options)."),
 		UHOLTextStyleNote::StaticClass(), 4.f);
@@ -205,28 +215,30 @@ void UHOLNewGameScreen::NativeOnInitialized()
 
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
 	{
-		SlotStates.Add(Cast<UHOLRotator>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotState"), SlotIndex))));
-		SlotFactions.Add(Cast<UHOLRotator>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotFaction"), SlotIndex))));
-		SlotColors.Add(Cast<UHOLRotator>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotColor"), SlotIndex))));
+		SlotStates.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotState"), SlotIndex))));
+		SlotFactions.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotFaction"), SlotIndex))));
+		SlotColors.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotColor"), SlotIndex))));
 		SlotSwatches.Add(Cast<UImage>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotSwatch"), SlotIndex))));
-		SlotTeams.Add(Cast<UHOLRotator>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotTeam"), SlotIndex))));
+		SlotTeams.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotTeam"), SlotIndex))));
 
 		if (SlotStates[SlotIndex])
 		{
-			SlotStates[SlotIndex]->OnRotatedEvent.AddWeakLambda(this, [this, SlotIndex](const int32 Value, bool)
+			// Greyed in the list (D240): AI players are not in the game yet.
+			SlotStates[SlotIndex]->SetOptionEnabled(static_cast<int32>(EHOLSlotState::AI), false);
+			SlotStates[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
 			{
-				HandleStateRotated(SlotIndex, Value);
+				HandleStateChosen(SlotIndex, Value);
 			});
 		}
 		if (SlotColors[SlotIndex])
 		{
-			SlotColors[SlotIndex]->OnRotatedEvent.AddWeakLambda(this, [this, SlotIndex](const int32 Value, bool)
+			SlotColors[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
 			{
-				HandleColorRotated(SlotIndex, Value);
+				HandleColorChosen(SlotIndex, Value);
 			});
 		}
 		// Greyed (D240): factions and teams are not in the game yet.
-		for (UHOLRotator* Greyed : { SlotFactions[SlotIndex].Get(), SlotTeams[SlotIndex].Get() })
+		for (UHOLDropdown* Greyed : { SlotFactions[SlotIndex].Get(), SlotTeams[SlotIndex].Get() })
 		{
 			if (Greyed)
 			{
@@ -234,16 +246,16 @@ void UHOLNewGameScreen::NativeOnInitialized()
 			}
 		}
 	}
-	for (UHOLRotator* Greyed : { ModeRotator.Get(), NomadRotator.Get(), RegicideRotator.Get(), CatastropheRotator.Get() })
+	for (UHOLDropdown* Greyed : { ModeDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
 		if (Greyed)
 		{
 			Greyed->SetIsEnabled(false);
 		}
 	}
-	if (MapRotator)
+	if (MapDropdown)
 	{
-		MapRotator->OnRotatedEvent.AddWeakLambda(this, [this](const int32 Value, bool) { HandleMapRotated(Value); });
+		MapDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleMapChosen);
 	}
 	if (LaunchButton)
 	{
@@ -268,9 +280,9 @@ UWidget* UHOLNewGameScreen::NativeGetDesiredFocusTarget() const
 void UHOLNewGameScreen::GetColumns(TArray<TArray<UWidget*>>& OutColumns) const
 {
 	TArray<UWidget*>& States = OutColumns.AddDefaulted_GetRef();
-	States.Add(MapRotator);
+	States.Add(MapDropdown);
 	States.Append(SlotStates);
-	States.Add(ModeRotator);
+	States.Add(ModeDropdown);
 	OutColumns.Emplace(SlotFactions);
 	OutColumns.Emplace(SlotColors);
 	OutColumns.Emplace(SlotTeams);
@@ -291,9 +303,9 @@ void UHOLNewGameScreen::Refresh()
 {
 	using namespace UE::HeroesOfLiberty::UI::NewGame;
 
-	if (MapRotator)
+	if (MapDropdown)
 	{
-		MapRotator->SetSelectedItem(FMath::Max(0, Maps.IndexOfByKey(Config.Map)));
+		MapDropdown->SetSelectedIndex(FMath::Max(0, Maps.IndexOfByKey(Config.Map)));
 	}
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
 	{
@@ -301,16 +313,20 @@ void UHOLNewGameScreen::Refresh()
 		const bool bOccupied = SlotConfig.State != EHOLSlotState::Closed;
 		if (SlotStates[SlotIndex])
 		{
-			SlotStates[SlotIndex]->SetSelectedItem(static_cast<int32>(SlotConfig.State));
+			SlotStates[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.State));
 		}
 		if (SlotFactions[SlotIndex])
 		{
-			SlotFactions[SlotIndex]->SetSelectedItem(static_cast<int32>(SlotConfig.Faction));
+			SlotFactions[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.Faction));
 		}
 		if (SlotColors[SlotIndex])
 		{
-			SlotColors[SlotIndex]->SetSelectedItem(SlotConfig.ColorIndex);
+			SlotColors[SlotIndex]->SetSelectedIndex(SlotConfig.ColorIndex);
 			SlotColors[SlotIndex]->SetIsEnabled(bOccupied);
+			for (int32 Color = 0; Color < HOLPlayerColors::NumColors; ++Color)
+			{
+				SlotColors[SlotIndex]->SetOptionEnabled(Color, !IsColorTaken(SlotIndex, Color));
+			}
 		}
 		if (SlotSwatches[SlotIndex])
 		{
@@ -320,24 +336,24 @@ void UHOLNewGameScreen::Refresh()
 		}
 		if (SlotTeams[SlotIndex])
 		{
-			SlotTeams[SlotIndex]->SetSelectedItem(SlotConfig.Team);
+			SlotTeams[SlotIndex]->SetSelectedIndex(SlotConfig.Team);
 		}
 	}
-	if (NomadRotator)
+	if (NomadDropdown)
 	{
-		NomadRotator->SetSelectedItem(Config.bNomad ? 1 : 0);
+		NomadDropdown->SetSelectedIndex(Config.bNomad ? 1 : 0);
 	}
-	if (RegicideRotator)
+	if (RegicideDropdown)
 	{
-		RegicideRotator->SetSelectedItem(Config.bRegicide ? 1 : 0);
+		RegicideDropdown->SetSelectedIndex(Config.bRegicide ? 1 : 0);
 	}
-	if (CatastropheRotator)
+	if (CatastropheDropdown)
 	{
-		CatastropheRotator->SetSelectedItem(Config.bCatastrophe ? 1 : 0);
+		CatastropheDropdown->SetSelectedIndex(Config.bCatastrophe ? 1 : 0);
 	}
 }
 
-void UHOLNewGameScreen::HandleMapRotated(const int32 Value)
+void UHOLNewGameScreen::HandleMapChosen(const int32 Value)
 {
 	if (Maps.IsValidIndex(Value))
 	{
@@ -346,33 +362,22 @@ void UHOLNewGameScreen::HandleMapRotated(const int32 Value)
 	Refresh();
 }
 
-void UHOLNewGameScreen::HandleStateRotated(const int32 SlotIndex, const int32 Value)
+void UHOLNewGameScreen::HandleStateChosen(const int32 SlotIndex, const int32 Value)
 {
-	using namespace UE::HeroesOfLiberty::UI::NewGame;
-
-	constexpr int32 NumStates = 3;
+	// AI is greyed in the list (D240): only Closed and Human come here.
 	FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
-	int32 State = Value;
-	if (State == static_cast<int32>(EHOLSlotState::AI))
-	{
-		// Greyed (D240): AI players are not in the game yet, the rotator passes over them.
-		State = (State + UHOLRotator::GetStep(static_cast<int32>(SlotConfig.State), Value, NumStates) + NumStates) % NumStates;
-	}
-	SlotConfig.State = static_cast<EHOLSlotState>(State);
+	SlotConfig.State = static_cast<EHOLSlotState>(Value);
 	if (SlotConfig.State != EHOLSlotState::Closed && IsColorTaken(SlotIndex, SlotConfig.ColorIndex))
 	{
-		SlotConfig.ColorIndex = FindFreeColor(SlotIndex, SlotConfig.ColorIndex, 1);
+		SlotConfig.ColorIndex = FindFreeColor(SlotIndex, SlotConfig.ColorIndex);
 	}
 	Refresh();
 }
 
-void UHOLNewGameScreen::HandleColorRotated(const int32 SlotIndex, const int32 Value)
+void UHOLNewGameScreen::HandleColorChosen(const int32 SlotIndex, const int32 Value)
 {
-	using namespace UE::HeroesOfLiberty::UI::NewGame;
-
-	FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
-	const int32 Step = UHOLRotator::GetStep(SlotConfig.ColorIndex, Value, HOLPlayerColors::NumColors);
-	SlotConfig.ColorIndex = FindFreeColor(SlotIndex, Value, Step);
+	// A colour held by another occupied slot is greyed in the list: this one is free.
+	Config.Slots[SlotIndex].ColorIndex = Value;
 	Refresh();
 }
 
@@ -388,12 +393,12 @@ bool UHOLNewGameScreen::IsColorTaken(const int32 SlotIndex, const int32 ColorInd
 	return false;
 }
 
-int32 UHOLNewGameScreen::FindFreeColor(const int32 SlotIndex, const int32 From, const int32 Step) const
+int32 UHOLNewGameScreen::FindFreeColor(const int32 SlotIndex, const int32 From) const
 {
 	constexpr int32 NumColors = HOLPlayerColors::NumColors;
 	for (int32 Tried = 0; Tried < NumColors; ++Tried)
 	{
-		const int32 Color = ((From + Tried * Step) % NumColors + NumColors) % NumColors;
+		const int32 Color = (From + Tried) % NumColors;
 		if (!IsColorTaken(SlotIndex, Color))
 		{
 			return Color;

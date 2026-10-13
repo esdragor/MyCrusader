@@ -18,6 +18,7 @@
 #include "Input/HOLUIInputData.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
+#include "Widgets/HOLDropdown.h"
 #include "Widgets/HOLRotator.h"
 
 #define LOCTEXT_NAMESPACE "HOLScreen"
@@ -277,6 +278,20 @@ UHOLRotator* UHOLScreen::AddRotator(UHorizontalBox* Row, const FName Name, const
 	BoxSlot->SetVerticalAlignment(VAlign_Center);
 	BoxSlot->SetPadding(FMargin(4.f, 0.f));
 	return Rotator;
+}
+
+UHOLDropdown* UHOLScreen::AddDropdown(UHorizontalBox* Row, const FName Name, const TArray<FText>& Options,
+	const int32 SelectedIndex, const float Width)
+{
+	USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	Box->SetWidthOverride(Width);
+	UHOLDropdown* Dropdown = WidgetTree->ConstructWidget<UHOLDropdown>(UHOLDropdown::StaticClass(), Name);
+	Dropdown->SetOptions(Options, SelectedIndex);
+	Box->SetContent(Dropdown);
+	UHorizontalBoxSlot* BoxSlot = Row->AddChildToHorizontalBox(Box);
+	BoxSlot->SetVerticalAlignment(VAlign_Center);
+	BoxSlot->SetPadding(FMargin(4.f, 0.f));
+	return Dropdown;
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -63,15 +63,29 @@ UHOLButtonStyleFocused::UHOLButtonStyleFocused()
 	NormalBase = FSlateRoundedBoxBrush(FLinearColor(0.06f, 0.06f, 0.08f, 0.9f), 4.f, HOLUIStyle::Accent, 2.f);
 }
 
-void HOLUIStyle::ShowFocus(UCommonButtonBase& Button)
+UHOLDropdownStyle::UHOLDropdownStyle()
 {
+	ButtonPadding = FMargin(0.f);
+}
+
+UHOLDropdownStyleFocused::UHOLDropdownStyleFocused()
+{
+	ButtonPadding = FMargin(0.f);
+}
+
+void HOLUIStyle::ShowFocus(UCommonButtonBase& Button, TSubclassOf<UCommonButtonStyle> FocusedStyle)
+{
+	if (!FocusedStyle)
+	{
+		FocusedStyle = UHOLButtonStyleFocused::StaticClass();
+	}
 	const TWeakObjectPtr<UCommonButtonBase> WeakButton(&Button);
 	const TSubclassOf<UCommonButtonStyle> OwnStyle = Button.GetStyle() ? Button.GetStyle()->GetClass() : nullptr;
-	Button.OnFocusReceived().AddLambda([WeakButton]()
+	Button.OnFocusReceived().AddLambda([WeakButton, FocusedStyle]()
 	{
 		if (WeakButton.IsValid())
 		{
-			WeakButton->SetStyle(UHOLButtonStyleFocused::StaticClass());
+			WeakButton->SetStyle(FocusedStyle);
 		}
 	});
 	Button.OnFocusLost().AddLambda([WeakButton, OwnStyle]()

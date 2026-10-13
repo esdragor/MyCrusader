@@ -20,8 +20,9 @@ namespace HOLUIStyle
 	const FLinearColor Panel(0.03f, 0.035f, 0.045f, 1.f);
 	const FLinearColor Veil(0.f, 0.f, 0.f, 0.6f);
 
-	/** Shows the keyboard focus on a button: the focused style while it has it, its own style otherwise. */
-	HEROESOFLIBERTYUI_API void ShowFocus(UCommonButtonBase& Button);
+	/** Shows the keyboard focus on a button: the focused style while it has it (UHOLButtonStyleFocused by default), its
+	 *  own style otherwise. */
+	HEROESOFLIBERTYUI_API void ShowFocus(UCommonButtonBase& Button, TSubclassOf<UCommonButtonStyle> FocusedStyle = nullptr);
 }
 
 /** Base of the text styles: the interface font (F_HOL) at a given size and typeface. */
@@ -102,4 +103,25 @@ class HEROESOFLIBERTYUI_API UHOLButtonStyleFocused : public UHOLButtonStyle
 
 public:
 	UHOLButtonStyleFocused();
+};
+
+/** A drop-down list (UHOLDropdown): the menu button without padding, which its content carries instead, so that the
+ *  list opens right under its edge. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLDropdownStyle : public UHOLButtonStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLDropdownStyle();
+};
+
+/** A drop-down list that has the keyboard focus. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLDropdownStyleFocused : public UHOLButtonStyleFocused
+{
+	GENERATED_BODY()
+
+public:
+	UHOLDropdownStyleFocused();
 };

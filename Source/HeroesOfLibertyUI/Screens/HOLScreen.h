@@ -9,6 +9,7 @@
 class UCommonTextBlock;
 class UHorizontalBox;
 class UHOLButton;
+class UHOLDropdown;
 class UHOLRotator;
 class UVerticalBox;
 
@@ -51,6 +52,8 @@ protected:
 		float LabelWidth = 360.f, float RotatorWidth = 380.f);
 	/** A rotator of the given width, added to a row. */
 	UHOLRotator* AddRotator(UHorizontalBox* Row, FName Name, const TArray<FText>& Options, int32 SelectedIndex, float Width);
+	/** A drop-down list of the given width, added to a row. */
+	UHOLDropdown* AddDropdown(UHorizontalBox* Row, FName Name, const TArray<FText>& Options, int32 SelectedIndex, float Width);
 
 	/** Closes this screen, as Back does. */
 	void Close() { DeactivateWidget(); }
