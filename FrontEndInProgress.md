@@ -24,19 +24,21 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
 | 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **fait** (2026-10-13) : titre, confirmation de sortie, Nouvelle partie avec lancement, Réglages ; captures et touches vérifiées |
 | 5. Localisation (français, anglais, japonais) | **fait** (2026-10-13) : 92 textes traduits en anglais et japonais (provisoires), bascule en direct vérifiée, captures dans les trois langues |
-| 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
+| 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | **fait** (2026-10-13) : 9 tests verts, `Tools/Tests/capture_screens.ps1` PASS en fr, en, ja |
 | 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
 
 ## Prochaine étape exacte
 
-**Étape 6 — vérification** (D246) :
-1. Tests d'automatisation à ajouter (module `HeroesOfLibertyUI` ou `HeroesOfLiberty`) : réglages enregistrés puis
-   relus (`UHOLGameUserSettings`, volumes) ; toutes les clés de texte présentes et traduites dans les trois langues
-   (lecture des archives ou des `.locres` de `Content/Localization/Game`) ; GameMode avec configuration lancée depuis
-   l'écran (chemin de `hol.UI.NewGame.Launch`).
-2. Script de bout en bout (`Tools/Tests/`) qui enchaîne les lancements de capture dans les trois langues (comme ci-dessous
-   « Commandes utiles ») et produit une planche par langue ; liste courte de finition à juger par l'utilisateur.
-3. **Toujours** lancer les fenêtres de test avec `-WinX=3940 -WinY=100 -saveddirsuffix=Tests` (voir « Commandes utiles »).
+**Étape 7 — clôture** :
+1. Reporter **D240 à D247 et D249** au journal du GDD (§ 21 ; D248 y est déjà), avec les renvois utiles (§ 15 pour
+   l'interface, § 16.6 pour la séparation simulation / présentation, D247). Vérifier d'abord que `GDD.md` n'a pas de
+   modification en cours d'une autre session (`git status`, `git diff GDD.md`).
+2. **Garde-fou du stress test** (D245) : le stress test doit forcer et écrire dans son rapport ce que le menu règle
+   (échelle de rendu, synchro verticale, limite d'i/s, qualité) ; fichier du chantier M2
+   (`StressTest/HOLStressTestSubsystem.cpp`) : changement minimal, compilé, S1 et S2 relancés.
+3. Lien `OwnerPlayer` (D233) ↔ index de joueur du `AHOLPlayerState` si M2 l'a posé ; sinon le noter pour M2.
+4. Commandes utiles reportées dans `ImplementationInProgress.md` ; mémoire du chantier mise à jour ; ce fichier archivé
+   ou marqué terminé.
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -47,9 +49,10 @@ Voir `ImplementationInProgress.md` (« Commandes utiles ») : compilation `Heroe
 test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversion des chemins `/Game/...`).
 
 ```powershell
-# Tests d'automatisation du projet, sans affichage (D246) ; résultat dans Saved/Logs/HeroesOfLiberty.log, lignes « Test Completed »
+# Tests d'automatisation du projet, sans affichage (D246) ; avec -saveddirsuffix=Tests le résultat est dans
+# Saved_Tests/Logs/HeroesOfLiberty.log, lignes « Test Completed » (9 tests : Match.*, Settings.Volumes, Localization.Translations)
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
-  -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -unattended -nullrhi -nosplash -nosound -log
+  -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -nosound -log
 
 # Lancements de TEST : toujours -saveddirsuffix=Tests et la fenêtre sur le DEUXIÈME écran de l'utilisateur.
 #  - -saveddirsuffix=Tests : dossier Saved_Tests/ à part (réglages, journaux, captures ; ignoré par git), les tests ne
@@ -64,6 +67,10 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
   -ExecCmds="hol.UI.Capture title 5 quit"
 # -> Saved_Tests/Screenshots/WindowsEditor/HOL/title.png ; journal Saved_Tests/Logs/HeroesOfLiberty.log
 # Langue imposée au lancement : -culture=fr|en|ja
+
+# Bout en bout (D246) : chaque écran capturé en fr, en, ja + partie lancée depuis l'écran, PASS / FAIL par langue,
+# planches Saved_Tests\Screenshots\WindowsEditor\HOL\e2e_<langue>.png (Pillow)
+powershell -ExecutionPolicy Bypass -File Tools\Tests\capture_screens.ps1
 
 # Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
 #   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"
@@ -337,3 +344,23 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   `Tools/Tests/GameUserSettings.ini`) ; vérifié : la fenêtre reste sur le deuxième écran pendant 25 s. Bénéfice
   annexe : les tests ne réécrivent plus le `GameUserSettings.ini` de l'utilisateur.
 - **Essai de l'utilisateur après l'étape 5** (session de test sur le deuxième écran, `-saveddirsuffix=Tests`) : « tout est bon » — fenêtre restée sur le deuxième écran, langues et écrans validés.
+
+### 2026-10-13 (suite) — Étape 6 faite : vérification
+
+- **Tests d'automatisation** (`Tests/HOLFrontEndTests.cpp`, 9/9 verts) :
+  `HeroesOfLiberty.Settings.Volumes` (défauts, bornes 0 à 1, aller-retour par un `.ini` temporaire, jamais le
+  `GameUserSettings.ini` du joueur) ; `HeroesOfLiberty.Localization.Translations` (chaque texte du manifeste a une
+  traduction non vide en anglais et japonais dans les archives, le français égal à la source, et le `.locres` compilé
+  de chaque langue donne exactement ce texte : attrape un texte ajouté au code sans traduction comme une compilation
+  oubliée). **Vu échouer** : traduction japonaise vidée dans l'archive → `ja: no translation for
+  HOLConfirmDialog,No ("Non")`, archive restaurée. Le GameMode lancé depuis l'écran est couvert par le bout en bout.
+- **Bout en bout** (`Tools/Tests/capture_screens.ps1` + `make_sheet.py`) : par langue, un lancement sur le deuxième
+  écran (`-saveddirsuffix=Tests`) ouvre chaque écran par le chemin de son bouton, capture titre, confirmation, Nouvelle
+  partie, quatre onglets, puis lance une partie depuis l'écran (`hol.UI.NewGame.Launch -`, `-` = ce que montre
+  l'écran) et capture la bataille ; contrôle : 8 captures, `Match on BattleMap: given configuration` au journal, aucune
+  erreur ni avertissement `LogHOLUI` / `LogHOLMatch`. Résultat : **PASS** en fr, en, ja ; planches relues.
+- Pièges : `python -I` ignore les paquets de l'utilisateur (Pillow) ; d'anciennes captures masqueraient une capture
+  manquante (effacées avant chaque lancement).
+- **Liste courte de finition pour l'utilisateur** : noms provisoires des factions et des cartes (nom de l'asset) ;
+  navigation manette entre colonnes de Nouvelle partie ; polices japonaises sans gras (police de secours du moteur) ;
+  « Affichage » montre le mode enregistré, pas celui imposé en ligne de commande.

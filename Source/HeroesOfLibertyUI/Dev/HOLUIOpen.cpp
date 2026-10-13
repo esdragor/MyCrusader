@@ -11,7 +11,8 @@
  * Opens a menu screen or launches a match by the same path as their buttons, for the scripted end-to-end checks
  * (D246).
  *   hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]   (Tab: 0 Video, 1 Sound, 2 Controls, 3 Language)
- *   hol.UI.NewGame.Launch [ConfigFile] [DelaySeconds=0]   (the file, JSON as for -MatchConfig=, is shown on the screen first)
+ *   hol.UI.NewGame.Launch [ConfigFile|-] [DelaySeconds=0]   (the file, JSON as for -MatchConfig=, is shown on the screen
+ *   first; - launches what the screen shows)
  */
 namespace UE::HeroesOfLiberty::UI
 {
@@ -71,7 +72,7 @@ namespace UE::HeroesOfLiberty::UI
 
 	void LaunchNewGame(const TArray<FString>& Args, UWorld* World)
 	{
-		const FString File = Args.Num() > 0 ? Args[0] : FString();
+		const FString File = Args.Num() > 0 && Args[0] != TEXT("-") ? Args[0] : FString();
 		const float Delay = Args.Num() > 1 ? FCString::Atof(*Args[1]) : 0.f;
 		AfterDelay(Delay, [File, WeakWorld = TWeakObjectPtr<UWorld>(World)]()
 		{
@@ -109,6 +110,6 @@ namespace UE::HeroesOfLiberty::UI
 
 	FAutoConsoleCommandWithWorldAndArgs LaunchCommand(
 		TEXT("hol.UI.NewGame.Launch"),
-		TEXT("hol.UI.NewGame.Launch [ConfigFile] [DelaySeconds=0]: launches a match from the New game screen, as its Launch button"),
+		TEXT("hol.UI.NewGame.Launch [ConfigFile|-] [DelaySeconds=0]: launches a match from the New game screen, as its Launch button"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&LaunchNewGame));
 }
