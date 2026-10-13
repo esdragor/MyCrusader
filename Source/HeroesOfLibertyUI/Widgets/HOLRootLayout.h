@@ -21,6 +21,9 @@ public:
 	UCommonActivatableWidget* PushMenu(TSubclassOf<UCommonActivatableWidget> ScreenClass);
 	UCommonActivatableWidget* PushModal(TSubclassOf<UCommonActivatableWidget> ScreenClass);
 
+	/** The screen on top of the menu layer. */
+	UCommonActivatableWidget* GetActiveMenu() const;
+
 	/** The layout of the given player, if it has one on screen. */
 	static UHOLRootLayout* Get(const APlayerController* PlayerController);
 

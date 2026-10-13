@@ -41,6 +41,11 @@ UCommonActivatableWidget* UHOLRootLayout::PushModal(const TSubclassOf<UCommonAct
 	return ModalLayer ? ModalLayer->AddWidget(ScreenClass) : nullptr;
 }
 
+UCommonActivatableWidget* UHOLRootLayout::GetActiveMenu() const
+{
+	return MenuLayer ? MenuLayer->GetActiveWidget() : nullptr;
+}
+
 UHOLRootLayout* UHOLRootLayout::Get(const APlayerController* PlayerController)
 {
 	const AHOLMenuPlayerController* MenuController = Cast<AHOLMenuPlayerController>(PlayerController);

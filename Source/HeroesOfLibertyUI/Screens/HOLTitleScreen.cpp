@@ -5,6 +5,7 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Screens/HOLConfirmDialog.h"
+#include "Screens/HOLNewGameScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
 #include "Widgets/HOLRootLayout.h"
@@ -32,8 +33,6 @@ void UHOLTitleScreen::NativeOnInitialized()
 	if (PlayButton)
 	{
 		PlayButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandlePlay);
-		// The New game screen comes next (front-end step 4, part 2).
-		PlayButton->SetIsEnabled(false);
 	}
 	if (SettingsButton)
 	{
@@ -54,6 +53,7 @@ UWidget* UHOLTitleScreen::NativeGetDesiredFocusTarget() const
 
 void UHOLTitleScreen::HandlePlay()
 {
+	UHOLNewGameScreen::Open(GetOwningPlayer());
 }
 
 void UHOLTitleScreen::HandleSettings()
