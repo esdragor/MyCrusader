@@ -25,14 +25,23 @@ vérifier sur S1 et S2.
 | D258 appliquée (aucune ombre) | **fait** (2026-10-13) |
 | J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | **fait** (2026-10-13) : tests 14/14, `check_camera.ps1` PASS à 2 et 8, menu PASS en fr / en / ja, essai de l'utilisateur validé (repères d'échelle) ; **S1 / S2 au repos reportés** (machine occupée) |
 | J1.5 Clôture : D253 à D257 au GDD | **fait** (2026-10-13) : D253 à D257 et paragraphe J1 au GDD, tests 14/14 sur la carte recréée, mémoire à jour |
+| J2 — plan (Q1 à Q5, D259 à D264) | **fait** (2026-10-13) |
+| J2.0 Essai Angelscript borné (D263) | à faire |
+| J2.1 Base des bâtiments : classe C++ répliquée, table des types depuis un CSV | à faire |
+| J2.2 Centre principal (script) : apparition sur les emplacements occupés, couleur, repères de J1 retirés | à faire |
+| J2.3 Sélection : canal, clic, Échap, cercle, survol | à faire |
+| J2.4 Vérification (D264) | à faire |
+| J2.5 Clôture : D259 à D264 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**J1 close.** Suite :
-1. Plan de **J2** (centre principal par joueur, à sa couleur, sélectionnable — D252), question par question ; le centre
-   principal remplace le repère de l'emplacement, et les repères d'échelle partent.
-2. **En attente, dès que la machine est au repos** (aucune compilation du moteur 5.8.3 ni autre `cl.exe`) : S1 et S2
-   courts, nouvelle référence sans ombres (D258) ; chiffres consignés ici et dans `ImplementationInProgress.md`.
+**Plan de J2 complet (D259 à D264).** Suite :
+1. **J2.0, essai Angelscript borné** (D263) : un script dans `Script/` (classe dérivée d'une classe C++ du projet), chargé
+   en jeu ; rechargement à chaud dans l'éditeur ; un test écrit en script lancé en ligne de commande ; une propriété
+   répliquée. Compte rendu ici ; si l'essai échoue, revenir vers l'utilisateur avant de continuer.
+2. J2.1 à J2.5 dans l'ordre du tableau.
+3. **En attente** : S1 et S2 au repos (machine occupée) ; moteur du serveur dédié à refaire depuis les sources de
+   Hazelight (`TMP.md`, à voir avec l'utilisateur).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -77,6 +86,16 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
 | Q4 | **Emplacements de départ** et limites de la carte. | **tranché (D256)** : acteurs posés (emplacement dérivé de `PlayerStart` avec son numéro, limites de la carte) sur une **nouvelle carte** faite par script |
 | Q5 | **Vérification**. | **tranché (D257)** : tests d'automatisation, bout en bout par script, S1 et S2 courts, essai de l'utilisateur |
 
+## Plan de J2 (à valider question par question)
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J2 : qui reçoit un centre, quelle sélection, quel retour à l'écran. | **tranché (D259)** : un centre par emplacement occupé, à sa couleur ; clic gauche sur un bâtiment, clic dans le vide ou Échap pour désélectionner ; cercle au sol et surlignage au survol ; pas de panneau |
+| Q2 | **Fabrication** du centre principal : acteur répliqué ou entité Mass, où vivent ses données (points de vie, propriétaire). | **tranché (D260)** : classe C++ commune répliquée, créée par le serveur ; propriétaire = numéro du joueur ; table des types de bâtiment depuis un CSV ; GAS en M5 |
+| Q3 | **Apparence** provisoire et **couleur du joueur**. | **tranché (D261)** : bloc et tour en volumes du moteur (~15 × 15 m, ~10 m), toit ou bandeau à la couleur du joueur, valeurs en table |
+| Q4 | **Sélection** : où vit l'état de sélection (client seul ou serveur), comment on vise (rayon sous le curseur), retour visuel. | **tranché (D262)** : client seul, rayon sur un canal de sélection, cercle au sol, survol par teinte du matériau |
+| Q5 | **Vérification**. | **tranché (D264)** : essai Angelscript d'abord, tests d'automatisation, bout en bout à 2 et 8 joueurs avec clics simulés, essai de l'utilisateur |
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -86,6 +105,12 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
 | D255 | 2026-10-13 | Technique — Fabrication de la caméra | **Caméra locale, sans pion** (choix de l'utilisateur, conforme à la recommandation) : le serveur ne crée aucun pion ; le contrôleur de partie `AHOLPlayerController` (C++, curseur visible) fait apparaître **chez le joueur seul** un acteur caméra (bras et caméra) qu'il pilote ; rien n'est envoyé au serveur quand la caméra bouge (ce que chacun reçoit dépendra du brouillard de guerre, M7, pas de sa caméra). Actions Enhanced Input de la partie (déplacement, zoom, glisser) dans un contexte `IMC_Game` créé par script, comme `IMC_UI` ; vitesse et défilement au bord enregistrés dans `UHOLGameUserSettings` ; le stress test place la caméra pour ses vues de mesure (D236, D237) par une fonction dédiée, hors des limites de jeu. Écartés : **pion caméra répliqué** (un pion par joueur sur le serveur, mouvements envoyés pour rien, à-coups possibles avec la latence) et **gestionnaire de caméra seul** (moins courant, sans composants réutilisables, plus dur à régler dans l'éditeur). |
 | D256 | 2026-10-13 | Technique — Emplacements de départ et limites de la carte | **Acteurs posés dans la carte, sur une nouvelle carte** (choix de l'utilisateur, conforme à la recommandation ; l'utilisateur autorise l'assistant à créer des cartes) : un acteur **emplacement de départ** dérivé du `PlayerStart` d'Unreal porte son numéro (0 à 7, D244 : l'emplacement est la position de départ) ; un acteur **limites de la carte** borne la caméra (puis la mini-carte et la construction). Une **carte de partie neuve**, créée par script comme `MainMenu` : sol plat d'environ 400 m × 400 m couvert par le navmesh, lumière et ciel, 8 emplacements symétriques sur un cercle dans un ordre qui écarte les premiers (en 1 contre 1, face à face), les limites ; elle devient la carte proposée par « Nouvelle partie ». `BattleMap` (carte d'ouverture de l'éditeur) et `StressTest` ne changent pas. Les vraies cartes, faites à la main, placeront ces acteurs de même. Écartés : **emplacements calculés par le code** (ne tient pas pour des cartes dessinées avec leur terrain et leurs ressources), **`PlayerStart` étiquetés** (numéro tapé sans contrôle, pas de place pour des données propres à l'emplacement) et **modifier `BattleMap`**. |
 | D257 | 2026-10-13 | Technique — Vérification de J1 | **Tests, bout en bout et stress tests** (choix de l'utilisateur, conforme à la recommandation) : tests d'automatisation sur la logique (caméra bornée aux limites, zoom entre ses bornes, emplacements symétriques et dans l'ordre, réglages vitesse et bord enregistrés puis relus) ; bout en bout par script sur le deuxième écran (partie lancée depuis le menu à 2 puis 8 joueurs, caméra au-dessus du bon emplacement, flèches et molette envoyées comme en D246, captures ; défilement au bord essayé avec une position de souris simulée dans le jeu, jamais en pilotant le bureau) ; S1 et S2 courts pour vérifier que les vues de mesure n'ont pas bougé ; puis une session d'essai de l'utilisateur. Écarté : essai manuel seul (rien de rejouable). |
+| D259 | 2026-10-13 | Technique — Périmètre de J2 | **Centre principal et sélection au clic** (choix de l'utilisateur, conforme à la recommandation) : au début de la partie, un **centre principal** sur chaque emplacement **occupé** (joueur humain ou IA ; rien sur un emplacement fermé), à la **couleur de son joueur** (D244) ; il remplace le repère de l'emplacement, et les repères d'échelle de J1 partent. **Clic gauche** sur un bâtiment : il est sélectionné, le sien comme celui d'un adversaire (pour le regarder) ; **clic dans le vide** ou **Échap** : plus rien de sélectionné. Retour visuel : **cercle au sol** à la couleur du propriétaire sous le bâtiment sélectionné, **surlignage léger au survol**. Pas de panneau ni de bloc de sélection (J3, HUD de D201). Écartés : **bloc de sélection provisoire du HUD** (anticipe un HUD redessiné en J3) et **sélection par cadre et multiple** (sans objet sans unités, prévue en M4). |
+| D260 | 2026-10-13 | Technique — Fabrication des bâtiments | **Acteur répliqué, valeurs en table, GAS plus tard** (choix de l'utilisateur, conforme à la recommandation ; les bâtiments sont des acteurs classiques, § 16.4) : une **classe C++ commune** à tous les bâtiments, **répliquée**, que le **serveur** fait apparaître au début de la partie sur chaque emplacement occupé (D259) ; son **propriétaire** est le numéro du joueur (un octet, comme `OwnerPlayer` des unités, D233) ; ses valeurs (nom, emprise, points de vie, maillage en référence souple) viennent d'une **table des types de bâtiment** fabriquée depuis un **CSV** par script, comme les unités (D221, D227). Le composant **GAS** et ses attributs viendront quand un bâtiment aura une capacité ou prendra des dégâts (M5). Écartés : **GAS dès J2** (code et réplication pour des valeurs que rien ne lit avant M5) et **un Blueprint par bâtiment** (valeurs dispersées au lieu d'une table à équilibrer). |
+| D261 | 2026-10-13 | Technique — Apparence provisoire du centre principal | **Bloc simple coloré** (choix de l'utilisateur, conforme à la recommandation) : volumes de base du moteur, un bloc et une tour centrale, d'environ **15 × 15 m au sol et 10 m de haut** (valeurs de la table, D260), avec un **toit ou bandeau à la couleur du joueur**, tirée de la même palette que les unités (`HOLPlayerColors`, D233, D244). Lisible de loin, rapide, évidemment provisoire ; le vrai modèle se branchera par la table. Écartés : **assemblage des pièces de château de FantasyVillage** (plus long, pièces qui s'emboîtent mal, toujours provisoire) et **modèle à télécharger sur Fab** (dépend d'un choix et d'une licence). |
+| D262 | 2026-10-13 | Technique — Sélection | **Chez le client seul, survol par teinte** (choix de l'utilisateur, conforme à la recommandation) : l'état de sélection vit dans le contrôleur du joueur ; le serveur ne le connaît pas, les futurs ordres lui porteront la liste visée par la file de commandes (comme AoE). On vise par un **rayon sous le curseur** sur un **canal de collision propre à la sélection**. Sélectionné : **cercle au sol** à la couleur du propriétaire ; survolé : le bâtiment **s'éclaircit** légèrement (paramètre du matériau, sans coût de rendu). Écartés : **contour en post-traitement** (passe de rendu en plus, à mesurer quand il s'étendra aux unités) et **sélection connue du serveur** (aller-retour réseau à chaque clic, sans usage tant que les alliés ne voient pas la sélection des autres). |
+| D263 | 2026-10-13 | Technique — Angelscript | **Hybride, dès J2** (question de l'utilisateur, choix conforme à la recommandation) : le moteur du projet est celui d'**Angelscript** (Hazelight), jamais évoqué jusqu'ici. Le **cœur reste en C++** (Mass : fragments, processeurs, simulation ; rendu ; réplication compacte ; menu et caméra déjà écrits ; classes de base) ; le **gameplay au-dessus passe en Angelscript à partir de J2** (bâtiments, sélection, règles de partie), sur des classes de base C++ (D260 : la classe commune des bâtiments est une base C++, le centre principal et la suite en script). Commence par un **essai borné** : script chargé, rechargement à chaud, tests d'automatisation, réplication d'une propriété. Motif : rechargement à chaud sans compilation (la cohabitation avec M2 interdit de compiler pendant ses compilations), GAS déjà relié par AngelscriptGAS (M5), même outil que l'autre projet de l'utilisateur. **Conséquence** : le moteur du **serveur dédié** (D231) doit être compilé depuis les **sources de Hazelight** (le build Epic 5.8.3 en cours n'a pas Angelscript). Écartés : **tout en C++** (pas de rechargement à chaud, compilations toujours soumises à la cohabitation) et **décider à M2.5** (code de J2 à réécrire). |
+| D264 | 2026-10-13 | Technique — Vérification de J2 | **Comme J1, plus l'essai Angelscript** (choix de l'utilisateur, conforme à la recommandation) : d'abord l'**essai borné d'Angelscript** (D263 : script chargé, rechargement à chaud, test écrit en script, propriété répliquée) ; puis **tests d'automatisation** (centres sur les seuls emplacements occupés, couleur de la palette du joueur, valeurs lues dans la table, rayon de sélection qui touche le centre) ; **bout en bout par script** à 2 et 8 joueurs (captures ; clic simulé sur son centre, sur un centre adverse, dans le vide, puis Échap) ; **essai de l'utilisateur**. S1 et S2 ne sont pas concernés (cartes sans emplacements, aucun centre). Écartés : **sans bout en bout** (sélection au clic non rejouable) et **essai de l'utilisateur seul**. Clôt le plan de J2 (D259 à D264). |
 
 ## Journal d'avancement
 
@@ -229,3 +254,42 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
 - Machine toujours occupée (compilation du moteur 5.8.3, autre projet) : S1 et S2 au repos reportés, sans bloquer J2.
 - **J1.5** : D253 à D257 reportées au journal du GDD (§ 21) et paragraphe « Parcours J1 » au § 16.6.
 - Tests d'automatisation relancés sur `Plain` recréée : **14/14 verts**. **J1 close.**
+
+### 2026-10-13 (suite) — J2 ouvert : plan en cinq questions
+
+- Repères du GDD : centre principal (§ 17, un par joueur au départ en mode Standard, sa destruction fait perdre) ;
+  sélection au § 9 (clic, multiple, cadre, double-clic) et D30 (groupes, `F4`…) ; HUD de D201 (sélection au centre de
+  la barre du bas : J3) ; couleur du joueur par instance (D233) et choix de couleur de la configuration (D244) ; M4 garde
+  la sélection d'unités et les ordres.
+
+### 2026-10-13 (suite) — J2, Q1 tranchée (D259)
+
+- Centre principal par emplacement occupé, à sa couleur ; sélection d'un bâtiment au clic, désélection au clic dans le
+  vide ou à Échap ; cercle au sol, surlignage au survol ; pas de panneau.
+
+### 2026-10-13 (suite) — J2, Q2 tranchée (D260)
+
+- Bâtiments : acteur C++ commun répliqué, créé par le serveur, propriétaire = numéro du joueur, table des types depuis
+  un CSV ; GAS en M5.
+
+### 2026-10-13 (suite) — J2, Q3 tranchée (D261)
+
+- Centre provisoire : bloc et tour en volumes du moteur, ~15 × 15 m et ~10 m, toit ou bandeau à la couleur du joueur.
+
+### 2026-10-13 (suite) — J2, Q4 tranchée (D262)
+
+- Sélection chez le client seul, rayon sur un canal de sélection, cercle au sol, survol par teinte.
+- Question de l'utilisateur avant Q5 : pourquoi Angelscript n'est-il pas évoqué ?
+- Constats : les moteurs `UE_5.8_AS_1` (projet) et `AS_2` sont le moteur **Angelscript** de Hazelight (plugins
+  Angelscript, AngelscriptEnhancedInput, AngelscriptGAS, activés par défaut ; dossier `Script/` du projet avec seulement
+  `Binds.Cache`) ; le GDD ne l'évoque nulle part, tous les plans supposaient du C++ (oubli de l'assistant). **Le moteur
+  5.8.3 en compilation pour le serveur dédié (D231, `C:\UE\src\UE_5.8.3_src`) est celui d'Epic, sans Angelscript**
+  (0 plugin) : du gameplay en Angelscript n'y tournerait pas.
+- **D263** : hybride dès J2 (cœur C++, gameplay en Angelscript), essai borné d'abord ; moteur du serveur à recompiler
+  depuis les sources de Hazelight (note ajoutée à `TMP.md`, la compilation Epic en cours n'est pas touchée).
+
+### 2026-10-13 (suite) — J2, Q5 tranchée (D264) : plan de J2 complet
+
+- Vérification : essai Angelscript d'abord, tests, bout en bout à 2 et 8 joueurs avec clics simulés, essai de
+  l'utilisateur. Ordre d'implémentation : J2.0 essai Angelscript, J2.1 base des bâtiments, J2.2 centre principal,
+  J2.3 sélection, J2.4 vérification, J2.5 clôture.
