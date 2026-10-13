@@ -22,24 +22,24 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
 | 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
-| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **en cours** : partie 1 faite (focus, sélecteur, titre, confirmation de sortie) ; parties 2 (Nouvelle partie) et 3 (Réglages) à faire |
+| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **en cours** : parties 1 (focus, sélecteur, titre, confirmation de sortie) et 2 (Nouvelle partie, lancement) faites ; partie 3 (Réglages) à faire |
 | 5. Localisation (français, anglais, japonais) | à faire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
 | 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
 
 ## Prochaine étape exacte
 
-**Étape 4, partie 2 — écran « Nouvelle partie »** (D244), dans `HeroesOfLibertyUI`, construit en code (D242) :
-1. Liste des cartes jouables en configuration (`DefaultGame.ini`, au moins `BattleMap`), sélecteur de carte.
-2. Grille de 8 emplacements : état (emplacement 0 = le joueur ; les autres Fermé / Humain, l'IA grisée), faction
-   (grisée), couleur (palette D233, nuancier, active, sans doublon entre emplacements occupés), équipe (grisée) ;
-   mode Standard et options Nomade, Régicide, Catastrophe grisés ; note « grisé : pas encore dans le jeu ».
-3. « Lancer » : remplit `UHOLMatchSubsystem` (graine tirée, `Normalize`) puis ouvre la carte ; « Retour ». Activer
-   « Jouer » sur l'écran titre. `hol.UI.Open NewGame` et `hol.UI.NewGame.Launch` (même chemin que le bouton, D246).
-4. Vérifier : captures, lancement de `BattleMap` depuis le menu (journal `LogHOLMatch` : « given configuration »,
-   emplacement et couleur), entrées du jeu rendues au monde une fois la carte ouverte (mode d'entrée de Common UI).
-Puis **partie 3 — Réglages** (D245) : `UGameUserSettings` dérivée, onglets Vidéo, Son, Commandes (grisé), Langue ;
-classes de son par script ; activer « Réglages » ; `hol.UI.Open Settings`.
+**Étape 4, partie 3 — écran « Réglages »** (D245), dans `HeroesOfLibertyUI`, construit en code (D242) :
+1. `UHOLGameUserSettings` (dérivée de `UGameUserSettings`, déclarée dans `DefaultEngine.ini`) : volumes général,
+   musique, effets, voix, enregistrés ; le général agit tout de suite, les trois autres par des classes de son et un
+   mélange créés par script d'éditeur (`Tools/Editor/`), actifs dès qu'il y aura des sons.
+2. Écran à onglets (rangée de boutons + `UWidgetSwitcher`) : **Vidéo** (résolution, mode fenêtre, synchro verticale,
+   limite d'i/s, qualité globale puis par groupe, échelle de rendu), **Son**, **Commandes** (grisé jusqu'à M4 :
+   remappage D30, vitesse de caméra, défilement au bord), **Langue** (français, anglais, japonais, bascule en direct et
+   enregistrée par la culture du moteur). Application immédiate de chaque changement.
+3. Activer « Réglages » sur l'écran titre ; `hol.UI.Open Settings`.
+4. Vérifier : captures de chaque onglet, réglage changé puis relu après redémarrage, S2 court (garde-fou D245 :
+   `GameUserSettings.ini` est relu par le stress test).
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -54,16 +54,19 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -unattended -nullrhi -nosplash -nosound -log
 
-# Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau
+# Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau ;
+# fenêtre sur le DEUXIÈME écran de l'utilisateur (-WinX=5900 -WinY=150), jamais sur l'écran principal
 & "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
-  -game -windowed -ResX=1600 -ResY=900 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
+  -game -windowed -ResX=1600 -ResY=900 -WinX=5900 -WinY=150 -nosplash -ExecCmds="hol.UI.Capture title 5 quit"
 # -> Saved/Screenshots/WindowsEditor/HOL/title.png
 
 # Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
 #   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"
 #   (Enter et Gamepad_FaceButton_Bottom ouvrent la confirmation de sortie ; Left puis Enter quittent :
 #   journal « LogHOLUI: Title screen: Quit »)
-# Ouvrir un écran par le même chemin que son bouton (D246) : hol.UI.Open Quit [Délai]
+# Ouvrir un écran par le même chemin que son bouton (D246) : hol.UI.Open NewGame|Quit [Délai]
+# Lancer une partie comme le bouton « Lancer », éventuellement depuis un fichier JSON (format de -MatchConfig=) :
+#   hol.UI.NewGame.Launch [Fichier] [Délai]  -> journal « LogHOLMatch: Match on BattleMap: given configuration »
 
 # Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
 #   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
@@ -226,3 +229,26 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
 - **`hol.UI.Open Quit`** (`Dev/HOLUIOpen.cpp`).
 - **Vérifié par touches et captures** (`p1_*.png`) : focus visible, accents affichés (« Réglages »), Entrée ouvre la
   confirmation, Échap et B la ferment et rendent le focus à Quitter, Gauche / croix gauche puis Entrée / A quittent.
+
+### 2026-10-13 (suite) — Étape 4, partie 2 : écran « Nouvelle partie » et lancement
+
+- **`UHOLNewGameScreen`** (D244) : carte (liste en configuration, `[/Script/HeroesOfLibertyUI.HOLNewGameScreen]
+  +Maps=` dans `DefaultGame.ini`, nom de l'asset en attendant de vrais noms), grille de 8 emplacements (joueur 1 =
+  « Vous » ; état Fermé / Humain, l'IA est sautée ; faction et équipe grisées ; nuancier + couleur active pour les
+  emplacements occupés), ligne mode Standard + Nomade, Régicide, Catastrophe grisés, note des grisés, Retour, Lancer.
+  L'écran garde sa `FHOLMatchConfig` (celle du dernier lancement à l'ouverture) ; deux emplacements occupés n'ont
+  jamais la même couleur (rotation qui saute les couleurs prises, couleur déplacée à l'ouverture d'un emplacement).
+  Widgets d'emplacement retrouvés par leur nom (`SlotColor3`…) pour qu'une mise en page Blueprint puisse les fournir.
+- **Lancer** : configuration normalisée, graine tirée de l'heure, `UHOLMatchSubsystem::SetConfig`, puis ouverture de
+  la carte. Avant, le routeur de Common UI est mis en mode **jeu** (souris capturée), comme une carte ouverte
+  directement : à la destruction des écrans, il efface sa configuration sans rendre la capture de la souris.
+- « Jouer » activé sur l'écran titre ; `hol.UI.Open NewGame`, `hol.UI.NewGame.Launch [Fichier] [Délai]`.
+- **Vérifié** (fenêtre sur le deuxième écran, à la demande de l'utilisateur) : Entrée sur Jouer ouvre l'écran (focus
+  sur Lancer) ; lancement depuis un fichier (emplacements 0 humain couleur 3, 1 humain couleur 5, 2 IA) →
+  `Match on BattleMap: given configuration, 3 occupied slots`, `holds slot 0 (colour 3)`, routeur `Menu → Game` ; la
+  bataille s'affiche (`BattleMap` signale éclairage et navmesh à reconstruire, sans rapport avec le menu).
+  Navigation : Haut depuis Lancer remonte la colonne Couleur, Tab passe d'une colonne à l'autre, ouvrir un emplacement
+  lui donne la première couleur libre (captures `p2_*.png`).
+- **Limite connue** (écrans provisoires, D242) : Gauche / Droite changent la valeur d'un sélecteur, donc ne font pas
+  changer de colonne ; au clavier Tab le fait, à la manette chaque colonne active s'atteint par Haut depuis le bouton
+  du dessous (Retour → Emplacement, Lancer → Couleur). À reprendre à la finition.
