@@ -39,9 +39,9 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    2026-10-14** (classique 221-231 i/s et GPU 3,5 ms, Nanite 30-32 i/s et GPU ~31 ms : voir le journal) ; reste à
    faire trancher **D235** (recommandation : classique) et le sens du seuil de 144 i/s (moyenne ou 1 % bas, le 1 % bas
    est à 74-85 i/s), puis à régler la foulée (`WalkPlayRate`) avec l'utilisateur.
-5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
-   même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `hol.StressTest.CrossingAngle`,
-   `hol.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
+5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités
+   (**instruit le 2026-10-14** : limite cinématique de la détection à 250 cm, levée à 600 cm hors face-à-face exact ;
+   reste à mesurer le coût et à choisir une piste) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
    d'unités immobiles.
 6. **M4 — à prévoir** : un ordre de groupe vers un **même point** ne verra jamais ses unités s'arrêter (tolérance
    d'arrivée de 50 cm pour toutes) : il faudra une formation ou une tolérance liée à la taille du groupe.
@@ -136,9 +136,16 @@ d'implémentation est consignée dans le journal ci-dessous, et les valeurs chif
   impulsion de pur **freinage** (−250 sur l'axe de marche, composante latérale inférieure à 0,1 cm/s²), dans une
   géométrie parfaitement symétrique. **À angle droit**, toute cadence ralentie échoue. Entre deux passages du solveur,
   le **pilotage ramène la vitesse** vers la vitesse voulue (trace : force de pilotage +42, +76, +105… cm/s² pendant
-  que l'impulsion freine), hypothèse 1 de la revue confirmée. Reste à instruire **avant M5** : décalages de phase de
-  l'ordre (0 à 5 pas), angles intermédiaires, effet d'une légère dissymétrie de face ; la trace par pas existe
-  (`hol.Units.AvoidanceTrace 1+2`).
+  que l'impulsion freine), hypothèse 1 de la revue confirmée.
+  **Instruit le 2026-10-14 (balayage des angles, voir le journal) : en grande partie expliqué.** Hors face-à-face,
+  l'échec est une **limite cinématique** : détection à 250 cm et accélération plafonnée à 250 cm/s² ne laissent pas le
+  temps de s'écarter quand les unités se rapprochent vite (frontière calculée vers 120° entre les trajectoires,
+  mesurée entre 90° et 135°). Avec une détection à **600 cm** et le solveur à chaque pas, **tous les angles de 30° à
+  120° passent** (92,6 à 104,7 cm) ; avec la cadence de D220, à partir de 90°. Reste **le face-à-face parfait**
+  (16,5 cm même à 600 cm et à chaque pas : symétrie, pur freinage) et le **coût** d'une détection plus longue (plus de
+  voisins par unité dans le solveur), à mesurer machine libre. Pistes, à proposer avant M5 : détection plus longue
+  (par type ou liée à la vitesse de rapprochement), plafond d'accélération latérale plus haut, règle de dissymétrie
+  pour le face-à-face (passer à droite). Décalages de phase de l'ordre : non instruits (pas de levier existant).
 - **Séparation des unités immobiles** : `MassStandingAvoidanceProcessor` pousse un **fantôme** et la conduite
   d'arrêt déplace le corps **en appliquant `MoveTarget.DesiredSpeed`** — que la naissance met à 0 pour une unité
   immobile : le fantôme s'écarte, le corps ne bouge pas (les recouvrements de S1, ~215 paires à la naissance,
@@ -201,6 +208,33 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   dessins indirects pilotés par le GPU, dont le processeur ne connaît pas la taille.
 
 ## Journal d'avancement
+
+### 2026-10-14 (suite) — Croisement instruit : limite cinématique de la détection, face-à-face à part
+
+- **Balayage des angles du scénario C** (2 unités, `hol.StressTest.CrossingAngle`, 0° = face-à-face), écart minimal en cm
+  pour une somme des rayons de 80 cm. Mesures de distances, comptées **en pas** : valables malgré la compilation du
+  moteur en parallèle (0° et 90° retombent exactement sur 3,5 et 6,1 cm de la mesure du 2026-10-12).
+
+  | Réglage | 0° | 15° | 30° | 45° | 60° | 75° | 90° | 105° | 120° | 135° | 150° |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | D220 + D230 (défaut, détection 250 cm) | 3,5 | 3,2 | 2,4 | 1,0 | 1,4 | 4,0 | 6,1 | 48,6 | 69,5 | **88,9** ✅ | **89,8** ✅ |
+  | solveur à chaque pas, détection 250 cm | 4,5 | 3,8 | 1,8 | 2,2 | 4,3 | 25,7 | 65,9 | **85,7** ✅ | **92,4** ✅ | **99,0** ✅ | **105,6** ✅ |
+  | défaut, détection 600 cm | 0,4 | — | 28,2 | — | 54,5 | — | **94,4** ✅ | — | **98,1** ✅ | — | — |
+  | solveur à chaque pas, détection 600 cm | 16,5 | — | **92,6** ✅ | — | **98,4** ✅ | — | **101,1** ✅ | — | **104,7** ✅ | — | — |
+
+- **Explication (hypothèse confirmée par la ligne à 600 cm)** : vitesse de rapprochement `2 × 300 × cos(angle / 2)` cm/s ;
+  pour s'écarter de 40 cm chacune à 250 cm/s² (plafond `MaxAcceleration`), il faut ~0,57 s, alors qu'entre la détection
+  (250 cm) et le contact (80 cm) il ne reste que 170 cm, soit 0,28 s de face. Le calcul place la frontière vers 120° ;
+  la mesure la place entre 90° et 105° au solveur à chaque pas (le freinage aide), entre 120° et 135° avec la cadence
+  de D220. À 600 cm, il reste 520 cm : tout passe au solveur à chaque pas, sauf le face-à-face exact.
+- **Face-à-face exact** : échoue dans tous les réglages (pur freinage, aucune composante latérale, voir la question
+  ouverte) ; problème distinct, de symétrie.
+- **Non mesuré** : le coût en temps de pas d'une détection à 600 cm sur S2 (plus de voisins par unité) — la machine
+  compile le moteur ; à faire machine libre avant toute proposition.
+- **Commande** : `-ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,hol.StressTest.CrossingAngle <angle>[,hol.Simulation.ThrottledStepInterval 1][,hol.Avoidance.ObstacleDetectionDistance 600],hol.StressTest C 2 10 quit"`
+  avec `-saveddirsuffix=Tests` ; journaux dans `Saved_Tests/Crossing/`.
+- **Prochaine étape (avant M5, avec l'utilisateur)** : choisir une piste (détection plus longue, plafond latéral,
+  règle de dissymétrie de face) après avoir mesuré son coût sur S2.
 
 ### 2026-10-14 — M2, étape 4 : mesures machine libre, classique contre Nanite (D235 à trancher), matériau mat (D265)
 
