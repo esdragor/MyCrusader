@@ -90,9 +90,9 @@ FText UHOLNewGameScreen::GetMapName(const FSoftObjectPath& Map)
 {
 	// One line per map of the list; the names are provisional, the GDD names no map yet.
 	const FString Asset = Map.GetAssetName();
-	if (Asset == TEXT("BattleMap"))
+	if (Asset == TEXT("Plain"))
 	{
-		return LOCTEXT("Map_BattleMap", "Champ de bataille");
+		return LOCTEXT("Map_Plain", "Plaine");
 	}
 	return FText::AsCultureInvariant(Asset);
 }

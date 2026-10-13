@@ -3,6 +3,10 @@
 #include "Player/HOLPlayerController.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Containers/Ticker.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/LocalPlayer.h"
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -28,7 +32,7 @@ namespace UE::HeroesOfLiberty::Player
 	TAutoConsoleVariable<FString> CVarTestCursor(
 		TEXT("hol.Camera.TestCursor"),
 		TEXT(""),
-		TEXT("Cursor position seen by the RTS camera's edge scrolling, \"X Y\" in 0..1 of the viewport (empty: the real cursor). For scripted checks (D257), never the desktop's cursor."));
+		TEXT("Cursor position seen by the RTS camera's edge scrolling, \"X Y\" in 0..1 of the viewport (empty or off: the real cursor). For scripted checks (D257), never the desktop's cursor."));
 
 	const UInputAction* LoadAction(const TCHAR* Name)
 	{
@@ -41,13 +45,17 @@ namespace UE::HeroesOfLiberty::Player
 		return Settings ? Settings->GetCameraSpeed() : EHOLCameraSpeed::Normal;
 	}
 
-	/** Logs where the local player's camera looks, for the scripted checks. */
-	FAutoConsoleCommandWithWorld ReportCommand(
-		TEXT("hol.Camera.Report"),
-		TEXT("Logs the focus and height of the local player's RTS camera"),
-		FConsoleCommandWithWorldDelegate::CreateLambda([](const UWorld* World)
+	/** Logs where the local players' cameras look, in every game world. */
+	void ReportCameras()
+	{
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
 		{
-			for (TActorIterator<AHOLPlayerController> It(const_cast<UWorld*>(World)); It; ++It)
+			UWorld* World = Context.World();
+			if (!World || !World->IsGameWorld())
+			{
+				continue;
+			}
+			for (TActorIterator<AHOLPlayerController> It(World); It; ++It)
 			{
 				if (const AHOLRTSCamera* Camera = It->IsLocalController() ? It->GetRTSCamera() : nullptr)
 				{
@@ -56,6 +64,21 @@ namespace UE::HeroesOfLiberty::Player
 						Camera->GetHeight());
 				}
 			}
+		}
+	}
+
+	/** For the scripted checks (D257): the delay lets a command given at start-up report once the match runs. */
+	FAutoConsoleCommand ReportCommand(
+		TEXT("hol.Camera.Report"),
+		TEXT("hol.Camera.Report [DelaySeconds=0]: logs the focus and height of the local player's RTS camera"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const float Delay = Args.Num() > 0 ? FCString::Atof(*Args[0]) : 0.f;
+			FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([](float)
+			{
+				ReportCameras();
+				return false;
+			}), Delay);
 		}));
 }
 
@@ -198,15 +221,18 @@ bool AHOLPlayerController::GetCursorFraction(FVector2D& OutFraction) const
 		OutFraction = FVector2D(FCString::Atod(*X), FCString::Atod(*Y));
 		return true;
 	}
+	// The real cursor scrolls only while the game window is the one in front, and only from inside it.
+	const ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	const FViewport* Viewport = LocalPlayer && LocalPlayer->ViewportClient ? LocalPlayer->ViewportClient->Viewport : nullptr;
 	int32 SizeX = 0, SizeY = 0;
 	float MouseX = 0.f, MouseY = 0.f;
 	GetViewportSize(SizeX, SizeY);
-	if (SizeX <= 0 || SizeY <= 0 || !GetMousePosition(MouseX, MouseY))
+	if (!Viewport || !Viewport->IsForegroundWindow() || SizeX <= 0 || SizeY <= 0 || !GetMousePosition(MouseX, MouseY))
 	{
 		return false;
 	}
 	OutFraction = FVector2D(MouseX / SizeX, MouseY / SizeY);
-	return true;
+	return OutFraction.X >= 0.0 && OutFraction.X <= 1.0 && OutFraction.Y >= 0.0 && OutFraction.Y <= 1.0;
 }
 
 FVector2D AHOLPlayerController::GetEdgeScroll() const

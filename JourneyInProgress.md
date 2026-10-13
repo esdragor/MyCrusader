@@ -20,16 +20,15 @@ vérifier sur S1 et S2.
 | D252 : ordre d'avancement par le parcours du joueur | **fait** (2026-10-13, au GDD § 16.6 et § 21) |
 | J1 — plan (Q1 à Q5, D253 à D257) | **fait** (2026-10-13) |
 | J1.1 Socle : contrôleur de partie, caméra locale, `IMC_Game`, réglages caméra | **fait** (2026-10-13) : compile, non essayé (pas encore de carte à emplacements) |
-| J1.2 Carte : emplacement de départ, limites, carte neuve par script, caméra au-dessus de son emplacement | à faire |
+| J1.2 Carte : emplacement de départ, limites, carte neuve par script, caméra au-dessus de son emplacement | **fait** (2026-10-13) : `Plain`, caméra essayée (placement, flèches, molette, bord, borne) |
 | J1.3 Réglages > Commandes : vitesse de caméra et défilement au bord dégrisés | à faire |
 | J1.4 Vérification (D257) : tests, bout en bout à 2 et 8 joueurs, S1 et S2 courts, essai de l'utilisateur | à faire |
 | J1.5 Clôture : D253 à D257 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**J1.2** : carte de partie neuve par script (sol ~400 m, navmesh, lumière, 8 emplacements symétriques, limites,
-repères visibles en attendant le centre principal de J2), proposée par « Nouvelle partie » avec un nom traduit ; essai
-de la caméra dessus. **Règle de cohabitation avec le stress test** : seule une carte qui a des
+**J1.3** : Réglages > Commandes, vitesse de la caméra et défilement au bord dégrisés et branchés sur
+`UHOLGameUserSettings` ; « Changer les touches » reste grisé. **Règle de cohabitation avec le stress test** : seule une carte qui a des
 emplacements de départ reçoit la caméra RTS ; une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par
 défaut, donc le stress test et son fichier (chantier M2) ne changent pas.
 
@@ -122,3 +121,22 @@ exacte, entrée de journal — avant de passer à la suivante.
   `_Drag` (clic molette), `IMC_Game`.
 - Au passage : `HOLFonts.cpp` passe aux accesseurs non dépréciés de la police composite (avertissement C4996 manqué en
   F4 du chantier menu, le filtre de compilation ne montrait que les erreurs).
+
+### 2026-10-13 (suite) — J1.2 fait : carte `Plain`, caméra essayée
+
+- **`Tools/Editor/create_match_map.py`** (éditeur complet) crée **`/Game/Maps/Plain`** : sol de 500 m (grille du moteur),
+  soleil, ciel et éclairage du ciel mobiles (rien à construire), brouillard, **limites 400 m** (`AHOLMapBounds`), volume
+  de navmesh sur les limites, **8 emplacements** sur un cercle de 150 m tournés vers le centre, dans l'ordre 180°, 0°,
+  270°, 90°, 225°, 45°, 315°, 135° (0 et 1 face à face, 0 à 3 aux quatre points cardinaux), un repère de 8 m × 2 m sur
+  chacun en attendant le centre principal de J2. Navmesh non vérifié (utile à J4).
+- `Plain` remplace `BattleMap` dans la liste de « Nouvelle partie » ; nom affiché « Plaine » / Plain / 平原 (94 textes).
+- **Essai** (deuxième écran, partie lancée depuis le menu) : `Match map: RTS camera, no pawn` ; caméra au-dessus de
+  l'emplacement 0 (-150 m, 0) ; flèche Haut tenue 1 s → +40 m, 3 s → +120 m (40 m/s attendus) ; trois crans de molette
+  → hauteur 35 → 50 m ; curseur simulé au bord droit 1 s → +40 m ; curseur au bord dès le départ → point visé arrêté à
+  la limite (+200 m). Captures `j1_*.png`.
+- **Correction** : le défilement au bord avec le vrai curseur n'agit que si la fenêtre de jeu est au premier plan et que
+  le curseur est dedans (au premier essai, le point visé avait dérivé de 23 cm, curseur hors de la fenêtre). Un premier
+  essai de la flèche n'avait avancé que de 6,6 m en 1 s, non reproduit ensuite (perte de focus probable de la fenêtre).
+- Outils d'essai : `hol.Delay <secondes> <commande>` (commande différée), `hol.Camera.Report [délai]`, `hol.UI.Key
+  <touche> [délai] [durée d'appui]`, `MouseScrollUp` / `MouseScrollDown` envoient un cran de molette au milieu de la
+  fenêtre de jeu.

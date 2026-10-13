@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-13 17:42\n"
-"PO-Revision-Date: 2026-10-13 17:42\n"
+"POT-Creation-Date: 2026-10-13 18:51\n"
+"PO-Revision-Date: 2026-10-13 18:51\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -286,16 +286,16 @@ msgctxt "HOLNewGameScreen,On"
 msgid "Oui"
 msgstr "オン"
 
-#. Key:	Map_BattleMap
+#. Key:	Map_Plain
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(95)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(95)
-msgctxt "HOLNewGameScreen,Map_BattleMap"
-msgid "Champ de bataille"
-msgstr "戦場"
+msgctxt "HOLNewGameScreen,Map_Plain"
+msgid "Plaine"
+msgstr "平原"
 
 #. Key:	ColumnHint
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLScreen.cpp(87)
-#: Source/HeroesOfLibertyUI/Screens/HOLScreen.cpp(87)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLScreen.cpp(104)
+#: Source/HeroesOfLibertyUI/Screens/HOLScreen.cpp(104)
 msgctxt "HOLScreen,ColumnHint"
 msgid "LB / RB : changer de colonne"
 msgstr "LB / RB：列を切り替え"

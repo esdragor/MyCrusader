@@ -35,7 +35,7 @@ TRANSLATIONS = {
     "HOLScreen,ColumnHint": ("LB / RB: change column", "LB / RB：列を切り替え"),
 
     "HOLNewGameScreen,Heading": ("New Game", "新しいゲーム"),
-    "HOLNewGameScreen,Map_BattleMap": ("Battlefield", "戦場"),
+    "HOLNewGameScreen,Map_Plain": ("Plain", "平原"),
     "HOLNewGameScreen,Map": ("Map", "マップ"),
     "HOLNewGameScreen,Player": ("Player", "プレイヤー"),
     "HOLNewGameScreen,Slot": ("Slot", "スロット"),
