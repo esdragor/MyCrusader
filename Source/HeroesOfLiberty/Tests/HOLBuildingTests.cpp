@@ -5,6 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "HOLCollision.h"
 #include "Match/HOLPlayerColors.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/AutomationTest.h"
@@ -87,6 +88,60 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 			CountPiecesOfColor(*Building, 5) + CountPiecesOfColor(*Building, 5, AHOLBuilding::BaseTopTone), 2);
 		Building->GetComponents(Pieces);
 		TestEqual(TEXT("without rebuilding the pieces"), Pieces.Num(), 4);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingSelectionTest, "HeroesOfLiberty.Buildings.Selection", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Buildings;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
+	if (TestNotNull(TEXT("building spawned"), Building))
+	{
+		Building->Setup(HOLBuildingTypeNames::MainCentre, 1, 4);
+
+		// D262: the selection ray, from the height of the camera, hits the building and nothing beside it.
+		FHitResult Hit;
+		const FVector Above(0.0, 0.0, 5000.0);
+		World->LineTraceSingleByChannel(Hit, Above, Above - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection);
+		TestTrue(TEXT("the selection ray hits the building"), Hit.GetActor() == Building);
+		const FVector Beside(2000.0, 0.0, 5000.0);
+		TestFalse(TEXT("nothing beside it"),
+			World->LineTraceSingleByChannel(Hit, Beside, Beside - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection));
+
+		TestNull(TEXT("no ring before the first selection"), Building->GetSelectionRing());
+		Building->SetSelected(true);
+		const UStaticMeshComponent* Ring = Building->GetSelectionRing();
+		if (TestNotNull(TEXT("a ring once selected"), Ring))
+		{
+			TestTrue(TEXT("shown"), Ring->IsVisible());
+			FLinearColor RingColor;
+			const UMaterialInstanceDynamic* RingMaterial = Cast<UMaterialInstanceDynamic>(Ring->GetMaterial(0));
+			TestTrue(TEXT("at the owner's colour"), RingMaterial
+				&& RingMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("Color")), RingColor)
+				&& RingColor.Equals(FLinearColor(HOLPlayerColors::GetLinearColor(4)), 1.e-4f));
+			const double Diameter = Ring->Bounds.BoxExtent.X * 2.0;
+			TestTrue(TEXT("around the footprint"), Diameter > FVector2D(1500.0, 1500.0).Size());
+			TestEqual(TEXT("no collision"), Ring->GetCollisionEnabled(), ECollisionEnabled::NoCollision);
+			Building->SetSelected(false);
+			TestFalse(TEXT("hidden once deselected"), Ring->IsVisible());
+		}
+
+		Building->SetHovered(true);
+		// The roof and the ring (made at the selection above) wear the owner's colour.
+		TestEqual(TEXT("hovered: the roof and the ring lighten"), CountPiecesOfColor(*Building, 4, AHOLBuilding::HoverBrightness), 2);
+		Building->SetHovered(false);
+		TestEqual(TEXT("back to their colour"), CountPiecesOfColor(*Building, 4), 2);
 	}
 
 	GEngine->DestroyWorldContext(World);

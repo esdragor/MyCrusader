@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HOLPlayerController.generated.h"
 
+class AHOLBuilding;
 class AHOLRTSCamera;
 class UInputAction;
 struct FInputActionValue;
@@ -14,6 +15,8 @@ struct FInputActionValue;
  * Controller of a player in a match map (a map with start slots, D255): no pawn, a visible cursor and, on the
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
+ * Selection (D262) lives here, on the player's machine only: a left click selects the building under the cursor (its
+ * own or another player's) or nothing, Escape selects nothing; the building under the cursor lightens.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
@@ -24,6 +27,17 @@ public:
 	AHOLPlayerController();
 
 	AHOLRTSCamera* GetRTSCamera() const { return RTSCamera; }
+
+	/** The building under a point of the viewport (0 to 1 each way), on the selection channel, or null. */
+	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
+	/** Selects the building under a point of the viewport, or nothing (a left click there). */
+	void SelectAt(const FVector2D& ViewportFraction);
+	/** Selects a building, or nothing (null). */
+	void SetSelection(AHOLBuilding* Building);
+	AHOLBuilding* GetSelection() const { return Selection.Get(); }
+	AHOLBuilding* GetHovered() const { return Hovered.Get(); }
+	/** "MainCentre of slot 3 (own)", "none": for the logs of the scripted checks. */
+	FString DescribeBuilding(const AHOLBuilding* Building) const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -42,6 +56,10 @@ private:
 	void HandleZoom(const FInputActionValue& Value);
 	void HandleDragStarted();
 	void HandleDragCompleted();
+	void HandleSelect();
+	void HandleDeselect();
+	/** The building under the cursor lightens (D262). */
+	void UpdateHover();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;
@@ -52,4 +70,7 @@ private:
 	bool bDragging = false;
 	/** Ground point under the cursor when the drag began: the drag keeps it under the cursor. */
 	FVector DragAnchor = FVector::ZeroVector;
+
+	TWeakObjectPtr<AHOLBuilding> Selection;
+	TWeakObjectPtr<AHOLBuilding> Hovered;
 };

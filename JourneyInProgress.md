@@ -29,19 +29,22 @@ vérifier sur S1 et S2.
 | J2.1 Base des bâtiments : classe C++ répliquée, table des types depuis un CSV | **fait** (2026-10-13) : compile sans avertissement, `Buildings.Types` et `Buildings.Appearance` verts (16 tests) |
 | J2.2 Centre principal : apparition sur les emplacements occupés, couleur, repères de J1 retirés | **fait** (2026-10-13) : centres sur les 8 emplacements, D265 appliquée, forme reprise (toit plat, couleur non éclairée, deux tons) ; tests 16/16, caméra PASS à 2 et 8, menu PASS fr / en / ja, S1 et S2 complets |
 | D266 (listes déroulantes dans « Nouvelle partie ») et D267 (vérification rapide `quick_check.ps1`) | **fait** (2026-10-13) : tests 16/16, `quick_check.ps1` PASS en ~30 s |
-| J2.3 Sélection : canal, clic, Échap, cercle, survol | à faire |
-| J2.4 Vérification (D264) | à faire |
+| J2.3 Sélection : canal, clic, Échap, cercle, survol | **fait** (2026-10-13) : tests 17/17 (`Buildings.Selection`), `quick_check.ps1` PASS avec la sélection à 2 et 8 joueurs (son centre, un centre adverse, le vide, Échap) |
+| J2.4 Vérification (D264) | partie scriptée **faite** (dans `quick_check.ps1`) ; **reste l'essai de l'utilisateur** |
 | J2.5 Clôture : D259 à D264 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**J2.2 faite.** Suite :
-1. **J2.3, sélection** (D262) : canal de collision propre à la sélection (pièces du bâtiment), clic gauche (rayon sous
-   le curseur) dans le contrôleur, clic dans le vide et Échap pour désélectionner (actions dans `IMC_Game` par
-   `make_game_input.py`), cercle au sol à la couleur du propriétaire sous le bâtiment sélectionné, survol : le bâtiment
-   s'éclaircit (paramètre des matériaux) ; commandes de jeu pour les essais par script (clic simulé à une position).
-2. J2.4 et J2.5 dans l'ordre du tableau.
-3. **En attente** : S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement (D258, D265).
+**J2.3 faite ; partie scriptée de J2.4 faite.** Suite :
+1. **Essai de l'utilisateur (J2.4, D264)** : lancer une partie à 2 joueurs (commande « session d'essai » ci-dessous,
+   Jouer, mettre le joueur 2 en Humain, Lancer) ; survoler son centre (il s'éclaircit), clic gauche (anneau à sa
+   couleur), flèches jusqu'au centre adverse (clic : il est sélectionné à son tour), clic dans le vide puis Échap
+   (plus rien). Recueillir ses remarques (taille et épaisseur de l'anneau, force de l'éclaircissement : valeurs dans
+   `AHOLBuilding`, `RingSizeRatio` 1,15, `HoverBrightness` 1,3, et `RING_HALF_WIDTH` 0,025 dans
+   `make_matte_materials.py`).
+2. **J2.5 Clôture** après l'essai : D259 à D264 au GDD (§ 21) et paragraphe J2 au § 16.6, comme J1.
+3. **En attente** : S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement (D258, D265) ; la session
+   serveur dédié (M2) prend ces mesures.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -392,3 +395,23 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
   l'ouverture montre l'écran précédent qui s'efface. Le premier passage disait PASS avec des captures fausses (il ne
   vérifiait que l'existence des fichiers) : d'où `waitui` et le contrôle de l'écran affiché à chaque capture.
 - Résultat : `quick_check.ps1` PASS en 30-33 s (jeu fini à ~30 s, tests en parallèle), planches `qc_fr/en/ja.png` relues.
+
+### 2026-10-13 (suite) — J2.3 sélection faite (D262)
+
+- **Canal** `Selection` (`ECC_GameTraceChannel1`, `Config/DefaultEngine.ini`, `HOLCollision.h`) : ignoré par défaut,
+  bloqué par les pièces des bâtiments seulement.
+- **Touches** : `IA_Select` (clic gauche) et `IA_Deselect` (Échap) dans `IMC_Game` (`make_game_input.py` relancé).
+- **Bâtiment** : `SetSelected` (anneau au sol fait à la première sélection : plan du moteur et `M_SelectionRing`, non
+  éclairé et masqué, fait par `make_matte_materials.py` ; diamètre 1,15 × la diagonale de l'emprise, ~1 m de large,
+  sans collision ni ombre), `SetHovered` (toutes les couleurs × 1,3, anneau compris).
+- **Contrôleur** : état de sélection local (`TWeakObjectPtr`), rayon sous le curseur sur le canal, survol à chaque
+  image, journal `Selection: MainCentre of slot N (own|other)` ou `none`. Commandes d'essai : `hol.Select.Click X Y`,
+  `hol.Select.Report`, `hol.Camera.FocusSlot N`.
+- Vérifications : test `Buildings.Selection` (rayon qui touche le centre et rien à côté, anneau absent avant la
+  première sélection puis à la couleur du propriétaire, autour de l'emprise, sans collision, caché une fois
+  désélectionné, éclaircissement au survol) ; `quick_check.ps1` étendu (son centre, un centre adverse, le vide, Échap,
+  à 2 et 8 joueurs, captures `sel_*`) : PASS, 17/17, ~38 s.
+- Constat : à la première partie après la création de `M_SelectionRing`, l'anneau s'affiche un instant en carré gris
+  (« Shaders en préparation » : compilation à la demande du mode éditeur), puis normalement.
+- Coordination : une session « serveur dédié » (M2) attend une machine au calme pour ses mesures S1 / S2 ; prévenue
+  quand ce chantier a fini de compiler et de lancer le jeu.

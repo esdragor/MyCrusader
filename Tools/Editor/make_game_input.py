@@ -1,7 +1,9 @@
-"""Creates the input assets of a match (D255, J1), with Enhanced Input:
+"""Creates the input assets of a match (D255 in J1, D262 in J2), with Enhanced Input:
   /Game/Input/IA_Camera_Left, _Right, _Up, _Down   move the RTS camera (arrows; ZQSD belongs to the command grid, D30)
   /Game/Input/IA_Camera_Zoom                       zoom (mouse wheel)
   /Game/Input/IA_Camera_Drag                       drag the ground (middle mouse button)
+  /Game/Input/IA_Select                            select what is under the cursor, or nothing (left click, D262)
+  /Game/Input/IA_Deselect                          select nothing (Escape, D262)
   /Game/Input/IMC_Game                             their keys, added by the match controller (AHOLPlayerController)
 
 Re-running the script refreshes the mappings of IMC_Game and keeps the actions.
@@ -20,6 +22,8 @@ ACTIONS = {
     "IA_Camera_Down": (BOOLEAN, ["Down"]),
     "IA_Camera_Zoom": (AXIS1D, ["MouseWheelAxis"]),
     "IA_Camera_Drag": (BOOLEAN, ["MiddleMouseButton"]),
+    "IA_Select": (BOOLEAN, ["LeftMouseButton"]),
+    "IA_Deselect": (BOOLEAN, ["Escape"]),
 }
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()

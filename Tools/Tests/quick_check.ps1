@@ -1,6 +1,6 @@
 # Quick check of the project (D267): the automation tests run in their own process WHILE a single game launch goes
 # through the menu in French, English and Japanese (language switched live), a drop-down list, then a match at 2 and
-# at 8 players with the camera checks of D257. Every step starts as soon as the one before is done (hol.Test.Run), no
+# at 8 players with the camera checks of D257 and the selection checks of D264 (own centre, another's, void, Escape). Every step starts as soon as the one before is done (hol.Test.Run), no
 # fixed delays. Replaced capture_screens.ps1, check_camera.ps1 and the automation command for everyday checks; the
 # short stress tests S1 and S2 stay apart (only when units, the simulation or rendering change, and at a closure).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
@@ -79,8 +79,8 @@ function Get-SlotStart([int] $Slot) {
 }
 # The local player takes the first human slot (D243): 2 players -> slot 0; 8 players, seven AI first -> slot 7.
 $Cases = @(
-    @{ Name = "2p"; Slot = 0; States = @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") },
-    @{ Name = "8p"; Slot = 7; States = @("AI", "AI", "AI", "AI", "AI", "AI", "AI", "Human") }
+    @{ Name = "2p"; Slot = 0; Other = 1; States = @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") },
+    @{ Name = "8p"; Slot = 7; Other = 0; States = @("AI", "AI", "AI", "AI", "AI", "AI", "AI", "Human") }
 )
 if ($Parts -contains "camera") {
     $First = $true
@@ -98,6 +98,16 @@ if ($Parts -contains "camera") {
         Key Up "1.0"
         Step "hol.Camera.Report", "hol.UI.Key MouseScrollDown 0", "wait 0.5", "hol.Camera.Report"
         Step "hol.Camera.TestCursor 0.999 0.5", "wait 1", "hol.Camera.TestCursor 0.5 0.5", "hol.Camera.Report", "capture ${Name}_end"
+        # Selection (D262, D264), the cursor in the middle of the screen: its own centre, another player's, the void,
+        # then Escape; a report says what is selected, whether its ring shows and what the cursor is over.
+        Step "mark selection $($Case.Name)", "hol.Camera.FocusSlot $($Case.Slot)", "frames 3", "hol.Select.Click 0.5 0.5",
+            "waitlog Selection: MainCentre of slot $($Case.Slot) (own)", "frames 2", "hol.Select.Report", "capture sel_$($Case.Name)_own"
+        Step "hol.Camera.FocusSlot $($Case.Other)", "frames 3", "hol.Select.Click 0.5 0.5",
+            "waitlog Selection: MainCentre of slot $($Case.Other) (other)", "frames 2", "hol.Select.Report", "capture sel_$($Case.Name)_other"
+        Step "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Report"
+        Step "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre"
+        Key Escape
+        Step "waitlog Selection: none", "hol.Select.Report"
     }
 }
 Step "mark end", "quit"
@@ -106,6 +116,7 @@ $Steps | Set-Content -Encoding utf8 $SequenceFile
 
 Get-ChildItem $Shots -Filter "qc_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "cam_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "sel_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $GameArguments = "`"$UProject`" -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 $GameTimedOut = -not $GameProcess.WaitForExit(300000)
@@ -140,7 +151,7 @@ $SequenceChecks["game launch ended by itself"] = -not $GameTimedOut
 $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
     newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
-    start = "no interface"; end = "no interface" }
+    start = "no interface"; end = "no interface"; own = "no interface"; other = "no interface" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -189,6 +200,19 @@ if ($Parts -contains "camera") {
             $Checks["right edge 1 s: +Y (got $([Math]::Round($Edge / 100)) m)"] = ($Edge -ge 3000) -and ($Edge -le 6500)
         }
         $Checks["captures"] = (Test-Path (Join-Path $Shots "cam_$($Case.Name)_start.png")) -and (Test-Path (Join-Path $Shots "cam_$($Case.Name)_end.png"))
+
+        # Selection: four reports, in the order of the steps.
+        $Selection = @((Get-Section "selection $($Case.Name)") | Select-String -Pattern "Selection report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Own = "MainCentre of slot $($Case.Slot) (own)"
+        $Other = "MainCentre of slot $($Case.Other) (other)"
+        $Checks["selection: four reports ($($Selection.Count))"] = $Selection.Count -eq 4
+        if ($Selection.Count -eq 4) {
+            $Checks["click on its centre: selected, ring, hovered ($($Selection[0]))"] = $Selection[0] -eq "selected $Own, ring shown, hovered $Own"
+            $Checks["click on another player's centre ($($Selection[1]))"] = $Selection[1] -eq "selected $Other, ring shown, hovered $Other"
+            $Checks["click in the void: nothing ($($Selection[2]))"] = $Selection[2] -like "selected none, ring none, *"
+            $Checks["Escape: nothing ($($Selection[3]))"] = $Selection[3] -like "selected none, ring none, *"
+        }
+        $Checks["selection captures"] = (Test-Path (Join-Path $Shots "sel_$($Case.Name)_own.png")) -and (Test-Path (Join-Path $Shots "sel_$($Case.Name)_other.png"))
         $AllOk = (Report "camera $($Case.Name)" $Checks) -and $AllOk
     }
 }
