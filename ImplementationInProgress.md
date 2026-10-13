@@ -31,9 +31,10 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 3b. ~~Suites de la revue (`ReviewM1Followup.md`)~~ → **fait (2026-10-12)** : maintien de l'impulsion corrigé et vérifié,
    A/B reproductible de D230 (gain net confirmé), spawn robuste, scénario C paramétré par angle, drapeau « solveur actif »
    posé par le pas, stress test avancé par pas. Détail dans le journal.
-4. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations cuites en textures
-   (`AnimToTexture`), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1 et S2 au vert, et
-   une vérification à 2 clients dès M2.5 (D216).
+4. **M2 — rendu**, au-dessus du cœur de M1 : instances par type et par joueur, animations en **squelettes instanciés**
+   à l'essai (D232, `AnimToTexture` en repli), interpolation déjà en place (`UMCInterpolatedISMProcessor`) ; garder S1
+   et S2 au vert, et une vérification à 2 clients dès M2.5 (D216). **En cours : plan de M2, question par question**
+   (voir « Plan de M2 ») ; **plan complet (D232 à D236)**, prochaine étape : implémenter dans l'ordre du plan.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités (de face,
    même le solveur à chaque pas échoue ; à angle droit, tout solveur ralenti échoue — outillage prêt : `mc.StressTest.CrossingAngle`,
    `mc.Units.AvoidanceTrace`) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -50,6 +51,43 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 | D228 | **Mouvement de l'ordre** « va à cet endroit ». | **tranché** : cible directe (`FMassMoveTargetFragment`, action `Move`, arrivée détectée par nous), destination ramenée au navmesh **à l'émission** (une requête de point par ordre) ; chemins à M3 |
 | D229 | **S2 du stress test**. | **tranché** : S2 passe aux ordres de M1, l'errance d'essai est supprimée, le scénario est requalifié (M3 le rendra exigeant) |
 | D230 | **Cadence de l'évitement** (revue du 2026-10-12). | **tranché** : cadence de D220 conservée **et** impulsion d'évitement ré-appliquée exactement 5 pas, sans décroissance, bornée à `MaxAcceleration` ; gain confirmé par un A/B reproductible (102 → 68 contre 173 → 120) ; croisement consigné comme limitation **non expliquée** ; graine fixée, stress test par pas |
+
+## Plan de M2 (à valider question par question)
+
+Rappel de l'étape (§ 16.6) : *« rendu : instances par type et par joueur, animations, interpolation »*, mesuré sur S2.
+État de départ : une instance **statique** par type (`SM_Mannequin`, `UMassMovableVisualizationTrait` posé par la
+fabrique), interpolée entre deux pas (`UMCInterpolatedISMProcessor`) ; ni joueur propriétaire, ni animation.
+Numérotation : **D231 est réservé** au serveur dédié (relais `TMP.md`, autre chantier), d'où D232 pour M2.
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Technique d'animation** : squelettes instanciés natifs de Mass, textures d'animation (`AnimToTexture`) ou acteurs près de la caméra ? | **tranché (D232)** : squelettes instanciés à l'essai borné, `AnimToTexture` en repli |
+| Q2 | **Joueur propriétaire** : où vit l'appartenance d'une unité, et comment le rendu la montre (couleur par instance, ou instances séparées par joueur). | **tranché (D233)** : octet `OwnerPlayer` dans `FMCUnitStateFragment`, couleur par valeur d'instance et palette côté client, un composant par type |
+| Q3 | **Animations jouées** : lesquelles en M2 (repos, marche), qui les choisit (état d'activité, vitesse), décalage pour désynchroniser. | **tranché (D234)** : repos et marche, choisis par le client d'après la vitesse affichée (seuil ~15 % avec hystérésis), fondu ~0,2 s, départ décalé au hasard, vitesse de lecture par type |
+| Q4 | **Ressources de test et niveaux de détail** : mannequin du pack Third Person, Nanite ou non, maillages par distance. | **tranché (D235)** : mannequin squelettique en deux copies (Nanite, classique), deux lignes de la table des types, chemin tranché sur mesure |
+| Q5 | **Mesure** : ce que le stress test montre et mesure pour « 2 000 unités à l'écran » (caméra, scénario). | **tranché (D236)** : deux vues fixes (large rapprochée ~70 m sur une nuée S2 de ~45 m ; vue de jeu à hauteur de RTS sur une nuée de ~30 m), triangles et appels de dessin au rapport, S2 requalifié |
+
+**Plan complet (D232 à D236).** Ordre d'implémentation proposé :
+1. **Ressources** : importer le mannequin squelettique et ses animations de repos et de marche (`TP_ThirdPerson.upack`) par
+   script d'éditeur (`Tools/Editor/`), en deux copies (Nanite, classique avec niveaux de détail générés) ; créer le
+   fournisseur d'animation (`UAnimSequenceTransformProviderData`, repos et marche) et le matériau teinté par une valeur
+   d'instance (palette de joueurs).
+2. **Table des types** : colonnes squelette (maillage, fournisseur, indices des séquences, vitesse de référence de la
+   marche) ; deux lignes d'essai (Nanite, classique) dans `Tools/Data/UnitTypes.csv`.
+3. **Code** : `OwnerPlayer` dans `FMCUnitStateFragment` (D233) ; la fabrique pose `SkinnedMeshInstanceDesc` et la
+   représentation `SkinnedMeshInstance` ; variante interpolée de `UMassUpdateSkinnedMeshProcessor` (comme
+   `UMCInterpolatedISMProcessor`) ; processeur de présentation qui choisit l'animation d'après la vitesse affichée
+   (D234) et écrit la couleur du joueur ; le stress test répartit les unités entre joueurs.
+4. **Stress test** : nuée de S2 à ~45 m, deux vues (D236), triangles et appels de dessin au rapport ; nouvelle référence
+   de S1/S2, puis mesures Nanite contre classique et décision consignée (D235). Bascule sur `AnimToTexture` si
+   144 i/s ne tient pas (D232).
+
+Repères vérifiés dans le moteur 5.8.2 (`C:/UE/UE_5.8_AS_1`) : type de représentation `EMassRepresentationType::SkinnedMeshInstance`,
+`FSkinnedMeshInstanceVisualizationDesc` (dans `UMassVisualizationTrait::SkinnedMeshInstanceDesc`, un fournisseur de
+transformations par maillage), `UMassUpdateSkinnedMeshProcessor`, `UMassConsumeInstancedSkinnedMeshAnimationProcessor`
+(consomme les `FAnimSequenceTrackAutoPlayData` : séquence, position, vitesse, durée de fondu, boucle) ;
+`UInstancedSkinnedMeshComponent` fonctionne avec ou sans Nanite (`ShouldNaniteSkin`). Ressources : `TP_ThirdPerson.upack`
+(`FeaturePacks/`) contient le mannequin squelettique et ses animations.
 
 ## Plan de M1 (à valider question par question)
 
@@ -148,6 +186,31 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   phases du test) doit avancer **par pas**, jamais par image.
 
 ## Journal d'avancement
+
+### 2026-10-13 — Plan de M2 ouvert : technique d'animation tranchée (D232)
+
+- **Constat dans les sources du moteur** : Mass 5.8 sait représenter une entité en **maillage squelettique instancié**
+  (`SkinnedMeshInstance`), animé par le GPU depuis des séquences, en plus des instances statiques ; mode absent quand le
+  § 16.4 a été écrit (« textures de sommets, ou équivalent »).
+- **D232** : squelettes instanciés natifs de Mass dans un **essai borné** (2 000 unités en marche et à l'arrêt sur S2),
+  bascule sur `AnimToTexture` si 144 i/s ne tient pas ou si la technologie résiste trop. Consigné au GDD (§ 16.4,
+  § 16.6, journal).
+- **D233** : propriétaire = octet `OwnerPlayer` de `FMCUnitStateFragment` ; couleur par valeur d'instance, palette choisie
+  par le client, un seul composant d'instances par type. Consigné au GDD (§ 16.6, journal).
+- **D234** : repos et marche, choisis par le client d'après la vitesse affichée ; fondu, départ décalé, vitesse de
+  lecture par type. **Contrainte vérifiée dans le moteur** : `UMassVisualizationComponent` (`MassVisualizationComponent.cpp`,
+  vers la ligne 768) n'appelle `SetAutoPlayData` que si l'index de séquence change ; la vitesse de lecture ne suit donc pas
+  la vitesse instantanée sans chemin à nous (`UAnimSequenceTransformProviderDataInstance::SetPlayRate`). Les fondus de
+  `BlendSpace` existent dans le fournisseur, mais le chemin de Mass ne les utilise pas.
+- **D235** : mannequin squelettique du pack Third Person en deux copies (Nanite, classique), deux lignes de
+  `Tools/Data/UnitTypes.csv`, comparaison par `mc.StressTest.UnitType` ; chemin tranché sur mesure, remesuré avec les
+  modèles définitifs. Le projet n'a aucun réglage de rendu dans `DefaultEngine.ini` (réglages par défaut du moteur ;
+  le log montre Lumen et Nanite actifs).
+- **D236** (précision de l'utilisateur : caméra rapprochée) : vue large à ~70 m sur une nuée S2 resserrée à ~45 m,
+  vue de jeu à hauteur de RTS sur ~30 m ; triangles et appels de dessin au rapport ; S2 requalifié.
+- **Plan de M2 complet (D232 à D236).** Prochaine étape : implémenter dans l'ordre du plan (ressources, table, code,
+  stress test). **Aucune mesure tant que la compilation du moteur 5.8.3 tourne** (autre chantier, `TMP.md`) : elle
+  occupe les cœurs et fausserait les temps.
 
 ### 2026-10-12 (suite) — Suites de la revue de M1 (`ReviewM1Followup.md`) : maintien corrigé, A/B reproductible de D230
 
