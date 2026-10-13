@@ -16,10 +16,11 @@ namespace UE::HeroesOfLiberty::Tests::Buildings
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
-	/** Pieces of a building painted with the given player colour. */
-	int32 CountPiecesOfColor(const AHOLBuilding& Building, const int32 ColorIndex)
+	/** Pieces of a building painted with the given player colour, at the given tone. */
+	int32 CountPiecesOfColor(const AHOLBuilding& Building, const int32 ColorIndex, const float Tone = 1.f)
 	{
-		const FLinearColor Expected(HOLPlayerColors::GetLinearColor(ColorIndex));
+		FLinearColor Expected = FLinearColor(HOLPlayerColors::GetLinearColor(ColorIndex)) * Tone;
+		Expected.A = 1.f;
 		TArray<UStaticMeshComponent*> Pieces;
 		Building.GetComponents(Pieces);
 		int32 Count = 0;
@@ -79,9 +80,11 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("footprint 15 x 15 m"), Box.GetSize().Equals(FVector(1500.0, 1500.0, 1000.0), 1.0));
 		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-750.0, -750.0, 0.0), 1.0));
 
-		TestEqual(TEXT("two pieces at the owner's colour"), CountPiecesOfColor(*Building, 3), 2);
+		TestEqual(TEXT("the roof at the owner's colour"), CountPiecesOfColor(*Building, 3), 1);
+		TestEqual(TEXT("the top of the block at a darker tone of it"), CountPiecesOfColor(*Building, 3, AHOLBuilding::BaseTopTone), 1);
 		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 5);
-		TestEqual(TEXT("a new colour repaints them"), CountPiecesOfColor(*Building, 5), 2);
+		TestEqual(TEXT("a new colour repaints them"),
+			CountPiecesOfColor(*Building, 5) + CountPiecesOfColor(*Building, 5, AHOLBuilding::BaseTopTone), 2);
 		Building->GetComponents(Pieces);
 		TestEqual(TEXT("without rebuilding the pieces"), Pieces.Num(), 4);
 	}

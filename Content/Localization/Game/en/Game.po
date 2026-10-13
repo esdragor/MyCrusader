@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-13 19:07\n"
-"PO-Revision-Date: 2026-10-13 19:07\n"
+"POT-Creation-Date: 2026-10-13 20:31\n"
+"PO-Revision-Date: 2026-10-13 20:31\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -301,330 +301,316 @@ msgid "LB / RB : changer de colonne"
 msgstr "LB / RB: change column"
 
 #. Key:	Unlimited
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(178)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(178)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(179)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(179)
 msgctxt "HOLSettingsScreen,Unlimited"
 msgid "Illimitée"
 msgstr "Unlimited"
 
 #. Key:	Heading
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(192)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(192)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(193)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(193)
 msgctxt "HOLSettingsScreen,Heading"
 msgid "Réglages"
 msgstr "Settings"
 
 #. Key:	Video
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(195)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(195)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(196)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(196)
 msgctxt "HOLSettingsScreen,Video"
 msgid "Vidéo"
 msgstr "Video"
 
 #. Key:	Sound
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(196)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(196)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(197)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(197)
 msgctxt "HOLSettingsScreen,Sound"
 msgid "Son"
 msgstr "Sound"
 
 #. Key:	Controls
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(197)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(197)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(198)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(198)
 msgctxt "HOLSettingsScreen,Controls"
 msgid "Commandes"
 msgstr "Controls"
 
 #. Key:	Language
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(198)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(198)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(199)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(199)
 msgctxt "HOLSettingsScreen,Language"
 msgid "Langue"
 msgstr "Language"
 
 #. Key:	Resolution
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(219)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(219)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(220)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(220)
 msgctxt "HOLSettingsScreen,Resolution"
 msgid "Résolution"
 msgstr "Resolution"
 
 #. Key:	WindowMode
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(220)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(220)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
 msgctxt "HOLSettingsScreen,WindowMode"
 msgid "Affichage"
 msgstr "Display Mode"
 
 #. Key:	Fullscreen
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(222)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(222)
 msgctxt "HOLSettingsScreen,Fullscreen"
 msgid "Plein écran"
 msgstr "Fullscreen"
 
 #. Key:	Windowed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(222)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(222)
 msgctxt "HOLSettingsScreen,Windowed"
 msgid "Fenêtre"
 msgstr "Windowed"
 
 #. Key:	WindowedFullscreen
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(221)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(222)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(222)
 msgctxt "HOLSettingsScreen,WindowedFullscreen"
 msgid "Fenêtre sans bordure"
 msgstr "Borderless Window"
 
 #. Key:	VSync
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(223)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(223)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(224)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(224)
 msgctxt "HOLSettingsScreen,VSync"
 msgid "Synchronisation verticale"
 msgstr "Vertical Sync"
 
 #. Key:	FrameRate
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(224)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(224)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(225)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(225)
 msgctxt "HOLSettingsScreen,FrameRate"
 msgid "Images par seconde"
 msgstr "Frame Rate Limit"
 
 #. Key:	RenderScale
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(225)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(225)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(226)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(226)
 msgctxt "HOLSettingsScreen,RenderScale"
 msgid "Échelle de rendu"
 msgstr "Render Scale"
 
 #. Key:	Custom
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(227)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(227)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(228)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(228)
 msgctxt "HOLSettingsScreen,Custom"
 msgid "Personnalisée"
 msgstr "Custom"
 
 #. Key:	Quality
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(228)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(228)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(229)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(229)
 msgctxt "HOLSettingsScreen,Quality"
 msgid "Qualité"
 msgstr "Quality"
 
 #. Key:	SoundNote
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(242)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(242)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(243)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(243)
 msgctxt "HOLSettingsScreen,SoundNote"
 msgid "Musique, effets et voix agiront dès que le jeu aura des sons."
 msgstr "Music, effects and voice will apply once the game has sounds."
 
 #. Key:	Remap
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(247)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(247)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(248)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(248)
 msgctxt "HOLSettingsScreen,Remap"
 msgid "Changer les touches"
 msgstr "Rebind Keys"
 
 #. Key:	CameraSpeed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(248)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(248)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
 msgctxt "HOLSettingsScreen,CameraSpeed"
 msgid "Vitesse de la caméra"
 msgstr "Camera Speed"
 
 #. Key:	Fast
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
 msgctxt "HOLSettingsScreen,Fast"
 msgid "Rapide"
 msgstr "Fast"
 
 #. Key:	Normal
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
 msgctxt "HOLSettingsScreen,Normal"
 msgid "Normale"
 msgstr "Normal"
 
 #. Key:	Slow
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(249)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
 msgctxt "HOLSettingsScreen,Slow"
 msgid "Lente"
 msgstr "Slow"
 
 #. Key:	EdgeScroll
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(250)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(251)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(251)
 msgctxt "HOLSettingsScreen,EdgeScroll"
 msgid "Défilement au bord de l'écran"
 msgstr "Edge Scrolling"
 
 #. Key:	RemapNote
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(251)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(251)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(252)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(252)
 msgctxt "HOLSettingsScreen,RemapNote"
 msgid "Changer les touches : pas encore dans le jeu."
 msgstr "Rebind keys: not in the game yet."
 
 #. Key:	LanguageLabel
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(254)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(254)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(255)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(255)
 msgctxt "HOLSettingsScreen,LanguageLabel"
 msgid "Langue"
 msgstr "Language"
 
 #. Key:	Back
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(257)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(257)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(258)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(258)
 msgctxt "HOLSettingsScreen,Back"
 msgid "Retour"
 msgstr "Back"
 
 #. Key:	ViewDistance
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(44)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(44)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(47)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(47)
 msgctxt "HOLSettingsScreen,ViewDistance"
 msgid "Distance d'affichage"
 msgstr "View Distance"
 
 #. Key:	AntiAliasing
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(45)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(45)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(48)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(48)
 msgctxt "HOLSettingsScreen,AntiAliasing"
 msgid "Anticrénelage"
 msgstr "Anti-Aliasing"
 
 #. Key:	GlobalIllumination
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(46)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(46)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(49)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(49)
 msgctxt "HOLSettingsScreen,GlobalIllumination"
 msgid "Éclairage global"
 msgstr "Global Illumination"
 
-#. Key:	Reflection
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(47)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(47)
-msgctxt "HOLSettingsScreen,Reflection"
-msgid "Réflexions"
-msgstr "Reflections"
-
-#. Key:	PostProcessing
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(48)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(48)
-msgctxt "HOLSettingsScreen,PostProcessing"
-msgid "Post-traitement"
-msgstr "Post-Processing"
-
 #. Key:	Texture
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(49)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(49)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(50)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(50)
 msgctxt "HOLSettingsScreen,Texture"
 msgid "Textures"
 msgstr "Textures"
 
 #. Key:	VisualEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(50)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(50)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(51)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(51)
 msgctxt "HOLSettingsScreen,VisualEffect"
 msgid "Effets"
 msgstr "Effects"
 
 #. Key:	Foliage
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(51)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(51)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(52)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(52)
 msgctxt "HOLSettingsScreen,Foliage"
 msgid "Végétation"
 msgstr "Foliage"
 
 #. Key:	Shading
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(52)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(52)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(53)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(53)
 msgctxt "HOLSettingsScreen,Shading"
 msgid "Matériaux"
 msgstr "Shading"
 
 #. Key:	Landscape
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(53)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(53)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(54)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(54)
 msgctxt "HOLSettingsScreen,Landscape"
 msgid "Terrain"
 msgstr "Terrain"
 
 #. Key:	Epic
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
 msgctxt "HOLSettingsScreen,Epic"
 msgid "Épique"
 msgstr "Epic"
 
 #. Key:	High
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
 msgctxt "HOLSettingsScreen,High"
 msgid "Haute"
 msgstr "High"
 
 #. Key:	Low
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
 msgctxt "HOLSettingsScreen,Low"
 msgid "Basse"
 msgstr "Low"
 
 #. Key:	Medium
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(59)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
 msgctxt "HOLSettingsScreen,Medium"
 msgid "Moyenne"
 msgstr "Medium"
 
 #. Key:	Cinematic
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(60)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(61)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(61)
 msgctxt "HOLSettingsScreen,Cinematic"
 msgid "Cinématique"
 msgstr "Cinematic"
 
 #. Key:	EffectsVolume
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
 msgctxt "HOLSettingsScreen,EffectsVolume"
 msgid "Effets"
 msgstr "Effects"
 
 #. Key:	MasterVolume
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
 msgctxt "HOLSettingsScreen,MasterVolume"
 msgid "Volume général"
 msgstr "Master Volume"
 
 #. Key:	MusicVolume
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(66)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
 msgctxt "HOLSettingsScreen,MusicVolume"
 msgid "Musique"
 msgstr "Music"
 
 #. Key:	VoiceVolume
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(67)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(68)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(68)
 msgctxt "HOLSettingsScreen,VoiceVolume"
 msgid "Voix"
 msgstr "Voice"
 
 #. Key:	Off
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(80)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(80)
 msgctxt "HOLSettingsScreen,Off"
 msgid "Non"
 msgstr "Off"
 
 #. Key:	On
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
-#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(79)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(80)
+#: Source/HeroesOfLibertyUI/Screens/HOLSettingsScreen.cpp(80)
 msgctxt "HOLSettingsScreen,On"
 msgid "Oui"
 msgstr "On"

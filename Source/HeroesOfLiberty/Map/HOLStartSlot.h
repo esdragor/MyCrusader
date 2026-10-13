@@ -21,6 +21,9 @@ public:
 
 	int32 GetSlotIndex() const { return SlotIndex; }
 
+	/** The point on the ground at the foot of the start (its capsule stands on the ground). */
+	FVector GetGroundLocation() const;
+
 	/** The start of the given slot, or null if the map has none. */
 	static AHOLStartSlot* Find(const UWorld* World, int32 Index);
 

@@ -692,3 +692,11 @@ S6 faites avec ombres ne se compareront plus ; une nouvelle référence sera à 
 Premiers passages courts sans ombres (machine chargée par la compilation du moteur 5.8.3, chiffres non significatifs) :
 S1 3,53 ms, 110 i/s, GPU 3,98 ms, fil de jeu 8,93 ms ; S2 3,38 ms, 119 i/s, GPU 3,92 ms, fil de jeu 7,90 ms ; complets,
 0 unité restante.
+
+**D265 (2026-10-13, demande de l'utilisateur) : rendu sans traitement** — matériaux mats partout, aucun reflet, aucun
+effet de post-traitement (exposition fixe, ni halo, ni flou de mouvement, ni reflets d'objectif, ni vignettage, ni
+grain, ni aberration chromatique, ni profondeur de champ, ni occlusion ambiante). Appliqué par le chantier parcours
+du joueur dans `DefaultEngine.ini` (réglages au-dessus des niveaux de qualité, comme D258) : **les mesures du stress
+test changent** (nouvelle référence à prendre avec celle de D258). **Pour M2** : `M_UnitPlayerColor`
+(`Tools/Editor/make_skinned_mannequin.py`, rugosité 0,7 et brillance par défaut) est à rendre mat (spéculaire 0,
+rugosité 1) ; non modifié par l'autre chantier, ce script étant à M2.

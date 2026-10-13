@@ -29,7 +29,10 @@ namespace UE::HeroesOfLiberty::UI::Settings
 	constexpr int32 NumVolumeSteps = 10;
 	const FIntPoint MinResolution(1280, 720);
 
-	/** A scalability group of the Video tab. No Shadows group: the game has none (D258). */
+	/**
+	 * A scalability group of the Video tab. No Shadows group: the game has none (D258); no Reflections nor
+	 * Post-processing group: no reflection and no post-processing effect (D265).
+	 */
 	struct FGroup
 	{
 		const TCHAR* Name;
@@ -44,8 +47,6 @@ namespace UE::HeroesOfLiberty::UI::Settings
 			{ TEXT("ViewDistance"), LOCTEXT("ViewDistance", "Distance d'affichage"), &UGameUserSettings::GetViewDistanceQuality, &UGameUserSettings::SetViewDistanceQuality },
 			{ TEXT("AntiAliasing"), LOCTEXT("AntiAliasing", "Anticrénelage"), &UGameUserSettings::GetAntiAliasingQuality, &UGameUserSettings::SetAntiAliasingQuality },
 			{ TEXT("GlobalIllumination"), LOCTEXT("GlobalIllumination", "Éclairage global"), &UGameUserSettings::GetGlobalIlluminationQuality, &UGameUserSettings::SetGlobalIlluminationQuality },
-			{ TEXT("Reflection"), LOCTEXT("Reflection", "Réflexions"), &UGameUserSettings::GetReflectionQuality, &UGameUserSettings::SetReflectionQuality },
-			{ TEXT("PostProcessing"), LOCTEXT("PostProcessing", "Post-traitement"), &UGameUserSettings::GetPostProcessingQuality, &UGameUserSettings::SetPostProcessingQuality },
 			{ TEXT("Texture"), LOCTEXT("Texture", "Textures"), &UGameUserSettings::GetTextureQuality, &UGameUserSettings::SetTextureQuality },
 			{ TEXT("VisualEffect"), LOCTEXT("VisualEffect", "Effets"), &UGameUserSettings::GetVisualEffectQuality, &UGameUserSettings::SetVisualEffectQuality },
 			{ TEXT("Foliage"), LOCTEXT("Foliage", "Végétation"), &UGameUserSettings::GetFoliageQuality, &UGameUserSettings::SetFoliageQuality },

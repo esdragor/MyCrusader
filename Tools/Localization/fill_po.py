@@ -91,8 +91,6 @@ TRANSLATIONS = {
     "HOLSettingsScreen,ViewDistance": ("View Distance", "描画距離"),
     "HOLSettingsScreen,AntiAliasing": ("Anti-Aliasing", "アンチエイリアス"),
     "HOLSettingsScreen,GlobalIllumination": ("Global Illumination", "グローバルイルミネーション"),
-    "HOLSettingsScreen,Reflection": ("Reflections", "反射"),
-    "HOLSettingsScreen,PostProcessing": ("Post-Processing", "ポストプロセス"),
     "HOLSettingsScreen,Texture": ("Textures", "テクスチャ"),
     "HOLSettingsScreen,VisualEffect": ("Effects", "エフェクト"),
     "HOLSettingsScreen,Foliage": ("Foliage", "植生"),

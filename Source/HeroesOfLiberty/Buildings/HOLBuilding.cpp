@@ -13,10 +13,12 @@
 
 namespace UE::HeroesOfLiberty::Buildings
 {
-	// The engine's basic shapes (1 m, centred) and their material, whose "Color" parameter paints a piece.
+	// The engine's basic cube (1 m, centred), painted by the matte material's "Color" parameter (D265: no
+	// specular highlight; Tools/Editor/make_matte_materials.py).
 	const TCHAR* CubePath = TEXT("/Engine/BasicShapes/Cube.Cube");
-	const TCHAR* ConePath = TEXT("/Engine/BasicShapes/Cone.Cone");
-	const TCHAR* ShapeMaterialPath = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
+	const TCHAR* ShapeMaterialPath = TEXT("/Game/Rendering/M_MatteColor.M_MatteColor");
+	// The owner's colour is unlit: the same colour on every face, with no darker side (D261).
+	const TCHAR* OwnerMaterialPath = TEXT("/Game/Rendering/M_FlatColor.M_FlatColor");
 	const FName ColorParameter(TEXT("Color"));
 
 	const FLinearColor StoneColor(0.42f, 0.40f, 0.37f);
@@ -36,11 +38,11 @@ AHOLBuilding::AHOLBuilding()
 
 	// Hard references, so that the shapes are cooked with the game.
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(UE::HeroesOfLiberty::Buildings::CubePath);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cone(UE::HeroesOfLiberty::Buildings::ConePath);
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(UE::HeroesOfLiberty::Buildings::ShapeMaterialPath);
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> OwnerMaterial(UE::HeroesOfLiberty::Buildings::OwnerMaterialPath);
 	CubeMesh = Cube.Object;
-	ConeMesh = Cone.Object;
 	PieceMaterial = ShapeMaterial.Object;
+	OwnerPieceMaterial = OwnerMaterial.Object;
 }
 
 void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -89,6 +91,7 @@ void AHOLBuilding::RefreshAppearance()
 		}
 		Pieces.Reset();
 		OwnerMaterials.Reset();
+		OwnerTones.Reset();
 		BuiltTypeName = TypeName;
 
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
@@ -107,9 +110,11 @@ void AHOLBuilding::RefreshAppearance()
 	}
 
 	const FLinearColor OwnerColor(HOLPlayerColors::GetLinearColor(ColorIndex));
-	for (UMaterialInstanceDynamic* Material : OwnerMaterials)
+	for (int32 Index = 0; Index < OwnerMaterials.Num(); ++Index)
 	{
-		Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, OwnerColor);
+		FLinearColor Toned = OwnerColor * OwnerTones[Index];
+		Toned.A = 1.f;
+		OwnerMaterials[Index]->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Toned);
 	}
 }
 
@@ -117,18 +122,19 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 {
 	using namespace UE::HeroesOfLiberty::Buildings;
 
-	// D261: a block and a central tower; the top of the block and the tower's roof wear the owner's colour, as they
-	// are what the RTS camera sees from above.
+	// D261: a block and a central tower; the top of the block (a darker tone) and the tower's flat roof, a little wider
+	// than the tower, wear the owner's colour, as they are what the RTS camera sees from above; unlit, so that the colour
+	// is the same everywhere (a lit cone showed a dark side, an unlit one read as a flat disc).
 	const FVector2D Footprint = Type.Footprint;
 	const float Height = Type.Height;
 	const float BaseHeight = Height * BaseHeightRatio;
-	const float TowerHeight = Height * TowerHeightRatio;
 	const float CapThickness = Height * CapThicknessRatio;
+	const float TowerHeight = Height - CapThickness;
 
 	AddPiece(CubeMesh, FVector(Footprint, BaseHeight), 0.f, StoneColor, false);
-	AddPiece(CubeMesh, FVector(Footprint, CapThickness), BaseHeight, FLinearColor::White, true);
+	AddPiece(CubeMesh, FVector(Footprint, CapThickness), BaseHeight, FLinearColor::White, true, BaseTopTone);
 	AddPiece(CubeMesh, FVector(Footprint * TowerSizeRatio, TowerHeight), 0.f, DarkStoneColor, false);
-	AddPiece(ConeMesh, FVector(Footprint * RoofSizeRatio, Height - TowerHeight), TowerHeight, FLinearColor::White, true);
+	AddPiece(CubeMesh, FVector(Footprint * RoofSizeRatio, CapThickness), TowerHeight, FLinearColor::White, true);
 }
 
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
@@ -147,9 +153,10 @@ void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 }
 
 UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& Size, const float BottomZ, const FLinearColor& Color,
-	const bool bOwnerColor)
+	const bool bOwnerColor, const float OwnerTone)
 {
-	if (!Mesh || !PieceMaterial)
+	UMaterialInterface* BaseMaterial = bOwnerColor ? OwnerPieceMaterial : PieceMaterial;
+	if (!Mesh || !BaseMaterial)
 	{
 		return nullptr;
 	}
@@ -164,7 +171,7 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	Piece->SetRelativeScale3D(Scale);
 	Piece->SetRelativeLocation(FVector(-Origin.X, -Origin.Y, BottomZ - MeshBottom));
 	Piece->SetCastShadow(false);	// D258
-	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(PieceMaterial, Piece);
+	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Piece);
 	Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Color);
 	Piece->SetMaterial(0, Material);
 	Piece->SetupAttachment(RootComponent);
@@ -174,6 +181,7 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	if (bOwnerColor)
 	{
 		OwnerMaterials.Add(Material);
+		OwnerTones.Add(OwnerTone);
 	}
 	return Piece;
 }

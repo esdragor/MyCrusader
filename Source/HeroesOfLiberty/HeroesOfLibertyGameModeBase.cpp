@@ -2,6 +2,8 @@
 
 #include "HeroesOfLibertyGameModeBase.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
@@ -63,4 +65,44 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	PlayerState->SetMatchSlot(Slot, MatchConfig.Slots[Slot].ColorIndex);
 	UE_LOG(LogHOLMatch, Log, TEXT("%s holds slot %d (colour %d)"), *PlayerState->GetPlayerName(), Slot,
 		MatchConfig.Slots[Slot].ColorIndex);
+}
+
+void AHeroesOfLibertyGameModeBase::StartPlay()
+{
+	Super::StartPlay();
+
+	if (AHOLStartSlot::WorldHasSlots(GetWorld()))
+	{
+		SpawnMainCentres();
+	}
+}
+
+void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
+{
+	for (int32 Slot = 0; Slot < MatchConfig.Slots.Num(); ++Slot)
+	{
+		const FHOLMatchSlot& SlotConfig = MatchConfig.Slots[Slot];
+		if (SlotConfig.State == EHOLSlotState::Closed)
+		{
+			continue;
+		}
+		const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot);
+		if (!Start)
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: no main centre"), Slot);
+			continue;
+		}
+		// Facing the way the start faces (the centre of a symmetric map).
+		const FTransform Transform(FRotator(0.f, Start->GetActorRotation().Yaw, 0.f), Start->GetGroundLocation());
+		AHOLBuilding* Centre = GetWorld()->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+		if (!Centre)
+		{
+			continue;
+		}
+		Centre->Setup(HOLBuildingTypeNames::MainCentre, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
+		Centre->FinishSpawning(Transform);
+		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f)"), Slot, SlotConfig.ColorIndex,
+			Transform.GetLocation().X, Transform.GetLocation().Y);
+	}
 }

@@ -38,9 +38,10 @@ public:
 	/** Values of the provisional shape (D261), as fractions of the footprint and the height. */
 	static constexpr float BaseHeightRatio = 0.45f;
 	static constexpr float TowerSizeRatio = 0.4f;
-	static constexpr float TowerHeightRatio = 0.8f;
-	static constexpr float RoofSizeRatio = 0.55f;
+	static constexpr float RoofSizeRatio = 0.5f;
 	static constexpr float CapThicknessRatio = 0.04f;
+	/** The top of the block is a darker tone of the owner's colour, so that the tower's roof stands out on it. */
+	static constexpr float BaseTopTone = 0.55f;
 
 protected:
 	virtual void BeginPlay() override;
@@ -53,8 +54,9 @@ private:
 	void RefreshAppearance();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
-	/** A piece of Size (cm) laid on BottomZ, painted Color, or the owner's colour when bOwnerColor. */
-	UStaticMeshComponent* AddPiece(UStaticMesh* Mesh, const FVector& Size, float BottomZ, const FLinearColor& Color, bool bOwnerColor);
+	/** A piece of Size (cm) laid on BottomZ, painted Color, or the owner's colour times OwnerTone when bOwnerColor. */
+	UStaticMeshComponent* AddPiece(UStaticMesh* Mesh, const FVector& Size, float BottomZ, const FLinearColor& Color, bool bOwnerColor,
+		float OwnerTone = 1.f);
 
 	UPROPERTY(ReplicatedUsing = OnRep_Setup)
 	FName TypeName;
@@ -74,13 +76,17 @@ private:
 	UPROPERTY()
 	TObjectPtr<UStaticMesh> CubeMesh;
 
-	UPROPERTY()
-	TObjectPtr<UStaticMesh> ConeMesh;
-
+	/** Matte, lit (D265). */
 	UPROPERTY()
 	TObjectPtr<UMaterialInterface> PieceMaterial;
 
-	/** Materials painted with the owner's colour. */
+	/** Unlit, for the owner's colour (D261). */
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> OwnerPieceMaterial;
+
+	/** Materials painted with the owner's colour, and the tone of each. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> OwnerMaterials;
+
+	TArray<float> OwnerTones;
 };

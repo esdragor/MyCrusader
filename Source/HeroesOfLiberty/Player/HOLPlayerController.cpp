@@ -2,7 +2,6 @@
 
 #include "Player/HOLPlayerController.h"
 
-#include "Components/CapsuleComponent.h"
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -205,9 +204,7 @@ void AHOLPlayerController::TryPlaceCamera()
 		UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: the camera stays where it is"), Slot);
 		return;
 	}
-	// The start is a capsule standing on the ground: the focus is at its foot.
-	FVector Ground = Start->GetActorLocation();
-	Ground.Z -= Start->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const FVector Ground = Start->GetGroundLocation();
 	RTSCamera->SetFocus(Ground);
 	UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d (%.0f, %.0f)"), Slot, Ground.X, Ground.Y);
 }
