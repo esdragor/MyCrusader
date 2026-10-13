@@ -86,6 +86,17 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	}
 }
 
+FText UHOLNewGameScreen::GetMapName(const FSoftObjectPath& Map)
+{
+	// One line per map of the list; the names are provisional, the GDD names no map yet.
+	const FString Asset = Map.GetAssetName();
+	if (Asset == TEXT("BattleMap"))
+	{
+		return LOCTEXT("Map_BattleMap", "Champ de bataille");
+	}
+	return FText::AsCultureInvariant(Asset);
+}
+
 UHOLNewGameScreen* UHOLNewGameScreen::Open(APlayerController* PlayerController)
 {
 	UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
@@ -108,8 +119,7 @@ void UHOLNewGameScreen::BuildLayout()
 	TArray<FText> MapNames;
 	for (const FSoftObjectPath& Map : Maps)
 	{
-		// Provisional: the asset name, until the maps have names of their own.
-		MapNames.Add(FText::AsCultureInvariant(Map.GetAssetName()));
+		MapNames.Add(GetMapName(Map));
 	}
 	// The grid: the map, one line per slot under a line of column headings, then the mode and its options.
 	const auto AddCell = [this](UHorizontalBox* Row, UWidget* Content, const float Width)
@@ -180,7 +190,8 @@ void UHOLNewGameScreen::BuildLayout()
 	CatastropheRotator = AddRotator(Options, TEXT("CatastropheRotator"), OffOn(), 0, ToggleWidth);
 
 	AddText(Column, TEXT("Note"), LOCTEXT("Greyed", "Grisé : pas encore dans le jeu (IA, factions, équipes, mode et options)."),
-		UHOLTextStyleNote::StaticClass(), 0.f);
+		UHOLTextStyleNote::StaticClass(), 4.f);
+	AddColumnHint(Column);
 	UHorizontalBox* Buttons = AddButtonRow(Column);
 	BackButton = AddButton(Buttons, TEXT("BackButton"), LOCTEXT("Back", "Retour"));
 	LaunchButton = AddButton(Buttons, TEXT("LaunchButton"), LOCTEXT("Launch", "Lancer"));
@@ -252,6 +263,17 @@ void UHOLNewGameScreen::NativeOnInitialized()
 UWidget* UHOLNewGameScreen::NativeGetDesiredFocusTarget() const
 {
 	return LaunchButton;
+}
+
+void UHOLNewGameScreen::GetColumns(TArray<TArray<UWidget*>>& OutColumns) const
+{
+	TArray<UWidget*>& States = OutColumns.AddDefaulted_GetRef();
+	States.Add(MapRotator);
+	States.Append(SlotStates);
+	States.Add(ModeRotator);
+	OutColumns.Emplace(SlotFactions);
+	OutColumns.Emplace(SlotColors);
+	OutColumns.Emplace(SlotTeams);
 }
 
 void UHOLNewGameScreen::SetConfig(const FHOLMatchConfig& InConfig)

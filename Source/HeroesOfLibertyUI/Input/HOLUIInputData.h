@@ -4,6 +4,7 @@
 #include "CommonInputBaseTypes.h"
 #include "HOLUIInputData.generated.h"
 
+class UInputAction;
 class UInputMappingContext;
 
 /**
@@ -21,4 +22,8 @@ public:
 
 	/** Added to each local player of a menu, so Common UI finds the keys of the confirm and back actions. */
 	static UInputMappingContext* GetMappingContext();
+
+	/** Move the focus to the next or previous column of a screen (gamepad RB and LB, D250). */
+	static const UInputAction* GetNextColumnAction();
+	static const UInputAction* GetPreviousColumnAction();
 };

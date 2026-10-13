@@ -32,7 +32,10 @@ TRANSLATIONS = {
     "HOLTitleScreen,QuitConfirm": ("Quit", "終了"),
     "HOLTitleScreen,QuitQuestion": ("Quit the game?", "ゲームを終了しますか？"),
 
+    "HOLScreen,ColumnHint": ("LB / RB: change column", "LB / RB：列を切り替え"),
+
     "HOLNewGameScreen,Heading": ("New Game", "新しいゲーム"),
+    "HOLNewGameScreen,Map_BattleMap": ("Battlefield", "戦場"),
     "HOLNewGameScreen,Map": ("Map", "マップ"),
     "HOLNewGameScreen,Player": ("Player", "プレイヤー"),
     "HOLNewGameScreen,Slot": ("Slot", "スロット"),

@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
+#include "CommonInputTypeEnum.h"
+#include "Input/UIActionBindingHandle.h"
 #include "HOLScreen.generated.h"
 
 class UCommonTextBlock;
@@ -13,7 +15,8 @@ class UVerticalBox;
 /**
  * Base of the menu screens: an activatable widget in menu input mode, whose layout is built in code by
  * BuildLayout() when no Blueprint gives one (D242). Back (Escape, gamepad B) closes it, except where a screen says
- * otherwise. Helpers add the usual pieces to a centred column.
+ * otherwise. On a screen with columns, gamepad LB and RB move the focus to the previous or next column, Left and Right
+ * keeping to change the value of a rotator (D250). Helpers add the usual pieces to a centred column.
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTYUI_API UHOLScreen : public UCommonActivatableWidget
@@ -27,6 +30,8 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	/** Builds the layout in code; only called when no Blueprint gave one. */
 	virtual void BuildLayout() {}
@@ -49,4 +54,23 @@ protected:
 
 	/** Closes this screen, as Back does. */
 	void Close() { DeactivateWidget(); }
+
+	/**
+	 * The columns of widgets that LB and RB move between (D250), left to right, as they are shown now; none by default.
+	 * Greyed or hidden widgets are passed over.
+	 */
+	virtual void GetColumns(TArray<TArray<UWidget*>>& OutColumns) const {}
+
+	/** The note "LB / RB: change column", shown only while the player uses a gamepad. */
+	UCommonTextBlock* AddColumnHint(UVerticalBox* Column);
+
+private:
+	/** Moves the focus to the next (+1) or previous (-1) column, onto the widget nearest in height to the focused one. */
+	void MoveColumn(int32 Direction);
+	void HandleInputMethodChanged(ECommonInputType InputType);
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCommonTextBlock>> ColumnHints;
+
+	TArray<FUIActionBindingHandle> ColumnActionHandles;
 };

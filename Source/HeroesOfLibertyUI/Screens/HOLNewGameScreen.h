@@ -19,6 +19,9 @@ class HEROESOFLIBERTYUI_API UHOLNewGameScreen : public UHOLScreen
 	GENERATED_BODY()
 
 public:
+	/** The translated name of a map, or its asset name for a map that has none yet. */
+	static FText GetMapName(const FSoftObjectPath& Map);
+
 	/** Opens the screen over the menu of the given player (Play button, hol.UI.Open NewGame). */
 	static UHOLNewGameScreen* Open(APlayerController* PlayerController);
 
@@ -36,8 +39,11 @@ protected:
 	virtual void BuildLayout() override;
 	virtual void NativeOnInitialized() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
+	/** Slot state (with the map and the mode above and below), faction, colour, team (D250). */
+	virtual void GetColumns(TArray<TArray<UWidget*>>& OutColumns) const override;
 
-	/** Maps offered by the screen ([/Script/HeroesOfLibertyUI.HOLNewGameScreen] in DefaultGame.ini). */
+	/** Maps offered by the screen ([/Script/HeroesOfLibertyUI.HOLNewGameScreen] in DefaultGame.ini), shown by their
+	 *  name (GetMapName). */
 	UPROPERTY(Config)
 	TArray<FSoftObjectPath> Maps;
 

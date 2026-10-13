@@ -1,6 +1,8 @@
 """Creates the interface input assets of Common UI (D241, front-end step 3), with Enhanced Input:
   /Game/UI/Input/IA_UI_Confirm   confirm the focused button (keyboard, gamepad; the mouse clicks buttons directly)
   /Game/UI/Input/IA_UI_Back      back out of a screen
+  /Game/UI/Input/IA_UI_NextColumn, IA_UI_PreviousColumn
+                                 move the focus to the next or previous column of a screen (gamepad shoulders, D250)
   /Game/UI/Input/IMC_UI          their keys, added by the menu player controller
 
 Re-running the script refreshes the mappings of IMC_UI and keeps the actions.
@@ -13,6 +15,8 @@ FOLDER = "/Game/UI/Input"
 MAPPINGS = {
     "IA_UI_Confirm": ["Enter", "SpaceBar", "Gamepad_FaceButton_Bottom"],
     "IA_UI_Back": ["Escape", "Gamepad_FaceButton_Right"],
+    "IA_UI_NextColumn": ["Gamepad_RightShoulder"],
+    "IA_UI_PreviousColumn": ["Gamepad_LeftShoulder"],
 }
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -39,7 +43,7 @@ def main():
     for name in MAPPINGS:
         action = load_or_create(name, unreal.InputAction, unreal.InputAction_Factory())
         action.set_editor_property("value_type", unreal.InputActionValueType.BOOLEAN)
-        unreal.EditorAssetLibrary.save_loaded_asset(action)
+        unreal.EditorAssetLibrary.save_loaded_asset(action, only_if_is_dirty=False)
         actions[name] = action
 
     context = load_or_create("IMC_UI", unreal.InputMappingContext, unreal.InputMappingContext_Factory())
@@ -47,7 +51,9 @@ def main():
     for name, keys in MAPPINGS.items():
         for key_name in keys:
             context.map_key(actions[name], make_key(key_name))
-    unreal.EditorAssetLibrary.save_loaded_asset(context)
+    # map_key does not mark the package dirty: saved anyway, or an existing context keeps its old mappings.
+    if not unreal.EditorAssetLibrary.save_loaded_asset(context, only_if_is_dirty=False):
+        raise RuntimeError("Could not save " + context.get_path_name())
 
     unreal.log("UI input assets in %s: %s" % (FOLDER, ", ".join(
         "%s -> %s" % (name, "/".join(keys)) for name, keys in MAPPINGS.items())))

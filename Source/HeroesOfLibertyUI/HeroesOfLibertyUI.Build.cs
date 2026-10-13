@@ -21,6 +21,8 @@ public class HeroesOfLibertyUI : ModuleRules
 			"CommonUI",
 			"CommonInput",
 			"EnhancedInput",
+			// Common UI's action bindings (FBindUIActionArgs) are keyed by gameplay tags.
+			"GameplayTags",
 		});
 	}
 }

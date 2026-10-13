@@ -1,6 +1,7 @@
 # Front-end in progress
 
 **Journal du chantier du menu — TERMINÉ le 2026-10-13** (étapes 1 à 7). Décisions D240 à D249 reportées au GDD (§ 21, résumé au § 15). Ce fichier reste comme mémoire du chantier : commandes utiles, pièges, liste de finition.
+**Reprise « Finition » ouverte le 2026-10-13** (étapes F1 à F5 ci-dessous), décisions D250 et D251.
 
 Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Server (D231). Pour ne pas se marcher dessus :
 - décisions numérotées **D240 et suivantes** (D237 à D239 restent à M2) ;
@@ -26,12 +27,20 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 5. Localisation (français, anglais, japonais) | **fait** (2026-10-13) : 92 textes traduits en anglais et japonais (provisoires), bascule en direct vérifiée, captures dans les trois langues |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | **fait** (2026-10-13) : 9 tests verts, `Tools/Tests/capture_screens.ps1` PASS en fr, en, ja |
 | 7. Clôture (D240 à D249 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | **fait** (2026-10-13) |
+| **Finition** — plan (D250 manette, D251 police japonaise) | **fait** (2026-10-13) |
+| F1. « Affichage » montre le mode réel (imposé par la ligne de commande) | **fait** (2026-10-13) |
+| F2. Nom affichable et traduit des cartes (plus le nom de l'asset) | **fait** (2026-10-13) |
+| F3. Manette : LB / RB changent de colonne (Nouvelle partie, Réglages > Vidéo), aide affichée (D250) | **fait** (2026-10-13) |
+| F4. Police composite Roboto + Noto Sans JP normal et gras, importée par script (D251) | à faire |
+| F5. Vérification (tests, bout en bout fr / en / ja, captures), D250 et D251 au GDD | à faire |
 
 ## Prochaine étape exacte
 
-**Aucune : chantier terminé.** Reprises possibles, chacune à décider :
-- **Finition** (liste courte de l'étape 6) : noms des factions et des cartes, navigation manette entre les colonnes de
-  Nouvelle partie, police japonaise grasse, mode d'affichage réel quand la ligne de commande l'impose.
+**Finition, F4** : police composite du projet, Roboto + Noto Sans JP normal et gras (D251), importée par script ;
+puis F5 (tableau). Les noms français des factions viennent du GDD (§ 13) : seules leurs traductions anglaise et
+japonaise restent provisoires (rien à faire à la finition).
+
+Autres reprises possibles, chacune à décider :
 - **M4** : onglet Commandes (remappage D30, vitesse de caméra, défilement au bord) et HUD de D201 sur la même base
   Common UI (couches, routage des entrées) ; menu pause et retour au menu depuis une partie.
 - **M2** : `OwnerPlayer` des unités = `AHOLPlayerState::GetPlayerIndex()` (note dans `ImplementationInProgress.md`).
@@ -141,6 +150,8 @@ powershell -ExecutionPolicy Bypass -File Tools\Tests\capture_screens.ps1
 | D245 | 2026-10-13 | Technique — Réglages | **Vidéo, son, commandes et langue** (choix de l'utilisateur : option B, avec deux précisions). **Vidéo** : résolution, mode fenêtre, synchronisation verticale, limite d'i/s, qualité globale puis par groupe, échelle de rendu ; **son** : volumes général, musique, effets, voix (le général agit tout de suite, les trois autres passent par des classes de son créées par script et agissent dès qu'il y a des sons) ; enregistrés par une classe dérivée de `UGameUserSettings`. **Commandes** *(précision 1, option b, contre la recommandation)* : onglet présent mais **grisé jusqu'à M4** — remappage des actions de D30 (« tout est reconfigurable »), vitesse de la caméra et défilement au bord de l'écran ; les actions Enhanced Input seront déclarées à M4. **Langues** *(précision 2, nuance de l'utilisateur)* : **français** (langue source), **anglais** et **japonais**, « pour tester aussi un alphabet non latin » ; sélecteur actif, bascule en direct, choix enregistré ; tout texte affiché passe par la localisation d'Unreal (`FText`, `LOCTEXT`), collecte par script, traductions en fichiers `.po` relisibles ; la police doit couvrir le japonais (police composite avec une sous-police japonaise sous licence libre, importée par script, D242). Traductions anglaise et japonaise **provisoires**, écrites par l'assistant. Garde-fou du stress test : `GameUserSettings.ini` est relu par le stress test, qui devra **forcer et écrire dans son rapport** tout ce que le menu règle (en particulier l'échelle de rendu), modification faite à la fusion car le fichier appartient à l'autre chantier. Écartés : vidéo et son seuls (recommandation initiale), vidéo seule, onglet Commandes actif dès maintenant (recommandation de la précision 1), français seul avec sélecteur grisé. |
 | D246 | 2026-10-13 | Technique — Vérification du chantier menu | **Tests automatiques sur la logique, captures par script pour l'aspect** (choix de l'utilisateur, conforme à la recommandation). **Tests d'automatisation Unreal**, en ligne de commande sans affichage : aller-retour JSON de la configuration et lecture d'une version antérieure du format ; GameMode **sans** configuration (valeurs par défaut, protège le stress test) ; GameMode **avec** configuration (nombre de joueurs, couleur, index de joueur) ; réglages enregistrés puis relus ; toutes les clés de texte présentes dans les trois langues. **Bout en bout par script** : des commandes console ouvrent chaque écran et lancent une partie depuis une configuration par le même chemin que le bouton « Lancer » ; le jeu est lancé en français, en anglais et en japonais et chaque écran est **capturé** ; l'assistant lit les captures (texte coupé, caractère manquant, chaîne restée en français) et les joint au compte rendu ; la finition se juge à l'œil par l'utilisateur sur une courte liste. Écartés : **vérification manuelle seule** (rien de rejouable, contrat JSON et GameMode sans configuration non protégés) et **pilotage de l'interface par clics simulés** (Automation Driver : fragile à chaque changement de mise en page, peu documenté, coût permanent pour des écrans provisoires, D242). Clôt le plan du chantier menu (D240 à D246). |
 | D247 | 2026-10-13 | Technique — Module de l'interface | **Un module à part pour l'interface** (choix de l'utilisateur, conforme à la recommandation) : la configuration de partie, son sous-système, le GameMode et le PlayerState restent dans `HeroesOfLiberty` (le serveur en a besoin) ; Common UI, styles, écrans et leurs tests vont dans un module **`HeroesOfLibertyUI`**, qui dépend de `HeroesOfLiberty` et jamais l'inverse, et qui pourra être **exclu de la cible Server** dans le `.uproject` (le serveur dédié de D231 ne charge ni Common UI ni écrans). Motif : sans worktree, c'est l'isolation qui reste face au chantier M2 (même module sinon : même `Build.cs`, une erreur de compilation bloque l'autre session), et la séparation simulation / présentation du § 16.6 s'étend à l'interface. Écarté : un sous-dossier `UI/` de `HeroesOfLiberty` (Common UI chargé par le serveur, `Build.cs` partagé). |
+| D250 | 2026-10-13 | Technique — Navigation à la manette entre colonnes | **Gâchettes hautes LB / RB** (choix de l'utilisateur, conforme à la recommandation) : sur les écrans à plusieurs colonnes (Nouvelle partie : Emplacement, Couleur ; Réglages > Vidéo : deux colonnes), LB et RB passent à la colonne précédente ou suivante, sur la même ligne ou la plus proche ; Gauche et Droite gardent leur rôle de changer la valeur d'un sélecteur, comme partout ailleurs ; une aide « LB / RB : colonne » est affichée. Écartés : **mode édition** (A entre dans le sélecteur, A ou B en sort : plus d'appuis, état « en édition » à montrer) et **grille pure** (flèches pour naviguer, A pour la valeur suivante : plus de retour en arrière, 10 appuis pour baisser un volume de 10 %). |
+| D251 | 2026-10-13 | Technique — Police japonaise | **Noto Sans JP normal et gras** (choix de l'utilisateur, conforme à la recommandation) : police de Google sous licence SIL OFL, téléchargée depuis le dépôt officiel `notofonts/noto-cjk` (sous-ensemble japonais), importée par script comme sous-police japonaise d'une **police composite du projet** (Roboto du moteur + Noto Sans JP), qui remplace la police de secours du moteur (DroidSansFallback, sans gras). Valide dès maintenant le chemin de la police finale (D242, D245). Coût assumé : environ 9 Mo de polices suivies par git (sans LFS) et la licence jointe. Écarté : garder la police de secours jusqu'à une direction artistique (japonais sans gras). |
 | D249 | 2026-10-13 | Technique — Langue au premier lancement | **Langue de Windows** (choix de l'utilisateur, conforme à la recommandation) : tant que le joueur n'a rien choisi, le jeu prend la langue du système si elle est traduite (anglais, japonais), sinon le français, langue source (repli du moteur sur la culture native de la cible `Game`) ; le choix fait dans Réglages > Langue est enregistré et passe ensuite avant. Comportement standard d'Unreal. Conséquence constatée : sur le Windows anglais de l'utilisateur, le jeu démarre en anglais, et tant que la traduction anglaise n'existe pas, le sélecteur indique English sur des textes français (incohérence levée à l'étape 5). Écarté : toujours le français au premier lancement (un joueur anglophone ou japonais doit chercher sa langue). |
 
 ## Journal d'avancement
@@ -375,3 +386,38 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
 - **`OwnerPlayer`** : pas encore d'unité née pour un joueur depuis le mode de jeu ; consigne laissée à M2 dans
   `ImplementationInProgress.md` (avec le nouveau levier et les lancements sur le deuxième écran).
 - **Mémoire** du chantier mise à jour (terminé).
+
+### 2026-10-13 (suite) — Reprise « Finition » : plan (D250, D251)
+
+- Reprise choisie par l'utilisateur parmi celles de la clôture. Liste de l'étape 6 relue : les noms **français** des
+  factions sont ceux du GDD (§ 13), seules les traductions anglaise et japonaise sont provisoires ; le nom des cartes
+  est encore celui de l'asset (`BattleMap`).
+- **D250** : LB / RB changent de colonne (Nouvelle partie et Réglages > Vidéo, qui a le même problème).
+- **D251** : Noto Sans JP normal et gras dans une police composite du projet.
+- Sans décision : mode d'affichage réel (F1), nom affichable des cartes (F2).
+- Contexte : aucun éditeur du projet ouvert ; la compilation du moteur 5.8.3 (chantier serveur dédié) charge le
+  processeur, les chiffres du stress test ne seront pas significatifs.
+
+### 2026-10-13 (suite) — Finition F1 à F3 faites
+
+- **F1** : Réglages > Vidéo montre la résolution et le mode **de la fenêtre** (`r.SetRes`, posé au démarrage depuis la
+  ligne de commande et à chaque changement ; les réglages enregistrés en secours, sans fenêtre de jeu). Changer la
+  résolution garde le mode affiché, changer le mode garde la résolution affichée. Vérifié : lancé en `-ResX=1440
+  -ResY=810`, l'écran montre 1440 × 810, Fenêtre (le fichier de test enregistre 1600 × 900).
+- **F2** : `UHOLNewGameScreen::GetMapName` : nom traduit par carte de la liste, nom de l'asset pour une carte qui n'en a
+  pas. `BattleMap` → « Champ de bataille » / Battlefield / 戦場 (provisoire : le GDD ne nomme aucune carte).
+- **F3 (D250)** : actions `IA_UI_NextColumn` (RB) et `IA_UI_PreviousColumn` (LB) dans `IMC_UI`, liées par Common UI
+  dans `UHOLScreen` (à la construction, comme Retour). Chaque écran donne ses colonnes (`GetColumns`) : Nouvelle partie
+  (Emplacement avec Carte et Mode, Faction, Couleur, Équipe), Réglages > Vidéo (affichage, qualité ; seulement sur
+  l'onglet Vidéo). LB / RB vont au widget actif le plus proche en hauteur dans la colonne voisine, en sautant les
+  colonnes toutes grisées ; hors colonnes, RB entre dans la première et LB dans la dernière. Aide « LB / RB : changer de
+  colonne » (traduite) affichée seulement quand le joueur utilise la manette (cachée, pas repliée : la mise en page ne
+  bouge pas). Module `GameplayTags` ajouté (les liaisons de Common UI en dépendent).
+- **Vérifié** (deuxième écran, captures `f3_*.png`) : Lancer → Carte → Couleur du joueur 1 (Faction grisée sautée) →
+  Emplacement du joueur 2 ; Vidéo : Résolution → Qualité, puis LB depuis le bas de Qualité → Échelle de rendu. 94 textes
+  traduits, 9 tests verts.
+- **Piège** : `EditorAssetLibrary.save_loaded_asset` n'enregistre par défaut qu'un asset marqué modifié, et `map_key`
+  en Python ne le marque pas : `IMC_UI` existant gardait ses anciennes touches (actions sans touche, liaisons muettes).
+  `make_ui_input.py` force désormais l'enregistrement. Diagnostic utile : `QueryKeysMappedToAction` vide.
+- **Piège** : `hol.UI.Key` n'accepte pas `quit` (seul `hol.UI.Capture` le fait) : une session lancée ainsi ne se ferme
+  pas ; les lancements de test attendent maintenant au plus 2 minutes puis ferment le jeu.

@@ -7,6 +7,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Components/WidgetSwitcher.h"
+#include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -92,6 +93,41 @@ namespace UE::HeroesOfLiberty::UI::Settings
 		}
 		return Best;
 	}
+
+	/**
+	 * The resolution and window mode of the game window, or the ones about to be applied: r.SetRes, set from the command
+	 * line at start-up (-windowed, -ResX...) and by every change. The saved settings can differ from them.
+	 */
+	bool GetShownDisplay(FIntPoint& OutResolution, EWindowMode::Type& OutWindowMode)
+	{
+		const IConsoleVariable* SetRes = IConsoleManager::Get().FindConsoleVariable(TEXT("r.SetRes"));
+		FString Width, Rest;
+		if (!SetRes || !SetRes->GetString().Split(TEXT("x"), &Width, &Rest))
+		{
+			return false;
+		}
+		int32 Digits = 0;
+		while (Digits < Rest.Len() && FChar::IsDigit(Rest[Digits]))
+		{
+			++Digits;
+		}
+		const FString Suffix = Rest.Mid(Digits);
+		OutResolution = FIntPoint(FCString::Atoi(*Width), FCString::Atoi(*Rest.Left(Digits)));
+		OutWindowMode = Suffix.Equals(TEXT("f"), ESearchCase::IgnoreCase) ? EWindowMode::Fullscreen
+			: Suffix.Equals(TEXT("wf"), ESearchCase::IgnoreCase) ? EWindowMode::WindowedFullscreen
+			: EWindowMode::Windowed;
+		return OutResolution.X > 0 && OutResolution.Y > 0;
+	}
+
+	/** The shown display, or the saved one when there is no game window. */
+	void GetDisplay(const UGameUserSettings& Settings, FIntPoint& OutResolution, EWindowMode::Type& OutWindowMode)
+	{
+		if (!GetShownDisplay(OutResolution, OutWindowMode))
+		{
+			OutResolution = Settings.GetScreenResolution();
+			OutWindowMode = Settings.GetFullscreenMode();
+		}
+	}
 }
 
 UHOLSettingsScreen* UHOLSettingsScreen::Open(APlayerController* PlayerController)
@@ -122,7 +158,10 @@ void UHOLSettingsScreen::BuildLayout()
 	}
 	if (const UGameUserSettings* GameSettings = UGameUserSettings::GetGameUserSettings())
 	{
-		Resolutions.AddUnique(GameSettings->GetScreenResolution());
+		FIntPoint Resolution;
+		EWindowMode::Type WindowMode;
+		GetDisplay(*GameSettings, Resolution, WindowMode);
+		Resolutions.AddUnique(Resolution);
 	}
 	Resolutions.Sort([](const FIntPoint& A, const FIntPoint& B) { return A.X != B.X ? A.X < B.X : A.Y < B.Y; });
 	FrameRates = { 30.f, 60.f, 120.f, 144.f, 240.f, 0.f };
@@ -170,13 +209,14 @@ void UHOLSettingsScreen::BuildLayout()
 		return Page;
 	};
 
-	// Video: display on the left, quality on the right.
-	UHorizontalBox* Video = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-	TabPages->AddChild(Video);
+	// Video: display on the left, quality on the right, the gamepad hint below.
+	UVerticalBox* Video = AddPage();
+	UHorizontalBox* VideoColumns = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	Video->AddChildToVerticalBox(VideoColumns)->SetPadding(FMargin(0.f, 0.f, 0.f, 12.f));
 	UVerticalBox* Display = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 	UVerticalBox* Quality = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	Video->AddChildToHorizontalBox(Display)->SetPadding(FMargin(0.f, 0.f, 24.f, 0.f));
-	Video->AddChildToHorizontalBox(Quality);
+	VideoColumns->AddChildToHorizontalBox(Display)->SetPadding(FMargin(0.f, 0.f, 24.f, 0.f));
+	VideoColumns->AddChildToHorizontalBox(Quality);
 	ResolutionRotator = AddRotatorRow(Display, TEXT("ResolutionRotator"), LOCTEXT("Resolution", "Résolution"), ResolutionNames, 0, VideoLabelWidth, DisplayRotatorWidth);
 	WindowModeRotator = AddRotatorRow(Display, TEXT("WindowModeRotator"), LOCTEXT("WindowMode", "Affichage"),
 		{ LOCTEXT("Fullscreen", "Plein écran"), LOCTEXT("WindowedFullscreen", "Fenêtre sans bordure"), LOCTEXT("Windowed", "Fenêtre") },
@@ -191,6 +231,7 @@ void UHOLSettingsScreen::BuildLayout()
 	{
 		AddRotatorRow(Quality, FName(FString(TEXT("Quality_")) + Group.Name), Group.Label, LevelNames(), 0, VideoLabelWidth, QualityRotatorWidth);
 	}
+	AddColumnHint(Video);
 
 	UVerticalBox* Sound = AddPage();
 	const TArray<FText> Volumes = VolumeNames();
@@ -294,6 +335,17 @@ UWidget* UHOLSettingsScreen::NativeGetDesiredFocusTarget() const
 	return VideoTab;
 }
 
+void UHOLSettingsScreen::GetColumns(TArray<TArray<UWidget*>>& OutColumns) const
+{
+	if (!TabPages || TabPages->GetActiveWidgetIndex() != 0)
+	{
+		return;
+	}
+	OutColumns.Add({ ResolutionRotator, WindowModeRotator, VSyncRotator, FrameRateRotator, RenderScaleRotator });
+	TArray<UWidget*>& Quality = OutColumns.Add_GetRef({ QualityRotator });
+	Quality.Append(GroupRotators);
+}
+
 void UHOLSettingsScreen::SelectTab(const int32 Index)
 {
 	if (TabPages)
@@ -320,13 +372,17 @@ void UHOLSettingsScreen::Refresh()
 		UE_LOG(LogHOLUI, Error, TEXT("Settings: the game user settings are not UHOLGameUserSettings (DefaultEngine.ini, GameUserSettingsClassName)"));
 		return;
 	}
+	// The window as it is, which the command line can impose over the saved settings.
+	FIntPoint Resolution;
+	EWindowMode::Type WindowMode;
+	GetDisplay(*Settings, Resolution, WindowMode);
 	if (ResolutionRotator)
 	{
-		ResolutionRotator->SetSelectedItem(FMath::Max(0, Resolutions.IndexOfByKey(Settings->GetScreenResolution())));
+		ResolutionRotator->SetSelectedItem(FMath::Max(0, Resolutions.IndexOfByKey(Resolution)));
 	}
 	if (WindowModeRotator)
 	{
-		WindowModeRotator->SetSelectedItem(static_cast<int32>(Settings->GetFullscreenMode()));
+		WindowModeRotator->SetSelectedItem(static_cast<int32>(WindowMode));
 	}
 	if (VSyncRotator)
 	{
@@ -394,9 +450,16 @@ void UHOLSettingsScreen::ApplyAndRefresh(const bool bResolutionChanged)
 
 void UHOLSettingsScreen::HandleResolution(const int32 Value)
 {
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
 	UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
 	if (Settings && Resolutions.IsValidIndex(Value))
 	{
+		// With the window mode shown, not the saved one, which the command line may have overridden.
+		FIntPoint Shown;
+		EWindowMode::Type WindowMode;
+		GetDisplay(*Settings, Shown, WindowMode);
+		Settings->SetFullscreenMode(WindowMode);
 		Settings->SetScreenResolution(Resolutions[Value]);
 	}
 	ApplyAndRefresh(/*bResolutionChanged*/ true);
@@ -404,8 +467,15 @@ void UHOLSettingsScreen::HandleResolution(const int32 Value)
 
 void UHOLSettingsScreen::HandleWindowMode(const int32 Value)
 {
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
 	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
 	{
+		// With the resolution shown, as above.
+		FIntPoint Resolution;
+		EWindowMode::Type Shown;
+		GetDisplay(*Settings, Resolution, Shown);
+		Settings->SetScreenResolution(Resolution);
 		Settings->SetFullscreenMode(static_cast<EWindowMode::Type>(Value));
 	}
 	ApplyAndRefresh(/*bResolutionChanged*/ true);

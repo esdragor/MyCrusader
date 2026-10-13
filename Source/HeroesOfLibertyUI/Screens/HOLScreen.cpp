@@ -2,6 +2,7 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
+#include "CommonInputSubsystem.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
@@ -12,13 +13,34 @@
 #include "Components/SizeBox.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "HeroesOfLibertyUILog.h"
+#include "Input/CommonUIInputTypes.h"
+#include "Input/HOLUIInputData.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
 #include "Widgets/HOLRotator.h"
 
+#define LOCTEXT_NAMESPACE "HOLScreen"
+
 namespace UE::HeroesOfLiberty::UI
 {
 	constexpr float RowButtonWidth = 220.f;
+
+	bool HasFocus(const UWidget& Widget)
+	{
+		return Widget.HasAnyUserFocus() || Widget.HasFocusedDescendants();
+	}
+
+	bool CanTakeFocus(const UWidget* Widget)
+	{
+		return Widget && Widget->GetIsEnabled() && Widget->IsVisible() && Widget->GetCachedWidget().IsValid();
+	}
+
+	double CentreHeight(const UWidget& Widget)
+	{
+		const FGeometry& Geometry = Widget.GetCachedGeometry();
+		return Geometry.GetAbsolutePosition().Y + Geometry.GetAbsoluteSize().Y / 2.0;
+	}
 }
 
 UHOLScreen::UHOLScreen()
@@ -38,6 +60,113 @@ void UHOLScreen::NativeOnInitialized()
 		BuildLayout();
 	}
 	Super::NativeOnInitialized();
+
+	if (UCommonInputSubsystem* Input = UCommonInputSubsystem::Get(GetOwningLocalPlayer()))
+	{
+		Input->OnInputMethodChangedNative.AddUObject(this, &UHOLScreen::HandleInputMethodChanged);
+		HandleInputMethodChanged(Input->GetCurrentInputType());
+	}
+}
+
+void UHOLScreen::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	// D250: bound on every screen, a screen without columns ignores them. Bound at construction and released at
+	// destruction, as Common UI does for Back.
+	const UInputAction* NextColumn = UHOLUIInputData::GetNextColumnAction();
+	const UInputAction* PreviousColumn = UHOLUIInputData::GetPreviousColumnAction();
+	if (NextColumn && PreviousColumn)
+	{
+		ColumnActionHandles.Add(RegisterUIActionBinding(FBindUIActionArgs(NextColumn, /*bShouldDisplayInActionBar*/ false,
+			FSimpleDelegate::CreateUObject(this, &UHOLScreen::MoveColumn, 1))));
+		ColumnActionHandles.Add(RegisterUIActionBinding(FBindUIActionArgs(PreviousColumn, /*bShouldDisplayInActionBar*/ false,
+			FSimpleDelegate::CreateUObject(this, &UHOLScreen::MoveColumn, -1))));
+	}
+	else
+	{
+		UE_LOG(LogHOLUI, Error, TEXT("Screen: column actions missing in /Game/UI/Input (Tools/Editor/make_ui_input.py)"));
+	}
+}
+
+void UHOLScreen::NativeDestruct()
+{
+	for (FUIActionBindingHandle& Handle : ColumnActionHandles)
+	{
+		Handle.Unregister();
+	}
+	ColumnActionHandles.Reset();
+	Super::NativeDestruct();
+}
+
+UCommonTextBlock* UHOLScreen::AddColumnHint(UVerticalBox* Column)
+{
+	UCommonTextBlock* Hint = AddText(Column, NAME_None, LOCTEXT("ColumnHint", "LB / RB : changer de colonne"),
+		UHOLTextStyleNote::StaticClass(), 0.f);
+	ColumnHints.Add(Hint);
+	return Hint;
+}
+
+void UHOLScreen::HandleInputMethodChanged(const ECommonInputType InputType)
+{
+	// Hidden rather than collapsed: the layout does not move when the player takes the gamepad.
+	for (UCommonTextBlock* Hint : ColumnHints)
+	{
+		if (Hint)
+		{
+			Hint->SetVisibility(InputType == ECommonInputType::Gamepad ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+		}
+	}
+}
+
+void UHOLScreen::MoveColumn(const int32 Direction)
+{
+	using namespace UE::HeroesOfLiberty::UI;
+
+	TArray<TArray<UWidget*>> Columns;
+	GetColumns(Columns);
+	int32 FromColumn = INDEX_NONE;
+	const UWidget* Focused = nullptr;
+	for (int32 Index = 0; Index < Columns.Num() && !Focused; ++Index)
+	{
+		for (const UWidget* Widget : Columns[Index])
+		{
+			if (Widget && HasFocus(*Widget))
+			{
+				FromColumn = Index;
+				Focused = Widget;
+				break;
+			}
+		}
+	}
+
+	// From outside the columns (a tab, a button of the bottom row), RB enters the first one and LB the last one, on
+	// their first widget that can take the focus.
+	const double Height = Focused ? CentreHeight(*Focused) : 0.0;
+	for (int32 ToColumn = Focused ? FromColumn + Direction : (Direction > 0 ? 0 : Columns.Num() - 1);
+		Columns.IsValidIndex(ToColumn); ToColumn += Direction)
+	{
+		UWidget* Target = nullptr;
+		for (UWidget* Widget : Columns[ToColumn])
+		{
+			if (CanTakeFocus(Widget)
+				&& (!Target || FMath::Abs(CentreHeight(*Widget) - Height) < FMath::Abs(CentreHeight(*Target) - Height)))
+			{
+				Target = Widget;
+				if (!Focused)
+				{
+					break;
+				}
+			}
+		}
+		if (Target)
+		{
+			UE_LOG(LogHOLUI, Display, TEXT("Screen: column %d -> %d (%s)"), FromColumn, ToColumn, *Target->GetName());
+			Target->SetFocus();
+			return;
+		}
+	}
+	UE_LOG(LogHOLUI, Verbose, TEXT("Screen: no column to move to (from column %d of %d)"), FromColumn, Columns.Num());
 }
 
 UVerticalBox* UHOLScreen::MakeCenteredColumn()
@@ -149,3 +278,5 @@ UHOLRotator* UHOLScreen::AddRotator(UHorizontalBox* Row, const FName Name, const
 	BoxSlot->SetPadding(FMargin(4.f, 0.f));
 	return Rotator;
 }
+
+#undef LOCTEXT_NAMESPACE

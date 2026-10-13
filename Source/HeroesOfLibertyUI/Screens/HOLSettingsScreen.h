@@ -30,6 +30,8 @@ protected:
 	virtual void BuildLayout() override;
 	virtual void NativeOnInitialized() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
+	/** On the Video tab: display, quality (D250). */
+	virtual void GetColumns(TArray<TArray<UWidget*>>& OutColumns) const override;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidgetSwitcher> TabPages;
