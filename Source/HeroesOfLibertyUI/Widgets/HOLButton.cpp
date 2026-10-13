@@ -19,6 +19,7 @@ void UHOLButton::NativeOnInitialized()
 		WidgetTree->RootWidget = Label;
 	}
 	Super::NativeOnInitialized();
+	HOLUIStyle::ShowFocus(*this);
 }
 
 void UHOLButton::NativeOnCurrentTextStyleChanged()

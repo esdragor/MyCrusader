@@ -22,24 +22,24 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 | 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
 | 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **fait** (2026-10-13) : 7 tests verts |
 | 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | **fait** (2026-10-13) : capture conforme, S1/S2 complets, 7 tests verts, touches vérifiées |
-| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | à faire |
+| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | **en cours** : partie 1 faite (focus, sélecteur, titre, confirmation de sortie) ; parties 2 (Nouvelle partie) et 3 (Réglages) à faire |
 | 5. Localisation (français, anglais, japonais) | à faire |
 | 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
 | 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
 
 ## Prochaine étape exacte
 
-**Étape 4 — écrans** (D240, D244, D245), dans `HeroesOfLibertyUI`, construits en code (D242) :
-1. **Focus visible au clavier** : aujourd'hui seul le passage à la manette met le bouton qui a le focus en surbrillance
-   (capture `keys_after_back.png`) ; au clavier et à la souris, le focus ne se voit pas (`title_step3.png`). Style de
-   focus à ajouter à `UHOLButton` avant d'avoir plusieurs boutons.
-2. **Titre complet** : Jouer, Réglages, Quitter ; « Quitter » ouvre une **confirmation de sortie** dans la couche
-   modale (`ModalLayer`), Échap / B la ferment (premier écran avec retour arrière : `bIsBackHandler`).
-3. **Nouvelle partie** (D244) : carte, 8 emplacements (état, faction, couleur, équipe), mode et options ; carte,
-   emplacements occupés et couleur actifs, le reste grisé ; « Lancer » remplit `UHOLMatchSubsystem` et ouvre la carte.
-   Une commande console doit prendre le même chemin que le bouton (D246).
-4. **Réglages** (D245) : onglets Vidéo, Son, Commandes (grisé), Langue ; classe dérivée de `UGameUserSettings`.
-5. Captures de chaque écran (`hol.UI.Capture`), touches par `hol.UI.Key`, S2 court, tests ; mettre ce fichier à jour.
+**Étape 4, partie 2 — écran « Nouvelle partie »** (D244), dans `HeroesOfLibertyUI`, construit en code (D242) :
+1. Liste des cartes jouables en configuration (`DefaultGame.ini`, au moins `BattleMap`), sélecteur de carte.
+2. Grille de 8 emplacements : état (emplacement 0 = le joueur ; les autres Fermé / Humain, l'IA grisée), faction
+   (grisée), couleur (palette D233, nuancier, active, sans doublon entre emplacements occupés), équipe (grisée) ;
+   mode Standard et options Nomade, Régicide, Catastrophe grisés ; note « grisé : pas encore dans le jeu ».
+3. « Lancer » : remplit `UHOLMatchSubsystem` (graine tirée, `Normalize`) puis ouvre la carte ; « Retour ». Activer
+   « Jouer » sur l'écran titre. `hol.UI.Open NewGame` et `hol.UI.NewGame.Launch` (même chemin que le bouton, D246).
+4. Vérifier : captures, lancement de `BattleMap` depuis le menu (journal `LogHOLMatch` : « given configuration »,
+   emplacement et couleur), entrées du jeu rendues au monde une fois la carte ouverte (mode d'entrée de Common UI).
+Puis **partie 3 — Réglages** (D245) : `UGameUserSettings` dérivée, onglets Vidéo, Son, Commandes (grisé), Langue ;
+classes de son par script ; activer « Réglages » ; `hol.UI.Open Settings`.
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
@@ -61,7 +61,9 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 
 # Touches envoyées à l'interface comme par le clavier ou la manette (D246), sans piloter le bureau
 #   -ExecCmds="hol.UI.Key Escape 4,hol.UI.Key Gamepad_FaceButton_Right 5,hol.UI.Capture keys_after_back 6.5,hol.UI.Key Enter 9"
-#   (Enter et Gamepad_FaceButton_Bottom ferment le jeu par « Quitter » : journal « LogHOLUI: Title screen: Quit »)
+#   (Enter et Gamepad_FaceButton_Bottom ouvrent la confirmation de sortie ; Left puis Enter quittent :
+#   journal « LogHOLUI: Title screen: Quit »)
+# Ouvrir un écran par le même chemin que son bouton (D246) : hol.UI.Open Quit [Délai]
 
 # Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
 #   UnrealEditor-Cmd.exe <uproject> -run=pythonscript -script=<projet>\Tools\Editor\make_ui_input.py -unattended -nop4 -nosplash
@@ -207,3 +209,20 @@ Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recop
   projets créés depuis la 5.6, le nôtre est plus ancien. Passé à **`TriggerClick`** (`DefaultGame.ini`) : Entrée et A
   activent « Quitter » (journal `Title screen: Quit`, sortie propre). `IA_UI_Confirm` reste l'action affichée comme
   icône de clic et routée pour la manette ; ce n'est pas elle qui clique au clavier.
+
+### 2026-10-13 (suite) — Étape 4, partie 1 : focus, sélecteur, titre complet, confirmation de sortie
+
+- **Focus visible** : un bouton qui reçoit le focus prend le style `UHOLButtonStyleFocused` (contour couleur
+  d'accent, mêmes dimensions), son style revient quand il le perd (`HOLUIStyle::ShowFocus`). La largeur minimale des
+  boutons est retirée du style (les largeurs viennent de la mise en page), sans quoi le changement de style changeait
+  la taille. Le rectangle de focus bleu de Slate, dessiné après une navigation au clavier par-dessus le nôtre, est
+  coupé : `RenderFocusRule=Never` (`DefaultEngine.ini`).
+- **`UHOLRotator`** (dérivé de `UCommonRotator`) : « ‹ valeur › », Gauche / Droite pour changer, clic ou Entrée pour
+  la valeur suivante, grisé par `SetIsEnabled(false)` ; servira à Nouvelle partie et Réglages.
+- **`UHOLScreen`** : Retour (Échap, B) ferme l'écran par défaut (`bIsBackHandler`), sauf l'écran titre ; aides pour
+  une ligne libellé + sélecteur, une rangée de boutons, une colonne de dialogue sur voile.
+- **`UHOLConfirmDialog`** : question oui / non dans la couche modale (`bIsModal`), focus sur Non, Retour ferme.
+- **Écran titre** : Jouer et Réglages (grisés jusqu'aux parties 2 et 3), Quitter ouvre « Quitter le jeu ? ».
+- **`hol.UI.Open Quit`** (`Dev/HOLUIOpen.cpp`).
+- **Vérifié par touches et captures** (`p1_*.png`) : focus visible, accents affichés (« Réglages »), Entrée ouvre la
+  confirmation, Échap et B la ferment et rendent le focus à Quitter, Gauche / croix gauche puis Entrée / A quittent.

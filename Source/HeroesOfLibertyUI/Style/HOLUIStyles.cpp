@@ -31,6 +31,11 @@ UHOLTextStyleDisabled::UHOLTextStyleDisabled()
 	SetFont(18.f, TEXT("Regular"), HOLUIStyle::TextDisabled);
 }
 
+UHOLTextStyleNote::UHOLTextStyleNote()
+{
+	SetFont(14.f, TEXT("Italic"), HOLUIStyle::TextDisabled);
+}
+
 UHOLButtonStyle::UHOLButtonStyle()
 {
 	constexpr float Radius = 4.f;
@@ -42,11 +47,37 @@ UHOLButtonStyle::UHOLButtonStyle()
 	SelectedPressed = NormalPressed;
 	Disabled = FSlateRoundedBoxBrush(FLinearColor(0.04f, 0.04f, 0.05f, 0.6f), Radius);
 	ButtonPadding = FMargin(24.f, 10.f);
-	MinWidth = 320;
+	// Widths come from the layout (columns, size boxes), so that the focused style never changes a button's size.
+	MinWidth = 0;
 	MinHeight = 48;
 	NormalTextStyle = UHOLTextStyleBody::StaticClass();
 	NormalHoveredTextStyle = UHOLTextStyleBody::StaticClass();
 	SelectedTextStyle = UHOLTextStyleBody::StaticClass();
 	SelectedHoveredTextStyle = UHOLTextStyleBody::StaticClass();
 	DisabledTextStyle = UHOLTextStyleDisabled::StaticClass();
+}
+
+UHOLButtonStyleFocused::UHOLButtonStyleFocused()
+{
+	NormalBase = FSlateRoundedBoxBrush(FLinearColor(0.06f, 0.06f, 0.08f, 0.9f), 4.f, HOLUIStyle::Accent, 2.f);
+}
+
+void HOLUIStyle::ShowFocus(UCommonButtonBase& Button)
+{
+	const TWeakObjectPtr<UCommonButtonBase> WeakButton(&Button);
+	const TSubclassOf<UCommonButtonStyle> OwnStyle = Button.GetStyle() ? Button.GetStyle()->GetClass() : nullptr;
+	Button.OnFocusReceived().AddLambda([WeakButton]()
+	{
+		if (WeakButton.IsValid())
+		{
+			WeakButton->SetStyle(UHOLButtonStyleFocused::StaticClass());
+		}
+	});
+	Button.OnFocusLost().AddLambda([WeakButton, OwnStyle]()
+	{
+		if (WeakButton.IsValid())
+		{
+			WeakButton->SetStyle(OwnStyle);
+		}
+	});
 }

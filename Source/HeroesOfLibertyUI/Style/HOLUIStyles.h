@@ -16,6 +16,12 @@ namespace HOLUIStyle
 	const FLinearColor Text(0.92f, 0.9f, 0.85f, 1.f);
 	const FLinearColor TextDisabled(0.4f, 0.4f, 0.4f, 1.f);
 	const FLinearColor Accent(0.85f, 0.65f, 0.25f, 1.f);
+	/** Panel of a dialog, and the veil laid over the screen below it. */
+	const FLinearColor Panel(0.03f, 0.035f, 0.045f, 1.f);
+	const FLinearColor Veil(0.f, 0.f, 0.f, 0.6f);
+
+	/** Shows the keyboard focus on a button: the focused style while it has it, its own style otherwise. */
+	HEROESOFLIBERTYUI_API void ShowFocus(UCommonButtonBase& Button);
 }
 
 /** Base of the text styles: Roboto at a given size and typeface. */
@@ -68,6 +74,16 @@ public:
 	UHOLTextStyleDisabled();
 };
 
+/** Notes under a screen (what is greyed and why). */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleNote : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleNote();
+};
+
 /** Menu buttons: flat, rounded, the accent colour when hovered. */
 UCLASS()
 class HEROESOFLIBERTYUI_API UHOLButtonStyle : public UCommonButtonStyle
@@ -76,4 +92,14 @@ class HEROESOFLIBERTYUI_API UHOLButtonStyle : public UCommonButtonStyle
 
 public:
 	UHOLButtonStyle();
+};
+
+/** A menu button that has the keyboard focus: outlined in the accent colour (hovering looks the same with a mouse). */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLButtonStyleFocused : public UHOLButtonStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLButtonStyleFocused();
 };
