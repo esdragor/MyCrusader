@@ -14,6 +14,47 @@ Chantier mené en parallèle de M2 (unités) et du moteur 5.8.3 avec cible Serve
 
 ---
 
+## Où on en est
+
+| Étape | État |
+|---|---|
+| Plan (Q1 à Q9, D240 à D248) | **fait** (2026-10-13) |
+| 1. Socle : plugin Common UI, module `HeroesOfLibertyUI` (client seulement), `Json` dans le module principal | **fait** (2026-10-13) |
+| 2. Configuration de partie (`FHOLMatchConfig`, sous-système, GameMode, PlayerState) + premiers tests | **en cours** |
+| 3. Socle Common UI (viewport, entrées, styles, police, couches, carte `MainMenu`) | à faire |
+| 4. Écrans (titre, Nouvelle partie, Réglages, confirmation de sortie) | à faire |
+| 5. Localisation (français, anglais, japonais) | à faire |
+| 6. Vérification (tests d'automatisation, bout en bout en trois langues avec captures) | à faire |
+| 7. Clôture (D240 à D247 au GDD, garde-fou du stress test, lien `OwnerPlayer`, commandes utiles) | à faire |
+
+## Prochaine étape exacte
+
+Étape 2, configuration de partie, dans le module `HeroesOfLiberty`, dossier `Match/` :
+1. **Palette partagée** : sortir la palette de D233 de `Presentation/HOLInterpolatedInstancesProcessor.cpp`
+   (`GetPlayerColor`, 8 couleurs) vers `Match/HOLPlayerColors.h/.cpp` (couleurs + nom localisable de chaque couleur),
+   le processeur l'appelant sans changer de comportement (toujours indexée par `OwnerPlayer`). Le lien « couleur choisie
+   par l'emplacement » ↔ `OwnerPlayer` se fait à l'étape 7.
+2. `HOLMatchConfig.h` : `EHOLSlotState` (fermé, humain, IA), `EHOLFaction` (les 6 factions du § 13), `EHOLMatchMode`
+   (Standard), `FHOLMatchSlot` (état, faction, couleur, équipe 0 = aucune, 1 à 4), `FHOLMatchConfig` (version, graine,
+   carte en `FSoftObjectPath`, 8 emplacements, mode, options Nomade / Régicide / Catastrophe) ; lecture et écriture
+   JSON (`FJsonObjectConverter`), avec numéro de version (D243, D244).
+3. `UHOLMatchSubsystem` (`UGameInstanceSubsystem`) : porte la configuration ; lit `-MatchConfig=<fichier JSON>` à
+   l'initialisation ; `HasConfig()`.
+4. `AHeroesOfLibertyGameModeBase` lit la configuration (ou des valeurs par défaut : un emplacement humain, D243) et
+   donne à chaque joueur un `AHOLPlayerState` (index de joueur, index de couleur).
+5. Tests d'automatisation (`Tests/`, `WITH_DEV_AUTOMATION_TESTS`) : aller-retour JSON, version antérieure, GameMode
+   sans configuration. Compiler, lancer les tests en ligne de commande, S2 court, committer.
+
+**Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
+exacte, entrée de journal — avant de passer à la suivante.
+
+## Commandes utiles
+
+Voir `ImplementationInProgress.md` (« Commandes utiles ») : compilation `HeroesOfLibertyEditor`, lancement du stress
+test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversion des chemins `/Game/...`).
+
+---
+
 ## Plan (à valider question par question)
 
 | # | Question | État |
@@ -76,3 +117,15 @@ Pas de worktree finalement (choix de l'utilisateur) ; Q8 ajoutée et tranchée (
 **renommer tout le projet avant de coder** : fait (D248, consigné directement au GDD car il concerne tous les chantiers).
 Contenu suivi par git sans LFS (990 fichiers sous `Content`) : un worktree recopie ~3,3 Go. Le moteur fournit
 `Engine/Content/Slate/Fonts/DroidSansFallback.ttf` (couvre le japonais) : candidat pour la sous-police japonaise.
+
+### 2026-10-13 (suite) — Étape 1 faite : socle
+
+- `HeroesOfLiberty.uproject` : plugin `CommonUI` activé (il contient `CommonInput`) ; module **`HeroesOfLibertyUI`**
+  déclaré en `ClientOnly` (ni compilé ni chargé par une cible Server, D247). Module minimal : `Build.cs` (dépend de
+  `HeroesOfLiberty`, `UMG`, `Slate`, `CommonUI`, `CommonInput`), catégorie de log `LogHOLUI`.
+- `HeroesOfLiberty.Build.cs` : `Json`, `JsonUtilities` ajoutés (configuration de partie en JSON, étape 2).
+- Compilation 80 s ; S2 court : les deux modules et Common UI se chargent, unités et rendu inchangés.
+- **Erreur attendue jusqu'à l'étape 3** dans le journal : `LogUIActionRouter: Error: Using CommonUI without a
+  CommonGameViewportClient derived game viewport client`. Elle disparaîtra avec le client de viewport Common UI (à
+  vérifier alors sur S1, car c'est un réglage global qui touche aussi le stress test).
+- Constat pour l'étape 2 : la palette de D233 est locale au processeur de rendu de M2, indexée par `OwnerPlayer`.

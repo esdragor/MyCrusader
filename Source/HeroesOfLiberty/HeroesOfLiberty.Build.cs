@@ -36,7 +36,7 @@ public class HeroesOfLiberty : ModuleRules
 		});
 
 		// SlateCore: the stress test checks the game window state before asking for a capture (D190).
-		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore", "SlateCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore", "SlateCore", "Json", "JsonUtilities" });
 
 		// Iris replication (D29, M2.5).
 		SetupIrisSupport(Target);

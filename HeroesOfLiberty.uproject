@@ -12,6 +12,11 @@
 				"Engine",
 				"AIModule"
 			]
+		},
+		{
+			"Name": "HeroesOfLibertyUI",
+			"Type": "ClientOnly",
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
@@ -41,6 +46,10 @@
 		},
 		{
 			"Name": "GeometryScripting",
+			"Enabled": true
+		},
+		{
+			"Name": "CommonUI",
 			"Enabled": true
 		}
 	]
