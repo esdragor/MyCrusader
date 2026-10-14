@@ -38,7 +38,7 @@ vérifier sur S1 et S2.
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | **fait** (2026-10-14) : 2 000 unités reçues par 2 clients ; 1,5 envoi/unité/s ; **~42 Ko/s par client** (> 32 Ko/s, à régler en M2.5.5) |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | **fait** (2026-10-14) : 2 000 unités affichées par chaque client, animées, à la couleur du joueur ; corrections ~24 cm en moyenne, aucun placement direct |
 | M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | **fait** (2026-10-14) : morceaux en acteurs (fin du chemin des objets énormes) ; D274 (35 cm, 10 mises à jour/s) : **S5 PASS, 30,3 Ko/s par client, écart affiché 19,7 cm** ; tests 28/28 |
-| M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | **en partie faite** (2026-10-14) : partie « net » de `quick_check.ps1` (D275 : serveur = éditeur en `-server`, 2 clients hors écran) PASS, `quick_check` PASS en 44 s, tests 28/28 ; **reste l'essai de l'utilisateur** (2 clients côte à côte sur `Plain` puis sur S5) |
+| M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | **en partie faite** (2026-10-14) : partie « net » de `quick_check.ps1` (D275 : serveur = éditeur en `-server`, 2 clients hors écran) PASS, `quick_check` PASS en 44 s, tests 28/28 ; essai de l'utilisateur sur `Plain` **validé** (« tout est bon », après correction du retard des ressources) ; **reste l'essai sur S5** |
 | M2.5.7 Clôture : D268 à D274 au GDD | **en partie faite** (2026-10-14) : D268 à D274 au § 21, paragraphe « Tranche réseau M2.5 » au § 16.6 (marqué « en cours ») ; reste, après M2.5.6, à le marquer fait et à compléter la ligne M2.5 du tableau du § 16.6 |
 | J3 — plan (Q1 à Q5, D280 à D284 ; mené en parallèle de la fin de M2.5, dans une autre session) | **fait** (2026-10-14) |
 | J3.1 Données et règles pures | **fait** (2026-10-14) : `Peasant` et colonnes de production dans les tables, `UHOLMatchSettings` (stock de départ), `Buildings/HOLProductionRules`, 3 tests `HeroesOfLiberty.Production.*` ; tests 28/28, `quick_check` PASS |
@@ -51,8 +51,8 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.6 : partie « net » de `quick_check.ps1` faite** (D275). Suite : **essai de l'utilisateur**, les deux
-   clients côte à côte sur `Plain` puis sur S5 (`net_match.ps1 -Stage`, puis `net_match.ps1 -Units 2000 -Keep`) ;
+1. **M2.5.6 : partie « net » de `quick_check.ps1` faite** (D275). Essai de l'utilisateur sur `Plain` validé ; suite :
+   **essai sur S5** (`net_match.ps1 -Units 2000 -Keep`, serveur déjà recuit) ;
    puis fin de M2.5.7 (D268 à D275 déjà au GDD ; marquer le paragraphe du § 16.6 fait, compléter la ligne M2.5 du
    tableau). Cette session ne fait que
    M2.5.x ; J3 est menée par un autre agent (se prévenir avant de compiler ou de lancer des clients).
@@ -786,6 +786,19 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 - Résultat : `quick_check.ps1` **PASS en 44 s** (au lieu de ~32 s), tests 28/28, toutes les parties (dont
   « production » de J3) ; capture relue : le client de l'emplacement 1 voit le centre bleu de l'emplacement 0, sélectionné
   comme « Joueur 1 ». Reste l'essai de l'utilisateur.
+
+### 2026-10-14 (suite) — M2.5.6 : essai de l'utilisateur sur `Plain`, retard des ressources corrigé
+
+- Serveur recuit (`net_match.ps1 -Stage`, avec la production de J3 et le correctif du ramasse-miettes 0fb58ea), deux
+  clients côte à côte sur `Plain`.
+- **Remarque de l'utilisateur** : « énorme latence » de la barre des ressources quand il met un Paysan en file ou
+  l'annule. Cause : un `APlayerState` n'envoie qu'**une fois par seconde** (`SetNetUpdateFrequency(1)` du moteur),
+  alors que la file du centre est poussée tout de suite (`ForceNetUpdate`). Correction : `ForceNetUpdate()` dans
+  `AHOLPlayerState::SetResources` et `SetPopulation`, après leurs retours anticipés (la population est écrite à chaque
+  pas mais change rarement). Recompilé, recuit, relancé : **« tout est bon »**.
+- Règle pour la suite : toute donnée d'un `PlayerState` que le joueur voit changer à son geste doit pousser sa mise à
+  jour (ou le `PlayerState` recevoir une fréquence plus haute) ; la récolte de J5 changera les ressources souvent.
+- Reste : l'essai sur S5.
 
 
 ### 2026-10-14 (suite) — J3, plan ouvert ; Q1 tranchée (D280)

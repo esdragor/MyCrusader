@@ -29,6 +29,8 @@ void AHOLPlayerState::SetResources(const FHOLResources& InResources)
 	}
 	Resources = InResources;
 	OnEconomyChanged.Broadcast();
+	// A player state sends once a second by default (APlayerState): the bar lagged behind the production queue.
+	ForceNetUpdate();
 }
 
 void AHOLPlayerState::SetPopulation(const int32 InUsed, const int32 InCap)
@@ -40,6 +42,7 @@ void AHOLPlayerState::SetPopulation(const int32 InUsed, const int32 InCap)
 	PopulationUsed = InUsed;
 	PopulationCap = InCap;
 	OnEconomyChanged.Broadcast();
+	ForceNetUpdate();
 }
 
 FString AHOLPlayerState::DescribeEconomy() const
