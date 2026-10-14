@@ -165,6 +165,23 @@ void UHOLProductionSubsystem::ApplyOrders()
 			continue;
 		}
 
+		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
+		{
+			// On the building itself: no rally point any more (the units are born at its foot, D283).
+			if (Building->IsOnFootprint(Order.Location))
+			{
+				Building->ClearRallyPoint();
+				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d cleared the rally point of %s"), Order.PlayerIndex, *Building->GetTypeName().ToString());
+			}
+			else
+			{
+				Building->SetRallyPoint(Order.Location);
+				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d set the rally point of %s at (%.0f, %.0f)"), Order.PlayerIndex,
+					*Building->GetTypeName().ToString(), Order.Location.X, Order.Location.Y);
+			}
+			continue;
+		}
+
 		FHOLResources Stock = PlayerState->GetResources();
 		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
 		if (Order.Kind == FHOLProductionCommand::EKind::Queue)
@@ -247,7 +264,11 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		{
 			int32& NumBorn = NumBirths.FindOrAdd(Building);
 			// A tiny radius: the unit is put on the navmesh right under the point (FHOLUnitSpawnRequest).
-			Units->RequestUnits(FHOLUnitSpawnRequest{ TypeName, 1, GetBirthLocation(*Building, NumBorn), 1.f, Building->GetOwnerPlayer() });
+			FHOLUnitSpawnRequest Request{ TypeName, 1, GetBirthLocation(*Building, NumBorn), 1.f, Building->GetOwnerPlayer() };
+			// Born at its foot, then to the rally point if it has one (J4, D288).
+			Request.bHasMoveTarget = Building->HasRallyPoint();
+			Request.MoveTarget = Building->GetRallyPoint();
+			Units->RequestUnits(Request);
 			++NumBorn;
 			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld (%d born here)"), *TypeName.ToString(),
 				Building->GetOwnerPlayer(), StepIndex, NumBorn);

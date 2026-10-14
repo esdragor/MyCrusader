@@ -15,4 +15,6 @@ struct FHOLMoveOrder
 	TArray<uint32> UnitIds;
 	/** On the navmesh (brought back to it when the order is issued, D228). */
 	FVector Target = FVector::ZeroVector;
+	/** Slot of the player who gave it (D288): only its own units obey. INDEX_NONE: no check (the server's own orders). */
+	int32 PlayerIndex = INDEX_NONE;
 };

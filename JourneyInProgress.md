@@ -51,7 +51,8 @@ vérifier sur S1 et S2.
 | J4.1 Navmesh dynamique et obstacles | **fait** (2026-10-14) : `DynamicModifiersOnly`, agent de 60 cm, zone interdite sous les bâtiments, rochers et bosquet sur `Plain`, navmesh construit et sauvegardé par les scripts des cartes (`Plain` et `StressTest` refaites), `hol.Nav.Path`, partie « move » de `quick_check` PASS (40 s), S1 / S2 courts PASS |
 | J4.2 Règles pures (paquets, places, attribution) | **fait** (2026-10-14) : `Simulation/HOLGroupMoveRules`, 3 tests `HeroesOfLiberty.Movement.*`, tests 31/31 |
 | J4.3 Chemins dans la simulation | **fait** (2026-10-14) : ordre de groupe, places, paquets, couloir partagé avec place de côté, dernier tronçon vers la place ; 40 Paysans contournent centre et arête, arrivés en disque de ~5 m ; `quick_check` PASS (48 s) ; **S2 à remesurer machine au repos** (3,0-3,8 ms sous charge, voir journal) |
-| J4.4 Ordre réseau et ralliement | à faire |
+| J4.4 Ordre réseau et ralliement | **fait** (2026-10-14) : appel serveur avec contrôle du propriétaire dans la simulation, point de ralliement (file de commandes, répliqué au propriétaire), naissance avec ordre, places déjà prises sautées ; partie à 2 clients de `quick_check` : chacun voit les deux Paysans là où leurs propriétaires les ont envoyés (13 cm), le serveur ignore l'unité de l'autre ; `quick_check` PASS (46 s) |
+| J4.5 Sélection des unités | à faire |
 
 ## Prochaine étape exacte
 
@@ -1170,3 +1171,29 @@ reconstruction d'une tuile, à mesurer en J4.1).
   bords : identique). **À remesurer machine au repos avant la clôture (J4.7)** : le seuil de 3 ms bloque l'étape.
 - `quick_check` **PASS en 48 s**.
 - Suite : **J4.4** (ordre réseau et point de ralliement).
+
+### 2026-10-14 (suite) — J4.4 faite : ordre par le serveur, point de ralliement
+
+- **Ordre du joueur** : `AHOLPlayerController::RequestMoveUnits` → appel serveur `ServerMoveUnits` (identifiants +
+  point quantifié, 200 unités au plus) → `IssueMoveOrder(..., PlayerIndex)`. `FHOLMoveOrder` porte le joueur ; le
+  **contrôle du propriétaire** se fait dans la simulation, au pas où l'ordre s'applique (comme la production, D282) :
+  les unités d'un autre sont ignorées (« Move order of slot N: K units ignored, not its own »). Les ordres du serveur
+  lui-même (ralliement, essais, stress test) n'ont pas de joueur.
+- **Point de ralliement** : `FHOLProductionCommand::EKind::Rally` (file de commandes, propriétaire vérifié par la
+  production) ; `AHOLBuilding` : `RallyPoint` et `bHasRallyPoint` répliqués au seul propriétaire, `OnRallyChanged`
+  pour le fanion de J4.6 ; un ordre sur l'emprise du bâtiment **efface** le ralliement. Le Paysan naît toujours au pied
+  du centre (D283), puis `FHOLUnitSpawnRequest::bHasMoveTarget` lui donne un ordre vers le ralliement au pas de sa
+  naissance.
+- **Places déjà prises** : trois Paysans envoyés un par un au même ralliement s'y empilaient (35 cm d'écart : un ordre
+  d'une seule unité allait au point exact). Désormais toute place passe par le nid d'abeille, et une place est
+  sautée si une unité **au repos hors de l'ordre** s'y trouve (grille d'obstacles de Mass) ou si elle est **déjà
+  donnée** à une unité en route (registre des places réservées par cases de 5 m, vérifié à la lecture, balayé toutes
+  les ~10 s). Essai : 4 Paysans au ralliement, à 1,33 m au plus près, dans 1,6 m.
+- **Vue des unités** (`Simulation/HOLUnitView`) : les unités connues de cette machine (simulées en solo et au serveur,
+  affichées chez un client), avec position et rayon ; servira à la sélection (J4.5).
+- Commandes : `hol.Units.Order X Y [all]` et `hol.Units.OrderNear Dx Dy [all]` (par le contrôleur, donc le serveur ;
+  `all` envoie aussi les unités des autres), `hol.Prod.Rally X Y`, `hol.Units.Where [Slot]`.
+- **`quick_check`, partie à 2 clients** (si `move`) : après la production, chaque client envoie **toutes** les unités
+  qu'il connaît à 25 m de son départ ; contrôles : chaque client voit les deux Paysans à moins de 1,5 m de là où leurs
+  propriétaires les ont envoyés (mesuré : 11-13 cm), le serveur a ignoré une unité pour chacun. **PASS en 46 s.**
+- Suite : **J4.5** (sélection des unités : projection, clic, cadre, Maj, clic droit).

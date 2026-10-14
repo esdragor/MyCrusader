@@ -63,6 +63,10 @@ public:
 	void RequestProduction(FName TypeName);
 	/** Asks the server to cancel the item at Index of the selected building's queue (its own). */
 	void RequestCancelProduction(int32 Index);
+	/** Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. */
+	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target);
+	/** Asks the server to put the selected building's rally point (own) at a ground point, or to clear it (on the building). */
+	void RequestRallyPoint(const FVector& Point);
 
 	/** Swaps the engine's default HUD for the match HUD of the UI module (D281), on the player's machine. */
 	virtual void ClientSetHUD_Implementation(TSubclassOf<AHUD> NewHUDClass) override;
@@ -93,6 +97,13 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelProduction(AHOLBuilding* Building, int32 Index);
+
+	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
+	UFUNCTION(Server, Reliable)
+	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

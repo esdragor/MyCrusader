@@ -53,5 +53,20 @@ protected:
 	uint32 NextOrderSerial = 1;
 	int64 NumPathsServed = 0;
 
+	/**
+	 * Slots given to units still on their way, by cell of ClaimCellSize: a later order does not give them again (units
+	 * sent one by one to a rally point stand side by side). A claim is checked when read (the unit still walks to
+	 * that slot) and dropped otherwise; the whole register is swept from time to time.
+	 */
+	TMap<FIntPoint, TArray<FMassEntityHandle>> SlotClaims;
+	int32 StepsSinceClaimSweep = 0;
+	static constexpr double ClaimCellSize = 500.;
+	static FIntPoint GetClaimCell(const FVector2D& Point)
+	{
+		return FIntPoint(FMath::FloorToInt32(Point.X / ClaimCellSize), FMath::FloorToInt32(Point.Y / ClaimCellSize));
+	}
+	/** True when the unit still walks to a slot of that cell. */
+	static bool IsClaimLive(const FMassEntityManager& EntityManager, FMassEntityHandle Entity, const FIntPoint& Cell);
+
 	FMassEntityQuery EntityQuery;
 };

@@ -35,6 +35,8 @@ public:
 	FString MakeReport() const;
 	/** The units displayed, counted by type and owner ("2 displayed: Peasant of slot 0 x1, ..."), for hol.Units.Report (J3). */
 	FString DescribeDisplayed() const;
+	/** The units displayed, where they are drawn (J4: what the player selects and orders). */
+	void GetDisplayedUnits(TArray<struct FHOLUnitView>& OutUnits) const;
 	void ResetStats();
 
 	// UTickableWorldSubsystem

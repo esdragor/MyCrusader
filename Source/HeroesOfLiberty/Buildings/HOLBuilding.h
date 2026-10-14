@@ -56,6 +56,22 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnProductionChanged);
 	FOnProductionChanged OnProductionChanged;
 
+	/**
+	 * Rally point (J4, D288): where the units it produces walk once born. Written by the server alone (a rally order
+	 * of the command queue), replicated to the owner only, like the queue.
+	 */
+	bool HasRallyPoint() const { return bHasRallyPoint; }
+	FVector GetRallyPoint() const { return RallyPoint; }
+	/** Server only. */
+	void SetRallyPoint(const FVector& Point);
+	void ClearRallyPoint();
+	/** True when a ground point is on the building's footprint (a rally order there clears the rally point). */
+	bool IsOnFootprint(const FVector& Point) const;
+
+	/** The rally point changed: on the server, on the owner's machine when it arrives. For the flag (J4.6). */
+	DECLARE_MULTICAST_DELEGATE(FOnRallyChanged);
+	FOnRallyChanged OnRallyChanged;
+
 	/** Values of the provisional shape (D261), as fractions of the footprint and the height. */
 	static constexpr float BaseHeightRatio = 0.45f;
 	static constexpr float TowerSizeRatio = 0.4f;
@@ -73,6 +89,9 @@ private:
 
 	UFUNCTION()
 	void OnRep_ProductionQueue();
+
+	UFUNCTION()
+	void OnRep_Rally();
 
 	/** Builds the look from the type, then paints the owner's colour. Safe to call again. */
 	void RefreshAppearance();
@@ -97,6 +116,12 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_ProductionQueue)
 	TArray<FHOLProductionItem> ProductionQueue;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Rally)
+	FVector_NetQuantize RallyPoint = FVector::ZeroVector;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Rally)
+	bool bHasRallyPoint = false;
 
 	/** The type the pieces were built for: the look is rebuilt only when it changes. */
 	FName BuiltTypeName;

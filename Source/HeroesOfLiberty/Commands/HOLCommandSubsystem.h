@@ -19,8 +19,11 @@ class HEROESOFLIBERTY_API UHOLCommandSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-	/** Queues "go to this location" for the given units, one order for the group (D286, D287). */
-	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target);
+	/**
+	 * Queues "go to this location" for the given units, one order for the group (D286, D287). PlayerIndex: the player
+	 * who gave it, whose own units alone obey (D288); INDEX_NONE for the server's own orders (rally point, tests).
+	 */
+	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE);
 
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
 	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);

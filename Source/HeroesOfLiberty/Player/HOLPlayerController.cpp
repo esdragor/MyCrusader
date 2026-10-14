@@ -27,6 +27,7 @@
 #include "Settings/HOLGameUserSettings.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::Player
 {
@@ -37,6 +38,9 @@ namespace UE::HeroesOfLiberty::Player
 	// Made by Tools/Editor/make_game_input.py.
 	const TCHAR* MappingContextPath = TEXT("/Game/Input/IMC_Game.IMC_Game");
 	const TCHAR* ActionFolder = TEXT("/Game/Input/");
+
+	/** Units of one move order at most: a player's whole population (D03), a client could send more. */
+	constexpr int32 MaxOrderedUnits = 200;
 
 	/** Width of the screen border that scrolls the camera, as a fraction of the viewport. */
 	constexpr double EdgeMargin = 0.01;
@@ -160,6 +164,81 @@ namespace UE::HeroesOfLiberty::Player
 		}
 		return nullptr;
 	}
+
+	/**
+	 * Scripted checks of the orders (J4, D289), without the selection: the player's own units known on this machine
+	 * (or every unit, to check that the server moves only the player's own) ordered to a ground point.
+	 */
+	FAutoConsoleCommand UnitsOrderCommand(
+		TEXT("hol.Units.Order"),
+		TEXT("hol.Units.Order X Y [all]: asks the server to move the local player's units known here to a ground point (cm); 'all' sends every unit, other players' too"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				return;
+			}
+			const FVector Target(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
+			const bool bAll = Args.Num() >= 3 && Args[2] == TEXT("all");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				TArray<FHOLUnitView> Views;
+				HOLUnitView::Gather(*Controller->GetWorld(), Views);
+				TArray<uint32> UnitIds;
+				for (const FHOLUnitView& View : Views)
+				{
+					if (bAll || (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex()))
+					{
+						UnitIds.Add(View.UnitId);
+					}
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)%s"), UnitIds.Num(), Target.X, Target.Y, bAll ? TEXT(", other players' too") : TEXT(""));
+				Controller->RequestMoveUnits(UnitIds, Target);
+			}
+		}));
+
+	/** The same, to a point given from the player's own start (a script does not know which slot a client holds). */
+	FAutoConsoleCommand UnitsOrderNearCommand(
+		TEXT("hol.Units.OrderNear"),
+		TEXT("hol.Units.OrderNear Dx Dy [all]: hol.Units.Order to the player's start plus (Dx, Dy) (cm)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				return;
+			}
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				if (Start)
+				{
+					const FVector Target = Start->GetGroundLocation() + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
+					IConsoleManager::Get().ProcessUserConsoleInput(*FString::Printf(TEXT("hol.Units.Order %.0f %.0f %s"), Target.X, Target.Y,
+						Args.Num() >= 3 ? *Args[2] : TEXT("")), *GLog, Controller->GetWorld());
+				}
+			}
+		}));
+
+	FAutoConsoleCommand ProductionRallyCommand(
+		TEXT("hol.Prod.Rally"),
+		TEXT("hol.Prod.Rally X Y: asks the server to put the rally point of the selected building (own), or of the player's main centre (selected first), at a ground point (cm); on the building, clears it"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (!Controller->GetOwnSelection())
+				{
+					Controller->SetSelection(FindOwnBuilding(*Controller, HOLBuildingTypeNames::MainCentre));
+				}
+				Controller->RequestRallyPoint(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.));
+			}
+		}));
 
 	/** Scripted checks of the production (D284), without the HUD: what a cell of the grid does. */
 	FAutoConsoleCommand ProductionQueueCommand(
@@ -536,6 +615,48 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
 		ServerCancelProduction(Building, Index);
+	}
+}
+
+void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitIds, const FVector& Target)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerMoveUnits(TArray<uint32>(UnitIds), Target);
+	}
+}
+
+void AHOLPlayerController::RequestRallyPoint(const FVector& Point)
+{
+	if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		ServerSetRallyPoint(Building, Point);
+	}
+}
+
+void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target)
+{
+	// The order names the player: the simulation moves only its own units (D288), a client could send any identifier.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		Commands->IssueMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex());
+	}
+}
+
+void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Rally;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Command.Location = Point;
+		Commands->IssueProductionOrder(Command);
 	}
 }
 

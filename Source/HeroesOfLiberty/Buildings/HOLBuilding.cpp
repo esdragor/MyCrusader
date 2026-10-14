@@ -66,6 +66,8 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AHOLBuilding, OwnerPlayer);
 	DOREPLIFETIME(AHOLBuilding, ColorIndex);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
 }
 
 const FHOLBuildingTypeRow* AHOLBuilding::GetType() const
@@ -83,6 +85,37 @@ void AHOLBuilding::NotifyProductionChanged()
 void AHOLBuilding::OnRep_ProductionQueue()
 {
 	OnProductionChanged.Broadcast();
+}
+
+void AHOLBuilding::SetRallyPoint(const FVector& Point)
+{
+	RallyPoint = Point;
+	bHasRallyPoint = true;
+	ForceNetUpdate();
+	OnRallyChanged.Broadcast();
+}
+
+void AHOLBuilding::ClearRallyPoint()
+{
+	bHasRallyPoint = false;
+	ForceNetUpdate();
+	OnRallyChanged.Broadcast();
+}
+
+void AHOLBuilding::OnRep_Rally()
+{
+	OnRallyChanged.Broadcast();
+}
+
+bool AHOLBuilding::IsOnFootprint(const FVector& Point) const
+{
+	const FHOLBuildingTypeRow* Type = GetType();
+	if (!Type)
+	{
+		return false;
+	}
+	const FVector Local = GetActorTransform().InverseTransformPosition(Point);
+	return FMath::Abs(Local.X) <= Type->Footprint.X * 0.5 && FMath::Abs(Local.Y) <= Type->Footprint.Y * 0.5;
 }
 
 void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, const uint8 InColorIndex)

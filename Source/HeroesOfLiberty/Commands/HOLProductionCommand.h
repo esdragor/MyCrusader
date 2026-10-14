@@ -16,6 +16,8 @@ struct FHOLProductionCommand
 	{
 		Queue,
 		Cancel,
+		/** The building's rally point (J4, D288), or none when Location is on the building itself. */
+		Rally,
 	};
 
 	EKind Kind = EKind::Queue;
@@ -26,4 +28,6 @@ struct FHOLProductionCommand
 	FName TypeName;
 	/** Cancel: index of the item in the building's queue. */
 	int32 Index = INDEX_NONE;
+	/** Rally: the ground point. */
+	FVector Location = FVector::ZeroVector;
 };

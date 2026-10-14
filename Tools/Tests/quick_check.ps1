@@ -206,8 +206,13 @@ if ($NetListening) {
         $NetSteps += "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Report"
         # Production (D284): each client has its centre make a Peasant (2 s, the server's hol.Prod.BuildTime), then both
         # Peasants must be shown, and the other player's resources must not have reached this client (D282).
-        $NetSteps += "hol.Prod.Queue", "waitunits 2", "wait 1", "hol.Units.Report", "hol.Prod.Report", "capture qcnet_${Client}_peasants",
-            "mark end", "quit"
+        $NetSteps += "hol.Prod.Queue", "waitunits 2", "wait 1", "hol.Units.Report", "hol.Prod.Report", "capture qcnet_${Client}_peasants"
+        # Orders (J4, D288, D289): each client sends every unit it knows, the other player's Peasant too, 25 m beside its
+        # start; the server moves its own alone; then each client must see both Peasants where their owners sent them.
+        if ($Parts -contains "move") {
+            $NetSteps += "hol.Units.OrderNear -1000 2500 all", "wait 12", "hol.Units.Where", "capture qcnet_${Client}_moved"
+        }
+        $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
@@ -383,6 +388,21 @@ if ($Parts -contains "net") {
         $Checks["client $N : captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
+    }
+    if ($Parts -contains "move") {
+        # Each client sees both Peasants beside their owners' starts (D288): its own order obeyed, the other client's too.
+        foreach ($NetClient in $NetClients) {
+            $N = $NetClient.Client
+            $Where = (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            foreach ($Slot in 0, 1) {
+                $Start = Get-SlotStart $Slot
+                $Seen = [regex]::Match([string]$Where, "slot $Slot at \((-?\d+), (-?\d+)\)")
+                $Gap = if ($Seen.Success) { [Math]::Sqrt([Math]::Pow([int]$Seen.Groups[1].Value - ($Start[0] - 1000), 2) + [Math]::Pow([int]$Seen.Groups[2].Value - ($Start[1] + 2500), 2)) } else { -1 }
+                $Checks["client $N : Peasant of slot $Slot where its owner sent it ($([Math]::Round($Gap)) cm off)"] = ($Gap -ge 0) -and ($Gap -le 150)
+            }
+        }
+        $Refused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Move order of slot (\d): 1 units ignored, not its own" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+        $Checks["server: each player's order left the other's Peasant alone ($($Refused -join ', '))"] = (($Refused | Sort-Object) -join ',') -eq "0,1"
     }
     $Checks["two clients in slots 0 and 1 ($($HeldSlots -join ', '))"] = (($HeldSlots | Sort-Object) -join ',') -eq "0,1"
     if ($NetServerProcess -and -not $NetServerProcess.HasExited) { Stop-Process -Id $NetServerProcess.Id -Force }

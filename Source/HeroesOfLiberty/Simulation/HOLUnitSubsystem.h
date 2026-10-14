@@ -30,6 +30,9 @@ struct FHOLUnitSpawnRequest
 	float Radius = 0.f;
 	/** Player the units belong to (D233). */
 	uint8 OwnerPlayer = 0;
+	/** Once born, the units go there (a building's rally point, J4, D288). */
+	bool bHasMoveTarget = false;
+	FVector MoveTarget = FVector::ZeroVector;
 };
 
 /**
@@ -84,6 +87,8 @@ public:
 	void GetPopulationByOwner(TArray<int32>& OutPopulation) const;
 	/** "3 units: #1 Peasant slot 0 at (x, y, z) LOD 0 visible, drawn as instances; ...", the first MaxUnits (hol.Units.Report). */
 	FString DescribeUnits(int32 MaxUnits) const;
+	/** The units simulated here (solo, server), where they are (J4: what the player selects and orders in solo). */
+	void GetUnitViews(TArray<struct FHOLUnitView>& OutUnits) const;
 
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }

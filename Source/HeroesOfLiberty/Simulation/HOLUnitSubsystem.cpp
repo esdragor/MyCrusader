@@ -2,6 +2,7 @@
 
 #include "Simulation/HOLUnitSubsystem.h"
 
+#include "Commands/HOLCommandSubsystem.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/DataTable.h"
@@ -27,6 +28,7 @@
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLLightUnitAvoidanceTrait.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLUnitView.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitMovementTrait.h"
 #include "Simulation/HOLUnitTrait.h"
@@ -425,6 +427,20 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		EntityToId.Add(Entity, UnitId);
 	}
 
+	// Born with somewhere to go (a rally point): one order for the units of the request, applied at this step.
+	if (Request.bHasMoveTarget)
+	{
+		if (UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>())
+		{
+			TArray<uint32> BornIds;
+			for (const FMassEntityHandle Entity : Created)
+			{
+				BornIds.Add(EntityToId.FindChecked(Entity));
+			}
+			Commands->IssueMoveOrder(BornIds, Request.MoveTarget);
+		}
+	}
+
 	if (NumProjectionFailures > 0)
 	{
 		UE_LOG(LogHOLSimulation, Warning, TEXT("%d of %d '%s' units found no navmesh under their birth position after %d draws: born off the navmesh, at their last draw"),
@@ -527,6 +543,35 @@ void UHOLUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
 		++OutCounts.FindOrAdd(Unit.Value.TypeName);
+	}
+}
+
+void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	if (!EntitySubsystem)
+	{
+		return;
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	OutUnits.Reserve(OutUnits.Num() + Units.Num());
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Unit.Value.Entity);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Unit.Value.Entity);
+		if (!Transform || !State)
+		{
+			continue;
+		}
+		FHOLUnitView& View = OutUnits.AddDefaulted_GetRef();
+		View.UnitId = Unit.Key;
+		View.OwnerPlayer = State->OwnerPlayer;
+		View.TypeName = Unit.Value.TypeName;
+		View.Location = Transform->GetTransform().GetLocation();
+		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Unit.Value.Entity))
+		{
+			View.Radius = Constants->Radius;
+		}
 	}
 }
 

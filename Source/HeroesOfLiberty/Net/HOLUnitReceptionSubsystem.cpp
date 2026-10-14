@@ -19,6 +19,7 @@
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 bool UHOLUnitReceptionSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
@@ -374,6 +375,34 @@ FString UHOLUnitReceptionSubsystem::MakeReport() const
 		NumDisplayed, Stats.NumArrivals, Stats.NumDepartures, Stats.NumStates / Seconds, WireStates,
 		Stats.NumCorrections > 0 ? Stats.TotalCorrectionCm / Stats.NumCorrections : 0.0, Stats.MaxCorrectionCm, Stats.NumSnaps,
 		ClockStep - LastServerStep, InBytesPerSecond, MeanFps, LowFps);
+}
+
+void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnits) const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+	if (!EntitySubsystem)
+	{
+		return;
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	for (const FSlot& Slot : Slots)
+	{
+		const FTransformFragment* Transform = Slot.Entity.IsSet() ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Slot.Entity) : nullptr;
+		if (!Transform)
+		{
+			continue;
+		}
+		FHOLUnitView& View = OutUnits.AddDefaulted_GetRef();
+		View.UnitId = Slot.UnitId;
+		View.OwnerPlayer = Slot.OwnerPlayer;
+		View.TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
+		View.Location = Transform->GetTransform().GetLocation();
+		if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(View.TypeName) : nullptr)
+		{
+			View.Radius = Row->Radius;
+		}
+	}
 }
 
 FString UHOLUnitReceptionSubsystem::DescribeDisplayed() const

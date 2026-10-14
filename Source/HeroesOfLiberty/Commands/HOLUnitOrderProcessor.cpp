@@ -13,6 +13,7 @@
 #include "MassExecutionContext.h"
 #include "MassNavMeshNavigationFragments.h"
 #include "MassNavigationFragments.h"
+#include "MassNavigationSubsystem.h"
 #include "NavCorridor.h"
 #include "NavigationData.h"
 #include "NavigationSystem.h"
@@ -147,11 +148,12 @@ namespace UE::HeroesOfLiberty::Orders
 	}
 
 	/**
-	 * Slots of an order of several units around Target (D287), on the navmesh: a honeycomb oriented along the march,
-	 * a slot kept only if the navmesh has it where it is (not in an obstacle) and reaches it straight from the target.
+	 * Slots of an order around Target (D287), on the navmesh: a honeycomb oriented along the march, the target itself
+	 * first; a slot is kept only if the navmesh has it where it is (not in an obstacle), reaches it straight from the
+	 * target, and no standing unit outside the order is on it (units sent one by one to a rally point stand side by side).
 	 */
 	void MakeOrderSlots(const FVector& Target, const FVector2D& Forward, const int32 NumUnits, const float Radius, const UNavigationSystemV1* NavSystem,
-		const ANavigationData* NavData, TArray<FVector>& OutSlots)
+		const ANavigationData* NavData, TConstArrayView<FVector2D> Occupied, TArray<FVector>& OutSlots)
 	{
 		OutSlots.Reset();
 		const double Spacing = 2. * Radius * HOLGroupMove::SlotSpacingInDiameters;
@@ -162,6 +164,11 @@ namespace UE::HeroesOfLiberty::Orders
 		{
 			const FVector2D World2D = FVector2D(Target) + HOLGroupMove::ToWorld(Offset, Forward);
 			const FVector Wanted(World2D.X, World2D.Y, Target.Z);
+			const double TakenDistance = Radius * 1.8;
+			if (Occupied.ContainsByPredicate([&World2D, TakenDistance](const FVector2D& Taken) { return FVector2D::DistSquared(Taken, World2D) < TakenDistance * TakenDistance; }))
+			{
+				continue;
+			}
 			if (NavSystem && NavData)
 			{
 				FNavLocation OnNav;
@@ -218,6 +225,12 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	AdvanceUnits(EntityManager, Context);
 }
 
+bool UHOLUnitOrderProcessor::IsClaimLive(const FMassEntityManager& EntityManager, const FMassEntityHandle Entity, const FIntPoint& Cell)
+{
+	const FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
+	return Order && Order->Phase != EHOLMovePhase::None && GetClaimCell(FVector2D(Order->Slot)) == Cell;
+}
+
 void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager, const UNavigationSystemV1* NavSystem, const ANavigationData* NavData)
 {
 	using namespace UE::HeroesOfLiberty::Orders;
@@ -231,6 +244,21 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 
 	TArray<FHOLMoveOrder> Orders;
 	Commands->ConsumeMoveOrders(Orders);
+
+	// Claims of units that stood or got another order since: swept every 10 s or so.
+	if (++StepsSinceClaimSweep >= 200)
+	{
+		StepsSinceClaimSweep = 0;
+		for (auto It = SlotClaims.CreateIterator(); It; ++It)
+		{
+			const FIntPoint Cell = It.Key();
+			It.Value().RemoveAll([&EntityManager, &Cell](const FMassEntityHandle Entity) { return !IsClaimLive(EntityManager, Entity, Cell); });
+			if (It.Value().Num() == 0)
+			{
+				It.RemoveCurrent();
+			}
+		}
+	}
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 	const float CorridorHalfWidth = Settings->PathCorridorWidth * 0.5f;
 
@@ -240,6 +268,10 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 	TArray<FVector2D> Slots2D;
 	TArray<int32> SlotOfUnit;
 	TArray<int32> ClusterOfUnit;
+	TArray<FVector2D> Occupied;
+	TArray<FMassNavigationObstacleItem> Nearby;
+	const UMassNavigationSubsystem* Navigation = World->GetSubsystem<UMassNavigationSubsystem>();
+	const FNavigationObstacleHashGrid2D* ObstacleGrid = Navigation ? &Navigation->GetObstacleGrid() : nullptr;
 	for (const FHOLMoveOrder& Order : Orders)
 	{
 		// A unit can be ordered before it is born or after it is gone: it is left out (M4 will keep the orders a
@@ -247,6 +279,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		Entities.Reset();
 		Positions.Reset();
 		float Radius = 0.f;
+		int32 NumRefused = 0;
 		for (const uint32 UnitId : Order.UnitIds)
 		{
 			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
@@ -254,9 +287,19 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			{
 				continue;
 			}
+			// Only a player's own units obey it (D288): a client could send any identifier.
+			if (Order.PlayerIndex != INDEX_NONE && EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer != Order.PlayerIndex)
+			{
+				++NumRefused;
+				continue;
+			}
 			Entities.Add(Entity);
 			Positions.Add(FVector2D(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation()));
 			Radius = FMath::Max(Radius, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).Radius);
+		}
+		if (NumRefused > 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Move order of slot %d: %d units ignored, not its own"), Order.PlayerIndex, NumRefused);
 		}
 		if (Entities.Num() == 0)
 		{
@@ -271,14 +314,50 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			Centre += Position;
 		}
 		Centre /= Positions.Num();
+		// Standing units outside the order around the target: their places are taken.
+		Occupied.Reset();
+		if (ObstacleGrid)
+		{
+			const double Reach = 2. * Radius * HOLGroupMove::SlotSpacingInDiameters * (FMath::Sqrt(Entities.Num() * 1.4 + 6.) + 1.);
+			Nearby.Reset();
+			ObstacleGrid->Query(FBox(Order.Target - FVector(Reach, Reach, 1000.), Order.Target + FVector(Reach, Reach, 1000.)), Nearby);
+			for (const FMassNavigationObstacleItem& Item : Nearby)
+			{
+				const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Item.Entity);
+				if (State && State->Activity == EHOLUnitActivity::Idle && !Entities.Contains(Item.Entity))
+				{
+					Occupied.Add(FVector2D(EntityManager.GetFragmentDataChecked<FTransformFragment>(Item.Entity).GetTransform().GetLocation()));
+				}
+			}
+			// And the slots already given to units on their way there.
+			const FIntPoint MinCell = GetClaimCell(FVector2D(Order.Target) - FVector2D(Reach));
+			const FIntPoint MaxCell = GetClaimCell(FVector2D(Order.Target) + FVector2D(Reach));
+			for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
+			{
+				for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
+				{
+					const FIntPoint Cell(X, Y);
+					TArray<FMassEntityHandle>* Claims = SlotClaims.Find(Cell);
+					if (!Claims)
+					{
+						continue;
+					}
+					Claims->RemoveAll([&EntityManager, &Cell](const FMassEntityHandle Entity) { return !IsClaimLive(EntityManager, Entity, Cell); });
+					for (const FMassEntityHandle Entity : *Claims)
+					{
+						if (!Entities.Contains(Entity))
+						{
+							Occupied.Add(FVector2D(EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).Slot));
+						}
+					}
+				}
+			}
+		}
 		Slots.Reset();
-		if (Entities.Num() == 1)
+		MakeOrderSlots(Order.Target, FVector2D(Order.Target) - Centre, Entities.Num(), Radius, NavSystem, NavData, Occupied, Slots);
+		if (Slots.Num() == 0)
 		{
 			Slots.Add(Order.Target);
-		}
-		else
-		{
-			MakeOrderSlots(Order.Target, FVector2D(Order.Target) - Centre, Entities.Num(), Radius, NavSystem, NavData, Slots);
 		}
 		Slots2D.Reset();
 		for (const FVector& Slot : Slots)
@@ -323,6 +402,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			MoveOrder.Slot = SlotOfUnit[Unit] != INDEX_NONE ? Slots[SlotOfUnit[Unit]] : Order.Target;
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));
 			MoveOrder.Phase = EHOLMovePhase::WaitingPath;
+			SlotClaims.FindOrAdd(GetClaimCell(FVector2D(MoveOrder.Slot))).AddUnique(Entity);
 			// Moving from now on: the unit keeps its current walk until its path comes (S2 orders only idle units).
 			EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).Activity = EHOLUnitActivity::Moving;
 		}
