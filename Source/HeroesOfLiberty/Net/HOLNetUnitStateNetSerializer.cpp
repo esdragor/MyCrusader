@@ -6,6 +6,7 @@
 #include "Iris/Serialization/NetBitStreamReader.h"
 #include "Iris/Serialization/NetBitStreamWriter.h"
 #include "Iris/Serialization/NetSerializerDelegates.h"
+#include "Misc/ScopeExit.h"
 #include "Net/HOLUnitReplicationRules.h"
 
 #include <atomic>
@@ -81,6 +82,36 @@ namespace HOLNetUnitState
 	/** Iris may serialize for several connections in parallel. */
 	std::atomic<int64> NumSerialized = 0;
 	std::atomic<int64> NumDeserialized = 0;
+
+	UE::HeroesOfLiberty::Net::FHOLUnitStateBitProbe BitProbe;
+	/** Absolute position in the received stream after the last state read. */
+	uint32 LastStateEndBits = 0;
+
+	void ProbeState(const uint32 StartBits, const uint32 EndBits)
+	{
+		using FProbe = UE::HeroesOfLiberty::Net::FHOLUnitStateBitProbe;
+		++BitProbe.NumStates;
+		if (StartBits == LastStateEndBits)
+		{
+			++BitProbe.NumAdjacent;
+		}
+		else if (StartBits < LastStateEndBits)
+		{
+			++BitProbe.NumPacketStarts;
+			BitProbe.PacketStartBits += StartBits;
+		}
+		else if (const uint32 Gap = StartBits - LastStateEndBits; Gap < FProbe::NumBuckets * FProbe::BucketBits)
+		{
+			++BitProbe.NumGaps;
+			BitProbe.GapBits += Gap;
+			++BitProbe.GapHistogram[Gap / FProbe::BucketBits];
+		}
+		else
+		{
+			++BitProbe.NumOther;
+		}
+		LastStateEndBits = EndBits;
+	}
 }
 
 void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context, const FNetSerializeArgs& Args)
@@ -101,6 +132,8 @@ void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Contex
 {
 	HOLNetUnitState::NumDeserialized.fetch_add(1, std::memory_order_relaxed);
 	FNetBitStreamReader& Reader = *Context.GetBitStreamReader();
+	const uint32 StartBits = Reader.GetAbsolutePosBits();
+	ON_SCOPE_EXIT { HOLNetUnitState::ProbeState(StartBits, Reader.GetAbsolutePosBits()); };
 	QuantizedType& State = *reinterpret_cast<QuantizedType*>(Args.Target);
 	State.X = ReadSigned(Reader, SourceType::HorizontalBits);
 	State.Y = ReadSigned(Reader, SourceType::HorizontalBits);
@@ -182,4 +215,29 @@ int64 UE::HeroesOfLiberty::Net::GetNumSerializedUnitStates()
 int64 UE::HeroesOfLiberty::Net::GetNumDeserializedUnitStates()
 {
 	return UE::Net::HOLNetUnitState::NumDeserialized.load(std::memory_order_relaxed);
+}
+
+int32 UE::HeroesOfLiberty::Net::FHOLUnitStateBitProbe::GapPercentile(const double Share) const
+{
+	const int64 Wanted = FMath::CeilToInt64(NumGaps * Share);
+	int64 Count = 0;
+	for (int32 Bucket = 0; Bucket < NumBuckets; ++Bucket)
+	{
+		Count += GapHistogram[Bucket];
+		if (Count >= Wanted && Count > 0)
+		{
+			return (Bucket + 1) * BucketBits;
+		}
+	}
+	return NumBuckets * BucketBits;
+}
+
+const UE::HeroesOfLiberty::Net::FHOLUnitStateBitProbe& UE::HeroesOfLiberty::Net::GetUnitStateBitProbe()
+{
+	return UE::Net::HOLNetUnitState::BitProbe;
+}
+
+void UE::HeroesOfLiberty::Net::ResetUnitStateBitProbe()
+{
+	UE::Net::HOLNetUnitState::BitProbe = FHOLUnitStateBitProbe();
 }

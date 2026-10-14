@@ -33,6 +33,8 @@ public:
 	void RemoveChunk(const AHOLUnitChunk* Chunk);
 	/** One report line: units displayed, states received, corrections (S5, D273). */
 	FString MakeReport() const;
+	/** Where the states sat in what was received (D300): the bits Iris wrote around them, over that many seconds. */
+	static FString MakeBitProbeReport(double Seconds);
 	/** The units displayed, counted by type and owner ("2 displayed: Peasant of slot 0 x1, ..."), for hol.Units.Report (J3). */
 	FString DescribeDisplayed() const;
 	/** The units displayed, where they are drawn (J4: what the player selects and orders). */

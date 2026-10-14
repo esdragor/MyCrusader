@@ -54,7 +54,7 @@ vérifier sur S1 et S2.
 | J4.4 Ordre réseau et ralliement | **fait** (2026-10-14) : appel serveur avec contrôle du propriétaire dans la simulation, point de ralliement (file de commandes, répliqué au propriétaire), naissance avec ordre, places déjà prises sautées ; partie à 2 clients de `quick_check` : chacun voit les deux Paysans là où leurs propriétaires les ont envoyés (13 cm), le serveur ignore l'unité de l'autre ; `quick_check` PASS (46 s) |
 | J4.5 Sélection des unités | **fait** (2026-10-14) : `Player/HOLUnitPicking` (projection, clic, cadre), sélection d'unités dans `AHOLPlayerController` (unité avant bâtiment, cadre au relâchement, Maj, unité adverse seule, unités disparues retirées), clic droit → ordre ou ralliement (sur le centre : effacé), `IA_SelectAdd` / `IA_Order` ; essai scripté solo conforme ; tests 32/32, `quick_check` PASS (39 s) |
 | J4.6 Retour visuel et HUD | **fait** (2026-10-14) : `AHOLSelectionMarkers` (cercles sous les unités sélectionnées, carré sous le bâtiment, repère d'ordre de 0,5 s, fanion de ralliement), `M_GroundRing` / `M_GroundFrame` (`make_marker_materials.py`), rectangle du cadre dessiné par `AHOLGameHUD`, bloc de sélection d'une unité ou d'un groupe (fr / en / ja) ; essai scripté avec captures conforme ; tests 32/32, `quick_check` PASS (43 s) ; **1er essai de l'utilisateur** → retouches faites (D290, D291 : marqueurs blancs, repère réduit, Paysan à 6 m/s, triches de développement) ; `quick_check` PASS (42 s) ; 2e à 4e essais → D290 complétée (arrêtée ou pleine vitesse), D292 (aucun corps n'en traverse un autre), D293 (contourner avant de bousculer) ; `quick_check` PASS (45 s) ; **5e essai validé** (« super ») |
-| J4.7 Vérification (D289) | **en cours** (2026-10-14) : partie solo des ordres dans `quick_check` (PASS, 65-75 s), défauts corrigés (D294), S1 PASS ; **S2 à remesurer au repos**, **S5 au-dessus de 32 Ko/s (~39)** : D300, chasse aux en-têtes d'Iris en cours |
+| J4.7 Vérification (D289) | **en cours** (2026-10-14) : partie solo des ordres dans `quick_check` (PASS, 65-75 s), défauts corrigés (D294), S1 PASS ; **S2 à remesurer au repos**, **S5 au-dessus de 32 Ko/s** : D300, en-têtes d'Iris trouvés (identifiant de 10 bits par élément d'un tableau rapide) et retirés (tableaux simples) : 39,7 → **35,6 Ko/s** ; reste ~3,6 Ko/s à trouver dans les états eux-mêmes (décision de l'utilisateur) |
 | J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299 ; trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte) ; code après la clôture de J4 |
 
 ## Prochaine étape exacte
@@ -1547,3 +1547,28 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   des emplacements changés + états) au lieu du tableau rapide ; couper les propriétés d'acteur inutiles du morceau ;
   mesure exacte par `-NetTrace` et Unreal Insights. Mesurer S5 avec `net_match.ps1 -Stage -Units 2000 -Seconds 40`
   (`-ServerSettings "réglage valeur"` pour un A / B, un réglage par chaîne).
+
+### 2026-10-14 (suite) — J4.7, D300 : les en-têtes d'Iris trouvés et retirés (39,7 → 35,6 Ko/s)
+
+- **Sonde chez le client** (`FHOLUnitStateBitProbe`, ligne « Net (bits) » du rapport toutes les 5 s) : position de
+  chaque état dans le flux reçu (`GetAbsolutePosBits` au début et à la fin de `Deserialize`) ; l'écart entre deux
+  états est exactement ce qu'Iris a écrit entre eux. Le serveur n'a pas changé : mesure sans recuire.
+- **Résultat** : **aucun état collé au précédent** ; **10 bits exactement** avant chaque état d'une même écriture de
+  morceau, ~130-150 bits entre deux morceaux, premier état d'un paquet à ~190 bits. Cause (lecture d'Iris,
+  `ReplicationStateDescriptorBuilder.cpp`) : *« For FastArraySerializerItems we currently include the ReplicationId even
+  though it is not replicated »* : chaque élément d'un tableau rapide part avec son `ReplicationID` (entier compacté,
+  10 bits pour nos identifiants < 256), soit ~4,2 Ko/s à ~3 400 états/s. C'était l'essentiel des « ~30 octets par
+  écriture de morceau » (~9 états × 10 bits) que la lecture d'Iris de M2.5.5 n'expliquait pas.
+- **Correctif** : les morceaux portent des **tableaux simples** (`TArray<FHOLNetUnitIdentity>`, `TArray<FHOLNetUnitState>`)
+  au lieu de tableaux rapides. Iris donne aussi 63 bits de changement par élément à un tableau simple
+  (`net.Iris.UseChangeMaskForTArray`, actif par défaut) et trouve lui-même les éléments changés en les comparant à
+  chaque mise à jour (`IsEqual` de notre sérialiseur). Le client lisait déjà tous les emplacements sans rappel du
+  tableau rapide : rien d'autre à changer. Après : 2 874 états sur 3 102 collés au précédent, ~185 écarts par seconde
+  de ~128 bits (en-tête de lot, masque de changement, nombre d'éléments).
+- **S5 court** (`net_match.ps1 -Stage -Units 2000 -Seconds 40`) : **35,6 Ko/s par client** (39,7 avant, mêmes
+  ~3 350 états lus par seconde), écart affiché 22,3 cm, 1,74 envoi par unité et par seconde, aucune erreur. Reste
+  chez le client : états 29,7 Ko/s (83 %), en-têtes de morceaux ~4,0 Ko/s, paquets (UDP/IP 28 octets × 46/s) et le
+  reste ~2 Ko/s. Les en-têtes ne peuvent plus donner que 1-2 Ko/s (moins de morceaux) : il faut **~3,6 Ko/s dans les
+  états** (bits par état ou nombre d'envois) : décision de l'utilisateur.
+- `quick_check` **PASS en 65 s** (tests 32/32, partie à 2 clients comprise).
+- Suite : décision de l'utilisateur sur les ~3,6 Ko/s restants, S5 de nouveau, S2 au repos, puis J4.8.

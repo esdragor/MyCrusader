@@ -19,31 +19,21 @@ AHOLUnitChunk::AHOLUnitChunk()
 void AHOLUnitChunk::InitSlots(const int32 InChunkIndex)
 {
 	ChunkIndex = InChunkIndex;
-	Identities.Items.SetNum(NumSlots);
-	States.Items.SetNum(NumSlots);
-	for (int32 Slot = 0; Slot < NumSlots; ++Slot)
-	{
-		Identities.MarkItemDirty(Identities.Items[Slot]);
-		States.MarkItemDirty(States.Items[Slot]);
-	}
-	Identities.MarkArrayDirty();
-	States.MarkArrayDirty();
+	Identities.SetNum(NumSlots);
+	States.SetNum(NumSlots);
 }
 
 void AHOLUnitChunk::SetIdentity(const int32 Slot, const uint32 UnitId, const uint8 TypeIndex, const uint8 OwnerPlayer)
 {
-	FHOLNetUnitIdentityItem& Item = Identities.Items[Slot];
-	Item.UnitId = UnitId;
-	Item.TypeIndex = TypeIndex;
-	Item.OwnerPlayer = OwnerPlayer;
-	Identities.MarkItemDirty(Item);
+	FHOLNetUnitIdentity& Identity = Identities[Slot];
+	Identity.UnitId = UnitId;
+	Identity.TypeIndex = TypeIndex;
+	Identity.OwnerPlayer = OwnerPlayer;
 }
 
 void AHOLUnitChunk::SetState(const int32 Slot, const FHOLNetUnitState& State)
 {
-	FHOLNetUnitStateItem& Item = States.Items[Slot];
-	Item.State = State;
-	States.MarkItemDirty(Item);
+	States[Slot] = State;
 }
 
 void AHOLUnitChunk::BeginPlay()

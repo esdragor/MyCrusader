@@ -67,6 +67,33 @@ void UHOLUnitReceptionSubsystem::ResetStats()
 	const UNetConnection* Connection = NetDriver ? NetDriver->ServerConnection.Get() : nullptr;
 	Stats.InTotalBytes = Connection ? Connection->InTotalBytes : 0;
 	Stats.DeserializedStates = UE::HeroesOfLiberty::Net::GetNumDeserializedUnitStates();
+	UE::HeroesOfLiberty::Net::ResetUnitStateBitProbe();
+}
+
+FString UHOLUnitReceptionSubsystem::MakeBitProbeReport(const double Seconds)
+{
+	const UE::HeroesOfLiberty::Net::FHOLUnitStateBitProbe& Probe = UE::HeroesOfLiberty::Net::GetUnitStateBitProbe();
+	const double PerSecond = 1.0 / FMath::Max(Seconds, 1.0e-3);
+	TArray<int32> Gaps;
+	for (int32 Bucket = 0; Bucket < Probe.NumBuckets; ++Bucket)
+	{
+		if (Probe.GapHistogram[Bucket] > 0)
+		{
+			Gaps.Add(Bucket);
+		}
+	}
+	Gaps.Sort([&Probe](const int32 A, const int32 B) { return Probe.GapHistogram[A] > Probe.GapHistogram[B]; });
+	FString Frequent;
+	for (int32 Index = 0; Index < FMath::Min(Gaps.Num(), 8); ++Index)
+	{
+		Frequent += FString::Printf(TEXT(" %d bits x%d"), Gaps[Index] * Probe.BucketBits, Probe.GapHistogram[Gaps[Index]]);
+	}
+	return FString::Printf(TEXT("Net (bits): %.0f states per second, %.0f right after the previous one; %.0f gaps per second of %.1f bits on average (median %d, 10 %% %d, 90 %% %d; most frequent:%s); %.0f packet starts per second, first state at %.1f bits; %.0f larger gaps per second"),
+		Probe.NumStates * PerSecond, Probe.NumAdjacent * PerSecond,
+		Probe.NumGaps * PerSecond, Probe.NumGaps > 0 ? double(Probe.GapBits) / Probe.NumGaps : 0.0,
+		Probe.GapPercentile(0.5), Probe.GapPercentile(0.1), Probe.GapPercentile(0.9), *Frequent,
+		Probe.NumPacketStarts * PerSecond, Probe.NumPacketStarts > 0 ? double(Probe.PacketStartBits) / Probe.NumPacketStarts : 0.0,
+		Probe.NumOther * PerSecond);
 }
 
 void UHOLUnitReceptionSubsystem::AddChunk(AHOLUnitChunk* Chunk)
@@ -109,6 +136,7 @@ void UHOLUnitReceptionSubsystem::Tick(const float DeltaTime)
 		if (Replicator.IsValid())
 		{
 			UE_LOG(LogHOLNet, Display, TEXT("%s"), *MakeReport());
+			UE_LOG(LogHOLNet, Display, TEXT("%s"), *MakeBitProbeReport(Now - Stats.StartSeconds));
 		}
 		ResetStats();
 	}
@@ -199,7 +227,7 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 		for (int32 Index = 0; Index < AHOLUnitChunk::NumSlots; ++Index)
 		{
 			FSlot& Slot = Slots[FirstSlot + Index];
-			const FHOLNetUnitIdentityItem& Identity = Chunk->GetIdentity(Index);
+			const FHOLNetUnitIdentity& Identity = Chunk->GetIdentity(Index);
 			const FHOLNetUnitState& State = Chunk->GetState(Index);
 			if (Identity.UnitId != Slot.UnitId)
 			{

@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Iris/ReplicationState/IrisFastArraySerializer.h"
+#include "Iris/ReplicationState/PropertyReplicationState.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "HOLUnitReplicator.generated.h"
 
 /** Which unit a slot holds (D270): sent when a unit takes or leaves the slot, or changes owner. UnitId 0: free slot. */
 USTRUCT()
-struct FHOLNetUnitIdentityItem : public FFastArraySerializerItem
+struct FHOLNetUnitIdentity
 {
 	GENERATED_BODY()
 
@@ -26,60 +26,12 @@ struct FHOLNetUnitIdentityItem : public FFastArraySerializerItem
 	uint8 OwnerPlayer = 0;
 };
 
-USTRUCT()
-struct FHOLNetUnitIdentityArray : public FIrisFastArraySerializer
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TArray<FHOLNetUnitIdentityItem> Items;
-
-	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParams)
-	{
-		return FFastArraySerializer::FastArrayDeltaSerialize<FHOLNetUnitIdentityItem, FHOLNetUnitIdentityArray>(Items, DeltaParams, *this);
-	}
-};
-
-template<>
-struct TStructOpsTypeTraits<FHOLNetUnitIdentityArray> : public TStructOpsTypeTraitsBase2<FHOLNetUnitIdentityArray>
-{
-	enum { WithNetDeltaSerializer = true };
-};
-
-/** Where the unit of a slot is and what it does (D269), rewritten only when the send rule says so. */
-USTRUCT()
-struct FHOLNetUnitStateItem : public FFastArraySerializerItem
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	FHOLNetUnitState State;
-};
-
-USTRUCT()
-struct FHOLNetUnitStateArray : public FIrisFastArraySerializer
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	TArray<FHOLNetUnitStateItem> Items;
-
-	bool NetDeltaSerialize(FNetDeltaSerializeInfo& DeltaParams)
-	{
-		return FFastArraySerializer::FastArrayDeltaSerialize<FHOLNetUnitStateItem, FHOLNetUnitStateArray>(Items, DeltaParams, *this);
-	}
-};
-
-template<>
-struct TStructOpsTypeTraits<FHOLNetUnitStateArray> : public TStructOpsTypeTraitsBase2<FHOLNetUnitStateArray>
-{
-	enum { WithNetDeltaSerializer = true };
-};
-
 /**
- * A chunk of unit slots (D270): one replicated actor, always relevant. Iris tracks the items of a fast array with one
- * change bit per 63 items (bit = index modulo 63): in a single array of 2 000 units, one marked unit would resend the
- * ~32 units sharing its bit; a chunk of exactly 63 slots gives each unit its own bit, so only the marked units are sent.
+ * A chunk of unit slots (D270): one replicated actor, always relevant. Iris tracks the elements of an array with one
+ * change bit per 63 elements (bit = index modulo 63): in a single array of 2 000 units, one changed unit would resend
+ * the ~32 units sharing its bit; a chunk of exactly 63 slots gives each unit its own bit, so only the changed units are
+ * sent. Plain arrays, not fast arrays: Iris writes each fast array item with its ReplicationID (10 bits per state, D300);
+ * it finds the changed elements of a plain array itself, by comparing them at each update.
  * Chunks are actors, not subobjects of the shared actor: Iris writes an actor and its subobjects as one batch, which at
  * ~300 states per update outgrew a packet and went through its huge object path every update (split, reliable, written
  * twice, the next update held until all of it was acknowledged); a chunk's batch fits in a packet. (S5: putting 4 runs
@@ -92,7 +44,7 @@ class HEROESOFLIBERTY_API AHOLUnitChunk : public AActor
 	GENERATED_BODY()
 
 public:
-	static constexpr int32 NumSlots = FIrisFastArraySerializer::IrisFastArrayChangeMaskBits;
+	static constexpr int32 NumSlots = UE::Net::FPropertyReplicationState::TArrayElementChangeMaskBits;
 
 	AHOLUnitChunk();
 
@@ -103,9 +55,9 @@ public:
 
 	int32 GetChunkIndex() const { return ChunkIndex; }
 	/** False until the client has received every slot of the chunk. */
-	bool HasAllSlots() const { return Identities.Items.Num() == NumSlots && States.Items.Num() == NumSlots; }
-	const FHOLNetUnitIdentityItem& GetIdentity(int32 Slot) const { return Identities.Items[Slot]; }
-	const FHOLNetUnitState& GetState(int32 Slot) const { return States.Items[Slot].State; }
+	bool HasAllSlots() const { return Identities.Num() == NumSlots && States.Num() == NumSlots; }
+	const FHOLNetUnitIdentity& GetIdentity(int32 Slot) const { return Identities[Slot]; }
+	const FHOLNetUnitState& GetState(int32 Slot) const { return States[Slot]; }
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -120,10 +72,10 @@ private:
 	int32 ChunkIndex = INDEX_NONE;
 
 	UPROPERTY(Replicated)
-	FHOLNetUnitIdentityArray Identities;
+	TArray<FHOLNetUnitIdentity> Identities;
 
 	UPROPERTY(Replicated)
-	FHOLNetUnitStateArray States;
+	TArray<FHOLNetUnitState> States;
 };
 
 /**

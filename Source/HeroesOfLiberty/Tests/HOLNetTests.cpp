@@ -59,7 +59,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::Net;
 	const FNetSerializer& Serializer = UE_NET_GET_SERIALIZER(FHOLNetUnitStateNetSerializer);
-	TestEqual(TEXT("one chunk of slots per change bit of an Iris fast array"), AHOLUnitChunk::NumSlots, 63);
+	TestEqual(TEXT("one chunk of slots per change bit of an Iris array"), AHOLUnitChunk::NumSlots, 63);
 
 	// Every field at both ends of its range and in between, through Iris' quantize, write, read and dequantize.
 	const FHOLNetUnitState States[] = {
