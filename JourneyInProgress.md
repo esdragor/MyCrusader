@@ -1479,3 +1479,5 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   en J4.7** ; pistes si trop cher : un tour au-delà de N marcheurs, calcul en float, découpage parallèle.
 - Tests 32/32, `quick_check` **PASS en 41 s**.
 - Suite : **4e essai de l'utilisateur**, puis J4.7.
+- 4e essai (fin de séance) : l'utilisateur signale **encore un problème**, qu'il décrira dans la séance suivante.
+  **Reprise** : lui demander ce problème, le corriger (tout est commité, b5f168b), puis J4.7.
