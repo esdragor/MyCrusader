@@ -82,6 +82,8 @@ public:
 	 * gets one entry per OwnerPlayer (D233) up to the highest one with a unit.
 	 */
 	void GetPopulationByOwner(TArray<int32>& OutPopulation) const;
+	/** "3 units: #1 Peasant slot 0 at (x, y, z) LOD 0 visible, drawn as instances; ...", the first MaxUnits (hol.Units.Report). */
+	FString DescribeUnits(int32 MaxUnits) const;
 
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }

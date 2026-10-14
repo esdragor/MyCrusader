@@ -17,6 +17,7 @@
 #include "MassEntityUtils.h"
 #include "MassLODTrait.h"
 #include "MassMovableVisualizationTrait.h"
+#include "MassRepresentationFragments.h"
 #include "MassNavMeshNavigationTrait.h"
 #include "MassNavigationFragments.h"
 #include "Movement/MassMovementTrait.h"
@@ -41,6 +42,17 @@ namespace UE::HeroesOfLiberty::Units
 
 	/** Draws of a birth position before giving up on finding the navmesh under it. */
 	constexpr int32 MaxSpawnProjectionAttempts = 4;
+
+	/** Where the units are and how they are drawn: for checking a match's units (J3) without looking at the screen. */
+	FAutoConsoleCommandWithWorldAndArgs CommandReport(TEXT("hol.Units.Report"),
+		TEXT("hol.Units.Report [MaxUnits=10]: logs the number of units and, for the first ones, their type, owner, location, LOD and drawing"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Units report: %s"), *Units->DescribeUnits(Args.IsEmpty() ? 10 : FCString::Atoi(*Args[0])));
+			}
+		}));
 }
 
 bool UHOLUnitSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -487,6 +499,32 @@ void UHOLUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 	{
 		++OutCounts.FindOrAdd(Unit.Value.TypeName);
 	}
+}
+
+FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	if (!EntitySubsystem)
+	{
+		return TEXT("no Mass");
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TArray<uint32> UnitIds;
+	GetAllUnitIds(UnitIds);
+	TArray<FString> Lines;
+	for (int32 Index = 0; Index < FMath::Min(MaxUnits, UnitIds.Num()); ++Index)
+	{
+		const FHOLUnitRecord& Record = Units[UnitIds[Index]];
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Record.Entity);
+		const FMassRepresentationLODFragment* LOD = EntityManager.GetFragmentDataPtr<FMassRepresentationLODFragment>(Record.Entity);
+		const FMassRepresentationFragment* Representation = EntityManager.GetFragmentDataPtr<FMassRepresentationFragment>(Record.Entity);
+		const FVector Location = Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector;
+		Lines.Add(FString::Printf(TEXT("#%u %s slot %d at (%.0f, %.0f, %.0f) LOD %d visibility %d, representation %d"), UnitIds[Index],
+			*Record.TypeName.ToString(), Record.OwnerPlayer, Location.X, Location.Y, Location.Z,
+			LOD ? static_cast<int32>(LOD->LOD) : -1, LOD ? static_cast<int32>(LOD->Visibility) : -1,
+			Representation ? static_cast<int32>(Representation->CurrentRepresentation) : -1));
+	}
+	return FString::Printf(TEXT("%d units: %s"), Units.Num(), *FString::Join(Lines, TEXT("; ")));
 }
 
 void UHOLUnitSubsystem::GetPopulationByOwner(TArray<int32>& OutPopulation) const

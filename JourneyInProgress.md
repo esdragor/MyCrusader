@@ -45,7 +45,7 @@ vérifier sur S1 et S2.
 | J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
 | J3.3 File de production, ordre au serveur, apparition du Paysan | **fait** (2026-10-14) : file sur `AHOLBuilding` (propriétaire réseau = contrôleur), ordres par la file de commandes, `UHOLProductionSubsystem`, 12 actions de grille, `hol.Prod.*` ; vérifié sans fenêtre en solo et à 2 clients |
 | J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
-| J3.5 Vérification (D284) | **en cours** (2026-10-14) : partie « production » dans `quick_check.ps1` PASS (hors écran) ; **Paysans nés mais invisibles sur `Plain`** (à comprendre) ; restent 2 clients dans `quick_check` (après M2.5.6), essai de l'utilisateur, S1 / S2 courts |
+| J3.5 Vérification (D284) | **en cours** (2026-10-14) : partie « production » dans `quick_check.ps1` PASS (hors écran) ; Paysans bien affichés, mais **nés derrière le centre** vu de la caméra pour les emplacements dont le milieu de la carte est vers le haut de l'écran (question à l'utilisateur) ; restent 2 clients dans `quick_check` (après M2.5.6), essai de l'utilisateur, S1 / S2 courts |
 | J3.6 Clôture : D280 à D284 au GDD | à faire |
 
 ## Prochaine étape exacte
@@ -58,7 +58,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** : d'abord comprendre pourquoi les Paysans nés sur `Plain` ne s'affichent pas.
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** : question à l'utilisateur sur le côté de naissance des Paysans ; puis essai de l'utilisateur, S1 / S2 courts, partie à 2 clients dans `quick_check` (après M2.5.6).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -823,3 +823,13 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 - **Vu sur les captures** : les Paysans nés (population 2/10, 3/10) **ne s'affichent pas** sur `Plain` en solo, même
   dézoomé. À comprendre avant de clore J3.5. Note : hors écran, sans `hol.Camera.TestCursor 0.5 0.5`, le vrai curseur est
   au bord et le défilement emporte la caméra.
+
+### 2026-10-14 (suite) — Paysans « invisibles » : nés derrière le centre
+
+- Nouvelle commande `hol.Units.Report [N]` (nombre d'unités, et pour les premières : type, propriétaire, position,
+  niveau de détail, visibilité, représentation). Les 3 Paysans sont à 11,5 m devant le centre côté milieu de la carte
+  (+X pour l'emplacement 0), visibles pour Mass, dessinés en instances.
+- Caméra déplacée vers eux puis zoomée : **ils s'affichent, bleus, en arc**. Ils étaient cachés : la caméra ne tourne
+  pas (D254) et regarde vers +X, donc pour l'emplacement 0 (milieu de la carte vers le haut de l'écran) ils naissent
+  **derrière** le bloc de 4,5 m, et sont petits à la hauteur de jeu. Pas un défaut de rendu ; question posée à
+  l'utilisateur sur le côté de naissance (D283 dit « du côté du milieu de la carte »).
