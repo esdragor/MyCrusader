@@ -26,6 +26,7 @@
 #include "Player/HOLPlayerController.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLGridCell.h"
 #include "Widgets/HOLQueueItem.h"
@@ -237,7 +238,14 @@ void UHOLGameScreen::Refresh()
 	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
 
 	RefreshTopBar(PlayerState);
-	RefreshSelection(Selected, Selected && Selected == Own);
+	if (PlayerController && !PlayerController->GetSelectedUnits().IsEmpty())
+	{
+		RefreshUnitSelection(PlayerController->GetSelectedUnits());
+	}
+	else
+	{
+		RefreshSelection(Selected, Selected && Selected == Own);
+	}
 	RefreshGrid(Own, PlayerState);
 	RefreshQueue(Own);
 	UpdateHead();
@@ -300,11 +308,72 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	{
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
 	}
+	SetShown(SelectionHealthRow, true);
 	if (SelectionHealth)
 	{
 		// No damage before M5: a building is whole.
 		const int32 MaxHealth = Type ? Type->MaxHealth : 0;
 		SelectionHealth->SetText(FormatRatio(MaxHealth, MaxHealth));
+	}
+}
+
+void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// The selected units as this machine knows them: type and owner.
+	TArray<FHOLUnitView> Views;
+	if (const UWorld* World = GetWorld())
+	{
+		HOLUnitView::Gather(*World, Views);
+	}
+	Views.RemoveAll([UnitIds](const FHOLUnitView& View) { return !UnitIds.Contains(View.UnitId); });
+	SetShown(SelectionPanel, !Views.IsEmpty(), ESlateVisibility::Visible);
+	if (Views.IsEmpty())
+	{
+		ShownSelection = TEXT("none");
+		return;
+	}
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 Owner = Views[0].OwnerPlayer;
+	const bool bOwn = PlayerState && PlayerState->GetPlayerIndex() == Owner;
+
+	// Types in a stable order, each with its number.
+	TMap<FName, int32> PerType;
+	for (const FHOLUnitView& View : Views)
+	{
+		++PerType.FindOrAdd(View.TypeName);
+	}
+	PerType.KeySort(FNameLexicalLess());
+	TArray<FString> ShownTypes;
+	TArray<FText> Lines;
+	for (const TPair<FName, int32>& Type : PerType)
+	{
+		const FText Name = HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key));
+		Lines.Add(Views.Num() == 1 ? Name : FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), Name, Type.Value));
+		ShownTypes.Add(Views.Num() == 1 ? Type.Key.ToString() : FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
+	}
+	ShownSelection = FString::Printf(TEXT("%s (%s)"), *FString::Join(ShownTypes, TEXT(", ")), bOwn ? TEXT("own") : TEXT("other"));
+
+	if (SelectionName)
+	{
+		SelectionName->SetText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
+	}
+	if (SelectionSwatch)
+	{
+		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(AHOLPlayerState::FindColorIndex(*GetWorld(), Owner))));
+	}
+	if (SelectionOwner)
+	{
+		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Owner + 1));
+	}
+	// One unit shows its health, a group does not (D288).
+	const FHOLUnitTypeRow* Type = Views.Num() == 1 ? FindUnitType(Views[0].TypeName) : nullptr;
+	SetShown(SelectionHealthRow, Type != nullptr);
+	if (SelectionHealth && Type)
+	{
+		// No damage before M5: a unit is whole.
+		SelectionHealth->SetText(FormatRatio(Type->MaxHealth, Type->MaxHealth));
 	}
 }
 
@@ -604,6 +673,7 @@ void UHOLGameScreen::BuildLayout()
 	SelectionOwner = MakeText(TEXT("SelectionOwner"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	AddToRow(OwnerRow, SelectionOwner, 0.f);
 	UHorizontalBox* HealthRow = MakeHorizontalBox(TEXT("SelectionHealthRow"));
+	SelectionHealthRow = HealthRow;
 	SelectionColumn->AddChildToVerticalBox(HealthRow);
 	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
 	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());

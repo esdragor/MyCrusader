@@ -9,6 +9,7 @@
 class AHOLBuilding;
 class AHOLPlayerState;
 class AHOLRTSCamera;
+class AHOLSelectionMarkers;
 class UInputAction;
 struct FHOLPickCandidate;
 struct FInputActionValue;
@@ -34,6 +35,7 @@ public:
 	AHOLPlayerController();
 
 	AHOLRTSCamera* GetRTSCamera() const { return RTSCamera; }
+	AHOLSelectionMarkers* GetSelectionMarkers() const { return SelectionMarkers; }
 
 	/** The building under a point of the viewport (0 to 1 each way), on the selection channel, or null. */
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
@@ -143,6 +145,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;
+
+	/** What the ground shows of the selection (J4.6), local only like the camera. */
+	UPROPERTY(Transient)
+	TObjectPtr<AHOLSelectionMarkers> SelectionMarkers;
 
 	/** Sum of the held arrow keys this frame. */
 	FVector2D KeyPan = FVector2D::ZeroVector;

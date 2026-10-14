@@ -53,7 +53,7 @@ vérifier sur S1 et S2.
 | J4.3 Chemins dans la simulation | **fait** (2026-10-14) : ordre de groupe, places, paquets, couloir partagé avec place de côté, dernier tronçon vers la place ; 40 Paysans contournent centre et arête, arrivés en disque de ~5 m ; `quick_check` PASS (48 s) ; **S2 à remesurer machine au repos** (3,0-3,8 ms sous charge, voir journal) |
 | J4.4 Ordre réseau et ralliement | **fait** (2026-10-14) : appel serveur avec contrôle du propriétaire dans la simulation, point de ralliement (file de commandes, répliqué au propriétaire), naissance avec ordre, places déjà prises sautées ; partie à 2 clients de `quick_check` : chacun voit les deux Paysans là où leurs propriétaires les ont envoyés (13 cm), le serveur ignore l'unité de l'autre ; `quick_check` PASS (46 s) |
 | J4.5 Sélection des unités | **fait** (2026-10-14) : `Player/HOLUnitPicking` (projection, clic, cadre), sélection d'unités dans `AHOLPlayerController` (unité avant bâtiment, cadre au relâchement, Maj, unité adverse seule, unités disparues retirées), clic droit → ordre ou ralliement (sur le centre : effacé), `IA_SelectAdd` / `IA_Order` ; essai scripté solo conforme ; tests 32/32, `quick_check` PASS (39 s) |
-| J4.6 Retour visuel et HUD | à faire |
+| J4.6 Retour visuel et HUD | **fait** (2026-10-14) : `AHOLSelectionMarkers` (cercles sous les unités sélectionnées, carré sous le bâtiment, repère d'ordre de 0,5 s, fanion de ralliement), `M_GroundRing` / `M_GroundFrame` (`make_marker_materials.py`), rectangle du cadre dessiné par `AHOLGameHUD`, bloc de sélection d'une unité ou d'un groupe (fr / en / ja) ; essai scripté avec captures conforme ; tests 32/32, `quick_check` PASS (43 s) ; **essai de l'utilisateur attendu** |
 | J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299 ; trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte) ; code après la clôture de J4 |
 
 ## Prochaine étape exacte
@@ -1384,3 +1384,34 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 - Tests 32/32, `quick_check` **PASS en 39 s**.
 - Suite : **J4.6** (cercles sous les unités sélectionnées, carré sous le bâtiment, rectangle du cadre via
   `GetSelectionBox`, repère d'ordre via `OnOrderGiven`, fanion de ralliement, bloc de sélection d'un groupe).
+
+### 2026-10-14 (suite) — J4.6 faite : retour visuel de la sélection
+
+- L'utilisateur préfère essayer J4.5 et J4.6 ensemble : J4.6 faite d'un trait, l'essai de l'utilisateur suit.
+- **`Player/AHOLSelectionMarkers`**, acteur local fait par le contrôleur (comme la caméra, jamais répliqué) : deux
+  maillages instanciés sur le plan de 1 m du moteur, sans collision ni ombre, données par instance 0-2 couleur,
+  3 trait en part du demi-côté. **Cercles** sous les unités sélectionnées (rayon × 1,4, trait 12 cm), à la couleur
+  choisie par leur propriétaire (`AHOLPlayerState::FindColorIndex`, ajouté) ; **repère d'ordre** : cercle blanc qui
+  passe de 1,8 m à 0,5 m de rayon en 0,5 s (`OnOrderGiven`, ordre d'unités ou ralliement) ; **carré** autour de
+  l'emprise du bâtiment sélectionné (marge 1 m, trait 30 cm), à la couleur de son propriétaire ; **fanion** (mât de
+  5 m, toile à la couleur du joueur) au ralliement de son bâtiment sélectionné. `hol.Select.Report` ajoute « Selection
+  markers: rings N, frame N, flag N ».
+- Matériaux `M_GroundRing` et `M_GroundFrame` (`Tools/Editor/make_marker_materials.py`, commandlet) : sans éclairage,
+  masqués, forme tirée des UV, faits seulement s'ils manquent.
+- Les cercles suivent les unités dessinées : `FHOLUnitView::Location` est désormais **la position dessinée** (en solo,
+  interpolée entre les deux derniers pas comme le dessin ; chez un client, inchangée) ; le clic vise donc aussi ce que
+  le joueur voit.
+- **Rectangle du cadre** : `AHOLGameHUD::DrawHUD` (fond blanc à 8 %, contour clair), d'après `GetSelectionBox`.
+- **Bloc de sélection** : une unité → nom, propriétaire, points de vie (comme un bâtiment) ; plusieurs → « Paysan × 3 »
+  par type, propriétaire, sans points de vie. Texte `UnitCount` « {0} × {1} » traduit (`fill_po.py`, 104 textes).
+  `hol.HUD.Report` : « selection Peasant x3 (own) ».
+- Essai scripté (`-RenderOffScreen`) : centre sélectionné → carré et fanion ; cadre → 3 cercles et « Paysan × 3 » ;
+  clic droit → cercle blanc au point ; clic sur un Paysan → 1 cercle et « Paysan, Vous, 50 / 50 » ; centre adverse →
+  carré rouge, pas de fanion. Au premier affichage, « Shaders en préparation » : carrés gris le temps de compiler.
+  Le rectangle du cadre demande un vrai glisser (non scripté) : à voir à l'essai.
+- Remarque hors étape : les unités sont dessinées avec la couleur d'index = leur emplacement (`GetPlayerColor
+  (OwnerPlayer)`), les bâtiments et les cercles avec la couleur choisie ; identiques tant que chaque joueur garde la
+  couleur de son emplacement (cas des essais), différentes sinon.
+- Tests 32/32, `quick_check` **PASS en 43 s**.
+- Suite : **essai de l'utilisateur** (J4.5 et J4.6), puis **J4.7** (vérification D289 dans `quick_check`, S1 / S2 /
+  S5 courts ; S2 à remesurer machine au repos).

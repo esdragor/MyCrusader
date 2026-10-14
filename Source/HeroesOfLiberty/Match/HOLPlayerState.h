@@ -23,6 +23,8 @@ public:
 
 	int32 GetPlayerIndex() const { return PlayerIndex; }
 	int32 GetColorIndex() const { return ColorIndex; }
+	/** The colour the player of a slot chose, as this machine knows it; the slot's own index until its state arrives. */
+	static int32 FindColorIndex(const UWorld& World, int32 Slot);
 
 	/** Server only, by the game mode. */
 	void SetMatchSlot(int32 InPlayerIndex, int32 InColorIndex);

@@ -24,6 +24,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLRTSCamera.h"
+#include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
 #include "Settings/HOLGameUserSettings.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -202,6 +203,10 @@ namespace UE::HeroesOfLiberty::Player
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				UE_LOG(LogHOLMatch, Display, TEXT("Selection report: selected %s"), *Controller->DescribeSelection());
+				if (const AHOLSelectionMarkers* Markers = Controller->GetSelectionMarkers())
+				{
+					UE_LOG(LogHOLMatch, Display, TEXT("Selection markers: %s"), *Markers->Describe());
+				}
 			}
 		}));
 
@@ -448,6 +453,9 @@ void AHOLPlayerController::BeginPlay()
 		UE_LOG(LogHOLMatch, Warning, TEXT("No map bounds (AHOLMapBounds): the camera is not bounded"));
 	}
 	SetViewTarget(RTSCamera);
+
+	SelectionMarkers = GetWorld()->SpawnActor<AHOLSelectionMarkers>(Params);
+	SelectionMarkers->Init(this);
 
 	FInputModeGameAndUI InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);

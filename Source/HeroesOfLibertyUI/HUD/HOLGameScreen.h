@@ -21,7 +21,8 @@ struct FHOLUnitTypeRow;
 /**
  * Game screen of a match (J3, D281): the HUD of D201 with only the blocks the game has a use for so far, at their
  * final places. Top left, the four resources and the population; bottom centre, the selected building (its own or
- * another player's, D203: name, owner, health); bottom right, the command grid (D30) of the player's own selected
+ * another player's, D203: name, owner, health) or units (J4, D288: one unit as a building, several by type and number);
+ * bottom right, the command grid (D30) of the player's own selected
  * building and, above it, that building's production queue, whose head shows its progress, computed on this machine
  * every frame from the server's clock (D282). The HUD reads the match and never changes it: a click on a cell or on
  * an item of the queue goes to the controller, then the server (D252); the grid's keys are the controller's own
@@ -95,6 +96,9 @@ protected:
 	TObjectPtr<UCommonTextBlock> SelectionOwner;
 
 	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHorizontalBox> SelectionHealthRow;
+
+	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionHealth;
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -133,6 +137,8 @@ private:
 	void Refresh();
 	void RefreshTopBar(const AHOLPlayerState* PlayerState);
 	void RefreshSelection(const AHOLBuilding* Building, bool bOwn);
+	/** Selected units (never with a building): one is shown as a building is, several by type and number. */
+	void RefreshUnitSelection(TConstArrayView<uint32> UnitIds);
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, const AHOLPlayerState* PlayerState);
 	void RefreshQueue(const AHOLBuilding* OwnBuilding);
 	/** The head of the queue: its progress (every frame) or the population note. */

@@ -12,7 +12,10 @@ struct FHOLUnitView
 	uint32 UnitId = 0;
 	uint8 OwnerPlayer = 0;
 	FName TypeName;
-	/** Where it is: the simulation in solo, the display entity on a client (D271, D272). */
+	/**
+	 * Where it is drawn this frame: the simulation in solo, between its last two fixed steps (D219), the display entity
+	 * on a client (D271, D272).
+	 */
 	FVector Location = FVector::ZeroVector;
 	/** Body radius (cm), from the type table. */
 	float Radius = 60.f;

@@ -30,6 +30,7 @@
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitView.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitMovementTrait.h"
 #include "Simulation/HOLUnitTrait.h"
 #include "SmoothOrientation/MassSmoothOrientationTrait.h"
@@ -554,6 +555,9 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 		return;
 	}
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	// Drawn between the last two fixed steps, as UHOLInterpolatedInstancesProcessor draws them.
+	const UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>();
+	const float Alpha = Simulation ? Simulation->GetInterpolationAlpha() : 1.f;
 	OutUnits.Reserve(OutUnits.Num() + Units.Num());
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
@@ -567,7 +571,9 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 		View.UnitId = Unit.Key;
 		View.OwnerPlayer = State->OwnerPlayer;
 		View.TypeName = Unit.Value.TypeName;
-		View.Location = Transform->GetTransform().GetLocation();
+		const FHOLPreviousTransformFragment* Previous = EntityManager.GetFragmentDataPtr<FHOLPreviousTransformFragment>(Unit.Value.Entity);
+		View.Location = Previous ? FMath::Lerp(Previous->Transform.GetLocation(), Transform->GetTransform().GetLocation(), Alpha)
+			: Transform->GetTransform().GetLocation();
 		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Unit.Value.Entity))
 		{
 			View.Radius = Constants->Radius;

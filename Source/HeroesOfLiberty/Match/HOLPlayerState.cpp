@@ -2,6 +2,8 @@
 
 #include "Match/HOLPlayerState.h"
 
+#include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
 
 void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -13,6 +15,22 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Resources, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationUsed, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationCap, COND_OwnerOnly);
+}
+
+int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
+{
+	if (const AGameStateBase* GameState = World.GetGameState())
+	{
+		for (const APlayerState* PlayerState : GameState->PlayerArray)
+		{
+			const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+			if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Slot)
+			{
+				return HOLPlayerState->GetColorIndex();
+			}
+		}
+	}
+	return Slot;
 }
 
 void AHOLPlayerState::SetMatchSlot(const int32 InPlayerIndex, const int32 InColorIndex)

@@ -123,6 +123,7 @@ TRANSLATIONS = {
     "HOLGameScreen,PlayerN": ("Player {0}", "プレイヤー{0}"),
     "HOLGameScreen,PopulationFull": ("Population full", "人口上限"),
     "HOLGameScreen,CancelHint": ("Click: cancel", "クリック：キャンセル"),
+    "HOLGameScreen,UnitCount": ("{0} × {1}", "{0} × {1}"),
 
     "HOLGameNames,Peasant": ("Peasant", "農民"),
     "HOLGameNames,MainCentre": ("Main Center", "本拠地"),
