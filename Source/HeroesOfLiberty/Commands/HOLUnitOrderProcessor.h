@@ -38,7 +38,7 @@ protected:
 	/** Path requests of the waiting clusters, oldest first, up to the step's budget. */
 	void ServePathRequests(FMassEntityManager& EntityManager, UNavigationSystemV1* NavSystem, const ANavigationData* NavData);
 	/** Next part of a path, then the final leg to the slot, then standing (activity Idle, action Stand). */
-	void AdvanceUnits(FMassEntityManager& EntityManager, FMassExecutionContext& Context);
+	void AdvanceUnits(FMassEntityManager& EntityManager, FMassExecutionContext& Context, const ANavigationData* NavData);
 
 	/** One cluster of an order waiting for its path. */
 	struct FPathRequest

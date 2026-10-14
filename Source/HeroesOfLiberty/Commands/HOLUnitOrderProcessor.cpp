@@ -38,6 +38,8 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr float EndReachedDistance = 50.f;
 	/** Distance (cm) to its slot within which a unit that no longer gets closer counts as stuck (D287, D292). */
 	constexpr float StuckCountDistance = 500.f;
+	/** Distance (cm) to the end of its path within which a unit leaves it for its slot when the navmesh lets it walk straight there (D294). */
+	constexpr double LeavePathDistance = 300.0;
 
 	/** Corridor of a path, the same settings as Mass' own navmesh path follow, at the project's width. */
 	TSharedPtr<FNavCorridor> MakeCorridor(const FNavigationPath& Path, const ANavigationData& NavData, const float Width)
@@ -228,7 +230,7 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
 	ApplyQueuedOrders(EntityManager, NavSystem, NavData);
 	ServePathRequests(EntityManager, NavSystem, NavData);
-	AdvanceUnits(EntityManager, Context);
+	AdvanceUnits(EntityManager, Context, NavData);
 }
 
 bool UHOLUnitOrderProcessor::IsClaimLive(const FMassEntityManager& EntityManager, const FMassEntityHandle Entity, const FIntPoint& Cell)
@@ -508,7 +510,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 	NumPathsServed += Served;
 }
 
-void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMassExecutionContext& Context, const ANavigationData* NavData)
 {
 	using namespace UE::HeroesOfLiberty::Orders;
 	UWorld* World = EntityManager.GetWorld();
@@ -520,7 +522,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 	const float Tolerance = Settings->OrderArrivalTolerance;
 	const int32 StuckLimit = Settings->FinalLegStuckSteps;
 
-	EntityQuery.ForEachEntityChunk(Context, [World, Tolerance, StuckLimit](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [World, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
 		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
@@ -547,6 +549,22 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 					RequestShortPath(ShortPath, CachedPath, CachedPath.NavPathNextStartIndex, FMassNavMeshCachedPathFragment::NumLeadingPoints, Order.Lateral);
 				}
 				else
+				{
+					StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+				}
+				continue;
+			}
+			if (Order.Phase == EHOLMovePhase::Path && NavData && CachedPath.NavPath.IsValid() && CachedPath.NavPath->GetPathPoints().Num() > 0)
+			{
+				// The path ends at the order's point, often taken: a unit already at a rally point, a group standing
+				// there. Once as close to that end as its slot is, a unit leaves the path for its slot if it can walk
+				// straight there (D294): looking ahead (D293), it went round the taken end and never reached it.
+				const FVector Location = Transform.GetTransform().GetLocation();
+				const FVector PathEnd = CachedPath.NavPath->GetPathPoints().Last().Location;
+				const double LeaveDistance = FMath::Max(LeavePathDistance, FVector::Dist2D(Order.Slot, PathEnd) + 100.);
+				FVector Hit;
+				if (FVector::DistSquared2D(Location, PathEnd) <= FMath::Square(LeaveDistance)
+					&& !NavData->Raycast(Location, Order.Slot, Hit, NavData->GetDefaultQueryFilter()))
 				{
 					StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
 				}

@@ -135,10 +135,10 @@ namespace UE::HeroesOfLiberty::Player
 	/** The same on one of the player's own units, wherever it is drawn: a script does not know where units stand on the screen. */
 	FAutoConsoleCommand ClickUnitCommand(
 		TEXT("hol.Select.ClickUnit"),
-		TEXT("hol.Select.ClickUnit <N> [add]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier)"),
+		TEXT("hol.Select.ClickUnit <N> [add]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
-			const int32 N = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			const int32 Wanted = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
 			const bool bAdd = Args.Num() >= 2 && Args[1] == TEXT("add");
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
@@ -147,6 +147,8 @@ namespace UE::HeroesOfLiberty::Player
 				HOLUnitView::Gather(*Controller->GetWorld(), Views);
 				Views.RemoveAll([PlayerState](const FHOLUnitView& View) { return !PlayerState || View.OwnerPlayer != PlayerState->GetPlayerIndex(); });
 				Views.Sort([](const FHOLUnitView& A, const FHOLUnitView& B) { return A.UnitId < B.UnitId; });
+				// Negative: from the last one (-1), whatever units the steps before made.
+				const int32 N = Wanted < 0 ? Views.Num() + Wanted : Wanted;
 				int32 SizeX = 0, SizeY = 0;
 				Controller->GetViewportSize(SizeX, SizeY);
 				FVector2D Middle;
@@ -195,6 +197,76 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** Where a ground point (cm) is drawn, as a fraction of the viewport; false when it is not on the screen. */
+	bool ProjectGroundPoint(const AHOLPlayerController& Controller, const double X, const double Y, FVector2D& OutFraction)
+	{
+		int32 SizeX = 0, SizeY = 0;
+		Controller.GetViewportSize(SizeX, SizeY);
+		FVector2D Pixel;
+		if (SizeX <= 0 || SizeY <= 0 || !Controller.ProjectWorldLocationToScreen(FVector(X, Y, 0.), Pixel))
+		{
+			return false;
+		}
+		OutFraction = FVector2D(Pixel.X / SizeX, Pixel.Y / SizeY);
+		return OutFraction.X >= 0. && OutFraction.X <= 1. && OutFraction.Y >= 0. && OutFraction.Y <= 1.;
+	}
+
+	/** The box and the right click on ground points (J4.7, D289): a script knows the map, not where it is drawn. */
+	FAutoConsoleCommand BoxGroundCommand(
+		TEXT("hol.Select.BoxGround"),
+		TEXT("hol.Select.BoxGround <X1> <Y1> <X2> <Y2> [add]: hol.Select.Box around where that ground rectangle (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 4)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.BoxGround <X1> <Y1> <X2> <Y2> [add]"));
+				return;
+			}
+			const double X1 = FCString::Atod(*Args[0]), Y1 = FCString::Atod(*Args[1]), X2 = FCString::Atod(*Args[2]), Y2 = FCString::Atod(*Args[3]);
+			const bool bAdd = Args.Num() >= 5 && Args[4] == TEXT("add");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FBox2D Box(ForceInit);
+				bool bOnScreen = true;
+				for (const FVector2D& Corner : { FVector2D(X1, Y1), FVector2D(X1, Y2), FVector2D(X2, Y1), FVector2D(X2, Y2) })
+				{
+					FVector2D Fraction;
+					bOnScreen &= ProjectGroundPoint(*Controller, Corner.X, Corner.Y, Fraction);
+					Box += Fraction;
+				}
+				if (!bOnScreen)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.BoxGround: the rectangle is not wholly on the screen"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Box on the ground from (%.3f, %.3f) to (%.3f, %.3f)"), Box.Min.X, Box.Min.Y, Box.Max.X, Box.Max.Y);
+				Controller->SelectInBox(Box.Min, Box.Max, bAdd);
+			}
+		}));
+
+	FAutoConsoleCommand OrderGroundCommand(
+		TEXT("hol.Select.OrderGround"),
+		TEXT("hol.Select.OrderGround <X> <Y>: hol.Select.Order where that ground point (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderGround: the point is not on the screen"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Right click on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
+				Controller->OrderAt(Fraction);
+			}
+		}));
+
 	FAutoConsoleCommand SelectionReportCommand(
 		TEXT("hol.Select.Report"),
 		TEXT("hol.Select.Report: logs the local player's selection"),
@@ -223,6 +295,24 @@ namespace UE::HeroesOfLiberty::Player
 				{
 					Controller->GetRTSCamera()->SetFocus(Start->GetGroundLocation());
 					UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d"), Slot);
+				}
+			}
+		}));
+
+	FAutoConsoleCommand FocusCommand(
+		TEXT("hol.Camera.Focus"),
+		TEXT("hol.Camera.Focus <X> <Y>: puts the local player's camera above a ground point (cm) (scripted checks)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (Controller->GetRTSCamera())
+				{
+					Controller->GetRTSCamera()->SetFocus(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.));
 				}
 			}
 		}));

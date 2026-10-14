@@ -46,6 +46,11 @@ namespace UE::HeroesOfLiberty::Net
 	FAutoConsoleVariableRef CVarSample(TEXT("hol.Net.Sample"), SampleEvery,
 		TEXT("S5 displayed error: logs the positions of the units whose identifier is a multiple of this (server: true ones at each step; client: displayed ones 4 times a second), 0 = none"));
 
+	/** 1: the velocity sent is the step's whole move, the separation's pushes included (D294); 0: the walk's velocity. */
+	int32 StepVelocity = 1;
+	FAutoConsoleVariableRef CVarStepVelocity(TEXT("hol.Net.StepVelocity"), StepVelocity,
+		TEXT("1: the velocity sent with a unit's state is its whole move over the last step, the separation's pushes included (D294); 0: the velocity it walks at"));
+
 	FAutoConsoleCommandWithWorld CommandReport(TEXT("hol.Net.Report"),
 		TEXT("Unit replication report: on the server what it sent since the last report, on a client what it received"),
 		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
@@ -147,6 +152,7 @@ void UHOLUnitReplicationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	UnitQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
+	UnitQuery.AddRequirement<FHOLPreviousTransformFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 
 	TypeIndices.Reset();
@@ -248,6 +254,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FMassVelocityFragment> Velocities = Context.GetFragmentView<FMassVelocityFragment>();
+		const TConstArrayView<FHOLPreviousTransformFragment> PreviousTransforms = Context.GetFragmentView<FHOLPreviousTransformFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		const uint8 TypeIndex = TypeIndices.FindRef(Constants.TypeName);
 
@@ -257,8 +264,11 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			const FVector Position = Transforms[EntityIt].GetTransform().GetLocation();
 			Stats.NumUnitSteps++;
 
-			// The instant velocity: S5 measured more sends with the move over the last 4 steps (it lags in turns).
-			const FVector& Velocity = Velocities[EntityIt].Value;
+			// The instant velocity: S5 measured more sends with the move over the last 4 steps (it lags in turns). The
+			// move of the last step, not the walk's velocity: in a crowd, the separation's pushes (D292) are part of it,
+			// and a client extrapolating the walk alone drifted away (S5: 1.4 -> 2.0 sends per unit and per second).
+			const FVector Velocity = UE::HeroesOfLiberty::Net::StepVelocity != 0 && StepSeconds > 0.f
+				? (Position - PreviousTransforms[EntityIt].Transform.GetLocation()) / StepSeconds : Velocities[EntityIt].Value;
 
 			FUnitRecord* Record = Records.Find(State.UnitId);
 			if (Record == nullptr)

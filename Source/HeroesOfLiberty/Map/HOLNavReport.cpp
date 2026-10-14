@@ -5,6 +5,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "NavMesh/RecastNavMesh.h"
 #include "NavigationSystem.h"
+#include "Simulation/HOLUnitView.h"
 
 namespace
 {
@@ -64,6 +65,38 @@ namespace
 				UE_LOG(LogHOLMatch, Display, TEXT("Nav path: %d points, length %.1f m, straight %.1f m, ratio %.2f%s (navmesh %s, agent %.0f cm)"),
 					Result.Path->GetPathPoints().Num(), Length / 100., Straight / 100., Straight > 1. ? Length / Straight : 1.,
 					Result.IsPartial() ? TEXT(", partial") : TEXT(""), RuntimeGenerationName(NavMesh->GetRuntimeGenerationMode()), NavMesh->AgentRadius);
+			}
+		}));
+
+	/** Scripted checks of the orders (J4.7, D289): no unit stands in a rock or a building, where the navmesh has a hole. */
+	FAutoConsoleCommand NavUnitsCommand(
+		TEXT("hol.Nav.Units"),
+		TEXT("hol.Nav.Units: logs the units whose centre is off the navmesh (by more than 10 cm), on the machines that have one"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const FWorldContext& Context : GEngine->GetWorldContexts())
+			{
+				UWorld* World = Context.World();
+				UNavigationSystemV1* NavSystem = World && World->IsGameWorld() ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr;
+				const ARecastNavMesh* NavMesh = NavSystem ? Cast<ARecastNavMesh>(NavSystem->GetDefaultNavDataInstance()) : nullptr;
+				if (!NavMesh)
+				{
+					continue;
+				}
+				TArray<FHOLUnitView> Units;
+				HOLUnitView::Gather(*World, Units);
+				Units.Sort([](const FHOLUnitView& A, const FHOLUnitView& B) { return A.UnitId < B.UnitId; });
+				TArray<FString> Off;
+				for (const FHOLUnitView& Unit : Units)
+				{
+					FNavLocation OnNav;
+					if (!NavSystem->ProjectPointToNavigation(Unit.Location, OnNav, FVector(10., 10., 1000.), NavMesh))
+					{
+						Off.Add(FString::Printf(TEXT("#%u at (%.0f, %.0f)"), Unit.UnitId, Unit.Location.X, Unit.Location.Y));
+					}
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Nav units: %d units, %d off the navmesh%s%s"), Units.Num(), Off.Num(), Off.IsEmpty() ? TEXT("") : TEXT(": "),
+					*FString::Join(Off, TEXT("; ")));
 			}
 		}));
 }

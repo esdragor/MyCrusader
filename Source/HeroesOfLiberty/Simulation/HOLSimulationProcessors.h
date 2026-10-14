@@ -27,8 +27,8 @@ protected:
  * A unit stands or walks at its full speed, nothing in between (the user's trial of J4, D290): Mass' steering eases
  * in, slows down over the last second of the way and overshoots its goal, then the standing steering brings it back
  * slowly. Between the force and the movement, a moving unit's velocity keeps the direction the steering, the
- * avoidance and the navmesh boundary gave it, at the full speed of its order; near its slot it walks straight to it
- * and its last step ends exactly there. A standing unit does not move at all.
+ * avoidance and the navmesh boundary gave it, at the full speed of its order; on the final leg it walks straight to
+ * its slot (D294) and its last step ends exactly there. A standing unit does not move at all.
  *
  * Every step, a walker looks ahead for the bodies it would meet on its way within a short time and turns aside from
  * them, the smallest turn first (D293): Mass' avoidance runs one step out of 6 (D220) and turned too late, the walker

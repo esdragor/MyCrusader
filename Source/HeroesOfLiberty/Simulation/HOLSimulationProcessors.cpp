@@ -14,16 +14,15 @@
 
 namespace UE::HeroesOfLiberty::Simulation
 {
-	/** Distance (cm) to its slot under which a unit of the final leg leaves the steering and walks straight to it (D290). */
-	constexpr double StraightToSlotDistance = 300.0;
-
 	/** Buckets of the look-ahead's cell table (a power of two), and the width (cm) of its cells. */
 	constexpr int32 LookAheadBuckets = 4096;
 	constexpr double LookAheadCellSize = 250.0;
 	/** Angle (degrees) between two ways a walker tries around a body ahead (D293). */
 	constexpr double AvoidAngleStep = 10.0;
-	/** Part of the bodies' radii the look-ahead keeps clear: a graze is left to the separation, not turned aside for. */
-	constexpr double AvoidRadiusScale = 0.95;
+	/** Part of the two bodies' radii a walker keeps between them when it looks ahead (D293, D294). */
+	float AvoidRadiusScale = 1.1f;
+	FAutoConsoleVariableRef CVarAvoidClearance(TEXT("hol.Units.AvoidClearance"), AvoidRadiusScale,
+		TEXT("Distance a walker keeps from the bodies it looks ahead for, as a part of the two radii (D293, D294): above 1, a margin"));
 
 	int32 AvoidEnabled = 1;
 	FAutoConsoleVariableRef CVarAvoid(TEXT("hol.Units.Avoid"), AvoidEnabled,
@@ -294,9 +293,11 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				continue;
 			}
 			FVector Direction;
-			if (Order.Phase == EHOLMovePhase::FinalLeg && SlotDistance <= StraightToSlotDistance)
+			if (Order.Phase == EHOLMovePhase::FinalLeg)
 			{
-				// Near its slot, straight to it: the steering turns over ~0.3 s, at full speed it would circle the slot.
+				// Straight to its slot, a straight way on the navmesh: the steering turns the velocity at ~50 degrees a
+				// second (its acceleration), at full speed it circled the slot (D290), and after each turn of the
+				// look-ahead it circled the units standing beside the slot without ever coming in (D294).
 				Direction = ToSlot / SlotDistance;
 			}
 			else
@@ -342,6 +343,10 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 SeparationEnabled = 1;
 	FAutoConsoleVariableRef CVarSeparation(TEXT("hol.Units.Separation"), SeparationEnabled,
 		TEXT("1: no body overlaps another once the units have moved (D292); 2: the same, and its average cost logged every 200 steps; 0: off, for A / B measures"));
+
+	float SeparationSlop = 0.f;
+	FAutoConsoleVariableRef CVarSeparationSlop(TEXT("hol.Units.SeparationSlop"), SeparationSlop,
+		TEXT("Overlap (cm) of two bodies the separation leaves (D294): only what goes beyond is undone"));
 
 	/** Time spent and steps run since the last log (hol.Units.Separation 2). */
 	double SeparationSeconds = 0.;
@@ -435,6 +440,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	// The walkers look for their neighbours, then each standing unit they pushed looks for its own (it may now overlap a
 	// third one), and so on: units standing together and left alone cost nothing. Each unit looks once a round; a second
 	// round undoes most of what the pushes of the first made (two walking groups meeting head-on: 36 cm left with one).
+	const double Slop = FMath::Max(0.f, SeparationSlop);
 	Corrections = Positions;
 	Queued = Walking;
 	ToLook.Reset();
@@ -465,7 +471,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 							continue;
 						}
 						const FVector2D Delta = Corrections[Index] - Corrections[Other];
-						const double MinDistance = Radii[Index] + Radii[Other];
+						const double MinDistance = Radii[Index] + Radii[Other] - Slop;
 						const double DistanceSquared = Delta.SizeSquared();
 						if (DistanceSquared >= FMath::Square(MinDistance))
 						{

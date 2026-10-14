@@ -9,8 +9,8 @@
 # reported, the server quits, the clients are closed and s5_report.py prints the S5 report (bandwidth, sends, step
 # times, frame rates, displayed error) with its PASS / FAIL. -Keep leaves everything running for a look, without report.
 # S5 knobs: -UpdateFrequency (updates per second of the shared actor), -Threshold (send threshold, cm), -RefreshSteps
-# (cycle of the slow refresh, in steps), -Lag (ms added to each packet, both ways) and -Loss (% of packets
-# lost, both ways).
+# (cycle of the slow refresh, in steps), -Lag (ms added to each packet, both ways), -Loss (% of packets
+# lost, both ways) and -ServerSettings (console settings of the server, for A / B measures).
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Seconds 40] [-Keep]]
 param(
     [switch] $Stage,
@@ -23,6 +23,7 @@ param(
     [int] $RefreshSteps = 0,
     [int] $Lag = 0,
     [int] $Loss = 0,
+    [string[]] $ServerSettings = @(),
     [switch] $Keep,
     [string] $EngineDir = ""
 )
@@ -74,6 +75,8 @@ if ($Units -gt 0) {
     if ($UpdateFrequency -gt 0) { $ServerCommands += "hol.Net.UpdateFrequency $UpdateFrequency" }
     if ($Threshold -gt 0) { $ServerCommands += "hol.Net.ErrorThreshold $Threshold" }
     if ($RefreshSteps -gt 0) { $ServerCommands += "hol.Net.RefreshSteps $RefreshSteps" }
+    # Other console settings of the server, for A / B measures (e.g. -ServerSettings "hol.Units.Avoid 0").
+    $ServerCommands += $ServerSettings
     $ServerCommands += "hol.Net.WhenClients $Clients hol.StressTest S2 $Units $Seconds$(if (-not $Keep) { ' quit' })"
 }
 if ($ServerCommands) { $ServerArguments += " -ExecCmds=`"$($ServerCommands -join ',')`"" }
