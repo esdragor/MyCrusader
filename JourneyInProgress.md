@@ -47,6 +47,8 @@ vérifier sur S1 et S2.
 | J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
 | J3.5 Vérification (D284) | **fait** (2026-10-14) : `quick_check` PASS (production solo, et production à 2 clients : un Paysan par client vu chez les deux, ressources de l'autre jamais reçues), essai de l'utilisateur « très bien » puis plantage du ramasse-miettes corrigé et confirmé disparu, unités ×1,5, S1 / S2 courts PASS |
 | J3.6 Clôture : D280 à D284 au GDD | **fait** (2026-10-14) : D280 à D284 au § 21 (D283 précisée : unités ×1,5), paragraphe « Parcours J3 » au § 16.6. **J3 close.** |
+| J4 — plan (Q1 à Q5, décisions à partir de D285) | **en cours** (2026-10-14) : Q1 tranchée (D285) ; plan validé (D286 à D289) |
+| J4.1 Navmesh dynamique et obstacles | **en cours** (2026-10-14) |
 
 ## Prochaine étape exacte
 
@@ -58,6 +60,9 @@ vérifier sur S1 et S2.
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
    à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3 close le 2026-10-14** (D280 à D284 au GDD). Suivant dans l'ordre de D252 : **plan de J4** (ordres de déplacement et chemins, M3), à ouvrir dans une nouvelle séance ; décisions à partir de **D285**.
+4. **Plan de J4 en cours** (ouvert le 2026-10-14) : questions une par une (tableau « Plan de J4 » ci-dessous), décisions
+   à partir de **D285** (D276 à D279 inutilisées). **Plan fait** (D285 à D289, sous-étapes J4.1 à J4.8 dans « Plan de
+   J4 »). Reprise : la première sous-étape qui n'est pas « fait » dans le tableau « Où on en est ».
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -165,6 +170,123 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 5. **J3.5 Vérification (D284)** : partie « production » dans `quick_check.ps1` (solo), partie à 2 clients une fois M2.5.6 faite, essai de l'utilisateur, S1 et S2 courts.
 6. **J3.6 Clôture** : D280 à D284 au GDD (§ 21, paragraphe « Parcours J3 » au § 16.6).
 
+## Plan de J4 (à valider question par question)
+
+Repères : § 7.3 (sélection par clic, multiple, par cadre ; ordres de déplacement), D30 (touches), D215 (Mass pour le
+suivi de chemin et l'évitement, couche RTS maison pour les ordres de groupe et formations), D216 / D252 (toute action
+par la file de commandes, donc le serveur ; vérification à 2 clients en fin d'étape), D228 (ordre de M1 en cible
+directe, chemins laissés à M3), D229 (S2 requalifié, que M3 doit rendre de nouveau exigeant), D230 (évitement : deux
+unités qui se croisent se traversent, à instruire avant M5), D262 (sélection chez le client seul), D269 à D272
+(réplication des unités), D283 (Paysan immobile, ralliement en J4). Déjà en place : file de commandes avec l'ordre
+« va à cet endroit » (`UHOLCommandSubsystem::IssueMoveOrder`, cible directe, destination ramenée au navmesh), sélection
+des seuls bâtiments (`AHOLPlayerController`), `Plain` plate avec navmesh, les centres principaux apparus en cours de
+partie (le navmesh ne les contourne pas encore).
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J4 : sélection d'unités, ordres, ralliement, obstacles. | **tranché (D285)** : déplacer ses Paysans seuls ou à plusieurs (clic, cadre, Maj ; clic droit ; chemins ; arrivée répartie ; ralliement ; bloc de sélection de groupe) |
+| Q2 | **Chemins** : comment une unité ou un groupe trouve et suit son chemin (navmesh, obstacles posés en cours de partie). | **tranché (D286)** : un chemin par paquet, couloir partagé, navmesh à modificateurs dynamiques, obstacles sur `Plain` |
+| Q3 | **Ordre de groupe** : où arrive chaque unité d'un groupe (pas d'empilement), formation ou non. | **tranché (D287)** : arrivée en tas serré, ordre relatif gardé, sans formation |
+| Q4 | **Sélection des unités et retour visuel** (unités sans collision : choix sous le curseur, cadre, ce que l'écran montre). | **tranché (D288)** : projection à l'écran, clic droit vérifié par le serveur, ralliement ; **cercle sous les unités sélectionnées et carré sous le bâtiment sélectionné** (revient sur D259) |
+| Q5 | **Vérification** (tests, `quick_check` solo et 2 clients, S2 avec chemins), et découpage en sous-étapes. | **tranché (D289)** : tests, solo et 2 clients dans `quick_check`, S2 avec chemins, S5 court, essai |
+
+L'utilisateur a demandé le plan d'implémentation complet après Q1 (2026-10-14) : Q2 à Q5 proposées d'un bloc, puis
+**validées** (« je valide »), avec pour le retour visuel l'option (a) **et** un carré sous le bâtiment sélectionné.
+
+**Tranché — D286 Chemins : un chemin par groupe, sur le navmesh, calculé par le serveur.**
+- Au pas où l'ordre s'applique, le serveur coupe les unités visées en **paquets** (unités à moins de ~15 m l'une de
+  l'autre) et fait **une requête de chemin par paquet** (`FindPath` sur le navmesh, du centre du paquet à la
+  destination), avec un **budget de requêtes par pas** (les suivantes attendent le pas d'après, comme les naissances,
+  D224). Le chemin devient un **couloir** (`FNavCorridor`, ~6 m de large) **partagé** par les unités du paquet ;
+  chacune le suit par le chemin court de Mass (`FMassNavMeshShortPathFragment`, `MassNavMeshPathFollowProcessor`,
+  déjà dans la liste des processeurs de simulation) : c'est la recette de l'errance d'essai de M1 (commit e8fa244),
+  partagée au lieu d'une par unité. Au bout du couloir, chaque unité rejoint **sa place** (D287).
+- Navmesh **dynamique, modificateurs seuls** (`RuntimeGeneration = DynamicModifiersOnly`) : chaque bâtiment porte un
+  modificateur de navigation (zone interdite) sur son emprise, tirée de la table (D260) ; les tuiles touchées se
+  refont au serveur à l'apparition, comme ce sera le cas pour la construction et les murs (M8). Le client n'a pas
+  besoin du navmesh : ses clics visent le sol par un rayon.
+- `Plain` reçoit quelques **obstacles fixes** (rochers, bosquet) par `create_match_map.py`, pour que les chemins se
+  voient ; `StressTest` garde son sol.
+- Destination ramenée au navmesh (D228) ; dans un bâtiment ou un obstacle, le point atteignable le plus proche.
+- Écartés : **un chemin par unité** (simple, mais 175 requêtes pour un grand ordre et S2 très cher au départ ; reste
+  le cas d'un paquet d'une unité) et **champ de flux** (bon pour de très grandes foules vers un seul point, gros
+  chantier, à garder si les couloirs ne tiennent pas en M4-M5).
+
+**Tranché — D287 Ordre de groupe : arrivée en tas serré, sans formation.**
+- Une unité seule va au point exact. Un groupe reçoit des **places** autour du point : disque serré en nid d'abeille
+  (écart = diamètre du corps + ~20 %), orienté selon la marche ; chaque place est ramenée au navmesh, une place dans
+  un obstacle passe à la suivante libre. Les places sont **attribuées en gardant l'ordre relatif** des unités (celle
+  de gauche arrive à gauche), pour que les chemins ne se croisent pas (D230 : deux unités qui se croisent se
+  traversent).
+- Chaque unité marche à sa propre vitesse (un seul type pour l'instant). Les **formations** (rangs, orientation en
+  glissant le clic droit, vitesse du plus lent) restent pour l'étape « armée » (M4).
+- Règles pures dans `Simulation/HOLGroupMoveRules` (places, attribution, paquets), testées seules.
+- Écartés : **toutes au même point** (empilement, évitement à l'arrêt qui pousse sans fin) et **formation en rangs dès
+  J4** (sans objet pour des Paysans).
+
+**Tranché — D288 Sélection des unités : chez le client, par projection à l'écran.**
+- L'état de sélection reste dans `AHOLPlayerController` (D262) : **une liste d'identifiants d'unités** (D223) ou un
+  bâtiment. Les unités n'ont pas de collision : on les vise en **projetant à l'écran** leur position affichée (en solo
+  les entités de la simulation, chez un client les entités d'affichage de M2.5 ; coût négligeable). Clic : l'unité
+  dont le corps (rayon et hauteur × 1,5) contient le curseur, la plus proche de la caméra, **avant** un bâtiment ;
+  cadre (glisser au clic gauche au-delà de ~6 pixels) : ses unités dont le centre projeté est dedans ; Maj + clic ou
+  cadre ajoute ou retire ; une unité adverse se sélectionne seule ; Échap ou clic dans le vide vident ; une unité
+  disparue sort de la sélection.
+- Ordres : **clic droit** sur le sol avec ses unités sélectionnées → appel serveur du contrôleur (identifiants +
+  point, ~4 octets par unité) ; le **serveur vérifie le propriétaire** de chaque unité et ignore les autres, puis
+  file de commandes (D252). Centre sélectionné + clic droit → **point de ralliement** (sur le bâtiment, répliqué au
+  propriétaire, D282) ; le Paysan produit y reçoit un ordre à sa naissance (sans ralliement : naissance en bas, D283).
+- Actions dans `IMC_Game` par `make_game_input.py` : clic droit (ordre), Maj (modificateur), glisser.
+- **Retour visuel — choix de l'utilisateur : (a) + carré sous le bâtiment sélectionné** (il revient sur le retrait de D259) :
+  (a) **cercle au sol sous chaque unité sélectionnée**, à la couleur du joueur (instances d'un anneau plat, comme
+  AoE4) — recommandé : avec 10 Paysans identiques, le HUD ne dit pas lesquels sont pris ; (b) rien sur les unités,
+  seulement le bloc de sélection ; (c) unités sélectionnées éclaircies (paramètre par instance). **Retenu : (a), et un
+  carré au sol sous le bâtiment sélectionné, à la couleur de son propriétaire.** Dans tous les cas :
+  le **rectangle du cadre** pendant le glisser, un **repère bref** au point du clic droit (~0,5 s), un **fanion** au
+  point de ralliement quand le centre est sélectionné.
+- Bloc de sélection : une unité → nom, propriétaire, points de vie ; plusieurs → nom × nombre par type. Textes fr / en
+  / ja.
+- Écartés : **sélection par collision** (une capsule par unité, contraire aux unités légères de D29) et **sélection
+  connue du serveur** (D262).
+
+**Tranché — D289 Vérification : tests, partie solo et à 2 clients, S2 avec chemins.**
+- Tests d'automatisation : places d'arrivée (aucun recouvrement, nombre, orientation, place dans un obstacle),
+  attribution (ordre relatif gardé), paquets, projection et cadre de sélection.
+- `quick_check.ps1`, partie **solo** : ralliement posé, 3 Paysans produits qui y marchent ; cadre simulé sur les 3,
+  clic droit derrière un rocher : arrivée sans recouvrement, chemin plus long que la ligne droite (contournement),
+  aucun Paysan dans un rocher ou un centre ; Maj + clic ; Échap ; captures. Nouveaux verbes ou commandes au besoin
+  (`hol.UI.Drag`, positions dans `hol.Units.Report`, `waitidle`).
+- Partie **à 2 clients** : chacun déplace son Paysan, l'autre le voit arriver (position affichée à < 50 cm) ; un ordre
+  sur l'unité de l'autre est ignoré par le serveur.
+- **S2 rendu exigeant** (promesse de D229) : ses ordres passent par les chemins (budget par pas), seuil de 3 ms ;
+  S1 inchangé ; **S5 court** (des chemins courbes peuvent coûter plus d'envois). Essai de l'utilisateur.
+
+**Sous-étapes de J4** (validées ; chacune compile, se vérifie et se commite seule) :
+
+1. **J4.1 Navmesh dynamique et obstacles** : `DynamicModifiersOnly`, modificateur de navigation sur `AHOLBuilding`
+   (emprise de la table), rochers et bosquet dans `Plain` (`create_match_map.py`), commande `hol.Nav.Path` (longueur
+   et points d'un chemin) ; vérifier qu'un chemin contourne un centre ; S1 / S2 courts (le mode du navmesh change
+   aussi pour `StressTest`).
+2. **J4.2 Règles pures** : `Simulation/HOLGroupMoveRules` (paquets, places, attribution) et tests
+   `HeroesOfLiberty.Movement.*`.
+3. **J4.3 Chemins dans la simulation** : `UHOLUnitOrderProcessor` → file de requêtes de chemin au budget par pas,
+   couloir partagé par paquet, chemin court de Mass, dernier tronçon vers la place, arrivée ; retrait du maintien
+   manuel de `DistanceToGoal` là où Mass l'entretient ; commande `hol.Units.Move` ; S2 avec chemins mesuré.
+4. **J4.4 Ordre réseau et ralliement** : appel serveur du contrôleur avec contrôle du propriétaire ; point de
+   ralliement sur `AHOLBuilding` ; la production l'utilise ; commande `hol.Prod.Rally` ; vérifié en solo et par
+   `net_match.ps1`.
+5. **J4.5 Sélection des unités** : projection, clic, cadre, Maj, priorité unité > bâtiment, Échap ; actions
+   `IMC_Game` ; clic droit → ordre ou ralliement.
+6. **J4.6 Retour visuel et HUD** : cercles sous les unités sélectionnées, carré sous le bâtiment sélectionné ; rectangle du cadre, repère d'ordre, fanion de ralliement ;
+   bloc de sélection d'un groupe ; textes fr / en / ja.
+7. **J4.7 Vérification (D289)** : parties solo et 2 clients dans `quick_check.ps1`, S1 / S2 / S5 courts, essai de
+   l'utilisateur.
+8. **J4.8 Clôture** : D285 à D289 au GDD (§ 21, paragraphe « Parcours J4 » au § 16.6).
+
+Risques connus : croisements dans un groupe (D230, réduits par l'attribution qui garde l'ordre relatif) ; coût des
+requêtes de chemin au départ de S2 (budget par pas) ; navmesh dynamique sur le serveur dédié (mémoire, temps de
+reconstruction d'une tuile, à mesurer en J4.1).
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -193,6 +315,11 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 | D282 | 2026-10-14 | Technique — Production côté serveur | **Le serveur seul décide, façon AoE** (choix de l'utilisateur, conforme à la recommandation) : un clic du HUD part au serveur par un **appel du contrôleur**, entre dans la **file de commandes** et s'applique au **pas suivant** ; le serveur vérifie le **propriétaire**, le **coût** et la **longueur de la file** (valeur en table). Le coût est **débité à la mise en file**, **remboursé à l'annulation** ; la **population** est vérifiée **au début de chaque production** : pleine, la file attend (comme AoE). **Ressources et population** vivent dans le `PlayerState`, répliquées **au seul propriétaire** (D203) ; la **file** vit sur le **bâtiment**, répliquée au propriétaire (types et pas de début), le client en calcule lui-même la progression. Écartés : **prédiction chez le client** (retour en arrière à gérer pour ~50-150 ms gagnées sur un ordre de production) et **GAS dès maintenant** (lourd pour une file, D260 le réserve à M5). |
 | D283 | 2026-10-14 | Technique — Le Paysan | **Mannequin, valeurs en tables** (choix de l'utilisateur, conforme à la recommandation) : une ligne **`Peasant`** dans `UnitTypes.csv`, avec le **mannequin de M2** à la couleur du joueur (le vrai modèle se branchera par la table) ; il **apparaît devant le centre**, du côté du milieu de la carte, **en arc** pour ne pas s'empiler, et reste **immobile** (ordres en J4). *Précisé à l'essai (2026-10-14, choix de l'utilisateur : « en bas du forum si pas de rally point »)* : il naît **en bas du centre vu de la caméra** (−X : la caméra ne tourne pas et regarde vers +X pour tous, D254), jamais caché derrière ; le point de ralliement de J4 le remplacera. Valeurs provisoires : **50 nourriture, 20 s** ; **200 de chaque ressource** au départ ; **population de base du centre 10**, plafond **175** (D03) ; **file de 5** au plus. Coût, temps et population de l'unité dans la table des unités ; population de base, file et unités produites dans la table des bâtiments ; stock de départ dans les réglages de partie. Écarté : **apparence distincte dès maintenant** (aucun soldat sur `Plain` dont le distinguer, temps passé sur du provisoire). |
 | D284 | 2026-10-14 | Technique — Vérification de J3 | **Tests, solo et 2 clients** (choix de l'utilisateur, conforme à la recommandation) : **tests d'automatisation** des règles de production (débit, refus faute de ressources, remboursement, file pleine, attente population pleine, progression) ; dans **`quick_check.ps1`**, une partie **solo** (clic sur son centre, touche `A` plusieurs fois, Paysans apparus, ressources baissées, annulation remboursée, captures du HUD en fr / en / ja) et, une fois M2.5.6 en place, la **partie à 2 clients** (le Paysan apparaît chez les deux, les ressources ne sont vues que par leur propriétaire, D216) ; **essai de l'utilisateur** ; **S1 et S2 courts** à la clôture (un type d'unité ajouté). Écarté : **solo seul, réseau essayé à la main à la fin** (contraire à D216). Clôt le plan de J3 (D280 à D284). |
+| D285 | 2026-10-14 | Technique — Périmètre de J4 | **Déplacer ses Paysans, seuls ou à plusieurs** (choix de l'utilisateur, conforme à la recommandation) : **sélection d'unités** au clic, au **cadre** et avec **Maj** pour ajouter ou retirer (ses unités seules à plusieurs ; une unité adverse seule, pour la regarder) ; **clic droit** sur le sol : l'ordre part au serveur par la file de commandes, les unités suivent un **chemin sur le navmesh** qui contourne les centres et quelques **obstacles posés sur `Plain`** ; un **groupe arrive réparti** autour du point, sans formation en rangs ; **point de ralliement** du centre (centre sélectionné + clic droit), où le Paysan produit se rend ; le **bloc de sélection** montre une unité ou un groupe. Retour visuel des unités sélectionnées et repère du clic droit tranchés à part (Q4). Écartés : **un Paysan à la fois** (ni cadre ni groupe : à reprendre dès J5, empilement à l'arrivée non réglé) et **commandes d'armée façon AoE4** (formations, ordres enchaînés à Maj, groupes de contrôle, `.` : sans objet sans soldats, étape longue avant d'être jouable ; pour l'étape « armée », M4). |
+| D286 | 2026-10-14 | Technique — Chemins | **Un chemin par paquet, couloir partagé** (plan validé par l'utilisateur, conforme à la recommandation) : au pas où l'ordre s'applique, le serveur coupe les unités visées en **paquets** d'unités proches (~15 m) et fait **une requête de chemin par paquet** sur le navmesh, avec un **budget de requêtes par pas** (les suivantes attendent, comme les naissances de D224) ; le chemin devient un **couloir** (`FNavCorridor`, ~6 m) **partagé** par les unités du paquet, que chacune suit par le chemin court de Mass (`MassNavMeshPathFollowProcessor`) ; au bout, chaque unité rejoint sa place (D287). Navmesh **dynamique à modificateurs seuls** : chaque bâtiment porte une zone interdite sur son emprise (table, D260), refaite au serveur ; le client n'a pas besoin du navmesh. `Plain` reçoit des **obstacles fixes** (rochers, bosquet). Destination ramenée au navmesh (D228), au point atteignable le plus proche. Écartés : **un chemin par unité** (175 requêtes pour un grand ordre, S2 très cher au départ) et **champ de flux** (gros chantier, gardé si les couloirs ne tiennent pas en M4-M5). |
+| D287 | 2026-10-14 | Technique — Ordre de groupe | **Arrivée en tas serré, sans formation** (plan validé par l'utilisateur, conforme à la recommandation) : une unité seule va au point exact ; un groupe reçoit des **places** en nid d'abeille autour du point (écart = diamètre du corps + ~20 %), orientées selon la marche, ramenées au navmesh (une place dans un obstacle passe à la suivante libre), **attribuées en gardant l'ordre relatif** des unités pour que leurs chemins ne se croisent pas (D230) ; chaque unité à sa vitesse. Règles pures dans `Simulation/HOLGroupMoveRules`. Formations (rangs, orientation au glisser, vitesse du plus lent) pour l'étape « armée » (M4). Écartés : **toutes au même point** (empilement, évitement à l'arrêt sans fin) et **formation en rangs dès J4** (sans objet pour des Paysans). |
+| D288 | 2026-10-14 | Technique — Sélection des unités et ordres | **Chez le client, par projection à l'écran** (plan validé par l'utilisateur, conforme à la recommandation) : la sélection reste dans le contrôleur (D262), liste d'identifiants d'unités (D223) ou un bâtiment ; les unités, sans collision, sont visées en **projetant à l'écran** leur position affichée (simulation en solo, entités d'affichage chez un client) ; clic : l'unité sous le curseur **avant** un bâtiment ; **cadre** au glisser (~6 pixels) : ses unités ; **Maj** ajoute ou retire ; une unité adverse seule ; Échap ou vide : rien. **Clic droit** : appel serveur (identifiants + point), le **serveur vérifie le propriétaire** de chaque unité, puis file de commandes (D252) ; centre sélectionné + clic droit : **point de ralliement** (sur le bâtiment, répliqué au propriétaire), où le Paysan produit reçoit un ordre à sa naissance. Retour visuel (**choix de l'utilisateur**) : **cercle au sol sous chaque unité sélectionnée** à la couleur de son propriétaire, et **carré au sol sous le bâtiment sélectionné** (*revient sur D259 / D262*, qui avaient retiré le cercle du bâtiment) ; rectangle du cadre au glisser, repère bref (~0,5 s) au point du clic droit, fanion au ralliement quand le centre est sélectionné. Bloc de sélection : une unité (nom, propriétaire, points de vie) ou un groupe (nom × nombre par type), fr / en / ja. Écartés : **rien sur les unités** (10 Paysans identiques, le HUD ne dit pas lesquels sont pris), **unités éclaircies**, **sélection par collision** (contraire à D29) et **sélection connue du serveur** (D262). |
+| D289 | 2026-10-14 | Technique — Vérification de J4 | **Tests, solo et 2 clients, S2 avec chemins** (plan validé par l'utilisateur, conforme à la recommandation) : tests d'automatisation (places, attribution, paquets, projection et cadre) ; dans `quick_check.ps1`, partie **solo** (ralliement, 3 Paysans qui s'y rendent, cadre, clic droit derrière un rocher : contournement, arrivée sans recouvrement, rien dans un obstacle ; Maj, Échap, captures) et partie **à 2 clients** (chacun voit le Paysan de l'autre arriver, à < 50 cm ; un ordre sur l'unité de l'autre ignoré) ; **S2 rendu exigeant** par les chemins (promesse de D229, seuil 3 ms), S1 inchangé, **S5 court** ; essai de l'utilisateur. Sous-étapes J4.1 à J4.8. Clôt le plan de J4 (D285 à D289). |
 
 ## Journal d'avancement
 
@@ -951,3 +1078,15 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   (couleur des unités = numéro d'emplacement comme index de palette ; pas d'économie pour les emplacements IA).
 - **J3 close.** Suite : plan de J4 (ordres de déplacement et chemins, M3), décisions à partir de D285.
 
+### 2026-10-14 (suite) — Plan de J4 ouvert
+
+- Plan de J4 (ordres de déplacement et chemins, M3) ouvert : 5 questions prévues (périmètre, chemins, ordre de groupe,
+  sélection des unités, vérification). Q1 (périmètre) posée à l'utilisateur.
+- **Q1 tranchée : D285** (option A, déplacer ses Paysans seuls ou à plusieurs). L'utilisateur demande ensuite le
+  **plan d'implémentation** complet : Q2 à Q5 proposées d'un bloc (D286 à D289, « proposé » dans le tableau du plan),
+  sous-étapes J4.1 à J4.8. Relevé dans le moteur : le plugin `MassNavMeshNavigation` (chemin court, suivi de couloir)
+  est toujours dans la liste des processeurs de simulation ; l'errance d'essai de M1 (supprimée en e8fa244) en donne
+  la recette (`FindPath` → `FNavCorridor` → `RequestShortPath`). Le navmesh du projet est statique (aucun réglage
+  `RuntimeGeneration`). Reprise : validation du plan par l'utilisateur, et son choix du retour visuel (D288).
+- **Plan validé** (D286 à D289) ; retour visuel : cercle sous les unités sélectionnées **et carré sous le bâtiment
+  sélectionné** (l'utilisateur revient sur le retrait de D259). **J4.1 commence.**
