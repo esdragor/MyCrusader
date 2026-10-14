@@ -112,6 +112,20 @@ TRANSLATIONS = {
     "HOLSettingsScreen,LanguageLabel": ("Language", "言語"),
     "HOLSettingsScreen,Off": ("Off", "オフ"),
     "HOLSettingsScreen,On": ("On", "オン"),
+
+    "HOLGameScreen,Food": ("Food", "食料"),
+    "HOLGameScreen,Wood": ("Wood", "木材"),
+    "HOLGameScreen,Stone": ("Stone", "石材"),
+    "HOLGameScreen,Gold": ("Gold", "金"),
+    "HOLGameScreen,Population": ("Population", "人口"),
+    "HOLGameScreen,Health": ("Health", "耐久力"),
+    "HOLGameScreen,You": ("You", "あなた"),
+    "HOLGameScreen,PlayerN": ("Player {0}", "プレイヤー{0}"),
+    "HOLGameScreen,PopulationFull": ("Population full", "人口上限"),
+    "HOLGameScreen,CancelHint": ("Click: cancel", "クリック：キャンセル"),
+
+    "HOLGameNames,Peasant": ("Peasant", "農民"),
+    "HOLGameNames,MainCentre": ("Main Center", "本拠地"),
 }
 
 CULTURES = {"en": 0, "ja": 1}

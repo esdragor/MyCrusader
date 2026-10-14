@@ -8,6 +8,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/GameStateBase.h"
+#include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLMapBounds.h"
 #include "Match/HOLPlayerState.h"
@@ -18,6 +19,11 @@
 
 namespace UE::HeroesOfLiberty::Production
 {
+	TAutoConsoleVariable<float> CVarBuildTime(
+		TEXT("hol.Prod.BuildTime"),
+		0.f,
+		TEXT("Production time (s) of every unit type in place of the table's (0: the table). For the scripted checks (D284): a Peasant in 2 s, not 20."));
+
 	/** Gap (cm) between the building's footprint and the first row of units born there. */
 	constexpr float BirthGap = 400.f;
 	/** Angle (deg) between two neighbours of the arc. */
@@ -91,7 +97,9 @@ double UHOLProductionSubsystem::GetDisplayStep(const UWorld* World)
 
 int32 UHOLProductionSubsystem::GetBuildSteps(const FHOLUnitTypeRow& Type, const float InStepSeconds)
 {
-	return FMath::Max(1, FMath::RoundToInt(Type.BuildTime / FMath::Max(InStepSeconds, UE_KINDA_SMALL_NUMBER)));
+	const float Override = UE::HeroesOfLiberty::Production::CVarBuildTime.GetValueOnGameThread();
+	const float BuildTime = Override > 0.f ? Override : Type.BuildTime;
+	return FMath::Max(1, FMath::RoundToInt(BuildTime / FMath::Max(InStepSeconds, UE_KINDA_SMALL_NUMBER)));
 }
 
 FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName) const
@@ -211,6 +219,11 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? Type->PopulationProvided : 0;
 		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
 	}
+	// No building (the stress test's maps): nothing produces, no population to count.
+	if (Buildings.IsEmpty())
+	{
+		return;
+	}
 
 	TArray<int32> UnitPopulation;
 	Units->GetPopulationByOwner(UnitPopulation);
@@ -237,8 +250,8 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			// A tiny radius: the unit is put on the navmesh right under the point (FHOLUnitSpawnRequest).
 			Units->RequestUnits(FHOLUnitSpawnRequest{ TypeName, 1, GetBirthLocation(*Building, NumBorn), 1.f, Building->GetOwnerPlayer() });
 			++NumBorn;
-			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld"), *TypeName.ToString(),
-				Building->GetOwnerPlayer(), StepIndex);
+			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld (%d born here)"), *TypeName.ToString(),
+				Building->GetOwnerPlayer(), StepIndex, NumBorn);
 		}
 		if (Queue != Before)
 		{

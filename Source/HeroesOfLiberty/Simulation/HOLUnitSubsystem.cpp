@@ -492,18 +492,21 @@ void UHOLUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 void UHOLUnitSubsystem::GetPopulationByOwner(TArray<int32>& OutPopulation) const
 {
 	OutPopulation.Reset();
-	const auto Add = [this, &OutPopulation](const FName TypeName, const uint8 OwnerPlayer, const int32 Count)
+	// One table lookup per type, not per unit.
+	TMap<FName, int32> PlacesByType;
+	const auto Add = [this, &OutPopulation, &PlacesByType](const FName TypeName, const uint8 OwnerPlayer, const int32 Count)
 	{
-		const FHOLUnitTypeRow* Row = FindTypeRow(TypeName);
-		if (!Row)
+		int32* Places = PlacesByType.Find(TypeName);
+		if (!Places)
 		{
-			return;
+			const FHOLUnitTypeRow* Row = FindTypeRow(TypeName);
+			Places = &PlacesByType.Add(TypeName, Row ? Row->Population : 0);
 		}
 		if (OutPopulation.Num() <= OwnerPlayer)
 		{
 			OutPopulation.SetNumZeroed(OwnerPlayer + 1);
 		}
-		OutPopulation[OwnerPlayer] += Row->Population * Count;
+		OutPopulation[OwnerPlayer] += *Places * Count;
 	};
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{

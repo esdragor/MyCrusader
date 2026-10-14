@@ -1,0 +1,689 @@
+#include "HUD/HOLGameScreen.h"
+
+#include "Blueprint/WidgetTree.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "CommonTextBlock.h"
+#include "Components/Border.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/ProgressBar.h"
+#include "Components/SizeBox.h"
+#include "Components/UniformGridPanel.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Dev/HOLTestHooks.h"
+#include "Engine/World.h"
+#include "HeroesOfLibertyUILog.h"
+#include "HUD/HOLGameNames.h"
+#include "Match/HOLPlayerColors.h"
+#include "Match/HOLPlayerState.h"
+#include "Player/HOLPlayerController.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Style/HOLUIStyles.h"
+#include "Widgets/HOLGridCell.h"
+#include "Widgets/HOLQueueItem.h"
+
+#define LOCTEXT_NAMESPACE "HOLGameScreen"
+
+namespace UE::HeroesOfLiberty::UI::GameScreen
+{
+	/** Keys of the grid's cells, row by row, as they sit on an AZERTY keyboard (D30; IMC_Game, make_game_input.py). */
+	const TCHAR* const GridKeys[AHOLPlayerController::NumGridCells] = {
+		TEXT("A"), TEXT("Z"), TEXT("E"), TEXT("R"),
+		TEXT("Q"), TEXT("S"), TEXT("D"), TEXT("F"),
+		TEXT("W"), TEXT("X"), TEXT("C"), TEXT("V") };
+	constexpr int32 GridColumns = 4;
+	constexpr float CellSize = 76.f;
+	constexpr float CellGap = 2.f;
+	constexpr float QueueItemWidth = 58.f;
+	constexpr float QueueItemHeight = 36.f;
+	constexpr float ScreenMargin = 16.f;
+	constexpr float MarkerSize = 12.f;
+	constexpr float SwatchSize = 14.f;
+	constexpr float SelectionMinWidth = 320.f;
+
+	FName GridCellName(const int32 Cell)
+	{
+		return *FString::Printf(TEXT("GridCell%02d"), Cell);
+	}
+
+	FName QueueItemName(const int32 Index)
+	{
+		return *FString::Printf(TEXT("QueueItem%d"), Index);
+	}
+
+	/** Shows or collapses a widget, touching it only when that changes (the queue's head is updated every frame). */
+	void SetShown(UWidget* Widget, const bool bShown, const ESlateVisibility ShownVisibility = ESlateVisibility::HitTestInvisible)
+	{
+		const ESlateVisibility Wanted = bShown ? ShownVisibility : ESlateVisibility::Collapsed;
+		if (Widget && Widget->GetVisibility() != Wanted)
+		{
+			Widget->SetVisibility(Wanted);
+		}
+	}
+
+	/** Amounts without thousands separators, as in AoE ("1200"). */
+	FText FormatAmount(const int32 Value)
+	{
+		return FText::AsNumber(Value, &FNumberFormattingOptions::DefaultNoGrouping());
+	}
+
+	FText FormatRatio(const int32 Value, const int32 Max)
+	{
+		return FText::Format(INVTEXT("{0} / {1}"), FormatAmount(Value), FormatAmount(Max));
+	}
+}
+
+UHOLGameScreen::UHOLGameScreen()
+{
+	bAutoActivate = true;
+	// Escape belongs to the game (IA_Deselect): no Back here.
+	bIsBackHandler = false;
+	// Never the keyboard focus: activated without a focus target, the screen leaves it to the game viewport.
+	SetIsFocusable(false);
+	// A click on a panel bubbles up to the screen and stops there; the rest of the screen is hit-test invisible, so a
+	// click there never reaches the screen and goes to the game.
+	SetConsumePointerInput(true);
+}
+
+TOptional<FUIInputConfig> UHOLGameScreen::GetDesiredInputConfig() const
+{
+	// The game keeps its keys and its mouse (camera, selection, grid, Escape); the viewport holds the mouse while a
+	// button is down, as the controller's input mode does (camera drag).
+	return FUIInputConfig(ECommonInputMode::All, EMouseCaptureMode::CaptureDuringMouseDown, /*bHideCursorDuringViewportCapture*/ false);
+}
+
+void UHOLGameScreen::NativeOnInitialized()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	if (!WidgetTree->RootWidget)
+	{
+		BuildLayout();
+	}
+	Super::NativeOnInitialized();
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
+	for (int32 Cell = 0; Cell < AHOLPlayerController::NumGridCells; ++Cell)
+	{
+		UHOLGridCell* GridCell = Cast<UHOLGridCell>(WidgetTree->FindWidget(GridCellName(Cell)));
+		GridCells.Add(GridCell);
+		if (GridCell)
+		{
+			GridCell->SetKey(FText::AsCultureInvariant(FString(GridKeys[Cell])));
+			GridCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGridCellClicked, Cell);
+		}
+	}
+	for (int32 Index = 0; Index < NumQueueItems; ++Index)
+	{
+		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(QueueItemName(Index)));
+		QueueItems.Add(Item);
+		if (Item)
+		{
+			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleQueueItemClicked, Index);
+		}
+	}
+	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
+
+	// For the scripted checks (hol.Test.Run): the captures of a match name the HUD.
+	const TWeakObjectPtr<UHOLGameScreen> WeakThis(this);
+	HOLTestHooks::DescribeInterface() = [WeakThis]()
+	{
+		return WeakThis.IsValid() ? FString::Printf(TEXT("hud=%s"), *WeakThis->GetClass()->GetName()) : FString(TEXT("no interface"));
+	};
+}
+
+void UHOLGameScreen::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	Controller = GetOwningPlayer<AHOLPlayerController>();
+	AHOLPlayerController* PlayerController = Controller.Get();
+	if (PlayerController)
+	{
+		SelectionHandle = PlayerController->OnSelectionChanged.AddUObject(this, &UHOLGameScreen::HandleSelectionChanged);
+	}
+	else
+	{
+		UE_LOG(LogHOLUI, Warning, TEXT("Game screen: the owning player is not a match controller (AHOLPlayerController), nothing to show"));
+	}
+	BindPlayerState(PlayerController ? PlayerController->GetHOLPlayerState() : nullptr);
+	BindBuilding(PlayerController ? PlayerController->GetSelection() : nullptr);
+	Refresh();
+}
+
+void UHOLGameScreen::NativeDestruct()
+{
+	if (AHOLPlayerController* PlayerController = Controller.Get())
+	{
+		PlayerController->OnSelectionChanged.Remove(SelectionHandle);
+	}
+	SelectionHandle.Reset();
+	Controller.Reset();
+	BindPlayerState(nullptr);
+	BindBuilding(nullptr);
+	Super::NativeDestruct();
+}
+
+void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	// The player state reaches a client after the HUD is up.
+	AHOLPlayerState* PlayerState = Controller.IsValid() ? Controller->GetHOLPlayerState() : nullptr;
+	if (PlayerState != BoundPlayerState.Get())
+	{
+		BindPlayerState(PlayerState);
+		Refresh();
+	}
+	UpdateHead();
+}
+
+void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
+{
+	if (BoundPlayerState.Get() == PlayerState)
+	{
+		return;
+	}
+	if (AHOLPlayerState* Previous = BoundPlayerState.Get())
+	{
+		Previous->OnEconomyChanged.Remove(EconomyHandle);
+	}
+	EconomyHandle.Reset();
+	BoundPlayerState = PlayerState;
+	if (PlayerState)
+	{
+		EconomyHandle = PlayerState->OnEconomyChanged.AddUObject(this, &UHOLGameScreen::Refresh);
+	}
+}
+
+void UHOLGameScreen::BindBuilding(AHOLBuilding* Building)
+{
+	if (BoundBuilding.Get() == Building)
+	{
+		return;
+	}
+	if (AHOLBuilding* Previous = BoundBuilding.Get())
+	{
+		Previous->OnProductionChanged.Remove(ProductionHandle);
+	}
+	ProductionHandle.Reset();
+	BoundBuilding = Building;
+	if (Building)
+	{
+		ProductionHandle = Building->OnProductionChanged.AddUObject(this, &UHOLGameScreen::Refresh);
+	}
+}
+
+void UHOLGameScreen::HandleSelectionChanged()
+{
+	BindBuilding(Controller.IsValid() ? Controller->GetSelection() : nullptr);
+	Refresh();
+}
+
+void UHOLGameScreen::Refresh()
+{
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const AHOLBuilding* Selected = PlayerController ? PlayerController->GetSelection() : nullptr;
+	// Only the owner gives a building orders, and only the owner receives its queue (D282).
+	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
+
+	RefreshTopBar(PlayerState);
+	RefreshSelection(Selected, Selected && Selected == Own);
+	RefreshGrid(Own, PlayerState);
+	RefreshQueue(Own);
+	UpdateHead();
+}
+
+void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// Nothing to show before the player state has reached this machine.
+	bEconomyShown = PlayerState != nullptr;
+	SetShown(TopBar, bEconomyShown, ESlateVisibility::Visible);
+	if (!PlayerState)
+	{
+		return;
+	}
+	ShownResources = PlayerState->GetResources();
+	ShownPopulationUsed = PlayerState->GetPopulationUsed();
+	ShownPopulationCap = PlayerState->GetPopulationCap();
+
+	const auto SetAmount = [](UCommonTextBlock* Block, const int32 Value)
+	{
+		if (Block)
+		{
+			Block->SetText(FormatAmount(Value));
+		}
+	};
+	SetAmount(FoodAmount, ShownResources.Food);
+	SetAmount(WoodAmount, ShownResources.Wood);
+	SetAmount(StoneAmount, ShownResources.Stone);
+	SetAmount(GoldAmount, ShownResources.Gold);
+	if (PopulationAmount)
+	{
+		PopulationAmount->SetText(FormatRatio(ShownPopulationUsed, ShownPopulationCap));
+	}
+}
+
+void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool bOwn)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	SetShown(SelectionPanel, Building != nullptr, ESlateVisibility::Visible);
+	if (!Building)
+	{
+		ShownSelection = TEXT("none");
+		return;
+	}
+	const FHOLBuildingTypeRow* Type = Building->GetType();
+	ShownSelection = FString::Printf(TEXT("%s (%s)"), *Building->GetTypeName().ToString(), bOwn ? TEXT("own") : TEXT("other"));
+
+	if (SelectionName)
+	{
+		SelectionName->SetText(HOLGameNames::GetBuildingName(Building->GetTypeName(), Type));
+	}
+	if (SelectionSwatch)
+	{
+		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(Building->GetColorIndex())));
+	}
+	if (SelectionOwner)
+	{
+		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
+	}
+	if (SelectionHealth)
+	{
+		// No damage before M5: a building is whole.
+		const int32 MaxHealth = Type ? Type->MaxHealth : 0;
+		SelectionHealth->SetText(FormatRatio(MaxHealth, MaxHealth));
+	}
+}
+
+void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const AHOLPlayerState* PlayerState)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	bGridShown = OwnBuilding != nullptr;
+	SetShown(GridPanel, bGridShown, ESlateVisibility::Visible);
+
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const FHOLBuildingTypeRow* Type = OwnBuilding ? OwnBuilding->GetType() : nullptr;
+	const bool bQueueFull = !Type || OwnBuilding->GetProductionQueue().Num() >= Type->MaxQueue;
+	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
+	{
+		const FName TypeName = bGridShown && PlayerController ? PlayerController->GetGridCellUnitType(Cell) : NAME_None;
+		ShownGridTypes[Cell] = TypeName;
+		UHOLGridCell* GridCell = GridCells[Cell];
+		if (!GridCell)
+		{
+			continue;
+		}
+		if (TypeName.IsNone())
+		{
+			GridCell->ClearUnit();
+			continue;
+		}
+		// Greyed when the server would refuse it (D282): queue full or not enough resources. The population is only
+		// checked when the unit starts: a full population makes it wait in the queue.
+		const FHOLUnitTypeRow* UnitType = FindUnitType(TypeName);
+		const FHOLResources Cost = UnitType ? UnitType->Cost : FHOLResources();
+		const bool bCanProduce = !bQueueFull && PlayerState && PlayerState->GetResources().Covers(Cost);
+		GridCell->SetUnit(HOLGameNames::GetUnitName(TypeName, UnitType), Cost, bCanProduce);
+	}
+}
+
+void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	ShownQueueTypes.Reset();
+	if (OwnBuilding)
+	{
+		for (const FHOLProductionItem& Item : OwnBuilding->GetProductionQueue())
+		{
+			ShownQueueTypes.Add(Item.TypeName);
+		}
+	}
+	bQueueShown = !ShownQueueTypes.IsEmpty();
+	SetShown(QueuePanel, bQueueShown, ESlateVisibility::Visible);
+
+	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
+	{
+		UHOLQueueItem* Item = QueueItems[Index];
+		const bool bShown = ShownQueueTypes.IsValidIndex(Index);
+		SetShown(Item, bShown, ESlateVisibility::Visible);
+		if (Item && bShown)
+		{
+			Item->SetLabel(HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index])));
+		}
+	}
+}
+
+void UHOLGameScreen::UpdateHead()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// The queue shown is the selected building's, which is then the player's own.
+	const AHOLBuilding* Building = bQueueShown ? BoundBuilding.Get() : nullptr;
+	const TArray<FHOLProductionItem>* Queue = Building ? &Building->GetProductionQueue() : nullptr;
+	if (!Queue || Queue->IsEmpty())
+	{
+		HeadState = EHeadState::None;
+		HeadProgress = 0.f;
+		return;
+	}
+
+	const FHOLProductionItem& Head = (*Queue)[0];
+	const FHOLUnitTypeRow* UnitType = FindUnitType(Head.TypeName);
+	if (Head.IsStarted())
+	{
+		// Only the start step travels (D282): the progress is computed here every frame, at the server's clock as this
+		// machine estimates it (D271).
+		const int32 BuildSteps = UnitType
+			? UHOLProductionSubsystem::GetBuildSteps(*UnitType, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())
+			: 1;
+		HeadProgress = HOLProduction::GetProgress(Head, UHOLProductionSubsystem::GetDisplayStep(GetWorld()), BuildSteps);
+		HeadState = EHeadState::InProgress;
+	}
+	else
+	{
+		// Not started: it waits for room in the population (as in AoE), or starts at the server's next step.
+		const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+		const int32 Places = UnitType ? UnitType->Population : 1;
+		HeadState = PlayerState && PlayerState->GetPopulationUsed() + Places > PlayerState->GetPopulationCap()
+			? EHeadState::PopulationFull
+			: EHeadState::Starting;
+		HeadProgress = 0.f;
+	}
+
+	if (QueueProgress && QueueProgress->GetPercent() != HeadProgress)
+	{
+		QueueProgress->SetPercent(HeadProgress);
+	}
+	SetShown(QueueProgress, HeadState != EHeadState::PopulationFull);
+	SetShown(QueueNote, HeadState == EHeadState::PopulationFull);
+}
+
+void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	AHOLPlayerController* PlayerController = Controller.Get();
+	if (PlayerController && Cell >= 0 && Cell < AHOLPlayerController::NumGridCells)
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: grid cell %s clicked"), GridKeys[Cell]);
+		PlayerController->ActivateGridCell(Cell);
+	}
+}
+
+void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
+{
+	if (AHOLPlayerController* PlayerController = Controller.Get())
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: queue item %d clicked (cancel)"), Index);
+		PlayerController->RequestCancelProduction(Index);
+	}
+}
+
+bool UHOLGameScreen::ClickWidget(const FName Name)
+{
+	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
+	{
+		const UHOLGridCell* GridCell = GridCells[Cell];
+		if (GridCell && GridCell->GetFName() == Name)
+		{
+			if (!bGridShown || !GridCell->GetIsEnabled())
+			{
+				return false;
+			}
+			HandleGridCellClicked(Cell);
+			return true;
+		}
+	}
+	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
+	{
+		const UHOLQueueItem* Item = QueueItems[Index];
+		if (Item && Item->GetFName() == Name)
+		{
+			if (!bQueueShown || !Item->IsVisible())
+			{
+				return false;
+			}
+			HandleQueueItemClicked(Index);
+			return true;
+		}
+	}
+	return false;
+}
+
+FString UHOLGameScreen::Describe() const
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const FString Economy = bEconomyShown
+		? FString::Printf(TEXT("%s, population %d/%d"), *ShownResources.ToString(), ShownPopulationUsed, ShownPopulationCap)
+		: FString(TEXT("none"));
+
+	FString Grid = TEXT("hidden");
+	FString Queue = TEXT("hidden");
+	if (bGridShown)
+	{
+		TArray<FString> Cells;
+		for (int32 Cell = 0; Cell < ShownGridTypes.Num(); ++Cell)
+		{
+			if (!ShownGridTypes[Cell].IsNone())
+			{
+				const bool bEnabled = GridCells.IsValidIndex(Cell) && GridCells[Cell] && GridCells[Cell]->GetIsEnabled();
+				Cells.Add(FString::Printf(TEXT("%s=%s %s"), GridKeys[Cell], *ShownGridTypes[Cell].ToString(), bEnabled ? TEXT("enabled") : TEXT("disabled")));
+			}
+		}
+		Grid = Cells.IsEmpty() ? FString(TEXT("empty")) : FString::Join(Cells, TEXT(" "));
+
+		TArray<FString> Items;
+		for (int32 Index = 0; Index < ShownQueueTypes.Num(); ++Index)
+		{
+			FString State = TEXT("waiting");
+			if (Index == 0)
+			{
+				State = HeadState == EHeadState::InProgress ? FString::Printf(TEXT("%.2f"), HeadProgress)
+					: HeadState == EHeadState::PopulationFull ? FString(TEXT("population full"))
+					: FString(TEXT("starting"));
+			}
+			Items.Add(FString::Printf(TEXT("%s %s"), *ShownQueueTypes[Index].ToString(), *State));
+		}
+		Queue = FString::Printf(TEXT("%d [%s]"), Items.Num(), *FString::Join(Items, TEXT(", ")));
+	}
+	return FString::Printf(TEXT("resources %s, selection %s, grid %s, queue %s"), *Economy, *ShownSelection, *Grid, *Queue);
+}
+
+const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const
+{
+	const UWorld* World = GetWorld();
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	return Units ? Units->FindTypeRow(TypeName) : nullptr;
+}
+
+void UHOLGameScreen::BuildLayout()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// Only the panels are hit-test visible: the frame and the boxes that place them let the clicks through to the game.
+	UOverlay* Frame = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("Frame"));
+	Frame->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	WidgetTree->RootWidget = Frame;
+
+	const auto MakePanel = [this](const FName Name)
+	{
+		UBorder* Panel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
+		Panel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f));
+		Panel->SetPadding(FMargin(12.f, 8.f));
+		Panel->SetVisibility(ESlateVisibility::Visible);
+		return Panel;
+	};
+	const auto MakeText = [this](const FName Name, const TSubclassOf<UCommonTextStyle> TextStyle, const FText& Text)
+	{
+		UCommonTextBlock* Block = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), Name);
+		Block->SetStyle(TextStyle);
+		Block->SetText(Text);
+		return Block;
+	};
+	const auto MakeSquare = [this](const FName Name, const FLinearColor& Color, const float Size)
+	{
+		UImage* Square = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
+		Square->SetColorAndOpacity(Color);
+		Square->SetDesiredSizeOverride(FVector2D(Size, Size));
+		return Square;
+	};
+	const auto MakeHorizontalBox = [this](const FName Name)
+	{
+		return WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), Name);
+	};
+	const auto MakeVerticalBox = [this](const FName Name)
+	{
+		return WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), Name);
+	};
+	const auto AddToRow = [](UHorizontalBox* Row, UWidget* Widget, const float RightPadding)
+	{
+		UHorizontalBoxSlot* WidgetSlot = Row->AddChildToHorizontalBox(Widget);
+		WidgetSlot->SetVerticalAlignment(VAlign_Center);
+		WidgetSlot->SetPadding(FMargin(0.f, 0.f, RightPadding, 0.f));
+	};
+
+	// Top bar, top left: each resource's marker, name and amount, then the population.
+	TopBar = MakePanel(TEXT("TopBar"));
+	UOverlaySlot* TopBarSlot = Frame->AddChildToOverlay(TopBar);
+	TopBarSlot->SetHorizontalAlignment(HAlign_Left);
+	TopBarSlot->SetVerticalAlignment(VAlign_Top);
+	TopBarSlot->SetPadding(FMargin(ScreenMargin));
+	UHorizontalBox* Resources = MakeHorizontalBox(TEXT("Resources"));
+	TopBar->SetContent(Resources);
+	const auto AddResource = [&](const FString& Name, const FLinearColor* Color, const FText& Label)
+	{
+		if (Color)
+		{
+			AddToRow(Resources, MakeSquare(*(Name + TEXT("Marker")), *Color, MarkerSize), 6.f);
+		}
+		AddToRow(Resources, MakeText(*(Name + TEXT("Label")), UHOLTextStyleHUDLabel::StaticClass(), Label), 6.f);
+		UCommonTextBlock* Value = MakeText(*(Name + TEXT("Amount")), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+		AddToRow(Resources, Value, 20.f);
+		return Value;
+	};
+	FoodAmount = AddResource(TEXT("Food"), &HOLUIStyle::Food, LOCTEXT("Food", "Nourriture"));
+	WoodAmount = AddResource(TEXT("Wood"), &HOLUIStyle::Wood, LOCTEXT("Wood", "Bois"));
+	StoneAmount = AddResource(TEXT("Stone"), &HOLUIStyle::Stone, LOCTEXT("Stone", "Pierre"));
+	GoldAmount = AddResource(TEXT("Gold"), &HOLUIStyle::Gold, LOCTEXT("Gold", "Or"));
+	PopulationAmount = AddResource(TEXT("Population"), nullptr, LOCTEXT("Population", "Population"));
+
+	// Selection block, bottom centre: name, owner (with its colour), health.
+	SelectionPanel = MakePanel(TEXT("SelectionPanel"));
+	UOverlaySlot* SelectionSlot = Frame->AddChildToOverlay(SelectionPanel);
+	SelectionSlot->SetHorizontalAlignment(HAlign_Center);
+	SelectionSlot->SetVerticalAlignment(VAlign_Bottom);
+	SelectionSlot->SetPadding(FMargin(0.f, 0.f, 0.f, ScreenMargin));
+	USizeBox* SelectionBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionBox"));
+	SelectionBox->SetMinDesiredWidth(SelectionMinWidth);
+	SelectionPanel->SetContent(SelectionBox);
+	UVerticalBox* SelectionColumn = MakeVerticalBox(TEXT("SelectionColumn"));
+	SelectionBox->SetContent(SelectionColumn);
+
+	SelectionName = MakeText(TEXT("SelectionName"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
+	SelectionColumn->AddChildToVerticalBox(SelectionName)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
+	UHorizontalBox* OwnerRow = MakeHorizontalBox(TEXT("SelectionOwnerRow"));
+	SelectionColumn->AddChildToVerticalBox(OwnerRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 2.f));
+	SelectionSwatch = MakeSquare(TEXT("SelectionSwatch"), FLinearColor::White, SwatchSize);
+	AddToRow(OwnerRow, SelectionSwatch, 8.f);
+	SelectionOwner = MakeText(TEXT("SelectionOwner"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+	AddToRow(OwnerRow, SelectionOwner, 0.f);
+	UHorizontalBox* HealthRow = MakeHorizontalBox(TEXT("SelectionHealthRow"));
+	SelectionColumn->AddChildToVerticalBox(HealthRow);
+	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
+	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+	AddToRow(HealthRow, SelectionHealth, 0.f);
+
+	// Bottom right: the production queue, then the command grid under it.
+	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
+	UOverlaySlot* CommandSlot = Frame->AddChildToOverlay(CommandColumn);
+	CommandSlot->SetHorizontalAlignment(HAlign_Right);
+	CommandSlot->SetVerticalAlignment(VAlign_Bottom);
+	CommandSlot->SetPadding(FMargin(ScreenMargin));
+
+	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
+	QueuePanel = MakePanel(TEXT("QueuePanel"));
+	UVerticalBoxSlot* QueueSlot = CommandColumn->AddChildToVerticalBox(QueuePanel);
+	QueueSlot->SetHorizontalAlignment(HAlign_Fill);
+	QueueSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
+	UVerticalBox* QueueColumn = MakeVerticalBox(TEXT("QueueColumn"));
+	QueuePanel->SetContent(QueueColumn);
+	UHorizontalBox* QueueRow = MakeHorizontalBox(TEXT("QueueRow"));
+	QueueColumn->AddChildToVerticalBox(QueueRow);
+	for (int32 Index = 0; Index < NumQueueItems; ++Index)
+	{
+		USizeBox* ItemBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		ItemBox->SetWidthOverride(QueueItemWidth);
+		ItemBox->SetHeightOverride(QueueItemHeight);
+		ItemBox->SetContent(WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), QueueItemName(Index)));
+		AddToRow(QueueRow, ItemBox, 4.f);
+	}
+
+	// The bar and the note share one line of a fixed height, so that the panel does not move when one replaces the other.
+	USizeBox* StatusBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("QueueStatus"));
+	StatusBox->SetHeightOverride(18.f);
+	QueueColumn->AddChildToVerticalBox(StatusBox)->SetPadding(FMargin(0.f, 6.f, 0.f, 0.f));
+	UOverlay* Status = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("QueueStatusLine"));
+	StatusBox->SetContent(Status);
+
+	QueueProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("QueueProgress"));
+	FProgressBarStyle BarStyle;
+	BarStyle.SetBackgroundImage(FSlateRoundedBoxBrush(FLinearColor(0.08f, 0.08f, 0.1f, 1.f), 2.f));
+	BarStyle.SetFillImage(FSlateRoundedBoxBrush(HOLUIStyle::Accent, 2.f));
+	QueueProgress->SetWidgetStyle(BarStyle);
+	USizeBox* BarBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("QueueProgressBox"));
+	BarBox->SetHeightOverride(6.f);
+	BarBox->SetContent(QueueProgress);
+	UOverlaySlot* BarSlot = Status->AddChildToOverlay(BarBox);
+	BarSlot->SetHorizontalAlignment(HAlign_Fill);
+	BarSlot->SetVerticalAlignment(VAlign_Center);
+
+	QueueNote = MakeText(TEXT("QueueNote"), UHOLTextStyleHUDAlert::StaticClass(), LOCTEXT("PopulationFull", "Population pleine"));
+	QueueNote->SetVisibility(ESlateVisibility::Collapsed);
+	UOverlaySlot* NoteSlot = Status->AddChildToOverlay(QueueNote);
+	NoteSlot->SetHorizontalAlignment(HAlign_Left);
+	NoteSlot->SetVerticalAlignment(VAlign_Center);
+
+	UCommonTextBlock* Hint = MakeText(TEXT("QueueHint"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("CancelHint", "Clic : annuler"));
+	UVerticalBoxSlot* HintSlot = QueueColumn->AddChildToVerticalBox(Hint);
+	HintSlot->SetHorizontalAlignment(HAlign_Right);
+	HintSlot->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+
+	// Command grid (D30): 3 rows of 4 square cells, A Z E R / Q S D F / W X C V.
+	GridPanel = MakePanel(TEXT("GridPanel"));
+	GridPanel->SetPadding(FMargin(6.f));
+	CommandColumn->AddChildToVerticalBox(GridPanel)->SetHorizontalAlignment(HAlign_Fill);
+	UUniformGridPanel* Grid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("Grid"));
+	Grid->SetSlotPadding(FMargin(CellGap));
+	GridPanel->SetContent(Grid);
+	for (int32 Cell = 0; Cell < AHOLPlayerController::NumGridCells; ++Cell)
+	{
+		USizeBox* CellBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		CellBox->SetWidthOverride(CellSize);
+		CellBox->SetHeightOverride(CellSize);
+		CellBox->SetContent(WidgetTree->ConstructWidget<UHOLGridCell>(UHOLGridCell::StaticClass(), GridCellName(Cell)));
+		Grid->AddChildToUniformGrid(CellBox, Cell / GridColumns, Cell % GridColumns);
+	}
+
+	// Nothing selected yet.
+	SelectionPanel->SetVisibility(ESlateVisibility::Collapsed);
+	QueuePanel->SetVisibility(ESlateVisibility::Collapsed);
+	GridPanel->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+#undef LOCTEXT_NAMESPACE

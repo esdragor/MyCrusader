@@ -44,8 +44,8 @@ vérifier sur S1 et S2.
 | J3.1 Données et règles pures | **fait** (2026-10-14) : `Peasant` et colonnes de production dans les tables, `UHOLMatchSettings` (stock de départ), `Buildings/HOLProductionRules`, 3 tests `HeroesOfLiberty.Production.*` ; tests 28/28, `quick_check` PASS |
 | J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
 | J3.3 File de production, ordre au serveur, apparition du Paysan | **fait** (2026-10-14) : file sur `AHOLBuilding` (propriétaire réseau = contrôleur), ordres par la file de commandes, `UHOLProductionSubsystem`, 12 actions de grille, `hol.Prod.*` ; vérifié sans fenêtre en solo et à 2 clients |
-| J3.4 HUD (barre du haut, sélection, grille, file) | à faire |
-| J3.5 Vérification (D284) | à faire (partie à 2 clients après M2.5.6) |
+| J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
+| J3.5 Vérification (D284) | **en cours** (2026-10-14) : partie « production » dans `quick_check.ps1` PASS (hors écran) ; **Paysans nés mais invisibles sur `Plain`** (à comprendre) ; restent 2 clients dans `quick_check` (après M2.5.6), essai de l'utilisateur, S1 / S2 courts |
 | J3.6 Clôture : D280 à D284 au GDD | à faire |
 
 ## Prochaine étape exacte
@@ -58,7 +58,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.3 faites** ; **J3.4** (HUD) en cours chez un sous-agent (module d'interface seul).
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** : d'abord comprendre pourquoi les Paysans nés sur `Plain` ne s'affichent pas.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -804,3 +804,22 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   affichent le Paysan**. Tests 28/28.
 - Reste connu : couleur des unités = `OwnerPlayer` comme index de palette (le Paysan n'a la couleur de son centre que si
   l'emplacement garde sa couleur par défaut) ; refus d'un ordre seulement journalisé (le HUD grise la case).
+
+### 2026-10-14 (suite) — J3.4 faite (HUD) ; J3.5 en cours ; `quick_check` hors écran
+
+- **HUD** (sous-agent, module d'interface seul) : `AHOLGameHUD` crée `UHOLGameScreen` (Common UI, arbre en C++, mode
+  d'entrée All, pas de gestion de Retour : Échap désélectionne toujours, aucun focus clavier) ; barre du haut (4
+  ressources, population), bloc de sélection (nom, « Vous » / « Joueur N » et sa couleur, points de vie), grille 3 × 4
+  avec ses lettres (seule la case A active, grisée si stock insuffisant ou file pleine), file au-dessus (barre de la tête
+  calculée à chaque image, « Population pleine », « Clic : annuler »). Un clic sur un panneau s'arrête au HUD, ailleurs il
+  atteint le jeu. Noms localisés par type (`HOLGameNames` : Paysan, Centre principal). 12 textes traduits (`fill_po.py`,
+  deux collectes). `DescribeInterface` vaut `hud=HOLGameScreen` en partie (attendu par `quick_check`).
+- **`quick_check` hors écran** par défaut (`-RenderOffScreen`, aucune fenêtre, consigne de l'utilisateur ; `-Visible`
+  pour l'ancien comportement) ; nouvelle partie **production** (2 joueurs) : clic sur la case, touche A deux fois, clic
+  sur la file (annulation remboursée), deux Paysans nés (`hol.Prod.BuildTime 2` : 2 s au lieu de 20). Le journal d'une
+  naissance porte « (N born here) » (deux `waitlog` identiques se suivant relisaient la même ligne). PASS complet en 38 s.
+- `AdvanceQueues` sort tout de suite sur une carte sans bâtiment (stress test) ; une recherche de ligne par type dans
+  `GetPopulationByOwner` (la session M2.5 avait vu un plantage du serveur dédié dans `FindRow` sur une ancienne cuisson).
+- **Vu sur les captures** : les Paysans nés (population 2/10, 3/10) **ne s'affichent pas** sur `Plain` en solo, même
+  dézoomé. À comprendre avant de clore J3.5. Note : hors écran, sans `hol.Camera.TestCursor 0.5 0.5`, le vrai curseur est
+  au bord et le défilement emporte la caméra.

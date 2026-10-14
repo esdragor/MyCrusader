@@ -19,6 +19,15 @@ namespace HOLUIStyle
 	/** Panel of a dialog, and the veil laid over the screen below it. */
 	const FLinearColor Panel(0.03f, 0.035f, 0.045f, 1.f);
 	const FLinearColor Veil(0.f, 0.f, 0.f, 0.6f);
+	/** Panels of the game HUD (J3, D281): see-through enough to keep the map readable around them. */
+	const FLinearColor HUDPanel(0.03f, 0.035f, 0.045f, 0.88f);
+	/** Labels and key letters of the HUD: dimmer than the values they name. */
+	const FLinearColor TextMuted(0.62f, 0.6f, 0.56f, 1.f);
+	/** Markers of the four resources (§ 5.1), in the top bar and on the costs: no icons yet. */
+	const FLinearColor Food(0.7f, 0.12f, 0.08f, 1.f);
+	const FLinearColor Wood(0.32f, 0.16f, 0.05f, 1.f);
+	const FLinearColor Stone(0.45f, 0.45f, 0.45f, 1.f);
+	const FLinearColor Gold(0.85f, 0.6f, 0.08f, 1.f);
 
 	/** Shows the keyboard focus on a button: the focused style while it has it (UHOLButtonStyleFocused by default), its
 	 *  own style otherwise. */
@@ -83,6 +92,67 @@ class HEROESOFLIBERTYUI_API UHOLTextStyleNote : public UHOLTextStyle
 
 public:
 	UHOLTextStyleNote();
+};
+
+/** Values of the game HUD (amounts, owner, health). */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUD : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUD();
+};
+
+/** Name of the selection in the HUD. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUDHeading : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUDHeading();
+};
+
+/** Small values of the HUD: names and costs in the command grid and the production queue. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUDSmall : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUDSmall();
+};
+
+/** Labels, key letters and hints of the HUD. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUDLabel : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUDLabel();
+};
+
+/** What holds the player up, in the HUD ("Population full"). */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUDAlert : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUDAlert();
+};
+
+/** Buttons of the HUD (cells of the command grid, items of the production queue): flat, square, the accent colour
+ *  when hovered; their content gives their size. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLHUDButtonStyle : public UCommonButtonStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLHUDButtonStyle();
 };
 
 /** Menu buttons: flat, rounded, the accent colour when hovered. */

@@ -12,7 +12,7 @@
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -121,6 +121,19 @@ if ($Parts -contains "camera") {
         Step "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre"
         Key Escape
         Step "waitlog Selection: none", "hol.Select.Report"
+        if (($Parts -contains "production") -and $Case.Name -eq "2p") {
+            # Production (J3, D284), a Peasant in 2 s instead of 20: its centre selected, one Peasant by a click on the
+            # grid's cell, two by its key A, the third one cancelled by a click on the queue, the two others born.
+            Step "mark production", "hol.Prod.BuildTime 2", "hol.Camera.FocusSlot $($Case.Slot)", "frames 3", "hol.Select.Click 0.5 0.5",
+                "waitlog Selection: MainCentre of slot $($Case.Slot) (own)", "frames 2", "hol.HUD.Report"
+            Step "hol.HUD.Click GridCell00", "waitlog queued Peasant (1 in"
+            Key A
+            Step "waitlog queued Peasant (2 in"
+            Key A
+            Step "waitlog queued Peasant (3 in", "frames 5", "hol.HUD.Report", "capture prod_queue"
+            Step "hol.HUD.Click QueueItem2", "waitlog cancelled Peasant", "waitlog (2 born here)", "frames 10", "hol.HUD.Report", "hol.Prod.Report", "capture prod_done",
+                "hol.Prod.BuildTime 0"
+        }
     }
 }
 Step "mark end", "quit"
@@ -161,11 +174,13 @@ function Get-Section([string] $Mark) {
 
 $SequenceChecks = [ordered]@{}
 $SequenceChecks["game launch ended by itself"] = -not $GameTimedOut
-# Each capture shows the screen it is named after (the screens on top of the layers when it was taken).
+# Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
+# the game HUD of J3).
 $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
     newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
-    start = "no interface"; end = "no interface"; own = "no interface"; other = "no interface" }
+    start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
+    queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -229,6 +244,22 @@ if ($Parts -contains "camera") {
         $Checks["selection captures"] = (Test-Path (Join-Path $Shots "sel_$($Case.Name)_own.png")) -and (Test-Path (Join-Path $Shots "sel_$($Case.Name)_other.png"))
         $AllOk = (Report "camera $($Case.Name)" $Checks) -and $AllOk
     }
+}
+
+if (($Parts -contains "production") -and ($Parts -contains "camera")) {
+    $Section = Get-Section "production"
+    $Hud = @($Section | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks = [ordered]@{}
+    $Checks["HUD: centre selected, Peasant in the grid ($($Hud | Select-Object -First 1))"] = ($Hud.Count -ge 1) -and
+        ($Hud[0] -match "resources F 200 W 200 S 200 G 200, population 0/10, selection MainCentre \(own\), grid A=Peasant enabled")
+    $Checks["three queued (click, key A, key A)"] = [bool]($Section | Select-String -Pattern "queued Peasant \(3 in the queue, F 50 W 200 S 200 G 200\)" -Quiet)
+    $Checks["HUD: 50 food, queue of 3 ($(if ($Hud.Count -ge 2) { $Hud[1] }))"] = ($Hud.Count -ge 2) -and ($Hud[1] -match "resources F 50 .* queue 3 ")
+    $Checks["click on the queue cancels and refunds"] = [bool]($Section | Select-String -Pattern "cancelled Peasant \(2 in the queue, F 100 W 200 S 200 G 200\)" -Quiet)
+    $Checks["two Peasants born"] = @($Section | Select-String -Pattern "Peasant of slot 0 done").Count -eq 2
+    $Report = $Section | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Select-Object -Last 1
+    $Checks["population 2/10, queue empty ($Report)"] = [bool]($Report -match "F 100 W 200 S 200 G 200, population 2/10, .* queue 0 ")
+    $Checks["captures"] = (Test-Path (Join-Path $Shots "prod_queue.png")) -and (Test-Path (Join-Path $Shots "prod_done.png"))
+    $AllOk = (Report "production" $Checks) -and $AllOk
 }
 
 if ($TestsProcess) {
