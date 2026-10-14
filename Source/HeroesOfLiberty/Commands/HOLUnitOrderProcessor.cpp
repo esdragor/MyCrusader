@@ -11,6 +11,7 @@
 #include "MassCommonTypes.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
+#include "MassMovementFragments.h"
 #include "MassNavMeshNavigationFragments.h"
 #include "MassNavigationFragments.h"
 #include "MassNavigationSubsystem.h"
@@ -209,6 +210,7 @@ void UHOLUnitOrderProcessor::ConfigureQueries(const TSharedRef<FMassEntityManage
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassNavMeshShortPathFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassNavMeshCachedPathFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
@@ -520,6 +522,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetMutableFragmentView<FMassMoveTargetFragment>();
+		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const TArrayView<FMassNavMeshShortPathFragment> ShortPaths = Context.GetMutableFragmentView<FMassNavMeshShortPathFragment>();
 		const TArrayView<FMassNavMeshCachedPathFragment> CachedPaths = Context.GetMutableFragmentView<FMassNavMeshCachedPathFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
@@ -567,7 +570,12 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			{
 				continue;
 			}
+			// It stops dead where it is (D290): Mass' standing steering would otherwise carry it on with the walk's
+			// velocity, then walk it slowly back to the order's centre (its slot, which a unit stopped short of it never
+			// reached).
+			MoveTarget.Center = Transform.GetTransform().GetLocation();
 			MoveTarget.CreateNewAction(EMassMovementAction::Stand, *World);
+			Movements[EntityIt].DesiredVelocity = FVector::ZeroVector;
 			Order.Phase = EHOLMovePhase::None;
 			States[EntityIt].Activity = EHOLUnitActivity::Idle;
 		}
