@@ -36,9 +36,10 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    et S2 au vert, et une vérification à 2 clients dès M2.5 (D216). **En cours : plan de M2, question par question**
    (voir « Plan de M2 ») ; **plan complet (D232 à D236)** ; étapes 1 à 3 faites (squelettes instanciés animés et
    colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237), **mesuré machine libre le
-   2026-10-14** (classique 221-231 i/s et GPU 3,5 ms, Nanite 30-32 i/s et GPU ~31 ms : voir le journal) ; reste à
-   faire trancher **D235** (recommandation : classique) et le sens du seuil de 144 i/s (moyenne ou 1 % bas, le 1 % bas
-   est à 74-85 i/s), puis à régler la foulée (`WalkPlayRate`) avec l'utilisateur.
+   2026-10-14** (classique 221-231 i/s et GPU 3,5 ms, Nanite 30-32 i/s et GPU ~31 ms : voir le journal) ; **D235
+   tranché : classique** ; seuil de 144 i/s sur la **moyenne** (précision de D218) ; foulée calculée (`WalkPlayRate`
+   1,22), **reste à la valider à l'œil** et à **remesurer S1/S2 machine libre sur 5.8.3** (projet passé sur `UE 5.8 AS 3`
+   le 2026-10-14, D231), puis à clore M2.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités
    (**instruit le 2026-10-14** : limite cinématique de la détection à 250 cm, levée à 600 cm hors face-à-face exact ;
    reste à mesurer le coût et à choisir une piste) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -208,6 +209,46 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   dessins indirects pilotés par le GPU, dont le processeur ne connaît pas la taille.
 
 ## Journal d'avancement
+
+### 2026-10-14 (suite) — Passage au moteur 5.8.3 avec cible Server (D231), D235 tranché, foulée calculée
+
+- **Moteur** : le projet passe de `UE 5.8 AS 1` (5.8.2) à **`UE 5.8 AS 3`** (5.8.3 compilé depuis les sources avec la
+  cible Server, `C:/UE/UE_5.8_AS_3`, voir D231). Nouvelle cible **`Source/HeroesOfLibertyServer.Target.cs`**
+  (`TargetType.Server`, module `HeroesOfLiberty` ; `HeroesOfLibertyUI` est `ClientOnly` et n'y entre pas).
+  **Piège** : après le changement d'association, la compilation incrémentale mélange les en-têtes des deux moteurs
+  (en-tête précompilé partagé produit avec AS_1 : `PLATFORM_32BITS should not be defined`, `type redefinition`) ;
+  il faut supprimer `Binaries` et `Intermediate` du projet. Recompilé de zéro : éditeur 112 s, serveur 110 s
+  (`HeroesOfLibertyServer.exe`), **0 avertissement**. Table des types régénérée sur AS_3 sans erreur.
+- **Rôle des processeurs (D231)** : constat en route, le sous-système de simulation ne construit **pas** son pas fixe
+  sur un client (`OnWorldBeginPlay` sort en `NM_Client`) ; les drapeaux `AllNetModes` des processeurs de simulation
+  étaient donc sans effet (pipeline assemblé à la main). Ils passent quand même à `Server | Standalone` pour dire la
+  vérité : `UHOLStorePreviousTransformProcessor`, `UHOLAvoidanceSnapshotProcessor`, `UHOLAvoidanceHoldProcessor`,
+  `UHOLUnitOrderProcessor` (les ordres s'appliquent au pas du serveur ; l'émission côté client passera par le
+  serveur, pas par un processeur client). Reste à relire `UHOLStressTestSubsystem` pour un serveur sans vue (M2.5).
+- **D235 tranché par l'utilisateur : chemin classique** (mesures de l'entrée précédente). La ligne
+  `LightInfantryNanite` reste dans la table pour remesurer avec les modèles définitifs.
+- **Seuil de rendu (précision de D218, choix de l'utilisateur)** : il porte sur la **moyenne** ; le 1 % bas reste au
+  rapport comme indicateur, sans seuil.
+- **Foulée (D234)** : `Tools/Editor/measure_walk_speed.py` mesure la vitesse du pied posé (le plus bas des deux) dans
+  `A_SW_Walk_F`, sans déplacement de la racine : **246 cm/s** (médiane ; moyenne 217). `WalkPlayRate` = vitesse du
+  type / 246 : **1,22** pour `LightInfantry` et `LightInfantryNanite` (300 cm/s), **1,14** pour `Archer` (280 cm/s),
+  au lieu de 1,0. À valider à l'œil par l'utilisateur.
+- **S1 et S2 sur 5.8.3 — provisoires, machine non libre** (l'utilisateur au poste : lanceur Epic Games à un cœur,
+  VS Code, éditeur ; la souris sur la fenêtre de jeu fait défiler la caméra de J1, d'où un nombre d'unités dans le
+  cadre qui varie : 1 095 à 2 000 au lieu de 1 990 stable). Classique, trois passages :
+
+  | Scénario, vue | Pas (ms) | i/s (1 % bas) |
+  |---|---|---|
+  | S1 large | 2,34 / 2,53 / 2,55 ✅ | 205 / 194 / 188 (71-73) |
+  | S1 jeu | 2,74 / 2,29 / 2,42 ✅ | 177 / 214 / 209 (62-76) |
+  | S2 large | 2,47 / 2,70 / 2,61 ✅ | 190 / 182 / 193 (70-77) |
+  | S2 jeu | 2,66 / 2,52 / **3,21** ❌ | 194 / 206 / **108** ❌ (45-73) |
+
+  Seuils tenus sauf au troisième passage de S2 en vue de jeu, sous charge. Tendance 10 à 15 % sous les mesures 5.8.2
+  de la nuit, sans pouvoir séparer le moteur de la charge : **à remesurer machine libre** (lanceur Epic fermé,
+  souris hors de la fenêtre) avant de valider le passage à 5.8.3.
+- **Prochaine étape** : validation par l'utilisateur des changements du GDD (D231, D235, précision de D218), puis
+  commit ; foulée à l'œil ; remesure machine libre ; puis clore M2.
 
 ### 2026-10-14 (suite) — Croisement instruit : limite cinématique de la détection, face-à-face à part
 
@@ -713,18 +754,20 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
 
 ```powershell
 # Compiler (éditeur fermé, sinon Live Coding bloque)
-& "C:\UE\UE_5.8_AS_1\Engine\Build\BatchFiles\Build.bat" HeroesOfLibertyEditor Win64 Development -Project="C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject"
+& "C:\UE\UE_5.8_AS_3\Engine\Build\BatchFiles\Build.bat" HeroesOfLibertyEditor Win64 Development -Project="C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject"
+# Serveur dédié (D231), même moteur : HeroesOfLibertyServer.exe dans Binaries/Win64
+& "C:\UE\UE_5.8_AS_3\Engine\Build\BatchFiles\Build.bat" HeroesOfLibertyServer Win64 Development -Project="C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject"
 
 # Lancer un stress test : la valeur de -ExecCmds DOIT être entre guillemets,
 # sinon la ligne de commande est coupée au premier espace et le test ne démarre pas.
 # Ne pas minimiser la fenêtre pendant la mesure (la capture est sautée, avec un avertissement).
-& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" `
+& "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor.exe" `
   "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" /Game/Maps/StressTest -game -windowed `
   -ResX=1920 -ResY=1080 -nosplash -ExecCmds="r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,hol.StressTest S2 2000 10 quit"
 # Rapport : Saved/Logs/HeroesOfLiberty.log, lignes LogHOLStressTest ; capture : Saved/Screenshots/WindowsEditor/
 
 # Créer/remplacer la table des types d'unité depuis le CSV (D227), éditeur fermé
-& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+& "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
   "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -run=pythonscript `
   -script="C:\Users\baudo\Documents\MyCrusader\Tools\Editor\make_unit_types.py" -unattended -nop4 -nosplash
 ```
