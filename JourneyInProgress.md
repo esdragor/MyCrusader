@@ -37,20 +37,30 @@ vérifier sur S1 et S2.
 | M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | **fait** (2026-10-14) : `Net/HOLUnitReplicationRules`, 6 tests `HeroesOfLiberty.Net.*`, `quick_check` PASS |
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | **fait** (2026-10-14) : 2 000 unités reçues par 2 clients ; 1,5 envoi/unité/s ; **~42 Ko/s par client** (> 32 Ko/s, à régler en M2.5.5) |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | **fait** (2026-10-14) : 2 000 unités affichées par chaque client, animées, à la couleur du joueur ; corrections ~24 cm en moyenne, aucun placement direct |
-| M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | à faire |
+| M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | **en cours** (2026-10-14) : script et rapport faits, horloge corrigée ; débit **36 Ko/s** à 10 mises à jour/s (> 32), réglage en cours |
 | M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | à faire |
 | M2.5.7 Clôture : D268 à D273 au GDD | à faire |
+| J3 — plan (Q1 à Q5, D280 à D284 ; mené en parallèle de la fin de M2.5, dans une autre session) | **fait** (2026-10-14) |
+| J3.1 Données et règles pures | **fait** (2026-10-14) : `Peasant` et colonnes de production dans les tables, `UHOLMatchSettings` (stock de départ), `Buildings/HOLProductionRules`, 3 tests `HeroesOfLiberty.Production.*` ; tests 28/28, `quick_check` PASS |
+| J3.2 Économie du joueur (ressources, population) | à faire |
+| J3.3 File de production, ordre au serveur, apparition du Paysan | à faire |
+| J3.4 HUD (barre du haut, sélection, grille, file) | à faire |
+| J3.5 Vérification (D284) | à faire (partie à 2 clients après M2.5.6) |
+| J3.6 Clôture : D280 à D284 au GDD | à faire |
 
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.1 à M2.5.4 faites** (voir le journal). Suite : **M2.5.5** S5 : script (`net_match.ps1 -Units` en est la
+1. **M2.5.5 en cours** (journal du 2026-10-14, « M2.5.5 en cours ») : script et rapport faits ; reste à passer le
+   débit sous 32 Ko/s (pistes : états écrits plusieurs fois sur le fil, rappel lent, bits de l'état). Ancien texte : **M2.5.5** S5 : script (`net_match.ps1 -Units` en est la
    base), rapport complet de D273 (octets par client, envois, temps de pas du serveur, images par seconde des
    clients, **écart affiché** : positions d'un échantillon notées au même pas par le serveur et les clients), et
    passage du débit sous 32 Ko/s (~42 Ko/s mesurés ; pistes dans le journal de M2.5.3). Puis M2.5.6 (partie à
    2 clients dans `quick_check.ps1`, essai de l'utilisateur), M2.5.7, puis **J3**.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
+3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 faite** ; prochaine étape : **J3.2** (économie du joueur), à coder quand l'autre session ne compile pas (même module).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -132,6 +142,32 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
 | Q4 | **Solo** : partie locale autonome ou serveur dédié local. | **tranché (D272)** : le solo reste autonome ; même code d'affichage nourri par la simulation (solo) ou par la réception (client) ; chemin réseau vérifié à 2 clients à chaque étape |
 | Q5 | **Vérification** : S5, partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur. | **tranché (D273)** : tests des règles pures, S5 avec bande passante, envois et écart affiché, partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur |
 
+## Plan de J3 (à valider question par question)
+
+Repères : D30 (grille de commandes `A Z E R / Q S D F / W X C V`), D83 (maisons, base de population du centre), D03
+(plafond 175), D201 (HUD façon AoE4), D241 / D242 / D247 (Common UI en C++, module que le serveur ne charge pas), D252
+(toute action passe par la file de commandes, donc le serveur), D259 / D262 (sélection chez le client, le panneau de J3
+la montre), D260 (bâtiments répliqués, table des types), D269 à D272 (unités répliquées, solo autonome). Déjà en
+place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), table des unités depuis
+`Tools/Data/UnitTypes.csv` (pas encore de Paysan). Aucune unité n'apparaît encore dans une partie sur `Plain`.
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J3. | **tranché (D280)** : ressources et population en haut, bloc de sélection, grille de commandes avec « Paysan », coût débité, file avec progression et annulation, Paysan immobile près du centre, tout par le serveur ; en plusieurs sous-étapes |
+| Q2 | **Fabrication du HUD** : quels blocs de D201 maintenant, comment (Common UI, C++), place des blocs à venir. | **tranché (D281)** : écran de jeu Common UI en C++, mise en page de D201, seuls barre du haut, bloc de sélection, grille de commandes et file de production ; le HUD lit l'état, ses clics passent par la file de commandes |
+| Q3 | **Production côté serveur** : ordre envoyé au serveur, vérification du coût et de la population, file de production, ce qui est répliqué (ressources, population, file). | **tranché (D282)** : appel du contrôleur → file de commandes → pas suivant ; coût débité à la mise en file, remboursé à l'annulation ; population vérifiée au début de la production ; ressources dans le `PlayerState` et file sur le bâtiment, répliquées au propriétaire |
+| Q4 | **Le Paysan** : type d'unité, apparence provisoire, lieu d'apparition, valeurs provisoires (coût, temps, stock de départ). | **tranché (D283)** : ligne `Peasant`, mannequin de M2, apparition en arc devant le centre, immobile ; 50 nourriture, 20 s, 200 de chaque au départ, population de base 10, file de 5 |
+| Q5 | **Vérification**, et découpage en sous-étapes. | **tranché (D284)** : tests des règles, partie solo et partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur, S1 et S2 courts à la clôture ; sous-étapes J3.1 à J3.6 ci-dessous |
+
+**Sous-étapes de J3** (chacune compile, se vérifie et se commite seule) :
+
+1. **J3.1 Données et règles pures** : `Peasant` dans `UnitTypes.csv` (colonnes coût en 4 ressources, temps, population) ; `BuildingTypes.csv` (population de base, longueur de file, unités produites) ; stock de départ dans les réglages ; tables refaites par leurs scripts ; règles pures de production (`Buildings/HOLProductionRules` : mise en file, débit, remboursement, avance d'un pas, attente population pleine) et leurs tests.
+2. **J3.2 Économie du joueur** : ressources et population dans `AHOLPlayerState`, répliquées au seul propriétaire, remplies par le mode de jeu au début de la partie ; population comptée par le serveur (unités du joueur, par propriétaire dans `UHOLUnitSubsystem`) ; commande console d'affichage.
+3. **J3.3 File de production et ordre** : file sur `AHOLBuilding` (type et pas de début, répliquée au propriétaire : propriétaire réseau = contrôleur du joueur) ; ordres « produire » et « annuler » dans la file de commandes, appels serveur du contrôleur ; traitement à chaque pas (sous-système de production) ; Paysan créé par `UHOLUnitSubsystem` à une position précise en arc devant le centre ; commandes console `hol.Prod.*` pour essayer sans HUD ; vérifié en solo et par `net_match.ps1` (le Paysan arrive chez les 2 clients).
+4. **J3.4 HUD** : `AHOLGameHUD` dans le module d'interface (classe donnée au mode de jeu par chemin souple : le serveur ne la charge pas) ; écran de jeu Common UI : barre du haut, bloc de sélection, grille 3 × 4 avec ses touches (12 actions de grille dans `IMC_Game` par `make_game_input.py`, positions AZERTY de D30), file avec progression calculée chez le client (horloge du serveur de M2.5, pas de la simulation en solo) et annulation au clic ; un clic sur le HUD ne sélectionne pas à travers ; textes en fr / en / ja.
+5. **J3.5 Vérification (D284)** : partie « production » dans `quick_check.ps1` (solo), partie à 2 clients une fois M2.5.6 faite, essai de l'utilisateur, S1 et S2 courts.
+6. **J3.6 Clôture** : D280 à D284 au GDD (§ 21, paragraphe « Parcours J3 » au § 16.6).
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -153,6 +189,11 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
 | D271 | 2026-10-14 | Technique — Affichage des unités chez le client | **Instant présent estimé, corrections lissées** (choix de l'utilisateur, conforme à la recommandation) : chez le client, chaque unité reçue devient une **entité Mass d'affichage** (identifiant, type, propriétaire, dernier état reçu, position affichée), créée, mise à jour et retirée au fil du tableau rapide (D270) ; tout l'affichage de M2 sert tel quel (instances, couleur D233, animation d'après la vitesse affichée D234) ; pas de simulation chez le client. Le client estime l'horloge du serveur (numéro du pas) et affiche chaque unité **là où le serveur l'a sans doute à cet instant** (dernier état + vitesse × temps écoulé) ; une correction est **lissée en ~0,2 s** (écart au plus ~25 cm, D269). Aucun retard ajouté (ordres de M4 aussi vifs que possible). Écartés : **retard d'affichage de ~100 ms** (moins de glissements mais tout en retard, ordres plus lents à partir) et **correction sans lissage** (sauts jusqu'à ~25 cm, scintillement dans la mêlée, animation qui hoquette). |
 | D272 | 2026-10-14 | Technique — Le solo | **Le solo reste autonome** (choix de l'utilisateur, conforme à la recommandation) : une partie lancée du menu tourne en un seul processus, simulation et affichage ensemble, sans réseau (conforme à D268, menu inchangé) ; l'affichage reste **un seul code**, nourri en solo par l'état des entités de la simulation, chez un client par celui des entités d'affichage que la réception remplit avec les mêmes données (position, vitesse) ; le chemin réseau est vérifié par la **partie à 2 clients** de fin d'étape (D216), qui entre dans `quick_check.ps1`. Écartés : **serveur dédié local même en solo** (le menu lancerait et rejoindrait un processus serveur, contre D268 ; démarrage plus lent, deux processus, un bug réseau bloque le solo) et **affichage toujours par le tableau rapide en boucle locale** (entités en double en solo, stress test changé de nature, références S1 et S2 à refaire). |
 | D273 | 2026-10-14 | Technique — Vérification de M2.5 | **Tests, S5 avec l'écart affiché, partie à 2 clients dans la vérification rapide, essai** (choix de l'utilisateur, conforme à la recommandation) : **tests d'automatisation** des règles pures (réduction des positions et vitesses à ~10 cm près, règle d'envoi de D269 — seuil, changement d'action, rappel lent —, prolongement et lissage de D271) ; **S5** lancé par script (serveur dédié sur la carte du stress test, nuée de S2, 2 000 unités, graine fixe, 2 clients sur le deuxième écran), rapport : octets reçus par client et par seconde (≤ 32 Ko/s), envoi du serveur, envois par unité et par seconde, temps de pas du serveur, images par seconde des clients, et **écart affiché** (positions d'un échantillon d'unités notées au même pas par le serveur et les clients, comparées : moins de ~25 cm attendus) ; **partie à 2 clients dans `quick_check.ps1`** (serveur dédié sur `Plain`, chaque caméra au-dessus de son emplacement, les deux centres à la bonne couleur des deux côtés, clics de sélection), vérification de fin d'étape de D216 et D272 ; **essai de l'utilisateur**, les deux clients côte à côte sur `Plain` puis sur S5. Écartés : **sans l'écart affiché** (justesse de l'affichage jugée à l'œil seulement) et **S5 et essai seuls** (partie à 2 clients non rejouable, contre D216). Clôt le plan de M2.5 (D268 à D273). |
+| D280 | 2026-10-14 | Technique — Périmètre de J3 | **Production avec coût, en plusieurs sous-étapes** (choix de l'utilisateur : option A, à découper en sous-étapes) : à la fin de J3, le HUD de D201 montre en haut les **4 ressources** (stock de départ provisoire) et la **population** (base donnée par le centre, plafond) ; en bas au centre, le **bloc de sélection** (nom, points de vie, propriétaire du bâtiment sélectionné) ; en bas à droite, la **grille de commandes** (D30) avec **« Paysan »** (clic ou touche `A`). Produire **débite le coût** et prend une place de population ; la **file de production** montre sa progression et s'annule au clic (remboursement) ; le Paysan **apparaît près du centre** et reste immobile (ses ordres en J4). Tout passe par la **file de commandes**, donc par le **serveur**, qui vérifie coût et population ; en solo comme à 2 clients. Les sous-étapes sont fixées à la fin du plan (Q2 à Q5). Écartés : **production gratuite** (ressources et population en J5 ; plus rapide, mais produire ne serait pas encore un choix) et **A avec point de ralliement et Paysans de départ** (le ralliement est un ordre de déplacement, J4). |
+| D281 | 2026-10-14 | Technique — Fabrication du HUD | **Blocs utiles seuls, à leur place définitive** (choix de l'utilisateur, conforme à la recommandation) : un **écran de jeu Common UI en C++** dans le module d'interface (D241, D242, D247), avec la mise en page de D201 ; seuls les blocs dont J3 a besoin sont dessinés : **barre du haut** (4 ressources, population), **bloc de sélection** en bas au centre, **grille de commandes** 3 × 4 en bas à droite (touches de D30 affichées, seule la case « Paysan » active) et **file de production** au-dessus de la grille. Mini-carte, bloc du héros et emplacement de faction viendront avec leurs systèmes, à leur place déjà prévue. Le HUD **lit** l'état de la partie, ne le modifie jamais : ses clics passent par le contrôleur, puis la file de commandes (D252). Écartés : **squelette complet** (blocs morts à l'écran pendant des mois) et **HUD provisoire de débogage** (à refaire, contraire à D242). |
+| D282 | 2026-10-14 | Technique — Production côté serveur | **Le serveur seul décide, façon AoE** (choix de l'utilisateur, conforme à la recommandation) : un clic du HUD part au serveur par un **appel du contrôleur**, entre dans la **file de commandes** et s'applique au **pas suivant** ; le serveur vérifie le **propriétaire**, le **coût** et la **longueur de la file** (valeur en table). Le coût est **débité à la mise en file**, **remboursé à l'annulation** ; la **population** est vérifiée **au début de chaque production** : pleine, la file attend (comme AoE). **Ressources et population** vivent dans le `PlayerState`, répliquées **au seul propriétaire** (D203) ; la **file** vit sur le **bâtiment**, répliquée au propriétaire (types et pas de début), le client en calcule lui-même la progression. Écartés : **prédiction chez le client** (retour en arrière à gérer pour ~50-150 ms gagnées sur un ordre de production) et **GAS dès maintenant** (lourd pour une file, D260 le réserve à M5). |
+| D283 | 2026-10-14 | Technique — Le Paysan | **Mannequin, valeurs en tables** (choix de l'utilisateur, conforme à la recommandation) : une ligne **`Peasant`** dans `UnitTypes.csv`, avec le **mannequin de M2** à la couleur du joueur (le vrai modèle se branchera par la table) ; il **apparaît devant le centre**, du côté du milieu de la carte, **en arc** pour ne pas s'empiler, et reste **immobile** (ordres en J4). Valeurs provisoires : **50 nourriture, 20 s** ; **200 de chaque ressource** au départ ; **population de base du centre 10**, plafond **175** (D03) ; **file de 5** au plus. Coût, temps et population de l'unité dans la table des unités ; population de base, file et unités produites dans la table des bâtiments ; stock de départ dans les réglages de partie. Écarté : **apparence distincte dès maintenant** (aucun soldat sur `Plain` dont le distinguer, temps passé sur du provisoire). |
+| D284 | 2026-10-14 | Technique — Vérification de J3 | **Tests, solo et 2 clients** (choix de l'utilisateur, conforme à la recommandation) : **tests d'automatisation** des règles de production (débit, refus faute de ressources, remboursement, file pleine, attente population pleine, progression) ; dans **`quick_check.ps1`**, une partie **solo** (clic sur son centre, touche `A` plusieurs fois, Paysans apparus, ressources baissées, annulation remboursée, captures du HUD en fr / en / ja) et, une fois M2.5.6 en place, la **partie à 2 clients** (le Paysan apparaît chez les deux, les ressources ne sont vues que par leur propriétaire, D216) ; **essai de l'utilisateur** ; **S1 et S2 courts** à la clôture (un type d'unité ajouté). Écarté : **solo seul, réseau essayé à la main à la fin** (contraire à D216). Clôt le plan de J3 (D280 à D284). |
 
 ## Journal d'avancement
 
@@ -638,3 +679,65 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
 - `quick_check.ps1` : **PASS en 33 s, 25 tests sur 25**. Le dessin commun ayant changé, **S2 court en solo**
   (2 000 unités, 10 s) : simulation 2,35 ms par pas, 204 i/s (1 % bas 76), **PASS**.
 
+### 2026-10-14 (suite) — M2.5.5 en cours : S5 mesuré, horloge corrigée, débit encore trop haut
+
+- **Rapport S5 complet** : `net_match.ps1 -Units 2000` attend le rapport de S2, ferme les clients et lance
+  `Tools/Tests/s5_report.py` (PASS / FAIL). Octets par client **moyennés sur les totaux** des connexions (l'ancien
+  chiffre `OutBytesPerSecond` ne valait que la dernière seconde), paquets/s, états réellement écrits sur le fil
+  (compteur dans le sérialiseur), coût du pas, images par seconde des clients, **écart affiché** (`hol.Net.Sample 100` :
+  le serveur note les vraies positions de 20 unités à chaque pas, les clients les positions affichées 4 fois par
+  seconde ; comparées sur l'horloge commune de la machine) et **avance de l'horloge** des clients. Réglages d'essai :
+  `-UpdateFrequency`, `-Threshold`, `-RefreshSteps`, `-Lag`, `-Loss` (`hol.Net.UpdateFrequency`, `hol.Net.RefreshSteps`).
+- **Serveur cuit avec `-pak`** : sans lui, le serveur lisait ses données dans Zen avec le mot de passe de l'instance
+  du moment ; l'éditeur de l'autre projet relancé (nouvelle instance de Zen), le serveur attendait sans fin.
+- **Horloge du serveur corrigée** (`FHOLServerClock`) : après une image de 0,5 s chez le client (capture), le premier
+  pas lu était en retard et l'horloge **sautait de 11 pas en arrière** (erreurs affichées jusqu'à 190 cm). Un
+  échantillon très en retard est maintenant ignoré, sauf s'il dure (10 de suite) ; un essai « enveloppe basse »
+  (suivre les plus précoces) mettait l'horloge un demi-pas en avance, abandonné. Test `ServerClock` étendu.
+- Mesures (2 000 unités en marche, S2, 40 s) :
+
+  | Réglage | Envois/unité/s | Ko/s par client | Écart affiché moyen (95 %) |
+  |---|---|---|---|
+  | 20 mises à jour/s, 25 cm | 1,49 | 41,0 | 15,0 cm (27) |
+  | 10 mises à jour/s, 25 cm | 1,49 | 36,1 | 16,5 cm (32) |
+  | 10 mises à jour/s, 35 cm | 1,30 | 31,6 | 20,4 cm (41) |
+  | 10/s, vitesse moyennée sur 4 pas | 1,61 | 39,0 | 17,0 cm — abandonné |
+
+- **Constat** : à 10/s, **30,6 Ko/s sont les états eux-mêmes** (3 449 états sur le fil par client et par seconde ×
+  71 bits), le reste (en-têtes des morceaux, masques, paquets) seulement 5,4 Ko/s. Il faut donc moins d'états, pas
+  moins d'en-têtes. Anomalie : **3 449 états sur le fil pour ~2 980 écrits** par seconde, alors qu'à 10/s des
+  écritures devraient se fondre ; à comprendre d'abord.
+- Reste vu : un écart maximal de ~2 m isolé (à expliquer), images par seconde des clients côte à côte ~130-180
+  (1 % bas ~10-17, captures comprises). Simulation du serveur ~2,7-3,0 ms par pas, réplication ~0,17 ms.
+
+
+### 2026-10-14 (suite) — J3, plan ouvert ; Q1 tranchée (D280)
+
+- La fin de M2.5 (M2.5.5 à M2.5.7) continue dans une autre session ; le plan de J3 est mené ici en parallèle. Décisions
+  de J3 numérotées **à partir de D280** (D274 à D279 laissées à M2.5). Plan de J3 : Q1 périmètre, Q2 HUD, Q3 production
+  côté serveur, Q4 le Paysan, Q5 vérification et sous-étapes.
+- **Q1 → D280** : production avec coût (option A), découpée en plusieurs sous-étapes, fixées à la fin du plan.
+- **Q2 → D281** : écran de jeu Common UI en C++, seuls les blocs utiles à leur place de D201.
+- **Q3 → D282** : le serveur seul décide (file de commandes, coût à la mise en file, population au début), état répliqué au propriétaire.
+- **Q4 → D283** : `Peasant` au mannequin de M2, en arc devant le centre, valeurs provisoires en tables.
+- **Q5 → D284** : tests, solo et 2 clients dans `quick_check.ps1`, essai, S1 et S2 courts. **Plan de J3 complet**, découpé en J3.1 à J3.6.
+- Suite : **J3.1**. Cohabitation : l'autre session code M2.5 dans le même module ; ne compiler que si elle ne compile pas, commits par chemins explicites, ne pas toucher aux fichiers `Net/` qu'elle modifie.
+
+### 2026-10-14 (suite) — J3.1 faite : données et règles pures de la production
+
+- **Tables** : colonnes `Cost` (`FHOLResources`, nouveau `Match/HOLResources.h`), `BuildTime` (s) et `Population` dans
+  `UnitTypes.csv`, ligne **`Peasant`** (mannequin de M2, 50 nourriture, 20 s, 1 place ; rangé en dernier par ordre
+  alphabétique, donc les index de type envoyés aux clients, D270, ne bougent pas) ; colonnes `PopulationProvided` (10),
+  `Produces` (`Peasant`) et `MaxQueue` (5) dans `BuildingTypes.csv` ; tables refaites par leurs scripts.
+- **Stock de départ** : `UHOLMatchSettings::StartingResources` (200 de chaque, `DefaultGame.ini`), hors de la
+  configuration de partie (D244 : pas de réglage de salon sans sa décision).
+- **Règles pures** `Buildings/HOLProductionRules` : `TryEnqueue` (file pleine, ressources insuffisantes, débit),
+  `Cancel` (remboursement entier), `Advance` (la tête démarre s'il reste de la place dans la population, sinon attend ;
+  finie après `BuildSteps` pas, la suivante démarre au même pas), `GetStartedPopulation`, `GetProgress`,
+  `GetPopulationCap` (175 au plus). Tests `HeroesOfLiberty.Production.Queue`, `.Advance`, `.Tables`.
+- Vu en explorant, pour la suite : (1) la couleur des unités vient de `OwnerPlayer` pris comme index de palette, pas de
+  la couleur choisie pour l'emplacement (`ColorIndex`, celle des bâtiments) : à corriger en J3.3 pour que le Paysan ait
+  la couleur de son centre ; (2) aucun propriétaire réseau sur les bâtiments : à poser pour la réplication au seul
+  propriétaire (D282) ; (3) les emplacements IA n'ont pas de `PlayerState` : seuls les humains ont une économie pour
+  l'instant ; (4) `quick_check.ps1` attend « no interface » sur les captures de partie : à adapter en J3.4.
+- Suite : **J3.2**.

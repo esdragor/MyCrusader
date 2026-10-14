@@ -38,6 +38,18 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Final model; empty = the provisional shape of D261 (a block and a tower, the top at the owner's colour). */
 	UPROPERTY(EditAnywhere, Category = "Presentation")
 	TSoftObjectPtr<UStaticMesh> Mesh;
+
+	/** Population places the building gives its owner (D83: the centres give a base, the houses add to it). */
+	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0"))
+	int32 PopulationProvided = 0;
+
+	/** Unit types the building produces (rows of the unit type table), in the order of its command grid (D30). */
+	UPROPERTY(EditAnywhere, Category = "Production")
+	TArray<FName> Produces;
+
+	/** Longest production queue (D283). */
+	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "1"))
+	int32 MaxQueue = 5;
 };
 
 /** Where the building type table lives (DefaultGame.ini). */

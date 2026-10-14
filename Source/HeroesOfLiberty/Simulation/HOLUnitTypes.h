@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "MassEntityTypes.h"
+#include "Match/HOLResources.h"
 #include "HOLUnitTypes.generated.h"
 
 class UAnimSequenceTransformProviderData;
@@ -133,6 +134,18 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	/** Play rate of the walk, so the stride matches Speed and the feet do not slide (D234). */
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
 	float WalkPlayRate = 1.f;
+
+	/** What producing one unit costs (J3, D283), taken when it is queued. Read by the production, not by Mass. */
+	UPROPERTY(EditAnywhere, Category = "Production")
+	FHOLResources Cost;
+
+	/** Production time (s) at its building (J3, D283). */
+	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0.05", ForceUnits = "s"))
+	float BuildTime = 20.f;
+
+	/** Population places the unit takes (§ 5.3; an elite unit of the Heritiers takes 2). */
+	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0"))
+	int32 Population = 1;
 
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };
