@@ -415,3 +415,10 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
   (« Shaders en préparation » : compilation à la demande du mode éditeur), puis normalement.
 - Coordination : une session « serveur dédié » (M2) attend une machine au calme pour ses mesures S1 / S2 ; prévenue
   quand ce chantier a fini de compiler et de lancer le jeu.
+
+### 2026-10-14 — Passage au moteur AS_3
+
+- La session serveur dédié a passé le projet sur `C:\UE\UE_5.8_AS_3` (5.8.3 avec la cible Server, D231) et l'a
+  recompilé entièrement. `quick_check.ps1` prend maintenant le moteur du `.uproject` (registre) ; commandes utiles de ce
+  fichier et de `FrontEndInProgress.md` passées sur AS_3. `quick_check.ps1` PASS sur AS_3 (17/17, 35 s).
+- J2 inchangé : reste l'essai de l'utilisateur (J2.4), puis la clôture J2.5.
