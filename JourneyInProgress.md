@@ -49,7 +49,8 @@ vérifier sur S1 et S2.
 | J3.6 Clôture : D280 à D284 au GDD | **fait** (2026-10-14) : D280 à D284 au § 21 (D283 précisée : unités ×1,5), paragraphe « Parcours J3 » au § 16.6. **J3 close.** |
 | J4 — plan (Q1 à Q5, décisions à partir de D285) | **en cours** (2026-10-14) : Q1 tranchée (D285) ; plan validé (D286 à D289) |
 | J4.1 Navmesh dynamique et obstacles | **fait** (2026-10-14) : `DynamicModifiersOnly`, agent de 60 cm, zone interdite sous les bâtiments, rochers et bosquet sur `Plain`, navmesh construit et sauvegardé par les scripts des cartes (`Plain` et `StressTest` refaites), `hol.Nav.Path`, partie « move » de `quick_check` PASS (40 s), S1 / S2 courts PASS |
-| J4.2 Règles pures (paquets, places, attribution) | à faire |
+| J4.2 Règles pures (paquets, places, attribution) | **fait** (2026-10-14) : `Simulation/HOLGroupMoveRules`, 3 tests `HeroesOfLiberty.Movement.*`, tests 31/31 |
+| J4.3 Chemins dans la simulation | à faire |
 
 ## Prochaine étape exacte
 
@@ -1123,3 +1124,15 @@ reconstruction d'une tuile, à mesurer en J4.1).
   tenus, recouvrements identiques à J3.5 : le nouveau navmesh ne change rien au stress test.
 - Le serveur cuit de `net_match.ps1` n'a pas été recuit : `-Stage` à passer avant le prochain essai à 2 clients.
 - Suite : **J4.2** (règles pures `Simulation/HOLGroupMoveRules` et tests).
+
+### 2026-10-14 (suite) — J4.2 faite : règles pures de l'ordre de groupe
+
+- `Simulation/HOLGroupMoveRules` (espace `HOLGroupMove`) : **paquets** (`MakeClusters` : union des voisins à moins de
+  15 m, une chaîne d'unités fait un seul paquet ; numérotés dans l'ordre de leur première unité) ; **places**
+  (`MakeSlots` : nid d'abeille d'écart 1,2 diamètre, les plus proches du but d'abord, la première étant le but ;
+  demander plus de places que d'unités laisse sauter celles qui tombent dans un obstacle) ; repère de la marche
+  (`ToWorld`) ; **attribution** (`AssignSlots` : unités et places ramenées au même centre et à la même dispersion,
+  paires les plus proches d'abord : un groupe déjà en forme la garde, l'unité de gauche arrive à gauche).
+- Tests `HeroesOfLiberty.Movement.Clusters`, `.Slots` (7, 30, 175 places : aucun recouvrement, disque serré, même
+  résultat à chaque fois), `.Assign` ; `quick_check -Parts tests` : **31/31**.
+- Suite : **J4.3** (chemins dans la simulation).
