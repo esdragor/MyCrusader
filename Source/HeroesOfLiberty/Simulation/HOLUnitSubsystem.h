@@ -128,6 +128,8 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMassEntityTraitBase>> Traits;
 
+	/** A UPROPERTY, so that the garbage collector keeps the table (J3: the HUD and the production read it all along). */
+	UPROPERTY(Transient)
 	mutable TObjectPtr<const UDataTable> CachedTypeTable = nullptr;
 	mutable bool bTypeTableLookedUp = false;
 

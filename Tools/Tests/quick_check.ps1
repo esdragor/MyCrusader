@@ -142,7 +142,8 @@ if ($Parts -contains "camera") {
             # grid's cell, two by its key A, the third one cancelled by a click on the queue, the two others born.
             Step "mark production", "hol.Prod.BuildTime 2", "hol.Camera.FocusSlot $($Case.Slot)", "frames 3", "hol.Select.Click 0.5 0.5",
                 "waitlog Selection: MainCentre of slot $($Case.Slot) (own)", "frames 2", "hol.HUD.Report"
-            Step "hol.HUD.Click GridCell00", "waitlog queued Peasant (1 in"
+            # A garbage collection first: the unit type table read by the HUD and the production must survive it.
+            Step "obj gc", "frames 5", "hol.HUD.Click GridCell00", "waitlog queued Peasant (1 in"
             Key A
             Step "waitlog queued Peasant (2 in"
             Key A
