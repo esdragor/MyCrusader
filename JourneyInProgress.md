@@ -46,7 +46,7 @@ vérifier sur S1 et S2.
 | J3.3 File de production, ordre au serveur, apparition du Paysan | **fait** (2026-10-14) : file sur `AHOLBuilding` (propriétaire réseau = contrôleur), ordres par la file de commandes, `UHOLProductionSubsystem`, 12 actions de grille, `hol.Prod.*` ; vérifié sans fenêtre en solo et à 2 clients |
 | J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
 | J3.5 Vérification (D284) | **fait** (2026-10-14) : `quick_check` PASS (production solo, et production à 2 clients : un Paysan par client vu chez les deux, ressources de l'autre jamais reçues), essai de l'utilisateur « très bien » puis plantage du ramasse-miettes corrigé et confirmé disparu, unités ×1,5, S1 / S2 courts PASS |
-| J3.6 Clôture : D280 à D284 au GDD | à faire |
+| J3.6 Clôture : D280 à D284 au GDD | **fait** (2026-10-14) : D280 à D284 au § 21 (D283 précisée : unités ×1,5), paragraphe « Parcours J3 » au § 16.6. **J3 close.** |
 
 ## Prochaine étape exacte
 
@@ -57,7 +57,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 faite** ; **J3.6 en cours** (D280 à D284 au GDD).
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3 close le 2026-10-14** (D280 à D284 au GDD). Suivant dans l'ordre de D252 : **plan de J4** (ordres de déplacement et chemins, M3), à ouvrir dans une nouvelle séance ; décisions à partir de **D285**.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -943,4 +943,11 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   chacun, son propre stock débité (F 150, population 1/10), celui de l'autre **jamais reçu** (F 0, population 0/0),
   un Paysan né par emplacement au serveur. `quick_check` **PASS en 43 s**.
 - **J3.5 close.** Suite : J3.6 (D280 à D284 au GDD).
+
+### 2026-10-14 (suite) — J3.6 faite : J3 close
+
+- D280 à D284 au § 21 du GDD ; D283 précisée (unités dessinées ×1,5, écartés : centre plus petit, plongée ~50°).
+  Paragraphe « Parcours J3 » au § 16.6, après celui de M2.5, avec le plantage du ramasse-miettes et les limites connues
+  (couleur des unités = numéro d'emplacement comme index de palette ; pas d'économie pour les emplacements IA).
+- **J3 close.** Suite : plan de J4 (ordres de déplacement et chemins, M3), décisions à partir de D285.
 
