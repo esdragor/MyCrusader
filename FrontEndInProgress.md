@@ -58,7 +58,7 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 ```powershell
 # Tests d'automatisation du projet, sans affichage (D246) ; avec -saveddirsuffix=Tests le résultat est dans
 # Saved_Tests/Logs/HeroesOfLiberty.log, lignes « Test Completed » (9 tests : Match.*, Settings.Volumes, Localization.Translations)
-& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
+& "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -ExecCmds="Automation RunTests HeroesOfLiberty" -TestExit="Automation Test Queue Empty" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -nosound -log
 
 # Lancements de TEST : toujours -saveddirsuffix=Tests et la fenêtre sur le DEUXIÈME écran de l'utilisateur.
@@ -69,7 +69,7 @@ test. **Lancer l'éditeur depuis PowerShell**, jamais depuis Git Bash (conversio
 #    la fenêtre sur l'écran enregistré, -WinX seul ne suffit pas ;
 #  - -WinX/-WinY sont en coordonnées logiques (Windows à 150 %) : 3940 = deuxième écran.
 # Capture de l'interface par le jeu lui-même (D246) : fenêtre de jeu seulement, jamais le bureau.
-& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
+& "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash -culture=fr `
   -ExecCmds="hol.UI.Capture title 5 quit"
 # -> Saved_Tests/Screenshots/WindowsEditor/HOL/title.png ; journal Saved_Tests/Logs/HeroesOfLiberty.log
@@ -92,7 +92,7 @@ powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 -Parts menu
 # Localisation (D245) : traductions provisoires de Tools/Localization/fill_po.py écrites dans les .po (signale les
 # clés inconnues, c.-à-d. les textes ajoutés depuis), puis collecte, import des .po, .locres, réexport des .po
 #   python Tools/Localization/fill_po.py
-& "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
+& "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" `
   -run=GatherText -config="C:\Users\baudo\Documents\MyCrusader\Config\Localization\Game.ini" -unattended -nop4 -nosplash
 
 # Recréer les ressources d'entrée de l'interface (commandlet) et la carte MainMenu (éditeur complet)
