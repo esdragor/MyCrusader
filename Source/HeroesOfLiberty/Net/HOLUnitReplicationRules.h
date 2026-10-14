@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "HOLUnitReplicationRules.generated.h"
 
 /**
  * Pure rules of the unit replication (M2.5): the reduced state of a unit (D269, D270), the send rule the server
@@ -13,12 +14,15 @@
  */
 
 /**
- * State of one unit as sent (D269, D270), in the integers the element format writes with the exact bit widths below.
- * Only the horizontal velocity is sent: units walk on the navmesh, their height follows the ground, and a height that
- * drifts on a slope is caught by the send rule like any other error.
+ * State of one unit as sent (D269, D270), in the integers the element format writes with the exact bit widths below
+ * (FHOLNetUnitStateNetSerializer). Only the horizontal velocity is sent: units walk on the navmesh, their height follows
+ * the ground, and a height that drifts on a slope is caught by the send rule like any other error.
  */
+USTRUCT()
 struct HEROESOFLIBERTY_API FHOLNetUnitState
 {
+	GENERATED_BODY()
+
 	/** Position precision (cm): ~10 cm (D269). */
 	static constexpr float PositionStep = 10.f;
 	/** Velocity precision (cm/s): at most 2.5 cm/s off per axis, ~5 cm of drift over a 2 s refresh. */
@@ -35,13 +39,20 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	static constexpr int32 StepBits = 8;
 	static constexpr int32 TotalBits = 2 * HorizontalBits + HeightBits + 2 * VelocityBits + ActivityBits + StepBits;
 
+	UPROPERTY()
 	int16 X = 0;
+	UPROPERTY()
 	int16 Y = 0;
+	UPROPERTY()
 	int16 Z = 0;
+	UPROPERTY()
 	int16 VelocityX = 0;
+	UPROPERTY()
 	int16 VelocityY = 0;
+	UPROPERTY()
 	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
 	/** StepBits low bits of the simulation step the state was taken at. */
+	UPROPERTY()
 	uint8 Step = 0;
 
 	/** Reduces a state; values out of range are held at the range's edge. */

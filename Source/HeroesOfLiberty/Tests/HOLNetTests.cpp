@@ -1,12 +1,17 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Iris/Serialization/NetBitStreamReader.h"
+#include "Iris/Serialization/NetBitStreamWriter.h"
+#include "Iris/Serialization/NetSerializationContext.h"
 #include "Misc/AutomationTest.h"
+#include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationRules.h"
+#include "Net/HOLUnitReplicator.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// M2.5 checks (D273): the pure rules of the unit replication, reduction (D269, D270), send rule (D269), server clock,
-// prediction and smoothed corrections (D271).
+// M2.5 checks (D273): the pure rules of the unit replication, reduction (D269, D270), element format on the wire (D270),
+// send rule (D269), server clock, prediction and smoothed corrections (D271).
 namespace UE::HeroesOfLiberty::Tests::Net
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
@@ -45,6 +50,71 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Z held at the range's edge"), static_cast<int32>(Far.Z), (1 << (FHOLNetUnitState::HeightBits - 1)) - 1);
 	TestEqual(TEXT("velocity held at the range's edge"), static_cast<int32>(Far.VelocityX), (1 << (FHOLNetUnitState::VelocityBits - 1)) - 1);
 	TestTrue(TEXT("the 400 m maps fit"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep > 25000.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetElementFormatTest, "HeroesOfLiberty.Net.ElementFormat", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::Net;
+	const FNetSerializer& Serializer = UE_NET_GET_SERIALIZER(FHOLNetUnitStateNetSerializer);
+	TestEqual(TEXT("one chunk of slots per change bit of an Iris fast array"), UHOLUnitChunk::NumSlots, 63);
+
+	// Every field at both ends of its range and in between, through Iris' quantize, write, read and dequantize.
+	const FHOLNetUnitState States[] = {
+		FHOLNetUnitState::Make(FVector(12345.6, -9876.5, 123.4), FVector(212.3, -147.9, 0.0), EHOLUnitActivity::Moving, 1000),
+		FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, -1.0e6), FVector(-1.0e5, 1.0e5, 0.0), EHOLUnitActivity::Idle, 255),
+		FHOLNetUnitState::Make(FVector(-1.0e7, 1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Moving, 256),
+		FHOLNetUnitState(),
+	};
+	for (const FHOLNetUnitState& State : States)
+	{
+		alignas(16) uint8 Quantized[64] = {};
+		alignas(16) uint8 Received[64] = {};
+		if (!TestTrue(TEXT("quantized form fits the test buffer"), Serializer.QuantizedTypeSize <= sizeof(Quantized)))
+		{
+			return false;
+		}
+		FNetSerializationContext Context;
+		FNetValidateArgs ValidateArgs;
+		ValidateArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		ValidateArgs.Source = NetSerializerValuePointer(&State);
+		TestTrue(TEXT("valid"), Serializer.Validate(Context, ValidateArgs));
+
+		FNetQuantizeArgs QuantizeArgs;
+		QuantizeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		QuantizeArgs.Source = NetSerializerValuePointer(&State);
+		QuantizeArgs.Target = NetSerializerValuePointer(Quantized);
+		Serializer.Quantize(Context, QuantizeArgs);
+
+		uint32 Buffer[8] = {};
+		FNetBitStreamWriter Writer;
+		Writer.InitBytes(Buffer, sizeof(Buffer));
+		FNetSerializationContext WriteContext(&Writer);
+		FNetSerializeArgs SerializeArgs;
+		SerializeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
+		Serializer.Serialize(WriteContext, SerializeArgs);
+		Writer.CommitWrites();
+		TestEqual(TEXT("71 bits on the wire"), Writer.GetPosBits(), static_cast<uint32>(FHOLNetUnitState::TotalBits));
+
+		FNetBitStreamReader Reader;
+		Reader.InitBits(Buffer, Writer.GetPosBits());
+		FNetSerializationContext ReadContext(&Reader);
+		FNetDeserializeArgs DeserializeArgs;
+		DeserializeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		DeserializeArgs.Target = NetSerializerValuePointer(Received);
+		Serializer.Deserialize(ReadContext, DeserializeArgs);
+		TestFalse(TEXT("read within the bits written"), Reader.IsOverflown());
+
+		FHOLNetUnitState Back;
+		FNetDequantizeArgs DequantizeArgs;
+		DequantizeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		DequantizeArgs.Source = NetSerializerValuePointer(Received);
+		DequantizeArgs.Target = NetSerializerValuePointer(&Back);
+		Serializer.Dequantize(ReadContext, DequantizeArgs);
+		TestEqual(TEXT("same state after the trip"), Back, State);
+	}
 	return true;
 }
 

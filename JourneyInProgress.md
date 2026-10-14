@@ -35,7 +35,7 @@ vérifier sur S1 et S2.
 | M2.5 — plan (Q1 à Q5, D268 à D273) | **fait** (2026-10-14) |
 | M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | **fait** (2026-10-14) : `Tools/Tests/net_match.ps1` ; serveur cuit et mis en place, 2 clients côte à côte, chacun sur son emplacement, centres à la bonne couleur, sélection ; reste le regard de l'utilisateur |
 | M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | **fait** (2026-10-14) : `Net/HOLUnitReplicationRules`, 6 tests `HeroesOfLiberty.Net.*`, `quick_check` PASS |
-| M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | à faire |
+| M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | **fait** (2026-10-14) : 2 000 unités reçues par 2 clients ; 1,5 envoi/unité/s ; **~42 Ko/s par client** (> 32 Ko/s, à régler en M2.5.5) |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | à faire |
 | M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | à faire |
 | M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | à faire |
@@ -44,11 +44,11 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.1 et M2.5.2 faites** (`net_match.ps1`, règles pures ; voir le journal). Suite : **M2.5.3** serveur : acteur
-   partagé toujours pertinent, tableau rapide (`FFastArraySerializer` sous Iris) dont l'élément s'écrit sur les
-   largeurs de `FHOLNetUnitState` (71 bits), marquage par `HOLUnitReplication::GetSendReason` à chaque pas, numéro du
-   pas répliqué, réglages de `FHOLUnitSendRules` dans les réglages du projet. Puis M2.5.4 à M2.5.7, puis **J3** :
-   panneau du bâtiment (il montrera la sélection, qui n'a plus de retour visuel) et production d'un Paysan.
+1. **M2.5.1 à M2.5.3 faites** (voir le journal). Suite : **M2.5.4** client : entités Mass d'affichage créées depuis
+   les morceaux reçus (identité → type, propriétaire ; état → position, vitesse), horloge du serveur
+   (`FHOLServerClock` nourrie par `AHOLUnitReplicator::ServerStep`), prolongement et lissage, branchement de
+   l'affichage de M2. Puis **M2.5.5** S5, où le débit (~42 Ko/s mesurés, pistes dans le journal) doit passer sous
+   32 Ko/s ; puis M2.5.6, M2.5.7, puis **J3** : panneau du bâtiment et production d'un Paysan.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 
@@ -570,4 +570,42 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
 - `quick_check.ps1` : un premier passage juste après la compilation a échoué sur les parties caméra (lancement du
   jeu fini à 76 s au lieu de ~30 s ; journal écrasé par le passage suivant, cause non établie) ; le second :
   **PASS en 32 s, 23 tests sur 23**. À surveiller si un premier lancement après compilation échoue encore.
+
+### 2026-10-14 (suite) — M2.5.3 faite : côté serveur de la réplication des unités
+
+- **Constat dans Iris (5.8.3)** : un tableau rapide (`FIrisFastArraySerializer`) n'a que **63 bits de changement**,
+  l'élément i sur le bit i mod 63 (`IrisFastArraySerializer.cpp`, `ArrayPropertyNetSerializer.cpp`) : dans un seul
+  tableau de 2 000 unités, marquer une unité renverrait les ~32 qui partagent son bit. La compression par écart d'Iris
+  n'y remédie pas (nouvelle base au plus toutes les 60 images, `net.Iris.MinimumNumberOfFramesBetweenBaselines`).
+- **Mise en œuvre de D270 qui en tient compte** (même principe : un acteur partagé, tableaux rapides, marquage selon
+  D269, format maison) : `Net/HOLUnitReplicator.h/.cpp`.
+  - `AHOLUnitReplicator` : l'acteur partagé, toujours pertinent, 20 mises à jour par seconde (réglage), porte le
+    **numéro du pas** du serveur et des **morceaux** `UHOLUnitChunk` (sous-objets répliqués) de **63 emplacements
+    exactement** : chaque unité a son bit, Iris n'envoie que les unités marquées et renvoie ce qui s'est perdu.
+  - Dans un morceau, deux tableaux rapides : **identité** (identifiant, type, propriétaire ; écrite à l'arrivée, au
+    départ et à une conversion) et **état** (`FHOLNetUnitState`, écrit seulement quand la règle d'envoi le dit).
+    Emplacements fixes : une unité partie libère le sien, rien n'est retiré, les indices ne bougent pas.
+  - Type envoyé comme **indice** dans la liste triée des types de la table (`UHOLUnitSubsystem::GetTypeNames`).
+  - **Sérialiseur Iris** `Net/HOLNetUnitStateNetSerializer` : l'état sur ses 71 bits exacts (au lieu de 16 bits par
+    entier). Test `HeroesOfLiberty.Net.ElementFormat` : aller-retour par Iris, 71 bits, valeurs aux bornes.
+- **`Net/HOLUnitReplicationSubsystem`** (serveur d'une partie en réseau seulement, D272) : à la fin de chaque pas
+  (nouveau `UHOLSimulationSubsystem::GetOnStepEnded`, hors du chrono du pas), requête Mass sur toutes les unités,
+  règle d'envoi, emplacement pris ou libéré. Réglages `UHOLUnitReplicationSettings` (seuil, cycle du rappel, mises à
+  jour par seconde) ; `hol.Net.ErrorThreshold`, `hol.Net.ReportInterval`, `hol.Net.Report` (serveur : envois par
+  raison, coût, octets envoyés par client ; client : unités reçues, pas du serveur, octets reçus). Catégorie de
+  journal `LogHOLNet`.
+- **`net_match.ps1 -Units N`** : serveur sur `StressTest`, S2 lancé 15 s après le démarrage (clients entrés), rapport
+  du serveur toutes les 5 s, deux rapports par client.
+- **Essai à 2 clients, 2 000 unités en marche (S2, 40 s)** :
+  - les deux clients reçoivent **2 000 unités en 32 morceaux**, le pas du serveur suit ;
+  - **1,48 à 1,58 envoi par unité et par seconde** (estimation de D269 : ~1,5) : sur 5 s, ~11 000 pour l'écart,
+    ~2 000 pour l'action (S2 relance sans cesse des ordres), ~1 800 rappels ;
+  - coût au serveur : **0,08 ms par pas** ;
+  - **débit : ~42 Ko/s par client**, au-dessus des 32 Ko/s de D218. Les états eux-mêmes font ~27 Ko/s
+    (3 000 × 71 bits) ; le reste (~15 Ko/s, ~24 octets par morceau et par mise à jour) est surtout le masque de
+    changement que chaque morceau marqué envoie (1 + 64 + 64 bits) et son en-tête, 32 morceaux × 20 fois par
+    seconde. Pistes pour M2.5.5 : **10 mises à jour par seconde** (moitié de ce surcoût, ~34 Ko/s estimés),
+    **identités dans des morceaux à part** (masque de 64 bits au lieu de 129), puis le seuil. S5 tranchera.
+- Rien ne s'affiche encore chez les clients (M2.5.4). Avertissement d'Iris déjà noté en M2.5.1 (modules chargés après
+  le démarrage) seul, sans autre alerte. `quick_check.ps1` : **PASS en 33 s, 24 tests sur 24**.
 

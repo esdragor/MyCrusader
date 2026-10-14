@@ -47,6 +47,9 @@ struct FHOLSimulationStepStats
 /** Head of a fixed step, before births and processors: what is issued here is applied by this very step. */
 DECLARE_MULTICAST_DELEGATE_OneParam(FHOLOnSimulationStepStarted, int64 /*StepIndex*/);
 
+/** Tail of a fixed step, destructions applied: the units' state is now the one at step StepIndex (the next step's). */
+DECLARE_MULTICAST_DELEGATE_OneParam(FHOLOnSimulationStepEnded, int64 /*StepIndex*/);
+
 /**
  * Runs the authoritative simulation at a fixed step (D217, D219): at the start of Mass' PrePhysics phase,
  * the accumulator runs 0 to N steps of the simulation pipeline; per-frame processors run afterwards and
@@ -66,6 +69,9 @@ public:
 
 	/** Fires at the head of every fixed step: a stress test drives its orders and its phases by steps, not by frames. */
 	FHOLOnSimulationStepStarted& GetOnStepStarted() { return OnStepStarted; }
+
+	/** Fires at the tail of every fixed step, outside of its chrono: the unit replication reads the step's result. */
+	FHOLOnSimulationStepEnded& GetOnStepEnded() { return OnStepEnded; }
 
 	const FHOLSimulationStepStats& GetStepStats() const { return StepStats; }
 	void ResetStepStats() { StepStats = FHOLSimulationStepStats(); }
@@ -112,4 +118,5 @@ private:
 	int64 StepIndex = 0;
 	FHOLSimulationStepStats StepStats;
 	FHOLOnSimulationStepStarted OnStepStarted;
+	FHOLOnSimulationStepEnded OnStepEnded;
 };

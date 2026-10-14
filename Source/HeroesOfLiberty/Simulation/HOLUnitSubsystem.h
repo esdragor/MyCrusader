@@ -37,6 +37,12 @@ public:
 	/** Row of a type of the table; nullptr when the table is missing or has no such row. */
 	const FHOLUnitTypeRow* FindTypeRow(FName TypeName) const;
 
+	/**
+	 * Types of the table in lexical order: the same list on the server and on the clients, so the unit replication
+	 * sends a type as its index in it (D270).
+	 */
+	void GetTypeNames(TArray<FName>& OutTypeNames) const;
+
 	/** Puts a birth request in the queue (D224); UHOLUnitBirthProcessor serves it at the next steps. */
 	void RequestUnits(const FHOLUnitSpawnRequest& Request);
 

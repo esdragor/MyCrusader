@@ -111,6 +111,7 @@ void UHOLSimulationSubsystem::Deinitialize()
 	}
 	PhaseStartedHandle.Reset();
 	OnStepStarted.Clear();
+	OnStepEnded.Clear();
 	StepPipeline.Reset();
 	ProcessorThrottled.Reset();
 	EntityManager.Reset();
@@ -192,6 +193,8 @@ void UHOLSimulationSubsystem::RunStep()
 	StepStats.NumUnitsBorn += NumUnitsBorn;
 	StepStats.TotalDestructionMs += DestructionMs;
 	StepStats.NumUnitsDestroyed += NumUnitsDestroyed;
+
+	OnStepEnded.Broadcast(StepIndex);
 }
 
 void UHOLSimulationSubsystem::RegisterProcessorStats(const TConstArrayView<TObjectPtr<UMassProcessor>> Processors)

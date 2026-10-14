@@ -81,6 +81,16 @@ const FHOLUnitTypeRow* UHOLUnitSubsystem::FindTypeRow(const FName TypeName) cons
 	return Table ? Table->FindRow<FHOLUnitTypeRow>(TypeName, TEXT("UnitSubsystem"), /*bWarnIfRowMissing*/ false) : nullptr;
 }
 
+void UHOLUnitSubsystem::GetTypeNames(TArray<FName>& OutTypeNames) const
+{
+	OutTypeNames.Reset();
+	if (const UDataTable* Table = GetTypeTable())
+	{
+		OutTypeNames = Table->GetRowNames();
+		OutTypeNames.Sort(FNameLexicalLess());
+	}
+}
+
 int32 UHOLUnitSubsystem::GetBirthBudget() const
 {
 	using namespace UE::HeroesOfLiberty::Units;

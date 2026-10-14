@@ -4,13 +4,19 @@
 # content or configuration the server uses). Logs: Saved_Tests\Logs\net_server.log, net_client1.log, net_client2.log.
 # Each client, once in the match: a capture net_client<N> (from the game, Saved_Tests_Net<N>\Screenshots\WindowsEditor\HOL),
 # then a click in the middle of its screen, on its own centre, and a selection report.
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2]
+# With -Units N (M2.5.3, S5): the server runs on StressTest, starts S2 with N units once the clients are in, and logs a
+# unit replication report every 5 s (sends per unit and per second, bytes sent per client); each client logs what it
+# received (hol.Net.Report) twice during the walk.
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Seconds 40]]
 param(
     [switch] $Stage,
     [int] $Clients = 2,
     [string] $Map = "/Game/Maps/Plain",
+    [int] $Units = 0,
+    [int] $Seconds = 40,
     [string] $EngineDir = ""
 )
+if ($Units -gt 0 -and -not $PSBoundParameters.ContainsKey('Map')) { $Map = "/Game/Maps/StressTest" }
 
 $Project = Resolve-Path "$PSScriptRoot\..\.."
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
@@ -41,7 +47,12 @@ $Config = Join-Path $TestSaved "net_match.json"
 "{ `"map`": `"$Map.$(Split-Path $Map -Leaf)`", `"slots`": [ $($Slots -join ', ') ] }" | Set-Content -Encoding ascii $Config
 
 $ServerLog = Join-Path $Logs "net_server.log"
-$ServerProcess = Start-Process -FilePath $Server -ArgumentList "$Map -log -unattended -MatchConfig=`"$Config`" -abslog=`"$ServerLog`"" `
+$ServerArguments = "$Map -log -unattended -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
+if ($Units -gt 0) {
+    # S2 starts once the clients had time to join, so they receive the births as they happen.
+    $ServerArguments += " -ExecCmds=`"hol.Net.ReportInterval 5,hol.Delay 15 hol.StressTest S2 $Units $Seconds`""
+}
+$ServerProcess = Start-Process -FilePath $Server -ArgumentList $ServerArguments `
     -PassThru -WindowStyle Minimized
 Write-Host "server: pid $($ServerProcess.Id), log $ServerLog"
 
@@ -55,9 +66,15 @@ $Width = [Math]::Floor(1920 / $Clients)
 for ($Client = 1; $Client -le $Clients; $Client++) {
     $ClientLog = Join-Path $Logs "net_client$Client.log"
     $Sequence = Join-Path $TestSaved "net_client$Client.seq"
-    @("waitmap $(Split-Path $Map -Leaf)", "waitlog Camera above the start", "frames 60", "capture net_client$Client",
-        "hol.Camera.TestCursor 0.5 0.5", "hol.Select.Click 0.5 0.5", "waitlog Selection:", "hol.Select.Report",
-        "hol.Camera.TestCursor off") | Set-Content -Encoding utf8 $Sequence
+    if ($Units -gt 0) {
+        # The walk starts 15 s after the server: two reports while the units walk.
+        @("waitmap $(Split-Path $Map -Leaf)", "wait 25", "hol.Net.Report", "wait 10", "hol.Net.Report",
+            "capture net_client$Client") | Set-Content -Encoding utf8 $Sequence
+    } else {
+        @("waitmap $(Split-Path $Map -Leaf)", "waitlog Camera above the start", "frames 60", "capture net_client$Client",
+            "hol.Camera.TestCursor 0.5 0.5", "hol.Select.Click 0.5 0.5", "waitlog Selection:", "hol.Select.Report",
+            "hol.Camera.TestCursor off") | Set-Content -Encoding utf8 $Sequence
+    }
     # Each client its own settings (Saved_Tests_Net<N>): the engine re-centres a window on the display saved in the
     # settings when it applies the resolution, which stacked the clients; with no display saved (-1) it keeps -WinX.
     $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
