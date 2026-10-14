@@ -1539,3 +1539,11 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   rappel ~2 500. **Reste au-dessus de 32 Ko/s : décision de l'utilisateur.**
 - **D300** : l'utilisateur choisit de chasser d'abord les ~8 Ko/s d'en-têtes non expliqués (D274).
 - Suite : en-têtes d'Iris (D300), S5 de nouveau, S2 au repos, puis J4.8 (clôture).
+- **Arrêt demandé par l'utilisateur** (reprise dans une autre séance). Tout est commité. Piste chiffrée, à vérifier :
+  ~32 morceaux × 10 mises à jour/s × ~30 octets ≈ 9,6 Ko/s, soit les ~8 Ko/s inexpliqués : l'en-tête de chaque
+  écriture d'un morceau (`AHOLUnitChunk`). Une lecture du code d'Iris par un agent (disposition des bits d'une
+  écriture d'acteur et d'un `FIrisFastArraySerializer`, propriétés d'`AActor` répliquées par défaut, options pour
+  réduire) a été **interrompue sans résultat** : à relancer. Pistes : un seul sérialiseur maison par morceau (masque
+  des emplacements changés + états) au lieu du tableau rapide ; couper les propriétés d'acteur inutiles du morceau ;
+  mesure exacte par `-NetTrace` et Unreal Insights. Mesurer S5 avec `net_match.ps1 -Stage -Units 2000 -Seconds 40`
+  (`-ServerSettings "réglage valeur"` pour un A / B, un réglage par chaîne).
