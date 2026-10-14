@@ -36,6 +36,8 @@ namespace UE::HeroesOfLiberty::Orders
 
 	/** A short path is done this close (cm) to its last point; the final leg brings the unit to its slot. */
 	constexpr float EndReachedDistance = 50.f;
+	/** Distance (cm) to its slot within which a unit that no longer gets closer counts as stuck (D287, D292). */
+	constexpr float StuckCountDistance = 500.f;
 
 	/** Corridor of a path, the same settings as Mass' own navmesh path follow, at the project's width. */
 	TSharedPtr<FNavCorridor> MakeCorridor(const FNavigationPath& Path, const ANavigationData& NavData, const float Width)
@@ -159,7 +161,9 @@ namespace UE::HeroesOfLiberty::Orders
 		OutSlots.Reset();
 		const double Spacing = 2. * Radius * HOLGroupMove::SlotSpacingInDiameters;
 		TArray<FVector2D> Offsets;
-		HOLGroupMove::MakeSlots(NumUnits + NumUnits / 3 + 6, Spacing, Offsets);
+		// Room for many more than the units: when standing units hold the nearest places, the next rings serve (a unit
+		// left without a slot went to the target itself, several on one point, D292). Tried in order until enough.
+		HOLGroupMove::MakeSlots(NumUnits * 3 + 20, Spacing, Offsets);
 		const FVector Extent(Spacing * 0.5, Spacing * 0.5, 500.);
 		for (const FVector2D& Offset : Offsets)
 		{
@@ -563,8 +567,10 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			{
 				MoveTarget.Forward = FVector(ToSlot.X, ToSlot.Y, 0.).GetSafeNormal();
 			}
-			// A unit that no longer gets closer (its slot taken, pushed by its neighbours) stands where it is.
-			Order.StuckSteps = Distance < Order.LastSlotDistance - 2.f ? 0 : static_cast<uint16>(FMath::Min<int32>(Order.StuckSteps + 1, MAX_uint16));
+			// A unit that no longer gets closer near its slot (taken, or its neighbours in the way) stands where it is. Far
+			// from it, a unit pushed back by a crowd keeps going (D292): it stopped 110 m short of its slot.
+			const bool bGettingCloser = Distance < Order.LastSlotDistance - 2.f;
+			Order.StuckSteps = bGettingCloser || Distance > StuckCountDistance ? 0 : static_cast<uint16>(FMath::Min<int32>(Order.StuckSteps + 1, MAX_uint16));
 			Order.LastSlotDistance = FMath::Min(Order.LastSlotDistance, Distance);
 			if (Distance > Tolerance && Order.StuckSteps < StuckLimit)
 			{
@@ -616,6 +622,43 @@ namespace UE::HeroesOfLiberty::Orders
 				});
 				Commands->IssueMoveOrder(UnitIds, Target);
 				UE_LOG(LogHOLSimulation, Display, TEXT("Move order: %d units to (%.0f, %.0f)"), UnitIds.Num(), Target.X, Target.Y);
+			}
+		}));
+
+	/** Diagnosis of the orders (server or solo): where each unit is in its order. */
+	FAutoConsoleCommandWithWorldAndArgs OrdersCommand(TEXT("hol.Units.Orders"),
+		TEXT("hol.Units.Orders [Slot]: logs each unit's order phase, slot, distance to it and steps without getting closer (server or solo)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
+		{
+			const int32 Slot = Args.IsEmpty() ? INDEX_NONE : FCString::Atoi(*Args[0]);
+			for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
+			{
+				UWorld* World = WorldContext.World();
+				const UHOLUnitSubsystem* Units = World && World->IsGameWorld() && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+				const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+				if (!Units || !EntitySubsystem)
+				{
+					continue;
+				}
+				const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+				TArray<uint32> UnitIds;
+				Units->GetAllUnitIds(UnitIds);
+				UnitIds.Sort();
+				TArray<FString> Lines;
+				for (const uint32 UnitId : UnitIds)
+				{
+					const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+					const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+					const FHOLMoveOrderFragment* Order = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+					const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+					if (!State || !Order || !Transform || (Slot != INDEX_NONE && State->OwnerPlayer != Slot))
+					{
+						continue;
+					}
+					Lines.Add(FString::Printf(TEXT("#%u %s slot (%.0f, %.0f) at %.0f cm, stuck %d"), UnitId, *UEnum::GetValueAsString(Order->Phase),
+						Order->Slot.X, Order->Slot.Y, FVector::Dist2D(Order->Slot, Transform->GetTransform().GetLocation()), Order->StuckSteps));
+				}
+				UE_LOG(LogHOLSimulation, Display, TEXT("Unit orders: %s"), *FString::Join(Lines, TEXT("; ")));
 			}
 		}));
 }
