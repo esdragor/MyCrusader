@@ -39,7 +39,7 @@ vérifier sur S1 et S2.
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | **fait** (2026-10-14) : 2 000 unités affichées par chaque client, animées, à la couleur du joueur ; corrections ~24 cm en moyenne, aucun placement direct |
 | M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | **fait** (2026-10-14) : morceaux en acteurs (fin du chemin des objets énormes) ; D274 (35 cm, 10 mises à jour/s) : **S5 PASS, 30,3 Ko/s par client, écart affiché 19,7 cm** ; tests 28/28 |
 | M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | à faire |
-| M2.5.7 Clôture : D268 à D273 au GDD | à faire |
+| M2.5.7 Clôture : D268 à D274 au GDD | **en partie faite** (2026-10-14) : D268 à D274 au § 21, paragraphe « Tranche réseau M2.5 » au § 16.6 (marqué « en cours ») ; reste, après M2.5.6, à le marquer fait et à compléter la ligne M2.5 du tableau du § 16.6 |
 | J3 — plan (Q1 à Q5, D280 à D284 ; mené en parallèle de la fin de M2.5, dans une autre session) | **fait** (2026-10-14) |
 | J3.1 Données et règles pures | **fait** (2026-10-14) : `Peasant` et colonnes de production dans les tables, `UHOLMatchSettings` (stock de départ), `Buildings/HOLProductionRules`, 3 tests `HeroesOfLiberty.Production.*` ; tests 28/28, `quick_check` PASS |
 | J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
@@ -53,7 +53,8 @@ vérifier sur S1 et S2.
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
 1. **M2.5.5 faite** (D274). Suite : **M2.5.6** (partie à 2 clients dans `quick_check.ps1` : serveur dédié sur
    `Plain`, caméras, centres aux bonnes couleurs des deux côtés, clics de sélection ; puis essai de l'utilisateur,
-   les deux clients côte à côte sur `Plain` puis sur S5), M2.5.7 (D268 à D274 au GDD). Cette session ne fait que
+   les deux clients côte à côte sur `Plain` puis sur S5), puis fin de M2.5.7 (D268 à D274 déjà au GDD ; marquer le
+   paragraphe du § 16.6 fait, compléter la ligne M2.5 du tableau). Cette session ne fait que
    M2.5.x ; J3 est menée par un autre agent (se prévenir avant de compiler ou de lancer des clients).
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
@@ -750,6 +751,15 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   aucun placement direct, horloge à ±0,3 pas. Test `Net.SendRule` : les poussées essayées suivent le seuil (±5 cm)
   au lieu de 20 et 30 cm écrits en dur. `quick_check.ps1` : tests **28/28** ; la partie « production » de J3 (autre
   session, en cours) échoue sur son propre minutage. **M2.5.5 faite.**
+
+### 2026-10-14 (suite) — M2.5.7 avancée : D268 à D274 au GDD
+
+- Pendant que J3 avance dans l'autre session, report au GDD sans compiler : **D268 à D274 au § 21** (texte du tableau
+  des décisions ci-dessus, colonne « § 16.6 ») et **paragraphe « Tranche réseau M2.5 »** au § 16.6, après « Parcours
+  J2 » : lancement par script, règle d'envoi, morceaux de 63 emplacements en acteurs, affichage chez le client, solo
+  autonome, valeurs de D274 et chiffres de S5. Marqué « en cours » tant que M2.5.6 n'est pas faite.
+- Reste pour clore M2.5.7 : après M2.5.6, enlever « en cours » du paragraphe et compléter la ligne M2.5 du tableau des
+  étapes du § 16.6 (« Fait le … »).
 
 
 ### 2026-10-14 (suite) — J3, plan ouvert ; Q1 tranchée (D280)
