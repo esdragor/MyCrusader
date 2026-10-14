@@ -12,6 +12,15 @@ class UDataTable;
 class UMassEntityTraitBase;
 struct FMassEntityTemplate;
 
+/** What a unit template is built for (D272): the server's simulated unit, or a client's display entity (D271). */
+enum class EHOLUnitTemplateKind : uint8
+{
+	/** Movement, avoidance, navigation and drawing: the authoritative unit (server, solo game). */
+	Simulation,
+	/** Drawing only, placed from the replicated states (UHOLNetUnitDisplayProcessor). */
+	Display,
+};
+
 /** Birth request (D224): "Count units of TypeName, on the navmesh around Center within Radius". */
 struct FHOLUnitSpawnRequest
 {
@@ -73,7 +82,7 @@ public:
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }
 
 	/** Mass entity template of a type, built once from its row and cached (D225); nullptr for an unknown type. */
-	const FMassEntityTemplate* FindTemplate(FName TypeName);
+	const FMassEntityTemplate* FindTemplate(FName TypeName, EHOLUnitTemplateKind Kind = EHOLUnitTemplateKind::Simulation);
 
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
@@ -103,6 +112,8 @@ private:
 
 	/** One Mass entity configuration, so one archetype, per type, built from the table (D225). */
 	TMap<FName, TSharedPtr<struct FMassEntityConfig>> TemplateCache;
+	/** The same, drawing only, for a client's display entities (D271). */
+	TMap<FName, TSharedPtr<struct FMassEntityConfig>> DisplayTemplateCache;
 	/** Fingerprint of each type's constants (D222), to catch two types sharing one copy. */
 	TMap<uint32, FName> ConstantsCrcToType;
 	/** Keeps the traits alive: FMassEntityConfig is held outside of a UPROPERTY. */

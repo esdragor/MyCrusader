@@ -36,7 +36,7 @@ vérifier sur S1 et S2.
 | M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | **fait** (2026-10-14) : `Tools/Tests/net_match.ps1` ; serveur cuit et mis en place, 2 clients côte à côte, chacun sur son emplacement, centres à la bonne couleur, sélection ; reste le regard de l'utilisateur |
 | M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | **fait** (2026-10-14) : `Net/HOLUnitReplicationRules`, 6 tests `HeroesOfLiberty.Net.*`, `quick_check` PASS |
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | **fait** (2026-10-14) : 2 000 unités reçues par 2 clients ; 1,5 envoi/unité/s ; **~42 Ko/s par client** (> 32 Ko/s, à régler en M2.5.5) |
-| M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | à faire |
+| M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | **fait** (2026-10-14) : 2 000 unités affichées par chaque client, animées, à la couleur du joueur ; corrections ~24 cm en moyenne, aucun placement direct |
 | M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | à faire |
 | M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | à faire |
 | M2.5.7 Clôture : D268 à D273 au GDD | à faire |
@@ -44,11 +44,11 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.1 à M2.5.3 faites** (voir le journal). Suite : **M2.5.4** client : entités Mass d'affichage créées depuis
-   les morceaux reçus (identité → type, propriétaire ; état → position, vitesse), horloge du serveur
-   (`FHOLServerClock` nourrie par `AHOLUnitReplicator::ServerStep`), prolongement et lissage, branchement de
-   l'affichage de M2. Puis **M2.5.5** S5, où le débit (~42 Ko/s mesurés, pistes dans le journal) doit passer sous
-   32 Ko/s ; puis M2.5.6, M2.5.7, puis **J3** : panneau du bâtiment et production d'un Paysan.
+1. **M2.5.1 à M2.5.4 faites** (voir le journal). Suite : **M2.5.5** S5 : script (`net_match.ps1 -Units` en est la
+   base), rapport complet de D273 (octets par client, envois, temps de pas du serveur, images par seconde des
+   clients, **écart affiché** : positions d'un échantillon notées au même pas par le serveur et les clients), et
+   passage du débit sous 32 Ko/s (~42 Ko/s mesurés ; pistes dans le journal de M2.5.3). Puis M2.5.6 (partie à
+   2 clients dans `quick_check.ps1`, essai de l'utilisateur), M2.5.7, puis **J3**.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 
@@ -608,4 +608,33 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
     **identités dans des morceaux à part** (masque de 64 bits au lieu de 129), puis le seuil. S5 tranchera.
 - Rien ne s'affiche encore chez les clients (M2.5.4). Avertissement d'Iris déjà noté en M2.5.1 (modules chargés après
   le démarrage) seul, sans autre alerte. `quick_check.ps1` : **PASS en 33 s, 24 tests sur 24**.
+
+### 2026-10-14 (suite) — M2.5.4 faite : affichage des unités chez le client
+
+- **Gabarit d'affichage** : `UHOLUnitSubsystem::FindTemplate(Type, EHOLUnitTemplateKind::Display)` construit pour
+  chaque type un gabarit **sans simulation** : trait de l'unité, trait d'affichage réseau, LOD et visualisation de
+  M2 (mêmes instances animées, même couleur D233) ; ni déplacement, ni évitement, ni navigation.
+- **`Net/HOLUnitReceptionSubsystem`** (client seulement) : chaque image, lit les morceaux de l'acteur partagé ;
+  une unité qui arrive dans un emplacement devient une entité d'affichage (créées par lots, par type), une unité
+  partie est détruite, un changement de propriétaire suit (D37) ; nourrit l'**horloge du serveur** à chaque nouveau
+  pas reçu (délai aller = moitié de `AvgLag` de la connexion) ; à chaque **nouvel état**, la correction démarre de
+  l'endroit où l'unité est dessinée (ancien état prolongé + ancienne correction) vers le nouvel état prolongé.
+- **`Net/HOLNetUnitDisplay`** : fragment `FHOLNetUnitDisplayFragment` (dernier état, son pas complet, correction,
+  vitesse, orientation), trait, et processeur par image `UHOLNetUnitDisplayProcessor` (client, avant le LOD et la
+  représentation) : position = dernier état prolongé jusqu'à l'horloge estimée (au plus 3 s) + correction lissée ;
+  **orientation** tournée vers la marche (540°/s, au-dessus de 20 cm/s), l'orientation n'étant pas envoyée. Le
+  dessin de M2 lit ensuite la transformation comme pour une unité simulée (D272 : un seul code d'affichage).
+- **Processeur d'affichage de M2** (`HOLInterpolatedInstancesProcessor`) : pour une entité d'affichage, l'allure de
+  l'animation vient de la **vitesse reçue** (pas de pas fixe chez le client pour la mesurer) ; inchangé en solo.
+- `hol.Net.Report` côté client ajoute une ligne « Net (display) » : unités affichées, états reçus par seconde,
+  correction moyenne et maximale, placements directs, avance de l'horloge sur le dernier pas reçu.
+- Test `HeroesOfLiberty.Net.DisplayedPosition` (prolongement borné à 3 s, pas de saut à un nouvel état, nouvel
+  état rejoint en 0,2 s).
+- **Essai à 2 clients, 2 000 unités en marche** (`net_match.ps1 -Stage -Units 2000`) : chaque client affiche **les
+  2 000 unités** (capture : mannequins aux couleurs des joueurs, en marche, tournés dans leur sens de marche) ;
+  ~2 650 à 2 970 états reçus par seconde ; **correction moyenne 24 cm, au plus ~46 cm, aucun placement direct**
+  (attendu : la plupart des envois partent quand l'écart passe 25 cm) ; horloge 0,5 à 1,2 pas en avance sur le
+  dernier pas reçu. Serveur inchangé : 1,5 envoi par unité et par seconde, ~41 Ko/s par client.
+- `quick_check.ps1` : **PASS en 33 s, 25 tests sur 25**. Le dessin commun ayant changé, **S2 court en solo**
+  (2 000 unités, 10 s) : simulation 2,35 ms par pas, 204 i/s (1 % bas 76), **PASS**.
 

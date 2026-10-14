@@ -4,6 +4,7 @@
 #include "Iris/Serialization/NetBitStreamWriter.h"
 #include "Iris/Serialization/NetSerializationContext.h"
 #include "Misc/AutomationTest.h"
+#include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "Net/HOLUnitReplicator.h"
@@ -284,6 +285,27 @@ bool FHOLNetCorrectionTest::RunTest(const FString& Parameters)
 
 	Correction.Start(FVector(1000.0, 0.0, 0.0), FVector::ZeroVector, 2.0);
 	TestEqual(TEXT("a gap past the snap distance is not smoothed"), Correction.GetOffset(2.0), FVector::ZeroVector);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetDisplayedPositionTest, "HeroesOfLiberty.Net.DisplayedPosition", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetDisplayedPositionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	FHOLNetUnitDisplayFragment Display;
+	Display.State = FHOLNetUnitState::Make(FVector(1000.0, 0.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::Moving, 100);
+	Display.StateStep = 100;
+	TestEqual(TEXT("half a second after the state"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1150.0, 0.0, 0.0));
+	TestEqual(TEXT("a lost state is not walked on past 3 s"), Display.GetDisplayedPosition(200.0, 0.0, StepSeconds),
+		FVector(1000.0 + 300.0 * FHOLNetUnitDisplayFragment::MaxPredictionSeconds, 0.0, 0.0));
+
+	// A new state 20 cm behind where the unit is drawn: drawn where it was, then the gap fades out.
+	const FVector Drawn = Display.GetDisplayedPosition(110.0, 5.0, StepSeconds);
+	Display.State = FHOLNetUnitState::Make(FVector(1130.0, 0.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::Moving, 110);
+	Display.StateStep = 110;
+	Display.Correction.Start(Drawn, Display.GetDisplayedPosition(110.0, 5.0, StepSeconds), 5.0);
+	TestTrue(TEXT("no jump at the new state"), Display.GetDisplayedPosition(110.0, 5.0, StepSeconds).Equals(Drawn, 1.0e-3));
+	TestTrue(TEXT("on the new state once smoothed"), Display.GetDisplayedPosition(114.0, 5.2, StepSeconds).Equals(FVector(1190.0, 0.0, 0.0), 1.0e-3));
 	return true;
 }
 

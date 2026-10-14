@@ -13,6 +13,7 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "MassMovementFragments.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/HOLUnitReplicationSettings.h"
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -40,6 +41,12 @@ namespace UE::HeroesOfLiberty::Net
 			{
 				UE_LOG(LogHOLNet, Display, TEXT("%s"), *Replication->MakeReport());
 				Replication->ResetStats();
+			}
+			UHOLUnitReceptionSubsystem* Reception = World ? World->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
+			if (Reception && Reception->IsTickable())
+			{
+				UE_LOG(LogHOLNet, Display, TEXT("%s"), *Reception->MakeReport());
+				Reception->ResetStats();
 			}
 		}));
 

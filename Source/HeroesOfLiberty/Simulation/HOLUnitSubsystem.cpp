@@ -22,6 +22,7 @@
 #include "Movement/MassMovementTrait.h"
 #include "HeroesOfLibertyLog.h"
 #include "NavigationSystem.h"
+#include "Net/HOLNetUnitDisplay.h"
 #include "Simulation/HOLLightUnitAvoidanceTrait.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -54,6 +55,7 @@ void UHOLUnitSubsystem::Deinitialize()
 	BirthQueue.Reset();
 	PendingDestruction.Reset();
 	TemplateCache.Reset();
+	DisplayTemplateCache.Reset();
 	Traits.Reset();
 
 	Super::Deinitialize();
@@ -107,9 +109,11 @@ int32 UHOLUnitSubsystem::GetBirthBudget() const
 	return Settings && Settings->MaxUnitBirthsPerStep > 0 ? Settings->MaxUnitBirthsPerStep : MAX_int32;
 }
 
-const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName)
+const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind)
 {
-	if (const TSharedPtr<FMassEntityConfig>* Found = TemplateCache.Find(TypeName))
+	const bool bDisplay = Kind == EHOLUnitTemplateKind::Display;
+	TMap<FName, TSharedPtr<FMassEntityConfig>>& Cache = bDisplay ? DisplayTemplateCache : TemplateCache;
+	if (const TSharedPtr<FMassEntityConfig>* Found = Cache.Find(TypeName))
 	{
 		return &(*Found)->GetOrCreateEntityTemplate(*GetWorld());
 	}
@@ -151,12 +155,13 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName)
 	// silently gets the first one's constants â€” an archer walking at the infantry's speed. Two types never share
 	// their constants (the type name is one of them), so a fingerprint already taken is a mistake, not a hit.
 	const uint32 ConstantsCrc = UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Constants));
-	if (const FName* ExistingType = ConstantsCrcToType.Find(ConstantsCrc))
+	const FName* ExistingType = ConstantsCrcToType.Find(ConstantsCrc);
+	if (ExistingType && *ExistingType != TypeName)
 	{
 		UE_LOG(LogHOLSimulation, Error, TEXT("Unit types '%s' and '%s' have the same constants fingerprint: check that every field of FHOLUnitTypeConstants is a UPROPERTY (D221, D222)"),
 			*ExistingType->ToString(), *TypeName.ToString());
 	}
-	else
+	else if (ExistingType == nullptr)
 	{
 		ConstantsCrcToType.Add(ConstantsCrc, TypeName);
 	}
@@ -217,23 +222,29 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName)
 	VisualizationTrait->LODParams.BaseLODDistance[EMassLOD::Off] = 1000000.f;
 	VisualizationTrait->LODParams.VisibleLODDistance[EMassLOD::Off] = 1000000.f;
 
-	const TArray<UMassEntityTraitBase*> TypeTraits = { UnitTrait, MovementTrait,
-		NewObject<UMassSteeringTrait>(this),
-		AvoidanceTrait,
-		NewObject<UMassNavigationObstacleTrait>(this),
-		NewObject<UMassSmoothOrientationTrait>(this),
-		NewObject<UMassNavMeshNavigationTrait>(this),
-		NewObject<UMassLODCollectorTrait>(this),
-		VisualizationTrait };
+	// A display entity is drawn like the unit, without moving by itself: it is placed from the replicated states (D271).
+	const TArray<UMassEntityTraitBase*> TypeTraits = bDisplay
+		? TArray<UMassEntityTraitBase*>{ UnitTrait,
+			NewObject<UHOLNetUnitDisplayTrait>(this),
+			NewObject<UMassLODCollectorTrait>(this),
+			VisualizationTrait }
+		: TArray<UMassEntityTraitBase*>{ UnitTrait, MovementTrait,
+			NewObject<UMassSteeringTrait>(this),
+			AvoidanceTrait,
+			NewObject<UMassNavigationObstacleTrait>(this),
+			NewObject<UMassSmoothOrientationTrait>(this),
+			NewObject<UMassNavMeshNavigationTrait>(this),
+			NewObject<UMassLODCollectorTrait>(this),
+			VisualizationTrait };
 	for (UMassEntityTraitBase* Trait : TypeTraits)
 	{
 		Config->AddTrait(*Trait);
 		Traits.Add(Trait);
 	}
 
-	TemplateCache.Add(TypeName, Config);
-	UE_LOG(LogHOLSimulation, Log, TEXT("Unit type '%s' (%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm, drawn as %s"),
-		*TypeName.ToString(), *Row->DisplayName, Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
+	Cache.Add(TypeName, Config);
+	UE_LOG(LogHOLSimulation, Log, TEXT("Unit type '%s' (%s%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm, drawn as %s"),
+		*TypeName.ToString(), *Row->DisplayName, bDisplay ? TEXT(", display entity") : TEXT(""), Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
 		bSkinned ? *FString::Printf(TEXT("skinned instances of %s"), *SkinnedMesh->GetName()) : TEXT("static instances"));
 
 	return &Config->GetOrCreateEntityTemplate(*GetWorld());

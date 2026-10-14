@@ -12,6 +12,7 @@
 #include "MassUpdateSkinnedMeshProcessor.h"
 #include "MassVisualizationComponent.h"
 #include "Match/HOLPlayerColors.h"
+#include "Net/HOLNetUnitDisplay.h"
 #include "Presentation/HOLPresentationFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -61,6 +62,8 @@ void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMass
 	EntityQuery.AddRequirement<FMassRepresentationLODFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FMassRepresentationAnimationFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLUnitAnimationStateFragment>(EMassFragmentAccess::ReadWrite);
+	// A client's display entities (D271) carry the received velocity: there is no fixed step to measure one on.
+	EntityQuery.AddRequirement<FHOLNetUnitDisplayFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 	EntityQuery.AddChunkRequirement<FMassVisualizationChunkFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.SetChunkFilter(&FMassVisualizationChunkFragment::AreAnyEntitiesVisibleInChunk);
@@ -96,6 +99,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 		const TConstArrayView<FMassRepresentationLODFragment> RepresentationLODs = Context.GetFragmentView<FMassRepresentationLODFragment>();
 		const TArrayView<FMassRepresentationAnimationFragment> Animations = Context.GetMutableFragmentView<FMassRepresentationAnimationFragment>();
 		const TArrayView<FHOLUnitAnimationStateFragment> AnimationStates = Context.GetMutableFragmentView<FHOLUnitAnimationStateFragment>();
+		const TConstArrayView<FHOLNetUnitDisplayFragment> NetDisplays = Context.GetFragmentView<FHOLNetUnitDisplayFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -133,8 +137,10 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 				{
 					FMassInstancedSkinnedMeshInfo& MeshInfo = SkinnedMeshInfos[SkinnedMeshInfoIndex];
 
-					// Walk or idle from the speed the client draws (D234): the step's displacement over its duration.
-					const float DrawnSpeed = StepSeconds > 0.f ? FVector::Dist2D(From.GetLocation(), To.GetLocation()) / StepSeconds : 0.f;
+					// Walk or idle from the speed the client draws (D234): the step's displacement over its duration, or the
+					// received velocity for a client's display entity (D271).
+					const float DrawnSpeed = !NetDisplays.IsEmpty() ? static_cast<float>(NetDisplays[EntityIt].Velocity.Size2D())
+						: StepSeconds > 0.f ? FVector::Dist2D(From.GetLocation(), To.GetLocation()) / StepSeconds : 0.f;
 					FHOLUnitAnimationStateFragment& AnimationState = AnimationStates[EntityIt];
 					FAnimSequenceTrackAutoPlayData& AnimData = Animations[EntityIt].AnimData;
 					const bool bWalking = AnimationState.bStarted && AnimData.SequenceIndex == Constants.WalkSequence;
