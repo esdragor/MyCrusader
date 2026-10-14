@@ -19,7 +19,7 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 | M0 — migration 5.8, modules, plugins, carte de test | **fait** (2026-10-11) |
 | M1 — essai Mass (D215) | **fait** (2026-10-11) : seuils D218 tenus sur S1 et S2 après **D220**, hypothèse `Stand` vérifiée |
 | M1 — cœur de la simulation (`UnitData`, identifiants, apparition/disparition, file de commandes) | **fait** (2026-10-11) : D221 à D229 implémentés ; **revue traitée le 2026-10-12** (deux bugs corrigés, D230) puis **suites de la revue** (maintien corrigé, A/B reproductible) ; S1 2,42 ms, S2 2,48/2,58 ms ✅, recouvrements S2 102 → 68 (173 → 120 sans maintien), croisement 3,5 cm de face, 6,1 cm à angle droit (limitation connue) |
-| M2 — rendu (instances par type et par joueur, animations, interpolation) | à faire |
+| M2 — rendu (instances par type et par joueur, animations, interpolation) | **fait** (2026-10-14) : squelettes instanciés classiques (D235), couleur par instance (D233), repos / marche (D234) ; S1 et S2 au vert sur 5.8.3 dans les deux vues |
 | M2.5 — tranche réseau Iris (D216) | **plan fait** (2026-10-14, D268 à D273, dans `JourneyInProgress.md`) ; le code commence après la clôture de M2 |
 
 ## Prochaine étape exacte
@@ -38,9 +38,8 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237), **mesuré machine libre le
    2026-10-14** (classique 221-231 i/s et GPU 3,5 ms, Nanite 30-32 i/s et GPU ~31 ms : voir le journal) ; **D235
    tranché : classique** ; seuil de 144 i/s sur la **moyenne** (précision de D218) ; foulée calculée (`WalkPlayRate`
-   1,22) et **validée à l'œil par l'utilisateur** ; **reste à remesurer S1/S2 machine libre sur 5.8.3** (projet passé
-   sur `UE 5.8 AS 3` le 2026-10-14, D231 ; lanceur Epic fermé, souris hors de la fenêtre de jeu), dans une prochaine
-   séance, puis à clore M2.
+   1,22) et **validée à l'œil par l'utilisateur** ; S1/S2 remesurés sur 5.8.3 : **M2 clos le 2026-10-14**. La suite
+   (M2.5, plan D268 à D273) est menée par `JourneyInProgress.md`.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités
    (**instruit le 2026-10-14** : limite cinématique de la détection à 250 cm, levée à 600 cm hors face-à-face exact ;
    reste à mesurer le coût et à choisir une piste) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -210,6 +209,29 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   dessins indirects pilotés par le GPU, dont le processeur ne connaît pas la taille.
 
 ## Journal d'avancement
+
+### 2026-10-14 (suite) — S1 et S2 remesurés sur 5.8.3 : M2 clos
+
+- **Conditions** : l'utilisateur garde un éditeur d'un autre projet ouvert (ProjectShiva) et demande de partir du
+  principe qu'il n'influence pas ; le lanceur Epic Games tournait aussi. Binaire du commit `09889da` (5.8.3, sans
+  ombres ni traitement, sélection sans anneau). Protocole de l'entrée « étape 4 » : `StressTest`, 1920 x 1080 sur le
+  deuxième écran, `-saveddirsuffix=Tests`, classique (`LightInfantry`), 2 000 unités, 10 s après 3 s, deux séries.
+  Journaux dans `Saved_Tests/Measures_M2_583/`.
+
+  | Scénario | Vue | Pas (ms) | i/s (1 % bas) | Jeu / rendu / GPU (ms) | Dessins | Cadre | Recouvrements |
+  |---|---|---|---|---|---|---|---|
+  | S1 | large | 2,47 / 2,48 ✅ | **198 / 179** (75 / 67) | 4,9-5,2 / 2,8-3,2 / **3,7-3,8** | 16 | 2 000 | 649 → 649 |
+  | S1 | jeu | 2,69 / 2,49 ✅ | **171 / 195** (62 / 71) | 5,0-5,6 / 2,9-3,0 / **3,7-3,8** | 24 | 1 990 | 1 399 → 1 399 |
+  | S2 | large | 2,37 / 2,28 ✅ | **204 / 204** (79 / 82) | 4,7 / 2,7-2,8 / **3,6-3,7** | 21-22 | 1 984-2 000 | 337 → 227 |
+  | S2 | jeu | 2,74 / 2,56 ✅ | **187 / 189** (68 / 72) | 5,1-5,2 / 2,5-3,1 / **3,6** | 28 | 1 740-1 777 | 846 → 390 |
+
+- **Tous les seuils tenus** (pas ≤ 3 ms, moyenne ≥ 144 i/s). **Recouvrements identiques** à ceux de 5.8.2 : la
+  simulation donne le même résultat sur les deux moteurs. Temps 10 à 20 % au-dessus de la série 5.8.2 (pas 2,2-2,5 →
+  2,3-2,7 ms ; 221-231 → 171-204 i/s), le **fil de jeu** surtout (4,1-4,2 → 4,7-5,6 ms), le GPU à peine (3,5 → 3,6-3,8) :
+  charge de l'éditeur ouvert et du lanceur plausible, sans pouvoir la séparer du moteur. **Nouvelle référence** sur 5.8.3
+  pour la suite, dans ces conditions.
+- **M2 clos** (choix de l'utilisateur de clore sur ces mesures). La suite, M2.5, est planifiée (D268 à D273) et menée
+  dans `JourneyInProgress.md`.
 
 ### 2026-10-14 (suite) — Passage au moteur 5.8.3 avec cible Server (D231), D235 tranché, foulée calculée
 

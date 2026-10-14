@@ -1964,7 +1964,7 @@ Principe : la **simulation** fait autorité (serveur) et reste séparée de la *
 |---|---|---|
 | **M0** | Migration en 5.8 (D214), modules et plugins, carte de test, nettoyage de `BattleMap` | |
 | **M1** | Essai Mass (~2 jours, D215), puis cœur de la simulation : entités, identifiants stables, apparition et disparition, `UnitData`. Essai fait le 2026-10-11 : seuils tenus sur S1 et S2 après D220. Plan du cœur (D221 et suivants) : proposé question par question ; S2 passe aux ordres de M1 (D229, requalifié) | S1 : 2 000 unités immobiles |
-| **M2** | Rendu : instances par type, couleur par joueur (D233), animations (squelettes instanciés à l'essai, textures d'animation en repli, D232), interpolation | S2 : 2 000 unités en marche |
+| **M2** | Rendu : instances par type, couleur par joueur (D233), animations (squelettes instanciés à l'essai, textures d'animation en repli, D232), interpolation. Fait le 2026-10-14 : squelettes instanciés en chemin classique (D235), seuils tenus sur S1 et S2 dans les deux vues (moteur 5.8.3, D231) | S2 : 2 000 unités en marche |
 | **M2.5** | Tranche réseau (D216) : réplication des positions et états via Iris, serveur dédié + 2 clients (D231) | S5 : bande passante à 2 000 unités en mouvement |
 | **M3** | Déplacement : chemins sur le navmesh, ordres de groupe et formations, évitement | S2 |
 | **M4** | Sélection, ordres de déplacement et d'attaque, groupes de contrôle | |

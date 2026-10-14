@@ -33,7 +33,7 @@ vérifier sur S1 et S2.
 | J2.4 Vérification (D264) | **fait** (2026-10-14) : essai de l'utilisateur → cercle et survol retirés (D259, D262 précisées) ; tests 17/17, `quick_check.ps1` PASS |
 | J2.5 Clôture : D259 à D264 au GDD | **fait** (2026-10-14) : D259 à D264 au § 21, paragraphe « Parcours J2 » au § 16.6. **J2 close.** |
 | M2.5 — plan (Q1 à Q5, D268 à D273) | **fait** (2026-10-14) |
-| M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | à faire, **après la clôture de M2** |
+| M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | **en cours** (M2 clos le 2026-10-14) |
 | M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | à faire |
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | à faire |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | à faire |
@@ -44,14 +44,13 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **Plan de M2.5 complet** (D268 à D273). **Attendre la clôture de M2** (S1 / S2 au repos sur 5.8.3, session serveur
-   dédié, `ImplementationInProgress.md`), puis **M2.5.1** : script qui lance le serveur dédié (`HeroesOfLibertyServer`,
+1. **Plan de M2.5 complet** (D268 à D273) ; **M2 clos** (2026-10-14, S1 / S2 au vert sur 5.8.3). **M2.5.1** : script qui lance le serveur dédié (`HeroesOfLibertyServer`,
    `Plain`, `-MatchConfig=`) et deux clients sur le deuxième écran, `open 127.0.0.1` ; vérifier que le mode de jeu
    attribue les emplacements aux clients distants (configuration D243 / D244) ; centres, caméra et sélection chez
    chacun. Puis **J3** : panneau du
    bâtiment (il montrera la sélection, qui n'a plus de retour visuel) et production d'un Paysan.
-2. **En attente** : S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement (D258, D265) ; la session
-   serveur dédié (M2) prend ces mesures.
+2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
+   sur 5.8.3 dans `ImplementationInProgress.md`).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -512,3 +511,9 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
 - Ordre d'implémentation : M2.5.1 lancement et partie à 2 clients, M2.5.2 règles pures, M2.5.3 serveur, M2.5.4 client,
   M2.5.5 S5, M2.5.6 vérification rapide et essai, M2.5.7 clôture. **Le code attend la clôture de M2.**
 - Ligne M2.5 de `ImplementationInProgress.md` renvoyée à ce fichier.
+
+### 2026-10-14 (suite) — M2 clos ; M2.5.1 commencée
+
+- L'utilisateur garde un éditeur d'un autre projet ouvert et demande de considérer la machine comme libre. Série S1 / S2
+  sur 5.8.3 (deux passages, deux vues) : **tous les seuils tenus**, recouvrements identiques à 5.8.2 ; détail et
+  nouvelle référence dans `ImplementationInProgress.md`. **M2 clos** (tableau du § 16.6 du GDD mis à jour).
