@@ -54,7 +54,7 @@ vérifier sur S1 et S2.
 | J4.4 Ordre réseau et ralliement | **fait** (2026-10-14) : appel serveur avec contrôle du propriétaire dans la simulation, point de ralliement (file de commandes, répliqué au propriétaire), naissance avec ordre, places déjà prises sautées ; partie à 2 clients de `quick_check` : chacun voit les deux Paysans là où leurs propriétaires les ont envoyés (13 cm), le serveur ignore l'unité de l'autre ; `quick_check` PASS (46 s) |
 | J4.5 Sélection des unités | **fait** (2026-10-14) : `Player/HOLUnitPicking` (projection, clic, cadre), sélection d'unités dans `AHOLPlayerController` (unité avant bâtiment, cadre au relâchement, Maj, unité adverse seule, unités disparues retirées), clic droit → ordre ou ralliement (sur le centre : effacé), `IA_SelectAdd` / `IA_Order` ; essai scripté solo conforme ; tests 32/32, `quick_check` PASS (39 s) |
 | J4.6 Retour visuel et HUD | à faire |
-| J5 — plan (Q1 à Q5, décisions à partir de D295 ; mené en parallèle de la fin de J4, dans une autre session) | **en cours** (2026-10-14) : Q1 et Q2 tranchées (D295, D296), Q3 posée |
+| J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299, sous-étapes J5.1 à J5.8 ; code après la clôture de J4 |
 
 ## Prochaine étape exacte
 
@@ -69,9 +69,8 @@ vérifier sur S1 et S2.
 4. **Plan de J4 en cours** (ouvert le 2026-10-14) : questions une par une (tableau « Plan de J4 » ci-dessous), décisions
    à partir de **D285** (D276 à D279 inutilisées). **Plan fait** (D285 à D289, sous-étapes J4.1 à J4.8 dans « Plan de
    J4 »). Reprise : la première sous-étape qui n'est pas « fait » dans le tableau « Où on en est ».
-5. **Plan de J5 en cours** (ouvert le 2026-10-14, en parallèle de la fin de J4, autre session) : questions une par une
-   (tableau « Plan de J5 »), décisions à partir de **D295** (D290 à D294 laissées à J4) ; aucun code avant la clôture
-   de J4.
+5. **Plan de J5 fait** (2026-10-14, en parallèle de la fin de J4, autre session) : D295 à D299 (D290 à D294 laissées à
+   J4), sous-étapes J5.1 à J5.8 dans « Plan de J5 ». **Aucun code avant la clôture de J4** ; reprise ensuite à J5.1.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -313,9 +312,9 @@ de déplacement par la file de commandes, navmesh à modificateurs dynamiques et
 |---|---|---|
 | Q1 | **Périmètre** de J5 : quelles sources, quels dépôts, sans construction (elle vient après). | **tranché (D295)** : 4 ressources (arbres, baies, filons de pierre et d'or), dépôt au centre seul, épuisement ; troupeaux gardés pour plus tard |
 | Q2 | **Boucle de récolte** : charge portée, aller-retour, dépôt le plus proche, nœud épuisé, Paysan inactif. | **tranché (D296)** : aller-retour façon AoE4, charge de 10, dépôt le plus proche, source voisine du même type ou inactif |
-| Q3 | **Gisements** dans la partie : ce qu'est un arbre ou un filon (acteur, entité, instance), placement sur `Plain`, épuisement, réplication, navmesh. | en cours |
-| Q4 | **Commande et retour visuel** : clic droit sur une ressource, ce que l'écran et le HUD montrent, touche « . ». | à poser |
-| Q5 | **Vérification** (tests, `quick_check` solo et 2 clients, coût à 2 000 unités) et découpage en sous-étapes. | à poser |
+| Q3 | **Gisements** dans la partie : ce qu'est un arbre ou un filon (acteur, entité, instance), placement sur `Plain`, épuisement, réplication, navmesh. | **tranché (D297)** : registre serveur, instances par type, acteur partagé à tableau rapide, un fournisseur de zones interdites |
+| Q4 | **Commande et retour visuel** : clic droit sur une ressource, ce que l'écran et le HUD montrent, touche « . ». | **tranché (D298)** : option C (contre la recommandation) : le nécessaire (source sélectionnable, charge, comptes, inactifs, « . ») plus animation de récolte, charge visible, « +10 » au dépôt |
+| Q5 | **Vérification** (tests, `quick_check` solo et 2 clients, coût à 2 000 unités) et découpage en sous-étapes. | **tranché (D299)** : tests, solo et 2 clients dans `quick_check`, stress test S7 (2 000 Paysans en récolte), S5 court, essai ; sous-étapes J5.1 à J5.8 |
 
 **Tranché — D295 Périmètre : les 4 ressources, une source simple chacune, dépôt au centre seul.**
 - Sources : **arbres** (bois), **buissons de baies** (nourriture), **filons de pierre** et **filons d'or**. Chaque source a
@@ -339,6 +338,75 @@ de déplacement par la file de commandes, navmesh à modificateurs dynamiques et
 - Aucune limite de Paysans par source ; ils se répartissent sur des places autour d'elle (règles de J4, D287).
 - Écartés : revenu au contact sans trajet (la distance ne compte plus, camps sans objet, contraire à D83) ; places
   limitées par source façon StarCraft (attente, gestion fine, illisible avec des unités qui se traversent).
+
+**Tranché — D297 Sources : registre côté serveur, affiché par instances.**
+- Ordre de grandeur : à 8 joueurs, un bois de ~40 arbres et ~6 buissons par centre, plus les filons entre voisins :
+  **400 à 500 sources**, 9 sur 10 des arbres.
+- Un **sous-système** tient le tableau des sources (type, position, rayon, quantité restante) ; la simulation le lit et
+  le modifie au serveur.
+- Affichage : **un composant d'instances par type de source** (quelques appels de rendu en tout).
+- Réplication : **un acteur partagé à tableau rapide** (recette des morceaux de M2.5) : liste complète à l'arrivée d'un
+  client, puis seulement les quantités changées et les épuisements.
+- Navmesh : **un seul fournisseur de zones interdites** (une boîte par source) ; une source épuisée retire sa boîte et
+  seule sa tuile se refait (mécanisme de J4.1). Une forêt recule arbre par arbre.
+- Quantités indicatives (à régler en test) : arbre 100 bois, buisson 200 nourriture, filon 2 500. Formes provisoires et
+  sobres : tronc et cône vert, boule à baies rouges, blocs gris (pierre) ou dorés (or).
+- Écartés : **un acteur répliqué par source** (500 acteurs : réseau, mémoire, arrivée d'un client ; contraire à D29 et
+  D190) ; **mixte** acteurs pour filons et baies, registre pour les arbres (deux chemins pour un même comportement).
+
+**Tranché — D298 Ordre de récolte et retour visuel : option C, contre la recommandation (A).**
+- **Clic droit sur une source** avec ses Paysans sélectionnés → ordre de récolte, vérifié par le serveur (D288) ;
+  **ralliement sur une source** → le Paysan né y va récolter.
+- **Clic gauche sur une source** → bloc de sélection : nom et quantité restante (« Filon d'or — 1 840 »).
+- Bloc d'un **Paysan** : activité et charge (« Bois 7/10 ») ; d'un groupe : nombre de Paysans par activité.
+- **Barre du haut** : à côté de chaque ressource, le nombre de Paysans qui la récoltent ; compteur de **Paysans
+  inactifs** (clic ou touche **« . »** : inactif suivant, caméra centrée, D30).
+- **Repère bref** de J4.6 sur la source visée.
+- **En plus (choix de l'utilisateur)** : **animation de récolte** (coup de hache, de pioche, cueillette), **charge
+  visible** sur le Paysan (fagot, panier, bloc de pierre ou d'or), **« +10 » qui monte** au dépôt.
+- Conséquences techniques : l'activité répliquée (déjà dans l'état réduit de M2.5) gagne « récolte » et le type de
+  charge (quelques bits ; S5 à remesurer) ; l'animation est choisie par le client d'après l'activité (comme D234) ; le
+  « +10 » est montré au seul propriétaire.
+- Risques : animations de récolte à trouver ou à faire pour le mannequin ; charge posée sur le squelette instancié de M2
+  (pièce fixée à un os ou instance placée d'après l'unité, à essayer).
+- Écartés : **A seul** (le nécessaire, sans animation ni charge visible) ; **le strict minimum** (clic droit et
+  ralliement seuls).
+
+**Tranché — D299 Vérification : tests, partie solo et à 2 clients, stress test de récolte S7.**
+- Coût nouveau : **chaque aller-retour demande un chemin** (à 2 000 unités et ~20 s par trajet, ~100 chemins par
+  seconde) ; le chemin entre une source et son dépôt est **réutilisé** plutôt que recalculé à chaque trajet.
+- Tests d'automatisation des règles pures : taux et charge, dépôt le plus proche, source voisine du même type ou
+  inactif, épuisement, charge perdue au changement de ressource.
+- `quick_check.ps1`, partie **solo** : ralliement sur des baies, les Paysans produits y récoltent ; le stock **ne monte
+  qu'au dépôt** ; arbre épuisé → arbre voisin ; bois vidé → inactifs, touche « . » ; captures de l'animation et de la
+  charge.
+- Partie **à 2 clients** : la récolte de l'autre se voit, une source épuisée disparaît chez les deux, le stock de
+  l'autre n'est jamais reçu.
+- **Nouveau stress test S7 : 2 000 Paysans en récolte** sur `StressTest` (sources posées par script), seuil de
+  simulation de 3 ms (D218) ; **S5 court** (état répliqué grossi de quelques bits) ; essai de l'utilisateur.
+- Écarté : `quick_check` seul, sans stress test de récolte (coût des trajets découvert à l'étape « armée »).
+
+**Sous-étapes de J5** (validées ; chacune compile, se vérifie et se commite seule ; **aucune avant la clôture de J4**) :
+
+1. **J5.1 Données et règles pures** : table des sources (CSV → table, comme `BuildingTypes`), taux et charge dans la
+   table des unités, `Simulation/HOLGatherRules` (taux, charge, dépôt le plus proche, source voisine, épuisement),
+   tests `HeroesOfLiberty.Gather.*`.
+2. **J5.2 Sources dans la partie** : registre au serveur, composants d'instances par type, acteur partagé à tableau
+   rapide, fournisseur de zones interdites ; sources posées par script sur `Plain` (symétriques, D295) et `StressTest`.
+3. **J5.3 Boucle de récolte dans la simulation** : machine à états (aller, récolter, rapporter, revenir), dépôt au
+   `PlayerState`, épuisement, inactif, chemin source-dépôt réutilisé ; commande `hol.Units.Gather` ; S7 mesuré.
+4. **J5.4 Ordre réseau et ralliement** : clic droit sur une source → ordre vérifié par le serveur ; ralliement sur une
+   source ; sélection d'une source ; vérifié en solo et à 2 clients.
+5. **J5.5 HUD** : bloc de la source et du Paysan (activité, charge), comptes par ressource, compteur d'inactifs, touche
+   « . », repère bref ; textes fr / en / ja.
+6. **J5.6 Vie de la récolte** : animations de récolte (choisies par le client d'après l'activité), charge visible,
+   « +10 » au dépôt (propriétaire seul).
+7. **J5.7 Vérification (D299)** : parties solo et 2 clients dans `quick_check.ps1`, S1 / S2 / S5 / S7, essai de
+   l'utilisateur.
+8. **J5.8 Clôture** : D295 à D299 au GDD (§ 21, paragraphe « Parcours J5 » au § 16.6, S7 au tableau des stress tests).
+
+Risques connus : coût des trajets à 2 000 Paysans (S7) ; animations de récolte à trouver pour le mannequin ; charge
+posée sur le squelette instancié ; reconstruction des tuiles quand une forêt recule vite.
 
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
@@ -375,6 +443,9 @@ de déplacement par la file de commandes, navmesh à modificateurs dynamiques et
 | D289 | 2026-10-14 | Technique — Vérification de J4 | **Tests, solo et 2 clients, S2 avec chemins** (plan validé par l'utilisateur, conforme à la recommandation) : tests d'automatisation (places, attribution, paquets, projection et cadre) ; dans `quick_check.ps1`, partie **solo** (ralliement, 3 Paysans qui s'y rendent, cadre, clic droit derrière un rocher : contournement, arrivée sans recouvrement, rien dans un obstacle ; Maj, Échap, captures) et partie **à 2 clients** (chacun voit le Paysan de l'autre arriver, à < 50 cm ; un ordre sur l'unité de l'autre ignoré) ; **S2 rendu exigeant** par les chemins (promesse de D229, seuil 3 ms), S1 inchangé, **S5 court** ; essai de l'utilisateur. Sous-étapes J4.1 à J4.8. Clôt le plan de J4 (D285 à D289). |
 | D295 | 2026-10-14 | Technique — Périmètre de J5 | **Les 4 ressources, une source simple chacune, dépôt au centre seul** (choix de l'utilisateur, conforme à la recommandation) : **arbres** (bois), **buissons de baies** (nourriture), **filons** de pierre et d'or ; le Paysan rapporte au **centre principal**, seul dépôt tant qu'il n'y a pas de construction (les camps de l'étape construction ajouteront des dépôts) ; chaque source **s'épuise** ; sur `Plain`, posées par script, symétriques : bois et baies près de chaque centre, pierre et or plus loin, contestés entre voisins (§ 15). **Nuance de l'utilisateur : garder les troupeaux façon AoE pour plus tard** (repérés, ramenés près du centre, abattus ; ils demandent points de vie, mort et carcasse : avec M5). Écartés : bois et baies seuls (pierre et or non éprouvés) ; troupeaux dès J5. | § 5.1, § 16.6 |
 | D296 | 2026-10-14 | Technique — Boucle de récolte | **Aller-retour façon AoE4** (choix de l'utilisateur, conforme à la recommandation) : récolte **au contact** à un taux par type d'unité et par ressource (~0,7/s, indicatif) ; **charge de 10** (la Brouette, § 11, l'augmentera) ; plein, le Paysan va au **dépôt le plus proche**, le stock du joueur monte **au dépôt**, puis il revient à **la même source** ; source épuisée → la plus proche **du même type** dans ~15 m, sinon **inactif** (touche « . ») ; un ordre de déplacement arrête la récolte et **garde la charge**, une autre ressource la **fait perdre** ; aucune limite par source, places autour d'elle par les règles de J4 (D287). Écartés : revenu au contact sans trajet (la distance ne compte plus, contraire à D83) ; places limitées par source façon StarCraft (attente, illisible avec des unités qui se traversent). | § 5.1, § 16.6 |
+| D297 | 2026-10-14 | Technique — Sources dans la partie | **Registre côté serveur, affiché par instances** (choix de l'utilisateur, conforme à la recommandation) : un sous-système tient le tableau des sources (type, position, rayon, quantité restante) ; **un composant d'instances par type de source** chez chaque machine ; réplication par **un acteur partagé à tableau rapide** (recette des morceaux de M2.5 : liste complète à l'arrivée, puis quantités et épuisements) ; **un seul fournisseur de zones interdites** pour le navmesh (une boîte par source, retirée à l'épuisement, seule sa tuile se refait, comme les bâtiments de J4.1). Ordre de grandeur : 400 à 500 sources à 8 joueurs, 9 sur 10 des arbres ; quantités indicatives : arbre 100 bois, buisson 200 nourriture, filon 2 500 ; formes provisoires (tronc et cône, boule à baies, blocs gris ou dorés). Écartés : un acteur répliqué par source (réseau, mémoire, arrivée d'un client, contraire à D29 / D190) ; mixte acteurs + registre (deux chemins pour un même comportement). | § 16.6 |
+| D298 | 2026-10-14 | Technique — Ordre de récolte et retour visuel | **Le nécessaire, plus ce qui donne vie à la récolte façon AoE4** (choix de l'utilisateur : option C, **contre la recommandation** A) : clic droit sur une source = ordre de récolte vérifié par le serveur (D288) ; ralliement sur une source ; source sélectionnable (nom, quantité restante) ; bloc d'un Paysan : activité et charge (« Bois 7/10 »), d'un groupe : Paysans par activité ; barre du haut : Paysans par ressource et compteur d'**inactifs** (clic ou touche « . » : inactif suivant, caméra centrée, D30) ; repère bref de J4.6 sur la source visée ; **en plus** : **animation de récolte** (hache, pioche, cueillette), **charge visible** sur le Paysan (fagot, panier, bloc), **« +10 » qui monte** au dépôt. L'activité répliquée (D269, déjà dans l'état réduit) gagne la récolte et le type de charge (quelques bits, S5 à remesurer). Risques : animations à trouver, charge sur le squelette instancié de M2. Écartés : A seul ; le strict minimum (clic droit et ralliement). | § 7.3, § 16.6 |
+| D299 | 2026-10-14 | Technique — Vérification de J5 | **Tests, solo et 2 clients, stress test de récolte S7** (choix de l'utilisateur, conforme à la recommandation) : tests d'automatisation des règles pures (taux et charge, dépôt le plus proche, source voisine ou inactif, épuisement, charge perdue) ; dans `quick_check.ps1`, partie **solo** (ralliement sur des baies, stock qui ne monte qu'au dépôt, arbre épuisé → arbre voisin, bois vidé → inactifs et touche « . », captures de l'animation et de la charge) et partie **à 2 clients** (récolte de l'autre vue, source épuisée disparue chez les deux, stock de l'autre jamais reçu) ; **nouveau stress test S7 : 2 000 Paysans en récolte** sur `StressTest`, seuil de simulation de 3 ms (coût des trajets ; chemin source-dépôt réutilisé plutôt que recalculé) ; **S5 court** ; essai de l'utilisateur. Sous-étapes J5.1 à J5.8. Écarté : `quick_check` seul, sans stress test de récolte. | § 16.6 |
 
 ## Journal d'avancement
 
