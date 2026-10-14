@@ -34,7 +34,7 @@ vérifier sur S1 et S2.
 | J2.5 Clôture : D259 à D264 au GDD | **fait** (2026-10-14) : D259 à D264 au § 21, paragraphe « Parcours J2 » au § 16.6. **J2 close.** |
 | M2.5 — plan (Q1 à Q5, D268 à D273) | **fait** (2026-10-14) |
 | M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | **fait** (2026-10-14) : `Tools/Tests/net_match.ps1` ; serveur cuit et mis en place, 2 clients côte à côte, chacun sur son emplacement, centres à la bonne couleur, sélection ; reste le regard de l'utilisateur |
-| M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | à faire |
+| M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | **fait** (2026-10-14) : `Net/HOLUnitReplicationRules`, 6 tests `HeroesOfLiberty.Net.*`, `quick_check` PASS |
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | à faire |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | à faire |
 | M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | à faire |
@@ -44,9 +44,11 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.1 faite** (`net_match.ps1`, voir le journal). Suite : **M2.5.2** règles pures (réduction des positions et
-   vitesses, règle d'envoi de D269, prolongement et lissage de D271) et leurs tests. Puis **J3** : panneau du
-   bâtiment (il montrera la sélection, qui n'a plus de retour visuel) et production d'un Paysan.
+1. **M2.5.1 et M2.5.2 faites** (`net_match.ps1`, règles pures ; voir le journal). Suite : **M2.5.3** serveur : acteur
+   partagé toujours pertinent, tableau rapide (`FFastArraySerializer` sous Iris) dont l'élément s'écrit sur les
+   largeurs de `FHOLNetUnitState` (71 bits), marquage par `HOLUnitReplication::GetSendReason` à chaque pas, numéro du
+   pas répliqué, réglages de `FHOLUnitSendRules` dans les réglages du projet. Puis M2.5.4 à M2.5.7, puis **J3** :
+   panneau du bâtiment (il montrera la sélection, qui n'a plus de retour visuel) et production d'un Paysan.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 
@@ -540,3 +542,32 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
   fenêtres (x 3 832-4 788 et 4 792-5 748).
 - Note : `Saved_Tests/Config/WindowsEditor/GameUserSettings.ini` (réglages partagés des essais) dit maintenant
   1920 x 1080 et `DisplayIndex=0` (réécrit par une session de mesure), au lieu du modèle 1600 x 900 sur l'écran 1.
+
+### 2026-10-14 (suite) — M2.5.2 faite : règles pures de la réplication des unités
+
+- **`Net/HOLUnitReplicationRules.h/.cpp`** (nouveau dossier `Net`), sans état du moteur, communes au serveur et au
+  client (le serveur mesure l'écart exact que le client montrerait) :
+  - **État réduit** `FHOLNetUnitState` : position à 10 cm (X, Y sur 15 bits, ±1 638 m ; Z sur 12 bits, ±204 m),
+    vitesse **horizontale** à 5 cm/s (9 bits par axe, ±12,8 m/s), action (3 bits), 8 bits bas du pas (12,8 s à
+    20 Hz) : **71 bits, ~9 octets** (D269 estimait ~8 avec l'identifiant ; S5 mesurera le surcoût d'Iris par
+    élément). Pas de vitesse verticale : les unités suivent le sol du navmesh, une hauteur qui dérive en pente est
+    rattrapée par la règle d'envoi. Valeurs hors bornes tenues au bord.
+  - `UnwrapStep` (pas complet depuis ses 8 bits bas et l'horloge estimée), `PredictPosition` (ligne droite).
+  - **Règle d'envoi** `GetSendReason` : changement d'action, sinon écart prolongé > 25 cm, sinon **rappel lent**.
+    Écart à D269 sur le rappel : il tombe au **pas propre à l'unité** d'un cycle de 2 s (fixé par son identifiant),
+    sauté si elle a été envoyée moins d'un quart de cycle avant. Une première version (« au plus un cycle ») aurait
+    envoyé ~1 000 unités au même pas puis les aurait gardées en phase : le test des 2 000 unités l'a montré avant
+    d'écrire. Unité au repos : un envoi toutes les 2 s, réparti ; attente au plus **2,5 s** (au lieu de ~2 s), sans
+    conséquence puisque le tableau rapide d'Iris livre de toute façon le dernier état (D270).
+  - **Horloge du serveur** `FHOLServerClock` (D271) : échantillon = pas reçu + délai aller (moitié du ping) ; suit
+    d'un dixième de l'écart par échantillon, saute à l'échantillon s'il est à plus de 0,25 s.
+  - **Correction lissée** `FHOLDisplayCorrection` : écart entre position affichée et nouvelle prédiction, effacé
+    linéairement en 0,2 s ; au-delà de 5 m, pas de lissage (placement direct).
+- **Tests** `Tests/HOLNetTests.cpp` : `HeroesOfLiberty.Net.Reduction`, `.UnwrapStep`, `.Prediction`, `.SendRule`,
+  `.ServerClock`, `.Correction` — tous passent. Mesures du test de la règle : unité qui tourne en rond (cercle de
+  20 m à 3 m/s) **1,3 envoi/s, écart au plus 24,7 cm** ; 2 000 unités au repos nées ensemble : **au plus 50 envois
+  par pas** (la part égale), 0,48 envoi par unité et par seconde.
+- `quick_check.ps1` : un premier passage juste après la compilation a échoué sur les parties caméra (lancement du
+  jeu fini à 76 s au lieu de ~30 s ; journal écrasé par le passage suivant, cause non établie) ; le second :
+  **PASS en 32 s, 23 tests sur 23**. À surveiller si un premier lancement après compilation échoue encore.
+

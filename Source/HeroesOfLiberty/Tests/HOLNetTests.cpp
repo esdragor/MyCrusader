@@ -1,0 +1,220 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Misc/AutomationTest.h"
+#include "Net/HOLUnitReplicationRules.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+// M2.5 checks (D273): the pure rules of the unit replication, reduction (D269, D270), send rule (D269), server clock,
+// prediction and smoothed corrections (D271).
+namespace UE::HeroesOfLiberty::Tests::Net
+{
+	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
+
+	constexpr float StepSeconds = 0.05f;
+
+	/** What the server records when it sends a unit. */
+	FHOLUnitSentRecord Send(const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity, const int64 Step)
+	{
+		return { FHOLNetUnitState::Make(Position, Velocity, Activity, Step), Step };
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetReductionTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("71 bits per state (~9 bytes)"), FHOLNetUnitState::TotalBits, 71);
+
+	const FVector Position(12345.6, -9876.5, 123.4);
+	const FVector Velocity(212.3, -147.9, 35.0);
+	const FHOLNetUnitState State = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000);
+	const FVector Back = State.GetPosition();
+	TestTrue(TEXT("position within half a step per axis"),
+		FMath::Abs(Back.X - Position.X) <= 5.0 && FMath::Abs(Back.Y - Position.Y) <= 5.0 && FMath::Abs(Back.Z - Position.Z) <= 5.0);
+	const FVector BackVelocity = State.GetVelocity();
+	TestTrue(TEXT("horizontal velocity within half a step"),
+		FMath::Abs(BackVelocity.X - Velocity.X) <= 2.5 && FMath::Abs(BackVelocity.Y - Velocity.Y) <= 2.5);
+	TestEqual(TEXT("no vertical velocity"), BackVelocity.Z, 0.0);
+	TestEqual(TEXT("activity kept"), State.Activity, EHOLUnitActivity::Moving);
+	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % 256));
+	TestEqual(TEXT("same values, same state"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000), State);
+
+	const FHOLNetUnitState Far = FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Idle, 0);
+	TestEqual(TEXT("X held at the range's edge"), static_cast<int32>(Far.X), (1 << (FHOLNetUnitState::HorizontalBits - 1)) - 1);
+	TestEqual(TEXT("Y held at the range's edge"), static_cast<int32>(Far.Y), -(1 << (FHOLNetUnitState::HorizontalBits - 1)));
+	TestEqual(TEXT("Z held at the range's edge"), static_cast<int32>(Far.Z), (1 << (FHOLNetUnitState::HeightBits - 1)) - 1);
+	TestEqual(TEXT("velocity held at the range's edge"), static_cast<int32>(Far.VelocityX), (1 << (FHOLNetUnitState::VelocityBits - 1)) - 1);
+	TestTrue(TEXT("the 400 m maps fit"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep > 25000.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetUnwrapStepTest, "HeroesOfLiberty.Net.UnwrapStep", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
+{
+	using HOLUnitReplication::UnwrapStep;
+	const auto Low = [](const int64 Step) { return static_cast<uint8>(Step % 256); };
+	TestEqual(TEXT("same step"), UnwrapStep(Low(1000), 1000), int64(1000));
+	TestEqual(TEXT("a little behind"), UnwrapStep(Low(990), 1000), int64(990));
+	TestEqual(TEXT("a little ahead"), UnwrapStep(Low(1010), 1000), int64(1010));
+	TestEqual(TEXT("behind, across a wrap"), UnwrapStep(Low(1020), 1030), int64(1020));
+	TestEqual(TEXT("ahead, across a wrap"), UnwrapStep(Low(1030), 1020), int64(1030));
+	TestEqual(TEXT("127 steps behind"), UnwrapStep(Low(5000 - 127), 5000), int64(5000 - 127));
+	TestEqual(TEXT("127 steps ahead"), UnwrapStep(Low(5000 + 127), 5000), int64(5000 + 127));
+	TestEqual(TEXT("first steps of the match"), UnwrapStep(Low(3), 0), int64(3));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetPredictionTest, "HeroesOfLiberty.Net.Prediction", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetPredictionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(1000.0, 2000.0, 50.0), FVector(300.0, -100.0, 0.0), EHOLUnitActivity::Moving, 0);
+	TestEqual(TEXT("at the state's step"), HOLUnitReplication::PredictPosition(State, 0.0, StepSeconds), FVector(1000.0, 2000.0, 50.0));
+	TestEqual(TEXT("one second later, in a straight line"), HOLUnitReplication::PredictPosition(State, 20.0, StepSeconds), FVector(1300.0, 1900.0, 50.0));
+	TestEqual(TEXT("between two steps"), HOLUnitReplication::PredictPosition(State, 2.5, StepSeconds), FVector(1037.5, 1987.5, 50.0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetSendRuleTest, "HeroesOfLiberty.Net.SendRule", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetSendRuleTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	using HOLUnitReplication::GetSendReason;
+	const FHOLUnitSendRules Rules;
+
+	// A unit at rest: nothing until the slow refresh, which comes after a quarter of a cycle at least, and at most a cycle
+	// and a quarter.
+	const int32 LongestRefresh = Rules.RefreshSteps + Rules.RefreshSteps / 4;
+	const FVector Rest(5000.0, 5000.0, 0.0);
+	const FHOLUnitSentRecord Resting = Send(Rest, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
+	int64 FirstRefresh = -1;
+	for (int64 Step = 1; Step <= LongestRefresh && FirstRefresh < 0; ++Step)
+	{
+		if (GetSendReason(Resting, Rest, EHOLUnitActivity::Idle, 7, Step, StepSeconds, Rules) == EHOLUnitSendReason::Refresh)
+		{
+			FirstRefresh = Step;
+		}
+	}
+	TestTrue(TEXT("at rest: refreshed between a quarter of a cycle and a cycle and a quarter"), FirstRefresh >= Rules.RefreshSteps / 4 && FirstRefresh <= LongestRefresh);
+	TestEqual(TEXT("at rest, 1 step later: nothing"), GetSendReason(Resting, Rest, EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
+	TestEqual(TEXT("starts walking: sent at once"), GetSendReason(Resting, Rest, EHOLUnitActivity::Moving, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("pushed 20 cm: under the threshold"), GetSendReason(Resting, Rest + FVector(20.0, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
+	TestEqual(TEXT("pushed 30 cm: past the threshold"), GetSendReason(Resting, Rest + FVector(30.0, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
+	TestEqual(TEXT("height drifted 30 cm: past the threshold"), GetSendReason(Resting, Rest + FVector(0.0, 0.0, 30.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
+
+	// Walking in a straight line: the client's prediction holds, only the refresh sends.
+	const FVector Velocity(300.0, 120.0, 0.0);
+	const FHOLUnitSentRecord Walking = Send(Rest, Velocity, EHOLUnitActivity::Moving, 0);
+	bool bErrorOnStraightLine = false;
+	for (int64 Step = 1; Step < Rules.RefreshSteps; ++Step)
+	{
+		const FVector Position = Rest + Velocity * (Step * StepSeconds);
+		bErrorOnStraightLine |= GetSendReason(Walking, Position, EHOLUnitActivity::Moving, 7, Step, StepSeconds, Rules) == EHOLUnitSendReason::Error;
+	}
+	TestFalse(TEXT("straight line: no error send"), bErrorOnStraightLine);
+
+	// Walking a circle (20 m wide, 3 m/s, 10 s), sent whenever the rule says: the error the client would show at each
+	// step never stays past the threshold, and the sends stay near the ~1.5 per second of D269.
+	{
+		constexpr double Radius = 1000.0;
+		constexpr double Speed = 300.0;
+		const auto PositionAt = [](const int64 Step) { const double Angle = Speed / Radius * Step * StepSeconds; return FVector(Radius * FMath::Cos(Angle), Radius * FMath::Sin(Angle), 0.0); };
+		const auto VelocityAt = [](const int64 Step) { const double Angle = Speed / Radius * Step * StepSeconds; return FVector(-Speed * FMath::Sin(Angle), Speed * FMath::Cos(Angle), 0.0); };
+		FHOLUnitSentRecord Sent = Send(PositionAt(0), VelocityAt(0), EHOLUnitActivity::Moving, 0);
+		int32 Sends = 0;
+		double WorstError = 0.0;
+		for (int64 Step = 1; Step <= 200; ++Step)
+		{
+			if (GetSendReason(Sent, PositionAt(Step), EHOLUnitActivity::Moving, 7, Step, StepSeconds, Rules) != EHOLUnitSendReason::None)
+			{
+				Sent = Send(PositionAt(Step), VelocityAt(Step), EHOLUnitActivity::Moving, Step);
+				++Sends;
+			}
+			WorstError = FMath::Max(WorstError, FVector::Dist(HOLUnitReplication::PredictPosition(Sent.State, Step - Sent.Step, StepSeconds), PositionAt(Step)));
+		}
+		AddInfo(FString::Printf(TEXT("circle of 20 m at 3 m/s: %.1f sends per second, worst error %.1f cm"), Sends / 10.0, WorstError));
+		TestTrue(TEXT("circle: error held under the threshold"), WorstError <= Rules.ErrorThreshold);
+		TestTrue(TEXT("circle: fewer than 3 sends per second"), Sends < 30);
+	}
+
+	// 2 000 units at rest, all sent at step 0: the refresh spreads them over the cycle instead of 2 000 at one step.
+	{
+		constexpr int32 NumUnits = 2000;
+		TArray<FHOLUnitSentRecord> Records;
+		Records.Init(Resting, NumUnits);
+		int32 MostInOneStep = 0;
+		int32 LongestGap = 0;
+		int32 Sends = 0;
+		for (int64 Step = 1; Step <= 6 * Rules.RefreshSteps; ++Step)
+		{
+			int32 ThisStep = 0;
+			for (int32 UnitId = 0; UnitId < NumUnits; ++UnitId)
+			{
+				FHOLUnitSentRecord& Record = Records[UnitId];
+				if (GetSendReason(Record, Rest, EHOLUnitActivity::Idle, UnitId, Step, StepSeconds, Rules) != EHOLUnitSendReason::None)
+				{
+					LongestGap = FMath::Max(LongestGap, static_cast<int32>(Step - Record.Step));
+					Record = Send(Rest, FVector::ZeroVector, EHOLUnitActivity::Idle, Step);
+					++ThisStep;
+				}
+			}
+			MostInOneStep = FMath::Max(MostInOneStep, ThisStep);
+			Sends += ThisStep;
+		}
+		AddInfo(FString::Printf(TEXT("2 000 units at rest: at most %d sends in one step, %.2f sends per unit and per second"),
+			MostInOneStep, Sends / (NumUnits * 6.0 * Rules.RefreshSteps * StepSeconds)));
+		TestTrue(TEXT("refresh spread: at most twice the even share per step"), MostInOneStep <= 2 * NumUnits / Rules.RefreshSteps);
+		TestTrue(TEXT("refresh never later than a cycle and a quarter"), LongestGap <= LongestRefresh);
+		TestTrue(TEXT("at rest: one send per cycle"), FMath::IsNearlyEqual(Sends / (NumUnits * 6.0), 1.0, 0.1));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetServerClockTest, "HeroesOfLiberty.Net.ServerClock", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetServerClockTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	FHOLServerClock Clock;
+	Clock.Reset(StepSeconds);
+	TestFalse(TEXT("no sample, no estimate"), Clock.IsValid());
+
+	// Server step 100 received at local time 10 s with 40 ms of one-way delay: the server is at step 100.8.
+	Clock.AddSample(100, 10.0, 0.04);
+	TestTrue(TEXT("first sample taken as is"), Clock.IsValid() && FMath::IsNearlyEqual(Clock.GetStep(10.0), 100.8, 1.0e-6));
+	TestTrue(TEXT("runs at the step rate"), FMath::IsNearlyEqual(Clock.GetStep(11.0), 120.8, 1.0e-6));
+
+	// A sample 20 ms late (jitter): followed by a tenth only.
+	Clock.AddSample(120, 11.02, 0.04);
+	TestTrue(TEXT("jitter: followed slowly"), FMath::IsNearlyEqual(Clock.GetStep(11.0), 120.8 - 0.04, 1.0e-6));
+
+	// Steady samples on a new delay: the estimate converges.
+	for (int32 Index = 0; Index < 100; ++Index)
+	{
+		Clock.AddSample(200 + Index, 15.0 + Index * StepSeconds, 0.06);
+	}
+	TestTrue(TEXT("steady samples: converged"), FMath::IsNearlyEqual(Clock.GetStep(15.0 + 99 * StepSeconds), 299.0 + 1.2, 0.01));
+
+	// A hitch of the connection: one second off, taken as is.
+	Clock.AddSample(1000, 100.0, 0.0);
+	TestTrue(TEXT("far sample: taken as is"), FMath::IsNearlyEqual(Clock.GetStep(100.0), 1000.0, 1.0e-6));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetCorrectionTest, "HeroesOfLiberty.Net.Correction", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetCorrectionTest::RunTest(const FString& Parameters)
+{
+	FHOLDisplayCorrection Correction;
+	TestEqual(TEXT("no correction: no offset"), Correction.GetOffset(0.0), FVector::ZeroVector);
+
+	Correction.Start(FVector(120.0, 0.0, 0.0), FVector(100.0, 0.0, 0.0), 1.0);
+	TestEqual(TEXT("starts where the unit is drawn"), Correction.GetOffset(1.0), FVector(20.0, 0.0, 0.0));
+	TestTrue(TEXT("halfway: half the gap"), Correction.GetOffset(1.1).Equals(FVector(10.0, 0.0, 0.0), 1.0e-4));
+	TestEqual(TEXT("after ~0.2 s: gone"), Correction.GetOffset(1.0 + FHOLDisplayCorrection::SmoothingSeconds), FVector::ZeroVector);
+	TestEqual(TEXT("later: still gone"), Correction.GetOffset(5.0), FVector::ZeroVector);
+
+	Correction.Start(FVector(1000.0, 0.0, 0.0), FVector::ZeroVector, 2.0);
+	TestEqual(TEXT("a gap past the snap distance is not smoothed"), Correction.GetOffset(2.0), FVector::ZeroVector);
+	return true;
+}
+
+#endif
