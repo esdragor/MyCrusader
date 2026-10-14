@@ -743,7 +743,9 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   d'Iris (Unreal Insights, `-NetTrace`) le dirait.
 - **Écueil** : remplacer seulement l'exécutable du serveur sur une ancienne cuisson a fait planter le serveur
   (`GetPopulationByOwner` → `UDataTable::FindRow`, table des unités changée par J3) : toujours `-Stage` après un
-  changement du code des autres.
+  changement du code des autres. *Corrigé le 2026-10-14 : cause probable autre, la table des types mise en cache par
+  `UHOLUnitSubsystem` n'était pas une `UPROPERTY` et le ramasse-miettes la libérait (~60 s) ; corrigé par J3 (0fb58ea).
+  Recuire après un changement de code reste nécessaire.*
 - `quick_check.ps1` : **PASS en 32 s, tests 28/28**. À trancher par l'utilisateur : le seuil (35 cm passe ; D269
   disait ~25 cm « réglable »).
 - **D274** (choix de l'utilisateur, conforme à la recommandation) : **35 cm et 10 mises à jour par seconde** par
