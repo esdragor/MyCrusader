@@ -1594,6 +1594,11 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   unité et par seconde, écart affiché 23,6 cm (médiane 21, 95 % 52), 41 paquets/s, réplication 0,15 ms par pas.
   Client : états 24,7 Ko/s, le reste 5,8 Ko/s.
 - `quick_check` **PASS en 63 s** (tests 32/32).
-- Suite : **S2 au repos** (l'éditeur ProjectShiva de l'utilisateur est ouvert : ne pas le fermer soi-même), puis
+- **S2 court** (hors écran, 888 × 500, 10 s ; machine à ~24 % de charge : éditeur ProjectShiva, GitKraken, lanceur
+  Epic…) : **simulation 4,41 ms par pas, FAIL** (seuil 3 ms ; J4.1 : 2,31 ms dans des conditions voisines), rendu
+  212 i/s PASS. Détail : `MassMovingAvoidance` 7,6 ms un pas sur 6 (~1,3 ms en moyenne), `HOLUnitSeparation` 0,80,
+  `HOLFullSpeed` (regard en avant) 0,70, `HOLUnitOrder` 0,58 (1 730 ordres en 10 s), `MassSmoothOrientation` 0,26,
+  `MassSteerToMoveTarget` 0,20. Les ~2 ms ajoutées par J4 sont réelles, pas seulement la charge.
+- Suite : décision de l'utilisateur (mesure sur machine vraiment au repos, ou optimisation des coûts de J4), puis
   **J4.8** (clôture : D285 à D294, D300, D301 au GDD ; D274 à préciser : les ~8 Ko/s d'en-têtes étaient l'identifiant
   des éléments des tableaux rapides).
