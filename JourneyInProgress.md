@@ -33,7 +33,7 @@ vérifier sur S1 et S2.
 | J2.4 Vérification (D264) | **fait** (2026-10-14) : essai de l'utilisateur → cercle et survol retirés (D259, D262 précisées) ; tests 17/17, `quick_check.ps1` PASS |
 | J2.5 Clôture : D259 à D264 au GDD | **fait** (2026-10-14) : D259 à D264 au § 21, paragraphe « Parcours J2 » au § 16.6. **J2 close.** |
 | M2.5 — plan (Q1 à Q5, D268 à D273) | **fait** (2026-10-14) |
-| M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | **en cours** (M2 clos le 2026-10-14) |
+| M2.5.1 Lancement : script serveur dédié + 2 clients sur `Plain`, partie à 2 clients qui marche | **fait** (2026-10-14) : `Tools/Tests/net_match.ps1` ; serveur cuit et mis en place, 2 clients côte à côte, chacun sur son emplacement, centres à la bonne couleur, sélection ; reste le regard de l'utilisateur |
 | M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | à faire |
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | à faire |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | à faire |
@@ -44,10 +44,8 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **Plan de M2.5 complet** (D268 à D273) ; **M2 clos** (2026-10-14, S1 / S2 au vert sur 5.8.3). **M2.5.1** : script qui lance le serveur dédié (`HeroesOfLibertyServer`,
-   `Plain`, `-MatchConfig=`) et deux clients sur le deuxième écran, `open 127.0.0.1` ; vérifier que le mode de jeu
-   attribue les emplacements aux clients distants (configuration D243 / D244) ; centres, caméra et sélection chez
-   chacun. Puis **J3** : panneau du
+1. **M2.5.1 faite** (`net_match.ps1`, voir le journal). Suite : **M2.5.2** règles pures (réduction des positions et
+   vitesses, règle d'envoi de D269, prolongement et lissage de D271) et leurs tests. Puis **J3** : panneau du
    bâtiment (il montrera la sélection, qui n'a plus de retour visuel) et production d'un Paysan.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
@@ -517,3 +515,28 @@ Server compilée. Seul S2 / le stress test fait naître des unités ; une partie
 - L'utilisateur garde un éditeur d'un autre projet ouvert et demande de considérer la machine comme libre. Série S1 / S2
   sur 5.8.3 (deux passages, deux vues) : **tous les seuils tenus**, recouvrements identiques à 5.8.2 ; détail et
   nouvelle référence dans `ImplementationInProgress.md`. **M2 clos** (tableau du § 16.6 du GDD mis à jour).
+
+### 2026-10-14 (suite) — M2.5.1 faite : partie à 2 clients sur un serveur dédié
+
+- **Serveur cuit et mis en place** (`RunUAT BuildCookRun -server -noclient -build -cook -stage`, cartes `Plain` et
+  `StressTest`, 1 min 48 s) : `Saved/StagedBuilds/WindowsServer/HeroesOfLiberty/Binaries/Win64/HeroesOfLibertyServer.exe`.
+  À refaire après tout changement de code, de contenu ou de configuration lu par le serveur (`net_match.ps1 -Stage`).
+- **`Tools/Tests/net_match.ps1`** : configuration JSON à 2 humains (emplacements 0 et 1), serveur dédié réduit dans la
+  barre des tâches, attente de l'écoute (port 7777), puis 2 clients (éditeur en `-game`, contenu non cuit) qui
+  rejoignent `127.0.0.1`, côte à côte sur le deuxième écran ; chaque client : capture interne `net_client<N>`, clic au
+  milieu de l'écran (son centre), rapport de sélection. Journaux `Saved_Tests/Logs/net_server.log`, `net_client<N>.log`.
+- Résultat : le mode de jeu existant suffit — chaque client reçoit le premier emplacement humain libre (`holds slot 0`
+  puis `1`, dans l'ordre d'arrivée), sa caméra se place au-dessus de son emplacement, les centres répliqués arrivent à la
+  bonne couleur (rouge pour l'emplacement 1, bleu pour le 0, captures relues) et le clic sélectionne son centre.
+  Client en éditeur non cuit contre serveur cuit : accepté sans erreur.
+- **Correction** : Iris demande `net.SubObjects.DefaultUseSubObjectReplicationList=1` (`[SystemSettings]`) ; sans lui,
+  alertes au démarrage et sous-objets de `GameStateBase` non répliqués. Ajouté, plus aucune alerte. Reste un
+  avertissement d'Iris sans effet constaté (`BroadcastLoadedModulesUpdated() called while there are 1 active
+  ReplicationSystems`, modules chargés après le démarrage du système de réplication).
+- **Remarque de l'utilisateur** : les fenêtres des clients s'empilaient. Cause : le moteur recentre une fenêtre sur
+  l'écran enregistré (`DisplayIndex` des réglages) quand il applique la résolution, ce qui annule `-WinX`. Correction :
+  chaque client a son propre dossier (`-saveddirsuffix=Tests_Net<N>`, `Saved_Tests_Net<N>`) avec des réglages tirés de
+  `Tools/Tests/GameUserSettings.ini`, taille de la fenêtre et `DisplayIndex=-1` ; vérifié par les rectangles des deux
+  fenêtres (x 3 832-4 788 et 4 792-5 748).
+- Note : `Saved_Tests/Config/WindowsEditor/GameUserSettings.ini` (réglages partagés des essais) dit maintenant
+  1920 x 1080 et `DisplayIndex=0` (réécrit par une session de mesure), au lieu du modèle 1600 x 900 sur l'écran 1.
