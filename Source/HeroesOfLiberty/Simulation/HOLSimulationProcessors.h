@@ -29,6 +29,11 @@ protected:
  * slowly. Between the force and the movement, a moving unit's velocity keeps the direction the steering, the
  * avoidance and the navmesh boundary gave it, at the full speed of its order; near its slot it walks straight to it
  * and its last step ends exactly there. A standing unit does not move at all.
+ *
+ * Every step, a walker looks ahead for the bodies it would meet on its way within a short time and turns aside from
+ * them, the smallest turn first (D293): Mass' avoidance runs one step out of 6 (D220) and turned too late, the walker
+ * pushed through. When no way within the largest turn is clear (a crowd, its slot behind other units), the detour is
+ * too long: it goes on and pushes its way (UHOLUnitSeparationProcessor, D292).
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLFullSpeedProcessor : public UMassProcessor
@@ -42,7 +47,25 @@ protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 
+	/** Takes the units' positions, velocities and radii into a hashed grid; false when no unit walks (nothing to do). */
+	bool BuildLookAhead(FMassExecutionContext& Context);
+	static int32 LookAheadBucketOf(const FIntPoint& Cell);
+	/** The way a walker takes: Direction if nothing is met on it within Horizon (s), else the smallest clear turn, else Direction. */
+	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon) const;
+
 	FMassEntityQuery EntityQuery;
+
+	/** The step's units before they move (kept between steps to spare the allocations). */
+	TArray<FMassEntityHandle> Entities;
+	TArray<FVector2D> Positions;
+	TArray<FVector2D> Velocities;
+	TArray<float> Radii;
+	float MaxRadius = 1.f;
+	float MaxSpeed = 0.f;
+	/** Cells of the positions, hashed into buckets: first unit of each bucket, the next unit of the same bucket, each unit's cell. */
+	TArray<int32> CellHeads;
+	TArray<int32> NextInCell;
+	TArray<FIntPoint> Cells;
 };
 
 /**
