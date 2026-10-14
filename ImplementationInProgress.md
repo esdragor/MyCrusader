@@ -38,8 +38,9 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
    colorés, voir le journal) ; **en cours : étape 4**, vues en place (D236, D237), **mesuré machine libre le
    2026-10-14** (classique 221-231 i/s et GPU 3,5 ms, Nanite 30-32 i/s et GPU ~31 ms : voir le journal) ; **D235
    tranché : classique** ; seuil de 144 i/s sur la **moyenne** (précision de D218) ; foulée calculée (`WalkPlayRate`
-   1,22), **reste à la valider à l'œil** et à **remesurer S1/S2 machine libre sur 5.8.3** (projet passé sur `UE 5.8 AS 3`
-   le 2026-10-14, D231), puis à clore M2.
+   1,22) et **validée à l'œil par l'utilisateur** ; **reste à remesurer S1/S2 machine libre sur 5.8.3** (projet passé
+   sur `UE 5.8 AS 3` le 2026-10-14, D231 ; lanceur Epic fermé, souris hors de la fenêtre de jeu), dans une prochaine
+   séance, puis à clore M2.
 5. **Avant M5, deux points ouverts à instruire** (voir « Questions ouvertes ») : le **croisement** de deux unités
    (**instruit le 2026-10-14** : limite cinématique de la détection à 250 cm, levée à 600 cm hors face-à-face exact ;
    reste à mesurer le coût et à choisir une piste) et la **vitesse d'arrêt nulle** qui empêche la séparation de résorber les recouvrements
@@ -247,8 +248,10 @@ erreur silencieuse ; la plupart sont désormais gardés par le code.
   Seuils tenus sauf au troisième passage de S2 en vue de jeu, sous charge. Tendance 10 à 15 % sous les mesures 5.8.2
   de la nuit, sans pouvoir séparer le moteur de la charge : **à remesurer machine libre** (lanceur Epic fermé,
   souris hors de la fenêtre) avant de valider le passage à 5.8.3.
-- **Prochaine étape** : validation par l'utilisateur des changements du GDD (D231, D235, précision de D218), puis
-  commit ; foulée à l'œil ; remesure machine libre ; puis clore M2.
+- **Suite le même jour** : changements du GDD validés par l'utilisateur et commités (D231, D235, précision de D218 ;
+  D231 complété : AS_3 sans Angelscript, conforme à D263) ; **foulée validée à l'œil** (S2 en vue de jeu, 1,22).
+- **Prochaine étape** (reportée à une autre séance par l'utilisateur) : remesurer S1 et S2 machine libre sur 5.8.3,
+  deux passages, les deux vues ; si les seuils tiennent, nouvelle référence et clôture de M2.
 
 ### 2026-10-14 (suite) — Croisement instruit : limite cinématique de la détection, face-à-face à part
 
