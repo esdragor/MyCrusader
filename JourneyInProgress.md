@@ -45,7 +45,7 @@ vérifier sur S1 et S2.
 | J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
 | J3.3 File de production, ordre au serveur, apparition du Paysan | **fait** (2026-10-14) : file sur `AHOLBuilding` (propriétaire réseau = contrôleur), ordres par la file de commandes, `UHOLProductionSubsystem`, 12 actions de grille, `hol.Prod.*` ; vérifié sans fenêtre en solo et à 2 clients |
 | J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
-| J3.5 Vérification (D284) | **en cours** (2026-10-14) : partie « production » dans `quick_check.ps1` PASS (hors écran) ; Paysans bien affichés, mais **nés derrière le centre** vu de la caméra pour les emplacements dont le milieu de la carte est vers le haut de l'écran (question à l'utilisateur) ; restent 2 clients dans `quick_check` (après M2.5.6), essai de l'utilisateur, S1 / S2 courts |
+| J3.5 Vérification (D284) | **en cours** (2026-10-14) : `quick_check` PASS (production et 2 clients compris), essai de l'utilisateur « très bien », plantage du ramasse-miettes corrigé ; unités ×1,5 compilées, S1 / S2 courts PASS ; reste la confirmation par l'utilisateur que le plantage a disparu |
 | J3.6 Clôture : D280 à D284 au GDD | à faire |
 
 ## Prochaine étape exacte
@@ -57,7 +57,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** (reprise dans une nouvelle session) : (1) compiler l'échelle ×1,5 des unités (non compilée, non commitée : `MeshScale` dans `HOLUnitTypes.h`, `HOLInterpolatedInstancesProcessor.cpp`, `UnitTypes.csv`), refaire la table (`make_unit_types.py`), `quick_check`, capture des Paysans ; (2) S1 et S2 courts en fenêtre visible (rayon 40 → 60 cm : densité des foules changée ; feu vert de l'utilisateur) ; (3) confirmer avec l'utilisateur que le plantage du ramasse-miettes a disparu ; puis **J3.6** (D280 à D284 au GDD).
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** : unités ×1,5 compilées, table refaite, `quick_check` PASS, S1 / S2 courts PASS (fait) ; reste à **confirmer avec l'utilisateur** que le plantage du ramasse-miettes a disparu (essai de plus d'une minute) ; puis **J3.6** (D280 à D284 au GDD).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -912,3 +912,22 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   d'autant, marche ralentie du même facteur). Écartés : centre ramené à ~12 m en plus, plongée ~50° (revient sur D254),
   rien. Code écrit, **pas encore compilé** (la session M2.5 occupait les DLL) : à compiler, refaire la table,
   `quick_check`, puis S1 / S2 courts en fenêtre visible.
+
+### 2026-10-14 (suite) — Unités ×1,5 compilées ; S1 / S2 courts
+
+- `MeshScale` compilé (binaire déjà à jour, compilé par la session M2.5), table refaite depuis le CSV (4 lignes),
+  `quick_check` **PASS en 42 s** (production et 2 clients compris). Capture `prod_done` : les deux Paysans nés sous le
+  centre, bien visibles ; rapport hauteur du centre / hauteur d'un Paysan à l'écran ≈ 9, celui de la capture d'AoE4.
+- **S1 et S2 courts** (3 s, vue large, deuxième écran ; deux éditeurs ProjectShiva ouverts, contre un pour la
+  référence 5.8.3) : complets, 2 000 unités, registre sans écart, 0 restante.
+
+  | Scénario | Pas (ms) | i/s (1 % bas) | Jeu / rendu / GPU (ms) | Recouvrements | Référence 5.8.3 (vue large) |
+  |---|---|---|---|---|---|
+  | S1 | 2,69 ✅ | 145 (55) ✅ | 6,25 / 3,29 / 3,60 | 1 399 → 1 399 | 2,47 ms, 179-198 i/s, 649 → 649 |
+  | S2 | 2,59 ✅ | 168 (66) ✅ | 5,49 / 2,36 / 3,53 | 882 → 751 | 2,28-2,37 ms, 204 i/s, 337 → 227 |
+
+  Seuils tenus. Le rayon passe de 40 à 60 cm sur la même densité de naissance (foule de 45 m de rayon) : plus de paires
+  se recouvrent, et l'évitement à l'arrêt coûte 10,4 ms par passage (1 pas sur 6) contre ~7 ms ; d'où le pas ~10 %
+  plus lourd. Le GPU ne bouge pas. Le fil de jeu plus lent (5,5-6,3 contre 4,9-5,2 ms) suit surtout la machine
+  chargée ; mesures courtes, pas une nouvelle référence.
+- Reste de J3.5 : confirmation par l'utilisateur que le plantage du ramasse-miettes a disparu.

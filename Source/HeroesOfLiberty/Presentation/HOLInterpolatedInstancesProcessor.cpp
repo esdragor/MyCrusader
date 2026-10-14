@@ -116,7 +116,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 			const FTransform Drawn(
 				FQuat::Slerp(From.GetRotation(), To.GetRotation(), Alpha),
 				FMath::Lerp(From.GetLocation(), To.GetLocation(), Alpha),
-				To.GetScale3D());
+				To.GetScale3D() * Constants.MeshScale);
 
 			const FMassEntityHandle Entity = Context.GetEntity(EntityIt);
 			const FMassRepresentationLODFragment& RepresentationLOD = RepresentationLODs[EntityIt];
@@ -150,7 +150,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					{
 						// Mass hands the data to the instance only when the sequence changes, so the play rate is set here.
 						AnimData.SequenceIndex = WantedSequence;
-						AnimData.PlayRate = bWantsWalk ? Constants.WalkPlayRate : 1.f;
+						// A larger mesh takes longer strides: its walk plays slower at the same speed.
+						AnimData.PlayRate = bWantsWalk ? Constants.WalkPlayRate / Constants.MeshScale : 1.f;
 						AnimData.Position = GetStartOffset(States[EntityIt].UnitId, WantedSequence, bWantsWalk ? Constants.WalkLength : Constants.IdleLength);
 						AnimData.BlendTime = AnimationState.bStarted ? AnimationBlendSeconds : 0.f;
 						AnimData.LoopMode = EAnimSequenceTrackLoopMode::Loop;

@@ -47,6 +47,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	float MeshYawOffset = -90.f;
 
+	/** Drawing scale of the mesh (J3: units larger than life, as in RTS games, to read them next to buildings). */
+	UPROPERTY()
+	float MeshScale = 1.f;
+
 	/** Instanced skeletal mesh and its animation provider (D232); the static Mesh is the fallback. */
 	UPROPERTY()
 	FSoftObjectPath SkinnedMesh;
@@ -113,6 +117,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	float MeshYawOffset = -90.f;
 
 	/**
+	 * Drawing scale of the mesh (J3, user's choice: x1.5). RTS units are drawn larger than life so they read next to the
+	 * buildings; Radius is set to match in the table, and the walk is slowed by the same factor so the feet do not slide.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.1"))
+	float MeshScale = 1.f;
+
+	/**
 	 * Instanced skeletal mesh (D232): when set, the unit is drawn animated and Mesh is not used. Its mesh must be
 	 * built with "Optimize for Instancing" (Tools/Editor/make_skinned_mannequin.py).
 	 */
@@ -160,6 +171,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.AvoidanceDistance = AvoidanceDistance;
 	Constants.Mesh = Mesh.ToSoftObjectPath();
 	Constants.MeshYawOffset = MeshYawOffset;
+	Constants.MeshScale = MeshScale;
 	Constants.SkinnedMesh = SkinnedMesh.ToSoftObjectPath();
 	Constants.AnimationProvider = AnimationProvider.ToSoftObjectPath();
 	Constants.IdleSequence = IdleSequence;
