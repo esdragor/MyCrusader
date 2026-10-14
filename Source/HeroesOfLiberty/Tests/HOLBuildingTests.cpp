@@ -98,8 +98,6 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingSelectionTest, "HeroesOfLiberty.Buildings.Selection", UE::HeroesOfLiberty::Tests::Buildings::Flags)
 bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
 {
-	using namespace UE::HeroesOfLiberty::Tests::Buildings;
-
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 	Context.SetCurrentWorld(World);
@@ -118,30 +116,6 @@ bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
 		const FVector Beside(2000.0, 0.0, 5000.0);
 		TestFalse(TEXT("nothing beside it"),
 			World->LineTraceSingleByChannel(Hit, Beside, Beside - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection));
-
-		TestNull(TEXT("no ring before the first selection"), Building->GetSelectionRing());
-		Building->SetSelected(true);
-		const UStaticMeshComponent* Ring = Building->GetSelectionRing();
-		if (TestNotNull(TEXT("a ring once selected"), Ring))
-		{
-			TestTrue(TEXT("shown"), Ring->IsVisible());
-			FLinearColor RingColor;
-			const UMaterialInstanceDynamic* RingMaterial = Cast<UMaterialInstanceDynamic>(Ring->GetMaterial(0));
-			TestTrue(TEXT("at the owner's colour"), RingMaterial
-				&& RingMaterial->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("Color")), RingColor)
-				&& RingColor.Equals(FLinearColor(HOLPlayerColors::GetLinearColor(4)), 1.e-4f));
-			const double Diameter = Ring->Bounds.BoxExtent.X * 2.0;
-			TestTrue(TEXT("around the footprint"), Diameter > FVector2D(1500.0, 1500.0).Size());
-			TestEqual(TEXT("no collision"), Ring->GetCollisionEnabled(), ECollisionEnabled::NoCollision);
-			Building->SetSelected(false);
-			TestFalse(TEXT("hidden once deselected"), Ring->IsVisible());
-		}
-
-		Building->SetHovered(true);
-		// The roof and the ring (made at the selection above) wear the owner's colour.
-		TestEqual(TEXT("hovered: the roof and the ring lighten"), CountPiecesOfColor(*Building, 4, AHOLBuilding::HoverBrightness), 2);
-		Building->SetHovered(false);
-		TestEqual(TEXT("back to their colour"), CountPiecesOfColor(*Building, 4), 2);
 	}
 
 	GEngine->DestroyWorldContext(World);

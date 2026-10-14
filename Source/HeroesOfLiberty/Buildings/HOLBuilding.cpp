@@ -20,11 +20,6 @@ namespace UE::HeroesOfLiberty::Buildings
 	const TCHAR* ShapeMaterialPath = TEXT("/Game/Rendering/M_MatteColor.M_MatteColor");
 	// The owner's colour is unlit: the same colour on every face, with no darker side (D261).
 	const TCHAR* OwnerMaterialPath = TEXT("/Game/Rendering/M_FlatColor.M_FlatColor");
-	// The selection ring (D262): an unlit ring on the engine's plane (1 m, facing up).
-	const TCHAR* PlanePath = TEXT("/Engine/BasicShapes/Plane.Plane");
-	const TCHAR* RingMaterialPath = TEXT("/Game/Rendering/M_SelectionRing.M_SelectionRing");
-	/** Height of the ring over the ground, against flickering with it (cm). */
-	constexpr float RingLift = 3.f;
 	const FName ColorParameter(TEXT("Color"));
 
 	const FLinearColor StoneColor(0.42f, 0.40f, 0.37f);
@@ -46,13 +41,9 @@ AHOLBuilding::AHOLBuilding()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(UE::HeroesOfLiberty::Buildings::CubePath);
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(UE::HeroesOfLiberty::Buildings::ShapeMaterialPath);
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> OwnerMaterial(UE::HeroesOfLiberty::Buildings::OwnerMaterialPath);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Plane(UE::HeroesOfLiberty::Buildings::PlanePath);
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> Ring(UE::HeroesOfLiberty::Buildings::RingMaterialPath);
 	CubeMesh = Cube.Object;
 	PieceMaterial = ShapeMaterial.Object;
 	OwnerPieceMaterial = OwnerMaterial.Object;
-	PlaneMesh = Plane.Object;
-	RingMaterial = Ring.Object;
 }
 
 void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -102,8 +93,6 @@ void AHOLBuilding::RefreshAppearance()
 		Pieces.Reset();
 		OwnerMaterials.Reset();
 		OwnerTones.Reset();
-		StoneMaterials.Reset();
-		StoneColors.Reset();
 		BuiltTypeName = TypeName;
 
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
@@ -126,67 +115,12 @@ void AHOLBuilding::RefreshAppearance()
 
 void AHOLBuilding::ApplyColors()
 {
-	using namespace UE::HeroesOfLiberty::Buildings;
-
-	const float Brightness = bHovered ? HoverBrightness : 1.f;
-	const auto Paint = [Brightness](UMaterialInstanceDynamic* Material, const FLinearColor& Color)
-	{
-		FLinearColor Shown = Color * Brightness;
-		Shown.A = 1.f;
-		Material->SetVectorParameterValue(ColorParameter, Shown);
-	};
 	const FLinearColor OwnerColor(HOLPlayerColors::GetLinearColor(ColorIndex));
 	for (int32 Index = 0; Index < OwnerMaterials.Num(); ++Index)
 	{
-		Paint(OwnerMaterials[Index], OwnerColor * OwnerTones[Index]);
-	}
-	for (int32 Index = 0; Index < StoneMaterials.Num(); ++Index)
-	{
-		Paint(StoneMaterials[Index], StoneColors[Index]);
-	}
-	if (UMaterialInstanceDynamic* Ring = SelectionRing ? Cast<UMaterialInstanceDynamic>(SelectionRing->GetMaterial(0)) : nullptr)
-	{
-		Paint(Ring, OwnerColor);
-	}
-}
-
-void AHOLBuilding::SetSelected(const bool bInSelected)
-{
-	using namespace UE::HeroesOfLiberty::Buildings;
-
-	bSelected = bInSelected;
-	if (bSelected && !SelectionRing && PlaneMesh && RingMaterial)
-	{
-		// Made at the first selection, so that a building never selected carries nothing more.
-		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-		const double Diameter = (Type ? Type->Footprint.Size() : 1500.0) * RingSizeRatio;
-		const FBoxSphereBounds Bounds = PlaneMesh->GetBounds();
-		const FVector Scale(Diameter / (2.0 * Bounds.BoxExtent.X), Diameter / (2.0 * Bounds.BoxExtent.Y), 1.0);
-
-		SelectionRing = NewObject<UStaticMeshComponent>(this, TEXT("SelectionRing"));
-		SelectionRing->SetStaticMesh(PlaneMesh);
-		SelectionRing->SetRelativeScale3D(Scale);
-		SelectionRing->SetRelativeLocation(FVector(-Bounds.Origin.X * Scale.X, -Bounds.Origin.Y * Scale.Y, RingLift));
-		SelectionRing->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		SelectionRing->SetCanEverAffectNavigation(false);
-		SelectionRing->SetCastShadow(false);	// D258
-		SelectionRing->SetMaterial(0, UMaterialInstanceDynamic::Create(RingMaterial, SelectionRing));
-		SelectionRing->SetupAttachment(RootComponent);
-		SelectionRing->RegisterComponent();
-		ApplyColors();
-	}
-	if (SelectionRing)
-	{
-		SelectionRing->SetVisibility(bSelected);
-	}
-}
-
-void AHOLBuilding::SetHovered(const bool bInHovered)
-{
-	if (bHovered != bInHovered)
-	{
-		bHovered = bInHovered;
-		ApplyColors();
+		FLinearColor Shown = OwnerColor * OwnerTones[Index];
+		Shown.A = 1.f;
+		OwnerMaterials[Index]->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Shown);
 	}
 }
 
@@ -256,11 +190,6 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	{
 		OwnerMaterials.Add(Material);
 		OwnerTones.Add(OwnerTone);
-	}
-	else
-	{
-		StoneMaterials.Add(Material);
-		StoneColors.Add(Color);
 	}
 	return Piece;
 }

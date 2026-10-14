@@ -16,7 +16,7 @@ struct FInputActionValue;
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
  * Selection (D262) lives here, on the player's machine only: a left click selects the building under the cursor (its
- * own or another player's) or nothing, Escape selects nothing; the building under the cursor lightens.
+ * own or another player's) or nothing, Escape selects nothing; nothing shows it yet (the panel comes in J3).
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
@@ -35,7 +35,6 @@ public:
 	/** Selects a building, or nothing (null). */
 	void SetSelection(AHOLBuilding* Building);
 	AHOLBuilding* GetSelection() const { return Selection.Get(); }
-	AHOLBuilding* GetHovered() const { return Hovered.Get(); }
 	/** "MainCentre of slot 3 (own)", "none": for the logs of the scripted checks. */
 	FString DescribeBuilding(const AHOLBuilding* Building) const;
 
@@ -58,8 +57,6 @@ private:
 	void HandleDragCompleted();
 	void HandleSelect();
 	void HandleDeselect();
-	/** The building under the cursor lightens (D262). */
-	void UpdateHover();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;
@@ -72,5 +69,4 @@ private:
 	FVector DragAnchor = FVector::ZeroVector;
 
 	TWeakObjectPtr<AHOLBuilding> Selection;
-	TWeakObjectPtr<AHOLBuilding> Hovered;
 };

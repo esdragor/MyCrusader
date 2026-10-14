@@ -110,16 +110,12 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand SelectionReportCommand(
 		TEXT("hol.Select.Report"),
-		TEXT("hol.Select.Report: logs the local player's selection and the building under the cursor"),
+		TEXT("hol.Select.Report: logs the local player's selection"),
 		FConsoleCommandDelegate::CreateLambda([]()
 		{
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				const AHOLBuilding* Selected = Controller->GetSelection();
-				UE_LOG(LogHOLMatch, Display, TEXT("Selection report: selected %s, ring %s, hovered %s"),
-					*Controller->DescribeBuilding(Selected),
-					Selected && Selected->GetSelectionRing() && Selected->GetSelectionRing()->IsVisible() ? TEXT("shown") : TEXT("none"),
-					*Controller->DescribeBuilding(Controller->GetHovered()));
+				UE_LOG(LogHOLMatch, Display, TEXT("Selection report: selected %s"), *Controller->DescribeBuilding(Controller->GetSelection()));
 			}
 		}));
 
@@ -269,7 +265,6 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 		RTSCamera->Pan(KeyPan + GetEdgeScroll(), DeltaTime, UE::HeroesOfLiberty::Player::GetSpeedSetting());
 	}
 	KeyPan = FVector2D::ZeroVector;
-	UpdateHover();
 }
 
 void AHOLPlayerController::TryPlaceCamera()
@@ -379,20 +374,11 @@ void AHOLPlayerController::SelectAt(const FVector2D& ViewportFraction)
 
 void AHOLPlayerController::SetSelection(AHOLBuilding* Building)
 {
-	AHOLBuilding* Previous = Selection.Get();
-	if (Previous == Building)
+	if (Selection.Get() == Building)
 	{
 		return;
 	}
-	if (Previous)
-	{
-		Previous->SetSelected(false);
-	}
 	Selection = Building;
-	if (Building)
-	{
-		Building->SetSelected(true);
-	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Selection: %s"), *DescribeBuilding(Building));
 }
 
@@ -420,25 +406,6 @@ void AHOLPlayerController::HandleSelect()
 void AHOLPlayerController::HandleDeselect()
 {
 	SetSelection(nullptr);
-}
-
-void AHOLPlayerController::UpdateHover()
-{
-	FVector2D Cursor;
-	AHOLBuilding* Under = GetCursorFraction(Cursor) ? FindBuildingAt(Cursor) : nullptr;
-	AHOLBuilding* Previous = Hovered.Get();
-	if (Under != Previous)
-	{
-		if (Previous)
-		{
-			Previous->SetHovered(false);
-		}
-		if (Under)
-		{
-			Under->SetHovered(true);
-		}
-		Hovered = Under;
-	}
 }
 
 void AHOLPlayerController::UpdateDrag()

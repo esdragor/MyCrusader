@@ -109,7 +109,7 @@ if ($Parts -contains "camera") {
         Step "hol.Camera.Report", "hol.UI.Key MouseScrollDown 0", "wait 0.5", "hol.Camera.Report"
         Step "hol.Camera.TestCursor 0.999 0.5", "wait 1", "hol.Camera.TestCursor 0.5 0.5", "hol.Camera.Report", "capture ${Name}_end"
         # Selection (D262, D264), the cursor in the middle of the screen: its own centre, another player's, the void,
-        # then Escape; a report says what is selected, whether its ring shows and what the cursor is over.
+        # then Escape; a report says what is selected.
         Step "mark selection $($Case.Name)", "hol.Camera.FocusSlot $($Case.Slot)", "frames 3", "hol.Select.Click 0.5 0.5",
             "waitlog Selection: MainCentre of slot $($Case.Slot) (own)", "frames 2", "hol.Select.Report", "capture sel_$($Case.Name)_own"
         Step "hol.Camera.FocusSlot $($Case.Other)", "frames 3", "hol.Select.Click 0.5 0.5",
@@ -217,10 +217,10 @@ if ($Parts -contains "camera") {
         $Other = "MainCentre of slot $($Case.Other) (other)"
         $Checks["selection: four reports ($($Selection.Count))"] = $Selection.Count -eq 4
         if ($Selection.Count -eq 4) {
-            $Checks["click on its centre: selected, ring, hovered ($($Selection[0]))"] = $Selection[0] -eq "selected $Own, ring shown, hovered $Own"
-            $Checks["click on another player's centre ($($Selection[1]))"] = $Selection[1] -eq "selected $Other, ring shown, hovered $Other"
-            $Checks["click in the void: nothing ($($Selection[2]))"] = $Selection[2] -like "selected none, ring none, *"
-            $Checks["Escape: nothing ($($Selection[3]))"] = $Selection[3] -like "selected none, ring none, *"
+            $Checks["click on its centre ($($Selection[0]))"] = $Selection[0] -eq "selected $Own"
+            $Checks["click on another player's centre ($($Selection[1]))"] = $Selection[1] -eq "selected $Other"
+            $Checks["click in the void: nothing ($($Selection[2]))"] = $Selection[2] -eq "selected none"
+            $Checks["Escape: nothing ($($Selection[3]))"] = $Selection[3] -eq "selected none"
         }
         $Checks["selection captures"] = (Test-Path (Join-Path $Shots "sel_$($Case.Name)_own.png")) -and (Test-Path (Join-Path $Shots "sel_$($Case.Name)_other.png"))
         $AllOk = (Report "camera $($Case.Name)" $Checks) -and $AllOk
