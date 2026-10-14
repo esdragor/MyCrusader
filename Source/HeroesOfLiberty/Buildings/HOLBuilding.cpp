@@ -2,13 +2,16 @@
 
 #include "Buildings/HOLBuilding.h"
 
+#include "AI/NavigationSystemBase.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLPlayerColors.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "NavAreas/NavArea_Null.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -30,6 +33,15 @@ AHOLBuilding::AHOLBuilding()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
+	// The footprint is a forbidden area of the navmesh (D286). A dynamic obstacle is a modifier, the only change a
+	// DynamicModifiersOnly navmesh takes at run time; the navmesh widens it by the agent's radius.
+	NavObstacle = CreateDefaultSubobject<UBoxComponent>(TEXT("NavObstacle"));
+	NavObstacle->SetupAttachment(RootComponent);
+	NavObstacle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	NavObstacle->SetCanEverAffectNavigation(true);
+	NavObstacle->bDynamicObstacle = true;
+	NavObstacle->SetAreaClassOverride(UNavArea_Null::StaticClass());
 
 	// Made by the server, seen by everyone: no movement to send, and nothing changes after the setup (until M5).
 	bReplicates = true;
@@ -126,6 +138,7 @@ void AHOLBuilding::RefreshAppearance()
 		{
 			BuildFinalMesh(*Type);
 		}
+		FitNavObstacle(*Type);
 	}
 
 	ApplyColors();
@@ -161,6 +174,14 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 	AddPiece(CubeMesh, FVector(Footprint * RoofSizeRatio, CapThickness), TowerHeight, FLinearColor::White, true);
 }
 
+void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
+{
+	NavObstacle->SetBoxExtent(FVector(Type.Footprint * 0.5, Type.Height * 0.5));
+	NavObstacle->SetRelativeLocation(FVector(0., 0., Type.Height * 0.5));
+	// Registered with the default size when the actor spawned: the navigation takes the new size.
+	FNavigationSystem::UpdateComponentData(*NavObstacle);
+}
+
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 {
 	UStaticMesh* Mesh = Type.Mesh.LoadSynchronous();
@@ -172,6 +193,7 @@ void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 	UStaticMeshComponent* Piece = NewObject<UStaticMeshComponent>(this);
 	Piece->SetStaticMesh(Mesh);
 	Piece->SetCollisionResponseToChannel(HOLCollision::Selection, ECR_Block);	// D262
+	Piece->SetCanEverAffectNavigation(false);	// the footprint is NavObstacle (D286)
 	Piece->SetupAttachment(RootComponent);
 	Piece->RegisterComponent();
 	Pieces.Add(Piece);
@@ -196,6 +218,7 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	Piece->SetRelativeScale3D(Scale);
 	Piece->SetRelativeLocation(FVector(-Origin.X, -Origin.Y, BottomZ - MeshBottom));
 	Piece->SetCastShadow(false);	// D258
+	Piece->SetCanEverAffectNavigation(false);	// the footprint is NavObstacle (D286)
 	Piece->SetCollisionResponseToChannel(HOLCollision::Selection, ECR_Block);	// D262
 	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Piece);
 	Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Color);

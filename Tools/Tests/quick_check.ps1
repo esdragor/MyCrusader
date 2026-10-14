@@ -7,14 +7,14 @@
 # Alongside, the "net" part (D273, M2.5.6): a two-client match on a dedicated server, the editor in server mode (D275),
 # each client checking its camera, the two centres in their colours and a click on each.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera,production,net] [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera,production,move,net] [-EngineDir <dir>] [-Visible]
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -150,6 +150,12 @@ if ($Parts -contains "camera") {
             Step "waitlog queued Peasant (3 in", "frames 5", "hol.HUD.Report", "capture prod_queue"
             Step "hol.HUD.Click QueueItem2", "waitlog cancelled Peasant", "waitlog (2 born here)", "frames 10", "hol.HUD.Report", "hol.Prod.Report", "capture prod_done",
                 "hol.Prod.BuildTime 0"
+        }
+        if (($Parts -contains "move") -and $Case.Name -eq "2p") {
+            # Paths (J4, D286), on the navmesh of Plain with the centre of slot 0 made at run time: through that
+            # centre (bottom to top on the screen), beside it, through the ridge in front of it, across the grove.
+            Step "mark move", "hol.Nav.Path -16500 0 -13500 0", "hol.Nav.Path -16500 3000 -13500 3000", "hol.Nav.Path -13000 0 -11000 0",
+                "hol.Nav.Path -2000 0 2000 0"
         }
     }
 }
@@ -326,6 +332,21 @@ if (($Parts -contains "production") -and ($Parts -contains "camera")) {
     $Checks["population 2/10, queue empty ($Report)"] = [bool]($Report -match "F 100 W 200 S 200 G 200, population 2/10, .* queue 0 ")
     $Checks["captures"] = (Test-Path (Join-Path $Shots "prod_queue.png")) -and (Test-Path (Join-Path $Shots "prod_done.png"))
     $AllOk = (Report "production" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "move") -and ($Parts -contains "camera")) {
+    $Paths = @((Get-Section "move") | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Ratio = { param($Line) if ($Line -match "ratio ([0-9.]+)") { [double]$Matches[1] } else { 0.0 } }
+    $Checks = [ordered]@{}
+    $Checks["four paths ($($Paths.Count))"] = $Paths.Count -eq 4
+    if ($Paths.Count -eq 4) {
+        $Checks["navmesh: modifiers only, agent 60 cm ($($Paths[0]))"] = $Paths[0] -match "\(navmesh modifiers only, agent 60 cm\)$"
+        $Checks["around the centre made at run time ($($Paths[0]))"] = (& $Ratio $Paths[0]) -gt 1.15
+        $Checks["beside the centre: straight ($($Paths[1]))"] = ((& $Ratio $Paths[1]) -gt 0) -and ((& $Ratio $Paths[1]) -lt 1.02)
+        $Checks["around the ridge ($($Paths[2]))"] = (& $Ratio $Paths[2]) -gt 1.2
+        $Checks["across the grove ($($Paths[3]))"] = ((& $Ratio $Paths[3]) -gt 0) -and ($Paths[3] -notmatch "partial")
+    }
+    $AllOk = (Report "move" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {

@@ -48,7 +48,8 @@ vérifier sur S1 et S2.
 | J3.5 Vérification (D284) | **fait** (2026-10-14) : `quick_check` PASS (production solo, et production à 2 clients : un Paysan par client vu chez les deux, ressources de l'autre jamais reçues), essai de l'utilisateur « très bien » puis plantage du ramasse-miettes corrigé et confirmé disparu, unités ×1,5, S1 / S2 courts PASS |
 | J3.6 Clôture : D280 à D284 au GDD | **fait** (2026-10-14) : D280 à D284 au § 21 (D283 précisée : unités ×1,5), paragraphe « Parcours J3 » au § 16.6. **J3 close.** |
 | J4 — plan (Q1 à Q5, décisions à partir de D285) | **en cours** (2026-10-14) : Q1 tranchée (D285) ; plan validé (D286 à D289) |
-| J4.1 Navmesh dynamique et obstacles | **en cours** (2026-10-14) |
+| J4.1 Navmesh dynamique et obstacles | **fait** (2026-10-14) : `DynamicModifiersOnly`, agent de 60 cm, zone interdite sous les bâtiments, rochers et bosquet sur `Plain`, navmesh construit et sauvegardé par les scripts des cartes (`Plain` et `StressTest` refaites), `hol.Nav.Path`, partie « move » de `quick_check` PASS (40 s), S1 / S2 courts PASS |
+| J4.2 Règles pures (paquets, places, attribution) | à faire |
 
 ## Prochaine étape exacte
 
@@ -1090,3 +1091,35 @@ reconstruction d'une tuile, à mesurer en J4.1).
   `RuntimeGeneration`). Reprise : validation du plan par l'utilisateur, et son choix du retour visuel (D288).
 - **Plan validé** (D286 à D289) ; retour visuel : cercle sous les unités sélectionnées **et carré sous le bâtiment
   sélectionné** (l'utilisateur revient sur le retrait de D259). **J4.1 commence.**
+
+### 2026-10-14 (suite) — J4.1 faite : navmesh à modificateurs, obstacles sur `Plain`
+
+- **Navmesh** (`DefaultEngine.ini`) : `RuntimeGeneration=DynamicModifiersOnly` sur `RecastNavMesh` ; l'agent se déclare
+  dans `NavigationSystemV1` (`+SupportedAgents`, **rayon 60 cm**, hauteur 270 cm : le Paysan ×1,5), car le rayon du
+  `RecastNavMesh` seul est écrasé par celui de l'agent (35 cm par défaut, vu au journal de construction). Les
+  modificateurs ne s'appliquent que si le navmesh a été construit **avec** ce mode (il garde alors ses couches
+  compressées) : les deux cartes ont été refaites par leurs scripts.
+- **Constat** : l'ancienne `Plain` n'avait **aucun navmesh sauvegardé** (seulement le volume). `create_match_map.py`
+  construit maintenant le navmesh comme `create_stress_test_map.py` : attente de ~5 s (l'éditeur verrouille la
+  construction après le chargement), mise à jour des limites (`on_navigation_bounds_updated` : l'échelle posée depuis
+  Python ne prévient pas la navigation, d'où un navmesh taillé pour le cube de 2 m, « 3 tile limit »), suppression du
+  navmesh mal taillé, `BUILDPATHS` synchrone, sauvegarde. Le rappel de Slate pouvait passer deux fois (une boîte de
+  dialogue modale fait retourner Slate) : drapeau `done`. Une boîte « Unable to Check Out From Revision Control » s'ouvre
+  à la sauvegarde d'une carte supprimée puis recréée ; sans effet (contrôle de version coupé), la carte est écrite.
+- **Bâtiments** : `AHOLBuilding` porte une boîte `NavObstacle` sans collision, `bDynamicObstacle`, zone
+  `NavArea_Null`, taillée sur l'emprise et la hauteur de la table puis `FNavigationSystem::UpdateComponentData` ; les
+  pièces ne touchent plus la navigation. Le navmesh élargit la zone du rayon de l'agent.
+- **Obstacles de `Plain`** (symétriques) : devant chaque emplacement, à 120 m du milieu (30 m devant le centre), une
+  arête de 3 rochers (sphères aplaties, ~20 m de long) ; au milieu, un bosquet de 12 arbres (troncs de 5 m, couronnes à
+  partir de ~4,75 m : on passe dessous). Matériaux `MI_Rock`, `MI_Trunk`, `MI_Crown` (instances de `M_MatteColor`,
+  faites par le script s'ils manquent).
+- **`hol.Nav.Path X1 Y1 X2 Y2`** (`Map/HOLNavReport.cpp`) : chemin entre deux points du sol, sur les machines qui ont
+  un navmesh (serveur, solo). Partie **« move »** de `quick_check.ps1` (dans le cas 2 joueurs) : à travers le centre de
+  l'emplacement 0 (né en cours de partie) **37,6 m pour 30 m (×1,25)**, à côté **×1,00**, à travers l'arête **×1,49**,
+  à travers le bosquet **×1,01** (entre les troncs). `quick_check` **PASS en 40 s** (104 s au premier passage :
+  matériaux neufs à compiler).
+- **S1 / S2 courts** hors écran (`-RenderOffScreen`, fenêtre de 888 × 500 : images par seconde non comparables à la
+  référence) : S1 **2,16 ms**, 216 i/s, 1 399 → 1 399 recouvrements ; S2 **2,31 ms**, 214 i/s, 882 → 751 ; seuils
+  tenus, recouvrements identiques à J3.5 : le nouveau navmesh ne change rien au stress test.
+- Le serveur cuit de `net_match.ps1` n'a pas été recuit : `-Stage` à passer avant le prochain essai à 2 clients.
+- Suite : **J4.2** (règles pures `Simulation/HOLGroupMoveRules` et tests).

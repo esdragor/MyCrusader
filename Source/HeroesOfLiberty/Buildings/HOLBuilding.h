@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "HOLBuilding.generated.h"
 
+class UBoxComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UStaticMesh;
@@ -18,7 +19,8 @@ struct FHOLBuildingTypeRow;
  * (a row of the building type table), its owner (the player's slot, a byte like the units' OwnerPlayer, D233) and its
  * owner's colour; every machine builds its look from the type, so only these three values travel. GAS comes with
  * the first ability or damage (M5). Selection is the local player's own (D262): its pieces block the selection trace
- * channel; nothing on the building shows it (no ring, no hover: the user's test of J2).
+ * channel; nothing on the building shows it (no ring, no hover: the user's test of J2). Its footprint is a forbidden
+ * area of the navmesh (D286): a dynamic obstacle, applied on the server when the building appears.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLBuilding : public AActor
@@ -78,6 +80,8 @@ private:
 	void ApplyColors();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
+	/** Sizes the navmesh's forbidden area to the type's footprint and height. */
+	void FitNavObstacle(const FHOLBuildingTypeRow& Type);
 	/** A piece of Size (cm) laid on BottomZ, painted Color, or the owner's colour times OwnerTone when bOwnerColor. */
 	UStaticMeshComponent* AddPiece(UStaticMesh* Mesh, const FVector& Size, float BottomZ, const FLinearColor& Color, bool bOwnerColor,
 		float OwnerTone = 1.f);
@@ -99,6 +103,10 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Pieces;
+
+	/** The footprint as a forbidden area of the navmesh (D286), sized from the type; no collision. */
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UBoxComponent> NavObstacle;
 
 	UPROPERTY()
 	TObjectPtr<UStaticMesh> CubeMesh;
