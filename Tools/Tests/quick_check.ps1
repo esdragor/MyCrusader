@@ -4,15 +4,17 @@
 # Every step starts as soon as the one before is done (hol.Test.Run), no fixed delays. Replaced capture_screens.ps1,
 # check_camera.ps1 and the automation command for everyday checks; the short stress tests S1 and S2 stay apart (only
 # when units, the simulation or rendering change, and at a closure).
+# Alongside, the "net" part (D273, M2.5.6): a two-client match on a dedicated server, the editor in server mode (D275),
+# each client checking its camera, the two centres in their colours and a click on each.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera] [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera,production,net] [-EngineDir <dir>] [-Visible]
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
-# second screen instead, windowed 1600 x 900.
+# second screen instead, windowed 1600 x 900, and the two clients side by side under it.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -49,6 +51,20 @@ $TestsProcess = $null
 if ($Parts -contains "tests") {
     $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty`" -TestExit=`"Automation Test Queue Empty`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -nosound -abslog=`"$TestsLog`""
     $TestsProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor-Cmd.exe") -ArgumentList $TestsArguments -PassThru -WindowStyle Hidden
+}
+
+# 3. (started now, the clients join further down) Two-client match on a dedicated server (D273): the editor in dedicated
+# server mode on Plain (D275: no cooking, always the code of the moment; the cooked server of net_match.ps1 stays for
+# S5 and the user's trials), two humans in slots 0 and 1 at the colours of their slots.
+$NetServerProcess = $null
+$NetServerLog = Join-Path $TestSaved "Logs\quick_net_server.log"
+if ($Parts -contains "net") {
+    $NetConfig = Join-Path $TestSaved "quick_net.json"
+    $NetSlots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }
+    "{ `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
+    Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log") -ErrorAction SilentlyContinue
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`""
+    $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
 # 2. One game launch for the menu and the camera.
@@ -146,6 +162,51 @@ Get-ChildItem $Shots -Filter "sel_*.png" -ErrorAction SilentlyContinue | Remove-
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 $GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
+
+# 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
+# as net_match.ps1). Each one: camera above the slot it holds, the buildings it has received (the two centres in their
+# colours), a click on the centre of slot 0, then of slot 1 (one its own, the other not), then one in the void.
+$NetClients = @()
+$NetListening = $false
+if ($NetServerProcess) {
+    $Deadline = (Get-Date).AddSeconds(90)
+    while (-not $NetListening -and (Get-Date) -lt $Deadline -and -not $NetServerProcess.HasExited) {
+        Start-Sleep -Milliseconds 250
+        $NetListening = (Test-Path $NetServerLog) -and (Select-String -Path $NetServerLog -Pattern "listening on port" -Quiet)
+    }
+}
+if ($NetListening) {
+    for ($Client = 1; $Client -le 2; $Client++) {
+        $ClientSaved = Join-Path $Project "Saved_Tests_Net$Client"
+        $ClientShots = Join-Path $ClientSaved "Screenshots\WindowsEditor\HOL"
+        Get-ChildItem $ClientShots -Filter "qcnet_*.png" -ErrorAction SilentlyContinue | Remove-Item
+        $ClientSettings = Join-Path $ClientSaved "Config\WindowsEditor\GameUserSettings.ini"
+        if (-not (Test-Path $ClientSettings)) {
+            # No display saved (-1): the engine keeps -WinX instead of re-centring the window (net_match.ps1).
+            New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+            (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+        }
+        # waitlog reads the lines since the last command: nothing between waitmap and it. The cursor is held in the middle
+        # from the start (-ExecCmds below), or the camera scrolls at the edge before the first step. Each client waits for
+        # the other one (a client done and gone frees its slot for the one still joining).
+        $NetSteps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark net", "frames 30",
+            "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start")
+        foreach ($Slot in 0, 1) {
+            $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
+                "frames 2", "hol.Select.Report", "capture qcnet_${Client}_slot$Slot"
+        }
+        $NetSteps += "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Report", "mark end", "quit"
+        $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
+        $NetSteps | Set-Content -Encoding utf8 $ClientSequence
+        $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
+        $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+        $ClientArguments = "`"$UProject`" 127.0.0.1 -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+        $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots;
+            Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+    }
+}
+
 $GameTimedOut = -not $GameProcess.WaitForExit(300000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
@@ -260,6 +321,43 @@ if (($Parts -contains "production") -and ($Parts -contains "camera")) {
     $Checks["population 2/10, queue empty ($Report)"] = [bool]($Report -match "F 100 W 200 S 200 G 200, population 2/10, .* queue 0 ")
     $Checks["captures"] = (Test-Path (Join-Path $Shots "prod_queue.png")) -and (Test-Path (Join-Path $Shots "prod_done.png"))
     $AllOk = (Report "production" $Checks) -and $AllOk
+}
+
+if ($Parts -contains "net") {
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $NetListening
+    $HeldSlots = @()
+    foreach ($NetClient in $NetClients) {
+        $ClientTimedOut = -not $NetClient.Process.WaitForExit(120000)
+        if ($ClientTimedOut) { $NetClient.Process.Kill() }
+        $N = $NetClient.Client
+        $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+        $Checks["client $N : holds a slot ($Held)"] = $null -ne $Held
+        if ($null -eq $Held) { continue }
+        $HeldSlots += $Held
+        $Camera = $ClientLines | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\)" | Select-Object -First 1
+        $Start = Get-SlotStart $Held
+        $Checks["client $N : camera above slot $Held"] = $Camera -and ([Math]::Abs([int]$Camera.Matches[0].Groups[1].Value - $Start[0]) -le 2) -and
+            ([Math]::Abs([int]$Camera.Matches[0].Groups[2].Value - $Start[1]) -le 2)
+        $Buildings = @($ClientLines | Select-String -Pattern "Building report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Checks["client $N : both centres, each in its colour ($($Buildings -join '; '))"] = ($Buildings.Count -eq 3) -and
+            ($Buildings -contains "MainCentre of slot 0, colour 0 shown") -and ($Buildings -contains "MainCentre of slot 1, colour 1 shown") -and
+            ($Buildings -contains "2 buildings")
+        $Selection = @($ClientLines | Select-String -Pattern "Selection report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Wanted = @(0, 1 | ForEach-Object { "selected MainCentre of slot $_ ($(if ($_ -eq $Held) { 'own' } else { 'other' }))" }) + "selected none"
+        $Checks["client $N : clicks on the two centres, then the void ($($Selection -join '; '))"] = ($Selection -join '|') -eq ($Wanted -join '|')
+        $Missing = @("start", "slot0", "slot1" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
+        $Checks["client $N : captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+        $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
+        $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
+    }
+    $Checks["two clients in slots 0 and 1 ($($HeldSlots -join ', '))"] = (($HeldSlots | Sort-Object) -join ',') -eq "0,1"
+    if ($NetServerProcess -and -not $NetServerProcess.HasExited) { Stop-Process -Id $NetServerProcess.Id -Force }
+    $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
+    $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
+    $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }
 
 if ($TestsProcess) {

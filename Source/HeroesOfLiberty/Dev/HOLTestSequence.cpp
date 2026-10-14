@@ -5,6 +5,8 @@
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
@@ -24,6 +26,7 @@
  *   wait <Seconds>       lets time go by (a key held, a camera moving)
  *   waitlog <Text>       waits for a log line holding Text, written since the last command
  *   waitmap <Name>       waits for a game world whose map name holds Name to have begun play
+ *   waitplayers <N>      waits for the game world to know N players (a client waits for the others to join)
  *   waitui               waits for the interface to be still: a screen just opened or closed has finished fading
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
@@ -148,6 +151,12 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				const UWorld* World = GetGameWorld();
 				bDone = World && World->HasBegunPlay() && World->GetMapName().Contains(Rest);
+			}
+			else if (Verb == TEXT("waitplayers"))
+			{
+				const UWorld* World = GetGameWorld();
+				const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+				bDone = GameState && GameState->PlayerArray.Num() >= FCString::Atoi(*Rest);
 			}
 			else if (Verb == TEXT("waitui"))
 			{
