@@ -8,6 +8,7 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/HUD.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
@@ -213,9 +214,23 @@ namespace UE::HeroesOfLiberty::Player
 							: FString::Printf(TEXT("%s waiting"), *Item.TypeName.ToString()));
 					}
 				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Production report: %s, selected %s, queue %d [%s]"),
+				// The other players' economy as this machine sees it: a client is sent its own only (D282).
+				TArray<FString> Others;
+				if (const AGameStateBase* GameState = Controller->GetWorld()->GetGameState())
+				{
+					for (const APlayerState* Other : GameState->PlayerArray)
+					{
+						const AHOLPlayerState* OtherState = Cast<AHOLPlayerState>(Other);
+						if (OtherState && OtherState != PlayerState)
+						{
+							Others.Add(FString::Printf(TEXT("slot %d %s"), OtherState->GetPlayerIndex(), *OtherState->DescribeEconomy()));
+						}
+					}
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Production report: %s, selected %s, queue %d [%s]; others [%s]"),
 					PlayerState ? *PlayerState->DescribeEconomy() : TEXT("no player state"),
-					*Controller->DescribeBuilding(Controller->GetSelection()), Items.Num(), *FString::Join(Items, TEXT(", ")));
+					*Controller->DescribeBuilding(Controller->GetSelection()), Items.Num(), *FString::Join(Items, TEXT(", ")),
+					*FString::Join(Others, TEXT("; ")));
 			}
 		}));
 

@@ -14,6 +14,8 @@
 #include "Misc/OutputDevice.h"
 #include "Misc/OutputDeviceRedirector.h"
 #include "Misc/Paths.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "UnrealClient.h"
 
 /**
@@ -27,6 +29,7 @@
  *   waitlog <Text>       waits for a log line holding Text, written since the last command
  *   waitmap <Name>       waits for a game world whose map name holds Name to have begun play
  *   waitplayers <N>      waits for the game world to know N players (a client waits for the others to join)
+ *   waitunits <N>        waits for N units at least: simulated (solo, server) or displayed (client, D271)
  *   waitui               waits for the interface to be still: a screen just opened or closed has finished fading
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
@@ -157,6 +160,15 @@ namespace UE::HeroesOfLiberty::Dev
 				const UWorld* World = GetGameWorld();
 				const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
 				bDone = GameState && GameState->PlayerArray.Num() >= FCString::Atoi(*Rest);
+			}
+			else if (Verb == TEXT("waitunits"))
+			{
+				const UWorld* World = GetGameWorld();
+				const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+				const UHOLUnitReceptionSubsystem* Reception = World ? World->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
+				const int32 NumUnits = World && World->GetNetMode() == NM_Client
+					? (Reception ? Reception->GetNumDisplayed() : 0) : (Units ? Units->GetNumUnits() : 0);
+				bDone = NumUnits >= FCString::Atoi(*Rest);
 			}
 			else if (Verb == TEXT("waitui"))
 			{

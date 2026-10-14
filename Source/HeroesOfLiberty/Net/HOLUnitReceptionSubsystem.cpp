@@ -375,3 +375,23 @@ FString UHOLUnitReceptionSubsystem::MakeReport() const
 		Stats.NumCorrections > 0 ? Stats.TotalCorrectionCm / Stats.NumCorrections : 0.0, Stats.MaxCorrectionCm, Stats.NumSnaps,
 		ClockStep - LastServerStep, InBytesPerSecond, MeanFps, LowFps);
 }
+
+FString UHOLUnitReceptionSubsystem::DescribeDisplayed() const
+{
+	TMap<FString, int32> Counts;
+	for (const FSlot& Slot : Slots)
+	{
+		if (Slot.Entity.IsSet())
+		{
+			const FName TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
+			++Counts.FindOrAdd(FString::Printf(TEXT("%s of slot %d"), *TypeName.ToString(), Slot.OwnerPlayer));
+		}
+	}
+	Counts.KeySort(TLess<FString>());
+	TArray<FString> Lines;
+	for (const TPair<FString, int32>& Count : Counts)
+	{
+		Lines.Add(FString::Printf(TEXT("%s x%d"), *Count.Key, Count.Value));
+	}
+	return FString::Printf(TEXT("%d displayed: %s"), NumDisplayed, *FString::Join(Lines, TEXT(", ")));
+}

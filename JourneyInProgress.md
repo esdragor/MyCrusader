@@ -45,7 +45,7 @@ vérifier sur S1 et S2.
 | J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
 | J3.3 File de production, ordre au serveur, apparition du Paysan | **fait** (2026-10-14) : file sur `AHOLBuilding` (propriétaire réseau = contrôleur), ordres par la file de commandes, `UHOLProductionSubsystem`, 12 actions de grille, `hol.Prod.*` ; vérifié sans fenêtre en solo et à 2 clients |
 | J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
-| J3.5 Vérification (D284) | **en cours** (2026-10-14) : `quick_check` PASS (production et 2 clients compris), essai de l'utilisateur « très bien », plantage du ramasse-miettes corrigé ; unités ×1,5 compilées, S1 / S2 courts PASS ; reste la confirmation par l'utilisateur que le plantage a disparu |
+| J3.5 Vérification (D284) | **fait** (2026-10-14) : `quick_check` PASS (production solo, et production à 2 clients : un Paysan par client vu chez les deux, ressources de l'autre jamais reçues), essai de l'utilisateur « très bien » puis plantage du ramasse-miettes corrigé et confirmé disparu, unités ×1,5, S1 / S2 courts PASS |
 | J3.6 Clôture : D280 à D284 au GDD | à faire |
 
 ## Prochaine étape exacte
@@ -57,7 +57,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** : unités ×1,5 compilées, table refaite, `quick_check` PASS, S1 / S2 courts PASS (fait) ; reste à **confirmer avec l'utilisateur** que le plantage du ramasse-miettes a disparu (essai de plus d'une minute) ; puis **J3.6** (D280 à D284 au GDD).
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 faite** ; **J3.6 en cours** (D280 à D284 au GDD).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -931,3 +931,16 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   plus lourd. Le GPU ne bouge pas. Le fil de jeu plus lent (5,5-6,3 contre 4,9-5,2 ms) suit surtout la machine
   chargée ; mesures courtes, pas une nouvelle référence.
 - Reste de J3.5 : confirmation par l'utilisateur que le plantage du ramasse-miettes a disparu.
+
+### 2026-10-14 (suite) — J3.5 close : production à 2 clients dans `quick_check`
+
+- L'utilisateur confirme : **plus de plantage** à l'essai (« c'est bon »).
+- D284 demandait aussi la production dans la partie à 2 clients, qui ne contrôlait encore que caméras et sélection.
+  Ajouts : verbe de séquence **`waitunits <N>`** (unités simulées en solo et au serveur, affichées chez un client) ;
+  `hol.Units.Report` chez un client décrit les unités **affichées** par type et propriétaire ; `hol.Prod.Report` ajoute
+  l'économie des **autres joueurs** telle que cette machine la voit. Chaque client fait produire un Paysan à son centre
+  (`hol.Prod.Queue`, 2 s par `hol.Prod.BuildTime 2` passé au serveur) ; contrôlés : les deux Paysans affichés chez
+  chacun, son propre stock débité (F 150, population 1/10), celui de l'autre **jamais reçu** (F 0, population 0/0),
+  un Paysan né par emplacement au serveur. `quick_check` **PASS en 43 s**.
+- **J3.5 close.** Suite : J3.6 (D280 à D284 au GDD).
+

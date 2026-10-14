@@ -24,6 +24,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "NavigationSystem.h"
 #include "Net/HOLNetUnitDisplay.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLLightUnitAvoidanceTrait.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -48,7 +49,13 @@ namespace UE::HeroesOfLiberty::Units
 		TEXT("hol.Units.Report [MaxUnits=10]: logs the number of units and, for the first ones, their type, owner, location, LOD and drawing"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			if (const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr)
+			// A client simulates nothing: it reports the units it displays (D271).
+			const UHOLUnitReceptionSubsystem* Reception = World ? World->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
+			if (Reception && World->GetNetMode() == NM_Client)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Units report: client, %s"), *Reception->DescribeDisplayed());
+			}
+			else if (const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr)
 			{
 				UE_LOG(LogHOLSimulation, Display, TEXT("Units report: %s"), *Units->DescribeUnits(Args.IsEmpty() ? 10 : FCString::Atoi(*Args[0])));
 			}
