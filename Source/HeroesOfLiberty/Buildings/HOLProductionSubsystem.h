@@ -16,8 +16,8 @@ struct FHOLUnitTypeRow;
  * simulation step: applies the production orders of the order queue (owner, producible type, queue length and cost
  * checked by the rules of HOLProductionRules), counts each player's population (its units and the units in
  * production) and cap (its buildings), advances every queue, and asks the unit subsystem for the units that are done,
- * in an arc in front of their building, on the side of the map's centre (D283). The births asked at the start of a
- * step are served by that same step.
+ * in an arc below their building as seen from the camera, until the rally point of J4 (D283, specified in J3). The
+ * births asked at the start of a step are served by that same step.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLProductionSubsystem : public UWorldSubsystem
@@ -47,7 +47,7 @@ private:
 	void OnStepStarted(int64 StepIndex);
 	void ApplyOrders();
 	void AdvanceQueues(int64 StepIndex);
-	/** Where the Index-th unit born at Building stands: an arc in front of it, towards the map's centre. */
+	/** Where the Index-th unit born at Building stands: an arc below it on the screen (the camera's side). */
 	FVector GetBirthLocation(const AHOLBuilding& Building, int32 Index) const;
 
 	FDelegateHandle StepStartedHandle;

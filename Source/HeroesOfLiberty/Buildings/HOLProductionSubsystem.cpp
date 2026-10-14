@@ -10,7 +10,6 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
-#include "Map/HOLMapBounds.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -284,17 +283,9 @@ FVector UHOLProductionSubsystem::GetBirthLocation(const AHOLBuilding& Building, 
 	using namespace UE::HeroesOfLiberty::Production;
 
 	const FVector Origin = Building.GetActorLocation();
-	// Towards the map's centre (the side the base opens on); the building's front without map bounds.
-	FVector Forward = Building.GetActorForwardVector().GetSafeNormal2D();
-	if (const AHOLMapBounds* Bounds = AHOLMapBounds::Find(GetWorld()))
-	{
-		const FVector2D Centre = Bounds->GetArea().GetCenter();
-		const FVector ToCentre = FVector(Centre.X - Origin.X, Centre.Y - Origin.Y, 0.0).GetSafeNormal();
-		if (!ToCentre.IsNearlyZero())
-		{
-			Forward = ToCentre;
-		}
-	}
+	// Below the building on the screen, while there is no rally point (J4): the camera never turns and looks along +X
+	// for every player (D254), so this side is never hidden behind the building (user's choice in J3).
+	const FVector Forward(-1.0, 0.0, 0.0);
 
 	const FHOLBuildingTypeRow* Type = Building.GetType();
 	const float HalfFootprint = Type ? 0.5f * FMath::Max(Type->Footprint.X, Type->Footprint.Y) : 750.f;
