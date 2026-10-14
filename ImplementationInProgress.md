@@ -20,7 +20,7 @@ des faits mesurés plutôt que des intentions, et jamais de mise à jour silenci
 | M1 — essai Mass (D215) | **fait** (2026-10-11) : seuils D218 tenus sur S1 et S2 après **D220**, hypothèse `Stand` vérifiée |
 | M1 — cœur de la simulation (`UnitData`, identifiants, apparition/disparition, file de commandes) | **fait** (2026-10-11) : D221 à D229 implémentés ; **revue traitée le 2026-10-12** (deux bugs corrigés, D230) puis **suites de la revue** (maintien corrigé, A/B reproductible) ; S1 2,42 ms, S2 2,48/2,58 ms ✅, recouvrements S2 102 → 68 (173 → 120 sans maintien), croisement 3,5 cm de face, 6,1 cm à angle droit (limitation connue) |
 | M2 — rendu (instances par type et par joueur, animations, interpolation) | à faire |
-| M2.5 — tranche réseau Iris (D216) | à faire |
+| M2.5 — tranche réseau Iris (D216) | **plan fait** (2026-10-14, D268 à D273, dans `JourneyInProgress.md`) ; le code commence après la clôture de M2 |
 
 ## Prochaine étape exacte
 
