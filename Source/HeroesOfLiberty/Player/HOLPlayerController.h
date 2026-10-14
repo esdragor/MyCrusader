@@ -10,14 +10,18 @@ class AHOLBuilding;
 class AHOLPlayerState;
 class AHOLRTSCamera;
 class UInputAction;
+struct FHOLPickCandidate;
 struct FInputActionValue;
 
 /**
  * Controller of a player in a match map (a map with start slots, D255): no pawn, a visible cursor and, on the
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
- * Selection (D262) lives here, on the player's machine only: a left click selects the building under the cursor (its
- * own or another player's) or nothing, Escape selects nothing; the HUD shows it (J3, D281).
+ * Selection (D262, D288) lives here, on the player's machine only: units (their identifiers, D223) or one building.
+ * A left click selects the unit under the cursor (aimed at on the screen: light units have no collision), else the
+ * building under it (its own or another player's), else nothing; a box (a press dragged past a few pixels) selects the
+ * player's own units in it; Shift adds or removes; Escape selects nothing; the HUD shows it (J3, D281). A right click
+ * sends the selected units of the player to the ground point, or puts the selected building's rally point there (J4).
  * Production (J3, D282): the cells of the command grid (keys of D30, or a click on the HUD) and the HUD's cancel
  * clicks become requests to the server (RPCs), which queues them in the order queue and applies them at its next step.
  */
@@ -33,17 +37,37 @@ public:
 
 	/** The building under a point of the viewport (0 to 1 each way), on the selection channel, or null. */
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
-	/** Selects the building under a point of the viewport, or nothing (a left click there). */
-	void SelectAt(const FVector2D& ViewportFraction);
+	/** The unit drawn under a point of the viewport, the one in front (D288), or 0. */
+	uint32 FindUnitAt(const FVector2D& ViewportFraction) const;
+	/**
+	 * A left click at a point of the viewport: the unit under it, else the building, else nothing. With bAdd (Shift), one
+	 * of the player's own units is added to its selected units, or removed when it already is one; the selection stays
+	 * when nothing is under the cursor.
+	 */
+	void SelectAt(const FVector2D& ViewportFraction, bool bAdd = false);
+	/** A box between two points of the viewport: the player's own units in it; with bAdd, added, or removed when all already are. */
+	void SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, bool bAdd = false);
+	/** A right click at a point of the viewport: the selected own units go there, or the selected own building's rally point. */
+	void OrderAt(const FVector2D& ViewportFraction);
 	/** Selects a building, or nothing (null). */
 	void SetSelection(AHOLBuilding* Building);
+	/** Selects units (their identifiers), or nothing (empty). */
+	void SetUnitSelection(TArray<uint32> UnitIds);
 	AHOLBuilding* GetSelection() const { return Selection.Get(); }
+	const TArray<uint32>& GetSelectedUnits() const { return SelectedUnits; }
+	/** The box the player is drawing, in viewport fractions; false when none (J4.6 draws it). */
+	bool GetSelectionBox(FVector2D& OutMin, FVector2D& OutMax) const;
 	/** "MainCentre of slot 3 (own)", "none": for the logs of the scripted checks. */
 	FString DescribeBuilding(const AHOLBuilding* Building) const;
+	/** The building as DescribeBuilding, "Peasant #12 of slot 3 (own)", "4 units (own): Peasant x4" or "none". */
+	FString DescribeSelection() const;
 
 	/** The selection changed (on this machine only, D262). For the HUD. */
 	DECLARE_MULTICAST_DELEGATE(FOnSelectionChanged);
 	FOnSelectionChanged OnSelectionChanged;
+	/** The player gave an order on the ground (units or rally point): the HUD marks the point briefly (J4.6). */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrderGiven, const FVector& /*Point*/);
+	FOnOrderGiven OnOrderGiven;
 
 	AHOLPlayerState* GetHOLPlayerState() const;
 	/** The selected building if it is the player's own, else null: only the owner gives it orders. */
@@ -83,12 +107,24 @@ private:
 	bool GetCursorFraction(FVector2D& OutFraction) const;
 	FVector2D GetEdgeScroll() const;
 	void UpdateDrag();
+	/** Pixels of a point of the viewport given in fractions. */
+	FVector2D ToPixels(const FVector2D& ViewportFraction) const;
+	/** Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only. Ids match the candidates. */
+	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const;
+	/** The selected units that are the player's own (an order moves only them). */
+	TArray<uint32> GetOwnSelectedUnits() const;
+	/** Units that left this machine (dead, out of view of a client) leave the selection. */
+	void PurgeSelectedUnits();
+	void BroadcastSelection();
 
 	void HandlePan(const FInputActionValue& Value, FVector2D Direction);
 	void HandleZoom(const FInputActionValue& Value);
 	void HandleDragStarted();
 	void HandleDragCompleted();
-	void HandleSelect();
+	void HandleSelectStarted();
+	void HandleSelectCompleted();
+	void HandleSelectAdd(bool bHeld);
+	void HandleOrder();
 	void HandleDeselect();
 	void HandleGridKey(const FInputActionValue& Value, int32 Cell);
 
@@ -116,4 +152,12 @@ private:
 	FVector DragAnchor = FVector::ZeroVector;
 
 	TWeakObjectPtr<AHOLBuilding> Selection;
+	/** Selected units (D223 identifiers), never with a building: several of the player's own, or one of anyone's. */
+	TArray<uint32> SelectedUnits;
+	/** Left button held: where it was pressed (viewport fractions); its release clicks or ends the box. */
+	bool bSelectPressed = false;
+	FVector2D SelectPressFraction = FVector2D::ZeroVector;
+	/** Shift held (IA_SelectAdd). */
+	bool bSelectAddHeld = false;
+	float SincePurge = 0.f;
 };

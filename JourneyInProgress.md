@@ -52,7 +52,9 @@ vérifier sur S1 et S2.
 | J4.2 Règles pures (paquets, places, attribution) | **fait** (2026-10-14) : `Simulation/HOLGroupMoveRules`, 3 tests `HeroesOfLiberty.Movement.*`, tests 31/31 |
 | J4.3 Chemins dans la simulation | **fait** (2026-10-14) : ordre de groupe, places, paquets, couloir partagé avec place de côté, dernier tronçon vers la place ; 40 Paysans contournent centre et arête, arrivés en disque de ~5 m ; `quick_check` PASS (48 s) ; **S2 à remesurer machine au repos** (3,0-3,8 ms sous charge, voir journal) |
 | J4.4 Ordre réseau et ralliement | **fait** (2026-10-14) : appel serveur avec contrôle du propriétaire dans la simulation, point de ralliement (file de commandes, répliqué au propriétaire), naissance avec ordre, places déjà prises sautées ; partie à 2 clients de `quick_check` : chacun voit les deux Paysans là où leurs propriétaires les ont envoyés (13 cm), le serveur ignore l'unité de l'autre ; `quick_check` PASS (46 s) |
-| J4.5 Sélection des unités | à faire |
+| J4.5 Sélection des unités | **fait** (2026-10-14) : `Player/HOLUnitPicking` (projection, clic, cadre), sélection d'unités dans `AHOLPlayerController` (unité avant bâtiment, cadre au relâchement, Maj, unité adverse seule, unités disparues retirées), clic droit → ordre ou ralliement (sur le centre : effacé), `IA_SelectAdd` / `IA_Order` ; essai scripté solo conforme ; tests 32/32, `quick_check` PASS (39 s) |
+| J4.6 Retour visuel et HUD | à faire |
+| J5 — plan (Q1 à Q5, décisions à partir de D295 ; mené en parallèle de la fin de J4, dans une autre session) | **en cours** (2026-10-14) : Q1 et Q2 tranchées (D295, D296), Q3 posée |
 
 ## Prochaine étape exacte
 
@@ -67,6 +69,9 @@ vérifier sur S1 et S2.
 4. **Plan de J4 en cours** (ouvert le 2026-10-14) : questions une par une (tableau « Plan de J4 » ci-dessous), décisions
    à partir de **D285** (D276 à D279 inutilisées). **Plan fait** (D285 à D289, sous-étapes J4.1 à J4.8 dans « Plan de
    J4 »). Reprise : la première sous-étape qui n'est pas « fait » dans le tableau « Où on en est ».
+5. **Plan de J5 en cours** (ouvert le 2026-10-14, en parallèle de la fin de J4, autre session) : questions une par une
+   (tableau « Plan de J5 »), décisions à partir de **D295** (D290 à D294 laissées à J4) ; aucun code avant la clôture
+   de J4.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -291,6 +296,50 @@ Risques connus : croisements dans un groupe (D230, réduits par l'attribution qu
 requêtes de chemin au départ de S2 (budget par pas) ; navmesh dynamique sur le serveur dédié (mémoire, temps de
 reconstruction d'une tuile, à mesurer en J4.1).
 
+## Plan de J5 (à valider question par question)
+
+Mené **en parallèle de la fin de J4, dans une autre session** (ouvert le 2026-10-14) ; aucun code avant la clôture de
+J4. Décisions à partir de **D295** (D290 à D294 laissées à J4).
+
+Repères : § 5.1 (4 ressources : nourriture, bois, pierre, or ; pierre contestable), § 5.3 (population, ~70 à 90
+travailleurs en fin de partie), § 6 (camps de collecte, ferme, construction libre, D22), § 7.3 (touche « . » : Paysans
+inactifs, D30), § 11 (technologies de collecte et Brouette, D129, D180), D66 / D91 / D39 (variantes de travailleurs :
+collecte plus lente, plus rapide), D83 (bâtiments économiques du prototype : maison, camps, ferme), D252 (J5 récolte et
+ressources, puis construction), D282 (ressources dans le `PlayerState`, au seul propriétaire), D285 à D289 (ordres et
+chemins de J4). Déjà en place : 4 ressources et population dans `AHOLPlayerState`, coût du Paysan, HUD du haut, ordres
+de déplacement par la file de commandes, navmesh à modificateurs dynamiques et obstacles sur `Plain`.
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J5 : quelles sources, quels dépôts, sans construction (elle vient après). | **tranché (D295)** : 4 ressources (arbres, baies, filons de pierre et d'or), dépôt au centre seul, épuisement ; troupeaux gardés pour plus tard |
+| Q2 | **Boucle de récolte** : charge portée, aller-retour, dépôt le plus proche, nœud épuisé, Paysan inactif. | **tranché (D296)** : aller-retour façon AoE4, charge de 10, dépôt le plus proche, source voisine du même type ou inactif |
+| Q3 | **Gisements** dans la partie : ce qu'est un arbre ou un filon (acteur, entité, instance), placement sur `Plain`, épuisement, réplication, navmesh. | en cours |
+| Q4 | **Commande et retour visuel** : clic droit sur une ressource, ce que l'écran et le HUD montrent, touche « . ». | à poser |
+| Q5 | **Vérification** (tests, `quick_check` solo et 2 clients, coût à 2 000 unités) et découpage en sous-étapes. | à poser |
+
+**Tranché — D295 Périmètre : les 4 ressources, une source simple chacune, dépôt au centre seul.**
+- Sources : **arbres** (bois), **buissons de baies** (nourriture), **filons de pierre** et **filons d'or**. Chaque source a
+  une quantité et **s'épuise**.
+- Dépôt : le **centre principal**, seul tant que la construction n'existe pas ; les camps de l'étape construction
+  ajouteront des dépôts sans changer la boucle.
+- `Plain` : sources posées par script, **symétriques** : un bois et des baies près de chaque centre, pierre et or plus
+  loin, contestés entre voisins (§ 15).
+- **Nuance de l'utilisateur : garder les troupeaux façon AoE pour plus tard** (moutons repérés, ramenés près du centre,
+  abattus) : ils demandent points de vie, mort et carcasse, donc viennent avec M5.
+- Écartés : bois et baies seuls (pierre et or non éprouvés, deux compteurs figés) ; troupeaux dès J5.
+
+**Tranché — D296 Boucle de récolte : aller-retour façon AoE4.**
+- Récolte **au contact** de la source, à un **taux par type d'unité et par ressource** (~0,7/s, indicatif ; les variantes
+  de D66, D91, D39 ne changeront que ce taux) ; **charge portée de 10** (la Brouette, § 11, l'augmentera).
+- Plein, le Paysan va au **dépôt le plus proche** (le centre pour l'instant) ; le stock du joueur monte **au dépôt** ;
+  puis il revient à **la même source**.
+- Source épuisée → la plus proche **du même type** dans ~15 m ; sinon **inactif** (touche « . », § 7.3).
+- Ordre de déplacement : la récolte s'arrête, **la charge reste** ; ordre de récolte sur une autre ressource : **charge
+  perdue** (comme AoE).
+- Aucune limite de Paysans par source ; ils se répartissent sur des places autour d'elle (règles de J4, D287).
+- Écartés : revenu au contact sans trajet (la distance ne compte plus, camps sans objet, contraire à D83) ; places
+  limitées par source façon StarCraft (attente, gestion fine, illisible avec des unités qui se traversent).
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -324,6 +373,8 @@ reconstruction d'une tuile, à mesurer en J4.1).
 | D287 | 2026-10-14 | Technique — Ordre de groupe | **Arrivée en tas serré, sans formation** (plan validé par l'utilisateur, conforme à la recommandation) : une unité seule va au point exact ; un groupe reçoit des **places** en nid d'abeille autour du point (écart = diamètre du corps + ~20 %), orientées selon la marche, ramenées au navmesh (une place dans un obstacle passe à la suivante libre), **attribuées en gardant l'ordre relatif** des unités pour que leurs chemins ne se croisent pas (D230) ; chaque unité à sa vitesse. Règles pures dans `Simulation/HOLGroupMoveRules`. Formations (rangs, orientation au glisser, vitesse du plus lent) pour l'étape « armée » (M4). Écartés : **toutes au même point** (empilement, évitement à l'arrêt sans fin) et **formation en rangs dès J4** (sans objet pour des Paysans). |
 | D288 | 2026-10-14 | Technique — Sélection des unités et ordres | **Chez le client, par projection à l'écran** (plan validé par l'utilisateur, conforme à la recommandation) : la sélection reste dans le contrôleur (D262), liste d'identifiants d'unités (D223) ou un bâtiment ; les unités, sans collision, sont visées en **projetant à l'écran** leur position affichée (simulation en solo, entités d'affichage chez un client) ; clic : l'unité sous le curseur **avant** un bâtiment ; **cadre** au glisser (~6 pixels) : ses unités ; **Maj** ajoute ou retire ; une unité adverse seule ; Échap ou vide : rien. **Clic droit** : appel serveur (identifiants + point), le **serveur vérifie le propriétaire** de chaque unité, puis file de commandes (D252) ; centre sélectionné + clic droit : **point de ralliement** (sur le bâtiment, répliqué au propriétaire), où le Paysan produit reçoit un ordre à sa naissance. Retour visuel (**choix de l'utilisateur**) : **cercle au sol sous chaque unité sélectionnée** à la couleur de son propriétaire, et **carré au sol sous le bâtiment sélectionné** (*revient sur D259 / D262*, qui avaient retiré le cercle du bâtiment) ; rectangle du cadre au glisser, repère bref (~0,5 s) au point du clic droit, fanion au ralliement quand le centre est sélectionné. Bloc de sélection : une unité (nom, propriétaire, points de vie) ou un groupe (nom × nombre par type), fr / en / ja. Écartés : **rien sur les unités** (10 Paysans identiques, le HUD ne dit pas lesquels sont pris), **unités éclaircies**, **sélection par collision** (contraire à D29) et **sélection connue du serveur** (D262). |
 | D289 | 2026-10-14 | Technique — Vérification de J4 | **Tests, solo et 2 clients, S2 avec chemins** (plan validé par l'utilisateur, conforme à la recommandation) : tests d'automatisation (places, attribution, paquets, projection et cadre) ; dans `quick_check.ps1`, partie **solo** (ralliement, 3 Paysans qui s'y rendent, cadre, clic droit derrière un rocher : contournement, arrivée sans recouvrement, rien dans un obstacle ; Maj, Échap, captures) et partie **à 2 clients** (chacun voit le Paysan de l'autre arriver, à < 50 cm ; un ordre sur l'unité de l'autre ignoré) ; **S2 rendu exigeant** par les chemins (promesse de D229, seuil 3 ms), S1 inchangé, **S5 court** ; essai de l'utilisateur. Sous-étapes J4.1 à J4.8. Clôt le plan de J4 (D285 à D289). |
+| D295 | 2026-10-14 | Technique — Périmètre de J5 | **Les 4 ressources, une source simple chacune, dépôt au centre seul** (choix de l'utilisateur, conforme à la recommandation) : **arbres** (bois), **buissons de baies** (nourriture), **filons** de pierre et d'or ; le Paysan rapporte au **centre principal**, seul dépôt tant qu'il n'y a pas de construction (les camps de l'étape construction ajouteront des dépôts) ; chaque source **s'épuise** ; sur `Plain`, posées par script, symétriques : bois et baies près de chaque centre, pierre et or plus loin, contestés entre voisins (§ 15). **Nuance de l'utilisateur : garder les troupeaux façon AoE pour plus tard** (repérés, ramenés près du centre, abattus ; ils demandent points de vie, mort et carcasse : avec M5). Écartés : bois et baies seuls (pierre et or non éprouvés) ; troupeaux dès J5. | § 5.1, § 16.6 |
+| D296 | 2026-10-14 | Technique — Boucle de récolte | **Aller-retour façon AoE4** (choix de l'utilisateur, conforme à la recommandation) : récolte **au contact** à un taux par type d'unité et par ressource (~0,7/s, indicatif) ; **charge de 10** (la Brouette, § 11, l'augmentera) ; plein, le Paysan va au **dépôt le plus proche**, le stock du joueur monte **au dépôt**, puis il revient à **la même source** ; source épuisée → la plus proche **du même type** dans ~15 m, sinon **inactif** (touche « . ») ; un ordre de déplacement arrête la récolte et **garde la charge**, une autre ressource la **fait perdre** ; aucune limite par source, places autour d'elle par les règles de J4 (D287). Écartés : revenu au contact sans trajet (la distance ne compte plus, contraire à D83) ; places limitées par source façon StarCraft (attente, illisible avec des unités qui se traversent). | § 5.1, § 16.6 |
 
 ## Journal d'avancement
 
@@ -1197,3 +1248,41 @@ reconstruction d'une tuile, à mesurer en J4.1).
   qu'il connaît à 25 m de son départ ; contrôles : chaque client voit les deux Paysans à moins de 1,5 m de là où leurs
   propriétaires les ont envoyés (mesuré : 11-13 cm), le serveur a ignoré une unité pour chacun. **PASS en 46 s.**
 - Suite : **J4.5** (sélection des unités : projection, clic, cadre, Maj, clic droit).
+
+### 2026-10-14 (suite) — J4.5 commencée, séance arrêtée par l'utilisateur
+
+- Écrits, **non compilés, non commités** : `Player/HOLUnitPicking.h/.cpp` (`PickAt` : corps dessiné sous le curseur, le
+  plus proche de la caméra ; `PickInBox` : milieu du corps dans le cadre ; `IsBox` : au-delà de 6 pixels) et le test
+  `HeroesOfLiberty.Movement.Picking` dans `Tests/HOLMovementTests.cpp`.
+- Reste de J4.5 (prévu, rien d'écrit) : dans `AHOLPlayerController`, sélection d'unités (`TArray<uint32>`) exclusive
+  du bâtiment ; clic résolu au relâchement (`IA_Select` Started / Completed : clic ou cadre), unité avant bâtiment,
+  Maj (`IA_SelectAdd`, LeftShift / RightShift) ajoute ou retire ses unités, une unité adverse seule ; clic droit
+  (`IA_Order`, RightMouseButton) : ses unités → `RequestMoveUnits`, son bâtiment → `RequestRallyPoint` (sur le
+  bâtiment : efface) ; candidats projetés depuis `HOLUnitView::Gather` (pieds, tête à +270 cm, demi-largeur du
+  rayon × 1,3) ; unités disparues retirées toutes les ~0,25 s ; `DescribeSelection` (garder « MainCentre of slot N
+  (own) » et « none » pour `quick_check`) ; `GetSelectionBox` pour le rectangle de J4.6 ; délégué d'ordre donné pour
+  le repère de J4.6 ; commandes `hol.Select.Click X Y [add]`, `hol.Select.Box X1 Y1 X2 Y2 [add]`,
+  `hol.Select.Order X Y` ; actions ajoutées à `make_game_input.py` puis le relancer (commandlet).
+- **Reprise** : compiler, `quick_check -Parts tests` (32 tests attendus), puis le contrôleur. S2 toujours à
+  remesurer machine au repos avant J4.7.
+
+### 2026-10-14 (suite) — J4.5 faite : sélection des unités et clic droit
+
+- Contrôleur fait comme prévu ci-dessus. Précisions : le corps visé va des pieds à 180 cm × l'échelle du maillage
+  (`FHOLUnitView::MeshScale`, ajouté, lu de la table), demi-largeur = rayon × 1,3 projeté ; **Maj sur le vide garde**
+  la sélection d'unités ; **Maj + cadre** ajoute les unités prises, ou les **retire toutes** si elles l'étaient déjà ;
+  Maj sur une unité adverse ou depuis un bâtiment sélectionné repart de zéro ; sélection bornée à 200 unités (comme
+  l'ordre). Clic droit sur son centre sélectionné : la position du centre est envoyée (le sol vu derrière le toit
+  serait hors de l'emprise), donc le ralliement s'efface. `DescribeSelection` : « Peasant #12 of slot 0 (own) »,
+  « 3 units (own): Peasant x3 », bâtiment et « none » inchangés. Le HUD ne montre encore rien pour des unités (J4.6).
+- Commandes : `hol.Select.Click X Y [add]`, `hol.Select.ClickUnit N [add]` (clic au milieu du corps dessiné de la
+  N-ième unité du joueur : un script ne sait pas où elles sont à l'écran), `hol.Select.Box X1 Y1 X2 Y2 [add]`,
+  `hol.Select.Order X Y` ; `hol.Select.Report` décrit aussi les unités.
+- `make_game_input.py` relancé : `IA_SelectAdd` (Maj gauche / droite), `IA_Order` (clic droit).
+- Essai scripté solo (`-RenderOffScreen`, hors `quick_check`) : ralliement, 3 Paysans ; cadre plein écran → 3 ;
+  clic droit → « Order: 3 units », arrivés autour du point ; clic sur #1 → #1 ; Maj + #2 → 2 ; Maj + #1 → #2 seul ;
+  Maj sur le vide → inchangé ; Maj + cadre → 3, de nouveau → aucune ; clic droit sur le centre sélectionné → ralliement
+  effacé (serveur), puis posé ailleurs. Captures `selt_*`. À intégrer à `quick_check` en J4.7.
+- Tests 32/32, `quick_check` **PASS en 39 s**.
+- Suite : **J4.6** (cercles sous les unités sélectionnées, carré sous le bâtiment, rectangle du cadre via
+  `GetSelectionBox`, repère d'ordre via `OnOrderGiven`, fanion de ralliement, bloc de sélection d'un groupe).

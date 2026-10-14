@@ -24,6 +24,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLRTSCamera.h"
+#include "Player/HOLUnitPicking.h"
 #include "Settings/HOLGameUserSettings.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -41,6 +42,12 @@ namespace UE::HeroesOfLiberty::Player
 
 	/** Units of one move order at most: a player's whole population (D03), a client could send more. */
 	constexpr int32 MaxOrderedUnits = 200;
+
+	/** Height (cm) of a unit's body drawn at scale 1 (the mannequin), and its drawn width over its radius: what a click aims at (D288). */
+	constexpr double PickBodyHeight = 180.0;
+	constexpr double PickWidthFactor = 1.3;
+	/** Seconds between two checks of the selected units still known here. */
+	constexpr float SelectionPurgeInterval = 0.25f;
 
 	/** Width of the screen border that scrolls the camera, as a fraction of the viewport. */
 	constexpr double EdgeMargin = 0.01;
@@ -106,20 +113,84 @@ namespace UE::HeroesOfLiberty::Player
 		return Controllers;
 	}
 
-	/** Scripted checks (D264): a left click at a point of the viewport, without the desktop's mouse. */
+	/** Scripted checks (D264, D289): a left click at a point of the viewport, without the desktop's mouse. */
 	FAutoConsoleCommand ClickCommand(
 		TEXT("hol.Select.Click"),
-		TEXT("hol.Select.Click <X> <Y>: selects as a left click at that point of the viewport (0 to 1 each way) would"),
+		TEXT("hol.Select.Click <X> <Y> [add]: selects as a left click at that point of the viewport (0 to 1 each way) would; 'add' as with Shift"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)
 			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Click <X> <Y>"));
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Click <X> <Y> [add]"));
+				return;
+			}
+			const bool bAdd = Args.Num() >= 3 && Args[2] == TEXT("add");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])), bAdd);
+			}
+		}));
+
+	/** The same on one of the player's own units, wherever it is drawn: a script does not know where units stand on the screen. */
+	FAutoConsoleCommand ClickUnitCommand(
+		TEXT("hol.Select.ClickUnit"),
+		TEXT("hol.Select.ClickUnit <N> [add]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 N = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			const bool bAdd = Args.Num() >= 2 && Args[1] == TEXT("add");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				TArray<FHOLUnitView> Views;
+				HOLUnitView::Gather(*Controller->GetWorld(), Views);
+				Views.RemoveAll([PlayerState](const FHOLUnitView& View) { return !PlayerState || View.OwnerPlayer != PlayerState->GetPlayerIndex(); });
+				Views.Sort([](const FHOLUnitView& A, const FHOLUnitView& B) { return A.UnitId < B.UnitId; });
+				int32 SizeX = 0, SizeY = 0;
+				Controller->GetViewportSize(SizeX, SizeY);
+				FVector2D Middle;
+				if (!Views.IsValidIndex(N) || SizeX <= 0 || SizeY <= 0 || !Controller->ProjectWorldLocationToScreen(
+					Views[N].Location + FVector(0.0, 0.0, PickBodyHeight * 0.5 * Views[N].MeshScale), Middle))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickUnit: no own unit %d on the screen"), N);
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Click on unit #%u at (%.3f, %.3f)"), Views[N].UnitId, Middle.X / SizeX, Middle.Y / SizeY);
+				Controller->SelectAt(FVector2D(Middle.X / SizeX, Middle.Y / SizeY), bAdd);
+			}
+		}));
+
+	FAutoConsoleCommand BoxCommand(
+		TEXT("hol.Select.Box"),
+		TEXT("hol.Select.Box <X1> <Y1> <X2> <Y2> [add]: selects as a box drawn between those points of the viewport (0 to 1 each way) would; 'add' as with Shift"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 4)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Box <X1> <Y1> <X2> <Y2> [add]"));
+				return;
+			}
+			const bool bAdd = Args.Num() >= 5 && Args[4] == TEXT("add");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectInBox(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])),
+					FVector2D(FCString::Atod(*Args[2]), FCString::Atod(*Args[3])), bAdd);
+			}
+		}));
+
+	FAutoConsoleCommand OrderCommand(
+		TEXT("hol.Select.Order"),
+		TEXT("hol.Select.Order <X> <Y>: orders as a right click at that point of the viewport (0 to 1 each way) would"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Order <X> <Y>"));
 				return;
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				Controller->SelectAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])));
+				Controller->OrderAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])));
 			}
 		}));
 
@@ -130,7 +201,7 @@ namespace UE::HeroesOfLiberty::Player
 		{
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				UE_LOG(LogHOLMatch, Display, TEXT("Selection report: selected %s"), *Controller->DescribeBuilding(Controller->GetSelection()));
+				UE_LOG(LogHOLMatch, Display, TEXT("Selection report: selected %s"), *Controller->DescribeSelection());
 			}
 		}));
 
@@ -420,7 +491,17 @@ void AHOLPlayerController::SetupInputComponent()
 	}
 	if (const UInputAction* Select = LoadAction(TEXT("IA_Select")))
 	{
-		Input->BindAction(Select, ETriggerEvent::Started, this, &AHOLPlayerController::HandleSelect);
+		Input->BindAction(Select, ETriggerEvent::Started, this, &AHOLPlayerController::HandleSelectStarted);
+		Input->BindAction(Select, ETriggerEvent::Completed, this, &AHOLPlayerController::HandleSelectCompleted);
+	}
+	if (const UInputAction* SelectAdd = LoadAction(TEXT("IA_SelectAdd")))
+	{
+		Input->BindAction(SelectAdd, ETriggerEvent::Started, this, &AHOLPlayerController::HandleSelectAdd, true);
+		Input->BindAction(SelectAdd, ETriggerEvent::Completed, this, &AHOLPlayerController::HandleSelectAdd, false);
+	}
+	if (const UInputAction* Order = LoadAction(TEXT("IA_Order")))
+	{
+		Input->BindAction(Order, ETriggerEvent::Started, this, &AHOLPlayerController::HandleOrder);
 	}
 	if (const UInputAction* Deselect = LoadAction(TEXT("IA_Deselect")))
 	{
@@ -456,6 +537,13 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 		RTSCamera->Pan(KeyPan + GetEdgeScroll(), DeltaTime, UE::HeroesOfLiberty::Player::GetSpeedSetting());
 	}
 	KeyPan = FVector2D::ZeroVector;
+
+	SincePurge += DeltaTime;
+	if (SincePurge >= UE::HeroesOfLiberty::Player::SelectionPurgeInterval)
+	{
+		SincePurge = 0.f;
+		PurgeSelectedUnits();
+	}
 }
 
 void AHOLPlayerController::TryPlaceCamera()
@@ -558,20 +646,241 @@ AHOLBuilding* AHOLPlayerController::FindBuildingAt(const FVector2D& ViewportFrac
 	return Cast<AHOLBuilding>(Hit.GetActor());
 }
 
-void AHOLPlayerController::SelectAt(const FVector2D& ViewportFraction)
+FVector2D AHOLPlayerController::ToPixels(const FVector2D& ViewportFraction) const
 {
-	SetSelection(FindBuildingAt(ViewportFraction));
+	int32 SizeX = 0, SizeY = 0;
+	GetViewportSize(SizeX, SizeY);
+	return FVector2D(ViewportFraction.X * SizeX, ViewportFraction.Y * SizeY);
+}
+
+void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const
+{
+	using namespace UE::HeroesOfLiberty::Player;
+
+	OutCandidates.Reset();
+	OutUnitIds.Reset();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (bOwnOnly && !HOLPlayerState)
+	{
+		return;
+	}
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	GetPlayerViewPoint(CameraLocation, CameraRotation);
+	const FVector CameraRight = FRotationMatrix(CameraRotation).GetUnitAxis(EAxis::Y);
+
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	for (const FHOLUnitView& View : Views)
+	{
+		if (bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
+		{
+			continue;
+		}
+		// Feet, top of the head and one side of the body, as drawn: a unit behind the camera is not on the screen.
+		FHOLPickCandidate Candidate;
+		FVector2D Side;
+		const FVector Head = View.Location + FVector(0.0, 0.0, PickBodyHeight * View.MeshScale);
+		if (!ProjectWorldLocationToScreen(View.Location, Candidate.Foot) || !ProjectWorldLocationToScreen(Head, Candidate.Head)
+			|| !ProjectWorldLocationToScreen(View.Location + CameraRight * (View.Radius * PickWidthFactor), Side))
+		{
+			continue;
+		}
+		Candidate.HalfWidth = FVector2D::Distance(Candidate.Foot, Side);
+		Candidate.Depth = FVector::Distance(CameraLocation, View.Location);
+		OutCandidates.Add(Candidate);
+		OutUnitIds.Add(View.UnitId);
+	}
+}
+
+uint32 AHOLPlayerController::FindUnitAt(const FVector2D& ViewportFraction) const
+{
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<uint32> UnitIds;
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds);
+	const int32 Index = HOLUnitPicking::PickAt(Candidates, ToPixels(ViewportFraction));
+	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
+}
+
+TArray<uint32> AHOLPlayerController::GetOwnSelectedUnits() const
+{
+	TArray<uint32> Own;
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (SelectedUnits.IsEmpty() || !HOLPlayerState)
+	{
+		return Own;
+	}
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	for (const FHOLUnitView& View : Views)
+	{
+		if (View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && SelectedUnits.Contains(View.UnitId))
+		{
+			Own.Add(View.UnitId);
+		}
+	}
+	return Own;
+}
+
+void AHOLPlayerController::SelectAt(const FVector2D& ViewportFraction, const bool bAdd)
+{
+	// A unit before a building (D288): it stands in front of the building's base.
+	const uint32 UnitId = FindUnitAt(ViewportFraction);
+	if (UnitId == 0)
+	{
+		// Shift on nothing keeps the units taken so far.
+		if (!bAdd || SelectedUnits.IsEmpty())
+		{
+			SetSelection(FindBuildingAt(ViewportFraction));
+		}
+		return;
+	}
+	// Shift adds to the player's own units only: another player's unit is always selected alone.
+	const TArray<uint32> Own = GetOwnSelectedUnits();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	const FHOLUnitView* Unit = Views.FindByPredicate([UnitId](const FHOLUnitView& View) { return View.UnitId == UnitId; });
+	const bool bOwnUnit = Unit && HOLPlayerState && Unit->OwnerPlayer == HOLPlayerState->GetPlayerIndex();
+	if (!bAdd || !bOwnUnit || Own.Num() != SelectedUnits.Num())
+	{
+		SetUnitSelection({ UnitId });
+		return;
+	}
+	TArray<uint32> Units = SelectedUnits;
+	if (Units.Remove(UnitId) == 0)
+	{
+		Units.Add(UnitId);
+	}
+	SetUnitSelection(MoveTemp(Units));
+}
+
+void AHOLPlayerController::SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, const bool bAdd)
+{
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<uint32> UnitIds;
+	GatherPickCandidates(/*bOwnOnly*/ true, Candidates, UnitIds);
+	TArray<int32> Indices;
+	HOLUnitPicking::PickInBox(Candidates, ToPixels(CornerA), ToPixels(CornerB), Indices);
+	TArray<uint32> Boxed;
+	for (const int32 Index : Indices)
+	{
+		Boxed.Add(UnitIds[Index]);
+	}
+	// Shift adds to the player's own selected units, or removes the boxed ones when all of them already are.
+	if (!bAdd || SelectedUnits.IsEmpty() || GetOwnSelectedUnits().Num() != SelectedUnits.Num())
+	{
+		SetUnitSelection(MoveTemp(Boxed));
+		return;
+	}
+	TArray<uint32> Units = SelectedUnits;
+	const bool bAllSelected = !Boxed.IsEmpty() && !Boxed.ContainsByPredicate([&Units](const uint32 Id) { return !Units.Contains(Id); });
+	for (const uint32 Id : Boxed)
+	{
+		if (bAllSelected)
+		{
+			Units.Remove(Id);
+		}
+		else
+		{
+			Units.AddUnique(Id);
+		}
+	}
+	SetUnitSelection(MoveTemp(Units));
+}
+
+void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
+{
+	const FVector2D Pixels = ToPixels(ViewportFraction);
+	FVector Origin, Direction, Ground;
+	if (!RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
+	{
+		return;
+	}
+	const TArray<uint32> Own = GetOwnSelectedUnits();
+	if (!Own.IsEmpty())
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)"), Own.Num(), Ground.X, Ground.Y);
+		RequestMoveUnits(Own, Ground);
+		OnOrderGiven.Broadcast(Ground);
+	}
+	else if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		// A click on the building itself clears its rally point: the ground seen behind its roof is off its footprint.
+		const FVector Point = FindBuildingAt(ViewportFraction) == Building ? Building->GetActorLocation() : Ground;
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)"), *DescribeBuilding(Building), Point.X, Point.Y);
+		RequestRallyPoint(Point);
+		OnOrderGiven.Broadcast(Point);
+	}
 }
 
 void AHOLPlayerController::SetSelection(AHOLBuilding* Building)
 {
-	if (Selection.Get() == Building)
+	if (Selection.Get() == Building && SelectedUnits.IsEmpty())
 	{
 		return;
 	}
 	Selection = Building;
-	UE_LOG(LogHOLMatch, Display, TEXT("Selection: %s"), *DescribeBuilding(Building));
+	SelectedUnits.Reset();
+	BroadcastSelection();
+}
+
+void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
+{
+	if (UnitIds.IsEmpty())
+	{
+		SetSelection(nullptr);
+		return;
+	}
+	if (UnitIds.Num() > UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		UnitIds.SetNum(UE::HeroesOfLiberty::Player::MaxOrderedUnits);
+	}
+	if (!Selection.IsValid() && UnitIds == SelectedUnits)
+	{
+		return;
+	}
+	Selection = nullptr;
+	SelectedUnits = MoveTemp(UnitIds);
+	BroadcastSelection();
+}
+
+void AHOLPlayerController::BroadcastSelection()
+{
+	UE_LOG(LogHOLMatch, Display, TEXT("Selection: %s"), *DescribeSelection());
 	OnSelectionChanged.Broadcast();
+}
+
+void AHOLPlayerController::PurgeSelectedUnits()
+{
+	if (SelectedUnits.IsEmpty())
+	{
+		return;
+	}
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	TSet<uint32> Known;
+	for (const FHOLUnitView& View : Views)
+	{
+		Known.Add(View.UnitId);
+	}
+	TArray<uint32> Units = SelectedUnits;
+	if (Units.RemoveAll([&Known](const uint32 Id) { return !Known.Contains(Id); }) > 0)
+	{
+		SetUnitSelection(MoveTemp(Units));
+	}
+}
+
+bool AHOLPlayerController::GetSelectionBox(FVector2D& OutMin, FVector2D& OutMax) const
+{
+	FVector2D Cursor;
+	if (!bSelectPressed || !GetCursorFraction(Cursor) || !HOLUnitPicking::IsBox(ToPixels(SelectPressFraction), ToPixels(Cursor)))
+	{
+		return false;
+	}
+	OutMin = FVector2D(FMath::Min(SelectPressFraction.X, Cursor.X), FMath::Min(SelectPressFraction.Y, Cursor.Y));
+	OutMax = FVector2D(FMath::Max(SelectPressFraction.X, Cursor.X), FMath::Max(SelectPressFraction.Y, Cursor.Y));
+	return true;
 }
 
 AHOLPlayerState* AHOLPlayerController::GetHOLPlayerState() const
@@ -702,12 +1011,75 @@ FString AHOLPlayerController::DescribeBuilding(const AHOLBuilding* Building) con
 		bOwn ? TEXT("own") : TEXT("other"));
 }
 
-void AHOLPlayerController::HandleSelect()
+FString AHOLPlayerController::DescribeSelection() const
+{
+	if (SelectedUnits.IsEmpty())
+	{
+		return DescribeBuilding(Selection.Get());
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	Views.RemoveAll([this](const FHOLUnitView& View) { return !SelectedUnits.Contains(View.UnitId); });
+	if (Views.IsEmpty())
+	{
+		return TEXT("none");
+	}
+	const TCHAR* const OwnText = HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Views[0].OwnerPlayer ? TEXT("own") : TEXT("other");
+	if (Views.Num() == 1)
+	{
+		return FString::Printf(TEXT("%s #%u of slot %d (%s)"), *Views[0].TypeName.ToString(), Views[0].UnitId, Views[0].OwnerPlayer, OwnText);
+	}
+	// Several units are always the player's own.
+	TMap<FName, int32> PerType;
+	for (const FHOLUnitView& View : Views)
+	{
+		++PerType.FindOrAdd(View.TypeName);
+	}
+	PerType.KeySort(FNameLexicalLess());
+	TArray<FString> Types;
+	for (const TPair<FName, int32>& Type : PerType)
+	{
+		Types.Add(FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
+	}
+	return FString::Printf(TEXT("%d units (%s): %s"), Views.Num(), OwnText, *FString::Join(Types, TEXT(", ")));
+}
+
+void AHOLPlayerController::HandleSelectStarted()
+{
+	bSelectPressed = GetCursorFraction(SelectPressFraction);
+}
+
+void AHOLPlayerController::HandleSelectCompleted()
+{
+	// Resolved at the release: a press that moved past a few pixels drew a box (D288).
+	if (!bSelectPressed)
+	{
+		return;
+	}
+	bSelectPressed = false;
+	FVector2D Release;
+	if (GetCursorFraction(Release) && HOLUnitPicking::IsBox(ToPixels(SelectPressFraction), ToPixels(Release)))
+	{
+		SelectInBox(SelectPressFraction, Release, bSelectAddHeld);
+	}
+	else
+	{
+		SelectAt(SelectPressFraction, bSelectAddHeld);
+	}
+}
+
+void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
+{
+	bSelectAddHeld = bHeld;
+}
+
+void AHOLPlayerController::HandleOrder()
 {
 	FVector2D Cursor;
 	if (GetCursorFraction(Cursor))
 	{
-		SelectAt(Cursor);
+		OrderAt(Cursor);
 	}
 }
 

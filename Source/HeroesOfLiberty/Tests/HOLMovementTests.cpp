@@ -2,6 +2,7 @@
 
 #include "Algo/Reverse.h"
 #include "Misc/AutomationTest.h"
+#include "Player/HOLUnitPicking.h"
 #include "Simulation/HOLGroupMoveRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -133,6 +134,38 @@ bool FHOLMovementAssignTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("one unit, one slot"), SlotOfUnit.Num() == 1 && SlotOfUnit[0] != INDEX_NONE);
 	HOLGroupMove::AssignSlots(Line, TArray<FVector2D>{ Target }, SlotOfUnit);
 	TestEqual(TEXT("one slot for seven units: given once"), SlotOfUnit.FilterByPredicate([](int32 Slot) { return Slot != INDEX_NONE; }).Num(), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMovementPickingTest, "HeroesOfLiberty.Movement.Picking", UE::HeroesOfLiberty::Tests::Movement::Flags)
+bool FHOLMovementPickingTest::RunTest(const FString& Parameters)
+{
+	// Two units drawn 40 px tall, 10 px wide on each side; the second one in front of the first, overlapping it.
+	auto Unit = [](double X, double FootY, double Depth)
+	{
+		FHOLPickCandidate Candidate;
+		Candidate.Foot = FVector2D(X, FootY);
+		Candidate.Head = FVector2D(X, FootY - 40.);
+		Candidate.HalfWidth = 10.;
+		Candidate.Depth = Depth;
+		return Candidate;
+	};
+	const TArray<FHOLPickCandidate> Units = { Unit(100., 200., 3000.), Unit(108., 210., 2900.), Unit(400., 300., 2500.) };
+
+	TestEqual(TEXT("a click on the lone unit's body"), HOLUnitPicking::PickAt(Units, FVector2D(402., 280.)), 2);
+	TestEqual(TEXT("a click beside it: nothing"), HOLUnitPicking::PickAt(Units, FVector2D(430., 280.)), INDEX_NONE);
+	TestEqual(TEXT("a click above its head: nothing"), HOLUnitPicking::PickAt(Units, FVector2D(400., 240.)), INDEX_NONE);
+	TestEqual(TEXT("where two bodies overlap, the one in front"), HOLUnitPicking::PickAt(Units, FVector2D(104., 185.)), 1);
+	TestEqual(TEXT("the one behind where only it is drawn"), HOLUnitPicking::PickAt(Units, FVector2D(95., 162.)), 0);
+
+	TArray<int32> Boxed;
+	HOLUnitPicking::PickInBox(Units, FVector2D(150., 150.), FVector2D(50., 250.), Boxed);
+	TestTrue(TEXT("a box takes the two units whose middle is in it, corners in any order"), Boxed == TArray<int32>({ 0, 1 }));
+	HOLUnitPicking::PickInBox(Units, FVector2D(380., 285.), FVector2D(420., 320.), Boxed);
+	TestTrue(TEXT("a box over the feet only: the middle is out"), Boxed.Num() == 0);
+
+	TestFalse(TEXT("a press released 5 px away is a click"), HOLUnitPicking::IsBox(FVector2D(10., 10.), FVector2D(13., 14.)));
+	TestTrue(TEXT("released 7 px away, a box"), HOLUnitPicking::IsBox(FVector2D(10., 10.), FVector2D(17., 10.)));
 	return true;
 }
 

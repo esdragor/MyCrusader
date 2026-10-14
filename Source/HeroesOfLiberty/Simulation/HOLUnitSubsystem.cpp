@@ -571,6 +571,7 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Unit.Value.Entity))
 		{
 			View.Radius = Constants->Radius;
+			View.MeshScale = Constants->MeshScale;
 		}
 	}
 }

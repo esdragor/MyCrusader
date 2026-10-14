@@ -16,6 +16,8 @@ struct FHOLUnitView
 	FVector Location = FVector::ZeroVector;
 	/** Body radius (cm), from the type table. */
 	float Radius = 60.f;
+	/** Drawing scale of its mesh, from the type table: the selection aims at the body as drawn (D288). */
+	float MeshScale = 1.f;
 };
 
 namespace HOLUnitView

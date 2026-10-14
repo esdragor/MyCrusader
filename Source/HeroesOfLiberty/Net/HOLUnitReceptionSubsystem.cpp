@@ -401,6 +401,7 @@ void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnit
 		if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(View.TypeName) : nullptr)
 		{
 			View.Radius = Row->Radius;
+			View.MeshScale = Row->MeshScale;
 		}
 	}
 }
