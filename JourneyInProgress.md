@@ -31,12 +31,14 @@ vérifier sur S1 et S2.
 | D266 (listes déroulantes dans « Nouvelle partie ») et D267 (vérification rapide `quick_check.ps1`) | **fait** (2026-10-13) : tests 16/16, `quick_check.ps1` PASS en ~30 s |
 | J2.3 Sélection : canal, clic, Échap, cercle, survol | **fait** (2026-10-13) : tests 17/17 (`Buildings.Selection`), `quick_check.ps1` PASS avec la sélection à 2 et 8 joueurs (son centre, un centre adverse, le vide, Échap) |
 | J2.4 Vérification (D264) | **fait** (2026-10-14) : essai de l'utilisateur → cercle et survol retirés (D259, D262 précisées) ; tests 17/17, `quick_check.ps1` PASS |
-| J2.5 Clôture : D259 à D264 au GDD | à faire |
+| J2.5 Clôture : D259 à D264 au GDD | **fait** (2026-10-14) : D259 à D264 au § 21, paragraphe « Parcours J2 » au § 16.6. **J2 close.** |
 
 ## Prochaine étape exacte
 
-**J2.4 faite** (cercle et survol retirés à l'essai). Suite :
-1. **J2.5 Clôture** : D259 à D264 au GDD (§ 21) et paragraphe J2 au § 16.6, comme J1.
+**J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
+1. **M2.5 réseau** (serveur dédié dès M2.5, D231) : à planifier question par question ; M2 doit d'abord se clore
+   (reste S1 / S2 au repos sur 5.8.3, session serveur dédié). Puis **J3** : panneau du bâtiment (il montrera la
+   sélection, qui n'a plus de retour visuel) et production d'un Paysan.
 2. **En attente** : S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement (D258, D265) ; la session
    serveur dédié (M2) prend ces mesures.
 
@@ -429,3 +431,8 @@ du défilement au bord, `off` = vrai curseur), `hol.Delay <secondes> <commande>`
   supprimé. La sélection elle-même (clic, vide, Échap, journal) ne change pas.
 - Vérifications : compile sans avertissement ; `quick_check.ps1` PASS (17/17, 43 s) ; capture `sel_2p_own` relue (centre
   sélectionné, sans anneau ni teinte). **J2.4 faite.**
+
+### 2026-10-14 (suite) — J2.5 faite : J2 close
+
+- D259 à D264 reportées au journal du GDD (§ 21, entre D258 et D265), D259 et D262 avec leur précision d'essai ;
+  paragraphe « Parcours J2 » au § 16.6, après celui de J1. **J2 close.** Prochaine étape du parcours : M2.5 (réseau).
