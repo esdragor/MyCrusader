@@ -59,7 +59,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** : Paysans nés en bas du centre (D283 précisée) ; puis essai de l'utilisateur, S1 / S2 courts, partie à 2 clients dans `quick_check` (après M2.5.6).
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.4 faites** ; **J3.5 en cours** (reprise dans une nouvelle session) : (1) compiler l'échelle ×1,5 des unités (non compilée, non commitée : `MeshScale` dans `HOLUnitTypes.h`, `HOLInterpolatedInstancesProcessor.cpp`, `UnitTypes.csv`), refaire la table (`make_unit_types.py`), `quick_check`, capture des Paysans ; (2) S1 et S2 courts en fenêtre visible (rayon 40 → 60 cm : densité des foules changée ; feu vert de l'utilisateur) ; (3) confirmer avec l'utilisateur que le plantage du ramasse-miettes a disparu ; puis **J3.6** (D280 à D284 au GDD).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -882,3 +882,14 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 - Corrigé (`UPROPERTY(Transient)`) ; la partie production de `quick_check` force un passage du ramasse-miettes
   (`obj gc`) avant de produire. `quick_check` complet PASS en 40 s (dont production et la partie réseau à 2 clients de
   la session M2.5).
+
+### 2026-10-14 (fin de séance) — Taille des unités ; reprise
+
+- Essai à 2 clients (mené par la session M2.5) : retard de la barre de ressources (le `PlayerState` part à 1 mise à jour
+  par seconde) ; la session M2.5 ajoute `ForceNetUpdate` dans `AHOLPlayerState::SetResources` / `SetPopulation`.
+- L'utilisateur trouve les **Paysans minuscules** (comparaison avec une capture d'AoE4) : même zoom, mais bâtiment /
+  hauteur d'un villageois à l'écran ~9 dans AoE4 contre ~16 chez nous (unités à l'échelle réelle, plongée de 55° qui
+  écrase la hauteur). **Choix de l'utilisateur : unités ×1,5** (colonne `MeshScale` par type, rayon de corps agrandi
+  d'autant, marche ralentie du même facteur). Écartés : centre ramené à ~12 m en plus, plongée ~50° (revient sur D254),
+  rien. Code écrit, **pas encore compilé** (la session M2.5 occupait les DLL) : à compiler, refaire la table,
+  `quick_check`, puis S1 / S2 courts en fenêtre visible.
