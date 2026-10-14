@@ -19,7 +19,6 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 	FHOLNetUnitState State;
 	State.X = ReduceNetValue(Position.X, PositionStep, HorizontalBits);
 	State.Y = ReduceNetValue(Position.Y, PositionStep, HorizontalBits);
-	State.Z = ReduceNetValue(Position.Z, PositionStep, HeightBits);
 	State.VelocityX = ReduceNetValue(Velocity.X, VelocityStep, VelocityBits);
 	State.VelocityY = ReduceNetValue(Velocity.Y, VelocityStep, VelocityBits);
 	State.Activity = Activity;
@@ -29,7 +28,7 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 
 FVector FHOLNetUnitState::GetPosition() const
 {
-	return FVector(X, Y, Z) * PositionStep;
+	return FVector(X, Y, 0.0) * PositionStep;
 }
 
 FVector FHOLNetUnitState::GetVelocity() const
@@ -61,7 +60,7 @@ EHOLUnitSendReason HOLUnitReplication::GetSendReason(const FHOLUnitSentRecord& S
 	}
 	const int64 Elapsed = Step - Sent.Step;
 	const FVector Predicted = PredictPosition(Sent.State, static_cast<double>(Elapsed), StepSeconds);
-	if (FVector::DistSquared(Predicted, Position) > FMath::Square(Rules.ErrorThreshold))
+	if (FVector::DistSquared2D(Predicted, Position) > FMath::Square(Rules.ErrorThreshold))
 	{
 		return EHOLUnitSendReason::Error;
 	}

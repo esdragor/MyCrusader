@@ -24,6 +24,8 @@ struct HEROESOFLIBERTY_API FHOLNetUnitDisplayFragment : public FMassFragment
 	FHOLNetUnitState State;
 	int64 StateStep = 0;
 	FHOLDisplayCorrection Correction;
+	/** Height (cm) of the ground under State's position, found by the client (D301: the height is not sent). */
+	double GroundZ = 0.0;
 	/** Horizontal velocity of State, for the walk animation (D234). */
 	FVector Velocity = FVector::ZeroVector;
 	/** Facing (deg), turned towards the velocity: the orientation is not sent. */
@@ -33,7 +35,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitDisplayFragment : public FMassFragment
 	FVector GetDisplayedPosition(const double ClockStep, const double LocalSeconds, const float StepSeconds) const
 	{
 		const double Elapsed = FMath::Clamp(ClockStep - static_cast<double>(StateStep), -MaxPredictionSeconds / StepSeconds, MaxPredictionSeconds / StepSeconds);
-		return HOLUnitReplication::PredictPosition(State, Elapsed, StepSeconds) + Correction.GetOffset(LocalSeconds);
+		return HOLUnitReplication::PredictPosition(State, Elapsed, StepSeconds) + FVector(0.0, 0.0, GroundZ) + Correction.GetOffset(LocalSeconds);
 	}
 };
 

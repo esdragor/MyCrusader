@@ -7,7 +7,7 @@
 
 /**
  * Element format of the unit replication (D270): Iris writes an FHOLNetUnitState in the exact bit widths it declares,
- * 71 bits, instead of 16 bits per integer.
+ * 59 bits (D301), instead of 16 bits per integer.
  */
 USTRUCT()
 struct FHOLNetUnitStateNetSerializerConfig : public FNetSerializerConfig

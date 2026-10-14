@@ -68,6 +68,10 @@ private:
 	void CreateEntities(TConstArrayView<int32> SlotIndices, double Now);
 	/** A new state for a displayed unit: the gap to where it is drawn becomes a fading correction (D271). */
 	void ApplyState(FSlot& Slot, double Now);
+	/** Height (cm) of the ground at Position's horizontal position (D301), Fallback where there is none. */
+	double GetGroundHeight(const FVector& Position, double Fallback) const;
+	/** The ground is looked for between these heights (cm), the range the 12 bits of height used to cover. */
+	static constexpr double GroundTraceHalfHeight = 20000.0;
 	/** S5 (D273): logs where the sampled units are displayed now, to compare with the server's true positions. */
 	void LogSample(double Now) const;
 

@@ -324,6 +324,7 @@ void UHOLUnitReceptionSubsystem::CreateEntities(const TConstArrayView<int32> Slo
 			Display.State = Slot.State;
 			Display.StateStep = HOLUnitReplication::UnwrapStep(Slot.State.Step, FMath::RoundToInt64(ClockStep));
 			Display.Velocity = Slot.State.GetVelocity();
+			Display.GroundZ = GetGroundHeight(Slot.State.GetPosition(), 0.0);
 			Display.Yaw = Display.Velocity.SizeSquared2D() > 1.f ? FMath::RadiansToDegrees(FMath::Atan2(Display.Velocity.Y, Display.Velocity.X)) : 0.f;
 
 			const FTransform Drawn(FRotator(0.f, Display.Yaw, 0.f), Display.GetDisplayedPosition(ClockStep, Now, StepSeconds));
@@ -351,6 +352,7 @@ void UHOLUnitReceptionSubsystem::ApplyState(FSlot& Slot, const double Now)
 	Display.State = Slot.State;
 	Display.StateStep = HOLUnitReplication::UnwrapStep(Slot.State.Step, FMath::RoundToInt64(ClockStep));
 	Display.Velocity = Slot.State.GetVelocity();
+	Display.GroundZ = GetGroundHeight(Slot.State.GetPosition(), Display.GroundZ);
 	Display.Correction = FHOLDisplayCorrection();
 	const FVector Predicted = Display.GetDisplayedPosition(ClockStep, Now, StepSeconds);
 	Display.Correction.Start(Displayed, Predicted, Now);
@@ -368,6 +370,22 @@ void UHOLUnitReceptionSubsystem::ApplyState(FSlot& Slot, const double Now)
 		Stats.TotalCorrectionCm += Gap;
 		Stats.MaxCorrectionCm = FMath::Max(Stats.MaxCorrectionCm, Gap);
 	}
+}
+
+double UHOLUnitReceptionSubsystem::GetGroundHeight(const FVector& Position, const double Fallback) const
+{
+	// The lowest static surface under the unit: a unit walks under a tree's crown (the grove of Plain), never on it. An
+	// object type query reports every surface along the ray, not only the first one.
+	TArray<FHitResult> Hits;
+	const FCollisionQueryParams Params(SCENE_QUERY_STAT(HOLUnitGround), false);
+	GetWorld()->LineTraceMultiByObjectType(Hits, FVector(Position.X, Position.Y, GroundTraceHalfHeight),
+		FVector(Position.X, Position.Y, -GroundTraceHalfHeight), FCollisionObjectQueryParams(ECC_WorldStatic), Params);
+	double Height = TNumericLimits<double>::Max();
+	for (const FHitResult& Hit : Hits)
+	{
+		Height = FMath::Min(Height, Hit.ImpactPoint.Z);
+	}
+	return Hits.Num() > 0 ? Height : Fallback;
 }
 
 FString UHOLUnitReceptionSubsystem::MakeReport() const

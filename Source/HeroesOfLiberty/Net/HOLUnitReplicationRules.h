@@ -15,8 +15,10 @@
 
 /**
  * State of one unit as sent (D269, D270), in the integers the element format writes with the exact bit widths below
- * (FHOLNetUnitStateNetSerializer). Only the horizontal velocity is sent: units walk on the navmesh, their height follows
- * the ground, and a height that drifts on a slope is caught by the send rule like any other error.
+ * (FHOLNetUnitStateNetSerializer). Horizontal only (D301): units walk on the ground, the client puts them on it itself
+ * (UHOLUnitReceptionSubsystem::GetGroundHeight), so neither their height nor a vertical velocity is sent, and the send
+ * rule measures the horizontal error. (Units standing on ramparts, D23, will need a bit "off the ground" and their
+ * height.)
  */
 USTRUCT()
 struct HEROESOFLIBERTY_API FHOLNetUnitState
@@ -30,21 +32,17 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 
 	/** X and Y: +-1 638 m around the map's origin. */
 	static constexpr int32 HorizontalBits = 15;
-	/** Z: +-204 m. */
-	static constexpr int32 HeightBits = 12;
 	/** Horizontal velocity, per axis: +-12.8 m/s (a walking unit goes at 3 m/s). */
 	static constexpr int32 VelocityBits = 9;
 	static constexpr int32 ActivityBits = 3;
 	/** Low bits of the step the state was taken at: 256 steps, 12.8 s at 20 Hz, unwrapped by the client (UnwrapStep). */
 	static constexpr int32 StepBits = 8;
-	static constexpr int32 TotalBits = 2 * HorizontalBits + HeightBits + 2 * VelocityBits + ActivityBits + StepBits;
+	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits;
 
 	UPROPERTY()
 	int16 X = 0;
 	UPROPERTY()
 	int16 Y = 0;
-	UPROPERTY()
-	int16 Z = 0;
 	UPROPERTY()
 	int16 VelocityX = 0;
 	UPROPERTY()
@@ -58,8 +56,8 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step);
 
+	/** Z = 0 for both, see above. */
 	FVector GetPosition() const;
-	/** Z = 0, see above. */
 	FVector GetVelocity() const;
 
 	bool operator==(const FHOLNetUnitState& Other) const = default;

@@ -23,7 +23,6 @@ struct FHOLNetUnitStateNetSerializer
 	{
 		int16 X;
 		int16 Y;
-		int16 Z;
 		int16 VelocityX;
 		int16 VelocityY;
 		uint8 Activity;
@@ -121,7 +120,6 @@ void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context,
 	FNetBitStreamWriter& Writer = *Context.GetBitStreamWriter();
 	WriteSigned(Writer, State.X, SourceType::HorizontalBits);
 	WriteSigned(Writer, State.Y, SourceType::HorizontalBits);
-	WriteSigned(Writer, State.Z, SourceType::HeightBits);
 	WriteSigned(Writer, State.VelocityX, SourceType::VelocityBits);
 	WriteSigned(Writer, State.VelocityY, SourceType::VelocityBits);
 	Writer.WriteBits(State.Activity, SourceType::ActivityBits);
@@ -137,7 +135,6 @@ void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Contex
 	QuantizedType& State = *reinterpret_cast<QuantizedType*>(Args.Target);
 	State.X = ReadSigned(Reader, SourceType::HorizontalBits);
 	State.Y = ReadSigned(Reader, SourceType::HorizontalBits);
-	State.Z = ReadSigned(Reader, SourceType::HeightBits);
 	State.VelocityX = ReadSigned(Reader, SourceType::VelocityBits);
 	State.VelocityY = ReadSigned(Reader, SourceType::VelocityBits);
 	State.Activity = static_cast<uint8>(Reader.ReadBits(SourceType::ActivityBits));
@@ -150,7 +147,6 @@ void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, 
 	QuantizedType& Target = *reinterpret_cast<QuantizedType*>(Args.Target);
 	Target.X = Source.X;
 	Target.Y = Source.Y;
-	Target.Z = Source.Z;
 	Target.VelocityX = Source.VelocityX;
 	Target.VelocityY = Source.VelocityY;
 	Target.Activity = static_cast<uint8>(Source.Activity);
@@ -163,7 +159,6 @@ void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context
 	SourceType& Target = *reinterpret_cast<SourceType*>(Args.Target);
 	Target.X = Source.X;
 	Target.Y = Source.Y;
-	Target.Z = Source.Z;
 	Target.VelocityX = Source.VelocityX;
 	Target.VelocityY = Source.VelocityY;
 	Target.Activity = static_cast<EHOLUnitActivity>(Source.Activity);
@@ -176,7 +171,7 @@ bool FHOLNetUnitStateNetSerializer::IsEqual(FNetSerializationContext& Context, c
 	{
 		const QuantizedType& A = *reinterpret_cast<const QuantizedType*>(Args.Source0);
 		const QuantizedType& B = *reinterpret_cast<const QuantizedType*>(Args.Source1);
-		return A.X == B.X && A.Y == B.Y && A.Z == B.Z && A.VelocityX == B.VelocityX && A.VelocityY == B.VelocityY
+		return A.X == B.X && A.Y == B.Y && A.VelocityX == B.VelocityX && A.VelocityY == B.VelocityY
 			&& A.Activity == B.Activity && A.Step == B.Step;
 	}
 	return *reinterpret_cast<const SourceType*>(Args.Source0) == *reinterpret_cast<const SourceType*>(Args.Source1);
@@ -187,7 +182,7 @@ bool FHOLNetUnitStateNetSerializer::Validate(FNetSerializationContext& Context, 
 	// FHOLNetUnitState::Make holds every value in its range; a state built otherwise would be cut on the wire.
 	const SourceType& State = *reinterpret_cast<const SourceType*>(Args.Source);
 	return FitsIn(State.X, SourceType::HorizontalBits) && FitsIn(State.Y, SourceType::HorizontalBits)
-		&& FitsIn(State.Z, SourceType::HeightBits) && FitsIn(State.VelocityX, SourceType::VelocityBits)
+		&& FitsIn(State.VelocityX, SourceType::VelocityBits)
 		&& FitsIn(State.VelocityY, SourceType::VelocityBits)
 		&& static_cast<uint32>(State.Activity) < (1U << SourceType::ActivityBits);
 }

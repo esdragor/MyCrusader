@@ -29,14 +29,14 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("71 bits per state (~9 bytes)"), FHOLNetUnitState::TotalBits, 71);
+	TestEqual(TEXT("59 bits per state (~7.4 bytes, D301)"), FHOLNetUnitState::TotalBits, 59);
 
 	const FVector Position(12345.6, -9876.5, 123.4);
 	const FVector Velocity(212.3, -147.9, 35.0);
 	const FHOLNetUnitState State = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000);
 	const FVector Back = State.GetPosition();
-	TestTrue(TEXT("position within half a step per axis"),
-		FMath::Abs(Back.X - Position.X) <= 5.0 && FMath::Abs(Back.Y - Position.Y) <= 5.0 && FMath::Abs(Back.Z - Position.Z) <= 5.0);
+	TestTrue(TEXT("position within half a step per axis"), FMath::Abs(Back.X - Position.X) <= 5.0 && FMath::Abs(Back.Y - Position.Y) <= 5.0);
+	TestEqual(TEXT("no height: the client puts the unit on the ground (D301)"), Back.Z, 0.0);
 	const FVector BackVelocity = State.GetVelocity();
 	TestTrue(TEXT("horizontal velocity within half a step"),
 		FMath::Abs(BackVelocity.X - Velocity.X) <= 2.5 && FMath::Abs(BackVelocity.Y - Velocity.Y) <= 2.5);
@@ -48,7 +48,6 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	const FHOLNetUnitState Far = FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Idle, 0);
 	TestEqual(TEXT("X held at the range's edge"), static_cast<int32>(Far.X), (1 << (FHOLNetUnitState::HorizontalBits - 1)) - 1);
 	TestEqual(TEXT("Y held at the range's edge"), static_cast<int32>(Far.Y), -(1 << (FHOLNetUnitState::HorizontalBits - 1)));
-	TestEqual(TEXT("Z held at the range's edge"), static_cast<int32>(Far.Z), (1 << (FHOLNetUnitState::HeightBits - 1)) - 1);
 	TestEqual(TEXT("velocity held at the range's edge"), static_cast<int32>(Far.VelocityX), (1 << (FHOLNetUnitState::VelocityBits - 1)) - 1);
 	TestTrue(TEXT("the 400 m maps fit"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep > 25000.f);
 	return true;
@@ -97,7 +96,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("71 bits on the wire"), Writer.GetPosBits(), static_cast<uint32>(FHOLNetUnitState::TotalBits));
+		TestEqual(TEXT("59 bits on the wire"), Writer.GetPosBits(), static_cast<uint32>(FHOLNetUnitState::TotalBits));
 
 		FNetBitStreamReader Reader;
 		Reader.InitBits(Buffer, Writer.GetPosBits());
@@ -140,9 +139,9 @@ bool FHOLNetPredictionTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::Net;
 	const FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(1000.0, 2000.0, 50.0), FVector(300.0, -100.0, 0.0), EHOLUnitActivity::Moving, 0);
-	TestEqual(TEXT("at the state's step"), HOLUnitReplication::PredictPosition(State, 0.0, StepSeconds), FVector(1000.0, 2000.0, 50.0));
-	TestEqual(TEXT("one second later, in a straight line"), HOLUnitReplication::PredictPosition(State, 20.0, StepSeconds), FVector(1300.0, 1900.0, 50.0));
-	TestEqual(TEXT("between two steps"), HOLUnitReplication::PredictPosition(State, 2.5, StepSeconds), FVector(1037.5, 1987.5, 50.0));
+	TestEqual(TEXT("at the state's step"), HOLUnitReplication::PredictPosition(State, 0.0, StepSeconds), FVector(1000.0, 2000.0, 0.0));
+	TestEqual(TEXT("one second later, in a straight line"), HOLUnitReplication::PredictPosition(State, 20.0, StepSeconds), FVector(1300.0, 1900.0, 0.0));
+	TestEqual(TEXT("between two steps"), HOLUnitReplication::PredictPosition(State, 2.5, StepSeconds), FVector(1037.5, 1987.5, 0.0));
 	return true;
 }
 
@@ -174,7 +173,7 @@ bool FHOLNetSendRuleTest::RunTest(const FString& Parameters)
 	const double Past = Rules.ErrorThreshold + 5.0;
 	TestEqual(TEXT("pushed under the threshold: nothing"), GetSendReason(Resting, Rest + FVector(Under, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
 	TestEqual(TEXT("pushed past the threshold"), GetSendReason(Resting, Rest + FVector(Past, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
-	TestEqual(TEXT("height drifted past the threshold"), GetSendReason(Resting, Rest + FVector(0.0, 0.0, Past), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
+	TestEqual(TEXT("height changed: nothing, the client finds the ground (D301)"), GetSendReason(Resting, Rest + FVector(0.0, 0.0, Past), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
 
 	// Walking in a straight line: the client's prediction holds, only the refresh sends.
 	const FVector Velocity(300.0, 120.0, 0.0);
@@ -313,6 +312,9 @@ bool FHOLNetDisplayedPositionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("half a second after the state"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1150.0, 0.0, 0.0));
 	TestEqual(TEXT("a lost state is not walked on past 3 s"), Display.GetDisplayedPosition(200.0, 0.0, StepSeconds),
 		FVector(1000.0 + 300.0 * FHOLNetUnitDisplayFragment::MaxPredictionSeconds, 0.0, 0.0));
+	Display.GroundZ = 50.0;
+	TestEqual(TEXT("on the ground the client found (D301)"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1150.0, 0.0, 50.0));
+	Display.GroundZ = 0.0;
 
 	// A new state 20 cm behind where the unit is drawn: drawn where it was, then the gap fades out.
 	const FVector Drawn = Display.GetDisplayedPosition(110.0, 5.0, StepSeconds);

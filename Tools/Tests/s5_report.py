@@ -17,6 +17,8 @@ import sys
 from datetime import datetime
 
 STEP_SECONDS = 0.05
+# Bits of one unit state on the wire (FHOLNetUnitState::TotalBits: 59 since D301, the height is no longer sent).
+STATE_BITS = 59
 
 
 def log_time(line):
@@ -146,7 +148,7 @@ def main(arguments):
         " / ".join("%.0f" % mean(column) for column in zip(*packets)), sum(per_client_out)))
     if wire_states:
         # Serializations of the server, rolled back ones included (an object that overflows a packet is written again).
-        payload = mean(wire_states) * 71 / 8
+        payload = mean(wire_states) * STATE_BITS / 8
         print("  Server: %.0f states serialized per client and per second (%.0f B/s if all were sent), %.0f B/s of the rest" % (
             mean(wire_states), payload, mean(per_client_out) - payload))
 
@@ -196,7 +198,7 @@ def main(arguments):
             "%.1f" % min(low_fps) if low_fps else "?", mean(corrections), snaps))
         if read_states:
             # The states that really arrived: their own bits, and the rest of what was received.
-            payload = mean(read_states) * 71 / 8
+            payload = mean(read_states) * STATE_BITS / 8
             print("  Client %d: %.0f states read off the wire per second, %.0f B/s of states, %.0f B/s of the rest" % (
                 index, mean(read_states), payload, (mean(in_bytes) if in_bytes else float("nan")) - payload))
         print("  Client %d: displayed error %.1f cm on average, median %.1f, 95 %% %.1f, max %.1f (%d positions)" % (
