@@ -13,6 +13,8 @@
 #include "MassEntityTemplate.h"
 #include "MassEntityUtils.h"
 #include "Net/HOLNetUnitDisplay.h"
+#include "Net/HOLNetUnitStateNetSerializer.h"
+#include "Net/HOLUnitReplicationSettings.h"
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -46,6 +48,7 @@ void UHOLUnitReceptionSubsystem::Deinitialize()
 {
 	bActive = false;
 	Slots.Reset();
+	Chunks.Reset();
 	NumDisplayed = 0;
 	Super::Deinitialize();
 }
@@ -59,11 +62,55 @@ void UHOLUnitReceptionSubsystem::ResetStats()
 {
 	Stats = FStats();
 	Stats.StartSeconds = FPlatformTime::Seconds();
+	const UNetDriver* NetDriver = GetWorld() ? GetWorld()->GetNetDriver() : nullptr;
+	const UNetConnection* Connection = NetDriver ? NetDriver->ServerConnection.Get() : nullptr;
+	Stats.InTotalBytes = Connection ? Connection->InTotalBytes : 0;
+	Stats.DeserializedStates = UE::HeroesOfLiberty::Net::GetNumDeserializedUnitStates();
+}
+
+void UHOLUnitReceptionSubsystem::AddChunk(AHOLUnitChunk* Chunk)
+{
+	const int32 ChunkIndex = Chunk->GetChunkIndex();
+	if (ChunkIndex < 0)
+	{
+		UE_LOG(LogHOLNet, Error, TEXT("Unit chunk %s arrived without its index"), *Chunk->GetName());
+		return;
+	}
+	if (Chunks.Num() <= ChunkIndex)
+	{
+		Chunks.SetNum(ChunkIndex + 1);
+	}
+	Chunks[ChunkIndex] = Chunk;
+}
+
+void UHOLUnitReceptionSubsystem::RemoveChunk(const AHOLUnitChunk* Chunk)
+{
+	// Its units stay displayed with their last state until the slots are read again (a chunk leaves with the match).
+	if (Chunks.IsValidIndex(Chunk->GetChunkIndex()) && Chunks[Chunk->GetChunkIndex()] == Chunk)
+	{
+		Chunks[Chunk->GetChunkIndex()] = nullptr;
+	}
 }
 
 void UHOLUnitReceptionSubsystem::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	const double Now = FPlatformTime::Seconds();
+	if (Stats.FrameSeconds.Num() < MaxFrames)
+	{
+		Stats.FrameSeconds.Add(DeltaTime);
+	}
+	const float ReportInterval = UE::HeroesOfLiberty::Net::ReportInterval;
+	if (ReportInterval > 0.f && Now - LastReportSeconds >= ReportInterval)
+	{
+		LastReportSeconds = Now;
+		if (Replicator.IsValid())
+		{
+			UE_LOG(LogHOLNet, Display, TEXT("%s"), *MakeReport());
+		}
+		ResetStats();
+	}
 
 	if (!Replicator.IsValid())
 	{
@@ -76,11 +123,37 @@ void UHOLUnitReceptionSubsystem::Tick(const float DeltaTime)
 			return;
 		}
 	}
-	const double Now = FPlatformTime::Seconds();
 	ReadClock(Now);
 	if (Clock.IsValid())
 	{
 		ReadSlots(Now);
+		if (UE::HeroesOfLiberty::Net::SampleEvery > 0 && Now - LastSampleSeconds >= 0.25)
+		{
+			LastSampleSeconds = Now;
+			LogSample(Now);
+		}
+	}
+}
+
+void UHOLUnitReceptionSubsystem::LogSample(const double Now) const
+{
+	const FMassEntityManager& EntityManager = GetWorld()->GetSubsystem<UMassEntitySubsystem>()->GetEntityManager();
+	const int32 SampleEvery = UE::HeroesOfLiberty::Net::SampleEvery;
+	const double ClockStep = Clock.GetStep(Now);
+	FString Sample;
+	for (const FSlot& Slot : Slots)
+	{
+		if (Slot.UnitId != 0 && Slot.UnitId % SampleEvery == 0 && Slot.Entity.IsSet())
+		{
+			// The position UHOLNetUnitDisplayProcessor draws at this instant.
+			const FHOLNetUnitDisplayFragment& Display = EntityManager.GetFragmentDataChecked<FHOLNetUnitDisplayFragment>(Slot.Entity);
+			const FVector Position = Display.GetDisplayedPosition(ClockStep, Now, StepSeconds);
+			Sample += FString::Printf(TEXT(" %u:%.0f,%.0f"), Slot.UnitId, Position.X, Position.Y);
+		}
+	}
+	if (!Sample.IsEmpty())
+	{
+		UE_LOG(LogHOLNet, Display, TEXT("NetSample client t=%.4f clock=%.2f%s"), Now, ClockStep, *Sample);
 	}
 }
 
@@ -110,23 +183,23 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 
 	TArray<int32> Arrivals;
 	TArray<FMassEntityHandle> Departures;
-	for (const UHOLUnitChunk* Chunk : Replicator->GetChunks())
+	for (const TWeakObjectPtr<AHOLUnitChunk>& ChunkPtr : Chunks)
 	{
-		if (Chunk == nullptr || Chunk->GetChunkIndex() == INDEX_NONE
-			|| Chunk->GetIdentities().Num() != UHOLUnitChunk::NumSlots || Chunk->GetStates().Num() != UHOLUnitChunk::NumSlots)
+		const AHOLUnitChunk* Chunk = ChunkPtr.Get();
+		if (Chunk == nullptr || !Chunk->HasAllSlots())
 		{
 			continue;
 		}
-		const int32 FirstSlot = Chunk->GetChunkIndex() * UHOLUnitChunk::NumSlots;
-		if (Slots.Num() < FirstSlot + UHOLUnitChunk::NumSlots)
+		const int32 FirstSlot = Chunk->GetChunkIndex() * AHOLUnitChunk::NumSlots;
+		if (Slots.Num() < FirstSlot + AHOLUnitChunk::NumSlots)
 		{
-			Slots.SetNum(FirstSlot + UHOLUnitChunk::NumSlots);
+			Slots.SetNum(FirstSlot + AHOLUnitChunk::NumSlots);
 		}
-		for (int32 Index = 0; Index < UHOLUnitChunk::NumSlots; ++Index)
+		for (int32 Index = 0; Index < AHOLUnitChunk::NumSlots; ++Index)
 		{
 			FSlot& Slot = Slots[FirstSlot + Index];
-			const FHOLNetUnitIdentityItem& Identity = Chunk->GetIdentities()[Index];
-			const FHOLNetUnitState& State = Chunk->GetStates()[Index].State;
+			const FHOLNetUnitIdentityItem& Identity = Chunk->GetIdentity(Index);
+			const FHOLNetUnitState& State = Chunk->GetState(Index);
 			if (Identity.UnitId != Slot.UnitId)
 			{
 				// The slot changed hands: the old unit leaves, the new one (if any) arrives with the slot's state.
@@ -272,8 +345,33 @@ FString UHOLUnitReceptionSubsystem::MakeReport() const
 {
 	const double Seconds = FMath::Max(FPlatformTime::Seconds() - Stats.StartSeconds, 1.0e-3);
 	const double ClockStep = Clock.IsValid() ? Clock.GetStep(FPlatformTime::Seconds()) : 0.0;
-	return FString::Printf(TEXT("Net (display): %d units displayed (+%d -%d), %.0f states per second, correction mean %.1f cm max %.1f cm, %d snaps; clock %.1f steps ahead of the last step received"),
-		NumDisplayed, Stats.NumArrivals, Stats.NumDepartures, Stats.NumStates / Seconds,
+
+	// Received bytes averaged over the report's span (InBytesPerSecond is the last second only).
+	const UNetDriver* NetDriver = GetWorld()->GetNetDriver();
+	const UNetConnection* Connection = NetDriver ? NetDriver->ServerConnection.Get() : nullptr;
+	const double InBytesPerSecond = Connection ? (Connection->InTotalBytes - Stats.InTotalBytes) / Seconds : -1.0;
+	// States really read off the wire (a state rewritten twice between two updates is read once).
+	const double WireStates = (UE::HeroesOfLiberty::Net::GetNumDeserializedUnitStates() - Stats.DeserializedStates) / Seconds;
+
+	// Frame rate: the mean, and the 1 % low (mean of the slowest 1 % of the frames), as in the stress test's report.
+	double TotalFrameSeconds = 0.0;
+	for (const float FrameSeconds : Stats.FrameSeconds)
+	{
+		TotalFrameSeconds += FrameSeconds;
+	}
+	TArray<float> SlowestFirst = Stats.FrameSeconds;
+	SlowestFirst.Sort(TGreater<float>());
+	const int32 NumSlowest = FMath::Max(1, SlowestFirst.Num() / 100);
+	double SlowestSeconds = 0.0;
+	for (int32 Index = 0; Index < NumSlowest && Index < SlowestFirst.Num(); ++Index)
+	{
+		SlowestSeconds += SlowestFirst[Index];
+	}
+	const double MeanFps = TotalFrameSeconds > 0.0 ? Stats.FrameSeconds.Num() / TotalFrameSeconds : 0.0;
+	const double LowFps = SlowestSeconds > 0.0 ? NumSlowest / SlowestSeconds : 0.0;
+
+	return FString::Printf(TEXT("Net (display): %d units displayed (+%d -%d), %.0f states per second (%.0f read off the wire), correction mean %.1f cm max %.1f cm, %d snaps; clock %.1f steps ahead of the last step received; in %.0f B/s; %.1f fps (1%% low %.1f)"),
+		NumDisplayed, Stats.NumArrivals, Stats.NumDepartures, Stats.NumStates / Seconds, WireStates,
 		Stats.NumCorrections > 0 ? Stats.TotalCorrectionCm / Stats.NumCorrections : 0.0, Stats.MaxCorrectionCm, Stats.NumSnaps,
-		ClockStep - LastServerStep);
+		ClockStep - LastServerStep, InBytesPerSecond, MeanFps, LowFps);
 }

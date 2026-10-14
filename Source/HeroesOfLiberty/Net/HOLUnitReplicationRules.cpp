@@ -77,20 +77,34 @@ void FHOLServerClock::Reset(const float InStepSeconds)
 {
 	StepSeconds = InStepSeconds;
 	Offset = 0.0;
+	NumFarLateSamples = 0;
 	bValid = false;
 }
 
 void FHOLServerClock::AddSample(const int64 ServerStep, const double LocalSeconds, const double OneWaySeconds)
 {
+	// Offsets are local time minus server time: a later sample has a larger offset.
 	const double SampleOffset = LocalSeconds - (static_cast<double>(ServerStep) * StepSeconds + OneWaySeconds);
-	if (!bValid || FMath::Abs(SampleOffset - Offset) > SnapSeconds)
+	const double Gap = SampleOffset - Offset;
+	if (Gap > SnapSeconds && bValid)
+	{
+		// Far later: a hitch delayed it, unless it lasts.
+		if (++NumFarLateSamples >= LateSamplesToFollow)
+		{
+			Offset = SampleOffset;
+			NumFarLateSamples = 0;
+		}
+		return;
+	}
+	NumFarLateSamples = 0;
+	if (!bValid || Gap < -SnapSeconds)
 	{
 		Offset = SampleOffset;
 		bValid = true;
 	}
 	else
 	{
-		Offset += (SampleOffset - Offset) * Blend;
+		Offset += Gap * Blend;
 	}
 }
 

@@ -8,6 +8,8 @@
 #include "Iris/Serialization/NetSerializerDelegates.h"
 #include "Net/HOLUnitReplicationRules.h"
 
+#include <atomic>
+
 namespace UE::Net
 {
 
@@ -74,8 +76,16 @@ UE_NET_IMPLEMENT_SERIALIZER(FHOLNetUnitStateNetSerializer);
 
 FHOLNetUnitStateNetSerializer::FNetSerializerRegistryDelegates FHOLNetUnitStateNetSerializer::NetSerializerRegistryDelegates;
 
+namespace HOLNetUnitState
+{
+	/** Iris may serialize for several connections in parallel. */
+	std::atomic<int64> NumSerialized = 0;
+	std::atomic<int64> NumDeserialized = 0;
+}
+
 void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context, const FNetSerializeArgs& Args)
 {
+	HOLNetUnitState::NumSerialized.fetch_add(1, std::memory_order_relaxed);
 	const QuantizedType& State = *reinterpret_cast<const QuantizedType*>(Args.Source);
 	FNetBitStreamWriter& Writer = *Context.GetBitStreamWriter();
 	WriteSigned(Writer, State.X, SourceType::HorizontalBits);
@@ -89,6 +99,7 @@ void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context,
 
 void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Context, const FNetDeserializeArgs& Args)
 {
+	HOLNetUnitState::NumDeserialized.fetch_add(1, std::memory_order_relaxed);
 	FNetBitStreamReader& Reader = *Context.GetBitStreamReader();
 	QuantizedType& State = *reinterpret_cast<QuantizedType*>(Args.Target);
 	State.X = ReadSigned(Reader, SourceType::HorizontalBits);
@@ -161,4 +172,14 @@ void FHOLNetUnitStateNetSerializer::FNetSerializerRegistryDelegates::OnPreFreeze
 	UE_NET_REGISTER_NETSERIALIZER_INFO(PropertyNetSerializerRegistry_NAME_HOLNetUnitState);
 }
 
+}
+
+int64 UE::HeroesOfLiberty::Net::GetNumSerializedUnitStates()
+{
+	return UE::Net::HOLNetUnitState::NumSerialized.load(std::memory_order_relaxed);
+}
+
+int64 UE::HeroesOfLiberty::Net::GetNumDeserializedUnitStates()
+{
+	return UE::Net::HOLNetUnitState::NumDeserialized.load(std::memory_order_relaxed);
 }

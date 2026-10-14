@@ -9,6 +9,7 @@
 #include "HOLUnitReplicationSubsystem.generated.h"
 
 class AHOLUnitReplicator;
+class UNetConnection;
 
 /** What the server's unit replication did since the last reset (S5, D273). */
 struct FHOLUnitReplicationStats
@@ -22,6 +23,10 @@ struct FHOLUnitReplicationStats
 	double TotalMs = 0.0;
 	double MaxMs = 0.0;
 	double StartSeconds = 0.0;
+	/** Unit states written to the wire at the reset, all connections together. */
+	int64 SerializedStates = 0;
+	/** Bytes and packets each client connection had sent at the reset, for averages over the report's span. */
+	TMap<TWeakObjectPtr<const UNetConnection>, TPair<int32, int32>> OutTotals;
 };
 
 /**

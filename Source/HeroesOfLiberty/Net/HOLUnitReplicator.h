@@ -77,18 +77,24 @@ struct TStructOpsTypeTraits<FHOLNetUnitStateArray> : public TStructOpsTypeTraits
 };
 
 /**
- * A run of unit slots (D270), replicated subobject of AHOLUnitReplicator. Iris tracks the items of a fast array with
- * one change bit per 63 items (bit = index modulo 63): in a single array of 2 000 units, one marked unit would resend
- * the ~32 units sharing its bit. A chunk of exactly 63 slots gives each unit its own bit, so only the marked units are
- * sent. Slots are fixed: a leaving unit frees its slot, nothing is removed from the arrays, the indices never move.
+ * A chunk of unit slots (D270): one replicated actor, always relevant. Iris tracks the items of a fast array with one
+ * change bit per 63 items (bit = index modulo 63): in a single array of 2 000 units, one marked unit would resend the
+ * ~32 units sharing its bit; a chunk of exactly 63 slots gives each unit its own bit, so only the marked units are sent.
+ * Chunks are actors, not subobjects of the shared actor: Iris writes an actor and its subobjects as one batch, which at
+ * ~300 states per update outgrew a packet and went through its huge object path every update (split, reliable, written
+ * twice, the next update held until all of it was acknowledged); a chunk's batch fits in a packet. (S5: putting 4 runs
+ * of 63 slots in one actor saved nothing and rolled back more batches at the ends of packets.) Slots are fixed: a
+ * leaving unit frees its slot, nothing is removed from the arrays, the indices never move.
  */
-UCLASS()
-class HEROESOFLIBERTY_API UHOLUnitChunk : public UObject
+UCLASS(NotPlaceable, Transient)
+class HEROESOFLIBERTY_API AHOLUnitChunk : public AActor
 {
 	GENERATED_BODY()
 
 public:
 	static constexpr int32 NumSlots = FIrisFastArraySerializer::IrisFastArrayChangeMaskBits;
+
+	AHOLUnitChunk();
 
 	/** Server: fills the chunk with free slots. */
 	void InitSlots(int32 InChunkIndex);
@@ -96,11 +102,17 @@ public:
 	void SetState(int32 Slot, const FHOLNetUnitState& State);
 
 	int32 GetChunkIndex() const { return ChunkIndex; }
-	const TArray<FHOLNetUnitIdentityItem>& GetIdentities() const { return Identities.Items; }
-	const TArray<FHOLNetUnitStateItem>& GetStates() const { return States.Items; }
+	/** False until the client has received every slot of the chunk. */
+	bool HasAllSlots() const { return Identities.Items.Num() == NumSlots && States.Items.Num() == NumSlots; }
+	const FHOLNetUnitIdentityItem& GetIdentity(int32 Slot) const { return Identities.Items[Slot]; }
+	const FHOLNetUnitState& GetState(int32 Slot) const { return States.Items[Slot].State; }
 
-	virtual bool IsSupportedForNetworking() const override { return true; }
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+protected:
+	/** Client: the chunk joins (leaves) the reception's list. */
+	virtual void BeginPlay() override;
+	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	/** The chunk's first slot is ChunkIndex * NumSlots. */
@@ -115,9 +127,9 @@ private:
 };
 
 /**
- * The one shared actor of the unit replication (D270): always relevant, it carries the chunks of unit slots and the
- * server's step, from which the clients estimate the server clock (D271). The server spawns it in a networked match
- * only (D272: the solo game does not replicate).
+ * The shared actor of the unit replication (D270): always relevant, it carries the server's step, from which the
+ * clients estimate the server clock (D271), and owns the chunk actors on the server. The server spawns it in a
+ * networked match only (D272: the solo game does not replicate).
  */
 UCLASS(NotPlaceable, Transient)
 class HEROESOFLIBERTY_API AHOLUnitReplicator : public AActor
@@ -127,12 +139,15 @@ class HEROESOFLIBERTY_API AHOLUnitReplicator : public AActor
 public:
 	AHOLUnitReplicator();
 
-	/** Server: the chunk of that index, created with its predecessors when missing. */
-	UHOLUnitChunk* GetOrAddChunk(int32 ChunkIndex);
+	/** Server: the chunk of that index, spawned with its predecessors when missing. */
+	AHOLUnitChunk* GetOrAddChunk(int32 ChunkIndex);
 	void SetServerStep(int64 Step);
+	/** Server: updates per second of this actor and of its chunks. */
+	void SetUpdateFrequency(float UpdateFrequency);
 
 	int32 GetServerStep() const { return ServerStep; }
-	const TArray<TObjectPtr<UHOLUnitChunk>>& GetChunks() const { return Chunks; }
+	/** Server only: the chunks it spawned (a client lists the ones it received in UHOLUnitReceptionSubsystem). */
+	const TArray<TObjectPtr<AHOLUnitChunk>>& GetChunks() const { return Chunks; }
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -141,6 +156,6 @@ private:
 	UPROPERTY(Replicated)
 	int32 ServerStep = 0;
 
-	UPROPERTY(Replicated)
-	TArray<TObjectPtr<UHOLUnitChunk>> Chunks;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AHOLUnitChunk>> Chunks;
 };

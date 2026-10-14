@@ -80,8 +80,8 @@ enum class EHOLUnitSendReason : uint8
 /** Values of the send rule (D269), tuned in S5. */
 struct FHOLUnitSendRules
 {
-	/** Prediction error (cm) past which a unit is sent again: ~25 cm. */
-	float ErrorThreshold = 25.f;
+	/** Prediction error (cm) past which a unit is sent again (D274: 35 cm). */
+	float ErrorThreshold = 35.f;
 	/** Cycle of the slow refresh: 40 steps = 2 s at 20 Hz (see GetSendReason). */
 	int32 RefreshSteps = 40;
 };
@@ -116,14 +116,20 @@ namespace HOLUnitReplication
 /**
  * The client's estimate of the server's simulation clock (D271), in steps. Each replicated server step, received with
  * the one-way delay of the connection (half the round trip), gives a sample; the estimate follows the samples slowly
- * so the units do not jerk, and jumps to a sample that is far off (first sample, hitch of the connection).
+ * so the units do not jerk. A far earlier sample (first sample, a burst of samples lost) is taken as is. A far later
+ * one is the first step read after a hitch (S5: a client frame of half a second pulled the clock back 11 steps): it
+ * is ignored, unless the shift lasts (the server lost time). The samples are late by the time between the step's end
+ * and the send, but the round trip, which counts the frames' waits, overestimates the delay by about as much: S5
+ * measured the plain average a tenth of a step off, and following the earliest samples half a step ahead.
  */
 struct HEROESOFLIBERTY_API FHOLServerClock
 {
 	/** Share of the gap to a sample caught up per sample. */
 	static constexpr double Blend = 0.1;
-	/** A sample further off than this (s) is taken as is. */
+	/** A sample further off than this (s) is far: taken as is if earlier, ignored if later unless the shift lasts. */
 	static constexpr double SnapSeconds = 0.25;
+	/** Far later samples in a row after which the shift is taken (~1 s at 10 updates per second). */
+	static constexpr int32 LateSamplesToFollow = 10;
 
 	void Reset(float InStepSeconds);
 	void AddSample(int64 ServerStep, double LocalSeconds, double OneWaySeconds);
@@ -135,6 +141,7 @@ private:
 	float StepSeconds = 0.05f;
 	/** Local time minus server time (s). */
 	double Offset = 0.0;
+	int32 NumFarLateSamples = 0;
 	bool bValid = false;
 };
 

@@ -37,7 +37,7 @@ vérifier sur S1 et S2.
 | M2.5.2 Règles pures (réduction, règle d'envoi, prolongement, lissage) et leurs tests | **fait** (2026-10-14) : `Net/HOLUnitReplicationRules`, 6 tests `HeroesOfLiberty.Net.*`, `quick_check` PASS |
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | **fait** (2026-10-14) : 2 000 unités reçues par 2 clients ; 1,5 envoi/unité/s ; **~42 Ko/s par client** (> 32 Ko/s, à régler en M2.5.5) |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | **fait** (2026-10-14) : 2 000 unités affichées par chaque client, animées, à la couleur du joueur ; corrections ~24 cm en moyenne, aucun placement direct |
-| M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | **en cours** (2026-10-14) : script et rapport faits, horloge corrigée ; débit **36 Ko/s** à 10 mises à jour/s (> 32), réglage en cours |
+| M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | **fait** (2026-10-14) : morceaux en acteurs (fin du chemin des objets énormes) ; D274 (35 cm, 10 mises à jour/s) : **S5 PASS, 30,3 Ko/s par client, écart affiché 19,7 cm** ; tests 28/28 |
 | M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | à faire |
 | M2.5.7 Clôture : D268 à D273 au GDD | à faire |
 | J3 — plan (Q1 à Q5, D280 à D284 ; mené en parallèle de la fin de M2.5, dans une autre session) | **fait** (2026-10-14) |
@@ -51,12 +51,10 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.5 en cours** (journal du 2026-10-14, « M2.5.5 en cours ») : script et rapport faits ; reste à passer le
-   débit sous 32 Ko/s (pistes : états écrits plusieurs fois sur le fil, rappel lent, bits de l'état). Ancien texte : **M2.5.5** S5 : script (`net_match.ps1 -Units` en est la
-   base), rapport complet de D273 (octets par client, envois, temps de pas du serveur, images par seconde des
-   clients, **écart affiché** : positions d'un échantillon notées au même pas par le serveur et les clients), et
-   passage du débit sous 32 Ko/s (~42 Ko/s mesurés ; pistes dans le journal de M2.5.3). Puis M2.5.6 (partie à
-   2 clients dans `quick_check.ps1`, essai de l'utilisateur), M2.5.7, puis **J3**.
+1. **M2.5.5 faite** (D274). Suite : **M2.5.6** (partie à 2 clients dans `quick_check.ps1` : serveur dédié sur
+   `Plain`, caméras, centres aux bonnes couleurs des deux côtés, clics de sélection ; puis essai de l'utilisateur,
+   les deux clients côte à côte sur `Plain` puis sur S5), M2.5.7 (D268 à D274 au GDD). Cette session ne fait que
+   M2.5.x ; J3 est menée par un autre agent (se prévenir avant de compiler ou de lancer des clients).
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
@@ -189,6 +187,7 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 | D271 | 2026-10-14 | Technique — Affichage des unités chez le client | **Instant présent estimé, corrections lissées** (choix de l'utilisateur, conforme à la recommandation) : chez le client, chaque unité reçue devient une **entité Mass d'affichage** (identifiant, type, propriétaire, dernier état reçu, position affichée), créée, mise à jour et retirée au fil du tableau rapide (D270) ; tout l'affichage de M2 sert tel quel (instances, couleur D233, animation d'après la vitesse affichée D234) ; pas de simulation chez le client. Le client estime l'horloge du serveur (numéro du pas) et affiche chaque unité **là où le serveur l'a sans doute à cet instant** (dernier état + vitesse × temps écoulé) ; une correction est **lissée en ~0,2 s** (écart au plus ~25 cm, D269). Aucun retard ajouté (ordres de M4 aussi vifs que possible). Écartés : **retard d'affichage de ~100 ms** (moins de glissements mais tout en retard, ordres plus lents à partir) et **correction sans lissage** (sauts jusqu'à ~25 cm, scintillement dans la mêlée, animation qui hoquette). |
 | D272 | 2026-10-14 | Technique — Le solo | **Le solo reste autonome** (choix de l'utilisateur, conforme à la recommandation) : une partie lancée du menu tourne en un seul processus, simulation et affichage ensemble, sans réseau (conforme à D268, menu inchangé) ; l'affichage reste **un seul code**, nourri en solo par l'état des entités de la simulation, chez un client par celui des entités d'affichage que la réception remplit avec les mêmes données (position, vitesse) ; le chemin réseau est vérifié par la **partie à 2 clients** de fin d'étape (D216), qui entre dans `quick_check.ps1`. Écartés : **serveur dédié local même en solo** (le menu lancerait et rejoindrait un processus serveur, contre D268 ; démarrage plus lent, deux processus, un bug réseau bloque le solo) et **affichage toujours par le tableau rapide en boucle locale** (entités en double en solo, stress test changé de nature, références S1 et S2 à refaire). |
 | D273 | 2026-10-14 | Technique — Vérification de M2.5 | **Tests, S5 avec l'écart affiché, partie à 2 clients dans la vérification rapide, essai** (choix de l'utilisateur, conforme à la recommandation) : **tests d'automatisation** des règles pures (réduction des positions et vitesses à ~10 cm près, règle d'envoi de D269 — seuil, changement d'action, rappel lent —, prolongement et lissage de D271) ; **S5** lancé par script (serveur dédié sur la carte du stress test, nuée de S2, 2 000 unités, graine fixe, 2 clients sur le deuxième écran), rapport : octets reçus par client et par seconde (≤ 32 Ko/s), envoi du serveur, envois par unité et par seconde, temps de pas du serveur, images par seconde des clients, et **écart affiché** (positions d'un échantillon d'unités notées au même pas par le serveur et les clients, comparées : moins de ~25 cm attendus) ; **partie à 2 clients dans `quick_check.ps1`** (serveur dédié sur `Plain`, chaque caméra au-dessus de son emplacement, les deux centres à la bonne couleur des deux côtés, clics de sélection), vérification de fin d'étape de D216 et D272 ; **essai de l'utilisateur**, les deux clients côte à côte sur `Plain` puis sur S5. Écartés : **sans l'écart affiché** (justesse de l'affichage jugée à l'œil seulement) et **S5 et essai seuls** (partie à 2 clients non rejouable, contre D216). Clôt le plan de M2.5 (D268 à D273). |
+| D274 | 2026-10-14 | Technique — Seuil d'envoi et cadence des unités (S5) | **35 cm et 10 mises à jour par seconde** (choix de l'utilisateur, conforme à la recommandation ; D269 laissait le seuil « réglable, S5 tranche », D217 la cadence entre 10 et 20 Hz) : à 2 000 unités en marche, **30,3 Ko/s par client** (sous les 32 Ko/s de D218) et écart affiché moyen **~19 cm** (sous les ~25 cm de D273) ; à 25 cm, 34,1 Ko/s. Les morceaux d'emplacements sont des **acteurs répliqués** de 63 emplacements (un sous-objet par morceau faisait passer toute la mise à jour par le chemin des objets énormes d'Iris). Reste ~8 Ko/s d'en-têtes non expliqués, à rechercher par une trace réseau d'Iris quand les états de M5 s'ajouteront. Écartés : **chercher d'abord ces en-têtes** (garder 25-30 cm ; travail plus long, gain incertain) et **30 cm avec un état réduit** (passage de justesse, moins de marge, moins robuste aux paquets en retard). |
 | D280 | 2026-10-14 | Technique — Périmètre de J3 | **Production avec coût, en plusieurs sous-étapes** (choix de l'utilisateur : option A, à découper en sous-étapes) : à la fin de J3, le HUD de D201 montre en haut les **4 ressources** (stock de départ provisoire) et la **population** (base donnée par le centre, plafond) ; en bas au centre, le **bloc de sélection** (nom, points de vie, propriétaire du bâtiment sélectionné) ; en bas à droite, la **grille de commandes** (D30) avec **« Paysan »** (clic ou touche `A`). Produire **débite le coût** et prend une place de population ; la **file de production** montre sa progression et s'annule au clic (remboursement) ; le Paysan **apparaît près du centre** et reste immobile (ses ordres en J4). Tout passe par la **file de commandes**, donc par le **serveur**, qui vérifie coût et population ; en solo comme à 2 clients. Les sous-étapes sont fixées à la fin du plan (Q2 à Q5). Écartés : **production gratuite** (ressources et population en J5 ; plus rapide, mais produire ne serait pas encore un choix) et **A avec point de ralliement et Paysans de départ** (le ralliement est un ordre de déplacement, J4). |
 | D281 | 2026-10-14 | Technique — Fabrication du HUD | **Blocs utiles seuls, à leur place définitive** (choix de l'utilisateur, conforme à la recommandation) : un **écran de jeu Common UI en C++** dans le module d'interface (D241, D242, D247), avec la mise en page de D201 ; seuls les blocs dont J3 a besoin sont dessinés : **barre du haut** (4 ressources, population), **bloc de sélection** en bas au centre, **grille de commandes** 3 × 4 en bas à droite (touches de D30 affichées, seule la case « Paysan » active) et **file de production** au-dessus de la grille. Mini-carte, bloc du héros et emplacement de faction viendront avec leurs systèmes, à leur place déjà prévue. Le HUD **lit** l'état de la partie, ne le modifie jamais : ses clics passent par le contrôleur, puis la file de commandes (D252). Écartés : **squelette complet** (blocs morts à l'écran pendant des mois) et **HUD provisoire de débogage** (à refaire, contraire à D242). |
 | D282 | 2026-10-14 | Technique — Production côté serveur | **Le serveur seul décide, façon AoE** (choix de l'utilisateur, conforme à la recommandation) : un clic du HUD part au serveur par un **appel du contrôleur**, entre dans la **file de commandes** et s'applique au **pas suivant** ; le serveur vérifie le **propriétaire**, le **coût** et la **longueur de la file** (valeur en table). Le coût est **débité à la mise en file**, **remboursé à l'annulation** ; la **population** est vérifiée **au début de chaque production** : pleine, la file attend (comme AoE). **Ressources et population** vivent dans le `PlayerState`, répliquées **au seul propriétaire** (D203) ; la **file** vit sur le **bâtiment**, répliquée au propriétaire (types et pas de début), le client en calcule lui-même la progression. Écartés : **prédiction chez le client** (retour en arrière à gérer pour ~50-150 ms gagnées sur un ordre de production) et **GAS dès maintenant** (lourd pour une file, D260 le réserve à M5). |
@@ -709,6 +708,48 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   écritures devraient se fondre ; à comprendre d'abord.
 - Reste vu : un écart maximal de ~2 m isolé (à expliquer), images par seconde des clients côte à côte ~130-180
   (1 % bas ~10-17, captures comprises). Simulation du serveur ~2,7-3,0 ms par pas, réplication ~0,17 ms.
+
+### 2026-10-14 (suite) — M2.5.5 : anomalie expliquée, morceaux en acteurs, S5 PASS à 35 cm (seuil à trancher)
+
+- **Anomalie expliquée** (lecture d'Iris, `ReplicationWriter.cpp`) : Iris écrit un acteur et **tous ses sous-objets en
+  un seul lot** ; à 10/s, une mise à jour (~300 états, ~2,7 Ko) dépassait un paquet. Le lot était annulé, réécrit dans
+  un tampon et envoyé par le **chemin des objets énormes** (morceaux fiables, mise à jour suivante bloquée jusqu'à
+  l'accusé de réception de tout). Le compteur du serveur comptait donc des écritures annulées : ce n'étaient pas des
+  états en trop sur le fil.
+- **Morceaux en acteurs** : `AHOLUnitChunk` (63 emplacements, un acteur répliqué toujours pertinent, propriétaire
+  l'acteur partagé) remplace le sous-objet `UHOLUnitChunk` ; chaque morceau est son propre lot et tient dans un paquet.
+  `AHOLUnitReplicator` ne porte plus que le pas du serveur (et la liste des morceaux, côté serveur). Chez le client, un
+  morceau s'inscrit auprès de `UHOLUnitReceptionSubsystem` à son `BeginPlay`. Principe de D270 inchangé (tableaux
+  rapides, marquage selon D269, format maison, préparés une fois pour tous les clients).
+- **Mesure exacte chez le client** : compteur dans `Deserialize` (« états lus sur le fil ») ; `s5_report.py` en tire
+  la part des états et le reste. `hol.Net.WhenClients <N> <commande>` (serveur) : S2 part dès que les clients sont dans
+  la partie (un client lent à démarrer faussait la mesure) ; `net_match.ps1` s'en sert.
+- Mesures (2 000 unités en marche, S2, 40 s, 10 mises à jour/s, serveur restagé) :
+
+  | Réglage | Envois/unité/s | États lus/s | Ko/s par client | Écart affiché moyen (95 %) |
+  |---|---|---|---|---|
+  | 25 cm | 1,48 | 2 810 | 34,1 | 15,2 cm (31) |
+  | 30 cm | 1,38 | 2 617 | 32,5 | 17,3 cm (36) |
+  | **35 cm** | 1,29 | 2 425 | **30,1** | 18,9 cm (41) — **S5 PASS** |
+  | 25 cm, 4 suites de 63 par acteur | 1,49 | 2 824 | 34,7 | 15,3 cm — abandonné |
+
+  Horloge des clients stable (±0,25 pas, au lieu de sauts de 3-4 pas), aucun placement direct, réplication 0,15 ms par
+  pas au serveur. Trafic fixe d'une partie à 2 clients (63 unités) : ~1,3 Ko/s.
+- **Reste non expliqué** : ~8 Ko/s qui suivent le nombre d'écritures de tableaux (~30 octets chacune), alors que la
+  lecture d'Iris en prévoit ~10-15 (masque codé par indices, nombre d'éléments, en-tête du lot). Regrouper 4 suites
+  par acteur n'a rien gagné (et a multiplié les lots annulés en bout de paquet) : retiré. Seule une trace réseau
+  d'Iris (Unreal Insights, `-NetTrace`) le dirait.
+- **Écueil** : remplacer seulement l'exécutable du serveur sur une ancienne cuisson a fait planter le serveur
+  (`GetPopulationByOwner` → `UDataTable::FindRow`, table des unités changée par J3) : toujours `-Stage` après un
+  changement du code des autres.
+- `quick_check.ps1` : **PASS en 32 s, tests 28/28**. À trancher par l'utilisateur : le seuil (35 cm passe ; D269
+  disait ~25 cm « réglable »).
+- **D274** (choix de l'utilisateur, conforme à la recommandation) : **35 cm et 10 mises à jour par seconde** par
+  défaut (`UHOLUnitReplicationSettings`). S5 sur les valeurs par défaut, sans réglage passé au script : **PASS,
+  30,3 Ko/s par client**, 1,30 envoi par unité et par seconde, écart affiché moyen **19,7 cm** (95 % : 40,6 cm),
+  aucun placement direct, horloge à ±0,3 pas. Test `Net.SendRule` : les poussées essayées suivent le seuil (±5 cm)
+  au lieu de 20 et 30 cm écrits en dur. `quick_check.ps1` : tests **28/28** ; la partie « production » de J3 (autre
+  session, en cours) échoue sur son propre minutage. **M2.5.5 faite.**
 
 
 ### 2026-10-14 (suite) — J3, plan ouvert ; Q1 tranchée (D280)

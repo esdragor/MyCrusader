@@ -59,7 +59,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::Net;
 	const FNetSerializer& Serializer = UE_NET_GET_SERIALIZER(FHOLNetUnitStateNetSerializer);
-	TestEqual(TEXT("one chunk of slots per change bit of an Iris fast array"), UHOLUnitChunk::NumSlots, 63);
+	TestEqual(TEXT("one chunk of slots per change bit of an Iris fast array"), AHOLUnitChunk::NumSlots, 63);
 
 	// Every field at both ends of its range and in between, through Iris' quantize, write, read and dequantize.
 	const FHOLNetUnitState States[] = {
@@ -169,9 +169,12 @@ bool FHOLNetSendRuleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("at rest: refreshed between a quarter of a cycle and a cycle and a quarter"), FirstRefresh >= Rules.RefreshSteps / 4 && FirstRefresh <= LongestRefresh);
 	TestEqual(TEXT("at rest, 1 step later: nothing"), GetSendReason(Resting, Rest, EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
 	TestEqual(TEXT("starts walking: sent at once"), GetSendReason(Resting, Rest, EHOLUnitActivity::Moving, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Activity);
-	TestEqual(TEXT("pushed 20 cm: under the threshold"), GetSendReason(Resting, Rest + FVector(20.0, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
-	TestEqual(TEXT("pushed 30 cm: past the threshold"), GetSendReason(Resting, Rest + FVector(30.0, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
-	TestEqual(TEXT("height drifted 30 cm: past the threshold"), GetSendReason(Resting, Rest + FVector(0.0, 0.0, 30.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
+	// 5 cm either side of the threshold (D274: 35 cm).
+	const double Under = Rules.ErrorThreshold - 5.0;
+	const double Past = Rules.ErrorThreshold + 5.0;
+	TestEqual(TEXT("pushed under the threshold: nothing"), GetSendReason(Resting, Rest + FVector(Under, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
+	TestEqual(TEXT("pushed past the threshold"), GetSendReason(Resting, Rest + FVector(Past, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
+	TestEqual(TEXT("height drifted past the threshold"), GetSendReason(Resting, Rest + FVector(0.0, 0.0, Past), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
 
 	// Walking in a straight line: the client's prediction holds, only the refresh sends.
 	const FVector Velocity(300.0, 120.0, 0.0);
@@ -259,15 +262,27 @@ bool FHOLNetServerClockTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("jitter: followed slowly"), FMath::IsNearlyEqual(Clock.GetStep(11.0), 120.8 - 0.04, 1.0e-6));
 
 	// Steady samples on a new delay: the estimate converges.
-	for (int32 Index = 0; Index < 100; ++Index)
+	for (int32 Index = 0; Index < 200; ++Index)
 	{
 		Clock.AddSample(200 + Index, 15.0 + Index * StepSeconds, 0.06);
 	}
-	TestTrue(TEXT("steady samples: converged"), FMath::IsNearlyEqual(Clock.GetStep(15.0 + 99 * StepSeconds), 299.0 + 1.2, 0.01));
+	TestTrue(TEXT("steady samples: converged"), FMath::IsNearlyEqual(Clock.GetStep(15.0 + 199 * StepSeconds), 399.0 + 1.2, 0.01));
 
-	// A hitch of the connection: one second off, taken as is.
-	Clock.AddSample(1000, 100.0, 0.0);
-	TestTrue(TEXT("far sample: taken as is"), FMath::IsNearlyEqual(Clock.GetStep(100.0), 1000.0, 1.0e-6));
+	// A hitch of the client: the first step read after it is half a second late, then they are on time again. Ignored.
+	const double BeforeHitch = Clock.GetStep(30.0);
+	Clock.AddSample(400, 25.5, 0.06);
+	TestTrue(TEXT("hitch: a far later sample is ignored"), FMath::IsNearlyEqual(Clock.GetStep(30.0), BeforeHitch, 1.0e-6));
+
+	// The server lost a second for good: the samples stay a second later, followed after LateSamplesToFollow of them.
+	for (int32 Index = 0; Index < FHOLServerClock::LateSamplesToFollow; ++Index)
+	{
+		Clock.AddSample(400 + Index, 26.0 + Index * StepSeconds, 0.06);
+	}
+	TestTrue(TEXT("lasting shift: followed"), FMath::IsNearlyEqual(Clock.GetStep(26.0 + 9 * StepSeconds), 409.0 + 1.2, 1.0e-6));
+
+	// The server ahead by a second (a lost burst of samples): taken as is.
+	Clock.AddSample(1000, 30.0, 0.0);
+	TestTrue(TEXT("far earlier sample: taken as is"), FMath::IsNearlyEqual(Clock.GetStep(30.0), 1000.0, 1.0e-6));
 	return true;
 }
 
