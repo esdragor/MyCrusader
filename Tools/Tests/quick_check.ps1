@@ -1,20 +1,30 @@
 # Quick check of the project (D267): the automation tests run in their own process WHILE a single game launch goes
 # through the menu in French, English and Japanese (language switched live), a drop-down list, then a match at 2 and
-# at 8 players with the camera checks of D257 and the selection checks of D264 (own centre, another's, void, Escape). Every step starts as soon as the one before is done (hol.Test.Run), no
-# fixed delays. Replaced capture_screens.ps1, check_camera.ps1 and the automation command for everyday checks; the
-# short stress tests S1 and S2 stay apart (only when units, the simulation or rendering change, and at a closure).
+# at 8 players with the camera checks of D257 and the selection checks of D264 (own centre, another's, void, Escape).
+# Every step starts as soon as the one before is done (hol.Test.Run), no fixed delays. Replaced capture_screens.ps1,
+# check_camera.ps1 and the automation command for everyday checks; the short stress tests S1 and S2 stay apart (only
+# when units, the simulation or rendering change, and at a closure).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera]
-# Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*), contact
-# sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera] [-EngineDir <dir>]
+# The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
+# Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
+# contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
     [string[]] $Parts = @("tests", "menu", "camera"),
-    [string] $EngineDir = "C:\UE\UE_5.8_AS_1\Engine\Binaries\Win64"
+    [string] $EngineDir = ""
 )
 
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 $Project = Resolve-Path "$PSScriptRoot\..\.."
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
+if (-not $EngineDir) {
+    # An installed build registered under its name (HKCU\Software\Epic Games\Unreal Engine\Builds).
+    $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation
+    $Root = (Get-ItemProperty "HKCU:\Software\Epic Games\Unreal Engine\Builds" -ErrorAction SilentlyContinue).$Association
+    if (-not $Root) { Write-Host "quick_check : FAIL (engine '$Association' of the .uproject not found in the registry; pass -EngineDir)"; exit 1 }
+    $EngineDir = Join-Path $Root "Engine\Binaries\Win64"
+}
+Write-Host "engine: $EngineDir"
 $TestSaved = Join-Path $Project "Saved_Tests"
 $Shots = Join-Path $TestSaved "Screenshots\WindowsEditor\HOL"
 $GameLog = Join-Path $TestSaved "Logs\quick_game.log"
