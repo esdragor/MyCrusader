@@ -78,7 +78,7 @@ UHOLAvoidanceSnapshotProcessor::UHOLAvoidanceSnapshotProcessor()
 	: EntityQuery(*this)
 {
 	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
-	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::AllNetModes);
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
 	// Between the steering, which writes the force of the step, and the avoidance, which adds to it.
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassSteerToMoveTargetProcessor"));
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassMovingAvoidanceProcessor"));
@@ -113,7 +113,7 @@ UHOLAvoidanceHoldProcessor::UHOLAvoidanceHoldProcessor()
 	: EntityQuery(*this)
 {
 	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
-	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::AllNetModes);
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
 	// Between the avoidance solvers and the processor that turns the force into a velocity.
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassMovingAvoidanceProcessor"));
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassStandingAvoidanceProcessor"));

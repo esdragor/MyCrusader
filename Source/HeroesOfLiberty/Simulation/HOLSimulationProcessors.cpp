@@ -11,7 +11,7 @@ UHOLStorePreviousTransformProcessor::UHOLStorePreviousTransformProcessor()
 	: EntityQuery(*this)
 {
 	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
-	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::AllNetModes);
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
 	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::Tasks);
 }
 

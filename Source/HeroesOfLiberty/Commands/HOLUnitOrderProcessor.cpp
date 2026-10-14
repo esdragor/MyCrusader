@@ -17,7 +17,7 @@ UHOLUnitOrderProcessor::UHOLUnitOrderProcessor()
 	: EntityQuery(*this)
 {
 	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
-	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::AllNetModes);
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // orders apply on the server's step (D231)
 	ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Tasks;
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassNavMeshPathFollowProcessor"));
 	bRequiresGameThreadExecution = true; // the order queue belongs to the game thread
