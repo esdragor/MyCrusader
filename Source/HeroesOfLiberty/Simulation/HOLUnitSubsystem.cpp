@@ -46,6 +46,8 @@ namespace UE::HeroesOfLiberty::Units
 
 	/** Draws of a birth position before giving up on finding the navmesh under it. */
 	constexpr int32 MaxSpawnProjectionAttempts = 4;
+	/** Seconds a unit takes from standing to its full speed (Mass' 250 cm/s² at the 300 cm/s of the first types). */
+	constexpr float SecondsToFullSpeed = 1.2f;
 
 	/** Where the units are and how they are drawn: for checking a match's units (J3) without looking at the screen. */
 	FAutoConsoleCommandWithWorldAndArgs CommandReport(TEXT("hol.Units.Report"),
@@ -225,6 +227,9 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 	UHOLUnitMovementTrait* MovementTrait = NewObject<UHOLUnitMovementTrait>(this);
 	FMassMovementParameters Movement;
 	Movement.MaxSpeed = Constants.Speed;
+	// Full speed in the same time whatever the speed: Mass' fixed 250 cm/s² took a 600 cm/s Peasant 2.4 s (the user's
+	// trial of J4); a 300 cm/s type (the stress test's) keeps its 250.
+	Movement.MaxAcceleration = Constants.Speed / UE::HeroesOfLiberty::Units::SecondsToFullSpeed;
 	Movement.DefaultDesiredSpeed = Constants.Speed;
 	Movement.DefaultDesiredSpeedVariance = 0.f;
 	MovementTrait->SetMovement(Movement);

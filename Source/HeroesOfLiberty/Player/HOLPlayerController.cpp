@@ -389,6 +389,70 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+#if !UE_BUILD_SHIPPING
+	/**
+	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
+	 * controllers. None of them exists in a Shipping build.
+	 */
+	void CheatResources(const TArray<FString>& Args, const FHOLResources& PerUnit)
+	{
+		const int32 Amount = Args.IsEmpty() ? 1000 : FCString::Atoi(*Args[0]);
+		for (AHOLPlayerController* Controller : GetLocalControllers())
+		{
+			Controller->RequestCheatResources(FHOLResources(PerUnit.Food * Amount, PerUnit.Wood * Amount, PerUnit.Stone * Amount, PerUnit.Gold * Amount));
+		}
+	}
+
+	FAutoConsoleCommand CheatResourcesCommand(
+		TEXT("hol.Cheat.Resources"),
+		TEXT("hol.Cheat.Resources [N=1000]: adds N of each resource to the local player's stock (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args) { CheatResources(Args, FHOLResources(1, 1, 1, 1)); }));
+
+	FAutoConsoleCommand CheatFoodCommand(
+		TEXT("hol.Cheat.Food"),
+		TEXT("hol.Cheat.Food [N=1000]: adds N food to the local player's stock (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args) { CheatResources(Args, FHOLResources(1, 0, 0, 0)); }));
+
+	FAutoConsoleCommand CheatWoodCommand(
+		TEXT("hol.Cheat.Wood"),
+		TEXT("hol.Cheat.Wood [N=1000]: adds N wood to the local player's stock (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args) { CheatResources(Args, FHOLResources(0, 1, 0, 0)); }));
+
+	FAutoConsoleCommand CheatStoneCommand(
+		TEXT("hol.Cheat.Stone"),
+		TEXT("hol.Cheat.Stone [N=1000]: adds N stone to the local player's stock (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args) { CheatResources(Args, FHOLResources(0, 0, 1, 0)); }));
+
+	FAutoConsoleCommand CheatGoldCommand(
+		TEXT("hol.Cheat.Gold"),
+		TEXT("hol.Cheat.Gold [N=1000]: adds N gold to the local player's stock (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args) { CheatResources(Args, FHOLResources(0, 0, 0, 1)); }));
+
+	FAutoConsoleCommand CheatFastBuildCommand(
+		TEXT("hol.Cheat.FastBuild"),
+		TEXT("hol.Cheat.FastBuild [1|0]: production in one step for every player, or back to the table's times (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bOn = Args.IsEmpty() || FCString::Atoi(*Args[0]) != 0;
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatFastBuild(bOn);
+			}
+		}));
+
+	FAutoConsoleCommand CheatPopulationCommand(
+		TEXT("hol.Cheat.Population"),
+		TEXT("hol.Cheat.Population [N=165]: adds N places to the local player's population cap, 175 at most (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Places = Args.IsEmpty() ? 165 : FCString::Atoi(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatPopulation(Places);
+			}
+		}));
+#endif
+
 	/** For the scripted checks (D257): the delay lets a command given at start-up report once the match runs. */
 	FAutoConsoleCommand ReportCommand(
 		TEXT("hol.Camera.Report"),
@@ -949,6 +1013,63 @@ void AHOLPlayerController::RequestRallyPoint(const FVector& Point)
 	{
 		ServerSetRallyPoint(Building, Point);
 	}
+}
+
+void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
+{
+	ServerCheatResources(Amount);
+}
+
+void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
+{
+	ServerCheatFastBuild(bOn);
+}
+
+void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
+{
+	ServerCheatPopulation(Places);
+}
+
+void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)
+{
+#if !UE_BUILD_SHIPPING
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!HOLPlayerState)
+	{
+		return;
+	}
+	FHOLResources Stock = HOLPlayerState->GetResources();
+	Stock += Amount;
+	Stock = FHOLResources(FMath::Max(0, Stock.Food), FMath::Max(0, Stock.Wood), FMath::Max(0, Stock.Stone), FMath::Max(0, Stock.Gold));
+	HOLPlayerState->SetResources(Stock);
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d resources, now %s"), HOLPlayerState->GetPlayerIndex(), *HOLPlayerState->DescribeEconomy());
+#endif
+}
+
+void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
+{
+#if !UE_BUILD_SHIPPING
+	// One step for every unit (hol.Prod.BuildTime, on this server).
+	if (IConsoleVariable* BuildTime = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Prod.BuildTime")))
+	{
+		BuildTime->Set(bOn ? 0.01f : 0.f, ECVF_SetByConsole);
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d fast build %s"), HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE, bOn ? TEXT("on") : TEXT("off"));
+#endif
+}
+
+void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Places)
+{
+#if !UE_BUILD_SHIPPING
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLProductionSubsystem* Production = GetWorld()->GetSubsystem<UHOLProductionSubsystem>();
+	if (HOLPlayerState && Production)
+	{
+		Production->AddCheatPopulation(HOLPlayerState->GetPlayerIndex(), Places);
+		UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d population cap +%d (175 at most)"), HOLPlayerState->GetPlayerIndex(), Places);
+	}
+#endif
 }
 
 void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target)

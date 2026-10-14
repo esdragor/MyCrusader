@@ -37,6 +37,9 @@ public:
 	/** Player state of a slot, or null (an AI slot has none yet: no economy). */
 	AHOLPlayerState* FindPlayerState(int32 PlayerIndex) const;
 
+	/** Development cheat (never in a Shipping build): places added to a player's cap, still at most 175 (D03). */
+	void AddCheatPopulation(int32 PlayerIndex, int32 Places);
+
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
 
@@ -54,4 +57,6 @@ private:
 	float StepSeconds = 0.05f;
 	/** Units born at each building so far: spreads them along the arc. */
 	TMap<TWeakObjectPtr<AHOLBuilding>, int32> NumBirths;
+	/** Places each player's cheats added to its cap (AddCheatPopulation). */
+	TMap<int32, int32> CheatPopulation;
 };

@@ -10,7 +10,6 @@
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLPlayerColors.h"
-#include "Match/HOLPlayerState.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
 #include "Simulation/HOLUnitView.h"
@@ -31,17 +30,19 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	/** Above the ground (cm), so that the plane does not fight with it. */
 	constexpr double GroundOffset = 3.0;
 
+	/** The selection's rings and frame: a neutral white, whoever the owner (the user's trial of J4). */
+	const FLinearColor SelectionColor(0.85f, 0.85f, 0.85f);
 	/** A unit's ring: its radius over the body's, and its stroke (cm). */
 	constexpr double RingRadiusFactor = 1.4;
 	constexpr double RingStroke = 12.0;
 	/** The building's frame: its margin around the footprint and its stroke (cm). */
 	constexpr double FrameMargin = 100.0;
 	constexpr double FrameStroke = 30.0;
-	/** The order's ring (~0.5 s, D288): it shrinks from the first radius to the second (cm). */
-	constexpr float PingSeconds = 0.5f;
-	constexpr double PingStartRadius = 180.0;
-	constexpr double PingEndRadius = 50.0;
-	constexpr double PingStroke = 14.0;
+	/** The order's ring (D288; halved in size and time at the user's trial): it shrinks from the first radius to the second (cm). */
+	constexpr float PingSeconds = 0.25f;
+	constexpr double PingStartRadius = 90.0;
+	constexpr double PingEndRadius = 25.0;
+	constexpr double PingStroke = 8.0;
 	const FLinearColor PingColor(0.9f, 0.9f, 0.9f);
 	/** The rally flag (cm): a pole, and a cloth at its top at the owner's colour. */
 	constexpr double PoleHeight = 500.0;
@@ -61,12 +62,6 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, Path);
 		UE_CLOG(!Material, LogHOLMatch, Error, TEXT("Selection markers: material %s missing (Tools/Editor/make_marker_materials.py)"), Path);
 		return Material;
-	}
-
-	/** The colour a player chose (D233), found by its slot. */
-	FLinearColor GetOwnerColor(const UWorld& World, const int32 Slot)
-	{
-		return FLinearColor(HOLPlayerColors::GetColor(AHOLPlayerState::FindColorIndex(World, Slot)));
 	}
 
 	UInstancedStaticMeshComponent* MakeMarkerComponent(AActor& Owner, const FName Name)
@@ -220,7 +215,7 @@ void AHOLSelectionMarkers::UpdateRings()
 			{
 				const double Radius = View.Radius * RingRadiusFactor;
 				Transforms.Add(MarkerTransform(View.Location, Radius * 2.0, Radius * 2.0));
-				AddCustomData(CustomData, GetOwnerColor(*World, View.OwnerPlayer), RingStroke / Radius);
+				AddCustomData(CustomData, SelectionColor, RingStroke / Radius);
 			}
 		}
 	}
@@ -245,7 +240,7 @@ void AHOLSelectionMarkers::UpdateFrame()
 	{
 		const FVector2D Size = Type->Footprint + FVector2D(FrameMargin * 2.0);
 		Transforms.Add(MarkerTransform(Building->GetActorLocation(), Size.X, Size.Y));
-		AddCustomData(CustomData, FLinearColor(HOLPlayerColors::GetColor(Building->GetColorIndex())), FrameStroke * 2.0 / Size.GetMax());
+		AddCustomData(CustomData, SelectionColor, FrameStroke * 2.0 / Size.GetMax());
 	}
 	SetInstances(*Frames, Transforms, CustomData);
 }

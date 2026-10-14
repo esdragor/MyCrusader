@@ -114,6 +114,11 @@ FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName) const
 	return Cost;
 }
 
+void UHOLProductionSubsystem::AddCheatPopulation(const int32 PlayerIndex, const int32 Places)
+{
+	CheatPopulation.FindOrAdd(PlayerIndex) += Places;
+}
+
 AHOLPlayerState* UHOLProductionSubsystem::FindPlayerState(const int32 PlayerIndex) const
 {
 	const AGameStateBase* GameState = GetWorld()->GetGameState();
@@ -234,6 +239,13 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		Buildings.Add(Building);
 		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? Type->PopulationProvided : 0;
 		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
+	}
+	for (const TPair<int32, int32>& Cheat : CheatPopulation)
+	{
+		if (int32* Cap = Caps.Find(Cheat.Key))
+		{
+			*Cap += Cheat.Value;
+		}
 	}
 	// No building (the stress test's maps): nothing produces, no population to count.
 	if (Buildings.IsEmpty())
