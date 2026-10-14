@@ -38,8 +38,8 @@ vérifier sur S1 et S2.
 | M2.5.3 Serveur : acteur partagé, tableau rapide, marquage selon D269 | **fait** (2026-10-14) : 2 000 unités reçues par 2 clients ; 1,5 envoi/unité/s ; **~42 Ko/s par client** (> 32 Ko/s, à régler en M2.5.5) |
 | M2.5.4 Client : entités d'affichage, horloge du serveur, prolongement et lissage, branchement de l'affichage | **fait** (2026-10-14) : 2 000 unités affichées par chaque client, animées, à la couleur du joueur ; corrections ~24 cm en moyenne, aucun placement direct |
 | M2.5.5 S5 : script, rapport (bande passante, envois, écart affiché) | **fait** (2026-10-14) : morceaux en acteurs (fin du chemin des objets énormes) ; D274 (35 cm, 10 mises à jour/s) : **S5 PASS, 30,3 Ko/s par client, écart affiché 19,7 cm** ; tests 28/28 |
-| M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | **en partie faite** (2026-10-14) : partie « net » de `quick_check.ps1` (D275 : serveur = éditeur en `-server`, 2 clients hors écran) PASS, `quick_check` PASS en 44 s, tests 28/28 ; essai de l'utilisateur sur `Plain` **validé** (« tout est bon », après correction du retard des ressources) ; **reste l'essai sur S5** |
-| M2.5.7 Clôture : D268 à D274 au GDD | **en partie faite** (2026-10-14) : D268 à D274 au § 21, paragraphe « Tranche réseau M2.5 » au § 16.6 (marqué « en cours ») ; reste, après M2.5.6, à le marquer fait et à compléter la ligne M2.5 du tableau du § 16.6 |
+| M2.5.6 Partie à 2 clients dans `quick_check.ps1`, essai de l'utilisateur | **en partie faite** (2026-10-14) : partie « net » de `quick_check.ps1` (D275 : serveur = éditeur en `-server`, 2 clients hors écran) PASS, `quick_check` PASS en 44 s, tests 28/28 ; essai de l'utilisateur sur `Plain` **validé** (« tout est bon », après correction du retard des ressources)  ; essai sur S5 **validé** |
+| M2.5.7 Clôture : D268 à D275 au GDD | **fait** (2026-10-14) : paragraphe marqué fait, ligne M2.5 du tableau du § 16.6 complétée. **M2.5 close.** Avant : D268 à D274 au § 21, paragraphe « Tranche réseau M2.5 » au § 16.6 (marqué « en cours ») ; reste, après M2.5.6, à le marquer fait et à compléter la ligne M2.5 du tableau du § 16.6 |
 | J3 — plan (Q1 à Q5, D280 à D284 ; mené en parallèle de la fin de M2.5, dans une autre session) | **fait** (2026-10-14) |
 | J3.1 Données et règles pures | **fait** (2026-10-14) : `Peasant` et colonnes de production dans les tables, `UHOLMatchSettings` (stock de départ), `Buildings/HOLProductionRules`, 3 tests `HeroesOfLiberty.Production.*` ; tests 28/28, `quick_check` PASS |
 | J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
@@ -51,11 +51,9 @@ vérifier sur S1 et S2.
 ## Prochaine étape exacte
 
 **J2 close** (2026-10-14). Suite, dans l'ordre de D252 :
-1. **M2.5.6 : partie « net » de `quick_check.ps1` faite** (D275). Essai de l'utilisateur sur `Plain` validé ; suite :
-   **essai sur S5** (`net_match.ps1 -Units 2000 -Keep`, serveur déjà recuit) ;
-   puis fin de M2.5.7 (D268 à D275 déjà au GDD ; marquer le paragraphe du § 16.6 fait, compléter la ligne M2.5 du
-   tableau). Cette session ne fait que
-   M2.5.x ; J3 est menée par un autre agent (se prévenir avant de compiler ou de lancer des clients).
+1. **M2.5 close** (2026-10-14) : D268 à D275 au GDD, essais de l'utilisateur sur `Plain` et S5 validés. La partie
+   « net » de `quick_check.ps1` reste la vérification à 2 clients de fin d'étape (D216) ; pour un essai sur S5, passer
+   `-Seconds 60` à `net_match.ps1` (10 minutes jugées trop longues).
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
@@ -799,6 +797,14 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
 - Règle pour la suite : toute donnée d'un `PlayerState` que le joueur voit changer à son geste doit pousser sa mise à
   jour (ou le `PlayerState` recevoir une fréquence plus haute) ; la récolte de J5 changera les ressources souvent.
 - Reste : l'essai sur S5.
+
+### 2026-10-14 (suite) — M2.5.6 et M2.5.7 faites : M2.5 close
+
+- **Essai sur S5** (`net_match.ps1 -Units 2000 -Seconds 600 -Keep`) : 2 000 unités en marche reçues par les deux
+  clients ; validé par l'utilisateur (« oui » : fluidité, couleurs, mêmes positions des deux côtés). Remarque : 10
+  minutes de marche, c'est trop long ; pour un essai, `-Seconds 60`.
+- **M2.5.7** : paragraphe « Tranche réseau M2.5 » du § 16.6 marqué fait le 2026-10-14, ligne M2.5 du tableau des étapes
+  complétée. **M2.5 close.**
 
 
 ### 2026-10-14 (suite) — J3, plan ouvert ; Q1 tranchée (D280)
