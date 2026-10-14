@@ -5,13 +5,16 @@
 # check_camera.ps1 and the automation command for everyday checks; the short stress tests S1 and S2 stay apart (only
 # when units, the simulation or rendering change, and at a closure).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera] [-EngineDir <dir>]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera] [-EngineDir <dir>] [-Visible]
+# The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
+# second screen instead, windowed 1600 x 900.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
     [string[]] $Parts = @("tests", "menu", "camera"),
-    [string] $EngineDir = ""
+    [string] $EngineDir = "",
+    [switch] $Visible
 )
 
 $Clock = [Diagnostics.Stopwatch]::StartNew()
@@ -127,7 +130,8 @@ $Steps | Set-Content -Encoding utf8 $SequenceFile
 Get-ChildItem $Shots -Filter "qc_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "cam_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "sel_*.png" -ErrorAction SilentlyContinue | Remove-Item
-$GameArguments = "`"$UProject`" -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
+$Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
+$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 $GameTimedOut = -not $GameProcess.WaitForExit(300000)
 if ($GameTimedOut) { $GameProcess.Kill() }
