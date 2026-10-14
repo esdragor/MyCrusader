@@ -27,6 +27,7 @@ public class HeroesOfLiberty : ModuleRules
 			"MassMovement",
 			"MassNavigation",
 			"MassNavMeshNavigation",
+			"NavCorridor",
 			"MassRepresentation",
 			"MassLOD",
 			"MassSimulation",

@@ -67,6 +67,21 @@ public:
 	float OrderTargetProjectionExtent = 1000.f;
 
 	/**
+	 * Navmesh path requests per fixed step at most (D286: one per cluster of an order); the others wait for the next
+	 * step, their units keep walking as they were. 0 = no budget. Console override: hol.Units.PathBudget.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "0"))
+	int32 PathRequestsPerStep = 64;
+
+	/** Width (cm) of the corridor a cluster's units share along its path (D286); they spread across it. */
+	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "100", ForceUnits = "cm"))
+	float PathCorridorWidth = 600.f;
+
+	/** Steps of the final leg without getting closer to its slot after which a unit stands where it is (D287). */
+	UPROPERTY(config, EditAnywhere, Category = "Units", meta = (ClampMin = "1"))
+	int32 FinalLegStuckSteps = 40;
+
+	/**
 	 * Steps an avoidance impulse is re-applied on after the solver computed it (D230), the total capped at the
 	 * type's MaxAcceleration. The solver runs one step out of ThrottledProcessorStepInterval and Mass resets the
 	 * force after applying it, so keeping the impulse is what separates the units of a crowd: S2 overlapping pairs

@@ -38,17 +38,15 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 		}
 	}
 
-	PendingMoveOrders.Reserve(PendingMoveOrders.Num() + UnitIds.Num());
-	for (const uint32 UnitId : UnitIds)
-	{
-		PendingMoveOrders.Add(FHOLUnitMoveCommand{ UnitId, Destination });
-	}
+	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();
+	Order.UnitIds = UnitIds;
+	Order.Target = Destination;
 }
 
-void UHOLCommandSubsystem::ConsumeMoveOrders(TArray<FHOLUnitMoveCommand>& OutCommands)
+void UHOLCommandSubsystem::ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders)
 {
-	OutCommands.Reset();
-	Swap(OutCommands, PendingMoveOrders);
+	OutOrders.Reset();
+	Swap(OutOrders, PendingMoveOrders);
 }
 
 void UHOLCommandSubsystem::IssueProductionOrder(const FHOLProductionCommand& Command)

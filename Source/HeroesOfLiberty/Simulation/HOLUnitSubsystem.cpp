@@ -60,6 +60,28 @@ namespace UE::HeroesOfLiberty::Units
 				UE_LOG(LogHOLSimulation, Display, TEXT("Units report: %s"), *Units->DescribeUnits(Args.IsEmpty() ? 10 : FCString::Atoi(*Args[0])));
 			}
 		}));
+
+	/** Groups to try the orders on (J4, D289), without producing them: outside the rules (no cost, over the cap). */
+	FAutoConsoleCommandWithWorldAndArgs CommandSpawn(TEXT("hol.Units.Spawn"),
+		TEXT("hol.Units.Spawn Count X Y [Slot=0] [Type=Peasant] [Radius=1000]: makes units of a slot around a ground point (cm), server or solo; a test command, free and over the population cap"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+			if (!Units || Args.Num() < 3)
+			{
+				UE_LOG(LogHOLSimulation, Warning, TEXT("hol.Units.Spawn Count X Y [Slot=0] [Type=Peasant] [Radius=1000], on the server or in solo"));
+				return;
+			}
+			FHOLUnitSpawnRequest Request;
+			Request.Count = FCString::Atoi(*Args[0]);
+			Request.Center = FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.);
+			Request.OwnerPlayer = static_cast<uint8>(Args.Num() >= 4 ? FCString::Atoi(*Args[3]) : 0);
+			Request.TypeName = FName(Args.Num() >= 5 ? *Args[4] : TEXT("Peasant"));
+			Request.Radius = Args.Num() >= 6 ? FCString::Atof(*Args[5]) : 1000.f;
+			Units->RequestUnits(Request);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Spawn: %d %s of slot %d around (%.0f, %.0f)"), Request.Count, *Request.TypeName.ToString(),
+				Request.OwnerPlayer, Request.Center.X, Request.Center.Y);
+		}));
 }
 
 bool UHOLUnitSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -525,11 +547,13 @@ FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const
 		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Record.Entity);
 		const FMassRepresentationLODFragment* LOD = EntityManager.GetFragmentDataPtr<FMassRepresentationLODFragment>(Record.Entity);
 		const FMassRepresentationFragment* Representation = EntityManager.GetFragmentDataPtr<FMassRepresentationFragment>(Record.Entity);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity);
 		const FVector Location = Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector;
-		Lines.Add(FString::Printf(TEXT("#%u %s slot %d at (%.0f, %.0f, %.0f) LOD %d visibility %d, representation %d"), UnitIds[Index],
+		Lines.Add(FString::Printf(TEXT("#%u %s slot %d at (%.0f, %.0f, %.0f) LOD %d visibility %d, representation %d, %s"), UnitIds[Index],
 			*Record.TypeName.ToString(), Record.OwnerPlayer, Location.X, Location.Y, Location.Z,
 			LOD ? static_cast<int32>(LOD->LOD) : -1, LOD ? static_cast<int32>(LOD->Visibility) : -1,
-			Representation ? static_cast<int32>(Representation->CurrentRepresentation) : -1));
+			Representation ? static_cast<int32>(Representation->CurrentRepresentation) : -1,
+			State && State->Activity == EHOLUnitActivity::Moving ? TEXT("moving") : TEXT("idle")));
 	}
 	return FString::Printf(TEXT("%d units: %s"), Units.Num(), *FString::Join(Lines, TEXT("; ")));
 }

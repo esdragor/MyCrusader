@@ -5,12 +5,14 @@
 #include "CoreMinimal.h"
 
 /**
- * One order for one unit (D226): "go to this location". Orders always pass through a queue, even in solo, so
- * that M2.5's replication (D216) plugs in here without touching the movement code.
+ * One move order (D226, D286): "go to this location", for a group of units. Orders always pass through a queue,
+ * even in solo, applied at the next fixed step. The group is kept whole: its units share their paths by clusters
+ * and are given their slots around the target together (D287).
  */
-struct FHOLUnitMoveCommand
+struct FHOLMoveOrder
 {
-	/** Stable identifier of the unit (D223). */
-	uint32 UnitId = 0;
+	/** Stable identifiers of the units (D223). */
+	TArray<uint32> UnitIds;
+	/** On the navmesh (brought back to it when the order is issued, D228). */
 	FVector Target = FVector::ZeroVector;
 };

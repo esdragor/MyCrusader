@@ -50,7 +50,8 @@ vérifier sur S1 et S2.
 | J4 — plan (Q1 à Q5, décisions à partir de D285) | **en cours** (2026-10-14) : Q1 tranchée (D285) ; plan validé (D286 à D289) |
 | J4.1 Navmesh dynamique et obstacles | **fait** (2026-10-14) : `DynamicModifiersOnly`, agent de 60 cm, zone interdite sous les bâtiments, rochers et bosquet sur `Plain`, navmesh construit et sauvegardé par les scripts des cartes (`Plain` et `StressTest` refaites), `hol.Nav.Path`, partie « move » de `quick_check` PASS (40 s), S1 / S2 courts PASS |
 | J4.2 Règles pures (paquets, places, attribution) | **fait** (2026-10-14) : `Simulation/HOLGroupMoveRules`, 3 tests `HeroesOfLiberty.Movement.*`, tests 31/31 |
-| J4.3 Chemins dans la simulation | à faire |
+| J4.3 Chemins dans la simulation | **fait** (2026-10-14) : ordre de groupe, places, paquets, couloir partagé avec place de côté, dernier tronçon vers la place ; 40 Paysans contournent centre et arête, arrivés en disque de ~5 m ; `quick_check` PASS (48 s) ; **S2 à remesurer machine au repos** (3,0-3,8 ms sous charge, voir journal) |
+| J4.4 Ordre réseau et ralliement | à faire |
 
 ## Prochaine étape exacte
 
@@ -1136,3 +1137,36 @@ reconstruction d'une tuile, à mesurer en J4.1).
 - Tests `HeroesOfLiberty.Movement.Clusters`, `.Slots` (7, 30, 175 places : aucun recouvrement, disque serré, même
   résultat à chaque fois), `.Assign` ; `quick_check -Parts tests` : **31/31**.
 - Suite : **J4.3** (chemins dans la simulation).
+
+### 2026-10-14 (suite) — J4.3 faite : chemins dans la simulation
+
+- **Ordre de groupe** : `FHOLMoveOrder` (identifiants + but) remplace l'ordre par unité ; `IssueMoveOrder` garde sa
+  signature (le stress test n'a pas changé). Fragment `FHOLMoveOrderFragment` par unité (place, phase, place de côté,
+  numéro d'ordre, pas sans progrès) ; phases `WaitingPath` → `Path` → `FinalLeg` → `None`.
+- `UHOLUnitOrderProcessor` réécrit : (1) **ordres** : places autour du but (une unité seule : le but ; un groupe : nid
+  d'abeille orienté selon la marche, chaque place gardée si le navmesh l'a là où elle est **et** l'atteint en ligne
+  droite depuis le but, `Raycast`), attribution (`AssignSlots`), paquets (`MakeClusters`), une requête de chemin par
+  paquet ; l'activité passe à `Moving` tout de suite (S2 n'ordonne que les unités au repos) ; (2) **requêtes** au
+  budget par pas (`PathRequestsPerStep` = 64, console `hol.Units.PathBudget`), `FindPathSync` du centre du paquet
+  ramené au navmesh ; un ordre plus récent remplace un chemin pas encore calculé (numéro d'ordre) ; (3) **suivi** : un
+  chemin de **plus de 2 points** (un détour) devient un couloir de 6 m partagé ; chaque unité y suit son chemin court
+  (Mass) **décalé de sa place de côté** dans le paquet (mesurée sur la droite propre du chemin, bornée par le portail),
+  et repart de sa propre avancée (une unité devant le centre du paquet ne revient pas en arrière) ; un chemin
+  **droit** (2 points, le cas en terrain dégagé) ou absent : **droit à la place**, sans couloir ; (4) **dernier
+  tronçon** droit vers la place, debout à 50 cm, ou après 40 pas sans se rapprocher (place prise, poussé).
+- Commandes : `hol.Units.Move X Y [Slot]`, `hol.Units.Spawn Count X Y [Slot] [Type] [Radius]` (essai, hors règles),
+  `hol.Units.DirectPaths 1` (aucun chemin, pour mesurer leur coût) ; `hol.Units.Report` dit `idle` / `moving`.
+  Dépendance `NavCorridor` remise dans `Build.cs`.
+- **Essais sur `Plain`** (sans fenêtre) : 4 Paysans produits, ordre derrière l'arête : contournent le centre puis
+  l'arête, arrivés écartés de 1,35 à 1,9 m ; retour à l'emplacement : pareil. **40 Paysans** nés à 30 m derrière le
+  centre, envoyés derrière l'arête (~75 m de chemin) : tous arrivés en ~40 s, disque de 5,1-5,4 m (attendu ~4,8 m),
+  paire la plus proche 1,10-1,15 m pour des corps de 1,20 m (3 paires).
+- **S2 et le coût des chemins** (`-RenderOffScreen`, machine chargée : éditeur ProjectShiva ~11 % du processeur,
+  git-lfs, lanceur Epic) : le même S2 varie de 3,0 à 4,3 ms d'un passage à l'autre (évitement en marche de 10 à 14 ms
+  par passage) ; S2 valait 2,31 ms à J4.1, une heure plus tôt. A / B alternés sur le même binaire : couloir suivi
+  pour tous les chemins → +0,6 ms (suivi +0,3, évitement +0,2) ; d'où le **chemin droit sans couloir** : reste
+  **+0,1 ms** (les requêtes de chemin, ~8 par pas) et un évitement dans le bruit (passages : chemins 3,83 / 3,34 ms,
+  direct 3,31 / 2,97 ms). Les arêtes du couloir données à l'évitement ne coûtent rien (A / B sans le processeur de
+  bords : identique). **À remesurer machine au repos avant la clôture (J4.7)** : le seuil de 3 ms bloque l'étape.
+- `quick_check` **PASS en 48 s**.
+- Suite : **J4.4** (ordre réseau et point de ralliement).

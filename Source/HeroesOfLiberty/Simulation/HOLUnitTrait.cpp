@@ -25,6 +25,8 @@ void UHOLUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
 	// Required by the visualization trait; light units never get an actor.
 	BuildContext.AddFragment<FMassActorFragment>();
 	BuildContext.AddFragment<FHOLUnitStateFragment>();
+	// Its part of its move order (D286, D287): slot, path phase, sideways place.
+	BuildContext.AddFragment<FHOLMoveOrderFragment>();
 	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
 	BuildContext.AddFragment<FHOLAvoidanceHoldFragment>();
 	// Animation played by the skinned instance (D234); the visualization trait does not add it.

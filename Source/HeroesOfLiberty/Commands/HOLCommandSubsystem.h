@@ -19,11 +19,11 @@ class HEROESOFLIBERTY_API UHOLCommandSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 
 public:
-	/** Queues "go to this location" for the given units. */
+	/** Queues "go to this location" for the given units, one order for the group (D286, D287). */
 	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target);
 
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
-	void ConsumeMoveOrders(TArray<FHOLUnitMoveCommand>& OutCommands);
+	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);
 
 	int32 GetNumPendingOrders() const { return PendingMoveOrders.Num(); }
 
@@ -36,6 +36,6 @@ protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
 private:
-	TArray<FHOLUnitMoveCommand> PendingMoveOrders;
+	TArray<FHOLMoveOrder> PendingMoveOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;
 };
