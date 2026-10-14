@@ -42,8 +42,8 @@ vérifier sur S1 et S2.
 | M2.5.7 Clôture : D268 à D273 au GDD | à faire |
 | J3 — plan (Q1 à Q5, D280 à D284 ; mené en parallèle de la fin de M2.5, dans une autre session) | **fait** (2026-10-14) |
 | J3.1 Données et règles pures | **fait** (2026-10-14) : `Peasant` et colonnes de production dans les tables, `UHOLMatchSettings` (stock de départ), `Buildings/HOLProductionRules`, 3 tests `HeroesOfLiberty.Production.*` ; tests 28/28, `quick_check` PASS |
-| J3.2 Économie du joueur (ressources, population) | à faire |
-| J3.3 File de production, ordre au serveur, apparition du Paysan | à faire |
+| J3.2 Économie du joueur (ressources, population) | **fait** (2026-10-14) : `AHOLPlayerState` (stock, population, au seul propriétaire), stock de départ au `PostLogin`, population par propriétaire dans `UHOLUnitSubsystem` |
+| J3.3 File de production, ordre au serveur, apparition du Paysan | **fait** (2026-10-14) : file sur `AHOLBuilding` (propriétaire réseau = contrôleur), ordres par la file de commandes, `UHOLProductionSubsystem`, 12 actions de grille, `hol.Prod.*` ; vérifié sans fenêtre en solo et à 2 clients |
 | J3.4 HUD (barre du haut, sélection, grille, file) | à faire |
 | J3.5 Vérification (D284) | à faire (partie à 2 clients après M2.5.6) |
 | J3.6 Clôture : D280 à D284 au GDD | à faire |
@@ -60,7 +60,7 @@ vérifier sur S1 et S2.
 2. ~~S1 et S2 au repos, nouvelle référence sans ombres ni post-traitement~~ : **fait** (2026-10-14, nouvelle référence
    sur 5.8.3 dans `ImplementationInProgress.md`).
 3. **Plan de J3 en cours** (en parallèle de M2.5, autre session ; décisions à partir de **D280**, D274 à D279 laissées
-   à M2.5) : plan fait (D280 à D284) ; **J3.1 faite** ; prochaine étape : **J3.2** (économie du joueur), à coder quand l'autre session ne compile pas (même module).
+   à M2.5) : plan fait (D280 à D284) ; **J3.1 à J3.3 faites** ; **J3.4** (HUD) en cours chez un sous-agent (module d'interface seul).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -741,3 +741,25 @@ place : file de commandes de M1 (déplacements seuls, `UHOLCommandSubsystem`), t
   propriétaire (D282) ; (3) les emplacements IA n'ont pas de `PlayerState` : seuls les humains ont une économie pour
   l'instant ; (4) `quick_check.ps1` attend « no interface » sur les captures de partie : à adapter en J3.4.
 - Suite : **J3.2**.
+
+### 2026-10-14 (suite) — J3.2 et J3.3 faites : économie, file de production, Paysan, sans HUD
+
+- **Économie** (`AHOLPlayerState`) : stock, population utilisée et plafond, `COND_OwnerOnly`, délégué
+  `OnEconomyChanged` ; stock de départ donné au `PostLogin`. `UHOLUnitSubsystem` garde le propriétaire de chaque unité
+  et donne la population par propriétaire (naissances en attente comprises).
+- **File** sur `AHOLBuilding` (`COND_OwnerOnly`, `OnProductionChanged`) ; le mode de jeu donne aux bâtiments d'un
+  emplacement le **contrôleur de son joueur comme propriétaire réseau** (à l'apparition et au `PostLogin`).
+- **Ordres** : `ServerQueueProduction` / `ServerCancelProduction` (contrôleur) → `FHOLProductionCommand` dans la file de
+  commandes → `UHOLProductionSubsystem`, au **début de chaque pas** (`OnStepStarted`, serveur ou solo) : vérifie le
+  propriétaire, le type produit, la file et le coût, compte population et plafond, avance les files ; un Paysan fini
+  naît au même pas, **en arc devant le centre**, du côté du milieu de la carte. Grille : 12 actions `IA_Grid_00..11`
+  (A Z E R / Q S D F / W X C V) dans `IMC_Game` ; la case N produit le N-ième type de `Produces`.
+- **HUD** : le contrôleur local remplace le HUD par défaut par `/Script/HeroesOfLibertyUI.HOLGameHUD` (chemin souple,
+  le serveur dédié ne charge pas le module d'interface).
+- **Vérifications sans fenêtre** (consigne de l'utilisateur : le plus discret possible, `-nullrhi -nosound`) :
+  solo sur `Plain` (`Saved_Tests/prod_solo.seq`) : 3 Paysans mis en file (200 → 50), le 3e annulé (→ 100), Paysans finis
+  aux pas 402 et 802 (20 s), population 2/10 ; **2 clients** sur un serveur lancé par l'éditeur (`-server -nullrhi`,
+  sans recuire le serveur dédié) : le client 0 voit son stock et sa file, le client 1 garde 200 de chaque, **les deux
+  affichent le Paysan**. Tests 28/28.
+- Reste connu : couleur des unités = `OwnerPlayer` comme index de palette (le Paysan n'a la couleur de son centre que si
+  l'emplacement garde sa couleur par défaut) ; refus d'un ordre seulement journalisé (le HUD grise la case).

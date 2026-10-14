@@ -53,6 +53,24 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AHOLBuilding, TypeName);
 	DOREPLIFETIME(AHOLBuilding, OwnerPlayer);
 	DOREPLIFETIME(AHOLBuilding, ColorIndex);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
+}
+
+const FHOLBuildingTypeRow* AHOLBuilding::GetType() const
+{
+	return TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
+}
+
+void AHOLBuilding::NotifyProductionChanged()
+{
+	// The queue changes a few times a minute: sent at the next update rather than within the second of NetUpdateFrequency.
+	ForceNetUpdate();
+	OnProductionChanged.Broadcast();
+}
+
+void AHOLBuilding::OnRep_ProductionQueue()
+{
+	OnProductionChanged.Broadcast();
 }
 
 void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, const uint8 InColorIndex)

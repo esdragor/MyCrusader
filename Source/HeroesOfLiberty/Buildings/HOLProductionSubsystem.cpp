@@ -1,0 +1,295 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Buildings/HOLProductionSubsystem.h"
+
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/GameStateBase.h"
+#include "HeroesOfLibertyLog.h"
+#include "Map/HOLMapBounds.h"
+#include "Match/HOLPlayerState.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
+
+namespace UE::HeroesOfLiberty::Production
+{
+	/** Gap (cm) between the building's footprint and the first row of units born there. */
+	constexpr float BirthGap = 400.f;
+	/** Angle (deg) between two neighbours of the arc. */
+	constexpr float BirthArcStep = 12.f;
+	/** Units in one arc (the middle one, then alternately right and left); the next ones stand a row further. */
+	constexpr int32 BirthsPerRow = 9;
+	/** Distance (cm) between two rows. */
+	constexpr float BirthRowGap = 150.f;
+
+	const TCHAR* DescribeRefusal(const EHOLProductionRefusal Refusal)
+	{
+		switch (Refusal)
+		{
+		case EHOLProductionRefusal::NotProducible: return TEXT("not produced here");
+		case EHOLProductionRefusal::QueueFull: return TEXT("queue full");
+		case EHOLProductionRefusal::NotEnoughResources: return TEXT("not enough resources");
+		default: return TEXT("none");
+		}
+	}
+}
+
+bool UHOLProductionSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
+{
+	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
+}
+
+void UHOLProductionSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
+
+	// The server (or a solo match) decides alone (D282); a client only shows what it receives.
+	if (InWorld.GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	if (UHOLSimulationSubsystem* Simulation = InWorld.GetSubsystem<UHOLSimulationSubsystem>())
+	{
+		StepStartedHandle = Simulation->GetOnStepStarted().AddUObject(this, &UHOLProductionSubsystem::OnStepStarted);
+	}
+}
+
+void UHOLProductionSubsystem::Deinitialize()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>())
+		{
+			Simulation->GetOnStepStarted().Remove(StepStartedHandle);
+		}
+	}
+	Super::Deinitialize();
+}
+
+double UHOLProductionSubsystem::GetDisplayStep(const UWorld* World)
+{
+	if (!World)
+	{
+		return 0.0;
+	}
+	if (World->GetNetMode() == NM_Client)
+	{
+		const UHOLUnitReceptionSubsystem* Reception = World->GetSubsystem<UHOLUnitReceptionSubsystem>();
+		return Reception && Reception->GetClock().IsValid() ? Reception->GetClock().GetStep(FPlatformTime::Seconds()) : 0.0;
+	}
+	// The step being run is GetStepIndex() - 1 once it is over: an item started at step S is done when step
+	// S + BuildSteps runs, which this shows as a full bar.
+	const UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	return Simulation ? static_cast<double>(Simulation->GetStepIndex() - 1) + Simulation->GetInterpolationAlpha() : 0.0;
+}
+
+int32 UHOLProductionSubsystem::GetBuildSteps(const FHOLUnitTypeRow& Type, const float InStepSeconds)
+{
+	return FMath::Max(1, FMath::RoundToInt(Type.BuildTime / FMath::Max(InStepSeconds, UE_KINDA_SMALL_NUMBER)));
+}
+
+FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName) const
+{
+	FHOLProductionCost Cost;
+	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(TypeName) : nullptr)
+	{
+		Cost.Resources = Row->Cost;
+		Cost.BuildSteps = GetBuildSteps(*Row, StepSeconds);
+		Cost.Population = Row->Population;
+	}
+	return Cost;
+}
+
+AHOLPlayerState* UHOLProductionSubsystem::FindPlayerState(const int32 PlayerIndex) const
+{
+	const AGameStateBase* GameState = GetWorld()->GetGameState();
+	if (!GameState || PlayerIndex == INDEX_NONE)
+	{
+		return nullptr;
+	}
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+		if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == PlayerIndex)
+		{
+			return HOLPlayerState;
+		}
+	}
+	return nullptr;
+}
+
+void UHOLProductionSubsystem::OnStepStarted(const int64 StepIndex)
+{
+	ApplyOrders();
+	AdvanceQueues(StepIndex);
+}
+
+void UHOLProductionSubsystem::ApplyOrders()
+{
+	using namespace UE::HeroesOfLiberty::Production;
+
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (!Commands)
+	{
+		return;
+	}
+	TArray<FHOLProductionCommand> Orders;
+	Commands->ConsumeProductionOrders(Orders);
+	for (const FHOLProductionCommand& Order : Orders)
+	{
+		AHOLBuilding* Building = Order.Building.Get();
+		AHOLPlayerState* PlayerState = FindPlayerState(Order.PlayerIndex);
+		// Only the owner gives its buildings orders: a client could send anything.
+		if (!Building || !PlayerState || Building->GetOwnerPlayer() != Order.PlayerIndex)
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: not its building"), Order.PlayerIndex);
+			continue;
+		}
+		const FHOLBuildingTypeRow* Type = Building->GetType();
+		if (!Type)
+		{
+			continue;
+		}
+
+		FHOLResources Stock = PlayerState->GetResources();
+		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
+		if (Order.Kind == FHOLProductionCommand::EKind::Queue)
+		{
+			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
+				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName), Type->MaxQueue, Stock)
+				: EHOLProductionRefusal::NotProducible;
+			if (Refusal != EHOLProductionRefusal::None)
+			{
+				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (%s)"), Order.PlayerIndex,
+					*Order.TypeName.ToString(), DescribeRefusal(Refusal));
+				continue;
+			}
+			UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued %s (%d in the queue, %s)"), Order.PlayerIndex,
+				*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
+		}
+		else
+		{
+			const FName TypeName = Queue.IsValidIndex(Order.Index) ? Queue[Order.Index].TypeName : NAME_None;
+			if (!HOLProduction::Cancel(Queue, Order.Index, GetCost(TypeName), Stock))
+			{
+				continue;
+			}
+			UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cancelled %s (%d in the queue, %s)"), Order.PlayerIndex,
+				*TypeName.ToString(), Queue.Num(), *Stock.ToString());
+		}
+		PlayerState->SetResources(Stock);
+		Building->NotifyProductionChanged();
+	}
+}
+
+void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
+{
+	UWorld* World = GetWorld();
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	if (!Units)
+	{
+		return;
+	}
+	const auto GetCostOf = [this](const FName TypeName) { return GetCost(TypeName); };
+
+	// Each player's cap (its buildings) and the places its units in production hold.
+	TArray<AHOLBuilding*> Buildings;
+	TMap<int32, int32> Caps;
+	TMap<int32, int32> Started;
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		AHOLBuilding* Building = *It;
+		const FHOLBuildingTypeRow* Type = Building->GetType();
+		Buildings.Add(Building);
+		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? Type->PopulationProvided : 0;
+		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
+	}
+
+	TArray<int32> UnitPopulation;
+	Units->GetPopulationByOwner(UnitPopulation);
+	TMap<int32, int32> FreePopulation;
+	for (const TPair<int32, int32>& Cap : Caps)
+	{
+		const int32 Used = (UnitPopulation.IsValidIndex(Cap.Key) ? UnitPopulation[Cap.Key] : 0) + Started.FindRef(Cap.Key);
+		FreePopulation.Add(Cap.Key, HOLProduction::GetPopulationCap(Cap.Value) - Used);
+	}
+
+	for (AHOLBuilding* Building : Buildings)
+	{
+		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
+		if (Queue.Num() == 0)
+		{
+			continue;
+		}
+		const TArray<FHOLProductionItem> Before = Queue;
+		TArray<FName> Done;
+		HOLProduction::Advance(Queue, StepIndex, GetCostOf, FreePopulation.FindOrAdd(Building->GetOwnerPlayer()), Done);
+		for (const FName TypeName : Done)
+		{
+			int32& NumBorn = NumBirths.FindOrAdd(Building);
+			// A tiny radius: the unit is put on the navmesh right under the point (FHOLUnitSpawnRequest).
+			Units->RequestUnits(FHOLUnitSpawnRequest{ TypeName, 1, GetBirthLocation(*Building, NumBorn), 1.f, Building->GetOwnerPlayer() });
+			++NumBorn;
+			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld"), *TypeName.ToString(),
+				Building->GetOwnerPlayer(), StepIndex);
+		}
+		if (Queue != Before)
+		{
+			Building->NotifyProductionChanged();
+		}
+	}
+
+	// The population each player sees: its units (the births just asked for included) and its units in production.
+	Units->GetPopulationByOwner(UnitPopulation);
+	for (const TPair<int32, int32>& Cap : Caps)
+	{
+		if (AHOLPlayerState* PlayerState = FindPlayerState(Cap.Key))
+		{
+			int32 InProduction = 0;
+			for (const AHOLBuilding* Building : Buildings)
+			{
+				if (Building->GetOwnerPlayer() == Cap.Key)
+				{
+					InProduction += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
+				}
+			}
+			const int32 Used = (UnitPopulation.IsValidIndex(Cap.Key) ? UnitPopulation[Cap.Key] : 0) + InProduction;
+			PlayerState->SetPopulation(Used, HOLProduction::GetPopulationCap(Cap.Value));
+		}
+	}
+}
+
+FVector UHOLProductionSubsystem::GetBirthLocation(const AHOLBuilding& Building, const int32 Index) const
+{
+	using namespace UE::HeroesOfLiberty::Production;
+
+	const FVector Origin = Building.GetActorLocation();
+	// Towards the map's centre (the side the base opens on); the building's front without map bounds.
+	FVector Forward = Building.GetActorForwardVector().GetSafeNormal2D();
+	if (const AHOLMapBounds* Bounds = AHOLMapBounds::Find(GetWorld()))
+	{
+		const FVector2D Centre = Bounds->GetArea().GetCenter();
+		const FVector ToCentre = FVector(Centre.X - Origin.X, Centre.Y - Origin.Y, 0.0).GetSafeNormal();
+		if (!ToCentre.IsNearlyZero())
+		{
+			Forward = ToCentre;
+		}
+	}
+
+	const FHOLBuildingTypeRow* Type = Building.GetType();
+	const float HalfFootprint = Type ? 0.5f * FMath::Max(Type->Footprint.X, Type->Footprint.Y) : 750.f;
+	const int32 Row = Index / BirthsPerRow;
+	const int32 InRow = Index % BirthsPerRow;
+	// 0, then +1, -1, +2, -2...: the arc fills from the middle.
+	const int32 Side = (InRow + 1) / 2 * (InRow % 2 == 1 ? 1 : -1);
+	const float Distance = HalfFootprint + BirthGap + Row * BirthRowGap;
+	const FVector Direction = Forward.RotateAngleAxis(Side * BirthArcStep, FVector::UpVector);
+	return Origin + Direction * Distance;
+}

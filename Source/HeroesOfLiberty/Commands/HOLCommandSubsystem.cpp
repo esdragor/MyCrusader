@@ -50,3 +50,14 @@ void UHOLCommandSubsystem::ConsumeMoveOrders(TArray<FHOLUnitMoveCommand>& OutCom
 	OutCommands.Reset();
 	Swap(OutCommands, PendingMoveOrders);
 }
+
+void UHOLCommandSubsystem::IssueProductionOrder(const FHOLProductionCommand& Command)
+{
+	PendingProductionOrders.Add(Command);
+}
+
+void UHOLCommandSubsystem::ConsumeProductionOrders(TArray<FHOLProductionCommand>& OutCommands)
+{
+	OutCommands.Reset();
+	Swap(OutCommands, PendingProductionOrders);
+}

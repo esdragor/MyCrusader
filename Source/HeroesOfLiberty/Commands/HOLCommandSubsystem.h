@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Commands/HOLProductionCommand.h"
 #include "Commands/HOLUnitCommand.h"
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
@@ -26,9 +27,15 @@ public:
 
 	int32 GetNumPendingOrders() const { return PendingMoveOrders.Num(); }
 
+	/** Queues a production order (J3, D282), applied by the production at the next step. */
+	void IssueProductionOrder(const FHOLProductionCommand& Command);
+	/** Takes the production orders waiting for the next step (UHOLProductionSubsystem calls this at each step). */
+	void ConsumeProductionOrders(TArray<FHOLProductionCommand>& OutCommands);
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
 private:
 	TArray<FHOLUnitMoveCommand> PendingMoveOrders;
+	TArray<FHOLProductionCommand> PendingProductionOrders;
 };

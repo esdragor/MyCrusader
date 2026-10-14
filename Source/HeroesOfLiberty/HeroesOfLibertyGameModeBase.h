@@ -33,5 +33,11 @@ private:
 	/** A main centre on the start of each occupied slot (human or AI), at the slot's colour. */
 	void SpawnMainCentres();
 
+	/**
+	 * The buildings of a slot get its player's controller as network owner, so that their production queue reaches
+	 * that player only (D282). Called when the player gets its slot and when the buildings appear, whichever is last.
+	 */
+	void AssignBuildingOwners(int32 Slot);
+
 	FHOLMatchConfig MatchConfig;
 };

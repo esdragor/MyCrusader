@@ -77,6 +77,11 @@ public:
 	int32 GetNumUnits() const { return Units.Num(); }
 	int32 GetNumPendingBirths() const { return BirthQueue.Num(); }
 	void GetUnitCountsByType(TMap<FName, int32>& OutCounts) const;
+	/**
+	 * Population places taken by each player's units (J3, D282), births waiting in the queue included: OutPopulation
+	 * gets one entry per OwnerPlayer (D233) up to the highest one with a unit.
+	 */
+	void GetPopulationByOwner(TArray<int32>& OutPopulation) const;
 
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }
@@ -94,6 +99,7 @@ private:
 	{
 		FMassEntityHandle Entity;
 		FName TypeName;
+		uint8 OwnerPlayer = 0;
 	};
 
 	const UDataTable* GetTypeTable() const;

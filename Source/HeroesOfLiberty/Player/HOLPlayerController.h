@@ -7,6 +7,7 @@
 #include "HOLPlayerController.generated.h"
 
 class AHOLBuilding;
+class AHOLPlayerState;
 class AHOLRTSCamera;
 class UInputAction;
 struct FInputActionValue;
@@ -16,7 +17,9 @@ struct FInputActionValue;
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
  * Selection (D262) lives here, on the player's machine only: a left click selects the building under the cursor (its
- * own or another player's) or nothing, Escape selects nothing; nothing shows it yet (the panel comes in J3).
+ * own or another player's) or nothing, Escape selects nothing; the HUD shows it (J3, D281).
+ * Production (J3, D282): the cells of the command grid (keys of D30, or a click on the HUD) and the HUD's cancel
+ * clicks become requests to the server (RPCs), which queues them in the order queue and applies them at its next step.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
@@ -38,6 +41,32 @@ public:
 	/** "MainCentre of slot 3 (own)", "none": for the logs of the scripted checks. */
 	FString DescribeBuilding(const AHOLBuilding* Building) const;
 
+	/** The selection changed (on this machine only, D262). For the HUD. */
+	DECLARE_MULTICAST_DELEGATE(FOnSelectionChanged);
+	FOnSelectionChanged OnSelectionChanged;
+
+	AHOLPlayerState* GetHOLPlayerState() const;
+	/** The selected building if it is the player's own, else null: only the owner gives it orders. */
+	AHOLBuilding* GetOwnSelection() const;
+
+	/** Number of cells of the command grid (D30: A Z E R / Q S D F / W X C V). */
+	static constexpr int32 NumGridCells = 12;
+	/**
+	 * Unit type a cell of the grid produces at the selected building (its own), or None: the building's Produces
+	 * list, in order, fills the cells.
+	 */
+	FName GetGridCellUnitType(int32 Cell) const;
+	/** A cell of the grid, by its key or a click on the HUD: asks the server to produce its unit type. */
+	void ActivateGridCell(int32 Cell);
+
+	/** Asks the server to queue one unit of TypeName at the selected building (its own). */
+	void RequestProduction(FName TypeName);
+	/** Asks the server to cancel the item at Index of the selected building's queue (its own). */
+	void RequestCancelProduction(int32 Index);
+
+	/** Swaps the engine's default HUD for the match HUD of the UI module (D281), on the player's machine. */
+	virtual void ClientSetHUD_Implementation(TSubclassOf<AHUD> NewHUDClass) override;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
@@ -57,6 +86,13 @@ private:
 	void HandleDragCompleted();
 	void HandleSelect();
 	void HandleDeselect();
+	void HandleGridKey(const FInputActionValue& Value, int32 Cell);
+
+	UFUNCTION(Server, Reliable)
+	void ServerQueueProduction(AHOLBuilding* Building, FName TypeName);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCancelProduction(AHOLBuilding* Building, int32 Index);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

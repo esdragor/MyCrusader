@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Buildings/HOLProductionRules.h"
 #include "GameFramework/Actor.h"
 #include "HOLBuilding.generated.h"
 
@@ -36,6 +37,23 @@ public:
 	uint8 GetOwnerPlayer() const { return OwnerPlayer; }
 	uint8 GetColorIndex() const { return ColorIndex; }
 
+	/** The row of its type, or null (logged) if missing. */
+	const FHOLBuildingTypeRow* GetType() const;
+
+	/**
+	 * Production queue (J3, D282): the head is in production (or waits for population), the others wait their turn.
+	 * Written by the server alone (UHOLProductionSubsystem), replicated to the owner only: the building's network
+	 * owner is its player's controller (set by the game mode).
+	 */
+	const TArray<FHOLProductionItem>& GetProductionQueue() const { return ProductionQueue; }
+	/** Server only, for UHOLProductionSubsystem; call NotifyProductionChanged after a change. */
+	TArray<FHOLProductionItem>& GetMutableProductionQueue() { return ProductionQueue; }
+	void NotifyProductionChanged();
+
+	/** The queue changed: on the server when it is written, on the owner's machine when it arrives. For the HUD. */
+	DECLARE_MULTICAST_DELEGATE(FOnProductionChanged);
+	FOnProductionChanged OnProductionChanged;
+
 	/** Values of the provisional shape (D261), as fractions of the footprint and the height. */
 	static constexpr float BaseHeightRatio = 0.45f;
 	static constexpr float TowerSizeRatio = 0.4f;
@@ -50,6 +68,9 @@ protected:
 private:
 	UFUNCTION()
 	void OnRep_Setup();
+
+	UFUNCTION()
+	void OnRep_ProductionQueue();
 
 	/** Builds the look from the type, then paints the owner's colour. Safe to call again. */
 	void RefreshAppearance();
@@ -69,6 +90,9 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Setup)
 	uint8 ColorIndex = 0;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ProductionQueue)
+	TArray<FHOLProductionItem> ProductionQueue;
 
 	/** The type the pieces were built for: the look is rebuilt only when it changes. */
 	FName BuiltTypeName;

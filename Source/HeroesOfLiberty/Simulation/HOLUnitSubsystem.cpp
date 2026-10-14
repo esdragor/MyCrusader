@@ -380,7 +380,7 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		MoveTarget.DesiredSpeed.Set(0.f);
 		MoveTarget.CreateNewAction(EMassMovementAction::Stand, *World);
 
-		Units.Add(UnitId, FHOLUnitRecord{Entity, Request.TypeName});
+		Units.Add(UnitId, FHOLUnitRecord{Entity, Request.TypeName, Request.OwnerPlayer});
 		EntityToId.Add(Entity, UnitId);
 	}
 
@@ -486,6 +486,32 @@ void UHOLUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
 		++OutCounts.FindOrAdd(Unit.Value.TypeName);
+	}
+}
+
+void UHOLUnitSubsystem::GetPopulationByOwner(TArray<int32>& OutPopulation) const
+{
+	OutPopulation.Reset();
+	const auto Add = [this, &OutPopulation](const FName TypeName, const uint8 OwnerPlayer, const int32 Count)
+	{
+		const FHOLUnitTypeRow* Row = FindTypeRow(TypeName);
+		if (!Row)
+		{
+			return;
+		}
+		if (OutPopulation.Num() <= OwnerPlayer)
+		{
+			OutPopulation.SetNumZeroed(OwnerPlayer + 1);
+		}
+		OutPopulation[OwnerPlayer] += Row->Population * Count;
+	};
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		Add(Unit.Value.TypeName, Unit.Value.OwnerPlayer, 1);
+	}
+	for (const FHOLUnitSpawnRequest& Request : BirthQueue)
+	{
+		Add(Request.TypeName, Request.OwnerPlayer, Request.Count);
 	}
 }
 

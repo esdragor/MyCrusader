@@ -9,6 +9,8 @@
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLStartSlot.h"
+#include "EngineUtils.h"
+#include "Match/HOLMatchSettings.h"
 #include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLPlayerController.h"
@@ -65,6 +67,34 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	PlayerState->SetMatchSlot(Slot, MatchConfig.Slots[Slot].ColorIndex);
 	UE_LOG(LogHOLMatch, Log, TEXT("%s holds slot %d (colour %d)"), *PlayerState->GetPlayerName(), Slot,
 		MatchConfig.Slots[Slot].ColorIndex);
+	// The stock of the start (D283); the population is counted by the production at each step.
+	PlayerState->SetResources(GetDefault<UHOLMatchSettings>()->StartingResources);
+	AssignBuildingOwners(Slot);
+}
+
+void AHeroesOfLibertyGameModeBase::AssignBuildingOwners(const int32 Slot)
+{
+	APlayerController* Controller = nullptr;
+	for (const APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+		if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Slot)
+		{
+			Controller = HOLPlayerState->GetPlayerController();
+			break;
+		}
+	}
+	if (!Controller)
+	{
+		return;
+	}
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		if (It->GetOwnerPlayer() == Slot)
+		{
+			It->SetOwner(Controller);
+		}
+	}
 }
 
 void AHeroesOfLibertyGameModeBase::StartPlay()
@@ -102,6 +132,7 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		}
 		Centre->Setup(HOLBuildingTypeNames::MainCentre, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
 		Centre->FinishSpawning(Transform);
+		AssignBuildingOwners(Slot);
 		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f)"), Slot, SlotConfig.ColorIndex,
 			Transform.GetLocation().X, Transform.GetLocation().Y);
 	}

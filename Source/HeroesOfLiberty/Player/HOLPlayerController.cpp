@@ -3,8 +3,12 @@
 #include "Player/HOLPlayerController.h"
 
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "Commands/HOLCommandSubsystem.h"
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
+#include "GameFramework/HUD.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
 #include "EngineUtils.h"
@@ -20,9 +24,15 @@
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLRTSCamera.h"
 #include "Settings/HOLGameUserSettings.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitSubsystem.h"
 
 namespace UE::HeroesOfLiberty::Player
 {
+	// The match HUD (D281) lives in the UI module, which a dedicated server never loads: found by its path on the
+	// player's machine, whatever HUD class the server sends.
+	const TCHAR* MatchHUDClassPath = TEXT("/Script/HeroesOfLibertyUI.HOLGameHUD");
+
 	// Made by Tools/Editor/make_game_input.py.
 	const TCHAR* MappingContextPath = TEXT("/Game/Input/IMC_Game.IMC_Game");
 	const TCHAR* ActionFolder = TEXT("/Game/Input/");
@@ -136,6 +146,79 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** The player's own building of a type (its main centre for the scripted checks), or null. */
+	AHOLBuilding* FindOwnBuilding(const AHOLPlayerController& Controller, const FName TypeName)
+	{
+		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
+		for (TActorIterator<AHOLBuilding> It(Controller.GetWorld()); PlayerState && It; ++It)
+		{
+			if (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex() && It->GetTypeName() == TypeName)
+			{
+				return *It;
+			}
+		}
+		return nullptr;
+	}
+
+	/** Scripted checks of the production (D284), without the HUD: what a cell of the grid does. */
+	FAutoConsoleCommand ProductionQueueCommand(
+		TEXT("hol.Prod.Queue"),
+		TEXT("hol.Prod.Queue [UnitType=Peasant]: asks the server to produce one unit at the selected building (own), or at the player's main centre (selected first) when none is"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const FName TypeName(Args.IsEmpty() ? TEXT("Peasant") : *Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (!Controller->GetOwnSelection())
+				{
+					Controller->SetSelection(FindOwnBuilding(*Controller, HOLBuildingTypeNames::MainCentre));
+				}
+				Controller->RequestProduction(TypeName);
+			}
+		}));
+
+	FAutoConsoleCommand ProductionCancelCommand(
+		TEXT("hol.Prod.Cancel"),
+		TEXT("hol.Prod.Cancel <Index>: asks the server to cancel an item of the selected building's queue (own)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Index = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCancelProduction(Index);
+			}
+		}));
+
+	FAutoConsoleCommand ProductionReportCommand(
+		TEXT("hol.Prod.Report"),
+		TEXT("hol.Prod.Report: logs the local player's economy and the queue of its selected building"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const AHOLBuilding* Building = Controller->GetOwnSelection();
+				TArray<FString> Items;
+				if (Building)
+				{
+					const UHOLUnitSubsystem* Units = Controller->GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+					const double Step = UHOLProductionSubsystem::GetDisplayStep(Controller->GetWorld());
+					const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+					for (const FHOLProductionItem& Item : Building->GetProductionQueue())
+					{
+						const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(Item.TypeName) : nullptr;
+						Items.Add(Item.IsStarted() && Row
+							? FString::Printf(TEXT("%s %.2f"), *Item.TypeName.ToString(),
+								HOLProduction::GetProgress(Item, Step, UHOLProductionSubsystem::GetBuildSteps(*Row, StepSeconds)))
+							: FString::Printf(TEXT("%s waiting"), *Item.TypeName.ToString()));
+					}
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Production report: %s, selected %s, queue %d [%s]"),
+					PlayerState ? *PlayerState->DescribeEconomy() : TEXT("no player state"),
+					*Controller->DescribeBuilding(Controller->GetSelection()), Items.Num(), *FString::Join(Items, TEXT(", ")));
+			}
+		}));
+
 	/** For the scripted checks (D257): the delay lets a command given at start-up report once the match runs. */
 	FAutoConsoleCommand ReportCommand(
 		TEXT("hol.Camera.Report"),
@@ -149,6 +232,13 @@ namespace UE::HeroesOfLiberty::Player
 				return false;
 			}), Delay);
 		}));
+}
+
+void AHOLPlayerController::ClientSetHUD_Implementation(const TSubclassOf<AHUD> NewHUDClass)
+{
+	UClass* MatchHUDClass = StaticLoadClass(AHUD::StaticClass(), nullptr, UE::HeroesOfLiberty::Player::MatchHUDClassPath,
+		nullptr, LOAD_Quiet | LOAD_NoWarn);
+	Super::ClientSetHUD_Implementation(MatchHUDClass ? MatchHUDClass : NewHUDClass.Get());
 }
 
 AHOLPlayerController::AHOLPlayerController()
@@ -241,6 +331,13 @@ void AHOLPlayerController::SetupInputComponent()
 	if (const UInputAction* Deselect = LoadAction(TEXT("IA_Deselect")))
 	{
 		Input->BindAction(Deselect, ETriggerEvent::Started, this, &AHOLPlayerController::HandleDeselect);
+	}
+	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
+	{
+		if (const UInputAction* GridKey = LoadAction(*FString::Printf(TEXT("IA_Grid_%02d"), Cell)))
+		{
+			Input->BindAction(GridKey, ETriggerEvent::Started, this, &AHOLPlayerController::HandleGridKey, Cell);
+		}
 	}
 }
 
@@ -380,6 +477,81 @@ void AHOLPlayerController::SetSelection(AHOLBuilding* Building)
 	}
 	Selection = Building;
 	UE_LOG(LogHOLMatch, Display, TEXT("Selection: %s"), *DescribeBuilding(Building));
+	OnSelectionChanged.Broadcast();
+}
+
+AHOLPlayerState* AHOLPlayerController::GetHOLPlayerState() const
+{
+	return GetPlayerState<AHOLPlayerState>();
+}
+
+AHOLBuilding* AHOLPlayerController::GetOwnSelection() const
+{
+	AHOLBuilding* Building = Selection.Get();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	return Building && HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Building->GetOwnerPlayer() ? Building : nullptr;
+}
+
+FName AHOLPlayerController::GetGridCellUnitType(const int32 Cell) const
+{
+	const AHOLBuilding* Building = GetOwnSelection();
+	const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr;
+	return Type && Type->Produces.IsValidIndex(Cell) ? Type->Produces[Cell] : NAME_None;
+}
+
+void AHOLPlayerController::ActivateGridCell(const int32 Cell)
+{
+	const FName TypeName = GetGridCellUnitType(Cell);
+	if (!TypeName.IsNone())
+	{
+		RequestProduction(TypeName);
+	}
+}
+
+void AHOLPlayerController::RequestProduction(const FName TypeName)
+{
+	if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		ServerQueueProduction(Building, TypeName);
+	}
+}
+
+void AHOLPlayerController::RequestCancelProduction(const int32 Index)
+{
+	if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		ServerCancelProduction(Building, Index);
+	}
+}
+
+void AHOLPlayerController::ServerQueueProduction_Implementation(AHOLBuilding* Building, const FName TypeName)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Queue;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Command.TypeName = TypeName;
+		Commands->IssueProductionOrder(Command);
+	}
+}
+
+void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* Building, const int32 Index)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Cancel;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Command.Index = Index;
+		Commands->IssueProductionOrder(Command);
+	}
 }
 
 FString AHOLPlayerController::DescribeBuilding(const AHOLBuilding* Building) const
@@ -406,6 +578,11 @@ void AHOLPlayerController::HandleSelect()
 void AHOLPlayerController::HandleDeselect()
 {
 	SetSelection(nullptr);
+}
+
+void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const int32 Cell)
+{
+	ActivateGridCell(Cell);
 }
 
 void AHOLPlayerController::UpdateDrag()
