@@ -39,6 +39,13 @@ public:
 	FString DescribeDisplayed() const;
 	/** The units displayed, where they are drawn (J4: what the player selects and orders). */
 	void GetDisplayedUnits(TArray<struct FHOLUnitView>& OutUnits) const;
+	/** One displayed unit; false when it is not displayed. */
+	bool GetDisplayedUnit(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
+	/**
+	 * The amount the player's own unit selected alone carries (D303), as the server last sent it to this player
+	 * (AHOLPlayerController): the states sent to everyone only say whether a unit carries. UnitId 0: none.
+	 */
+	void SetWatchedLoad(uint32 UnitId, EHOLResource Resource, int32 Amount);
 	void ResetStats();
 
 	// UTickableWorldSubsystem
@@ -62,6 +69,8 @@ private:
 		FMassEntityHandle Entity;
 	};
 
+	/** The view of one slot's unit; false when it has no display entity. */
+	bool MakeView(const FSlot& Slot, struct FHOLUnitView& OutView) const;
 	void ReadClock(double Now);
 	void ReadSlots(double Now);
 	/** Display entities for the slots whose unit just arrived, by type. */
@@ -84,6 +93,9 @@ private:
 	TArray<FName> TypeNames;
 	TArray<FSlot> Slots;
 	int32 NumDisplayed = 0;
+	uint32 WatchedUnitId = 0;
+	EHOLResource WatchedResource = EHOLResource::Food;
+	int32 WatchedAmount = 0;
 
 	static constexpr int32 MaxFrames = 36000;
 

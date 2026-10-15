@@ -199,6 +199,15 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		BindPlayerState(PlayerState);
 		Refresh();
 	}
+	// A gatherer selected alone: its line follows it at every change (D303), the other blocks follow their delegates.
+	if (Controller.IsValid() && Controller->GetSelectedUnits().Num() == 1)
+	{
+		FHOLUnitView Unit;
+		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit) && Unit.CarryCapacity > 0)
+		{
+			RefreshUnitActivity(&Unit);
+		}
+	}
 	UpdateHead();
 }
 
@@ -306,6 +315,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	if (!Building)
 	{
 		ShownSelection = TEXT("none");
+		RefreshUnitActivity(nullptr);
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
@@ -324,7 +334,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
 	}
 	SetShown(SelectionHealthRow, true);
-	SetShown(SelectionActivity, false);
+	RefreshUnitActivity(nullptr);
 	if (SelectionHealth)
 	{
 		// No damage before M5: a building is whole.
@@ -341,13 +351,22 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	TArray<FHOLUnitView> Views;
 	if (const UWorld* World = GetWorld())
 	{
-		HOLUnitView::Gather(*World, Views);
+		FHOLUnitView One;
+		if (UnitIds.Num() != 1)
+		{
+			HOLUnitView::Gather(*World, Views);
+		}
+		else if (HOLUnitView::Find(*World, UnitIds[0], One))
+		{
+			Views.Add(One);
+		}
 	}
 	Views.RemoveAll([UnitIds](const FHOLUnitView& View) { return !UnitIds.Contains(View.UnitId); });
 	SetShown(SelectionPanel, !Views.IsEmpty(), ESlateVisibility::Visible);
 	if (Views.IsEmpty())
 	{
 		ShownSelection = TEXT("none");
+		RefreshUnitActivity(nullptr);
 		return;
 	}
 	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
@@ -391,21 +410,34 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		// No damage before M5: a unit is whole.
 		SelectionHealth->SetText(FormatRatio(Type->MaxHealth, Type->MaxHealth));
 	}
-	// One gatherer shows what it does and what it carries (J5, D298); a client has them from the unit's last state.
-	const bool bGatherer = Views.Num() == 1 && Views[0].CarryCapacity > 0;
-	SetShown(SelectionActivity, bGatherer);
-	if (bGatherer && SelectionActivity)
+	// One gatherer shows what it does and what it carries (J5, D298).
+	RefreshUnitActivity(Views.Num() == 1 && Views[0].CarryCapacity > 0 ? &Views[0] : nullptr);
+}
+
+void UHOLGameScreen::RefreshUnitActivity(const FHOLUnitView* Unit)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// The amount is known in solo, and on a client once the server has sent it (D303): until then, the activity alone.
+	const bool bLoad = Unit && Unit->bLoadAmountKnown && (Unit->LoadAmount > 0 || Unit->Activity == EHOLUnitActivity::Gathering);
+	const FString Shown = !Unit ? FString()
+		: bLoad ? FString::Printf(TEXT(", %s %s %d/%d"), *UEnum::GetValueAsString(Unit->Activity),
+			*UEnum::GetValueAsString(Unit->LoadResource), Unit->LoadAmount, Unit->CarryCapacity)
+		: FString::Printf(TEXT(", %s"), *UEnum::GetValueAsString(Unit->Activity));
+	if (Shown == ShownActivity)
 	{
-		const FHOLUnitView& Unit = Views[0];
-		const FText Activity = Unit.Activity == EHOLUnitActivity::Gathering ? LOCTEXT("ActivityGathering", "Récolte")
-			: Unit.Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
-		const bool bLoad = Unit.LoadAmount > 0 || Unit.Activity == EHOLUnitActivity::Gathering;
+		return;
+	}
+	ShownActivity = Shown;
+	SetShown(SelectionActivity, Unit != nullptr);
+	if (Unit && SelectionActivity)
+	{
+		const FText Activity = Unit->Activity == EHOLUnitActivity::Gathering ? LOCTEXT("ActivityGathering", "Récolte")
+			: Unit->Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
 		SelectionActivity->SetText(bLoad
-			? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit.LoadResource),
-				Unit.LoadAmount, Unit.CarryCapacity)
+			? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit->LoadResource),
+				Unit->LoadAmount, Unit->CarryCapacity)
 			: Activity);
-		ShownSelection += FString::Printf(TEXT(", %s %s %d/%d"), *UEnum::GetValueAsString(Unit.Activity),
-			*UEnum::GetValueAsString(Unit.LoadResource), Unit.LoadAmount, Unit.CarryCapacity);
 	}
 }
 
@@ -603,7 +635,7 @@ FString UHOLGameScreen::Describe() const
 		}
 		Queue = FString::Printf(TEXT("%d [%s]"), Items.Num(), *FString::Join(Items, TEXT(", ")));
 	}
-	return FString::Printf(TEXT("resources %s, selection %s, grid %s, queue %s"), *Economy, *ShownSelection, *Grid, *Queue);
+	return FString::Printf(TEXT("resources %s, selection %s%s, grid %s, queue %s"), *Economy, *ShownSelection, *ShownActivity, *Grid, *Queue);
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const

@@ -30,7 +30,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Redu
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("60 bits per state (~7.5 bytes, D301 and a load bit of J5)"), FHOLNetUnitState::TotalBits, 60);
-	TestEqual(TEXT("7 bits more for a carrier (J5)"), FHOLNetUnitState::CarriedLoadBits, 7);
+	TestEqual(TEXT("2 bits more for a carrier (J5, D303: its resource, never its amount)"), FHOLNetUnitState::CarriedLoadBits, 2);
 
 	const FVector Position(12345.6, -9876.5, 123.4);
 	const FVector Velocity(212.3, -147.9, 35.0);
@@ -46,10 +46,10 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % 256));
 	TestEqual(TEXT("same values, same state"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000), State);
 	const FHOLNetUnitState Carrier = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Wood, 7);
-	TestEqual(TEXT("load kept"), static_cast<int32>(Carrier.LoadAmount), 7);
+	TestTrue(TEXT("a carrier"), Carrier.bCarrying);
 	TestEqual(TEXT("load's resource kept"), static_cast<int32>(Carrier.LoadResource), static_cast<int32>(EHOLResource::Wood));
-	TestEqual(TEXT("load held at its range's edge"),
-		static_cast<int32>(FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0, EHOLResource::Gold, 99).LoadAmount), 31);
+	TestEqual(TEXT("the amount is not sent (D303): 7 or 9 make the same state"), Carrier,
+		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Wood, 9));
 	TestEqual(TEXT("nothing carried: the resource does not count"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0, EHOLResource::Gold, 0),
 		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0));
 
@@ -105,8 +105,8 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("60 bits on the wire, 67 for a carrier"), Writer.GetPosBits(),
-			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.LoadAmount > 0 ? FHOLNetUnitState::CarriedLoadBits : 0)));
+		TestEqual(TEXT("60 bits on the wire, 62 for a carrier"), Writer.GetPosBits(),
+			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)));
 
 		FNetBitStreamReader Reader;
 		Reader.InitBits(Buffer, Writer.GetPosBits());

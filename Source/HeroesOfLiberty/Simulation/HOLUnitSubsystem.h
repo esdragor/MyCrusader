@@ -91,6 +91,8 @@ public:
 	FString DescribeUnits(int32 MaxUnits) const;
 	/** The units simulated here (solo, server), where they are (J4: what the player selects and orders in solo). */
 	void GetUnitViews(TArray<struct FHOLUnitView>& OutUnits) const;
+	/** One unit simulated here; false when it is gone. */
+	bool GetUnitView(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
 
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }

@@ -27,6 +27,17 @@ namespace HOLUnitView
 			Units->GetUnitViews(OutUnits);
 		}
 	}
+
+	bool Find(const UWorld& World, const uint32 UnitId, FHOLUnitView& OutUnit)
+	{
+		if (World.GetNetMode() == NM_Client)
+		{
+			const UHOLUnitReceptionSubsystem* Reception = World.GetSubsystem<UHOLUnitReceptionSubsystem>();
+			return Reception && Reception->GetDisplayedUnit(UnitId, OutUnit);
+		}
+		const UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+		return Units && Units->GetUnitView(UnitId, OutUnit);
+	}
 }
 
 namespace

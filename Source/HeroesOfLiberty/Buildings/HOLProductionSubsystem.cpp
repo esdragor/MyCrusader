@@ -318,13 +318,20 @@ FVector UHOLProductionSubsystem::GetBirthLocation(const AHOLBuilding& Building, 
 	using namespace UE::HeroesOfLiberty::Production;
 
 	const FVector Origin = Building.GetActorLocation();
-	// Below the building on the screen, while there is no rally point (J4): the camera never turns and looks along +X
-	// for every player (D254), so this side is never hidden behind the building (user's choice in J3).
-	const FVector Forward(-1.0, 0.0, 0.0);
-
 	const FHOLBuildingTypeRow* Type = Building.GetType();
 	const float HalfFootprint = Type ? 0.5f * FMath::Max(Type->Footprint.X, Type->Footprint.Y) : 750.f;
-	const int32 Row = Index / BirthsPerRow;
+
+	// On the side of the rally point (user's choice at the J5a trial): the unit walks off at once, so one arc is enough.
+	// Without one, below the building on the screen: the camera never turns and looks along +X for every player (D254),
+	// so this side is never hidden behind the building (user's choice in J3).
+	FVector Forward(-1.0, 0.0, 0.0);
+	const FVector ToRally = (Building.GetRallyPoint() - Origin) * FVector(1.0, 1.0, 0.0);
+	const bool bTowardRally = Building.HasRallyPoint() && ToRally.Size() > HalfFootprint;
+	if (bTowardRally)
+	{
+		Forward = ToRally.GetSafeNormal();
+	}
+	const int32 Row = bTowardRally ? 0 : Index / BirthsPerRow;
 	const int32 InRow = Index % BirthsPerRow;
 	// 0, then +1, -1, +2, -2...: the arc fills from the middle.
 	const int32 Side = (InRow + 1) / 2 * (InRow % 2 == 1 ? 1 : -1);

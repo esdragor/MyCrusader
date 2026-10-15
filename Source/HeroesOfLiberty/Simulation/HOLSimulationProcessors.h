@@ -69,6 +69,26 @@ protected:
 };
 
 /**
+ * Orientation, instant (user's choice at the J5a trial, as D290 made the speed): a walking unit faces the way it walks,
+ * from the step it starts or turns; a unit at rest keeps its facing (pushed aside, it does not turn). Replaces Mass'
+ * smoothed orientation, which blended the walk with the path's direction and turned in ~0.3 s.
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLInstantOrientationProcessor : public UMassProcessor
+{
+	GENERATED_BODY()
+
+public:
+	UHOLInstantOrientationProcessor();
+
+protected:
+	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
+	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
+
+	FMassEntityQuery EntityQuery;
+};
+
+/**
  * No body walks through another (the user's trial of J4, D292): at full speed the avoidance turns too late, and a
  * standing unit no longer steps aside (D290). Once the units have moved, every overlap a walker takes part in is
  * undone, each unit of the pair taking half: a walker pushes a standing unit out of its way (as in AoE) and the pushed

@@ -423,37 +423,64 @@ FString UHOLUnitReceptionSubsystem::MakeReport() const
 		ClockStep - LastServerStep, InBytesPerSecond, MeanFps, LowFps);
 }
 
-void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnits) const
+bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutView) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
-	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
-	if (!EntitySubsystem)
+	const FTransformFragment* Transform = EntitySubsystem && Slot.Entity.IsSet()
+		? EntitySubsystem->GetEntityManager().GetFragmentDataPtr<FTransformFragment>(Slot.Entity) : nullptr;
+	if (!Transform)
 	{
-		return;
+		return false;
 	}
-	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	OutView = FHOLUnitView();
+	OutView.UnitId = Slot.UnitId;
+	OutView.OwnerPlayer = Slot.OwnerPlayer;
+	OutView.TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
+	OutView.Location = Transform->GetTransform().GetLocation();
+	OutView.Activity = Slot.State.Activity;
+	OutView.bCarrying = Slot.State.bCarrying;
+	OutView.LoadResource = Slot.State.LoadResource;
+	// The amount only for the watched unit (D303): the server sends it at every change, sooner than the state.
+	if (Slot.UnitId == WatchedUnitId)
+	{
+		OutView.bCarrying = WatchedAmount > 0;
+		OutView.LoadResource = WatchedResource;
+		OutView.LoadAmount = WatchedAmount;
+		OutView.bLoadAmountKnown = true;
+	}
+	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(OutView.TypeName) : nullptr)
+	{
+		OutView.Radius = Row->Radius;
+		OutView.MeshScale = Row->MeshScale;
+		OutView.CarryCapacity = Row->CarryCapacity;
+	}
+	return true;
+}
+
+void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnits) const
+{
+	FHOLUnitView View;
 	for (const FSlot& Slot : Slots)
 	{
-		const FTransformFragment* Transform = Slot.Entity.IsSet() ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Slot.Entity) : nullptr;
-		if (!Transform)
+		if (MakeView(Slot, View))
 		{
-			continue;
-		}
-		FHOLUnitView& View = OutUnits.AddDefaulted_GetRef();
-		View.UnitId = Slot.UnitId;
-		View.OwnerPlayer = Slot.OwnerPlayer;
-		View.TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
-		View.Location = Transform->GetTransform().GetLocation();
-		View.Activity = Slot.State.Activity;
-		View.LoadResource = Slot.State.LoadResource;
-		View.LoadAmount = Slot.State.LoadAmount;
-		if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(View.TypeName) : nullptr)
-		{
-			View.Radius = Row->Radius;
-			View.MeshScale = Row->MeshScale;
-			View.CarryCapacity = Row->CarryCapacity;
+			OutUnits.Add(View);
 		}
 	}
+}
+
+bool UHOLUnitReceptionSubsystem::GetDisplayedUnit(const uint32 UnitId, FHOLUnitView& OutUnit) const
+{
+	const FSlot* Slot = UnitId != 0 ? Slots.FindByPredicate([UnitId](const FSlot& Each) { return Each.UnitId == UnitId && Each.Entity.IsSet(); }) : nullptr;
+	return Slot && MakeView(*Slot, OutUnit);
+}
+
+void UHOLUnitReceptionSubsystem::SetWatchedLoad(const uint32 UnitId, const EHOLResource Resource, const int32 Amount)
+{
+	WatchedUnitId = UnitId;
+	WatchedResource = Resource;
+	WatchedAmount = Amount;
 }
 
 FString UHOLUnitReceptionSubsystem::DescribeDisplayed() const

@@ -34,7 +34,6 @@
 #include "Simulation/HOLUnitMovementTrait.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLUnitTrait.h"
-#include "SmoothOrientation/MassSmoothOrientationTrait.h"
 #include "Steering/MassSteeringTrait.h"
 #include "StructUtils/StructUtilsTypes.h"
 
@@ -282,7 +281,6 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 			NewObject<UMassSteeringTrait>(this),
 			AvoidanceTrait,
 			NewObject<UMassNavigationObstacleTrait>(this),
-			NewObject<UMassSmoothOrientationTrait>(this),
 			NewObject<UMassNavMeshNavigationTrait>(this),
 			NewObject<UMassLODCollectorTrait>(this),
 			VisualizationTrait };
@@ -562,6 +560,44 @@ void UHOLUnitSubsystem::GetUnitCountsByType(TMap<FName, int32>& OutCounts) const
 	}
 }
 
+namespace UE::HeroesOfLiberty::Units
+{
+	/** The view of one simulated unit; false when its entity has no transform or state. */
+	bool MakeUnitView(const FMassEntityManager& EntityManager, const uint32 UnitId, const FName TypeName, const FMassEntityHandle Entity,
+		const float Alpha, FHOLUnitView& OutView)
+	{
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		if (!Transform || !State)
+		{
+			return false;
+		}
+		OutView = FHOLUnitView();
+		OutView.UnitId = UnitId;
+		OutView.OwnerPlayer = State->OwnerPlayer;
+		OutView.TypeName = TypeName;
+		// Drawn between the last two fixed steps, as UHOLInterpolatedInstancesProcessor draws them.
+		const FHOLPreviousTransformFragment* Previous = EntityManager.GetFragmentDataPtr<FHOLPreviousTransformFragment>(Entity);
+		OutView.Location = Previous ? FMath::Lerp(Previous->Transform.GetLocation(), Transform->GetTransform().GetLocation(), Alpha)
+			: Transform->GetTransform().GetLocation();
+		OutView.Activity = State->Activity;
+		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity))
+		{
+			OutView.bCarrying = Gather->Load.Amount > 0;
+			OutView.LoadResource = Gather->Load.Resource;
+			OutView.LoadAmount = Gather->Load.Amount;
+		}
+		OutView.bLoadAmountKnown = true;
+		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity))
+		{
+			OutView.Radius = Constants->Radius;
+			OutView.MeshScale = Constants->MeshScale;
+			OutView.CarryCapacity = Constants->CarryCapacity;
+		}
+		return true;
+	}
+}
+
 void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
@@ -570,38 +606,30 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 		return;
 	}
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
-	// Drawn between the last two fixed steps, as UHOLInterpolatedInstancesProcessor draws them.
 	const UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>();
 	const float Alpha = Simulation ? Simulation->GetInterpolationAlpha() : 1.f;
 	OutUnits.Reserve(OutUnits.Num() + Units.Num());
+	FHOLUnitView View;
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
-		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Unit.Value.Entity);
-		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Unit.Value.Entity);
-		if (!Transform || !State)
+		if (UE::HeroesOfLiberty::Units::MakeUnitView(EntityManager, Unit.Key, Unit.Value.TypeName, Unit.Value.Entity, Alpha, View))
 		{
-			continue;
-		}
-		FHOLUnitView& View = OutUnits.AddDefaulted_GetRef();
-		View.UnitId = Unit.Key;
-		View.OwnerPlayer = State->OwnerPlayer;
-		View.TypeName = Unit.Value.TypeName;
-		const FHOLPreviousTransformFragment* Previous = EntityManager.GetFragmentDataPtr<FHOLPreviousTransformFragment>(Unit.Value.Entity);
-		View.Location = Previous ? FMath::Lerp(Previous->Transform.GetLocation(), Transform->GetTransform().GetLocation(), Alpha)
-			: Transform->GetTransform().GetLocation();
-		View.Activity = State->Activity;
-		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Unit.Value.Entity))
-		{
-			View.LoadResource = Gather->Load.Resource;
-			View.LoadAmount = Gather->Load.Amount;
-		}
-		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Unit.Value.Entity))
-		{
-			View.Radius = Constants->Radius;
-			View.MeshScale = Constants->MeshScale;
-			View.CarryCapacity = Constants->CarryCapacity;
+			OutUnits.Add(View);
 		}
 	}
+}
+
+bool UHOLUnitSubsystem::GetUnitView(const uint32 UnitId, FHOLUnitView& OutUnit) const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	const FHOLUnitRecord* Unit = Units.Find(UnitId);
+	if (!EntitySubsystem || !Unit)
+	{
+		return false;
+	}
+	const UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>();
+	return UE::HeroesOfLiberty::Units::MakeUnitView(EntitySubsystem->GetEntityManager(), UnitId, Unit->TypeName, Unit->Entity,
+		Simulation ? Simulation->GetInterpolationAlpha() : 1.f, OutUnit);
 }
 
 FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const

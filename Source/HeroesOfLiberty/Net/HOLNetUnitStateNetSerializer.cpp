@@ -27,8 +27,8 @@ struct FHOLNetUnitStateNetSerializer
 		int16 VelocityY;
 		uint8 Activity;
 		uint8 Step;
+		uint8 bCarrying;
 		uint8 LoadResource;
-		uint8 LoadAmount;
 	};
 
 	typedef FHOLNetUnitState SourceType;
@@ -127,10 +127,9 @@ void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context,
 	Writer.WriteBits(State.Activity, SourceType::ActivityBits);
 	Writer.WriteBits(State.Step, SourceType::StepBits);
 	// The load, only for a carrier (J5, D298).
-	if (Writer.WriteBool(State.LoadAmount > 0))
+	if (Writer.WriteBool(State.bCarrying != 0))
 	{
 		Writer.WriteBits(State.LoadResource, SourceType::LoadResourceBits);
-		Writer.WriteBits(State.LoadAmount, SourceType::LoadAmountBits);
 	}
 }
 
@@ -147,9 +146,8 @@ void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Contex
 	State.VelocityY = ReadSigned(Reader, SourceType::VelocityBits);
 	State.Activity = static_cast<uint8>(Reader.ReadBits(SourceType::ActivityBits));
 	State.Step = static_cast<uint8>(Reader.ReadBits(SourceType::StepBits));
-	const bool bCarries = Reader.ReadBool();
-	State.LoadResource = bCarries ? static_cast<uint8>(Reader.ReadBits(SourceType::LoadResourceBits)) : 0;
-	State.LoadAmount = bCarries ? static_cast<uint8>(Reader.ReadBits(SourceType::LoadAmountBits)) : 0;
+	State.bCarrying = Reader.ReadBool() ? 1 : 0;
+	State.LoadResource = State.bCarrying ? static_cast<uint8>(Reader.ReadBits(SourceType::LoadResourceBits)) : 0;
 }
 
 void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, const FNetQuantizeArgs& Args)
@@ -162,8 +160,8 @@ void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, 
 	Target.VelocityY = Source.VelocityY;
 	Target.Activity = static_cast<uint8>(Source.Activity);
 	Target.Step = Source.Step;
+	Target.bCarrying = Source.bCarrying ? 1 : 0;
 	Target.LoadResource = static_cast<uint8>(Source.LoadResource);
-	Target.LoadAmount = Source.LoadAmount;
 }
 
 void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context, const FNetDequantizeArgs& Args)
@@ -176,8 +174,8 @@ void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context
 	Target.VelocityY = Source.VelocityY;
 	Target.Activity = static_cast<EHOLUnitActivity>(Source.Activity);
 	Target.Step = Source.Step;
+	Target.bCarrying = Source.bCarrying != 0;
 	Target.LoadResource = static_cast<EHOLResource>(Source.LoadResource);
-	Target.LoadAmount = Source.LoadAmount;
 }
 
 bool FHOLNetUnitStateNetSerializer::IsEqual(FNetSerializationContext& Context, const FNetIsEqualArgs& Args)
@@ -187,7 +185,7 @@ bool FHOLNetUnitStateNetSerializer::IsEqual(FNetSerializationContext& Context, c
 		const QuantizedType& A = *reinterpret_cast<const QuantizedType*>(Args.Source0);
 		const QuantizedType& B = *reinterpret_cast<const QuantizedType*>(Args.Source1);
 		return A.X == B.X && A.Y == B.Y && A.VelocityX == B.VelocityX && A.VelocityY == B.VelocityY
-			&& A.Activity == B.Activity && A.Step == B.Step && A.LoadResource == B.LoadResource && A.LoadAmount == B.LoadAmount;
+			&& A.Activity == B.Activity && A.Step == B.Step && A.bCarrying == B.bCarrying && A.LoadResource == B.LoadResource;
 	}
 	return *reinterpret_cast<const SourceType*>(Args.Source0) == *reinterpret_cast<const SourceType*>(Args.Source1);
 }
@@ -200,8 +198,7 @@ bool FHOLNetUnitStateNetSerializer::Validate(FNetSerializationContext& Context, 
 		&& FitsIn(State.VelocityX, SourceType::VelocityBits)
 		&& FitsIn(State.VelocityY, SourceType::VelocityBits)
 		&& static_cast<uint32>(State.Activity) < (1U << SourceType::ActivityBits)
-		&& static_cast<uint32>(State.LoadResource) < (1U << SourceType::LoadResourceBits)
-		&& State.LoadAmount <= SourceType::MaxLoadAmount;
+		&& static_cast<uint32>(State.LoadResource) < (1U << SourceType::LoadResourceBits);
 }
 
 static const FName PropertyNetSerializerRegistry_NAME_HOLNetUnitState("HOLNetUnitState");

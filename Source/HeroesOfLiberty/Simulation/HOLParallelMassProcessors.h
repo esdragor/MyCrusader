@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Avoidance/MassAvoidanceProcessors.h"
-#include "SmoothOrientation/MassSmoothOrientationProcessors.h"
 #include "Steering/MassSteeringProcessors.h"
 #include "HOLParallelMassProcessors.generated.h"
 
@@ -37,19 +36,6 @@ class HEROESOFLIBERTY_API UHOLParallelSteerToMoveTargetProcessor : public UMassS
 
 public:
 	UHOLParallelSteerToMoveTargetProcessor();
-
-protected:
-	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
-};
-
-/** Orientation smoothed after the movement. */
-UCLASS()
-class HEROESOFLIBERTY_API UHOLParallelSmoothOrientationProcessor : public UMassSmoothOrientationProcessor
-{
-	GENERATED_BODY()
-
-public:
-	UHOLParallelSmoothOrientationProcessor();
 
 protected:
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;

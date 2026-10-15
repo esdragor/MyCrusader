@@ -19,6 +19,8 @@ namespace UE::HeroesOfLiberty::Simulation
 	constexpr double LookAheadCellSize = 250.0;
 	/** Angle (degrees) between two ways a walker tries around a body ahead (D293). */
 	constexpr double AvoidAngleStep = 10.0;
+	/** Below this speed (cm/s) a unit keeps its facing (UHOLInstantOrientationProcessor). */
+	constexpr double MinFacingSpeed = 20.0;
 	/** Part of the two bodies' radii a walker keeps between them when it looks ahead (D293, D294). */
 	float AvoidRadiusScale = 1.1f;
 	FAutoConsoleVariableRef CVarAvoidClearance(TEXT("hol.Units.AvoidClearance"), AvoidRadiusScale,
@@ -530,6 +532,43 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				FTransform& Transform = Transforms[EntityIt].GetMutableTransform();
 				const FVector Location = Transform.GetLocation();
 				Transform.SetLocation(FVector(Corrections[Index].X, Corrections[Index].Y, Location.Z));
+			}
+		}
+	});
+}
+
+UHOLInstantOrientationProcessor::UHOLInstantOrientationProcessor()
+	: EntityQuery(*this)
+{
+	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
+	// Once the units moved and were pushed apart.
+	ExecutionOrder.ExecuteAfter.Add(TEXT("HOLUnitSeparationProcessor"));
+}
+
+void UHOLInstantOrientationProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	EntityQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+}
+
+void UHOLInstantOrientationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+	using namespace UE::HeroesOfLiberty::Simulation;
+
+	EntityQuery.ParallelForEachEntityChunk(Context, [](FMassExecutionContext& Context)
+	{
+		const TConstArrayView<FMassVelocityFragment> Velocities = Context.GetFragmentView<FMassVelocityFragment>();
+		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
+
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			// The walk's velocity (a standing unit's is zero, D290), not the step's move: a push does not turn it.
+			const FVector& Velocity = Velocities[EntityIt].Value;
+			if (Velocity.SizeSquared2D() > FMath::Square(MinFacingSpeed))
+			{
+				Transforms[EntityIt].GetMutableTransform().SetRotation(FQuat(FVector::UpVector, FMath::Atan2(Velocity.Y, Velocity.X)));
 			}
 		}
 	});

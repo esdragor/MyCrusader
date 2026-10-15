@@ -24,9 +24,9 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 	State.VelocityY = ReduceNetValue(Velocity.Y, VelocityStep, VelocityBits);
 	State.Activity = Activity;
 	State.Step = static_cast<uint8>(Step & (NetStepCycle - 1));
-	State.LoadAmount = static_cast<uint8>(FMath::Clamp(LoadAmount, 0, MaxLoadAmount));
+	State.bCarrying = LoadAmount > 0;
 	// Nothing carried: the resource is not sent, the same state whatever it was.
-	State.LoadResource = State.LoadAmount > 0 ? LoadResource : EHOLResource::Food;
+	State.LoadResource = State.bCarrying ? LoadResource : EHOLResource::Food;
 	return State;
 }
 

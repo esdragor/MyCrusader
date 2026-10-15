@@ -74,17 +74,3 @@ void UHOLParallelSteerToMoveTargetProcessor::Execute(FMassEntityManager& EntityM
 		Super::Execute(EntityManager, RunContext);
 	});
 }
-
-UHOLParallelSmoothOrientationProcessor::UHOLParallelSmoothOrientationProcessor()
-{
-	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
-	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
-}
-
-void UHOLParallelSmoothOrientationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
-{
-	UE::HeroesOfLiberty::Simulation::ExecuteChunksInParallel(Context, [this, &EntityManager](FMassExecutionContext& RunContext)
-	{
-		Super::Execute(EntityManager, RunContext);
-	});
-}

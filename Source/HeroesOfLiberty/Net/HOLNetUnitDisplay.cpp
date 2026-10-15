@@ -15,8 +15,6 @@
 
 namespace UE::HeroesOfLiberty::NetDisplay
 {
-	/** Turn rate (deg/s) of a displayed unit towards its walk; provisional, to tune in test. */
-	constexpr float TurnRate = 540.f;
 	/** Below this speed (cm/s) a unit keeps its facing. */
 	constexpr float MinTurnSpeed = 20.f;
 }
@@ -55,9 +53,8 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	const double Now = FPlatformTime::Seconds();
 	const double ClockStep = Reception->GetClock().GetStep(Now);
 	const float StepSeconds = Reception->GetStepSeconds();
-	const float MaxTurn = TurnRate * Context.GetDeltaTimeSeconds();
 
-	EntityQuery.ForEachEntityChunk(Context, [Now, ClockStep, StepSeconds, MaxTurn](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [Now, ClockStep, StepSeconds](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLNetUnitDisplayFragment> Displays = Context.GetMutableFragmentView<FHOLNetUnitDisplayFragment>();
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
@@ -66,11 +63,11 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			FHOLNetUnitDisplayFragment& Display = Displays[EntityIt];
-			if (Display.Velocity.SizeSquared2D() > FMath::Square(MinTurnSpeed))
+			// Facing its walk at once, as the simulation does (UHOLInstantOrientationProcessor); a unit at rest pushed aside
+			// (its sent velocity is the step's move, D294) does not turn.
+			if (Display.State.Activity == EHOLUnitActivity::Moving && Display.Velocity.SizeSquared2D() > FMath::Square(MinTurnSpeed))
 			{
-				const float TargetYaw = FMath::RadiansToDegrees(FMath::Atan2(Display.Velocity.Y, Display.Velocity.X));
-				const float Delta = FRotator::NormalizeAxis(TargetYaw - Display.Yaw);
-				Display.Yaw = FRotator::NormalizeAxis(Display.Yaw + FMath::Clamp(Delta, -MaxTurn, MaxTurn));
+				Display.Yaw = FMath::RadiansToDegrees(FMath::Atan2(Display.Velocity.Y, Display.Velocity.X));
 			}
 			// The drawing interpolates from the previous transform with the simulation's alpha, which is 1 on a client
 			// (no fixed step there): both get the present.

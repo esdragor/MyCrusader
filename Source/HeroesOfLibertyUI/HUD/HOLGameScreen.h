@@ -143,6 +143,11 @@ private:
 	void RefreshSelection(const AHOLBuilding* Building, bool bOwn);
 	/** Selected units (never with a building): one is shown as a building is, several by type and number. */
 	void RefreshUnitSelection(TConstArrayView<uint32> UnitIds);
+	/**
+	 * The line of a gatherer selected alone (J5, D298), or hidden (null): what it does and carries, read again every
+	 * frame and written when it changed (D303).
+	 */
+	void RefreshUnitActivity(const struct FHOLUnitView* Unit);
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, const AHOLPlayerState* PlayerState);
 	void RefreshQueue(const AHOLBuilding* OwnBuilding);
 	/** The head of the queue: its progress (every frame) or the population note. */
@@ -172,6 +177,8 @@ private:
 	int32 ShownPopulationUsed = 0;
 	int32 ShownPopulationCap = 0;
 	FString ShownSelection = TEXT("none");
+	/** ", Gathering Wood 4/10" after ShownSelection for a gatherer selected alone, else empty. */
+	FString ShownActivity;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
 	bool bQueueShown = false;

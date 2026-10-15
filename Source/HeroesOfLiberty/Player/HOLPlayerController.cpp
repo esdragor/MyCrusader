@@ -21,6 +21,8 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Map/HOLMapBounds.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Net/UnrealNetwork.h"
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLRTSCamera.h"
@@ -1105,7 +1107,81 @@ void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
 void AHOLPlayerController::BroadcastSelection()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Selection: %s"), *DescribeSelection());
+	UpdateWatchedUnit();
 	OnSelectionChanged.Broadcast();
+}
+
+void AHOLPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(AHOLPlayerController, WatchedLoad, COND_OwnerOnly);
+}
+
+void AHOLPlayerController::UpdateWatchedUnit()
+{
+	// Solo and the server simulate: the selection block reads the unit itself.
+	if (GetNetMode() != NM_Client)
+	{
+		return;
+	}
+	uint32 UnitId = 0;
+	FHOLUnitView View;
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (SelectedUnits.Num() == 1 && HOLPlayerState && HOLUnitView::Find(*GetWorld(), SelectedUnits[0], View)
+		&& View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.CarryCapacity > 0)
+	{
+		UnitId = View.UnitId;
+	}
+	if (UnitId != SentWatchedUnitId)
+	{
+		SentWatchedUnitId = UnitId;
+		ServerWatchUnit(UnitId);
+	}
+}
+
+void AHOLPlayerController::ServerWatchUnit_Implementation(const uint32 UnitId)
+{
+	WatchedUnitId = UnitId;
+	SendWatchedLoad();
+}
+
+void AHOLPlayerController::SendWatchedLoad()
+{
+	FHOLWatchedLoad Load;
+	FHOLUnitView View;
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+	// Only the player's own unit: another player's load is never sent to it.
+	if (WatchedUnitId != 0 && HOLPlayerState && Units && Units->GetUnitView(WatchedUnitId, View)
+		&& View.OwnerPlayer == HOLPlayerState->GetPlayerIndex())
+	{
+		Load.UnitId = WatchedUnitId;
+		Load.Resource = View.LoadResource;
+		Load.Amount = static_cast<uint8>(FMath::Clamp(View.LoadAmount, 0, 255));
+	}
+	if (!(Load == WatchedLoad))
+	{
+		WatchedLoad = Load;
+		ForceNetUpdate();
+	}
+}
+
+void AHOLPlayerController::OnRep_WatchedLoad()
+{
+	if (UHOLUnitReceptionSubsystem* Reception = GetWorld()->GetSubsystem<UHOLUnitReceptionSubsystem>())
+	{
+		Reception->SetWatchedLoad(WatchedLoad.UnitId, WatchedLoad.Resource, WatchedLoad.Amount);
+	}
+}
+
+void AHOLPlayerController::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	// On a server, for a remote player's controller: its watched unit's load, sent when it changed (D303).
+	if (WatchedUnitId != 0 && GetNetMode() < NM_Client && !IsLocalController())
+	{
+		SendWatchedLoad();
+	}
 }
 
 void AHOLPlayerController::PurgeSelectedUnits()

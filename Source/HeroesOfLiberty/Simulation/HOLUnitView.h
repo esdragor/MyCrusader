@@ -25,8 +25,14 @@ struct FHOLUnitView
 	float MeshScale = 1.f;
 	/** What it is doing and carrying (J5, D298): the selection block shows it. A client has them from the last state received. */
 	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
+	bool bCarrying = false;
 	EHOLResource LoadResource = EHOLResource::Food;
+	/**
+	 * How much it carries: always known in solo and on the server; on a client, only for the player's own unit selected
+	 * alone (D303, AHOLPlayerController's watched unit), once the server has answered.
+	 */
 	int32 LoadAmount = 0;
+	bool bLoadAmountKnown = false;
 	/** What its type carries at most (0: it does not gather). */
 	int32 CarryCapacity = 0;
 };
@@ -35,4 +41,6 @@ namespace HOLUnitView
 {
 	/** The units of a game world: simulated (solo, server) or displayed (client). */
 	HEROESOFLIBERTY_API void Gather(const UWorld& World, TArray<FHOLUnitView>& OutUnits);
+	/** One unit of a game world, without gathering them all (the selection block, every frame); false when it is gone. */
+	HEROESOFLIBERTY_API bool Find(const UWorld& World, uint32 UnitId, FHOLUnitView& OutUnit);
 }

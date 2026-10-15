@@ -16,6 +16,26 @@ struct FHOLPickCandidate;
 struct FInputActionValue;
 
 /**
+ * What the player's own unit selected alone carries (D303), sent by the server to its owner at every change: the states
+ * sent to everyone only say whether a unit carries (FHOLNetUnitState).
+ */
+USTRUCT()
+struct FHOLWatchedLoad
+{
+	GENERATED_BODY()
+
+	/** 0: no unit watched. */
+	UPROPERTY()
+	uint32 UnitId = 0;
+	UPROPERTY()
+	EHOLResource Resource = EHOLResource::Food;
+	UPROPERTY()
+	uint8 Amount = 0;
+
+	bool operator==(const FHOLWatchedLoad& Other) const = default;
+};
+
+/**
  * Controller of a player in a match map (a map with start slots, D255): no pawn, a visible cursor and, on the
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
@@ -117,10 +137,13 @@ public:
 	/** Swaps the engine's default HUD for the match HUD of the UI module (D281), on the player's machine. */
 	virtual void ClientSetHUD_Implementation(TSubclassOf<AHUD> NewHUDClass) override;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
 	virtual void PlayerTick(float DeltaTime) override;
+	virtual void Tick(float DeltaSeconds) override;
 
 private:
 	/** Places the camera above the player's start slot, once its slot has reached this machine. */
@@ -138,6 +161,12 @@ private:
 	/** Units that left this machine (dead, out of view of a client) leave the selection. */
 	void PurgeSelectedUnits();
 	void BroadcastSelection();
+	/** On a client: tells the server which unit the player watches (its own unit selected alone, D303), when it changes. */
+	void UpdateWatchedUnit();
+	/** On the server: the watched unit's load, sent to the owner when it changed. */
+	void SendWatchedLoad();
+	UFUNCTION()
+	void OnRep_WatchedLoad();
 
 	void HandlePan(const FInputActionValue& Value, FVector2D Direction);
 	void HandleZoom(const FInputActionValue& Value);
@@ -166,6 +195,10 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex);
+
+	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
+	UFUNCTION(Server, Reliable)
+	void ServerWatchUnit(uint32 UnitId);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatResources(FHOLResources Amount);
@@ -199,4 +232,12 @@ private:
 	/** Shift held (IA_SelectAdd). */
 	bool bSelectAddHeld = false;
 	float SincePurge = 0.f;
+
+	/** The unit this client last asked the server to watch (D303). */
+	uint32 SentWatchedUnitId = 0;
+	/** On the server: the unit the player watches. */
+	uint32 WatchedUnitId = 0;
+	/** Replicated to the owner alone. */
+	UPROPERTY(ReplicatedUsing = OnRep_WatchedLoad)
+	FHOLWatchedLoad WatchedLoad;
 };
