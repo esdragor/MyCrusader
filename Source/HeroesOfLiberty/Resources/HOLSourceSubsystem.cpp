@@ -85,6 +85,30 @@ namespace UE::HeroesOfLiberty::Resources
 				}
 			});
 		}));
+
+	// The same on the standing source nearest a point: the scripted checks of J5a.5 thin out the tree a client will
+	// gather (the one nearest its start), so that its gathering uses it up within seconds.
+	FAutoConsoleCommand CommandTakeNear(TEXT("hol.Sources.TakeNear"),
+		TEXT("hol.Sources.TakeNear X Y [Amount]: hol.Sources.Take on the standing source nearest a ground point (cm)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Sources: usage hol.Sources.TakeNear X Y [Amount]"));
+				return;
+			}
+			const FVector Point(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
+			const int32 Amount = Args.Num() > 2 ? FCString::Atoi(*Args[2]) : MAX_int32;
+			ForEachRegistry([&Point, Amount](UHOLSourceSubsystem& Registry)
+			{
+				const int32 Index = Registry.HasAuthority() ? Registry.FindNearestStanding(Point) : INDEX_NONE;
+				if (Index != INDEX_NONE)
+				{
+					const int32 Taken = Registry.Take(Index, Amount);
+					UE_LOG(LogHOLMatch, Display, TEXT("Sources: took %d from source %d"), Taken, Index);
+				}
+			});
+		}));
 #endif
 }
 

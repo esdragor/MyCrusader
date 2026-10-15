@@ -61,7 +61,7 @@ vérifier sur S1 et S2.
 | J5a.2 Sources dans la partie | **fait** (2026-10-15) : registre `UHOLSourceSubsystem`, disposition `AHOLSourceLayout` posée par le script de `Plain` (40 arbres par emplacement, 320 en tout), affichage par instances (`AHOLSourceField`), un seul fournisseur de zones interdites à cylindres par instance (`UHOLSourceNavComponent` : seule la tuile d'une source épuisée se refait), morceaux répliqués de 63 sources (`AHOLSourceChunk`) ; `quick_check` PASS (83 s) avec les parties « sources » et « net » ; arbres de `StressTest` reportés à J5a.3 (créés par S7) |
 | J5a.3 Boucle de récolte dans la simulation | **fait** (2026-10-15) : `UHOLGatherProcessor` (places au contact, récolte, dépôt le plus proche, épuisement, inactif ; ses marches passent par la file d'ordres), dépôts en emprise (`Accepts` dans la table des bâtiments), `hol.Units.Gather`, `hol.Gather.Report` ; **S7 PASS à 2,96 ms** (machine chargée ; avec 3 camps de bûcherons provisoires par joueur), S2 inchangé (mêmes recouvrements) ; `quick_check` PASS (89 s), tests 36/36 ; **S1 / S2 / S7 et le rendu à remesurer au repos** |
 | J5a.4 Ordre réseau et ralliement | **fait** (2026-10-15) : clic droit sur une source (visée à l'écran comme une unité) → ordre de récolte vérifié par le serveur, repère bref sur la source ; ralliement sur une source (le Paysan né y récolte) ; activité « récolte » et charge dans l'état répliqué (1 bit, +7 pour un porteur) ; bloc du Paysan « Récolte — Bois 4/10 » (fr / en / ja) ; couronne des arbres remontée (les récolteurs se voient) ; `quick_check` PASS (caméra 8p : un raté d'à-coup, PASS au second essai), **S5 PASS à 31,3 Ko/s** (machine chargée) |
-| J5a.5 Vérification et essai | **en cours** (2026-10-15) : 1er essai → D303 (naissance vers le ralliement, bloc du Paysan à chaque changement, charge exacte au seul propriétaire de l'unité sélectionnée seule) ; 2e essai → D304 (orientation instantanée) ; 3e essai validé ; `quick_check` PASS (68 s) ; restent les contrôles scriptés et S1 / S2 / S7 / S5 |
+| J5a.5 Vérification et essai | **en cours** (2026-10-15) : 1er essai → D303 (naissance vers le ralliement, bloc du Paysan à chaque changement, charge exacte au seul propriétaire de l'unité sélectionnée seule) ; 2e essai → D304 (orientation instantanée) ; 3e essai validé ; `quick_check` PASS (68 s) ; solo vérifié à la main par l'utilisateur ; **partie à 2 clients de la récolte** dans `quick_check` (charge suivie de D303, arbre épuisé chez les deux, stock de l'autre jamais reçu) PASS, `quick_check` PASS (70 s) ; restent S1 / S2 / S7 au repos, S5 |
 
 ## Prochaine étape exacte
 
@@ -86,8 +86,9 @@ vérifier sur S1 et S2.
    les deux, stock de l'autre jamais reçu ; S1 / S2 / S7 courts **au repos** ; **essai de l'utilisateur**). À faire
    valider à l'essai : la disposition de S7 (camps provisoires), l'abandon pour l'instant de la réutilisation des chemins
    (journal de J5a.3), la forme des arbres ; marge de S5 devenue mince (31,3 Ko/s machine chargée).
-8. **J5a.5 commencée** (2026-10-15) : essais de l'utilisateur → D303, D304, validés ; reprise au point « Reprise » du
-   dernier journal (contrôles scriptés, S1 / S2 / S7 au repos, S5).
+8. **J5a.5 commencée** (2026-10-15) : essais de l'utilisateur → D303, D304, validés ; solo vérifié à la main, partie à
+   2 clients de la récolte dans `quick_check` faite ; reprise au point « Reprise » du dernier journal (S1 / S2 / S7 au
+   repos, S5, dernier essai).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1842,3 +1843,24 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   voisin, inactif) et à 2 clients (récolte vue, arbre épuisé disparu chez les deux, stock de l'autre jamais reçu, **charge
   suivie de D303** reçue par le seul propriétaire) ; S1 / S2 / S7 courts **au repos** ; serveur recuit puis S5 court ;
   dernier essai de l'utilisateur pour clore J5a (disposition de S7, chemins non réutilisés, forme des arbres).
+
+### 2026-10-15 (suite) — J5a.5 : récolte solo vérifiée à la main
+
+- **Partie solo** (ralliement sur un arbre, stock qui ne monte qu'au dépôt, arbre voisin, inactif) : **vérifiée à la
+  main par l'utilisateur** ; pas de partie « récolte » solo scriptée dans `quick_check` (choix de l'utilisateur).
+- **Partie à 2 clients de la récolte** dans `quick_check` (partie « net », avec « sources ») : 6 s après l'arrivée des
+  2 clients, le serveur laisse 5 bois dans l'arbre le plus proche de chaque emplacement (`hol.Sources.TakeNear X Y N`,
+  outil de développement) ; chaque client met la caméra sur son emplacement (`hol.Camera.FocusSlot own`), sélectionne
+  son Paysan seul, clic droit sur l'arbre le plus proche de son emplacement (`hol.Select.OrderSourceNear`), puis toutes
+  les 2 s `hol.HUD.Report` et `hol.Units.Where` (qui dit désormais l'activité et la charge de chaque unité, « ? » quand
+  la machine ne connaît pas la quantité). Contrôles par client : ordre passé, **charge exacte au HUD en temps réel**
+  (0, 1, 2, 4, 5… /10, « Moving Wood 10/10 » vers le dépôt), Paysan de l'autre vu « Gathering » et « carries Wood ? »,
+  **quantité de l'autre jamais reçue**, les 2 arbres visés **épuisés et disparus chez les deux** (317 debout), **bois à
+  210** au dépôt et stock de l'autre jamais reçu, capture ; au serveur : chaque joueur a déchargé 10 bois. Les contrôles
+  de la partie « net » lisent leur section (`Test mark: net` / `gather`).
+- `-Parts` : passé par `-File`, la liste arrive en une seule chaîne (aucune partie ne tourne) ; passer par
+  `-Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"` (noté en tête du script).
+- Compile sans avertissement ; `quick_check` **PASS en 70 s** (la partie « net » tourne en parallèle du lancement
+  principal : rien d'ajouté), tests 36/36.
+- **Reprise** : S1 / S2 / S7 courts **au repos** (ProjectShiva fermé) ; serveur recuit puis S5 court ; dernier essai de
+  l'utilisateur pour clore J5a (disposition de S7, chemins non réutilisés, forme des arbres).

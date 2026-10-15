@@ -42,10 +42,13 @@ namespace HOLUnitView
 
 namespace
 {
-	/** Scripted checks of J4 (D289): where this machine has the units (a client: where it draws them). */
+	/**
+	 * Scripted checks of J4 (D289): where this machine has the units (a client: where it draws them); and of J5 (D299,
+	 * D303): what each one does and carries, its amount as "?" when this machine does not know it.
+	 */
 	FAutoConsoleCommand UnitsWhereCommand(
 		TEXT("hol.Units.Where"),
-		TEXT("hol.Units.Where [Slot]: logs the units known on this machine (of one slot, or all) and where they are"),
+		TEXT("hol.Units.Where [Slot]: logs the units known on this machine (of one slot, or all), where they are, what they do and carry"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const int32 Slot = Args.IsEmpty() ? INDEX_NONE : FCString::Atoi(*Args[0]);
@@ -64,7 +67,14 @@ namespace
 				{
 					if (Slot == INDEX_NONE || Unit.OwnerPlayer == Slot)
 					{
-						Lines.Add(FString::Printf(TEXT("#%u slot %d at (%.0f, %.0f)"), Unit.UnitId, Unit.OwnerPlayer, Unit.Location.X, Unit.Location.Y));
+						FString Line = FString::Printf(TEXT("#%u slot %d at (%.0f, %.0f) %s"), Unit.UnitId, Unit.OwnerPlayer, Unit.Location.X,
+							Unit.Location.Y, *StaticEnum<EHOLUnitActivity>()->GetNameStringByValue(static_cast<int64>(Unit.Activity)));
+						if (Unit.bCarrying || (Unit.bLoadAmountKnown && Unit.LoadAmount > 0))
+						{
+							Line += FString::Printf(TEXT(", carries %s %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Unit.LoadResource)),
+								Unit.bLoadAmountKnown ? *FString::FromInt(Unit.LoadAmount) : TEXT("?"));
+						}
+						Lines.Add(MoveTemp(Line));
 					}
 				}
 				UE_LOG(LogHOLSimulation, Display, TEXT("Units where: %d units: %s"), Lines.Num(), *FString::Join(Lines, TEXT("; ")));

@@ -7,9 +7,12 @@
 # Alongside, the "net" part (D273, M2.5.6): a two-client match on a dedicated server, the editor in server mode (D275),
 # each client checking its camera, the two centres in their colours and a click on each.
 # The "sources" part (J5a.2, D297): the wood beside slot 0, forbidden on the navmesh tree by tree; a tree used up
-# leaves the map on the server and on both clients.
+# leaves the map on the server and on both clients. With "net" (J5a.5, D299, D303): each client sends its Peasant to
+# the tree nearest its start, the server having left 5 wood in it; the tree is used up on both clients, the wood rises
+# at the deposit, the exact load reaches its owner alone, the other client only knows that it carries wood.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera,production,move,sources,net] [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
@@ -66,7 +69,13 @@ if ($Parts -contains "net") {
     "{ `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
-    $NetSourceCommand = if ($Parts -contains "sources") { ",hol.Net.WhenClients 2 hol.Delay 5 hol.Sources.Take 0" } else { "" }
+    # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
+    # will gather), so that the gathering uses it up within seconds; every unload logged.
+    $NetSourceCommand = if ($Parts -contains "sources") {
+        ",hol.Net.WhenClients 2 hol.Delay 5 hol.Sources.Take 0" +
+        ",hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear -15000 0 95,hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear 15000 0 95" +
+        ",hol.Gather.LogDeposits 1"
+    } else { "" }
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
@@ -247,6 +256,14 @@ if ($NetListening) {
         # Sources (J5a.2): the 320 trees received, the one the server used up gone (5 s after both joined, long done).
         if ($Parts -contains "sources") {
             $NetSteps += "hol.Sources.Report"
+            # Gathering (J5a.5, D299, D303): its Peasant selected alone, a right click on the tree nearest its start (5
+            # wood left by the server): it gathers it, the tree is used up, it goes on with a neighbour, unloads 10 at
+            # its centre. Every 2 s, what the HUD shows (its exact load, sent to this client alone) and what this client
+            # knows of each unit (the other's activity, never its amount).
+            $NetSteps += "mark gather", "hol.Camera.FocusSlot own", "frames 3", "hol.Select.ClickUnit 0", "waitlog Selection: Peasant", "frames 2",
+                "hol.Select.OrderSourceNear", "frames 2"
+            for ($i = 0; $i -lt 16; $i++) { $NetSteps += "wait 2", "hol.HUD.Report", "hol.Units.Where" }
+            $NetSteps += "hol.Sources.Report", "hol.Prod.Report", "capture qcnet_${Client}_gather"
         }
         $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
@@ -449,6 +466,14 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
 }
 
 if ($Parts -contains "net") {
+    # The lines of a client's section, from its mark to the next one ("net", then "gather").
+    function Get-ClientSection($Lines, [string] $Mark) {
+        $Inside = $false
+        foreach ($Line in $Lines) {
+            if ($Line -match "Test mark: (.*)$") { $Inside = $Matches[1] -eq $Mark; continue }
+            if ($Inside) { $Line }
+        }
+    }
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetListening
     $HeldSlots = @()
@@ -473,17 +498,41 @@ if ($Parts -contains "net") {
         $Selection = @($ClientLines | Select-String -Pattern "Selection report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Wanted = @(0, 1 | ForEach-Object { "selected MainCentre of slot $_ ($(if ($_ -eq $Held) { 'own' } else { 'other' }))" }) + "selected none"
         $Checks["client $N : clicks on the two centres, then the void ($($Selection -join '; '))"] = ($Selection -join '|') -eq ($Wanted -join '|')
-        $Production = $ClientLines | Select-String -Pattern "Production report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $NetLines = Get-ClientSection $ClientLines "net"
+        $Production = $NetLines | Select-String -Pattern "Production report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $Checks["client $N : own Peasant paid and counted ($Production)"] = [bool]($Production -match "^F 150 W 200 S 200 G 200, population 1/10, .*queue 0 ")
         $Checks["client $N : other player's economy not received"] = [bool]($Production -match "; others \[slot $(1 - $Held) F 0 W 0 S 0 G 0, population 0/0\]$")
-        $Shown = $ClientLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $Shown = $NetLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $Checks["client $N : both Peasants shown ($Shown)"] = $Shown -eq "client, 2 displayed: Peasant of slot 0 x1, Peasant of slot 1 x1"
         $Missing = @("start", "slot0", "slot1", "peasants" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
         $Checks["client $N : captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         if ($Parts -contains "sources") {
-            $Sources = $ClientLines | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-            $Checks["client $N : 320 trees received, the used-up one gone ($Sources)"] = $Sources -eq "319 standing of 320 (Tree 319: 31900 left); shown 319, navmesh 0"
+            # 5 wood left by the server in the tree nearest each start: 31900 - 2 x 95.
+            $Sources = $NetLines | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            $Checks["client $N : 320 trees received, the used-up one gone ($Sources)"] = $Sources -eq "319 standing of 320 (Tree 319: 31710 left); shown 319, navmesh 0"
             $Checks["client $N : saw the tree used up"] = [bool]($ClientLines | Select-String -Pattern "Sources: source 0 used up \(client\)" -Quiet)
+
+            # Gathering (J5a.5, D299, D303).
+            $Gather = @(Get-ClientSection $ClientLines "gather")
+            $Other = 1 - $Held
+            $Clicked = $Gather | Select-String -Pattern "Right click on source (\d+)" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            $Checks["client $N : its Peasant alone, right click on a tree (source $Clicked)"] = [bool]($Gather | Select-String -Pattern "Selection: Peasant #\d+ of slot $Held \(own\)" -Quiet) -and ($null -ne $Clicked)
+            $Loads = @($Gather | Select-String -Pattern "HUD report: .*, EHOLUnitActivity::(\w+) EHOLResource::Wood (\d+)/10" | ForEach-Object { "$($_.Matches[0].Groups[1].Value -replace 'Gathering', 'G' -replace 'Moving', 'M' -replace 'Idle', 'I') $($_.Matches[0].Groups[2].Value)" })
+            $Checks["client $N : HUD shows its exact load in real time, D303 ($($Loads -join ', '))"] =
+                @($Loads | Where-Object { $_ -match "^G [1-9]" }).Count -ge 2
+            $OwnKnown = [bool]($Gather | Select-String -Pattern "slot $Held at \(-?\d+, -?\d+\) \w+, carries Wood \d+" -Quiet)
+            $Checks["client $N : its own Peasant's load known here"] = $OwnKnown
+            $Checks["client $N : the other's Peasant seen gathering and carrying"] = [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) Gathering" -Quiet) -and
+                [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) \w+, carries Wood \?" -Quiet)
+            $Checks["client $N : the other's load never received"] = -not ($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) \w+, carries \w+ \d" -Quiet)
+            $UsedUp = @($Gather | Select-String -Pattern "Sources: source (\d+) used up \(client\)" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique)
+            $Final = $Gather | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            $Checks["client $N : both gathered trees used up, gone here ($($UsedUp -join ', '); $Final)"] = ($UsedUp.Count -eq 2) -and
+                [bool]($Final -match "^317 standing of 320 .*; shown 317, navmesh 0$")
+            $Stock = $Gather | Select-String -Pattern "Production report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            $Checks["client $N : its wood rose at the deposit, the other's stock never received ($Stock)"] =
+                [bool]($Stock -match "^F 150 W 2[1-9]0 S 200 G 200, ") -and [bool]($Stock -match "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$")
+            $Checks["client $N : gather capture"] = Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_gather.png")
         }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
@@ -492,7 +541,7 @@ if ($Parts -contains "net") {
         # Each client sees both Peasants beside their owners' starts (D288): its own order obeyed, the other client's too.
         foreach ($NetClient in $NetClients) {
             $N = $NetClient.Client
-            $Where = (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            $Where = (Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "net") | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
             foreach ($Slot in 0, 1) {
                 $Start = Get-SlotStart $Slot
                 $Seen = [regex]::Match([string]$Where, "slot $Slot at \((-?\d+), (-?\d+)\)")
@@ -509,6 +558,10 @@ if ($Parts -contains "net") {
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     $Born = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Production: Peasant of slot (\d) done" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
     $Checks["server: one Peasant born per slot ($($Born -join ', '))"] = (($Born | Sort-Object) -join ',') -eq "0,1"
+    if ($Parts -contains "sources") {
+        $Unloaded = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Gather: slot (\d) unloaded 10 Wood" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique })
+        $Checks["server: each player's Peasant unloaded 10 wood at its centre ($($Unloaded -join ', '))"] = ($Unloaded -join ',') -eq "0,1"
+    }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }
 

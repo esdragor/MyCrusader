@@ -309,6 +309,25 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** The same from the player's own start (a script does not know which slot a client holds, J5a.5). */
+	FAutoConsoleCommand OrderSourceNearCommand(
+		TEXT("hol.Select.OrderSourceNear"),
+		TEXT("hol.Select.OrderSourceNear [Dx Dy]: hol.Select.OrderSource at the player's start plus (Dx, Dy) (cm)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				if (Start)
+				{
+					const FVector Point = Start->GetGroundLocation() + (Args.Num() >= 2 ? FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.) : FVector::ZeroVector);
+					IConsoleManager::Get().ProcessUserConsoleInput(*FString::Printf(TEXT("hol.Select.OrderSource %.0f %.0f"), Point.X, Point.Y),
+						*GLog, Controller->GetWorld());
+				}
+			}
+		}));
+
 	FAutoConsoleCommand SelectionReportCommand(
 		TEXT("hol.Select.Report"),
 		TEXT("hol.Select.Report: logs the local player's selection"),
@@ -326,12 +345,14 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand FocusSlotCommand(
 		TEXT("hol.Camera.FocusSlot"),
-		TEXT("hol.Camera.FocusSlot <Slot>: puts the local player's camera above a start slot (scripted checks)"),
+		TEXT("hol.Camera.FocusSlot <Slot|own>: puts the local player's camera above a start slot, or its own (scripted checks)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
-			const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			const bool bOwn = !Args.IsEmpty() && Args[0] == TEXT("own");
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const int32 Slot = !bOwn ? (Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0])) : PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
 				const AHOLStartSlot* Start = AHOLStartSlot::Find(Controller->GetWorld(), Slot);
 				if (Start && Controller->GetRTSCamera())
 				{
