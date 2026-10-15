@@ -47,14 +47,15 @@ vérifier sur S1 et S2.
 | J3.4 HUD (barre du haut, sélection, grille, file) | **fait** (2026-10-14) : `AHOLGameHUD` + `UHOLGameScreen` (module d'interface, écrit par un sous-agent), textes fr / en / ja, `hol.HUD.Report` / `hol.HUD.Click` |
 | J3.5 Vérification (D284) | **fait** (2026-10-14) : `quick_check` PASS (production solo, et production à 2 clients : un Paysan par client vu chez les deux, ressources de l'autre jamais reçues), essai de l'utilisateur « très bien » puis plantage du ramasse-miettes corrigé et confirmé disparu, unités ×1,5, S1 / S2 courts PASS |
 | J3.6 Clôture : D280 à D284 au GDD | **fait** (2026-10-14) : D280 à D284 au § 21 (D283 précisée : unités ×1,5), paragraphe « Parcours J3 » au § 16.6. **J3 close.** |
-| J4 — plan (Q1 à Q5, décisions à partir de D285) | **en cours** (2026-10-14) : Q1 tranchée (D285) ; plan validé (D286 à D289) |
+| J4 — plan (Q1 à Q5, décisions à partir de D285) | **fait** (2026-10-14) : Q1 tranchée (D285) ; plan validé (D286 à D289) |
 | J4.1 Navmesh dynamique et obstacles | **fait** (2026-10-14) : `DynamicModifiersOnly`, agent de 60 cm, zone interdite sous les bâtiments, rochers et bosquet sur `Plain`, navmesh construit et sauvegardé par les scripts des cartes (`Plain` et `StressTest` refaites), `hol.Nav.Path`, partie « move » de `quick_check` PASS (40 s), S1 / S2 courts PASS |
 | J4.2 Règles pures (paquets, places, attribution) | **fait** (2026-10-14) : `Simulation/HOLGroupMoveRules`, 3 tests `HeroesOfLiberty.Movement.*`, tests 31/31 |
 | J4.3 Chemins dans la simulation | **fait** (2026-10-14) : ordre de groupe, places, paquets, couloir partagé avec place de côté, dernier tronçon vers la place ; 40 Paysans contournent centre et arête, arrivés en disque de ~5 m ; `quick_check` PASS (48 s) ; **S2 à remesurer machine au repos** (3,0-3,8 ms sous charge, voir journal) |
 | J4.4 Ordre réseau et ralliement | **fait** (2026-10-14) : appel serveur avec contrôle du propriétaire dans la simulation, point de ralliement (file de commandes, répliqué au propriétaire), naissance avec ordre, places déjà prises sautées ; partie à 2 clients de `quick_check` : chacun voit les deux Paysans là où leurs propriétaires les ont envoyés (13 cm), le serveur ignore l'unité de l'autre ; `quick_check` PASS (46 s) |
 | J4.5 Sélection des unités | **fait** (2026-10-14) : `Player/HOLUnitPicking` (projection, clic, cadre), sélection d'unités dans `AHOLPlayerController` (unité avant bâtiment, cadre au relâchement, Maj, unité adverse seule, unités disparues retirées), clic droit → ordre ou ralliement (sur le centre : effacé), `IA_SelectAdd` / `IA_Order` ; essai scripté solo conforme ; tests 32/32, `quick_check` PASS (39 s) |
 | J4.6 Retour visuel et HUD | **fait** (2026-10-14) : `AHOLSelectionMarkers` (cercles sous les unités sélectionnées, carré sous le bâtiment, repère d'ordre de 0,5 s, fanion de ralliement), `M_GroundRing` / `M_GroundFrame` (`make_marker_materials.py`), rectangle du cadre dessiné par `AHOLGameHUD`, bloc de sélection d'une unité ou d'un groupe (fr / en / ja) ; essai scripté avec captures conforme ; tests 32/32, `quick_check` PASS (43 s) ; **1er essai de l'utilisateur** → retouches faites (D290, D291 : marqueurs blancs, repère réduit, Paysan à 6 m/s, triches de développement) ; `quick_check` PASS (42 s) ; 2e à 4e essais → D290 complétée (arrêtée ou pleine vitesse), D292 (aucun corps n'en traverse un autre), D293 (contourner avant de bousculer) ; `quick_check` PASS (45 s) ; **5e essai validé** (« super ») |
-| J4.7 Vérification (D289) | **en cours** (2026-10-14) : partie solo des ordres dans `quick_check` (PASS, 65-75 s), défauts corrigés (D294), S1 PASS ; **S2 à remesurer au repos**, **S5 PASS à 29,97 Ko/s** (39,7 avant) : D300 (identifiant de 10 bits par élément d'un tableau rapide, retiré par des tableaux simples : 35,6) puis D301 (hauteur posée au sol par le client, état de 59 bits) ; S2 court FAIL (4,41 ms par pas, seuil 3) → **D302 fait (2026-10-15) : S2 court PASS à 2,71 ms** (évitement, pilotage et orientation de Mass en parallèle, regard en avant allégé, mêmes résultats), S1 PASS (2,24 ms), `quick_check` PASS (64 s), S5 court PASS (30,0 Ko/s, 23,0 cm). **Reste J4.8** |
+| J4.7 Vérification (D289) | **fait** (2026-10-15) : partie solo des ordres dans `quick_check` (PASS, 65-75 s), défauts corrigés (D294), S1 PASS ; **S2 à remesurer au repos**, **S5 PASS à 29,97 Ko/s** (39,7 avant) : D300 (identifiant de 10 bits par élément d'un tableau rapide, retiré par des tableaux simples : 35,6) puis D301 (hauteur posée au sol par le client, état de 59 bits) ; S2 court FAIL (4,41 ms par pas, seuil 3) → **D302 fait (2026-10-15) : S2 court PASS à 2,71 ms** (évitement, pilotage et orientation de Mass en parallèle, regard en avant allégé, mêmes résultats), S1 PASS (2,24 ms), `quick_check` PASS (64 s), S5 court PASS (30,0 Ko/s, 23,0 cm) |
+| J4.8 Clôture : D285 à D294, D300 à D302 au GDD | **fait** (2026-10-15) : lignes au § 21 (D294 complétée, D274 précisée : les ~8 Ko/s d'en-têtes), paragraphe « Parcours J4 » et ligne M3 au § 16.6. **J4 close.** |
 | J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299 ; trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte) ; code après la clôture de J4 |
 
 ## Prochaine étape exacte
@@ -73,6 +74,8 @@ vérifier sur S1 et S2.
 5. **Plan de J5 fait** (2026-10-14, en parallèle de la fin de J4, autre session) : D295 à D299 (D290 à D294 laissées à
    J4) ; J5 coupée en **trois parties jouables** (J5a le bois, J5b les 4 ressources et le HUD, J5c la vie de la
    récolte), chacune avec l'essai de l'utilisateur. **Aucun code avant la clôture de J4** ; reprise ensuite à J5a.1.
+6. **J4 close le 2026-10-15** (D285 à D294, D300 à D302 au GDD). Suite : **J5a.1** (première sous-étape de J5a, le
+   bois ; voir « Plan de J5 »).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1663,3 +1666,11 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   nouveaux processeurs) : 30 007 o/s par client, 1,72 envoi par unité et par seconde, écart affiché 23,0 cm (D301 :
   29 970 o/s, 23,6 cm). Simulation du serveur 6,4 ms par pas, mesurée avec les 2 clients sur la même machine.
 - Suite : **J4.8** (clôture : D285 à D294, D300 à D302 au GDD ; D274 à préciser).
+
+### 2026-10-15 (suite) — J4.8 : clôture, J4 close
+
+- GDD § 21 : lignes D285 à D294 et D300 à D302 (colonne « Sections » : § 16.6) ; D294 complétée (sa décision
+  attendue a été tranchée par D300 et D301) ; **D274 précisée** (les ~8 Ko/s d'en-têtes étaient l'identifiant des
+  éléments des tableaux rapides). § 16.6 : paragraphe « Parcours J4 » après celui de J3, ligne **M3** du tableau marquée
+  faite (sauf les formations, M4), phrase des en-têtes de la tranche M2.5 mise à jour.
+- **J4 close.** Suite dans l'ordre de D252 : **J5a.1** (plan de J5 déjà fait, D295 à D299).
