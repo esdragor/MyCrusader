@@ -166,15 +166,16 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	// behind it (no turn reaches them; one catching up from behind is its own to avoid).
 	const FVector2D Position(Location.X, Location.Y);
 	const FVector2D Ahead(Direction.X, Direction.Y);
-	const double Reach = (Speed + MaxSpeed) * Horizon + Radius + MaxRadius;
-	const int32 CellReach = FMath::CeilToInt32(Reach / LookAheadCellSize);
-	const FIntPoint Center(FMath::FloorToInt32(Position.X / LookAheadCellSize), FMath::FloorToInt32(Position.Y / LookAheadCellSize));
+	// Only the cells the square around that reach overlaps (D302: 9 to 16 instead of 25 at 3 m/s), in the same order.
+	const double Reach = (Speed + MaxSpeed) * Horizon + (Radius + MaxRadius) * FMath::Max(1.f, AvoidRadiusScale);
+	const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y - Reach) / LookAheadCellSize));
+	const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y + Reach) / LookAheadCellSize));
 	TArray<int32, TInlineAllocator<64>> Near;
-	for (int32 DY = -CellReach; DY <= CellReach; ++DY)
+	for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
 	{
-		for (int32 DX = -CellReach; DX <= CellReach; ++DX)
+		for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
 		{
-			const FIntPoint Cell(Center.X + DX, Center.Y + DY);
+			const FIntPoint Cell(X, Y);
 			for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 			{
 				if (Cells[Other] != Cell || Entities[Other] == Entity)
@@ -212,6 +213,18 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		}
 		return First;
 	};
+	// Whether nothing is met going this way within the horizon: the first contact found is enough (D302).
+	const auto IsClear = [this, &Near, &Position, Radius, Speed, Horizon](const FVector2D& Way)
+	{
+		for (const int32 Other : Near)
+		{
+			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale) < Horizon)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
 	int32 Blocker = INDEX_NONE;
 	if (FirstContact(Ahead, Blocker) >= Horizon)
 	{
@@ -228,8 +241,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		for (const double Hand : { Side, -Side })
 		{
 			const FVector2D Way = Ahead.GetRotated(Hand * Turn * AvoidAngleStep);
-			int32 Unused = INDEX_NONE;
-			if (FirstContact(Way, Unused) >= Horizon)
+			if (IsClear(Way))
 			{
 				return FVector(Way.X, Way.Y, 0.);
 			}
@@ -259,6 +271,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	const bool bLookAhead = AvoidEnabled != 0 && BuildLookAhead(Context);
 	const double LookAheadTime = FMath::Max(0.f, AvoidTime);
 
+	// Chunks taken by the threads as they come free: a chunk of a dense crowd costs more (D302).
 	EntityQuery.ParallelForEachEntityChunk(Context, [this, bLookAhead, LookAheadTime](FMassExecutionContext& Context)
 	{
 		// As UMassApplyMovementProcessor, which moves the unit by this velocity next.
@@ -330,7 +343,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 			}
 			Velocity = Direction * Speed;
 		}
-	});
+	}, FMassEntityQuery::EParallelExecutionFlags::AutoBalance);
 }
 
 namespace UE::HeroesOfLiberty::Simulation
@@ -351,6 +364,9 @@ namespace UE::HeroesOfLiberty::Simulation
 	/** Time spent and steps run since the last log (hol.Units.Separation 2). */
 	double SeparationSeconds = 0.;
 	int32 SeparationRuns = 0;
+	/** Of that time, the positions gathered into the grid, and the rounds (D302). */
+	double SeparationGridSeconds = 0.;
+	double SeparationRoundsSeconds = 0.;
 }
 
 UHOLUnitSeparationProcessor::UHOLUnitSeparationProcessor()
@@ -387,8 +403,11 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			SeparationSeconds += FPlatformTime::Seconds() - StartSeconds;
 			if (++SeparationRuns == 200)
 			{
-				UE_LOG(LogHOLSimulation, Display, TEXT("Separation: %.3f ms per step on average (%d units)"), SeparationSeconds * 1000. / SeparationRuns, Positions.Num());
+				UE_LOG(LogHOLSimulation, Display, TEXT("Separation: %.3f ms per step on average (%d units; grid %.3f, rounds %.3f)"), SeparationSeconds * 1000. / SeparationRuns,
+					Positions.Num(), SeparationGridSeconds * 1000. / SeparationRuns, SeparationRoundsSeconds * 1000. / SeparationRuns);
 				SeparationSeconds = 0.;
+				SeparationGridSeconds = 0.;
+				SeparationRoundsSeconds = 0.;
 				SeparationRuns = 0;
 			}
 		}
@@ -440,6 +459,8 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	// The walkers look for their neighbours, then each standing unit they pushed looks for its own (it may now overlap a
 	// third one), and so on: units standing together and left alone cost nothing. Each unit looks once a round; a second
 	// round undoes most of what the pushes of the first made (two walking groups meeting head-on: 36 cm left with one).
+	const double GridSeconds = FPlatformTime::Seconds();
+	SeparationGridSeconds += GridSeconds - StartSeconds;
 	const double Slop = FMath::Max(0.f, SeparationSlop);
 	Corrections = Positions;
 	Queued = Walking;
@@ -495,6 +516,8 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			}
 		}
 	}
+
+	SeparationRoundsSeconds += FPlatformTime::Seconds() - GridSeconds;
 
 	int32 Index = 0;
 	EntityQuery.ForEachEntityChunk(Context, [this, &Index](FMassExecutionContext& Context)

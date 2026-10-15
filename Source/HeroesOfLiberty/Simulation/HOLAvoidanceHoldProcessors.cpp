@@ -81,7 +81,9 @@ UHOLAvoidanceSnapshotProcessor::UHOLAvoidanceSnapshotProcessor()
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
 	// Between the steering, which writes the force of the step, and the avoidance, which adds to it.
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassSteerToMoveTargetProcessor"));
+	ExecutionOrder.ExecuteAfter.Add(TEXT("HOLParallelSteerToMoveTargetProcessor")); // Mass' one run in parallel (D302)
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassMovingAvoidanceProcessor"));
+	ExecutionOrder.ExecuteBefore.Add(TEXT("HOLParallelMovingAvoidanceProcessor")); // Mass' one run in parallel (D302)
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassStandingAvoidanceProcessor"));
 }
 
@@ -116,6 +118,7 @@ UHOLAvoidanceHoldProcessor::UHOLAvoidanceHoldProcessor()
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
 	// Between the avoidance solvers and the processor that turns the force into a velocity.
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassMovingAvoidanceProcessor"));
+	ExecutionOrder.ExecuteAfter.Add(TEXT("HOLParallelMovingAvoidanceProcessor")); // Mass' one run in parallel (D302)
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassStandingAvoidanceProcessor"));
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassApplyForceProcessor"));
 }

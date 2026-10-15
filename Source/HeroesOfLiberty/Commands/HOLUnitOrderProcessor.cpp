@@ -34,6 +34,14 @@ namespace UE::HeroesOfLiberty::Orders
 	FAutoConsoleVariableRef CVarDirectPaths(TEXT("hol.Units.DirectPaths"), DirectPaths,
 		TEXT("1: no navmesh path, every unit walks straight to its slot (the M1 move of D228), to measure what the paths cost (D289)."));
 
+	int32 OrderTiming = 0;
+	FAutoConsoleVariableRef CVarOrderTiming(TEXT("hol.Units.OrderTiming"), OrderTiming,
+		TEXT("1: the average cost of the order processor's parts (orders applied, paths served, units advanced) logged every 200 steps (D302)"));
+
+	/** Time spent in each part and steps run since the last log (hol.Units.OrderTiming 1). */
+	double TimingSeconds[3] = {};
+	int32 TimingRuns = 0;
+
 	/** A short path is done this close (cm) to its last point; the final leg brings the unit to its slot. */
 	constexpr float EndReachedDistance = 50.f;
 	/** Distance (cm) to its slot within which a unit that no longer gets closer counts as stuck (D287, D292). */
@@ -225,12 +233,30 @@ void UHOLUnitOrderProcessor::ConfigureQueries(const TSharedRef<FMassEntityManage
 
 void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
+	using namespace UE::HeroesOfLiberty::Orders;
 	UWorld* World = EntityManager.GetWorld();
 	UNavigationSystemV1* NavSystem = World ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr;
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
+	const double StartSeconds = FPlatformTime::Seconds();
 	ApplyQueuedOrders(EntityManager, NavSystem, NavData);
+	const double OrdersSeconds = FPlatformTime::Seconds();
 	ServePathRequests(EntityManager, NavSystem, NavData);
+	const double PathsSeconds = FPlatformTime::Seconds();
 	AdvanceUnits(EntityManager, Context, NavData);
+	if (OrderTiming != 0)
+	{
+		TimingSeconds[0] += OrdersSeconds - StartSeconds;
+		TimingSeconds[1] += PathsSeconds - OrdersSeconds;
+		TimingSeconds[2] += FPlatformTime::Seconds() - PathsSeconds;
+		if (++TimingRuns == 200)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Orders: %.3f ms per step on average (orders applied %.3f, paths %.3f, units advanced %.3f)"),
+				(TimingSeconds[0] + TimingSeconds[1] + TimingSeconds[2]) * 1000. / TimingRuns, TimingSeconds[0] * 1000. / TimingRuns,
+				TimingSeconds[1] * 1000. / TimingRuns, TimingSeconds[2] * 1000. / TimingRuns);
+			TimingSeconds[0] = TimingSeconds[1] = TimingSeconds[2] = 0.;
+			TimingRuns = 0;
+		}
+	}
 }
 
 bool UHOLUnitOrderProcessor::IsClaimLive(const FMassEntityManager& EntityManager, const FMassEntityHandle Entity, const FIntPoint& Cell)
