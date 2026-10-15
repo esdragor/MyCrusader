@@ -6,15 +6,17 @@
 # when units, the simulation or rendering change, and at a closure).
 # Alongside, the "net" part (D273, M2.5.6): a two-client match on a dedicated server, the editor in server mode (D275),
 # each client checking its camera, the two centres in their colours and a click on each.
+# The "sources" part (J5a.2, D297): the wood beside slot 0, forbidden on the navmesh tree by tree; a tree used up
+# leaves the map on the server and on both clients.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera,production,move,net] [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Parts tests,menu,camera,production,move,sources,net] [-EngineDir <dir>] [-Visible]
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -63,7 +65,9 @@ if ($Parts -contains "net") {
     $NetSlots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }
     "{ `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log") -ErrorAction SilentlyContinue
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2`""
+    # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
+    $NetSourceCommand = if ($Parts -contains "sources") { ",hol.Net.WhenClients 2 hol.Delay 5 hol.Sources.Take 0" } else { "" }
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -173,6 +177,16 @@ if ($Parts -contains "camera") {
                 Step "waitlog Selection: none", "hol.Select.Report"
             }
         }
+        if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
+            # Resource sources (J5a.2, D297): the 320 trees placed by the map (create_match_map.py: 40 beside each slot), the
+            # first one of slot 0's wood at (-14221, -1816) and the one behind it at (-14217, -2023). A standing tree is
+            # forbidden on the navmesh; used up (hol.Sources.Take, a development tool until the gathering of J5a.3), it
+            # leaves the map and the navmesh opens where it stood, the tree behind still closing its own place.
+            Step "mark sources", "hol.Sources.Report", "hol.Sources.Nearest -14221 -1300", "hol.Nav.Path -14221 -1300 -14221 -1816",
+                "hol.Sources.Take 0", "waitlog Sources: source 0 used up (server)", "wait 1", "hol.Sources.Report",
+                "hol.Nav.Path -14221 -1300 -14221 -1816", "hol.Nav.Path -14221 -1300 -14217 -2023",
+                "hol.Camera.Focus -15000 -1500", "frames 5", "capture src_wood"
+        }
     }
 }
 Step "mark end", "quit"
@@ -183,6 +197,7 @@ Get-ChildItem $Shots -Filter "qc_*.png" -ErrorAction SilentlyContinue | Remove-I
 Get-ChildItem $Shots -Filter "cam_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "sel_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "move_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "src_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 $GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
@@ -228,6 +243,10 @@ if ($NetListening) {
         # start; the server moves its own alone; then each client must see both Peasants where their owners sent them.
         if ($Parts -contains "move") {
             $NetSteps += "hol.Units.OrderNear -1000 2500 all", "wait 12", "hol.Units.Where", "capture qcnet_${Client}_moved"
+        }
+        # Sources (J5a.2): the 320 trees received, the one the server used up gone (5 s after both joined, long done).
+        if ($Parts -contains "sources") {
+            $NetSteps += "hol.Sources.Report"
         }
         $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
@@ -408,6 +427,27 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
     $AllOk = (Report "move" $Checks) -and $AllOk
 }
 
+if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
+    $Section = Get-Section "sources"
+    $Reports = @($Section | Select-String -Pattern "Sources \(server\): (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Paths = @($Section | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks = [ordered]@{}
+    $Checks["320 trees placed, shown, forbidden on the navmesh ($($Reports | Select-Object -First 1))"] =
+        ($Reports.Count -eq 2) -and ($Reports[0] -eq "320 standing of 320 (Tree 320: 32000 left); shown 320, navmesh 320")
+    $Checks["nearest tree is the first one ($($Section | Select-String -Pattern 'Sources: nearest (.*)$' | ForEach-Object { $_.Matches[0].Groups[1].Value }))"] =
+        [bool]($Section | Select-String -Pattern "Sources: nearest 0 Tree at \(-14221, -1816\), 100 left" -Quiet)
+    $Checks["three paths ($($Paths.Count))"] = $Paths.Count -eq 3
+    if ($Paths.Count -eq 3) {
+        $Checks["a standing tree closes its place ($($Paths[0]))"] = $Paths[0] -match "off the navmesh"
+        $Checks["used up, its place opens ($($Paths[1]))"] = ($Paths[1] -notmatch "off the navmesh") -and ($Paths[1] -match "ratio") -and ($Paths[1] -notmatch "partial")
+        $Checks["the tree behind still closes its place ($($Paths[2]))"] = $Paths[2] -match "off the navmesh"
+    }
+    $Checks["used up: 319 left, shown and forbidden ($($Reports | Select-Object -Last 1))"] =
+        ($Reports.Count -eq 2) -and ($Reports[1] -eq "319 standing of 320 (Tree 319: 31900 left); shown 319, navmesh 319")
+    $Checks["capture"] = Test-Path (Join-Path $Shots "src_wood.png")
+    $AllOk = (Report "sources" $Checks) -and $AllOk
+}
+
 if ($Parts -contains "net") {
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetListening
@@ -440,6 +480,11 @@ if ($Parts -contains "net") {
         $Checks["client $N : both Peasants shown ($Shown)"] = $Shown -eq "client, 2 displayed: Peasant of slot 0 x1, Peasant of slot 1 x1"
         $Missing = @("start", "slot0", "slot1", "peasants" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
         $Checks["client $N : captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+        if ($Parts -contains "sources") {
+            $Sources = $ClientLines | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            $Checks["client $N : 320 trees received, the used-up one gone ($Sources)"] = $Sources -eq "319 standing of 320 (Tree 319: 31900 left); shown 319, navmesh 0"
+            $Checks["client $N : saw the tree used up"] = [bool]($ClientLines | Select-String -Pattern "Sources: source 0 used up \(client\)" -Quiet)
+        }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
     }

@@ -58,6 +58,7 @@ vérifier sur S1 et S2.
 | J4.8 Clôture : D285 à D294, D300 à D302 au GDD | **fait** (2026-10-15) : lignes au § 21 (D294 complétée, D274 précisée : les ~8 Ko/s d'en-têtes), paragraphe « Parcours J4 » et ligne M3 au § 16.6. **J4 close.** |
 | J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299 ; trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte) ; code après la clôture de J4 |
 | J5a.1 Données et règles pures | **fait** (2026-10-15) : table des sources (`SourceTypes.csv` → `/Game/Resources/SourceTypes`, `make_source_types.py`), taux et charge dans la table des unités, `Simulation/HOLGatherRules`, 4 tests `HeroesOfLiberty.Gather.*` ; tests 36/36, `quick_check` PASS (87 s) |
+| J5a.2 Sources dans la partie | **fait** (2026-10-15) : registre `UHOLSourceSubsystem`, disposition `AHOLSourceLayout` posée par le script de `Plain` (40 arbres par emplacement, 320 en tout), affichage par instances (`AHOLSourceField`), un seul fournisseur de zones interdites à cylindres par instance (`UHOLSourceNavComponent` : seule la tuile d'une source épuisée se refait), morceaux répliqués de 63 sources (`AHOLSourceChunk`) ; `quick_check` PASS (83 s) avec les parties « sources » et « net » ; arbres de `StressTest` reportés à J5a.3 (créés par S7) |
 
 ## Prochaine étape exacte
 
@@ -77,8 +78,8 @@ vérifier sur S1 et S2.
    récolte), chacune avec l'essai de l'utilisateur. **Aucun code avant la clôture de J4** ; reprise ensuite à J5a.1.
 6. **J4 close le 2026-10-15** (D285 à D294, D300 à D302 au GDD). Suite : **J5a.1** (première sous-étape de J5a, le
    bois ; voir « Plan de J5 »).
-7. **J5a.1 faite** (2026-10-15). Suite : **J5a.2** (sources dans la partie : registre au serveur, instances par type,
-   acteur partagé, fournisseur de zones interdites, arbres posés par script sur `Plain` et `StressTest`).
+7. **J5a.1 et J5a.2 faites** (2026-10-15). Suite : **J5a.3** (boucle de récolte dans la simulation, `hol.Units.Gather`,
+   S7 qui pose ses propres arbres sur `StressTest` par code).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1696,3 +1697,35 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 - Tests `HeroesOfLiberty.Gather.Load` / `.Deposit` / `.Choice` / `.Tables`. Compile sans avertissement ; tests 36/36,
   **`quick_check` PASS en 87 s**. S1 / S2 non concernés (rien dans la simulation encore).
 - Suite : **J5a.2** (sources dans la partie).
+
+### 2026-10-15 (suite) — J5a.2 : sources dans la partie
+
+- **Registre** `Resources/HOLSourceSubsystem` (sous-système de monde) : au serveur ou en solo, lit au début de la partie
+  les `AHOLSourceLayout` de la carte (données seules, pas chargées par les clients), `AddSource` (aussi pour du code :
+  S7), `Take` (une source vidée quitte la carte : affichage, navmesh, clients), `FindNearestStanding` ; chez un client,
+  remplit sa copie depuis les morceaux reçus. Les types sont numérotés dans l'ordre de la table (même ressource partout).
+  Commandes : `hol.Sources.Report`, `hol.Sources.Nearest X Y`, `hol.Sources.Take Index [N]` (outil de développement, hors
+  Shipping, en attendant la récolte de J5a.3).
+- **Affichage** `AHOLSourceField` (acteur local, non répliqué) : un composant d'instances par pièce de chaque type
+  (arbre = tronc + cône vert ; buisson = boule verte + baies rouges ; filon = trois blocs gris ou dorés), petite variation
+  de rotation et de taille tirée de la position (la même partout) ; une source vidée passe à l'échelle 0 (les indices des
+  autres ne bougent pas). `M_MatteColor` reçoit le drapeau d'usage des maillages instanciés (`make_matte_materials.py`
+  pose désormais les drapeaux sur un matériau existant ; sans lui le jeu dessinait le matériau par défaut, gris).
+- **Navmesh** (D297, « seule sa tuile se refait ») : `UHOLSourceNavComponent`, un seul élément de navigation, un
+  modificateur cylindrique interdit « par instance » (le mécanisme des maillages instanciés) : le générateur demande les
+  cylindres de chaque tuile qu'il refait ; ajout ou épuisement → `FNavigationSystem::OnObjectBoundsChanged` avec la seule
+  boîte de la source ; inscription après la pose des premières sources (salir toutes leurs boîtes une fois). Vérifié : un
+  arbre debout ferme sa place (« off the navmesh »), vidé il l'ouvre (chemin de 5,2 m), l'arbre derrière la ferme encore.
+- **Réseau** : `AHOLSourceChunk`, recette des morceaux d'unités (63 emplacements, tableaux simples) : type et position
+  une fois, reste sur 16 bits, 2 mises à jour/s (`HOLSourceSettings.NetUpdateFrequency`), envoi forcé à l'épuisement.
+- **`Plain` refaite** (`create_match_map.py`) : un bois de 40 arbres (5 × 8, 2,2 m, décalages de 20 cm au plus, les
+  mêmes partout) à gauche de chaque emplacement vu de lui, de 18 à 27 m, loin de la naissance des Paysans ; avec l'agent
+  de 60 cm, un bois est un mur (comme AoE) et recule arbre par arbre. Le bosquet du milieu (obstacles de J4) reste.
+  Arbre provisoire : 7,5 m de haut (CSV), couronne de 3,2 m.
+- `quick_check` : partie **« sources »** (320 arbres posés, affichés, interdits ; le plus proche ; navmesh fermé, ouvert
+  après `Take`, l'arbre derrière toujours fermé ; capture `src_wood`) et, dans **« net »**, le serveur vide le premier
+  arbre 5 s après l'arrivée des 2 clients (`hol.Net.WhenClients 2 hol.Delay 5 hol.Sources.Take 0`) : chaque client voit
+  319 arbres sur 320, sans navmesh. **PASS en 83 s**, tests 36/36.
+- **Écart au plan** : pas d'arbres posés dans la carte `StressTest` (S1 et S2 auraient changé) ; S7 (J5a.3) posera les
+  siens par code (`AddSource`). S1 / S2 / S5 non concernés (aucune source sur `StressTest`).
+- Suite : **J5a.3** (boucle de récolte dans la simulation, S7).

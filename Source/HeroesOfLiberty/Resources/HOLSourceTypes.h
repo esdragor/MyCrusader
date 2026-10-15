@@ -59,6 +59,13 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Sources")
 	TSoftObjectPtr<UDataTable> SourceTypesTable;
 
+	/**
+	 * Network updates per second of the source chunks (D297): what remains of a source is for the selection block, not
+	 * worth the units' rate; a used-up source is sent at the next update whatever this rate.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Network", meta = (ClampMin = "0.1"))
+	float NetUpdateFrequency = 2.f;
+
 	/** The row of a type, or null (logged) if the table or the row is missing. */
 	static const FHOLSourceTypeRow* FindType(FName TypeName);
 };

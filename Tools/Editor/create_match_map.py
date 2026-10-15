@@ -11,6 +11,10 @@ on each occupied slot when a match starts (D259).
   obstacles    so that the paths show (D286, J4): in front of each slot, towards the middle, a ridge of three
                boulders; in the middle of the map, a grove of trees (the units walk between the trunks). Symmetric.
                Their matte materials /Game/Rendering/MI_Rock and MI_Tree are made when missing.
+  sources      the resources of the match (D295, D297), as data in an AHOLSourceLayout the server reads at the start:
+               a wood of 40 trees beside each slot (J5a), on its left seen from the slot, 18 to 27 m from it, out of the
+               way of the Peasants born at the centre's foot. Trees 2.2 m apart: with the navmesh's agent radius, a
+               wood is a wall, as in AoE, and its edge recedes tree by tree. The same small offsets for every slot.
 
 Needs the HeroesOfLiberty module compiled. Run in a full editor session (the editor quits when done):
   UnrealEditor.exe <project> -nosplash -unattended -ExecCmds="py <this file>"
@@ -39,6 +43,15 @@ ROCK_COLOR = unreal.LinearColor(0.33, 0.31, 0.29, 1.0)
 TRUNK_COLOR = unreal.LinearColor(0.22, 0.15, 0.09, 1.0)
 CROWN_COLOR = unreal.LinearColor(0.10, 0.22, 0.08, 1.0)
 NAV_BUILD_DELAY = 5.0  # seconds
+
+# Wood beside each slot (D295): WOOD_ROWS rows from WOOD_NEAR on the slot's left, WOOD_COLUMNS along the radius.
+WOOD_NEAR = 1800.0
+WOOD_SPACING = 220.0
+WOOD_ROWS = 5
+WOOD_COLUMNS = 8
+# Offsets (cm) of the trees from their grid point, the same for every slot (symmetric map): a wood is not a grid.
+# At most 20 cm: two neighbours never leave a way through for a unit (60 cm agent radius on each trunk of 60 cm).
+WOOD_JITTER = [(16, -9), (-12, 18), (6, 14), (-19, -5), (10, -17), (-4, 7), (19, 11), (-15, -18), (3, -13), (-8, 20)]
 
 
 def spawn(actor_class, location=unreal.Vector(0, 0, 0), rotation=unreal.Rotator(0, 0, 0), label=None):
@@ -105,6 +118,32 @@ def spawn_obstacles():
         spawn_shape("/Engine/BasicShapes/Sphere", unreal.Vector(x, y, 650), unreal.Vector(4.5, 4.5, 3.5), "Crown%d" % number, crown)
 
 
+def make_sources():
+    """The sources of the match (D297): a wood beside each slot, as AHOLSourceLayout data."""
+    sources = []
+    for angle in SLOT_ANGLES:
+        radians = math.radians(angle)
+        radial = (math.cos(radians), math.sin(radians))
+        left = (-radial[1], radial[0])
+        slot = (SLOT_RADIUS * radial[0], SLOT_RADIUS * radial[1])
+        number = 0
+        for row in range(WOOD_ROWS):
+            for column in range(WOOD_COLUMNS):
+                side = WOOD_NEAR + row * WOOD_SPACING
+                along = (column - (WOOD_COLUMNS - 1) / 2.0) * WOOD_SPACING
+                jitter = WOOD_JITTER[number % len(WOOD_JITTER)]
+                number += 1
+                side += jitter[0]
+                along += jitter[1]
+                x = slot[0] + left[0] * side + radial[0] * along
+                y = slot[1] + left[1] * side + radial[1] * along
+                source = unreal.HOLPlacedSource()
+                source.set_editor_property("type", "Tree")
+                source.set_editor_property("location", unreal.Vector(x, y, 0))
+                sources.append(source)
+    return sources
+
+
 def movable_light(actor):
     """The light component of a light actor, made movable (nothing to build)."""
     component = actor.get_editor_property("light_component")
@@ -117,8 +156,9 @@ def main():
         raise RuntimeError(MAP_PATH + " already exists: delete Content/Maps/Plain.umap first")
     slot_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLStartSlot")
     bounds_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLMapBounds")
-    if slot_class is None or bounds_class is None:
-        raise RuntimeError("Missing HOLStartSlot or HOLMapBounds (is the HeroesOfLiberty module compiled?)")
+    layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLSourceLayout")
+    if slot_class is None or bounds_class is None or layout_class is None:
+        raise RuntimeError("Missing HOLStartSlot, HOLMapBounds or HOLSourceLayout (is the HeroesOfLiberty module compiled?)")
 
     level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     if not level_subsystem.new_level(MAP_PATH, False):
@@ -155,6 +195,10 @@ def main():
 
     spawn_obstacles()
 
+    # Resource sources (D297): data read by the server, nothing in the map itself (the navmesh is built without them).
+    layout = spawn(layout_class, label="SourceLayout")
+    layout.set_editor_property("sources", make_sources())
+
     # The navmesh is built once the editor lets it (it locks building for ~2 s after loading), then saved.
     wait_for_navmesh(nav, level_subsystem)
 
@@ -182,9 +226,9 @@ def wait_for_navmesh(nav, level_subsystem):
             elif not level_subsystem.save_current_level():
                 unreal.log_error("Could not save " + MAP_PATH)
             else:
-                unreal.log("Match map created at %s: %d start slots on a %.0f m circle, bounds %.0f m, %d obstacles, navmesh built" % (
+                unreal.log("Match map created at %s: %d start slots on a %.0f m circle, bounds %.0f m, %d obstacles, %d sources, navmesh built" % (
                     MAP_PATH, len(SLOT_ANGLES), SLOT_RADIUS / 100, 2 * BOUNDS_HALF_SIZE / 100,
-                    len(SLOT_ANGLES) * len(RIDGE_BOULDERS) + 2 * len(GROVE_TREES)))
+                    len(SLOT_ANGLES) * len(RIDGE_BOULDERS) + 2 * len(GROVE_TREES), len(SLOT_ANGLES) * WOOD_ROWS * WOOD_COLUMNS))
         except Exception as error:  # never leave the editor open
             unreal.log_error("Match map: %s" % error)
         unreal.SystemLibrary.quit_editor()

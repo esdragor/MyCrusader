@@ -4,6 +4,8 @@
   /Game/Rendering/M_MatteGround   grey ground with a line every 10 m, aligned on the world (the camera's movement shows)
 Only the missing ones are made: delete a material's .uasset to make it again. Editing one in place crashes the editor
 (DeleteAllMaterialExpressions, "!IsRooted()"): AHOLBuilding references them from C++, so they load with the editor.
+The usage flags are set on existing materials too (a flag, no node touched): M_MatteColor is drawn on instanced meshes
+by the resource sources (J5a, D297), without the flag the game draws the engine's default material instead.
 Run (the editor quits when done):
   UnrealEditor.exe <project> -ExecutePythonScript=<this file>
 """
@@ -110,6 +112,18 @@ def make_ground():
     finish(material)
 
 
+def ensure_usage(name, flag):
+    """Sets a usage flag of an existing material (made or kept above), and saves it if it changed."""
+    material = unreal.load_asset(FOLDER + "/" + name)
+    if material is None or material.get_editor_property(flag):
+        return
+    material.set_editor_property(flag, True)
+    lib.recompile_material(material)
+    assets.save_loaded_asset(material)
+    unreal.log("Material %s: %s set" % (material.get_path_name(), flag))
+
+
 make_color()
 make_flat()
 make_ground()
+ensure_usage("M_MatteColor", "used_with_instanced_static_meshes")
