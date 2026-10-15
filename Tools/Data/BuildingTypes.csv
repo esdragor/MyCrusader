@@ -1,2 +1,3 @@
-Name,DisplayName,Footprint,Height,MaxHealth,Mesh,PopulationProvided,Produces,MaxQueue
-MainCentre,Centre principal,"(X=1500.0,Y=1500.0)",1000,2400,,10,"(""Peasant"")",5
+Name,DisplayName,Footprint,Height,MaxHealth,Mesh,PopulationProvided,Produces,MaxQueue,Accepts
+MainCentre,Centre principal,"(X=1500.0,Y=1500.0)",1000,2400,,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)"
+LumberCamp,Camp de bûcherons,"(X=600.0,Y=600.0)",400,1000,,0,,1,"(Wood)"

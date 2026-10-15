@@ -27,6 +27,8 @@ public:
 
 	/** Path requests served since the start, and waiting now (for reports). */
 	int64 GetNumPathsServed() const { return NumPathsServed; }
+	/** Path requests served by every order processor since the program started (stress test S7: paths per second). */
+	static int64 GetTotalPathsServed() { return TotalPathsServed; }
 	int32 GetNumPathsWaiting() const { return PendingPaths.Num(); }
 
 protected:
@@ -52,6 +54,7 @@ protected:
 
 	uint32 NextOrderSerial = 1;
 	int64 NumPathsServed = 0;
+	static int64 TotalPathsServed;
 
 	/**
 	 * Slots given to units still on their way, by cell of ClaimCellSize: a later order does not give them again (units

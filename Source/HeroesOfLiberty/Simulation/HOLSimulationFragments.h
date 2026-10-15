@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"
+#include "Simulation/HOLGatherRules.h"
 #include "HOLSimulationFragments.generated.h"
 
 /** Transform at the start of the last fixed step: the presentation interpolates from it to FTransformFragment. */
@@ -66,6 +67,55 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	uint16 StuckSteps = 0;
 
 	EHOLMovePhase Phase = EHOLMovePhase::None;
+};
+
+/** Where a gatherer is in its round trip (J5, D296). */
+UENUM()
+enum class EHOLGatherPhase : uint8
+{
+	/** Not gathering: idle, or walking where a player sent it (its load kept). */
+	None,
+	/** Walking to its spot at its source. */
+	ToSource,
+	/** At its source, taking from it. */
+	Gathering,
+	/** Carrying its load to the nearest deposit. */
+	ToDeposit,
+};
+
+/** A unit's gathering (J5, D296), on the server: its source, its load, its place in the round trip. */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
+{
+	GENERATED_BODY()
+
+	/**
+	 * The source it gathers (an index of UHOLSourceSubsystem), INDEX_NONE: none. Kept while it carries its load to the
+	 * deposit, so it walks back to the same source; INDEX_NONE on the way to the deposit: it stands there once unloaded.
+	 */
+	int32 SourceIndex = INDEX_NONE;
+
+	/** Where it walks: its spot at the source, or against the deposit. */
+	FVector Spot = FVector::ZeroVector;
+
+	/** Its move order's serial when it gave itself the walk to Spot: a new serial, then no order, is the arrival. */
+	uint32 OrderSerialBefore = 0;
+
+	/** What it carries; kept by a player's move order, lost when it gathers another resource (D296). */
+	FHOLGatherLoad Load;
+
+	/** Steps to wait before looking for a spot again (none was free). */
+	uint16 WaitSteps = 0;
+
+	/** Arrivals in a row that missed their spot (taken, or pushed away). */
+	uint8 Misses = 0;
+
+	/** The walk to Spot is asked for (it starts at the next step, through the order queue). */
+	bool bWalkIssued = false;
+
+	EHOLGatherPhase Phase = EHOLGatherPhase::None;
+
+	bool IsGathering() const { return Phase != EHOLGatherPhase::None; }
 };
 
 /** Per-entity state of a unit (D222), the values that change: identifier, health, activity. */

@@ -27,6 +27,8 @@ void UHOLUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
 	BuildContext.AddFragment<FHOLUnitStateFragment>();
 	// Its part of its move order (D286, D287): slot, path phase, sideways place.
 	BuildContext.AddFragment<FHOLMoveOrderFragment>();
+	// Its gathering (J5, D296): source, load, round trip.
+	BuildContext.AddFragment<FHOLGatherFragment>();
 	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
 	BuildContext.AddFragment<FHOLAvoidanceHoldFragment>();
 	// Animation played by the skinned instance (D234); the visualization trait does not add it.

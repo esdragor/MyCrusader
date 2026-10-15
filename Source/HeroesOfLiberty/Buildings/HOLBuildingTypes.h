@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "Engine/DeveloperSettings.h"
+#include "Match/HOLResources.h"
 #include "HOLBuildingTypes.generated.h"
 
 class UStaticMesh;
@@ -50,6 +51,15 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Longest production queue (D283). */
 	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "1"))
 	int32 MaxQueue = 5;
+
+	/**
+	 * Resources its owner's gatherers bring to it (J5, D296): the main centre takes the four, the camps of the
+	 * construction step one each. Empty: not a deposit.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Gathering")
+	TArray<EHOLResource> Accepts;
+
+	bool AcceptsResource(const EHOLResource Resource) const { return Accepts.Contains(Resource); }
 };
 
 /** Where the building type table lives (DefaultGame.ini). */
@@ -71,4 +81,6 @@ public:
 namespace HOLBuildingTypeNames
 {
 	inline const FName MainCentre(TEXT("MainCentre"));
+	/** Provisional (J5a, stress test S7): a wood deposit; the construction step will give the camps their place (D83). */
+	inline const FName LumberCamp(TEXT("LumberCamp"));
 }

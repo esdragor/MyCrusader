@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Mass/EntityHandle.h"
+#include "Match/HOLResources.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLStressTestSubsystem.generated.h"
 
+class AHOLBuilding;
 class UHOLUnitSubsystem;
 
 /** Stress test scenarios (D190, § 16.6). */
@@ -15,11 +17,12 @@ enum class EHOLStressScenario : uint8
 	S1_Idle,	// units standing still
 	S2_Moving,	// units walking on the navmesh
 	Crossing,	// two units ordered through the same point at hol.StressTest.CrossingAngle: does the avoidance make them step aside?
+	S7_Gathering,	// Peasants gathering wood for their players' centres (J5, D299): round trips, paths, used-up trees
 };
 
 /**
  * Load tests launched from the console on the StressTest map:
- *   hol.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit]
+ *   hol.StressTest S1|S2|C|S7 [Count=2000] [Seconds=20] [quit]
  *   hol.StressTest.Stop
  * Measures the fixed-step simulation time, the frame rate and the memory, and checks them against D218.
  * Since M1 the units are created by the unit subsystem (D224) and S2 walks by move orders (D229): this
@@ -78,6 +81,20 @@ private:
 	/** Interpenetration before and after the walk: a plateau means the avoidance is not doing its job (D228). */
 	void LogAvoidanceSummary() const;
 
+	/**
+	 * S7 (D299): each player's main centre, lumber camps and a field of lone trees behind it, placed by code: the map
+	 * StressTest stays as S1 and S2 measure it.
+	 */
+	void SetUpGathering();
+	/** S7: once born, each player's Peasants are sent to its trees, four per tree (as a player spreads its groups). */
+	void OrderGathering();
+	void TearDownGathering();
+	/** S7: what was unloaded, trees used up, paths asked for, where the gatherers are. */
+	void LogGatheringSummary() const;
+	/** S7: where a player's Peasants are born, between its centre and the middle of the map. */
+	FVector GetGatheringSpawnPoint(int32 Player) const;
+	int32 GetNumPlayers() const;
+
 	/** Identifiers of the units of this run (D223): the stress test never holds Mass entities itself. */
 	TArray<uint32> UnitIds;
 	FName UnitTypeName;
@@ -106,6 +123,17 @@ private:
 	bool bCrossingFarEnd = true;
 	/** Destination draw of S2: a fixed seed keeps two runs comparable (D230). */
 	FRandomStream OrderRandom{ 1066 };
+
+	/** S7: the deposits it made (centres and camps), each player's trees, whether the Peasants were sent, and the counts
+	 *  when the measure began. */
+	TArray<TWeakObjectPtr<AHOLBuilding>> GatheringCentres;
+	TArray<TArray<int32>> GatheringTrees;
+	bool bGatheringOrdered = false;
+	FHOLResources UnloadedAtMeasureStart;
+	int32 StandingAtMeasureStart = 0;
+	int64 PathsAtMeasureStart = 0;
+	/** UHOLGatherProcessor::FCounters when the measure began (as plain numbers: the header stays free of the processor). */
+	int64 GatherCountersAtMeasureStart[6] = {};
 
 	EHOLStressScenario Scenario = EHOLStressScenario::S1_Idle;
 	EPhase Phase = EPhase::Idle;

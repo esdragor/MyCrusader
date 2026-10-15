@@ -61,13 +61,55 @@ bool HOLGather::IsInContact(const FVector2D& Position, const float BodyRadius, c
 	return GetEdgeDistance(Position, Site) - BodyRadius <= ContactGap;
 }
 
-int32 HOLGather::FindNearestDeposit(const FVector2D& Position, TConstArrayView<FHOLGatherSite> Deposits)
+namespace UE::HeroesOfLiberty::Gather
+{
+	/** Position in the deposit's frame (X, Y along its footprint's sides). */
+	FVector2D ToLocal(const FVector2D& Position, const FHOLGatherDeposit& Deposit)
+	{
+		return (Position - Deposit.Centre).GetRotated(-Deposit.Yaw);
+	}
+}
+
+double HOLGather::GetDepositDistance(const FVector2D& Position, const FHOLGatherDeposit& Deposit)
+{
+	const FVector2D Local = UE::HeroesOfLiberty::Gather::ToLocal(Position, Deposit);
+	const FVector2D Outside(FMath::Max(FMath::Abs(Local.X) - Deposit.HalfExtent.X, 0.), FMath::Max(FMath::Abs(Local.Y) - Deposit.HalfExtent.Y, 0.));
+	return Outside.Size();
+}
+
+bool HOLGather::IsAtDeposit(const FVector2D& Position, const float BodyRadius, const FHOLGatherDeposit& Deposit)
+{
+	return GetDepositDistance(Position, Deposit) - BodyRadius <= DepositGap;
+}
+
+FVector2D HOLGather::GetDepositSpot(const FVector2D& From, const FHOLGatherDeposit& Deposit, const double Gap, const double Along)
+{
+	const FVector2D Local = UE::HeroesOfLiberty::Gather::ToLocal(From, Deposit);
+	const FVector2D& Half = Deposit.HalfExtent;
+	// The side it faces: the one it stands farthest out of (inside: the nearest side).
+	const double OutX = FMath::Abs(Local.X) - Half.X;
+	const double OutY = FMath::Abs(Local.Y) - Half.Y;
+	FVector2D Spot;
+	if (OutX >= OutY)
+	{
+		const double Side = Local.X >= 0. ? 1. : -1.;
+		Spot = FVector2D(Side * (Half.X + Gap), FMath::Clamp(Local.Y + Along, -Half.Y, Half.Y));
+	}
+	else
+	{
+		const double Side = Local.Y >= 0. ? 1. : -1.;
+		Spot = FVector2D(FMath::Clamp(Local.X + Along, -Half.X, Half.X), Side * (Half.Y + Gap));
+	}
+	return Deposit.Centre + Spot.GetRotated(Deposit.Yaw);
+}
+
+int32 HOLGather::FindNearestDeposit(const FVector2D& Position, TConstArrayView<FHOLGatherDeposit> Deposits)
 {
 	int32 Nearest = INDEX_NONE;
 	double NearestDistance = TNumericLimits<double>::Max();
 	for (int32 Index = 0; Index < Deposits.Num(); ++Index)
 	{
-		const double Distance = GetEdgeDistance(Position, Deposits[Index]);
+		const double Distance = GetDepositDistance(Position, Deposits[Index]);
 		if (Distance < NearestDistance)
 		{
 			Nearest = Index;

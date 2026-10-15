@@ -17,4 +17,20 @@ struct FHOLMoveOrder
 	FVector Target = FVector::ZeroVector;
 	/** Slot of the player who gave it (D288): only its own units obey. INDEX_NONE: no check (the server's own orders). */
 	int32 PlayerIndex = INDEX_NONE;
+	/**
+	 * A walk a unit's task gives it (J5: to its source, to the deposit): the task goes on. Any other move order ends the
+	 * unit's gathering, its load kept (D296).
+	 */
+	bool bFromTask = false;
+};
+
+/** One gather order (J5, D296): "gather this source", for a group of units. Applied by the gathering at the next step. */
+struct FHOLGatherOrder
+{
+	/** Stable identifiers of the units (D223). */
+	TArray<uint32> UnitIds;
+	/** The source (an index of UHOLSourceSubsystem). */
+	int32 SourceIndex = INDEX_NONE;
+	/** Slot of the player who gave it (D288): only its own units obey. INDEX_NONE: no check (the server's own orders). */
+	int32 PlayerIndex = INDEX_NONE;
 };

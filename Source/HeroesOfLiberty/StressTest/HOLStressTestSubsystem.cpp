@@ -2,7 +2,10 @@
 
 #include "StressTest/HOLStressTestSubsystem.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLUnitOrderProcessor.h"
 #include "DynamicRHI.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -19,8 +22,11 @@
 #include "HeroesOfLibertyLog.h"
 #include "NavigationSystem.h"
 #include "RenderTimer.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "RHIStats.h"
 #include "Simulation/HOLAvoidanceHoldProcessors.h"
+#include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -32,6 +38,40 @@
 namespace UE::HeroesOfLiberty::StressTest
 {
 	constexpr float WarmUpSeconds = 3.f;
+	/**
+	 * S7 (D299): the warm-up lets the Peasants be born, walk to their trees and settle in their round trips, so the
+	 * measure sees gathering, not the first walk.
+	 */
+	constexpr float GatheringWarmUpSeconds = 25.f;
+
+	/** S7: the centres stand this far from the middle of the map (cm), one per player around it. */
+	constexpr double GatheringCentreRadius = 5000.;
+	/** S7: rings of trees behind each centre, from this distance from the middle (cm), this far apart. */
+	constexpr double GatheringFirstRing = 6000.;
+	constexpr int32 GatheringRings = 9;
+	/** S7: lone trees this far apart (cm) along a ring, within this half-width (cm) of the player's direction. */
+	constexpr double GatheringTreeSpacing = 400.;
+	constexpr double GatheringHalfWidth = 1600.;
+	/** S7: Peasants are born this far from the middle (cm), towards their centre, within this radius (cm). */
+	constexpr double GatheringSpawnRadius = 3800.;
+	constexpr float GatheringSpawnDisc = 1000.f;
+	/** S7: Peasants sent to one tree. */
+	constexpr int32 GatherersPerTree = 4;
+	/**
+	 * S7: lumber camps in each player's trees (stand-ins for the camps of the construction step, D83), this far from the
+	 * middle (cm), this far apart (cm) across: about 60 gatherers per deposit, as many as the camps of a real economy
+	 * see at most (with the centre alone, 250 crowded one side of it).
+	 */
+	constexpr double GatheringCampRing = 7600.;
+	constexpr double GatheringCampSpacing = 1100.;
+	constexpr int32 GatheringCamps = 3;
+	/** S7: no tree this close (cm) to a camp's centre. */
+	constexpr double GatheringCampClearance = 550.;
+
+	/** S7: wood in each tree of the run (the table's 100 would leave the field bare before the end of the measure). */
+	int32 TreeAmount = 400;
+	FAutoConsoleVariableRef CVarTreeAmount(TEXT("hol.StressTest.TreeAmount"), TreeAmount,
+		TEXT("S7: wood in each tree the stress test places (the source table says 100; 400 keeps the field standing through the measure)"));
 	/** Time granted to the last fixed steps after the run asked to quit, so the units are destroyed (D224). */
 	constexpr float QuitDelaySeconds = 0.5f;
 	/**
@@ -160,13 +200,13 @@ namespace UE::HeroesOfLiberty::StressTest
 
 	FAutoConsoleCommandWithWorldAndArgs StartCommand(
 		TEXT("hol.StressTest"),
-		TEXT("hol.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units crossing at hol.StressTest.CrossingAngle (avoidance check)"),
+		TEXT("hol.StressTest S1|S2|C|S7 [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units crossing at hol.StressTest.CrossingAngle (avoidance check), S7: Peasants gathering wood (D299)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UHOLStressTestSubsystem* Subsystem = FindSubsystem(World);
 			if (!Subsystem || Args.Num() < 1)
 			{
-				UE_LOG(LogHOLStressTest, Warning, TEXT("Usage: hol.StressTest S1|S2|C [Count=2000] [Seconds=20] [quit] (in a game world)"));
+				UE_LOG(LogHOLStressTest, Warning, TEXT("Usage: hol.StressTest S1|S2|C|S7 [Count=2000] [Seconds=20] [quit] (in a game world)"));
 				return;
 			}
 			EHOLStressScenario Scenario = EHOLStressScenario::S1_Idle;
@@ -177,6 +217,10 @@ namespace UE::HeroesOfLiberty::StressTest
 			else if (Args[0].Equals(TEXT("C"), ESearchCase::IgnoreCase) || Args[0].Equals(TEXT("Crossing"), ESearchCase::IgnoreCase))
 			{
 				Scenario = EHOLStressScenario::Crossing;
+			}
+			else if (Args[0].Equals(TEXT("S7"), ESearchCase::IgnoreCase))
+			{
+				Scenario = EHOLStressScenario::S7_Gathering;
 			}
 			// The crossing needs exactly two units, at two known places.
 			const int32 Count = Scenario == EHOLStressScenario::Crossing
@@ -204,6 +248,7 @@ namespace UE::HeroesOfLiberty::StressTest
 		{
 		case EHOLStressScenario::S2_Moving: return TEXT("S2 (moving)");
 		case EHOLStressScenario::Crossing: return TEXT("C (crossing)");
+		case EHOLStressScenario::S7_Gathering: return TEXT("S7 (gathering)");
 		default: return TEXT("S1 (idle)");
 		}
 	}
@@ -251,7 +296,8 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 	Count = InCount;
 	MeasureSeconds = InMeasureSeconds;
 	bQuitWhenDone = bInQuitWhenDone;
-	UnitTypeName = FName(*UE::HeroesOfLiberty::StressTest::UnitType);
+	// S7 gathers: Peasants, whatever the type of the other scenarios.
+	UnitTypeName = Scenario == EHOLStressScenario::S7_Gathering ? FName(TEXT("Peasant")) : FName(*UE::HeroesOfLiberty::StressTest::UnitType);
 
 	UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>();
 	if (Simulation == nullptr)
@@ -264,7 +310,8 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 		StepStartedHandle = Simulation->GetOnStepStarted().AddUObject(this, &UHOLStressTestSubsystem::OnSimulationStep);
 	}
 	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
-	WarmUpSteps = FMath::CeilToInt32(UE::HeroesOfLiberty::StressTest::WarmUpSeconds / StepSeconds);
+	WarmUpSteps = FMath::CeilToInt32((Scenario == EHOLStressScenario::S7_Gathering ? UE::HeroesOfLiberty::StressTest::GatheringWarmUpSeconds
+		: UE::HeroesOfLiberty::StressTest::WarmUpSeconds) / StepSeconds);
 	MeasureSteps = FMath::Max(1, FMath::RoundToInt32(MeasureSeconds / StepSeconds));
 
 	UsedPhysicalBeforeSpawn = FPlatformMemory::GetStats().UsedPhysical;
@@ -272,6 +319,10 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 	{
 		// Same crowd for every run, even several in one process (D230).
 		Units->ResetSpawnSeed();
+	}
+	if (Scenario == EHOLStressScenario::S7_Gathering)
+	{
+		SetUpGathering();
 	}
 	SpawnUnits();
 	PlaceViewer();
@@ -282,7 +333,7 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 	{
 		UnitIds = TArray<uint32>();
 		UE_LOG(LogHOLStressTest, Display, TEXT("Stress test %s: %d units of type %s requested (D224: they are born on the following steps), measuring for %.0f s after %.0f s of warm-up"),
-			UE::HeroesOfLiberty::StressTest::ToString(Scenario), Count, *UnitTypeName.ToString(), MeasureSeconds, UE::HeroesOfLiberty::StressTest::WarmUpSeconds);
+			UE::HeroesOfLiberty::StressTest::ToString(Scenario), Count, *UnitTypeName.ToString(), MeasureSeconds, WarmUpSteps * StepSeconds);
 		return;
 	}
 	UE_LOG(LogHOLStressTest, Error, TEXT("No unit subsystem: nothing spawned"));
@@ -291,6 +342,7 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 void UHOLStressTestSubsystem::StopTest()
 {
 	DestroyUnits();
+	TearDownGathering();
 	Phase = EPhase::Idle;
 }
 
@@ -340,7 +392,8 @@ void UHOLStressTestSubsystem::Tick(const float DeltaTime)
 		}
 		else
 		{
-			const TCHAR* ScenarioName = Scenario == EHOLStressScenario::S2_Moving ? TEXT("S2") : (Scenario == EHOLStressScenario::Crossing ? TEXT("C") : TEXT("S1"));
+			const TCHAR* ScenarioName = Scenario == EHOLStressScenario::S2_Moving ? TEXT("S2") : (Scenario == EHOLStressScenario::Crossing ? TEXT("C")
+				: (Scenario == EHOLStressScenario::S7_Gathering ? TEXT("S7") : TEXT("S1")));
 			FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("StressTest_%s.png"), ScenarioName),
 				/*bInShowUI*/ false, /*bAddFilenameSuffix*/ false);
 		}
@@ -377,6 +430,10 @@ void UHOLStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
 	{
 		MaintainCrossing();
 	}
+	else if (Scenario == EHOLStressScenario::S7_Gathering && !bGatheringOrdered)
+	{
+		OrderGathering();
+	}
 }
 
 void UHOLStressTestSubsystem::SpawnUnits()
@@ -403,17 +460,212 @@ void UHOLStressTestSubsystem::SpawnUnits()
 	// The authority creates the units, spread over the following steps by the per-step budget (D224). The S1
 	// units are born standing still, which is what an immobile unit means (D220). One request per player: the
 	// births are served in order and draw their positions one after the other, so the crowd does not depend on
-	// how it is shared.
-	const int32 NumPlayers = FMath::Clamp(UE::HeroesOfLiberty::StressTest::Players, 1, 255);
+	// how it is shared. S7: each player's Peasants are born on their own side of the map, near their centre.
+	const bool bGathering = Scenario == EHOLStressScenario::S7_Gathering;
+	const int32 NumPlayers = bGathering ? GetNumPlayers() : FMath::Clamp(UE::HeroesOfLiberty::StressTest::Players, 1, 255);
 	for (int32 Player = 0; Player < NumPlayers; ++Player)
 	{
 		const int32 PlayerCount = Count / NumPlayers + (Player < Count % NumPlayers ? 1 : 0);
 		if (PlayerCount > 0)
 		{
-			Units->RequestUnits(FHOLUnitSpawnRequest{ UnitTypeName, PlayerCount, FVector::ZeroVector, UE::HeroesOfLiberty::StressTest::GetSpawnRadius(),
+			Units->RequestUnits(FHOLUnitSpawnRequest{ UnitTypeName, PlayerCount, bGathering ? GetGatheringSpawnPoint(Player) : FVector::ZeroVector,
+				bGathering ? UE::HeroesOfLiberty::StressTest::GatheringSpawnDisc : UE::HeroesOfLiberty::StressTest::GetSpawnRadius(),
 				static_cast<uint8>(Player) });
 		}
 	}
+}
+
+int32 UHOLStressTestSubsystem::GetNumPlayers() const
+{
+	return FMath::Clamp(UE::HeroesOfLiberty::StressTest::Players, 1, 8);
+}
+
+FVector UHOLStressTestSubsystem::GetGatheringSpawnPoint(const int32 Player) const
+{
+	const double Angle = 2. * UE_DOUBLE_PI * Player / GetNumPlayers();
+	return FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.) * UE::HeroesOfLiberty::StressTest::GatheringSpawnRadius;
+}
+
+void UHOLStressTestSubsystem::SetUpGathering()
+{
+	using namespace UE::HeroesOfLiberty::StressTest;
+	TearDownGathering();
+	UWorld* World = GetWorld();
+	UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || !Sources->HasAuthority())
+	{
+		UE_LOG(LogHOLStressTest, Error, TEXT("S7: no source registry with authority here, no trees"));
+		return;
+	}
+	const int32 NumPlayers = GetNumPlayers();
+	GatheringTrees.SetNum(NumPlayers);
+	int32 NumTrees = 0;
+	for (int32 Player = 0; Player < NumPlayers; ++Player)
+	{
+		const double Angle = 2. * UE_DOUBLE_PI * Player / NumPlayers;
+		const FVector Out(FMath::Cos(Angle), FMath::Sin(Angle), 0.);
+		const FVector Side(-Out.Y, Out.X, 0.);
+
+		// Its main centre, facing the middle of the map: a deposit for the four resources (D295).
+		const FTransform Transform(FRotator(0.f, static_cast<float>(FMath::RadiansToDegrees(Angle)) + 180.f, 0.f), Out * GatheringCentreRadius);
+		AHOLBuilding* Centre = World->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+		if (Centre)
+		{
+			Centre->Setup(HOLBuildingTypeNames::MainCentre, static_cast<uint8>(Player), static_cast<uint8>(Player));
+			Centre->FinishSpawning(Transform);
+			GatheringCentres.Add(Centre);
+		}
+
+		// Its lumber camps, among its trees.
+		TArray<FVector> Camps;
+		for (int32 Camp = 0; Camp < GatheringCamps; ++Camp)
+		{
+			const FVector Location = Out * GatheringCampRing + Side * ((Camp - (GatheringCamps - 1) * 0.5) * GatheringCampSpacing);
+			const FTransform CampTransform(Transform.GetRotation(), Location);
+			AHOLBuilding* CampBuilding = World->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), CampTransform, nullptr, nullptr,
+				ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+			if (CampBuilding)
+			{
+				CampBuilding->Setup(HOLBuildingTypeNames::LumberCamp, static_cast<uint8>(Player), static_cast<uint8>(Player));
+				CampBuilding->FinishSpawning(CampTransform);
+				GatheringCentres.Add(CampBuilding);
+				Camps.Add(Location);
+			}
+		}
+
+		// Lone trees behind it, on rings: each one open on every side, room for its four gatherers; every other ring
+		// half a step aside, so the trees of two rings do not line up.
+		for (int32 Ring = 0; Ring < GatheringRings; ++Ring)
+		{
+			const double Radius = GatheringFirstRing + Ring * GatheringTreeSpacing;
+			const double Shift = (Ring % 2) * GatheringTreeSpacing * 0.5;
+			for (double Along = -GatheringHalfWidth; Along <= GatheringHalfWidth + 1.; Along += GatheringTreeSpacing)
+			{
+				const FVector Location = Out * Radius + Side * (Along + Shift);
+				if (Camps.ContainsByPredicate([&Location](const FVector& Camp) { return FVector::Dist2D(Camp, Location) < GatheringCampClearance; }))
+				{
+					continue;
+				}
+				const int32 Index = Sources->AddSource(HOLSourceTypeNames::Tree, Location, TreeAmount);
+				if (Index != INDEX_NONE)
+				{
+					GatheringTrees[Player].Add(Index);
+					++NumTrees;
+				}
+			}
+		}
+	}
+	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d deposits (a main centre and %d lumber camps each) and %d trees of %d wood placed for %d players"),
+		GatheringCentres.Num(), GatheringCamps, NumTrees, TreeAmount, NumPlayers);
+}
+
+void UHOLStressTestSubsystem::OrderGathering()
+{
+	using namespace UE::HeroesOfLiberty::StressTest;
+	UWorld* World = GetWorld();
+	UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!Units || !Commands || !EntitySubsystem)
+	{
+		return;
+	}
+	Units->GetUnitIdsOfType(UnitTypeName, UnitIds);
+	if (UnitIds.Num() < Count)
+	{
+		return;	// the births are served over a few steps (D224)
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TArray<TArray<uint32>> PlayerUnits;
+	PlayerUnits.SetNum(GatheringTrees.Num());
+	for (const uint32 UnitId : UnitIds)
+	{
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(UnitId));
+		if (State && PlayerUnits.IsValidIndex(State->OwnerPlayer))
+		{
+			PlayerUnits[State->OwnerPlayer].Add(UnitId);
+		}
+	}
+	for (int32 Player = 0; Player < PlayerUnits.Num(); ++Player)
+	{
+		const TArray<int32>& Trees = GatheringTrees[Player];
+		for (int32 First = 0; First < PlayerUnits[Player].Num() && Trees.Num() > 0; First += GatherersPerTree)
+		{
+			const int32 Num = FMath::Min(GatherersPerTree, PlayerUnits[Player].Num() - First);
+			Commands->IssueGatherOrder(TConstArrayView<uint32>(PlayerUnits[Player].GetData() + First, Num), Trees[(First / GatherersPerTree) % Trees.Num()],
+				Player);
+			++NumOrdersIssued;
+		}
+	}
+	bGatheringOrdered = true;
+	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d Peasants sent to their trees, %d per tree"), UnitIds.Num(), GatherersPerTree);
+}
+
+void UHOLStressTestSubsystem::TearDownGathering()
+{
+	for (const TWeakObjectPtr<AHOLBuilding>& Centre : GatheringCentres)
+	{
+		if (Centre.IsValid())
+		{
+			Centre->Destroy();
+		}
+	}
+	GatheringCentres.Reset();
+	if (UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr)
+	{
+		// The registry keeps its indices for the whole match: the run's trees are used up, they leave the map.
+		for (const TArray<int32>& Trees : GatheringTrees)
+		{
+			for (const int32 Tree : Trees)
+			{
+				Sources->Take(Tree, MAX_int32);
+			}
+		}
+	}
+	GatheringTrees.Reset();
+	bGatheringOrdered = false;
+}
+
+void UHOLStressTestSubsystem::LogGatheringSummary() const
+{
+	const UWorld* World = GetWorld();
+	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	if (!Sources || !EntitySubsystem || !Units)
+	{
+		return;
+	}
+	FHOLResources Unloaded;
+	for (int32 Player = 0; Player < GetNumPlayers(); ++Player)
+	{
+		Unloaded += Sources->GetDeposited(static_cast<uint8>(Player));
+	}
+	Unloaded -= UnloadedAtMeasureStart;
+	int32 Phases[4] = {};
+	int32 Carrying = 0;
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	for (const uint32 UnitId : UnitIds)
+	{
+		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Units->FindEntity(UnitId)))
+		{
+			++Phases[static_cast<int32>(Gather->Phase)];
+			Carrying += Gather->Load.Amount > 0 ? 1 : 0;
+		}
+	}
+	const int64 Paths = UHOLUnitOrderProcessor::GetTotalPathsServed() - PathsAtMeasureStart;
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering (D296, D299): %d wood unloaded during the measure (%.0f per second), %d trees used up (%d standing), %lld paths served (%.1f per second)"),
+		Unloaded.Wood, Unloaded.Wood / FMath::Max(MeasureSeconds, 1.f), StandingAtMeasureStart - Sources->GetNumStanding(), Sources->GetNumStanding(),
+		Paths, Paths / FMath::Max(MeasureSeconds, 1.f));
+	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering trips during the measure: %lld unloads, walks to a tree %lld and to a deposit %lld, missed spots %lld and deposits %lld, waits for a free spot %lld"),
+		Counters.Unloads - GatherCountersAtMeasureStart[4], Counters.WalksToSource - GatherCountersAtMeasureStart[0],
+		Counters.WalksToDeposit - GatherCountersAtMeasureStart[1], Counters.MissedSpots - GatherCountersAtMeasureStart[2],
+		Counters.MissedDeposits - GatherCountersAtMeasureStart[3], Counters.NoSpotWaits - GatherCountersAtMeasureStart[5]);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Gatherers at the end: to their source %d, gathering %d, to the deposit %d, not gathering %d; %d carrying a load"),
+		Phases[static_cast<int32>(EHOLGatherPhase::ToSource)], Phases[static_cast<int32>(EHOLGatherPhase::Gathering)],
+		Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Phases[static_cast<int32>(EHOLGatherPhase::None)], Carrying);
 }
 
 void UHOLStressTestSubsystem::MaintainCrossing()
@@ -671,6 +923,19 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	}
 	LocationsAtMeasureStart = GetUnitLocations();
 	CountInterpenetration(InterpenetrationAtMeasureStart, SmallestGapAtMeasureStart);
+	if (const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>())
+	{
+		UnloadedAtMeasureStart = FHOLResources();
+		for (int32 Player = 0; Player < GetNumPlayers(); ++Player)
+		{
+			UnloadedAtMeasureStart += Sources->GetDeposited(static_cast<uint8>(Player));
+		}
+		StandingAtMeasureStart = Sources->GetNumStanding();
+	}
+	PathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsServed();
+	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
+	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotWaits };
+	FMemory::Memcpy(GatherCountersAtMeasureStart, Now, sizeof(Now));
 	if (UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>())
 	{
 		Simulation->ResetStepStats();
@@ -971,6 +1236,10 @@ void UHOLStressTestSubsystem::FinishMeasure()
 	if (Scenario == EHOLStressScenario::Crossing)
 	{
 		LogCrossingSummary();
+	}
+	if (Scenario == EHOLStressScenario::S7_Gathering)
+	{
+		LogGatheringSummary();
 	}
 	if (GEngine)
 	{

@@ -23,12 +23,17 @@ public:
 	 * Queues "go to this location" for the given units, one order for the group (D286, D287). PlayerIndex: the player
 	 * who gave it, whose own units alone obey (D288); INDEX_NONE for the server's own orders (rally point, tests).
 	 */
-	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE);
+	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bFromTask = false);
 
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
 	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);
 
 	int32 GetNumPendingOrders() const { return PendingMoveOrders.Num(); }
+
+	/** Queues "gather this source" for the given units (J5, D296); PlayerIndex as for a move order. */
+	void IssueGatherOrder(TConstArrayView<uint32> UnitIds, int32 SourceIndex, int32 PlayerIndex = INDEX_NONE);
+	/** Takes the gather orders waiting for the next step (the gathering calls this at each step). */
+	void ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders);
 
 	/** Queues a production order (J3, D282), applied by the production at the next step. */
 	void IssueProductionOrder(const FHOLProductionCommand& Command);
@@ -40,5 +45,6 @@ protected:
 
 private:
 	TArray<FHOLMoveOrder> PendingMoveOrders;
+	TArray<FHOLGatherOrder> PendingGatherOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;
 };

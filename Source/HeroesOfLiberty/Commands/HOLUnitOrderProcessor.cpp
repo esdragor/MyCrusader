@@ -208,6 +208,8 @@ namespace UE::HeroesOfLiberty::Orders
 	}
 }
 
+int64 UHOLUnitOrderProcessor::TotalPathsServed = 0;
+
 UHOLUnitOrderProcessor::UHOLUnitOrderProcessor()
 	: EntityQuery(*this)
 {
@@ -348,9 +350,12 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			Centre += Position;
 		}
 		Centre /= Positions.Num();
+		// A task's walk of one unit (J5: a gatherer's spot, chosen free and on the navmesh by its gathering): the target
+		// is its slot, no slot to look for (S7: the slot search was most of the orders' cost).
+		const bool bTaskSpot = Order.bFromTask && Entities.Num() == 1;
 		// Standing units outside the order around the target: their places are taken.
 		Occupied.Reset();
-		if (ObstacleGrid)
+		if (ObstacleGrid && !bTaskSpot)
 		{
 			const double Reach = 2. * Radius * HOLGroupMove::SlotSpacingInDiameters * (FMath::Sqrt(Entities.Num() * 1.4 + 6.) + 1.);
 			Nearby.Reset();
@@ -388,7 +393,10 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			}
 		}
 		Slots.Reset();
-		MakeOrderSlots(Order.Target, FVector2D(Order.Target) - Centre, Entities.Num(), Radius, NavSystem, NavData, Occupied, Slots);
+		if (!bTaskSpot)
+		{
+			MakeOrderSlots(Order.Target, FVector2D(Order.Target) - Centre, Entities.Num(), Radius, NavSystem, NavData, Occupied, Slots);
+		}
 		if (Slots.Num() == 0)
 		{
 			Slots.Add(Order.Target);
@@ -433,6 +441,14 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 
 			FHOLMoveOrderFragment& MoveOrder = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
 			MoveOrder.OrderSerial = OrderSerial;
+			// A player's order ends the unit's gathering, its load kept (D296); a walk its gathering gave it does not.
+			FHOLGatherFragment* Gather = Order.bFromTask ? nullptr : EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+			if (Gather && Gather->IsGathering())
+			{
+				Gather->Phase = EHOLGatherPhase::None;
+				Gather->SourceIndex = INDEX_NONE;
+				Gather->bWalkIssued = false;
+			}
 			MoveOrder.Slot = SlotOfUnit[Unit] != INDEX_NONE ? Slots[SlotOfUnit[Unit]] : Order.Target;
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));
 			MoveOrder.Phase = EHOLMovePhase::WaitingPath;
@@ -534,6 +550,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 	}
 	PendingPaths.RemoveAt(0, Next, EAllowShrinking::No);
 	NumPathsServed += Served;
+	TotalPathsServed += Served;
 }
 
 void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMassExecutionContext& Context, const ANavigationData* NavData)

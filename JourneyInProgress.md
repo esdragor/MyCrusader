@@ -59,6 +59,7 @@ vérifier sur S1 et S2.
 | J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299 ; trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte) ; code après la clôture de J4 |
 | J5a.1 Données et règles pures | **fait** (2026-10-15) : table des sources (`SourceTypes.csv` → `/Game/Resources/SourceTypes`, `make_source_types.py`), taux et charge dans la table des unités, `Simulation/HOLGatherRules`, 4 tests `HeroesOfLiberty.Gather.*` ; tests 36/36, `quick_check` PASS (87 s) |
 | J5a.2 Sources dans la partie | **fait** (2026-10-15) : registre `UHOLSourceSubsystem`, disposition `AHOLSourceLayout` posée par le script de `Plain` (40 arbres par emplacement, 320 en tout), affichage par instances (`AHOLSourceField`), un seul fournisseur de zones interdites à cylindres par instance (`UHOLSourceNavComponent` : seule la tuile d'une source épuisée se refait), morceaux répliqués de 63 sources (`AHOLSourceChunk`) ; `quick_check` PASS (83 s) avec les parties « sources » et « net » ; arbres de `StressTest` reportés à J5a.3 (créés par S7) |
+| J5a.3 Boucle de récolte dans la simulation | **fait** (2026-10-15) : `UHOLGatherProcessor` (places au contact, récolte, dépôt le plus proche, épuisement, inactif ; ses marches passent par la file d'ordres), dépôts en emprise (`Accepts` dans la table des bâtiments), `hol.Units.Gather`, `hol.Gather.Report` ; **S7 PASS à 2,96 ms** (machine chargée ; avec 3 camps de bûcherons provisoires par joueur), S2 inchangé (mêmes recouvrements) ; `quick_check` PASS (89 s), tests 36/36 ; **S1 / S2 / S7 et le rendu à remesurer au repos** |
 
 ## Prochaine étape exacte
 
@@ -78,8 +79,10 @@ vérifier sur S1 et S2.
    récolte), chacune avec l'essai de l'utilisateur. **Aucun code avant la clôture de J4** ; reprise ensuite à J5a.1.
 6. **J4 close le 2026-10-15** (D285 à D294, D300 à D302 au GDD). Suite : **J5a.1** (première sous-étape de J5a, le
    bois ; voir « Plan de J5 »).
-7. **J5a.1 et J5a.2 faites** (2026-10-15). Suite : **J5a.3** (boucle de récolte dans la simulation, `hol.Units.Gather`,
-   S7 qui pose ses propres arbres sur `StressTest` par code).
+7. **J5a.1 à J5a.3 faites** (2026-10-15). Suite : **J5a.4** (ordre réseau et ralliement : clic droit sur un arbre →
+   ordre vérifié par le serveur ; ralliement sur un arbre ; activité et charge dans le bloc du Paysan). À faire valider à
+   l'essai de J5a.5 : la disposition de S7 (camps provisoires) et l'abandon, pour l'instant, de la réutilisation des
+   chemins (voir le journal de J5a.3). S1 / S2 / S7 à remesurer au repos (rendu compris).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1729,3 +1732,47 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 - **Écart au plan** : pas d'arbres posés dans la carte `StressTest` (S1 et S2 auraient changé) ; S7 (J5a.3) posera les
   siens par code (`AddSource`). S1 / S2 / S5 non concernés (aucune source sur `StressTest`).
 - Suite : **J5a.3** (boucle de récolte dans la simulation, S7).
+
+### 2026-10-15 (suite) — J5a.3 : boucle de récolte dans la simulation, S7
+
+- **Fragment** `FHOLGatherFragment` (source, place visée, charge, phase : vers la source, récolte, vers le dépôt) sur
+  chaque unité. **Ordres** : `FHOLGatherOrder` dans la file de commandes (`IssueGatherOrder`) ; un ordre de déplacement
+  porte `bFromTask` : ceux que la récolte se donne la laissent continuer, ceux du joueur l'arrêtent (charge gardée, D296).
+- **`Simulation/HOLGatherProcessor`** (après les ordres, au serveur et en solo, fil de jeu) : applique les ordres de
+  récolte (propriétaire vérifié, type d'unité qui récolte cette ressource ; autre ressource → charge perdue) ; choisit
+  une **place libre au contact** de la source (tous les 30° depuis le côté qui fait face au Paysan, 15 cm à l'intérieur
+  du navmesh, 1,4 m entre deux récolteurs, et le navmesh doit être ouvert vers l'extérieur sur 3 m : entre quatre arbres
+  d'un bois restent des îlots que nul chemin n'atteint, un Paysan y était resté coincé) ; sinon la voisine la plus proche
+  avec une place libre (dans 15 m), sinon il attend 3 s ; récolte au contact (règles de J5a.1) ; plein → **dépôt le plus
+  proche de son propriétaire** qui prend la ressource (emprise rectangulaire, place contre le côté qui lui fait face,
+  étalée sur 85 % du côté selon l'unité, glissée de 1,5 m à chaque raté ; déchargement à 1,5 m de l'emprise au plus) ;
+  stock du `PlayerState` monté au dépôt seulement ; retour à la même source ; source épuisée → voisine du même type
+  dans 15 m, sinon décharge puis inactif. Un récolteur bousculé continue jusqu'à 1,2 m de sa source.
+- Règles pures complétées (`HOLGatherRules`) : dépôts en emprise tournée (`FHOLGatherDeposit`, distance, place, dépôt
+  le plus proche) ; tests `Gather.Choice` et `Gather.Tables` étendus (le centre reçoit les 4 ressources).
+- Table des bâtiments : colonne **`Accepts`** (le centre : les 4) et ligne provisoire **`LumberCamp`** (6 × 6 m, bois
+  seul), pour S7 seulement ; l'étape construction donnera leur place aux camps (D83).
+- Commandes : `hol.Units.Gather X Y [Slot]`, `hol.Gather.Report [Slot]`, `hol.Gather.LogDeposits 1`.
+- Essai solo sur `Plain` (5 Paysans sur le premier arbre) : ils se répartissent sur les arbres voisins, **200 bois en
+  83 s**, le stock monte de 10 à chaque déchargement.
+- **S7** (`hol.StressTest S7 [N] [s] [quit]`, posé par code sur `StressTest`, la carte ne change pas) : 8 joueurs, un
+  centre chacun à 50 m du milieu, 60 arbres isolés par joueur (anneaux de 60 à 92 m, 4 m d'écart, **400 bois** chacun :
+  `hol.StressTest.TreeAmount`, sinon le champ est rasé avant la fin), Paysans nés au pied de leur centre, 4 par arbre,
+  chauffe de 25 s. Rapport : bois déchargé par seconde, arbres épuisés, chemins par seconde, marches et ratés, phases.
+  Mesures (S7 court hors écran, 888 × 500, 10 s ; machine chargée, ProjectShiva ouvert) :
+  - 1er passage : **4,29 ms** (ordres 1,06 ms, 375 chemins/s ; 2 115 paires de corps l'un sur l'autre au dépôt :
+    250 Paysans par centre) ;
+  - les marches de la récolte prennent leur place telle quelle (ni recherche de place ni projection : « orders
+    applied » 0,84 → 0,02 ms) ; arrivée à 60 cm, bousculé jusqu'à 1,2 m ; points de déchargement étalés : **4,15 ms** ;
+  - **3 camps de bûcherons par joueur** dans ses arbres (~60 récolteurs par dépôt, ce que voient au plus les camps d'une
+    vraie économie ; § 5.3 : 70 à 90 travailleurs par joueur) : foules normales (409 paires), séparation 1,06 → 0,41,
+    regard en avant 1,0 → 0,33 ; puis assez d'arbres (480) et nouvelle tentative de place toutes les 3 s :
+    **S7 PASS à 2,96 ms** ; 1 403 bois/s (0,70 par Paysan : le taux plein), 307 chemins/s, 75 % des Paysans récoltent.
+  - Postes : évitement à l'arrêt 0,72 ms par pas (1 500 récolteurs immobiles), ordres 0,38, séparation 0,44, regard en
+    avant 0,34, récolte 0,22. Rendu non mesurable (45 i/s machine chargée ; 149 i/s au 1er passage).
+- **S2 court** : mêmes recouvrements qu'en D302 (522 puis 374 paires : mouvement inchangé), 2,98 ms machine chargée
+  (2,71 en D302) ; la récolte coûte 0,04 ms sans récolteur. **S1 / S2 / S7 à remesurer au repos.**
+- **Réutilisation des chemins source-dépôt (D299) pas faite** : les chemins eux-mêmes ne coûtent que ~0,2 ms par pas à
+  300 par seconde (presque tous droits) ; à reprendre si S7 repasse au-dessus de 3 ms.
+- `quick_check` PASS en 89 s, tests 36/36.
+- Suite : **J5a.4** (ordre réseau et ralliement).

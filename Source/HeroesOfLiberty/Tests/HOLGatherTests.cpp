@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceTypes.h"
@@ -124,15 +125,31 @@ bool FHOLGatherChoiceTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::Gather;
 
-	// Nearest deposit, measured to its edge: a large centre farther away may be the nearer one.
-	const TArray<FHOLGatherSite> Deposits = {
-		{ FVector2D(2000., 0.), 100.f },
-		{ FVector2D(-2400., 0.), 750.f },
+	// Nearest deposit, measured to its footprint: a large centre farther away may be the nearer one.
+	const TArray<FHOLGatherDeposit> Deposits = {
+		{ FVector2D(2000., 0.), FVector2D(100., 100.), 0.f },
+		{ FVector2D(-2400., 0.), FVector2D(750., 750.), 0.f },
 	};
-	TestEqual(TEXT("the nearer edge wins"), HOLGather::FindNearestDeposit(FVector2D::ZeroVector, Deposits), 1);
+	TestEqual(TEXT("the nearer footprint wins"), HOLGather::FindNearestDeposit(FVector2D::ZeroVector, Deposits), 1);
 	TestEqual(TEXT("near the small one"), HOLGather::FindNearestDeposit(FVector2D(1500., 0.), Deposits), 0);
-	TestEqual(TEXT("no deposit"), HOLGather::FindNearestDeposit(FVector2D::ZeroVector, TConstArrayView<FHOLGatherSite>()), int32(INDEX_NONE));
-	TestEqual(TEXT("edge distance"), HOLGather::GetEdgeDistance(FVector2D::ZeroVector, Deposits[1]), 1650.);
+	TestEqual(TEXT("no deposit"), HOLGather::FindNearestDeposit(FVector2D::ZeroVector, TConstArrayView<FHOLGatherDeposit>()), int32(INDEX_NONE));
+	TestEqual(TEXT("distance to a footprint"), HOLGather::GetDepositDistance(FVector2D::ZeroVector, Deposits[1]), 1650., 0.01);
+	TestEqual(TEXT("distance to a corner"), HOLGather::GetDepositDistance(FVector2D(-1350., 1150.), Deposits[1]), 500., 0.01);
+	TestEqual(TEXT("0 on the footprint"), HOLGather::GetDepositDistance(FVector2D(-2400., 100.), Deposits[1]), 0., 0.01);
+
+	// A turned footprint (45 degrees): its corner points along X, 141 cm from its centre.
+	const FHOLGatherDeposit Turned = { FVector2D::ZeroVector, FVector2D(100., 100.), 45.f };
+	TestEqual(TEXT("turned: 100 cm past the corner"), HOLGather::GetDepositDistance(FVector2D(241.42, 0.), Turned), 100., 0.5);
+
+	// Unloading: against the side it faces, Gap cm out, slid along it for a second try; close enough within 150 cm.
+	const FHOLGatherDeposit& Centre = Deposits[1];
+	const FVector2D Spot = HOLGather::GetDepositSpot(FVector2D(-2400., 3000.), Centre, 70.);
+	TestTrue(TEXT("spot against the facing side"), Spot.Equals(FVector2D(-2400., 820.), 0.01));
+	TestTrue(TEXT("spot slid along the side"), HOLGather::GetDepositSpot(FVector2D(-2400., 3000.), Centre, 70., 150.).Equals(FVector2D(-2250., 820.), 0.01));
+	TestTrue(TEXT("spot stays on the side"), HOLGather::GetDepositSpot(FVector2D(-1000., 3000.), Centre, 70., 150.).Equals(FVector2D(-1650., 820.), 0.01));
+	TestTrue(TEXT("unloads at its spot"), HOLGather::IsAtDeposit(Spot, 60.f, Centre));
+	TestFalse(TEXT("too far to unload"), HOLGather::IsAtDeposit(FVector2D(-2400., 1000.), 60.f, Centre));
+	TestEqual(TEXT("edge distance of a source"), HOLGather::GetEdgeDistance(FVector2D::ZeroVector, FHOLGatherSite{ FVector2D(-2400., 0.), 750.f }), 1650.);
 
 	// Contact: body against body, give or take 30 cm.
 	const FHOLGatherSite Tree = { FVector2D::ZeroVector, 60.f };
@@ -204,6 +221,14 @@ bool FHOLGatherTablesTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("a soldier carries nothing"), Infantry->CarryCapacity, 0);
 			TestTrue(TEXT("a soldier gathers nothing"), Infantry->GatherRates == FHOLResourceRates());
 		}
+	}
+
+	const FHOLBuildingTypeRow* MainCentre = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
+	if (TestNotNull(TEXT("main centre in the building type table"), MainCentre))
+	{
+		TestTrue(TEXT("the main centre takes the four resources (D295)"), MainCentre->AcceptsResource(EHOLResource::Food)
+			&& MainCentre->AcceptsResource(EHOLResource::Wood) && MainCentre->AcceptsResource(EHOLResource::Stone)
+			&& MainCentre->AcceptsResource(EHOLResource::Gold));
 	}
 	return true;
 }

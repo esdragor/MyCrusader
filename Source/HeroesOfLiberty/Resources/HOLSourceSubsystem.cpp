@@ -167,7 +167,7 @@ const FHOLSourceTypeRow* UHOLSourceSubsystem::GetType(const uint8 TypeIndex) con
 	return TypeRows.IsValidIndex(TypeIndex) ? TypeRows[TypeIndex] : nullptr;
 }
 
-int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Location)
+int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Location, const int32 Amount)
 {
 	if (!bStarted || !bAuthority)
 	{
@@ -186,7 +186,7 @@ int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Locati
 	Source.Resource = Type->Resource;
 	Source.Location = Location;
 	Source.Radius = Type->Radius;
-	Source.Remaining = Type->Amount;
+	Source.Remaining = Amount != INDEX_NONE ? FMath::Max(Amount, 1) : Type->Amount;
 	const int32 SourceIndex = Sources.Num() - 1;
 	OnSourceAdded(SourceIndex);
 	return SourceIndex;
@@ -252,6 +252,11 @@ AHOLSourceChunk* UHOLSourceSubsystem::GetOrAddChunk(const int32 ChunkIndex)
 		Chunks.Add(Chunk);
 	}
 	return Chunks[ChunkIndex];
+}
+
+void UHOLSourceSubsystem::RecordDeposit(const uint8 OwnerPlayer, const EHOLResource Resource, const int32 Amount)
+{
+	Deposited.FindOrAdd(OwnerPlayer)[Resource] += Amount;
 }
 
 int32 UHOLSourceSubsystem::FindNearestStanding(const FVector& Location) const

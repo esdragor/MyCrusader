@@ -49,8 +49,11 @@ public:
 	/** The server or the solo game: the registry decides; a client only mirrors. */
 	bool HasAuthority() const { return bAuthority; }
 
-	/** Server: adds a source of the type TypeName on Location (its ground point). Its index, INDEX_NONE if the type is unknown. */
-	int32 AddSource(FName TypeName, const FVector& Location);
+	/**
+	 * Server: adds a source of the type TypeName on Location (its ground point), holding Amount (the type's amount when
+	 * INDEX_NONE). Its index, INDEX_NONE if the type is unknown.
+	 */
+	int32 AddSource(FName TypeName, const FVector& Location, int32 Amount = INDEX_NONE);
 
 	/**
 	 * Server: takes up to Amount from a standing source; returns what was taken. A source left with nothing is used up:
@@ -64,6 +67,10 @@ public:
 	/** The source type table's rows, in its order: their indices travel instead of names. */
 	const TArray<FName>& GetTypeNames() const { return TypeNames; }
 	const FHOLSourceTypeRow* GetType(uint8 TypeIndex) const;
+
+	/** Server: what a player's gatherers unloaded since the start (reports, stress test S7). */
+	void RecordDeposit(uint8 OwnerPlayer, EHOLResource Resource, int32 Amount);
+	FHOLResources GetDeposited(uint8 OwnerPlayer) const { return Deposited.FindRef(OwnerPlayer); }
 
 	/** The standing source nearest Location, INDEX_NONE if there is none. */
 	int32 FindNearestStanding(const FVector& Location) const;
@@ -92,6 +99,7 @@ private:
 
 	TArray<FHOLSource> Sources;
 	int32 NumStanding = 0;
+	TMap<uint8, FHOLResources> Deposited;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLSourceField> Field;

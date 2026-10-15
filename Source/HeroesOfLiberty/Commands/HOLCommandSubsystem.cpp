@@ -12,7 +12,7 @@ bool UHOLCommandSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
 }
 
-void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex)
+void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask)
 {
 	if (UnitIds.Num() == 0)
 	{
@@ -21,9 +21,10 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 
 	// Destination brought back to the navigable area (D228): one point query per order, not per unit, the way
 	// a real time strategy game keeps a click next to the map walkable instead of walking into the void.
+	// A task's walk (J5: a gatherer's spot, already on the navmesh) is taken as it is.
 	FVector Destination = Target;
 	UWorld* World = GetWorld();
-	if (UNavigationSystemV1* NavSystem = World ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr)
+	if (UNavigationSystemV1* NavSystem = World && !bFromTask ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr)
 	{
 		const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 		const FVector Extent(Settings ? Settings->OrderTargetProjectionExtent : 1000.f);
@@ -42,6 +43,25 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	Order.UnitIds = UnitIds;
 	Order.Target = Destination;
 	Order.PlayerIndex = PlayerIndex;
+	Order.bFromTask = bFromTask;
+}
+
+void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex)
+{
+	if (UnitIds.Num() == 0 || SourceIndex == INDEX_NONE)
+	{
+		return;
+	}
+	FHOLGatherOrder& Order = PendingGatherOrders.AddDefaulted_GetRef();
+	Order.UnitIds = UnitIds;
+	Order.SourceIndex = SourceIndex;
+	Order.PlayerIndex = PlayerIndex;
+}
+
+void UHOLCommandSubsystem::ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingGatherOrders);
 }
 
 void UHOLCommandSubsystem::ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders)

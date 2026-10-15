@@ -34,6 +34,14 @@ struct FHOLGatherSite
 	float Radius = 0.f;
 };
 
+/** A deposit (D296): a building's footprint, a rectangle turned by Yaw (degrees) on the ground plane. */
+struct FHOLGatherDeposit
+{
+	FVector2D Centre = FVector2D::ZeroVector;
+	FVector2D HalfExtent = FVector2D::ZeroVector;
+	float Yaw = 0.f;
+};
+
 /** A source as the rules see it. */
 struct FHOLGatherSource
 {
@@ -49,8 +57,14 @@ namespace HOLGather
 	/** Distance (cm) between the centres of a used-up source and the one its gatherers move on to, at most (D296). */
 	inline constexpr double NeighbourSourceDistance = 1500.;
 
-	/** Gap (cm) between the bodies of a gatherer and its source within which it gathers, or of a carrier and its deposit. */
+	/** Gap (cm) between the bodies of a gatherer and its source within which it gathers. */
 	inline constexpr double ContactGap = 30.;
+
+	/**
+	 * Gap (cm) between a carrier's body and its deposit's footprint within which it unloads: generous, as in AoE (a
+	 * carrier moved one slot out by another one unloading on its spot still unloads).
+	 */
+	inline constexpr double DepositGap = 150.;
 
 	/**
 	 * Readies Load for gathering Resource: a load of another resource is lost, one of the same resource is kept (D296).
@@ -77,8 +91,20 @@ namespace HOLGather
 	/** A body of BodyRadius at Position touches Site, give or take ContactGap. */
 	HEROESOFLIBERTY_API bool IsInContact(const FVector2D& Position, float BodyRadius, const FHOLGatherSite& Site);
 
-	/** Index of the deposit whose edge is nearest Position (the first one of a tie), INDEX_NONE if there is none. */
-	HEROESOFLIBERTY_API int32 FindNearestDeposit(const FVector2D& Position, TConstArrayView<FHOLGatherSite> Deposits);
+	/** Distance (cm) from Position to a deposit's footprint; 0 on it or inside. */
+	HEROESOFLIBERTY_API double GetDepositDistance(const FVector2D& Position, const FHOLGatherDeposit& Deposit);
+
+	/** A body of BodyRadius at Position is close enough to the deposit to unload, give or take DepositGap. */
+	HEROESOFLIBERTY_API bool IsAtDeposit(const FVector2D& Position, float BodyRadius, const FHOLGatherDeposit& Deposit);
+
+	/**
+	 * Where a carrier coming from From unloads: against the side of the footprint it faces, Gap cm out, at the point
+	 * nearest it, slid Along cm along that side (a second try beside the first one).
+	 */
+	HEROESOFLIBERTY_API FVector2D GetDepositSpot(const FVector2D& From, const FHOLGatherDeposit& Deposit, double Gap, double Along = 0.);
+
+	/** Index of the deposit whose footprint is nearest Position (the first one of a tie), INDEX_NONE if there is none. */
+	HEROESOFLIBERTY_API int32 FindNearestDeposit(const FVector2D& Position, TConstArrayView<FHOLGatherDeposit> Deposits);
 
 	/**
 	 * Where the gatherers of a used-up source at From go: the index of the nearest source of Resource that still holds
