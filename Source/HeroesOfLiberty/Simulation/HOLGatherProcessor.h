@@ -103,7 +103,7 @@ private:
 	/** Walks to its owner's nearest deposit that takes what it carries (a second try slides along the wall). */
 	void WalkToDeposit(const FStepContext& Step, FGatherer& Gatherer);
 	/** Its source is gone: the nearest standing one of the same resource within 15 m, or unload and stand. */
-	void OnSourceGone(const FStepContext& Step, FGatherer& Gatherer, const FVector& GoneLocation);
+	void OnSourceGone(const FStepContext& Step, FGatherer& Gatherer, EHOLResource Resource, const FVector& GoneLocation);
 	/** Unloads at the deposit: the owner's stock rises (D296). */
 	void Unload(const FStepContext& Step, FGatherer& Gatherer);
 	void Stop(FGatherer& Gatherer);

@@ -2,35 +2,47 @@
 
 #include "Simulation/HOLGatherRules.h"
 
-int32 HOLGather::StartGathering(FHOLGatherLoad& Load, const EHOLResource Resource)
+void HOLGather::StartGathering(FHOLGatherLoad& Load, const EHOLResource Resource)
 {
-	if (Load.Resource == Resource)
+	if (Load.Amount == 0)
 	{
-		return 0;
+		Load.Resource = Resource;
 	}
-	const int32 Lost = Load.Amount;
-	Load.Resource = Resource;
-	Load.Amount = 0;
-	Load.Progress = 0.f;
-	return Lost;
 }
 
-int32 HOLGather::Gather(FHOLGatherLoad& Load, const float Rate, const float StepSeconds, const int32 Capacity, int32& SourceRemaining)
+int32 HOLGather::Gather(FHOLGatherLoad& Load, const EHOLResource Resource, const float Rate, const float StepSeconds, const int32 Capacity,
+	int32& SourceRemaining, int32* OutLost)
 {
 	if (Rate <= 0.f || StepSeconds <= 0.f)
 	{
 		return 0;
 	}
+	StartGathering(Load, Resource);
+	if (Load.ProgressResource != Resource)
+	{
+		Load.ProgressResource = Resource;
+		Load.Progress = 0.f;
+	}
 	int32 Taken = 0;
 	Load.Progress += Rate * StepSeconds;
-	while (Load.Progress >= 1.f && Load.Amount < Capacity && SourceRemaining > 0)
+	while (Load.Progress >= 1.f && (Load.Resource != Resource || Load.Amount < Capacity) && SourceRemaining > 0)
 	{
+		if (Load.Resource != Resource)
+		{
+			// Its first unit: what it carried is lost (D306).
+			if (OutLost)
+			{
+				*OutLost += Load.Amount;
+			}
+			Load.Resource = Resource;
+			Load.Amount = 0;
+		}
 		Load.Progress -= 1.f;
 		++Load.Amount;
 		--SourceRemaining;
 		++Taken;
 	}
-	if (Load.Amount >= Capacity || SourceRemaining <= 0)
+	if (IsFullOf(Load, Resource, Capacity) || SourceRemaining <= 0)
 	{
 		Load.Progress = 0.f;
 	}
@@ -40,6 +52,11 @@ int32 HOLGather::Gather(FHOLGatherLoad& Load, const float Rate, const float Step
 bool HOLGather::IsFull(const FHOLGatherLoad& Load, const int32 Capacity)
 {
 	return Load.Amount >= Capacity;
+}
+
+bool HOLGather::IsFullOf(const FHOLGatherLoad& Load, const EHOLResource Resource, const int32 Capacity)
+{
+	return Load.Resource == Resource && IsFull(Load, Capacity);
 }
 
 int32 HOLGather::Deposit(FHOLGatherLoad& Load, FHOLResources& Stock)

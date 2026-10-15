@@ -18,13 +18,14 @@ namespace UE::HeroesOfLiberty::Tests::Gather
 	/** The fixed step of D217 (20 Hz). */
 	constexpr float StepSeconds = 0.05f;
 
-	/** Gathers Steps steps in a row; returns the units taken. */
-	int32 GatherSteps(FHOLGatherLoad& Load, const int32 Steps, const float Rate, const int32 Capacity, int32& SourceRemaining)
+	/** Gathers Resource Steps steps in a row; returns the units taken (the load lost added to OutLost, D306). */
+	int32 GatherSteps(FHOLGatherLoad& Load, const int32 Steps, const float Rate, const int32 Capacity, int32& SourceRemaining,
+		const EHOLResource Resource = EHOLResource::Wood, int32* OutLost = nullptr)
 	{
 		int32 Taken = 0;
 		for (int32 Step = 0; Step < Steps; ++Step)
 		{
-			Taken += HOLGather::Gather(Load, Rate, StepSeconds, Capacity, SourceRemaining);
+			Taken += HOLGather::Gather(Load, Resource, Rate, StepSeconds, Capacity, SourceRemaining, OutLost);
 		}
 		return Taken;
 	}
@@ -106,17 +107,43 @@ bool FHOLGatherDepositTest::RunTest(const FString& Parameters)
 	// Back to the same resource: the load is kept (a move order also keeps it, D296).
 	GatherSteps(Load, 210, 0.7f, 10, Tree);
 	TestEqual(TEXT("7 wood carried"), Load.Amount, 7);
-	TestEqual(TEXT("same resource: nothing lost"), HOLGather::StartGathering(Load, EHOLResource::Wood), 0);
-	TestEqual(TEXT("load kept"), Load.Amount, 7);
+	HOLGather::StartGathering(Load, EHOLResource::Wood);
+	TestEqual(TEXT("same resource: load kept"), Load.Amount, 7);
 
-	// Another resource: the load is lost, as in AoE.
-	TestEqual(TEXT("berries: the 7 wood are lost"), HOLGather::StartGathering(Load, EHOLResource::Food), 7);
-	TestEqual(TEXT("load emptied"), Load.Amount, 0);
-	TestEqual(TEXT("now carries food"), int32(Load.Resource), int32(EHOLResource::Food));
+	// Another resource (D306): the load is kept at the order and while no whole unit of it is gathered, lost at the first.
+	HOLGather::StartGathering(Load, EHOLResource::Food);
+	TestEqual(TEXT("order on berries: the 7 wood kept"), Load.Amount, 7);
+	TestEqual(TEXT("still carries wood"), int32(Load.Resource), int32(EHOLResource::Wood));
 	int32 Bush = 200;
-	GatherSteps(Load, 100, 0.7f, 10, Bush);
+	int32 Lost = 0;
+	TestEqual(TEXT("nothing whole after 1 s of berries"), GatherSteps(Load, 20, 0.7f, 10, Bush, EHOLResource::Food, &Lost), 0);
+	TestEqual(TEXT("the 7 wood still carried"), Load.Amount, 7);
+	TestEqual(TEXT("nothing lost yet"), Lost, 0);
+	TestEqual(TEXT("first food after 2 s"), GatherSteps(Load, 20, 0.7f, 10, Bush, EHOLResource::Food, &Lost), 1);
+	TestEqual(TEXT("the 7 wood lost then"), Lost, 7);
+	TestEqual(TEXT("now carries 1 food"), Load.Amount, 1);
+	TestEqual(TEXT("now carries food"), int32(Load.Resource), int32(EHOLResource::Food));
+	GatherSteps(Load, 60, 0.7f, 10, Bush, EHOLResource::Food);
 	HOLGather::Deposit(Load, Stock);
 	TestTrue(TEXT("food deposited, the lost wood never"), Stock == FHOLResources(203, 210, 200, 200));
+
+	// A full load of another resource is not full of this one: it gathers on, the progress toward wood not counted.
+	FHOLGatherLoad Full;
+	Full.Resource = EHOLResource::Wood;
+	Full.Amount = 10;
+	Full.Progress = 0.5f;
+	Full.ProgressResource = EHOLResource::Wood;
+	TestTrue(TEXT("full of wood"), HOLGather::IsFullOf(Full, EHOLResource::Wood, 10));
+	TestFalse(TEXT("not full of food"), HOLGather::IsFullOf(Full, EHOLResource::Food, 10));
+	int32 FullLost = 0;
+	TestEqual(TEXT("full of wood: nothing whole after 1 s of berries"), GatherSteps(Full, 20, 0.7f, 10, Bush, EHOLResource::Food, &FullLost), 0);
+	TestEqual(TEXT("then its first food"), GatherSteps(Full, 20, 0.7f, 10, Bush, EHOLResource::Food, &FullLost), 1);
+	TestEqual(TEXT("the 10 wood lost"), FullLost, 10);
+
+	// An empty load takes the ordered resource at once (the HUD shows it on the way).
+	FHOLGatherLoad Empty;
+	HOLGather::StartGathering(Empty, EHOLResource::Gold);
+	TestEqual(TEXT("empty: gold at the order"), int32(Empty.Resource), int32(EHOLResource::Gold));
 	return true;
 }
 

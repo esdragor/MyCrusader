@@ -181,7 +181,6 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 		const EHOLResource Resource = Sources[Order.SourceIndex].Resource;
 		int32 NumGatherers = 0;
 		int32 NumRefused = 0;
-		int32 NumLost = 0;
 		for (const uint32 UnitId : Order.UnitIds)
 		{
 			const FMassEntityHandle Entity = Step.Units->FindEntity(UnitId);
@@ -199,8 +198,8 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 				continue;
 			}
 			FHOLGatherFragment& Gather = EntityManager.GetFragmentDataChecked<FHOLGatherFragment>(Entity);
-			// Another resource: what it carries is lost, as in AoE (D296).
-			NumLost += HOLGather::StartGathering(Gather.Load, Resource);
+			// Another resource: what it carries is kept until its first unit of this one (D306).
+			HOLGather::StartGathering(Gather.Load, Resource);
 			Gather.SourceIndex = Order.SourceIndex;
 			Gather.Phase = EHOLGatherPhase::ToSource;
 			Gather.bWalkIssued = false;
@@ -208,9 +207,8 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 			Gather.WaitSteps = 0;
 			++NumGatherers;
 		}
-		UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d: %d units to source %d (%s)%s%s"), Order.PlayerIndex, NumGatherers,
-			Order.SourceIndex, GetResourceName(Resource), NumRefused > 0 ? *FString::Printf(TEXT(", %d refused"), NumRefused) : TEXT(""),
-			NumLost > 0 ? *FString::Printf(TEXT(", %d carried lost"), NumLost) : TEXT(""));
+		UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d: %d units to source %d (%s)%s"), Order.PlayerIndex, NumGatherers,
+			Order.SourceIndex, GetResourceName(Resource), NumRefused > 0 ? *FString::Printf(TEXT(", %d refused"), NumRefused) : TEXT(""));
 	}
 }
 
@@ -232,7 +230,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		{
 			if (Source)
 			{
-				OnSourceGone(Step, Gatherer, Source->Location);
+				OnSourceGone(Step, Gatherer, Source->Resource, Source->Location);
 			}
 			else
 			{
@@ -240,7 +238,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			}
 			return;
 		}
-		if (HOLGather::IsFull(Gather.Load, Gatherer.Constants.CarryCapacity) && Gather.Load.Resource == Source->Resource)
+		if (HOLGather::IsFullOf(Gather.Load, Source->Resource, Gatherer.Constants.CarryCapacity))
 		{
 			WalkToDeposit(Step, Gatherer);
 			return;
@@ -286,7 +284,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		{
 			if (Source)
 			{
-				OnSourceGone(Step, Gatherer, Source->Location);
+				OnSourceGone(Step, Gatherer, Source->Resource, Source->Location);
 			}
 			else
 			{
@@ -305,20 +303,28 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		}
 		int32 Remaining = Source->Remaining;
 		const FVector GoneLocation = Source->Location;
-		const int32 Taken = HOLGather::Gather(Gather.Load, Gatherer.Constants.GatherRates[Source->Resource], Step.StepSeconds,
-			Gatherer.Constants.CarryCapacity, Remaining);
+		const EHOLResource Resource = Source->Resource;
+		const EHOLResource Carried = Gather.Load.Resource;
+		int32 Lost = 0;
+		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Gatherer.Constants.GatherRates[Resource], Step.StepSeconds,
+			Gatherer.Constants.CarryCapacity, Remaining, &Lost);
 		if (Taken > 0)
 		{
 			// The registry's own count (it leaves the map at 0); Source is changed in place.
 			Step.Sources->Take(Gather.SourceIndex, Taken);
 		}
-		if (HOLGather::IsFull(Gather.Load, Gatherer.Constants.CarryCapacity))
+		if (Lost > 0 && LogDeposits != 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d gathered its first %s, %d %s carried lost"), Gatherer.OwnerPlayer,
+				GetResourceName(Resource), Lost, GetResourceName(Carried));
+		}
+		if (HOLGather::IsFullOf(Gather.Load, Resource, Gatherer.Constants.CarryCapacity))
 		{
 			WalkToDeposit(Step, Gatherer);
 		}
 		else if (Remaining <= 0)
 		{
-			OnSourceGone(Step, Gatherer, GoneLocation);
+			OnSourceGone(Step, Gatherer, Resource, GoneLocation);
 		}
 		return;
 	}
@@ -346,7 +352,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			}
 			else if (Source)
 			{
-				OnSourceGone(Step, Gatherer, Source->Location);
+				OnSourceGone(Step, Gatherer, Source->Resource, Source->Location);
 			}
 			else
 			{
@@ -442,11 +448,12 @@ void UHOLGatherProcessor::WalkToDeposit(const FStepContext& Step, FGatherer& Gat
 	IssueWalk(Step, Gatherer, FVector(Spot, Deposit.GroundZ));
 }
 
-void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gatherer, const FVector& GoneLocation)
+void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gatherer, const EHOLResource Resource, const FVector& GoneLocation)
 {
 	FHOLGatherFragment& Gather = Gatherer.Gather;
 	TArray<int32> Neighbours;
-	FindNeighbours(Step, Gather.Load.Resource, GoneLocation, Gather.SourceIndex, Neighbours);
+	// The source's resource: it may still carry another one (D306).
+	FindNeighbours(Step, Resource, GoneLocation, Gather.SourceIndex, Neighbours);
 	Gather.bWalkIssued = false;
 	Gather.Misses = 0;
 	if (Neighbours.Num() > 0)
