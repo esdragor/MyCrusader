@@ -105,10 +105,15 @@ vérifier sur S1 et S2.
    courts au repos** (D308 et D309 changent le suivi des chemins et les corps ; machine chargée, A/B seulement),
    puis **J5b.3** (vérification : `quick_check` solo — baies au ralliement, bois vidé → inactifs et « . » — et 2 clients ;
    S5 et S7 courts, l'activité répliquée ayant changé de sens).
-13. **J5b.2 validée et commitée** (2026-10-16, avec D307 à D309, D309 précisée : massifs, places à 100 cm vers le
-   dépôt, points d'attente). Suite : **J5b.3** (voir « Préparation de J5b.3 » dans le journal du 2026-10-16), puis J5c.
+13. **J5b.2 validée et commitée** (2026-10-16, `039b6ca`, avec D307 à D309, D309 précisée : massifs, places à 100 cm
+   vers le dépôt, points d'attente). Suite : **J5b.3** (voir « Préparation de J5b.3 » dans le journal du 2026-10-16), puis J5c.
    Question en suspens : les inactifs en trop quand tout un massif est plein et tous les points d'attente pris (à
    175 Paysans) — A rangées sans limite (recommandé) / B autour du massif / C tel quel.
+   **Reprise dans une nouvelle séance** (« continue JourneyInProgress ») : en sous-agents (règle ci-dessous), d'abord
+   poser la question A / B / C à l'utilisateur, puis J5b.3 point par point (préparation dans le journal du 2026-10-16).
+   Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
+   explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
+   GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -2176,8 +2181,8 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 - Session d'essai relancée.
 - **Essai validé** par l'utilisateur (2026-10-16) : « très bien » avec `hol.Gather.SpotSpacing 100` → valeur par
   défaut passée à 100 cm (sous-agent : compilation, `quick_check`). D309 précisée dans « Décisions » (massifs, places
-  serrées vers le dépôt, points d'attente des inactifs ; remplace les 15 m de D296). **J5b.2 commitée** (sans les
-  lignes du plan de J6, tenues par l'autre session).
+  serrées vers le dépôt, points d'attente des inactifs ; remplace les 15 m de D296). **J5b.2 commitée** (`039b6ca`,
+  `quick_check` PASS en 70 s à 100 cm, tests 38/38 ; sans les lignes du plan de J6, tenues par l'autre session).
 
 ### 2026-10-16 — Préparation de J5b.3 (vérification de J5b)
 
