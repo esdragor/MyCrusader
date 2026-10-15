@@ -46,6 +46,45 @@ namespace UE::HeroesOfLiberty::Orders
 	FAutoConsoleVariableRef CVarCheckReusedStraight(TEXT("hol.Units.ReuseCheckStraight"), CheckReusedStraight,
 		TEXT("1: a kept straight walk is reused only if a navmesh ray from the unit to its target is clear (D305)."));
 
+	int32 CheckReusedDetour = 1;
+	FAutoConsoleVariableRef CVarCheckReusedDetour(TEXT("hol.Units.ReuseCheckDetour"), CheckReusedDetour,
+		TEXT("1: a kept detour is reused only where this walk needs one and it fits it (D308): a clear navmesh ray walks straight; ")
+		TEXT("the walk must see the detour's first corner and its last corner its target, for no longer a walk than the kept one's."));
+
+	int32 LogDetours = 0;
+	FAutoConsoleVariableRef CVarLogDetours(TEXT("hol.Units.LogDetours"), LogDetours,
+		TEXT("1: every task walk much longer than the straight line is logged (D308: kept or new path, lengths)."));
+
+	/** A walk is a detour for hol.Units.LogDetours when longer than this share of the straight line, plus DetourSlack. */
+	constexpr double DetourRatio = 1.3;
+	constexpr double DetourSlack = 300.;
+	/** A kept detour fits a walk if its own length is at most this share of the kept walk's (over the straight line), plus the slack. */
+	constexpr double ReusedDetourRatioMargin = 1.1;
+
+	/** A partial path ending closer than this (cm) to its start: the unit is shut in a pocket of the navmesh (D308). */
+	constexpr double PocketEscapeDistance = 200.;
+
+	/** Length (cm) of a walk from Start along Points (from the second one) to Target, as a unit takes a kept path. */
+	double GetSplicedLength(const TArray<FNavPathPoint>& Points, const FVector& Start, const FVector& Target)
+	{
+		double Length = FVector::Dist2D(Start, Points[1].Location);
+		for (int32 Index = 1; Index + 2 < Points.Num(); ++Index)
+		{
+			Length += FVector::Dist2D(Points[Index].Location, Points[Index + 1].Location);
+		}
+		return Length + FVector::Dist2D(Points[Points.Num() - 2].Location, Target);
+	}
+
+	double GetPathLength(const TArray<FNavPathPoint>& Points)
+	{
+		double Length = 0.;
+		for (int32 Index = 0; Index + 1 < Points.Num(); ++Index)
+		{
+			Length += FVector::Dist2D(Points[Index].Location, Points[Index + 1].Location);
+		}
+		return Length;
+	}
+
 	float ReuseCellSize = 600.f;
 	FAutoConsoleVariableRef CVarReuseCellSize(TEXT("hol.Units.ReuseCellSize"), ReuseCellSize,
 		TEXT("Size (cm) of the cells of a kept path's start and end (D305): a walk takes it when it starts and ends in the same cells."));
@@ -558,18 +597,42 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 		// A kept straight walk is straight between its own points: this one, between others of the same cells, only if
 		// the navmesh lets it walk straight (one ray, much cheaper than a path; a tree may stand between).
 		FVector Hit;
-		if (Kept && !Kept->Corridor.IsValid() && CheckReusedStraight != 0
-			&& NavData->Raycast(Request.Start, Request.Target, Hit, NavData->GetDefaultQueryFilter()))
+		const bool bCheckKept = Kept && (Kept->Corridor.IsValid() ? CheckReusedDetour != 0 : CheckReusedStraight != 0);
+		const bool bStraightBlocked = bCheckKept && NavData->Raycast(Request.Start, Request.Target, Hit, NavData->GetDefaultQueryFilter());
+		bool bWalkStraight = false;
+		if (Kept && !Kept->Corridor.IsValid() && bStraightBlocked)
 		{
 			Kept = nullptr;
+		}
+		else if (Kept && Kept->Corridor.IsValid() && bCheckKept)
+		{
+			// A kept detour is another walk's (D308): this one goes straight when it can; else it takes the detour only if
+			// it sees its first corner, its last corner sees its target, and it walks no farther than the kept walk did
+			// (the user's trial of J5b.2: gatherers went around the wood for a tree beside them).
+			const TArray<FNavPathPoint>& Points = Kept->Path->GetPathPoints();
+			if (!bStraightBlocked)
+			{
+				bWalkStraight = true;
+			}
+			else
+			{
+				const double KeptRatio = GetPathLength(Points) / FMath::Max(FVector::Dist2D(Points[0].Location, Points.Last().Location), 1.);
+				const double Allowed = FVector::Dist2D(Request.Start, Request.Target) * FMath::Max(KeptRatio, 1.) * ReusedDetourRatioMargin + DetourSlack;
+				if (GetSplicedLength(Points, Request.Start, Request.Target) > Allowed
+					|| NavData->Raycast(Request.Start, Points[1].Location, Hit, NavData->GetDefaultQueryFilter())
+					|| NavData->Raycast(Points[Points.Num() - 2].Location, Request.Target, Hit, NavData->GetDefaultQueryFilter()))
+				{
+					Kept = nullptr;
+				}
+			}
 		}
 		FNavPathSharedPtr Path;
 		TSharedPtr<FNavCorridor> Corridor;
 		if (Kept)
 		{
 			Kept->LastUsedStep = StepCount;
-			Path = Kept->Path;
-			Corridor = Kept->Corridor;
+			Path = bWalkStraight ? FNavPathSharedPtr() : Kept->Path;
+			Corridor = bWalkStraight ? TSharedPtr<FNavCorridor>() : Kept->Corridor;
 			++TotalPathsReused;
 		}
 		else
@@ -617,7 +680,27 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 				}
 			}
 		}
+		// A partial path ending where the walk starts: the unit stands in a pocket of the navmesh (pushed between the trees
+		// of a wood, D308), cut off from the rest. It walks out straight to its slot, the way it came in (light units only
+		// keep off obstacles through their paths); before, each walk ended at once and the gatherer gave up with its load.
+		if (Path.IsValid() && Path->IsPartial() && FVector::Dist2D(Path->GetPathPoints().Last().Location, Request.Start) < PocketEscapeDistance)
+		{
+			UE_CLOG(LogDetours != 0, LogHOLCommands, Display, TEXT("Detour: out of a navmesh pocket at (%.0f, %.0f), straight to (%.0f, %.0f)"),
+				Request.Start.X, Request.Start.Y, Request.Target.X, Request.Target.Y);
+			Path.Reset();
+			Corridor.Reset();
+		}
 		const bool bFollowPath = Corridor.IsValid() && Corridor->Portals.Num() >= 2 && DirectPaths == 0;
+		if (LogDetours != 0 && Request.bReusable && bFollowPath && Path.IsValid())
+		{
+			const double Straight = FVector::Dist2D(Request.Start, Request.Target);
+			const double Walked = GetSplicedLength(Path->GetPathPoints(), Request.Start, Request.Target);
+			if (Walked > Straight * DetourRatio + DetourSlack)
+			{
+				UE_LOG(LogHOLCommands, Display, TEXT("Detour: %s path, %.0f cm walked for %.0f cm straight, from (%.0f, %.0f) to (%.0f, %.0f)"),
+					Kept ? TEXT("kept") : TEXT("new"), Walked, Straight, Request.Start.X, Request.Start.Y, Request.Target.X, Request.Target.Y);
+			}
+		}
 
 		for (const FMassEntityHandle Entity : Request.Entities)
 		{

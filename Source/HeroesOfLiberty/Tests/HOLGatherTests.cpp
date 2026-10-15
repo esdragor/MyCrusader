@@ -39,6 +39,12 @@ namespace UE::HeroesOfLiberty::Tests::Gather
 		Source.Remaining = Remaining;
 		return Source;
 	}
+
+	/** "1 3 0": the sources a search tried, in order. */
+	FString JoinIndices(const TArray<int32>& Indices)
+	{
+		return FString::JoinBy(Indices, TEXT(" "), [](const int32 Index) { return FString::FromInt(Index); });
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherLoadTest, "HeroesOfLiberty.Gather.Load", UE::HeroesOfLiberty::Tests::Gather::Flags)
@@ -184,22 +190,266 @@ bool FHOLGatherChoiceTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("in contact 30 cm off"), HOLGather::IsInContact(FVector2D(150., 0.), 60.f, Tree));
 	TestFalse(TEXT("not in contact 50 cm off"), HOLGather::IsInContact(FVector2D(170., 0.), 60.f, Tree));
 
-	// A used-up tree: the nearest tree within 15 m that still holds wood; berries, empty trees and far trees are not.
-	const TArray<FHOLGatherSource> Sources = {
-		MakeSource(0., 0., EHOLResource::Wood, 0),         // the used-up tree
-		MakeSource(300., 0., EHOLResource::Food, 200),     // berries, nearer
-		MakeSource(400., 0., EHOLResource::Wood, 0),       // empty tree, nearer
-		MakeSource(900., 0., EHOLResource::Wood, 100),
-		MakeSource(0., -700., EHOLResource::Wood, 40),     // the nearest tree that holds wood
-		MakeSource(1600., 0., EHOLResource::Wood, 100),    // 16 m away
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherMassifTest, "HeroesOfLiberty.Gather.Massif", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherMassifTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Gather;
+	// A massif (D309, the user's rule at the 3rd trial of J5b.2): the sources of one resource linked step by step, 8 m
+	// apart at most; a gatherer with no room looks through it from its source outward.
+	TArray<FHOLGatherSource> Sources;
+	for (int32 Tree = 0; Tree < 6; ++Tree)
+	{
+		// A chain of trees 6 m apart: 30 m from end to end, every one reached step by step.
+		Sources.Add(MakeSource(600. * Tree, 0., EHOLResource::Wood, Tree == 3 ? 0 : 100)); // tree 3 used up
+	}
+	Sources.Add(MakeSource(5000., 0., EHOLResource::Wood, 100));     // 6: 20 m beyond the chain's end
+	Sources.Add(MakeSource(1200., 300., EHOLResource::Food, 200));   // 7: berries beside tree 2
+	Sources.Add(MakeSource(0., 10000., EHOLResource::Stone, 1000));  // 8: a vein
+	Sources.Add(MakeSource(6000., 10000., EHOLResource::Stone, 1000)); // 9: another vein, 60 m away
+	FHOLSourceMassifs Massifs;
+	Massifs.Build(Sources, HOLGather::NoRoomSourceDistance);
+	TestEqual(TEXT("built for every source"), Massifs.Num(), Sources.Num());
+	TestEqual(TEXT("the chain's end: one link"), Massifs.GetLinks(0).Num(), 1);
+	TestEqual(TEXT("berries beside a tree: no link to it"), Massifs.GetLinks(7).Num(), 0);
+	TestEqual(TEXT("a vein alone"), Massifs.GetLinks(8).Num(), 0);
+
+	// Every source refused: the order they were tried in, from tree 2 outward.
+	TArray<int32> Tried;
+	const auto Refuse = [&Tried](const int32 Index)
+	{
+		Tried.Add(Index);
+		return false;
 	};
-	TestEqual(TEXT("nearest tree with wood"), HOLGather::FindNeighbourSource(FVector2D::ZeroVector, EHOLResource::Wood, Sources), 4);
-	TestEqual(TEXT("berries for food"), HOLGather::FindNeighbourSource(FVector2D::ZeroVector, EHOLResource::Food, Sources), 1);
-	TestEqual(TEXT("no gold: idle"), HOLGather::FindNeighbourSource(FVector2D::ZeroVector, EHOLResource::Gold, Sources), int32(INDEX_NONE));
-	TestEqual(TEXT("nothing within 15 m: idle"),
-		HOLGather::FindNeighbourSource(FVector2D(3200., 0.), EHOLResource::Wood, Sources), int32(INDEX_NONE));
-	TestEqual(TEXT("exactly 15 m is within reach"),
-		HOLGather::FindNeighbourSource(FVector2D(3100., 0.), EHOLResource::Wood, Sources), 5);
+	TestEqual(TEXT("the whole chain full: none"), Massifs.Search(2, Refuse), int32(INDEX_NONE));
+	TestEqual(TEXT("nearest first, a tie to the first index, past the used-up tree 3, tree 2 itself not tried"), JoinIndices(Tried), FString(TEXT("1 3 0 4 5")));
+	TestFalse(TEXT("the tree 20 m away never reached"), Tried.Contains(6));
+	TestFalse(TEXT("nor the berries beside it"), Tried.Contains(7));
+
+	// The first one with room, nearest first; the used-up tree refused leads on to the chain beyond it.
+	Tried.Reset();
+	const auto RoomAt5 = [&Tried, &Sources](const int32 Index)
+	{
+		Tried.Add(Index);
+		return Sources[Index].Remaining > 0 && Index == 5;
+	};
+	TestEqual(TEXT("tree 5, at the far end"), Massifs.Search(0, RoomAt5), 5);
+	TestEqual(TEXT("each tree tried once, in order"), JoinIndices(Tried), FString(TEXT("1 2 3 4 5")));
+	Tried.Reset();
+	TestEqual(TEXT("the first one with room stops the search"), Massifs.Search(0, [&Tried](const int32 Index) { Tried.Add(Index); return Index != 3; }), 1);
+	TestEqual(TEXT("nothing tried beyond it"), Tried.Num(), 1);
+	TestEqual(TEXT("from the tree 20 m away: nothing"), Massifs.Search(6, [](int32) { return true; }), int32(INDEX_NONE));
+	TestEqual(TEXT("a vein never leads to another"), Massifs.Search(8, [](int32) { return true; }), int32(INDEX_NONE));
+
+	// A wood (7 x 7 trees 3 m apart) clicked at a corner tree: it fills from there outward, as far as its farthest tree.
+	TArray<FHOLGatherSource> Wood;
+	for (int32 Y = 0; Y < 7; ++Y)
+	{
+		for (int32 X = 0; X < 7; ++X)
+		{
+			Wood.Add(MakeSource(300. * X, 300. * Y, EHOLResource::Wood, 100));
+		}
+	}
+	FHOLSourceMassifs WoodMassifs;
+	WoodMassifs.Build(Wood, HOLGather::NoRoomSourceDistance);
+	TArray<int32> Filled;
+	WoodMassifs.Search(0, [&Filled](const int32 Index) { Filled.Add(Index); return false; });
+	TestEqual(TEXT("every other tree of the wood tried"), Filled.Num(), Wood.Num() - 1);
+	bool bOutward = true;
+	for (int32 Index = 1; Index < Filled.Num(); ++Index)
+	{
+		bOutward &= FVector2D::Distance(Wood[Filled[Index]].Site.Position, Wood[0].Site.Position)
+			>= FVector2D::Distance(Wood[Filled[Index - 1]].Site.Position, Wood[0].Site.Position) - 0.01;
+	}
+	TestTrue(TEXT("from the tree clicked outward"), bOutward);
+	TestEqual(TEXT("the opposite corner last"), Filled.Last(), Wood.Num() - 1);
+
+	// Toward a deposit (the user's trial of D309, after AoE IV): the edge facing it first. The wood of Plain: 8 trees
+	// along X by 5 rows 2.2 m apart, its near row at Y = 0; a main centre (15 m square) whose side is 10.5 m in front.
+	TArray<FHOLGatherSource> Plain;
+	for (int32 Row = 0; Row < 5; ++Row)
+	{
+		for (int32 Column = 0; Column < 8; ++Column)
+		{
+			Plain.Add(MakeSource((Column - 3.5) * 220., -220. * Row, EHOLResource::Wood, 100));
+		}
+	}
+	const FHOLGatherDeposit Centre{ FVector2D(0., 1800.), FVector2D(750., 750.), 0.f };
+	FHOLSourceMassifs PlainMassifs;
+	PlainMassifs.Build(Plain, HOLGather::NoRoomSourceDistance);
+	for (const int32 Clicked : { 3, 0 })
+	{
+		// Clicked in the middle of the near row, then at its end: every other tree refused, in the order tried.
+		TArray<int32> PlainTried;
+		PlainMassifs.Search(Clicked, [&PlainTried](const int32 Index) { PlainTried.Add(Index); return false; }, &Centre);
+		TestEqual(*FString::Printf(TEXT("tree %d clicked: every other tree tried"), Clicked), PlainTried.Num(), Plain.Num() - 1);
+		int32 LastNear = INDEX_NONE;
+		int32 FirstBack = MAX_int32;
+		bool bAlongFromClicked = true;
+		double LastAlong = 0.;
+		for (int32 Order = 0; Order < PlainTried.Num(); ++Order)
+		{
+			const int32 Row = PlainTried[Order] / 8;
+			if (Row == 0)
+			{
+				LastNear = Order;
+				const double Along = FMath::Abs(Plain[PlainTried[Order]].Site.Position.X - Plain[Clicked].Site.Position.X);
+				bAlongFromClicked &= Along >= LastAlong - 0.01;
+				LastAlong = Along;
+			}
+			else if (Row >= 3)
+			{
+				FirstBack = FMath::Min(FirstBack, Order);
+			}
+		}
+		TestTrue(*FString::Printf(TEXT("tree %d clicked: the near edge along from it (%s)"), Clicked, *JoinIndices(PlainTried)), bAlongFromClicked);
+		TestTrue(*FString::Printf(TEXT("tree %d clicked: the whole near edge before the back of the wood (%s)"), Clicked, *JoinIndices(PlainTried)),
+			LastNear < FirstBack);
+	}
+	// With no deposit, the nearest the tree clicked first, as before: the tree behind it before the end of its row.
+	TArray<int32> Plainly;
+	PlainMassifs.Search(0, [&Plainly](const int32 Index) { Plainly.Add(Index); return false; });
+	TestTrue(TEXT("no deposit: the tree 2.2 m behind before the tree 6.6 m along"), Plainly.IndexOfByKey(8) < Plainly.IndexOfByKey(3));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherSpotsTest, "HeroesOfLiberty.Gather.Spots", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherSpotsTest::RunTest(const FString& Parameters)
+{
+	// Two Peasants (60 cm bodies) at their spots stand 70 cm apart at least, about one body, overlapping by half, at one
+	// source or two side by side (D309; the user's trial, after AoE IV: 140 before, two bodies and a gap).
+	constexpr double Spacing = 70.;
+	TSet<uint64> Stale;
+	int32 StaleAsked = 0;
+	const auto IsStale = [&Stale, &StaleAsked](const FHOLSpotClaims::FClaim& Claim)
+	{
+		++StaleAsked;
+		return Stale.Contains(Claim.Owner);
+	};
+	FHOLSpotClaims Claims;
+	TestFalse(TEXT("nothing claimed"), Claims.IsTaken(FVector2D(135., 0.), Spacing, 1, IsStale));
+
+	// Tree 0 at the origin: gatherer 1 on its spot facing +X.
+	Claims.Add(1, 0, FVector2D(135., 0.));
+	TestTrue(TEXT("same source, 50 cm away: taken"), Claims.IsTaken(FVector2D(135., 50.), Spacing, 2, IsStale));
+	TestTrue(TEXT("on the same point: taken"), Claims.IsTaken(FVector2D(135., 0.), Spacing, 2, IsStale));
+	TestFalse(TEXT("same source, 75 cm away: free"), Claims.IsTaken(FVector2D(135., 75.), Spacing, 2, IsStale));
+	// Tree 1, 2.2 m along X: its spot at 165 degrees is 57 cm from that gatherer; another source, taken all the same.
+	const FVector2D NeighbourSpot = FVector2D(220., 0.) + 135. * FVector2D(FMath::Cos(FMath::DegreesToRadians(165.)), FMath::Sin(FMath::DegreesToRadians(165.)));
+	TestTrue(TEXT("neighbour source: taken"), Claims.IsTaken(NeighbourSpot, Spacing, 2, IsStale));
+
+	// Across the grid's cell borders, negative coordinates too.
+	Claims.Add(3, 2, FVector2D(199., 900.));
+	TestTrue(TEXT("across a cell border"), Claims.IsTaken(FVector2D(201., 900.), Spacing, 2, IsStale));
+	Claims.Add(4, 2, FVector2D(-1., -501.));
+	TestTrue(TEXT("across the axes"), Claims.IsTaken(FVector2D(1., -499.), Spacing, 2, IsStale));
+	TestTrue(TEXT("a spacing wider than a cell"), Claims.IsTaken(FVector2D(-420., -501.), 450., 2, IsStale));
+
+	// Its own old spot is no obstacle: left as it looks for a new one.
+	TestEqual(TEXT("three claims"), Claims.Num(), 3);
+	TestFalse(TEXT("its own spot: free"), Claims.IsTaken(FVector2D(135., 0.), Spacing, 1, IsStale));
+	TestEqual(TEXT("its old claim dropped"), Claims.Num(), 2);
+
+	// A stale claim (its gatherer went elsewhere) is dropped once met; a far one is not even looked at.
+	Claims.Add(5, 3, FVector2D(2000., 0.));
+	Stale.Add(5);
+	StaleAsked = 0;
+	TestFalse(TEXT("150 cm from a stale claim: free"), Claims.IsTaken(FVector2D(2150., 0.), Spacing, 2, IsStale));
+	TestEqual(TEXT("far claims: staleness not asked"), StaleAsked, 0);
+	TestFalse(TEXT("on a stale claim: free"), Claims.IsTaken(FVector2D(2000., 10.), Spacing, 2, IsStale));
+	TestEqual(TEXT("the stale claim dropped"), Claims.Num(), 2);
+
+	// The spots tried around a source: as many as its circle holds at the spacing, the side facing the deposit first.
+	const FHOLGatherSite Tree{ FVector2D(5000., 5000.), 60.f };
+	constexpr double SpotOffset = 75.; // body radius 60 + gap 15
+	const double SpotDistance = Tree.Radius + SpotOffset;
+	const FVector2D Deposit = Tree.Position + FVector2D(0., 2000.);
+	TArray<FVector2D> Ring;
+	HOLGather::GetSourceSpots(Tree.Position, SpotDistance, Spacing, Deposit - Tree.Position, Ring);
+	TestEqual(TEXT("11 spots around a tree at 70 cm"), Ring.Num(), 11);
+	if (Ring.Num() == 11)
+	{
+		TestTrue(TEXT("the first one faces the deposit"), Ring[0].Equals(Tree.Position + FVector2D(0., SpotDistance), 0.01));
+		double ClosestSpots = TNumericLimits<double>::Max();
+		bool bNearestDepositFirst = true;
+		for (int32 A = 0; A < Ring.Num(); ++A)
+		{
+			bNearestDepositFirst &= A == 0 || FVector2D::Distance(Ring[A], Deposit) >= FVector2D::Distance(Ring[A - 1], Deposit) - 0.01;
+			for (int32 B = A + 1; B < Ring.Num(); ++B)
+			{
+				ClosestSpots = FMath::Min(ClosestSpots, FVector2D::Distance(Ring[A], Ring[B]));
+			}
+		}
+		TestTrue(*FString::Printf(TEXT("no two spots closer than the spacing (%.1f cm)"), ClosestSpots), ClosestSpots >= Spacing);
+		TestTrue(TEXT("nearest the deposit first"), bNearestDepositFirst);
+	}
+	HOLGather::GetSourceSpots(Tree.Position, SpotDistance, 140., FVector2D(1., 0.), Ring);
+	TestEqual(TEXT("5 around a tree at 140 cm (before)"), Ring.Num(), 5);
+	HOLGather::GetSourceSpots(Tree.Position, 110. + SpotOffset, Spacing, FVector2D(1., 0.), Ring);
+	TestEqual(TEXT("16 around a bush"), Ring.Num(), 16);
+	HOLGather::GetSourceSpots(Tree.Position, 300. + SpotOffset, Spacing, FVector2D(1., 0.), Ring);
+	TestEqual(TEXT("33 around a vein"), Ring.Num(), 33);
+
+	// Idle gatherers in front of a full tree (D309, the user's 3rd trial of J5b.2): rows beyond its spots, facing them,
+	// at their own spacing (two bodies and a gap: they never overlap, nor stand on a spot, however close the spots).
+	constexpr double StandSpacing = 140.;
+	TArray<FVector2D> Points;
+	HOLGather::GetStandPoints(Tree.Position, SpotDistance, StandSpacing, FVector2D(-1., 0.), 3, Points);
+	if (TestTrue(TEXT("stand points"), Points.Num() > 6))
+	{
+		TestTrue(TEXT("the first one faces the gatherer, one spacing beyond the spots"),
+			Points[0].Equals(Tree.Position + FVector2D(-(SpotDistance + StandSpacing + 1.), 0.), 0.01));
+		bool bFacing = true;
+		bool bOffSpots = true;
+		for (const FVector2D& Point : Points)
+		{
+			bFacing &= Point.X <= Tree.Position.X + 0.01;
+			bOffSpots &= FVector2D::Distance(Point, Tree.Position) >= SpotDistance + StandSpacing - 0.01;
+		}
+		TestTrue(TEXT("on the half facing it"), bFacing);
+		TestTrue(TEXT("a spacing beyond the spots"), bOffSpots);
+		TestTrue(TEXT("two points of a row a spacing apart"), FVector2D::Distance(Points[0], Points[1]) >= StandSpacing - 0.01);
+	}
+	// A tree beside it: its spots are not stood on either.
+	const FHOLGatherSite Sites[] = { Tree, FHOLGatherSite{ Tree.Position + FVector2D(-300., 0.), 60.f } };
+	TestTrue(TEXT("its own spots only: clear"), HOLGather::IsClearOfSpots(Points[0], MakeArrayView(Sites, 1), SpotOffset, StandSpacing));
+	TestFalse(TEXT("on the spots of the tree beside it"), HOLGather::IsClearOfSpots(Points[0], Sites, SpotOffset, StandSpacing));
+	TestFalse(TEXT("on its own spots"), HOLGather::IsClearOfSpots(Tree.Position + FVector2D(0., SpotDistance), Sites, SpotOffset, StandSpacing));
+
+	// Ten idle gatherers, three gatherers at their spots: each takes the first point free, none closer than the spacing.
+	FHOLSpotClaims Front;
+	const auto NeverStale = [](const FHOLSpotClaims::FClaim&) { return false; };
+	for (uint64 Gatherer = 1; Gatherer <= 3; ++Gatherer)
+	{
+		const double Angle = UE_DOUBLE_PI + (static_cast<double>(Gatherer) - 2.) * 0.8;
+		Front.Add(Gatherer, 7, Tree.Position + SpotDistance * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)));
+	}
+	TArray<FVector2D> Stood;
+	for (uint64 Idle = 10; Idle < 20; ++Idle)
+	{
+		for (const FVector2D& Point : Points)
+		{
+			if (HOLGather::IsClearOfSpots(Point, MakeArrayView(Sites, 1), SpotOffset, StandSpacing) && !Front.IsTaken(Point, StandSpacing, Idle, NeverStale))
+			{
+				Front.Add(Idle, INDEX_NONE, Point);
+				Stood.Add(Point);
+				break;
+			}
+		}
+	}
+	TestEqual(TEXT("every idle gatherer has a point"), Stood.Num(), 10);
+	double Closest = TNumericLimits<double>::Max();
+	for (int32 A = 0; A < Stood.Num(); ++A)
+	{
+		for (int32 B = A + 1; B < Stood.Num(); ++B)
+		{
+			Closest = FMath::Min(Closest, FVector2D::Distance(Stood[A], Stood[B]));
+		}
+	}
+	TestTrue(*FString::Printf(TEXT("idle gatherers a spacing apart (%.0f cm)"), Closest), Closest >= StandSpacing - 0.01);
+	TestFalse(TEXT("a gatherer's spot behind the tree is still free"), Front.IsTaken(Tree.Position + FVector2D(SpotDistance, 0.), Spacing, 30, NeverStale));
 	return true;
 }
 

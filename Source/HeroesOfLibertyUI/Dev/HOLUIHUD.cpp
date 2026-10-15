@@ -9,7 +9,8 @@
  * The game HUD for the scripted checks (J3, D284): what it shows, and a click on it by the same path as the mouse.
  *   hol.HUD.Report [DelaySeconds=0]   logs "HUD report: resources ..., selection ..., grid ..., queue ..."
  *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the grid (GridCell00 to GridCell11, A to V) or an
- *   item of the queue (QueueItem0 to QueueItem4); a hidden or greyed one is not clicked
+ *   item of the queue (QueueItem0 to QueueItem4), or the idle workers' counter (IdleWorkers); a hidden or greyed one
+ *   is not clicked
  */
 namespace UE::HeroesOfLiberty::UI::HUD
 {
@@ -64,6 +65,6 @@ namespace UE::HeroesOfLiberty::UI::HUD
 
 	FAutoConsoleCommandWithWorldAndArgs ClickCommand(
 		TEXT("hol.HUD.Click"),
-		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command grid (GridCell00-11) or an item of the production queue (QueueItem0-4), as the mouse would"),
+		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command grid (GridCell00-11), an item of the production queue (QueueItem0-4) or the idle workers' counter (IdleWorkers), as the mouse would"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Click));
 }

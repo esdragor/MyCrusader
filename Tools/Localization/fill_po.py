@@ -128,9 +128,19 @@ TRANSLATIONS = {
     "HOLGameScreen,ActivityMoving": ("Walking", "移動中"),
     "HOLGameScreen,ActivityIdle": ("Idle", "待機中"),
     "HOLGameScreen,ActivityWithLoad": ("{0} — {1} {2}/{3}", "{0} — {1} {2}/{3}"),
+    "HOLGameScreen,GathererCount": ("({0})", "（{0}）"),
+    "HOLGameScreen,IdleWorkers": ("Idle: {0}", "待機中：{0}"),
+    "HOLGameScreen,GroupGathering": ("{0} gathering", "採集中 {0}"),
+    "HOLGameScreen,GroupMoving": ("{0} walking", "移動中 {0}"),
+    "HOLGameScreen,GroupIdle": ("{0} idle", "待機中 {0}"),
+    "HOLGameScreen,SourceRemaining": ("Left: {0}", "残り：{0}"),
 
     "HOLGameNames,Peasant": ("Peasant", "農民"),
     "HOLGameNames,MainCentre": ("Main Center", "本拠地"),
+    "HOLGameNames,Tree": ("Tree", "木"),
+    "HOLGameNames,BerryBush": ("Berry Bush", "ベリーの茂み"),
+    "HOLGameNames,StoneVein": ("Stone Vein", "石の鉱脈"),
+    "HOLGameNames,GoldVein": ("Gold Vein", "金の鉱脈"),
 }
 
 CULTURES = {"en": 0, "ja": 1}

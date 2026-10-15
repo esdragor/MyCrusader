@@ -13,6 +13,7 @@ class AHOLRTSCamera;
 class AHOLSelectionMarkers;
 class UInputAction;
 struct FHOLPickCandidate;
+struct FHOLUnitView;
 struct FInputActionValue;
 
 /**
@@ -39,10 +40,11 @@ struct FHOLWatchedLoad
  * Controller of a player in a match map (a map with start slots, D255): no pawn, a visible cursor and, on the
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
- * Selection (D262, D288) lives here, on the player's machine only: units (their identifiers, D223) or one building.
- * A left click selects the unit under the cursor (aimed at on the screen: light units have no collision), else the
- * building under it (its own or another player's), else nothing; a box (a press dragged past a few pixels) selects the
- * player's own units in it; Shift adds or removes; Escape selects nothing; the HUD shows it (J3, D281). A right click
+ * Selection (D262, D288) lives here, on the player's machine only: units (their identifiers, D223), one building or one
+ * resource source (J5b, D298). A left click selects the unit under the cursor (aimed at on the screen: light units have
+ * no collision), else the building under it (its own or another player's), else the source under it, else nothing; a box (a press dragged past a few pixels) selects the
+ * player's own units in it; Shift adds or removes; Escape selects nothing; "." selects the next idle worker of the
+ * player and centres the camera on it (D30, J5b); the HUD shows it (J3, D281). A right click
  * sends the selected units of the player to the ground point, or puts the selected building's rally point there (J4).
  * Production (J3, D282): the cells of the command grid (keys of D30, or a click on the HUD) and the HUD's cancel
  * clicks become requests to the server (RPCs), which queues them in the order queue and applies them at its next step.
@@ -65,7 +67,7 @@ public:
 	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
 	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
 	/**
-	 * A left click at a point of the viewport: the unit under it, else the building, else nothing. With bAdd (Shift), one
+	 * A left click at a point of the viewport: the unit under it, else the building, else the source, else nothing. With bAdd (Shift), one
 	 * of the player's own units is added to its selected units, or removed when it already is one; the selection stays
 	 * when nothing is under the cursor.
 	 */
@@ -81,13 +83,28 @@ public:
 	void SetSelection(AHOLBuilding* Building);
 	/** Selects units (their identifiers), or nothing (empty). */
 	void SetUnitSelection(TArray<uint32> UnitIds);
+	/** Selects a standing resource source (its index in UHOLSourceSubsystem), or nothing (INDEX_NONE). */
+	void SetSourceSelection(int32 SourceIndex);
 	AHOLBuilding* GetSelection() const { return Selection.Get(); }
 	const TArray<uint32>& GetSelectedUnits() const { return SelectedUnits; }
+	/** The selected resource source, or INDEX_NONE (J5b, D298). */
+	int32 GetSelectedSource() const { return SelectedSource; }
+
+	/**
+	 * The player's idle workers known here (J5b, D307): its own units that gather, standing with nothing to do, in
+	 * increasing identifiers; read again four times a second.
+	 */
+	const TArray<uint32>& GetIdleWorkers() const { return IdleWorkers; }
+	/** The "." key or a click on the HUD's counter (D30): the next idle worker selected alone, the camera above it. */
+	void SelectNextIdleWorker();
 	/** The box the player is drawing, in viewport fractions; false when none (J4.6 draws it). */
 	bool GetSelectionBox(FVector2D& OutMin, FVector2D& OutMax) const;
 	/** "MainCentre of slot 3 (own)", "none": for the logs of the scripted checks. */
 	FString DescribeBuilding(const AHOLBuilding* Building) const;
-	/** The building as DescribeBuilding, "Peasant #12 of slot 3 (own)", "4 units (own): Peasant x4" or "none". */
+	/**
+	 * The building as DescribeBuilding, "Peasant #12 of slot 3 (own)", "4 units (own): Peasant x4", "source 12 GoldVein
+	 * (2500 left)" or "none".
+	 */
 	FString DescribeSelection() const;
 
 	/** The selection changed (on this machine only, D262). For the HUD. */
@@ -158,8 +175,10 @@ private:
 	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const;
 	/** The selected units that are the player's own (an order moves only them). */
 	TArray<uint32> GetOwnSelectedUnits() const;
-	/** Units that left this machine (dead, out of view of a client) leave the selection. */
-	void PurgeSelectedUnits();
+	/** Units that left this machine (dead, out of view of a client) leave the selection, a used-up source too. */
+	void PurgeSelection(TConstArrayView<FHOLUnitView> Views);
+	/** The player's idle workers among the units known here (Views). */
+	void UpdateIdleWorkers(TConstArrayView<FHOLUnitView> Views);
 	void BroadcastSelection();
 	/** On a client: tells the server which unit the player watches (its own unit selected alone, D303), when it changes. */
 	void UpdateWatchedUnit();
@@ -177,6 +196,7 @@ private:
 	void HandleSelectAdd(bool bHeld);
 	void HandleOrder();
 	void HandleDeselect();
+	void HandleNextIdle();
 	void HandleGridKey(const FInputActionValue& Value, int32 Cell);
 
 	UFUNCTION(Server, Reliable)
@@ -226,6 +246,11 @@ private:
 	TWeakObjectPtr<AHOLBuilding> Selection;
 	/** Selected units (D223 identifiers), never with a building: several of the player's own, or one of anyone's. */
 	TArray<uint32> SelectedUnits;
+	/** Selected resource source, never with a building or units; INDEX_NONE: none. */
+	int32 SelectedSource = INDEX_NONE;
+	TArray<uint32> IdleWorkers;
+	/** The idle worker the last "." selected: the next press goes on from it. */
+	uint32 LastIdleWorker = 0;
 	/** Left button held: where it was pressed (viewport fractions); its release clicks or ends the box. */
 	bool bSelectPressed = false;
 	FVector2D SelectPressFraction = FVector2D::ZeroVector;

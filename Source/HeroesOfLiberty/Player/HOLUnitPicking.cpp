@@ -51,4 +51,16 @@ namespace HOLUnitPicking
 	{
 		return FVector2D::Distance(Start, End) > BoxThreshold;
 	}
+
+	uint32 NextInCycle(const TConstArrayView<uint32> SortedIds, const uint32 Last)
+	{
+		for (const uint32 Id : SortedIds)
+		{
+			if (Id > Last)
+			{
+				return Id;
+			}
+		}
+		return SortedIds.IsEmpty() ? 0 : SortedIds[0];
+	}
 }

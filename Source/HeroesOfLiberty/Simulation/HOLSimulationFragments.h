@@ -23,15 +23,30 @@ struct HEROESOFLIBERTY_API FHOLLightUnitTag : public FMassTag
 	GENERATED_BODY()
 };
 
-/** What the RTS layer sees a unit doing (D226): standing, walking to its current order, or gathering at its source. */
+/**
+ * What the RTS layer sees a unit doing (D226): standing, walking to its current order, gathering at its source, or on
+ * its gathering's round trip. Sent to every client in 3 bits (FHOLNetUnitState::ActivityBits): room for 8 values.
+ */
 UENUM()
 enum class EHOLUnitActivity : uint8
 {
+	/** Standing with nothing to do: an idle worker for the HUD and the "." key (J5b, D307). */
 	Idle,
 	Moving,
 	/** Standing at its source, taking from it (J5, D298): the client shows it, the presentation will animate it (J5c). */
 	Gathering,
+	/**
+	 * On its gathering's round trip (J5b, D307): walking to its source or to a deposit, or waiting for a free spot. It
+	 * walks as Moving does, but is never idle: a gatherer between two walks no longer shows Idle for a step.
+	 */
+	GatherTrip,
 };
+
+/** True while the unit walks: to a player's order, or on its gathering's round trip. */
+inline bool IsWalkingActivity(const EHOLUnitActivity Activity)
+{
+	return Activity == EHOLUnitActivity::Moving || Activity == EHOLUnitActivity::GatherTrip;
+}
 
 /** Where a unit is in its move order (D286, D287). */
 UENUM()
@@ -100,20 +115,32 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	/** Where it walks: its spot at the source, or against the deposit. */
 	FVector Spot = FVector::ZeroVector;
 
+	/** Where its current walk began, and how far it has walked since (hol.Gather.LogWalks: detours, D308). */
+	FVector WalkStart = FVector::ZeroVector;
+	FVector LastLocation = FVector::ZeroVector;
+	float Walked = 0.f;
+	/** Farthest it went from the straight line to Spot, and the steps its walk took (hol.Gather.LogWalks). */
+	float MaxLateral = 0.f;
+	uint16 WalkSteps = 0;
+
 	/** Its move order's serial when it gave itself the walk to Spot: a new serial, then no order, is the arrival. */
 	uint32 OrderSerialBefore = 0;
 
 	/** What it carries; kept by a player's move order, lost when it gathers another resource (D296). */
 	FHOLGatherLoad Load;
 
-	/** Steps to wait before looking for a spot again (none was free). */
-	uint16 WaitSteps = 0;
-
 	/** Arrivals in a row that missed their spot (taken, or pushed away). */
 	uint8 Misses = 0;
 
 	/** The walk to Spot is asked for (it starts at the next step, through the order queue). */
 	bool bWalkIssued = false;
+
+	/**
+	 * It started gathering this step (D309): having walked through every unit to its spot, it pushes a standing unit it
+	 * landed on apart, down to the spots' spacing (UHOLUnitSeparationProcessor: a gatherer beside it on its own spot is
+	 * left); the next step clears it.
+	 */
+	bool bSettling = false;
 
 	EHOLGatherPhase Phase = EHOLGatherPhase::None;
 

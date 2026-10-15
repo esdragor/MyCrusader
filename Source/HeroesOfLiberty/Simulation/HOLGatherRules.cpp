@@ -136,24 +136,222 @@ int32 HOLGather::FindNearestDeposit(const FVector2D& Position, TConstArrayView<F
 	return Nearest;
 }
 
-int32 HOLGather::FindNeighbourSource(const FVector2D& From, const EHOLResource Resource, TConstArrayView<FHOLGatherSource> Sources,
-	const double MaxDistance)
+void HOLGather::GetSourceSpots(const FVector2D& Centre, const double Distance, const double Spacing, const FVector2D& Towards, TArray<FVector2D>& OutSpots)
 {
-	int32 Nearest = INDEX_NONE;
-	double NearestDistanceSquared = FMath::Square(MaxDistance);
-	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	OutSpots.Reset();
+	if (Distance <= 0.)
 	{
-		const FHOLGatherSource& Source = Sources[Index];
-		if (Source.Resource != Resource || Source.Remaining <= 0)
+		OutSpots.Add(Centre);
+		return;
+	}
+	const FVector2D Facing = Towards.GetSafeNormal();
+	const double BaseAngle = Facing.IsZero() ? 0. : FMath::Atan2(Facing.Y, Facing.X);
+	// As many as the circle holds Spacing apart, spread evenly around it: no two closer at the end of the turn.
+	const double MinStep = 2. * FMath::Asin(FMath::Min(1., (FMath::Max(Spacing, 0.) + 1.) / (2. * Distance)));
+	const int32 Count = FMath::Max(1, FMath::FloorToInt32(UE_DOUBLE_TWO_PI / FMath::Max(MinStep, UE_DOUBLE_KINDA_SMALL_NUMBER) + 1e-6));
+	const double Step = UE_DOUBLE_TWO_PI / Count;
+	OutSpots.Reserve(Count);
+	for (int32 Try = 0; Try < Count; ++Try)
+	{
+		// 0, +1, -1, +2, -2... steps from the side facing Towards.
+		const int32 Turn = (Try + 1) / 2;
+		const double Angle = BaseAngle + (Try % 2 == 1 ? 1. : -1.) * Turn * Step;
+		OutSpots.Add(Centre + Distance * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)));
+	}
+}
+
+void HOLGather::GetStandPoints(const FVector2D& Centre, const double SpotDistance, const double Spacing, const FVector2D& Towards, const int32 Rows,
+	TArray<FVector2D>& OutPoints)
+{
+	OutPoints.Reset();
+	if (Spacing <= 0.)
+	{
+		return;
+	}
+	const FVector2D Facing = Towards.GetSafeNormal();
+	const double BaseAngle = Facing.IsZero() ? 0. : FMath::Atan2(Facing.Y, Facing.X);
+	// 1 cm more than the spacing: two points side by side are not taken for too close by a rounding.
+	const double Step = Spacing + 1.;
+	for (int32 Row = 0; Row < Rows; ++Row)
+	{
+		const double Distance = SpotDistance + (Row + 1) * Step;
+		const double AngleStep = 2. * FMath::Asin(FMath::Min(1., Step / (2. * Distance)));
+		// 0, +1, -1, +2, -2... steps, up to a quarter turn each way.
+		const int32 MaxTurn = FMath::FloorToInt32(UE_DOUBLE_HALF_PI / AngleStep + 1e-6);
+		for (int32 Try = 0; Try <= 2 * MaxTurn; ++Try)
 		{
-			continue;
-		}
-		const double DistanceSquared = FVector2D::DistSquared(From, Source.Site.Position);
-		if (DistanceSquared <= NearestDistanceSquared && (Nearest == INDEX_NONE || DistanceSquared < NearestDistanceSquared))
-		{
-			Nearest = Index;
-			NearestDistanceSquared = DistanceSquared;
+			const int32 Turn = (Try + 1) / 2;
+			const double Angle = BaseAngle + (Try % 2 == 1 ? 1. : -1.) * Turn * AngleStep;
+			OutPoints.Add(Centre + Distance * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)));
 		}
 	}
-	return Nearest;
+}
+
+bool HOLGather::IsClearOfSpots(const FVector2D& Point, TConstArrayView<FHOLGatherSite> Sites, const double SpotOffset, const double Spacing)
+{
+	for (const FHOLGatherSite& Site : Sites)
+	{
+		// Its spots lie on a circle: the nearest one is as far as that circle (1 cm of rounding allowed).
+		if (FMath::Abs(FVector2D::Distance(Point, Site.Position) - (Site.Radius + SpotOffset)) < Spacing - 1.)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+FIntPoint FHOLSpotClaims::GetCell(const FVector2D& Spot)
+{
+	return FIntPoint(FMath::FloorToInt32(Spot.X / CellSize), FMath::FloorToInt32(Spot.Y / CellSize));
+}
+
+void FHOLSpotClaims::Add(const uint64 Owner, const int32 SourceIndex, const FVector2D& Spot)
+{
+	Cells.FindOrAdd(GetCell(Spot)).Add({ Owner, SourceIndex, Spot });
+}
+
+bool FHOLSpotClaims::IsTaken(const FVector2D& Spot, const double MinSpacing, const uint64 Owner, TFunctionRef<bool(const FClaim&)> IsStale)
+{
+	// Cells as wide as the spacing: those around Spot's cell hold every spot close enough.
+	const int32 Reach = FMath::Max(1, FMath::CeilToInt32(MinSpacing / CellSize));
+	const FIntPoint Centre = GetCell(Spot);
+	const double MinSpacingSquared = MinSpacing * MinSpacing;
+	for (int32 Y = -Reach; Y <= Reach; ++Y)
+	{
+		for (int32 X = -Reach; X <= Reach; ++X)
+		{
+			TArray<FClaim>* Claims = Cells.Find(Centre + FIntPoint(X, Y));
+			if (!Claims)
+			{
+				continue;
+			}
+			for (int32 Index = Claims->Num() - 1; Index >= 0; --Index)
+			{
+				const FClaim& Claim = (*Claims)[Index];
+				const bool bNear = FVector2D::DistSquared(Claim.Spot, Spot) < MinSpacingSquared;
+				// Staleness asked of the near ones only: the others stay until a look close to them.
+				if (Claim.Owner == Owner || (bNear && IsStale(Claim)))
+				{
+					Claims->RemoveAtSwap(Index, EAllowShrinking::No);
+				}
+				else if (bNear)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+int32 FHOLSpotClaims::Num() const
+{
+	int32 Total = 0;
+	for (const TPair<FIntPoint, TArray<FClaim>>& Cell : Cells)
+	{
+		Total += Cell.Value.Num();
+	}
+	return Total;
+}
+
+void FHOLSourceMassifs::Build(TConstArrayView<FHOLGatherSource> Sources, const double LinkDistance)
+{
+	Positions.Reset(Sources.Num());
+	FirstLinks.Reset(Sources.Num() + 1);
+	Links.Reset();
+	for (const FHOLGatherSource& Source : Sources)
+	{
+		Positions.Add(Source.Site.Position);
+	}
+	// Cells as wide as a link: a source's links lie in the 3 x 3 cells around its own.
+	const double CellSize = FMath::Max(LinkDistance, 1.);
+	const auto GetCell = [CellSize](const FVector2D& Position)
+	{
+		return FIntPoint(FMath::FloorToInt32(Position.X / CellSize), FMath::FloorToInt32(Position.Y / CellSize));
+	};
+	TMap<FIntPoint, TArray<int32>> Cells;
+	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	{
+		Cells.FindOrAdd(GetCell(Positions[Index])).Add(Index);
+	}
+	const double LinkDistanceSquared = LinkDistance * LinkDistance;
+	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	{
+		FirstLinks.Add(Links.Num());
+		const FIntPoint Cell = GetCell(Positions[Index]);
+		for (int32 Y = -1; Y <= 1; ++Y)
+		{
+			for (int32 X = -1; X <= 1; ++X)
+			{
+				const TArray<int32>* Others = Cells.Find(Cell + FIntPoint(X, Y));
+				if (!Others)
+				{
+					continue;
+				}
+				for (const int32 Other : *Others)
+				{
+					if (Other != Index && Sources[Other].Resource == Sources[Index].Resource
+						&& FVector2D::DistSquared(Positions[Other], Positions[Index]) <= LinkDistanceSquared)
+					{
+						Links.Add(Other);
+					}
+				}
+			}
+		}
+	}
+	FirstLinks.Add(Links.Num());
+}
+
+TConstArrayView<int32> FHOLSourceMassifs::GetLinks(const int32 Index) const
+{
+	if (!Positions.IsValidIndex(Index))
+	{
+		return TConstArrayView<int32>();
+	}
+	return TConstArrayView<int32>(Links.GetData() + FirstLinks[Index], FirstLinks[Index + 1] - FirstLinks[Index]);
+}
+
+int32 FHOLSourceMassifs::Search(const int32 Start, TFunctionRef<bool(int32)> Accept, const FHOLGatherDeposit* Deposit) const
+{
+	if (!Positions.IsValidIndex(Start))
+	{
+		return INDEX_NONE;
+	}
+	// The sources met so far and not tried yet, the lowest cost first (the first index of a tie): nearest Start, the
+	// massif filling from the source clicked outward, as far as the links lead; toward a deposit, the edge facing it
+	// first (MassifStartWeight).
+	using FMet = TPair<double, int32>;
+	const auto Nearer = [](const FMet& A, const FMet& B) { return A.Key < B.Key || (A.Key == B.Key && A.Value < B.Value); };
+	TArray<FMet, TInlineAllocator<64>> Met;
+	TBitArray<TInlineAllocator<16>> bMet(false, Positions.Num());
+	const FVector2D& Origin = Positions[Start];
+	const auto GetCost = [this, &Origin, Deposit](const int32 Index)
+	{
+		const double FromStart = FVector2D::Distance(Positions[Index], Origin);
+		return Deposit ? HOLGather::GetDepositDistance(Positions[Index], *Deposit) + HOLGather::MassifStartWeight * FromStart : FromStart;
+	};
+	const auto Meet = [this, &Met, &bMet, &GetCost, &Nearer](const int32 From)
+	{
+		for (const int32 Link : GetLinks(From))
+		{
+			if (!bMet[Link])
+			{
+				bMet[Link] = true;
+				Met.HeapPush(FMet(GetCost(Link), Link), Nearer);
+			}
+		}
+	};
+	bMet[Start] = true;
+	Meet(Start);
+	while (Met.Num() > 0)
+	{
+		FMet Next;
+		Met.HeapPop(Next, Nearer, EAllowShrinking::No);
+		if (Accept(Next.Value))
+		{
+			return Next.Value;
+		}
+		Meet(Next.Value);
+	}
+	return INDEX_NONE;
 }

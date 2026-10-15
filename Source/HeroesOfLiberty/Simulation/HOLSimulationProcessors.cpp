@@ -10,6 +10,7 @@
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
 #include "Misc/ScopeExit.h"
+#include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 
 namespace UE::HeroesOfLiberty::Simulation
@@ -35,6 +36,22 @@ namespace UE::HeroesOfLiberty::Simulation
 	float AvoidMaxAngle = 60.f;
 	FAutoConsoleVariableRef CVarAvoidMaxAngle(TEXT("hol.Units.AvoidMaxAngle"), AvoidMaxAngle,
 		TEXT("Largest turn (degrees) a walker makes around a body ahead; beyond, the detour is too long and it pushes its way (D293)"));
+
+	int32 PathAim = 1;
+	FAutoConsoleVariableRef CVarPathAim(TEXT("hol.Units.PathAim"), PathAim,
+		TEXT("1: a walker following a path heads at once for the point the path follow moves ahead of it (D308); 0: the steering's direction, which turns at ~50 degrees a second and swings wide at the corners"));
+	/** How far beyond the path follow's point a walker aims (cm), along the path (Mass' steering aims ahead the same way). */
+	constexpr double PathAimLead = 100.;
+
+	int32 GhostTrips = 1;
+	FAutoConsoleVariableRef CVarGhostTrips(TEXT("hol.Units.GhostTrips"), GhostTrips,
+		TEXT("1: a gatherer on its round trip passes through every unit, none turns aside for it nor pushes it (D309); 0: bodies as any unit's"));
+
+	/** A gatherer on its round trip (D309): no look-ahead, no separation, for it or against it. */
+	bool IsGhost(const FHOLUnitStateFragment& State)
+	{
+		return GhostTrips != 0 && State.Activity == EHOLUnitActivity::GatherTrip;
+	}
 
 	/** Time spent and steps run since the last log (hol.Units.Avoid 2). */
 	double AvoidSeconds = 0.;
@@ -105,6 +122,7 @@ void UHOLFullSpeedProcessor::ConfigureQueries(const TSharedRef<FMassEntityManage
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FAgentRadiusFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
@@ -125,8 +143,14 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 		const TConstArrayView<FMassVelocityFragment> UnitVelocities = Context.GetFragmentView<FMassVelocityFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
 		const TConstArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetFragmentView<FMassMoveTargetFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
+			// Nobody turns aside for a gatherer on its round trip (D309).
+			if (IsGhost(States[EntityIt]))
+			{
+				continue;
+			}
 			const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
 			const FVector2D Velocity(UnitVelocities[EntityIt].Value.X, UnitVelocities[EntityIt].Value.Y);
 			Entities.Add(Context.GetEntity(EntityIt));
@@ -283,6 +307,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -308,7 +333,18 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				continue;
 			}
 			FVector Direction;
-			if (Order.Phase == EHOLMovePhase::FinalLeg)
+			if (Order.Phase == EHOLMovePhase::Path && PathAim != 0)
+			{
+				// Along its path, as straight to its slot below: the steering turned the velocity at ~50 degrees a second, at
+				// full speed it swung 5 to 10 m wide of each corner of the path (the user's trial of J5b.2: gatherers going
+				// round the centre or out of the wood made huge detours). The path follow's point runs ahead at the unit's
+				// speed and waits for it when it falls behind.
+				const FVector Tangent = FVector(MoveTarget.Forward.X, MoveTarget.Forward.Y, 0.).GetSafeNormal();
+				const FVector Aim = MoveTarget.Center + Tangent * PathAimLead;
+				const FVector ToAim(Aim.X - Location.X, Aim.Y - Location.Y, 0.);
+				Direction = ToAim.SizeSquared() > 1. ? ToAim.GetSafeNormal() : Tangent.IsZero() ? ToSlot / FMath::Max(SlotDistance, 1.) : Tangent;
+			}
+			else if (Order.Phase == EHOLMovePhase::FinalLeg)
 			{
 				// Straight to its slot, a straight way on the navmesh: the steering turns the velocity at ~50 degrees a
 				// second (its acceleration), at full speed it circled the slot (D290), and after each turn of the
@@ -336,7 +372,8 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 					Direction = Sideways.IsZero() ? Goal : Sideways;
 				}
 			}
-			if (bLookAhead)
+			// A gatherer on its round trip goes through the others (D309).
+			if (bLookAhead && !IsGhost(States[EntityIt]))
 			{
 				// Around the bodies on its way (D293), those beyond its slot aside: Mass' avoidance runs one step out of 6
 				// (D220) and turns too late at full speed, so the walker pushed through them.
@@ -354,6 +391,11 @@ namespace UE::HeroesOfLiberty::Simulation
 	constexpr int32 SeparationBuckets = 8192;
 	/** Rounds of the separation a step (D292). */
 	constexpr int32 SeparationRounds = 2;
+	/**
+	 * What (cm) a gatherer at its source and a unit standing beside it may come closer than the spots' spacing (D309): the
+	 * arrival tolerance of an order (OrderArrivalTolerance), so that two gatherers on their spots are never nudged.
+	 */
+	constexpr double AtSourceTolerance = 5.;
 
 	int32 SeparationEnabled = 1;
 	FAutoConsoleVariableRef CVarSeparation(TEXT("hol.Units.Separation"), SeparationEnabled,
@@ -386,6 +428,8 @@ void UHOLUnitSeparationProcessor::ConfigureQueries(const TSharedRef<FMassEntityM
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FAgentRadiusFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
@@ -417,6 +461,9 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Positions.Reset();
 	Radii.Reset();
 	Walking.Reset();
+	Ghosts.Reset();
+	Moving.Reset();
+	AtSource.Reset();
 	float MaxRadius = 1.f;
 	bool bAnyWalking = false;
 	EntityQuery.ForEachEntityChunk(Context, [this, &MaxRadius, &bAnyWalking](FMassExecutionContext& Context)
@@ -424,13 +471,23 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
 		const TConstArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetFragmentView<FMassMoveTargetFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
 			Positions.Add(FVector2D(Location.X, Location.Y));
 			Radii.Add(AgentRadii[EntityIt].Radius);
-			const bool bWalking = MoveTargets[EntityIt].GetCurrentAction() == EMassMovementAction::Move;
+			// A gatherer on its round trip neither pushes nor is pushed (D309): it never looks, nobody finds it. Landed at
+			// its spot, it looks once, as a walker: a unit standing there and itself part (the user's 3rd trial of J5b.2).
+			const bool bGhost = IsGhost(States[EntityIt]);
+			Ghosts.Add(bGhost);
+			const bool bSettling = !Gathers.IsEmpty() && Gathers[EntityIt].bSettling;
+			const bool bMoving = !bGhost && MoveTargets[EntityIt].GetCurrentAction() == EMassMovementAction::Move;
+			const bool bWalking = bMoving || (!bGhost && bSettling);
 			Walking.Add(bWalking);
+			Moving.Add(bMoving);
+			AtSource.Add(States[EntityIt].Activity == EHOLUnitActivity::Gathering);
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			bAnyWalking |= bWalking;
 		}
@@ -464,6 +521,9 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	const double GridSeconds = FPlatformTime::Seconds();
 	SeparationGridSeconds += GridSeconds - StartSeconds;
 	const double Slop = FMath::Max(0.f, SeparationSlop);
+	// A gatherer at its source and a unit standing beside it: the spots' spacing (D309), less what an arrival may stop
+	// short of its spot; two gatherers on their spots are not pushed apart, a unit on a gatherer's spot is.
+	const double AtSourceDistance = FMath::Max(0., UHOLGatherProcessor::GetSpotSpacing() - AtSourceTolerance);
 	Corrections = Positions;
 	Queued = Walking;
 	ToLook.Reset();
@@ -489,12 +549,16 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 					{
 						// A pair is undone once a round, by the first of the two to look; another cell of the same bucket is not this one.
-						if (Other == Index || Looked[Other] || Cells[Other] != Cell)
+						if (Other == Index || Looked[Other] || Ghosts[Other] || Cells[Other] != Cell)
 						{
 							continue;
 						}
 						const FVector2D Delta = Corrections[Index] - Corrections[Other];
-						const double MinDistance = Radii[Index] + Radii[Other] - Slop;
+						double MinDistance = Radii[Index] + Radii[Other] - Slop;
+						if ((AtSource[Index] || AtSource[Other]) && !Moving[Index] && !Moving[Other])
+						{
+							MinDistance = FMath::Min(MinDistance, AtSourceDistance);
+						}
 						const double DistanceSquared = Delta.SizeSquared();
 						if (DistanceSquared >= FMath::Square(MinDistance))
 						{

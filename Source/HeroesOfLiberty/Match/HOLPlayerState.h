@@ -11,7 +11,7 @@
  * A player of the match: the slot it holds in the match configuration (D244), which is the index its units carry
  * as OwnerPlayer (D233), and the colour the slot chose. Its economy (J3, D282): the stock of resources and the
  * population (places used, cap), set by the server alone and replicated to this player only (D203: nobody sees
- * another player's resources).
+ * another player's resources); and how many of its units gather each resource (J5b, D307), for the top bar of its HUD.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLPlayerState : public APlayerState
@@ -35,10 +35,15 @@ public:
 	/** Places the player's buildings give, 175 at most (D03, D83). */
 	int32 GetPopulationCap() const { return PopulationCap; }
 
+	/** The player's units gathering each resource (J5b, D307): on their round trip or at their source. */
+	const FHOLResources& GetGatherers() const { return Gatherers; }
+
 	/** Server only: the stock (the game mode at the start, then the production). */
 	void SetResources(const FHOLResources& InResources);
 	/** Server only: the population, counted by the production at each step. */
 	void SetPopulation(int32 InUsed, int32 InCap);
+	/** Server only: the gatherers by resource, counted by the gathering at each step. */
+	void SetGatherers(const FHOLResources& InGatherers);
 
 	/** The economy changed: on the server when it is set, on the owner's machine when it arrives. For the HUD. */
 	DECLARE_MULTICAST_DELEGATE(FOnEconomyChanged);
@@ -66,4 +71,7 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Economy)
 	int32 PopulationCap = 0;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Economy)
+	FHOLResources Gatherers;
 };

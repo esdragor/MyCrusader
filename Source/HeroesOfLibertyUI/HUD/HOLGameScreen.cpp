@@ -24,6 +24,8 @@
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLPlayerController.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
@@ -35,6 +37,12 @@
 
 namespace UE::HeroesOfLiberty::UI::GameScreen
 {
+	/** At its source or on its round trip (D307): the HUD says « Récolte » for both. */
+	bool IsGatheringActivity(const EHOLUnitActivity Activity)
+	{
+		return Activity == EHOLUnitActivity::Gathering || Activity == EHOLUnitActivity::GatherTrip;
+	}
+
 	/** A resource's name, as the top bar writes it. */
 	FText GetResourceName(const EHOLResource Resource)
 	{
@@ -64,6 +72,10 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float MarkerSize = 12.f;
 	constexpr float SwatchSize = 14.f;
 	constexpr float SelectionMinWidth = 320.f;
+	constexpr float IdleWorkersWidth = 130.f;
+	/** Seconds between two readings of a selected group's activities. */
+	constexpr float GroupRefreshInterval = 0.25f;
+	const FName IdleWorkersName(TEXT("IdleWorkers"));
 
 	FName GridCellName(const int32 Cell)
 	{
@@ -146,6 +158,10 @@ void UHOLGameScreen::NativeOnInitialized()
 			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleQueueItemClicked, Index);
 		}
 	}
+	if (IdleWorkers)
+	{
+		IdleWorkers->OnClicked().AddUObject(this, &UHOLGameScreen::HandleIdleWorkersClicked);
+	}
 	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 
 	// For the scripted checks (hol.Test.Run): the captures of a match name the HUD.
@@ -199,8 +215,12 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		BindPlayerState(PlayerState);
 		Refresh();
 	}
-	// A gatherer selected alone: its line follows it at every change (D303), the other blocks follow their delegates.
-	if (Controller.IsValid() && Controller->GetSelectedUnits().Num() == 1)
+	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
+	// source's amount at every change (J5b). The other blocks follow their delegates.
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+	const int32 NumSelectedUnits = Controller.IsValid() ? Controller->GetSelectedUnits().Num() : 0;
+	SinceGroupRefresh += InDeltaTime;
+	if (NumSelectedUnits == 1)
 	{
 		FHOLUnitView Unit;
 		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit) && Unit.CarryCapacity > 0)
@@ -208,6 +228,16 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			RefreshUnitActivity(&Unit);
 		}
 	}
+	else if (NumSelectedUnits > 1 && SinceGroupRefresh >= GroupRefreshInterval)
+	{
+		SinceGroupRefresh = 0.f;
+		RefreshUnitSelection(Controller->GetSelectedUnits());
+	}
+	else if (Controller.IsValid() && Controller->GetSelectedSource() != INDEX_NONE)
+	{
+		RefreshSourceSelection(Controller->GetSelectedSource());
+	}
+	RefreshIdleWorkers();
 	UpdateHead();
 }
 
@@ -266,10 +296,15 @@ void UHOLGameScreen::Refresh()
 	{
 		RefreshUnitSelection(PlayerController->GetSelectedUnits());
 	}
+	else if (PlayerController && PlayerController->GetSelectedSource() != INDEX_NONE)
+	{
+		RefreshSourceSelection(PlayerController->GetSelectedSource());
+	}
 	else
 	{
 		RefreshSelection(Selected, Selected && Selected == Own);
 	}
+	RefreshIdleWorkers();
 	RefreshGrid(Own, PlayerState);
 	RefreshQueue(Own);
 	UpdateHead();
@@ -289,6 +324,7 @@ void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 	ShownResources = PlayerState->GetResources();
 	ShownPopulationUsed = PlayerState->GetPopulationUsed();
 	ShownPopulationCap = PlayerState->GetPopulationCap();
+	ShownGatherers = PlayerState->GetGatherers();
 
 	const auto SetAmount = [](UCommonTextBlock* Block, const int32 Value)
 	{
@@ -301,6 +337,17 @@ void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 	SetAmount(WoodAmount, ShownResources.Wood);
 	SetAmount(StoneAmount, ShownResources.Stone);
 	SetAmount(GoldAmount, ShownResources.Gold);
+	const auto SetGatherers = [](UCommonTextBlock* Block, const int32 Value)
+	{
+		if (Block)
+		{
+			Block->SetText(FText::Format(LOCTEXT("GathererCount", "({0})"), FormatAmount(Value)));
+		}
+	};
+	SetGatherers(FoodGatherers, ShownGatherers.Food);
+	SetGatherers(WoodGatherers, ShownGatherers.Wood);
+	SetGatherers(StoneGatherers, ShownGatherers.Stone);
+	SetGatherers(GoldGatherers, ShownGatherers.Gold);
 	if (PopulationAmount)
 	{
 		PopulationAmount->SetText(FormatRatio(ShownPopulationUsed, ShownPopulationCap));
@@ -325,6 +372,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	{
 		SelectionName->SetText(HOLGameNames::GetBuildingName(Building->GetTypeName(), Type));
 	}
+	SetShown(SelectionOwnerRow, true);
 	if (SelectionSwatch)
 	{
 		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(Building->GetColorIndex())));
@@ -394,6 +442,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	{
 		SelectionName->SetText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
 	}
+	SetShown(SelectionOwnerRow, true);
 	if (SelectionSwatch)
 	{
 		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(AHOLPlayerState::FindColorIndex(*GetWorld(), Owner))));
@@ -410,8 +459,66 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		// No damage before M5: a unit is whole.
 		SelectionHealth->SetText(FormatRatio(Type->MaxHealth, Type->MaxHealth));
 	}
-	// One gatherer shows what it does and what it carries (J5, D298).
-	RefreshUnitActivity(Views.Num() == 1 && Views[0].CarryCapacity > 0 ? &Views[0] : nullptr);
+	if (Views.Num() == 1)
+	{
+		// One gatherer shows what it does and what it carries (J5, D298).
+		RefreshUnitActivity(Views[0].CarryCapacity > 0 ? &Views[0] : nullptr);
+		return;
+	}
+	// A group, its workers by activity (J5b, D298): the round trip counts as gathering (D307).
+	int32 Gathering = 0, Moving = 0, Idle = 0;
+	for (const FHOLUnitView& View : Views)
+	{
+		if (View.CarryCapacity > 0)
+		{
+			++(IsGatheringActivity(View.Activity) ? Gathering : View.Activity == EHOLUnitActivity::Moving ? Moving : Idle);
+		}
+	}
+	TArray<FText> Parts;
+	if (Gathering > 0)
+	{
+		Parts.Add(FText::Format(LOCTEXT("GroupGathering", "{0} en récolte"), Gathering));
+	}
+	if (Moving > 0)
+	{
+		Parts.Add(FText::Format(LOCTEXT("GroupMoving", "{0} en marche"), Moving));
+	}
+	if (Idle > 0)
+	{
+		Parts.Add(FText::Format(LOCTEXT("GroupIdle", "{0} {0}|plural(one=inactif,other=inactifs)"), Idle));
+	}
+	SetDetailLine(Parts.IsEmpty() ? FString() : FString::Printf(TEXT(", gathering %d moving %d idle %d"), Gathering, Moving, Idle),
+		FText::Join(FText::AsCultureInvariant(TEXT(" · ")), Parts));
+}
+
+void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	const FHOLSource* Source = Sources && Sources->GetSources().IsValidIndex(SourceIndex) ? &Sources->GetSources()[SourceIndex] : nullptr;
+	const FName TypeName = Source && Sources->GetTypeNames().IsValidIndex(Source->TypeIndex) ? Sources->GetTypeNames()[Source->TypeIndex] : NAME_None;
+	SetShown(SelectionPanel, !TypeName.IsNone(), ESlateVisibility::Visible);
+	if (TypeName.IsNone())
+	{
+		ShownSelection = TEXT("none");
+		SetDetailLine(FString(), FText::GetEmpty());
+		return;
+	}
+	// Nobody's: no owner, no health; its name, and what it still holds (« Filon d'or — 1840 », D298).
+	SetShown(SelectionOwnerRow, false);
+	SetShown(SelectionHealthRow, false);
+	const FString Shown = FString::Printf(TEXT("%s source %d"), *TypeName.ToString(), SourceIndex);
+	if (Shown != ShownSelection)
+	{
+		ShownSelection = Shown;
+		if (SelectionName)
+		{
+			SelectionName->SetText(HOLGameNames::GetSourceName(TypeName, Sources->GetType(Source->TypeIndex)));
+		}
+	}
+	SetDetailLine(FString::Printf(TEXT(", %d left"), Source->Remaining),
+		FText::Format(LOCTEXT("SourceRemaining", "Reste : {0}"), FormatAmount(Source->Remaining)));
 }
 
 void UHOLGameScreen::RefreshUnitActivity(const FHOLUnitView* Unit)
@@ -419,25 +526,61 @@ void UHOLGameScreen::RefreshUnitActivity(const FHOLUnitView* Unit)
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
 	// The amount is known in solo, and on a client once the server has sent it (D303): until then, the activity alone.
-	const bool bLoad = Unit && Unit->bLoadAmountKnown && (Unit->LoadAmount > 0 || Unit->Activity == EHOLUnitActivity::Gathering);
+	const bool bLoad = Unit && Unit->bLoadAmountKnown && (Unit->LoadAmount > 0 || IsGatheringActivity(Unit->Activity));
 	const FString Shown = !Unit ? FString()
 		: bLoad ? FString::Printf(TEXT(", %s %s %d/%d"), *UEnum::GetValueAsString(Unit->Activity),
 			*UEnum::GetValueAsString(Unit->LoadResource), Unit->LoadAmount, Unit->CarryCapacity)
 		: FString::Printf(TEXT(", %s"), *UEnum::GetValueAsString(Unit->Activity));
+	if (Shown == ShownActivity || !Unit)
+	{
+		SetDetailLine(Shown, FText::GetEmpty());
+		return;
+	}
+	const FText Activity = IsGatheringActivity(Unit->Activity) ? LOCTEXT("ActivityGathering", "Récolte")
+		: Unit->Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
+	SetDetailLine(Shown, bLoad
+		? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit->LoadResource),
+			Unit->LoadAmount, Unit->CarryCapacity)
+		: Activity);
+}
+
+void UHOLGameScreen::SetDetailLine(const FString& Shown, const FText& Text)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
 	if (Shown == ShownActivity)
 	{
 		return;
 	}
 	ShownActivity = Shown;
-	SetShown(SelectionActivity, Unit != nullptr);
-	if (Unit && SelectionActivity)
+	SetShown(SelectionActivity, !Shown.IsEmpty());
+	if (SelectionActivity && !Shown.IsEmpty())
 	{
-		const FText Activity = Unit->Activity == EHOLUnitActivity::Gathering ? LOCTEXT("ActivityGathering", "Récolte")
-			: Unit->Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
-		SelectionActivity->SetText(bLoad
-			? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit->LoadResource),
-				Unit->LoadAmount, Unit->CarryCapacity)
-			: Activity);
+		SelectionActivity->SetText(Text);
+	}
+}
+
+void UHOLGameScreen::RefreshIdleWorkers()
+{
+	const int32 Count = Controller.IsValid() ? Controller->GetIdleWorkers().Num() : 0;
+	if (Count == ShownIdleWorkers)
+	{
+		return;
+	}
+	ShownIdleWorkers = Count;
+	if (IdleWorkers)
+	{
+		IdleWorkers->SetLabel(FText::Format(LOCTEXT("IdleWorkers", "Inactifs : {0}"), Count));
+		IdleWorkers->SetIsEnabled(Count > 0);
+	}
+}
+
+void UHOLGameScreen::HandleIdleWorkersClicked()
+{
+	if (AHOLPlayerController* PlayerController = Controller.Get())
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: idle workers clicked"));
+		PlayerController->SelectNextIdleWorker();
 	}
 }
 
@@ -569,6 +712,15 @@ void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
 
 bool UHOLGameScreen::ClickWidget(const FName Name)
 {
+	if (IdleWorkers && Name == UE::HeroesOfLiberty::UI::GameScreen::IdleWorkersName)
+	{
+		if (!IdleWorkers->GetIsEnabled())
+		{
+			return false;
+		}
+		HandleIdleWorkersClicked();
+		return true;
+	}
 	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
 	{
 		const UHOLGridCell* GridCell = GridCells[Cell];
@@ -635,7 +787,12 @@ FString UHOLGameScreen::Describe() const
 		}
 		Queue = FString::Printf(TEXT("%d [%s]"), Items.Num(), *FString::Join(Items, TEXT(", ")));
 	}
-	return FString::Printf(TEXT("resources %s, selection %s%s, grid %s, queue %s"), *Economy, *ShownSelection, *ShownActivity, *Grid, *Queue);
+	// The gatherers and the idle workers last (J5b): the checks of J3 read the line from its start.
+	const FString Workers = bEconomyShown
+		? FString::Printf(TEXT(", gatherers %s, idle %d"), *ShownGatherers.ToString(), FMath::Max(ShownIdleWorkers, 0))
+		: FString();
+	return FString::Printf(TEXT("resources %s, selection %s%s, grid %s, queue %s%s"), *Economy, *ShownSelection, *ShownActivity, *Grid, *Queue,
+		*Workers);
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const
@@ -699,7 +856,8 @@ void UHOLGameScreen::BuildLayout()
 	TopBarSlot->SetPadding(FMargin(ScreenMargin));
 	UHorizontalBox* Resources = MakeHorizontalBox(TEXT("Resources"));
 	TopBar->SetContent(Resources);
-	const auto AddResource = [&](const FString& Name, const FLinearColor* Color, const FText& Label)
+	// A resource's gatherers follow its amount (J5b), « (3) »; the population has none.
+	const auto AddResource = [&](const FString& Name, const FLinearColor* Color, const FText& Label, UCommonTextBlock** OutGatherers)
 	{
 		if (Color)
 		{
@@ -707,14 +865,32 @@ void UHOLGameScreen::BuildLayout()
 		}
 		AddToRow(Resources, MakeText(*(Name + TEXT("Label")), UHOLTextStyleHUDLabel::StaticClass(), Label), 6.f);
 		UCommonTextBlock* Value = MakeText(*(Name + TEXT("Amount")), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-		AddToRow(Resources, Value, 20.f);
+		AddToRow(Resources, Value, OutGatherers ? 4.f : 20.f);
+		if (OutGatherers)
+		{
+			*OutGatherers = MakeText(*(Name + TEXT("Gatherers")), UHOLTextStyleHUDLabel::StaticClass(), FText::GetEmpty());
+			AddToRow(Resources, *OutGatherers, 20.f);
+		}
 		return Value;
 	};
-	FoodAmount = AddResource(TEXT("Food"), &HOLUIStyle::Food, LOCTEXT("Food", "Nourriture"));
-	WoodAmount = AddResource(TEXT("Wood"), &HOLUIStyle::Wood, LOCTEXT("Wood", "Bois"));
-	StoneAmount = AddResource(TEXT("Stone"), &HOLUIStyle::Stone, LOCTEXT("Stone", "Pierre"));
-	GoldAmount = AddResource(TEXT("Gold"), &HOLUIStyle::Gold, LOCTEXT("Gold", "Or"));
-	PopulationAmount = AddResource(TEXT("Population"), nullptr, LOCTEXT("Population", "Population"));
+	UCommonTextBlock* Gatherers[4] = {};
+	FoodAmount = AddResource(TEXT("Food"), &HOLUIStyle::Food, LOCTEXT("Food", "Nourriture"), &Gatherers[0]);
+	WoodAmount = AddResource(TEXT("Wood"), &HOLUIStyle::Wood, LOCTEXT("Wood", "Bois"), &Gatherers[1]);
+	StoneAmount = AddResource(TEXT("Stone"), &HOLUIStyle::Stone, LOCTEXT("Stone", "Pierre"), &Gatherers[2]);
+	GoldAmount = AddResource(TEXT("Gold"), &HOLUIStyle::Gold, LOCTEXT("Gold", "Or"), &Gatherers[3]);
+	FoodGatherers = Gatherers[0];
+	WoodGatherers = Gatherers[1];
+	StoneGatherers = Gatherers[2];
+	GoldGatherers = Gatherers[3];
+	PopulationAmount = AddResource(TEXT("Population"), nullptr, LOCTEXT("Population", "Population"), nullptr);
+
+	// The idle workers' counter, a button (J5b, D298): a click selects the next one, as ".".
+	USizeBox* IdleBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("IdleWorkersBox"));
+	IdleBox->SetWidthOverride(IdleWorkersWidth);
+	IdleBox->SetHeightOverride(QueueItemHeight * 0.8f);
+	IdleWorkers = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), IdleWorkersName);
+	IdleBox->SetContent(IdleWorkers);
+	AddToRow(Resources, IdleBox, 0.f);
 
 	// Selection block, bottom centre: name, owner (with its colour), health.
 	SelectionPanel = MakePanel(TEXT("SelectionPanel"));
@@ -731,6 +907,7 @@ void UHOLGameScreen::BuildLayout()
 	SelectionName = MakeText(TEXT("SelectionName"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
 	SelectionColumn->AddChildToVerticalBox(SelectionName)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
 	UHorizontalBox* OwnerRow = MakeHorizontalBox(TEXT("SelectionOwnerRow"));
+	SelectionOwnerRow = OwnerRow;
 	SelectionColumn->AddChildToVerticalBox(OwnerRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 2.f));
 	SelectionSwatch = MakeSquare(TEXT("SelectionSwatch"), FLinearColor::White, SwatchSize);
 	AddToRow(OwnerRow, SelectionSwatch, 8.f);

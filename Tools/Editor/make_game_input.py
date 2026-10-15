@@ -1,4 +1,4 @@
-"""Creates the input assets of a match (D255 in J1, D262 in J2, D30 grid in J3, D288 in J4), with Enhanced Input:
+"""Creates the input assets of a match (D255 in J1, D262 in J2, D30 grid in J3, D288 in J4, D30 "." in J5b), with Enhanced Input:
   /Game/Input/IA_Camera_Left, _Right, _Up, _Down   move the RTS camera (arrows; ZQSD belongs to the command grid, D30)
   /Game/Input/IA_Camera_Zoom                       zoom (mouse wheel)
   /Game/Input/IA_Camera_Drag                       drag the ground (middle mouse button)
@@ -6,6 +6,7 @@
   /Game/Input/IA_SelectAdd                         held, a click or a box adds or removes units (Shift, D288)
   /Game/Input/IA_Order                             send the selected units, or the rally point, to the ground (right click, D288)
   /Game/Input/IA_Deselect                          select nothing (Escape, D262)
+  /Game/Input/IA_NextIdle                          select the next idle worker, the camera above it (".", D30, J5b)
   /Game/Input/IA_Grid_00 to IA_Grid_11             the cells of the command grid, A Z E R / Q S D F / W X C V (D30, J3)
   /Game/Input/IMC_Game                             their keys, added by the match controller (AHOLPlayerController)
 
@@ -29,6 +30,9 @@ ACTIONS = {
     "IA_SelectAdd": (BOOLEAN, ["LeftShift", "RightShift"]),
     "IA_Order": (BOOLEAN, ["RightMouseButton"]),
     "IA_Deselect": (BOOLEAN, ["Escape"]),
+    # The engine names a character key after its character on the player's layout: "." on QWERTY (Period); on AZERTY
+    # the key of ";" and "." (Semicolon, with Shift or not, as the grid's keys follow AZERTY); the keypad's "." (Decimal).
+    "IA_NextIdle": (BOOLEAN, ["Period", "Semicolon", "Decimal"]),
 }
 # Command grid (D30): one key per cell, row by row, as the keys sit on an AZERTY keyboard.
 GRID_KEYS = ["A", "Z", "E", "R", "Q", "S", "D", "F", "W", "X", "C", "V"]

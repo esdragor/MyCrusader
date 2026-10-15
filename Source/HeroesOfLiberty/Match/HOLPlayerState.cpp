@@ -15,6 +15,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Resources, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationUsed, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationCap, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
 }
 
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
@@ -59,6 +60,17 @@ void AHOLPlayerState::SetPopulation(const int32 InUsed, const int32 InCap)
 	}
 	PopulationUsed = InUsed;
 	PopulationCap = InCap;
+	OnEconomyChanged.Broadcast();
+	ForceNetUpdate();
+}
+
+void AHOLPlayerState::SetGatherers(const FHOLResources& InGatherers)
+{
+	if (Gatherers == InGatherers)
+	{
+		return;
+	}
+	Gatherers = InGatherers;
 	OnEconomyChanged.Broadcast();
 	ForceNetUpdate();
 }

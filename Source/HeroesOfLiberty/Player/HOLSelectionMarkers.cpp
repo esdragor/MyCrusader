@@ -12,6 +12,7 @@
 #include "Match/HOLPlayerColors.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::SelectionMarkers
@@ -35,6 +36,9 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	/** A unit's ring: its radius over the body's, and its stroke (cm). */
 	constexpr double RingRadiusFactor = 1.4;
 	constexpr double RingStroke = 12.0;
+	/** A resource source's ring (J5b): its margin around the source's body and its stroke (cm). */
+	constexpr double SourceRingMargin = 60.0;
+	constexpr double SourceRingStroke = 16.0;
 	/** The building's frame: its margin around the footprint and its stroke (cm). */
 	constexpr double FrameMargin = 100.0;
 	constexpr double FrameStroke = 30.0;
@@ -218,6 +222,16 @@ void AHOLSelectionMarkers::UpdateRings()
 				AddCustomData(CustomData, SelectionColor, RingStroke / Radius);
 			}
 		}
+	}
+	// The selected resource source (J5b, D298): a ring around its body.
+	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	const int32 SourceIndex = PlayerController ? PlayerController->GetSelectedSource() : INDEX_NONE;
+	if (Sources && Sources->GetSources().IsValidIndex(SourceIndex) && Sources->GetSources()[SourceIndex].IsStanding())
+	{
+		const FHOLSource& Source = Sources->GetSources()[SourceIndex];
+		const double Radius = Source.Radius + SourceRingMargin;
+		Transforms.Add(MarkerTransform(Source.Location, Radius * 2.0, Radius * 2.0));
+		AddCustomData(CustomData, SelectionColor, SourceRingStroke / Radius);
 	}
 	if (PingAge < PingSeconds)
 	{

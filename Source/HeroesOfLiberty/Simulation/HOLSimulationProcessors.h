@@ -92,8 +92,11 @@ protected:
  * No body walks through another (the user's trial of J4, D292): at full speed the avoidance turns too late, and a
  * standing unit no longer steps aside (D290). Once the units have moved, every overlap a walker takes part in is
  * undone, each unit of the pair taking half: a walker pushes a standing unit out of its way (as in AoE) and the pushed
- * unit moves no further, two walkers part. Standing units among themselves are left as they are. Pairs found in a
- * hashed grid of the step's positions, one pass a step.
+ * unit moves no further, two walkers part. Standing units among themselves are left as they are, but for a gatherer
+ * that walked through every unit to its spot (D309): landed, it parts from a unit standing there. A gatherer at its
+ * source and a unit standing beside it part down to the spots' spacing only (100 cm: gatherers pressed against a wood's
+ * edge overlap a little, the user's trial of D309). Pairs found in a hashed grid of the step's positions, one
+ * pass a step.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLUnitSeparationProcessor : public UMassProcessor
@@ -113,7 +116,17 @@ protected:
 	TArray<FVector2D> Positions;
 	TArray<FVector2D> Corrections;
 	TArray<float> Radii;
+	/** The walkers, and the gatherers that landed at their spot this step (D309): the units that look for overlaps. */
 	TArray<bool> Walking;
+	/** Gatherers on their round trip (D309): they pass through every unit and none pushes them. */
+	TArray<bool> Ghosts;
+	/** Units walking an order (not a gatherer settling at its spot). */
+	TArray<bool> Moving;
+	/**
+	 * Gatherers at their source (D309): with a unit standing beside them, they keep the spots' spacing only (100 cm,
+	 * hol.Gather.SpotSpacing), not two bodies; a walker still pushes them out of its way.
+	 */
+	TArray<bool> AtSource;
 	/** Units that looked for their neighbours this step, and those to look (the walkers, then the units they pushed). */
 	TArray<bool> Looked;
 	TArray<bool> Queued;

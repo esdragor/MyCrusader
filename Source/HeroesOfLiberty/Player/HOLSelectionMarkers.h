@@ -13,7 +13,8 @@ class UStaticMeshComponent;
 
 /**
  * What the ground shows of the local player's selection (J4, D288), on the player's machine only (never replicated,
- * like the RTS camera): a ring under each selected unit and a square frame under the selected building, a neutral
+ * like the RTS camera): a ring under each selected unit or around the selected resource source (J5b), and a square
+ * frame under the selected building, a neutral
  * white; a brief ring where the player gave an order; the rally flag of the player's own selected building, at its
  * colour.
  * Unlit masked planes (Tools/Editor/make_marker_materials.py), instanced, with no collision and no shadow.

@@ -65,7 +65,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			FHOLNetUnitDisplayFragment& Display = Displays[EntityIt];
 			// Facing its walk at once, as the simulation does (UHOLInstantOrientationProcessor); a unit at rest pushed aside
 			// (its sent velocity is the step's move, D294) does not turn.
-			if (Display.State.Activity == EHOLUnitActivity::Moving && Display.Velocity.SizeSquared2D() > FMath::Square(MinTurnSpeed))
+			if (IsWalkingActivity(Display.State.Activity) &&Display.Velocity.SizeSquared2D() > FMath::Square(MinTurnSpeed))
 			{
 				Display.Yaw = FMath::RadiansToDegrees(FMath::Atan2(Display.Velocity.Y, Display.Velocity.X));
 			}

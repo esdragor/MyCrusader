@@ -8,8 +8,8 @@ class UCommonTextBlock;
 
 /**
  * An item of the production queue in the HUD (J3, D282): the name of the unit in production or waiting; a click
- * cancels it. Never takes the keyboard focus, as the cells of the command grid. Built in code when no Blueprint gives
- * it a layout (D242).
+ * cancels it. Also the idle workers' counter of the top bar (J5b): a small labelled button. Never takes the keyboard
+ * focus, as the cells of the command grid. Built in code when no Blueprint gives it a layout (D242).
  */
 UCLASS()
 class HEROESOFLIBERTYUI_API UHOLQueueItem : public UCommonButtonBase

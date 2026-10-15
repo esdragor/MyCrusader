@@ -64,6 +64,7 @@ vérifier sur S1 et S2.
 | J5a.5 Vérification et essai | **fait** (2026-10-15) : 1er essai → D303 (naissance vers le ralliement, bloc du Paysan à chaque changement, charge exacte au seul propriétaire de l'unité sélectionnée seule) ; 2e essai → D304 (orientation instantanée) ; 3e essai validé ; `quick_check` PASS (68 s) ; solo vérifié à la main par l'utilisateur ; **partie à 2 clients de la récolte** dans `quick_check` (charge suivie de D303, arbre épuisé chez les deux, stock de l'autre jamais reçu) PASS, `quick_check` PASS (70 s) ; essai de l'utilisateur (arbres, S7) validé ; D305 (réutilisation des chemins) faite ; **S1 / S2 / S7 au repos et S5 reportés** (machine chargée, choix de l'utilisateur) |
 | J5a.6 Clôture : D295 à D299, D303 à D305 au GDD | **fait** (2026-10-15) : lignes au § 21 (D297 et D299 précisées par ce qui a été fait), paragraphe « Parcours J5a : le bois » au § 16.6, S7 dans les seuils des stress tests. **J5a close.** |
 | J5b.1 Baies et filons | **fait** (2026-10-15) : `Plain` refaite (376 sources : 6 buissons de baies en face du bois de chaque emplacement, à 20-23 m ; 8 filons entre voisins, pierre et or alternés, à 60 m de chacun) ; places autour d'une source au pas de deux récolteurs (16 autour d'un filon au lieu de 12, arbres et baies inchangés) ; essai scripté solo : baies, pierre, or déchargés, charge perdue au changement ; `quick_check` PASS (69 s) ; essai de l'utilisateur → **D306** (charge perdue au premier point de la nouvelle ressource, pas à l'ordre), faite, `quick_check` PASS (72 s), **validée** ; D306 au GDD (§ 21, D296 et « Parcours J5a » précisés) |
+| J5b.2 HUD de la récolte | **fait** (2026-10-16, **validée** par l'utilisateur, commitée) : D307 (activité « en tournée de récolte » dans les 3 bits de l'état, comptes de récolteurs au `PlayerState` du seul propriétaire) ; source sélectionnable (nom, « Reste : 1840 », anneau au sol), bloc d'un groupe (« 3 en récolte · 2 inactifs »), comptes par ressource « (2) » dans la barre du haut, compteur « Inactifs : N » cliquable et touche « . » (`IA_NextIdle` : « . », la touche « ; . » de l'AZERTY, « . » du pavé) ; textes fr / en / ja ; tests 36/36 (`Movement.Picking` étendu), essai scripté solo conforme, `quick_check` PASS (77 s) ; **essai de l'utilisateur** : « super », mais des Paysans font d'énormes détours dans leurs allers-retours → **D308** (suivi d'un chemin sans grand virage, détour gardé vérifié, sortie d'une poche du navmesh) : marches anormalement longues 37 → 2, `quick_check` PASS (75 s) ; 2e essai : moins de détours, mais les Paysans se gênent devant le centre → **D309** (choix de l'utilisateur : en aller-retour, un Paysan traverse toutes les unités ; plus de place autour d'une source → même ressource à 8 m, sinon inactif devant), faite, compile sans avertissement, `quick_check` PASS (75 s) ; 3e essai → empilement à la source et amas récolteurs / inactifs corrigés (réservations sur le point réel, toutes sources, points d'attente des inactifs), **massifs** (recherche de proche en proche dans tout le bois, D309 précisée), places serrées **à 100 cm** tournées vers le dépôt (capture d'AoE4 de l'utilisateur) ; `quick_check` PASS, tests 38/38, S7 court PASS (2,39 ms) ; **validée** (« très bien », `hol.Gather.SpotSpacing 100`) |
 
 ## Prochaine étape exacte
 
@@ -98,6 +99,16 @@ vérifier sur S1 et S2.
    inactifs, touche « . », textes fr / en / ja ; voir « Plan de J5 »). **S1 / S2 / S7 courts au repos faits** (2026-10-15,
    tous PASS : S1 2,23 ms, S2 2,78 ms, S7 2,91 ms) ; **S5 court au repos fait** (serveur recuit, PASS à 31,08 Ko/s,
    marge mince). Plus aucune mesure reportée.
+12. **J5b.2 faite** (2026-10-15, avec D307, D308 et D309 ; **non commitée** : essai de l'utilisateur attendu). Suite :
+   **3e essai de l'utilisateur** (D309 : Paysans en aller-retour qui traversent tout, inactif devant une source pleine ;
+   HUD déjà jugé « super », détours de D308 jugés moindres), puis **commit** de J5b.2 + D307 à D309, puis **S2 et S7
+   courts au repos** (D308 et D309 changent le suivi des chemins et les corps ; machine chargée, A/B seulement),
+   puis **J5b.3** (vérification : `quick_check` solo — baies au ralliement, bois vidé → inactifs et « . » — et 2 clients ;
+   S5 et S7 courts, l'activité répliquée ayant changé de sens).
+13. **J5b.2 validée et commitée** (2026-10-16, avec D307 à D309, D309 précisée : massifs, places à 100 cm vers le
+   dépôt, points d'attente). Suite : **J5b.3** (voir « Préparation de J5b.3 » dans le journal du 2026-10-16), puis J5c.
+   Question en suspens : les inactifs en trop quand tout un massif est plein et tous les points d'attente pris (à
+   175 Paysans) — A rangées sans limite (recommandé) / B autour du massif / C tel quel.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -105,6 +116,14 @@ une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut
 
 **Règle de tenue** (permanente) : mettre à jour ce fichier à **chaque étape** — tableau ci-dessus, prochaine étape
 exacte, entrée de journal — avant de passer à la suivante.
+
+**Règle des sous-agents** (permanente, demande de l'utilisateur du 2026-10-15) : le chantier se mène **en sous-agents
+autant que possible** (code, essais scriptés, `quick_check`, mesures S1 / S2 / S5 / S7, lectures larges du code ou du
+moteur) ; la session principale garde le fil : elle lit ce fichier, confie chaque tâche à un sous-agent avec un
+énoncé complet (contexte, fichiers, règles de compilation et de test, ce qu'il doit rapporter), relaie les résultats,
+pose les questions à l'utilisateur et tient ce fichier. Restent dans la session principale : les questions de plan
+(une à la fois), le lancement de la session d'essai de l'utilisateur et les commits après sa validation. Deux
+sous-agents ne compilent ni ne lancent le jeu en même temps (DLL verrouillées).
 
 ## Commandes utiles
 
@@ -461,6 +480,27 @@ portée et le « +10 » au dépôt.
 Risques connus : coût des trajets à 2 000 Paysans (S7) ; animations de récolte à trouver pour le mannequin ; charge
 posée sur le squelette instancié ; reconstruction des tuiles quand une forêt recule vite.
 
+**Repérage pour J5c.1 et J5c.2** (2026-10-15, lecture seule, pendant J5b.2 ; rien de décidé) :
+- **Squelette** : mannequin UE4 de `CloseCombat` (`make_skinned_mannequin.py`), douilles `Socket_Weapon` (main droite),
+  `Socket_HandL`, `Socket_WeaponSpine`. Un fournisseur `UAnimSequenceTransformProviderData` par maillage = liste de
+  séquences par indice ; la table des types ne connaît que `IdleSequence` / `WalkSequence` ; le client choisit d'après
+  la vitesse seule (`HOLInterpolatedInstancesProcessor.cpp` ~l. 148), toujours en boucle. Séquences **sur place**
+  obligatoires (l'os racine est joué tel quel). Pendant la récolte, le client ne connaît la ressource qu'une fois la
+  charge commencée (`bCarrying`) : ~1,4 s sans savoir hache / pioche / cueillette.
+- **Animations dans le projet** : **aucune de récolte**. Pis-aller : coups d'épée de `CloseCombat/.../Swordsman/Attack`
+  (`A_SW_HeavyAttack`, `A_SW_Attack_01..05`) en hache ou pioche (racine à figer) ; rien de bon pour la cueillette, la
+  marche chargée ou la pose au dépôt (`AnimStarterPack` : accroupi au fusil, marche au fusil, autre squelette à
+  recibler). Moteur (`C:/UE/UE_5.8_AS_3`) et cache du lanceur (Lyra seul) : rien de mieux (Manny, reciblage UE5 → UE4).
+  Pistes **à vérifier** : Mixamo (gratuit, récolte / minage / port, à recibler), packs « paysan / ouvrier » sur Fab,
+  courtes boucles faites au Control Rig.
+- **Pièces** (`FantasyVillage/Meshes`) : bois `SM_WoodChunks01..05`, `SM_Planks` ; pierre `SM_StoneWallSingle01..03`,
+  `SM_Rock01/02` ; **ni panier, ni or, ni hache, ni pioche** (à faire en formes simples, comme les arbres).
+- **Fixer une pièce** : le fournisseur est sur GPU seul, donc pas de maillage statique attaché à un os. Voie la plus
+  simple : pièce en **maillage squelettique lié à `hand_r` / `spine_03`** sur le même squelette, ajoutée à la liste des
+  maillages du type d'unité (Mass lui envoie la même animation), cachée par une donnée par instance ; coût : chaque
+  Paysan dessine toutes les pièces, à mesurer sur S7. Repli : instance statique posée d'après l'unité (épaule, dos),
+  sans suivre les mains.
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -511,6 +551,9 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 | D298 | 2026-10-14 | Technique — Ordre de récolte et retour visuel | **Le nécessaire, plus ce qui donne vie à la récolte façon AoE4** (choix de l'utilisateur : option C, **contre la recommandation** A) : clic droit sur une source = ordre de récolte vérifié par le serveur (D288) ; ralliement sur une source ; source sélectionnable (nom, quantité restante) ; bloc d'un Paysan : activité et charge (« Bois 7/10 »), d'un groupe : Paysans par activité ; barre du haut : Paysans par ressource et compteur d'**inactifs** (clic ou touche « . » : inactif suivant, caméra centrée, D30) ; repère bref de J4.6 sur la source visée ; **en plus** : **animation de récolte** (hache, pioche, cueillette), **charge visible** sur le Paysan (fagot, panier, bloc), **« +10 » qui monte** au dépôt. L'activité répliquée (D269, déjà dans l'état réduit) gagne la récolte et le type de charge (quelques bits, S5 à remesurer). Risques : animations à trouver, charge sur le squelette instancié de M2. Écartés : A seul ; le strict minimum (clic droit et ralliement). | § 7.3, § 16.6 |
 | D299 | 2026-10-14 | Technique — Vérification de J5 | **Tests, solo et 2 clients, stress test de récolte S7** (choix de l'utilisateur, conforme à la recommandation) : tests d'automatisation des règles pures (taux et charge, dépôt le plus proche, source voisine ou inactif, épuisement, charge perdue) ; dans `quick_check.ps1`, partie **solo** (ralliement sur des baies, stock qui ne monte qu'au dépôt, arbre épuisé → arbre voisin, bois vidé → inactifs et touche « . », captures de l'animation et de la charge) et partie **à 2 clients** (récolte de l'autre vue, source épuisée disparue chez les deux, stock de l'autre jamais reçu) ; **nouveau stress test S7 : 2 000 Paysans en récolte** sur `StressTest`, seuil de simulation de 3 ms (coût des trajets ; chemin source-dépôt réutilisé plutôt que recalculé) ; **S5 court** ; essai de l'utilisateur. Trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte), chacune avec l'essai de l'utilisateur (demande de l'utilisateur). Écarté : `quick_check` seul, sans stress test de récolte. | § 16.6 |
 | D306 | 2026-10-15 | Technique — Charge perdue au changement de ressource | **Perdue au premier point de la nouvelle ressource, pas à l'ordre** (essai de J5b.1, règle de l'utilisateur ; *précise D296*, qui la perdait dès l'ordre) : un Paysan qui porte 9 nourriture et reçoit l'ordre de couper du bois garde ses 9 nourriture en route et au contact de l'arbre, tant qu'il n'a pas récolté un bois entier ; au premier bois, la nourriture est perdue et il porte 1 bois. Un Paysan plein d'une ressource envoyé sur une autre va droit à la nouvelle source (il ne dépose pas d'abord) et continue de récolter jusqu'à ce premier point. Une charge vide prend la nouvelle ressource dès l'ordre (le bloc la montre en route). Règles pures : `HOLGather::Gather` reçoit la ressource récoltée et rend la charge perdue, `IsFullOf` (plein de cette ressource) ; la progression vers le point suivant compte pour la ressource récoltée seulement ; source épuisée → voisine de la ressource de la source, non de la charge. | § 16.6 |
+| D307 | 2026-10-15 | Technique — Inactifs et comptes de récolteurs | **Choix d'exécution de J5b.2** (dans le cadre de D298, sans question à l'utilisateur) : (1) l'activité répliquée gagne une 4e valeur, **« en tournée de récolte »** (vers la source, vers le dépôt, en attente d'une place) : elle tient dans les **3 bits** déjà envoyés, **aucun bit de plus** (S5 à 0,9 Ko/s du seuil) ; un récolteur n'est plus jamais « inactif » le temps d'un pas (arrivée au dépôt, attente d'une place), donc le **compteur d'inactifs et la touche « . » se calculent chez le client** d'après l'état reçu, sans clignoter ; marche dessinée comme « en marche » ; (2) les **Paysans par ressource** (barre du haut) sont comptés par le serveur à chaque pas et envoyés dans le `PlayerState` **au seul propriétaire** (comme le stock, D282 ; envoi seulement quand un compte change) : la ressource d'un récolteur vide sur le chemin du retour n'est pas dans l'état envoyé à tous ; (3) le **bloc d'un groupe** compte ses Paysans par activité (récolte, en marche, inactifs) d'après l'état reçu. La touche « . » prend l'inactif suivant par identifiant, revient au premier après le dernier, centre la caméra ; l'action `IA_NextIdle` répond à « . » (QWERTY), à la touche « ; . » de l'AZERTY (le moteur la nomme « ; », avec ou sans Maj) et au « . » du pavé. Écartés : **un bit « au travail » de plus** (S5) ; **comptes et inactifs envoyés par le serveur** (aller-retour pour la touche « . »). | § 7.3, § 16.6 |
+| D308 | 2026-10-15 | Technique — Détours des allers-retours | **Essai de J5b.2** (l'utilisateur : « des Paysans font énormément de détours » entre le centre et les ressources). Mesuré par la distance réellement marchée à chaque marche de récolte (`hol.Gather.LogWalks`) : ~35 marches sur ~70 déchargements faisaient 2 à 3 fois la ligne droite (jusqu'à 44 m de trop). **Cause principale** : une unité qui suit un chemin du navmesh (contourner le centre, sortir du bois) gardait la direction du pilotage de Mass, qui ne tourne qu'à ~50°/s : à pleine vitesse (D290) elle s'écartait de **5 à 12 m** à chaque coin ; la marche droite vers sa place avait déjà été corrigée ainsi (D294), pas le suivi d'un chemin. **Fait** : (1) sur un chemin, l'unité vise à chaque pas le point que le suivi de Mass avance devant elle, plus 1 m le long du chemin, puis le regard en avant de D293 (`hol.Units.PathAim`) ; (2) un **détour gardé** (D305) n'est repris que si cette marche ne peut pas aller droit, voit son premier coin, si son dernier coin voit sa cible, et si elle ne marche pas plus loin que la marche gardée (`hol.Units.ReuseCheckDetour`) ; (3) une unité poussée dans une **poche fermée du navmesh** (entre les arbres de devant du bois : chemin partiel qui finit où elle est) en sort droit vers sa place, au lieu de voir chaque marche finir aussitôt et d'abandonner sa charge. Résultat (20 Paysans, bois puis baies) : marches anormalement longues **37 → 2** (autour du massif de baies, légitimes), mètres de trop **647 → 18**, dépôts manqués **15 → 0**. Coût nul mesuré (S2 et S7 en A/B dans les deux ordres) ; recouvrements de S2 inchangés. | § 16.6 |
+| D309 | 2026-10-15 | Technique — Récolteurs fantômes, source sans place | **2e essai de J5b.2** (l'utilisateur : moins de détours, mais les Paysans « se gênent devant le forum »). Choix de l'utilisateur : (1) **en aller-retour automatique** (activité « en tournée de récolte » de D307 : vers la source, vers le dépôt), un Paysan **traverse toutes les unités** — choix « toutes », **contre la recommandation** « les autres récolteurs seulement » — : il ne regarde pas en avant pour les éviter (D293), la séparation ne le pousse pas et il ne pousse personne (D292), personne ne se détourne pour lui ; un ordre donné par le joueur garde les collisions ; à la source, chacun récolte à **sa place réservée** (pas d'empilement) et un Paysan qui récolte redevient un corps (`hol.Units.GhostTrips`) ; (2) **plus aucune place libre** autour de la source visée (ordre, point de ralliement, ou places manquées), quelle que soit la ressource : une source de la **même ressource à 8 m au plus** (choix conforme à la recommandation : les arbres voisins, le même massif de baies, jamais un autre filon), sinon le Paysan **s'arrête inactif devant la source**, sa charge gardée (compté dans « Inactifs », touche « . ») ; fini l'attente invisible de 3 s en boucle. Écartés : traverser seulement les autres récolteurs (recommandation) ou seulement ceux en aller-retour ; 15 m ou 4 m. **Précisée au 3e essai** (2026-10-15/16, sans nouveau numéro : D315 à D317 prises par la review du GDD) : (3) **massifs** — demande de l'utilisateur : « si 175 Paysans vont sur une forêt, ils vont entièrement entourer la forêt » : les sources de même ressource à 8 m l'une de l'autre, **de proche en proche**, forment un massif (souches comprises : une source épuisée ne le coupe pas) ; sans place autour de la source visée, le Paysan prend la première source du massif qui a une place, par ordre de distance à l'emprise du dépôt + 0,5 × distance à la source visée (la **lisière tournée vers le dépôt** d'abord) ; inactif devant seulement si tout le massif est plein ; un filon isolé ne mène jamais à un autre filon ; même recherche pour une source épuisée (**remplace les 15 m de D296**) ; (4) **places serrées** façon AoE4 (capture de l'utilisateur, 37 villageois au bois) : places réservées sur le point réel, jamais à moins de **100 cm** l'une de l'autre, même sur deux sources voisines (`hol.Gather.SpotSpacing`, réglé à l'essai), un rang régulier autour de la source, tourné d'abord vers le dépôt ; deux unités arrêtées dont un récolteur à sa source ne sont écartées que jusqu'à cet écart (un marcheur pousse toujours à deux corps) ; (5) les **inactifs devant une source pleine** attendent sur des points réservés en rangées hors de l'anneau des places (plus jamais sur une place de récolte). | § 16.6 |
 
 ## Journal d'avancement
 
@@ -1970,3 +2013,187 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 - **Non commité** (règle de l'utilisateur) : J5b.1 + D306 attendent sa validation. Reprise : essai de D306, puis J5b.2.
 - **Essai de D306 validé** par l'utilisateur ; D306 portée au GDD (ligne au § 21, D296 et « Parcours J5a » précisés).
   Commit, arrêt de la séance. **Reprise** (nouvelle séance) : **J5b.2** (HUD).
+
+### 2026-10-15 (suite) — J5b.2 : HUD de la récolte (D307)
+
+- **D307** (choix d'exécution, voir « Décisions ») : `EHOLUnitActivity::GatherTrip` (« en tournée de récolte »), tenue
+  par `UHOLGatherProcessor` à chaque pas d'après la phase de la récolte (`SyncActivity`) ; un récolteur arrêté sur une
+  marche qu'il s'était donnée finit « en marche » ; `IsWalkingActivity` pour l'orientation chez le client. Comptes par
+  joueur et par ressource (`CountGatherer`, `PublishGathererCounts`) → `AHOLPlayerState::Gatherers`, au seul propriétaire.
+- **Contrôleur** : sélection d'une source (clic gauche : unité, sinon bâtiment, sinon source ; une source épuisée quitte
+  la sélection), `GetIdleWorkers` (Paysans du joueur inactifs, relus 4 fois par seconde avec la purge de la sélection),
+  `SelectNextIdleWorker` (règle pure `HOLUnitPicking::NextInCycle`, test `Movement.Picking` étendu), `IA_NextIdle`
+  (`make_game_input.py` relancé), commandes `hol.Select.ClickSource X Y` et `hol.Select.NextIdle`. Anneau blanc autour
+  de la source sélectionnée (`AHOLSelectionMarkers`).
+- **HUD** : « (N) » après chaque ressource, bouton « Inactifs : N » (grisé à 0, `hol.HUD.Click IdleWorkers`) ; bloc d'une
+  source (nom par `HOLGameNames::GetSourceName`, « Reste : N » relu à chaque image, sans propriétaire ni points de vie) ;
+  bloc d'un groupe : « 3 en récolte · 2 inactifs » (relu 4 fois par seconde) ; un Paysan seul en tournée affiche
+  « Récolte — Bois 0/10 ». `hol.HUD.Report` ajoute en fin de ligne « gatherers F 1 W 2 S 0 G 0, idle 2 » (les contrôles
+  de J3 lisent le début). Textes fr / en / ja (`fill_po.py`, deux collectes).
+- Compile sans avertissement. **Essai scripté solo** (hors écran, `Saved_Tests\j5b2.seq`) : 5 Paysans nés → « idle 5 » ;
+  « . » → #1, puis #2, clic sur le compteur → #3 ; deux au bois, un aux baies → « gatherers F 1 W 2, idle 2 » ; cadre
+  sur les 5 → « 3 en récolte · 2 inactifs » ; filon d'or → « Filon d'or, Reste : 2500 », anneau ; arbre → « Arbre,
+  Reste : 100 » (l'anneau reste caché sous les couronnes) ; Échap → rien. Captures `j5b2_*` conformes.
+- `quick_check` **PASS en 77 s**, tests 36/36 ; à 2 clients, chaque client voit « gatherers W 1, idle 0 » pour lui et
+  les deux Paysans « GatherTrip » sur le chemin.
+- Non mesurés (machine chargée : deux ProjectShiva ouverts) : S5 et S7 courts, à faire en J5b.3.
+- **Non commité** (règle de l'utilisateur). Reprise : **essai de l'utilisateur**, puis J5b.3.
+
+### 2026-10-15 (suite) — Essai de J5b.2 ; D308 (détours des allers-retours)
+
+- **Essai de l'utilisateur** : HUD « super » ; mais quand plusieurs Paysans font l'aller-retour vers le centre, certains
+  font d'énormes détours (l'utilisateur supposait un chemin calculé quand la ligne droite n'était pas libre).
+- **Première piste, juste mais secondaire** : un détour gardé (D305) était repris sans contrôle par une autre marche
+  entre les mêmes cases de 6 m (un chemin autour d'un arbre servait au voisin qui pouvait aller droit). Contrôle ajouté
+  (`hol.Units.ReuseCheckDetour`, journal `hol.Units.LogDetours`) ; mesuré : 2 détours gardés sur ~60 s, pas la cause.
+- **Mesure de ce qui est marché** (`hol.Gather.LogWalks` : distance parcourue, durée, écart à la ligne droite ; scénario
+  `Saved_Tests\detours2.seq` : 20 Paysans au bois 60 s puis aux baies 40 s, hors écran) : ~35 marches 2 à 3 fois trop
+  longues, avec ou sans le contrôle ; regard en avant coupé (`hol.Units.Avoid 0`) : encore 21. Tracé à 2 Hz
+  (`hol.Units.Where`, `hol.Units.Orders`) : les grands écarts sont en phase **Path** (suivi d'un chemin du navmesh) ;
+  le Paysan #17, du bois aux baies, passe à 7 m du coin du centre ; #18 sort du bois par un arc de 10 m de rayon.
+- **Cause** : en phase Path, `UHOLFullSpeedProcessor` gardait la direction du pilotage de Mass (~50°/s). **Correctif**
+  (`hol.Units.PathAim 1`) : viser le point du suivi de Mass plus 1 m le long du chemin, à chaque pas. A/B même scénario :
+  marches anormalement longues **37 → 2**, mètres de trop 647 → 18, pire cas 44 → 9,6 m.
+- **Poche du navmesh** : un Paysan à (-14366, -1845), entre les deux premiers arbres du bois, « manquait » le dépôt 6 fois
+  sans bouger puis abandonnait sa charge (vu avec et sans les correctifs) ; `hol.Nav.Path` depuis ce point : chemin
+  partiel de 0 m, une île fermée du navmesh. Correctif : chemin partiel finissant à moins de 2 m du départ → marche droite
+  vers la place. Ensuite : dépôts manqués **15 → 0**, 4 sorties de poche, 71 déchargements (meilleur des essais).
+- Un plantage pendant les mesures (19 h 28) : assertion du moteur au démarrage (`InheritedContext.cpp:130`, chargement des
+  modules, avant tout code du jeu) ; même essai relancé aussitôt, sans problème. La fenêtre de plantage est apparue chez
+  l'utilisateur : mesures lancées une par une ensuite.
+- `quick_check` **PASS en 75 s**, tests 36/36. S2 et S7 courts en A/B (trois ProjectShiva ouverts : absolus non
+  comparables, tous au-dessus de 3 ms) : le premier lancé de chaque paire est toujours le plus lent ; en moyenne sur les deux
+  ordres, `HOLFullSpeedProcessor` 0,373 ms avec contre 0,368 sans ; S7 1 174 contre 1 158 bois/s ; S2 393 contre 387
+  paires l'une sur l'autre à la fin. **S2 et S7 au repos à refaire** (S7 n'avait que 0,09 ms de marge).
+- **Non commité**. Reprise : nouvel essai de l'utilisateur, puis commit de J5b.2 + D308, puis J5b.3.
+
+### 2026-10-15 (suite) — 2e essai de J5b.2 ; D309 (récolteurs fantômes, source sans place) ; fin de séance
+
+- **Mesures de D308 terminées** : `quick_check` PASS (75 s) ; S2 et S7 courts en A/B (trois ProjectShiva ouverts) :
+  aucun coût mesurable, recouvrements inchangés ; détail dans l'entrée précédente.
+- **2e essai de l'utilisateur** : moins de gros détours, mais les Paysans se gênent devant le centre. Demandes : (1) deux
+  Paysans peuvent se traverser sur le chemin automatique ressource ↔ centre, pas sur un ordre du joueur, sans
+  s'empiler à la ressource ; (2) ordre ou ralliement sur une ressource (n'importe laquelle) sans place libre autour :
+  la même ressource tout près, sinon inactif devant. Deux questions posées → **D309** (« toutes les unités » traversées,
+  8 m).
+- **Fait** : `IsGhost` (activité `GatherTrip`, `hol.Units.GhostTrips`) dans `UHOLFullSpeedProcessor` (un fantôme ne
+  regarde pas en avant et n'est pas un corps pour les autres) et `UHOLUnitSeparationProcessor` (ni ne pousse ni n'est
+  poussé) ; `HOLGather::NoRoomSourceDistance` (800 cm) pour une source entourée et après 3 places manquées ;
+  `UHOLGatherProcessor::StandBeforeSource` (fin de la récolte, ordre de marche ordinaire devant la source, 150 cm au-delà
+  des deux corps, charge gardée) ; attente de 3 s retirée (`WaitSteps`) ; compteur `NoSpotStops` (S7 : « idle for want
+  of a free spot »).
+- Un essai de compilation refusé pendant l'essai de l'utilisateur (Live Coding actif tant que le jeu est ouvert) ; jeu
+  fermé, **compile sans avertissement**, `quick_check` **PASS en 75 s**, tests 36/36. Pas encore d'essai scripté de D309.
+- **Arrêt de la séance demandé par l'utilisateur.** Rien n'est commité (J5b.2, D307, D308, D309 attendent sa validation).
+- **Reprise (nouvelle séance)** : lancer la session d'essai (deuxième écran) pour le **3e essai** de l'utilisateur ; au
+  besoin d'abord un essai scripté de D309 (`Saved_Tests\detours2.seq` avec `hol.Gather.LogWalks 1` : marches longues,
+  « no room » dans le journal) ; puis commit (chemins explicites, sans les lignes du plan de J6 tenues par l'autre
+  session si elles ne sont pas commitées), S2 / S7 courts au repos, **J5b.3**.
+
+### 2026-10-15 (nouvelle séance) — Règle des sous-agents ; essai scripté de D309
+
+- **Règle des sous-agents** écrite (demande de l'utilisateur, voir sous « Prochaine étape exacte ») : le chantier se
+  mène en sous-agents autant que possible.
+- Essai scripté de D309 confié à un sous-agent (hors écran : `detours2.seq` avec `hol.Gather.LogWalks 1`, scénario
+  « source sans place ») avant le 3e essai de l'utilisateur. Rien de commité.
+- **Résultat de l'essai scripté** (hors écran, `detours2.seq` + `d309_sampled.seq`, `d309_noroom.seq`,
+  `d309_loadkept.seq` dans `Saved_Tests`) : marches anormalement longues **2 → 0**, mètres de trop 18 → 0, dépôts
+  manqués 0 ; « source sans place » conforme (filon à 40 Paysans : 11 récoltent, 29 inactifs devant ; buisson : 20
+  placés sur lui et ses voisins à 8 m, 20 inactifs ; charge de baies gardée devant un filon plein). **Défaut** : des
+  récolteurs **s'empilent** à la source (deux Paysans à 1 cm sur l'arbre 0, paires à 19-53 cm aux baies) : la
+  séparation n'écarte plus deux Paysans arrêtés, et la réservation des places semble perdue (point non projeté
+  comparé au point projeté, à 1 cm près) ou ignore les places des sources voisines. Aussi : une source épuisée mène à
+  la voisine la plus proche à 15 m **sans vérifier qu'elle a de la place**. À signaler à l'essai : avec 20 Paysans sur
+  un arbre, 4 ou 5 restent inactifs (les arbres à 8 m n'ont que 16 places), conforme à D309 mais visible ; des
+  fantômes partis ensemble marchent superposés.
+- **Correctif confié à un sous-agent** : places réservées sur le point réel, jamais deux places à moins de deux corps
+  (même source ou voisines), source épuisée → voisine avec une place libre à 15 m. Puis 3e essai de l'utilisateur.
+- **Correctif de l'empilement fait** (sous-agent, non commité) : trois causes confirmées (point réservé non projeté
+  effacé à 1 cm près ; réservations rangées par source, les cercles de places de deux arbres à 2,2 m se recouvrant ;
+  `OnSourceGone` sans contrôle de place). `HOLGather::FHOLSpotClaims` (grille de 200 cm, toutes sources, 3 × 3 cellules
+  par recherche), `FindSourceSpot` réserve le point projeté, écart de 140 cm vérifié avant et après la projection,
+  `IsSpotTaken`, source épuisée → plus proche à 15 m avec une place libre (sinon inactif devant) ; test
+  `Gather.Spots` (tests 37/37). Distance minimale entre récolteurs arrêtés : bois **1 → 128 cm**, baies 24 → 142 cm ;
+  marches longues et dépôts manqués 0. **Contrepartie** : bois à 20 Paysans 16 / 4-5 inactifs → **11 / 9** ; baies 15 / 5
+  (géométrie réelle à 140 cm). Réglages possibles si trop : 120 cm entre sources différentes, ou rayon de 8 m élargi
+  (à décider avec l'utilisateur). Compile sans avertissement, `quick_check` **PASS en 76 s**. S7 non mesuré (à faire
+  avec S2 / S7 courts). Scénario `Saved_Tests\d309_gone.seq` (source épuisée). Les lancements doivent passer des
+  chemins **absolus** à `-abslog` et `hol.Test.Run` (relatifs au dossier du moteur sinon).
+- Suite : **3e essai de l'utilisateur** (session sur le deuxième écran).
+- **3e essai de l'utilisateur** : « les slots se stackent (sûrement le multi ressources ?) » ; capture : amas de 3 à
+  4 Paysans entre deux arbres d'une lisière, les autres bien espacés. Piste principale : les **inactifs devant une
+  source pleine** (D309) reçoivent le même point et deux unités arrêtées ne s'écartent jamais ; autres pistes : fantôme
+  arrêté sans place, changement de ressource. Enquête et correctif confiés à un sous-agent (compilation après la
+  fermeture du jeu de l'utilisateur).
+- **Correctif de l'amas fait** (sous-agent, non commité) : cause confirmée par `Saved_Tests\d309_mixed.seq` (36 Paysans
+  sur un arbre, groupes envoyés aux baies, à un filon puis renvoyés au bois, ordres sur des arbres voisins) : les 54
+  chevauchements étaient **tous un récolteur et un inactif** : le rang des inactifs devant la source débordait sur
+  l'anneau des places de récolte (de la source ou d'un arbre voisin), un fantôme arrivait sur sa place occupée et deux
+  unités arrêtées ne s'écartent jamais. Fait : `HOLGather::GetStandPoints` (rangées devant la source, 140 cm au-delà de
+  l'anneau, pas de 141 cm) et `IsClearOfSpots` ; `UHOLGatherProcessor::FindStandPoint` (point d'attente réservé dans
+  `FHOLSpotClaims`, tenu tant que l'inactif y va ou s'y tient) ; `FHOLGatherFragment::bSettling` : un Paysan qui
+  arrive à sa place regarde une fois autour de lui dans la séparation (filet pour un inactif posé là par le joueur, peut
+  le pousser d'~40 cm). `Gather.Spots` étendu. Distance minimale entre Paysans arrêtés **19 → 117-120 cm** ; quick_check
+  **PASS en 70 s**, tests 37/37. Reste : beaucoup d'inactifs (36 Paysans sur un arbre : 11 récoltent), S7 non mesuré.
+- Session d'essai relancée pour la suite du 3e essai.
+- **Suite du 3e essai : D309 précisée** (pas de nouveau numéro : D315 à D317 sont prises par la review du GDD, dans
+  une autre session). L'utilisateur : « quand tu cliques, tu vas sur la ressource ; si tu n'as pas de place, tu regardes
+  autour ; s'ils n'ont pas de place, tu regardes à côté des voisins […] si 175 Paysans vont sur une forêt, ils vont
+  entièrement entourer la forêt ». Règle : les sources de même ressource reliées de proche en proche (8 m) forment un
+  **massif** ; sans place, recherche dans tout le massif en s'étendant depuis la source visée ; inactif devant seulement
+  si tout le massif est plein ; un filon isolé ne mène jamais à un autre filon. Même recherche pour une source épuisée
+  (au lieu des 15 m de D296). Confiée à un sous-agent (compilation après la fermeture du jeu de l'utilisateur).
+- **Massifs faits** (sous-agent, non commité) : `HOLGather::FHOLSourceMassifs` (liens à 8 m sur toutes les sources,
+  épuisées comprises : une souche ne coupe pas le massif ; calculés une fois par une grille de 8 m ; recherche par
+  proximité de la source visée, première source avec une place), `FindMassifSpot`, sources trouvées pleines notées pour
+  le pas ; ordre, ralliement, 3 places manquées et source épuisée passent par le massif (**les 15 m de D296
+  disparaissent**, `FindNeighbourSource` retiré). Test `Gather.Massif` (tests 38/38). 36 Paysans sur un arbre :
+  **11 / 25 → 33 / 3** ; 175 sur l'arbre d'angle : ~30 récoltent (capacité du bois au pas de 140 cm), bois ceinturé
+  jusqu'à 17,9 m ; 175 sur un filon : 0 vers un autre filon ; source épuisée à 20 Paysans : 0 inactif en 180 s.
+  Dépôts manqués 0 ; quelques marches longues = contournement du bois par ceux de l'autre côté. `quick_check`
+  **PASS en 98 s**. S7 court 2,72 ms PASS sur machine chargée (récolte 0,221 → 0,310 ms) : **à refaire au repos**.
+  Restent : (1) à 175, plus de points d'attente libres → les inactifs en trop reçoivent un même point devant la source
+  et s'écrasent dans le bois (paires à 108-111 cm) : à décider avec l'utilisateur ; (2) le côté opposé du bois passe
+  avant le bout du côté proche (ordre par distance à l'arbre cliqué).
+- Session d'essai relancée.
+- **Suite de l'essai** (capture d'AoE4, 37 villageois au bois) : « les unités peuvent être plus stackées ». Voulu :
+  Paysans serrés contre la **lisière tournée vers le dépôt**, 2 à 4 par arbre, corps qui se chevauchent à moitié,
+  aucun de l'autre côté du bois. Confié à un sous-agent : écart des places ~70 cm (`hol.Gather.SpotSpacing`), anneau
+  plus dense, places et sources du massif triées vers le dépôt (répond aussi au point 2). Question des inactifs en trop
+  à 175 (A rangées sans limite / B autour du massif / C tel quel) laissée en suspens.
+- **Paysans serrés, lisière proche d'abord** (sous-agent, non commité) : écart des places **70 cm** (`hol.Gather.SpotSpacing`,
+  140 = ancien), un rang régulier (`HOLGather::GetSourceSpots` : 11 places autour d'un arbre au lieu de 5, 16 autour d'un
+  buisson, 33 autour d'un filon), places triées depuis la face tournée vers le dépôt (`FindSourceDeposit`), massif trié
+  par distance à l'emprise du dépôt + 0,5 × distance à l'arbre cliqué (`MassifStartWeight`) ; séparation : un récolteur
+  à sa source et une unité arrêtée ne sont écartés que jusqu'à 65 cm (un marcheur pousse toujours à 120 cm) ; points
+  d'attente des inactifs inchangés (140 cm). Pas de second rang (hors contact, D296). Tests `Gather.Spots` et
+  `Gather.Massif` mis à jour, 38/38. **37 Paysans sur un arbre de la lisière proche : 37 récoltent, 0 inactif, 0 de
+  l'autre côté** (21 sur la lisière proche, 2 à 4 par arbre, 16 sur les petits côtés ; capture `near37.png`) ; filon
+  à 40 : 11 / 29 → 28 / 12 ; 175 sur le bois : 52 récoltent. Distance minimale entre arrêtés 65-76 cm (61-64 cm
+  récolteur / inactif sans point à lui, à 175). Marches longues 0 hors du cas à 175. `quick_check` **PASS en 97 s** ;
+  **S7 court 2,394 ms PASS** (CPU ~40 %), récolte 0,214 ms. À lire : S7 compte ~1 390 paires « l'une sur l'autre »
+  (voulu) ; S7 à 632 bois/s (fenêtre de 10 s entre deux vagues ? à vérifier sur un S7 plus long).
+- Session d'essai relancée.
+- **Essai validé** par l'utilisateur (2026-10-16) : « très bien » avec `hol.Gather.SpotSpacing 100` → valeur par
+  défaut passée à 100 cm (sous-agent : compilation, `quick_check`). D309 précisée dans « Décisions » (massifs, places
+  serrées vers le dépôt, points d'attente des inactifs ; remplace les 15 m de D296). **J5b.2 commitée** (sans les
+  lignes du plan de J6, tenues par l'autre session).
+
+### 2026-10-16 — Préparation de J5b.3 (vérification de J5b)
+
+Ce que J5b.3 doit montrer (D299, plan de J5), mené en sous-agents (un seul à la fois compile ou lance le jeu) :
+1. **`quick_check` solo** : ajouter à la partie « gather » : ralliement sur des baies (le Paysan né y récolte, stock de
+   nourriture qui ne monte qu'au dépôt) ; un massif vidé (petit bois ou buissons épuisés par triche) → Paysans
+   inactifs devant, compteur « Inactifs : N », touche « . » qui les parcourt ; un ordre sur un arbre entouré → arbre
+   voisin du massif (D309 précisée) ; aucune paire de Paysans arrêtés sous ~90 cm.
+2. **`quick_check` 2 clients** : comptes par ressource « (N) » et inactifs justes chez chaque client pour lui seul ;
+   source sélectionnée chez l'un, « Reste » qui baisse chez les deux ; activité `GatherTrip` vue de l'autre.
+3. **Mesures au repos** (ProjectShiva fermés si possible, sinon A/B) : S2 et S7 courts (D308, D309 changent suivi des
+   chemins, corps et places) — **S7 sur une fenêtre plus longue** pour comprendre la chute à ~632 bois/s (contre
+   1 158-1 403) ; S5 court sur serveur recuit (activité répliquée qui a changé de sens, marge 0,9 Ko/s).
+4. **Essai de l'utilisateur** (4 ressources, HUD, inactifs), puis clôture de J5b (D306-D309 au GDD avec J5c.4 ou
+   tout de suite, au choix).
+En suspens : question A / B / C des inactifs en trop à 175 (voir « Prochaine étape exacte », point 13).
+Ensuite **J5c** (animations, charge visible, « +10 ») : le repérage montre qu'aucune animation de récolte n'existe
+dans le projet ; il faudra une décision de l'utilisateur sur la source (Mixamo, Fab, Control Rig, pis-aller des coups
+d'épée).

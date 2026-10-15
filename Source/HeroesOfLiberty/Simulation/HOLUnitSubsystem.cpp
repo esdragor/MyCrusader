@@ -655,7 +655,7 @@ FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const
 			*Record.TypeName.ToString(), Record.OwnerPlayer, Location.X, Location.Y, Location.Z,
 			LOD ? static_cast<int32>(LOD->LOD) : -1, LOD ? static_cast<int32>(LOD->Visibility) : -1,
 			Representation ? static_cast<int32>(Representation->CurrentRepresentation) : -1,
-			State && State->Activity == EHOLUnitActivity::Moving ? TEXT("moving") : TEXT("idle")));
+			State ? *StaticEnum<EHOLUnitActivity>()->GetNameStringByValue(static_cast<int64>(State->Activity)) : TEXT("no state")));
 	}
 	return FString::Printf(TEXT("%d units: %s"), Units.Num(), *FString::Join(Lines, TEXT("; ")));
 }

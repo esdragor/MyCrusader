@@ -9,6 +9,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLPlayerState.h"
@@ -25,17 +26,29 @@
 
 namespace UE::HeroesOfLiberty::Gather
 {
+	int32 LogWalks = 0;
+	FAutoConsoleVariableRef CVarLogWalks(TEXT("hol.Gather.LogWalks"), LogWalks,
+		TEXT("1: every gathering walk much longer than the straight line is logged at its end (D308: what was walked, from where to where)"));
+
 	int32 LogDeposits = 0;
 	FAutoConsoleVariableRef CVarLogDeposits(TEXT("hol.Gather.LogDeposits"), LogDeposits,
 		TEXT("1: every unload at a deposit is logged (scripted checks of J5: the stock rises at the deposit only)"));
+
+	float SpotSpacing = 100.f;
+	FAutoConsoleVariableRef CVarSpotSpacing(TEXT("hol.Gather.SpotSpacing"), SpotSpacing,
+		TEXT("Distance (cm) between two gatherers' spots, at one source or two side by side (D309): two Peasants' bodies (60 cm radius) overlapping a little, ")
+		TEXT("pressed against a wood's edge as in AoE IV (the user's trial of D309: 70 overlapped by half, too tight); 140: two bodies and a gap, as before"));
 
 	/**
 	 * Gap (cm) between the bodies of a gatherer standing at its spot and its source: the navmesh ends one agent radius
 	 * from a source, a spot a little inside it is reached exactly (on its edge, the unit stopped 12 cm short).
 	 */
 	constexpr double SpotGap = 15.;
-	/** Gap (cm) between two gatherers' bodies at their spots around a source. */
-	constexpr double SpotSpacingGap = 20.;
+	/**
+	 * Gap (cm) between two idle gatherers' bodies at their points in front of a full source, and between those points and
+	 * the gatherers' spots (D309): they never overlap, nor stand on a spot.
+	 */
+	constexpr double StandSpacingGap = 20.;
 	/**
 	 * A gatherer pushed farther than this (cm, body to body) from its source walks back to its spot (S7: at 60 cm, the
 	 * passers-by made the gatherers walk back and forth).
@@ -45,17 +58,17 @@ namespace UE::HeroesOfLiberty::Gather
 	constexpr double ArrivalGap = 60.;
 	/** Distance (cm) the navmesh must be open outward from a spot, away from its source. */
 	constexpr double OpenOutwardDistance = 300.;
-	/**
-	 * Largest angle (radians) between two spots tried around a source, from the side facing the gatherer: 30 degrees
-	 * around a tree or a bush; around a vein (J5b.1), as close as two gatherers stand, so that more of them fit.
-	 */
-	constexpr double MaxSpotStep = UE_DOUBLE_PI / 6.;
 	/** Arrivals that missed their spot in a row before a gatherer tries a neighbour of its source. */
 	constexpr int32 MaxSourceMisses = 3;
 	/** Arrivals that missed the deposit in a row before a carrier gives up and stands, its load kept. */
 	constexpr int32 MaxDepositMisses = 6;
-	/** Steps a gatherer waits when no spot is free at its source nor at its neighbours (3 s: each try looks around them all). */
-	constexpr uint16 NoSpotWaitSteps = 60;
+	/**
+	 * Gap (cm) between the body of a gatherer with no room and its source, where it stands idle when no point of the rows
+	 * in front is free (D309): the place of an order, among the units standing there.
+	 */
+	constexpr double StandBeforeGap = 150.;
+	/** Rows of points in front of a source where its idle gatherers stand, one per unit (D309, 3rd trial of J5b.2). */
+	constexpr int32 StandRows = 6;
 	/** Gap (cm) between a carrier's body and the deposit at its unloading spot. */
 	constexpr double DepositSpotGap = 20.;
 	/** Slide (cm) along the deposit's wall of each new try after a missed unloading spot. */
@@ -80,6 +93,11 @@ namespace UE::HeroesOfLiberty::Gather
 }
 
 UHOLGatherProcessor::FCounters UHOLGatherProcessor::Counters;
+
+double UHOLGatherProcessor::GetSpotSpacing()
+{
+	return FMath::Max(1., static_cast<double>(UE::HeroesOfLiberty::Gather::SpotSpacing));
+}
 
 UHOLGatherProcessor::UHOLGatherProcessor()
 	: EntityQuery(*this)
@@ -119,10 +137,14 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	Step.NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 	Step.NavData = Step.NavSystem ? Step.NavSystem->GetDefaultNavDataInstance() : nullptr;
 	Step.StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	// Spots taken since the last step, and spots left: every source may have room again (D309).
+	FullSources.Init(false, Step.Sources->GetSources().Num());
 
 	RefreshDeposits(*World);
 	ApplyGatherOrders(Step);
 
+	// Each player's gatherers by resource, counted again at every step (J5b, D307).
+	GathererCounts.Reset();
 	EntityQuery.ForEachEntityChunk(Context, [this, &Step](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLGatherFragment> Gathers = Context.GetMutableFragmentView<FHOLGatherFragment>();
@@ -132,6 +154,8 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
+			// Settled at the last step's separation (D309).
+			Gathers[EntityIt].bSettling = false;
 			if (!Gathers[EntityIt].IsGathering())
 			{
 				continue;
@@ -139,8 +163,14 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			FGatherer Gatherer{ Context.GetEntity(EntityIt), Gathers[EntityIt], Moves[EntityIt], States[EntityIt],
 				Transforms[EntityIt].GetTransform().GetLocation(), States[EntityIt].OwnerPlayer, Constants };
 			Advance(Step, Gatherer);
+			if (Gatherer.Gather.IsGathering())
+			{
+				SyncActivity(Gatherer);
+				CountGatherer(Step, Gatherer);
+			}
 		}
 	});
+	PublishGathererCounts(Step);
 }
 
 void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
@@ -204,7 +234,6 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 			Gather.Phase = EHOLGatherPhase::ToSource;
 			Gather.bWalkIssued = false;
 			Gather.Misses = 0;
-			Gather.WaitSteps = 0;
 			++NumGatherers;
 		}
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d: %d units to source %d (%s)%s"), Order.PlayerIndex, NumGatherers,
@@ -221,6 +250,24 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 	const FHOLSource* Source = bHasSource ? &Sources[Gather.SourceIndex] : nullptr;
 	// Its walk is over: the order it gave itself was applied (a new serial), then ended (no phase).
 	const bool bArrived = Gather.bWalkIssued && Gatherer.Move.OrderSerial != Gather.OrderSerialBefore && Gatherer.Move.Phase == EHOLMovePhase::None;
+	if (Gather.bWalkIssued)
+	{
+		Gather.Walked += static_cast<float>(FVector::Dist2D(Gatherer.Location, Gather.LastLocation));
+		Gather.LastLocation = Gatherer.Location;
+		Gather.WalkSteps = static_cast<uint16>(FMath::Min<int32>(Gather.WalkSteps + 1, MAX_uint16));
+		const FVector2D Line = FVector2D(Gather.Spot - Gather.WalkStart).GetSafeNormal();
+		const FVector2D FromStart(Gatherer.Location - Gather.WalkStart);
+		Gather.MaxLateral = FMath::Max(Gather.MaxLateral, static_cast<float>(FMath::Abs(FVector2D::CrossProduct(Line, FromStart))));
+		const double Straight = FVector::Dist2D(Gather.WalkStart, Gatherer.Location);
+		// Once, at the end of a walk (gathering at its source, it still counts as arrived).
+		if (bArrived && Gather.Phase != EHOLGatherPhase::Gathering && LogWalks != 0 && Gather.Walked > Straight * 1.3 + 300.)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Gather walk: %s, %.0f cm walked for %.0f cm straight in %.1f s, %.0f cm off the line at most, from (%.0f, %.0f) to (%.0f, %.0f), spot (%.0f, %.0f)"),
+				Gather.Phase == EHOLGatherPhase::ToDeposit ? TEXT("to deposit") : TEXT("to source"), Gather.Walked, Straight,
+				Gather.WalkSteps * Step.StepSeconds, Gather.MaxLateral, Gather.WalkStart.X,
+				Gather.WalkStart.Y, Gatherer.Location.X, Gatherer.Location.Y, Gather.Spot.X, Gather.Spot.Y);
+		}
+	}
 
 	switch (Gather.Phase)
 	{
@@ -230,7 +277,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		{
 			if (Source)
 			{
-				OnSourceGone(Step, Gatherer, Source->Resource, Source->Location);
+				OnSourceGone(Step, Gatherer);
 			}
 			else
 			{
@@ -245,11 +292,6 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		}
 		if (!Gather.bWalkIssued)
 		{
-			if (Gather.WaitSteps > 0)
-			{
-				--Gather.WaitSteps;
-				return;
-			}
 			WalkToSource(Step, Gatherer);
 			return;
 		}
@@ -263,16 +305,18 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			StartGathering(Gatherer);
 			return;
 		}
-		// Short of its spot (taken by another body, or pushed): another spot, then a neighbour.
+		// Short of its spot (taken by another body, or pushed): another spot, then the nearest source of its massif with a
+		// free spot, claimed until its walk there (D309); its massif full, its own source again.
 		Gather.bWalkIssued = false;
 		++Counters.MissedSpots;
 		if (++Gather.Misses >= MaxSourceMisses)
 		{
-			TArray<int32> Neighbours;
-			FindNeighbours(Step, Source->Resource, Source->Location, Gather.SourceIndex, Neighbours);
-			if (Neighbours.Num() > 0)
+			FVector Spot;
+			const int32 Other = FindMassifSpot(Step, Gatherer, Gather.SourceIndex, Spot);
+			if (Other != INDEX_NONE)
 			{
-				Gather.SourceIndex = Neighbours[0];
+				Gather.SourceIndex = Other;
+				Gather.Spot = Spot;
 			}
 			Gather.Misses = 0;
 		}
@@ -284,7 +328,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		{
 			if (Source)
 			{
-				OnSourceGone(Step, Gatherer, Source->Resource, Source->Location);
+				OnSourceGone(Step, Gatherer);
 			}
 			else
 			{
@@ -302,7 +346,6 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			return;
 		}
 		int32 Remaining = Source->Remaining;
-		const FVector GoneLocation = Source->Location;
 		const EHOLResource Resource = Source->Resource;
 		const EHOLResource Carried = Gather.Load.Resource;
 		int32 Lost = 0;
@@ -324,7 +367,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		}
 		else if (Remaining <= 0)
 		{
-			OnSourceGone(Step, Gatherer, Resource, GoneLocation);
+			OnSourceGone(Step, Gatherer);
 		}
 		return;
 	}
@@ -352,7 +395,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			}
 			else if (Source)
 			{
-				OnSourceGone(Step, Gatherer, Source->Resource, Source->Location);
+				OnSourceGone(Step, Gatherer);
 			}
 			else
 			{
@@ -390,37 +433,133 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 
 	// Already touching it (a player ordered it to the tree beside it): no walk.
 	if (HOLGather::IsInContact(FVector2D(Gatherer.Location), BodyRadius, FHOLGatherSite{ FVector2D(Source.Location), Source.Radius })
-		&& !SpotClaims.FindRef(Gather.SourceIndex).ContainsByPredicate([&Gatherer, BodyRadius](const FSpotClaim& Claim)
-		{
-			return Claim.Entity != Gatherer.Entity && FVector2D::Distance(Claim.Spot, FVector2D(Gatherer.Location)) < 2. * BodyRadius;
-		}))
+		&& !IsSpotTaken(Step, FVector2D(Gatherer.Location), GetSpotSpacing(), Gatherer.Entity))
 	{
 		Gather.Spot = Gatherer.Location;
-		SpotClaims.FindOrAdd(Gather.SourceIndex).Add({ Gatherer.Entity, FVector2D(Gatherer.Location) });
+		SpotClaims.Add(Gatherer.Entity.AsNumber(), Gather.SourceIndex, FVector2D(Gatherer.Location));
 		StartGathering(Gatherer);
 		return;
 	}
 
+	// Its spot on the side facing the deposit it will unload at (the user's trial of D309, after AoE IV).
 	FVector Spot;
-	if (FindSourceSpot(Step, Gather.SourceIndex, Gatherer.Location, BodyRadius, Gatherer.Entity, Spot))
+	if (FindSourceSpot(Step, Gather.SourceIndex, Gatherer.Location, BodyRadius, Gatherer.Entity, Spot, FindSourceDeposit(Gatherer.OwnerPlayer, Source)))
 	{
 		IssueWalk(Step, Gatherer, Spot);
 		return;
 	}
-	// Its source is surrounded: the nearest neighbour with a free spot (the gatherers spread along the wood's edge).
-	TArray<int32> Neighbours;
-	FindNeighbours(Step, Source.Resource, Source.Location, Gather.SourceIndex, Neighbours);
-	for (const int32 Neighbour : Neighbours)
+	// Full for it, full for the others too (its own claim was no obstacle).
+	if (FullSources.IsValidIndex(Gather.SourceIndex))
 	{
-		if (FindSourceSpot(Step, Neighbour, Gatherer.Location, BodyRadius, Gatherer.Entity, Spot))
+		FullSources[Gather.SourceIndex] = true;
+	}
+	// Its source is surrounded: the nearest source of its massif with a free spot, from it outward (the user's rule at
+	// the 3rd trial of J5b.2: the gatherers fill the wood from the tree clicked and surround it, round the patch of
+	// berries; a vein alone has no other, D309).
+	const int32 Other = FindMassifSpot(Step, Gatherer, Gather.SourceIndex, Spot);
+	if (Other != INDEX_NONE)
+	{
+		Gather.SourceIndex = Other;
+		IssueWalk(Step, Gatherer, Spot);
+		return;
+	}
+	// The whole massif full: idle in front of the source it was sent to.
+	++Counters.NoSpotStops;
+	StandBeforeSource(Step, Gatherer, Source);
+}
+
+void UHOLGatherProcessor::StandBeforeSource(const FStepContext& Step, FGatherer& Gatherer, const FHOLSource& Source)
+{
+	using namespace UE::HeroesOfLiberty::Gather;
+	// In front of it as seen from the gatherer, its load kept: an idle worker (the HUD's counter, the "." key) the player
+	// sends elsewhere; it no longer waits there for a spot, unseen (D309).
+	FVector2D Away = FVector2D(Gatherer.Location) - FVector2D(Source.Location);
+	if (!Away.Normalize())
+	{
+		Away = FVector2D(1., 0.);
+	}
+	const float BodyRadius = Gatherer.Constants.Radius;
+	FVector Front = Source.Location + FVector(Away * (Source.Radius + BodyRadius + StandBeforeGap), 0.);
+	// Its own point, claimed as the gatherers' spots are: two idle gatherers never stand on one point, nor on a
+	// gatherer's spot, of this source or of one beside it (the user's 3rd trial of J5b.2: gatherers walking through
+	// every unit landed on the idle ones standing there, and two units at rest never part).
+	const bool bClaimed = FindStandPoint(Step, Source, Gatherer.Location, BodyRadius, Gatherer.Entity, Front);
+	const uint32 UnitId = Step.Units->FindUnitId(Gatherer.Entity);
+	Stop(Gatherer);
+	if (bClaimed)
+	{
+		// The claim lasts while it walks there or stands there (IsSpotTaken).
+		Gatherer.Gather.Spot = Front;
+		Gatherer.Gather.OrderSerialBefore = Gatherer.Move.OrderSerial;
+	}
+	if (UnitId != 0)
+	{
+		const uint32 UnitIds[] = { UnitId };
+		// To its point exactly; with none free, among the units standing in front as for a player's order.
+		Step.Commands->IssueMoveOrder(UnitIds, Front, INDEX_NONE, /*bFromTask*/ bClaimed);
+	}
+	if (LogDeposits != 0)
+	{
+		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d found no room in its massif, it stands idle in front of it at (%.0f, %.0f)%s"),
+			Gatherer.OwnerPlayer, Front.X, Front.Y, bClaimed ? TEXT("") : TEXT(", no point of its own free"));
+	}
+}
+
+bool UHOLGatherProcessor::FindStandPoint(const FStepContext& Step, const FHOLSource& Source, const FVector& From, const float BodyRadius,
+	const FMassEntityHandle Self, FVector& OutPoint)
+{
+	using namespace UE::HeroesOfLiberty::Gather;
+	const FVector2D Centre(Source.Location);
+	const double SpotOffset = BodyRadius + SpotGap;
+	// Clear of the circle of spots, however close they stand on it (hol.Gather.SpotSpacing): that rule is the idle ones'.
+	const double Spacing = 2. * BodyRadius + StandSpacingGap;
+	const double SpotDistance = Source.Radius + SpotOffset;
+
+	// The sources whose spots a row may meet: none of their spots is stood on, used or not.
+	const double Reach = SpotDistance + (StandRows + 1) * Spacing;
+	TArray<FHOLGatherSite, TInlineAllocator<32>> Sites;
+	for (const FHOLSource& Other : Step.Sources->GetSources())
+	{
+		if (Other.IsStanding() && FVector::DistSquared2D(Other.Location, Source.Location) <= FMath::Square(Reach + Other.Radius + SpotOffset + Spacing))
 		{
-			Gather.SourceIndex = Neighbour;
-			IssueWalk(Step, Gatherer, Spot);
-			return;
+			Sites.Add(FHOLGatherSite{ FVector2D(Other.Location), Other.Radius });
 		}
 	}
-	Gather.WaitSteps = NoSpotWaitSteps;
-	++Counters.NoSpotWaits;
+	TArray<FVector2D> Points;
+	HOLGather::GetStandPoints(Centre, SpotDistance, Spacing, FVector2D(From) - Centre, StandRows, Points);
+	const FVector Extent(25., 25., 300.);
+	for (const FVector2D& Point : Points)
+	{
+		if (!HOLGather::IsClearOfSpots(Point, Sites, SpotOffset, Spacing) || IsSpotTaken(Step, Point, Spacing, Self))
+		{
+			continue;
+		}
+		FVector Found(Point, Source.Location.Z);
+		if (Step.NavSystem && Step.NavData)
+		{
+			FNavLocation OnNav;
+			if (!Step.NavSystem->ProjectPointToNavigation(Found, OnNav, Extent, Step.NavData) || FVector::Dist2D(OnNav.Location, Found) > 20.)
+			{
+				continue;
+			}
+			// Not on one of the wood's islands no path reaches (as the spots, FindSourceSpot).
+			const FVector2D Out = (Point - Centre).GetSafeNormal() * OpenOutwardDistance;
+			FVector Hit;
+			if (Step.NavData->Raycast(OnNav.Location, OnNav.Location + FVector(Out, 0.), Hit, Step.NavData->GetDefaultQueryFilter()))
+			{
+				continue;
+			}
+			Found = OnNav.Location;
+			if (!HOLGather::IsClearOfSpots(FVector2D(Found), Sites, SpotOffset, Spacing) || IsSpotTaken(Step, FVector2D(Found), Spacing, Self))
+			{
+				continue;
+			}
+		}
+		SpotClaims.Add(Self.AsNumber(), INDEX_NONE, FVector2D(Found));
+		OutPoint = Found;
+		return true;
+	}
+	return false;
 }
 
 void UHOLGatherProcessor::WalkToDeposit(const FStepContext& Step, FGatherer& Gatherer)
@@ -448,24 +587,35 @@ void UHOLGatherProcessor::WalkToDeposit(const FStepContext& Step, FGatherer& Gat
 	IssueWalk(Step, Gatherer, FVector(Spot, Deposit.GroundZ));
 }
 
-void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gatherer, const EHOLResource Resource, const FVector& GoneLocation)
+void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gatherer)
 {
 	FHOLGatherFragment& Gather = Gatherer.Gather;
-	TArray<int32> Neighbours;
-	// The source's resource: it may still carry another one (D306).
-	FindNeighbours(Step, Resource, GoneLocation, Gather.SourceIndex, Neighbours);
 	Gather.bWalkIssued = false;
 	Gather.Misses = 0;
-	if (Neighbours.Num() > 0)
+	// The nearest source of its massif with a free spot, from the used-up one outward (a tree felled: the nearest free tree
+	// of the wood), claimed until its walk there, its spot found again then (D309). The source's resource: it may still
+	// carry another one (D306).
+	FVector Spot;
+	int32 NearestStanding = INDEX_NONE;
+	const int32 Other = FindMassifSpot(Step, Gatherer, Gather.SourceIndex, Spot, &NearestStanding);
+	if (Other != INDEX_NONE)
 	{
-		Gather.SourceIndex = Neighbours[0];
+		Gather.SourceIndex = Other;
+		Gather.Spot = Spot;
 		Gather.Phase = EHOLGatherPhase::ToSource;
+		return;
+	}
+	if (NearestStanding != INDEX_NONE)
+	{
+		// The whole massif full: idle in front of the nearest source still standing, its load kept.
+		++Counters.NoSpotStops;
+		StandBeforeSource(Step, Gatherer, Step.Sources->GetSources()[NearestStanding]);
 		return;
 	}
 	Gather.SourceIndex = INDEX_NONE;
 	if (Gather.Load.Amount > 0)
 	{
-		// Nothing left to gather near: it unloads what it carries, then stands (D296).
+		// Nothing left to gather in its massif: it unloads what it carries, then stands (D296).
 		WalkToDeposit(Step, Gatherer);
 		return;
 	}
@@ -496,14 +646,55 @@ void UHOLGatherProcessor::StartGathering(FGatherer& Gatherer)
 {
 	Gatherer.Gather.Phase = EHOLGatherPhase::Gathering;
 	Gatherer.Gather.Misses = 0;
+	Gatherer.Gather.bSettling = true;
 	Gatherer.State.Activity = EHOLUnitActivity::Gathering;
+}
+
+void UHOLGatherProcessor::SyncActivity(FGatherer& Gatherer)
+{
+	// Its round trip shows as one activity from the order to the end (D307): the walks it gives itself start at the next
+	// step and end idle (UHOLUnitOrderProcessor), the waits for a spot stand; none of that is idleness.
+	Gatherer.State.Activity = Gatherer.Gather.Phase == EHOLGatherPhase::Gathering ? EHOLUnitActivity::Gathering : EHOLUnitActivity::GatherTrip;
+}
+
+void UHOLGatherProcessor::CountGatherer(const FStepContext& Step, const FGatherer& Gatherer)
+{
+	// Its source's resource; on its last way to a deposit (its source gone), what it carries.
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	const EHOLResource Resource = Sources.IsValidIndex(Gatherer.Gather.SourceIndex) ? Sources[Gatherer.Gather.SourceIndex].Resource
+		: Gatherer.Gather.Load.Resource;
+	if (!GathererCounts.IsValidIndex(Gatherer.OwnerPlayer))
+	{
+		GathererCounts.SetNum(Gatherer.OwnerPlayer + 1);
+	}
+	++GathererCounts[Gatherer.OwnerPlayer][Resource];
+}
+
+void UHOLGatherProcessor::PublishGathererCounts(const FStepContext& Step) const
+{
+	const AGameStateBase* GameState = Step.Production ? Step.Production->GetWorld()->GetGameState() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	// Every player, those with no gatherer left too (each state sends only when its counts changed).
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+		const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+		if (Slot != INDEX_NONE)
+		{
+			HOLPlayerState->SetGatherers(GathererCounts.IsValidIndex(Slot) ? GathererCounts[Slot] : FHOLResources());
+		}
+	}
 }
 
 void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 {
-	if (Gatherer.State.Activity == EHOLUnitActivity::Gathering)
+	if (Gatherer.State.Activity == EHOLUnitActivity::Gathering || Gatherer.State.Activity == EHOLUnitActivity::GatherTrip)
 	{
-		Gatherer.State.Activity = EHOLUnitActivity::Idle;
+		// Stopped on a walk it gave itself, it ends that walk first.
+		Gatherer.State.Activity = Gatherer.Move.Phase != EHOLMovePhase::None ? EHOLUnitActivity::Moving : EHOLUnitActivity::Idle;
 	}
 	Gatherer.Gather.Phase = EHOLGatherPhase::None;
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
@@ -522,6 +713,11 @@ void UHOLGatherProcessor::IssueWalk(const FStepContext& Step, FGatherer& Gathere
 	FHOLGatherFragment& Gather = Gatherer.Gather;
 	++(Gather.Phase == EHOLGatherPhase::ToDeposit ? Counters.WalksToDeposit : Counters.WalksToSource);
 	Gather.Spot = Spot;
+	Gather.WalkStart = Gatherer.Location;
+	Gather.LastLocation = Gatherer.Location;
+	Gather.Walked = 0.f;
+	Gather.MaxLateral = 0.f;
+	Gather.WalkSteps = 0;
 	Gather.OrderSerialBefore = Gatherer.Move.OrderSerial;
 	Gather.bWalkIssued = true;
 	const uint32 UnitIds[] = { UnitId };
@@ -529,45 +725,28 @@ void UHOLGatherProcessor::IssueWalk(const FStepContext& Step, FGatherer& Gathere
 }
 
 bool UHOLGatherProcessor::FindSourceSpot(const FStepContext& Step, const int32 SourceIndex, const FVector& From, const float BodyRadius,
-	const FMassEntityHandle Self, FVector& OutSpot)
+	const FMassEntityHandle Self, FVector& OutSpot, const FHOLGatherDeposit* Deposit)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
 	const FHOLSource& Source = Step.Sources->GetSources()[SourceIndex];
 	const FVector2D Centre(Source.Location);
 	const double Distance = Source.Radius + BodyRadius + SpotGap;
-	const double MinSpacing = 2. * BodyRadius + SpotSpacingGap;
+	// 100 cm (hol.Gather.SpotSpacing): two gatherers side by side overlap a little, never on one point.
+	const double MinSpacing = GetSpotSpacing();
 
-	// The spots still held: their gatherers still walk to them or gather there.
-	TArray<FSpotClaim>& Claims = SpotClaims.FindOrAdd(SourceIndex);
-	const FMassEntityManager& EntityManager = *Step.EntityManager;
-	Claims.RemoveAll([&EntityManager, SourceIndex, Self](const FSpotClaim& Claim)
-	{
-		if (Claim.Entity == Self || !EntityManager.IsEntityValid(Claim.Entity))
-		{
-			return true;
-		}
-		const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Claim.Entity);
-		return !Gather || Gather->SourceIndex != SourceIndex
-			|| (Gather->Phase != EHOLGatherPhase::ToSource && Gather->Phase != EHOLGatherPhase::Gathering)
-			|| FVector2D::DistSquared(FVector2D(Gather->Spot), Claim.Spot) > 1.;
-	});
-
-	FVector2D Towards = FVector2D(From) - Centre;
+	// The side facing the deposit first (the point of its footprint nearest the source); with none, the gatherer's side.
+	FVector2D Towards = Deposit ? HOLGather::GetDepositSpot(Centre, *Deposit, 0.) - Centre : FVector2D(From) - Centre;
 	if (!Towards.Normalize())
 	{
 		Towards = FVector2D(1., 0.);
 	}
-	const double BaseAngle = FMath::Atan2(Towards.Y, Towards.X);
-	const double SpotStep = FMath::Min(MaxSpotStep, 2. * FMath::Asin(FMath::Min(1., MinSpacing / (2. * Distance))));
-	const int32 SpotTries = FMath::FloorToInt32(2. * UE_DOUBLE_PI / SpotStep + 1e-6);
+	TArray<FVector2D> Spots;
+	HOLGather::GetSourceSpots(Centre, Distance, MinSpacing, Towards, Spots);
 	const FVector Extent(25., 25., 300.);
-	for (int32 Try = 0; Try < SpotTries; ++Try)
+	for (const FVector2D& Spot : Spots)
 	{
-		// 0, +1, -1, +2, -2... steps from the side facing it.
-		const int32 Turn = (Try + 1) / 2;
-		const double Angle = BaseAngle + (Try % 2 == 1 ? 1. : -1.) * Turn * SpotStep;
-		const FVector2D Spot = Centre + Distance * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
-		if (Claims.ContainsByPredicate([&Spot, MinSpacing](const FSpotClaim& Claim) { return FVector2D::DistSquared(Claim.Spot, Spot) < MinSpacing * MinSpacing; }))
+		// Spots of this source and of its neighbours alike (two trees side by side, D309).
+		if (IsSpotTaken(Step, Spot, MinSpacing, Self))
 		{
 			continue;
 		}
@@ -589,39 +768,114 @@ bool UHOLGatherProcessor::FindSourceSpot(const FStepContext& Step, const int32 S
 				continue;
 			}
 			Found = OnNav.Location;
+			// Where it will stand, up to 20 cm off: the spacing holds there too.
+			if (IsSpotTaken(Step, FVector2D(Found), MinSpacing, Self))
+			{
+				continue;
+			}
 		}
-		Claims.Add({ Self, Spot });
+		// The point it walks to and stands on (Gather.Spot): the claim lasts as long as that one (D309; the point off
+		// the navmesh was claimed before, its claim lost once the gatherer's spot differed by more than 1 cm).
+		SpotClaims.Add(Self.AsNumber(), SourceIndex, FVector2D(Found));
 		OutSpot = Found;
 		return true;
 	}
 	return false;
 }
 
-void UHOLGatherProcessor::FindNeighbours(const FStepContext& Step, const EHOLResource Resource, const FVector& Location, const int32 Exclude,
-	TArray<int32>& OutSources) const
+bool UHOLGatherProcessor::IsSpotTaken(const FStepContext& Step, const FVector2D& Spot, const double MinSpacing, const FMassEntityHandle Self)
 {
-	OutSources.Reset();
+	// A claim holds while its gatherer walks to that spot or gathers there, at the same source; an idle gatherer's point
+	// in front of a full source, while it walks there or stands there, sent nowhere else (D309).
+	const FMassEntityManager& EntityManager = *Step.EntityManager;
+	return SpotClaims.IsTaken(Spot, MinSpacing, Self.AsNumber(), [&EntityManager](const FHOLSpotClaims::FClaim& Claim)
+	{
+		const FMassEntityHandle Entity = FMassEntityHandle::FromNumber(Claim.Owner);
+		if (!EntityManager.IsEntityValid(Entity))
+		{
+			return true;
+		}
+		const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+		if (Gather && Claim.SourceIndex == INDEX_NONE)
+		{
+			// Its walk there not applied yet (the same order serial), or applied: its slot is that point.
+			const FHOLMoveOrderFragment* Move = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+			return !Move || Gather->Phase != EHOLGatherPhase::None || FVector2D::DistSquared(FVector2D(Gather->Spot), Claim.Spot) > 1.
+				|| (Move->OrderSerial != Gather->OrderSerialBefore && FVector2D::DistSquared(FVector2D(Move->Slot), Claim.Spot) > 1.);
+		}
+		return !Gather || Gather->SourceIndex != Claim.SourceIndex
+			|| (Gather->Phase != EHOLGatherPhase::ToSource && Gather->Phase != EHOLGatherPhase::Gathering)
+			|| FVector2D::DistSquared(FVector2D(Gather->Spot), Claim.Spot) > 1.;
+	});
+}
+
+int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGatherer& Gatherer, const int32 FromSource, FVector& OutSpot,
+	int32* OutNearestStanding)
+{
 	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
-	const double MaxDistanceSquared = FMath::Square(HOLGather::NeighbourSourceDistance);
-	TArray<TPair<double, int32>> Found;
-	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	if (OutNearestStanding)
 	{
+		*OutNearestStanding = INDEX_NONE;
+	}
+	if (!Sources.IsValidIndex(FromSource))
+	{
+		return INDEX_NONE;
+	}
+	// The edge facing the deposit it will unload at first, from FromSource along it (the user's trial of D309, after AoE
+	// IV: the wood's other side only once that edge is full), and each source's spots facing that deposit.
+	const FHOLGatherDeposit* Deposit = FindSourceDeposit(Gatherer.OwnerPlayer, Sources[FromSource]);
+	return GetMassifs(Step).Search(FromSource, [this, &Step, &Gatherer, &Sources, &OutSpot, OutNearestStanding, Deposit](const int32 Index)
+	{
+		// A used-up source leads on to the ones beyond it: the massif is not cut.
 		const FHOLSource& Source = Sources[Index];
-		if (Index == Exclude || !Source.IsStanding() || Source.Resource != Resource)
+		if (!Source.IsStanding())
 		{
-			continue;
+			return false;
 		}
-		const double DistanceSquared = FVector::DistSquared2D(Location, Source.Location);
-		if (DistanceSquared <= MaxDistanceSquared)
+		if (OutNearestStanding && *OutNearestStanding == INDEX_NONE)
 		{
-			Found.Emplace(DistanceSquared, Index);
+			*OutNearestStanding = Index;
 		}
-	}
-	Found.Sort([](const TPair<double, int32>& A, const TPair<double, int32>& B) { return A.Key < B.Key || (A.Key == B.Key && A.Value < B.Value); });
-	for (const TPair<double, int32>& Pair : Found)
+		if (FullSources.IsValidIndex(Index) && FullSources[Index])
+		{
+			return false;
+		}
+		if (FindSourceSpot(Step, Index, Gatherer.Location, Gatherer.Constants.Radius, Gatherer.Entity, OutSpot, Deposit))
+		{
+			return true;
+		}
+		if (FullSources.IsValidIndex(Index))
+		{
+			FullSources[Index] = true;
+		}
+		return false;
+	}, Deposit);
+}
+
+const FHOLGatherDeposit* UHOLGatherProcessor::FindSourceDeposit(const uint8 OwnerPlayer, const FHOLSource& Source) const
+{
+	const int32 DepositIndex = FindDeposit(OwnerPlayer, Source.Resource, Source.Location);
+	return DepositIndex == INDEX_NONE ? nullptr : &Deposits[DepositIndex].Footprint;
+}
+
+const FHOLSourceMassifs& UHOLGatherProcessor::GetMassifs(const FStepContext& Step)
+{
+	// Sources are only added, never moved, a used-up one kept in the list: the same count, the same links.
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	if (Massifs.Num() != Sources.Num())
 	{
-		OutSources.Add(Pair.Value);
+		TArray<FHOLGatherSource> Sites;
+		Sites.Reserve(Sources.Num());
+		for (const FHOLSource& Source : Sources)
+		{
+			FHOLGatherSource& Site = Sites.AddDefaulted_GetRef();
+			Site.Site = FHOLGatherSite{ FVector2D(Source.Location), Source.Radius };
+			Site.Resource = Source.Resource;
+			Site.Remaining = Source.Remaining;
+		}
+		Massifs.Build(Sites, HOLGather::NoRoomSourceDistance);
 	}
+	return Massifs;
 }
 
 int32 UHOLGatherProcessor::FindDeposit(const uint8 OwnerPlayer, const EHOLResource Resource, const FVector& From) const

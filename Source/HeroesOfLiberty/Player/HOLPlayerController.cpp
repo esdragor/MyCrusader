@@ -272,6 +272,34 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/**
+	 * Where the standing source nearest a ground point is drawn (a fraction of the viewport), aimed at the middle of its
+	 * trunk: inside its drawn body, in front of the ground behind it. INDEX_NONE (logged for Command) when there is none
+	 * or it is not on the screen.
+	 */
+	int32 AimAtSource(const AHOLPlayerController& Controller, const double X, const double Y, const TCHAR* Command, FVector2D& OutFraction)
+	{
+		const UHOLSourceSubsystem* Sources = Controller.GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+		const int32 Index = Sources ? Sources->FindNearestStanding(FVector(X, Y, 0.)) : INDEX_NONE;
+		if (Index == INDEX_NONE)
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("%s: no standing source"), Command);
+			return INDEX_NONE;
+		}
+		const FHOLSource& Source = Sources->GetSources()[Index];
+		const FHOLSourceTypeRow* Type = Sources->GetType(Source.TypeIndex);
+		int32 SizeX = 0, SizeY = 0;
+		Controller.GetViewportSize(SizeX, SizeY);
+		FVector2D Pixel;
+		if (!Type || SizeX <= 0 || SizeY <= 0 || !Controller.ProjectWorldLocationToScreen(Source.Location + FVector(0., 0., Type->Height * 0.3), Pixel))
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("%s: the source is not on the screen"), Command);
+			return INDEX_NONE;
+		}
+		OutFraction = FVector2D(Pixel.X / SizeX, Pixel.Y / SizeY);
+		return Index;
+	}
+
 	/** A right click on the standing source nearest a ground point (J5, D299), where it is drawn: through the picking. */
 	FAutoConsoleCommand OrderSourceCommand(
 		TEXT("hol.Select.OrderSource"),
@@ -285,27 +313,48 @@ namespace UE::HeroesOfLiberty::Player
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				const UHOLSourceSubsystem* Sources = Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
-				const int32 Index = Sources ? Sources->FindNearestStanding(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.)) : INDEX_NONE;
-				if (Index == INDEX_NONE)
+				FVector2D Fraction;
+				const int32 Index = AimAtSource(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), TEXT("hol.Select.OrderSource"), Fraction);
+				if (Index != INDEX_NONE)
 				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderSource: no standing source"));
-					continue;
+					UE_LOG(LogHOLMatch, Display, TEXT("Right click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
+					Controller->OrderAt(Fraction);
 				}
-				// Aimed at the middle of its trunk: inside its drawn body, in front of the ground behind it.
-				const FHOLSource& Source = Sources->GetSources()[Index];
-				const FHOLSourceTypeRow* Type = Sources->GetType(Source.TypeIndex);
-				int32 SizeX = 0, SizeY = 0;
-				Controller->GetViewportSize(SizeX, SizeY);
-				FVector2D Pixel;
-				if (!Type || SizeX <= 0 || !Controller->ProjectWorldLocationToScreen(Source.Location + FVector(0., 0., Type->Height * 0.3), Pixel))
+			}
+		}));
+
+	/** A left click on the standing source nearest a ground point (J5b, D298): its block in the HUD. */
+	FAutoConsoleCommand ClickSourceCommand(
+		TEXT("hol.Select.ClickSource"),
+		TEXT("hol.Select.ClickSource <X> <Y>: a left click where the standing resource source nearest that ground point (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.ClickSource <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				const int32 Index = AimAtSource(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), TEXT("hol.Select.ClickSource"), Fraction);
+				if (Index != INDEX_NONE)
 				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderSource: the source is not on the screen"));
-					continue;
+					UE_LOG(LogHOLMatch, Display, TEXT("Click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
+					Controller->SelectAt(Fraction);
 				}
-				const FVector2D Fraction(Pixel.X / SizeX, Pixel.Y / SizeY);
-				UE_LOG(LogHOLMatch, Display, TEXT("Right click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
-				Controller->OrderAt(Fraction);
+			}
+		}));
+
+	/** The "." key (D30, J5b), without the keyboard. */
+	FAutoConsoleCommand NextIdleCommand(
+		TEXT("hol.Select.NextIdle"),
+		TEXT("hol.Select.NextIdle: selects the local player's next idle worker and centres the camera on it, as the '.' key"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectNextIdleWorker();
 			}
 		}));
 
@@ -732,6 +781,10 @@ void AHOLPlayerController::SetupInputComponent()
 	{
 		Input->BindAction(Deselect, ETriggerEvent::Started, this, &AHOLPlayerController::HandleDeselect);
 	}
+	if (const UInputAction* NextIdle = LoadAction(TEXT("IA_NextIdle")))
+	{
+		Input->BindAction(NextIdle, ETriggerEvent::Started, this, &AHOLPlayerController::HandleNextIdle);
+	}
 	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
 	{
 		if (const UInputAction* GridKey = LoadAction(*FString::Printf(TEXT("IA_Grid_%02d"), Cell)))
@@ -767,7 +820,10 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 	if (SincePurge >= UE::HeroesOfLiberty::Player::SelectionPurgeInterval)
 	{
 		SincePurge = 0.f;
-		PurgeSelectedUnits();
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*GetWorld(), Views);
+		PurgeSelection(Views);
+		UpdateIdleWorkers(Views);
 	}
 }
 
@@ -996,7 +1052,16 @@ void AHOLPlayerController::SelectAt(const FVector2D& ViewportFraction, const boo
 		// Shift on nothing keeps the units taken so far.
 		if (!bAdd || SelectedUnits.IsEmpty())
 		{
-			SetSelection(FindBuildingAt(ViewportFraction));
+			AHOLBuilding* Building = FindBuildingAt(ViewportFraction);
+			const int32 SourceIndex = Building ? INDEX_NONE : FindSourceAt(ViewportFraction);
+			if (SourceIndex != INDEX_NONE)
+			{
+				SetSourceSelection(SourceIndex);
+			}
+			else
+			{
+				SetSelection(Building);
+			}
 		}
 		return;
 	}
@@ -1096,12 +1161,13 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
 
 void AHOLPlayerController::SetSelection(AHOLBuilding* Building)
 {
-	if (Selection.Get() == Building && SelectedUnits.IsEmpty())
+	if (Selection.Get() == Building && SelectedUnits.IsEmpty() && SelectedSource == INDEX_NONE)
 	{
 		return;
 	}
 	Selection = Building;
 	SelectedUnits.Reset();
+	SelectedSource = INDEX_NONE;
 	BroadcastSelection();
 }
 
@@ -1116,13 +1182,73 @@ void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
 	{
 		UnitIds.SetNum(UE::HeroesOfLiberty::Player::MaxOrderedUnits);
 	}
-	if (!Selection.IsValid() && UnitIds == SelectedUnits)
+	if (!Selection.IsValid() && SelectedSource == INDEX_NONE && UnitIds == SelectedUnits)
 	{
 		return;
 	}
 	Selection = nullptr;
+	SelectedSource = INDEX_NONE;
 	SelectedUnits = MoveTemp(UnitIds);
 	BroadcastSelection();
+}
+
+void AHOLPlayerController::SetSourceSelection(const int32 SourceIndex)
+{
+	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+	if (SourceIndex == INDEX_NONE || !Sources || !Sources->GetSources().IsValidIndex(SourceIndex) || !Sources->GetSources()[SourceIndex].IsStanding())
+	{
+		SetSelection(nullptr);
+		return;
+	}
+	if (SelectedSource == SourceIndex)
+	{
+		return;
+	}
+	Selection = nullptr;
+	SelectedUnits.Reset();
+	SelectedSource = SourceIndex;
+	BroadcastSelection();
+}
+
+void AHOLPlayerController::UpdateIdleWorkers(const TConstArrayView<FHOLUnitView> Views)
+{
+	IdleWorkers.Reset();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!HOLPlayerState)
+	{
+		return;
+	}
+	// A gatherer on its round trip is never idle (D307): only a worker standing with nothing to do.
+	for (const FHOLUnitView& View : Views)
+	{
+		if (View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.CarryCapacity > 0 && View.Activity == EHOLUnitActivity::Idle)
+		{
+			IdleWorkers.Add(View.UnitId);
+		}
+	}
+	IdleWorkers.Sort();
+}
+
+void AHOLPlayerController::SelectNextIdleWorker()
+{
+	// Read again now: the list may be a quarter of a second old.
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	UpdateIdleWorkers(Views);
+	const uint32 UnitId = HOLUnitPicking::NextInCycle(IdleWorkers, LastIdleWorker);
+	const FHOLUnitView* Unit = UnitId != 0 ? Views.FindByPredicate([UnitId](const FHOLUnitView& View) { return View.UnitId == UnitId; }) : nullptr;
+	if (!Unit)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Next idle worker: none"));
+		return;
+	}
+	LastIdleWorker = UnitId;
+	UE_LOG(LogHOLMatch, Display, TEXT("Next idle worker: #%u (%d idle) at (%.0f, %.0f)"), UnitId, IdleWorkers.Num(), Unit->Location.X, Unit->Location.Y);
+	SetUnitSelection({ UnitId });
+	if (RTSCamera)
+	{
+		RTSCamera->SetFocus(Unit->Location);
+	}
 }
 
 void AHOLPlayerController::BroadcastSelection()
@@ -1205,14 +1331,22 @@ void AHOLPlayerController::Tick(const float DeltaSeconds)
 	}
 }
 
-void AHOLPlayerController::PurgeSelectedUnits()
+void AHOLPlayerController::PurgeSelection(const TConstArrayView<FHOLUnitView> Views)
 {
+	if (SelectedSource != INDEX_NONE)
+	{
+		// A used-up source leaves the map, and the selection.
+		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+		if (!Sources || !Sources->GetSources().IsValidIndex(SelectedSource) || !Sources->GetSources()[SelectedSource].IsStanding())
+		{
+			SetSelection(nullptr);
+		}
+		return;
+	}
 	if (SelectedUnits.IsEmpty())
 	{
 		return;
 	}
-	TArray<FHOLUnitView> Views;
-	HOLUnitView::Gather(*GetWorld(), Views);
 	TSet<uint32> Known;
 	for (const FHOLUnitView& View : Views)
 	{
@@ -1447,6 +1581,14 @@ FString AHOLPlayerController::DescribeBuilding(const AHOLBuilding* Building) con
 
 FString AHOLPlayerController::DescribeSelection() const
 {
+	if (SelectedSource != INDEX_NONE)
+	{
+		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+		const FHOLSource* Source = Sources && Sources->GetSources().IsValidIndex(SelectedSource) ? &Sources->GetSources()[SelectedSource] : nullptr;
+		return Source && Sources->GetTypeNames().IsValidIndex(Source->TypeIndex)
+			? FString::Printf(TEXT("source %d %s (%d left)"), SelectedSource, *Sources->GetTypeNames()[Source->TypeIndex].ToString(), Source->Remaining)
+			: FString::Printf(TEXT("source %d"), SelectedSource);
+	}
 	if (SelectedUnits.IsEmpty())
 	{
 		return DescribeBuilding(Selection.Get());
@@ -1520,6 +1662,11 @@ void AHOLPlayerController::HandleOrder()
 void AHOLPlayerController::HandleDeselect()
 {
 	SetSelection(nullptr);
+}
+
+void AHOLPlayerController::HandleNextIdle()
+{
+	SelectNextIdleWorker();
 }
 
 void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const int32 Cell)

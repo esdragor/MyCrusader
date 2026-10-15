@@ -33,4 +33,10 @@ namespace HOLUnitPicking
 
 	/** True when a press at Start released at End is a box, not a click. */
 	HEROESOFLIBERTY_API bool IsBox(const FVector2D& Start, const FVector2D& End);
+
+	/**
+	 * The "." key (D30, J5b): of the idle workers (identifiers in increasing order), the first one after Last, or the
+	 * first of all after the last one or when Last is not one of them; 0 when there is none. Each press goes to the next.
+	 */
+	HEROESOFLIBERTY_API uint32 NextInCycle(TConstArrayView<uint32> SortedIds, uint32 Last);
 }

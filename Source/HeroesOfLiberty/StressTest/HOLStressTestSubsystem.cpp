@@ -660,10 +660,10 @@ void UHOLStressTestSubsystem::LogGatheringSummary() const
 		Unloaded.Wood, Unloaded.Wood / FMath::Max(MeasureSeconds, 1.f), StandingAtMeasureStart - Sources->GetNumStanding(), Sources->GetNumStanding(),
 		Paths, Paths / FMath::Max(MeasureSeconds, 1.f), Reused, Reused / FMath::Max(MeasureSeconds, 1.f));
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
-	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering trips during the measure: %lld unloads, walks to a tree %lld and to a deposit %lld, missed spots %lld and deposits %lld, waits for a free spot %lld"),
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering trips during the measure: %lld unloads, walks to a tree %lld and to a deposit %lld, missed spots %lld and deposits %lld, idle for want of a free spot %lld"),
 		Counters.Unloads - GatherCountersAtMeasureStart[4], Counters.WalksToSource - GatherCountersAtMeasureStart[0],
 		Counters.WalksToDeposit - GatherCountersAtMeasureStart[1], Counters.MissedSpots - GatherCountersAtMeasureStart[2],
-		Counters.MissedDeposits - GatherCountersAtMeasureStart[3], Counters.NoSpotWaits - GatherCountersAtMeasureStart[5]);
+		Counters.MissedDeposits - GatherCountersAtMeasureStart[3], Counters.NoSpotStops - GatherCountersAtMeasureStart[5]);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Gatherers at the end: to their source %d, gathering %d, to the deposit %d, not gathering %d; %d carrying a load"),
 		Phases[static_cast<int32>(EHOLGatherPhase::ToSource)], Phases[static_cast<int32>(EHOLGatherPhase::Gathering)],
 		Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Phases[static_cast<int32>(EHOLGatherPhase::None)], Carrying);
@@ -936,7 +936,7 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	PathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsServed();
 	PathsReusedAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsReused();
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
-	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotWaits };
+	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotStops };
 	FMemory::Memcpy(GatherCountersAtMeasureStart, Now, sizeof(Now));
 	if (UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>())
 	{

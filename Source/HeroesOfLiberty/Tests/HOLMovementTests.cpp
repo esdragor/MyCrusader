@@ -166,6 +166,14 @@ bool FHOLMovementPickingTest::RunTest(const FString& Parameters)
 
 	TestFalse(TEXT("a press released 5 px away is a click"), HOLUnitPicking::IsBox(FVector2D(10., 10.), FVector2D(13., 14.)));
 	TestTrue(TEXT("released 7 px away, a box"), HOLUnitPicking::IsBox(FVector2D(10., 10.), FVector2D(17., 10.)));
+
+	// The "." key (J5b): the idle workers in turn, back to the first after the last.
+	const uint32 Idle[] = { 4, 9, 12 };
+	TestEqual(TEXT("the first press: the first idle worker"), static_cast<int32>(HOLUnitPicking::NextInCycle(Idle, 0)), 4);
+	TestEqual(TEXT("the next press: the next one"), static_cast<int32>(HOLUnitPicking::NextInCycle(Idle, 4)), 9);
+	TestEqual(TEXT("after the last: the first again"), static_cast<int32>(HOLUnitPicking::NextInCycle(Idle, 12)), 4);
+	TestEqual(TEXT("the last one got to work: the one after it"), static_cast<int32>(HOLUnitPicking::NextInCycle(Idle, 7)), 9);
+	TestEqual(TEXT("no idle worker: none"), static_cast<int32>(HOLUnitPicking::NextInCycle(TConstArrayView<uint32>(), 4)), 0);
 	return true;
 }
 
