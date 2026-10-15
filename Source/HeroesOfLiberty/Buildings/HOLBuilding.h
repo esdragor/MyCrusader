@@ -62,8 +62,10 @@ public:
 	 */
 	bool HasRallyPoint() const { return bHasRallyPoint; }
 	FVector GetRallyPoint() const { return RallyPoint; }
+	/** The resource source at the rally point (J5, D298): the units born here gather it. INDEX_NONE: the ground. */
+	int32 GetRallySource() const { return RallySource; }
 	/** Server only. */
-	void SetRallyPoint(const FVector& Point);
+	void SetRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE);
 	void ClearRallyPoint();
 	/** True when a ground point is on the building's footprint (a rally order there clears the rally point). */
 	bool IsOnFootprint(const FVector& Point) const;
@@ -122,6 +124,9 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Rally)
 	bool bHasRallyPoint = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Rally)
+	int32 RallySource = INDEX_NONE;
 
 	/** The type the pieces were built for: the look is rebuilt only when it changes. */
 	FName BuiltTypeName;

@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLResources.h"
+#include "Simulation/HOLSimulationFragments.h"
 
 class UWorld;
 
@@ -21,6 +23,12 @@ struct FHOLUnitView
 	float Radius = 60.f;
 	/** Drawing scale of its mesh, from the type table: the selection aims at the body as drawn (D288). */
 	float MeshScale = 1.f;
+	/** What it is doing and carrying (J5, D298): the selection block shows it. A client has them from the last state received. */
+	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
+	EHOLResource LoadResource = EHOLResource::Food;
+	int32 LoadAmount = 0;
+	/** What its type carries at most (0: it does not gather). */
+	int32 CarryCapacity = 0;
 };
 
 namespace HOLUnitView

@@ -94,7 +94,7 @@ void UHOLGatherProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 {
 	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly);
-	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
@@ -124,7 +124,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		const TArrayView<FHOLGatherFragment> Gathers = Context.GetMutableFragmentView<FHOLGatherFragment>();
 		const TConstArrayView<FHOLMoveOrderFragment> Moves = Context.GetFragmentView<FHOLMoveOrderFragment>();
-		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
@@ -133,8 +133,8 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				continue;
 			}
-			FGatherer Gatherer{ Context.GetEntity(EntityIt), Gathers[EntityIt], Moves[EntityIt], Transforms[EntityIt].GetTransform().GetLocation(),
-				States[EntityIt].OwnerPlayer, Constants };
+			FGatherer Gatherer{ Context.GetEntity(EntityIt), Gathers[EntityIt], Moves[EntityIt], States[EntityIt],
+				Transforms[EntityIt].GetTransform().GetLocation(), States[EntityIt].OwnerPlayer, Constants };
 			Advance(Step, Gatherer);
 		}
 	});
@@ -259,8 +259,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		const FHOLGatherSite Site{ FVector2D(Source->Location), Source->Radius };
 		if (HOLGather::GetEdgeDistance(FVector2D(Gatherer.Location), Site) - Gatherer.Constants.Radius <= ArrivalGap)
 		{
-			Gather.Phase = EHOLGatherPhase::Gathering;
-			Gather.Misses = 0;
+			StartGathering(Gatherer);
 			return;
 		}
 		// Short of its spot (taken by another body, or pushed): another spot, then a neighbour.
@@ -389,8 +388,7 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 	{
 		Gather.Spot = Gatherer.Location;
 		SpotClaims.FindOrAdd(Gather.SourceIndex).Add({ Gatherer.Entity, FVector2D(Gatherer.Location) });
-		Gather.Phase = EHOLGatherPhase::Gathering;
-		Gather.Misses = 0;
+		StartGathering(Gatherer);
 		return;
 	}
 
@@ -484,8 +482,19 @@ void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer)
 	}
 }
 
+void UHOLGatherProcessor::StartGathering(FGatherer& Gatherer)
+{
+	Gatherer.Gather.Phase = EHOLGatherPhase::Gathering;
+	Gatherer.Gather.Misses = 0;
+	Gatherer.State.Activity = EHOLUnitActivity::Gathering;
+}
+
 void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 {
+	if (Gatherer.State.Activity == EHOLUnitActivity::Gathering)
+	{
+		Gatherer.State.Activity = EHOLUnitActivity::Idle;
+	}
 	Gatherer.Gather.Phase = EHOLGatherPhase::None;
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
 	Gatherer.Gather.bWalkIssued = false;

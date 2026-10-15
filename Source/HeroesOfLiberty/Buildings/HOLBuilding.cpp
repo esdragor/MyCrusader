@@ -68,6 +68,7 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, RallySource, COND_OwnerOnly);
 }
 
 const FHOLBuildingTypeRow* AHOLBuilding::GetType() const
@@ -87,9 +88,10 @@ void AHOLBuilding::OnRep_ProductionQueue()
 	OnProductionChanged.Broadcast();
 }
 
-void AHOLBuilding::SetRallyPoint(const FVector& Point)
+void AHOLBuilding::SetRallyPoint(const FVector& Point, const int32 SourceIndex)
 {
 	RallyPoint = Point;
+	RallySource = SourceIndex;
 	bHasRallyPoint = true;
 	ForceNetUpdate();
 	OnRallyChanged.Broadcast();
@@ -98,6 +100,7 @@ void AHOLBuilding::SetRallyPoint(const FVector& Point)
 void AHOLBuilding::ClearRallyPoint()
 {
 	bHasRallyPoint = false;
+	RallySource = INDEX_NONE;
 	ForceNetUpdate();
 	OnRallyChanged.Broadcast();
 }

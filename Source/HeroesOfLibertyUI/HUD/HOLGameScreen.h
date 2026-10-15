@@ -101,6 +101,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionHealth;
 
+	/** What a gatherer does and carries (J5, D298): « Récolte — Bois 7/10 ». */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> SelectionActivity;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 

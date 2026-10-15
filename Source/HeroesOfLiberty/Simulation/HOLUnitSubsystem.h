@@ -33,6 +33,8 @@ struct FHOLUnitSpawnRequest
 	/** Once born, the units go there (a building's rally point, J4, D288). */
 	bool bHasMoveTarget = false;
 	FVector MoveTarget = FVector::ZeroVector;
+	/** ... and gather this source there (a rally point on a source, J5, D298), if it still stands. */
+	int32 GatherSource = INDEX_NONE;
 };
 
 /**

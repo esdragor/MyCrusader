@@ -153,6 +153,7 @@ void UHOLUnitReplicationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	UnitQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FHOLPreviousTransformFragment>(EMassFragmentAccess::ReadOnly);
+	UnitQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 
 	TypeIndices.Reset();
@@ -241,9 +242,10 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 	FString Sample;
 
 	Replicator->SetServerStep(Step);
-	const auto WriteState = [this, Step](FUnitRecord& Record, const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity)
+	const auto WriteState = [this, Step](FUnitRecord& Record, const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity,
+		const FHOLGatherLoad& Load)
 	{
-		Record.Sent.State = FHOLNetUnitState::Make(Position, Velocity, Activity, Step);
+		Record.Sent.State = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount);
 		Record.Sent.Step = Step;
 		Replicator->GetOrAddChunk(Record.Slot / AHOLUnitChunk::NumSlots)->SetState(Record.Slot % AHOLUnitChunk::NumSlots, Record.Sent.State);
 	};
@@ -255,6 +257,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FMassVelocityFragment> Velocities = Context.GetFragmentView<FMassVelocityFragment>();
 		const TConstArrayView<FHOLPreviousTransformFragment> PreviousTransforms = Context.GetFragmentView<FHOLPreviousTransformFragment>();
+		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		const uint8 TypeIndex = TypeIndices.FindRef(Constants.TypeName);
 
@@ -279,7 +282,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 				Record->OwnerPlayer = State.OwnerPlayer;
 				Replicator->GetOrAddChunk(Record->Slot / AHOLUnitChunk::NumSlots)
 					->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
-				WriteState(*Record, Position, Velocity, State.Activity);
+				WriteState(*Record, Position, Velocity, State.Activity, Gathers[EntityIt].Load);
 				Stats.Sends[static_cast<int32>(EHOLUnitSendReason::None)]++;
 			}
 			else
@@ -295,7 +298,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 					State.UnitId, Step, StepSeconds, Rules);
 				if (Reason != EHOLUnitSendReason::None)
 				{
-					WriteState(*Record, Position, Velocity, State.Activity);
+					WriteState(*Record, Position, Velocity, State.Activity, Gathers[EntityIt].Load);
 					Stats.Sends[static_cast<int32>(Reason)]++;
 				}
 			}

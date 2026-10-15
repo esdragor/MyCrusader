@@ -180,9 +180,10 @@ void UHOLProductionSubsystem::ApplyOrders()
 			}
 			else
 			{
-				Building->SetRallyPoint(Order.Location);
-				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d set the rally point of %s at (%.0f, %.0f)"), Order.PlayerIndex,
-					*Building->GetTypeName().ToString(), Order.Location.X, Order.Location.Y);
+				Building->SetRallyPoint(Order.Location, Order.SourceIndex);
+				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d set the rally point of %s at (%.0f, %.0f)%s"), Order.PlayerIndex,
+					*Building->GetTypeName().ToString(), Order.Location.X, Order.Location.Y,
+					Order.SourceIndex != INDEX_NONE ? *FString::Printf(TEXT(", on source %d"), Order.SourceIndex) : TEXT(""));
 			}
 			continue;
 		}
@@ -280,6 +281,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			// Born at its foot, then to the rally point if it has one (J4, D288).
 			Request.bHasMoveTarget = Building->HasRallyPoint();
 			Request.MoveTarget = Building->GetRallyPoint();
+			Request.GatherSource = Building->HasRallyPoint() ? Building->GetRallySource() : INDEX_NONE;
 			Units->RequestUnits(Request);
 			++NumBorn;
 			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld (%d born here)"), *TypeName.ToString(),

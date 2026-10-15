@@ -26,6 +26,9 @@
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
+#include "Resources/HOLSourceField.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Settings/HOLGameUserSettings.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -263,6 +266,43 @@ namespace UE::HeroesOfLiberty::Player
 					continue;
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Right click on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
+				Controller->OrderAt(Fraction);
+			}
+		}));
+
+	/** A right click on the standing source nearest a ground point (J5, D299), where it is drawn: through the picking. */
+	FAutoConsoleCommand OrderSourceCommand(
+		TEXT("hol.Select.OrderSource"),
+		TEXT("hol.Select.OrderSource <X> <Y>: a right click where the standing resource source nearest that ground point (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderSource <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const UHOLSourceSubsystem* Sources = Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+				const int32 Index = Sources ? Sources->FindNearestStanding(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.)) : INDEX_NONE;
+				if (Index == INDEX_NONE)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderSource: no standing source"));
+					continue;
+				}
+				// Aimed at the middle of its trunk: inside its drawn body, in front of the ground behind it.
+				const FHOLSource& Source = Sources->GetSources()[Index];
+				const FHOLSourceTypeRow* Type = Sources->GetType(Source.TypeIndex);
+				int32 SizeX = 0, SizeY = 0;
+				Controller->GetViewportSize(SizeX, SizeY);
+				FVector2D Pixel;
+				if (!Type || SizeX <= 0 || !Controller->ProjectWorldLocationToScreen(Source.Location + FVector(0., 0., Type->Height * 0.3), Pixel))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderSource: the source is not on the screen"));
+					continue;
+				}
+				const FVector2D Fraction(Pixel.X / SizeX, Pixel.Y / SizeY);
+				UE_LOG(LogHOLMatch, Display, TEXT("Right click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
 				Controller->OrderAt(Fraction);
 			}
 		}));
@@ -855,6 +895,46 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	}
 }
 
+int32 AHOLPlayerController::FindSourceAt(const FVector2D& ViewportFraction) const
+{
+	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+	if (!Sources)
+	{
+		return INDEX_NONE;
+	}
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	GetPlayerViewPoint(CameraLocation, CameraRotation);
+	const FVector CameraRight = FRotationMatrix(CameraRotation).GetUnitAxis(EAxis::Y);
+	// Each source as drawn, a body from the ground to its top (the picking of the units, D288).
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<int32> Indices;
+	const TArray<FHOLSource>& All = Sources->GetSources();
+	for (int32 Index = 0; Index < All.Num(); ++Index)
+	{
+		const FHOLSource& Source = All[Index];
+		const FHOLSourceTypeRow* Type = Source.IsStanding() ? Sources->GetType(Source.TypeIndex) : nullptr;
+		if (!Type)
+		{
+			continue;
+		}
+		FHOLPickCandidate Candidate;
+		FVector2D Side;
+		if (!ProjectWorldLocationToScreen(Source.Location, Candidate.Foot)
+			|| !ProjectWorldLocationToScreen(Source.Location + FVector(0., 0., Type->Height), Candidate.Head)
+			|| !ProjectWorldLocationToScreen(Source.Location + CameraRight * AHOLSourceField::GetDrawnRadius(*Type), Side))
+		{
+			continue;
+		}
+		Candidate.HalfWidth = FVector2D::Distance(Candidate.Foot, Side);
+		Candidate.Depth = FVector::Distance(CameraLocation, Source.Location);
+		Candidates.Add(Candidate);
+		Indices.Add(Index);
+	}
+	const int32 Picked = HOLUnitPicking::PickAt(Candidates, ToPixels(ViewportFraction));
+	return Indices.IsValidIndex(Picked) ? Indices[Picked] : INDEX_NONE;
+}
+
 uint32 AHOLPlayerController::FindUnitAt(const FVector2D& ViewportFraction) const
 {
 	TArray<FHOLPickCandidate> Candidates;
@@ -959,9 +1039,21 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
 	{
 		return;
 	}
+	// A resource source under the cursor (J5, D298): its ground point, where the brief mark shows.
+	const int32 SourceIndex = FindSourceAt(ViewportFraction);
+	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
 	const TArray<uint32> Own = GetOwnSelectedUnits();
 	if (!Own.IsEmpty())
 	{
+		if (Source)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)"), Own.Num(), SourceIndex,
+				*Sources->GetTypeNames()[Source->TypeIndex].ToString(), Source->Location.X, Source->Location.Y);
+			RequestGatherUnits(Own, SourceIndex);
+			OnOrderGiven.Broadcast(Source->Location);
+			return;
+		}
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)"), Own.Num(), Ground.X, Ground.Y);
 		RequestMoveUnits(Own, Ground);
 		OnOrderGiven.Broadcast(Ground);
@@ -969,9 +1061,12 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
 	else if (AHOLBuilding* Building = GetOwnSelection())
 	{
 		// A click on the building itself clears its rally point: the ground seen behind its roof is off its footprint.
-		const FVector Point = FindBuildingAt(ViewportFraction) == Building ? Building->GetActorLocation() : Ground;
-		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)"), *DescribeBuilding(Building), Point.X, Point.Y);
-		RequestRallyPoint(Point);
+		const bool bOnBuilding = FindBuildingAt(ViewportFraction) == Building;
+		const FVector Point = bOnBuilding ? Building->GetActorLocation() : Source ? Source->Location : Ground;
+		const int32 RallySource = !bOnBuilding && Source ? SourceIndex : INDEX_NONE;
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s"), *DescribeBuilding(Building), Point.X, Point.Y,
+			RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""));
+		RequestRallyPoint(Point, RallySource);
 		OnOrderGiven.Broadcast(Point);
 	}
 }
@@ -1097,11 +1192,19 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 	}
 }
 
-void AHOLPlayerController::RequestRallyPoint(const FVector& Point)
+void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex)
+{
+	if (UnitIds.Num() > 0 && SourceIndex != INDEX_NONE)
+	{
+		ServerGatherUnits(TArray<uint32>(UnitIds), SourceIndex);
+	}
+}
+
+void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerSetRallyPoint(Building, Point);
+		ServerSetRallyPoint(Building, Point, SourceIndex);
 	}
 }
 
@@ -1173,7 +1276,18 @@ void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& 
 	}
 }
 
-void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point)
+void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>& UnitIds, const int32 SourceIndex)
+{
+	// The order names the player: the gathering sends only its own units (D288), a client could send any identifier.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		Commands->IssueGatherOrder(UnitIds, SourceIndex, HOLPlayerState->GetPlayerIndex());
+	}
+}
+
+void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -1184,6 +1298,10 @@ void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Buil
 		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
 		Command.Building = Building;
 		Command.Location = Point;
+		// A source that is not standing (any more) is the ground: the rally point stays where it was clicked.
+		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+		Command.SourceIndex = Sources && Sources->GetSources().IsValidIndex(SourceIndex) && Sources->GetSources()[SourceIndex].IsStanding()
+			? SourceIndex : INDEX_NONE;
 		Commands->IssueProductionOrder(Command);
 	}
 }

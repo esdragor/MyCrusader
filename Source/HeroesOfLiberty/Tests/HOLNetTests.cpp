@@ -29,7 +29,8 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("59 bits per state (~7.4 bytes, D301)"), FHOLNetUnitState::TotalBits, 59);
+	TestEqual(TEXT("60 bits per state (~7.5 bytes, D301 and a load bit of J5)"), FHOLNetUnitState::TotalBits, 60);
+	TestEqual(TEXT("7 bits more for a carrier (J5)"), FHOLNetUnitState::CarriedLoadBits, 7);
 
 	const FVector Position(12345.6, -9876.5, 123.4);
 	const FVector Velocity(212.3, -147.9, 35.0);
@@ -44,6 +45,13 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("activity kept"), State.Activity, EHOLUnitActivity::Moving);
 	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % 256));
 	TestEqual(TEXT("same values, same state"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000), State);
+	const FHOLNetUnitState Carrier = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Wood, 7);
+	TestEqual(TEXT("load kept"), static_cast<int32>(Carrier.LoadAmount), 7);
+	TestEqual(TEXT("load's resource kept"), static_cast<int32>(Carrier.LoadResource), static_cast<int32>(EHOLResource::Wood));
+	TestEqual(TEXT("load held at its range's edge"),
+		static_cast<int32>(FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0, EHOLResource::Gold, 99).LoadAmount), 31);
+	TestEqual(TEXT("nothing carried: the resource does not count"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0, EHOLResource::Gold, 0),
+		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0));
 
 	const FHOLNetUnitState Far = FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Idle, 0);
 	TestEqual(TEXT("X held at the range's edge"), static_cast<int32>(Far.X), (1 << (FHOLNetUnitState::HorizontalBits - 1)) - 1);
@@ -65,6 +73,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		FHOLNetUnitState::Make(FVector(12345.6, -9876.5, 123.4), FVector(212.3, -147.9, 0.0), EHOLUnitActivity::Moving, 1000),
 		FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, -1.0e6), FVector(-1.0e5, 1.0e5, 0.0), EHOLUnitActivity::Idle, 255),
 		FHOLNetUnitState::Make(FVector(-1.0e7, 1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Moving, 256),
+		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 77, EHOLResource::Gold, 31),
 		FHOLNetUnitState(),
 	};
 	for (const FHOLNetUnitState& State : States)
@@ -96,7 +105,8 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("59 bits on the wire"), Writer.GetPosBits(), static_cast<uint32>(FHOLNetUnitState::TotalBits));
+		TestEqual(TEXT("60 bits on the wire, 67 for a carrier"), Writer.GetPosBits(),
+			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.LoadAmount > 0 ? FHOLNetUnitState::CarriedLoadBits : 0)));
 
 		FNetBitStreamReader Reader;
 		Reader.InitBits(Buffer, Writer.GetPosBits());

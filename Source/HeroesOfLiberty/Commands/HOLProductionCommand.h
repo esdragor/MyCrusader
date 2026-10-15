@@ -30,4 +30,6 @@ struct FHOLProductionCommand
 	int32 Index = INDEX_NONE;
 	/** Rally: the ground point. */
 	FVector Location = FVector::ZeroVector;
+	/** Rally: the resource source there (J5, D298), whose units born here gather it; INDEX_NONE: the ground. */
+	int32 SourceIndex = INDEX_NONE;
 };

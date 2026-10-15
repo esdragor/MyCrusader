@@ -32,6 +32,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitMovementTrait.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLUnitTrait.h"
 #include "SmoothOrientation/MassSmoothOrientationTrait.h"
 #include "Steering/MassSteeringTrait.h"
@@ -433,7 +434,8 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		EntityToId.Add(Entity, UnitId);
 	}
 
-	// Born with somewhere to go (a rally point): one order for the units of the request, applied at this step.
+	// Born with somewhere to go (a rally point): one order for the units of the request, applied at this step; a rally
+	// point on a source still standing sends them to gather it (J5, D298).
 	if (Request.bHasMoveTarget)
 	{
 		if (UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>())
@@ -443,7 +445,15 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 			{
 				BornIds.Add(EntityToId.FindChecked(Entity));
 			}
-			Commands->IssueMoveOrder(BornIds, Request.MoveTarget);
+			const UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
+			if (Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
+			{
+				Commands->IssueGatherOrder(BornIds, Request.GatherSource);
+			}
+			else
+			{
+				Commands->IssueMoveOrder(BornIds, Request.MoveTarget);
+			}
 		}
 	}
 
@@ -579,10 +589,17 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 		const FHOLPreviousTransformFragment* Previous = EntityManager.GetFragmentDataPtr<FHOLPreviousTransformFragment>(Unit.Value.Entity);
 		View.Location = Previous ? FMath::Lerp(Previous->Transform.GetLocation(), Transform->GetTransform().GetLocation(), Alpha)
 			: Transform->GetTransform().GetLocation();
+		View.Activity = State->Activity;
+		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Unit.Value.Entity))
+		{
+			View.LoadResource = Gather->Load.Resource;
+			View.LoadAmount = Gather->Load.Amount;
+		}
 		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Unit.Value.Entity))
 		{
 			View.Radius = Constants->Radius;
 			View.MeshScale = Constants->MeshScale;
+			View.CarryCapacity = Constants->CarryCapacity;
 		}
 	}
 }

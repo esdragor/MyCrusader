@@ -14,7 +14,8 @@ namespace
 	constexpr int64 NetStepCycle = int64(1) << FHOLNetUnitState::StepBits;
 }
 
-FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity, const int64 Step)
+FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity, const int64 Step,
+	const EHOLResource LoadResource, const int32 LoadAmount)
 {
 	FHOLNetUnitState State;
 	State.X = ReduceNetValue(Position.X, PositionStep, HorizontalBits);
@@ -23,6 +24,9 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 	State.VelocityY = ReduceNetValue(Velocity.Y, VelocityStep, VelocityBits);
 	State.Activity = Activity;
 	State.Step = static_cast<uint8>(Step & (NetStepCycle - 1));
+	State.LoadAmount = static_cast<uint8>(FMath::Clamp(LoadAmount, 0, MaxLoadAmount));
+	// Nothing carried: the resource is not sent, the same state whatever it was.
+	State.LoadResource = State.LoadAmount > 0 ? LoadResource : EHOLResource::Food;
 	return State;
 }
 

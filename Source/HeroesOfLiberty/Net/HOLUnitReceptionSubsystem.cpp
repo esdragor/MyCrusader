@@ -444,10 +444,14 @@ void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnit
 		View.OwnerPlayer = Slot.OwnerPlayer;
 		View.TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
 		View.Location = Transform->GetTransform().GetLocation();
+		View.Activity = Slot.State.Activity;
+		View.LoadResource = Slot.State.LoadResource;
+		View.LoadAmount = Slot.State.LoadAmount;
 		if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(View.TypeName) : nullptr)
 		{
 			View.Radius = Row->Radius;
 			View.MeshScale = Row->MeshScale;
+			View.CarryCapacity = Row->CarryCapacity;
 		}
 	}
 }

@@ -17,6 +17,7 @@ class UNavigationSystemV1;
 struct FHOLGatherFragment;
 struct FHOLMoveOrderFragment;
 struct FHOLSource;
+struct FHOLUnitStateFragment;
 struct FHOLUnitTypeConstants;
 
 /**
@@ -87,6 +88,7 @@ private:
 		FMassEntityHandle Entity;
 		FHOLGatherFragment& Gather;
 		const FHOLMoveOrderFragment& Move;
+		FHOLUnitStateFragment& State;
 		FVector Location;
 		uint8 OwnerPlayer = 0;
 		const FHOLUnitTypeConstants& Constants;
@@ -105,6 +107,8 @@ private:
 	/** Unloads at the deposit: the owner's stock rises (D296). */
 	void Unload(const FStepContext& Step, FGatherer& Gatherer);
 	void Stop(FGatherer& Gatherer);
+	/** It reached its source: it gathers there (its activity shows it, J5, D298). */
+	void StartGathering(FGatherer& Gatherer);
 	void IssueWalk(const FStepContext& Step, FGatherer& Gatherer, const FVector& Spot);
 
 	/** A free spot touching the source, on the navmesh, the side facing From first. */

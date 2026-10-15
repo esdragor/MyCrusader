@@ -35,6 +35,21 @@
 
 namespace UE::HeroesOfLiberty::UI::GameScreen
 {
+	/** A resource's name, as the top bar writes it. */
+	FText GetResourceName(const EHOLResource Resource)
+	{
+		switch (Resource)
+		{
+		case EHOLResource::Wood: return LOCTEXT("Wood", "Bois");
+		case EHOLResource::Stone: return LOCTEXT("Stone", "Pierre");
+		case EHOLResource::Gold: return LOCTEXT("Gold", "Or");
+		default: return LOCTEXT("Food", "Nourriture");
+		}
+	}
+}
+
+namespace UE::HeroesOfLiberty::UI::GameScreen
+{
 	/** Keys of the grid's cells, row by row, as they sit on an AZERTY keyboard (D30; IMC_Game, make_game_input.py). */
 	const TCHAR* const GridKeys[AHOLPlayerController::NumGridCells] = {
 		TEXT("A"), TEXT("Z"), TEXT("E"), TEXT("R"),
@@ -309,6 +324,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
 	}
 	SetShown(SelectionHealthRow, true);
+	SetShown(SelectionActivity, false);
 	if (SelectionHealth)
 	{
 		// No damage before M5: a building is whole.
@@ -374,6 +390,22 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	{
 		// No damage before M5: a unit is whole.
 		SelectionHealth->SetText(FormatRatio(Type->MaxHealth, Type->MaxHealth));
+	}
+	// One gatherer shows what it does and what it carries (J5, D298); a client has them from the unit's last state.
+	const bool bGatherer = Views.Num() == 1 && Views[0].CarryCapacity > 0;
+	SetShown(SelectionActivity, bGatherer);
+	if (bGatherer && SelectionActivity)
+	{
+		const FHOLUnitView& Unit = Views[0];
+		const FText Activity = Unit.Activity == EHOLUnitActivity::Gathering ? LOCTEXT("ActivityGathering", "Récolte")
+			: Unit.Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
+		const bool bLoad = Unit.LoadAmount > 0 || Unit.Activity == EHOLUnitActivity::Gathering;
+		SelectionActivity->SetText(bLoad
+			? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit.LoadResource),
+				Unit.LoadAmount, Unit.CarryCapacity)
+			: Activity);
+		ShownSelection += FString::Printf(TEXT(", %s %s %d/%d"), *UEnum::GetValueAsString(Unit.Activity),
+			*UEnum::GetValueAsString(Unit.LoadResource), Unit.LoadAmount, Unit.CarryCapacity);
 	}
 }
 
@@ -678,6 +710,8 @@ void UHOLGameScreen::BuildLayout()
 	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
 	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	AddToRow(HealthRow, SelectionHealth, 0.f);
+	SelectionActivity = MakeText(TEXT("SelectionActivity"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+	SelectionColumn->AddChildToVerticalBox(SelectionActivity)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
 
 	// Bottom right: the production queue, then the command grid under it.
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));

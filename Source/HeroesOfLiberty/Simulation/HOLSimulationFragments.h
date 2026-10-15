@@ -23,12 +23,14 @@ struct HEROESOFLIBERTY_API FHOLLightUnitTag : public FMassTag
 	GENERATED_BODY()
 };
 
-/** What the RTS layer sees a unit doing (D226): standing, or walking to its current order. */
+/** What the RTS layer sees a unit doing (D226): standing, walking to its current order, or gathering at its source. */
 UENUM()
 enum class EHOLUnitActivity : uint8
 {
 	Idle,
 	Moving,
+	/** Standing at its source, taking from it (J5, D298): the client shows it, the presentation will animate it (J5c). */
+	Gathering,
 };
 
 /** Where a unit is in its move order (D286, D287). */

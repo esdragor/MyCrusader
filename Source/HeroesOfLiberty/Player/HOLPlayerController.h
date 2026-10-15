@@ -42,6 +42,8 @@ public:
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
 	/** The unit drawn under a point of the viewport, the one in front (D288), or 0. */
 	uint32 FindUnitAt(const FVector2D& ViewportFraction) const;
+	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
+	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
 	/**
 	 * A left click at a point of the viewport: the unit under it, else the building, else nothing. With bAdd (Shift), one
 	 * of the player's own units is added to its selected units, or removed when it already is one; the selection stays
@@ -50,7 +52,10 @@ public:
 	void SelectAt(const FVector2D& ViewportFraction, bool bAdd = false);
 	/** A box between two points of the viewport: the player's own units in it; with bAdd, added, or removed when all already are. */
 	void SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, bool bAdd = false);
-	/** A right click at a point of the viewport: the selected own units go there, or the selected own building's rally point. */
+	/**
+	 * A right click at a point of the viewport: the selected own units gather the source under it (J5, D298) or go there;
+	 * or the selected own building's rally point, on the source under it if there is one.
+	 */
 	void OrderAt(const FVector2D& ViewportFraction);
 	/** Selects a building, or nothing (null). */
 	void SetSelection(AHOLBuilding* Building);
@@ -92,8 +97,13 @@ public:
 	void RequestCancelProduction(int32 Index);
 	/** Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. */
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target);
-	/** Asks the server to put the selected building's rally point (own) at a ground point, or to clear it (on the building). */
-	void RequestRallyPoint(const FVector& Point);
+	/** Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. */
+	void RequestGatherUnits(TConstArrayView<uint32> UnitIds, int32 SourceIndex);
+	/**
+	 * Asks the server to put the selected building's rally point (own) at a ground point, on a resource source (J5) when
+	 * SourceIndex is one, or to clear it (on the building).
+	 */
+	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE);
 
 	/**
 	 * Development cheats for the trials (hol.Cheat.*; never in a Shipping build: no command registers them and the
@@ -150,8 +160,12 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target);
 
+	/** The units' identifiers and the source's index (J5, D298). */
 	UFUNCTION(Server, Reliable)
-	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point);
+	void ServerGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatResources(FHOLResources Amount);

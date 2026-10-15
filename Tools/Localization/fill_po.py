@@ -124,6 +124,10 @@ TRANSLATIONS = {
     "HOLGameScreen,PopulationFull": ("Population full", "人口上限"),
     "HOLGameScreen,CancelHint": ("Click: cancel", "クリック：キャンセル"),
     "HOLGameScreen,UnitCount": ("{0} × {1}", "{0} × {1}"),
+    "HOLGameScreen,ActivityGathering": ("Gathering", "採集中"),
+    "HOLGameScreen,ActivityMoving": ("Walking", "移動中"),
+    "HOLGameScreen,ActivityIdle": ("Idle", "待機中"),
+    "HOLGameScreen,ActivityWithLoad": ("{0} — {1} {2}/{3}", "{0} — {1} {2}/{3}"),
 
     "HOLGameNames,Peasant": ("Peasant", "農民"),
     "HOLGameNames,MainCentre": ("Main Center", "本拠地"),

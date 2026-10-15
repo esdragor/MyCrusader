@@ -60,6 +60,7 @@ vérifier sur S1 et S2.
 | J5a.1 Données et règles pures | **fait** (2026-10-15) : table des sources (`SourceTypes.csv` → `/Game/Resources/SourceTypes`, `make_source_types.py`), taux et charge dans la table des unités, `Simulation/HOLGatherRules`, 4 tests `HeroesOfLiberty.Gather.*` ; tests 36/36, `quick_check` PASS (87 s) |
 | J5a.2 Sources dans la partie | **fait** (2026-10-15) : registre `UHOLSourceSubsystem`, disposition `AHOLSourceLayout` posée par le script de `Plain` (40 arbres par emplacement, 320 en tout), affichage par instances (`AHOLSourceField`), un seul fournisseur de zones interdites à cylindres par instance (`UHOLSourceNavComponent` : seule la tuile d'une source épuisée se refait), morceaux répliqués de 63 sources (`AHOLSourceChunk`) ; `quick_check` PASS (83 s) avec les parties « sources » et « net » ; arbres de `StressTest` reportés à J5a.3 (créés par S7) |
 | J5a.3 Boucle de récolte dans la simulation | **fait** (2026-10-15) : `UHOLGatherProcessor` (places au contact, récolte, dépôt le plus proche, épuisement, inactif ; ses marches passent par la file d'ordres), dépôts en emprise (`Accepts` dans la table des bâtiments), `hol.Units.Gather`, `hol.Gather.Report` ; **S7 PASS à 2,96 ms** (machine chargée ; avec 3 camps de bûcherons provisoires par joueur), S2 inchangé (mêmes recouvrements) ; `quick_check` PASS (89 s), tests 36/36 ; **S1 / S2 / S7 et le rendu à remesurer au repos** |
+| J5a.4 Ordre réseau et ralliement | **fait** (2026-10-15) : clic droit sur une source (visée à l'écran comme une unité) → ordre de récolte vérifié par le serveur, repère bref sur la source ; ralliement sur une source (le Paysan né y récolte) ; activité « récolte » et charge dans l'état répliqué (1 bit, +7 pour un porteur) ; bloc du Paysan « Récolte — Bois 4/10 » (fr / en / ja) ; couronne des arbres remontée (les récolteurs se voient) ; `quick_check` PASS (caméra 8p : un raté d'à-coup, PASS au second essai), **S5 PASS à 31,3 Ko/s** (machine chargée) |
 
 ## Prochaine étape exacte
 
@@ -79,10 +80,11 @@ vérifier sur S1 et S2.
    récolte), chacune avec l'essai de l'utilisateur. **Aucun code avant la clôture de J4** ; reprise ensuite à J5a.1.
 6. **J4 close le 2026-10-15** (D285 à D294, D300 à D302 au GDD). Suite : **J5a.1** (première sous-étape de J5a, le
    bois ; voir « Plan de J5 »).
-7. **J5a.1 à J5a.3 faites** (2026-10-15). Suite : **J5a.4** (ordre réseau et ralliement : clic droit sur un arbre →
-   ordre vérifié par le serveur ; ralliement sur un arbre ; activité et charge dans le bloc du Paysan). À faire valider à
-   l'essai de J5a.5 : la disposition de S7 (camps provisoires) et l'abandon, pour l'instant, de la réutilisation des
-   chemins (voir le journal de J5a.3). S1 / S2 / S7 à remesurer au repos (rendu compris).
+7. **J5a.1 à J5a.4 faites** (2026-10-15). Suite : **J5a.5** (vérification : `quick_check` solo — ralliement sur un
+   arbre, stock qui ne monte qu'au dépôt, arbre voisin, inactif — et à 2 clients — récolte vue, arbre épuisé disparu chez
+   les deux, stock de l'autre jamais reçu ; S1 / S2 / S7 courts **au repos** ; **essai de l'utilisateur**). À faire
+   valider à l'essai : la disposition de S7 (camps provisoires), l'abandon pour l'instant de la réutilisation des chemins
+   (journal de J5a.3), la forme des arbres ; marge de S5 devenue mince (31,3 Ko/s machine chargée).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1776,3 +1778,30 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   300 par seconde (presque tous droits) ; à reprendre si S7 repasse au-dessus de 3 ms.
 - `quick_check` PASS en 89 s, tests 36/36.
 - Suite : **J5a.4** (ordre réseau et ralliement).
+
+### 2026-10-15 (suite) — J5a.4 : ordre de récolte du joueur, ralliement, bloc du Paysan
+
+- **Viser une source** : `AHOLPlayerController::FindSourceAt`, la recette de la sélection des unités (D288) : chaque
+  source debout projetée à l'écran, du sol à son sommet, de la largeur dessinée (`AHOLSourceField::GetDrawnRadius` :
+  la couronne d'un arbre), celle de devant l'emporte.
+- **Clic droit** (`OrderAt`) : Paysans à soi sélectionnés + source sous le curseur → `ServerGatherUnits` (identifiants et
+  index de la source ; le serveur ne garde que les unités du joueur, D288) → file de commandes ; le **repère bref de
+  J4.6** se pose sur la source. Bâtiment à soi sélectionné + source → **ralliement sur la source**
+  (`FHOLProductionCommand::SourceIndex`, `AHOLBuilding::RallySource` répliqué au propriétaire, vérifiée debout par le
+  serveur) ; à la naissance, l'unité reçoit un ordre de récolte si la source est encore debout, sinon un déplacement.
+- **État répliqué** (D298, avancé de J5c.1) : `EHOLUnitActivity::Gathering` (dans les 3 bits existants), charge
+  (`LoadResource`, `LoadAmount`) : **1 bit** « porte quelque chose », puis 2 + 5 bits pour un porteur seulement
+  (60 bits, 67 pour un porteur) ; la charge n'est pas une raison d'envoi (D269), le client la voit au rappel lent ;
+  tests `Net.Reduction` et `Net.ElementFormat` étendus. La récolte met l'activité à « récolte » au contact de sa source.
+- **Bloc du Paysan** (`UHOLGameScreen`) : une ligne pour un récolteur seul : « Récolte — Bois 4/10 », « En marche —
+  Bois 10/10 », « Inactif » ; textes fr / en / ja (`fill_po.py`, 108 textes) ; `hol.HUD.Report` l'écrit.
+- **Arbres** : couronne remontée (de 0,40 à 1,0 de la hauteur) et resserrée (2,9 m) : un Paysan au pied de son arbre se
+  voit (caché sous la couronne avant).
+- Commandes de test : `hol.Select.OrderSource X Y` (clic droit là où est dessinée la source debout la plus proche du
+  point), le ralliement par le même chemin (centre sélectionné).
+- Essais scriptés solo : ralliement sur un arbre → les 3 Paysans nés y récoltent ; cadre + clic droit au sol → récolte
+  arrêtée, charge gardée ; clic droit sur l'arbre → reprise ; capture du bloc (« Récolte — Bois 4/10 »).
+- `quick_check` PASS (caméra 8p : flèche tenue 1 s = 52 m au lieu de ~40, à-coup de la machine chargée ; PASS au second
+  essai) ; **S5 court PASS : 31 283 o/s par client** (30 007 en D302 : 1 bit ≈ 0,5 Ko/s, le reste machine chargée,
+  1,77 envoi par unité et par seconde contre 1,72), écart affiché 22,2 cm.
+- Suite : **J5a.5** (vérification et essai de l'utilisateur).

@@ -37,7 +37,16 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	static constexpr int32 ActivityBits = 3;
 	/** Low bits of the step the state was taken at: 256 steps, 12.8 s at 20 Hz, unwrapped by the client (UnwrapStep). */
 	static constexpr int32 StepBits = 8;
-	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits;
+	/**
+	 * Load carried (J5, D298): one bit says whether the unit carries something, then only a carrier writes the resource and
+	 * the amount (up to 31, room for the Wheelbarrow of § 11): a soldier pays one bit.
+	 */
+	static constexpr int32 LoadResourceBits = 2;
+	static constexpr int32 LoadAmountBits = 5;
+	static constexpr int32 MaxLoadAmount = (1 << LoadAmountBits) - 1;
+	/** Bits of a unit that carries nothing; a carrier writes CarriedLoadBits more. */
+	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1;
+	static constexpr int32 CarriedLoadBits = LoadResourceBits + LoadAmountBits;
 
 	UPROPERTY()
 	int16 X = 0;
@@ -53,8 +62,16 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	UPROPERTY()
 	uint8 Step = 0;
 
+	/** What it carries (J5, D298): the client shows it in the selection block. Not a reason to send the unit (D269). */
+	UPROPERTY()
+	EHOLResource LoadResource = EHOLResource::Food;
+
+	UPROPERTY()
+	uint8 LoadAmount = 0;
+
 	/** Reduces a state; values out of range are held at the range's edge. */
-	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step);
+	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,
+		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0);
 
 	/** Z = 0 for both, see above. */
 	FVector GetPosition() const;

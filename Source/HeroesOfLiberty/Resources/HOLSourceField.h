@@ -43,6 +43,9 @@ public:
 	int32 GetNumShown() const { return NumShown; }
 	int32 GetNumNavCylinders() const;
 
+	/** Half the width (cm) a source of this type is drawn with (a tree's crown is wider than its trunk): the selection aims there. */
+	static float GetDrawnRadius(const FHOLSourceTypeRow& Type);
+
 private:
 	/** A piece of a provisional shape (D297), in the source's measures: XY by its radius, Z by its height. */
 	struct FPiece
