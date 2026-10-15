@@ -96,7 +96,8 @@ vérifier sur S1 et S2.
    occasion au repos, au plus tard à la vérification de J5b. Suite : **J5b.1** (baies et filons ; voir « Plan de J5 »).
 10. **J5b.1 faite** (2026-10-15). Suite : **J5b.2** (HUD : sélection d'une source, bloc d'un groupe, comptes par ressource,
    inactifs, touche « . », textes fr / en / ja ; voir « Plan de J5 »). **S1 / S2 / S7 courts au repos faits** (2026-10-15,
-   tous PASS : S1 2,23 ms, S2 2,78 ms, S7 2,91 ms) ; reste reporté : serveur recuit puis S5 court.
+   tous PASS : S1 2,23 ms, S2 2,78 ms, S7 2,91 ms) ; **S5 court au repos fait** (serveur recuit, PASS à 31,08 Ko/s,
+   marge mince). Plus aucune mesure reportée.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1940,4 +1941,11 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
     pas sur 6, séparation 0,42, regard en avant 0,31, ordres 0,27, récolte 0,22 ; 1 170 bois/s, 62,5 chemins/s,
     207,8 chemins gardés repris/s (77 %).
 - GDD § 16.6 (« Parcours J5a ») : mesures au repos ajoutées à côté de celles sur machine chargée.
-- **Reste reporté** : serveur recuit puis S5 court. Reprise inchangée : **J5b.2** (HUD).
+- **S5 court au repos** (`net_match.ps1 -Stage -Units 2000 -Seconds 40`, serveur recuit sur 3c60912, 211 s en tout) :
+  **PASS à 31 082 o/s par client** (seuil 32 000 : **marge de 0,9 Ko/s**), 1,76 envoi par unité et par seconde, 42
+  paquets/s, écart affiché 22,7 cm (seuil 25), réplication 0,149 ms par pas. Client : états 25,2 Ko/s, le reste 5,9 Ko/s.
+  Machine chargée en J5a.4 : 31 283 o/s ; la hausse depuis D302 (30 007 o/s) n'est donc **pas** due à la charge : c'est
+  l'état de la récolte (activité, porteur et ce qu'il porte, D303). Tout bit ajouté à l'état répliqué en J5b / J5c
+  coûte ~0,5 Ko/s et peut faire échouer S5. Simulation du serveur 6,99 ms par pas (6,4 en D302), mesurée avec les 2
+  clients sur la même machine : non comparable au seuil de S2.
+- Plus aucune mesure reportée. Reprise inchangée : **J5b.2** (HUD).
