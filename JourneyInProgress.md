@@ -95,7 +95,8 @@ vérifier sur S1 et S2.
    chargée) : S1 / S2 / S7 courts au repos (ProjectShiva fermé), serveur recuit puis S5 court ; à faire à la première
    occasion au repos, au plus tard à la vérification de J5b. Suite : **J5b.1** (baies et filons ; voir « Plan de J5 »).
 10. **J5b.1 faite** (2026-10-15). Suite : **J5b.2** (HUD : sélection d'une source, bloc d'un groupe, comptes par ressource,
-   inactifs, touche « . », textes fr / en / ja ; voir « Plan de J5 »). Mesures au repos toujours reportées.
+   inactifs, touche « . », textes fr / en / ja ; voir « Plan de J5 »). **S1 / S2 / S7 courts au repos faits** (2026-10-15,
+   tous PASS : S1 2,23 ms, S2 2,78 ms, S7 2,91 ms) ; reste reporté : serveur recuit puis S5 court.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1926,3 +1927,17 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
 - `quick_check` : comptes passés à 376 sources (« sources » et « net ») ; **PASS en 69 s**, tests 36/36. S1 / S2 / S7 non
   concernés (S7 : arbres seuls, pas des places inchangé autour d'un arbre).
 - **Reprise** : **J5b.2** (HUD).
+
+### 2026-10-15 (suite) — S1 / S2 / S7 courts au repos
+
+- Machine au repos (ProjectShiva fermé, ~10 % du processeur, aucun Unreal ni compilation), binaires de 3c60912 (J5b.1),
+  hors écran (`-RenderOffScreen -ResX=888 -ResY=500`, journaux `Saved_Tests\Logs\rest_s1.log`, `rest_s2.log`,
+  `rest_s7.log` ; images par seconde non comparables à la référence en 1920 × 1080) :
+  - **S1** (10 s) : **2,233 ms PASS** (2,24 en D302) ; évitement à l'arrêt de Mass 8,5 ms un pas sur 6 ;
+  - **S2** (10 s) : **2,779 ms PASS** (2,71 en D302, 2,98 machine chargée) ; évitement en marche 1,29 (un pas sur 6),
+    séparation 0,75, ordres 0,55, regard en avant 0,53 ; 547 puis 387 paires l'une sur l'autre ;
+  - **S7** (20 s) : **2,906 ms PASS** (2,96 machine chargée), **marge mince** (0,09 ms) ; évitement à l'arrêt 5,3 ms un
+    pas sur 6, séparation 0,42, regard en avant 0,31, ordres 0,27, récolte 0,22 ; 1 170 bois/s, 62,5 chemins/s,
+    207,8 chemins gardés repris/s (77 %).
+- GDD § 16.6 (« Parcours J5a ») : mesures au repos ajoutées à côté de celles sur machine chargée.
+- **Reste reporté** : serveur recuit puis S5 court. Reprise inchangée : **J5b.2** (HUD).
