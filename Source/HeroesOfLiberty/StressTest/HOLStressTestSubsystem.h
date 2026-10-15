@@ -132,6 +132,7 @@ private:
 	FHOLResources UnloadedAtMeasureStart;
 	int32 StandingAtMeasureStart = 0;
 	int64 PathsAtMeasureStart = 0;
+	int64 PathsReusedAtMeasureStart = 0;
 	/** UHOLGatherProcessor::FCounters when the measure began (as plain numbers: the header stays free of the processor). */
 	int64 GatherCountersAtMeasureStart[6] = {};
 

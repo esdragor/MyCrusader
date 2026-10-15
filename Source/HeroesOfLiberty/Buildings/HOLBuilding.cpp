@@ -4,6 +4,7 @@
 
 #include "AI/NavigationSystemBase.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Commands/HOLCommandSubsystem.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -216,6 +217,11 @@ void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
 	NavObstacle->SetRelativeLocation(FVector(0., 0., Type.Height * 0.5));
 	// Registered with the default size when the actor spawned: the navigation takes the new size.
 	FNavigationSystem::UpdateComponentData(*NavObstacle);
+	// The paths kept for the gathering's walks across its footprint are forgotten (D305).
+	if (UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+	{
+		Commands->NotifyNavigationChanged(NavObstacle->Bounds.GetBox());
+	}
 }
 
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)

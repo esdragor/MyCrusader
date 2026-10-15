@@ -655,9 +655,10 @@ void UHOLStressTestSubsystem::LogGatheringSummary() const
 		}
 	}
 	const int64 Paths = UHOLUnitOrderProcessor::GetTotalPathsServed() - PathsAtMeasureStart;
-	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering (D296, D299): %d wood unloaded during the measure (%.0f per second), %d trees used up (%d standing), %lld paths served (%.1f per second)"),
+	const int64 Reused = UHOLUnitOrderProcessor::GetTotalPathsReused() - PathsReusedAtMeasureStart;
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering (D296, D299): %d wood unloaded during the measure (%.0f per second), %d trees used up (%d standing), %lld paths served (%.1f per second), %lld kept paths reused (%.1f per second, D305)"),
 		Unloaded.Wood, Unloaded.Wood / FMath::Max(MeasureSeconds, 1.f), StandingAtMeasureStart - Sources->GetNumStanding(), Sources->GetNumStanding(),
-		Paths, Paths / FMath::Max(MeasureSeconds, 1.f));
+		Paths, Paths / FMath::Max(MeasureSeconds, 1.f), Reused, Reused / FMath::Max(MeasureSeconds, 1.f));
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Gathering trips during the measure: %lld unloads, walks to a tree %lld and to a deposit %lld, missed spots %lld and deposits %lld, waits for a free spot %lld"),
 		Counters.Unloads - GatherCountersAtMeasureStart[4], Counters.WalksToSource - GatherCountersAtMeasureStart[0],
@@ -933,6 +934,7 @@ void UHOLStressTestSubsystem::BeginMeasure()
 		StandingAtMeasureStart = Sources->GetNumStanding();
 	}
 	PathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsServed();
+	PathsReusedAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsReused();
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
 	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotWaits };
 	FMemory::Memcpy(GatherCountersAtMeasureStart, Now, sizeof(Now));

@@ -40,6 +40,14 @@ public:
 	/** Takes the production orders waiting for the next step (UHOLProductionSubsystem calls this at each step). */
 	void ConsumeProductionOrders(TArray<FHOLProductionCommand>& OutCommands);
 
+	/**
+	 * The navmesh changes there (a source used up, a building placed; server and solo): the paths the simulation kept
+	 * for the gathering's walks across that area are forgotten at the next step (D305).
+	 */
+	void NotifyNavigationChanged(const FBox& Area);
+	/** Takes the areas changed since the last step (the order processor calls this at each step). */
+	void ConsumeNavigationChanges(TArray<FBox>& OutAreas);
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
@@ -47,4 +55,5 @@ private:
 	TArray<FHOLMoveOrder> PendingMoveOrders;
 	TArray<FHOLGatherOrder> PendingGatherOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;
+	TArray<FBox> PendingNavigationChanges;
 };

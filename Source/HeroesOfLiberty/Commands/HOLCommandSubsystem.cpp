@@ -80,3 +80,19 @@ void UHOLCommandSubsystem::ConsumeProductionOrders(TArray<FHOLProductionCommand>
 	OutCommands.Reset();
 	Swap(OutCommands, PendingProductionOrders);
 }
+
+void UHOLCommandSubsystem::NotifyNavigationChanged(const FBox& Area)
+{
+	// Only the simulation consumes them: a client would only pile them up.
+	const UWorld* World = GetWorld();
+	if (World && World->GetNetMode() != NM_Client && Area.IsValid)
+	{
+		PendingNavigationChanges.Add(Area);
+	}
+}
+
+void UHOLCommandSubsystem::ConsumeNavigationChanges(TArray<FBox>& OutAreas)
+{
+	OutAreas.Reset();
+	Swap(OutAreas, PendingNavigationChanges);
+}

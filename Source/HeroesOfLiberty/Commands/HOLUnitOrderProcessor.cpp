@@ -38,6 +38,26 @@ namespace UE::HeroesOfLiberty::Orders
 	FAutoConsoleVariableRef CVarOrderTiming(TEXT("hol.Units.OrderTiming"), OrderTiming,
 		TEXT("1: the average cost of the order processor's parts (orders applied, paths served, units advanced) logged every 200 steps (D302)"));
 
+	int32 ReusePaths = 1;
+	FAutoConsoleVariableRef CVarReusePaths(TEXT("hol.Units.ReusePaths"), ReusePaths,
+		TEXT("1: a task's walk (J5: to the source, to the deposit) takes the path kept from a walk between the same points (D305); 0: a new request each time."));
+
+	int32 CheckReusedStraight = 1;
+	FAutoConsoleVariableRef CVarCheckReusedStraight(TEXT("hol.Units.ReuseCheckStraight"), CheckReusedStraight,
+		TEXT("1: a kept straight walk is reused only if a navmesh ray from the unit to its target is clear (D305)."));
+
+	float ReuseCellSize = 600.f;
+	FAutoConsoleVariableRef CVarReuseCellSize(TEXT("hol.Units.ReuseCellSize"), ReuseCellSize,
+		TEXT("Size (cm) of the cells of a kept path's start and end (D305): a walk takes it when it starts and ends in the same cells."));
+
+	/** A kept path no walk took for this many steps (60 s) is forgotten; the register is swept every SweepSteps. */
+	constexpr uint32 ReuseForgetSteps = 1200;
+	constexpr uint32 ReuseSweepSteps = 200;
+	/** Steps (5 s) during which a path found across a changed area is not kept: the tiles there are being rebuilt. */
+	constexpr uint32 NavChangeSettleSteps = 100;
+	/** Margin (cm) around a kept path within which a change of the navmesh forgets it: half the corridor and more. */
+	constexpr double ReuseBoundsMargin = 400.;
+
 	/** Time spent in each part and steps run since the last log (hol.Units.OrderTiming 1). */
 	double TimingSeconds[3] = {};
 	int32 TimingRuns = 0;
@@ -209,6 +229,7 @@ namespace UE::HeroesOfLiberty::Orders
 }
 
 int64 UHOLUnitOrderProcessor::TotalPathsServed = 0;
+int64 UHOLUnitOrderProcessor::TotalPathsReused = 0;
 
 UHOLUnitOrderProcessor::UHOLUnitOrderProcessor()
 	: EntityQuery(*this)
@@ -240,6 +261,11 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	UNavigationSystemV1* NavSystem = World ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr;
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
 	const double StartSeconds = FPlatformTime::Seconds();
+	++StepCount;
+	if (UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+	{
+		ForgetChangedPaths(*Commands);
+	}
 	ApplyQueuedOrders(EntityManager, NavSystem, NavData);
 	const double OrdersSeconds = FPlatformTime::Seconds();
 	ServePathRequests(EntityManager, NavSystem, NavData);
@@ -257,6 +283,44 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				TimingSeconds[1] * 1000. / TimingRuns, TimingSeconds[2] * 1000. / TimingRuns);
 			TimingSeconds[0] = TimingSeconds[1] = TimingSeconds[2] = 0.;
 			TimingRuns = 0;
+		}
+	}
+}
+
+FIntVector4 UHOLUnitOrderProcessor::GetReuseKey(const FVector& Start, const FVector& Target)
+{
+	using namespace UE::HeroesOfLiberty::Orders;
+	const double Cell = FMath::Max(ReuseCellSize, 1.f);
+	return FIntVector4(FMath::FloorToInt32(Start.X / Cell), FMath::FloorToInt32(Start.Y / Cell), FMath::FloorToInt32(Target.X / Cell),
+		FMath::FloorToInt32(Target.Y / Cell));
+}
+
+void UHOLUnitOrderProcessor::ForgetChangedPaths(UHOLCommandSubsystem& Commands)
+{
+	using namespace UE::HeroesOfLiberty::Orders;
+	TArray<FBox> Changed;
+	Commands.ConsumeNavigationChanges(Changed);
+	RecentNavChanges.RemoveAll([this](const FRecentNavChange& Change) { return Change.UntilStep < StepCount; });
+	const int32 FirstNew = RecentNavChanges.Num();
+	for (const FBox& Area : Changed)
+	{
+		RecentNavChanges.Add({ FBox2D(FVector2D(Area.Min), FVector2D(Area.Max)), StepCount + NavChangeSettleSteps });
+	}
+	// The kept paths across a new change are forgotten once; until its tiles are rebuilt, a path found across it is
+	// not kept (ServePathRequests), since it may cross what the navmesh does not show yet (a building placed).
+	const TConstArrayView<FRecentNavChange> NewChanges = TConstArrayView<FRecentNavChange>(RecentNavChanges).RightChop(FirstNew);
+	const bool bSweep = StepCount % ReuseSweepSteps == 0;
+	if (NewChanges.IsEmpty() && !bSweep)
+	{
+		return;
+	}
+	for (auto It = ReusedPaths.CreateIterator(); It; ++It)
+	{
+		const FReusedPath& Kept = It.Value();
+		if ((bSweep && StepCount - Kept.LastUsedStep > ReuseForgetSteps)
+			|| NewChanges.ContainsByPredicate([&Kept](const FRecentNavChange& Change) { return Change.Area.Intersect(Kept.Bounds); }))
+		{
+			It.RemoveCurrent();
 		}
 	}
 }
@@ -416,6 +480,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
 			Request.OrderSerial = OrderSerial;
 			Request.Target = Order.Target;
+			Request.bReusable = bTaskSpot;
 		}
 		TArray<FVector> ClusterSums;
 		ClusterSums.Init(FVector::ZeroVector, NumClusters);
@@ -472,7 +537,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 
 	int32 Served = 0;
 	int32 Next = 0;
-	for (; Next < PendingPaths.Num() && (Budget == 0 || Served < Budget); ++Next)
+	for (; Next < PendingPaths.Num(); ++Next)
 	{
 		FPathRequest& Request = PendingPaths[Next];
 		// Its units that still follow this order (a newer order replaces a path not yet computed).
@@ -485,31 +550,73 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 		{
 			continue;
 		}
-		++Served;
 
-		FNavPathSharedPtr Path;
-		if (NavSystem && NavData && DirectPaths == 0)
+		// A task's walk between the same cells as a kept one takes its path (D305): no request, nothing off the budget.
+		const bool bReuse = Request.bReusable && ReusePaths != 0 && DirectPaths == 0 && NavData;
+		const FIntVector4 ReuseKey = bReuse ? GetReuseKey(Request.Start, Request.Target) : FIntVector4();
+		FReusedPath* Kept = bReuse ? ReusedPaths.Find(ReuseKey) : nullptr;
+		// A kept straight walk is straight between its own points: this one, between others of the same cells, only if
+		// the navmesh lets it walk straight (one ray, much cheaper than a path; a tree may stand between).
+		FVector Hit;
+		if (Kept && !Kept->Corridor.IsValid() && CheckReusedStraight != 0
+			&& NavData->Raycast(Request.Start, Request.Target, Hit, NavData->GetDefaultQueryFilter()))
 		{
-			FNavLocation Start;
-			const FVector StartExtent(500.f, 500.f, 500.f);
-			if (NavSystem->ProjectPointToNavigation(Request.Start, Start, StartExtent, NavData))
+			Kept = nullptr;
+		}
+		FNavPathSharedPtr Path;
+		TSharedPtr<FNavCorridor> Corridor;
+		if (Kept)
+		{
+			Kept->LastUsedStep = StepCount;
+			Path = Kept->Path;
+			Corridor = Kept->Corridor;
+			++TotalPathsReused;
+		}
+		else
+		{
+			if (Budget > 0 && Served >= Budget)
 			{
-				const FPathFindingQuery Query(World, *NavData, Start.Location, Request.Target);
-				const FPathFindingResult Result = NavSystem->FindPathSync(Query);
-				if (Result.IsSuccessful() && Result.Path.IsValid())
+				break;
+			}
+			++Served;
+			if (NavSystem && NavData && DirectPaths == 0)
+			{
+				FNavLocation Start;
+				const FVector StartExtent(500.f, 500.f, 500.f);
+				if (NavSystem->ProjectPointToNavigation(Request.Start, Start, StartExtent, NavData))
 				{
-					Result.Path->RemoveOverlappingPoints(FNavCorridor::OverlappingPointTolerance);
-					if (Result.Path->GetPathPoints().Num() >= 2)
+					const FPathFindingQuery Query(World, *NavData, Start.Location, Request.Target);
+					const FPathFindingResult Result = NavSystem->FindPathSync(Query);
+					if (Result.IsSuccessful() && Result.Path.IsValid())
 					{
-						Path = Result.Path;
+						Result.Path->RemoveOverlappingPoints(FNavCorridor::OverlappingPointTolerance);
+						if (Result.Path->GetPathPoints().Num() >= 2)
+						{
+							Path = Result.Path;
+						}
 					}
 				}
 			}
+			// A straight path (nothing in the way, the usual case in the open) needs no corridor: the units walk straight
+			// to their slots, which costs no path follow (S2: +0.3 ms of path follow and avoidance for nothing otherwise).
+			const bool bDetour = Path.IsValid() && Path->GetPathPoints().Num() > 2;
+			Corridor = bDetour ? MakeCorridor(*Path, *NavData, Settings->PathCorridorWidth) : nullptr;
+			// Kept for the next walk between the same cells: a whole path (not a partial one, not none), and not across
+			// an area whose tiles are being rebuilt. A straight one is kept without its points (the walk goes straight).
+			if (bReuse && Path.IsValid() && !Path->IsPartial())
+			{
+				FBox2D Bounds(ForceInit);
+				for (const FNavPathPoint& Point : Path->GetPathPoints())
+				{
+					Bounds += FVector2D(Point.Location);
+				}
+				Bounds = Bounds.ExpandBy(ReuseBoundsMargin);
+				if (!RecentNavChanges.ContainsByPredicate([&Bounds](const FRecentNavChange& Change) { return Change.Area.Intersect(Bounds); }))
+				{
+					ReusedPaths.Add(ReuseKey, { bDetour ? Path : FNavPathSharedPtr(), Corridor, Bounds, StepCount });
+				}
+			}
 		}
-		// A straight path (nothing in the way, the usual case in the open) needs no corridor: the units walk straight
-		// to their slots, which costs no path follow (S2: +0.3 ms of path follow and avoidance for nothing otherwise).
-		const bool bDetour = Path.IsValid() && Path->GetPathPoints().Num() > 2;
-		const TSharedPtr<FNavCorridor> Corridor = bDetour ? MakeCorridor(*Path, *NavData, Settings->PathCorridorWidth) : nullptr;
 		const bool bFollowPath = Corridor.IsValid() && Corridor->Portals.Num() >= 2 && DirectPaths == 0;
 
 		for (const FMassEntityHandle Entity : Request.Entities)

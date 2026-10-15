@@ -5,6 +5,8 @@
 #include "AI/Navigation/NavigationRelevantData.h"
 #include "AI/NavigationModifier.h"
 #include "AI/NavigationSystemBase.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Engine/World.h"
 #include "NavAreas/NavArea_Null.h"
 
 namespace UE::HeroesOfLiberty::Resources
@@ -121,5 +123,13 @@ void UHOLSourceNavComponent::NotifyChanged(const TConstArrayView<FBox> DirtyArea
 	if (IsRegistered() && Bounds.IsValid && DirtyAreas.Num() > 0)
 	{
 		FNavigationSystem::OnObjectBoundsChanged(*this, Bounds, DirtyAreas);
+		// The paths kept for the gathering's walks across these areas are forgotten (D305).
+		if (UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+		{
+			for (const FBox& Area : DirtyAreas)
+			{
+				Commands->NotifyNavigationChanged(Area);
+			}
+		}
 	}
 }

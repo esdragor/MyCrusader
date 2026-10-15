@@ -8,7 +8,10 @@
 #include "HOLUnitOrderProcessor.generated.h"
 
 class ANavigationData;
+class UHOLCommandSubsystem;
 class UNavigationSystemV1;
+struct FNavCorridor;
+struct FNavigationPath;
 
 /**
  * The RTS layer's step (D226), first of the Tasks group, on the server (and in solo). A move order (D286, D287):
@@ -29,6 +32,8 @@ public:
 	int64 GetNumPathsServed() const { return NumPathsServed; }
 	/** Path requests served by every order processor since the program started (stress test S7: paths per second). */
 	static int64 GetTotalPathsServed() { return TotalPathsServed; }
+	/** Task walks given a kept path instead of a new request since the program started (D305, stress test S7). */
+	static int64 GetTotalPathsReused() { return TotalPathsReused; }
 	int32 GetNumPathsWaiting() const { return PendingPaths.Num(); }
 
 protected:
@@ -49,12 +54,40 @@ protected:
 		FVector Start = FVector::ZeroVector;
 		FVector Target = FVector::ZeroVector;
 		TArray<FMassEntityHandle> Entities;
+		/** A task's walk of one unit (J5: to its source, to the deposit): its path may be a kept one (D305). */
+		bool bReusable = false;
 	};
 	TArray<FPathRequest> PendingPaths;
 
 	uint32 NextOrderSerial = 1;
 	int64 NumPathsServed = 0;
 	static int64 TotalPathsServed;
+	static int64 TotalPathsReused;
+
+	/**
+	 * Paths of the task walks (D305), kept for the next walk between the same points (a gatherer goes back and forth
+	 * between the same spots): by the cells of ReuseCellSize of their start and their end. No path: the walk was
+	 * straight. Forgotten when the navmesh changes across them, or when no walk took them for a while.
+	 */
+	struct FReusedPath
+	{
+		TSharedPtr<FNavigationPath, ESPMode::ThreadSafe> Path;
+		TSharedPtr<FNavCorridor> Corridor;
+		FBox2D Bounds;
+		uint32 LastUsedStep = 0;
+	};
+	TMap<FIntVector4, FReusedPath> ReusedPaths;
+	/** Areas where the navmesh changed lately: its tiles are rebuilt a little later, a path found meanwhile is not kept. */
+	struct FRecentNavChange
+	{
+		FBox2D Area;
+		uint32 UntilStep = 0;
+	};
+	TArray<FRecentNavChange> RecentNavChanges;
+	uint32 StepCount = 0;
+	static FIntVector4 GetReuseKey(const FVector& Start, const FVector& Target);
+	/** The navmesh changes of the last step: the kept paths across them are forgotten. */
+	void ForgetChangedPaths(UHOLCommandSubsystem& Commands);
 
 	/**
 	 * Slots given to units still on their way, by cell of ClaimCellSize: a later order does not give them again (units
