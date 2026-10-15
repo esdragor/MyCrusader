@@ -57,6 +57,7 @@ vérifier sur S1 et S2.
 | J4.7 Vérification (D289) | **fait** (2026-10-15) : partie solo des ordres dans `quick_check` (PASS, 65-75 s), défauts corrigés (D294), S1 PASS ; **S2 à remesurer au repos**, **S5 PASS à 29,97 Ko/s** (39,7 avant) : D300 (identifiant de 10 bits par élément d'un tableau rapide, retiré par des tableaux simples : 35,6) puis D301 (hauteur posée au sol par le client, état de 59 bits) ; S2 court FAIL (4,41 ms par pas, seuil 3) → **D302 fait (2026-10-15) : S2 court PASS à 2,71 ms** (évitement, pilotage et orientation de Mass en parallèle, regard en avant allégé, mêmes résultats), S1 PASS (2,24 ms), `quick_check` PASS (64 s), S5 court PASS (30,0 Ko/s, 23,0 cm) |
 | J4.8 Clôture : D285 à D294, D300 à D302 au GDD | **fait** (2026-10-15) : lignes au § 21 (D294 complétée, D274 précisée : les ~8 Ko/s d'en-têtes), paragraphe « Parcours J4 » et ligne M3 au § 16.6. **J4 close.** |
 | J5 — plan (Q1 à Q5, D295 à D299 ; mené en parallèle de la fin de J4, dans une autre session) | **fait** (2026-10-14) : D295 à D299 ; trois parties jouables J5a (bois), J5b (4 ressources et HUD), J5c (vie de la récolte) ; code après la clôture de J4 |
+| J5a.1 Données et règles pures | **fait** (2026-10-15) : table des sources (`SourceTypes.csv` → `/Game/Resources/SourceTypes`, `make_source_types.py`), taux et charge dans la table des unités, `Simulation/HOLGatherRules`, 4 tests `HeroesOfLiberty.Gather.*` ; tests 36/36, `quick_check` PASS (87 s) |
 
 ## Prochaine étape exacte
 
@@ -76,6 +77,8 @@ vérifier sur S1 et S2.
    récolte), chacune avec l'essai de l'utilisateur. **Aucun code avant la clôture de J4** ; reprise ensuite à J5a.1.
 6. **J4 close le 2026-10-15** (D285 à D294, D300 à D302 au GDD). Suite : **J5a.1** (première sous-étape de J5a, le
    bois ; voir « Plan de J5 »).
+7. **J5a.1 faite** (2026-10-15). Suite : **J5a.2** (sources dans la partie : registre au serveur, instances par type,
+   acteur partagé, fournisseur de zones interdites, arbres posés par script sur `Plain` et `StressTest`).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1674,3 +1677,22 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   éléments des tableaux rapides). § 16.6 : paragraphe « Parcours J4 » après celui de J3, ligne **M3** du tableau marquée
   faite (sauf les formations, M4), phrase des en-têtes de la tranche M2.5 mise à jour.
 - **J4 close.** Suite dans l'ordre de D252 : **J5a.1** (plan de J5 déjà fait, D295 à D299).
+
+### 2026-10-15 (suite) — J5a.1 : données et règles pures de la récolte
+
+- `Match/HOLResources.h` : `EHOLResource` (une des 4 ressources : ce que donne une source, ce que porte un Paysan),
+  `FHOLResources[ressource]`, `FHOLResourceRates` (un taux par ressource, par seconde).
+- Table des unités : colonnes `GatherRates` et `CarryCapacity` (Paysan 0,7/s pour les 4, charge 10 ; soldats 0),
+  recopiées dans le fragment partagé `FHOLUnitTypeConstants` pour la simulation de J5a.3 ; `UnitTypes` réimportée.
+- Table des sources (D297) : `Resources/HOLSourceTypes` (`FHOLSourceTypeRow` : nom, ressource, quantité, rayon, hauteur
+  et maillage provisoires ; `UHOLSourceSettings::FindType`), `Tools/Data/SourceTypes.csv` (`Tree` bois 100, rayon 60 ;
+  `BerryBush` nourriture 200, rayon 110 ; `StoneVein` / `GoldVein` 2 500, rayon 300), `Tools/Editor/make_source_types.py`
+  → `/Game/Resources/SourceTypes`, déclarée dans `DefaultGame.ini`.
+- Règles pures (D296) : `Simulation/HOLGatherRules` : charge (une ressource, unités entières et progression vers la
+  suivante), `StartGathering` (autre ressource : charge perdue), `Gather` (un pas au taux, jusqu'à la charge ou la fin de
+  la source), `IsFull`, `Deposit` (le stock ne monte qu'ici), distance au bord d'un corps et contact (à 30 cm près),
+  `FindNearestDeposit` (au bord le plus proche), `FindNeighbourSource` (même ressource, non vide, centre à 15 m au plus,
+  sinon inactif).
+- Tests `HeroesOfLiberty.Gather.Load` / `.Deposit` / `.Choice` / `.Tables`. Compile sans avertissement ; tests 36/36,
+  **`quick_check` PASS en 87 s**. S1 / S2 non concernés (rien dans la simulation encore).
+- Suite : **J5a.2** (sources dans la partie).

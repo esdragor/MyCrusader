@@ -73,6 +73,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 
 	UPROPERTY()
 	float WalkLength = 0.f;
+
+	/** Gathering (J5, D296): rate per resource (per second, 0 = cannot gather it) and load carried to a deposit. */
+	UPROPERTY()
+	FHOLResourceRates GatherRates;
+
+	UPROPERTY()
+	int32 CarryCapacity = 0;
 };
 
 /**
@@ -158,6 +165,14 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0"))
 	int32 Population = 1;
 
+	/** How fast the unit gathers each resource (per second, J5, D296: ~0.7, indicative); 0 everywhere = not a gatherer. */
+	UPROPERTY(EditAnywhere, Category = "Gathering")
+	FHOLResourceRates GatherRates;
+
+	/** Load the unit carries before it walks to a deposit (J5, D296: 10; the Wheelbarrow of § 11 will raise it). */
+	UPROPERTY(EditAnywhere, Category = "Gathering", meta = (ClampMin = "0"))
+	int32 CarryCapacity = 0;
+
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };
 
@@ -177,5 +192,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.IdleSequence = IdleSequence;
 	Constants.WalkSequence = WalkSequence;
 	Constants.WalkPlayRate = WalkPlayRate;
+	Constants.GatherRates = GatherRates;
+	Constants.CarryCapacity = CarryCapacity;
 	return Constants;
 }

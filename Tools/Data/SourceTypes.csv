@@ -1,0 +1,5 @@
+Name,DisplayName,Resource,Amount,Radius,Height,Mesh
+Tree,Arbre,Wood,100,60,900,
+BerryBush,Buisson de baies,Food,200,110,160,
+StoneVein,Filon de pierre,Stone,2500,300,300,
+GoldVein,Filon d'or,Gold,2500,300,300,
