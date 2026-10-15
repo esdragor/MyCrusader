@@ -45,8 +45,11 @@ namespace UE::HeroesOfLiberty::Gather
 	constexpr double ArrivalGap = 60.;
 	/** Distance (cm) the navmesh must be open outward from a spot, away from its source. */
 	constexpr double OpenOutwardDistance = 300.;
-	/** Spots tried around a source, every 30 degrees from the side facing the gatherer. */
-	constexpr int32 SpotTries = 12;
+	/**
+	 * Largest angle (radians) between two spots tried around a source, from the side facing the gatherer: 30 degrees
+	 * around a tree or a bush; around a vein (J5b.1), as close as two gatherers stand, so that more of them fit.
+	 */
+	constexpr double MaxSpotStep = UE_DOUBLE_PI / 6.;
 	/** Arrivals that missed their spot in a row before a gatherer tries a neighbour of its source. */
 	constexpr int32 MaxSourceMisses = 3;
 	/** Arrivals that missed the deposit in a row before a carrier gives up and stands, its load kept. */
@@ -548,12 +551,14 @@ bool UHOLGatherProcessor::FindSourceSpot(const FStepContext& Step, const int32 S
 		Towards = FVector2D(1., 0.);
 	}
 	const double BaseAngle = FMath::Atan2(Towards.Y, Towards.X);
+	const double SpotStep = FMath::Min(MaxSpotStep, 2. * FMath::Asin(FMath::Min(1., MinSpacing / (2. * Distance))));
+	const int32 SpotTries = FMath::FloorToInt32(2. * UE_DOUBLE_PI / SpotStep + 1e-6);
 	const FVector Extent(25., 25., 300.);
 	for (int32 Try = 0; Try < SpotTries; ++Try)
 	{
-		// 0, +30, -30, +60, -60... degrees from the side facing it.
+		// 0, +1, -1, +2, -2... steps from the side facing it.
 		const int32 Turn = (Try + 1) / 2;
-		const double Angle = BaseAngle + (Try % 2 == 1 ? 1. : -1.) * Turn * UE_DOUBLE_PI / 6.;
+		const double Angle = BaseAngle + (Try % 2 == 1 ? 1. : -1.) * Turn * SpotStep;
 		const FVector2D Spot = Centre + Distance * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
 		if (Claims.ContainsByPredicate([&Spot, MinSpacing](const FSpotClaim& Claim) { return FVector2D::DistSquared(Claim.Spot, Spot) < MinSpacing * MinSpacing; }))
 		{

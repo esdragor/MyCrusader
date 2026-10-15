@@ -15,6 +15,10 @@ on each occupied slot when a match starts (D259).
                a wood of 40 trees beside each slot (J5a), on its left seen from the slot, 18 to 27 m from it, out of the
                way of the Peasants born at the centre's foot. Trees 2.2 m apart: with the navmesh's agent radius, a
                wood is a wall, as in AoE, and its edge recedes tree by tree. The same small offsets for every slot.
+               Beside each slot on the other side (J5b.1), 6 berry bushes, 20 to 23 m from it: farther than the nearest
+               trees (the scripted checks aim at the tree nearest a start). Between each two neighbouring slots, a vein,
+               stone and gold in turn: each slot has one of each ~60 m away, as far from it as from its neighbour
+               (contested, D295), and the way to the one on the wood's side passes beside the wood.
 
 Needs the HeroesOfLiberty module compiled. Run in a full editor session (the editor quits when done):
   UnrealEditor.exe <project> -nosplash -unattended -ExecCmds="py <this file>"
@@ -52,6 +56,16 @@ WOOD_COLUMNS = 8
 # Offsets (cm) of the trees from their grid point, the same for every slot (symmetric map): a wood is not a grid.
 # At most 20 cm: two neighbours never leave a way through for a unit (60 cm agent radius on each trunk of 60 cm).
 WOOD_JITTER = [(16, -9), (-12, 18), (6, 14), (-19, -5), (10, -17), (-4, 7), (19, 11), (-15, -18), (3, -13), (-8, 20)]
+# Berries on each slot's other side (J5b.1): BERRY_ROWS x BERRY_COLUMNS bushes from BERRY_NEAR. Bushes of 1.1 m radius
+# 3 m apart: 80 cm between two, closed to a unit (60 cm agent radius), so a patch is gathered from its edge.
+BERRY_NEAR = 2000.0
+BERRY_SPACING = 300.0
+BERRY_ROWS = 2
+BERRY_COLUMNS = 3
+# Veins between neighbouring slots (J5b.1): at the middle angle of two slots, VEIN_RADIUS from the map's centre (inside
+# the slots' circle: the way from a slot to the vein on its wood's side passes ~7 m beside the wood). Stone first.
+VEIN_RADIUS = 12000.0
+VEIN_TYPES = ["StoneVein", "GoldVein"]
 
 
 def spawn(actor_class, location=unreal.Vector(0, 0, 0), rotation=unreal.Rotator(0, 0, 0), label=None):
@@ -118,8 +132,16 @@ def spawn_obstacles():
         spawn_shape("/Engine/BasicShapes/Sphere", unreal.Vector(x, y, 650), unreal.Vector(4.5, 4.5, 3.5), "Crown%d" % number, crown)
 
 
+def placed_source(type_name, x, y):
+    source = unreal.HOLPlacedSource()
+    source.set_editor_property("type", type_name)
+    source.set_editor_property("location", unreal.Vector(x, y, 0))
+    return source
+
+
 def make_sources():
-    """The sources of the match (D297): a wood beside each slot, as AHOLSourceLayout data."""
+    """The sources of the match (D297), as AHOLSourceLayout data: the woods first (source 0 is the first tree of slot
+    0's wood, the scripted checks use it), then the berries, then the veins."""
     sources = []
     for angle in SLOT_ANGLES:
         radians = math.radians(angle)
@@ -137,10 +159,22 @@ def make_sources():
                 along += jitter[1]
                 x = slot[0] + left[0] * side + radial[0] * along
                 y = slot[1] + left[1] * side + radial[1] * along
-                source = unreal.HOLPlacedSource()
-                source.set_editor_property("type", "Tree")
-                source.set_editor_property("location", unreal.Vector(x, y, 0))
-                sources.append(source)
+                sources.append(placed_source("Tree", x, y))
+    for angle in SLOT_ANGLES:
+        radians = math.radians(angle)
+        radial = (math.cos(radians), math.sin(radians))
+        right = (radial[1], -radial[0])
+        slot = (SLOT_RADIUS * radial[0], SLOT_RADIUS * radial[1])
+        for row in range(BERRY_ROWS):
+            for column in range(BERRY_COLUMNS):
+                side = BERRY_NEAR + row * BERRY_SPACING
+                along = (column - (BERRY_COLUMNS - 1) / 2.0) * BERRY_SPACING
+                sources.append(placed_source("BerryBush", slot[0] + right[0] * side + radial[0] * along,
+                                             slot[1] + right[1] * side + radial[1] * along))
+    # Slot angles are multiples of 45 degrees: a vein at each odd multiple of 22.5 degrees, between two neighbours.
+    for number in range(len(SLOT_ANGLES)):
+        radians = math.radians(22.5 + 45.0 * number)
+        sources.append(placed_source(VEIN_TYPES[number % 2], VEIN_RADIUS * math.cos(radians), VEIN_RADIUS * math.sin(radians)))
     return sources
 
 
@@ -197,14 +231,15 @@ def main():
 
     # Resource sources (D297): data read by the server, nothing in the map itself (the navmesh is built without them).
     layout = spawn(layout_class, label="SourceLayout")
-    layout.set_editor_property("sources", make_sources())
+    sources = make_sources()
+    layout.set_editor_property("sources", sources)
 
     # The navmesh is built once the editor lets it (it locks building for ~2 s after loading), then saved.
-    wait_for_navmesh(nav, level_subsystem)
+    wait_for_navmesh(nav, level_subsystem, len(sources))
 
 
-def wait_for_navmesh(nav, level_subsystem):
-    state = {"elapsed": 0.0, "handle": None, "done": False}
+def wait_for_navmesh(nav, level_subsystem, num_sources):
+    state = {"elapsed": 0.0, "handle": None, "done": False, "sources": num_sources}
 
     def tick(delta):
         # A modal dialog (a save, a warning) ticks Slate again: never run twice.
@@ -228,7 +263,7 @@ def wait_for_navmesh(nav, level_subsystem):
             else:
                 unreal.log("Match map created at %s: %d start slots on a %.0f m circle, bounds %.0f m, %d obstacles, %d sources, navmesh built" % (
                     MAP_PATH, len(SLOT_ANGLES), SLOT_RADIUS / 100, 2 * BOUNDS_HALF_SIZE / 100,
-                    len(SLOT_ANGLES) * len(RIDGE_BOULDERS) + 2 * len(GROVE_TREES), len(SLOT_ANGLES) * WOOD_ROWS * WOOD_COLUMNS))
+                    len(SLOT_ANGLES) * len(RIDGE_BOULDERS) + 2 * len(GROVE_TREES), state["sources"]))
         except Exception as error:  # never leave the editor open
             unreal.log_error("Match map: %s" % error)
         unreal.SystemLibrary.quit_editor()

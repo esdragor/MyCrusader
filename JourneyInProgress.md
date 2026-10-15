@@ -63,6 +63,7 @@ vérifier sur S1 et S2.
 | J5a.4 Ordre réseau et ralliement | **fait** (2026-10-15) : clic droit sur une source (visée à l'écran comme une unité) → ordre de récolte vérifié par le serveur, repère bref sur la source ; ralliement sur une source (le Paysan né y récolte) ; activité « récolte » et charge dans l'état répliqué (1 bit, +7 pour un porteur) ; bloc du Paysan « Récolte — Bois 4/10 » (fr / en / ja) ; couronne des arbres remontée (les récolteurs se voient) ; `quick_check` PASS (caméra 8p : un raté d'à-coup, PASS au second essai), **S5 PASS à 31,3 Ko/s** (machine chargée) |
 | J5a.5 Vérification et essai | **fait** (2026-10-15) : 1er essai → D303 (naissance vers le ralliement, bloc du Paysan à chaque changement, charge exacte au seul propriétaire de l'unité sélectionnée seule) ; 2e essai → D304 (orientation instantanée) ; 3e essai validé ; `quick_check` PASS (68 s) ; solo vérifié à la main par l'utilisateur ; **partie à 2 clients de la récolte** dans `quick_check` (charge suivie de D303, arbre épuisé chez les deux, stock de l'autre jamais reçu) PASS, `quick_check` PASS (70 s) ; essai de l'utilisateur (arbres, S7) validé ; D305 (réutilisation des chemins) faite ; **S1 / S2 / S7 au repos et S5 reportés** (machine chargée, choix de l'utilisateur) |
 | J5a.6 Clôture : D295 à D299, D303 à D305 au GDD | **fait** (2026-10-15) : lignes au § 21 (D297 et D299 précisées par ce qui a été fait), paragraphe « Parcours J5a : le bois » au § 16.6, S7 dans les seuils des stress tests. **J5a close.** |
+| J5b.1 Baies et filons | **fait** (2026-10-15) : `Plain` refaite (376 sources : 6 buissons de baies en face du bois de chaque emplacement, à 20-23 m ; 8 filons entre voisins, pierre et or alternés, à 60 m de chacun) ; places autour d'une source au pas de deux récolteurs (16 autour d'un filon au lieu de 12, arbres et baies inchangés) ; essai scripté solo : baies, pierre, or déchargés, charge perdue au changement ; `quick_check` PASS (69 s) |
 
 ## Prochaine étape exacte
 
@@ -93,6 +94,8 @@ vérifier sur S1 et S2.
 9. **J5a close le 2026-10-15** (D295 à D299, D303 à D305 au GDD). **Mesures reportées** (choix de l'utilisateur, machine
    chargée) : S1 / S2 / S7 courts au repos (ProjectShiva fermé), serveur recuit puis S5 court ; à faire à la première
    occasion au repos, au plus tard à la vérification de J5b. Suite : **J5b.1** (baies et filons ; voir « Plan de J5 »).
+10. **J5b.1 faite** (2026-10-15). Suite : **J5b.2** (HUD : sélection d'une source, bloc d'un groupe, comptes par ressource,
+   inactifs, touche « . », textes fr / en / ja ; voir « Plan de J5 »). Mesures au repos toujours reportées.
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -1902,3 +1905,24 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   J5c.4 n'a plus qu'à écrire le paragraphe « Parcours J5 ». **J5a close.**
 - **Reprise** : S1 / S2 / S7 courts au repos et S5 (serveur recuit) si la machine est au repos ; puis **J5b.1** (baies et
   filons de pierre et d'or sur `Plain`, récolte des 4 ressources, charge perdue au changement de ressource).
+
+### 2026-10-15 (suite) — J5b.1 : baies et filons
+
+- Machine toujours chargée (ProjectShiva, 66 %) : mesures au repos encore reportées.
+- **`Plain` refaite** (`create_match_map.py`) : après les 320 arbres (la source 0 reste le premier arbre de l'emplacement
+  0), **6 buissons de baies** par emplacement (2 × 3, 3 m d'écart : 80 cm entre deux, fermé à une unité, récoltés par le
+  bord), de l'autre côté que le bois, **à 20-23 m** : plus loin que les arbres les plus proches (17,9 m), que visent les
+  contrôles de `quick_check` ; puis **8 filons** à 120 m du milieu, à l'angle médian de deux emplacements voisins,
+  **pierre et or alternés** : chaque emplacement a un filon de chaque à **60 m**, à égale distance de son voisin
+  (contestés, D295) ; le chemin vers celui du côté du bois passe à ~7 m du bois. 376 sources en tout.
+- **Places autour d'une source** (`UHOLGatherProcessor::FindSourceSpot`) : le pas entre deux places essayées est celui
+  de deux récolteurs côte à côte, 30° au plus : autour d'un filon (3 m de rayon), **16 places au lieu de 12** ; arbres
+  et baies inchangés (30°).
+- Rien d'autre à changer : la simulation, l'affichage (formes de J5a.2), la visée et les textes du bloc (Nourriture,
+  Pierre, Or en fr / en / ja) étaient déjà génériques.
+- **Essai scripté solo** (hors écran, 10 Paysans de l'emplacement 0, `hol.Units.Gather`) : baies → **130 nourriture en
+  40 s** ; filon de pierre → **100 pierre en 55 s**, « 69 carried lost » (la nourriture portée, D296) ; filon d'or →
+  **100 or**, « 41 carried lost » ; les 10 récolteurs tiennent ensemble au filon ; captures conformes.
+- `quick_check` : comptes passés à 376 sources (« sources » et « net ») ; **PASS en 69 s**, tests 36/36. S1 / S2 / S7 non
+  concernés (S7 : arbres seuls, pas des places inchangé autour d'un arbre).
+- **Reprise** : **J5b.2** (HUD).

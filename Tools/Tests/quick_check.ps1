@@ -187,7 +187,8 @@ if ($Parts -contains "camera") {
             }
         }
         if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
-            # Resource sources (J5a.2, D297): the 320 trees placed by the map (create_match_map.py: 40 beside each slot), the
+            # Resource sources (J5a.2, D297): the 376 sources placed by the map (create_match_map.py: 40 trees beside each slot,
+            # then 6 berry bushes on its other side and 8 veins between neighbours, J5b.1), the
             # first one of slot 0's wood at (-14221, -1816) and the one behind it at (-14217, -2023). A standing tree is
             # forbidden on the navmesh; used up (hol.Sources.Take, a development tool until the gathering of J5a.3), it
             # leaves the map and the navmesh opens where it stood, the tree behind still closing its own place.
@@ -253,7 +254,7 @@ if ($NetListening) {
         if ($Parts -contains "move") {
             $NetSteps += "hol.Units.OrderNear -1000 2500 all", "wait 12", "hol.Units.Where", "capture qcnet_${Client}_moved"
         }
-        # Sources (J5a.2): the 320 trees received, the one the server used up gone (5 s after both joined, long done).
+        # Sources (J5a.2): the 376 sources received, the tree the server used up gone (5 s after both joined, long done).
         if ($Parts -contains "sources") {
             $NetSteps += "hol.Sources.Report"
             # Gathering (J5a.5, D299, D303): its Peasant selected alone, a right click on the tree nearest its start (5
@@ -449,8 +450,8 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
     $Reports = @($Section | Select-String -Pattern "Sources \(server\): (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Paths = @($Section | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks = [ordered]@{}
-    $Checks["320 trees placed, shown, forbidden on the navmesh ($($Reports | Select-Object -First 1))"] =
-        ($Reports.Count -eq 2) -and ($Reports[0] -eq "320 standing of 320 (Tree 320: 32000 left); shown 320, navmesh 320")
+    $Checks["376 sources placed, shown, forbidden on the navmesh ($($Reports | Select-Object -First 1))"] =
+        ($Reports.Count -eq 2) -and ($Reports[0] -eq "376 standing of 376 (Tree 320: 32000 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 376, navmesh 376")
     $Checks["nearest tree is the first one ($($Section | Select-String -Pattern 'Sources: nearest (.*)$' | ForEach-Object { $_.Matches[0].Groups[1].Value }))"] =
         [bool]($Section | Select-String -Pattern "Sources: nearest 0 Tree at \(-14221, -1816\), 100 left" -Quiet)
     $Checks["three paths ($($Paths.Count))"] = $Paths.Count -eq 3
@@ -459,8 +460,8 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
         $Checks["used up, its place opens ($($Paths[1]))"] = ($Paths[1] -notmatch "off the navmesh") -and ($Paths[1] -match "ratio") -and ($Paths[1] -notmatch "partial")
         $Checks["the tree behind still closes its place ($($Paths[2]))"] = $Paths[2] -match "off the navmesh"
     }
-    $Checks["used up: 319 left, shown and forbidden ($($Reports | Select-Object -Last 1))"] =
-        ($Reports.Count -eq 2) -and ($Reports[1] -eq "319 standing of 320 (Tree 319: 31900 left); shown 319, navmesh 319")
+    $Checks["used up: 375 left, shown and forbidden ($($Reports | Select-Object -Last 1))"] =
+        ($Reports.Count -eq 2) -and ($Reports[1] -eq "375 standing of 376 (Tree 319: 31900 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 375, navmesh 375")
     $Checks["capture"] = Test-Path (Join-Path $Shots "src_wood.png")
     $AllOk = (Report "sources" $Checks) -and $AllOk
 }
@@ -509,7 +510,7 @@ if ($Parts -contains "net") {
         if ($Parts -contains "sources") {
             # 5 wood left by the server in the tree nearest each start: 31900 - 2 x 95.
             $Sources = $NetLines | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-            $Checks["client $N : 320 trees received, the used-up one gone ($Sources)"] = $Sources -eq "319 standing of 320 (Tree 319: 31710 left); shown 319, navmesh 0"
+            $Checks["client $N : 376 sources received, the used-up tree gone ($Sources)"] = $Sources -eq "375 standing of 376 (Tree 319: 31710 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 375, navmesh 0"
             $Checks["client $N : saw the tree used up"] = [bool]($ClientLines | Select-String -Pattern "Sources: source 0 used up \(client\)" -Quiet)
 
             # Gathering (J5a.5, D299, D303).
@@ -528,7 +529,7 @@ if ($Parts -contains "net") {
             $UsedUp = @($Gather | Select-String -Pattern "Sources: source (\d+) used up \(client\)" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique)
             $Final = $Gather | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
             $Checks["client $N : both gathered trees used up, gone here ($($UsedUp -join ', '); $Final)"] = ($UsedUp.Count -eq 2) -and
-                [bool]($Final -match "^317 standing of 320 .*; shown 317, navmesh 0$")
+                [bool]($Final -match "^373 standing of 376 .*; shown 373, navmesh 0$")
             $Stock = $Gather | Select-String -Pattern "Production report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
             $Checks["client $N : its wood rose at the deposit, the other's stock never received ($Stock)"] =
                 [bool]($Stock -match "^F 150 W 2[1-9]0 S 200 G 200, ") -and [bool]($Stock -match "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$")
