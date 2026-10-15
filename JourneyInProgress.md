@@ -61,7 +61,8 @@ vérifier sur S1 et S2.
 | J5a.2 Sources dans la partie | **fait** (2026-10-15) : registre `UHOLSourceSubsystem`, disposition `AHOLSourceLayout` posée par le script de `Plain` (40 arbres par emplacement, 320 en tout), affichage par instances (`AHOLSourceField`), un seul fournisseur de zones interdites à cylindres par instance (`UHOLSourceNavComponent` : seule la tuile d'une source épuisée se refait), morceaux répliqués de 63 sources (`AHOLSourceChunk`) ; `quick_check` PASS (83 s) avec les parties « sources » et « net » ; arbres de `StressTest` reportés à J5a.3 (créés par S7) |
 | J5a.3 Boucle de récolte dans la simulation | **fait** (2026-10-15) : `UHOLGatherProcessor` (places au contact, récolte, dépôt le plus proche, épuisement, inactif ; ses marches passent par la file d'ordres), dépôts en emprise (`Accepts` dans la table des bâtiments), `hol.Units.Gather`, `hol.Gather.Report` ; **S7 PASS à 2,96 ms** (machine chargée ; avec 3 camps de bûcherons provisoires par joueur), S2 inchangé (mêmes recouvrements) ; `quick_check` PASS (89 s), tests 36/36 ; **S1 / S2 / S7 et le rendu à remesurer au repos** |
 | J5a.4 Ordre réseau et ralliement | **fait** (2026-10-15) : clic droit sur une source (visée à l'écran comme une unité) → ordre de récolte vérifié par le serveur, repère bref sur la source ; ralliement sur une source (le Paysan né y récolte) ; activité « récolte » et charge dans l'état répliqué (1 bit, +7 pour un porteur) ; bloc du Paysan « Récolte — Bois 4/10 » (fr / en / ja) ; couronne des arbres remontée (les récolteurs se voient) ; `quick_check` PASS (caméra 8p : un raté d'à-coup, PASS au second essai), **S5 PASS à 31,3 Ko/s** (machine chargée) |
-| J5a.5 Vérification et essai | **en cours** (2026-10-15) : 1er essai → D303 (naissance vers le ralliement, bloc du Paysan à chaque changement, charge exacte au seul propriétaire de l'unité sélectionnée seule) ; 2e essai → D304 (orientation instantanée) ; 3e essai validé ; `quick_check` PASS (68 s) ; solo vérifié à la main par l'utilisateur ; **partie à 2 clients de la récolte** dans `quick_check` (charge suivie de D303, arbre épuisé chez les deux, stock de l'autre jamais reçu) PASS, `quick_check` PASS (70 s) ; essai de l'utilisateur (arbres, S7) validé ; D305 (réutilisation des chemins) faite ; restent S1 / S2 / S7 au repos, S5 |
+| J5a.5 Vérification et essai | **fait** (2026-10-15) : 1er essai → D303 (naissance vers le ralliement, bloc du Paysan à chaque changement, charge exacte au seul propriétaire de l'unité sélectionnée seule) ; 2e essai → D304 (orientation instantanée) ; 3e essai validé ; `quick_check` PASS (68 s) ; solo vérifié à la main par l'utilisateur ; **partie à 2 clients de la récolte** dans `quick_check` (charge suivie de D303, arbre épuisé chez les deux, stock de l'autre jamais reçu) PASS, `quick_check` PASS (70 s) ; essai de l'utilisateur (arbres, S7) validé ; D305 (réutilisation des chemins) faite ; **S1 / S2 / S7 au repos et S5 reportés** (machine chargée, choix de l'utilisateur) |
+| J5a.6 Clôture : D295 à D299, D303 à D305 au GDD | **fait** (2026-10-15) : lignes au § 21 (D297 et D299 précisées par ce qui a été fait), paragraphe « Parcours J5a : le bois » au § 16.6, S7 dans les seuils des stress tests. **J5a close.** |
 
 ## Prochaine étape exacte
 
@@ -89,6 +90,9 @@ vérifier sur S1 et S2.
 8. **J5a.5 commencée** (2026-10-15) : essais de l'utilisateur → D303, D304, validés ; solo vérifié à la main, partie à
    2 clients de la récolte dans `quick_check` faite ; essai final validé (arbres, S7) ; D305 faite ; reprise au point
    « Reprise » du dernier journal (S1 / S2 / S7 au repos, S5, clôture de J5a).
+9. **J5a close le 2026-10-15** (D295 à D299, D303 à D305 au GDD). **Mesures reportées** (choix de l'utilisateur, machine
+   chargée) : S1 / S2 / S7 courts au repos (ProjectShiva fermé), serveur recuit puis S5 court ; à faire à la première
+   occasion au repos, au plus tard à la vérification de J5b. Suite : **J5b.1** (baies et filons ; voir « Plan de J5 »).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -446,8 +450,8 @@ portée et le « +10 » au dépôt.
 2. **J5c.2 Charge visible** : fagot, panier, bloc de pierre ou d'or (pièce fixée à un os ou instance placée d'après
    l'unité, à essayer).
 3. **J5c.3 « +10 » au dépôt** : montré au seul propriétaire.
-4. **J5c.4 Vérification et clôture** : captures dans `quick_check`, S5 court, **essai de l'utilisateur** ; D295 à D299
-   au GDD (§ 21, paragraphe « Parcours J5 » au § 16.6, S7 au tableau des stress tests).
+4. **J5c.4 Vérification et clôture** : captures dans `quick_check`, S5 court, **essai de l'utilisateur** ; paragraphe
+   « Parcours J5 » au § 16.6 (D295 à D299 au § 21 et S7 aux seuils des stress tests depuis la clôture de J5a).
 
 Risques connus : coût des trajets à 2 000 Paysans (S7) ; animations de récolte à trouver pour le mannequin ; charge
 posée sur le squelette instancié ; reconstruction des tuiles quand une forêt recule vite.
@@ -1885,3 +1889,16 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   1 166 par seconde).
 - Compile sans avertissement ; `quick_check` **PASS en 73 s**, tests 36/36. S2 non concerné (ordres du joueur).
 - **Reprise** : S1 / S2 / S7 courts **au repos** (ProjectShiva fermé) ; serveur recuit puis S5 court ; clôture de J5a.
+
+### 2026-10-15 (suite) — Clôture de J5a
+
+- **Mesures reportées** (choix de l'utilisateur) : deux éditeurs ProjectShiva ouverts, processeur à 57 % ; S1 / S2 / S7
+  courts au repos et S5 sur le serveur recuit restent à faire, à la première occasion au repos, au plus tard à la
+  vérification de J5b.
+- **Clôture** : D295 à D299 et D303 à D305 au § 21 du GDD (D295 à D299 avancées de J5c.4 : décisions prises, journal
+  gardé complet et dans l'ordre) ; D297 précisée (morceaux en tableaux simples, cylindres par source), D299 précisée
+  (solo vérifié à la main, 3 camps provisoires dans S7, réutilisation des chemins par D305) ; paragraphe « Parcours
+  J5a : le bois » au § 16.6 (mesures à refaire au repos notées) ; S7 dans les seuils des stress tests (S1 à S7).
+  J5c.4 n'a plus qu'à écrire le paragraphe « Parcours J5 ». **J5a close.**
+- **Reprise** : S1 / S2 / S7 courts au repos et S5 (serveur recuit) si la machine est au repos ; puis **J5b.1** (baies et
+  filons de pierre et d'or sur `Plain`, récolte des 4 ressources, charge perdue au changement de ressource).
