@@ -198,7 +198,7 @@ bool FHOLNetUnitStateNetSerializer::Validate(FNetSerializationContext& Context, 
 	return FitsIn(State.X, SourceType::HorizontalBits) && FitsIn(State.Y, SourceType::HorizontalBits)
 		&& FitsIn(State.VelocityX, SourceType::VelocityBits)
 		&& FitsIn(State.VelocityY, SourceType::VelocityBits)
-		&& static_cast<uint32>(State.Activity) < HOLUnitReplication::GatheringWireBase
+		&& HOLUnitReplication::IsValidActivity(State.Activity)
 		&& static_cast<uint32>(State.GatherResource) < (1U << SourceType::ActivityBits) - HOLUnitReplication::GatheringWireBase
 		&& static_cast<uint32>(State.LoadResource) < (1U << SourceType::LoadResourceBits);
 }

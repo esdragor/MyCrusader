@@ -19,6 +19,7 @@
 #include "MassExecutionContext.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -251,12 +252,13 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 				continue;
 			}
 			FHOLGatherFragment& Gather = EntityManager.GetFragmentDataChecked<FHOLGatherFragment>(Entity);
+			// It stops building, its queue of sites forgotten (J6a.4, D312).
+			if (FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity))
+			{
+				Build->Clear();
+			}
 			// Another resource: what it carries is kept until its first unit of this one (D306).
-			HOLGather::StartGathering(Gather.Load, Resource);
-			Gather.SourceIndex = Order.SourceIndex;
-			Gather.Phase = EHOLGatherPhase::ToSource;
-			Gather.bWalkIssued = false;
-			Gather.Misses = 0;
+			Gather.StartTask(Order.SourceIndex, Resource);
 			++NumGatherers;
 		}
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d: %d units to source %d (%s)%s"), Order.PlayerIndex, NumGatherers,
@@ -494,6 +496,17 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 void UHOLGatherProcessor::StandBeforeSource(const FStepContext& Step, FGatherer& Gatherer, const FHOLSource& Source)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
+	// The head of its queue with more after it (Shift, the user's trial of J6a.4): no standing idle here, its massif is
+	// used up for it; the builders' step sends it to the next item of its queue, its load kept.
+	if (const FHOLBuildFragment* Build = Step.EntityManager->GetFragmentDataPtr<FHOLBuildFragment>(Gatherer.Entity); Build && Build->HasQueuedNext())
+	{
+		Stop(Gatherer);
+		if (LogDeposits != 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d found no room in its massif, the next item of its queue"), Gatherer.OwnerPlayer);
+		}
+		return;
+	}
 	// In front of it as seen from the gatherer, its load kept: an idle worker (the HUD's counter, the "." key) the player
 	// sends elsewhere; it no longer waits there for a spot, unseen (D309).
 	FVector2D Away = FVector2D(Gatherer.Location) - FVector2D(Source.Location);

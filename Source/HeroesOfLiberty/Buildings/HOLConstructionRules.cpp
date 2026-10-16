@@ -2,6 +2,7 @@
 
 #include "Buildings/HOLConstructionRules.h"
 
+#include "Algo/StableSort.h"
 #include "Buildings/HOLBuildingTypes.h"
 
 FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
@@ -209,4 +210,57 @@ void HOLConstruction::GetNavProbes(const FBox2D& Footprint, const double Tile, c
 		OutPoints.Emplace(Footprint.Min.X + Inset.X, Footprint.Max.Y - Inset.Y);
 		OutPoints.Emplace(Footprint.Max.X - Inset.X, Footprint.Max.Y - Inset.Y);
 	}
+}
+
+void HOLConstruction::GetBuildSpots(const FBox2D& Footprint, const double Offset, const double Spacing, const FVector2D& From, TArray<FVector2D>& OutSpots)
+{
+	OutSpots.Reset();
+	const FVector2D Size = Footprint.GetSize();
+	const FVector2D Centre = Footprint.GetCenter();
+	const FVector2D Half = Size * 0.5;
+	// Along each side, centred on it, as many as fit between its corners (Spacing apart).
+	const auto AddSide = [&OutSpots, &Centre, Offset, Spacing](const FVector2D& Outward, const FVector2D& Along, const double HalfDepth, const double HalfLength)
+	{
+		const int32 Count = Spacing > 0.0 ? FMath::FloorToInt32(2.0 * HalfLength / Spacing) + 1 : 1;
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			const double Position = (Index - (Count - 1) * 0.5) * Spacing;
+			OutSpots.Add(Centre + Outward * (HalfDepth + Offset) + Along * Position);
+		}
+	};
+	AddSide(FVector2D(1.0, 0.0), FVector2D(0.0, 1.0), Half.X, Half.Y);
+	AddSide(FVector2D(-1.0, 0.0), FVector2D(0.0, 1.0), Half.X, Half.Y);
+	AddSide(FVector2D(0.0, 1.0), FVector2D(1.0, 0.0), Half.Y, Half.X);
+	AddSide(FVector2D(0.0, -1.0), FVector2D(1.0, 0.0), Half.Y, Half.X);
+	// The nearest From first (a stable sort: the same order on every machine and at every call).
+	Algo::StableSortBy(OutSpots, [&From](const FVector2D& Spot) { return FVector2D::DistSquared(Spot, From); });
+}
+
+bool HOLConstruction::IsAtSite(const FBox2D& Footprint, const FVector2D& Position, const double BodyRadius, const double Gap)
+{
+	return GetDistance(Footprint, Position) - BodyRadius <= Gap;
+}
+
+double HOLConstruction::GetGap(const FBox2D& A, const FBox2D& B)
+{
+	const double GapX = FMath::Max3(0.0, A.Min.X - B.Max.X, B.Min.X - A.Max.X);
+	const double GapY = FMath::Max3(0.0, A.Min.Y - B.Max.Y, B.Min.Y - A.Max.Y);
+	return FMath::Sqrt(GapX * GapX + GapY * GapY);
+}
+
+int32 HOLConstruction::FindNextSite(const FBox2D& Finished, const TConstArrayView<FBox2D> Sites, const double Range)
+{
+	int32 Found = INDEX_NONE;
+	double Nearest = Range;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		const double Gap = GetGap(Finished, Sites[Index]);
+		// Strictly nearer than the one kept: the first of two as near (the same choice on every run).
+		if (Gap <= Range && (Found == INDEX_NONE || Gap < Nearest))
+		{
+			Found = Index;
+			Nearest = Gap;
+		}
+	}
+	return Found;
 }

@@ -64,13 +64,16 @@ struct FHOLDepositPopup
  * no collision), else the building under it (its own or another player's), else the source under it, else nothing; a box (a press dragged past a few pixels) selects the
  * player's own units in it; Shift adds or removes; Escape selects nothing; "." selects the next idle worker of the
  * player and centres the camera on it (D30, J5b); the HUD shows it (J3, D281). A right click
- * sends the selected units of the player to the ground point, or puts the selected building's rally point there (J4).
+ * sends the selected units of the player to the ground point, or puts the selected building's rally point there (J4);
+ * on one of the player's sites not finished, its selected Peasants go and help build it (J6a.4, D312; Shift: queued).
  * Production (J3, D282): the cells of the command grid (keys of D30, or a click on the HUD) and the HUD's cancel
  * clicks become requests to the server (RPCs), which queues them in the order queue and applies them at its next step.
  * Placement (J6a.3, D311): in placement mode a ghost of the building follows the cursor tile by tile, green where the
  * server would accept it from what this machine knows (the rules of HOLConstruction) and the stock covers its cost,
  * red otherwise; a left click places it (an RPC, checked again and paid by the server) and leaves the mode, Shift +
- * click places it and stays; Escape or a right click leave the mode. In the mode, clicks never select nor order.
+ * click places it and stays; Escape or a right click leave the mode. In the mode, clicks never select nor order. The
+ * player's selected units are sent to build what is placed (J6a.4, D312): with Shift, each foundation at the end of
+ * their queue, built in that order.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
@@ -98,10 +101,12 @@ public:
 	/** A box between two points of the viewport: the player's own units in it; with bAdd, added, or removed when all already are. */
 	void SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, bool bAdd = false);
 	/**
-	 * A right click at a point of the viewport: the selected own units gather the source under it (J5, D298) or go there;
-	 * or the selected own building's rally point, on the source under it if there is one.
+	 * A right click at a point of the viewport: the selected own units gather the source under it (J5, D298), build the
+	 * player's site under it (J6a.4) or go there; or the selected own building's rally point, on the source or the site
+	 * under it if there is one. With Shift held (or bQueue, scripts), a site or a source goes at the end of the units'
+	 * queue (the user's trial of J6a.4).
 	 */
-	void OrderAt(const FVector2D& ViewportFraction);
+	void OrderAt(const FVector2D& ViewportFraction, bool bQueue = false);
 	/** Selects a building, or nothing (null). */
 	void SetSelection(AHOLBuilding* Building);
 	/** Selects units (their identifiers), or nothing (empty). */
@@ -171,8 +176,13 @@ public:
 	 * UHOLConstructionSubsystem::CheckPlacement, then the stock; OutReason says why not ("" when possible).
 	 */
 	bool CheckPlacementHere(FName TypeName, const FBox2D& Footprint, FString& OutReason) const;
-	/** Asks the server to place a foundation of TypeName around a ground point (snapped to the tiles); it checks everything again. */
-	void RequestPlaceBuilding(FName TypeName, const FVector& Point);
+	/**
+	 * Asks the server to place a foundation of TypeName around a ground point (snapped to the tiles); it checks everything
+	 * again. The player's selected units are sent to build it (J6a.4), at the end of their queue with bQueue (Shift).
+	 */
+	void RequestPlaceBuilding(FName TypeName, const FVector& Point, bool bQueue = false);
+	/** Asks the server to have units build (help) one of the player's sites not finished (J6a.4, D312); bQueue: Shift. */
+	void RequestBuildUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
 	/** Asks the server to cancel one of the player's buildings not yet finished (refunded, D311). */
 	void RequestCancelBuilding(AHOLBuilding* Building);
 
@@ -182,13 +192,17 @@ public:
 	void RequestCancelProduction(int32 Index);
 	/** Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. */
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target);
-	/** Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. */
-	void RequestGatherUnits(TConstArrayView<uint32> UnitIds, int32 SourceIndex);
+	/**
+	 * Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. bQueue (Shift): at
+	 * the end of their queue, after their sites (the user's trial of J6a.4).
+	 */
+	void RequestGatherUnits(TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue = false);
 	/**
 	 * Asks the server to put the selected building's rally point (own) at a ground point, on a resource source (J5) when
-	 * SourceIndex is one, or to clear it (on the building).
+	 * SourceIndex is one, on one of the player's sites not finished when Site is one (the units born there build it, the
+	 * user's trial of J6a.4), or to clear it (on the building).
 	 */
-	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE);
+	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr);
 
 	/**
 	 * Development cheats for the trials (hol.Cheat.*; never in a Shipping build: no command registers them and the
@@ -279,19 +293,24 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target);
 
-	/** The units' identifiers and the source's index (J5, D298). */
+	/** The units' identifiers and the source's index (J5, D298); Shift (the user's trial of J6a.4). */
 	UFUNCTION(Server, Reliable)
-	void ServerGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex);
+	void ServerGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex, bool bQueue);
 
-	/** A type and a ground point (J6a.3, D311): ~16 bytes a foundation. */
+	/** A type and a ground point (J6a.3, D311): ~16 bytes a foundation; the units sent to build it (J6a.4), Shift. */
 	UFUNCTION(Server, Reliable)
-	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point);
+	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue);
+
+	/** The units' identifiers and the site they build (J6a.4, D312). */
+	UFUNCTION(Server, Reliable)
+	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelBuilding(AHOLBuilding* Building);
 
+	/** The building, the ground point, the source there and the site there (the user's trial of J6a.4), both checked. */
 	UFUNCTION(Server, Reliable)
-	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex);
+	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site);
 
 	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
 	UFUNCTION(Server, Reliable)

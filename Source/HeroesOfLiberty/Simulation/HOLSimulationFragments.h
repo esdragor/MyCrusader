@@ -24,10 +24,10 @@ struct HEROESOFLIBERTY_API FHOLLightUnitTag : public FMassTag
 };
 
 /**
- * What the RTS layer sees a unit doing (D226): standing, walking to its current order, gathering at its source, or on
- * its gathering's round trip. Sent to every client in 3 bits (FHOLNetUnitState::ActivityBits), Gathering with its
- * resource (J5c.1): it takes values 4 to 7 of the wire (HOLUnitReplication::EncodeActivity), and one value is left
- * (2, Gathering's own, never written): a fifth activity needs that value mapped to it, or one bit more.
+ * What the RTS layer sees a unit doing (D226): standing, walking to its current order, gathering at its source, on its
+ * gathering's round trip, or building. Sent to every client in 3 bits (FHOLNetUnitState::ActivityBits), Gathering with
+ * its resource (J5c.1): it takes values 4 to 7 of the wire (HOLUnitReplication::EncodeActivity); Building (J6a.4) takes
+ * value 2, Gathering's own, never written, which was the last free value of the wire: a sixth activity needs one bit more.
  */
 UENUM()
 enum class EHOLUnitActivity : uint8
@@ -45,6 +45,11 @@ enum class EHOLUnitActivity : uint8
 	 * walks as Moving does, but is never idle: a gatherer between two walks no longer shows Idle for a step.
 	 */
 	GatherTrip,
+	/**
+	 * At its spot around a site, working on it (J6a.4, D312): never idle (the HUD's count, the "." key). Written on the
+	 * wire as value 2 (HOLUnitReplication::BuildingWireValue): its enum value is above the wire's first gathering value.
+	 */
+	Building,
 };
 
 /** True while the unit walks: to a player's order, or on its gathering's round trip. */
@@ -156,6 +161,19 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	EHOLGatherPhase Phase = EHOLGatherPhase::None;
 
 	bool IsGathering() const { return Phase != EHOLGatherPhase::None; }
+
+	/**
+	 * Sent to gather a source (a gather order, or the head of its queue: the user's trial of J6a.4): its round trip starts
+	 * there; what it carries of another resource is kept until its first unit of this one (D306).
+	 */
+	void StartTask(const int32 InSourceIndex, const EHOLResource Resource)
+	{
+		HOLGather::StartGathering(Load, Resource);
+		SourceIndex = InSourceIndex;
+		Phase = EHOLGatherPhase::ToSource;
+		bWalkIssued = false;
+		Misses = 0;
+	}
 };
 
 /** Per-entity state of a unit (D222), the values that change: identifier, health, activity. */

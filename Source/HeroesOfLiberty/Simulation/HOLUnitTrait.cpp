@@ -9,6 +9,7 @@
 #include "MassRepresentationFragments.h"
 #include "Presentation/HOLPresentationFragments.h"
 #include "Simulation/HOLAvoidanceHoldFragments.h"
+#include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 
 void UHOLUnitTrait::Setup(const FName InTypeName, const FHOLUnitTypeConstants& InConstants)
@@ -29,6 +30,8 @@ void UHOLUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
 	BuildContext.AddFragment<FHOLMoveOrderFragment>();
 	// Its gathering (J5, D296): source, load, round trip.
 	BuildContext.AddFragment<FHOLGatherFragment>();
+	// Its building (J6a.4, D312): site, spot, work.
+	BuildContext.AddFragment<FHOLBuildFragment>();
 	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
 	BuildContext.AddFragment<FHOLAvoidanceHoldFragment>();
 	// Animation played by the skinned instance (D234); the visualization trait does not add it.

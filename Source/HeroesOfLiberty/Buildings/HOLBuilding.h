@@ -21,10 +21,12 @@ class UStaticMeshComponent;
  * the first ability or damage (M5). Selection is the local player's own (D262): its pieces block the selection trace
  * channel; nothing on the building shows it (no ring, no hover: the user's test of J2). Its footprint is a forbidden
  * area of the navmesh (D286): a dynamic obstacle, applied on the server when the building appears.
- * Construction (J6a.3, D311, D312): a building placed by a player is born a foundation (a flat outline at its owner's
- * colour, which blocks nothing and gives nothing), its state and work replicated to everyone; the main centres are
- * born finished. The footprint blocks the navmesh from the first work on (J6a.4), and the building serves (population,
- * deposit, production) once finished.
+ * Construction (J6a.3, J6a.4, D311, D312): a building placed by a player is born a foundation, which blocks nothing and
+ * gives nothing: only a ghost (a frame on the ground and the edges of its volume, at its owner's colour) that its owner
+ * alone sees and receives (the user's choice of 2026-10-16, as in AoE IV: the other players do not learn the plans). At
+ * the first work it becomes a site seen by everyone, its footprint blocks the navmesh (D312), and it rises from the
+ * ground with its work, over the foundation's slab; its state and work replicated to everyone. It serves (population,
+ * deposit, production) once finished. The main centres are born finished.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLBuilding : public AActor
@@ -61,6 +63,15 @@ public:
 	int64 GetConstructionWork() const { return ConstructionWork; }
 	/** Some work has been done (D311: a cancel refunds half). */
 	bool HasWorkStarted() const;
+	/** Work it needs from nothing to finished (its type's BuildTime for one builder, J6a.2); 0 without a type. */
+	int64 GetTotalWork() const;
+	/** Share of its construction done, 0 to 1; 1 once finished (it rises from the ground with it, D312). */
+	float GetProgress() const;
+	/**
+	 * This machine shows it: always, but a bare foundation only on its owner's machine (a client receives only its own,
+	 * J6a.4); on another (a solo match's computer players, a listen server), it is not drawn and cannot be clicked.
+	 */
+	bool IsSeenHere() const;
 	/**
 	 * Server only (J6a.4): its state, its work. The look and the navmesh follow on every machine (the footprint blocks
 	 * from UnderConstruction on).
@@ -97,8 +108,13 @@ public:
 	FVector GetRallyPoint() const { return RallyPoint; }
 	/** The resource source at the rally point (J5, D298): the units born here gather it. INDEX_NONE: the ground. */
 	int32 GetRallySource() const { return RallySource; }
+	/**
+	 * The owner's site at the rally point (the user's trial of J6a.4): the units born here build it while it is not finished;
+	 * null: the ground or a source. Server only (the flag stands on its middle, as on a source).
+	 */
+	AHOLBuilding* GetRallySite() const { return RallySite.Get(); }
 	/** Server only. */
-	void SetRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE);
+	void SetRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr);
 	void ClearRallyPoint();
 	/** True when a ground point is on the building's footprint (a rally order there clears the rally point). */
 	bool IsOnFootprint(const FVector& Point) const;
@@ -114,6 +130,15 @@ public:
 	static constexpr float CapThicknessRatio = 0.04f;
 	/** The top of the block is a darker tone of the owner's colour, so that the tower's roof stands out on it. */
 	static constexpr float BaseTopTone = 0.55f;
+
+	/** A site's height at its first work (share of the full height, J6a.4): it shows at once, then rises with its work. */
+	static constexpr float MinRiseRatio = 0.04f;
+	/** The ghost of a bare foundation (J6a.4, cm): its frame on the ground, the edges of its volume. */
+	static constexpr float GhostFrameWidth = 30.f;
+	static constexpr float GhostFrameHeight = 4.f;
+	static constexpr float GhostEdgeWidth = 10.f;
+	/** The ghost's colour: the owner's colour this much toward white (a light outline, as the placement ghost). */
+	static constexpr float GhostWhiten = 0.35f;
 
 	/** The foundation's look (J6a.3, cm): a low slab, its edges at the owner's colour, a stake at each corner. */
 	static constexpr float FoundationSlabHeight = 12.f;
@@ -140,12 +165,24 @@ private:
 
 	/** Builds the look from the type and the construction state, then paints the owner's colour. Safe to call again. */
 	void RefreshAppearance();
+	/** A site's height follows its work (J6a.4): the pieces under RiseRoot squashed to it, at least MinRiseRatio. */
+	void UpdateRise();
+	/**
+	 * The relevancy of a bare foundation, its owner alone (J6a.4), or of anything else, everyone: the actor's flags (the
+	 * legacy replication) and the owner filter of Iris, cleared at the first work.
+	 */
+	void ApplyRelevancy();
 	/** Writes the owner's colour on the pieces that wear it. */
 	void ApplyColors();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
 	/** A foundation (J6a.3): a low slab over the footprint, a border at the owner's colour, four corner stakes. */
 	void BuildFoundationShape(const FHOLBuildingTypeRow& Type);
+	/**
+	 * A bare foundation seen by its owner (J6a.4): a ghost, its frame on the ground and the edges of its volume (no slab),
+	 * and an unseen box over its footprint that a click selects.
+	 */
+	void BuildGhostShape(const FHOLBuildingTypeRow& Type);
 	/**
 	 * Sizes the navmesh's forbidden area to the type's footprint, widened by the bodies' clearance (D310), and height,
 	 * and makes it count for the navmesh while the building blocks it (D312: not as a bare foundation).
@@ -154,6 +191,8 @@ private:
 	/** A piece of Size (cm) laid on BottomZ, painted Color, or the owner's colour times OwnerTone when bOwnerColor. */
 	UStaticMeshComponent* AddPiece(UStaticMesh* Mesh, const FVector& Size, float BottomZ, const FLinearColor& Color, bool bOwnerColor,
 		float OwnerTone = 1.f);
+	/** The pieces AddPiece makes from now on go under Parent (RiseRoot for the rising building of a site), else the root. */
+	USceneComponent* PieceParent = nullptr;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Setup)
 	FName TypeName;
@@ -176,15 +215,31 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_Rally)
 	int32 RallySource = INDEX_NONE;
 
+	/** The server's alone: the owner sees the flag at RallyPoint. */
+	TWeakObjectPtr<AHOLBuilding> RallySite;
+
 	UPROPERTY(ReplicatedUsing = OnRep_Construction)
 	EHOLConstructionState ConstructionState = EHOLConstructionState::Finished;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Construction)
 	int64 ConstructionWork = 0;
 
-	/** The type the pieces were built for, and whether as a foundation: the look is rebuilt only when either changes. */
+	/** What the pieces show (J6a.4): nothing, a ghost, a site, the finished building. */
+	enum class ELook : uint8
+	{
+		None,
+		Hidden,
+		Ghost,
+		Site,
+		Finished,
+	};
+	/** The type the pieces were built for, and their look: the look is rebuilt only when either changes. */
 	FName BuiltTypeName;
-	bool bBuiltAsFoundation = false;
+	ELook BuiltLook = ELook::None;
+
+	/** The building above its foundation, squashed to a site's progress (J6a.4); scale 1 once finished. */
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> RiseRoot;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Pieces;
@@ -209,4 +264,6 @@ private:
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> OwnerMaterials;
 
 	TArray<float> OwnerTones;
+	/** How far toward white each one is (the ghost's lighter edges, J6a.4). */
+	TArray<float> OwnerWhitens;
 };

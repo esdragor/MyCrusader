@@ -2,6 +2,7 @@
 
 #include "Simulation/HOLUnitSubsystem.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
@@ -462,7 +463,17 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 				BornIds.Add(EntityToId.FindChecked(Entity));
 			}
 			const UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
-			if (Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
+			// A rally point on a site not finished: they build it (the user's trial of J6a.4); finished (or cancelled) by
+			// then, they walk to its ground point as to any other.
+			AHOLBuilding* Site = Request.BuildSite.Get();
+			if (Site && !Site->IsFinished())
+			{
+				FHOLBuildOrder Order;
+				Order.UnitIds = BornIds;
+				Order.Building = Site;
+				Commands->IssueBuildOrder(Order);
+			}
+			else if (Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
 			{
 				Commands->IssueGatherOrder(BornIds, Request.GatherSource);
 			}

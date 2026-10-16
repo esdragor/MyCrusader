@@ -121,6 +121,15 @@ namespace HOLUnitReplication
 	 */
 	constexpr uint8 GatheringWireBase = 4;
 
+	/**
+	 * Building (J6a.4) on the wire: value 2, Gathering's own value, never written since J5c.1. It was the last free value of
+	 * the activity's 3 bits: one more activity needs a bit more.
+	 */
+	constexpr uint8 BuildingWireValue = static_cast<uint8>(EHOLUnitActivity::Gathering);
+
+	/** The activity is one the wire can carry (EncodeActivity). */
+	HEROESOFLIBERTY_API bool IsValidActivity(EHOLUnitActivity Activity);
+
 	/** The activity as written on the wire, with what it gathers while Gathering. */
 	HEROESOFLIBERTY_API uint8 EncodeActivity(EHOLUnitActivity Activity, EHOLResource GatherResource);
 

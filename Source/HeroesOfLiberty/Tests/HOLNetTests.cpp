@@ -86,6 +86,8 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 79, EHOLResource::Food, 4, EHOLResource::Wood),
 		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 80, EHOLResource::Food, 0, EHOLResource::Stone),
 		FHOLNetUnitState::Make(FVector(-500.0, 600.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::GatherTrip, 81, EHOLResource::Stone, 10),
+		// J6a.4: a builder at work, a load kept from its gathering (Gathering's own value on the wire).
+		FHOLNetUnitState::Make(FVector(-500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Building, 82, EHOLResource::Wood, 6),
 		FHOLNetUnitState(),
 	};
 	for (const FHOLNetUnitState& State : States)
@@ -138,17 +140,20 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("same state after the trip"), Back, State);
 	}
 
-	// J5c.1 (option A of the user): "gathering + resource" in the 4 values the activities leave free, at no bit more.
-	// The reflection's last entry is the _MAX it adds.
+	// J5c.1 (option A of the user): "gathering + resource" in the 4 values the activities leave free, at no bit more;
+	// J6a.4: Building in Gathering's own value, the last one free. The reflection's last entry is the _MAX it adds.
 	const UEnum* Activities = StaticEnum<EHOLUnitActivity>();
 	for (int32 Index = 0; Index < Activities->NumEnums() - 1; ++Index)
 	{
-		TestTrue(*FString::Printf(TEXT("%s below the gathering values"), *Activities->GetNameStringByIndex(Index)),
-			Activities->GetValueByIndex(Index) < HOLUnitReplication::GatheringWireBase);
+		const EHOLUnitActivity Activity = static_cast<EHOLUnitActivity>(Activities->GetValueByIndex(Index));
+		TestTrue(*FString::Printf(TEXT("%s carried by the wire"), *Activities->GetNameStringByIndex(Index)), HOLUnitReplication::IsValidActivity(Activity));
+		TestTrue(*FString::Printf(TEXT("%s below the gathering values on the wire"), *Activities->GetNameStringByIndex(Index)),
+			Activity == EHOLUnitActivity::Gathering || HOLUnitReplication::EncodeActivity(Activity, EHOLResource::Food) < HOLUnitReplication::GatheringWireBase);
 	}
 	TestEqual(TEXT("the 4 resources fill the activity's bits"), HOLUnitReplication::GatheringWireBase + 4, 1 << FHOLNetUnitState::ActivityBits);
 	TArray<uint8> WireValues;
-	for (const EHOLUnitActivity Activity : { EHOLUnitActivity::Idle, EHOLUnitActivity::Moving, EHOLUnitActivity::Gathering, EHOLUnitActivity::GatherTrip })
+	for (const EHOLUnitActivity Activity : { EHOLUnitActivity::Idle, EHOLUnitActivity::Moving, EHOLUnitActivity::Gathering, EHOLUnitActivity::GatherTrip,
+		EHOLUnitActivity::Building })
 	{
 		for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
 		{
@@ -164,8 +169,9 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 			WireValues.AddUnique(Wire);
 		}
 	}
-	TestEqual(TEXT("7 values on the wire: 3 activities and gathering each resource"), WireValues.Num(), 7);
-	TestFalse(TEXT("Gathering's own value never written"), WireValues.Contains(static_cast<uint8>(EHOLUnitActivity::Gathering)));
+	TestEqual(TEXT("8 values on the wire, all of them: 4 activities and gathering each resource"), WireValues.Num(), 8);
+	TestEqual(TEXT("Building in Gathering's own value (J6a.4)"), HOLUnitReplication::EncodeActivity(EHOLUnitActivity::Building, EHOLResource::Wood),
+		static_cast<uint8>(EHOLUnitActivity::Gathering));
 	return true;
 }
 

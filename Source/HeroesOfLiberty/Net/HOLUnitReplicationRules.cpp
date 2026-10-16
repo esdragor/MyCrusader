@@ -44,8 +44,17 @@ FVector FHOLNetUnitState::GetVelocity() const
 
 uint8 HOLUnitReplication::EncodeActivity(const EHOLUnitActivity Activity, const EHOLResource GatherResource)
 {
+	if (Activity == EHOLUnitActivity::Building)
+	{
+		return BuildingWireValue;
+	}
 	return Activity == EHOLUnitActivity::Gathering ? static_cast<uint8>(GatheringWireBase + static_cast<uint8>(GatherResource))
 		: static_cast<uint8>(Activity);
+}
+
+bool HOLUnitReplication::IsValidActivity(const EHOLUnitActivity Activity)
+{
+	return static_cast<uint8>(Activity) <= static_cast<uint8>(EHOLUnitActivity::Building);
 }
 
 void HOLUnitReplication::DecodeActivity(const uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource)
@@ -57,8 +66,8 @@ void HOLUnitReplication::DecodeActivity(const uint8 WireActivity, EHOLUnitActivi
 	}
 	else
 	{
-		// Gathering's own value is never written; read, it would be gathering food.
-		OutActivity = static_cast<EHOLUnitActivity>(WireActivity);
+		// Gathering's own value carries Building (J6a.4).
+		OutActivity = WireActivity == BuildingWireValue ? EHOLUnitActivity::Building : static_cast<EHOLUnitActivity>(WireActivity);
 		OutGatherResource = EHOLResource::Food;
 	}
 }

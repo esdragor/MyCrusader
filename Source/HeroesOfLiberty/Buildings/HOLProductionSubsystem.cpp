@@ -187,10 +187,20 @@ void UHOLProductionSubsystem::ApplyOrders()
 			}
 			else
 			{
-				Building->SetRallyPoint(Order.Location, Order.SourceIndex);
+				// On one of the player's own sites not finished (the user's trial of J6a.4): the units born here build it, the
+				// flag on its middle (as on a source); a client could name any building (D288).
+				AHOLBuilding* Site = Order.RallySite.Get();
+				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || Site->IsFinished()))
+				{
+					Site = nullptr;
+				}
+				const FVector Point = Site ? Site->GetActorLocation() : Order.Location;
+				const int32 SourceIndex = Site ? INDEX_NONE : Order.SourceIndex;
+				Building->SetRallyPoint(Point, SourceIndex, Site);
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d set the rally point of %s at (%.0f, %.0f)%s"), Order.PlayerIndex,
-					*Building->GetTypeName().ToString(), Order.Location.X, Order.Location.Y,
-					Order.SourceIndex != INDEX_NONE ? *FString::Printf(TEXT(", on source %d"), Order.SourceIndex) : TEXT(""));
+					*Building->GetTypeName().ToString(), Point.X, Point.Y,
+					Site ? *FString::Printf(TEXT(", on site %s"), *Site->GetTypeName().ToString())
+					: SourceIndex != INDEX_NONE ? *FString::Printf(TEXT(", on source %d"), SourceIndex) : TEXT(""));
 			}
 			continue;
 		}
@@ -290,6 +300,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			Request.bHasMoveTarget = Building->HasRallyPoint();
 			Request.MoveTarget = Building->GetRallyPoint();
 			Request.GatherSource = Building->HasRallyPoint() ? Building->GetRallySource() : INDEX_NONE;
+			Request.BuildSite = Building->HasRallyPoint() ? Building->GetRallySite() : nullptr;
 			Units->RequestUnits(Request);
 			++NumBorn;
 			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld (%d born here)"), *TypeName.ToString(),

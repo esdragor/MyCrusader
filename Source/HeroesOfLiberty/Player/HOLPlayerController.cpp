@@ -201,17 +201,17 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand OrderCommand(
 		TEXT("hol.Select.Order"),
-		TEXT("hol.Select.Order <X> <Y>: orders as a right click at that point of the viewport (0 to 1 each way) would"),
+		TEXT("hol.Select.Order <X> <Y> [shift]: orders as a right click at that point of the viewport (0 to 1 each way) would; 'shift' as with Shift held"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)
 			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Order <X> <Y>"));
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Order <X> <Y> [shift]"));
 				return;
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				Controller->OrderAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])));
+				Controller->OrderAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])), Args.Num() >= 3 && Args[2] == TEXT("shift"));
 			}
 		}));
 
@@ -264,14 +264,15 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand OrderGroundCommand(
 		TEXT("hol.Select.OrderGround"),
-		TEXT("hol.Select.OrderGround <X> <Y>: hol.Select.Order where that ground point (cm) is drawn"),
+		TEXT("hol.Select.OrderGround <X> <Y> [shift]: hol.Select.Order where that ground point (cm) is drawn"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)
 			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderGround <X> <Y>"));
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderGround <X> <Y> [shift]"));
 				return;
 			}
+			const bool bShift = Args.Num() >= 3 && Args[2] == TEXT("shift");
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				FVector2D Fraction;
@@ -280,8 +281,8 @@ namespace UE::HeroesOfLiberty::Player
 					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderGround: the point is not on the screen"));
 					continue;
 				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Right click on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
-				Controller->OrderAt(Fraction);
+				UE_LOG(LogHOLMatch, Display, TEXT("Right click on the ground at (%.3f, %.3f)%s"), Fraction.X, Fraction.Y, bShift ? TEXT(", Shift") : TEXT(""));
+				Controller->OrderAt(Fraction, bShift);
 			}
 		}));
 
@@ -316,22 +317,23 @@ namespace UE::HeroesOfLiberty::Player
 	/** A right click on the standing source nearest a ground point (J5, D299), where it is drawn: through the picking. */
 	FAutoConsoleCommand OrderSourceCommand(
 		TEXT("hol.Select.OrderSource"),
-		TEXT("hol.Select.OrderSource <X> <Y>: a right click where the standing resource source nearest that ground point (cm) is drawn"),
+		TEXT("hol.Select.OrderSource <X> <Y> [shift]: a right click where the standing resource source nearest that ground point (cm) is drawn; 'shift' as with Shift held"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)
 			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderSource <X> <Y>"));
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderSource <X> <Y> [shift]"));
 				return;
 			}
+			const bool bShift = Args.Num() >= 3 && Args[2] == TEXT("shift");
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				FVector2D Fraction;
 				const int32 Index = AimAtSource(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), TEXT("hol.Select.OrderSource"), Fraction);
 				if (Index != INDEX_NONE)
 				{
-					UE_LOG(LogHOLMatch, Display, TEXT("Right click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
-					Controller->OrderAt(Fraction);
+					UE_LOG(LogHOLMatch, Display, TEXT("Right click on source %d at (%.3f, %.3f)%s"), Index, Fraction.X, Fraction.Y, bShift ? TEXT(", Shift") : TEXT(""));
+					Controller->OrderAt(Fraction, bShift);
 				}
 			}
 		}));
@@ -505,6 +507,32 @@ namespace UE::HeroesOfLiberty::Player
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)%s"), UnitIds.Num(), Target.X, Target.Y, bAll ? TEXT(", other players' too") : TEXT(""));
 				Controller->RequestMoveUnits(UnitIds, Target);
+			}
+		}));
+
+	/** Scripted checks of the building (J6a.4): the player's units selected wherever they are, on the screen or not. */
+	FAutoConsoleCommand SelectOwnCommand(
+		TEXT("hol.Select.Own"),
+		TEXT("hol.Select.Own: selects every unit of the local player known here, on the screen or not"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				TArray<FHOLUnitView> Views;
+				HOLUnitView::Gather(*Controller->GetWorld(), Views);
+				TArray<uint32> UnitIds;
+				for (const FHOLUnitView& View : Views)
+				{
+					if (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex())
+					{
+						UnitIds.Add(View.UnitId);
+					}
+				}
+				UnitIds.Sort();
+				// Logged even when they already were (the selection then logs nothing).
+				UE_LOG(LogHOLMatch, Display, TEXT("Select own: %d units"), UnitIds.Num());
+				Controller->SetUnitSelection(MoveTemp(UnitIds));
 			}
 		}));
 
@@ -693,8 +721,11 @@ namespace UE::HeroesOfLiberty::Player
 				for (TActorIterator<AHOLBuilding> It(Controller->GetWorld()); It; ++It)
 				{
 					const bool bOwn = PlayerState && It->GetOwnerPlayer() == PlayerState->GetPlayerIndex();
-					Buildings.Add(FString::Printf(TEXT("%s of slot %d (%s) %s at (%.0f, %.0f)"), *It->GetTypeName().ToString(), It->GetOwnerPlayer(),
-						bOwn ? TEXT("own") : TEXT("other"), DescribeState(It->GetConstructionState()), It->GetActorLocation().X, It->GetActorLocation().Y));
+					// A site's progress (J6a.4), as this machine knows it (its work replicated).
+					const FString Progress = It->GetConstructionState() == EHOLConstructionState::UnderConstruction
+						? FString::Printf(TEXT(" %d%%"), FMath::FloorToInt32(It->GetProgress() * 100.f)) : FString();
+					Buildings.Add(FString::Printf(TEXT("%s of slot %d (%s) %s%s at (%.0f, %.0f)"), *It->GetTypeName().ToString(), It->GetOwnerPlayer(),
+						bOwn ? TEXT("own") : TEXT("other"), DescribeState(It->GetConstructionState()), *Progress, It->GetActorLocation().X, It->GetActorLocation().Y));
 				}
 				Buildings.Sort();
 				UE_LOG(LogHOLMatch, Display, TEXT("Build report: %s; %d buildings [%s]"), PlayerState ? *PlayerState->DescribeEconomy() : TEXT("no player state"),
@@ -835,7 +866,7 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand CheatFastBuildCommand(
 		TEXT("hol.Cheat.FastBuild"),
-		TEXT("hol.Cheat.FastBuild [1|0]: production in one step for every player, or back to the table's times (development only)"),
+		TEXT("hol.Cheat.FastBuild [1|0]: production in one step and every site finished at its first blow (a builder still has to reach it) for every player, or back to the table's times (development only)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const bool bOn = Args.IsEmpty() || FCString::Atoi(*Args[0]) != 0;
@@ -1327,8 +1358,10 @@ void AHOLPlayerController::SelectInBox(const FVector2D& CornerA, const FVector2D
 	SetUnitSelection(MoveTemp(Units));
 }
 
-void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
+void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool bQueue)
 {
+	// Shift held, or a script's Shift: a site or a source at the end of the units' queue (D311, the user's trial of J6a.4).
+	const bool bShift = bSelectAddHeld || bQueue;
 	const FVector2D Pixels = ToPixels(ViewportFraction);
 	FVector Origin, Direction, Ground;
 	if (!RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
@@ -1340,13 +1373,23 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
 	const TArray<uint32> Own = GetOwnSelectedUnits();
+	// One of the player's sites not finished under the cursor (J6a.4, D312): its selected units go and help build it.
+	AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(ViewportFraction) : nullptr;
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->IsFinished())
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units build %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
+		RequestBuildUnits(Own, Site, bShift);
+		OnOrderGiven.Broadcast(Site->GetActorLocation());
+		return;
+	}
 	if (!Own.IsEmpty())
 	{
 		if (Source)
 		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)"), Own.Num(), SourceIndex,
-				*Sources->GetTypeNames()[Source->TypeIndex].ToString(), Source->Location.X, Source->Location.Y);
-			RequestGatherUnits(Own, SourceIndex);
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)%s"), Own.Num(), SourceIndex,
+				*Sources->GetTypeNames()[Source->TypeIndex].ToString(), Source->Location.X, Source->Location.Y, bShift ? TEXT(", queued") : TEXT(""));
+			RequestGatherUnits(Own, SourceIndex, bShift);
 			OnOrderGiven.Broadcast(Source->Location);
 			return;
 		}
@@ -1357,12 +1400,18 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction)
 	else if (AHOLBuilding* Building = GetOwnSelection())
 	{
 		// A click on the building itself clears its rally point: the ground seen behind its roof is off its footprint.
-		const bool bOnBuilding = FindBuildingAt(ViewportFraction) == Building;
-		const FVector Point = bOnBuilding ? Building->GetActorLocation() : Source ? Source->Location : Ground;
-		const int32 RallySource = !bOnBuilding && Source ? SourceIndex : INDEX_NONE;
+		AHOLBuilding* Under = FindBuildingAt(ViewportFraction);
+		const bool bOnBuilding = Under == Building;
+		// One of the player's sites not finished (the user's trial of J6a.4): the units born here build it; the flag on its
+		// middle, as on a source.
+		AHOLBuilding* RallySite = Under && !bOnBuilding && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex()
+			&& !Under->IsFinished() ? Under : nullptr;
+		const FVector Point = bOnBuilding ? Building->GetActorLocation() : RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
+		const int32 RallySource = !bOnBuilding && !RallySite && Source ? SourceIndex : INDEX_NONE;
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s"), *DescribeBuilding(Building), Point.X, Point.Y,
-			RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""));
-		RequestRallyPoint(Point, RallySource);
+			RallySite ? *FString::Printf(TEXT(" on site %s"), *DescribeBuilding(RallySite))
+			: RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""));
+		RequestRallyPoint(Point, RallySource, RallySite);
 		OnOrderGiven.Broadcast(Point);
 	}
 }
@@ -1680,19 +1729,19 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 	}
 }
 
-void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex)
+void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
 {
 	if (UnitIds.Num() > 0 && SourceIndex != INDEX_NONE)
 	{
-		ServerGatherUnits(TArray<uint32>(UnitIds), SourceIndex);
+		ServerGatherUnits(TArray<uint32>(UnitIds), SourceIndex, bQueue);
 	}
 }
 
-void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex)
+void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerSetRallyPoint(Building, Point, SourceIndex);
+		ServerSetRallyPoint(Building, Point, SourceIndex, Site);
 	}
 }
 
@@ -1808,18 +1857,48 @@ void AHOLPlayerController::ClickPlacement(const bool bKeep)
 	}
 	const FVector2D Centre = GhostFootprint.GetCenter();
 	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s at (%.0f, %.0f)%s"), *PlacementType.ToString(), Centre.X, Centre.Y, bKeep ? TEXT(", Shift: next one") : TEXT(""));
-	RequestPlaceBuilding(PlacementType, FVector(Centre, GhostGroundZ));
+	RequestPlaceBuilding(PlacementType, FVector(Centre, GhostGroundZ), bKeep);
 	if (!bKeep)
 	{
 		EndPlacement();
 	}
 }
 
-void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVector& Point)
+void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVector& Point, const bool bQueue)
 {
 	if (!TypeName.IsNone())
 	{
-		ServerPlaceBuilding(TypeName, Point);
+		// The selected Peasants build it (J6a.4); the server keeps only the player's own that build.
+		const TArray<uint32> Builders = GetOwnSelectedUnits();
+		if (!Builders.IsEmpty())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build it%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
+		}
+		ServerPlaceBuilding(TypeName, Point, Builders, bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
+{
+	if (UnitIds.Num() > 0 && Building)
+	{
+		ServerBuildUnits(TArray<uint32>(UnitIds), Building, bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+{
+	// The order names the player: only its own units, on its own site (D288; checked again by the builders' step).
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		FHOLBuildOrder Order;
+		Order.UnitIds = UnitIds;
+		Order.Building = Building;
+		Order.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Order.bQueue = bQueue;
+		Commands->IssueBuildOrder(Order);
 	}
 }
 
@@ -1832,7 +1911,8 @@ void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
 	}
 }
 
-void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeName, const FVector_NetQuantize Point)
+void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds,
+	const bool bQueue)
 {
 	// The order names the player: it pays and owns the foundation (D288); the server checks everything again.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -1844,6 +1924,11 @@ void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeNa
 		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
 		Command.TypeName = TypeName;
 		Command.Location = Point;
+		if (UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+		{
+			Command.UnitIds = UnitIds;
+		}
+		Command.bQueue = bQueue;
 		Commands->IssueConstructionOrder(Command);
 	}
 }
@@ -1901,6 +1986,12 @@ void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
 	{
 		BuildTime->Set(bOn ? 0.01f : 0.f, ECVF_SetByConsole);
 	}
+	// Every site finished at its first blow, a builder still has to reach it (hol.Build.Instant; the user's choice at the
+	// trial of J6a.4, as the aegis of AoE II). hol.Build.Speed stays a knob of its own.
+	if (IConsoleVariable* BuildInstant = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Build.Instant")))
+	{
+		BuildInstant->Set(bOn ? 1 : 0, ECVF_SetByConsole);
+	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d fast build %s"), HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE, bOn ? TEXT("on") : TEXT("off"));
 #endif
@@ -1930,18 +2021,19 @@ void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& 
 	}
 }
 
-void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>& UnitIds, const int32 SourceIndex)
+void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>& UnitIds, const int32 SourceIndex, const bool bQueue)
 {
 	// The order names the player: the gathering sends only its own units (D288), a client could send any identifier.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
-		Commands->IssueGatherOrder(UnitIds, SourceIndex, HOLPlayerState->GetPlayerIndex());
+		Commands->IssueGatherOrder(UnitIds, SourceIndex, HOLPlayerState->GetPlayerIndex(), bQueue);
 	}
 }
 
-void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex)
+void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex,
+	AHOLBuilding* Site)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -1956,6 +2048,8 @@ void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Buil
 		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 		Command.SourceIndex = Sources && Sources->GetSources().IsValidIndex(SourceIndex) && Sources->GetSources()[SourceIndex].IsStanding()
 			? SourceIndex : INDEX_NONE;
+		// Its own site not finished, checked by the production at its step (D288).
+		Command.RallySite = Site;
 		Commands->IssueProductionOrder(Command);
 	}
 }

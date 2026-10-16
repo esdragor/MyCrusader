@@ -8,6 +8,7 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLUnitSubsystem.generated.h"
 
+class AHOLBuilding;
 class UDataTable;
 class UMassEntityTraitBase;
 struct FMassEntityTemplate;
@@ -35,6 +36,8 @@ struct FHOLUnitSpawnRequest
 	FVector MoveTarget = FVector::ZeroVector;
 	/** ... and gather this source there (a rally point on a source, J5, D298), if it still stands. */
 	int32 GatherSource = INDEX_NONE;
+	/** ... or build this site there (a rally point on a site, the user's trial of J6a.4), if it is not finished. */
+	TWeakObjectPtr<AHOLBuilding> BuildSite;
 };
 
 /**

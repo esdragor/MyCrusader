@@ -373,4 +373,158 @@ bool FHOLConstructionProbesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionBuildSpotsTest, "HeroesOfLiberty.Construction.BuildSpots", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionBuildSpotsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+	// J6a.4 (D312): a Peasant's body (60 cm), 25 cm of clearance (D310) and a gap of 20 cm; two bodies 130 cm apart.
+	const double Radius = 60.0;
+	const double Offset = Radius + 25.0 + 20.0;
+	const double Spacing = 2.0 * Radius + 10.0;
+	const FBox2D Footprint = House(0.0, 0.0);
+	TArray<FVector2D> Spots;
+	HOLConstruction::GetBuildSpots(Footprint, Offset, Spacing, FVector2D(-2000.0, 100.0), Spots);
+	TestEqual(TEXT("a house: 5 spots on each of its 4 sides"), Spots.Num(), 20);
+
+	// Every spot outside the footprint, at its offset from a side, no two bodies overlapping, none at a corner.
+	bool bAtOffset = true;
+	bool bApart = true;
+	for (int32 Index = 0; Index < Spots.Num(); ++Index)
+	{
+		bAtOffset &= FMath::IsNearlyEqual(HOLConstruction::GetDistance(Footprint, Spots[Index]), Offset, 0.01);
+		for (int32 Other = Index + 1; Other < Spots.Num(); ++Other)
+		{
+			bApart &= FVector2D::Distance(Spots[Index], Spots[Other]) >= Spacing - 0.01;
+		}
+	}
+	TestTrue(TEXT("each spot at its offset from the footprint (a body at contact, clear of the navmesh's forbidden area)"), bAtOffset);
+	TestTrue(TEXT("two builders' bodies never overlap"), bApart);
+
+	// On every side, the nearest side first: the builders coming from the west fill the west side, then the others.
+	TestTrue(TEXT("the first spot on the side facing them (west), nearest them"), Spots[0].Equals(FVector2D(-300.0 - Offset, 130.0), 0.01));
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		TestTrue(FString::Printf(TEXT("spot %d on the west side"), Index), FMath::IsNearlyEqual(Spots[Index].X, -300.0 - Offset, 0.01));
+	}
+	const auto CountSide = [&Spots](const TFunctionRef<bool(const FVector2D&)> OnSide)
+	{
+		int32 Count = 0;
+		for (const FVector2D& Spot : Spots)
+		{
+			Count += OnSide(Spot) ? 1 : 0;
+		}
+		return Count;
+	};
+	TestEqual(TEXT("5 on the east side too"), CountSide([Offset](const FVector2D& Spot) { return FMath::IsNearlyEqual(Spot.X, 300.0 + Offset, 0.01); }), 5);
+	TestEqual(TEXT("5 on the north side"), CountSide([Offset](const FVector2D& Spot) { return FMath::IsNearlyEqual(Spot.Y, 300.0 + Offset, 0.01); }), 5);
+	TestEqual(TEXT("5 on the south side"), CountSide([Offset](const FVector2D& Spot) { return FMath::IsNearlyEqual(Spot.Y, -300.0 - Offset, 0.01); }), 5);
+	TestTrue(TEXT("the far side (east) last"), FMath::IsNearlyEqual(Spots.Last().X, 300.0 + Offset, 0.01));
+	TArray<FVector2D> Again;
+	HOLConstruction::GetBuildSpots(Footprint, Offset, Spacing, FVector2D(-2000.0, 100.0), Again);
+	TestTrue(TEXT("the same order at every call"), Again == Spots);
+
+	// At the site (D312): the body within the gap of the footprint, measured from its edge.
+	TestTrue(TEXT("at its spot: at the site"), HOLConstruction::IsAtSite(Footprint, Spots[0], Radius, 100.0));
+	TestTrue(TEXT("stopped 50 cm short of its spot: still at the site"), HOLConstruction::IsAtSite(Footprint, Spots[0] - FVector2D(50.0, 0.0), Radius, 100.0));
+	TestFalse(TEXT("2 m out: not at the site"), HOLConstruction::IsAtSite(Footprint, FVector2D(-300.0 - 200.0 - Radius, 0.0), Radius, 100.0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionBuildQueueTest, "HeroesOfLiberty.Construction.BuildQueue", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionBuildQueueTest::RunTest(const FString& Parameters)
+{
+	// J6a.4 (D311, D312): sites by number; Open: those not finished nor cancelled.
+	TSet<int32> Closed;
+	const auto IsOpen = [&Closed](const int32& Site) { return !Closed.Contains(Site); };
+	TArray<int32> Queue;
+	HOLConstruction::AddToBuildQueue(Queue, 1, false);
+	TestTrue(TEXT("a click: its site alone"), Queue == TArray<int32>({ 1 }));
+	HOLConstruction::AddToBuildQueue(Queue, 2, true);
+	HOLConstruction::AddToBuildQueue(Queue, 3, true);
+	TestTrue(TEXT("Shift: queued in the order placed"), Queue == TArray<int32>({ 1, 2, 3 }));
+	HOLConstruction::AddToBuildQueue(Queue, 2, true);
+	TestTrue(TEXT("Shift on a site already queued: no second time"), Queue == TArray<int32>({ 1, 2, 3 }));
+
+	TestTrue(TEXT("the first one open: built first"), HOLConstruction::AdvanceBuildQueue<int32>(Queue, IsOpen) && Queue[0] == 1);
+	Closed.Add(1);
+	TestTrue(TEXT("finished: the next one of the queue"), HOLConstruction::AdvanceBuildQueue<int32>(Queue, IsOpen) && Queue[0] == 2);
+	Closed.Add(2);
+	Closed.Add(3);
+	TestFalse(TEXT("the last finished, the one after cancelled: idle"), HOLConstruction::AdvanceBuildQueue<int32>(Queue, IsOpen));
+	TestEqual(TEXT("nothing left"), Queue.Num(), 0);
+
+	Queue = { 4, 5, 6 };
+	Closed.Add(5);
+	TestTrue(TEXT("a cancelled site in the middle waits its turn"), HOLConstruction::AdvanceBuildQueue<int32>(Queue, IsOpen) && Queue == TArray<int32>({ 4, 5, 6 }));
+	Closed.Add(4);
+	TestTrue(TEXT("then skipped with the finished one before it"), HOLConstruction::AdvanceBuildQueue<int32>(Queue, IsOpen) && Queue == TArray<int32>({ 6 }));
+	HOLConstruction::AddToBuildQueue(Queue, 7, false);
+	TestTrue(TEXT("a click without Shift replaces the queue"), Queue == TArray<int32>({ 7 }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionWorkQueueTest, "HeroesOfLiberty.Construction.WorkQueue", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionWorkQueueTest::RunTest(const FString& Parameters)
+{
+	// The user's trial of J6a.4: Shift + place house 1, Shift + place house 2, Shift + right click on tree 30, Shift + right
+	// click on vein 90; sites by number, Open: those not finished nor cancelled.
+	using FItem = HOLConstruction::TWorkItem<int32>;
+	TSet<int32> Closed;
+	const auto IsOpen = [&Closed](const int32& Site) { return !Closed.Contains(Site); };
+	TArray<FItem> Queue;
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeBuild(1), true);
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeBuild(2), true);
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeGather(30), true);
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeGather(30), true);
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeGather(90), true);
+	TestTrue(TEXT("sites and sources queued in the order given, a source twice once"),
+		Queue == TArray<FItem>({ FItem::MakeBuild(1), FItem::MakeBuild(2), FItem::MakeGather(30), FItem::MakeGather(90) }));
+	TestFalse(TEXT("a site is no gathering"), Queue[0].IsGather());
+	TestTrue(TEXT("a source is one"), Queue[2].IsGather());
+	TestFalse(TEXT("site 0 and source 0 differ"), FItem::MakeBuild(0) == FItem::MakeGather(0));
+
+	TestTrue(TEXT("house 1 open: built first"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue[0] == FItem::MakeBuild(1));
+	Closed.Add(1);
+	TestTrue(TEXT("house 1 finished: house 2"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue[0] == FItem::MakeBuild(2));
+	Closed.Add(2);
+	TestTrue(TEXT("house 2 finished: the tree"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue[0] == FItem::MakeGather(30));
+	TestTrue(TEXT("a gathering lasts while its massif gives (head not done)"),
+		HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue[0] == FItem::MakeGather(30) && Queue.Num() == 2);
+	TestTrue(TEXT("its massif used up: the vein"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen) && Queue[0] == FItem::MakeGather(90));
+	TestFalse(TEXT("the vein used up, nothing after it: idle"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen));
+	TestEqual(TEXT("nothing left"), Queue.Num(), 0);
+
+	// A gathering before a site: the site finished by others meanwhile is skipped once the gathering is over.
+	Queue = { FItem::MakeGather(31), FItem::MakeBuild(3), FItem::MakeBuild(4) };
+	Closed.Add(3);
+	TestTrue(TEXT("a site finished behind a gathering waits its turn"),
+		HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue.Num() == 3 && Queue[0] == FItem::MakeGather(31));
+	TestTrue(TEXT("the gathering over: the finished site skipped, house 4"),
+		HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen) && Queue.Num() == 1 && Queue[0] == FItem::MakeBuild(4));
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeGather(32), false);
+	TestTrue(TEXT("a right click without Shift replaces the queue"), Queue == TArray<FItem>({ FItem::MakeGather(32) }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionNextSiteTest, "HeroesOfLiberty.Construction.NextSite", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionNextSiteTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+	// The user's trial of J6a.4: a house finished at (0, 0) m, 6 m wide; the next site within 20 m of its footprint.
+	const FBox2D Finished = House(0.0, 0.0);
+	TestEqual(TEXT("gap to a house touching it"), HOLConstruction::GetGap(Finished, House(6.0, 0.0)), 0.0, 0.01);
+	TestEqual(TEXT("gap to a house 10 m off its side"), HOLConstruction::GetGap(Finished, House(16.0, 0.0)), 1000.0, 0.01);
+	TestEqual(TEXT("gap to a house off its corner (3 m, 4 m)"), HOLConstruction::GetGap(Finished, House(9.0, 10.0)), 500.0, 0.01);
+	TestEqual(TEXT("gap to an overlapping box"), HOLConstruction::GetGap(Finished, House(2.0, 2.0)), 0.0, 0.01);
+
+	const TArray<FBox2D> Sites = { House(-46.0, 0.0), House(0.0, 16.0), House(0.0, -19.0) };
+	TestEqual(TEXT("10 m away chosen, not 40 m away nor 13 m"), HOLConstruction::FindNextSite(Finished, Sites, 2000.0), 1);
+	TestEqual(TEXT("only 40 m away: none, idle"), HOLConstruction::FindNextSite(Finished, TArray<FBox2D>({ House(-46.0, 0.0) }), 2000.0), INDEX_NONE);
+	TestEqual(TEXT("exactly 20 m away: still near"), HOLConstruction::FindNextSite(Finished, TArray<FBox2D>({ House(26.0, 0.0) }), 2000.0), 0);
+	TestEqual(TEXT("two as near: the first"), HOLConstruction::FindNextSite(Finished, TArray<FBox2D>({ House(16.0, 0.0), House(-16.0, 0.0) }), 2000.0), 0);
+	TestEqual(TEXT("no site: none"), HOLConstruction::FindNextSite(Finished, TArray<FBox2D>(), 2000.0), INDEX_NONE);
+	TestEqual(TEXT("range 0: only one touching it"), HOLConstruction::FindNextSite(Finished, Sites, 0.0), INDEX_NONE);
+	return true;
+}
+
 #endif

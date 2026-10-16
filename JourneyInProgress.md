@@ -142,7 +142,8 @@ vérifier sur S1 et S2.
    **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
    refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
    3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
-   annulation). Suite : **J6a.4** (chantier ; une fondation n'est qu'un fantôme avant le premier coup de marteau).
+   annulation). **J6a.4 faite** (2026-10-16, validée : chantier, bâtisseurs, fondation fantôme, file Maj avec
+   récolte, ralliement sur un chantier, chantier voisin ; S2 / S7 au repos à refaire). Suite : **J6a.5** (HUD).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -2555,3 +2556,98 @@ d'épée).
   épaisseur du cadre du fantôme (40 cm).
 - Session d'essai lancée (deuxième écran) pour l'essai de J6a.3.
 - **Essai validé** par l'utilisateur (« tout est bien ») avec une remarque : **une fondation n'est qu'un fantôme tant que le premier coup de marteau n'est pas donné** (pas de dalle avant le travail) → à faire en J6a.4 (le premier coup y arrive). J6a.3 commitée (sans les lignes des autres sessions). Reprise : **J6a.4** (chantier).
+
+### 2026-10-16 — J6a.4 : chantier
+
+- **Fondation fantôme** (choix de l'utilisateur, recommandation) : avant le premier coup de marteau, une fondation
+  n'est qu'un **fantôme vu de son seul propriétaire** (AoE4 : l'adversaire ne découvre pas les plans ; les alliés la
+  verront avec les équipes) ; au premier coup, elle devient un chantier visible de tous, bloque le navmesh (D312) et
+  monte du sol. Confié à un sous-agent avec le reste de J6a.4.
+- Sous-agent, rien de commité (essai de l'utilisateur attendu), GDD non touché. Activité répliquée : accord de
+  `mycrusader-23` (relayé) pour **`EHOLUnitActivity::Building`**, valeur 4 en mémoire, **valeur 2 sur le fil**
+  (`HOLUnitReplication::BuildingWireValue`, celle de `Gathering` jamais écrite : **la dernière libre** des 3 bits,
+  commenté) ; 0 bit de plus ; présentation non touchée (geste du marteau : `mycrusader-23`, après J5c.2).
+- **Fondation fantôme** (`AHOLBuilding`) : posée, elle n'est répliquée qu'à son propriétaire (`bOnlyRelevantToOwner`,
+  filtre « propriétaire » d'Iris) ; dessinée en fantôme (cadre au sol + arêtes du volume, couleur du joueur
+  éclaircie, pas de dalle) et une boîte invisible pour le clic ; ailleurs (ordinateur en solo, serveur) rien n'est
+  dessiné (`IsSeenHere`). **Premier coup** : état `UnderConstruction`, filtre d'Iris levé (tous la reçoivent),
+  navmesh bloqué (J6a.1 : unités sorties par la garde des emprises), dalle + bordure + piquets et le bâtiment qui
+  **monte** (pièces sous `RiseRoot`, écrasées en hauteur à l'avancement, 4 % au moins) ; travail répliqué à chaque pas.
+  Client : journal `Building arrived: <Type> of slot N, <état>`.
+- **Bâtisseurs** (`Simulation/HOLBuildProcessor`, nouveau, après la récolte ; `FHOLBuildFragment` dans
+  `HOLBuildFragments.h`, file des chantiers gardée par le processeur : un fragment ne tient pas de tableau) :
+  - ordre `FHOLBuildOrder` par la file d'ordres ; le serveur revérifie (chantier du joueur non fini, ses seules
+    unités, celles qui récoltent : `CarryCapacity > 0`, faute de colonne « bâtisseur » dans la table des unités) ;
+    l'ordre arrête la récolte (charge gardée) ; un ordre de marche ou de récolte du joueur arrête la construction ;
+  - pose en mode placement avec des Paysans choisis : ils partent la bâtir ; **Maj** : en fin de leur file, bâties
+    dans l'ordre (`HOLConstruction::AddToBuildQueue` / `AdvanceBuildQueue`) ; **clic droit** sur un chantier ou une
+    fondation à soi non finis : aider (RPC `ServerBuildUnits`, Maj = en file) ;
+  - places autour de l'emprise (`HOLConstruction::GetBuildSpots` : à rayon + 25 + 20 cm des côtés, 130 cm entre deux,
+    5 par côté d'une maison, côté le plus proche d'abord ; pas sur un autre bâtiment, sur le navmesh) ; marche par
+    ordre « de tâche » (comme la récolte) ; au contact (corps à 100 cm de l'emprise au plus) : il travaille, corps
+    solide (ni fantôme ni marcheur), activité `Building` ; poussé à plus de 150 cm : il y retourne ;
+  - chaque pas : `AddWork` avec le nombre de bâtisseurs **au travail** (N^0,63) ; `hol.Build.Speed N` (travail × N,
+    développement ; `hol.Cheat.FastBuild 1` le met à 10) ; journaux `first work`, `N builders at work` (changement),
+    `finished ... after S steps of work (by builders: 1 xa, 2 xb, 3 xc)` ;
+  - fini : état `Finished` (population, dépôt, forme et navmesh déjà en place) ; ses bâtisseurs : chantier suivant de
+    leur file, sinon **inactifs** (comptés dans « Inactifs », touche « . ») ; enchaînement camp → récolte : J6b.1.
+- **HUD** : « Construction » (unité seule), « N en construction » (groupe), fr / en / ja (`fill_po.py`, GatherText
+  deux fois) ; population : le plafond suit les maisons finies (10 → 20 → 30 vu dans le HUD). `hol.Build.Report`
+  donne l'avancement (`under construction 45%`) ; `hol.Select.Own` (sélectionne ses unités, scripts).
+- **Tests** : `Construction.BuildSpots`, `Construction.BuildQueue` (nouveaux), `Buildings.Foundation` (fantôme du
+  propriétaire, rien chez un autre, chantier qui monte à mi-hauteur à mi-travail), `Net.ElementFormat` (Building
+  sur le fil, aller-retour, 8 valeurs sur 8) : **52/52**.
+- **`quick_check` PASS en 119 s** (machine chargée, 73 % avant) ; parties nouvelles : **`build site`** solo (navmesh à
+  travers la fondation A : droit 1,00, après le premier coup 1,27 ; A bâtie seule en **200 pas** à vitesse 2 ; plafond
+  10 → 20 et HUD ; bâtisseur inactif ; C posée avec 3 Paysans puis D en Maj : C en **102 pas** (3 x98), soit 0,51 de A,
+  puis D ; plafond 30 ; le 1er Paysan aide D par clic droit (4 bâtisseurs) ; D annulée : **25 bois rendus**, 4
+  inactifs) ; **net** : chaque client fait bâtir sa maison par son Paysan ; la fondation de l'autre **jamais reçue**
+  avant son premier coup (3 bâtiments), puis reçue « under construction » (4) ; serveur : un premier coup par slot.
+  Avant la partie `build` de J6a.3 : rien de sélectionné (Échap), ses poses n'envoient personne.
+- Captures vues : `build_foundations` (fantôme du propriétaire, cadre et arêtes), `build_site` (A montée ~40 %,
+  « Construction »), `build_three` (3 Paysans au contact de C, D en fantôme, « 3 en construction »), `build_finished`
+  (A et C finies) ; `qcnet_1_build1` (son fantôme derrière son forum), `qcnet_1_build0` (rien chez l'autre),
+  `qcnet_1_site0` (chantier de l'autre reçu).
+- **S2 / S7 courts** hors écran, **machine très chargée** (ProjectShiva ouvert, Discord, Opera ; 29-100 % avant,
+  77-92 % pendant) : S2 **3,579 / 3,897 ms FAIL**, S7 **3,589 / 3,056 ms FAIL** ; tous les postes +15-40 % (copie des
+  transformées 0,078 → 0,103 ms), **`HOLBuildProcessor` 0,004-0,005 ms** (sort tout de suite sans bâtisseur) ; S7 :
+  1 195 bois/s, 0 raté, 0 inactif. **À refaire au repos** (S2 2,738, S7 2,155).
+- À essayer : `hol.Cheat.Wood 500`, choisir des Paysans, `hol.Build.Place House`, clic (ou Maj + clic plusieurs
+  fois) : ils bâtissent, la maison monte, population +10 ; clic droit d'autres Paysans sur le chantier ; un chantier
+  choisi, `hol.Build.CancelSelected` (moitié rendue) ; `hol.Build.Speed 5` pour aller vite. À 2 clients : le fantôme
+  de l'autre n'apparaît qu'au premier coup.
+- Session d'essai lancée (deuxième écran) pour l'essai de J6a.4. S2 / S7 courts en échec sous forte charge (S2 3,58-3,90, S7 3,06-3,59 ms ; tous les processeurs 15-40 % plus lents, construction 0,005 ms) : **à refaire au repos**.
+- **Retours de l'essai de J6a.4** (2026-10-16), à faire avant le commit :
+  1. **Ralliement sur un chantier** (ou une fondation) = le Paysan né va le bâtir.
+  2. **Chantier voisin** : un bâtisseur qui finit sans rien dans sa file va au chantier inachevé le plus proche du
+     joueur s'il est proche (~20 m, réglable), sinon inactif.
+  3. **`hol.Cheat.FastBuild 1`** : le chantier est **fini au premier coup** (choix de l'utilisateur : il faut encore
+     qu'un Paysan arrive, façon « aegis » d'AoE2), au lieu d'une vitesse ×10.
+  4. **Maj + clic droit sur une ressource** (bois, baies, filon) s'ajoute à la file comme un chantier : le Paysan
+     bâtit ses chantiers puis va récolter (Maj + clic plusieurs fois, « très bien » pour les chantiers).
+- **Retours de J6a.4 traités** (sous-agent, rien de commité, GDD non touché, présentation non touchée, 0 bit de plus) :
+  1. **Ralliement sur un chantier** : centre choisi, clic droit sur un chantier ou une fondation à soi non finis →
+     ralliement sur le chantier, drapeau en son milieu (comme une source) ; le serveur revérifie (à soi, non fini, pas
+     le bâtiment lui-même ; `RallySite` côté serveur seul). Le Paysan né reçoit un ordre de bâtir ; chantier fini ou
+     annulé entre-temps : marche vers son point comme un ralliement au sol (camp : inactif, enchaînement J6b).
+  2. **Chantier voisin** : un bâtisseur qui finit un chantier, file vide, va au chantier non fini le plus proche de son
+     joueur (fondations fantômes comprises) à **`hol.Build.NextSiteRange`** (cm, 2000) au plus, emprise à emprise
+     (`HOLConstruction::GetGap` / `FindNextSite`) ; sinon inactif. Pas après une annulation.
+  3. **`hol.Cheat.FastBuild 1`** : production en un pas et **chantier fini au premier coup** (`hol.Build.Instant`,
+     absent en Shipping) ; `hol.Build.Speed N` reste à part. Journal `..., speed 1, instant`.
+  4. **Maj + clic droit sur une ressource** : file mixte du bâtisseur (`HOLConstruction::TWorkItem`, chantier ou source ;
+     `AdvanceWorkQueue`) ; l'ordre passe par la file des ordres de bâtir (`FHOLBuildOrder::SourceIndex`, ordre de clic
+     gardé), revérifié (source debout, unités du joueur qui récoltent cette ressource). Venue en tête, la source est
+     confiée à la récolte (`FHOLGatherFragment::StartTask`, phase `Gathering` du bâtisseur) jusqu'à épuisement du
+     massif : massif plein avec une suite en file → arrêt sans se poster devant, élément suivant (`bQueueNext`) ;
+     dernier élément : comme aujourd'hui. Sans Maj : la file est remplacée. Maj sur une unité sans file : la file
+     commence par l'ordre (la récolte en cours est remplacée, comme pour un chantier).
+  - Scripts : `hol.Select.Order / OrderGround / OrderSource ... shift`.
+  - **Tests 54/54** (`Construction.WorkQueue`, `Construction.NextSite`). **`quick_check` PASS en 182 s** du premier
+    coup (119 s avant ; partie build allongée). Partie solo **`build trial`** : ralliement sur le fantôme E (drapeau
+    vu, capture `build_rally`), le Paysan né bâtit E en **1 pas** (`instant`), va à F (**900 cm**), pas à G (39 m),
+    F en 1 pas, puis inactif ; Maj + H, Maj + I, Maj + clic droit sur un arbre (source 31) : H (100 pas à vitesse 4),
+    puis I, puis `goes on to gather source 31 (Wood)`, HUD « Gathering Wood ». Chemin chaud de la récolte non touché
+    (seul le cas rare « massif plein ») : pas de S7.
+- Session d'essai relancée (deuxième écran) pour les 4 retours de J6a.4.
+- **Essai validé** par l'utilisateur (« ok, tout fonctionne ») : J6a.4 et ses 4 retours commités (sans le panneau de triches de `mycrusader-bb` ni les lignes des autres sessions). Reste : S2 / S7 au repos. Reprise : **J6a.5** (HUD de la construction).

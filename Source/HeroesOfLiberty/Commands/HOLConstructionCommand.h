@@ -28,4 +28,31 @@ struct FHOLConstructionCommand
 	FVector Location = FVector::ZeroVector;
 	/** Cancel: the building. */
 	TWeakObjectPtr<AHOLBuilding> Building;
+	/**
+	 * Place (J6a.4, D312): the units the player had selected (D223 identifiers), sent to build the foundation once placed;
+	 * with bQueue (Shift), it goes at the end of their queue of sites.
+	 */
+	TArray<uint32> UnitIds;
+	bool bQueue = false;
+};
+
+/**
+ * One build order (J6a.4, D312): units sent to build one of their player's sites not yet finished, a foundation just
+ * placed (UHOLConstructionSubsystem) or a site helped (a right click on it). Applied by UHOLBuildProcessor at the next
+ * step, which checks it again (D288): the site its owner's, unfinished; only the owner's units that build.
+ */
+struct FHOLBuildOrder
+{
+	/** Stable identifiers of the units (D223). */
+	TArray<uint32> UnitIds;
+	TWeakObjectPtr<AHOLBuilding> Building;
+	/** Slot of the player who gave it (D288): only its own units obey, on its own site. INDEX_NONE: no check (the server's own orders). */
+	int32 PlayerIndex = INDEX_NONE;
+	/** Shift (D311): the site goes at the end of each unit's queue; otherwise it replaces it. */
+	bool bQueue = false;
+	/**
+	 * Or, with bQueue, a source to gather in its turn (Shift + right click on a resource, the user's trial of J6a.4; an index
+	 * of UHOLSourceSubsystem), Building left empty: it goes in the same queue as the sites, in the order given.
+	 */
+	int32 SourceIndex = INDEX_NONE;
 };

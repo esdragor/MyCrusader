@@ -9,13 +9,21 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "GameFramework/PlayerController.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLPlayerColors.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NavAreas/NavArea_Null.h"
 #include "Net/UnrealNetwork.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "UObject/ConstructorHelpers.h"
+#if UE_WITH_IRIS
+#include "Iris/ReplicationSystem/Filtering/NetObjectFilter.h"
+#include "Iris/ReplicationSystem/ReplicationSystem.h"
+#include "Net/Iris/ReplicationSystem/EngineReplicationBridge.h"
+#include "Net/Iris/ReplicationSystem/ReplicationSystemUtil.h"
+#endif
 
 namespace UE::HeroesOfLiberty::Buildings
 {
@@ -38,6 +46,9 @@ AHOLBuilding::AHOLBuilding()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	// The building's pieces: squashed to a site's progress, it rises from the ground (J6a.4).
+	RiseRoot = CreateDefaultSubobject<USceneComponent>(TEXT("Rise"));
+	RiseRoot->SetupAttachment(RootComponent);
 
 	// The footprint is a forbidden area of the navmesh (D286). A dynamic obstacle is a modifier, the only change a
 	// DynamicModifiersOnly navmesh takes at run time; the navmesh widens it by the agent's radius, FitNavObstacle by the
@@ -101,6 +112,63 @@ bool AHOLBuilding::HasWorkStarted() const
 	return HOLConstruction::HasWorkStarted(ConstructionState, ConstructionWork);
 }
 
+int64 AHOLBuilding::GetTotalWork() const
+{
+	const FHOLBuildingTypeRow* Type = GetType();
+	return Type ? HOLConstruction::GetTotalWork(HOLConstruction::GetBuildSteps(Type->BuildTime, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())) : 0;
+}
+
+float AHOLBuilding::GetProgress() const
+{
+	return IsFinished() ? 1.f : HOLConstruction::GetProgress(ConstructionWork, GetTotalWork());
+}
+
+bool AHOLBuilding::IsSeenHere() const
+{
+	if (!IsFoundation())
+	{
+		return true;
+	}
+	// A client receives only its own foundations (ApplyRelevancy); elsewhere, only the owner's own machine draws one.
+	if (GetNetMode() == NM_Client)
+	{
+		return true;
+	}
+	const APlayerController* Controller = Cast<APlayerController>(GetOwner());
+	return Controller && Controller->IsLocalController();
+}
+
+void AHOLBuilding::ApplyRelevancy()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	// A bare foundation reaches its owner alone (J6a.4); from its first work, everyone (until the fog of war, M7).
+	const bool bOwnerOnly = IsFoundation();
+	if (bAlwaysRelevant == !bOwnerOnly && bOnlyRelevantToOwner == bOwnerOnly)
+	{
+		return;
+	}
+	bAlwaysRelevant = !bOwnerOnly;
+	bOnlyRelevantToOwner = bOwnerOnly;
+#if UE_WITH_IRIS
+	// Iris reads the flags once, when the actor starts replicating (the owner filter of a foundation spawned so): its
+	// filter is cleared here. The class is always relevant, so no spatial filter comes in its place.
+	if (!bOwnerOnly)
+	{
+		UReplicationSystem* ReplicationSystem = UE::Net::FReplicationSystemUtil::GetReplicationSystem(this);
+		const UEngineReplicationBridge* Bridge = UE::Net::FReplicationSystemUtil::GetActorReplicationBridge(this);
+		const UE::Net::FNetRefHandle Handle = Bridge ? Bridge->GetReplicatedRefHandle(this) : UE::Net::FNetRefHandle::GetInvalid();
+		if (ReplicationSystem && Handle.IsValid())
+		{
+			ReplicationSystem->SetFilter(Handle, UE::Net::InvalidNetObjectFilterHandle);
+		}
+	}
+#endif
+	ForceNetUpdate();
+}
+
 void AHOLBuilding::SetConstructionState(const EHOLConstructionState InState)
 {
 	if (ConstructionState == InState)
@@ -108,6 +176,7 @@ void AHOLBuilding::SetConstructionState(const EHOLConstructionState InState)
 		return;
 	}
 	ConstructionState = InState;
+	ApplyRelevancy();
 	ForceNetUpdate();
 	RefreshAppearance();
 	OnConstructionChanged.Broadcast();
@@ -121,11 +190,13 @@ void AHOLBuilding::SetConstructionWork(const int64 InWork)
 	}
 	ConstructionWork = InWork;
 	ForceNetUpdate();
+	UpdateRise();
 	OnConstructionChanged.Broadcast();
 }
 
 void AHOLBuilding::OnRep_Construction()
 {
+	// The state rebuilds the look, the work raises the site (RefreshAppearance does both).
 	RefreshAppearance();
 	OnConstructionChanged.Broadcast();
 }
@@ -149,10 +220,11 @@ void AHOLBuilding::OnRep_ProductionQueue()
 	OnProductionChanged.Broadcast();
 }
 
-void AHOLBuilding::SetRallyPoint(const FVector& Point, const int32 SourceIndex)
+void AHOLBuilding::SetRallyPoint(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site)
 {
 	RallyPoint = Point;
 	RallySource = SourceIndex;
+	RallySite = Site;
 	bHasRallyPoint = true;
 	ForceNetUpdate();
 	OnRallyChanged.Broadcast();
@@ -162,6 +234,7 @@ void AHOLBuilding::ClearRallyPoint()
 {
 	bHasRallyPoint = false;
 	RallySource = INDEX_NONE;
+	RallySite.Reset();
 	ForceNetUpdate();
 	OnRallyChanged.Broadcast();
 }
@@ -188,6 +261,8 @@ void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, cons
 	OwnerPlayer = InOwnerPlayer;
 	ColorIndex = InColorIndex;
 	ConstructionState = InState;
+	// Before the spawn is finished: a foundation starts replicating to its owner alone (J6a.4).
+	ApplyRelevancy();
 	// A deferred spawn builds its look in BeginPlay; an actor already spawned builds it now.
 	if (IsActorInitialized())
 	{
@@ -199,6 +274,12 @@ void AHOLBuilding::BeginPlay()
 {
 	Super::BeginPlay();
 	RefreshAppearance();
+	// For the scripted checks (J6a.4): what a client receives, and when (a foundation reaches its owner alone).
+	if (GetNetMode() == NM_Client && !TypeName.IsNone())
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Building arrived: %s of slot %d, %s"), *TypeName.ToString(), OwnerPlayer,
+			IsFoundation() ? TEXT("foundation") : IsFinished() ? TEXT("finished") : TEXT("under construction"));
+	}
 }
 
 void AHOLBuilding::OnRep_Setup()
@@ -212,10 +293,11 @@ void AHOLBuilding::RefreshAppearance()
 	{
 		return;
 	}
-	// A foundation and a building under construction show the foundation (J6a.3); it rises with its work in J6a.4.
-	const bool bAsFoundation = !IsFinished();
+	// A bare foundation is a ghost its owner alone sees (J6a.4); a site, the foundation's slab under the building rising
+	// with its work; then the building.
+	const ELook Look = IsFinished() ? ELook::Finished : !IsFoundation() ? ELook::Site : IsSeenHere() ? ELook::Ghost : ELook::Hidden;
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	if (BuiltTypeName != TypeName || bBuiltAsFoundation != bAsFoundation)
+	if (BuiltTypeName != TypeName || BuiltLook != Look)
 	{
 		for (UStaticMeshComponent* Piece : Pieces)
 		{
@@ -224,24 +306,34 @@ void AHOLBuilding::RefreshAppearance()
 		Pieces.Reset();
 		OwnerMaterials.Reset();
 		OwnerTones.Reset();
+		OwnerWhitens.Reset();
 		BuiltTypeName = TypeName;
-		bBuiltAsFoundation = bAsFoundation;
+		BuiltLook = Look;
 
 		if (!Type)
 		{
 			return;
 		}
-		if (bAsFoundation)
+		if (Look == ELook::Ghost)
 		{
-			BuildFoundationShape(*Type);
+			BuildGhostShape(*Type);
 		}
-		else if (Type->Mesh.IsNull())
+		else if (Look == ELook::Site || Look == ELook::Finished)
 		{
-			BuildProvisionalShape(*Type);
-		}
-		else
-		{
-			BuildFinalMesh(*Type);
+			if (Look == ELook::Site)
+			{
+				BuildFoundationShape(*Type);
+			}
+			PieceParent = RiseRoot;
+			if (Type->Mesh.IsNull())
+			{
+				BuildProvisionalShape(*Type);
+			}
+			else
+			{
+				BuildFinalMesh(*Type);
+			}
+			PieceParent = nullptr;
 		}
 	}
 	if (Type)
@@ -249,7 +341,18 @@ void AHOLBuilding::RefreshAppearance()
 		FitNavObstacle(*Type);
 	}
 
+	UpdateRise();
 	ApplyColors();
+}
+
+void AHOLBuilding::UpdateRise()
+{
+	// Squashed from the ground up: the building grows out of its slab (J6a.4); whole once finished.
+	const float Rise = IsFinished() ? 1.f : FMath::Max(MinRiseRatio, GetProgress());
+	if (RiseRoot && !FMath::IsNearlyEqual(static_cast<float>(RiseRoot->GetRelativeScale3D().Z), Rise))
+	{
+		RiseRoot->SetRelativeScale3D(FVector(1.0, 1.0, Rise));
+	}
 }
 
 void AHOLBuilding::ApplyColors()
@@ -257,7 +360,7 @@ void AHOLBuilding::ApplyColors()
 	const FLinearColor OwnerColor(HOLPlayerColors::GetLinearColor(ColorIndex));
 	for (int32 Index = 0; Index < OwnerMaterials.Num(); ++Index)
 	{
-		FLinearColor Shown = OwnerColor * OwnerTones[Index];
+		FLinearColor Shown = FMath::Lerp(OwnerColor * OwnerTones[Index], FLinearColor::White, OwnerWhitens[Index]);
 		Shown.A = 1.f;
 		OwnerMaterials[Index]->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Shown);
 	}
@@ -341,6 +444,50 @@ void AHOLBuilding::BuildFoundationShape(const FHOLBuildingTypeRow& Type)
 	}
 }
 
+void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
+{
+	// Planned, not started (J6a.4, the user's choice): drawn as the placement ghost is, a frame on the ground and the edges
+	// of the volume, light at the owner's colour; no slab before the first work.
+	const FVector2D Footprint = Type.Footprint;
+	const FVector2D Half = Footprint * 0.5;
+	const float Height = Type.Height;
+	const auto Move = [](UStaticMeshComponent* Piece, const FVector& Offset)
+	{
+		if (Piece)
+		{
+			Piece->AddRelativeLocation(Offset);
+		}
+	};
+	const auto AddEdge = [this](const FVector& Size, const float BottomZ)
+	{
+		UStaticMeshComponent* Piece = AddPiece(CubeMesh, Size, BottomZ, FLinearColor::White, true);
+		if (Piece)
+		{
+			OwnerWhitens.Last() = GhostWhiten;
+		}
+		return Piece;
+	};
+	const double Frame = FMath::Min(static_cast<double>(GhostFrameWidth), Footprint.GetMin() * 0.25);
+	for (const double Sign : { 1.0, -1.0 })
+	{
+		// The frame on the ground, then the edges of the top, along each axis.
+		Move(AddEdge(FVector(Footprint.X, Frame, GhostFrameHeight), 0.f), FVector(0.0, Sign * (Half.Y - Frame * 0.5), 0.0));
+		Move(AddEdge(FVector(Frame, Footprint.Y - 2.0 * Frame, GhostFrameHeight), 0.f), FVector(Sign * (Half.X - Frame * 0.5), 0.0, 0.0));
+		Move(AddEdge(FVector(Footprint.X, GhostEdgeWidth, GhostEdgeWidth), Height - GhostEdgeWidth), FVector(0.0, Sign * (Half.Y - GhostEdgeWidth * 0.5), 0.0));
+		Move(AddEdge(FVector(GhostEdgeWidth, Footprint.Y, GhostEdgeWidth), Height - GhostEdgeWidth), FVector(Sign * (Half.X - GhostEdgeWidth * 0.5), 0.0, 0.0));
+	}
+	const FVector2D Corner = Half - FVector2D(GhostEdgeWidth * 0.5);
+	for (const FVector2D Sign : { FVector2D(1.0, 1.0), FVector2D(1.0, -1.0), FVector2D(-1.0, 1.0), FVector2D(-1.0, -1.0) })
+	{
+		Move(AddEdge(FVector(GhostEdgeWidth, GhostEdgeWidth, Height), 0.f), FVector(Corner * Sign, 0.0));
+	}
+	// The whole volume answers a click (D262), unseen: the ghost is selected (and cancelled) as a foundation is.
+	if (UStaticMeshComponent* Box = AddPiece(CubeMesh, FVector(Footprint, Height), 0.f, FLinearColor::White, false))
+	{
+		Box->SetVisibility(false);
+	}
+}
+
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 {
 	UStaticMesh* Mesh = Type.Mesh.LoadSynchronous();
@@ -353,7 +500,7 @@ void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 	Piece->SetStaticMesh(Mesh);
 	Piece->SetCollisionResponseToChannel(HOLCollision::Selection, ECR_Block);	// D262
 	Piece->SetCanEverAffectNavigation(false);	// the footprint is NavObstacle (D286)
-	Piece->SetupAttachment(RootComponent);
+	Piece->SetupAttachment(PieceParent ? PieceParent : RootComponent.Get());
 	Piece->RegisterComponent();
 	Pieces.Add(Piece);
 }
@@ -382,7 +529,7 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Piece);
 	Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Color);
 	Piece->SetMaterial(0, Material);
-	Piece->SetupAttachment(RootComponent);
+	Piece->SetupAttachment(PieceParent ? PieceParent : RootComponent.Get());
 	Piece->RegisterComponent();
 
 	Pieces.Add(Piece);
@@ -390,6 +537,7 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	{
 		OwnerMaterials.Add(Material);
 		OwnerTones.Add(OwnerTone);
+		OwnerWhitens.Add(0.f);
 	}
 	return Piece;
 }

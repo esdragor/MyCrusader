@@ -1,0 +1,140 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "Buildings/HOLConstructionRules.h"
+#include "CoreMinimal.h"
+#include "MassEntityQuery.h"
+#include "MassProcessor.h"
+#include "HOLBuildProcessor.generated.h"
+
+class AHOLBuilding;
+class ANavigationData;
+class UHOLCommandSubsystem;
+class UHOLSourceSubsystem;
+class UHOLUnitSubsystem;
+class UNavigationSystemV1;
+struct FHOLBuildFragment;
+struct FHOLGatherFragment;
+struct FHOLMoveOrderFragment;
+struct FHOLUnitStateFragment;
+struct FHOLUnitTypeConstants;
+
+/**
+ * The building (J6a.4, D312), on the server (and in solo), after the orders and the gathering of the step: a builder
+ * walks to a free spot around the footprint of the site at the head of its queue (the side facing it first), and works
+ * there at contact. Each site's builders at work add their work together, with diminishing returns
+ * (HOLConstruction::AddWork, 3 builders ~2x one). The first work makes a bare foundation a site: seen by everyone, its
+ * footprint blocking the navmesh, rising from the ground (at once finished with hol.Build.Instant, development). Finished,
+ * it serves (population, deposit), and its builders go on to the next item of their queue (Shift, D311), else to their
+ * player's nearest site within hol.Build.NextSiteRange of it (the user's trial of J6a.4), else stand idle. A source in the
+ * queue (Shift + right click on a resource) is handed to the gathering when it comes, until its massif is used up. Its
+ * walks are move orders it gives itself through the order queue (as the gathering's); a player's move or gather order
+ * ends it.
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLBuildProcessor : public UMassProcessor
+{
+	GENERATED_BODY()
+
+public:
+	UHOLBuildProcessor();
+
+protected:
+	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
+	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
+
+private:
+	/** What one step works with. */
+	struct FStepContext
+	{
+		FMassEntityManager* EntityManager = nullptr;
+		UHOLCommandSubsystem* Commands = nullptr;
+		UHOLSourceSubsystem* Sources = nullptr;
+		UHOLUnitSubsystem* Units = nullptr;
+		UNavigationSystemV1* NavSystem = nullptr;
+		const ANavigationData* NavData = nullptr;
+		int64 StepIndex = 0;
+	};
+
+	using FWorkItem = HOLConstruction::TWorkItem<TWeakObjectPtr<AHOLBuilding>>;
+
+	/**
+	 * A builder's queue (Shift, D311): sites, and sources to gather (the user's trial of J6a.4), the head first; Current,
+	 * the head being carried out (the site its spot was found for, the source handed to the gathering).
+	 */
+	struct FBuilderQueue
+	{
+		TArray<FWorkItem> Items;
+		FWorkItem Current;
+	};
+
+	/** A spot held by a builder: walked to, or worked at. */
+	struct FSpotClaim
+	{
+		FMassEntityHandle Owner;
+		FVector2D Spot = FVector2D::ZeroVector;
+	};
+
+	/** A site's construction so far, for the log of its end (the scripted checks of J6a.4). */
+	struct FSiteStats
+	{
+		int64 FirstStep = 0;
+		int32 WorkSteps = 0;
+		/** Steps worked by 1, 2, 3, ... builders (the last one: that many or more). */
+		int32 StepsByBuilders[6] = {};
+		/** Builders at work at the last step (a change is logged). */
+		int32 LastBuilders = 0;
+	};
+
+	/** The builder met by the step, and what it needs. */
+	struct FBuilder
+	{
+		FMassEntityHandle Entity;
+		FHOLBuildFragment& Build;
+		const FHOLMoveOrderFragment& Move;
+		FHOLUnitStateFragment& State;
+		FHOLGatherFragment& Gather;
+		FVector Location;
+		const FHOLUnitTypeConstants& Constants;
+	};
+
+	void ApplyBuildOrders(const FStepContext& Step);
+	void Advance(const FStepContext& Step, FBuilder& Builder);
+	/** Walks to a free spot around its site, or works at once if it already stands at contact on a free place. */
+	void WalkToSite(const FStepContext& Step, FBuilder& Builder, const AHOLBuilding& Site, const FBox2D& Footprint);
+	/** A free spot around Footprint for Self, claimed (HOLConstruction::GetBuildSpots, on the navmesh, clear of the other buildings). */
+	bool FindSpot(const FStepContext& Step, const AHOLBuilding& Site, const FBox2D& Footprint, const FVector& From, float BodyRadius,
+		FMassEntityHandle Self, FVector& OutSpot);
+	/** Another builder's spot within MinSpacing of Spot. */
+	bool IsSpotTaken(const FVector2D& Spot, double MinSpacing, FMassEntityHandle Self) const;
+	void StartBuilding(FBuilder& Builder);
+	/** The head of its queue is a source: handed to the gathering (as a gather order would), until its massif is used up. */
+	void StartGathering(const FStepContext& Step, FBuilder& Builder, int32 SourceIndex);
+	/**
+	 * Its player's nearest site not finished (bare foundations too) within hol.Build.NextSiteRange of Finished, footprint to
+	 * footprint (HOLConstruction::FindNextSite), or null.
+	 */
+	AHOLBuilding* FindNextSite(const FBuilder& Builder, const AHOLBuilding& Finished) const;
+	/** Nothing left in its queue (or its site out of reach): it stands idle where it is, its queue forgotten. */
+	void Stop(FBuilder& Builder, const TCHAR* Why);
+	void IssueWalk(const FStepContext& Step, FBuilder& Builder, const FVector& Spot);
+	/** Its activity (D307): working at its site, else walking there (never idle while it builds). */
+	static void SyncActivity(FBuilder& Builder);
+	/** Each site worked this step: its builders' work added, its first work, its end (D312). */
+	void ApplyWork(const FStepContext& Step);
+
+	/** Each builder's queue, by entity: a fragment holds no array. Swept of the units that no longer build. */
+	TMap<FMassEntityHandle, FBuilderQueue> Queues;
+	/** The spots held this step. */
+	TArray<FSpotClaim> SpotClaims;
+	/** The footprints of every building and foundation of the match this step: a spot is never on one (D310). */
+	TArray<FBox2D> Footprints;
+	TArray<TWeakObjectPtr<AHOLBuilding>> FootprintBuildings;
+	/** This step's builders at work, by site. */
+	TMap<TWeakObjectPtr<AHOLBuilding>, int32> WorkersBySite;
+	TMap<TWeakObjectPtr<AHOLBuilding>, FSiteStats> SiteStats;
+	int32 StepsSinceSweep = 0;
+
+	FMassEntityQuery EntityQuery;
+};
