@@ -6,8 +6,16 @@ principal par joueur, sélection ; **M2.5** réseau ; **J3** panneau du bâtimen
 de déplacement et chemins ; **J5** récolte et ressources ; puis construction, armée et combat.
 
 Cohabitation (mêmes règles que le chantier menu) : M2 tourne dans une autre session sur le module `HeroesOfLiberty` ;
-décisions numérotées **D252 et suivantes**, tenues ici pendant le plan puis reportées au GDD (§ 21) ; pas de worktree,
-commits sur `main` par chemins explicites ; ne compiler que si aucun éditeur ni compilation du projet ne tourne ; jamais
+décisions numérotées **D252 et suivantes**, tenues ici pendant le plan puis reportées au GDD (§ 21) ; commits sur `main`
+par chemins explicites, **sauf travail en parallèle (règle de l'utilisateur, 2026-10-16) : une session qui doit
+travailler en même temps qu'une autre dans la copie principale prend le worktree de réserve
+`C:\Users\baudo\Documents\MyCrusader-A`** (le chantier animations a le sien, `MyCrusader-J5c`, branche `j5c-anims`).
+Mode d'emploi de `MyCrusader-A` : vérifier qu'il est libre (pas de fichier `IN_USE.txt` à sa racine), y écrire
+`IN_USE.txt` (session, chantier, date), remettre sa branche au niveau de `main`, travailler sur une branche à soi,
+compiler et tester là-bas (binaires et `Saved_Tests` séparés : un jeu d'essai ouvert ailleurs ne bloque pas la
+compilation), fusionner dans `main` après validation de l'utilisateur, puis effacer `IN_USE.txt`. Les journaux
+(`*InProgress.md`, `GDD.md`) restent écrits dans la copie principale. Le moteur reste commun : annoncer aux autres
+sessions chaque compilation ou lancement d'Unreal ; ne compiler que si aucun éditeur ni compilation du projet ne tourne ; jamais
 de code qui ne compile pas ; ne pas changer l'environnement du stress test (GameMode global, pion, caméra) sans le
 vérifier sur S1 et S2.
 
@@ -143,6 +151,10 @@ vérifier sur S1 et S2.
    refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
    3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
    annulation). **J6a.4 faite** (2026-10-16, validée : chantier, bâtisseurs, fondation fantôme, file Maj avec
+   **J5c.2 faite** (2026-10-16, worktree, détail dans `AnimationsInProgress.md`) : hache et pioche dans les mains,
+   panier de baies, fagot, hotte de pierre ou d'or, repos chargés ; essai de l'utilisateur validé (« très bien ») ;
+   **fusionnée dans `main`** (fad246d ; tests 54/54, `quick_check` PASS ; A/B S7 : CPU inchangé, GPU +1 ms par image).
+   Restent pour J5c : S1 / S2 / S7 au repos, S5 court, J5c.4 (clôture) ; animation du bâtisseur pour J6a.4.
    récolte, ralliement sur un chantier, chantier voisin ; S2 / S7 au repos à refaire). Suite : **J6a.5** (HUD).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
