@@ -7,12 +7,16 @@ weighs most on it); red = right limbs, blue = left limbs; the PROPS of the gestu
 drawn filled, on their bones, exactly as the mesh will show them (axe and pickaxe on the tool bone ik_hand_gun, loads
 on spine_03), hidden where they are behind something. Grey dots on the ground = path of the tool's head (or of the
 right hand) over the loop; green = the scenery of the gesture's "scene": trunk or rock placed where the tool's head
-is at the hit (fastest-stopping frame, marked by a dash), bush and pouch where the gesture puts them.
-The output line gives the hit, how far the hands miss their targets, for a tool how far each hand's grip is from
-the handle carried by the tool bone (both hands on the tool if ~0), and for each prop the body points inside it
-(clearance: hands and fingers left out, they hold the props).
+is at the hit (fastest-stopping frame, marked by a dash), bush and pouch where the gesture puts them, beam (the
+builder's work: a block whose top is where the hammer's face is at the hit, the impact marked by a cross).
+The output line gives the hit, how far the hands miss their targets, for a tool how far each hand on it is from
+the handle carried by the tool bone (the tool in the hands if ~0), for each prop the body points inside it
+(clearance: the hands holding props left out; a one-handed tool's free hand counts), the feet's drift (planted if
+~0, gestures without a base) and, for the beam, the hammer's face at each hit and how deep any part of the hammer or
+the left hand goes into the beam.
 Run:
-  python Tools/Editor/preview_animation.py [gesture] [--frames N] [--zoom Z] [--out <png>]
+  python Tools/Editor/preview_animation.py [gesture] [--frames N | --picks f1,f2,...] [--zoom Z] [--out <png>]
+      (--picks: the frame indices to show, e.g. one strike in detail)
   python Tools/Editor/preview_animation.py --compare g1,g2,g3 [--at 0.25] [--zoom Z] [--out <png>]
       (several gestures side by side at the same point of their loops; --at is the share of the loop, 0-1)
   python Tools/Editor/preview_animation.py --all
@@ -233,6 +237,7 @@ class Shared:
         self.props = peasant_props.build_props(self.sk)
         self.prop_tris = {name: peasant_props.prop_triangles(p) for name, p in self.props.items()}
         self.body = []
+        self.body_side = []  # "l" / "r" for the points of the hands, else None
         if os.path.exists(BODY_JSON):
             with open(BODY_JSON, "r", encoding="utf-8") as f:
                 points = json.load(f)["points"]
@@ -241,6 +246,7 @@ class Shared:
                 t, q = self.sk.ref_world[i]
                 self.body.append((i, anim_rig.qrot(anim_rig.qconj(q), anim_rig.sub((x, y, z), t)),
                                   bone.startswith(HOLDING)))
+                self.body_side.append(bone[-1] if bone.startswith(HOLDING) else None)
 
     def posed_body(self, world, step=1):
         out = []
@@ -284,14 +290,15 @@ def inside_depth(prim, p):
     return None
 
 
-def clearance(shared, prop, world, points):
-    """Body points (not hands) inside the prop in a pose: (count, deepest cm)."""
+def clearance(shared, prop, world, points, free=()):
+    """Body points (not the hands holding it; the hands of the sides in `free` count) inside the prop in a pose:
+    (count, deepest cm). `points` from Shared.posed_body with step 1 (aligned with Shared.body_side)."""
     t, q = peasant_props.prop_frame(prop, shared.sk, world)
     lo = [min(c) - 1.0 for c in zip(*[p for tri, _ in shared.prop_tris[prop["name"]] for p in tri])]
     hi = [max(c) + 1.0 for c in zip(*[p for tri, _ in shared.prop_tris[prop["name"]] for p in tri])]
     count, deepest = 0, 0.0
-    for p, holding in points:
-        if holding:
+    for k, (p, holding) in enumerate(points):
+        if holding and shared.body_side[k] not in free:
             continue
         local = anim_rig.qrot(anim_rig.qconj(q), anim_rig.sub(p, t))
         if any(c < a or c > b for c, a, b in zip(local, lo, hi)):
@@ -324,8 +331,9 @@ def prepare(shared, gesture_name):
         ctx["summary"] = ", frappe a %.2f s, tete de l'outil a la frappe : droite %.0f, avant %.0f, haut %.0f cm" % (
             rig.times[hit], r, f, u)
         handle = [rig.handle_distances(world) for world in worlds]
-        ctx["checks"].append("mains a l'axe du manche porte par %s au plus : gauche %.3f, droite %.3f cm" % (
-            anim_rig.TOOL_BONE, max(h["l"] for h in handle), max(h["r"] for h in handle)))
+        ctx["checks"].append("mains a l'axe du manche porte par %s au plus : %s" % (anim_rig.TOOL_BONE, ", ".join(
+            "%s %.3f cm" % ({"l": "gauche", "r": "droite"}[side], max(h[side] for h in handle))
+            for side in rig.tool_hands)))
     hit = ctx["hit"]
     if scene["kind"] == "trunk" and hit is not None:
         r, f, u = body_terms(sk, traces[hit])
@@ -338,22 +346,92 @@ def prepare(shared, gesture_name):
         height = max(10.0, u)
         ctx["scenery"] += [(line, 1.6) for line in box_lines(sk, (r, f + 10.0, height / 2), (24.0, 18.0, height / 2))]
         ctx["summary"] += ", pointe a la frappe : avant %.0f, haut %.0f cm" % (f, u)
+    elif scene["kind"] == "beam" and hit is not None:
+        beam_scene(shared, ctx)
     elif scene["kind"] == "bush":
         ctx["scenery"] += [(line, 1.2) for line in ellipsoid_lines(sk, scene["centre"], scene["radii"])]
         if "pouch" in scene:
             ctx["scenery"] += [(line, 1.2) for line in box_lines(sk, scene["pouch"], (6.0, 8.0, 8.0))]
+    if rig.base is None:
+        # Planted feet: how far each foot drifts from its place at the first frame.
+        drift = max(anim_rig.length(anim_rig.sub(sk.pos(foot, world), sk.pos(foot, worlds[0])))
+                    for world in worlds for foot in ("foot_l", "foot_r", "ball_l", "ball_r"))
+        loop = max(anim_rig.length(anim_rig.sub(a[0], b[0])) for a, b in zip(worlds[0], worlds[-1]))
+        ctx["checks"].append("pieds : derive max %.3f cm ; premiere / derniere image : ecart max des os %.3f cm"
+                             % (drift, loop))
     # Clearance of each prop against the body (hands left out), over the loop (every frame up to 60, else spread).
+    free = tuple(side for side in ("l", "r") if side not in rig.tool_hands) if rig.has_tool else ()
     if shared.body and ctx["props"]:
         step = max(1, int(math.ceil(len(worlds) / 60.0)))
         for prop in ctx["props"]:
             worst = (0, 0.0, 0.0)
             for k in range(0, len(worlds), step):
-                count, deep = clearance(shared, prop, worlds[k], shared.posed_body(worlds[k]))
+                count, deep = clearance(shared, prop, worlds[k], shared.posed_body(worlds[k]),
+                                        free if prop["frame"] == "tool" else ())
                 if (count, deep) > worst[:2]:
                     worst = (count, deep, rig.times[k])
-            ctx["checks"].append("%s : points du corps dedans au plus %d (%.2f s), %.1f cm de profondeur au plus"
-                                 % (prop["name"], worst[0], worst[2], worst[1]))
+            ctx["checks"].append("%s : points du corps%s dedans au plus %d (%.2f s), %.1f cm de profondeur au plus"
+                                 % (prop["name"], " (main libre comprise)" if free and prop["frame"] == "tool" else "",
+                                    worst[0], worst[2], worst[1]))
     return ctx
+
+
+def hammer_face(sk, world):
+    """Centre of the hammer's face and its outward direction (component space) in a solved pose."""
+    t, q = world[sk.index[anim_rig.TOOL_BONE]]
+    centre = anim_rig.add(t, anim_rig.qrot(q, (peasant_props.HAMMER_HEAD_AT, peasant_props.HAMMER_FACE, 0.0)))
+    return centre, anim_rig.qrot(q, (0.0, 1.0, 0.0))
+
+
+def beam_scene(shared, ctx):
+    """The builder's beam: a block from the ground to the hammer's face at the hit, "near" cm before the impact to
+    "depth" cm behind its near edge, "width" cm wide (centred on him); checks every hit and the hammer and left hand
+    against the block."""
+    sk, scene, worlds, rig = shared.sk, ctx["scene"], ctx["worlds"], ctx["rig"]
+    centre, _ = hammer_face(sk, worlds[ctx["hit"]])
+    r, f, top = body_terms(sk, centre)
+    near, far, half = f - scene["near"], f - scene["near"] + scene["depth"], scene["width"] / 2.0
+    ctx["beam"] = (near, far, half, top)
+    ctx["scenery"] += [(line, 1.6) for line in box_lines(sk, (0.0, (near + far) / 2, top / 2),
+                                                          (half, (far - near) / 2, top / 2))]
+    # The impact: a cross on the top.
+    for d in ((6.0, 0.0), (0.0, 6.0)):
+        ctx["scenery"].append(((sk.body((r - d[0], f - d[1], top)), sk.body((r + d[0], f + d[1], top))), 1.2))
+    # Every hit: the frames where the face is lowest (local minima of its height).
+    heights = [body_terms(sk, hammer_face(sk, w)[0])[2] for w in worlds]
+    hits = [k for k in range(1, len(worlds) - 1) if heights[k] <= heights[k - 1] and heights[k] < heights[k + 1]]
+    parts = []
+    for k in hits:
+        c, out = hammer_face(sk, worlds[k])
+        cr, cf, cu = body_terms(sk, c)
+        tilt = math.degrees(math.acos(max(-1.0, min(1.0, -anim_rig.dot(out, sk.up)))))
+        parts.append("%.2f s : droite %.1f, avant %.1f, haut %.1f cm, face a %.0f deg de la verticale"
+                     % (rig.times[k], cr, cf, cu, tilt))
+    ctx["checks"].append("marteau sur la poutre (dessus a %.1f cm, de %.0f a %.0f cm devant) : %s"
+                         % (top, near, far, " ; ".join(parts)))
+
+    def into_beam(points):
+        deepest = 0.0
+        for p in points:
+            pr, pf, pu = body_terms(sk, p)
+            if -half < pr < half and near < pf < far and pu < top:
+                deepest = max(deepest, min(top - pu, pf - near, far - pf, pr + half, half - pr))
+        return deepest
+
+    hammer = shared.props["hammer"]
+    tris = shared.prop_tris["hammer"]
+    left = [k for k, side in enumerate(shared.body_side) if side == "l"]
+    worst_hammer = worst_hand = 0.0
+    gap = 1e9
+    for world in worlds:
+        points = [p for tri, _ in peasant_props.posed_triangles(hammer, sk, world, tris) for p in tri]
+        worst_hammer = max(worst_hammer, into_beam(points))
+        body = shared.posed_body(world)
+        hand = [body[k][0] for k in left]
+        worst_hand = max(worst_hand, into_beam(hand))
+        gap = min(gap, min(body_terms(sk, p)[2] for p in hand) - top)
+    ctx["checks"].append("dans la poutre au plus : marteau %.2f cm, main gauche %.2f cm ; dessous de la main gauche "
+                         "%.2f cm au-dessus du dessus au plus bas" % (worst_hammer, worst_hand, gap))
 
 
 def draw_cell(canvas, shared, ctx, frame, ox, oy, view, label):
@@ -411,12 +489,13 @@ def report(ctx):
     return "\n    ".join(lines + ctx["checks"])
 
 
-def render(shared, gesture_name, frames, out_path, zoom=1.0, ctx=None):
+def render(shared, gesture_name, frames, out_path, zoom=1.0, ctx=None, picks=None):
     set_zoom(zoom)
     sk = shared.sk
     ctx = ctx or prepare(shared, gesture_name)
     rig = ctx["rig"]
-    picks = [int(round(i * (len(rig.times) - 1) / frames)) for i in range(frames)]
+    picks = picks or [int(round(i * (len(rig.times) - 1) / frames)) for i in range(frames)]
+    frames = len(picks)
     canvas = Canvas(CELL_W * frames, (CELL_H + LABEL_H) * 3)
     for row, view in enumerate(views(sk)):
         oy = row * (CELL_H + LABEL_H)
@@ -453,8 +532,12 @@ def render_all(shared):
     for key, gesture in peasant_poses.GESTURES.items():
         ctx = prepare(shared, key)
         contexts[key] = ctx
-        render(shared, key, 12, os.path.join(OUT_DIR, gesture["name"] + "_contact_sheet.png"), 1.0, ctx)
-        render(shared, key, 6, os.path.join(OUT_DIR, gesture["name"] + "_zoom.png"), 2.0, ctx)
+        # A gesture may choose its frames ("preview": {"frames": N, "zoom_picks": [...]}) so the sheets show its hits.
+        preview = gesture.get("preview", {})
+        render(shared, key, preview.get("frames", 12), os.path.join(OUT_DIR, gesture["name"] + "_contact_sheet.png"),
+               1.0, ctx)
+        render(shared, key, 6, os.path.join(OUT_DIR, gesture["name"] + "_zoom.png"), 2.0, ctx,
+               preview.get("zoom_picks"))
         print("  %s : %s" % (gesture["name"], report(ctx)))
     for names, label in ((("carry_food", "carry_wood", "carry_stone"), "A_Peasant_Carry_comparaison"),
                          (("idle_carry_food", "idle_carry_wood", "idle_carry_stone"),
@@ -469,6 +552,7 @@ def main():
     out = None
     zoom = 1.0
     together = None
+    picks = None
     fraction = 0.25
     i = 0
     shared = Shared()
@@ -488,6 +572,9 @@ def main():
         elif args[i] == "--compare":
             together = args[i + 1].split(",")
             i += 1
+        elif args[i] == "--picks":
+            picks = [int(v) for v in args[i + 1].split(",")]
+            i += 1
         elif args[i] == "--at":
             fraction = float(args[i + 1])
             i += 1
@@ -501,7 +588,7 @@ def main():
     if together:
         compare(shared, together, fraction, out, zoom)
     else:
-        ctx = render(shared, gesture, frames, out, zoom)
+        ctx = render(shared, gesture, frames, out, zoom, picks=picks)
         print("  " + report(ctx))
 
 

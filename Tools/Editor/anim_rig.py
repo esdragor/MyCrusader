@@ -14,11 +14,13 @@ Gesture description (one dict, see peasant_poses.py):
   "name", "fps"  asset name and frame rate; "keys" the list of keys below (first at t = 0, last = first for a loop).
   "stance"  {"l": (right, forward, up), "r": ...}: constant offsets of the feet from their reference place, in cm.
   "elbows"  default elbow directions (see below); "fist" (degrees) curl of the finger joints 01, 02, 03 (constant).
-  "tool"    {"kind": "axe" | "pick", "hand_spacing", "knob_offset", "handle_length"}: tool sizes in cm (defaults
-            22, 6, 80; also read at the top level, as the axe chop has them). A gesture with a tool also keys the
+  "tool"    {"kind": "axe" | "pick" | "hammer", "hand_spacing", "knob_offset", "handle_length", "hands"}: tool sizes
+            in cm (defaults 22, 6, 80; also read at the top level, as the axe chop has them); "hands" 2 (default, both
+            hands on the handle) or 1 (the right hand alone, the hammer: "knob_offset" is then the right hand's grip
+            from the knob, the left hand is free, given by the keys' "hands"). A gesture with a tool also keys the
             TOOL BONE ik_hand_gun (the only ik_* bone ever written, J5c.2b): Rig.pose puts it on the tool frame
             (origin at the knob, X along the handle toward the head, Y toward the striking edge, Z = X x Y), so a prop
-            skinned to it (peasant_props.py) follows both hands exactly. The edge is fixed in the right hand (the
+            skinned to it (peasant_props.py) follows the hands exactly. The edge is fixed in the right hand (the
             tool is held rigidly by it): the direction the head moves in at the hit, read once from the solved loop.
   "base"    optional path of a source animation (the walk under the loaded walk): its pelvis and legs are copied
             frame by frame (sampled by make_peasant_animations.py into Data/<name>.json), it sets the length and the
@@ -28,7 +30,8 @@ Gesture description (one dict, see peasant_poses.py):
                   spine_03): for a base whose pelvis turns a lot (the idle's fencing stance), the chest faces forward
                   without a kink at one joint.
   "hands_frame"   "chest": free hands' positions follow the chest (bob, sway) instead of staying fixed in the mesh.
-  "scene"   preview only: what the gesture works on ("trunk", "rock", "bush").
+  "scene"   preview only: what the gesture works on ("trunk", "rock", "bush", "beam").
+  "preview" preview only: {"frames": N, "zoom_picks": [frame indices]} of the sheets made by --all.
   "props"   preview only: names of the props of peasant_props.py drawn on their bones (what the mesh will show).
 Key (one dict per key):
   "t"       time in seconds.
@@ -43,7 +46,8 @@ Key (one dict per key):
             on the handle in cm, "dir": (right, forward, up) direction from the knob toward the head, "spacing": cm
             from the lower to the upper (right) hand}. The arms are solved by two-bone IK every frame so both hands
             stay on the handle; each hand grips with its palm across the handle, fingers pointing away from its
-            shoulder.
+            shoulder. One-handed tool ("hands": 1): "grip" is the right hand's place on the handle, no "spacing", and
+            the key also has "hands" with the free left hand only.
   "hands"   instead of a tool, free hands: {"l": {"at": (right, forward, up) cm, "palm": direction the palm faces,
             optional "fingers": direction, optional "swing": share of the same-side foot's travel the hand makes the
             other way (a walking arm, needs a base)}, "r": ...}; fingers default to pointing away from the shoulder.
@@ -297,6 +301,8 @@ class Rig:
         self.hand_spacing = tool.get("hand_spacing", gesture.get("hand_spacing", 22.0))
         self.knob_offset = tool.get("knob_offset", gesture.get("knob_offset", 6.0))
         self.handle_length = tool.get("handle_length", gesture.get("handle_length", 80.0))
+        # Hands on the tool's handle: both, or the right one alone (the left is then free).
+        self.tool_hands = ("r",) if tool.get("hands", 2) == 1 else ("l", "r")
         self.grip_local = {}
         self.hand_axes = {}
         self.palm = {}
@@ -390,9 +396,10 @@ class Rig:
             out["dir"] = slerp_dir(tool_a["dir"], tool_b["dir"], s)
             spacing = (tool_a.get("spacing", self.hand_spacing), tool_b.get("spacing", self.hand_spacing))
             out["spacing"] = spacing[0] + (spacing[1] - spacing[0]) * s
-        else:
+        free = ("l", "r") if tool_a is None else tuple(side for side in ("l", "r") if side not in self.tool_hands)
+        if free:
             out["hands"] = {}
-            for side in ("l", "r"):
+            for side in free:
                 ha, hb = a["hands"][side], b["hands"][side]
                 hand = {"at": lerp(ha["at"], hb["at"], s), "palm": slerp_dir(ha["palm"], hb["palm"], s),
                         "swing": ha.get("swing", 0.0) + (hb.get("swing", 0.0) - ha.get("swing", 0.0)) * s}
@@ -410,9 +417,15 @@ class Rig:
     # -- solving --------------------------------------------------------------------------------------------------
 
     def axe(self, values):
-        """Component-space tool of a sampled pose: grip points of both hands, knob, head, handle direction."""
+        """Component-space tool of a sampled pose: grip points of the hands on it, knob, head, handle direction."""
         sk = self.sk
         direction = normalize(sk.body(values["dir"]))
+        if self.tool_hands == ("r",):
+            # One-handed: "grip" is the right hand's place, knob_offset below it.
+            grip_r = sk.body(values["grip"])
+            knob = sub(grip_r, scale(direction, self.knob_offset))
+            head = add(knob, scale(direction, self.handle_length))
+            return {"grip_r": grip_r, "knob": knob, "head": head, "dir": direction, "trace": head}
         grip_l = sk.body(values["grip"])
         grip_r = add(grip_l, scale(direction, values["spacing"]))
         knob = sub(grip_l, scale(direction, self.knob_offset))
@@ -593,14 +606,12 @@ class Rig:
         world = sk.fk(local)
         chest = sk.index["spine_03"]
         chest_motion = qmul(world[chest][1], qconj(sk.ref_world[chest][1]))
-        if "grip" in values:
-            axe = self.axe(values)
-        else:
+        axe = self.axe(values) if "grip" in values else {}
+        if "hands" in values:
             # Free hands, in body terms; "hands_frame": "chest" makes them follow the chest (bob, sway).
-            axe = {}
             follow = self.g.get("hands_frame") == "chest"
             chest_ref = sk.ref_world[chest][0]
-            for side in ("l", "r"):
+            for side in values["hands"]:
                 hand = values["hands"][side]
                 at, palm = sk.body(hand["at"]), sk.body(hand["palm"])
                 if hand["swing"] and self.base is not None:
@@ -616,12 +627,13 @@ class Rig:
                 axe["grip_" + side] = at
                 axe["palm_" + side] = palm
                 axe["fingers_" + side] = fingers
-            axe["trace"] = axe["grip_r"]
+            if "grip" not in values:
+                axe["trace"] = axe["grip_r"]
         for side, chain in ARM_CHAINS.items():
             grip = axe["grip_" + side]
             pole = qrot(chest_motion, sk.body(values["elbows"][side]))
             shoulder = world[sk.index[chain[0]]][0]
-            if "dir" in axe:
+            if "dir" in axe and side in self.tool_hands:
                 rotation = self._hand_rotation(side, shoulder, grip, axe["dir"])
             else:
                 rotation = self._free_hand_rotation(side, shoulder, grip, axe["palm_" + side], axe["fingers_" + side])
@@ -640,13 +652,13 @@ class Rig:
         return out
 
     def handle_distances(self, world):
-        """Distance (cm) from each hand's grip point to the handle's axis as carried by the tool bone (the segment
-        from the knob to the head along the bone's X): the tool really stays in both hands if ~0."""
+        """Distance (cm) from the grip point of each hand on the tool to the handle's axis as carried by the tool bone
+        (the segment from the knob to the head along the bone's X): the tool really stays in the hands if ~0."""
         sk = self.sk
         knob, rot = world[sk.index[TOOL_BONE]]
         along = qrot(rot, (1.0, 0.0, 0.0))
         out = {}
-        for side in ("l", "r"):
+        for side in self.tool_hands:
             hand = sk.index["hand_" + side]
             grip = add(world[hand][0], qrot(world[hand][1], self.grip_local[side]))
             s = max(0.0, min(self.handle_length, dot(sub(grip, knob), along)))

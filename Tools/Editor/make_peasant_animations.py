@@ -19,7 +19,9 @@ Peasant is measured as in measure_walk_speed.py.
 Run (headless, editor closed, from PowerShell; log lines start with "HOLAnim"):
   UnrealEditor-Cmd.exe <project> -run=pythonscript -script="<this file>" -unattended -nop4 -nosplash
   add "--dump-only" inside the -script value to only refresh the skeleton and source JSON files (and the body point
-  cloud Data/SKM_Mannequin_Body.json, the preview's grey body and the props' clearance check).
+  cloud Data/SKM_Mannequin_Body.json, the preview's grey body and the props' clearance check);
+  add "--only=<key>[,<key>...]" (keys of peasant_poses.GESTURES) to bake and read back those gestures alone, the
+  other sequences left untouched (a new gesture added without remaking the validated ones).
 """
 import json
 import math
@@ -452,8 +454,15 @@ def main():
         dump_body(sk)
     if "--dump-only" in sys.argv[1:]:
         return
-    for gesture in peasant_poses.GESTURES.values():
-        verify(sk, *bake(sk, gesture))
+    only = [arg.split("=", 1)[1].split(",") for arg in sys.argv[1:] if arg.startswith("--only=")]
+    keys = only[0] if only else list(peasant_poses.GESTURES)
+    unknown = [key for key in keys if key not in peasant_poses.GESTURES]
+    if unknown:
+        raise RuntimeError("Unknown gestures: " + ", ".join(unknown))
+    if only:
+        log("--only : %s (les autres sequences ne sont pas touchees)" % ", ".join(keys))
+    for key in keys:
+        verify(sk, *bake(sk, peasant_poses.GESTURES[key]))
     log("termine")
 
 

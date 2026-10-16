@@ -11,10 +11,11 @@ Units and frames:
   - Every prop has a PROP FRAME, right-handed, in which its primitives are written:
       * "body" props (loads): origin at the prop's "anchor" (body terms, reference pose); axes X = forward,
         Y = the character's right, Z = up (Unreal's actor convention). Carried rigidly by "bone".
-      * "tool" props (axe, pickaxe): origin at the knob (end of the handle), X along the handle toward the head,
-        Y toward the striking side (the axe's edge, the pick's point), Z = X x Y. The bone is ik_hand_gun, whose track
-        in the tool gestures (anim_rig.Rig.tool_frame) puts the bone exactly on this frame: the prop's local transform
-        in the bone is the identity, and the tool follows both hands exactly (the right hand slides along the handle).
+      * "tool" props (axe, pickaxe, hammer): origin at the knob (end of the handle), X along the handle toward the
+        head, Y toward the striking side (the axe's edge, the pick's point, the hammer's face), Z = X x Y. The bone is
+        ik_hand_gun, whose track in the tool gestures (anim_rig.Rig.tool_frame) puts the bone exactly on this frame:
+        the prop's local transform in the bone is the identity, and the tool follows the hands exactly (two-handed:
+        the right hand slides along the handle; one-handed, the hammer: fixed in the right hand).
   - bone_local(prop, sk) is the prop frame in its bone's reference frame (translation cm, quaternion (x, y, z, w) as
     FQuat): a vertex v of the prop sits at BoneWorld * Local * v in any pose.
 Primitives (dicts; "t" translation and "q" rotation of the primitive in the prop frame; "color"):
@@ -27,7 +28,7 @@ Triangles are wound so that (b - a) x (c - a) points out of the solid (right-han
 the other way round (measured on the mannequin's body, J5c.2c): make_peasant_mesh.py reverses every triangle and keeps
 the normals pointing out.
 Ids (the 4th per-instance float of J5c.2d; 0 = body only, no prop):
-  1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte of gold.
+  1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte of gold, 7 hammer (the builder's, J6a.4).
 In the mesh (mesh_parts(), J5c.2c), each vertex carries in its colour's alpha the MASK of the props it belongs to, bit
 id - 1 (0 = the body, always shown): a primitive with a "part" key shared by several props (the hotte's wicker and straps)
 is written once with the bits of all of them, so the stone and gold hottes cost one hotte and two heaps. Hence at most 8
@@ -161,6 +162,33 @@ def make_pickaxe():
                         caps=("bottom", "top"), x_hint=FLAT),
     ]
     return {"id": 2, "name": "pickaxe", "label": "pioche", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
+
+
+# The builder's hammer (J6a.4), held in the right hand only: a 40 cm wooden handle a little thicker at the knob, an
+# iron head 12 cm long across the handle near its end, a round face on the striking side (Y, 7 cm from the handle's
+# axis) and a wedge-shaped peen on the other (5 cm), its edge across the handle.
+HAMMER_HANDLE = 40.0      # knob to the handle's end (cm)
+HAMMER_HEAD_AT = 37.0     # knob to the head's centre, along the handle (the gesture's "handle_length")
+HAMMER_FACE = 7.0         # handle's axis to the striking face, along Y
+HAMMER_FACE_RADIUS = 2.2
+HAMMER_PEEN = 5.0         # handle's axis to the peen's edge, along -Y
+HAMMER_GRIP = 7.0         # knob to the right hand's grip point (the gesture's "knob_offset")
+
+
+def make_hammer():
+    prims = [
+        frustum_between((0.0, 0.0, 0.0), (HAMMER_HANDLE, 0.0, 0.0), (1.8, 1.6), (1.3, 1.2), 6, WOOD_HANDLE,
+                        x_hint=FLAT),
+        # The eye around the handle...
+        box((HAMMER_HEAD_AT, 0.4, 0.0), (4.4, 5.2, 3.6), IRON),
+        # ...the face, a short round bar ending in bright steel...
+        frustum_between((HAMMER_HEAD_AT, 2.6, 0.0), (HAMMER_HEAD_AT, HAMMER_FACE, 0.0), (1.9, 1.9),
+                        (HAMMER_FACE_RADIUS, HAMMER_FACE_RADIUS), 6, IRON, cap_color=STEEL, x_hint=TOOL_AXIS),
+        # ...and the peen, thinning to an edge across the handle.
+        frustum_between((HAMMER_HEAD_AT, -1.8, 0.0), (HAMMER_HEAD_AT, -HAMMER_PEEN, 0.0), (1.9, 1.7), (0.35, 1.7), 6,
+                        IRON, x_hint=TOOL_AXIS),
+    ]
+    return {"id": 7, "name": "hammer", "label": "marteau", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -314,7 +342,8 @@ def make_hotte(content):
 
 def build_props(sk):
     """All props by name (the logs need the skeleton for their validated axes)."""
-    props = [make_axe(), make_pickaxe(), make_basket(), make_logs(sk), make_hotte("stone"), make_hotte("gold")]
+    props = [make_axe(), make_pickaxe(), make_basket(), make_logs(sk), make_hotte("stone"), make_hotte("gold"),
+             make_hammer()]
     return {p["name"]: p for p in props}
 
 

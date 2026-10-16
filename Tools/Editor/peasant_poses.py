@@ -316,8 +316,67 @@ IDLE_CARRY_STONE = loaded_idle(
     merge(torso(0.0, 24.0, 0.0, nod=-8.0, pelvis=False), SHOULDERS_FORWARD),
     STRAP_ELBOWS, CARRY_STONE["fist"], ("hotte_stone",))
 
+# The builder (J6a.4): hammering in place on the construction in front of him, as the villagers of the classic RTS
+# games build. Bent over the work (knees bent, torso well forward), the right hand swings a one-handed hammer
+# (peasant_props.py) from above the head down onto a beam about 65 cm in front at about 75 cm high, the left hand
+# steadying the work on the beam beside the impact. Two quick strikes per loop (one every 0.667 s), the second a few
+# centimetres to the right of the first; feet planted. The hammer is held by the right hand alone ("hands": 1).
+BUILD_LEFT = {"l": {"at": (-18.0, 54.0, 80.0), "palm": (0.15, 0.1, -1.0), "fingers": (0.15, 1.0, -0.15)}}
+BUILD_ELBOWS_UP = {"l": (-0.8, -0.2, -1.0), "r": (1.0, -0.3, -0.2)}
+BUILD_ELBOWS_DOWN = {"l": (-0.8, -0.2, -1.0), "r": (0.7, -0.5, -1.0)}
+CLAVICLE_L = {"clavicle_l": (10.0, 0.0, 0.0)}  # left shoulder a little forward, toward the beam
+BUILD_TOP = {"t": 0.0, "pelvis": (0.0, -7.0, -14.0),
+             "rot": merge(torso(12.0, 50.0, 0.0, nod=14.0), {"clavicle_r": (6.0, 0.0, -12.0)}, CLAVICLE_L),
+             "tool": {"grip": (26.0, 16.0, 160.0), "dir": (0.1, -0.6, 0.8)}, "hands": BUILD_LEFT,
+             "elbows": BUILD_ELBOWS_UP}
+BUILD_HIT_ROT = merge(torso(-4.0, 60.0, 0.0, nod=18.0), {"clavicle_r": (-8.0, 0.0, 4.0)}, CLAVICLE_L)
+
+
+def build_strike(t0, shift):
+    """One strike from the cocked hammer at t0 (exclusive) to the next cocked position: down, hit, rebound, lift.
+    `shift` moves the hit to his right (cm)."""
+    f = 1.0 / 30.0
+    return [
+        # Down: the forearm swings first, the wrist snaps late...
+        {"t": t0 + 3 * f, "ease": "in", "pelvis": (0.0, -7.0, -15.0),
+         "rot": merge(torso(4.0, 56.0, 0.0, nod=16.0), {"clavicle_r": (-2.0, 0.0, -4.0)}, CLAVICLE_L),
+         "tool": {"grip": (15.0 + shift, 32.0, 128.0), "dir": (0.05, 0.3, 0.95)}, "hands": BUILD_LEFT,
+         "elbows": BUILD_ELBOWS_UP},
+        # ...and the face lands flat on the beam (the hit).
+        {"t": t0 + 5 * f, "ease": "linear", "pelvis": (0.0, -7.0, -16.0), "rot": BUILD_HIT_ROT,
+         "tool": {"grip": (11.0 + shift, 36.0, 82.5), "dir": (-0.05, 1.0, -0.02)}, "hands": BUILD_LEFT,
+         "elbows": BUILD_ELBOWS_DOWN},
+        # Rebound off the wood.
+        {"t": t0 + 8 * f, "ease": "out", "pelvis": (0.0, -7.0, -16.0), "rot": BUILD_HIT_ROT,
+         "tool": {"grip": (12.0 + shift, 35.0, 89.0), "dir": (0.0, 0.95, 0.3)}, "hands": BUILD_LEFT,
+         "elbows": BUILD_ELBOWS_DOWN},
+        # Lift: the hammer comes up in front of the shoulder...
+        {"t": t0 + 14 * f, "ease": "inout", "pelvis": (0.0, -7.0, -15.0),
+         "rot": merge(torso(8.0, 54.0, 0.0, nod=15.0), {"clavicle_r": (2.0, 0.0, -8.0)}, CLAVICLE_L),
+         "tool": {"grip": (20.0, 26.0, 135.0), "dir": (0.08, 0.1, 0.99)}, "hands": BUILD_LEFT,
+         "elbows": BUILD_ELBOWS_UP},
+        # ...and is cocked above the head.
+        dict(BUILD_TOP, t=t0 + 20 * f, ease="inout"),
+    ]
+
+
+BUILD = {
+    "name": "A_Peasant_Build",
+    "fps": 30,
+    "tool": {"kind": "hammer", "hands": 1, "handle_length": 37.0, "knob_offset": 7.0},
+    "props": ("hammer",),
+    "scene": {"kind": "beam", "near": 12.0, "depth": 30.0, "width": 140.0},
+    # Preview sheets: every 5th frame (both hits, frames 5 and 25) and one strike in detail.
+    "preview": {"frames": 8, "zoom_picks": [0, 3, 5, 8, 14, 20]},
+    "stance": {"l": (-8.0, 8.0, 0.0), "r": (8.0, -6.0, 0.0)},
+    "elbows": BUILD_ELBOWS_UP,
+    "fist": (55.0, 70.0, 45.0),
+    "keys": [BUILD_TOP] + build_strike(0.0, 0.0) + build_strike(20 / 30.0, 5.0)[:-1]
+            + [dict(BUILD_TOP, t=40 / 30.0, ease="inout")],
+}
+
 # Baked in this order; new gestures at the end (make_skinned_mannequin.py lists the sequences by index on its own).
 GESTURES = {"chop_wood": CHOP_WOOD, "mine_pick": MINE_PICK, "gather_berries": GATHER_BERRIES,
             "carry_food": CARRY_FOOD, "carry_wood": CARRY_WOOD, "carry_stone": CARRY_STONE,
             "idle_carry_food": IDLE_CARRY_FOOD, "idle_carry_wood": IDLE_CARRY_WOOD,
-            "idle_carry_stone": IDLE_CARRY_STONE}
+            "idle_carry_stone": IDLE_CARRY_STONE, "build": BUILD}
