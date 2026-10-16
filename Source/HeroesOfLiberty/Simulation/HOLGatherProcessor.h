@@ -45,8 +45,10 @@ public:
 		int64 MissedSpots = 0;
 		int64 MissedDeposits = 0;
 		int64 Unloads = 0;
-		/** Gatherers that found no free spot at their source nor anywhere in its massif: idle (D309). */
+		/** Gatherers that found no free spot at their source nor anywhere in its massif or its nearby groves: idle (D309). */
 		int64 NoSpotStops = 0;
+		/** Gatherers sent to a nearby grove, their massif full (D309 point 6). */
+		int64 NearbyGroves = 0;
 	};
 	static const FCounters& GetCounters() { return Counters; }
 
@@ -100,7 +102,10 @@ private:
 	void ApplyGatherOrders(const FStepContext& Step);
 	void Advance(const FStepContext& Step, FGatherer& Gatherer);
 
-	/** Walks to a free spot at its source, or at the nearest source of its massif with one; otherwise stands idle in front (D309). */
+	/**
+	 * Walks to a free spot at its source, or at the nearest source of its massif with one, or of a nearby grove; otherwise
+	 * stands idle in front (D309).
+	 */
 	void WalkToSource(const FStepContext& Step, FGatherer& Gatherer);
 	/** Walks to its owner's nearest deposit that takes what it carries (a second try slides along the wall). */
 	void WalkToDeposit(const FStepContext& Step, FGatherer& Gatherer);
@@ -113,14 +118,15 @@ private:
 	void Unload(const FStepContext& Step, FGatherer& Gatherer);
 	void Stop(FGatherer& Gatherer);
 	/**
-	 * No room at its source nor anywhere in its massif (D309): it stops gathering and walks in front of its source, where it stands idle
-	 * on a point of its own (FindStandPoint).
+	 * No room at its source nor anywhere in its massif or its nearby groves (D309): it stops gathering and walks in front of its
+	 * source, where it stands idle on a point of its own (FindStandPoint).
 	 */
 	void StandBeforeSource(const FStepContext& Step, FGatherer& Gatherer, const FHOLSource& Source);
 	/**
 	 * A free point in front of a full source for Self to stand idle on, the side facing From first, claimed: rows beyond
 	 * the gatherers' spots, never on a spot of this source or of one beside it, never closer to another claim than two
-	 * gatherers stand (D309, the user's 3rd trial of J5b.2). False if none is free nor on the navmesh.
+	 * gatherers stand (D309, the user's 3rd trial of J5b.2); row after row farther out while none is free (point 6: two
+	 * idle gatherers never on one point). False if none is free nor on the navmesh, MaxStandRows out.
 	 */
 	bool FindStandPoint(const FStepContext& Step, const FHOLSource& Source, const FVector& From, float BodyRadius, FMassEntityHandle Self, FVector& OutPoint);
 	/** Its activity from its place in the round trip (D307): gathering at its source, else on its round trip. */
@@ -144,8 +150,9 @@ private:
 	bool IsSpotTaken(const FStepContext& Step, const FVector2D& Spot, double MinSpacing, FMassEntityHandle Self);
 	/**
 	 * The nearest standing source of FromSource's massif with a free spot, from FromSource outward (FromSource itself left
-	 * out), its spot claimed for the gatherer in OutSpot (D309, the user's rule: 175 Peasants sent to a wood surround it).
-	 * INDEX_NONE if the whole massif is full; OutNearestStanding, when given, then holds the first standing one met.
+	 * out), its spot claimed for the gatherer in OutSpot (D309, the user's rule: 175 Peasants sent to a wood surround it);
+	 * the whole massif full, the first one with a free spot in its nearby groves (D309 point 6). INDEX_NONE if they are all
+	 * full; OutNearestStanding, when given, then holds the first standing one met in FromSource's own massif.
 	 */
 	int32 FindMassifSpot(const FStepContext& Step, const FGatherer& Gatherer, int32 FromSource, FVector& OutSpot, int32* OutNearestStanding = nullptr);
 	/** The massifs of the server's sources, linked again only when sources were added (D309). */
@@ -158,8 +165,10 @@ private:
 	TArray<FDeposit> Deposits;
 	/** The spots held: their gatherers still walk to them or gather there; and the points of the idle ones in front of a full source. */
 	FHOLSpotClaims SpotClaims;
-	/** The sources' massifs: links built once for the sources registered (D309). */
+	/** The sources' massifs: links built once for the sources registered (D309), and their nearby groves (point 6). */
 	FHOLSourceMassifs Massifs;
+	/** The hol.Gather.NearbyMassifRange the massifs were built with (cm). */
+	double MassifsNearbyRange = -1.;
 	/**
 	 * Sources found with no free spot during this step, by a massif's search: not tried again before the next step (175
 	 * Peasants ordered to a wood at once look through the trees filled before them once, not each). Another gatherer's

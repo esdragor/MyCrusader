@@ -39,6 +39,11 @@ namespace UE::HeroesOfLiberty::Gather
 		TEXT("Distance (cm) between two gatherers' spots, at one source or two side by side (D309): two Peasants' bodies (60 cm radius) overlapping a little, ")
 		TEXT("pressed against a wood's edge as in AoE IV (the user's trial of D309: 70 overlapped by half, too tight); 140: two bodies and a gap, as before"));
 
+	float NearbyMassifRange = static_cast<float>(HOLGather::NearbyMassifDistance);
+	FAutoConsoleVariableRef CVarNearbyMassifRange(TEXT("hol.Gather.NearbyMassifRange"), NearbyMassifRange,
+		TEXT("Distance (cm) at most between a source of a full massif and a source of a nearby grove of the same resource, where its gatherers ")
+		TEXT("look for a free spot next (D309 point 6, the user's choice: ~20 m); 0: none, idle in front of the source at once"));
+
 	/**
 	 * Gap (cm) between the bodies of a gatherer standing at its spot and its source: the navmesh ends one agent radius
 	 * from a source, a spot a little inside it is reached exactly (on its edge, the unit stopped 12 cm short).
@@ -67,8 +72,16 @@ namespace UE::HeroesOfLiberty::Gather
 	 * in front is free (D309): the place of an order, among the units standing there.
 	 */
 	constexpr double StandBeforeGap = 150.;
-	/** Rows of points in front of a source where its idle gatherers stand, one per unit (D309, 3rd trial of J5b.2). */
+	/**
+	 * Rows of points in front of a source where its idle gatherers stand, one per unit (D309, 3rd trial of J5b.2), looked
+	 * through so many at a time, farther out while none is free (D309 point 6: rows without limit).
+	 */
 	constexpr int32 StandRows = 6;
+	/**
+	 * Rows at most (some 6,500 points, 90 m out): a bound against a source the navmesh never reaches around, not a limit
+	 * met by a match (175 Peasants on one wood stand in the first 10 or so).
+	 */
+	constexpr int32 MaxStandRows = 64;
 	/** Gap (cm) between a carrier's body and the deposit at its unloading spot. */
 	constexpr double DepositSpotGap = 20.;
 	/** Slide (cm) along the deposit's wall of each new try after a missed unloading spot. */
@@ -455,7 +468,7 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 	}
 	// Its source is surrounded: the nearest source of its massif with a free spot, from it outward (the user's rule at
 	// the 3rd trial of J5b.2: the gatherers fill the wood from the tree clicked and surround it, round the patch of
-	// berries; a vein alone has no other, D309).
+	// berries; a vein alone has no other, D309); the whole massif full, a nearby grove of the same resource (point 6).
 	const int32 Other = FindMassifSpot(Step, Gatherer, Gather.SourceIndex, Spot);
 	if (Other != INDEX_NONE)
 	{
@@ -463,7 +476,7 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 		IssueWalk(Step, Gatherer, Spot);
 		return;
 	}
-	// The whole massif full: idle in front of the source it was sent to.
+	// The whole massif full, its nearby groves too: idle in front of the source it was sent to, on a point of its own.
 	++Counters.NoSpotStops;
 	StandBeforeSource(Step, Gatherer, Source);
 }
@@ -515,49 +528,58 @@ bool UHOLGatherProcessor::FindStandPoint(const FStepContext& Step, const FHOLSou
 	const double Spacing = 2. * BodyRadius + StandSpacingGap;
 	const double SpotDistance = Source.Radius + SpotOffset;
 
-	// The sources whose spots a row may meet: none of their spots is stood on, used or not.
-	const double Reach = SpotDistance + (StandRows + 1) * Spacing;
+	// The sources whose spots a row may meet: none of their spots is stood on, used or not. Gathered as the rows go farther
+	// out, those beyond the last reach added to the ones already met.
 	TArray<FHOLGatherSite, TInlineAllocator<32>> Sites;
-	for (const FHOLSource& Other : Step.Sources->GetSources())
-	{
-		if (Other.IsStanding() && FVector::DistSquared2D(Other.Location, Source.Location) <= FMath::Square(Reach + Other.Radius + SpotOffset + Spacing))
-		{
-			Sites.Add(FHOLGatherSite{ FVector2D(Other.Location), Other.Radius });
-		}
-	}
+	double SitesReach = -1.;
 	TArray<FVector2D> Points;
-	HOLGather::GetStandPoints(Centre, SpotDistance, Spacing, FVector2D(From) - Centre, StandRows, Points);
 	const FVector Extent(25., 25., 300.);
-	for (const FVector2D& Point : Points)
+	for (int32 FirstRow = 0; FirstRow < MaxStandRows; FirstRow += StandRows)
 	{
-		if (!HOLGather::IsClearOfSpots(Point, Sites, SpotOffset, Spacing) || IsSpotTaken(Step, Point, Spacing, Self))
+		const double Reach = SpotDistance + (FirstRow + StandRows + 1) * Spacing;
+		for (const FHOLSource& Other : Step.Sources->GetSources())
 		{
-			continue;
-		}
-		FVector Found(Point, Source.Location.Z);
-		if (Step.NavSystem && Step.NavData)
-		{
-			FNavLocation OnNav;
-			if (!Step.NavSystem->ProjectPointToNavigation(Found, OnNav, Extent, Step.NavData) || FVector::Dist2D(OnNav.Location, Found) > 20.)
+			const double Within = Reach + Other.Radius + SpotOffset + Spacing;
+			const double Before = SitesReach + Other.Radius + SpotOffset + Spacing;
+			const double DistanceSquared = FVector::DistSquared2D(Other.Location, Source.Location);
+			if (Other.IsStanding() && DistanceSquared <= FMath::Square(Within) && (SitesReach < 0. || DistanceSquared > FMath::Square(Before)))
 			{
-				continue;
-			}
-			// Not on one of the wood's islands no path reaches (as the spots, FindSourceSpot).
-			const FVector2D Out = (Point - Centre).GetSafeNormal() * OpenOutwardDistance;
-			FVector Hit;
-			if (Step.NavData->Raycast(OnNav.Location, OnNav.Location + FVector(Out, 0.), Hit, Step.NavData->GetDefaultQueryFilter()))
-			{
-				continue;
-			}
-			Found = OnNav.Location;
-			if (!HOLGather::IsClearOfSpots(FVector2D(Found), Sites, SpotOffset, Spacing) || IsSpotTaken(Step, FVector2D(Found), Spacing, Self))
-			{
-				continue;
+				Sites.Add(FHOLGatherSite{ FVector2D(Other.Location), Other.Radius });
 			}
 		}
-		SpotClaims.Add(Self.AsNumber(), INDEX_NONE, FVector2D(Found));
-		OutPoint = Found;
-		return true;
+		SitesReach = Reach;
+		HOLGather::GetStandPoints(Centre, SpotDistance, Spacing, FVector2D(From) - Centre, StandRows, Points, FirstRow);
+		for (const FVector2D& Point : Points)
+		{
+			if (!HOLGather::IsClearOfSpots(Point, Sites, SpotOffset, Spacing) || IsSpotTaken(Step, Point, Spacing, Self))
+			{
+				continue;
+			}
+			FVector Found(Point, Source.Location.Z);
+			if (Step.NavSystem && Step.NavData)
+			{
+				FNavLocation OnNav;
+				if (!Step.NavSystem->ProjectPointToNavigation(Found, OnNav, Extent, Step.NavData) || FVector::Dist2D(OnNav.Location, Found) > 20.)
+				{
+					continue;
+				}
+				// Not on one of the wood's islands no path reaches (as the spots, FindSourceSpot).
+				const FVector2D Out = (Point - Centre).GetSafeNormal() * OpenOutwardDistance;
+				FVector Hit;
+				if (Step.NavData->Raycast(OnNav.Location, OnNav.Location + FVector(Out, 0.), Hit, Step.NavData->GetDefaultQueryFilter()))
+				{
+					continue;
+				}
+				Found = OnNav.Location;
+				if (!HOLGather::IsClearOfSpots(FVector2D(Found), Sites, SpotOffset, Spacing) || IsSpotTaken(Step, FVector2D(Found), Spacing, Self))
+				{
+					continue;
+				}
+			}
+			SpotClaims.Add(Self.AsNumber(), INDEX_NONE, FVector2D(Found));
+			OutPoint = Found;
+			return true;
+		}
 	}
 	return false;
 }
@@ -593,8 +615,8 @@ void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gath
 	Gather.bWalkIssued = false;
 	Gather.Misses = 0;
 	// The nearest source of its massif with a free spot, from the used-up one outward (a tree felled: the nearest free tree
-	// of the wood), claimed until its walk there, its spot found again then (D309). The source's resource: it may still
-	// carry another one (D306).
+	// of the wood), else of a nearby grove (D309 point 6), claimed until its walk there, its spot found again then (D309).
+	// The source's resource: it may still carry another one (D306).
 	FVector Spot;
 	int32 NearestStanding = INDEX_NONE;
 	const int32 Other = FindMassifSpot(Step, Gatherer, Gather.SourceIndex, Spot, &NearestStanding);
@@ -823,8 +845,11 @@ int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGathe
 	}
 	// The edge facing the deposit it will unload at first, from FromSource along it (the user's trial of D309, after AoE
 	// IV: the wood's other side only once that edge is full), and each source's spots facing that deposit.
+	// Its whole massif full, its nearby groves next (D309 point 6), in the same order.
 	const FHOLGatherDeposit* Deposit = FindSourceDeposit(Gatherer.OwnerPlayer, Sources[FromSource]);
-	return GetMassifs(Step).Search(FromSource, [this, &Step, &Gatherer, &Sources, &OutSpot, OutNearestStanding, Deposit](const int32 Index)
+	const FHOLSourceMassifs& SourceMassifs = GetMassifs(Step);
+	const int32 OwnMassif = SourceMassifs.GetMassif(FromSource);
+	const int32 Found = SourceMassifs.Search(FromSource, [this, &Step, &Gatherer, &Sources, &OutSpot, OutNearestStanding, Deposit, &SourceMassifs, OwnMassif](const int32 Index)
 	{
 		// A used-up source leads on to the ones beyond it: the massif is not cut.
 		const FHOLSource& Source = Sources[Index];
@@ -832,7 +857,9 @@ int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGathe
 		{
 			return false;
 		}
-		if (OutNearestStanding && *OutNearestStanding == INDEX_NONE)
+		// The one to stand in front of is of its own massif: a massif used up still sends its gatherers home, its loads
+		// unloaded, not to stand at a full grove.
+		if (OutNearestStanding && *OutNearestStanding == INDEX_NONE && SourceMassifs.GetMassif(Index) == OwnMassif)
 		{
 			*OutNearestStanding = Index;
 		}
@@ -850,6 +877,16 @@ int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGathe
 		}
 		return false;
 	}, Deposit);
+	if (Found != INDEX_NONE && SourceMassifs.GetMassif(Found) != OwnMassif)
+	{
+		++Counters.NearbyGroves;
+		if (UE::HeroesOfLiberty::Gather::LogDeposits != 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d found no room in the massif of source %d, sent to source %d of a nearby grove, %.0f cm away"),
+				Gatherer.OwnerPlayer, FromSource, Found, FVector::Dist2D(Sources[FromSource].Location, Sources[Found].Location));
+		}
+	}
+	return Found;
 }
 
 const FHOLGatherDeposit* UHOLGatherProcessor::FindSourceDeposit(const uint8 OwnerPlayer, const FHOLSource& Source) const
@@ -860,10 +897,13 @@ const FHOLGatherDeposit* UHOLGatherProcessor::FindSourceDeposit(const uint8 Owne
 
 const FHOLSourceMassifs& UHOLGatherProcessor::GetMassifs(const FStepContext& Step)
 {
-	// Sources are only added, never moved, a used-up one kept in the list: the same count, the same links.
+	// Sources are only added, never moved, a used-up one kept in the list: the same count, the same links (the nearby
+	// groves linked again when hol.Gather.NearbyMassifRange changes).
 	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
-	if (Massifs.Num() != Sources.Num())
+	const double NearbyRange = FMath::Max(0., static_cast<double>(UE::HeroesOfLiberty::Gather::NearbyMassifRange));
+	if (Massifs.Num() != Sources.Num() || MassifsNearbyRange != NearbyRange)
 	{
+		MassifsNearbyRange = NearbyRange;
 		TArray<FHOLGatherSource> Sites;
 		Sites.Reserve(Sources.Num());
 		for (const FHOLSource& Source : Sources)
@@ -873,7 +913,7 @@ const FHOLSourceMassifs& UHOLGatherProcessor::GetMassifs(const FStepContext& Ste
 			Site.Resource = Source.Resource;
 			Site.Remaining = Source.Remaining;
 		}
-		Massifs.Build(Sites, HOLGather::NoRoomSourceDistance);
+		Massifs.Build(Sites, HOLGather::NoRoomSourceDistance, NearbyRange);
 	}
 	return Massifs;
 }
@@ -986,6 +1026,10 @@ namespace UE::HeroesOfLiberty::Gather
 						Slot.Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Slot.Phases[static_cast<int32>(EHOLGatherPhase::None)], Slot.IdleCarrying,
 						Slot.Carried, *Sources->GetDeposited(static_cast<uint8>(Pair.Key)).ToString());
 				}
+				// Since the program started, every slot (D309): sent to a nearby grove, stopped idle in front of a full source.
+				const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
+				UE_LOG(LogHOLSimulation, Display, TEXT("Gather: since the start, %lld sent to a nearby grove, %lld stopped idle with no room"),
+					Counters.NearbyGroves, Counters.NoSpotStops);
 			}
 		}));
 }

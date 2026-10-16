@@ -97,17 +97,29 @@ struct FHOLGatherSource
  * of berries; a vein alone, 60 m from the next one). A gatherer with no room at its source, or whose source is used up,
  * looks through its massif from that source outward: 175 Peasants sent to a wood surround it. The links are built once
  * for a list of sources, through a grid (never every pair); a used-up source keeps its links, the massif is not cut.
+ * Its whole massif full, a gatherer looks through the nearby groves (D309, point 6, the user's choice): the other massifs
+ * of the same resource with a source NearbyDistance at most from one of its massif's, linked once too (a vein alone,
+ * 60 m from the next one, still never leads to another).
  */
 struct HEROESOFLIBERTY_API FHOLSourceMassifs
 {
-	/** Links the sources (their resource and position; what they hold is not looked at). */
-	void Build(TConstArrayView<FHOLGatherSource> Sources, double LinkDistance);
+	/**
+	 * Links the sources (their resource and position; what they hold is not looked at), and the massifs NearbyDistance
+	 * apart at most (0: no nearby grove).
+	 */
+	void Build(TConstArrayView<FHOLGatherSource> Sources, double LinkDistance, double NearbyDistance = 0.);
 
 	/** Sources it was built for. */
 	int32 Num() const { return Positions.Num(); }
 
 	/** The sources linked to Index: same resource, within LinkDistance. */
 	TConstArrayView<int32> GetLinks(int32 Index) const;
+
+	/** Index's massif (a number of its own, INDEX_NONE for no source). */
+	int32 GetMassif(int32 Index) const { return MassifOf.IsValidIndex(Index) ? MassifOf[Index] : INDEX_NONE; }
+
+	/** The massifs near Massif: same resource, a source of theirs NearbyDistance at most from one of its own. */
+	TConstArrayView<int32> GetNearbyMassifs(int32 Massif) const;
 
 	/**
 	 * Looks through Start's massif from it outward and returns the first source Accept takes, INDEX_NONE once the whole
@@ -116,6 +128,8 @@ struct HEROESOFLIBERTY_API FHOLSourceMassifs
 	 * Given the deposit its gatherers unload at, the edge facing it first (the user's trial of D309, after AoE IV: a wood
 	 * fills along its edge turned to the camp, from the tree clicked, its other side only once that edge is full): a
 	 * source's distance to the deposit's footprint plus MassifStartWeight times its distance to Start, the lowest first.
+	 * The whole massif refused, the sources of its nearby groves are tried in the same order, those of every grove
+	 * together (the best grove's best source first, D309 point 6).
 	 */
 	int32 Search(int32 Start, TFunctionRef<bool(int32)> Accept, const FHOLGatherDeposit* Deposit = nullptr) const;
 
@@ -124,6 +138,14 @@ private:
 	/** Source I's links: Links[FirstLinks[I]] to Links[FirstLinks[I + 1]] (excluded). */
 	TArray<int32> FirstLinks;
 	TArray<int32> Links;
+	/** Each source's massif. */
+	TArray<int32> MassifOf;
+	/** Massif M's sources: MassifSources[FirstMassifSources[M]] to MassifSources[FirstMassifSources[M + 1]] (excluded). */
+	TArray<int32> FirstMassifSources;
+	TArray<int32> MassifSources;
+	/** Massif M's nearby groves: NearbyMassifs[FirstNearbyMassifs[M]] to NearbyMassifs[FirstNearbyMassifs[M + 1]] (excluded). */
+	TArray<int32> FirstNearbyMassifs;
+	TArray<int32> NearbyMassifs;
 };
 
 namespace HOLGather
@@ -134,6 +156,12 @@ namespace HOLGather
 	 * up, looks for a free spot through the massif (FHOLSourceMassifs); all of it full, it stands idle in front.
 	 */
 	inline constexpr double NoRoomSourceDistance = 800.;
+
+	/**
+	 * Distance (cm) at most between a source of a full massif and a source of a nearby grove of the same resource (D309,
+	 * point 6, the user's choice: ~20 m, hol.Gather.NearbyMassifRange): the next wood, never another vein (60 m).
+	 */
+	inline constexpr double NearbyMassifDistance = 2000.;
 
 	/**
 	 * Weight of the distance to the source clicked against the distance to the deposit when a massif is looked through
@@ -210,10 +238,12 @@ namespace HOLGather
 	 * Where the idle gatherers of a source with no free spot may stand (D309; the user's 3rd trial of J5b.2: they stood on
 	 * the gatherers' spots, which landed on them): rows around Centre beyond its spots (at SpotDistance from it), the
 	 * first one Spacing beyond them, each next one Spacing farther, the points of a row Spacing apart, on the half facing
-	 * Towards only, its middle first. In the order to try them; the caller keeps the first one free.
+	 * Towards only, its middle first. Rows FirstRow to FirstRow + Rows (excluded): the caller asks for more rows, farther
+	 * out, until one point is free (D309 point 6: rows without limit). In the order to try them; the caller keeps the
+	 * first one free.
 	 */
 	HEROESOFLIBERTY_API void GetStandPoints(const FVector2D& Centre, double SpotDistance, double Spacing, const FVector2D& Towards, int32 Rows,
-		TArray<FVector2D>& OutPoints);
+		TArray<FVector2D>& OutPoints, int32 FirstRow = 0);
 
 	/**
 	 * A body standing at Point is Spacing away at least from every spot of these sources (their spots SpotOffset beyond

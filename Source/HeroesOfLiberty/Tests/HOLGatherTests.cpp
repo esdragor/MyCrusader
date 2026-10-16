@@ -315,6 +315,119 @@ bool FHOLGatherMassifTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherNearbyMassifTest, "HeroesOfLiberty.Gather.NearbyMassif", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherNearbyMassifTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Gather;
+	// A whole massif full (D309 point 6, the user's choice): a nearby grove of the same resource, ~20 m at most from one
+	// of its sources, in the same order as the massif; none, the idle ones wait in front on rows without limit.
+	TArray<FHOLGatherSource> Sources;
+	Sources.Add(MakeSource(0., 0., EHOLResource::Wood, 100));        // 0: wood A, clicked
+	Sources.Add(MakeSource(500., 0., EHOLResource::Wood, 100));      // 1: wood A
+	Sources.Add(MakeSource(1000., 0., EHOLResource::Wood, 0));       // 2: wood A, used up
+	Sources.Add(MakeSource(2500., 0., EHOLResource::Wood, 100));     // 3: wood B, 15 m beyond the stump 2
+	Sources.Add(MakeSource(3000., 0., EHOLResource::Wood, 100));     // 4: wood B
+	Sources.Add(MakeSource(-2600., 0., EHOLResource::Wood, 100));    // 5: wood C, 26 m from tree 0: out of range
+	Sources.Add(MakeSource(500., 1200., EHOLResource::Food, 200));   // 6: berries 12 m from tree 1: another resource
+	Sources.Add(MakeSource(500., -1900., EHOLResource::Wood, 100));  // 7: wood D, 19 m from tree 1, nearer the deposit
+	Sources.Add(MakeSource(0., 10000., EHOLResource::Stone, 1000));  // 8: a vein
+	Sources.Add(MakeSource(6000., 10000., EHOLResource::Stone, 1000)); // 9: another vein, 60 m away
+	FHOLSourceMassifs Massifs;
+	Massifs.Build(Sources, HOLGather::NoRoomSourceDistance, HOLGather::NearbyMassifDistance);
+	TestEqual(TEXT("one massif for wood A"), Massifs.GetMassif(2), Massifs.GetMassif(0));
+	TestNotEqual(TEXT("wood B a massif of its own"), Massifs.GetMassif(3), Massifs.GetMassif(0));
+	TestEqual(TEXT("wood A: two nearby groves (B, D)"), Massifs.GetNearbyMassifs(Massifs.GetMassif(0)).Num(), 2);
+	TestEqual(TEXT("a vein: no nearby grove"), Massifs.GetNearbyMassifs(Massifs.GetMassif(8)).Num(), 0);
+
+	// Wood A full: its own trees first, then those of B and D, never C (out of range) nor the berries (another resource).
+	TArray<int32> Tried;
+	TestEqual(TEXT("everything full: none"), Massifs.Search(0, [&Tried](const int32 Index) { Tried.Add(Index); return false; }), int32(INDEX_NONE));
+	TestEqual(TEXT("its massif, then the groves nearest the tree clicked"), JoinIndices(Tried), FString(TEXT("1 2 7 3 4")));
+	TestFalse(TEXT("wood C, 26 m away: never"), Tried.Contains(5));
+	TestFalse(TEXT("berries 12 m away: never"), Tried.Contains(6));
+	const auto NotA = [&Massifs](const int32 Index) { return Massifs.GetMassif(Index) != Massifs.GetMassif(0); };
+	TestEqual(TEXT("wood A full: the first tree of a nearby grove"), Massifs.Search(0, NotA), 7);
+
+	// Toward a deposit south of wood A (the same order as in the massif): D, on the deposit's side, before B.
+	const FHOLGatherDeposit South{ FVector2D(500., -4000.), FVector2D(750., 750.), 0.f };
+	Tried.Reset();
+	Massifs.Search(0, [&Tried](const int32 Index) { Tried.Add(Index); return false; }, &South);
+	TestTrue(*FString::Printf(TEXT("toward the deposit: grove D first (%s)"), *JoinIndices(Tried)), Tried.IndexOfByKey(7) < Tried.IndexOfByKey(3));
+	// A deposit east of wood B: B first.
+	const FHOLGatherDeposit East{ FVector2D(5000., 0.), FVector2D(750., 750.), 0.f };
+	TestEqual(TEXT("toward a deposit beyond grove B: B first"), Massifs.Search(0, NotA, &East), 4);
+
+	// Within the range, not beyond; a vein never leads to another (60 m), nor without nearby groves (range 0).
+	TestEqual(TEXT("a vein never leads to another"), Massifs.Search(8, [](int32) { return true; }), int32(INDEX_NONE));
+	FHOLSourceMassifs Short;
+	Short.Build(Sources, HOLGather::NoRoomSourceDistance, 1400.);
+	TestEqual(TEXT("14 m: grove B (15 m) out of range"), Short.Search(0, NotA), int32(INDEX_NONE));
+	FHOLSourceMassifs None;
+	None.Build(Sources, HOLGather::NoRoomSourceDistance);
+	TestEqual(TEXT("no range: no nearby grove"), None.Search(0, NotA), int32(INDEX_NONE));
+	FHOLSourceMassifs Long;
+	Long.Build(Sources, HOLGather::NoRoomSourceDistance, 2700.);
+	Tried.Reset();
+	Long.Search(0, [&Tried](const int32 Index) { Tried.Add(Index); return false; });
+	TestTrue(TEXT("27 m: wood C in range"), Tried.Contains(5));
+	TestFalse(TEXT("27 m: still no berries"), Tried.Contains(6));
+	// From grove B: wood A nearby, but not D (40 m from B), nor through A.
+	Tried.Reset();
+	Massifs.Search(3, [&Tried](const int32 Index) { Tried.Add(Index); return false; });
+	TestEqual(TEXT("from grove B: its tree, then wood A only"), JoinIndices(Tried), FString(TEXT("4 2 1 0")));
+
+	// No grove with room: rows without limit in front of the tree (300 idle gatherers, far more than 6 rows hold), each on
+	// a point of its own, two bodies and a gap apart, clear of the spots of the tree and of the one beside it.
+	const FHOLGatherSite Tree{ FVector2D(5000., 5000.), 60.f };
+	constexpr double SpotOffset = 75.; // body radius 60 + gap 15
+	constexpr double StandSpacing = 140.;
+	const double SpotDistance = Tree.Radius + SpotOffset;
+	const FHOLGatherSite Sites[] = { Tree, FHOLGatherSite{ Tree.Position + FVector2D(220., 0.), 60.f } };
+	FHOLSpotClaims Claims;
+	const auto NeverStale = [](const FHOLSpotClaims::FClaim&) { return false; };
+	TArray<FVector2D> Stood;
+	TArray<FVector2D> Points;
+	constexpr int32 RowsAtATime = 6;
+	int32 FarthestRow = 0;
+	for (uint64 Idle = 1; Idle <= 300; ++Idle)
+	{
+		bool bFound = false;
+		for (int32 FirstRow = 0; FirstRow < 64 && !bFound; FirstRow += RowsAtATime)
+		{
+			HOLGather::GetStandPoints(Tree.Position, SpotDistance, StandSpacing, FVector2D(0., -1.), RowsAtATime, Points, FirstRow);
+			for (const FVector2D& Point : Points)
+			{
+				if (HOLGather::IsClearOfSpots(Point, Sites, SpotOffset, StandSpacing) && !Claims.IsTaken(Point, StandSpacing, Idle, NeverStale))
+				{
+					Claims.Add(Idle, INDEX_NONE, Point);
+					Stood.Add(Point);
+					FarthestRow = FMath::Max(FarthestRow, FirstRow);
+					bFound = true;
+					break;
+				}
+			}
+		}
+	}
+	TestEqual(TEXT("300 idle gatherers, 300 points"), Stood.Num(), 300);
+	TestTrue(*FString::Printf(TEXT("beyond the first 6 rows (rows from %d)"), FarthestRow), FarthestRow >= RowsAtATime);
+	double Closest = TNumericLimits<double>::Max();
+	for (int32 A = 0; A < Stood.Num(); ++A)
+	{
+		for (int32 B = A + 1; B < Stood.Num(); ++B)
+		{
+			Closest = FMath::Min(Closest, FVector2D::Distance(Stood[A], Stood[B]));
+		}
+	}
+	TestTrue(*FString::Printf(TEXT("no two idle gatherers closer than 140 cm (%.0f cm)"), Closest), Closest >= StandSpacing - 0.01);
+	// The rows go on as asked: row 10 lies 11 spacings beyond the spots.
+	HOLGather::GetStandPoints(Tree.Position, SpotDistance, StandSpacing, FVector2D(0., -1.), 1, Points, 10);
+	if (TestTrue(TEXT("row 10"), Points.Num() > 0))
+	{
+		TestEqual(TEXT("row 10, 11 spacings out"), FVector2D::Distance(Points[0], Tree.Position), SpotDistance + 11. * (StandSpacing + 1.), 0.01);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherSpotsTest, "HeroesOfLiberty.Gather.Spots", UE::HeroesOfLiberty::Tests::Gather::Flags)
 bool FHOLGatherSpotsTest::RunTest(const FString& Parameters)
 {
