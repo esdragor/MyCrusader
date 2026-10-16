@@ -107,6 +107,8 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr float StuckCountDistance = 500.f;
 	/** Distance (cm) to the end of its path within which a unit leaves it for its slot when the navmesh lets it walk straight there (D294). */
 	constexpr double LeavePathDistance = 300.0;
+	/** Steps in a row a building puts a walker back (D310) before it gets a new path: half a second. */
+	constexpr uint8 RepathBuildingPushes = 10;
 
 	/** Corridor of a path, the same settings as Mass' own navmesh path follow, at the project's width. */
 	TSharedPtr<FNavCorridor> MakeCorridor(const FNavigationPath& Path, const ANavigationData& NavData, const float Width)
@@ -269,6 +271,7 @@ namespace UE::HeroesOfLiberty::Orders
 
 int64 UHOLUnitOrderProcessor::TotalPathsServed = 0;
 int64 UHOLUnitOrderProcessor::TotalPathsReused = 0;
+int64 UHOLUnitOrderProcessor::TotalBuildingRepaths = 0;
 
 UHOLUnitOrderProcessor::UHOLUnitOrderProcessor()
 	: EntityQuery(*this)
@@ -644,9 +647,12 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			++Served;
 			if (NavSystem && NavData && DirectPaths == 0)
 			{
+				// Failing that, as far as an order's target is looked for (1000 cm): a unit born in a building (S7) is up to
+				// ~8 m from the navmesh; at 500 cm it found no start and walked straight to its slot, into the building (D310).
 				FNavLocation Start;
 				const FVector StartExtent(500.f, 500.f, 500.f);
-				if (NavSystem->ProjectPointToNavigation(Request.Start, Start, StartExtent, NavData))
+				if (NavSystem->ProjectPointToNavigation(Request.Start, Start, StartExtent, NavData)
+					|| NavSystem->ProjectPointToNavigation(Request.Start, Start, FVector(Settings->OrderTargetProjectionExtent), NavData))
 				{
 					const FPathFindingQuery Query(World, *NavData, Start.Location, Request.Target);
 					const FPathFindingResult Result = NavSystem->FindPathSync(Query);
@@ -755,7 +761,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 	const float Tolerance = Settings->OrderArrivalTolerance;
 	const int32 StuckLimit = Settings->FinalLegStuckSteps;
 
-	EntityQuery.ForEachEntityChunk(Context, [World, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [this, World, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
 		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
@@ -774,6 +780,20 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			FMassNavMeshCachedPathFragment& CachedPath = CachedPaths[EntityIt];
 			const FTransformFragment& Transform = Transforms[EntityIt];
 
+			// Its way crosses a building the navmesh did not show yet when its path was found (S7's first paths, a building
+			// placed): put back at the wall step after step (D310), it gets a new path from where it stands.
+			if ((Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg) && Order.BuildingPushes >= RepathBuildingPushes)
+			{
+				Order.BuildingPushes = 0;
+				FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
+				Request.OrderSerial = Order.OrderSerial;
+				Request.Start = Transform.GetTransform().GetLocation();
+				Request.Target = Order.Slot;
+				Request.Entities.Add(Context.GetEntity(EntityIt));
+				Order.Phase = EHOLMovePhase::WaitingPath;
+				++TotalBuildingRepaths;
+				continue;
+			}
 			if (Order.Phase == EHOLMovePhase::Path && ShortPath.IsDone())
 			{
 				if (ShortPath.bPartialResult && CachedPath.Corridor.IsValid())

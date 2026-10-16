@@ -36,7 +36,8 @@ AHOLBuilding::AHOLBuilding()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
 	// The footprint is a forbidden area of the navmesh (D286). A dynamic obstacle is a modifier, the only change a
-	// DynamicModifiersOnly navmesh takes at run time; the navmesh widens it by the agent's radius.
+	// DynamicModifiersOnly navmesh takes at run time; the navmesh widens it by the agent's radius, FitNavObstacle by the
+	// bodies' clearance (D310).
 	NavObstacle = CreateDefaultSubobject<UBoxComponent>(TEXT("NavObstacle"));
 	NavObstacle->SetupAttachment(RootComponent);
 	NavObstacle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -213,7 +214,9 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 
 void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
 {
-	NavObstacle->SetBoxExtent(FVector(Type.Footprint * 0.5, Type.Height * 0.5));
+	// Widened by the bodies' clearance (D310): the navmesh widens a forbidden area by the agent's radius (measured at J6a.1:
+	// its edge 63 to 77 cm from the sides, 82 to 95 cm from the corners), so a walker's body brushed the wall.
+	NavObstacle->SetBoxExtent(FVector(Type.Footprint * 0.5 + FVector2D(UHOLBuildingSettings::GetBodyClearance()), Type.Height * 0.5));
 	NavObstacle->SetRelativeLocation(FVector(0., 0., Type.Height * 0.5));
 	// Registered with the default size when the actor spawned: the navigation takes the new size.
 	FNavigationSystem::UpdateComponentData(*NavObstacle);

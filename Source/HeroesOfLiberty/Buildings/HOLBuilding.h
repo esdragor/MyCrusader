@@ -101,7 +101,7 @@ private:
 	void ApplyColors();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
-	/** Sizes the navmesh's forbidden area to the type's footprint and height. */
+	/** Sizes the navmesh's forbidden area to the type's footprint, widened by the bodies' clearance (D310), and height. */
 	void FitNavObstacle(const FHOLBuildingTypeRow& Type);
 	/** A piece of Size (cm) laid on BottomZ, painted Color, or the owner's colour times OwnerTone when bOwnerColor. */
 	UStaticMeshComponent* AddPiece(UStaticMesh* Mesh, const FVector& Size, float BottomZ, const FLinearColor& Color, bool bOwnerColor,

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <atomic>
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
 #include "HOLSimulationProcessors.generated.h"
@@ -66,6 +67,54 @@ protected:
 	TArray<int32> CellHeads;
 	TArray<int32> NextInCell;
 	TArray<FIntPoint> Cells;
+};
+
+/**
+ * No unit's body in a building (D310, J6a.1): once the units have moved and parted, a body in a footprint is put back
+ * against its wall, out by the nearest way. The navmesh keeps the walkers' paths the clearance away
+ * (UHOLBuildingSettings::BodyClearance); what pushed bodies in was the separation of a crowd standing against a wall
+ * (D292: 19 Peasants sent onto the main centre stood inside it, up to 4.6 m deep), the look-ahead's turns (D293), and a
+ * final leg to a slot by the wall. The same rule for every building, each unit's own radius.
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLFootprintKeepOutProcessor : public UMassProcessor
+{
+	GENERATED_BODY()
+
+public:
+	UHOLFootprintKeepOutProcessor();
+
+	/** Bodies put back out of a footprint since the program started (hol.Nav.Footprints report). */
+	static int64 GetNumPushedOut() { return NumPushedOut.load(); }
+
+protected:
+	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
+	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
+
+	FMassEntityQuery EntityQuery;
+
+	/** A footprint of the step, in its own frame. */
+	struct FFootprint
+	{
+		FVector2D Centre = FVector2D::ZeroVector;
+		FVector2D HalfExtent = FVector2D::ZeroVector;
+		/** Its yaw's cosine and sine. */
+		double Cos = 1.;
+		double Sin = 0.;
+		/** Where a body can touch it: its bounds widened by the largest body. */
+		FBox2D Reach;
+	};
+	TArray<FFootprint> Footprints;
+	/**
+	 * The footprints each cell of a grid over their reaches may concern (S7: 32 buildings), a unit tried against these
+	 * alone: cell C's are CellFootprints[CellStarts[C]] to CellFootprints[CellStarts[C + 1]].
+	 */
+	FBox2D GridBounds;
+	FIntPoint GridSize = FIntPoint::ZeroValue;
+	TArray<int32> CellStarts;
+	TArray<int32> CellFootprints;
+
+	static std::atomic<int64> NumPushedOut;
 };
 
 /**

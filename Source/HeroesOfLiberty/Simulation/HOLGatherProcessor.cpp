@@ -82,7 +82,10 @@ namespace UE::HeroesOfLiberty::Gather
 	 * met by a match (175 Peasants on one wood stand in the first 10 or so).
 	 */
 	constexpr int32 MaxStandRows = 64;
-	/** Gap (cm) between a carrier's body and the deposit at its unloading spot. */
+	/**
+	 * Gap (cm) between a carrier's body and the deposit at its unloading spot, beyond the clearance every body keeps from a
+	 * footprint (D310): the spot is on the navmesh, which ends that far from the footprint (and up to ~17 cm more).
+	 */
 	constexpr double DepositSpotGap = 20.;
 	/** Slide (cm) along the deposit's wall of each new try after a missed unloading spot. */
 	constexpr double DepositSlide = 150.;
@@ -611,7 +614,8 @@ void UHOLGatherProcessor::WalkToDeposit(const FStepContext& Step, FGatherer& Gat
 		? Deposit.Footprint.HalfExtent.Y : Deposit.Footprint.HalfExtent.X;
 	const double Spread = (static_cast<double>(GetTypeHash(Gatherer.Entity) % 1001u) / 500. - 1.) * DepositSpread * HalfSide;
 	const double Along = Spread + (Gather.Misses % 2 == 0 ? 1. : -1.) * Slide * DepositSlide;
-	const FVector2D Spot = HOLGather::GetDepositSpot(FVector2D(Gatherer.Location), Deposit.Footprint, Gatherer.Constants.Radius + DepositSpotGap, Along);
+	const FVector2D Spot = HOLGather::GetDepositSpot(FVector2D(Gatherer.Location), Deposit.Footprint, Gatherer.Constants.Radius + UHOLBuildingSettings::GetBodyClearance() + DepositSpotGap,
+		Along);
 	IssueWalk(Step, Gatherer, FVector(Spot, Deposit.GroundZ));
 }
 

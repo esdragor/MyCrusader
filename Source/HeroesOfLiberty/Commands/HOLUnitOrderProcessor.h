@@ -34,6 +34,8 @@ public:
 	static int64 GetTotalPathsServed() { return TotalPathsServed; }
 	/** Task walks given a kept path instead of a new request since the program started (D305, stress test S7). */
 	static int64 GetTotalPathsReused() { return TotalPathsReused; }
+	/** New paths of walkers a building kept putting back since the program started (D310, stress test S7). */
+	static int64 GetTotalBuildingRepaths() { return TotalBuildingRepaths; }
 	int32 GetNumPathsWaiting() const { return PendingPaths.Num(); }
 
 protected:
@@ -63,6 +65,7 @@ protected:
 	int64 NumPathsServed = 0;
 	static int64 TotalPathsServed;
 	static int64 TotalPathsReused;
+	static int64 TotalBuildingRepaths;
 
 	/**
 	 * Paths of the task walks (D305), kept for the next walk between the same points (a gatherer goes back and forth

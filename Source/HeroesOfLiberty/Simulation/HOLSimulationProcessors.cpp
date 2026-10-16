@@ -2,12 +2,16 @@
 
 #include "Simulation/HOLSimulationProcessors.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 #include "MassMovementFragments.h"
+#include "MassNavMeshNavigationFragments.h"
 #include "MassNavigationFragments.h"
 #include "Misc/ScopeExit.h"
 #include "Simulation/HOLGatherProcessor.h"
@@ -46,6 +50,39 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 GhostTrips = 1;
 	FAutoConsoleVariableRef CVarGhostTrips(TEXT("hol.Units.GhostTrips"), GhostTrips,
 		TEXT("1: a gatherer on its round trip passes through every unit, none turns aside for it nor pushes it (D309); 0: bodies as any unit's"));
+
+	/**
+	 * Where a walker following its short path heads (D308): Aim, PathDistance along the path, unless the path has a point
+	 * between the walker and Aim: then that point, the next one once within Reached (cm) of it. The path follow's point
+	 * runs up to ~5 m ahead of the walker (Mass' look-ahead at its speed): round a building's corner, the straight line to
+	 * it cut through the building (D310, J6a.1: 1.9 m into the main centre).
+	 */
+	FVector GetAimOnPath(const FMassNavMeshShortPathFragment& ShortPath, const FVector& Location, const FVector& Aim, const double PathDistance,
+		const double Reached)
+	{
+		if (ShortPath.NumPoints < 2)
+		{
+			return Aim;
+		}
+		// The walker's segment: the nearest one, as Mass' path follow finds it.
+		uint8 Segment = 0;
+		double Nearest = TNumericLimits<double>::Max();
+		for (uint8 Index = 0; Index + 1 < ShortPath.NumPoints; ++Index)
+		{
+			const double DistanceSquared = FMath::PointDistToSegmentSquared(Location, ShortPath.Points[Index].Position, ShortPath.Points[Index + 1].Position);
+			if (DistanceSquared < Nearest)
+			{
+				Nearest = DistanceSquared;
+				Segment = Index;
+			}
+		}
+		uint8 Next = Segment + 1;
+		while (Next + 1 < ShortPath.NumPoints && FVector::DistSquared2D(Location, ShortPath.Points[Next].Position) <= FMath::Square(Reached))
+		{
+			++Next;
+		}
+		return PathDistance > ShortPath.Points[Next].Distance.Get() ? ShortPath.Points[Next].Position : Aim;
+	}
 
 	/** A gatherer on its round trip (D309): no look-ahead, no separation, for it or against it. */
 	bool IsGhost(const FHOLUnitStateFragment& State)
@@ -123,6 +160,7 @@ void UHOLFullSpeedProcessor::ConfigureQueries(const TSharedRef<FMassEntityManage
 	EntityQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FAgentRadiusFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FMassNavMeshShortPathFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
@@ -308,6 +346,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		const TConstArrayView<FMassNavMeshShortPathFragment> ShortPaths = Context.GetFragmentView<FMassNavMeshShortPathFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -338,9 +377,11 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				// Along its path, as straight to its slot below: the steering turned the velocity at ~50 degrees a second, at
 				// full speed it swung 5 to 10 m wide of each corner of the path (the user's trial of J5b.2: gatherers going
 				// round the centre or out of the wood made huge detours). The path follow's point runs ahead at the unit's
-				// speed and waits for it when it falls behind.
+				// speed and waits for it when it falls behind; never past the path's next point (D310), the step's walk from it.
 				const FVector Tangent = FVector(MoveTarget.Forward.X, MoveTarget.Forward.Y, 0.).GetSafeNormal();
-				const FVector Aim = MoveTarget.Center + Tangent * PathAimLead;
+				const FMassNavMeshShortPathFragment& ShortPath = ShortPaths[EntityIt];
+				const FVector Aim = GetAimOnPath(ShortPath, Location, MoveTarget.Center + Tangent * PathAimLead,
+					ShortPath.MoveTargetProgressDistance + PathAimLead, Speed * DeltaTime);
 				const FVector ToAim(Aim.X - Location.X, Aim.Y - Location.Y, 0.);
 				Direction = ToAim.SizeSquared() > 1. ? ToAim.GetSafeNormal() : Tangent.IsZero() ? ToSlot / FMath::Max(SlotDistance, 1.) : Tangent;
 			}
@@ -597,6 +638,229 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				const FVector Location = Transform.GetLocation();
 				Transform.SetLocation(FVector(Corrections[Index].X, Corrections[Index].Y, Location.Z));
 			}
+		}
+	});
+}
+
+namespace UE::HeroesOfLiberty::Simulation
+{
+	/** Times a body is put back out of the footprints a step, at most: two buildings side by side, out of one into the other. */
+	constexpr int32 KeepOutPasses = 3;
+	/** The largest body the footprints' reach allows for (cm): above any unit's radius (60 cm, the Peasant drawn x1.5). */
+	constexpr double KeepOutMaxRadius = 200.;
+	/** Gap (cm) a body put back is left from the wall: the rounding of the move back does not leave it a hair inside. */
+	constexpr double KeepOutSlack = 1.;
+	/** Side (cm) of the cells of the keep-out's grid, and cells at most (a larger side past that). */
+	constexpr double KeepOutCellSize = 2000.;
+	constexpr int32 KeepOutMaxCells = 4096;
+
+	int32 KeepOutEnabled = 1;
+	FAutoConsoleVariableRef CVarKeepOut(TEXT("hol.Units.KeepOut"), KeepOutEnabled,
+		TEXT("1: a body in a building's footprint is put back against its wall (D310); 2: the same, each one logged; 0: off, for A / B measures"));
+}
+
+std::atomic<int64> UHOLFootprintKeepOutProcessor::NumPushedOut{ 0 };
+
+UHOLFootprintKeepOutProcessor::UHOLFootprintKeepOutProcessor()
+	: EntityQuery(*this)
+{
+	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
+	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone); // authoritative simulation (D231)
+	// Once the units moved and were pushed apart, before the obstacle grid records where they are.
+	ExecutionOrder.ExecuteAfter.Add(TEXT("HOLUnitSeparationProcessor"));
+	ExecutionOrder.ExecuteBefore.Add(TEXT("MassNavigationObstacleGridProcessor"));
+	bRequiresGameThreadExecution = true; // the buildings are read from the world
+}
+
+void UHOLFootprintKeepOutProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FAgentRadiusFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+}
+
+void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
+{
+	using namespace UE::HeroesOfLiberty::Simulation;
+	const UWorld* World = EntityManager.GetWorld();
+	if (!World || KeepOutEnabled == 0)
+	{
+		return;
+	}
+	// A few buildings per player: read again at each step, as the gathering's deposits.
+	Footprints.Reset();
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		const FHOLBuildingTypeRow* Type = It->GetType();
+		if (!Type)
+		{
+			continue;
+		}
+		FFootprint& Footprint = Footprints.AddDefaulted_GetRef();
+		Footprint.Centre = FVector2D(It->GetActorLocation());
+		Footprint.HalfExtent = Type->Footprint * 0.5;
+		FMath::SinCos(&Footprint.Sin, &Footprint.Cos, FMath::DegreesToRadians(It->GetActorRotation().Yaw));
+		// The bounds of the turned rectangle, widened.
+		const FVector2D Half(FMath::Abs(Footprint.Cos) * Footprint.HalfExtent.X + FMath::Abs(Footprint.Sin) * Footprint.HalfExtent.Y,
+			FMath::Abs(Footprint.Sin) * Footprint.HalfExtent.X + FMath::Abs(Footprint.Cos) * Footprint.HalfExtent.Y);
+		const FVector2D Margin(KeepOutMaxRadius);
+		Footprint.Reach = FBox2D(Footprint.Centre - Half - Margin, Footprint.Centre + Half + Margin);
+	}
+	if (Footprints.IsEmpty())
+	{
+		return;
+	}
+	// The grid over the footprints' reaches: a unit far from every building costs one box test.
+	GridBounds = FBox2D(ForceInit);
+	for (const FFootprint& Footprint : Footprints)
+	{
+		GridBounds += Footprint.Reach;
+	}
+	double CellSize = KeepOutCellSize;
+	const FVector2D Extent = GridBounds.GetSize();
+	while (FMath::CeilToDouble(Extent.X / CellSize) * FMath::CeilToDouble(Extent.Y / CellSize) > KeepOutMaxCells)
+	{
+		CellSize *= 2.;
+	}
+	GridSize = FIntPoint(FMath::Max(1, FMath::CeilToInt32(Extent.X / CellSize)), FMath::Max(1, FMath::CeilToInt32(Extent.Y / CellSize)));
+	const auto GetCell = [this, CellSize](const FVector2D& Point)
+	{
+		return FIntPoint(FMath::Clamp(FMath::FloorToInt32((Point.X - GridBounds.Min.X) / CellSize), 0, GridSize.X - 1),
+			FMath::Clamp(FMath::FloorToInt32((Point.Y - GridBounds.Min.Y) / CellSize), 0, GridSize.Y - 1));
+	};
+	CellStarts.Init(0, GridSize.X * GridSize.Y + 1);
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		// First the count of each cell, then the footprints in place.
+		TArray<int32> Fill;
+		if (Pass == 1)
+		{
+			for (int32 Cell = 1; Cell < CellStarts.Num(); ++Cell)
+			{
+				CellStarts[Cell] += CellStarts[Cell - 1];
+			}
+			CellFootprints.SetNumUninitialized(CellStarts.Last());
+			Fill = CellStarts;
+		}
+		for (int32 Index = 0; Index < Footprints.Num(); ++Index)
+		{
+			const FIntPoint Min = GetCell(Footprints[Index].Reach.Min);
+			const FIntPoint Max = GetCell(Footprints[Index].Reach.Max);
+			for (int32 Y = Min.Y; Y <= Max.Y; ++Y)
+			{
+				for (int32 X = Min.X; X <= Max.X; ++X)
+				{
+					const int32 Cell = Y * GridSize.X + X;
+					if (Pass == 0)
+					{
+						++CellStarts[Cell + 1];
+					}
+					else
+					{
+						CellFootprints[Fill[Cell]++] = Index;
+					}
+				}
+			}
+		}
+	}
+
+	// One thread: a light loop (S7, 2 000 units and 32 buildings: ~0.11 ms a step, as much as on the workers).
+	EntityQuery.ForEachEntityChunk(Context, [this, GetCell](FMassExecutionContext& Context)
+	{
+		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
+		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
+		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		int64 Pushed = 0;
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			FTransform& Transform = Transforms[EntityIt].GetMutableTransform();
+			const FVector Location = Transform.GetLocation();
+			FVector2D Position(Location.X, Location.Y);
+			// The body against the wall at most: the navmesh keeps the walkers the clearance away (D310); a crowd pressed
+			// against a building touches it. Not the clearance: on the turned buildings of S7 the navmesh's cells leave the
+			// walkers' paths 11 cm from the wall, a keep-out at 25 cm would put them back at every step.
+			const double Keep = AgentRadii[EntityIt].Radius + KeepOutSlack;
+			bool bMoved = false;
+			for (int32 Pass = 0; Pass < KeepOutPasses; ++Pass)
+			{
+				bool bMovedThisPass = false;
+				if (!GridBounds.IsInsideOrOn(Position))
+				{
+					break;
+				}
+				const FIntPoint Cell = GetCell(Position);
+				const int32 CellIndex = Cell.Y * GridSize.X + Cell.X;
+				for (int32 Item = CellStarts[CellIndex]; Item < CellStarts[CellIndex + 1]; ++Item)
+				{
+					const FFootprint& Footprint = Footprints[CellFootprints[Item]];
+					if (!Footprint.Reach.IsInsideOrOn(Position))
+					{
+						continue;
+					}
+					// In the footprint's frame.
+					const FVector2D Offset = Position - Footprint.Centre;
+					FVector2D Local(Offset.X * Footprint.Cos + Offset.Y * Footprint.Sin, -Offset.X * Footprint.Sin + Offset.Y * Footprint.Cos);
+					const FVector2D& Half = Footprint.HalfExtent;
+					const FVector2D Outside(FMath::Abs(Local.X) - Half.X, FMath::Abs(Local.Y) - Half.Y);
+					if (Outside.X <= 0. && Outside.Y <= 0.)
+					{
+						// Its centre inside: out by the nearest side.
+						if (Outside.X >= Outside.Y)
+						{
+							Local.X = (Local.X >= 0. ? 1. : -1.) * (Half.X + Keep);
+						}
+						else
+						{
+							Local.Y = (Local.Y >= 0. ? 1. : -1.) * (Half.Y + Keep);
+						}
+					}
+					else
+					{
+						// Its centre outside, its body too near: away from the footprint's nearest point.
+						const FVector2D Nearest(FMath::Clamp(Local.X, -Half.X, Half.X), FMath::Clamp(Local.Y, -Half.Y, Half.Y));
+						const FVector2D Away = Local - Nearest;
+						const double Distance = Away.Size();
+						if (Distance >= Keep - UE_KINDA_SMALL_NUMBER)
+						{
+							continue;
+						}
+						Local = Nearest + Away / Distance * Keep;
+					}
+					Position = Footprint.Centre + FVector2D(Local.X * Footprint.Cos - Local.Y * Footprint.Sin, Local.X * Footprint.Sin + Local.Y * Footprint.Cos);
+					bMovedThisPass = true;
+				}
+				bMoved |= bMovedThisPass;
+				if (!bMovedThisPass)
+				{
+					break;
+				}
+			}
+			if (bMoved)
+			{
+				UE_CLOG(KeepOutEnabled == 2, LogHOLSimulation, Display, TEXT("Keep-out: #%u %s/%s at (%.0f, %.0f) put back at (%.0f, %.0f), its slot (%.0f, %.0f)"),
+					States[EntityIt].UnitId, *StaticEnum<EHOLUnitActivity>()->GetNameStringByValue(static_cast<int64>(States[EntityIt].Activity)),
+					*StaticEnum<EHOLMovePhase>()->GetNameStringByValue(static_cast<int64>(Orders[EntityIt].Phase)), Location.X, Location.Y,
+					Position.X, Position.Y, Orders[EntityIt].Slot.X, Orders[EntityIt].Slot.Y);
+				Transform.SetLocation(FVector(Position.X, Position.Y, Location.Z));
+				++Pushed;
+			}
+			// A walker put back step after step: its way crosses the building, the order processor finds it a new path.
+			FHOLMoveOrderFragment& Order = Orders[EntityIt];
+			if (bMoved && (Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg))
+			{
+				Order.BuildingPushes = static_cast<uint8>(FMath::Min<int32>(Order.BuildingPushes + 1, MAX_uint8));
+			}
+			else if (Order.BuildingPushes != 0)
+			{
+				Order.BuildingPushes = 0;
+			}
+		}
+		if (Pushed > 0)
+		{
+			NumPushedOut += Pushed;
 		}
 	});
 }

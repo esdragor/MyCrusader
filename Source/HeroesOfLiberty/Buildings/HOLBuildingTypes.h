@@ -73,6 +73,16 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Buildings")
 	TSoftObjectPtr<UDataTable> BuildingTypesTable;
 
+	/**
+	 * Gap (cm) every unit's body keeps from a building's footprint (D310, J6a.1), the same for every building: the
+	 * navmesh's forbidden area is the footprint widened by it (the navmesh widens it again by the agent's radius, the
+	 * largest body). A body pushed into a footprint anyway is put back against its wall (UHOLFootprintKeepOutProcessor).
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Buildings", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float BodyClearance = 25.f;
+
+	static float GetBodyClearance() { return FMath::Max(0.f, GetDefault<UHOLBuildingSettings>()->BodyClearance); }
+
 	/** The row of a type, or null (logged) if the table or the row is missing. */
 	static const FHOLBuildingTypeRow* FindType(FName TypeName);
 };

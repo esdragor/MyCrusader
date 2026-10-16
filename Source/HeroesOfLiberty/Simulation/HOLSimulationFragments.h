@@ -83,6 +83,12 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	/** Steps of the final leg without getting closer to the slot (pushed by others, or the slot taken). */
 	uint16 StuckSteps = 0;
 
+	/**
+	 * Steps in a row a building's footprint put it back while it walked (D310, UHOLFootprintKeepOutProcessor): its way
+	 * crosses a building the navmesh did not show yet when its path was found; the order processor finds it a new one.
+	 */
+	uint8 BuildingPushes = 0;
+
 	EHOLMovePhase Phase = EHOLMovePhase::None;
 };
 

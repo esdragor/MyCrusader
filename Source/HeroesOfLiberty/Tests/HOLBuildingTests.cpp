@@ -2,6 +2,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -77,9 +78,20 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("a block, its top, a tower and its roof"), Pieces.Num(), 4);
 
 		// The shape fills the type's footprint and height, standing on the ground, centred on the actor.
-		const FBox Box = Building->GetComponentsBoundingBox(/*bNonColliding*/ true);
+		FBox Box(ForceInit);
+		for (const UStaticMeshComponent* Piece : Pieces)
+		{
+			Box += Piece->Bounds.GetBox();
+		}
 		TestTrue(TEXT("footprint 15 x 15 m"), Box.GetSize().Equals(FVector(1500.0, 1500.0, 1000.0), 1.0));
 		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-750.0, -750.0, 0.0), 1.0));
+
+		// The navmesh's forbidden area: the footprint widened by the bodies' clearance (D310), as tall as the shape.
+		TArray<UBoxComponent*> Boxes;
+		Building->GetComponents(Boxes);
+		const double Clearance = UHOLBuildingSettings::GetBodyClearance();
+		TestTrue(TEXT("forbidden area: the footprint and the clearance"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation()
+			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(750.0 + Clearance, 750.0 + Clearance, 500.0), 1.0));
 
 		TestEqual(TEXT("the roof at the owner's colour"), CountPiecesOfColor(*Building, 3), 1);
 		TestEqual(TEXT("the top of the block at a darker tone of it"), CountPiecesOfColor(*Building, 3, AHOLBuilding::BaseTopTone), 1);

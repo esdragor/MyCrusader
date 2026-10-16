@@ -120,6 +120,8 @@ vérifier sur S1 et S2.
    récolte), en commençant par **J5c.1** (voir « Plan de J5 »). **Ordre choisi par l'utilisateur (2026-10-16)** :
    J5c.1 (animations) menée par la session `mycrusader-23` ; cette session fait **J5c.3** (« +10 »), essai, commit, puis
    **J6a** (à partir de J6a.1) tant que les animations ne sont pas prêtes ; J5c.2 et J5c.4 après les animations.
+   **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
+   refaire avant la clôture de J6a). Suite : **J6a.2** (voir « Plan de J6 »).
    En sous-agents (règle ci-dessous).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
@@ -2351,3 +2353,51 @@ d'épée).
 - Reste : **essai de l'utilisateur** (récolte, « +10 » au dépôt, couleur du bois sur le sol), puis commit ; ensuite J6a.
 - Session d'essai lancée (deuxième écran) pour l'essai de J5c.3.
 - **Essai validé** par l'utilisateur (« très bien ») ; commité (sans les lignes des autres sessions). Reprise : **J6a.1** (navmesh des bâtiments).
+
+### 2026-10-16 — J6a.1 : navmesh des bâtiments
+
+- Sous-agent, rien de commité (essai de l'utilisateur attendu), GDD non touché, aucun fichier réservé à `mycrusader-23`.
+- **Mesure d'abord** (nouvelle commande `hol.Nav.Footprints on|off|report|navmesh`, développement : à chaque pas, écart
+  entre le corps de chaque unité et l'emprise la plus proche, entrées journalisées ; `navmesh` = rayons du navmesh vers
+  les côtés et les coins). Scénario solo (12 Paysans au bois, 6 aux baies, ralliement + 3 produits, 10 envoyés autour du
+  centre et retour, tous sur le point du centre lui-même, puis autour) :
+  - **la piste de D310 était fausse** : une zone `UNavArea_Null` **est** élargie du rayon de l'agent (moteur,
+    `MarkDynamicArea` : `ExpandBy = AgentRadius`) ; navmesh à **63-77 cm** des côtés, **82-95 cm** des coins : un corps
+    de 60 cm **frôle** le mur (3 cm) ;
+  - allers-retours de récolte : **jamais dans l'emprise** (20 cm au plus près, la place au dépôt) ;
+  - **suivi de chemin** (D308) : le marcheur visait le point du suivi de Mass, jusqu'à ~5 m devant lui, **au-delà du
+    coin** : la ligne droite coupait le coin du centre, **jusqu'à 1,9 m dedans** (séparation coupée : -173 / -193 cm) ;
+  - **séparation** (D292) d'une foule contre le mur : ordre sur le centre lui-même, **19 Paysans debout dans le
+    centre, jusqu'à 4,6 m** (hors navmesh) ; demi-tours du regard en avant (D293) et dernières lignes droites aussi.
+- **Correctif, même règle pour tous les bâtiments** (réglage unique `BodyClearance=25` cm, `[HOLBuildingSettings]` de
+  `DefaultGame.ini`) :
+  1. **zone interdite = emprise + 25 cm** (`FitNavObstacle`), le navmesh y ajoute l'agent (60 cm) : navmesh à
+     **86-96 cm** des côtés, 122 cm des coins (bâtiments tournés de S7 : 71-94, cellules du navmesh) ;
+  2. **visée le long du chemin** (`GetAimOnPath`, `HOLFullSpeedProcessor`) : jamais au-delà du **point suivant** du
+     chemin court (le suivant une fois à un pas de marche) ; seul (sans séparation ni regard en avant) : -173 → -21 cm ;
+  3. **`UHOLFootprintKeepOutProcessor`** (après la séparation, `hol.Units.KeepOut 0|1|2`) : un corps entré dans une
+     emprise est remis **contre le mur** (à 1 cm), par le côté le plus proche, son propre rayon ; pas à 25 cm : le
+     navmesh des bâtiments tournés laisse les chemins à 11 cm du mur, il les repousserait à chaque pas ;
+  4. **nouveau chemin** pour un marcheur remis contre le mur **10 pas de suite** (`BuildingPushes`, ordres) : son
+     chemin traverse un bâtiment que le navmesh ne montrait pas encore (S7 : Paysans nés **dans** les centres, premiers
+     chemins avant les tuiles refaites ; 63 restaient **bloqués contre le mur** sans cela, avant ils traversaient le
+     centre) ; départ cherché à 10 m si rien à 5 m ;
+  5. **place au dépôt** : rayon + 25 + 20 cm (sur le navmesh). Places des sources (D297) inchangées (cylindres déjà
+     élargis de l'agent ; 29 cm au plus près d'un camp en S7).
+- **Après** (même scénario) : **0 corps dans une emprise** ; récolte au plus près **45 cm** ; foule sur le centre : 1 155
+  remises contre le mur, 69 nouveaux chemins, contre le mur à 1 cm (hors navmesh de 25 cm, normal).
+- **`quick_check`** : partie **`footprints`** (solo : navmesh ≥ 85 cm des côtés du centre ; surveillance de la marque
+  `gather` à la fin, plus un ordre de tous les Paysans **sur le centre** puis autour : 0 corps dans une emprise, écart ≥
+  0) ; 2 clients : surveillance au serveur sur les allers-retours (36 cm au plus près, 0 dedans). Test
+  `Buildings.Appearance` : boîtes des pièces seules, zone interdite = emprise + 25. Compte au rapport de S7
+  (« Buildings (D310) »). **PASS en 87-91 s** (78 avant : +2 attentes de 5 s), tests **39/39**.
+- **S1 / S2 / S7 courts** hors écran, **machine chargée** (25-44 % avant chaque mesure, Opera, Discord ; 10-15 % au
+  repos) : **S1 2,365 ms** (2,184 au repos), **S2 2,789 ms** (2,738), **S7 2,567 ms** (2,155), tous **PASS** ;
+  évitement à l'arrêt non touché 8,40 ms au lieu de 8,10 (charge). Coût propre : visée ~+0,03 ms en S2 (0,531 au lieu de 0,502, sous charge), garde des
+  emprises 0,006 ms sans bâtiment, **0,11 ms en S7** (32 bâtiments, 2 000 unités) ; S7 : 1 214 bois/s, 0 raté, 0
+  remise pendant la mesure. **À refaire au repos** pour des chiffres comparables.
+- Cartes non refaites (bâtiments apparus en cours de partie : modificateurs dynamiques).
+- Reste : **essai de l'utilisateur** (Paysans autour du forum, ordre sur le forum, allers-retours au dépôt, ralliement),
+  puis commit ; mesures au repos.
+- Session d'essai lancée (deuxième écran) pour l'essai de J6a.1.
+- **Essai validé** par l'utilisateur (« c'est bon ») ; J6a.1 commitée (sans les lignes des autres sessions). Reste : S1 / S2 / S7 au repos (avant la clôture de J6a). Reprise : **J6a.2** (données et règles pures).

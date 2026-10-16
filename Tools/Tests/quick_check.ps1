@@ -16,6 +16,9 @@
 # the food rises at the deposit only), twelve Peasants on one tree (the others gather the trees beside it), the berries
 # used up (all idle, the HUD's counter, the "." key), no two Peasants at rest closer than 90 cm. J5c.3 (D298): each unload
 # shows a +10 to its owner alone, with what was unloaded (solo: captured; 2 clients: never on the other client).
+# J6a.1 (D310): no Peasant's body in a building's footprint, watched at every step (hol.Nav.Footprints) over the gather
+# part, then an order onto the centre itself and one around it (solo), and over the round trips of the two clients
+# (server); the navmesh ends 60 cm (agent) + 25 cm (BodyClearance) at least from the centre's sides.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -80,7 +83,9 @@ if ($Parts -contains "net") {
     $NetSourceCommand = if ($Parts -contains "sources") {
         ",hol.Net.WhenClients 2 hol.Delay 5 hol.Sources.Take 0" +
         ",hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear -15000 0 95,hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear 15000 0 95" +
-        ",hol.Gather.LogDeposits 1"
+        ",hol.Gather.LogDeposits 1" +
+        # No body in a footprint (J6a.1, D310): the Peasants' round trips to both centres watched at every step.
+        ",hol.Net.WhenClients 2 hol.Nav.Footprints on,hol.Net.WhenClients 2 hol.Delay 30 hol.Nav.Footprints report,hol.Net.WhenClients 2 hol.Delay 45 hol.Nav.Footprints report"
     } else { "" }
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
@@ -220,7 +225,7 @@ if ($Parts -contains "camera") {
             # right click on the berries; the centre's rally point on the same bush, one Peasant produced, which gathers
             # there. Then the six bushes used up (hol.Sources.TakeNear): the carriers unload, the stock rises then
             # only, all stand idle; the "." key and the HUD's counter go through them.
-            Step "mark gather", "hol.Gather.LogDeposits 1", "hol.Gather.LogPopups 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
+            Step "mark gather", "hol.Nav.Footprints navmesh", "hol.Nav.Footprints on", "hol.Gather.LogDeposits 1", "hol.Gather.LogPopups 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
                 "hol.Units.Spawn $GatherTrees $($GatherTreeSpawn -join ' ') 0 Peasant 250", "hol.Units.Spawn $GatherBerries $($GatherBerrySpawn -join ' ') 0 Peasant 200",
                 "waitunits $($GatherBefore + $GatherTrees + $GatherBerries)"
             Step "hol.Camera.Focus $($GatherTreeSpawn[0]) $($GatherTreeSpawn[1] + 150)", "frames 5", "hol.Select.BoxGround -15450 -1650 -14300 -850",
@@ -248,6 +253,10 @@ if ($Parts -contains "camera") {
                 if ($i -eq 0) { Step "hol.HUD.Report", "capture gather_idle" }
             }
             Step "hol.HUD.Click IdleWorkers", "waitlog Next idle worker:", "frames 2", "hol.Camera.Report", "hol.Select.Report", "hol.Prod.BuildTime 0"
+            # No body in a footprint (J6a.1, D310): every Peasant of slot 0 sent onto its centre itself (the point inside
+            # the footprint: they crowd against its wall), then around it to its far corner; watched since the mark gather.
+            Step "mark footprints", "hol.Units.Move $((Get-SlotStart 0) -join ' ') 0", "wait 5", "hol.Units.Move $((Get-SlotStart 0)[0] - 1900) -1500 0", "wait 5",
+                "hol.Nav.Footprints off", "hol.Nav.Units"
         }
     }
 }
@@ -640,6 +649,18 @@ if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
     $Missing = @("berries", "wood", "idle", "popup" | Where-Object { -not (Test-Path (Join-Path $Shots "gather_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "gather" $Checks) -and $AllOk
+
+    # No body in a footprint (J6a.1, D310): the navmesh ends far enough from the centre's sides; over the gather part,
+    # the order onto the centre and the one around it, every step, no Peasant's body entered a footprint.
+    $Checks = [ordered]@{}
+    $NavLine = $Start | Select-String -Pattern "Footprint navmesh: MainCentre of slot 0, (\d+) rays: sides (\d+) to \d+ cm, corners (\d+) to \d+ cm" | Select-Object -First 1
+    $Checks["navmesh at 85 cm at least from the centre (agent 60 + clearance 25): $(if ($NavLine) { $NavLine.Matches[0].Value -replace '^Footprint navmesh: ', '' })"] =
+        ($null -ne $NavLine) -and ([int]$NavLine.Matches[0].Groups[1].Value -ge 20) -and ([int]$NavLine.Matches[0].Groups[2].Value -ge 85) -and ([int]$NavLine.Matches[0].Groups[3].Value -ge 85)
+    $Watch = (Get-Section "footprints") | Select-String -Pattern "Footprint watch: (\d+) steps, \d+ samples, closest body gap (-?\d+) cm \((.*)\); bodies in a footprint: (\d+) unit-steps, (\d+) units; .*; put back out: (\d+), new paths: (\d+)$" | Select-Object -Last 1
+    $W = if ($Watch) { $Watch.Matches[0].Groups } else { $null }
+    $Checks["no Peasant's body in a footprint ($(if ($W) { "$($W[1].Value) steps, closest gap $($W[2].Value) cm: $($W[3].Value); $($W[4].Value) unit-steps inside; put back out $($W[6].Value), new paths $($W[7].Value)" }))"] =
+        ($null -ne $W) -and ([int]$W[1].Value -ge 200) -and ([int]$W[2].Value -ge 0) -and ([int]$W[4].Value -eq 0)
+    $AllOk = (Report "footprints" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {
@@ -775,6 +796,11 @@ if ($Parts -contains "net") {
         $TooMany = @($NetPopups.Values | Where-Object { $_.Count -gt @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Gather: slot $($_.Slot) unloaded [1-9]" }).Count })
         $ServerPopups = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Deposit popup:" }).Count
         $Checks["each client's +10 no more than its own unloads ($($TooMany.Count) over), none on the server ($ServerPopups)"] = ($NetPopups.Count -eq 2) -and ($TooMany.Count -eq 0) -and ($ServerPopups -eq 0)
+        # J6a.1 (D310): over the round trips, no Peasant's body in a footprint (the server's last report).
+        $Watch = if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Footprint watch: (\d+) steps, \d+ samples, closest body gap (-?\d+) cm \((.*)\); bodies in a footprint: (\d+) unit-steps" | Select-Object -Last 1 }
+        $W = if ($Watch) { $Watch.Matches[0].Groups } else { $null }
+        $Checks["server: no Peasant's body in a footprint ($(if ($W) { "$($W[1].Value) steps, closest gap $($W[2].Value) cm, $($W[4].Value) unit-steps inside" }))"] =
+            ($null -ne $W) -and ([int]$W[1].Value -ge 200) -and ([int]$W[2].Value -ge 0) -and ([int]$W[4].Value -eq 0)
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

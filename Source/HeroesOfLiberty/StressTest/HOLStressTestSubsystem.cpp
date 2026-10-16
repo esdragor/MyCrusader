@@ -28,6 +28,7 @@
 #include "Simulation/HOLAvoidanceHoldProcessors.h"
 #include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLSimulationProcessors.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -664,6 +665,8 @@ void UHOLStressTestSubsystem::LogGatheringSummary() const
 		Counters.Unloads - GatherCountersAtMeasureStart[4], Counters.WalksToSource - GatherCountersAtMeasureStart[0],
 		Counters.WalksToDeposit - GatherCountersAtMeasureStart[1], Counters.MissedSpots - GatherCountersAtMeasureStart[2],
 		Counters.MissedDeposits - GatherCountersAtMeasureStart[3], Counters.NoSpotStops - GatherCountersAtMeasureStart[5]);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Buildings (D310): %lld bodies put back out of a footprint, %lld walkers given a new path for it, during the measure"),
+		UHOLFootprintKeepOutProcessor::GetNumPushedOut() - PushedOutAtMeasureStart, UHOLUnitOrderProcessor::GetTotalBuildingRepaths() - RepathsAtMeasureStart);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Gatherers at the end: to their source %d, gathering %d, to the deposit %d, not gathering %d; %d carrying a load"),
 		Phases[static_cast<int32>(EHOLGatherPhase::ToSource)], Phases[static_cast<int32>(EHOLGatherPhase::Gathering)],
 		Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Phases[static_cast<int32>(EHOLGatherPhase::None)], Carrying);
@@ -935,6 +938,8 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	}
 	PathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsServed();
 	PathsReusedAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsReused();
+	PushedOutAtMeasureStart = UHOLFootprintKeepOutProcessor::GetNumPushedOut();
+	RepathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalBuildingRepaths();
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
 	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotStops };
 	FMemory::Memcpy(GatherCountersAtMeasureStart, Now, sizeof(Now));
