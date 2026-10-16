@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Match/HOLResources.h"
 
+enum class EHOLConstructionState : uint8;
+
 /**
  * Pure rules of construction (J6, D311, D312), applied by the server (and the client's ghost, J6a.3): where a
  * foundation may go, what it costs and gives back, how fast its builders raise it, what it gives when finished. No
@@ -142,4 +144,36 @@ namespace HOLConstruction
 
 	/** Population places a building gives its owner (D312: only once finished; D83: centres and houses). */
 	HEROESOFLIBERTY_API int32 GetPopulationProvided(int32 TypePopulation, bool bFinished);
+
+	// The construction states (J6a.3, EHOLConstructionState).
+
+	/** The building's footprint is a forbidden area of the navmesh (D312: from its first work on, never as a bare foundation). */
+	HEROESOFLIBERTY_API bool BlocksNavigation(EHOLConstructionState State);
+
+	/** The building serves its owner: population, deposit, production (D312: only once finished). */
+	HEROESOFLIBERTY_API bool IsServing(EHOLConstructionState State);
+
+	/** Its owner may cancel it and be refunded (D311): a foundation or a building under construction, never a finished one. */
+	HEROESOFLIBERTY_API bool CanCancel(EHOLConstructionState State);
+
+	/** Some work has been done on it (D311: the refund is then halved): under construction, or Work above 0. */
+	HEROESOFLIBERTY_API bool HasWorkStarted(EHOLConstructionState State, int64 Work);
+
+	/** What cancelling a building in State with Work done gives back (D311); nothing for a finished one. */
+	HEROESOFLIBERTY_API FHOLResources GetCancelRefund(const FHOLResources& Cost, EHOLConstructionState State, int64 Work);
+
+	/**
+	 * The ground box a footprint of size Footprint covers, centred on Centre and turned by Yaw (degrees): the footprint
+	 * itself on the grid's quarter turns (a turned square is the same square), its bounds otherwise.
+	 */
+	HEROESOFLIBERTY_API FBox2D GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, float Yaw);
+
+	/**
+	 * Where the navmesh is probed under a footprint (D311, the caller's answer of FHOLPlacementQuery::bOnNavMesh): the
+	 * middle of each of its tiles of side Tile (Tile <= 0: its middle), then its four corners moved CornerInset inside
+	 * (none if CornerInset <= 0). For 3 m tiles the middles stand 1.5 m inside the edges, and with an inset of 1 m the
+	 * corners too stay out of the forbidden area of a neighbour it touches (its footprint + 25 cm + the agent's 60 cm,
+	 * D310), while a rock across a corner is seen.
+	 */
+	HEROESOFLIBERTY_API void GetNavProbes(const FBox2D& Footprint, double Tile, double CornerInset, TArray<FVector2D>& OutPoints);
 }

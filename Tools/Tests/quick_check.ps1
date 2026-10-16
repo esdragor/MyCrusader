@@ -20,6 +20,11 @@
 # part, then an order onto the centre itself and one around it (solo), and over the round trips of the two clients
 # (server); the navmesh ends 60 cm (agent) + 25 cm (BodyClearance) at least from the centre's sides.
 # J5c.1: each client knows what the other's Peasant gathers (wood), received in the activity's bits.
+# The "build" part (J6a.3, D311), in solo: placement mode, the ghost green on free ground, a house placed by a click,
+# another one touching it with Shift (still in the mode), the ghost red on them, Escape; refused (nothing taken): on a
+# house, on a tree, near the enemy centre, without enough wood; the second foundation selected by a click and cancelled
+# (refunded). With "net": each client places a house behind its centre, sees the other's, pays alone, and a house near
+# the enemy centre is refused. The two clients wait for each other before quitting (each one's last report done).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -29,7 +34,7 @@
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -149,6 +154,11 @@ $GatherTree = @(-14885, -1781)
 $GatherTreeSpawn = @(-14885, -1250)
 $GatherBerry = @(-15000, 2000)
 $GatherBerrySpawn = @(-15000, 1350)
+# Placement in solo (J6a.3): house A 12 m behind slot 0's centre (its middle on a grid point, 2 x 2 tiles), house B
+# touching it, a spot across both.
+$BuildA = @(-16200, 0)
+$BuildB = @(-16200, 600)
+$BuildOver = @(-16200, 300)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -262,6 +272,30 @@ if ($Parts -contains "camera") {
             Step "mark footprints", "hol.Units.Move $((Get-SlotStart 0) -join ' ') 0", "wait 5", "hol.Units.Move $((Get-SlotStart 0)[0] - 1900) -1500 0", "wait 5",
                 "hol.Nav.Footprints off", "hol.Nav.Units"
         }
+        if (($Parts -contains "build") -and $Case.Name -eq "2p") {
+            # Placement (J6a.3, D311), 120 wood exactly (two houses of 50): the cursor stays in the middle of the screen
+            # (hol.Camera.TestCursor), the camera brings the ghost where wanted. House A behind slot 0's centre, B touching
+            # it (Shift: still in the mode), then the ghost on both: red; Escape leaves the mode.
+            Step "mark build", "hol.Cheat.Wood -100000", "hol.Cheat.Wood 120", "hol.Build.Report",
+                "hol.Camera.Focus $($BuildA -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($BuildA -join ', ')) valid",
+                "frames 3", "hol.Select.Report", "capture build_ghost_green", "hol.Build.Click shift",
+                "waitlog Construction: slot 0 placed House foundation at ($($BuildA -join ', '))"
+            Step "hol.Camera.Focus $($BuildB -join ' ')", "frames 3", "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($BuildB -join ', '))",
+                "hol.Camera.Focus $($BuildOver -join ' ')", "waitlog Placement ghost: House at ($($BuildOver -join ', ')) refused", "frames 3", "hol.Select.Report",
+                "capture build_ghost_red", "hol.Build.Click", "waitlog Placement: not here"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Select.Report"
+            # Refused by the server, nothing taken (20 wood left): on house A and B, on a tree of slot 0's wood, near the
+            # enemy centre (slot 1), and a free spot without the wood.
+            Step "mark build refused", "hol.Build.PlaceNear House $($BuildOver[0] - (Get-SlotStart 0)[0]) $($BuildOver[1])",
+                "waitlog Construction: slot 0 cannot place", "hol.Build.PlaceAtSource House -14217 -2023", "waitlog Construction: slot 0 cannot place",
+                "hol.Build.PlaceNear House -2400 0 enemy", "waitlog Construction: slot 0 cannot place",
+                "hol.Build.PlaceNear House -2400 0", "waitlog Construction: slot 0 cannot place", "hol.Build.Report"
+            # House B selected by a click on it (its square, its block in the HUD), then cancelled: refunded, gone.
+            Step "mark build cancel", "hol.Camera.Focus $($BuildB[0]) $($BuildB[1] - 300)", "frames 3", "hol.Select.ClickGround $($BuildB -join ' ')",
+                "waitlog Selection: House of slot 0 (own), foundation", "frames 3", "hol.Select.Report", "hol.HUD.Report", "capture build_foundations",
+                "hol.Build.CancelSelected", "waitlog Construction: slot 0 cancelled House", "waitlog Selection: none", "frames 3", "hol.Build.Report", "hol.Select.Report"
+        }
     }
 }
 Step "mark end", "quit"
@@ -274,6 +308,7 @@ Get-ChildItem $Shots -Filter "sel_*.png" -ErrorAction SilentlyContinue | Remove-
 Get-ChildItem $Shots -Filter "move_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "src_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "gather_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "build_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 $GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
@@ -291,6 +326,7 @@ if ($NetServerProcess) {
     }
 }
 if ($NetListening) {
+    Remove-Item (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     for ($Client = 1; $Client -le 2; $Client++) {
         $ClientSaved = Join-Path $Project "Saved_Tests_Net$Client"
         $ClientShots = Join-Path $ClientSaved "Screenshots\WindowsEditor\HOL"
@@ -339,7 +375,19 @@ if ($NetListening) {
             }
             $NetSteps += "hol.Sources.Report", "hol.Prod.Report", "capture qcnet_${Client}_gather"
         }
-        $NetSteps += "mark end", "quit"
+        # Placement (J6a.3, D311): its Peasant sent aside first (no unload meanwhile), a house 18 m behind its centre; once
+        # both placed (each waits for the other), both foundations seen here, its own wood 50 less, the other's stock
+        # never received; then a house 24 m behind the enemy centre, refused by the server (anti-rush radius, D22).
+        $Other = 3 - $Client
+        if ($Parts -contains "build") {
+            $NetSteps += "mark build", "hol.Units.OrderNear -1000 2500", "wait 1", "hol.Prod.Report", "hol.Build.PlaceNear House -1800 0",
+                "signal $(Join-Path $TestSaved "quick_net_placed$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_placed$Other.flag")", "wait 2",
+                "hol.Build.Report", "hol.Prod.Report", "hol.Camera.FocusSlot 0", "frames 5", "capture qcnet_${Client}_build0", "hol.Camera.FocusSlot 1", "frames 5",
+                "capture qcnet_${Client}_build1", "hol.Build.PlaceNear House -2400 0 enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
+        }
+        # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
+        # "others []", the flake of 2026-10-16).
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
@@ -385,7 +433,7 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
-    popup = "hud=HOLGameScreen" }
+    popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -674,6 +722,49 @@ if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
     $AllOk = (Report "footprints" $Checks) -and $AllOk
 }
 
+if (($Parts -contains "build") -and ($Parts -contains "camera")) {
+    $Build = Get-Section "build"
+    $Refused = Get-Section "build refused"
+    $Cancel = Get-Section "build cancel"
+    $Value = { param($Lines, [string] $Pattern) $Lines | Select-String -Pattern $Pattern | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value } }
+    $Wood = { param($Line) if ([string]$Line -match "W (\d+) S") { [int]$Matches[1] } else { -1 } }
+    $Checks = [ordered]@{}
+    $Checks["120 wood to start ($(& $Value $Build 'Build report: (.*)$'))"] = (& $Wood (& $Value $Build "Build report: (F \d+ W \d+ S)")) -eq 120
+    $Checks["placement mode: ghost green on free ground, shown"] = [bool]($Build | Select-String -Pattern "Placement: House \(cost F 0 W 50 S 0 G 0\)" -Quiet) -and
+        [bool]($Build | Select-String -Pattern "Placement ghost: House at \($($BuildA -join ', ')\) valid" -Quiet) -and
+        [bool]($Build | Select-String -Pattern "Selection markers: .*, ghost valid" -Quiet)
+    $PlacedA = & $Value $Build "Construction: slot 0 placed House foundation at \($($BuildA -join ', ')\), (.*)$"
+    $PlacedB = & $Value $Build "Construction: slot 0 placed House foundation at \($($BuildB -join ', ')\), (.*)$"
+    $Checks["click: house A placed, 50 wood taken ($PlacedA)"] = [bool]($PlacedA -match "^paid F 0 W 50 S 0 G 0 \(F \d+ W 70 ")
+    $Checks["Shift + click: house B touching it ($PlacedB)"] = [bool]($PlacedB -match "^paid F 0 W 50 S 0 G 0 \(F \d+ W 20 ")
+    $Ended = @($Build | Select-String -Pattern "Placement: ended|Construction: slot 0 placed" | ForEach-Object { if ($_.Line -match "ended") { "ended" } else { "placed" } })
+    $Checks["the mode left only by Escape, after both ($($Ended -join ', '))"] = ($Ended -join ',') -eq "placed,placed,ended"
+    $Checks["ghost red on the two houses, its click places nothing, shown"] = [bool]($Build | Select-String -Pattern "Placement ghost: House at \($($BuildOver -join ', ')\) refused \(on a building\)" -Quiet) -and
+        [bool]($Build | Select-String -Pattern "Placement: not here \(on a building\)" -Quiet) -and
+        [bool]($Build | Select-String -Pattern "Selection markers: .*, ghost refused" -Quiet) -and
+        @($Build | Select-String -Pattern "Construction: slot 0 placed").Count -eq 2
+    $Checks["clicks in placement mode select nothing"] = -not ($Build | Select-String -Pattern "Selection: " -Quiet)
+    $Reasons = @($Refused | Select-String -Pattern "Construction: slot 0 cannot place House at \((-?\d+), (-?\d+)\): ([^(]+) \((.*)\)$" | ForEach-Object { $_.Matches[0] })
+    $Said = ($Reasons | ForEach-Object { $_.Groups[3].Value.Trim() }) -join '; '
+    $Checks["refused by the server: on a house, on a tree, near the enemy centre, not enough wood ($Said)"] = $Said -eq "on a building; on a resource source; too near an enemy main centre; not enough resources"
+    $Checks["refused: nothing taken (wood $(($Reasons | ForEach-Object { & $Wood $_.Groups[4].Value }) -join ', '))"] = ($Reasons.Count -eq 4) -and
+        (@($Reasons | Where-Object { (& $Wood $_.Groups[4].Value) -ne 20 }).Count -eq 0) -and ((& $Wood (& $Value $Refused "Build report: (F \d+ W \d+ S)")) -eq 20)
+    $Selected = & $Value $Cancel "Selection report: selected (.*)$"
+    $Markers = $Cancel | Select-String -Pattern "Selection markers: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+    $Hud = & $Value $Cancel "HUD report: (.*)$"
+    $Checks["a click selects the foundation, its square, its block ($((@($Cancel | Select-String -Pattern 'Selection report: selected (.*)$' | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1)); $Markers)"] =
+        [bool](($Cancel | Select-String -Pattern "Selection report: selected House of slot 0 \(own\), foundation$" -Quiet)) -and [bool]($Markers -match "frame 1") -and
+        [bool]($Hud -match "selection House \(own\), foundation")
+    $Cancelled = & $Value $Cancel "(Construction: slot 0 cancelled House .*)$"
+    $Report = & $Value $Cancel "Build report: (.*)$"
+    $Checks["cancelled: 50 back, gone ($Cancelled)"] = [bool]($Cancelled -match "at \($($BuildB -join ', ')\), refund F 0 W 50 S 0 G 0 \(F \d+ W 70 ") -and
+        [bool]($Report -match "W 70 ") -and [bool]($Report -match "House of slot 0 \(own\) foundation at \($($BuildA -join ', ')\)") -and
+        -not ($Report -match "at \($($BuildB -join ', ')\)") -and ($Selected -eq "none")
+    $Missing = @("ghost_green", "ghost_red", "foundations" | Where-Object { -not (Test-Path (Join-Path $Shots "build_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build" $Checks) -and $AllOk
+}
+
 if ($Parts -contains "net") {
     # The lines of a client's section, from its mark to the next one ("net", then "gather").
     function Get-ClientSection($Lines, [string] $Mark) {
@@ -777,6 +868,28 @@ if ($Parts -contains "net") {
                 (@($Popups | Where-Object { $_.Groups[1].Value -ne "10" -or $_.Groups[2].Value -ne "Wood" }).Count -eq 0)
             $Checks["client $N : the other's Peasant seen on its round trip (GatherTrip)"] = [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) GatherTrip" -Quiet)
         }
+        if ($Parts -contains "build") {
+            # Placement (J6a.3): both foundations seen here, its own wood 50 less, the other's stock never received; the
+            # house near the enemy centre refused (nothing taken).
+            $BuildLines = @(Get-ClientSection $ClientLines "build")
+            $Other = 1 - $Held
+            $Behind = { param($Slot, $Distance) $At = Get-SlotStart $Slot; @(($At[0] + $(if ($At[0] -lt 0) { -$Distance } else { $Distance })), $At[1]) }
+            $OwnHouse = & $Behind $Held 1800
+            $OtherHouse = & $Behind $Other 1800
+            $Reports = @($BuildLines | Select-String -Pattern "Build report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Stocks = @($BuildLines | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Woods = @($Stocks | ForEach-Object { if ($_ -match "^F \d+ W (\d+) ") { [int]$Matches[1] } else { -1 } })
+            $Checks["client $N : both foundations seen ($(if ($Reports.Count) { $Reports[0] }))"] = ($Reports.Count -eq 2) -and
+                [bool]($Reports[0] -match "4 buildings") -and [bool]($Reports[0] -match "House of slot $Held \(own\) foundation at \($($OwnHouse -join ', ')\)") -and
+                [bool]($Reports[0] -match "House of slot $Other \(other\) foundation at \($($OtherHouse -join ', ')\)")
+            $Checks["client $N : its wood 50 less, then unchanged by the refusal ($($Woods -join ' -> '))"] = ($Woods.Count -eq 3) -and ($Woods[0] -ge 50) -and
+                ($Woods[1] -eq $Woods[0] - 50) -and ($Woods[2] -eq $Woods[1])
+            $Checks["client $N : the other's stock never received"] = ($Stocks.Count -eq 3) -and
+                (@($Stocks | Where-Object { $_ -notmatch "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$" }).Count -eq 0)
+            $Checks["client $N : no foundation near the enemy centre ($(if ($Reports.Count -ge 2) { $Reports[1] }))"] = ($Reports.Count -eq 2) -and [bool]($Reports[1] -match "4 buildings")
+            $Missing = @("build0", "build1" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
+            $Checks["client $N : build captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+        }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
     }
@@ -817,6 +930,13 @@ if ($Parts -contains "net") {
         $W = if ($Watch) { $Watch.Matches[0].Groups } else { $null }
         $Checks["server: no Peasant's body in a footprint ($(if ($W) { "$($W[1].Value) steps, closest gap $($W[2].Value) cm, $($W[4].Value) unit-steps inside" }))"] =
             ($null -ne $W) -and ([int]$W[1].Value -ge 200) -and ([int]$W[2].Value -ge 0) -and ([int]$W[4].Value -eq 0)
+    }
+    if ($Parts -contains "build") {
+        $ServerLines = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+        $Placed = @($ServerLines | Select-String -Pattern "Construction: slot (\d) placed House foundation at \((-?\d+), (-?\d+)\), paid F 0 W 50 S 0 G 0" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
+        $Checks["server: one house paid and placed per slot, behind its centre ($($Placed -join '; '))"] = ($Placed -join '|') -eq "0: (-16800, 0)|1: (16800, 0)"
+        $NearEnemy = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place House at \((-?\d+), (-?\d+)\): too near an enemy main centre" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
+        $Checks["server: each house near the enemy centre refused ($($NearEnemy -join '; '))"] = ($NearEnemy -join '|') -eq "0: (17400, 0)|1: (-17400, 0)"
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

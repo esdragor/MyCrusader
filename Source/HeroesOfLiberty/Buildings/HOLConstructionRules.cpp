@@ -2,6 +2,8 @@
 
 #include "Buildings/HOLConstructionRules.h"
 
+#include "Buildings/HOLBuildingTypes.h"
+
 FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
 {
 	const FVector2D Half = Footprint * 0.5;
@@ -147,4 +149,64 @@ int32 HOLConstruction::GetHealth(const int32 MaxHealth, const int64 Work, const 
 int32 HOLConstruction::GetPopulationProvided(const int32 TypePopulation, const bool bFinished)
 {
 	return bFinished ? FMath::Max(TypePopulation, 0) : 0;
+}
+
+bool HOLConstruction::BlocksNavigation(const EHOLConstructionState State)
+{
+	return State != EHOLConstructionState::Foundation;
+}
+
+bool HOLConstruction::IsServing(const EHOLConstructionState State)
+{
+	return State == EHOLConstructionState::Finished;
+}
+
+bool HOLConstruction::CanCancel(const EHOLConstructionState State)
+{
+	return State != EHOLConstructionState::Finished;
+}
+
+bool HOLConstruction::HasWorkStarted(const EHOLConstructionState State, const int64 Work)
+{
+	return State != EHOLConstructionState::Foundation || Work > 0;
+}
+
+FHOLResources HOLConstruction::GetCancelRefund(const FHOLResources& Cost, const EHOLConstructionState State, const int64 Work)
+{
+	return CanCancel(State) ? GetRefund(Cost, HasWorkStarted(State, Work)) : FHOLResources();
+}
+
+FBox2D HOLConstruction::GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, const float Yaw)
+{
+	double Sin = 0.0, Cos = 1.0;
+	FMath::SinCos(&Sin, &Cos, FMath::DegreesToRadians(static_cast<double>(Yaw)));
+	// Exact on the quarter turns: no rounding left by the sine of 90 degrees.
+	Sin = FMath::IsNearlyZero(Sin, 1e-6) ? 0.0 : Sin;
+	Cos = FMath::IsNearlyZero(Cos, 1e-6) ? 0.0 : Cos;
+	const FVector2D Half = Footprint * 0.5;
+	const FVector2D Reach(FMath::Abs(Cos) * Half.X + FMath::Abs(Sin) * Half.Y, FMath::Abs(Sin) * Half.X + FMath::Abs(Cos) * Half.Y);
+	return FBox2D(Centre - Reach, Centre + Reach);
+}
+
+void HOLConstruction::GetNavProbes(const FBox2D& Footprint, const double Tile, const double CornerInset, TArray<FVector2D>& OutPoints)
+{
+	OutPoints.Reset();
+	const FVector2D Size = Footprint.GetSize();
+	const int32 CountX = Tile > 0.0 ? FMath::Max(1, FMath::RoundToInt(Size.X / Tile)) : 1;
+	const int32 CountY = Tile > 0.0 ? FMath::Max(1, FMath::RoundToInt(Size.Y / Tile)) : 1;
+	for (int32 X = 0; X < CountX; ++X)
+	{
+		for (int32 Y = 0; Y < CountY; ++Y)
+		{
+			OutPoints.Emplace(Footprint.Min.X + (X + 0.5) * Size.X / CountX, Footprint.Min.Y + (Y + 0.5) * Size.Y / CountY);
+		}
+	}
+	if (CornerInset > 0.0)
+	{
+		const FVector2D Inset(FMath::Min(CornerInset, Size.X * 0.5), FMath::Min(CornerInset, Size.Y * 0.5));
+		OutPoints.Emplace(Footprint.Min.X + Inset.X, Footprint.Min.Y + Inset.Y);
+		OutPoints.Emplace(Footprint.Max.X - Inset.X, Footprint.Min.Y + Inset.Y);
+		OutPoints.Emplace(Footprint.Min.X + Inset.X, Footprint.Max.Y - Inset.Y);
+		OutPoints.Emplace(Footprint.Max.X - Inset.X, Footprint.Max.Y - Inset.Y);
+	}
 }

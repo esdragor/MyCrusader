@@ -81,6 +81,17 @@ void UHOLCommandSubsystem::ConsumeProductionOrders(TArray<FHOLProductionCommand>
 	Swap(OutCommands, PendingProductionOrders);
 }
 
+void UHOLCommandSubsystem::IssueConstructionOrder(const FHOLConstructionCommand& Command)
+{
+	PendingConstructionOrders.Add(Command);
+}
+
+void UHOLCommandSubsystem::ConsumeConstructionOrders(TArray<FHOLConstructionCommand>& OutCommands)
+{
+	OutCommands.Reset();
+	Swap(OutCommands, PendingConstructionOrders);
+}
+
 void UHOLCommandSubsystem::NotifyNavigationChanged(const FBox& Area)
 {
 	// Only the simulation consumes them: a client would only pile them up.

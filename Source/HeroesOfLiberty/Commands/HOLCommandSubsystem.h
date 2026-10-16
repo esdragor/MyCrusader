@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Commands/HOLConstructionCommand.h"
 #include "Commands/HOLProductionCommand.h"
 #include "Commands/HOLUnitCommand.h"
 #include "CoreMinimal.h"
@@ -40,6 +41,11 @@ public:
 	/** Takes the production orders waiting for the next step (UHOLProductionSubsystem calls this at each step). */
 	void ConsumeProductionOrders(TArray<FHOLProductionCommand>& OutCommands);
 
+	/** Queues a construction order (J6a.3, D311), applied by the construction at the next step. */
+	void IssueConstructionOrder(const FHOLConstructionCommand& Command);
+	/** Takes the construction orders waiting for the next step (UHOLConstructionSubsystem calls this at each step). */
+	void ConsumeConstructionOrders(TArray<FHOLConstructionCommand>& OutCommands);
+
 	/**
 	 * The navmesh changes there (a source used up, a building placed; server and solo): the paths the simulation kept
 	 * for the gathering's walks across that area are forgotten at the next step (D305).
@@ -55,5 +61,6 @@ private:
 	TArray<FHOLMoveOrder> PendingMoveOrders;
 	TArray<FHOLGatherOrder> PendingGatherOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;
+	TArray<FHOLConstructionCommand> PendingConstructionOrders;
 	TArray<FBox> PendingNavigationChanges;
 };

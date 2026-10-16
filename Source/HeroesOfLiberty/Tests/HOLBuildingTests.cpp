@@ -107,6 +107,58 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// J6a.3 checks: a foundation (D311, D312) looks flat, blocks nothing, is selected like a building; finished, it is a building.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingFoundationTest, "HeroesOfLiberty.Buildings.Foundation", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Buildings;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
+	const FHOLBuildingTypeRow* House = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
+	if (TestNotNull(TEXT("building spawned"), Building) && TestNotNull(TEXT("house in the table"), House))
+	{
+		Building->Setup(HOLBuildingTypeNames::House, 0, 2, EHOLConstructionState::Foundation);
+		TestTrue(TEXT("a foundation"), Building->IsFoundation() && !Building->IsFinished() && !Building->HasWorkStarted());
+
+		// Flat: the slab, its border, its stakes, no higher than a stake, over the whole footprint.
+		TArray<UStaticMeshComponent*> Pieces;
+		Building->GetComponents(Pieces);
+		FBox Box(ForceInit);
+		for (const UStaticMeshComponent* Piece : Pieces)
+		{
+			Box += Piece->Bounds.GetBox();
+		}
+		TestEqual(TEXT("a slab, four borders, four stakes"), Pieces.Num(), 9);
+		TestTrue(TEXT("over the footprint (6 x 6 m)"), FVector2D(Box.GetSize()).Equals(House->Footprint, 1.0));
+		TestTrue(TEXT("flat: no higher than its stakes"), Box.Max.Z <= AHOLBuilding::FoundationStakeHeight + 1.0);
+		TestEqual(TEXT("its border at the owner's colour"), CountPiecesOfColor(*Building, 2), 4);
+
+		// Blocks nothing (D312), selected like a building (D262).
+		TArray<UBoxComponent*> Boxes;
+		Building->GetComponents(Boxes);
+		TestTrue(TEXT("its forbidden area does not count for the navmesh"), Boxes.Num() == 1 && !Boxes[0]->CanEverAffectNavigation());
+		FHitResult Hit;
+		const FVector Above(100.0, 100.0, 5000.0);
+		World->LineTraceSingleByChannel(Hit, Above, Above - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection);
+		TestTrue(TEXT("the selection ray hits the foundation"), Hit.GetActor() == Building);
+
+		// Finished: the building's shape, its forbidden area counted.
+		Building->SetConstructionState(EHOLConstructionState::Finished);
+		Building->GetComponents(Pieces);
+		TestEqual(TEXT("finished: a block, its top, a tower and its roof"), Pieces.Num(), 4);
+		TestTrue(TEXT("finished: its forbidden area counts"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation());
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingSelectionTest, "HeroesOfLiberty.Buildings.Selection", UE::HeroesOfLiberty::Tests::Buildings::Flags)
 bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
 {

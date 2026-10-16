@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Containers/Ticker.h"
@@ -530,6 +531,177 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** A left click on a ground point (cm), where it is drawn: a foundation (J6a.3) or anything else under it. */
+	FAutoConsoleCommand ClickGroundCommand(
+		TEXT("hol.Select.ClickGround"),
+		TEXT("hol.Select.ClickGround <X> <Y> [add]: hol.Select.Click where that ground point (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.ClickGround <X> <Y> [add]"));
+				return;
+			}
+			const bool bAdd = Args.Num() >= 3 && Args[2] == TEXT("add");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickGround: the point is not on the screen"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Click on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
+				Controller->SelectAt(Fraction, bAdd);
+			}
+		}));
+
+	/** The main centre of the player (or, with bEnemy, of the first other player known here), or null. */
+	const AHOLBuilding* FindMainCentre(const AHOLPlayerController& Controller, const bool bEnemy)
+	{
+		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
+		for (TActorIterator<AHOLBuilding> It(Controller.GetWorld()); PlayerState && It; ++It)
+		{
+			if (It->GetTypeName() == HOLBuildingTypeNames::MainCentre && (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex()) != bEnemy)
+			{
+				return *It;
+			}
+		}
+		return nullptr;
+	}
+
+	/** Development and scripted checks of the placement (J6a.3, D311), until the Peasant's grid of J6a.5. */
+	FAutoConsoleCommand BuildPlaceCommand(
+		TEXT("hol.Build.Place"),
+		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const FName TypeName(Args.IsEmpty() ? TEXT("House") : *Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->BeginPlacement(TypeName);
+			}
+		}));
+
+	FAutoConsoleCommand BuildClickCommand(
+		TEXT("hol.Build.Click"),
+		TEXT("hol.Build.Click [shift]: a left click in placement mode, where the ghost is (with Shift: stays in the mode)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bKeep = !Args.IsEmpty() && Args[0] == TEXT("shift");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->ClickPlacement(bKeep);
+			}
+		}));
+
+	/** Logs what this machine thinks of a placement, then asks the server (which checks everything again). */
+	void RequestPlacementAt(AHOLPlayerController& Controller, const FName TypeName, const FVector& Point)
+	{
+		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
+		if (!Type)
+		{
+			return;
+		}
+		const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Point);
+		FString Reason;
+		const bool bValid = Controller.CheckPlacementHere(TypeName, Footprint, Reason);
+		UE_LOG(LogHOLMatch, Display, TEXT("Build request: %s at (%.0f, %.0f), here %s"), *TypeName.ToString(), Footprint.GetCenter().X,
+			Footprint.GetCenter().Y, bValid ? TEXT("valid") : *FString::Printf(TEXT("refused (%s)"), *Reason));
+		Controller.RequestPlaceBuilding(TypeName, Point);
+	}
+
+	FAutoConsoleCommand BuildPlaceNearCommand(
+		TEXT("hol.Build.PlaceNear"),
+		TEXT("hol.Build.PlaceNear <Type> <Dx> <Dy> [enemy]: asks the server for a foundation at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame (X toward the map's middle), whatever this machine thinks of it"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Build.PlaceNear <Type> <Dx> <Dy> [enemy]"));
+				return;
+			}
+			const bool bEnemy = Args.Num() >= 4 && Args[3] == TEXT("enemy");
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLBuilding* Centre = FindMainCentre(*Controller, bEnemy);
+				if (!Centre)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Build.PlaceNear: no %s main centre known here"), bEnemy ? TEXT("enemy") : TEXT("own"));
+					continue;
+				}
+				const FVector Offset = Centre->GetActorRotation().RotateVector(FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.));
+				RequestPlacementAt(*Controller, FName(*Args[0]), Centre->GetActorLocation() + Offset);
+			}
+		}));
+
+	FAutoConsoleCommand BuildPlaceAtSourceCommand(
+		TEXT("hol.Build.PlaceAtSource"),
+		TEXT("hol.Build.PlaceAtSource <Type> <X> <Y>: asks the server for a foundation on the standing resource source nearest that ground point (cm), whatever this machine thinks of it"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Build.PlaceAtSource <Type> <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const UHOLSourceSubsystem* Sources = Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+				const int32 Index = Sources ? Sources->FindNearestStanding(FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.)) : INDEX_NONE;
+				if (Index == INDEX_NONE)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Build.PlaceAtSource: no standing source"));
+					continue;
+				}
+				const FHOLSource& Source = Sources->GetSources()[Index];
+				UE_LOG(LogHOLMatch, Display, TEXT("Build on source %d at (%.0f, %.0f)"), Index, Source.Location.X, Source.Location.Y);
+				RequestPlacementAt(*Controller, FName(*Args[0]), Source.Location);
+			}
+		}));
+
+	FAutoConsoleCommand BuildCancelSelectedCommand(
+		TEXT("hol.Build.CancelSelected"),
+		TEXT("hol.Build.CancelSelected: asks the server to cancel the selected building of the player not yet finished (refunded, D311)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCancelBuilding(Controller->GetOwnSelection());
+			}
+		}));
+
+	const TCHAR* DescribeState(const EHOLConstructionState State)
+	{
+		switch (State)
+		{
+		case EHOLConstructionState::Foundation: return TEXT("foundation");
+		case EHOLConstructionState::UnderConstruction: return TEXT("under construction");
+		default: return TEXT("finished");
+		}
+	}
+
+	FAutoConsoleCommand BuildReportCommand(
+		TEXT("hol.Build.Report"),
+		TEXT("hol.Build.Report: logs the local player's stock and every building known here, its state and place"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				TArray<FString> Buildings;
+				for (TActorIterator<AHOLBuilding> It(Controller->GetWorld()); It; ++It)
+				{
+					const bool bOwn = PlayerState && It->GetOwnerPlayer() == PlayerState->GetPlayerIndex();
+					Buildings.Add(FString::Printf(TEXT("%s of slot %d (%s) %s at (%.0f, %.0f)"), *It->GetTypeName().ToString(), It->GetOwnerPlayer(),
+						bOwn ? TEXT("own") : TEXT("other"), DescribeState(It->GetConstructionState()), It->GetActorLocation().X, It->GetActorLocation().Y));
+				}
+				Buildings.Sort();
+				UE_LOG(LogHOLMatch, Display, TEXT("Build report: %s; %d buildings [%s]"), PlayerState ? *PlayerState->DescribeEconomy() : TEXT("no player state"),
+					Buildings.Num(), *FString::Join(Buildings, TEXT("; ")));
+			}
+		}));
+
 	FAutoConsoleCommand ProductionRallyCommand(
 		TEXT("hol.Prod.Rally"),
 		TEXT("hol.Prod.Rally X Y: asks the server to put the rally point of the selected building (own), or of the player's main centre (selected first), at a ground point (cm); on the building, clears it"),
@@ -846,6 +1018,11 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 		RTSCamera->Pan(KeyPan + GetEdgeScroll(), DeltaTime, UE::HeroesOfLiberty::Player::GetSpeedSetting());
 	}
 	KeyPan = FVector2D::ZeroVector;
+
+	if (IsPlacing())
+	{
+		UpdatePlacementGhost();
+	}
 
 	SincePurge += DeltaTime;
 	if (SincePurge >= UE::HeroesOfLiberty::Player::SelectionPurgeInterval)
@@ -1405,6 +1582,13 @@ void AHOLPlayerController::Tick(const float DeltaSeconds)
 
 void AHOLPlayerController::PurgeSelection(const TConstArrayView<FHOLUnitView> Views)
 {
+	if (Selection.IsStale())
+	{
+		// A building gone (a foundation cancelled, J6a.3) leaves the selection.
+		Selection.Reset();
+		BroadcastSelection();
+		return;
+	}
 	if (SelectedSource != INDEX_NONE)
 	{
 		// A used-up source leaves the map, and the selection.
@@ -1457,8 +1641,9 @@ AHOLBuilding* AHOLPlayerController::GetOwnSelection() const
 
 FName AHOLPlayerController::GetGridCellUnitType(const int32 Cell) const
 {
+	// A building under construction produces nothing (D312).
 	const AHOLBuilding* Building = GetOwnSelection();
-	const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr;
+	const FHOLBuildingTypeRow* Type = Building && Building->IsFinished() ? Building->GetType() : nullptr;
 	return Type && Type->Produces.IsValidIndex(Cell) ? Type->Produces[Cell] : NAME_None;
 }
 
@@ -1508,6 +1693,172 @@ void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 S
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
 		ServerSetRallyPoint(Building, Point, SourceIndex);
+	}
+}
+
+void AHOLPlayerController::BeginPlacement(const FName TypeName)
+{
+	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
+	if (!Type || !Type->IsBuildable())
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Placement: %s is not built by builders"), *TypeName.ToString());
+		return;
+	}
+	PlacementType = TypeName;
+	bGhostShown = false;
+	GhostReason.Reset();
+	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s (cost %s)"), *TypeName.ToString(), *Type->Cost.ToString());
+	UpdatePlacementGhost();
+}
+
+void AHOLPlayerController::EndPlacement()
+{
+	if (!IsPlacing())
+	{
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Placement: ended"));
+	PlacementType = NAME_None;
+	bGhostShown = false;
+}
+
+bool AHOLPlayerController::GetPlacementGhost(FName& OutType, FBox2D& OutFootprint, double& OutGroundZ, bool& bOutValid) const
+{
+	if (!IsPlacing() || !bGhostShown)
+	{
+		return false;
+	}
+	OutType = PlacementType;
+	OutFootprint = GhostFootprint;
+	OutGroundZ = GhostGroundZ;
+	bOutValid = bGhostValid;
+	return true;
+}
+
+bool AHOLPlayerController::CheckPlacementHere(const FName TypeName, const FBox2D& Footprint, FString& OutReason) const
+{
+	OutReason.Reset();
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!Type || !HOLPlayerState)
+	{
+		OutReason = TEXT("unknown");
+		return false;
+	}
+	const EHOLPlacementRefusal Refusal = UHOLConstructionSubsystem::CheckPlacement(*GetWorld(), Footprint, HOLPlayerState->GetPlayerIndex());
+	if (Refusal != EHOLPlacementRefusal::None)
+	{
+		OutReason = UHOLConstructionSubsystem::DescribeRefusal(Refusal);
+		return false;
+	}
+	if (!HOLPlayerState->GetResources().Covers(Type->Cost))
+	{
+		OutReason = TEXT("not enough resources");
+		return false;
+	}
+	return true;
+}
+
+void AHOLPlayerController::UpdatePlacementGhost()
+{
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(PlacementType);
+	FVector2D Cursor;
+	FVector Origin, Direction, Ground;
+	const bool bCursor = GetCursorFraction(Cursor);
+	const FVector2D Pixels = ToPixels(Cursor);
+	if (!Type || !RTSCamera || !bCursor || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction)
+		|| !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
+	{
+		bGhostShown = false;
+		return;
+	}
+	// Checked again every frame: the stock, the buildings and the sources change under a ghost that stays still.
+	const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
+	FString Reason;
+	const bool bValid = CheckPlacementHere(PlacementType, Footprint, Reason);
+	const bool bChanged = !bGhostShown || bValid != bGhostValid || Reason != GhostReason || !(Footprint.Min == GhostFootprint.Min);
+	bGhostShown = true;
+	bGhostValid = bValid;
+	GhostReason = Reason;
+	GhostFootprint = Footprint;
+	GhostGroundZ = Ground.Z;
+	if (bChanged)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Placement ghost: %s at (%.0f, %.0f) %s"), *PlacementType.ToString(), Footprint.GetCenter().X,
+			Footprint.GetCenter().Y, bValid ? TEXT("valid") : *FString::Printf(TEXT("refused (%s)"), *Reason));
+	}
+}
+
+void AHOLPlayerController::ClickPlacement(const bool bKeep)
+{
+	if (!IsPlacing())
+	{
+		return;
+	}
+	UpdatePlacementGhost();
+	if (!bGhostShown)
+	{
+		return;
+	}
+	if (!bGhostValid)
+	{
+		// A red ghost places nothing (J6a.5 shows why in a short message).
+		UE_LOG(LogHOLMatch, Display, TEXT("Placement: not here (%s)"), *GhostReason);
+		return;
+	}
+	const FVector2D Centre = GhostFootprint.GetCenter();
+	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s at (%.0f, %.0f)%s"), *PlacementType.ToString(), Centre.X, Centre.Y, bKeep ? TEXT(", Shift: next one") : TEXT(""));
+	RequestPlaceBuilding(PlacementType, FVector(Centre, GhostGroundZ));
+	if (!bKeep)
+	{
+		EndPlacement();
+	}
+}
+
+void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVector& Point)
+{
+	if (!TypeName.IsNone())
+	{
+		ServerPlaceBuilding(TypeName, Point);
+	}
+}
+
+void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
+{
+	if (Building)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Cancel request: %s"), *DescribeBuilding(Building));
+		ServerCancelBuilding(Building);
+	}
+}
+
+void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeName, const FVector_NetQuantize Point)
+{
+	// The order names the player: it pays and owns the foundation (D288); the server checks everything again.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		FHOLConstructionCommand Command;
+		Command.Kind = FHOLConstructionCommand::EKind::Place;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.TypeName = TypeName;
+		Command.Location = Point;
+		Commands->IssueConstructionOrder(Command);
+	}
+}
+
+void AHOLPlayerController::ServerCancelBuilding_Implementation(AHOLBuilding* Building)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLConstructionCommand Command;
+		Command.Kind = FHOLConstructionCommand::EKind::Cancel;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Commands->IssueConstructionOrder(Command);
 	}
 }
 
@@ -1647,8 +1998,9 @@ FString AHOLPlayerController::DescribeBuilding(const AHOLBuilding* Building) con
 	}
 	const AHOLPlayerState* HOLPlayerState = GetPlayerState<AHOLPlayerState>();
 	const bool bOwn = HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Building->GetOwnerPlayer();
-	return FString::Printf(TEXT("%s of slot %d (%s)"), *Building->GetTypeName().ToString(), Building->GetOwnerPlayer(),
-		bOwn ? TEXT("own") : TEXT("other"));
+	return FString::Printf(TEXT("%s of slot %d (%s)%s"), *Building->GetTypeName().ToString(), Building->GetOwnerPlayer(),
+		bOwn ? TEXT("own") : TEXT("other"), Building->IsFoundation() ? TEXT(", foundation")
+			: !Building->IsFinished() ? TEXT(", under construction") : TEXT(""));
 }
 
 FString AHOLPlayerController::DescribeSelection() const
@@ -1695,6 +2047,13 @@ FString AHOLPlayerController::DescribeSelection() const
 
 void AHOLPlayerController::HandleSelectStarted()
 {
+	// In placement mode a left click places (J6a.3): it never selects nor starts a box.
+	if (IsPlacing())
+	{
+		bSelectPressed = false;
+		ClickPlacement(bSelectAddHeld);
+		return;
+	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
 }
 
@@ -1724,6 +2083,12 @@ void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
 
 void AHOLPlayerController::HandleOrder()
 {
+	// A right click leaves placement mode (D313), without ordering anything.
+	if (IsPlacing())
+	{
+		EndPlacement();
+		return;
+	}
 	FVector2D Cursor;
 	if (GetCursorFraction(Cursor))
 	{
@@ -1733,6 +2098,12 @@ void AHOLPlayerController::HandleOrder()
 
 void AHOLPlayerController::HandleDeselect()
 {
+	// Escape leaves placement mode first, the selection kept (D313).
+	if (IsPlacing())
+	{
+		EndPlacement();
+		return;
+	}
 	SetSelection(nullptr);
 }
 

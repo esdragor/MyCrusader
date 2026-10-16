@@ -4,6 +4,7 @@
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionSubsystem.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
@@ -268,12 +269,16 @@ void UHOLGameScreen::BindBuilding(AHOLBuilding* Building)
 	if (AHOLBuilding* Previous = BoundBuilding.Get())
 	{
 		Previous->OnProductionChanged.Remove(ProductionHandle);
+		Previous->OnConstructionChanged.Remove(ConstructionHandle);
 	}
 	ProductionHandle.Reset();
+	ConstructionHandle.Reset();
 	BoundBuilding = Building;
 	if (Building)
 	{
 		ProductionHandle = Building->OnProductionChanged.AddUObject(this, &UHOLGameScreen::Refresh);
+		// A foundation's state and work (J6a.3, D312): its name, its health.
+		ConstructionHandle = Building->OnConstructionChanged.AddUObject(this, &UHOLGameScreen::Refresh);
 	}
 }
 
@@ -366,11 +371,14 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
-	ShownSelection = FString::Printf(TEXT("%s (%s)"), *Building->GetTypeName().ToString(), bOwn ? TEXT("own") : TEXT("other"));
+	ShownSelection = FString::Printf(TEXT("%s (%s)%s"), *Building->GetTypeName().ToString(), bOwn ? TEXT("own") : TEXT("other"),
+		Building->IsFinished() ? TEXT("") : TEXT(", foundation"));
 
 	if (SelectionName)
 	{
-		SelectionName->SetText(HOLGameNames::GetBuildingName(Building->GetTypeName(), Type));
+		// A building not finished shows as its foundation (J6a.3; J6a.5 adds its progress and its cancel cell).
+		const FText Name = HOLGameNames::GetBuildingName(Building->GetTypeName(), Type);
+		SelectionName->SetText(Building->IsFinished() ? Name : FText::Format(LOCTEXT("FoundationName", "Fondation : {0}"), Name));
 	}
 	SetShown(SelectionOwnerRow, true);
 	if (SelectionSwatch)
@@ -385,9 +393,12 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	RefreshUnitActivity(nullptr);
 	if (SelectionHealth)
 	{
-		// No damage before M5: a building is whole.
+		// No damage before M5: a building has the health of its work (D312), whole once finished.
 		const int32 MaxHealth = Type ? Type->MaxHealth : 0;
-		SelectionHealth->SetText(FormatRatio(MaxHealth, MaxHealth));
+		const int64 TotalWork = Type && !Building->IsFinished()
+			? HOLConstruction::GetTotalWork(HOLConstruction::GetBuildSteps(Type->BuildTime, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())) : 0;
+		SelectionHealth->SetText(FormatRatio(HOLConstruction::GetHealth(MaxHealth, Building->IsFinished() ? 1 : Building->GetConstructionWork(),
+			Building->IsFinished() ? 1 : TotalWork), MaxHealth));
 	}
 }
 

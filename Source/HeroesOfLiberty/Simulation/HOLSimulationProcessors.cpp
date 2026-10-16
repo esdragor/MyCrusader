@@ -694,7 +694,8 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
-		if (!Type)
+		// A bare foundation is walked over (D312): only a footprint the navmesh forbids keeps bodies out.
+		if (!Type || !It->BlocksNavigation())
 		{
 			continue;
 		}

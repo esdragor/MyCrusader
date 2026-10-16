@@ -28,6 +28,18 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("MainCentre", "Centre principal");
 		}
+		if (TypeName == HOLBuildingTypeNames::House)
+		{
+			return LOCTEXT("House", "Maison");
+		}
+		if (TypeName == HOLBuildingTypeNames::LumberCamp)
+		{
+			return LOCTEXT("LumberCamp", "Camp de bûcherons");
+		}
+		if (TypeName == HOLBuildingTypeNames::MiningCamp)
+		{
+			return LOCTEXT("MiningCamp", "Camp de mineurs");
+		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
 			return Row->DisplayName;

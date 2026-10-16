@@ -67,6 +67,10 @@ struct FHOLDepositPopup
  * sends the selected units of the player to the ground point, or puts the selected building's rally point there (J4).
  * Production (J3, D282): the cells of the command grid (keys of D30, or a click on the HUD) and the HUD's cancel
  * clicks become requests to the server (RPCs), which queues them in the order queue and applies them at its next step.
+ * Placement (J6a.3, D311): in placement mode a ghost of the building follows the cursor tile by tile, green where the
+ * server would accept it from what this machine knows (the rules of HOLConstruction) and the stock covers its cost,
+ * red otherwise; a left click places it (an RPC, checked again and paid by the server) and leaves the mode, Shift +
+ * click places it and stays; Escape or a right click leave the mode. In the mode, clicks never select nor order.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
@@ -146,6 +150,31 @@ public:
 	FName GetGridCellUnitType(int32 Cell) const;
 	/** A cell of the grid, by its key or a click on the HUD: asks the server to produce its unit type. */
 	void ActivateGridCell(int32 Cell);
+
+	/**
+	 * Placement mode (J6a.3, D311) for a type the builders build (the Peasant's grid of J6a.5 starts it; a development
+	 * command meanwhile): the ghost follows the cursor until a click places it or Escape / a right click ends it.
+	 */
+	void BeginPlacement(FName TypeName);
+	void EndPlacement();
+	bool IsPlacing() const { return !PlacementType.IsNone(); }
+	FName GetPlacementType() const { return PlacementType; }
+	/**
+	 * A left click in placement mode: places the ghost's building if it is green, staying in the mode with bKeep (Shift,
+	 * several foundations in a row) or leaving it; nothing on a red ghost.
+	 */
+	void ClickPlacement(bool bKeep);
+	/** The ghost to draw: its type, footprint, ground height and colour; false when none is shown. */
+	bool GetPlacementGhost(FName& OutType, FBox2D& OutFootprint, double& OutGroundZ, bool& bOutValid) const;
+	/**
+	 * Whether this machine sees a foundation of TypeName on Footprint as possible (the ghost's colour): the rules of
+	 * UHOLConstructionSubsystem::CheckPlacement, then the stock; OutReason says why not ("" when possible).
+	 */
+	bool CheckPlacementHere(FName TypeName, const FBox2D& Footprint, FString& OutReason) const;
+	/** Asks the server to place a foundation of TypeName around a ground point (snapped to the tiles); it checks everything again. */
+	void RequestPlaceBuilding(FName TypeName, const FVector& Point);
+	/** Asks the server to cancel one of the player's buildings not yet finished (refunded, D311). */
+	void RequestCancelBuilding(AHOLBuilding* Building);
 
 	/** Asks the server to queue one unit of TypeName at the selected building (its own). */
 	void RequestProduction(FName TypeName);
@@ -237,6 +266,8 @@ private:
 	void HandleDeselect();
 	void HandleNextIdle();
 	void HandleGridKey(const FInputActionValue& Value, int32 Cell);
+	/** The ghost under the cursor, its colour checked again (placement mode, every frame). */
+	void UpdatePlacementGhost();
 
 	UFUNCTION(Server, Reliable)
 	void ServerQueueProduction(AHOLBuilding* Building, FName TypeName);
@@ -251,6 +282,13 @@ private:
 	/** The units' identifiers and the source's index (J5, D298). */
 	UFUNCTION(Server, Reliable)
 	void ServerGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex);
+
+	/** A type and a ground point (J6a.3, D311): ~16 bytes a foundation. */
+	UFUNCTION(Server, Reliable)
+	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCancelBuilding(AHOLBuilding* Building);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex);
@@ -307,4 +345,12 @@ private:
 
 	/** The « +10 » showing (J5c.3), MaxDepositPopups at most. */
 	TArray<FShownDepositPopup> DepositPopups;
+
+	/** Placement mode (J6a.3): the type placed, None outside the mode; the ghost under the cursor and its colour. */
+	FName PlacementType;
+	bool bGhostShown = false;
+	bool bGhostValid = false;
+	FBox2D GhostFootprint = FBox2D(ForceInit);
+	double GhostGroundZ = 0.0;
+	FString GhostReason;
 };
