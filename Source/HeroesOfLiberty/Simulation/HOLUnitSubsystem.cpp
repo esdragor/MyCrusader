@@ -187,18 +187,34 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 		{
 			Constants.IdleSequence = Constants.WalkSequence = 0;
 		}
-		// Gathering and carrying walks (J5c.1): one out of the provider is dropped (idle or walk played instead).
-		for (FHOLResourceSequences* Sequences : { &Constants.GatherSequences, &Constants.CarryWalkSequences })
+		// Gathering, carrying walks (J5c.1) and loaded idles (J5c.2): one out of the provider is dropped (idle or walk
+		// played instead).
+		const TPair<FHOLResourceSequences*, const TCHAR*> SequenceSets[] = { { &Constants.GatherSequences, TEXT("gathering") },
+			{ &Constants.CarryWalkSequences, TEXT("carrying walk") }, { &Constants.CarryIdleSequences, TEXT("loaded idle") } };
+		for (const TPair<FHOLResourceSequences*, const TCHAR*>& Set : SequenceSets)
 		{
 			for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
 			{
-				int32& Sequence = (*Sequences)[Resource];
+				int32& Sequence = (*Set.Key)[Resource];
 				if (!ensureMsgf(Sequence >= INDEX_NONE && Sequence < NumSequences,
-					TEXT("Unit type '%s': %s sequence %d of %s out of the %d sequences of %s"), *TypeName.ToString(),
-					Sequences == &Constants.GatherSequences ? TEXT("gathering") : TEXT("carrying walk"), Sequence,
+					TEXT("Unit type '%s': %s sequence %d of %s out of the %d sequences of %s"), *TypeName.ToString(), Set.Value, Sequence,
 					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Resource)), NumSequences, *Constants.AnimationProvider.ToString()))
 				{
 					Sequence = INDEX_NONE;
+				}
+			}
+		}
+		// Props (J5c.2): the material knows ids 1 to 8 (the bits of a vertex's mask); one outside is dropped (nothing shown).
+		for (FHOLResourceProps* Props : { &Constants.GatherProps, &Constants.CarryProps })
+		{
+			for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
+			{
+				int32& Prop = (*Props)[Resource];
+				if (!ensureMsgf(Prop >= 0 && Prop <= FHOLResourceProps::MaxId, TEXT("Unit type '%s': %s prop %d of %s out of 0-%d"), *TypeName.ToString(),
+					Props == &Constants.GatherProps ? TEXT("gathering") : TEXT("carrying"), Prop,
+					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Resource)), FHOLResourceProps::MaxId))
+				{
+					Prop = 0;
 				}
 			}
 		}

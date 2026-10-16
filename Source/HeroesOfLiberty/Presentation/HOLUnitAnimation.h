@@ -35,6 +35,11 @@ struct FHOLUnitAnimationChoice
 	float PlayRate = 1.f;
 	/** Gathering at its source: drawn facing it (display only, the simulation's orientation does not change). */
 	bool bFacesSource = false;
+	/**
+	 * Prop of the mesh shown (J5c.2: the tool of the gesture, the load carried; FHOLResourceProps), 0 none. Sent every frame
+	 * as the instance's 4th custom float: it changes at once, while the sequence blends in 0.2 s.
+	 */
+	uint8 Prop = 0;
 
 	bool operator==(const FHOLUnitAnimationChoice& Other) const = default;
 };
@@ -48,14 +53,16 @@ namespace HOLUnitAnimation
 	constexpr float WalkStartSpeedShare = 0.15f;
 	constexpr float WalkStopSpeedShare = 0.10f;
 
-	/** Sequence is one of the type's walks: the plain one or a carrying one. */
+	/** Sequence is one of the type's walks: the plain one or a carrying one. A loaded idle is not a walk. */
 	HEROESOFLIBERTY_API bool IsWalkSequence(const FHOLUnitTypeConstants& Type, int32 Sequence);
 
 	/**
-	 * Gathering at its source: the gesture of the resource (axe, pick, picking berries), whatever its speed (pushed aside,
-	 * it keeps working); else walking (any activity: an order, the round trip, a push) with a load: the carrying walk of
-	 * the load; else the walk or the idle by speed, as before (D234). A walk's play rate is divided by the mesh scale (a
-	 * larger mesh takes longer strides), a gesture's is not. A type without the sequence wanted plays its idle or walk.
+	 * Gathering at its source: the gesture of the resource (axe, pick, picking berries) and its tool, whatever its speed
+	 * (pushed aside, it keeps working); else walking (any activity: an order, the round trip, a push) with a load: the
+	 * carrying walk of the load and the load; else standing with a load: the loaded idle of the load and the load (J5c.2:
+	 * the load stays shown); else the walk or the idle by speed, as before (D234), no prop. A walk's play rate is divided
+	 * by the mesh scale (a larger mesh takes longer strides), a gesture's or an idle's is not. A type without the sequence
+	 * wanted plays its idle or walk, without a prop.
 	 */
 	HEROESOFLIBERTY_API FHOLUnitAnimationChoice Choose(const FHOLUnitTypeConstants& Type, const FHOLUnitAnimationInput& Input);
 }

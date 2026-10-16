@@ -22,7 +22,9 @@ ANIMATIONS = "/Game/CloseCombat/Character/UE4Mannequin/Animations/Swordsman/Move
 PEASANT_ANIMATIONS = "/Game/Units/Mannequin/Animations/"
 # Order = sequence index read by the presentation (D234): the unit type table names them by index (IdleSequence,
 # WalkSequence, GatherSequences, CarryWalkSequences in Tools/Data/UnitTypes.csv). Add at the end only: an index that
-# moves changes what every type plays. The Peasant's (J5c.1) are made by make_peasant_animations.py.
+# moves changes what every type plays. The Peasant's (J5c.1) are made by make_peasant_animations.py. Since J5c.2 the
+# Peasant draws its own mesh, SKM_Peasant, whose provider TP_Peasant (make_peasant_mesh.py) copies this list from
+# TP_Mannequin_Classic, same order, and appends its loaded idles (8 to 10): re-run it after a change here.
 SEQUENCES = [
     ANIMATIONS + "A_SW_Idle",                       # 0 idle (every type)
     ANIMATIONS + "A_SW_Walk_F",                     # 1 walk (every type)

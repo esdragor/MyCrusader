@@ -57,6 +57,49 @@ struct HEROESOFLIBERTY_API FHOLResourceSequences
 };
 
 /**
+ * A prop of a unit's skinned mesh for each of the four base resources (J5c.2): the tool it holds gathering each one, or
+ * the load it carries. A prop is part of the mesh, hidden unless the instance's 4th custom float names it (the Peasant's
+ * material, Tools/Editor/make_peasant_mesh.py): 1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte
+ * of gold. 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
+ * "(Food=3,Wood=4,Stone=5,Gold=6)" in the table, like GatherRates.
+ */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLResourceProps
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "0", ClampMax = "8"))
+	int32 Food = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "0", ClampMax = "8"))
+	int32 Wood = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "0", ClampMax = "8"))
+	int32 Stone = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "0", ClampMax = "8"))
+	int32 Gold = 0;
+
+	/** Highest prop id: the material reads a vertex's props as the 8 bits of its colour's alpha. */
+	static constexpr int32 MaxId = 8;
+
+	int32& operator[](const EHOLResource Resource)
+	{
+		switch (Resource)
+		{
+		case EHOLResource::Wood: return Wood;
+		case EHOLResource::Stone: return Stone;
+		case EHOLResource::Gold: return Gold;
+		default: return Food;
+		}
+	}
+
+	int32 operator[](const EHOLResource Resource) const { return const_cast<FHOLResourceProps&>(*this)[Resource]; }
+
+	bool operator==(const FHOLResourceProps& Other) const = default;
+};
+
+/**
  * Runtime cache of one unit type (D222): a single copy per type, shared by all its units, so the static values
  * are not duplicated 2 000 times and balancing them in the table reaches every unit of the type.
  *
@@ -123,6 +166,17 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 
 	UPROPERTY()
 	float CarryWalkPlayRate = 1.f;
+
+	/** Standing with a load (J5c.2), by resource; INDEX_NONE: the plain idle. */
+	UPROPERTY()
+	FHOLResourceSequences CarryIdleSequences;
+
+	/** Prop shown gathering each resource and carrying a load of it (J5c.2); 0: none. */
+	UPROPERTY()
+	FHOLResourceProps GatherProps;
+
+	UPROPERTY()
+	FHOLResourceProps CarryProps;
 
 	/** Lengths (s) of the provider's sequences by index, read from it by the factory: random start offsets (D234). */
 	UPROPERTY()
@@ -226,6 +280,24 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
 	float CarryWalkPlayRate = 1.f;
 
+	/**
+	 * Idle played standing with a load of each resource (J5c.2: the load stays held, at the play rate of the idle), in
+	 * place of IdleSequence. -1: the plain idle (and no load shown).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	FHOLResourceSequences CarryIdleSequences;
+
+	/**
+	 * Prop of SkinnedMesh shown while gathering each resource (J5c.2: axe for wood, pickaxe for stone and gold, bare hands
+	 * for berries). 0: none.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	FHOLResourceProps GatherProps;
+
+	/** Prop shown carrying a load of each resource, walking or standing (J5c.2: basket, logs, hottes). 0: none. */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	FHOLResourceProps CarryProps;
+
 	/** What producing one unit costs (J3, D283), taken when it is queued. Read by the production, not by Mass. */
 	UPROPERTY(EditAnywhere, Category = "Production")
 	FHOLResources Cost;
@@ -269,6 +341,9 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.GatherPlayRate = GatherPlayRate;
 	Constants.CarryWalkSequences = CarryWalkSequences;
 	Constants.CarryWalkPlayRate = CarryWalkPlayRate;
+	Constants.CarryIdleSequences = CarryIdleSequences;
+	Constants.GatherProps = GatherProps;
+	Constants.CarryProps = CarryProps;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
 	return Constants;

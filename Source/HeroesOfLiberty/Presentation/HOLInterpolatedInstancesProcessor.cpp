@@ -27,11 +27,20 @@ namespace UE::HeroesOfLiberty::Presentation
 	/**
 	 * Player colours (D233), chosen by the client: the units only carry their owner's index. The palette is shared
 	 * with the menu (HOLPlayerColors). Written as linear base colour into the instance's custom data 0-2
-	 * (M_UnitPlayerColor).
+	 * (M_UnitPlayerColor), followed by the prop shown (J5c.2, custom data 3, M_UnitPlayerColorProps; 0 for a type
+	 * without props). Every type writes the four: the float count is one per component, and Mass ensures it.
+	 * Plain floats: Mass copies the struct into its float array at any float offset (FVector4f is 16-byte aligned).
 	 */
-	const FVector3f& GetPlayerColor(const uint8 OwnerPlayer)
+	struct FUnitCustomData
 	{
-		return HOLPlayerColors::GetLinearColor(OwnerPlayer);
+		FVector3f Color;
+		float Prop;
+	};
+	static_assert(sizeof(FUnitCustomData) == 4 * sizeof(float));
+
+	FUnitCustomData GetCustomData(const uint8 OwnerPlayer, const uint8 Prop)
+	{
+		return { HOLPlayerColors::GetLinearColor(OwnerPlayer), static_cast<float>(Prop) };
 	}
 
 	/** Start offset (s) of a unit in a sequence: stable per unit and sequence, so 2 000 units do not step in time. */
@@ -202,11 +211,11 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						Drawn.SetRotation(FRotator(0.f, AnimationState.FacingYaw, 0.f).Quaternion());
 					}
 
-					// Transform, animation and colour in this order for each entity: Mass pairs them by position.
+					// Transform, animation and colour (and prop) in this order for each entity: Mass pairs them by position.
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
-					MeshInfo.AddBatchedCustomData(GetPlayerColor(State.OwnerPlayer), RepresentationLOD.LODSignificance,
+					MeshInfo.AddBatchedCustomData(GetCustomData(State.OwnerPlayer, Choice.Prop), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}

@@ -23,10 +23,15 @@ Primitives (dicts; "t" translation and "q" rotation of the primitive in the prop
     z = height on its local Z; "caps": which ends are closed ("bottom", "top"); optional "cap_color". A cylinder has
     equal radii, a cone a top of (0, 0) (no top cap). 2 x sides wall triangles (sides if pointed), sides - 2 per cap.
   - "prism": "points" [(x, y), ...] convex polygon, counter-clockwise, extruded on its local Z from 0 to "height".
-Triangles are wound so that (b - a) x (c - a) points out of the solid (right-handed maths); the mesh builder must
-check the winding Unreal expects once (normals out) rather than trust this sentence.
+Triangles are wound so that (b - a) x (c - a) points out of the solid (right-handed maths). Unreal's meshes are wound
+the other way round (measured on the mannequin's body, J5c.2c): make_peasant_mesh.py reverses every triangle and keeps
+the normals pointing out.
 Ids (the 4th per-instance float of J5c.2d; 0 = body only, no prop):
   1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte of gold.
+In the mesh (mesh_parts(), J5c.2c), each vertex carries in its colour's alpha the MASK of the props it belongs to, bit
+id - 1 (0 = the body, always shown): a primitive with a "part" key shared by several props (the hotte's wicker and straps)
+is written once with the bits of all of them, so the stone and gold hottes cost one hotte and two heaps. Hence at most 8
+props per mesh (one byte).
 Run alone to print the table of props:  python Tools/Editor/peasant_props.py
 """
 import math
@@ -280,6 +285,9 @@ def make_hotte(content):
                         10, WICKER_DARK, caps=()),
     ]
     prims += strap(STRAP_R, LEATHER) + strap([mirror_right(p) for p in STRAP_R], LEATHER)
+    # The wicker and the straps are the same for both contents: one part in the mesh, shown with either hotte.
+    for prim in prims:
+        prim["part"] = "hotte"
     if content == "stone":
         fill, light, dark = STONE, STONE_LIGHT, STONE_DARK
         ident, name, label = 5, "hotte_stone", "hotte de pierre"
@@ -419,6 +427,57 @@ def bind_mesh(prop, sk):
     return {"bone": prop["bone"], "vertices": vertices, "triangles": triangles, "colors": colors}
 
 
+def prop_bit(prop):
+    """The prop's bit in a vertex's mask (see the module's docstring)."""
+    if not 1 <= prop["id"] <= 8:
+        raise ValueError("Prop id %d out of 1-8: a mesh's vertex mask is one byte" % prop["id"])
+    return 1 << (prop["id"] - 1)
+
+
+def mesh_parts(sk):
+    """What the Peasant's mesh contains besides the body: each part once (primitives of one prop, or shared by several
+    through their "part" key), with the mask of the props that show it and its bone. Parts sharing a key must have the
+    same bone and frame (they are written with the frame of the first prop that has them)."""
+    parts = {}
+    for prop in sorted(build_props(sk).values(), key=lambda p: p["id"]):
+        for prim in prop["prims"]:
+            key = prim.get("part", prop["name"])
+            part = parts.setdefault(key, {"key": key, "mask": 0, "owner": prop, "prims": []})
+            part["mask"] |= prop_bit(prop)
+            if part["owner"] is prop:
+                part["prims"].append(prim)
+            elif prop["bone"] != part["owner"]["bone"] or prop_frame_reference(prop, sk) != prop_frame_reference(part["owner"], sk):
+                raise ValueError("Part %s shared by %s and %s on different frames" % (key, part["owner"]["name"], prop["name"]))
+    return list(parts.values())
+
+
+def part_buffers(part, sk, decimals=3):
+    """A part's buffers for the mesh, in component space in the bind pose: vertices welded where position, normal and
+    colour agree (flat normal per triangle: the props are faceted), one normal and one sRGB colour per vertex, triangles
+    as index triples wound so (b - a) x (c - a) points out of the solid."""
+    owner = part["owner"]
+    triangles = [tri for prim in part["prims"] for tri in primitive_triangles(prim)]
+    vertices, normals, colors, indices, index = [], [], [], [], {}
+    for tri, col in posed_triangles(owner, sk, sk.ref_world, triangles):
+        a, b, c = tri
+        n = anim_rig.cross(anim_rig.sub(b, a), anim_rig.sub(c, a))
+        if anim_rig.length(n) < 1e-9:
+            continue
+        n = anim_rig.normalize(n)
+        face = []
+        for v in tri:
+            key = (tuple(round(x, decimals) for x in v), tuple(round(x, 4) for x in n), col)
+            if key not in index:
+                index[key] = len(vertices)
+                vertices.append(tuple(v))
+                normals.append(n)
+                colors.append(col)
+            face.append(index[key])
+        indices.append(tuple(face))
+    return {"key": part["key"], "mask": part["mask"], "bone": owner["bone"], "vertices": vertices, "normals": normals,
+            "colors": colors, "triangles": indices}
+
+
 def extents(prop):
     """Size of the prop along its prop frame's axes (cm)."""
     points = [p for tri, _ in prop_triangles(prop) for p in tri]
@@ -437,6 +496,16 @@ def main():
         print("%-3d %-12s %-12s %-6s %-26s %-5d (%.1f, %.1f, %.1f) (%.4f, %.4f, %.4f, %.4f)"
               % (prop["id"], prop["name"], prop["bone"], prop["frame"], "%.0f x %.0f x %.0f" % size,
                  len(prop_triangles(prop)), t[0], t[1], t[2], q[0], q[1], q[2], q[3]))
+    print("\nParties du maillage (masque = bits des pieces qui la montrent) :")
+    total_vertices = total_triangles = 0
+    for part in mesh_parts(sk):
+        buffers = part_buffers(part, sk)
+        total_vertices += len(buffers["vertices"])
+        total_triangles += len(buffers["triangles"])
+        print("  %-12s masque %3d (0b%s)  os %-12s %4d sommets %4d triangles"
+              % (part["key"], part["mask"], format(part["mask"], "08b"), part["owner"]["bone"], len(buffers["vertices"]),
+                 len(buffers["triangles"])))
+    print("  total : %d sommets, %d triangles" % (total_vertices, total_triangles))
 
 
 if __name__ == "__main__":
