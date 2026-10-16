@@ -110,13 +110,14 @@ vérifier sur S1 et S2.
    ~~Question en suspens : inactifs en trop à 175~~ → **tranchée le 2026-10-16** (D309 précisée, point 6) : massif
    plein → **bosquet voisin** de la même ressource à ~20 m au plus du massif, sinon **rangées d'attente sans limite**
    devant la source visée. Faite, **validée** par l'utilisateur et commitée (2026-10-16). Suite : **J5b.3**.
-   **Reprise dans une nouvelle séance** (« continue JourneyInProgress ») : en sous-agents (règle ci-dessous), d'abord
-   poser la question A / B / C à l'utilisateur, puis J5b.3 point par point (préparation dans le journal du 2026-10-16).
+   **J5b.3, points 1 et 2 faits, validés, commités** (2026-10-16, a067c11) : parties « gather » solo et 2 clients de
+   `quick_check` (PASS en 77-78 s, tests 39/39), verbe `waitidle`, correctif des inactifs empilés au centre (`Stop` →
+   `bSettling`). **Point 3 fait** (au repos) : S1 2,18 / S2 2,74 / S7 2,16 ms, S5 31,2 Ko/s (erreur 21,6 cm), tous PASS ;
+   les 632 bois/s de S7 étaient un effet de fenêtre (vagues d'allers-retours ; régime 1 201 bois/s).
+   **Suite : clôture de J5b** (D307 à D309 au GDD ; D306 y est déjà), puis **J5c** (animations : décision de
+   l'utilisateur sur leur source). En sous-agents (règle ci-dessous).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
-   **J5b.3, points 1 et 2 faits** (2026-10-16, non commités) : parties « gather » solo et 2 clients de `quick_check`
-   (PASS en 77-78 s, tests 39/39), verbe `waitidle`, correctif des inactifs empilés au centre (`Stop` → `bSettling`).
-   Essai validé, commités. Suite : point 3 (S2 / S7 au repos, S7 long, S5 sur serveur recuit), puis clôture de J5b.
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
@@ -2266,3 +2267,34 @@ d'épée).
   simulation, S2 / S7 à refaire), puis essai de l'utilisateur (4 ressources, HUD, inactifs ; inactifs au dépôt séparés).
 - Session d'essai lancée (deuxième écran) pour l'essai de J5b.3 (4 ressources, HUD, inactifs, correctif `Stop`).
 - **Essai validé** par l'utilisateur (« c'est bon ») ; points 1 et 2 de J5b.3 commités (sans les lignes du plan de J6). Reprise : point 3 (S2 / S7 au repos, S7 long, S5 sur serveur recuit).
+
+### 2026-10-16 — J5b.3 : mesures au repos
+
+- Sous-agent, rien de commité, aucun code touché. Machine au repos : ~10-15 % du processeur avant les mesures, aucun
+  Unreal, ProjectShiva ni compilation ; ouverts : VS Code (inactif, son installateur de mise à jour en attente),
+  Discord (~3 %), Opera, Battle.net ; autres processus pendant les mesures 7-9 % en moyenne (au plus 16 %). Éditeur
+  compilé à jour (rien à refaire), hors écran (`-RenderOffScreen -ResX=888 -ResY=500`, journaux
+  `Saved_Tests\Logs\rest3_s1.log`, `rest3_s2.log`, `rest3_s7.log`, `rest3_s7long.log`) :
+  - **S1** (10 s) : **2,184 ms PASS** (2,233 en c234f84) ; évitement à l'arrêt 8,1 ms un pas sur 6 ;
+  - **S2** (10 s) : **2,738 ms PASS** (2,779) ; 583 puis 393 paires l'une sur l'autre (547 / 387) ;
+  - **S7** (20 s) : **2,155 ms PASS** (2,906 ; marge 0,85 ms au lieu de 0,09) ; évitement à l'arrêt 5,6 ms un pas
+    sur 6, récolte 0,204, ordres 0,157 (0,27), séparation 0,117 (0,42) ; **1 198 bois/s** (1 170), 13,1 chemins/s,
+    220,8 chemins gardés repris/s ; 0 raté, 0 inactif ; 1 341 puis 1 503 paires l'une sur l'autre (voulu, D309).
+- **S7 long** (180 s de mesure, `hol.Gather.LogDeposits 1`, `hol.Gather.Report` toutes les 10 s par
+  `Saved_Tests\rest3_s7long.seq`) : les 632 bois/s étaient un **effet de fenêtre**, pas une baisse. Les 2 000 Paysans
+  partent ensemble, donc les déchargements viennent par **vagues** (~15 s, un aller-retour) : de 3 620 bois/s à 0 sur
+  1 s (aucun déchargement de 30 à 32 s après l'ordre). La fenêtre de 10 s qui suit la chauffe de 25 s (25-35 s) donne
+  **647 bois/s** : c'est celle d'un S7 de 10 s (632). Sur 20 s (25-45 s) : 1 214 ; de 25 à 150 s : **1 201 bois/s**
+  en moyenne, fenêtres de 10 s entre 454 et 1 812, vagues qui s'amortissent (792-1 499 de 85 à 140 s). Aucun inactif,
+  aucune place ni dépôt manqué, 0 « sans place libre » jusqu'à 150 s. Ensuite le champ s'épuise (480 arbres de 400
+  bois = 192 000 ; premier arbre épuisé à ~85 s, tous à ~180 s) : 399 bois/s de 150 à 205 s, 342 envoyés vers un
+  bosquet, 1 937 arrêtés inactifs faute de place ; à la fin 1 998 inactifs dont **1 198 gardent leur charge** (ils
+  ne vont pas décharger le reste quand plus rien n'est à récolter : à décider si on le veut). Moyenne de la mesure
+  958 bois/s (épuisement compris) ; 2,325 ms par pas (journal de chaque déchargement compris : non comparable).
+  11 Paysans nés hors du navmesh dans ce passage (avertissement, 0 dans les passages courts).
+- **S5 court au repos** (`net_match.ps1 -Stage -Units 2000 -Seconds 40`, serveur recuit sur a067c11, 195 s en tout,
+  processeur 8-10 % avant) : **PASS à 31 227 o/s par client** (31 082 en 535b7c8 : +145 o/s, `GatherTrip` de D307 ;
+  seuil 32 000 : **marge de 0,77 Ko/s**, 0,92 avant), 1,78 envoi par unité et par seconde, 42 paquets/s, écart affiché
+  **21,6 cm** (22,7 ; seuil 25), réplication 0,148 ms par pas, simulation du serveur 6,95 ms (2 clients sur la même
+  machine). Client : états 25,5 Ko/s, le reste 5,9 Ko/s.
+- Tout PASS : point 3 de J5b.3 fait. Reste : clôture de J5b (D306-D309 au GDD, au choix de l'utilisateur), puis J5c.
