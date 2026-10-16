@@ -8,8 +8,12 @@
 
 /**
  * The game HUD for the scripted checks (J3, D284): what it shows, and a click on it by the same path as the mouse.
- *   hol.HUD.Report [DelaySeconds=0]   logs "HUD report: resources ..., selection ..., grid ..., queue ..."
- *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the grid (GridCell00 to GridCell11, A to V) or an
+ *   hol.HUD.Report [DelaySeconds=0]   logs "HUD report: resources ..., selection ..., grid ..., queue ..." and, with
+ *   the grid shown, "HUD cells: A: Maison; ..." (what the cells write) and "HUD tooltips: A: Maison | W 50 | +10
+ *   population; ..." (J6a.5); a group of buildings' selection ends with its active subgroup (Tab): "7 buildings (own):
+ *   MainCentre x1 House x6, subgroup All (7)", the cells being that subgroup's
+ *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the grid (GridCell00 to GridCell11, A to V: with
+ *   Peasants selected GridCell00 house, GridCell01 lumber camp, GridCell02 mining camp; a site's « Annuler » GridCell11) or an
  *   item of the queue (QueueItem0 to QueueItem4), the idle workers' counter (IdleWorkers), or a button of the cheats'
  *   panel (CheatToggle, CheatFood, CheatWood, CheatStone, CheatGold, CheatAll, CheatPopulation, CheatFastBuild); a
  *   hidden or greyed one is not clicked
@@ -41,6 +45,9 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		WithGameScreen(World, Delay, [](UHOLGameScreen& Screen)
 		{
 			UE_LOG(LogHOLUI, Display, TEXT("HUD report: %s"), *Screen.Describe());
+			// On their own lines too (J6a.5): what the grid's cells write, and their tooltips.
+			UE_LOG(LogHOLUI, Display, TEXT("HUD cells: %s"), *Screen.DescribeCells());
+			UE_LOG(LogHOLUI, Display, TEXT("HUD tooltips: %s"), *Screen.DescribeTooltips());
 			// On its own line: the checks read the report's line to its end.
 			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
 			{

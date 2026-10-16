@@ -33,6 +33,11 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 
 	/** The selection's rings and frame: a neutral white, whoever the owner (the user's trial of J4). */
 	const FLinearColor SelectionColor(0.85f, 0.85f, 0.85f);
+	/**
+	 * The frame of a group's building out of its active subgroup (Tab, the user's 2nd trial of J6a.5): the same white,
+	 * its stroke a third as thick (a darker grey melts into the ground, as the first try showed).
+	 */
+	constexpr double DimmedStrokeScale = 1.0 / 3.0;
 	/** A unit's ring: its radius over the body's, and its stroke (cm). */
 	constexpr double RingRadiusFactor = 1.4;
 	constexpr double RingStroke = 12.0;
@@ -143,8 +148,6 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("Root")));
 	Rings = MakeMarkerComponent(*this, TEXT("Rings"));
 	Frames = MakeMarkerComponent(*this, TEXT("Frames"));
-	FlagPole = MakeFlagComponent(*this, TEXT("FlagPole"));
-	FlagCloth = MakeFlagComponent(*this, TEXT("FlagCloth"));
 	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
@@ -172,15 +175,12 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	GhostFrames->SetMaterial(0, Frames->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
-	FlagPole->SetStaticMesh(Cube);
-	FlagCloth->SetStaticMesh(Cube);
+	CubeMesh = Cube;
 	if (Flat)
 	{
-		UMaterialInstanceDynamic* PoleMaterial = UMaterialInstanceDynamic::Create(Flat, this);
+		PoleMaterial = UMaterialInstanceDynamic::Create(Flat, this);
 		PoleMaterial->SetVectorParameterValue(TEXT("Color"), PoleColor);
-		FlagPole->SetMaterial(0, PoleMaterial);
 		ClothMaterial = UMaterialInstanceDynamic::Create(Flat, this);
-		FlagCloth->SetMaterial(0, ClothMaterial);
 		GhostMaterial = UMaterialInstanceDynamic::Create(Flat, this);
 	}
 	for (UStaticMeshComponent* Edge : GhostEdges)
@@ -188,8 +188,28 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 		Edge->SetStaticMesh(Cube);
 		Edge->SetMaterial(0, GhostMaterial);
 	}
-	FlagPole->SetRelativeScale3D(FVector(PoleWidth, PoleWidth, PoleHeight) / ShapeSize);
-	FlagCloth->SetRelativeScale3D(ClothSize / ShapeSize);
+}
+
+void AHOLSelectionMarkers::AddFlag()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	const int32 Index = FlagPoles.Num();
+	UStaticMeshComponent* Parts[2] = {};
+	for (int32 Part = 0; Part < 2; ++Part)
+	{
+		UStaticMeshComponent* Component = NewObject<UStaticMeshComponent>(this, *FString::Printf(TEXT("Flag%s%d"), Part == 0 ? TEXT("Pole") : TEXT("Cloth"), Index));
+		Component->SetupAttachment(GetRootComponent());
+		Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Component->SetCastShadow(false);
+		Component->SetStaticMesh(CubeMesh);
+		Component->SetMaterial(0, Part == 0 ? PoleMaterial.Get() : ClothMaterial.Get());
+		Component->SetRelativeScale3D(Part == 0 ? FVector(PoleWidth, PoleWidth, PoleHeight) / ShapeSize : ClothSize / ShapeSize);
+		Component->RegisterComponent();
+		Parts[Part] = Component;
+	}
+	FlagPoles.Add(Parts[0]);
+	FlagCloths.Add(Parts[1]);
 }
 
 void AHOLSelectionMarkers::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -271,12 +291,25 @@ void AHOLSelectionMarkers::UpdateFrame()
 	TArray<FTransform> Transforms;
 	TArray<float> CustomData;
 	const AHOLPlayerController* PlayerController = Controller.Get();
-	const AHOLBuilding* Building = PlayerController ? PlayerController->GetSelection() : nullptr;
-	if (const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr)
+	// The selected building, or each of a group (an F key, D30), those out of its active subgroup thinner (Tab).
+	TArray<AHOLBuilding*> Buildings;
+	FHOLSubgroup Active;
+	if (PlayerController)
 	{
-		const FVector2D Size = Type->Footprint + FVector2D(FrameMargin * 2.0);
-		Transforms.Add(MarkerTransform(Building->GetActorLocation(), Size.X, Size.Y));
-		AddCustomData(CustomData, SelectionColor, FrameStroke * 2.0 / Size.GetMax());
+		PlayerController->GetSelectedBuildings(Buildings);
+		PlayerController->GetActiveSubgroup(Active);
+	}
+	DimmedFrames = 0;
+	for (int32 Index = 0; Index < Buildings.Num(); ++Index)
+	{
+		if (const FHOLBuildingTypeRow* Type = Buildings[Index]->GetType())
+		{
+			const bool bDimmed = !Active.bAll && !Active.Members.IsEmpty() && !Active.Members.Contains(Index);
+			DimmedFrames += bDimmed ? 1 : 0;
+			const FVector2D Size = Type->Footprint + FVector2D(FrameMargin * 2.0);
+			Transforms.Add(MarkerTransform(Buildings[Index]->GetActorLocation(), Size.X, Size.Y));
+			AddCustomData(CustomData, SelectionColor, FrameStroke * (bDimmed ? DimmedStrokeScale : 1.0) * 2.0 / Size.GetMax());
+		}
 	}
 	SetInstances(*Frames, Transforms, CustomData);
 }
@@ -285,26 +318,43 @@ void AHOLSelectionMarkers::UpdateFlag()
 {
 	using namespace UE::HeroesOfLiberty::SelectionMarkers;
 
-	// The rally point reaches its owner only (D282): shown while the player's own building is selected.
+	// The rally point reaches its owner only (D282): shown while the player's own building is selected, or for each
+	// building of a group's active subgroup (all of them for « Tous », the user's 3rd trial of J6a.5); followed each
+	// frame, so Tab and a right click on the group move them at once.
 	const AHOLPlayerController* PlayerController = Controller.Get();
-	const AHOLBuilding* Building = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
-	const bool bShown = Building && Building->HasRallyPoint();
-	if (FlagPole->bHiddenInGame == bShown)
+	TArray<AHOLBuilding*> Buildings;
+	if (PlayerController)
 	{
-		FlagPole->SetHiddenInGame(!bShown);
-		FlagCloth->SetHiddenInGame(!bShown);
+		PlayerController->GetCommandBuildings(Buildings);
 	}
-	if (!bShown)
+	Buildings.RemoveAll([](const AHOLBuilding* Building) { return !Building || !Building->HasRallyPoint(); });
+	while (FlagPoles.Num() < Buildings.Num())
 	{
-		return;
+		AddFlag();
 	}
-	const FVector Foot = Building->GetRallyPoint();
-	FlagPole->SetWorldLocation(Foot + FVector(0.0, 0.0, PoleHeight * 0.5));
-	// The cloth hangs from the top of the pole, on its right as the camera sees it (the camera looks along +X, D254).
-	FlagCloth->SetWorldLocation(Foot + FVector(0.0, ClothSize.Y * 0.5, PoleHeight - ClothSize.Z * 0.5));
-	if (ClothMaterial)
+	FlagFeet.Reset();
+	for (int32 Index = 0; Index < FlagPoles.Num(); ++Index)
 	{
-		ClothMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(HOLPlayerColors::GetColor(Building->GetColorIndex())));
+		const bool bShown = Buildings.IsValidIndex(Index);
+		if (FlagPoles[Index]->bHiddenInGame == bShown)
+		{
+			FlagPoles[Index]->SetHiddenInGame(!bShown);
+			FlagCloths[Index]->SetHiddenInGame(!bShown);
+		}
+		if (!bShown)
+		{
+			continue;
+		}
+		const FVector Foot = Buildings[Index]->GetRallyPoint();
+		FlagFeet.Add(Foot);
+		FlagPoles[Index]->SetWorldLocation(Foot + FVector(0.0, 0.0, PoleHeight * 0.5));
+		// The cloth hangs from the top of the pole, on its right as the camera sees it (the camera looks along +X, D254).
+		FlagCloths[Index]->SetWorldLocation(Foot + FVector(0.0, ClothSize.Y * 0.5, PoleHeight - ClothSize.Z * 0.5));
+	}
+	// The player's own buildings: one colour for every cloth.
+	if (ClothMaterial && !Buildings.IsEmpty())
+	{
+		ClothMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(HOLPlayerColors::GetColor(Buildings[0]->GetColorIndex())));
 	}
 }
 
@@ -376,6 +426,11 @@ void AHOLSelectionMarkers::UpdateGhost()
 FString AHOLSelectionMarkers::Describe() const
 {
 	const int32 NumPings = PingAge < UE::HeroesOfLiberty::SelectionMarkers::PingSeconds ? 1 : 0;
-	return FString::Printf(TEXT("rings %d, frame %d, flag %d, ghost %s"), Rings->GetInstanceCount() - NumPings, Frames->GetInstanceCount(),
-		FlagPole->bHiddenInGame ? 0 : 1, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"));
+	FString Flags = FString::FromInt(FlagFeet.Num());
+	for (int32 Index = 0; Index < FlagFeet.Num(); ++Index)
+	{
+		Flags += FString::Printf(TEXT("%s(%.0f, %.0f)"), Index == 0 ? TEXT(" at ") : TEXT(" "), FlagFeet[Index].X, FlagFeet[Index].Y);
+	}
+	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, frames dimmed %d"), Rings->GetInstanceCount() - NumPings, Frames->GetInstanceCount(),
+		*Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"), DimmedFrames);
 }

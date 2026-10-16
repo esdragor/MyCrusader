@@ -28,6 +28,8 @@ namespace HOLUIStyle
 	const FLinearColor Wood(0.32f, 0.16f, 0.05f, 1.f);
 	const FLinearColor Stone(0.45f, 0.45f, 0.45f, 1.f);
 	const FLinearColor Gold(0.85f, 0.6f, 0.08f, 1.f);
+	/** A cost the stock does not cover (D313): its amount in red. */
+	const FLinearColor Missing(0.95f, 0.22f, 0.16f, 1.f);
 
 	/** Shows the keyboard focus on a button: the focused style while it has it (UHOLButtonStyleFocused by default), its
 	 *  own style otherwise. */
@@ -124,6 +126,19 @@ public:
 	UHOLTextStyleHUDSmall();
 };
 
+/**
+ * The names in the cells of the command grid (J6a.5: « Camp de bûcherons » on two lines of a 76 px cell, the cell
+ * showing nothing else, at 1440p as at 900p).
+ */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUDTiny : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUDTiny();
+};
+
 /** Labels, key letters and hints of the HUD. */
 UCLASS()
 class HEROESOFLIBERTYUI_API UHOLTextStyleHUDLabel : public UHOLTextStyle
@@ -153,6 +168,17 @@ class HEROESOFLIBERTYUI_API UHOLHUDButtonStyle : public UCommonButtonStyle
 
 public:
 	UHOLHUDButtonStyle();
+};
+
+/** A greyed cell of the grid that still takes a click (D313: not enough resources, the click says why): darker, a dim
+ *  outline when hovered. */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLHUDButtonStyleGreyed : public UHOLHUDButtonStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLHUDButtonStyleGreyed();
 };
 
 /** Menu buttons: flat, rounded, the accent colour when hovered. */

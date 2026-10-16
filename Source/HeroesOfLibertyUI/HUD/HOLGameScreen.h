@@ -4,6 +4,7 @@
 #include "CommonActivatableWidget.h"
 #include "Input/UIActionBindingHandle.h"
 #include "Match/HOLResources.h"
+#include "Player/HOLCommandGrid.h"
 #include "HOLGameScreen.generated.h"
 
 class AHOLBuilding;
@@ -26,7 +27,15 @@ struct FHOLUnitTypeRow;
  * number, the workers among them by activity) or resource source (J5b: its name and what it still holds);
  * bottom right, the command grid (D30) of the player's own selected
  * building and, above it, that building's production queue, whose head shows its progress, computed on this machine
- * every frame from the server's clock (D282). The HUD reads the match and never changes it: a click on a cell or on
+ * every frame from the server's clock (D282). With the player's Peasants selected, the grid shows the buildings they
+ * build (J6a.5, D313: A house, Z lumber camp, E mining camp). A cell shows its name only (no icon yet, no cost: the
+ * user's trial of J6a.5); its tooltip gives name, cost (the missing amounts in red) and effect; greyed when the stock
+ * does not cover it. A site selected shows its progress, its builders and an « Annuler » cell (V). Several of the
+ * player's buildings selected together (F1, F2, F3, D30) show their active subgroup (Tab: « Tous (7) », « Maison × 6 »,
+ * « Centre principal »), then by type and number, the grid that subgroup's cells (the user's 2nd trial of J6a.5). A
+ * short message above the grid says why a command did not go through (« Pas assez de bois », « Aucun bâtiment
+ * militaire ») or that the production waits for room (« Population maximale — construisez des maisons »).
+ * The HUD reads the match and never changes it: a click on a cell or on
  * an item of the queue goes to the controller, then the server (D252); the grid's keys are the controller's own
  * (IMC_Game). Built in code when no Blueprint gives it a layout (D242).
  * Input stays the game's: input mode All, no Back handler (Escape deselects through IA_Deselect), never the keyboard
@@ -55,6 +64,15 @@ public:
 	 * hidden or greyed.
 	 */
 	bool ClickWidget(FName Name);
+
+	/** The tooltips of the grid's cells: "A: Maison | W 50 | +10 population; Z: ..." (hol.HUD.Report). */
+	FString DescribeTooltips() const;
+	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
+	FString DescribeCells() const;
+
+	/** Seconds a short message stays above the grid (D313), the last of them fading out. */
+	static constexpr float MessageSeconds = 3.f;
+	static constexpr float MessageFadeSeconds = 0.5f;
 
 	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
 	UBorder* GetTopBar() const { return TopBar; }
@@ -135,6 +153,23 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionActivity;
 
+	/** A building not finished (J6a.5, D313): its progress, a bar and « 45 % ». */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHorizontalBox> SelectionProgressRow;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UProgressBar> SelectionProgress;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> SelectionProgressText;
+
+	/** The short message above the grid (D313). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UBorder> MessagePanel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> MessageText;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
@@ -178,6 +213,8 @@ private:
 	void RefreshUnitSelection(TConstArrayView<uint32> UnitIds);
 	/** The selected resource source (J5b, D298): its name and what it still holds, read again every frame. */
 	void RefreshSourceSelection(int32 SourceIndex);
+	/** Several of the player's buildings (an F key, D30): the active subgroup, then by type and number, the sites among them. */
+	void RefreshBuildingGroup(TConstArrayView<AHOLBuilding*> Buildings);
 	/**
 	 * The line of a gatherer selected alone (J5, D298), or hidden (null): what it does and carries, read again every
 	 * frame and written when it changed (D303).
@@ -188,13 +225,26 @@ private:
 	/** The idle workers' counter, written when their number changed. */
 	void RefreshIdleWorkers();
 	void HandleIdleWorkersClicked();
-	void RefreshGrid(const AHOLBuilding* OwnBuilding, const AHOLPlayerState* PlayerState);
+	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
+	void RefreshGrid(const AHOLBuilding* OwnBuilding, bool bOwnGroup, const AHOLPlayerState* PlayerState);
 	void RefreshQueue(const AHOLBuilding* OwnBuilding);
 	/** The head of the queue: its progress (every frame) or the population note. */
 	void UpdateHead();
 
 	void HandleGridCellClicked(int32 Cell);
 	void HandleQueueItemClicked(int32 Index);
+
+	/** A command that did not go through (D313), from the controller: its short message. */
+	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
+	/** Shows a short message above the grid for MessageSeconds; Key names it in the logs and in Describe. */
+	void ShowMessage(const FString& Key, const FText& Text);
+	/** The message's age: it fades, then hides. */
+	void UpdateMessage(float DeltaSeconds);
+	/**
+	 * One of the player's buildings has a unit waiting for room in the population (D313): when that starts, the message
+	 * « Population maximale — construisez des maisons ».
+	 */
+	void CheckPopulationBlocked();
 
 	const FHOLUnitTypeRow* FindUnitType(FName TypeName) const;
 
@@ -211,6 +261,7 @@ private:
 	FDelegateHandle EconomyHandle;
 	FDelegateHandle ProductionHandle;
 	FDelegateHandle ConstructionHandle;
+	FDelegateHandle FeedbackHandle;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;
@@ -219,7 +270,7 @@ private:
 	int32 ShownPopulationCap = 0;
 	FHOLResources ShownGatherers;
 	int32 ShownIdleWorkers = INDEX_NONE;
-	/** Seconds since a group's activities were read again. */
+	/** Seconds since a group's activities (or a group of buildings) were read again. */
 	float SinceGroupRefresh = 0.f;
 	FString ShownSelection = TEXT("none");
 	/**
@@ -233,4 +284,9 @@ private:
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
 	float HeadProgress = 0.f;
+	/** The short message shown (its key, empty: none) and its age (s). */
+	FString MessageKey;
+	float MessageAge = 0.f;
+	/** A unit of the player waits for room in the population (the last check). */
+	bool bPopulationBlocked = false;
 };

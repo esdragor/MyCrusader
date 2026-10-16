@@ -26,6 +26,18 @@ enum class EHOLConstructionState : uint8
 };
 
 /**
+ * What a building is for (D30, the user's trial of J6a.5): F1 selects the player's military buildings, F2 its economic
+ * ones, F3 its technological ones. Every type of the prototype is economic (§ 17: centre, houses, camps).
+ */
+UENUM()
+enum class EHOLBuildingCategory : uint8
+{
+	Economic,
+	Military,
+	Technological,
+};
+
+/**
  * One building type (D260): a row of /Game/Buildings/BuildingTypes, imported from Tools/Data/BuildingTypes.csv by
  * Tools/Editor/make_building_types.py, like the unit types (D221, D227). The values are provisional by nature and
  * are balanced in the CSV.
@@ -92,6 +104,10 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	int32 BuildGridSlot = INDEX_NONE;
 
 	bool IsBuildable() const { return BuildGridSlot != INDEX_NONE; }
+
+	/** Its category (D30): the F key that selects it with the others of its kind (F1 military, F2 economic, F3 technological). */
+	UPROPERTY(EditAnywhere, Category = "Display")
+	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
 };
 
 /** Where the building type table lives (DefaultGame.ini). */
@@ -141,6 +157,9 @@ public:
 
 	/** The row of a type, or null (logged) if the table or the row is missing. */
 	static const FHOLBuildingTypeRow* FindType(FName TypeName);
+
+	/** The types builders build, each with its cell in their grid (BuildGridSlot, D313), in the table's order. */
+	static void GetBuildableTypes(TArray<TPair<FName, int32>>& OutTypes);
 };
 
 /** Row names of the building type table used by the code. */

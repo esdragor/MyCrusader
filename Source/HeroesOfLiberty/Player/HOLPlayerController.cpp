@@ -35,6 +35,7 @@
 #include "Settings/HOLGameUserSettings.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::Player
@@ -370,6 +371,53 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->SelectNextIdleWorker();
+			}
+		}));
+
+	/** The F1, F2, F3 keys (D30, the user's trial of J6a.5), without the keyboard. */
+	FAutoConsoleCommand CategoryCommand(
+		TEXT("hol.Select.Category"),
+		TEXT("hol.Select.Category <Military|Economic|Technological>: selects all the local player's buildings of the category, as F1, F2, F3; again, the camera goes to the next one"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int64 Value = Args.IsEmpty() ? INDEX_NONE : StaticEnum<EHOLBuildingCategory>()->GetValueByNameString(Args[0]);
+			if (Value == INDEX_NONE)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Category <Military|Economic|Technological>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectBuildingCategory(static_cast<EHOLBuildingCategory>(Value));
+			}
+		}));
+
+	/** A cell of the command grid (J6a.5), as its key or a click on the HUD: 0 to 11, A Z E R / Q S D F / W X C V. */
+	FAutoConsoleCommand GridCommand(
+		TEXT("hol.Select.Grid"),
+		TEXT("hol.Select.Grid <Cell>: activates a cell of the command grid (0 = A ... 11 = V), as its key"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Grid <Cell>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->ActivateGridCell(FCString::Atoi(*Args[0]));
+			}
+		}));
+
+	/** Tab (the user's 2nd trial of J6a.5), without the keyboard: the next subgroup of a group of buildings. */
+	FAutoConsoleCommand SubgroupCommand(
+		TEXT("hol.Select.Subgroup"),
+		TEXT("hol.Select.Subgroup: the next subgroup of the selected group of buildings (All, then each type, each main centre alone), as Tab"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->CycleSubgroup();
 			}
 		}));
 
@@ -1019,6 +1067,21 @@ void AHOLPlayerController::SetupInputComponent()
 	{
 		Input->BindAction(NextIdle, ETriggerEvent::Started, this, &AHOLPlayerController::HandleNextIdle);
 	}
+	// F1, F2, F3 (D30): the player's military, economic, technological buildings; F4 (the hero) comes with the heroes.
+	const TPair<const TCHAR*, EHOLBuildingCategory> CategoryKeys[] = { { TEXT("IA_MilitaryBuildings"), EHOLBuildingCategory::Military },
+		{ TEXT("IA_EconomicBuildings"), EHOLBuildingCategory::Economic }, { TEXT("IA_TechnologicalBuildings"), EHOLBuildingCategory::Technological } };
+	for (const TPair<const TCHAR*, EHOLBuildingCategory>& CategoryKey : CategoryKeys)
+	{
+		if (const UInputAction* Action = LoadAction(CategoryKey.Key))
+		{
+			Input->BindAction(Action, ETriggerEvent::Started, this, &AHOLPlayerController::HandleCategoryKey, CategoryKey.Value);
+		}
+	}
+	// Tab (the user's 2nd trial of J6a.5): the next subgroup of a group of buildings.
+	if (const UInputAction* NextSubgroup = LoadAction(TEXT("IA_NextSubgroup")))
+	{
+		Input->BindAction(NextSubgroup, ETriggerEvent::Started, this, &AHOLPlayerController::HandleSubgroupKey);
+	}
 	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
 	{
 		if (const UInputAction* GridKey = LoadAction(*FString::Printf(TEXT("IA_Grid_%02d"), Cell)))
@@ -1414,18 +1477,212 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		RequestRallyPoint(Point, RallySource, RallySite);
 		OnOrderGiven.Broadcast(Point);
 	}
+	else if (HasBuildingGroup())
+	{
+		// A group (an F key, D30): the rally point of each of its buildings that produce, as for one; a click on one of
+		// them clears nothing (each its own).
+		TArray<AHOLBuilding*> Group;
+		GetSelectedBuildings(Group);
+		AHOLBuilding* Under = FindBuildingAt(ViewportFraction);
+		if (Group.Contains(Under))
+		{
+			return;
+		}
+		AHOLBuilding* RallySite = Under && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Under->IsFinished() ? Under : nullptr;
+		const FVector Point = RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
+		const int32 RallySource = !RallySite && Source ? SourceIndex : INDEX_NONE;
+		int32 Rallied = 0;
+		for (AHOLBuilding* Member : Group)
+		{
+			const FHOLBuildingTypeRow* Type = Member->GetType();
+			if (Type && !Type->Produces.IsEmpty() && Member->IsFinished())
+			{
+				ServerSetRallyPoint(Member, Point, RallySource, RallySite);
+				++Rallied;
+			}
+		}
+		if (Rallied > 0)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %d buildings of the group at (%.0f, %.0f)"), Rallied, Point.X, Point.Y);
+			OnOrderGiven.Broadcast(Point);
+		}
+	}
 }
 
 void AHOLPlayerController::SetSelection(AHOLBuilding* Building)
 {
-	if (Selection.Get() == Building && SelectedUnits.IsEmpty() && SelectedSource == INDEX_NONE)
+	if (Selection.Get() == Building && SelectedUnits.IsEmpty() && SelectedSource == INDEX_NONE && SelectedBuildings.IsEmpty())
 	{
 		return;
 	}
 	Selection = Building;
+	SelectedBuildings.Reset();
 	SelectedUnits.Reset();
 	SelectedSource = INDEX_NONE;
 	BroadcastSelection();
+}
+
+void AHOLPlayerController::SetBuildingSelection(TArray<AHOLBuilding*> Buildings)
+{
+	Buildings.Remove(nullptr);
+	if (Buildings.Num() <= 1)
+	{
+		SetSelection(Buildings.IsEmpty() ? nullptr : Buildings[0]);
+		return;
+	}
+	const bool bSame = !Selection.IsValid() && SelectedUnits.IsEmpty() && SelectedSource == INDEX_NONE && SelectedBuildings.Num() == Buildings.Num()
+		&& !Buildings.ContainsByPredicate([this](const AHOLBuilding* Building) { return !SelectedBuildings.Contains(Building); });
+	if (bSame)
+	{
+		return;
+	}
+	Selection = nullptr;
+	SelectedUnits.Reset();
+	SelectedSource = INDEX_NONE;
+	SelectedBuildings.Reset();
+	for (AHOLBuilding* Building : Buildings)
+	{
+		SelectedBuildings.Add(Building);
+	}
+	// A new group starts on « Tous » (the user's 2nd trial of J6a.5).
+	ActiveSubgroup = 0;
+	BroadcastSelection();
+}
+
+void AHOLPlayerController::GetGroupMembers(const TConstArrayView<AHOLBuilding*> Group, TArray<FHOLGroupMember>& OutMembers) const
+{
+	OutMembers.Reset();
+	for (const AHOLBuilding* Building : Group)
+	{
+		OutMembers.Add({ Building->GetTypeName(), HOLCommandGrid::IsAloneInGroup(Building->GetTypeName()) });
+	}
+}
+
+void AHOLPlayerController::GetSubgroups(TArray<FHOLSubgroup>& OutSubgroups) const
+{
+	OutSubgroups.Reset();
+	if (!HasBuildingGroup())
+	{
+		return;
+	}
+	TArray<AHOLBuilding*> Group;
+	GetSelectedBuildings(Group);
+	TArray<FHOLGroupMember> Members;
+	GetGroupMembers(Group, Members);
+	OutSubgroups = HOLCommandGrid::SplitSubgroups(Members);
+}
+
+bool AHOLPlayerController::GetActiveSubgroup(FHOLSubgroup& OutSubgroup) const
+{
+	TArray<FHOLSubgroup> Subgroups;
+	GetSubgroups(Subgroups);
+	if (Subgroups.IsEmpty())
+	{
+		return false;
+	}
+	OutSubgroup = Subgroups[Subgroups.IsValidIndex(ActiveSubgroup) ? ActiveSubgroup : 0];
+	return true;
+}
+
+void AHOLPlayerController::CycleSubgroup()
+{
+	TArray<FHOLSubgroup> Subgroups;
+	GetSubgroups(Subgroups);
+	if (Subgroups.IsEmpty())
+	{
+		return;
+	}
+	ActiveSubgroup = (ActiveSubgroup + 1) % Subgroups.Num();
+	UE_LOG(LogHOLMatch, Display, TEXT("Subgroup: %s (%d of %d)"), *DescribeSubgroup(), ActiveSubgroup + 1, Subgroups.Num());
+	// The same selection, other cells: the HUD and the frames follow.
+	OnSelectionChanged.Broadcast();
+}
+
+void AHOLPlayerController::RestoreSubgroup(const uint32 FirstKey)
+{
+	TArray<FHOLSubgroup> Subgroups;
+	GetSubgroups(Subgroups);
+	TArray<AHOLBuilding*> Group;
+	GetSelectedBuildings(Group);
+	const int32 Previous = ActiveSubgroup;
+	ActiveSubgroup = 0;
+	for (int32 Index = 1; Index < Subgroups.Num(); ++Index)
+	{
+		if (Subgroups[Index].Members.ContainsByPredicate([&Group, FirstKey](const int32 Member) { return Group[Member]->GetUniqueID() == FirstKey; }))
+		{
+			ActiveSubgroup = Index;
+			break;
+		}
+	}
+	if (ActiveSubgroup != Previous)
+	{
+		OnSelectionChanged.Broadcast();
+	}
+}
+
+bool AHOLPlayerController::IsInActiveSubgroup(const AHOLBuilding* Building) const
+{
+	FHOLSubgroup Subgroup;
+	if (!GetActiveSubgroup(Subgroup) || Subgroup.bAll)
+	{
+		return true;
+	}
+	TArray<AHOLBuilding*> Group;
+	GetSelectedBuildings(Group);
+	return Subgroup.Members.ContainsByPredicate([&Group, Building](const int32 Member) { return Group[Member] == Building; });
+}
+
+FString AHOLPlayerController::DescribeSubgroup() const
+{
+	FHOLSubgroup Subgroup;
+	if (!GetActiveSubgroup(Subgroup))
+	{
+		return FString();
+	}
+	if (Subgroup.bAll)
+	{
+		return FString::Printf(TEXT("All (%d)"), Subgroup.Members.Num());
+	}
+	return HOLCommandGrid::IsAloneInGroup(Subgroup.TypeName) ? Subgroup.TypeName.ToString()
+		: FString::Printf(TEXT("%s x%d"), *Subgroup.TypeName.ToString(), Subgroup.Members.Num());
+}
+
+void AHOLPlayerController::GetCommandBuildings(TArray<AHOLBuilding*>& OutBuildings) const
+{
+	OutBuildings.Reset();
+	if (AHOLBuilding* Own = GetOwnSelection())
+	{
+		OutBuildings.Add(Own);
+		return;
+	}
+	FHOLSubgroup Subgroup;
+	if (!GetActiveSubgroup(Subgroup))
+	{
+		return;
+	}
+	TArray<AHOLBuilding*> Group;
+	GetSelectedBuildings(Group);
+	for (const int32 Member : Subgroup.Members)
+	{
+		OutBuildings.Add(Group[Member]);
+	}
+}
+
+void AHOLPlayerController::GetSelectedBuildings(TArray<AHOLBuilding*>& OutBuildings) const
+{
+	OutBuildings.Reset();
+	if (AHOLBuilding* Building = Selection.Get())
+	{
+		OutBuildings.Add(Building);
+		return;
+	}
+	for (const TWeakObjectPtr<AHOLBuilding>& Building : SelectedBuildings)
+	{
+		if (Building.IsValid())
+		{
+			OutBuildings.Add(Building.Get());
+		}
+	}
 }
 
 void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
@@ -1439,11 +1696,12 @@ void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
 	{
 		UnitIds.SetNum(UE::HeroesOfLiberty::Player::MaxOrderedUnits);
 	}
-	if (!Selection.IsValid() && SelectedSource == INDEX_NONE && UnitIds == SelectedUnits)
+	if (!Selection.IsValid() && SelectedSource == INDEX_NONE && SelectedBuildings.IsEmpty() && UnitIds == SelectedUnits)
 	{
 		return;
 	}
 	Selection = nullptr;
+	SelectedBuildings.Reset();
 	SelectedSource = INDEX_NONE;
 	SelectedUnits = MoveTemp(UnitIds);
 	BroadcastSelection();
@@ -1462,6 +1720,7 @@ void AHOLPlayerController::SetSourceSelection(const int32 SourceIndex)
 		return;
 	}
 	Selection = nullptr;
+	SelectedBuildings.Reset();
 	SelectedUnits.Reset();
 	SelectedSource = SourceIndex;
 	BroadcastSelection();
@@ -1505,6 +1764,90 @@ void AHOLPlayerController::SelectNextIdleWorker()
 	if (RTSCamera)
 	{
 		RTSCamera->SetFocus(Unit->Location);
+	}
+}
+
+void AHOLPlayerController::SelectBuildingCategory(const EHOLBuildingCategory Category)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!HOLPlayerState)
+	{
+		return;
+	}
+	const FString CategoryName = StaticEnum<EHOLBuildingCategory>()->GetNameStringByValue(static_cast<int64>(Category));
+	// The player's buildings of the category seen here: finished, under construction and its ghosts (the user's 2nd
+	// trial of J6a.5), in the order of their cycle (the centre, then by type and key): the group's order, its subgroups'.
+	TArray<AHOLBuilding*> Buildings;
+	TArray<FHOLCycleBuilding> Entries;
+	TArray<uint32> Keys;
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		const FHOLBuildingTypeRow* Type = It->GetType();
+		if (Type && It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->IsSeenHere() && HOLCommandGrid::IsSelectedByCategory(*Type, Category))
+		{
+			Buildings.Add(*It);
+		}
+	}
+	Buildings.Sort([](const AHOLBuilding& A, const AHOLBuilding& B)
+	{
+		const int32 RankA = HOLCommandGrid::GetCycleRank(*A.GetType());
+		const int32 RankB = HOLCommandGrid::GetCycleRank(*B.GetType());
+		return RankA != RankB ? RankA < RankB : A.GetUniqueID() < B.GetUniqueID();
+	});
+	for (const AHOLBuilding* Building : Buildings)
+	{
+		Entries.Add({ HOLCommandGrid::GetCycleRank(*Building->GetType()), Building->GetUniqueID() });
+		Keys.Add(Building->GetUniqueID());
+	}
+	if (Buildings.IsEmpty())
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Category %s: no building"), *CategoryName);
+		LastCategory.Reset();
+		FHOLCommandFeedback Feedback;
+		Feedback.Kind = EHOLCommandFeedback::NoBuilding;
+		Feedback.Category = Category;
+		NotifyFeedback(Feedback);
+		return;
+	}
+	// Pressed again while its selection stays: the selection kept (a building finished or begun since joins it), the
+	// camera to the next one.
+	TArray<AHOLBuilding*> Selected;
+	GetSelectedBuildings(Selected);
+	TArray<uint32> SelectedKeys;
+	for (const AHOLBuilding* Building : Selected)
+	{
+		SelectedKeys.Add(Building->GetUniqueID());
+	}
+	const bool bRepeat = HOLCommandGrid::IsRepeatPress(SelectedKeys, LastCategorySelection, LastCategory.IsSet() && LastCategory.GetValue() == Category);
+	if (!bRepeat)
+	{
+		LastCategoryBuilding = 0;
+	}
+	LastCategory = Category;
+	LastCategorySelection = Keys;
+	// Pressed again: the active subgroup kept, even when a building placed since joins the group.
+	FHOLSubgroup Active;
+	const bool bActive = bRepeat && GetActiveSubgroup(Active);
+	const uint32 ActiveKey = bActive && !Active.bAll && Selected.IsValidIndex(Active.Members[0]) ? Selected[Active.Members[0]]->GetUniqueID() : 0;
+	SetBuildingSelection(Buildings);
+	if (!bRepeat)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Category %s: %d buildings selected"), *CategoryName, Buildings.Num());
+		return;
+	}
+	if (ActiveKey != 0)
+	{
+		RestoreSubgroup(ActiveKey);
+	}
+	const int32 Index = HOLCommandGrid::NextInCycle(Entries, LastCategoryBuilding);
+	AHOLBuilding* Next = Buildings[Index];
+	LastCategoryBuilding = Entries[Index].Key;
+	const FVector Location = Next->GetActorLocation();
+	UE_LOG(LogHOLMatch, Display, TEXT("Category %s: next building %s at (%.0f, %.0f) (%d selected)"), *CategoryName, *DescribeBuilding(Next),
+		Location.X, Location.Y, Buildings.Num());
+	if (RTSCamera)
+	{
+		RTSCamera->SetFocus(Location);
 	}
 }
 
@@ -1638,6 +1981,25 @@ void AHOLPlayerController::PurgeSelection(const TConstArrayView<FHOLUnitView> Vi
 		BroadcastSelection();
 		return;
 	}
+	if (SelectedBuildings.ContainsByPredicate([](const TWeakObjectPtr<AHOLBuilding>& Building) { return !Building.IsValid(); }))
+	{
+		// The same in a group: the others stay, the active subgroup too while one of its buildings does.
+		TArray<AHOLBuilding*> Buildings;
+		GetSelectedBuildings(Buildings);
+		FHOLSubgroup Active;
+		uint32 ActiveKey = 0;
+		if (GetActiveSubgroup(Active) && !Active.bAll)
+		{
+			ActiveKey = Buildings[Active.Members[0]]->GetUniqueID();
+		}
+		SelectedBuildings.Reset();
+		SetBuildingSelection(MoveTemp(Buildings));
+		if (ActiveKey != 0 && HasBuildingGroup())
+		{
+			RestoreSubgroup(ActiveKey);
+		}
+		return;
+	}
 	if (SelectedSource != INDEX_NONE)
 	{
 		// A used-up source leaves the map, and the selection.
@@ -1696,13 +2058,187 @@ FName AHOLPlayerController::GetGridCellUnitType(const int32 Cell) const
 	return Type && Type->Produces.IsValidIndex(Cell) ? Type->Produces[Cell] : NAME_None;
 }
 
+void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands) const
+{
+	FHOLGridContext Context;
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (const AHOLBuilding* Building = GetOwnSelection())
+	{
+		const FHOLBuildingTypeRow* Type = Building->GetType();
+		Context.bOwnBuilding = Type != nullptr;
+		Context.bBuildingFinished = Building->IsFinished();
+		if (Type)
+		{
+			Context.Produces = Type->Produces;
+		}
+	}
+	else if (HasBuildingGroup())
+	{
+		// A group (an F key, D30), always the player's own: the cells of its active subgroup's buildings, merged (the
+		// user's 2nd trial of J6a.5): in « Tous », a key two of them use goes to the main centre, then to the group's order.
+		// A subgroup of one building alone is read as that building selected (a site's « Annuler »).
+		FHOLSubgroup Subgroup;
+		TArray<AHOLBuilding*> Group;
+		GetSelectedBuildings(Group);
+		if (!GetActiveSubgroup(Subgroup))
+		{
+			OutCommands.Init(FHOLGridCommand(), NumGridCells);
+			return;
+		}
+		const bool bSeveral = Subgroup.bAll || Subgroup.Members.Num() > 1;
+		TArray<FHOLGroupMember> Members;
+		GetGroupMembers(Group, Members);
+		TArray<TArray<FHOLGridCommand>> PerBuilding;
+		PerBuilding.SetNum(Group.Num());
+		for (const int32 Member : Subgroup.Members)
+		{
+			const FHOLBuildingTypeRow* Type = Group[Member]->GetType();
+			FHOLGridContext One;
+			One.bOwnBuilding = Type != nullptr;
+			One.bBuildingGroup = bSeveral;
+			One.bBuildingFinished = Group[Member]->IsFinished();
+			if (Type)
+			{
+				One.Produces = Type->Produces;
+			}
+			for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
+			{
+				PerBuilding[Member].Add(HOLCommandGrid::GetCommand(One, Cell));
+			}
+		}
+		OutCommands = HOLCommandGrid::MergeCommands(PerBuilding, HOLCommandGrid::GetCommandPriority(Members));
+		return;
+	}
+	else if (HOLPlayerState && !SelectedUnits.IsEmpty())
+	{
+		// Builders: the player's own units that gather (what the server checks for a build order, J6a.4).
+		for (const uint32 UnitId : SelectedUnits)
+		{
+			FHOLUnitView View;
+			if (HOLUnitView::Find(*GetWorld(), UnitId, View) && View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.CarryCapacity > 0)
+			{
+				Context.bBuilders = true;
+				break;
+			}
+		}
+		if (Context.bBuilders)
+		{
+			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
+		}
+	}
+	OutCommands.SetNum(NumGridCells);
+	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
+	{
+		OutCommands[Cell] = HOLCommandGrid::GetCommand(Context, Cell);
+	}
+}
+
 void AHOLPlayerController::ActivateGridCell(const int32 Cell)
 {
-	const FName TypeName = GetGridCellUnitType(Cell);
-	if (!TypeName.IsNone())
+	TArray<FHOLGridCommand> Commands;
+	GetGridCommands(Commands);
+	if (!Commands.IsValidIndex(Cell) || Commands[Cell].IsNone())
 	{
-		RequestProduction(TypeName);
+		return;
 	}
+	const FHOLGridCommand Command = Commands[Cell];
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	switch (Command.Command)
+	{
+	case EHOLGridCommand::Produce:
+	{
+		// What the server would refuse is told and not sent (D282, D313); a full population is told, the unit queued (it waits).
+		// A group (D30): spread evenly among the active subgroup's buildings that produce it; every queue full: told so.
+		AHOLBuilding* Building = FindProductionBuilding(Command.TypeName);
+		const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr;
+		const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+		const FHOLUnitTypeRow* UnitType = Units ? Units->FindTypeRow(Command.TypeName) : nullptr;
+		if (HOLPlayerState && UnitType)
+		{
+			const int32 MaxQueue = Type ? Type->MaxQueue : 1;
+			const FHOLCommandFeedback Feedback = HOLCommandGrid::CheckProduction(HOLPlayerState->GetResources(), UnitType->Cost,
+				Building ? Building->GetProductionQueue().Num() : MaxQueue, MaxQueue, HOLPlayerState->GetPopulationUsed(), HOLPlayerState->GetPopulationCap(),
+				UnitType->Population);
+			if (!Feedback.IsNone())
+			{
+				NotifyFeedback(Feedback);
+			}
+			if (HOLCommandGrid::Blocks(Feedback))
+			{
+				return;
+			}
+		}
+		if (Building)
+		{
+			UE_CLOG(HasBuildingGroup(), LogHOLMatch, Display, TEXT("Grid: %s queued at %s (#%u), subgroup %s"), *Command.TypeName.ToString(),
+				*DescribeBuilding(Building), Building->GetUniqueID(), *DescribeSubgroup());
+			LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
+			ServerQueueProduction(Building, Command.TypeName);
+		}
+		return;
+	}
+	case EHOLGridCommand::Build:
+	{
+		// Not enough resources: a short message, no ghost (D313).
+		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(Command.TypeName);
+		if (HOLPlayerState && Type)
+		{
+			const FHOLCommandFeedback Feedback = HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), Type->Cost);
+			if (HOLCommandGrid::Blocks(Feedback))
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Grid: %s not placed"), *Command.TypeName.ToString());
+				NotifyFeedback(Feedback);
+				return;
+			}
+		}
+		BeginPlacement(Command.TypeName);
+		return;
+	}
+	case EHOLGridCommand::CancelConstruction:
+	{
+		// The site selected alone, or a subgroup's only building.
+		TArray<AHOLBuilding*> Buildings;
+		GetCommandBuildings(Buildings);
+		if (Buildings.Num() == 1)
+		{
+			RequestCancelBuilding(Buildings[0]);
+		}
+		return;
+	}
+	default:
+		return;
+	}
+}
+
+AHOLBuilding* AHOLPlayerController::FindProductionBuilding(const FName TypeName, bool* bOutAny) const
+{
+	TArray<AHOLBuilding*> Buildings;
+	GetCommandBuildings(Buildings);
+	TArray<AHOLBuilding*> Producers;
+	TArray<FHOLQueueChoice> Choices;
+	for (AHOLBuilding* Building : Buildings)
+	{
+		// A building under construction produces nothing (D312).
+		const FHOLBuildingTypeRow* Type = Building->IsFinished() ? Building->GetType() : nullptr;
+		if (Type && Type->Produces.Contains(TypeName))
+		{
+			Producers.Add(Building);
+			Choices.Add({ Building->GetProductionQueue().Num(), Type->MaxQueue, Building->GetUniqueID() });
+		}
+	}
+	if (bOutAny)
+	{
+		*bOutAny = !Producers.IsEmpty();
+	}
+	const uint32* LastKey = LastProductionBuilding.Find(TypeName);
+	const int32 Index = HOLCommandGrid::PickEvenly(Choices, LastKey ? *LastKey : 0);
+	return Index == INDEX_NONE ? nullptr : Producers[Index];
+}
+
+void AHOLPlayerController::NotifyFeedback(const FHOLCommandFeedback& Feedback)
+{
+	UE_LOG(LogHOLMatch, Display, TEXT("Command feedback: %s"), *HOLCommandGrid::Describe(Feedback));
+	OnCommandFeedback.Broadcast(Feedback);
 }
 
 void AHOLPlayerController::RequestProduction(const FName TypeName)
@@ -1784,9 +2320,13 @@ bool AHOLPlayerController::GetPlacementGhost(FName& OutType, FBox2D& OutFootprin
 	return true;
 }
 
-bool AHOLPlayerController::CheckPlacementHere(const FName TypeName, const FBox2D& Footprint, FString& OutReason) const
+bool AHOLPlayerController::CheckPlacementHere(const FName TypeName, const FBox2D& Footprint, FString& OutReason, FHOLCommandFeedback* OutFeedback) const
 {
 	OutReason.Reset();
+	if (OutFeedback)
+	{
+		*OutFeedback = FHOLCommandFeedback();
+	}
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	if (!Type || !HOLPlayerState)
@@ -1798,11 +2338,21 @@ bool AHOLPlayerController::CheckPlacementHere(const FName TypeName, const FBox2D
 	if (Refusal != EHOLPlacementRefusal::None)
 	{
 		OutReason = UHOLConstructionSubsystem::DescribeRefusal(Refusal);
+		if (OutFeedback)
+		{
+			OutFeedback->Kind = EHOLCommandFeedback::PlacementRefused;
+			OutFeedback->Refusal = Refusal;
+		}
 		return false;
 	}
-	if (!HOLPlayerState->GetResources().Covers(Type->Cost))
+	const FHOLCommandFeedback Cost = HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), Type->Cost);
+	if (!Cost.IsNone())
 	{
 		OutReason = TEXT("not enough resources");
+		if (OutFeedback)
+		{
+			*OutFeedback = Cost;
+		}
 		return false;
 	}
 	return true;
@@ -1824,7 +2374,7 @@ void AHOLPlayerController::UpdatePlacementGhost()
 	// Checked again every frame: the stock, the buildings and the sources change under a ghost that stays still.
 	const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
 	FString Reason;
-	const bool bValid = CheckPlacementHere(PlacementType, Footprint, Reason);
+	const bool bValid = CheckPlacementHere(PlacementType, Footprint, Reason, &GhostFeedback);
 	const bool bChanged = !bGhostShown || bValid != bGhostValid || Reason != GhostReason || !(Footprint.Min == GhostFootprint.Min);
 	bGhostShown = true;
 	bGhostValid = bValid;
@@ -1851,8 +2401,9 @@ void AHOLPlayerController::ClickPlacement(const bool bKeep)
 	}
 	if (!bGhostValid)
 	{
-		// A red ghost places nothing (J6a.5 shows why in a short message).
+		// A red ghost places nothing, and the player is told why in a short message (D313).
 		UE_LOG(LogHOLMatch, Display, TEXT("Placement: not here (%s)"), *GhostReason);
+		NotifyFeedback(GhostFeedback);
 		return;
 	}
 	const FVector2D Centre = GhostFootprint.GetCenter();
@@ -1873,6 +2424,8 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 		if (!Builders.IsEmpty())
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build it%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
+			// The brief mark of an order (J4.6) on the foundation they go to (D313).
+			OnOrderGiven.Broadcast(Point);
 		}
 		ServerPlaceBuilding(TypeName, Point, Builders, bQueue);
 	}
@@ -2107,6 +2660,24 @@ FString AHOLPlayerController::DescribeSelection() const
 			? FString::Printf(TEXT("source %d %s (%d left)"), SelectedSource, *Sources->GetTypeNames()[Source->TypeIndex].ToString(), Source->Remaining)
 			: FString::Printf(TEXT("source %d"), SelectedSource);
 	}
+	if (!SelectedBuildings.IsEmpty())
+	{
+		// A group (an F key, D30), always the player's own.
+		TArray<AHOLBuilding*> Group;
+		GetSelectedBuildings(Group);
+		TMap<FName, int32> PerType;
+		for (const AHOLBuilding* Building : Group)
+		{
+			++PerType.FindOrAdd(Building->GetTypeName());
+		}
+		PerType.KeySort(FNameLexicalLess());
+		TArray<FString> Types;
+		for (const TPair<FName, int32>& Type : PerType)
+		{
+			Types.Add(FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
+		}
+		return FString::Printf(TEXT("%d buildings (own): %s, subgroup %s"), Group.Num(), *FString::Join(Types, TEXT(", ")), *DescribeSubgroup());
+	}
 	if (SelectedUnits.IsEmpty())
 	{
 		return DescribeBuilding(Selection.Get());
@@ -2204,6 +2775,16 @@ void AHOLPlayerController::HandleDeselect()
 void AHOLPlayerController::HandleNextIdle()
 {
 	SelectNextIdleWorker();
+}
+
+void AHOLPlayerController::HandleCategoryKey(const EHOLBuildingCategory Category)
+{
+	SelectBuildingCategory(Category);
+}
+
+void AHOLPlayerController::HandleSubgroupKey()
+{
+	CycleSubgroup();
 }
 
 void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const int32 Cell)

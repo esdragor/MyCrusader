@@ -78,6 +78,12 @@ public:
 	 */
 	void SetConstructionState(EHOLConstructionState InState);
 	void SetConstructionWork(int64 InWork);
+	/**
+	 * Its builders at work this step (J6a.5, D313: the site's block shows them), replicated to its owner alone; 0 once
+	 * finished or when nobody works on it. Server only to set.
+	 */
+	int32 GetBuildersAtWork() const { return BuildersAtWork; }
+	void SetBuildersAtWork(int32 InBuilders);
 
 	/** The construction state or work changed: on the server when set, on every machine when it arrives. For the HUD. */
 	DECLARE_MULTICAST_DELEGATE(FOnConstructionChanged);
@@ -163,6 +169,9 @@ private:
 	UFUNCTION()
 	void OnRep_Construction();
 
+	UFUNCTION()
+	void OnRep_BuildersAtWork();
+
 	/** Builds the look from the type and the construction state, then paints the owner's colour. Safe to call again. */
 	void RefreshAppearance();
 	/** A site's height follows its work (J6a.4): the pieces under RiseRoot squashed to it, at least MinRiseRatio. */
@@ -223,6 +232,10 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Construction)
 	int64 ConstructionWork = 0;
+
+	/** Changes only when a builder arrives or leaves (one byte, to the owner alone). */
+	UPROPERTY(ReplicatedUsing = OnRep_BuildersAtWork)
+	uint8 BuildersAtWork = 0;
 
 	/** What the pieces show (J6a.4): nothing, a ghost, a site, the finished building. */
 	enum class ELook : uint8

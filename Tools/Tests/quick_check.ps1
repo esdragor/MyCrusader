@@ -34,6 +34,14 @@
 # its first blow (hol.Cheat.FastBuild 1): the Peasant produced builds E, goes on to F 9 m away (hol.Build.NextSiteRange,
 # 20 m), not to G 39 m away, then stands idle; Shift + place H, Shift + place I, Shift + right click on a tree: H built,
 # then I, then it gathers wood.
+# J6a.5 (D313), solo: every Peasant selected without wood, the grid shows house, lumber camp and mining camp on A, Z, E,
+# greyed, their tooltips; a click on the lumber camp: no ghost, the message "Pas assez de bois" (captured in French,
+# English and Japanese); with wood, the key Z starts the lumber camp's ghost; two Peasants place house J by the key A,
+# the site selected shows its progress, its builders and "Annuler" (V), clicked: refunded; the population full, the key
+# A at the centre: the message "Population maximale". The user's trial of J6a.5: the cells write the name alone (the cost
+# in the tooltip only); F1 and F3: no building, the message "Aucun bâtiment militaire", nothing selected; F2: every
+# economic building of the player selected (centre, houses, sites; not its ghosts), the camera where it was; F2 three
+# times again: the centre, then the houses, the camera on each, the selection kept.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -183,6 +191,11 @@ $BuildG = @(-16800, 3000)
 $BuildH = @(-17700, -3000)
 $BuildI = @(-18300, -3000)
 $BuildTree = @(-15770, -2400)
+# The construction HUD (J6a.5): house J behind slot 0's centre, away from the others, two Peasants made beside it.
+$BuildJ = @(-18600, 1800)
+$BuildJSpawn = @(-19500, 1800)
+# The rally flags of a group (the user's 3rd trial of J6a.5): a right click on the ground behind slot 0's centre.
+$BuildRally = @(-18000, -1500)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -385,6 +398,73 @@ if ($Parts -contains "camera") {
                 "waitlog units to gather source", "waitlog Construction: slot 0 finished House at ($($BuildH -join ', '))",
                 "waitlog Construction: slot 0 finished House at ($($BuildI -join ', '))", "waitlog Build: a builder of slot 0 goes on to gather source", "wait 4",
                 "hol.HUD.Report", "hol.Build.Speed 1", "hol.Build.Report", "hol.Prod.Report"
+            # The construction HUD (J6a.5, D313). Every Peasant selected, no wood: the builders' grid greyed, its tooltips; a
+            # click on Z (lumber camp): no ghost, "Pas assez de bois", captured in the three languages.
+            Step "mark build hud", "hol.Cheat.Wood -100000", "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3", "hol.Select.Own", "waitlog Select own:", "frames 3",
+                "hol.HUD.Report", "capture build_hud_greyed", "hol.HUD.Click GridCell01", "waitlog HUD message: NotEnoughWood", "frames 3", "hol.HUD.Report",
+                "capture build_hud_fr"
+            foreach ($Culture in "en", "ja") {
+                Step "hol.UI.Language $Culture", "frames 5", "hol.HUD.Click GridCell01", "waitlog HUD message: NotEnoughWood", "frames 3", "capture build_hud_$Culture"
+            }
+            Step "hol.UI.Language fr", "frames 5"
+            # With wood, the key Z: the lumber camp's ghost; Escape.
+            Step "mark build hud ghost", "hol.Cheat.Wood 500", "wait 0.3", "hol.HUD.Report"
+            Key Z
+            Step "waitlog Placement: LumberCamp (cost", "frames 3", "hol.HUD.Report", "capture build_hud_ghost"
+            Key Escape
+            Step "waitlog Placement: ended"
+            # Two Peasants made behind, selected by a box; the key A, a click: house J placed, they build it; the site selected:
+            # its block (progress, builders, "Annuler" on V), the click on it refunds half.
+            Step "mark build hud site", "hol.Units.Spawn 2 $($BuildJSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($BuildJSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($BuildJSpawn[0] - 400) $($BuildJSpawn[1] - 400) $($BuildJSpawn[0] + 400) $($BuildJSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3"
+            Key A
+            Step "waitlog Placement ghost: House at ($($BuildJ -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 2 units to House at ($($BuildJ -join ', '))",
+                "waitlog Construction: slot 0 first work on House at ($($BuildJ -join ', '))", "wait 2", "hol.Camera.Focus $($BuildJ[0]) $($BuildJ[1] - 300)", "frames 3",
+                "hol.Select.ClickGround $($BuildJ -join ' ')", "waitlog Selection: House of slot 0 (own), under construction", "frames 3", "hol.HUD.Report",
+                "capture build_hud_block", "hol.HUD.Click GridCell11", "waitlog Construction: slot 0 cancelled House", "waitlog Selection: none", "hol.Build.Report"
+            # The population full (the cheat's places taken back): the key A at the centre, the Peasant queued waits, the message.
+            Step "mark build hud population", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)",
+                "hol.Cheat.Population -300", "hol.Cheat.Food 100", "wait 0.5", "hol.Prod.Report"
+            Key A
+            Step "waitlog Command feedback: population full", "waitlog HUD message: PopulationFull", "frames 3", "hol.HUD.Report", "capture build_hud_popfull",
+                "hol.HUD.Click QueueItem0", "waitlog cancelled Peasant", "hol.Cheat.Population 300"
+            # The F keys (the user's trial of J6a.5), the camera elsewhere. F1 and F3: no building of theirs, the message.
+            Key Escape
+            Step "mark build hud f1", "waitlog Selection: none", "hol.Build.Report", "hol.Camera.Focus 0 0", "frames 2", "hol.Camera.Report"
+            Key F1
+            Step "waitlog Category Military: no building", "waitlog HUD message: NoMilitaryBuilding", "frames 3", "hol.Select.Report", "hol.HUD.Report",
+                "capture build_hud_f1"
+            Key F3
+            Step "waitlog Category Technological: no building", "waitlog HUD message: NoTechnologicalBuilding", "hol.Select.Report"
+            # F2: every economic building selected, the camera kept; then three times: the centre, a house, another one.
+            Step "mark build hud f2"
+            Key F2
+            Step "waitlog Category Economic: ", "frames 3", "hol.Camera.Report", "hol.Select.Report", "hol.HUD.Report", "capture build_hud_f2"
+            for ($i = 0; $i -lt 3; $i++) {
+                Key F2
+                Step "waitlog Category Economic: next building", "frames 3", "hol.Camera.Report"
+                if ($i -eq 1) { Step "hol.Select.Report", "capture build_hud_next" }
+            }
+            # Tab (the user's 2nd trial of J6a.5): the group's subgroups. « Tous » first: the centre's Peasant on A, the key A
+            # queues it there; then the centre alone (the others' frames dimmer); then the houses, their ghost G among them:
+            # nothing to produce. Escape, F2 anew: « Tous » again.
+            Step "mark build hud tab", "hol.Cheat.Food 200", "wait 0.3", "hol.HUD.Report"
+            Key A
+            Step "waitlog Grid: Peasant queued at MainCentre", "frames 3", "hol.HUD.Report"
+            Key Tab
+            Step "waitlog Subgroup: MainCentre", "frames 3", "hol.HUD.Report", "hol.Select.Report", "capture build_hud_tab_centre"
+            Key Tab
+            Step "waitlog Subgroup: House x", "frames 3", "hol.HUD.Report", "hol.Select.Report", "capture build_hud_tab_houses"
+            Key Escape
+            Step "waitlog Selection: none"
+            Key F2
+            Step "waitlog Category Economic: ", "frames 3", "hol.HUD.Report"
+            # The user's 3rd trial of J6a.5: on « Tous », the centre's flag (on E); a right click on the ground: the
+            # group's rally point there, the flag with it.
+            Step "mark build hud rally", "hol.Select.Report", "hol.Camera.Focus $($BuildRally[0] + 600) $($BuildRally[1])", "frames 3",
+                "hol.Select.OrderGround $($BuildRally -join ' ')", "waitlog Rally: slot 0 set the rally point of MainCentre at (", "frames 3", "hol.Select.Report",
+                "capture build_hud_rally"
         }
     }
 }
@@ -527,7 +607,9 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
     popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen";
-    site = "hud=HOLGameScreen"; three = "hud=HOLGameScreen"; finished = "hud=HOLGameScreen"; rally = "hud=HOLGameScreen" }
+    site = "hud=HOLGameScreen"; three = "hud=HOLGameScreen"; finished = "hud=HOLGameScreen"; rally = "hud=HOLGameScreen";
+    greyed = "hud=HOLGameScreen"; fr = "hud=HOLGameScreen"; en = "hud=HOLGameScreen"; ja = "hud=HOLGameScreen"; ghost = "hud=HOLGameScreen";
+    block = "hud=HOLGameScreen"; popfull = "hud=HOLGameScreen"; f1 = "hud=HOLGameScreen"; f2 = "hud=HOLGameScreen"; next = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -941,6 +1023,100 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         [bool]($QueueHud -match "EHOLUnitActivity::(Gathering|GatherTrip)")
     $Checks["capture (rally)"] = Test-Path (Join-Path $Shots "build_rally.png")
     $AllOk = (Report "build trial" $Checks) -and $AllOk
+
+    # J6a.5 (D313): the construction HUD.
+    $Hud = Get-Section "build hud"
+    $HudGhost = Get-Section "build hud ghost"
+    $HudSite = Get-Section "build hud site"
+    $HudPopulation = Get-Section "build hud population"
+    $HudF1 = Get-Section "build hud f1"
+    $HudF2 = Get-Section "build hud f2"
+    $HudTab = Get-Section "build hud tab"
+    $Checks = [ordered]@{}
+    $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
+    $Checks["Peasants without wood: house, lumber camp, mining camp on A, Z, E, greyed ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid A=House greyed Z=LumberCamp greyed E=MiningCamp greyed, queue ")
+    # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
+    $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs$") -and -not ($Cells -match "\d")
+    $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or$")
+    $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
+        [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
+    $Checks["the message in the three languages (HUD message lines: $(@($Hud | Select-String -Pattern 'HUD message: NotEnoughWood').Count))"] = @($Hud | Select-String -Pattern "HUD message: NotEnoughWood").Count -eq 3
+    $Checks["with wood, the key Z: the lumber camp's ghost, the cells ready"] = [bool]($HudGhost | Select-String -Pattern "Placement: LumberCamp \(cost F 0 W 100 S 0 G 0\)" -Quiet) -and
+        [bool]($HudGhost | Select-String -Pattern "grid A=House enabled Z=LumberCamp enabled E=MiningCamp enabled" -Quiet) -and [bool]($HudGhost | Select-String -Pattern "Placement: ended" -Quiet)
+    $Checks["the key A with two Peasants: house J placed, they build it"] = [bool]($HudSite | Select-String -Pattern "Placement: House \(cost" -Quiet) -and
+        [bool]($HudSite | Select-String -Pattern "Build order of slot 0: 2 units to House at \($($BuildJ -join ', ')\)$" -Quiet)
+    $Block = & $Value $HudSite "HUD report: (.*)$"
+    $Checks["the site's block: progress, builders, Annuler on V ($([regex]::Match([string]$Block, 'selection House[^,]*, under construction \d+%, builders \d+').Value); $([regex]::Match([string]$Block, 'V=Cancel \w+').Value))"] =
+        [bool]($Block -match "selection House \(own\), under construction (\d+)%, builders (\d+), grid V=Cancel enabled") -and ([int]$Matches[1] -ge 1) -and ([int]$Matches[1] -le 60) -and ([int]$Matches[2] -ge 1)
+    $CancelledJ = & $Value $HudSite "(Construction: slot 0 cancelled House .*)$"
+    $Checks["Annuler clicked: half refunded ($CancelledJ)"] = [bool]($CancelledJ -match "at \($($BuildJ -join ', ')\), refund F 0 W 25 S 0 G 0 ")
+    $Checks["population full: the key A queues, the message"] = [bool]($HudPopulation | Select-String -Pattern "Command feedback: population full" -Quiet) -and
+        [bool]($HudPopulation | Select-String -Pattern "HUD message: PopulationFull" -Quiet) -and [bool]($HudPopulation | Select-String -Pattern "queued Peasant" -Quiet) -and
+        [bool](($HudPopulation | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "message PopulationFull")
+    # F1, F3: no building of theirs, the message, nothing selected.
+    $Checks["F1 and F3: no building, the message, nothing selected"] = [bool]($HudF1 | Select-String -Pattern "Category Military: no building" -Quiet) -and
+        [bool]($HudF1 | Select-String -Pattern 'HUD message: NoMilitaryBuilding "Aucun b.+timent militaire"' -Quiet) -and
+        [bool]($HudF1 | Select-String -Pattern "Category Technological: no building" -Quiet) -and [bool]($HudF1 | Select-String -Pattern "HUD message: NoTechnologicalBuilding" -Quiet) -and
+        (@($HudF1 | Select-String -Pattern "Selection report: selected none").Count -eq 2) -and
+        [bool](($HudF1 | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "selection none, grid hidden, queue hidden, message NoMilitaryBuilding")
+    # F2: every economic building of slot 0 (finished, sites and its ghosts: the user's 2nd trial of J6a.5) as the build
+    # report lists them; the ghost G of the build trial among them.
+    $Owned = @(([string](& $Value $HudF1 "(Build report: .*)$")) -split "; " | Where-Object { $_ -match "of slot 0 \(own\) (finished|under construction|foundation)" })
+    $Ghosts = @($Owned | Where-Object { $_ -match "of slot 0 \(own\) foundation" })
+    $Selected = & $Value $HudF2 "Category Economic: (\d+) buildings selected"
+    $SelReport = & $Value $HudF2 "Selection report: selected (.*)$"
+    $Checks["F2: every economic building selected, its ghosts too ($Selected; $($Owned.Count) in the build report, $($Ghosts.Count) ghosts: $SelReport)"] =
+        ($Owned.Count -ge 3) -and ($Ghosts.Count -ge 1) -and ([int]$Selected -eq $Owned.Count) -and
+        [bool]($SelReport -match "^$($Owned.Count) buildings \(own\): House x\d+.*MainCentre x1") -and
+        [bool]($HudF2 | Select-String -Pattern "Selection markers: rings 0, frame $($Owned.Count)," -Quiet) -and
+        [bool]($HudF2 | Select-String -Pattern "HUD report: .*selection $($Owned.Count) buildings \(own\): " -Quiet)
+    $Cams = @($HudF2 | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | ForEach-Object { $_.Matches[0] })
+    $Before = $HudF1 | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | Select-Object -Last 1 | ForEach-Object { $_.Matches[0] }
+    $Checks["F2: the camera where it was ($($Before.Value) -> $(if ($Cams.Count -gt 0) { $Cams[0].Value }))"] = $Before -and ($Cams.Count -ge 1) -and
+        ($Cams[0].Groups[1].Value -eq $Before.Groups[1].Value) -and ($Cams[0].Groups[2].Value -eq $Before.Groups[2].Value)
+    $Next = @($HudF2 | Select-String -Pattern "Category Economic: next building (\w+) of slot 0 \(own\)[^(]*at \((-?\d+), (-?\d+)\) \((\d+) selected\)" | ForEach-Object { $_.Matches[0] })
+    $Start0 = Get-SlotStart 0
+    $Said = ($Next | ForEach-Object { "$($_.Groups[1].Value) ($($_.Groups[2].Value), $($_.Groups[3].Value))" }) -join '; '
+    $Checks["F2 again: the centre, then two houses, the selection kept ($Said)"] = ($Next.Count -eq 3) -and ($Next[0].Groups[1].Value -eq "MainCentre") -and
+        ([Math]::Abs([int]$Next[0].Groups[2].Value - $Start0[0]) -le 2) -and ([Math]::Abs([int]$Next[0].Groups[3].Value - $Start0[1]) -le 2) -and
+        ($Next[1].Groups[1].Value -eq "House") -and ($Next[2].Groups[1].Value -eq "House") -and ("$($Next[1].Groups[2].Value),$($Next[1].Groups[3].Value)" -ne "$($Next[2].Groups[2].Value),$($Next[2].Groups[3].Value)") -and
+        (@($Next | Where-Object { [int]$_.Groups[4].Value -eq $Owned.Count }).Count -eq 3) -and
+        (@($HudF2 | Select-String -Pattern "Selection report: selected $($Owned.Count) buildings \(own\)").Count -eq 2)
+    $Moves = @($Cams | Select-Object -Skip 1)
+    $Checks["F2 again: the camera above each ($(($Moves | ForEach-Object { "($($_.Groups[1].Value), $($_.Groups[2].Value))" }) -join '; '))"] = ($Moves.Count -eq 3) -and ($Next.Count -eq 3) -and
+        (@(0..2 | Where-Object { ([Math]::Abs([int]$Moves[$_].Groups[1].Value - [int]$Next[$_].Groups[2].Value) -le 2) -and ([Math]::Abs([int]$Moves[$_].Groups[2].Value - [int]$Next[$_].Groups[3].Value) -le 2) }).Count -eq 3)
+    # Tab (the user's 2nd trial of J6a.5): « Tous » (A = the centre's Peasant, queued there), the centre alone, the houses.
+    $TabHud = @($HudTab | Select-String -Pattern "HUD report: .*selection (\d+) buildings \(own\): [^,]*, subgroup ([^,]+), " | ForEach-Object { $_.Matches[0] })
+    $TabCells = @($HudTab | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $TabSaid = ($TabHud | ForEach-Object { $_.Groups[2].Value }) -join ' -> '
+    $Checks["Tab: All, then the centre, then the houses, then F2 anew on All ($TabSaid; cells $($TabCells -join ' | '))"] = ($TabHud.Count -eq 5) -and ($TabCells.Count -eq 5) -and
+        ($TabHud[0].Groups[2].Value -eq "All ($($Owned.Count))") -and ($TabHud[1].Groups[2].Value -eq "All ($($Owned.Count))") -and
+        ($TabHud[2].Groups[2].Value -eq "MainCentre") -and ($TabHud[3].Groups[2].Value -match "^House x\d+$") -and ($TabHud[4].Groups[2].Value -eq "All ($($Owned.Count))") -and
+        ($TabCells[0] -eq "A: Paysan") -and ($TabCells[2] -eq "A: Paysan") -and ($TabCells[3] -eq "none") -and ($TabCells[4] -eq "A: Paysan")
+    $Queued = & $Value $HudTab "(Grid: Peasant queued at .*)$"
+    $Checks["Tous: the key A queues the Peasant at the centre ($Queued)"] = [bool]($Queued -match "^Grid: Peasant queued at MainCentre of slot 0 \(own\).*, subgroup All \(\d+\)$")
+    $TabMarkers = @($HudTab | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Houses = if ($TabHud.Count -ge 4 -and $TabHud[3].Groups[2].Value -match "^House x(\d+)$") { [int]$Matches[1] } else { 0 }
+    $Checks["the frames out of the active subgroup dimmer ($($TabMarkers -join ' | '))"] = ($TabMarkers.Count -eq 2) -and ($Houses -ge 1) -and
+        ($TabMarkers[0] -match "frame $($Owned.Count),.*frames dimmed $($Owned.Count - 1)$") -and ($TabMarkers[1] -match "frame $($Owned.Count),.*frames dimmed $($Owned.Count - $Houses)$")
+    # The user's 3rd trial of J6a.5: the centre's rally flag (on E) shown on « Tous » and on its subgroup, not on the houses'.
+    $HudRally = Get-Section "build hud rally"
+    $RallyMarkers = @($HudRally | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $FlagE = [regex]::Escape("flag 1 at ($($BuildE -join ', ')),")
+    $Checks["the centre's flag on E: on « Tous » and on the centre's subgroup, none on the houses' ($(@($RallyMarkers | Select-Object -First 1) + $TabMarkers -join ' | '))"] =
+        ($RallyMarkers.Count -eq 2) -and ($TabMarkers.Count -eq 2) -and ($RallyMarkers[0] -match $FlagE) -and ($TabMarkers[0] -match $FlagE) -and ($TabMarkers[1] -match "flag 0,")
+    $GroupOrder = & $Value $HudRally "(Order: rally point of .*)$"
+    $Moved = if ($RallyMarkers.Count -ge 2 -and $RallyMarkers[1] -match "flag 1 at \((-?\d+), (-?\d+)\),") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
+    $Checks["a right click on « Tous »: the group's rally point, the flag moved there ($GroupOrder; $(if ($RallyMarkers.Count -ge 2) { $RallyMarkers[1] }))"] =
+        [bool]($GroupOrder -match "^Order: rally point of 1 buildings of the group at ") -and ($Moved.Count -eq 2) -and
+        ([Math]::Abs($Moved[0] - $BuildRally[0]) -le 50) -and ([Math]::Abs($Moved[1] - $BuildRally[1]) -le 50)
+    $Missing = @("greyed", "fr", "en", "ja", "ghost", "block", "popfull", "f1", "f2", "next", "tab_centre", "tab_houses", "rally" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hud_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build hud" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {

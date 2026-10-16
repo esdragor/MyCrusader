@@ -90,6 +90,7 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallySource, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, BuildersAtWork, COND_OwnerOnly);
 }
 
 const FHOLBuildingTypeRow* AHOLBuilding::GetType() const
@@ -198,6 +199,23 @@ void AHOLBuilding::OnRep_Construction()
 {
 	// The state rebuilds the look, the work raises the site (RefreshAppearance does both).
 	RefreshAppearance();
+	OnConstructionChanged.Broadcast();
+}
+
+void AHOLBuilding::SetBuildersAtWork(const int32 InBuilders)
+{
+	const uint8 Builders = static_cast<uint8>(FMath::Clamp(InBuilders, 0, 255));
+	if (BuildersAtWork == Builders)
+	{
+		return;
+	}
+	BuildersAtWork = Builders;
+	ForceNetUpdate();
+	OnConstructionChanged.Broadcast();
+}
+
+void AHOLBuilding::OnRep_BuildersAtWork()
+{
 	OnConstructionChanged.Broadcast();
 }
 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Match/HOLResources.h"
+#include "Player/HOLCommandGrid.h"
 #include "HOLPlayerController.generated.h"
 
 class AHOLBuilding;
@@ -68,6 +69,11 @@ struct FHOLDepositPopup
  * on one of the player's sites not finished, its selected Peasants go and help build it (J6a.4, D312; Shift: queued).
  * Production (J3, D282): the cells of the command grid (keys of D30, or a click on the HUD) and the HUD's cancel
  * clicks become requests to the server (RPCs), which queues them in the order queue and applies them at its next step.
+ * With builders (Peasants) selected, the grid shows the buildings they build, directly on A, Z, E (J6a.5, D313): a cell
+ * starts the placement; a site selected shows « Annuler » on V. F1, F2, F3 select all the player's military, economic,
+ * technological buildings (D30, the user's trial of J6a.5), their ghosts included; pressed again, the camera goes from
+ * one to the next. Tab goes through the group's subgroups (« Tous », each type, each main centre alone), whose cells the
+ * grid shows; a unit asked of several is spread evenly among them (the user's 2nd trial of J6a.5).
  * Placement (J6a.3, D311): in placement mode a ghost of the building follows the cursor tile by tile, green where the
  * server would accept it from what this machine knows (the rules of HOLConstruction) and the stock covers its cost,
  * red otherwise; a left click places it (an RPC, checked again and paid by the server) and leaves the mode, Shift +
@@ -109,6 +115,33 @@ public:
 	void OrderAt(const FVector2D& ViewportFraction, bool bQueue = false);
 	/** Selects a building, or nothing (null). */
 	void SetSelection(AHOLBuilding* Building);
+	/**
+	 * Selects several of the player's own buildings (an F key, D30): one alone is selected as SetSelection does; several
+	 * make a group, GetSelection() then null.
+	 */
+	void SetBuildingSelection(TArray<AHOLBuilding*> Buildings);
+	/** The selected buildings: the one of GetSelection(), or a group's (the player's own), or none. */
+	void GetSelectedBuildings(TArray<AHOLBuilding*>& OutBuildings) const;
+	/** Several of the player's buildings are selected together (an F key). */
+	bool HasBuildingGroup() const { return !SelectedBuildings.IsEmpty(); }
+	/**
+	 * A group's subgroups (the user's 2nd trial of J6a.5, HOLCommandGrid::SplitSubgroups): « Tous », then one per type in
+	 * the group's order, each main centre alone; indices in GetSelectedBuildings' order. Empty without a group.
+	 */
+	void GetSubgroups(TArray<FHOLSubgroup>& OutSubgroups) const;
+	/** The subgroup Tab made active (0: « Tous », a new group's), whose cells the grid shows; false without a group. */
+	bool GetActiveSubgroup(FHOLSubgroup& OutSubgroup) const;
+	/** Tab (AoE4's way): the next subgroup of the group, back to « Tous » after the last one; nothing without a group. */
+	void CycleSubgroup();
+	/** Whether a building of the group is in its active subgroup (its frame drawn brighter); true outside a group. */
+	bool IsInActiveSubgroup(const AHOLBuilding* Building) const;
+	/** "All (7)", "House x6", "MainCentre": the active subgroup, for the logs; empty without a group. */
+	FString DescribeSubgroup() const;
+	/**
+	 * The buildings the grid's commands go to: the player's own building selected alone, or the active subgroup's (the
+	 * whole group for « Tous »).
+	 */
+	void GetCommandBuildings(TArray<AHOLBuilding*>& OutBuildings) const;
 	/** Selects units (their identifiers), or nothing (empty). */
 	void SetUnitSelection(TArray<uint32> UnitIds);
 	/** Selects a standing resource source (its index in UHOLSourceSubsystem), or nothing (INDEX_NONE). */
@@ -130,8 +163,8 @@ public:
 	/** "MainCentre of slot 3 (own)", "none": for the logs of the scripted checks. */
 	FString DescribeBuilding(const AHOLBuilding* Building) const;
 	/**
-	 * The building as DescribeBuilding, "Peasant #12 of slot 3 (own)", "4 units (own): Peasant x4", "source 12 GoldVein
-	 * (2500 left)" or "none".
+	 * The building as DescribeBuilding, "3 buildings (own): MainCentre x1, House x2", "Peasant #12 of slot 3 (own)", "4 units
+	 * (own): Peasant x4", "source 12 GoldVein (2500 left)" or "none".
 	 */
 	FString DescribeSelection() const;
 
@@ -147,14 +180,44 @@ public:
 	AHOLBuilding* GetOwnSelection() const;
 
 	/** Number of cells of the command grid (D30: A Z E R / Q S D F / W X C V). */
-	static constexpr int32 NumGridCells = 12;
+	static constexpr int32 NumGridCells = HOLCommandGrid::NumCells;
 	/**
 	 * Unit type a cell of the grid produces at the selected building (its own), or None: the building's Produces
 	 * list, in order, fills the cells.
 	 */
 	FName GetGridCellUnitType(int32 Cell) const;
-	/** A cell of the grid, by its key or a click on the HUD: asks the server to produce its unit type. */
+	/**
+	 * What each cell of the grid does with the selection (D30, D281, D313): the selected building's production, or its
+	 * « Annuler » when it is one of the player's sites; a group of buildings, the cells of its active subgroup's buildings
+	 * merged (HOLCommandGrid::MergeCommands: in « Tous », a key two of them use goes to the main centre, then to the
+	 * group's order; a subgroup of one site alone has its « Annuler »); with builders (Peasants) selected, the buildings
+	 * they build, directly on A, Z, E; NumGridCells commands.
+	 */
+	void GetGridCommands(TArray<FHOLGridCommand>& OutCommands) const;
+	/**
+	 * The building (of the player's own, finished) that would take a unit of TypeName: the selected one, or, of the
+	 * active subgroup, the next one of an even spread (HOLCommandGrid::PickEvenly); null when none produces it or every
+	 * queue is full. With bOutAny, whether one of them produces it at all.
+	 */
+	AHOLBuilding* FindProductionBuilding(FName TypeName, bool* bOutAny = nullptr) const;
+	/**
+	 * A cell of the grid, by its key or a click on the HUD: asks the server to produce its unit type, starts the
+	 * placement of its building (D313), or asks the server to cancel the selected site (D311). What does not go
+	 * through (not enough resources, queue full) or waits (population full) is told (OnCommandFeedback).
+	 */
 	void ActivateGridCell(int32 Cell);
+
+	/** A command did not go through as asked (D313): the HUD shows a short message above the grid. */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnCommandFeedback, const FHOLCommandFeedback& /*Feedback*/);
+	FOnCommandFeedback OnCommandFeedback;
+
+	/**
+	 * The F1, F2, F3 keys (D30, the user's trial of J6a.5): all the player's buildings of Category selected (finished,
+	 * under construction and its ghosts, HOLCommandGrid::IsSelectedByCategory), in the order of their cycle (the centre,
+	 * then by type), « Tous » active, the camera where it is; pressed again while that selection stays, the camera goes to
+	 * the next one (HOLCommandGrid::NextInCycle), the active subgroup kept. None: a short message.
+	 */
+	void SelectBuildingCategory(EHOLBuildingCategory Category);
 
 	/**
 	 * Placement mode (J6a.3, D311) for a type the builders build (the Peasant's grid of J6a.5 starts it; a development
@@ -175,7 +238,7 @@ public:
 	 * Whether this machine sees a foundation of TypeName on Footprint as possible (the ghost's colour): the rules of
 	 * UHOLConstructionSubsystem::CheckPlacement, then the stock; OutReason says why not ("" when possible).
 	 */
-	bool CheckPlacementHere(FName TypeName, const FBox2D& Footprint, FString& OutReason) const;
+	bool CheckPlacementHere(FName TypeName, const FBox2D& Footprint, FString& OutReason, FHOLCommandFeedback* OutFeedback = nullptr) const;
 	/**
 	 * Asks the server to place a foundation of TypeName around a ground point (snapped to the tiles); it checks everything
 	 * again. The player's selected units are sent to build it (J6a.4), at the end of their queue with bQueue (Shift).
@@ -279,6 +342,14 @@ private:
 	void HandleOrder();
 	void HandleDeselect();
 	void HandleNextIdle();
+	void HandleCategoryKey(EHOLBuildingCategory Category);
+	void HandleSubgroupKey();
+	/** The group's buildings as the pure rules read them (their type, a main centre alone). */
+	void GetGroupMembers(TConstArrayView<AHOLBuilding*> Group, TArray<FHOLGroupMember>& OutMembers) const;
+	/** After the group changed (a building gone, an F key again): the subgroup of that building active again, else « Tous ». */
+	void RestoreSubgroup(uint32 FirstKey);
+	/** Logs and broadcasts a command's feedback (OnCommandFeedback). */
+	void NotifyFeedback(const FHOLCommandFeedback& Feedback);
 	void HandleGridKey(const FInputActionValue& Value, int32 Cell);
 	/** The ghost under the cursor, its colour checked again (placement mode, every frame). */
 	void UpdatePlacementGhost();
@@ -347,6 +418,19 @@ private:
 	TArray<uint32> IdleWorkers;
 	/** The idle worker the last "." selected: the next press goes on from it. */
 	uint32 LastIdleWorker = 0;
+	/** Several of the player's buildings selected together (an F key), never with Selection, units or a source: 2 at least. */
+	TArray<TWeakObjectPtr<AHOLBuilding>> SelectedBuildings;
+	/**
+	 * The last F key (D30): its category, the buildings it selected (unique ids on this machine) and the one the camera
+	 * went to last; a press again while they are still the selection goes on from it.
+	 */
+	TOptional<EHOLBuildingCategory> LastCategory;
+	TArray<uint32> LastCategorySelection;
+	uint32 LastCategoryBuilding = 0;
+	/** The group's active subgroup (Tab), an index of GetSubgroups: 0, « Tous », for a new group. */
+	int32 ActiveSubgroup = 0;
+	/** By unit type, the building of a group that took the last one (unique id here): the next press goes on from it. */
+	TMap<FName, uint32> LastProductionBuilding;
 	/** Left button held: where it was pressed (viewport fractions); its release clicks or ends the box. */
 	bool bSelectPressed = false;
 	FVector2D SelectPressFraction = FVector2D::ZeroVector;
@@ -372,4 +456,6 @@ private:
 	FBox2D GhostFootprint = FBox2D(ForceInit);
 	double GhostGroundZ = 0.0;
 	FString GhostReason;
+	/** Why the ghost is red, as told to the player when it is clicked (D313). */
+	FHOLCommandFeedback GhostFeedback;
 };
