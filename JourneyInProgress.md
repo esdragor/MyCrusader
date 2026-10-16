@@ -2786,3 +2786,64 @@ d'épée).
 - **3e retour appliqué** (sous-agent, rien de commité, GDD non touché) : cause, le drapeau suivait `GetOwnSelection` (un bâtiment choisi seul) et un seul mât existait ; correction dans `HOLSelectionMarkers` : un drapeau par bâtiment de `GetCommandBuildings` qui a un point de ralliement (choisi seul, sous-groupe actif, tous pour « Tous »), mâts faits au besoin, suivis à chaque image (Tab, clic droit sur le groupe) ; contrôleur inchangé ; repères : `flag 1 at (x, y)`. `quick_check` partie `build hud rally` : « Tous » et « Centre principal » → `flag 1 at (-16800, -1500)` (E), maisons → `flag 0`, clic droit au sol sur « Tous » → ralliement du centre et drapeau à (-17999, -1500). **PASS en 151 s du premier coup, 62/62** ; capture `build_hud_rally` vue (drapeau au point, « Tous (8) »).
 - Session d'essai relancée (deuxième écran) pour le drapeau des groupes.
 - **Essai validé** par l'utilisateur (« c'est bon ») : J6a.5 commitée (sans les lignes des autres sessions). Reste : S2 / S7 au repos, puis vérification et clôture de J6a (J6a.6).
+- Fusion de `cheat-unit-speed` (d486f84, panneau de triches : curseurs de vitesse des unités et de la collecte, D291) sur main (435094f), en `--no-commit` : fusion automatique cohérente avec J6a.5, aucune correction ; build éditeur OK (47 s) ; `quick_check` PASS en 151 s, tests 62/62 (du premier coup) ; essai console hors écran : `hol.Cheat.UnitSpeed 2` → `hol.Units.SpeedScale = 2`, `hol.Cheat.GatherSpeed 3` → `hol.Gather.SpeedScale = 3`, 50 tenu à 10. Fusion non committée.
+
+### 2026-10-16 — J6a.6 : mesures au repos
+
+- Sous-agent, rien de commité, aucun code touché, main à bfda9b4 (éditeur compilé à jour). Mêmes commandes que le matin
+  (`-RenderOffScreen -ResX=888 -ResY=500`, journaux `Saved_Tests\Logs\j6a6_s1.log`, `j6a6_s2.log`, `j6a6_s7.log`).
+  Servent aussi à J5c (animations : J5c.1, J5c.2, marteau du bâtisseur).
+- **Machine pas au repos** : l'éditeur ProjectShiva n'était pas fermé (4,6 % avant), il s'est fermé vers le début de S1
+  puis a été **relancé deux fois par un autre processus** (via WmiPrvSE, 20 h 43 juste après la mesure de S1, puis
+  20 h 53 avec `-log -abslog` pendant S5) : 3-9 % pendant S2/S7, ~11 % pendant S5, **12-13 % stable ensuite**
+  (~2 cœurs). Processeur total : 9-38 % avant les mesures (10-15 % le matin), 40-50 % au calme après S5 ; pendant les
+  passages (test compris) S1 61 %, S2 62 %, S7 73 %, S5 89 % (99 au plus). Autres : GitKraken 3-4 %, Opera ~6 %,
+  Notepad, IMF, Battle.net, VS Code, Discord.
+- **S1** (10 s) : **2,566 ms PASS** (2,184 le matin, +17 %) ; évitement à l'arrêt 9,4 ms un pas sur 6 (8,1) ; 186 i/s
+  (241), fil du jeu 5,19 ms (4,02), rendu 2,46 (1,87), GPU 2,37 (2,30).
+- **S2** (10 s) : **3,178 ms FAIL** (2,738, +16 %) ; évitement en marche 1,31 (1,00), séparation 0,91 (0,76),
+  pleine vitesse 0,60 (0,50), ordres 0,59 (0,57) ; 598 puis 407 paires (583 / 393) ; 185 i/s (234), GPU 2,36 (2,32).
+- **S7** (20 s) : **2,790 ms PASS** (2,155, +29 %, marge 0,21 ms) ; évitement à l'arrêt 7,2 (5,6), récolte 0,263
+  (0,204), ordres 0,182 (0,157), évitement en marche 0,378 (0,261) ; **1 198 bois/s** (1 198), 10,9 chemins/s (13,1),
+  219,8 repris/s ; 0 raté, 0 inactif ; « Buildings (D310) : 0 bodies put back out of a footprint, 0 walkers given a
+  new path » ; 162 i/s (248), fil du jeu 5,88 (3,97), rendu 3,14 (1,93), **GPU 3,60 (2,15 : +1,45 ms, J5c.2)**.
+- **Nouveaux processeurs** : `HOLBuildProcessor` 0,003-0,004 ms partout ; `HOLFootprintKeepOutProcessor` 0,006-0,007
+  dans S1/S2, **0,124 ms dans S7** (les 32 dépôts ont une emprise) : seul surcoût propre du code (+0,13 ms sur les
+  +0,64 de S7). Tous les anciens processeurs sont 10-30 % plus lents, uniformément : signature de la charge, pas du
+  code. Le côté client / présentation (animations) ne figure pas dans le détail du pas, seulement dans le fil du jeu,
+  le rendu et le GPU.
+- **S5 court** (`net_match.ps1 -Stage -Units 2000 -Seconds 40`, serveur recuit sur bfda9b4 : 565 paquets cuits,
+  176 s de préparation, 240 s en tout) : **PASS à 31 428 o/s par client** (31 227 : +201 o/s ; seuil 32 000, **marge
+  0,57 Ko/s**), 1,78 envoi par unité et par seconde, 42 paquets/s, écart affiché **23,2 cm PASS** (21,6 ; seuil 25),
+  réplication 0,203 ms par pas (0,148), simulation du serveur 9,36 ms (6,95) ; client : états 25,2 Ko/s, le reste
+  5,9 Ko/s ; 128 et 145 i/s. Écart et temps du serveur probablement gonflés par la charge (89 %).
+- Bilan : S1, S7, S5 PASS ; **S2 FAIL sous charge** (ProjectShiva relancé). À refaire au vrai repos (ProjectShiva
+  fermé et pas relancé) pour conclure J6a.6 et J5c.
+
+- **Mesures refaites au repos** (même jour, ~21 h 25-21 h 33, sous-agent, rien de commité, aucun code touché, main à
+  bfda9b4, serveur cuit de bfda9b4 sans `-Stage`). Servent aussi à **J5c** (mycrusader-23 a suspendu ses lancements).
+  **Charge** : aucun Unreal ni ProjectShiva avant ni pendant aucun passage (vérifié avant chaque lancement et toutes les
+  2-3 s pendant) ; processeur total avant 8-20 % (10-15 le matin) ; pendant les passages (test compris) S1 33 % en
+  moyenne (63 au plus), S2 39 % (52), S7 46 % (63 ; Defender 12 % un instant, sinon Opera ~3-4 %, VS Code ~2 %),
+  S5 68 % (83). Mêmes commandes (journaux `Saved_Tests\Logs\j6a6b_s1.log`, `j6a6b_s2.log`, `j6a6b_s7.log`).
+  - **S1** (10 s) : **2,276 ms PASS** (2,184 le matin, +4 %) ; évitement à l'arrêt 8,58 ms un pas sur 6 (8,10) ;
+    226 i/s (241), fil du jeu 4,27 ms (4,02), rendu 1,98 (1,87), GPU 2,36 (2,30) ; 1 399 paires.
+  - **S2** (10 s) : **2,882 ms PASS** (2,738, +5 % ; marge 0,12 ms) ; évitement en marche 1,207 (1,001), séparation
+    0,813 (0,758), pleine vitesse 0,533 (0,502), ordres 0,555 (0,568) ; 598 puis 407 paires (583 / 393) ; 219 i/s
+    (234), fil du jeu 4,41 (4,12), rendu 2,01 (1,94), GPU 2,34 (2,32).
+  - **S7** (20 s) : **2,303 ms PASS** (2,155, +0,148 ms) ; évitement à l'arrêt 5,86 (5,60), récolte 0,220 (0,204),
+    ordres 0,144 (0,157), séparation 0,108 (0,117), évitement en marche 0,286 (0,261) ; **1 198 bois/s** (1 198),
+    10,9 chemins/s, 219,8 repris/s, 0 raté, 0 inactif ; « Buildings (D310) : 0 bodies put back out of a footprint,
+    0 walkers given a new path » ; 223 i/s (248), fil du jeu 4,40 (3,97), rendu 2,18 (1,93), **GPU 3,34 (2,15 :
+    +1,2 ms, animations de J5c)**.
+  - **Nouveaux processeurs** : `HOLBuildProcessor` 0,003 ms partout ; `HOLFootprintKeepOutProcessor` 0,005 (S1),
+    0,008 (S2), **0,105 (S7**, 32 dépôts à emprise) : il fait l'essentiel des +0,148 ms de S7 (le reste : évitement à
+    l'arrêt +0,04 par pas, récolte +0,016). Anciens processeurs à ±5-10 % du matin (bruit).
+  - **S5 court** (`net_match.ps1 -Units 2000 -Seconds 40`, sans `-Stage`, 64 s en tout) : **PASS à 30 937 o/s par
+    client** (31 227 le matin, 31 428 sous charge ; seuil 32 000, marge 1,06 Ko/s), 1,76 envoi par unité et par
+    seconde, 42 paquets/s, écart affiché **23,3 cm PASS** (21,6 le matin, 23,2 sous charge ; seuil 25, marge 1,7 cm ;
+    23,2 et 23,4 par client, médiane 21,3), réplication 0,160 ms par pas (0,148), simulation du serveur 7,44 ms
+    (6,95) ; client : états 25,3-25,4 Ko/s, le reste 5,9 Ko/s ; 168 et 164 i/s.
+  - **Bilan : tout PASS au repos** (S1, S2, S7, S5) : le FAIL de S2 venait de la charge. J6a.6 (mesures) et J5c ont
+    leurs mesures. À suivre : la marge de S2 (0,12 ms), le GPU de S7 (+1,2 ms) et l'écart de S5 (+1,7 cm, le même
+    chargé ou non).
