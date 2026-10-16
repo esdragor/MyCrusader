@@ -207,11 +207,15 @@ public:
 	/**
 	 * Development cheats for the trials (hol.Cheat.*; never in a Shipping build: no command registers them and the
 	 * server refuses them). Resources added to the player's stock (never below 0), instant production for every
-	 * player, places added to the player's population cap (still 175 at most, D03).
+	 * player, places added to the player's population cap (still 175 at most, D03), every unit walking Scale times as
+	 * fast (hol.Units.SpeedScale, for every player), every gatherer gathering Scale times as fast (hol.Gather.SpeedScale,
+	 * for every player).
 	 */
 	void RequestCheatResources(const FHOLResources& Amount);
 	void RequestCheatFastBuild(bool bOn);
 	void RequestCheatPopulation(int32 Places);
+	void RequestCheatUnitSpeed(float Scale);
+	void RequestCheatGatherSpeed(float Scale);
 
 	/** A « +10 » shown on this machine (J5c.3): the unload, when it arrived, and its line over others at the same place. */
 	struct FShownDepositPopup
@@ -324,6 +328,12 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatPopulation(int32 Places);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatUnitSpeed(float Scale);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatGatherSpeed(float Scale);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

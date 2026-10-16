@@ -2,10 +2,12 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
+#include "CommonTextBlock.h"
 #include "Components/Border.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
+#include "Components/Slider.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/World.h"
@@ -28,6 +30,11 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 	/** What a resource button adds, and the places the population button adds (hol.Cheat.* defaults). */
 	constexpr int32 ResourceAmount = 1000;
 	constexpr int32 PopulationPlaces = 165;
+	/** The speed sliders: their range and their step. */
+	constexpr float MinSpeed = 0.5f;
+	constexpr float MaxSpeed = 5.f;
+	constexpr float SpeedStep = 0.5f;
+	constexpr float SliderHeight = 20.f;
 	const TCHAR* const ConfigSection = TEXT("HOL.CheatPanel");
 	const TCHAR* const ConfigOpenKey = TEXT("bOpen");
 
@@ -48,6 +55,22 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 		{ TEXT("CheatFastBuild"), TEXT("") },
 	};
 	const FName ToggleName(TEXT("CheatToggle"));
+
+	struct FSpeedSlider
+	{
+		const TCHAR* Name;
+		const TCHAR* Label;
+		/** The server's setting it changes (hol.Cheat.UnitSpeed, hol.Cheat.GatherSpeed). */
+		const TCHAR* Variable;
+		/** In Describe. */
+		const TCHAR* Described;
+	};
+
+	/** In the order of ESpeed. */
+	const FSpeedSlider SpeedSpecs[] = {
+		{ TEXT("CheatUnitSpeed"), TEXT("Vitesse des unités"), TEXT("hol.Units.SpeedScale"), TEXT("unit speed") },
+		{ TEXT("CheatGatherSpeed"), TEXT("Vitesse de collecte"), TEXT("hol.Gather.SpeedScale"), TEXT("gather speed") },
+	};
 }
 
 UHOLCheatPanel::UHOLCheatPanel()
@@ -79,23 +102,71 @@ void UHOLCheatPanel::NativeOnInitialized()
 			CheatButtons[Index]->OnClicked().AddUObject(this, &UHOLCheatPanel::HandleCheatClicked, static_cast<ECheat>(Index));
 		}
 	}
+	for (int32 Index = 0; Index < SpeedSliders.Num(); ++Index)
+	{
+		USlider* Slider = SpeedSliders[Index];
+		if (Slider && static_cast<ESpeed>(Index) == ESpeed::Units)
+		{
+			Slider->OnValueChanged.AddDynamic(this, &UHOLCheatPanel::HandleUnitSpeedChanged);
+		}
+		else if (Slider)
+		{
+			Slider->OnValueChanged.AddDynamic(this, &UHOLCheatPanel::HandleGatherSpeedChanged);
+		}
+	}
 	GConfig->GetBool(ConfigSection, ConfigOpenKey, bOpen, GGameUserSettingsIni);
 	SetOpen(bOpen);
 }
 
 void UHOLCheatPanel::NativeConstruct()
 {
+	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
+
 	Super::NativeConstruct();
 
 	Controller = GetOwningPlayer<AHOLPlayerController>();
-	// Solo or listen server: the server's own setting (hol.Prod.BuildTime, set by hol.Cheat.FastBuild).
+	// Solo or listen server: the server's own settings (hol.Prod.BuildTime, set by hol.Cheat.FastBuild; the sliders'
+	// variables, set by hol.Cheat.UnitSpeed and hol.Cheat.GatherSpeed).
 	const UWorld* World = GetWorld();
 	if (World && World->GetNetMode() != NM_Client)
 	{
-		const IConsoleVariable* BuildTime = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Prod.BuildTime"));
-		bFastBuild = BuildTime && BuildTime->GetFloat() > 0.f;
+		ServerBuildTime = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Prod.BuildTime"));
+		for (int32 Index = 0; Index < NumSpeeds; ++Index)
+		{
+			ServerSpeeds[Index] = IConsoleManager::Get().FindConsoleVariable(SpeedSpecs[Index].Variable);
+		}
 	}
+	FollowServerSettings();
 	RefreshLabels();
+}
+
+void UHOLCheatPanel::FollowServerSettings()
+{
+	bool bChanged = false;
+	if (ServerBuildTime && (ServerBuildTime->GetFloat() > 0.f) != bFastBuild)
+	{
+		bFastBuild = !bFastBuild;
+		bChanged = true;
+	}
+	for (int32 Index = 0; Index < NumSpeeds; ++Index)
+	{
+		const float ServerSpeed = ServerSpeeds[Index] ? ServerSpeeds[Index]->GetFloat() : Speeds[Index];
+		if (ServerSpeed == Speeds[Index])
+		{
+			continue;
+		}
+		Speeds[Index] = ServerSpeed;
+		bChanged = true;
+		USlider* Slider = SpeedSliders.IsValidIndex(Index) ? SpeedSliders[Index].Get() : nullptr;
+		if (Slider && Slider->GetValue() != ServerSpeed)
+		{
+			Slider->SetValue(ServerSpeed);
+		}
+	}
+	if (bChanged)
+	{
+		RefreshLabels();
+	}
 }
 
 void UHOLCheatPanel::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
@@ -103,6 +174,7 @@ void UHOLCheatPanel::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
 
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	FollowServerSettings();
 
 	// Under the top bar, which only shows once the player's economy has arrived and may change height.
 	const UWidget* AnchorWidget = Anchor.Get();
@@ -168,8 +240,47 @@ void UHOLCheatPanel::HandleCheatClicked(const ECheat Cheat)
 	}
 }
 
+void UHOLCheatPanel::HandleUnitSpeedChanged(const float Value)
+{
+	HandleSpeedChanged(ESpeed::Units, Value);
+}
+
+void UHOLCheatPanel::HandleGatherSpeedChanged(const float Value)
+{
+	HandleSpeedChanged(ESpeed::Gather, Value);
+}
+
+void UHOLCheatPanel::HandleSpeedChanged(const ESpeed Speed, const float Value)
+{
+	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
+
+	// The slider moves by steps: one request a step, not one a frame while it is dragged.
+	const int32 Index = static_cast<int32>(Speed);
+	const float Scale = FMath::Clamp(FMath::GridSnap(Value, SpeedStep), MinSpeed, MaxSpeed);
+	if (Scale == Speeds[Index])
+	{
+		return;
+	}
+	Speeds[Index] = Scale;
+	RefreshLabels();
+	if (AHOLPlayerController* PlayerController = Controller.Get())
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: cheat %s x%.1f"), SpeedSpecs[Index].Described, Scale);
+		if (Speed == ESpeed::Units)
+		{
+			PlayerController->RequestCheatUnitSpeed(Scale);
+		}
+		else
+		{
+			PlayerController->RequestCheatGatherSpeed(Scale);
+		}
+	}
+}
+
 void UHOLCheatPanel::RefreshLabels()
 {
+	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
+
 	if (Toggle)
 	{
 		Toggle->SetLabel(bOpen ? INVTEXT("Triches  -") : INVTEXT("Triches  +"));
@@ -178,6 +289,13 @@ void UHOLCheatPanel::RefreshLabels()
 	if (CheatButtons.IsValidIndex(FastBuildIndex) && CheatButtons[FastBuildIndex])
 	{
 		CheatButtons[FastBuildIndex]->SetLabel(bFastBuild ? INVTEXT("Construction rapide : oui") : INVTEXT("Construction rapide : non"));
+	}
+	for (int32 Index = 0; Index < SpeedLabels.Num(); ++Index)
+	{
+		if (SpeedLabels[Index])
+		{
+			SpeedLabels[Index]->SetText(FText::AsCultureInvariant(FString::Printf(TEXT("%s : x%.1f"), SpeedSpecs[Index].Label, Speeds[Index])));
+		}
 	}
 }
 
@@ -205,7 +323,18 @@ bool UHOLCheatPanel::ClickWidget(const FName Name)
 
 FString UHOLCheatPanel::Describe() const
 {
-	return bOpen ? FString::Printf(TEXT("cheats open, fast build %s"), bFastBuild ? TEXT("on") : TEXT("off")) : FString(TEXT("cheats folded"));
+	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
+
+	if (!bOpen)
+	{
+		return TEXT("cheats folded");
+	}
+	FString Description = FString::Printf(TEXT("cheats open, fast build %s"), bFastBuild ? TEXT("on") : TEXT("off"));
+	for (int32 Index = 0; Index < NumSpeeds; ++Index)
+	{
+		Description += FString::Printf(TEXT(", %s x%.1f"), SpeedSpecs[Index].Described, Speeds[Index]);
+	}
+	return Description;
 }
 
 void UHOLCheatPanel::BuildLayout()
@@ -251,5 +380,30 @@ void UHOLCheatPanel::BuildLayout()
 		UHOLQueueItem* Button = MakeButton(CheatSpecs[Index].Name, CheatColumn, Index == 0 ? 0.f : ButtonGap);
 		Button->SetLabel(FText::AsCultureInvariant(CheatSpecs[Index].Label));
 		CheatButtons.Add(Button);
+	}
+
+	// The speeds: each one's label, then its slider (by steps of x0.5).
+	for (int32 Index = 0; Index < NumSpeeds; ++Index)
+	{
+		const FString Name = SpeedSpecs[Index].Name;
+		UCommonTextBlock* Label = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), *(Name + TEXT("Label")));
+		Label->SetStyle(UHOLTextStyleHUDLabel::StaticClass());
+		CheatColumn->AddChildToVerticalBox(Label)->SetPadding(FMargin(2.f, ButtonGap * 3.f, 0.f, 0.f));
+		SpeedLabels.Add(Label);
+		USlider* Slider = WidgetTree->ConstructWidget<USlider>(USlider::StaticClass(), *Name);
+		Slider->SetMinValue(MinSpeed);
+		Slider->SetMaxValue(MaxSpeed);
+		Slider->SetStepSize(SpeedStep);
+		Slider->MouseUsesStep = true;
+		Slider->IsFocusable = false;
+		Slider->SetValue(Speeds[Index]);
+		Slider->SetSliderBarColor(HOLUIStyle::TextMuted);
+		Slider->SetSliderHandleColor(HOLUIStyle::Accent);
+		USizeBox* SliderBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *(Name + TEXT("Box")));
+		SliderBox->SetWidthOverride(ButtonWidth);
+		SliderBox->SetHeightOverride(SliderHeight);
+		SliderBox->SetContent(Slider);
+		CheatColumn->AddChildToVerticalBox(SliderBox);
+		SpeedSliders.Add(Slider);
 	}
 }

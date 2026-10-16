@@ -35,6 +35,11 @@ namespace UE::HeroesOfLiberty::Gather
 	FAutoConsoleVariableRef CVarLogDeposits(TEXT("hol.Gather.LogDeposits"), LogDeposits,
 		TEXT("1: every unload at a deposit is logged (scripted checks of J5: the stock rises at the deposit only)"));
 
+	float SpeedScale = 1.f;
+	FAutoConsoleVariableRef CVarSpeedScale(TEXT("hol.Gather.SpeedScale"), SpeedScale,
+		TEXT("Every gatherer gathers this many times as fast, on this server (development: hol.Cheat.GatherSpeed and the cheats' panel set it; D291); ")
+		TEXT("1: the table's rates"));
+
 	float SpotSpacing = 100.f;
 	FAutoConsoleVariableRef CVarSpotSpacing(TEXT("hol.Gather.SpotSpacing"), SpotSpacing,
 		TEXT("Distance (cm) between two gatherers' spots, at one source or two side by side (D309): two Peasants' bodies (60 cm radius) overlapping a little, ")
@@ -374,7 +379,8 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		const EHOLResource Resource = Source->Resource;
 		const EHOLResource Carried = Gather.Load.Resource;
 		int32 Lost = 0;
-		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Gatherer.Constants.GatherRates[Resource], Step.StepSeconds,
+		const float Rate = Gatherer.Constants.GatherRates[Resource] * FMath::Clamp(SpeedScale, 0.1f, 10.f);
+		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Rate, Step.StepSeconds,
 			Gatherer.Constants.CarryCapacity, Remaining, &Lost);
 		if (Taken > 0)
 		{
