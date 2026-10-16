@@ -373,7 +373,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** The same from the player's own start (a script does not know which slot a client holds, J5a.5). */
 	FAutoConsoleCommand OrderSourceNearCommand(
 		TEXT("hol.Select.OrderSourceNear"),
-		TEXT("hol.Select.OrderSourceNear [Dx Dy]: hol.Select.OrderSource at the player's start plus (Dx, Dy) (cm)"),
+		TEXT("hol.Select.OrderSourceNear [Dx Dy]: hol.Select.OrderSource at the player's start (its main centre's middle) plus (Dx, Dy) (cm)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
@@ -382,7 +382,7 @@ namespace UE::HeroesOfLiberty::Player
 				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
 				if (Start)
 				{
-					const FVector Point = Start->GetGroundLocation() + (Args.Num() >= 2 ? FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.) : FVector::ZeroVector);
+					const FVector Point = Start->GetMainCentreLocation() + (Args.Num() >= 2 ? FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.) : FVector::ZeroVector);
 					IConsoleManager::Get().ProcessUserConsoleInput(*FString::Printf(TEXT("hol.Select.OrderSource %.0f %.0f"), Point.X, Point.Y),
 						*GLog, Controller->GetWorld());
 				}
@@ -406,7 +406,7 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand FocusSlotCommand(
 		TEXT("hol.Camera.FocusSlot"),
-		TEXT("hol.Camera.FocusSlot <Slot|own>: puts the local player's camera above a start slot, or its own (scripted checks)"),
+		TEXT("hol.Camera.FocusSlot <Slot|own>: puts the local player's camera above a start slot's main centre, or its own (scripted checks)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const bool bOwn = !Args.IsEmpty() && Args[0] == TEXT("own");
@@ -417,7 +417,7 @@ namespace UE::HeroesOfLiberty::Player
 				const AHOLStartSlot* Start = AHOLStartSlot::Find(Controller->GetWorld(), Slot);
 				if (Start && Controller->GetRTSCamera())
 				{
-					Controller->GetRTSCamera()->SetFocus(Start->GetGroundLocation());
+					Controller->GetRTSCamera()->SetFocus(Start->GetMainCentreLocation());
 					UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d"), Slot);
 				}
 			}
@@ -491,7 +491,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** The same, to a point given from the player's own start (a script does not know which slot a client holds). */
 	FAutoConsoleCommand UnitsOrderNearCommand(
 		TEXT("hol.Units.OrderNear"),
-		TEXT("hol.Units.OrderNear Dx Dy [all]: hol.Units.Order to the player's start plus (Dx, Dy) (cm)"),
+		TEXT("hol.Units.OrderNear Dx Dy [all]: hol.Units.Order to the player's start (its main centre's middle) plus (Dx, Dy) (cm)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)
@@ -504,7 +504,7 @@ namespace UE::HeroesOfLiberty::Player
 				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
 				if (Start)
 				{
-					const FVector Target = Start->GetGroundLocation() + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
+					const FVector Target = Start->GetMainCentreLocation() + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
 					IConsoleManager::Get().ProcessUserConsoleInput(*FString::Printf(TEXT("hol.Units.Order %.0f %.0f %s"), Target.X, Target.Y,
 						Args.Num() >= 3 ? *Args[2] : TEXT("")), *GLog, Controller->GetWorld());
 				}
@@ -854,7 +854,7 @@ void AHOLPlayerController::TryPlaceCamera()
 		UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: the camera stays where it is"), Slot);
 		return;
 	}
-	const FVector Ground = Start->GetGroundLocation();
+	const FVector Ground = Start->GetMainCentreLocation();
 	RTSCamera->SetFocus(Ground);
 	UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d (%.0f, %.0f)"), Slot, Ground.X, Ground.Y);
 }

@@ -2,6 +2,8 @@
 
 #include "Map/HOLStartSlot.h"
 
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Components/CapsuleComponent.h"
 #include "EngineUtils.h"
 
@@ -15,6 +17,20 @@ FVector AHOLStartSlot::GetGroundLocation() const
 	FVector Ground = GetActorLocation();
 	Ground.Z -= GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	return Ground;
+}
+
+FVector AHOLStartSlot::GetMainCentreLocation() const
+{
+	const FVector Ground = GetGroundLocation();
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
+	const FVector2D Footprint = Type ? Type->Footprint : FVector2D::ZeroVector;
+	const FVector2D Middle = HOLConstruction::SnapToGrid(FVector2D(Ground), Footprint, UHOLBuildingSettings::GetTileSize()).GetCenter();
+	return FVector(Middle, Ground.Z);
+}
+
+float AHOLStartSlot::GetMainCentreYaw() const
+{
+	return HOLConstruction::SnapYaw(GetActorRotation().Yaw);
 }
 
 AHOLStartSlot* AHOLStartSlot::Find(const UWorld* World, const int32 Index)

@@ -319,7 +319,7 @@ FVector UHOLProductionSubsystem::GetBirthLocation(const AHOLBuilding& Building, 
 
 	const FVector Origin = Building.GetActorLocation();
 	const FHOLBuildingTypeRow* Type = Building.GetType();
-	const float HalfFootprint = Type ? 0.5f * FMath::Max(Type->Footprint.X, Type->Footprint.Y) : 750.f;
+	const float HalfFootprint = Type ? 0.5f * FMath::Max(Type->Footprint.X, Type->Footprint.Y) : 600.f;
 
 	// On the side of the rally point (user's choice at the J5a trial): the unit walks off at once, so one arc is enough.
 	// Without one, below the building on the screen: the camera never turns and looks along +X for every player (D254),

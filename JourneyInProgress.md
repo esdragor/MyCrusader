@@ -121,7 +121,8 @@ vérifier sur S1 et S2.
    J5c.1 (animations) menée par la session `mycrusader-23` ; cette session fait **J5c.3** (« +10 »), essai, commit, puis
    **J6a** (à partir de J6a.1) tant que les animations ne sont pas prêtes ; J5c.2 et J5c.4 après les animations.
    **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
-   refaire avant la clôture de J6a). Suite : **J6a.2** (voir « Plan de J6 »).
+   refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
+   3 m, forum 12 m, maison et camps 6 m, camps 100 bois). Suite : **J6a.3** (pose ; voir « Plan de J6 »).
    En sous-agents (règle ci-dessous).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
@@ -2401,3 +2402,68 @@ d'épée).
   puis commit ; mesures au repos.
 - Session d'essai lancée (deuxième écran) pour l'essai de J6a.1.
 - **Essai validé** par l'utilisateur (« c'est bon ») ; J6a.1 commitée (sans les lignes des autres sessions). Reste : S1 / S2 / S7 au repos (avant la clôture de J6a). Reprise : **J6a.2** (données et règles pures).
+
+### 2026-10-16 — J6a.2 : données et règles de la construction
+
+- **Table** (`Tools/Data/BuildingTypes.csv`, refaite par `make_building_types.py` en commandlet) : colonnes **`Cost`**
+  (4 ressources), **`BuildTime`** (s, un bâtisseur), **`BuildGridSlot`** (case de la grille du Paysan, D313 : 0 = A,
+  1 = Z, 2 = E ; −1 = non constructible, le centre). Valeurs indicatives façon AoE4 :
+
+  | Ligne | Emprise | Hauteur | PV | Pop. | Accepte | Coût | Durée | Case |
+  |---|---|---|---|---|---|---|---|---|
+  | `MainCentre` | 15 × 15 m | 10 m | 2 400 | 10 | les 4 | — | — | −1 |
+  | `House` | 5 × 5 m | 4 m | 600 | +10 | — | 50 bois | 20 s | A |
+  | `LumberCamp` | 6 × 6 m | 4 m | 1 000 | 0 | bois | 50 bois | 25 s | Z |
+  | `MiningCamp` | 6 × 6 m | 4 m | 1 000 | 0 | pierre, or | 50 bois | 25 s | E |
+
+  `LumberCamp` devient la vraie ligne **sans changer emprise, hauteur, PV ni dépôt** : S7 (camps posés par le code)
+  inchangé, non relancé.
+- **Réglages** (`UHOLBuildingSettings`, `DefaultGame.ini`) : `PlacementGrid=100` cm, `AntiRushRadius=4000` cm (du milieu
+  du centre ennemi au point le plus proche de l'emprise ; emplacements à 115 m à 8 joueurs, filons à ~60 m de deux
+  emplacements : les deux voisins peuvent y bâtir), `BuilderExponent=0.63`.
+- **`Buildings/HOLConstructionRules`** (fonctions pures, `HOLConstruction::`) :
+  - `SnapToGrid` : **coin bas de l'emprise sur la grille** (bords sur les lignes ; milieu entre deux lignes si taille
+    impaire) → deux bâtiments côte à côte se touchent exactement.
+  - `CheckPlacement` (requête : emprise, emprises posées, cercles des sources, carte, centres ennemis, rayon anti-rush,
+    réponse navmesh de l'appelant) → refus dans l'ordre `OutOfMap`, `Building` (se toucher permis, tolérance 0,5 cm),
+    `Source` (disque du rayon de la source), `EnemyCentre`, `NavMesh`.
+  - `TryPay` (tout ou rien) ; `GetRefund` : tout avant le premier travail, **moitié arrondie en dessous** après.
+  - Travail en **entiers** : un bâtisseur = 1 000 par pas, total = `BuildSteps` × 1 000 ; N bâtisseurs =
+    **1 000 × N^0,63** par pas (3 → ×2,0 ; 2 → ×1,55 ; 4 → ×2,4 ; 10 → ×4,3) ; `AddWork` vrai au seul pas qui finit.
+  - `GetHealth` = PV max × travail / total, au moins 1 (l'appelant ajoute l'écart à chaque pas : les dégâts pris
+    restent, un bâtiment intact finit à ses PV max) ; `GetPopulationProvided` : rien tant que non fini ; plafond 175
+    par `HOLProduction::GetPopulationCap` (inchangé).
+- **Tests** `HeroesOfLiberty.Construction.*` : `Grid`, `Placement`, `Payment`, `Builders`, `Population`, `Tables` (6) ;
+  **45/45**. Rien de visible en jeu ; **quick_check PASS en 90 s**.
+- **À régler à l'essai** : coûts (50 bois partout), durées (20 / 25 s), emprises (maison 5 m, camps 6 m), PV (600 /
+  1 000), rayon anti-rush (40 m), exposant (0,63), demi-remboursement arrondi en dessous. Plus tard (J6a.4) : le
+  plafond de `UHOLProductionSubsystem` devra ignorer les bâtiments non finis.
+- **Tailles en cases** (choix de l'utilisateur, 2026-10-16, précise D311) : **une case = 3 m** ; forum (centre principal)
+  **4 × 4 cases (12 m)** au lieu de 15 m ; maison et camps **2 × 2 cases (6 m)** ; la pose se fait **case par case**
+  (grille de 3 m au lieu de ~1 m), bâtiments toujours alignés bord à bord. Confié à un sous-agent avant le commit de J6a.2.
+- **Coût des camps** (choix de l'utilisateur, 2026-10-16) : **100 bois** (maison 50 bois).
+- **Cases de 3 m faites dans le code** (sous-agent, non compilé ni essayé : fenêtre de compilation de `mycrusader-23`) :
+  réglage **`TileSize=300`** (remplace `PlacementGrid`, source unique, `UHOLBuildingSettings::GetTileSize`) ; emprises
+  en cm dans la table : centre **1 200 × 1 200**, maison et camps **600 × 600** ; camps à **100 bois**. **Forum sur la
+  grille** sans refaire `Plain` : `AHOLStartSlot::GetMainCentreLocation` (point de l'emplacement porté sur la grille par
+  `SnapToGrid`, ≤ 1,5 m par axe ; emplacements diagonaux : 1,07 m) et `GetMainCentreYaw` (quart de tour le plus proche,
+  `HOLConstruction::SnapYaw`) ; servent à la pose du centre, à la caméra de départ et aux commandes `OrderNear` /
+  `OrderSourceNear` / `FocusSlot`. `quick_check` : `Get-SlotStart` sur la grille, contrôle « centres sur la grille de
+  3 m » (journal du centre avec son lacet). Tests `Construction.Grid` / `.Placement` / `.Tables` en cases (forum d'un
+  emplacement diagonal sur la grille, maison collée à lui), `Buildings.Types` / `.Appearance` à 12 m. S7 inchangé
+  (centres tournés posés par le code). **Reste** : compilation, table refaite, tests, `quick_check`, S7 court.
+- Cases de 3 m (suite) : compilation OK, table refaite (commandlet), **tests 45/45** ; centres vus en jeu sur la grille
+  (8 joueurs : (±15 000, 0), (0, ±15 000), (±10 500, ±10 500), lacets en quarts de tour). `quick_check` faussé (deux
+  lancés en même temps dans ce dossier : clients en trop sur le serveur) ; contrôle « centres sur la grille » corrigé
+  (groupes de l'expression aplatis par PowerShell). À relancer seul : `quick_check`, S7 court, captures.
+- Cases de 3 m (vérification seule) : compilation à jour, table refaite, **`quick_check` PASS en 99 s** (toutes les
+  parties, tests 45/45 ; essai de l'utilisateur ouvert depuis `MyCrusader-J5c` en même temps). Captures `cam_2p_start`
+  et `gather_*` : forum de 12 m net, bosquet et baies un peu plus loin de ses bords (anneau de sources prévu pour 15 m),
+  Paysans autour, aucun dans l'emprise, « +4 » au bord du centre. **S7 court non lancé** (essai en cours) : à faire.
+- **S7 court après les cases de 3 m** (sous-agent, 20 s hors écran, `j6a2_s7.log`) : **2,991 ms PASS de justesse**
+  (2,155 au repos, 2,567 en J6a.1), max 13,9 ms ; **machine chargée** (15-21 % avant, 64-89 % pendant : deux
+  ProjectShiva montés de ~0 à 8-21 %, autres 11-21 %) ; tous les postes ~+25-30 % (récolte 0,267, ordres 0,201,
+  séparation 0,142, évitement à l'arrêt 7,48 un pas sur 6), garde des emprises 0,127 ; 1 189 bois/s, 0 raté, 0
+  inactif, « Buildings (D310) » 0 remis / 0 nouveau chemin ; 1 295 puis 1 376 paires. **À refaire au repos.**
+- Session d'essai lancée (deuxième écran) : l'utilisateur veut voir le forum à 12 m avant le commit de J6a.2.
+- **Essai validé** par l'utilisateur (« c'est bon », forum à 12 m) ; J6a.2 commitée (sans les lignes des autres sessions). S7 au repos à refaire à la clôture de J6a. Reprise : **J6a.3** (pose), après la fusion de J5c.1 par `mycrusader-23`.
