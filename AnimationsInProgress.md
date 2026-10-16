@@ -704,3 +704,16 @@ l'utilisateur, commit sur `j5c-anims`, fusion.
   J6a.5 (petite fusion attendue dans `HOLBuildProcessor.cpp`), avec l'accord de mycrusader-58 avant l'avance rapide.
 - **Bâtisseur fusionné dans `main`** (avance rapide jusqu'à 3b750bc, avec l'accord de mycrusader-58) après fusion de
   J6a.5 (b5148a2) dans la branche : compilation, tests 62/62, `quick_check` PASS en 151 s.
+- **Mesures de clôture** : S1 / S2 / S7 courts au repos et S5 court (serveur recuit) seront faits par mycrusader-58
+  dans J6a.6, depuis `main` ≥ bfda9b4 (contient J5c.1, J5c.2 et le bâtisseur) ; chiffres transmis pour la clôture de
+  J5c. Ne lancer aucun Unreal pendant cette fenêtre (annoncée).
+- **Mesures J6a.6 de mycrusader-58** (`main` bfda9b4, contient toutes les animations ; machine **pas au repos** :
+  ProjectShiva relancé deux fois par un autre processus, ~12-13 % de CPU) : S1 2,566 ms PASS, S2 3,178 ms **FAIL**,
+  S7 2,790 ms PASS (GPU 3,60 ms contre 2,15 ce matin : +1,45 ms, cohérent avec J5c.2 ; 267 appels de dessin), S5
+  **PASS 31 428 o/s** par client (marge 572 o/s ; écart affiché 23,2 cm). Tous les processeurs anciens 10-30 % plus
+  lents : la charge. **À refaire au vrai repos** avant la clôture de J5c.
+- **Mesures au repos** (mycrusader-58, J6a.6 refait, `main` bfda9b4, ni Unreal ni ProjectShiva ouverts, CPU 8-20 %
+  avant) : **S1 2,276 ms, S2 2,882 ms, S7 2,303 ms, S5 30 937 o/s par client (écart 23,3 cm), tous PASS**. S7 :
+  1 198 bois/s, image 4,40 / 2,18 / **GPU 3,34 ms** (2,15 ce matin : **+1,2 ms dû aux animations de J5c**, surtout les
+  pièces de J5c.2), 223 i/s, 267 appels de dessin. Le +0,148 ms de S7 vient surtout des nouveaux processeurs de J6a.
+  Plus aucune mesure en attente pour J5c ; reste la clôture (et, en option, les pièces allégées aux LOD 2-3).
