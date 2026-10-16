@@ -268,6 +268,18 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	Foundation->ForceNetUpdate();
 	UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d placed %s foundation at (%.0f, %.0f), paid %s (%s)"), Order.PlayerIndex,
 		*Order.TypeName.ToString(), Centre.X, Centre.Y, *Type->Cost.ToString(), *Stock.ToString());
+
+	// The Peasants selected when it was placed go and build it (J6a.4, D312), at the end of their queue with Shift (D311).
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	if (Commands && !Order.UnitIds.IsEmpty())
+	{
+		FHOLBuildOrder BuildOrder;
+		BuildOrder.UnitIds = Order.UnitIds;
+		BuildOrder.Building = Foundation;
+		BuildOrder.PlayerIndex = Order.PlayerIndex;
+		BuildOrder.bQueue = Order.bQueue;
+		Commands->IssueBuildOrder(BuildOrder);
+	}
 }
 
 void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHOLPlayerState& PlayerState)

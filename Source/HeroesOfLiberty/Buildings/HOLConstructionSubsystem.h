@@ -17,8 +17,8 @@ struct FHOLConstructionCommand;
  * step: applies the construction orders of the order queue. A placement is checked again from what the server knows
  * (D288: grid, map, buildings and foundations, sources, enemy main centres and their anti-rush radius, the navmesh under
  * the footprint), paid (taken at placement, all or nothing) and spawns a replicated foundation (AHOLBuilding in the
- * Foundation state) owned by the player; a cancel refunds (all before the first work, half after) and removes it. The
- * building work itself comes in J6a.4. The placement check is shared with the client's ghost (CheckPlacement), which
+ * Foundation state) owned by the player, and sends the units selected to build it (a build order, UHOLBuildProcessor,
+ * J6a.4); a cancel refunds (all before the first work, half after) and removes it. The placement check is shared with the client's ghost (CheckPlacement), which
  * shows what the server would answer from what the client knows.
  */
 UCLASS()

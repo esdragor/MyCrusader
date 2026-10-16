@@ -176,4 +176,108 @@ namespace HOLConstruction
 	 * D310), while a rock across a corner is seen.
 	 */
 	HEROESOFLIBERTY_API void GetNavProbes(const FBox2D& Footprint, double Tile, double CornerInset, TArray<FVector2D>& OutPoints);
+
+	// The builders (J6a.4, D312).
+
+	/**
+	 * The builders' spots around a footprint (D312, as the gatherers' spots around a source, D309), in the order to try
+	 * them: Offset cm out from each of its four sides (a body's radius, the clearance every body keeps from a footprint,
+	 * D310, and a small gap), Spacing apart along each side, centred on it (no spot at the corners: two bodies there would
+	 * overlap), on every side; the nearest From first, so the side facing the builders fills first and the others after.
+	 * The caller keeps the first one free (not taken by another builder, on the navmesh, clear of the other buildings).
+	 */
+	HEROESOFLIBERTY_API void GetBuildSpots(const FBox2D& Footprint, double Offset, double Spacing, const FVector2D& From, TArray<FVector2D>& OutSpots);
+
+	/** A body of BodyRadius at Position works on the site of Footprint: its body within Gap of the footprint (D312, at contact). */
+	HEROESOFLIBERTY_API bool IsAtSite(const FBox2D& Footprint, const FVector2D& Position, double BodyRadius, double Gap);
+
+	/**
+	 * A build order given to a builder (D311, D312): with bAppend (Shift), Site goes at the end of its queue (unless it is
+	 * already in it), the sites before it built first; without, Site alone replaces its queue.
+	 */
+	template<typename SiteType>
+	void AddToBuildQueue(TArray<SiteType>& Queue, const SiteType& Site, const bool bAppend)
+	{
+		if (!bAppend)
+		{
+			Queue.Reset();
+		}
+		Queue.AddUnique(Site);
+	}
+
+	/**
+	 * The head of a builder's queue is the site it builds: the sites no longer open (finished, cancelled) are dropped from
+	 * the head until one is, the next of its queue (D312: a house finished, its builders go to the next site of their
+	 * queue). False when none is left: the builder goes idle.
+	 */
+	template<typename SiteType>
+	bool AdvanceBuildQueue(TArray<SiteType>& Queue, TFunctionRef<bool(const SiteType&)> IsOpen)
+	{
+		int32 Dropped = 0;
+		while (Dropped < Queue.Num() && !IsOpen(Queue[Dropped]))
+		{
+			++Dropped;
+		}
+		Queue.RemoveAt(0, Dropped, EAllowShrinking::No);
+		return Queue.Num() > 0;
+	}
+
+	/**
+	 * One item of a worker's queue (Shift, D311; the user's trial of J6a.4): a site to build, or a source to gather (Shift +
+	 * right click on a resource) once the items before it are done. A gathering lasts until its massif is used up (no
+	 * spot left in it nor in its nearby groves, D309), then the next item comes.
+	 */
+	template<typename SiteType>
+	struct TWorkItem
+	{
+		SiteType Site = SiteType();
+		/** The source to gather (an index of UHOLSourceSubsystem); INDEX_NONE: a site. */
+		int32 SourceIndex = INDEX_NONE;
+
+		static TWorkItem MakeBuild(const SiteType& InSite)
+		{
+			TWorkItem Item;
+			Item.Site = InSite;
+			return Item;
+		}
+		static TWorkItem MakeGather(const int32 InSourceIndex)
+		{
+			TWorkItem Item;
+			Item.SourceIndex = InSourceIndex;
+			return Item;
+		}
+		bool IsGather() const { return SourceIndex != INDEX_NONE; }
+		bool operator==(const TWorkItem& Other) const { return Site == Other.Site && SourceIndex == Other.SourceIndex; }
+		bool operator!=(const TWorkItem& Other) const { return !(*this == Other); }
+	};
+
+	/**
+	 * A worker's queue moves on (the user's trial of J6a.4): its head done when bHeadDone (a gathering at the head ends only
+	 * when the gathering stops: its massif used up), then the sites no longer open (finished, cancelled) dropped from the
+	 * head as AdvanceBuildQueue does; a gathering waiting its turn stays (its massif is searched when it comes). False when
+	 * nothing is left.
+	 */
+	template<typename SiteType>
+	bool AdvanceWorkQueue(TArray<TWorkItem<SiteType>>& Queue, const bool bHeadDone, TFunctionRef<bool(const SiteType&)> IsSiteOpen)
+	{
+		if (bHeadDone && Queue.Num() > 0)
+		{
+			Queue.RemoveAt(0, 1, EAllowShrinking::No);
+		}
+		return AdvanceBuildQueue<TWorkItem<SiteType>>(Queue, [&IsSiteOpen](const TWorkItem<SiteType>& Item)
+		{
+			return Item.IsGather() || IsSiteOpen(Item.Site);
+		});
+	}
+
+	/** Ground distance between two footprints (0 when they touch or overlap). */
+	HEROESOFLIBERTY_API double GetGap(const FBox2D& A, const FBox2D& B);
+
+	/**
+	 * The site a builder goes on to when it finishes one with nothing left in its queue (the user's trial of J6a.4): the
+	 * nearest of Sites (its player's sites not finished, bare foundations too: its own plans), footprint to footprint from
+	 * the finished one, within Range (cm, hol.Build.NextSiteRange); the first of two as near. INDEX_NONE if none is that
+	 * near: it stands idle.
+	 */
+	HEROESOFLIBERTY_API int32 FindNextSite(const FBox2D& Finished, TConstArrayView<FBox2D> Sites, double Range);
 }

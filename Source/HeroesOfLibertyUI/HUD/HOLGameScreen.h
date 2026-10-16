@@ -56,6 +56,9 @@ public:
 	 */
 	bool ClickWidget(FName Name);
 
+	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
+	UBorder* GetTopBar() const { return TopBar; }
+
 	/** Items of the queue built by BuildLayout, the longest queue shown (D283: 5); one line, under the grid's width. */
 	static constexpr int32 NumQueueItems = 5;
 

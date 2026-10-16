@@ -31,8 +31,12 @@ public:
 
 	int32 GetNumPendingOrders() const { return PendingMoveOrders.Num(); }
 
-	/** Queues "gather this source" for the given units (J5, D296); PlayerIndex as for a move order. */
-	void IssueGatherOrder(TConstArrayView<uint32> UnitIds, int32 SourceIndex, int32 PlayerIndex = INDEX_NONE);
+	/**
+	 * Queues "gather this source" for the given units (J5, D296); PlayerIndex as for a move order. With bQueue (Shift + right
+	 * click, the user's trial of J6a.4), a build order naming the source instead: it goes at the end of each unit's queue,
+	 * after its sites, applied by the builders in the order given.
+	 */
+	void IssueGatherOrder(TConstArrayView<uint32> UnitIds, int32 SourceIndex, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
 	/** Takes the gather orders waiting for the next step (the gathering calls this at each step). */
 	void ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders);
 
@@ -45,6 +49,11 @@ public:
 	void IssueConstructionOrder(const FHOLConstructionCommand& Command);
 	/** Takes the construction orders waiting for the next step (UHOLConstructionSubsystem calls this at each step). */
 	void ConsumeConstructionOrders(TArray<FHOLConstructionCommand>& OutCommands);
+
+	/** Queues a build order (J6a.4, D312), applied by the builders at the next step. */
+	void IssueBuildOrder(const FHOLBuildOrder& Order);
+	/** Takes the build orders waiting for the next step (UHOLBuildProcessor calls this at each step). */
+	void ConsumeBuildOrders(TArray<FHOLBuildOrder>& OutOrders);
 
 	/**
 	 * The navmesh changes there (a source used up, a building placed; server and solo): the paths the simulation kept
@@ -62,5 +71,6 @@ private:
 	TArray<FHOLGatherOrder> PendingGatherOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;
 	TArray<FHOLConstructionCommand> PendingConstructionOrders;
+	TArray<FHOLBuildOrder> PendingBuildOrders;
 	TArray<FBox> PendingNavigationChanges;
 };

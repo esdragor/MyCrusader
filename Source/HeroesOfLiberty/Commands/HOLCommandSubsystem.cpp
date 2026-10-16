@@ -46,10 +46,20 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	Order.bFromTask = bFromTask;
 }
 
-void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex)
+void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)
 {
 	if (UnitIds.Num() == 0 || SourceIndex == INDEX_NONE)
 	{
+		return;
+	}
+	if (bQueue)
+	{
+		// In the workers' queue, among the build orders: kept in the order given (Shift + place, Shift + right click...).
+		FHOLBuildOrder& Order = PendingBuildOrders.AddDefaulted_GetRef();
+		Order.UnitIds = UnitIds;
+		Order.SourceIndex = SourceIndex;
+		Order.PlayerIndex = PlayerIndex;
+		Order.bQueue = true;
 		return;
 	}
 	FHOLGatherOrder& Order = PendingGatherOrders.AddDefaulted_GetRef();
@@ -90,6 +100,20 @@ void UHOLCommandSubsystem::ConsumeConstructionOrders(TArray<FHOLConstructionComm
 {
 	OutCommands.Reset();
 	Swap(OutCommands, PendingConstructionOrders);
+}
+
+void UHOLCommandSubsystem::IssueBuildOrder(const FHOLBuildOrder& Order)
+{
+	if (Order.UnitIds.Num() > 0 && (Order.Building.IsValid() || Order.SourceIndex != INDEX_NONE))
+	{
+		PendingBuildOrders.Add(Order);
+	}
+}
+
+void UHOLCommandSubsystem::ConsumeBuildOrders(TArray<FHOLBuildOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingBuildOrders);
 }
 
 void UHOLCommandSubsystem::NotifyNavigationChanged(const FBox& Area)

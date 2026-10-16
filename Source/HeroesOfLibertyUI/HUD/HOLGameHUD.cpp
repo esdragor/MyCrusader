@@ -1,12 +1,14 @@
 #include "HUD/HOLGameHUD.h"
 
 #include "Blueprint/UserWidget.h"
+#include "Components/Border.h"
 #include "CanvasItem.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "Engine/Font.h"
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyUILog.h"
+#include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
 #include "Player/HOLPlayerController.h"
 #include "Style/HOLUIStyles.h"
@@ -62,10 +64,24 @@ void AHOLGameHUD::BeginPlay()
 		Screen->AddToViewport();
 		UE_LOG(LogHOLUI, Display, TEXT("Game HUD: game screen shown"));
 	}
+#if !UE_BUILD_SHIPPING
+	// The cheats' panel (D291), over the game screen, under its top bar.
+	CheatPanel = CreateWidget<UHOLCheatPanel>(PlayerController, UHOLCheatPanel::StaticClass());
+	if (CheatPanel)
+	{
+		CheatPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
+		CheatPanel->AddToViewport(/*ZOrder*/ 1);
+	}
+#endif
 }
 
 void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (CheatPanel)
+	{
+		CheatPanel->RemoveFromParent();
+		CheatPanel = nullptr;
+	}
 	if (Screen)
 	{
 		Screen->RemoveFromParent();
@@ -152,4 +168,10 @@ UHOLGameScreen* AHOLGameHUD::FindScreen(const APlayerController* PlayerControlle
 {
 	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
 	return GameHUD ? GameHUD->GetScreen() : nullptr;
+}
+
+UHOLCheatPanel* AHOLGameHUD::FindCheatPanel(const APlayerController* PlayerController)
+{
+	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
+	return GameHUD ? GameHUD->GetCheatPanel() : nullptr;
 }

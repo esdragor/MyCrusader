@@ -18,6 +18,7 @@
 #include "NavCorridor.h"
 #include "NavigationData.h"
 #include "NavigationSystem.h"
+#include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLGroupMoveRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -555,6 +556,11 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				Gather->Phase = EHOLGatherPhase::None;
 				Gather->SourceIndex = INDEX_NONE;
 				Gather->bWalkIssued = false;
+			}
+			// And its building, its queue of sites forgotten (J6a.4, D312).
+			if (FHOLBuildFragment* Build = Order.bFromTask ? nullptr : EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity))
+			{
+				Build->Clear();
 			}
 			MoveOrder.Slot = SlotOfUnit[Unit] != INDEX_NONE ? Slots[SlotOfUnit[Unit]] : Order.Target;
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));

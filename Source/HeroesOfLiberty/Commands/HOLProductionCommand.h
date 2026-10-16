@@ -32,4 +32,9 @@ struct FHOLProductionCommand
 	FVector Location = FVector::ZeroVector;
 	/** Rally: the resource source there (J5, D298), whose units born here gather it; INDEX_NONE: the ground. */
 	int32 SourceIndex = INDEX_NONE;
+	/**
+	 * Rally: one of the player's sites not finished there (the user's trial of J6a.4), whose units born here build it;
+	 * null: the ground or a source.
+	 */
+	TWeakObjectPtr<AHOLBuilding> RallySite;
 };

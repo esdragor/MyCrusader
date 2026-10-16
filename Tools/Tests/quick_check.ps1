@@ -25,6 +25,15 @@
 # house, on a tree, near the enemy centre, without enough wood; the second foundation selected by a click and cancelled
 # (refunded). With "net": each client places a house behind its centre, sees the other's, pays alone, and a house near
 # the enemy centre is refused. The two clients wait for each other before quitting (each one's last report done).
+# J6a.4 (D312), solo: a Peasant sent by a right click on house A (a ghost until then): its first work blocks the navmesh,
+# it rises, finished alone in the table's time (hol.Build.Speed 2), the population cap 10 -> 20, the builder idle; three
+# Peasants place house C, then D with Shift: C built by the three (about twice as fast), then D; the first Peasant helps
+# on D (a right click on the site), D cancelled after its first work (half refunded), its builders idle. With "net": each
+# client's Peasant builds its house; the other's foundation never reaches a client before its first work, then it does.
+# The user's trial of J6a.4, solo: the centre's rally point on a ghost house E (the flag on it), every site finished at
+# its first blow (hol.Cheat.FastBuild 1): the Peasant produced builds E, goes on to F 9 m away (hol.Build.NextSiteRange,
+# 20 m), not to G 39 m away, then stands idle; Shift + place H, Shift + place I, Shift + right click on a tree: H built,
+# then I, then it gathers wood.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -159,6 +168,21 @@ $GatherBerrySpawn = @(-15000, 1350)
 $BuildA = @(-16200, 0)
 $BuildB = @(-16200, 600)
 $BuildOver = @(-16200, 300)
+# Building in solo (J6a.4): the Peasant sent to A, then three Peasants for house C and house D touching it (Shift), all
+# behind slot 0's centre; the navmesh probed across A (14 m, through its middle).
+$BuildPeasant = @(-18000, -300)
+$BuildThree = @(-19000, 600)
+$BuildC = @(-17400, 600)
+$BuildD = @(-17400, 1200)
+$BuildAcross = @(-16200, -700, -16200, 700)
+# The user's trial of J6a.4 (solo): house E behind slot 0's centre, on the wood's side, its rally point on it; F 9 m from
+# E, G 39 m from it on the other side; H and I behind F; a tree of the wood's back rows.
+$BuildE = @(-16800, -1500)
+$BuildF = @(-16800, -3000)
+$BuildG = @(-16800, 3000)
+$BuildH = @(-17700, -3000)
+$BuildI = @(-18300, -3000)
+$BuildTree = @(-15770, -2400)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -273,6 +297,9 @@ if ($Parts -contains "camera") {
                 "hol.Nav.Footprints off", "hol.Nav.Units"
         }
         if (($Parts -contains "build") -and $Case.Name -eq "2p") {
+            # Nothing selected: the placements of J6a.3 send no builder (J6a.4).
+            Key Escape
+            Step "waitlog Selection: none"
             # Placement (J6a.3, D311), 120 wood exactly (two houses of 50): the cursor stays in the middle of the screen
             # (hol.Camera.TestCursor), the camera brings the ghost where wanted. House A behind slot 0's centre, B touching
             # it (Shift: still in the mode), then the ghost on both: red; Escape leaves the mode.
@@ -295,6 +322,69 @@ if ($Parts -contains "camera") {
             Step "mark build cancel", "hol.Camera.Focus $($BuildB[0]) $($BuildB[1] - 300)", "frames 3", "hol.Select.ClickGround $($BuildB -join ' ')",
                 "waitlog Selection: House of slot 0 (own), foundation", "frames 3", "hol.Select.Report", "hol.HUD.Report", "capture build_foundations",
                 "hol.Build.CancelSelected", "waitlog Construction: slot 0 cancelled House", "waitlog Selection: none", "frames 3", "hol.Build.Report", "hol.Select.Report"
+            # Building (J6a.4, D312), twice as fast (hol.Build.Speed 2: house 10 s for one builder). The population cap of the
+            # centre alone (the gather part's cheat taken back), 100 wood more (170). The navmesh across house A, a ghost:
+            # straight. A Peasant made beside it, selected, a right click on A: it walks there, works, A blocks the navmesh
+            # (a detour now), rises (captured), is finished alone in 200 steps, the cap 10 -> 20, the Peasant idle.
+            $Uncheat = if ($Parts -contains "gather") { "hol.Cheat.Population -165" } else { "hol.Build.Report" }
+            Step "mark build site", "hol.Build.Speed 2", $Uncheat, "hol.Cheat.Wood 100", "wait 0.3", "hol.Prod.Report", "hol.HUD.Report",
+                "hol.Nav.Path $($BuildAcross -join ' ')", "hol.Units.Spawn 1 $($BuildPeasant -join ' ') 0 Peasant 10", "wait 0.5",
+                "hol.Camera.Focus -17000 0", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Select.OrderGround $($BuildA -join ' ')",
+                "waitlog Build order of slot 0: 1 units to House at ($($BuildA -join ', '))", "waitlog Construction: slot 0 first work on House at ($($BuildA -join ', '))",
+                "wait 2", "hol.Nav.Path $($BuildAcross -join ' ')", "wait 2", "hol.Build.Report", "frames 2", "capture build_site",
+                "waitlog Construction: slot 0 finished House at ($($BuildA -join ', '))", "waitlog Build: a builder of slot 0 stops (no site left), idle", "wait 0.3",
+                "hol.Prod.Report", "hol.HUD.Report", "hol.Build.Report"
+            # Three Peasants made behind, selected by a box; house C placed by Shift + click, D touching it by another one
+            # (queued in that order), Escape. The three build C (about twice as fast as one alone), then D.
+            Step "mark build three", "hol.Units.Spawn 3 $($BuildThree -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BuildThree[0] + 600) $($BuildThree[1])", "frames 3",
+                "hol.Select.BoxGround $($BuildThree[0] - 400) $($BuildThree[1] - 400) $($BuildThree[0] + 400) $($BuildThree[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3",
+                "hol.Camera.Focus $($BuildC -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($BuildC -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Build order of slot 0: 3 units to House at ($($BuildC -join ', ')), queued",
+                "hol.Camera.Focus $($BuildD -join ' ')", "frames 3", "waitlog Placement ghost: House at ($($BuildD -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Build order of slot 0: 3 units to House at ($($BuildD -join ', ')), queued"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Camera.Focus -17400 300", "waitlog Construction: slot 0 first work on House at ($($BuildC -join ', '))", "wait 2", "frames 2",
+                "capture build_three", "waitlog Construction: slot 0 finished House at ($($BuildC -join ', '))", "hol.Build.Speed 1",
+                "waitlog Construction: slot 0 first work on House at ($($BuildD -join ', '))", "hol.Prod.Report", "hol.HUD.Report"
+            # The first Peasant (idle at A) helps on D: a right click on the site; D cancelled once it works there: half
+            # refunded, its four builders idle.
+            Step "mark build help", "hol.Select.ClickUnit -4", "waitlog Selection: Peasant #", "hol.Select.OrderGround $($BuildD -join ' ')",
+                "waitlog Build order of slot 0: 1 units to House at ($($BuildD -join ', '))", "waitlog House at ($($BuildD -join ', ')), 4 builders at work", "hol.Build.Report",
+                "hol.Select.ClickGround $($BuildD -join ' ')", "waitlog Selection: House of slot 0 (own), under construction", "hol.Build.CancelSelected",
+                "waitlog Construction: slot 0 cancelled House", "wait 1", "hol.Build.Speed 1", "hol.Camera.Focus -17000 300", "frames 5", "hol.Build.Report", "hol.Prod.Report",
+                "hol.HUD.Report", "capture build_finished"
+            # The user's trial of J6a.4. With the centre selected (no builder), houses E, F and G placed (Shift: still in the
+            # mode), every site finished at its first blow (hol.Cheat.FastBuild 1, production in one step too); a right click
+            # on the ghost E puts the centre's rally point on it (the flag on its middle, captured); a Peasant produced builds
+            # E, goes on to F (9 m), not to G (39 m), then stands idle.
+            Step "mark build rally", "hol.Cheat.FastBuild 1", "hol.Cheat.Wood 300", "hol.Cheat.Food 100", "hol.Cheat.Population 20",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "hol.Select.Report", "waitlog Selection report: selected MainCentre of slot 0 (own)",
+                "hol.Camera.Focus $($BuildE -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($BuildE -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($BuildE -join ', '))",
+                "hol.Camera.Focus $($BuildF -join ' ')", "frames 3", "waitlog Placement ghost: House at ($($BuildF -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($BuildF -join ', '))",
+                "hol.Camera.Focus $($BuildG -join ' ')", "frames 3", "waitlog Placement ghost: House at ($($BuildG -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($BuildG -join ', '))"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Select.Report", "waitlog Selection report: selected MainCentre of slot 0 (own)",
+                "hol.Camera.Focus $($BuildE -join ' ')", "frames 3", "hol.Select.OrderGround $($BuildE -join ' ')",
+                "waitlog Rally: slot 0 set the rally point of MainCentre at ($($BuildE -join ', ')), on site House", "frames 3", "hol.Select.Report",
+                "capture build_rally", "hol.Prod.Queue Peasant", "waitlog Construction: slot 0 finished House at ($($BuildE -join ', '))",
+                "waitlog Construction: slot 0 finished House at ($($BuildF -join ', '))", "waitlog Build: a builder of slot 0 stops (no site left), idle", "wait 1",
+                "hol.Build.Report"
+            # Shift + place H, Shift + place I, Shift + right click on a tree, the newborn selected (construction 4 times as
+            # fast: 5 s a house): H built, then I, then it gathers wood.
+            Step "mark build queue", "hol.Cheat.FastBuild 0", "hol.Build.Speed 4", "hol.Camera.Focus $($BuildF -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Camera.Focus $($BuildH -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($BuildH -join ', ')) valid", "hol.Build.Click shift",
+                "waitlog Build order of slot 0: 1 units to House at ($($BuildH -join ', ')), queued", "hol.Camera.Focus $($BuildI -join ' ')", "frames 3",
+                "waitlog Placement ghost: House at ($($BuildI -join ', ')) valid", "hol.Build.Click shift",
+                "waitlog Build order of slot 0: 1 units to House at ($($BuildI -join ', ')), queued"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Camera.Focus $($BuildTree[0]) $($BuildTree[1] + 300)", "frames 3", "hol.Select.OrderSource $($BuildTree -join ' ') shift",
+                "waitlog units to gather source", "waitlog Construction: slot 0 finished House at ($($BuildH -join ', '))",
+                "waitlog Construction: slot 0 finished House at ($($BuildI -join ', '))", "waitlog Build: a builder of slot 0 goes on to gather source", "wait 4",
+                "hol.HUD.Report", "hol.Build.Speed 1", "hol.Build.Report", "hol.Prod.Report"
         }
     }
 }
@@ -375,15 +465,18 @@ if ($NetListening) {
             }
             $NetSteps += "hol.Sources.Report", "hol.Prod.Report", "capture qcnet_${Client}_gather"
         }
-        # Placement (J6a.3, D311): its Peasant sent aside first (no unload meanwhile), a house 18 m behind its centre; once
-        # both placed (each waits for the other), both foundations seen here, its own wood 50 less, the other's stock
-        # never received; then a house 24 m behind the enemy centre, refused by the server (anti-rush radius, D22).
+        # Placement (J6a.3, D311): its Peasant sent aside first (no unload meanwhile), then selected, a house 18 m behind its
+        # centre, which its Peasant builds (J6a.4); once both placed (each waits for the other), its own foundation seen here
+        # and not the other's (a ghost for its owner alone until its first work), its own wood 50 less, the other's stock
+        # never received; then the other's site arrives at its first work (captured); a house 24 m behind the enemy centre,
+        # refused by the server (anti-rush radius, D22).
         $Other = 3 - $Client
         if ($Parts -contains "build") {
-            $NetSteps += "mark build", "hol.Units.OrderNear -1000 2500", "wait 1", "hol.Prod.Report", "hol.Build.PlaceNear House -1800 0",
+            $NetSteps += "mark build", "hol.Units.OrderNear -1000 2500", "wait 1", "hol.Prod.Report", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear House -1800 0",
                 "signal $(Join-Path $TestSaved "quick_net_placed$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_placed$Other.flag")", "wait 2",
                 "hol.Build.Report", "hol.Prod.Report", "hol.Camera.FocusSlot 0", "frames 5", "capture qcnet_${Client}_build0", "hol.Camera.FocusSlot 1", "frames 5",
-                "capture qcnet_${Client}_build1", "hol.Build.PlaceNear House -2400 0 enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
+                "capture qcnet_${Client}_build1", "waitlog Building arrived: House of slot", "wait 1", "hol.Build.Report", "hol.Camera.FocusSlot 0", "frames 5",
+                "capture qcnet_${Client}_site0", "hol.Camera.FocusSlot 1", "frames 5", "capture qcnet_${Client}_site1", "hol.Build.PlaceNear House -2400 0 enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
         }
         # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
         # "others []", the flake of 2026-10-16).
@@ -433,7 +526,8 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
-    popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen" }
+    popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen";
+    site = "hud=HOLGameScreen"; three = "hud=HOLGameScreen"; finished = "hud=HOLGameScreen"; rally = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -763,6 +857,90 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("ghost_green", "ghost_red", "foundations" | Where-Object { -not (Test-Path (Join-Path $Shots "build_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build" $Checks) -and $AllOk
+
+    # J6a.4 (D312): the site.
+    $Site = Get-Section "build site"
+    $Three = Get-Section "build three"
+    $Help = Get-Section "build help"
+    $Checks = [ordered]@{}
+    $Cap = { param($Line) if ([string]$Line -match "population \d+/(\d+)") { [int]$Matches[1] } else { -1 } }
+    $Paths = @($Site | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Ratio = { param($Text) if ([string]$Text -match "ratio (\d+\.\d+)") { [double]$Matches[1] } elseif ([string]$Text -match "^none") { 99.0 } else { -1.0 } }
+    $Checks["the ghost blocks nothing, the site blocks the navmesh after its first work ($($Paths -join ' / '))"] = ($Paths.Count -eq 2) -and
+        ((& $Ratio $Paths[0]) -ge 0) -and ((& $Ratio $Paths[0]) -le 1.02) -and ((& $Ratio $Paths[1]) -ge 1.15)
+    $Checks["a right click on the ghost: its Peasant sent to build it"] = [bool]($Site | Select-String -Pattern "Order: 1 units build House of slot 0 \(own\), foundation" -Quiet) -and
+        [bool]($Site | Select-String -Pattern "Build order of slot 0: 1 units to House at \($($BuildA -join ', ')\)$" -Quiet)
+    $SiteReport = & $Value $Site "Build report: (.*House of slot 0 \(own\) under construction.*)$"
+    $Checks["A rises with its work ($([regex]::Match([string]$SiteReport, 'House of slot 0 \(own\) under construction \d+%').Value))"] = [bool]($SiteReport -match "House of slot 0 \(own\) under construction (\d+)% at \($($BuildA -join ', ')\)") -and
+        ([int]$Matches[1] -ge 10) -and ([int]$Matches[1] -le 90)
+    $FinishedA = & $Value $Site "(Construction: slot 0 finished House at \($($BuildA -join ', ')\) .*)$"
+    $StepsA = if ([string]$FinishedA -match "after (\d+) steps") { [int]$Matches[1] } else { -1 }
+    $Checks["A finished by one builder in the table's time, 20 s at speed 2: 200 steps ($FinishedA)"] = [bool]($FinishedA -match "after 200 steps of work \(by builders: 1 x200\), speed 2$")
+    $Prods = @($Site | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Huds = @($Site | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["population cap 10 -> 20 when A is finished, the HUD too ($(($Prods | ForEach-Object { & $Cap $_ }) -join ' -> '); HUD $(($Huds | ForEach-Object { & $Cap $_ }) -join ' -> '))"] =
+        ($Prods.Count -eq 2) -and ((& $Cap $Prods[0]) -eq 10) -and ((& $Cap $Prods[1]) -eq 20) -and ($Huds.Count -eq 2) -and ((& $Cap $Huds[0]) -eq 10) -and ((& $Cap $Huds[1]) -eq 20)
+    $Checks["its builder idle once A is finished"] = [bool]($Site | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle" -Quiet)
+    $ThreeLines = @($Three | ForEach-Object { $_ })
+    $Order = @($ThreeLines | Select-String -Pattern "Construction: slot 0 (finished|first work on) House at \((-?\d+), (-?\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" })
+    $Checks["three Peasants: C then D (Shift) placed with them, C built, then D ($($Order -join '; '))"] = (@($ThreeLines | Select-String -Pattern "Build order of slot 0: 3 units to House at .*, queued$").Count -eq 2) -and
+        (($Order -join '|') -eq "first work on ($($BuildC -join ', '))|finished ($($BuildC -join ', '))|first work on ($($BuildD -join ', '))")
+    $FinishedC = & $Value $Three "(Construction: slot 0 finished House at \($($BuildC -join ', ')\) .*)$"
+    $StepsC = if ([string]$FinishedC -match "after (\d+) steps") { [int]$Matches[1] } else { -1 }
+    $ByThree = if ([string]$FinishedC -match "3 x(\d+)") { [int]$Matches[1] } else { 0 }
+    $Checks["C by three builders about twice as fast as A by one ($StepsC steps against $StepsA; $FinishedC)"] = ($StepsA -gt 0) -and ($StepsC -gt 0) -and
+        ($StepsC -le 0.6 * $StepsA) -and ($StepsC -ge 0.45 * $StepsA) -and ($ByThree -ge 0.8 * $StepsC)
+    $Prods = @($Three | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["population cap 30 with A and C ($(($Prods | ForEach-Object { & $Cap $_ }) -join ', '))"] = ($Prods.Count -eq 1) -and ((& $Cap $Prods[0]) -eq 30)
+    $Checks["a right click on the site D: the first Peasant helps, 4 builders at work"] = [bool]($Help | Select-String -Pattern "Order: 1 units build House of slot 0 \(own\), under construction" -Quiet) -and
+        [bool]($Help | Select-String -Pattern "House at \($($BuildD -join ', ')\), 4 builders at work" -Quiet)
+    $CancelledD = & $Value $Help "(Construction: slot 0 cancelled House .*)$"
+    $Checks["D cancelled after its first work: half refunded ($CancelledD)"] = [bool]($CancelledD -match "at \($($BuildD -join ', ')\), refund F 0 W 25 S 0 G 0 \(F \d+ W 95 ")
+    $Idle = @($Help | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle").Count
+    $Checks["its four builders idle ($Idle)"] = $Idle -eq 4
+    $FinalReport = & $Value $Help "Build report: (.*)$"
+    $Prods = @($Help | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["A and C finished, D gone, cap 30 ($(& $Cap $Prods[-1]))"] = [bool]($FinalReport -match "House of slot 0 \(own\) finished at \($($BuildA -join ', ')\)") -and
+        [bool]($FinalReport -match "House of slot 0 \(own\) finished at \($($BuildC -join ', ')\)") -and -not ($FinalReport -match "at \($($BuildD -join ', ')\)") -and
+        ($Prods.Count -eq 1) -and ((& $Cap $Prods[0]) -eq 30)
+    $Missing = @("site", "three", "finished" | Where-Object { -not (Test-Path (Join-Path $Shots "build_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build site" $Checks) -and $AllOk
+
+    # The user's trial of J6a.4: the rally point on a site, the nearby site, the first blow, a queue of sites and a source.
+    $Rally = Get-Section "build rally"
+    $Queued = Get-Section "build queue"
+    $Checks = [ordered]@{}
+    $Checks["a right click on the ghost E, the centre selected: its rally point on the site"] =
+        [bool]($Rally | Select-String -Pattern "Order: rally point of MainCentre of slot 0 \(own\) at \($($BuildE -join ', ')\) on site House of slot 0 \(own\), foundation" -Quiet) -and
+        [bool]($Rally | Select-String -Pattern "Rally: slot 0 set the rally point of MainCentre at \($($BuildE -join ', ')\), on site House$" -Quiet)
+    $Flag = & $Value $Rally "Selection markers: (.*)$"
+    $Checks["the flag shown on it ($Flag)"] = [bool]($Flag -match "flag 1")
+    $Checks["the Peasant produced sent to build E"] = [bool]($Rally | Select-String -Pattern "Build order of slot -1: 1 units to House at \($($BuildE -join ', ')\)$" -Quiet)
+    $FinishedE = & $Value $Rally "(Construction: slot 0 finished House at \($($BuildE -join ', ')\) .*)$"
+    $Checks["E finished at its first blow, one step after contact ($FinishedE)"] = [bool]($FinishedE -match "after 1 steps of work \(by builders: 1 x1\), speed 1, instant$")
+    $Nearby = @($Rally | Select-String -Pattern "Build: a builder of slot 0 goes on to the nearby site (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["E finished, its builder goes on to F 9 m away ($($Nearby -join '; '))"] = ($Nearby.Count -eq 1) -and
+        [bool]($Nearby[0] -match "^House at \($($BuildF -join ', ')\), 900 cm from the one finished$")
+    $Sites = @($Rally | Select-String -Pattern "Construction: slot 0 (finished|first work on) House at \((-?\d+), (-?\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" })
+    $Checks["E then F, each at its first blow, G (39 m) never started ($($Sites -join '; '))"] = ($Sites -join '|') -eq
+        "first work on ($($BuildE -join ', '))|finished ($($BuildE -join ', '))|first work on ($($BuildF -join ', '))|finished ($($BuildF -join ', '))"
+    $FinishedF = & $Value $Rally "(Construction: slot 0 finished House at \($($BuildF -join ', ')\) .*)$"
+    $Checks["F at its first blow too ($FinishedF)"] = [bool]($FinishedF -match "after 1 steps of work \(by builders: 1 x1\), speed 1, instant$")
+    $Idle = @($Rally | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle").Count
+    $RallyReport = & $Value $Rally "Build report: (.*)$"
+    $Checks["then idle, G still a foundation ($Idle; $RallyReport)"] = ($Idle -eq 1) -and [bool]($RallyReport -match "House of slot 0 \(own\) foundation at \($($BuildG -join ', ')\)")
+    $Checks["Shift + right click on a tree: queued"] = [bool]($Queued | Select-String -Pattern "Order: 1 units gather source \d+ \(Tree\) at .*, queued$" -Quiet) -and
+        [bool]($Queued | Select-String -Pattern "Build order of slot 0: 1 units to gather source \d+ \(Wood\) at .*, queued$" -Quiet)
+    $Tokens = @($Queued | ForEach-Object {
+        if ([string]$_ -match "Construction: slot 0 finished House at \((-?\d+), (-?\d+)\)") { "finished ($($Matches[1]), $($Matches[2]))" }
+        elseif ([string]$_ -match "Build: a builder of slot 0 goes on to gather source \d+ \((\w+)\)") { "gather $($Matches[1])" } })
+    $Checks["H, then I, then the wood ($($Tokens -join '; '))"] = ($Tokens -join '|') -eq "finished ($($BuildH -join ', '))|finished ($($BuildI -join ', '))|gather Wood"
+    $QueueHud = & $Value $Queued "HUD report: (.*)$"
+    $Checks["the Peasant on its gathering's round trip ($([regex]::Match([string]$QueueHud, 'EHOLUnitActivity::\w+( EHOLResource::\w+ \d+/\d+)?').Value))"] =
+        [bool]($QueueHud -match "EHOLUnitActivity::(Gathering|GatherTrip)")
+    $Checks["capture (rally)"] = Test-Path (Join-Path $Shots "build_rally.png")
+    $AllOk = (Report "build trial" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {
@@ -879,15 +1057,19 @@ if ($Parts -contains "net") {
             $Reports = @($BuildLines | Select-String -Pattern "Build report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $Stocks = @($BuildLines | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $Woods = @($Stocks | ForEach-Object { if ($_ -match "^F \d+ W (\d+) ") { [int]$Matches[1] } else { -1 } })
-            $Checks["client $N : both foundations seen ($(if ($Reports.Count) { $Reports[0] }))"] = ($Reports.Count -eq 2) -and
-                [bool]($Reports[0] -match "4 buildings") -and [bool]($Reports[0] -match "House of slot $Held \(own\) foundation at \($($OwnHouse -join ', ')\)") -and
-                [bool]($Reports[0] -match "House of slot $Other \(other\) foundation at \($($OtherHouse -join ', ')\)")
+            # J6a.4: the other's foundation is a ghost for its owner alone, received here at its first work only.
+            $Checks["client $N : its own foundation seen, not the other's ($(if ($Reports.Count) { $Reports[0] }))"] = ($Reports.Count -eq 3) -and
+                [bool]($Reports[0] -match "3 buildings") -and [bool]($Reports[0] -match "House of slot $Held \(own\) (foundation|under construction \d+%) at \($($OwnHouse -join ', ')\)") -and
+                -not ($Reports[0] -match "House of slot $Other")
+            $Arrived = @($ClientLines | Select-String -Pattern "Building arrived: House of slot $Other, (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Checks["client $N : the other's site received at its first work ($($Arrived -join ', '); $(if ($Reports.Count -ge 2) { $Reports[1] }))"] = ($Arrived -join ',') -eq "under construction" -and
+                ($Reports.Count -ge 2) -and [bool]($Reports[1] -match "4 buildings") -and [bool]($Reports[1] -match "House of slot $Other \(other\) (under construction \d+%|finished) at \($($OtherHouse -join ', ')\)")
             $Checks["client $N : its wood 50 less, then unchanged by the refusal ($($Woods -join ' -> '))"] = ($Woods.Count -eq 3) -and ($Woods[0] -ge 50) -and
                 ($Woods[1] -eq $Woods[0] - 50) -and ($Woods[2] -eq $Woods[1])
             $Checks["client $N : the other's stock never received"] = ($Stocks.Count -eq 3) -and
                 (@($Stocks | Where-Object { $_ -notmatch "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$" }).Count -eq 0)
-            $Checks["client $N : no foundation near the enemy centre ($(if ($Reports.Count -ge 2) { $Reports[1] }))"] = ($Reports.Count -eq 2) -and [bool]($Reports[1] -match "4 buildings")
-            $Missing = @("build0", "build1" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
+            $Checks["client $N : no foundation near the enemy centre ($(if ($Reports.Count -ge 3) { $Reports[2] }))"] = ($Reports.Count -eq 3) -and [bool]($Reports[2] -match "4 buildings")
+            $Missing = @("build0", "build1", "site0", "site1" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
             $Checks["client $N : build captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
@@ -937,6 +1119,8 @@ if ($Parts -contains "net") {
         $Checks["server: one house paid and placed per slot, behind its centre ($($Placed -join '; '))"] = ($Placed -join '|') -eq "0: (-16800, 0)|1: (16800, 0)"
         $NearEnemy = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place House at \((-?\d+), (-?\d+)\): too near an enemy main centre" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
         $Checks["server: each house near the enemy centre refused ($($NearEnemy -join '; '))"] = ($NearEnemy -join '|') -eq "0: (17400, 0)|1: (-17400, 0)"
+        $Started = @($ServerLines | Select-String -Pattern "Construction: slot (\d) first work on House at \((-?\d+), (-?\d+)\), 1 builders" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
+        $Checks["server: each house's first work by its Peasant ($($Started -join '; '))"] = ($Started -join '|') -eq "0: (-16800, 0)|1: (16800, 0)"
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }
