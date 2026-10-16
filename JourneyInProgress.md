@@ -75,6 +75,10 @@ vérifier sur S1 et S2.
 | J5b.2 HUD de la récolte | **fait** (2026-10-16, **validée** par l'utilisateur, commitée) : D307 (activité « en tournée de récolte » dans les 3 bits de l'état, comptes de récolteurs au `PlayerState` du seul propriétaire) ; source sélectionnable (nom, « Reste : 1840 », anneau au sol), bloc d'un groupe (« 3 en récolte · 2 inactifs »), comptes par ressource « (2) » dans la barre du haut, compteur « Inactifs : N » cliquable et touche « . » (`IA_NextIdle` : « . », la touche « ; . » de l'AZERTY, « . » du pavé) ; textes fr / en / ja ; tests 36/36 (`Movement.Picking` étendu), essai scripté solo conforme, `quick_check` PASS (77 s) ; **essai de l'utilisateur** : « super », mais des Paysans font d'énormes détours dans leurs allers-retours → **D308** (suivi d'un chemin sans grand virage, détour gardé vérifié, sortie d'une poche du navmesh) : marches anormalement longues 37 → 2, `quick_check` PASS (75 s) ; 2e essai : moins de détours, mais les Paysans se gênent devant le centre → **D309** (choix de l'utilisateur : en aller-retour, un Paysan traverse toutes les unités ; plus de place autour d'une source → même ressource à 8 m, sinon inactif devant), faite, compile sans avertissement, `quick_check` PASS (75 s) ; 3e essai → empilement à la source et amas récolteurs / inactifs corrigés (réservations sur le point réel, toutes sources, points d'attente des inactifs), **massifs** (recherche de proche en proche dans tout le bois, D309 précisée), places serrées **à 100 cm** tournées vers le dépôt (capture d'AoE4 de l'utilisateur) ; `quick_check` PASS, tests 38/38, S7 court PASS (2,39 ms) ; **validée** (« très bien », `hol.Gather.SpotSpacing 100`) |
 | J5b.3 Vérification et essai | **fait** (2026-10-16) : D309 précisée (point 6 : bosquet voisin à ~20 m, rangées d'attente sans limite), **validée**, commitée (`516ac75`) ; parties « gather » solo et 2 clients de `quick_check` (PASS en 77-78 s, tests 39/39, verbe `waitidle`, `SoftQuit`), correctif de `Stop` (inactifs empilés au dépôt : 29-56 → 115-120 cm), essai de l'utilisateur **validé**, commitées (`a067c11`) ; mesures au repos (`684045f`) : S1 2,184 ms, S2 2,738 ms, S7 2,155 ms par pas, S5 31 227 o/s par client (écart 21,6 cm), tous PASS ; 632 bois/s du S7 court = effet de fenêtre (régime 1 201 bois/s sur 180 s) ; Paysan sans place inactif **en gardant sa charge**, comme dans AoE4 : **confirmé** par l'utilisateur |
 | J5b.4 Clôture : D307 à D309 au GDD | **fait** (2026-10-16) : lignes D307 à D309 au § 21 (D296 précisée par D309), paragraphe « Parcours J5b : les 4 ressources et le HUD » au § 16.6 (« Parcours J5a » précisé : les 15 m remplacés par les massifs). **J5b close.** |
+| J5c.1 Animations de récolte | **fait** (2026-10-16, worktree `MyCrusader-J5c`, détail dans `AnimationsInProgress.md`) : source tranchée (faites par Claude, option A) ; chaîne de fabrication par script ; 6 séquences (hache, pioche, cueillette, marches chargées nourriture / bois / pierre-or) ; ressource récoltée dans les valeurs libres de l'activité (0 bit) ; choix chez le client (`HOLUnitAnimation::Choose`), Paysan tourné vers sa source ; pas de geste au dépôt ; tests 41/41, `quick_check` PASS ; essai de l'utilisateur **validé** (« c'est bon »), commitée (a9e4269), **fusionnée dans `main`** (8d18407, tests 47/47) ; A/B S7 : +0,15 ms par image au fil de jeu |
+| J5c.2 Charge visible | **fait** (2026-10-16, worktree) : choix de l'utilisateur (hache, pioche, mains nues pour les baies ; panier, fagot, hotte de pierre ou d'or ; charge montrée à l'arrêt : repos chargés) ; `SKM_Peasant` (pièces fusionnées, outils sur `ik_hand_gun`, 4e float par instance, WPO), `TP_Peasant` ; tests 50/50, `quick_check` PASS ; essai **validé** (« très bien »), **fusionnée dans `main`** (fad246d, tests 54/54) ; A/B S7 : CPU inchangé, GPU +1,06 ms |
+| J5c.3 « +10 » au dépôt | **fait** (2026-10-16, 98858d0) : « +N » au seul propriétaire (appel client non fiable par pas, 0 bit dans l'état des unités), `hol.Gather.LogPopups`, capture `gather_popup` et contrôles solo et 2 clients dans `quick_check` (PASS en 78 s, tests 39/39) ; essai **validé** (« très bien ») |
+| J5c.4 Vérification et clôture : D318 à D323 au GDD | **fait** (2026-10-16) : mesures au repos de J6a.6 (`main` bfda9b4, toutes les animations et le bâtisseur) : S1 2,276 / S2 2,882 / S7 2,303 ms, S5 30 937 o/s par client (écart 23,3 cm), tous PASS, GPU de S7 3,34 ms (2,15 avant J5c) ; tests 62/62 et `quick_check` PASS à la dernière fusion ; partie « anims » de `quick_check` ajoutée en parallèle (partie « anims », 16 s : rapport `hol.Units.AnimReport` ; geste et pièce de chaque Paysan dessiné au travail, en marche chargée et debout chargé ; `quick_check` PASS en 163 s) ; D318 à D323 au § 21 (D298 précisée : fait en J5c), paragraphe « Parcours J5c : la vie de la récolte » au § 16.6, numéro suivant de la review (§ 22) passé à D324. **J5c close, J5 close.** |
 
 ## Prochaine étape exacte
 
@@ -135,7 +139,7 @@ vérifier sur S1 et S2.
    tranchée** (2026-10-16, option A, la recommandation) : **faites par Claude**, boucles courtes écrites pose par pose
    en Python sur le mannequin UE4, sur place (hache, pioche, cueillette, marche chargée, pose au dépôt) ; remplaçables
    plus tard (Mixamo, Fab) sans toucher au code, la table des types les nommant. Écartés : B Mixamo (compte Adobe et
-   reciblage), C pack Fab (achat). Numéro de décision à donner à la clôture de J5c. En sous-agents (règle ci-dessous).
+   reciblage), C pack Fab (achat). Numéro donné à la clôture de J5c : **D318**. En sous-agents (règle ci-dessous).
    La fabrication des animations (tâche récurrente) est tenue dans **`AnimationsInProgress.md`** (méthode, catalogue,
    journal) ; J5c.1 y renvoie. **J5c.1a faite** (2026-10-16) : 6 séquences fabriquées et relues (hache, pioche,
    cueillette, marches chargées nourriture / bois / pierre-or), jugées sur les aperçus ; pas encore branchées.
@@ -154,7 +158,9 @@ vérifier sur S1 et S2.
    **J5c.2 faite** (2026-10-16, worktree, détail dans `AnimationsInProgress.md`) : hache et pioche dans les mains,
    panier de baies, fagot, hotte de pierre ou d'or, repos chargés ; essai de l'utilisateur validé (« très bien ») ;
    **fusionnée dans `main`** (fad246d ; tests 54/54, `quick_check` PASS ; A/B S7 : CPU inchangé, GPU +1 ms par image).
-   Restent pour J5c : S1 / S2 / S7 au repos, S5 court, J5c.4 (clôture) ; animation du bâtisseur pour J6a.4.
+   ~~Restent pour J5c : S1 / S2 / S7 au repos, S5 court, J5c.4 (clôture) ; animation du bâtisseur pour J6a.4.~~ →
+   mesures au repos faites par J6a.6 (tous PASS), bâtisseur fait en J6a.4 ; **J5c close** (2026-10-16 : D318 à D323
+   au GDD, paragraphe « Parcours J5c ») : **J5 close**.
    **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
    refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
    3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
@@ -2999,3 +3005,22 @@ d'épée).
     chargé ou non).
 - Session d'essai lancée (deuxième écran) : **essai complet de J6a** (pose, chantier, HUD, animations, triches).
 - **Essai complet validé** par l'utilisateur (« tout est bon ») : **J6a close** (2026-10-16). D310 à D314 iront au GDD à la clôture de J6 (J6b.4). Reprise : **J6b.1** (camps : camp fini → ses bâtisseurs récoltent la source la plus proche qu'il accepte).
+
+### 2026-10-16 — J5c.4 : clôture
+
+- Sous-agent, documentation seule, rien de commité, aucun code ni worktree touché.
+- Mesures de clôture : celles de J6a.6 au repos (`main` bfda9b4, J5c.1, J5c.2 et le bâtisseur) : S1 2,276 ms, S2
+  2,882 ms, S7 2,303 ms par pas, S5 30 937 o/s par client (écart affiché 23,3 cm), tous PASS ; GPU de S7 3,34 ms contre
+  2,15 avant J5c (+1,2 ms, surtout les pièces). Tests 62/62 et `quick_check` PASS (151 s) à la dernière fusion (bâtisseur,
+  3b750bc). Partie « anims » de `quick_check` ajoutée en parallèle par une autre tâche (partie « anims », 16 s : rapport `hol.Units.AnimReport` ; geste et pièce de chaque Paysan dessiné au travail, en marche chargée et debout chargé ; `quick_check` PASS en 163 s).
+- GDD § 21 : **D318** (source des animations : faites par Claude, par script ; worktree fusionné après validation),
+  **D319** (ressource récoltée dans les valeurs libres de l'activité, 0 bit ; les 3 bits pleins depuis `Building`),
+  **D320** (pas de geste au dépôt), **D321** (gestes, marches chargées, choix chez le client, Paysan tourné vers sa
+  source, vitesses de lecture), **D322** (outils et charges visibles : questions de J5c.2, charge montrée à l'arrêt
+  contre la recommandation), **D323** (pièces fusionnées dans `SKM_Peasant`, `ik_hand_gun`, 4e float, WPO ; coût GPU
+  +1,06 ms ; piste des LOD 2-3), après D317. **D298 précisée** (*fait en J5c* : « +N » au seul propriétaire par un appel
+  client non fiable, sans bit ; J5c.3 n'a pas de numéro propre).
+- GDD § 16.6 : paragraphe **« Parcours J5c : la vie de la récolte »** après « Parcours J5b » (ce que voit le joueur,
+  D318 à D323, « +N », marteau du bâtisseur fait avec la même chaîne, vérifications, coût A/B, mesures au repos).
+  § 22 : numéro suivant **D324** (D310 à D314 au plan de J6, D318 à D323 à J5c).
+- **J5c close, J5 close.** Reprise inchangée : **J6b.1**.

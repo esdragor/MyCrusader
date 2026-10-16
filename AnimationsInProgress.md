@@ -171,30 +171,27 @@ Règles :
 
 | Animation | Unité | Utilisée par | État |
 |---|---|---|---|
-| Coup de hache (bois) | Paysan | J5c.1 | **fabriquée** (`A_Peasant_ChopWood`, 1,2 s, J5c.1a) ; **validée sur l'aperçu** par l'utilisateur (2026-10-16) ; **branchée** (indice 2, J5c.1b-d, vitesse 1,0)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2b** : piste `ik_hand_gun` (repère de la hache), corps identique (0,000 cm), refabriquée (worktree, non commitée) |
-| Coup de pioche (pierre, or) | Paysan | J5c.1 | **fabriquée** (`A_Peasant_MinePick`, 1,333 s, une séquence pour les deux) ; **branchée** (indice 3, vitesse 1,0)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2b** : piste `ik_hand_gun` (repère de la pioche), corps identique (0,000 cm), refabriquée (worktree, non commitée) |
+| Coup de hache (bois) | Paysan | J5c.1 | **fabriquée** (`A_Peasant_ChopWood`, 1,2 s, J5c.1a) ; **validée sur l'aperçu** par l'utilisateur (2026-10-16) ; **branchée** (indice 2, J5c.1b-d, vitesse 1,0)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2b** : piste `ik_hand_gun` (repère de la hache), corps identique (0,000 cm), refabriquée ; fusionnée dans `main` (fad246d) |
+| Coup de pioche (pierre, or) | Paysan | J5c.1 | **fabriquée** (`A_Peasant_MinePick`, 1,333 s, une séquence pour les deux) ; **branchée** (indice 3, vitesse 1,0)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2b** : piste `ik_hand_gun` (repère de la pioche), corps identique (0,000 cm), refabriquée ; fusionnée dans `main` (fad246d) |
 | Cueillette (baies) | Paysan | J5c.1 | **fabriquée** (`A_Peasant_GatherBerries`, 1,8 s) ; **branchée** (indice 4, vitesse 1,0)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 |
 | Marche chargée, nourriture | Paysan | J5c.1 / J5c.2 | **fabriquée** (`A_Peasant_CarryFood`, renommée depuis `A_Peasant_CarryWalk` ; 1,0 s, jambes de `A_SW_Unarmed_Walk`, charge contre le ventre) ; vitesse de lecture **3,57** (règle du projet) ; **validée sur l'aperçu pour la nourriture** (2026-10-16) ; **branchée** (indice 5)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 |
-| Marche chargée, bois | Paysan | J5c.1 / J5c.2 | **fabriquée** (`A_Peasant_CarryWood`, mêmes jambes et cadence, fagot de 4 bûches sur l'épaule droite) ; vitesse **3,57** ; **branchée** (indice 6)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2a** : fagot réel (bûches de 4,5 cm) monté de 9 cm et décalé de 4 cm vers sa droite (il entrait de 4,5 cm dans la tête et l'épaule), main droite suivie (12, 14, 162) → (17, 14, 167,5) ; **à revoir sur l'aperçu** |
-| Marche chargée, pierre et or | Paysan | J5c.1 / J5c.2 | **fabriquée** (`A_Peasant_CarryStone`, mêmes jambes et cadence, sac sur le dos, buste penché en avant) ; vitesse **3,57** ; **branchée** (indice 7)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2a retouchée** : hotte sur le dos, **mains sur les bretelles** devant les épaules (jambes, penché et rebond identiques à 0,000 cm) ; **à revoir sur l'aperçu** |
-| Repos chargé, nourriture | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryFood`, 11,333 s, 340 images, bassin et jambes de `A_SW_Idle`, panier contre le ventre, bras de la marche chargée, trois respirations) ; validée sur l'aperçu (2026-10-16) ; **branchée** (indice 8 de `TP_Peasant`, J5c.2c-d, worktree, non commitée) |
-| Repos chargé, bois | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryWood`, mêmes base et durée, main droite qui tient le fagot, bras gauche pendant) ; validée sur l'aperçu ; **branchée** (indice 9, worktree) |
-| Repos chargé, pierre et or | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryStone`, mêmes base et durée, mains aux bretelles, penché en avant de ~10° de plus que debout) ; validée sur l'aperçu ; **branchée** (indice 10, worktree) ; l'or prend celle-ci (avec la hotte d'or) |
-| Pièces visibles : hache, pioche, panier de baies, fagot, hottes de pierre et d'or | Paysan | J5c.2 | **dans le maillage** `SKM_Peasant` (J5c.2c-e, worktree, non commité) ; vues en jeu (captures `props_*.png`, planche `props_sheet.png`) ; A/B S7 et essai de l'utilisateur à faire |
+| Marche chargée, bois | Paysan | J5c.1 / J5c.2 | **fabriquée** (`A_Peasant_CarryWood`, mêmes jambes et cadence, fagot de 4 bûches sur l'épaule droite) ; vitesse **3,57** ; **branchée** (indice 6)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2a** : fagot réel (bûches de 4,5 cm) monté de 9 cm et décalé de 4 cm vers sa droite (il entrait de 4,5 cm dans la tête et l'épaule), main droite suivie (12, 14, 162) → (17, 14, 167,5) ; validée sur l'aperçu et en jeu, fusionnée dans `main` (fad246d) |
+| Marche chargée, pierre et or | Paysan | J5c.1 / J5c.2 | **fabriquée** (`A_Peasant_CarryStone`, mêmes jambes et cadence, sac sur le dos, buste penché en avant) ; vitesse **3,57** ; **branchée** (indice 7)  ; **validée en jeu** (essai du 2026-10-16), commitée a9e4269 ; **J5c.2a retouchée** : hotte sur le dos, **mains sur les bretelles** devant les épaules (jambes, penché et rebond identiques à 0,000 cm) ; validée sur l'aperçu et en jeu, fusionnée dans `main` (fad246d) |
+| Repos chargé, nourriture | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryFood`, 11,333 s, 340 images, bassin et jambes de `A_SW_Idle`, panier contre le ventre, bras de la marche chargée, trois respirations) ; validée sur l'aperçu (2026-10-16) ; **branchée** (indice 8 de `TP_Peasant`, J5c.2c-d) ; validée en jeu, fusionnée dans `main` (fad246d) |
+| Repos chargé, bois | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryWood`, mêmes base et durée, main droite qui tient le fagot, bras gauche pendant) ; validée sur l'aperçu ; **branchée** (indice 9) ; validée en jeu, fusionnée dans `main` (fad246d) |
+| Repos chargé, pierre et or | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryStone`, mêmes base et durée, mains aux bretelles, penché en avant de ~10° de plus que debout) ; validée sur l'aperçu ; **branchée** (indice 10) ; validée en jeu, fusionnée dans `main` (fad246d) ; l'or prend celle-ci (avec la hotte d'or) |
+| Pièces visibles : hache, pioche, panier de baies, fagot, hottes de pierre et d'or | Paysan | J5c.2 | **dans le maillage** `SKM_Peasant` (J5c.2c-e) ; vues en jeu (captures `props_*.png`, planche `props_sheet.png`) ; essai de l'utilisateur validé, fusionnées dans `main` (fad246d) ; A/B S7 : GPU +1,06 ms (D323) ; piste : pièces allégées aux LOD 2-3 |
 | Pose au dépôt | Paysan | — | **abandonnée** (2026-10-16 : pas de geste, comme AoE4 ; le serveur ne s'arrête pas au dépôt) |
 | Repos, marche | toutes | M2 (D234) | empruntées au pack `CloseCombat` (épéiste) |
 | Bâtisseur (coup de marteau) + marteau | Paysan | J6a.4 | **fabriqué, branché, validé en jeu** (`A_Peasant_Build`, 1,333 s, deux coups ; marteau pièce 7 sur `ik_hand_gun` ; séquence 11 de `TP_Peasant` ; bâtisseur tourné vers son chantier) ; fusionné dans `main` (3b750bc) |
 
 ## Prochaine étape exacte
 
-**J5c.2c, d, e faits dans le worktree** (2026-10-16, rien de commité, voir le journal) : `SKM_Peasant` (corps + pièces),
-`M_UnitPlayerColorProps`, `TP_Peasant` (11 séquences), table des types (colonnes `CarryIdleSequences`, `GatherProps`,
-`CarryProps`), choix de la pièce et repos chargés dans `HOLUnitAnimation::Choose`, 4e float de donnée par instance ;
-tests 50/50, `quick_check` PASS ; captures en jeu `Saved_Tests/Screenshots/WindowsEditor/HOL/props_*.png` et planche
-`props_sheet.png` (worktree). Reste **J5c.2f** : A/B S7 (B = worktree, comparé aux A/B de J5c.1) et trace Insights
-courte (`EndVisualChanges`, `InstancedSkinnedMeshComponent`, `HOLInterpolatedInstancesProcessor`, appels de dessin
-267), **en attente** (jeu d'essai de l'utilisateur ouvert : pas de stress test pendant ce temps) ; puis essai de
-l'utilisateur, commit sur `j5c-anims`, fusion.
+**J5c close** (2026-10-16 : D318 à D323 au § 21 du GDD, paragraphe « Parcours J5c » au § 16.6) ; tout le travail
+d'animation (J5c.1, J5c.2, bâtisseur de J6a.4) est fusionné dans `main`. Rien en cours. Piste ouverte, au choix de
+l'utilisateur : **pièces allégées aux LOD 2-3** (voire sans outil au LOD 3), puis GPU de S7 remesuré (3,34 ms au repos,
+2,15 avant J5c). Prochaines animations : à la demande des étapes de jeu (combat de M5, autres unités), dans le worktree
+`MyCrusader-J5c` remis au niveau de `main`.
 
 ## Journal
 
@@ -717,3 +714,21 @@ l'utilisateur, commit sur `j5c-anims`, fusion.
   1 198 bois/s, image 4,40 / 2,18 / **GPU 3,34 ms** (2,15 ce matin : **+1,2 ms dû aux animations de J5c**, surtout les
   pièces de J5c.2), 223 i/s, 267 appels de dessin. Le +0,148 ms de S7 vient surtout des nouveaux processeurs de J6a.
   Plus aucune mesure en attente pour J5c ; reste la clôture (et, en option, les pièces allégées aux LOD 2-3).
+
+### 2026-10-16 — Clôture de J5c
+
+- Sous-agent, documentation seule, rien de commité. Décisions du chantier au § 21 du GDD : **D318** (source : faites
+  par Claude, par script, chaîne et journal ici, worktree fusionné après validation), **D319** (ressource récoltée dans
+  les valeurs libres de l'activité, 0 bit ; la dernière valeur libre prise par `Building` en J6a.4 : toute nouvelle
+  activité répliquée coûtera un bit), **D320** (pas de geste au dépôt), **D321** (gestes, marches chargées, choix chez le
+  client, orientation vers la source, vitesses de lecture), **D322** (outils et charges visibles, charge montrée à
+  l'arrêt), **D323** (pièces fusionnées dans `SKM_Peasant`, `ik_hand_gun`, 4e float, WPO ; GPU +1,06 ms à l'A/B, +1,2 ms
+  au repos). Paragraphe « Parcours J5c : la vie de la récolte » au § 16.6 (le marteau du bâtisseur y est cité comme
+  fait avec la même chaîne, sans numéro propre).
+- Catalogue : rien à fabriquer en attente. Piste laissée : pièces allégées aux LOD 2-3.
+- **J5c.4 : partie « anims » de `quick_check`** (worktree) : rapport de développement `hol.Units.AnimReport` (ce que
+  l'affichage a réellement choisi : séquence et pièce par état d'unité, solo) ; partie de 16 s en solo : Paysans au bois,
+  à la pierre, à l'or, aux baies, bâtisseurs, inactifs ; chaque Paysan dessiné doit montrer le geste et la pièce de son
+  état au travail, en marche chargée et debout chargé ; `quick_check` PASS deux fois (201 s, 163 s). Un lancement a
+  chevauché le `quick_check` de mycrusader-a5 (port réseau commun : « net 2 clients » en échec chez nous) ; relancé
+  chacun de son côté. Captures dans le scratchpad (`anims_qc\`).
