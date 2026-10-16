@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionRules.h"
 #include "GameFramework/Actor.h"
 #include "HOLBuilding.generated.h"
@@ -12,7 +13,6 @@ class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UStaticMesh;
 class UStaticMeshComponent;
-struct FHOLBuildingTypeRow;
 
 /**
  * A building (D260): a classic replicated actor (§ 16.4, buildings are few), made by the server. It carries its type
@@ -21,6 +21,10 @@ struct FHOLBuildingTypeRow;
  * the first ability or damage (M5). Selection is the local player's own (D262): its pieces block the selection trace
  * channel; nothing on the building shows it (no ring, no hover: the user's test of J2). Its footprint is a forbidden
  * area of the navmesh (D286): a dynamic obstacle, applied on the server when the building appears.
+ * Construction (J6a.3, D311, D312): a building placed by a player is born a foundation (a flat outline at its owner's
+ * colour, which blocks nothing and gives nothing), its state and work replicated to everyone; the main centres are
+ * born finished. The footprint blocks the navmesh from the first work on (J6a.4), and the building serves (population,
+ * deposit, production) once finished.
  */
 UCLASS()
 class HEROESOFLIBERTY_API AHOLBuilding : public AActor
@@ -32,8 +36,11 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	/** Server only, between a deferred spawn and its FinishSpawning (or right after a spawn). */
-	void Setup(FName InTypeName, uint8 InOwnerPlayer, uint8 InColorIndex);
+	/**
+	 * Server only, between a deferred spawn and its FinishSpawning (or right after a spawn). InState: Finished for the
+	 * main centres and the buildings placed by code, Foundation for a player's placement (D311).
+	 */
+	void Setup(FName InTypeName, uint8 InOwnerPlayer, uint8 InColorIndex, EHOLConstructionState InState = EHOLConstructionState::Finished);
 
 	FName GetTypeName() const { return TypeName; }
 	uint8 GetOwnerPlayer() const { return OwnerPlayer; }
@@ -41,6 +48,32 @@ public:
 
 	/** The row of its type, or null (logged) if missing. */
 	const FHOLBuildingTypeRow* GetType() const;
+
+	/** Where it stands in its construction (J6, replicated to everyone). */
+	EHOLConstructionState GetConstructionState() const { return ConstructionState; }
+	/** Finished: it serves its owner (population, deposit, production; D312). */
+	bool IsFinished() const;
+	/** A bare foundation: placed and paid, no work yet (D311). */
+	bool IsFoundation() const { return ConstructionState == EHOLConstructionState::Foundation; }
+	/** Its footprint is a forbidden area of the navmesh (D312: not as a bare foundation). */
+	bool BlocksNavigation() const;
+	/** Work done on it (HOLConstruction::WorkPerBuilder per builder and step, J6a.4); 0 for a foundation. */
+	int64 GetConstructionWork() const { return ConstructionWork; }
+	/** Some work has been done (D311: a cancel refunds half). */
+	bool HasWorkStarted() const;
+	/**
+	 * Server only (J6a.4): its state, its work. The look and the navmesh follow on every machine (the footprint blocks
+	 * from UnderConstruction on).
+	 */
+	void SetConstructionState(EHOLConstructionState InState);
+	void SetConstructionWork(int64 InWork);
+
+	/** The construction state or work changed: on the server when set, on every machine when it arrives. For the HUD. */
+	DECLARE_MULTICAST_DELEGATE(FOnConstructionChanged);
+	FOnConstructionChanged OnConstructionChanged;
+
+	/** Its footprint on the ground (cm), turned by its yaw: the box placements are checked against (D311). */
+	FBox2D GetFootprintBounds() const;
 
 	/**
 	 * Production queue (J3, D282): the head is in production (or waits for population), the others wait their turn.
@@ -82,6 +115,13 @@ public:
 	/** The top of the block is a darker tone of the owner's colour, so that the tower's roof stands out on it. */
 	static constexpr float BaseTopTone = 0.55f;
 
+	/** The foundation's look (J6a.3, cm): a low slab, its edges at the owner's colour, a stake at each corner. */
+	static constexpr float FoundationSlabHeight = 12.f;
+	static constexpr float FoundationBorderWidth = 35.f;
+	static constexpr float FoundationBorderHeight = 20.f;
+	static constexpr float FoundationStakeSize = 20.f;
+	static constexpr float FoundationStakeHeight = 90.f;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -95,13 +135,21 @@ private:
 	UFUNCTION()
 	void OnRep_Rally();
 
-	/** Builds the look from the type, then paints the owner's colour. Safe to call again. */
+	UFUNCTION()
+	void OnRep_Construction();
+
+	/** Builds the look from the type and the construction state, then paints the owner's colour. Safe to call again. */
 	void RefreshAppearance();
 	/** Writes the owner's colour on the pieces that wear it. */
 	void ApplyColors();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
-	/** Sizes the navmesh's forbidden area to the type's footprint, widened by the bodies' clearance (D310), and height. */
+	/** A foundation (J6a.3): a low slab over the footprint, a border at the owner's colour, four corner stakes. */
+	void BuildFoundationShape(const FHOLBuildingTypeRow& Type);
+	/**
+	 * Sizes the navmesh's forbidden area to the type's footprint, widened by the bodies' clearance (D310), and height,
+	 * and makes it count for the navmesh while the building blocks it (D312: not as a bare foundation).
+	 */
 	void FitNavObstacle(const FHOLBuildingTypeRow& Type);
 	/** A piece of Size (cm) laid on BottomZ, painted Color, or the owner's colour times OwnerTone when bOwnerColor. */
 	UStaticMeshComponent* AddPiece(UStaticMesh* Mesh, const FVector& Size, float BottomZ, const FLinearColor& Color, bool bOwnerColor,
@@ -128,8 +176,15 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_Rally)
 	int32 RallySource = INDEX_NONE;
 
-	/** The type the pieces were built for: the look is rebuilt only when it changes. */
+	UPROPERTY(ReplicatedUsing = OnRep_Construction)
+	EHOLConstructionState ConstructionState = EHOLConstructionState::Finished;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Construction)
+	int64 ConstructionWork = 0;
+
+	/** The type the pieces were built for, and whether as a foundation: the look is rebuilt only when either changes. */
 	FName BuiltTypeName;
+	bool bBuiltAsFoundation = false;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Pieces;

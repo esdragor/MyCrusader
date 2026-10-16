@@ -141,7 +141,8 @@ vérifier sur S1 et S2.
    A/B S7 : coût faible, +0,15 ms par image sur le fil de jeu). Restent les mesures au repos et S5.
    **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
    refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
-   3 m, forum 12 m, maison et camps 6 m, camps 100 bois). Suite : **J6a.3** (pose ; voir « Plan de J6 »).
+   3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
+   annulation). Suite : **J6a.4** (chantier ; une fondation n'est qu'un fantôme avant le premier coup de marteau).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -2504,3 +2505,53 @@ d'épée).
   inactif, « Buildings (D310) » 0 remis / 0 nouveau chemin ; 1 295 puis 1 376 paires. **À refaire au repos.**
 - Session d'essai lancée (deuxième écran) : l'utilisateur veut voir le forum à 12 m avant le commit de J6a.2.
 - **Essai validé** par l'utilisateur (« c'est bon », forum à 12 m) ; J6a.2 commitée (sans les lignes des autres sessions). S7 au repos à refaire à la clôture de J6a. Reprise : **J6a.3** (pose), après la fusion de J5c.1 par `mycrusader-23`.
+
+### 2026-10-16 — J6a.3 : pose des bâtiments
+
+- Sous-agent, rien de commité (essai de l'utilisateur attendu), GDD non touché, aucun fichier réservé à `mycrusader-23`.
+- **État de construction** (`EHOLConstructionState` : `Foundation`, `UnderConstruction`, `Finished`) et **travail**
+  (`int64`) répliqués à tous sur `AHOLBuilding` ; `Setup(..., État = Finished)` : centres et camps de S7 nés finis, une
+  pose naît fondation. Règles pures ajoutées à `HOLConstruction` : `BlocksNavigation` (pas une fondation, D312),
+  `IsServing` (fini seulement), `CanCancel`, `HasWorkStarted`, `GetCancelRefund`, `GetFootprintBounds` (emprise tournée),
+  `GetNavProbes` (milieu de chaque case + coins rentrés de 1 m). Setter serveur `SetConstructionState` / `SetConstructionWork`
+  prêt pour J6a.4 (aspect et navmesh suivent).
+- **Fondation** : dalle de terre battue 12 cm, bordure à la couleur du joueur, 4 piquets ; **ne bloque pas le navmesh**
+  (zone interdite comptée seulement si l'état la bloque : `NavObstacle` non pertinent au départ, activé par
+  `FitNavObstacle`), ignorée par la garde des emprises (D310) et par `hol.Nav.Footprints` ; ni population (plafond de
+  `UHOLProductionSubsystem` = bâtiments **finis** seulement), ni dépôt (`RefreshDeposits`), ni production / ralliement.
+- **Serveur** : `UHOLConstructionSubsystem` (nouveau, début de pas comme la production) applique les ordres de la file
+  (`FHOLConstructionCommand` : `Place`, `Cancel`) ; revérifie tout (D288) par `CheckPlacement` (type constructible,
+  grille, carte, bâtiments **et fondations**, sources debout, centres des **autres** joueurs + rayon anti-rush, navmesh
+  sous chaque case), `TryPay`, fondation apparue (propriétaire = contrôleur du joueur, couleur du joueur), journal
+  `Construction: slot N placed / cannot place ...: <raison> / cancelled ..., refund ...`. Refus : rien de pris.
+- **Client** : mode de pose (`BeginPlacement`), **fantôme** dans `AHOLSelectionMarkers` (cadre au sol, cases de 3 m,
+  arêtes du volume) **vert / rouge** par la même vérification (le client n'a pas de navmesh : le serveur tranche celle-ci)
+  et le stock ; clic gauche : pose et sort du mode ; **Maj + clic** : pose et reste ; **Échap / clic droit** : sortent du
+  mode (sélection gardée) ; en mode pose, aucun clic ne sélectionne ni n'ordonne. RPC `ServerPlaceBuilding(type, point)`,
+  `ServerCancelBuilding(bâtiment)`.
+- **Sélection** : une fondation se sélectionne comme un bâtiment (cadre au sol) ; bloc du HUD « Fondation : Maison »,
+  points de vie 1 / 600 (D312) ; textes fr / en / ja (Maison / House / 家, Camp de bûcherons / Lumber Camp / 伐採所,
+  Camp de mineurs / Mining Camp / 採掘所, « Fondation : {0} » / « Foundation: {0} » / « {0}（基礎） »), GatherText relancé.
+  Bâtiment annulé : il quitte la sélection.
+- **Commandes** (développement) : `hol.Build.Place House|LumberCamp|MiningCamp` (mode pose, Paysans sélectionnés ou non) ;
+  `hol.Build.Click [shift]` ; `hol.Build.PlaceNear <Type> <Dx> <Dy> [enemy]` (repère du centre, X vers le milieu de la
+  carte ; envoyé même si refusé ici) ; `hol.Build.PlaceAtSource <Type> X Y` ; `hol.Build.CancelSelected` ;
+  `hol.Build.Report` ; `hol.Select.ClickGround X Y`.
+- **Tests** : `Construction.States`, `Construction.Probes`, `Buildings.Foundation` ; **50/50**.
+- **`quick_check`** : partie **`build`** solo (120 bois : maison A par clic, B collée avec Maj, fantôme rouge dessus et
+  clic sans effet, Échap ; refus serveur sur une maison, un arbre, près du centre ennemi, faute de bois, bois inchangé ;
+  B choisie par un clic au sol, annulée, 50 rendus) ; 2 clients : chacun pose une maison derrière son centre, voit celle
+  de l'autre, paie seul (bois −50 exact, stock de l'autre jamais reçu), maison près du centre ennemi refusée par le
+  serveur. **Correctif du flottement** « others [] » : étapes `signal` / `waitfile` de `hol.Test.Run`, chaque client
+  attend le dernier rapport de l'autre avant de quitter. **PASS en 141 s** (1er lancement après compilation, démarrage
+  48 s) puis **120 s** ; **machine très chargée** (CPU 100 % : 3 ProjectShiva, Discord, Opera) ; la partie `build`
+  coûte ~1,3 s, le net ~6 s.
+- Captures vues : fantôme vert (cage verte derrière le forum), rouge sur les deux fondations, fondation choisie (cadre
+  blanc, bloc « Fondation : Maison »), côté client la fondation derrière le forum de l'autre.
+- Simulation à peine touchée (une condition par bâtiment dans la garde des emprises et les dépôts) : pas de stress test.
+- À essayer : `hol.Cheat.Wood 500`, `hol.Build.Place House`, promener le fantôme (vert sur sol libre, rouge sur un arbre,
+  le forum, une autre fondation, près du forum ennemi, sans bois), clic, Maj + clic en rangée, Échap / clic droit ;
+  cliquer une fondation (bloc « Fondation : Maison »), `hol.Build.CancelSelected` (bois rendu). Réglage possible :
+  épaisseur du cadre du fantôme (40 cm).
+- Session d'essai lancée (deuxième écran) pour l'essai de J6a.3.
+- **Essai validé** par l'utilisateur (« tout est bien ») avec une remarque : **une fondation n'est qu'un fantôme tant que le premier coup de marteau n'est pas donné** (pas de dalle avant le travail) → à faire en J6a.4 (le premier coup y arrive). J6a.3 commitée (sans les lignes des autres sessions). Reprise : **J6a.4** (chantier).

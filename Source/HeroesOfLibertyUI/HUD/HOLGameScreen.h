@@ -207,6 +207,7 @@ private:
 	FDelegateHandle SelectionHandle;
 	FDelegateHandle EconomyHandle;
 	FDelegateHandle ProductionHandle;
+	FDelegateHandle ConstructionHandle;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;

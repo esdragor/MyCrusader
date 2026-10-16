@@ -4,6 +4,7 @@
 
 #include "AI/NavigationSystemBase.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -28,6 +29,9 @@ namespace UE::HeroesOfLiberty::Buildings
 
 	const FLinearColor StoneColor(0.42f, 0.40f, 0.37f);
 	const FLinearColor DarkStoneColor(0.30f, 0.29f, 0.27f);
+	/** A foundation's slab (packed earth) and its corner stakes (wood). */
+	const FLinearColor FoundationSlabColor(0.40f, 0.33f, 0.24f);
+	const FLinearColor StakeColor(0.20f, 0.13f, 0.07f);
 }
 
 AHOLBuilding::AHOLBuilding()
@@ -41,7 +45,9 @@ AHOLBuilding::AHOLBuilding()
 	NavObstacle = CreateDefaultSubobject<UBoxComponent>(TEXT("NavObstacle"));
 	NavObstacle->SetupAttachment(RootComponent);
 	NavObstacle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	NavObstacle->SetCanEverAffectNavigation(true);
+	// Counted by the navmesh only once sized and only while the building blocks it (FitNavObstacle; D312: a foundation
+	// blocks nothing).
+	NavObstacle->SetCanEverAffectNavigation(false);
 	NavObstacle->bDynamicObstacle = true;
 	NavObstacle->SetAreaClassOverride(UNavArea_Null::StaticClass());
 
@@ -67,6 +73,8 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AHOLBuilding, TypeName);
 	DOREPLIFETIME(AHOLBuilding, OwnerPlayer);
 	DOREPLIFETIME(AHOLBuilding, ColorIndex);
+	DOREPLIFETIME(AHOLBuilding, ConstructionState);
+	DOREPLIFETIME(AHOLBuilding, ConstructionWork);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
@@ -76,6 +84,57 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 const FHOLBuildingTypeRow* AHOLBuilding::GetType() const
 {
 	return TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
+}
+
+bool AHOLBuilding::IsFinished() const
+{
+	return HOLConstruction::IsServing(ConstructionState);
+}
+
+bool AHOLBuilding::BlocksNavigation() const
+{
+	return HOLConstruction::BlocksNavigation(ConstructionState);
+}
+
+bool AHOLBuilding::HasWorkStarted() const
+{
+	return HOLConstruction::HasWorkStarted(ConstructionState, ConstructionWork);
+}
+
+void AHOLBuilding::SetConstructionState(const EHOLConstructionState InState)
+{
+	if (ConstructionState == InState)
+	{
+		return;
+	}
+	ConstructionState = InState;
+	ForceNetUpdate();
+	RefreshAppearance();
+	OnConstructionChanged.Broadcast();
+}
+
+void AHOLBuilding::SetConstructionWork(const int64 InWork)
+{
+	if (ConstructionWork == InWork)
+	{
+		return;
+	}
+	ConstructionWork = InWork;
+	ForceNetUpdate();
+	OnConstructionChanged.Broadcast();
+}
+
+void AHOLBuilding::OnRep_Construction()
+{
+	RefreshAppearance();
+	OnConstructionChanged.Broadcast();
+}
+
+FBox2D AHOLBuilding::GetFootprintBounds() const
+{
+	const FHOLBuildingTypeRow* Type = GetType();
+	return HOLConstruction::GetFootprintBounds(FVector2D(GetActorLocation()), Type ? Type->Footprint : FVector2D::ZeroVector,
+		static_cast<float>(GetActorRotation().Yaw));
 }
 
 void AHOLBuilding::NotifyProductionChanged()
@@ -123,11 +182,12 @@ bool AHOLBuilding::IsOnFootprint(const FVector& Point) const
 	return FMath::Abs(Local.X) <= Type->Footprint.X * 0.5 && FMath::Abs(Local.Y) <= Type->Footprint.Y * 0.5;
 }
 
-void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, const uint8 InColorIndex)
+void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, const uint8 InColorIndex, const EHOLConstructionState InState)
 {
 	TypeName = InTypeName;
 	OwnerPlayer = InOwnerPlayer;
 	ColorIndex = InColorIndex;
+	ConstructionState = InState;
 	// A deferred spawn builds its look in BeginPlay; an actor already spawned builds it now.
 	if (IsActorInitialized())
 	{
@@ -152,7 +212,10 @@ void AHOLBuilding::RefreshAppearance()
 	{
 		return;
 	}
-	if (BuiltTypeName != TypeName)
+	// A foundation and a building under construction show the foundation (J6a.3); it rises with its work in J6a.4.
+	const bool bAsFoundation = !IsFinished();
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
+	if (BuiltTypeName != TypeName || bBuiltAsFoundation != bAsFoundation)
 	{
 		for (UStaticMeshComponent* Piece : Pieces)
 		{
@@ -162,13 +225,17 @@ void AHOLBuilding::RefreshAppearance()
 		OwnerMaterials.Reset();
 		OwnerTones.Reset();
 		BuiltTypeName = TypeName;
+		bBuiltAsFoundation = bAsFoundation;
 
-		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
 		if (!Type)
 		{
 			return;
 		}
-		if (Type->Mesh.IsNull())
+		if (bAsFoundation)
+		{
+			BuildFoundationShape(*Type);
+		}
+		else if (Type->Mesh.IsNull())
 		{
 			BuildProvisionalShape(*Type);
 		}
@@ -176,6 +243,9 @@ void AHOLBuilding::RefreshAppearance()
 		{
 			BuildFinalMesh(*Type);
 		}
+	}
+	if (Type)
+	{
 		FitNavObstacle(*Type);
 	}
 
@@ -216,14 +286,58 @@ void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
 {
 	// Widened by the bodies' clearance (D310): the navmesh widens a forbidden area by the agent's radius (measured at J6a.1:
 	// its edge 63 to 77 cm from the sides, 82 to 95 cm from the corners), so a walker's body brushed the wall.
-	NavObstacle->SetBoxExtent(FVector(Type.Footprint * 0.5 + FVector2D(UHOLBuildingSettings::GetBodyClearance()), Type.Height * 0.5));
+	const FVector Extent(Type.Footprint * 0.5 + FVector2D(UHOLBuildingSettings::GetBodyClearance()), Type.Height * 0.5);
+	const bool bBlocks = BlocksNavigation();
+	const bool bWasBlocking = NavObstacle->CanEverAffectNavigation();
+	if (bBlocks == bWasBlocking && NavObstacle->GetUnscaledBoxExtent().Equals(Extent, 0.01))
+	{
+		return;
+	}
+	NavObstacle->SetBoxExtent(Extent);
 	NavObstacle->SetRelativeLocation(FVector(0., 0., Type.Height * 0.5));
-	// Registered with the default size when the actor spawned: the navigation takes the new size.
-	FNavigationSystem::UpdateComponentData(*NavObstacle);
-	// The paths kept for the gathering's walks across its footprint are forgotten (D305).
-	if (UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+	// Counted by the navmesh from now on with its size, or no more; a bare foundation never is (D312). Registered with
+	// the default size when the actor spawned: the navigation takes the new size.
+	NavObstacle->SetCanEverAffectNavigation(bBlocks);
+	if (bBlocks)
+	{
+		FNavigationSystem::UpdateComponentData(*NavObstacle);
+	}
+	// The paths kept for the gathering's walks across its footprint are forgotten (D305), when the navmesh changed there.
+	UHOLCommandSubsystem* Commands = (bBlocks || bWasBlocking) && GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (Commands)
 	{
 		Commands->NotifyNavigationChanged(NavObstacle->Bounds.GetBox());
+	}
+}
+
+void AHOLBuilding::BuildFoundationShape(const FHOLBuildingTypeRow& Type)
+{
+	using namespace UE::HeroesOfLiberty::Buildings;
+
+	// Flat and clearly unfinished (J6a.3): packed earth over the footprint, its edges at the owner's colour (unlit, the
+	// colour seen from the RTS camera), a wooden stake at each corner. Units walk over it until its first work (D312).
+	const FVector2D Footprint = Type.Footprint;
+	AddPiece(CubeMesh, FVector(Footprint, FoundationSlabHeight), 0.f, FoundationSlabColor, false);
+	const double Border = FMath::Min(static_cast<double>(FoundationBorderWidth), Footprint.GetMin() * 0.25);
+	const FVector AlongX(Footprint.X, Border, FoundationBorderHeight);
+	const FVector AlongY(Border, Footprint.Y - 2.0 * Border, FoundationBorderHeight);
+	const FVector2D Half = Footprint * 0.5;
+	const auto Move = [](UStaticMeshComponent* Piece, const FVector2D& Offset)
+	{
+		if (Piece)
+		{
+			Piece->AddRelativeLocation(FVector(Offset, 0.0));
+		}
+	};
+	Move(AddPiece(CubeMesh, AlongX, 0.f, FLinearColor::White, true), FVector2D(0.0, Half.Y - Border * 0.5));
+	Move(AddPiece(CubeMesh, AlongX, 0.f, FLinearColor::White, true), FVector2D(0.0, -Half.Y + Border * 0.5));
+	Move(AddPiece(CubeMesh, AlongY, 0.f, FLinearColor::White, true), FVector2D(Half.X - Border * 0.5, 0.0));
+	Move(AddPiece(CubeMesh, AlongY, 0.f, FLinearColor::White, true), FVector2D(-Half.X + Border * 0.5, 0.0));
+	const FVector Stake(FoundationStakeSize, FoundationStakeSize, FoundationStakeHeight);
+	const FVector2D Corner = Half - FVector2D(FoundationStakeSize * 0.5);
+	for (const FVector2D Sign : { FVector2D(1.0, 1.0), FVector2D(1.0, -1.0), FVector2D(-1.0, 1.0), FVector2D(-1.0, -1.0) })
+	{
+		Move(AddPiece(CubeMesh, Stake, 0.f, StakeColor, false), Corner * Sign);
 	}
 }
 

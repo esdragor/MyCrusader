@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -169,6 +170,12 @@ void UHOLProductionSubsystem::ApplyOrders()
 		{
 			continue;
 		}
+		// A building under construction neither produces nor rallies (D312).
+		if (!Building->IsFinished())
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: %s not finished"), Order.PlayerIndex, *Building->GetTypeName().ToString());
+			continue;
+		}
 
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
@@ -238,7 +245,8 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		AHOLBuilding* Building = *It;
 		const FHOLBuildingTypeRow* Type = Building->GetType();
 		Buildings.Add(Building);
-		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? Type->PopulationProvided : 0;
+		// Only a finished building gives places (D312): a house's foundation gives none.
+		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? HOLConstruction::GetPopulationProvided(Type->PopulationProvided, Building->IsFinished()) : 0;
 		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
 	}
 	for (const TPair<int32, int32>& Cheat : CheatPopulation)

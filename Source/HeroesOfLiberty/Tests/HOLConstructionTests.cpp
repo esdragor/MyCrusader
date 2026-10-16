@@ -291,4 +291,86 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// J6a.3 checks: what each construction state allows (D311, D312).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionStatesTest, "HeroesOfLiberty.Construction.States", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionStatesTest::RunTest(const FString& Parameters)
+{
+	using EState = EHOLConstructionState;
+	const FHOLResources Cost(0, 50, 0, 0);
+
+	// A bare foundation: walked over, serves nothing, cancelled with all its cost back.
+	TestFalse(TEXT("a foundation does not block the navmesh (D312)"), HOLConstruction::BlocksNavigation(EState::Foundation));
+	TestFalse(TEXT("a foundation serves nothing"), HOLConstruction::IsServing(EState::Foundation));
+	TestTrue(TEXT("a foundation may be cancelled"), HOLConstruction::CanCancel(EState::Foundation));
+	TestFalse(TEXT("a foundation has no work"), HOLConstruction::HasWorkStarted(EState::Foundation, 0));
+	TestTrue(TEXT("a foundation cancelled: all back (D311)"), HOLConstruction::GetCancelRefund(Cost, EState::Foundation, 0) == Cost);
+
+	// Under construction: blocks, serves nothing yet, cancelled with half back.
+	TestTrue(TEXT("under construction: blocks the navmesh (D312)"), HOLConstruction::BlocksNavigation(EState::UnderConstruction));
+	TestFalse(TEXT("under construction: serves nothing yet"), HOLConstruction::IsServing(EState::UnderConstruction));
+	TestTrue(TEXT("under construction: work started"), HOLConstruction::HasWorkStarted(EState::UnderConstruction, 0));
+	TestTrue(TEXT("under construction, cancelled: half back"),
+		HOLConstruction::GetCancelRefund(Cost, EState::UnderConstruction, 1000) == FHOLResources(0, 25, 0, 0));
+	TestTrue(TEXT("any work done halves the refund"), HOLConstruction::GetCancelRefund(Cost, EState::Foundation, 1) == FHOLResources(0, 25, 0, 0));
+
+	// Finished: blocks, serves, never cancelled.
+	TestTrue(TEXT("finished: blocks the navmesh"), HOLConstruction::BlocksNavigation(EState::Finished));
+	TestTrue(TEXT("finished: serves its owner"), HOLConstruction::IsServing(EState::Finished));
+	TestFalse(TEXT("finished: not cancelled"), HOLConstruction::CanCancel(EState::Finished));
+	TestTrue(TEXT("finished: nothing back"), HOLConstruction::GetCancelRefund(Cost, EState::Finished, 0) == FHOLResources());
+
+	// Population (D312): only once finished.
+	TestEqual(TEXT("a house's foundation gives no place"), HOLConstruction::GetPopulationProvided(10, HOLConstruction::IsServing(EState::Foundation)), 0);
+	TestEqual(TEXT("a finished house gives 10"), HOLConstruction::GetPopulationProvided(10, HOLConstruction::IsServing(EState::Finished)), 10);
+	return true;
+}
+
+// J6a.3 checks: the footprint of a turned building, and where the navmesh is probed under a placement (D311).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionProbesTest, "HeroesOfLiberty.Construction.Probes", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionProbesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+
+	// Bounds of a footprint turned by its yaw: the same box on the quarter turns, swapped sides for a long one.
+	const FVector2D Square(1200.0, 1200.0);
+	for (const float Yaw : { 0.f, 90.f, -90.f, 180.f })
+	{
+		TestTrue(FString::Printf(TEXT("a square turned by %.0f: the same box"), Yaw),
+			HOLConstruction::GetFootprintBounds(FVector2D(-15000.0, 0.0), Square, Yaw).Equals(FBox2D(FVector2D(-15600.0, -600.0), FVector2D(-14400.0, 600.0))));
+	}
+	TestTrue(TEXT("a 6 x 3 m footprint turned a quarter: 3 x 6 m"),
+		HOLConstruction::GetFootprintBounds(FVector2D::ZeroVector, FVector2D(600.0, 300.0), 90.f).GetSize().Equals(FVector2D(300.0, 600.0), 0.01));
+	TestTrue(TEXT("turned by 45 degrees: its bounds"),
+		HOLConstruction::GetFootprintBounds(FVector2D::ZeroVector, FVector2D(600.0, 600.0), 45.f).GetSize().Equals(FVector2D(848.53, 848.53), 0.1));
+
+	// A house (2 x 2 tiles): the middles of its four tiles, 1.5 m inside its edges, then its corners 1 m inside.
+	TArray<FVector2D> Probes;
+	HOLConstruction::GetNavProbes(House(0.0, 0.0), Tile, 100.0, Probes);
+	TestEqual(TEXT("a house: 4 tile middles and 4 corners"), Probes.Num(), 8);
+	const FVector2D Expected[] = { FVector2D(-150.0, -150.0), FVector2D(-150.0, 150.0), FVector2D(150.0, -150.0), FVector2D(150.0, 150.0),
+		FVector2D(-200.0, -200.0), FVector2D(200.0, -200.0), FVector2D(-200.0, 200.0), FVector2D(200.0, 200.0) };
+	for (const FVector2D& Point : Expected)
+	{
+		TestTrue(FString::Printf(TEXT("probe at (%.0f, %.0f)"), Point.X, Point.Y), Probes.ContainsByPredicate([&Point](const FVector2D& Probe) { return Probe.Equals(Point, 0.01); }));
+	}
+	// Every probe stays out of the forbidden area of a building it touches (its footprint + 25 cm + the agent's 60 cm, D310).
+	const double Nearest = [&Probes]
+	{
+		double Best = TNumericLimits<double>::Max();
+		for (const FVector2D& Probe : Probes)
+		{
+			Best = FMath::Min(Best, HOLConstruction::GetDistance(House(6.0, 0.0), Probe));
+		}
+		return Best;
+	}();
+	TestTrue(FString::Printf(TEXT("a neighbour touching it: its forbidden area (85 cm) far from every probe (%.0f cm)"), Nearest), Nearest >= 100.0);
+
+	// The main centre (4 x 4 tiles): 16 tile middles and 4 corners; no tile: the middle alone.
+	HOLConstruction::GetNavProbes(HOLConstruction::MakeFootprint(FVector2D::ZeroVector, Square), Tile, 100.0, Probes);
+	TestEqual(TEXT("a main centre: 16 tile middles and 4 corners"), Probes.Num(), 20);
+	HOLConstruction::GetNavProbes(House(3.0, 3.0), 0.0, 0.0, Probes);
+	TestTrue(TEXT("no tile, no inset: the middle alone"), Probes.Num() == 1 && Probes[0].Equals(FVector2D(300.0, 300.0)));
+	return true;
+}
+
 #endif

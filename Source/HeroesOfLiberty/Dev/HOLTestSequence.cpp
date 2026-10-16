@@ -36,6 +36,9 @@
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
+ *   signal <File>        writes the file (absolute path): another game on the machine waiting for it goes on
+ *   waitfile <File>      waits for the file to exist: two clients wait for each other (each one's last report done
+ *                        before either quits, quick_check's net part)
  *   anything else        runs as a console command, in the current game world
  * A wait that lasts more than 60 seconds ends the run with an error and quits.
  */
@@ -202,6 +205,15 @@ namespace UE::HeroesOfLiberty::Dev
 			else if (Verb == TEXT("mark"))
 			{
 				UE_LOG(LogHOLTest, Display, TEXT("Test mark: %s"), *Rest);
+			}
+			else if (Verb == TEXT("signal"))
+			{
+				FFileHelper::SaveStringToFile(TEXT("signal"), *Rest);
+				UE_LOG(LogHOLTest, Display, TEXT("Test signal: %s"), *Rest);
+			}
+			else if (Verb == TEXT("waitfile"))
+			{
+				bDone = IFileManager::Get().FileExists(*Rest);
 			}
 			else
 			{

@@ -125,7 +125,9 @@ namespace
 		OutFootprints.Reset();
 		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
 		{
-			if (const FHOLBuildingTypeRow* Type = It->GetType())
+			// A bare foundation is walked over (D312): watched once it blocks the navmesh.
+			const FHOLBuildingTypeRow* Type = It->BlocksNavigation() ? It->GetType() : nullptr;
+			if (Type)
 			{
 				OutFootprints.Add({ FString::Printf(TEXT("%s of slot %d"), *It->GetTypeName().ToString(), It->GetOwnerPlayer()),
 					FVector2D(It->GetActorLocation()), Type->Footprint * 0.5, It->GetActorRotation().Yaw });

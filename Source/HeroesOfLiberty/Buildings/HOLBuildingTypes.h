@@ -11,6 +11,21 @@
 class UStaticMesh;
 
 /**
+ * Where a building stands in its construction (J6, D311, D312), replicated with it. The main centres (and the camps
+ * the stress tests place by code) are born finished; a building placed by a player is born a foundation.
+ */
+UENUM()
+enum class EHOLConstructionState : uint8
+{
+	/** Placed and paid (D311): a flat outline on the ground, no work yet; never blocks the navmesh (D312). */
+	Foundation,
+	/** Its first work done (J6a.4): blocks the navmesh, rises from the ground; still gives nothing. */
+	UnderConstruction,
+	/** Serves its owner: population (D83), deposit (D296), production. */
+	Finished,
+};
+
+/**
  * One building type (D260): a row of /Game/Buildings/BuildingTypes, imported from Tools/Data/BuildingTypes.csv by
  * Tools/Editor/make_building_types.py, like the unit types (D221, D227). The values are provisional by nature and
  * are balanced in the CSV.

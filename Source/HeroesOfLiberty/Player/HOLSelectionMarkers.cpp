@@ -53,6 +53,14 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double PoleWidth = 10.0;
 	const FVector ClothSize(6.0, 160.0, 100.0);
 	const FLinearColor PoleColor(0.12f, 0.08f, 0.04f);
+	/** The placement ghost (J6a.3): green where it may go, red where not; its outline's and its tiles' strokes (cm). */
+	const FLinearColor GhostValidColor(0.15f, 0.85f, 0.2f);
+	const FLinearColor GhostRefusedColor(0.95f, 0.12f, 0.08f);
+	constexpr double GhostOutlineStroke = 40.0;
+	constexpr double GhostTileStroke = 8.0;
+	/** Width (cm) of the posts and beams outlining its volume. */
+	constexpr double GhostEdgeWidth = 12.0;
+	constexpr int32 NumGhostEdges = 8;
 
 	UStaticMesh* LoadMesh(const TCHAR* Path)
 	{
@@ -137,6 +145,11 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	Frames = MakeMarkerComponent(*this, TEXT("Frames"));
 	FlagPole = MakeFlagComponent(*this, TEXT("FlagPole"));
 	FlagCloth = MakeFlagComponent(*this, TEXT("FlagCloth"));
+	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
+	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
+	{
+		GhostEdges.Add(MakeFlagComponent(*this, *FString::Printf(TEXT("GhostEdge%d"), Index)));
+	}
 }
 
 void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
@@ -155,6 +168,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	Rings->SetMaterial(0, LoadMaterial(RingMaterialPath));
 	Frames->SetStaticMesh(Plane);
 	Frames->SetMaterial(0, LoadMaterial(FrameMaterialPath));
+	GhostFrames->SetStaticMesh(Plane);
+	GhostFrames->SetMaterial(0, Frames->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
 	FlagPole->SetStaticMesh(Cube);
@@ -166,6 +181,12 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 		FlagPole->SetMaterial(0, PoleMaterial);
 		ClothMaterial = UMaterialInstanceDynamic::Create(Flat, this);
 		FlagCloth->SetMaterial(0, ClothMaterial);
+		GhostMaterial = UMaterialInstanceDynamic::Create(Flat, this);
+	}
+	for (UStaticMeshComponent* Edge : GhostEdges)
+	{
+		Edge->SetStaticMesh(Cube);
+		Edge->SetMaterial(0, GhostMaterial);
 	}
 	FlagPole->SetRelativeScale3D(FVector(PoleWidth, PoleWidth, PoleHeight) / ShapeSize);
 	FlagCloth->SetRelativeScale3D(ClothSize / ShapeSize);
@@ -197,6 +218,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	UpdateRings();
 	UpdateFrame();
 	UpdateFlag();
+	UpdateGhost();
 }
 
 void AHOLSelectionMarkers::UpdateRings()
@@ -286,9 +308,74 @@ void AHOLSelectionMarkers::UpdateFlag()
 	}
 }
 
+void AHOLSelectionMarkers::UpdateGhost()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	FName TypeName;
+	FBox2D Footprint;
+	double GroundZ = 0.0;
+	bool bValid = false;
+	const FHOLBuildingTypeRow* Type = PlayerController && PlayerController->GetPlacementGhost(TypeName, Footprint, GroundZ, bValid)
+		? UHOLBuildingSettings::FindType(TypeName) : nullptr;
+	const EGhost Ghost = !Type ? EGhost::None : bValid ? EGhost::Valid : EGhost::Refused;
+	if (Ghost != ShownGhost)
+	{
+		for (UStaticMeshComponent* Edge : GhostEdges)
+		{
+			Edge->SetHiddenInGame(Ghost == EGhost::None);
+		}
+		if (GhostMaterial && Ghost != EGhost::None)
+		{
+			GhostMaterial->SetVectorParameterValue(TEXT("Color"), Ghost == EGhost::Valid ? GhostValidColor : GhostRefusedColor);
+		}
+		ShownGhost = Ghost;
+	}
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	if (Type)
+	{
+		const FLinearColor Color = bValid ? GhostValidColor : GhostRefusedColor;
+		const FVector2D Size = Footprint.GetSize();
+		const FVector Centre(Footprint.GetCenter(), GroundZ);
+		// The outline, then each tile (D311: placement tile by tile), a thin frame.
+		Transforms.Add(MarkerTransform(Centre, Size.X, Size.Y));
+		AddCustomData(CustomData, Color, GhostOutlineStroke * 2.0 / Size.GetMax());
+		const double Tile = UHOLBuildingSettings::GetTileSize();
+		const int32 TilesX = FMath::Max(1, FMath::RoundToInt(Size.X / Tile));
+		const int32 TilesY = FMath::Max(1, FMath::RoundToInt(Size.Y / Tile));
+		const FVector2D TileSize(Size.X / TilesX, Size.Y / TilesY);
+		for (int32 X = 0; X < TilesX && TilesX * TilesY > 1; ++X)
+		{
+			for (int32 Y = 0; Y < TilesY; ++Y)
+			{
+				const FVector TileCentre(Footprint.Min + TileSize * FVector2D(X + 0.5, Y + 0.5), GroundZ);
+				Transforms.Add(MarkerTransform(TileCentre, TileSize.X, TileSize.Y));
+				AddCustomData(CustomData, Color, GhostTileStroke * 2.0 / TileSize.GetMax());
+			}
+		}
+		// The edges of its volume: a post at each corner, a beam along each side at its height.
+		const double Height = Type->Height;
+		const FVector2D Half = Size * 0.5 - FVector2D(GhostEdgeWidth * 0.5);
+		const FVector2D Corners[] = { FVector2D(Half.X, Half.Y), FVector2D(Half.X, -Half.Y), FVector2D(-Half.X, -Half.Y), FVector2D(-Half.X, Half.Y) };
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			GhostEdges[Index]->SetWorldLocationAndRotation(Centre + FVector(Corners[Index], Height * 0.5), FQuat::Identity);
+			GhostEdges[Index]->SetWorldScale3D(FVector(GhostEdgeWidth, GhostEdgeWidth, Height) / ShapeSize);
+			const FVector2D Next = Corners[(Index + 1) % 4];
+			const FVector2D Middle = (Corners[Index] + Next) * 0.5;
+			const FVector2D Span = (Next - Corners[Index]).GetAbs() + FVector2D(GhostEdgeWidth);
+			GhostEdges[4 + Index]->SetWorldLocationAndRotation(Centre + FVector(Middle, Height - GhostEdgeWidth * 0.5), FQuat::Identity);
+			GhostEdges[4 + Index]->SetWorldScale3D(FVector(Span, GhostEdgeWidth) / ShapeSize);
+		}
+	}
+	SetInstances(*GhostFrames, Transforms, CustomData);
+}
+
 FString AHOLSelectionMarkers::Describe() const
 {
 	const int32 NumPings = PingAge < UE::HeroesOfLiberty::SelectionMarkers::PingSeconds ? 1 : 0;
-	return FString::Printf(TEXT("rings %d, frame %d, flag %d"), Rings->GetInstanceCount() - NumPings, Frames->GetInstanceCount(),
-		FlagPole->bHiddenInGame ? 0 : 1);
+	return FString::Printf(TEXT("rings %d, frame %d, flag %d, ghost %s"), Rings->GetInstanceCount() - NumPings, Frames->GetInstanceCount(),
+		FlagPole->bHiddenInGame ? 0 : 1, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"));
 }
