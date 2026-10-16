@@ -114,6 +114,9 @@ vérifier sur S1 et S2.
    poser la question A / B / C à l'utilisateur, puis J5b.3 point par point (préparation dans le journal du 2026-10-16).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
+   **J5b.3, points 1 et 2 faits** (2026-10-16, non commités) : parties « gather » solo et 2 clients de `quick_check`
+   (PASS en 77-78 s, tests 39/39), verbe `waitidle`, correctif des inactifs empilés au centre (`Stop` → `bSettling`).
+   Essai validé, commités. Suite : point 3 (S2 / S7 au repos, S7 long, S5 sur serveur recuit), puis clôture de J5b.
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
@@ -2235,3 +2238,31 @@ d'épée).
   (0,214 avant) ; 0 inactif, 0 bosquet dans S7. Reste : essai de l'utilisateur, puis commit.
 - Session d'essai lancée (deuxième écran, `Saved_Tests\j5b2.json`) ; essai de l'utilisateur attendu, puis commit.
 - **Essai validé** par l'utilisateur (« ok, c'est bon ») ; commité (sans les lignes du plan de J6). Reprise : **J5b.3**.
+
+### 2026-10-16 — J5b.3 : vérification (quick_check)
+
+- Sous-agent, rien de commité. **Partie `gather`** (nouvelle, solo, dans la partie à 2 de `camera`, ~10 s de jeu) : 12
+  Paysans (`hol.Units.Spawn`) encadrés, clic droit sur un arbre de la lisière (le clic tombe sur la source 5, couronne
+  devant la source 3) → 3 le récoltent, 9 les arbres voisins (5,6 m au plus), 0 inactif ; 4 Paysans sur les baies ;
+  ralliement du centre sur un buisson, un Paysan produit qui récolte le massif de baies (il porte 1 nourriture) ; stock
+  de nourriture inchangé tant qu'ils portent (1900, 17 portés), puis les 6 buissons vidés (`hol.Sources.TakeNear`) :
+  5 déchargements, stock 1900 → 1917 au dépôt seul, les 5 Paysans des baies inactifs ; HUD « gatherers F 5 W 12 …,
+  idle 5 » puis « F 0 W 12 …, idle 10 » ; touche « . » trois fois puis clic sur le compteur : 4 inactifs différents
+  (#1 à #4), caméra au-dessus de chacun, lui seul sélectionné ; aucune paire de Paysans arrêtés sous 90 cm (101 cm
+  entre récolteurs). Captures `gather_berries`, `gather_wood`, `gather_idle` vérifiées.
+- **2 clients** (même durée de 32 s) : HUD avant l'ordre « F 0 W 0 S 0 G 0, idle 1 », ensuite « F 0 W 1 S 0 G 0, idle
+  0 » chez chacun (le Paysan de l'autre jamais compté) ; de T+4 à T+16 s les deux clients sélectionnent l'arbre le plus
+  proche du départ du slot 0 (source 3) : « Reste » 5, 5, 4, 2, 1 chez les deux, puis retour à leur Paysan (charge
+  exacte de D303 toujours vue) ; activité `GatherTrip` du Paysan de l'autre vue (7 relevés chacun).
+- Nouveau verbe d'étape **`waitidle <N>`** (`HOLTestSequence.cpp` : N inactifs au moins, comptés comme le HUD).
+- **Bug trouvé et corrigé** (à valider à l'essai) : après un massif épuisé, les Paysans qui déchargent s'arrêtaient
+  inactifs l'un dans l'autre au dépôt (29 cm, 56 cm) : la fin de leur marche les rendait déjà inactifs, donc
+  `UHOLGatherProcessor::Stop` ne posait rien, et des fantômes arrêtés ne sont jamais séparés. `Stop` pose désormais
+  toujours `bSettling` (un regard de marcheur au pas d'arrêt) : 115-120 cm entre inactifs au dépôt.
+- Tests : `-TestExit` (sortie forcée) coupait la dernière ligne du journal (38/39) ; remplacé par
+  `Automation RunTests HeroesOfLiberty;SoftQuit` et un contrôle « chaque test commencé est fini » : **39/39**.
+- `quick_check` **PASS en 78 s puis 77 s** (machine au repos ; 96 s au dernier passage, machine chargée).
+- Reste pour J5b.3 : point 3 (S2 et S7 courts au repos, S7 plus long ; S5 court sur serveur recuit — `Stop` touche la
+  simulation, S2 / S7 à refaire), puis essai de l'utilisateur (4 ressources, HUD, inactifs ; inactifs au dépôt séparés).
+- Session d'essai lancée (deuxième écran) pour l'essai de J5b.3 (4 ressources, HUD, inactifs, correctif `Stop`).
+- **Essai validé** par l'utilisateur (« c'est bon ») ; points 1 et 2 de J5b.3 commités (sans les lignes du plan de J6). Reprise : point 3 (S2 / S7 au repos, S7 long, S5 sur serveur recuit).

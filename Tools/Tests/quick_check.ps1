@@ -9,7 +9,12 @@
 # The "sources" part (J5a.2, D297): the wood beside slot 0, forbidden on the navmesh tree by tree; a tree used up
 # leaves the map on the server and on both clients. With "net" (J5a.5, D299, D303): each client sends its Peasant to
 # the tree nearest its start, the server having left 5 wood in it; the tree is used up on both clients, the wood rises
-# at the deposit, the exact load reaches its owner alone, the other client only knows that it carries wood.
+# at the deposit, the exact load reaches its owner alone, the other client only knows that it carries wood; J5b.3: the
+# HUD's counts of gatherers and idle workers are each player's own, slot 0's tree selected on both clients shows what is
+# left going down, each client sees the other's Peasant on its round trip.
+# The "gather" part (J5b.3, D299, D307, D309), in solo: a rally point on the berries (the Peasant produced gathers there,
+# the food rises at the deposit only), twelve Peasants on one tree (the others gather the trees beside it), the berries
+# used up (all idle, the HUD's counter, the "." key), no two Peasants at rest closer than 90 cm.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -19,7 +24,7 @@
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -54,7 +59,7 @@ Remove-Item $GameLog, $TestsLog -ErrorAction SilentlyContinue
 # 1. Automation tests, in the background (no window).
 $TestsProcess = $null
 if ($Parts -contains "tests") {
-    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty`" -TestExit=`"Automation Test Queue Empty`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -nosound -abslog=`"$TestsLog`""
+    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -nosound -abslog=`"$TestsLog`""
     $TestsProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor-Cmd.exe") -ArgumentList $TestsArguments -PassThru -WindowStyle Hidden
 }
 
@@ -124,6 +129,16 @@ $Cases = @(
     @{ Name = "2p"; Slot = 0; Other = 1; States = @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") },
     @{ Name = "8p"; Slot = 7; Other = 0; States = @("AI", "AI", "AI", "AI", "AI", "AI", "AI", "Human") }
 )
+# Gathering in solo (J5b.3): the Peasants of slot 0 left by the parts before (2 produced, 3 more with the orders), the
+# tree clicked (source 3, the 4th of the first row of slot 0's wood) and the berry bush (the middle one of the front row
+# of slot 0's patch), where the two groups are made.
+$GatherBefore = $(if ($Parts -contains "production") { 2 } else { 0 }) + $(if (($Parts -contains "production") -and ($Parts -contains "move")) { 3 } else { 0 })
+$GatherTrees = 12
+$GatherBerries = 4
+$GatherTree = @(-14885, -1781)
+$GatherTreeSpawn = @(-14885, -1250)
+$GatherBerry = @(-15000, 2000)
+$GatherBerrySpawn = @(-15000, 1350)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -197,6 +212,40 @@ if ($Parts -contains "camera") {
                 "hol.Nav.Path -14221 -1300 -14221 -1816", "hol.Nav.Path -14221 -1300 -14217 -2023",
                 "hol.Camera.Focus -15000 -1500", "frames 5", "capture src_wood"
         }
+        if (($Parts -contains "gather") -and $Case.Name -eq "2p") {
+            # Gathering in solo (J5b.3, D299, D307, D309), Peasants of slot 0 made by hol.Units.Spawn (free) beside those
+            # of the parts before ($GatherBefore, idle): twelve in a box, a right click on one tree of the wood's edge,
+            # the 4th of its first row (more than its free spots: the others go to trees beside it); four in a box, a
+            # right click on the berries; the centre's rally point on the same bush, one Peasant produced, which gathers
+            # there. Then the six bushes used up (hol.Sources.TakeNear): the carriers unload, the stock rises then
+            # only, all stand idle; the "." key and the HUD's counter go through them.
+            Step "mark gather", "hol.Gather.LogDeposits 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
+                "hol.Units.Spawn $GatherTrees $($GatherTreeSpawn -join ' ') 0 Peasant 250", "hol.Units.Spawn $GatherBerries $($GatherBerrySpawn -join ' ') 0 Peasant 200",
+                "waitunits $($GatherBefore + $GatherTrees + $GatherBerries)"
+            Step "hol.Camera.Focus $($GatherTreeSpawn[0]) $($GatherTreeSpawn[1] + 150)", "frames 5", "hol.Select.BoxGround -15450 -1650 -14300 -850",
+                "waitlog Selection: $GatherTrees units (own): Peasant x$GatherTrees", "hol.Select.OrderSource $($GatherTree -join ' ')",
+                "waitlog Gather order of slot 0: $GatherTrees units to source"
+            Step "hol.Camera.Focus $($GatherBerry[0]) $($GatherBerry[1] - 400)", "frames 5", "hol.Select.BoxGround -15350 1000 -14650 1700",
+                "waitlog Selection: $GatherBerries units (own): Peasant x$GatherBerries", "hol.Select.OrderSource $($GatherBerry -join ' ')",
+                "waitlog Gather order of slot 0: $GatherBerries units to source"
+            Step "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)",
+                "hol.Camera.Focus $($GatherBerry[0]) $($GatherBerry[1] - 400)", "frames 3", "hol.Select.OrderSource $($GatherBerry -join ' ')",
+                "waitlog Rally: slot 0 set the rally point of MainCentre", "hol.Prod.Queue", "waitlog Production: Peasant of slot 0 done", "hol.Prod.Report"
+            # Born on the rally point's side (D303), ~10 m from its bush, a first food in ~1.4 s: carrying when looked at.
+            Step "wait 5", "mark gather working", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report", "frames 2", "capture gather_berries",
+                "hol.Camera.Focus $($GatherTree[0]) $($GatherTree[1] + 300)", "frames 5", "capture gather_wood"
+            Step "mark gather used up"
+            for ($i = 0; $i -lt 6; $i++) { Step "hol.Sources.TakeNear $($GatherBerry[0]) $($GatherBerry[1] + 150)" }
+            Step "waitidle $($GatherBefore + $GatherBerries + 1)", "frames 2", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report"
+            # The "." key three times, then a click on the HUD's counter: each time the next idle one, the camera above it.
+            Step "mark gather idle", "hol.Camera.FocusSlot 0", "frames 2"
+            for ($i = 0; $i -lt 3; $i++) {
+                Key Period
+                Step "waitlog Next idle worker:", "frames 2", "hol.Camera.Report", "hol.Select.Report"
+                if ($i -eq 0) { Step "hol.HUD.Report", "capture gather_idle" }
+            }
+            Step "hol.HUD.Click IdleWorkers", "waitlog Next idle worker:", "frames 2", "hol.Camera.Report", "hol.Select.Report", "hol.Prod.BuildTime 0"
+        }
     }
 }
 Step "mark end", "quit"
@@ -208,6 +257,7 @@ Get-ChildItem $Shots -Filter "cam_*.png" -ErrorAction SilentlyContinue | Remove-
 Get-ChildItem $Shots -Filter "sel_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "move_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "src_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "gather_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 $GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
@@ -261,9 +311,16 @@ if ($NetListening) {
             # wood left by the server): it gathers it, the tree is used up, it goes on with a neighbour, unloads 10 at
             # its centre. Every 2 s, what the HUD shows (its exact load, sent to this client alone) and what this client
             # knows of each unit (the other's activity, never its amount).
-            $NetSteps += "mark gather", "hol.Camera.FocusSlot own", "frames 3", "hol.Select.ClickUnit 0", "waitlog Selection: Peasant", "frames 2",
+            # J5b.3 (D307): the HUD's counts first, its Peasant idle. From the 3rd report to the 8th, both clients select the
+            # tree nearest slot 0's start (slot 0's 5 wood: the other's for one of them), its remaining amount followed;
+            # then their own Peasant again.
+            $NetSteps += "mark gather", "hol.HUD.Report", "hol.Camera.FocusSlot own", "frames 3", "hol.Select.ClickUnit 0", "waitlog Selection: Peasant", "frames 2",
                 "hol.Select.OrderSourceNear", "frames 2"
-            for ($i = 0; $i -lt 16; $i++) { $NetSteps += "wait 2", "hol.HUD.Report", "hol.Units.Where" }
+            for ($i = 0; $i -lt 16; $i++) {
+                if ($i -eq 2) { $NetSteps += "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.ClickSource $((Get-SlotStart 0) -join ' ')", "waitlog Selection:" }
+                if ($i -eq 8) { $NetSteps += "hol.Camera.FocusSlot own", "frames 3", "hol.Select.ClickUnit 0", "waitlog Selection:" }
+                $NetSteps += "wait 2", "hol.HUD.Report", "hol.Units.Where"
+            }
             $NetSteps += "hol.Sources.Report", "hol.Prod.Report", "capture qcnet_${Client}_gather"
         }
         $NetSteps += "mark end", "quit"
@@ -311,7 +368,7 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
-    queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen" }
+    queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -466,6 +523,108 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
     $AllOk = (Report "sources" $Checks) -and $AllOk
 }
 
+if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
+    # Units of slot 0 from a "Units where" line: identifier -> X, Y, activity, what it carries.
+    $ReadUnits = { param($Line) $Units = @{}
+        foreach ($M in [regex]::Matches([string]$Line, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)(?:, carries (\w+) (\d+|\?))?")) {
+            $Units[[int]$M.Groups[1].Value] = @{ X = [double]$M.Groups[2].Value; Y = [double]$M.Groups[3].Value; Activity = $M.Groups[4].Value;
+                Resource = $M.Groups[5].Value; Amount = $(if ($M.Groups[6].Value -match '^\d+$') { [int]$M.Groups[6].Value } else { 0 }) } }
+        $Units }
+    $Gap = { param($A, $B) [Math]::Sqrt([Math]::Pow($A.X - $B.X, 2) + [Math]::Pow($A.Y - $B.Y, 2)) }
+    # The closest two units standing (gathering at their spot or idle), with the pair.
+    $Closest = { param($Units) $Best = @(1e9, ""); $Ids = @($Units.Keys | Where-Object { $Units[$_].Activity -in "Gathering", "Idle" })
+        for ($i = 0; $i -lt $Ids.Count; $i++) { for ($j = $i + 1; $j -lt $Ids.Count; $j++) {
+            $D = & $Gap $Units[$Ids[$i]] $Units[$Ids[$j]]; if ($D -lt $Best[0]) { $Best = @($D, "#$($Ids[$i]) and #$($Ids[$j])") } } }
+        $Best }
+    $Food = { param($Line) if ([string]$Line -match "^F (\d+) ") { [int]$Matches[1] } else { -1 } }
+    $Value = { param($Lines, [string] $Pattern) $Lines | Select-String -Pattern $Pattern | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value } }
+
+    $Start = Get-Section "gather"
+    $Working = Get-Section "gather working"
+    $UsedUp = Get-Section "gather used up"
+    $Idle = Get-Section "gather idle"
+    $Checks = [ordered]@{}
+    $Old = @((& $ReadUnits (& $Value $Start "Units where: (.*)$")).Keys)
+    $AtWork = & $ReadUnits (& $Value $Working "Units where: (.*)$")
+    $New = @($AtWork.Keys | Where-Object { $_ -notin $Old } | Sort-Object)
+    $Checks["$GatherBefore Peasants before, $GatherTrees + $GatherBerries made, one produced ($($Old.Count) + $($New.Count))"] =
+        ($Old.Count -eq $GatherBefore) -and ($New.Count -eq $GatherTrees + $GatherBerries + 1)
+    $Trees = @($New | Select-Object -First $GatherTrees)
+    $Berries = @($New | Select-Object -Skip $GatherTrees -First $GatherBerries)
+    $Newborn = $New | Select-Object -Last 1
+
+    # Rally point on a bush (D298): the Peasant produced gathers the patch (that bush or one beside it, D309); the food
+    # rises only at the deposit (D296).
+    $Rally = & $Value $Start "(Rally: slot 0 set the rally point of MainCentre at .*)$"
+    $Checks["rally point on the berry bush ($Rally)"] = [bool]($Rally -match "at \($($GatherBerry -join ', ')\), on source \d+$")
+    $Born = if ($null -ne $Newborn) { $AtWork[$Newborn] } else { $null }
+    $Checks["the Peasant produced gathers the berries (#$Newborn $(if ($Born) { "$($Born.Activity) $($Born.Resource) $($Born.Amount)" }))"] =
+        ($null -ne $Born) -and ($Born.Activity -eq "Gathering") -and ($Born.Resource -eq "Food") -and ($Born.Amount -ge 1) -and
+        ((& $Gap $Born @{ X = $GatherBerry[0]; Y = $GatherBerry[1] }) -le 800)
+    $Carried = 0; foreach ($Id in @($Berries) + @($Newborn)) { if ($null -ne $Id -and $AtWork.Contains($Id) -and $AtWork[$Id].Resource -eq "Food") { $Carried += $AtWork[$Id].Amount } }
+    $FoodBorn = & $Food (& $Value $Start "Production report: (.*)$")
+    $FoodWorking = & $Food (& $Value $Working "Production report: (.*)$")
+    $Unloads = @($UsedUp | Select-String -Pattern "Gather: slot 0 unloaded (\d+) Food \(stock F (\d+) " | ForEach-Object { , @([int]$_.Matches[0].Groups[1].Value, [int]$_.Matches[0].Groups[2].Value) })
+    $Unloaded = 0; $Rises = $true
+    foreach ($U in $Unloads) { $Unloaded += $U[0]; if ($U[1] -ne $FoodBorn + $Unloaded) { $Rises = $false } }
+    $FoodAfter = & $Food (& $Value $UsedUp "Production report: (.*)$")
+    $Checks["food unchanged while carried ($FoodBorn -> $FoodWorking, $Carried carried)"] = ($FoodBorn -gt 0) -and ($FoodWorking -eq $FoodBorn) -and ($Carried -ge 1)
+    $Checks["food rises at the deposit only, by what was carried ($($Unloads.Count) unloads, +$Unloaded, $FoodBorn -> $FoodAfter)"] =
+        ($Unloads.Count -ge 1) -and $Rises -and ($Unloaded -ge $Carried) -and ($FoodAfter -eq $FoodBorn + $Unloaded) -and
+        -not ($Start + $Working | Select-String -Pattern "Gather: slot 0 unloaded" -Quiet)
+
+    # The HUD's counts (D307): gatherers per resource, idle workers.
+    $HudWorking = & $Value $Working "HUD report: (.*)$"
+    $Checks["HUD while gathering: F $($GatherBerries + 1), W $GatherTrees, idle $GatherBefore ($([regex]::Match([string]$HudWorking, 'gatherers .*$').Value))"] =
+        [bool]($HudWorking -match ", gatherers F $($GatherBerries + 1) W $GatherTrees S 0 G 0, idle $GatherBefore$")
+
+    # An order on a tree with more Peasants than its free spots (D309): the others gather the trees beside it.
+    $Clicked = $Start | Select-String -Pattern "Order: $GatherTrees units gather source (\d+) \(Tree\) at \((-?\d+), (-?\d+)\)" | Select-Object -Last 1
+    $TreeAt = if ($Clicked) { @{ X = [double]$Clicked.Matches[0].Groups[2].Value; Y = [double]$Clicked.Matches[0].Groups[3].Value } } else { @{ X = 1e9; Y = 1e9 } }
+    $OnIt = @($Trees | Where-Object { $AtWork.Contains($_) -and $AtWork[$_].Activity -eq "Gathering" -and (& $Gap $AtWork[$_] $TreeAt) -le 200 })
+    $Beside = @($Trees | Where-Object { $AtWork.Contains($_) -and $AtWork[$_].Activity -eq "Gathering" -and (& $Gap $AtWork[$_] $TreeAt) -gt 200 })
+    $Farthest = ($Beside | ForEach-Object { & $Gap $AtWork[$_] $TreeAt } | Measure-Object -Maximum).Maximum
+    $Checks["order on one tree: $($OnIt.Count) gather it, $($Beside.Count) the trees beside it (up to $([Math]::Round($Farthest)) cm), of $GatherTrees"] =
+        ($null -ne $Clicked) -and ($OnIt.Count -ge 1) -and ($Beside.Count -ge 1) -and ($OnIt.Count + $Beside.Count -eq $GatherTrees) -and ($Farthest -le 2000)
+
+    # The berries used up: every Peasant of the berries idle, the counter and the "." key (D307, D30).
+    $AfterUse = & $ReadUnits (& $Value $UsedUp "Units where: (.*)$")
+    $IdleIds = @($AfterUse.Keys | Where-Object { $AfterUse[$_].Activity -eq "Idle" } | Sort-Object)
+    $WantIdle = $GatherBefore + $GatherBerries + 1
+    $GoneBushes = @($UsedUp | Select-String -Pattern "Sources: source (\d+) used up" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique)
+    $Checks["six bushes used up, the berry Peasants idle ($($GoneBushes.Count) used up, $($IdleIds.Count) idle)"] = ($GoneBushes.Count -eq 6) -and
+        ($IdleIds.Count -eq $WantIdle) -and (@(@($Berries) + @($Newborn) | Where-Object { $_ -notin $IdleIds }).Count -eq 0)
+    $HudIdle = & $Value $UsedUp "HUD report: (.*)$"
+    $Checks["HUD: idle $WantIdle, F 0, W $GatherTrees ($([regex]::Match([string]$HudIdle, 'gatherers .*$').Value))"] =
+        [bool]($HudIdle -match ", gatherers F 0 W $GatherTrees S 0 G 0, idle $WantIdle$")
+    $Picks = @($Idle | Select-String -Pattern "Next idle worker: #(\d+) \((\d+) idle\) at \((-?\d+), (-?\d+)\)" | ForEach-Object { $_.Matches[0] })
+    $Cameras = @($Idle | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | ForEach-Object { @{ X = [double]$_.Matches[0].Groups[1].Value; Y = [double]$_.Matches[0].Groups[2].Value } })
+    $Selected = @($Idle | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $PickIds = @($Picks | ForEach-Object { [int]$_.Groups[1].Value })
+    $Centred = $true; $Followed = $true
+    for ($i = 0; $i -lt $Picks.Count; $i++) {
+        $At = @{ X = [double]$Picks[$i].Groups[3].Value; Y = [double]$Picks[$i].Groups[4].Value }
+        if ($i -ge $Cameras.Count -or (& $Gap $Cameras[$i] $At) -gt 5) { $Centred = $false }
+        if ($i -ge $Selected.Count -or $Selected[$i] -ne "Peasant #$($PickIds[$i]) of slot 0 (own)") { $Followed = $false }
+    }
+    $Checks["'.' three times, then the counter: the next idle one each time (#$($PickIds -join ', #'))"] = ($Picks.Count -eq 4) -and
+        (@($PickIds | Sort-Object -Unique).Count -eq 4) -and (@($PickIds | Where-Object { $_ -notin $IdleIds }).Count -eq 0) -and
+        (@($Picks | Where-Object { [int]$_.Groups[2].Value -ne $WantIdle }).Count -eq 0) -and
+        ((($PickIds | Select-Object -First 3) -join ',') -eq (($PickIds | Select-Object -First 3 | Sort-Object) -join ','))
+    $Checks["camera above it, it alone selected"] = ($Picks.Count -ge 1) -and $Centred -and $Followed
+    $HudPick = & $Value $Idle "HUD report: (.*)$"
+    $Checks["HUD: the idle one selected, the counter at $WantIdle"] = [bool]($HudPick -match "selection Peasant \(own\), .*, idle $WantIdle$")
+
+    # Units at rest never on one another (D309: spots 100 cm apart, idle points 140 cm).
+    $Near = & $Closest $AtWork
+    $NearAfter = & $Closest $AfterUse
+    $Checks["no two Peasants at rest closer than 90 cm ($([Math]::Round($Near[0])) cm $($Near[1]) gathering; $([Math]::Round($NearAfter[0])) cm $($NearAfter[1]) after)"] =
+        ($Near[0] -ge 90) -and ($NearAfter[0] -ge 90)
+    $Missing = @("berries", "wood", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "gather_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "gather" $Checks) -and $AllOk
+}
+
 if ($Parts -contains "net") {
     # The lines of a client's section, from its mark to the next one ("net", then "gather").
     function Get-ClientSection($Lines, [string] $Mark) {
@@ -478,6 +637,7 @@ if ($Parts -contains "net") {
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetListening
     $HeldSlots = @()
+    $NetSelectedTrees = @{}
     foreach ($NetClient in $NetClients) {
         $ClientTimedOut = -not $NetClient.Process.WaitForExit(120000)
         if ($ClientTimedOut) { $NetClient.Process.Kill() }
@@ -534,6 +694,23 @@ if ($Parts -contains "net") {
             $Checks["client $N : its wood rose at the deposit, the other's stock never received ($Stock)"] =
                 [bool]($Stock -match "^F 150 W 2[1-9]0 S 200 G 200, ") -and [bool]($Stock -match "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$")
             $Checks["client $N : gather capture"] = Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_gather.png")
+
+            # J5b.3 (D307): the HUD counts this player's Peasants alone (the other's, idle then gathering, never counted).
+            $Huds = @($Gather | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Checks["client $N : HUD before the order: idle 1, no gatherer ($(if ($Huds.Count) { [regex]::Match($Huds[0], 'gatherers .*$').Value }))"] =
+                ($Huds.Count -ge 1) -and [bool]($Huds[0] -match ", gatherers F 0 W 0 S 0 G 0, idle 1$")
+            $Counts = @($Huds | Select-Object -Skip 1 | ForEach-Object { [regex]::Match($_, 'gatherers .*$').Value } | Sort-Object -Unique)
+            $Checks["client $N : HUD after: its one wood gatherer, none idle ($($Counts -join '; '))"] = ($Huds.Count -eq 17) -and
+                (($Counts -join '|') -eq "gatherers F 0 W 1 S 0 G 0, idle 0")
+            # The tree nearest slot 0's start selected on both clients (one gathers it, the other sees it): what is left goes down.
+            $Remaining = @($Gather | Select-String -Pattern "HUD report: .*, selection Tree source (\d+), (\d+) left," | ForEach-Object { , @([int]$_.Matches[0].Groups[1].Value, [int]$_.Matches[0].Groups[2].Value) })
+            $Amounts = @($Remaining | ForEach-Object { $_[1] })
+            $NonIncreasing = $true; for ($i = 1; $i -lt $Amounts.Count; $i++) { if ($Amounts[$i] -gt $Amounts[$i - 1]) { $NonIncreasing = $false } }
+            $Picked = @($Remaining | ForEach-Object { $_[0] } | Sort-Object -Unique)
+            $NetSelectedTrees[$N] = $Picked -join ','
+            $Checks["client $N : slot 0's tree selected, 'Reste' going down (source $($Picked -join ', '): $($Amounts -join ', '))"] =
+                ($Picked.Count -eq 1) -and ($Amounts.Count -ge 2) -and $NonIncreasing -and ($Amounts[-1] -lt $Amounts[0])
+            $Checks["client $N : the other's Peasant seen on its round trip (GatherTrip)"] = [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) GatherTrip" -Quiet)
         }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
@@ -554,6 +731,10 @@ if ($Parts -contains "net") {
         $Checks["server: each player's order left the other's Peasant alone ($($Refused -join ', '))"] = (($Refused | Sort-Object) -join ',') -eq "0,1"
     }
     $Checks["two clients in slots 0 and 1 ($($HeldSlots -join ', '))"] = (($HeldSlots | Sort-Object) -join ',') -eq "0,1"
+    if ($Parts -contains "sources") {
+        $Checks["the same tree selected on both clients ($(($NetSelectedTrees.Values | Sort-Object) -join ' / '))"] = ($NetSelectedTrees.Count -eq 2) -and
+            (@($NetSelectedTrees.Values | Sort-Object -Unique).Count -eq 1) -and ($NetSelectedTrees.Values -notcontains "")
+    }
     if ($NetServerProcess -and -not $NetServerProcess.HasExited) { Stop-Process -Id $NetServerProcess.Id -Force }
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
@@ -571,8 +752,11 @@ if ($TestsProcess) {
     if ($TestsTimedOut) { $TestsProcess.Kill() }
     $Results = @(if (Test-Path $TestsLog) { Select-String -Path $TestsLog -Pattern "Test Completed\. Result=\{(\w+)\}.*Path=\{([^}]+)\}" | ForEach-Object { $_.Matches[0] } })
     $Failures = @($Results | Where-Object { $_.Groups[1].Value -ne "Success" } | ForEach-Object { $_.Groups[2].Value })
+    # Every test started has completed (the forced exit of -TestExit cut the last lines of the log; SoftQuit flushes it).
+    $Started = @(if (Test-Path $TestsLog) { Select-String -Path $TestsLog -Pattern "Test Started\. Name=" }).Count
     $Checks = [ordered]@{}
     $Checks["tests ran ($($Results.Count))"] = (-not $TestsTimedOut) -and $Results.Count -gt 0
+    $Checks["every test started completed ($($Results.Count) of $Started)"] = $Results.Count -eq $Started
     $Checks["all green (failed: $($Failures -join ', '))"] = $Failures.Count -eq 0
     $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
 }

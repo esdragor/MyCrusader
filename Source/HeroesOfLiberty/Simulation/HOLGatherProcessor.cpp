@@ -718,6 +718,10 @@ void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 		// Stopped on a walk it gave itself, it ends that walk first.
 		Gatherer.State.Activity = Gatherer.Move.Phase != EHOLMovePhase::None ? EHOLUnitActivity::Moving : EHOLUnitActivity::Idle;
 	}
+	// Stopped where its round trip left it, having walked through every unit (D309; its walk's end already made it idle,
+	// UHOLUnitOrderProcessor): it looks once, as a walker, and parts from a unit it stands on (J5b.3: Peasants idle at the
+	// centre 29 cm apart once their berries were used up).
+	Gatherer.Gather.bSettling = true;
 	Gatherer.Gather.Phase = EHOLGatherPhase::None;
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
 	Gatherer.Gather.bWalkIssued = false;

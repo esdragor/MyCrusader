@@ -15,6 +15,7 @@
 #include "Misc/OutputDeviceRedirector.h"
 #include "Misc/Paths.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Player/HOLPlayerController.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "UnrealClient.h"
 
@@ -30,6 +31,7 @@
  *   waitmap <Name>       waits for a game world whose map name holds Name to have begun play
  *   waitplayers <N>      waits for the game world to know N players (a client waits for the others to join)
  *   waitunits <N>        waits for N units at least: simulated (solo, server) or displayed (client, D271)
+ *   waitidle <N>         waits for the local player to have N idle workers at least, as the HUD counts them (J5b, D307)
  *   waitui               waits for the interface to be still: a screen just opened or closed has finished fading
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
@@ -169,6 +171,12 @@ namespace UE::HeroesOfLiberty::Dev
 				const int32 NumUnits = World && World->GetNetMode() == NM_Client
 					? (Reception ? Reception->GetNumDisplayed() : 0) : (Units ? Units->GetNumUnits() : 0);
 				bDone = NumUnits >= FCString::Atoi(*Rest);
+			}
+			else if (Verb == TEXT("waitidle"))
+			{
+				const UWorld* World = GetGameWorld();
+				const AHOLPlayerController* Controller = World ? Cast<AHOLPlayerController>(World->GetFirstPlayerController()) : nullptr;
+				bDone = Controller && Controller->GetIdleWorkers().Num() >= FCString::Atoi(*Rest);
 			}
 			else if (Verb == TEXT("waitui"))
 			{
