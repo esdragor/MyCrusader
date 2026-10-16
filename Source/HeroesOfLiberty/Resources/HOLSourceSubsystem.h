@@ -72,8 +72,8 @@ public:
 	void RecordDeposit(uint8 OwnerPlayer, EHOLResource Resource, int32 Amount);
 	FHOLResources GetDeposited(uint8 OwnerPlayer) const { return Deposited.FindRef(OwnerPlayer); }
 
-	/** The standing source nearest Location, INDEX_NONE if there is none. */
-	int32 FindNearestStanding(const FVector& Location) const;
+	/** The standing source nearest Location (of Resource only, when set), INDEX_NONE if there is none. */
+	int32 FindNearestStanding(const FVector& Location, TOptional<EHOLResource> Resource = {}) const;
 
 	/** Client: a chunk arrived (left); its sources are read when all its slots are in. */
 	void AddChunk(AHOLSourceChunk* Chunk);

@@ -74,6 +74,11 @@ namespace
 							Line += FString::Printf(TEXT(", carries %s %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Unit.LoadResource)),
 								Unit.bLoadAmountKnown ? *FString::FromInt(Unit.LoadAmount) : TEXT("?"));
 						}
+						if (Unit.Activity == EHOLUnitActivity::Gathering)
+						{
+							// Last, so the activity and the load read as before (quick_check).
+							Line += FString::Printf(TEXT(", gathers %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Unit.GatherResource)));
+						}
 						Lines.Add(MoveTemp(Line));
 					}
 				}

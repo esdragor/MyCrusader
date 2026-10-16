@@ -187,8 +187,26 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 		{
 			Constants.IdleSequence = Constants.WalkSequence = 0;
 		}
-		Constants.IdleLength = AnimationProvider->GetSequencePlayLength(Constants.IdleSequence);
-		Constants.WalkLength = AnimationProvider->GetSequencePlayLength(Constants.WalkSequence);
+		// Gathering and carrying walks (J5c.1): one out of the provider is dropped (idle or walk played instead).
+		for (FHOLResourceSequences* Sequences : { &Constants.GatherSequences, &Constants.CarryWalkSequences })
+		{
+			for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
+			{
+				int32& Sequence = (*Sequences)[Resource];
+				if (!ensureMsgf(Sequence >= INDEX_NONE && Sequence < NumSequences,
+					TEXT("Unit type '%s': %s sequence %d of %s out of the %d sequences of %s"), *TypeName.ToString(),
+					Sequences == &Constants.GatherSequences ? TEXT("gathering") : TEXT("carrying walk"), Sequence,
+					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Resource)), NumSequences, *Constants.AnimationProvider.ToString()))
+				{
+					Sequence = INDEX_NONE;
+				}
+			}
+		}
+		Constants.SequenceLengths.SetNum(NumSequences);
+		for (int32 Sequence = 0; Sequence < NumSequences; ++Sequence)
+		{
+			Constants.SequenceLengths[Sequence] = AnimationProvider->GetSequencePlayLength(Sequence);
+		}
 	}
 	else if (!Constants.SkinnedMesh.IsNull())
 	{
@@ -581,6 +599,7 @@ namespace UE::HeroesOfLiberty::Units
 		OutView.Location = Previous ? FMath::Lerp(Previous->Transform.GetLocation(), Transform->GetTransform().GetLocation(), Alpha)
 			: Transform->GetTransform().GetLocation();
 		OutView.Activity = State->Activity;
+		OutView.GatherResource = State->GatherResource;
 		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity))
 		{
 			OutView.bCarrying = Gather->Load.Amount > 0;

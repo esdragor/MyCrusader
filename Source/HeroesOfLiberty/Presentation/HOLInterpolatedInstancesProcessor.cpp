@@ -14,16 +14,14 @@
 #include "Match/HOLPlayerColors.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Presentation/HOLPresentationFragments.h"
+#include "Presentation/HOLUnitAnimation.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 
 namespace UE::HeroesOfLiberty::Presentation
 {
-	// Walk/idle choice from the drawn speed, as a share of the type's speed (D234). Two thresholds so a unit
-	// hovering around one does not flicker between the two animations. Provisional, to tune in test.
-	constexpr float WalkStartSpeedShare = 0.15f;
-	constexpr float WalkStopSpeedShare = 0.10f;
 	constexpr float AnimationBlendSeconds = 0.2f;
 
 	/**
@@ -41,6 +39,27 @@ namespace UE::HeroesOfLiberty::Presentation
 	{
 		const uint32 Hash = HashCombineFast(GetTypeHash(UnitId), GetTypeHash(SequenceIndex));
 		return SequenceLength * static_cast<float>(Hash & 0xFFFF) / 65536.f;
+	}
+
+	/**
+	 * Where a gatherer's source is (J5c.1), to draw it facing it: in solo its source in the simulation; on a client, which
+	 * does not receive it, the standing source of the gathered resource nearest the unit (a gatherer stands against its
+	 * source). False if none is known.
+	 */
+	bool FindGatheredSource(const UHOLSourceSubsystem* Sources, const FHOLGatherFragment* Gather, const FVector& Location,
+		const EHOLResource Resource, FVector& OutLocation)
+	{
+		if (!Sources)
+		{
+			return false;
+		}
+		const int32 SourceIndex = Gather ? Gather->SourceIndex : Sources->FindNearestStanding(Location, Resource);
+		if (!Sources->GetSources().IsValidIndex(SourceIndex))
+		{
+			return false;
+		}
+		OutLocation = Sources->GetSources()[SourceIndex].Location;
+		return true;
 	}
 }
 
@@ -64,6 +83,8 @@ void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMass
 	EntityQuery.AddRequirement<FHOLUnitAnimationStateFragment>(EMassFragmentAccess::ReadWrite);
 	// A client's display entities (D271) carry the received velocity: there is no fixed step to measure one on.
 	EntityQuery.AddRequirement<FHOLNetUnitDisplayFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	// In solo, the load and the source of a gatherer (J5c.1); a client reads the received state instead.
+	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 	EntityQuery.AddChunkRequirement<FMassVisualizationChunkFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.SetChunkFilter(&FMassVisualizationChunkFragment::AreAnyEntitiesVisibleInChunk);
@@ -80,8 +101,9 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
 	const float Alpha = Simulation ? Simulation->GetInterpolationAlpha() : 1.f;
 	const float StepSeconds = Simulation ? Simulation->GetStepSeconds() : 0.f;
+	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
 
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -89,8 +111,6 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 		FMassInstancedSkinnedMeshInfoArrayView SkinnedMeshInfos = RepresentationSubsystem->GetMutableInstancedSkinnedMeshInfos();
 
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
-		const float WalkStartSpeed = Constants.Speed * WalkStartSpeedShare;
-		const float WalkStopSpeed = Constants.Speed * WalkStopSpeedShare;
 
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FHOLPreviousTransformFragment> PreviousTransforms = Context.GetFragmentView<FHOLPreviousTransformFragment>();
@@ -100,6 +120,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 		const TArrayView<FMassRepresentationAnimationFragment> Animations = Context.GetMutableFragmentView<FMassRepresentationAnimationFragment>();
 		const TArrayView<FHOLUnitAnimationStateFragment> AnimationStates = Context.GetMutableFragmentView<FHOLUnitAnimationStateFragment>();
 		const TConstArrayView<FHOLNetUnitDisplayFragment> NetDisplays = Context.GetFragmentView<FHOLNetUnitDisplayFragment>();
+		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -113,7 +134,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 
 			const FTransform& From = PreviousTransforms[EntityIt].Transform;
 			const FTransform& To = Transforms[EntityIt].GetTransform();
-			const FTransform Drawn(
+			FTransform Drawn(
 				FQuat::Slerp(From.GetRotation(), To.GetRotation(), Alpha),
 				FMath::Lerp(From.GetLocation(), To.GetLocation(), Alpha),
 				To.GetScale3D() * Constants.MeshScale);
@@ -137,32 +158,55 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 				{
 					FMassInstancedSkinnedMeshInfo& MeshInfo = SkinnedMeshInfos[SkinnedMeshInfoIndex];
 
-					// Walk or idle from the speed the client draws (D234): the step's displacement over its duration, or the
-					// received velocity for a client's display entity (D271).
-					const float DrawnSpeed = !NetDisplays.IsEmpty() ? static_cast<float>(NetDisplays[EntityIt].Velocity.Size2D())
-						: StepSeconds > 0.f ? FVector::Dist2D(From.GetLocation(), To.GetLocation()) / StepSeconds : 0.f;
+					// What it does as this machine knows it (D272): the simulation in solo, the last state received on a client.
+					// The speed the client draws (D234): the step's displacement over its duration, or the received velocity
+					// for a client's display entity (D271).
+					const FHOLUnitStateFragment& State = States[EntityIt];
+					const FHOLNetUnitDisplayFragment* NetDisplay = !NetDisplays.IsEmpty() ? &NetDisplays[EntityIt] : nullptr;
+					const FHOLGatherFragment* Gather = !NetDisplay && !Gathers.IsEmpty() ? &Gathers[EntityIt] : nullptr;
 					FHOLUnitAnimationStateFragment& AnimationState = AnimationStates[EntityIt];
 					FAnimSequenceTrackAutoPlayData& AnimData = Animations[EntityIt].AnimData;
-					const bool bWalking = AnimationState.bStarted && AnimData.SequenceIndex == Constants.WalkSequence;
-					const bool bWantsWalk = bWalking ? DrawnSpeed >= WalkStopSpeed : DrawnSpeed > WalkStartSpeed;
-					const int32 WantedSequence = bWantsWalk ? Constants.WalkSequence : Constants.IdleSequence;
-					if (!AnimationState.bStarted || AnimData.SequenceIndex != WantedSequence)
+					FHOLUnitAnimationInput Input;
+					Input.Activity = State.Activity;
+					Input.GatherResource = State.GatherResource;
+					Input.bCarrying = NetDisplay ? NetDisplay->State.bCarrying : Gather && Gather->Load.Amount > 0;
+					Input.LoadResource = NetDisplay ? NetDisplay->State.LoadResource : Gather ? Gather->Load.Resource : EHOLResource::Food;
+					Input.Speed = NetDisplay ? static_cast<float>(NetDisplay->Velocity.Size2D())
+						: StepSeconds > 0.f ? FVector::Dist2D(From.GetLocation(), To.GetLocation()) / StepSeconds : 0.f;
+					Input.PlayingSequence = AnimationState.bStarted ? AnimData.SequenceIndex : INDEX_NONE;
+					const FHOLUnitAnimationChoice Choice = HOLUnitAnimation::Choose(Constants, Input);
+					if (!AnimationState.bStarted || AnimData.SequenceIndex != Choice.Sequence)
 					{
 						// Mass hands the data to the instance only when the sequence changes, so the play rate is set here.
-						AnimData.SequenceIndex = WantedSequence;
-						// A larger mesh takes longer strides: its walk plays slower at the same speed.
-						AnimData.PlayRate = bWantsWalk ? Constants.WalkPlayRate / Constants.MeshScale : 1.f;
-						AnimData.Position = GetStartOffset(States[EntityIt].UnitId, WantedSequence, bWantsWalk ? Constants.WalkLength : Constants.IdleLength);
+						AnimData.SequenceIndex = Choice.Sequence;
+						AnimData.PlayRate = Choice.PlayRate;
+						AnimData.Position = GetStartOffset(State.UnitId, Choice.Sequence,
+							Constants.SequenceLengths.IsValidIndex(Choice.Sequence) ? Constants.SequenceLengths[Choice.Sequence] : 0.f);
 						AnimData.BlendTime = AnimationState.bStarted ? AnimationBlendSeconds : 0.f;
 						AnimData.LoopMode = EAnimSequenceTrackLoopMode::Loop;
 						AnimationState.bStarted = true;
+
+						// A gatherer turns towards its source once, when its gesture starts (it stands there), at once (D304).
+						FVector SourceLocation;
+						AnimationState.bFacingSource = Choice.bFacesSource
+							&& FindGatheredSource(Sources, Gather, To.GetLocation(), State.GatherResource, SourceLocation)
+							&& FVector::DistSquared2D(SourceLocation, To.GetLocation()) > 1.;
+						if (AnimationState.bFacingSource)
+						{
+							const FVector ToSource = SourceLocation - To.GetLocation();
+							AnimationState.FacingYaw = static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(ToSource.Y, ToSource.X)));
+						}
+					}
+					if (AnimationState.bFacingSource)
+					{
+						Drawn.SetRotation(FRotator(0.f, AnimationState.FacingYaw, 0.f).Quaternion());
 					}
 
 					// Transform, animation and colour in this order for each entity: Mass pairs them by position.
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
-					MeshInfo.AddBatchedCustomData(GetPlayerColor(States[EntityIt].OwnerPlayer), RepresentationLOD.LODSignificance,
+					MeshInfo.AddBatchedCustomData(GetPlayerColor(State.OwnerPlayer), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}

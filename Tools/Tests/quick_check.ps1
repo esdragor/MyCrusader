@@ -19,6 +19,7 @@
 # J6a.1 (D310): no Peasant's body in a building's footprint, watched at every step (hol.Nav.Footprints) over the gather
 # part, then an order onto the centre itself and one around it (solo), and over the round trips of the two clients
 # (server); the navmesh ends 60 cm (agent) + 25 cm (BodyClearance) at least from the centre's sides.
+# J5c.1: each client knows what the other's Peasant gathers (wood), received in the activity's bits.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -724,6 +725,11 @@ if ($Parts -contains "net") {
             $Checks["client $N : its own Peasant's load known here"] = $OwnKnown
             $Checks["client $N : the other's Peasant seen gathering and carrying"] = [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) Gathering" -Quiet) -and
                 [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) \w+, carries Wood \?" -Quiet)
+            # J5c.1: what it gathers comes with its activity (the axe on this client), carrying or not yet.
+            $Checks["client $N : the other's Peasant seen gathering wood (resource in the activity's bits)"] =
+                [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) Gathering, gathers Wood" -Quiet) -and
+                [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) Gathering, carries Wood \?, gathers Wood" -Quiet) -and
+                -not ($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) Gathering(, carries \w+ [\d?]+)?, gathers (Food|Stone|Gold)" -Quiet)
             $Checks["client $N : the other's load never received"] = -not ($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) \w+, carries \w+ \d" -Quiet)
             $UsedUp = @($Gather | Select-String -Pattern "Sources: source (\d+) used up \(client\)" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique)
             $Final = $Gather | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }

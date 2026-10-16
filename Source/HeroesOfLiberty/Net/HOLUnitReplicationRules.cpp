@@ -15,7 +15,7 @@ namespace
 }
 
 FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity, const int64 Step,
-	const EHOLResource LoadResource, const int32 LoadAmount)
+	const EHOLResource LoadResource, const int32 LoadAmount, const EHOLResource GatherResource)
 {
 	FHOLNetUnitState State;
 	State.X = ReduceNetValue(Position.X, PositionStep, HorizontalBits);
@@ -23,6 +23,8 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 	State.VelocityX = ReduceNetValue(Velocity.X, VelocityStep, VelocityBits);
 	State.VelocityY = ReduceNetValue(Velocity.Y, VelocityStep, VelocityBits);
 	State.Activity = Activity;
+	// Not gathering: what it gathered does not count, the same state whatever it was.
+	State.GatherResource = Activity == EHOLUnitActivity::Gathering ? GatherResource : EHOLResource::Food;
 	State.Step = static_cast<uint8>(Step & (NetStepCycle - 1));
 	State.bCarrying = LoadAmount > 0;
 	// Nothing carried: the resource is not sent, the same state whatever it was.
@@ -38,6 +40,27 @@ FVector FHOLNetUnitState::GetPosition() const
 FVector FHOLNetUnitState::GetVelocity() const
 {
 	return FVector(VelocityX, VelocityY, 0.0) * VelocityStep;
+}
+
+uint8 HOLUnitReplication::EncodeActivity(const EHOLUnitActivity Activity, const EHOLResource GatherResource)
+{
+	return Activity == EHOLUnitActivity::Gathering ? static_cast<uint8>(GatheringWireBase + static_cast<uint8>(GatherResource))
+		: static_cast<uint8>(Activity);
+}
+
+void HOLUnitReplication::DecodeActivity(const uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource)
+{
+	if (WireActivity >= GatheringWireBase)
+	{
+		OutActivity = EHOLUnitActivity::Gathering;
+		OutGatherResource = static_cast<EHOLResource>(WireActivity - GatheringWireBase);
+	}
+	else
+	{
+		// Gathering's own value is never written; read, it would be gathering food.
+		OutActivity = static_cast<EHOLUnitActivity>(WireActivity);
+		OutGatherResource = EHOLResource::Food;
+	}
 }
 
 int64 HOLUnitReplication::UnwrapStep(const uint8 StepLowBits, const int64 NearStep)
@@ -56,9 +79,10 @@ FVector HOLUnitReplication::PredictPosition(const FHOLNetUnitState& State, const
 }
 
 EHOLUnitSendReason HOLUnitReplication::GetSendReason(const FHOLUnitSentRecord& Sent, const FVector& Position,
-	const EHOLUnitActivity Activity, const uint32 UnitId, const int64 Step, const float StepSeconds, const FHOLUnitSendRules& Rules)
+	const EHOLUnitActivity Activity, const uint32 UnitId, const int64 Step, const float StepSeconds, const FHOLUnitSendRules& Rules,
+	const EHOLResource GatherResource)
 {
-	if (Activity != Sent.State.Activity)
+	if (EncodeActivity(Activity, GatherResource) != EncodeActivity(Sent.State.Activity, Sent.State.GatherResource))
 	{
 		return EHOLUnitSendReason::Activity;
 	}

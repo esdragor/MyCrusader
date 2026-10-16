@@ -130,8 +130,11 @@ private:
 	 * idle gatherers never on one point). False if none is free nor on the navmesh, MaxStandRows out.
 	 */
 	bool FindStandPoint(const FStepContext& Step, const FHOLSource& Source, const FVector& From, float BodyRadius, FMassEntityHandle Self, FVector& OutPoint);
-	/** Its activity from its place in the round trip (D307): gathering at its source, else on its round trip. */
-	void SyncActivity(FGatherer& Gatherer);
+	/**
+	 * Its activity from its place in the round trip (D307): gathering at its source, with the source's resource (J5c.1,
+	 * sent with the activity), else on its round trip.
+	 */
+	void SyncActivity(const FStepContext& Step, FGatherer& Gatherer);
 	/** Counts it in its owner's gatherers of its resource (J5b, D307). */
 	void CountGatherer(const FStepContext& Step, const FGatherer& Gatherer);
 	/** Each player's gatherers by resource, to its player state (the top bar of its HUD). */

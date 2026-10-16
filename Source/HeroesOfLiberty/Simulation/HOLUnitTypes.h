@@ -13,6 +13,50 @@ class USkeletalMesh;
 class UStaticMesh;
 
 /**
+ * A sequence of a unit's animation provider for each of the four base resources (J5c.1): what it plays gathering each
+ * one, or walking with a load of it. INDEX_NONE (-1): none, the unit plays its idle or walk instead. Written
+ * "(Food=4,Wood=2,Stone=3,Gold=3)" in the table, like GatherRates.
+ */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLResourceSequences
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "-1"))
+	int32 Food = INDEX_NONE;
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "-1"))
+	int32 Wood = INDEX_NONE;
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "-1"))
+	int32 Stone = INDEX_NONE;
+
+	UPROPERTY(EditAnywhere, Category = "Resources", meta = (ClampMin = "-1"))
+	int32 Gold = INDEX_NONE;
+
+	int32& operator[](const EHOLResource Resource)
+	{
+		switch (Resource)
+		{
+		case EHOLResource::Wood: return Wood;
+		case EHOLResource::Stone: return Stone;
+		case EHOLResource::Gold: return Gold;
+		default: return Food;
+		}
+	}
+
+	int32 operator[](const EHOLResource Resource) const { return const_cast<FHOLResourceSequences&>(*this)[Resource]; }
+
+	/** One of the four is Sequence. */
+	bool Contains(const int32 Sequence) const
+	{
+		return Sequence != INDEX_NONE && (Food == Sequence || Wood == Sequence || Stone == Sequence || Gold == Sequence);
+	}
+
+	bool operator==(const FHOLResourceSequences& Other) const = default;
+};
+
+/**
  * Runtime cache of one unit type (D222): a single copy per type, shared by all its units, so the static values
  * are not duplicated 2 000 times and balancing them in the table reaches every unit of the type.
  *
@@ -67,12 +111,22 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	float WalkPlayRate = 1.f;
 
-	/** Lengths (s) of the two sequences, read from the provider by the factory: random start offsets (D234). */
+	/** Gathering at a source and walking with a load (J5c.1), by resource; INDEX_NONE: none. */
 	UPROPERTY()
-	float IdleLength = 0.f;
+	FHOLResourceSequences GatherSequences;
 
 	UPROPERTY()
-	float WalkLength = 0.f;
+	float GatherPlayRate = 1.f;
+
+	UPROPERTY()
+	FHOLResourceSequences CarryWalkSequences;
+
+	UPROPERTY()
+	float CarryWalkPlayRate = 1.f;
+
+	/** Lengths (s) of the provider's sequences by index, read from it by the factory: random start offsets (D234). */
+	UPROPERTY()
+	TArray<float> SequenceLengths;
 
 	/** Gathering (J5, D296): rate per resource (per second, 0 = cannot gather it) and load carried to a deposit. */
 	UPROPERTY()
@@ -153,6 +207,25 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
 	float WalkPlayRate = 1.f;
 
+	/**
+	 * Sequence played gathering each resource at its source (J5c.1: axe, pick, picking berries), whatever the speed: a
+	 * gatherer pushed aside keeps working. -1: none, it stands idle.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	FHOLResourceSequences GatherSequences;
+
+	/** Play rate of the gathering sequences (a gesture, not a stride: the mesh scale does not change it). */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
+	float GatherPlayRate = 1.f;
+
+	/** Walk played carrying a load of each resource (J5c.1), in place of WalkSequence. -1: the plain walk. */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	FHOLResourceSequences CarryWalkSequences;
+
+	/** Play rate of the carrying walks, set as WalkPlayRate is (Speed / the walk's planted-foot speed, D234). */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
+	float CarryWalkPlayRate = 1.f;
+
 	/** What producing one unit costs (J3, D283), taken when it is queued. Read by the production, not by Mass. */
 	UPROPERTY(EditAnywhere, Category = "Production")
 	FHOLResources Cost;
@@ -192,6 +265,10 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.IdleSequence = IdleSequence;
 	Constants.WalkSequence = WalkSequence;
 	Constants.WalkPlayRate = WalkPlayRate;
+	Constants.GatherSequences = GatherSequences;
+	Constants.GatherPlayRate = GatherPlayRate;
+	Constants.CarryWalkSequences = CarryWalkSequences;
+	Constants.CarryWalkPlayRate = CarryWalkPlayRate;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
 	return Constants;

@@ -25,7 +25,9 @@ struct HEROESOFLIBERTY_API FHOLLightUnitTag : public FMassTag
 
 /**
  * What the RTS layer sees a unit doing (D226): standing, walking to its current order, gathering at its source, or on
- * its gathering's round trip. Sent to every client in 3 bits (FHOLNetUnitState::ActivityBits): room for 8 values.
+ * its gathering's round trip. Sent to every client in 3 bits (FHOLNetUnitState::ActivityBits), Gathering with its
+ * resource (J5c.1): it takes values 4 to 7 of the wire (HOLUnitReplication::EncodeActivity), and one value is left
+ * (2, Gathering's own, never written): a fifth activity needs that value mapped to it, or one bit more.
  */
 UENUM()
 enum class EHOLUnitActivity : uint8
@@ -33,7 +35,10 @@ enum class EHOLUnitActivity : uint8
 	/** Standing with nothing to do: an idle worker for the HUD and the "." key (J5b, D307). */
 	Idle,
 	Moving,
-	/** Standing at its source, taking from it (J5, D298): the client shows it, the presentation will animate it (J5c). */
+	/**
+	 * Standing at its source, taking from it (J5, D298): the client shows it, the presentation plays the gesture of the
+	 * resource (J5c.1, FHOLUnitStateFragment::GatherResource).
+	 */
 	Gathering,
 	/**
 	 * On its gathering's round trip (J5b, D307): walking to its source or to a deposit, or waiting for a free spot. It
@@ -168,6 +173,13 @@ struct HEROESOFLIBERTY_API FHOLUnitStateFragment : public FMassFragment
 
 	UPROPERTY()
 	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
+
+	/**
+	 * What it gathers, read only while Activity is Gathering (J5c.1: the presentation plays the axe, the pick or the
+	 * picking of berries). Sent with the activity, in its 3 bits (HOLUnitReplication::EncodeActivity).
+	 */
+	UPROPERTY()
+	EHOLResource GatherResource = EHOLResource::Food;
 
 	/** Player the unit belongs to (D233): a conversion (D37) rewrites it. The client turns it into a colour. */
 	UPROPERTY()

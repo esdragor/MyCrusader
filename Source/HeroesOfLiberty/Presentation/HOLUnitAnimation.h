@@ -1,0 +1,61 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Simulation/HOLSimulationFragments.h"
+
+struct FHOLUnitTypeConstants;
+
+/**
+ * Pure rule of the animation a client plays on a unit (D234, J5c.1), from what the unit does as this machine knows it:
+ * the simulation in solo, the last state received on a client (D272: one display code). No engine state: tested on its
+ * own (HeroesOfLiberty.Animation.Choice).
+ */
+
+/** What the animation is chosen from. */
+struct FHOLUnitAnimationInput
+{
+	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
+	/** What it gathers, read while Activity is Gathering. */
+	EHOLResource GatherResource = EHOLResource::Food;
+	/** Whether it carries a load, and of what. */
+	bool bCarrying = false;
+	EHOLResource LoadResource = EHOLResource::Food;
+	/** Horizontal speed it is drawn at (cm/s). */
+	float Speed = 0.f;
+	/** Sequence it plays now, INDEX_NONE before its first: a walk keeps walking down to a lower speed (hysteresis). */
+	int32 PlayingSequence = INDEX_NONE;
+};
+
+/** The animation to play. Mass hands it to the instance only when Sequence changes (play rate and start fixed then). */
+struct FHOLUnitAnimationChoice
+{
+	int32 Sequence = 0;
+	float PlayRate = 1.f;
+	/** Gathering at its source: drawn facing it (display only, the simulation's orientation does not change). */
+	bool bFacesSource = false;
+
+	bool operator==(const FHOLUnitAnimationChoice& Other) const = default;
+};
+
+namespace HOLUnitAnimation
+{
+	/**
+	 * Walk or stand from the drawn speed, as a share of the type's speed (D234). Two thresholds so a unit hovering around
+	 * one does not flicker between the two animations. Provisional, to tune in test.
+	 */
+	constexpr float WalkStartSpeedShare = 0.15f;
+	constexpr float WalkStopSpeedShare = 0.10f;
+
+	/** Sequence is one of the type's walks: the plain one or a carrying one. */
+	HEROESOFLIBERTY_API bool IsWalkSequence(const FHOLUnitTypeConstants& Type, int32 Sequence);
+
+	/**
+	 * Gathering at its source: the gesture of the resource (axe, pick, picking berries), whatever its speed (pushed aside,
+	 * it keeps working); else walking (any activity: an order, the round trip, a push) with a load: the carrying walk of
+	 * the load; else the walk or the idle by speed, as before (D234). A walk's play rate is divided by the mesh scale (a
+	 * larger mesh takes longer strides), a gesture's is not. A type without the sequence wanted plays its idle or walk.
+	 */
+	HEROESOFLIBERTY_API FHOLUnitAnimationChoice Choose(const FHOLUnitTypeConstants& Type, const FHOLUnitAnimationInput& Input);
+}

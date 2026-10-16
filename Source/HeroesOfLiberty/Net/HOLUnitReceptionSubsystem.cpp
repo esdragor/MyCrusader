@@ -335,6 +335,7 @@ void UHOLUnitReceptionSubsystem::CreateEntities(const TConstArrayView<int32> Slo
 			UnitState.UnitId = Slot.UnitId;
 			UnitState.OwnerPlayer = Slot.OwnerPlayer;
 			UnitState.Activity = Slot.State.Activity;
+			UnitState.GatherResource = Slot.State.GatherResource;
 		}
 		NumDisplayed += Created.Num();
 		Stats.NumArrivals += Created.Num();
@@ -356,7 +357,9 @@ void UHOLUnitReceptionSubsystem::ApplyState(FSlot& Slot, const double Now)
 	Display.Correction = FHOLDisplayCorrection();
 	const FVector Predicted = Display.GetDisplayedPosition(ClockStep, Now, StepSeconds);
 	Display.Correction.Start(Displayed, Predicted, Now);
-	EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Slot.Entity).Activity = Slot.State.Activity;
+	FHOLUnitStateFragment& UnitState = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Slot.Entity);
+	UnitState.Activity = Slot.State.Activity;
+	UnitState.GatherResource = Slot.State.GatherResource;
 
 	const double Gap = FVector::Dist(Displayed, Predicted);
 	++Stats.NumStates;
@@ -438,6 +441,7 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 	OutView.TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
 	OutView.Location = Transform->GetTransform().GetLocation();
 	OutView.Activity = Slot.State.Activity;
+	OutView.GatherResource = Slot.State.GatherResource;
 	OutView.bCarrying = Slot.State.bCarrying;
 	OutView.LoadResource = Slot.State.LoadResource;
 	// The amount only for the watched unit (D303): the server sends it at every change, sooner than the state.

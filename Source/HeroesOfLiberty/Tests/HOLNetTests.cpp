@@ -52,6 +52,13 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Wood, 9));
 	TestEqual(TEXT("nothing carried: the resource does not count"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0, EHOLResource::Gold, 0),
 		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Idle, 0));
+	// J5c.1: what a gatherer gathers, kept while it gathers only (it may carry another resource, D306).
+	const FHOLNetUnitState Chopping = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Food, 3, EHOLResource::Wood);
+	TestEqual(TEXT("gathered resource kept"), static_cast<int32>(Chopping.GatherResource), static_cast<int32>(EHOLResource::Wood));
+	TestEqual(TEXT("load of another resource kept beside it"), static_cast<int32>(Chopping.LoadResource), static_cast<int32>(EHOLResource::Food));
+	TestEqual(TEXT("not gathering: the gathered resource does not count"),
+		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::GatherTrip, 0, EHOLResource::Wood, 10, EHOLResource::Stone),
+		FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::GatherTrip, 0, EHOLResource::Wood, 10));
 
 	const FHOLNetUnitState Far = FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Idle, 0);
 	TestEqual(TEXT("X held at the range's edge"), static_cast<int32>(Far.X), (1 << (FHOLNetUnitState::HorizontalBits - 1)) - 1);
@@ -73,7 +80,12 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		FHOLNetUnitState::Make(FVector(12345.6, -9876.5, 123.4), FVector(212.3, -147.9, 0.0), EHOLUnitActivity::Moving, 1000),
 		FHOLNetUnitState::Make(FVector(1.0e7, -1.0e7, -1.0e6), FVector(-1.0e5, 1.0e5, 0.0), EHOLUnitActivity::Idle, 255),
 		FHOLNetUnitState::Make(FVector(-1.0e7, 1.0e7, 1.0e6), FVector(1.0e5, -1.0e5, 0.0), EHOLUnitActivity::Moving, 256),
-		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 77, EHOLResource::Gold, 31),
+		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 77, EHOLResource::Gold, 31, EHOLResource::Gold),
+		// J5c.1: each resource gathered, in the activity's bits; with a load of another resource (D306), without a load.
+		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector(-5.0, 10.0, 0.0), EHOLUnitActivity::Gathering, 78, EHOLResource::Food, 0, EHOLResource::Food),
+		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 79, EHOLResource::Food, 4, EHOLResource::Wood),
+		FHOLNetUnitState::Make(FVector(500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Gathering, 80, EHOLResource::Food, 0, EHOLResource::Stone),
+		FHOLNetUnitState::Make(FVector(-500.0, 600.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::GatherTrip, 81, EHOLResource::Stone, 10),
 		FHOLNetUnitState(),
 	};
 	for (const FHOLNetUnitState& State : States)
@@ -125,6 +137,35 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		Serializer.Dequantize(ReadContext, DequantizeArgs);
 		TestEqual(TEXT("same state after the trip"), Back, State);
 	}
+
+	// J5c.1 (option A of the user): "gathering + resource" in the 4 values the activities leave free, at no bit more.
+	// The reflection's last entry is the _MAX it adds.
+	const UEnum* Activities = StaticEnum<EHOLUnitActivity>();
+	for (int32 Index = 0; Index < Activities->NumEnums() - 1; ++Index)
+	{
+		TestTrue(*FString::Printf(TEXT("%s below the gathering values"), *Activities->GetNameStringByIndex(Index)),
+			Activities->GetValueByIndex(Index) < HOLUnitReplication::GatheringWireBase);
+	}
+	TestEqual(TEXT("the 4 resources fill the activity's bits"), HOLUnitReplication::GatheringWireBase + 4, 1 << FHOLNetUnitState::ActivityBits);
+	TArray<uint8> WireValues;
+	for (const EHOLUnitActivity Activity : { EHOLUnitActivity::Idle, EHOLUnitActivity::Moving, EHOLUnitActivity::Gathering, EHOLUnitActivity::GatherTrip })
+	{
+		for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
+		{
+			const uint8 Wire = HOLUnitReplication::EncodeActivity(Activity, Resource);
+			EHOLUnitActivity BackActivity = EHOLUnitActivity::Idle;
+			EHOLResource BackResource = EHOLResource::Gold;
+			HOLUnitReplication::DecodeActivity(Wire, BackActivity, BackResource);
+			const FString What = FString::Printf(TEXT("%s %s"), *UEnum::GetValueAsString(Activity), *UEnum::GetValueAsString(Resource));
+			TestTrue(*FString::Printf(TEXT("%s fits in 3 bits"), *What), Wire < (1 << FHOLNetUnitState::ActivityBits));
+			TestEqual(*FString::Printf(TEXT("%s: activity back"), *What), BackActivity, Activity);
+			TestEqual(*FString::Printf(TEXT("%s: gathered resource back (food unless gathering)"), *What), static_cast<int32>(BackResource),
+				static_cast<int32>(Activity == EHOLUnitActivity::Gathering ? Resource : EHOLResource::Food));
+			WireValues.AddUnique(Wire);
+		}
+	}
+	TestEqual(TEXT("7 values on the wire: 3 activities and gathering each resource"), WireValues.Num(), 7);
+	TestFalse(TEXT("Gathering's own value never written"), WireValues.Contains(static_cast<uint8>(EHOLUnitActivity::Gathering)));
 	return true;
 }
 
@@ -178,6 +219,14 @@ bool FHOLNetSendRuleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("at rest: refreshed between a quarter of a cycle and a cycle and a quarter"), FirstRefresh >= Rules.RefreshSteps / 4 && FirstRefresh <= LongestRefresh);
 	TestEqual(TEXT("at rest, 1 step later: nothing"), GetSendReason(Resting, Rest, EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
 	TestEqual(TEXT("starts walking: sent at once"), GetSendReason(Resting, Rest, EHOLUnitActivity::Moving, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Activity);
+	// J5c.1: the gathered resource is part of the activity.
+	const FHOLUnitSentRecord Chopping = { FHOLNetUnitState::Make(Rest, FVector::ZeroVector, EHOLUnitActivity::Gathering, 0, EHOLResource::Food, 0, EHOLResource::Wood), 0 };
+	TestEqual(TEXT("starts gathering: sent at once"), GetSendReason(Resting, Rest, EHOLUnitActivity::Gathering, 7, 1, StepSeconds, Rules, EHOLResource::Wood),
+		EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("still gathering wood: nothing"), GetSendReason(Chopping, Rest, EHOLUnitActivity::Gathering, 7, 1, StepSeconds, Rules, EHOLResource::Wood),
+		EHOLUnitSendReason::None);
+	TestEqual(TEXT("gathering another resource: sent at once"), GetSendReason(Chopping, Rest, EHOLUnitActivity::Gathering, 7, 1, StepSeconds, Rules, EHOLResource::Stone),
+		EHOLUnitSendReason::Activity);
 	// 5 cm either side of the threshold (D274: 35 cm).
 	const double Under = Rules.ErrorThreshold - 5.0;
 	const double Past = Rules.ErrorThreshold + 5.0;

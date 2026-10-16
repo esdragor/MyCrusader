@@ -186,7 +186,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Advance(Step, Gatherer);
 			if (Gatherer.Gather.IsGathering())
 			{
-				SyncActivity(Gatherer);
+				SyncActivity(Step, Gatherer);
 				CountGatherer(Step, Gatherer);
 			}
 		}
@@ -698,11 +698,18 @@ void UHOLGatherProcessor::StartGathering(FGatherer& Gatherer)
 	Gatherer.State.Activity = EHOLUnitActivity::Gathering;
 }
 
-void UHOLGatherProcessor::SyncActivity(FGatherer& Gatherer)
+void UHOLGatherProcessor::SyncActivity(const FStepContext& Step, FGatherer& Gatherer)
 {
 	// Its round trip shows as one activity from the order to the end (D307): the walks it gives itself start at the next
 	// step and end idle (UHOLUnitOrderProcessor), the waits for a spot stand; none of that is idleness.
 	Gatherer.State.Activity = Gatherer.Gather.Phase == EHOLGatherPhase::Gathering ? EHOLUnitActivity::Gathering : EHOLUnitActivity::GatherTrip;
+	if (Gatherer.State.Activity == EHOLUnitActivity::Gathering)
+	{
+		// What its gesture shows (J5c.1): its source's resource, the one it takes now (its load may still be another, D306).
+		const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+		Gatherer.State.GatherResource = Sources.IsValidIndex(Gatherer.Gather.SourceIndex) ? Sources[Gatherer.Gather.SourceIndex].Resource
+			: Gatherer.Gather.Load.ProgressResource;
+	}
 }
 
 void UHOLGatherProcessor::CountGatherer(const FStepContext& Step, const FGatherer& Gatherer)

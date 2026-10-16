@@ -283,13 +283,13 @@ void UHOLSourceSubsystem::RecordDeposit(const uint8 OwnerPlayer, const EHOLResou
 	Deposited.FindOrAdd(OwnerPlayer)[Resource] += Amount;
 }
 
-int32 UHOLSourceSubsystem::FindNearestStanding(const FVector& Location) const
+int32 UHOLSourceSubsystem::FindNearestStanding(const FVector& Location, const TOptional<EHOLResource> Resource) const
 {
 	int32 Nearest = INDEX_NONE;
 	double NearestDistanceSquared = TNumericLimits<double>::Max();
 	for (int32 Index = 0; Index < Sources.Num(); ++Index)
 	{
-		if (!Sources[Index].IsStanding())
+		if (!Sources[Index].IsStanding() || (Resource.IsSet() && Sources[Index].Resource != Resource.GetValue()))
 		{
 			continue;
 		}

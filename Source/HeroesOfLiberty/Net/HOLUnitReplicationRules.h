@@ -34,6 +34,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	static constexpr int32 HorizontalBits = 15;
 	/** Horizontal velocity, per axis: +-12.8 m/s (a walking unit goes at 3 m/s). */
 	static constexpr int32 VelocityBits = 9;
+	/** The activity, and while it is Gathering what it gathers (J5c.1: HOLUnitReplication::EncodeActivity, no bit more). */
 	static constexpr int32 ActivityBits = 3;
 	/** Low bits of the step the state was taken at: 256 steps, 12.8 s at 20 Hz, unwrapped by the client (UnwrapStep). */
 	static constexpr int32 StepBits = 8;
@@ -57,6 +58,9 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	int16 VelocityY = 0;
 	UPROPERTY()
 	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
+	/** What it gathers while Activity is Gathering (J5c.1), Food otherwise: written in the activity's bits. */
+	UPROPERTY()
+	EHOLResource GatherResource = EHOLResource::Food;
 	/** StepBits low bits of the simulation step the state was taken at. */
 	UPROPERTY()
 	uint8 Step = 0;
@@ -70,7 +74,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,
-		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0);
+		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0, EHOLResource GatherResource = EHOLResource::Food);
 
 	/** Z = 0 for both, see above. */
 	FVector GetPosition() const;
@@ -110,6 +114,19 @@ struct FHOLUnitSentRecord
 
 namespace HOLUnitReplication
 {
+	/**
+	 * First value of "gathering this resource" on the wire (J5c.1, option A of the user): the activity's 3 bits carry
+	 * Idle, Moving and GatherTrip as themselves and Gathering as GatheringWireBase + its resource, 4 to 7, the four values
+	 * the activities left free. The client knows what is gathered as soon as the gathering starts, at no bit more.
+	 */
+	constexpr uint8 GatheringWireBase = 4;
+
+	/** The activity as written on the wire, with what it gathers while Gathering. */
+	HEROESOFLIBERTY_API uint8 EncodeActivity(EHOLUnitActivity Activity, EHOLResource GatherResource);
+
+	/** Back from the wire; GatherResource is Food unless the activity is Gathering. */
+	HEROESOFLIBERTY_API void DecodeActivity(uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource);
+
 	/** Full step whose low bits are StepLowBits, the nearest to NearStep (the client's estimate of the server clock). */
 	HEROESOFLIBERTY_API int64 UnwrapStep(uint8 StepLowBits, int64 NearStep);
 
@@ -121,10 +138,12 @@ namespace HOLUnitReplication
 	 * refresh comes at the unit's own step of the cycle, set by its identifier, so units sent together (born together,
 	 * stopped by the same order) are refreshed spread over the cycle and never all at one step; it is skipped when the
 	 * unit was sent less than a quarter of a cycle before. A unit at rest is thus sent once a cycle, and no unit waits
-	 * more than a cycle and a quarter (2.5 s).
+	 * more than a cycle and a quarter (2.5 s). GatherResource, what it gathers while Activity is Gathering, is part of
+	 * the activity: another resource is sent at once too (J5c.1).
 	 */
 	HEROESOFLIBERTY_API EHOLUnitSendReason GetSendReason(const FHOLUnitSentRecord& Sent, const FVector& Position,
-		EHOLUnitActivity Activity, uint32 UnitId, int64 Step, float StepSeconds, const FHOLUnitSendRules& Rules);
+		EHOLUnitActivity Activity, uint32 UnitId, int64 Step, float StepSeconds, const FHOLUnitSendRules& Rules,
+		EHOLResource GatherResource = EHOLResource::Food);
 }
 
 /**

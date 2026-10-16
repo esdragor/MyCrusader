@@ -441,6 +441,25 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand ZoomCommand(
+		TEXT("hol.Camera.Zoom"),
+		TEXT("hol.Camera.Zoom <Steps>: zooms the local player's camera by mouse wheel steps, positive closer (scripted checks: close-ups of the animations, J5c.1)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (Controller->GetRTSCamera())
+				{
+					Controller->GetRTSCamera()->Zoom(FCString::Atof(*Args[0]));
+					UE_LOG(LogHOLMatch, Display, TEXT("Camera height %.0f cm"), Controller->GetRTSCamera()->GetHeight());
+				}
+			}
+		}));
+
 	/** The player's own building of a type (its main centre for the scripted checks), or null. */
 	AHOLBuilding* FindOwnBuilding(const AHOLPlayerController& Controller, const FName TypeName)
 	{

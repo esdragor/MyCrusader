@@ -242,10 +242,10 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 	FString Sample;
 
 	Replicator->SetServerStep(Step);
-	const auto WriteState = [this, Step](FUnitRecord& Record, const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity,
+	const auto WriteState = [this, Step](FUnitRecord& Record, const FVector& Position, const FVector& Velocity, const FHOLUnitStateFragment& State,
 		const FHOLGatherLoad& Load)
 	{
-		Record.Sent.State = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount);
+		Record.Sent.State = FHOLNetUnitState::Make(Position, Velocity, State.Activity, Step, Load.Resource, Load.Amount, State.GatherResource);
 		Record.Sent.Step = Step;
 		Replicator->GetOrAddChunk(Record.Slot / AHOLUnitChunk::NumSlots)->SetState(Record.Slot % AHOLUnitChunk::NumSlots, Record.Sent.State);
 	};
@@ -282,7 +282,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 				Record->OwnerPlayer = State.OwnerPlayer;
 				Replicator->GetOrAddChunk(Record->Slot / AHOLUnitChunk::NumSlots)
 					->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
-				WriteState(*Record, Position, Velocity, State.Activity, Gathers[EntityIt].Load);
+				WriteState(*Record, Position, Velocity, State, Gathers[EntityIt].Load);
 				Stats.Sends[static_cast<int32>(EHOLUnitSendReason::None)]++;
 			}
 			else
@@ -295,10 +295,10 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 						->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
 				}
 				const EHOLUnitSendReason Reason = HOLUnitReplication::GetSendReason(Record->Sent, Position, State.Activity,
-					State.UnitId, Step, StepSeconds, Rules);
+					State.UnitId, Step, StepSeconds, Rules, State.GatherResource);
 				if (Reason != EHOLUnitSendReason::None)
 				{
-					WriteState(*Record, Position, Velocity, State.Activity, Gathers[EntityIt].Load);
+					WriteState(*Record, Position, Velocity, State, Gathers[EntityIt].Load);
 					Stats.Sends[static_cast<int32>(Reason)]++;
 				}
 			}

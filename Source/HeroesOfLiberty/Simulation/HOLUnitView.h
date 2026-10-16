@@ -25,6 +25,8 @@ struct FHOLUnitView
 	float MeshScale = 1.f;
 	/** What it is doing and carrying (J5, D298): the selection block shows it. A client has them from the last state received. */
 	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
+	/** What it gathers, while Activity is Gathering (J5c.1: on a client, received with the activity). */
+	EHOLResource GatherResource = EHOLResource::Food;
 	bool bCarrying = false;
 	EHOLResource LoadResource = EHOLResource::Food;
 	/**

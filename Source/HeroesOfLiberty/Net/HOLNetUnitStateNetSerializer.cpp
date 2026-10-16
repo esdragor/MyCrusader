@@ -25,6 +25,7 @@ struct FHOLNetUnitStateNetSerializer
 		int16 Y;
 		int16 VelocityX;
 		int16 VelocityY;
+		/** The activity as on the wire: with what it gathers while gathering (J5c.1, HOLUnitReplication::EncodeActivity). */
 		uint8 Activity;
 		uint8 Step;
 		uint8 bCarrying;
@@ -158,7 +159,7 @@ void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, 
 	Target.Y = Source.Y;
 	Target.VelocityX = Source.VelocityX;
 	Target.VelocityY = Source.VelocityY;
-	Target.Activity = static_cast<uint8>(Source.Activity);
+	Target.Activity = HOLUnitReplication::EncodeActivity(Source.Activity, Source.GatherResource);
 	Target.Step = Source.Step;
 	Target.bCarrying = Source.bCarrying ? 1 : 0;
 	Target.LoadResource = static_cast<uint8>(Source.LoadResource);
@@ -172,7 +173,7 @@ void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context
 	Target.Y = Source.Y;
 	Target.VelocityX = Source.VelocityX;
 	Target.VelocityY = Source.VelocityY;
-	Target.Activity = static_cast<EHOLUnitActivity>(Source.Activity);
+	HOLUnitReplication::DecodeActivity(Source.Activity, Target.Activity, Target.GatherResource);
 	Target.Step = Source.Step;
 	Target.bCarrying = Source.bCarrying != 0;
 	Target.LoadResource = static_cast<EHOLResource>(Source.LoadResource);
@@ -197,7 +198,8 @@ bool FHOLNetUnitStateNetSerializer::Validate(FNetSerializationContext& Context, 
 	return FitsIn(State.X, SourceType::HorizontalBits) && FitsIn(State.Y, SourceType::HorizontalBits)
 		&& FitsIn(State.VelocityX, SourceType::VelocityBits)
 		&& FitsIn(State.VelocityY, SourceType::VelocityBits)
-		&& static_cast<uint32>(State.Activity) < (1U << SourceType::ActivityBits)
+		&& static_cast<uint32>(State.Activity) < HOLUnitReplication::GatheringWireBase
+		&& static_cast<uint32>(State.GatherResource) < (1U << SourceType::ActivityBits) - HOLUnitReplication::GatheringWireBase
 		&& static_cast<uint32>(State.LoadResource) < (1U << SourceType::LoadResourceBits);
 }
 

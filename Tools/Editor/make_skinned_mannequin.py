@@ -4,13 +4,14 @@ From the project's UE4 mannequin (/Game/CloseCombat/Character/UE4Mannequin, the 
   /Game/Units/Materials/M_UnitPlayerColor           matte material tinted by the instance's custom data 0-2 (D233, D265)
   /Game/Units/Mannequin/SKM_Mannequin_Classic       copy with a generated LOD chain (D235)
   /Game/Units/Mannequin/SKM_Mannequin_Nanite        copy built as Nanite (D235)
-  /Game/Units/Mannequin/TP_Mannequin_Classic        animation provider of each copy: sequence 0 = idle, 1 = walk (D234)
-  /Game/Units/Mannequin/TP_Mannequin_Nanite
+  /Game/Units/Mannequin/TP_Mannequin_Classic        animation provider of each copy: the sequences of SEQUENCES, by
+  /Game/Units/Mannequin/TP_Mannequin_Nanite         index (0 idle, 1 walk, D234; 2 and up the Peasant's, J5c.1)
 Re-running the script updates these assets in place (deleting a referenced asset can leave it loaded, and the
 creation that follows then fails); delete a mesh by hand to copy it again from the source.
 Run (the editor quits when done):
   UnrealEditor.exe <project> -ExecutePythonScript="<this file>"
-  UnrealEditor.exe <project> -ExecutePythonScript="<this file> --material-only"   (the material alone)
+  UnrealEditor.exe <project> -ExecutePythonScript="<this file> --material-only"    (the material alone)
+  UnrealEditor.exe <project> -ExecutePythonScript="<this file> --providers-only"   (the providers alone, meshes kept)
 """
 import sys
 
@@ -18,8 +19,20 @@ import unreal
 
 SOURCE_MESH = "/Game/CloseCombat/Character/UE4Mannequin/Meshes/SK_Mannequin"
 ANIMATIONS = "/Game/CloseCombat/Character/UE4Mannequin/Animations/Swordsman/Movement/"
-# Order = sequence index read by the presentation (D234).
-SEQUENCES = [ANIMATIONS + "A_SW_Idle", ANIMATIONS + "A_SW_Walk_F"]
+PEASANT_ANIMATIONS = "/Game/Units/Mannequin/Animations/"
+# Order = sequence index read by the presentation (D234): the unit type table names them by index (IdleSequence,
+# WalkSequence, GatherSequences, CarryWalkSequences in Tools/Data/UnitTypes.csv). Add at the end only: an index that
+# moves changes what every type plays. The Peasant's (J5c.1) are made by make_peasant_animations.py.
+SEQUENCES = [
+    ANIMATIONS + "A_SW_Idle",                       # 0 idle (every type)
+    ANIMATIONS + "A_SW_Walk_F",                     # 1 walk (every type)
+    PEASANT_ANIMATIONS + "A_Peasant_ChopWood",      # 2 gathering wood
+    PEASANT_ANIMATIONS + "A_Peasant_MinePick",      # 3 gathering stone and gold
+    PEASANT_ANIMATIONS + "A_Peasant_GatherBerries", # 4 gathering food
+    PEASANT_ANIMATIONS + "A_Peasant_CarryFood",     # 5 carrying food
+    PEASANT_ANIMATIONS + "A_Peasant_CarryWood",     # 6 carrying wood
+    PEASANT_ANIMATIONS + "A_Peasant_CarryStone",    # 7 carrying stone and gold
+]
 
 MESH_FOLDER = "/Game/Units/Mannequin"
 MATERIAL_FOLDER = "/Game/Units/Materials"
@@ -133,7 +146,8 @@ def make_provider(name, mesh, sequences):
     # The runtime needs at least one layer (InitLayerPools); one full-body layer, nothing blended over it.
     provider.set_editor_property("layers", [unreal.AnimSequenceTransformProviderLayer()])
     assets.save_loaded_asset(provider)
-    unreal.log("%s: %d sequences on %s" % (path, len(entries), mesh.get_path_name()))
+    names = ", ".join("%d %s" % (index, sequence.get_name()) for index, sequence in enumerate(sequences))
+    unreal.log("%s: %d sequences on %s (%s)" % (path, len(entries), mesh.get_path_name(), names))
     return provider
 
 
@@ -155,6 +169,11 @@ def main():
     sequences = [load(path) for path in SEQUENCES]
     for sequence in sequences:
         log_sequence(sequence)
+    if "--providers-only" in sys.argv[1:]:
+        for variant in ("Classic", "Nanite"):
+            make_provider("TP_Mannequin_" + variant, load(MESH_FOLDER + "/SKM_Mannequin_" + variant), sequences)
+        unreal.log("Animation providers updated")
+        return
     material = make_material()
     for variant, nanite in (("Classic", False), ("Nanite", True)):
         mesh = make_mesh("SKM_Mannequin_" + variant, material, nanite)
