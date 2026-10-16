@@ -37,6 +37,25 @@ struct FHOLWatchedLoad
 };
 
 /**
+ * One unload at a deposit, shown to the owner alone as a « +10 » rising above its Peasant (J5c.3, D298): sent by the
+ * server to the owner's controller, the step's unloads in one unreliable call (UHOLGatherProcessor). ~9 bytes.
+ */
+USTRUCT()
+struct FHOLDepositPopup
+{
+	GENERATED_BODY()
+
+	/** Where the Peasant unloaded, on the ground (cm). */
+	UPROPERTY()
+	FVector_NetQuantize Location = FVector::ZeroVector;
+	UPROPERTY()
+	EHOLResource Resource = EHOLResource::Food;
+	/** What it unloaded: its load, 10 at most for a Peasant. */
+	UPROPERTY()
+	uint8 Amount = 0;
+};
+
+/**
  * Controller of a player in a match map (a map with start slots, D255): no pawn, a visible cursor and, on the
  * player's own machine, the RTS camera (D254), placed above the player's start slot once the slot is known. Camera
  * keys come from IMC_Game (Tools/Editor/make_game_input.py); speed and edge scrolling from the Controls tab (D253).
@@ -150,6 +169,26 @@ public:
 	void RequestCheatResources(const FHOLResources& Amount);
 	void RequestCheatFastBuild(bool bOn);
 	void RequestCheatPopulation(int32 Places);
+
+	/** A « +10 » shown on this machine (J5c.3): the unload, when it arrived, and its line over others at the same place. */
+	struct FShownDepositPopup
+	{
+		FHOLDepositPopup Popup;
+		float BornSeconds = 0.f;
+		int32 Stack = 0;
+	};
+	/** Seconds a « +10 » shows (it rises, then fades), and how many show at once at most (the oldest go first). */
+	static constexpr float DepositPopupSeconds = 1.2f;
+	static constexpr int32 MaxDepositPopups = 30;
+	/** The « +10 » of the player's own unloads still showing, oldest first; the HUD draws them. */
+	TConstArrayView<FShownDepositPopup> GetDepositPopups() const { return DepositPopups; }
+
+	/**
+	 * From the server (or the simulation, in solo): the player's unloads of one step (J5c.3, D298), to this player alone
+	 * (a client call reaches the owning connection only). Unreliable: a « +10 » lost is not missed.
+	 */
+	UFUNCTION(Client, Unreliable)
+	void ClientShowDepositPopups(const TArray<FHOLDepositPopup>& Popups);
 
 	/** Swaps the engine's default HUD for the match HUD of the UI module (D281), on the player's machine. */
 	virtual void ClientSetHUD_Implementation(TSubclassOf<AHUD> NewHUDClass) override;
@@ -265,4 +304,7 @@ private:
 	/** Replicated to the owner alone. */
 	UPROPERTY(ReplicatedUsing = OnRep_WatchedLoad)
 	FHOLWatchedLoad WatchedLoad;
+
+	/** The « +10 » showing (J5c.3), MaxDepositPopups at most. */
+	TArray<FShownDepositPopup> DepositPopups;
 };

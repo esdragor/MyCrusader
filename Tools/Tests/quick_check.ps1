@@ -14,7 +14,8 @@
 # left going down, each client sees the other's Peasant on its round trip.
 # The "gather" part (J5b.3, D299, D307, D309), in solo: a rally point on the berries (the Peasant produced gathers there,
 # the food rises at the deposit only), twelve Peasants on one tree (the others gather the trees beside it), the berries
-# used up (all idle, the HUD's counter, the "." key), no two Peasants at rest closer than 90 cm.
+# used up (all idle, the HUD's counter, the "." key), no two Peasants at rest closer than 90 cm. J5c.3 (D298): each unload
+# shows a +10 to its owner alone, with what was unloaded (solo: captured; 2 clients: never on the other client).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -219,7 +220,7 @@ if ($Parts -contains "camera") {
             # right click on the berries; the centre's rally point on the same bush, one Peasant produced, which gathers
             # there. Then the six bushes used up (hol.Sources.TakeNear): the carriers unload, the stock rises then
             # only, all stand idle; the "." key and the HUD's counter go through them.
-            Step "mark gather", "hol.Gather.LogDeposits 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
+            Step "mark gather", "hol.Gather.LogDeposits 1", "hol.Gather.LogPopups 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
                 "hol.Units.Spawn $GatherTrees $($GatherTreeSpawn -join ' ') 0 Peasant 250", "hol.Units.Spawn $GatherBerries $($GatherBerrySpawn -join ' ') 0 Peasant 200",
                 "waitunits $($GatherBefore + $GatherTrees + $GatherBerries)"
             Step "hol.Camera.Focus $($GatherTreeSpawn[0]) $($GatherTreeSpawn[1] + 150)", "frames 5", "hol.Select.BoxGround -15450 -1650 -14300 -850",
@@ -234,8 +235,10 @@ if ($Parts -contains "camera") {
             # Born on the rally point's side (D303), ~10 m from its bush, a first food in ~1.4 s: carrying when looked at.
             Step "wait 5", "mark gather working", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report", "frames 2", "capture gather_berries",
                 "hol.Camera.Focus $($GatherTree[0]) $($GatherTree[1] + 300)", "frames 5", "capture gather_wood"
-            Step "mark gather used up"
+            # The camera on the centre's side facing the berries, where they unload: the first +10 captured (J5c.3).
+            Step "mark gather used up", "hol.Camera.Focus $($GatherBerry[0]) 500", "frames 3"
             for ($i = 0; $i -lt 6; $i++) { Step "hol.Sources.TakeNear $($GatherBerry[0]) $($GatherBerry[1] + 150)" }
+            Step "waitlog Deposit popup: +", "frames 6", "capture gather_popup"
             Step "waitidle $($GatherBefore + $GatherBerries + 1)", "frames 2", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report"
             # The "." key three times, then a click on the HUD's counter: each time the next idle one, the camera above it.
             Step "mark gather idle", "hol.Camera.FocusSlot 0", "frames 2"
@@ -328,7 +331,7 @@ if ($NetListening) {
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
-        $ClientArguments = "`"$UProject`" 127.0.0.1 -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Test.Run $ClientSequence`""
+        $ClientArguments = "`"$UProject`" 127.0.0.1 -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots;
             Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
     }
@@ -368,7 +371,8 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
-    queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen" }
+    queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
+    popup = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -620,7 +624,20 @@ if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
     $NearAfter = & $Closest $AfterUse
     $Checks["no two Peasants at rest closer than 90 cm ($([Math]::Round($Near[0])) cm $($Near[1]) gathering; $([Math]::Round($NearAfter[0])) cm $($NearAfter[1]) after)"] =
         ($Near[0] -ge 90) -and ($NearAfter[0] -ge 90)
-    $Missing = @("berries", "wood", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "gather_$_.png")) })
+    # The +10 (J5c.3, D298): one per unload of slot 0, with its amount and resource, at the centre (its deposit); from
+    # the mark on, every unload logged by the simulation and every +10 by the controller, in the same step.
+    $GatherMark = 0; for ($i = 0; $i -lt $Log.Count; $i++) { if ($Log[$i] -match "Test mark: gather$") { $GatherMark = $i; break } }
+    $FromGather = $Log[$GatherMark..($Log.Count - 1)]
+    $UnloadKinds = @($FromGather | Select-String -Pattern "Gather: slot 0 unloaded ([1-9]\d*) (\w+) " | ForEach-Object { "+$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" } | Sort-Object)
+    $PopupLines = @($FromGather | Select-String -Pattern "Deposit popup: (\+\d+ \w+) at \((-?\d+), (-?\d+)\)" | ForEach-Object { $_.Matches[0] })
+    $PopupKinds = @($PopupLines | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
+    $SlotStart = Get-SlotStart 0
+    $PopupFar = @($PopupLines | Where-Object { [Math]::Sqrt([Math]::Pow([double]$_.Groups[2].Value - $SlotStart[0], 2) + [Math]::Pow([double]$_.Groups[3].Value - $SlotStart[1], 2)) -gt 1200 })
+    $UsedUpPopups = @($UsedUp | Select-String -Pattern "Deposit popup: \+\d+ Food at" )
+    $Checks["a +10 per unload, its amount and resource ($($PopupKinds.Count) shown: $(($PopupKinds | Group-Object | ForEach-Object { "$($_.Count) x $($_.Name)" }) -join ', '); $($UnloadKinds.Count) unloads)"] =
+        ($UsedUpPopups.Count -ge 1) -and ($PopupKinds.Count -eq $UnloadKinds.Count) -and (($PopupKinds -join '|') -eq ($UnloadKinds -join '|'))
+    $Checks["each +10 at the centre ($($PopupFar.Count) farther than 12 m)"] = ($PopupLines.Count -ge 1) -and ($PopupFar.Count -eq 0)
+    $Missing = @("berries", "wood", "idle", "popup" | Where-Object { -not (Test-Path (Join-Path $Shots "gather_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "gather" $Checks) -and $AllOk
 }
@@ -638,6 +655,7 @@ if ($Parts -contains "net") {
     $Checks["server listening"] = $NetListening
     $HeldSlots = @()
     $NetSelectedTrees = @{}
+    $NetPopups = @{}
     foreach ($NetClient in $NetClients) {
         $ClientTimedOut = -not $NetClient.Process.WaitForExit(120000)
         if ($ClientTimedOut) { $NetClient.Process.Kill() }
@@ -710,6 +728,16 @@ if ($Parts -contains "net") {
             $NetSelectedTrees[$N] = $Picked -join ','
             $Checks["client $N : slot 0's tree selected, 'Reste' going down (source $($Picked -join ', '): $($Amounts -join ', '))"] =
                 ($Picked.Count -eq 1) -and ($Amounts.Count -ge 2) -and $NonIncreasing -and ($Amounts[-1] -lt $Amounts[0])
+            # J5c.3 (D298): its own unloads' +10 at its centre, never the other's (sent to the owner alone).
+            $Popups = @($Gather | Select-String -Pattern "Deposit popup: \+(\d+) (\w+) at \((-?\d+), (-?\d+)\)" | ForEach-Object { $_.Matches[0] })
+            $OwnStart = Get-SlotStart $Held; $OtherStart = Get-SlotStart $Other
+            $NearStart = { param($M, $At) [Math]::Sqrt([Math]::Pow([double]$M.Groups[3].Value - $At[0], 2) + [Math]::Pow([double]$M.Groups[4].Value - $At[1], 2)) -le 1500 }
+            $NearOwn = @($Popups | Where-Object { & $NearStart $_ $OwnStart })
+            $NearOther = @($Popups | Where-Object { & $NearStart $_ $OtherStart })
+            $NetPopups[$N] = @{ Slot = $Held; Count = $Popups.Count }
+            $Checks["client $N : +10 of its own unloads at its centre, none of the other's ($(($Popups | ForEach-Object { "+$($_.Groups[1].Value) $($_.Groups[2].Value)" }) -join ', '); $($NearOther.Count) at the other's)"] =
+                ($Popups.Count -ge 1) -and ($NearOwn.Count -eq $Popups.Count) -and ($NearOther.Count -eq 0) -and
+                (@($Popups | Where-Object { $_.Groups[1].Value -ne "10" -or $_.Groups[2].Value -ne "Wood" }).Count -eq 0)
             $Checks["client $N : the other's Peasant seen on its round trip (GatherTrip)"] = [bool]($Gather | Select-String -Pattern "slot $Other at \(-?\d+, -?\d+\) GatherTrip" -Quiet)
         }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
@@ -743,6 +771,10 @@ if ($Parts -contains "net") {
     if ($Parts -contains "sources") {
         $Unloaded = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Gather: slot (\d) unloaded 10 Wood" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique })
         $Checks["server: each player's Peasant unloaded 10 wood at its centre ($($Unloaded -join ', '))"] = ($Unloaded -join ',') -eq "0,1"
+        # Each client's +10 at most its own player's unloads (one per unload); the server shows none (no player there).
+        $TooMany = @($NetPopups.Values | Where-Object { $_.Count -gt @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Gather: slot $($_.Slot) unloaded [1-9]" }).Count })
+        $ServerPopups = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Deposit popup:" }).Count
+        $Checks["each client's +10 no more than its own unloads ($($TooMany.Count) over), none on the server ($ServerPopups)"] = ($NetPopups.Count -eq 2) -and ($TooMany.Count -eq 0) -and ($ServerPopups -eq 0)
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

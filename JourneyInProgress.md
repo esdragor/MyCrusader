@@ -117,7 +117,10 @@ vérifier sur S1 et S2.
    `bSettling`). **Point 3 fait** (au repos) : S1 2,18 / S2 2,74 / S7 2,16 ms, S5 31,2 Ko/s (erreur 21,6 cm), tous PASS ;
    les 632 bois/s de S7 étaient un effet de fenêtre (vagues d'allers-retours ; régime 1 201 bois/s).
    **J5b close** (2026-10-16 : D307 à D309 au GDD, paragraphe « Parcours J5b »). Suite : **J5c** (la vie de la
-   récolte), en commençant par **J5c.1** (voir « Plan de J5 »). En sous-agents (règle ci-dessous).
+   récolte), en commençant par **J5c.1** (voir « Plan de J5 »). **Ordre choisi par l'utilisateur (2026-10-16)** :
+   J5c.1 (animations) menée par la session `mycrusader-23` ; cette session fait **J5c.3** (« +10 »), essai, commit, puis
+   **J6a** (à partir de J6a.1) tant que les animations ne sont pas prêtes ; J5c.2 et J5c.4 après les animations.
+   En sous-agents (règle ci-dessous).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -2315,3 +2318,36 @@ d'épée).
   au repos du 2026-10-16 ; effet de fenêtre de S7) ; « Parcours J5a » précisé (les 15 m remplacés par les massifs,
   D309). § 22 (review) non touché.
 - **J5b close.** Reprise : **J5c.1** (source des animations déjà tranchée, voir « Prochaine étape exacte », point 13).
+
+### 2026-10-16 — J5c.3 : « +10 » au dépôt
+
+- Sous-agent, rien de commité (essai de l'utilisateur attendu). Fichiers : `HOLGatherProcessor.{h,cpp}`,
+  `HOLPlayerController.{h,cpp}`, `HOLGameHUD.{h,cpp}` (module UI), `quick_check.ps1`. Rien dans les fichiers réservés
+  à `mycrusader-23` (`HOLInterpolatedInstancesProcessor`, table des unités, `HOLUnitReplicationRules` et sérialiseur).
+- **Comportement** : à chaque déchargement d'un Paysan du joueur, un « +N » (quantité réellement déchargée) avec le
+  carré de couleur de la ressource de la barre du haut, texte clair cerné de noir (police F_HOL, 20 pt), 2 m au-dessus
+  du point de déchargement ; il monte de 1,2 m en 1,2 s, opaque la première moitié puis s'efface. Deux « +N » à moins de
+  2,5 m nés à moins de 0,5 s : le second une ligne plus haut (4 lignes au plus). 30 au plus à l'écran (les plus vieux
+  partent) ; dessinés par le HUD au canvas (sous les panneaux), seulement ceux qui vivent : aucun coût par unité.
+- **Canal réseau** : appel client **non fiable** `AHOLPlayerController::ClientShowDepositPopups`, un par pas et par
+  joueur ayant déchargé, avec les déchargements du pas (`FHOLDepositPopup` : position `FVector_NetQuantize`, ressource,
+  quantité ; 8 au plus par pas et par joueur). Un appel client ne va qu'à la connexion propriétaire : l'autre joueur ne
+  reçoit rien ; en solo l'appel s'exécute sur place ; une IA n'a pas de contrôleur, rien n'est envoyé. **État des
+  unités inchangé** (aucun bit). Déduire le « +10 » chez le client écarté : il ne connaît la charge exacte que de
+  l'unité suivie (D303) et le stock (D282) arrive regroupé, donc ni quantité par Paysan ni lieu exacts.
+- **Coût** : ~9 octets par déchargement (position ~63 bits, ressource 2, quantité 8) + en-tête d'appel ; un Paysan
+  décharge ~0,06 fois par seconde (S7 : 1 201 bois/s pour 2 000) : 175 Paysans → ~10 déchargements/s → **~0,1 à
+  0,2 Ko/s**, au seul propriétaire, seulement en récolte. **S5 non refait** : ses unités ne récoltent pas (aucun
+  appel) et l'état répliqué n'a pas changé.
+- Commande de développement **`hol.Gather.LogPopups 1`** (absente en Shipping) : « Deposit popup: +4 Food at (-15214,
+  830) » à chaque « +N » montré sur la machine.
+- **`quick_check`** : partie `gather` solo, caméra sur le côté baies du centre avant d'épuiser les buissons, attente du
+  premier « +N », capture **`gather_popup`** (regardée : « +4 » et « +1 » avec le carré rouge de la nourriture,
+  lisibles au zoom par défaut) ; contrôles : un « +N » par déchargement du slot 0 depuis la marque, même quantité et
+  ressource (5 « +N » nourriture pour 5 déchargements), tous à moins de 12 m du départ du slot 0. Partie à 2 clients
+  (`hol.Gather.LogPopups 1` aux clients) : chaque client a le « +10 Wood » de son Paysan près de son centre, aucun près
+  du centre de l'autre, pas plus de « +N » que de déchargements de son joueur au serveur, aucun au serveur.
+- `quick_check` **PASS en 78 s** (103 s au premier passage, premier lancement après la compilation) ; tests **39/39**.
+- Reste : **essai de l'utilisateur** (récolte, « +10 » au dépôt, couleur du bois sur le sol), puis commit ; ensuite J6a.
+- Session d'essai lancée (deuxième écran) pour l'essai de J5c.3.
+- **Essai validé** par l'utilisateur (« très bien ») ; commité (sans les lignes des autres sessions). Reprise : **J6a.1** (navmesh des bâtiments).

@@ -6,6 +6,7 @@
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
 #include "Match/HOLResources.h"
+#include "Player/HOLPlayerController.h"
 #include "Simulation/HOLGatherRules.h"
 #include "HOLGatherProcessor.generated.h"
 
@@ -135,6 +136,8 @@ private:
 	void CountGatherer(const FStepContext& Step, const FGatherer& Gatherer);
 	/** Each player's gatherers by resource, to its player state (the top bar of its HUD). */
 	void PublishGathererCounts(const FStepContext& Step) const;
+	/** Each player's unloads of the step, to its own controller alone: its « +10 » (J5c.3, D298). */
+	void SendDepositPopups(const FStepContext& Step);
 	/** It reached its source: it gathers there (its activity shows it, J5, D298). */
 	void StartGathering(FGatherer& Gatherer);
 	void IssueWalk(const FStepContext& Step, FGatherer& Gatherer, const FVector& Spot);
@@ -177,6 +180,8 @@ private:
 	TBitArray<> FullSources;
 	/** This step's gatherers by owner (index) and resource. */
 	TArray<FHOLResources> GathererCounts;
+	/** This step's unloads by owner (index), MaxDepositPopupsPerStep each at most: their « +10 » (J5c.3). */
+	TArray<TArray<FHOLDepositPopup>> DepositPopups;
 	static FCounters Counters;
 
 	FMassEntityQuery EntityQuery;

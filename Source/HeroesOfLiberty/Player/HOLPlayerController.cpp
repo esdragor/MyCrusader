@@ -60,6 +60,18 @@ namespace UE::HeroesOfLiberty::Player
 	/** Length of the selection trace from the camera (cm): well past the farthest zoom (D254). */
 	constexpr double SelectionTraceLength = 1000000.0;
 
+	/** Two « +10 » this close (cm) and this young (s) at once: the newer one a line higher (Peasants unloading side by side). */
+	constexpr double DepositPopupStackDistance = 250.0;
+	constexpr float DepositPopupStackSeconds = 0.5f;
+	/** Lines a stack of « +10 » goes up to before starting again at the bottom. */
+	constexpr int32 MaxDepositPopupStack = 4;
+
+#if !UE_BUILD_SHIPPING
+	int32 LogDepositPopups = 0;
+	FAutoConsoleVariableRef CVarLogDepositPopups(TEXT("hol.Gather.LogPopups"), LogDepositPopups,
+		TEXT("1: every \"+10\" shown on this machine at an unload of its player is logged, \"Deposit popup: +10 Wood at (x, y)\" (J5c.3, scripted checks)"));
+#endif
+
 	TAutoConsoleVariable<FString> CVarTestCursor(
 		TEXT("hol.Camera.TestCursor"),
 		TEXT(""),
@@ -1318,6 +1330,47 @@ void AHOLPlayerController::OnRep_WatchedLoad()
 	if (UHOLUnitReceptionSubsystem* Reception = GetWorld()->GetSubsystem<UHOLUnitReceptionSubsystem>())
 	{
 		Reception->SetWatchedLoad(WatchedLoad.UnitId, WatchedLoad.Resource, WatchedLoad.Amount);
+	}
+}
+
+void AHOLPlayerController::ClientShowDepositPopups_Implementation(const TArray<FHOLDepositPopup>& Popups)
+{
+	using namespace UE::HeroesOfLiberty::Player;
+	const UWorld* World = GetWorld();
+	if (!World || !IsLocalController())
+	{
+		return;
+	}
+	const float Now = World->GetTimeSeconds();
+	DepositPopups.RemoveAll([Now](const FShownDepositPopup& Shown) { return Now - Shown.BornSeconds >= DepositPopupSeconds; });
+	for (const FHOLDepositPopup& Popup : Popups)
+	{
+		if (Popup.Amount == 0)
+		{
+			continue;
+		}
+		if (DepositPopups.Num() >= MaxDepositPopups)
+		{
+			DepositPopups.RemoveAt(0, EAllowShrinking::No);
+		}
+		// Over a young one at the same place, a line higher: two Peasants unloading side by side never show one number.
+		int32 Stack = 0;
+		for (const FShownDepositPopup& Other : DepositPopups)
+		{
+			if (Now - Other.BornSeconds < DepositPopupStackSeconds
+				&& FVector::DistSquared2D(Other.Popup.Location, Popup.Location) < FMath::Square(DepositPopupStackDistance))
+			{
+				Stack = FMath::Max(Stack, Other.Stack + 1);
+			}
+		}
+		DepositPopups.Add(FShownDepositPopup{ Popup, Now, Stack % MaxDepositPopupStack });
+#if !UE_BUILD_SHIPPING
+		if (LogDepositPopups != 0)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Deposit popup: +%d %s at (%.0f, %.0f)"), Popup.Amount,
+				*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Popup.Resource)), Popup.Location.X, Popup.Location.Y);
+		}
+#endif
 	}
 }
 

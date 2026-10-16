@@ -91,6 +91,11 @@ namespace UE::HeroesOfLiberty::Gather
 	 * aim at one point (S7: 250 gatherers crowded the middle of a side).
 	 */
 	constexpr double DepositSpread = 0.85;
+	/**
+	 * Unloads of one player sent as « +10 » per step at most (J5c.3): 8 at 20 steps a second is more than its HUD shows at
+	 * once (AHOLPlayerController::MaxDepositPopups); the rest of a wave of unloads is not shown.
+	 */
+	constexpr int32 MaxDepositPopupsPerStep = 8;
 
 	const TCHAR* GetResourceName(const EHOLResource Resource)
 	{
@@ -184,6 +189,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	});
 	PublishGathererCounts(Step);
+	SendDepositPopups(Step);
 }
 
 void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
@@ -657,6 +663,22 @@ void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer)
 		PlayerState->SetResources(Stock);
 	}
 	Step.Sources->RecordDeposit(Gatherer.OwnerPlayer, Resource, Amount);
+	if (Amount > 0)
+	{
+		// Its « +10 », for its owner alone, sent at the end of the step with the owner's other unloads (J5c.3).
+		if (!DepositPopups.IsValidIndex(Gatherer.OwnerPlayer))
+		{
+			DepositPopups.SetNum(Gatherer.OwnerPlayer + 1);
+		}
+		TArray<FHOLDepositPopup>& Popups = DepositPopups[Gatherer.OwnerPlayer];
+		if (Popups.Num() < MaxDepositPopupsPerStep)
+		{
+			FHOLDepositPopup& Popup = Popups.AddDefaulted_GetRef();
+			Popup.Location = Gatherer.Location;
+			Popup.Resource = Resource;
+			Popup.Amount = static_cast<uint8>(FMath::Min(Amount, 255));
+		}
+	}
 	if (LogDeposits != 0)
 	{
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d unloaded %d %s (stock %s)"), Gatherer.OwnerPlayer, Amount, GetResourceName(Resource),
@@ -708,6 +730,25 @@ void UHOLGatherProcessor::PublishGathererCounts(const FStepContext& Step) const
 		{
 			HOLPlayerState->SetGatherers(GathererCounts.IsValidIndex(Slot) ? GathererCounts[Slot] : FHOLResources());
 		}
+	}
+}
+
+void UHOLGatherProcessor::SendDepositPopups(const FStepContext& Step)
+{
+	for (int32 Slot = 0; Slot < DepositPopups.Num(); ++Slot)
+	{
+		TArray<FHOLDepositPopup>& Popups = DepositPopups[Slot];
+		if (Popups.IsEmpty())
+		{
+			continue;
+		}
+		// Its own controller only: a client call goes to the owning connection (in solo, it runs here). An AI has none.
+		const AHOLPlayerState* PlayerState = Step.Production ? Step.Production->FindPlayerState(Slot) : nullptr;
+		if (AHOLPlayerController* Controller = PlayerState ? Cast<AHOLPlayerController>(PlayerState->GetPlayerController()) : nullptr)
+		{
+			Controller->ClientShowDepositPopups(Popups);
+		}
+		Popups.Reset();
 	}
 }
 
