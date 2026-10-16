@@ -183,7 +183,7 @@ Règles :
 | Pièces visibles : hache, pioche, panier de baies, fagot, hottes de pierre et d'or | Paysan | J5c.2 | **dans le maillage** `SKM_Peasant` (J5c.2c-e, worktree, non commité) ; vues en jeu (captures `props_*.png`, planche `props_sheet.png`) ; A/B S7 et essai de l'utilisateur à faire |
 | Pose au dépôt | Paysan | — | **abandonnée** (2026-10-16 : pas de geste, comme AoE4 ; le serveur ne s'arrête pas au dépôt) |
 | Repos, marche | toutes | M2 (D234) | empruntées au pack `CloseCombat` (épéiste) |
-| Bâtisseur (coup de marteau) + marteau | Paysan | J6a.4 (autre session) | à faire après J5c.2 (accord du 2026-10-16 avec mycrusader-58 : `EHOLUnitActivity::Building`, valeur d'énumération 4, valeur 2 sur le fil, `HOLUnitReplication::BuildingWireValue` ; chantier du bâtisseur dans `FHOLBuildFragment`, `Simulation/HOLBuildFragments.h`, `Spot` = où il se tient ; séquence, marteau et branche de `Choose` ici) |
+| Bâtisseur (coup de marteau) + marteau | Paysan | J6a.4 | **fabriqué, branché, validé en jeu** (`A_Peasant_Build`, 1,333 s, deux coups ; marteau pièce 7 sur `ik_hand_gun` ; séquence 11 de `TP_Peasant` ; bâtisseur tourné vers son chantier) ; fusionné dans `main` (3b750bc) |
 
 ## Prochaine étape exacte
 
@@ -601,3 +601,106 @@ l'utilisateur, commit sur `j5c-anims`, fusion.
   les 1 746 sommets de pièces passent le shader de sommets même repliés, et le WPO impose la passe de vitesses) ; sans
   effet sur les i/s aujourd'hui (image limitée par le fil de jeu). Piste : pièces simplifiées aux LOD 2-3 (voire sans
   outils au LOD 3), à remesurer. Restent : S1 / S2 / S7 au repos, S5 court ; animation du bâtisseur (marteau).
+
+### 2026-10-16 — Bâtisseur : marteau et coup de marteau (worktree, rien de commité)
+
+- Première phase seulement (geste, pièce, aperçus, fabrication) : **aucun C++, ni table, ni fournisseur, ni maillage**
+  touchés. Worktree `MyCrusader-J5c` (`j5c-anims` au niveau de `main` aaa38dc, avec `EHOLUnitActivity::Building` de
+  J6a.4).
+- **Marteau** (`peasant_props.py`, **pièce 7**, bit 6 du masque : 7 pièces sur 8 possibles) : marteau de charpentier
+  tenu d'une main, sur `ik_hand_gun` comme la hache et la pioche (repère d'outil : origine au pommeau, X le long du
+  manche, Y vers la **face de frappe**). Manche en bois de **40 cm** (Ø 3,6 → 2,6 cm), tête en fer de **12 cm** en
+  travers du manche à 37 cm du pommeau : face ronde Ø 4,4 cm (acier) à 7 cm de l'axe, panne en coin à 5 cm de l'autre
+  côté, son tranchant en travers du manche. **72 triangles, 148 sommets** soudés. Le maillage `SKM_Peasant` n'est
+  **pas refait** (le marteau y entrera au branchement : `make_peasant_mesh.py` prend toutes les pièces de
+  `build_props`).
+- **Outil à une main** (`anim_rig.py`) : clé de geste `tool.hands = 1` : `grip` = place de la **main droite** sur le
+  manche (`knob_offset` = 7 cm du pommeau, `handle_length` = 37 cm jusqu'à la tête), main gauche **libre** (`hands`
+  avec la seule main gauche dans les clés) ; le repère de l'outil sur `ik_hand_gun`, la face fixée dans la main
+  droite (sens du mouvement de la tête juste avant la frappe) et le contrôle « main à l'axe du manche » ne portent
+  que sur la main droite. **Gestes existants identiques** : poses des neuf autres gestes recalculées avant / après
+  la modification, écart **0** (exactement, pistes `ik_hand_gun` comprises).
+- **`A_Peasant_Build`** (geste `build`, en fin de `GESTURES`) : boucle de **1,333 s** (40 images à 30 i/s), **deux
+  coups** (un toutes les 0,667 s), 45 pistes (44 du corps + `ik_hand_gun`). Penché sur l'ouvrage (buste à 31-37° de
+  la verticale, bassin descendu de 14 à 16 cm, genoux fléchis), pieds écartés **cloués** (dérive 0,000 cm), main
+  gauche posée à plat sur la poutre à gauche de l'impact (immobile). Par coup : **armé** au-dessus de la tête (main à
+  160 cm, coude levé sur le côté, tête du marteau à 184 cm derrière la main) → descente en **0,167 s** (l'avant-bras
+  d'abord, le poignet casse à la fin) → **frappe** à 0,167 s puis 0,833 s : face **à plat** (5° et 2° de la verticale)
+  sur le dessus d'une poutre à **75 cm de haut, 66 cm devant**, 9 puis 15 cm à sa droite (le 2e coup 5 cm plus à
+  droite) → rebond 0,1 s → remontée lente devant l'épaule (0,3 → 0,667 s). Trajet de la tête du marteau ~1 m par
+  coup, lisible de haut.
+- **Aperçu** (`preview_animation.py`) : scène `beam` (bloc vert du sol au dessus de la poutre, dessus = face du
+  marteau à la frappe, croix à l'impact), `--picks f1,f2,…` (images choisies), clé de geste `preview` (images des
+  planches de `--all` : ici toutes les 5 images, les deux frappes y sont), contrôles nouveaux : face à chaque frappe,
+  enfoncement du marteau et de la main gauche dans la poutre, dérive des pieds et fermeture de la boucle (gestes sans
+  base), main libre comptée dans le contrôle de l'outil contre le corps. Planches (worktree) :
+  `Saved/AnimPreview/A_Peasant_Build_contact_sheet.png` (8 images, toutes les 5), `A_Peasant_Build_zoom.png` (un coup
+  en détail : armé, descente, frappe, rebond, remontée, armé), `A_Peasant_Build_comparaison.png` (hache, pioche,
+  marteau à l'armé).
+- **Contrôles hors ligne** : main droite sur le manche **0,000 cm** ; mains à leur cible 0,1 cm au plus (main gauche à
+  l'armé) ; marteau dans la poutre **0,17 cm** au plus (bord de la face au contact), main gauche 0,00 cm (dessous à
+  0,26 cm au-dessus) ; marteau contre le corps, main gauche comprise : **0 point** ; première = dernière image.
+- **Fabrication** : `make_peasant_animations.py` gagne `--only=<clé>[,…]` (les autres séquences ne sont pas
+  touchées) ; un lancement (13 s, `--only=build`) : séquence créée, **relecture** brute écart FK / Unreal **0,000 cm**,
+  compressée **0,005 cm** ; racine 0,000 cm ; première / dernière image 0,000 cm ; durée 1,3333 s ; piste
+  `ik_hand_gun` présente, repère hors ligne / Unreal 0,000 cm et 0,000° (brut), 0,009 cm et 0,072° (compressé) ; main
+  droite à l'axe du manche 0,000 / 0,010 cm. Les neuf autres séquences et les `Data/*.json` réécrits sont inchangés
+  (`git status` : seul `A_Peasant_Build.uasset` nouveau).
+- **Points ouverts pour le branchement** : fournisseur `TP_Peasant` (séquence 11 à la fin), colonne de la table
+  (séquence et pièce du bâtisseur : p. ex. `BuildSequence` = 11, `BuildProp` = 7, -1 / 0 pour les soldats), maillage
+  `SKM_Peasant` refait avec le marteau (+148 sommets à chaque LOD : à peser avec la piste « pièces allégées aux LOD
+  2-3 » de l'A/B J5c.2), branche `Building` de `HOLUnitAnimation::Choose` (geste + marteau quelle que soit la
+  vitesse, comme la récolte), **orientation vers le chantier** : en solo le bâtiment de `FHOLBuildFragment` (pas
+  `Spot`, qui est où le bâtisseur se tient) ; chez le client, qui ne connaît que l'activité, le bâtiment en construction
+  répliqué (`AHOLBuilding` non fini) le plus proche, cherché une fois au début du geste comme la source de la récolte
+  (`FindNearestStanding`), tourné vers le point le plus proche de son emprise plutôt que vers son centre. Vitesse de
+  lecture 1,0 à juger en jeu.
+- **Coup de marteau validé sur l'aperçu** par l'utilisateur (« très bien ») ; commité sur `j5c-anims`. Suite :
+  branchement (marteau dans `SKM_Peasant`, séquence 11 de `TP_Peasant`, colonnes de la table, branche `Building` de
+  `Choose`, bâtisseur tourné vers le bâtiment).
+
+### 2026-10-16 — Bâtisseur branché : marteau, séquence 11, orientation vers le chantier (worktree, rien de commité)
+
+- Worktree `MyCrusader-J5c` (`j5c-anims` 65c765f = `main` aaa38dc + `A_Peasant_Build` et le marteau).
+- **Maillage et fournisseur** (`make_peasant_mesh.py`, un lancement de 13 s) : `SKM_Peasant` refait avec le marteau
+  (pièce 7, masque 64, `ik_hand_gun`) ; sommets de rendu par LOD **25 203 / 8 831 / 5 864 / 4 157** (avant 25 055 / 8 683 /
+  5 716 / 4 009 : **+148 à chaque LOD**), pièces **+1 894 sommets, +940 triangles** (avant +1 746 / +868) ; relecture de
+  chaque LOD : masque 64 = 148/148 sommets sur `ik_hand_gun`, les autres pièces inchangées, « relecture des pièces : OK ».
+  `TP_Peasant` : **12 séquences**, 0-10 inchangées, **11 `A_Peasant_Build`** (liste `LOADED_IDLES` renommée
+  `PEASANT_SEQUENCES`, ajout en fin seulement). Matériau refait à l'identique (le WPO lisait déjà les ids 1-8).
+- **Table** : colonnes `BuildSequence`, `BuildPlayRate`, `BuildProp` (ligne, constantes partagées, `ToConstants`) ;
+  Paysan **11 / 1,0 / 7**, soldats -1 / 1 / 0 ; bornes vérifiées à la fabrique (`ensure` : séquence dans le fournisseur,
+  pièce 0-8) ; `UnitTypes` régénérée (`make_unit_types.py` en commandlet).
+- **Choix** (`HOLUnitAnimation::Choose`) : après la récolte, **`Building` → geste du bâtisseur + marteau**, quelle que soit
+  la vitesse (poussé, il continue), la charge éventuelle non montrée pendant le geste (comme la récolte) ; nouveau
+  drapeau `bFacesSite`. Le bâtisseur qui **marche vers son chantier est `Moving`** (`UHOLBuildProcessor::SyncActivity`) :
+  marche ou marche chargée habituelles. Un type sans geste de bâtisseur (soldats) : repos.
+- **Orientation** (affichage seul, une fois au début du geste, instantanée comme la récolte, D304 ; même champ
+  `FacingYaw` de `FHOLUnitAnimationStateFragment`) : tourné vers le **point de l'emprise le plus proche** (pas son
+  centre : à un coin, il regarde le côté devant lui). **Solo** : nouveau champ `FHOLBuildFragment::SiteFootprint`
+  (emprise du chantier, écrite par `StartBuilding`, seul changement de la simulation : deux appels, aucune logique
+  touchée). **Client** (ne connaît que l'activité) : le bâtiment **non fini** (chantier, ou ses propres fondations) dont
+  l'emprise est la plus proche, à moins de rayon + 2 m du corps ; les emprises sont relevées **une fois par image, à la
+  première demande** (`TActorIterator<AHOLBuilding>`, quelques bâtiments), rien quand personne ne commence de geste.
+- **Vérifications** : compilation du premier coup ; tests **54/54** (`Animation.Choice` : marteau et geste, poussé, avec
+  une charge, marche vers le chantier, hystérésis, soldat ; `Animation.Table` : colonnes, séquence 11 = `A_Peasant_Build`
+  par son nom, 12 séquences, 0-7 = celles du fournisseur des soldats dans le même ordre, soldats sans geste) ;
+  `quick_check` **PASS en 141 s** (toutes les parties, dont build, build site, build trial, net 2 clients où les
+  bâtisseurs des clients passent par la recherche du client), du premier coup.
+- **Captures en jeu** (solo, 2 560 × 1 440, hors écran, `Saved_Tests/Screenshots/WindowsEditor/HOL/` du worktree) :
+  maison A de `quick_check` (-16200, 0), 8 Paysans envoyés en la plaçant : `build_anim_west_0..3`, `_north_0..1`,
+  `_south_0..1`, planche **`build_anim_sheet.png`** : cinq bâtisseurs côte à côte face au côté ouest, un ou deux sur les
+  côtés nord et sud tournés vers leur côté, marteau dans la main droite, bras levé ou frappe selon le départ décalé.
+  Script `build_capture.ps1` du scratchpad de la session (la maison finit en ~6 s à 8 bâtisseurs : captures dans les
+  3 premières secondes). Le `quick_check` suivant a vidé le dossier des captures : captures **refaites** (même script, même résultat) et
+  copiées avec la planche dans `build_anim\` du scratchpad de la session
+  (`C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\7fd0d9e2-e7f9-4957-a439-708ba26a0692\scratchpad\build_anim\`).
+- Points ouverts : **essai de l'utilisateur** (lisibilité du marteau à la distance du RTS, vitesse 1,0) ; un bâtisseur qui
+  enchaîne un chantier voisin **sans marcher** (déjà au contact) garde l'orientation du premier (le geste ne redémarre
+  pas) ; coût GPU : +148 sommets de pièce par Paysan à tous les LOD, s'ajoute au +1,06 ms de l'A/B J5c.2 (piste des
+  pièces allégées aux LOD 2-3 toujours ouverte) ; puis commit sur `j5c-anims` et fusion dans `main`.
+- **Bâtisseur validé en jeu** par l'utilisateur (« ça marche nickel l'anim », chantier posé par `hol.Build.Place`, la
+  grille de J6a.5 n'étant pas encore dans la branche). Commité sur `j5c-anims`. Fusion dans `main` après le commit de
+  J6a.5 (petite fusion attendue dans `HOLBuildProcessor.cpp`), avec l'accord de mycrusader-58 avant l'avance rapide.
+- **Bâtisseur fusionné dans `main`** (avance rapide jusqu'à 3b750bc, avec l'accord de mycrusader-58) après fusion de
+  J6a.5 (b5148a2) dans la branche : compilation, tests 62/62, `quick_check` PASS en 151 s.
