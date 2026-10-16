@@ -119,11 +119,29 @@ vérifier sur S1 et S2.
    **J5b close** (2026-10-16 : D307 à D309 au GDD, paragraphe « Parcours J5b »). Suite : **J5c** (la vie de la
    récolte), en commençant par **J5c.1** (voir « Plan de J5 »). **Ordre choisi par l'utilisateur (2026-10-16)** :
    J5c.1 (animations) menée par la session `mycrusader-23` ; cette session fait **J5c.3** (« +10 »), essai, commit, puis
-   **J6a** (à partir de J6a.1) tant que les animations ne sont pas prêtes ; J5c.2 et J5c.4 après les animations.
+   **J6a** (à partir de J6a.1) tant que les animations ne sont pas prêtes ; J5c.2 et J5c.4 après les animations. **Source des animations
+   tranchée** (2026-10-16, option A, la recommandation) : **faites par Claude**, boucles courtes écrites pose par pose
+   en Python sur le mannequin UE4, sur place (hache, pioche, cueillette, marche chargée, pose au dépôt) ; remplaçables
+   plus tard (Mixamo, Fab) sans toucher au code, la table des types les nommant. Écartés : B Mixamo (compte Adobe et
+   reciblage), C pack Fab (achat). Numéro de décision à donner à la clôture de J5c. En sous-agents (règle ci-dessous).
+   La fabrication des animations (tâche récurrente) est tenue dans **`AnimationsInProgress.md`** (méthode, catalogue,
+   journal) ; J5c.1 y renvoie. **J5c.1a faite** (2026-10-16) : 6 séquences fabriquées et relues (hache, pioche,
+   cueillette, marches chargées nourriture / bois / pierre-or), jugées sur les aperçus ; pas encore branchées.
+   **Worktree** (2026-10-16, demande de l'utilisateur) : le code de J5c.1 b à f se fait dans
+   `C:\Users\baudo\Documents\MyCrusader-J5c`, branche **`j5c-anims`** (depuis cd39c6c), fusionnée dans `main` après
+   validation de l'utilisateur ; les journaux restent dans la copie principale. Raisons : le jeu d'essai de
+   l'utilisateur ne bloque plus la compilation, pas de code à moitié écrit dans les compilations de l'autre session.
+   Fichiers binaires pris par J5c.1 (à ne pas régénérer sur `main`) : table des types d'unités, fournisseurs
+   `TP_Mannequin_Classic*`, `Content/Units/Mannequin/Animations`.
+   **J5c.1 b, c, d faites, essai de l'utilisateur validé** (« c'est bon », 2026-10-16), **commitées sur `j5c-anims`**
+   (a9e4269). Reste : S1 / S2 / S7 courts dans le worktree (rendu touché), fusion dans `main` après le commit de J6a.2
+   par l'autre session (fichiers communs non commités là-bas : `HOLPlayerController.cpp`, `quick_check.ps1`), S5 court
+   depuis `main` (serveur recuit), puis J5c.2 (outils et charge visibles). **Fusionnée dans `main`** (2026-10-16,
+   avance rapide jusqu'à 8d18407, après fusion de J6a.2 dans la branche : compilation, tests 47/47, `quick_check` PASS ;
+   A/B S7 : coût faible, +0,15 ms par image sur le fil de jeu). Restent les mesures au repos et S5.
    **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
    refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
    3 m, forum 12 m, maison et camps 6 m, camps 100 bois). Suite : **J6a.3** (pose ; voir « Plan de J6 »).
-   En sous-agents (règle ci-dessous).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -488,7 +506,26 @@ voisins), sélectionne une source pour voir ce qu'il reste, suit ses Paysans par
 portée et le « +10 » au dépôt.
 
 1. **J5c.1 Animations de récolte** : trouvées ou faites pour le mannequin, choisies par le client d'après l'activité
-   (comme D234) ; l'activité répliquée gagne « récolte » et le type de charge.
+   (comme D234) ; l'activité répliquée gagne « récolte » et le type de charge. **Faites par Claude** (2026-10-16 ;
+   fabrication dans `AnimationsInProgress.md`). Sous-étapes (2026-10-16, après repérage) :
+   a. **Outil et premier geste** : `Tools/Editor/make_peasant_animations.py` (poses clés, mise à jour en place,
+      contrôles : racine immobile, boucle fermée), aperçu image par image, coup de hache d'abord ; regard de
+      l'utilisateur, puis pioche, cueillette, marche chargée (jambes d'une marche, bras réécrits).
+   b. **Fournisseur et table** : séquences ajoutées au fournisseur, colonnes de la table des types (récolte par
+      ressource, marche chargée, vitesses de lecture), recompiler, régénérer. **Fait** (2026-10-16, worktree, rien de
+      commité ; détail dans `AnimationsInProgress.md`) : indices 2 à 7, `GatherSequences` / `CarryWalkSequences`,
+      `CarryWalkPlayRate` 3,57 (joué 3,57 / 1,5 = 2,38 à l'écran : le client divise déjà par `MeshScale`).
+   c. **Ressource connue du client** : **tranché (2026-10-16, option A, la recommandation)** : « récolte + ressource »
+      dans les 4 valeurs libres de l'activité sur le fil (3 bits), exact, immédiat, 0 bit de plus. Écartés : B source la
+      plus proche chez le client (ambigu entre sources voisines), C 2 bits de plus (~+1 Ko/s, S5 en échec). **Fait**
+      (2026-10-16, worktree) : `GatherResource` à côté de l'activité, valeurs 4 à 7 sur le fil, 60 / 62 bits inchangés.
+   d. **Choix chez le client** : fonction pure testée, récolte prioritaire sur la vitesse, marche chargée si porteur,
+      Paysan tourné vers sa source. **Fait** (2026-10-16, worktree) : `HOLUnitAnimation::Choose`, tests 41/41,
+      `quick_check` PASS, captures en jeu ; reste f (S1 / S2 / S7 / S5 courts, essai de l'utilisateur, commit).
+   e. **Pose au dépôt** : **tranché (2026-10-16, option A, la recommandation)** : **pas de geste**, comme AoE4 (le
+      Paysan touche le dépôt et repart ; la charge qui disparaît, J5c.2, et le « +10 », J5c.3, montrent le dépôt).
+      Écarté : B pause de ~0,4 s au serveur (récolte ralentie, S7 et tests à refaire). Sous-étape supprimée.
+   f. **Vérification** : tests, captures en gros plan (`hol.Camera.Zoom` à ajouter), S1 / S2 / S7 / S5 courts, essai.
 2. **J5c.2 Charge visible** : fagot, panier, bloc de pierre ou d'or (pièce fixée à un os ou instance placée d'après
    l'unité, à essayer).
 3. **J5c.3 « +10 » au dépôt** : montré au seul propriétaire.
