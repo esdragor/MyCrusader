@@ -147,15 +147,16 @@ vérifier sur S1 et S2.
    depuis `main` (serveur recuit), puis J5c.2 (outils et charge visibles). **Fusionnée dans `main`** (2026-10-16,
    avance rapide jusqu'à 8d18407, après fusion de J6a.2 dans la branche : compilation, tests 47/47, `quick_check` PASS ;
    A/B S7 : coût faible, +0,15 ms par image sur le fil de jeu). Restent les mesures au repos et S5.
-   **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
-   refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
-   3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
-   annulation). **J6a.4 faite** (2026-10-16, validée : chantier, bâtisseurs, fondation fantôme, file Maj avec
    **J5c.2 faite** (2026-10-16, worktree, détail dans `AnimationsInProgress.md`) : hache et pioche dans les mains,
    panier de baies, fagot, hotte de pierre ou d'or, repos chargés ; essai de l'utilisateur validé (« très bien ») ;
    **fusionnée dans `main`** (fad246d ; tests 54/54, `quick_check` PASS ; A/B S7 : CPU inchangé, GPU +1 ms par image).
    Restent pour J5c : S1 / S2 / S7 au repos, S5 court, J5c.4 (clôture) ; animation du bâtisseur pour J6a.4.
-   récolte, ralliement sur un chantier, chantier voisin ; S2 / S7 au repos à refaire). Suite : **J6a.5** (HUD).
+   **J5c.3 faite** (98858d0) ; **J6a.1 faite** (2026-10-16, navmesh des bâtiments, validée ; S1 / S2 / S7 au repos à
+   refaire avant la clôture de J6a). **J6a.2 faite** (2026-10-16, validée : table, règles de construction, case de
+   3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
+   annulation). **J6a.4 faite** (2026-10-16, validée : chantier, bâtisseurs, fondation fantôme, file Maj avec
+   récolte, ralliement sur un chantier, chantier voisin ; S2 / S7 au repos à refaire). **J6a.5 faite** (2026-10-16, validée : grille du Paysan,
+   infobulles, messages, bloc du chantier, F1 / F2 / F3, groupes et Tab). Suite : **J6a.6** (vérification).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -2663,3 +2664,125 @@ d'épée).
     (seul le cas rare « massif plein ») : pas de S7.
 - Session d'essai relancée (deuxième écran) pour les 4 retours de J6a.4.
 - **Essai validé** par l'utilisateur (« ok, tout fonctionne ») : J6a.4 et ses 4 retours commités (sans le panneau de triches de `mycrusader-bb` ni les lignes des autres sessions). Reste : S2 / S7 au repos. Reprise : **J6a.5** (HUD de la construction).
+
+- **Panneau de triches** (session `mycrusader-bb`, cd75e85, D291) : en build de développement, sous la barre du haut à
+  gauche, plié et déplié par son premier bouton (choix gardé dans GameUserSettings.ini) ; +1000 par ressource, +1000 de
+  chaque, population +165, construction rapide oui / non ; `hol.HUD.Click CheatXxx` ; validé par l'utilisateur le
+  2026-10-16.
+
+### 2026-10-16 — J6a.5 : HUD de la construction
+
+- Confié à un sous-agent (D313 : grille directe du Paysan A / Z / E, infobulle, case grisée et message bref,
+  « Population maximale », bloc du chantier avec « Annuler », repère sur la fondation, F2 ; fr / en / ja).
+- Sous-agent, rien de commité (essai de l'utilisateur attendu), GDD non touché, ni présentation ni table des unités.
+- **Grille du Paysan** (règles pures `Player/HOLCommandGrid`) : un ou plusieurs Paysans à soi choisis (unités qui
+  récoltent, comme le contrôle du serveur) → **A** maison, **Z** camp de bûcherons, **E** camp de mineurs (colonne
+  `BuildGridSlot`, `UHOLBuildingSettings::GetBuildableTypes`) ; centre choisi → A = Paysan (même touche, autre sens,
+  D281) ; chantier à soi choisi → **V « Annuler »** (loin des touches qui bâtissent ; le coût rendu sur la case : tout
+  avant le premier coup, moitié après). Clic ou touche → fantôme de J6a.3. Contrôleur : `GetGridCommands`,
+  `ActivateGridCell` (production, pose ou annulation), délégué `OnCommandFeedback`.
+- **Case grisée** (D313) : faute de ressources (ou file pleine), case sombre (style `UHOLHUDButtonStyleGreyed`), nom
+  atténué, **coût manquant en rouge** ; elle prend le clic : rien d'envoyé, **message bref** au-dessus de la grille
+  (3 s, s'efface) : « Pas assez de bois / pierre / d'or / de nourriture », « File de production pleine ». Fantôme rouge
+  cliqué : « Emplacement occupé », « Trop près d'un centre ennemi », « Hors de la carte », « Terrain impraticable ».
+- **Infobulle** de chaque case (survol) : nom, coût (manquant en rouge), effet : « +10 population », « Dépôt : bois »,
+  « Dépôt : pierre, or », Paysan « Récolte et bâtit », Annuler « Rend tout / la moitié du coût ».
+- **Population maximale** : Paysan demandé sans place → mis en file quand même (il attend, comme avant) et message
+  « Population maximale — construisez des maisons » ; même message quand une file du joueur se met à attendre.
+- **Bloc du chantier** : « Fondation : Maison » (fantôme), puis « Chantier : Maison », points de vie, **barre
+  d'avancement + « 15 % »**, « **Bâtisseurs : 2** » (au propriétaire seul : octet répliqué `BuildersAtWork` sur
+  `AHOLBuilding`, écrit par `HOLBuildProcessor`, 0 quand personne n'y travaille ; rien sur l'état des unités).
+- **Repère bref de J4.6** sur la fondation posée avec des Paysans choisis (clic droit sur un chantier : déjà là).
+- **F2** : bâtiment économique suivant (centre d'abord, puis maisons, camps ; sites et fantômes compris), caméra
+  centrée ; `IA_NextEconomic` (make_game_input.py relancé) ; F1 à F4 retirés des vues de débogage du moteur
+  (`DefaultInput.ini`, sinon F2 = « viewmode unlit » en build de développement).
+- Textes fr / en / ja (`fill_po.py`, GatherText deux fois ; 149 textes, 0 clé inconnue). Commandes : `hol.Select.Grid N`,
+  `hol.Select.NextEconomic` ; `hol.HUD.Report` écrit aussi `HUD tooltips: ...` et `, message <Clé>` ;
+  `hol.HUD.Click GridCell11` = Annuler.
+- **Tests** `CommandGrid.Commands`, `.Feedback`, `.Cycle`, `.Tables` : **58/58** (54 avec J5c.2 fusionnée).
+- **`quick_check` PASS en 155 s puis 157 s** (182 avant) ; partie nouvelle **`build hud`** (solo) : tous les Paysans
+  sans bois → `A=House greyed Z=LumberCamp greyed E=MiningCamp greyed`, infobulles ; clic sur Z : pas de fantôme,
+  « Pas assez de bois » capturé en fr / en / ja ; avec du bois, touche Z → fantôme du camp ; 2 Paysans, touche A, clic :
+  maison J bâtie ; chantier choisi : « under construction 15%, builders 2 », `V=Cancel` ; clic → 25 bois rendus ;
+  population pleine, touche A au centre : message ; F2 trois fois : centre, maison, autre maison, caméra dessus.
+- Captures vues : `build_hud_fr/en/ja` (message à droite au-dessus de la grille, cases grisées, coûts en rouge),
+  `build_hud_block` (bloc du chantier, barre, bâtisseurs, Annuler 25), `build_hud_popfull`, `build_hud_f2`,
+  `build_hud_ghost`. Premier jet corrigé : noms des cases en 11 pt (« Camp de bûcherons » sur deux lignes), message
+  non replié. **Infobulle non capturée** (pas de survol hors écran) : à voir à l'essai.
+- À essayer : choisir des Paysans, A / Z / E (fantôme), survoler les cases ; `hol.Cheat.Wood -100000` puis Z : case
+  grise, « Pas assez de bois » ; poser une maison avec 2-3 Paysans, cliquer le chantier (barre, bâtisseurs), V ou clic
+  « Annuler » ; centre choisi à population pleine, A : message ; F2 plusieurs fois.
+- Session d'essai lancée (deuxième écran) pour l'essai de J6a.5.
+- **Retours de l'essai de J6a.5** (2026-10-16 ; « tout est bon sinon ») :
+  1. **Pas de coût sur la grille** : une case ne montre que l'**icône** (le nom tant qu'il n'y a pas d'icône) ; coût et
+     manque seulement dans l'infobulle. La case reste grisée si on ne peut pas payer.
+  2. **Touches F** (précise D30, § 7.3) : **F1 sélectionne tous les bâtiments militaires**, **F2 tous les bâtiments
+     économiques**, **F3 tous les bâtiments technologiques** (F4 héros) ; au lieu de « bâtiment suivant » seul. Appuis
+     successifs : la sélection reste, la caméra passe au bâtiment suivant de la catégorie (lecture du § 7.3 gardée).
+- **Retours appliqués** (sous-agent, rien de commité, GDD non touché) :
+  - **Cases** : le nom seul (`HOLCommandGrid::GetCellFace` : l'icône quand il y en aura une, sinon le nom, jamais le
+    coût) ; coût, manque en rouge et effet dans l'infobulle seulement ; case grisée et message au clic inchangés ;
+    « Annuler » sans le montant (rendu dans l'infobulle). Nom en 11 pt, la boîte sur toute la largeur de la case :
+    « Camp de / bûcherons » sur deux lignes, centré, sous la touche (vu à 1440p fr / en / ja ; en 13 pt, trois lignes
+    collées à la touche).
+  - **Catégorie** : colonne `Category` de la table des bâtiments (`EHOLBuildingCategory` Economic / Military /
+    Technological ; les quatre types Economic), table refaite (make_building_types.py).
+  - **F1 / F2 / F3** (`IA_MilitaryBuildings`, `IA_EconomicBuildings`, `IA_TechnologicalBuildings`, make_game_input.py ;
+    `IA_NextEconomic` supprimé ; F4 non lié, débogage du moteur toujours retiré) : premier appui = tous les bâtiments à
+    soi de la catégorie, finis et chantiers, pas les fantômes, caméra inchangée ; appui suivant tant que cette sélection
+    reste = sélection gardée (rafraîchie), caméra au suivant (centre, puis maisons, camps). Aucun : message bref
+    « Aucun bâtiment militaire / technologique / économique » (fr / en / ja, 152 textes), sélection inchangée.
+    `hol.Select.Category <Military|Economic|Technological>` remplace `hol.Select.NextEconomic`.
+  - **Sélection de plusieurs bâtiments** (minimale) : groupe de bâtiments à soi dans le contrôleur (`SetBuildingSelection`,
+    `GetSelectedBuildings`) ; un cadre au sol sous chacun ; bloc « Maison × 6 / Centre principal × 1 / Vous » et
+    « N en construction » ; grille = ce que tous produisent (plusieurs centres : Paysan, mis dans la file la moins
+    chargée, `PickLeastBusy`), sinon vide ; jamais « Annuler » pour un groupe ; clic droit = point de ralliement de
+    chacun de ceux qui produisent. Le clic, le cadre, Échap, « . » remplacent le groupe comme avant.
+  - Tests `CommandGrid.Categories` et `.Group` ajoutés, `.Commands` (case) et `.Cycle` revus : **60/60**.
+  - `quick_check` partie `build hud` : `HUD cells: A: Maison; Z: Camp de bûcherons; E: Camp de mineurs` (aucun
+    chiffre), infobulles avec le coût ; F1 et F3 : rien, message, sélection vide ; F2 : 7 bâtiments (centre + 6 maisons,
+    autant que le rapport des bâtiments ; pas de chantier à ce moment), 7 cadres, caméra inchangée ; F2 ×3 : centre,
+    maison, maison, caméra dessus, sélection gardée. **PASS en 150, 167 puis 186 s** (machine chargée : une autre
+    copie lançait ses essais). Captures vues : `build_hud_greyed`, `_f1`, `_f2`, `_next` (cadres sous les 7),
+    `_block` ; `cells_*` à 1440p (fr / en / ja, grisé et prêt).
+- Session d'essai relancée (deuxième écran) pour les retours de J6a.5.
+- **2e retour de l'essai de J6a.5** (2026-10-16), à faire avant le commit (lecture retenue, à confirmer à l'essai) :
+  1. Les **fondations pas encore commencées** comptent dans F1 / F2 / F3 et dans tous les groupes de sélection.
+  2. **Groupe de bâtiments** : des sous-groupes parcourus par **Tab** : d'abord **« Tous »** (toutes les commandes du
+     groupe ; à touche égale, le forum passe en premier, puis l'ordre de sélection : le forum produit sur A même si le
+     moulin a une technologie sur A), puis un sous-groupe **par type** dans l'ordre de sélection (tous les moulins, tous
+     les camps…) ; **chaque forum est un sous-groupe à lui** (« un forum n'a pas de catégorie, deux forums sont
+     distincts »). Plusieurs bâtiments du même type visés par un ordre de production (sous-groupe ou « Tous ») :
+     **répartition équitable** entre eux (forums compris dans « Tous », casernes plus tard).
+- **2e retour appliqué** (sous-agent, rien de commité, GDD non touché) :
+  - **Fantômes** : `IsSelectedByCategory(Type, Category)` (la catégorie seule) : F1 / F2 / F3 prennent aussi les fondations
+    pas commencées ; groupe trié dans l'ordre du cycle (centre, puis par type et clé) = ordre de sélection. Le cadre ne
+    sélectionne que des unités : rien d'autre à changer.
+  - **Sous-groupes** (règles pures `HOLCommandGrid::SplitSubgroups`, `GetCommandPriority`, `MergeCommands`) : « Tous »,
+    puis un par type dans l'ordre du groupe, chaque centre principal seul (`IsAloneInGroup`). Grille = cellules des
+    bâtiments du sous-groupe actif fusionnées ; à touche égale, le centre d'abord, puis l'ordre du groupe. Sous-groupe
+    d'un seul chantier : lu comme ce chantier choisi seul (V « Annuler ») ; « Tous » et sous-groupe de plusieurs :
+    jamais. Ralliement : tout le groupe (clic droit), inchangé.
+  - **Tab** : `IA_NextSubgroup` (make_game_input.py relancé ; Tab n'était lié à rien, seul Ctrl+Tab du moteur = fenêtres
+    PIE), `CycleSubgroup`, `hol.Select.Subgroup` ; agit seulement avec un groupe ; nouveau groupe = « Tous » ; F2 répété
+    ou bâtiment disparu : sous-groupe gardé (celui du même bâtiment), sinon « Tous ».
+  - **HUD** : 1re ligne du bloc = sous-groupe actif (« Tous (8) », « Maison × 7 », « Centre principal »), puis le groupe
+    par type (ordre du groupe) ; `SubgroupAll` fr / en / ja (fill_po.py, GatherText deux fois, 153 textes, 0 inconnue).
+    Cadres : tous, ceux hors du sous-groupe actif en trait trois fois plus fin (un gris foncé se fondait dans le sol au
+    premier essai). `hol.HUD.Report` / `hol.Select.Report` : `, subgroup All (8)` ; repères : `frames dimmed N`.
+  - **Répartition équitable** (`PickEvenly`, remplace `PickLeastBusy`) : moins de file d'abord, à égalité le suivant du
+    dernier choisi dans l'ordre du groupe (mémoire par type d'unité dans le contrôleur) : 4 appuis sur 2 centres = 2 + 2,
+    même avant que les files arrivent. Testée en unitaire seulement (un centre par joueur sur Plain, pas de commande
+    pour faire naître un bâtiment).
+  - Tests `CommandGrid.Subgroups` et `.Distribution` ajoutés, `.Categories` et `.Group` revus : **62/62**.
+  - `quick_check` partie `build hud` : F2 = 8 bâtiments, fantôme G compris (« sites 1 ») ; `build hud tab` : « Tous » →
+    touche A → Paysan au centre ; Tab → `MainCentre` (A: Paysan, 7 cadres fins) ; Tab → `House x7` (cellules vides,
+    1 cadre fin) ; Échap, F2 → « Tous (8) ». **PASS en 151 s (gather KO une fois : Paysans au repos à 70 cm, sans lien,
+    PASS aux deux passages suivants), 151 s, 150 s.** Captures vues : `build_hud_f2`, `build_hud_tab_centre`,
+    `build_hud_tab_houses`.
+- À essayer : F2 avec un fantôme posé ; Tab plusieurs fois (titre du bloc, cases, cadres fins) ; A sur « Tous ».
+- Session d'essai relancée (deuxième écran) pour le 2e retour de J6a.5 (sous-groupes, Tab, répartition).
+- **3e retour de l'essai de J6a.5** : « tout est bien », sauf : en F2, sur le sous-groupe du forum ou sur « Tous », le **drapeau de ralliement n'apparaît pas** (il apparaît quand le forum est sélectionné seul). À corriger avant le commit.
+- **3e retour appliqué** (sous-agent, rien de commité, GDD non touché) : cause, le drapeau suivait `GetOwnSelection` (un bâtiment choisi seul) et un seul mât existait ; correction dans `HOLSelectionMarkers` : un drapeau par bâtiment de `GetCommandBuildings` qui a un point de ralliement (choisi seul, sous-groupe actif, tous pour « Tous »), mâts faits au besoin, suivis à chaque image (Tab, clic droit sur le groupe) ; contrôleur inchangé ; repères : `flag 1 at (x, y)`. `quick_check` partie `build hud rally` : « Tous » et « Centre principal » → `flag 1 at (-16800, -1500)` (E), maisons → `flag 0`, clic droit au sol sur « Tous » → ralliement du centre et drapeau à (-17999, -1500). **PASS en 151 s du premier coup, 62/62** ; capture `build_hud_rally` vue (drapeau au point, « Tous (8) »).
+- Session d'essai relancée (deuxième écran) pour le drapeau des groupes.
+- **Essai validé** par l'utilisateur (« c'est bon ») : J6a.5 commitée (sans les lignes des autres sessions). Reste : S2 / S7 au repos, puis vérification et clôture de J6a (J6a.6).

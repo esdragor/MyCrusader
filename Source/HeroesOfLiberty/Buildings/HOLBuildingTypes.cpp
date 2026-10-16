@@ -19,3 +19,20 @@ const FHOLBuildingTypeRow* UHOLBuildingSettings::FindType(const FName TypeName)
 	}
 	return Row;
 }
+
+void UHOLBuildingSettings::GetBuildableTypes(TArray<TPair<FName, int32>>& OutTypes)
+{
+	OutTypes.Reset();
+	const UDataTable* Table = GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous();
+	if (!Table)
+	{
+		return;
+	}
+	Table->ForeachRow<FHOLBuildingTypeRow>(TEXT("buildable types"), [&OutTypes](const FName& Name, const FHOLBuildingTypeRow& Row)
+	{
+		if (Row.IsBuildable())
+		{
+			OutTypes.Emplace(Name, Row.BuildGridSlot);
+		}
+	});
+}

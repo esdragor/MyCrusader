@@ -20,6 +20,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
 #include "Match/HOLPlayerColors.h"
@@ -55,6 +56,111 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 		default: return LOCTEXT("Food", "Nourriture");
 		}
 	}
+
+	/** A resource's name inside a sentence (« Dépôt : pierre, or »). */
+	FText GetResourceNameInText(const EHOLResource Resource)
+	{
+		switch (Resource)
+		{
+		case EHOLResource::Wood: return LOCTEXT("WoodInText", "bois");
+		case EHOLResource::Stone: return LOCTEXT("StoneInText", "pierre");
+		case EHOLResource::Gold: return LOCTEXT("GoldInText", "or");
+		default: return LOCTEXT("FoodInText", "nourriture");
+		}
+	}
+
+	/** What the stock lacks of Cost, resource by resource (0 where it covers it): shown in red (D313). */
+	FHOLResources GetMissing(const FHOLResources& Stock, const FHOLResources& Cost)
+	{
+		return FHOLResources(FMath::Max(0, Cost.Food - Stock.Food), FMath::Max(0, Cost.Wood - Stock.Wood), FMath::Max(0, Cost.Stone - Stock.Stone),
+			FMath::Max(0, Cost.Gold - Stock.Gold));
+	}
+
+	/** What a building gives, for its tooltip (D313): « +10 population », « Dépôt : pierre, or ». */
+	FText GetBuildingEffect(const FHOLBuildingTypeRow* Type)
+	{
+		TArray<FText> Lines;
+		if (Type && Type->PopulationProvided > 0)
+		{
+			Lines.Add(FText::Format(LOCTEXT("PopulationEffect", "+{0} population"), Type->PopulationProvided));
+		}
+		if (Type && !Type->Accepts.IsEmpty())
+		{
+			TArray<FText> Names;
+			for (const EHOLResource Resource : Type->Accepts)
+			{
+				Names.Add(GetResourceNameInText(Resource));
+			}
+			Lines.Add(FText::Format(LOCTEXT("DepositEffect", "Dépôt : {0}"), FText::Join(LOCTEXT("ListSeparator", ", "), Names)));
+		}
+		return FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines);
+	}
+
+	/** What a unit does, for its tooltip. */
+	FText GetUnitEffect(const FName TypeName)
+	{
+		static const FName Peasant(TEXT("Peasant"));
+		return TypeName == Peasant ? LOCTEXT("PeasantEffect", "Récolte et bâtit") : FText::GetEmpty();
+	}
+
+	/** The key of a command's message, for the logs and Describe: "NotEnoughWood", "PopulationFull", "PlacementBuilding"... */
+	FString GetFeedbackKey(const FHOLCommandFeedback& Feedback)
+	{
+		switch (Feedback.Kind)
+		{
+		case EHOLCommandFeedback::NotEnoughResources:
+			return TEXT("NotEnough") + StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Feedback.Resource));
+		case EHOLCommandFeedback::QueueFull: return TEXT("QueueFull");
+		case EHOLCommandFeedback::PopulationFull: return TEXT("PopulationFull");
+		case EHOLCommandFeedback::NoBuilding:
+			return TEXT("No") + StaticEnum<EHOLBuildingCategory>()->GetNameStringByValue(static_cast<int64>(Feedback.Category)) + TEXT("Building");
+		case EHOLCommandFeedback::PlacementRefused:
+			switch (Feedback.Refusal)
+			{
+			case EHOLPlacementRefusal::OutOfMap: return TEXT("PlacementOutOfMap");
+			case EHOLPlacementRefusal::Building: return TEXT("PlacementBuilding");
+			case EHOLPlacementRefusal::Source: return TEXT("PlacementSource");
+			case EHOLPlacementRefusal::EnemyCentre: return TEXT("PlacementEnemyCentre");
+			case EHOLPlacementRefusal::NavMesh: return TEXT("PlacementNavMesh");
+			default: return TEXT("Placement");
+			}
+		default: return FString();
+		}
+	}
+
+	/** The short message of a command that did not go through (D313). */
+	FText GetFeedbackText(const FHOLCommandFeedback& Feedback)
+	{
+		switch (Feedback.Kind)
+		{
+		case EHOLCommandFeedback::NotEnoughResources:
+			switch (Feedback.Resource)
+			{
+			case EHOLResource::Wood: return LOCTEXT("NotEnoughWood", "Pas assez de bois");
+			case EHOLResource::Stone: return LOCTEXT("NotEnoughStone", "Pas assez de pierre");
+			case EHOLResource::Gold: return LOCTEXT("NotEnoughGold", "Pas assez d'or");
+			default: return LOCTEXT("NotEnoughFood", "Pas assez de nourriture");
+			}
+		case EHOLCommandFeedback::QueueFull: return LOCTEXT("QueueFull", "File de production pleine");
+		case EHOLCommandFeedback::PopulationFull: return LOCTEXT("PopulationMax", "Population maximale — construisez des maisons");
+		case EHOLCommandFeedback::NoBuilding:
+			switch (Feedback.Category)
+			{
+			case EHOLBuildingCategory::Military: return LOCTEXT("NoMilitaryBuilding", "Aucun bâtiment militaire");
+			case EHOLBuildingCategory::Technological: return LOCTEXT("NoTechnologicalBuilding", "Aucun bâtiment technologique");
+			default: return LOCTEXT("NoEconomicBuilding", "Aucun bâtiment économique");
+			}
+		case EHOLCommandFeedback::PlacementRefused:
+			switch (Feedback.Refusal)
+			{
+			case EHOLPlacementRefusal::OutOfMap: return LOCTEXT("PlacementOutOfMap", "Hors de la carte");
+			case EHOLPlacementRefusal::EnemyCentre: return LOCTEXT("PlacementEnemyCentre", "Trop près d'un centre ennemi");
+			case EHOLPlacementRefusal::NavMesh: return LOCTEXT("PlacementNavMesh", "Terrain impraticable");
+			default: return LOCTEXT("PlacementBlocked", "Emplacement occupé");
+			}
+		default: return FText::GetEmpty();
+		}
+	}
 }
 
 namespace UE::HeroesOfLiberty::UI::GameScreen
@@ -74,6 +180,12 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float SwatchSize = 14.f;
 	constexpr float SelectionMinWidth = 320.f;
 	constexpr float IdleWorkersWidth = 130.f;
+	/** The site's progress bar in the selection block (J6a.5). */
+	constexpr float SiteBarWidth = 200.f;
+	/** The grid panel's width: the short message above it wraps within it (D313). */
+	constexpr float GridWidth = 4 * (CellSize + 2 * CellGap) + 12.f;
+	/** The name the HUD's report gives the « Annuler » cell of a site. */
+	const FName CancelName(TEXT("Cancel"));
 	/** Seconds between two readings of a selected group's activities. */
 	constexpr float GroupRefreshInterval = 0.25f;
 	const FName IdleWorkersName(TEXT("IdleWorkers"));
@@ -182,6 +294,7 @@ void UHOLGameScreen::NativeConstruct()
 	if (PlayerController)
 	{
 		SelectionHandle = PlayerController->OnSelectionChanged.AddUObject(this, &UHOLGameScreen::HandleSelectionChanged);
+		FeedbackHandle = PlayerController->OnCommandFeedback.AddUObject(this, &UHOLGameScreen::HandleCommandFeedback);
 	}
 	else
 	{
@@ -197,8 +310,10 @@ void UHOLGameScreen::NativeDestruct()
 	if (AHOLPlayerController* PlayerController = Controller.Get())
 	{
 		PlayerController->OnSelectionChanged.Remove(SelectionHandle);
+		PlayerController->OnCommandFeedback.Remove(FeedbackHandle);
 	}
 	SelectionHandle.Reset();
+	FeedbackHandle.Reset();
 	Controller.Reset();
 	BindPlayerState(nullptr);
 	BindBuilding(nullptr);
@@ -217,11 +332,20 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		Refresh();
 	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
-	// source's amount at every change (J5b). The other blocks follow their delegates.
+	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
+	// followed without their delegates. The other blocks follow their delegates.
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 	const int32 NumSelectedUnits = Controller.IsValid() ? Controller->GetSelectedUnits().Num() : 0;
 	SinceGroupRefresh += InDeltaTime;
-	if (NumSelectedUnits == 1)
+	if (Controller.IsValid() && Controller->HasBuildingGroup())
+	{
+		if (SinceGroupRefresh >= GroupRefreshInterval)
+		{
+			SinceGroupRefresh = 0.f;
+			Refresh();
+		}
+	}
+	else if (NumSelectedUnits == 1)
 	{
 		FHOLUnitView Unit;
 		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit) && Unit.CarryCapacity > 0)
@@ -240,6 +364,8 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	}
 	RefreshIdleWorkers();
 	UpdateHead();
+	CheckPopulationBlocked();
+	UpdateMessage(InDeltaTime);
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
@@ -305,12 +431,18 @@ void UHOLGameScreen::Refresh()
 	{
 		RefreshSourceSelection(PlayerController->GetSelectedSource());
 	}
+	else if (PlayerController && PlayerController->HasBuildingGroup())
+	{
+		TArray<AHOLBuilding*> Group;
+		PlayerController->GetSelectedBuildings(Group);
+		RefreshBuildingGroup(Group);
+	}
 	else
 	{
 		RefreshSelection(Selected, Selected && Selected == Own);
 	}
 	RefreshIdleWorkers();
-	RefreshGrid(Own, PlayerState);
+	RefreshGrid(Own, PlayerController && PlayerController->HasBuildingGroup(), PlayerState);
 	RefreshQueue(Own);
 	UpdateHead();
 }
@@ -364,6 +496,8 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
 	SetShown(SelectionPanel, Building != nullptr, ESlateVisibility::Visible);
+	const bool bSite = Building && !Building->IsFinished();
+	SetShown(SelectionProgressRow, bSite);
 	if (!Building)
 	{
 		ShownSelection = TEXT("none");
@@ -371,14 +505,24 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
+	const int32 Percent = FMath::FloorToInt(Building->GetProgress() * 100.f);
 	ShownSelection = FString::Printf(TEXT("%s (%s)%s"), *Building->GetTypeName().ToString(), bOwn ? TEXT("own") : TEXT("other"),
-		Building->IsFinished() ? TEXT("") : TEXT(", foundation"));
+		Building->IsFoundation() ? TEXT(", foundation") : bSite ? *FString::Printf(TEXT(", under construction %d%%"), Percent) : TEXT(""));
 
 	if (SelectionName)
 	{
-		// A building not finished shows as its foundation (J6a.3; J6a.5 adds its progress and its cancel cell).
+		// A building not finished: its foundation (J6a.3), then its site with its progress (J6a.5, D313).
 		const FText Name = HOLGameNames::GetBuildingName(Building->GetTypeName(), Type);
-		SelectionName->SetText(Building->IsFinished() ? Name : FText::Format(LOCTEXT("FoundationName", "Fondation : {0}"), Name));
+		SelectionName->SetText(!bSite ? Name : Building->IsFoundation() ? FText::Format(LOCTEXT("FoundationName", "Fondation : {0}"), Name)
+			: FText::Format(LOCTEXT("SiteName", "Chantier : {0}"), Name));
+	}
+	if (bSite && SelectionProgress)
+	{
+		SelectionProgress->SetPercent(Building->GetProgress());
+	}
+	if (bSite && SelectionProgressText)
+	{
+		SelectionProgressText->SetText(FText::Format(LOCTEXT("ProgressPercent", "{0} %"), FText::AsNumber(Percent)));
 	}
 	SetShown(SelectionOwnerRow, true);
 	if (SelectionSwatch)
@@ -390,7 +534,10 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
 	}
 	SetShown(SelectionHealthRow, true);
-	RefreshUnitActivity(nullptr);
+	if (!bSite || !bOwn)
+	{
+		RefreshUnitActivity(nullptr);
+	}
 	if (SelectionHealth)
 	{
 		// No damage before M5: a building has the health of its work (D312), whole once finished.
@@ -399,6 +546,12 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 			? HOLConstruction::GetTotalWork(HOLConstruction::GetBuildSteps(Type->BuildTime, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())) : 0;
 		SelectionHealth->SetText(FormatRatio(HOLConstruction::GetHealth(MaxHealth, Building->IsFinished() ? 1 : Building->GetConstructionWork(),
 			Building->IsFinished() ? 1 : TotalWork), MaxHealth));
+	}
+	if (bSite && bOwn)
+	{
+		// Its builders at work (D313), which only its owner receives.
+		const int32 Builders = Building->GetBuildersAtWork();
+		SetDetailLine(FString::Printf(TEXT(", builders %d"), Builders), FText::Format(LOCTEXT("Builders", "Bâtisseurs : {0}"), Builders));
 	}
 }
 
@@ -422,6 +575,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	}
 	Views.RemoveAll([UnitIds](const FHOLUnitView& View) { return !UnitIds.Contains(View.UnitId); });
 	SetShown(SelectionPanel, !Views.IsEmpty(), ESlateVisibility::Visible);
+	SetShown(SelectionProgressRow, false);
 	if (Views.IsEmpty())
 	{
 		ShownSelection = TEXT("none");
@@ -507,6 +661,63 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		FText::Join(FText::AsCultureInvariant(TEXT(" · ")), Parts));
 }
 
+void UHOLGameScreen::RefreshBuildingGroup(const TConstArrayView<AHOLBuilding*> Buildings)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// Several of the player's buildings (an F key, D30): by type and number, as a group of units; the sites among them.
+	SetShown(SelectionPanel, !Buildings.IsEmpty(), ESlateVisibility::Visible);
+	SetShown(SelectionProgressRow, false);
+	SetShown(SelectionHealthRow, false);
+	if (Buildings.IsEmpty())
+	{
+		ShownSelection = TEXT("none");
+		SetDetailLine(FString(), FText::GetEmpty());
+		return;
+	}
+	// In the group's order (the centre first), its ghosts and sites counted as « en construction ».
+	TMap<FName, int32> PerType;
+	int32 Sites = 0;
+	for (const AHOLBuilding* Building : Buildings)
+	{
+		++PerType.FindOrAdd(Building->GetTypeName());
+		Sites += Building->IsFinished() ? 0 : 1;
+	}
+	TArray<FString> ShownTypes;
+	TArray<FText> Lines;
+	// First the subgroup Tab made active (the user's 2nd trial of J6a.5), whose cells the grid shows: « Tous (7) »,
+	// « Maison × 3 », « Centre principal » (each main centre is one alone).
+	FHOLSubgroup Subgroup;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	if (PlayerController && PlayerController->GetActiveSubgroup(Subgroup))
+	{
+		const FText TypeName = Subgroup.bAll ? FText::GetEmpty() : HOLGameNames::GetBuildingName(Subgroup.TypeName, UHOLBuildingSettings::FindType(Subgroup.TypeName));
+		Lines.Add(Subgroup.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Subgroup.Members.Num())
+			: HOLCommandGrid::IsAloneInGroup(Subgroup.TypeName) ? TypeName : FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), TypeName, Subgroup.Members.Num()));
+	}
+	for (const TPair<FName, int32>& Type : PerType)
+	{
+		Lines.Add(FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), HOLGameNames::GetBuildingName(Type.Key, UHOLBuildingSettings::FindType(Type.Key)), Type.Value));
+		ShownTypes.Add(FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
+	}
+	ShownSelection = FString::Printf(TEXT("%d buildings (own): %s, subgroup %s"), Buildings.Num(), *FString::Join(ShownTypes, TEXT(" ")),
+		PlayerController ? *PlayerController->DescribeSubgroup() : TEXT(""));
+	if (SelectionName)
+	{
+		SelectionName->SetText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
+	}
+	SetShown(SelectionOwnerRow, true);
+	if (SelectionSwatch)
+	{
+		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(Buildings[0]->GetColorIndex())));
+	}
+	if (SelectionOwner)
+	{
+		SelectionOwner->SetText(LOCTEXT("You", "Vous"));
+	}
+	SetDetailLine(Sites > 0 ? FString::Printf(TEXT(", sites %d"), Sites) : FString(), FText::Format(LOCTEXT("GroupBuilding", "{0} en construction"), Sites));
+}
+
 void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -515,6 +726,7 @@ void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
 	const FHOLSource* Source = Sources && Sources->GetSources().IsValidIndex(SourceIndex) ? &Sources->GetSources()[SourceIndex] : nullptr;
 	const FName TypeName = Source && Sources->GetTypeNames().IsValidIndex(Source->TypeIndex) ? Sources->GetTypeNames()[Source->TypeIndex] : NAME_None;
 	SetShown(SelectionPanel, !TypeName.IsNone(), ESlateVisibility::Visible);
+	SetShown(SelectionProgressRow, false);
 	if (TypeName.IsNone())
 	{
 		ShownSelection = TEXT("none");
@@ -601,36 +813,81 @@ void UHOLGameScreen::HandleIdleWorkersClicked()
 	}
 }
 
-void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const AHOLPlayerState* PlayerState)
+void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOwnGroup, const AHOLPlayerState* PlayerState)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
-	bGridShown = OwnBuilding != nullptr;
+	// What each cell does with the selection (D30, D313): the building's production or its site's « Annuler », what a
+	// group of buildings all produce, or the builders' grid. A cell shows its name only (the user's trial of J6a.5); its
+	// cost, what is missing in red, is its tooltip's.
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	TArray<FHOLGridCommand> Commands;
+	if (PlayerController)
+	{
+		PlayerController->GetGridCommands(Commands);
+	}
+	bGridShown = OwnBuilding != nullptr || bOwnGroup || Commands.ContainsByPredicate([](const FHOLGridCommand& Command) { return !Command.IsNone(); });
 	SetShown(GridPanel, bGridShown, ESlateVisibility::Visible);
 
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	const FHOLBuildingTypeRow* Type = OwnBuilding ? OwnBuilding->GetType() : nullptr;
-	const bool bQueueFull = !Type || OwnBuilding->GetProductionQueue().Num() >= Type->MaxQueue;
+	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
+	TArray<AHOLBuilding*> CommandBuildings;
+	if (PlayerController)
+	{
+		PlayerController->GetCommandBuildings(CommandBuildings);
+	}
+	const AHOLBuilding* Site = CommandBuildings.Num() == 1 ? CommandBuildings[0] : nullptr;
+	const FHOLBuildingTypeRow* Type = Site ? Site->GetType() : nullptr;
+	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
-		const FName TypeName = bGridShown && PlayerController ? PlayerController->GetGridCellUnitType(Cell) : NAME_None;
-		ShownGridTypes[Cell] = TypeName;
+		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell] : FHOLGridCommand();
+		ShownGridTypes[Cell] = Command.Command == EHOLGridCommand::CancelConstruction ? CancelName : Command.TypeName;
 		UHOLGridCell* GridCell = GridCells[Cell];
 		if (!GridCell)
 		{
 			continue;
 		}
-		if (TypeName.IsNone())
+		switch (Command.Command)
 		{
-			GridCell->ClearUnit();
-			continue;
+		case EHOLGridCommand::Produce:
+		{
+			// Greyed when the server would refuse it (D282): queue full (every queue of a group) or not enough resources;
+			// still clickable, the click says why (D313). The population is only checked when the unit starts: a full
+			// population makes it wait.
+			const FHOLUnitTypeRow* UnitType = FindUnitType(Command.TypeName);
+			const FHOLResources Cost = UnitType ? UnitType->Cost : FHOLResources();
+			const FHOLResources Missing = GetMissing(Stock, Cost);
+			const bool bQueueFull = !PlayerController || !PlayerController->FindProductionBuilding(Command.TypeName);
+			const FText Name = HOLGameNames::GetUnitName(Command.TypeName, UnitType);
+			GridCell->SetCommand(Name, bQueueFull || !(Missing == FHOLResources()) ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, Cost, Missing, GetUnitEffect(Command.TypeName));
+			break;
 		}
-		// Greyed when the server would refuse it (D282): queue full or not enough resources. The population is only
-		// checked when the unit starts: a full population makes it wait in the queue.
-		const FHOLUnitTypeRow* UnitType = FindUnitType(TypeName);
-		const FHOLResources Cost = UnitType ? UnitType->Cost : FHOLResources();
-		const bool bCanProduce = !bQueueFull && PlayerState && PlayerState->GetResources().Covers(Cost);
-		GridCell->SetUnit(HOLGameNames::GetUnitName(TypeName, UnitType), Cost, bCanProduce);
+		case EHOLGridCommand::Build:
+		{
+			// The builders' grid (D313): greyed when the stock does not cover the cost (in red in the tooltip).
+			const FHOLBuildingTypeRow* BuildType = UHOLBuildingSettings::FindType(Command.TypeName);
+			const FHOLResources Cost = BuildType ? BuildType->Cost : FHOLResources();
+			const FHOLResources Missing = GetMissing(Stock, Cost);
+			const FText Name = HOLGameNames::GetBuildingName(Command.TypeName, BuildType);
+			GridCell->SetCommand(Name, Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			GridCell->SetTooltip(Name, Cost, Missing, GetBuildingEffect(BuildType));
+			break;
+		}
+		case EHOLGridCommand::CancelConstruction:
+		{
+			// What a cancel gives back (D311): all before the first work, half after.
+			const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Site->GetConstructionState(),
+				Site->GetConstructionWork()) : FHOLResources();
+			GridCell->SetCommand(LOCTEXT("Cancel", "Annuler"), EHOLGridCellState::Ready);
+			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), Refund, FHOLResources(), Site && Site->HasWorkStarted()
+				? LOCTEXT("RefundHalf", "Rend la moitié du coût") : LOCTEXT("RefundAll", "Rend tout le coût"));
+			break;
+		}
+		default:
+			GridCell->ClearUnit();
+			break;
+		}
 	}
 }
 
@@ -718,6 +975,87 @@ void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
 	}
 }
 
+void UHOLGameScreen::HandleCommandFeedback(const FHOLCommandFeedback& Feedback)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	if (!Feedback.IsNone())
+	{
+		ShowMessage(GetFeedbackKey(Feedback), GetFeedbackText(Feedback));
+	}
+}
+
+void UHOLGameScreen::ShowMessage(const FString& Key, const FText& Text)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	MessageKey = Key;
+	MessageAge = 0.f;
+	if (MessageText)
+	{
+		MessageText->SetText(Text);
+	}
+	if (MessagePanel)
+	{
+		MessagePanel->SetRenderOpacity(1.f);
+	}
+	SetShown(MessagePanel, true);
+	UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
+}
+
+void UHOLGameScreen::UpdateMessage(const float DeltaSeconds)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	if (MessageKey.IsEmpty())
+	{
+		return;
+	}
+	MessageAge += DeltaSeconds;
+	if (MessageAge >= MessageSeconds)
+	{
+		MessageKey.Reset();
+		SetShown(MessagePanel, false);
+		return;
+	}
+	const float Left = MessageSeconds - MessageAge;
+	if (MessagePanel)
+	{
+		MessagePanel->SetRenderOpacity(Left < MessageFadeSeconds ? Left / MessageFadeSeconds : 1.f);
+	}
+}
+
+void UHOLGameScreen::CheckPopulationBlocked()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// The player's buildings whose next unit waits for room (their queues reach their owner alone, D282).
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const UWorld* World = GetWorld();
+	bool bBlocked = false;
+	if (PlayerState && World)
+	{
+		for (TActorIterator<AHOLBuilding> It(World); It && !bBlocked; ++It)
+		{
+			const TArray<FHOLProductionItem>& Queue = It->GetProductionQueue();
+			if (It->GetOwnerPlayer() != PlayerState->GetPlayerIndex() || !It->IsFinished() || Queue.IsEmpty() || Queue[0].IsStarted())
+			{
+				continue;
+			}
+			const FHOLUnitTypeRow* UnitType = FindUnitType(Queue[0].TypeName);
+			bBlocked = HOLCommandGrid::IsPopulationBlocked(PlayerState->GetPopulationUsed(), PlayerState->GetPopulationCap(), UnitType ? UnitType->Population : 1);
+		}
+	}
+	if (bBlocked && !bPopulationBlocked)
+	{
+		// The production stops (D313): the player's first wall.
+		FHOLCommandFeedback Feedback;
+		Feedback.Kind = EHOLCommandFeedback::PopulationFull;
+		ShowMessage(GetFeedbackKey(Feedback), GetFeedbackText(Feedback));
+	}
+	bPopulationBlocked = bBlocked;
+}
+
 void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
 {
 	if (AHOLPlayerController* PlayerController = Controller.Get())
@@ -784,8 +1122,9 @@ FString UHOLGameScreen::Describe() const
 		{
 			if (!ShownGridTypes[Cell].IsNone())
 			{
-				const bool bEnabled = GridCells.IsValidIndex(Cell) && GridCells[Cell] && GridCells[Cell]->GetIsEnabled();
-				Cells.Add(FString::Printf(TEXT("%s=%s %s"), GridKeys[Cell], *ShownGridTypes[Cell].ToString(), bEnabled ? TEXT("enabled") : TEXT("disabled")));
+				const EHOLGridCellState State = GridCells.IsValidIndex(Cell) && GridCells[Cell] ? GridCells[Cell]->GetState() : EHOLGridCellState::Disabled;
+				Cells.Add(FString::Printf(TEXT("%s=%s %s"), GridKeys[Cell], *ShownGridTypes[Cell].ToString(), State == EHOLGridCellState::Ready ? TEXT("enabled")
+					: State == EHOLGridCellState::Greyed ? TEXT("greyed") : TEXT("disabled")));
 			}
 		}
 		Grid = Cells.IsEmpty() ? FString(TEXT("empty")) : FString::Join(Cells, TEXT(" "));
@@ -808,8 +1147,42 @@ FString UHOLGameScreen::Describe() const
 	const FString Workers = bEconomyShown
 		? FString::Printf(TEXT(", gatherers %s, idle %d"), *ShownGatherers.ToString(), FMath::Max(ShownIdleWorkers, 0))
 		: FString();
-	return FString::Printf(TEXT("resources %s, selection %s%s, grid %s, queue %s%s"), *Economy, *ShownSelection, *ShownActivity, *Grid, *Queue,
-		*Workers);
+	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
+	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
+	return FString::Printf(TEXT("resources %s, selection %s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *ShownActivity, *Grid, *Queue,
+		*Message, *Workers);
+}
+
+FString UHOLGameScreen::DescribeCells() const
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	TArray<FString> Parts;
+	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
+	{
+		const FString Content = bGridShown && GridCells[Cell] ? GridCells[Cell]->DescribeContent() : FString();
+		if (!Content.IsEmpty())
+		{
+			Parts.Add(FString::Printf(TEXT("%s: %s"), GridKeys[Cell], *Content.Replace(TEXT("\n"), TEXT(" "))));
+		}
+	}
+	return Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT("; "));
+}
+
+FString UHOLGameScreen::DescribeTooltips() const
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	TArray<FString> Parts;
+	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
+	{
+		const FString Tooltip = bGridShown && GridCells[Cell] ? GridCells[Cell]->DescribeTooltip() : FString();
+		if (!Tooltip.IsEmpty())
+		{
+			Parts.Add(FString::Printf(TEXT("%s: %s"), GridKeys[Cell], *Tooltip));
+		}
+	}
+	return Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT("; "));
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const
@@ -936,6 +1309,23 @@ void UHOLGameScreen::BuildLayout()
 	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
 	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	AddToRow(HealthRow, SelectionHealth, 0.f);
+	// A site's progress (J6a.5, D313): a bar and its percentage.
+	UHorizontalBox* ProgressRow = MakeHorizontalBox(TEXT("SelectionProgressRow"));
+	SelectionProgressRow = ProgressRow;
+	SelectionColumn->AddChildToVerticalBox(ProgressRow)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+	SelectionProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("SelectionProgress"));
+	FProgressBarStyle SiteBarStyle;
+	SiteBarStyle.SetBackgroundImage(FSlateRoundedBoxBrush(FLinearColor(0.08f, 0.08f, 0.1f, 1.f), 2.f));
+	SiteBarStyle.SetFillImage(FSlateRoundedBoxBrush(HOLUIStyle::Accent, 2.f));
+	SelectionProgress->SetWidgetStyle(SiteBarStyle);
+	USizeBox* SiteBarBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionProgressBox"));
+	SiteBarBox->SetWidthOverride(SiteBarWidth);
+	SiteBarBox->SetHeightOverride(8.f);
+	SiteBarBox->SetContent(SelectionProgress);
+	AddToRow(ProgressRow, SiteBarBox, 8.f);
+	SelectionProgressText = MakeText(TEXT("SelectionProgressText"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+	AddToRow(ProgressRow, SelectionProgressText, 0.f);
+	ProgressRow->SetVisibility(ESlateVisibility::Collapsed);
 	SelectionActivity = MakeText(TEXT("SelectionActivity"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	SelectionColumn->AddChildToVerticalBox(SelectionActivity)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
 
@@ -945,6 +1335,20 @@ void UHOLGameScreen::BuildLayout()
 	CommandSlot->SetHorizontalAlignment(HAlign_Right);
 	CommandSlot->SetVerticalAlignment(VAlign_Bottom);
 	CommandSlot->SetPadding(FMargin(ScreenMargin));
+
+	// The short message (D313), above the queue and the grid, wrapped within the grid's width; it lets the clicks through.
+	MessagePanel = MakePanel(TEXT("MessagePanel"));
+	UVerticalBoxSlot* MessageSlot = CommandColumn->AddChildToVerticalBox(MessagePanel);
+	MessageSlot->SetHorizontalAlignment(HAlign_Right);
+	MessageSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
+	USizeBox* MessageBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MessageBox"));
+	MessageBox->SetMaxDesiredWidth(GridWidth);
+	MessagePanel->SetContent(MessageBox);
+	MessageText = MakeText(TEXT("MessageText"), UHOLTextStyleHUDAlert::StaticClass(), FText::GetEmpty());
+	// Wrapped at a fixed width: a short message keeps its own width, a long one goes on two lines.
+	MessageText->SetWrapTextAt(GridWidth - 24.f);
+	MessageBox->SetContent(MessageText);
+	MessagePanel->SetVisibility(ESlateVisibility::Collapsed);
 
 	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
 	QueuePanel = MakePanel(TEXT("QueuePanel"));

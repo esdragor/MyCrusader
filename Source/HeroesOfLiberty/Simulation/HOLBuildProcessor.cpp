@@ -118,6 +118,14 @@ void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	// No builder anywhere (S7, most of a match): nothing more to do.
 	if (Queues.IsEmpty())
 	{
+		// The last builders gone: their sites show none (J6a.5); nothing to do once it is written.
+		for (const TPair<TWeakObjectPtr<AHOLBuilding>, FSiteStats>& Pair : SiteStats)
+		{
+			if (AHOLBuilding* Site = Pair.Key.Get())
+			{
+				Site->SetBuildersAtWork(0);
+			}
+		}
 		return;
 	}
 	Step.NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
@@ -558,6 +566,8 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 				*Site->GetTypeName().ToString(), Location.X, Location.Y, Builders);
 		}
 		Stats.LastBuilders = Builders;
+		// The site's block shows them to its owner (J6a.5, D313).
+		Site->SetBuildersAtWork(Builders);
 		const int64 Total = Site->GetTotalWork();
 		int64 Work = Site->GetConstructionWork();
 		bool bFinished = Total <= 0;
@@ -580,6 +590,7 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 		}
 		// Finished: it serves (population, deposit; D312); its builders go on at the next step.
 		Site->SetConstructionState(EHOLConstructionState::Finished);
+		Site->SetBuildersAtWork(0);
 		TArray<FString> ByBuilders;
 		for (int32 Index = 0; Index < UE_ARRAY_COUNT(Stats.StepsByBuilders); ++Index)
 		{
@@ -593,12 +604,16 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 			bInstant ? TEXT(", instant") : TEXT(""));
 		SiteStats.Remove(Pair.Key);
 	}
-	// The stats of sites cancelled or gone.
+	// The stats of sites cancelled or gone; a site nobody works on any more shows no builder (J6a.5).
 	for (auto It = SiteStats.CreateIterator(); It; ++It)
 	{
 		if (!It.Key().IsValid())
 		{
 			It.RemoveCurrent();
+		}
+		else if (!WorkersBySite.Contains(It.Key()))
+		{
+			It.Key()->SetBuildersAtWork(0);
 		}
 	}
 }

@@ -1,0 +1,227 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
+#include "Match/HOLResources.h"
+
+/** What a cell of the command grid does (D30, D313). */
+enum class EHOLGridCommand : uint8
+{
+	None,
+	/** Queues a unit at the player's selected building (J3, D282). */
+	Produce,
+	/** Starts the placement of a building (J6a.5, D313): the builders' grid, A house, Z lumber camp, E mining camp. */
+	Build,
+	/** Cancels the player's selected site, refunded (D311). */
+	CancelConstruction,
+};
+
+/** A cell's command and the type it names (the unit produced, the building placed). */
+struct FHOLGridCommand
+{
+	EHOLGridCommand Command = EHOLGridCommand::None;
+	FName TypeName;
+
+	bool IsNone() const { return Command == EHOLGridCommand::None; }
+	bool operator==(const FHOLGridCommand& Other) const = default;
+};
+
+/** What the player is told when a command does not go through as asked (D313): a short message above the grid. */
+enum class EHOLCommandFeedback : uint8
+{
+	None,
+	/** The stock does not cover the cost: nothing done. */
+	NotEnoughResources,
+	/** The building's queue is full (D283): nothing queued. */
+	QueueFull,
+	/** No room in the population: queued, but the production waits (« Population maximale — construisez des maisons »). */
+	PopulationFull,
+	/** A red ghost clicked: nothing placed. */
+	PlacementRefused,
+	/** An F key (D30) while the player has no building of its category (« Aucun bâtiment militaire »): nothing selected. */
+	NoBuilding,
+};
+
+struct FHOLCommandFeedback
+{
+	EHOLCommandFeedback Kind = EHOLCommandFeedback::None;
+	/** NotEnoughResources: the first resource missing, in the order Food, Wood, Stone, Gold. */
+	EHOLResource Resource = EHOLResource::Food;
+	/** PlacementRefused: why. */
+	EHOLPlacementRefusal Refusal = EHOLPlacementRefusal::None;
+	/** NoBuilding: the category of the F key. */
+	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
+
+	bool IsNone() const { return Kind == EHOLCommandFeedback::None; }
+	bool operator==(const FHOLCommandFeedback& Other) const = default;
+};
+
+/** What the command grid is read from: the player's selection as this machine knows it. */
+struct FHOLGridContext
+{
+	/**
+	 * The player's own building is selected: finished, it produces; not finished, its site may be cancelled. One of
+	 * several shown together (bBuildingGroup: « Tous » or a subgroup of several, an F key, D30): its cells are read the
+	 * same, never « Annuler » (a group is never cancelled at once), then merged with the others' (MergeCommands).
+	 */
+	bool bOwnBuilding = false;
+	bool bBuildingGroup = false;
+	bool bBuildingFinished = false;
+	TArray<FName> Produces;
+	/**
+	 * The player's own selected units count at least one builder (a unit that gathers, CarryCapacity > 0: what the
+	 * server checks for a build order, J6a.4).
+	 */
+	bool bBuilders = false;
+	/** The types builders build and their cell (BuildGridSlot of the building type table). */
+	TArray<TPair<FName, int32>> Buildable;
+};
+
+/** One of the player's buildings in the cycle of an F key (D30): its rank (its type) and a key stable on this machine. */
+struct FHOLCycleBuilding
+{
+	int32 Rank = 0;
+	uint32 Key = 0;
+};
+
+/** One of the selected buildings that could take a unit (a group, D30): its queue, its limit, its key. */
+struct FHOLQueueChoice
+{
+	int32 QueueLength = 0;
+	int32 MaxQueue = 0;
+	uint32 Key = 0;
+};
+
+/** One building of a group (an F key, D30), for its subgroups: its type, and whether it is a subgroup to itself. */
+struct FHOLGroupMember
+{
+	FName TypeName;
+	/** A main centre (the user's 2nd trial of J6a.5: « un forum n'a pas de catégorie ; deux forums sont distincts »). */
+	bool bAlone = false;
+};
+
+/**
+ * A subgroup of a group of buildings, the one Tab makes active (the user's 2nd trial of J6a.5, AoE4's way): « Tous »
+ * (every building of the group), the buildings of one type, or one main centre alone. The selection stays the group.
+ */
+struct FHOLSubgroup
+{
+	bool bAll = false;
+	/** None for « Tous ». */
+	FName TypeName;
+	/** Its buildings: their indices in the group, in the group's order. */
+	TArray<int32> Members;
+
+	bool operator==(const FHOLSubgroup& Other) const = default;
+};
+
+/**
+ * What a cell of the grid shows of its command (the user's trial of J6a.5): its icon, its name while it has none; never
+ * its cost, which only its tooltip gives (what is missing in red there), a greyed cell telling it cannot be paid.
+ */
+struct FHOLGridCellFace
+{
+	bool bIcon = false;
+	bool bName = false;
+	bool bCost = false;
+};
+
+/**
+ * Pure rules of the command grid (D30, D281, D313), tested on their own: what each cell does for the selection, what
+ * a cell shows, what a press tells the player when it does not go through, and the F keys: the player's buildings of a
+ * category selected together, then the camera from one to the next (the user's trial of J6a.5); a group's subgroups
+ * (Tab), whose cells merge, and the even spread of its production (the user's 2nd trial of J6a.5).
+ */
+namespace HOLCommandGrid
+{
+	/** Cells of the grid (A Z E R / Q S D F / W X C V). */
+	inline constexpr int32 NumCells = 12;
+	/** The cell of a selected site's « Annuler » (V, bottom right: far from the keys that build). */
+	inline constexpr int32 CancelCell = 11;
+
+	/**
+	 * What Cell does: the selected building's production (finished) or its cancel cell (a site); else, with builders
+	 * selected, the building whose BuildGridSlot is Cell; else nothing.
+	 */
+	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
+
+	/** The first resource of Cost the stock does not cover (Food, Wood, Stone, Gold); false when it covers it all. */
+	HEROESOFLIBERTY_API bool FindMissingResource(const FHOLResources& Stock, const FHOLResources& Cost, EHOLResource& OutResource);
+
+	/**
+	 * A unit asked at a building: queue full first, then the cost (both refused by the server, D282), then the population
+	 * (queued, the production waits for room: PopulationFull, which does not block). None: it goes through.
+	 */
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue,
+		int32 PopulationUsed, int32 PopulationCap, int32 Places);
+
+	/** A building asked (D313): its cost, taken at its placement (D311). */
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost);
+
+	/** The command is not sent (the population's feedback is only told: the unit is queued). */
+	HEROESOFLIBERTY_API bool Blocks(const FHOLCommandFeedback& Feedback);
+
+	/** A unit of Places waits for room in the population (the production stops, D313). */
+	HEROESOFLIBERTY_API bool IsPopulationBlocked(int32 PopulationUsed, int32 PopulationCap, int32 Places);
+
+	/** "not enough Wood", "queue full", "population full", "placement refused (on a building)", "no Military building", "none": for the logs. */
+	HEROESOFLIBERTY_API FString Describe(const FHOLCommandFeedback& Feedback);
+
+	/** What a cell shows (the user's trial of J6a.5): the icon when the command has one, else its name; the cost never. */
+	HEROESOFLIBERTY_API FHOLGridCellFace GetCellFace(bool bHasIcon);
+
+	/** The rank of a type in the cycle of its F key: the main centre first (no grid slot), then by its slot in the builders' grid. */
+	HEROESOFLIBERTY_API int32 GetCycleRank(const FHOLBuildingTypeRow& Type);
+
+	/**
+	 * Whether the F key of Category selects a building of Type (D30, the user's trial of J6a.5): its category, whatever
+	 * its state: finished, under construction, or a foundation not started (a ghost, its owner's alone: the user's 2nd
+	 * trial of J6a.5).
+	 */
+	HEROESOFLIBERTY_API bool IsSelectedByCategory(const FHOLBuildingTypeRow& Type, EHOLBuildingCategory Category);
+
+	/**
+	 * A press of an F key repeats the last one (the camera goes to the next building, the selection stays) when it is the
+	 * same key and the selection is still what that key selected (the same buildings, in any order); else it selects the
+	 * category's buildings again, the camera where it is.
+	 */
+	HEROESOFLIBERTY_API bool IsRepeatPress(TConstArrayView<uint32> Selected, TConstArrayView<uint32> LastSelected, bool bSameKey);
+
+	/**
+	 * The cycle of an F key (D30): of the category's buildings, sorted by rank then key, the index (in Buildings) of the
+	 * first one after LastKey, or of the first of all after the last one or when LastKey is not one of them; INDEX_NONE
+	 * when there is none. Each repeated press goes to the next one.
+	 */
+	HEROESOFLIBERTY_API int32 NextInCycle(TConstArrayView<FHOLCycleBuilding> Buildings, uint32 LastKey);
+
+	/** A building of this type is a subgroup to itself in a group: the main centre. */
+	HEROESOFLIBERTY_API bool IsAloneInGroup(FName TypeName);
+
+	/**
+	 * The subgroups Tab goes through (the user's 2nd trial of J6a.5): « Tous » first, then one per type in the group's
+	 * order (the first building of each type places it), except each main centre, a subgroup to itself at its place. A
+	 * group of one type and no centre still has « Tous » then its type. None for an empty group.
+	 */
+	HEROESOFLIBERTY_API TArray<FHOLSubgroup> SplitSubgroups(TConstArrayView<FHOLGroupMember> Members);
+
+	/** The order in which the buildings of « Tous » give their cells: the main centres first, then the group's order. */
+	HEROESOFLIBERTY_API TArray<int32> GetCommandPriority(TConstArrayView<FHOLGroupMember> Members);
+
+	/**
+	 * The cells of several buildings shown together (« Tous », a subgroup): PerBuilding holds each building's cells
+	 * (NumCells each, in the group's order), Priority the order they are read in; a cell two of them fill goes to the
+	 * first one (« Tous »: the forum's Peasant on A before a mill's technology on A).
+	 */
+	HEROESOFLIBERTY_API TArray<FHOLGridCommand> MergeCommands(TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, TConstArrayView<int32> Priority);
+
+	/**
+	 * The building of a group (or subgroup) that takes a unit asked, spread evenly (the user's 2nd trial of J6a.5): of
+	 * those with room, the fewest queued; between equals, the first after the one LastKey names in the group's order
+	 * (each press goes to the next one: 4 presses on 2 centres give 2 + 2, even before their queues reach this machine),
+	 * or the first of them when LastKey is none of them. INDEX_NONE when every queue is full.
+	 */
+	HEROESOFLIBERTY_API int32 PickEvenly(TConstArrayView<FHOLQueueChoice> Choices, uint32 LastKey);
+}

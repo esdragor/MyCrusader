@@ -52,6 +52,11 @@ UHOLTextStyleHUDSmall::UHOLTextStyleHUDSmall()
 	SetFont(13.f, TEXT("Regular"), HOLUIStyle::Text);
 }
 
+UHOLTextStyleHUDTiny::UHOLTextStyleHUDTiny()
+{
+	SetFont(11.f, TEXT("Regular"), HOLUIStyle::Text);
+}
+
 UHOLTextStyleHUDLabel::UHOLTextStyleHUDLabel()
 {
 	SetFont(13.f, TEXT("Regular"), HOLUIStyle::TextMuted);
@@ -81,6 +86,18 @@ UHOLHUDButtonStyle::UHOLHUDButtonStyle()
 	SelectedTextStyle = UHOLTextStyleHUDSmall::StaticClass();
 	SelectedHoveredTextStyle = UHOLTextStyleHUDSmall::StaticClass();
 	DisabledTextStyle = UHOLTextStyleHUDLabel::StaticClass();
+}
+
+UHOLHUDButtonStyleGreyed::UHOLHUDButtonStyleGreyed()
+{
+	constexpr float Radius = 3.f;
+	const FLinearColor Greyed(0.035f, 0.035f, 0.045f, 1.f);
+	NormalBase = FSlateRoundedBoxBrush(Greyed, Radius);
+	NormalHovered = FSlateRoundedBoxBrush(Greyed, Radius, HOLUIStyle::TextMuted, 1.f);
+	NormalPressed = NormalHovered;
+	SelectedBase = NormalBase;
+	SelectedHovered = NormalHovered;
+	SelectedPressed = NormalHovered;
 }
 
 UHOLButtonStyle::UHOLButtonStyle()
