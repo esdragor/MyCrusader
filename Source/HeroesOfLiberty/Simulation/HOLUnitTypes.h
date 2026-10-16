@@ -60,7 +60,7 @@ struct HEROESOFLIBERTY_API FHOLResourceSequences
  * A prop of a unit's skinned mesh for each of the four base resources (J5c.2): the tool it holds gathering each one, or
  * the load it carries. A prop is part of the mesh, hidden unless the instance's 4th custom float names it (the Peasant's
  * material, Tools/Editor/make_peasant_mesh.py): 1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte
- * of gold. 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
+ * of gold, 7 hammer (the builder's, BuildProp). 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
  * "(Food=3,Wood=4,Stone=5,Gold=6)" in the table, like GatherRates.
  */
 USTRUCT()
@@ -177,6 +177,16 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 
 	UPROPERTY()
 	FHOLResourceProps CarryProps;
+
+	/** Working at a site (J6a.4): its gesture (INDEX_NONE: none, it stands idle), at its play rate, and its prop (0: none). */
+	UPROPERTY()
+	int32 BuildSequence = INDEX_NONE;
+
+	UPROPERTY()
+	float BuildPlayRate = 1.f;
+
+	UPROPERTY()
+	int32 BuildProp = 0;
 
 	/** Lengths (s) of the provider's sequences by index, read from it by the factory: random start offsets (D234). */
 	UPROPERTY()
@@ -298,6 +308,21 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation")
 	FHOLResourceProps CarryProps;
 
+	/**
+	 * Sequence played working at a site (J6a.4: the Peasant's hammering), whatever the speed, as a gathering gesture. -1:
+	 * none, it stands idle.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
+	int32 BuildSequence = INDEX_NONE;
+
+	/** Play rate of BuildSequence (a gesture: the mesh scale does not change it). */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
+	float BuildPlayRate = 1.f;
+
+	/** Prop of SkinnedMesh shown while building (J6a.4: the hammer, 7). 0: none. */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0", ClampMax = "8"))
+	int32 BuildProp = 0;
+
 	/** What producing one unit costs (J3, D283), taken when it is queued. Read by the production, not by Mass. */
 	UPROPERTY(EditAnywhere, Category = "Production")
 	FHOLResources Cost;
@@ -344,6 +369,9 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.CarryIdleSequences = CarryIdleSequences;
 	Constants.GatherProps = GatherProps;
 	Constants.CarryProps = CarryProps;
+	Constants.BuildSequence = BuildSequence;
+	Constants.BuildPlayRate = BuildPlayRate;
+	Constants.BuildProp = BuildProp;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
 	return Constants;

@@ -338,7 +338,7 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 		}
 		if (HOLConstruction::IsAtSite(Footprint, Location, Builder.Constants.Radius, ArrivalGap))
 		{
-			StartBuilding(Builder);
+			StartBuilding(Builder, Footprint);
 			return;
 		}
 		// Short of the site (pushed away, its spot taken by a body): another spot.
@@ -371,7 +371,7 @@ void UHOLBuildProcessor::WalkToSite(const FStepContext& Step, FBuilder& Builder,
 	{
 		Builder.Build.Spot = Builder.Location;
 		SpotClaims.Add({ Builder.Entity, FVector2D(Builder.Location) });
-		StartBuilding(Builder);
+		StartBuilding(Builder, Footprint);
 		return;
 	}
 	FVector Spot;
@@ -440,9 +440,10 @@ bool UHOLBuildProcessor::IsSpotTaken(const FVector2D& Spot, const double MinSpac
 	});
 }
 
-void UHOLBuildProcessor::StartBuilding(FBuilder& Builder)
+void UHOLBuildProcessor::StartBuilding(FBuilder& Builder, const FBox2D& Footprint)
 {
 	Builder.Build.Phase = EHOLBuildPhase::Building;
+	Builder.Build.SiteFootprint = Footprint;
 	Builder.Build.Misses = 0;
 	Builder.Build.bWalkIssued = false;
 	Builder.State.Activity = EHOLUnitActivity::Building;

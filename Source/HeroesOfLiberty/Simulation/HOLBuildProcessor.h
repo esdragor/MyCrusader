@@ -108,7 +108,8 @@ private:
 		FMassEntityHandle Self, FVector& OutSpot);
 	/** Another builder's spot within MinSpacing of Spot. */
 	bool IsSpotTaken(const FVector2D& Spot, double MinSpacing, FMassEntityHandle Self) const;
-	void StartBuilding(FBuilder& Builder);
+	/** At its spot: it works there, the site's footprint kept for the display (its hammering turned towards it). */
+	void StartBuilding(FBuilder& Builder, const FBox2D& Footprint);
 	/** The head of its queue is a source: handed to the gathering (as a gather order would), until its massif is used up. */
 	void StartGathering(const FStepContext& Step, FBuilder& Builder, int32 SourceIndex);
 	/**

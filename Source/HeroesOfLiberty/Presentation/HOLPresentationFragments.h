@@ -19,8 +19,8 @@ struct HEROESOFLIBERTY_API FHOLUnitAnimationStateFragment : public FMassFragment
 	bool bStarted = false;
 
 	/**
-	 * Gathering at its source (J5c.1): drawn turned towards it, at FacingYaw (deg), found when its gesture starts; the
-	 * orientation of the simulation does not change.
+	 * Gathering at its source (J5c.1), or building at its site (J6a.4): drawn turned towards it, at FacingYaw (deg), found
+	 * when its gesture starts; the orientation of the simulation does not change.
 	 */
 	bool bFacingSource = false;
 	float FacingYaw = 0.f;

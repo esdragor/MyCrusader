@@ -24,6 +24,14 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 			return Choice;
 		}
 	}
+	if (Input.Activity == EHOLUnitActivity::Building && Type.BuildSequence != INDEX_NONE)
+	{
+		Choice.Sequence = Type.BuildSequence;
+		Choice.PlayRate = Type.BuildPlayRate;
+		Choice.bFacesSite = true;
+		Choice.Prop = static_cast<uint8>(Type.BuildProp);
+		return Choice;
+	}
 
 	const bool bWalking = IsWalkSequence(Type, Input.PlayingSequence);
 	const bool bWantsWalk = bWalking ? Input.Speed >= Type.Speed * WalkStopSpeedShare : Input.Speed > Type.Speed * WalkStartSpeedShare;

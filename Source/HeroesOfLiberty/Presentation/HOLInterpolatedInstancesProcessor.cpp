@@ -2,7 +2,9 @@
 
 #include "Presentation/HOLInterpolatedInstancesProcessor.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "MassCommonFragments.h"
 #include "MassExecutionContext.h"
 #include "MassLODFragments.h"
@@ -16,6 +18,7 @@
 #include "Presentation/HOLPresentationFragments.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -70,6 +73,75 @@ namespace UE::HeroesOfLiberty::Presentation
 		OutLocation = Sources->GetSources()[SourceIndex].Location;
 		return true;
 	}
+
+	/** How far (cm) beyond its body a client looks for the site of a builder: it works at contact (D312). */
+	constexpr double MaxSiteGap = 200.;
+
+	/**
+	 * The footprints of the buildings not finished that this machine knows (J6a.4: sites, and its own bare foundations),
+	 * gathered at the first need of the frame: a client knows only that a unit builds, not where.
+	 */
+	struct FSiteFootprints
+	{
+		UWorld* World = nullptr;
+		bool bGathered = false;
+		TArray<FBox2D, TInlineAllocator<16>> Footprints;
+
+		TConstArrayView<FBox2D> Get()
+		{
+			if (!bGathered && World)
+			{
+				bGathered = true;
+				for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+				{
+					if (!It->IsFinished() && It->GetType())
+					{
+						Footprints.Add(It->GetFootprintBounds());
+					}
+				}
+			}
+			return Footprints;
+		}
+	};
+
+	/**
+	 * Where a builder's hammering is turned to (J6a.4): the point of its site's footprint nearest it (it stands beside one
+	 * side). In solo its site in the simulation (FHOLBuildFragment); on a client, which does not receive it, the building
+	 * not finished whose footprint is nearest the unit, within MaxSiteGap of its body. False if none is known.
+	 */
+	bool FindBuiltSite(FSiteFootprints& Sites, const FHOLBuildFragment* Build, const FVector& Location, const float BodyRadius,
+		FVector& OutLocation)
+	{
+		const FVector2D Location2D(Location);
+		FBox2D Footprint(ForceInit);
+		if (Build)
+		{
+			if (Build->Phase == EHOLBuildPhase::Building)
+			{
+				Footprint = Build->SiteFootprint;
+			}
+		}
+		else
+		{
+			double BestDistanceSquared = FMath::Square(BodyRadius + MaxSiteGap);
+			for (const FBox2D& Candidate : Sites.Get())
+			{
+				const double DistanceSquared = Candidate.ComputeSquaredDistanceToPoint(Location2D);
+				if (DistanceSquared <= BestDistanceSquared)
+				{
+					BestDistanceSquared = DistanceSquared;
+					Footprint = Candidate;
+				}
+			}
+		}
+		if (!Footprint.bIsValid)
+		{
+			return false;
+		}
+		const FVector2D Nearest = Footprint.GetClosestPointTo(Location2D);
+		OutLocation = FVector(Nearest.X, Nearest.Y, Location.Z);
+		return true;
+	}
 }
 
 UHOLInterpolatedInstancesProcessor::UHOLInterpolatedInstancesProcessor()
@@ -92,8 +164,10 @@ void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMass
 	EntityQuery.AddRequirement<FHOLUnitAnimationStateFragment>(EMassFragmentAccess::ReadWrite);
 	// A client's display entities (D271) carry the received velocity: there is no fixed step to measure one on.
 	EntityQuery.AddRequirement<FHOLNetUnitDisplayFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
-	// In solo, the load and the source of a gatherer (J5c.1); a client reads the received state instead.
+	// In solo, the load and the source of a gatherer (J5c.1), the site of a builder (J6a.4); a client reads the received
+	// state instead.
 	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLBuildFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 	EntityQuery.AddChunkRequirement<FMassVisualizationChunkFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.SetChunkFilter(&FMassVisualizationChunkFragment::AreAnyEntitiesVisibleInChunk);
@@ -106,13 +180,15 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 {
 	using namespace UE::HeroesOfLiberty::Presentation;
 
-	const UWorld* World = EntityManager.GetWorld();
+	UWorld* World = EntityManager.GetWorld();
 	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
 	const float Alpha = Simulation ? Simulation->GetInterpolationAlpha() : 1.f;
 	const float StepSeconds = Simulation ? Simulation->GetStepSeconds() : 0.f;
 	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	FSiteFootprints Sites;
+	Sites.World = World;
 
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -130,6 +206,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 		const TArrayView<FHOLUnitAnimationStateFragment> AnimationStates = Context.GetMutableFragmentView<FHOLUnitAnimationStateFragment>();
 		const TConstArrayView<FHOLNetUnitDisplayFragment> NetDisplays = Context.GetFragmentView<FHOLNetUnitDisplayFragment>();
 		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
+		const TConstArrayView<FHOLBuildFragment> Builds = Context.GetFragmentView<FHOLBuildFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -173,6 +250,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					const FHOLUnitStateFragment& State = States[EntityIt];
 					const FHOLNetUnitDisplayFragment* NetDisplay = !NetDisplays.IsEmpty() ? &NetDisplays[EntityIt] : nullptr;
 					const FHOLGatherFragment* Gather = !NetDisplay && !Gathers.IsEmpty() ? &Gathers[EntityIt] : nullptr;
+					const FHOLBuildFragment* Build = !NetDisplay && !Builds.IsEmpty() ? &Builds[EntityIt] : nullptr;
 					FHOLUnitAnimationStateFragment& AnimationState = AnimationStates[EntityIt];
 					FAnimSequenceTrackAutoPlayData& AnimData = Animations[EntityIt].AnimData;
 					FHOLUnitAnimationInput Input;
@@ -195,10 +273,12 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						AnimData.LoopMode = EAnimSequenceTrackLoopMode::Loop;
 						AnimationState.bStarted = true;
 
-						// A gatherer turns towards its source once, when its gesture starts (it stands there), at once (D304).
+						// A gatherer turns towards its source once, when its gesture starts (it stands there), at once (D304); a
+						// builder towards its site (J6a.4), the same way.
 						FVector SourceLocation;
-						AnimationState.bFacingSource = Choice.bFacesSource
-							&& FindGatheredSource(Sources, Gather, To.GetLocation(), State.GatherResource, SourceLocation)
+						AnimationState.bFacingSource = ((Choice.bFacesSource
+								&& FindGatheredSource(Sources, Gather, To.GetLocation(), State.GatherResource, SourceLocation))
+							|| (Choice.bFacesSite && FindBuiltSite(Sites, Build, To.GetLocation(), Constants.Radius, SourceLocation)))
 							&& FVector::DistSquared2D(SourceLocation, To.GetLocation()) > 1.;
 						if (AnimationState.bFacingSource)
 						{

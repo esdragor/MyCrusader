@@ -219,6 +219,18 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 				}
 			}
 		}
+		// Building (J6a.4): the same, the gesture or the prop out of range dropped (idle played, nothing shown).
+		if (!ensureMsgf(Constants.BuildSequence >= INDEX_NONE && Constants.BuildSequence < NumSequences,
+			TEXT("Unit type '%s': building sequence %d out of the %d sequences of %s"), *TypeName.ToString(), Constants.BuildSequence, NumSequences,
+			*Constants.AnimationProvider.ToString()))
+		{
+			Constants.BuildSequence = INDEX_NONE;
+		}
+		if (!ensureMsgf(Constants.BuildProp >= 0 && Constants.BuildProp <= FHOLResourceProps::MaxId, TEXT("Unit type '%s': building prop %d out of 0-%d"),
+			*TypeName.ToString(), Constants.BuildProp, FHOLResourceProps::MaxId))
+		{
+			Constants.BuildProp = 0;
+		}
 		Constants.SequenceLengths.SetNum(NumSequences);
 		for (int32 Sequence = 0; Sequence < NumSequences; ++Sequence)
 		{

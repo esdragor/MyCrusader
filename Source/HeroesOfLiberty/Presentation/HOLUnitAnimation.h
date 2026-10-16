@@ -35,6 +35,8 @@ struct FHOLUnitAnimationChoice
 	float PlayRate = 1.f;
 	/** Gathering at its source: drawn facing it (display only, the simulation's orientation does not change). */
 	bool bFacesSource = false;
+	/** Building at its site (J6a.4): drawn facing it, as a gatherer its source. */
+	bool bFacesSite = false;
 	/**
 	 * Prop of the mesh shown (J5c.2: the tool of the gesture, the load carried; FHOLResourceProps), 0 none. Sent every frame
 	 * as the instance's 4th custom float: it changes at once, while the sequence blends in 0.2 s.
@@ -58,9 +60,11 @@ namespace HOLUnitAnimation
 
 	/**
 	 * Gathering at its source: the gesture of the resource (axe, pick, picking berries) and its tool, whatever its speed
-	 * (pushed aside, it keeps working); else walking (any activity: an order, the round trip, a push) with a load: the
-	 * carrying walk of the load and the load; else standing with a load: the loaded idle of the load and the load (J5c.2:
-	 * the load stays shown); else the walk or the idle by speed, as before (D234), no prop. A walk's play rate is divided
+	 * (pushed aside, it keeps working); else working at its site (J6a.4, Building; walking there is Moving): the type's
+	 * building gesture (the Peasant's hammering) and its prop (the hammer), the same way, a load not shown; else walking
+	 * (any activity: an order, the round trip, a push) with a load: the carrying walk of the load and the load; else
+	 * standing with a load: the loaded idle of the load and the load (J5c.2: the load stays shown); else the walk or the
+	 * idle by speed, as before (D234), no prop. A walk's play rate is divided
 	 * by the mesh scale (a larger mesh takes longer strides), a gesture's or an idle's is not. A type without the sequence
 	 * wanted plays its idle or walk, without a prop.
 	 */

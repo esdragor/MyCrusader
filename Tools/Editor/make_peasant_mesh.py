@@ -8,7 +8,7 @@
                                                  of peasant_props.py, each vertex skinned 100 % to its prop's bone
   /Game/Units/Mannequin/TP_Peasant               its animation provider: TP_Mannequin_Classic's sequences, same order
                                                  (so the same indices in the type table), then the loaded idles (8 food,
-                                                 9 wood, 10 stone and gold)
+                                                 9 wood, 10 stone and gold) and the builder's hammering (11, J6a.4)
 
 The props (peasant_props.mesh_parts) are written in the bind pose, in component space, as peasant_props.bind_mesh() puts
 them: flat faceted primitives, one sRGB colour per face. A vertex's colour alpha holds the MASK of the props it belongs
@@ -47,12 +47,13 @@ PROVIDER_NAME = "TP_Peasant"
 MATERIAL_FOLDER = "/Game/Units/Materials"
 MATERIAL_NAME = "M_UnitPlayerColorProps"
 PEASANT_ANIMATIONS = "/Game/Units/Mannequin/Animations/"
-# Appended after TP_Mannequin_Classic's sequences (indices 8, 9, 10 in Tools/Data/UnitTypes.csv, CarryIdleSequences).
-# Add at the end only: an index that moves changes what the Peasant plays.
-LOADED_IDLES = [
+# Appended after TP_Mannequin_Classic's sequences (indices 8, 9, 10 in Tools/Data/UnitTypes.csv, CarryIdleSequences;
+# 11, BuildSequence). Add at the end only: an index that moves changes what the Peasant plays.
+PEASANT_SEQUENCES = [
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryFood",   # 8 standing with food
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryWood",   # 9 standing with wood
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryStone",  # 10 standing with stone and gold
+    PEASANT_ANIMATIONS + "A_Peasant_Build",           # 11 building (J6a.4: hammering, the hammer is prop 7)
 ]
 SKELETON_JSON = os.path.join(TOOLS_DIR, "Data", "UE4MannequinSkeleton.json")
 
@@ -422,7 +423,7 @@ def make_mesh(material):
 def make_provider(mesh):
     source = load(SOURCE_PROVIDER)
     sequences = [entry.get_editor_property("sequence") for entry in source.get_editor_property("sequences")]
-    sequences += [load(path) for path in LOADED_IDLES]
+    sequences += [load(path) for path in PEASANT_SEQUENCES]
     path = MESH_FOLDER + "/" + PROVIDER_NAME
     provider = existing(path)
     if provider is None:

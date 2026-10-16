@@ -37,6 +37,12 @@ struct HEROESOFLIBERTY_API FHOLBuildFragment : public FMassFragment
 	/** Where it walks and stands, around the head's footprint. */
 	FVector Spot = FVector::ZeroVector;
 
+	/**
+	 * The footprint of the site it works on, written when it starts working there (Phase Building): its hammering is drawn
+	 * turned towards the nearest point of it (J6a.4, display only).
+	 */
+	FBox2D SiteFootprint = FBox2D(ForceInit);
+
 	/** Its move order's serial when it gave itself the walk to Spot: a new serial, then no order, is the arrival. */
 	uint32 OrderSerialBefore = 0;
 
