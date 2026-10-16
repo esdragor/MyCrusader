@@ -109,6 +109,10 @@ vérifier sur S1 et S2.
    inactifs, touche « . », textes fr / en / ja ; voir « Plan de J5 »). **S1 / S2 / S7 courts au repos faits** (2026-10-15,
    tous PASS : S1 2,23 ms, S2 2,78 ms, S7 2,91 ms) ; **S5 court au repos fait** (serveur recuit, PASS à 31,08 Ko/s,
    marge mince). Plus aucune mesure reportée.
+11. **Plan de J6 (construction) fait** (2026-10-15, en parallèle de J5b.2, autre session) : D310 à D314 (D307 à D309
+   laissées à J5) ; deux parties jouables **J6a** (maison et chantier, **correctif du navmesh du centre principal en
+   premier**, J6a.1) et **J6b** (camps, S7 sur des camps bâtis) ; voir « Plan de J6 ». **Aucun code avant la clôture de
+   J5** ; reprise ensuite à J6a.1.
 12. **J5b.2 faite** (2026-10-15, avec D307, D308 et D309 ; **non commitée** : essai de l'utilisateur attendu). Suite :
    **3e essai de l'utilisateur** (D309 : Paysans en aller-retour qui traversent tout, inactif devant une source pleine ;
    HUD déjà jugé « super », détours de D308 jugés moindres), puis **commit** de J5b.2 + D307 à D309, puis **S2 et S7
@@ -571,6 +575,152 @@ posée sur le squelette instancié ; reconstruction des tuiles quand une forêt 
   maillages du type d'unité (Mass lui envoie la même animation), cachée par une donnée par instance ; coût : chaque
   Paysan dessine toutes les pièces, à mesurer sur S7. Repli : instance statique posée d'après l'unité (épaule, dos),
   sans suivre les mains.
+
+## Plan de J6 — la construction (à valider question par question)
+
+Mené **en parallèle de J5b.2, dans une autre session** (ouvert le 2026-10-15) ; **aucun code avant la clôture de J5**.
+Décisions à partir de **D310** (D307 à D309 laissées à J5). Ce plan n'écrit que dans cette section ; le GDD ne change
+qu'à la clôture de J6.
+
+Repères : § 5.3 et D83 (maisons ~ +10 de population, plafond 175), § 6 et D22 (construction libre, vision requise, rien
+près d'un centre principal ennemi, règles propres à certains bâtiments), D128 (production militaire par catégorie),
+§ 7.3 et D30 (F2 bâtiments économiques, grille `A Z E R / Q S D F / W X C V`), § 15 (« ce qu'il peut construire »),
+§ 17 (bâtiments économiques du prototype : maison, camps de collecte bois / pierre / or, ferme, marché), D252
+(construction après J5), D260 (bâtiment = acteur répliqué, valeurs en table), D261 (formes provisoires), D281 (HUD :
+grille 3 × 4, blocs à leur place définitive), D286 (navmesh à modificateurs dynamiques : une emprise posée refait ses
+seules tuiles), D296 (dépôt le plus proche). Déjà en place : `AHOLBuilding` répliqué apparu par le serveur, table
+`BuildingTypes` (emprise, hauteur, points de vie, `PopulationProvided`, `Produces`, `Accepts`), plafond de population
+calculé d'après les bâtiments (`GetPopulationCap`, **10 places avec le seul centre**), `LumberCamp` provisoire (S7
+seulement), grille de commandes avec la case « Paysan », ordres par la file de commandes vérifiés par le serveur.
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J6 : quels bâtiments, ce qui marche à la fin. | **tranché (D310)** : maison, camp de bûcherons, camp de mineurs (pierre et or) ; ferme et marché à l'étape suivante ; **+ avertissement : le navmesh frôle ou entre dans le centre principal, à corriger** |
+| Q2 | **Pose** : fantôme, emplacement valide (grille ou libre, recouvrements, sources, rayon anti-rush, vision), coût payé quand, pose en file (Maj). | **tranché (D311)** : fantôme vert / rouge calé sur une grille de ~1 m, sans rotation, payé à la pose, Maj pour poser en file, serveur qui revérifie |
+| Q3 | **Bâtir** : fondation, Paysans bâtisseurs (seuls ou à plusieurs), durée, annulation, ce que font les Paysans après. | **tranché (D312)** : plusieurs bâtisseurs à rendement décroissant ; camp fini → récolte de la source la plus proche qu'il accepte ; maison finie → chantier suivant ou inactif |
+| Q4 | **Commande et retour visuel** : grille de construction du Paysan, touches, coût affiché, manque de ressources, bloc d'un chantier. | **tranché (D313)** : grille directe du Paysan (A, Z, E), infobulle et coût, case grisée et message bref, « population maximale », bloc du chantier avec annulation, F2 |
+| Q5 | **Vérification** (tests, `quick_check` solo et 2 clients, stress tests) et découpage en parties jouables. | **tranché (D314)** : deux parties jouables J6a (maison et chantier, correctif du navmesh en premier) et J6b (camps, S7 sur des camps bâtis en cours de test), chacune finie par l'essai de l'utilisateur |
+
+**Tranché — D310 Périmètre : maison et camps de collecte** (choix de l'utilisateur, conforme à la recommandation).
+- **Maison** (~ +10 de population, en bois ; valeurs indicatives) : le joueur dépasse les 10 places du seul centre.
+- **Camp de bûcherons** (dépôt du bois) et **camp de mineurs** (dépôt de la pierre **et** de l'or, un seul camp façon
+  AoE4, lecture du § 17 « camps de collecte (bois, pierre, or) ») : dépôts au plus près des sources (filons à 60 m du
+  centre sur `Plain`). Le `LumberCamp` provisoire de S7 devient le vrai camp.
+- À la fin de J6 : le joueur choisit où bâtir, ses Paysans bâtissent, la population monte, les allers-retours
+  raccourcissent (dépôt le plus proche de D296, colonne `Accepts` déjà là).
+- Plus tard : **ferme** (source infinie de nourriture quand les baies sont épuisées, 6 × 200 par emplacement) et
+  **marché** (D70, D84), à l'étape suivante ; militaire avec l'armée (D128).
+- Écartés : **A + ferme** (la ferme est un bâtiment-source, touche le registre et la boucle de récolte : J6 presque
+  doublée) ; **maison seule** (pas de vraie décision de placement sans les camps).
+- **⚠️ Avertissement de l'utilisateur (2026-10-15) : le navmesh du centre principal (« forum ») passe très près, voire
+  dedans** ; les Paysans frôlent ou entrent dans le bâtiment. **À corriger dans J6**, pour le centre et chaque bâtiment
+  posé (maisons et camps serrés les uns contre les autres l'aggraveront). Piste à vérifier : la zone interdite
+  (`UNavArea_Null`) est une boîte **exactement** de l'emprise (`AHOLBuilding::FitNavObstacle`) ; un modificateur de zone
+  n'est pas érodé du rayon de l'agent comme un mur, donc le centre d'un Paysan longe le bord et son corps entre à moitié
+  dans le bâtiment. Remède probable : élargir la boîte du rayon du corps et d'une marge, la même règle pour tous les
+  bâtiments ; vérifier aussi les cylindres des sources (D297) et l'arrivée au dépôt (places au bord de l'emprise, D296).
+  Vérification attendue : aucun Paysan dans l'emprise d'un bâtiment (contrôle scripté dans `quick_check`).
+
+**Tranché — D311 Pose : grille, sans rotation, payé à la pose, Maj pour poser en file** (choix de l'utilisateur,
+conforme à la recommandation, façon AoE4).
+- **Fantôme** du bâtiment sous le curseur, **vert** si posable, **rouge** sinon ; calé sur une **grille de ~1 m**
+  (valeur indicative) ; **orientation fixe**. Les bâtiments peuvent se toucher (rangées de maisons en obstacle, D83 ;
+  prépare les murs).
+- Pose refusée si l'emprise **chevauche un bâtiment ou une source**, sort de la **carte** ou du **navmesh**, ou entre dans
+  le **rayon anti-rush** d'un centre principal ennemi (D22, rayon à régler en test). Le **serveur revérifie** tout
+  (D288). La **vision** de D22 viendra avec le brouillard de guerre.
+- **Coût retiré à la pose** de la fondation ; **remboursé en entier** si annulée avant le premier coup de travail, **à
+  moitié** ensuite. On ne réserve jamais plus que ce qu'on a.
+- **Maj** : plusieurs fondations à la suite, bâties dans l'ordre par les Paysans envoyés.
+- Écartés : **pose libre et rotation** (alignements approximatifs, trous de 30 cm illisibles, murs plus durs, molette
+  déjà prise par le zoom) ; **payé au premier Paysan arrivé** (chantier bloqué faute de ressources, règle et message en
+  plus).
+
+**Tranché — D312 Bâtir : plusieurs bâtisseurs à rendement décroissant, enchaînement façon AoE4** (choix de
+l'utilisateur, conforme à la recommandation).
+- Les Paysans envoyés prennent des **places autour de l'emprise** (règles des places autour d'une source, J5b.1) et
+  travaillent **au contact** ; **durée de base** par bâtiment dans la table (indicatif : maison ~20 s, camp ~25 s pour un
+  bâtisseur).
+- **Plusieurs bâtisseurs** : chacun de plus accélère, **de moins en moins** (indicatif : 3 Paysans ≈ 2 fois plus vite
+  qu'un seul) ; combien en retirer de la récolte reste un choix.
+- L'emprise **bloque le navmesh dès le premier coup de travail** (pas à la pose) ; les unités qui s'y trouvent en
+  sortent ; la marge de D310 s'applique.
+- Le bâtiment **monte du sol** avec l'avancement ; ses **points de vie** aussi (prépare M5) ; il ne sert (dépôt,
+  population) qu'une fois fini.
+- **Clic droit** sur un de ses chantiers inachevés : aider.
+- Après : **camp** fini → ses bâtisseurs **récoltent la source la plus proche qu'il accepte** ; **maison** finie →
+  chantier suivant de leur file (Maj), sinon **inactifs** (touche « . »).
+- Écartés : **chaque bâtisseur aussi utile que le premier** (10 Paysans, maison en 2 s : plus de choix) ; **un seul
+  bâtisseur** façon StarCraft (pas d'urgence possible, contraire à AoE4).
+
+**Tranché — D313 Commande et retour visuel : grille directe du Paysan, coûts visibles, messages brefs, F2** (choix de
+l'utilisateur, conforme à la recommandation, façon AoE4).
+- Un ou plusieurs **Paysans sélectionnés** : la grille 3 × 4 (D281) montre **directement** les 3 bâtiments, sur les
+  touches de la grille de D30 (**A** maison, **Z** camp de bûcherons, **E** camp de mineurs) ; clic ou touche → fantôme
+  (D311) ; Échap ou clic droit l'annule.
+- **Survol** d'une case : infobulle (nom, coût, effet : « +10 population », « Dépôt : pierre, or »).
+- Ressources insuffisantes : case **grisée**, coût **en rouge** ; un clic → **message bref** au-dessus de la grille
+  (« Pas assez de bois »).
+- **Population pleine** : la production de Paysans s'arrête avec un message bref « Population maximale — construisez des
+  maisons » (premier mur du joueur).
+- **Repère bref** de J4.6 sur la fondation visée ; le chantier se **sélectionne** comme un bâtiment ; son **bloc** :
+  nom, barre d'avancement, nombre de bâtisseurs, case **« Annuler »** (remboursement de D311).
+- **F2** : bâtiment économique suivant (D30), caméra centrée.
+- Textes fr / en / ja. Les bâtiments militaires ajouteront une **seconde page** à la grille du Paysan (AoE4).
+- Écartés : **grille à deux niveaux** façon AoE2 (une touche de plus par construction pour 3 bâtiments) ; **sans
+  messages ni F2** (le joueur devine pourquoi rien ne se passe).
+
+**Tranché — D314 Vérification : deux parties jouables, S7 refait sur des camps bâtis** (choix de l'utilisateur,
+conforme à la recommandation).
+- Nouveau : les bâtiments **apparaissent en cours de partie** ; chaque pose refait des tuiles du navmesh ; les Paysans
+  dont le chemin (ou le chemin réutilisé de D305) traverse une emprise nouvelle **recalculent** ; une base serrée met à
+  l'épreuve la marge de D310.
+- Tests d'automatisation des règles pures : grille, emplacement valide (chevauchement, source, carte, anti-rush),
+  rendement des bâtisseurs, remboursement, plafond de population.
+- `quick_check` **solo** : maison posée et bâtie à 3, population de 10 à 20, annulation remboursée, poses refusées,
+  **aucun Paysan dans une emprise** ; camp au bois → ses bâtisseurs récoltent, trajets plus courts.
+- **2 clients** : le chantier de l'autre se voit monter, le serveur refuse une pose interdite, les ressources de l'autre
+  jamais reçues.
+- **S7 refait avec des camps bâtis en cours de test** (au lieu des camps provisoires) : tuiles refaites et chemins
+  recalculés sous charge, seuil de 3 ms (D218) ; **S5 court** ; S1 / S2 courts après le correctif du navmesh.
+- Écartés : **un seul bloc** (un seul essai, à la fin, contraire à la préférence de l'utilisateur de jouer souvent) ;
+  **sans refaire S7** (coût du navmesh refait découvert à l'étape « armée »).
+
+**Découpage de J6 en deux parties jouables** : chaque sous-étape compile, se vérifie et se commite seule (après
+validation de l'utilisateur) ; **aucune avant la clôture de J5**.
+
+**J6a — La maison et le chantier** : à la fin, le joueur pose une maison, ses Paysans la bâtissent, sa population
+dépasse 10 ; plus aucun Paysan n'entre dans un bâtiment.
+
+1. **J6a.1 Correctif du navmesh des bâtiments (D310)** : emprise interdite élargie du rayon du corps et d'une marge,
+   même règle pour tous les bâtiments ; vérifier les cylindres des sources et les places au dépôt ; contrôle scripté
+   « aucun Paysan dans une emprise » dans `quick_check` ; S1 / S2 courts (mouvement touché).
+2. **J6a.2 Données et règles pures** : table des bâtiments (coût, durée de construction ; lignes `House`, `LumberCamp`
+   vrai, `MiningCamp`), `Buildings/HOLConstructionRules` (grille, emplacement valide, rendement décroissant,
+   remboursement, plafond), tests `HeroesOfLiberty.Construction.*`.
+3. **J6a.3 Pose** : fantôme chez le client (grille, vert / rouge), appel serveur (vérification, coût retiré), fondation
+   répliquée (`AHOLBuilding` apparu en cours de partie, état « fondation »), Maj en file, annulation remboursée.
+4. **J6a.4 Chantier dans la simulation** : ordre de bâtir par la file d'ordres, places autour de l'emprise, avancement à
+   rendement décroissant, navmesh bloqué au premier coup et unités sorties de l'emprise, bâtiment qui monte, points de
+   vie, population à la fin ; maison finie → chantier suivant ou inactif ; clic droit sur un chantier : aider.
+5. **J6a.5 HUD** : grille du Paysan (A, Z, E), infobulle, case grisée et message bref, « Population maximale », bloc du
+   chantier avec « Annuler », repère sur la fondation ; textes fr / en / ja.
+6. **J6a.6 Vérification** : `quick_check` solo et 2 clients (partie maison), **essai de l'utilisateur**.
+
+**J6b — Les camps** : à la fin, le joueur pose un camp près du bois ou d'un filon, ses bâtisseurs s'y mettent à
+récolter, les allers-retours raccourcissent.
+
+1. **J6b.1 Camps** : camp de bûcherons et camp de mineurs (dépôts de D296), enchaînement camp fini → récolte de la source
+   la plus proche qu'il accepte, F2 ; le `LumberCamp` provisoire de S7 disparaît.
+2. **J6b.2 Chemins coupés par une emprise** : marches et chemins réutilisés de la récolte (D305) recalculés quand une
+   emprise nouvelle les coupe.
+3. **J6b.3 Vérification** : `quick_check` solo et 2 clients (partie camps), **S7 avec des camps bâtis en cours de
+   test**, S5 court, **essai de l'utilisateur**.
+4. **J6b.4 Clôture** : D310 à D314 au § 21 du GDD, paragraphe « Parcours J6 » au § 16.6.
+
+Risques connus : tuiles refaites en rafale quand plusieurs joueurs bâtissent en même temps ; chemins (et chemins
+réutilisés de D305) traversant une emprise nouvelle ; Paysans enfermés par une rangée de maisons (pose à refuser si elle
+enferme des unités ? à voir à l'essai) ; marge de S7 déjà mince (0,09 ms au repos).
 
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
@@ -2665,7 +2815,6 @@ d'épée).
     (seul le cas rare « massif plein ») : pas de S7.
 - Session d'essai relancée (deuxième écran) pour les 4 retours de J6a.4.
 - **Essai validé** par l'utilisateur (« ok, tout fonctionne ») : J6a.4 et ses 4 retours commités (sans le panneau de triches de `mycrusader-bb` ni les lignes des autres sessions). Reste : S2 / S7 au repos. Reprise : **J6a.5** (HUD de la construction).
-
 - **Panneau de triches** (session `mycrusader-bb`, cd75e85, D291) : en build de développement, sous la barre du haut à
   gauche, plié et déplié par son premier bouton (choix gardé dans GameUserSettings.ini) ; +1000 par ressource, +1000 de
   chaque, population +165, construction rapide oui / non ; `hol.HUD.Click CheatXxx` ; validé par l'utilisateur le
