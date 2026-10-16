@@ -20,6 +20,7 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 			Choice.Sequence = GatherSequence;
 			Choice.PlayRate = Type.GatherPlayRate;
 			Choice.bFacesSource = true;
+			Choice.Prop = static_cast<uint8>(Type.GatherProps[Input.GatherResource]);
 			return Choice;
 		}
 	}
@@ -28,7 +29,16 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 	const bool bWantsWalk = bWalking ? Input.Speed >= Type.Speed * WalkStopSpeedShare : Input.Speed > Type.Speed * WalkStartSpeedShare;
 	if (!bWantsWalk)
 	{
-		Choice.Sequence = Type.IdleSequence;
+		const int32 CarryIdleSequence = Input.bCarrying ? Type.CarryIdleSequences[Input.LoadResource] : INDEX_NONE;
+		if (CarryIdleSequence != INDEX_NONE)
+		{
+			Choice.Sequence = CarryIdleSequence;
+			Choice.Prop = static_cast<uint8>(Type.CarryProps[Input.LoadResource]);
+		}
+		else
+		{
+			Choice.Sequence = Type.IdleSequence;
+		}
 		return Choice;
 	}
 	const int32 CarryWalkSequence = Input.bCarrying ? Type.CarryWalkSequences[Input.LoadResource] : INDEX_NONE;
@@ -37,6 +47,7 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 	{
 		Choice.Sequence = CarryWalkSequence;
 		Choice.PlayRate = Type.CarryWalkPlayRate / MeshScale;
+		Choice.Prop = static_cast<uint8>(Type.CarryProps[Input.LoadResource]);
 	}
 	else
 	{

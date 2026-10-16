@@ -10,8 +10,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// J5c.1 checks: the animation a client plays on a unit (D234, HOLUnitAnimation::Choose) and the Peasant's sequences in
-// the type table and its animation provider.
+// J5c.1 and J5c.2 checks: the animation and the prop a client shows on a unit (D234, HOLUnitAnimation::Choose) and the
+// Peasant's sequences and props in the type table and its animation provider.
 namespace UE::HeroesOfLiberty::Tests::Animation
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
@@ -35,6 +35,18 @@ namespace UE::HeroesOfLiberty::Tests::Animation
 		Type.CarryWalkSequences.Stone = 7;
 		Type.CarryWalkSequences.Gold = 7;
 		Type.CarryWalkPlayRate = 3.57f;
+		Type.CarryIdleSequences.Food = 8;
+		Type.CarryIdleSequences.Wood = 9;
+		Type.CarryIdleSequences.Stone = 10;
+		Type.CarryIdleSequences.Gold = 10;
+		Type.GatherProps.Food = 0;
+		Type.GatherProps.Wood = 1;
+		Type.GatherProps.Stone = 2;
+		Type.GatherProps.Gold = 2;
+		Type.CarryProps.Food = 3;
+		Type.CarryProps.Wood = 4;
+		Type.CarryProps.Stone = 5;
+		Type.CarryProps.Gold = 6;
 		return Type;
 	}
 
@@ -70,15 +82,18 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	const FHOLUnitTypeConstants Peasant = MakePeasant();
 	const float Walking = Peasant.Speed;
 	const auto Sequence = [&Peasant](const FHOLUnitAnimationInput& Input) { return Choose(Peasant, Input).Sequence; };
+	const auto Prop = [&Peasant](const FHOLUnitAnimationInput& Input) { return static_cast<int32>(Choose(Peasant, Input).Prop); };
 
 	// Idle and walk as before (D234), the walk slowed by the mesh scale.
 	const FHOLUnitAnimationChoice Idle = Choose(Peasant, MakeInput(EHOLUnitActivity::Idle, 0.f));
 	TestEqual(TEXT("standing: idle"), Idle.Sequence, 0);
 	TestEqual(TEXT("idle at its own rate"), Idle.PlayRate, 1.f);
 	TestFalse(TEXT("idle: its own orientation"), Idle.bFacesSource);
+	TestEqual(TEXT("idle: no prop"), static_cast<int32>(Idle.Prop), 0);
 	const FHOLUnitAnimationChoice Walk = Choose(Peasant, MakeInput(EHOLUnitActivity::Moving, Walking));
 	TestEqual(TEXT("walking: walk"), Walk.Sequence, 1);
 	TestEqual(TEXT("walk rate: WalkPlayRate / MeshScale"), Walk.PlayRate, 2.44f / 1.5f, UE_KINDA_SMALL_NUMBER);
+	TestEqual(TEXT("walk: no prop"), static_cast<int32>(Walk.Prop), 0);
 
 	// Gathering: the resource's gesture, whatever the speed or the load.
 	const FHOLUnitAnimationChoice Chop = Choose(Peasant, Gathering(EHOLResource::Wood));
@@ -91,6 +106,14 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("pushed aside while gathering: keeps chopping"), Sequence(Gathering(EHOLResource::Wood, Walking, 2)), 2);
 	TestEqual(TEXT("gathering wood with a load of food (D306): the axe"), Sequence(WithLoad(Gathering(EHOLResource::Wood), EHOLResource::Food)), 2);
 
+	// The tool of the gesture (J5c.2): axe for wood, pickaxe for stone and gold, bare hands for berries; the load is not
+	// shown while gathering.
+	TestEqual(TEXT("chopping: the axe"), static_cast<int32>(Chop.Prop), 1);
+	TestEqual(TEXT("mining stone: the pickaxe"), Prop(Gathering(EHOLResource::Stone)), 2);
+	TestEqual(TEXT("mining gold: the pickaxe"), Prop(Gathering(EHOLResource::Gold)), 2);
+	TestEqual(TEXT("picking berries: bare hands"), Prop(Gathering(EHOLResource::Food)), 0);
+	TestEqual(TEXT("chopping with a load of food: the axe, no basket"), Prop(WithLoad(Gathering(EHOLResource::Wood), EHOLResource::Food)), 1);
+
 	// Walking with a load: the load's carrying walk, on any walk (its round trip, an order, a push).
 	const FHOLUnitAnimationChoice CarryWood = Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Walking), EHOLResource::Wood));
 	TestEqual(TEXT("to the deposit with wood: carrying wood"), CarryWood.Sequence, 6);
@@ -99,8 +122,24 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("with food: carrying food"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Walking), EHOLResource::Food)), 5);
 	TestEqual(TEXT("with stone: carrying the sack"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Walking), EHOLResource::Stone)), 7);
 	TestEqual(TEXT("ordered away with gold (load kept, D296): carrying the sack"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::Moving, Walking), EHOLResource::Gold)), 7);
-	TestEqual(TEXT("standing with a load: idle"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, 0.f), EHOLResource::Wood)), 0);
 	TestEqual(TEXT("back to its source, nothing carried: walk"), Sequence(MakeInput(EHOLUnitActivity::GatherTrip, Walking)), 1);
+
+	// The load carried (J5c.2), walking and standing: basket, logs, hotte of stone or of gold.
+	TestEqual(TEXT("carrying wood: the logs"), static_cast<int32>(CarryWood.Prop), 4);
+	TestEqual(TEXT("carrying food: the basket"), Prop(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Walking), EHOLResource::Food)), 3);
+	TestEqual(TEXT("carrying stone: the hotte of stone"), Prop(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Walking), EHOLResource::Stone)), 5);
+	TestEqual(TEXT("carrying gold: the hotte of gold"), Prop(WithLoad(MakeInput(EHOLUnitActivity::Moving, Walking), EHOLResource::Gold)), 6);
+	TestEqual(TEXT("back to its source, nothing carried: no prop"), Prop(MakeInput(EHOLUnitActivity::GatherTrip, Walking)), 0);
+	const FHOLUnitAnimationChoice StandWood = Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, 0.f), EHOLResource::Wood));
+	TestEqual(TEXT("standing with wood: the loaded idle of wood"), StandWood.Sequence, 9);
+	TestEqual(TEXT("standing with wood: the logs stay shown"), static_cast<int32>(StandWood.Prop), 4);
+	TestEqual(TEXT("a loaded idle plays at its own rate"), StandWood.PlayRate, 1.f);
+	TestFalse(TEXT("standing with a load: its own orientation"), StandWood.bFacesSource);
+	TestEqual(TEXT("standing with food: the loaded idle of food"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::Idle, 0.f), EHOLResource::Food)), 8);
+	TestEqual(TEXT("standing with food: the basket"), Prop(WithLoad(MakeInput(EHOLUnitActivity::Idle, 0.f), EHOLResource::Food)), 3);
+	TestEqual(TEXT("standing with stone: the loaded idle of stone"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::Idle, 0.f), EHOLResource::Stone)), 10);
+	TestEqual(TEXT("standing with gold: the loaded idle of stone"), Sequence(WithLoad(MakeInput(EHOLUnitActivity::Moving, 0.f), EHOLResource::Gold)), 10);
+	TestEqual(TEXT("standing with gold: the hotte of gold"), Prop(WithLoad(MakeInput(EHOLUnitActivity::Moving, 0.f), EHOLResource::Gold)), 6);
 
 	// Hysteresis: between the two thresholds, a walk (plain or carrying) keeps walking, anything else stands.
 	const float Between = Walking * (HOLUnitAnimation::WalkStartSpeedShare + HOLUnitAnimation::WalkStopSpeedShare) / 2.f;
@@ -109,9 +148,16 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("between the thresholds, from carrying wood: carrying wood"),
 		Sequence(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Between, 6), EHOLResource::Wood)), 6);
 	TestEqual(TEXT("between the thresholds, from the axe: idle"), Sequence(MakeInput(EHOLUnitActivity::GatherTrip, Between, 2)), 0);
+	TestEqual(TEXT("between the thresholds, from the loaded idle of wood: loaded idle"),
+		Sequence(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Between, 9), EHOLResource::Wood)), 9);
+	TestEqual(TEXT("between the thresholds, from carrying wood: the logs stay shown"),
+		Prop(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Between, 6), EHOLResource::Wood)), 4);
+	TestEqual(TEXT("above the start threshold, from the loaded idle: carrying walk"),
+		Sequence(WithLoad(MakeInput(EHOLUnitActivity::GatherTrip, Walking, 9), EHOLResource::Wood)), 6);
 	TestEqual(TEXT("first frame (no sequence yet), between the thresholds: idle"), Sequence(MakeInput(EHOLUnitActivity::Moving, Between)), 0);
 	TestTrue(TEXT("the carrying walks are walks"), HOLUnitAnimation::IsWalkSequence(Peasant, 5) && HOLUnitAnimation::IsWalkSequence(Peasant, 7));
 	TestFalse(TEXT("a gesture is not a walk"), HOLUnitAnimation::IsWalkSequence(Peasant, 3));
+	TestFalse(TEXT("a loaded idle is not a walk"), HOLUnitAnimation::IsWalkSequence(Peasant, 8) || HOLUnitAnimation::IsWalkSequence(Peasant, 10));
 	TestFalse(TEXT("no sequence is not a walk"), HOLUnitAnimation::IsWalkSequence(Peasant, INDEX_NONE));
 
 	// A type without the sequences (a soldier, -1 everywhere): idle and walk only.
@@ -123,6 +169,9 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("no gesture: its own orientation"), Choose(Soldier, Gathering(EHOLResource::Wood)).bFacesSource);
 	TestEqual(TEXT("no carrying walk: walk"), Choose(Soldier, WithLoad(MakeInput(EHOLUnitActivity::Moving, 300.f), EHOLResource::Wood)).Sequence,
 		Soldier.WalkSequence);
+	const FHOLUnitAnimationChoice SoldierStanding = Choose(Soldier, WithLoad(MakeInput(EHOLUnitActivity::Idle, 0.f), EHOLResource::Gold));
+	TestEqual(TEXT("no loaded idle: idle"), SoldierStanding.Sequence, Soldier.IdleSequence);
+	TestEqual(TEXT("no props: none"), static_cast<int32>(SoldierStanding.Prop), 0);
 	return true;
 }
 
@@ -144,6 +193,11 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	// The project's rule (D234): Speed / planted-foot speed of the walk, 600 / 168.2 for A_SW_Unarmed_Walk's legs.
 	TestEqual(TEXT("carrying walk play rate (600 / 168.2)"), Constants.CarryWalkPlayRate, 3.57f, 0.005f);
 	TestEqual(TEXT("walk play rate unchanged (600 / 246.2)"), Constants.WalkPlayRate, 2.44f, 0.005f);
+	TestTrue(TEXT("loaded idles reach the shared fragment"), Constants.CarryIdleSequences == Expected.CarryIdleSequences);
+	TestTrue(TEXT("gathering props reach the shared fragment"), Constants.GatherProps == Expected.GatherProps);
+	TestTrue(TEXT("carrying props reach the shared fragment"), Constants.CarryProps == Expected.CarryProps);
+	// The props live in the Peasant's own mesh, drawn with the material that hides all but the one named (J5c.2).
+	TestEqual(TEXT("Peasant's mesh"), Peasant->SkinnedMesh.ToSoftObjectPath().GetAssetName(), TEXT("SKM_Peasant"));
 
 	// The provider plays them by index: each index is the sequence made for it (Tools/Editor/make_skinned_mannequin.py).
 	const UAnimSequenceTransformProviderData* Provider = Peasant->AnimationProvider.LoadSynchronous();
@@ -166,6 +220,10 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("carrying wood"), SequenceName(Constants.CarryWalkSequences.Wood), TEXT("A_Peasant_CarryWood"));
 	TestEqual(TEXT("carrying stone"), SequenceName(Constants.CarryWalkSequences.Stone), TEXT("A_Peasant_CarryStone"));
 	TestEqual(TEXT("carrying gold"), SequenceName(Constants.CarryWalkSequences.Gold), TEXT("A_Peasant_CarryStone"));
+	TestEqual(TEXT("standing with food"), SequenceName(Constants.CarryIdleSequences.Food), TEXT("A_Peasant_IdleCarryFood"));
+	TestEqual(TEXT("standing with wood"), SequenceName(Constants.CarryIdleSequences.Wood), TEXT("A_Peasant_IdleCarryWood"));
+	TestEqual(TEXT("standing with stone"), SequenceName(Constants.CarryIdleSequences.Stone), TEXT("A_Peasant_IdleCarryStone"));
+	TestEqual(TEXT("standing with gold"), SequenceName(Constants.CarryIdleSequences.Gold), TEXT("A_Peasant_IdleCarryStone"));
 
 	// The soldiers keep idle 0 and walk 1 of the same provider, and nothing else.
 	for (const TCHAR* Soldier : { TEXT("LightInfantry"), TEXT("Archer") })
@@ -173,8 +231,11 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier, TEXT("Animation test"));
 		if (TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier), Row))
 		{
-			TestTrue(*FString::Printf(TEXT("%s: idle 0, walk 1, no gesture nor carrying walk"), Soldier), Row->IdleSequence == 0 && Row->WalkSequence == 1
-				&& Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences());
+			TestTrue(*FString::Printf(TEXT("%s: idle 0, walk 1, no gesture, carrying walk, loaded idle nor prop"), Soldier), Row->IdleSequence == 0
+				&& Row->WalkSequence == 1 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
+				&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps());
+			TestEqual(*FString::Printf(TEXT("%s keeps the mannequin's mesh"), Soldier), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(),
+				TEXT("SKM_Mannequin_Classic"));
 		}
 	}
 	return true;
