@@ -24,4 +24,11 @@ struct HEROESOFLIBERTY_API FHOLUnitAnimationStateFragment : public FMassFragment
 	 */
 	bool bFacingSource = false;
 	float FacingYaw = 0.f;
+
+	/**
+	 * What the instance was last given besides its sequence (J5c.4, read by hol.Units.AnimReport only): the prop shown and
+	 * the frame it was drawn at (GFrameCounter), so a unit not drawn since (off screen) is told apart.
+	 */
+	uint8 Prop = 0;
+	uint64 DrawnFrame = 0;
 };

@@ -2,10 +2,17 @@
 
 #include "Presentation/HOLInterpolatedInstancesProcessor.h"
 
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimSequenceTransformProviderData.h"
 #include "Buildings/HOLBuilding.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/PlayerController.h"
+#include "HAL/IConsoleManager.h"
+#include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "MassLODFragments.h"
 #include "MassRepresentationFragments.h"
@@ -14,6 +21,7 @@
 #include "MassUpdateSkinnedMeshProcessor.h"
 #include "MassVisualizationComponent.h"
 #include "Match/HOLPlayerColors.h"
+#include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Presentation/HOLPresentationFragments.h"
 #include "Presentation/HOLUnitAnimation.h"
@@ -21,6 +29,7 @@
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 
 namespace UE::HeroesOfLiberty::Presentation
@@ -290,6 +299,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					{
 						Drawn.SetRotation(FRotator(0.f, AnimationState.FacingYaw, 0.f).Quaternion());
 					}
+					AnimationState.Prop = Choice.Prop;
+					AnimationState.DrawnFrame = GFrameCounter;
 
 					// Transform, animation and colour (and prop) in this order for each entity: Mass pairs them by position.
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
@@ -304,4 +315,126 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 			Representation.PrevLODSignificance = RepresentationLOD.LODSignificance;
 		}
 	});
+}
+
+namespace
+{
+	/**
+	 * Scripted check of J5c.4 (quick_check's "anims" part): what this frame's drawing gave the units of a slot, the sequence
+	 * playing and the prop shown, counted per sequence, per prop, and per state the choice was made from (activity, what it
+	 * gathers, what it carries). Solo only: a client's units are display entities with no unit identifier to look them up.
+	 * Reads what the presentation wrote (FHOLUnitAnimationStateFragment, Mass' animation fragment), nothing recomputed.
+	 */
+	FAutoConsoleCommand AnimReportCommand(
+		TEXT("hol.Units.AnimReport"),
+		TEXT("hol.Units.AnimReport [Slot]: logs, for the units of a slot (the local player's by default) drawn now, the sequences played and the props shown, per state (solo)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
+			{
+				const UWorld* World = WorldContext.World();
+				const UHOLUnitSubsystem* Units = World && World->IsGameWorld() && World->GetNetMode() == NM_Standalone
+					? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+				const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+				if (!Units || !EntitySubsystem)
+				{
+					continue;
+				}
+				int32 Slot = INDEX_NONE;
+				if (!Args.IsEmpty())
+				{
+					Slot = FCString::Atoi(*Args[0]);
+				}
+				else if (const APlayerController* Controller = World->GetFirstPlayerController())
+				{
+					const AHOLPlayerState* PlayerState = Controller->GetPlayerState<AHOLPlayerState>();
+					Slot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+				}
+
+				// The sequence's asset name in the type's animation provider (its index if the provider is not loaded).
+				auto GetSequenceName = [](const FHOLUnitTypeConstants& Type, const int32 Sequence)
+				{
+					const UAnimSequenceTransformProviderData* Provider = Cast<UAnimSequenceTransformProviderData>(Type.AnimationProvider.ResolveObject());
+					if (Provider && Provider->GetSequences().IsValidIndex(Sequence) && Provider->GetSequences()[Sequence].Sequence)
+					{
+						return Provider->GetSequences()[Sequence].Sequence->GetName();
+					}
+					return FString::Printf(TEXT("sequence %d"), Sequence);
+				};
+				auto GetEnumName = [](const UEnum* Enum, const uint8 Value) { return Enum->GetNameStringByValue(static_cast<int64>(Value)); };
+
+				const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+				TArray<uint32> UnitIds;
+				Units->GetAllUnitIds(UnitIds);
+				UnitIds.Sort();
+				TMap<FString, int32> Sequences;
+				TMap<int32, int32> Props;
+				TMap<FString, TMap<FString, int32>> ByState;
+				int32 NumDrawn = 0;
+				int32 NumNotDrawn = 0;
+				for (const uint32 UnitId : UnitIds)
+				{
+					const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+					const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+					const FHOLUnitAnimationStateFragment* AnimationState = EntityManager.GetFragmentDataPtr<FHOLUnitAnimationStateFragment>(Entity);
+					const FMassRepresentationAnimationFragment* Animation = EntityManager.GetFragmentDataPtr<FMassRepresentationAnimationFragment>(Entity);
+					const FHOLUnitTypeConstants* Type = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity);
+					if (!State || !AnimationState || !Animation || !Type || (Slot != INDEX_NONE && State->OwnerPlayer != Slot))
+					{
+						continue;
+					}
+					// Drawn by this frame's or the last one's presentation (the command may run before or after it).
+					if (!AnimationState->bStarted || AnimationState->DrawnFrame + 2 < GFrameCounter)
+					{
+						++NumNotDrawn;
+						continue;
+					}
+					++NumDrawn;
+					const FString Sequence = GetSequenceName(*Type, Animation->AnimData.SequenceIndex);
+					++Sequences.FindOrAdd(Sequence);
+					++Props.FindOrAdd(AnimationState->Prop);
+
+					// The state as the presentation read it: the simulation's (solo).
+					FString StateName = Type->TypeName.ToString() + TEXT(" ") + GetEnumName(StaticEnum<EHOLUnitActivity>(), static_cast<uint8>(State->Activity));
+					if (State->Activity == EHOLUnitActivity::Gathering)
+					{
+						StateName += TEXT(" ") + GetEnumName(StaticEnum<EHOLResource>(), static_cast<uint8>(State->GatherResource));
+					}
+					const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+					if (Gather && Gather->Load.Amount > 0)
+					{
+						StateName += TEXT(" carrying ") + GetEnumName(StaticEnum<EHOLResource>(), static_cast<uint8>(Gather->Load.Resource));
+					}
+					++ByState.FindOrAdd(StateName).FindOrAdd(FString::Printf(TEXT("%s prop %d"), *Sequence, AnimationState->Prop));
+				}
+
+				Sequences.KeySort(TLess<FString>());
+				Props.KeySort(TLess<int32>());
+				ByState.KeySort(TLess<FString>());
+				TArray<FString> SequenceParts;
+				for (const TPair<FString, int32>& Pair : Sequences)
+				{
+					SequenceParts.Add(FString::Printf(TEXT("%s x%d"), *Pair.Key, Pair.Value));
+				}
+				TArray<FString> PropParts;
+				for (const TPair<int32, int32>& Pair : Props)
+				{
+					PropParts.Add(FString::Printf(TEXT("%d x%d"), Pair.Key, Pair.Value));
+				}
+				TArray<FString> StateParts;
+				for (TPair<FString, TMap<FString, int32>>& Pair : ByState)
+				{
+					Pair.Value.KeySort(TLess<FString>());
+					TArray<FString> Shown;
+					for (const TPair<FString, int32>& Outcome : Pair.Value)
+					{
+						Shown.Add(FString::Printf(TEXT("%s x%d"), *Outcome.Key, Outcome.Value));
+					}
+					StateParts.Add(Pair.Key + TEXT(": ") + FString::Join(Shown, TEXT(", ")));
+				}
+				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report: slot %d, %d drawn, %d not drawn; sequences %s; props %s"), Slot, NumDrawn, NumNotDrawn,
+					*FString::Join(SequenceParts, TEXT(", ")), *FString::Join(PropParts, TEXT(", ")));
+				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report by state: %s"), *FString::Join(StateParts, TEXT("; ")));
+			}
+		}));
 }

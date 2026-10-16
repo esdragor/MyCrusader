@@ -42,6 +42,11 @@
 # in the tooltip only); F1 and F3: no building, the message "Aucun bâtiment militaire", nothing selected; F2: every
 # economic building of the player selected (centre, houses, sites; not its ghosts), the camera where it was; F2 three
 # times again: the centre, then the houses, the camera on each, the selection kept.
+# The "anims" part (J5c.4), in solo: what the presentation shows, read from hol.Units.AnimReport (sequence and prop of
+# each Peasant drawn, per state). Two Peasants build a house; three each chop wood, mine stone, mine gold, pick berries;
+# three stand idle: each gesture with its tool (axe, pickaxe, nothing for the berries), the hammer, the plain idle. Then
+# the four groups of gatherers walk away with their loads (the carrying walk of the load, the load shown), and stand
+# there (the loaded idle, the load still shown). Every Peasant drawn, whatever it does, must show what its state calls for.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -51,7 +56,7 @@
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -196,6 +201,19 @@ $BuildJ = @(-18600, 1800)
 $BuildJSpawn = @(-19500, 1800)
 # The rally flags of a group (the user's 3rd trial of J6a.5): a right click on the ground behind slot 0's centre.
 $BuildRally = @(-18000, -1500)
+# The animations (J5c.4), solo: house K behind slot 0's centre and its wood, its builders made beside it; each group of
+# gatherers made a few metres from its source (the wood's edge, the stone and gold veins on either side of slot 0, slot 4's
+# berries: slot 0's are used up by the gather part), then sent ~20 m away with its load; three idle Peasants on their own.
+# Look: where its close-up at work is taken from (the wood's edge, not under the crowns).
+$AnimHouse = @(-18600, -5100)
+$AnimBuilders = @(-19400, -5100)
+$AnimIdle = @(-9000, 2000)
+$AnimGroups = @(
+    @{ Name = "wood"; Spawn = @(-13700, -1500); Source = @(-14221, -1900); Target = @(-12500, -3000); Look = @(-14200, -1450) },
+    @{ Name = "stone"; Spawn = @(-11087, -5400); Source = @(-11087, -4592); Target = @(-11087, -6600); Look = @(-11087, -4592) },
+    @{ Name = "gold"; Spawn = @(-11087, 5400); Source = @(-11087, 4592); Target = @(-11087, 6600); Look = @(-11087, 4592) },
+    @{ Name = "berries"; Spawn = @(-11668, -9546); Source = @(-12021, -9193); Target = @(-10200, -8000); Look = @(-12021, -9193) }
+)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -466,6 +484,43 @@ if ($Parts -contains "camera") {
                 "hol.Select.OrderGround $($BuildRally -join ' ')", "waitlog Rally: slot 0 set the rally point of MainCentre at (", "frames 3", "hol.Select.Report",
                 "capture build_hud_rally"
         }
+        if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
+            # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
+            # Two Peasants made beside K, selected by a box, K placed by a click: they walk there and hammer.
+            Step "mark anims", "hol.Cheat.FastBuild 0", "hol.Build.Speed 1", "hol.Cheat.GatherSpeed 1", "hol.Cheat.Wood 100",
+                "hol.Units.Spawn 2 $($AnimBuilders -join ' ') 0 Peasant 100", "hol.Units.Spawn 3 $($AnimIdle -join ' ') 0 Peasant 150"
+            foreach ($Group in $AnimGroups) { Step "hol.Units.Spawn 3 $($Group.Spawn -join ' ') 0 Peasant 150" }
+            Step "wait 0.5", "hol.Camera.Focus $($AnimBuilders -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($AnimBuilders[0] - 400) $($AnimBuilders[1] - 400) $($AnimBuilders[0] + 400) $($AnimBuilders[1] + 400)",
+                "waitlog Selection: 2 units (own): Peasant x2", "hol.Camera.Focus $($AnimHouse -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($AnimHouse -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 2 units to House at ($($AnimHouse -join ', '))",
+                "waitlog Construction: slot 0 first work on House at ($($AnimHouse -join ', '))"
+            # Each group selected by a box around it, a right click on its source.
+            foreach ($Group in $AnimGroups) {
+                Step "hol.Camera.Focus $($Group.Spawn -join ' ')", "frames 3",
+                    "hol.Select.BoxGround $($Group.Spawn[0] - 400) $($Group.Spawn[1] - 400) $($Group.Spawn[0] + 400) $($Group.Spawn[1] + 400)",
+                    "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.OrderSource $($Group.Source -join ' ')", "waitlog Gather order of slot 0: 3 units to source"
+            }
+            # At their sources within ~1.5 s (spawned 5 to 8 m away): all at work, the report, close-ups.
+            Step "wait 3", "mark anims working", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
+            foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Look -join ' ')", "frames 3", "capture anims_work_$($Group.Name)" }
+            Step "hol.Camera.Focus $($AnimHouse[0] - 350) $($AnimHouse[1])", "frames 3", "capture anims_work_build",
+                "hol.Camera.Focus $($AnimIdle -join ' ')", "frames 3", "capture anims_work_idle", "hol.Camera.Zoom -14", "wait 3"
+            # Each group (a few wood, stone, gold or food each by now: 0.7 a second) selected around its source, sent ~20 m
+            # away: it keeps its load (D296). Reported on the way, then once they stand there.
+            foreach ($Group in $AnimGroups) {
+                Step "hol.Camera.Focus $($Group.Source -join ' ')", "frames 3",
+                    "hol.Select.BoxGround $($Group.Source[0] - 700) $($Group.Source[1] - 700) $($Group.Source[0] + 700) $($Group.Source[1] + 700)",
+                    "waitlog Selection: ", "hol.Select.OrderGround $($Group.Target -join ' ')", "waitlog Order: "
+            }
+            Step "wait 0.5", "mark anims walking", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
+            $Last = $AnimGroups[-1]
+            # The last group sent, a few metres on its way.
+            Step "hol.Camera.Focus $($Last.Source[0] + ($Last.Target[0] - $Last.Source[0]) / 5) $($Last.Source[1] + ($Last.Target[1] - $Last.Source[1]) / 5)", "frames 2", "capture anims_walk_$($Last.Name)",
+                "hol.Camera.Zoom -14", "wait 4", "mark anims standing", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
+            foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Target -join ' ')", "frames 3", "capture anims_stand_$($Group.Name)" }
+            Step "hol.Camera.Zoom -14", "hol.Build.Report"
+        }
     }
 }
 Step "mark end", "quit"
@@ -479,6 +534,7 @@ Get-ChildItem $Shots -Filter "move_*.png" -ErrorAction SilentlyContinue | Remove
 Get-ChildItem $Shots -Filter "src_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "gather_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "build_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "anims_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 $GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
@@ -1117,6 +1173,72 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("greyed", "fr", "en", "ja", "ghost", "block", "popfull", "f1", "f2", "next", "tab_centre", "tab_houses", "rally" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hud_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hud" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
+    # What each state calls for (J5c.2, J6a.4; HOLUnitAnimation::Choose and the Peasant's row of the unit types): the
+    # sequence and the prop (1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte of gold, 7 hammer).
+    $GatherShown = @{ Food = "A_Peasant_GatherBerries prop 0"; Wood = "A_Peasant_ChopWood prop 1"; Stone = "A_Peasant_MinePick prop 2"; Gold = "A_Peasant_MinePick prop 2" }
+    $CarryWalkShown = @{ Food = "A_Peasant_CarryFood prop 3"; Wood = "A_Peasant_CarryWood prop 4"; Stone = "A_Peasant_CarryStone prop 5"; Gold = "A_Peasant_CarryStone prop 6" }
+    $CarryIdleShown = @{ Food = "A_Peasant_IdleCarryFood prop 3"; Wood = "A_Peasant_IdleCarryWood prop 4"; Stone = "A_Peasant_IdleCarryStone prop 5"; Gold = "A_Peasant_IdleCarryStone prop 6" }
+    $IdleShown = "A_SW_Idle prop 0"
+    $WalkShown = "A_SW_Walk_F prop 0"
+    $BuildShown = "A_Peasant_Build prop 7"
+    # Gathering or building: its gesture and tool at any speed; else, with a load, the carrying walk or the loaded idle of
+    # the load (by its speed: a unit starting, stopping or pushed may show either), the load shown; else the walk or the idle.
+    $Allowed = { param([string] $State)
+        if ($State -match '^Peasant Gathering (\w+)') { return @($GatherShown[$Matches[1]]) }
+        if ($State -match '^Peasant Building') { return @($BuildShown) }
+        if ($State -match ' carrying (\w+)$') { return @($CarryWalkShown[$Matches[1]], $CarryIdleShown[$Matches[1]]) }
+        return @($IdleShown, $WalkShown) }
+    # The last report of a section: Peasants drawn, and state -> (shown -> count).
+    $ReadAnims = { param($Lines)
+        $Head = $Lines | Select-String -Pattern "Anim report: slot 0, (\d+) drawn, (\d+) not drawn" | Select-Object -Last 1
+        $Line = $Lines | Select-String -Pattern "Anim report by state: (.*)$" | Select-Object -Last 1
+        $States = [ordered]@{}
+        if ($Line) {
+            foreach ($Part in ($Line.Matches[0].Groups[1].Value -split '; ')) {
+                if ($Part -match '^(.+?): (.+)$') {
+                    $Name = $Matches[1]; $Shown = @{}
+                    foreach ($Outcome in ($Matches[2] -split ', ')) { if ($Outcome -match '^(.+) x(\d+)$') { $Shown[$Matches[1]] = [int]$Matches[2] } }
+                    $States[$Name] = $Shown
+                }
+            }
+        }
+        @{ Drawn = $(if ($Head) { [int]$Head.Matches[0].Groups[1].Value } else { 0 }); NotDrawn = $(if ($Head) { [int]$Head.Matches[0].Groups[2].Value } else { -1 });
+            States = $States; Text = $(if ($Line) { $Line.Matches[0].Groups[1].Value } else { "no report" }) } }
+    # How many Peasants in the states matching a pattern show one thing.
+    $CountShown = { param($Report, [string] $StatePattern, [string] $Shown)
+        $Count = 0; foreach ($State in $Report.States.Keys) { if ($State -match $StatePattern) { $Count += [int]$Report.States[$State][$Shown] } }; $Count }
+    $Checks = [ordered]@{}
+    $Reports = [ordered]@{ working = (& $ReadAnims (Get-Section "anims working")); walking = (& $ReadAnims (Get-Section "anims walking")); standing = (& $ReadAnims (Get-Section "anims standing")) }
+    foreach ($Moment in $Reports.Keys) {
+        $Report = $Reports[$Moment]
+        $Wrong = @(foreach ($State in $Report.States.Keys) { $Ok = & $Allowed $State
+            foreach ($Shown in $Report.States[$State].Keys) { if ($Shown -notin $Ok) { "$State shows $Shown x$($Report.States[$State][$Shown])" } } })
+        $Checks["$Moment`: every Peasant drawn shows what its state calls for ($($Report.Drawn) drawn, $($Report.NotDrawn) not; $($Wrong -join '; '))"] =
+            ($Report.Drawn -ge 17) -and ($Wrong.Count -eq 0)
+    }
+    $Working = $Reports["working"]
+    foreach ($Resource in "Wood", "Stone", "Gold", "Food") {
+        $Count = & $CountShown $Working "^Peasant Gathering $Resource" $GatherShown[$Resource]
+        $Checks["gathering $Resource`: $($GatherShown[$Resource]) ($Count of 3)"] = $Count -ge 2
+    }
+    $Count = & $CountShown $Working "^Peasant Building" $BuildShown
+    $Checks["building: $BuildShown ($Count of 2)"] = $Count -ge 2
+    $Count = & $CountShown $Working "^Peasant Idle$" $IdleShown
+    $Checks["idle, nothing carried: $IdleShown ($Count, 3 at least)"] = $Count -ge 3
+    foreach ($Resource in "Wood", "Stone", "Gold", "Food") {
+        $Count = & $CountShown $Reports["walking"] "^Peasant Moving carrying $Resource$" $CarryWalkShown[$Resource]
+        $Checks["walking with $Resource`: $($CarryWalkShown[$Resource]) ($Count of 3)"] = $Count -ge 2
+        $Count = & $CountShown $Reports["standing"] "^Peasant Idle carrying $Resource$" $CarryIdleShown[$Resource]
+        $Checks["standing with $Resource`: $($CarryIdleShown[$Resource]) ($Count of 3)"] = $Count -ge 2
+    }
+    $Missing = @("work_wood", "work_stone", "work_gold", "work_berries", "work_build", "work_idle", "walk_berries", "stand_wood", "stand_stone", "stand_gold", "stand_berries" |
+        Where-Object { -not (Test-Path (Join-Path $Shots "anims_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "anims" $Checks) -and $AllOk
+    foreach ($Moment in $Reports.Keys) { Write-Host "  $Moment`: $($Reports[$Moment].Text)" }
 }
 
 if ($Parts -contains "net") {
