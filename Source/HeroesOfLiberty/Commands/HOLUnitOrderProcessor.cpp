@@ -56,6 +56,20 @@ namespace UE::HeroesOfLiberty::Orders
 	FAutoConsoleVariableRef CVarLogDetours(TEXT("hol.Units.LogDetours"), LogDetours,
 		TEXT("1: every task walk much longer than the straight line is logged (D308: kept or new path, lengths)."));
 
+	float SpeedScale = 1.f;
+	FAutoConsoleVariableRef CVarSpeedScale(TEXT("hol.Units.SpeedScale"), SpeedScale,
+		TEXT("Every unit walks this many times as fast, on this server (development: hol.Cheat.UnitSpeed and the cheats' panel set it; D291); ")
+		TEXT("a walker takes a new value at the next step. 1: the table's speeds"));
+	/** What hol.Units.SpeedScale is held to. */
+	constexpr float MinSpeedScale = 0.1f;
+	constexpr float MaxSpeedScale = 10.f;
+
+	/** A unit's walking speed (cm/s): its type's, times hol.Units.SpeedScale. */
+	float GetWalkSpeed(const FHOLUnitTypeConstants& Constants)
+	{
+		return Constants.Speed * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+	}
+
 	/** A walk is a detour for hol.Units.LogDetours when longer than this share of the straight line, plus DetourSlack. */
 	constexpr double DetourRatio = 1.3;
 	constexpr double DetourSlack = 300.;
@@ -214,7 +228,7 @@ namespace UE::HeroesOfLiberty::Orders
 		MoveTarget.EntityDistanceToGoal = FMassMoveTargetFragment::UnsetDistance;
 		MoveTarget.SlackRadius = 0.f;
 		MoveTarget.IntentAtGoal = EMassMovementAction::Stand; // Slow down on approach, stand at the slot.
-		MoveTarget.DesiredSpeed.Set(Constants.Speed);
+		MoveTarget.DesiredSpeed.Set(GetWalkSpeed(Constants));
 		MoveTarget.CreateNewAction(EMassMovementAction::Move, World);
 
 		Order.Phase = EHOLMovePhase::FinalLeg;
@@ -742,7 +756,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			ShortPath.MoveTargetProgressDistance = FMath::Clamp(GetProgressAt(ShortPath, Transform.GetTransform().GetLocation()), 0.f,
 				FMath::Max(LastDistance - EndReachedDistance * 2.f, 0.f));
 
-			MoveTarget.DesiredSpeed.Set(Constants.Speed);
+			MoveTarget.DesiredSpeed.Set(GetWalkSpeed(Constants));
 			// The slot comes after the path: no slowing down at its end.
 			MoveTarget.IntentAtGoal = EMassMovementAction::Move;
 			MoveTarget.SlackRadius = 0.f;
@@ -785,6 +799,13 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			FMassNavMeshShortPathFragment& ShortPath = ShortPaths[EntityIt];
 			FMassNavMeshCachedPathFragment& CachedPath = CachedPaths[EntityIt];
 			const FTransformFragment& Transform = Transforms[EntityIt];
+
+			// A walker takes the units' speed of the cheats at once (hol.Units.SpeedScale): Mass moves its path's point on at
+			// that speed too.
+			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && MoveTarget.DesiredSpeed.Get() > 0.f)
+			{
+				MoveTarget.DesiredSpeed.Set(GetWalkSpeed(Constants));
+			}
 
 			// Its way crosses a building the navmesh did not show yet when its path was found (S7's first paths, a building
 			// placed): put back at the wall step after step (D310), it gets a new path from where it stands.

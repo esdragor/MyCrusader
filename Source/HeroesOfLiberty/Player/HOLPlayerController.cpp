@@ -935,6 +935,30 @@ namespace UE::HeroesOfLiberty::Player
 				Controller->RequestCheatPopulation(Places);
 			}
 		}));
+
+	FAutoConsoleCommand CheatUnitSpeedCommand(
+		TEXT("hol.Cheat.UnitSpeed"),
+		TEXT("hol.Cheat.UnitSpeed [Scale=1]: every unit of every player walks Scale times as fast (0.1 to 10; 1: the table's speeds; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const float Scale = Args.IsEmpty() ? 1.f : FCString::Atof(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatUnitSpeed(Scale);
+			}
+		}));
+
+	FAutoConsoleCommand CheatGatherSpeedCommand(
+		TEXT("hol.Cheat.GatherSpeed"),
+		TEXT("hol.Cheat.GatherSpeed [Scale=1]: every gatherer of every player gathers Scale times as fast (0.1 to 10; 1: the table's rates; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const float Scale = Args.IsEmpty() ? 1.f : FCString::Atof(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatGatherSpeed(Scale);
+			}
+		}));
 #endif
 
 	/** For the scripted checks (D257): the delay lets a command given at start-up report once the match runs. */
@@ -2515,6 +2539,16 @@ void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 	ServerCheatPopulation(Places);
 }
 
+void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
+{
+	ServerCheatUnitSpeed(Scale);
+}
+
+void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
+{
+	ServerCheatGatherSpeed(Scale);
+}
+
 void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)
 {
 #if !UE_BUILD_SHIPPING
@@ -2560,6 +2594,34 @@ void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Plac
 		Production->AddCheatPopulation(HOLPlayerState->GetPlayerIndex(), Places);
 		UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d population cap +%d (175 at most)"), HOLPlayerState->GetPlayerIndex(), Places);
 	}
+#endif
+}
+
+void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale)
+{
+#if !UE_BUILD_SHIPPING
+	// Every walker of every player (hol.Units.SpeedScale, on this server), at the next step.
+	const float Held = FMath::Clamp(FMath::IsFinite(Scale) ? Scale : 1.f, 0.1f, 10.f);
+	if (IConsoleVariable* SpeedScale = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Units.SpeedScale")))
+	{
+		SpeedScale->Set(Held, ECVF_SetByConsole);
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d unit speed x%.2f"), HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE, Held);
+#endif
+}
+
+void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Scale)
+{
+#if !UE_BUILD_SHIPPING
+	// Every gatherer of every player (hol.Gather.SpeedScale, on this server), at the next step.
+	const float Held = FMath::Clamp(FMath::IsFinite(Scale) ? Scale : 1.f, 0.1f, 10.f);
+	if (IConsoleVariable* SpeedScale = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Gather.SpeedScale")))
+	{
+		SpeedScale->Set(Held, ECVF_SetByConsole);
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d gather speed x%.2f"), HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE, Held);
 #endif
 }
 
