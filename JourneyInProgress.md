@@ -65,6 +65,8 @@ vérifier sur S1 et S2.
 | J5a.6 Clôture : D295 à D299, D303 à D305 au GDD | **fait** (2026-10-15) : lignes au § 21 (D297 et D299 précisées par ce qui a été fait), paragraphe « Parcours J5a : le bois » au § 16.6, S7 dans les seuils des stress tests. **J5a close.** |
 | J5b.1 Baies et filons | **fait** (2026-10-15) : `Plain` refaite (376 sources : 6 buissons de baies en face du bois de chaque emplacement, à 20-23 m ; 8 filons entre voisins, pierre et or alternés, à 60 m de chacun) ; places autour d'une source au pas de deux récolteurs (16 autour d'un filon au lieu de 12, arbres et baies inchangés) ; essai scripté solo : baies, pierre, or déchargés, charge perdue au changement ; `quick_check` PASS (69 s) ; essai de l'utilisateur → **D306** (charge perdue au premier point de la nouvelle ressource, pas à l'ordre), faite, `quick_check` PASS (72 s), **validée** ; D306 au GDD (§ 21, D296 et « Parcours J5a » précisés) |
 | J5b.2 HUD de la récolte | **fait** (2026-10-16, **validée** par l'utilisateur, commitée) : D307 (activité « en tournée de récolte » dans les 3 bits de l'état, comptes de récolteurs au `PlayerState` du seul propriétaire) ; source sélectionnable (nom, « Reste : 1840 », anneau au sol), bloc d'un groupe (« 3 en récolte · 2 inactifs »), comptes par ressource « (2) » dans la barre du haut, compteur « Inactifs : N » cliquable et touche « . » (`IA_NextIdle` : « . », la touche « ; . » de l'AZERTY, « . » du pavé) ; textes fr / en / ja ; tests 36/36 (`Movement.Picking` étendu), essai scripté solo conforme, `quick_check` PASS (77 s) ; **essai de l'utilisateur** : « super », mais des Paysans font d'énormes détours dans leurs allers-retours → **D308** (suivi d'un chemin sans grand virage, détour gardé vérifié, sortie d'une poche du navmesh) : marches anormalement longues 37 → 2, `quick_check` PASS (75 s) ; 2e essai : moins de détours, mais les Paysans se gênent devant le centre → **D309** (choix de l'utilisateur : en aller-retour, un Paysan traverse toutes les unités ; plus de place autour d'une source → même ressource à 8 m, sinon inactif devant), faite, compile sans avertissement, `quick_check` PASS (75 s) ; 3e essai → empilement à la source et amas récolteurs / inactifs corrigés (réservations sur le point réel, toutes sources, points d'attente des inactifs), **massifs** (recherche de proche en proche dans tout le bois, D309 précisée), places serrées **à 100 cm** tournées vers le dépôt (capture d'AoE4 de l'utilisateur) ; `quick_check` PASS, tests 38/38, S7 court PASS (2,39 ms) ; **validée** (« très bien », `hol.Gather.SpotSpacing 100`) |
+| J5b.3 Vérification et essai | **fait** (2026-10-16) : D309 précisée (point 6 : bosquet voisin à ~20 m, rangées d'attente sans limite), **validée**, commitée (`516ac75`) ; parties « gather » solo et 2 clients de `quick_check` (PASS en 77-78 s, tests 39/39, verbe `waitidle`, `SoftQuit`), correctif de `Stop` (inactifs empilés au dépôt : 29-56 → 115-120 cm), essai de l'utilisateur **validé**, commitées (`a067c11`) ; mesures au repos (`684045f`) : S1 2,184 ms, S2 2,738 ms, S7 2,155 ms par pas, S5 31 227 o/s par client (écart 21,6 cm), tous PASS ; 632 bois/s du S7 court = effet de fenêtre (régime 1 201 bois/s sur 180 s) ; Paysan sans place inactif **en gardant sa charge**, comme dans AoE4 : **confirmé** par l'utilisateur |
+| J5b.4 Clôture : D307 à D309 au GDD | **fait** (2026-10-16) : lignes D307 à D309 au § 21 (D296 précisée par D309), paragraphe « Parcours J5b : les 4 ressources et le HUD » au § 16.6 (« Parcours J5a » précisé : les 15 m remplacés par les massifs). **J5b close.** |
 
 ## Prochaine étape exacte
 
@@ -114,8 +116,8 @@ vérifier sur S1 et S2.
    `quick_check` (PASS en 77-78 s, tests 39/39), verbe `waitidle`, correctif des inactifs empilés au centre (`Stop` →
    `bSettling`). **Point 3 fait** (au repos) : S1 2,18 / S2 2,74 / S7 2,16 ms, S5 31,2 Ko/s (erreur 21,6 cm), tous PASS ;
    les 632 bois/s de S7 étaient un effet de fenêtre (vagues d'allers-retours ; régime 1 201 bois/s).
-   **Suite : clôture de J5b** (D307 à D309 au GDD ; D306 y est déjà), puis **J5c** (animations : décision de
-   l'utilisateur sur leur source). En sous-agents (règle ci-dessous).
+   **J5b close** (2026-10-16 : D307 à D309 au GDD, paragraphe « Parcours J5b »). Suite : **J5c** (la vie de la
+   récolte), en commençant par **J5c.1** (voir « Plan de J5 »). En sous-agents (règle ci-dessous).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -2298,3 +2300,18 @@ d'épée).
   **21,6 cm** (22,7 ; seuil 25), réplication 0,148 ms par pas, simulation du serveur 6,95 ms (2 clients sur la même
   machine). Client : états 25,5 Ko/s, le reste 5,9 Ko/s.
 - Tout PASS : point 3 de J5b.3 fait. Reste : clôture de J5b (D306-D309 au GDD, au choix de l'utilisateur), puis J5c.
+- **Charge gardée par un inactif sans place** : **confirmée** par l'utilisateur après ce S7 long (comme dans AoE4, il
+  ne va pas la déposer). Rien à changer.
+
+### 2026-10-16 — Clôture de J5b
+
+- Sous-agent, documentation seule, rien de commité.
+- GDD § 21 : lignes **D307** (inactifs et comptes de récolteurs), **D308** (détours des allers-retours) et **D309**
+  (récolteurs fantômes, massifs, places à 100 cm, inactifs en rangées, point 6 : bosquet voisin à ~20 m et rangées
+  sans limite ; charge gardée par un inactif sans place, confirmée), après D306 et avant D315. **D296 précisée par
+  D309** (les ~15 m remplacés par les massifs et le bosquet voisin).
+- GDD § 16.6 : paragraphe **« Parcours J5b : les 4 ressources et le HUD »** après « Parcours J5a » (baies et filons,
+  376 sources, D306, HUD, D308, D309, 175 Paysans sur un arbre ; `quick_check` « gather » solo et 2 clients ; mesures
+  au repos du 2026-10-16 ; effet de fenêtre de S7) ; « Parcours J5a » précisé (les 15 m remplacés par les massifs,
+  D309). § 22 (review) non touché.
+- **J5b close.** Reprise : **J5c.1** (source des animations déjà tranchée, voir « Prochaine étape exacte », point 13).
