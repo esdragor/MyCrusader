@@ -1,3 +1,5 @@
-Name,DisplayName,Footprint,Height,MaxHealth,Mesh,PopulationProvided,Produces,MaxQueue,Accepts
-MainCentre,Centre principal,"(X=1500.0,Y=1500.0)",1000,2400,,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)"
-LumberCamp,Camp de bûcherons,"(X=600.0,Y=600.0)",400,1000,,0,,1,"(Wood)"
+Name,DisplayName,Footprint,Height,MaxHealth,Mesh,PopulationProvided,Produces,MaxQueue,Accepts,Cost,BuildTime,BuildGridSlot
+MainCentre,Centre principal,"(X=1200.0,Y=1200.0)",1000,2400,,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)","(Food=0,Wood=0,Stone=0,Gold=0)",0,-1
+House,Maison,"(X=600.0,Y=600.0)",400,600,,10,,1,,"(Food=0,Wood=50,Stone=0,Gold=0)",20,0
+LumberCamp,Camp de bûcherons,"(X=600.0,Y=600.0)",400,1000,,0,,1,"(Wood)","(Food=0,Wood=100,Stone=0,Gold=0)",25,1
+MiningCamp,Camp de mineurs,"(X=600.0,Y=600.0)",400,1000,,0,,1,"(Stone,Gold)","(Food=0,Wood=100,Stone=0,Gold=0)",25,2

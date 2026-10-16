@@ -122,8 +122,9 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 			UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: no main centre"), Slot);
 			continue;
 		}
-		// Facing the way the start faces (the centre of a symmetric map).
-		const FTransform Transform(FRotator(0.f, Start->GetActorRotation().Yaw, 0.f), Start->GetGroundLocation());
+		// On the tile grid (D311), facing about the way the start faces (the centre of a symmetric map), turned to the
+		// nearest quarter turn: the houses placed tile by tile line up with it.
+		const FTransform Transform(FRotator(0.f, Start->GetMainCentreYaw(), 0.f), Start->GetMainCentreLocation());
 		AHOLBuilding* Centre = GetWorld()->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 		if (!Centre)
@@ -133,7 +134,7 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		Centre->Setup(HOLBuildingTypeNames::MainCentre, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
 		Centre->FinishSpawning(Transform);
 		AssignBuildingOwners(Slot);
-		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f)"), Slot, SlotConfig.ColorIndex,
-			Transform.GetLocation().X, Transform.GetLocation().Y);
+		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f), yaw %.0f"), Slot, SlotConfig.ColorIndex,
+			Transform.GetLocation().X, Transform.GetLocation().Y, Transform.Rotator().Yaw);
 	}
 }

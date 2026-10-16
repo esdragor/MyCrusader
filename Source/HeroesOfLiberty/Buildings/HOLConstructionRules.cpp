@@ -1,0 +1,150 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Buildings/HOLConstructionRules.h"
+
+FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
+{
+	const FVector2D Half = Footprint * 0.5;
+	if (Grid <= 0.0)
+	{
+		return FBox2D(Point - Half, Point + Half);
+	}
+	// The lower corner on the nearest grid point: the footprint's edges are then on grid lines whatever its size.
+	const FVector2D Corner(FMath::RoundToDouble((Point.X - Half.X) / Grid) * Grid, FMath::RoundToDouble((Point.Y - Half.Y) / Grid) * Grid);
+	return FBox2D(Corner, Corner + Footprint);
+}
+
+float HOLConstruction::SnapYaw(const float Yaw)
+{
+	return FRotator::NormalizeAxis(FMath::RoundToFloat(Yaw / 90.f) * 90.f);
+}
+
+FBox2D HOLConstruction::MakeFootprint(const FVector2D& Centre, const FVector2D& Footprint)
+{
+	const FVector2D Half = Footprint * 0.5;
+	return FBox2D(Centre - Half, Centre + Half);
+}
+
+bool HOLConstruction::Overlaps(const FBox2D& A, const FBox2D& B)
+{
+	return FMath::Min(A.Max.X, B.Max.X) - FMath::Max(A.Min.X, B.Min.X) > TouchTolerance
+		&& FMath::Min(A.Max.Y, B.Max.Y) - FMath::Max(A.Min.Y, B.Min.Y) > TouchTolerance;
+}
+
+double HOLConstruction::GetDistance(const FBox2D& Footprint, const FVector2D& Point)
+{
+	const FVector2D Nearest(FMath::Clamp(Point.X, Footprint.Min.X, Footprint.Max.X), FMath::Clamp(Point.Y, Footprint.Min.Y, Footprint.Max.Y));
+	return FVector2D::Distance(Nearest, Point);
+}
+
+bool HOLConstruction::Overlaps(const FBox2D& Footprint, const FHOLPlacementCircle& Circle)
+{
+	return GetDistance(Footprint, Circle.Centre) < Circle.Radius - TouchTolerance;
+}
+
+EHOLPlacementRefusal HOLConstruction::CheckPlacement(const FHOLPlacementQuery& Query)
+{
+	const FBox2D& Footprint = Query.Footprint;
+	if (Query.MapArea.bIsValid
+		&& (Footprint.Min.X < Query.MapArea.Min.X - TouchTolerance || Footprint.Min.Y < Query.MapArea.Min.Y - TouchTolerance
+			|| Footprint.Max.X > Query.MapArea.Max.X + TouchTolerance || Footprint.Max.Y > Query.MapArea.Max.Y + TouchTolerance))
+	{
+		return EHOLPlacementRefusal::OutOfMap;
+	}
+	for (const FBox2D& Building : Query.Buildings)
+	{
+		if (Overlaps(Footprint, Building))
+		{
+			return EHOLPlacementRefusal::Building;
+		}
+	}
+	for (const FHOLPlacementCircle& Source : Query.Sources)
+	{
+		if (Overlaps(Footprint, Source))
+		{
+			return EHOLPlacementRefusal::Source;
+		}
+	}
+	for (const FVector2D& Centre : Query.EnemyMainCentres)
+	{
+		if (GetDistance(Footprint, Centre) < Query.AntiRushRadius)
+		{
+			return EHOLPlacementRefusal::EnemyCentre;
+		}
+	}
+	return Query.bOnNavMesh ? EHOLPlacementRefusal::None : EHOLPlacementRefusal::NavMesh;
+}
+
+bool HOLConstruction::TryPay(FHOLResources& Stock, const FHOLResources& Cost)
+{
+	if (!Stock.Covers(Cost))
+	{
+		return false;
+	}
+	Stock -= Cost;
+	return true;
+}
+
+FHOLResources HOLConstruction::GetRefund(const FHOLResources& Cost, const bool bWorkStarted)
+{
+	if (!bWorkStarted)
+	{
+		return Cost;
+	}
+	return FHOLResources(Cost.Food / 2, Cost.Wood / 2, Cost.Stone / 2, Cost.Gold / 2);
+}
+
+int32 HOLConstruction::GetBuildSteps(const float BuildTime, const float StepSeconds)
+{
+	return FMath::Max(1, FMath::RoundToInt(BuildTime / FMath::Max(StepSeconds, UE_KINDA_SMALL_NUMBER)));
+}
+
+int64 HOLConstruction::GetTotalWork(const int32 BuildSteps)
+{
+	return static_cast<int64>(FMath::Max(BuildSteps, 1)) * WorkPerBuilder;
+}
+
+int32 HOLConstruction::GetWorkPerStep(const int32 Builders, const float Exponent)
+{
+	if (Builders <= 0)
+	{
+		return 0;
+	}
+	return FMath::RoundToInt(WorkPerBuilder * FMath::Pow(static_cast<float>(Builders), FMath::Clamp(Exponent, 0.f, 1.f)));
+}
+
+int32 HOLConstruction::GetStepsToFinish(const int32 BuildSteps, const int32 Builders, const float Exponent)
+{
+	const int64 PerStep = FMath::Max(GetWorkPerStep(FMath::Max(Builders, 1), Exponent), 1);
+	return static_cast<int32>((GetTotalWork(BuildSteps) + PerStep - 1) / PerStep);
+}
+
+bool HOLConstruction::AddWork(int64& Work, const int64 TotalWork, const int32 Builders, const float Exponent)
+{
+	if (Work >= TotalWork)
+	{
+		return false;
+	}
+	Work = FMath::Min(Work + GetWorkPerStep(Builders, Exponent), TotalWork);
+	return Work >= TotalWork;
+}
+
+float HOLConstruction::GetProgress(const int64 Work, const int64 TotalWork)
+{
+	return TotalWork > 0 ? static_cast<float>(FMath::Clamp(static_cast<double>(Work) / static_cast<double>(TotalWork), 0.0, 1.0)) : 1.f;
+}
+
+int32 HOLConstruction::GetHealth(const int32 MaxHealth, const int64 Work, const int64 TotalWork)
+{
+	if (TotalWork <= 0)
+	{
+		return FMath::Max(MaxHealth, 1);
+	}
+	const int64 Done = FMath::Clamp(Work, int64(0), TotalWork);
+	return FMath::Max(1, static_cast<int32>(static_cast<int64>(MaxHealth) * Done / TotalWork));
+}
+
+int32 HOLConstruction::GetPopulationProvided(const int32 TypePopulation, const bool bFinished)
+{
+	return bFinished ? FMath::Max(TypePopulation, 0) : 0;
+}

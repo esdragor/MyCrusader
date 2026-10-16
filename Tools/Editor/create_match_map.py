@@ -37,7 +37,7 @@ SLOT_ANGLES = [180.0, 0.0, 270.0, 90.0, 225.0, 45.0, 315.0, 135.0]
 PLAYER_START_HALF_HEIGHT = 92.0
 
 # Obstacles (D286). A ridge across the way from each slot to the middle, RIDGE_RADIUS from the map's centre: 30 m in
-# front of the main centre, out of the 15 m centre's way and of the Peasants born at its foot.
+# front of the main centre, out of the 12 m centre's way and of the Peasants born at its foot.
 RIDGE_RADIUS = 12000.0
 RIDGE_BOULDERS = [(-650.0, unreal.Vector(7.0, 4.5, 3.0)), (0.0, unreal.Vector(8.0, 5.0, 3.6)), (650.0, unreal.Vector(6.5, 4.0, 2.8))]
 # Grove: trunks of 5 m, crowns from 4 m up (the units pass under them, the trunks block), on a disc of 14 m.

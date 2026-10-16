@@ -24,6 +24,16 @@ public:
 	/** The point on the ground at the foot of the start (its capsule stands on the ground). */
 	FVector GetGroundLocation() const;
 
+	/**
+	 * Where the slot's main centre stands (D311): the ground point moved onto the tile grid (its footprint's edges on
+	 * the grid lines, 1.5 m at most each way), so the houses and camps placed tile by tile line up with it. The
+	 * camera starts above it; the scripted checks aim at it.
+	 */
+	FVector GetMainCentreLocation() const;
+
+	/** The main centre's yaw: the start's, turned to the nearest quarter turn to keep the footprint on the grid. */
+	float GetMainCentreYaw() const;
+
 	/** The start of the given slot, or null if the map has none. */
 	static AHOLStartSlot* Find(const UWorld* World, int32 Index);
 

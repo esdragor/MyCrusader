@@ -47,7 +47,7 @@ bool FHOLBuildingTypesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("main centre in the building type table"), MainCentre))
 	{
 		TestFalse(TEXT("named"), MainCentre->DisplayName.IsEmpty());
-		TestEqual(TEXT("~15 x 15 m (D261)"), MainCentre->Footprint, FVector2D(1500.0, 1500.0));
+		TestEqual(TEXT("12 x 12 m: 4 x 4 tiles (D261, D311)"), MainCentre->Footprint, FVector2D(1200.0, 1200.0));
 		TestEqual(TEXT("~10 m high (D261)"), MainCentre->Height, 1000.f);
 		TestTrue(TEXT("health points"), MainCentre->MaxHealth > 0);
 		TestTrue(TEXT("provisional shape: no final mesh yet"), MainCentre->Mesh.IsNull());
@@ -83,15 +83,15 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		{
 			Box += Piece->Bounds.GetBox();
 		}
-		TestTrue(TEXT("footprint 15 x 15 m"), Box.GetSize().Equals(FVector(1500.0, 1500.0, 1000.0), 1.0));
-		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-750.0, -750.0, 0.0), 1.0));
+		TestTrue(TEXT("footprint 12 x 12 m"), Box.GetSize().Equals(FVector(1200.0, 1200.0, 1000.0), 1.0));
+		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-600.0, -600.0, 0.0), 1.0));
 
 		// The navmesh's forbidden area: the footprint widened by the bodies' clearance (D310), as tall as the shape.
 		TArray<UBoxComponent*> Boxes;
 		Building->GetComponents(Boxes);
 		const double Clearance = UHOLBuildingSettings::GetBodyClearance();
 		TestTrue(TEXT("forbidden area: the footprint and the clearance"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation()
-			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(750.0 + Clearance, 750.0 + Clearance, 500.0), 1.0));
+			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(600.0 + Clearance, 600.0 + Clearance, 500.0), 1.0));
 
 		TestEqual(TEXT("the roof at the owner's colour"), CountPiecesOfColor(*Building, 3), 1);
 		TestEqual(TEXT("the top of the block at a darker tone of it"), CountPiecesOfColor(*Building, 3, AHOLBuilding::BaseTopTone), 1);

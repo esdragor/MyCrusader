@@ -125,11 +125,14 @@ if ($Parts -contains "menu") {
     Step "hol.UI.Language fr", "waitui"
 }
 
-# Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles.
+# Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles; each main
+# centre (4 x 4 tiles) stands on the 3 m tile grid (D311), its middle on the grid point nearest its slot (diagonal slots:
+# 1.07 m off on each axis), where the camera starts and the scripted checks aim.
 $SlotAngles = @(180, 0, 270, 90, 225, 45, 315, 135)
+$Tile = 300
 function Get-SlotStart([int] $Slot) {
     $Radians = $SlotAngles[$Slot] * [Math]::PI / 180
-    return @([Math]::Round(15000 * [Math]::Cos($Radians)), [Math]::Round(15000 * [Math]::Sin($Radians)))
+    return @(([Math]::Round(15000 * [Math]::Cos($Radians) / $Tile) * $Tile), ([Math]::Round(15000 * [Math]::Sin($Radians) / $Tile) * $Tile))
 }
 # The local player takes the first human slot (D243): 2 players -> slot 0; 8 players, seven AI first -> slot 7.
 $Cases = @(
@@ -431,6 +434,13 @@ if ($Parts -contains "camera") {
             $Checks["right edge 1 s: +Y (got $([Math]::Round($Edge / 100)) m)"] = ($Edge -ge 3000) -and ($Edge -le 6500)
         }
         $Checks["captures"] = (Test-Path (Join-Path $Shots "cam_$($Case.Name)_start.png")) -and (Test-Path (Join-Path $Shots "cam_$($Case.Name)_end.png"))
+        # The main centres on the tile grid (D311): one per open slot, at its slot's grid point, along the grid lines.
+        $Centres = @($Section | Select-String -Pattern "Main centre of slot (\d) \(colour \d\) at \((-?\d+), (-?\d+)\), yaw (-?\d+)$" | ForEach-Object { $_.Matches[0] })
+        $OffGrid = @($Centres | Where-Object { $G = $_.Groups; $At = Get-SlotStart ([int]$G[1].Value)
+            ([int]$G[2].Value -ne $At[0]) -or ([int]$G[3].Value -ne $At[1]) -or ([int]$G[2].Value % $Tile -ne 0) -or ([int]$G[3].Value % $Tile -ne 0) -or ([int]$G[4].Value % 90 -ne 0) })
+        $OpenSlots = @($Case.States | Where-Object { $_ -ne "Closed" }).Count
+        $Checks["main centres on the 3 m grid, along its lines ($($Centres.Count) of $OpenSlots; $(($Centres | ForEach-Object { "$($_.Groups[1].Value): ($($_.Groups[2].Value), $($_.Groups[3].Value)) yaw $($_.Groups[4].Value)" }) -join '; '))"] =
+            ($Centres.Count -eq $OpenSlots) -and ($OffGrid.Count -eq 0)
 
         # Selection: four reports, in the order of the steps.
         $Selection = @((Get-Section "selection $($Case.Name)") | Select-String -Pattern "Selection report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
