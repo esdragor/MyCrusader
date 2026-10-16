@@ -1,6 +1,7 @@
 """Gestures of the Peasant, written key by key (pure Python: read by make_peasant_animations.py and preview_animation.py).
 
-Format: see anim_rig.py. Body terms everywhere: (right, forward, up) in cm for positions and directions,
+Format: see anim_rig.py; "props" names the props of peasant_props.py the preview draws on their bones (the mesh
+will show the same, J5c.2). Body terms everywhere: (right, forward, up) in cm for positions and directions,
 (twist, bend, side) in degrees for rotations (twist toward his right, bend forward, lean toward his right).
 The first key is at t = 0 and the last key repeats the first (clean loop).
 """
@@ -46,6 +47,7 @@ WIND_UP = {
 CHOP_WOOD = {
     "name": "A_Peasant_ChopWood",
     "fps": 30,
+    "props": ("axe",),
     "stance": {"l": (-6.0, 8.0, 0.0), "r": (6.0, -6.0, 0.0)},
     "elbows": {"l": (-0.4, 0.1, -1.0), "r": (0.5, -0.2, -1.0)},
     "fist": (55.0, 70.0, 45.0),
@@ -99,6 +101,7 @@ MINE_PICK = {
     "name": "A_Peasant_MinePick",
     "fps": 30,
     "tool": {"kind": "pick", "handle_length": 80.0, "knob_offset": 6.0},
+    "props": ("pickaxe",),
     "scene": {"kind": "rock"},
     "stance": {"l": (-9.0, 7.0, 0.0), "r": (9.0, -5.0, 0.0)},
     "elbows": {"l": (-0.6, 0.0, -1.0), "r": (0.6, 0.0, -1.0)},
@@ -194,15 +197,15 @@ GATHER_BERRIES = {
 # lands (about 0.37 and 0.9 of the loop) and highest at about 0.13 and 0.63.
 UNARMED_WALK = "/Game/CloseCombat/Character/UE4Mannequin/Animations/Swordsman/Movement/Unarmed/A_SW_Unarmed_Walk"
 
-# Food: a load held against the belly at about 110 cm, torso leaning back a little and steady on the swinging pelvis
-# (validated on the preview by the user, 2026-10-16: keep as is).
+# Food: a basket of berries (peasant_props.py) held against the belly at about 110 cm, torso leaning back a little and
+# steady on the swinging pelvis (validated on the preview by the user, 2026-10-16: keep as is).
 CARRY_HANDS = hands((15.0, 26.0, 108.0), (-0.75, 0.0, 0.65), (-15.0, 26.0, 108.0), (0.75, 0.0, 0.65))
 CARRY_FOOD = {
     "name": "A_Peasant_CarryFood",
     "base": UNARMED_WALK,
     "hands_frame": "chest",
     "steady_chest": 0.6,
-    "scene": {"kind": "load", "half": (15.0, 11.0, 11.0)},
+    "props": ("basket_food",),
     "elbows": {"l": (-0.6, -0.4, -1.0), "r": (0.6, -0.4, -1.0)},
     "fist": (45.0, 55.0, 35.0),
     "keys": [
@@ -216,7 +219,8 @@ CARRY_FOOD = {
 # Wood: a bundle of four logs (95 cm) on the right shoulder, front end a little up, steadied by the right hand raised
 # beside the face; the left arm swings with the walk (forward when the left foot is back); the body leans a little to
 # the left against the load.
-WOOD_HANDS = {"r": {"at": (12.0, 14.0, 162.0), "palm": (-0.3, 0.0, 0.95)},
+# J5c.2: the right hand follows the bundle, raised to rest on the shoulder (was at (12, 14, 162)).
+WOOD_HANDS = {"r": {"at": (17.0, 14.0, 167.5), "palm": (-0.3, 0.0, 0.95)},
               "l": {"at": (-21.0, -4.0, 90.0), "palm": (1.0, 0.0, 0.0), "fingers": (0.0, 0.15, -1.0), "swing": 0.35}}
 WOOD_ROT = merge(torso(0.0, -3.0, -10.0, look=0.0, pelvis=False), {"clavicle_r": (0.0, 0.0, -10.0)})
 CARRY_WOOD = {
@@ -224,8 +228,7 @@ CARRY_WOOD = {
     "base": UNARMED_WALK,
     "hands_frame": "chest",
     "steady_chest": 0.5,
-    "prop": {"kind": "logs", "centre": (17.0, -8.0, 161.0), "dir": (-0.1, 0.92, 0.36), "length": 95.0, "count": 4,
-             "radius": 5.0},
+    "props": ("logs",),
     "elbows": {"l": (-0.2, -1.0, -0.4), "r": (0.6, 0.4, -1.0)},
     "fist": (40.0, 50.0, 35.0),
     "keys": [
@@ -234,11 +237,16 @@ CARRY_WOOD = {
     ],
 }
 
-# Stone and gold (one sequence): a heavy sack on the back, its neck over the right shoulder held by both hands, torso
-# bent forward about 20 degrees more than standing (the spine keys say more: the walk and the steady chest take part
-# of it back), head up to look ahead; the torso dips a little more each time a foot lands (weight).
-STONE_HANDS = {"r": {"at": (13.0, 9.0, 153.0), "palm": (-0.2, -0.7, -0.7)},
-               "l": {"at": (3.0, 13.0, 149.0), "palm": (0.3, -0.7, -0.6)}}
+# Stone and gold (one sequence): a hotte (wicker back-basket, peasant_props.py) on the back, both hands holding its
+# straps in front of the shoulders (J5c.2; was the neck of a sack at the right shoulder), torso bent forward about 20
+# degrees more than standing (the spine keys say more: the walk and the steady chest take part of it back), head up to
+# look ahead; the torso dips a little more each time a foot lands (weight). Legs, lean and bob unchanged.
+# The hands' grip points sit just in front of the straps (STRAP_R of peasant_props.py, at about 140 cm), fists closed
+# on them, palms toward the chest, elbows out.
+STRAP_HANDS = {"r": {"at": (13.5, 15.0, 140.0), "palm": (-0.25, -1.0, 0.1), "fingers": (-0.15, 0.1, -1.0)},
+               "l": {"at": (-13.5, 15.0, 140.0), "palm": (0.25, -1.0, 0.1), "fingers": (0.15, 0.1, -1.0)}}
+STRAP_ELBOWS = {"l": (-1.0, -0.3, -0.7), "r": (1.0, -0.3, -0.7)}
+STONE_HANDS = STRAP_HANDS
 
 
 def stone_key(t, bend):
@@ -251,12 +259,65 @@ CARRY_STONE = {
     "base": UNARMED_WALK,
     "hands_frame": "chest",
     "steady_chest": 0.4,
-    "prop": {"kind": "sack", "centre": (6.0, -25.0, 128.0), "radii": (20.0, 15.0, 26.0)},
-    "elbows": {"l": (-0.5, 0.3, -1.0), "r": (0.7, 0.1, -1.0)},
+    "props": ("hotte_stone",),
+    "elbows": STRAP_ELBOWS,
     "fist": (50.0, 60.0, 40.0),
     "keys": [stone_key(0.0, 44.0), stone_key(0.13, 41.0), stone_key(0.37, 48.0), stone_key(0.63, 41.0),
              stone_key(0.9, 48.0), stone_key(1.0, 44.0)],
 }
 
+# Loaded idles (J5c.2): a carrier standing still keeps his load held. Pelvis and legs copied from the idle every type
+# plays (A_SW_Idle: 11.333 s, in place, a fencing stance with the pelvis turned about 50 degrees to his right); the
+# pelvis' turn is taken back along the spine ("steady_spine") so the chest and the load face forward like in the
+# loaded walks; calm breathing (three breaths over the loop: chest up and a little back, shoulders up). Same arms
+# as the loaded walk of the same load (no swing). Gold uses the stone idle.
+IDLE = "/Game/CloseCombat/Character/UE4Mannequin/Animations/Swordsman/Movement/A_SW_Idle"
+IDLE_LENGTH = 34 / 3.0  # the idle's length (s): the key times below are in its seconds
+BREATHS = 3
+
+
+def breathing(rot, depth=1.0):
+    """Keys of a calm breathing loop on top of a static upper body `rot`: chest lifted and opened at each inhale."""
+    period = IDLE_LENGTH / BREATHS
+    keys = []
+    for k in range(BREATHS):
+        start = k * period
+        inhale = {bone: tuple(a + c for a, c in zip(rot.get(bone, (0.0, 0.0, 0.0)), delta)) for bone, delta in (
+            ("spine_02", (0.0, -1.0 * depth, 0.0)), ("spine_03", (0.0, -1.5 * depth, 0.0)),
+            ("neck_01", (0.0, 1.2 * depth, 0.0)), ("head", (0.0, 1.0 * depth, 0.0)),
+            ("clavicle_r", (0.0, 0.0, -2.0 * depth)), ("clavicle_l", (0.0, 0.0, 2.0 * depth)))}
+        keys.append({"t": start, "ease": "inout", "rot": rot})
+        keys.append({"t": start + period * 0.42, "ease": "inout", "rot": merge(rot, inhale)})
+    keys.append({"t": IDLE_LENGTH, "ease": "inout", "rot": rot})
+    return keys
+
+
+def loaded_idle(name, hands_pose, rot, elbows, fist, props, depth=1.0):
+    keys = breathing(rot, depth)
+    for key in keys:
+        key["hands"] = hands_pose
+    return {"name": name, "base": IDLE, "hands_frame": "chest", "steady_spine": 1.0, "props": props,
+            "elbows": elbows, "fist": fist, "keys": keys}
+
+
+IDLE_CARRY_FOOD = loaded_idle(
+    "A_Peasant_IdleCarryFood", CARRY_HANDS,
+    merge(torso(0.0, -8.0, 0.0, nod=4.0, pelvis=False), SHOULDERS_FORWARD),
+    CARRY_FOOD["elbows"], CARRY_FOOD["fist"], ("basket_food",))
+# Wood: the right hand steadies the logs on the shoulder as in the walk, the left arm hangs relaxed.
+IDLE_WOOD_HANDS = {"r": WOOD_HANDS["r"],
+                   "l": {"at": (-22.0, -2.0, 92.0), "palm": (1.0, 0.0, 0.0), "fingers": (0.0, 0.1, -1.0)}}
+IDLE_CARRY_WOOD = loaded_idle(
+    "A_Peasant_IdleCarryWood", IDLE_WOOD_HANDS, WOOD_ROT, {"l": (-0.2, -1.0, -0.4), "r": (0.6, 0.4, -1.0)},
+    CARRY_WOOD["fist"], ("logs",))
+# Stone and gold: hands on the hotte's straps, slight forward lean under the weight, head up.
+IDLE_CARRY_STONE = loaded_idle(
+    "A_Peasant_IdleCarryStone", STRAP_HANDS,
+    merge(torso(0.0, 24.0, 0.0, nod=-8.0, pelvis=False), SHOULDERS_FORWARD),
+    STRAP_ELBOWS, CARRY_STONE["fist"], ("hotte_stone",))
+
+# Baked in this order; new gestures at the end (make_skinned_mannequin.py lists the sequences by index on its own).
 GESTURES = {"chop_wood": CHOP_WOOD, "mine_pick": MINE_PICK, "gather_berries": GATHER_BERRIES,
-            "carry_food": CARRY_FOOD, "carry_wood": CARRY_WOOD, "carry_stone": CARRY_STONE}
+            "carry_food": CARRY_FOOD, "carry_wood": CARRY_WOOD, "carry_stone": CARRY_STONE,
+            "idle_carry_food": IDLE_CARRY_FOOD, "idle_carry_wood": IDLE_CARRY_WOOD,
+            "idle_carry_stone": IDLE_CARRY_STONE}

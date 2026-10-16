@@ -15,13 +15,21 @@ Gesture description (one dict, see peasant_poses.py):
   "stance"  {"l": (right, forward, up), "r": ...}: constant offsets of the feet from their reference place, in cm.
   "elbows"  default elbow directions (see below); "fist" (degrees) curl of the finger joints 01, 02, 03 (constant).
   "tool"    {"kind": "axe" | "pick", "hand_spacing", "knob_offset", "handle_length"}: tool sizes in cm (defaults
-            22, 6, 80; also read at the top level, as the axe chop has them); the kind only changes the preview.
+            22, 6, 80; also read at the top level, as the axe chop has them). A gesture with a tool also keys the
+            TOOL BONE ik_hand_gun (the only ik_* bone ever written, J5c.2b): Rig.pose puts it on the tool frame
+            (origin at the knob, X along the handle toward the head, Y toward the striking edge, Z = X x Y), so a prop
+            skinned to it (peasant_props.py) follows both hands exactly. The edge is fixed in the right hand (the
+            tool is held rigidly by it): the direction the head moves in at the hit, read once from the solved loop.
   "base"    optional path of a source animation (the walk under the loaded walk): its pelvis and legs are copied
             frame by frame (sampled by make_peasant_animations.py into Data/<name>.json), it sets the length and the
             frame rate, the key times are stretched onto its length and the legs are not solved.
   "steady_chest"  0-1: share of the pelvis' own swing taken back at spine_03 (a carrier keeps his load still).
+  "steady_spine"  0-1: the same, spread along the spine (a third at spine_01, two thirds at spine_02, all of it at
+                  spine_03): for a base whose pelvis turns a lot (the idle's fencing stance), the chest faces forward
+                  without a kink at one joint.
   "hands_frame"   "chest": free hands' positions follow the chest (bob, sway) instead of staying fixed in the mesh.
-  "scene"   preview only: what the gesture works on ("trunk", "rock", "bush", "load").
+  "scene"   preview only: what the gesture works on ("trunk", "rock", "bush").
+  "props"   preview only: names of the props of peasant_props.py drawn on their bones (what the mesh will show).
 Key (one dict per key):
   "t"       time in seconds.
   "ease"    how the segment ending at this key is timed: "linear", "in" (accelerates), "out" (decelerates), "inout".
@@ -269,6 +277,9 @@ FINGERS = ("index", "middle", "ring", "pinky")
 FINGER_BONES = tuple("%s_%02d_%s" % (f, k, side) for side in ("l", "r") for f in FINGERS for k in (1, 2, 3))
 ANIMATED_BONES = (SPINE_BONES + ARM_CHAINS["l"] + ARM_CHAINS["r"] + LEG_CHAINS["l"] + LEG_CHAINS["r"]
                   + FINGER_BONES)
+# The tool bone: unused by the mannequin's mesh, child of ik_hand_root (at the origin, never keyed); keyed only by the
+# gestures with a tool, on the tool frame (J5c.2b). Every other ik_* bone stays untouched.
+TOOL_BONE = "ik_hand_gun"
 
 
 class Rig:
@@ -331,6 +342,8 @@ class Rig:
         if any(keys[i + 1]["t"] <= keys[i]["t"] for i in range(len(keys) - 1)):
             raise ValueError("Keys must be in increasing time")
         self.key_span = keys[-1]["t"] - keys[0]["t"]
+        self.has_tool = any("tool" in key or "axe" in key for key in keys)
+        self._strike = None
         if base is not None:
             # The source animation sets the length and the frames; the key times are stretched onto it.
             self.length = base["length"]
@@ -484,7 +497,45 @@ class Rig:
             local[i] = (lerp(a[:3], b[:3], s), qslerp(tuple(a[3:]), tuple(b[3:]), s))
 
     def pose(self, t):
-        """Local (translation, rotation) of every bone at time t, and the axe placement."""
+        """Local (translation, rotation) of every bone at time t, and the tool placement (for a tool gesture also
+        "edge" and "frame", and the tool bone's local transform written into the pose)."""
+        local, axe = self._solve(t)
+        if "dir" in axe:
+            frame = self.tool_frame(local, axe)
+            axe["frame"] = frame
+            axe["edge"] = qrot(frame[1], (0.0, 1.0, 0.0))
+            sk = self.sk
+            i = sk.index[TOOL_BONE]
+            parent = sk.ref_world[sk.parent[i]]  # ik_hand_root: never keyed, its reference is its pose
+            local[i] = (qrot(qconj(parent[1]), sub(frame[0], parent[0])), qnormalize(qmul(qconj(parent[1]), frame[1])))
+        return local, axe
+
+    def strike(self):
+        """(hit frame index, striking edge in the right hand's frame) of a tool gesture: the hit is the frame where
+        the head stops hardest (largest drop of speed), the edge the direction the head moves in just before it."""
+        if self._strike is None:
+            hand = self.sk.index["hand_r"]
+            heads, hand_rots = [], []
+            for t in self.times:
+                local, axe = self._solve(t)
+                heads.append(axe["head"])
+                hand_rots.append(self.sk.fk(local)[hand][1])
+            speeds = [length(sub(heads[i + 1], heads[i])) * self.fps for i in range(len(heads) - 1)]
+            hit = max(range(1, len(speeds)), key=lambda i: speeds[i - 1] - speeds[i])
+            self._strike = (hit, qrot(qconj(hand_rots[hit]), sub(heads[hit], heads[hit - 1])))
+        return self._strike
+
+    def tool_frame(self, local, axe):
+        """Component-space tool frame (knob, rotation): X along the handle, Y the striking edge, fixed in the right
+        hand and square to the handle."""
+        world = self.sk.fk(local)
+        edge = qrot(world[self.sk.index["hand_r"]][1], self.strike()[1])
+        d = axe["dir"]
+        edge = normalize(sub(edge, scale(d, dot(edge, d))))
+        return axe["knob"], qfrom_matrix((d, edge, cross(d, edge)))
+
+    def _solve(self, t):
+        """Body solve at time t: local transforms of every bone and the tool (or free hands) placement."""
         sk = self.sk
         values = self.sample(t)
         local = list(sk.ref_local)
@@ -525,6 +576,18 @@ class Rig:
             current = world[chest][1]
             self._set_world_rotation(local, world, chest,
                                      qslerp(current, qnormalize(qmul(qconj(pelvis_motion), current)), steady))
+
+        # Steady spine: the pelvis' motion taken back progressively along the spine.
+        spread = self.g.get("steady_spine", 0.0)
+        if spread > 0.0:
+            world = sk.fk(local)
+            spine = ("spine_01", "spine_02", "spine_03")
+            original = {bone: world[sk.index[bone]][1] for bone in spine}
+            for k, bone in enumerate(spine):
+                world = sk.fk(local)
+                target = qnormalize(qmul(qconj(pelvis_motion), original[bone]))
+                self._set_world_rotation(local, world, sk.index[bone],
+                                         qslerp(original[bone], target, spread * (k + 1) / 3.0))
 
         # Arms: both hands on the handle; hand rotation first, then the wrist where that grip puts it.
         world = sk.fk(local)
@@ -574,6 +637,20 @@ class Rig:
             hand = sk.index["hand_" + side]
             grip = add(world[hand][0], qrot(world[hand][1], self.grip_local[side]))
             out[side] = length(sub(grip, axe["grip_" + side]))
+        return out
+
+    def handle_distances(self, world):
+        """Distance (cm) from each hand's grip point to the handle's axis as carried by the tool bone (the segment
+        from the knob to the head along the bone's X): the tool really stays in both hands if ~0."""
+        sk = self.sk
+        knob, rot = world[sk.index[TOOL_BONE]]
+        along = qrot(rot, (1.0, 0.0, 0.0))
+        out = {}
+        for side in ("l", "r"):
+            hand = sk.index["hand_" + side]
+            grip = add(world[hand][0], qrot(world[hand][1], self.grip_local[side]))
+            s = max(0.0, min(self.handle_length, dot(sub(grip, knob), along)))
+            out[side] = length(sub(grip, add(knob, scale(along, s))))
         return out
 
 
