@@ -2,6 +2,7 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
+#include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLGameScreen.h"
 
@@ -9,8 +10,9 @@
  * The game HUD for the scripted checks (J3, D284): what it shows, and a click on it by the same path as the mouse.
  *   hol.HUD.Report [DelaySeconds=0]   logs "HUD report: resources ..., selection ..., grid ..., queue ..."
  *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the grid (GridCell00 to GridCell11, A to V) or an
- *   item of the queue (QueueItem0 to QueueItem4), or the idle workers' counter (IdleWorkers); a hidden or greyed one
- *   is not clicked
+ *   item of the queue (QueueItem0 to QueueItem4), the idle workers' counter (IdleWorkers), or a button of the cheats'
+ *   panel (CheatToggle, CheatFood, CheatWood, CheatStone, CheatGold, CheatAll, CheatPopulation, CheatFastBuild); a
+ *   hidden or greyed one is not clicked
  */
 namespace UE::HeroesOfLiberty::UI::HUD
 {
@@ -39,6 +41,11 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		WithGameScreen(World, Delay, [](UHOLGameScreen& Screen)
 		{
 			UE_LOG(LogHOLUI, Display, TEXT("HUD report: %s"), *Screen.Describe());
+			// On its own line: the checks read the report's line to its end.
+			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
+			{
+				UE_LOG(LogHOLUI, Display, TEXT("HUD cheats: %s"), *CheatPanel->Describe());
+			}
 		});
 	}
 
@@ -53,7 +60,8 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		const float Delay = Args.Num() > 1 ? FCString::Atof(*Args[1]) : 0.f;
 		WithGameScreen(World, Delay, [Name](UHOLGameScreen& Screen)
 		{
-			const bool bClicked = Screen.ClickWidget(Name);
+			UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer());
+			const bool bClicked = Screen.ClickWidget(Name) || (CheatPanel && CheatPanel->ClickWidget(Name));
 			UE_LOG(LogHOLUI, Display, TEXT("HUD click %s: %s"), *Name.ToString(), bClicked ? TEXT("done") : TEXT("hidden, greyed or unknown"));
 		});
 	}
@@ -65,6 +73,6 @@ namespace UE::HeroesOfLiberty::UI::HUD
 
 	FAutoConsoleCommandWithWorldAndArgs ClickCommand(
 		TEXT("hol.HUD.Click"),
-		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command grid (GridCell00-11), an item of the production queue (QueueItem0-4) or the idle workers' counter (IdleWorkers), as the mouse would"),
+		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command grid (GridCell00-11), an item of the production queue (QueueItem0-4) the idle workers' counter (IdleWorkers) or a button of the cheats' panel (CheatToggle, CheatFood, ...), as the mouse would"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Click));
 }

@@ -6,12 +6,14 @@
 
 class AHOLPlayerController;
 class UFont;
+class UHOLCheatPanel;
 class UHOLGameScreen;
 
 /**
  * HUD of a match (J3, D281): puts the game screen on the viewport of its local player; draws itself only the box the
  * player drags to select units (J4, D288) and the « +10 » rising above the player's Peasants as they unload at a
- * deposit (J5c.3, D298: its own unloads only, the server sends no other).
+ * deposit (J5c.3, D298: its own unloads only, the server sends no other). In a development build, also the cheats'
+ * panel under the top bar (D291).
  * It lives in the interface module, which a dedicated server neither builds nor loads (D247): the match names it by
  * its class path, /Script/HeroesOfLibertyUI.HOLGameHUD, and only a player's machine ever makes one.
  */
@@ -22,9 +24,12 @@ class HEROESOFLIBERTYUI_API AHOLGameHUD : public AHUD
 
 public:
 	UHOLGameScreen* GetScreen() const { return Screen; }
+	/** The cheats' panel (D291), in a development build only; null in Shipping. */
+	UHOLCheatPanel* GetCheatPanel() const { return CheatPanel; }
 
 	/** The game screen of a local player, if its HUD is this one. */
 	static UHOLGameScreen* FindScreen(const APlayerController* PlayerController);
+	static UHOLCheatPanel* FindCheatPanel(const APlayerController* PlayerController);
 
 	virtual void DrawHUD() override;
 
@@ -39,6 +44,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLGameScreen> Screen;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLCheatPanel> CheatPanel;
 
 	/** The interface font (F_HOL), for the « +10 ». */
 	UPROPERTY(Transient)
