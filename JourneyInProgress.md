@@ -156,7 +156,8 @@ vérifier sur S1 et S2.
    3 m, forum 12 m, maison et camps 6 m, camps 100 bois). **J6a.3 faite** (2026-10-16, validée : pose, fondation,
    annulation). **J6a.4 faite** (2026-10-16, validée : chantier, bâtisseurs, fondation fantôme, file Maj avec
    récolte, ralliement sur un chantier, chantier voisin ; S2 / S7 au repos à refaire). **J6a.5 faite** (2026-10-16, validée : grille du Paysan,
-   infobulles, messages, bloc du chantier, F1 / F2 / F3, groupes et Tab). Suite : **J6a.6** (vérification).
+   infobulles, messages, bloc du chantier, F1 / F2 / F3, groupes et Tab). **J6a.6 faite, J6a close** (2026-10-16 : mesures au repos
+   PASS, essai complet validé). Suite : **J6b.1** (camps ; voir « Plan de J6 »).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -2847,3 +2848,5 @@ d'épée).
   - **Bilan : tout PASS au repos** (S1, S2, S7, S5) : le FAIL de S2 venait de la charge. J6a.6 (mesures) et J5c ont
     leurs mesures. À suivre : la marge de S2 (0,12 ms), le GPU de S7 (+1,2 ms) et l'écart de S5 (+1,7 cm, le même
     chargé ou non).
+- Session d'essai lancée (deuxième écran) : **essai complet de J6a** (pose, chantier, HUD, animations, triches).
+- **Essai complet validé** par l'utilisateur (« tout est bon ») : **J6a close** (2026-10-16). D310 à D314 iront au GDD à la clôture de J6 (J6b.4). Reprise : **J6b.1** (camps : camp fini → ses bâtisseurs récoltent la source la plus proche qu'il accepte).
