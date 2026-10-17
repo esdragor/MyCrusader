@@ -187,11 +187,33 @@ Règles :
 
 ## Prochaine étape exacte
 
-**J5c close** (2026-10-16 : D318 à D323 au § 21 du GDD, paragraphe « Parcours J5c » au § 16.6) ; tout le travail
-d'animation (J5c.1, J5c.2, bâtisseur de J6a.4) est fusionné dans `main`. Rien en cours. Piste ouverte, au choix de
-l'utilisateur : **pièces allégées aux LOD 2-3** (voire sans outil au LOD 3), puis GPU de S7 remesuré (3,34 ms au repos,
-2,15 avant J5c). Prochaines animations : à la demande des étapes de jeu (combat de M5, autres unités), dans le worktree
-`MyCrusader-J5c` remis au niveau de `main`.
+**J5c close** (2026-10-16 : D318 à D323 au § 21 du GDD, paragraphe « Parcours J5c » au § 16.6) ; J5c.1, J5c.2 et le
+bâtisseur de J6a.4 sont dans `main`.
+
+**1. En attente, session mycrusader-23** : la branche `j5c-anims` porte encore, **non fusionnés dans `main`**, la partie
+« anims » de `quick_check` + `hol.Units.AnimReport` (e3736d1), la fusion de J6b.1 (3934b62, `quick_check` PASS en
+219 s, 63/63) et `Tools/Tests/stress_ab.ps1` (f71c6b1). À faire : attendre le commit de **J6b.2** (mycrusader-a5, qui
+touche aussi `quick_check.ps1`), refusionner `main` dans `j5c-anims`, compiler et `quick_check` dans le worktree,
+**demander l'accord** des sessions actives dans la copie principale, puis avance rapide de `main`. Si la session
+mycrusader-23 n'est plus là, la session suivante du chantier le fait (même marche à suivre).
+
+**2. Passation (choix de l'utilisateur : dans une autre session) : pièces allégées aux LOD 2-3.**
+- But : récupérer une partie du **+1,2 ms de GPU** de S7 dû aux pièces (3,34 ms au repos, 2,15 avant J5c ; A/B : passe
+  de base +0,70 ms, passe de vitesses +0,42 ms ; les sommets des pièces passent le shader de sommets même repliés par
+  WPO). Le fil de jeu et les appels de dessin ne bougent pas.
+- Où : worktree `C:\Users\baudo\Documents\MyCrusader-J5c`, branche `j5c-anims` (d'abord remise au niveau de `main` si le
+  point 1 est fait). Le maillage est fait LOD par LOD par `Tools/Editor/make_peasant_mesh.py` (corps du même LOD de
+  `SKM_Mannequin_Classic` + toutes les pièces de `peasant_props.py` en pleine définition ; poids des LOD 1-3 transférés du
+  LOD 0). Pièces : +1 894 sommets / +940 triangles à chaque LOD, soit +7,5 % au LOD 0 et +81 % au LOD 3.
+- Pistes : une version simplifiée de chaque pièce pour les LOD 2-3 (boîtes au lieu de cylindres, moins de bûches, hotte
+  en une boîte), outils retirés au LOD 3 (les charges restent) ; mesurer d'abord la répartition des Paysans par LOD dans
+  S7 pour savoir quel LOD compte.
+- Vérifier : relecture de chaque LOD par le script, `quick_check` (partie « anims »), captures, puis **A/B S7** avec
+  `Tools/Tests/stress_ab.ps1` (côté A : un worktree détaché au commit de base, compilé, ou `MyCrusader-A` s'il est libre,
+  règle « Cohabitation » de `JourneyInProgress.md` ; côté B : le worktree J5c ; A B A B A B, annoncés aux autres
+  sessions ; trace Insights `-trace=cpu,gpu` si besoin). Puis essai de l'utilisateur (aspect de loin), commit, fusion.
+
+Prochaines animations : à la demande des étapes de jeu (combat de M5, autres unités), même chaîne, même worktree.
 
 ## Journal
 
@@ -732,3 +754,6 @@ l'utilisateur : **pièces allégées aux LOD 2-3** (voire sans outil au LOD 3), 
   état au travail, en marche chargée et debout chargé ; `quick_check` PASS deux fois (201 s, 163 s). Un lancement a
   chevauché le `quick_check` de mycrusader-a5 (port réseau commun : « net 2 clients » en échec chez nous) ; relancé
   chacun de son côté. Captures dans le scratchpad (`anims_qc\`).
+- Fusion de `main` (J6b.1, 7a3466b) dans `j5c-anims` (3934b62 ; conflit dans `quick_check.ps1` : deux blocs ajoutés au
+  même endroit, les deux gardés) : `quick_check` PASS en 219 s, tests 63/63, « build camp » et « anims » PASS ensemble.
+  Avance rapide de `main` après le commit de J6b.2 (mycrusader-a5 touche aussi `quick_check.ps1`).

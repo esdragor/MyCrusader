@@ -429,9 +429,21 @@ void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
 	{
 		FNavigationSystem::UpdateComponentData(*NavObstacle);
 	}
-	// The paths kept for the gathering's walks across its footprint are forgotten (D305), when the navmesh changed there.
+	// The paths kept for the gathering's walks across its footprint are forgotten (D305), when the navmesh changed there;
+	// a footprint that starts blocking it also gives a new path to the walkers whose way it cuts, once its tiles are
+	// rebuilt (J6b.2, D314).
 	UHOLCommandSubsystem* Commands = (bBlocks || bWasBlocking) && GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
-	if (Commands)
+	if (Commands && bBlocks && !bWasBlocking)
+	{
+		FHOLBlockedFootprint Blocked;
+		Blocked.TypeName = TypeName;
+		Blocked.Centre = FVector2D(GetActorLocation());
+		Blocked.Size = Type.Footprint;
+		Blocked.Yaw = static_cast<float>(GetActorRotation().Yaw);
+		Blocked.Area = NavObstacle->Bounds.GetBox();
+		Commands->NotifyFootprintBlocked(Blocked);
+	}
+	else if (Commands)
 	{
 		Commands->NotifyNavigationChanged(NavObstacle->Bounds.GetBox());
 	}

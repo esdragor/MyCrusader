@@ -2,9 +2,13 @@
 
 #include "Commands/HOLUnitOrderProcessor.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
@@ -16,6 +20,8 @@
 #include "MassNavigationFragments.h"
 #include "MassNavigationSubsystem.h"
 #include "NavCorridor.h"
+#include "NavMesh/RecastNavMesh.h"
+#include "NavMesh/RecastNavMeshGenerator.h"
 #include "NavigationData.h"
 #include "NavigationSystem.h"
 #include "Simulation/HOLBuildFragments.h"
@@ -55,6 +61,25 @@ namespace UE::HeroesOfLiberty::Orders
 	int32 LogDetours = 0;
 	FAutoConsoleVariableRef CVarLogDetours(TEXT("hol.Units.LogDetours"), LogDetours,
 		TEXT("1: every task walk much longer than the straight line is logged (D308: kept or new path, lengths)."));
+
+	int32 CutPaths = 1;
+	FAutoConsoleVariableRef CVarCutPaths(TEXT("hol.Units.CutPaths"), CutPaths,
+		TEXT("1: a new footprint (a site's first work, J6b.2, D314) drops the kept paths across it at once, and once its tiles are rebuilt every walker ")
+		TEXT("whose way crosses it gets a new path; 0: as before (the kept paths near it forgotten, a walker repathed only once the building puts it back, D310), for A / B measures."));
+
+	/** Steps (5 s) the tiles of a new footprint are waited for at most: its walkers are then checked anyway, and it is logged. */
+	constexpr uint32 FootprintRebuildSteps = 100;
+	/** Corners of a new footprint probed this far inside it (cm, HOLConstruction::GetNavProbes), as for a placement. */
+	constexpr double FootprintProbeInset = 100.;
+	/**
+	 * Half size (cm) of the box a probe looks for the navmesh in: once the tiles are rebuilt, the navmesh ends 85 cm at least
+	 * outside the footprint (agent 60, clearance 25, D310), a metre at least from a probe.
+	 */
+	constexpr double FootprintProbeExtent = 50.;
+	/** A path ending farther than this (cm) from its slot leaves it short: the slot cannot be reached (J6b.2). */
+	constexpr double ShortOfSlotDistance = 100.;
+	/** Gap (cm) between a body and the clearance of a new footprint at a destination moved out of it (as a builder's spot, D312). */
+	constexpr double MovedSlotGap = 20.;
 
 	float SpeedScale = 1.f;
 	FAutoConsoleVariableRef CVarSpeedScale(TEXT("hol.Units.SpeedScale"), SpeedScale,
@@ -287,6 +312,8 @@ namespace UE::HeroesOfLiberty::Orders
 int64 UHOLUnitOrderProcessor::TotalPathsServed = 0;
 int64 UHOLUnitOrderProcessor::TotalPathsReused = 0;
 int64 UHOLUnitOrderProcessor::TotalBuildingRepaths = 0;
+int64 UHOLUnitOrderProcessor::TotalFootprintRepaths = 0;
+int64 UHOLUnitOrderProcessor::TotalFootprintDroppedPaths = 0;
 
 UHOLUnitOrderProcessor::UHOLUnitOrderProcessor()
 	: EntityQuery(*this)
@@ -322,12 +349,28 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	if (UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
 	{
 		ForgetChangedPaths(*Commands);
+		UpdateNewFootprints(*Commands, NavSystem, NavData);
 	}
 	ApplyQueuedOrders(EntityManager, NavSystem, NavData);
 	const double OrdersSeconds = FPlatformTime::Seconds();
 	ServePathRequests(EntityManager, NavSystem, NavData);
 	const double PathsSeconds = FPlatformTime::Seconds();
 	AdvanceUnits(EntityManager, Context, NavData);
+	if (!ReadyFootprints.IsEmpty())
+	{
+		RequestCutPaths(EntityManager, NavSystem, NavData);
+		// One line per footprint, for the scripted checks (J6b.2).
+		for (const FNewFootprint& Ready : ReadyFootprints)
+		{
+			TotalFootprintRepaths += Ready.Walkers;
+			UE_LOG(LogHOLSimulation, Display, TEXT("Buildings (D310): footprint %s at (%.0f, %.0f): %d walkers given a new path, %d reused gather paths dropped%s (%s)"),
+				*Ready.Building.TypeName.ToString(), Ready.Building.Centre.X, Ready.Building.Centre.Y, Ready.Walkers, Ready.DroppedPaths,
+				Ready.MovedSlots > 0 ? *FString::Printf(TEXT(", %d destinations moved out of it"), Ready.MovedSlots) : TEXT(""),
+				Ready.bRebuilt ? *FString::Printf(TEXT("tiles rebuilt after %u steps"), StepCount - Ready.SinceStep)
+					: *FString::Printf(TEXT("tiles not seen rebuilt after %u steps"), StepCount - Ready.SinceStep));
+		}
+		ReadyFootprints.Reset();
+	}
 	if (OrderTiming != 0)
 	{
 		TimingSeconds[0] += OrdersSeconds - StartSeconds;
@@ -380,6 +423,264 @@ void UHOLUnitOrderProcessor::ForgetChangedPaths(UHOLCommandSubsystem& Commands)
 			It.RemoveCurrent();
 		}
 	}
+}
+
+void UHOLUnitOrderProcessor::UpdateNewFootprints(UHOLCommandSubsystem& Commands, const UNavigationSystemV1* NavSystem, const ANavigationData* NavData)
+{
+	using namespace UE::HeroesOfLiberty::Orders;
+	ReadyFootprints.Reset();
+	TArray<FHOLBlockedFootprint> Blocked;
+	Commands.ConsumeBlockedFootprints(Blocked);
+	// The margin of a kept path: the navmesh's agent (60 cm, the walker of a task) and the clearance of D310.
+	const double KeptMargin = UHOLBuildingSettings::GetBodyClearance() + (NavData ? NavData->GetConfig().AgentRadius : 0.f);
+	TArray<FVector2D, TInlineAllocator<16>> Points;
+	for (const FHOLBlockedFootprint& Building : Blocked)
+	{
+		// As any change of the navmesh: no path found across it in the next seconds is kept (D305).
+		const FBox2D Area(FVector2D(Building.Area.Min), FVector2D(Building.Area.Max));
+		RecentNavChanges.Add({ Area, StepCount + NavChangeSettleSteps });
+		if (CutPaths == 0)
+		{
+			// As before J6b.2: the kept paths whose bounds meet it forgotten, nothing else.
+			for (auto It = ReusedPaths.CreateIterator(); It; ++It)
+			{
+				if (Area.Intersect(It.Value().Bounds))
+				{
+					It.RemoveCurrent();
+				}
+			}
+			continue;
+		}
+		FNewFootprint& New = NewFootprints.AddDefaulted_GetRef();
+		New.Building = Building;
+		New.Bounds = HOLConstruction::GetFootprintBounds(Building.Centre, Building.Size, Building.Yaw);
+		New.SinceStep = StepCount;
+		// Probed as a placement is (D311), in the footprint's own frame, turned with it.
+		HOLConstruction::GetNavProbes(HOLConstruction::MakeFootprint(FVector2D::ZeroVector, Building.Size), UHOLBuildingSettings::GetTileSize(), FootprintProbeInset,
+			New.Probes);
+		for (FVector2D& Probe : New.Probes)
+		{
+			Probe = Building.Centre + Probe.GetRotated(Building.Yaw);
+		}
+		// The kept paths across it, at once (D305): its tiles change, a walk taking one now would cross it.
+		const FBox2D Reach = New.Bounds.ExpandBy(KeptMargin);
+		for (auto It = ReusedPaths.CreateIterator(); It; ++It)
+		{
+			const FReusedPath& Kept = It.Value();
+			if (!Reach.Intersect(Kept.Bounds))
+			{
+				continue;
+			}
+			Points.Reset();
+			if (Kept.Path.IsValid())
+			{
+				for (const FNavPathPoint& Point : Kept.Path->GetPathPoints())
+				{
+					Points.Add(FVector2D(Point.Location));
+				}
+			}
+			else
+			{
+				Points.Add(Kept.From);
+				Points.Add(Kept.To);
+			}
+			if (HOLConstruction::DoesWalkCross(New.Bounds, KeptMargin, Points))
+			{
+				It.RemoveCurrent();
+				++New.DroppedPaths;
+			}
+		}
+		TotalFootprintDroppedPaths += New.DroppedPaths;
+	}
+	if (NewFootprints.IsEmpty())
+	{
+		return;
+	}
+	// Its tiles rebuilt: the navmesh's generator has none left to rebuild there, and every probe is off the navmesh (the
+	// change reached the generator and its tiles were rebuilt, asynchronously).
+	const ARecastNavMesh* Recast = Cast<const ARecastNavMesh>(NavData);
+	const FRecastNavMeshGenerator* Generator = Recast ? static_cast<const FRecastNavMeshGenerator*>(Recast->GetGenerator()) : nullptr;
+	const FVector Extent(FootprintProbeExtent, FootprintProbeExtent, 500.);
+	for (int32 Index = 0; Index < NewFootprints.Num();)
+	{
+		FNewFootprint& New = NewFootprints[Index];
+		bool bRebuilt = NavSystem && NavData && !(Generator && Generator->HasDirtyTiles(New.Building.Area));
+		for (int32 Probe = 0; bRebuilt && Probe < New.Probes.Num(); ++Probe)
+		{
+			FNavLocation OnNav;
+			bRebuilt = !NavSystem->ProjectPointToNavigation(FVector(New.Probes[Probe], New.Building.Area.Min.Z), OnNav, Extent, NavData);
+		}
+		if (bRebuilt || StepCount - New.SinceStep >= FootprintRebuildSteps)
+		{
+			New.bRebuilt = bRebuilt;
+			ReadyFootprints.Add(MoveTemp(New));
+			NewFootprints.RemoveAt(Index);
+		}
+		else
+		{
+			++Index;
+		}
+	}
+}
+
+bool UHOLUnitOrderProcessor::IsWayCut(const FHOLMoveOrderFragment& Order, const FVector& Location, const FMassNavMeshCachedPathFragment& CachedPath, const float Radius,
+	const FMassEntityHandle Entity)
+{
+	const FVector2D Here(Location);
+	// Its way: from where it is, along what is left of its corridor from the part nearest it (at its place across it), then
+	// to its slot; on the final leg, straight to its slot.
+	CutWay.Reset();
+	CutWay.Add(Here);
+	double Across = 0.;
+	if (Order.Phase == EHOLMovePhase::Path && CachedPath.Corridor.IsValid() && CachedPath.Corridor->Portals.Num() >= 2)
+	{
+		const TArray<FNavCorridorPortal>& Portals = CachedPath.Corridor->Portals;
+		int32 Next = 1;
+		double Nearest = TNumericLimits<double>::Max();
+		for (int32 Index = 0; Index + 1 < Portals.Num(); ++Index)
+		{
+			const double DistanceSquared = FVector2D::DistSquared(Here, FMath::ClosestPointOnSegment2D(Here, FVector2D(Portals[Index].Location), FVector2D(Portals[Index + 1].Location)));
+			if (DistanceSquared < Nearest)
+			{
+				Nearest = DistanceSquared;
+				Next = Index + 1;
+			}
+		}
+		for (int32 Index = Next; Index < Portals.Num(); ++Index)
+		{
+			CutWay.Add(FVector2D(Portals[Index].Location));
+		}
+		Across = FMath::Abs(Order.Lateral);
+	}
+	CutWay.Add(FVector2D(Order.Slot));
+	const double Clearance = UHOLBuildingSettings::GetBodyClearance();
+	for (int32 Index = 0; Index < ReadyFootprints.Num(); ++Index)
+	{
+		FNewFootprint& Ready = ReadyFootprints[Index];
+		// Standing in it (its centre inside): the footprints' guard puts it out by the nearest side (D310), not this check;
+		// only the rest of its way counts, from its next point on.
+		const bool bInside = HOLConstruction::GetDistance(Ready.Bounds, Here) <= 0.;
+		const TConstArrayView<FVector2D> Way = bInside ? TConstArrayView<FVector2D>(CutWay).RightChop(1) : TConstArrayView<FVector2D>(CutWay);
+		if (HOLConstruction::DoesWalkCross(Ready.Bounds, Clearance + Radius + Across, Way))
+		{
+			++Ready.Walkers;
+			CutWalkers.Add({ Entity, Order.OrderSerial, Location, Order.Slot, Index, Radius });
+			return true;
+		}
+	}
+	return false;
+}
+
+void UHOLUnitOrderProcessor::RequestCutPaths(FMassEntityManager& EntityManager, const UNavigationSystemV1* NavSystem, const ANavigationData* NavData)
+{
+	using namespace UE::HeroesOfLiberty::Orders;
+	if (CutWalkers.IsEmpty())
+	{
+		return;
+	}
+	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
+	const double Clearance = UHOLBuildingSettings::GetBodyClearance();
+	// A destination in the footprint (a slot of an order given before, a spot by a source or a deposit now under it): moved
+	// out along the ray from its middle, a little beyond the navmesh's edge (the slots of a group keep their spread around
+	// it), onto the navmesh; failing that, its nearest point. The task of a unit sent there finds another place on arrival
+	// (gathering, D309; building).
+	for (FCutWalker& Walker : CutWalkers)
+	{
+		FNewFootprint& Ready = ReadyFootprints[Walker.Footprint];
+		if (!NavSystem || !NavData || HOLConstruction::GetDistance(Ready.Bounds, FVector2D(Walker.Slot)) >= Clearance + Walker.Radius)
+		{
+			continue;
+		}
+		const FVector2D Out = HOLConstruction::PushOutOfFootprint(Ready.Bounds, Clearance + Walker.Radius + MovedSlotGap, FVector2D(Walker.Slot));
+		FNavLocation OnNav;
+		if (NavSystem->ProjectPointToNavigation(FVector(Out, Walker.Slot.Z), OnNav, FVector(MovedSlotGap * 2., MovedSlotGap * 2., 500.), NavData)
+			|| NavSystem->ProjectPointToNavigation(Walker.Slot, OnNav, FVector(Settings->OrderTargetProjectionExtent), NavData))
+		{
+			Walker.Slot = OnNav.Location;
+			EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Walker.Entity).Slot = OnNav.Location;
+			++Ready.MovedSlots;
+		}
+	}
+	// One request per cluster of each order (D286): a group cut by the footprint goes round it together, each one to its
+	// own slot after the path.
+	CutWalkers.StableSort([](const FCutWalker& A, const FCutWalker& B) { return A.OrderSerial < B.OrderSerial; });
+	TArray<FVector2D> Positions;
+	TArray<int32> ClusterOfUnit;
+	for (int32 First = 0; First < CutWalkers.Num();)
+	{
+		int32 End = First + 1;
+		while (End < CutWalkers.Num() && CutWalkers[End].OrderSerial == CutWalkers[First].OrderSerial)
+		{
+			++End;
+		}
+		Positions.Reset();
+		for (int32 Index = First; Index < End; ++Index)
+		{
+			Positions.Add(FVector2D(CutWalkers[Index].Location));
+		}
+		const int32 NumClusters = HOLGroupMove::MakeClusters(Positions, HOLGroupMove::ClusterLinkDistance, ClusterOfUnit);
+		for (int32 Cluster = 0; Cluster < NumClusters; ++Cluster)
+		{
+			FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
+			Request.OrderSerial = CutWalkers[First].OrderSerial;
+			Request.bForBuilding = true;
+			FVector Start = FVector::ZeroVector;
+			FVector SlotsCentre = FVector::ZeroVector;
+			for (int32 Index = First; Index < End; ++Index)
+			{
+				if (ClusterOfUnit[Index - First] == Cluster)
+				{
+					Request.Entities.Add(CutWalkers[Index].Entity);
+					Start += CutWalkers[Index].Location;
+					SlotsCentre += CutWalkers[Index].Slot;
+				}
+			}
+			Request.Start = Start / Request.Entities.Num();
+			SlotsCentre /= Request.Entities.Num();
+			// The path to the slot nearest the middle of theirs: a point on the navmesh, as an order's target.
+			double Nearest = TNumericLimits<double>::Max();
+			for (int32 Index = First; Index < End; ++Index)
+			{
+				const double Distance = FVector::DistSquared2D(CutWalkers[Index].Slot, SlotsCentre);
+				if (ClusterOfUnit[Index - First] == Cluster && Distance < Nearest)
+				{
+					Nearest = Distance;
+					Request.Target = CutWalkers[Index].Slot;
+				}
+			}
+			// Each one's place across the new corridor, to the right of the new march, as for an order (its old place was
+			// across a way that no longer goes there).
+			const FVector2D Forward = (FVector2D(Request.Target) - FVector2D(Request.Start)).GetSafeNormal();
+			const FVector2D Right(-Forward.Y, Forward.X);
+			for (int32 Index = First; Index < End; ++Index)
+			{
+				if (ClusterOfUnit[Index - First] == Cluster)
+				{
+					const FCutWalker& Walker = CutWalkers[Index];
+					const double Lateral = Forward.IsNearlyZero() ? 0. : FVector2D::DotProduct(FVector2D(Walker.Location) - FVector2D(Request.Start), Right);
+					const double MaxLateral = FMath::Max(0., Settings->PathCorridorWidth * 0.5 - Walker.Radius);
+					EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Walker.Entity).Lateral = static_cast<float>(FMath::Clamp(Lateral, -MaxLateral, MaxLateral));
+				}
+			}
+		}
+		First = End;
+	}
+	CutWalkers.Reset();
+}
+
+bool UHOLUnitOrderProcessor::DoesCrossBuilding(const UWorld& World, const FVector& Start, const FVector& Target, const ANavigationData* NavData)
+{
+	// Rare (a partial path out of a pocket of the navmesh): the buildings read from the world.
+	const double Margin = UHOLBuildingSettings::GetBodyClearance() + (NavData ? NavData->GetConfig().AgentRadius : 0.f);
+	const FVector2D Way[] = { FVector2D(Start), FVector2D(Target) };
+	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	{
+		if (It->BlocksNavigation() && HOLConstruction::DoesWalkCross(It->GetFootprintBounds(), Margin, Way))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool UHOLUnitOrderProcessor::IsClaimLive(const FMassEntityManager& EntityManager, const FMassEntityHandle Entity, const FIntPoint& Cell)
@@ -579,6 +880,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			MoveOrder.Slot = SlotOfUnit[Unit] != INDEX_NONE ? Slots[SlotOfUnit[Unit]] : Order.Target;
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));
 			MoveOrder.Phase = EHOLMovePhase::WaitingPath;
+			MoveOrder.bShortOfSlot = false;
 			SlotClaims.FindOrAdd(GetClaimCell(FVector2D(MoveOrder.Slot))).AddUnique(Entity);
 			// Moving from now on: the unit keeps its current walk until its path comes (S2 orders only idle units).
 			EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).Activity = EHOLUnitActivity::Moving;
@@ -651,6 +953,10 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 		}
 		FNavPathSharedPtr Path;
 		TSharedPtr<FNavCorridor> Corridor;
+		// A partial path of a single point: the unit already stands as near its target as it can get (J6b.2: shut in by
+		// buildings); where that point is.
+		bool bNoWay = false;
+		FVector NoWayEnd = FVector::ZeroVector;
 		if (Kept)
 		{
 			Kept->LastUsedStep = StepCount;
@@ -678,10 +984,19 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 					const FPathFindingResult Result = NavSystem->FindPathSync(Query);
 					if (Result.IsSuccessful() && Result.Path.IsValid())
 					{
+						// Its corridor is made once from its points: the engine must not find it again in place when tiles change
+						// under it (from the walk's first start, the corridor left as it was); a new footprint across it gives
+						// its walkers a new path instead (J6b.2).
+						Result.Path->EnableRecalculationOnInvalidation(false);
 						Result.Path->RemoveOverlappingPoints(FNavCorridor::OverlappingPointTolerance);
 						if (Result.Path->GetPathPoints().Num() >= 2)
 						{
 							Path = Result.Path;
+						}
+						else if (Result.Path->IsPartial() && Result.Path->GetPathPoints().Num() == 1)
+						{
+							bNoWay = true;
+							NoWayEnd = Result.Path->GetPathPoints()[0].Location;
 						}
 					}
 				}
@@ -700,22 +1015,30 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 					Bounds += FVector2D(Point.Location);
 				}
 				Bounds = Bounds.ExpandBy(ReuseBoundsMargin);
-				if (!RecentNavChanges.ContainsByPredicate([&Bounds](const FRecentNavChange& Change) { return Change.Area.Intersect(Bounds); }))
+				if (!RecentNavChanges.ContainsByPredicate([&Bounds](const FRecentNavChange& Change) { return Change.Area.Intersect(Bounds); })
+					&& !NewFootprints.ContainsByPredicate([&Bounds](const FNewFootprint& New) { return New.Bounds.Intersect(Bounds); }))
 				{
-					ReusedPaths.Add(ReuseKey, { bDetour ? Path : FNavPathSharedPtr(), Corridor, Bounds, StepCount });
+					ReusedPaths.Add(ReuseKey, { bDetour ? Path : FNavPathSharedPtr(), Corridor, Bounds, FVector2D(Request.Start), FVector2D(Request.Target), StepCount });
 				}
 			}
 		}
 		// A partial path ending where the walk starts: the unit stands in a pocket of the navmesh (pushed between the trees
 		// of a wood, D308), cut off from the rest. It walks out straight to its slot, the way it came in (light units only
 		// keep off obstacles through their paths); before, each walk ended at once and the gatherer gave up with its load.
-		if (Path.IsValid() && Path->IsPartial() && FVector::Dist2D(Path->GetPathPoints().Last().Location, Request.Start) < PocketEscapeDistance)
+		// Not for a new path around a building (D310, J6b.2), nor straight through one: a unit shut in by buildings goes where
+		// its path ends, its slot out of reach (J6b.2); it walked into the wall and was put back, step after step.
+		if (Path.IsValid() && Path->IsPartial() && FVector::Dist2D(Path->GetPathPoints().Last().Location, Request.Start) < PocketEscapeDistance
+			&& !Request.bForBuilding && !DoesCrossBuilding(*World, Request.Start, Request.Target, NavData))
 		{
 			UE_CLOG(LogDetours != 0, LogHOLCommands, Display, TEXT("Detour: out of a navmesh pocket at (%.0f, %.0f), straight to (%.0f, %.0f)"),
 				Request.Start.X, Request.Start.Y, Request.Target.X, Request.Target.Y);
 			Path.Reset();
 			Corridor.Reset();
 		}
+		// No way at all and a building in the way: it stays where it is (before, it walked straight into the wall, was put
+		// back step after step and given the same path again, without end); out of a pocket of trees, it still walks out
+		// straight (D308).
+		const bool bStayHere = bNoWay && (Request.bForBuilding || DoesCrossBuilding(*World, Request.Start, Request.Target, NavData));
 		const bool bFollowPath = Corridor.IsValid() && Corridor->Portals.Num() >= 2 && DirectPaths == 0;
 		if (LogDetours != 0 && Request.bReusable && bFollowPath && Path.IsValid())
 		{
@@ -736,9 +1059,17 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			FMassMoveTargetFragment& MoveTarget = EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
 			FMassNavMeshShortPathFragment& ShortPath = EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity);
 			FMassNavMeshCachedPathFragment& CachedPath = EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Entity);
+			Order.bShortOfSlot = false;
+			if (bStayHere)
+			{
+				Order.bShortOfSlot = FVector::Dist2D(NoWayEnd, Order.Slot) > ShortOfSlotDistance;
+				Order.Slot = NoWayEnd;
+			}
 			if (Path.IsValid() && Path->IsPartial())
 			{
-				// The target cannot be reached: the units gather where the path ends.
+				// The target cannot be reached: the units gather where the path ends; the task of a unit sent there knows
+				// that its walk's end is no arrival (J6b.2).
+				Order.bShortOfSlot = FVector::Dist2D(Path->GetPathPoints().Last().Location, Order.Slot) > ShortOfSlotDistance;
 				Order.Slot = Path->GetPathPoints().Last().Location;
 			}
 			if (!bFollowPath)
@@ -817,8 +1148,17 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				Request.Start = Transform.GetTransform().GetLocation();
 				Request.Target = Order.Slot;
 				Request.Entities.Add(Context.GetEntity(EntityIt));
+				Request.bForBuilding = true;
 				Order.Phase = EHOLMovePhase::WaitingPath;
 				++TotalBuildingRepaths;
+				continue;
+			}
+			// The tiles under a new footprint are rebuilt (J6b.2, D314): a walker whose way crosses it gets a new path around it
+			// (RequestCutPaths, after this pass).
+			if (!ReadyFootprints.IsEmpty() && (Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg)
+				&& IsWayCut(Order, Transform.GetTransform().GetLocation(), CachedPath, Constants.Radius, Context.GetEntity(EntityIt)))
+			{
+				Order.Phase = EHOLMovePhase::WaitingPath;
 				continue;
 			}
 			if (Order.Phase == EHOLMovePhase::Path && ShortPath.IsDone())

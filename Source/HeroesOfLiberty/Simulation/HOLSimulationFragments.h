@@ -100,6 +100,12 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	uint8 BuildingPushes = 0;
 
 	EHOLMovePhase Phase = EHOLMovePhase::None;
+
+	/**
+	 * Its path ended short of its slot (a partial path: the slot cannot be reached from where it stood, J6b.2: shut in by
+	 * buildings); it walks to the path's end. A task that sent it there takes that end for no arrival.
+	 */
+	bool bShortOfSlot = false;
 };
 
 /** Where a gatherer is in its round trip (J5, D296). */
@@ -148,6 +154,9 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	/** Arrivals in a row that missed their spot (taken, or pushed away). */
 	uint8 Misses = 0;
 
+	/** Walks to its source in a row whose path ended short of the spot (out of reach: shut in by buildings, J6b.2). */
+	uint8 UnreachableWalks = 0;
+
 	/** The walk to Spot is asked for (it starts at the next step, through the order queue). */
 	bool bWalkIssued = false;
 
@@ -173,6 +182,7 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 		Phase = EHOLGatherPhase::ToSource;
 		bWalkIssued = false;
 		Misses = 0;
+		UnreachableWalks = 0;
 	}
 };
 

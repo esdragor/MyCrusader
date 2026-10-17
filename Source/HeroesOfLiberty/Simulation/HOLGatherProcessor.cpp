@@ -74,6 +74,11 @@ namespace UE::HeroesOfLiberty::Gather
 	/** Arrivals that missed the deposit in a row before a carrier gives up and stands, its load kept. */
 	constexpr int32 MaxDepositMisses = 6;
 	/**
+	 * Walks to its source in a row whose path ended short of the spot (shut in by buildings, J6b.2) before a gatherer gives
+	 * up and stands, its load kept, as a carrier that cannot reach a deposit; it would otherwise try spot after spot forever.
+	 */
+	constexpr int32 MaxUnreachableWalks = 6;
+	/**
 	 * Gap (cm) between the body of a gatherer with no room and its source, where it stands idle when no point of the rows
 	 * in front is free (D309): the place of an order, among the units standing there.
 	 */
@@ -340,6 +345,16 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		// free spot, claimed until its walk there (D309); its massif full, its own source again.
 		Gather.bWalkIssued = false;
 		++Counters.MissedSpots;
+		if (!Gatherer.Move.bShortOfSlot)
+		{
+			Gather.UnreachableWalks = 0;
+		}
+		else if (++Gather.UnreachableWalks >= MaxUnreachableWalks)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Gather: a unit of slot %d could not reach its source, it stands with its load"), Gatherer.OwnerPlayer);
+			Stop(Gatherer);
+			return;
+		}
 		if (++Gather.Misses >= MaxSourceMisses)
 		{
 			FVector Spot;
@@ -717,6 +732,7 @@ void UHOLGatherProcessor::StartGathering(FGatherer& Gatherer)
 {
 	Gatherer.Gather.Phase = EHOLGatherPhase::Gathering;
 	Gatherer.Gather.Misses = 0;
+	Gatherer.Gather.UnreachableWalks = 0;
 	Gatherer.Gather.bSettling = true;
 	Gatherer.State.Activity = EHOLUnitActivity::Gathering;
 }
@@ -801,6 +817,7 @@ void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
 	Gatherer.Gather.bWalkIssued = false;
 	Gatherer.Gather.Misses = 0;
+	Gatherer.Gather.UnreachableWalks = 0;
 }
 
 void UHOLGatherProcessor::IssueWalk(const FStepContext& Step, FGatherer& Gatherer, const FVector& Spot)

@@ -136,6 +136,9 @@ private:
 	/** Bodies put back out of a footprint, and walkers given a new path for it (D310), when the measure began. */
 	int64 PushedOutAtMeasureStart = 0;
 	int64 RepathsAtMeasureStart = 0;
+	/** Walkers given a new path by a new footprint, and kept paths it dropped (J6b.2, D314), when the measure began. */
+	int64 CutRepathsAtMeasureStart = 0;
+	int64 CutDroppedAtMeasureStart = 0;
 	/** UHOLGatherProcessor::FCounters when the measure began (as plain numbers: the header stays free of the processor). */
 	int64 GatherCountersAtMeasureStart[6] = {};
 

@@ -80,6 +80,7 @@ vérifier sur S1 et S2.
 | J5c.3 « +10 » au dépôt | **fait** (2026-10-16, 98858d0) : « +N » au seul propriétaire (appel client non fiable par pas, 0 bit dans l'état des unités), `hol.Gather.LogPopups`, capture `gather_popup` et contrôles solo et 2 clients dans `quick_check` (PASS en 78 s, tests 39/39) ; essai **validé** (« très bien ») |
 | J5c.4 Vérification et clôture : D318 à D323 au GDD | **fait** (2026-10-16) : mesures au repos de J6a.6 (`main` bfda9b4, toutes les animations et le bâtisseur) : S1 2,276 / S2 2,882 / S7 2,303 ms, S5 30 937 o/s par client (écart 23,3 cm), tous PASS, GPU de S7 3,34 ms (2,15 avant J5c) ; tests 62/62 et `quick_check` PASS à la dernière fusion ; partie « anims » de `quick_check` ajoutée en parallèle (partie « anims », 16 s : rapport `hol.Units.AnimReport` ; geste et pièce de chaque Paysan dessiné au travail, en marche chargée et debout chargé ; `quick_check` PASS en 163 s) ; D318 à D323 au § 21 (D298 précisée : fait en J5c), paragraphe « Parcours J5c : la vie de la récolte » au § 16.6, numéro suivant de la review (§ 22) passé à D324. **J5c close, J5 close.** |
 | J6b.1 Camps | **fait** (2026-10-16, **validée** à l'essai le 2026-10-17 : « tout m'a l'air bon », commitée) : camp fini → ses bâtisseurs file vide récoltent la source acceptée la plus proche (`hol.Build.CampGatherRange`, 25 m, emprise au bord de la source), sinon chantier voisin / inactif ; ralliement sur un camp (fini ou non) → récolte ; 0 bit ; tests 63/63 (`Construction.CampSource`), partie `build camp` de `quick_check`, `quick_check` PASS en 202 s ; S7 inchangé (J6b.3) |
+| J6b.2 Chemins coupés par une emprise | **fait** (2026-10-17, **validée** à l'essai : « super », commitée) : emprise nouvelle → chemins gardés de D305 qui la traversent oubliés, marcheurs dont le chemin la traverse recalculés une fois ses tuiles refaites (générateur + sondes), destination sous l'emprise sortie ; ligne `Buildings (D310): footprint ...` ; bouclage des Paysans enfermés corrigé ; 0 bit ; tests 64/64 (`Construction.CutPaths`), partie `build cut`, `quick_check` PASS en 259 s ; S7 2,289 / S2 2,758 ms PASS |
 
 ## Prochaine étape exacte
 
@@ -172,7 +173,11 @@ vérifier sur S1 et S2.
    sous-agent, rien de commité) : camp fini → récolte, ralliement sur un camp ; tests 63/63, `quick_check` PASS (202 s,
    partie `build camp`) ; essai de l'utilisateur **validé** (2026-10-17 : camp avant le chantier voisin, portée de 25 m, ralliement sur un
    camp fini, gardés tels quels), commitée (journal « J6b.1 : les camps »). Suite :
-   **J6b.2** (chemins coupés par une emprise).
+   **J6b.2** (chemins coupés par une emprise). **J6b.2 faite** (2026-10-17, sous-agent, rien de commité ; journal
+   « J6b.2 : chemins coupés par une emprise ») : tests 64/64, `quick_check` PASS (259 s, partie `build cut`), S7 2,289 /
+   S2 2,758 ms PASS ; essai de l'utilisateur **validé** (« super »), commitée ; à l'essai, **nouvelle règle** demandée :
+   un bâtiment occupe ses cases mais n'en remplit que ~90-95 %, un Paysan passe entre deux bâtiments voisins, pas deux
+   (réglage en cours de discussion, avant J6b.3). Suite : **J6b.3** (vérification, S7 avec camps bâtis).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -3093,3 +3098,98 @@ d'épée).
 - **Essai validé** par l'utilisateur (2026-10-17, « tout m'a l'air bon ») : les trois points gardés tels quels (camp
   avant le chantier voisin, portée de 25 m, ralliement sur un camp fini). Commitée. Reprise : **J6b.2** (chemins coupés
   par une emprise).
+
+### 2026-10-17 — J6b.2 : chemins coupés par une emprise
+
+- Sous-agent, rien de commité, GDD non touché, ni présentation, ni table des unités, ni réplication (0 bit de plus).
+- **État des lieux (avant)** :
+  - chemins gardés de D305 : une emprise posée appelait `NotifyNavigationChanged` (boîte de la zone interdite) ; au pas
+    suivant, tout chemin gardé dont la **boîte englobante + 4 m** touchait la zone était oublié, et un chemin trouvé dans
+    les 5 s autour n'était pas gardé ; pas de compte, pas d'attente des tuiles (au-delà de 5 s, un chemin à travers des
+    tuiles pas encore refaites pouvait être gardé) ;
+  - marcheurs : **rien de préventif**. Seul le remède de J6a.1 : un marcheur remis contre le mur **10 pas de suite** par
+    `HOLFootprintKeepOutProcessor` reçoit un nouveau chemin (`BuildingPushes`, compté « walkers given a new path for it »
+    dans S7) ; il bute donc sur le bâtiment avant de le contourner ; ordres de groupe (couloir partagé) et détours gardés
+    (D308) idem ;
+  - **le moteur refaisait en place nos chemins** : tout `FNavigationPath` est enregistré auprès du navmesh ; quand des
+    tuiles changent sous lui, le moteur le recalcule (depuis le départ de la marche) dans son tick, sans toucher au
+    couloir (`FNavCorridor`) que nos marcheurs suivent : coût caché, points et couloir désaccordés (chemins gardés de D305
+    compris).
+- **Fait** (réglage `hol.Units.CutPaths 1` ; 0 = comportement d'avant, pour des A/B) :
+  - `AHOLBuilding::FitNavObstacle` : une emprise qui **se met à bloquer** le navmesh (premier coup d'un chantier, bâtiment
+    posé fini par le code : centres, camps de S7) appelle `UHOLCommandSubsystem::NotifyFootprintBlocked` (type, milieu,
+    taille, lacet, zone interdite) au lieu de `NotifyNavigationChanged` (gardé pour le reste : source épuisée, chantier
+    annulé) ;
+  - `UHOLUnitOrderProcessor::UpdateNewFootprints` (pas suivant) : les **chemins gardés de D305 qui la traversent sont
+    oubliés aussitôt** (tracé exact, ou segment départ-arrivée d'une marche droite gardée, contre l'emprise élargie de
+    25 + 60 cm), comptés (M) ; puis l'emprise **attend ses tuiles** : refaites quand le générateur du navmesh n'a plus de
+    tuile à refaire dans sa zone (`FRecastNavMeshGenerator::HasDirtyTiles`, module `Navmesh` ajouté) **et** que les 8
+    sondes sous l'emprise (celles de la pose, D311, tournées avec le bâtiment) sont hors du navmesh ; au plus 100 pas
+    (5 s), puis contrôle quand même (« tiles not seen rebuilt »). Pendant l'attente, aucun chemin trouvé à travers n'est
+    gardé ;
+  - tuiles refaites : dans le passage des unités (`AdvanceUnits`, seulement aux pas où une emprise est prête), chaque
+    marcheur (phases `Path` / `FinalLeg`) dont le **chemin restant** (sa position, le reste de son couloir depuis la
+    portion la plus proche, puis sa place ; ou la ligne droite vers sa place) passe à moins de **25 cm + son rayon + sa
+    place en travers du couloir** de l'emprise reçoit un **nouveau chemin**, regroupé par ordre et par paquet (règles de
+    J4.3, `RequestCutPaths`), sa place en travers recalculée sur la nouvelle marche ; une **destination sous l'emprise**
+    est sortie le long du rayon depuis son milieu jusqu'à 105 cm (corps, marge, 20 cm), sur le navmesh (les places d'un
+    groupe gardent leur écart) ;
+  - journal, une ligne par emprise : `Buildings (D310): footprint House at (x, y): N walkers given a new path, M reused
+    gather paths dropped[, K destinations moved out of it] (tiles rebuilt after S steps)` ; S7 : ligne « New footprints
+    (J6b.2) » ;
+  - **chemins figés** : `EnableRecalculationOnInvalidation(false)` sur nos chemins : le moteur ne les refait plus en
+    place dans son tick (couloir et points restent d'accord ; le recalcul passe par la règle ci-dessus) ;
+  - fonctions pures (`HOLConstructionRules`) : `GetSegmentDistance`, `DoesWalkCross`, `PushOutOfFootprint` ; test
+    **`HeroesOfLiberty.Construction.CutPaths`**.
+- **Cas limites** :
+  - **unité dans l'emprise** (son centre dedans) : la garde des emprises la sort (D310) ; le contrôle ne regarde que la
+    suite de son chemin (depuis son point suivant) : nouveau chemin seulement si cette suite traverse. Une unité qui frôle
+    seulement le mur est contrôlée comme les autres. Vu : 5 Paysans sur la fondation au premier coup, sortis par la
+    garde, 5 nouveaux chemins, tous arrivés ;
+  - **destination dans l'emprise** : sortie le long du rayon (ci-dessus) ; la tâche (récolte, chantier) juge l'arrivée
+    comme avant (place manquée → autre place, D309 ; chantier : autre place). Vu : 5 places d'un groupe déplacées, places
+    distinctes, 5 arrivés et arrêtés (une première version, au point du navmesh le plus proche, en mettait deux au même
+    point) ;
+  - **Paysans enfermés** (anneau de 8 maisons, 3 Paysans dedans) : **bouclage préexistant trouvé** : un chemin partiel
+    réduit à un point (déjà au plus près) comptait pour « pas de chemin » → marche droite vers la place, dans le mur, remis
+    contre le mur, nouveau chemin identique tous les 10 pas, **sans fin** (1 138 remises en 20 s). Corrigé sans règle de
+    jeu nouvelle : un tel chemin, un bâtiment en travers (ou un nouveau chemin pour un bâtiment), laisse l'unité **où elle
+    est** ; la sortie droite d'une poche d'arbres (D308) reste, mais plus à travers un bâtiment ; un récolteur dont **6
+    marches de suite** vers sa source finissent court de leur place (chemin partiel, `bShortOfSlot`) **s'arrête avec sa
+    charge** (« Gather: a unit of slot N could not reach its source, it stands with its load »), comme le porteur qui
+    n'atteint pas de dépôt (6) et le bâtisseur (6). Ordre de sortie : ils vont au plus près dans l'enclos et s'arrêtent.
+    **À juger par l'utilisateur** : refuser une pose qui enferme des unités (question ouverte du plan) ; rien de tel fait ;
+  - **plusieurs emprises dans le même pas** : chacune attend ses tuiles ; celles prêtes au même pas sont contrôlées en un
+    seul passage, chaque marcheur compté pour la première qui coupe son chemin ; vu à l'anneau (8 maisons en quelques
+    secondes) et au lancement de chaque partie (centres).
+- **Mesures** : tuiles d'une maison refaites dès le pas suivant (« after 0 steps ») ; 2-3 pas pour les centres au
+  lancement. Coût nul hors des pas où une emprise est prête.
+- Fichiers : `Buildings/HOLBuilding.cpp`, `Buildings/HOLConstructionRules.h/.cpp`, `Commands/HOLCommandSubsystem.h/.cpp`,
+  `Commands/HOLUnitOrderProcessor.h/.cpp`, `Simulation/HOLSimulationFragments.h` (`bShortOfSlot`, `UnreachableWalks` :
+  serveur seul, 0 bit répliqué), `Simulation/HOLGatherProcessor.cpp`, `StressTest/HOLStressTestSubsystem.h/.cpp`,
+  `Tests/HOLConstructionTests.cpp`, `HeroesOfLiberty.Build.cs` (`Navmesh`), `Tools/Tests/quick_check.ps1`.
+- **Compilation** sans avertissement. **Tests 64/64** (nouveau `Construction.CutPaths`).
+- **`quick_check` PASS en 259 s** (202 avant). Partie nouvelle **`build cut`** (solo, après `build camp`) : 6 Paysans
+  récoltent le filon au nord-est de l'emplacement 0 et déposent au centre (50 m ; un filon ne s'épuise pas, alors que
+  chaque arbre abattu oublie les chemins gardés autour de lui) ; 25 s après, maison K à (-12900, 2700) en travers,
+  commencée : `6 walkers given a new path, 4 reused gather paths dropped (tiles rebuilt after 0 steps)`, puis 12 s
+  surveillées : **0 corps remis par une emprise, 0 chemin de remède**, allers-retours qui continuent (dépôts au centre) ;
+  6 Paysans envoyés de (-9000, 5000) à (-9000, -4000), maison N commencée à (-9000, 0) : `6 walkers given a new path`,
+  0 remis, les 6 arrivés. Captures vues : `build_cut_gather` (récolteurs contournant K), `build_cut_move` (le groupe
+  longeant N). Un passage complet a échoué une fois sur « no two Peasants at rest closer than 90 cm » (71 cm : deux
+  porteurs arrêtés au mur du centre, partie `gather`, avant toute maison ; déjà vu une fois en J5c) ; repassé : tout PASS.
+- **S2 / S7 courts** hors écran (`Saved_Tests\Logs\j6b2_s2.log`, `j6b2_s7.log`), aucun autre éditeur ouvert avant ni
+  pendant, processeur 22-46 % avant, 57-64 % en moyenne pendant (test compris ; 39-46 % aux mesures au repos de J6a.6) :
+  **S7 2,289 ms PASS** (2,303 au repos), ordres 0,156 (0,144), garde des emprises 0,107 (0,105), 1 190 bois/s, 218
+  repris/s ; **S2 2,758 ms PASS** (2,882), ordres 0,542 (0,555). S7 ne contrôle aucune emprise pendant la mesure (camps
+  posés au début ; J6b.3 les bâtira en cours de test).
+- À essayer à la main : `hol.Cheat.Wood 500` ; des Paysans en aller-retour (bois ou filon) ; une maison posée en travers
+  de leur trajet et commencée : ils la contournent sans buter (`hol.Units.KeepOut 2` journalise chaque remise contre un
+  mur, `hol.Nav.Footprints on` puis `off` en fait le compte) ; un groupe envoyé loin, une maison commencée sur son chemin,
+  ou **sur son point d'arrivée** ; des Paysans enfermés dans un anneau de maisons (`hol.Cheat.FastBuild 1`) puis un ordre
+  (ils restent dedans ; ceux qui récoltent finissent inactifs, avec leur charge). A/B : `hol.Units.CutPaths 0`.
+- Session d'essai lancée (deuxième écran, 11 h 25) : **essai de J6b.2** (maison en travers d'allers-retours ou d'un groupe, maison sur un point d'arrivée, enclos de maisons). À juger : refuser une pose qui enferme des unités ? récolteur arrêté après 6 marches manquées ; groupe qui frôle un coin.
+- **Essai validé** par l'utilisateur (2026-10-17, « super ») : commitée. **Nouvelle règle** demandée à l'essai : un
+  bâtiment prend X cases mais le bâtiment lui-même n'en fait que 90-95 % ; un Paysan peut passer entre deux maisons
+  voisines, mais pas deux de front. À régler avant J6b.3 (écart à choisir : le corps d'un Paysan fait 1,2 m de large,
+  rayon 60 cm, plus 25 cm de marge de J6a.1).

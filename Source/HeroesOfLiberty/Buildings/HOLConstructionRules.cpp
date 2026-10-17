@@ -301,3 +301,78 @@ int32 HOLConstruction::FindCampSource(const FBox2D& Camp, const TConstArrayView<
 	}
 	return Found;
 }
+
+double HOLConstruction::GetSegmentDistance(const FBox2D& Footprint, const FVector2D& A, const FVector2D& B)
+{
+	// Through the box, by its two slabs: the part of the segment inside each one, overlapping on both axes.
+	const FVector2D Delta = B - A;
+	double Enter = 0.0;
+	double Exit = 1.0;
+	bool bMeets = true;
+	for (int32 Axis = 0; Axis < 2 && bMeets; ++Axis)
+	{
+		const double Start = A[Axis];
+		const double Step = Delta[Axis];
+		if (FMath::IsNearlyZero(Step))
+		{
+			bMeets = Start >= Footprint.Min[Axis] && Start <= Footprint.Max[Axis];
+			continue;
+		}
+		double In = (Footprint.Min[Axis] - Start) / Step;
+		double Out = (Footprint.Max[Axis] - Start) / Step;
+		if (In > Out)
+		{
+			Swap(In, Out);
+		}
+		Enter = FMath::Max(Enter, In);
+		Exit = FMath::Min(Exit, Out);
+		bMeets = Enter <= Exit;
+	}
+	if (bMeets)
+	{
+		return 0.0;
+	}
+	// Apart, the nearest points are an end of the segment or a corner of the box.
+	double Distance = FMath::Min(GetDistance(Footprint, A), GetDistance(Footprint, B));
+	for (const FVector2D& Corner : { Footprint.Min, Footprint.Max, FVector2D(Footprint.Min.X, Footprint.Max.Y), FVector2D(Footprint.Max.X, Footprint.Min.Y) })
+	{
+		Distance = FMath::Min(Distance, FVector2D::Distance(Corner, FMath::ClosestPointOnSegment2D(Corner, A, B)));
+	}
+	return Distance;
+}
+
+bool HOLConstruction::DoesWalkCross(const FBox2D& Footprint, const double Margin, const TConstArrayView<FVector2D> Points)
+{
+	if (Points.Num() == 1)
+	{
+		return GetDistance(Footprint, Points[0]) < Margin;
+	}
+	for (int32 Index = 0; Index + 1 < Points.Num(); ++Index)
+	{
+		if (GetSegmentDistance(Footprint, Points[Index], Points[Index + 1]) < Margin)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+FVector2D HOLConstruction::PushOutOfFootprint(const FBox2D& Footprint, const double Margin, const FVector2D& Point)
+{
+	if (GetDistance(Footprint, Point) >= Margin)
+	{
+		return Point;
+	}
+	const FBox2D Widened = Footprint.ExpandBy(Margin);
+	const FVector2D Centre = Footprint.GetCenter();
+	FVector2D Direction = Point - Centre;
+	if (!Direction.Normalize())
+	{
+		Direction = FVector2D(1.0, 0.0);
+	}
+	// The nearest exit of the widened box along the ray: the smaller of the distances to its two facing sides.
+	const FVector2D Half = Widened.GetExtent();
+	const double ToX = FMath::IsNearlyZero(Direction.X) ? TNumericLimits<double>::Max() : Half.X / FMath::Abs(Direction.X);
+	const double ToY = FMath::IsNearlyZero(Direction.Y) ? TNumericLimits<double>::Max() : Half.Y / FMath::Abs(Direction.Y);
+	return Centre + Direction * FMath::Min(ToX, ToY);
+}

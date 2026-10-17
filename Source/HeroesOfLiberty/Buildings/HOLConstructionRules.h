@@ -314,4 +314,25 @@ namespace HOLConstruction
 	 */
 	HEROESOFLIBERTY_API int32 FindCampSource(const FBox2D& Camp, TConstArrayView<EHOLResource> Accepts, TConstArrayView<FHOLCampSource> Sources, double Range,
 		double* OutGap = nullptr);
+
+	// Ways cut by a new footprint (J6b.2, D314).
+
+	/** Ground distance from the segment A-B to the nearest point of Footprint (0 when it meets or enters it). */
+	HEROESOFLIBERTY_API double GetSegmentDistance(const FBox2D& Footprint, const FVector2D& A, const FVector2D& B);
+
+	/**
+	 * A walk along Points (in order; a single point: a body standing there) passes closer than Margin to Footprint
+	 * (J6b.2, D314): Margin is a body's radius, the clearance every body keeps from a footprint (D310) and its place across
+	 * its group's corridor. When the footprint becomes forbidden on the navmesh, such a walker gets a new path and such a
+	 * kept path of the gathering (D305) is dropped; a walk passing farther goes on as it is.
+	 */
+	HEROESOFLIBERTY_API bool DoesWalkCross(const FBox2D& Footprint, double Margin, TConstArrayView<FVector2D> Points);
+
+	/**
+	 * A destination that a new footprint covers, moved out of it (J6b.2: a slot of an order given before, a spot now under
+	 * a building): along the ray from the footprint's middle through Point, onto the edge of the footprint widened by
+	 * Margin; the slots of a group so keep their spread around it instead of meeting on one point. Point in the middle:
+	 * toward +X. A point already out of the widened footprint is returned as it is.
+	 */
+	HEROESOFLIBERTY_API FVector2D PushOutOfFootprint(const FBox2D& Footprint, double Margin, const FVector2D& Point);
 }

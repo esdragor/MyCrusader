@@ -574,4 +574,50 @@ bool FHOLConstructionCampSourceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionCutPathsTest, "HeroesOfLiberty.Construction.CutPaths", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionCutPathsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+	// J6b.2 (D314): a house at (0, 0) m, 6 m wide, newly forbidden on the navmesh; a Peasant's margin: its body (60 cm) and the
+	// clearance of D310 (25 cm).
+	const FBox2D Site = House(0.0, 0.0);
+	const double Margin = 85.0;
+	const auto Point = [](const double X, const double Y) { return FVector2D(X, Y) * 100.0; };
+	TestEqual(TEXT("a segment through it: 0"), HOLConstruction::GetSegmentDistance(Site, Point(-10.0, 0.0), Point(10.0, 0.0)), 0.0, 0.01);
+	TestEqual(TEXT("a segment ending in it: 0"), HOLConstruction::GetSegmentDistance(Site, Point(-10.0, 1.0), Point(0.0, 1.0)), 0.0, 0.01);
+	TestEqual(TEXT("a segment beside a side, 1 m off"), HOLConstruction::GetSegmentDistance(Site, Point(-10.0, 4.0), Point(10.0, 4.0)), 100.0, 0.01);
+	TestEqual(TEXT("a diagonal passing its corner: to the corner (1.06 m off), not to the widened box's"),
+		HOLConstruction::GetSegmentDistance(Site, Point(0.0, 7.5), Point(7.5, 0.0)), 150.0 / FMath::Sqrt(2.0), 0.01);
+	TestFalse(TEXT("so a walk past the corner, 1.06 m off, is on its way"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(0.0, 7.5), Point(7.5, 0.0) })));
+	TestEqual(TEXT("a segment ending short of it, in line"), HOLConstruction::GetSegmentDistance(Site, Point(-10.0, 0.0), Point(-5.0, 0.0)), 200.0, 0.01);
+	TestEqual(TEXT("a point (a segment of no length)"), HOLConstruction::GetSegmentDistance(Site, Point(0.0, 5.0), Point(0.0, 5.0)), 200.0, 0.01);
+	TestEqual(TEXT("a segment along a side, on it: 0"), HOLConstruction::GetSegmentDistance(Site, Point(-10.0, 3.0), Point(10.0, 3.0)), 0.0, 0.01);
+
+	TestTrue(TEXT("a walk straight through it: cut"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 0.0), Point(10.0, 0.0) })));
+	TestTrue(TEXT("a walk 80 cm off its side: cut (a body would brush it)"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 3.8), Point(10.0, 3.8) })));
+	TestFalse(TEXT("a walk 1 m off its side: on its way"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 4.0), Point(10.0, 4.0) })));
+	TestFalse(TEXT("a walk round it (a detour of the navmesh): on its way"),
+		HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 0.0), Point(-4.0, 4.0), Point(4.0, 4.0), Point(10.0, 0.0) })));
+	TestTrue(TEXT("a walk whose second leg crosses it: cut"),
+		HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 10.0), Point(-1.0, 5.0), Point(1.0, -5.0), Point(10.0, -10.0) })));
+	TestTrue(TEXT("a walk ending in it (its slot now under the house): cut"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 0.0), Point(0.0, 0.0) })));
+	TestFalse(TEXT("a walk ending short of it: on its way"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(-10.0, 0.0), Point(-4.0, 0.0) })));
+	TestTrue(TEXT("a wider margin (its place across its group's corridor, 2 m): cut 1.5 m off"),
+		HOLConstruction::DoesWalkCross(Site, Margin + 200.0, TArray<FVector2D>({ Point(-10.0, 4.5), Point(10.0, 4.5) })));
+	TestTrue(TEXT("a body standing against it"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>({ Point(3.5, 0.0) })));
+	TestFalse(TEXT("no point: nothing"), HOLConstruction::DoesWalkCross(Site, Margin, TArray<FVector2D>()));
+
+	// A slot under the house moved out along the ray from its middle, 105 cm beyond its edge (body, clearance, gap).
+	const double Out = 105.0;
+	TestTrue(TEXT("a slot east of the middle: out by the east side, at its height"),
+		HOLConstruction::PushOutOfFootprint(Site, Out, Point(1.0, 0.5)).Equals(FVector2D(405.0, 202.5), 0.01));
+	TestTrue(TEXT("a slot by a corner: out along its diagonal"), HOLConstruction::PushOutOfFootprint(Site, Out, Point(2.0, 2.0)).Equals(FVector2D(405.0, 405.0), 0.01));
+	TestTrue(TEXT("two slots of a group: two places, not one"),
+		!HOLConstruction::PushOutOfFootprint(Site, Out, Point(1.0, 0.5)).Equals(HOLConstruction::PushOutOfFootprint(Site, Out, Point(1.0, -0.5)), 1.0));
+	TestTrue(TEXT("the middle itself: toward +X"), HOLConstruction::PushOutOfFootprint(Site, Out, Point(0.0, 0.0)).Equals(FVector2D(405.0, 0.0), 0.01));
+	TestTrue(TEXT("a slot within the margin, outside: pushed to it"), HOLConstruction::PushOutOfFootprint(Site, Out, Point(0.0, 3.5)).Equals(FVector2D(0.0, 405.0), 0.01));
+	TestTrue(TEXT("a slot farther: as it is"), HOLConstruction::PushOutOfFootprint(Site, Out, Point(0.0, 5.0)).Equals(Point(0.0, 5.0), 0.01));
+	return true;
+}
+
 #endif
