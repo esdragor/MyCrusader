@@ -2,14 +2,16 @@
 
 #pragma once
 
+#include "Commands/HOLCommandSubsystem.h"
 #include "CoreMinimal.h"
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
 #include "HOLUnitOrderProcessor.generated.h"
 
 class ANavigationData;
-class UHOLCommandSubsystem;
 class UNavigationSystemV1;
+struct FHOLMoveOrderFragment;
+struct FMassNavMeshCachedPathFragment;
 struct FNavCorridor;
 struct FNavigationPath;
 
@@ -36,6 +38,10 @@ public:
 	static int64 GetTotalPathsReused() { return TotalPathsReused; }
 	/** New paths of walkers a building kept putting back since the program started (D310, stress test S7). */
 	static int64 GetTotalBuildingRepaths() { return TotalBuildingRepaths; }
+	/** Walkers given a new path because a new footprint cut their way, since the program started (J6b.2, D314, stress test S7). */
+	static int64 GetTotalFootprintRepaths() { return TotalFootprintRepaths; }
+	/** Kept paths of the task walks dropped because a new footprint cut them, since the program started (J6b.2, D314). */
+	static int64 GetTotalFootprintDroppedPaths() { return TotalFootprintDroppedPaths; }
 	int32 GetNumPathsWaiting() const { return PendingPaths.Num(); }
 
 protected:
@@ -58,6 +64,11 @@ protected:
 		TArray<FMassEntityHandle> Entities;
 		/** A task's walk of one unit (J5: to its source, to the deposit): its path may be a kept one (D305). */
 		bool bReusable = false;
+		/**
+		 * A new path because a building is in the way (D310: put back at its wall; J6b.2: a new footprint across it): never
+		 * straight to the slot out of a pocket of the navmesh (D308), which would walk into that building again.
+		 */
+		bool bForBuilding = false;
 	};
 	TArray<FPathRequest> PendingPaths;
 
@@ -66,6 +77,8 @@ protected:
 	static int64 TotalPathsServed;
 	static int64 TotalPathsReused;
 	static int64 TotalBuildingRepaths;
+	static int64 TotalFootprintRepaths;
+	static int64 TotalFootprintDroppedPaths;
 
 	/**
 	 * Paths of the task walks (D305), kept for the next walk between the same points (a gatherer goes back and forth
@@ -77,6 +90,9 @@ protected:
 		TSharedPtr<FNavigationPath, ESPMode::ThreadSafe> Path;
 		TSharedPtr<FNavCorridor> Corridor;
 		FBox2D Bounds;
+		/** The walk that found it, from its start to its target: a straight one has no other point (J6b.2). */
+		FVector2D From = FVector2D::ZeroVector;
+		FVector2D To = FVector2D::ZeroVector;
 		uint32 LastUsedStep = 0;
 	};
 	TMap<FIntVector4, FReusedPath> ReusedPaths;
@@ -91,6 +107,53 @@ protected:
 	static FIntVector4 GetReuseKey(const FVector& Start, const FVector& Target);
 	/** The navmesh changes of the last step: the kept paths across them are forgotten. */
 	void ForgetChangedPaths(UHOLCommandSubsystem& Commands);
+
+	/**
+	 * A footprint that started blocking the navmesh (J6b.2, D314: a site's first work, a building placed finished by the
+	 * code), waiting until its tiles are seen rebuilt: no path found across it meanwhile is kept, then the walkers whose way
+	 * crosses it get a new path (AdvanceUnits).
+	 */
+	struct FNewFootprint
+	{
+		FHOLBlockedFootprint Building;
+		/** Its bounds on the ground, and the points under it that leave the navmesh once its tiles are rebuilt. */
+		FBox2D Bounds = FBox2D(ForceInit);
+		TArray<FVector2D> Probes;
+		uint32 SinceStep = 0;
+		/** Kept paths dropped for it (at once), walkers given a new path and destinations moved out of it (once rebuilt). */
+		int32 DroppedPaths = 0;
+		int32 Walkers = 0;
+		int32 MovedSlots = 0;
+		bool bRebuilt = false;
+	};
+	TArray<FNewFootprint> NewFootprints;
+	/** Those whose tiles are rebuilt this step: AdvanceUnits checks the walkers against them, then they are logged. */
+	TArray<FNewFootprint> ReadyFootprints;
+	/** The new footprints of the last step taken in; those whose tiles are rebuilt moved to ReadyFootprints. */
+	void UpdateNewFootprints(UHOLCommandSubsystem& Commands, const UNavigationSystemV1* NavSystem, const ANavigationData* NavData);
+	/** A walker whose way crosses a ready footprint, given a new path after the units' pass (grouped by order, J4.3). */
+	struct FCutWalker
+	{
+		FMassEntityHandle Entity;
+		uint32 OrderSerial = 0;
+		FVector Location = FVector::ZeroVector;
+		FVector Slot = FVector::ZeroVector;
+		/** The footprint that cuts its way (an index of ReadyFootprints), and its body's radius. */
+		int32 Footprint = INDEX_NONE;
+		float Radius = 0.f;
+	};
+	TArray<FCutWalker> CutWalkers;
+	/** The way of the walker being checked (kept between walkers: no allocation per unit). */
+	TArray<FVector2D> CutWay;
+	/**
+	 * A walker at Location (on its path or its final leg) whose way crosses a ready footprint: added to CutWalkers and to
+	 * the footprint's count. A body already against the footprint is left to the footprints' guard (D310).
+	 */
+	bool IsWayCut(const FHOLMoveOrderFragment& Order, const FVector& Location, const FMassNavMeshCachedPathFragment& CachedPath, float Radius, FMassEntityHandle Entity);
+	/** The new paths of the cut walkers, one per cluster of each order, as an order's (D286); a slot under the footprint moved out. */
+	void RequestCutPaths(FMassEntityManager& EntityManager, const UNavigationSystemV1* NavSystem, const ANavigationData* NavData);
+	/** The straight way from Start to Target crosses a building that blocks the navmesh (with the margin of D310). */
+	static bool DoesCrossBuilding(const UWorld& World, const FVector& Start, const FVector& Target, const ANavigationData* NavData);
 
 	/**
 	 * Slots given to units still on their way, by cell of ClaimCellSize: a later order does not give them again (units

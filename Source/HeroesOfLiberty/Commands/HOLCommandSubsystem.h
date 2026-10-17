@@ -10,6 +10,21 @@
 #include "HOLCommandSubsystem.generated.h"
 
 /**
+ * A building's footprint that starts blocking the navmesh (J6b.2, D314): a site's first work (D312), or a building placed
+ * finished by the code (the main centres, S7's camps). Its tiles of the navmesh are rebuilt a little later.
+ */
+struct FHOLBlockedFootprint
+{
+	FName TypeName;
+	/** Its middle on the ground, its size (cm, the table's Footprint) and its yaw (degrees). */
+	FVector2D Centre = FVector2D::ZeroVector;
+	FVector2D Size = FVector2D::ZeroVector;
+	float Yaw = 0.f;
+	/** The forbidden area given to the navmesh (the footprint and the bodies' clearance, D310). */
+	FBox Area = FBox(ForceInit);
+};
+
+/**
  * The order queue (D216, D226): orders are queued here and applied by the order processor at the next fixed
  * step, never in the frame that issued them. The destination is brought back to the navmesh when the order is
  * issued (D228), so a point outside the navigable area cannot send a unit off the navmesh.
@@ -63,6 +78,14 @@ public:
 	/** Takes the areas changed since the last step (the order processor calls this at each step). */
 	void ConsumeNavigationChanges(TArray<FBox>& OutAreas);
 
+	/**
+	 * A footprint starts blocking the navmesh (J6b.2, D314; server and solo): the kept paths across it are forgotten at the
+	 * next step, and once its tiles are rebuilt the walkers whose way crosses it get a new path.
+	 */
+	void NotifyFootprintBlocked(const FHOLBlockedFootprint& Footprint);
+	/** Takes the footprints blocked since the last step (the order processor calls this at each step). */
+	void ConsumeBlockedFootprints(TArray<FHOLBlockedFootprint>& OutFootprints);
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
@@ -73,4 +96,5 @@ private:
 	TArray<FHOLConstructionCommand> PendingConstructionOrders;
 	TArray<FHOLBuildOrder> PendingBuildOrders;
 	TArray<FBox> PendingNavigationChanges;
+	TArray<FHOLBlockedFootprint> PendingBlockedFootprints;
 };

@@ -667,6 +667,8 @@ void UHOLStressTestSubsystem::LogGatheringSummary() const
 		Counters.MissedDeposits - GatherCountersAtMeasureStart[3], Counters.NoSpotStops - GatherCountersAtMeasureStart[5]);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Buildings (D310): %lld bodies put back out of a footprint, %lld walkers given a new path for it, during the measure"),
 		UHOLFootprintKeepOutProcessor::GetNumPushedOut() - PushedOutAtMeasureStart, UHOLUnitOrderProcessor::GetTotalBuildingRepaths() - RepathsAtMeasureStart);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  New footprints (J6b.2): %lld walkers given a new path, %lld kept paths dropped, during the measure"),
+		UHOLUnitOrderProcessor::GetTotalFootprintRepaths() - CutRepathsAtMeasureStart, UHOLUnitOrderProcessor::GetTotalFootprintDroppedPaths() - CutDroppedAtMeasureStart);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Gatherers at the end: to their source %d, gathering %d, to the deposit %d, not gathering %d; %d carrying a load"),
 		Phases[static_cast<int32>(EHOLGatherPhase::ToSource)], Phases[static_cast<int32>(EHOLGatherPhase::Gathering)],
 		Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Phases[static_cast<int32>(EHOLGatherPhase::None)], Carrying);
@@ -940,6 +942,8 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	PathsReusedAtMeasureStart = UHOLUnitOrderProcessor::GetTotalPathsReused();
 	PushedOutAtMeasureStart = UHOLFootprintKeepOutProcessor::GetNumPushedOut();
 	RepathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalBuildingRepaths();
+	CutRepathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalFootprintRepaths();
+	CutDroppedAtMeasureStart = UHOLUnitOrderProcessor::GetTotalFootprintDroppedPaths();
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
 	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotStops };
 	FMemory::Memcpy(GatherCountersAtMeasureStart, Now, sizeof(Now));

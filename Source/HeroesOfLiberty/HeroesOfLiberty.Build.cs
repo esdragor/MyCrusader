@@ -45,6 +45,9 @@ public class HeroesOfLiberty : ModuleRules
 		// The match controller's camera keys (D255).
 		PrivateDependencyModuleNames.Add("EnhancedInput");
 
+		// Recast's headers, for the navmesh generator's tiles still to rebuild under a new footprint (J6b.2, D314).
+		PrivateDependencyModuleNames.Add("Navmesh");
+
 		// Iris replication (D29, M2.5).
 		SetupIrisSupport(Target);
 	}

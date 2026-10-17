@@ -131,3 +131,19 @@ void UHOLCommandSubsystem::ConsumeNavigationChanges(TArray<FBox>& OutAreas)
 	OutAreas.Reset();
 	Swap(OutAreas, PendingNavigationChanges);
 }
+
+void UHOLCommandSubsystem::NotifyFootprintBlocked(const FHOLBlockedFootprint& Footprint)
+{
+	// As the changes of the navmesh: only the simulation consumes them.
+	const UWorld* World = GetWorld();
+	if (World && World->GetNetMode() != NM_Client && Footprint.Area.IsValid)
+	{
+		PendingBlockedFootprints.Add(Footprint);
+	}
+}
+
+void UHOLCommandSubsystem::ConsumeBlockedFootprints(TArray<FHOLBlockedFootprint>& OutFootprints)
+{
+	OutFootprints.Reset();
+	Swap(OutFootprints, PendingBlockedFootprints);
+}

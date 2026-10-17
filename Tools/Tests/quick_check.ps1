@@ -46,6 +46,10 @@
 # wood and unload at the camp (a gatherer nearby unloads at the centre until then); the centre's rally point on the camp:
 # the Peasant born once it is finished gathers there too; a mining camp by the stone vein: its builders gather the stone;
 # a camp 34 m from any wood: its builders stand idle.
+# J6b.2 (D314), solo: six Peasants on round trips between the vein north-east of slot 0 and its centre, 50 m (their kept
+# paths, D305); house K placed across their way and started: the kept paths across it dropped, those walking across it
+# given a new path once its tiles are rebuilt (one log line), no body put back by a footprint after; six Peasants sent 90 m
+# across open ground, house N started across their way: they go round it and arrive.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -213,6 +217,18 @@ $CampM = @(-12000, -3900)
 $CampMSpawn = @(-12000, -3000)
 $CampFar = @(-19500, -900)
 $CampFarSpawn = @(-19500, -1800)
+# Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
+# not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
+# unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
+# sent from 50 m north of house N to 40 m south of it, its builder made east of it.
+$CutSpawn = @(-11800, 3900)
+$CutVein = @(-11087, 4592)
+$CutK = @(-12900, 2700)
+$CutKBuilder = @(-13700, 2700)
+$CutN = @(-9000, 0)
+$CutNBuilder = @(-8100, 0)
+$CutFrom = @(-9000, 5000)
+$CutTo = @(-9000, -4000)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -520,6 +536,34 @@ if ($Parts -contains "camera") {
                 "hol.Build.Click", "waitlog Build order of slot 0: 2 units to LumberCamp at ($($CampFar -join ', '))", "waitlog Construction: slot 0 finished LumberCamp at ($($CampFar -join ', '))",
                 "waitlog Construction: slot 0 camp LumberCamp at ($($CampFar -join ', ')) finished: no accepted source", "wait 1", "hol.Units.Where 0", "hol.HUD.Report",
                 "hol.Camera.Focus $($CampFar[0]) $($CampFar[1] - 300)", "frames 5", "capture build_camp_idle", "hol.Build.Speed 1", "hol.Gather.SpeedScale 1", "hol.Build.Report"
+            # Paths cut by a footprint (J6b.2, D314). Six Peasants gather the vein (5 times as fast: they walk most of the time)
+            # and unload at the centre; 25 s later (a round trip each: their paths kept), house K placed across their way by a
+            # Peasant made beside it: at its first work, the kept paths across it are dropped; once its tiles are rebuilt, the
+            # walkers crossing it get a new path (the log line); watched 12 s (every body put back by a footprint logged).
+            Key Escape
+            Step "mark build cut", "waitlog Selection: none", "hol.Gather.SpeedScale 5", "hol.Units.Spawn 6 $($CutSpawn -join ' ') 0 Peasant 100", "wait 0.5",
+                "hol.Camera.Focus $($CutSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($CutSpawn[0] - 350) $($CutSpawn[1] - 300) $($CutSpawn[0] + 350) $($CutSpawn[1] + 300)", "waitlog Selection: 6 units (own): Peasant x6",
+                "hol.Select.OrderSource $($CutVein -join ' ')", "waitlog Gather order of slot 0: 6 units to source", "wait 25",
+                "hol.Units.Spawn 1 $($CutKBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CutK -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Build.Place House", "waitlog Placement ghost: House at ($($CutK -join ', ')) valid", "hol.Build.Click",
+                "waitlog Build order of slot 0: 1 units to House at ($($CutK -join ', '))", "waitlog Construction: slot 0 first work on House at ($($CutK -join ', '))",
+                "waitlog Buildings (D310): footprint House at ($($CutK -join ', '))", "hol.Nav.Footprints on", "hol.Units.KeepOut 2", "wait 1.5",
+                "hol.Camera.Focus $($CutK[0]) $($CutK[1] + 200)", "frames 3", "capture build_cut_gather", "wait 10", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
+                "hol.Units.Where 0"
+            # Six Peasants made 50 m north of house N, sent 90 m south (straight on open ground); house N started across their
+            # way by a Peasant made beside it: they go round it, arrive, none put back by a footprint.
+            Key Escape
+            Step "mark build cut move", "waitlog Selection: none", "hol.Gather.SpeedScale 1", "hol.Units.Spawn 6 $($CutFrom -join ' ') 0 Peasant 100", "wait 0.5",
+                "hol.Camera.Focus $($CutFrom -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($CutFrom[0] - 350) $($CutFrom[1] - 300) $($CutFrom[0] + 350) $($CutFrom[1] + 300)", "waitlog Selection: 6 units (own): Peasant x6",
+                "hol.Camera.Focus $($CutTo -join ' ')", "frames 3", "hol.Select.OrderGround $($CutTo -join ' ')", "hol.Units.Spawn 1 $($CutNBuilder -join ' ') 0 Peasant 10", "wait 0.5",
+                "hol.Camera.Focus $($CutN -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Build.Place House", "waitlog Placement ghost: House at ($($CutN -join ', ')) valid", "hol.Build.Click",
+                "waitlog Build order of slot 0: 1 units to House at ($($CutN -join ', '))", "waitlog Construction: slot 0 first work on House at ($($CutN -join ', '))",
+                "waitlog Buildings (D310): footprint House at ($($CutN -join ', '))", "hol.Nav.Footprints on", "hol.Units.KeepOut 2", "hol.Units.Where 0", "wait 6.5",
+                "hol.Camera.Focus $($CutN -join ' ')", "frames 3", "capture build_cut_move", "wait 10", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
+                "hol.Units.Where 0", "hol.Build.Report"
         }
     }
 }
@@ -1221,6 +1265,38 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("wood", "stone", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "build_camp_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build camp" $Checks) -and $AllOk
+
+    # J6b.2 (D314): paths cut by a footprint. The footprint's line; the watch of the bodies over the seconds after it.
+    $Cut = @(Get-Section "build cut" | ForEach-Object { $_ })
+    $CutMove = @(Get-Section "build cut move" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $ReadCut = { param($Lines, $At) $Line = $Lines | Select-String -Pattern "Buildings \(D310\): footprint House at \($($At -join ', ')\): (\d+) walkers given a new path, (\d+) reused gather paths dropped(.*)\((.*)\)$" | Select-Object -First 1
+        if ($Line) { $G = $Line.Matches[0].Groups; [pscustomobject]@{ Walkers = [int]$G[1].Value; Dropped = [int]$G[2].Value; Text = ($Line.Matches[0].Value -replace '^Buildings \(D310\): ', ''); Rebuilt = ($G[4].Value -match '^tiles rebuilt') } } }
+    $ReadWatch = { param($Lines) $W = $Lines | Select-String -Pattern "Footprint watch: (\d+) steps, .*; put back out: (\d+), new paths: (\d+)$" | Select-Object -Last 1
+        if ($W) { [pscustomobject]@{ Steps = [int]$W.Matches[0].Groups[1].Value; Out = [int]$W.Matches[0].Groups[2].Value; Repaths = [int]$W.Matches[0].Groups[3].Value } } }
+    $K = & $ReadCut $Cut $CutK
+    $Checks["house K across the round trips: its kept paths dropped, its walkers given a new path once its tiles were rebuilt ($(if ($K) { $K.Text }))"] =
+        ($null -ne $K) -and ($K.Walkers -ge 1) -and ($K.Dropped -ge 1) -and $K.Rebuilt
+    $WatchK = & $ReadWatch $Cut
+    $PushedK = @($Cut | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
+    $Checks["none put back by a footprint over 12 s after it ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it" }) $($PushedK -join '; '))"] =
+        ($null -ne $WatchK) -and ($WatchK.Steps -ge 200) -and ($WatchK.Out -eq 0) -and ($WatchK.Repaths -eq 0)
+    $KLine = -1; for ($i = 0; $i -lt $Cut.Count; $i++) { if ($Cut[$i] -match "Buildings \(D310\): footprint House at \($($CutK -join ', ')\)") { $KLine = $i; break } }
+    $UnloadsK = if ($KLine -ge 0) { @($Cut[$KLine..($Cut.Count - 1)] | Select-String -Pattern "Gather: slot 0 unloaded \d+ \w+ \(stock [^)]*\) at MainCentre ").Count } else { 0 }
+    $Checks["the round trips go on around it ($UnloadsK unloads at the centre after it)"] = $UnloadsK -ge 3
+    $N = & $ReadCut $CutMove $CutN
+    $Checks["house N across a move order: its walkers given a new path ($(if ($N) { $N.Text }))"] = ($null -ne $N) -and ($N.Walkers -ge 6) -and $N.Rebuilt
+    $WatchN = & $ReadWatch $CutMove
+    $PushedN = @($CutMove | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
+    $Checks["none put back by a footprint ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
+        ($null -ne $WatchN) -and ($WatchN.Out -eq 0) -and ($WatchN.Repaths -eq 0)
+    $Arrived = @($CutMove | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object {
+        [regex]::Matches($_.Matches[0].Groups[1].Value, "#\d+ slot 0 at \((-?\d+), (-?\d+)\) (\w+)") } |
+        Where-Object { [Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $CutTo[0], 2) + [Math]::Pow([double]$_.Groups[2].Value - $CutTo[1], 2)) -le 600 -and $_.Groups[3].Value -eq "Idle" })
+    $Checks["they arrive ($($Arrived.Count) standing within 6 m of the point)"] = $Arrived.Count -ge 6
+    $Missing = @("gather", "move" | Where-Object { -not (Test-Path (Join-Path $Shots "build_cut_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build cut" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {
