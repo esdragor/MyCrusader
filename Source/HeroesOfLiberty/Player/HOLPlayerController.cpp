@@ -1489,10 +1489,11 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		// A click on the building itself clears its rally point: the ground seen behind its roof is off its footprint.
 		AHOLBuilding* Under = FindBuildingAt(ViewportFraction);
 		const bool bOnBuilding = Under == Building;
-		// One of the player's sites not finished (the user's trial of J6a.4): the units born here build it; the flag on its
+		// One of the player's sites not finished (the user's trial of J6a.4): the units born here build it; or one of its
+		// camps, finished or not: once it is, they gather the nearest source it accepts (D312, J6b.1); the flag on its
 		// middle, as on a source.
 		AHOLBuilding* RallySite = Under && !bOnBuilding && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex()
-			&& !Under->IsFinished() ? Under : nullptr;
+			&& (!Under->IsFinished() || Under->IsCamp()) ? Under : nullptr;
 		const FVector Point = bOnBuilding ? Building->GetActorLocation() : RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
 		const int32 RallySource = !bOnBuilding && !RallySite && Source ? SourceIndex : INDEX_NONE;
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s"), *DescribeBuilding(Building), Point.X, Point.Y,
@@ -1512,7 +1513,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		{
 			return;
 		}
-		AHOLBuilding* RallySite = Under && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Under->IsFinished() ? Under : nullptr;
+		AHOLBuilding* RallySite = Under && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex()
+			&& (!Under->IsFinished() || Under->IsCamp()) ? Under : nullptr;
 		const FVector Point = RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
 		const int32 RallySource = !RallySite && Source ? SourceIndex : INDEX_NONE;
 		int32 Rallied = 0;

@@ -27,6 +27,7 @@
 #include "NavigationSystem.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLBuildProcessor.h"
 #include "Simulation/HOLLightUnitAvoidanceTrait.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitView.h"
@@ -491,15 +492,26 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 				BornIds.Add(EntityToId.FindChecked(Entity));
 			}
 			const UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
-			// A rally point on a site not finished: they build it (the user's trial of J6a.4); finished (or cancelled) by
+			// A rally point on a site not finished: they build it (the user's trial of J6a.4); a camp finished by then, they
+			// gather the nearest source it accepts, as its builders (D312, J6b.1); another site finished (or cancelled) by
 			// then, they walk to its ground point as to any other.
 			AHOLBuilding* Site = Request.BuildSite.Get();
+			double CampGap = 0.;
+			const int32 CampSource = Site && Site->IsFinished() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site, &CampGap) : INDEX_NONE;
 			if (Site && !Site->IsFinished())
 			{
 				FHOLBuildOrder Order;
 				Order.UnitIds = BornIds;
 				Order.Building = Site;
 				Commands->IssueBuildOrder(Order);
+			}
+			else if (CampSource != INDEX_NONE)
+			{
+				Commands->IssueGatherOrder(BornIds, CampSource, Request.OwnerPlayer);
+				const FVector Location = Site->GetActorLocation();
+				UE_LOG(LogHOLSimulation, Display, TEXT("Rally: %d units of slot %d born for the finished camp %s at (%.0f, %.0f) sent to gather %s (source %d, %.1f m)"),
+					BornIds.Num(), Request.OwnerPlayer, *Site->GetTypeName().ToString(), Location.X, Location.Y,
+					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Sources->GetSources()[CampSource].Resource)), CampSource, CampGap / 100.);
 			}
 			else if (Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
 			{

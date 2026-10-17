@@ -79,6 +79,7 @@ vérifier sur S1 et S2.
 | J5c.2 Charge visible | **fait** (2026-10-16, worktree) : choix de l'utilisateur (hache, pioche, mains nues pour les baies ; panier, fagot, hotte de pierre ou d'or ; charge montrée à l'arrêt : repos chargés) ; `SKM_Peasant` (pièces fusionnées, outils sur `ik_hand_gun`, 4e float par instance, WPO), `TP_Peasant` ; tests 50/50, `quick_check` PASS ; essai **validé** (« très bien »), **fusionnée dans `main`** (fad246d, tests 54/54) ; A/B S7 : CPU inchangé, GPU +1,06 ms |
 | J5c.3 « +10 » au dépôt | **fait** (2026-10-16, 98858d0) : « +N » au seul propriétaire (appel client non fiable par pas, 0 bit dans l'état des unités), `hol.Gather.LogPopups`, capture `gather_popup` et contrôles solo et 2 clients dans `quick_check` (PASS en 78 s, tests 39/39) ; essai **validé** (« très bien ») |
 | J5c.4 Vérification et clôture : D318 à D323 au GDD | **fait** (2026-10-16) : mesures au repos de J6a.6 (`main` bfda9b4, toutes les animations et le bâtisseur) : S1 2,276 / S2 2,882 / S7 2,303 ms, S5 30 937 o/s par client (écart 23,3 cm), tous PASS, GPU de S7 3,34 ms (2,15 avant J5c) ; tests 62/62 et `quick_check` PASS à la dernière fusion ; partie « anims » de `quick_check` ajoutée en parallèle (partie « anims », 16 s : rapport `hol.Units.AnimReport` ; geste et pièce de chaque Paysan dessiné au travail, en marche chargée et debout chargé ; `quick_check` PASS en 163 s) ; D318 à D323 au § 21 (D298 précisée : fait en J5c), paragraphe « Parcours J5c : la vie de la récolte » au § 16.6, numéro suivant de la review (§ 22) passé à D324. **J5c close, J5 close.** |
+| J6b.1 Camps | **fait** (2026-10-16, **validée** à l'essai le 2026-10-17 : « tout m'a l'air bon », commitée) : camp fini → ses bâtisseurs file vide récoltent la source acceptée la plus proche (`hol.Build.CampGatherRange`, 25 m, emprise au bord de la source), sinon chantier voisin / inactif ; ralliement sur un camp (fini ou non) → récolte ; 0 bit ; tests 63/63 (`Construction.CampSource`), partie `build camp` de `quick_check`, `quick_check` PASS en 202 s ; S7 inchangé (J6b.3) |
 
 ## Prochaine étape exacte
 
@@ -167,7 +168,11 @@ vérifier sur S1 et S2.
    annulation). **J6a.4 faite** (2026-10-16, validée : chantier, bâtisseurs, fondation fantôme, file Maj avec
    récolte, ralliement sur un chantier, chantier voisin ; S2 / S7 au repos à refaire). **J6a.5 faite** (2026-10-16, validée : grille du Paysan,
    infobulles, messages, bloc du chantier, F1 / F2 / F3, groupes et Tab). **J6a.6 faite, J6a close** (2026-10-16 : mesures au repos
-   PASS, essai complet validé). Suite : **J6b.1** (camps ; voir « Plan de J6 »).
+   PASS, essai complet validé). Suite : **J6b.1** (camps ; voir « Plan de J6 »). **J6b.1 faite** (2026-10-16,
+   sous-agent, rien de commité) : camp fini → récolte, ralliement sur un camp ; tests 63/63, `quick_check` PASS (202 s,
+   partie `build camp`) ; essai de l'utilisateur **validé** (2026-10-17 : camp avant le chantier voisin, portée de 25 m, ralliement sur un
+   camp fini, gardés tels quels), commitée (journal « J6b.1 : les camps »). Suite :
+   **J6b.2** (chemins coupés par une emprise).
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -3024,3 +3029,67 @@ d'épée).
   D318 à D323, « +N », marteau du bâtisseur fait avec la même chaîne, vérifications, coût A/B, mesures au repos).
   § 22 : numéro suivant **D324** (D310 à D314 au plan de J6, D318 à D323 à J5c).
 - **J5c close, J5 close.** Reprise inchangée : **J6b.1**.
+
+### 2026-10-16 — J6b.1 : les camps
+
+- Sous-agent, rien de commité, GDD non touché, ni présentation, ni table des unités, ni réplication (0 bit de plus :
+  tout se passe côté serveur / simulation).
+- **Camp fini → ses bâtisseurs récoltent** (D312) : un « camp » = bâtiment dont `Accepts` n'est pas vide et qui n'est
+  pas un centre principal (`HOLConstruction::SendsBuildersToGather`, `AHOLBuilding::IsCamp`). Au pas qui suit sa fin,
+  chaque bâtisseur dont la file est vide (après les chantiers finis ou annulés qu'elle tenait) reçoit la **source debout
+  la plus proche que le camp accepte** (`HOLConstruction::FindCampSource` : distance de l'emprise au **bord** de la
+  source ; camp de mineurs : la plus proche, pierre ou or ; à égalité, la première), choisie une fois pour tous ses
+  bâtisseurs, dans **`hol.Build.CampGatherRange`** (cm, **2500** = 25 m ; négatif : jamais). Elle lui est donnée comme un
+  ordre de récolte (`FHOLGatherFragment::StartTask`, file oubliée, activité « tournée de récolte ») : places, massifs,
+  bosquet voisin et inactif devant de D309 inchangés, charge gardée jusqu'à la première unité d'une autre ressource
+  (D306). Ceux qui ont encore quelque chose dans leur file (Maj) la suivent d'abord, comme pour une maison. Aucune source
+  acceptée assez près (ou une unité qui ne récolte pas cette ressource) : la règle d'avant (chantier voisin à
+  `hol.Build.NextSiteRange`, sinon inactif). Choix : le camp passe **avant** le chantier voisin.
+- Journal (une ligne par camp, au pas où ses bâtisseurs repartent) : `Construction: slot 0 camp LumberCamp at (x, y)
+  finished: 2 builders sent to gather Wood (source 8, 3.6 m)`, ou `... finished: no accepted source within 25 m, 2
+  builders go on as after a house`.
+- **Ralliement** : un Paysan né avec un ralliement sur un camp inachevé le bâtit ; fini avant son arrivée, il récolte
+  comme les autres bâtisseurs. Camp **fini avant sa naissance** : ordre de récolte direct de la même source
+  (`UHOLUnitSubsystem`, journal `Rally: 1 units of slot 0 born for the finished camp LumberCamp at (x, y) sent to gather
+  Wood (source i, d m)`) ; aucune source : il marche vers le camp comme avant. Le ralliement peut désormais se poser sur un
+  **camp fini** (contrôleur et serveur : `!IsFinished() || IsCamp()`), drapeau en son milieu. Cas rare couvert : un
+  ordre de bâtir arrivé un pas après la fin d'un camp (`ApplyBuildOrders`) devient un ordre de récolte de sa source.
+- **Camp inachevé** : n'accepte aucun dépôt (déjà le cas : `RefreshDeposits` ne prend que les bâtiments finis) ; vérifié
+  dans `quick_check`. Journal des dépôts (`hol.Gather.LogDeposits 1`) complété : `... at LumberCamp (x, y), unit #N`.
+- **S7** : ses camps posés par le code sont déjà la vraie ligne `LumberCamp`, nés finis, sans bâtisseur : rien ne change
+  (S7 avec des camps bâtis en cours de test = J6b.3). Chemin chaud de la récolte non touché (seul le journal sous
+  `LogDeposits`) : pas de S1 / S2 / S7.
+- Fichiers : `Buildings/HOLConstructionRules.h/.cpp` (`FHOLCampSource`, `SendsBuildersToGather`, `GetSourceGap`,
+  `FindCampSource`), `Buildings/HOLBuilding.h/.cpp` (`IsCamp`), `Simulation/HOLBuildProcessor.h/.cpp` (variable,
+  `FindCampSource`, `GatherForCamp`, `LogCampSends`, ordre tardif), `Simulation/HOLUnitSubsystem.cpp` (naissance),
+  `Buildings/HOLProductionSubsystem.cpp` et `Player/HOLPlayerController.cpp` (ralliement sur un camp fini),
+  `Simulation/HOLGatherProcessor.h/.cpp` (journal des dépôts), `Tests/HOLConstructionTests.cpp`, `Tools/Tests/quick_check.ps1`.
+- **Compilation** sans avertissement (44 s). **Tests 63/63** (62 avant ; nouveau `Construction.CampSource`).
+- **`quick_check` PASS en 202 s** (151 avant). Un premier passage (même code) avait échoué en `gather` (le contrôle des
+  « +10 » prenait le journal jusqu'au bout : borné désormais à la marque `build camp`) et en `net` (lancé en même temps
+  que le `quick_check` de `mycrusader-23` : port du serveur partagé) ; second passage, machine libre : tout PASS.
+  Partie nouvelle **`build camp`** (solo, après `build hud`) : tous les Paysans de l'emplacement 0 envoyés derrière le
+  centre, file du centre vidée, `hol.Build.Speed 2`, `hol.Gather.SpeedScale 5` ; un Paysan envoyé à l'arbre le plus
+  proche du futur camp ; deux Paysans posent le camp de bûcherons L à (-13500, -2100), à 4 m du bois ; ralliement du
+  centre sur le chantier L, Paysan en file (12 s). Résultats : L fini en 163 pas, `2 builders sent to gather Wood
+  (source 8, 3.6 m)`, ils déposent **au camp** (aucun au centre) ; le premier Paysan dépose **au centre tant que L n'est
+  pas fini**, au camp ensuite ; le Paysan né après la fin de L : `Rally: 1 units ... sent to gather Wood`, dépose au
+  camp. Camp de mineurs M à (-12000, -3900), à 4,3 m du filon de pierre (l'or à 60 m) : `2 builders sent to gather
+  Stone (source 372, 4.3 m)`, pierre déposée à M. Camp de bûcherons à (-19500, -900), à 34 m de tout bois : `no
+  accepted source within 25 m`, ses 2 bâtisseurs inactifs.
+- Captures vues : `build_camp_wood` (camp fini derrière le bois, « +10 » au camp, « Bois (4) » ; le bois masque un peu
+  les récolteurs, caméra fixe), `build_camp_stone` (camp de mineurs, 2 Paysans au filon, « 2 en récolte », « Pierre
+  (2) »), `build_camp_idle` (camp loin du bois, « 2 inactifs », Inactifs 31).
+- À essayer : `hol.Cheat.Wood 500`, choisir 2-3 Paysans, `hol.Build.Place LumberCamp` (ou Z) près du bois, clic : ils
+  bâtissent puis récoltent le bois et déposent au camp ; idem `hol.Build.Place MiningCamp` (ou E) près d'un filon
+  (pierre ou or, le plus proche) ; un camp loin de tout : inactifs. Maj : poser un camp puis une maison, ils font les deux
+  avant de récolter. Ralliement : centre choisi, clic droit sur un camp (chantier ou fini), `hol.Prod.Queue` : le Paysan
+  né récolte près du camp. `hol.Build.Speed 4` ou `hol.Cheat.FastBuild 1` pour aller vite ; `hol.Build.CampGatherRange
+  1000` pour essayer une portée plus courte ; `hol.Gather.LogDeposits 1` pour voir où chacun dépose.
+- À faire valider à l'essai : le camp avant le chantier voisin ; la portée de 25 m ; le ralliement sur un camp fini (une
+  nouveauté : tout Paysan né y part récolter, comme AoE4).
+- Session d'essai lancée (deuxième écran, 22 h 12) : **essai de J6b.1** (camps, enchaînement vers la récolte, ralliement sur un camp). À juger : la source du camp avant le chantier voisin, la portée de 25 m (`hol.Build.CampGatherRange`), le ralliement sur un camp déjà fini.
+
+- **Essai validé** par l'utilisateur (2026-10-17, « tout m'a l'air bon ») : les trois points gardés tels quels (camp
+  avant le chantier voisin, portée de 25 m, ralliement sur un camp fini). Commitée. Reprise : **J6b.2** (chemins coupés
+  par une emprise).

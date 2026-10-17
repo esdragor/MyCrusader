@@ -264,3 +264,40 @@ int32 HOLConstruction::FindNextSite(const FBox2D& Finished, const TConstArrayVie
 	}
 	return Found;
 }
+
+bool HOLConstruction::SendsBuildersToGather(const FName TypeName, const TConstArrayView<EHOLResource> Accepts)
+{
+	return !Accepts.IsEmpty() && TypeName != HOLBuildingTypeNames::MainCentre;
+}
+
+double HOLConstruction::GetSourceGap(const FBox2D& Footprint, const FVector2D& Centre, const double Radius)
+{
+	return FMath::Max(0.0, GetDistance(Footprint, Centre) - Radius);
+}
+
+int32 HOLConstruction::FindCampSource(const FBox2D& Camp, const TConstArrayView<EHOLResource> Accepts, const TConstArrayView<FHOLCampSource> Sources,
+	const double Range, double* OutGap)
+{
+	int32 Found = INDEX_NONE;
+	double Nearest = Range;
+	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	{
+		const FHOLCampSource& Source = Sources[Index];
+		if (!Source.bStanding || !Accepts.Contains(Source.Resource))
+		{
+			continue;
+		}
+		const double Gap = GetSourceGap(Camp, Source.Centre, Source.Radius);
+		// Strictly nearer than the one kept: the first of two as near (the same choice on every run).
+		if (Gap <= Range && (Found == INDEX_NONE || Gap < Nearest))
+		{
+			Found = Index;
+			Nearest = Gap;
+		}
+	}
+	if (OutGap && Found != INDEX_NONE)
+	{
+		*OutGap = Nearest;
+	}
+	return Found;
+}

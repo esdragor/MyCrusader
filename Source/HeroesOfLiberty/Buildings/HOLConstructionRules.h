@@ -40,6 +40,18 @@ struct FHOLPlacementQuery
 	bool bOnNavMesh = true;
 };
 
+/**
+ * A resource source as the builders of a camp just finished choose one (J6b.1, D312): its ground point, body radius and
+ * resource (D297), standing or used up.
+ */
+struct FHOLCampSource
+{
+	FVector2D Centre = FVector2D::ZeroVector;
+	double Radius = 0.0;
+	EHOLResource Resource = EHOLResource::Wood;
+	bool bStanding = true;
+};
+
 /** Why a foundation may not go there; the first failed check, in this order. */
 enum class EHOLPlacementRefusal : uint8
 {
@@ -280,4 +292,26 @@ namespace HOLConstruction
 	 * near: it stands idle.
 	 */
 	HEROESOFLIBERTY_API int32 FindNextSite(const FBox2D& Finished, TConstArrayView<FBox2D> Sites, double Range);
+
+	// The camps (J6b.1, D312).
+
+	/**
+	 * A building of this type sends its builders to gather once it is finished (D312: a camp): it takes deliveries (Accepts
+	 * not empty, D296) and is not a main centre (it takes the four resources: no source would be « its » own). A house, or
+	 * any other: they go on to the next site or stand idle.
+	 */
+	HEROESOFLIBERTY_API bool SendsBuildersToGather(FName TypeName, TConstArrayView<EHOLResource> Accepts);
+
+	/** Ground distance from a footprint to the edge of a source's body of Radius at Centre (0 when they touch or overlap). */
+	HEROESOFLIBERTY_API double GetSourceGap(const FBox2D& Footprint, const FVector2D& Centre, double Radius);
+
+	/**
+	 * The source the builders of a camp just finished, with nothing left in their queue, go on to gather (D312, J6b.1): the
+	 * nearest standing one of Sources whose resource the camp accepts (Accepts: a mining camp takes the nearer of stone and
+	 * gold), measured from the camp's footprint to the source's edge, within Range (cm, hol.Build.CampGatherRange); the first
+	 * of two as near. INDEX_NONE if none is that near: they go on as after a house (the nearby site, else idle). OutGap, when
+	 * given, holds the gap of the one found.
+	 */
+	HEROESOFLIBERTY_API int32 FindCampSource(const FBox2D& Camp, TConstArrayView<EHOLResource> Accepts, TConstArrayView<FHOLCampSource> Sources, double Range,
+		double* OutGap = nullptr);
 }
