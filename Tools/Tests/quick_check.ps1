@@ -47,6 +47,10 @@
 # three stand idle: each gesture with its tool (axe, pickaxe, nothing for the berries), the hammer, the plain idle. Then
 # the four groups of gatherers walk away with their loads (the carrying walk of the load, the load shown), and stand
 # there (the loaded idle, the load still shown). Every Peasant drawn, whatever it does, must show what its state calls for.
+# J6b.1 (D312), solo: a lumber camp placed by the wood and built by two Peasants: once finished, they gather the nearest
+# wood and unload at the camp (a gatherer nearby unloads at the centre until then); the centre's rally point on the camp:
+# the Peasant born once it is finished gathers there too; a mining camp by the stone vein: its builders gather the stone;
+# a camp 34 m from any wood: its builders stand idle.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -214,6 +218,19 @@ $AnimGroups = @(
     @{ Name = "gold"; Spawn = @(-11087, 5400); Source = @(-11087, 4592); Target = @(-11087, 6600); Look = @(-11087, 4592) },
     @{ Name = "berries"; Spawn = @(-11668, -9546); Source = @(-12021, -9193); Target = @(-10200, -8000); Look = @(-12021, -9193) }
 )
+# The camps (J6b.1): every Peasant of slot 0 sent behind its centre; lumber camp L 4 m off the edge of slot 0's wood (on
+# the map's side), a Peasant made beside the wood sent to its tree nearest L, two builders made beyond L; mining camp M
+# 4 m off the stone vein between slots 0 and 4 (at (-11087, -4592)), its two builders made beside it; a lumber camp 34 m
+# from every wood, behind the centre.
+$CampCrowd = @(-18600, 1500)
+$CampL = @(-13500, -2100)
+$CampLSpawn = @(-12600, -2100)
+$CampEarly = @(-13700, -1300)
+$CampTree = @(-14230, -1800)
+$CampM = @(-12000, -3900)
+$CampMSpawn = @(-12000, -3000)
+$CampFar = @(-19500, -900)
+$CampFarSpawn = @(-19500, -1800)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -483,6 +500,44 @@ if ($Parts -contains "camera") {
             Step "mark build hud rally", "hol.Select.Report", "hol.Camera.Focus $($BuildRally[0] + 600) $($BuildRally[1])", "frames 3",
                 "hol.Select.OrderGround $($BuildRally -join ' ')", "waitlog Rally: slot 0 set the rally point of MainCentre at (", "frames 3", "hol.Select.Report",
                 "capture build_hud_rally"
+            # The camps (J6b.1, D312): every Peasant of slot 0 sent behind its centre (no gatherer left), the centre's queue
+            # emptied; construction twice as fast, gathering 5 times. A Peasant sent to the tree nearest lumber camp L, then
+            # two Peasants place L by the wood's edge and build it; the centre's rally point on L's site, a Peasant queued
+            # (12 s): L finished, its builders gather the wood and unload at L (the first Peasant at the centre until then, at
+            # L after), the Peasant born walks to gather there too (its rally point on a camp finished meanwhile).
+            Key Escape
+            Step "mark build camp", "waitlog Selection: none", "hol.Units.Move $($CampCrowd -join ' ') 0", "hol.Cheat.Wood 1000", "hol.Cheat.Food 500",
+                "hol.Build.Speed 2", "hol.Gather.SpeedScale 5", "hol.Gather.LogDeposits 1", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
+                "waitlog Selection: MainCentre of slot 0 (own)", "hol.Prod.Cancel 0", "hol.Prod.Cancel 0", "wait 0.5", "hol.Prod.Report",
+                "hol.Units.Spawn 1 $($CampEarly -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CampEarly -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Select.OrderSource $($CampTree -join ' ')", "waitlog Gather order of slot 0: 1 units to source",
+                "hol.Units.Spawn 2 $($CampLSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampLSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($CampLSpawn[0] - 400) $($CampLSpawn[1] - 400) $($CampLSpawn[0] + 400) $($CampLSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($CampL -join ' ')", "frames 3", "hol.Build.Place LumberCamp", "waitlog Placement ghost: LumberCamp at ($($CampL -join ', ')) valid",
+                "hol.Build.Click", "waitlog Build order of slot 0: 2 units to LumberCamp at ($($CampL -join ', '))"
+            Step "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)", "hol.Camera.Focus $($CampL -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($CampL -join ' ')", "waitlog Rally: slot 0 set the rally point of MainCentre at ($($CampL -join ', ')), on site LumberCamp",
+                "hol.Prod.BuildTime 12", "hol.Prod.Queue Peasant", "waitlog Construction: slot 0 finished LumberCamp at ($($CampL -join ', '))",
+                "waitlog Construction: slot 0 camp LumberCamp at ($($CampL -join ', ')) finished: ", "waitlog Production: Peasant of slot 0 done",
+                "waitlog Rally: 1 units of slot 0 born for the finished camp LumberCamp", "hol.Prod.BuildTime 0", "wait 8", "hol.Units.Where 0",
+                "hol.Camera.Focus $($CampL[0] + 200) $($CampL[1])", "frames 5", "hol.HUD.Report", "capture build_camp_wood"
+            # Mining camp M by the stone vein between slots 0 and 4: its two builders gather the stone (the gold vein is 60 m
+            # away) and unload at M.
+            Key Escape
+            Step "mark build camp mining", "waitlog Selection: none", "hol.Units.Spawn 2 $($CampMSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampMSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($CampMSpawn[0] - 400) $($CampMSpawn[1] - 400) $($CampMSpawn[0] + 400) $($CampMSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($CampM -join ' ')", "frames 3", "hol.Build.Place MiningCamp", "waitlog Placement ghost: MiningCamp at ($($CampM -join ', ')) valid",
+                "hol.Build.Click", "waitlog Build order of slot 0: 2 units to MiningCamp at ($($CampM -join ', '))", "waitlog Construction: slot 0 finished MiningCamp at ($($CampM -join ', '))",
+                "waitlog Construction: slot 0 camp MiningCamp at ($($CampM -join ', ')) finished: ", "wait 9", "hol.Units.Where 0",
+                "hol.Camera.Focus $($CampM[0] + 400) $($CampM[1] - 300)", "frames 5", "capture build_camp_stone"
+            # A lumber camp far from every wood (34 m): no accepted source within 25 m, its two builders stand idle.
+            Key Escape
+            Step "mark build camp far", "waitlog Selection: none", "hol.Units.Spawn 2 $($CampFarSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampFarSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($CampFarSpawn[0] - 400) $($CampFarSpawn[1] - 400) $($CampFarSpawn[0] + 400) $($CampFarSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($CampFar -join ' ')", "frames 3", "hol.Build.Place LumberCamp", "waitlog Placement ghost: LumberCamp at ($($CampFar -join ', ')) valid",
+                "hol.Build.Click", "waitlog Build order of slot 0: 2 units to LumberCamp at ($($CampFar -join ', '))", "waitlog Construction: slot 0 finished LumberCamp at ($($CampFar -join ', '))",
+                "waitlog Construction: slot 0 camp LumberCamp at ($($CampFar -join ', ')) finished: no accepted source", "wait 1", "hol.Units.Where 0", "hol.HUD.Report",
+                "hol.Camera.Focus $($CampFar[0]) $($CampFar[1] - 300)", "frames 5", "capture build_camp_idle", "hol.Build.Speed 1", "hol.Gather.SpeedScale 1", "hol.Build.Report"
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
             # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
@@ -665,7 +720,8 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen";
     site = "hud=HOLGameScreen"; three = "hud=HOLGameScreen"; finished = "hud=HOLGameScreen"; rally = "hud=HOLGameScreen";
     greyed = "hud=HOLGameScreen"; fr = "hud=HOLGameScreen"; en = "hud=HOLGameScreen"; ja = "hud=HOLGameScreen"; ghost = "hud=HOLGameScreen";
-    block = "hud=HOLGameScreen"; popfull = "hud=HOLGameScreen"; f1 = "hud=HOLGameScreen"; f2 = "hud=HOLGameScreen"; next = "hud=HOLGameScreen" }
+    block = "hud=HOLGameScreen"; popfull = "hud=HOLGameScreen"; f1 = "hud=HOLGameScreen"; f2 = "hud=HOLGameScreen"; next = "hud=HOLGameScreen";
+    stone = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -925,9 +981,11 @@ if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
     $Checks["no two Peasants at rest closer than 90 cm ($([Math]::Round($Near[0])) cm $($Near[1]) gathering; $([Math]::Round($NearAfter[0])) cm $($NearAfter[1]) after)"] =
         ($Near[0] -ge 90) -and ($NearAfter[0] -ge 90)
     # The +10 (J5c.3, D298): one per unload of slot 0, with its amount and resource, at the centre (its deposit); from
-    # the mark on, every unload logged by the simulation and every +10 by the controller, in the same step.
+    # the mark on, every unload logged by the simulation and every +10 by the controller, in the same step; up to the camps
+    # of J6b.1 (their unloads are at the camps).
     $GatherMark = 0; for ($i = 0; $i -lt $Log.Count; $i++) { if ($Log[$i] -match "Test mark: gather$") { $GatherMark = $i; break } }
-    $FromGather = $Log[$GatherMark..($Log.Count - 1)]
+    $CampMark = $Log.Count - 1; for ($i = $GatherMark; $i -lt $Log.Count; $i++) { if ($Log[$i] -match "Test mark: build camp$") { $CampMark = $i; break } }
+    $FromGather = $Log[$GatherMark..$CampMark]
     $UnloadKinds = @($FromGather | Select-String -Pattern "Gather: slot 0 unloaded ([1-9]\d*) (\w+) " | ForEach-Object { "+$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" } | Sort-Object)
     $PopupLines = @($FromGather | Select-String -Pattern "Deposit popup: (\+\d+ \w+) at \((-?\d+), (-?\d+)\)" | ForEach-Object { $_.Matches[0] })
     $PopupKinds = @($PopupLines | ForEach-Object { $_.Groups[1].Value } | Sort-Object)
@@ -1173,6 +1231,52 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("greyed", "fr", "en", "ja", "ghost", "block", "popfull", "f1", "f2", "next", "tab_centre", "tab_houses", "rally" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hud_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hud" $Checks) -and $AllOk
+
+    # J6b.1 (D312): the camps. Each unload: what, where, who (hol.Gather.LogDeposits).
+    $Camp = @(Get-Section "build camp" | ForEach-Object { $_ })
+    $Mining = @(Get-Section "build camp mining" | ForEach-Object { $_ })
+    $Far = @(Get-Section "build camp far" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $ReadUnloads = { param($Lines) @($Lines | Select-String -Pattern "Gather: slot 0 unloaded (\d+) (\w+) \(stock [^)]*\) at (\w+) \((-?\d+), (-?\d+)\), unit #(\d+)" | ForEach-Object {
+        $G = $_.Matches[0].Groups; [pscustomobject]@{ Amount = [int]$G[1].Value; Resource = $G[2].Value; At = "$($G[3].Value) ($($G[4].Value), $($G[5].Value))"; Unit = $G[6].Value; Line = $_.LineNumber } }) }
+    $AtL = "LumberCamp ($($CampL -join ', '))"
+    $AtM = "MiningCamp ($($CampM -join ', '))"
+    $Early = & $Value $Camp "Selection: Peasant #(\d+) of slot 0 \(own\)"
+    $FinishedL = @($Camp | Select-String -Pattern "Construction: slot 0 finished LumberCamp at \($($CampL -join ', ')\)" | Select-Object -First 1)
+    $EndL = if ($FinishedL.Count -eq 1) { $FinishedL[0].LineNumber } else { [int]::MaxValue }
+    $Unloads = & $ReadUnloads $Camp
+    $Before = @($Unloads | Where-Object { $_.Line -lt $EndL })
+    $After = @($Unloads | Where-Object { $_.Line -gt $EndL })
+    $SentL = & $Value $Camp "(camp LumberCamp at \($($CampL -join ', ')\) finished: .*)$"
+    $Checks["L built by its two Peasants, its builders sent to gather the wood within 25 m ($SentL)"] = [bool]($Camp | Select-String -Pattern "Build order of slot 0: 2 units to LumberCamp at \($($CampL -join ', ')\)$" -Quiet) -and
+        ($FinishedL.Count -eq 1) -and [bool]($SentL -match "finished: (\d+) builders sent to gather Wood \(source \d+, (\d+\.\d) m\)$") -and ([int]$Matches[1] -ge 2) -and ([double]$Matches[2] -le 25)
+    $Builders = @($After | Where-Object { $_.Unit -ne $Early })
+    $BuilderUnits = @($Builders | ForEach-Object { $_.Unit } | Sort-Object -Unique)
+    $Checks["they unload their wood at L, none at the centre ($($Builders.Count) unloads by $($BuilderUnits.Count) units: $(($Builders | ForEach-Object { "#$($_.Unit) $($_.Amount) $($_.Resource) at $($_.At)" } | Select-Object -First 4) -join '; '))"] =
+        ($BuilderUnits.Count -ge 2) -and (@($Builders | Where-Object { $_.At -ne $AtL -or $_.Resource -ne "Wood" }).Count -eq 0)
+    $EarlyBefore = @($Before | Where-Object { $_.Unit -eq $Early })
+    $EarlyAfter = @($After | Where-Object { $_.Unit -eq $Early })
+    $Checks["L unfinished takes nothing: the first Peasant (#$Early) unloads at the centre until its end, at L after ($(($EarlyBefore | ForEach-Object { $_.At }) -join ', ') | $(($EarlyAfter | ForEach-Object { $_.At }) -join ', '))"] =
+        ($EarlyBefore.Count -ge 1) -and (@($Before | Where-Object { $_.At -eq $AtL }).Count -eq 0) -and (@($EarlyBefore | Where-Object { $_.At -notmatch "^MainCentre " }).Count -eq 0) -and
+        (@($EarlyAfter | Where-Object { $_.At -eq $AtL }).Count -ge 1)
+    $Checks["the centre's rally point on L's site, the Peasant born once L is finished gathers by it"] =
+        [bool]($Camp | Select-String -Pattern "Rally: slot 0 set the rally point of MainCentre at \($($CampL -join ', ')\), on site LumberCamp$" -Quiet) -and
+        [bool]($Camp | Select-String -Pattern "Rally: 1 units of slot 0 born for the finished camp LumberCamp at \($($CampL -join ', ')\) sent to gather Wood \(source \d+, \d+\.\d m\)$" -Quiet)
+    $SentM = & $Value $Mining "(camp MiningCamp at \($($CampM -join ', ')\) finished: .*)$"
+    $Checks["M built by its two Peasants, its builders sent to the stone vein, not to the gold one ($SentM)"] = [bool]($Mining | Select-String -Pattern "Build order of slot 0: 2 units to MiningCamp at \($($CampM -join ', ')\)$" -Quiet) -and
+        [bool]($SentM -match "finished: (\d+) builders sent to gather Stone \(source \d+, (\d+\.\d) m\)$") -and ([int]$Matches[1] -ge 2) -and ([double]$Matches[2] -le 25)
+    $Stone = @(& $ReadUnloads $Mining | Where-Object { $_.Resource -eq "Stone" })
+    $StoneUnits = @($Stone | ForEach-Object { $_.Unit } | Sort-Object -Unique)
+    $Checks["they unload their stone at M ($($Stone.Count) unloads by $($StoneUnits.Count) units: $(($Stone | ForEach-Object { $_.At } | Sort-Object -Unique) -join ', '))"] =
+        ($StoneUnits.Count -ge 2) -and (@($Stone | Where-Object { $_.At -ne $AtM }).Count -eq 0)
+    $SentFar = & $Value $Far "(camp LumberCamp at \($($CampFar -join ', ')\) finished: .*)$"
+    $IdleFar = @($Far | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle").Count
+    $Checks["a camp 34 m from any wood: no source within 25 m, its two builders idle ($SentFar; $IdleFar idle)"] =
+        [bool]($SentFar -match "finished: no accepted source within 25 m, 2 builders go on as after a house$") -and ($IdleFar -eq 2) -and
+        -not ($Far | Select-String -Pattern "goes on to the nearby site" -Quiet)
+    $Missing = @("wood", "stone", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "build_camp_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build camp" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

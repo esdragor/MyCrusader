@@ -220,6 +220,7 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 		Deposit.GroundZ = static_cast<float>(It->GetActorLocation().Z);
 		Deposit.OwnerPlayer = It->GetOwnerPlayer();
 		Deposit.Accepts = Type->Accepts;
+		Deposit.TypeName = It->GetTypeName();
 	}
 }
 
@@ -416,7 +417,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		const int32 DepositIndex = FindDeposit(Gatherer.OwnerPlayer, Gather.Load.Resource, Gatherer.Location);
 		if (DepositIndex != INDEX_NONE && HOLGather::IsAtDeposit(FVector2D(Gatherer.Location), Gatherer.Constants.Radius, Deposits[DepositIndex].Footprint))
 		{
-			Unload(Step, Gatherer);
+			Unload(Step, Gatherer, Deposits[DepositIndex]);
 			++Counters.Unloads;
 			Gather.Misses = 0;
 			if (Source && Source->IsStanding())
@@ -674,7 +675,7 @@ void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gath
 	Stop(Gatherer);
 }
 
-void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer)
+void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer, const FDeposit& Deposit)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
 	FHOLGatherFragment& Gather = Gatherer.Gather;
@@ -705,8 +706,10 @@ void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer)
 	}
 	if (LogDeposits != 0)
 	{
-		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d unloaded %d %s (stock %s)"), Gatherer.OwnerPlayer, Amount, GetResourceName(Resource),
-			PlayerState ? *Stock.ToString() : TEXT("none"));
+		// Where, and who (J6b.1: a camp's builders unload at the camp, not at the centre).
+		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d unloaded %d %s (stock %s) at %s (%.0f, %.0f), unit #%u"), Gatherer.OwnerPlayer, Amount,
+			GetResourceName(Resource), PlayerState ? *Stock.ToString() : TEXT("none"), *Deposit.TypeName.ToString(), Deposit.Footprint.Centre.X,
+			Deposit.Footprint.Centre.Y, Step.Units->FindUnitId(Gatherer.Entity));
 	}
 }
 

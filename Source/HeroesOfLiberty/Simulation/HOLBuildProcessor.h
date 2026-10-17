@@ -27,10 +27,11 @@ struct FHOLUnitTypeConstants;
  * (HOLConstruction::AddWork, 3 builders ~2x one). The first work makes a bare foundation a site: seen by everyone, its
  * footprint blocking the navmesh, rising from the ground (at once finished with hol.Build.Instant, development). Finished,
  * it serves (population, deposit), and its builders go on to the next item of their queue (Shift, D311), else to their
- * player's nearest site within hol.Build.NextSiteRange of it (the user's trial of J6a.4), else stand idle. A source in the
- * queue (Shift + right click on a resource) is handed to the gathering when it comes, until its massif is used up. Its
- * walks are move orders it gives itself through the order queue (as the gathering's); a player's move or gather order
- * ends it.
+ * player's nearest site within hol.Build.NextSiteRange of it (the user's trial of J6a.4), else stand idle; a camp finished,
+ * those with nothing left in their queue gather the nearest source it accepts within hol.Build.CampGatherRange of it first
+ * (D312, J6b.1). A source in the queue (Shift + right click on a resource) is handed to the gathering when it comes, until
+ * its massif is used up. Its walks are move orders it gives itself through the order queue (as the gathering's); a
+ * player's move or gather order ends it.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLBuildProcessor : public UMassProcessor
@@ -39,6 +40,15 @@ class HEROESOFLIBERTY_API UHOLBuildProcessor : public UMassProcessor
 
 public:
 	UHOLBuildProcessor();
+
+	/**
+	 * The standing source the builders of Camp go on to gather once it is finished (D312, J6b.1): the nearest one it accepts
+	 * within hol.Build.CampGatherRange of its footprint (HOLConstruction::FindCampSource), its gap (cm) in OutGap; INDEX_NONE
+	 * if Camp is no camp or none is near enough. A unit born with its rally point on a camp finished meanwhile goes there too.
+	 */
+	static int32 FindCampSource(const UHOLSourceSubsystem& Sources, const AHOLBuilding& Camp, double* OutGap = nullptr);
+	/** hol.Build.CampGatherRange (cm). */
+	static double GetCampGatherRange();
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -87,6 +97,15 @@ private:
 		int32 LastBuilders = 0;
 	};
 
+	/** A camp whose builders went on at this step (J6b.1): the source they were sent to, how many went there, how many could not. */
+	struct FCampSend
+	{
+		int32 SourceIndex = INDEX_NONE;
+		double Gap = 0.;
+		int32 Sent = 0;
+		int32 NotSent = 0;
+	};
+
 	/** The builder met by the step, and what it needs. */
 	struct FBuilder
 	{
@@ -117,6 +136,14 @@ private:
 	 * footprint (HOLConstruction::FindNextSite), or null.
 	 */
 	AHOLBuilding* FindNextSite(const FBuilder& Builder, const AHOLBuilding& Finished) const;
+	/**
+	 * Camp just finished, nothing left in its builder's queue (D312, J6b.1): the builder gathers the nearest source Camp
+	 * accepts, as a gather order would send it (the gathering's spots, massifs and groves, D309), its queue forgotten. False if
+	 * Camp is no camp or no such source is near enough: it goes on as after a house.
+	 */
+	bool GatherForCamp(const FStepContext& Step, FBuilder& Builder, AHOLBuilding& Camp);
+	/** One line per camp whose builders went on at this step (J6b.1, scripted checks): where they were sent, or why not. */
+	void LogCampSends(const FStepContext& Step);
 	/** Nothing left in its queue (or its site out of reach): it stands idle where it is, its queue forgotten. */
 	void Stop(FBuilder& Builder, const TCHAR* Why);
 	void IssueWalk(const FStepContext& Step, FBuilder& Builder, const FVector& Spot);
@@ -135,6 +162,8 @@ private:
 	/** This step's builders at work, by site. */
 	TMap<TWeakObjectPtr<AHOLBuilding>, int32> WorkersBySite;
 	TMap<TWeakObjectPtr<AHOLBuilding>, FSiteStats> SiteStats;
+	/** This step's camps whose builders went on (J6b.1). */
+	TMap<TWeakObjectPtr<AHOLBuilding>, FCampSend> CampSends;
 	int32 StepsSinceSweep = 0;
 
 	FMassEntityQuery EntityQuery;

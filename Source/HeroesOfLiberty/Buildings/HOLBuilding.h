@@ -55,6 +55,11 @@ public:
 	EHOLConstructionState GetConstructionState() const { return ConstructionState; }
 	/** Finished: it serves its owner (population, deposit, production; D312). */
 	bool IsFinished() const;
+	/**
+	 * A camp (HOLConstruction::SendsBuildersToGather: a deposit other than a main centre): finished, its builders with nothing
+	 * left in their queue gather the nearest source it accepts, and a rally point on it sends the units born to it (D312, J6b.1).
+	 */
+	bool IsCamp() const;
 	/** A bare foundation: placed and paid, no work yet (D311). */
 	bool IsFoundation() const { return ConstructionState == EHOLConstructionState::Foundation; }
 	/** Its footprint is a forbidden area of the navmesh (D312: not as a bare foundation). */

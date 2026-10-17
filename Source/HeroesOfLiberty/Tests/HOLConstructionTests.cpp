@@ -527,4 +527,51 @@ bool FHOLConstructionNextSiteTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionCampSourceTest, "HeroesOfLiberty.Construction.CampSource", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionCampSourceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+	// J6b.1 (D312): a camp finished at (0, 0) m, 6 m wide; its builders gather the nearest source it accepts within 25 m of it.
+	TestTrue(TEXT("a lumber camp sends its builders to gather"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::LumberCamp, TArray<EHOLResource>({ EHOLResource::Wood })));
+	TestTrue(TEXT("a mining camp too"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::MiningCamp, TArray<EHOLResource>({ EHOLResource::Stone, EHOLResource::Gold })));
+	TestFalse(TEXT("a house does not (no deposit)"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::House, TArray<EHOLResource>()));
+	TestFalse(TEXT("a main centre does not (the four resources)"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::MainCentre,
+		TArray<EHOLResource>({ EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })));
+
+	const FBox2D Camp = House(0.0, 0.0);
+	TestEqual(TEXT("gap to a tree's edge off a side (8 m from the middle, 60 cm of body)"), HOLConstruction::GetSourceGap(Camp, FVector2D(800.0, 0.0), 60.0), 440.0, 0.01);
+	TestEqual(TEXT("gap to a vein off a corner (3 m, 4 m; 3 m of body)"), HOLConstruction::GetSourceGap(Camp, FVector2D(600.0, 700.0), 300.0), 200.0, 0.01);
+	TestEqual(TEXT("a body over the footprint: 0"), HOLConstruction::GetSourceGap(Camp, FVector2D(350.0, 0.0), 60.0), 0.0, 0.01);
+
+	const auto Source = [](const double X, const double Y, const double Radius, const EHOLResource Resource, const bool bStanding = true)
+	{
+		return FHOLCampSource{ FVector2D(X, Y) * 100.0, Radius * 100.0, Resource, bStanding };
+	};
+	const TArray<FHOLCampSource> Sources = {
+		Source(-6.0, 0.0, 1.1, EHOLResource::Food),          // berries 1.9 m off: not wood
+		Source(10.0, 0.0, 0.6, EHOLResource::Wood),          // 6.4 m
+		Source(0.0, 8.0, 0.6, EHOLResource::Wood, false),    // 4.4 m, used up
+		Source(0.0, -9.0, 0.6, EHOLResource::Wood),          // 5.4 m: the nearest standing tree
+		Source(16.0, 16.0, 3.0, EHOLResource::Gold),         // 15.4 m
+		Source(-20.0, 0.0, 3.0, EHOLResource::Stone),        // 14 m
+		Source(40.0, 0.0, 0.6, EHOLResource::Wood),          // 36.4 m
+	};
+	const TArray<EHOLResource> Wood = { EHOLResource::Wood };
+	const TArray<EHOLResource> Mining = { EHOLResource::Stone, EHOLResource::Gold };
+	double Gap = -1.0;
+	TestEqual(TEXT("lumber camp: the nearest standing tree, not the berries nearer, nor the stump"), HOLConstruction::FindCampSource(Camp, Wood, Sources, 2500.0, &Gap), 3);
+	TestEqual(TEXT("its gap"), Gap, 540.0, 0.01);
+	TestEqual(TEXT("mining camp: the nearer of stone and gold"), HOLConstruction::FindCampSource(Camp, Mining, Sources, 2500.0, &Gap), 5);
+	TestEqual(TEXT("its gap (to the vein's edge)"), Gap, 1400.0, 0.01);
+	TestEqual(TEXT("mining camp within 10 m: none"), HOLConstruction::FindCampSource(Camp, Mining, Sources, 1000.0), INDEX_NONE);
+	TestEqual(TEXT("exactly at the range: still near"), HOLConstruction::FindCampSource(Camp, Wood, Sources, 540.0), 3);
+	TestEqual(TEXT("only the far tree standing: none within 25 m, they go on as after a house"),
+		HOLConstruction::FindCampSource(Camp, Wood, TArray<FHOLCampSource>({ Source(40.0, 0.0, 0.6, EHOLResource::Wood) }), 2500.0), INDEX_NONE);
+	TestEqual(TEXT("two as near: the first"), HOLConstruction::FindCampSource(Camp, Wood,
+		TArray<FHOLCampSource>({ Source(10.0, 0.0, 0.6, EHOLResource::Wood), Source(-10.0, 0.0, 0.6, EHOLResource::Wood) }), 2500.0), 0);
+	TestEqual(TEXT("a camp accepting nothing: none"), HOLConstruction::FindCampSource(Camp, TArray<EHOLResource>(), Sources, 2500.0), INDEX_NONE);
+	TestEqual(TEXT("no source: none"), HOLConstruction::FindCampSource(Camp, Wood, TArray<FHOLCampSource>(), 2500.0), INDEX_NONE);
+	return true;
+}
+
 #endif

@@ -187,10 +187,11 @@ void UHOLProductionSubsystem::ApplyOrders()
 			}
 			else
 			{
-				// On one of the player's own sites not finished (the user's trial of J6a.4): the units born here build it, the
-				// flag on its middle (as on a source); a client could name any building (D288).
+				// On one of the player's own sites not finished (the user's trial of J6a.4): the units born here build it; on one
+				// of its camps, finished or not: once it is, they gather the nearest source it accepts (D312, J6b.1); the flag
+				// on its middle (as on a source); a client could name any building (D288).
 				AHOLBuilding* Site = Order.RallySite.Get();
-				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || Site->IsFinished()))
+				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (Site->IsFinished() && !Site->IsCamp())))
 				{
 					Site = nullptr;
 				}

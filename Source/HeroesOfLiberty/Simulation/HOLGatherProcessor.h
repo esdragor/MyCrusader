@@ -85,6 +85,8 @@ private:
 		float GroundZ = 0.f;
 		uint8 OwnerPlayer = 0;
 		TArray<EHOLResource> Accepts;
+		/** Its building's type, for the log of the unloads (hol.Gather.LogDeposits: at the camp or at the centre, J6b.1). */
+		FName TypeName;
 	};
 
 	/** The gatherer met by the step, and what it needs. */
@@ -116,7 +118,7 @@ private:
 	 */
 	void OnSourceGone(const FStepContext& Step, FGatherer& Gatherer);
 	/** Unloads at the deposit: the owner's stock rises (D296). */
-	void Unload(const FStepContext& Step, FGatherer& Gatherer);
+	void Unload(const FStepContext& Step, FGatherer& Gatherer, const FDeposit& Deposit);
 	void Stop(FGatherer& Gatherer);
 	/**
 	 * No room at its source nor anywhere in its massif or its nearby groves (D309): it stops gathering and walks in front of its

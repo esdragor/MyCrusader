@@ -103,6 +103,12 @@ bool AHOLBuilding::IsFinished() const
 	return HOLConstruction::IsServing(ConstructionState);
 }
 
+bool AHOLBuilding::IsCamp() const
+{
+	const FHOLBuildingTypeRow* Type = GetType();
+	return Type && HOLConstruction::SendsBuildersToGather(TypeName, Type->Accepts);
+}
+
 bool AHOLBuilding::BlocksNavigation() const
 {
 	return HOLConstruction::BlocksNavigation(ConstructionState);

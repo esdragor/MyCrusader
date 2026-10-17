@@ -40,6 +40,12 @@ namespace UE::HeroesOfLiberty::Build
 		TEXT("Distance (cm, footprint to footprint) at most from a site just finished to its player's nearest site not finished, bare foundations too, ")
 		TEXT("where its builders with nothing left in their queue go on (the user's trial of J6a.4: ~20 m); 0: they stand idle"));
 
+	float CampGatherRange = 2500.f;
+	FAutoConsoleVariableRef CVarCampGatherRange(TEXT("hol.Build.CampGatherRange"), CampGatherRange,
+		TEXT("Distance (cm, footprint to the source's edge) at most from a camp just finished to the nearest standing source it accepts, which its ")
+		TEXT("builders with nothing left in their queue go on to gather (D312, J6b.1: 25 m); none that near: they go on as after a house ")
+		TEXT("(hol.Build.NextSiteRange, else idle); a negative value: never"));
+
 	/**
 	 * Gap (cm) between a builder's body at its spot and the footprint, beyond the clearance every body keeps from a footprint
 	 * (D310): the spot is on the navmesh once the site blocks it (it ends 60 + 25 cm from the footprint, ~10 cm more on the
@@ -60,6 +66,28 @@ namespace UE::HeroesOfLiberty::Build
 	constexpr int32 SweepSteps = 200;
 	/** hol.Build.Speed at most. */
 	constexpr int32 MaxSpeed = 100;
+}
+
+double UHOLBuildProcessor::GetCampGatherRange()
+{
+	return static_cast<double>(UE::HeroesOfLiberty::Build::CampGatherRange);
+}
+
+int32 UHOLBuildProcessor::FindCampSource(const UHOLSourceSubsystem& Sources, const AHOLBuilding& Camp, double* OutGap)
+{
+	const double Range = GetCampGatherRange();
+	if (Range < 0. || !Camp.IsCamp())
+	{
+		return INDEX_NONE;
+	}
+	// Every source by its index (a camp finished now and then: a copy of a few hundred is nothing).
+	TArray<FHOLCampSource> Candidates;
+	Candidates.Reserve(Sources.GetSources().Num());
+	for (const FHOLSource& Source : Sources.GetSources())
+	{
+		Candidates.Add({ FVector2D(Source.Location), static_cast<double>(Source.Radius), Source.Resource, Source.IsStanding() });
+	}
+	return HOLConstruction::FindCampSource(Camp.GetFootprintBounds(), Camp.GetType()->Accepts, Candidates, Range, OutGap);
 }
 
 UHOLBuildProcessor::UHOLBuildProcessor()
@@ -183,6 +211,7 @@ void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			}
 		}
 	});
+	LogCampSends(Step);
 	ApplyWork(Step);
 }
 
@@ -202,6 +231,22 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d ignored: source %d is not standing"), Order.PlayerIndex, Order.SourceIndex);
 			continue;
+		}
+		// A camp finished meanwhile (a unit born with its rally point on it a step too late, a right click on a site finishing
+		// at once): the nearest source it accepts, as its builders (D312, J6b.1), by a gather order of its owner's.
+		if (!bGather && Site && Site->IsFinished() && !Order.bQueue && (Order.PlayerIndex == INDEX_NONE || Site->GetOwnerPlayer() == Order.PlayerIndex))
+		{
+			double Gap = 0.;
+			const int32 CampSource = FindCampSource(*Step.Sources, *Site, &Gap);
+			if (CampSource != INDEX_NONE)
+			{
+				Step.Commands->IssueGatherOrder(Order.UnitIds, CampSource, Site->GetOwnerPlayer());
+				const FVector Location = Site->GetActorLocation();
+				UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d on the finished camp %s at (%.0f, %.0f): %d units sent to gather %s (source %d, %.1f m)"),
+					Order.PlayerIndex, *Site->GetTypeName().ToString(), Location.X, Location.Y, Order.UnitIds.Num(),
+					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Sources[CampSource].Resource)), CampSource, Gap / 100.);
+				continue;
+			}
 		}
 		// Only the player's own site, not finished yet (D288): a client could name any building.
 		if (!bGather && (!Site || Site->IsFinished() || (Order.PlayerIndex != INDEX_NONE && Site->GetOwnerPlayer() != Order.PlayerIndex)))
@@ -292,14 +337,20 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 	{
 		return;
 	}
-	// Its site finished or cancelled, its gathering over: the next item of its queue (D312), else its player's nearest site
-	// near the one it finished (the user's trial of J6a.4), else idle.
+	// Its site finished or cancelled, its gathering over: the next item of its queue (D312), else, a camp finished, the
+	// nearest source it accepts (J6b.1), else its player's nearest site near the one it finished (the user's trial of
+	// J6a.4), else idle.
 	const FWorkItem Before = Queue->Current;
 	if (!HOLConstruction::AdvanceWorkQueue<TWeakObjectPtr<AHOLBuilding>>(Queue->Items, bGatherHead,
 		[](const TWeakObjectPtr<AHOLBuilding>& Site) { return Site.IsValid() && !Site->IsFinished(); }))
 	{
 		AHOLBuilding* Finished = !Before.IsGather() ? Before.Site.Get() : nullptr;
-		AHOLBuilding* Next = Finished && Finished->IsFinished() ? FindNextSite(Builder, *Finished) : nullptr;
+		const bool bFinished = Finished && Finished->IsFinished();
+		if (bFinished && GatherForCamp(Step, Builder, *Finished))
+		{
+			return;
+		}
+		AHOLBuilding* Next = bFinished ? FindNextSite(Builder, *Finished) : nullptr;
 		if (!Next)
 		{
 			Stop(Builder, bGatherHead ? TEXT("its queue done") : TEXT("no site left"));
@@ -495,6 +546,65 @@ AHOLBuilding* UHOLBuildProcessor::FindNextSite(const FBuilder& Builder, const AH
 	}
 	const int32 Found = NextSiteRange > 0.f ? HOLConstruction::FindNextSite(Finished.GetFootprintBounds(), Boxes, NextSiteRange) : INDEX_NONE;
 	return Found != INDEX_NONE ? Sites[Found] : nullptr;
+}
+
+bool UHOLBuildProcessor::GatherForCamp(const FStepContext& Step, FBuilder& Builder, AHOLBuilding& Camp)
+{
+	if (!Camp.IsCamp())
+	{
+		return false;
+	}
+	// Its source chosen once for all its builders (they all go on at the same step, the one after its end).
+	const TWeakObjectPtr<AHOLBuilding> Key(&Camp);
+	FCampSend* Send = CampSends.Find(Key);
+	if (!Send)
+	{
+		Send = &CampSends.Add(Key);
+		Send->SourceIndex = FindCampSource(*Step.Sources, Camp, &Send->Gap);
+	}
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	if (!Sources.IsValidIndex(Send->SourceIndex) || Builder.Constants.GatherRates[Sources[Send->SourceIndex].Resource] <= 0.f)
+	{
+		++Send->NotSent;
+		return false;
+	}
+	// As a gather order (UHOLGatherProcessor::ApplyGatherOrders): no more building, its queue forgotten; from the gathering's
+	// next step, a free spot at the source (on the camp's side), else in its massif or a nearby grove (D309), its load kept
+	// until its first unit of another resource (D306).
+	const FHOLSource& Source = Sources[Send->SourceIndex];
+	Builder.Build.Clear();
+	Queues.Remove(Builder.Entity);
+	Builder.Gather.StartTask(Send->SourceIndex, Source.Resource);
+	Builder.State.Activity = EHOLUnitActivity::GatherTrip;
+	++Send->Sent;
+	return true;
+}
+
+void UHOLBuildProcessor::LogCampSends(const FStepContext& Step)
+{
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	for (const TPair<TWeakObjectPtr<AHOLBuilding>, FCampSend>& Pair : CampSends)
+	{
+		const AHOLBuilding* Camp = Pair.Key.Get();
+		if (!Camp)
+		{
+			continue;
+		}
+		const FCampSend& Send = Pair.Value;
+		const FVector Location = Camp->GetActorLocation();
+		const FString Name = Camp->GetTypeName().ToString();
+		if (!Sources.IsValidIndex(Send.SourceIndex))
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d camp %s at (%.0f, %.0f) finished: no accepted source within %.0f m, %d builders go on as after a house"),
+				Camp->GetOwnerPlayer(), *Name, Location.X, Location.Y, GetCampGatherRange() / 100., Send.NotSent);
+			continue;
+		}
+		const FString Resource = StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Sources[Send.SourceIndex].Resource));
+		const FString NotSent = Send.NotSent > 0 ? FString::Printf(TEXT(", %d that cannot gather it go on as after a house"), Send.NotSent) : FString();
+		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d camp %s at (%.0f, %.0f) finished: %d builders sent to gather %s (source %d, %.1f m)%s"),
+			Camp->GetOwnerPlayer(), *Name, Location.X, Location.Y, Send.Sent, *Resource, Send.SourceIndex, Send.Gap / 100., *NotSent);
+	}
+	CampSends.Reset();
 }
 
 void UHOLBuildProcessor::Stop(FBuilder& Builder, const TCHAR* Why)
