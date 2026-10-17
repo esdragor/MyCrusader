@@ -38,6 +38,14 @@ public:
 	static int64 GetTotalPathsReused() { return TotalPathsReused; }
 	/** New paths of walkers a building kept putting back since the program started (D310, stress test S7). */
 	static int64 GetTotalBuildingRepaths() { return TotalBuildingRepaths; }
+
+	/**
+	 * The navmesh's path Found from Start to Target, or a shorter one through the way between two neighbouring buildings
+	 * near its line (D324: the navmesh's search often goes around that strip one body wide). What the orders walk;
+	 * hol.Nav.Path shows it too.
+	 */
+	static TSharedPtr<FNavigationPath, ESPMode::ThreadSafe> FindPathThroughWays(UWorld& World, UNavigationSystemV1& NavSystem, const ANavigationData& NavData,
+		const FVector& Start, const FVector& Target, const TSharedPtr<FNavigationPath, ESPMode::ThreadSafe>& Found);
 	/** Walkers given a new path because a new footprint cut their way, since the program started (J6b.2, D314, stress test S7). */
 	static int64 GetTotalFootprintRepaths() { return TotalFootprintRepaths; }
 	/** Kept paths of the task walks dropped because a new footprint cut them, since the program started (J6b.2, D314). */
@@ -152,8 +160,11 @@ protected:
 	bool IsWayCut(const FHOLMoveOrderFragment& Order, const FVector& Location, const FMassNavMeshCachedPathFragment& CachedPath, float Radius, FMassEntityHandle Entity);
 	/** The new paths of the cut walkers, one per cluster of each order, as an order's (D286); a slot under the footprint moved out. */
 	void RequestCutPaths(FMassEntityManager& EntityManager, const UNavigationSystemV1* NavSystem, const ANavigationData* NavData);
-	/** The straight way from Start to Target crosses a building that blocks the navmesh (with the margin of D310). */
-	static bool DoesCrossBuilding(const UWorld& World, const FVector& Start, const FVector& Target, const ANavigationData* NavData);
+	/**
+	 * The straight way from Start to Target crosses a building's body that blocks the navmesh (with the margin of D310), or
+	 * passes within ExtraMargin more of one (D324: a way between two buildings).
+	 */
+	static bool DoesCrossBuilding(const UWorld& World, const FVector& Start, const FVector& Target, const ANavigationData* NavData, double ExtraMargin = 0.);
 
 	/**
 	 * Slots given to units still on their way, by cell of ClaimCellSize: a later order does not give them again (units

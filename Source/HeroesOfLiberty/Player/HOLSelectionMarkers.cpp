@@ -306,7 +306,8 @@ void AHOLSelectionMarkers::UpdateFrame()
 		{
 			const bool bDimmed = !Active.bAll && !Active.Members.IsEmpty() && !Active.Members.Contains(Index);
 			DimmedFrames += bDimmed ? 1 : 0;
-			const FVector2D Size = Type->Footprint + FVector2D(FrameMargin * 2.0);
+			// Around the building's visible shape (D324 refined), not its tiles.
+			const FVector2D Size = UHOLBuildingSettings::GetVisualSize(Type->Footprint) + FVector2D(FrameMargin * 2.0);
 			Transforms.Add(MarkerTransform(Buildings[Index]->GetActorLocation(), Size.X, Size.Y));
 			AddCustomData(CustomData, SelectionColor, FrameStroke * (bDimmed ? DimmedStrokeScale : 1.0) * 2.0 / Size.GetMax());
 		}
@@ -405,9 +406,10 @@ void AHOLSelectionMarkers::UpdateGhost()
 				AddCustomData(CustomData, Color, GhostTileStroke * 2.0 / TileSize.GetMax());
 			}
 		}
-		// The edges of its volume: a post at each corner, a beam along each side at its height.
+		// The edges of its volume: a post at each corner, a beam along each side at its height; over its visible shape, a
+		// little inset in the tiles it takes (D324 refined).
 		const double Height = Type->Height;
-		const FVector2D Half = Size * 0.5 - FVector2D(GhostEdgeWidth * 0.5);
+		const FVector2D Half = UHOLBuildingSettings::GetVisualSize(Size) * 0.5 - FVector2D(GhostEdgeWidth * 0.5);
 		const FVector2D Corners[] = { FVector2D(Half.X, Half.Y), FVector2D(Half.X, -Half.Y), FVector2D(-Half.X, -Half.Y), FVector2D(-Half.X, Half.Y) };
 		for (int32 Index = 0; Index < 4; ++Index)
 		{

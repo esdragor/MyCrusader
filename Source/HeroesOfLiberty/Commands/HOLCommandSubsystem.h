@@ -16,7 +16,7 @@
 struct FHOLBlockedFootprint
 {
 	FName TypeName;
-	/** Its middle on the ground, its size (cm, the table's Footprint) and its yaw (degrees). */
+	/** Its middle on the ground, its size (cm: its body, inset in the table's Footprint, D324) and its yaw (degrees). */
 	FVector2D Centre = FVector2D::ZeroVector;
 	FVector2D Size = FVector2D::ZeroVector;
 	float Yaw = 0.f;

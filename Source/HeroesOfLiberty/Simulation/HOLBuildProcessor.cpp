@@ -87,7 +87,7 @@ int32 UHOLBuildProcessor::FindCampSource(const UHOLSourceSubsystem& Sources, con
 	{
 		Candidates.Add({ FVector2D(Source.Location), static_cast<double>(Source.Radius), Source.Resource, Source.IsStanding() });
 	}
-	return HOLConstruction::FindCampSource(Camp.GetFootprintBounds(), Camp.GetType()->Accepts, Candidates, Range, OutGap);
+	return HOLConstruction::FindCampSource(Camp.GetBodyBounds(), Camp.GetType()->Accepts, Candidates, Range, OutGap);
 }
 
 UHOLBuildProcessor::UHOLBuildProcessor()
@@ -159,14 +159,15 @@ void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	Step.NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 	Step.NavData = Step.NavSystem ? Step.NavSystem->GetDefaultNavDataInstance() : nullptr;
 
-	// Every building and foundation: no spot on one (a house touching the site), whoever it belongs to.
+	// Every building and foundation: no spot on one (a house touching the site), whoever it belongs to; their bodies (D324:
+	// no spot in the way between two neighbours either, too narrow for a builder and a passer-by).
 	Footprints.Reset();
 	FootprintBuildings.Reset();
 	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
 	{
 		if (It->GetType())
 		{
-			Footprints.Add(It->GetFootprintBounds());
+			Footprints.Add(It->GetBodyBounds());
 			FootprintBuildings.Add(*It);
 		}
 	}
@@ -359,7 +360,7 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 		const FVector Location = Next->GetActorLocation();
 		UE_LOG(LogHOLSimulation, Display, TEXT("Build: a builder of slot %d goes on to the nearby site %s at (%.0f, %.0f), %.0f cm from the one finished"),
 			Builder.State.OwnerPlayer, *Next->GetTypeName().ToString(), Location.X, Location.Y,
-			HOLConstruction::GetGap(Finished->GetFootprintBounds(), Next->GetFootprintBounds()));
+			HOLConstruction::GetGap(Finished->GetBodyBounds(), Next->GetBodyBounds()));
 		Queue->Items.Add(FWorkItem::MakeBuild(Next));
 	}
 	Build.bQueueNext = Queue->Items.Num() > 1;
@@ -380,7 +381,8 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 	{
 		return;
 	}
-	const FBox2D Footprint = Site->GetFootprintBounds();
+	// The builders stand at the wall of its body (D324), not at the edge of its tiles.
+	const FBox2D Footprint = Site->GetBodyBounds();
 	const FVector2D Location(Builder.Location);
 	// Its walk is over: the order it gave itself was applied (a new serial), then ended (no phase).
 	const bool bArrived = Build.bWalkIssued && Builder.Move.OrderSerial != Build.OrderSerialBefore && Builder.Move.Phase == EHOLMovePhase::None;
@@ -544,7 +546,7 @@ AHOLBuilding* UHOLBuildProcessor::FindNextSite(const FBuilder& Builder, const AH
 			Sites.Add(Site);
 		}
 	}
-	const int32 Found = NextSiteRange > 0.f ? HOLConstruction::FindNextSite(Finished.GetFootprintBounds(), Boxes, NextSiteRange) : INDEX_NONE;
+	const int32 Found = NextSiteRange > 0.f ? HOLConstruction::FindNextSite(Finished.GetBodyBounds(), Boxes, NextSiteRange) : INDEX_NONE;
 	return Found != INDEX_NONE ? Sites[Found] : nullptr;
 }
 

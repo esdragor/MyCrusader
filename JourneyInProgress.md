@@ -81,6 +81,7 @@ vérifier sur S1 et S2.
 | J5c.4 Vérification et clôture : D318 à D323 au GDD | **fait** (2026-10-16) : mesures au repos de J6a.6 (`main` bfda9b4, toutes les animations et le bâtisseur) : S1 2,276 / S2 2,882 / S7 2,303 ms, S5 30 937 o/s par client (écart 23,3 cm), tous PASS, GPU de S7 3,34 ms (2,15 avant J5c) ; tests 62/62 et `quick_check` PASS à la dernière fusion ; partie « anims » de `quick_check` ajoutée en parallèle (partie « anims », 16 s : rapport `hol.Units.AnimReport` ; geste et pièce de chaque Paysan dessiné au travail, en marche chargée et debout chargé ; `quick_check` PASS en 163 s) ; D318 à D323 au § 21 (D298 précisée : fait en J5c), paragraphe « Parcours J5c : la vie de la récolte » au § 16.6, numéro suivant de la review (§ 22) passé à D324. **J5c close, J5 close.** |
 | J6b.1 Camps | **fait** (2026-10-16, **validée** à l'essai le 2026-10-17 : « tout m'a l'air bon », commitée) : camp fini → ses bâtisseurs file vide récoltent la source acceptée la plus proche (`hol.Build.CampGatherRange`, 25 m, emprise au bord de la source), sinon chantier voisin / inactif ; ralliement sur un camp (fini ou non) → récolte ; 0 bit ; tests 63/63 (`Construction.CampSource`), partie `build camp` de `quick_check`, `quick_check` PASS en 202 s ; S7 inchangé (J6b.3) |
 | J6b.2 Chemins coupés par une emprise | **fait** (2026-10-17, **validée** à l'essai : « super », commitée) : emprise nouvelle → chemins gardés de D305 qui la traversent oubliés, marcheurs dont le chemin la traverse recalculés une fois ses tuiles refaites (générateur + sondes), destination sous l'emprise sortie ; ligne `Buildings (D310): footprint ...` ; bouclage des Paysans enfermés corrigé ; 0 bit ; tests 64/64 (`Construction.CutPaths`), partie `build cut`, `quick_check` PASS en 259 s ; S7 2,289 / S2 2,758 ms PASS |
+| J6b.2b Bâtiments rentrés dans leurs cases (D324) | **fait** (2026-10-17, **validée** à l'essai : « c'est bon », commitée) : forme visible à **90 %** des cases (`VisualInset=30`, choix de l'utilisateur après « trop grosses allées »), corps qui bloque rentré de **115 cm** (`BodyInset=115` : un Paysan mord ~30 cm dans le mur, « une épaule ») ; au premier essai, corps rentré de 105 cm (écart 2,1 m ; 90 cm fermait le passage), passage à la file et par l'écart ; tests 65/65 (`Construction.Body`), partie `build gap`, `quick_check` complet PASS en 364 s au réglage final ; A/B S2 / S7 sans surcoût (machine chargée) |
 
 ## Prochaine étape exacte
 
@@ -178,6 +179,10 @@ vérifier sur S1 et S2.
    S2 2,758 ms PASS ; essai de l'utilisateur **validé** (« super »), commitée ; à l'essai, **nouvelle règle** demandée :
    un bâtiment occupe ses cases mais n'en remplit que ~90-95 %, un Paysan passe entre deux bâtiments voisins, pas deux
    (réglage en cours de discussion, avant J6b.3). Suite : **J6b.3** (vérification, S7 avec camps bâtis).
+   **D324 choisie** (marge fixe) ; **J6b.2b faite** (2026-10-17, sous-agent, rien de commité ; journal « J6b.2b ») : marge
+   **105 cm** (écart 2,1 m), à la file dans l'écart, chemin par l'écart ; tests 65/65, `quick_check` PASS (306 s). Suite :
+   essai de l'utilisateur **validé** après deux retouches (forme visible à 90 %, corps à 115 cm), `quick_check` complet
+   PASS (364 s), **commitée**. Suite : **S1 / S2 / S7 au repos** (S2 en échec sous forte charge), puis **J6b.3**.
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
@@ -196,6 +201,11 @@ moteur) ; la session principale garde le fil : elle lit ce fichier, confie chaqu
 pose les questions à l'utilisateur et tient ce fichier. Restent dans la session principale : les questions de plan
 (une à la fois), le lancement de la session d'essai de l'utilisateur et les commits après sa validation. Deux
 sous-agents ne compilent ni ne lancent le jeu en même temps (DLL verrouillées).
+
+**Règle des boucles de 15 minutes** (permanente, demande de l'utilisateur du 2026-10-17) : on travaille **en boucles de
+15 minutes au plus** ; une tâche (sous-agent compris) qui dure plus longtemps signale que quelque chose cloche. Chaque
+sous-agent reçoit un but précis tenant dans une boucle et rend la main sous ~15 minutes avec ce qui est fait et ce qui
+reste ; `quick_check` (~4-5 min) et les mesures S1 / S2 / S7 comptent dans la boucle, ou font une boucle à part.
 
 ## Commandes utiles
 
@@ -3193,3 +3203,132 @@ d'épée).
   bâtiment prend X cases mais le bâtiment lui-même n'en fait que 90-95 % ; un Paysan peut passer entre deux maisons
   voisines, mais pas deux de front. À régler avant J6b.3 (écart à choisir : le corps d'un Paysan fait 1,2 m de large,
   rayon 60 cm, plus 25 cm de marge de J6a.1).
+
+### 2026-10-17 — D324 : bâtiments rentrés dans leurs cases (nouvelle règle de l'utilisateur)
+
+- Demande à l'essai de J6b.2 : « un bâtiment prend X cases mais le bâtiment en lui-même fait 90-95 % de cette taille, un
+  Paysan peut passer entre deux maisons mais pas deux ». Le Paysan fait 1,2 m de large (rayon 60 cm) : à 90-95 %, deux
+  maisons voisines (6 m) ne laissent que 30-60 cm. Question posée (marge fixe / marge fine et passage serré / 90-95 % et
+  Paysan plus fin) : **choix A, la recommandation** : **D324** : chaque bâtiment est **rentré d'une marge fixe (~90 cm)
+  sur chaque côté** de ses cases, quelle que soit sa taille ; la pose, le chevauchement et l'anti-rush restent sur les
+  cases ; le corps (forme, zone interdite du navmesh, garde de J6a.1, places des bâtisseurs et des dépôts) sur le bâtiment
+  rentré. Écart de ~1,8 m entre deux voisins : un Paysan passe, deux de front non. Maison à ~70 % de ses cases, forum à
+  ~85 %. Numéro D324 réservé au § 22 du GDD (suivant : D325). Écartés : passage serré à 1,2 m (frôle les murs, marge de
+  J6a.1 à retirer), Paysan plus fin (évitement, récolte et stress tests à reprendre).
+- Main avancée à 7595c81 par mycrusader-32 (partie « anims » de `quick_check`, `stress_ab.ps1`) : binaires de la copie
+  principale à recompiler. Code de D324 confié à un sous-agent (J6b.2b).
+
+### 2026-10-17 — J6b.2b : bâtiments rentrés dans leurs cases (D324)
+
+- Sous-agent, rien de commité, GDD non touché, ni présentation, ni table des unités, ni réplication (0 bit :
+  le corps se déduit des cases et du réglage sur chaque machine).
+- **Réglage** `BodyInset` (`UHOLBuildingSettings`, `DefaultGame.ini`), règle pure `HOLConstruction::GetBodySize` /
+  `GetBody` (côté jamais sous 1 m), `AHOLBuilding::GetBodySize` / `GetBodyBounds` / `IsOnBody`.
+- **Inventaire cases / corps** :
+  - **cases** : `SnapToGrid` et pose (`UHOLConstructionSubsystem::SnapFootprint` / `CheckPlacement` : chevauchement entre
+    bâtiments et fondations, sources, carte, anti-rush, sondes du navmesh sous chaque case), fantôme posable ou non et son
+    cadre au sol case par case, forum sur la grille (`AHOLStartSlot`), `GetFootprintBounds` ;
+  - **corps** : forme provisoire de D261, dalle et chantier qui monte, fondation fantôme, arêtes du volume du fantôme de
+    pose, cadre de sélection au sol, zone interdite du navmesh (`FitNavObstacle` : corps + `BodyClearance`, puis l'agent),
+    emprise signalée aux chemins coupés de J6b.2 (`FHOLBlockedFootprint::Size`, `DoesWalkCross`, `PushOutOfFootprint`,
+    sondes des tuiles refaites), `DoesCrossBuilding`, garde `HOLFootprintKeepOutProcessor`, dépôts (D296 : places et
+    arrivée), places des bâtisseurs et « au contact » (`GetBuildSpots`, `IsAtSite`, autres bâtiments : aucune place dans
+    l'écart entre deux voisins), distances du chantier voisin et de la source d'un camp (mesurées du bâtiment lui-même),
+    naissance au pied du bâtiment, ralliement « sur le bâtiment » (`IsOnBody`), `hol.Nav.Footprints` (contrôle « aucun
+    Paysan dans une emprise »), visée au clic (pièces de la forme : le corps).
+  - non touché (interdit) : `HOLInterpolatedInstancesProcessor` (orientation du marteau chez un client : boîte des cases,
+    même direction) ; en solo il lit `SiteFootprint`, devenu le corps.
+- **Mesure de l'écart** (`hol.Nav.Path` entre deux maisons posées côte à côte, puis 10 paires à divers endroits de la
+  grille, dans les deux sens, 120 chemins) :
+  - **90 cm** (écart 1,8 m) : la bande praticable disparaît (navmesh à 87-102 cm du corps : 85 + la quantification des
+    voxels) ; le chemin contourne la paire (1,10) ;
+  - **105 cm** (écart 2,1 m) : bande présente (chemin droit 1,00) ; mais **la recherche de Recast contourne souvent la paire**
+    (41 chemins sur 120, 6 à 12 % plus longs, même avec la bande : coûts entre milieux d'arêtes de polygones étroits) ;
+  - deux Paysans envoyés ensemble passaient **de front**, poussés contre les murs (11 à 22 remises, un nouveau chemin).
+- **Corrections du mouvement** (aucune règle de jeu nouvelle) :
+  - **à la file dans un passage étroit** : un portail du couloir plus étroit qu'un Paysan (120 cm) ramène chaque unité sur
+    le chemin lui-même (place de côté ignorée) ; une unité d'un groupe dont la ligne droite vers sa place touche le bord du
+    navmesh suit le couloir du chemin (même droit) près des bâtiments : **0 remise**, l'un derrière l'autre (133 cm) ;
+  - **par l'écart** : un chemin plus long que la ligne droite est comparé au chemin par le milieu de chaque écart entre deux
+    voisins proche de cette ligne (deux recherches, chemins raboutés, points et polygones ; `hol.Units.ThroughWays 0` pour
+    A/B ; `hol.Nav.Path` montre le même) : **41 → 4 contournements sur 120** (les 4 restants à 1,03 : passage par l'écart avec
+    un coude). Règle pure `HOLConstruction::FindWays`.
+- **Marge retenue : 105 cm** (`BodyInset=105`, `BodyClearance` gardé à 25) : écart de 2,1 m entre deux voisins, toujours
+  moins que deux Paysans de front (2,4 m) ; maison à 3,9 m de ses 6 m (65 %), forum à 9,9 m de 12 (83 %). À 90 cm le passage
+  se fermait ; 100 et 105 cm avec `BodyClearance=10`, et 105 avec 25, gardent la bande sur les 10 paires mesurées : le choix
+  le plus proche de la règle sans toucher la marge de J6a.1. Correctifs du mouvement : « à la file » seulement dans un
+  **passage** (deux portails de suite plus étroits qu'un Paysan ; un portail étroit seul est un coin du chemin, où le groupe
+  garde ses places : sans cela, un groupe qui contourne une maison se tassait contre le mur).
+- **Mesures avec 105 cm** : 10 paires, 120 chemins : tous droits ou par l'écart (4 à 1,03, coude dans l'écart) ; un Paysan :
+  droit (1,00), au milieu de l'écart, 45 cm des murs ; deux ensemble : l'un derrière l'autre (~125 cm), **0 remise, 0
+  nouveau chemin**.
+- Fichiers : `Buildings/HOLBuildingTypes.h/.cpp` (`BodyInset`, `GetBodySize`), `Buildings/HOLConstructionRules.h/.cpp`
+  (`GetBodySize`, `GetBody`, `FindWays`), `Buildings/HOLBuilding.h/.cpp`, `Buildings/HOLProductionSubsystem.cpp`,
+  `Commands/HOLCommandSubsystem.h`, `Commands/HOLUnitOrderProcessor.h/.cpp` (à la file, propre ligne droite bloquée → couloir,
+  chemin par l'écart, `hol.Units.ThroughWays`), `Map/HOLNavReport.cpp` (`hol.Nav.Path` passe par la même recherche),
+  `Player/HOLSelectionMarkers.cpp`, `Simulation/HOLBuildFragments.h`, `HOLBuildProcessor.h/.cpp`, `HOLGatherProcessor.cpp`,
+  `HOLSimulationProcessors.h/.cpp`, `Tests/HOLBuildingTests.cpp`, `Tests/HOLConstructionTests.cpp`, `Config/DefaultGame.ini`,
+  `Tools/Tests/quick_check.ps1`. Aucune carte ni ressource binaire refaite.
+- **Compilation** sans avertissement. **Tests 65/65** (nouveau `Construction.Body` : corps d'une maison et du forum, écart
+  entre deux voisins, un Paysan passe et pas deux, écarts trouvés par `FindWays` ; `Buildings.Appearance` / `.Foundation` au
+  corps).
+- **`quick_check` PASS en 306 s** (259 avant ; délai du lancement du jeu porté de 300 à 420 s). Contrôles adaptés : contour du
+  forum `move` > 1,06 (1,12 mesuré, 1,2 autour de ses cases avant), chantier A `build site` ≥ 1,08 (1,14), chantier voisin F
+  à **1 110 cm** (corps à corps : 900 + 2 × 105), groupe de `build cut move` : **aucun nouveau chemin et au plus 20 remises**
+  (9 mesurées, déterministes : autour du corps plus petit de N, le groupe de six tasse son Paysan intérieur contre le mur
+  ouest, la garde le glisse le long ; avant 0 ; même effet, moindre, à 0 cm de marge : 6). Partie nouvelle **`build gap`** :
+  maisons P et Q aux cases qui se touchent, chemins `hol.Nav.Path` droits (1,00 et 1,00), un Paysan au milieu de l'écart, deux
+  l'un derrière l'autre, 0 remise, 0 nouveau chemin, tous arrivés. Captures vues : `build_gap_two` (les deux en file à
+  l'entrée de l'écart), `build_gap_houses` (gros plan : deux maisons rentrées dans leurs cases, l'écart, fantôme d'une troisième
+  maison collée à Q : cadre des cases et arêtes du corps à l'intérieur).
+- **S1 / S2 / S7 courts** hors écran, **machine très chargée** (Overwatch, Opera ouverts ; 18-44 % avant) : S1 2,529 / 2,636 ms
+  PASS, S2 3,137 / 3,349 ms **FAIL**, S7 2,694 / 2,469 ms PASS. **A/B** (base 7595c81 compilée dans `MyCrusader-A`, rendu
+  à sa branche ensuite, 10 s, A B A B) : S2 base 3,368 / 3,499 contre 3,455 / 3,227 ; S7 base 2,686 / 2,546 contre 2,499 /
+  2,537 : **aucun surcoût** ; l'échec de S2 vient de la charge. **S1 / S2 / S7 au repos à refaire.**
+- À juger à l'essai : la taille des bâtiments (65 % des cases pour une maison), l'écart de 2,1 m, le glissement le long d'un
+  mur d'un groupe qui contourne une maison, la file dans l'écart. Commandes : `hol.Cheat.Wood 500`, `hol.Cheat.FastBuild 1`,
+  poser deux maisons collées (Maj + clic), envoyer un Paysan puis deux de l'autre côté ; `hol.Nav.Path X1 Y1 X2 Y2` ;
+  `hol.Units.KeepOut 2` (chaque remise journalisée) ; `hol.Nav.Footprints on` / `off` ; `hol.Units.ThroughWays 0` (A/B du
+  chemin par l'écart) ; `hol.Units.LogDetours 1` (« Detour: through the way between two buildings »).
+- **Essai de J6b.2b** (2026-10-17) : refusé tel quel : « ça fait de trop grosses allées ». **D324 précisée** (choix de l'utilisateur) :
+  la forme visible de **tout bâtiment fait au moins 90 % de ses cases** (marge visible ~30 cm par côté : maison et camps
+  90 %, forum 95 %) ; le **corps qui bloque** (navmesh, garde, chemins coupés) reste rentré de 105 cm, et **les Paysans
+  passent un peu dans la forme** des bâtiments ; toujours **un par un** entre deux maisons voisines. Boucle suivante
+  (15 min) : séparer la marge visible de la marge du corps.
+- **Marge visible séparée** (2026-10-17, boucle de 15 min) : `UHOLBuildingSettings::VisualInset` (**30 cm**, `DefaultGame.ini`)
+  et `GetVisualSize` à côté de `BodyInset` (**105 cm**, inchangé). À la marge visible : forme provisoire (D261), dalle et
+  chantier qui monte, fantôme d'un bâtiment prévu (et sa boîte invisible : la visée au clic suit les pièces), arêtes du
+  volume du fantôme de pose, cadre de sélection. Au corps, sans changement : navmesh, garde, chemins coupés, places des
+  bâtisseurs et des dépôts, `IsOnBody`, `hol.Nav.Footprints`. Maison et camps 5,4 m de 6 (90 %), forum 11,4 m de 12 (95 %).
+  Fichiers : `HOLBuildingTypes.h/.cpp`, `HOLBuilding.cpp`, `HOLSelectionMarkers.cpp`, `DefaultGame.ini`,
+  `Tests/HOLBuildingTests.cpp` (forme et fantôme à la taille visible, ≥ 90 %), `Tests/HOLConstructionTests.cpp`
+  (`Construction.Body` : marge visible ≥ 90 % des cases, plus large que le corps).
+- Compilation sans avertissement ; **tests 65/65**. `quick_check -Parts camera,production,build` hors écran (242 s ; `build`
+  seul bloque au départ sur `waitlog Selection: none`, il lui faut `production` avant) : `build`, `build site`, `build trial`,
+  `build hud`, `build camp`, **`build gap` PASS** ; **`build cut` FAIL** sur un seul contrôle (« they arrive » : 4 sur 6 à
+  moins de 6 m) — sans doute l'état laissé par les parties absentes (`move`, `gather`), le mouvement n'ayant pas changé (les
+  pièces ne touchent pas la navmesh) : **à revoir au `quick_check` complet**. Captures vues : `build_gap_houses` (deux
+  maisons à 90 % de leurs cases, allée étroite, fantôme de pose aux arêtes à 90 %), `build_gap_two` (les deux Paysans l'un
+  derrière l'autre à l'entrée de l'allée). Reste : `quick_check` complet, essai de l'utilisateur.
+- **Essai** (2026-10-17) : taille à 90 % **validée** (« très bien pour la taille ») ; demande : laisser les Paysans **entrer un peu
+  plus dans les murs, « une épaule »** (le milieu d'un Paysan peut venir jusqu'à la ligne du mur visible). Boucle suivante :
+  rapprocher le corps qui bloque, toujours un par un entre deux maisons.
+- **« Une épaule »** (2026-10-17, boucle de 15 min) : `BodyInset` **105 → 115 cm** (`DefaultGame.ini` seul, rien recompilé) ;
+  `quick_check` : chantier voisin F à **1 130 cm** (900 + 2 × 115), mesure ajoutée **`build wall`** (sans contrôle : un Paysan
+  longe le mur sud de P, 20 cm dans ses cases, garde des emprises allumée ; capture `build_wall_one`).
+  - **Mesures** (garde des emprises : « closest body gap » = bord du Paysan au corps) : **allée** entre P et Q, avant 44 cm
+    (milieu à 104 cm du corps), après 54 cm (114 cm) : dans les deux cas **le milieu suit le milieu de l'allée, à 30 cm de
+    chaque mur visible** (le chemin passe au milieu ; seule la bande praticable s'élargit : ~20-40 cm → ~40-60 cm, sous
+    120 cm, deux Paysans toujours l'un derrière l'autre, 0 remise) ; **le long d'un mur** après : 57 cm, milieu à 117 cm du
+    corps, soit **32 cm devant le mur visible** (avant, même écart au corps : ~42 cm devant).
+  - **Ce qui tient encore à distance**, au-delà du corps + `BodyClearance` (25) + agent (60) = 85 cm : l'arrondi aux voxels
+    du navmesh (~+2 à +17 cm) et `PathOffsetFromBoundaries = 10` cm (`HOLUnitOrderProcessor.cpp`, coins des chemins) :
+    ~117 cm au total. Pour amener le milieu au mur visible en gardant l'allée étroite, le levier n'est pas `BodyInset`
+    (à ~145 cm l'allée passerait 2,9 m, deux de front) mais **`BodyClearance` 25 → ~0** (milieu ~7 cm devant le mur, allée
+    ~75 cm) et/ou l'offset de 10 cm : à décider (D310 fixe 25 cm).
+  - **Tests 65/65** ; `quick_check -Parts camera,production,build` **PASS en 247 s**, dont **`build cut` PASS** (garde : plus
+    proche 1 cm, 5 remises, 0 nouveau chemin) et `build gap` PASS (chemins 1,00 / 1,00).
+- **Essai validé** (2026-10-17, « c'est bon ») : forme visible à 90 % (`VisualInset=30`), corps qui bloque à 115 cm
+  (`BodyInset=115`), `BodyClearance` gardé à 25 : un Paysan mord ~30 cm dans un mur visible, un par un entre deux maisons.
+  `quick_check` complet lancé avant le commit de J6b.2b (D324).
+- **`quick_check` complet** (2026-10-17, D324 dans l'arbre de travail) : **PASS en 364 s**, toutes les parties PASS, tests 65/65.

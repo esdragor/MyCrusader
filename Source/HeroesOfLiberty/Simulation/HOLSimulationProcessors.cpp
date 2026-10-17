@@ -701,7 +701,8 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		}
 		FFootprint& Footprint = Footprints.AddDefaulted_GetRef();
 		Footprint.Centre = FVector2D(It->GetActorLocation());
-		Footprint.HalfExtent = Type->Footprint * 0.5;
+		// The building's body, inset in its tiles (D324): a unit walks between two neighbours.
+		Footprint.HalfExtent = UHOLBuildingSettings::GetBodySize(Type->Footprint) * 0.5;
 		FMath::SinCos(&Footprint.Sin, &Footprint.Cos, FMath::DegreesToRadians(It->GetActorRotation().Yaw));
 		// The bounds of the turned rectangle, widened.
 		const FVector2D Half(FMath::Abs(Footprint.Cos) * Footprint.HalfExtent.X + FMath::Abs(Footprint.Sin) * Footprint.HalfExtent.Y,

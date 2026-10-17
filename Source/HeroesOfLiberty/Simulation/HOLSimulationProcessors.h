@@ -74,7 +74,8 @@ protected:
  * against its wall, out by the nearest way. The navmesh keeps the walkers' paths the clearance away
  * (UHOLBuildingSettings::BodyClearance); what pushed bodies in was the separation of a crowd standing against a wall
  * (D292: 19 Peasants sent onto the main centre stood inside it, up to 4.6 m deep), the look-ahead's turns (D293), and a
- * final leg to a slot by the wall. The same rule for every building, each unit's own radius.
+ * final leg to a slot by the wall. The same rule for every building, each unit's own radius; a building's body, inset in its
+ * tiles (D324), so that a unit walks between two neighbours.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLFootprintKeepOutProcessor : public UMassProcessor

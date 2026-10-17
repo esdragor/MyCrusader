@@ -20,7 +20,9 @@ class UStaticMeshComponent;
  * owner's colour; every machine builds its look from the type, so only these three values travel. GAS comes with
  * the first ability or damage (M5). Selection is the local player's own (D262): its pieces block the selection trace
  * channel; nothing on the building shows it (no ring, no hover: the user's test of J2). Its footprint is a forbidden
- * area of the navmesh (D286): a dynamic obstacle, applied on the server when the building appears.
+ * area of the navmesh (D286): a dynamic obstacle, applied on the server when the building appears. It occupies whole tiles
+ * (D311) but the building itself, its body, stands inset in them (D324): its shape, the forbidden area and every rule of the
+ * units around it (D310) take the body, the placement rules the tiles.
  * Construction (J6a.3, J6a.4, D311, D312): a building placed by a player is born a foundation, which blocks nothing and
  * gives nothing: only a ghost (a frame on the ground and the edges of its volume, at its owner's colour) that its owner
  * alone sees and receives (the user's choice of 2026-10-16, as in AoE IV: the other players do not learn the plans). At
@@ -94,8 +96,14 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnConstructionChanged);
 	FOnConstructionChanged OnConstructionChanged;
 
-	/** Its footprint on the ground (cm), turned by its yaw: the box placements are checked against (D311). */
+	/** Its footprint on the ground (cm), turned by its yaw: its tiles, the box placements are checked against (D311). */
 	FBox2D GetFootprintBounds() const;
+	/**
+	 * Its body (D324): the building itself, inset in its tiles by UHOLBuildingSettings::BodyInset on every side; its size,
+	 * and its box on the ground turned by its yaw. What units walk around, stand by and are kept out of (D310).
+	 */
+	FVector2D GetBodySize() const;
+	FBox2D GetBodyBounds() const;
 
 	/**
 	 * Production queue (J3, D282): the head is in production (or waits for population), the others wait their turn.
@@ -127,8 +135,8 @@ public:
 	/** Server only. */
 	void SetRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr);
 	void ClearRallyPoint();
-	/** True when a ground point is on the building's footprint (a rally order there clears the rally point). */
-	bool IsOnFootprint(const FVector& Point) const;
+	/** True when a ground point is on the building's body (D324; a rally order there clears the rally point). */
+	bool IsOnBody(const FVector& Point) const;
 
 	/** The rally point changed: on the server, on the owner's machine when it arrives. For the flag (J4.6). */
 	DECLARE_MULTICAST_DELEGATE(FOnRallyChanged);
@@ -198,7 +206,8 @@ private:
 	 */
 	void BuildGhostShape(const FHOLBuildingTypeRow& Type);
 	/**
-	 * Sizes the navmesh's forbidden area to the type's footprint, widened by the bodies' clearance (D310), and height,
+	 * Sizes the navmesh's forbidden area to the building's body (D324: inset in its tiles), widened by the bodies' clearance
+	 * (D310), and height,
 	 * and makes it count for the navmesh while the building blocks it (D312: not as a bare foundation).
 	 */
 	void FitNavObstacle(const FHOLBuildingTypeRow& Type);
@@ -262,7 +271,7 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> Pieces;
 
-	/** The footprint as a forbidden area of the navmesh (D286), sized from the type; no collision. */
+	/** The body as a forbidden area of the navmesh (D286, D324), sized from the type; no collision. */
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UBoxComponent> NavObstacle;
 

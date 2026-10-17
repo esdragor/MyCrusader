@@ -20,6 +20,7 @@
 #include "MassNavigationFragments.h"
 #include "MassNavigationSubsystem.h"
 #include "NavCorridor.h"
+#include "NavMesh/NavMeshPath.h"
 #include "NavMesh/RecastNavMesh.h"
 #include "NavMesh/RecastNavMeshGenerator.h"
 #include "NavigationData.h"
@@ -61,6 +62,11 @@ namespace UE::HeroesOfLiberty::Orders
 	int32 LogDetours = 0;
 	FAutoConsoleVariableRef CVarLogDetours(TEXT("hol.Units.LogDetours"), LogDetours,
 		TEXT("1: every task walk much longer than the straight line is logged (D308: kept or new path, lengths)."));
+
+	int32 ThroughWays = 1;
+	FAutoConsoleVariableRef CVarThroughWays(TEXT("hol.Units.ThroughWays"), ThroughWays,
+		TEXT("1: a path that goes around buildings is compared with the path through the way between two neighbours near its line ")
+		TEXT("(D324: the navmesh's search often misses that strip one body wide); 0: the navmesh's path as it is, for A / B measures."));
 
 	int32 CutPaths = 1;
 	FAutoConsoleVariableRef CVarCutPaths(TEXT("hol.Units.CutPaths"), CutPaths,
@@ -145,10 +151,117 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr float EndReachedDistance = 50.f;
 	/** Distance (cm) to its slot within which a unit that no longer gets closer counts as stuck (D287, D292). */
 	constexpr float StuckCountDistance = 500.f;
+	/**
+	 * Width (cm) of a portal of the corridor (where the units' centres may pass) below which two units cannot walk abreast:
+	 * a Peasant's diameter (D324). Through two such portals in a row (a passage) every unit walks the path itself, whatever its
+	 * place across the march.
+	 */
+	constexpr double NarrowPortalWidth = 120.0;
 	/** Distance (cm) to the end of its path within which a unit leaves it for its slot when the navmesh lets it walk straight there (D294). */
 	constexpr double LeavePathDistance = 300.0;
 	/** Steps in a row a building puts a walker back (D310) before it gets a new path: half a second. */
 	constexpr uint8 RepathBuildingPushes = 10;
+
+	/** A path at most this much longer than the straight line is not compared with the ways between buildings (D324). */
+	constexpr double ThroughWayMinRatio = 1.01;
+	/** A way between buildings farther than this (cm) from the straight line of a path is not tried (D324). */
+	constexpr double ThroughWayReach = 400.;
+	/** Ways between buildings tried for one path, at most (two searches each), the most promising first (D324). */
+	constexpr int32 MaxThroughWayTries = 2;
+
+	/**
+	 * The way between two neighbouring buildings (D324: their tiles touching, their bodies 2 x BodyInset apart) is a strip of
+	 * the navmesh one body wide; the navmesh's search, its costs measured between the middles of its polygons' edges, often
+	 * finds the way around the pair shorter (a third of the walks across such a way went around, 6 to 12 % longer). A path
+	 * longer than its straight line is compared with the path through the middle of each way near that line (a search to the
+	 * way's middle, another on to the target, spliced: points and polygons); the shorter is kept.
+	 */
+	FNavPathSharedPtr FindPathThroughWaysImpl(UWorld& World, UNavigationSystemV1& NavSystem, const ANavigationData& NavData, const FVector& Start,
+		const FVector& Target, const FNavPathSharedPtr& Found)
+	{
+		double Best = GetPathLength(Found->GetPathPoints());
+		if (ThroughWays == 0 || Best <= FVector::Dist2D(Start, Target) * ThroughWayMinRatio)
+		{
+			return Found;
+		}
+		const FVector2D Line[] = { FVector2D(Start), FVector2D(Target) };
+		TArray<FBox2D, TInlineAllocator<32>> Bodies;
+		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		{
+			if (It->BlocksNavigation())
+			{
+				Bodies.Add(It->GetBodyBounds());
+			}
+		}
+		if (Bodies.Num() < 2)
+		{
+			return Found;
+		}
+		// The ways near the straight line (it may run down the way itself, clear of both buildings), shorter by their middle.
+		TArray<FBox2D> Ways;
+		HOLConstruction::FindWays(Bodies, 2. * UHOLBuildingSettings::GetBodyInset() + HOLConstruction::TouchTolerance, Ways);
+		TArray<TPair<double, FVector2D>, TInlineAllocator<8>> Candidates;
+		for (const FBox2D& Way : Ways)
+		{
+			const FVector2D Middle = Way.GetCenter();
+			const double Estimate = FVector2D::Distance(Line[0], Middle) + FVector2D::Distance(Middle, Line[1]);
+			if (Estimate < Best - 1. && HOLConstruction::GetSegmentDistance(Way, Line[0], Line[1]) <= ThroughWayReach)
+			{
+				Candidates.Emplace(Estimate, Middle);
+			}
+		}
+		Candidates.Sort([](const TPair<double, FVector2D>& A, const TPair<double, FVector2D>& B) { return A.Key < B.Key; });
+		FNavPathSharedPtr Chosen = Found;
+		for (int32 Index = 0; Index < FMath::Min(Candidates.Num(), MaxThroughWayTries); ++Index)
+		{
+			FNavLocation Middle;
+			if (!NavSystem.ProjectPointToNavigation(FVector(Candidates[Index].Value, Start.Z), Middle, FVector(50., 50., 500.), &NavData))
+			{
+				continue;
+			}
+			const FPathFindingResult In = NavSystem.FindPathSync(FPathFindingQuery(&World, NavData, Start, Middle.Location));
+			const FPathFindingResult Out = In.IsSuccessful() && In.Path.IsValid() && !In.Path->IsPartial()
+				? NavSystem.FindPathSync(FPathFindingQuery(&World, NavData, Middle.Location, Target)) : FPathFindingResult();
+			FNavMeshPath* InMesh = In.Path.IsValid() ? In.Path->CastPath<FNavMeshPath>() : nullptr;
+			const FNavMeshPath* OutMesh = Out.IsSuccessful() && Out.Path.IsValid() && !Out.Path->IsPartial() ? Out.Path->CastPath<FNavMeshPath>() : nullptr;
+			if (!InMesh || !OutMesh)
+			{
+				continue;
+			}
+			const double Length = GetPathLength(In.Path->GetPathPoints()) + GetPathLength(Out.Path->GetPathPoints());
+			if (Length >= Best - 1.)
+			{
+				continue;
+			}
+			// Spliced at the way's middle: the second path's points after its first (the middle again), its polygons after the
+			// first path's last one (the polygon of the middle, in both), with their costs.
+			TArray<FNavPathPoint>& Points = In.Path->GetPathPoints();
+			const TArray<FNavPathPoint>& More = Out.Path->GetPathPoints();
+			for (int32 Point = 1; Point < More.Num(); ++Point)
+			{
+				Points.Add(More[Point]);
+			}
+			for (int32 Poly = 0; Poly < OutMesh->PathCorridor.Num(); ++Poly)
+			{
+				if (Poly == 0 && InMesh->PathCorridor.Num() > 0 && InMesh->PathCorridor.Last() == OutMesh->PathCorridor[0])
+				{
+					continue;
+				}
+				InMesh->PathCorridor.Add(OutMesh->PathCorridor[Poly]);
+				if (OutMesh->PathCorridorCost.IsValidIndex(Poly))
+				{
+					InMesh->PathCorridorCost.Add(OutMesh->PathCorridorCost[Poly]);
+				}
+			}
+			In.Path->EnableRecalculationOnInvalidation(false);
+			In.Path->RemoveOverlappingPoints(FNavCorridor::OverlappingPointTolerance);
+			Best = Length;
+			Chosen = In.Path;
+		}
+		UE_CLOG(LogDetours != 0 && Chosen != Found, LogHOLCommands, Display, TEXT("Detour: through the way between two buildings, %.0f cm instead of %.0f cm, from (%.0f, %.0f) to (%.0f, %.0f)"),
+			Best, GetPathLength(Found->GetPathPoints()), Start.X, Start.Y, Target.X, Target.Y);
+		return Chosen;
+	}
 
 	/** Corridor of a path, the same settings as Mass' own navmesh path follow, at the project's width. */
 	TSharedPtr<FNavCorridor> MakeCorridor(const FNavigationPath& Path, const ANavigationData& NavData, const float Width)
@@ -196,8 +309,16 @@ namespace UE::HeroesOfLiberty::Orders
 			return;
 		}
 		TStaticArray<FVector, FMassNavMeshShortPathFragment::MaxPoints> Moved;
+		// A passage with no room for two abreast (D324: the way between two buildings): two portals in a row narrower than a
+		// body. A lone narrow portal is a corner of the path (its fan), where the group keeps its places.
+		TStaticArray<bool, FMassNavMeshShortPathFragment::MaxPoints> Narrow;
 		for (uint8 Index = 0; Index < ShortPath.NumPoints; ++Index)
 		{
+			Narrow[Index] = FVector::Dist2D(ShortPath.Points[Index].Left, ShortPath.Points[Index].Right) < NarrowPortalWidth;
+		}
+		for (uint8 Index = 0; Index < ShortPath.NumPoints; ++Index)
+		{
+			const bool bInPassage = Narrow[Index] && ((Index > 0 && Narrow[Index - 1]) || (Index + 1 < ShortPath.NumPoints && Narrow[Index + 1]));
 			const FMassNavMeshPathPoint& Point = ShortPath.Points[Index];
 			const FVector Before = ShortPath.Points[FMath::Max(Index - 1, 0)].Position;
 			const FVector After = ShortPath.Points[FMath::Min<int32>(Index + 1, ShortPath.NumPoints - 1)].Position;
@@ -205,7 +326,9 @@ namespace UE::HeroesOfLiberty::Orders
 			const FVector Right(-Along.Y, Along.X, 0.);
 			const double ToLeft = FVector::DotProduct(Point.Left - Point.Position, Right);
 			const double ToRight = FVector::DotProduct(Point.Right - Point.Position, Right);
-			const double Offset = FMath::Clamp<double>(Lateral, FMath::Min(ToLeft, ToRight), FMath::Max(ToLeft, ToRight));
+			// In a passage every unit walks the path itself, one after another; side by side, the pair was pushed apart into the
+			// walls and put back at every step.
+			const double Offset = bInPassage ? 0. : FMath::Clamp<double>(Lateral, FMath::Min(ToLeft, ToRight), FMath::Max(ToLeft, ToRight));
 			Moved[Index] = Point.Position + Right * Offset;
 		}
 		for (uint8 Index = 0; Index < ShortPath.NumPoints; ++Index)
@@ -668,14 +791,22 @@ void UHOLUnitOrderProcessor::RequestCutPaths(FMassEntityManager& EntityManager, 
 	CutWalkers.Reset();
 }
 
-bool UHOLUnitOrderProcessor::DoesCrossBuilding(const UWorld& World, const FVector& Start, const FVector& Target, const ANavigationData* NavData)
+FNavPathSharedPtr UHOLUnitOrderProcessor::FindPathThroughWays(UWorld& World, UNavigationSystemV1& NavSystem, const ANavigationData& NavData, const FVector& Start,
+	const FVector& Target, const FNavPathSharedPtr& Found)
 {
-	// Rare (a partial path out of a pocket of the navmesh): the buildings read from the world.
-	const double Margin = UHOLBuildingSettings::GetBodyClearance() + (NavData ? NavData->GetConfig().AgentRadius : 0.f);
+	return Found.IsValid() && !Found->IsPartial() && Found->GetPathPoints().Num() > 2
+		? UE::HeroesOfLiberty::Orders::FindPathThroughWaysImpl(World, NavSystem, NavData, Start, Target, Found) : Found;
+}
+
+bool UHOLUnitOrderProcessor::DoesCrossBuilding(const UWorld& World, const FVector& Start, const FVector& Target, const ANavigationData* NavData,
+	const double ExtraMargin)
+{
+	// Rare (a partial path out of a pocket of the navmesh, a group's straight path): the buildings read from the world.
+	const double Margin = UHOLBuildingSettings::GetBodyClearance() + (NavData ? NavData->GetConfig().AgentRadius : 0.f) + ExtraMargin;
 	const FVector2D Way[] = { FVector2D(Start), FVector2D(Target) };
 	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
 	{
-		if (It->BlocksNavigation() && HOLConstruction::DoesWalkCross(It->GetFootprintBounds(), Margin, Way))
+		if (It->BlocksNavigation() && HOLConstruction::DoesWalkCross(It->GetBodyBounds(), Margin, Way))
 		{
 			return true;
 		}
@@ -992,6 +1123,11 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 						if (Result.Path->GetPathPoints().Num() >= 2)
 						{
 							Path = Result.Path;
+							// Around two neighbouring buildings: perhaps shorter between them (D324).
+							if (!Path->IsPartial() && Path->GetPathPoints().Num() > 2)
+							{
+								Path = FindPathThroughWaysImpl(*World, *NavSystem, *NavData, Start.Location, Request.Target, Path);
+							}
 						}
 						else if (Result.Path->IsPartial() && Result.Path->GetPathPoints().Num() == 1)
 						{
@@ -1040,6 +1176,14 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 		// straight (D308).
 		const bool bStayHere = bNoWay && (Request.bForBuilding || DoesCrossBuilding(*World, Request.Start, Request.Target, NavData));
 		const bool bFollowPath = Corridor.IsValid() && Corridor->Portals.Num() >= 2 && DirectPaths == 0;
+		// A straight path past buildings (D324: the way between two neighbours, room for one unit at a time): straight for the
+		// cluster, not for each of its units, walking side by side to their slots; a unit whose own straight way meets the
+		// navmesh's edge follows the path through its corridor instead, its place across the march held within the corridor's
+		// width (one after another through the way, instead of walking into a wall and being put back at every step, D310).
+		const bool bCheckOwnWays = !bFollowPath && !bStayHere && DirectPaths == 0 && NavData && Path.IsValid() && !Path->IsPartial()
+			&& Path->GetPathPoints().Num() == 2 && Request.Entities.Num() > 1
+			&& DoesCrossBuilding(*World, Request.Start, Request.Target, NavData, Settings->PathCorridorWidth * 0.5);
+		TSharedPtr<FNavCorridor> StraightCorridor;
 		if (LogDetours != 0 && Request.bReusable && bFollowPath && Path.IsValid())
 		{
 			const double Straight = FVector::Dist2D(Request.Start, Request.Target);
@@ -1072,14 +1216,25 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 				Order.bShortOfSlot = FVector::Dist2D(Path->GetPathPoints().Last().Location, Order.Slot) > ShortOfSlotDistance;
 				Order.Slot = Path->GetPathPoints().Last().Location;
 			}
-			if (!bFollowPath)
+			bool bOwnWayBlocked = false;
+			if (bCheckOwnWays)
+			{
+				FVector OwnHit;
+				bOwnWayBlocked = NavData->Raycast(Transform.GetTransform().GetLocation(), Order.Slot, OwnHit, NavData->GetDefaultQueryFilter());
+				if (bOwnWayBlocked && !StraightCorridor.IsValid())
+				{
+					StraightCorridor = MakeCorridor(*Path, *NavData, Settings->PathCorridorWidth);
+				}
+				bOwnWayBlocked = bOwnWayBlocked && StraightCorridor.IsValid() && StraightCorridor->Portals.Num() >= 2;
+			}
+			if (!bFollowPath && !bOwnWayBlocked)
 			{
 				// A straight path, or none (start off the navmesh, already there): straight to the slot.
 				StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
 				continue;
 			}
 			CachedPath.NavPath = Path;
-			CachedPath.Corridor = Corridor;
+			CachedPath.Corridor = bFollowPath ? Corridor : StraightCorridor;
 			CachedPath.PathSource = EMassNavigationPathSource::NavMesh;
 			RequestShortPath(ShortPath, CachedPath, /*StartIndex*/0, /*NumLeadingPoints*/0, Order.Lateral);
 			// A unit ahead of the cluster's start goes on from where it is (short of the last point, so it still ends).

@@ -65,7 +65,12 @@ namespace
 					continue;
 				}
 				const FPathFindingQuery Query(World, *NavMesh, StartOnNav.Location, EndOnNav.Location);
-				const FPathFindingResult Result = NavSystem->FindPathSync(Query);
+				FPathFindingResult Result = NavSystem->FindPathSync(Query);
+				// What an order walks: around two neighbouring buildings, perhaps between them (D324).
+				if (Result.IsSuccessful())
+				{
+					Result.Path = UHOLUnitOrderProcessor::FindPathThroughWays(*World, *NavSystem, *NavMesh, StartOnNav.Location, EndOnNav.Location, Result.Path);
+				}
 				const double Straight = FVector::Dist2D(StartOnNav.Location, EndOnNav.Location);
 				if (!Result.IsSuccessful() || !Result.Path.IsValid())
 				{
@@ -130,7 +135,7 @@ namespace
 			if (Type)
 			{
 				OutFootprints.Add({ FString::Printf(TEXT("%s of slot %d"), *It->GetTypeName().ToString(), It->GetOwnerPlayer()),
-					FVector2D(It->GetActorLocation()), Type->Footprint * 0.5, It->GetActorRotation().Yaw });
+					FVector2D(It->GetActorLocation()), UHOLBuildingSettings::GetBodySize(Type->Footprint) * 0.5, It->GetActorRotation().Yaw });
 			}
 		}
 	}

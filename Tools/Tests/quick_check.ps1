@@ -55,6 +55,9 @@
 # paths, D305); house K placed across their way and started: the kept paths across it dropped, those walking across it
 # given a new path once its tiles are rebuilt (one log line), no body put back by a footprint after; six Peasants sent 90 m
 # across open ground, house N started across their way: they go round it and arrive.
+# J6b.2b (D324), solo: houses P and Q whose tiles touch, their bodies inset 105 cm in them (2.1 m apart): the navmesh's
+# paths go through the way between them; one Peasant sent across passes through it, on its middle line; two sent together
+# pass one after the other; none put back by a wall, none given a new path, all arrive.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
 #   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
@@ -247,6 +250,14 @@ $CutN = @(-9000, 0)
 $CutNBuilder = @(-8100, 0)
 $CutFrom = @(-9000, 5000)
 $CutTo = @(-9000, -4000)
+# The way between two houses (J6b.2b, D324): houses P and Q whose tiles touch (Q north of P) on open ground east of house N,
+# their builders made south of them; walkers made 15 m west of the way, sent 15 m east of it (the way runs along X at
+# y = 300, between bodies 2.1 m apart, from x -6195 to -5805).
+$GapP = @(-6000, 0)
+$GapQ = @(-6000, 600)
+$GapBuilders = @(-6000, -1500)
+$GapFrom = @(-7500, 300)
+$GapTo = @(-4500, 300)
 if ($Parts -contains "camera") {
     $First = $true
     foreach ($Case in $Cases) {
@@ -582,6 +593,46 @@ if ($Parts -contains "camera") {
                 "waitlog Buildings (D310): footprint House at ($($CutN -join ', '))", "hol.Nav.Footprints on", "hol.Units.KeepOut 2", "hol.Units.Where 0", "wait 6.5",
                 "hol.Camera.Focus $($CutN -join ' ')", "frames 3", "capture build_cut_move", "wait 10", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
                 "hol.Units.Where 0", "hol.Build.Report"
+            # The way between two houses (J6b.2b, D324): P and Q placed touching and finished at their first blow, their two
+            # builders sent away; the navmesh's paths through the way (straight, and slanting); one Peasant sent across, then
+            # two together: they pass through the way, one after the other, none put back by a wall.
+            Key Escape
+            Step "mark build gap", "waitlog Selection: none", "hol.Cheat.FastBuild 1", "hol.Units.Spawn 2 $($GapBuilders -join ' ') 0 Peasant 100", "wait 0.5",
+                "hol.Camera.Focus $($GapBuilders -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($GapBuilders[0] - 400) $($GapBuilders[1] - 400) $($GapBuilders[0] + 400) $($GapBuilders[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($GapP -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($GapP -join ', ')) valid", "hol.Build.Click shift",
+                "hol.Camera.Focus $($GapQ -join ' ')", "frames 3", "waitlog Placement ghost: House at ($($GapQ -join ', ')) valid", "hol.Build.Click shift"
+            Key Escape
+            Step "waitlog Construction: slot 0 finished House at ($($GapP -join ', '))", "waitlog Construction: slot 0 finished House at ($($GapQ -join ', '))",
+                "waitlog Buildings (D310): footprint House at ($($GapQ -join ', '))", "hol.Cheat.FastBuild 0", "hol.Camera.Focus $($GapBuilders[0]) $($GapBuilders[1] - 1000)", "frames 3",
+                "hol.Select.OrderGround $($GapBuilders[0]) $($GapBuilders[1] - 1000)", "wait 3", "hol.Nav.Path $($GapFrom -join ' ') $($GapTo -join ' ')",
+                "hol.Nav.Path $($GapFrom[0]) $($GapFrom[1] - 200) $($GapTo[0]) $($GapTo[1] + 200)"
+            Key Escape
+            Step "mark build gap one", "waitlog Selection: none", "hol.Units.Spawn 1 $($GapFrom -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($GapFrom -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($GapP[0]) $($GapTo[1])", "frames 3", "hol.Nav.Footprints on", "hol.Units.KeepOut 2",
+                "hol.Select.OrderGround $($GapTo -join ' ')"
+            for ($i = 0; $i -lt 14; $i++) { Step "wait 0.2", "hol.Units.Where 0"; if ($i -eq 6) { Step "capture build_gap_one" } }
+            Step "wait 4", "hol.Units.Where 0", "hol.Nav.Footprints off"
+            Key Escape
+            Step "mark build gap two", "waitlog Selection: none", "hol.Units.Spawn 2 $($GapFrom -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($GapFrom -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($GapFrom[0] - 400) $($GapFrom[1] - 400) $($GapFrom[0] + 400) $($GapFrom[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($GapP[0]) $($GapTo[1])", "frames 3", "hol.Nav.Footprints on", "hol.Select.OrderGround $($GapTo -join ' ')"
+            for ($i = 0; $i -lt 16; $i++) { Step "wait 0.2", "hol.Units.Where 0"; if ($i -eq 7) { Step "capture build_gap_two" } }
+            Step "wait 4", "hol.Units.Where 0", "hol.Nav.Footprints off", "hol.Units.KeepOut 1"
+            # Measure only (no check): one Peasant sent along P's south wall, 20 cm inside its tiles; the footprint watch logs how
+            # close its body comes to P's body (the middle of a Peasant at the visible wall: 85 - 60 = 25 cm at BodyInset 115).
+            Key Escape
+            Step "mark build wall", "waitlog Selection: none", "hol.Units.Spawn 1 $($GapP[0] - 1000) $($GapP[1] - 250) 0 Peasant 10", "wait 0.5",
+                "hol.Camera.Focus $($GapP[0] - 1000) $($GapP[1] - 250)", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #",
+                "hol.Camera.Focus $($GapP[0]) $($GapP[1] - 250)", "frames 3", "hol.Nav.Footprints on", "hol.Select.OrderGround $($GapP[0] + 1000) $($GapP[1] - 250)"
+            for ($i = 0; $i -lt 10; $i++) { Step "wait 0.25", "hol.Units.Where 0"; if ($i -eq 4) { Step "hol.Camera.Zoom 12", "frames 2", "capture build_wall_one", "hol.Camera.Zoom -12" } }
+            Step "wait 3", "hol.Units.Where 0", "hol.Nav.Footprints off"
+            # Close up: the two houses in their tiles, and the ghost of a third one touching Q (its tiles, its body inside them).
+            Key Escape
+            Step "waitlog Selection: none", "hol.Camera.Zoom 12", "hol.Build.Place House", "hol.Camera.Focus $($GapQ[0]) $($GapQ[1] + 600)",
+                "waitlog Placement ghost: House at ($($GapQ[0]), $($GapQ[1] + 600)) valid", "frames 3", "capture build_gap_houses"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Camera.Zoom -12"
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
             # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
@@ -726,7 +777,8 @@ if ($NetListening) {
     }
 }
 
-$GameTimedOut = -not $GameProcess.WaitForExit(300000)
+# 420 s: the sequence takes ~285 s since J6b.2b (the build gap part), the start ~20 s.
+$GameTimedOut = -not $GameProcess.WaitForExit(420000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
@@ -861,7 +913,8 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
     $Checks["four paths ($($Paths.Count))"] = $Paths.Count -eq 4
     if ($Paths.Count -eq 4) {
         $Checks["navmesh: modifiers only, agent 60 cm ($($Paths[0]))"] = $Paths[0] -match "\(navmesh modifiers only, agent 60 cm\)$"
-        $Checks["around the centre made at run time ($($Paths[0]))"] = (& $Ratio $Paths[0]) -gt 1.15
+        # D324: around the centre's body (9.9 m of its 12 m of tiles), 1.12 (1.2 around its tiles before).
+        $Checks["around the centre made at run time ($($Paths[0]))"] = (& $Ratio $Paths[0]) -gt 1.06
         $Checks["beside the centre: straight ($($Paths[1]))"] = ((& $Ratio $Paths[1]) -gt 0) -and ((& $Ratio $Paths[1]) -lt 1.02)
         $Checks["around the ridge ($($Paths[2]))"] = (& $Ratio $Paths[2]) -gt 1.2
         $Checks["across the grove ($($Paths[3]))"] = ((& $Ratio $Paths[3]) -gt 0) -and ($Paths[3] -notmatch "partial")
@@ -1107,7 +1160,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Paths = @($Site | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Ratio = { param($Text) if ([string]$Text -match "ratio (\d+\.\d+)") { [double]$Matches[1] } elseif ([string]$Text -match "^none") { 99.0 } else { -1.0 } }
     $Checks["the ghost blocks nothing, the site blocks the navmesh after its first work ($($Paths -join ' / '))"] = ($Paths.Count -eq 2) -and
-        ((& $Ratio $Paths[0]) -ge 0) -and ((& $Ratio $Paths[0]) -le 1.02) -and ((& $Ratio $Paths[1]) -ge 1.15)
+        ((& $Ratio $Paths[0]) -ge 0) -and ((& $Ratio $Paths[0]) -le 1.02) -and ((& $Ratio $Paths[1]) -ge 1.08)
     $Checks["a right click on the ghost: its Peasant sent to build it"] = [bool]($Site | Select-String -Pattern "Order: 1 units build House of slot 0 \(own\), foundation" -Quiet) -and
         [bool]($Site | Select-String -Pattern "Build order of slot 0: 1 units to House at \($($BuildA -join ', ')\)$" -Quiet)
     $SiteReport = & $Value $Site "Build report: (.*House of slot 0 \(own\) under construction.*)$"
@@ -1160,8 +1213,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $FinishedE = & $Value $Rally "(Construction: slot 0 finished House at \($($BuildE -join ', ')\) .*)$"
     $Checks["E finished at its first blow, one step after contact ($FinishedE)"] = [bool]($FinishedE -match "after 1 steps of work \(by builders: 1 x1\), speed 1, instant$")
     $Nearby = @($Rally | Select-String -Pattern "Build: a builder of slot 0 goes on to the nearby site (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    # D324: measured between the bodies, 9 m between their tiles + 2 x 115 cm (BodyInset).
     $Checks["E finished, its builder goes on to F 9 m away ($($Nearby -join '; '))"] = ($Nearby.Count -eq 1) -and
-        [bool]($Nearby[0] -match "^House at \($($BuildF -join ', ')\), 900 cm from the one finished$")
+        [bool]($Nearby[0] -match "^House at \($($BuildF -join ', ')\), 1130 cm from the one finished$")
     $Sites = @($Rally | Select-String -Pattern "Construction: slot 0 (finished|first work on) House at \((-?\d+), (-?\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" })
     $Checks["E then F, each at its first blow, G (39 m) never started ($($Sites -join '; '))"] = ($Sites -join '|') -eq
         "first work on ($($BuildE -join ', '))|finished ($($BuildE -join ', '))|first work on ($($BuildF -join ', '))|finished ($($BuildF -join ', '))"
@@ -1344,8 +1398,10 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["house N across a move order: its walkers given a new path ($(if ($N) { $N.Text }))"] = ($null -ne $N) -and ($N.Walkers -ge 6) -and $N.Rebuilt
     $WatchN = & $ReadWatch $CutMove
     $PushedN = @($CutMove | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
-    $Checks["none put back by a footprint ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
-        ($null -ne $WatchN) -and ($WatchN.Out -eq 0) -and ($WatchN.Repaths -eq 0)
+    # D324: round N's body (3.9 m, 6 m before), the group of six squeezes its inner Peasant against the west wall, which the
+    # footprints' guard keeps out (a few cm a step, D310): a slide along the wall, not a walk into the building (no new path).
+    $Checks["no walk into it: no new path, a few slides along its wall ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
+        ($null -ne $WatchN) -and ($WatchN.Out -le 20) -and ($WatchN.Repaths -eq 0)
     $Arrived = @($CutMove | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object {
         [regex]::Matches($_.Matches[0].Groups[1].Value, "#\d+ slot 0 at \((-?\d+), (-?\d+)\) (\w+)") } |
         Where-Object { [Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $CutTo[0], 2) + [Math]::Pow([double]$_.Groups[2].Value - $CutTo[1], 2)) -le 600 -and $_.Groups[3].Value -eq "Idle" })
@@ -1353,6 +1409,49 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("gather", "move" | Where-Object { -not (Test-Path (Join-Path $Shots "build_cut_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build cut" $Checks) -and $AllOk
+
+    # J6b.2b (D324): the way between two houses whose tiles touch. The navmesh's paths through it; the walkers' samples (every
+    # 0.2 s) while they are between the two bodies (x -6195 to -5805): in the way (within 60 cm of its middle line), one at
+    # a time; none put back by a wall, no new path; all arrived.
+    $Gap = @(Get-Section "build gap" | ForEach-Object { $_ })
+    $GapOne = @(Get-Section "build gap one" | ForEach-Object { $_ })
+    $GapTwo = @(Get-Section "build gap two" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $GapPaths = @($Gap | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $GapRatio = { param($Text) if ([string]$Text -match "ratio (\d+\.\d+)") { [double]$Matches[1] } else { 99.0 } }
+    $Checks["two houses touching, finished"] = [bool]($Gap | Select-String -Pattern "Construction: slot 0 finished House at \($($GapQ -join ', ')\)" -Quiet)
+    $Checks["the navmesh's paths through the way: straight ($($GapPaths -join ' / '))"] = ($GapPaths.Count -eq 2) -and ((& $GapRatio $GapPaths[0]) -le 1.01) -and ((& $GapRatio $GapPaths[1]) -le 1.03)
+    # The walkers: the units of the section whose first sample is within 4 m of the start.
+    $ReadSamples = { param($Lines)
+        $Samples = @($Lines | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}
+            foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)")) { $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value, $M.Groups[4].Value) }
+            , $Units })
+        $Walkers = if ($Samples.Count -gt 0) { @($Samples[0].Keys | Where-Object { $P = $Samples[0][$_]; [Math]::Abs($P[0] - $GapFrom[0]) -le 400 -and [Math]::Abs($P[1] - $GapFrom[1]) -le 400 }) } else { @() }
+        [pscustomobject]@{ Samples = $Samples; Walkers = $Walkers } }
+    $InWay = { param($P) $P[0] -ge -6195 -and $P[0] -le -5805 }
+    foreach ($GapCase in @(@{ Name = "one"; Lines = $GapOne; Count = 1 }, @{ Name = "two"; Lines = $GapTwo; Count = 2 })) {
+        $R = & $ReadSamples $GapCase.Lines
+        $Between = @(); $Abreast = 0; $Off = @()
+        foreach ($S in $R.Samples) {
+            $Here = @($R.Walkers | Where-Object { $S.ContainsKey($_) -and (& $InWay $S[$_]) })
+            foreach ($U in $Here) { $Between += "#$U ($($S[$U][0]), $($S[$U][1]))"; if ([Math]::Abs($S[$U][1] - $GapFrom[1]) -gt 60) { $Off += "#$U ($($S[$U][0]), $($S[$U][1]))" } }
+            # Two in the way at once are a file (one behind the other, a body apart), not abreast.
+            if ($Here.Count -ge 2 -and [Math]::Abs($S[$Here[0]][0] - $S[$Here[1]][0]) -lt 100) { $Abreast++ }
+        }
+        $Last = if ($R.Samples.Count -gt 0) { $R.Samples[-1] } else { @{} }
+        $Arrived = @($R.Walkers | Where-Object { $Last.ContainsKey($_) -and [Math]::Abs($Last[$_][0] - $GapTo[0]) -le 400 -and [Math]::Abs($Last[$_][1] - $GapTo[1]) -le 400 -and $Last[$_][2] -eq "Idle" })
+        $Watch = & $ReadWatch $GapCase.Lines
+        $Pushed = @($GapCase.Lines | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
+        $Checks["$($GapCase.Name): $($R.Walkers.Count) walker(s) seen in the way ($($Between.Count) samples: $(($Between | Select-Object -First 4) -join ', '))"] = ($R.Walkers.Count -eq $GapCase.Count) -and ($Between.Count -ge $GapCase.Count)
+        $Checks["$($GapCase.Name): on the way's middle line, within 60 cm (off: $($Off -join ', '))"] = $Off.Count -eq 0
+        if ($GapCase.Count -ge 2) { $Checks["two: one after the other ($Abreast samples with both in the way less than 1 m apart along it)"] = $Abreast -eq 0 }
+        $Checks["$($GapCase.Name): none put back by a wall ($(if ($Watch) { "$($Watch.Steps) steps, $($Watch.Out) put back, $($Watch.Repaths) new paths" }) $($Pushed -join '; '))"] =
+            ($null -ne $Watch) -and ($Watch.Out -eq 0) -and ($Watch.Repaths -eq 0)
+        $Checks["$($GapCase.Name): arrived ($($Arrived.Count) standing within 4 m of the point)"] = $Arrived.Count -eq $GapCase.Count
+    }
+    $Missing = @("one", "two", "houses" | Where-Object { -not (Test-Path (Join-Path $Shots "build_gap_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build gap" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

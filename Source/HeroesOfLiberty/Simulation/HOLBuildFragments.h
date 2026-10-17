@@ -38,7 +38,7 @@ struct HEROESOFLIBERTY_API FHOLBuildFragment : public FMassFragment
 	FVector Spot = FVector::ZeroVector;
 
 	/**
-	 * The footprint of the site it works on, written when it starts working there (Phase Building): its hammering is drawn
+	 * The body (D324) of the site it works on, written when it starts working there (Phase Building): its hammering is drawn
 	 * turned towards the nearest point of it (J6a.4, display only).
 	 */
 	FBox2D SiteFootprint = FBox2D(ForceInit);

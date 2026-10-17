@@ -28,6 +28,48 @@ FBox2D HOLConstruction::MakeFootprint(const FVector2D& Centre, const FVector2D& 
 	return FBox2D(Centre - Half, Centre + Half);
 }
 
+FVector2D HOLConstruction::GetBodySize(const FVector2D& Footprint, const double Inset)
+{
+	const auto Side = [Inset](const double Tiles)
+	{
+		return FMath::Max(Tiles - 2.0 * FMath::Max(0.0, Inset), FMath::Min(Tiles, MinBodySide));
+	};
+	return FVector2D(Side(Footprint.X), Side(Footprint.Y));
+}
+
+FBox2D HOLConstruction::GetBody(const FBox2D& Footprint, const double Inset)
+{
+	return MakeFootprint(Footprint.GetCenter(), GetBodySize(Footprint.GetSize(), Inset));
+}
+
+void HOLConstruction::FindWays(const TConstArrayView<FBox2D> Bodies, const double MaxWidth, TArray<FBox2D>& OutWays)
+{
+	OutWays.Reset();
+	for (int32 First = 0; First < Bodies.Num(); ++First)
+	{
+		for (int32 Second = First + 1; Second < Bodies.Num(); ++Second)
+		{
+			const FBox2D& A = Bodies[First];
+			const FBox2D& B = Bodies[Second];
+			const double AcrossX = FMath::Min(A.Max.X, B.Max.X) - FMath::Max(A.Min.X, B.Min.X);
+			const double AcrossY = FMath::Min(A.Max.Y, B.Max.Y) - FMath::Max(A.Min.Y, B.Min.Y);
+			// Side by side along X (a way running along Y), or along Y (a way running along X); never on a diagonal.
+			const double GapX = FMath::Max(B.Min.X - A.Max.X, A.Min.X - B.Max.X);
+			const double GapY = FMath::Max(B.Min.Y - A.Max.Y, A.Min.Y - B.Max.Y);
+			if (GapX > 0.0 && GapX <= MaxWidth && AcrossY > 0.0)
+			{
+				const double West = A.Max.X <= B.Min.X ? A.Max.X : B.Max.X;
+				OutWays.Emplace(FVector2D(West, FMath::Max(A.Min.Y, B.Min.Y)), FVector2D(West + GapX, FMath::Min(A.Max.Y, B.Max.Y)));
+			}
+			else if (GapY > 0.0 && GapY <= MaxWidth && AcrossX > 0.0)
+			{
+				const double South = A.Max.Y <= B.Min.Y ? A.Max.Y : B.Max.Y;
+				OutWays.Emplace(FVector2D(FMath::Max(A.Min.X, B.Min.X), South), FVector2D(FMath::Min(A.Max.X, B.Max.X), South + GapY));
+			}
+		}
+	}
+}
+
 bool HOLConstruction::Overlaps(const FBox2D& A, const FBox2D& B)
 {
 	return FMath::Min(A.Max.X, B.Max.X) - FMath::Max(A.Min.X, B.Min.X) > TouchTolerance

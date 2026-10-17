@@ -97,6 +97,26 @@ namespace HOLConstruction
 	/** The footprint of size Footprint centred on Centre. */
 	HEROESOFLIBERTY_API FBox2D MakeFootprint(const FVector2D& Centre, const FVector2D& Footprint);
 
+	/** The smallest side of a building's body (cm, D324): a tiny footprint keeps a body this wide (or its own size). */
+	inline constexpr double MinBodySide = 100.0;
+
+	/**
+	 * The body of a building whose tiles measure Footprint (D324): the building itself, inset by Inset (cm,
+	 * UHOLBuildingSettings::BodyInset) on every side of its tiles, whatever its size (a house of 2 x 2 tiles at 105 cm: 3.9 m
+	 * of 6, a main centre of 4 x 4: 9.9 m of 12); a side never below MinBodySide (nor above the footprint's).
+	 */
+	HEROESOFLIBERTY_API FVector2D GetBodySize(const FVector2D& Footprint, double Inset);
+
+	/** The body (GetBodySize) of the footprint box Footprint, on the same middle (D324). */
+	HEROESOFLIBERTY_API FBox2D GetBody(const FBox2D& Footprint, double Inset);
+
+	/**
+	 * The ways between neighbouring buildings (D324): for each pair of Bodies (boxes on the ground, along the grid) facing each
+	 * other along X or Y, no farther apart than MaxWidth and sharing some length across, the box of ground between their facing
+	 * sides. Two houses whose tiles touch leave a way 2 x BodyInset wide, as long as their facing sides.
+	 */
+	HEROESOFLIBERTY_API void FindWays(TConstArrayView<FBox2D> Bodies, double MaxWidth, TArray<FBox2D>& OutWays);
+
 	/** The two footprints share some area (more than TouchTolerance deep on both axes); touching edges do not. */
 	HEROESOFLIBERTY_API bool Overlaps(const FBox2D& A, const FBox2D& B);
 

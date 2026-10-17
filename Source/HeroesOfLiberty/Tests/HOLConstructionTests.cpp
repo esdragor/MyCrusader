@@ -620,4 +620,73 @@ bool FHOLConstructionCutPathsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionBodyTest, "HeroesOfLiberty.Construction.Body", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionBodyTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+	// D324 (J6b.2b): a building occupies its tiles, its body stands inset in them by a fixed margin on every side, whatever
+	// its size. At 105 cm (the setting): a house (2 x 2 tiles) 3.9 m of 6, a main centre (4 x 4) 9.9 m of 12.
+	const double Inset = 105.0;
+	TestTrue(TEXT("a house's body: 3.9 m"), HOLConstruction::GetBodySize(FVector2D(600.0, 600.0), Inset).Equals(FVector2D(390.0, 390.0), 0.01));
+	TestTrue(TEXT("a main centre's body: 9.9 m"), HOLConstruction::GetBodySize(FVector2D(1200.0, 1200.0), Inset).Equals(FVector2D(990.0, 990.0), 0.01));
+	TestTrue(TEXT("each side on its own (3 x 2 tiles)"), HOLConstruction::GetBodySize(FVector2D(900.0, 600.0), Inset).Equals(FVector2D(690.0, 390.0), 0.01));
+	TestTrue(TEXT("no inset: the tiles"), HOLConstruction::GetBodySize(FVector2D(600.0, 600.0), 0.0).Equals(FVector2D(600.0, 600.0), 0.01));
+	TestTrue(TEXT("a tiny footprint keeps a body of MinBodySide"),
+		HOLConstruction::GetBodySize(FVector2D(150.0, 150.0), Inset).Equals(FVector2D(HOLConstruction::MinBodySide), 0.01));
+	TestTrue(TEXT("never larger than its tiles"), HOLConstruction::GetBodySize(FVector2D(50.0, 50.0), Inset).Equals(FVector2D(50.0, 50.0), 0.01));
+	const FBox2D Tiles = HOLConstruction::SnapToGrid(FVector2D(100.0, 100.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D Body = HOLConstruction::GetBody(Tiles, Inset);
+	TestTrue(TEXT("the body box: on the tiles' middle, inset on every side"),
+		Body.Min.Equals(Tiles.Min + FVector2D(Inset), 0.01) && Body.Max.Equals(Tiles.Max - FVector2D(Inset), 0.01));
+
+	// Two houses whose tiles touch (placement on the tiles, D311: allowed): their bodies 2.1 m apart, room for one Peasant
+	// (60 cm radius: 1.2 m wide), not for two abreast (2.4 m).
+	const FBox2D West = HOLConstruction::SnapToGrid(FVector2D(0.0, 0.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D East = HOLConstruction::SnapToGrid(FVector2D(600.0, 0.0), FVector2D(600.0, 600.0), Tile);
+	TestEqual(TEXT("their tiles touch"), HOLConstruction::GetGap(West, East), 0.0, 0.01);
+	TestFalse(TEXT("so they may stand side by side"), HOLConstruction::Overlaps(West, East));
+	const double Gap = HOLConstruction::GetGap(HOLConstruction::GetBody(West, Inset), HOLConstruction::GetBody(East, Inset));
+	TestEqual(TEXT("their bodies: 2.1 m apart"), Gap, 2.0 * Inset, 0.01);
+	const double Peasant = 60.0;
+	TestTrue(TEXT("one Peasant passes between them"), Gap >= 2.0 * Peasant);
+	TestTrue(TEXT("not two abreast"), Gap < 4.0 * Peasant);
+	// A walk down the middle of the way between them: 105 cm from each body, beyond a Peasant's margin (its 60 cm and the
+	// clearance of D310, 25 cm): the ways cut by a new building (J6b.2) leave it as it is.
+	const double Middle = (West.Max.X + East.Min.X) * 0.5;
+	const TArray<FVector2D> Through({ FVector2D(Middle, -1000.0), FVector2D(Middle, 1000.0) });
+	TestFalse(TEXT("a walk through the way: not cut by the west body"), HOLConstruction::DoesWalkCross(HOLConstruction::GetBody(West, Inset), 85.0, Through));
+	TestFalse(TEXT("nor by the east one"), HOLConstruction::DoesWalkCross(HOLConstruction::GetBody(East, Inset), 85.0, Through));
+	TestTrue(TEXT("but by their tiles"), HOLConstruction::DoesWalkCross(West, 85.0, Through));
+
+	// The ways between neighbours (the paths through them, D324): the box between their facing sides.
+	const FBox2D North = HOLConstruction::SnapToGrid(FVector2D(0.0, 600.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D Far = HOLConstruction::SnapToGrid(FVector2D(2400.0, 0.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D Diagonal = HOLConstruction::SnapToGrid(FVector2D(600.0, 600.0), FVector2D(600.0, 600.0), Tile);
+	const TArray<FBox2D> Bodies({ HOLConstruction::GetBody(West, Inset), HOLConstruction::GetBody(East, Inset), HOLConstruction::GetBody(North, Inset),
+		HOLConstruction::GetBody(Far, Inset) });
+	TArray<FBox2D> Ways;
+	HOLConstruction::FindWays(Bodies, 2.0 * Inset + HOLConstruction::TouchTolerance, Ways);
+	TestEqual(TEXT("two ways: west-east (along Y), west-north (along X); none to the far house"), Ways.Num(), 2);
+	if (Ways.Num() == 2)
+	{
+		TestTrue(TEXT("west-east: 2.1 m wide, along their facing sides"), Ways[0].Min.Equals(FVector2D(Middle - Inset, -300.0 + Inset), 0.01)
+			&& Ways[0].Max.Equals(FVector2D(Middle + Inset, 300.0 - Inset), 0.01));
+		TestTrue(TEXT("west-north: across Y"), FMath::IsNearlyEqual(Ways[1].GetSize().Y, 2.0 * Inset, 0.01) && FMath::IsNearlyEqual(Ways[1].GetCenter().Y, 300.0, 0.01));
+	}
+	HOLConstruction::FindWays(TArray<FBox2D>({ HOLConstruction::GetBody(West, Inset), HOLConstruction::GetBody(Diagonal, Inset) }), 2.0 * Inset + 1.0, Ways);
+	TestEqual(TEXT("corner to corner: no way"), Ways.Num(), 0);
+
+	// The game's setting, the same rule: one Peasant between two neighbours, not two.
+	const double Setting = UHOLBuildingSettings::GetBodyInset();
+	TestTrue(FString::Printf(TEXT("the setting (%.0f cm per side): one Peasant passes, not two"), Setting), 2.0 * Setting >= 2.0 * Peasant && 2.0 * Setting < 4.0 * Peasant);
+	TestTrue(TEXT("the setting's house body"), UHOLBuildingSettings::GetBodySize(FVector2D(600.0, 600.0)).Equals(FVector2D(600.0 - 2.0 * Setting), 0.01));
+	// What is seen fills at least 90 % of the tiles of any building (D324 refined), wider than the body: Peasants walk a
+	// little into the shape.
+	const double Seen = UHOLBuildingSettings::GetVisualInset();
+	TestTrue(FString::Printf(TEXT("the visible shape (%.0f cm per side): at least 90 %% of a house's tiles"), Seen), 600.0 - 2.0 * Seen >= 0.9 * 600.0 - 0.01);
+	TestTrue(TEXT("the visible shape wider than the body"), Seen <= Setting);
+	TestTrue(TEXT("the setting's house shape"), UHOLBuildingSettings::GetVisualSize(FVector2D(600.0, 600.0)).Equals(FVector2D(600.0 - 2.0 * Seen), 0.01));
+	return true;
+}
+
 #endif

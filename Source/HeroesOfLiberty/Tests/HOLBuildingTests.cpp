@@ -78,21 +78,27 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		Building->GetComponents(Pieces);
 		TestEqual(TEXT("a block, its top, a tower and its roof"), Pieces.Num(), 4);
 
-		// The shape fills the type's footprint and height, standing on the ground, centred on the actor.
+		// The shape fills the type's visible size (D324 refined: its 12 x 12 m of tiles inset by VisualInset on every side,
+		// at least 90 % of them) and height, standing on the ground, centred on the actor; its body, narrower, blocks.
 		FBox Box(ForceInit);
 		for (const UStaticMeshComponent* Piece : Pieces)
 		{
 			Box += Piece->Bounds.GetBox();
 		}
-		TestTrue(TEXT("footprint 12 x 12 m"), Box.GetSize().Equals(FVector(1200.0, 1200.0, 1000.0), 1.0));
-		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-600.0, -600.0, 0.0), 1.0));
+		const double Seen = 1200.0 - 2.0 * UHOLBuildingSettings::GetVisualInset();
+		const double Body = 1200.0 - 2.0 * UHOLBuildingSettings::GetBodyInset();
+		TestTrue(FString::Printf(TEXT("the visible size of its 12 x 12 m (%.0f cm)"), Seen), Box.GetSize().Equals(FVector(Seen, Seen, 1000.0), 1.0));
+		TestTrue(TEXT("at least 90 % of its tiles"), Seen >= 0.9 * 1200.0 - 0.01);
+		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-Seen * 0.5, -Seen * 0.5, 0.0), 1.0));
+		TestTrue(TEXT("its body box"), Building->GetBodyBounds().GetSize().Equals(FVector2D(Body), 0.01));
+		TestTrue(TEXT("its tiles box"), Building->GetFootprintBounds().GetSize().Equals(FVector2D(1200.0), 0.01));
 
-		// The navmesh's forbidden area: the footprint widened by the bodies' clearance (D310), as tall as the shape.
+		// The navmesh's forbidden area: the body widened by the bodies' clearance (D310), as tall as the shape.
 		TArray<UBoxComponent*> Boxes;
 		Building->GetComponents(Boxes);
 		const double Clearance = UHOLBuildingSettings::GetBodyClearance();
-		TestTrue(TEXT("forbidden area: the footprint and the clearance"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation()
-			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(600.0 + Clearance, 600.0 + Clearance, 500.0), 1.0));
+		TestTrue(TEXT("forbidden area: the body and the clearance"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation()
+			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(Body * 0.5 + Clearance, Body * 0.5 + Clearance, 500.0), 1.0));
 
 		TestEqual(TEXT("the roof at the owner's colour"), CountPiecesOfColor(*Building, 3), 1);
 		TestEqual(TEXT("the top of the block at a darker tone of it"), CountPiecesOfColor(*Building, 3, AHOLBuilding::BaseTopTone), 1);
@@ -163,7 +169,7 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 		}
 		TestEqual(TEXT("a ghost: 4 frame pieces, 8 edges, an unseen box"), Pieces.Num(), 13);
 		TestEqual(TEXT("one piece unseen (the box a click hits)"), Unseen, 1);
-		TestTrue(TEXT("over the footprint (6 x 6 m)"), FVector2D(Box.GetSize()).Equals(House->Footprint, 1.0));
+		TestTrue(TEXT("over the visible shape (D324 refined: inset in its 6 x 6 m)"), FVector2D(Box.GetSize()).Equals(UHOLBuildingSettings::GetVisualSize(House->Footprint), 1.0));
 		TestTrue(TEXT("as high as the building"), FMath::IsNearlyEqual(Box.Max.Z, static_cast<double>(House->Height), 1.0));
 		TestEqual(TEXT("no piece at the owner's plain colour (lightened)"), CountPiecesOfColor(*Building, 2), 0);
 

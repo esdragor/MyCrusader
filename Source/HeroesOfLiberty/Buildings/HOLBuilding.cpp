@@ -232,6 +232,17 @@ FBox2D AHOLBuilding::GetFootprintBounds() const
 		static_cast<float>(GetActorRotation().Yaw));
 }
 
+FVector2D AHOLBuilding::GetBodySize() const
+{
+	const FHOLBuildingTypeRow* Type = GetType();
+	return Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D::ZeroVector;
+}
+
+FBox2D AHOLBuilding::GetBodyBounds() const
+{
+	return HOLConstruction::GetFootprintBounds(FVector2D(GetActorLocation()), GetBodySize(), static_cast<float>(GetActorRotation().Yaw));
+}
+
 void AHOLBuilding::NotifyProductionChanged()
 {
 	// The queue changes a few times a minute: sent at the next update rather than within the second of NetUpdateFrequency.
@@ -268,15 +279,15 @@ void AHOLBuilding::OnRep_Rally()
 	OnRallyChanged.Broadcast();
 }
 
-bool AHOLBuilding::IsOnFootprint(const FVector& Point) const
+bool AHOLBuilding::IsOnBody(const FVector& Point) const
 {
-	const FHOLBuildingTypeRow* Type = GetType();
-	if (!Type)
+	if (!GetType())
 	{
 		return false;
 	}
+	const FVector2D Half = GetBodySize() * 0.5;
 	const FVector Local = GetActorTransform().InverseTransformPosition(Point);
-	return FMath::Abs(Local.X) <= Type->Footprint.X * 0.5 && FMath::Abs(Local.Y) <= Type->Footprint.Y * 0.5;
+	return FMath::Abs(Local.X) <= Half.X && FMath::Abs(Local.Y) <= Half.Y;
 }
 
 void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, const uint8 InColorIndex, const EHOLConstructionState InState)
@@ -396,8 +407,9 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 
 	// D261: a block and a central tower; the top of the block (a darker tone) and the tower's flat roof, a little wider
 	// than the tower, wear the owner's colour, as they are what the RTS camera sees from above; unlit, so that the colour
-	// is the same everywhere (a lit cone showed a dark side, an unlit one read as a flat disc).
-	const FVector2D Footprint = Type.Footprint;
+	// is the same everywhere (a lit cone showed a dark side, an unlit one read as a flat disc). Its visible size, a little
+	// inset in its tiles and wider than its body (D324 refined).
+	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
 	const float Height = Type.Height;
 	const float BaseHeight = Height * BaseHeightRatio;
 	const float CapThickness = Height * CapThicknessRatio;
@@ -411,9 +423,11 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 
 void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
 {
-	// Widened by the bodies' clearance (D310): the navmesh widens a forbidden area by the agent's radius (measured at J6a.1:
-	// its edge 63 to 77 cm from the sides, 82 to 95 cm from the corners), so a walker's body brushed the wall.
-	const FVector Extent(Type.Footprint * 0.5 + FVector2D(UHOLBuildingSettings::GetBodyClearance()), Type.Height * 0.5);
+	// The building's body (D324), inset in its tiles, widened by the bodies' clearance (D310): the navmesh widens a forbidden
+	// area by the agent's radius (measured at J6a.1: its edge 63 to 77 cm from the sides, 82 to 95 cm from the corners), so a
+	// walker's body brushed the wall.
+	const FVector2D Body = UHOLBuildingSettings::GetBodySize(Type.Footprint);
+	const FVector Extent(Body * 0.5 + FVector2D(UHOLBuildingSettings::GetBodyClearance()), Type.Height * 0.5);
 	const bool bBlocks = BlocksNavigation();
 	const bool bWasBlocking = NavObstacle->CanEverAffectNavigation();
 	if (bBlocks == bWasBlocking && NavObstacle->GetUnscaledBoxExtent().Equals(Extent, 0.01))
@@ -438,7 +452,7 @@ void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
 		FHOLBlockedFootprint Blocked;
 		Blocked.TypeName = TypeName;
 		Blocked.Centre = FVector2D(GetActorLocation());
-		Blocked.Size = Type.Footprint;
+		Blocked.Size = Body;
 		Blocked.Yaw = static_cast<float>(GetActorRotation().Yaw);
 		Blocked.Area = NavObstacle->Bounds.GetBox();
 		Commands->NotifyFootprintBlocked(Blocked);
@@ -454,8 +468,9 @@ void AHOLBuilding::BuildFoundationShape(const FHOLBuildingTypeRow& Type)
 	using namespace UE::HeroesOfLiberty::Buildings;
 
 	// Flat and clearly unfinished (J6a.3): packed earth over the footprint, its edges at the owner's colour (unlit, the
-	// colour seen from the RTS camera), a wooden stake at each corner. Units walk over it until its first work (D312).
-	const FVector2D Footprint = Type.Footprint;
+	// colour seen from the RTS camera), a wooden stake at each corner. Units walk over it until its first work (D312). Under
+	// the building's visible shape (D324 refined).
+	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
 	AddPiece(CubeMesh, FVector(Footprint, FoundationSlabHeight), 0.f, FoundationSlabColor, false);
 	const double Border = FMath::Min(static_cast<double>(FoundationBorderWidth), Footprint.GetMin() * 0.25);
 	const FVector AlongX(Footprint.X, Border, FoundationBorderHeight);
@@ -483,8 +498,8 @@ void AHOLBuilding::BuildFoundationShape(const FHOLBuildingTypeRow& Type)
 void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
 {
 	// Planned, not started (J6a.4, the user's choice): drawn as the placement ghost is, a frame on the ground and the edges
-	// of the volume, light at the owner's colour; no slab before the first work.
-	const FVector2D Footprint = Type.Footprint;
+	// of the volume, light at the owner's colour; no slab before the first work. The building's visible shape (D324 refined).
+	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
 	const FVector2D Half = Footprint * 0.5;
 	const float Height = Type.Height;
 	const auto Move = [](UStaticMeshComponent* Piece, const FVector& Offset)

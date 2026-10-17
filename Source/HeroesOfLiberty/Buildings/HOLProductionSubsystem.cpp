@@ -180,7 +180,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
 			// On the building itself: no rally point any more (the units are born at its foot, D283).
-			if (Building->IsOnFootprint(Order.Location))
+			if (Building->IsOnBody(Order.Location))
 			{
 				Building->ClearRallyPoint();
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d cleared the rally point of %s"), Order.PlayerIndex, *Building->GetTypeName().ToString());
@@ -339,7 +339,9 @@ FVector UHOLProductionSubsystem::GetBirthLocation(const AHOLBuilding& Building, 
 
 	const FVector Origin = Building.GetActorLocation();
 	const FHOLBuildingTypeRow* Type = Building.GetType();
-	const float HalfFootprint = Type ? 0.5f * FMath::Max(Type->Footprint.X, Type->Footprint.Y) : 600.f;
+	// At the foot of its body (D324), not of its tiles.
+	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
+	const float HalfFootprint = 0.5f * static_cast<float>(Body.GetMax());
 
 	// On the side of the rally point (user's choice at the J5a trial): the unit walks off at once, so one arc is enough.
 	// Without one, below the building on the screen: the camera never turns and looks along +X for every player (D254),

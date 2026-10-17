@@ -132,6 +132,37 @@ public:
 	static float GetBodyClearance() { return FMath::Max(0.f, GetDefault<UHOLBuildingSettings>()->BodyClearance); }
 
 	/**
+	 * How far (cm) a building's body stands inside its tiles, on every side, whatever its size (D324, the user's rule of
+	 * 2026-10-17). The tiles (the table's Footprint) are what it occupies: grid, placement, overlaps, map, anti-rush, the
+	 * placement ghost's validity. The body (HOLConstruction::GetBodySize) is what blocks (its visible shape is wider,
+	 * VisualInset): the navmesh's forbidden area (widened by BodyClearance, D310), the footprints' guard, the builders' and the
+	 * deposits' spots, the ways a new building cuts (J6b.2). Two neighbours whose tiles touch leave twice this between their
+	 * bodies: room for one Peasant (1.2 m wide), not for two abreast.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Buildings", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float BodyInset = 105.f;
+
+	static float GetBodyInset() { return FMath::Max(0.f, GetDefault<UHOLBuildingSettings>()->BodyInset); }
+
+	/** The body of a building whose tiles measure Footprint (D324): inset by BodyInset on every side. */
+	static FVector2D GetBodySize(const FVector2D& Footprint);
+
+	/**
+	 * How far (cm) a building's visible shape stands inside its tiles, on every side, whatever its size (D324 refined, the
+	 * user's rule of 2026-10-17: what is seen fills at least 90 % of the tiles). Its provisional shape (D261), its slab and
+	 * rising site, its planned ghost, the placement ghost's volume edges, its selection frame and the click (its pieces) use
+	 * it; everything that blocks or places units keeps the body (BodyInset), narrower: Peasants walk a little into the
+	 * shape, still one at a time between two neighbours.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Buildings", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float VisualInset = 30.f;
+
+	static float GetVisualInset() { return FMath::Max(0.f, GetDefault<UHOLBuildingSettings>()->VisualInset); }
+
+	/** The visible shape of a building whose tiles measure Footprint (D324 refined): inset by VisualInset on every side. */
+	static FVector2D GetVisualSize(const FVector2D& Footprint);
+
+	/**
 	 * Side of a tile (cm, D311, user's choice of 2026-10-16): the placement grid. Footprints are whole tiles (main
 	 * centre 4 x 4, houses and camps 2 x 2), their corners on the grid lines, the main centres included (placed on it
 	 * at their start, AHOLStartSlot::GetMainCentreLocation): every building lines up and touches its neighbours.

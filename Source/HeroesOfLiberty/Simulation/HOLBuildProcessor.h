@@ -156,7 +156,7 @@ private:
 	TMap<FMassEntityHandle, FBuilderQueue> Queues;
 	/** The spots held this step. */
 	TArray<FSpotClaim> SpotClaims;
-	/** The footprints of every building and foundation of the match this step: a spot is never on one (D310). */
+	/** The bodies (D324) of every building and foundation of the match this step: a spot is never on one (D310). */
 	TArray<FBox2D> Footprints;
 	TArray<TWeakObjectPtr<AHOLBuilding>> FootprintBuildings;
 	/** This step's builders at work, by site. */

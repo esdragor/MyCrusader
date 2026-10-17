@@ -2,7 +2,18 @@
 
 #include "Buildings/HOLBuildingTypes.h"
 
+#include "Buildings/HOLConstructionRules.h"
 #include "HeroesOfLibertyLog.h"
+
+FVector2D UHOLBuildingSettings::GetBodySize(const FVector2D& Footprint)
+{
+	return HOLConstruction::GetBodySize(Footprint, GetBodyInset());
+}
+
+FVector2D UHOLBuildingSettings::GetVisualSize(const FVector2D& Footprint)
+{
+	return HOLConstruction::GetBodySize(Footprint, GetVisualInset());
+}
 
 const FHOLBuildingTypeRow* UHOLBuildingSettings::FindType(const FName TypeName)
 {

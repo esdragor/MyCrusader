@@ -220,7 +220,8 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 		}
 		FDeposit& Deposit = Deposits.AddDefaulted_GetRef();
 		Deposit.Footprint.Centre = FVector2D(It->GetActorLocation());
-		Deposit.Footprint.HalfExtent = Type->Footprint * 0.5;
+		// Its body, inset in its tiles (D324): the gatherers unload at its wall.
+		Deposit.Footprint.HalfExtent = UHOLBuildingSettings::GetBodySize(Type->Footprint) * 0.5;
 		Deposit.Footprint.Yaw = static_cast<float>(It->GetActorRotation().Yaw);
 		Deposit.GroundZ = static_cast<float>(It->GetActorLocation().Z);
 		Deposit.OwnerPlayer = It->GetOwnerPlayer();
