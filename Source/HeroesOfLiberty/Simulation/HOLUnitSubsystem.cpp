@@ -61,6 +61,7 @@ namespace UE::HeroesOfLiberty::Units
 			if (Reception && World->GetNetMode() == NM_Client)
 			{
 				UE_LOG(LogHOLSimulation, Display, TEXT("Units report: client, %s"), *Reception->DescribeDisplayed());
+				UE_LOG(LogHOLSimulation, Display, TEXT("Units looks: client, %s"), *Reception->DescribeLooks());
 			}
 			else if (const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr)
 			{

@@ -12,6 +12,10 @@
 #include "MassEntitySubsystem.h"
 #include "MassEntityTemplate.h"
 #include "MassEntityUtils.h"
+#include "MassRepresentationFragments.h"
+#include "MassRepresentationSubsystem.h"
+#include "GameFramework/GameStateBase.h"
+#include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationSettings.h"
@@ -505,4 +509,58 @@ FString UHOLUnitReceptionSubsystem::DescribeDisplayed() const
 		Lines.Add(FString::Printf(TEXT("%s x%d"), *Count.Key, Count.Value));
 	}
 	return FString::Printf(TEXT("%d displayed: %s"), NumDisplayed, *FString::Join(Lines, TEXT(", ")));
+}
+
+FString UHOLUnitReceptionSubsystem::DescribeLooks() const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
+	if (!EntitySubsystem)
+	{
+		return TEXT("no entities");
+	}
+	TMap<int32, int32> ColorIndices;
+	if (const AGameStateBase* GameState = GetWorld()->GetGameState())
+	{
+		for (const APlayerState* PlayerState : GameState->PlayerArray)
+		{
+			if (const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState))
+			{
+				ColorIndices.Add(HOLPlayerState->GetPlayerIndex(), HOLPlayerState->GetColorIndex());
+			}
+		}
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TMap<FString, int32> Counts;
+	for (const FSlot& Slot : Slots)
+	{
+		if (!Slot.Entity.IsSet())
+		{
+			continue;
+		}
+		const FName TypeName = TypeNames.IsValidIndex(Slot.TypeIndex) ? TypeNames[Slot.TypeIndex] : NAME_None;
+		FString Mesh = TEXT("no mesh");
+		const FMassRepresentationFragment* Representation = EntityManager.GetFragmentDataPtr<FMassRepresentationFragment>(Slot.Entity);
+		const FMassRepresentationSubsystemSharedFragment* Shared = EntityManager.GetSharedFragmentDataPtr<FMassRepresentationSubsystemSharedFragment>(Slot.Entity);
+		if (Representation && Shared && Shared->RepresentationSubsystem && Representation->SkinnedMeshDescHandle.IsValid())
+		{
+			FMassInstancedSkinnedMeshInfoArrayView Infos = Shared->RepresentationSubsystem->GetMutableInstancedSkinnedMeshInfos();
+			const int32 Index = Representation->SkinnedMeshDescHandle.ToIndex();
+			if (Infos.IsValidIndex(Index) && !Infos[Index].GetDesc().Meshes.IsEmpty() && Infos[Index].GetDesc().Meshes[0].Asset)
+			{
+				Mesh = Infos[Index].GetDesc().Meshes[0].Asset->GetName();
+			}
+		}
+		const TCHAR* Drawn = Representation && Representation->CurrentRepresentation == EMassRepresentationType::SkinnedMeshInstance ? TEXT("skinned")
+			: Representation && Representation->CurrentRepresentation == EMassRepresentationType::StaticMeshInstance ? TEXT("static") : TEXT("none");
+		const int32* Color = ColorIndices.Find(Slot.OwnerPlayer);
+		++Counts.FindOrAdd(FString::Printf(TEXT("%s of slot %d %s %s colour %d"), *TypeName.ToString(), Slot.OwnerPlayer, Drawn, *Mesh,
+			Color ? *Color : static_cast<int32>(Slot.OwnerPlayer)));
+	}
+	Counts.KeySort(TLess<FString>());
+	TArray<FString> Lines;
+	for (const TPair<FString, int32>& Count : Counts)
+	{
+		Lines.Add(FString::Printf(TEXT("%s x%d"), *Count.Key, Count.Value));
+	}
+	return FString::Join(Lines, TEXT(", "));
 }

@@ -219,6 +219,13 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	 */
 	bool bSettling = false;
 
+	/**
+	 * Steps it keeps settling after this one (J7a.6): stopped idle where its round trip left it (at a deposit, beside
+	 * others stopped there, against the building's wall that puts back a body pushed into it), one look left two
+	 * Peasants 83 cm apart; it looks again for a few steps.
+	 */
+	uint8 SettleSteps = 0;
+
 	EHOLGatherPhase Phase = EHOLGatherPhase::None;
 
 	bool IsGathering() const { return Phase != EHOLGatherPhase::None; }

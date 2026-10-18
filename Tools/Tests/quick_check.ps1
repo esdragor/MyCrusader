@@ -1,4 +1,4 @@
-# Quick check of the project (D267): the automation tests run in their own process WHILE a single game launch goes
+﻿# Quick check of the project (D267): the automation tests run in their own process WHILE a single game launch goes
 # through the menu in French, English and Japanese (language switched live), a drop-down list, then a match at 2 and
 # at 8 players with the camera checks of D257 and the selection checks of D264 (own centre, another's, void, Escape).
 # Every step starts as soon as the one before is done (hol.Test.Run), no fixed delays. Replaced capture_screens.ps1,
@@ -130,6 +130,8 @@ if ($Parts -contains "net") {
     } else { "" }
     # The camps (J6b.3): built 4 times faster, every unload logged (at the camp).
     if ($Parts -contains "build") { $NetSourceCommand += ",hol.Build.Speed 4,hol.Gather.LogDeposits 1" }
+    # The army (J7a.6): where the server has the units, every 5 s (the units stand still after their march).
+    $NetSourceCommand += (@(for ($t = 20; $t -le 500; $t += 5) { ",hol.Net.WhenClients 2 hol.Delay $t hol.Units.Where" }) -join "")
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
@@ -394,7 +396,9 @@ if ($Parts -contains "camera") {
             Step "mark gather used up", "hol.Camera.Focus $($GatherBerry[0]) 500", "frames 3"
             for ($i = 0; $i -lt 6; $i++) { Step "hol.Sources.TakeNear $($GatherBerry[0]) $($GatherBerry[1] + 150)" }
             Step "waitlog Deposit popup: +", "frames 6", "capture gather_popup"
-            Step "waitidle $($GatherBefore + $GatherBerries + 1)", "frames 2", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report"
+            # A second after the last one stopped (J7a.6): those stopped at the deposit side by side part over a few steps
+            # (UHOLGatherProcessor::Stop), the last ones 5 steps before the look stood 70 cm apart.
+            Step "waitidle $($GatherBefore + $GatherBerries + 1)", "wait 1", "frames 2", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report"
             # The "." key three times, then a click on the HUD's counter: each time the next idle one, the camera above it.
             Step "mark gather idle", "hol.Camera.FocusSlot 0", "frames 2"
             for ($i = 0; $i -lt 3; $i++) {
@@ -910,6 +914,23 @@ if ($NetListening) {
                 "wait 1", "hol.Build.Report", "hol.Prod.Report", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
                 "hol.Build.PlaceAtSource LumberCamp $($CampTree -join ' ')", "wait 2", "hol.Build.Report", "hol.Prod.Report"
         }
+        # The army (J7a.6): resources, places and fast building cheated (every player); its Peasant places a barracks behind
+        # its centre (the solo part's spot, in its frame; its own foundation arrives at once, the other's when finished, at its
+        # first blow); once the other's has arrived here and both clients have seen theirs, 2 Spearmen and 2 Men-at-arms
+        # queued there; once all 10 units are shown, the other's army framed: its type, mesh and colour logged (Units looks).
+        # Then its 5 units (Peasant included) in control group 1 (Shift + &), the selection emptied, & selects them again,
+        # a right click 30 m beside its centre: the group arrives in rows; each waits for the other's, then reports where.
+        $NetSteps += "mark army", "hol.Cheat.Resources 2000", "hol.Cheat.Population 20", "hol.Cheat.FastBuild 1", "wait 1",
+            "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear Barracks -3150 4050", "waitlog Building arrived: Barracks of slot", "waitlog , finished",
+            "signal $(Join-Path $TestSaved "quick_net_barracks$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_barracks$Other.flag")", "wait 3",
+            "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue ManAtArms Barracks", "hol.Prod.Queue ManAtArms Barracks",
+            "waitunits 10", "wait 8", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
+            "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear -3150 4050 enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
+            "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
+            "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
+            "hol.UI.Key Ampersand 0 0.05", "wait 0.4", "hol.Select.Report", "hol.Select.OrderNear 0 3000", "wait 18",
+            "signal $(Join-Path $TestSaved "quick_net_marched$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_marched$Other.flag")", "wait 1",
+            "hol.Units.Where", "hol.Camera.FocusNear 0 3000", "frames 5", "capture net_army_c$Client"
         # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
         # "others []", the flake of 2026-10-16).
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "mark end", "quit"
@@ -1960,7 +1981,8 @@ if ($Parts -contains "net") {
         $Checks["client $N : both centres, each in its colour ($($Buildings -join '; '))"] = ($Buildings.Count -eq 3) -and
             ($Buildings -contains "MainCentre of slot 0, colour 0 shown") -and ($Buildings -contains "MainCentre of slot 1, colour 1 shown") -and
             ($Buildings -contains "2 buildings")
-        $Selection = @($ClientLines | Select-String -Pattern "Selection report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        # The first three (the army's comes later, J7a.6).
+        $Selection = @($ClientLines | Select-String -Pattern "Selection report: (.*)$" | Select-Object -First 3 | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Wanted = @(0, 1 | ForEach-Object { "selected MainCentre of slot $_ ($(if ($_ -eq $Held) { 'own' } else { 'other' }))" }) + "selected none"
         $Checks["client $N : clicks on the two centres, then the void ($($Selection -join '; '))"] = ($Selection -join '|') -eq ($Wanted -join '|')
         $NetLines = Get-ClientSection $ClientLines "net"
@@ -2079,6 +2101,21 @@ if ($Parts -contains "net") {
             $Checks["client $N : the other's stock never received, camps included"] = ($CampStocks.Count -eq 3) -and
                 (@($CampStocks | Where-Object { $_ -notmatch "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$" }).Count -eq 0)
         }
+        # The army (J7a.6): both barracks' soldiers shown with their types, the other's drawn with its mesh and colour;
+        # control group 1 made of its 5 units and selected by its digit.
+        $ArmyLines = @(Get-ClientSection $ClientLines "army")
+        $Other = 1 - $Held
+        $ArmyShown = $ArmyLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $Checks["client $N : both armies shown with their types ($ArmyShown)"] = $ArmyShown -eq "client, 10 displayed: ManAtArms of slot 0 x2, ManAtArms of slot 1 x2, Peasant of slot 0 x1, Peasant of slot 1 x1, Spearman of slot 0 x2, Spearman of slot 1 x2"
+        $Looks = $ArmyLines | Select-String -Pattern "Units looks: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $OtherLooks = @(foreach ($Type in "Spearman", "ManAtArms") { [regex]::Match([string]$Looks, "$Type of slot $Other skinned (\w+) colour (\d+) x2") })
+        $Checks["client $N : the other's soldiers drawn, their meshes, the other's colour ($Looks)"] = (@($OtherLooks | Where-Object { $_.Success -and $_.Groups[2].Value -eq "$Other" }).Count -eq 2) -and
+            ($OtherLooks[0].Groups[1].Value -ne $OtherLooks[1].Groups[1].Value)
+        $Checks["client $N : control group 1 made of its 5 units, its digit selects them"] = [bool]($ArmyLines | Select-String -Pattern "Group 1: created" -Quiet) -and
+            [bool]($ArmyLines | Select-String -Pattern "Group 1: selected, 5 units" -Quiet) -and
+            [bool]($ArmyLines | Select-String -Pattern "Selection report: selected 5 units \(own\): ManAtArms x2, Peasant x1, Spearman x2" -Quiet)
+        $Missing = @("qcnet_${N}_army_other", "net_army_c$N" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "$_.png")) })
+        $Checks["client $N : army captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
     }
@@ -2096,6 +2133,30 @@ if ($Parts -contains "net") {
         }
         $Refused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Move order of slot (\d): 1 units ignored, not its own" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
         $Checks["server: each player's order left the other's Peasant alone ($($Refused -join ', '))"] = (($Refused | Sort-Object) -join ',') -eq "0,1"
+    }
+    # The army's march (J7a.6): each client's 10 units where the server has them (the server's last report with them
+    # all), each slot's 5 around its right click (frame (0, 30 m) of its centre), no two of a slot overlapping.
+    $ServerWheres = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+    $ParseWhere = { param($Text) $Map = @{}; foreach ($M in [regex]::Matches([string]$Text, "#(\d+) slot (\d) at \((-?\d+), (-?\d+)\)")) { $Map[$M.Groups[1].Value] = @([int]$M.Groups[2].Value, [double]$M.Groups[3].Value, [double]$M.Groups[4].Value) }; $Map }
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $ArmyLines = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "army")
+        $Seen = & $ParseWhere ($ArmyLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Server = $null
+        foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Seen.Count -ge 10 -and @($Seen.Keys | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
+        $Gaps = @(if ($Server) { foreach ($Id in $Seen.Keys) { [Math]::Sqrt([Math]::Pow($Seen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($Seen[$Id][2] - $Server[$Id][2], 2)) } })
+        $MaxGap = if ($Gaps.Count) { [Math]::Round(($Gaps | Measure-Object -Maximum).Maximum) } else { -1 }
+        $Checks["client $N : the 10 units where the server has them ($($Seen.Count) seen, at most $MaxGap cm off)"] = ($Seen.Count -eq 10) -and ($Gaps.Count -eq 10) -and ($MaxGap -ge 0) -and ($MaxGap -le 100)
+        foreach ($Slot in 0, 1) {
+            $Ids = @($Seen.Keys | Where-Object { $Seen[$_][0] -eq $Slot })
+            $Closest = [double]::MaxValue
+            for ($i = 0; $i -lt $Ids.Count; $i++) { for ($j = $i + 1; $j -lt $Ids.Count; $j++) {
+                $Closest = [Math]::Min($Closest, [Math]::Sqrt([Math]::Pow($Seen[$Ids[$i]][1] - $Seen[$Ids[$j]][1], 2) + [Math]::Pow($Seen[$Ids[$i]][2] - $Seen[$Ids[$j]][2], 2))) } }
+            $Target = @(if ($Slot -eq 0) { -15000, 3000 } else { 15000, -3000 })
+            $Far = if ($Ids.Count) { @($Ids | ForEach-Object { [Math]::Sqrt([Math]::Pow($Seen[$_][1] - $Target[0], 2) + [Math]::Pow($Seen[$_][2] - $Target[1], 2)) } | Measure-Object -Maximum).Maximum } else { -1 }
+            $Checks["client $N : slot $Slot's 5 units in rows at the click ($([Math]::Round($Far)) cm at most from it, closest pair $([Math]::Round($Closest)) cm)"] =
+                ($Ids.Count -eq 5) -and ($Far -le 600) -and ($Closest -ge 100)
+        }
     }
     $Checks["two clients in slots 0 and 1 ($($HeldSlots -join ', '))"] = (($HeldSlots | Sort-Object) -join ',') -eq "0,1"
     if ($Parts -contains "sources") {

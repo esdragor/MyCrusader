@@ -37,6 +37,12 @@ public:
 	static FString MakeBitProbeReport(double Seconds);
 	/** The units displayed, counted by type and owner ("2 displayed: Peasant of slot 0 x1, ..."), for hol.Units.Report (J3). */
 	FString DescribeDisplayed() const;
+
+	/**
+	 * J7a.6: how this client draws its displayed units, per type and slot: the representation, the skinned mesh and the
+	 * colour index the presentation writes (the owner's player state, as FSlotColors), with their counts.
+	 */
+	FString DescribeLooks() const;
 	/** The units displayed, where they are drawn (J4: what the player selects and orders). */
 	void GetDisplayedUnits(TArray<struct FHOLUnitView>& OutUnits) const;
 	/** One displayed unit; false when it is not displayed. */

@@ -817,6 +817,55 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** J7a.6 (quick_check "net"): a ground point given in the frame of the player's main centre (or an enemy's), as hol.Build.PlaceNear. */
+	bool GetPointNear(const AHOLPlayerController& Controller, const TArray<FString>& Args, FVector& OutPoint)
+	{
+		const bool bEnemy = Args.Num() >= 3 && Args[2] == TEXT("enemy");
+		const AHOLBuilding* Centre = Args.Num() >= 2 ? FindMainCentre(Controller, bEnemy) : nullptr;
+		if (!Centre)
+		{
+			return false;
+		}
+		OutPoint = Centre->GetActorLocation() + Centre->GetActorRotation().RotateVector(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.));
+		OutPoint.Z = 0.;
+		return true;
+	}
+
+	FAutoConsoleCommand CameraFocusNearCommand(
+		TEXT("hol.Camera.FocusNear"),
+		TEXT("hol.Camera.FocusNear <Dx> <Dy> [enemy]: puts the camera above the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame (scripted checks)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector Point;
+				if (GetPointNear(*Controller, Args, Point) && Controller->GetRTSCamera())
+				{
+					Controller->GetRTSCamera()->SetFocus(Point);
+					UE_LOG(LogHOLMatch, Display, TEXT("Camera near: (%.0f, %.0f)"), Point.X, Point.Y);
+				}
+			}
+		}));
+
+	FAutoConsoleCommand OrderNearCommand(
+		TEXT("hol.Select.OrderNear"),
+		TEXT("hol.Select.OrderNear <Dx> <Dy> [enemy]: a right click (hol.Select.OrderGround) at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector Point;
+				FVector2D Fraction;
+				if (!GetPointNear(*Controller, Args, Point) || !ProjectGroundPoint(*Controller, Point.X, Point.Y, Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderNear: the point is not on the screen"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Right click near the centre at (%.0f, %.0f)"), Point.X, Point.Y);
+				Controller->OrderAt(Fraction, false);
+			}
+		}));
+
 	FAutoConsoleCommand BuildPlaceAtSourceCommand(
 		TEXT("hol.Build.PlaceAtSource"),
 		TEXT("hol.Build.PlaceAtSource <Type> <X> <Y>: asks the server for a foundation on the standing resource source nearest that ground point (cm), whatever this machine thinks of it"),
@@ -909,12 +958,17 @@ namespace UE::HeroesOfLiberty::Player
 	/** Scripted checks of the production (D284), without the HUD: what a cell of the grid does. */
 	FAutoConsoleCommand ProductionQueueCommand(
 		TEXT("hol.Prod.Queue"),
-		TEXT("hol.Prod.Queue [UnitType=Peasant]: asks the server to produce one unit at the selected building (own), or at the player's main centre (selected first) when none is"),
+		TEXT("hol.Prod.Queue [UnitType=Peasant] [Building]: asks the server to produce one unit at the selected building (own), or at the player's main centre (selected first) when none is"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const FName TypeName(Args.IsEmpty() ? TEXT("Peasant") : *Args[0]);
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
+				// J7a.6: [Building], its own building of that type selected first (the net part's barracks).
+				if (Args.Num() >= 2)
+				{
+					Controller->SetSelection(FindOwnBuilding(*Controller, FName(*Args[1])));
+				}
 				if (!Controller->GetOwnSelection())
 				{
 					Controller->SetSelection(FindOwnBuilding(*Controller, HOLBuildingTypeNames::MainCentre));

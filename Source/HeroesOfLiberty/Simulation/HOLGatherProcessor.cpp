@@ -55,6 +55,8 @@ namespace UE::HeroesOfLiberty::Gather
 	 * from a source, a spot a little inside it is reached exactly (on its edge, the unit stopped 12 cm short).
 	 */
 	constexpr double SpotGap = 15.;
+	/** Steps a gatherer stopped idle keeps settling after the first (J7a.6): a few looks undo what one leaves. */
+	constexpr uint8 StopSettleSteps = 10;
 	/**
 	 * Gap (cm) between two idle gatherers' bodies at their points in front of a full source, and between those points and
 	 * the gatherers' spots (D309): they never overlap, nor stand on a spot.
@@ -186,8 +188,9 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
-			// Settled at the last step's separation (D309).
-			Gathers[EntityIt].bSettling = false;
+			// Settled at the last step's separation (D309), or a few steps more once stopped (J7a.6).
+			Gathers[EntityIt].bSettling = Gathers[EntityIt].SettleSteps > 0;
+			Gathers[EntityIt].SettleSteps -= Gathers[EntityIt].SettleSteps > 0 ? 1 : 0;
 			if (!Gathers[EntityIt].IsGathering())
 			{
 				continue;
@@ -814,6 +817,7 @@ void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 	// UHOLUnitOrderProcessor): it looks once, as a walker, and parts from a unit it stands on (J5b.3: Peasants idle at the
 	// centre 29 cm apart once their berries were used up).
 	Gatherer.Gather.bSettling = true;
+	Gatherer.Gather.SettleSteps = UE::HeroesOfLiberty::Gather::StopSettleSteps;
 	Gatherer.Gather.Phase = EHOLGatherPhase::None;
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
 	Gatherer.Gather.bWalkIssued = false;
