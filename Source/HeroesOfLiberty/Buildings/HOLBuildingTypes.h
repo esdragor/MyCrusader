@@ -27,7 +27,7 @@ enum class EHOLConstructionState : uint8
 
 /**
  * What a building is for (D30, the user's trial of J6a.5): F1 selects the player's military buildings, F2 its economic
- * ones, F3 its technological ones. Every type of the prototype is economic (§ 17: centre, houses, camps).
+ * ones, F3 its technological ones. The centre, houses and camps are economic (§ 17), the Barracks military (J7-Q2).
  */
 UENUM()
 enum class EHOLBuildingCategory : uint8
@@ -98,9 +98,11 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 
 	/**
 	 * Its slot in the construction grid of the builders (D313), the grid of D30 read row by row: 0 = A, 1 = Z,
-	 * 2 = E, 3 = R, 4 = Q... -1: nobody builds it (the main centre comes with the map).
+	 * 2 = E, 3 = R, 4 = Q... -1: nobody builds it (the main centre comes with the map). From 12 (NumCells), the second
+	 * page (J7-Q2): its cell is BuildGridSlot - 12 (12 = A of the second page: the Barracks). Until J7a.2 opens that page,
+	 * no cell of the grid names it.
 	 */
-	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
+	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "23"))
 	int32 BuildGridSlot = INDEX_NONE;
 
 	bool IsBuildable() const { return BuildGridSlot != INDEX_NONE; }
@@ -203,4 +205,6 @@ namespace HOLBuildingTypeNames
 	inline const FName LumberCamp(TEXT("LumberCamp"));
 	/** Stone and gold deposit (D310). */
 	inline const FName MiningCamp(TEXT("MiningCamp"));
+	/** Military (J7-Q2): produces the Spearman and the Man-at-arms; on the second page of the Peasant's grid. */
+	inline const FName Barracks(TEXT("Barracks"));
 }

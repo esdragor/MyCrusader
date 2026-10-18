@@ -16,6 +16,9 @@ namespace UE::HeroesOfLiberty::Tests::Production
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	const FName Peasant(TEXT("Peasant"));
+	/** The soldiers of the Barracks (J7-Q2). */
+	const FName SpearmanType(TEXT("Spearman"));
+	const FName ManAtArmsType(TEXT("ManAtArms"));
 
 	/** 50 food, 4 steps, 1 place. */
 	FHOLProductionCost MakeCost()
@@ -118,7 +121,48 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("50 food (D283)"), Row->Cost == FHOLResources(50, 0, 0, 0));
 			TestEqual(TEXT("20 s (D283)"), Row->BuildTime, 20.f);
 			TestEqual(TEXT("one place"), Row->Population, 1);
+			TestEqual(TEXT("Peasant: its own armour category (J7-Q4)"), int32(Row->ArmorCategory), int32(EHOLArmorCategory::Peasant));
+			TestTrue(TEXT("Peasant: a weak attack (J7-Q4)"), Row->Attack > 0 && Row->Attack < 8);
+			TestEqual(TEXT("Peasant: takes on nobody by itself"), Row->AggressionRadius, 0.f);
 		}
+
+		// J7a.1 (J7-Q2, J7-Q4): the two soldiers of the Barracks and their combat values (AoE4-like, indicative).
+		const FHOLUnitTypeRow* Spearman = UnitTypes->FindRow<FHOLUnitTypeRow>(SpearmanType, TEXT("Production test"));
+		if (TestNotNull(TEXT("Spearman in the unit type table"), Spearman))
+		{
+			TestTrue(TEXT("Spearman: 60 food, 20 wood"), Spearman->Cost == FHOLResources(60, 20, 0, 0));
+			TestEqual(TEXT("Spearman: one place"), Spearman->Population, 1);
+			TestEqual(TEXT("Spearman: 80 health"), Spearman->MaxHealth, 80);
+			TestEqual(TEXT("Spearman: light infantry"), int32(Spearman->ArmorCategory), int32(EHOLArmorCategory::LightInfantry));
+			TestEqual(TEXT("Spearman: attack 8"), Spearman->Attack, 8);
+			TestEqual(TEXT("Spearman: bonus against cavalry"), int32(Spearman->BonusCategory), int32(EHOLArmorCategory::Cavalry));
+			TestEqual(TEXT("Spearman: +17"), Spearman->BonusDamage, 17);
+			TestTrue(TEXT("Spearman: a cadence, a melee reach, an aggression radius"),
+				Spearman->AttackInterval > 0.f && Spearman->AttackRange > 0.f && Spearman->AttackRange < 200.f && Spearman->AggressionRadius > 0.f);
+		}
+		const FHOLUnitTypeRow* ManAtArms = UnitTypes->FindRow<FHOLUnitTypeRow>(ManAtArmsType, TEXT("Production test"));
+		if (TestNotNull(TEXT("ManAtArms in the unit type table"), ManAtArms))
+		{
+			TestTrue(TEXT("Man-at-arms: 100 food, 20 gold"), ManAtArms->Cost == FHOLResources(100, 0, 0, 20));
+			TestEqual(TEXT("Man-at-arms: one place"), ManAtArms->Population, 1);
+			TestEqual(TEXT("Man-at-arms: 155 health"), ManAtArms->MaxHealth, 155);
+			TestEqual(TEXT("Man-at-arms: heavy infantry"), int32(ManAtArms->ArmorCategory), int32(EHOLArmorCategory::HeavyInfantry));
+			TestEqual(TEXT("Man-at-arms: attack 8"), ManAtArms->Attack, 8);
+			TestEqual(TEXT("Man-at-arms: melee armour 4"), ManAtArms->MeleeArmor, 4);
+			TestEqual(TEXT("Man-at-arms: ranged armour 4"), ManAtArms->RangedArmor, 4);
+			TestEqual(TEXT("Man-at-arms: no bonus"), ManAtArms->BonusDamage, 0);
+			TestTrue(TEXT("Man-at-arms: costs more than the Spearman"), Spearman && ManAtArms->Cost.Food > Spearman->Cost.Food);
+		}
+	}
+
+	const FHOLBuildingTypeRow* Barracks = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
+	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
+	{
+		TestEqual(TEXT("Barracks: military (F1, D30)"), int32(Barracks->Category), int32(EHOLBuildingCategory::Military));
+		TestTrue(TEXT("Barracks: produces the Spearman then the Man-at-arms"),
+			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType }));
+		TestEqual(TEXT("Barracks: gives no population"), Barracks->PopulationProvided, 0);
+		TestTrue(TEXT("Barracks: not a deposit"), Barracks->Accepts.IsEmpty());
 	}
 
 	const FHOLBuildingTypeRow* MainCentre = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);

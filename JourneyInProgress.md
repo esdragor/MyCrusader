@@ -84,6 +84,7 @@ vérifier sur S1 et S2.
 | J6b.2b Bâtiments rentrés dans leurs cases (D324) | **fait** (2026-10-17, **validée** à l'essai : « c'est bon », commitée) : forme visible à **90 %** des cases (`VisualInset=30`, choix de l'utilisateur après « trop grosses allées »), corps qui bloque rentré de **115 cm** (`BodyInset=115` : un Paysan mord ~30 cm dans le mur, « une épaule ») ; au premier essai, corps rentré de 105 cm (écart 2,1 m ; 90 cm fermait le passage), passage à la file et par l'écart ; tests 65/65 (`Construction.Body`), partie `build gap`, `quick_check` complet PASS en 364 s au réglage final ; A/B S2 / S7 sans surcoût (machine chargée) |
 | J6b.3 Vérification | **fait** (2026-10-18, **validée** à l'essai : « tout est bon », commitée) : `quick_check` complet PASS (311 s, 20 parties, tests 65/65) ; S7 avec camps d'abord FAIL (3,41 ms : `HOLBuildProcessor` 1 ms, affichage des chantiers dans le pas) → `RiseStepRatio`, pièces `QueryOnly`, puis **D325** (apparence des bâtiments hors du pas, aucune pièce sur le serveur dédié) ; **mesures de fin de J6** par le nouvel outil `chapter_measures.ps1` (7,4 min) : S1 2,37, **S2 2,995 (moyenne de 3, au seuil)**, S7 2,60 ms, S5 31 005 o/s, 22,9 cm, tous PASS. Avant : 1re boucle faite, partie **2 clients des camps** dans `quick_check` (`net` + `build`) : chaque client bâtit un camp de bûcherons près de son bois et y dépose, voit le camp de l'autre (reçu au premier coup, puis fini), le serveur refuse un camp sur un arbre (`hol.Build.PlaceAtSource`), stock de l'autre jamais reçu ; aucun code C++ ; `quick_check` complet 324 s : tout PASS (`net 2 clients` compris, tests 65/65) sauf `build cut` (solo, non touché : aléa à relancer) ; puis `build cut` revue (contrôles de remises réalignés, blocage au coin corrigé : nouveau chemin d'une unité tenue sur son chemin, `PathStuckSteps`), `quick_check` complet PASS (350 s) ; **S7 bâtit ses 24 camps pendant la mesure** (D314, `hol.StressTest.S7BuildCamps`), fermeture sans bruit, `AHOLMapBounds::Find` corrigé ; S7 court OK |
 | J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **fait** (2026-10-18) : lignes D310 à D314, D324, D325 au § 21 (précisées par ce qui a été fait : case de 3 m, fondation fantôme, camp → récolte, F1 / F2 / F3 et Tab, deux marges de D324…), paragraphe « Parcours J6 : la construction » au § 16.6, § 7.3 précisé (F1 / F2 / F3 : tous les bâtiments de la catégorie ; Tab), § 22 : numéro suivant **D326**. **J6 close.** |
+| J7a.1 Données et règles pures | **fait** (2026-10-18, commitée ; rien de visible en jeu) : `Simulation/HOLFormationRules` (largeurs Paysans / carré / mixte, largeur imposée, types par ligne, places, attribution sans croisement), les 9 scénarios de l'utilisateur reproduits ; colonnes de combat dans la table des unités (non lues), lignes `Spearman`, `ManAtArms`, `Barracks` (militaire, `BuildGridSlot` 12 = A de la 2e page) ; tests 69/69 (4 `Formation.*`, `*.Tables` étendus) |
 
 ## Prochaine étape exacte
 
@@ -191,8 +192,10 @@ vérifier sur S1 et S2.
    **J6b.3 faite, validée et commitée** (2026-10-18 ; journal « J6b.3 : vérification ») : D325 (apparence des bâtiments
    hors du pas), mesures de fin de J6 toutes PASS par `chapter_measures.ps1`, essai « tout est bon ».
    **J6b.4 faite, J6 close** (2026-10-18, journal « J6b.4 : clôture ») : D310 à D314, D324, D325 au GDD.
-   **Reprise : plan de J7** (déjà écrit, « Plan de J7 », mesures regroupées en J7c.4 par la règle des mesures) :
-   le relire avec l'utilisateur avant le code ; décisions à partir de **D326**.
+   **Plan de J7 relu avec l'utilisateur** (2026-10-18 : J7a validée, forme des rangs précisée, voir J7-Q3). S2 : sans
+   réponse de l'utilisateur, mesuré à la fin de J7 (règle des mesures). **J7a.1 faite** (2026-10-18). **Reprise : J7a.2**
+   (Caserne : seconde page de la grille du Paysan, page = case / 12, pose et chantier, production des deux soldats,
+   ralliement, F1 ; textes fr / en / ja), puis essai de l'utilisateur.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
       de la marge sur le mouvement avant la formation de J7 (J7a.4 touche ce code) ; à proposer à l'utilisateur.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -776,7 +779,8 @@ avant la clôture de J6**. Ce plan n'écrit que dans cette section ; le GDD (§ 
 
 **Numéros de décision : à attribuer à la clôture**, à la suite des derniers pris (au 2026-10-16, D318 à D323 sont pris
 par J5c et le numéro suivant du § 22 est **D324** ; J6b peut en prendre d'autres). Ci-dessous, les décisions sont notées
-**J7-Q1** à **J7-Q6**.
+**J7-Q1** à **J7-Q6**. Au 2026-10-18, **D326** est pris par les pièces allégées du LOD 3 (mycrusader-e3, précision de
+D323) : J7 numérotera à partir du numéro suivant du § 22 à sa clôture (D327 ou plus).
 
 Repères : D20 et D21 (socle commun, matrice de contres façon AoE4), D30 (groupes de contrôle, F1, Ctrl + A, grille),
 D62 (aucune unité anti-héros), D74 (moral : effets nommés, plus tard), D86 (cadavres : Légions, avec les factions),
@@ -835,6 +839,39 @@ la recommandation ; nuance de l'utilisateur : la formation simple s'applique aus
 - **Paysans** : la même formation remplace le tas serré de D287 pour **tout ordre de déplacement au sol** d'un groupe.
   **Inchangés** : les places de récolte (D309) et de chantier (D312), qui gardent leurs règles. Lecture à confirmer à
   l'essai.
+- **Forme des rangs** (règle de l'utilisateur, 2026-10-18, à la relecture du plan) :
+  - **Paysans** : **une seule ligne jusqu'à 5**, **deux lignes jusqu'à 10**, 15 → **6, 6, 3**, 20 → **7, 7, 6** : de
+    vraies lignes, plus larges que profondes. Règle générale déduite (à confirmer) : jusqu'à 5, une ligne ; au-delà,
+    largeur = ⌈√(2N)⌉ (6 → 4, 10 → 5, 15 → 6, 20 → 7, 30 → 8, 50 → 10), lignes remplies de l'avant vers l'arrière, la
+    dernière centrée.
+    **Les Paysans sont une exception** : leur règle ne sert pas aux soldats.
+  - **Soldats d'un seul type** (que des Lanciers) : **formation en carré** par défaut, largeur **⌈√N⌉** (confirmé :
+    12 → 4, 4, 4 ; 20 → 5 × 4).
+  - **Plusieurs types** (Lanciers et Hommes d'armes) : **formation en ligne**, chaque type à sa ligne selon une
+    **priorité de ligne par type** (le type prioritaire devant) ; exemple de l'utilisateur, 12 Hommes d'armes et 12
+    Lanciers : ligne 1 : 7 Lanciers ; ligne 2 : 2 Lanciers, 2 Hommes d'armes, 3 Lanciers (**voulu** : le type de
+    derrière au centre de la ligne partagée, celui de devant sur les ailes) ; ligne 3 : 5 Hommes d'armes ; ligne 4 :
+    5 Hommes d'armes. 12 Hommes d'armes et 12 Archers donnent la même chose. Formule générale (largeur, lignes du
+    dernier type) : **à trouver par des scénarios** soumis à l'utilisateur.
+  - **Scénarios dessinés par l'utilisateur** (2026-10-18 ; L Lancier, H Homme d'armes, A Archer, devant d'abord) :
+    10 L + 10 H → 5 L / 5 L / 5 H / 5 H ; 14 L + 5 H → 5 L / 5 L / 2 L 1 H 2 L / 4 H ; 7 L + 17 H → 7 L / 7 H / 5 H /
+    5 H ; 3 L + 21 H → 2 H 3 L 2 H / 7 H / 5 H / 5 H ; 8 L + 8 H + 8 A → 7 L / 1 L 6 H / 1 H 3 A 1 H / 5 A ; 3 L + 1 H →
+    3 L / 1 H ; 30 L + 30 H → 11 L / 11 L / 4 L 3 H 4 L / 9 H / 9 H / 9 H. Ordre de priorité lu : **L, puis H, puis A**.
+  - **Lecture proposée** (à confirmer) : la forme ne dépend que du nombre N ; **R = ⌊√N⌋ lignes**, largeurs **impaires**
+    (un soldat au milieu) : largeur moyenne N / R impaire → lignes égales ; paire → moitié devant à +1, moitié derrière
+    à −1 ; sinon la plus petite largeur impaire au-dessus, la dernière ligne plus courte. Remplissage par priorité,
+    de l'avant vers l'arrière, chaque ligne centrée ; dans une ligne partagée, **le type qui commence au centre, celui
+    qui finit sur les ailes** (première ligne : le type de devant au centre). Reproduit 6 scénarios sur 7 ; 60 soldats
+    donnerait 7 lignes (9 × 6 puis 6) au lieu des 6 dessinées (11, 11, 11, 9, 9, 9).
+  - 8e scénario de l'utilisateur : 20 L + 20 H → 9 L / 9 L / 1 L 6 H 1 L / 7 H / 7 H (ligne 3 corrigée par
+    l'utilisateur : 8 de large). Aile impaire : **le soldat en plus à gauche** (choix de l'utilisateur).
+  - **Formule retenue** (reproduit les 8 scénarios) : W = plus petit impair ≥ √N ; R = ⌊N / W⌋ lignes de W ; reste
+    e = N − R·W. e = 0 : R lignes de W. Si R ≥ 2 et e ≤ R : les ⌊e / 2⌋ premières lignes passent à W + 2 et, e impair,
+    la ligne suivante à W + 1. Sinon : une ligne de plus, de e, centrée. Exemples : 4 → 3 / 1 ; 19 → 5 / 5 / 5 / 4 ;
+    20 → 5 × 4 ; 24 → 7 / 7 / 5 / 5 ; 40 → 9 / 9 / 8 / 7 / 7 ; 60 → 11 / 11 / 11 / 9 / 9 / 9. **Confirmée** par les
+    dessins de l'utilisateur (2026-10-18).
+  - Le glisser du clic droit (orientation, largeur) reste prévu ; il remplace la largeur par défaut.
+- **F1** : depuis D313 (J6a.5), sélectionne **tous** les bâtiments militaires (appuis suivants : caméra sur le suivant).
 - L'**attaque**, l'**arrêt** et le **maintien de position** viennent en J7b, avec le combat.
 - Écartés : **groupes seuls, tas serré** (une armée qui arrive en vrac rend J7b moins lisible) ; **jeu complet façon
   AoE4** (patrouille, suivre, plusieurs formations : J7a s'allonge sans combat pour en profiter).
@@ -3708,3 +3745,30 @@ d'épée).
   hors du pas). § 16.6 : paragraphe « Parcours J6 : la construction » (mesures de fin de J6). § 7.3 : F1 / F2 / F3 et Tab
   précisés par D313. § 22 : D310 à D314, D324, D325 pris par la clôture de J6 ; numéro suivant **D326**.
 - **J6 close.** Reprise : **plan de J7**, à relire avec l'utilisateur ; S2 au seuil à lui proposer avant J7a.4.
+
+### 2026-10-18 — Plan de J7 relu ; J7a.1, 1re boucle : règles de la formation
+
+- Relecture du plan de J7 avec l'utilisateur : J7a validée ; **forme des rangs** précisée par 9 scénarios dessinés
+  (J7-Q3 : Paysans à part, carré pour un seul type, lignes par priorité pour plusieurs types, formule retenue) ; le côté
+  du soldat en plus sur une aile impaire est sans importance (gauche gardé). Animations des troupes ajoutées au
+  catalogue de `AnimationsInProgress.md` (bf294a7).
+- Sous-agent (coupé par la fin de la session précédente, repris) : `Simulation/HOLFormationRules.h/.cpp` (namespace
+  `HOLFormation` : `MakePeasantRows`, `MakeSquareRows`, `MakeMixedRows`, `MakeRowsOfWidth`, `PlaceKinds`, `MakePlaces`
+  — point visé au milieu du premier rang —, `AssignPlaces` — ordre latéral puis échanges qui raccourcissent ou
+  décroisent), `Tests/HOLFormationTests.cpp` (`Formation.Rows`, `.Kinds`, `.Places`, `.Assign` : 40 tirages jusqu'à 60
+  unités, aucun croisement). **9 scénarios sur 9** ; compilation sans avertissement ; **tests 69/69** (`quick_check
+  -Parts tests` PASS en 27 s). Non commité.
+- Reste pour J7a.4 : branchement dans l'ordre de groupe (Paysans compris, places de récolte et de chantier inchangées),
+  espacements, place dans un obstacle, glisser du clic droit, vitesse du plus lent, reprise de place ; coût
+  d'`AssignPlaces` (paires) à voir aux mesures de fin de J7.
+- **2e boucle** (sous-agent, ~5 min) : table des unités, enum `EHOLArmorCategory` (LightInfantry, HeavyInfantry, Ranged,
+  Cavalry, Siege, Peasant) et colonnes `ArmorCategory`, `Attack`, `AttackInterval` (s), `AttackRange` (cm, bord à bord),
+  `MeleeArmor`, `RangedArmor`, `BonusCategory`, `BonusDamage`, `AggressionRadius` (cm, 0 = seulement sur ordre), **non
+  lues** par la simulation (pas dans `FHOLUnitTypeConstants`). Valeurs indicatives (AoE4) : **Lancier** 80 PV, attaque
+  8 toutes les 1,875 s, +17 contre la cavalerie, armures 0 / 0, 60 nourriture + 20 bois, 15 s ; **Homme d'armes** 155 PV,
+  attaque 8 / 1,375 s, armures 4 / 4, 100 nourriture + 20 or, 22 s, 2,7 m/s ; **Paysan** attaque 3 / 2 s, aucune
+  agression ; types des stress tests remplis (Archer : portée 15 m, +5 contre l'infanterie légère). **Caserne**
+  (`Barracks`) : militaire, 3 × 3 cases, 6 m, 1 500 PV, 150 bois, 40 s, produit Lancier et Homme d'armes, file de 5 ;
+  `BuildGridSlot` **12** (hors de la grille actuelle ; J7a.2 : page = case / 12, case = case % 12, donc A de la 2e page).
+  Tables refaites par commandlet ; tests `Production.Tables`, `Construction.Tables`, `CommandGrid.Tables` étendus ;
+  compilation sans avertissement ; **tests 69/69**. Commitée (rien de visible en jeu).

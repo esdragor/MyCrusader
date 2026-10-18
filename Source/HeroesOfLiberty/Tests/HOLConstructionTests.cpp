@@ -288,6 +288,19 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(Name + TEXT(": 2 x 2 tiles (6 m)"), Row->Footprint, FVector2D(2.0 * Grid, 2.0 * Grid));
 		TestTrue(Name + TEXT(": smaller than the main centre"), MainCentre && Row->Footprint.X < MainCentre->Footprint.X);
 	}
+
+	// J7a.1 (J7-Q2): the Barracks, built like a house, on the second page of the Peasant's grid (A of that page).
+	const FHOLBuildingTypeRow* Barracks = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
+	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
+	{
+		TestTrue(TEXT("Barracks: built by Peasants"), Barracks->IsBuildable());
+		TestEqual(TEXT("Barracks: A of the second page (12), out of the first page (D313)"), Barracks->BuildGridSlot, 12);
+		TestEqual(TEXT("Barracks: 3 x 3 tiles (9 m)"), Barracks->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestTrue(TEXT("Barracks: 150 wood"), Barracks->Cost == FHOLResources(0, 150, 0, 0));
+		TestEqual(TEXT("Barracks: 40 s for one builder"), Barracks->BuildTime, 40.f);
+		TestEqual(TEXT("Barracks: 1 500 health"), Barracks->MaxHealth, 1500);
+		TestEqual(TEXT("Barracks: 6 m high"), Barracks->Height, 600.f);
+	}
 	return true;
 }
 

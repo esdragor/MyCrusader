@@ -13,6 +13,21 @@ class USkeletalMesh;
 class UStaticMesh;
 
 /**
+ * Armour category of a unit type (J7-Q4, D21): what the bonus damage of the others is aimed at (the Spearman's bonus
+ * against cavalry). Read by the combat of J7b, not yet by the simulation.
+ */
+UENUM()
+enum class EHOLArmorCategory : uint8
+{
+	LightInfantry,
+	HeavyInfantry,
+	Ranged,
+	Cavalry,
+	Siege,
+	Peasant,
+};
+
+/**
  * A sequence of a unit's animation provider for each of the four base resources (J5c.1): what it plays gathering each
  * one, or walking with a load of it. INDEX_NONE (-1): none, the unit plays its idle or walk instead. Written
  * "(Food=4,Wood=2,Stone=3,Gold=3)" in the table, like GatherRates.
@@ -342,6 +357,45 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	/** Load the unit carries before it walks to a deposit (J5, D296: 10; the Wheelbarrow of § 11 will raise it). */
 	UPROPERTY(EditAnywhere, Category = "Gathering", meta = (ClampMin = "0"))
 	int32 CarryCapacity = 0;
+
+	// Combat (J7-Q4, J7a.1): filled in the table, read by the combat of J7b (not yet in the shared fragment). Damage of a
+	// hit = Attack + BonusDamage if the target is of BonusCategory - the target's armour (melee or ranged), 1 at least.
+
+	/** Armour category (D21): what the others' bonus damage is aimed at. */
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	EHOLArmorCategory ArmorCategory = EHOLArmorCategory::LightInfantry;
+
+	/** Damage of one hit, before bonus and armour. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 Attack = 0;
+
+	/** Time (s) between two hits. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0.05", ForceUnits = "s"))
+	float AttackInterval = 1.5f;
+
+	/** Reach (cm) between the edges of the two bodies: a short one for a melee unit, a long one for a ranged unit. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float AttackRange = 50.f;
+
+	/** Taken off each melee hit received. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 MeleeArmor = 0;
+
+	/** Taken off each ranged hit received. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 RangedArmor = 0;
+
+	/** The category its bonus damage is aimed at (one pair for now); no bonus while BonusDamage is 0. */
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	EHOLArmorCategory BonusCategory = EHOLArmorCategory::LightInfantry;
+
+	/** Damage added to each hit on a unit of BonusCategory (the Spearman's +17 against cavalry). */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 BonusDamage = 0;
+
+	/** Radius (cm) within which the unit takes on an enemy it sees by itself (J7-Q4 riposte); 0: only when ordered. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float AggressionRadius = 0.f;
 
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };

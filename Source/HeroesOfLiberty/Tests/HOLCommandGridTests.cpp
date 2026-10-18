@@ -339,10 +339,17 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("three buildable types"), Context.Buildable.Num(), 3);
+	TestEqual(TEXT("four buildable types"), Context.Buildable.Num(), 4);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetCommand(Context, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetCommand(Context, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetCommand(Context, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
+	// The Barracks waits on the second page (slot 12, J7-Q2): no cell of the first page names it until J7a.2.
+	TestTrue(TEXT("the Barracks is buildable, slot 12"), Context.Buildable.Contains(TPair<FName, int32>(HOLBuildingTypeNames::Barracks, 12)));
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		TestFalse(*FString::Printf(TEXT("cell %d of the first page is not the Barracks"), Cell),
+			HOLCommandGrid::GetCommand(Context, Cell).TypeName == HOLBuildingTypeNames::Barracks);
+	}
 	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const TPair<FName, int32>& Type)
 	{
 		return Type.Key == HOLBuildingTypeNames::MainCentre;
