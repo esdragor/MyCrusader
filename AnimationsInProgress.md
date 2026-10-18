@@ -198,31 +198,26 @@ Règles :
 **J5c close** (2026-10-16 : D318 à D323 au § 21 du GDD, paragraphe « Parcours J5c » au § 16.6) ; J5c.1, J5c.2 et le
 bâtisseur de J6a.4 sont dans `main`.
 
-**1. Fait (2026-10-17, mycrusader-32)** : `main` avancé à 7595c81 avec l'accord de mycrusader-a5 (partie « anims » de
-`quick_check`, `hol.Units.AnimReport`, `stress_ab.ps1`, fusions de J6b.1 et J6b.2) ; `j5c-anims` = `main`.
+**Rien en cours (2026-10-18, mycrusader-e3).** Pièces allégées au LOD 3 closes : validées par l'utilisateur, dans `main`
+(dc451aa), D326 au GDD (journaux du 2026-10-17 et du 2026-10-18). Worktree `MyCrusader-J5c` propre, **`j5c-anims` =
+`main` (4d00135)**, binaires du worktree compilés à ce point.
 
-**2. Pièces allégées au LOD 3 : validées par l'utilisateur et commitées (dc451aa, `j5c-anims`, 2026-10-18)** , `main` avancé à dc451aa (accord de mycrusader-ec), **D326** au GDD (précision de D323). Point clos. Détail aux journaux du 2026-10-17 et du 2026-10-18. Passation d'origine :
-- But : récupérer une partie du **+1,2 ms de GPU** de S7 dû aux pièces (3,34 ms au repos, 2,15 avant J5c ; A/B : passe
-  de base +0,70 ms, passe de vitesses +0,42 ms ; les sommets des pièces passent le shader de sommets même repliés par
-  WPO). Le fil de jeu et les appels de dessin ne bougent pas.
-- Où : worktree `C:\Users\baudo\Documents\MyCrusader-J5c`, branche `j5c-anims` (d'abord remise au niveau de `main` si le
-  point 1 est fait). Le maillage est fait LOD par LOD par `Tools/Editor/make_peasant_mesh.py` (corps du même LOD de
-  `SKM_Mannequin_Classic` + toutes les pièces de `peasant_props.py` en pleine définition ; poids des LOD 1-3 transférés du
-  LOD 0). Pièces : +1 894 sommets / +940 triangles à chaque LOD, soit +7,5 % au LOD 0 et +81 % au LOD 3.
-- Pistes : une version simplifiée de chaque pièce pour les LOD 2-3 (boîtes au lieu de cylindres, moins de bûches, hotte
-  en une boîte), outils retirés au LOD 3 (les charges restent) ; mesurer d'abord la répartition des Paysans par LOD dans
-  S7 pour savoir quel LOD compte.
-- Vérifier : relecture de chaque LOD par le script, `quick_check` (partie « anims »), captures, puis **A/B S7** avec
-  `Tools/Tests/stress_ab.ps1` (côté A : un worktree détaché au commit de base, compilé, ou `MyCrusader-A` s'il est libre,
-  règle « Cohabitation » de `JourneyInProgress.md` ; côté B : le worktree J5c ; A B A B A B, annoncés aux autres
-  sessions ; trace Insights `-trace=cpu,gpu` si besoin). Puis essai de l'utilisateur (aspect de loin), commit, fusion.
+**Suivant : animations des troupes de J7** (demande de l'utilisateur du 2026-10-18), au rythme du parcours J7 mené dans
+`JourneyInProgress.md` (« Plan de J7 ») par une autre session — au 2026-10-18 J7a.1 faite, J7a.2 (Caserne) en cours :
+1. **J7a.3 Apparence des soldats** (la prochaine à démarrer, après ou en parallèle de J7a.2, à voir avec la session du
+   parcours) : pièces lance (Lancier, deux mains) et épée + bouclier (Homme d'armes) par script comme `peasant_props.py`,
+   couleur du joueur ; repos et marche armés (repos et marche de D234 repris, bras qui tiennent l'arme) ; maillages et
+   fournisseurs des soldats (aujourd'hui `TP_Mannequin_Classic`, repos 0 / marche 1), lignes de la table des unités.
+   Questions probables pour l'utilisateur : un maillage par type (comme `SKM_Peasant`) ou un maillage soldat commun
+   (pièce choisie par le 4e float, D323) ; tenue de la lance au repos et en marche.
+2. **J7b.5** : coup de lance, coup d'épée (boucles sur la cadence d'attaque), chute de l'unité mourante (~1 s, D224, D86).
+3. **J7c** : arc, tir à l'arc, repos et marche de l'Archer.
+4. **Attaque du Paysan** : seulement si « Les Paysans combattent-ils ? » (plan de J7) le décide, avant J7b.2.
 
-**3. Animations des troupes (J7, demande de l'utilisateur du 2026-10-18)** : il en faudra pour les soldats de J7 — voir
-les lignes « à faire » du catalogue : pièces et repos / marche armés du Lancier et de l'Homme d'armes (J7a.3), coups de
-lance et d'épée et chute de l'unité mourante (J7b.5), arc et tir de l'Archer (J7c), attaque du Paysan si les Paysans
-combattent. Même chaîne (poses en Python sur le mannequin, aperçus, commandlet), même worktree, une ligne de la table des
-unités par séquence ; l'essai de l'utilisateur juge chaque geste. Plan et étapes dans `JourneyInProgress.md` (« Plan de
-J7 »).
+Même chaîne (poses en Python sur le mannequin, aperçus, commandlet), même worktree (le remettre d'abord au niveau de
+`main` : `git merge --ff-only main` depuis le worktree), une ligne de la table des unités par séquence ; l'essai de
+l'utilisateur juge chaque geste ; prévenir les autres sessions (`ListAgents`) avant toute compilation ou lancement
+d'Unreal ; fusion dans `main` en avance rapide avec l'accord des sessions actives. Stress tests seulement à la fin de J7.
 
 Prochaines animations : à la demande des étapes de jeu, même chaîne, même worktree.
 
