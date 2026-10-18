@@ -180,7 +180,7 @@ Règles :
 | Repos chargé, nourriture | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryFood`, 11,333 s, 340 images, bassin et jambes de `A_SW_Idle`, panier contre le ventre, bras de la marche chargée, trois respirations) ; validée sur l'aperçu (2026-10-16) ; **branchée** (indice 8 de `TP_Peasant`, J5c.2c-d) ; validée en jeu, fusionnée dans `main` (fad246d) |
 | Repos chargé, bois | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryWood`, mêmes base et durée, main droite qui tient le fagot, bras gauche pendant) ; validée sur l'aperçu ; **branchée** (indice 9) ; validée en jeu, fusionnée dans `main` (fad246d) |
 | Repos chargé, pierre et or | Paysan | J5c.2 | **fabriquée** (`A_Peasant_IdleCarryStone`, mêmes base et durée, mains aux bretelles, penché en avant de ~10° de plus que debout) ; validée sur l'aperçu ; **branchée** (indice 10) ; validée en jeu, fusionnée dans `main` (fad246d) ; l'or prend celle-ci (avec la hotte d'or) |
-| Pièces visibles : hache, pioche, panier de baies, fagot, hottes de pierre et d'or | Paysan | J5c.2 | **dans le maillage** `SKM_Peasant` (J5c.2c-e) ; vues en jeu (captures `props_*.png`, planche `props_sheet.png`) ; essai de l'utilisateur validé, fusionnées dans `main` (fad246d) ; A/B S7 : GPU +1,06 ms (D323) ; piste : pièces allégées aux LOD 2-3 |
+| Pièces visibles : hache, pioche, panier de baies, fagot, hottes de pierre et d'or | Paysan | J5c.2 | **dans le maillage** `SKM_Peasant` (J5c.2c-e) ; vues en jeu (captures `props_*.png`, planche `props_sheet.png`) ; essai de l'utilisateur validé, fusionnées dans `main` (fad246d) ; A/B S7 : GPU +1,06 ms (D323) ; **pièces allégées au LOD 3** (966 sommets au lieu de 1 894, GPU S7 −0,49 ms), validées à l'essai le 2026-10-18, commitées dc451aa, dans `main` (D326) |
 | Pose au dépôt | Paysan | — | **abandonnée** (2026-10-16 : pas de geste, comme AoE4 ; le serveur ne s'arrête pas au dépôt) |
 | Repos, marche | toutes | M2 (D234) | empruntées au pack `CloseCombat` (épéiste) |
 | Bâtisseur (coup de marteau) + marteau | Paysan | J6a.4 | **fabriqué, branché, validé en jeu** (`A_Peasant_Build`, 1,333 s, deux coups ; marteau pièce 7 sur `ik_hand_gun` ; séquence 11 de `TP_Peasant` ; bâtisseur tourné vers son chantier) ; fusionné dans `main` (3b750bc) |
@@ -201,7 +201,7 @@ bâtisseur de J6a.4 sont dans `main`.
 **1. Fait (2026-10-17, mycrusader-32)** : `main` avancé à 7595c81 avec l'accord de mycrusader-a5 (partie « anims » de
 `quick_check`, `hol.Units.AnimReport`, `stress_ab.ps1`, fusions de J6b.1 et J6b.2) ; `j5c-anims` = `main`.
 
-**2. Pièces allégées au LOD 3 : faites et mesurées (GPU S7 −0,49 ms), non commitées ; reste l'essai de l'utilisateur** (jeu lancé depuis le worktree J5c, zoom maximal sur des Paysans chargés), puis commit sur `j5c-anims` (scripts + `SKM_Peasant.uasset`), avance rapide de `main` avec l'accord des sessions actives, D-numéro au GDD (précision de D323). Détail au journal du 2026-10-17. Passation d'origine :
+**2. Pièces allégées au LOD 3 : validées par l'utilisateur et commitées (dc451aa, `j5c-anims`, 2026-10-18)** , `main` avancé à dc451aa (accord de mycrusader-ec), **D326** au GDD (précision de D323). Point clos. Détail aux journaux du 2026-10-17 et du 2026-10-18. Passation d'origine :
 - But : récupérer une partie du **+1,2 ms de GPU** de S7 dû aux pièces (3,34 ms au repos, 2,15 avant J5c ; A/B : passe
   de base +0,70 ms, passe de vitesses +0,42 ms ; les sommets des pièces passent le shader de sommets même repliés par
   WPO). Le fil de jeu et les appels de dessin ne bougent pas.
@@ -843,3 +843,14 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
   prévenue. Reste : essai de l'utilisateur sur les pièces légères.
 - D324 commitée sur `main` par mycrusader-a5 (e3797f7, touche `quick_check.ps1`) : **avant le commit des pièces légères,
   refusionner `main` dans `j5c-anims`**, recompiler le worktree et repasser `quick_check`.
+
+### 2026-10-18 — Pièces allégées validées et commitées (session mycrusader-e3)
+
+- **Essai de l'utilisateur : pièces allégées validées.**
+- `j5c-anims` avancé en avance rapide jusqu'à `main` (7595c81 → bf294a7, J6b.3, J6b.4, clôture de J6 ; aucun fichier
+  commun avec les pièces allégées), worktree compilé (51 s), **`quick_check` complet PASS** en 328 s (tests 65/65,
+  « anims » PASS : chaque état montre sa séquence et sa pièce).
+- Commit **dc451aa** sur `j5c-anims` (`SKM_Peasant.uasset`, `peasant_props.py`, `make_peasant_mesh.py`,
+  `preview_animation.py`) ; **`main` avancé en avance rapide à dc451aa** (accord de mycrusader-ec, qui travaille sur J7a.1
+  dans la copie principale) ; **D326** au GDD (pièces allégées au LOD 3, précision de D323), prochain numéro D327.
+- `j5c-anims` = `main` : prêt pour les animations des troupes (point 3).
