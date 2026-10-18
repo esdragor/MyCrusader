@@ -76,7 +76,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 			FMath::Max(0, Cost.Gold - Stock.Gold));
 	}
 
-	/** What a building gives, for its tooltip (D313): « +10 population », « Dépôt : pierre, or ». */
+	/** What a building gives, for its tooltip (D313): « +10 population », « Dépôt : pierre, or », « Produit : Lancier, Homme d'armes ». */
 	FText GetBuildingEffect(const FHOLBuildingTypeRow* Type)
 	{
 		TArray<FText> Lines;
@@ -92,6 +92,15 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 				Names.Add(GetResourceNameInText(Resource));
 			}
 			Lines.Add(FText::Format(LOCTEXT("DepositEffect", "Dépôt : {0}"), FText::Join(LOCTEXT("ListSeparator", ", "), Names)));
+		}
+		if (Type && !Type->Produces.IsEmpty())
+		{
+			TArray<FText> Names;
+			for (const FName Unit : Type->Produces)
+			{
+				Names.Add(HOLGameNames::GetUnitName(Unit, nullptr));
+			}
+			Lines.Add(FText::Format(LOCTEXT("ProducesEffect", "Produit : {0}"), FText::Join(LOCTEXT("ListSeparator", ", "), Names)));
 		}
 		return FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines);
 	}

@@ -261,6 +261,12 @@ $GapP = @(-6000, 0)
 $GapQ = @(-6000, 600)
 $GapBuilders = @(-6000, -1500)
 $GapFrom = @(-7500, 300)
+# The barracks (J7a.2), solo: its middle on a tile's middle (3 x 3 tiles) behind slot 0's centre, north of house G; its
+# three builders made west of it; its rally point 18 m north-east; the soldiers then sent onto the vein of the cut part, then
+# back to the rally point (the anims part boxes Peasants beside that vein).
+$BarracksAt = @(-18150, 4050)
+$BarracksSpawn = @(-19500, 4050)
+$BarracksRally = @(-17000, 5400)
 $GapTo = @(-4500, 300)
 if ($Parts -contains "camera") {
     $First = $true
@@ -638,6 +644,36 @@ if ($Parts -contains "camera") {
                 "waitlog Placement ghost: House at ($($GapQ[0]), $($GapQ[1] + 600)) valid", "frames 3", "capture build_gap_houses"
             Key Escape
             Step "waitlog Placement: ended", "hol.Camera.Zoom -12"
+            # The barracks (J7a.2). Three Peasants made beside its spot, selected by a box: R on their grid (captured); the key R,
+            # the ghost, a click: they build it (4 times as fast). The barracks selected: Lancier on A, Homme d'armes on Z
+            # (captured); its rally point by a right click; A then Z (2 s each): both born, they walk to the rally point
+            # (captured). Both sent onto the stone vein: they walk there (they do not gather). F1: the barracks selected.
+            Step "mark build barracks", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20", "hol.Build.Speed 4",
+                "hol.Units.Spawn 3 $($BarracksSpawn -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BarracksSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($BarracksSpawn[0] - 400) $($BarracksSpawn[1] - 400) $($BarracksSpawn[0] + 400) $($BarracksSpawn[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3",
+                "hol.Camera.Focus $($BarracksAt -join ' ')", "frames 3", "hol.HUD.Report", "capture build_barracks_peasants"
+            Key R
+            Step "waitlog Placement ghost: Barracks at ($($BarracksAt -join ', ')) valid", "frames 3", "capture build_barracks_ghost", "hol.Build.Click",
+                "waitlog Build order of slot 0: 3 units to Barracks at ($($BarracksAt -join ', '))", "waitlog Construction: slot 0 finished Barracks at ($($BarracksAt -join ', '))",
+                "wait 1", "hol.Build.Speed 1", "hol.Build.Report", "hol.Camera.Focus $($BarracksAt[0]) $($BarracksAt[1] - 300)", "frames 3",
+                "hol.Select.ClickGround $($BarracksAt -join ' ')", "waitlog Selection: Barracks of slot 0 (own)", "frames 3", "hol.HUD.Report", "capture build_barracks_finished",
+                "hol.Camera.Focus $($BarracksRally -join ' ')", "frames 3", "hol.Select.OrderGround $($BarracksRally -join ' ')",
+                "waitlog Rally: slot 0 set the rally point of Barracks at (", "hol.Prod.BuildTime 2", "hol.Prod.Report"
+            Key A
+            Step "waitlog Production: Spearman of slot 0 done"
+            Key Z
+            Step "waitlog Production: ManAtArms of slot 0 done", "hol.Prod.BuildTime 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report", "frames 3", "capture build_barracks_soldiers"
+            Key Escape
+            Step "mark build barracks orders", "waitlog Selection: none",
+                "hol.Select.BoxGround $($BarracksRally[0] - 500) $($BarracksRally[1] - 500) $($BarracksRally[0] + 500) $($BarracksRally[1] + 500)", "waitlog Selection: 2 units (own)",
+                "hol.Camera.Focus $($CutVein[0]) $($CutVein[1] - 300)", "frames 3", "hol.Select.OrderSource $($CutVein -join ' ')", "waitlog units that do not work walk to", "wait 1",
+                "hol.Camera.Focus $($BarracksRally -join ' ')", "frames 3", "hol.Select.OrderGround $($BarracksRally -join ' ')", "wait 1"
+            Key Escape
+            Step "mark build barracks f1", "waitlog Selection: none", "hol.Camera.Focus 0 0", "frames 2"
+            Key F1
+            Step "waitlog Category Military: ", "frames 3", "hol.Select.Report", "hol.HUD.Report", "capture build_barracks_f1"
+            Key Escape
+            Step "waitlog Selection: none"
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
             # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
@@ -791,8 +827,8 @@ if ($NetListening) {
     }
 }
 
-# 420 s: the sequence takes ~285 s since J6b.2b (the build gap part), the start ~20 s.
-$GameTimedOut = -not $GameProcess.WaitForExit(420000)
+# 480 s: the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the barracks (J7a.2), the start ~20 s.
+$GameTimedOut = -not $GameProcess.WaitForExit(480000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
@@ -1260,13 +1296,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudTab = Get-Section "build hud tab"
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
-    $Checks["Peasants without wood: house, lumber camp, mining camp on A, Z, E, greyed ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid A=House greyed Z=LumberCamp greyed E=MiningCamp greyed, queue ")
+    $Checks["Peasants without wood: house, lumber camp, mining camp, barracks on A, Z, E, R, greyed ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Barracks greyed, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs; R: Caserne$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; R: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -1470,6 +1506,40 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("one", "two", "houses" | Where-Object { -not (Test-Path (Join-Path $Shots "build_gap_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build gap" $Checks) -and $AllOk
+
+    # J7a.2: the barracks.
+    $Barracks = @(Get-Section "build barracks" | ForEach-Object { $_ })
+    $BarracksOrders = @(Get-Section "build barracks orders" | ForEach-Object { $_ })
+    $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["the Peasants' grid: R = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; R: Caserne$") -and
+        [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "R=Barracks enabled")
+    $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
+    $Checks["the key R: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
+        [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
+    $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["the barracks selected: A Lancier, Z Homme d'armes ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
+        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes$")
+    # The ground point under the cursor, a few cm off the camera's focus (as the group's rally point of J6a.5).
+    $RallyAt = if ([string](& $Value $Barracks "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
+    $Checks["its rally point by a right click ($($RallyAt -join ', '))"] = ($RallyAt.Count -eq 2) -and ([Math]::Abs($RallyAt[0] - $BarracksRally[0]) -le 50) -and
+        ([Math]::Abs($RallyAt[1] - $BarracksRally[1]) -le 50)
+    $Born = @($Barracks | Select-String -Pattern "Production: (Spearman|ManAtArms) of slot 0 done" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["a Lancier and a Homme d'armes born ($($Born -join ', '))"] = ($Born -join ',') -eq "Spearman,ManAtArms"
+    $WhereLine = [string]($Barracks | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1)
+    $Soldiers = @{}
+    foreach ($M in [regex]::Matches([string]$WhereLine, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) { $Soldiers[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
+    $Last2 = @($Soldiers.Keys | Sort-Object | Select-Object -Last 2)
+    $Gaps = @($Last2 | ForEach-Object { [Math]::Round([Math]::Sqrt([Math]::Pow($Soldiers[$_][0] - $BarracksRally[0], 2) + [Math]::Pow($Soldiers[$_][1] - $BarracksRally[1], 2))) })
+    $Checks["both at the rally point, within 4 m ($($Gaps -join ', ') cm)"] = ($Gaps.Count -eq 2) -and (@($Gaps | Where-Object { $_ -le 400 }).Count -eq 2)
+    $Checks["both sent onto the vein: they walk there, no gather order"] = [bool]($BarracksOrders | Select-String -Pattern "Order of slot 0: 2 units that do not work walk to" -Quiet) -and
+        -not ($BarracksOrders | Select-String -Pattern "Gather order of slot 0" -Quiet)
+    $Checks["F1: the barracks selected"] = [bool]($BarracksF1 | Select-String -Pattern "Category Military: 1 buildings selected" -Quiet) -and
+        [bool]($BarracksF1 | Select-String -Pattern "Selection report: selected .*Barracks" -Quiet)
+    $Missing = @("peasants", "ghost", "finished", "soldiers", "f1" | Where-Object { -not (Test-Path (Join-Path $Shots "build_barracks_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build barracks" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

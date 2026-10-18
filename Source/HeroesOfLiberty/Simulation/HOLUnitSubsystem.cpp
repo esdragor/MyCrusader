@@ -494,8 +494,9 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 			const UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
 			// A rally point on a site not finished: they build it (the user's trial of J6a.4); a camp finished by then, they
 			// gather the nearest source it accepts, as its builders (D312, J6b.1); another site finished (or cancelled) by
-			// then, they walk to its ground point as to any other.
-			AHOLBuilding* Site = Request.BuildSite.Get();
+			// then, they walk to its ground point as to any other. Soldiers (who carry nothing: no worker, J7a.2) only walk there.
+			const bool bWorker = Constants.CarryCapacity > 0;
+			AHOLBuilding* Site = bWorker ? Request.BuildSite.Get() : nullptr;
 			double CampGap = 0.;
 			const int32 CampSource = Site && Site->IsFinished() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site, &CampGap) : INDEX_NONE;
 			if (Site && !Site->IsFinished())
@@ -513,7 +514,7 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 					BornIds.Num(), Request.OwnerPlayer, *Site->GetTypeName().ToString(), Location.X, Location.Y,
 					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Sources->GetSources()[CampSource].Resource)), CampSource, CampGap / 100.);
 			}
-			else if (Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
+			else if (bWorker && Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
 			{
 				Commands->IssueGatherOrder(BornIds, Request.GatherSource);
 			}

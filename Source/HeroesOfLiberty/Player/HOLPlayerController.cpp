@@ -2465,6 +2465,32 @@ void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitI
 	}
 }
 
+namespace
+{
+	/**
+	 * The units that neither gather nor build (CarryCapacity 0: the soldiers, J7a.2) taken out of an order to gather or to
+	 * build: they walk to its point instead (the user's choice, J7a.2), as a move order of the player's (D288).
+	 */
+	void SendNonWorkersTo(UWorld& World, UHOLCommandSubsystem& Commands, const int32 PlayerIndex, TArray<uint32>& InOutUnitIds, const FVector& Point)
+	{
+		TArray<uint32> Walkers;
+		for (int32 Index = InOutUnitIds.Num() - 1; Index >= 0; --Index)
+		{
+			FHOLUnitView View;
+			if (HOLUnitView::Find(World, InOutUnitIds[Index], View) && View.OwnerPlayer == PlayerIndex && View.CarryCapacity <= 0)
+			{
+				Walkers.Add(InOutUnitIds[Index]);
+				InOutUnitIds.RemoveAt(Index);
+			}
+		}
+		if (!Walkers.IsEmpty())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order of slot %d: %d units that do not work walk to (%.0f, %.0f)"), PlayerIndex, Walkers.Num(), Point.X, Point.Y);
+			Commands.IssueMoveOrder(Walkers, Point, PlayerIndex);
+		}
+	}
+}
+
 void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
 	// The order names the player: only its own units, on its own site (D288; checked again by the builders' step).
@@ -2472,8 +2498,14 @@ void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>&
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		TArray<uint32> Workers = UnitIds;
+		SendNonWorkersTo(*GetWorld(), *Commands, HOLPlayerState->GetPlayerIndex(), Workers, Building->GetActorLocation());
+		if (Workers.IsEmpty())
+		{
+			return;
+		}
 		FHOLBuildOrder Order;
-		Order.UnitIds = UnitIds;
+		Order.UnitIds = MoveTemp(Workers);
 		Order.Building = Building;
 		Order.PlayerIndex = HOLPlayerState->GetPlayerIndex();
 		Order.bQueue = bQueue;
@@ -2645,7 +2677,16 @@ void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
-		Commands->IssueGatherOrder(UnitIds, SourceIndex, HOLPlayerState->GetPlayerIndex(), bQueue);
+		TArray<uint32> Workers = UnitIds;
+		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+		if (Sources && Sources->GetSources().IsValidIndex(SourceIndex))
+		{
+			SendNonWorkersTo(*GetWorld(), *Commands, HOLPlayerState->GetPlayerIndex(), Workers, Sources->GetSources()[SourceIndex].Location);
+		}
+		if (!Workers.IsEmpty())
+		{
+			Commands->IssueGatherOrder(Workers, SourceIndex, HOLPlayerState->GetPlayerIndex(), bQueue);
+		}
 	}
 }
 

@@ -3,4 +3,4 @@ MainCentre,Centre principal,"(X=1200.0,Y=1200.0)",1000,2400,,10,"(""Peasant"")",
 House,Maison,"(X=600.0,Y=600.0)",400,600,,10,,1,,"(Food=0,Wood=50,Stone=0,Gold=0)",20,0,Economic
 LumberCamp,Camp de bûcherons,"(X=600.0,Y=600.0)",400,1000,,0,,1,"(Wood)","(Food=0,Wood=100,Stone=0,Gold=0)",25,1,Economic
 MiningCamp,Camp de mineurs,"(X=600.0,Y=600.0)",400,1000,,0,,1,"(Stone,Gold)","(Food=0,Wood=100,Stone=0,Gold=0)",25,2,Economic
-Barracks,Caserne,"(X=900.0,Y=900.0)",600,1500,,0,"(""Spearman"",""ManAtArms"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",40,12,Military
+Barracks,Caserne,"(X=900.0,Y=900.0)",600,1500,,0,"(""Spearman"",""ManAtArms"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",40,3,Military

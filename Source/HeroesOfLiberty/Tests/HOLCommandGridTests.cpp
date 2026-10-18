@@ -335,7 +335,8 @@ bool FHOLCommandGridDistributionTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridTablesTest, "HeroesOfLiberty.CommandGrid.Tables", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 {
-	// The builders' grid of the table (D313): A house, Z lumber camp, E mining camp; the centre is nobody's to build.
+	// The builders' grid of the table (D313): A house, Z lumber camp, E mining camp, R barracks (J7a.2: no military page,
+	// the pages come later by age); the centre is nobody's to build.
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
@@ -343,12 +344,37 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetCommand(Context, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetCommand(Context, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetCommand(Context, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
-	// The Barracks waits on the second page (slot 12, J7-Q2): no cell of the first page names it until J7a.2.
-	TestTrue(TEXT("the Barracks is buildable, slot 12"), Context.Buildable.Contains(TPair<FName, int32>(HOLBuildingTypeNames::Barracks, 12)));
-	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	TestTrue(TEXT("R: barracks"), HOLCommandGrid::GetCommand(Context, 3).TypeName == HOLBuildingTypeNames::Barracks);
+	TestTrue(TEXT("R: a build command"), HOLCommandGrid::GetCommand(Context, 3).Command == EHOLGridCommand::Build);
+	for (int32 Cell = 4; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
-		TestFalse(*FString::Printf(TEXT("cell %d of the first page is not the Barracks"), Cell),
-			HOLCommandGrid::GetCommand(Context, Cell).TypeName == HOLBuildingTypeNames::Barracks);
+		TestTrue(*FString::Printf(TEXT("cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Context, Cell).IsNone());
+	}
+
+	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms once finished; a site produces nothing, Q cancels it.
+	const FHOLBuildingTypeRow* BarracksType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
+	if (TestNotNull(TEXT("Barracks in the building type table"), BarracksType))
+	{
+		FHOLGridContext Barracks;
+		Barracks.bOwnBuilding = true;
+		Barracks.bBuildingFinished = true;
+		Barracks.Produces = BarracksType->Produces;
+		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Barracks, 0);
+		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Barracks, 1);
+		TestTrue(TEXT("Barracks, A: produce a Spearman"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Spearman")));
+		TestTrue(TEXT("Barracks, Z: produce a Man-at-arms"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("ManAtArms")));
+		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		{
+			TestTrue(*FString::Printf(TEXT("Barracks, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Barracks, Cell).IsNone());
+		}
+		Barracks.bBuildingFinished = false;
+		for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+		{
+			const FHOLGridCommand Command = HOLCommandGrid::GetCommand(Barracks, Cell);
+			TestTrue(*FString::Printf(TEXT("Barracks site, cell %d: no production"), Cell), Command.Command != EHOLGridCommand::Produce);
+		}
+		TestTrue(TEXT("Barracks site: the cancel cell cancels it"),
+			HOLCommandGrid::GetCommand(Barracks, HOLCommandGrid::CancelCell).Command == EHOLGridCommand::CancelConstruction);
 	}
 	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const TPair<FName, int32>& Type)
 	{

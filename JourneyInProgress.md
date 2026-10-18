@@ -85,6 +85,7 @@ vérifier sur S1 et S2.
 | J6b.3 Vérification | **fait** (2026-10-18, **validée** à l'essai : « tout est bon », commitée) : `quick_check` complet PASS (311 s, 20 parties, tests 65/65) ; S7 avec camps d'abord FAIL (3,41 ms : `HOLBuildProcessor` 1 ms, affichage des chantiers dans le pas) → `RiseStepRatio`, pièces `QueryOnly`, puis **D325** (apparence des bâtiments hors du pas, aucune pièce sur le serveur dédié) ; **mesures de fin de J6** par le nouvel outil `chapter_measures.ps1` (7,4 min) : S1 2,37, **S2 2,995 (moyenne de 3, au seuil)**, S7 2,60 ms, S5 31 005 o/s, 22,9 cm, tous PASS. Avant : 1re boucle faite, partie **2 clients des camps** dans `quick_check` (`net` + `build`) : chaque client bâtit un camp de bûcherons près de son bois et y dépose, voit le camp de l'autre (reçu au premier coup, puis fini), le serveur refuse un camp sur un arbre (`hol.Build.PlaceAtSource`), stock de l'autre jamais reçu ; aucun code C++ ; `quick_check` complet 324 s : tout PASS (`net 2 clients` compris, tests 65/65) sauf `build cut` (solo, non touché : aléa à relancer) ; puis `build cut` revue (contrôles de remises réalignés, blocage au coin corrigé : nouveau chemin d'une unité tenue sur son chemin, `PathStuckSteps`), `quick_check` complet PASS (350 s) ; **S7 bâtit ses 24 camps pendant la mesure** (D314, `hol.StressTest.S7BuildCamps`), fermeture sans bruit, `AHOLMapBounds::Find` corrigé ; S7 court OK |
 | J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **fait** (2026-10-18) : lignes D310 à D314, D324, D325 au § 21 (précisées par ce qui a été fait : case de 3 m, fondation fantôme, camp → récolte, F1 / F2 / F3 et Tab, deux marges de D324…), paragraphe « Parcours J6 : la construction » au § 16.6, § 7.3 précisé (F1 / F2 / F3 : tous les bâtiments de la catégorie ; Tab), § 22 : numéro suivant **D326**. **J6 close.** |
 | J7a.1 Données et règles pures | **fait** (2026-10-18, commitée ; rien de visible en jeu) : `Simulation/HOLFormationRules` (largeurs Paysans / carré / mixte, largeur imposée, types par ligne, places, attribution sans croisement), les 9 scénarios de l'utilisateur reproduits ; colonnes de combat dans la table des unités (non lues), lignes `Spearman`, `ManAtArms`, `Barracks` (militaire, `BuildGridSlot` 12 = A de la 2e page) ; tests 69/69 (4 `Formation.*`, `*.Tables` étendus) |
+| J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
 
 ## Prochaine étape exacte
 
@@ -193,9 +194,12 @@ vérifier sur S1 et S2.
    hors du pas), mesures de fin de J6 toutes PASS par `chapter_measures.ps1`, essai « tout est bon ».
    **J6b.4 faite, J6 close** (2026-10-18, journal « J6b.4 : clôture ») : D310 à D314, D324, D325 au GDD.
    **Plan de J7 relu avec l'utilisateur** (2026-10-18 : J7a validée, forme des rangs précisée, voir J7-Q3). S2 : sans
-   réponse de l'utilisateur, mesuré à la fin de J7 (règle des mesures). **J7a.1 faite** (2026-10-18). **Reprise : J7a.2**
-   (Caserne : seconde page de la grille du Paysan, page = case / 12, pose et chantier, production des deux soldats,
-   ralliement, F1 ; textes fr / en / ja), puis essai de l'utilisateur.
+   réponse de l'utilisateur, mesuré à la fin de J7 (règle des mesures). **J7a.1 faite** (2026-10-18). **Pages de la grille du Paysan** (choix de l'utilisateur, 2026-10-18 ; *précise D313*,
+   qui prévoyait une seconde page pour les bâtiments militaires) : **pas de page militaire** ; les pages viendront **par
+   palier, comme les âges d'AoE4** ; pour l'instant la Caserne prend une case libre de la page actuelle : **R**
+   (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **Reprise : J7a.3** (apparence des soldats : lance ; épée et
+   bouclier ; repos et marche armés, voir le catalogue de `AnimationsInProgress.md`) ; la partie 2 clients de la Caserne
+   attend J7a.6.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
       de la marge sur le mouvement avant la formation de J7 (J7a.4 touche ce code) ; à proposer à l'utilisateur.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -965,7 +969,7 @@ groupes de contrôle et les déplace en rangs ; ses Paysans aussi marchent en ra
 
 **J7c — Le tir** : à la fin, des Archers sortent de la Caserne et tirent ; S4 tient.
 
-1. **J7c.1 Archer** : ligne de la table (portée, projectile), production à la Caserne, accessoire (arc).
+1. **J7c.1 Archer** : ligne de la table (vitesse : référence **1,25** donnée par l'utilisateur le 2026-10-18, × 1,098214 = **1,373**, soit **584 cm/s** ; portée, projectile), production à la Caserne, accessoire (arc).
 2. **J7c.2 Tir** : projectile simulé au serveur (vol à durée fixe, dégât à l'arrivée, peut manquer une cible qui
    bouge), affiché chez le client sans envoi par flèche (déduit de l'activité « attaque » et de la cible). *Lecture à
    confirmer avant le code.*
@@ -3772,3 +3776,36 @@ d'épée).
   `BuildGridSlot` **12** (hors de la grille actuelle ; J7a.2 : page = case / 12, case = case % 12, donc A de la 2e page).
   Tables refaites par commandlet ; tests `Production.Tables`, `Construction.Tables`, `CommandGrid.Tables` étendus ;
   compilation sans avertissement ; **tests 69/69**. Commitée (rien de visible en jeu).
+
+### 2026-10-18 — J7a.2 : la Caserne
+
+- Choix de l'utilisateur : **pas de page militaire** dans la grille du Paysan ; pages **par palier** (âges d'AoE4) plus
+  tard ; la Caserne sur **R** (`BuildGridSlot` 3).
+- **1re boucle** (sous-agent, ~14 min, non commitée) : `BuildingTypes.csv` (R), table refaite ; grille du Paysan A / Z /
+  E / R ; Caserne finie : **A Lancier, Z Homme d'armes** (index dans `Produces`, comme le centre), inachevée : seulement
+  « Annuler » ; infobulle « Produit : Lancier, Homme d'armes » (`ProducesEffect`) ; textes fr / en / ja (Caserne /
+  Barracks / 兵舎, Lancier / Spearman / 槍兵, Homme d'armes / Man-at-Arms / 重装歩兵 ; 157 textes) ; **correctif** :
+  un soldat né avec un ralliement sur un chantier ou une source n'y bâtit ni n'y récolte, il marche au point (seuls
+  les travailleurs, `CarryCapacity > 0`). Pose, chantier, file, naissance, ralliement et F1 : génériques depuis J6,
+  vérifiés à la lecture. Compilation sans avertissement, **tests 69/69** ; `quick_check -Parts tests` FAIL sur
+  « sequence » : jeu bloqué à la fermeture (nettoyage du cache de données dérivées), à confirmer.
+- 2e boucle lancée : ordre d'un soldat sur une source ou un chantier côté serveur, parties `build barracks` (solo) et
+  2 clients de `quick_check`, `quick_check` complet.
+- **2e boucle** (sous-agent, non commitée) : un soldat envoyé sur une source ou un chantier était **refusé** par le
+  serveur (rien ne se passait) → `SendNonWorkersTo` (`HOLPlayerController.cpp`) : les unités qui ne travaillent pas
+  marchent vers la source ou le chantier (`Order of slot N: K units that do not work walk to (x, y)`). Partie
+  **`build barracks`** solo de `quick_check` (R, pose, bâtie, grille A Lancier / Z Homme d'armes, ralliement, les deux
+  nés et au ralliement, soldats sur un filon : marche sans récolte, F1 ; 5 captures) ; `build hud` revu pour R ; délai
+  du jeu 420 → 480 s. `quick_check` complet : 1re course FAIL (ralliement à 24 cm du point attendu), 2e FAIL (soldats
+  laissés près du filon de la partie `anims`), corrigés ; **3e PASS en 347 s**, toutes les parties, tests 69/69 ;
+  blocage à la fermeture de la 1re boucle **non revu**. Reste : partie 2 clients de la Caserne. Caserne dessinée en
+  bloc à la couleur du joueur (pas de forme propre).
+- Session d'essai lancée (deuxième écran) : **essai de J7a.2**.
+- **Essai de J7a.2** : « troupes extrêmement lentes ». **Vitesses de la fiche des unités** (règle de l'utilisateur) :
+  **Paysan 1,41** (sa vitesse actuelle, 600 cm/s, D290), **Lancier 1,37**, **Homme d'armes 1,23** ; échelle : 1 = 600 /
+  1,41 ≈ 425,5 cm/s. Table des unités (cm/s) : Lancier 300 → **583**, Homme d'armes 270 → **523** ; cadence de la marche
+  à proportion (1,22 → 2,37 ; 1,1 → 2,13 ; pied qui ne glisse pas, D234). Table refaite (commandlet, 0 erreur), tests 69/69 ; session d'essai relancée.
+- **Règle des vitesses** (utilisateur, 2026-10-18, permanente) : pour chaque nouveau type d'unité (Archer en J7c,
+  cavalerie, héros…), **demander à l'utilisateur sa vitesse de référence** et appliquer **× 1,098214** (1,29 → ~1,41) ;
+  ne jamais deviner une vitesse.
+- **Essai validé** (« c'est bon ») avec les vitesses de la fiche ; commitée. Reprise : **J7a.3**.

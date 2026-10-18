@@ -11,9 +11,19 @@ namespace HOLGameNames
 	FText GetUnitName(const FName TypeName, const FHOLUnitTypeRow* Row)
 	{
 		static const FName Peasant(TEXT("Peasant"));
+		static const FName Spearman(TEXT("Spearman"));
+		static const FName ManAtArms(TEXT("ManAtArms"));
 		if (TypeName == Peasant)
 		{
 			return LOCTEXT("Peasant", "Paysan");
+		}
+		if (TypeName == Spearman)
+		{
+			return LOCTEXT("Spearman", "Lancier");
+		}
+		if (TypeName == ManAtArms)
+		{
+			return LOCTEXT("ManAtArms", "Homme d'armes");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
@@ -39,6 +49,10 @@ namespace HOLGameNames
 		if (TypeName == HOLBuildingTypeNames::MiningCamp)
 		{
 			return LOCTEXT("MiningCamp", "Camp de mineurs");
+		}
+		if (TypeName == HOLBuildingTypeNames::Barracks)
+		{
+			return LOCTEXT("Barracks", "Caserne");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{

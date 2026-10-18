@@ -98,11 +98,10 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 
 	/**
 	 * Its slot in the construction grid of the builders (D313), the grid of D30 read row by row: 0 = A, 1 = Z,
-	 * 2 = E, 3 = R, 4 = Q... -1: nobody builds it (the main centre comes with the map). From 12 (NumCells), the second
-	 * page (J7-Q2): its cell is BuildGridSlot - 12 (12 = A of the second page: the Barracks). Until J7a.2 opens that page,
-	 * no cell of the grid names it.
+	 * 2 = E, 3 = R (the Barracks, J7a.2), 4 = Q... -1: nobody builds it (the main centre comes with the map). One page
+	 * for now: the pages come later, by age (AoE4).
 	 */
-	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "23"))
+	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
 	int32 BuildGridSlot = INDEX_NONE;
 
 	bool IsBuildable() const { return BuildGridSlot != INDEX_NONE; }
@@ -205,6 +204,6 @@ namespace HOLBuildingTypeNames
 	inline const FName LumberCamp(TEXT("LumberCamp"));
 	/** Stone and gold deposit (D310). */
 	inline const FName MiningCamp(TEXT("MiningCamp"));
-	/** Military (J7-Q2): produces the Spearman and the Man-at-arms; on the second page of the Peasant's grid. */
+	/** Military (J7-Q2): produces the Spearman and the Man-at-arms; on R of the Peasant's grid (J7a.2). */
 	inline const FName Barracks(TEXT("Barracks"));
 }
