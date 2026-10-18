@@ -12,6 +12,8 @@
   /Game/Input/IA_TechnologicalBuildings            the same for its technological buildings (F3); F4 (the hero) comes with the heroes
   /Game/Input/IA_NextSubgroup                      the next subgroup of a group of buildings (Tab, the user's 2nd trial of J6a.5)
   /Game/Input/IA_Grid_00 to IA_Grid_11             the cells of the command grid, A Z E R / Q S D F / W X C V (D30, J3)
+  /Game/Input/IA_Group_0 to IA_Group_9             the control groups (D30, J7a.5): the digit keys of the top row (QWERTY and
+                                                   AZERTY names) and the keypad's; Ctrl, Shift, Ctrl + Shift read by the controller
   /Game/Input/IMC_Game                             their keys, added by the match controller (AHOLPlayerController)
 
 Re-running the script refreshes the mappings of IMC_Game and keeps the actions.
@@ -48,6 +50,14 @@ ACTIONS = {
 GRID_KEYS = ["A", "Z", "E", "R", "Q", "S", "D", "F", "W", "X", "C", "V"]
 for cell, key in enumerate(GRID_KEYS):
     ACTIONS["IA_Grid_%02d" % cell] = (BOOLEAN, [key])
+# Control groups (D30, J7a.5): the engine names a character key after its unshifted character on the player's layout, so
+# the top row's key of a digit is One..Zero on QWERTY and & é " ' ( - è _ ç à on AZERTY (Shift held or not: the
+# controller reads Shift and Ctrl itself, never the character); the keypad's digits too.
+QWERTY_DIGITS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
+AZERTY_DIGITS = ["A_AccentGrave", "Ampersand", "E_AccentAigu", "Quote", "Apostrophe", "LeftParantheses", "Hyphen",
+                 "E_AccentGrave", "Underscore", "C_Cedille"]
+for digit in range(10):
+    ACTIONS["IA_Group_%d" % digit] = (BOOLEAN, [QWERTY_DIGITS[digit], AZERTY_DIGITS[digit], "NumPad" + QWERTY_DIGITS[digit]])
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 

@@ -124,6 +124,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLQueueItem> IdleWorkers;
 
+	/** The control groups' bar (J7a.5, D30), bottom left: one slot per group not empty, 1 to 9 then 0. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UBorder> GroupsPanel;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> SelectionPanel;
 
@@ -225,6 +229,16 @@ private:
 	/** The idle workers' counter, written when their number changed. */
 	void RefreshIdleWorkers();
 	void HandleIdleWorkersClicked();
+	/**
+	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not
+	 * empty, its digit and number, its types in the tooltip; the group just selected lit briefly. Logs « HUD groups: ... »
+	 * when what it shows changed.
+	 */
+	void RefreshControlGroups(float DeltaSeconds);
+	/** A slot clicked: the group selected, as its key (twice quickly: the camera goes to it). */
+	void HandleGroupSlotClicked(int32 Group);
+	/** A slot's widget name, ControlGroup0 to ControlGroup9 (hol.HUD.Click). */
+	static FName GroupSlotName(int32 Group);
 	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, bool bOwnGroup, const AHOLPlayerState* PlayerState);
 	void RefreshQueue(const AHOLBuilding* OwnBuilding);
@@ -253,6 +267,17 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLQueueItem>> QueueItems;
+
+	/** The control groups' slots, by group (0 to 9). */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHOLQueueItem>> GroupSlots;
+	/** What each slot shows (its number of units, « b » and its buildings; empty: hidden) and the line logged of it. */
+	TArray<FString> ShownGroups;
+	FString ShownGroupsLine;
+	float SinceGroupsRefresh = 1.f;
+	/** The group lit (just selected) and since when (real time). */
+	int32 LitGroup = INDEX_NONE;
+	double LitGroupTime = -1.0;
 
 	TWeakObjectPtr<AHOLPlayerController> Controller;
 	TWeakObjectPtr<AHOLPlayerState> BoundPlayerState;

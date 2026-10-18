@@ -235,6 +235,33 @@ public:
 	void SelectBuildingCategory(EHOLBuildingCategory Category);
 
 	/**
+	 * Control groups (D30, J7a.5), 1 to 9 and 0, kept on this machine only, as the selection they come from (D262): the
+	 * server needs none, every order still names its units. A group holds the player's own units (identifiers, D223) or
+	 * its own buildings, one kind at a time, as the selection; dead units and buildings gone drop out when it is read.
+	 */
+	static constexpr int32 NumControlGroups = 10;
+	/**
+	 * The digit: the group replaces the selection; pressed again within ControlGroupDoublePress seconds, the camera goes
+	 * to its centroid as well (F1's camera move). An empty group changes nothing.
+	 */
+	void SelectControlGroup(int32 Group);
+	/**
+	 * Shift + digit: the group made of the selection's own units (or buildings) when empty, otherwise the selection added
+	 * to it; another kind than the group's replaces it. Ctrl + digit alone does nothing (the user's trial of J7a.5).
+	 */
+	void AddToControlGroup(int32 Group);
+	/** Ctrl + Shift + digit: the selection's own units and buildings leave the group. */
+	void RemoveFromControlGroup(int32 Group);
+	/** The group's members still here: units (identifiers) and buildings; false when it is empty. */
+	bool GetControlGroup(int32 Group, TArray<uint32>& OutUnits, TArray<AHOLBuilding*>& OutBuildings) const;
+	/** Ctrl + A (D30): all the player's soldiers known here (every unit type but the Peasant), no building. */
+	void SelectArmy();
+	/** Two presses of a group's key this close (s, real time): the camera goes to the group. */
+	static constexpr double ControlGroupDoublePress = 0.3;
+	/** The group last selected (its key, a click on its slot or the command), INDEX_NONE before any, and when (real time). */
+	int32 GetLastSelectedGroup(double& OutTime) const { OutTime = LastGroupSelectTime; return LastSelectedGroup; }
+
+	/**
 	 * Placement mode (J6a.3, D311) for a type the builders build (the Peasant's grid of J6a.5 starts it; a development
 	 * command meanwhile): the ghost follows the cursor until a click places it or Escape / a right click ends it.
 	 */
@@ -374,6 +401,12 @@ private:
 	/** Logs and broadcasts a command's feedback (OnCommandFeedback). */
 	void NotifyFeedback(const FHOLCommandFeedback& Feedback);
 	void HandleGridKey(const FInputActionValue& Value, int32 Cell);
+	/** A control group's digit key (IA_Group_N): Ctrl, Shift or both read here, never the character the layout gives. */
+	void HandleGroupKey(const FInputActionValue& Value, int32 Group);
+	/** The selection's own units and own buildings (the group keys' source). */
+	void GetOwnSelectionForGroup(TArray<uint32>& OutUnits, TArray<AHOLBuilding*>& OutBuildings) const;
+	bool IsCtrlHeld() const;
+	bool IsShiftHeld() const;
 	/** The ghost under the cursor, its colour checked again (placement mode, every frame). */
 	void UpdatePlacementGhost();
 
@@ -487,6 +520,20 @@ private:
 
 	/** The « +10 » showing (J5c.3), MaxDepositPopups at most. */
 	TArray<FShownDepositPopup> DepositPopups;
+
+	/** A control group (J7a.5): the player's own units, or its own buildings, never both. */
+	struct FControlGroup
+	{
+		TArray<uint32> Units;
+		TArray<TWeakObjectPtr<AHOLBuilding>> Buildings;
+	};
+	FControlGroup ControlGroups[NumControlGroups];
+	/** The last group selected by its key and when (real time): a press again soon centres the camera. */
+	int32 LastGroupPressed = INDEX_NONE;
+	double LastGroupPressTime = -1.0;
+	/** The group last selected, double press or not (the HUD lights its slot). */
+	int32 LastSelectedGroup = INDEX_NONE;
+	double LastGroupSelectTime = -1.0;
 
 	/** Placement mode (J6a.3): the type placed, None outside the mode; the ghost under the cursor and its colour. */
 	FName PlacementType;

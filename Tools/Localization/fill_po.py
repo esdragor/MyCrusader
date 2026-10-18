@@ -131,6 +131,8 @@ TRANSLATIONS = {
     "HOLGameScreen,ActivityWithLoad": ("{0} — {1} {2}/{3}", "{0} — {1} {2}/{3}"),
     "HOLGameScreen,GathererCount": ("({0})", "（{0}）"),
     "HOLGameScreen,IdleWorkers": ("Idle: {0}", "待機中：{0}"),
+    "HOLGameScreen,ControlGroupSlot": ("{0} · {1}", "{0} · {1}"),
+    "HOLGameScreen,ControlGroupTooltip": ("Group {0}", "グループ{0}"),
     "HOLGameScreen,GroupGathering": ("{0} gathering", "採集中 {0}"),
     "HOLGameScreen,GroupMoving": ("{0} walking", "移動中 {0}"),
     "HOLGameScreen,GroupIdle": ("{0} idle", "待機中 {0}"),

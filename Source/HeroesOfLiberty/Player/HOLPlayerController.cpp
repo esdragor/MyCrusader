@@ -429,6 +429,57 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** The control groups' keys (D30, J7a.5), without the keyboard. */
+	FAutoConsoleCommand GroupCommand(
+		TEXT("hol.Select.Group"),
+		TEXT("hol.Select.Group <Select|Add|Remove|Double> <0-9>: as the digit, Shift + digit (creates the group when empty), Ctrl + Shift + digit; Double, the digit pressed twice (the camera to the group)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Group = Args.Num() >= 2 && Args[1].IsNumeric() ? FCString::Atoi(*Args[1]) : INDEX_NONE;
+			if (Group < 0 || Group >= AHOLPlayerController::NumControlGroups)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Group <Select|Add|Remove|Double> <0-9>"));
+				return;
+			}
+			const FString& Mode = Args[0];
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (Mode == TEXT("Add"))
+				{
+					Controller->AddToControlGroup(Group);
+				}
+				else if (Mode == TEXT("Remove"))
+				{
+					Controller->RemoveFromControlGroup(Group);
+				}
+				else if (Mode == TEXT("Select"))
+				{
+					Controller->SelectControlGroup(Group);
+				}
+				else if (Mode == TEXT("Double"))
+				{
+					Controller->SelectControlGroup(Group);
+					Controller->SelectControlGroup(Group);
+				}
+				else
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Group <Select|Add|Remove|Double> <0-9>"));
+				}
+			}
+		}));
+
+	/** Ctrl + A (D30, J7a.5), without the keyboard. */
+	FAutoConsoleCommand ArmyCommand(
+		TEXT("hol.Select.Army"),
+		TEXT("hol.Select.Army: selects all the local player's soldiers (every unit but the Peasants), as Ctrl + A"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectArmy();
+			}
+		}));
+
 	/** The F1, F2, F3 keys (D30, the user's trial of J6a.5), without the keyboard. */
 	FAutoConsoleCommand CategoryCommand(
 		TEXT("hol.Select.Category"),
@@ -1167,6 +1218,13 @@ void AHOLPlayerController::SetupInputComponent()
 		if (const UInputAction* GridKey = LoadAction(*FString::Printf(TEXT("IA_Grid_%02d"), Cell)))
 		{
 			Input->BindAction(GridKey, ETriggerEvent::Started, this, &AHOLPlayerController::HandleGridKey, Cell);
+		}
+	}
+	for (int32 Group = 0; Group < NumControlGroups; ++Group)
+	{
+		if (const UInputAction* GroupKey = LoadAction(*FString::Printf(TEXT("IA_Group_%d"), Group)))
+		{
+			Input->BindAction(GroupKey, ETriggerEvent::Started, this, &AHOLPlayerController::HandleGroupKey, Group);
 		}
 	}
 }
@@ -3035,7 +3093,248 @@ void AHOLPlayerController::HandleSubgroupKey()
 
 void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const int32 Cell)
 {
+	// Ctrl + A (D30): the whole army; Ctrl with another key of the grid does nothing (no production by mistake).
+	if (IsCtrlHeld())
+	{
+		if (Cell == 0)
+		{
+			SelectArmy();
+		}
+		return;
+	}
 	ActivateGridCell(Cell);
+}
+
+void AHOLPlayerController::HandleGroupKey(const FInputActionValue& Value, const int32 Group)
+{
+	// The modifiers are read from the keys held: on AZERTY, Shift + the key gives the digit, the key's name stays the same.
+	const bool bCtrl = IsCtrlHeld();
+	const bool bShift = IsShiftHeld();
+	if (bCtrl && bShift)
+	{
+		RemoveFromControlGroup(Group);
+	}
+	else if (bCtrl)
+	{
+		// Ctrl + digit alone does nothing (the user's trial of J7a.5: no assign, Shift + digit creates the group).
+	}
+	else if (bShift)
+	{
+		AddToControlGroup(Group);
+	}
+	else
+	{
+		SelectControlGroup(Group);
+	}
+}
+
+bool AHOLPlayerController::IsCtrlHeld() const
+{
+	return IsInputKeyDown(EKeys::LeftControl) || IsInputKeyDown(EKeys::RightControl);
+}
+
+bool AHOLPlayerController::IsShiftHeld() const
+{
+	return IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift);
+}
+
+void AHOLPlayerController::GetOwnSelectionForGroup(TArray<uint32>& OutUnits, TArray<AHOLBuilding*>& OutBuildings) const
+{
+	OutUnits = GetOwnSelectedUnits();
+	OutBuildings.Reset();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	TArray<AHOLBuilding*> Buildings;
+	GetSelectedBuildings(Buildings);
+	for (AHOLBuilding* Building : Buildings)
+	{
+		if (HOLPlayerState && Building->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex())
+		{
+			OutBuildings.Add(Building);
+		}
+	}
+}
+
+bool AHOLPlayerController::GetControlGroup(const int32 Group, TArray<uint32>& OutUnits, TArray<AHOLBuilding*>& OutBuildings) const
+{
+	OutUnits.Reset();
+	OutBuildings.Reset();
+	if (Group < 0 || Group >= NumControlGroups)
+	{
+		return false;
+	}
+	const FControlGroup& Members = ControlGroups[Group];
+	if (!Members.Units.IsEmpty())
+	{
+		// Dead units (or out of a client's view) are not known here any more: they drop out.
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*GetWorld(), Views);
+		TSet<uint32> Known;
+		for (const FHOLUnitView& View : Views)
+		{
+			Known.Add(View.UnitId);
+		}
+		for (const uint32 UnitId : Members.Units)
+		{
+			if (Known.Contains(UnitId))
+			{
+				OutUnits.Add(UnitId);
+			}
+		}
+	}
+	for (const TWeakObjectPtr<AHOLBuilding>& Building : Members.Buildings)
+	{
+		if (Building.IsValid())
+		{
+			OutBuildings.Add(Building.Get());
+		}
+	}
+	return !OutUnits.IsEmpty() || !OutBuildings.IsEmpty();
+}
+
+void AHOLPlayerController::AddToControlGroup(const int32 Group)
+{
+	if (Group < 0 || Group >= NumControlGroups)
+	{
+		return;
+	}
+	TArray<uint32> Units;
+	TArray<AHOLBuilding*> Buildings;
+	GetOwnSelectionForGroup(Units, Buildings);
+	if (Units.IsEmpty() && Buildings.IsEmpty())
+	{
+		return;
+	}
+	TArray<uint32> OldUnits;
+	TArray<AHOLBuilding*> OldBuildings;
+	const bool bCreated = !GetControlGroup(Group, OldUnits, OldBuildings);
+	FControlGroup& Members = ControlGroups[Group];
+	Members.Units.Reset();
+	Members.Buildings.Reset();
+	if (!Units.IsEmpty())
+	{
+		// Units into a group of buildings: it becomes a group of units (one kind at a time).
+		Members.Units = MoveTemp(OldUnits);
+		for (const uint32 UnitId : Units)
+		{
+			Members.Units.AddUnique(UnitId);
+		}
+		if (Members.Units.Num() > UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+		{
+			Members.Units.SetNum(UE::HeroesOfLiberty::Player::MaxOrderedUnits);
+		}
+	}
+	else
+	{
+		for (AHOLBuilding* Building : OldBuildings)
+		{
+			Members.Buildings.Add(Building);
+		}
+		for (AHOLBuilding* Building : Buildings)
+		{
+			Members.Buildings.AddUnique(Building);
+		}
+	}
+	LastGroupPressed = INDEX_NONE;
+	UE_LOG(LogHOLMatch, Display, TEXT("Group %d: %s, %d units, %d buildings"), Group, bCreated ? TEXT("created") : TEXT("added"), Members.Units.Num(), Members.Buildings.Num());
+}
+
+void AHOLPlayerController::RemoveFromControlGroup(const int32 Group)
+{
+	if (Group < 0 || Group >= NumControlGroups)
+	{
+		return;
+	}
+	TArray<uint32> Units;
+	TArray<AHOLBuilding*> Buildings;
+	GetOwnSelectionForGroup(Units, Buildings);
+	FControlGroup& Members = ControlGroups[Group];
+	Members.Units.RemoveAll([&Units](const uint32 UnitId) { return Units.Contains(UnitId); });
+	Members.Buildings.RemoveAll([&Buildings](const TWeakObjectPtr<AHOLBuilding>& Building) { return !Building.IsValid() || Buildings.Contains(Building.Get()); });
+	LastGroupPressed = INDEX_NONE;
+	UE_LOG(LogHOLMatch, Display, TEXT("Group %d: removed, %d units, %d buildings"), Group, Members.Units.Num(), Members.Buildings.Num());
+}
+
+void AHOLPlayerController::SelectControlGroup(const int32 Group)
+{
+	TArray<uint32> Units;
+	TArray<AHOLBuilding*> Buildings;
+	if (!GetControlGroup(Group, Units, Buildings))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Group %d: empty"), Group);
+		LastGroupPressed = INDEX_NONE;
+		return;
+	}
+	const double Now = GetWorld()->GetRealTimeSeconds();
+	const bool bDouble = LastGroupPressed == Group && Now - LastGroupPressTime <= ControlGroupDoublePress;
+	LastGroupPressed = bDouble ? INDEX_NONE : Group;
+	LastGroupPressTime = Now;
+	LastSelectedGroup = Group;
+	LastGroupSelectTime = Now;
+
+	FVector Centroid = FVector::ZeroVector;
+	int32 Count = 0;
+	if (!Units.IsEmpty())
+	{
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*GetWorld(), Views);
+		for (const FHOLUnitView& View : Views)
+		{
+			if (Units.Contains(View.UnitId))
+			{
+				Centroid += View.Location;
+				++Count;
+			}
+		}
+	}
+	else
+	{
+		for (const AHOLBuilding* Building : Buildings)
+		{
+			Centroid += Building->GetActorLocation();
+			++Count;
+		}
+	}
+	Centroid /= FMath::Max(Count, 1);
+	UE_LOG(LogHOLMatch, Display, TEXT("Group %d: selected, %d units, %d buildings%s"), Group, Units.Num(), Buildings.Num(),
+		bDouble ? *FString::Printf(TEXT(", camera to (%.0f, %.0f)"), Centroid.X, Centroid.Y) : TEXT(""));
+	if (!Units.IsEmpty())
+	{
+		SetUnitSelection(MoveTemp(Units));
+	}
+	else
+	{
+		SetBuildingSelection(MoveTemp(Buildings));
+	}
+	if (bDouble && RTSCamera && Count > 0)
+	{
+		RTSCamera->SetFocus(Centroid);
+	}
+}
+
+void AHOLPlayerController::SelectArmy()
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!HOLPlayerState)
+	{
+		return;
+	}
+	static const FName PeasantType(TEXT("Peasant"));
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	TArray<uint32> UnitIds;
+	for (const FHOLUnitView& View : Views)
+	{
+		if (View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.TypeName != PeasantType)
+		{
+			UnitIds.Add(View.UnitId);
+		}
+	}
+	UnitIds.Sort();
+	UE_LOG(LogHOLMatch, Display, TEXT("Select army: %d soldiers"), UnitIds.Num());
+	if (!UnitIds.IsEmpty())
+	{
+		SetUnitSelection(MoveTemp(UnitIds));
+	}
 }
 
 void AHOLPlayerController::UpdateDrag()

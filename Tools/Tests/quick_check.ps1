@@ -792,6 +792,18 @@ if ($Parts -contains "camera") {
             Step "hol.Camera.Focus $($FormTo[0] - 1200) $($FormTo[1])", "frames 3", "capture formation_block"
             for ($i = 0; $i -lt 20; $i++) { Step "wait 0.25", "hol.Units.Formation 0" }
             Step "wait 2", "mark formation block end", "hol.Units.Formation 0", "hol.Camera.Focus $($FormTo -join ' ')", "frames 3", "capture formation_block_end"
+            # The control groups and Ctrl + A (J7a.5), the nine of the block selected: real keys (the AZERTY names of the
+            # top row, the QWERTY one, Ctrl and Shift held around them) and the console commands. Shift + digit creates an
+            # empty group; Ctrl + digit alone does nothing (the user's trial: no assign).
+            Step "mark groups", "hol.Units.Formation 0",
+                "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "waitlog HUD groups: 1=9",
+                "hol.UI.Key LeftControl 0 0.5", "hol.UI.Key A 0.2 0.1", "wait 0.6", "waitlog Select army: ",
+                "hol.UI.Key LeftControl 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "hol.Select.Report",
+                "hol.Select.Group Add 2", "hol.Select.Group Remove 1", "hol.Select.Group Select 2", "waitlog Group 2: selected", "waitlog HUD groups: 1=3 2=",
+                "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key One 0.2 0.1", "wait 0.6", "waitlog Group 1: added", "frames 3", "capture groups_bar",
+                "hol.Camera.Focus 0 0", "frames 2", "hol.UI.Key Ampersand 0 0.05", "hol.UI.Key Ampersand 0.15 0.05", "wait 0.4", "hol.Camera.Report",
+                "hol.Select.Army", "hol.UI.Key LeftControl 0 0.6", "hol.UI.Key LeftShift 0 0.6", "hol.UI.Key Ampersand 0.25 0.1", "wait 0.7",
+                "waitlog Group 1: removed", "wait 0.4", "hol.HUD.Click ControlGroup2", "waitlog Group 2: selected", "hol.Select.Group Select 0", "hol.Select.Group Double 2", "hol.Camera.Report", "mark groups end"
             Key Escape
             Step "waitlog Selection: none"
         }
@@ -1872,6 +1884,48 @@ if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     $Missing = @("mixed", "front", "back", "queued", "block", "block_end" | Where-Object { -not (Test-Path (Join-Path $Shots "formation_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "formation" $Checks) -and $AllOk
+
+    # The control groups and Ctrl + A (J7a.5): the counts each step logged.
+    $G = @(Get-Section "groups")
+    $Find = { param([string] $Pattern) $M = $G | Select-String -Pattern $Pattern | Select-Object -First 1; if ($M) { $M.Matches[0] } else { $null } }
+    $Report0 = & $ReadFormation @($G | Select-String -Pattern "Formation report: " | Select-Object -First 1 | ForEach-Object { $_.Line })
+    $Soldiers = @($Report0.Units.Values | Where-Object { $_.Type -ne "Peasant" }).Count
+    $Checks = [ordered]@{}
+    $Created = & $Find "Group 1: created, (\d+) units"
+    $Checks["Shift + & creates group 1 with the 9 selected ($(if ($Created) { $Created.Groups[1].Value }))"] = $Created -and [int]$Created.Groups[1].Value -eq 9
+    $Army = & $Find "Select army: (\d+) soldiers"
+    $Checks["Ctrl + A selects the $Soldiers soldiers ($(if ($Army) { $Army.Groups[1].Value }))"] = $Army -and $Soldiers -gt 0 -and [int]$Army.Groups[1].Value -eq $Soldiers
+    $Created2 = & $Find "Group 2: created, (\d+) units"
+    $Checks["Shift + 2 creates group 2 with the army ($(if ($Created2) { $Created2.Groups[1].Value }))"] = $Created2 -and [int]$Created2.Groups[1].Value -eq $Soldiers
+    # Ctrl + & sent between Ctrl + A and Shift + 2: no line of a group there, the army still selected.
+    $From = [Array]::FindIndex([string[]]$G, [Predicate[string]]{ param($L) $L -match "Select army: " })
+    $To = [Array]::FindIndex([string[]]$G, [Predicate[string]]{ param($L) $L -match "Group 2: created" })
+    $Ctrl = if ($From -ge 0 -and $To -gt $From) { @($G[$From..$To] | Select-Object -Skip 1 | Select-Object -SkipLast 1) } else { @() }
+    $CtrlSel = $Ctrl | Select-String -Pattern "Selection report: selected (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+    $Checks["Ctrl + & alone does nothing: no group change, the army still selected ($CtrlSel)"] = ($Ctrl.Count -gt 0) -and ($CtrlSel -match "^$Soldiers units") -and
+        -not ($Ctrl | Select-String -Pattern "Group \d: ") -and -not ($G | Select-String -Pattern "Group \d: assigned")
+    $Checks["Ctrl + A starts no placement nor production"] = -not ($G | Select-String -Pattern "Placement: ")
+    $Removed = & $Find "Group 1: removed, (\d+) units"
+    $Checks["remove the army from group 1: its 3 Peasants left ($(if ($Removed) { $Removed.Groups[1].Value }))"] = $Removed -and [int]$Removed.Groups[1].Value -eq 3
+    $Added = & $Find "Group 1: added, (\d+) units"
+    $Checks["Shift + 1 adds the army to group 1 ($(if ($Added) { $Added.Groups[1].Value }))"] = $Added -and [int]$Added.Groups[1].Value -eq 3 + $Soldiers
+    $Selected = @($G | Select-String -Pattern "Group 1: selected, (\d+) units")
+    $Checks["& selects group 1 ($($Selected.Count) times, $(if ($Selected) { $Selected[0].Matches[0].Groups[1].Value }) units)"] = $Selected.Count -eq 2 -and [int]$Selected[0].Matches[0].Groups[1].Value -eq 3 + $Soldiers
+    $Centred = & $Find "Group 1: selected, \d+ units, 0 buildings, camera to \((-?\d+), (-?\d+)\)"
+    $Focus = & $Find "Camera: focus \((-?\d+), (-?\d+),"
+    $Checks["& twice centres the camera on group 1"] = $Centred -and $Focus -and [Math]::Abs([double]$Focus.Groups[1].Value - [double]$Centred.Groups[1].Value) -lt 50 -and [Math]::Abs([double]$Focus.Groups[2].Value - [double]$Centred.Groups[2].Value) -lt 50
+    $Removed2 = @($G | Select-String -Pattern "Group 1: removed, (\d+) units")
+    $Checks["Ctrl + Shift + & removes the army again ($(if ($Removed2.Count -ge 2) { $Removed2[1].Matches[0].Groups[1].Value }))"] = $Removed2.Count -ge 2 -and [int]$Removed2[1].Matches[0].Groups[1].Value -eq 3
+    $Checks["group 0 empty"] = [bool]($G | Select-String -Pattern "Group 0: empty")
+    # The groups' bar (J7a.5): what it showed after each change, the slot clicked.
+    $Bars = @($G | Select-String -Pattern "HUD groups: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $Checks["bar after Shift + &: 1=9 ($($Bars -join ' | '))"] = $Bars -contains "1=9"
+    $Checks["bar after Shift + 2 / remove 1: 1=3 2=$Soldiers"] = $Bars -contains "1=3 2=$Soldiers"
+    $Checks["bar after Shift + 1: 1=$(3 + $Soldiers) 2=$Soldiers"] = $Bars -contains "1=$(3 + $Soldiers) 2=$Soldiers"
+    $Checks["bar slot 2 clicked selects group 2"] = [bool]($G | Select-String -Pattern "HUD: group 2 clicked")
+    $Checks["capture groups_bar"] = Test-Path (Join-Path $Shots "groups_bar.png")
+    $Checks["group 2 twice: the camera to it"] = [bool]($G | Select-String -Pattern "Group 2: selected, $Soldiers units, 0 buildings, camera to")
+    $AllOk = (Report "groups" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {
