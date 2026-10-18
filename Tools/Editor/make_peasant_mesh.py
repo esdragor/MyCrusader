@@ -18,7 +18,10 @@ to the mesh description through an sRGB-to-linear transform and the skeletal mes
 shader reads the linear colour of the sRGB value written here (the alpha is not transformed: mask / 255 exactly).
 
 Each LOD is written on its own (CopyMeshToSkeletalMesh with no reduction): the body of SKM_Mannequin_Classic's same
-LOD, then every prop at full detail (a prop drawn at the RTS camera's distance must not be reduced away). The LOD
+LOD, then every prop, never reduced by the engine (a prop drawn at the RTS camera's distance must not be reduced away):
+at full detail up to LOD 2, the LIGHT props of peasant_props (same props, about half the vertices) from LIGHT_PROPS_LOD
+on. The last LOD is the Peasant as the RTS camera sees it (LOD 3 beyond 18.4 m from the camera, so every Peasant at the
+default height and in the stress tests, 2026-10-17), where the props made 48 % of its vertices. The LOD
 screen sizes and build settings are those of SKM_Mannequin_Classic (SKM_Peasant starts as its duplicate);
 "Optimize for Instancing" is set on every LOD (the provider needs its unified bone map; ik_hand_gun now carries the
 tools' weights, so it stays in it).
@@ -26,7 +29,8 @@ tools' weights, so it stays in it).
 Run (headless, editor closed, from PowerShell; log lines start with "HOLPeasantMesh"):
   UnrealEditor-Cmd.exe <project> -run=pythonscript -script="<this file>" -unattended -nop4 -nosplash
   add "--provider-only" inside the -script value to refresh TP_Peasant alone (mesh and material kept), or
-  "--material-only" for the material alone.
+  "--material-only" for the material alone, "--light-lod=N" to take the light props from LOD N instead of
+  LIGHT_PROPS_LOD (99: full props everywhere, the mesh as it was before them, for an A/B measure).
 """
 import os
 import sys
@@ -56,6 +60,8 @@ PEASANT_SEQUENCES = [
     PEASANT_ANIMATIONS + "A_Peasant_Build",           # 11 building (J6a.4: hammering, the hammer is prop 7)
 ]
 SKELETON_JSON = os.path.join(TOOLS_DIR, "Data", "UE4MannequinSkeleton.json")
+# First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
+LIGHT_PROPS_LOD = 3
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 assets = unreal.EditorAssetLibrary
@@ -353,7 +359,7 @@ def verify_lod(mesh, lod, bone_index, parts):
     return ok
 
 
-def make_mesh(material):
+def make_mesh(material, light_lod=LIGHT_PROPS_LOD):
     source = load(SOURCE_MESH)
     path = MESH_FOLDER + "/" + MESH_NAME
     mesh = existing(path) or assets.duplicate_asset(SOURCE_MESH, path)
@@ -364,13 +370,18 @@ def make_mesh(material):
     sk = anim_rig.Skeleton.load(SKELETON_JSON)
     if [n for n in names if n in sk.index] != names or len(names) != len(sk.names):
         raise RuntimeError("The mesh's bones differ from Data/UE4MannequinSkeleton.json")
-    parts = [peasant_props.part_buffers(part, sk) for part in peasant_props.mesh_parts(sk)]
-    for part in parts:
-        if part["bone"] not in bone_index:
-            raise RuntimeError("Bone %s of part %s not in the mesh" % (part["bone"], part["key"]))
-    log("pieces : %s" % ", ".join("%s (masque %d, %s, %d sommets, %d triangles)"
-                                 % (p["key"], p["mask"], p["bone"], len(p["vertices"]), len(p["triangles"]))
-                                 for p in parts))
+    part_sets = {}
+    for light in (False, True):
+        parts = [peasant_props.part_buffers(part, sk) for part in peasant_props.mesh_parts(sk, light)]
+        for part in parts:
+            if part["bone"] not in bone_index:
+                raise RuntimeError("Bone %s of part %s not in the mesh" % (part["bone"], part["key"]))
+        log("pieces%s : %s" % (" legeres" if light else "",
+                               ", ".join("%s (masque %d, %s, %d sommets, %d triangles)"
+                                         % (p["key"], p["mask"], p["bone"], len(p["vertices"]), len(p["triangles"]))
+                                         for p in parts)))
+        part_sets[light] = parts
+    lod_parts = lambda lod: part_sets[lod >= light_lod]
 
     subsystem = unreal.get_editor_subsystem(unreal.SkeletalMeshEditorSubsystem)
     lod_count = unreal.SkeletalMeshEditorSubsystem.get_lod_count(source)
@@ -390,10 +401,11 @@ def make_mesh(material):
         flags = unreal.GeometryScriptColorFlags()
         unreal.GeometryScript_VertexColors.set_mesh_constant_vertex_color(dynamic, unreal.LinearColor(0.0, 0.0, 0.0, 0.0),
                                                                           flags, True)
-        vertices, triangles = append_props(dynamic, parts, bone_index)
+        vertices, triangles = append_props(dynamic, lod_parts(lod), bone_index)
         write_lod(dynamic, mesh, lod)
-        log("LOD %d : corps %d sommets %d triangles (%s), pieces +%d sommets +%d triangles"
-            % (lod, body_vertices, body_triangles, how, vertices, triangles))
+        log("LOD %d : corps %d sommets %d triangles (%s), pieces%s +%d sommets +%d triangles"
+            % (lod, body_vertices, body_triangles, how, " legeres" if lod >= light_lod else "", vertices,
+               triangles))
 
     # Every slot takes the props material; LOD settings of the source, Optimize for Instancing on every LOD.
     slots = []
@@ -411,7 +423,7 @@ def make_mesh(material):
 
     peasant_vertices = [subsystem.get_num_verts(mesh, lod) for lod in range(lod_count)]
     log("%s : sommets par LOD %s (source %s)" % (path, peasant_vertices, source_vertices))
-    ok = all([verify_lod(mesh, lod, bone_index, parts) for lod in range(lod_count)])
+    ok = all([verify_lod(mesh, lod, bone_index, lod_parts(lod)) for lod in range(lod_count)])
     log("relecture des pieces : %s" % ("OK" if ok else "ECART"))
     return mesh
 
@@ -454,8 +466,12 @@ def main():
     if "--provider-only" in arguments:
         make_provider(load(MESH_FOLDER + "/" + MESH_NAME))
         return
+    light_lod = LIGHT_PROPS_LOD
+    for argument in arguments:
+        if argument.startswith("--light-lod="):
+            light_lod = int(argument.split("=", 1)[1])
     material = make_material()
-    mesh = make_mesh(material)
+    mesh = make_mesh(material, light_lod)
     make_provider(mesh)
     log("termine")
 

@@ -33,6 +33,12 @@ In the mesh (mesh_parts(), J5c.2c), each vertex carries in its colour's alpha th
 id - 1 (0 = the body, always shown): a primitive with a "part" key shared by several props (the hotte's wicker and straps)
 is written once with the bits of all of them, so the stone and gold hottes cost one hotte and two heaps. Hence at most 8
 props per mesh (one byte).
+LIGHT props (build_props(sk, light=True), 2026-10-17): the same props with fewer vertices, for the mesh's last LOD, which
+is the Peasant as the RTS camera always sees it (LOD 3 from 18.4 m: see AnimationsInProgress.md). Same ids, bones,
+frames, sizes and colours, so they read the same from the camera: 4 sides instead of 6 on the tools, 6 instead of 10 on
+the basket and the hotte, logs of 5 sides instead of 7, no knob, no rim on the basket, no hoops on the hotte, fewer
+berries and chunks, strap boxes open at their ends (each overlaps the next) and on the body's side on a polyline of 7 segments instead of 9,
+no bottom cap where the camera never looks (basket, hotte, heaps).
 Run alone to print the table of props:  python Tools/Editor/peasant_props.py
 """
 import math
@@ -100,8 +106,12 @@ def rotation_xz(x_axis, z_hint):
     return anim_rig.qfrom_matrix((x, y, z))
 
 
-def box(centre, size, color, q=IDENTITY):
-    return {"shape": "box", "t": tuple(centre), "q": q, "size": tuple(size), "color": color}
+def box(centre, size, color, q=IDENTITY, open_faces=()):
+    """`open_faces`: faces left out, among "+x", "-x", "+y", "-y", "+z", "-z" (local axes)."""
+    prim = {"shape": "box", "t": tuple(centre), "q": q, "size": tuple(size), "color": color}
+    if open_faces:
+        prim["open"] = tuple(open_faces)
+    return prim
 
 
 def frustum_between(start, end, bottom, top, sides, color, caps=("bottom", "top"), cap_color=None, x_hint=None):
@@ -132,12 +142,17 @@ TOOL_AXIS = (1.0, 0.0, 0.0)
 FLAT = (0.0, 0.0, 1.0)  # the tool frame's Z: across the blade's flat
 
 
-def make_axe():
+def make_axe(light=False):
+    sides = 4 if light else 6
     prims = [
-        # Handle, slightly past the head; a swelled knob at the end.
-        frustum_between((0.0, 0.0, 0.0), (HANDLE_LENGTH + 2.5, 0.0, 0.0), (1.6, 1.6), (1.5, 1.5), 6, WOOD_HANDLE,
+        # Handle, slightly past the head; a swelled knob at the end (not on the light axe).
+        frustum_between((0.0, 0.0, 0.0), (HANDLE_LENGTH + 2.5, 0.0, 0.0), (1.6, 1.6), (1.5, 1.5), sides, WOOD_HANDLE,
                         x_hint=FLAT),
-        frustum_between((0.0, 0.0, 0.0), (3.0, 0.0, 0.0), (2.3, 2.3), (1.9, 1.9), 6, WOOD_DARK, x_hint=FLAT),
+    ]
+    if not light:
+        prims.append(frustum_between((0.0, 0.0, 0.0), (3.0, 0.0, 0.0), (2.3, 2.3), (1.9, 1.9), 6, WOOD_DARK,
+                                     x_hint=FLAT))
+    prims += [
         # Head: the eye around the handle and the poll behind it...
         box((HANDLE_LENGTH - 4.5, -0.8, 0.0), (9.0, 7.6, 3.8), IRON),
         # ...and the blade flaring toward the edge (y = 14), 1.6 cm thick.
@@ -147,18 +162,23 @@ def make_axe():
     return {"id": 1, "name": "axe", "label": "hache", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
 
 
-def make_pickaxe():
+def make_pickaxe(light=False):
     head = (HANDLE_LENGTH - 0.5, 0.0, 0.0)
+    sides = 4 if light else 6
     prims = [
-        frustum_between((0.0, 0.0, 0.0), (HANDLE_LENGTH + 2.5, 0.0, 0.0), (1.7, 1.7), (1.6, 1.6), 6, WOOD_HANDLE,
+        frustum_between((0.0, 0.0, 0.0), (HANDLE_LENGTH + 2.5, 0.0, 0.0), (1.7, 1.7), (1.6, 1.6), sides, WOOD_HANDLE,
                         x_hint=FLAT),
-        frustum_between((0.0, 0.0, 0.0), (3.0, 0.0, 0.0), (2.4, 2.4), (2.0, 2.0), 6, WOOD_DARK, x_hint=FLAT),
+    ]
+    if not light:
+        prims.append(frustum_between((0.0, 0.0, 0.0), (3.0, 0.0, 0.0), (2.4, 2.4), (2.0, 2.0), 6, WOOD_DARK,
+                                     x_hint=FLAT))
+    prims += [
         # Collar around the handle, then the two arms, a little curved back toward the hands: the point on the
         # striking side, a flat chisel on the other.
         box(head, (6.5, 6.5, 4.6), IRON),
-        frustum_between(head, (HANDLE_LENGTH - 6.0, 24.0, 0.0), (2.3, 2.3), (0.35, 0.35), 6, IRON,
+        frustum_between(head, (HANDLE_LENGTH - 6.0, 24.0, 0.0), (2.3, 2.3), (0.35, 0.35), sides, IRON,
                         caps=("bottom",), x_hint=FLAT),
-        frustum_between(head, (HANDLE_LENGTH - 5.0, -22.0, 0.0), (2.3, 2.3), (0.6, 1.8), 6, IRON,
+        frustum_between(head, (HANDLE_LENGTH - 5.0, -22.0, 0.0), (2.3, 2.3), (0.6, 1.8), sides, IRON,
                         caps=("bottom", "top"), x_hint=FLAT),
     ]
     return {"id": 2, "name": "pickaxe", "label": "pioche", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
@@ -175,18 +195,19 @@ HAMMER_PEEN = 5.0         # handle's axis to the peen's edge, along -Y
 HAMMER_GRIP = 7.0         # knob to the right hand's grip point (the gesture's "knob_offset")
 
 
-def make_hammer():
+def make_hammer(light=False):
+    sides = 4 if light else 6
     prims = [
-        frustum_between((0.0, 0.0, 0.0), (HAMMER_HANDLE, 0.0, 0.0), (1.8, 1.6), (1.3, 1.2), 6, WOOD_HANDLE,
+        frustum_between((0.0, 0.0, 0.0), (HAMMER_HANDLE, 0.0, 0.0), (1.8, 1.6), (1.3, 1.2), sides, WOOD_HANDLE,
                         x_hint=FLAT),
         # The eye around the handle...
         box((HAMMER_HEAD_AT, 0.4, 0.0), (4.4, 5.2, 3.6), IRON),
         # ...the face, a short round bar ending in bright steel...
         frustum_between((HAMMER_HEAD_AT, 2.6, 0.0), (HAMMER_HEAD_AT, HAMMER_FACE, 0.0), (1.9, 1.9),
-                        (HAMMER_FACE_RADIUS, HAMMER_FACE_RADIUS), 6, IRON, cap_color=STEEL, x_hint=TOOL_AXIS),
+                        (HAMMER_FACE_RADIUS, HAMMER_FACE_RADIUS), sides, IRON, cap_color=STEEL, x_hint=TOOL_AXIS),
         # ...and the peen, thinning to an edge across the handle.
-        frustum_between((HAMMER_HEAD_AT, -1.8, 0.0), (HAMMER_HEAD_AT, -HAMMER_PEEN, 0.0), (1.9, 1.7), (0.35, 1.7), 6,
-                        IRON, x_hint=TOOL_AXIS),
+        frustum_between((HAMMER_HEAD_AT, -1.8, 0.0), (HAMMER_HEAD_AT, -HAMMER_PEEN, 0.0), (1.9, 1.7), (0.35, 1.7),
+                        sides, IRON, x_hint=TOOL_AXIS),
     ]
     return {"id": 7, "name": "hammer", "label": "marteau", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
 
@@ -213,23 +234,35 @@ def radii(right_forward):
     return (right_forward[1], right_forward[0])
 
 
-def make_basket():
+def make_basket(light=False):
     up = (0.0, 0.0, 1.0)
     rim = (BASKET_TOP[0] + 0.8, BASKET_TOP[1] + 0.8)
+    sides = 6 if light else 10
     prims = [
-        frustum_between(b((0, 0, 0)), b((0, 0, BASKET_HEIGHT)), radii(BASKET_BOTTOM), radii(BASKET_TOP), 10, WICKER,
-                        caps=("bottom",), cap_color=WICKER_DARK),
-        frustum_between(b((0, 0, BASKET_HEIGHT - 2.5)), b((0, 0, BASKET_HEIGHT + 0.5)), radii(rim), radii(rim), 10,
-                        WICKER_DARK, caps=()),
-        # Heap of berries above the rim, a few big berries and two leaves on it (readable from the RTS camera).
-        frustum_between(b((0, 0, BASKET_HEIGHT - 3.0)), b((0, 0, BASKET_HEIGHT + 4.0)),
-                        radii((BASKET_TOP[0] - 0.4, BASKET_TOP[1] - 0.4)), radii((6.0, 5.0)), 10, BERRY),
-        box(b((5.0, 3.0, BASKET_HEIGHT + 4.5)), (3.4, 3.4, 3.4), BERRY_DARK, rotation_z_to(up, (1.0, 0.6, 0.0))),
-        box(b((-4.0, -2.0, BASKET_HEIGHT + 4.6)), (3.4, 3.4, 3.4), BERRY_DARK, rotation_z_to(up, (0.7, -1.0, 0.0))),
-        box(b((-1.0, 5.0, BASKET_HEIGHT + 3.4)), (3.0, 3.0, 3.0), BERRY, rotation_z_to(up, (1.0, -0.3, 0.0))),
-        box(b((8.0, -3.0, BASKET_HEIGHT + 2.6)), (5.0, 2.6, 0.6), LEAF, rotation_z_to((0.2, -0.3, 1.0), (1.0, 1.0, 0))),
-        box(b((-8.5, 2.5, BASKET_HEIGHT + 2.2)), (5.0, 2.6, 0.6), LEAF, rotation_z_to((0.3, 0.2, 1.0), (1.0, -1.0, 0))),
+        frustum_between(b((0, 0, 0)), b((0, 0, BASKET_HEIGHT)), radii(BASKET_BOTTOM), radii(BASKET_TOP), sides, WICKER,
+                        caps=() if light else ("bottom",), cap_color=WICKER_DARK),
     ]
+    if not light:
+        prims.append(frustum_between(b((0, 0, BASKET_HEIGHT - 2.5)), b((0, 0, BASKET_HEIGHT + 0.5)), radii(rim),
+                                     radii(rim), 10, WICKER_DARK, caps=()))
+    # Heap of berries above the rim, a few big berries and two leaves on it (readable from the RTS camera; the light
+    # basket keeps one of each).
+    prims += [
+        frustum_between(b((0, 0, BASKET_HEIGHT - 3.0)), b((0, 0, BASKET_HEIGHT + 4.0)),
+                        radii((BASKET_TOP[0] - 0.4, BASKET_TOP[1] - 0.4)), radii((6.0, 5.0)), sides, BERRY,
+                        caps=("top",) if light else ("bottom", "top")),
+        box(b((5.0, 3.0, BASKET_HEIGHT + 4.5)), (3.4, 3.4, 3.4), BERRY_DARK, rotation_z_to(up, (1.0, 0.6, 0.0))),
+    ]
+    if not light:
+        prims += [
+            box(b((-4.0, -2.0, BASKET_HEIGHT + 4.6)), (3.4, 3.4, 3.4), BERRY_DARK, rotation_z_to(up, (0.7, -1.0, 0.0))),
+            box(b((-1.0, 5.0, BASKET_HEIGHT + 3.4)), (3.0, 3.0, 3.0), BERRY, rotation_z_to(up, (1.0, -0.3, 0.0))),
+        ]
+    prims.append(box(b((8.0, -3.0, BASKET_HEIGHT + 2.6)), (5.0, 2.6, 0.6), LEAF,
+                     rotation_z_to((0.2, -0.3, 1.0), (1.0, 1.0, 0))))
+    if not light:
+        prims.append(box(b((-8.5, 2.5, BASKET_HEIGHT + 2.2)), (5.0, 2.6, 0.6), LEAF,
+                         rotation_z_to((0.3, 0.2, 1.0), (1.0, -1.0, 0))))
     return {"id": 3, "name": "basket_food", "label": "panier de baies", "bone": "spine_03", "frame": "body",
             "anchor": BASKET_ANCHOR, "prims": prims}
 
@@ -244,9 +277,10 @@ LOGS_LENGTH = 95.0
 LOGS_RADIUS = 4.5
 
 
-def make_logs(sk):
+def make_logs(sk, light=False):
     """The axes across the bundle are those of the validated preview: u = axis x up, v = u x axis, both computed in
     component space (hence the skeleton)."""
+    sides = 5 if light else 7
     axis = anim_rig.normalize(sk.body(LOGS_DIR))
     u = anim_rig.normalize(anim_rig.cross(axis, sk.up))
     v = anim_rig.cross(u, axis)
@@ -260,7 +294,7 @@ def make_logs(sk):
         start = anim_rig.add(anim_rig.scale(axis, -half + trim), offset)
         end = anim_rig.add(anim_rig.scale(axis, half + trim * 0.5), offset)
         to_prop = lambda p: body_to_prop((anim_rig.dot(p, sk.right), anim_rig.dot(p, sk.forward), anim_rig.dot(p, sk.up)))
-        prims.append(frustum_between(to_prop(start), to_prop(end), (r, r), (r * 0.94, r * 0.94), 7, BARK,
+        prims.append(frustum_between(to_prop(start), to_prop(end), (r, r), (r * 0.94, r * 0.94), sides, BARK,
                                      cap_color=CUT_WOOD, x_hint=(0.0, 0.0, 1.0)))
     return {"id": 4, "name": "logs", "label": "fagot de buches", "bone": "spine_03", "frame": "body",
             "anchor": LOGS_CENTRE, "prims": prims}
@@ -281,8 +315,16 @@ STRAP_R = [(10.0, -24.0, 151.0), (12.0, -15.5, 159.5), (12.0, -8.0, 161.3), (12.
 STRAP_WIDTH, STRAP_THICKNESS = 3.4, 0.9
 
 
-def strap(points, color):
-    """Thin boxes along a polyline given in absolute body terms (reference pose)."""
+# The light hotte's strap: 7 segments of STRAP_R's 9, the points left out those whose chord passes closest under them
+# (0.8 cm under the top of the chest, 1.7 cm under the back of the armpit, hidden by the arm and the hotte); the shoulder
+# (point 1) and the front under the hands (point 6) are kept.
+STRAP_R_LIGHT = [STRAP_R[k] for k in (0, 1, 2, 4, 5, 6, 7, 9)]
+
+
+def strap(points, color, open_ends=False):
+    """Thin boxes along a polyline given in absolute body terms (reference pose). `open_ends`: no end faces (each box
+    overlaps the next by half the strap's width; the first and last ends are inside the hotte) and no inner face (against
+    the body)."""
     prims = []
     for p, q in zip(points, points[1:]):
         a, c = b(anim_rig.sub(p, HOTTE_ANCHOR)), b(anim_rig.sub(q, HOTTE_ANCHOR))
@@ -292,46 +334,53 @@ def strap(points, color):
         out = anim_rig.sub(mid, b(anim_rig.sub((0.0, -4.0, 0.0), HOTTE_ANCHOR)))
         out = (out[0], out[1], 0.0)
         rot = rotation_xz(along, out)
-        prims.append(box(mid, (anim_rig.length(along) + STRAP_WIDTH * 0.5, STRAP_WIDTH, STRAP_THICKNESS), color, rot))
+        prims.append(box(mid, (anim_rig.length(along) + STRAP_WIDTH * 0.5, STRAP_WIDTH, STRAP_THICKNESS), color, rot,
+                         ("+x", "-x", "-z") if open_ends else ()))
     return prims
 
 
-def make_hotte(content):
+def make_hotte(content, light=False):
     up = (0.0, 0.0, 1.0)
+    sides = 6 if light else 10
     top = b(HOTTE_TOP)
     rim = (HOTTE_TOP_RADII[0] + 1.0, HOTTE_TOP_RADII[1] + 1.0)
     rim_start = anim_rig.scale(top, (HOTTE_TOP[2] - 3.0) / HOTTE_TOP[2])
     prims = [
-        frustum_between((0.0, 0.0, 0.0), top, radii(HOTTE_BOTTOM_RADII), radii(HOTTE_TOP_RADII), 10, WICKER,
-                        caps=("bottom",), cap_color=WICKER_DARK),
-        frustum_between(rim_start, anim_rig.add(top, (0.0, 0.0, 0.5)), radii(rim), radii(rim), 10, WICKER_DARK,
+        frustum_between((0.0, 0.0, 0.0), top, radii(HOTTE_BOTTOM_RADII), radii(HOTTE_TOP_RADII), sides, WICKER,
+                        caps=() if light else ("bottom",), cap_color=WICKER_DARK),
+        frustum_between(rim_start, anim_rig.add(top, (0.0, 0.0, 0.5)), radii(rim), radii(rim), sides, WICKER_DARK,
                         caps=()),
-        # Two hoops of darker wicker around the body of the hotte.
-        frustum_between(anim_rig.scale(top, 0.30), anim_rig.scale(top, 0.36),
-                        radii(tuple(a + (c - a) * 0.30 + 0.5 for a, c in zip(HOTTE_BOTTOM_RADII, HOTTE_TOP_RADII))),
-                        radii(tuple(a + (c - a) * 0.36 + 0.5 for a, c in zip(HOTTE_BOTTOM_RADII, HOTTE_TOP_RADII))),
-                        10, WICKER_DARK, caps=()),
     ]
-    prims += strap(STRAP_R, LEATHER) + strap([mirror_right(p) for p in STRAP_R], LEATHER)
+    if not light:
+        # Two hoops of darker wicker around the body of the hotte.
+        prims.append(frustum_between(anim_rig.scale(top, 0.30), anim_rig.scale(top, 0.36),
+                                     radii(tuple(a + (c - a) * 0.30 + 0.5 for a, c in zip(HOTTE_BOTTOM_RADII, HOTTE_TOP_RADII))),
+                                     radii(tuple(a + (c - a) * 0.36 + 0.5 for a, c in zip(HOTTE_BOTTOM_RADII, HOTTE_TOP_RADII))),
+                                     10, WICKER_DARK, caps=()))
+    points = STRAP_R_LIGHT if light else STRAP_R
+    prims += strap(points, LEATHER, light) + strap([mirror_right(p) for p in points], LEATHER, light)
     # The wicker and the straps are the same for both contents: one part in the mesh, shown with either hotte.
     for prim in prims:
         prim["part"] = "hotte"
     if content == "stone":
-        fill, light, dark = STONE, STONE_LIGHT, STONE_DARK
+        fill, bright, dark = STONE, STONE_LIGHT, STONE_DARK
         ident, name, label = 5, "hotte_stone", "hotte de pierre"
     else:
-        fill, light, dark = GOLD, GOLD_LIGHT, GOLD_DARK
+        fill, bright, dark = GOLD, GOLD_LIGHT, GOLD_DARK
         ident, name, label = 6, "hotte_gold", "hotte d'or"
     # The heap: a low mound filling the opening, and chunks standing out of it.
     prims.append(frustum_between(anim_rig.scale(top, (HOTTE_TOP[2] - 4.0) / HOTTE_TOP[2]),
                                  anim_rig.add(top, (0.0, 0.0, 5.0)),
-                                 radii((HOTTE_TOP_RADII[0] - 0.6, HOTTE_TOP_RADII[1] - 0.6)), radii((8.0, 6.0)), 10,
-                                 fill))
+                                 radii((HOTTE_TOP_RADII[0] - 0.6, HOTTE_TOP_RADII[1] - 0.6)), radii((8.0, 6.0)), sides,
+                                 fill, caps=("top",) if light else ("bottom", "top")))
     chunks = [((6.0, -1.0, 5.5), (9.0, 7.0, 6.5), (1.0, 0.5, 0.0), dark),
-              ((-7.0, 1.5, 5.0), (8.0, 7.5, 7.0), (0.6, -1.0, 0.0), light),
-              ((0.0, -6.0, 6.5), (7.0, 6.0, 6.0), (1.0, 1.0, 0.0), light),
+              ((-7.0, 1.5, 5.0), (8.0, 7.5, 7.0), (0.6, -1.0, 0.0), bright),
+              ((0.0, -6.0, 6.5), (7.0, 6.0, 6.0), (1.0, 1.0, 0.0), bright),
               ((-1.0, 6.0, 4.0), (7.0, 6.0, 5.0), (-1.0, 0.4, 0.0), dark),
               ((10.5, 5.0, 2.5), (6.0, 5.0, 5.0), (0.3, 1.0, 0.0), fill)]
+    if light:
+        # The three biggest.
+        chunks = chunks[:3]
     for at, size, x_hint, color in chunks:
         centre = anim_rig.add(top, b(at))
         tilt = anim_rig.add(up, (0.25 * x_hint[1], 0.25 * x_hint[0], 0.0))
@@ -340,10 +389,11 @@ def make_hotte(content):
             "prims": prims}
 
 
-def build_props(sk):
-    """All props by name (the logs need the skeleton for their validated axes)."""
-    props = [make_axe(), make_pickaxe(), make_basket(), make_logs(sk), make_hotte("stone"), make_hotte("gold"),
-             make_hammer()]
+def build_props(sk, light=False):
+    """All props by name (the logs need the skeleton for their validated axes); `light`: the light props (see the
+    module's docstring)."""
+    props = [make_axe(light), make_pickaxe(light), make_basket(light), make_logs(sk, light), make_hotte("stone", light),
+             make_hotte("gold", light), make_hammer(light)]
     return {p["name"]: p for p in props}
 
 
@@ -367,7 +417,10 @@ def primitive_triangles(prim):
         faces = [((1, -1, -1), (1, 1, -1), (1, 1, 1), (1, -1, 1)), ((-1, 1, -1), (-1, -1, -1), (-1, -1, 1), (-1, 1, 1)),
                  ((1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1)), ((-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1)),
                  ((-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1)), ((-1, 1, -1), (1, 1, -1), (1, -1, -1), (-1, -1, -1))]
-        for f in faces:
+        open_faces = prim.get("open", ())
+        for name, f in zip(("+x", "-x", "+y", "-y", "+z", "-z"), faces):
+            if name in open_faces:
+                continue
             out.append(((c[f[0]], c[f[1]], c[f[2]]), color))
             out.append(((c[f[0]], c[f[2]], c[f[3]]), color))
     elif shape == "frustum":
@@ -463,12 +516,12 @@ def prop_bit(prop):
     return 1 << (prop["id"] - 1)
 
 
-def mesh_parts(sk):
+def mesh_parts(sk, light=False):
     """What the Peasant's mesh contains besides the body: each part once (primitives of one prop, or shared by several
     through their "part" key), with the mask of the props that show it and its bone. Parts sharing a key must have the
     same bone and frame (they are written with the frame of the first prop that has them)."""
     parts = {}
-    for prop in sorted(build_props(sk).values(), key=lambda p: p["id"]):
+    for prop in sorted(build_props(sk, light).values(), key=lambda p: p["id"]):
         for prim in prop["prims"]:
             key = prim.get("part", prop["name"])
             part = parts.setdefault(key, {"key": key, "mask": 0, "owner": prop, "prims": []})
@@ -525,16 +578,17 @@ def main():
         print("%-3d %-12s %-12s %-6s %-26s %-5d (%.1f, %.1f, %.1f) (%.4f, %.4f, %.4f, %.4f)"
               % (prop["id"], prop["name"], prop["bone"], prop["frame"], "%.0f x %.0f x %.0f" % size,
                  len(prop_triangles(prop)), t[0], t[1], t[2], q[0], q[1], q[2], q[3]))
-    print("\nParties du maillage (masque = bits des pieces qui la montrent) :")
-    total_vertices = total_triangles = 0
-    for part in mesh_parts(sk):
-        buffers = part_buffers(part, sk)
-        total_vertices += len(buffers["vertices"])
-        total_triangles += len(buffers["triangles"])
-        print("  %-12s masque %3d (0b%s)  os %-12s %4d sommets %4d triangles"
-              % (part["key"], part["mask"], format(part["mask"], "08b"), part["owner"]["bone"], len(buffers["vertices"]),
-                 len(buffers["triangles"])))
-    print("  total : %d sommets, %d triangles" % (total_vertices, total_triangles))
+    for light in (False, True):
+        print("\nParties du maillage%s (masque = bits des pieces qui la montrent) :" % (", pieces legeres" if light else ""))
+        total_vertices = total_triangles = 0
+        for part in mesh_parts(sk, light):
+            buffers = part_buffers(part, sk)
+            total_vertices += len(buffers["vertices"])
+            total_triangles += len(buffers["triangles"])
+            print("  %-12s masque %3d (0b%s)  os %-12s %4d sommets %4d triangles"
+                  % (part["key"], part["mask"], format(part["mask"], "08b"), part["owner"]["bone"],
+                     len(buffers["vertices"]), len(buffers["triangles"])))
+        print("  total : %d sommets, %d triangles" % (total_vertices, total_triangles))
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ Run:
   python Tools/Editor/preview_animation.py --all
       (every gesture: <name>_contact_sheet.png (12 frames) and <name>_zoom.png (6 frames, zoom 2), plus the
       comparisons A_Peasant_Carry_comparaison.png and A_Peasant_IdleCarry_comparaison.png)
+  add --light to any of them to draw the light props (peasant_props.build_props(light=True), the mesh's last LOD).
 (default output: Saved/AnimPreview/<gesture>_contact_sheet.png, outside git).
 The skeleton, the source walk or idle and the body come from Tools/Editor/Data/, written by
 make_peasant_animations.py.
@@ -232,9 +233,9 @@ def body_terms(sk, p):
 
 
 class Shared:
-    def __init__(self):
+    def __init__(self, light=False):
         self.sk = anim_rig.Skeleton.load(SKELETON_JSON)
-        self.props = peasant_props.build_props(self.sk)
+        self.props = peasant_props.build_props(self.sk, light)
         self.prop_tris = {name: peasant_props.prop_triangles(p) for name, p in self.props.items()}
         self.body = []
         self.body_side = []  # "l" / "r" for the points of the hands, else None
@@ -555,7 +556,9 @@ def main():
     picks = None
     fraction = 0.25
     i = 0
-    shared = Shared()
+    light = "--light" in args
+    args = [a for a in args if a != "--light"]
+    shared = Shared(light)
     if "--all" in args:
         render_all(shared)
         return
