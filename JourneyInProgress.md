@@ -200,7 +200,8 @@ vérifier sur S1 et S2.
    (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **J7a.3 faite et validée** (8280f6a). **J7a.4 faite et validée** (2026-10-18, cb8227d ; journal « J7a.4 : la
    formation » et les essais 1 à 5) : rangs, marche en bloc façon AoE4, flèche du clic droit (Ctrl : largeur), Maj en
    file, retour à sa place, couleur du joueur. Orientation au front chez le client reportée à J7b (choix B).
-   **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **Reprise : J7a.6** (vérification). La partie 2 clients de la Caserne attend J7a.6.
+   **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
+   armée à 2 clients, correctif de `gather`). **Reprise : J7b** (la mêlée). La partie 2 clients de la Caserne attend J7a.6.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -4137,3 +4138,30 @@ d'épée).
 - **Essai de J7a.5** : « tout a l'air bon ». Choix de l'utilisateur : **Ctrl + chiffre retiré** — Maj + chiffre crée le
   groupe s'il est vide et l'agrandit sinon ; Ctrl + Maj + chiffre retire (précise D30, à reporter au tableau des
   touches du GDD § 7.3 à la clôture de J7). Boucle courte lancée (sous-agent, worktree).
+
+### 2026-10-18 — J7a.6 : vérification
+
+- **1re boucle** lancée (sous-agent, worktree) : partie armée à 2 clients dans `quick_check` (Caserne, soldats,
+  formation, groupes chez un client), puis `quick_check` complet.
+- **1re boucle faite** (sous-agent, worktree, rien de commité). Étape **`army`** de la partie `net` : chaque client pose
+  une Caserne, produit 2 Lanciers et 2 Hommes d'armes ; « Units looks » (`DescribeLooks`, `hol.Units.Report`) : soldats
+  de l'autre en `SKM_Spearman` / `SKM_ManAtArms`, couleur de l'autre ; groupe 1 par Maj + &, puis & (5 unités, bloc
+  mixte) ; clic droit à 30 m : 10 unités à **5 cm** au plus du serveur, 5 par emplacement à ~2 m du clic, paire la plus
+  proche 114 / 149 cm. Commandes `hol.Camera.FocusNear`, `hol.Select.OrderNear`, `hol.Prod.Queue [Type] [Bâtiment]`.
+  Captures `net_army_c1/c2`, `qcnet_N_army_other`. **`quick_check` complet FAIL** (423 s, tests 74/74) : tout PASS
+  (`net 2 clients` compris) **sauf `gather`** — « deux Paysans au repos à moins de 90 cm » : **83 cm** (#21 et #19).
+  Le `quick_check` complet passait après la 8e boucle de J7a.4 : piste, la traversée ajoutée en J7a.4 (9e-11e
+  boucles, `bReforming` / `GetPassThroughSerial`) qui resterait active.
+- **2e boucle** lancée (sous-agent, worktree) : ce FAIL.
+- **2e boucle faite** (sous-agent, worktree, rien de commité). Reproduit seulement en `quick_check` complet (83 puis
+  70 cm, #21 et #19). **Cause** (pas la traversée de J7a.4) : deux Paysans des baies qui déchargent aux pas 952 et 953
+  s'arrêtent côte à côte contre le mur de la Maison ; `UHOLGatherProcessor::Stop` ne les laissait se tasser
+  (`bSettling`) qu'**un pas**, et `UHOLFootprintKeepOutProcessor` les remettait contre le mur ; le relevé du test était
+  pris 5 pas après l'arrêt. **Correctif** : `FHOLGatherFragment::SettleSteps`, `StopSettleSteps = 10` (tassement
+  pendant 10 pas) ; `wait 1` avant `hol.Units.Where 0` dans « gather used up ». Paysans au repos à 120 cm (avant 111).
+  **`quick_check` complet PASS** (422 s), **tests 74/74**. Un 2e passage complet lancé pour confirmer.
+- **2e passage complet : PASS** (421 s, tests 74/74, toutes les parties) ; `gather` : paire au repos la plus proche à
+  102 cm (seuil 90). Essai de clôture de J7a lancé.
+- **Essai de clôture de J7a : validé** (« c'est bon »). Commit **2be3be1** (étape `army` du `net`, correctif de
+  `gather`) sur `j5c-anims`, avance rapide de `main`. **J7a close.** Reprise : **J7b** (la mêlée ; orientation au front
+  chez le client, choix B ; S3 en J7b ; S2 à la fin de J7).
