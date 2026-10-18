@@ -184,6 +184,14 @@ Règles :
 | Pose au dépôt | Paysan | — | **abandonnée** (2026-10-16 : pas de geste, comme AoE4 ; le serveur ne s'arrête pas au dépôt) |
 | Repos, marche | toutes | M2 (D234) | empruntées au pack `CloseCombat` (épéiste) |
 | Bâtisseur (coup de marteau) + marteau | Paysan | J6a.4 | **fabriqué, branché, validé en jeu** (`A_Peasant_Build`, 1,333 s, deux coups ; marteau pièce 7 sur `ik_hand_gun` ; séquence 11 de `TP_Peasant` ; bâtisseur tourné vers son chantier) ; fusionné dans `main` (3b750bc) |
+| Lance (pièce) | Lancier | J7a.3 | **à faire** (2026-10-18, demande de l'utilisateur : animations des troupes) : pièce par script comme les outils du Paysan (`peasant_props.py`), tenue à deux mains, couleur du joueur |
+| Épée et bouclier (pièces) | Homme d'armes | J7a.3 | **à faire** : épée en main droite, bouclier au bras gauche |
+| Repos et marche armés | Lancier, Homme d'armes | J7a.3 | **à faire** : repos et marche de D234 repris, bras qui tiennent l'arme (lance relevée ; épée basse, bouclier devant) ; vitesse de marche réglée comme celle du Paysan |
+| Coup de lance | Lancier | J7b.5 | **à faire** : estoc à deux mains, boucle sur la cadence d'attaque de la table ; unité tournée vers sa cible |
+| Coup d'épée | Homme d'armes | J7b.5 | **à faire** : taille ou estoc, bouclier levé ; boucle sur la cadence d'attaque |
+| Chute (mourant) | toutes les troupes (et le Paysan) | J7b.5 | **à faire** : ~1 s, activité « mourant » avant la destruction différée (D224), pas de cadavre (D86) |
+| Arc (pièce), tir à l'arc, repos et marche | Archer | J7c.1 / J7c.2 | **à faire** : bander, viser, lâcher (la flèche part au lâcher), arc en main gauche |
+| Attaque du Paysan | Paysan | J7b (si les Paysans combattent) | **en attente** : question du plan de J7 (« Les Paysans combattent-ils ? »), à trancher avant J7b.2 |
 
 ## Prochaine étape exacte
 
@@ -209,7 +217,14 @@ bâtisseur de J6a.4 sont dans `main`.
   règle « Cohabitation » de `JourneyInProgress.md` ; côté B : le worktree J5c ; A B A B A B, annoncés aux autres
   sessions ; trace Insights `-trace=cpu,gpu` si besoin). Puis essai de l'utilisateur (aspect de loin), commit, fusion.
 
-Prochaines animations : à la demande des étapes de jeu (combat de M5, autres unités), même chaîne, même worktree.
+**3. Animations des troupes (J7, demande de l'utilisateur du 2026-10-18)** : il en faudra pour les soldats de J7 — voir
+les lignes « à faire » du catalogue : pièces et repos / marche armés du Lancier et de l'Homme d'armes (J7a.3), coups de
+lance et d'épée et chute de l'unité mourante (J7b.5), arc et tir de l'Archer (J7c), attaque du Paysan si les Paysans
+combattent. Même chaîne (poses en Python sur le mannequin, aperçus, commandlet), même worktree, une ligne de la table des
+unités par séquence ; l'essai de l'utilisateur juge chaque geste. Plan et étapes dans `JourneyInProgress.md` (« Plan de
+J7 »).
+
+Prochaines animations : à la demande des étapes de jeu, même chaîne, même worktree.
 
 ## Journal
 
