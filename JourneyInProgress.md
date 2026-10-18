@@ -4165,3 +4165,21 @@ d'épée).
 - **Essai de clôture de J7a : validé** (« c'est bon »). Commit **2be3be1** (étape `army` du `net`, correctif de
   `gather`) sur `j5c-anims`, avance rapide de `main`. **J7a close.** Reprise : **J7b** (la mêlée ; orientation au front
   chez le client, choix B ; S3 en J7b ; S2 à la fin de J7).
+
+### 2026-10-18 — J7b.1 : règles pures du combat
+
+- **1re boucle** lancée (sous-agent, worktree) : `Simulation/HOLCombatRules` (dégâts, bonus, armure, cadence, choix de
+  cible), colonnes de combat lues dans `FHOLUnitTypeConstants`, tests `Combat.*`.
+- **J7b.1 faite** (sous-agent). `Simulation/HOLCombatRules.h/.cpp` (`HOLCombat`) : `GetDamage` (attaque + bonus de
+  catégorie − armure, 1 au moins), `GetHitsToKill`, cadence en millisecondes entières (`TickAttack`, `TickIdle` ; pas
+  de 50 ms ; 1,875 s → coups à 37 ou 38 pas, sans dérive), **préparation du premier coup = 50 %** de la cadence
+  (`StartAttack` : un changement de cible ne donne pas de coup gratuit), `IsInRange` / `GetEdgeDistance` (bord à bord),
+  `GetSearchRadius` (maintien : portée seule ; rayon d'agression 0 → personne, sauf attaque-déplacement :
+  `AttackMoveRadius` **1 200 cm**), `ChooseTarget` (cible actuelle gardée à portée ; unité avant bâtiment, à portée
+  d'abord, qui m'attaque, étalement au-delà de **6 attaquants** (`MaxAttackers`) hors de portée, plus proche, plus petit
+  identifiant ; indépendant de l'ordre). `FHOLUnitTypeConstants` lit les 9 colonnes de combat (format réseau inchangé).
+  Exemples : Lancier → Homme d'armes 4 par coup, **39 coups (~72 s)** ; Homme d'armes → Lancier 8, **10 coups
+  (13 s)** ; Lancier → cavalerie (armure 2) 23 ; Paysan → Homme d'armes 1. Tests `Combat.Damage`, `.Cadence`,
+  `.Range`, `.Target` ; compilation sans avertissement ; **tests 78/78** ; `quick_check -Parts tests` PASS (21 s).
+  Commitée (rien de visible en jeu). À revoir à l'essai : `AttackMoveRadius`, `MaxAttackers`, durée des duels.
+  Reprise : **J7b.2** (processeur de combat).
