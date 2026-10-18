@@ -3877,3 +3877,19 @@ d'épée).
   `quick_check`, commit sur `j5c-anims`, avance rapide de `main`.
 - **Essai validé** par l'utilisateur (« c'est bon ») ; J7a.3 commitée sur `j5c-anims` et reportée sur `main`. Reste :
   soldats dans la partie `anims` de `quick_check` (boucle suivante), puis **J7a.4** (formation).
+
+- **4e boucle faite** (sous-agent, worktree, rien de commité) : soldats dans la partie `anims` de `quick_check.ps1`.
+  3 Lanciers en (-7800, 3000), 3 Hommes d'armes en (-7800, 4000), capture `anims_soldiers_idle` ; sélection par un
+  cadre autour des deux groupes, envoyés 12 m à l'est (-6600, 3500), capture `anims_soldiers_walk`. Vérifications : repos
+  armé (« working »), marche armée (« walking »), repos armé (« standing »), 2 sur 3 au moins ; états des soldats admis
+  dans « every Peasant drawn ». Vérifications existantes inchangées. **`quick_check -Parts tests,camera,anims` PASS en
+  37 s** : **3 sur 3** à chaque moment pour les deux types. Captures vues : lance et fanion, épée et bouclier, bleu du
+  joueur. **`quick_check` complet FAIL (387 s)** : délai dépassé à `waitlog Selection: 3 units (own): Peasant x3` (groupe
+  du bois, au début d'`anims`) : le cadre a pris **4 Paysans**, dont un resté de `build camp` (près de L et de son
+  arbre). Pas dû aux soldats ; les échecs `camera 8p`, `move`, `anims` en découlent. Reste : écarter ce Paysan (ou le
+  groupe du bois), refaire le `quick_check` complet, commit.
+- **5e boucle faite** (sous-agent, worktree, rien de commité) : au début d'`anims`, une étape `clear wood` (avant
+  `mark anims`) sélectionne par un cadre le bord du bois de l'emplacement 0 et le camp L (x -15600 à -12400, y -3000 à
+  -700) et envoie ce qu'il contient au point lointain de la coupe (`CutTo`, -9000, -4000), puis attend 6 s. Elle a pris
+  **4 Paysans** (`gather`, `build camp`). Vérifications inchangées. **`quick_check` complet PASS en 348 s** (toutes
+  les parties, soldats compris, tests 69/69). Reste : commit sur `j5c-anims`, avance rapide de `main`, puis J7a.4.
