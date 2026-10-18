@@ -201,7 +201,7 @@ vérifier sur S1 et S2.
    armes et poses armées écrites et vues en aperçu, **rien de commité, rien fabriqué dans Unreal** ; fichiers non
    commités dans le worktree `MyCrusader-J5c` (branche `j5c-anims`, à c49417e) : `Tools/Editor/soldier_props.py`,
    `soldier_poses.py` (nouveaux), `anim_rig.py`, `peasant_props.py`, `preview_animation.py` (étendus).
-   **Reprise (nouvelle séance)** : l'utilisateur fait la **revue des aperçus** (`MyCrusader-J5c\Saved\AnimPreview   soldiers_compare.png` et `_light`) : épée droite au repos, à 45° vers l'avant en marche, **plat de la lame tourné
+   **Reprise (nouvelle séance)** : l'utilisateur fait la **revue des aperçus** (`C:\Users\baudo\Documents\MyCrusader-J5c\Saved\AnimPreview\soldiers_compare.png` et `soldiers_compare_light.png`) : épée droite au repos, à 45° vers l'avant en marche, **plat de la lame tourné
    vers l'avant** (ajout non demandé, à confirmer) ; lance, fanion, bouclier non commentés. Puis : fabrication dans
    Unreal (`make_peasant_animations.py` à étendre aux `soldier_poses.GESTURES`), `SKM_Spearman` / `SKM_ManAtArms` (armes
    toujours visibles : masque du matériau à trancher ; parties « joueur » en alpha 0), fournisseurs, table des unités
