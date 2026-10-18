@@ -28,9 +28,22 @@ tools' weights, so it stays in it).
 
 Run (headless, editor closed, from PowerShell; log lines start with "HOLPeasantMesh"):
   UnrealEditor-Cmd.exe <project> -run=pythonscript -script="<this file>" -unattended -nop4 -nosplash
-  add "--provider-only" inside the -script value to refresh TP_Peasant alone (mesh and material kept), or
+  add "--provider-only" inside the -script value to refresh TP_Peasant alone (mesh and material kept; with
+  "--soldiers": TP_Spearman and TP_ManAtArms alone), or
   "--material-only" for the material alone, "--light-lod=N" to take the light props from LOD N instead of
   LIGHT_PROPS_LOD (99: full props everywhere, the mesh as it was before them, for an A/B measure).
+
+"--soldiers" (J7a.3) builds the soldiers instead, one mesh per type, weapons ALWAYS shown (user's choice, 2026-10-18):
+  /Game/Units/Materials/M_UnitPlayerColorWeapons  M_UnitPlayerColorProps without the folding (no World Position
+                                                  Offset, nothing read from custom data 3): alpha 0 = the player's
+                                                  colour (body, the spear's pennant, the shield's face), alpha > 0 =
+                                                  the vertex colour (the alpha only names the piece: its bit, as
+                                                  for the Peasant's props, read back per LOD)
+  /Game/Units/Mannequin/SKM_Spearman, SKM_ManAtArms  the same body and LODs as SKM_Peasant, with the pieces of
+                                                  soldier_props.SOLDIER_MESHES (light from LIGHT_PROPS_LOD)
+  /Game/Units/Mannequin/TP_Spearman, TP_ManAtArms    4 sequences only (user's choice, 2026-10-18): 0 idle and 1 walk
+                                                  (TP_Mannequin_Classic's 0 and 1), 2 the armed idle, 3 the armed
+                                                  walk (soldier_poses.GESTURES); none of the Peasant's gestures
 """
 import os
 import sys
@@ -42,6 +55,7 @@ sys.dont_write_bytecode = True  # no __pycache__ in Tools/Editor
 sys.path.insert(0, TOOLS_DIR)
 import anim_rig  # noqa: E402
 import peasant_props  # noqa: E402
+import soldier_props  # noqa: E402
 
 SOURCE_MESH = "/Game/Units/Mannequin/SKM_Mannequin_Classic"
 SOURCE_PROVIDER = "/Game/Units/Mannequin/TP_Mannequin_Classic"
@@ -60,6 +74,15 @@ PEASANT_SEQUENCES = [
     PEASANT_ANIMATIONS + "A_Peasant_Build",           # 11 building (J6a.4: hammering, the hammer is prop 7)
 ]
 SKELETON_JSON = os.path.join(TOOLS_DIR, "Data", "UE4MannequinSkeleton.json")
+# The soldiers (--soldiers): material, then per mesh its provider and its sequences appended at 2, 3 (after the
+# mannequin's idle and walk only, SOLDIER_BASE_SEQUENCES).
+SOLDIER_BASE_SEQUENCES = 2
+SOLDIER_MATERIAL_NAME = "M_UnitPlayerColorWeapons"
+SOLDIERS = {
+    "SKM_Spearman": ("TP_Spearman", [PEASANT_ANIMATIONS + "A_Spearman_Idle", PEASANT_ANIMATIONS + "A_Spearman_Walk"]),
+    "SKM_ManAtArms": ("TP_ManAtArms", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle",
+                                       PEASANT_ANIMATIONS + "A_ManAtArms_Walk"]),
+}
 # First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
 LIGHT_PROPS_LOD = 3
 
@@ -125,17 +148,17 @@ def custom_node(lib, material, name, code, inputs, x, y):
     return node
 
 
-def make_material():
+def make_material(name=MATERIAL_NAME, fold=True):
     """Player colour on the body as M_UnitPlayerColor (custom data 0-2, matte); vertex colour on the props; the props
     not named by custom data 3 folded by World Position Offset onto the object's origin (zero-area triangles: nothing
-    drawn, in the shadows too)."""
-    path = MATERIAL_FOLDER + "/" + MATERIAL_NAME
+    drawn, in the shadows too). fold=False (the soldiers): no folding, every piece always shown."""
+    path = MATERIAL_FOLDER + "/" + name
     lib = unreal.MaterialEditingLibrary
     material = existing(path)
     if material is not None:
         lib.delete_all_material_expressions(material)
     else:
-        material = asset_tools.create_asset(MATERIAL_NAME, MATERIAL_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
+        material = asset_tools.create_asset(name, MATERIAL_FOLDER, unreal.Material, unreal.MaterialFactoryNew())
     if material is None:
         raise RuntimeError("Could not create " + path)
     # Without both usages the engine draws the default material instead (see make_skinned_mannequin.py).
@@ -145,9 +168,6 @@ def make_material():
     player = lib.create_material_expression(material, unreal.MaterialExpressionPerInstanceCustomData3Vector, -900, 0)
     player.set_editor_property("data_index", 0)
     player.set_editor_property("const_default_value", unreal.LinearColor(0.6, 0.6, 0.6, 1.0))
-    prop = lib.create_material_expression(material, unreal.MaterialExpressionPerInstanceCustomData, -900, 400)
-    prop.set_editor_property("data_index", 3)
-    prop.set_editor_property("const_default_value", 0.0)
     vertex_color = lib.create_material_expression(material, unreal.MaterialExpressionVertexColor, -900, 200)
 
     # Base colour: the player's on the body, the vertex colour on a prop.
@@ -159,6 +179,27 @@ def make_material():
     lib.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR)
 
     # World Position Offset: hidden props to the object's origin.
+    if fold:
+        fold_hidden_props(lib, material, vertex_color)
+
+    # Matte (D265), as M_UnitPlayerColor.
+    specular = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -300, 200)
+    specular.set_editor_property("r", 0.0)
+    lib.connect_material_property(specular, "", unreal.MaterialProperty.MP_SPECULAR)
+    roughness = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -300, 300)
+    roughness.set_editor_property("r", 1.0)
+    lib.connect_material_property(roughness, "", unreal.MaterialProperty.MP_ROUGHNESS)
+    lib.recompile_material(material)
+    assets.save_loaded_asset(material)
+    log("materiau %s : %d noeuds%s" % (path, lib.get_num_material_expressions(material),
+                                      "" if fold else " (sans repli : pieces toujours montrees)"))
+    return material
+
+
+def fold_hidden_props(lib, material, vertex_color):
+    prop = lib.create_material_expression(material, unreal.MaterialExpressionPerInstanceCustomData, -900, 400)
+    prop.set_editor_property("data_index", 3)
+    prop.set_editor_property("const_default_value", 0.0)
     hidden = custom_node(lib, material, "PropHidden", HIDDEN_CODE,
                          [("Mask", (vertex_color, "A")), ("Prop", (prop, ""))], -600, 400)
     origin = lib.create_material_expression(material, unreal.MaterialExpressionObjectPositionWS, -900, 600)
@@ -170,18 +211,6 @@ def make_material():
     lib.connect_material_expressions(to_origin, "", offset, "A")
     lib.connect_material_expressions(hidden, "", offset, "B")
     lib.connect_material_property(offset, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET)
-
-    # Matte (D265), as M_UnitPlayerColor.
-    specular = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -300, 200)
-    specular.set_editor_property("r", 0.0)
-    lib.connect_material_property(specular, "", unreal.MaterialProperty.MP_SPECULAR)
-    roughness = lib.create_material_expression(material, unreal.MaterialExpressionConstant, -300, 300)
-    roughness.set_editor_property("r", 1.0)
-    lib.connect_material_property(roughness, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    lib.recompile_material(material)
-    assets.save_loaded_asset(material)
-    log("materiau %s : %d noeuds" % (path, lib.get_num_material_expressions(material)))
-    return material
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -321,11 +350,15 @@ def write_lod(dynamic, mesh, lod):
         raise RuntimeError("Could not write LOD %d of %s" % (lod, mesh.get_path_name()))
 
 
-def verify_lod(mesh, lod, bone_index, parts):
-    """Reads the written LOD back: vertices per mask, bone of the prop vertices."""
+def verify_lod(mesh, lod, bone_index, parts, body_vertices=None):
+    """Reads the written LOD back: vertices per mask, bone of the prop vertices; with body_vertices, the vertices of
+    mask 0 (the body and the soldiers' pieces in the player's colour) counted too."""
     dynamic = read_lod(mesh, lod)
     names = {index: name for name, index in bone_index.items()}
-    expected = {part["mask"]: (len(part["vertices"]), part["bone"]) for part in parts}
+    expected = {part["mask"]: (len(part["vertices"]), part["bone"]) for part in parts if part["mask"]}
+    zero_expected = None if body_vertices is None else body_vertices + sum(len(p["vertices"]) for p in parts
+                                                                          if not p["mask"])
+    zero_found = 0
     found = {}
     count = queries.get_vertex_count(dynamic)
     colors = first(unreal.GeometryScript_VertexColors.get_mesh_per_vertex_colors(dynamic), unreal.GeometryScriptColorList)
@@ -337,6 +370,7 @@ def verify_lod(mesh, lod, bone_index, parts):
             break
         mask = int(round(color_list[vid].a * 255.0))
         if mask == 0:
+            zero_found += 1
             continue
         weight = first(weights.get_largest_vertex_bone_weight(dynamic, vid), unreal.GeometryScriptBoneWeight)
         bone = names.get(weight.get_editor_property("bone_index")) if weight is not None else None
@@ -355,13 +389,35 @@ def verify_lod(mesh, lod, bone_index, parts):
     if extra:
         ok = False
         lines.append("masques inattendus %s" % extra)
+    if zero_expected is not None:
+        ok = ok and zero_found == zero_expected
+        lines.append("masque 0 (corps et couleur du joueur) : %d/%d%s" % (
+            zero_found, zero_expected, "" if zero_found == zero_expected else " ECART"))
     log("relecture LOD %d (%d sommets) : %s" % (lod, count, " ; ".join(lines)))
     return ok
 
 
-def make_mesh(material, light_lod=LIGHT_PROPS_LOD):
+def soldier_parts(sk, names, light):
+    """The pieces of one soldier's mesh: per weapon, its primitives in their own colours (mask = the weapon's bit,
+    always shown by M_UnitPlayerColorWeapons) and those in the player's colour (mask 0, drawn like the body)."""
+    props = soldier_props.build_props(sk, light)
+    parts = []
+    for name in names:
+        prop = props[name]
+        for player in (False, True):
+            prims = [p for p in prop["prims"] if bool(p.get("player")) == player]
+            if prims:
+                parts.append({"key": name + ("_joueur" if player else ""), "owner": prop, "prims": prims,
+                              "mask": 0 if player else peasant_props.prop_bit(prop)})
+    return parts
+
+
+def make_mesh(material, light_lod=LIGHT_PROPS_LOD, mesh_name=MESH_NAME, parts_of=None):
+    """parts_of(sk, light): the pieces (peasant_props.mesh_parts by default)."""
+    soldier = parts_of is not None
+    parts_of = parts_of or peasant_props.mesh_parts
     source = load(SOURCE_MESH)
-    path = MESH_FOLDER + "/" + MESH_NAME
+    path = MESH_FOLDER + "/" + mesh_name
     mesh = existing(path) or assets.duplicate_asset(SOURCE_MESH, path)
     if mesh is None:
         raise RuntimeError("Could not duplicate " + SOURCE_MESH + " to " + path)
@@ -372,7 +428,7 @@ def make_mesh(material, light_lod=LIGHT_PROPS_LOD):
         raise RuntimeError("The mesh's bones differ from Data/UE4MannequinSkeleton.json")
     part_sets = {}
     for light in (False, True):
-        parts = [peasant_props.part_buffers(part, sk) for part in peasant_props.mesh_parts(sk, light)]
+        parts = [peasant_props.part_buffers(part, sk) for part in parts_of(sk, light)]
         for part in parts:
             if part["bone"] not in bone_index:
                 raise RuntimeError("Bone %s of part %s not in the mesh" % (part["bone"], part["key"]))
@@ -388,9 +444,11 @@ def make_mesh(material, light_lod=LIGHT_PROPS_LOD):
     source_vertices = [subsystem.get_num_verts(source, lod) for lod in range(lod_count)]
     weighted = read_lod(source, 0)
     weights.copy_bones_from_skeleton(source.get_editor_property("skeleton"), weighted)
+    body_counts = []
     for lod in range(lod_count):
         dynamic, how = body_lod(source, lod, source.get_editor_property("skeleton"), weighted)
         body_vertices, body_triangles = queries.get_vertex_count(dynamic), queries.get_num_triangle_i_ds(dynamic)
+        body_counts.append(body_vertices)
         if lod == 0:
             against, total = check_winding(dynamic)
             log("sens des triangles du corps : %d/%d avec (b - a) x (c - a) contre la normale (pieces inversees en "
@@ -423,7 +481,8 @@ def make_mesh(material, light_lod=LIGHT_PROPS_LOD):
 
     peasant_vertices = [subsystem.get_num_verts(mesh, lod) for lod in range(lod_count)]
     log("%s : sommets par LOD %s (source %s)" % (path, peasant_vertices, source_vertices))
-    ok = all([verify_lod(mesh, lod, bone_index, lod_parts(lod)) for lod in range(lod_count)])
+    ok = all([verify_lod(mesh, lod, bone_index, lod_parts(lod), body_counts[lod] if soldier else None)
+              for lod in range(lod_count)])
     log("relecture des pieces : %s" % ("OK" if ok else "ECART"))
     return mesh
 
@@ -432,16 +491,19 @@ def make_mesh(material, light_lod=LIGHT_PROPS_LOD):
 # Provider
 
 
-def make_provider(mesh):
+def make_provider(mesh, name=PROVIDER_NAME, extra=PEASANT_SEQUENCES, base_count=None):
+    """TP_Mannequin_Classic's sequences (all of them, or its first base_count), then extra."""
     source = load(SOURCE_PROVIDER)
     sequences = [entry.get_editor_property("sequence") for entry in source.get_editor_property("sequences")]
-    sequences += [load(path) for path in PEASANT_SEQUENCES]
-    path = MESH_FOLDER + "/" + PROVIDER_NAME
+    if base_count is not None:
+        sequences = sequences[:base_count]
+    sequences += [load(path) for path in extra]
+    path = MESH_FOLDER + "/" + name
     provider = existing(path)
     if provider is None:
         factory = unreal.TransformProviderDataFactory()
         factory.set_editor_property("provider_data_class", unreal.AnimSequenceTransformProviderData)
-        provider = asset_tools.create_asset(PROVIDER_NAME, MESH_FOLDER, unreal.AnimSequenceTransformProviderData, factory)
+        provider = asset_tools.create_asset(name, MESH_FOLDER, unreal.AnimSequenceTransformProviderData, factory)
     if provider is None:
         raise RuntimeError("Could not create " + path)
     provider.set_editor_property("skinned_asset", mesh)
@@ -453,6 +515,9 @@ def make_provider(mesh):
     provider.set_editor_property("sequences", entries)
     provider.set_editor_property("layers", [unreal.AnimSequenceTransformProviderLayer()])
     assets.save_loaded_asset(provider)
+    saved = [entry.get_editor_property("sequence") for entry in load(path).get_editor_property("sequences")]
+    if [s.get_path_name() for s in saved] != [s.get_path_name() for s in sequences]:
+        raise RuntimeError("%s read back differs: %s" % (path, ", ".join(s.get_name() for s in saved)))
     log("%s : %d sequences sur %s (%s)" % (path, len(entries), mesh.get_name(),
                                          ", ".join("%d %s" % (i, s.get_name()) for i, s in enumerate(sequences))))
     return provider
@@ -464,12 +529,26 @@ def main():
         make_material()
         return
     if "--provider-only" in arguments:
-        make_provider(load(MESH_FOLDER + "/" + MESH_NAME))
+        if "--soldiers" in arguments:
+            for mesh_name, (provider_name, sequences) in SOLDIERS.items():
+                make_provider(load(MESH_FOLDER + "/" + mesh_name), provider_name, sequences, SOLDIER_BASE_SEQUENCES)
+        else:
+            make_provider(load(MESH_FOLDER + "/" + MESH_NAME))
+        log("termine")
         return
     light_lod = LIGHT_PROPS_LOD
     for argument in arguments:
         if argument.startswith("--light-lod="):
             light_lod = int(argument.split("=", 1)[1])
+    if "--soldiers" in arguments:
+        material = make_material(SOLDIER_MATERIAL_NAME, fold=False)
+        for mesh_name, (provider_name, sequences) in SOLDIERS.items():
+            pieces = soldier_props.SOLDIER_MESHES[mesh_name]
+            mesh = make_mesh(material, light_lod, mesh_name,
+                             lambda sk, light, pieces=pieces: soldier_parts(sk, pieces, light))
+            make_provider(mesh, provider_name, sequences, SOLDIER_BASE_SEQUENCES)
+        log("termine")
+        return
     material = make_material()
     mesh = make_mesh(material, light_lod)
     make_provider(mesh)

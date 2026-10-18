@@ -21,7 +21,9 @@ Gesture description (one dict, see peasant_poses.py):
             TOOL BONE ik_hand_gun (the only ik_* bone ever written, J5c.2b): Rig.pose puts it on the tool frame
             (origin at the knob, X along the handle toward the head, Y toward the striking edge, Z = X x Y), so a prop
             skinned to it (peasant_props.py) follows the hands exactly. The edge is fixed in the right hand (the
-            tool is held rigidly by it): the direction the head moves in at the hit, read once from the solved loop.
+            tool is held rigidly by it): the direction the head moves in at the hit, read once from the solved loop;
+            or, for a weapon carried still (no hit: the soldiers' spear and sword, J7a.3), "edge": (right, forward,
+            up) direction of the edge (the blade's side) at the first frame, then fixed in the right hand.
   "base"    optional path of a source animation (the walk under the loaded walk): its pelvis and legs are copied
             frame by frame (sampled by make_peasant_animations.py into Data/<name>.json), it sets the length and the
             frame rate, the key times are stretched onto its length and the legs are not solved.
@@ -29,7 +31,8 @@ Gesture description (one dict, see peasant_poses.py):
   "steady_spine"  0-1: the same, spread along the spine (a third at spine_01, two thirds at spine_02, all of it at
                   spine_03): for a base whose pelvis turns a lot (the idle's fencing stance), the chest faces forward
                   without a kink at one joint.
-  "hands_frame"   "chest": free hands' positions follow the chest (bob, sway) instead of staying fixed in the mesh.
+  "hands_frame"   "chest": free hands' positions follow the chest (bob, sway) instead of staying fixed in the mesh;
+                  a tool's grip follows it too (position only: the tool keeps its keyed direction, J7a.3).
   "scene"   preview only: what the gesture works on ("trunk", "rock", "bush", "beam").
   "preview" preview only: {"frames": N, "zoom_picks": [frame indices]} of the sheets made by --all.
   "props"   preview only: names of the props of peasant_props.py drawn on their bones (what the mesh will show).
@@ -526,6 +529,11 @@ class Rig:
     def strike(self):
         """(hit frame index, striking edge in the right hand's frame) of a tool gesture: the hit is the frame where
         the head stops hardest (largest drop of speed), the edge the direction the head moves in just before it."""
+        if self._strike is None and "edge" in self.g.get("tool", {}):
+            # A weapon carried still: no hit, the edge given in body terms at the first frame.
+            local, _ = self._solve(self.times[0])
+            hand_rot = self.sk.fk(local)[self.sk.index["hand_r"]][1]
+            self._strike = (0, qrot(qconj(hand_rot), normalize(self.sk.body(self.g["tool"]["edge"]))))
         if self._strike is None:
             hand = self.sk.index["hand_r"]
             heads, hand_rots = [], []
@@ -607,10 +615,16 @@ class Rig:
         chest = sk.index["spine_03"]
         chest_motion = qmul(world[chest][1], qconj(sk.ref_world[chest][1]))
         axe = self.axe(values) if "grip" in values else {}
+        follow = self.g.get("hands_frame") == "chest"
+        chest_ref = sk.ref_world[chest][0]
+        if follow and "grip" in values:
+            # The tool follows the chest's motion (position only, its direction stays as keyed).
+            moved = sub(add(world[chest][0], qrot(chest_motion, sub(axe["grip_r"], chest_ref))), axe["grip_r"])
+            for k in ("grip_l", "grip_r", "knob", "head", "trace"):
+                if k in axe:
+                    axe[k] = add(axe[k], moved)
         if "hands" in values:
             # Free hands, in body terms; "hands_frame": "chest" makes them follow the chest (bob, sway).
-            follow = self.g.get("hands_frame") == "chest"
-            chest_ref = sk.ref_world[chest][0]
             for side in values["hands"]:
                 hand = values["hands"][side]
                 at, palm = sk.body(hand["at"]), sk.body(hand["palm"])

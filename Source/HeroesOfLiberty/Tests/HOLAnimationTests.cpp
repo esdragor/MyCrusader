@@ -2,6 +2,7 @@
 
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
+#include "Engine/SkinnedAsset.h"
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
 #include "Presentation/HOLUnitAnimation.h"
@@ -282,6 +283,40 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 				&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0);
 			TestEqual(*FString::Printf(TEXT("%s keeps the mannequin's mesh"), Soldier), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(),
 				TEXT("SKM_Mannequin_Classic"));
+		}
+	}
+
+	// The Spearman and the Man-at-arms (J7a.3): their own mesh and provider, 4 sequences only (0 idle and 1 walk of the
+	// mannequin, 2 the armed idle, 3 the armed walk; user's choice), idle 2, walk 3, no gesture nor prop.
+	struct FArmedSoldier { const TCHAR* Name; const TCHAR* Mesh; const TCHAR* Idle; const TCHAR* Walk; };
+	for (const FArmedSoldier& Soldier : { FArmedSoldier{ TEXT("Spearman"), TEXT("SKM_Spearman"), TEXT("A_Spearman_Idle"), TEXT("A_Spearman_Walk") },
+			FArmedSoldier{ TEXT("ManAtArms"), TEXT("SKM_ManAtArms"), TEXT("A_ManAtArms_Idle"), TEXT("A_ManAtArms_Walk") } })
+	{
+		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier.Name, TEXT("Animation test"));
+		if (!TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier.Name), Row))
+		{
+			continue;
+		}
+		TestEqual(*FString::Printf(TEXT("%s: its own mesh"), Soldier.Name), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(), FString(Soldier.Mesh));
+		TestTrue(*FString::Printf(TEXT("%s: idle 2, walk 3, no gesture, carrying walk, loaded idle, building nor prop"), Soldier.Name), Row->IdleSequence == 2
+			&& Row->WalkSequence == 3 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
+			&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
+			&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0);
+		const UAnimSequenceTransformProviderData* SoldierOwn = Row->AnimationProvider.LoadSynchronous();
+		if (TestNotNull(*FString::Printf(TEXT("%s's animation provider"), Soldier.Name), SoldierOwn))
+		{
+			const TArray<FAnimSequenceTransformProviderSequence>& Own = SoldierOwn->GetSequences();
+			const auto OwnName = [&Own](int32 Index)
+			{
+				return Own.IsValidIndex(Index) && Own[Index].Sequence ? Own[Index].Sequence->GetName() : FString(TEXT("none"));
+			};
+			TestEqual(*FString::Printf(TEXT("%s's provider: 4 sequences"), Soldier.Name), Own.Num(), 4);
+			TestEqual(*FString::Printf(TEXT("%s: 0 the mannequin's idle"), Soldier.Name), OwnName(0), FString(TEXT("A_SW_Idle")));
+			TestEqual(*FString::Printf(TEXT("%s: 1 the mannequin's walk"), Soldier.Name), OwnName(1), FString(TEXT("A_SW_Walk_F")));
+			TestEqual(*FString::Printf(TEXT("%s: 2 the armed idle"), Soldier.Name), OwnName(2), FString(Soldier.Idle));
+			TestEqual(*FString::Printf(TEXT("%s: 3 the armed walk"), Soldier.Name), OwnName(3), FString(Soldier.Walk));
+			TestTrue(*FString::Printf(TEXT("%s's provider drives its own mesh"), Soldier.Name), SoldierOwn->GetSkinnedAsset() != nullptr
+				&& SoldierOwn->GetSkinnedAsset()->GetName() == Soldier.Mesh);
 		}
 	}
 	return true;

@@ -21,7 +21,9 @@ Run (headless, editor closed, from PowerShell; log lines start with "HOLAnim"):
   add "--dump-only" inside the -script value to only refresh the skeleton and source JSON files (and the body point
   cloud Data/SKM_Mannequin_Body.json, the preview's grey body and the props' clearance check);
   add "--only=<key>[,<key>...]" (keys of peasant_poses.GESTURES) to bake and read back those gestures alone, the
-  other sequences left untouched (a new gesture added without remaking the validated ones).
+  other sequences left untouched (a new gesture added without remaking the validated ones);
+  add "--soldiers" to bake the soldiers' gestures (soldier_poses.GESTURES, J7a.3: A_Spearman_Idle / _Walk,
+  A_ManAtArms_Idle / _Walk) instead of the Peasant's ("--only" then takes keys of soldier_poses.GESTURES).
 """
 import json
 import math
@@ -35,6 +37,7 @@ sys.dont_write_bytecode = True  # no __pycache__ in Tools/Editor
 sys.path.insert(0, TOOLS_DIR)
 import anim_rig  # noqa: E402
 import peasant_poses  # noqa: E402
+import soldier_poses  # noqa: E402
 
 SKELETON = "/Game/CloseCombat/Character/UE4Mannequin/Meshes/UE4_Mannequin_Skeleton"
 # Any sequence on that skeleton: FindBonePathToRoot reads the hierarchy through it.
@@ -448,21 +451,23 @@ def main():
     reference = natural_speed(load(REFERENCE_WALK))
     log("marche de reference %s : pied d'appui %.1f cm/s -> vitesse de lecture du Paysan %s"
         % (REFERENCE_WALK.rsplit("/", 1)[-1], reference, play_rate(reference)))
-    for source in sorted({g["base"] for g in peasant_poses.GESTURES.values() if "base" in g} | set(EXTRA_SOURCES)):
+    gestures = soldier_poses.GESTURES if "--soldiers" in sys.argv[1:] else peasant_poses.GESTURES
+    all_gestures = list(peasant_poses.GESTURES.values()) + list(soldier_poses.GESTURES.values())
+    for source in sorted({g["base"] for g in all_gestures if "base" in g} | set(EXTRA_SOURCES)):
         dump_base(source)
     if "--dump-only" in sys.argv[1:] or not os.path.exists(BODY_JSON):
         dump_body(sk)
     if "--dump-only" in sys.argv[1:]:
         return
     only = [arg.split("=", 1)[1].split(",") for arg in sys.argv[1:] if arg.startswith("--only=")]
-    keys = only[0] if only else list(peasant_poses.GESTURES)
-    unknown = [key for key in keys if key not in peasant_poses.GESTURES]
+    keys = only[0] if only else list(gestures)
+    unknown = [key for key in keys if key not in gestures]
     if unknown:
         raise RuntimeError("Unknown gestures: " + ", ".join(unknown))
     if only:
         log("--only : %s (les autres sequences ne sont pas touchees)" % ", ".join(keys))
     for key in keys:
-        verify(sk, *bake(sk, peasant_poses.GESTURES[key]))
+        verify(sk, *bake(sk, gestures[key]))
     log("termine")
 
 

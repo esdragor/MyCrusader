@@ -11,6 +11,8 @@ Units and frames:
   - Every prop has a PROP FRAME, right-handed, in which its primitives are written:
       * "body" props (loads): origin at the prop's "anchor" (body terms, reference pose); axes X = forward,
         Y = the character's right, Z = up (Unreal's actor convention). Carried rigidly by "bone".
+      * "bone" props (the soldier's shield, soldier_props.py): the prop frame given directly in its bone's reference
+        frame ("local": (translation, rotation)), for a piece that follows a hand rather than the chest.
       * "tool" props (axe, pickaxe, hammer): origin at the knob (end of the handle), X along the handle toward the
         head, Y toward the striking side (the axe's edge, the pick's point, the hammer's face), Z = X x Y. The bone is
         ik_hand_gun, whose track in the tool gestures (anim_rig.Rig.tool_frame) puts the bone exactly on this frame:
@@ -469,6 +471,10 @@ def prop_frame_reference(prop, sk):
     """The prop frame in component space in the reference pose: (translation, rotation)."""
     if prop["frame"] == "tool":
         return sk.ref_world[sk.index[prop["bone"]]]
+    if prop["frame"] == "bone":
+        bt, bq = sk.ref_world[sk.index[prop["bone"]]]
+        lt, lq = prop["local"]
+        return anim_rig.add(bt, anim_rig.qrot(bq, lt)), anim_rig.qnormalize(anim_rig.qmul(bq, lq))
     # X forward, Y right, Z up (right-handed).
     rotation = anim_rig.qfrom_matrix((sk.forward, sk.right, sk.up))
     return sk.body(prop["anchor"]), rotation
@@ -478,6 +484,8 @@ def bone_local(prop, sk):
     """The prop frame in its bone's reference frame: (translation cm, quaternion (x, y, z, w))."""
     if prop["frame"] == "tool":
         return (0.0, 0.0, 0.0), IDENTITY
+    if prop["frame"] == "bone":
+        return prop["local"]
     bt, bq = sk.ref_world[sk.index[prop["bone"]]]
     pt, pq = prop_frame_reference(prop, sk)
     return anim_rig.qrot(anim_rig.qconj(bq), anim_rig.sub(pt, bt)), anim_rig.qnormalize(anim_rig.qmul(anim_rig.qconj(bq), pq))

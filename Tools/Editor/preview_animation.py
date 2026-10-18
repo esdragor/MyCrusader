@@ -38,6 +38,11 @@ sys.dont_write_bytecode = True  # no __pycache__ in Tools/Editor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anim_rig  # noqa: E402
 import peasant_poses  # noqa: E402
+import soldier_poses  # noqa: E402
+import soldier_props  # noqa: E402
+
+# Every gesture the preview knows: the Peasant's and the soldiers' (J7a.3).
+ALL_GESTURES = dict(peasant_poses.GESTURES, **soldier_poses.GESTURES)
 import peasant_props  # noqa: E402
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Data")
@@ -236,6 +241,7 @@ class Shared:
     def __init__(self, light=False):
         self.sk = anim_rig.Skeleton.load(SKELETON_JSON)
         self.props = peasant_props.build_props(self.sk, light)
+        self.props.update(soldier_props.build_props(self.sk, light))
         self.prop_tris = {name: peasant_props.prop_triangles(p) for name, p in self.props.items()}
         self.body = []
         self.body_side = []  # "l" / "r" for the points of the hands, else None
@@ -314,7 +320,7 @@ def clearance(shared, prop, world, points, free=()):
 def prepare(shared, gesture_name):
     """Everything a cell of this gesture needs: solved frames, hit, scenery, props; and the checks."""
     sk = shared.sk
-    gesture = peasant_poses.GESTURES[gesture_name]
+    gesture = ALL_GESTURES[gesture_name]
     rig = anim_rig.Rig(sk, gesture, anim_rig.load_base(gesture, DATA_DIR))
     poses = [rig.pose(t) for t in rig.times]
     worlds = [sk.fk(local) for local, _ in poses]
