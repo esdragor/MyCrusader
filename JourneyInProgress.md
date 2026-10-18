@@ -197,18 +197,12 @@ vérifier sur S1 et S2.
    réponse de l'utilisateur, mesuré à la fin de J7 (règle des mesures). **J7a.1 faite** (2026-10-18). **Pages de la grille du Paysan** (choix de l'utilisateur, 2026-10-18 ; *précise D313*,
    qui prévoyait une seconde page pour les bâtiments militaires) : **pas de page militaire** ; les pages viendront **par
    palier, comme les âges d'AoE4** ; pour l'instant la Caserne prend une case libre de la page actuelle : **R**
-   (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **J7a.3 en cours** (journal « J7a.3 : apparence des soldats ») :
-   armes et poses armées écrites et vues en aperçu, **rien de commité, rien fabriqué dans Unreal** ; fichiers non
-   commités dans le worktree `MyCrusader-J5c` (branche `j5c-anims`, à c49417e) : `Tools/Editor/soldier_props.py`,
-   `soldier_poses.py` (nouveaux), `anim_rig.py`, `peasant_props.py`, `preview_animation.py` (étendus).
-   **Reprise (nouvelle séance)** : l'utilisateur fait la **revue des aperçus** (`C:\Users\baudo\Documents\MyCrusader-J5c\Saved\AnimPreview\soldiers_compare.png` et `soldiers_compare_light.png`) : épée droite au repos, à 45° vers l'avant en marche, **plat de la lame tourné
-   vers l'avant** (ajout non demandé, à confirmer) ; lance, fanion, bouclier non commentés. Puis : fabrication dans
-   Unreal (`make_peasant_animations.py` à étendre aux `soldier_poses.GESTURES`), `SKM_Spearman` / `SKM_ManAtArms` (armes
-   toujours visibles : masque du matériau à trancher ; parties « joueur » en alpha 0), fournisseurs, table des unités
-   (séquences, `WalkPlayRate`), `quick_check -Parts camera,anims`, essai, commit sur `j5c-anims`, avance rapide de
-   `main`. La partie 2 clients de la Caserne attend J7a.6.
-   1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
-      de la marge sur le mouvement avant la formation de J7 (J7a.4 touche ce code) ; à proposer à l'utilisateur.
+   (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **J7a.3 faite et validée** (8280f6a). **J7a.4 faite et validée** (2026-10-18, cb8227d ; journal « J7a.4 : la
+   formation » et les essais 1 à 5) : rangs, marche en bloc façon AoE4, flèche du clic droit (Ctrl : largeur), Maj en
+   file, retour à sa place, couleur du joueur. Orientation au front chez le client reportée à J7b (choix B).
+   **Reprise : J7a.5** (groupes de contrôle et HUD). La partie 2 clients de la Caserne attend J7a.6.
+   1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
+      J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
       essai de l'utilisateur en attente, worktree `MyCrusader-J5c`) ; `Build/` (non suivi).
 
@@ -3893,3 +3887,223 @@ d'épée).
   -700) et envoie ce qu'il contient au point lointain de la coupe (`CutTo`, -9000, -4000), puis attend 6 s. Elle a pris
   **4 Paysans** (`gather`, `build camp`). Vérifications inchangées. **`quick_check` complet PASS en 348 s** (toutes
   les parties, soldats compris, tests 69/69). Reste : commit sur `j5c-anims`, avance rapide de `main`, puis J7a.4.
+
+### 2026-10-18 — J7a.4 : la formation
+
+- Choix de l'utilisateur : **S2 gardé pour la fin de J7** (règle des mesures), pas de marge regagnée avant J7a.4.
+- **1re boucle** lancée (sous-agent, worktree `MyCrusader-J5c`) : `HOLFormation` branché dans l'ordre de déplacement au
+  sol d'un groupe (Paysans compris ; places de récolte et de chantier inchangées), rangs orientés selon la marche,
+  espacements, place dans un obstacle.
+
+- **1re boucle faite** (sous-agent, worktree, rien de commité). Un ordre au sol à **plusieurs unités** (hors marche
+  d'une tâche) prend les places de `HOLFormation` au lieu du tas serré de D287 ; une seule unité garde D287 ; les
+  places de récolte (D309) et de chantier (D312) ne changent pas (ce sont des marches d'une unité). Nouveau :
+  `HOLFormation::MakeGroupRows`, `PlaceGroup` (rangs, types, places, projection, `AssignPlaces` par type) ;
+  `GetFormationPriority`, `ProjectFormationPlace` dans `HOLUnitOrderProcessor.cpp`.
+- Choix : rangs orientés du centre du groupe vers le point, point au milieu du premier rang. Espacements : **150 cm**
+  entre colonnes (1,25 diamètre), **180 cm** entre rangs (1,5 diamètre), rayon 60 cm de la table. Groupe mixte : les
+  Paysans sont un type de plus, **derrière les soldats** (règle des lignes). Place dans un obstacle ou hors navmesh :
+  projetée comme D287 ; sinon ramenée vers le point (3/4, 1/2, 1/4), sinon le point lui-même. Les unités à l'arrêt
+  sur une place ne la font pas sauter (bousculade).
+- Test `Formation.Group` ajouté. Compilation sans avertissement ; **tests 70/70** ; **`quick_check -Parts
+  tests,camera,move,anims` PASS** (43 s ; `move` inchangée : 3 Paysans à moins de 3 m du point, sans chevauchement).
+- Reste : vitesse du plus lent, glisser du clic droit, reprise de place ; essai de l'utilisateur.
+- **2e boucle** lancée (sous-agent, worktree `MyCrusader-J5c`) : vitesse du plus lent tant que le groupe est en
+  formation, reprise de place après bousculade. Le glisser du clic droit suivra (3e boucle).
+- **2e boucle faite** (sous-agent, worktree, rien de commité). **Vitesse du plus lent** : un ordre en formation donne à
+  chaque unité `FHOLMoveOrderFragment::bFormation` et `MarchSpeed` (vitesse de la table du plus lent du groupe) ;
+  `AdvanceUnits` refait le minimum par numéro d'ordre parmi les unités encore en route (`SlowestOfOrder` /
+  `NextSlowestOfOrder`, servi au pas suivant, déterministe) ; arrivée ou nouvel ordre → vitesse propre ; groupe cassé →
+  le reste accélère jusqu'au plus lent restant. `GetOrderWalkSpeed` (× `hol.Units.SpeedScale`) dans `StartFinalLeg`,
+  `ServePathRequests`, `AdvanceUnits`. **Reprise de place** : `HOLFormation::FPlaceHold`, `EndWalkToPlace`,
+  `WatchPlace` ; place gardée si l'arrivée est à moins d'**un rayon (60 cm)** ; repart en ligne droite si à plus de
+  60 cm et immobile (< 2 cm par pas) **20 pas de suite** (1 s) ; un retour qui finit loin, ou un chemin direct coupé
+  (raycast navmesh), lâche la place (pas d'oscillation) ; tout nouvel ordre ou une activité autre qu'Idle la lâche.
+  Compteur `GetTotalPlaceReturns()`. Tests `Formation.Speed`, `Formation.Return` ; compilation sans avertissement ;
+  **tests 72/72** ; **`quick_check -Parts tests,camera,move,anims` PASS** (44 s).
+- Points ouverts : **pieds qui glissent** chez une unité ralentie (`WalkPlayRate` fixe par type, à multiplier par
+  vitesse réelle / vitesse du type) ; aucune étape de `quick_check` pour un groupe mixte au même pas ni pour un retour
+  à sa place (à voir à l'essai) ; un Paysan qui revient à sa place sort un instant du compte des inactifs du HUD (à
+  confirmer).
+- **3e boucle** lancée (sous-agent, worktree) : glisser du clic droit (orientation, largeur du front).
+- **3e boucle faite** (sous-agent, worktree, rien de commité). **Glisser du clic droit** : règles `GetFrontWidth`
+  (⌊longueur / 150⌋ + 1 colonnes, une à chaque bout du trait, entre 1 et le nombre d'unités ; « + 1 » à confirmer) et
+  `GetFrontFacing` (face au travers du trait, du côté opposé au centre du groupe ; groupe sur la ligne → à gauche du
+  trait vu d'en haut, gauche → droite fait face à +X) ; `PlaceGroup(…, FrontWidth)` (0 = largeur par défaut ; sinon
+  rangs pleins, le dernier plus court). Ordre : `FHOLMoveOrder::FrontLine` (nul = clic simple), `IssueMoveOrder(…,
+  FrontLine)`, appel serveur `ServerMoveUnitsInLine(UnitIds, Start, End)` (`FVector_NetQuantize`, propriétaire vérifié,
+  orientation et largeur calculées par le serveur). Joueur : `IA_Order` lié aussi à `Completed`, décision au relâcher
+  (`HandleOrderCompleted`, seuil de 6 px du cadre) ; clic simple inchangé mais au relâcher ; `OrderLineAt` retombe sur
+  `OrderAt` pour moins de 2 unités, une source, un chantier ou un bâtiment ; Maj ne met pas les déplacements en file
+  (récolte et construction gardent Maj). Commande `hol.Select.OrderLine X1 Y1 X2 Y2`. Aperçu local : anneaux blancs
+  sur les places pendant le glisser (`HOLSelectionMarkers::UpdateRings`, `GetOrderLine`, sans projection navmesh).
+  Test `Formation.Front` ; compilation sans avertissement ; **tests 73/73** ; **`quick_check -Parts
+  tests,camera,move,anims` PASS** (42 s). Glisser **pas essayé** (aucune étape ne l'utilise).
+- Points ouverts : les unités ne se tournent pas vers l'orientation du rang à l'arrivée ; étape `quick_check` du
+  glisser et d'un groupe mixte ; pieds qui glissent.
+- **4e boucle** lancée (sous-agent, worktree) : pieds qui glissent, unités tournées vers le front à l'arrivée.
+- **4e boucle faite** (sous-agent, worktree, rien de commité). **Pieds qui glissent** :
+  `FHOLUnitAnimationInput::WalkSpeed` (vitesse du type × `hol.Units.SpeedScale`), `HOLUnitAnimation::GetWalkRateShare`
+  (vitesse / vitesse du type, bornée **0,5 – 1,2**) appliquée par `Choose` à la marche et à la marche chargée ;
+  branché dans `HOLInterpolatedInstancesProcessor.cpp` (vitesse affichée, donc aussi chez le client). Limite : la
+  cadence n'est remise à Mass qu'au changement de séquence (fixée au début de la marche). **Face au front** :
+  `FHOLMoveOrderFragment::FrontYaw`, `bFacesFront` (réglés dans `ApplyQueuedOrders`, mis à vrai à l'arrivée d'une marche
+  en formation ou d'un retour à sa place, remis à faux par tout ordre ou activité) ; `UHOLInstantOrientationProcessor`
+  tourne vers `FrontYaw` sous 20 cm/s (virage immédiat comme J5a, affichage interpolé sur un pas). **Limite réseau** :
+  l'orientation n'est pas répliquée, un client garde le sens de la dernière marche (presque le front par défaut, pas
+  pour un glisser de travers). Test `Animation.Choice` étendu ; compilation sans avertissement ; **tests 73/73** ;
+  **`quick_check -Parts tests,camera,move,anims` PASS** (42 s).
+- Question à l'utilisateur : orientation au front chez le client (1 bit « face au front » + ~6 bits d'orientation pour
+  une unité à l'arrêt, budget de D270).
+- **5e boucle** lancée (sous-agent, worktree) : étape `quick_check` du glisser, d'un groupe mixte et de l'orientation.
+- **5e boucle faite** (sous-agent, worktree, rien de commité). Partie **`formation`** de `quick_check` (après `anims`,
+  dans la liste par défaut) ; commandes `hol.Units.Formation [Slot]` (état de formation par unité) et
+  `hol.Select.OrderLineGround X1 Y1 X2 Y2`. 3 Paysans + 3 Hommes d'armes en (-6000, -5200/-5800) envoyés à 35 m.
+  Vérifie : **même pas** (vitesse de marche = le plus lent, 523 cm/s, ≤ 1 cm/s ; personne au-dessus de +10 %) ;
+  **arrivée** (≤ 60 cm de sa place, relevé 0-38 ; écart ≥ 110 cm, relevé 149 ; soldats un rang devant ; rangs en
+  travers ; face à la marche ≤ 10°, relevé 0°) ; **glisser** de 3,6 m en diagonale (premier rang à ≤ 60 cm du trait,
+  3 colonnes sur 3, entre les bouts, fait de soldats ; rangs à 180 ± 60 cm ; `FrontYaw` à 2° de 135° ; repos à 10°) ;
+  **retour** (compteur 1 → 2 à l'arrivée ; un Paysan qui traverse le front ne déplace personne de plus de 28 cm).
+  Captures `formation_mixed`, `formation_front`, `formation_back`. **`quick_check -Parts
+  tests,camera,move,anims,formation` PASS** (72 s, tests 73/73). Aucun défaut trouvé. Notes : le trait relu après
+  projection écran → sol est décalé de 15-20 cm et un peu plus court (3 m tombait sous 3 colonnes) ; un retour certain
+  sous bousculade demanderait une poussée plus forte.
+- Suite : **essai de l'utilisateur** (largeur « + 1 », Maj sans file pour les déplacements, cadence 0,5 – 1,2, virage
+  immédiat ; orientation chez le client : A 7 bits / B reportée à J7b, recommandée B).
+- Choix de l'utilisateur : **B**, orientation au front chez le client **reportée à J7b** (avec le combat). Essai de
+  l'utilisateur lancé.
+
+### 2026-10-18 — J7a.4 : 1er essai de l'utilisateur
+
+- Retours de l'utilisateur :
+  1. **Couleur** : le bonhomme, le fanion et le bouclier doivent prendre la couleur du joueur (toujours bleus
+     aujourd'hui) ; l'emblème de la civilisation viendra plus tard sur le fanion et le bouclier.
+  2. **Glisser du clic droit** : changer la largeur lui plaît mais casse la formation ; **le glisser ne donne que
+     l'orientation** (largeur par défaut gardée) ; **Ctrl + glisser** donne orientation et largeur.
+  3. **Même pas** : Hommes d'armes, Paysans et Lanciers ensemble ne marchent pas en gardant la formation du départ ni
+     à la vitesse du plus lent (table : Paysan 600, Lancier 583, Homme d'armes 523 cm/s).
+  4. **Bousculade** : le retour à sa place marche mais est **trop lent**.
+  5. **Maj** doit mettre les ordres de déplacement **en file**.
+- **6e boucle** lancée (sous-agent, worktree) : points 2, 4 et 5.
+- Choix de l'utilisateur pour le point 3 : **bloc façon AoE4** — le groupe se met d'abord en rangs sur place (court
+  arrêt), puis tout le bloc suit un seul chemin au pas du plus lent, rangs gardés, et pivote à l'arrivée. Boucle à
+  suivre après la 6e ; puis la couleur du joueur (point 1).
+- **6e boucle faite** (sous-agent, worktree, rien de commité). **Glisser = orientation seule**, **Ctrl + glisser =
+  orientation et largeur** (`FHOLMoveOrder::bFrontWidth`, `ServerMoveUnitsInLine(…, bWidth, bQueue)`,
+  `IsOrderWidthHeld()` au relâcher, aperçu qui lit Ctrl en direct ; priorité des rangs partagée dans
+  `HOLFormation::GetRowPriority`). **Retour plus rapide** : cause, « immobile » (< 2 cm par pas) jamais vrai entre deux
+  corps qui s'écartent ; désormais seule une vraie poussée (> 2 cm plus loin de sa place en un pas, ou > 8 cm,
+  `PushStepDistance`) remet le compteur à zéro ; délai **5 pas (0,25 s)** ; 3 essais au plus (`MaxReturnTries`) puis
+  place lâchée. Mesuré : poussé à 337 cm, sur sa place ~1 s après le pic. **Maj met les déplacements en file**
+  (`FQueuedMove`, `StartQueuedMoves`, `ForgetMoveQueue` ; tout l'ordre attend tant qu'une unité du groupe marche
+  encore ; places calculées au départ de l'ordre en file ; pas de marqueurs des points en file). `quick_check`
+  `formation` étendue (glisser simple, Maj + clic, capture `formation_queued`). Compilation sans avertissement ;
+  **tests 73/73** ; **`quick_check -Parts tests,camera,move,anims,formation` PASS** (91 s). Compiler ce worktree avec
+  `C:\UE\UE_5.8_AS_3\Engine\Build\BatchFiles\Build.bat` (AS_1 : erreurs de PCH).
+- **7e boucle** lancée (sous-agent, worktree) : marche en bloc façon AoE4.
+- **Couleur du joueur** lancée en parallèle (demande de l'utilisateur ; sous-agent, branche `j7a4-colour` dans le
+  dépôt principal, partie de 8280f6a, à fusionner dans `j5c-anims` ensuite).
+- **Couleur du joueur faite** (sous-agent, branche `j7a4-colour`, rien de commité). **Cause** : `GetCustomData`
+  (`Presentation/HOLInterpolatedInstancesProcessor.cpp`) passait le numéro d'emplacement (`OwnerPlayer`) à
+  `HOLPlayerColors::GetLinearColor` au lieu de la couleur choisie au menu (`ColorIndex`, D244) : l'emplacement 0 du
+  joueur humain était toujours bleu. **Correctif** (C++ seul) : `FSlotColors`, rempli une fois par image dans
+  `Execute` (couleur des bâtiments de l'emplacement, répliquée, puis celle de l'`AHOLPlayerState`, sinon le numéro) ;
+  corps, fanion et face du bouclier ; solo, serveur et client (même processeur). `quick_check` `anims` : 3 unités de
+  l'emplacement 1 (`$AnimOthers`), capture `anims_colors` (bleu et rouge côte à côte, mais l'emplacement 1 était déjà
+  rouge avant). Tests 69/69 ; **`quick_check -Parts tests,camera,anims` PASS** (44 s). À vérifier à l'essai : une
+  couleur autre que le bleu choisie au menu ; gros plan du fanion et du bouclier.
+- **7e boucle arrêtée par l'utilisateur** en cours de route (le sous-agent commençait les règles pures de la marche en
+  bloc) : le worktree mêle les boucles 1-6 (vérifiées) et des changements partiels de la 7e, non compilés ni testés.
+- Arrêt par erreur (l'utilisateur) : **7e boucle relancée** (nouveau sous-agent, repart des changements partiels).
+- **7e boucle faite** (sous-agent, worktree, rien de commité). **Marche en bloc** (`hol.Units.BlockMarch 1`) :
+  mise en rangs sur place (`PlaceGroup` tourné vers le début du chemin du groupe ; fin à 30 cm de sa place,
+  `FormUpTolerance`, ou 60 pas = 3 s, `FormUpMaxSteps`) ; un seul chemin (centre → milieu des places d'arrivée), place
+  de chacun = point du bloc + décalage tourné selon le chemin (direction lue sur ± 200 cm) ; place hors navmesh
+  ramenée vers le chemin ; pas du plus lent ; le bloc attend une unité à plus de 40 cm, qui le quitte au bout de 60
+  pas ; rattrapage 1,08 × le pas ; arrivée : places finales redistribuées, `StartFinalLeg`, puis la logique existante.
+  Déplacement court (sous la taille du bloc) : droit aux places. **Paysans seuls : pas de bloc** (choix à confirmer).
+  `GetSlotOnPath` et voisins (`HOLFormationRules`), phases `FormUp` / `Block`, `StartBlockMarch`, `AdvanceBlocks`,
+  `SteerInBlock`, `FBlockMarch`, `FBlockReport`. Test `Formation.Block`. `quick_check` : étape « formation block »
+  (9 unités sur 35 m : mise en rangs 31 pas = 1,55 s, marche 127 pas, 523 cm/s au plus, écart à sa place ≤ ~26 cm,
+  personne qui quitte le bloc). Compilation sans avertissement ; **tests 74/74** ; **`quick_check -Parts
+  tests,camera,move,anims,formation` PASS** (114 s). **Défaut** : au glisser simple et à Maj + clic, la mise en rangs
+  va jusqu'à 3 s puis une unité retient le bloc 3 s et le quitte (écart 252 cm, 557 cm/s, ~10 s par ordre au lieu
+  de 5) ; piste : place de mise en rangs bloquée.
+- **8e boucle** lancée (sous-agent, worktree) : ce défaut.
+- Choix de l'utilisateur : **Paysans seuls sans marche en bloc** confirmé (en rangs à l'arrivée ; mêlés à des
+  soldats, ils suivent le bloc).
+- **8e boucle faite** (sous-agent, worktree, rien de commité). **Cause** : au glisser simple et à Maj + clic, le bloc
+  tourne d'environ 107° ; les soldats passent devant en traversant le rang des Paysans, chacun va tout droit à sa place
+  et la séparation dure les remettait au même point à chaque pas (positions figées 5 s). **Correctif** : les unités
+  d'une même mise en rangs (même `OrderSerial`, phase `FormUp`) se traversent (`UHOLUnitSeparationProcessor`,
+  `FormUpSerials` ; `AvoidBodies(…, FormUpSerial)` dans `UHOLFullSpeedProcessor`) ; pas pendant `Block`. Mesures :
+  glisser simple 60 + 142 pas, 1 partie, 557 cm/s → **13 + 83 pas**, 0 partie, 523 cm/s ; Maj 60 + 153 → **12 + 94**,
+  0 partie ; écart à sa place ≤ 16 cm. `quick_check` resserré (mise en rangs ≤ 30 pas, personne ne quitte, ≤ 523 +
+  10 %). **Tests 74/74** ; **`quick_check -Parts tests,camera,move,anims,formation` PASS** (115 s). À juger à
+  l'essai : chevauchement bref pendant une mise en rangs qui tourne beaucoup.
+- Couleur du joueur **fusionnée** dans le worktree (patch de `j7a4-colour` ; un morceau recollé à la main dans
+  `Execute` : `FSlotColors` à côté de `SpeedScale`). Vérification lancée (sous-agent) : compilation, `quick_check`
+  complet. Puis 2e essai de l'utilisateur.
+- Vérification après fusion (sous-agent) : compilation sans avertissement ; **`quick_check` complet PASS en 417 s**
+  (toutes les parties, `formation` et `net` comprises), **tests 74/74** ; `anims_colors` : emplacement 1 rouge,
+  emplacement 0 bleu. 2e essai de l'utilisateur lancé.
+
+### 2026-10-18 — J7a.4 : 2e essai de l'utilisateur
+
+- Retours :
+  1. **Orientation du glisser inversée** : la direction va de la base du clic à la souris (souris vers la droite →
+     ils regardent à droite). Choix de l'utilisateur : le glisser est une **flèche** — point d'arrivée = base du clic,
+     regard = base → souris ; **Ctrl + glisser** : même flèche, sa longueur donne la largeur du front (rang centré sur
+     la base).
+  2. **Arrivée** : la formation en marche est bien, mais à l'arrivée ils n'ont pas anticipé la rotation et se
+     replacent en se bousculant dans tous les sens.
+- **9e boucle** lancée (sous-agent, worktree) : ces deux points.
+- **9e boucle faite** (sous-agent, worktree, rien de commité). **Flèche** : `HOLFormation::GetFrontFacing(Arrow)`
+  (direction de la flèche, +X si nulle) ; `ServerMoveUnitsInLine` vise la base (`Start`), `FrontLine = End - Start`,
+  Ctrl : largeur par `GetFrontWidth(longueur)` ; ping à la base ; aperçu : anneaux à la base, orientés par la flèche,
+  points tous les ~80 cm de la base à la souris. **Pivot anticipé** : `AdvanceBlocks` tourne les décalages du bloc
+  vers l'orientation finale sur les derniers « taille du bloc + 3 m » (au plus la moitié du chemin ;
+  `GetBlockPivot`, smoothstep ; rotation bornée, `BlockPivotShare`, le bloc ralentit d'autant ; fini à 1° près, sinon
+  sur place) ; places finales **une pour une** depuis les places du bloc (redistribution supprimée). Mesure
+  `FArrivalWatch` / `WatchArrivals` (croisements, poussées, pas jusqu'à posés, écart en fin de bloc). Glisser simple
+  (pivot ~165°) : posés en 24 → **3** pas, poussées 9 → **0**, écart 240 → **9 cm**, marche 99 → 128 pas ; Ctrl :
+  5 → 3 pas, écart 61 → 9 cm ; croisements 0. `quick_check` : posés en ≤ 20 pas, 0 croisement, ≤ 2 poussées.
+  **Tests 74/74** ; **`quick_check -Parts tests,camera,move,anims,formation` PASS** (114 s). 3e essai lancé.
+
+### 2026-10-18 — J7a.4 : 3e essai de l'utilisateur
+
+- Retours : ça fonctionne, mais (1) **retirer les points** de l'aperçu entre la formation et la souris ; (2) le pivot
+  est **beaucoup trop long** (rotation entière du bloc) : s'inspirer d'AoE4 (chaque unité gagne directement la place
+  la plus proche de son type, le bloc ne tourne pas d'un bloc ; un demi-tour retourne la formation sur place).
+- **10e boucle** lancée (sous-agent, worktree).
+- **10e boucle faite** (sous-agent, worktree, rien de commité). Points de l'aperçu retirés. Pivot rigide supprimé
+  (`GetBlockPivot`, `BlockPivotMargin`, `BlockPivotShare`, champs de `FBlockMarch`). **Reformation façon AoE4** : sur
+  les derniers **1,5 m** (`BlockReformDistance`), places finales réattribuées par type depuis les positions réelles
+  (`HOLFormation::AssignPlacesByKind`), puis chacun va droit à sa place ; les unités d'un même ordre se traversent
+  pendant la mise en rangs et la reformation (`FHOLMoveOrderFragment::bReforming`, `GetPassThroughSerial()`). Le premier
+  rang reste devant selon la nouvelle orientation : au demi-tour, le type de devant **traverse le bloc** (chevauchement
+  bref, voulu). Glisser simple (~165°) : marche 128 → **94** pas, posés en 3 → 15 pas (0,75 s), 0 poussée, 0
+  croisement ; Ctrl 71 pas, posés en 10 ; Maj 112 pas, posés en 9 ; bloc de 9 : 122 pas, posés en 8. **Tests
+  74/74** ; **`quick_check -Parts tests,camera,move,anims,formation` PASS** (107 s ; lancer avec `-EngineDir
+  C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64`). 4e essai lancé.
+
+### 2026-10-18 — J7a.4 : 4e essai de l'utilisateur
+
+- Retours : l'arrivée est mieux, **la pousser encore** si possible ; **pourquoi refaire une formation avant de partir**
+  quand le groupe est déjà en formation ?
+- **11e boucle** lancée (sous-agent, worktree) : pas de mise en rangs à l'arrêt pour un groupe déjà en formation
+  (rangs repris en marchant), reformation d'arrivée commencée plus tôt et fondue dans la marche.
+- **11e boucle faite** (sous-agent, worktree, rien de commité). **Mise en rangs en marchant** : si chacun est à
+  **450 cm** au plus de sa place (`BlockJoinDistance`), le bloc part aussitôt (`bJoining`), les unités rejoignent leur
+  place en marchant (traversée, ≤ 1,08 × le plus lent), le point du bloc ralentit selon le plus grand écart
+  (`GetBlockSoftPace` : plein pas jusqu'à 40 cm, arrêt à 160 cm) ; règle valable pour tout groupe proche (un groupe
+  éparpillé se rassemble d'abord jusqu'à 450 cm). **Arrivée fondue** : sur « taille du bloc + 2,5 m »
+  (`GetBlockBlendDistance`, `BlockBlendMargin`), la place de chacun glisse de sa place dans le bloc à sa place finale
+  (`GetBlockBlend`), places finales données une fois (`AssignPlacesByKind`) ; `BlockReformDistance` supprimé. Mesures
+  (mise en rangs + marche / posés) : glisser simple ~12 + 94 / 15 → **0 + 116 / 3** ; Ctrl 71 / 10 → **0 + 89 / 3** ;
+  Maj 112 / 9 → **0 + 127 / 2** ; bloc de 9 éparpillé → 12 + 148 / 2 ; 0 croisement, 0 poussée, posés à 0-5 cm,
+  ≤ 565 cm/s. `quick_check` : mise en rangs ≤ 2 pas, posés ≤ 8 pas, marche ≤ chemin + 20 %. **Tests 74/74** ;
+  **`quick_check -Parts tests,camera,move,anims,formation` PASS** (110 s). 5e essai lancé.
+- **5e essai : validé** (« ça a l'air great »). Commit **cb8227d** sur `j5c-anims` (couleur du joueur comprise ; la
+  branche `j7a4-colour`, sans commit, est supprimée), avance rapide de `main`. **J7a.4 close.** Reprise : **J7a.5**
+  (groupes de contrôle et HUD).
