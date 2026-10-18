@@ -83,7 +83,7 @@ vérifier sur S1 et S2.
 | J6b.2 Chemins coupés par une emprise | **fait** (2026-10-17, **validée** à l'essai : « super », commitée) : emprise nouvelle → chemins gardés de D305 qui la traversent oubliés, marcheurs dont le chemin la traverse recalculés une fois ses tuiles refaites (générateur + sondes), destination sous l'emprise sortie ; ligne `Buildings (D310): footprint ...` ; bouclage des Paysans enfermés corrigé ; 0 bit ; tests 64/64 (`Construction.CutPaths`), partie `build cut`, `quick_check` PASS en 259 s ; S7 2,289 / S2 2,758 ms PASS |
 | J6b.2b Bâtiments rentrés dans leurs cases (D324) | **fait** (2026-10-17, **validée** à l'essai : « c'est bon », commitée) : forme visible à **90 %** des cases (`VisualInset=30`, choix de l'utilisateur après « trop grosses allées »), corps qui bloque rentré de **115 cm** (`BodyInset=115` : un Paysan mord ~30 cm dans le mur, « une épaule ») ; au premier essai, corps rentré de 105 cm (écart 2,1 m ; 90 cm fermait le passage), passage à la file et par l'écart ; tests 65/65 (`Construction.Body`), partie `build gap`, `quick_check` complet PASS en 364 s au réglage final ; A/B S2 / S7 sans surcoût (machine chargée) |
 | J6b.3 Vérification | **fait** (2026-10-18, **validée** à l'essai : « tout est bon », commitée) : `quick_check` complet PASS (311 s, 20 parties, tests 65/65) ; S7 avec camps d'abord FAIL (3,41 ms : `HOLBuildProcessor` 1 ms, affichage des chantiers dans le pas) → `RiseStepRatio`, pièces `QueryOnly`, puis **D325** (apparence des bâtiments hors du pas, aucune pièce sur le serveur dédié) ; **mesures de fin de J6** par le nouvel outil `chapter_measures.ps1` (7,4 min) : S1 2,37, **S2 2,995 (moyenne de 3, au seuil)**, S7 2,60 ms, S5 31 005 o/s, 22,9 cm, tous PASS. Avant : 1re boucle faite, partie **2 clients des camps** dans `quick_check` (`net` + `build`) : chaque client bâtit un camp de bûcherons près de son bois et y dépose, voit le camp de l'autre (reçu au premier coup, puis fini), le serveur refuse un camp sur un arbre (`hol.Build.PlaceAtSource`), stock de l'autre jamais reçu ; aucun code C++ ; `quick_check` complet 324 s : tout PASS (`net 2 clients` compris, tests 65/65) sauf `build cut` (solo, non touché : aléa à relancer) ; puis `build cut` revue (contrôles de remises réalignés, blocage au coin corrigé : nouveau chemin d'une unité tenue sur son chemin, `PathStuckSteps`), `quick_check` complet PASS (350 s) ; **S7 bâtit ses 24 camps pendant la mesure** (D314, `hol.StressTest.S7BuildCamps`), fermeture sans bruit, `AHOLMapBounds::Find` corrigé ; S7 court OK |
-| J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **à faire** (prochaine séance) : lignes au § 21, paragraphe « Parcours J6 » au § 16.6, numéro suivant du § 22 ; **J6 close** ensuite |
+| J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **fait** (2026-10-18) : lignes D310 à D314, D324, D325 au § 21 (précisées par ce qui a été fait : case de 3 m, fondation fantôme, camp → récolte, F1 / F2 / F3 et Tab, deux marges de D324…), paragraphe « Parcours J6 : la construction » au § 16.6, § 7.3 précisé (F1 / F2 / F3 : tous les bâtiments de la catégorie ; Tab), § 22 : numéro suivant **D326**. **J6 close.** |
 
 ## Prochaine étape exacte
 
@@ -190,15 +190,12 @@ vérifier sur S1 et S2.
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
    **J6b.3 faite, validée et commitée** (2026-10-18 ; journal « J6b.3 : vérification ») : D325 (apparence des bâtiments
    hors du pas), mesures de fin de J6 toutes PASS par `chapter_measures.ps1`, essai « tout est bon ».
-   **Reprise (nouvelle séance) : J6b.4, clôture de J6** :
-   1. Reporter au § 21 du GDD les lignes **D310 à D314** (plan de J6, tableau « Décisions du chantier »), **D324** et
-      **D325** (précisées par ce qui a été fait : journaux J6a.1 à J6b.3) ; paragraphe **« Parcours J6 : la
-      construction »** au § 16.6 (au style de « Parcours J5c ») ; au § 22, numéro suivant **D326**.
-   2. Commit de la clôture ; J6 close. Puis **plan de J7** (déjà écrit, « Plan de J7 », mesures regroupées en J7c.4
-      par la règle des mesures) : relire avec l'utilisateur avant le code.
-   3. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
+   **J6b.4 faite, J6 close** (2026-10-18, journal « J6b.4 : clôture ») : D310 à D314, D324, D325 au GDD.
+   **Reprise : plan de J7** (déjà écrit, « Plan de J7 », mesures regroupées en J7c.4 par la règle des mesures) :
+   le relire avec l'utilisateur avant le code ; décisions à partir de **D326**.
+   1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
       de la marge sur le mouvement avant la formation de J7 (J7a.4 touche ce code) ; à proposer à l'utilisateur.
-   4. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
+   2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
       essai de l'utilisateur en attente, worktree `MyCrusader-J5c`) ; `Build/` (non suivi).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
@@ -3698,3 +3695,16 @@ d'épée).
   regagner avant la formation de J7) ; **S7 avec camps PASS** 2,450 / 2,748 ms, 216 i/s ; **S5 PASS** 31 005 o/s par
   client, écart affiché 22,9 cm. Journaux `chapter_j6end_*`, résumé `Saved_Tests\Logs\chapter_measures.txt`.
 - Session d'essai de J6b relancée (deuxième écran).
+
+### 2026-10-18 — J6b.4 : clôture
+
+- Session principale, documentation seule, aucun code. GDD § 21 : **D310** (périmètre, précisé par J6a.1 : la piste de
+  la zone interdite était fausse ; zone + 25 cm, visée jusqu'au point suivant, garde des emprises), **D311** (pose,
+  précisée : case de 3 m, forum 12 m, maison et camps 6 m, coûts, fondation fantôme du seul propriétaire), **D312**
+  (bâtir, précisée : N^0,63, camp → récolte à 25 m, chantier voisin à 20 m, ralliement sur un chantier ou un camp fini,
+  Maj + source, FastBuild), **D313** (HUD, précisée : case sans coût, F1 / F2 / F3 = tous les bâtiments de la
+  catégorie, sous-groupes et Tab, répartition équitable), **D314** (vérification, S7 aux camps bâtis pendant la mesure,
+  règle des mesures de fin de chapitre), **D324** (deux marges : forme visible 30 cm, corps 115 cm), **D325** (apparence
+  hors du pas). § 16.6 : paragraphe « Parcours J6 : la construction » (mesures de fin de J6). § 7.3 : F1 / F2 / F3 et Tab
+  précisés par D313. § 22 : D310 à D314, D324, D325 pris par la clôture de J6 ; numéro suivant **D326**.
+- **J6 close.** Reprise : **plan de J7**, à relire avec l'utilisateur ; S2 au seuil à lui proposer avant J7a.4.
