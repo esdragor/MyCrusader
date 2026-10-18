@@ -201,7 +201,7 @@ vérifier sur S1 et S2.
    formation » et les essais 1 à 5) : rangs, marche en bloc façon AoE4, flèche du clic droit (Ctrl : largeur), Maj en
    file, retour à sa place, couleur du joueur. Orientation au front chez le client reportée à J7b (choix B).
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
-   armée à 2 clients, correctif de `gather`). **Reprise : J7b** (la mêlée). La partie 2 clients de la Caserne attend J7a.6.
+   armée à 2 clients, correctif de `gather`). **Reprise : J7b** (la mêlée).
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
