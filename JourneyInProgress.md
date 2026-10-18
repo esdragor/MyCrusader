@@ -3836,3 +3836,44 @@ d'épée).
 - Retouche de l'utilisateur : **épée droite vers le haut au repos, à 45° vers l'avant en marche** ; faite en aperçu
   (repos : pointe à 183 cm ; marche : 75 cm devant, 154 cm de haut ; 26-31 cm du bouclier et de la tête ; plat de la
   lame tourné vers l'avant, ajout du sous-agent). L'utilisateur fera la revue ; **suite à la prochaine séance**.
+- Revue de la nouvelle planche par l'utilisateur : **la lance n'était pas à 45° en marche** (restée droite). Corrigé
+  en aperçu (`soldier_poses.py` du worktree, `SPEAR_WALK_GRIP` : direction 45° vers l'avant) : pointe 113 cm devant à
+  208 cm de haut, talon ~45 cm du sol derrière, main à 0 cm du manche, rien dans le corps ; épée inchangée (45° en
+  marche). Aperçus refaits (`soldiers_compare.png`, `spear_walk_*`). Attente du nouvel avis de l'utilisateur.
+- **Aperçus validés** par l'utilisateur (« très bien ») : lance droite au repos et à 45° en marche, épée droite au repos
+  et à 45° en marche (plat de la lame vers l'avant gardé), fanion et bouclier tels quels. 2e boucle lancée (sous-agent,
+  worktree) : fabrication dans Unreal des 4 séquences et de `SKM_Spearman` / `SKM_ManAtArms`.
+- **2e boucle faite** (sous-agent, worktree, rien de commité) : `make_peasant_animations.py --soldiers` (les
+  4 gestes de `soldier_poses.GESTURES`, un lancement de ~5 s) : **`A_Spearman_Idle`, `A_ManAtArms_Idle`** (11,333 s,
+  340 images) et **`A_Spearman_Walk`, `A_ManAtArms_Walk`** (1 s, 30 images) créées ; relecture **écart ≤ 0,03 cm**
+  (brute et compressée), racine à 0, boucle fermée, `ik_hand_gun` à 0,008 cm / 0,075°, pieds = source à 0,001 cm ;
+  pied d'appui de la marche 168,2 cm/s (Lancier 583 → **3,47**, Homme d'armes 523 → **3,11**).
+- `make_peasant_mesh.py --soldiers` : matériau **`M_UnitPlayerColorWeapons`** (celui du Paysan **sans repli** : pas de
+  WPO, rien lu en donnée 3 ; alpha 0 = couleur du joueur, alpha > 0 = couleur du sommet) ; fanion et face du bouclier
+  en alpha 0 (couleur du joueur), le reste de chaque arme en alpha = son bit. **`SKM_Spearman`** (sommets par LOD
+  23 465 / 7 093 / 4 126 / 2 359) et **`SKM_ManAtArms`** (23 587 / 7 215 / 4 248 / 2 433), pièces légères au LOD 3 ;
+  **relecture des 4 LOD OK** pour les deux (sommets par masque, os, masque 0 = corps + couleur du joueur).
+  **`TP_Spearman`, `TP_ManAtArms`** : 0-7 de `TP_Mannequin_Classic`, puis 8 repos armé, 9 marche armée. 0 erreur.
+- Reste (prochaine boucle) : table des unités (`SkinnedMesh`, `AnimationProvider`, `IdleSequence` 8, `WalkSequence` 9,
+  `WalkPlayRate` 3,47 / 3,11), test `HOLAnimationTests` (« keeps the mannequin's mesh » à changer), tests,
+  `quick_check -Parts camera,anims`, essai.
+- Choix de l'utilisateur : fournisseurs des soldats à **4 séquences** (0 repos, 1 marche, 2 repos armé, 3 marche armée),
+  sans les gestes du Paysan. 3e boucle lancée (sous-agent) : fournisseurs refaits, branchement dans la table, test,
+  `quick_check -Parts camera,anims`.
+- **3e boucle faite** (sous-agent, worktree, rien de commité) : `make_peasant_mesh.py` (`SOLDIER_BASE_SEQUENCES` = 2,
+  `--soldiers --provider-only` refait les fournisseurs seuls, relecture après sauvegarde) : **`TP_Spearman`,
+  `TP_ManAtArms` à 4 séquences** (0 `A_SW_Idle`, 1 `A_SW_Walk_F`, 2 repos armé, 3 marche armée), 0 erreur. Table des
+  unités : Lancier et Homme d'armes sur leur `SKM_` et leur `TP_`, repos 2, marche 3, cadence **3,47** / **3,11** ;
+  récolte, portage, repos chargé et chantier restent à -1, pièces à 0 (cohérent pour des soldats). Table refaite
+  (commandlet) : la 1re fois avec d'anciens binaires du worktree (9 colonnes de combat ignorées, test
+  `Production.Tables` en échec) ; refaite après la compilation : **0 problème**. `HOLAnimationTests` : Lancier et
+  Homme d'armes (maillage, repos 2 / marche 3, 4 séquences nommées, fournisseur sur son maillage) ; test de l'Archer
+  gardé. Compilation sans avertissement (31 s), **tests 69/69**, **`quick_check -Parts tests,camera,anims` PASS en
+  35 s**. La partie `anims` ne montre **que des Paysans** : pour voir les soldats, il faudrait y faire naître 3 Lanciers
+  et 3 Hommes d'armes (`hol.Units.Spawn … Spearman`), une capture au repos, un ordre de marche, et attendre dans
+  `hol.Units.AnimReport` `A_Spearman_Idle` / `_Walk` et `A_ManAtArms_Idle` / `_Walk`. Reste : cette partie, essai.
+- Session d'essai lancée depuis le worktree (deuxième écran) : **essai de J7a.3** (Caserne, Lanciers et Hommes d'armes :
+  repos, marche, armes, couleur du joueur sur le fanion et le bouclier). Ensuite : soldats dans la partie `anims` de
+  `quick_check`, commit sur `j5c-anims`, avance rapide de `main`.
+- **Essai validé** par l'utilisateur (« c'est bon ») ; J7a.3 commitée sur `j5c-anims` et reportée sur `main`. Reste :
+  soldats dans la partie `anims` de `quick_check` (boucle suivante), puis **J7a.4** (formation).
