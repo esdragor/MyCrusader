@@ -197,9 +197,16 @@ vérifier sur S1 et S2.
    réponse de l'utilisateur, mesuré à la fin de J7 (règle des mesures). **J7a.1 faite** (2026-10-18). **Pages de la grille du Paysan** (choix de l'utilisateur, 2026-10-18 ; *précise D313*,
    qui prévoyait une seconde page pour les bâtiments militaires) : **pas de page militaire** ; les pages viendront **par
    palier, comme les âges d'AoE4** ; pour l'instant la Caserne prend une case libre de la page actuelle : **R**
-   (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **Reprise : J7a.3** (apparence des soldats : lance ; épée et
-   bouclier ; repos et marche armés, voir le catalogue de `AnimationsInProgress.md`) ; la partie 2 clients de la Caserne
-   attend J7a.6.
+   (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **J7a.3 en cours** (journal « J7a.3 : apparence des soldats ») :
+   armes et poses armées écrites et vues en aperçu, **rien de commité, rien fabriqué dans Unreal** ; fichiers non
+   commités dans le worktree `MyCrusader-J5c` (branche `j5c-anims`, à c49417e) : `Tools/Editor/soldier_props.py`,
+   `soldier_poses.py` (nouveaux), `anim_rig.py`, `peasant_props.py`, `preview_animation.py` (étendus).
+   **Reprise (nouvelle séance)** : l'utilisateur fait la **revue des aperçus** (`MyCrusader-J5c\Saved\AnimPreview   soldiers_compare.png` et `_light`) : épée droite au repos, à 45° vers l'avant en marche, **plat de la lame tourné
+   vers l'avant** (ajout non demandé, à confirmer) ; lance, fanion, bouclier non commentés. Puis : fabrication dans
+   Unreal (`make_peasant_animations.py` à étendre aux `soldier_poses.GESTURES`), `SKM_Spearman` / `SKM_ManAtArms` (armes
+   toujours visibles : masque du matériau à trancher ; parties « joueur » en alpha 0), fournisseurs, table des unités
+   (séquences, `WalkPlayRate`), `quick_check -Parts camera,anims`, essai, commit sur `j5c-anims`, avance rapide de
+   `main`. La partie 2 clients de la Caserne attend J7a.6.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
       de la marge sur le mouvement avant la formation de J7 (J7a.4 touche ce code) ; à proposer à l'utilisateur.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -3809,3 +3816,23 @@ d'épée).
   cavalerie, héros…), **demander à l'utilisateur sa vitesse de référence** et appliquer **× 1,098214** (1,29 → ~1,41) ;
   ne jamais deviner une vitesse.
 - **Essai validé** (« c'est bon ») avec les vitesses de la fiche ; commitée. Reprise : **J7a.3**.
+
+### 2026-10-18 — J7a.3 : apparence des soldats
+
+- Worktree `MyCrusader-J5c` cédé par mycrusader-e3 (rien en cours, conseils sur la chaîne relayés au sous-agent).
+- Choix de l'utilisateur : **un maillage par type** (`SKM_Spearman`, `SKM_ManAtArms`, plus tard `SKM_Archer` ; armes
+  toujours visibles, sans repli ni choix par instance) ; **lance droite, main droite** (verticale, talon près du sol au
+  repos, pointe en l'air, droite en marche).
+- 1re boucle lancée (sous-agent, worktree) : armes par script (versions légères au LOD 3), repos et marche armés des
+  deux soldats, aperçus à montrer à l'utilisateur avant toute fabrication dans Unreal.
+- **1re boucle faite** (sous-agent, worktree à c49417e, rien de commité, rien fabriqué dans Unreal) :
+  `Tools/Editor/soldier_props.py` (lance 240 cm, fanion à la couleur du joueur, sur `ik_hand_gun` ; épée 92 cm ; bouclier
+  60 × 46 cm sur `hand_l`, face à la couleur du joueur ; versions légères au LOD 3), `soldier_poses.py` (repos et marche
+  armés des deux soldats ; bases `A_SW_Idle` et `A_SW_Unarmed_Walk`), `anim_rig.py` / `peasant_props.py` /
+  `preview_animation.py` étendus sans changer les gestes du Paysan ; aperçus vérifiés (mains à 0 cm, rien dans le corps).
+  Aperçus soumis à l'utilisateur (`Saved/AnimPreview/soldiers_compare.png` du worktree). Reste : fabrication dans
+  Unreal, `SKM_Spearman` / `SKM_ManAtArms` (armes toujours visibles : masque à trancher dans le matériau), fournisseurs,
+  table des unités, `quick_check -Parts camera,anims`, essai.
+- Retouche de l'utilisateur : **épée droite vers le haut au repos, à 45° vers l'avant en marche** ; faite en aperçu
+  (repos : pointe à 183 cm ; marche : 75 cm devant, 154 cm de haut ; 26-31 cm du bouclier et de la tête ; plat de la
+  lame tourné vers l'avant, ajout du sous-agent). L'utilisateur fera la revue ; **suite à la prochaine séance**.
