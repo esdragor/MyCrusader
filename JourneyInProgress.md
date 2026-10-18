@@ -4183,3 +4183,14 @@ d'épée).
   `.Range`, `.Target` ; compilation sans avertissement ; **tests 78/78** ; `quick_check -Parts tests` PASS (21 s).
   Commitée (rien de visible en jeu). À revoir à l'essai : `AttackMoveRadius`, `MaxAttackers`, durée des duels.
   Reprise : **J7b.2** (processeur de combat).
+
+### 2026-10-18 — Mesures à la demande de l'utilisateur (après J7b.1)
+
+- `chapter_measures.ps1 -Tag j7b1_req` (demande de l'utilisateur, hors de la règle des mesures ; 7 min, serveur
+  recuit ; dépôt principal recompilé avant) : **S1 PASS** 2,550 / 2,433 ms (moyenne 2,492 ; fin de J6 : 2,37) ;
+  **S2 FAIL** 3,250 / 3,106 ms (**moyenne 3,178**, seuil 3 ; fin de J6 : 2,995 au seuil) ; **S7 PASS** 2,775 / 2,720
+  (2,748 ; fin de J6 : 2,60) ; **S5 PASS** 30 947 o/s, écart affiché 22,7 cm. Rendu 201 à 218 fps partout.
+- Lecture : **S2 a perdu ~0,18 ms** et S7 ~0,15 ms depuis la fin de J6 ; J7a.4 a touché le mouvement (marche en bloc,
+  `AssignPlaces`, traversée dans la séparation, tassement à l'arrêt de J7a.6). À traiter avant la fin de J7 (S2 était
+  déjà au seuil) : profil de S2 à comparer à la fin de J6 (`stress_ab.ps1`, côté A à 3141200^ ou à la fin de J6).
+  Journaux `chapter_j7b1_req_*`, résumé `Saved_Tests\Logs\chapter_measures.txt`.
