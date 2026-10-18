@@ -190,14 +190,10 @@ Règles :
 **J5c close** (2026-10-16 : D318 à D323 au § 21 du GDD, paragraphe « Parcours J5c » au § 16.6) ; J5c.1, J5c.2 et le
 bâtisseur de J6a.4 sont dans `main`.
 
-**1. En attente, session mycrusader-23** : la branche `j5c-anims` porte encore, **non fusionnés dans `main`**, la partie
-« anims » de `quick_check` + `hol.Units.AnimReport` (e3736d1), la fusion de J6b.1 (3934b62, `quick_check` PASS en
-219 s, 63/63) et `Tools/Tests/stress_ab.ps1` (f71c6b1). À faire : attendre le commit de **J6b.2** (mycrusader-a5, qui
-touche aussi `quick_check.ps1`), refusionner `main` dans `j5c-anims`, compiler et `quick_check` dans le worktree,
-**demander l'accord** des sessions actives dans la copie principale, puis avance rapide de `main`. Si la session
-mycrusader-23 n'est plus là, la session suivante du chantier le fait (même marche à suivre).
+**1. Fait (2026-10-17, mycrusader-32)** : `main` avancé à 7595c81 avec l'accord de mycrusader-a5 (partie « anims » de
+`quick_check`, `hol.Units.AnimReport`, `stress_ab.ps1`, fusions de J6b.1 et J6b.2) ; `j5c-anims` = `main`.
 
-**2. Passation (choix de l'utilisateur : dans une autre session) : pièces allégées aux LOD 2-3.**
+**2. Pièces allégées au LOD 3 : faites et mesurées (GPU S7 −0,49 ms), non commitées ; reste l'essai de l'utilisateur** (jeu lancé depuis le worktree J5c, zoom maximal sur des Paysans chargés), puis commit sur `j5c-anims` (scripts + `SKM_Peasant.uasset`), avance rapide de `main` avec l'accord des sessions actives, D-numéro au GDD (précision de D323). Détail au journal du 2026-10-17. Passation d'origine :
 - But : récupérer une partie du **+1,2 ms de GPU** de S7 dû aux pièces (3,34 ms au repos, 2,15 avant J5c ; A/B : passe
   de base +0,70 ms, passe de vitesses +0,42 ms ; les sommets des pièces passent le shader de sommets même repliés par
   WPO). Le fil de jeu et les appels de dessin ne bougent pas.
@@ -757,3 +753,78 @@ Prochaines animations : à la demande des étapes de jeu (combat de M5, autres u
 - Fusion de `main` (J6b.1, 7a3466b) dans `j5c-anims` (3934b62 ; conflit dans `quick_check.ps1` : deux blocs ajoutés au
   même endroit, les deux gardés) : `quick_check` PASS en 219 s, tests 63/63, « build camp » et « anims » PASS ensemble.
   Avance rapide de `main` après le commit de J6b.2 (mycrusader-a5 touche aussi `quick_check.ps1`).
+
+### 2026-10-17 — Pièces allégées : répartition des Paysans par LOD (session mycrusader-32)
+
+- Point 1 de « Prochaine étape exacte » toujours en attente (J6b.2 pas commitée ; mycrusader-a5 préviendra, avance
+  rapide de `main` d'accord sur le principe, à redemander avant de la faire).
+- Sonde en lecture seule (commandlet, worktree J5c) : `SKM_Peasant` et `SKM_Mannequin_Classic` ont 4 LOD, tailles
+  d'écran **1 / 0,5 / 0,25 / 0,125** (hystérésis 0,02) ; sommets du Paysan par LOD **25 203 / 8 831 / 5 864 / 4 157**
+  (corps seul 23 309 / 6 733 / 3 803 / 2 152) ; bornes du Paysan étendue (69,4 ; 48,6 ; 97,8), rayon 129,4 cm (les pièces
+  l'ont porté de 116,1).
+- Sélection du LOD (moteur 5.8, lu dans le code) : faite **sur le GPU, instance par instance**
+  (`FInstancedSkinnedMeshSceneProxy::bUseGpuLodSelection`, rayon d'instance = longueur de l'étendue des bornes, 129,4) ;
+  taille d'écran = 2 × max(P00, P11) / 2 × R / D ; champ de 90° à l'horizontale (59° à la verticale, 16:9) : taille =
+  230 / D (cm). **LOD 3 au-delà de 18,4 m de la caméra**, LOD 2 de 9,2 à 18,4 m, LOD 1 de 4,6 à 9,2 m.
+- Donc : S7 (vue « Wide », caméra à 100 m, Paysans entre ~70 et ~170 m) et S7 « Game » (~38 m de haut) : **100 % au
+  LOD 3**. En jeu (`AHOLRTSCamera`, tangage 55°, hauteur 15 à 70 m, 35 par défaut) : tout au LOD 3 dès 18,4 m de haut ;
+  au zoom maximal (15 m) le bas de l'écran (sol à 15,1-18,4 m) est au LOD 2. Les LOD 0-1 ne se voient jamais en jeu.
+- Conséquence : **le LOD 3 est l'aspect du Paysan en jeu** (c'est lui que l'utilisateur a validé) ; les pièces y font
+  48 % des sommets. Une version allégée doit donc **se lire pareil depuis la caméra du RTS** ; la piste « outils retirés
+  au LOD 3 » est écartée (plus d'outils du tout en jeu). Le LOD 2 ne pèse rien dans S7 : il garde les pièces pleines
+  (vue rapprochée du zoom maximal), seul le LOD 3 prend les pièces allégées (constante du script, changeable).
+- **Pièces légères** (worktree J5c, rien de commité) : `peasant_props.build_props(sk, light=True)` / `mesh_parts(sk,
+  light)` : mêmes ids, os, repères, tailles et couleurs ; outils à 4 côtés au lieu de 6 et sans pommeau, panier et hotte
+  à 6 côtés au lieu de 10, sans bord du panier ni cerclages de la hotte, bûches à 5 côtés au lieu de 7, une baie et une
+  feuille au lieu de trois et deux, trois morceaux sur le tas au lieu de cinq, pas de fond où la caméra ne regarde
+  jamais (panier, hotte, tas), bretelles sur 7 segments au lieu de 9 (points 3 et 8 sautés : la corde passe 0,8 et
+  1,7 cm sous eux ; épaule et devant gardés) en boîtes ouvertes aux bouts et côté corps (`box(..., open_faces=)`).
+  **1 894 → 966 sommets** (940 → 458 triangles) ; hache 72, pioche 100, panier 118, fagot 120, hotte 224, tas 110 + 110,
+  marteau 112. Jeu plein **identique à l'octet près** (tampons comparés avant / après). Aperçu `--light` (planches côte à
+  côte dans le scratchpad, `lod\`) : mains au manche à 0,000 cm, mêmes contrôles de pénétration dans le corps (0,4 cm au
+  plus pour la hotte, comme la pleine) ; lecture identique à l'échelle de l'aperçu (seuls les cerclages manquent).
+- `make_peasant_mesh.py` : `LIGHT_PROPS_LOD = 3` (LOD 0-2 pièces pleines, LOD 3 pièces légères), relecture de chaque LOD
+  contre son jeu ; option `--light-lod=N` dans la valeur de `-script` (99 = pièces pleines partout : le maillage d'avant,
+  pour l'A/B dans le même worktree en refaisant seulement le maillage).
+- `SKM_Peasant` refait (commandlet, worktree J5c) : LOD 0-2 inchangés (pièces pleines +1 894 sommets), **LOD 3 pièces
+  légères +966** ; sommets rendus par LOD **25 203 / 8 831 / 5 864 / 3 229** (LOD 3 : 4 157 → 3 229, −22 % pour tout le
+  Paysan) ; relecture de chaque LOD contre son jeu de pièces : OK ; `TP_Peasant` refait, mêmes 12 séquences.
+- `quick_check -Parts camera,anims` (worktree J5c) : **PASS** en 34 s (chaque état montre sa séquence et sa pièce ;
+  captures `anims_*.png` : hottes, outils et charges visibles au zoom maximal).
+- **A/B S7 en attente** : mycrusader-a5 (J6b.2) a la machine pour ~40-60 min, attendre son « machine free ». Script prêt :
+  scratchpad `ab_lod.ps1` (B = pièces légères, A = `--light-lod=99` ; ordre B A B A B A, maillage refait avant chaque
+  passage par `Start-Process`, `quick_check -Parts camera,anims` pendant A1 pour les captures des pièces pleines,
+  retour à B à la fin ; journaux `Saved_Tests\Logs\lod_<côté><n>.log` du worktree).
+- **A/B S7** (2026-10-17, machine libérée par mycrusader-a5 ; worktree J5c au même code, seul `SKM_Peasant` refait
+  entre les passages ; `stress_ab.ps1`, 20 s, hors écran 888 × 500, B A B A B A ; B = pièces légères au LOD 3, A =
+  pièces pleines partout) :
+
+  | Passage | GPU (ms) | Fil de rendu (ms) | Fil de jeu (ms) | Simulation (ms/pas) | i/s |
+  |---|---|---|---|---|---|
+  | B1 | 2,79 | 2,02 | 4,18 | 2,315 | 235,2 |
+  | A1 | 3,25 | 2,19 | 4,20 | 2,260 | 233,9 |
+  | B2 | 2,76 | 1,95 | 4,16 | 2,252 | 236,2 |
+  | A2 | 3,28 | 2,32 | 4,03 | 2,192 | 242,8 |
+  | B3 | 2,79 | 1,99 | 4,18 | 2,318 | 234,9 |
+  | A3 | 3,27 | 2,11 | 4,17 | 2,268 | 235,6 |
+  | **moyennes B / A** | **2,78 / 3,27** | **1,99 / 2,21** | 4,17 / 4,13 | 2,295 / 2,240 | 235,4 / 237,4 |
+
+  **GPU −0,49 ms par image (−15 %)**, très régulier (écart de 0,03 ms au plus dans chaque côté) : environ 40 % du coût des
+  pièces repris (S7 avant J5c 2,15 ms, avec les pièces pleines ~3,3). Fil de rendu −0,2 ms (à confirmer, plus bruité).
+  Fil de jeu, simulation, appels de dessin (267) et collecte (1 190 bois/s) inchangés : l'image reste limitée par le fil
+  de jeu. Chaque échange de maillage relu OK ; maillage final : pièces légères (3 229 sommets au LOD 3).
+  `quick_check -Parts camera,anims` avec les pièces pleines : PASS (captures copiées dans le scratchpad,
+  `captures_full\`).
+- J6b.2 commitée (4df8080, mycrusader-a5) : **fusionnée dans `j5c-anims`** (7595c81, sans conflit ; `quick_check.ps1`
+  fusionné tout seul), worktree compilé (29 s), **`quick_check` complet PASS** en 274 s (tests 64/64 ; « build cut » et
+  « anims » PASS ensemble ; pièces légères en place dans le worktree, non commitées). Matériau
+  `M_UnitPlayerColorProps` remis tel que commité (le script le recrée à l'identique à chaque passage).
+- Planche **pièces pleines / légères** (captures de `quick_check`, zoom maximal, agrandies ×2) : scratchpad
+  `props_full_vs_light.png` ; fagots, hottes, paniers, pioches, marteaux se lisent pareil (captures de deux parties
+  différentes : groupes pas tout à fait les mêmes).
+- Avance rapide de `main` à 7595c81 demandée à mycrusader-a5 (ne prend pas les pièces légères, non commitées avant
+  l'essai de l'utilisateur).
+- **`main` avancé à 7595c81** (accord de mycrusader-a5) ; ses binaires sont à recompiler (Presentation touché), a5
+  prévenue. Reste : essai de l'utilisateur sur les pièces légères.
+- D324 commitée sur `main` par mycrusader-a5 (e3797f7, touche `quick_check.ps1`) : **avant le commit des pièces légères,
+  refusionner `main` dans `j5c-anims`**, recompiler le worktree et repasser `quick_check`.
