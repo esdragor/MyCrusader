@@ -200,7 +200,7 @@ vérifier sur S1 et S2.
    (`BuildGridSlot` 3). **J7a.2 faite et validée** (2026-10-18). **J7a.3 faite et validée** (8280f6a). **J7a.4 faite et validée** (2026-10-18, cb8227d ; journal « J7a.4 : la
    formation » et les essais 1 à 5) : rangs, marche en bloc façon AoE4, flèche du clic droit (Ctrl : largeur), Maj en
    file, retour à sa place, couleur du joueur. Orientation au front chez le client reportée à J7b (choix B).
-   **Reprise : J7a.5** (groupes de contrôle et HUD). La partie 2 clients de la Caserne attend J7a.6.
+   **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **Reprise : J7a.6** (vérification). La partie 2 clients de la Caserne attend J7a.6.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -4107,3 +4107,33 @@ d'épée).
 - **5e essai : validé** (« ça a l'air great »). Commit **cb8227d** sur `j5c-anims` (couleur du joueur comprise ; la
   branche `j7a4-colour`, sans commit, est supprimée), avance rapide de `main`. **J7a.4 close.** Reprise : **J7a.5**
   (groupes de contrôle et HUD).
+
+### 2026-10-18 — J7a.5 : groupes de contrôle et HUD
+
+- **1re boucle** lancée (sous-agent, worktree `MyCrusader-J5c`) : groupes de contrôle de D30 (Ctrl + chiffre, chiffre,
+  deux appuis, Maj + chiffre, Ctrl + Maj + chiffre) et Ctrl + A (soldats seuls), clavier AZERTY compris. HUD et textes
+  à la 2e boucle.
+- **1re boucle faite** (sous-agent, worktree, rien de commité). `AHOLPlayerController` : `AssignControlGroup`,
+  `SelectControlGroup`, `AddToControlGroup`, `RemoveFromControlGroup`, `GetControlGroup`, `SelectArmy`,
+  `HandleGroupKey`, `ControlGroups[10]` ; **local seulement** (la sélection l'est déjà, D262 ; les ordres envoient les
+  identifiants). Un groupe : unités à soi **ou** bâtiments à soi ; morts et disparus retirés à la lecture ; chiffre =
+  remplace la sélection ; deux appuis en moins de 0,3 s : caméra sur le centroïde (`SetFocus`, comme F1). **Ctrl + A** :
+  unités à soi hors Paysans (dans `HandleGridKey` : avec Ctrl, les autres touches de la grille ne font rien). Actions
+  `IA_Group_0..9` (`make_game_input.py`, `IMC_Game` refait) : `One…Zero`, AZERTY `Ampersand`, `E_AccentAigu`,
+  `Quote`, `Apostrophe`, `LeftParantheses`, `Hyphen`, `E_AccentGrave`, `Underscore`, `C_Cedille`, `A_AccentGrave`,
+  pavé `NumPadOne…Zero` ; Ctrl et Maj lus par `IsInputKeyDown`. Commandes `hol.Select.Group <Assign|Select|Add|Remove|
+  Double> <0-9>`, `hol.Select.Army`. `quick_check` : section `groups` dans `formation` (vraies touches injectées).
+  **Tests 74/74** ; **`quick_check -Parts tests,camera,move,formation` PASS** (93 s). Limites : sur QWERTY,
+  `Apostrophe` et `Hyphen` servent aussi aux groupes 4 et 6 ; Maj + pavé numérique ne marche pas avec Verr Num.
+- **2e boucle** lancée (sous-agent, worktree) : HUD des groupes et du groupe mixte, textes fr / en / ja.
+- **2e boucle faite** (sous-agent, worktree, rien de commité). **Barre des groupes** en C++
+  (`HOLGameScreen.cpp/.h`, `GroupsPanel` en bas à gauche) : une case par groupe non vide (1 à 9 puis 0,
+  `ControlGroup0..9`), « chiffre · effectif », infobulle « Groupe N » + types par nombre ; clic = touche, deux clics =
+  caméra ; relue 4 fois par seconde ; groupe choisi mis en avant 0,5 s (`GetLastSelectedGroup`). Log `HUD groups: …`,
+  commande `hol.HUD.Click ControlGroupN`. **Bloc mixte** : soldats d'abord, Paysans en dernier (était alphabétique).
+  Textes `ControlGroupSlot`, `ControlGroupTooltip` (fr / en / ja, `fill_po.py`, GatherText). `quick_check` `groups`
+  étendue, capture `groups_bar`. **Tests 74/74** ; **`quick_check -Parts tests,menu,camera,move,formation` PASS**
+  (105 s). Essai de l'utilisateur lancé.
+- **Essai de J7a.5** : « tout a l'air bon ». Choix de l'utilisateur : **Ctrl + chiffre retiré** — Maj + chiffre crée le
+  groupe s'il est vide et l'agrandit sinon ; Ctrl + Maj + chiffre retire (précise D30, à reporter au tableau des
+  touches du GDD § 7.3 à la clôture de J7). Boucle courte lancée (sous-agent, worktree).
