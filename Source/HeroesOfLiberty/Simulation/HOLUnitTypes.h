@@ -14,7 +14,7 @@ class UStaticMesh;
 
 /**
  * Armour category of a unit type (J7-Q4, D21): what the bonus damage of the others is aimed at (the Spearman's bonus
- * against cavalry). Read by the combat of J7b, not yet by the simulation.
+ * against cavalry). Read by the combat rules (HOLCombat, J7b).
  */
 UENUM()
 enum class EHOLArmorCategory : uint8
@@ -213,6 +213,37 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 
 	UPROPERTY()
 	int32 CarryCapacity = 0;
+
+	/** Combat (J7-Q4, J7b.1): the table's combat columns, read by HOLCombat and the combat processor (J7b.2). */
+	UPROPERTY()
+	EHOLArmorCategory ArmorCategory = EHOLArmorCategory::LightInfantry;
+
+	UPROPERTY()
+	int32 Attack = 0;
+
+	/** Time (s) between two hits. */
+	UPROPERTY()
+	float AttackInterval = 1.5f;
+
+	/** Reach (cm) between the two bodies' edges. */
+	UPROPERTY()
+	float AttackRange = 50.f;
+
+	UPROPERTY()
+	int32 MeleeArmor = 0;
+
+	UPROPERTY()
+	int32 RangedArmor = 0;
+
+	UPROPERTY()
+	EHOLArmorCategory BonusCategory = EHOLArmorCategory::LightInfantry;
+
+	UPROPERTY()
+	int32 BonusDamage = 0;
+
+	/** Radius (cm, edge to edge) of the riposte; 0: only when ordered. */
+	UPROPERTY()
+	float AggressionRadius = 0.f;
 };
 
 /**
@@ -358,7 +389,7 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Gathering", meta = (ClampMin = "0"))
 	int32 CarryCapacity = 0;
 
-	// Combat (J7-Q4, J7a.1): filled in the table, read by the combat of J7b (not yet in the shared fragment). Damage of a
+	// Combat (J7-Q4, J7a.1): filled in the table, copied into the shared fragment (J7b.1), read by HOLCombat. Damage of a
 	// hit = Attack + BonusDamage if the target is of BonusCategory - the target's armour (melee or ranged), 1 at least.
 
 	/** Armour category (D21): what the others' bonus damage is aimed at. */
@@ -428,5 +459,14 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.BuildProp = BuildProp;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
+	Constants.ArmorCategory = ArmorCategory;
+	Constants.Attack = Attack;
+	Constants.AttackInterval = AttackInterval;
+	Constants.AttackRange = AttackRange;
+	Constants.MeleeArmor = MeleeArmor;
+	Constants.RangedArmor = RangedArmor;
+	Constants.BonusCategory = BonusCategory;
+	Constants.BonusDamage = BonusDamage;
+	Constants.AggressionRadius = AggressionRadius;
 	return Constants;
 }
