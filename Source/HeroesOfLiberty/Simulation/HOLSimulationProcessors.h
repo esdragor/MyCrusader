@@ -52,7 +52,7 @@ protected:
 	bool BuildLookAhead(FMassExecutionContext& Context);
 	static int32 LookAheadBucketOf(const FIntPoint& Cell);
 	/** The way a walker takes: Direction if nothing is met on it within Horizon (s), else the smallest clear turn, else Direction. */
-	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon) const;
+	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, uint32 FormUpSerial) const;
 
 	FMassEntityQuery EntityQuery;
 
@@ -61,6 +61,8 @@ protected:
 	TArray<FVector2D> Positions;
 	TArray<FVector2D> Velocities;
 	TArray<float> Radii;
+	/** Each unit's order serial while it forms up for a block march (J7a.4), else 0: those of one form-up do not turn aside for each other. */
+	TArray<uint32> FormUpSerials;
 	float MaxRadius = 1.f;
 	float MaxSpeed = 0.f;
 	/** Cells of the positions, hashed into buckets: first unit of each bucket, the next unit of the same bucket, each unit's cell. */
@@ -170,6 +172,11 @@ protected:
 	TArray<bool> Walking;
 	/** Gatherers on their round trip (D309): they pass through every unit and none pushes them. */
 	TArray<bool> Ghosts;
+	/**
+	 * Each unit's order serial while it forms up for a block march (J7a.4), else 0: the units of one form-up pass through
+	 * each other (rows turned to a new march cross; three bodies pressed together held each other still).
+	 */
+	TArray<uint32> FormUpSerials;
 	/** Units walking an order (not a gatherer settling at its spot). */
 	TArray<bool> Moving;
 	/**

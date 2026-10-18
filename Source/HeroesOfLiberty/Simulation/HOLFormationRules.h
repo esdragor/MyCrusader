@@ -62,4 +62,180 @@ namespace HOLFormation
 	 */
 	HEROESOFLIBERTY_API void AssignPlaces(TConstArrayView<FVector2D> Positions, TConstArrayView<FVector2D> Places, const FVector2D& Forward,
 		TArray<int32>& OutPlaceOfUnit);
+
+	/**
+	 * Gaps of a group's formation (J7a.4), in body diameters of its largest unit: across the march, a diameter and a
+	 * quarter (150 cm for the table's 60 cm radius, the honeycomb of D287 was 1.2); between two rows, a diameter and a
+	 * half (180 cm), so the rows read as rows.
+	 */
+	inline constexpr double ColumnSpacingInDiameters = 1.25;
+	inline constexpr double RowSpacingInDiameters = 1.5;
+
+	/**
+	 * The shape of a group's rows (J7-Q3), from the number of units of each kind, sorted by row priority (zero counts
+	 * allowed): Peasants alone (bPeasantsOnly), their rule; a single kind of soldier, a square; several kinds, the
+	 * rows of several kinds (Peasants with soldiers are one more kind, the last one: behind the soldiers).
+	 */
+	HEROESOFLIBERTY_API void MakeGroupRows(TConstArrayView<int32> CountOfKind, bool bPeasantsOnly, TArray<int32>& OutWidths);
+
+	/**
+	 * A group's places (J7a.4): its rows (MakeGroupRows), the kinds on them (PlaceKinds), the places in the world
+	 * (MakePlaces, Target in the middle of the front row), each brought where a unit can stand by ProjectPlace (the
+	 * navmesh, called once per place in the order of OutPlaces), then each kind's units given its places
+	 * (AssignPlaces, from the projected places). KindOfUnit[i] is the kind of unit i, an index into the kinds sorted by
+	 * row priority. OutPlaces: the projected places; OutPlaceOfUnit[i]: the index in OutPlaces given to unit i.
+	 */
+	HEROESOFLIBERTY_API void PlaceGroup(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, bool bPeasantsOnly,
+		const FVector2D& Target, const FVector2D& Forward, double ColumnSpacing, double RowSpacing,
+		TFunctionRef<FVector2D(const FVector2D&)> ProjectPlace, TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit,
+		int32 FrontWidth = 0);
+
+	/**
+	 * Row priority of a unit's kind in a group's formation (J7-Q3): Spearman 0, Man-at-arms 1, Archer 2 (the kind in
+	 * front first), other soldiers 3, then the Peasants (workers: CarryCapacity > 0) PeasantRowPriority, behind them.
+	 * Shared by the server's formation and the drag's preview.
+	 */
+	inline constexpr int32 PeasantRowPriority = 4;
+	HEROESOFLIBERTY_API int32 GetRowPriority(FName TypeName, int32 CarryCapacity);
+
+	/**
+	 * The front's width (columns) a right-button drag gives (J7a.4, J7-Q3): one column at each end of the drag and one
+	 * every ColumnSpacing between them, so the front row spans the drag at most (floor(Length / ColumnSpacing) + 1),
+	 * at least 1, at most Count (the group's units). It replaces the default widths of MakeGroupRows.
+	 */
+	HEROESOFLIBERTY_API int32 GetFrontWidth(double Length, double ColumnSpacing, int32 Count);
+
+	/**
+	 * Where a group faces after a right-button drag (the user's 2nd trial of J7a.4): the drag is an arrow, from where the
+	 * button was pressed (the arrival point, the middle of the front row) to the mouse; the group faces along it (mouse
+	 * dragged to the right: facing right). Normalised; +X for a null arrow.
+	 */
+	HEROESOFLIBERTY_API FVector2D GetFrontFacing(const FVector2D& Arrow);
+
+	/**
+	 * The speed a unit of a group in formation walks at (J7a.4, J7-Q3): the slowest speed of the units of its order
+	 * still on their way (Slowest, cm/s), when it is slower than its own; 0 or less: no group, its own speed.
+	 */
+	inline float GetMarchSpeed(const float OwnSpeed, const float Slowest)
+	{
+		return Slowest > 0.f ? FMath::Min(OwnSpeed, Slowest) : OwnSpeed;
+	}
+
+	/**
+	 * Back to its place after a push (J7a.4, reported from D293; faster after the user's 1st trial): a unit standing on
+	 * its formation place, pushed farther than ReturnDistanceInRadii of its radius from it (60 cm for the table's radius:
+	 * half a body), walks back once the push is over: ReturnRestSteps steps in a row (0.25 s at 20 steps a second)
+	 * without being pushed, i.e. neither driven farther from its place by more than RestStepDistance in a step nor
+	 * shoved more than PushStepDistance (the slow drift of two bodies easing apart, or a slide along its place, is not a
+	 * push: it kept "still" false for a second or more). A unit that stopped farther than that from its place (taken,
+	 * out of reach) does not hold it; a walk back that ends farther tries again, MaxReturnTries walks in a row at most,
+	 * then lets it go: no endless back and forth against another unit.
+	 */
+	inline constexpr double ReturnDistanceInRadii = 1.;
+	inline constexpr double RestStepDistance = 2.;
+	inline constexpr double PushStepDistance = 8.;
+	inline constexpr int32 ReturnRestSteps = 5;
+	inline constexpr int32 MaxReturnTries = 3;
+
+	/** A unit's hold on its formation place, on the server (FHOLMoveOrderFragment). */
+	struct FPlaceHold
+	{
+		/** Where it stood at the last step it was watched. */
+		FVector2D LastLocation = FVector2D::ZeroVector;
+		/** Steps in a row away from its place, not pushed. */
+		int32 RestSteps = 0;
+		/** Walks back in a row that ended short of it. */
+		int32 FailedReturns = 0;
+		/** It holds its place (Slot of its order): its last order was a formation move, and it reached the place. */
+		bool bHeld = false;
+		/** It walks back to its place. */
+		bool bReturning = false;
+
+		void Clear() { *this = FPlaceHold(); }
+	};
+
+	/**
+	 * Its walk to the place ended (the order's arrival, or the walk back) at Location: it holds the place if it stands
+	 * within the return distance of it; else an arrival lets it go, a walk back keeps it for another try (MaxReturnTries
+	 * walks back in a row at most).
+	 */
+	HEROESOFLIBERTY_API void EndWalkToPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, double Radius);
+
+	/**
+	 * One step of a standing unit holding its place: true when it should walk back now (away from it, and not pushed for
+	 * ReturnRestSteps steps; bReturning is set). A unit on its place, or one still pushed, stays.
+	 */
+	HEROESOFLIBERTY_API bool WatchPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, double Radius);
+
+	/**
+	 * The block march (J7a.4, the user's 1st trial: as in AoE4). A group's move in formation first forms up in place (its
+	 * rows around its centre, facing the start of its path), then the whole block follows one path at its slowest unit's
+	 * pace, each unit at its offset in the block (ahead, to the right) turned with the path, then re-forms on its arrival
+	 * places. Shorter than BlockMarchMinDistanceInDepths of the block's size (its larger side, plus a row): straight to
+	 * the places. Form-up: done when every unit stands within FormUpTolerance of its place, or after FormUpMaxSteps
+	 * (3 s). March: the block's point moves on only while every unit is within BlockLagDistance of its slot; a unit that
+	 * holds it BlockWaitMaxSteps steps in a row leaves the block (its own path to its place). A unit walks to its slot
+	 * at most BlockCatchUpShare of the block's pace (its own speed at most), to catch up. The path's direction is read
+	 * over BlockTurnWindow before and after the block's point, so the block turns smoothly at a corner.
+	 */
+	inline constexpr double BlockMarchMinDistanceInDepths = 1.;
+	inline constexpr double FormUpTolerance = 30.;
+	inline constexpr int32 FormUpMaxSteps = 60;
+	inline constexpr double BlockLagDistance = 40.;
+	inline constexpr int32 BlockWaitMaxSteps = 60;
+	inline constexpr double BlockCatchUpShare = 1.08;
+	inline constexpr double BlockTurnWindow = 200.;
+	/**
+	 * The block's arrival (the user's 3rd trial of J7a.4, as in AoE4): no rigid turn of the block. Over its last
+	 * GetBlockBlendDistance cm each unit slides from its slot to a final place of its own kind (its row group), so the
+	 * front stays the front of the new facing: a half turn mirrors the rows in place, a quarter turn is a short re-shuffle;
+	 * the units of the order go through each other meanwhile (as in the form-up).
+	 */
+	/**
+	 * Forming up on the move (the user's 4th trial of J7a.4): a group whose units all stand within BlockJoinDistance of
+	 * their form-up places (already in rows, or close together) does not stop; the block starts at once and its units
+	 * take their slots walking, through each other (a scattered group first gathers, until all are that close). While
+	 * units join, and while the block re-forms at its end, the block's point slows down with the worst gap instead of
+	 * stopping (GetBlockSoftPace): full pace up to BlockLagDistance, nothing from BlockSoftHoldDistance.
+	 */
+	inline constexpr double BlockJoinDistance = 450.;
+	inline constexpr double BlockSoftHoldDistance = 160.;
+	HEROESOFLIBERTY_API double GetBlockSoftPace(double MaxGap);
+	/**
+	 * The arrival blended into the march (the user's 4th trial): over the last GetBlockBlendDistance of the path (the
+	 * block's size + BlockBlendMargin, half the path at most), each unit's target slides from its slot in the block to its
+	 * final place (given once by kind when the blend starts), GetBlockBlend of the way at Remaining cm from the end.
+	 */
+	inline constexpr double BlockBlendMargin = 250.;
+	HEROESOFLIBERTY_API double GetBlockBlendDistance(double BlockSize, double PathLength);
+	HEROESOFLIBERTY_API double GetBlockBlend(double Remaining, double BlendDistance);
+	/**
+	 * The units' final places at a block's arrival: PlaceOfUnit[i] is the place unit i holds (one each), KindOfUnit[i] its
+	 * kind; the places of each kind are given again to its units by AssignPlaces from where they stand (Positions,
+	 * Forward the final facing), so no two straight ways of one kind cross. OutPlaceOfUnit[i] is an index into Places.
+	 */
+	HEROESOFLIBERTY_API void AssignPlacesByKind(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit,
+		TConstArrayView<FVector2D> Places, const FVector2D& Forward, TArray<int32>& OutPlaceOfUnit);
+
+	/** Length (cm) of a polyline on the ground. */
+	HEROESOFLIBERTY_API double GetLineLength(TConstArrayView<FVector2D> Points);
+
+	/** The point Distance along a polyline (clamped to its ends); its first point for a single one, zero for none. */
+	HEROESOFLIBERTY_API FVector2D GetPointOnLine(TConstArrayView<FVector2D> Points, double Distance);
+
+	/**
+	 * The polyline's direction at Distance: from the point Window before it to the point Window after it (clamped to the
+	 * ends), normalised; Fallback when they meet (a single point).
+	 */
+	HEROESOFLIBERTY_API FVector2D GetDirectionOnLine(TConstArrayView<FVector2D> Points, double Distance, double Window, const FVector2D& Fallback);
+
+	/** An offset in the block (X ahead, Y to the right: right = (-Forward.Y, Forward.X)) turned into the world, and back. */
+	HEROESOFLIBERTY_API FVector2D BlockOffsetToWorld(const FVector2D& Offset, const FVector2D& Forward);
+	HEROESOFLIBERTY_API FVector2D WorldToBlockOffset(const FVector2D& Delta, const FVector2D& Forward);
+
+	/**
+	 * A unit's slot in the marching block: the block's point Distance along its path plus its offset (X ahead, Y to the
+	 * right) turned with the path's direction there (GetDirectionOnLine over BlockTurnWindow).
+	 */
+	HEROESOFLIBERTY_API FVector2D GetSlotOnPath(TConstArrayView<FVector2D> Points, double Distance, const FVector2D& Offset, const FVector2D& Fallback);
 }

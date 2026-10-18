@@ -200,6 +200,36 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** A word among the arguments after the four numbers of hol.Select.OrderLine / OrderLineGround ("ctrl", "shift"). */
+	bool HasLineFlag(const TArray<FString>& Args, const TCHAR* Flag)
+	{
+		for (int32 Index = 4; Index < Args.Num(); ++Index)
+		{
+			if (Args[Index].Equals(Flag, ESearchCase::IgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	FAutoConsoleCommand OrderLineCommand(
+		TEXT("hol.Select.OrderLine"),
+		TEXT("hol.Select.OrderLine <X1> <Y1> <X2> <Y2> [ctrl] [shift]: a right-button drag between those points of the viewport (0 to 1 each way): an arrow, the group's front row centred on its base, facing along it; 'ctrl' its length is the front's width, 'shift' queued"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 4)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderLine <X1> <Y1> <X2> <Y2>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->OrderLineAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])),
+					FVector2D(FCString::Atod(*Args[2]), FCString::Atod(*Args[3])), HasLineFlag(Args, TEXT("ctrl")), HasLineFlag(Args, TEXT("shift")));
+			}
+		}));
+
 	FAutoConsoleCommand OrderCommand(
 		TEXT("hol.Select.Order"),
 		TEXT("hol.Select.Order <X> <Y> [shift]: orders as a right click at that point of the viewport (0 to 1 each way) would; 'shift' as with Shift held"),
@@ -284,6 +314,31 @@ namespace UE::HeroesOfLiberty::Player
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Right click on the ground at (%.3f, %.3f)%s"), Fraction.X, Fraction.Y, bShift ? TEXT(", Shift") : TEXT(""));
 				Controller->OrderAt(Fraction, bShift);
+			}
+		}));
+
+	/** The right-button drag on ground points (J7a.4, quick_check "formation"): hol.Select.OrderLine where they are drawn. */
+	FAutoConsoleCommand OrderLineGroundCommand(
+		TEXT("hol.Select.OrderLineGround"),
+		TEXT("hol.Select.OrderLineGround <X1> <Y1> <X2> <Y2> [ctrl] [shift]: hol.Select.OrderLine between where those ground points (cm) are drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 4)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderLineGround <X1> <Y1> <X2> <Y2>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D From, To;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), From)
+					|| !ProjectGroundPoint(*Controller, FCString::Atod(*Args[2]), FCString::Atod(*Args[3]), To))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderLineGround: a point is not on the screen"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Right drag on the ground from (%.3f, %.3f) to (%.3f, %.3f)"), From.X, From.Y, To.X, To.Y);
+				Controller->OrderLineAt(From, To, HasLineFlag(Args, TEXT("ctrl")), HasLineFlag(Args, TEXT("shift")));
 			}
 		}));
 
@@ -1082,6 +1137,7 @@ void AHOLPlayerController::SetupInputComponent()
 	if (const UInputAction* Order = LoadAction(TEXT("IA_Order")))
 	{
 		Input->BindAction(Order, ETriggerEvent::Started, this, &AHOLPlayerController::HandleOrder);
+		Input->BindAction(Order, ETriggerEvent::Completed, this, &AHOLPlayerController::HandleOrderCompleted);
 	}
 	if (const UInputAction* Deselect = LoadAction(TEXT("IA_Deselect")))
 	{
@@ -1480,8 +1536,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			OnOrderGiven.Broadcast(Source->Location);
 			return;
 		}
-		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)"), Own.Num(), Ground.X, Ground.Y);
-		RequestMoveUnits(Own, Ground);
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)%s"), Own.Num(), Ground.X, Ground.Y, bShift ? TEXT(", queued") : TEXT(""));
+		RequestMoveUnits(Own, Ground, bShift);
 		OnOrderGiven.Broadcast(Ground);
 	}
 	else if (AHOLBuilding* Building = GetOwnSelection())
@@ -2283,11 +2339,11 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 }
 
-void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitIds, const FVector& Target)
+void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerMoveUnits(TArray<uint32>(UnitIds), Target);
+		ServerMoveUnits(TArray<uint32>(UnitIds), Target, bQueue);
 	}
 }
 
@@ -2659,14 +2715,28 @@ void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Sca
 #endif
 }
 
-void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target)
+void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
 	// The order names the player: the simulation moves only its own units (D288), a client could send any identifier.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
-		Commands->IssueMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex());
+		Commands->IssueMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex(), /*bFromTask*/ false, FVector2D::ZeroVector, /*bFrontWidth*/ false, bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start,
+	const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
+{
+	// As ServerMoveUnits (D288): the simulation moves only the player's own units. The drag is an arrow (the user's 2nd
+	// trial of J7a.4): its base (Start, where the button was pressed) is the target, the middle of the front row; the
+	// group faces Start -> End, and with Ctrl its length is the front's width.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		Commands->IssueMoveOrder(UnitIds, Start, HOLPlayerState->GetPlayerIndex(), /*bFromTask*/ false, FVector2D(End - Start), bWidth, bQueue);
 	}
 }
 
@@ -2859,11 +2929,82 @@ void AHOLPlayerController::HandleOrder()
 		EndPlacement();
 		return;
 	}
-	FVector2D Cursor;
-	if (GetCursorFraction(Cursor))
+	// Resolved at the release (J7a.4): a click orders at the press, a drag along its line.
+	bOrderPressed = GetCursorFraction(OrderPressFraction);
+}
+
+void AHOLPlayerController::HandleOrderCompleted()
+{
+	if (!bOrderPressed)
 	{
-		OrderAt(Cursor);
+		return;
 	}
+	bOrderPressed = false;
+	FVector2D Release;
+	if (GetCursorFraction(Release) && HOLUnitPicking::IsBox(ToPixels(OrderPressFraction), ToPixels(Release)))
+	{
+		OrderLineAt(OrderPressFraction, Release);
+	}
+	else
+	{
+		OrderAt(OrderPressFraction);
+	}
+}
+
+bool AHOLPlayerController::GetOrderLine(FVector& OutStart, FVector& OutEnd) const
+{
+	FVector2D Cursor;
+	if (!bOrderPressed || !RTSCamera || IsPlacing() || !GetCursorFraction(Cursor)
+		|| !HOLUnitPicking::IsBox(ToPixels(OrderPressFraction), ToPixels(Cursor)) || GetOwnSelectedUnits().Num() < 2)
+	{
+		return false;
+	}
+	const FVector2D Ends[2] = { ToPixels(OrderPressFraction), ToPixels(Cursor) };
+	FVector* Out[2] = { &OutStart, &OutEnd };
+	for (int32 End = 0; End < 2; ++End)
+	{
+		FVector Origin, Direction;
+		if (!DeprojectScreenPositionToWorld(Ends[End].X, Ends[End].Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, *Out[End]))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool AHOLPlayerController::IsOrderWidthHeld() const
+{
+	return IsInputKeyDown(EKeys::LeftControl) || IsInputKeyDown(EKeys::RightControl);
+}
+
+void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& End, const bool bWidth, const bool bQueue)
+{
+	// Ctrl (or a script's): the front's width too; Shift (or a script's): after the current move (the user's 1st trial).
+	const bool bWithWidth = bWidth || IsOrderWidthHeld();
+	const bool bShift = bQueue || bSelectAddHeld;
+	const TArray<uint32> Own = GetOwnSelectedUnits();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(Start) : nullptr;
+	const bool bOnSite = Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->IsFinished();
+	FVector Origin, Direction, GroundStart, GroundEnd;
+	const FVector2D StartPixels = ToPixels(Start);
+	const FVector2D EndPixels = ToPixels(End);
+	if (Own.Num() < 2 || bOnSite || FindSourceAt(Start) != INDEX_NONE || !RTSCamera
+		|| !DeprojectScreenPositionToWorld(StartPixels.X, StartPixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, GroundStart)
+		|| !DeprojectScreenPositionToWorld(EndPixels.X, EndPixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, GroundEnd))
+	{
+		OrderAt(Start, bQueue);
+		return;
+	}
+	// The arrow's base is where they go (the user's 2nd trial of J7a.4).
+	const FVector Middle = GroundStart;
+	UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units in line from (%.0f, %.0f) to (%.0f, %.0f)%s%s"), Own.Num(), GroundStart.X, GroundStart.Y,
+		GroundEnd.X, GroundEnd.Y, bWithWidth ? TEXT(", its width") : TEXT(""), bShift ? TEXT(", queued") : TEXT(""));
+	if (Own.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		ServerMoveUnitsInLine(Own, GroundStart, GroundEnd, bWithWidth, bShift);
+	}
+	OnOrderGiven.Broadcast(Middle);
 }
 
 void AHOLPlayerController::HandleDeselect()

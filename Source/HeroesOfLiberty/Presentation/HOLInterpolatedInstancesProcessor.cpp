@@ -20,6 +20,8 @@
 #include "MassUpdateISMProcessor.h"
 #include "MassUpdateSkinnedMeshProcessor.h"
 #include "MassVisualizationComponent.h"
+#include "GameFramework/GameStateBase.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
@@ -50,9 +52,54 @@ namespace UE::HeroesOfLiberty::Presentation
 	};
 	static_assert(sizeof(FUnitCustomData) == 4 * sizeof(float));
 
-	FUnitCustomData GetCustomData(const uint8 OwnerPlayer, const uint8 Prop)
+	/**
+	 * The colour each slot chose (D244), as this machine knows it, gathered once per frame: OwnerPlayer is a slot, not a
+	 * colour. A slot's buildings carry its colour (replicated, AI slots included), its player state too (humans); the
+	 * slot's own index until either is known.
+	 */
+	struct FSlotColors
 	{
-		return { HOLPlayerColors::GetLinearColor(OwnerPlayer), static_cast<float>(Prop) };
+		TStaticArray<uint8, FHOLMatchConfig::MaxSlots> ColorIndices;
+
+		explicit FSlotColors(const UWorld* World)
+		{
+			for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+			{
+				ColorIndices[Slot] = static_cast<uint8>(Slot);
+			}
+			if (!World)
+			{
+				return;
+			}
+			for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+			{
+				if (It->GetOwnerPlayer() < FHOLMatchConfig::MaxSlots)
+				{
+					ColorIndices[It->GetOwnerPlayer()] = It->GetColorIndex();
+				}
+			}
+			if (const AGameStateBase* GameState = World->GetGameState())
+			{
+				for (const APlayerState* PlayerState : GameState->PlayerArray)
+				{
+					const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+					if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() >= 0 && HOLPlayerState->GetPlayerIndex() < FHOLMatchConfig::MaxSlots)
+					{
+						ColorIndices[HOLPlayerState->GetPlayerIndex()] = static_cast<uint8>(HOLPlayerState->GetColorIndex());
+					}
+				}
+			}
+		}
+
+		int32 Get(const uint8 OwnerPlayer) const
+		{
+			return OwnerPlayer < FHOLMatchConfig::MaxSlots ? ColorIndices[OwnerPlayer] : OwnerPlayer;
+		}
+	};
+
+	FUnitCustomData GetCustomData(const int32 ColorIndex, const uint8 Prop)
+	{
+		return { HOLPlayerColors::GetLinearColor(ColorIndex), static_cast<float>(Prop) };
 	}
 
 	/** Start offset (s) of a unit in a sequence: stable per unit and sequence, so 2 000 units do not step in time. */
@@ -196,8 +243,14 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
 	FSiteFootprints Sites;
 	Sites.World = World;
+	const FSlotColors SlotColors(World);
 
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites](FMassExecutionContext& Context)
+	// The units' speed of the cheats (hol.Units.SpeedScale, this machine's: a client's is not the server's), for the walks'
+	// play rate (J7a.4).
+	static IConsoleVariable* const SpeedScaleVariable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Units.SpeedScale"));
+	const float SpeedScale = SpeedScaleVariable ? FMath::Clamp(SpeedScaleVariable->GetFloat(), 0.1f, 10.f) : 1.f;
+
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -270,6 +323,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					Input.Speed = NetDisplay ? static_cast<float>(NetDisplay->Velocity.Size2D())
 						: StepSeconds > 0.f ? FVector::Dist2D(From.GetLocation(), To.GetLocation()) / StepSeconds : 0.f;
 					Input.PlayingSequence = AnimationState.bStarted ? AnimData.SequenceIndex : INDEX_NONE;
+					// Its feet keep pace with a walk slower than its own (J7a.4: a group in formation at its slowest unit's speed).
+					Input.WalkSpeed = Constants.Speed * SpeedScale;
 					const FHOLUnitAnimationChoice Choice = HOLUnitAnimation::Choose(Constants, Input);
 					if (!AnimationState.bStarted || AnimData.SequenceIndex != Choice.Sequence)
 					{
@@ -306,7 +361,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
-					MeshInfo.AddBatchedCustomData(GetCustomData(State.OwnerPlayer, Choice.Prop), RepresentationLOD.LODSignificance,
+					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.Get(State.OwnerPlayer), Choice.Prop), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}

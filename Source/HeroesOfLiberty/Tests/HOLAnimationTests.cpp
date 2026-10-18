@@ -99,6 +99,21 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("walk rate: WalkPlayRate / MeshScale"), Walk.PlayRate, 2.44f / 1.5f, UE_KINDA_SMALL_NUMBER);
 	TestEqual(TEXT("walk: no prop"), static_cast<int32>(Walk.Prop), 0);
 
+	// J7a.4: a walk slower than its own (a group at its slowest unit's speed) plays in proportion, held to 0.5 - 1.2.
+	const auto WalkAt = [&Peasant](const float Speed, const float WalkSpeed, const bool bCarrying = false)
+	{
+		FHOLUnitAnimationInput Input = MakeInput(EHOLUnitActivity::Moving, Speed);
+		Input.WalkSpeed = WalkSpeed;
+		return Choose(Peasant, bCarrying ? WithLoad(Input, EHOLResource::Wood) : Input).PlayRate;
+	};
+	TestEqual(TEXT("walk at its own speed: the table's rate"), WalkAt(Walking, Walking), 2.44f / 1.5f, UE_KINDA_SMALL_NUMBER);
+	TestEqual(TEXT("walk at 3/4 of its speed: 3/4 of the rate"), WalkAt(Walking * 0.75f, Walking), 0.75f * 2.44f / 1.5f, 0.001f);
+	TestEqual(TEXT("walk far slower: held at half the rate"), WalkAt(Walking * 0.3f, Walking), 0.5f * 2.44f / 1.5f, 0.001f);
+	TestEqual(TEXT("walk faster: held at 1.2 times the rate"), WalkAt(Walking * 2.f, Walking), 1.2f * 2.44f / 1.5f, 0.001f);
+	TestEqual(TEXT("walk speed of the cheats: in proportion to it"), WalkAt(Walking * 2.f, Walking * 2.f), 2.44f / 1.5f, 0.001f);
+	TestEqual(TEXT("carrying walk at 3/4: 3/4 of its rate"), WalkAt(Walking * 0.75f, Walking, true), 0.75f * 3.57f / 1.5f, 0.001f);
+	TestEqual(TEXT("no walk speed given: the table's rate"), WalkAt(Walking * 0.75f, 0.f), 2.44f / 1.5f, UE_KINDA_SMALL_NUMBER);
+
 	// Gathering: the resource's gesture, whatever the speed or the load.
 	const FHOLUnitAnimationChoice Chop = Choose(Peasant, Gathering(EHOLResource::Wood));
 	TestEqual(TEXT("gathering wood: the axe"), Chop.Sequence, 2);

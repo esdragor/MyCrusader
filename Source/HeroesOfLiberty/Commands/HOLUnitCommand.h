@@ -22,6 +22,19 @@ struct FHOLMoveOrder
 	 * unit's gathering, its load kept (D296).
 	 */
 	bool bFromTask = false;
+	/**
+	 * The arrow of a right-button drag (J7a.4, the user's 2nd trial), from its base to the mouse (cm, on the ground; Target
+	 * is its base, the middle of the front row): a group in formation faces along it. Null: a plain click, the default
+	 * rows facing the march.
+	 */
+	FVector2D FrontLine = FVector2D::ZeroVector;
+	/** Ctrl + right-button drag (the user's 1st trial of J7a.4): the front as wide as FrontLine; otherwise its default width. */
+	bool bFrontWidth = false;
+	/**
+	 * Shift (the user's 1st trial of J7a.4): the move waits until the units' current move is over (their queue of moves,
+	 * UHOLUnitOrderProcessor), its places made then from the units still in it; units with no move go at once.
+	 */
+	bool bQueue = false;
 };
 
 /** One gather order (J5, D296): "gather this source", for a group of units. Applied by the gathering at the next step. */

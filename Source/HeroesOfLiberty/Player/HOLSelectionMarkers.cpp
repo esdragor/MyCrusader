@@ -13,6 +13,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLFormationRules.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::SelectionMarkers
@@ -53,6 +54,9 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double PingEndRadius = 25.0;
 	constexpr double PingStroke = 8.0;
 	const FLinearColor PingColor(0.9f, 0.9f, 0.9f);
+	/** The places of a right-button drag's formation (J7a.4): thin rings, smaller than a unit's, in the ping's white. */
+	constexpr double PreviewRadiusFactor = 0.8;
+	constexpr double PreviewStroke = 8.0;
 	/** The rally flag (cm): a pole, and a cloth at its top at the owner's colour. */
 	constexpr double PoleHeight = 500.0;
 	constexpr double PoleWidth = 10.0;
@@ -255,6 +259,12 @@ void AHOLSelectionMarkers::UpdateRings()
 		TArray<FHOLUnitView> Views;
 		HOLUnitView::Gather(*World, Views);
 		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
+		FVector2D Centre = FVector2D::ZeroVector;
+		double LargestRadius = 0.;
+		int32 CountOfKind[HOLFormation::PeasantRowPriority + 1] = {};
+		bool bPeasantsOnly = true;
+		int32 Count = 0;
+		double Height = 0.;
 		for (const FHOLUnitView& View : Views)
 		{
 			if (Selected.Contains(View.UnitId))
@@ -262,6 +272,43 @@ void AHOLSelectionMarkers::UpdateRings()
 				const double Radius = View.Radius * RingRadiusFactor;
 				Transforms.Add(MarkerTransform(View.Location, Radius * 2.0, Radius * 2.0));
 				AddCustomData(CustomData, SelectionColor, RingStroke / Radius);
+				Centre += FVector2D(View.Location);
+				LargestRadius = FMath::Max(LargestRadius, static_cast<double>(View.Radius));
+				const int32 Priority = HOLFormation::GetRowPriority(View.TypeName, View.CarryCapacity);
+				++CountOfKind[Priority];
+				bPeasantsOnly &= Priority == HOLFormation::PeasantRowPriority;
+				Height += View.Location.Z;
+				++Count;
+			}
+		}
+		// The right-button drag (J7a.4): a small ring on each place of the formation the release will give, as the server
+		// makes it from the line (its projection on the navmesh aside).
+		FVector LineStart, LineEnd;
+		if (Count >= 2 && PlayerController->GetOrderLine(LineStart, LineEnd))
+		{
+			Centre /= Count;
+			const FVector2D Line(LineEnd - LineStart);
+			// The arrow (the user's 2nd trial): the front row's middle at its base, facing along it.
+			const FVector2D Middle(LineStart);
+			const double ColumnSpacing = 2. * LargestRadius * HOLFormation::ColumnSpacingInDiameters;
+			const double RowSpacing = 2. * LargestRadius * HOLFormation::RowSpacingInDiameters;
+			// Ctrl held, read live (the user's 1st trial): the drag's width; otherwise the group's default rows, as the server.
+			TArray<int32> Widths;
+			if (PlayerController->IsOrderWidthHeld())
+			{
+				HOLFormation::MakeRowsOfWidth(Count, HOLFormation::GetFrontWidth(Line.Size(), ColumnSpacing, Count), Widths);
+			}
+			else
+			{
+				HOLFormation::MakeGroupRows(CountOfKind, bPeasantsOnly, Widths);
+			}
+			TArray<FVector2D> Places;
+			HOLFormation::MakePlaces(Widths, Middle, HOLFormation::GetFrontFacing(Line), ColumnSpacing, RowSpacing, Places);
+			const double Radius = LargestRadius * PreviewRadiusFactor;
+			for (const FVector2D& Place : Places)
+			{
+				Transforms.Add(MarkerTransform(FVector(Place.X, Place.Y, Height / Count), Radius * 2.0, Radius * 2.0));
+				AddCustomData(CustomData, PingColor, PreviewStroke / Radius);
 			}
 		}
 	}

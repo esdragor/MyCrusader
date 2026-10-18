@@ -9,6 +9,11 @@ bool HOLUnitAnimation::IsWalkSequence(const FHOLUnitTypeConstants& Type, const i
 	return Sequence != INDEX_NONE && (Sequence == Type.WalkSequence || Type.CarryWalkSequences.Contains(Sequence));
 }
 
+float HOLUnitAnimation::GetWalkRateShare(const float Speed, const float WalkSpeed)
+{
+	return WalkSpeed > UE_KINDA_SMALL_NUMBER ? FMath::Clamp(Speed / WalkSpeed, MinWalkRateShare, MaxWalkRateShare) : 1.f;
+}
+
 FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Type, const FHOLUnitAnimationInput& Input)
 {
 	FHOLUnitAnimationChoice Choice;
@@ -50,7 +55,7 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 		return Choice;
 	}
 	const int32 CarryWalkSequence = Input.bCarrying ? Type.CarryWalkSequences[Input.LoadResource] : INDEX_NONE;
-	const float MeshScale = FMath::Max(Type.MeshScale, UE_KINDA_SMALL_NUMBER);
+	const float MeshScale = FMath::Max(Type.MeshScale, UE_KINDA_SMALL_NUMBER) / GetWalkRateShare(Input.Speed, Input.WalkSpeed);
 	if (CarryWalkSequence != INDEX_NONE)
 	{
 		Choice.Sequence = CarryWalkSequence;

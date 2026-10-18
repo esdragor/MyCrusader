@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "MassEntityTypes.h"
+#include "Simulation/HOLFormationRules.h"
 #include "Simulation/HOLGatherRules.h"
 #include "HOLSimulationFragments.generated.h"
 
@@ -70,6 +71,10 @@ enum class EHOLMovePhase : uint8
 	Path,
 	/** From the end of the path straight to its own slot, then it stands. */
 	FinalLeg,
+	/** A group's block march (J7a.4): walking to its form-up place in the block, waiting there for the others. */
+	FormUp,
+	/** A group's block march (J7a.4): at its slot in the block marching along the group's path (Slot moves with it). */
+	Block,
 };
 
 /** A unit's part of its move order (J4, D286, D287), on the server. */
@@ -94,6 +99,22 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	uint32 OrderSerial = 0;
 
 	/**
+	 * The slowest speed (cm/s, the table's) of the units of its order still on their way, while it walks in a group's
+	 * formation (J7a.4): it walks no faster (HOLFormation::GetMarchSpeed). 0: its own speed (one unit, a task's walk, a
+	 * walk back to its place). Set by the order, then each step from the order's walkers of the step before.
+	 */
+	float MarchSpeed = 0.f;
+
+	/** Its hold on its formation place (J7a.4): pushed off it, it walks back (HOLFormation::WatchPlace). */
+	HOLFormation::FPlaceHold PlaceHold;
+
+	/**
+	 * Facing (deg) of its formation's rows (J7a.4: the march's way, or across a right-button drag's line), set by a group's
+	 * formation move. Standing at the end of the walk (bFacesFront), it is held turned this way (UHOLInstantOrientationProcessor).
+	 */
+	float FrontYaw = 0.f;
+
+	/**
 	 * Steps of the final leg without getting closer to the slot (pushed by others, or the slot taken); along its path, steps
 	 * without leaving its anchor (held at a corner of the navmesh, its move target gone round it).
 	 */
@@ -107,12 +128,37 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 
 	EHOLMovePhase Phase = EHOLMovePhase::None;
 
+	/** Its order is a group's move in formation (J7a.4): it ends holding its place (PlaceHold), the group marches at MarchSpeed. */
+	bool bFormation = false;
+
+	/**
+	 * Its final leg is a block's re-forming at its arrival (the user's 3rd trial of J7a.4): it goes through the others of
+	 * its order re-forming too, walking or standing, as in the form-up (GetPassThroughSerial), until the arrival is
+	 * settled (UHOLUnitOrderProcessor::WatchArrivals). A new order clears it.
+	 */
+	bool bReforming = false;
+
+	/**
+	 * It reached its formation place (or the end of its walk back there, J7a.4): standing, it faces FrontYaw. A new order,
+	 * or an activity other than Idle, lets it go.
+	 */
+	bool bFacesFront = false;
+
 	/**
 	 * Its path ended short of its slot (a partial path: the slot cannot be reached from where it stood, J6b.2: shut in by
 	 * buildings); it walks to the path's end. A task that sent it there takes that end for no arrival.
 	 */
 	bool bShortOfSlot = false;
 };
+
+/**
+ * The order whose walkers a unit goes through (J7a.4): its order's while it forms up for a block march or re-forms at the
+ * block's arrival (until all stand); 0 otherwise (it keeps clear of everyone).
+ */
+inline uint32 GetPassThroughSerial(const FHOLMoveOrderFragment& Order)
+{
+	return Order.Phase == EHOLMovePhase::FormUp || Order.bReforming ? Order.OrderSerial : 0u;
+}
 
 /** Where a gatherer is in its round trip (J5, D296). */
 UENUM()

@@ -39,7 +39,8 @@ public:
 	 * Queues "go to this location" for the given units, one order for the group (D286, D287). PlayerIndex: the player
 	 * who gave it, whose own units alone obey (D288); INDEX_NONE for the server's own orders (rally point, tests).
 	 */
-	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bFromTask = false);
+	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bFromTask = false,
+		const FVector2D& FrontLine = FVector2D::ZeroVector, bool bFrontWidth = false, bool bQueue = false);
 
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
 	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);

@@ -69,7 +69,7 @@
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -228,6 +228,9 @@ $AnimIdle = @(-9000, 2000)
 $AnimSpearmen = @(-7800, 3000)
 $AnimMenAtArms = @(-7800, 4000)
 $AnimSoldiersTo = @(-6600, 3500)
+# The colours (J7a.4): a Peasant, a Spearman and a Man-at-arms of slot 1 (no player, red by default) west of slot 0's
+# soldiers, never selected nor ordered: both colours side by side (body, pennant, shield face) in anims_colors.
+$AnimOthers = @(-8900, 3500)
 $AnimGroups = @(
     @{ Name = "wood"; Spawn = @(-13700, -1500); Source = @(-14221, -1900); Target = @(-12500, -3000); Look = @(-14200, -1450) },
     @{ Name = "stone"; Spawn = @(-11087, -5400); Source = @(-11087, -4592); Target = @(-11087, -6600); Look = @(-11087, -4592) },
@@ -262,6 +265,25 @@ $CutTo = @(-9000, -4000)
 # The way between two houses (J6b.2b, D324): houses P and Q whose tiles touch (Q north of P) on open ground east of house N,
 # their builders made south of them; walkers made 15 m west of the way, sent 15 m east of it (the way runs along X at
 # y = 300, between bodies 2.1 m apart, from x -6195 to -5805).
+# The formation (J7a.4), solo: 3 Peasants and 3 Men-at-arms made side by side (the soldiers south of them) on open
+# ground between slot 0's ridge, slot 4's and the grove, sent 35 m east together: one pace (the slowest's), rows, the
+# soldiers in front. Then a Ctrl + right-button drag, an arrow of 3.6 m north-east of them (its front of 3 columns
+# centred on its base, facing along it, yaw 45; the user's 2nd trial), then a Peasant made north-west of the front sent through it: those pushed walk back to their places.
+$FormPeasants = @(-6000, -5200)
+$FormMenAtArms = @(-6000, -5800)
+$FormTo = @(-2500, -5500)
+$FormLine = @(-1627, -3627, -1373, -3373)
+$FormWalker = @(-2300, -2700)
+$FormWalkerTo = @(-700, -4300)
+# Then (the user's 1st trial of J7a.4) a plain right-button drag of 11 m back at the march's end (orientation only: the default rows, not 6
+# columns) and, with Shift, a move queued while they walk there, 26 m north: the six go there once that walk is over.
+$FormPlainLine = @(-2900, -5900, -2100, -5100)
+$FormQueuedTo = @(-2200, -2900)
+# Then the block march (the user's 1st trial of J7a.4): 3 Peasants, 3 Spearmen and 3 Men-at-arms (600, 583, 523 cm/s) on
+# the six's first ground (gone by then), sent to the same point 35 m east.
+$FormBlockPeasants = @(-6000, -5000)
+$FormBlockSpearmen = @(-6000, -5500)
+$FormBlockMenAtArms = @(-6000, -6000)
 $GapP = @(-6000, 0)
 $GapQ = @(-6000, 600)
 $GapBuilders = @(-6000, -1500)
@@ -691,7 +713,9 @@ if ($Parts -contains "camera") {
             Step "mark anims","hol.Cheat.FastBuild 0", "hol.Build.Speed 1", "hol.Cheat.GatherSpeed 1", "hol.Cheat.Wood 100",
                 "hol.Units.Spawn 2 $($AnimBuilders -join ' ') 0 Peasant 100", "hol.Units.Spawn 3 $($AnimIdle -join ' ') 0 Peasant 150"
             foreach ($Group in $AnimGroups) { Step "hol.Units.Spawn 3 $($Group.Spawn -join ' ') 0 Peasant 150" }
-            Step "hol.Units.Spawn 3 $($AnimSpearmen -join ' ') 0 Spearman 150", "hol.Units.Spawn 3 $($AnimMenAtArms -join ' ') 0 ManAtArms 150"
+            Step "hol.Units.Spawn 3 $($AnimSpearmen -join ' ') 0 Spearman 150", "hol.Units.Spawn 3 $($AnimMenAtArms -join ' ') 0 ManAtArms 150",
+                "hol.Units.Spawn 1 $($AnimOthers[0]) $($AnimOthers[1] - 400) 1 Spearman 10", "hol.Units.Spawn 1 $($AnimOthers -join ' ') 1 ManAtArms 10",
+                "hol.Units.Spawn 1 $($AnimOthers[0]) $($AnimOthers[1] + 400) 1 Peasant 10"
             Step "wait 0.5", "hol.Camera.Focus $($AnimBuilders -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($AnimBuilders[0] - 400) $($AnimBuilders[1] - 400) $($AnimBuilders[0] + 400) $($AnimBuilders[1] + 400)",
                 "waitlog Selection: 2 units (own): Peasant x2", "hol.Camera.Focus $($AnimHouse -join ' ')", "frames 3", "hol.Build.Place House",
@@ -708,7 +732,8 @@ if ($Parts -contains "camera") {
             foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Look -join ' ')", "frames 3", "capture anims_work_$($Group.Name)" }
             Step "hol.Camera.Focus $($AnimHouse[0] - 350) $($AnimHouse[1])", "frames 3", "capture anims_work_build",
                 "hol.Camera.Focus $($AnimIdle -join ' ')", "frames 3", "capture anims_work_idle",
-                "hol.Camera.Focus $($AnimSpearmen[0]) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 3", "capture anims_soldiers_idle", "hol.Camera.Zoom -14", "wait 3"
+                "hol.Camera.Focus $($AnimSpearmen[0]) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 3", "capture anims_soldiers_idle",
+                "hol.Camera.Focus $(($AnimOthers[0] + $AnimSpearmen[0]) / 2) $($AnimOthers[1])", "frames 3", "capture anims_colors", "hol.Camera.Zoom -14", "wait 3"
             # Each group (a few wood, stone, gold or food each by now: 0.7 a second) selected around its source, sent ~20 m
             # away: it keeps its load (D296). Reported on the way, then once they stand there.
             foreach ($Group in $AnimGroups) {
@@ -729,6 +754,47 @@ if ($Parts -contains "camera") {
             foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Target -join ' ')", "frames 3", "capture anims_stand_$($Group.Name)" }
             Step "hol.Camera.Zoom -14", "hol.Build.Report"
         }
+        if (($Parts -contains "formation") -and $Case.Name -eq "2p") {
+            # The formation (J7a.4): the units of slot 0 before (the new ones are the others), the six made, a box
+            # around them, a right click 35 m east; reported every half second on the way, then at rest.
+            Step "mark formation", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $(($FormPeasants[1] + $FormMenAtArms[1]) / 2)",
+                "hol.Units.Spawn 3 $($FormPeasants -join ' ') 0 Peasant 150", "hol.Units.Spawn 3 $($FormMenAtArms -join ' ') 0 ManAtArms 150", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($FormPeasants[0] - 800) $($FormMenAtArms[1] - 500) $($FormPeasants[0] + 800) $($FormPeasants[1] + 500)",
+                "waitlog Selection: 6 units (own)", "hol.Units.Formation 0", "hol.Camera.Focus $($FormTo -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($FormTo -join ' ')", "waitlog Order: ", "mark formation march"
+            for ($i = 0; $i -lt 20; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+            Step "wait 2", "mark formation arrived", "hol.Units.Formation 0", "hol.Camera.Zoom 14", "frames 3", "capture formation_mixed", "hol.Camera.Zoom -14"
+            # The drag (the six still selected), then at rest.
+            Step "mark formation front", "hol.Camera.Focus $(($FormLine[0] + $FormLine[2]) / 2) $(($FormLine[1] + $FormLine[3]) / 2)", "frames 3",
+                "hol.Select.OrderLineGround $($FormLine -join ' ') ctrl", "waitlog Order: ", "wait 7", "hol.Units.Formation 0",
+                "hol.Camera.Zoom 14", "frames 3", "capture formation_front", "hol.Camera.Zoom -14"
+            # A Peasant sent through the front, alone: the pushed ones walk back to their places.
+            Step "mark formation push", "hol.Units.Formation 0", "hol.Units.Spawn 1 $($FormWalker -join ' ') 0 Peasant 150", "wait 0.3", "frames 3",
+                "hol.Select.BoxGround $($FormWalker[0] - 300) $($FormWalker[1] - 300) $($FormWalker[0] + 300) $($FormWalker[1] + 300)",
+                "waitlog Selection: Peasant #", "hol.Select.OrderGround $($FormWalkerTo -join ' ')", "waitlog Order: "
+            for ($i = 0; $i -lt 18; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+            Step "mark formation back", "hol.Units.Formation 0", "hol.Camera.Zoom 14", "frames 3", "capture formation_back", "hol.Camera.Zoom -14"
+            # A plain drag (orientation only), then a Shift move queued after it (the walker first taken out of the selection).
+            Step "mark formation plain", "hol.Select.BoxGround $($FormLine[0] - 600) $($FormLine[1] - 600) $($FormLine[2] + 600) $($FormLine[3] + 600)", "waitlog Selection: ",
+                "hol.Camera.Focus $(($FormPlainLine[0] + $FormPlainLine[2]) / 2) $(($FormPlainLine[1] + $FormPlainLine[3]) / 2)", "frames 3",
+                "hol.Select.OrderLineGround $($FormPlainLine -join ' ')", "waitlog Order: ", "wait 0.5",
+                "hol.Camera.Focus $($FormQueuedTo -join ' ')", "frames 3", "hol.Select.OrderGround $($FormQueuedTo -join ' ') shift", "waitlog Order: ", "wait 1", "hol.Units.Formation 0"
+            for ($i = 0; $i -lt 46; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+            Step "mark formation queued", "hol.Units.Formation 0", "hol.Camera.Focus $($FormQueuedTo -join ' ')", "frames 3", "capture formation_queued"
+            # The block march (J7a.4, the user's 1st trial): 3 Peasants, 3 Spearmen, 3 Men-at-arms on the six's first ground,
+            # sent 35 m east: form-up in place, then one block on one path at the slowest's pace, reported every half second.
+            Step "mark formation block", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $($FormBlockSpearmen[1])",
+                "hol.Units.Spawn 3 $($FormBlockPeasants -join ' ') 0 Peasant 150", "hol.Units.Spawn 3 $($FormBlockSpearmen -join ' ') 0 Spearman 150",
+                "hol.Units.Spawn 3 $($FormBlockMenAtArms -join ' ') 0 ManAtArms 150", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($FormBlockPeasants[0] - 800) $($FormBlockMenAtArms[1] - 400) $($FormBlockPeasants[0] + 800) $($FormBlockPeasants[1] + 400)",
+                "waitlog Selection: 9 units (own)", "hol.Units.Formation 0", "hol.Select.OrderGround $($FormTo -join ' ')", "waitlog Order: "
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 0.25", "hol.Units.Formation 0" }
+            Step "hol.Camera.Focus $($FormTo[0] - 1200) $($FormTo[1])", "frames 3", "capture formation_block"
+            for ($i = 0; $i -lt 20; $i++) { Step "wait 0.25", "hol.Units.Formation 0" }
+            Step "wait 2", "mark formation block end", "hol.Units.Formation 0", "hol.Camera.Focus $($FormTo -join ' ')", "frames 3", "capture formation_block_end"
+            Key Escape
+            Step "waitlog Selection: none"
+        }
     }
 }
 Step "mark end", "quit"
@@ -743,6 +809,7 @@ Get-ChildItem $Shots -Filter "src_*.png" -ErrorAction SilentlyContinue | Remove-
 Get-ChildItem $Shots -Filter "gather_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "build_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "anims_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "formation_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 $GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
@@ -1632,6 +1699,179 @@ if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "anims" $Checks) -and $AllOk
     foreach ($Moment in $Reports.Keys) { Write-Host "  $Moment`: $($Reports[$Moment].Text)" }
+}
+
+if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
+    # The formation (J7a.4), from hol.Units.Formation: id -> type, location, yaw, speed (velocity), own speed, march
+    # speed, front yaw, facing the front, holding its place, distance to it; and the place returns so far.
+    $ReadFormation = { param($Lines)
+        $Line = $Lines | Select-String -Pattern "Formation report: returns (\d+); (.*)$" | Select-Object -Last 1
+        $Units = @{}; $Returns = -1
+        if ($Line) {
+            $Returns = [int]$Line.Matches[0].Groups[1].Value
+            foreach ($M in [regex]::Matches($Line.Matches[0].Groups[2].Value, "#(\d+) (\w+) at \((-?\d+), (-?\d+)\) yaw (-?[\d.]+) speed (-?\d+) own (\d+) march (\d+) front (-?[\d.]+) faces (\d) held (\d) returning (\d) place \((-?\d+), (-?\d+)\) off (\d+) phase (\w+)")) {
+                $G = $M.Groups
+                $Units[[int]$G[1].Value] = @{ Type = $G[2].Value; X = [double]$G[3].Value; Y = [double]$G[4].Value; Yaw = [double]$G[5].Value; Speed = [double]$G[6].Value;
+                    Own = [double]$G[7].Value; March = [double]$G[8].Value; Front = [double]$G[9].Value; Faces = $G[10].Value -eq "1"; Held = $G[11].Value -eq "1";
+                    Off = [double]$G[15].Value; Phase = $G[16].Value }
+            }
+        }
+        @{ Returns = $Returns; Units = $Units } }
+    $AllReports = { param($Lines) @($Lines | Select-String -Pattern "Formation report: " | ForEach-Object { & $ReadFormation @($_.Line) }) }
+    $YawGap = { param([double] $A, [double] $B) [Math]::Abs(((($A - $B) % 360) + 540) % 360 - 180) }
+    $Checks = [ordered]@{}
+    $Start = @(& $AllReports (Get-Section "formation"))
+    $Ids = @()
+    if ($Start.Count -ge 2) { $Ids = @($Start[1].Units.Keys | Where-Object { -not $Start[0].Units.ContainsKey($_) } | Sort-Object) }
+    $Checks["six units made ($($Ids.Count))"] = $Ids.Count -eq 6
+    if ($Ids.Count -eq 6) {
+        $Begin = $Start[1].Units
+        $Slowest = ($Ids | ForEach-Object { $Begin[$_].Own } | Measure-Object -Minimum).Minimum
+        # 1. One pace: each order's march speed is the slowest's; no walker more than 10 % above it, the Peasants
+        # (600 cm/s alone) at it (median of their walking samples within 15 %).
+        $March = @(& $AllReports (Get-Section "formation march"))
+        $Marches = @(foreach ($R in $March) { foreach ($Id in $Ids) { if ($R.Units.ContainsKey($Id) -and $R.Units[$Id].March -gt 0) { $R.Units[$Id].March } } })
+        $WrongMarch = @($Marches | Where-Object { [Math]::Abs($_ - $Slowest) -gt 1 })
+        $Checks["march speed of the six orders = the slowest's ($Slowest cm/s; $($Marches.Count) samples, $($WrongMarch.Count) other)"] = ($Marches.Count -ge 12) -and ($WrongMarch.Count -eq 0)
+        $Walking = @(foreach ($R in $March) { foreach ($Id in $Ids) { if ($R.Units.ContainsKey($Id) -and $R.Units[$Id].Speed -gt 100 -and $R.Units[$Id].March -gt 0 -and $R.Units[$Id].Phase -ne "FormUp") { , @($R.Units[$Id].Type, $R.Units[$Id].Speed) } } })
+        $Fastest = ($Walking | ForEach-Object { $_[1] } | Measure-Object -Maximum).Maximum
+        $PeasantSpeeds = @($Walking | Where-Object { $_[0] -eq "Peasant" } | ForEach-Object { $_[1] } | Sort-Object)
+        $Median = if ($PeasantSpeeds.Count -gt 0) { $PeasantSpeeds[[int][Math]::Floor($PeasantSpeeds.Count / 2)] } else { 0 }
+        $Checks["no walker in the march faster than the slowest + 10 % (fastest $Fastest cm/s of $($Walking.Count) samples)"] = ($Walking.Count -gt 0) -and ($Fastest -le $Slowest * 1.1)
+        $Checks["the Peasants at the slowest's pace (median $Median cm/s of $($PeasantSpeeds.Count) samples)"] = ($PeasantSpeeds.Count -ge 6) -and ([Math]::Abs($Median - $Slowest) -le $Slowest * 0.15)
+        # 2. At rest: on their places (60 cm), no overlap, rows across the march, the soldiers in front, facing the march.
+        $End = (& $ReadFormation (Get-Section "formation arrived")).Units
+        $Cx = ($Ids | ForEach-Object { $Begin[$_].X } | Measure-Object -Average).Average; $Cy = ($Ids | ForEach-Object { $Begin[$_].Y } | Measure-Object -Average).Average
+        $Fx = $FormTo[0] - $Cx; $Fy = $FormTo[1] - $Cy; $Fl = [Math]::Sqrt($Fx * $Fx + $Fy * $Fy); $Fx /= $Fl; $Fy /= $Fl
+        $Ahead = @{}; foreach ($Id in $Ids) { if ($End.ContainsKey($Id)) { $Ahead[$Id] = ($End[$Id].X - $FormTo[0]) * $Fx + ($End[$Id].Y - $FormTo[1]) * $Fy } }
+        $Offs = @($Ids | ForEach-Object { if ($End.ContainsKey($_)) { $End[$_].Off } else { 1e9 } })
+        $Checks["arrived on their places ($($Offs -join ', ') cm, 60 at most)"] = @($Offs | Where-Object { $_ -le 60 }).Count -eq 6
+        $Closest = 1e9
+        foreach ($A in $Ids) { foreach ($B in $Ids) { if ($A -lt $B -and $End.ContainsKey($A) -and $End.ContainsKey($B)) {
+            $Closest = [Math]::Min($Closest, [Math]::Sqrt([Math]::Pow($End[$A].X - $End[$B].X, 2) + [Math]::Pow($End[$A].Y - $End[$B].Y, 2))) } } }
+        $Checks["no overlap ($([Math]::Round($Closest)) cm closest, bodies 120)"] = $Closest -ge 110
+        $Soldiers = @($Ids | Where-Object { $Begin[$_].Type -ne "Peasant" }); $Peasants = @($Ids | Where-Object { $Begin[$_].Type -eq "Peasant" })
+        if ($Ahead.Count -eq 6) {
+            $SoldierBack = ($Soldiers | ForEach-Object { $Ahead[$_] } | Measure-Object -Minimum).Minimum
+            $PeasantFront = ($Peasants | ForEach-Object { $Ahead[$_] } | Measure-Object -Maximum).Maximum
+            $Checks["the soldiers a row in front of the Peasants (last soldier $([Math]::Round($SoldierBack)), first Peasant $([Math]::Round($PeasantFront)) cm along the march)"] =
+                ($SoldierBack - $PeasantFront -ge 120)
+            $Spreads = @(foreach ($Kind in @(, $Soldiers) + @(, $Peasants)) { $V = @($Kind | ForEach-Object { $Ahead[$_] }); [Math]::Round(($V | Measure-Object -Maximum).Maximum - ($V | Measure-Object -Minimum).Minimum) })
+            $Checks["in rows across the march (spread along it: soldiers $($Spreads[0]), Peasants $($Spreads[1]) cm, 60 at most)"] = @($Spreads | Where-Object { $_ -le 60 }).Count -eq 2
+        } else { $Checks["the six reported at rest ($($Ahead.Count))"] = $false }
+        $MarchYaw = [Math]::Atan2($Fy, $Fx) * 180 / [Math]::PI
+        $Yaws = @($Ids | ForEach-Object { if ($End.ContainsKey($_)) { [Math]::Round((& $YawGap $End[$_].Yaw $MarchYaw)) } else { 999 } })
+        $Checks["facing the march at rest (off by $($Yaws -join ', ') degrees, 10 at most)"] = @($Yaws | Where-Object { $_ -le 10 }).Count -eq 6
+        # 3. The drag, an arrow (the user's 2nd trial): its ground base and end (the order's log); a front of
+        # floor(length / 150) + 1 columns centred on its base, facing along it; the others a row (180 cm) behind.
+        $FrontLines = Get-Section "formation front"
+        $LineOrder = $FrontLines | Select-String -Pattern "Order: 6 units in line from \((-?\d+), (-?\d+)\) to \((-?\d+), (-?\d+)\)" | Select-Object -First 1
+        $Checks["the drag ordered the six in line ($(if ($LineOrder) { $LineOrder.Matches[0].Value } else { 'no order' }))"] = [bool]$LineOrder
+        if ($LineOrder -and $End.Count -ge 6) {
+            $G = $LineOrder.Matches[0].Groups
+            $Ax = [double]$G[1].Value; $Ay = [double]$G[2].Value; $Bx = [double]$G[3].Value; $By = [double]$G[4].Value
+            $Dx = $Bx - $Ax; $Dy = $By - $Ay; $Length = [Math]::Sqrt($Dx * $Dx + $Dy * $Dy); $Dx /= $Length; $Dy /= $Length
+            $Width = [Math]::Min(6, [Math]::Max(1, [Math]::Floor($Length / 150) + 1))
+            $Mx = $Ax; $My = $Ay
+            $Nx = $Dx; $Ny = $Dy; $Dx = $Ny; $Dy = -$Nx
+            $FrontYaw = [Math]::Atan2($Ny, $Nx) * 180 / [Math]::PI
+            $Front = (& $ReadFormation $FrontLines).Units
+            $Behind = @{}; $Along = @{}
+            foreach ($Id in $Ids) { if ($Front.ContainsKey($Id)) { $Behind[$Id] = ($Mx - $Front[$Id].X) * $Nx + ($My - $Front[$Id].Y) * $Ny; $Along[$Id] = ($Front[$Id].X - $Mx) * $Dx + ($Front[$Id].Y - $My) * $Dy } }
+            $FirstRow = @($Behind.Keys | Where-Object { [Math]::Abs($Behind[$_]) -le 60 })
+            $Checks["front row at the arrow's base: $($FirstRow.Count) units, $Width columns wanted (length $([Math]::Round($Length)) cm)"] = $FirstRow.Count -eq $Width
+            $Spans = @($FirstRow | ForEach-Object { [Math]::Round($Along[$_]) } | Sort-Object)
+            $Checks["front row across the arrow, centred on its base, within its length / 2 + 75 cm (at $($Spans -join ', ') cm of the base)"] = ($FirstRow.Count -gt 0) -and (@($Spans | Where-Object { [Math]::Abs($_) -le $Length / 2 + 75 }).Count -eq $FirstRow.Count)
+            $Checks["the front row is the soldiers ($(@($FirstRow | ForEach-Object { $Begin[$_].Type }) -join ', '))"] = ($FirstRow.Count -gt 0) -and (@($FirstRow | Where-Object { $Begin[$_].Type -eq "Peasant" }).Count -eq 0)
+            $Rest = @($Behind.Keys | Where-Object { [Math]::Abs($Behind[$_]) -gt 60 } | ForEach-Object { [Math]::Round($Behind[$_]) })
+            $Checks["the others in rows behind it ($($Rest -join ', ') cm, every 180 +- 60)"] = ($Rest.Count -eq 6 - $Width) -and
+                (@($Rest | Where-Object { ([Math]::Round($_ / 180) -ge 1) -and ([Math]::Abs($_ - 180 * [Math]::Round($_ / 180)) -le 60) }).Count -eq $Rest.Count)
+            $Fronts = @($Ids | ForEach-Object { if ($Front.ContainsKey($_)) { [Math]::Round((& $YawGap $Front[$_].Front $FrontYaw)) } else { 999 } })
+            $Checks["front yaw of the orders along the arrow ($([Math]::Round($FrontYaw)) degrees; off by $($Fronts -join ', '), 2 at most)"] = @($Fronts | Where-Object { $_ -le 2 }).Count -eq 6
+            $Yaws = @($Ids | ForEach-Object { if ($Front.ContainsKey($_) -and $Front[$_].Speed -lt 20) { [Math]::Round((& $YawGap $Front[$_].Yaw $FrontYaw)) } else { 999 } })
+            $Checks["facing the front at rest (off by $($Yaws -join ', ') degrees, 10 at most)"] = @($Yaws | Where-Object { $_ -le 10 }).Count -eq 6
+            # 4. Back to their places once the walker has gone through.
+            $Pushed = @(& $AllReports (Get-Section "formation push")); $Before = $Pushed[0]
+            $PushedOff = ($Pushed | ForEach-Object { $R = $_; $Ids | ForEach-Object { if ($R.Units.ContainsKey($_)) { $R.Units[$_].Off } } } | Measure-Object -Maximum).Maximum
+            $After = & $ReadFormation (Get-Section "formation back")
+            # The walker pushes them less than a radius (they hold their places); the return is seen at the march's end
+            # instead: the soldiers arriving push a Peasant off its place, it walks back (its own pace, not the march's).
+            $Returns = (& $ReadFormation (Get-Section "formation arrived")).Returns
+            # (The block march, J7a.4: the soldiers no longer push a Peasant on arrival; walking back is the test Formation.Return's.)
+            Write-Host "  formation: place returns on arrival $($Start[1].Returns) -> $Returns (no longer checked: the block arrives without pushing)"
+            $Offs = @($Ids | ForEach-Object { if ($After.Units.ContainsKey($_)) { $After.Units[$_].Off } else { 1e9 } })
+            $Held = @($Ids | Where-Object { $After.Units.ContainsKey($_) -and $After.Units[$_].Held }).Count
+            $Checks["all six on their places after a walker went through (pushed $PushedOff cm at most, returns $($Before.Returns) -> $($After.Returns); $($Offs -join ', ') cm, 60 at most; $Held holding)"] = (@($Offs | Where-Object { $_ -le 60 }).Count -eq 6) -and ($Held -eq 6)
+            $Yaws = @($Ids | ForEach-Object { if ($After.Units.ContainsKey($_)) { [Math]::Round((& $YawGap $After.Units[$_].Yaw $FrontYaw)) } else { 999 } })
+            $Checks["facing the front again (off by $($Yaws -join ', ') degrees, 10 at most)"] = @($Yaws | Where-Object { $_ -le 10 }).Count -eq 6
+        }
+    }
+    # 5. The plain drag keeps the default width (no "its width" in its order), the Shift move waits for its end, then
+    # the six go there in formation.
+    $PlainLines = @(Get-Section "formation plain")
+    $PlainOrder = $PlainLines | Select-String -Pattern "Order: (\d+) units in line from .*$" | Select-Object -First 1
+    $Checks["plain drag: orientation only ($(if ($PlainOrder) { $PlainOrder.Matches[0].Value } else { 'no order' }))"] = [bool]$PlainOrder -and ($PlainOrder.Matches[0].Value -notmatch "its width")
+    $Queued = $PlainLines | Select-String -Pattern "Move order of slot 0 queued \(Shift\) for (\d+) units" | Select-Object -First 1
+    $Started = $PlainLines | Select-String -Pattern "Queued move started for (\d+) units" | Select-Object -First 1
+    $Checks["Shift move queued behind the drag's ($(if ($Queued) { $Queued.Matches[0].Value } else { 'not queued' }))"] = [bool]$Queued
+    $Checks["queued move started once the drag's walk was over ($(if ($Started) { $Started.Matches[0].Value } else { 'never' }))"] = [bool]$Started
+    if ($PlainOrder -and $Start.Count -ge 2) {
+        $QueuedEnd = (& $ReadFormation (Get-Section "formation queued")).Units
+        $Near = @($Ids | Where-Object { $QueuedEnd.ContainsKey($_) -and ([Math]::Sqrt([Math]::Pow($QueuedEnd[$_].X - $FormQueuedTo[0], 2) + [Math]::Pow($QueuedEnd[$_].Y - $FormQueuedTo[1], 2)) -le 600) -and $QueuedEnd[$_].Held })
+        $Checks["the six at the queued point in formation ($($Near.Count) within 6 m, holding their places)"] = $Near.Count -eq 6
+    }
+    # The drag's and the queued move's block marches: the six were already in rows, so no stop (the user's 4th trial: formed
+    # up on the move, 2 steps at most), nobody left the block, none faster than the slowest + 10 %.
+    $PlainBlocks = @($PlainLines + @(Get-Section "formation queued") | Select-String -Pattern "Block march: arrived after (\d+) steps of form-up and (\d+) of march \((\d+) held\), slot gap (\d+) cm at most, speed (\d+) cm/s at most, (\d+) units left it")
+    $Checks["plain drag and queued move: two block marches arrived ($($PlainBlocks.Count))"] = $PlainBlocks.Count -eq 2
+    $PlainStarts = @($PlainLines + @(Get-Section "formation queued") | Select-String -Pattern "Block march: \d+ units, path of \d+ points, (\d+) cm, pace (\d+) cm/s")
+    for ($i = 0; $i -lt $PlainBlocks.Count; $i++) {
+        $G = $PlainBlocks[$i].Matches[0].Groups
+        # No rigid turn at the end (the user's 3rd trial): the march takes no longer than its path at the pace (20 steps a
+        # second), + 20 % (the user's 4th trial: the block slows down while its units take their slots on the move and
+        # while it re-forms in its last metres, instead of stopping before and after).
+        $Expected = if ($i -lt $PlainStarts.Count) { [Math]::Ceiling([double]$PlainStarts[$i].Matches[0].Groups[1].Value / [double]$PlainStarts[$i].Matches[0].Groups[2].Value * 20 * 1.2) } else { 0 }
+        $Checks["plain/queued block: form-up $($G[1].Value) steps (2 at most), march $($G[2].Value) steps ($Expected at most), $($G[6].Value) left, speed $($G[5].Value) cm/s (523 + 10 % at most), held $($G[3].Value), gap $($G[4].Value) cm"] =
+            ([int]$G[1].Value -le 2) -and ([int]$G[2].Value -le $Expected) -and ([int]$G[6].Value -eq 0) -and ([int]$G[5].Value -le 523 * 1.1)
+    }
+    # The arrivals (the user's 2nd and 3rd trials): no rigid turn, each unit from the last 1.5 m of the path straight to a
+    # place of its kind: no two straight ways of one kind crossing, (almost) nobody pushed, everyone standing within 1 s.
+    $Settled = @(@(Get-Section "formation front") + $PlainLines + @(Get-Section "formation queued") + @(Get-Section "formation block") + @(Get-Section "formation block end") |
+        Select-String -Pattern "Block march: settled after (-?\d+) steps, (\d+) crossings, (\d+) pushes, (\d+) cm from its place at most at the end")
+    $Checks["arrivals watched: four block marches settled ($($Settled.Count))"] = $Settled.Count -eq 4
+    foreach ($S in $Settled) {
+        $G = $S.Matches[0].Groups
+        $Checks["arrival: settled in $($G[1].Value) steps (8 at most), $($G[2].Value) crossings (0), $($G[3].Value) pushes (2 at most), $($G[4].Value) cm off at the end"] =
+            ([int]$G[1].Value -ge 0) -and ([int]$G[1].Value -le 8) -and ([int]$G[2].Value -eq 0) -and ([int]$G[3].Value -le 2)
+    }
+    # 6. The block march: form-up in place (3 s at most), then on the group's path every unit within 80 cm of its slot and
+    # none faster than the slowest + 10 %; it arrives, nobody left behind, then each on its place.
+    $BlockLines = @(Get-Section "formation block")
+    $BlockReports = @(& $AllReports $BlockLines)
+    $BlockIds = @()
+    if ($BlockReports.Count -ge 2) { $BlockIds = @($BlockReports[1].Units.Keys | Where-Object { -not $BlockReports[0].Units.ContainsKey($_) } | Sort-Object) }
+    $Checks["block: nine units made ($($BlockIds.Count))"] = $BlockIds.Count -eq 9
+    if ($BlockIds.Count -eq 9) {
+        $BlockSlowest = ($BlockIds | ForEach-Object { $BlockReports[1].Units[$_].Own } | Measure-Object -Minimum).Minimum
+        $InBlock = @(foreach ($Line in ($BlockLines | Select-String -Pattern "Formation report: ")) {
+            foreach ($M in [regex]::Matches($Line.Line, "#(\d+) (\w+) at \(-?\d+, -?\d+\) yaw -?[\d.]+ speed (-?\d+) own \d+ march \d+ .*? off (\d+) phase (\w+)")) {
+                if (($BlockIds -contains [int]$M.Groups[1].Value) -and $M.Groups[5].Value -eq "Block") { , @([double]$M.Groups[3].Value, [double]$M.Groups[4].Value) } } })
+        $BlockFastest = ($InBlock | ForEach-Object { $_[0] } | Measure-Object -Maximum).Maximum
+        $BlockGap = ($InBlock | ForEach-Object { $_[1] } | Measure-Object -Maximum).Maximum
+        $Checks["block: marching samples ($($InBlock.Count))"] = $InBlock.Count -ge 60
+        $Checks["block: none faster than the slowest + 10 % ($BlockFastest cm/s at most, slowest $BlockSlowest)"] = ($InBlock.Count -gt 0) -and ($BlockFastest -le $BlockSlowest * 1.1)
+        $Checks["block: each within 80 cm of its slot on the path ($BlockGap cm at most)"] = ($InBlock.Count -gt 0) -and ($BlockGap -le 80)
+        $Report = $BlockLines + @(Get-Section "formation block end") | Select-String -Pattern "Block report: units (\d+) formup (-?\d+) march (\d+) held (\d+) left (\d+) pace (\d+) gap (\d+) speed (\d+) arrived (\d)" | Select-Object -Last 1
+        $Checks["block: formed up, marched, arrived, nobody left ($(if ($Report) { $Report.Matches[0].Value } else { 'no report' }))"] = [bool]$Report -and
+            ([int]$Report.Matches[0].Groups[1].Value -eq 9) -and ([int]$Report.Matches[0].Groups[2].Value -ge 0) -and ([int]$Report.Matches[0].Groups[2].Value -le 60) -and
+            ([int]$Report.Matches[0].Groups[5].Value -eq 0) -and ([int]$Report.Matches[0].Groups[9].Value -eq 1)
+        $BlockEnd = (& $ReadFormation (Get-Section "formation block end")).Units
+        $BlockOffs = @($BlockIds | ForEach-Object { if ($BlockEnd.ContainsKey($_)) { $BlockEnd[$_].Off } else { 1e9 } })
+        $Checks["block: on their places at the end ($($BlockOffs -join ', ') cm, 60 at most)"] = @($BlockOffs | Where-Object { $_ -le 60 }).Count -eq 9
+    }
+    $Missing = @("mixed", "front", "back", "queued", "block", "block_end" | Where-Object { -not (Test-Path (Join-Path $Shots "formation_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "formation" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "net") {

@@ -113,6 +113,21 @@ public:
 	 * queue (the user's trial of J6a.4).
 	 */
 	void OrderAt(const FVector2D& ViewportFraction, bool bQueue = false);
+	/**
+	 * A right-button drag from Start to End (viewport fractions; J7a.4, J7-Q3): the selected own units, two or more, go
+	 * in formation with their front on that line (its middle the target, facing away from the group; the user's 1st
+	 * trial: the default width, or with Ctrl, bWidth, the line's length); Shift (bQueue): after their current move. A
+	 * press on a source or one of the player's sites, a single unit or a building's selection: a right click at Start
+	 * (OrderAt).
+	 */
+	void OrderLineAt(const FVector2D& Start, const FVector2D& End, bool bWidth = false, bool bQueue = false);
+	/** Ctrl held (the user's 1st trial of J7a.4): a right-button drag sets the front's width too. */
+	bool IsOrderWidthHeld() const;
+	/**
+	 * The right button held and dragged past a few pixels with two or more own units selected (J7a.4): the front line
+	 * on the ground, for its preview (the local player only).
+	 */
+	bool GetOrderLine(FVector& OutStart, FVector& OutEnd) const;
 	/** Selects a building, or nothing (null). */
 	void SetSelection(AHOLBuilding* Building);
 	/**
@@ -253,8 +268,11 @@ public:
 	void RequestProduction(FName TypeName);
 	/** Asks the server to cancel the item at Index of the selected building's queue (its own). */
 	void RequestCancelProduction(int32 Index);
-	/** Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. */
-	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target);
+	/**
+	 * Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. bQueue
+	 * (Shift, the user's 1st trial of J7a.4): after their current move.
+	 */
+	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/**
 	 * Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. bQueue (Shift): at
 	 * the end of their queue, after their sites (the user's trial of J6a.4).
@@ -344,6 +362,7 @@ private:
 	void HandleSelectCompleted();
 	void HandleSelectAdd(bool bHeld);
 	void HandleOrder();
+	void HandleOrderCompleted();
 	void HandleDeselect();
 	void HandleNextIdle();
 	void HandleCategoryKey(EHOLBuildingCategory Category);
@@ -366,7 +385,14 @@ private:
 
 	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
 	UFUNCTION(Server, Reliable)
-	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target);
+	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+
+	/**
+	 * A right-button drag (J7a.4): the units and the two ends of the front line on the ground (~4 bytes a unit and two
+	 * points); the server makes the formation from them (facing; width with bWidth, Ctrl), as for ServerMoveUnits.
+	 */
+	UFUNCTION(Server, Reliable)
+	void ServerMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue);
 
 	/** The units' identifiers and the source's index (J5, D298); Shift (the user's trial of J6a.4). */
 	UFUNCTION(Server, Reliable)
@@ -444,6 +470,9 @@ private:
 	/** Left button held: where it was pressed (viewport fractions); its release clicks or ends the box. */
 	bool bSelectPressed = false;
 	FVector2D SelectPressFraction = FVector2D::ZeroVector;
+	/** Right button held (J7a.4): where it was pressed; its release orders there, or along the drag. */
+	bool bOrderPressed = false;
+	FVector2D OrderPressFraction = FVector2D::ZeroVector;
 	/** Shift held (IA_SelectAdd). */
 	bool bSelectAddHeld = false;
 	float SincePurge = 0.f;

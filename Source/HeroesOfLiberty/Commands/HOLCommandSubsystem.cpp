@@ -12,7 +12,8 @@ bool UHOLCommandSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
 }
 
-void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask)
+void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask,
+	const FVector2D& FrontLine, const bool bFrontWidth, const bool bQueue)
 {
 	if (UnitIds.Num() == 0)
 	{
@@ -44,6 +45,9 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	Order.Target = Destination;
 	Order.PlayerIndex = PlayerIndex;
 	Order.bFromTask = bFromTask;
+	Order.FrontLine = FrontLine;
+	Order.bFrontWidth = bFrontWidth;
+	Order.bQueue = bQueue;
 }
 
 void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)

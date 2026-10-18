@@ -287,4 +287,284 @@ namespace HOLFormation
 			}
 		}
 	}
+
+	void MakeGroupRows(TConstArrayView<int32> CountOfKind, const bool bPeasantsOnly, TArray<int32>& OutWidths)
+	{
+		int32 Count = 0;
+		int32 Kinds = 0;
+		for (const int32 KindCount : CountOfKind)
+		{
+			Count += FMath::Max(KindCount, 0);
+			Kinds += KindCount > 0 ? 1 : 0;
+		}
+		if (bPeasantsOnly)
+		{
+			MakePeasantRows(Count, OutWidths);
+		}
+		else if (Kinds <= 1)
+		{
+			MakeSquareRows(Count, OutWidths);
+		}
+		else
+		{
+			MakeMixedRows(Count, OutWidths);
+		}
+	}
+
+	void PlaceGroup(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, const bool bPeasantsOnly,
+		const FVector2D& Target, const FVector2D& Forward, const double ColumnSpacing, const double RowSpacing,
+		TFunctionRef<FVector2D(const FVector2D&)> ProjectPlace, TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit,
+		const int32 FrontWidth)
+	{
+		OutPlaces.Reset();
+		OutPlaceOfUnit.Init(INDEX_NONE, Positions.Num());
+		int32 NumKinds = 0;
+		for (const int32 Kind : KindOfUnit)
+		{
+			NumKinds = FMath::Max(NumKinds, Kind + 1);
+		}
+		TArray<int32, TInlineAllocator<8>> CountOfKind;
+		CountOfKind.Init(0, NumKinds);
+		for (const int32 Kind : KindOfUnit)
+		{
+			if (Kind >= 0)
+			{
+				++CountOfKind[Kind];
+			}
+		}
+		TArray<int32> Widths;
+		if (FrontWidth > 0)
+		{
+			MakeRowsOfWidth(KindOfUnit.Num(), FrontWidth, Widths);
+		}
+		else
+		{
+			MakeGroupRows(CountOfKind, bPeasantsOnly, Widths);
+		}
+		TArray<int32> KindOfPlace;
+		PlaceKinds(Widths, CountOfKind, KindOfPlace);
+		MakePlaces(Widths, Target, Forward, ColumnSpacing, RowSpacing, OutPlaces);
+		for (FVector2D& Place : OutPlaces)
+		{
+			Place = ProjectPlace(Place);
+		}
+
+		TArray<FVector2D> KindPositions;
+		TArray<FVector2D> KindPlaces;
+		TArray<int32> KindUnits;
+		TArray<int32> KindPlaceIndices;
+		TArray<int32> PlaceOfKindUnit;
+		for (int32 Kind = 0; Kind < NumKinds; ++Kind)
+		{
+			KindPositions.Reset();
+			KindUnits.Reset();
+			for (int32 Unit = 0; Unit < Positions.Num(); ++Unit)
+			{
+				if (KindOfUnit.IsValidIndex(Unit) && KindOfUnit[Unit] == Kind)
+				{
+					KindPositions.Add(Positions[Unit]);
+					KindUnits.Add(Unit);
+				}
+			}
+			KindPlaces.Reset();
+			KindPlaceIndices.Reset();
+			for (int32 Place = 0; Place < KindOfPlace.Num() && Place < OutPlaces.Num(); ++Place)
+			{
+				if (KindOfPlace[Place] == Kind)
+				{
+					KindPlaces.Add(OutPlaces[Place]);
+					KindPlaceIndices.Add(Place);
+				}
+			}
+			if (KindUnits.IsEmpty() || KindPlaces.IsEmpty())
+			{
+				continue;
+			}
+			AssignPlaces(KindPositions, KindPlaces, Forward, PlaceOfKindUnit);
+			for (int32 Index = 0; Index < KindUnits.Num() && Index < PlaceOfKindUnit.Num(); ++Index)
+			{
+				if (KindPlaceIndices.IsValidIndex(PlaceOfKindUnit[Index]))
+				{
+					OutPlaceOfUnit[KindUnits[Index]] = KindPlaceIndices[PlaceOfKindUnit[Index]];
+				}
+			}
+		}
+	}
+
+	int32 GetFrontWidth(const double Length, const double ColumnSpacing, const int32 Count)
+	{
+		const int32 Columns = ColumnSpacing > 0. ? FMath::FloorToInt32(FMath::Max(Length, 0.) / ColumnSpacing + 1e-6) + 1 : 1;
+		return FMath::Clamp(Columns, 1, FMath::Max(Count, 1));
+	}
+
+	double GetBlockSoftPace(const double MaxGap)
+	{
+		return FMath::Clamp(1. - (MaxGap - BlockLagDistance) / (BlockSoftHoldDistance - BlockLagDistance), 0., 1.);
+	}
+
+	double GetBlockBlendDistance(const double BlockSize, const double PathLength)
+	{
+		return FMath::Max(FMath::Min(BlockSize + BlockBlendMargin, PathLength * 0.5), 0.);
+	}
+
+	double GetBlockBlend(const double Remaining, const double BlendDistance)
+	{
+		return BlendDistance <= 0. ? 1. : FMath::Clamp(1. - Remaining / BlendDistance, 0., 1.);
+	}
+
+	void AssignPlacesByKind(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, TConstArrayView<FVector2D> Places,
+		const FVector2D& Forward, TArray<int32>& OutPlaceOfUnit)
+	{
+		const int32 Num = FMath::Min3(Positions.Num(), KindOfUnit.Num(), Places.Num());
+		OutPlaceOfUnit.Init(INDEX_NONE, Positions.Num());
+		TArray<int32> Kinds;
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			Kinds.AddUnique(KindOfUnit[Unit]);
+		}
+		TArray<int32> Units;
+		TArray<FVector2D> KindPositions, KindPlaces;
+		TArray<int32> PlaceOfKindUnit;
+		for (const int32 Kind : Kinds)
+		{
+			Units.Reset();
+			KindPositions.Reset();
+			KindPlaces.Reset();
+			for (int32 Unit = 0; Unit < Num; ++Unit)
+			{
+				if (KindOfUnit[Unit] == Kind)
+				{
+					Units.Add(Unit);
+					KindPositions.Add(Positions[Unit]);
+					KindPlaces.Add(Places[Unit]);
+				}
+			}
+			AssignPlaces(KindPositions, KindPlaces, Forward, PlaceOfKindUnit);
+			for (int32 Index = 0; Index < Units.Num(); ++Index)
+			{
+				OutPlaceOfUnit[Units[Index]] = PlaceOfKindUnit.IsValidIndex(Index) && Units.IsValidIndex(PlaceOfKindUnit[Index]) ? Units[PlaceOfKindUnit[Index]] : Units[Index];
+			}
+		}
+	}
+
+	FVector2D GetFrontFacing(const FVector2D& Arrow)
+	{
+		const FVector2D Direction = Arrow.GetSafeNormal();
+		return Direction.IsNearlyZero() ? FVector2D(1., 0.) : Direction;
+	}
+
+	int32 GetRowPriority(const FName TypeName, const int32 CarryCapacity)
+	{
+		static const FName Spearman(TEXT("Spearman"));
+		static const FName ManAtArms(TEXT("ManAtArms"));
+		static const FName Archer(TEXT("Archer"));
+		if (CarryCapacity > 0)
+		{
+			return PeasantRowPriority;
+		}
+		return TypeName == Spearman ? 0 : TypeName == ManAtArms ? 1 : TypeName == Archer ? 2 : 3;
+	}
+
+	void EndWalkToPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, const double Radius)
+	{
+		const bool bWasReturning = Hold.bReturning;
+		Hold.bReturning = false;
+		Hold.RestSteps = 0;
+		Hold.LastLocation = Location;
+		const bool bOnPlace = FVector2D::DistSquared(Location, Place) <= FMath::Square(Radius * ReturnDistanceInRadii);
+		if (bOnPlace)
+		{
+			Hold.bHeld = true;
+			Hold.FailedReturns = 0;
+			return;
+		}
+		// Short of it: an arrival lets it go; a walk back tries again, a few times in a row at most.
+		Hold.FailedReturns = bWasReturning && Hold.bHeld ? Hold.FailedReturns + 1 : 0;
+		Hold.bHeld = bWasReturning && Hold.bHeld && Hold.FailedReturns < MaxReturnTries;
+		if (!Hold.bHeld)
+		{
+			Hold.FailedReturns = 0;
+		}
+	}
+
+	bool WatchPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, const double Radius)
+	{
+		if (!Hold.bHeld || Hold.bReturning)
+		{
+			return false;
+		}
+		const double Distance = FVector2D::Distance(Location, Place);
+		const double LastDistance = FVector2D::Distance(Hold.LastLocation, Place);
+		const bool bPushed = Distance > LastDistance + RestStepDistance
+			|| FVector2D::DistSquared(Location, Hold.LastLocation) > FMath::Square(PushStepDistance);
+		Hold.LastLocation = Location;
+		const bool bAway = Distance > Radius * ReturnDistanceInRadii;
+		Hold.RestSteps = bAway && !bPushed ? Hold.RestSteps + 1 : 0;
+		if (Hold.RestSteps < ReturnRestSteps)
+		{
+			return false;
+		}
+		Hold.RestSteps = 0;
+		Hold.bReturning = true;
+		return true;
+	}
+
+	double GetLineLength(TConstArrayView<FVector2D> Points)
+	{
+		double Length = 0.;
+		for (int32 Index = 1; Index < Points.Num(); ++Index)
+		{
+			Length += FVector2D::Distance(Points[Index - 1], Points[Index]);
+		}
+		return Length;
+	}
+
+	FVector2D GetPointOnLine(TConstArrayView<FVector2D> Points, double Distance)
+	{
+		if (Points.Num() == 0)
+		{
+			return FVector2D::ZeroVector;
+		}
+		if (Distance <= 0.)
+		{
+			return Points[0];
+		}
+		for (int32 Index = 1; Index < Points.Num(); ++Index)
+		{
+			const double Segment = FVector2D::Distance(Points[Index - 1], Points[Index]);
+			if (Distance <= Segment && Segment > 0.)
+			{
+				return FMath::Lerp(Points[Index - 1], Points[Index], Distance / Segment);
+			}
+			Distance -= Segment;
+		}
+		return Points.Last();
+	}
+
+	FVector2D GetDirectionOnLine(TConstArrayView<FVector2D> Points, const double Distance, const double Window, const FVector2D& Fallback)
+	{
+		const double Length = GetLineLength(Points);
+		const FVector2D Behind = GetPointOnLine(Points, FMath::Clamp(Distance - Window, 0., Length));
+		const FVector2D Ahead = GetPointOnLine(Points, FMath::Clamp(Distance + Window, 0., Length));
+		const FVector2D Direction = Ahead - Behind;
+		return Direction.IsNearlyZero() ? Fallback : Direction.GetSafeNormal();
+	}
+
+	FVector2D BlockOffsetToWorld(const FVector2D& Offset, const FVector2D& Forward)
+	{
+		const FVector2D Right(-Forward.Y, Forward.X);
+		return Forward * Offset.X + Right * Offset.Y;
+	}
+
+	FVector2D WorldToBlockOffset(const FVector2D& Delta, const FVector2D& Forward)
+	{
+		const FVector2D Right(-Forward.Y, Forward.X);
+		return FVector2D(FVector2D::DotProduct(Delta, Forward), FVector2D::DotProduct(Delta, Right));
+	}
+
+	FVector2D GetSlotOnPath(TConstArrayView<FVector2D> Points, const double Distance, const FVector2D& Offset, const FVector2D& Fallback)
+	{
+		const FVector2D Direction = GetDirectionOnLine(Points, Distance, BlockTurnWindow, Fallback);
+		return GetPointOnLine(Points, Distance) + BlockOffsetToWorld(Offset, Direction);
+	}
 }

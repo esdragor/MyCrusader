@@ -172,6 +172,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	Positions.Reset();
 	Velocities.Reset();
 	Radii.Reset();
+	FormUpSerials.Reset();
 	MaxRadius = 1.f;
 	MaxSpeed = 0.f;
 	bool bAnyWalking = false;
@@ -182,6 +183,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
 		const TConstArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetFragmentView<FMassMoveTargetFragment>();
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			// Nobody turns aside for a gatherer on its round trip (D309).
@@ -195,6 +197,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 			Positions.Add(FVector2D(Location.X, Location.Y));
 			Velocities.Add(Velocity);
 			Radii.Add(AgentRadii[EntityIt].Radius);
+			FormUpSerials.Add(GetPassThroughSerial(Orders[EntityIt]));
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			MaxSpeed = FMath::Max(MaxSpeed, static_cast<float>(Velocity.Size()));
 			bAnyWalking |= MoveTargets[EntityIt].GetCurrentAction() == EMassMovementAction::Move;
@@ -222,7 +225,8 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 	return static_cast<int32>((static_cast<uint32>(Cell.X) * 73856093u ^ static_cast<uint32>(Cell.Y) * 19349663u) & (UE::HeroesOfLiberty::Simulation::LookAheadBuckets - 1));
 }
 
-FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon) const
+FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
+	const uint32 FormUpSerial) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
@@ -242,7 +246,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			const FIntPoint Cell(X, Y);
 			for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 			{
-				if (Cells[Other] != Cell || Entities[Other] == Entity)
+				if (Cells[Other] != Cell || Entities[Other] == Entity || (FormUpSerial != 0u && FormUpSerials[Other] == FormUpSerial))
 				{
 					continue;
 				}
@@ -365,7 +369,8 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 
 			const FVector ToSlot(Order.Slot.X - Location.X, Order.Slot.Y - Location.Y, 0.);
 			const double SlotDistance = ToSlot.Size();
-			if (Order.Phase == EHOLMovePhase::FinalLeg && SlotDistance <= Speed * DeltaTime)
+			const bool bToSlot = Order.Phase == EHOLMovePhase::FinalLeg || Order.Phase == EHOLMovePhase::FormUp || Order.Phase == EHOLMovePhase::Block;
+			if (bToSlot && SlotDistance <= Speed * DeltaTime)
 			{
 				// The last step lands on the slot: the order processor stands the unit there at the next step.
 				Velocity = ToSlot / DeltaTime;
@@ -385,7 +390,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				const FVector ToAim(Aim.X - Location.X, Aim.Y - Location.Y, 0.);
 				Direction = ToAim.SizeSquared() > 1. ? ToAim.GetSafeNormal() : Tangent.IsZero() ? ToSlot / FMath::Max(SlotDistance, 1.) : Tangent;
 			}
-			else if (Order.Phase == EHOLMovePhase::FinalLeg)
+			else if (bToSlot)
 			{
 				// Straight to its slot, a straight way on the navmesh: the steering turns the velocity at ~50 degrees a
 				// second (its acceleration), at full speed it circled the slot (D290), and after each turn of the
@@ -418,8 +423,11 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 			{
 				// Around the bodies on its way (D293), those beyond its slot aside: Mass' avoidance runs one step out of 6
 				// (D220) and turns too late at full speed, so the walker pushed through them.
-				const double Horizon = Order.Phase == EHOLMovePhase::FinalLeg ? FMath::Min(LookAheadTime, SlotDistance / Speed) : LookAheadTime;
-				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon);
+				const double Horizon = bToSlot ? FMath::Min(LookAheadTime, SlotDistance / Speed) : LookAheadTime;
+				// A unit forming up for a block march, or re-forming at its arrival, goes through the others doing so (J7a.4, as
+				// the separation lets it).
+				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon,
+					GetPassThroughSerial(Order));
 			}
 			Velocity = Direction * Speed;
 		}
@@ -471,6 +479,7 @@ void UHOLUnitSeparationProcessor::ConfigureQueries(const TSharedRef<FMassEntityM
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
@@ -503,6 +512,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Radii.Reset();
 	Walking.Reset();
 	Ghosts.Reset();
+	FormUpSerials.Reset();
 	Moving.Reset();
 	AtSource.Reset();
 	float MaxRadius = 1.f;
@@ -514,9 +524,11 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		const TConstArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetFragmentView<FMassMoveTargetFragment>();
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
 		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
+		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
+			FormUpSerials.Add(!Orders.IsEmpty() ? GetPassThroughSerial(Orders[EntityIt]) : 0u);
 			Positions.Add(FVector2D(Location.X, Location.Y));
 			Radii.Add(AgentRadii[EntityIt].Radius);
 			// A gatherer on its round trip neither pushes nor is pushed (D309): it never looks, nobody finds it. Landed at
@@ -591,6 +603,12 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					{
 						// A pair is undone once a round, by the first of the two to look; another cell of the same bucket is not this one.
 						if (Other == Index || Looked[Other] || Ghosts[Other] || Cells[Other] != Cell)
+						{
+							continue;
+						}
+						// Two units of one form-up (J7a.4): through each other, the rows turned to the march cross (three
+						// bodies pressed together, each walking into the next, held each other still until the form-up's end).
+						if (FormUpSerials[Index] != 0u && FormUpSerials[Index] == FormUpSerials[Other])
 						{
 							continue;
 						}
@@ -880,6 +898,7 @@ void UHOLInstantOrientationProcessor::ConfigureQueries(const TSharedRef<FMassEnt
 {
 	EntityQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
@@ -891,6 +910,7 @@ void UHOLInstantOrientationProcessor::Execute(FMassEntityManager& EntityManager,
 	{
 		const TConstArrayView<FMassVelocityFragment> Velocities = Context.GetFragmentView<FMassVelocityFragment>();
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
+		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -899,6 +919,11 @@ void UHOLInstantOrientationProcessor::Execute(FMassEntityManager& EntityManager,
 			if (Velocity.SizeSquared2D() > FMath::Square(MinFacingSpeed))
 			{
 				Transforms[EntityIt].GetMutableTransform().SetRotation(FQuat(FVector::UpVector, FMath::Atan2(Velocity.Y, Velocity.X)));
+			}
+			// Standing at the end of a formation move (J7a.4): turned towards the front of its rows, at once as a walker.
+			else if (!Orders.IsEmpty() && Orders[EntityIt].bFacesFront && Orders[EntityIt].Phase == EHOLMovePhase::None)
+			{
+				Transforms[EntityIt].GetMutableTransform().SetRotation(FQuat(FVector::UpVector, FMath::DegreesToRadians(Orders[EntityIt].FrontYaw)));
 			}
 		}
 	});
