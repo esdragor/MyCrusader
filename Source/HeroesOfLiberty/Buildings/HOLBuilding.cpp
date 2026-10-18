@@ -44,7 +44,9 @@ namespace UE::HeroesOfLiberty::Buildings
 
 AHOLBuilding::AHOLBuilding()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	// The tick applies the look outside the simulation step (D325): on only while the look is to be redone, then off.
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	// The building's pieces: squashed to a site's progress, it rises from the ground (J6a.4).
 	RiseRoot = CreateDefaultSubobject<USceneComponent>(TEXT("Rise"));
@@ -185,7 +187,9 @@ void AHOLBuilding::SetConstructionState(const EHOLConstructionState InState)
 	ConstructionState = InState;
 	ApplyRelevancy();
 	ForceNetUpdate();
-	RefreshAppearance();
+	// The navmesh's forbidden area counts for the simulation, at once; the look waits for the frame (D325).
+	RefreshNavObstacle();
+	MarkAppearanceDirty();
 	OnConstructionChanged.Broadcast();
 }
 
@@ -197,14 +201,16 @@ void AHOLBuilding::SetConstructionWork(const int64 InWork)
 	}
 	ConstructionWork = InWork;
 	ForceNetUpdate();
-	UpdateRise();
+	// The site rises at the frame, outside the simulation step (D325).
+	MarkAppearanceDirty();
 	OnConstructionChanged.Broadcast();
 }
 
 void AHOLBuilding::OnRep_Construction()
 {
-	// The state rebuilds the look, the work raises the site (RefreshAppearance does both).
-	RefreshAppearance();
+	// The state rebuilds the look, the work raises the site (RefreshVisuals does both, at the frame, D325).
+	RefreshNavObstacle();
+	MarkAppearanceDirty();
 	OnConstructionChanged.Broadcast();
 }
 
@@ -298,16 +304,19 @@ void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, cons
 	ConstructionState = InState;
 	// Before the spawn is finished: a foundation starts replicating to its owner alone (J6a.4).
 	ApplyRelevancy();
-	// A deferred spawn builds its look in BeginPlay; an actor already spawned builds it now.
+	// A deferred spawn builds its look in BeginPlay; an actor already spawned fits its forbidden area now, its look at the
+	// frame (D325).
 	if (IsActorInitialized())
 	{
-		RefreshAppearance();
+		RefreshNavObstacle();
+		MarkAppearanceDirty();
 	}
 }
 
 void AHOLBuilding::BeginPlay()
 {
 	Super::BeginPlay();
+	// At once: a building that appears is seen at the frame it appears.
 	RefreshAppearance();
 	// For the scripted checks (J6a.4): what a client receives, and when (a foundation reaches its owner alone).
 	if (GetNetMode() == NM_Client && !TypeName.IsNone())
@@ -319,12 +328,54 @@ void AHOLBuilding::BeginPlay()
 
 void AHOLBuilding::OnRep_Setup()
 {
-	RefreshAppearance();
+	RefreshNavObstacle();
+	MarkAppearanceDirty();
+}
+
+void AHOLBuilding::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	ApplyPendingAppearance();
+}
+
+void AHOLBuilding::MarkAppearanceDirty()
+{
+	// Nobody looks at a dedicated server: no piece is made there (D325; selection is the client's, D262).
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	bAppearanceDirty = true;
+	SetActorTickEnabled(true);
+}
+
+void AHOLBuilding::ApplyPendingAppearance()
+{
+	if (bAppearanceDirty)
+	{
+		RefreshVisuals();
+	}
+	SetActorTickEnabled(false);
 }
 
 void AHOLBuilding::RefreshAppearance()
 {
-	if (TypeName.IsNone())
+	RefreshNavObstacle();
+	RefreshVisuals();
+}
+
+void AHOLBuilding::RefreshNavObstacle()
+{
+	if (const FHOLBuildingTypeRow* Type = GetType())
+	{
+		FitNavObstacle(*Type);
+	}
+}
+
+void AHOLBuilding::RefreshVisuals()
+{
+	bAppearanceDirty = false;
+	if (TypeName.IsNone() || GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
@@ -371,11 +422,6 @@ void AHOLBuilding::RefreshAppearance()
 			PieceParent = nullptr;
 		}
 	}
-	if (Type)
-	{
-		FitNavObstacle(*Type);
-	}
-
 	UpdateRise();
 	ApplyColors();
 }
@@ -384,7 +430,13 @@ void AHOLBuilding::UpdateRise()
 {
 	// Squashed from the ground up: the building grows out of its slab (J6a.4); whole once finished.
 	const float Rise = IsFinished() ? 1.f : FMath::Max(MinRiseRatio, GetProgress());
-	if (RiseRoot && !FMath::IsNearlyEqual(static_cast<float>(RiseRoot->GetRelativeScale3D().Z), Rise))
+	if (!RiseRoot)
+	{
+		return;
+	}
+	// Grown by a visible step only, or whole, or lower than shown (a site begun again, its pieces built whole).
+	const float Shown = static_cast<float>(RiseRoot->GetRelativeScale3D().Z);
+	if (!FMath::IsNearlyEqual(Shown, Rise) && (Rise >= 1.f || Rise < Shown || Rise - Shown >= RiseStepRatio))
 	{
 		RiseRoot->SetRelativeScale3D(FVector(1.0, 1.0, Rise));
 	}
@@ -551,6 +603,10 @@ void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 	Piece->SetStaticMesh(Mesh);
 	Piece->SetCollisionResponseToChannel(HOLCollision::Selection, ECR_Block);	// D262
 	Piece->SetCanEverAffectNavigation(false);	// the footprint is NavObstacle (D286)
+	// Traced (the selection), never simulated, and nobody listens to its overlaps: no overlap test when it is made or
+	// rises (a site's rise moved its pieces' bodies at each visible step, J6b.3).
+	Piece->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Piece->SetGenerateOverlapEvents(false);
 	Piece->SetupAttachment(PieceParent ? PieceParent : RootComponent.Get());
 	Piece->RegisterComponent();
 	Pieces.Add(Piece);
@@ -577,6 +633,9 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	Piece->SetCastShadow(false);	// D258
 	Piece->SetCanEverAffectNavigation(false);	// the footprint is NavObstacle (D286)
 	Piece->SetCollisionResponseToChannel(HOLCollision::Selection, ECR_Block);	// D262
+	// As BuildFinalMesh: traced only, no overlap test (J6b.3).
+	Piece->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Piece->SetGenerateOverlapEvents(false);
 	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Piece);
 	Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Color);
 	Piece->SetMaterial(0, Material);

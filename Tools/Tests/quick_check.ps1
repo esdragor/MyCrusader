@@ -25,6 +25,8 @@
 # house, on a tree, near the enemy centre, without enough wood; the second foundation selected by a click and cancelled
 # (refunded). With "net": each client places a house behind its centre, sees the other's, pays alone, and a house near
 # the enemy centre is refused. The two clients wait for each other before quitting (each one's last report done).
+# J6b.3, with "net": each client's Peasant builds a lumber camp by the wood beside its centre and unloads there; the
+# other's camp reaches a client at its first work, then finished; a camp asked on a tree is refused by the server.
 # J6a.4 (D312), solo: a Peasant sent by a right click on house A (a ghost until then): its first work blocks the navmesh,
 # it rises, finished alone in the table's time (hol.Build.Speed 2), the population cap 10 -> 20, the builder idle; three
 # Peasants place house C, then D with Shift: C built by the three (about twice as fast), then D; the first Peasant helps
@@ -53,7 +55,7 @@
 # a camp 34 m from any wood: its builders stand idle.
 # J6b.2 (D314), solo: six Peasants on round trips between the vein north-east of slot 0 and its centre, 50 m (their kept
 # paths, D305); house K placed across their way and started: the kept paths across it dropped, those walking across it
-# given a new path once its tiles are rebuilt (one log line), no body put back by a footprint after; six Peasants sent 90 m
+# given a new path once its tiles are rebuilt (one log line), no body in a footprint after; six Peasants sent 90 m
 # across open ground, house N started across their way: they go round it and arrive.
 # J6b.2b (D324), solo: houses P and Q whose tiles touch, their bodies inset 105 cm in them (2.1 m apart): the navmesh's
 # paths go through the way between them; one Peasant sent across passes through it, on its middle line; two sent together
@@ -126,6 +128,8 @@ if ($Parts -contains "net") {
         # No body in a footprint (J6a.1, D310): the Peasants' round trips to both centres watched at every step.
         ",hol.Net.WhenClients 2 hol.Nav.Footprints on,hol.Net.WhenClients 2 hol.Delay 30 hol.Nav.Footprints report,hol.Net.WhenClients 2 hol.Delay 45 hol.Nav.Footprints report"
     } else { "" }
+    # The camps (J6b.3): built 4 times faster, every unload logged (at the camp).
+    if ($Parts -contains "build") { $NetSourceCommand += ",hol.Build.Speed 4,hol.Gather.LogDeposits 1" }
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
@@ -581,9 +585,10 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($CutK[0]) $($CutK[1] + 200)", "frames 3", "capture build_cut_gather", "wait 10", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
                 "hol.Units.Where 0"
             # Six Peasants made 50 m north of house N, sent 90 m south (straight on open ground); house N started across their
-            # way by a Peasant made beside it: they go round it, arrive, none put back by a footprint.
+            # way by a Peasant made beside it: they go round it, arrive, none put back by a footprint. The waits are on the
+            # clock, not the steps: ~16.5 s of walk, 20.5 s given (J6b.3: 10 s after the capture left 2 s, 4 of 6 arrived once).
             Key Escape
-            Step "mark build cut move", "waitlog Selection: none", "hol.Gather.SpeedScale 1", "hol.Units.Spawn 6 $($CutFrom -join ' ') 0 Peasant 100", "wait 0.5",
+            Step "mark build cut move", "waitlog Selection: none", "hol.Gather.SpeedScale 1", "hol.Units.LogDetours 1", "hol.Units.Spawn 6 $($CutFrom -join ' ') 0 Peasant 100", "wait 0.5",
                 "hol.Camera.Focus $($CutFrom -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($CutFrom[0] - 350) $($CutFrom[1] - 300) $($CutFrom[0] + 350) $($CutFrom[1] + 300)", "waitlog Selection: 6 units (own): Peasant x6",
                 "hol.Camera.Focus $($CutTo -join ' ')", "frames 3", "hol.Select.OrderGround $($CutTo -join ' ')", "hol.Units.Spawn 1 $($CutNBuilder -join ' ') 0 Peasant 10", "wait 0.5",
@@ -591,8 +596,8 @@ if ($Parts -contains "camera") {
                 "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Build.Place House", "waitlog Placement ghost: House at ($($CutN -join ', ')) valid", "hol.Build.Click",
                 "waitlog Build order of slot 0: 1 units to House at ($($CutN -join ', '))", "waitlog Construction: slot 0 first work on House at ($($CutN -join ', '))",
                 "waitlog Buildings (D310): footprint House at ($($CutN -join ', '))", "hol.Nav.Footprints on", "hol.Units.KeepOut 2", "hol.Units.Where 0", "wait 6.5",
-                "hol.Camera.Focus $($CutN -join ' ')", "frames 3", "capture build_cut_move", "wait 10", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
-                "hol.Units.Where 0", "hol.Build.Report"
+                "hol.Camera.Focus $($CutN -join ' ')", "frames 3", "capture build_cut_move", "wait 14", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
+                "hol.Units.Where 0", "hol.Units.Orders 0", "hol.Build.Report", "hol.Units.LogDetours 0"
             # The way between two houses (J6b.2b, D324): P and Q placed touching and finished at their first blow, their two
             # builders sent away; the navmesh's paths through the way (straight, and slanting); one Peasant sent across, then
             # two together: they pass through the way, one after the other, none put back by a wall.
@@ -763,6 +768,15 @@ if ($NetListening) {
                 "hol.Build.Report", "hol.Prod.Report", "hol.Camera.FocusSlot 0", "frames 5", "capture qcnet_${Client}_build0", "hol.Camera.FocusSlot 1", "frames 5",
                 "capture qcnet_${Client}_build1", "waitlog Building arrived: House of slot", "wait 1", "hol.Build.Report", "hol.Camera.FocusSlot 0", "frames 5",
                 "capture qcnet_${Client}_site0", "hol.Camera.FocusSlot 1", "frames 5", "capture qcnet_${Client}_site1", "hol.Build.PlaceNear House -2400 0 enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
+            # The camps (J6b.3, D312): once both houses are seen, its Peasant places a lumber camp 4 m off the wood beside its
+            # centre (slot 0's L of the solo part, mirrored for slot 1) and builds it (hol.Build.Speed 4 on the server); once
+            # its first unload at the camp shows (the +10), each waits for the other's, then sees both camps finished; then,
+            # its selection emptied, a camp asked on the tree nearest slot 0's L (a cheating client): refused by the server.
+            $NetSteps += "signal $(Join-Path $TestSaved "quick_net_built$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_built$Other.flag")",
+                "mark camp", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear LumberCamp 1500 -2100", "wait 2", "hol.Prod.Report",
+                "waitlog Deposit popup: +", "signal $(Join-Path $TestSaved "quick_net_camp$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_camp$Other.flag")",
+                "wait 1", "hol.Build.Report", "hol.Prod.Report", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
+                "hol.Build.PlaceAtSource LumberCamp $($CampTree -join ' ')", "wait 2", "hol.Build.Report", "hol.Prod.Report"
         }
         # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
         # "others []", the flake of 2026-10-16).
@@ -1382,15 +1396,17 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $ReadCut = { param($Lines, $At) $Line = $Lines | Select-String -Pattern "Buildings \(D310\): footprint House at \($($At -join ', ')\): (\d+) walkers given a new path, (\d+) reused gather paths dropped(.*)\((.*)\)$" | Select-Object -First 1
         if ($Line) { $G = $Line.Matches[0].Groups; [pscustomobject]@{ Walkers = [int]$G[1].Value; Dropped = [int]$G[2].Value; Text = ($Line.Matches[0].Value -replace '^Buildings \(D310\): ', ''); Rebuilt = ($G[4].Value -match '^tiles rebuilt') } } }
-    $ReadWatch = { param($Lines) $W = $Lines | Select-String -Pattern "Footprint watch: (\d+) steps, .*; put back out: (\d+), new paths: (\d+)$" | Select-Object -Last 1
-        if ($W) { [pscustomobject]@{ Steps = [int]$W.Matches[0].Groups[1].Value; Out = [int]$W.Matches[0].Groups[2].Value; Repaths = [int]$W.Matches[0].Groups[3].Value } } }
+    $ReadWatch = { param($Lines) $W = $Lines | Select-String -Pattern "Footprint watch: (\d+) steps, .*; bodies in a footprint: (\d+) unit-steps, .*; put back out: (\d+), new paths: (\d+)$" | Select-Object -Last 1
+        if ($W) { [pscustomobject]@{ Steps = [int]$W.Matches[0].Groups[1].Value; Inside = [int]$W.Matches[0].Groups[2].Value; Out = [int]$W.Matches[0].Groups[3].Value; Repaths = [int]$W.Matches[0].Groups[4].Value } } }
     $K = & $ReadCut $Cut $CutK
     $Checks["house K across the round trips: its kept paths dropped, its walkers given a new path once its tiles were rebuilt ($(if ($K) { $K.Text }))"] =
         ($null -ne $K) -and ($K.Walkers -ge 1) -and ($K.Dropped -ge 1) -and $K.Rebuilt
     $WatchK = & $ReadWatch $Cut
     $PushedK = @($Cut | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
-    $Checks["none put back by a footprint over 12 s after it ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it" }) $($PushedK -join '; '))"] =
-        ($null -ne $WatchK) -and ($WatchK.Steps -ge 200) -and ($WatchK.Out -eq 0) -and ($WatchK.Repaths -eq 0)
+    # Same rule as house N below (J6b.3): a walker brushing K's wall is put back by the guard (a few cm a step, D310), 10 in
+    # a row give it one new path; none in the footprint, a few put back, a new path at most.
+    $Checks["none in it over 12 s after it, a few put back, a new path at most ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Inside) unit-steps in it, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it" }) $($PushedK -join '; '))"] =
+        ($null -ne $WatchK) -and ($WatchK.Steps -ge 200) -and ($WatchK.Inside -eq 0) -and ($WatchK.Out -le 20) -and ($WatchK.Repaths -le 1)
     $KLine = -1; for ($i = 0; $i -lt $Cut.Count; $i++) { if ($Cut[$i] -match "Buildings \(D310\): footprint House at \($($CutK -join ', ')\)") { $KLine = $i; break } }
     $UnloadsK = if ($KLine -ge 0) { @($Cut[$KLine..($Cut.Count - 1)] | Select-String -Pattern "Gather: slot 0 unloaded \d+ \w+ \(stock [^)]*\) at MainCentre ").Count } else { 0 }
     $Checks["the round trips go on around it ($UnloadsK unloads at the centre after it)"] = $UnloadsK -ge 3
@@ -1399,9 +1415,11 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $WatchN = & $ReadWatch $CutMove
     $PushedN = @($CutMove | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
     # D324: round N's body (3.9 m, 6 m before), the group of six squeezes its inner Peasant against the west wall, which the
-    # footprints' guard keeps out (a few cm a step, D310): a slide along the wall, not a walk into the building (no new path).
-    $Checks["no walk into it: no new path, a few slides along its wall ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
-        ($null -ne $WatchN) -and ($WatchN.Out -le 20) -and ($WatchN.Repaths -eq 0)
+    # footprints' guard keeps out (a few cm a step, D310): a slide along the wall, not a walk into the building. A slide of 10
+    # steps in a row (half a second) gives that walker one new path from where it stands (RepathBuildingPushes, D310), as
+    # #48 at the full quick_check of J6b.3: one at most, and no body in the footprint after the guard.
+    $Checks["no walk into it: none in it, a few slides along its wall, a new path at most ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Inside) unit-steps in it, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
+        ($null -ne $WatchN) -and ($WatchN.Inside -eq 0) -and ($WatchN.Out -le 20) -and ($WatchN.Repaths -le 1)
     $Arrived = @($CutMove | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object {
         [regex]::Matches($_.Matches[0].Groups[1].Value, "#\d+ slot 0 at \((-?\d+), (-?\d+)\) (\w+)") } |
         Where-Object { [Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $CutTo[0], 2) + [Math]::Pow([double]$_.Groups[2].Value - $CutTo[1], 2)) -le 600 -and $_.Groups[3].Value -eq "Idle" })
@@ -1648,6 +1666,28 @@ if ($Parts -contains "net") {
             $Checks["client $N : no foundation near the enemy centre ($(if ($Reports.Count -ge 3) { $Reports[2] }))"] = ($Reports.Count -eq 3) -and [bool]($Reports[2] -match "4 buildings")
             $Missing = @("build0", "build1", "site0", "site1" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
             $Checks["client $N : build captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+            # The camps (J6b.3): its camp paid (100 wood), its +10 at its camp; the other's camp received at its first work,
+            # then both finished here; the camp on a tree refused (nothing taken); the other's stock never received.
+            $CampLines = @(Get-ClientSection $ClientLines "camp")
+            $CampAt = { param($Slot) if ($Slot -eq 0) { $CampL } else { @(-$CampL[0], -$CampL[1]) } }
+            $OwnCamp = & $CampAt $Held; $OtherCamp = & $CampAt $Other
+            $CampReports = @($CampLines | Select-String -Pattern "Build report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $CampStocks = @($CampLines | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $CampWoods = @($CampStocks | ForEach-Object { if ($_ -match "^F \d+ W (\d+) ") { [int]$Matches[1] } else { -1 } })
+            $CampPopups = @($CampLines | Select-String -Pattern "Deposit popup: \+\d+ Wood at \((-?\d+), (-?\d+)\)" | ForEach-Object { [Math]::Sqrt([Math]::Pow([double]$_.Matches[0].Groups[1].Value - $OwnCamp[0], 2) + [Math]::Pow([double]$_.Matches[0].Groups[2].Value - $OwnCamp[1], 2)) })
+            $Checks["client $N : its camp paid 100 wood, then the camp on a tree takes nothing ($($CampWoods -join ' -> '))"] = ($Woods.Count -eq 3) -and ($CampWoods.Count -eq 3) -and
+                ($CampWoods[0] -eq $Woods[2] - 100) -and ($CampWoods[2] -ge $CampWoods[1])
+            $Checks["client $N : its +10 at its camp ($(($CampPopups | ForEach-Object { [Math]::Round($_) }) -join ', ') cm off)"] = ($CampPopups.Count -ge 1) -and
+                (@($CampPopups | Where-Object { $_ -gt 1000 }).Count -eq 0)
+            $CampArrived = @($CampLines | Select-String -Pattern "Building arrived: LumberCamp of slot $Other, (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Checks["client $N : the other's camp received at its first work ($($CampArrived -join ', '))"] = ($CampArrived -join ',') -eq "under construction"
+            $Checks["client $N : both camps finished here ($(if ($CampReports.Count) { $CampReports[0] }))"] = ($CampReports.Count -eq 2) -and
+                [bool]($CampReports[0] -match "LumberCamp of slot $Held \(own\) finished at \($($OwnCamp -join ', ')\)") -and
+                [bool]($CampReports[0] -match "LumberCamp of slot $Other \(other\) finished at \($($OtherCamp -join ', ')\)")
+            $Checks["client $N : no camp on the tree ($(if ($CampReports.Count -ge 2) { $CampReports[1] }))"] = ($CampReports.Count -eq 2) -and
+                ([regex]::Matches($CampReports[1], "LumberCamp of slot").Count -eq 2)
+            $Checks["client $N : the other's stock never received, camps included"] = ($CampStocks.Count -eq 3) -and
+                (@($CampStocks | Where-Object { $_ -notmatch "; others \[slot $Other F 0 W 0 S 0 G 0, population 0/0\]$" }).Count -eq 0)
         }
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
         $Checks["client $N : no match, network or sequence error ($($ClientErrors.Count))"] = $ClientErrors.Count -eq 0
@@ -1698,6 +1738,17 @@ if ($Parts -contains "net") {
         $Checks["server: each house near the enemy centre refused ($($NearEnemy -join '; '))"] = ($NearEnemy -join '|') -eq "0: (17400, 0)|1: (-17400, 0)"
         $Started = @($ServerLines | Select-String -Pattern "Construction: slot (\d) first work on House at \((-?\d+), (-?\d+)\), 1 builders" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
         $Checks["server: each house's first work by its Peasant ($($Started -join '; '))"] = ($Started -join '|') -eq "0: (-16800, 0)|1: (16800, 0)"
+        # The camps (J6b.3): one lumber camp paid per slot, finished, its builder sent to the wood, unloading at the camp;
+        # each camp asked on a tree refused.
+        $CampsWanted = "0: ($($CampL -join ', '))|1: ($(-$CampL[0]), $(-$CampL[1]))"
+        $CampPlaced = @($ServerLines | Select-String -Pattern "Construction: slot (\d) placed LumberCamp foundation at \((-?\d+), (-?\d+)\), paid F 0 W 100 S 0 G 0" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
+        $Checks["server: one lumber camp paid and placed per slot by its wood ($($CampPlaced -join '; '))"] = ($CampPlaced -join '|') -eq $CampsWanted
+        $CampSent = @($ServerLines | Select-String -Pattern "Construction: slot (\d) camp LumberCamp at \((-?\d+), (-?\d+)\) finished: 1 builders sent to gather Wood" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
+        $Checks["server: each camp finished, its builder sent to the wood ($($CampSent -join '; '))"] = ($CampSent -join '|') -eq $CampsWanted
+        $CampUnloads = @($ServerLines | Select-String -Pattern "Gather: slot (\d) unloaded \d+ Wood \(stock [^)]*\) at LumberCamp \((-?\d+), (-?\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object -Unique)
+        $Checks["server: each builder unloaded at its camp ($($CampUnloads -join '; '))"] = ($CampUnloads -join '|') -eq $CampsWanted
+        $OnTree = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place LumberCamp at \(-?\d+, -?\d+\): (.*)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): $($_.Matches[0].Groups[2].Value)" } | Sort-Object)
+        $Checks["server: each camp on a tree refused ($($OnTree -join '; '))"] = (@($OnTree | ForEach-Object { $_.Substring(0, 1) }) -join ',') -eq "0,1"
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

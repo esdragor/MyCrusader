@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Commands/HOLConstructionCommand.h"
 #include "Mass/EntityHandle.h"
 #include "Match/HOLResources.h"
 #include "Subsystems/WorldSubsystem.h"
@@ -88,6 +89,10 @@ private:
 	void SetUpGathering();
 	/** S7: once born, each player's Peasants are sent to its trees, four per tree (as a player spreads its groups). */
 	void OrderGathering();
+	/** S7 (D314): notes when each camp placed as a foundation is finished. */
+	void WatchCampSites();
+	/** S7 (D314): issues the camps' build orders drawn up by OrderGathering (at the start of the measure). */
+	void OrderCampBuilding();
 	void TearDownGathering();
 	/** S7: what was unloaded, trees used up, paths asked for, where the gatherers are. */
 	void LogGatheringSummary() const;
@@ -139,6 +144,30 @@ private:
 	/** Walkers given a new path by a new footprint, and kept paths it dropped (J6b.2, D314), when the measure began. */
 	int64 CutRepathsAtMeasureStart = 0;
 	int64 CutDroppedAtMeasureStart = 0;
+	/** Walkers given a new path because they were held on theirs (J6b.3), when the measure began. */
+	int64 StuckRepathsAtMeasureStart = 0;
+	/**
+	 * S7 built camps (D314, hol.StressTest.S7BuildCamps): the foundations it placed, the seconds from the start of the
+	 * run when each was finished (negative: not yet), the steps since the start, and the J6b.2 counts at the start.
+	 */
+	TArray<TWeakObjectPtr<AHOLBuilding>> GatheringCampSites;
+	TArray<float> CampFinishedSeconds;
+	/** S7 (D314): the seconds from the start of the run when each camp took its first work (negative: not yet). */
+	TArray<float> CampStartedSeconds;
+	/**
+	 * S7 (D314): the build orders of the camps, drawn up when the Peasants are sent (their builders gather meanwhile) and
+	 * issued when the measure begins, so the new footprints and cut paths fall inside it.
+	 */
+	TArray<FHOLBuildOrder> PendingBuildOrders;
+	/**
+	 * The run stopped: its deposits and trees are removed once its units are gone (destroyed at the tail of a step,
+	 * D224), so no gatherer is left without a deposit in between; the steps waited so far.
+	 */
+	bool bTearDownPending = false;
+	int32 TearDownWaitSteps = 0;
+	int32 RunSteps = 0;
+	int64 CutRepathsAtRunStart = 0;
+	int64 CutDroppedAtRunStart = 0;
 	/** UHOLGatherProcessor::FCounters when the measure began (as plain numbers: the header stays free of the processor). */
 	int64 GatherCountersAtMeasureStart[6] = {};
 

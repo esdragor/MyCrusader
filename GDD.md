@@ -2488,7 +2488,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 
 *Section de travail : elle indique où en est la review question par question du GDD. À mettre à jour à chaque séance.*
 
-**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D325** ; D310 à D314 et D324 sont pris par `JourneyInProgress.md` (plan de J6 ; D324 : bâtiments rentrés dans leurs cases), D318 à D323 par la clôture de J5c), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
+**Méthode :** une question à la fois, 2 à 4 options (A/B/C) avec leurs conséquences et une recommandation. Chaque réponse est consignée dans le journal (§ 21, numéro D suivant : **D326** ; D310 à D314, D324 et D325 sont pris par `JourneyInProgress.md` (plan de J6 ; D324 : bâtiments rentrés dans leurs cases ; D325 : apparence des bâtiments hors du pas de simulation), D318 à D323 par la clôture de J5c), reportée dans le corps du document, et le ⚠️ correspondant est retiré de la liste du § 20.
 
 **Bilan au 2026-10-06 :** la liste prévue est terminée (D42 à D61). Points encore ouverts, à discuter dans cet ordre :
 

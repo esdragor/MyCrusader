@@ -38,6 +38,8 @@ public:
 	static int64 GetTotalPathsReused() { return TotalPathsReused; }
 	/** New paths of walkers a building kept putting back since the program started (D310, stress test S7). */
 	static int64 GetTotalBuildingRepaths() { return TotalBuildingRepaths; }
+	/** New paths of walkers held on theirs since the program started (J6b.3, stress test report). */
+	static int64 GetTotalStuckRepaths() { return TotalStuckRepaths; }
 
 	/**
 	 * The navmesh's path Found from Start to Target, or a shorter one through the way between two neighbouring buildings
@@ -85,6 +87,8 @@ protected:
 	static int64 TotalPathsServed;
 	static int64 TotalPathsReused;
 	static int64 TotalBuildingRepaths;
+	/** New paths of walkers held on theirs (J6b.3: pushed behind at a corner of the navmesh), since the program started. */
+	static int64 TotalStuckRepaths;
 	static int64 TotalFootprintRepaths;
 	static int64 TotalFootprintDroppedPaths;
 

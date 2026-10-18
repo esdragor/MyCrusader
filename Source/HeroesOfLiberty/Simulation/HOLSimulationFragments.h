@@ -84,13 +84,19 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	/** Distance to the slot at the last step of the final leg, to tell a unit that no longer gets closer. */
 	float LastSlotDistance = 0.f;
 
+	/** Where it stood when it last moved on along its path: a unit that no longer leaves that spot is stuck on its path. */
+	FVector2f PathAnchor = FVector2f::ZeroVector;
+
 	/** Sideways place (cm, to the right of the march) along its cluster's corridor, so the units do not walk in a file. */
 	float Lateral = 0.f;
 
 	/** Order the unit follows: a path computed for an older order is not applied to it. */
 	uint32 OrderSerial = 0;
 
-	/** Steps of the final leg without getting closer to the slot (pushed by others, or the slot taken). */
+	/**
+	 * Steps of the final leg without getting closer to the slot (pushed by others, or the slot taken); along its path, steps
+	 * without leaving its anchor (held at a corner of the navmesh, its move target gone round it).
+	 */
 	uint16 StuckSteps = 0;
 
 	/**

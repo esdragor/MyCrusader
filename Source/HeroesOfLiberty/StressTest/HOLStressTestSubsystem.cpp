@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLUnitOrderProcessor.h"
 #include "DynamicRHI.h"
@@ -68,6 +69,17 @@ namespace UE::HeroesOfLiberty::StressTest
 	constexpr int32 GatheringCamps = 3;
 	/** S7: no tree this close (cm) to a camp's centre. */
 	constexpr double GatheringCampClearance = 550.;
+	/**
+	 * S7 (D314): 1 = the camps are placed as foundations (the grid and the placement check of D311, D324) and built by
+	 * GatheringBuildersPerCamp Peasants of their player while the others gather (they unload at the main centre until a
+	 * camp is finished, J6b.1): new footprints and cut paths under load (J6b.2); 0 = the camps stand finished from the
+	 * start (the S7 of J5a.3 to J6a.6, for an A/B).
+	 */
+	int32 S7BuildCamps = 1;
+	FAutoConsoleVariableRef CVarS7BuildCamps(TEXT("hol.StressTest.S7BuildCamps"), S7BuildCamps,
+		TEXT("S7 (D314): 1 = the lumber camps are foundations built by a few Peasants during the run, 0 = they stand finished from the start"));
+	/** S7 (D314): Peasants of a player sent to build each of its camps. */
+	constexpr int32 GatheringBuildersPerCamp = 3;
 
 	/** S7: wood in each tree of the run (the table's 100 would leave the field bare before the end of the measure). */
 	int32 TreeAmount = 400;
@@ -323,6 +335,9 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 	}
 	if (Scenario == EHOLStressScenario::S7_Gathering)
 	{
+		RunSteps = 0;
+		CutRepathsAtRunStart = UHOLUnitOrderProcessor::GetTotalFootprintRepaths();
+		CutDroppedAtRunStart = UHOLUnitOrderProcessor::GetTotalFootprintDroppedPaths();
 		SetUpGathering();
 	}
 	SpawnUnits();
@@ -342,8 +357,19 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 
 void UHOLStressTestSubsystem::StopTest()
 {
+	const bool bHadUnits = UnitIds.Num() > 0;
 	DestroyUnits();
-	TearDownGathering();
+	if (bHadUnits && (!GatheringCentres.IsEmpty() || !GatheringTrees.IsEmpty()))
+	{
+		// The units go at the tail of a step (D224): the deposits and trees wait for them (OnSimulationStep), or the
+		// gatherers of that step would each say they have no deposit left.
+		bTearDownPending = true;
+		TearDownWaitSteps = 0;
+	}
+	else
+	{
+		TearDownGathering();
+	}
 	Phase = EPhase::Idle;
 }
 
@@ -359,6 +385,10 @@ void UHOLStressTestSubsystem::Tick(const float DeltaTime)
 		if (QuitDelayElapsed >= UE::HeroesOfLiberty::StressTest::QuitDelaySeconds)
 		{
 			bQuitPending = false;
+			if (bTearDownPending)
+			{
+				TearDownGathering();
+			}
 			if (const UHOLUnitSubsystem* Units = GetUnitSubsystem())
 			{
 				UE_LOG(LogHOLStressTest, Display, TEXT("Units left after the run: %d (D224: the queued destructions are applied at the tail of the step)"), Units->GetNumUnits());
@@ -404,6 +434,15 @@ void UHOLStressTestSubsystem::Tick(const float DeltaTime)
 
 void UHOLStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
 {
+	if (bTearDownPending)
+	{
+		// The stopped run's units are gone (or a dozen steps went by): its deposits and trees may go too.
+		const UHOLUnitSubsystem* Units = GetUnitSubsystem();
+		if (!Units || Units->GetNumUnits() == 0 || ++TearDownWaitSteps > 12)
+		{
+			TearDownGathering();
+		}
+	}
 	if (Phase == EPhase::Idle)
 	{
 		return;
@@ -431,10 +470,56 @@ void UHOLStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
 	{
 		MaintainCrossing();
 	}
-	else if (Scenario == EHOLStressScenario::S7_Gathering && !bGatheringOrdered)
+	else if (Scenario == EHOLStressScenario::S7_Gathering)
 	{
-		OrderGathering();
+		if (!bGatheringOrdered)
+		{
+			OrderGathering();
+		}
+		if (Phase == EPhase::Measuring && !PendingBuildOrders.IsEmpty())
+		{
+			OrderCampBuilding();
+		}
+		WatchCampSites();
 	}
+}
+
+void UHOLStressTestSubsystem::WatchCampSites()
+{
+	++RunSteps;
+	for (int32 Index = 0; Index < GatheringCampSites.Num(); ++Index)
+	{
+		const AHOLBuilding* Site = GatheringCampSites[Index].Get();
+		if (CampStartedSeconds[Index] < 0.f && Site && Site->GetConstructionState() != EHOLConstructionState::Foundation)
+		{
+			CampStartedSeconds[Index] = RunSteps * GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		}
+		if (CampFinishedSeconds[Index] < 0.f && Site && Site->GetConstructionState() == EHOLConstructionState::Finished)
+		{
+			CampFinishedSeconds[Index] = RunSteps * GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			UE_LOG(LogHOLStressTest, Display, TEXT("S7: camp of player %d finished after %.1f s (D314)"), Site->GetOwnerPlayer(), CampFinishedSeconds[Index]);
+		}
+	}
+}
+
+void UHOLStressTestSubsystem::OrderCampBuilding()
+{
+	UWorld* World = GetWorld();
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands)
+	{
+		return;
+	}
+	int32 NumBuilders = 0;
+	for (const FHOLBuildOrder& BuildOrder : PendingBuildOrders)
+	{
+		Commands->IssueBuildOrder(BuildOrder);
+		NumBuilders += BuildOrder.UnitIds.Num();
+		++NumOrdersIssued;
+	}
+	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d Peasants leave their trees to build %d camps, at %.1f s from the start of the run (D314)"), NumBuilders,
+		PendingBuildOrders.Num(), RunSteps * GetDefault<UHOLSimulationSettings>()->GetStepSeconds());
+	PendingBuildOrders.Reset();
 }
 
 void UHOLStressTestSubsystem::SpawnUnits()
@@ -523,6 +608,40 @@ void UHOLStressTestSubsystem::SetUpGathering()
 		for (int32 Camp = 0; Camp < GatheringCamps; ++Camp)
 		{
 			const FVector Location = Out * GatheringCampRing + Side * ((Camp - (GatheringCamps - 1) * 0.5) * GatheringCampSpacing);
+			if (S7BuildCamps != 0)
+			{
+				// D314: a foundation, as UHOLConstructionSubsystem::Place puts one (snapped to the grid, checked, along
+				// it), unpaid (the run's players have no player state); its builders are sent with the gatherers.
+				const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::LumberCamp);
+				if (!Type)
+				{
+					continue;
+				}
+				const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Location);
+				const FVector2D Centre2D = Footprint.GetCenter();
+				const EHOLPlacementRefusal Refusal = UHOLConstructionSubsystem::CheckPlacement(*World, Footprint, Player);
+				if (Refusal != EHOLPlacementRefusal::None)
+				{
+					UE_LOG(LogHOLStressTest, Warning, TEXT("S7: camp %d of player %d not placed at (%.0f, %.0f): %s"), Camp, Player, Centre2D.X, Centre2D.Y,
+						UHOLConstructionSubsystem::DescribeRefusal(Refusal));
+					continue;
+				}
+				const FVector SiteLocation(Centre2D, UHOLConstructionSubsystem::FindGroundZ(*World, Centre2D, Location.Z));
+				const FTransform SiteTransform(FRotator::ZeroRotator, SiteLocation);
+				AHOLBuilding* Site = World->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), SiteTransform, nullptr, nullptr,
+					ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+				if (Site)
+				{
+					Site->Setup(HOLBuildingTypeNames::LumberCamp, static_cast<uint8>(Player), static_cast<uint8>(Player), EHOLConstructionState::Foundation);
+					Site->FinishSpawning(SiteTransform);
+					GatheringCentres.Add(Site);
+					GatheringCampSites.Add(Site);
+					CampFinishedSeconds.Add(-1.f);
+					CampStartedSeconds.Add(-1.f);
+					Camps.Add(SiteLocation);
+				}
+				continue;
+			}
 			const FTransform CampTransform(Transform.GetRotation(), Location);
 			AHOLBuilding* CampBuilding = World->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), CampTransform, nullptr, nullptr,
 				ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
@@ -557,8 +676,8 @@ void UHOLStressTestSubsystem::SetUpGathering()
 			}
 		}
 	}
-	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d deposits (a main centre and %d lumber camps each) and %d trees of %d wood placed for %d players"),
-		GatheringCentres.Num(), GatheringCamps, NumTrees, TreeAmount, NumPlayers);
+	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d deposits (a main centre and %d lumber camps each%s) and %d trees of %d wood placed for %d players"),
+		GatheringCentres.Num(), GatheringCamps, S7BuildCamps != 0 ? TEXT(", the camps as foundations to build, D314") : TEXT(""), NumTrees, TreeAmount, NumPlayers);
 }
 
 void UHOLStressTestSubsystem::OrderGathering()
@@ -588,19 +707,44 @@ void UHOLStressTestSubsystem::OrderGathering()
 			PlayerUnits[State->OwnerPlayer].Add(UnitId);
 		}
 	}
+	int32 NumBuilders = 0;
 	for (int32 Player = 0; Player < PlayerUnits.Num(); ++Player)
 	{
+		// D314: the first Peasants of the player will build its camps (a build order, UHOLBuildProcessor, as a right click
+		// on a site would give); until the measure begins they gather with the others, so the first work, the new
+		// footprints and the cut paths fall inside the measure (OrderCampBuilding). Once a camp is finished, its builders
+		// gather near it (J6b.1).
+		int32 NextBuilder = 0;
+		for (const TWeakObjectPtr<AHOLBuilding>& Site : GatheringCampSites)
+		{
+			if (!Site.IsValid() || Site->GetOwnerPlayer() != Player)
+			{
+				continue;
+			}
+			const int32 Num = FMath::Min(GatheringBuildersPerCamp, PlayerUnits[Player].Num() - NextBuilder);
+			if (Num <= 0)
+			{
+				break;
+			}
+			FHOLBuildOrder& BuildOrder = PendingBuildOrders.AddDefaulted_GetRef();
+			BuildOrder.UnitIds = TArray<uint32>(PlayerUnits[Player].GetData() + NextBuilder, Num);
+			BuildOrder.Building = Site;
+			BuildOrder.PlayerIndex = Player;
+			NextBuilder += Num;
+			NumBuilders += Num;
+		}
 		const TArray<int32>& Trees = GatheringTrees[Player];
 		for (int32 First = 0; First < PlayerUnits[Player].Num() && Trees.Num() > 0; First += GatherersPerTree)
 		{
 			const int32 Num = FMath::Min(GatherersPerTree, PlayerUnits[Player].Num() - First);
-			Commands->IssueGatherOrder(TConstArrayView<uint32>(PlayerUnits[Player].GetData() + First, Num), Trees[(First / GatherersPerTree) % Trees.Num()],
-				Player);
+			Commands->IssueGatherOrder(TConstArrayView<uint32>(PlayerUnits[Player].GetData() + First, Num),
+				Trees[(First / GatherersPerTree) % Trees.Num()], Player);
 			++NumOrdersIssued;
 		}
 	}
 	bGatheringOrdered = true;
-	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d Peasants sent to their trees, %d per tree"), UnitIds.Num(), GatherersPerTree);
+	UE_LOG(LogHOLStressTest, Display, TEXT("S7: %d Peasants sent to their trees, %d per tree; %d of them to build %d camps when the measure begins (D314)"), UnitIds.Num(),
+		GatherersPerTree, NumBuilders, GatheringCampSites.Num());
 }
 
 void UHOLStressTestSubsystem::TearDownGathering()
@@ -613,6 +757,12 @@ void UHOLStressTestSubsystem::TearDownGathering()
 		}
 	}
 	GatheringCentres.Reset();
+	GatheringCampSites.Reset();
+	CampFinishedSeconds.Reset();
+	CampStartedSeconds.Reset();
+	PendingBuildOrders.Reset();
+	bTearDownPending = false;
+	TearDownWaitSteps = 0;
 	if (UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr)
 	{
 		// The registry keeps its indices for the whole match: the run's trees are used up, they leave the map.
@@ -669,6 +819,35 @@ void UHOLStressTestSubsystem::LogGatheringSummary() const
 		UHOLFootprintKeepOutProcessor::GetNumPushedOut() - PushedOutAtMeasureStart, UHOLUnitOrderProcessor::GetTotalBuildingRepaths() - RepathsAtMeasureStart);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  New footprints (J6b.2): %lld walkers given a new path, %lld kept paths dropped, during the measure"),
 		UHOLUnitOrderProcessor::GetTotalFootprintRepaths() - CutRepathsAtMeasureStart, UHOLUnitOrderProcessor::GetTotalFootprintDroppedPaths() - CutDroppedAtMeasureStart);
+	if (!GatheringCampSites.IsEmpty())
+	{
+		// Seconds from the start of the run: how many, the first and the last.
+		const auto Span = [](const TArray<float>& AllSeconds, int32& OutNum, float& OutFirst, float& OutLast)
+		{
+			OutNum = 0;
+			OutFirst = 0.f;
+			OutLast = 0.f;
+			for (const float Seconds : AllSeconds)
+			{
+				if (Seconds >= 0.f)
+				{
+					OutFirst = OutNum == 0 ? Seconds : FMath::Min(OutFirst, Seconds);
+					OutLast = FMath::Max(OutLast, Seconds);
+					++OutNum;
+				}
+			}
+		};
+		int32 NumStarted = 0;
+		int32 NumFinished = 0;
+		float FirstStarted = 0.f, LastStarted = 0.f, FirstFinished = 0.f, LastFinished = 0.f;
+		Span(CampStartedSeconds, NumStarted, FirstStarted, LastStarted);
+		Span(CampFinishedSeconds, NumFinished, FirstFinished, LastFinished);
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		UE_LOG(LogHOLStressTest, Display, TEXT("  Camps built (D314), in seconds from the start of the run, the measure from %.1f to %.1f s: %d of %d begun (first work %.1f to %.1f s), %d finished (%.1f to %.1f s); since the start, new footprints gave %lld walkers a new path and dropped %lld kept paths"),
+			WarmUpSteps * StepSeconds, (WarmUpSteps + MeasureSteps) * StepSeconds, NumStarted, GatheringCampSites.Num(), FirstStarted, LastStarted,
+			NumFinished, FirstFinished, LastFinished, UHOLUnitOrderProcessor::GetTotalFootprintRepaths() - CutRepathsAtRunStart,
+			UHOLUnitOrderProcessor::GetTotalFootprintDroppedPaths() - CutDroppedAtRunStart);
+	}
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Gatherers at the end: to their source %d, gathering %d, to the deposit %d, not gathering %d; %d carrying a load"),
 		Phases[static_cast<int32>(EHOLGatherPhase::ToSource)], Phases[static_cast<int32>(EHOLGatherPhase::Gathering)],
 		Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Phases[static_cast<int32>(EHOLGatherPhase::None)], Carrying);
@@ -944,6 +1123,7 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	RepathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalBuildingRepaths();
 	CutRepathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalFootprintRepaths();
 	CutDroppedAtMeasureStart = UHOLUnitOrderProcessor::GetTotalFootprintDroppedPaths();
+	StuckRepathsAtMeasureStart = UHOLUnitOrderProcessor::GetTotalStuckRepaths();
 	const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
 	const int64 Now[6] = { Counters.WalksToSource, Counters.WalksToDeposit, Counters.MissedSpots, Counters.MissedDeposits, Counters.Unloads, Counters.NoSpotStops };
 	FMemory::Memcpy(GatherCountersAtMeasureStart, Now, sizeof(Now));
@@ -1133,6 +1313,8 @@ void UHOLStressTestSubsystem::LogAvoidanceSummary() const
 	// arrived). A negative gap means two bodies are inside each other.
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Avoidance (D228): at the start of the measure %d pairs over each other (smallest gap %.1f cm), at the end %d pairs (smallest gap %.1f cm)"),
 		InterpenetrationAtMeasureStart, SmallestGapAtMeasureStart, NumPairsAtEnd, SmallestGapAtEnd);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Held on their path (J6b.3): %lld walkers given a new path during the measure"),
+		UHOLUnitOrderProcessor::GetTotalStuckRepaths() - StuckRepathsAtMeasureStart);
 }
 
 void UHOLStressTestSubsystem::LogUnitRegistrySummary() const

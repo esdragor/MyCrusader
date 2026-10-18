@@ -161,6 +161,10 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr double LeavePathDistance = 300.0;
 	/** Steps in a row a building puts a walker back (D310) before it gets a new path: half a second. */
 	constexpr uint8 RepathBuildingPushes = 10;
+	/** Steps (3 s) a unit following its path may stay within PathStuckDistance of one spot before it gets a new path (J6b.3). */
+	constexpr uint16 PathStuckSteps = 60;
+	/** Distance (cm) a unit following its path must move away from its anchor to count as moving on (J6b.3). */
+	constexpr float PathStuckDistance = 50.f;
 
 	/** A path at most this much longer than the straight line is not compared with the ways between buildings (D324). */
 	constexpr double ThroughWayMinRatio = 1.01;
@@ -435,6 +439,7 @@ namespace UE::HeroesOfLiberty::Orders
 int64 UHOLUnitOrderProcessor::TotalPathsServed = 0;
 int64 UHOLUnitOrderProcessor::TotalPathsReused = 0;
 int64 UHOLUnitOrderProcessor::TotalBuildingRepaths = 0;
+int64 UHOLUnitOrderProcessor::TotalStuckRepaths = 0;
 int64 UHOLUnitOrderProcessor::TotalFootprintRepaths = 0;
 int64 UHOLUnitOrderProcessor::TotalFootprintDroppedPaths = 0;
 
@@ -1248,6 +1253,8 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			MoveTarget.SlackRadius = 0.f;
 			MoveTarget.CreateNewAction(EMassMovementAction::Move, *World);
 			Order.Phase = EHOLMovePhase::Path;
+			Order.PathAnchor = FVector2f(FVector2D(Transform.GetTransform().GetLocation()));
+			Order.StuckSteps = 0;
 		}
 	}
 	PendingPaths.RemoveAt(0, Next, EAllowShrinking::No);
@@ -1315,6 +1322,34 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			{
 				Order.Phase = EHOLMovePhase::WaitingPath;
 				continue;
+			}
+			// Held on its path (J6b.3): Mass moves its target on along the path while it keeps up; a unit pushed behind at a
+			// corner of the navmesh (a group going round a building, a neighbour pressing it against the wall) steers at a
+			// target already round the corner, straight into the wall, and stood there without end, far from its slot (the
+			// final leg's check counts only near it). Not moved on for a while: a new path from where it stands.
+			if (Order.Phase == EHOLMovePhase::Path)
+			{
+				const FVector2f Here(FVector2D(Transform.GetTransform().GetLocation()));
+				if (FVector2f::DistSquared(Here, Order.PathAnchor) > FMath::Square(PathStuckDistance))
+				{
+					Order.PathAnchor = Here;
+					Order.StuckSteps = 0;
+				}
+				else if (++Order.StuckSteps >= PathStuckSteps)
+				{
+					Order.StuckSteps = 0;
+					FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
+					Request.OrderSerial = Order.OrderSerial;
+					Request.Start = Transform.GetTransform().GetLocation();
+					Request.Target = Order.Slot;
+					Request.Entities.Add(Context.GetEntity(EntityIt));
+					Request.bForBuilding = true;
+					Order.Phase = EHOLMovePhase::WaitingPath;
+					++TotalStuckRepaths;
+					UE_CLOG(LogDetours != 0, LogHOLCommands, Display, TEXT("Detour: held on its path at (%.0f, %.0f), new path to (%.0f, %.0f)"),
+						Here.X, Here.Y, Order.Slot.X, Order.Slot.Y);
+					continue;
+				}
 			}
 			if (Order.Phase == EHOLMovePhase::Path && ShortPath.IsDone())
 			{

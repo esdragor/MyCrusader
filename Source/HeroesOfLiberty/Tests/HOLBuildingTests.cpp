@@ -72,6 +72,8 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(TEXT("replicated"), Building->GetIsReplicated());
 		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 3);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 		TestEqual(TEXT("owner"), Building->GetOwnerPlayer(), static_cast<uint8>(2));
 
 		TArray<UStaticMeshComponent*> Pieces;
@@ -103,6 +105,8 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the roof at the owner's colour"), CountPiecesOfColor(*Building, 3), 1);
 		TestEqual(TEXT("the top of the block at a darker tone of it"), CountPiecesOfColor(*Building, 3, AHOLBuilding::BaseTopTone), 1);
 		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 5);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 		TestEqual(TEXT("a new colour repaints them"),
 			CountPiecesOfColor(*Building, 5) + CountPiecesOfColor(*Building, 5, AHOLBuilding::BaseTopTone), 2);
 		Building->GetComponents(Pieces);
@@ -131,6 +135,8 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("another player's building spawned"), Other))
 	{
 		Other->Setup(HOLBuildingTypeNames::House, 1, 3, EHOLConstructionState::Foundation);
+		// The look is applied at the frame (D325): at once here.
+		Other->ApplyPendingAppearance();
 		TArray<UStaticMeshComponent*> Pieces;
 		Other->GetComponents(Pieces);
 		TestFalse(TEXT("another player's foundation: not seen here"), Other->IsSeenHere());
@@ -154,6 +160,8 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 	{
 		Building->SetOwner(Owner);
 		Building->Setup(HOLBuildingTypeNames::House, 0, 2, EHOLConstructionState::Foundation);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 		TestTrue(TEXT("a foundation"), Building->IsFoundation() && !Building->IsFinished() && !Building->HasWorkStarted());
 		TestTrue(TEXT("its owner's: seen here"), Building->IsSeenHere());
 
@@ -185,6 +193,8 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 		// Its first work (D312): a site, the foundation's slab, border and stakes, the building over it barely risen; its
 		// forbidden area counted.
 		Building->SetConstructionState(EHOLConstructionState::UnderConstruction);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 		Building->GetComponents(Pieces);
 		Box = FBox(ForceInit);
 		for (const UStaticMeshComponent* Piece : Pieces)
@@ -197,6 +207,8 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("a site: its forbidden area counts"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation());
 		// Half its work: half its height.
 		Building->SetConstructionWork(Building->GetTotalWork() / 2);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 		Box = FBox(ForceInit);
 		for (const UStaticMeshComponent* Piece : Pieces)
 		{
@@ -206,6 +218,8 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 
 		// Finished: the building's shape, whole, its forbidden area counted.
 		Building->SetConstructionState(EHOLConstructionState::Finished);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 		Building->GetComponents(Pieces);
 		Box = FBox(ForceInit);
 		for (const UStaticMeshComponent* Piece : Pieces)
@@ -234,6 +248,8 @@ bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("building spawned"), Building))
 	{
 		Building->Setup(HOLBuildingTypeNames::MainCentre, 1, 4);
+		// The look is applied at the frame (D325): at once here.
+		Building->ApplyPendingAppearance();
 
 		// D262: the selection ray, from the height of the camera, hits the building and nothing beside it.
 		FHitResult Hit;

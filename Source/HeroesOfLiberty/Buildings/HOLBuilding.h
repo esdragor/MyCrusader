@@ -152,6 +152,11 @@ public:
 
 	/** A site's height at its first work (share of the full height, J6a.4): it shows at once, then rises with its work. */
 	static constexpr float MinRiseRatio = 0.04f;
+	/**
+	 * A rising site is rescaled once its height grew by this share at least (a few times a second, S7): rescaling moves every
+	 * piece of the building, its render state, which cost ~0.7 ms a step for 24 sites rescaled at every step.
+	 */
+	static constexpr float RiseStepRatio = 0.02f;
 	/** The ghost of a bare foundation (J6a.4, cm): its frame on the ground, the edges of its volume. */
 	static constexpr float GhostFrameWidth = 30.f;
 	static constexpr float GhostFrameHeight = 4.f;
@@ -165,6 +170,14 @@ public:
 	static constexpr float FoundationBorderHeight = 20.f;
 	static constexpr float FoundationStakeSize = 20.f;
 	static constexpr float FoundationStakeHeight = 90.f;
+
+	/**
+	 * Applies a look marked to be redone (D325), then stops the tick. Called by the tick at the frame; the tests call it to
+	 * see the look without a frame.
+	 */
+	void ApplyPendingAppearance();
+
+	virtual void Tick(float DeltaSeconds) override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -185,8 +198,19 @@ private:
 	UFUNCTION()
 	void OnRep_BuildersAtWork();
 
-	/** Builds the look from the type and the construction state, then paints the owner's colour. Safe to call again. */
+	/** The forbidden area of the navmesh, then the look, both at once (BeginPlay: a building is seen the frame it appears). */
 	void RefreshAppearance();
+	/** What the simulation needs of the look (D325): the navmesh's forbidden area, fitted to the type and the state. */
+	void RefreshNavObstacle();
+	/**
+	 * Builds the look from the type and the construction state, raises a site, then paints the owner's colour. Safe to call
+	 * again. Never on a dedicated server (D325).
+	 */
+	void RefreshVisuals();
+	/** The look is to be redone at the next frame, by the tick, outside the simulation step (D325); not on a dedicated server. */
+	void MarkAppearanceDirty();
+	/** Set by MarkAppearanceDirty, cleared by RefreshVisuals. */
+	bool bAppearanceDirty = false;
 	/** A site's height follows its work (J6a.4): the pieces under RiseRoot squashed to it, at least MinRiseRatio. */
 	void UpdateRise();
 	/**

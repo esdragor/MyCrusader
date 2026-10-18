@@ -82,6 +82,8 @@ vérifier sur S1 et S2.
 | J6b.1 Camps | **fait** (2026-10-16, **validée** à l'essai le 2026-10-17 : « tout m'a l'air bon », commitée) : camp fini → ses bâtisseurs file vide récoltent la source acceptée la plus proche (`hol.Build.CampGatherRange`, 25 m, emprise au bord de la source), sinon chantier voisin / inactif ; ralliement sur un camp (fini ou non) → récolte ; 0 bit ; tests 63/63 (`Construction.CampSource`), partie `build camp` de `quick_check`, `quick_check` PASS en 202 s ; S7 inchangé (J6b.3) |
 | J6b.2 Chemins coupés par une emprise | **fait** (2026-10-17, **validée** à l'essai : « super », commitée) : emprise nouvelle → chemins gardés de D305 qui la traversent oubliés, marcheurs dont le chemin la traverse recalculés une fois ses tuiles refaites (générateur + sondes), destination sous l'emprise sortie ; ligne `Buildings (D310): footprint ...` ; bouclage des Paysans enfermés corrigé ; 0 bit ; tests 64/64 (`Construction.CutPaths`), partie `build cut`, `quick_check` PASS en 259 s ; S7 2,289 / S2 2,758 ms PASS |
 | J6b.2b Bâtiments rentrés dans leurs cases (D324) | **fait** (2026-10-17, **validée** à l'essai : « c'est bon », commitée) : forme visible à **90 %** des cases (`VisualInset=30`, choix de l'utilisateur après « trop grosses allées »), corps qui bloque rentré de **115 cm** (`BodyInset=115` : un Paysan mord ~30 cm dans le mur, « une épaule ») ; au premier essai, corps rentré de 105 cm (écart 2,1 m ; 90 cm fermait le passage), passage à la file et par l'écart ; tests 65/65 (`Construction.Body`), partie `build gap`, `quick_check` complet PASS en 364 s au réglage final ; A/B S2 / S7 sans surcoût (machine chargée) |
+| J6b.3 Vérification | **fait** (2026-10-18, **validée** à l'essai : « tout est bon », commitée) : `quick_check` complet PASS (311 s, 20 parties, tests 65/65) ; S7 avec camps d'abord FAIL (3,41 ms : `HOLBuildProcessor` 1 ms, affichage des chantiers dans le pas) → `RiseStepRatio`, pièces `QueryOnly`, puis **D325** (apparence des bâtiments hors du pas, aucune pièce sur le serveur dédié) ; **mesures de fin de J6** par le nouvel outil `chapter_measures.ps1` (7,4 min) : S1 2,37, **S2 2,995 (moyenne de 3, au seuil)**, S7 2,60 ms, S5 31 005 o/s, 22,9 cm, tous PASS. Avant : 1re boucle faite, partie **2 clients des camps** dans `quick_check` (`net` + `build`) : chaque client bâtit un camp de bûcherons près de son bois et y dépose, voit le camp de l'autre (reçu au premier coup, puis fini), le serveur refuse un camp sur un arbre (`hol.Build.PlaceAtSource`), stock de l'autre jamais reçu ; aucun code C++ ; `quick_check` complet 324 s : tout PASS (`net 2 clients` compris, tests 65/65) sauf `build cut` (solo, non touché : aléa à relancer) ; puis `build cut` revue (contrôles de remises réalignés, blocage au coin corrigé : nouveau chemin d'une unité tenue sur son chemin, `PathStuckSteps`), `quick_check` complet PASS (350 s) ; **S7 bâtit ses 24 camps pendant la mesure** (D314, `hol.StressTest.S7BuildCamps`), fermeture sans bruit, `AHOLMapBounds::Find` corrigé ; S7 court OK |
+| J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **à faire** (prochaine séance) : lignes au § 21, paragraphe « Parcours J6 » au § 16.6, numéro suivant du § 22 ; **J6 close** ensuite |
 
 ## Prochaine étape exacte
 
@@ -186,6 +188,18 @@ vérifier sur S1 et S2.
    Petit reste : le commentaire du test `Gather.Spots` décrit encore l'écart de 70 cm (le test passe l'écart
    explicitement : il reste juste, à reformuler à l'occasion). Hors de ce chantier, non commités : `GDD.md` (review du
    GDD, autre session) et les lignes du plan de J6 dans ce fichier (autre session).
+   **J6b.3 faite, validée et commitée** (2026-10-18 ; journal « J6b.3 : vérification ») : D325 (apparence des bâtiments
+   hors du pas), mesures de fin de J6 toutes PASS par `chapter_measures.ps1`, essai « tout est bon ».
+   **Reprise (nouvelle séance) : J6b.4, clôture de J6** :
+   1. Reporter au § 21 du GDD les lignes **D310 à D314** (plan de J6, tableau « Décisions du chantier »), **D324** et
+      **D325** (précisées par ce qui a été fait : journaux J6a.1 à J6b.3) ; paragraphe **« Parcours J6 : la
+      construction »** au § 16.6 (au style de « Parcours J5c ») ; au § 22, numéro suivant **D326**.
+   2. Commit de la clôture ; J6 close. Puis **plan de J7** (déjà écrit, « Plan de J7 », mesures regroupées en J7c.4
+      par la règle des mesures) : relire avec l'utilisateur avant le code.
+   3. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995 ; ne touche aucun bâtiment, bruit ±0,15 ms) : regagner
+      de la marge sur le mouvement avant la formation de J7 (J7a.4 touche ce code) ; à proposer à l'utilisateur.
+   4. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
+      essai de l'utilisateur en attente, worktree `MyCrusader-J5c`) ; `Build/` (non suivi).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -207,6 +221,16 @@ sous-agents ne compilent ni ne lancent le jeu en même temps (DLL verrouillées)
 sous-agent reçoit un but précis tenant dans une boucle et rend la main sous ~15 minutes avec ce qui est fait et ce qui
 reste ; `quick_check` (~4-5 min) et les mesures S1 / S2 / S7 comptent dans la boucle, ou font une boucle à part.
 
+**Règle des mesures** (permanente, demande de l'utilisateur du 2026-10-17, confirmée et étendue le 2026-10-18) : **toutes
+les mesures de performance** (S1 / S2 / S3 / S4 / S5 / S7, au repos ou non, courtes ou non) se font **une seule fois, à
+la fin de chaque chapitre** (fin de J6, fin de J7…), juste avant sa clôture, **par `Tools/Tests/chapter_measures.ps1`**
+(choix de l'utilisateur, 2026-10-18), lancé par la session principale en tâche de fond, sans sous-agent : chaque stress
+test **deux fois, PASS les deux** ; si elles ne s'accordent pas, une 3e course et la moyenne des trois décide ; S5 une
+fois, le serveur dédié n'étant recuit que si `Source`, `Config` ou `Content` ont changé depuis sa cuisson ; **jamais pendant le chapitre**, ni à la
+vérification d'une partie (J7a, J7b…) ni à une sous-étape. En cours de route : `quick_check` seulement. Un seuil
+dépassé à la fin du chapitre se corrige avant la clôture. Les plans de chapitre qui prévoient une mesure en cours de
+route sont lus à la lumière de cette règle (la mesure passe à la fin du chapitre).
+
 ## Commandes utiles
 
 Compilation, traductions : voir `FrontEndInProgress.md` (« Commandes utiles »). Toujours depuis **PowerShell** (Git
@@ -215,8 +239,8 @@ Bash réécrit `/Game/...`), aucun éditeur du projet ouvert.
 **Vérification de tous les jours (D267) : `quick_check.ps1`**, ~30 s : tests d'automatisation en parallèle d'un seul
 lancement du jeu (menu fr / en / ja avec bascule de langue en direct, liste déroulante, partie à 2 puis 8 joueurs avec
 les contrôles de caméra de D257). Chaque étape part dès que la précédente est finie (`hol.Test.Run`), chaque capture est
-vérifiée (écran affiché au moment de la prendre). Une ligne PASS / FAIL par partie. **S1 et S2 seulement** quand on
-touche aux unités, à la simulation ou au rendu, et à la clôture d'une étape.
+vérifiée (écran affiché au moment de la prendre). Une ligne PASS / FAIL par partie. Les stress tests (S1 à S7) ne se
+lancent qu'à la fin d'un chapitre (règle des mesures ci-dessus).
 
 ```powershell
 # Vérification rapide (D267) ; -Parts tests,menu,camera pour n'en lancer qu'une partie
@@ -748,6 +772,191 @@ Risques connus : tuiles refaites en rafale quand plusieurs joueurs bâtissent en
 réutilisés de D305) traversant une emprise nouvelle ; Paysans enfermés par une rangée de maisons (pose à refuser si elle
 enferme des unités ? à voir à l'essai) ; marge de S7 déjà mince (0,09 ms au repos).
 
+## Plan de J7 — l'armée et le combat (M4, M5)
+
+Préparé **le 2026-10-16 dans une session cloud, en parallèle de J6** (menée sur le PC de l'utilisateur) ; **aucun code
+avant la clôture de J6**. Ce plan n'écrit que dans cette section ; le GDD (§ 21, § 16.6) ne change qu'à la clôture de J7.
+
+**Numéros de décision : à attribuer à la clôture**, à la suite des derniers pris (au 2026-10-16, D318 à D323 sont pris
+par J5c et le numéro suivant du § 22 est **D324** ; J6b peut en prendre d'autres). Ci-dessous, les décisions sont notées
+**J7-Q1** à **J7-Q6**.
+
+Repères : D20 et D21 (socle commun, matrice de contres façon AoE4), D30 (groupes de contrôle, F1, Ctrl + A, grille),
+D62 (aucune unité anti-héros), D74 (moral : effets nommés, plus tard), D86 (cadavres : Légions, avec les factions),
+D128 (un bâtiment par catégorie, **bâtiment unique au prototype**), § 7.1 à 7.3, § 16.4 (D29 : unités légères en Mass,
+couche RTS maison), § 16.6 (M4 : sélection, ordres de déplacement et d'attaque, groupes de contrôle ; M5 : cible,
+mêlée, tir, dégâts et armure, mort ; S3 1 000 contre 1 000 en mêlée, S4 armées mixtes), § 17 (unités du prototype),
+D218 (seuils : 3 ms par pas, 32 Ko/s par client), D224 (naissances et destructions différées), D269 à D274 et D300,
+D301 (état répliqué, 59 bits), D287 (arrivée en tas serré, formations reportées à M4), D292 et D293 (séparation,
+contournement ; **reprise de place reportée aux formations**), D313 (les bâtiments militaires ajoutent une **seconde
+page** à la grille du Paysan). Déjà en place : sélection au clic, au cadre et Maj (J4.5), groupes et Tab (J6a.5),
+F1 / F2 / F3 (J6a.5), production et ralliement (J3, J4.4), grille hachée de la séparation (D292), types `LightInfantry`
+et `Archer` dans la table des unités (stress tests seulement), activité sur 3 bits **pleine** depuis J6a.4
+(`Building` = la dernière valeur libre).
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J7 : l'armée seule, ou l'armée et le combat. | **tranché (J7-Q1)** : armée et combat, en trois parties jouables J7a, J7b, J7c |
+| Q2 | **Bâtiment et soldats** de J7a. | **tranché (J7-Q2)** : une Caserne ; Lancier et Homme d'armes ; l'Archer s'y ajoute en J7c |
+| Q3 | **Commandes d'armée** avant le combat. | **tranché (J7-Q3)** : groupes de contrôle, F1, Ctrl + A, formation simple en rangs ; **la formation s'applique aussi aux Paysans** (nuance de l'utilisateur) |
+| Q4 | **Modèle de combat** dans la simulation. | **tranché (J7-Q4)** : processeur maison, règles façon AoE4 |
+| Q5 | **Réseau du combat** (PV, activité « attaque »). | **tranché (J7-Q5)** : activité sur 4 bits, PV en 16 paliers |
+| Q6 | **Vérification et découpage**. | **tranché (J7-Q6)** : S3 en J7b, S4 en J7c, chaque partie close par l'essai de l'utilisateur |
+
+**Tranché — J7-Q1 Périmètre : l'armée et le combat, en trois parties jouables** (choix de l'utilisateur, conforme à la
+recommandation).
+- **J7a** l'armée : Caserne, soldats, groupes de contrôle, formation. **J7b** la mêlée : cible, attaque, dégâts et
+  armure, mort, S3. **J7c** le tir : Archer, projectiles, S4.
+- On peut se battre dès J7b, chaque partie se joue.
+- Écartés : **l'armée seule, le combat en J8** (J7 se jouerait peu : des soldats qui marchent sans rien pouvoir faire) ;
+  **le combat d'abord, avec des unités apparues par triche** (le plus tôt pour le risque de S3, mais hors du parcours du
+  joueur, D252).
+
+**Tranché — J7-Q2 Une Caserne, Lancier et Homme d'armes** (choix de l'utilisateur, conforme à la recommandation).
+- **Caserne** : le bâtiment militaire unique du prototype (D128, § 17), posée et bâtie comme une maison (D311, D312), sur
+  la **seconde page** de la grille du Paysan (D313) ; F1 la sélectionne (D30). Données conçues pour le découpage de D128
+  (catégorie de production par type d'unité). Valeurs indicatives : emprise 9 × 9 m (3 cases de 3 m), 150 bois, ~40 s
+  pour un bâtisseur.
+- **Lancier** (anti-cavalerie bon marché, infanterie légère) et **Homme d'armes** (tank, infanterie lourde) : deux mêlées
+  qui permettent de tester un contre dès J7b (l'Homme d'armes gagne à l'usure contre le Lancier, D21). L'**Archer**
+  s'ajoute à la même Caserne en J7c.
+- **Apparence** : le mannequin, à la couleur du joueur, avec un accessoire (lance ; épée et bouclier) fabriqué par script
+  comme les outils du Paysan (`peasant_props.py`) ; marche et repos repris ; geste d'attaque en J7b
+  (`AnimationsInProgress.md`).
+- Écartés : **Caserne + Champ de tir dès J7a** (un bâtiment de plus avant que les combats soient validés, contraire au
+  § 17) ; **un seul soldat** (aucun contre à tester avant J7c).
+
+**Tranché — J7-Q3 Groupes de contrôle et formation simple, aussi pour les Paysans** (choix de l'utilisateur, conforme à
+la recommandation ; nuance de l'utilisateur : la formation simple s'applique aussi aux Paysans).
+- **Groupes de contrôle** de D30 : Ctrl + chiffre (assigner), chiffre (sélectionner), deux appuis (centrer la caméra),
+  Maj + chiffre (ajouter), Ctrl + Maj + chiffre (retirer). **Ctrl + A** : toute l'armée (les soldats, pas les Paysans).
+  **F1** : bâtiment militaire suivant.
+- **Formation simple** : un ordre de déplacement au sol donné à un groupe le fait arriver **en rangs**, orientés selon
+  la marche (ou selon le **glisser du clic droit**, qui donne aussi la largeur du front) ; le groupe avance à la
+  **vitesse du plus lent** tant qu'il est en formation ; une unité **bousculée reprend sa place** ensuite (reporté depuis
+  D293). Règles pures (places en rangs, attribution, largeur) dans `Simulation/HOLFormationRules`, testées à part.
+- **Paysans** : la même formation remplace le tas serré de D287 pour **tout ordre de déplacement au sol** d'un groupe.
+  **Inchangés** : les places de récolte (D309) et de chantier (D312), qui gardent leurs règles. Lecture à confirmer à
+  l'essai.
+- L'**attaque**, l'**arrêt** et le **maintien de position** viennent en J7b, avec le combat.
+- Écartés : **groupes seuls, tas serré** (une armée qui arrive en vrac rend J7b moins lisible) ; **jeu complet façon
+  AoE4** (patrouille, suivre, plusieurs formations : J7a s'allonge sans combat pour en profiter).
+
+**Tranché — J7-Q4 Combat : processeur maison, règles façon AoE4** (choix de l'utilisateur, conforme à la
+recommandation).
+- Dans la **couche RTS maison** (D215, § 16.4), sur le serveur : **recherche de cible** par la grille hachée de la
+  séparation (D292), **à cadence réduite** (~5 Hz, liste de D220) ; **approche** par la file d'ordres (ordre « de
+  tâche », comme la récolte et la construction) ; **frappe au contact** (portée de mêlée), **cadence d'attaque par
+  type**.
+- **Dégâts** = attaque + **bonus de catégorie d'armure** (D21) − **armure** (mêlée ou distance), **1 au moins**. Valeurs
+  dans la table des unités (colonnes nouvelles : catégorie d'armure, attaque, cadence, portée, armures, bonus par
+  catégorie, rayon d'agression). Pas de moral (D74) ni d'effets en J7.
+- **Mort** : PV à 0 → **destruction différée** à la queue du pas (D224), population libérée ; pas de cadavre (D86 :
+  Légions, avec les factions).
+- **Ordres** : clic droit sur un ennemi (attaquer), **attaque-déplacement** (touche de la grille), **arrêt**,
+  **maintien de position** ; le serveur revérifie (D288). **Riposte automatique** dans un rayon d'agression (une unité
+  attaquée ou qui voit un ennemi proche s'en prend à lui, sauf en maintien de position).
+- Règles pures (dégâts, choix de cible, cadence) dans `Simulation/HOLCombatRules`, tests
+  `HeroesOfLiberty.Combat.*`.
+- Écartés : **StateTree de Mass** (plus générique, mais coût par entité inconnu à 2 000 unités et rien dans le projet ne
+  l'utilise encore) ; **le système d'effets d'abord** (prépare héros et moral, mais retarde le premier combat jouable).
+
+**Tranché — J7-Q5 Réseau du combat : activité sur 4 bits, PV en 16 paliers, cible pendant l'attaque** (choix de
+l'utilisateur, conforme à la recommandation ; nuance de l'utilisateur sur l'affichage des barres de vie). Point de
+départ : état de 60 bits (62 pour un porteur), S5 à 30,9 Ko/s (~1 Ko/s de marge), 3 bits d'activité pleins (D319).
+- **PV** : le serveur garde les PV exacts et envoie un **palier sur 4 bits** (0 à 15, seizièmes des PV max) dans l'état
+  de l'unité ; un **changement de palier** compte comme un changement d'action (envoi immédiat), un coup qui ne change
+  pas de palier n'envoie rien. Un bit **« PV pleins »** précède le palier, envoyé seulement pour une unité blessée.
+- **Activité sur 4 bits** (16 valeurs, 0 à 7 pris) : **attaque** (geste de frappe chez le client) et **mourant** (à
+  0 PV, l'unité garde cette activité ~1 s avant sa destruction différée, D224, pour une chute ; pas de cadavre, D86) ;
+  6 valeurs restent libres (maintien de position, fuite, siège…).
+- **Cible** : seulement quand l'activité vaut « attaque », l'état porte l'**identifiant de la cible** (comme les bits du
+  porteur) ; un changement de cible déclenche un envoi. Sert à tourner vers sa cible une unité arrêtée au contact (dès
+  J7b) et à déduire la flèche chez le client (J7c.2).
+- **Barres de vie** (nuance de l'utilisateur) : **toujours affichées pour les unités sélectionnées** ; hors sélection,
+  **affichées seulement pour une unité blessée**, alliée comme ennemie.
+- Coût : 60 → **62 bits** pour une unité qui ne se bat pas ; ~66 bits plus l'identifiant pour une unité blessée qui
+  attaque. En mêlée, les unités presque arrêtées envoient moins de positions, les PV prennent le relais (~un palier tous
+  les 1 ou 2 coups). **S5 en combat (J7b.6) tranche** ; repli : 8 paliers, ou barres lissées chez le client.
+- Écartés : **PV exacts** (~10 bits, un envoi par coup : au-delà de 32 Ko/s en mêlée de 2 000) ; **PV aux seules
+  unités sélectionnées ou survolées** (envoi propre à chaque client, contre D270 ; pas de barres de vie dans une
+  mêlée) ; **4e bit sans « mourant »** (unités qui disparaissent d'un coup) ; **cible jamais envoyée** (orientation
+  fausse en mêlée, J7c.2 à reprendre).
+
+**Tranché — J7-Q6 Vérification : S3 en J7b, S4 en J7c** (choix de l'utilisateur, conforme à la recommandation).
+**Révisé par la règle des mesures (2026-10-18)** : S2, S3, S4, S5 et S7 se mesurent **tous à la fin de J7**, avant sa
+clôture (J7c.4) ; les vérifications de J7a, J7b et J7c se font par `quick_check` et l'essai de l'utilisateur. Les
+mentions de stress tests ci-dessous désignent ce qui sera mesuré à la fin du chapitre.
+- **J7a** : tests des règles pures (formation, groupes), `quick_check` solo (Caserne posée, bâtie, Lancier et Homme
+  d'armes produits, groupes de contrôle, formation, Paysans en rangs) et 2 clients (soldats de l'autre vus en rangs) ;
+  **S2 refait** avec la formation (le chemin chaud du mouvement change).
+- **J7b** : tests `Combat.*`, `quick_check` solo et 2 clients (combat, mort vue chez les deux) ; **S3 : 1 000 contre
+  1 000 en mêlée**, seuil de 3 ms (D218) ; **S5 en combat**.
+- **J7c** : **S4 : armées mixtes** (mêlée et tir).
+- Chaque partie close par l'**essai de l'utilisateur**, comme J5 et J6.
+- Écarté : **S3 dès J7a, à vide** (détecte tôt un souci de densité, mais mesure un scénario incomplet).
+
+**Découpage de J7 en trois parties jouables** : chaque sous-étape compile, se vérifie et se commite seule (après
+validation de l'utilisateur).
+
+**J7a — L'armée** : à la fin, le joueur bâtit une Caserne, produit des Lanciers et des Hommes d'armes, les range en
+groupes de contrôle et les déplace en rangs ; ses Paysans aussi marchent en rangs.
+
+1. **J7a.1 Données et règles pures** : colonnes de combat dans la table des unités (remplies, pas encore lues), lignes
+   `Spearman`, `ManAtArms` ; ligne `Barracks` dans la table des bâtiments (catégorie militaire, `Produces`) ;
+   `Simulation/HOLFormationRules` (places en rangs, attribution sans croisement, largeur au glisser) ; tests
+   `Formation.*`.
+2. **J7a.2 Caserne** : seconde page de la grille du Paysan, pose et chantier (code de J6), production des deux soldats,
+   ralliement, F1 ; textes fr / en / ja.
+3. **J7a.3 Apparence des soldats** : accessoires par script (lance ; épée et bouclier), couleur du joueur, lignes de la
+   table.
+4. **J7a.4 Formation** : ordre de groupe en rangs, vitesse du plus lent, glisser du clic droit (orientation, largeur),
+   reprise de place après bousculade ; **Paysans en rangs** sur un ordre au sol (S2 refait à la fin de J7).
+5. **J7a.5 Groupes de contrôle et HUD** : Ctrl + chiffre et le reste de D30, Ctrl + A, bloc d'un groupe mixte (soldats
+   et Paysans) ; textes fr / en / ja.
+6. **J7a.6 Vérification** : `quick_check` solo et 2 clients (partie armée), **essai de l'utilisateur** (S2 : à la fin de J7).
+
+**J7b — La mêlée** : à la fin, deux armées se battent, les contres se voient, les morts disparaissent ; S3 tient 3 ms.
+
+1. **J7b.1 Règles pures du combat** : dégâts, bonus, armure, cadence, choix de cible ; tests `Combat.*`.
+2. **J7b.2 Processeur de combat** : recherche de cible à ~5 Hz, approche, frappe, riposte, mort et population libérée.
+3. **J7b.3 Ordres** : clic droit sur un ennemi, attaque-déplacement, arrêt, maintien de position ; vérifiés par le
+   serveur ; repère d'ordre (J4.6) rouge sur une cible.
+4. **J7b.4 Réseau** : 4e bit d'activité (« attaque », « mourant »), bit « PV pleins » et PV en 16 paliers, cible
+   pendant l'attaque, mort chez le client ; tests `Net.*` étendus (S5 : à la fin de J7).
+5. **J7b.5 Présentation** : geste d'attaque (fabriqué comme ceux du Paysan), chute de l'unité mourante, unité tournée
+   vers sa cible, barres de vie (toujours dans la sélection, hors sélection si blessée, alliée ou ennemie), PV au bloc
+   de sélection.
+6. **J7b.6 Vérification** : `quick_check` solo et 2 clients (combat), **essai de l'utilisateur** (S3 et S5 en combat : à la fin de J7).
+
+**J7c — Le tir** : à la fin, des Archers sortent de la Caserne et tirent ; S4 tient.
+
+1. **J7c.1 Archer** : ligne de la table (portée, projectile), production à la Caserne, accessoire (arc).
+2. **J7c.2 Tir** : projectile simulé au serveur (vol à durée fixe, dégât à l'arrivée, peut manquer une cible qui
+   bouge), affiché chez le client sans envoi par flèche (déduit de l'activité « attaque » et de la cible). *Lecture à
+   confirmer avant le code.*
+3. **J7c.3 Vérification** : `quick_check`, **essai de l'utilisateur**.
+4. **J7c.4 Mesures de fin de chapitre** (règle des mesures) : S1, S2 (formation), **S3** (mêlée), **S4** (armées mixtes),
+   S5 (en combat), S7, au repos ; un seuil dépassé se corrige ici.
+5. **J7c.5 Clôture** : décisions J7-Q1 à J7-Q6 (numérotées) au § 21, paragraphe « Parcours J7 » et lignes M4 / M5 au
+   § 16.6.
+
+Points à trancher en cours de route :
+- **Les Paysans combattent-ils ?** (AoE4 : oui, faiblement ; à défaut, ils fuient ou restent passifs.) À poser avant
+  J7b.2.
+- **Attaquer un bâtiment** : les bâtiments ont des PV depuis J6 ; mêlée contre bâtiment en J7b, ou avec le siège
+  (Bélier, D77) ? À poser avant J7b.3.
+- **Le projectile de J7c.2** (lecture ci-dessus) : à confirmer avant J7c.2.
+- **Valeurs** (PV, attaque, armures, coûts, durées) : indicatives, inspirées d'AoE4, à régler en essai ; elles iront à
+  la fiche de valeurs (§ 22).
+
+Risques connus :
+- **S3** : 2 000 unités au contact, la séparation de D292 et l'évitement à l'arrêt (déjà ~6 ms un pas sur 6 dans S7)
+  deviennent le pire cas ; la recherche de cible s'y ajoute. Marge de S2 déjà mince (0,12 ms au repos).
+- **S5** : marge de ~1 Ko/s ; le combat change souvent l'action et les PV (plus d'envois).
+- **Formation des Paysans** : ne doit pas gêner les allers-retours de récolte (D309), qui ne passent pas par l'ordre au
+  sol ; à vérifier dans S7.
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -801,6 +1010,7 @@ enferme des unités ? à voir à l'essai) ; marge de S7 déjà mince (0,09 ms au
 | D307 | 2026-10-15 | Technique — Inactifs et comptes de récolteurs | **Choix d'exécution de J5b.2** (dans le cadre de D298, sans question à l'utilisateur) : (1) l'activité répliquée gagne une 4e valeur, **« en tournée de récolte »** (vers la source, vers le dépôt, en attente d'une place) : elle tient dans les **3 bits** déjà envoyés, **aucun bit de plus** (S5 à 0,9 Ko/s du seuil) ; un récolteur n'est plus jamais « inactif » le temps d'un pas (arrivée au dépôt, attente d'une place), donc le **compteur d'inactifs et la touche « . » se calculent chez le client** d'après l'état reçu, sans clignoter ; marche dessinée comme « en marche » ; (2) les **Paysans par ressource** (barre du haut) sont comptés par le serveur à chaque pas et envoyés dans le `PlayerState` **au seul propriétaire** (comme le stock, D282 ; envoi seulement quand un compte change) : la ressource d'un récolteur vide sur le chemin du retour n'est pas dans l'état envoyé à tous ; (3) le **bloc d'un groupe** compte ses Paysans par activité (récolte, en marche, inactifs) d'après l'état reçu. La touche « . » prend l'inactif suivant par identifiant, revient au premier après le dernier, centre la caméra ; l'action `IA_NextIdle` répond à « . » (QWERTY), à la touche « ; . » de l'AZERTY (le moteur la nomme « ; », avec ou sans Maj) et au « . » du pavé. Écartés : **un bit « au travail » de plus** (S5) ; **comptes et inactifs envoyés par le serveur** (aller-retour pour la touche « . »). | § 7.3, § 16.6 |
 | D308 | 2026-10-15 | Technique — Détours des allers-retours | **Essai de J5b.2** (l'utilisateur : « des Paysans font énormément de détours » entre le centre et les ressources). Mesuré par la distance réellement marchée à chaque marche de récolte (`hol.Gather.LogWalks`) : ~35 marches sur ~70 déchargements faisaient 2 à 3 fois la ligne droite (jusqu'à 44 m de trop). **Cause principale** : une unité qui suit un chemin du navmesh (contourner le centre, sortir du bois) gardait la direction du pilotage de Mass, qui ne tourne qu'à ~50°/s : à pleine vitesse (D290) elle s'écartait de **5 à 12 m** à chaque coin ; la marche droite vers sa place avait déjà été corrigée ainsi (D294), pas le suivi d'un chemin. **Fait** : (1) sur un chemin, l'unité vise à chaque pas le point que le suivi de Mass avance devant elle, plus 1 m le long du chemin, puis le regard en avant de D293 (`hol.Units.PathAim`) ; (2) un **détour gardé** (D305) n'est repris que si cette marche ne peut pas aller droit, voit son premier coin, si son dernier coin voit sa cible, et si elle ne marche pas plus loin que la marche gardée (`hol.Units.ReuseCheckDetour`) ; (3) une unité poussée dans une **poche fermée du navmesh** (entre les arbres de devant du bois : chemin partiel qui finit où elle est) en sort droit vers sa place, au lieu de voir chaque marche finir aussitôt et d'abandonner sa charge. Résultat (20 Paysans, bois puis baies) : marches anormalement longues **37 → 2** (autour du massif de baies, légitimes), mètres de trop **647 → 18**, dépôts manqués **15 → 0**. Coût nul mesuré (S2 et S7 en A/B dans les deux ordres) ; recouvrements de S2 inchangés. | § 16.6 |
 | D309 | 2026-10-15 | Technique — Récolteurs fantômes, source sans place | **2e essai de J5b.2** (l'utilisateur : moins de détours, mais les Paysans « se gênent devant le forum »). Choix de l'utilisateur : (1) **en aller-retour automatique** (activité « en tournée de récolte » de D307 : vers la source, vers le dépôt), un Paysan **traverse toutes les unités** — choix « toutes », **contre la recommandation** « les autres récolteurs seulement » — : il ne regarde pas en avant pour les éviter (D293), la séparation ne le pousse pas et il ne pousse personne (D292), personne ne se détourne pour lui ; un ordre donné par le joueur garde les collisions ; à la source, chacun récolte à **sa place réservée** (pas d'empilement) et un Paysan qui récolte redevient un corps (`hol.Units.GhostTrips`) ; (2) **plus aucune place libre** autour de la source visée (ordre, point de ralliement, ou places manquées), quelle que soit la ressource : une source de la **même ressource à 8 m au plus** (choix conforme à la recommandation : les arbres voisins, le même massif de baies, jamais un autre filon), sinon le Paysan **s'arrête inactif devant la source**, sa charge gardée (compté dans « Inactifs », touche « . ») ; fini l'attente invisible de 3 s en boucle. Écartés : traverser seulement les autres récolteurs (recommandation) ou seulement ceux en aller-retour ; 15 m ou 4 m. **Précisée au 3e essai** (2026-10-15/16, sans nouveau numéro : D315 à D317 prises par la review du GDD) : (3) **massifs** — demande de l'utilisateur : « si 175 Paysans vont sur une forêt, ils vont entièrement entourer la forêt » : les sources de même ressource à 8 m l'une de l'autre, **de proche en proche**, forment un massif (souches comprises : une source épuisée ne le coupe pas) ; sans place autour de la source visée, le Paysan prend la première source du massif qui a une place, par ordre de distance à l'emprise du dépôt + 0,5 × distance à la source visée (la **lisière tournée vers le dépôt** d'abord) ; inactif devant seulement si tout le massif est plein ; un filon isolé ne mène jamais à un autre filon ; même recherche pour une source épuisée (**remplace les 15 m de D296**) ; (4) **places serrées** façon AoE4 (capture de l'utilisateur, 37 villageois au bois) : places réservées sur le point réel, jamais à moins de **100 cm** l'une de l'autre, même sur deux sources voisines (`hol.Gather.SpotSpacing`, réglé à l'essai), un rang régulier autour de la source, tourné d'abord vers le dépôt ; deux unités arrêtées dont un récolteur à sa source ne sont écartées que jusqu'à cet écart (un marcheur pousse toujours à deux corps) ; (5) les **inactifs devant une source pleine** attendent sur des points réservés en rangées hors de l'anneau des places (plus jamais sur une place de récolte) ; (6) *(2026-10-16, choix de l'utilisateur, entre la recommandation A « rangées sans limite » et sa propre proposition)* **massif entier plein** → le Paysan cherche un **bosquet voisin** (autre massif de la même ressource dont une source est à ~20 m au plus d'une source du massif plein, réglable : `hol.Gather.NearbyMassifRange`) et y prend la première place libre selon le même ordre ; sinon il attend devant la source visée, sur des **rangées sans limite** (plus jamais deux inactifs sur un même point) ; un filon ne mène toujours pas à un autre filon (60 m). | § 16.6 |
+| D325 | 2026-10-18 | Technique — Coût des chantiers dans S7 (J6b.3) | **L'apparence des bâtiments sort du pas de simulation** (choix de l'utilisateur, conforme à la recommandation ; écartés : pièces allégées dans le pas, ~0,1-0,2 ms seulement ; gagner sur l'évitement à l'arrêt ; scénario S7 revu). S7 avec ses 24 camps bâtis pendant la mesure était à ~3,0 ms (seuil 3) : le surcoût des chantiers était de l'**affichage** fait pendant le pas (~10 pièces créées par chantier au premier coup et à la fin, 2-3 ms chacun ; montée qui déplace les pièces, ~0,1-0,2 ms par pas). Désormais : la simulation ne change que l'**état** (étape, travail, bâtisseurs) et ce qui compte pour elle (zone interdite du navmesh, relevance), et marque l'apparence à refaire ; la **présentation** reconstruit les pièces, les couleurs et la montée **à l'image**, hors du pas (D219), au plus une fois par image et par bâtiment ; **le serveur dédié ne crée aucune pièce** (personne n'y regarde ; la sélection est chez le client, D262). Le coût passe au fil de jeu du client, sous le seuil de rendu (≥ 144 i/s). | J6b.3 |
 
 ## Journal d'avancement
 
@@ -3332,3 +3542,159 @@ d'épée).
   (`BodyInset=115`), `BodyClearance` gardé à 25 : un Paysan mord ~30 cm dans un mur visible, un par un entre deux maisons.
   `quick_check` complet lancé avant le commit de J6b.2b (D324).
 - **`quick_check` complet** (2026-10-17, D324 dans l'arbre de travail) : **PASS en 364 s**, toutes les parties PASS, tests 65/65.
+- **Mesures au repos après D324 : reportées** (Age of Empires IV ouvert ; règle des mesures : à la fin de J6, J6b.4).
+
+### 2026-10-17 — J6b.3 : vérification
+
+- Sous-agent, première boucle (15 min), rien de commité, aucun code C++ : les verbes existaient
+  (`hol.Build.PlaceNear`, `hol.Build.PlaceAtSource`, `hol.Select.Own`, `signal` / `waitfile`).
+- **`quick_check`, partie « net » avec « build » : les camps à 2 clients.** Après les maisons, chaque client attend
+  l'autre (`quick_net_built*.flag`), marque `camp`, sélectionne son Paysan et pose un **camp de bûcherons** par
+  `hol.Build.PlaceNear LumberCamp 1500 -2100` : le L de la partie solo (-13500, -2100) pour l'emplacement 0, (13500,
+  2100) en miroir pour l'emplacement 1 (la carte l'est : source 48 à 4,7 m, comme la source 8 de l'autre côté). Le
+  serveur bâtit 4 fois plus vite (`hol.Build.Speed 4`) et journalise les dépôts (`hol.Gather.LogDeposits 1`) quand
+  « build » est lancé. Chaque client attend son premier « +10 », puis celui de l'autre (`quick_net_camp*.flag`), fait son
+  rapport, vide sa sélection et demande un camp **sur l'arbre** le plus proche de L (`hol.Build.PlaceAtSource LumberCamp
+  -14230 -1800`, comme un client tricheur).
+- Contrôles ajoutés, par client : camp payé 100 bois puis rien pris par le refus ; ses « +10 » à son camp (≤ 10 m) ; le
+  camp de l'autre reçu à son premier coup (`Building arrived: LumberCamp of slot N, under construction`), puis les deux
+  finis ; pas de camp sur l'arbre ; stock de l'autre jamais reçu (`others [slot N F 0 W 0 S 0 G 0, population 0/0]` à
+  chaque rapport de la section). Serveur : un camp payé par emplacement à sa place, fini, `1 builders sent to gather
+  Wood`, dépôts `at LumberCamp (x, y)` des deux, chaque camp sur l'arbre refusé (`on a resource source`).
+- Essais : `-Parts net,build` seul : FAIL **déjà là avant** (sans « sources », le Paysan est près de sa maison : la
+  maison de l'autre arrive pendant le `wait 2`, avant le `waitlog Building arrived`) ; `-Parts net,sources,build` : tous
+  les contrôles des camps PASS (91 s), seul KO « 376 sources received » (31900 au lieu de 31710 : sans « move », le
+  rapport des sources passe avant le `TakeNear` du serveur, déjà là avant). Camps finis en 125 pas (1 bâtisseur,
+  vitesse 4), premier dépôt au camp ~8 s après.
+- **`quick_check` complet** (machine libre, Age of Empires IV ouvert) : **FAIL en 324 s**, toutes les parties PASS dont
+  **`net 2 clients`** (camps compris) et tests 65/65, **sauf `build cut`** (solo, que ce changement ne touche pas : le
+  serveur à part seul a changé) : « no walk into it » KO, 1 nouveau chemin et 10 remises dehors pour l'unité #48
+  (`Keep-out: #48 Moving/Path at (-9187, 226) put back`) ; PASS au `quick_check` de D324 : à relancer pour savoir si
+  c'est un aléa. Reste de J6b.3 : `build cut` à revoir, S7 avec des camps bâtis en cours de test (journal J6b.1).
+- **`build cut` revue** (sous-agent, boucle de 15 min, Age of Empires IV ouvert, rien de commité, aucun C++) : deux
+  défauts distincts. (1) **« no walk into it »** du `quick_check` complet : #48 **glisse** le long du mur ouest de N
+  (10 pas de suite, 1 à 30 cm par pas, son milieu jamais dedans, 0 corps dans l'emprise) ; à 10 remises de suite la garde
+  lui donne un nouveau chemin (`RepathBuildingPushes`, D310) : le seuil « 0 nouveau chemin » contredisait « ≤ 20 remises ».
+  Contrôle changé : **0 unité-pas dans l'emprise, ≤ 20 remises, ≤ 1 nouveau chemin**. (2) **« they arrive » 4 sur 6** :
+  reproduit (`-Parts camera,production,build`, 1 sur 2) ; **ce n'est pas le temps** : #25 et #30 restent `Moving` **16 s**
+  à (-9238, 285) et (-9358, 287), au **coin nord-ouest** de N (mur nord y = 195), sans remise ni nouveau chemin (garde :
+  plus proche 8 cm, 0 remise) : **blocage au coin, défaut du jeu**, cause à trouver. Script : attente finale 10 → 14 s
+  (marge de l'horloge, ~16,5 s de marche) et `hol.Units.Orders 0` en fin d'étape (phase, place, `stuck` de chacun) pour le
+  prochain échec. Deuxième passe (contrôles nouveaux) : PASS (258 s ; 5 remises, 0 nouveau chemin).
+- **Blocage au coin : cause et correctif** (sous-agent, boucle de 15 min, Age of Empires IV ouvert, **non commité**) :
+  reproduit au 1er lancement, **mêmes positions au cm près** ; `hol.Units.Orders 0` : #25 et #30 en phase **`Path`**, à
+  42-43 m de leur place, `stuck 0`. Cause : Mass avance la cible du chemin tant que l'unité suit ; poussées en arrière au
+  coin nord-ouest (le groupe tourne autour de N, voisin qui presse contre le bord), elles visent une cible déjà passée au
+  coin, droit dans le bord du navmesh, et restent là ; le seul détecteur de blocage (`StuckSteps`) ne compte qu'en fin de
+  trajet, à moins de 5 m de la place. **Correctif** : en phase `Path`, une unité restée à moins de 50 cm d'un point pendant
+  60 pas (3 s) reçoit un nouveau chemin d'où elle est (`PathStuckSteps`, `PathStuckDistance`, `FHOLMoveOrderFragment::PathAnchor`,
+  compteur `TotalStuckRepaths`, ligne « Detour: held on its path » sous `hol.Units.LogDetours 1`) ; fichiers
+  `Commands/HOLUnitOrderProcessor.h/.cpp`, `Simulation/HOLSimulationFragments.h`. Compilation sans avertissement ;
+  `quick_check -Parts tests,camera,production,build` **PASS en 257 s**, tests 65/65, `build cut` : les 6 arrivés (#30 à
+  20 cm), 0 remise, 0 nouveau chemin de la garde. Non prouvé que le correctif a joué (journal des détours éteint). Reste :
+  relancer `build cut` quelques fois, S2 / S7 courts (suivi des chemins touché), essai, commit.
+- **Vérification du correctif** (sous-agent, boucle de 15 min, Age of Empires IV ouvert, non commité) : `hol.Units.LogDetours 1`
+  pendant l'étape `build cut move` (remis à 0 en fin d'étape) ; rapport du stress test : nouvelle ligne « Held on their
+  path (J6b.3) » (`GetTotalStuckRepaths`, fichiers `StressTest/HOLStressTestSubsystem.h/.cpp`), compilé sans avertissement.
+  `quick_check -Parts camera,production,build` ×2 : 1er PASS (259 s), 0 ligne « held » (pas de blocage au coin ce
+  coup-ci) ; 2e FAIL (260 s), `build cut move` bon (0 ligne « held ») mais KO « none put back by a footprint » de la
+  maison K (partie cueillette, avant `build cut move` : 1 remise sur 236 pas, 0 nouveau chemin), aléa à revoir. S2 court
+  (10 s, 2000 unités, hors écran) : **0** nouveau chemin « held » pendant la mesure, 0 ligne dans tout le journal : pas
+  d'emballement dans la foule. Le correctif n'a pas encore été vu jouer en `quick_check`.
+- **`build cut` : maison K alignée sur N** (sous-agent, boucle de 15 min, machine libre, non commité, aucun C++) : le
+  contrôle « none put back by a footprint » de K (0 remise, 0 nouveau chemin) devient **« none in it, a few put back, a
+  new path at most »** : 0 unité-pas dans l'emprise, ≤ 20 remises, ≤ 1 nouveau chemin de la garde (même règle que
+  `build cut move`) ; gardés : ≥ 200 pas, K donne des nouveaux chemins et oublie des chemins gardés, ≥ 3 dépôts après.
+  **`quick_check` complet PASS en 350 s**, toutes les parties PASS, tests 65/65. K : 239 pas, 0 remise, 0 nouveau chemin
+  (6 marcheurs, 4 chemins gardés oubliés) ; N : 417 pas, 0 dans l'emprise, **10 remises et 1 nouveau chemin** (#48 glisse
+  le long du mur ouest, comme au `quick_check` précédent, désormais admis) ; **0 ligne « held on its path »**.
+- **S7 bâtit ses camps pendant le test (D314)** (non commité) : `hol.StressTest.S7BuildCamps` (défaut 1 ; 0 = ancien S7
+  aux camps finis) ; les 3 camps de chaque joueur posés en fondations (`SnapFootprint` + `CheckPlacement`, D324), 3
+  bâtisseurs par camp (`IssueBuildOrder`, `GatheringBuildersPerCamp`), `WatchCampSites` (« S7: camp of player N finished
+  after X s »), ligne de rapport « Camps built (D314) » ; fichiers `StressTest/HOLStressTestSubsystem.h/.cpp`. Correctif
+  `AHOLMapBounds::Find` (`Map/HOLMapBounds.cpp`) qui plantait sur la carte `StressTest` sans bornes.
+- **S7 court** (sous-agent, machine libre, `stress_ab.ps1 -Test S7 -Seconds 40`, hors écran, journal `j6b3_s7build`) :
+  sortie code 0 en 123 s. **24 camps posés sur 24** (aucun « not placed »), 72 bâtisseurs, 1928 Paysans aux arbres ;
+  premier coup à ~6 s, **24 sur 24 finis entre 20,2 et 23,0 s** (≈ 255-280 pas de travail, vitesse 1), avant la mesure ;
+  chaque camp fini envoie ses 3 bâtisseurs récolter (J6b.1). Depuis le début, les nouvelles emprises ont donné un nouveau
+  chemin à 661 marcheurs et oublié 2 chemins gardés ; pendant la mesure : 0 nouvelle emprise, **0 corps remis hors d'une
+  emprise**, 0 « held on their path », 0 Paysan sans récolte, 0 point manqué. Bois : 44 790 déchargés pendant la mesure
+  (4479 dépôts). Aucun avertissement ni erreur du jeu. Bruit à la fermeture (déjà là avant D314 : `StopTest` retire les
+  dépôts avant que la destruction des unités, différée d'un pas, soit appliquée) : 1664 lignes « slot N has no deposit
+  for Wood, its gatherer stands with its load » après le rapport, sans effet.
+- **Camps bâtis pendant la mesure, fermeture sans bruit** (sous-agent, boucle de 15 min, machine libre, non commité) :
+  `OrderGathering` prépare les ordres de bâtir (`PendingBuildOrders`) mais envoie tout le monde récolter ; à la première
+  étape de la mesure, `OrderCampBuilding` les donne (« 72 Peasants leave their trees to build 24 camps, at 25.0 s »).
+  `WatchCampSites` note aussi le premier coup ; ligne de rapport « Camps built » : fenêtre de la mesure, premiers coups et
+  fins. `StopTest` ne retire plus les dépôts ni les arbres tout de suite (`bTearDownPending`) : à la tête d'une étape,
+  une fois les unités détruites (au plus 12 pas, et avant de quitter). `S7BuildCamps 0` inchangé. Fichiers
+  `StressTest/HOLStressTestSubsystem.h/.cpp`, compilé sans avertissement.
+- **S7 court** (`stress_ab.ps1 -Test S7 -Seconds 40`, hors écran, journal `S7_campsMeasure`) : code 0 en 82 s ; mesure de
+  25 à 65 s ; **24 camps sur 24 commencés entre 27,1 et 31,1 s, finis entre 39,8 et 44,0 s**, tout dans la mesure.
+  Pendant la mesure : nouvelles emprises J6b.2 **244 nouveaux chemins, 157 chemins gardés oubliés** (depuis le début :
+  407 et 157, le reste vient des centres posés au préchauffage) ; 54 corps remis hors d'une emprise (garde D310), 0
+  nouveau chemin de la garde, 0 « held on their path » ; bois 42 780 (4278 dépôts), 0 point manqué, 0 Paysan sans
+  récolte. **0 ligne « has no deposit »** dans tout le journal ; après le rapport, seulement « Units left after the run:
+  0 ». Erreurs : les 18 `LogAutomationTest` du démarrage du moteur, déjà dans le journal `j6b3_s7build`.
+- **`quick_check` complet sur le code final** (sous-agent, 2026-10-18, rien de commité) : compilation à jour sans
+  avertissement, **PASS en 346 s**, toutes les parties PASS (dont `build camp`, `build cut`, `build gap`, `net 2 clients`),
+  tests 65/65.
+- **Mesures au repos de fin de J6** (sous-agent, 2026-10-18, machine au repos, mêmes commandes que J6a.6, journaux
+  `Saved_Tests\Logs\j6b3_s1.log`, `j6b3_s2.log`, `j6b3_s7.log`, `j6b3_s7old.log`) :
+  - **S1** 2,265 ms PASS (2,276) ; **S2** 2,802 ms PASS (2,882, marge 0,20) ; **S7 ancien** (`S7BuildCamps 0`) 2,286 ms
+    PASS (2,303 ; 1 172 bois/s contre 1 198) ; **S5 court** (serveur recuit sur le code actuel) PASS à 31 333 o/s par
+    client (30 937, marge 0,67 Ko/s), écart affiché 22,9 cm (23,3).
+  - **S7 avec camps bâtis pendant la mesure : 3,411 ms FAIL** (seuil 3) : **`HOLBuildProcessor` 1,016 ms par pas**
+    (0,003) ; ordres 0,307 (0,144), évitement en marche 0,573 (0,286). 24 camps commencés de 27,1 à 31,1 s, finis de
+    39,8 à 44,0 s ; 46 corps remis hors d'une emprise, 0 « held », 992 bois/s, 0 raté, 0 inactif ; GPU 3,33 ms.
+  - Seuil dépassé : J6 bloquée. Correctif de `HOLBuildProcessor` confié à un sous-agent (pistes : montée du bâtiment à
+    chaque pas, recherche des places, parcours des bâtiments).
+- **Correctif du coût des chantiers** (sous-agent, 2026-10-18, non commité) : chronos temporaires sur 200 pas avec
+  bâtisseurs : parcours des bâtiments 0,023 ms, places tenues 0,026, `Advance` 0,043 (`FindSpot` 0,001), **`ApplyWork`
+  0,946**, dont **`SetConstructionWork` 0,661** (~27 µs par chantier et par pas : `UpdateRise` →
+  `RiseRoot->SetRelativeScale3D` déplace toutes les pièces) et ~0,26 de premiers coups (`SetConstructionState` →
+  `RefreshAppearance`, ~2 ms une fois par chantier). Correctif : `UpdateRise` ne remet à l'échelle que si la montée a
+  grandi d'au moins 2 % (`AHOLBuilding::RiseStepRatio`, ~4 fois par seconde), si le bâtiment est entier ou si la
+  hauteur voulue est plus basse que celle affichée ; simulation, réplication et délégués inchangés. **S7 avec camps :
+  3,437 → 2,783 ms PASS**, `HOLBuildProcessor` 1,014 → 0,467 ms, 206 → 228 i/s ; « Camps built » identique. Reste :
+  `quick_check -Parts tests,camera,production,build`, deux S7 (bruit des pas de fin), puis l'essai de l'utilisateur.
+- **Vérification du correctif** (sous-agent, 2026-10-18, machine au repos, aucun code) : `quick_check -Parts
+  tests,camera,production,build` **PASS en 234 s**, tests 65/65, captures des chantiers qui montent toujours
+  (`build_site`, `build_three`). ⚠️ `quick_check.ps1 -Parts a,b` par `-File` ne passe qu'une chaîne : lancer par
+  `powershell -Command "& .\Tools\Tests\quick_check.ps1 -Parts ..."`. **Deux S7 avec camps : 2,908 ms PASS et 3,038 ms
+  FAIL** (journaux `j6b3_s7fix1`, `j6b3_s7fix2`) ; le 2,783 venait d'une compilation antérieure du correctif (même jeu) ;
+  `HOLBuildProcessor` 0,49-0,51 ms, évitement à l'arrêt 4,6-4,9 ; « Camps built » identique ; lignes « finished ... after
+  N steps » identiques à quelques pas près sur 3 camps du slot 0 (ordre d'arrivée des bâtisseurs : bruit). **Trop juste** :
+  nouvelle boucle sur le `ForceNetUpdate` à chaque pas et la reconstruction des pièces au premier coup (~2 ms par chantier).
+- **Deuxième correctif** (sous-agent, 2026-10-18, ~30 min, au-delà de la boucle) : chronos : `ForceNetUpdate`
+  négligeable (~0,004 ms par pas) ; montée ~0,20 ms par pas (~68 µs par cran : pièces déplacées, corps de collision,
+  chevauchements) ; premier coup 1,9-3,1 ms par chantier et fin 0,9-2,5 ms (création de ~10 pièces). Pièces en
+  `QueryOnly`, sans événements de chevauchement : montée 0,20 → 0,11 ms ; **S7 avec camps 3,060 et 3,016 ms FAIL**
+  (`j6b3_s7fixB1/B2`). Le FAIL de `net 2 clients` de cette boucle venait de `-Parts tests,build,net` sans « sources »
+  (défaut connu du script, noté plus haut), pas du correctif.
+- **D325 choisie** par l'utilisateur (apparence des bâtiments hors du pas de simulation) et **codée** (sous-agent,
+  ~11 min, non commité) : `RefreshNavObstacle` (zone interdite, immédiate), `RefreshVisuals` (pièces, montée, couleurs),
+  `MarkAppearanceDirty` (drapeau + tick de l'acteur activé, coupé une fois appliqué : au plus une reconstruction par
+  image et par bâtiment) ; `BeginPlay` reste immédiat ; **serveur dédié : aucune pièce**. Tests
+  (`HOLBuildingTests.cpp`) : `ApplyPendingAppearance()` après chaque changement. Compilé sans avertissement, tests 65/65.
+  ⚠️ `quick_check -Parts ...` par `-Command` n'a lancé que « sequence » et « tests » : liste de parties mal transmise
+  aussi ; lancer `quick_check` complet. Reste : `quick_check` complet, deux S7, essai.
+- **Vérification de D325** (sous-agent, 2026-10-18, aucun code) : **`quick_check` complet PASS en 311 s**, les 20
+  parties PASS, tests 65/65 ; `hol.Buildings.Report` n'est lu que chez les clients (le serveur dédié sans pièces ne casse
+  aucun contrôle) ; captures des chantiers inchangées. **Deux S7 avec camps : 2,777 et 2,756 ms PASS** (`j6b3_s7d325a/b` ;
+  3,06 / 3,02 avant), `HOLBuildProcessor` 0,13 ms (0,44), 195 et 203 i/s (seuil 144 ; ~210 avant, la 1re course sur une
+  machine un peu chargée), GPU 3,37 ms, « Camps built » identique. À suivre à la mesure de fin de chapitre : le rendu.
+- **Outil de mesure de fin de chapitre** (2026-10-18, demande de l'utilisateur : « ultra rapide ») :
+  `Tools/Tests/chapter_measures.ps1`, lancé par la session principale en tâche de fond, sans sous-agent : S1, S2, S7
+  deux fois en alternance, une 3e course si les deux ne s'accordent pas (la moyenne des trois décide), puis S5 une fois
+  (serveur recuit) ; verdict par test et résumé dans `Saved_Tests\Logs\chapter_measures.txt` ; ~5 min sans S5, ~9 avec.
+  Règle des 2 courses proposée à l'utilisateur, en attente de son accord.
+- Session d'essai de J6b lancée (deuxième écran).
+- **Mesures de fin de J6 par `chapter_measures.ps1`** (2026-10-18, 1er usage, session principale en tâche de fond,
+  machine au repos, 9-18 % avant chaque course) : stress tests **4,9 min** (3e course de S2 comprise), S5 **2,5 min**
+  (recuisson incrémentale comprise ; 1er lancement de S5 tombé sur un défaut du script, `-Stage` passé dans un tableau,
+  corrigé par un `@{}`) : **7,4 min en tout**. **S1 PASS** 2,362 / 2,381 ms, 240 i/s ; **S2 PASS à la moyenne de 3**
+  2,816 / 3,024 / 3,145 → 2,995 ms (S2 ne touche aucun bâtiment : bruit ±0,15 ms, marge déjà mince en J6a.6 ; ⚠️ à
+  regagner avant la formation de J7) ; **S7 avec camps PASS** 2,450 / 2,748 ms, 216 i/s ; **S5 PASS** 31 005 o/s par
+  client, écart affiché 22,9 cm. Journaux `chapter_j6end_*`, résumé `Saved_Tests\Logs\chapter_measures.txt`.
+- Session d'essai de J6b relancée (deuxième écran).

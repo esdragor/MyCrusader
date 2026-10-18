@@ -24,5 +24,11 @@ FBox2D AHOLMapBounds::GetArea() const
 
 AHOLMapBounds* AHOLMapBounds::Find(const UWorld* World)
 {
-	return World ? *TActorIterator<AHOLMapBounds>(const_cast<UWorld*>(World)) : nullptr;
+	if (!World)
+	{
+		return nullptr;
+	}
+	// A map without bounds (the stress test map, D314's S7 placing its camps) has none: no actor, no assert.
+	const TActorIterator<AHOLMapBounds> It(const_cast<UWorld*>(World));
+	return It ? *It : nullptr;
 }
