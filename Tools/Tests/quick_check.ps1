@@ -223,6 +223,11 @@ $BuildRally = @(-18000, -1500)
 $AnimHouse = @(-18600, -5100)
 $AnimBuilders = @(-19400, -5100)
 $AnimIdle = @(-9000, 2000)
+# The soldiers (J7a.3): 3 Spearmen and 3 Men-at-arms made apart (east of the idle Peasants, north of the gap's walls),
+# shown at rest, then sent 12 m east together: their armed idle and walk.
+$AnimSpearmen = @(-7800, 3000)
+$AnimMenAtArms = @(-7800, 4000)
+$AnimSoldiersTo = @(-6600, 3500)
 $AnimGroups = @(
     @{ Name = "wood"; Spawn = @(-13700, -1500); Source = @(-14221, -1900); Target = @(-12500, -3000); Look = @(-14200, -1450) },
     @{ Name = "stone"; Spawn = @(-11087, -5400); Source = @(-11087, -4592); Target = @(-11087, -6600); Look = @(-11087, -4592) },
@@ -678,9 +683,15 @@ if ($Parts -contains "camera") {
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
             # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
             # Two Peasants made beside K, selected by a box, K placed by a click: they walk there and hammer.
-            Step "mark anims", "hol.Cheat.FastBuild 0", "hol.Build.Speed 1", "hol.Cheat.GatherSpeed 1", "hol.Cheat.Wood 100",
+            # First the wood's edge cleared: Peasants of the earlier parts (gather, build camp) at work between slot 0's
+            # wood and the lumber camp L would enter the wood group's box; all units there sent to the cut's far point.
+            Step "mark clear wood", "hol.Camera.Focus $($AnimGroups[0].Spawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($AnimGroups[0].Spawn[0] - 1900) $($AnimGroups[0].Spawn[1] - 1500) $($AnimGroups[0].Spawn[0] + 1300) $($AnimGroups[0].Spawn[1] + 800)",
+                "frames 3", "hol.Select.OrderGround $($CutTo -join ' ')", "frames 3", "wait 6"
+            Step "mark anims","hol.Cheat.FastBuild 0", "hol.Build.Speed 1", "hol.Cheat.GatherSpeed 1", "hol.Cheat.Wood 100",
                 "hol.Units.Spawn 2 $($AnimBuilders -join ' ') 0 Peasant 100", "hol.Units.Spawn 3 $($AnimIdle -join ' ') 0 Peasant 150"
             foreach ($Group in $AnimGroups) { Step "hol.Units.Spawn 3 $($Group.Spawn -join ' ') 0 Peasant 150" }
+            Step "hol.Units.Spawn 3 $($AnimSpearmen -join ' ') 0 Spearman 150", "hol.Units.Spawn 3 $($AnimMenAtArms -join ' ') 0 ManAtArms 150"
             Step "wait 0.5", "hol.Camera.Focus $($AnimBuilders -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($AnimBuilders[0] - 400) $($AnimBuilders[1] - 400) $($AnimBuilders[0] + 400) $($AnimBuilders[1] + 400)",
                 "waitlog Selection: 2 units (own): Peasant x2", "hol.Camera.Focus $($AnimHouse -join ' ')", "frames 3", "hol.Build.Place House",
@@ -696,7 +707,8 @@ if ($Parts -contains "camera") {
             Step "wait 3", "mark anims working", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
             foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Look -join ' ')", "frames 3", "capture anims_work_$($Group.Name)" }
             Step "hol.Camera.Focus $($AnimHouse[0] - 350) $($AnimHouse[1])", "frames 3", "capture anims_work_build",
-                "hol.Camera.Focus $($AnimIdle -join ' ')", "frames 3", "capture anims_work_idle", "hol.Camera.Zoom -14", "wait 3"
+                "hol.Camera.Focus $($AnimIdle -join ' ')", "frames 3", "capture anims_work_idle",
+                "hol.Camera.Focus $($AnimSpearmen[0]) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 3", "capture anims_soldiers_idle", "hol.Camera.Zoom -14", "wait 3"
             # Each group (a few wood, stone, gold or food each by now: 0.7 a second) selected around its source, sent ~20 m
             # away: it keeps its load (D296). Reported on the way, then once they stand there.
             foreach ($Group in $AnimGroups) {
@@ -704,10 +716,15 @@ if ($Parts -contains "camera") {
                     "hol.Select.BoxGround $($Group.Source[0] - 700) $($Group.Source[1] - 700) $($Group.Source[0] + 700) $($Group.Source[1] + 700)",
                     "waitlog Selection: ", "hol.Select.OrderGround $($Group.Target -join ' ')", "waitlog Order: "
             }
+            # The soldiers, selected by a box around both groups, sent last (on their way at the report).
+            Step "hol.Camera.Focus $($AnimSpearmen[0]) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 3",
+                "hol.Select.BoxGround $($AnimSpearmen[0] - 500) $($AnimSpearmen[1] - 500) $($AnimMenAtArms[0] + 500) $($AnimMenAtArms[1] + 500)",
+                "waitlog Selection: 6 units (own)", "hol.Select.OrderGround $($AnimSoldiersTo -join ' ')", "waitlog Order: "
             Step "wait 0.5", "mark anims walking", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
             $Last = $AnimGroups[-1]
             # The last group sent, a few metres on its way.
             Step "hol.Camera.Focus $($Last.Source[0] + ($Last.Target[0] - $Last.Source[0]) / 5) $($Last.Source[1] + ($Last.Target[1] - $Last.Source[1]) / 5)", "frames 2", "capture anims_walk_$($Last.Name)",
+                "hol.Camera.Focus $($AnimSpearmen[0] + 300) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 2", "capture anims_soldiers_walk",
                 "hol.Camera.Zoom -14", "wait 4", "mark anims standing", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
             foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Target -join ' ')", "frames 3", "capture anims_stand_$($Group.Name)" }
             Step "hol.Camera.Zoom -14", "hol.Build.Report"
@@ -1556,6 +1573,7 @@ if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
     $Allowed = { param([string] $State)
         if ($State -match '^Peasant Gathering (\w+)') { return @($GatherShown[$Matches[1]]) }
         if ($State -match '^Peasant Building') { return @($BuildShown) }
+        if ($State -match '^(Spearman|ManAtArms) ') { return @("A_$($Matches[1])_Idle prop 0", "A_$($Matches[1])_Walk prop 0") }
         if ($State -match ' carrying (\w+)$') { return @($CarryWalkShown[$Matches[1]], $CarryIdleShown[$Matches[1]]) }
         return @($IdleShown, $WalkShown) }
     # The last report of a section: Peasants drawn, and state -> (shown -> count).
@@ -1601,7 +1619,15 @@ if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
         $Count = & $CountShown $Reports["standing"] "^Peasant Idle carrying $Resource$" $CarryIdleShown[$Resource]
         $Checks["standing with $Resource`: $($CarryIdleShown[$Resource]) ($Count of 3)"] = $Count -ge 2
     }
-    $Missing = @("work_wood", "work_stone", "work_gold", "work_berries", "work_build", "work_idle", "walk_berries", "stand_wood", "stand_stone", "stand_gold", "stand_berries" |
+    # The soldiers (J7a.3): their armed idle at rest, their armed walk on the way, at rest again once there.
+    foreach ($Soldier in "Spearman", "ManAtArms") {
+        foreach ($Moment in @(@("working", "Idle", "Idle"), @("walking", "Moving", "Walk"), @("standing", "Idle", "Idle"))) {
+            $Shown = "A_$Soldier`_$($Moment[2]) prop 0"
+            $Count = & $CountShown $Reports[$Moment[0]] "^$Soldier $($Moment[1])$" $Shown
+            $Checks["$($Moment[0]) $Soldier`: $Shown ($Count of 3)"] = $Count -ge 2
+        }
+    }
+    $Missing = @("work_wood", "work_stone", "work_gold", "work_berries", "work_build", "work_idle", "soldiers_idle", "soldiers_walk", "walk_berries", "stand_wood", "stand_stone", "stand_gold", "stand_berries" |
         Where-Object { -not (Test-Path (Join-Path $Shots "anims_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "anims" $Checks) -and $AllOk
