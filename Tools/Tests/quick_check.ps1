@@ -1,6 +1,17 @@
-﻿# Quick check of the project (D267): the automation tests run in their own process WHILE a single game launch goes
-# through the menu in French, English and Japanese (language switched live), a drop-down list, then a match at 2 and
-# at 8 players with the camera checks of D257 and the selection checks of D264 (own centre, another's, void, Escape).
+﻿# Quick check of the project (D267), on two levels (D327):
+#   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
+#     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
+#     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
+#     Peasant, which they kill;
+#   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
+#   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
+#     formation, combat, net). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
+#     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
+#     go through their orders, gathering, houses and camps (the server's commands for those come with them).
+# The full run: a single game launch goes through the menu in French, English and Japanese (language switched live), a
+# drop-down list, then a match at 2 and at 8 players with the camera checks of D257 and the selection checks of D264 (own
+# centre, another's, void, Escape).
 # Every step starts as soon as the one before is done (hol.Test.Run), no fixed delays. Replaced capture_screens.ps1,
 # check_camera.ps1 and the automation command for everyday checks; the short stress tests S1 and S2 stay apart (only
 # when units, the simulation or rendering change, and at a closure).
@@ -61,18 +72,28 @@
 # paths go through the way between them; one Peasant sent across passes through it, on its middle line; two sent together
 # pass one after the other; none put back by a wall, none given a new path, all arrive.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-EngineDir <dir>] [-Visible]
-#   powershell -ExecutionPolicy Bypass -Command "& .\Tools\Tests\quick_check.ps1 -Parts net,sources,move"   (-File passes a list as one string)
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Full | -Parts net,sources,move] [-EngineDir <dir>] [-Visible]
+# (-File passes a list as one string: the script splits it at the commas.)
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "net"),
+    [string[]] $Parts = @("tests", "smoke"),
+    [switch] $Full,
     [string] $EngineDir = "",
     [switch] $Visible
 )
+# -Full (D327): every part, the default before D327 (~530 s).
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "net") }
+# A list passed by -File arrives as one string ("net,sources"): split it.
+$Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+# The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
+if (@($Parts | Where-Object { $_ -in "production", "move", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
+    $Parts += "camera"
+}
+Write-Host "parts: $($Parts -join ', ')"
 
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 $Project = Resolve-Path "$PSScriptRoot\..\.."
@@ -322,8 +343,34 @@ $BarracksAt = @(-18150, 4050)
 $BarracksSpawn = @(-19500, 4050)
 $BarracksRally = @(-17000, 5400)
 $GapTo = @(-4500, 300)
+# The smoke part (D327), the default's single short game: the title screen and New game in French, a 2-player match
+# launched from it, the camera moved by the arrow, its own centre selected then nothing; 3 Men-at-arms of slot 0 made 18 m
+# from a Peasant of slot 1 (out of their 12 m aggression), boxed and sent 4 m short of it: once there they take it on and
+# kill it (the melee on for this step alone). Every step waits for its event, no fixed delays.
+$SmokeMenAtArms = @(-6500, -1500)
+$SmokeEnemy = @(-4700, -1500)
+$SmokeTo = @(-5100, -1500)
+if ($Parts -contains "smoke") {
+    $SmokeConfig = Join-Path $TestSaved "smoke_2p.json"
+    $SmokeSlots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$($Cases[0].States[$i])`", `"colorIndex`": $i }" }
+    "{ `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($SmokeSlots -join ', ') ] }" | Set-Content -Encoding ascii $SmokeConfig
+    Step "mark smoke menu", "capture qc_smoke_title"
+    Open NewGame; Step "capture qc_smoke_newgame"
+    Step "mark smoke camera", "hol.Camera.TestCursor 0.5 0.5", "hol.UI.NewGame.Launch $SmokeConfig 0", "waitmap Plain", "frames 10", "hol.Camera.Report"
+    Key Up "0.5"
+    Step "hol.Camera.Report", "capture qc_smoke_play"
+    Step "mark smoke selection", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)",
+        "hol.Select.Click 0.03 0.05", "waitlog Selection: none"
+    Step "mark smoke move", "hol.Units.Spawn 3 $($SmokeMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 1 $($SmokeEnemy -join ' ') 1 Peasant 10",
+        "waitunits 4", "hol.Camera.Focus $(($SmokeMenAtArms[0] + $SmokeEnemy[0]) / 2) $($SmokeMenAtArms[1])", "frames 3",
+        "hol.Select.BoxGround $($SmokeMenAtArms[0] - 350) $($SmokeMenAtArms[1] - 350) $($SmokeMenAtArms[0] + 350) $($SmokeMenAtArms[1] + 350)",
+        "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Combat.Enabled 1", "hol.Select.OrderGround $($SmokeTo -join ' ')",
+        "waitlog Peasant of slot 1 killed by", "mark smoke combat", "hol.Units.Where 0", "hol.Combat.Report", "capture qc_smoke_melee",
+        "hol.Combat.Enabled 0", "mark smoke end"
+}
 if ($Parts -contains "camera") {
-    $First = $true
+    # After the smoke part, the match it launched is left for the main menu first.
+    $First = -not ($Parts -contains "smoke")
     foreach ($Case in $Cases) {
         $Slots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$($Case.States[$i])`", `"colorIndex`": $i }" }
         $Config = Join-Path $TestSaved "camera_$($Case.Name).json"
@@ -1038,9 +1085,11 @@ if ($NetListening) {
     }
 }
 
-# 660 s: the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the barracks (J7a.2), the start ~20 s;
-# past 480 s with the combat and orders parts (J7b.3: attack-move and hold, ~45 s more).
-$GameTimedOut = -not $GameProcess.WaitForExit(660000)
+# 660 s with the camera's parts (-Full): the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the
+# barracks (J7a.2), the start ~20 s; past 480 s with the combat and orders parts (J7b.3: attack-move and hold, ~45 s more).
+# 120 s otherwise: the default's smoke part is done ~40 s after the launch (D327), the menu part ~15 s.
+$GameLimitSeconds = if ($Parts -contains "camera") { 660 } else { 120 }
+$GameTimedOut = -not $GameProcess.WaitForExit($GameLimitSeconds * 1000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
@@ -1079,7 +1128,7 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     site = "hud=HOLGameScreen"; three = "hud=HOLGameScreen"; finished = "hud=HOLGameScreen"; rally = "hud=HOLGameScreen";
     greyed = "hud=HOLGameScreen"; fr = "hud=HOLGameScreen"; en = "hud=HOLGameScreen"; ja = "hud=HOLGameScreen"; ghost = "hud=HOLGameScreen";
     block = "hud=HOLGameScreen"; popfull = "hud=HOLGameScreen"; f1 = "hud=HOLGameScreen"; f2 = "hud=HOLGameScreen"; next = "hud=HOLGameScreen";
-    stone = "hud=HOLGameScreen" }
+    stone = "hud=HOLGameScreen"; play = "hud=HOLGameScreen"; melee = "hud=HOLGameScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
@@ -1090,6 +1139,33 @@ $Errors = @($Log | Select-String -Pattern "LogHOLUI: (Error|Warning)|LogHOLMatch
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
 $AllOk = (Report "sequence" $SequenceChecks) -and $AllOk
 $Errors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
+
+if ($Parts -contains "smoke") {
+    $Checks = [ordered]@{}
+    $Missing = @("title", "newgame", "play", "melee" | Where-Object { -not (Test-Path (Join-Path $Shots "qc_smoke_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $Section = Get-Section "smoke camera"
+    $Checks["match launched from the screen, slot 0 held"] = [bool]($Section | Select-String -Pattern "Match on \w+: given configuration" -Quiet) -and
+        [bool]($Section | Select-String -Pattern "holds slot 0 " -Quiet)
+    $Reports = @($Section | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\), height (\d+)" | ForEach-Object {
+        $g = $_.Matches[0].Groups; @{ X = [int]$g[1].Value; Y = [int]$g[2].Value } })
+    $Start = Get-SlotStart 0
+    $Up = if ($Reports.Count -eq 2) { $Reports[1].X - $Reports[0].X } else { 0 }
+    $Checks["camera above slot 0, arrow up 0.5 s: +X ~20 m (got $([Math]::Round($Up / 100)) m)"] = ($Reports.Count -eq 2) -and
+        ([Math]::Abs($Reports[0].X - $Start[0]) -le 2) -and ([Math]::Abs($Reports[0].Y - $Start[1]) -le 2) -and ($Up -ge 1000) -and ($Up -le 3000)
+    $Section = Get-Section "smoke selection"
+    $Checks["its centre selected, then nothing"] = [bool]($Section | Select-String -SimpleMatch "Selection: MainCentre of slot 0 (own)" -Quiet) -and
+        [bool]($Section | Select-String -SimpleMatch "Selection: none" -Quiet)
+    $Section = Get-Section "smoke move"
+    $Checks["3 Men-at-arms boxed"] = [bool]($Section | Select-String -SimpleMatch "Selection: 3 units (own): ManAtArms x3" -Quiet)
+    $Kill = $Section | Select-String -Pattern "Combat: step \d+ #\d+ Peasant of slot 1 killed by #\d+ ManAtArms of slot 0 \(\d+ hits struck\)" | Select-Object -First 1
+    $Checks["sent beside the enemy Peasant, they kill it ($(if ($Kill) { $Kill.Line -replace '^.*Combat: ', '' }))"] = $null -ne $Kill
+    $Where = (Get-Section "smoke combat") | Select-String -Pattern "Units where: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+    $Walked = @([regex]::Matches([string]$Where, "slot 0 at \((-?\d+), (-?\d+)\)") | ForEach-Object {
+        [Math]::Round([Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $SmokeTo[0], 2) + [Math]::Pow([double]$_.Groups[2].Value - $SmokeTo[1], 2)) / 100, 1) })
+    $Checks["the 3 walked there (m from the point: $($Walked -join ', '))"] = ($Walked.Count -eq 3) -and (@($Walked | Where-Object { $_ -le 6 }).Count -eq 3)
+    $AllOk = (Report "smoke" $Checks) -and $AllOk
+}
 
 if ($Parts -contains "menu") {
     foreach ($Culture in $Cultures) {
