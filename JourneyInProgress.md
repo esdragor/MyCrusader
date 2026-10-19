@@ -203,11 +203,15 @@ vérifier sur S1 et S2.
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
    worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
-   **Prochaine étape exacte** : J7b.2 à J7b.5 commitées (ce6a4d2), D327 (ee63932), gestes polis, préchargement et
-   ralliement sur fantôme (258c5d0), tout validé par l'utilisateur. Suite : (1) polir le coup du Paysan (hache,
-   `PEASANT_ATTACK` dans `PROPOSED`) avec la méthode des soldats, GIF à faire revoir, puis fabrication et hache affichée
-   (`AttackProp`) ; (2) option : décalage / variation de vitesse des gestes par unité ; (3) J7b.6. Sous-agents : un
-   livrable chacun, 15 min / 300k tokens. Mesures au repos (fermer Opera) : S2 à la fin de J7.
+   **Prochaine étape exacte (nouvelle séance)** : J7b.2 à J7b.5 commitées (ce6a4d2), D327 (ee63932), gestes polis,
+   préchargement et ralliement sur fantôme (258c5d0). **Coup du Paysan validé en aperçu** (2026-10-19) : coup de
+   pointe au couteau, posture de peur (`PEASANT_ATTACK` dans `PROPOSED`, pièce `make_knife()` id 8), commité en aperçu
+   seulement (f7b0b27). Suite : (1) **fabriquer** (sous-agent, un livrable) : maillage du Paysan refait avec le couteau
+   (`make_peasant_mesh.py`), geste passé dans `GESTURES` et fabriqué, colonne `AttackProp` (8 pour le Paysan) sur le
+   modèle de `BuildProp` (`HOLUnitTypes.h`, `HOLUnitSubsystem.cpp`, `HOLUnitAnimation.cpp`, tests), table refaite,
+   `quick_check` rapide + `-Parts combat` ; (2) essai de l'utilisateur, `-Full`, commit ; (3) option : décalage des
+   gestes par unité ; (4) J7b.6. Sous-agents : un livrable chacun, 15 min / 300k tokens, minuteur à chaque lancement.
+   Mesures au repos (fermer Opera) : S2 à la fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -4545,3 +4549,5 @@ d'épée).
   ramasse (25), coup court surtout du bras (bassin 12°, poids +8 cm, sans fente) image 30, recul vif (retour plus
   rapide que l'aller), se recroqueville (43). Pointe 3,5 / 67 / 103 cm. Contrôles 0 cm. GIF
   `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_fear.gif`.
+- **Couteau en posture de peur validé** par l'utilisateur, commité en aperçu (f7b0b27). **Fin de séance** (demande de
+  l'utilisateur) : reprise à « Prochaine étape exacte » (fabrication du coup du Paysan).
