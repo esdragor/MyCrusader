@@ -321,43 +321,98 @@ GESTURES.update({"spear_attack": SPEAR_ATTACK, "maa_attack": MAA_ATTACK, "spear_
                  "maa_fall": MAA_FALL, "peasant_fall": PEASANT_FALL})
 
 # Peasant attack (proposal, preview only until the user validates it: in PROPOSED, not in GESTURES, so --soldiers does
-# not bake it). The Peasant strikes with the axe he chops with (prop "axe", already on SKM_Peasant: no new piece), two
-# hands on the handle: guard with the axe across the body, wind-up over the right shoulder, a diagonal blow down onto
-# the enemy's shoulder ~1.1 m in front at chest height, short follow-through to his left, back to the guard. A long
-# handle and a wide arc read from the RTS camera, a punch would not (the arm stays inside the body's outline). 2.0 s
-# (AttackInterval of the Peasant): 60 frames at 30 fps, the hit at frame 30 (ATTACK_HIT_FRACTION).
-from peasant_poses import SHOULDERS_BACK, SHOULDERS_DOWN  # noqa: E402
+# not bake it). User's choice (2026-10-19): the Peasant fights with a knife, not the axe: a one-handed stab into the
+# enemy's belly ~1 m in front. He is not a fighter (user's review of the first stab, 2026-10-19): a frightened villager
+# defending himself, not a boxer's guard. The knife (prop "knife", peasant_props.py, id 8) is held by the right hand
+# alone and shown only while he attacks (as the hammer while he builds). 2.0 s (AttackInterval of the Peasant): 60
+# frames at 30 fps, the hit at frame 30 (ATTACK_HIT_FRACTION).
+import peasant_props as pprops  # noqa: E402
 
 PEASANT_PERIOD = 2.0
-PEASANT_AXE_TOOL = {"kind": "axe", "hand_spacing": 22.0, "knob_offset": 6.0, "handle_length": 80.0}
+PEASANT_KNIFE_TOOL = {"kind": "knife", "hands": 1, "handle_length": pprops.KNIFE_LENGTH,
+                      "knob_offset": pprops.KNIFE_GRIP, "edge": (0.0, 0.0, -1.0)}  # the edge down, the flat sideways
 PEASANT_STANCE = {"l": (-6.0, 14.0, 0.0), "r": (6.0, -10.0, 0.0)}
-PEASANT_FIGHT_ELBOWS = {"l": (-0.4, 0.1, -1.0), "r": (0.6, -0.2, -0.9)}
-PEASANT_GUARD = {"pelvis": (0.0, 0.0, -5.0), "rot": torso(10.0, 6.0, 0.0),
-                 "tool": {"grip": (4.0, 24.0, 102.0), "dir": (0.45, 0.35, 0.82), "spacing": 22.0}}
-PEASANT_COCKED = {"pelvis": (2.0, -3.0, -4.0), "rot": merge(torso(40.0, -10.0, -4.0), SHOULDERS_DOWN),
-                  "tool": {"grip": (13.0, -2.0, 156.0), "dir": (0.25, -0.65, 0.72), "spacing": 24.0},
-                  "elbows": {"l": (-0.3, 0.6, -1.0), "r": (1.0, -0.2, -0.4)}}
-PEASANT_BLOW = {"pelvis": (-1.0, 9.0, -9.0), "rot": merge(torso(-14.0, 16.0, 3.0), SHOULDERS_BACK),
-                "tool": {"grip": (2.0, 40.0, 116.0), "dir": (-0.12, 0.99, 0.08), "spacing": 10.0},
-                "elbows": {"l": (-0.6, 0.0, -1.0), "r": (0.4, -0.2, -1.0)}}
-PEASANT_FOLLOW = {"pelvis": (-1.0, 8.0, -9.0), "rot": merge(torso(-22.0, 18.0, 3.0), SHOULDERS_BACK),
-                  "tool": {"grip": (-6.0, 34.0, 100.0), "dir": (-0.45, 0.82, -0.35), "spacing": 12.0},
-                  "elbows": {"l": (-0.6, 0.0, -1.0), "r": (0.4, -0.2, -1.0)}}
+PEASANT_FIGHT_ELBOWS = {"l": (-0.5, -0.2, -1.0), "r": (0.35, -0.6, -0.9)}  # the knife's elbow tucked against the ribs
 
 
-def peasant_key(t, pose, ease="inout"):
-    return merge({"elbows": PEASANT_FIGHT_ELBOWS}, pose, {"t": t, "ease": ease})
+def peasant_key(t, pose, flow=0.0):
+    return merge({"elbows": PEASANT_FIGHT_ELBOWS}, pose, {"t": t, "flow": flow})
 
 
-PEASANT_ATTACK = fighting("A_Peasant_Attack", PEASANT_AXE_TOOL, ("axe",), [
+def peasant_cover(at_, palm=(0.25, -0.95, 0.15), fingers=(0.15, 0.25, 0.95)):
+    """The free left forearm raised in front of his face, the back of the hand toward the enemy (shielding himself)."""
+    return {"l": {"at": at_, "palm": palm, "fingers": fingers}}
+
+
+def afraid(rot, fear=1.0, away=8.0):
+    """`rot` hunched by fear: the back rounded, both shoulders raised, the head pulled into them (the neck bowed
+    forward, the head tipped back up to keep the enemy in sight) and turned `away` degrees to his right, shying."""
+    out = dict(rot)
+
+    def add(bone, d):
+        out[bone] = tuple(a + b for a, b in zip(out.get(bone, (0.0, 0.0, 0.0)), d))
+    add("spine_02", (0.0, 4.0 * fear, 0.0))
+    add("spine_03", (0.0, 5.0 * fear, 0.0))
+    add("clavicle_r", (0.0, 0.0, -11.0 * fear))
+    add("clavicle_l", (0.0, 0.0, 11.0 * fear))
+    add("neck_01", (away * 0.4, 9.0 * fear, 0.0))
+    add("head", (away * 0.6, -12.0 * fear, 0.0))
+    return out
+
+
+# Same method as the soldiers' validated attacks (hermite keys, "flow", "leads"), but a frightened body: guard hunched,
+# knees bent, the weight back over the right foot (ready to back away), the left forearm up in front of his face, the
+# knife held tight by the right hip, point forward, elbow against the ribs; a small tremble in the guard. The blow:
+# a false start (he leans in, flinches back), he gathers himself (lower, curled up, the knife drawn back), then a
+# quick short jab: the hips barely turn and the weight hardly comes forward (no lunge), the arm does most of it, the
+# point arrives in the body's axis at belly height; at once the trunk snaps back (the return is faster than the
+# jab), the forearm back up in front of his face, cowering a moment further back before the guard. Feet planted (IK).
+PEASANT_GUARD = {"pelvis": (0.0, -5.0, -9.0), "rot": afraid(hip_turn(10.0, 12.0, 4.0, nod=-4.0)),
+                 "tool": {"grip": (14.0, 12.0, 99.0), "dir": (-0.15, 0.86, 0.49)},
+                 "hands": peasant_cover((-5.0, 25.0, 140.0))}
+PEASANT_TREMBLE = {"pelvis": (0.3, -5.4, -9.4), "rot": afraid(hip_turn(11.0, 12.5, 4.0, nod=-4.0), 1.1, 10.0),
+                   "tool": {"grip": (14.5, 11.0, 98.0), "dir": (-0.17, 0.85, 0.50)},
+                   "hands": peasant_cover((-6.0, 24.0, 141.5))}
+PEASANT_LEAN = {"pelvis": (-0.5, -2.5, -9.5), "rot": afraid(hip_turn(6.0, 14.0, 2.0, nod=-5.0), 0.9, 6.0),
+                "tool": {"grip": (13.0, 17.0, 100.0), "dir": (-0.12, 0.90, 0.42)},
+                "hands": peasant_cover((-5.0, 27.0, 139.0))}
+PEASANT_FLINCH = {"pelvis": (0.5, -6.5, -9.5), "rot": afraid(hip_turn(13.0, 10.0, 5.0, nod=-3.0), 1.15, 12.0),
+                  "tool": {"grip": (14.5, 10.0, 99.0), "dir": (-0.16, 0.85, 0.50)},
+                  "hands": peasant_cover((-5.0, 24.0, 142.0))}
+PEASANT_GATHER = {"pelvis": (1.0, -6.0, -12.0),
+                  "rot": afraid(merge(hip_turn(24.0, 16.0, 8.0, nod=-6.0), {"clavicle_r": (-6.0, 0.0, 0.0)}), 1.2, 4.0),
+                  "tool": {"grip": (18.5, 2.0, 100.0), "dir": (-0.08, 0.95, 0.30)},
+                  "hands": peasant_cover((-4.0, 28.0, 137.0))}
+PEASANT_STAB = {"pelvis": (-0.5, 1.5, -11.0), "rot": afraid(hip_turn(-12.0, 16.0, -4.0, nod=-8.0), 0.8, 0.0),
+                "tool": {"grip": (5.0, 42.0, 104.0), "dir": (-0.06, 0.997, -0.04)},
+                "hands": peasant_cover((-7.0, 26.0, 138.0))}
+PEASANT_OVER = {"pelvis": (-0.5, 1.0, -11.0), "rot": afraid(hip_turn(-12.0, 15.0, -4.0, nod=-8.0), 0.85, 2.0),
+                "tool": {"grip": (5.0, 44.0, 104.0), "dir": (-0.06, 0.997, -0.05)},
+                "hands": peasant_cover((-7.0, 26.0, 138.5))}
+PEASANT_RECOIL = {"pelvis": (0.5, -6.5, -10.0), "rot": afraid(hip_turn(8.0, 6.0, 3.0, nod=-2.0), 1.2, 12.0),
+                  "tool": {"grip": (13.5, 13.0, 100.5), "dir": (-0.14, 0.88, 0.46)},
+                  "hands": peasant_cover((-5.0, 24.0, 143.0))}
+PEASANT_COWER = {"pelvis": (0.5, -7.0, -10.0), "rot": afraid(hip_turn(13.0, 10.0, 5.0, nod=-3.0), 1.25, 14.0),
+                 "tool": {"grip": (14.5, 10.0, 99.0), "dir": (-0.16, 0.85, 0.50)},
+                 "hands": peasant_cover((-5.0, 23.0, 143.0))}
+PEASANT_LEADS = {"pelvis": 0.05, "rot": {"pelvis": 0.045, "spine_01": 0.03, "spine_02": 0.02, "spine_03": 0.012,
+                                         "neck_01": 0.01, "head": 0.01, "clavicle_r": 0.006},
+                 "elbows": 0.005, "tool": 0.0, "hands": -0.02}
+
+PEASANT_ATTACK = fighting("A_Peasant_Attack", PEASANT_KNIFE_TOOL, ("knife",), [
     peasant_key(0.0, PEASANT_GUARD),
-    peasant_key(at(PEASANT_PERIOD, 0.12), PEASANT_GUARD),
-    peasant_key(at(PEASANT_PERIOD, 0.40), PEASANT_COCKED),          # axe over the right shoulder
-    peasant_key(at(PEASANT_PERIOD, 0.50), PEASANT_BLOW, "in"),      # THE HIT: axe head on the enemy (frame 30 of 60)
-    peasant_key(at(PEASANT_PERIOD, 0.58), PEASANT_FOLLOW, "out"),   # follow-through to his left
-    peasant_key(at(PEASANT_PERIOD, 0.85), PEASANT_GUARD),
+    peasant_key(at(PEASANT_PERIOD, 0.07), PEASANT_TREMBLE),             # a small tremble
+    peasant_key(at(PEASANT_PERIOD, 0.14), PEASANT_GUARD),
+    peasant_key(at(PEASANT_PERIOD, 0.23), PEASANT_LEAN),                # a false start: he leans in...
+    peasant_key(at(PEASANT_PERIOD, 0.31), PEASANT_FLINCH),              # ...and flinches back
+    peasant_key(at(PEASANT_PERIOD, 0.42), PEASANT_GATHER),              # gathers himself, the knife drawn back
+    peasant_key(at(PEASANT_PERIOD, 0.50), PEASANT_STAB, (2.0, 1.0)),    # THE HIT, a short quick jab (frame 30 of 60)
+    peasant_key(at(PEASANT_PERIOD, 0.52), PEASANT_OVER),                # the arm's last 2 cm, the trunk already going
+    peasant_key(at(PEASANT_PERIOD, 0.57), PEASANT_RECOIL, 0.8),         # snaps back at once, faster than the jab
+    peasant_key(at(PEASANT_PERIOD, 0.72), PEASANT_COWER),               # cowers, further back than the guard
     peasant_key(PEASANT_PERIOD, PEASANT_GUARD),
-], PEASANT_FIGHT_ELBOWS, 30, PEASANT_STANCE, [0, 12, 24, 30, 35, 48])
+], PEASANT_FIGHT_ELBOWS, 30, PEASANT_STANCE, [0, 4, 18, 25, 30, 34])
+PEASANT_ATTACK.update({"frames": 60, "curve": "hermite", "loop": True, "leads": PEASANT_LEADS})
 
 # Gestures shown by the previews but not baked yet (waiting for the user's review).
 PROPOSED = {"peasant_attack": PEASANT_ATTACK}

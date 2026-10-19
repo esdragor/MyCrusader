@@ -13,7 +13,7 @@ Units and frames:
         Y = the character's right, Z = up (Unreal's actor convention). Carried rigidly by "bone".
       * "bone" props (the soldier's shield, soldier_props.py): the prop frame given directly in its bone's reference
         frame ("local": (translation, rotation)), for a piece that follows a hand rather than the chest.
-      * "tool" props (axe, pickaxe, hammer): origin at the knob (end of the handle), X along the handle toward the
+      * "tool" props (axe, pickaxe, hammer, knife): origin at the knob (end of the handle), X along the handle toward the
         head, Y toward the striking side (the axe's edge, the pick's point, the hammer's face), Z = X x Y. The bone is
         ik_hand_gun, whose track in the tool gestures (anim_rig.Rig.tool_frame) puts the bone exactly on this frame:
         the prop's local transform in the bone is the identity, and the tool follows the hands exactly (two-handed:
@@ -30,7 +30,8 @@ Triangles are wound so that (b - a) x (c - a) points out of the solid (right-han
 the other way round (measured on the mannequin's body, J5c.2c): make_peasant_mesh.py reverses every triangle and keeps
 the normals pointing out.
 Ids (the 4th per-instance float of J5c.2d; 0 = body only, no prop):
-  1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte of gold, 7 hammer (the builder's, J6a.4).
+  1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte of gold, 7 hammer (the builder's, J6a.4),
+  8 knife (the Peasant's attack, J7b; the last id a byte allows).
 In the mesh (mesh_parts(), J5c.2c), each vertex carries in its colour's alpha the MASK of the props it belongs to, bit
 id - 1 (0 = the body, always shown): a primitive with a "part" key shared by several props (the hotte's wicker and straps)
 is written once with the bits of all of them, so the stone and gold hottes cost one hotte and two heaps. Hence at most 8
@@ -214,6 +215,29 @@ def make_hammer(light=False):
     return {"id": 7, "name": "hammer", "label": "marteau", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
 
 
+# The Peasant's knife (J7b, his attack), held in the right hand only, shown only while he strikes: a 10 cm wooden handle,
+# a small iron bolster, a flat 20 cm blade (one flat plate, 0.8 cm thick), its straight back on -Y and its edge on +Y
+# curving up to the point, which sits near the handle's axis.
+KNIFE_HANDLE = 10.0       # knob to the bolster (cm)
+KNIFE_LENGTH = 30.0       # knob to the point, along the handle (the gesture's "handle_length")
+KNIFE_GRIP = 5.0          # knob to the right hand's grip point (the gesture's "knob_offset")
+
+
+def make_knife(light=False):
+    sides = 4 if light else 6
+    base = KNIFE_HANDLE + 0.8
+    prims = [
+        frustum_between((0.0, 0.0, 0.0), (KNIFE_HANDLE, 0.0, 0.0), (1.5, 1.2), (1.3, 1.0), sides, WOOD_DARK,
+                        x_hint=FLAT),
+        # The bolster between handle and blade...
+        box((KNIFE_HANDLE + 0.4, 0.2, 0.0), (0.8, 3.6, 2.2), IRON),
+        # ...and the blade: back straight, edge rising to the point.
+        prism([(base, -1.1), (KNIFE_LENGTH, -0.5), (KNIFE_LENGTH - 6.0, 1.4), (base, 1.8)], 0.8, (0.0, 0.0, -0.4),
+              IDENTITY, STEEL),
+    ]
+    return {"id": 8, "name": "knife", "label": "couteau", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Loads (bone spine_03, body prop frame; positions written in body terms relative to the anchor)
 
@@ -395,7 +419,7 @@ def build_props(sk, light=False):
     """All props by name (the logs need the skeleton for their validated axes); `light`: the light props (see the
     module's docstring)."""
     props = [make_axe(light), make_pickaxe(light), make_basket(light), make_logs(sk, light), make_hotte("stone", light),
-             make_hotte("gold", light), make_hammer(light)]
+             make_hotte("gold", light), make_hammer(light), make_knife(light)]
     return {p["name"]: p for p in props}
 
 
