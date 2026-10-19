@@ -4194,3 +4194,24 @@ d'épée).
   `AssignPlaces`, traversée dans la séparation, tassement à l'arrêt de J7a.6). À traiter avant la fin de J7 (S2 était
   déjà au seuil) : profil de S2 à comparer à la fin de J6 (`stress_ab.ps1`, côté A à 3141200^ ou à la fin de J6).
   Journaux `chapter_j7b1_req_*`, résumé `Saved_Tests\Logs\chapter_measures.txt`.
+
+### 2026-10-19 — S2 : perte de 0,18 ms depuis la fin de J6
+
+- Choix de l'utilisateur : **regarder S2 avant J7b.2**. Boucle lancée (sous-agent) : A / B en alternance entre la fin
+  de J6 (c14d25b, worktree détaché) et `main`, profil de S2, cause et correctif si simple.
+- **Résultat** (sous-agent ; côté A : worktree détaché `MyCrusader-S2A` à c14d25b, laissé en place). S2 de 10 s,
+  A B A B A B au repos : **A 2,820 ms** de moyenne (2,915 / 2,816 / 2,730), **B (main) 2,905 ms** (2,925 / 2,965 /
+  2,825) ; écart +0,085 ms, plus petit que la dispersion d'un même côté (0,19 ms) ; six passages PASS. Profil par
+  processeur (Insights, un passage par côté) : simulation **+0,01 ms par pas** au total (séparation +0,003, plein
+  régime +0,010, évitement +0,003 par pas). S2 ne donne que des ordres d'une unité : ni marche en bloc ni
+  `SlowestOfOrder` ; `SettleSteps` ne touche que la récolte. **Ma piste J7a.4 était fausse** : le 3,178 ms de
+  `j7b1_req` vient très probablement de l'état de la machine. Hors simulation : `HOLInterpolatedInstancesProcessor`
+  +0,026 ms par image (`FSlotColors` parcourt bâtiments et joueurs à chaque image ; cache possible). Aucun correctif.
+- S2 relancé seul par `chapter_measures.ps1 -Tests S2:10 -NoS5` (machine au repos) pour confirmer.
+- S2 seul (`-Tag s2_rest`) : **FAIL 3,105 / 3,049 ms** (moyenne 3,077). Charge avant les passages 7 à 14 %, puis 31 % :
+  Opera, Discord, GitKraken, Battle.net, IMF ouverts — machine **pas au repos**. À refaire après fermeture de ces
+  applications (le sous-agent mesurait 2,905 ms sur le même code dans le worktree).
+- **Mesures complètes refaites, Opera fermé** (`-Tag j7b1_rest2`, 5,3 min) : **toutes PASS** — S1 2,263 / 2,169
+  (2,216 ms), **S2 2,829 / 2,850 (2,840 ms)**, S7 2,484 / 2,676 (2,580 ms), S5 30 897 o/s, 22,4 cm ; 232 à 253 fps.
+  Le FAIL de S2 venait de la charge de la machine (Opera). Reprise : **J7b.2** (l'utilisateur est absent : boucles
+  sans essai, rien de visible commité, résumé dans `SummaryToReview.md`).
