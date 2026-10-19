@@ -203,12 +203,11 @@ vérifier sur S1 et S2.
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
    worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
-   **Prochaine étape exacte** : revue et essai de J7b faits (journal « Revue de l'utilisateur » et « Essai de J7b
-   par l'utilisateur », 2026-10-19 ; `SummaryToReview.md` supprimé). Corrections de l'essai validées, **J7b.2 à
-   J7b.5 commitées (ce6a4d2)**, `quick_check` complet PASS (526 s). Suite : (1) **D327**, `quick_check` à deux
-   niveaux (rapide < 1 min par défaut, complet derrière `-Full`) ; (2) fabriquer les gestes validés
-   (`make_peasant_animations.py --soldiers`, fournisseurs, branchement sur Attack / Dying, plus un geste d'attaque du
-   Paysan) ; (3) J7b.6. Mesures au repos (fermer Opera) : S2 à la fin de J7.
+   **Prochaine étape exacte** : J7b.2 à J7b.5 commitées (ce6a4d2), D327 (ee63932), gestes polis, préchargement et
+   ralliement sur fantôme (258c5d0), tout validé par l'utilisateur. Suite : (1) polir le coup du Paysan (hache,
+   `PEASANT_ATTACK` dans `PROPOSED`) avec la méthode des soldats, GIF à faire revoir, puis fabrication et hache affichée
+   (`AttackProp`) ; (2) option : décalage / variation de vitesse des gestes par unité ; (3) J7b.6. Sous-agents : un
+   livrable chacun, 15 min / 300k tokens. Mesures au repos (fermer Opera) : S2 à la fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -4389,3 +4388,135 @@ d'épée).
   complète, D327 ; encore le défaut du script) lancé avant le commit de J7b.2 à J7b.5.
 - `quick_check` complet **PASS** (526 s, toutes les parties, **tests 81/81**). **J7b.2 à J7b.5 commitées : ce6a4d2**
   (dans le worktree, `main` avancé dessus). Suite : D327, puis les gestes, puis J7b.6.
+- **D327 fait** (sous-agent, rien de commité ; seul `Tools/Tests/quick_check.ps1` changé). **Défaut = `tests` +
+  `smoke`** : une partie solo à 2 joueurs (écrans titre et Nouvelle partie en français, lancement, caméra au-dessus du
+  slot 0 et flèche haut, sélection du centre et clic dans le vide, 3 Hommes d'armes qui tuent un Paysan ennemi puis
+  arrivent au point) : **PASS en 23 à 31 s**, tests 81/81. **`-Full`** = l'ancien défaut (sans `smoke`) : PASS en
+  510 s. **`-Parts`** : liste découpée aux virgules (avec `-File`, `net,sources` arrivait en une seule chaîne : cause
+  probable de l'« échec de `net` en partiel ») ; `-Parts net` seul PASS (92 s) ; les parties solo ajoutent `camera`
+  d'elles-mêmes (non essayé seul). Délai maximum 660 s avec `camera`, sinon 120 s.
+- D327 commitée (validée par l'utilisateur). Suite : fabrication des gestes de combat validés et du coup du Paysan.
+- Fabrication des gestes lancée (sous-agent, worktree) : `spear_attack`, `maa_attack`, trois chutes, branchement sur
+  Attack / Dying ; coup du Paysan en **aperçu seulement** (revue de l'utilisateur avant fabrication).
+- **Gestes de combat fabriqués et branchés** (sous-agent, **19 min, 276k tokens** : au-delà de la limite de 15 min ;
+  rien de commité). `A_Spearman_Attack` (56 images à 30 i/s, 1,867 s), `A_ManAtArms_Attack` (42 images, 1,4 s ; frappe
+  sur l'image 21), `A_Spearman_Fall`, `A_ManAtArms_Fall`, `A_Peasant_Fall` (1 s) ; fournisseurs refaits (soldats :
+  4 attaque, 5 chute ; Paysan : 12 chute) ; colonnes `AttackSequence` / `FallSequence` dans la table. **Choix** :
+  30 i/s imposé par Unreal, donc l'attaque est jouée à la vitesse longueur / `AttackInterval` (une boucle = une
+  cadence, frappe à 50 %) ; boucle calée sur le prochain coup du serveur en solo / hôte, et sur un coup qui commence
+  chez un client (décalage possible si changement de cible en gardant le rythme, non essayé) ; **en solo, celui qui
+  frappe se tourne vers sa cible** (ajout non validé) ; le Paysan qui frappe joue son repos en attendant son geste.
+  Chute jouée une fois puis figée. Outils : `anim_rig.py` (clé `frames`), `make_peasant_animations.py` relit aux temps
+  de la séquence. Test `Animation.Strike` (**82/82**), `quick_check` rapide PASS (27 s), `-Parts combat` PASS (109 s,
+  « combat anims »). Captures `Saved_Tests\Screenshots\WindowsEditor\HOL\combat_melee.png`, `combat_fall.png`.
+- **Bilan de la règle des 15 min** : la tâche mêlait trois livrables (fabrication, branchement, aperçu du Paysan).
+  Amélioration : **un sous-agent = un seul livrable** ; l'aperçu du Paysan part dans une boucle à lui.
+- Reste : aperçu du coup du Paysan (boucle suivante), mise à jour du catalogue de `AnimationsInProgress.md`, essai de
+  l'utilisateur, commit.
+- **Aperçu du coup du Paysan fait** (sous-agent, **5 min, 105k tokens** : dans les limites ; rien de fabriqué ni
+  commité). `PEASANT_ATTACK` dans `soldier_poses.py`, rangé dans `PROPOSED` (hors `GESTURES`, donc hors fabrication
+  tant que l'utilisateur n'a pas validé) ; `preview_animation.py` connaît `PROPOSED`. **Coup de hache à deux mains en
+  diagonale** (la hache de la coupe du bois, aucune pièce nouvelle ; frappe au torse à ~1,1 m, garde et fin de geste,
+  pieds fixes), boucle **2 s** (`AttackInterval` du Paysan), 60 images, frappe image 30 (50 %), armement à 40 %. Pour
+  la fabrication : passer dans `GESTURES` et afficher la hache pendant l'attaque (colonne `AttackProp` sur le modèle de
+  `BuildProp`). Aperçus : `peasant_attack_contact_sheet.png`, `peasant_attack_zoom.png`, `peasant_attack_hit.png`,
+  `peasant_attack_windup.png` (`MyCrusader-J5c\Saved\AnimPreview\`). En attente de la revue de l'utilisateur, avec
+  l'essai des gestes des soldats.
+
+### 2026-10-19 — Essai des gestes de combat
+
+- Retours de l'utilisateur :
+  1. **Gel de 2-3 min en lançant un Homme d'armes** : diagnostic confié à un sous-agent (journal, piste : compression
+     d'animation / DDC au premier chargement des séquences fabriquées aujourd'hui).
+  2. **Les gestes marchent mais font « vraiment robot »** : question posée à l'utilisateur.
+  3. **Demande** : le **point de ralliement** doit pouvoir se poser sur un bâtiment **fantôme** (fondation posée,
+     personne n'a encore donné de coup de marteau). À faire.
+- « Robot » vise **l'Homme d'armes et le Lancier** (gestes vus en jeu) ; le coup du Paysan n'est pas encore revu
+  (aperçu seulement). Choix de l'utilisateur : **polir sur un geste d'essai** (attaque de l'Homme d'armes) :
+  accélérations et ralentis, bassin qui mène et bras en retard, dépassement après le coup, puis désynchronisation par
+  unité (décalage et petite variation de vitesse). Boucle 1 : le geste poli en **aperçu animé** (avant / après), sans
+  fabrication.
+- **Diagnostic du gel** (sous-agent, dans les limites ; rien modifié). Un seul gel, **42 s** dans le journal (image
+  359, 17:34:00 → 17:34:42 UTC), à la naissance du premier Homme d'armes produit à la Caserne :
+  `UHOLUnitSubsystem::FindTemplate` charge **de façon synchrone, à la première naissance d'un type**, le maillage et le
+  fournisseur (`TryLoad`) ; en jeu non cuit, ça passe par le DDC (Zen). Or le **zenserver commun** (port 8558) venait
+  d'être tué avec son parent, l'**éditeur sans fenêtre de ProjectShiva** (autre session, arrêt brutal entre 17:33:28 et
+  17:34:00) : le jeu a relancé Zen et l'a attendu 39 s (relance lente : 826 sessions accumulées dans
+  `Zen\Data\sessions`). Pas de compression d'animation ni de shader. **Version cuite** : pas de DDC, donc pas ce gel,
+  mais l'à-coup du chargement synchrone reste (0,23 s pour le Lancier en non cuit). **Correctif jeu** : précharger les
+  types d'unités au chargement de la carte. **Poste** : l'outil Shiva ne doit pas tuer les enfants de son éditeur, ou
+  Zen lancé à part, ou un Zen propre à HeroesOfLiberty (clés à vérifier).
+- **Attaque de l'Homme d'armes polie, en aperçu** (sous-agent, 8 min, 111k tokens ; rien fabriqué ni commité).
+  **Cause de la raideur** (`anim_rig.Rig.sample`) : arrêt à vitesse nulle à chaque pose clé (main en ligne droite),
+  tous les os partent ensemble, ni anticipation ni dépassement, bouclier et bassin passifs. **Outils** (`anim_rig.py`,
+  inactifs par défaut, autres gestes inchangés) : `"curve": "hermite"` avec un `"flow"` par pose (0 arrêt, 1 traversée
+  en arc, > 1 fouet, paire arrivée / départ) ; `"leads"` (avance / retard par os, `"loop": True`), valeurs exactes sur
+  les poses clés (frappe inchangée, image 21). **`maa_attack`** : anticipation, épée qui monte plus loin et marque un
+  temps, taille à pleine vitesse au coup (36 m/s), rebond et garde dépassée, poids pied arrière → genou avant ; bassin
+  en avance de 6 %, bouclier en retard de 4 %. Aperçu `MyCrusader-J5c\Saved\AnimPreview\maa_attack_before_after.gif`
+  (avant / après, côté + RTS). Reste : validation de l'utilisateur, puis Lancier, fabrication, essai.
+- **Préchargement des types d'unités fait** (sous-agent, dans les limites ; rien de commité). `UHOLUnitSubsystem::
+  OnWorldBeginPlay` → `PreloadTypes` : `FindTemplate` pour chaque ligne, **synchrone au chargement de la carte**
+  (cartes à emplacements de départ seulement ; pas le menu ni le test de charge). Solo / serveur : gabarits simulés ;
+  client : gabarits d'affichage ; serveur dédié : ni maillage animé ni statique (fournisseur gardé pour les durées).
+  Journal « Unit types preloaded: 6 of 6 … in 631 ms » (clients ~570 ms, serveur 646 ms) ; avertissement « built after
+  the preload ». `smoke` vérifie les deux lignes. Compilé ; `quick_check` rapide PASS (61 s, tests 82/82), `-Parts
+  net` PASS (96 s).
+- **Point de ralliement d'un fantôme fait** (sous-agent, dans les limites ; rien de commité). Blocage : le serveur
+  (`UHOLProductionSubsystem`) ignorait production et ralliement sur tout bâtiment non fini (D312) ; le client envoyait
+  déjà l'ordre. **Règle** : un bâtiment qui produira (`Produces` non vide) accepte le ralliement dès son fantôme (et en
+  chantier) ; production toujours refusée avant la fin ; maison non finie : refusé. Point gardé jusqu'à la fin (même
+  acteur), visible du seul propriétaire. Groupe de bâtiments (F) : le clic droit pose aussi le point des producteurs
+  non finis. `quick_check` : séquence **`build barracks ghost`** (Caserne fantôme, point posé avant le premier coup,
+  construite avec FastBuild, l'Homme d'armes produit arrive à < 4 m du point) PASS ; correction de `-Parts build` seul
+  (attente « Selection: none » jamais écrite, remplacée par une marque `build none`). `quick_check` rapide PASS (22 s).
+  `-Parts build` relancé par la session principale pour confirmer `camera 2p`.
+- `-Parts build` relancé : **PASS** (261 s ; `camera 2p`, `camera 8p` et les 9 séquences `build`, `barracks ghost`
+  compris). En attente : avis de l'utilisateur sur `maa_attack_before_after.gif`, puis essai (préchargement, ralliement
+  sur fantôme) et commit.
+- Avis de l'utilisateur sur le GIF : **plus de mouvement du bassin pour faire une vraie taille**. Boucle suivante :
+  rotation du bassin (armement en arrière, rotation à travers la taille), nouveau GIF.
+- **Bassin de la taille** (sous-agent, dans les limites ; rien fabriqué). `hip_turn(twist, bend, hip)` dans
+  `soldier_poses.py` (bassin + trois os du dos, tête qui compense) sur les poses de l'attaque ; avance du bassin 7 %.
+  Rotation **bassin 30°** (avant 13,6°), **épaules 69°** (avant 60,6°) ; bassin qui mène (image 18 : bassin −11°,
+  épaules −1°) ; poids −7 cm à l'armement → +8 cm au coup. Pieds, poignée, boucle : 0 cm ; frappe inchangée (image 21,
+  même point, 35,7 m/s). L'épée effleure le haut du bras droit (≤ 0,9 cm, images 19-20). GIF trois vues (côté, RTS,
+  dessus avec lignes hanches / épaules) : `MyCrusader-J5c\Saved\AnimPreview\maa_attack_hips.gif`.
+- Avis de l'utilisateur : **non** — « il faut que la garde de l'épée se trouve devant la position du bouclier, que le
+  haut du corps se tourne en fait ». Compris : à la fin de la taille, la poignée de l'épée passe **devant le bouclier**
+  (côté gauche), portée par une vraie rotation du haut du corps, pas seulement par le bras. Boucle suivante.
+- **Haut du corps** (sous-agent, dans les limites ; rien fabriqué). `turned()`, `shield_turned()` (le bouclier tourne
+  avec le tronc, bras gauche qui s'ouvre), `SHIELD_OPEN`, `SHIELD_BACK` ; poses d'armement, taille, suivi, rebond
+  reprises. **Épaules 124°** (+54° à l'armement → −70° au suivi), **bassin 39°**. Fin du suivi (image 25) : **garde de
+  l'épée devant le bouclier** (garde −36 / 45 / 104 cm, bouclier −37 / 12 / 127), bras droit croisé. Pieds, poignée,
+  boucle : 0 cm ; frappe toujours image 21 (pointe −40 / 115 / 89) ; épée et bras jamais à travers le bouclier. Bouclier
+  assez loin à gauche aux images 27-28 (réglable). GIF : `MyCrusader-J5c\Saved\AnimPreview\maa_attack_torso.gif`.
+- **Attaque de l'Homme d'armes (haut du corps) validée** en aperçu (« ça m'a l'air bien »). Suite : polir l'estoc du
+  Lancier de la même façon (aperçu GIF), puis fabriquer les deux, puis essai (avec préchargement et ralliement sur
+  fantôme) et commit.
+- **Estoc du Lancier poli** (sous-agent, dans les limites ; rien fabriqué). Hermite + flow + leads, `hip_turn()` ;
+  poses GUARD, SET (anticipation), DRAWN, LOADED (armé, temps d'arrêt), LUNGE (frappe, 50 %), OVER (dépassement 4 cm),
+  BACK, SETTLE. **Bassin 23°** (avant 6°), **épaules 54°** (avant 25°) ; le bassin pousse d'abord (11 cm sur le genou
+  avant), puis le tronc, puis les bras. Frappe identique (image 28, pointe à 205 cm devant, 133 cm de haut ; les
+  179 / 124 cm étaient la pointe en garde, `preview_animation` mesure l'image 0 pour une arme à `"edge"`). Pieds et
+  boucle : 0 cm ; mains sur la hampe 4,8 cm max (5,0 avant), 0 à la frappe. GIF :
+  `MyCrusader-J5c\Saved\AnimPreview\spear_attack_polished.gif`.
+- Avis de l'utilisateur sur l'estoc : **la pointe plus au centre** (elle est à 17 cm à droite à la frappe) et **pas
+  tout le corps en même temps** (enchaînement plus marqué : jambes → bassin → tronc → bras). Boucle suivante.
+- **Estoc v3** (sous-agent, dans les limites ; rien fabriqué). Pointe **au centre** à la frappe (droite 0, avant
+  205, haut 133 cm ; garde 0,4 cm ; −1 à +5 cm sur tout le cycle) ; lance à 5-6° de l'axe (droite sur l'axe, la hampe
+  traversait le ventre). **Enchaînement** : leads augmentés (avance du bassin 0,04 → 0,12, rotation 0,08, dos
+  0,065 / 0,05 / 0,038, clavicule 0,028, coudes 0,014) ; départs : poids image 19, bassin 21, tronc 22, bras et lance
+  26 (écart 7 images au lieu de 1), retour dans le même ordre. Pieds et boucle 0 cm ; mains 4,1 cm max, 0 à la frappe ;
+  hampe qui frôle le corps (3 points à 0,4 cm, images 32-34). GIF `MyCrusader-J5c\Saved\AnimPreview\spear_attack_v3.gif`.
+- **Estoc v3 validé** (« très bien »). Fabrication des deux attaques polies lancée (sous-agent).
+- **Attaques polies fabriquées** (sous-agent, dans les limites ; rien de commité). `A_ManAtArms_Attack` (42 images,
+  frappe image 21, arme jusqu'à 37,3 m/s) et `A_Spearman_Attack` (56 images, frappe image 28) refaites en place
+  (fournisseurs inchangés). Relecture compressée : os ≤ 0,024 cm, tête de l'arme ≤ 0,009 cm, racine et boucle 0 cm ;
+  la compression ne déforme pas le fouet. Nouveau contrôle dans `make_peasant_animations.py verify()` (tête de l'arme,
+  vitesse max, image de frappe). `quick_check` rapide PASS (28 s), `-Parts combat` PASS (110 s). Jeu lancé pour
+  l'essai (attaques, préchargement, ralliement sur fantôme).
+- **Essai validé** (« très bien ») : attaques polies, plus de gel, ralliement sur fantôme. `quick_check -Full` PASS
+  (524 s, tests 82/82). **Commit 258c5d0** (worktree, `main` avancé dessus). Catalogue de `AnimationsInProgress.md` mis
+  à jour. Reste avant J7b.6 : polir et faire revoir le coup du Paysan (puis fabrication, hache affichée), décalage des
+  unités entre elles (optionnel).

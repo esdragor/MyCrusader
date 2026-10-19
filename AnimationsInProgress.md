@@ -187,11 +187,11 @@ Règles :
 | Lance (pièce) | Lancier | J7a.3 | **à faire** (2026-10-18, demande de l'utilisateur : animations des troupes) : pièce par script comme les outils du Paysan (`peasant_props.py`), tenue à deux mains, couleur du joueur |
 | Épée et bouclier (pièces) | Homme d'armes | J7a.3 | **à faire** : épée en main droite, bouclier au bras gauche |
 | Repos et marche armés | Lancier, Homme d'armes | J7a.3 | **à faire** : repos et marche de D234 repris, bras qui tiennent l'arme (lance relevée ; épée basse, bouclier devant) ; vitesse de marche réglée comme celle du Paysan |
-| Coup de lance | Lancier | J7b.5 | **à faire** : estoc à deux mains, boucle sur la cadence d'attaque de la table ; unité tournée vers sa cible |
-| Coup d'épée | Homme d'armes | J7b.5 | **à faire** : taille ou estoc, bouclier levé ; boucle sur la cadence d'attaque |
-| Chute (mourant) | toutes les troupes (et le Paysan) | J7b.5 | **à faire** : ~1 s, activité « mourant » avant la destruction différée (D224), pas de cadavre (D86) |
+| Coup de lance | Lancier | J7b.5 | **fait** (2026-10-19) : `A_Spearman_Attack`, estoc à deux mains, 56 images à 30 i/s jouées sur la cadence, frappe image 28 calée sur le coup du serveur ; poli après l'essai (« robot ») : pointe dans l'axe, chaîne poids → bassin → tronc → lance (hermite, `flow`, `leads`) |
+| Coup d'épée | Homme d'armes | J7b.5 | **fait** (2026-10-19) : `A_ManAtArms_Attack`, taille en diagonale portée par le bassin puis le haut du corps (épaules 124°, garde devant le bouclier au suivi), 42 images, frappe image 21 |
+| Chute (mourant) | toutes les troupes (et le Paysan) | J7b.5 | **fait** (2026-10-19) : `A_Spearman_Fall`, `A_ManAtArms_Fall`, `A_Peasant_Fall`, 1 s, bascule en arrière, arme gardée en main, jouée une fois puis figée jusqu'à la disparition |
 | Arc (pièce), tir à l'arc, repos et marche | Archer | J7c.1 / J7c.2 | **à faire** : bander, viser, lâcher (la flèche part au lâcher), arc en main gauche |
-| Attaque du Paysan | Paysan | J7b (si les Paysans combattent) | **en attente** : question du plan de J7 (« Les Paysans combattent-ils ? »), à trancher avant J7b.2 |
+| Attaque du Paysan | Paysan | J7b | **aperçu** (2026-10-19) : les Paysans combattent sur ordre (et plus tard contre les bêtes sauvages) ; coup de hache à deux mains en diagonale (`PEASANT_ATTACK` dans `PROPOSED`), boucle 2 s, frappe à 50 % ; à polir comme les soldats puis à faire revoir avant fabrication (afficher la hache : colonne `AttackProp`) |
 
 ## Prochaine étape exacte
 
