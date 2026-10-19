@@ -201,7 +201,17 @@ vérifier sur S1 et S2.
    formation » et les essais 1 à 5) : rangs, marche en bloc façon AoE4, flèche du clic droit (Ctrl : largeur), Maj en
    file, retour à sa place, couleur du joueur. Orientation au front chez le client reportée à J7b (choix B).
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
-   armée à 2 clients, correctif de `gather`). **Reprise : J7b** (la mêlée).
+   armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
+   worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
+   **Prochaine étape exacte (nouvelle séance)** : l'utilisateur **relit `SummaryToReview.md`** (racine du dépôt
+   principal, non suivi) et répond : (1) revue des aperçus des gestes (`MyCrusader-J5c\Saved\AnimPreview\` : chute
+   en arrière ou en avant, arme gardée ou lâchée, taille ou estoc pour l'Homme d'armes, amplitude de l'estoc) ;
+   (2) « Les Paysans combattent-ils ? » (ils frappent sur ordre depuis J7b.3) ; (3) choix faits sans lui (Q / S / D,
+   couleurs des barres, population libérée 1 s après la mort, cible par emplacement de réplication, front sur
+   6 bits…). Puis : lancer l'essai de J7b depuis le worktree (commande sous « Lancer une session d'essai », chemin
+   `MyCrusader-J5c`), fabriquer les gestes après sa revue (`make_peasant_animations.py --soldiers`, fournisseurs,
+   branchement sur Attack / Dying), commit de J7b.2 à J7b.5, puis J7b.6. Mesures au repos (fermer Opera) : S2 à la
+   fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -4215,3 +4225,119 @@ d'épée).
   (2,216 ms), **S2 2,829 / 2,850 (2,840 ms)**, S7 2,484 / 2,676 (2,580 ms), S5 30 897 o/s, 22,4 cm ; 232 à 253 fps.
   Le FAIL de S2 venait de la charge de la machine (Opera). Reprise : **J7b.2** (l'utilisateur est absent : boucles
   sans essai, rien de visible commité, résumé dans `SummaryToReview.md`).
+
+### 2026-10-19 — J7b.2 : processeur de combat
+
+- **1re boucle** lancée (sous-agent, worktree) : fragments de combat, recherche de cible à ~5 Hz, approche, frappe,
+  mort ; cache de `FSlotColors`.
+- **1re boucle faite** (sous-agent, ~25 min au lieu de 15 : deux relances de `quick_check` ; rien de commité). PV :
+  `FHOLUnitStateFragment::CurrentHealth` (déjà là). `EHOLCombatMode` (Normal / AttackMove / Hold),
+  `FHOLCombatFragment` (cible, dernier attaquant, point d'approche, cadence, attaquants, compteurs, `bOrderedTarget`,
+  `bAttacking`, `bApproaching`). **`UHOLCombatProcessor`** (dernier du groupe Tasks, avant le suivi de chemin ; unités
+  dans l'ordre de leur `UnitId` ; grille de 4 m refaite à chaque pas) : recherche tous les 4 pas, décalée par
+  `(UnitId + pas) % 4`, et tout de suite à la mort de la cible ; candidats = ennemis dans le rayon + cible + dernier
+  attaquant ; approche par marche de tâche (relancée si la cible a bougé de plus de 1 m) ; à portée : `StopWalk`,
+  `StartAttack`, `TickAttack`, `GetDamage` ; mort par `RequestDestroyUnits` (D224, population libérée). Paysans sans
+  agression : ne ripostent pas ; une unité en marche d'ordre, en récolte ou en chantier ne cherche pas. Cvars
+  `hol.Combat.Enabled` (1), `hol.Combat.LogHits`, `hol.Combat.Report [Slot]`. `FSlotColors` en cache (0,5 s).
+  `quick_check` **`combat`** : 3 Hommes d'armes contre 3 Lanciers à 6 m ; premier coup ~1 s ; Lanciers morts à 7,55 /
+  9,7 / 15 s ; 30 coups de 8 = 10 par Lancier ; Hommes d'armes à 103 / 155 / 139 PV (riposte) ; population du slot 1
+  −3. `quick_check` lancé avec `hol.Combat.Enabled 0`, combat réactivé au début de la partie (sinon les unités
+  d'autres emplacements de `anims` se battaient). **Tests 78/78** ; **`quick_check -Parts
+  tests,camera,move,gather,anims,formation,combat` PASS** (166 s). Ouverts : `net` pas lancé (serveur dédié sans
+  `hol.Combat.Enabled 0`) ; un ordre du joueur n'interrompt pas un combat engagé ; pas d'activité « attaque » ; pas de
+  places autour d'une cible.
+- **2e boucle** lancée (sous-agent, worktree) : un ordre du joueur prime sur le combat, `quick_check` complet (`net`
+  compris).
+- **2e boucle faite** (sous-agent, rien de commité). **Un ordre du joueur prime** : `FHOLCombatFragment::Disengage()`
+  (cible, dernier attaquant, `bOrderedTarget`, `bAttacking`, `bApproaching`) appelée par `ApplyQueuedOrders` pour tout
+  ordre de déplacement hors tâche (simple, formation, bloc, Maj au démarrage) ; une unité en récolte ou en chantier est
+  désengagée par le processeur de combat ; pas de recherche pendant une marche d'ordre ; ordre des processeurs vérifié.
+  `combat` étendue : ordre de recul de 20 m en pleine mêlée → plus de cible en 1 s, aucun coup en 4 s, ≥ 8 m parcourus
+  (6 coups avant et après ; x −6113 → −8109) ; les Lanciers poursuivent et les Hommes d'armes réengagent à l'arrivée.
+  `net` : combat actif sur le serveur dédié, « aucun mort » vérifié. `combat` dans les parties par défaut.
+  **`quick_check` complet PASS** (452 s), **tests 78/78**. Ouvert : une marche d'approche émise au pas précédent peut
+  écraser un ordre Maj qui démarre (rare).
+- **J7b.3** lancée (sous-agent, worktree) : ordres d'attaque, attaque-déplacement, arrêt, maintien de position.
+- **J7b.3, 1re boucle faite** (sous-agent, ~25 min, rien de commité). **Touches** (choix sans l'utilisateur, à
+  valider) : **Q** attaque-déplacement (soldats seuls), **S** arrêt, **D** tenir la position (toute sélection de ses
+  unités). `EHOLOrderKind` (Move / Attack / AttackMove / Stop / Hold), `FHOLMoveOrder::TargetUnitId`, `CombatStamp` ;
+  `IssueCombatOrder`, `IssueAttackMoveOrder`, `IssueCombatWalk`. Serveur (`ApplyCombatOrder`) : attaque acceptée si
+  cible vivante et ennemie (D288) ; Attaque / Arrêt / Tenir arrêtent net, annulent récolte et chantier ; Maj met en
+  file l'attaque et l'attaque-déplacement (Arrêt et Tenir immédiats) ; une attaque ordonnée bloque la file Maj.
+  **Marche d'approche périmée** : `EngageSerial` (incrémenté par `Disengage`), marches tamponnées, les périmées
+  rejetées (`TotalStaleCombatWalks`). Attaque-déplacement : recherche pendant la marche, reprise vers sa case après un
+  détour (`bAttackMoveDetour`), Normal à 150 cm. Paysans sous ordre d'attaque : frappent. Client : clic droit sur un
+  ennemi → `RequestAttackUnit` ; Q puis clic gauche (Maj = file ; clic droit ou Échap annule) ; repère rouge.
+  Commandes `hol.Select.Attack`, `.AttackMove`, `.Stop`, `.Hold`. Grille : `EHOLGridCommand` AttackMove / Stop / Hold.
+  `quick_check -Parts tests,menu,camera,move,formation,combat` PASS (144 s), **tests 78/78** ; partie « orders » :
+  4 Paysans attaquent un Lancier (5 coups), S les arrête. Ouverts : localisation non compilée, scénarios
+  attaque-déplacement et tenir, tests `CommandGrid`.
+- **2e boucle** lancée (sous-agent, worktree) : ces trois points, `quick_check` complet.
+- **J7b.3, 2e boucle faite** (sous-agent, ~25 min, rien de commité). Localisation refaite (GatherText, `fill_po.py` :
+  en / ja 168 textes, 0 clé inconnue). Test **`CommandGrid.UnitOrders`** (Q / S / D aux cases 4 / 5 / 6 ; soldats : Q S D ;
+  Paysans : A Z E R + S D ; mixte ; aucun bâtiment sur Q S D ; ennemi : rien ; Caserne : jamais Q S D). `quick_check`
+  « orders » : **attaque-déplacement** (3 Hommes d'armes, Lancier à 4 m du chemin : engagé, tué en 10 coups, arrivée
+  à moins de 4 m du but, écarts ≤ ~1,5 m) ; **tenir** (Paysan ennemi hors de portée : 0 cm, aucune cible ; Lancier au
+  contact : 5 coups, 0 cm). `build hud` / `build barracks` attendent aussi S et D dans la grille des Paysans. **Délai
+  du jeu de `quick_check` 480 → 660 s** (la séquence dure ~487 s). **`quick_check` complet PASS** (492 s, 3e
+  lancement), **tests 79/79**.
+- **J7b.4** lancée (sous-agent, worktree) : réseau du combat (J7-Q5).
+- **J7b.4, 1re boucle faite** (sous-agent, ~35 min, rien de commité). **Bits** : 60 → **62** pour une unité non
+  blessée hors combat (4e bit d'activité, bit « PV pleins ») ; +2 porteur, +4 palier si blessée, +12 cible si elle
+  attaque, +6 front au repos (blessée qui attaque : 78). Activité : 8 attaque, 9 mourant, **10 « inactif face à son
+  front »** (choix B : orientation sur 6 bits, ~5,6°) ; 11-15 libres. **Cible = numéro d'emplacement de réplication
+  sur 12 bits** (4 095 = pas encore répliquée), pas l'identifiant. Palier = ⌈15 × PV / PV max⌉, 0 seulement à 0 PV.
+  Envoi immédiat au changement de palier, d'activité, de cible ou de front. **Mourant** : 20 pas puis destruction ;
+  population libérée à la destruction ; ni ciblé, ni ordres, ni sélection (collision gardée). Fichiers :
+  `HOLUnitReplicationRules` (`SetCombat`, `GetFrontYaw`, `GetHealthLevel`, `IsSameAction`, `GetSendReason`),
+  `HOLNetUnitStateNetSerializer`, `HOLUnitReplicationSubsystem`, `HOLUnitReceptionSubsystem` (`GetTargetUnitId`,
+  `GetTargetEntity`), `HOLNetUnitDisplay` (tourné vers la cible ou le front), `HOLUnitView` (`bIncludeDying`),
+  `DyingSteps = 20`. Test **`Net.CombatSendRule`**, tests `Net.*` étendus ; **tests 80/80**. `quick_check -Parts
+  tests,combat,net` PASS (65 s) **mais `combat` n'a pas tourné** (dépend sans doute d'autres parties) et `net` ne
+  vérifie aucun combat.
+- **2e boucle** lancée (sous-agent, worktree) : combat vu par un client dans `net`, « Attaque » au bloc de sélection,
+  `quick_check` complet.
+- **J7b.4, 2e boucle faite** (sous-agent, rien de commité). `net` : **combat vu par le client 1** — le serveur
+  (séquence `quick_net_server.seq`, `waitfile <Fichier> [S]` avec délai, `HOLTestSequence.cpp`) fait apparaître
+  2 Hommes d'armes du slot 0 et 2 Lanciers du slot 1 sous la caméra du client 1 ; relevés toutes les 0,5 s : paliers
+  qui ne font que baisser (#13 et #14 : 16 → … → 0), `Attacking` avec cible de l'autre slot, Lanciers `Dying` (≈ 6,5 s)
+  puis retirés (≈ 14 s), Hommes d'armes restants, écart au serveur 5 cm ; capture `net_combat_c1` ; serveur : « seuls
+  les 2 Lanciers tués ». **Bloc de sélection** : « Attaque » / « Attacking » / « 攻撃中 » pour une unité seule qui frappe
+  (`ActivityAttacking`, localisation refaite, 169 textes). `combat` et `orders` inchangés avec le délai de mort.
+  `quick_check` complet : tout PASS sauf `net` (ligne « Attaque » du HUD), corrigée puis `-Parts net` PASS (90 s) ;
+  **tests 80/80**. `quick_check` complet relancé (session principale) pour confirmer.
+- **`quick_check` complet de confirmation : PASS** (493 s), toutes les parties, `net combat` compris ; **tests 80/80**.
+  J7b.4 faite (non commitée : J7b entière attend l'essai de l'utilisateur).
+
+### 2026-10-19 — J7b.5 : présentation du combat
+
+- **1re boucle** lancée (sous-agent, worktree) : barres de vie (toujours dans la sélection ; hors sélection si blessée,
+  alliée ou ennemie — nuance J7-Q5) et PV au bloc de sélection. Le geste d'attaque et la chute suivront (aperçus à
+  montrer à l'utilisateur, comme en J7a.3).
+- **1re boucle faite** (sous-agent, rien de commité). **Barres de vie** : un composant instancié `HealthBars` dans
+  `AHOLSelectionMarkers` (plan + `M_GroundFrame`, aucun asset nouveau ; fond + remplissage, face à la caméra, 230 cm
+  au-dessus des pieds, 90 × 12 cm à 45 m, échelle bornée ×0,8 – ×1,8, hors du cône non tracées ; 1 draw call). Règle :
+  toujours pour une unité sélectionnée ; hors sélection seulement si blessée ; jamais pour une mourante. Remplissage :
+  PV exacts en solo et au serveur, palier / 15 chez un client. **Couleur** : vert pour les siennes, rouge pour les
+  autres (pas d'alliés dans le code). Bloc : « PV x / y » pour une unité seule (client : `ceil(max × palier / 15)`),
+  rien pour un groupe. `HOLUnitView::Gather` désormais à chaque image (partagé avec les anneaux) : à mesurer en fin
+  de J7. Commande `hol.Units.Bars` ; `combat` et `net` vérifient la règle ; capture `combat_bars` (barres **petites** en
+  vue haute). `quick_check -Parts tests,menu,camera,move,formation,combat,net` PASS (184 s), **tests 80/80**.
+- Point à soumettre : les Paysans **frappent sur ordre** depuis J7b.3, alors que « Les Paysans combattent-ils ? »
+  restait ouvert au catalogue de `AnimationsInProgress.md` (ligne « Attaque du Paysan »).
+- **2e boucle** lancée (sous-agent, worktree) : coup de lance, coup d'épée, chute — poses et **aperçus seulement**
+  (revue de l'utilisateur avant la fabrication dans Unreal, comme en J7a.3).
+- **2e boucle faite** (sous-agent ; aperçus seulement, rien fabriqué dans Unreal, rien de commité). Dans
+  `soldier_poses.py` : **`spear_attack`** (estoc à deux mains, boucle = cadence 1,875 s, 56 images à 30 i/s, pointe à
+  179 cm devant à 124 cm de haut), **`maa_attack`** (taille en diagonale, bouclier levé, 1,375 s, 44 images à 32 i/s),
+  frappe à **50 % de la boucle** (`ATTACK_HIT_FRACTION`, accordée à la préparation de 50 % du serveur) ;
+  **`spear_fall`, `maa_fall`, `peasant_fall`** (1 s, 30 images, non bouclée ; bascule **en arrière**, arme **gardée
+  en main** et posée au sol, bouclier au bras). Aperçus dans `MyCrusader-J5c\Saved\AnimPreview\` :
+  `soldiers_attack.png`, `soldiers_attack_windup.png`, `troops_fall.png`, `troops_fall_mid.png` et les planches de
+  chaque geste. **En attente de la revue de l'utilisateur** (sens de la chute, arme gardée ou lâchée, taille ou estoc
+  pour l'Homme d'armes, amplitude de l'estoc), puis fabrication, fournisseurs, branchement sur Attack / Dying.
+- **Arrêt des boucles autonomes** : la suite (fabrication des gestes, J7b.6 avec essai) attend l'utilisateur. Résumé
+  dans `SummaryToReview.md` (racine du dépôt principal, non suivi).
+- **Fin de séance** (demande de l'utilisateur) : prochaine étape écrite au point de reprise — l'utilisateur relit
+  `SummaryToReview.md` et répond à ses questions, puis essai de J7b.
