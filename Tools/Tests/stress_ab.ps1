@@ -5,13 +5,16 @@
 #   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-A -Test S7 -Seconds 20 -LogName a1
 #   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-J5c -Test S7 -Seconds 20 -LogName b1
 # A clean side A: a detached worktree at the base commit, built (git worktree add --detach <dir> <commit>; Build.bat).
+# -Trace also records an Insights trace (<LogName>.utrace; the trace costs time: compare traced runs only with traced
+# runs), to read with: python Tools\Tests\trace_report.py Saved_Tests\Logs\<LogName>.utrace
 param(
     [Parameter(Mandatory)] [string] $Project,
     [string] $Test = "S7",
     [int] $Seconds = 20,
     [Parameter(Mandatory)] [string] $LogName,
     [string] $Extra = "",
-    [string] $ExtraExec = ""
+    [string] $ExtraExec = "",
+    [switch] $Trace
 )
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
 $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation
@@ -20,6 +23,11 @@ $Exe = Join-Path $Root "Engine\Binaries\Win64\UnrealEditor.exe"
 $LogDir = Join-Path $Project "Saved_Tests\Logs"
 New-Item -ItemType Directory -Force $LogDir | Out-Null
 $Log = Join-Path $LogDir "$LogName.log"
+if ($Trace) {
+    $TraceFile = Join-Path $LogDir "$LogName.utrace"
+    Remove-Item $TraceFile -ErrorAction SilentlyContinue
+    $Extra = "$Extra -trace=cpu,frame,bookmark,region,log -tracefile=`"$TraceFile`""
+}
 $Others = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'HeroesOfLiberty' -and $_.Name -match 'Unreal|UnrealBuildTool|dotnet' }
 if ($Others) { Write-Host "BUSY: $($Others | ForEach-Object { $_.ProcessId })"; exit 1 }
 $ArgList = "`"$UProject`" /Game/Maps/StressTest -game -RenderOffScreen -ResX=888 -ResY=500 -saveddirsuffix=Tests -nosplash -nosound $Extra -abslog=`"$Log`" -ExecCmds=`"r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,$ExtraExec hol.StressTest $Test 2000 $Seconds quit`""

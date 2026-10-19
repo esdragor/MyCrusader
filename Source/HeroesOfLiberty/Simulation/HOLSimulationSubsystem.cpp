@@ -11,6 +11,7 @@
 #include "MassProcessor.h"
 #include "MassProcessorDependencySolver.h"
 #include "MassSimulationSubsystem.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HeroesOfLibertyLog.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -144,6 +145,8 @@ void UHOLSimulationSubsystem::RunStep()
 	// Listeners (the stress test) run before the step's chrono: their orders belong to this step, their cost does not.
 	OnStepStarted.Broadcast(StepIndex);
 
+	// Insights scopes for Tools/Tests/trace_report.py; the processors already have theirs (Mass).
+	TRACE_CPUPROFILER_EVENT_SCOPE(HOLSimulationStep);
 	const double StartSeconds = FPlatformTime::Seconds();
 
 	// Births are served at the head of the step and destructions applied at its tail (D224): neither is a
@@ -151,7 +154,11 @@ void UHOLSimulationSubsystem::RunStep()
 	// step is the unit of the simulation (D219), so they belong to it.
 	UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	const double BirthStartSeconds = FPlatformTime::Seconds();
-	const int32 NumUnitsBorn = Units ? Units->ServeBirthRequests() : 0;
+	int32 NumUnitsBorn = 0;
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(HOLSimulationBirths);
+		NumUnitsBorn = Units ? Units->ServeBirthRequests() : 0;
+	}
 	const double BirthMs = (FPlatformTime::Seconds() - BirthStartSeconds) * 1000.0;
 
 	{
@@ -181,7 +188,11 @@ void UHOLSimulationSubsystem::RunStep()
 	}
 
 	const double DestructionStartSeconds = FPlatformTime::Seconds();
-	const int32 NumUnitsDestroyed = Units ? Units->FlushDestructions() : 0;
+	int32 NumUnitsDestroyed = 0;
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(HOLSimulationDestructions);
+		NumUnitsDestroyed = Units ? Units->FlushDestructions() : 0;
+	}
 	const double DestructionMs = (FPlatformTime::Seconds() - DestructionStartSeconds) * 1000.0;
 
 	const double StepMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.0;

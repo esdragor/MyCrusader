@@ -22,6 +22,7 @@
 #include "MassRepresentationFragments.h"
 #include "HeroesOfLibertyLog.h"
 #include "NavigationSystem.h"
+#include "ProfilingDebugging/MiscTrace.h"
 #include "RenderTimer.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -1086,6 +1087,8 @@ void UHOLStressTestSubsystem::PlaceViewer() const
 void UHOLStressTestSubsystem::BeginMeasure()
 {
 	Phase = EPhase::Measuring;
+	// The measure window in an Insights trace (stress_ab.ps1 -Trace, Tools/Tests/trace_report.py).
+	TRACE_BEGIN_REGION(TEXT("HOLMeasure"));
 	PhaseSteps = 0;
 	FrameTimes.Reset();
 	GameThreadMsSum = RenderThreadMsSum = GpuMsSum = 0.0;
@@ -1347,6 +1350,7 @@ void UHOLStressTestSubsystem::FinishMeasure()
 	using namespace UE::HeroesOfLiberty::StressTest;
 
 	Phase = EPhase::Idle;
+	TRACE_END_REGION(TEXT("HOLMeasure"));
 
 	double TotalFrameSeconds = 0.0;
 	for (const float FrameTime : FrameTimes)
