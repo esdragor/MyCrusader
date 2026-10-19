@@ -1814,7 +1814,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		for (AHOLBuilding* Member : Group)
 		{
 			const FHOLBuildingTypeRow* Type = Member->GetType();
-			if (Type && !Type->Produces.IsEmpty() && Member->IsFinished())
+			// Finished or not: one that will produce takes its rally point from its ghost on (the user's request of 2026-10-19).
+			if (Type && !Type->Produces.IsEmpty())
 			{
 				ServerSetRallyPoint(Member, Point, RallySource, RallySite);
 				++Rallied;

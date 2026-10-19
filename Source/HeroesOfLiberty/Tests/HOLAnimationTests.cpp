@@ -6,6 +6,7 @@
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
 #include "Presentation/HOLUnitAnimation.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 
@@ -51,6 +52,8 @@ namespace UE::HeroesOfLiberty::Tests::Animation
 		Type.BuildSequence = 11;
 		Type.BuildPlayRate = 1.f;
 		Type.BuildProp = 7;
+		Type.FallSequence = 12;
+		Type.AttackInterval = 2.f;
 		return Type;
 	}
 
@@ -215,6 +218,75 @@ bool FHOLAnimationChoiceTest::RunTest(const FString& Parameters)
 	const FHOLUnitAnimationChoice SoldierStanding = Choose(Soldier, WithLoad(MakeInput(EHOLUnitActivity::Idle, 0.f), EHOLResource::Gold));
 	TestEqual(TEXT("no loaded idle: idle"), SoldierStanding.Sequence, Soldier.IdleSequence);
 	TestEqual(TEXT("no props: none"), static_cast<int32>(SoldierStanding.Prop), 0);
+	TestEqual(TEXT("no strike: idle"), Choose(Soldier, MakeInput(EHOLUnitActivity::Attacking, 0.f)).Sequence, Soldier.IdleSequence);
+	TestEqual(TEXT("no fall: idle"), Choose(Soldier, MakeInput(EHOLUnitActivity::Dying, 0.f)).Sequence, Soldier.IdleSequence);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAnimationStrikeTest, "HeroesOfLiberty.Animation.Strike", UE::HeroesOfLiberty::Tests::Animation::Flags)
+bool FHOLAnimationStrikeTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Animation;
+	using HOLUnitAnimation::Choose;
+
+	// J7b.5: the strike, looped at the attack cadence, and the fall, once. A Spearman as the table has it (strike 4, fall
+	// 5; its strike baked 56 frames at 30 fps, 1.867 s, for a 1.875 s cadence).
+	FHOLUnitTypeConstants Spearman;
+	Spearman.Speed = 583.f;
+	Spearman.MeshScale = 1.5f;
+	Spearman.IdleSequence = 2;
+	Spearman.WalkSequence = 3;
+	Spearman.AttackSequence = 4;
+	Spearman.FallSequence = 5;
+	Spearman.AttackInterval = 1.875f;
+	Spearman.SequenceLengths = { 11.333f, 1.f, 11.333f, 1.f, 56.f / 30.f, 1.f };
+	const FHOLUnitAnimationChoice Strike = Choose(Spearman, MakeInput(EHOLUnitActivity::Attacking, 0.f));
+	TestEqual(TEXT("striking: the strike"), Strike.Sequence, 4);
+	TestTrue(TEXT("striking: phased on the hits"), Strike.bStrike);
+	TestFalse(TEXT("striking: looped"), Strike.bOnce);
+	TestEqual(TEXT("one loop lasts one attack interval: its length / AttackInterval"), Strike.PlayRate, (56.f / 30.f) / 1.875f, UE_KINDA_SMALL_NUMBER);
+	TestEqual(TEXT("striking: no prop"), static_cast<int32>(Strike.Prop), 0);
+	TestEqual(TEXT("pushed while striking: keeps striking"), Choose(Spearman, MakeInput(EHOLUnitActivity::Attacking, 583.f, 4)).Sequence, 4);
+	const FHOLUnitAnimationChoice Fall = Choose(Spearman, MakeInput(EHOLUnitActivity::Dying, 0.f));
+	TestEqual(TEXT("dying: the fall"), Fall.Sequence, 5);
+	TestTrue(TEXT("dying: once, held on its last frame"), Fall.bOnce);
+	TestFalse(TEXT("dying: not a strike"), Fall.bStrike);
+	TestEqual(TEXT("the fall at its own rate"), Fall.PlayRate, 1.f);
+	TestEqual(TEXT("dying while pushed: the fall"), Choose(Spearman, MakeInput(EHOLUnitActivity::Dying, 583.f, 3)).Sequence, 5);
+	FHOLUnitTypeConstants NoLength = Spearman;
+	NoLength.SequenceLengths.Reset();
+	TestEqual(TEXT("length unknown: the strike at rate 1"), Choose(NoLength, MakeInput(EHOLUnitActivity::Attacking, 0.f)).PlayRate, 1.f);
+
+	// The Peasant (J7b: it fights on order): no strike made yet, its idle; its fall.
+	const FHOLUnitTypeConstants Peasant = MakePeasant();
+	TestEqual(TEXT("Peasant striking, no strike yet: idle"), Choose(Peasant, MakeInput(EHOLUnitActivity::Attacking, 0.f)).Sequence, 0);
+	TestEqual(TEXT("Peasant dying: its fall"), Choose(Peasant, MakeInput(EHOLUnitActivity::Dying, 0.f)).Sequence, 12);
+	TestEqual(TEXT("Peasant dying with a load: its fall, no prop"), static_cast<int32>(Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::Dying, 0.f),
+		EHOLResource::Wood)).Prop), 0);
+
+	// The gestures' hit at half the loop is the server's wind-up (soldier_poses.py ATTACK_HIT_FRACTION).
+	TestEqual(TEXT("hit share = the wind-up"), HOLUnitAnimation::StrikeHitShare, static_cast<float>(HOLCombat::WindUpPercent) / 100.f);
+
+	// Start position: the hit (at half the loop) falls in SecondsToHit, at the play rate, wrapped into the loop.
+	using HOLUnitAnimation::GetStrikeStartPosition;
+	TestEqual(TEXT("hit now: start on the hit"), GetStrikeStartPosition(1.875f, 1.f, 0.f), 0.9375f, 0.0001f);
+	TestEqual(TEXT("hit in half an interval: start at the loop's start"), GetStrikeStartPosition(1.875f, 1.f, 0.9375f), 0.f, 0.0001f);
+	TestEqual(TEXT("hit in a whole interval: half a loop back, wrapped"), GetStrikeStartPosition(1.875f, 1.f, 1.875f), 0.9375f, 0.0001f);
+	TestEqual(TEXT("hit in 1.2 s: wrapped into the loop"), GetStrikeStartPosition(1.875f, 1.f, 1.2f), 1.875f + 0.9375f - 1.2f, 0.0001f);
+	TestEqual(TEXT("at the play rate: the sequence's own time"), GetStrikeStartPosition(1.4f, 1.4f / 1.375f, 0.6875f), 0.f, 0.0001f);
+	TestEqual(TEXT("no length: 0"), GetStrikeStartPosition(0.f, 1.f, 0.5f), 0.f);
+
+	// Time to the next hit: whole steps (the hit falls at the step that takes the cool-down to 0).
+	using HOLUnitAnimation::GetSecondsToHit;
+	TestEqual(TEXT("887 ms on 50 ms steps: 18 steps"), GetSecondsToHit(887, 50), 0.9f, 0.0001f);
+	TestEqual(TEXT("900 ms: 18 steps"), GetSecondsToHit(900, 50), 0.9f, 0.0001f);
+	TestEqual(TEXT("none left: now"), GetSecondsToHit(0, 50), 0.f);
+	TestEqual(TEXT("negative: now"), GetSecondsToHit(-20, 50), 0.f);
+	// A strike that just started (a client's guess): the wind-up less the step that brought it, its hit at half the loop
+	// within a step.
+	const int32 IntervalMs = HOLCombat::ToMilliseconds(1.875f);
+	const float ClientStart = GetStrikeStartPosition(56.f / 30.f, Strike.PlayRate, GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(IntervalMs) - 50, 50));
+	TestTrue(TEXT("a client starts a strike near the loop's start"), ClientStart >= 0.f && ClientStart <= 0.06f);
 	return true;
 }
 
@@ -242,6 +314,8 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("building sequence"), Constants.BuildSequence, Expected.BuildSequence);
 	TestEqual(TEXT("building play rate"), Constants.BuildPlayRate, Expected.BuildPlayRate);
 	TestEqual(TEXT("building prop: the hammer"), Constants.BuildProp, Expected.BuildProp);
+	TestEqual(TEXT("no strike yet (J7b.5)"), Constants.AttackSequence, INDEX_NONE);
+	TestEqual(TEXT("fall sequence (J7b.5)"), Constants.FallSequence, Expected.FallSequence);
 	// The props live in the Peasant's own mesh, drawn with the material that hides all but the one named (J5c.2).
 	TestEqual(TEXT("Peasant's mesh"), Peasant->SkinnedMesh.ToSoftObjectPath().GetAssetName(), TEXT("SKM_Peasant"));
 
@@ -271,6 +345,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("standing with stone"), SequenceName(Constants.CarryIdleSequences.Stone), TEXT("A_Peasant_IdleCarryStone"));
 	TestEqual(TEXT("standing with gold"), SequenceName(Constants.CarryIdleSequences.Gold), TEXT("A_Peasant_IdleCarryStone"));
 	TestEqual(TEXT("building"), SequenceName(Constants.BuildSequence), TEXT("A_Peasant_Build"));
+	TestEqual(TEXT("falling"), SequenceName(Constants.FallSequence), TEXT("A_Peasant_Fall"));
 	// Sequences 0-7 are the soldiers' provider's, in its order (the same indices for both meshes).
 	const FHOLUnitTypeRow* ArcherRow = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Archer"), TEXT("Animation test"));
 	const UAnimSequenceTransformProviderData* SoldierProvider = ArcherRow ? ArcherRow->AnimationProvider.LoadSynchronous() : nullptr;
@@ -284,7 +359,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 		}
 		TestTrue(TEXT("the Peasant's provider starts with the soldiers' sequences, same order"), bSameStart);
 	}
-	TestEqual(TEXT("the Peasant's provider: 12 sequences"), Provider->GetSequences().Num(), 12);
+	TestEqual(TEXT("the Peasant's provider: 13 sequences"), Provider->GetSequences().Num(), 13);
 
 	// The soldiers keep idle 0 and walk 1 of the same provider, and nothing else.
 	for (const TCHAR* Soldier : { TEXT("LightInfantry"), TEXT("Archer") })
@@ -295,17 +370,20 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			TestTrue(*FString::Printf(TEXT("%s: idle 0, walk 1, no gesture, carrying walk, loaded idle, building nor prop"), Soldier), Row->IdleSequence == 0
 				&& Row->WalkSequence == 1 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
 				&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
-				&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0);
+				&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0 && Row->AttackSequence == INDEX_NONE && Row->FallSequence == INDEX_NONE);
 			TestEqual(*FString::Printf(TEXT("%s keeps the mannequin's mesh"), Soldier), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(),
 				TEXT("SKM_Mannequin_Classic"));
 		}
 	}
 
-	// The Spearman and the Man-at-arms (J7a.3): their own mesh and provider, 4 sequences only (0 idle and 1 walk of the
-	// mannequin, 2 the armed idle, 3 the armed walk; user's choice), idle 2, walk 3, no gesture nor prop.
-	struct FArmedSoldier { const TCHAR* Name; const TCHAR* Mesh; const TCHAR* Idle; const TCHAR* Walk; };
-	for (const FArmedSoldier& Soldier : { FArmedSoldier{ TEXT("Spearman"), TEXT("SKM_Spearman"), TEXT("A_Spearman_Idle"), TEXT("A_Spearman_Walk") },
-			FArmedSoldier{ TEXT("ManAtArms"), TEXT("SKM_ManAtArms"), TEXT("A_ManAtArms_Idle"), TEXT("A_ManAtArms_Walk") } })
+	// The Spearman and the Man-at-arms (J7a.3): their own mesh and provider, their own sequences only (0 idle and 1 walk of
+	// the mannequin, 2 the armed idle, 3 the armed walk; user's choice; J7b.5: 4 the strike, 5 the fall), idle 2, walk 3,
+	// strike 4, fall 5, no gesture nor prop.
+	struct FArmedSoldier { const TCHAR* Name; const TCHAR* Mesh; const TCHAR* Idle; const TCHAR* Walk; const TCHAR* Attack; const TCHAR* Fall; };
+	for (const FArmedSoldier& Soldier : { FArmedSoldier{ TEXT("Spearman"), TEXT("SKM_Spearman"), TEXT("A_Spearman_Idle"), TEXT("A_Spearman_Walk"),
+				TEXT("A_Spearman_Attack"), TEXT("A_Spearman_Fall") },
+			FArmedSoldier{ TEXT("ManAtArms"), TEXT("SKM_ManAtArms"), TEXT("A_ManAtArms_Idle"), TEXT("A_ManAtArms_Walk"), TEXT("A_ManAtArms_Attack"),
+				TEXT("A_ManAtArms_Fall") } })
 	{
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier.Name, TEXT("Animation test"));
 		if (!TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier.Name), Row))
@@ -317,6 +395,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			&& Row->WalkSequence == 3 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
 			&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
 			&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0);
+		TestTrue(*FString::Printf(TEXT("%s: strike 4, fall 5"), Soldier.Name), Row->AttackSequence == 4 && Row->FallSequence == 5);
 		const UAnimSequenceTransformProviderData* SoldierOwn = Row->AnimationProvider.LoadSynchronous();
 		if (TestNotNull(*FString::Printf(TEXT("%s's animation provider"), Soldier.Name), SoldierOwn))
 		{
@@ -325,11 +404,13 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			{
 				return Own.IsValidIndex(Index) && Own[Index].Sequence ? Own[Index].Sequence->GetName() : FString(TEXT("none"));
 			};
-			TestEqual(*FString::Printf(TEXT("%s's provider: 4 sequences"), Soldier.Name), Own.Num(), 4);
+			TestEqual(*FString::Printf(TEXT("%s's provider: 6 sequences"), Soldier.Name), Own.Num(), 6);
 			TestEqual(*FString::Printf(TEXT("%s: 0 the mannequin's idle"), Soldier.Name), OwnName(0), FString(TEXT("A_SW_Idle")));
 			TestEqual(*FString::Printf(TEXT("%s: 1 the mannequin's walk"), Soldier.Name), OwnName(1), FString(TEXT("A_SW_Walk_F")));
 			TestEqual(*FString::Printf(TEXT("%s: 2 the armed idle"), Soldier.Name), OwnName(2), FString(Soldier.Idle));
 			TestEqual(*FString::Printf(TEXT("%s: 3 the armed walk"), Soldier.Name), OwnName(3), FString(Soldier.Walk));
+			TestEqual(*FString::Printf(TEXT("%s: 4 the strike"), Soldier.Name), OwnName(4), FString(Soldier.Attack));
+			TestEqual(*FString::Printf(TEXT("%s: 5 the fall"), Soldier.Name), OwnName(5), FString(Soldier.Fall));
 			TestTrue(*FString::Printf(TEXT("%s's provider drives its own mesh"), Soldier.Name), SoldierOwn->GetSkinnedAsset() != nullptr
 				&& SoldierOwn->GetSkinnedAsset()->GetName() == Soldier.Mesh);
 		}

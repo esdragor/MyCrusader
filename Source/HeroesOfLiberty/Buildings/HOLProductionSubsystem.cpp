@@ -170,8 +170,10 @@ void UHOLProductionSubsystem::ApplyOrders()
 		{
 			continue;
 		}
-		// A building under construction neither produces nor rallies (D312).
-		if (!Building->IsFinished())
+		// A building under construction produces nothing (D312); one that will produce takes its rally point already, from its
+		// ghost on (the user's request of 2026-10-19): kept through the site to the finished building.
+		const bool bEarlyRally = Order.Kind == FHOLProductionCommand::EKind::Rally && !Type->Produces.IsEmpty();
+		if (!Building->IsFinished() && !bEarlyRally)
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: %s not finished"), Order.PlayerIndex, *Building->GetTypeName().ToString());
 			continue;

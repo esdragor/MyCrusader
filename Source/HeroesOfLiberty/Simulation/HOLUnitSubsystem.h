@@ -110,6 +110,7 @@ public:
 
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
+	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
 
 private:
@@ -124,6 +125,11 @@ private:
 	};
 
 	const UDataTable* GetTypeTable() const;
+	/**
+	 * Builds the template of every type of the table, the kind this world uses (display entities on a client), with
+	 * their mesh and animation provider, while the map loads: the first birth of a type loads nothing in the match.
+	 */
+	void PreloadTypes(UWorld& InWorld);
 	/** Births created in one step: the setting, or the whole queue when it is 0 (stress tests measure the peak). */
 	int32 GetBirthBudget() const;
 	void CreateUnitEntities(const FHOLUnitSpawnRequest& Request, const FMassEntityTemplate& Template, int32 Count);
@@ -143,6 +149,8 @@ private:
 	TMap<FName, TSharedPtr<struct FMassEntityConfig>> DisplayTemplateCache;
 	/** Fingerprint of each type's constants (D222), to catch two types sharing one copy. */
 	TMap<uint32, FName> ConstantsCrcToType;
+	/** PreloadTypes() ran: a template built from now on is a load in the middle of the match (logged as a warning). */
+	bool bTypesPreloaded = false;
 	/** Keeps the traits alive: FMassEntityConfig is held outside of a UPROPERTY. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMassEntityTraitBase>> Traits;

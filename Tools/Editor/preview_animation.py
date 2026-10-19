@@ -43,6 +43,7 @@ import soldier_props  # noqa: E402
 
 # Every gesture the preview knows: the Peasant's and the soldiers' (J7a.3).
 ALL_GESTURES = dict(peasant_poses.GESTURES, **soldier_poses.GESTURES)
+ALL_GESTURES.update(getattr(soldier_poses, "PROPOSED", {}))  # proposals under review, not baked yet
 import peasant_props  # noqa: E402
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Data")

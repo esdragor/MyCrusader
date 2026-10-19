@@ -24,6 +24,7 @@
 #include "MassNavigationFragments.h"
 #include "Movement/MassMovementTrait.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLStartSlot.h"
 #include "NavigationSystem.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
@@ -97,8 +98,44 @@ bool UHOLUnitSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) c
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
 }
 
+void UHOLUnitSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
+
+	// A match map only (its start slots): the front end's map makes no unit, a stress test map builds its one type at
+	// its first births, before its measure.
+	if (AHOLStartSlot::WorldHasSlots(&InWorld))
+	{
+		PreloadTypes(InWorld);
+	}
+}
+
+void UHOLUnitSubsystem::PreloadTypes(UWorld& InWorld)
+{
+	// Synchronous, while the map loads: the map itself is loaded synchronously around it, so this blocks no frame of the
+	// match, and the templates (the archetypes) are built here too, which an asynchronous load would still leave to the
+	// first birth. A client draws display entities only (D271); a dedicated server draws nothing, so FindTemplate leaves
+	// the meshes there.
+	const double StartSeconds = FPlatformTime::Seconds();
+	const EHOLUnitTemplateKind Kind = InWorld.GetNetMode() == NM_Client ? EHOLUnitTemplateKind::Display : EHOLUnitTemplateKind::Simulation;
+	TArray<FName> TypeNames;
+	GetTypeNames(TypeNames);
+	int32 NumBuilt = 0;
+	for (const FName TypeName : TypeNames)
+	{
+		NumBuilt += FindTemplate(TypeName, Kind) != nullptr ? 1 : 0;
+	}
+	bTypesPreloaded = true;
+	UE_LOG(LogHOLSimulation, Display, TEXT("Unit types preloaded: %d of %d (%s) as %s, meshes %s, in %.0f ms"), NumBuilt, TypeNames.Num(),
+		*FString::JoinBy(TypeNames, TEXT(", "), [](const FName Name) { return Name.ToString(); }),
+		Kind == EHOLUnitTemplateKind::Display ? TEXT("display entities") : TEXT("simulated units"),
+		InWorld.GetNetMode() == NM_DedicatedServer ? TEXT("left out (dedicated server)") : TEXT("loaded"),
+		(FPlatformTime::Seconds() - StartSeconds) * 1000.);
+}
+
 void UHOLUnitSubsystem::Deinitialize()
 {
+	bTypesPreloaded = false;
 	Units.Reset();
 	EntityToId.Reset();
 	BirthQueue.Reset();
@@ -174,13 +211,22 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 		return nullptr;
 	}
 
+	if (bTypesPreloaded)
+	{
+		// PreloadTypes() built every type of this world's kind: this one loads its assets in the middle of the match.
+		UE_LOG(LogHOLSimulation, Warning, TEXT("Unit type '%s' built after the preload (%s): its assets load during the match"),
+			*TypeName.ToString(), bDisplay ? TEXT("display entity") : TEXT("simulated unit"));
+	}
+
 	FHOLUnitTypeConstants Constants = Row->ToConstants(TypeName);
 
 	// Instanced skeletal mesh (D232), drawn when the type has one and its animation provider loads; the static mesh
-	// stays the fallback (AnimToTexture, D232).
-	USkeletalMesh* SkinnedMesh = Cast<USkeletalMesh>(Constants.SkinnedMesh.TryLoad());
+	// stays the fallback (AnimToTexture, D232). A dedicated server draws nothing (Mass' visualization trait adds nothing
+	// there): it loads no mesh, only the animation provider, whose sequence lengths time the gestures.
+	const bool bDrawn = !GetWorld()->IsNetMode(NM_DedicatedServer);
+	USkeletalMesh* SkinnedMesh = bDrawn ? Cast<USkeletalMesh>(Constants.SkinnedMesh.TryLoad()) : nullptr;
 	UAnimSequenceTransformProviderData* AnimationProvider = Cast<UAnimSequenceTransformProviderData>(Constants.AnimationProvider.TryLoad());
-	const bool bSkinned = SkinnedMesh && AnimationProvider;
+	const bool bSkinned = AnimationProvider && (bDrawn ? SkinnedMesh != nullptr : !Constants.SkinnedMesh.IsNull());
 	if (bSkinned)
 	{
 		const int32 NumSequences = AnimationProvider->GetSequences().Num();
@@ -227,6 +273,16 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 			*Constants.AnimationProvider.ToString()))
 		{
 			Constants.BuildSequence = INDEX_NONE;
+		}
+		// Fighting (J7b.5): the same, a strike or a fall out of range dropped (idle played).
+		for (int32* Sequence : { &Constants.AttackSequence, &Constants.FallSequence })
+		{
+			if (!ensureMsgf(*Sequence >= INDEX_NONE && *Sequence < NumSequences, TEXT("Unit type '%s': %s sequence %d out of the %d sequences of %s"),
+				*TypeName.ToString(), Sequence == &Constants.AttackSequence ? TEXT("attack") : TEXT("fall"), *Sequence, NumSequences,
+				*Constants.AnimationProvider.ToString()))
+			{
+				*Sequence = INDEX_NONE;
+			}
 		}
 		if (!ensureMsgf(Constants.BuildProp >= 0 && Constants.BuildProp <= FHOLResourceProps::MaxId, TEXT("Unit type '%s': building prop %d out of 0-%d"),
 			*TypeName.ToString(), Constants.BuildProp, FHOLResourceProps::MaxId))
@@ -289,7 +345,11 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 
 	UMassMovableVisualizationTrait* VisualizationTrait = NewObject<UMassMovableVisualizationTrait>(this);
 	const FTransform MeshOffset(FRotator(0.f, Constants.MeshYawOffset, 0.f));
-	if (bSkinned)
+	if (!bDrawn)
+	{
+		// No mesh on a dedicated server (above).
+	}
+	else if (bSkinned)
 	{
 		FMassSkinnedMeshInstanceVisualizationMeshDesc& MeshDesc = VisualizationTrait->SkinnedMeshInstanceDesc.Meshes.AddDefaulted_GetRef();
 		MeshDesc.Asset = SkinnedMesh;
@@ -311,7 +371,8 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 		UE_LOG(LogHOLSimulation, Warning, TEXT("Unit type '%s' has no mesh (%s): it stays invisible"), *TypeName.ToString(), *Constants.Mesh.ToString());
 	}
 	// Instances at every distance: D218 measures 2 000 units on screen.
-	const EMassRepresentationType InstanceRepresentation = bSkinned ? EMassRepresentationType::SkinnedMeshInstance : EMassRepresentationType::StaticMeshInstance;
+	const EMassRepresentationType InstanceRepresentation = !bDrawn ? EMassRepresentationType::None
+		: bSkinned ? EMassRepresentationType::SkinnedMeshInstance : EMassRepresentationType::StaticMeshInstance;
 	for (int32 LODIndex = 0; LODIndex < EMassLOD::Max; ++LODIndex)
 	{
 		VisualizationTrait->Params.LODRepresentation[LODIndex] = LODIndex == EMassLOD::Off ? EMassRepresentationType::None : InstanceRepresentation;
@@ -342,7 +403,8 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 	Cache.Add(TypeName, Config);
 	UE_LOG(LogHOLSimulation, Log, TEXT("Unit type '%s' (%s%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm, drawn as %s"),
 		*TypeName.ToString(), *Row->DisplayName, bDisplay ? TEXT(", display entity") : TEXT(""), Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
-		bSkinned ? *FString::Printf(TEXT("skinned instances of %s"), *SkinnedMesh->GetName()) : TEXT("static instances"));
+		!bDrawn ? TEXT("nothing (dedicated server)")
+			: bSkinned ? *FString::Printf(TEXT("skinned instances of %s"), *SkinnedMesh->GetName()) : TEXT("static instances"));
 
 	return &Config->GetOrCreateEntityTemplate(*GetWorld());
 }

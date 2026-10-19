@@ -14,9 +14,43 @@ float HOLUnitAnimation::GetWalkRateShare(const float Speed, const float WalkSpee
 	return WalkSpeed > UE_KINDA_SMALL_NUMBER ? FMath::Clamp(Speed / WalkSpeed, MinWalkRateShare, MaxWalkRateShare) : 1.f;
 }
 
+float HOLUnitAnimation::GetStrikeStartPosition(const float Length, const float PlayRate, const float SecondsToHit)
+{
+	if (Length <= UE_KINDA_SMALL_NUMBER)
+	{
+		return 0.f;
+	}
+	const float Position = FMath::Fmod(StrikeHitShare * Length - FMath::Max(SecondsToHit, 0.f) * PlayRate, Length);
+	return Position < 0.f ? Position + Length : Position;
+}
+
+float HOLUnitAnimation::GetSecondsToHit(const int32 CooldownMs, const int32 StepMs)
+{
+	if (StepMs <= 0)
+	{
+		return FMath::Max(CooldownMs, 0) / 1000.f;
+	}
+	const int32 Steps = FMath::DivideAndRoundUp(FMath::Max(CooldownMs, 0), StepMs);
+	return static_cast<float>(Steps * StepMs) / 1000.f;
+}
+
 FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Type, const FHOLUnitAnimationInput& Input)
 {
 	FHOLUnitAnimationChoice Choice;
+	if (Input.Activity == EHOLUnitActivity::Dying && Type.FallSequence != INDEX_NONE)
+	{
+		Choice.Sequence = Type.FallSequence;
+		Choice.bOnce = true;
+		return Choice;
+	}
+	if (Input.Activity == EHOLUnitActivity::Attacking && Type.AttackSequence != INDEX_NONE)
+	{
+		Choice.Sequence = Type.AttackSequence;
+		const float Length = Type.SequenceLengths.IsValidIndex(Type.AttackSequence) ? Type.SequenceLengths[Type.AttackSequence] : 0.f;
+		Choice.PlayRate = Length > UE_KINDA_SMALL_NUMBER && Type.AttackInterval > UE_KINDA_SMALL_NUMBER ? Length / Type.AttackInterval : 1.f;
+		Choice.bStrike = true;
+		return Choice;
+	}
 	if (Input.Activity == EHOLUnitActivity::Gathering)
 	{
 		const int32 GatherSequence = Type.GatherSequences[Input.GatherResource];

@@ -30,6 +30,7 @@
 #include "Presentation/HOLUnitAnimation.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -113,6 +114,23 @@ namespace UE::HeroesOfLiberty::Presentation
 	{
 		const uint32 Hash = HashCombineFast(GetTypeHash(UnitId), GetTypeHash(SequenceIndex));
 		return SequenceLength * static_cast<float>(Hash & 0xFFFF) / 65536.f;
+	}
+
+	/**
+	 * What a unit does as the clients have it (J7b.4, UHOLUnitReplicationSubsystem): Dying at 0 health, Attacking while it
+	 * strikes (its fight, solo and server), else its activity. A client's display entity holds the received activity.
+	 */
+	EHOLUnitActivity GetShownActivity(const FHOLUnitStateFragment& State, const FHOLCombatFragment* Combat, const bool bDisplayEntity)
+	{
+		if (bDisplayEntity)
+		{
+			return State.Activity;
+		}
+		if (State.CurrentHealth <= 0 || State.Activity == EHOLUnitActivity::Dying)
+		{
+			return EHOLUnitActivity::Dying;
+		}
+		return Combat && Combat->bAttacking ? EHOLUnitActivity::Attacking : State.Activity;
 	}
 
 	/**
@@ -230,6 +248,8 @@ void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMass
 	// state instead.
 	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddRequirement<FHOLBuildFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	// In solo, a fighter's strike (J7b.5): whether it strikes, its cool-down (the phase of its gesture) and its target.
+	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 	EntityQuery.AddChunkRequirement<FMassVisualizationChunkFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.SetChunkFilter(&FMassVisualizationChunkFragment::AreAnyEntitiesVisibleInChunk);
@@ -292,6 +312,9 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 		const TConstArrayView<FHOLNetUnitDisplayFragment> NetDisplays = Context.GetFragmentView<FHOLNetUnitDisplayFragment>();
 		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
 		const TConstArrayView<FHOLBuildFragment> Builds = Context.GetFragmentView<FHOLBuildFragment>();
+		const TConstArrayView<FHOLCombatFragment> Combats = Context.GetFragmentView<FHOLCombatFragment>();
+		const FMassEntityManager& EntityManager = Context.GetEntityManagerChecked();
+		const int32 StepMs = FMath::RoundToInt(StepSeconds * 1000.f);
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -336,10 +359,11 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					const FHOLNetUnitDisplayFragment* NetDisplay = !NetDisplays.IsEmpty() ? &NetDisplays[EntityIt] : nullptr;
 					const FHOLGatherFragment* Gather = !NetDisplay && !Gathers.IsEmpty() ? &Gathers[EntityIt] : nullptr;
 					const FHOLBuildFragment* Build = !NetDisplay && !Builds.IsEmpty() ? &Builds[EntityIt] : nullptr;
+					const FHOLCombatFragment* Combat = !NetDisplay && !Combats.IsEmpty() ? &Combats[EntityIt] : nullptr;
 					FHOLUnitAnimationStateFragment& AnimationState = AnimationStates[EntityIt];
 					FAnimSequenceTrackAutoPlayData& AnimData = Animations[EntityIt].AnimData;
 					FHOLUnitAnimationInput Input;
-					Input.Activity = State.Activity;
+					Input.Activity = GetShownActivity(State, Combat, NetDisplay != nullptr);
 					Input.GatherResource = State.GatherResource;
 					Input.bCarrying = NetDisplay ? NetDisplay->State.bCarrying : Gather && Gather->Load.Amount > 0;
 					Input.LoadResource = NetDisplay ? NetDisplay->State.LoadResource : Gather ? Gather->Load.Resource : EHOLResource::Food;
@@ -354,10 +378,24 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						// Mass hands the data to the instance only when the sequence changes, so the play rate is set here.
 						AnimData.SequenceIndex = Choice.Sequence;
 						AnimData.PlayRate = Choice.PlayRate;
-						AnimData.Position = GetStartOffset(State.UnitId, Choice.Sequence,
-							Constants.SequenceLengths.IsValidIndex(Choice.Sequence) ? Constants.SequenceLengths[Choice.Sequence] : 0.f);
+						const float Length = Constants.SequenceLengths.IsValidIndex(Choice.Sequence) ? Constants.SequenceLengths[Choice.Sequence] : 0.f;
+						if (Choice.bStrike)
+						{
+							// Its hit on the server's (J7b.5): in solo from its cool-down, plus the drawing's lag behind the last step
+							// (it draws between the last two steps); on a client, which does not receive the cool-down, as a strike
+							// that just started (the wind-up, HOLCombat::StartAttack, less the step that brought the state).
+							const float SecondsToHit = Combat
+								? HOLUnitAnimation::GetSecondsToHit(Combat->CooldownMs, StepMs) + (1.f - Alpha) * StepSeconds
+								: HOLUnitAnimation::GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(HOLCombat::ToMilliseconds(Constants.AttackInterval)) - StepMs, StepMs);
+							AnimData.Position = HOLUnitAnimation::GetStrikeStartPosition(Length, Choice.PlayRate, SecondsToHit);
+						}
+						else
+						{
+							// The fall from its start (J7b.5); the loops from a random point (D234).
+							AnimData.Position = Choice.bOnce ? 0.f : GetStartOffset(State.UnitId, Choice.Sequence, Length);
+						}
 						AnimData.BlendTime = AnimationState.bStarted ? AnimationBlendSeconds : 0.f;
-						AnimData.LoopMode = EAnimSequenceTrackLoopMode::Loop;
+						AnimData.LoopMode = Choice.bOnce ? EAnimSequenceTrackLoopMode::Clamp : EAnimSequenceTrackLoopMode::Loop;
 						AnimationState.bStarted = true;
 
 						// A gatherer turns towards its source once, when its gesture starts (it stands there), at once (D304); a
@@ -371,6 +409,19 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						{
 							const FVector ToSource = SourceLocation - To.GetLocation();
 							AnimationState.FacingYaw = static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(ToSource.Y, ToSource.X)));
+						}
+					}
+					// Striking in solo (J7b.5): turned towards its target, as a client draws it (UHOLNetUnitDisplayProcessor).
+					if (Choice.bStrike && Combat && EntityManager.IsEntityValid(Combat->Target))
+					{
+						if (const FTransformFragment* TargetTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Combat->Target))
+						{
+							const FVector ToTarget = TargetTransform->GetTransform().GetLocation() - To.GetLocation();
+							if (ToTarget.SizeSquared2D() > 1.)
+							{
+								AnimationState.bFacingSource = true;
+								AnimationState.FacingYaw = static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(ToTarget.Y, ToTarget.X)));
+							}
 						}
 					}
 					if (AnimationState.bFacingSource)
@@ -472,8 +523,9 @@ namespace
 					++Sequences.FindOrAdd(Sequence);
 					++Props.FindOrAdd(AnimationState->Prop);
 
-					// The state as the presentation read it: the simulation's (solo).
-					FString StateName = Type->TypeName.ToString() + TEXT(" ") + GetEnumName(StaticEnum<EHOLUnitActivity>(), static_cast<uint8>(State->Activity));
+					// The state as the presentation read it: the simulation's (solo), Attacking and Dying as the clients have them.
+					const EHOLUnitActivity Activity = UE::HeroesOfLiberty::Presentation::GetShownActivity(*State, EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity), false);
+					FString StateName = Type->TypeName.ToString() + TEXT(" ") + GetEnumName(StaticEnum<EHOLUnitActivity>(), static_cast<uint8>(Activity));
 					if (State->Activity == EHOLUnitActivity::Gathering)
 					{
 						StateName += TEXT(" ") + GetEnumName(StaticEnum<EHOLResource>(), static_cast<uint8>(State->GatherResource));

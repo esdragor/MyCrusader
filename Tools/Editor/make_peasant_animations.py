@@ -305,6 +305,10 @@ def bake(sk, gesture):
         locals_by_frame.append(local)
         worst_grip = max(worst_grip, max(rig.grip_errors(sk.fk(local), axe).values()))
 
+    # The sequence's own times, frame k at k / fps: the keys are spread over the gesture's span, so a span that is not a
+    # whole number of frames (the attacks of J7b.5: 1.875 s is 56.25 frames) comes out a little shorter (56 frames,
+    # 1.867 s), played at its length / AttackInterval in the game (HOLUnitAnimation::Choose).
+    times = [k / float(fps) for k in range(frames + 1)]
     sequence = load(path) if assets.does_asset_exist(path) else None
     before = sample_body(sequence, times) if sequence is not None else None
     if sequence is None:
@@ -364,8 +368,8 @@ def sample_body(sequence, times):
 def verify(sk, sequence, rig, times, locals_by_frame):
     length = sequence.get_play_length()
     tracks = [str(n) for n in unreal.AnimationLibrary.get_animation_track_names(sequence)]
-    log("relecture : duree %.4f s (attendue %.4f), %d images, pistes : %s"
-        % (length, rig.length, unreal.AnimationLibrary.get_num_frames(sequence), ", ".join(tracks)))
+    log("relecture : duree %.4f s (attendue %.4f ; geste %.4f s), %d images, pistes : %s"
+        % (length, times[-1], rig.length, unreal.AnimationLibrary.get_num_frames(sequence), ", ".join(tracks)))
     if "root" in tracks or any(t.startswith("ik_") and t != anim_rig.TOOL_BONE for t in tracks):
         log("ERREUR : piste sur root ou sur un os ik_* autre que l'os porte-outil")
     if (anim_rig.TOOL_BONE in tracks) != rig.has_tool:
@@ -376,6 +380,7 @@ def verify(sk, sequence, rig, times, locals_by_frame):
         worst, worst_at, root_worst = 0.0, "", 0.0
         tool_worst = tool_angle = hands_worst = 0.0
         first = last = None
+        heads_read, heads_offline = [], []
         for k, t in enumerate(times):
             pose = poses.get_anim_pose_at_time(sequence, t, options)
             offline = sk.fk(locals_by_frame[k])
@@ -392,6 +397,10 @@ def verify(sk, sequence, rig, times, locals_by_frame):
                 # The tool bone read back: same frame as offline, and both hands on the handle it carries.
                 tool = poses.get_bone_pose(pose, anim_rig.TOOL_BONE, WORLD)
                 i = sk.index[anim_rig.TOOL_BONE]
+                # The tool head (knob + handle along X): read back, and offline (the weapon's whip, the hit frame).
+                reach = (rig.handle_length, 0.0, 0.0)
+                heads_read.append(anim_rig.add(vec(tool.translation), anim_rig.qrot(quat(tool.rotation), reach)))
+                heads_offline.append(anim_rig.add(offline[i][0], anim_rig.qrot(offline[i][1], reach)))
                 tool_worst = max(tool_worst, anim_rig.length(anim_rig.sub(vec(tool.translation), offline[i][0])))
                 d = abs(sum(a * c for a, c in zip(quat(tool.rotation), offline[i][1])))
                 tool_angle = max(tool_angle, 2.0 * math.degrees(math.acos(min(1.0, d))))
@@ -410,6 +419,21 @@ def verify(sk, sequence, rig, times, locals_by_frame):
         if rig.has_tool:
             log("relecture %s, os porte-outil %s : ecart au repere hors ligne %.3f cm et %.3f deg ; mains a l'axe du "
                 "manche au plus %.3f cm" % (label, anim_rig.TOOL_BONE, tool_worst, tool_angle, hands_worst))
+            fps = 1.0 / (times[1] - times[0])
+            head_err = [anim_rig.length(anim_rig.sub(a, b)) for a, b in zip(heads_read, heads_offline)]
+            worst_k = max(range(len(head_err)), key=lambda k: head_err[k])
+            speeds = [anim_rig.length(anim_rig.sub(heads_read[k], heads_read[k - 1])) * fps / 100.0
+                      for k in range(1, len(heads_read))]
+            fast = max(range(len(speeds)), key=lambda k: speeds[k])
+            log("relecture %s, tete de l'arme : ecart au hors ligne %.3f cm au plus (image %d) ; vitesse max %.1f m/s "
+                "(images %d-%d)" % (label, head_err[worst_k], worst_k, speeds[fast], fast, fast + 1))
+            if rig.g["name"].endswith("_Attack"):
+                hit = int(round((len(times) - 1) * soldier_poses.ATTACK_HIT_FRACTION))
+                near = min(range(len(heads_read)),
+                           key=lambda k: anim_rig.length(anim_rig.sub(heads_read[k], heads_offline[hit])))
+                log("relecture %s, frappe : tete de l'arme la plus proche de la cle de frappe a l'image %d (attendue %d), "
+                    "ecart %.3f cm ; images voisines %s cm" % (label, near, hit, head_err[hit], ", ".join(
+                        "%d: %.3f" % (k, head_err[k]) for k in range(max(0, hit - 2), min(len(times), hit + 3)))))
     if rig.base is not None:
         # Same feet as the source walk, at the same times (no new foot sliding), and the same play rate.
         source = load(rig.base["source"])

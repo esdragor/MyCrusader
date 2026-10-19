@@ -55,6 +55,8 @@
 # in the tooltip only); F1 and F3: no building, the message "Aucun bâtiment militaire", nothing selected; F2: every
 # economic building of the player selected (centre, houses, sites; not its ghosts), the camera where it was; F2 three
 # times again: the centre, then the houses, the camera on each, the selection kept.
+# The user's request of 2026-10-19, solo: a barracks' ghost (no builder) selected, its rally point by a right click (the
+# flag); built at its first blow by a Peasant: the Homme d'armes it produces walks to the rally point kept since the ghost.
 # The "anims" part (J5c.4), in solo: what the presentation shows, read from hol.Units.AnimReport (sequence and prop of
 # each Peasant drawn, per state). Two Peasants build a house; three each chop wood, mine stone, mine gold, pick berries;
 # three stand idle: each gesture with its tool (axe, pickaxe, nothing for the berries), the hammer, the plain idle. Then
@@ -342,6 +344,11 @@ $GapFrom = @(-7500, 300)
 $BarracksAt = @(-18150, 4050)
 $BarracksSpawn = @(-19500, 4050)
 $BarracksRally = @(-17000, 5400)
+# The rally point of a barracks' ghost (the user's request of 2026-10-19), solo: a second barracks north of the first one,
+# placed with nothing selected (a ghost, no builder); its rally point 18 m north-east of it; its builder made west of it.
+$BarracksGhostAt = @(-18150, 6450)
+$BarracksGhostSpawn = @(-19500, 6450)
+$BarracksGhostRally = @(-16500, 7500)
 $GapTo = @(-4500, 300)
 # The smoke part (D327), the default's single short game: the title screen and New game in French, a 2-player match
 # launched from it, the camera moved by the arrow, its own centre selected then nothing; 3 Men-at-arms of slot 0 made 18 m
@@ -485,9 +492,10 @@ if ($Parts -contains "camera") {
                 "hol.Nav.Footprints off", "hol.Nav.Units"
         }
         if (($Parts -contains "build") -and $Case.Name -eq "2p") {
-            # Nothing selected: the placements of J6a.3 send no builder (J6a.4).
+            # Nothing selected: the placements of J6a.3 send no builder (J6a.4). Escape logs nothing when nothing is selected
+            # (the build part asked alone): the report says it, after a mark (the selection part counts its reports).
             Key Escape
-            Step "waitlog Selection: none"
+            Step "mark build none", "hol.Select.Report", "waitlog Selection report: selected none"
             # Placement (J6a.3, D311), 120 wood exactly (two houses of 50): the cursor stays in the middle of the screen
             # (hol.Camera.TestCursor), the camera brings the ghost where wanted. House A behind slot 0's centre, B touching
             # it (Shift: still in the mode), then the ghost on both: red; Escape leaves the mode.
@@ -777,6 +785,27 @@ if ($Parts -contains "camera") {
             Step "waitlog Category Military: ", "frames 3", "hol.Select.Report", "hol.HUD.Report", "capture build_barracks_f1"
             Key Escape
             Step "waitlog Selection: none"
+            # The rally point of a ghost (the user's request of 2026-10-19). A barracks placed with nothing selected: a ghost,
+            # selected by a click; a right click on the ground puts its rally point there (the flag, captured); every site
+            # finished at its first blow and production in one step (hol.Cheat.FastBuild 1): a Peasant made west of it builds
+            # it; a Homme d'armes produced there walks to the rally point kept since the ghost.
+            Step "mark build barracks ghost", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20",
+                "hol.Camera.Focus $($BarracksGhostAt -join ' ')", "frames 3", "hol.Build.Place Barracks",
+                "waitlog Placement ghost: Barracks at ($($BarracksGhostAt -join ', ')) valid", "hol.Build.Click",
+                "waitlog Construction: slot 0 placed Barracks foundation at ($($BarracksGhostAt -join ', '))", "wait 0.5",
+                "hol.Camera.Focus $($BarracksGhostAt[0]) $($BarracksGhostAt[1] - 300)", "frames 3", "hol.Select.ClickGround $($BarracksGhostAt -join ' ')",
+                "waitlog Selection: Barracks of slot 0 (own)", "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($BarracksGhostRally -join ' ')", "waitlog Rally: slot 0 set the rally point of Barracks at (", "frames 3",
+                "hol.Select.Report", "capture build_barracks_ghost_rally", "hol.Cheat.FastBuild 1",
+                "hol.Units.Spawn 1 $($BarracksGhostSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($BarracksGhostSpawn -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($BarracksGhostAt[0]) $($BarracksGhostAt[1] - 300)", "frames 3",
+                "hol.Select.OrderGround $($BarracksGhostAt -join ' ')", "waitlog Build order of slot 0: 1 units to Barracks at ($($BarracksGhostAt -join ', '))",
+                "waitlog Construction: slot 0 finished Barracks at ($($BarracksGhostAt -join ', '))", "wait 0.5",
+                "hol.Select.ClickGround $($BarracksGhostAt -join ' ')", "waitlog Selection: Barracks of slot 0 (own)", "hol.Prod.Queue ManAtArms",
+                "waitlog Production: ManAtArms of slot 0 done", "hol.Cheat.FastBuild 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report",
+                "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3", "capture build_barracks_ghost_soldier"
+            Key Escape
+            Step "waitlog Selection: none"
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
             # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
@@ -889,6 +918,8 @@ if ($Parts -contains "camera") {
             Step "mark combat", "hol.Combat.Enabled 1", "hol.Combat.Report", "hol.Units.Spawn 3 $($CombatMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($CombatSpearmen -join ' ') 1 Spearman 150",
                 "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "wait 0.2", "hol.Combat.Report"
             for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
+            # The strikes (J7b.5): each side's fighters play their strike (hol.Units.AnimReport per slot), a close-up of the melee.
+            Step "hol.Units.AnimReport 0", "hol.Units.AnimReport 1", "hol.Camera.Zoom 14", "frames 3", "capture combat_melee", "hol.Camera.Zoom -14", "frames 2"
             # A player's order prevails (J7b.2): the 3 Men-at-arms, in the melee, ordered 20 m away (west): they stop striking
             # and walk off; the Spearmen chase their last attackers, taken on again once the Men-at-arms have arrived.
             # The health bars (J7b.5): the wounded alone while nothing is selected, then the 3 Men-at-arms selected as well.
@@ -938,6 +969,11 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: 3 units (own): ManAtArms x3", "mark orders push", "hol.Select.OrderGround $($PushTarget -join ' ')", "hol.Combat.Report"
             for ($i = 0; $i -lt 10; $i++) { Step "wait 1", "hol.Combat.Report" }
             Step "capture orders_push", "mark orders push end", "hol.Select.Click 0.03 0.05"
+            # The fall (J7b.5): a Peasant of slot 1 made beside the 3 Men-at-arms standing at the attack-move's end (their own
+            # aggression takes it on); once killed it plays its fall (the report of slot 1), captured falling (dying 1 s).
+            Step "mark combat fall", "hol.Camera.Focus $($OrdersMoveTo -join ' ')", "frames 2", "hol.Units.Spawn 1 $($OrdersMoveTo[0] + 450) $($OrdersMoveTo[1]) 1 Peasant 10",
+                "waitlog Peasant of slot 1 killed by", "frames 2", "hol.Units.AnimReport 1", "hol.Camera.Zoom 14", "frames 2", "capture combat_fall", "hol.Camera.Zoom -14",
+                "hol.Units.AnimReport 0", "mark combat fall end"
         }
     }
 }
@@ -1145,6 +1181,10 @@ if ($Parts -contains "smoke") {
     $Missing = @("title", "newgame", "play", "melee" | Where-Object { -not (Test-Path (Join-Path $Shots "qc_smoke_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $Section = Get-Section "smoke camera"
+    # Every unit type built while the map loads, nothing loaded at a first birth in the match.
+    $Preload = $Section | Select-String -Pattern "Unit types preloaded: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+    $Late = @($Log | Select-String -Pattern "built after the preload" | ForEach-Object { $_.Line -replace '^.*Unit type ', '' })
+    $Checks["unit types preloaded ($Preload), none built in the match ($($Late -join '; '))"] = ($null -ne $Preload) -and ($Late.Count -eq 0)
     $Checks["match launched from the screen, slot 0 held"] = [bool]($Section | Select-String -Pattern "Match on \w+: given configuration" -Quiet) -and
         [bool]($Section | Select-String -Pattern "holds slot 0 " -Quiet)
     $Reports = @($Section | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\), height (\d+)" | ForEach-Object {
@@ -1828,6 +1868,28 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("peasants", "ghost", "finished", "soldiers", "f1" | Where-Object { -not (Test-Path (Join-Path $Shots "build_barracks_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build barracks" $Checks) -and $AllOk
+
+    # The user's request of 2026-10-19: the rally point of a barracks' ghost.
+    $Ghost = @(Get-Section "build barracks ghost" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $GhostAt = [regex]::Escape("Barracks at ($($BarracksGhostAt -join ', '))")
+    $GhostLines = @($Ghost | Select-String -Pattern "Rally: slot 0 set the rally point of Barracks at|first work on $GhostAt|finished $GhostAt" | ForEach-Object { $_.Line })
+    $Checks["the ghost placed, its rally point set before its first work"] = [bool]($Ghost | Select-String -Pattern "placed $([regex]::Escape("Barracks foundation at ($($BarracksGhostAt -join ', '))"))" -Quiet) -and
+        ($GhostLines.Count -ge 2) -and [bool]($GhostLines[0] -match "Rally: ") -and -not ($Ghost | Select-String -Pattern "Production order of slot 0 ignored" -Quiet)
+    $GhostRallyAt = if ([string](& $Value $Ghost "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
+    $Checks["its rally point by a right click ($($GhostRallyAt -join ', '))"] = ($GhostRallyAt.Count -eq 2) -and ([Math]::Abs($GhostRallyAt[0] - $BarracksGhostRally[0]) -le 50) -and
+        ([Math]::Abs($GhostRallyAt[1] - $BarracksGhostRally[1]) -le 50)
+    $Checks["built by the Peasant, a Homme d'armes born"] = [bool]($Ghost | Select-String -Pattern "Construction: slot 0 finished $GhostAt" -Quiet) -and
+        [bool]($Ghost | Select-String -Pattern "Production: ManAtArms of slot 0 done" -Quiet)
+    $WhereLine = [string]($Ghost | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1)
+    $GhostUnits = @{}
+    foreach ($M in [regex]::Matches([string]$WhereLine, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) { $GhostUnits[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
+    $GhostNewest = @($GhostUnits.Keys | Sort-Object | Select-Object -Last 1)
+    $GhostGap = if ($GhostNewest.Count -eq 1) { [Math]::Round([Math]::Sqrt([Math]::Pow($GhostUnits[$GhostNewest[0]][0] - $BarracksGhostRally[0], 2) + [Math]::Pow($GhostUnits[$GhostNewest[0]][1] - $BarracksGhostRally[1], 2))) } else { -1 }
+    $Checks["it walks to the rally point kept since the ghost, within 4 m ($GhostGap cm)"] = ($GhostGap -ge 0) -and ($GhostGap -le 400)
+    $Missing = @("rally", "soldier" | Where-Object { -not (Test-Path (Join-Path $Shots "build_barracks_ghost_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build barracks ghost" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -2209,6 +2271,41 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     }
     $Checks["capture"] = (Test-Path (Join-Path $Shots "combat_end.png")) -and (Test-Path (Join-Path $Shots "combat_bars.png"))
     $AllOk = (Report "combat" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
+    # The strikes and the fall (J7b.5), from hol.Units.AnimReport: in the melee the Men-at-arms and the Spearmen striking play
+    # their strike; the Peasant killed plays its fall; no unit striking or dying shows anything but its type's gesture (the
+    # Peasant has no strike yet: left out).
+    $Checks = [ordered]@{}
+    $Shown = @{}
+    $Wrong = @()
+    foreach ($Line in @(Get-Section "combat") + @(Get-Section "combat fall")) {
+        if ($Line -notmatch "Anim report by state: (.*)$") { continue }
+        foreach ($Part in ($Matches[1] -split '; ')) {
+            if ($Part -notmatch '^(\w+) (Attacking|Dying): (.+)$') { continue }
+            $Type = $Matches[1]; $State = $Matches[2]; $Outcomes = $Matches[3]
+            if ($Type -eq "Peasant" -and $State -eq "Attacking") { continue }
+            $Expected = if ($State -eq "Attacking") { "A_$Type`_Attack prop 0" } else { "A_$Type`_Fall prop 0" }
+            $Key = "$Type $State"
+            if (-not $Shown.ContainsKey($Key)) { $Shown[$Key] = 0 }
+            foreach ($Outcome in ($Outcomes -split ', ')) {
+                if ($Outcome -notmatch '^(.+) x(\d+)$') { continue }
+                if ($Matches[1] -eq $Expected) { $Shown[$Key] = [Math]::Max($Shown[$Key], [int]$Matches[2]) } else { $Wrong += "$Key shows $Outcome" }
+            }
+        }
+    }
+    $Count = [int]$Shown["ManAtArms Attacking"]
+    $Checks["melee: Men-at-arms striking play A_ManAtArms_Attack ($Count of 3)"] = $Count -ge 2
+    $Count = [int]$Shown["Spearman Attacking"]
+    $Checks["melee: Spearmen striking play A_Spearman_Attack ($Count of 3)"] = $Count -ge 2
+    $Count = [int]$Shown["Peasant Dying"]
+    $Checks["the Peasant killed plays A_Peasant_Fall ($Count)"] = $Count -ge 1
+    $Checks["striking or dying: never another sequence ($($Wrong -join '; '))"] = $Wrong.Count -eq 0
+    $Missing = @("melee", "fall" | Where-Object { -not (Test-Path (Join-Path $Shots "combat_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    Write-Host "  combat anims: $(($Shown.Keys | Sort-Object | ForEach-Object { "$_ x$($Shown[$_])" }) -join ', ')"
+    $AllOk = (Report "combat anims" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "combat") -and ($Parts -contains "camera")) {

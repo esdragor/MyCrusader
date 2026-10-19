@@ -375,14 +375,57 @@ class Rig:
         else:
             self.length = self.key_span
             self.fps = gesture["fps"]
-            self.times = frame_times(self.length, self.fps)
+            # "frames" (J7b.5): a whole frame count forced on the keys' span (an attack's hit on a whole frame at 30 fps).
+            self.times = frame_times(self.length, self.fps, gesture.get("frames"))
 
     # -- key interpolation ----------------------------------------------------------------------------------------
 
     def sample(self, t):
-        """Interpolated key values at time t (seconds from the first key)."""
+        """Interpolated key values at time t (seconds from the first key).
+
+        Two optional gesture fields, off by default (the gestures without them are sampled exactly as before):
+          - "curve": "hermite": cubic Hermite between keys instead of one ease per segment. Each key's "flow" (default
+            0) scales its Catmull-Rom tangent: 0 stops on the key (between two such keys the curve is exactly the
+            "inout" ease), 1 passes through it at the neighbours' average speed (no stop: a fluid motion, the path
+            of a hand or of a tool head bends into an arc through the keys), more than 1 passes faster (a whip);
+            a pair (arriving, leaving) crosses the key at two speeds (a hit: fast in, slowed out). Directions
+            turn along the great circle between keys, their progress on the same curve.
+            The values still land exactly on the keys at the keys' times (the hit stays where it is keyed).
+          - "leads": overlap, channel by channel, as a share of the loop the channel runs AHEAD of the keys (a
+            negative lead is a lag): {"pelvis": x, "rot": {bone: x}, "tool": x, "hands": x, "elbows": x}. The
+            pelvis leading the chest, the chest the shoulder and the arm, the weapon last (lead 0: on its keys),
+            the free hand trailing: the body no longer starts and stops all at once. A looped gesture ("loop":
+            True) wraps the shifted times around the loop; otherwise they are clamped to the keys."""
+        leads = self.g.get("leads")
+        if not leads:
+            return self._sample_keys(t)
+        tk = max(0.0, min(self.length, t)) * self.key_span / self.length
+        cache = {}
+
+        def at(lead):
+            if lead not in cache:
+                shifted = tk + lead * self.key_span
+                if self.g.get("loop"):
+                    shifted %= self.key_span
+                cache[lead] = self._sample_keys(max(0.0, min(self.key_span, shifted)) * self.length / self.key_span)
+            return cache[lead]
+
+        out = dict(at(leads.get("tool", 0.0)))
+        out["pelvis"] = at(leads.get("pelvis", 0.0))["pelvis"]
+        rot_leads = leads.get("rot", {})
+        bones = set(out["rot"]) | set(rot_leads)
+        out["rot"] = {bone: at(rot_leads.get(bone, 0.0))["rot"].get(bone, (0.0, 0.0, 0.0)) for bone in bones}
+        if "hands" in out:
+            out["hands"] = at(leads.get("hands", 0.0))["hands"]
+        out["elbows"] = at(leads.get("elbows", 0.0))["elbows"]
+        return out
+
+    def _sample_keys(self, t):
+        """Key values at time t (seconds from the first key), every channel on the same time."""
         keys = self.g["keys"]
         t = keys[0]["t"] + max(0.0, min(self.length, t)) * self.key_span / self.length
+        if self.g.get("curve") == "hermite":
+            return self._sample_hermite(t)
         for i in range(len(keys) - 1):
             if t <= keys[i + 1]["t"] or i == len(keys) - 2:
                 a, b = keys[i], keys[i + 1]
@@ -415,6 +458,95 @@ class Rig:
             ea = a.get("elbows", default_elbows).get(side, default_elbows.get(side))
             eb = b.get("elbows", default_elbows).get(side, default_elbows.get(side))
             out["elbows"][side] = normalize(lerp(ea, eb, s))
+        return out
+
+    def _sample_hermite(self, t):
+        """Key values at key time t, cubic Hermite through the keys (see sample: "curve", "flow")."""
+        keys = self.g["keys"]
+        n = len(keys)
+        i = next((k for k in range(n - 1) if t <= keys[k + 1]["t"]), n - 2)
+        a, b = keys[i], keys[i + 1]
+        dt = b["t"] - a["t"]
+        s = max(0.0, min(1.0, (t - a["t"]) / dt))
+        h00, h10 = 2 * s ** 3 - 3 * s * s + 1, s ** 3 - 2 * s * s + s
+        h01, h11 = -2 * s ** 3 + 3 * s * s, s ** 3 - s * s
+        loop = self.g.get("loop")
+
+        def neighbours(k):
+            """(previous key, its time, next key, its time) of key k; wrapped around a loop (first = last key)."""
+            if 0 < k < n - 1:
+                return keys[k - 1], keys[k - 1]["t"], keys[k + 1], keys[k + 1]["t"]
+            if loop:
+                if k == 0:
+                    return keys[n - 2], keys[n - 2]["t"] - self.key_span, keys[1], keys[1]["t"]
+                return keys[n - 2], keys[n - 2]["t"], keys[1], keys[1]["t"] + self.key_span
+            p, q = max(0, k - 1), min(n - 1, k + 1)
+            return keys[p], keys[p]["t"], keys[q], keys[q]["t"]
+
+        def flow(k, outgoing):
+            """Key k's flow: one number, or (arriving, leaving) for a key the motion crosses at two speeds."""
+            f = keys[k].get("flow", 0.0)
+            return (f[1] if outgoing else f[0]) if isinstance(f, (tuple, list)) else f
+
+        def curve(get):
+            """Hermite value of the channel `get` (key -> tuple)."""
+            va, vb = get(a), get(b)
+            tangents = []
+            for k, outgoing in ((i, True), (i + 1, False)):
+                f = flow(k, outgoing)
+                if f == 0.0:
+                    tangents.append(tuple(0.0 for _ in va))
+                    continue
+                prev, tp, nxt, tn = neighbours(k)
+                tangents.append(tuple((x - y) * f / (tn - tp) for x, y in zip(get(nxt), get(prev))))
+            return tuple(h00 * x + h10 * dt * ma + h01 * y + h11 * dt * mb
+                         for x, ma, y, mb in zip(va, tangents[0], vb, tangents[1]))
+
+        def angle(u, v):
+            return math.acos(max(-1.0, min(1.0, dot(normalize(u), normalize(v)))))
+
+        def turn(get):
+            """Direction channel: along the great circle from key a to key b (an even turn, unlike blending the
+            components), the progress on a Hermite curve whose tangents come from the angular speeds at the keys."""
+            da, db = get(a), get(b)
+            span = angle(da, db)
+            if span < 1e-6:
+                return normalize(da)
+            m = []
+            for k, outgoing in ((i, True), (i + 1, False)):
+                f = flow(k, outgoing)
+                if f == 0.0:
+                    m.append(0.0)
+                    continue
+                prev, tp, nxt, tn = neighbours(k)
+                m.append(f * (angle(get(prev), get(keys[k])) + angle(get(keys[k]), get(nxt))) / (tn - tp) / span)
+            return slerp_dir(da, db, h01 + h10 * dt * m[0] + h11 * dt * m[1])
+
+        zero = (0.0, 0.0, 0.0)
+        out = {"pelvis": curve(lambda k: k.get("pelvis", zero)), "rot": {}}
+        for bone in set(a.get("rot", {})) | set(b.get("rot", {})):
+            out["rot"][bone] = curve(lambda k, bone=bone: k.get("rot", {}).get(bone, zero))
+        tool = lambda k: k.get("tool", k.get("axe"))  # noqa: E731
+        if tool(a) is not None:
+            out["grip"] = curve(lambda k: tool(k)["grip"])
+            out["dir"] = turn(lambda k: tool(k)["dir"])
+            out["spacing"] = curve(lambda k: (tool(k).get("spacing", self.hand_spacing),))[0]
+        free = ("l", "r") if tool(a) is None else tuple(side for side in ("l", "r") if side not in self.tool_hands)
+        if free:
+            out["hands"] = {}
+            for side in free:
+                hand = lambda k, side=side: k["hands"][side]  # noqa: E731
+                place = {"at": curve(lambda k: hand(k)["at"]),
+                         "palm": turn(lambda k: hand(k)["palm"]),
+                         "swing": curve(lambda k: (hand(k).get("swing", 0.0),))[0]}
+                if "fingers" in hand(a) and "fingers" in hand(b):
+                    place["fingers"] = turn(lambda k: hand(k)["fingers"])
+                out["hands"][side] = place
+        default_elbows = self.g.get("elbows", {"l": (-0.5, -0.2, -1.0), "r": (0.5, -0.2, -1.0)})
+        out["elbows"] = {}
+        for side in ("l", "r"):
+            out["elbows"][side] = normalize(curve(
+                lambda k, side=side: normalize(k.get("elbows", default_elbows).get(side, default_elbows.get(side)))))
         return out
 
     # -- solving --------------------------------------------------------------------------------------------------
@@ -689,7 +821,8 @@ def load_base(gesture, data_dir):
         return json.load(f)
 
 
-def frame_times(length, fps):
-    """Times of every key of a sequence of `length` seconds at `fps` (frames + 1 keys, last = length)."""
-    frames = int(round(length * fps))
+def frame_times(length, fps, frames=None):
+    """Times of every key of a sequence of `length` seconds at `fps` (frames + 1 keys, last = length); `frames` forces
+    the count (the baked sequence then lasts frames / fps, played at its length / the gesture's span in the game)."""
+    frames = int(frames) if frames else int(round(length * fps))
     return [length * i / frames for i in range(frames + 1)]

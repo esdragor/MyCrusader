@@ -8,7 +8,7 @@
                                                  of peasant_props.py, each vertex skinned 100 % to its prop's bone
   /Game/Units/Mannequin/TP_Peasant               its animation provider: TP_Mannequin_Classic's sequences, same order
                                                  (so the same indices in the type table), then the loaded idles (8 food,
-                                                 9 wood, 10 stone and gold) and the builder's hammering (11, J6a.4)
+                                                 9 wood, 10 stone and gold) and the builder's hammering (11, J6a.4) and the fall (12, J7b.5)
 
 The props (peasant_props.mesh_parts) are written in the bind pose, in component space, as peasant_props.bind_mesh() puts
 them: flat faceted primitives, one sRGB colour per face. A vertex's colour alpha holds the MASK of the props it belongs
@@ -41,9 +41,10 @@ Run (headless, editor closed, from PowerShell; log lines start with "HOLPeasantM
                                                   for the Peasant's props, read back per LOD)
   /Game/Units/Mannequin/SKM_Spearman, SKM_ManAtArms  the same body and LODs as SKM_Peasant, with the pieces of
                                                   soldier_props.SOLDIER_MESHES (light from LIGHT_PROPS_LOD)
-  /Game/Units/Mannequin/TP_Spearman, TP_ManAtArms    4 sequences only (user's choice, 2026-10-18): 0 idle and 1 walk
-                                                  (TP_Mannequin_Classic's 0 and 1), 2 the armed idle, 3 the armed
-                                                  walk (soldier_poses.GESTURES); none of the Peasant's gestures
+  /Game/Units/Mannequin/TP_Spearman, TP_ManAtArms    their own sequences only (user's choice, 2026-10-18): 0 idle and
+                                                  1 walk (TP_Mannequin_Classic's 0 and 1), 2 the armed idle, 3 the
+                                                  armed walk, 4 the attack, 5 the fall (J7b.5; soldier_poses.GESTURES);
+                                                  none of the Peasant's gestures
 """
 import os
 import sys
@@ -72,16 +73,19 @@ PEASANT_SEQUENCES = [
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryWood",   # 9 standing with wood
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryStone",  # 10 standing with stone and gold
     PEASANT_ANIMATIONS + "A_Peasant_Build",           # 11 building (J6a.4: hammering, the hammer is prop 7)
+    PEASANT_ANIMATIONS + "A_Peasant_Fall",            # 12 dying (J7b.5: falls backward, played once, FallSequence)
 ]
 SKELETON_JSON = os.path.join(TOOLS_DIR, "Data", "UE4MannequinSkeleton.json")
 # The soldiers (--soldiers): material, then per mesh its provider and its sequences appended at 2, 3 (after the
-# mannequin's idle and walk only, SOLDIER_BASE_SEQUENCES).
+# mannequin's idle and walk only, SOLDIER_BASE_SEQUENCES), then 4 the attack and 5 the fall (J7b.5, AttackSequence and
+# FallSequence of the unit table). Add at the end only.
 SOLDIER_BASE_SEQUENCES = 2
 SOLDIER_MATERIAL_NAME = "M_UnitPlayerColorWeapons"
 SOLDIERS = {
-    "SKM_Spearman": ("TP_Spearman", [PEASANT_ANIMATIONS + "A_Spearman_Idle", PEASANT_ANIMATIONS + "A_Spearman_Walk"]),
-    "SKM_ManAtArms": ("TP_ManAtArms", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle",
-                                       PEASANT_ANIMATIONS + "A_ManAtArms_Walk"]),
+    "SKM_Spearman": ("TP_Spearman", [PEASANT_ANIMATIONS + "A_Spearman_Idle", PEASANT_ANIMATIONS + "A_Spearman_Walk",
+                                     PEASANT_ANIMATIONS + "A_Spearman_Attack", PEASANT_ANIMATIONS + "A_Spearman_Fall"]),
+    "SKM_ManAtArms": ("TP_ManAtArms", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
+                                       PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),
 }
 # First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
 LIGHT_PROPS_LOD = 3

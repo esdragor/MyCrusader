@@ -203,6 +203,16 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	int32 BuildProp = 0;
 
+	/**
+	 * Fighting (J7b.5): its strike, looped at its attack cadence, and its fall while dying, played once (INDEX_NONE: none, it
+	 * plays its idle).
+	 */
+	UPROPERTY()
+	int32 AttackSequence = INDEX_NONE;
+
+	UPROPERTY()
+	int32 FallSequence = INDEX_NONE;
+
 	/** Lengths (s) of the provider's sequences by index, read from it by the factory: random start offsets (D234). */
 	UPROPERTY()
 	TArray<float> SequenceLengths;
@@ -369,6 +379,18 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0", ClampMax = "8"))
 	int32 BuildProp = 0;
 
+	/**
+	 * Sequence played striking (J7b.5: the activity Attacking), looped at the attack cadence: its play rate is its length over
+	 * AttackInterval, and its loop starts so that its hit (HOLUnitAnimation::StrikeHitShare of the loop) falls on the
+	 * server's. -1: none, it plays its idle.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
+	int32 AttackSequence = INDEX_NONE;
+
+	/** Sequence played once while dying (J7b.5: the activity Dying, ~1 s), then held on its last frame. -1: none. */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
+	int32 FallSequence = INDEX_NONE;
+
 	/** What producing one unit costs (J3, D283), taken when it is queued. Read by the production, not by Mass. */
 	UPROPERTY(EditAnywhere, Category = "Production")
 	FHOLResources Cost;
@@ -457,6 +479,8 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.BuildSequence = BuildSequence;
 	Constants.BuildPlayRate = BuildPlayRate;
 	Constants.BuildProp = BuildProp;
+	Constants.AttackSequence = AttackSequence;
+	Constants.FallSequence = FallSequence;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
 	Constants.ArmorCategory = ArmorCategory;

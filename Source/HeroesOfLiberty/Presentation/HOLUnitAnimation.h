@@ -48,6 +48,13 @@ struct FHOLUnitAnimationChoice
 	 * as the instance's 4th custom float: it changes at once, while the sequence blends in 0.2 s.
 	 */
 	uint8 Prop = 0;
+	/**
+	 * Striking (J7b.5): the loop lasts one attack interval (PlayRate = its length / AttackInterval) and the caller starts it
+	 * at GetStrikeStartPosition, so its hit falls on the server's; else a random start offset (D234).
+	 */
+	bool bStrike = false;
+	/** Played once from its start and held on its last frame (J7b.5: the fall of a dying unit), not looped. */
+	bool bOnce = false;
 
 	bool operator==(const FHOLUnitAnimationChoice& Other) const = default;
 };
@@ -71,11 +78,33 @@ namespace HOLUnitAnimation
 	/** The share a walk's play rate is scaled by at Speed, for a walk made for WalkSpeed (1 if WalkSpeed is 0). */
 	HEROESOFLIBERTY_API float GetWalkRateShare(float Speed, float WalkSpeed);
 
+	/**
+	 * Where the hit falls in a strike's loop (J7b.5), as a share of it: the gestures are made with the hit at half the loop
+	 * (soldier_poses.py, ATTACK_HIT_FRACTION), the server's first hit falls half an interval after the unit starts
+	 * attacking (HOLCombat::WindUpPercent, checked by HeroesOfLiberty.Animation.Strike).
+	 */
+	constexpr float StrikeHitShare = 0.5f;
+
+	/**
+	 * Position (s, in the sequence's time) to start a strike's loop of Length seconds played at PlayRate, for its hit to
+	 * fall in SecondsToHit: the hit's position minus the time to it, wrapped into the loop. A loop lasting one attack
+	 * interval then keeps every hit of the server's cadence on its hit frame.
+	 */
+	HEROESOFLIBERTY_API float GetStrikeStartPosition(float Length, float PlayRate, float SecondsToHit);
+
+	/**
+	 * Seconds until a unit's next hit (J7b.5), from its cool-down on the fixed step: the hit falls at the first step that
+	 * takes the cool-down to 0 (HOLCombat::TickAttack), so a whole number of steps.
+	 */
+	HEROESOFLIBERTY_API float GetSecondsToHit(int32 CooldownMs, int32 StepMs);
+
 	/** Sequence is one of the type's walks: the plain one or a carrying one. A loaded idle is not a walk. */
 	HEROESOFLIBERTY_API bool IsWalkSequence(const FHOLUnitTypeConstants& Type, int32 Sequence);
 
 	/**
-	 * Gathering at its source: the gesture of the resource (axe, pick, picking berries) and its tool, whatever its speed
+	 * Dying (J7b.5): the type's fall, once (bOnce), at play rate 1, no prop; else striking (Attacking): the type's strike,
+	 * looped at its attack cadence (bStrike: play rate = the sequence's length / AttackInterval, the caller sets its start),
+	 * no prop. Else gathering at its source: the gesture of the resource (axe, pick, picking berries) and its tool, whatever its speed
 	 * (pushed aside, it keeps working); else working at its site (J6a.4, Building; walking there is Moving): the type's
 	 * building gesture (the Peasant's hammering) and its prop (the hammer), the same way, a load not shown; else walking
 	 * (any activity: an order, the round trip, a push) with a load: the carrying walk of the load and the load; else
