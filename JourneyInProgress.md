@@ -203,15 +203,12 @@ vérifier sur S1 et S2.
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
    worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
-   **Prochaine étape exacte (nouvelle séance)** : l'utilisateur **relit `SummaryToReview.md`** (racine du dépôt
-   principal, non suivi) et répond : (1) revue des aperçus des gestes (`MyCrusader-J5c\Saved\AnimPreview\` : chute
-   en arrière ou en avant, arme gardée ou lâchée, taille ou estoc pour l'Homme d'armes, amplitude de l'estoc) ;
-   (2) « Les Paysans combattent-ils ? » (ils frappent sur ordre depuis J7b.3) ; (3) choix faits sans lui (Q / S / D,
-   couleurs des barres, population libérée 1 s après la mort, cible par emplacement de réplication, front sur
-   6 bits…). Puis : lancer l'essai de J7b depuis le worktree (commande sous « Lancer une session d'essai », chemin
-   `MyCrusader-J5c`), fabriquer les gestes après sa revue (`make_peasant_animations.py --soldiers`, fournisseurs,
-   branchement sur Attack / Dying), commit de J7b.2 à J7b.5, puis J7b.6. Mesures au repos (fermer Opera) : S2 à la
-   fin de J7.
+   **Prochaine étape exacte** : revue et essai de J7b faits (journal « Revue de l'utilisateur » et « Essai de J7b
+   par l'utilisateur », 2026-10-19 ; `SummaryToReview.md` supprimé). Corrections de l'essai validées, **J7b.2 à
+   J7b.5 commitées (ce6a4d2)**, `quick_check` complet PASS (526 s). Suite : (1) **D327**, `quick_check` à deux
+   niveaux (rapide < 1 min par défaut, complet derrière `-Full`) ; (2) fabriquer les gestes validés
+   (`make_peasant_animations.py --soldiers`, fournisseurs, branchement sur Attack / Dying, plus un geste d'attaque du
+   Paysan) ; (3) J7b.6. Mesures au repos (fermer Opera) : S2 à la fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
@@ -1061,6 +1058,7 @@ Risques connus :
 | D308 | 2026-10-15 | Technique — Détours des allers-retours | **Essai de J5b.2** (l'utilisateur : « des Paysans font énormément de détours » entre le centre et les ressources). Mesuré par la distance réellement marchée à chaque marche de récolte (`hol.Gather.LogWalks`) : ~35 marches sur ~70 déchargements faisaient 2 à 3 fois la ligne droite (jusqu'à 44 m de trop). **Cause principale** : une unité qui suit un chemin du navmesh (contourner le centre, sortir du bois) gardait la direction du pilotage de Mass, qui ne tourne qu'à ~50°/s : à pleine vitesse (D290) elle s'écartait de **5 à 12 m** à chaque coin ; la marche droite vers sa place avait déjà été corrigée ainsi (D294), pas le suivi d'un chemin. **Fait** : (1) sur un chemin, l'unité vise à chaque pas le point que le suivi de Mass avance devant elle, plus 1 m le long du chemin, puis le regard en avant de D293 (`hol.Units.PathAim`) ; (2) un **détour gardé** (D305) n'est repris que si cette marche ne peut pas aller droit, voit son premier coin, si son dernier coin voit sa cible, et si elle ne marche pas plus loin que la marche gardée (`hol.Units.ReuseCheckDetour`) ; (3) une unité poussée dans une **poche fermée du navmesh** (entre les arbres de devant du bois : chemin partiel qui finit où elle est) en sort droit vers sa place, au lieu de voir chaque marche finir aussitôt et d'abandonner sa charge. Résultat (20 Paysans, bois puis baies) : marches anormalement longues **37 → 2** (autour du massif de baies, légitimes), mètres de trop **647 → 18**, dépôts manqués **15 → 0**. Coût nul mesuré (S2 et S7 en A/B dans les deux ordres) ; recouvrements de S2 inchangés. | § 16.6 |
 | D309 | 2026-10-15 | Technique — Récolteurs fantômes, source sans place | **2e essai de J5b.2** (l'utilisateur : moins de détours, mais les Paysans « se gênent devant le forum »). Choix de l'utilisateur : (1) **en aller-retour automatique** (activité « en tournée de récolte » de D307 : vers la source, vers le dépôt), un Paysan **traverse toutes les unités** — choix « toutes », **contre la recommandation** « les autres récolteurs seulement » — : il ne regarde pas en avant pour les éviter (D293), la séparation ne le pousse pas et il ne pousse personne (D292), personne ne se détourne pour lui ; un ordre donné par le joueur garde les collisions ; à la source, chacun récolte à **sa place réservée** (pas d'empilement) et un Paysan qui récolte redevient un corps (`hol.Units.GhostTrips`) ; (2) **plus aucune place libre** autour de la source visée (ordre, point de ralliement, ou places manquées), quelle que soit la ressource : une source de la **même ressource à 8 m au plus** (choix conforme à la recommandation : les arbres voisins, le même massif de baies, jamais un autre filon), sinon le Paysan **s'arrête inactif devant la source**, sa charge gardée (compté dans « Inactifs », touche « . ») ; fini l'attente invisible de 3 s en boucle. Écartés : traverser seulement les autres récolteurs (recommandation) ou seulement ceux en aller-retour ; 15 m ou 4 m. **Précisée au 3e essai** (2026-10-15/16, sans nouveau numéro : D315 à D317 prises par la review du GDD) : (3) **massifs** — demande de l'utilisateur : « si 175 Paysans vont sur une forêt, ils vont entièrement entourer la forêt » : les sources de même ressource à 8 m l'une de l'autre, **de proche en proche**, forment un massif (souches comprises : une source épuisée ne le coupe pas) ; sans place autour de la source visée, le Paysan prend la première source du massif qui a une place, par ordre de distance à l'emprise du dépôt + 0,5 × distance à la source visée (la **lisière tournée vers le dépôt** d'abord) ; inactif devant seulement si tout le massif est plein ; un filon isolé ne mène jamais à un autre filon ; même recherche pour une source épuisée (**remplace les 15 m de D296**) ; (4) **places serrées** façon AoE4 (capture de l'utilisateur, 37 villageois au bois) : places réservées sur le point réel, jamais à moins de **100 cm** l'une de l'autre, même sur deux sources voisines (`hol.Gather.SpotSpacing`, réglé à l'essai), un rang régulier autour de la source, tourné d'abord vers le dépôt ; deux unités arrêtées dont un récolteur à sa source ne sont écartées que jusqu'à cet écart (un marcheur pousse toujours à deux corps) ; (5) les **inactifs devant une source pleine** attendent sur des points réservés en rangées hors de l'anneau des places (plus jamais sur une place de récolte) ; (6) *(2026-10-16, choix de l'utilisateur, entre la recommandation A « rangées sans limite » et sa propre proposition)* **massif entier plein** → le Paysan cherche un **bosquet voisin** (autre massif de la même ressource dont une source est à ~20 m au plus d'une source du massif plein, réglable : `hol.Gather.NearbyMassifRange`) et y prend la première place libre selon le même ordre ; sinon il attend devant la source visée, sur des **rangées sans limite** (plus jamais deux inactifs sur un même point) ; un filon ne mène toujours pas à un autre filon (60 m). | § 16.6 |
 | D325 | 2026-10-18 | Technique — Coût des chantiers dans S7 (J6b.3) | **L'apparence des bâtiments sort du pas de simulation** (choix de l'utilisateur, conforme à la recommandation ; écartés : pièces allégées dans le pas, ~0,1-0,2 ms seulement ; gagner sur l'évitement à l'arrêt ; scénario S7 revu). S7 avec ses 24 camps bâtis pendant la mesure était à ~3,0 ms (seuil 3) : le surcoût des chantiers était de l'**affichage** fait pendant le pas (~10 pièces créées par chantier au premier coup et à la fin, 2-3 ms chacun ; montée qui déplace les pièces, ~0,1-0,2 ms par pas). Désormais : la simulation ne change que l'**état** (étape, travail, bâtisseurs) et ce qui compte pour elle (zone interdite du navmesh, relevance), et marque l'apparence à refaire ; la **présentation** reconstruit les pièces, les couleurs et la montée **à l'image**, hors du pas (D219), au plus une fois par image et par bâtiment ; **le serveur dédié ne crée aucune pièce** (personne n'y regarde ; la sélection est chez le client, D262). Le coût passe au fil de jeu du client, sous le seuil de rendu (≥ 144 i/s). | J6b.3 |
+| D327 | 2026-10-19 | Technique — Durée de `quick_check` (J7b) | **Deux niveaux** (choix de l'utilisateur, conforme à la recommandation) : `quick_check` par défaut = tests d'automatisation + **une seule partie solo courte** (menu, caméra, sélection, déplacement, petit combat), **moins d'1 min** ; la version complète (toutes les parties, ~8 min) passe derrière **`-Full`**, lancée seulement **avant un commit d'étape et à une clôture**. Les sous-agents lancent la version rapide plus les parties qu'ils touchent (`-Parts`). Motif : le script, à ~35 s à D267, avait grossi à chaque étape jusqu'à 8 min, lancé en entier à chaque boucle. Écartés : parties ciblées seulement (complet inchangé) ; alléger tout le script (gros chantier). | J7b |
 
 ## Journal d'avancement
 
@@ -4341,3 +4339,53 @@ d'épée).
   dans `SummaryToReview.md` (racine du dépôt principal, non suivi).
 - **Fin de séance** (demande de l'utilisateur) : prochaine étape écrite au point de reprise — l'utilisateur relit
   `SummaryToReview.md` et répond à ses questions, puis essai de J7b.
+
+### 2026-10-19 — Revue de l'utilisateur (`SummaryToReview.md`)
+
+- **Gestes validés tels quels** : chute **en arrière**, arme **gardée en main**, Homme d'armes en **taille
+  diagonale**, estoc du Lancier **inchangé** (pointe à 179 cm). La fabrication dans Unreal peut suivre.
+- **Paysans** : ils combattent **sur ordre, ou s'ils sont attaqués par une bête sauvage** (riposte réservée aux bêtes,
+  pas aux soldats ennemis). Pas encore de bêtes sauvages dans le code : la riposte attendra qu'elles existent. Il faut
+  un geste d'attaque pour le Paysan.
+- Reste à revoir : choix faits sans l'utilisateur (Q / S / D, vert / rouge, population libérée 1 s après la mort,
+  choix de J7b.3 et J7b.4), puis l'essai de J7b.
+- L'utilisateur veut **tout tester** lui-même. Ajout de `hol.Units.SpawnHere [Count=5] [Type=Spearman] [Slot=1]
+  [Radius=600]` (`HOLPlayerController.cpp`, développement seulement) : fait apparaître des unités autour du centre de
+  la caméra, pour l'essai du combat. Compilé (20 s), jeu lancé depuis `MyCrusader-J5c` pour l'essai de J7b.
+
+### 2026-10-19 — Essai de J7b par l'utilisateur
+
+- **Tout est bien**, sauf trois retours :
+  1. **Deux unités ennemies ne doivent pas pouvoir se repousser** : en combat, elles se poussent.
+  2. **Attaque-déplacement sur A**, pas Q (AZERTY). **Sélection mixte Paysans + soldats** : la vue « Tous » montre les
+     commandes des soldats (A = attaque-déplacement) ; la grille des Paysans reste dans leur sous-groupe (Tab). À noter
+     pour plus tard : **touches attribuées selon la disposition du clavier** (AZERTY / QWERTY…).
+  3. **Population libérée dès la mort**, pas à la disparition 1 s plus tard.
+- Validés par l'essai : S / D, Maj, clic droit sur un ennemi, attaque-déplacement unité par unité, Arrêt et Tenir hors
+  Maj, attaque ordonnée qui annule Tenir, barres de vie vert / rouge, bloc de sélection.
+- Corrections lancées en sous-agents dans `MyCrusader-J5c` : d'abord touche A + population, puis la poussée.
+- L'utilisateur : « le quick_check devrait être quick et pas durer 8 min ». **D327** : deux niveaux (rapide < 1 min par
+  défaut, complet derrière `-Full` avant un commit d'étape et à une clôture). À faire après la poussée.
+- **Touche A + population faites** (sous-agent, ~35 min, rien de commité). **A** : `AttackMoveCell` 4 → 0 ; la grille
+  de construction n'apparaît plus s'il y a des soldats ; **sous-groupes d'unités (Tab)**, sur le modèle des bâtiments
+  (`SplitSubgroups`) : seulement si plusieurs types, « Tous » puis soldats puis Paysans, sous-groupe retenu par son type ;
+  Arrêt / Tenir / attaque-déplacement s'appliquent au sous-groupe actif ; panneau « Tous (N) » / « Paysan × N »
+  (`HOLGameScreen.cpp`, textes existants). `CommandGrid.UnitOrders` réécrit. **Population** : `FHOLUnitRecord::bDying`
+  (`MarkUnitDying`, au coup mortel ou au premier pas à 0 PV) ; `GetPopulationByOwner` ne compte plus les mourantes.
+  Tests 80/80 ; `quick_check` complet PASS (510 s). Tab sur des unités et la ligne du sous-groupe : à l'essai. Note :
+  avec `-Parts` partiel, `net 2 clients` échoue (dépendance entre parties, à régler avec D327).
+- **Poussée entre ennemis corrigée** (sous-agent, rien de commité). Cause : `UHOLUnitSeparationProcessor` partageait
+  tout recouvrement moitié-moitié, ennemis compris, et l'unité poussée, remise en file, poussait ses voisins (chaîne en
+  mêlée). Règle pure `HOLCombat::GetOverlapShare(bEnemies, bWalkingA, bWalkingB)` : alliés moitié-moitié ; contre un
+  ennemi à l'arrêt, l'unité qui marche (ou poussée par son camp) prend tout, l'ennemi ne bouge pas ; deux ennemis qui
+  marchent : moitié chacun. Tableau `Owners` dans la passe (aucune recherche de voisins en plus). Test
+  `Combat.Push` (**81/81**) ; `quick_check` partie `orders` : scénario « push » (12 Paysans ennemis à l'arrêt, 3 Hommes
+  d'armes : le mur bouge de **0 cm**, avant jusqu'à 168 cm), « hold » resserré à 20 cm. Parties `tests, camera, move,
+  formation, combat` puis `camera, combat` PASS. Effet : les Hommes d'armes contournent le mur au lieu de le traverser
+  (5 coups en 10 s au lieu de 12). S2 à mesurer en fin de J7.
+- Jeu relancé pour l'essai des trois corrections.
+- **Essai des trois corrections : validé** par l'utilisateur (« ça a l'air bon »). Worktree avancé sur `main`
+  (7c2c371, traces Insights d'une autre session, sans fichier commun), recompilé ; `quick_check` complet (la version
+  complète, D327 ; encore le défaut du script) lancé avant le commit de J7b.2 à J7b.5.
+- `quick_check` complet **PASS** (526 s, toutes les parties, **tests 81/81**). **J7b.2 à J7b.5 commitées : ce6a4d2**
+  (dans le worktree, `main` avancé dessus). Suite : D327, puis les gestes, puis J7b.6.
