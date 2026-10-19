@@ -69,7 +69,7 @@
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
-    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "net"),
+    [string[]] $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "net"),
     [string] $EngineDir = "",
     [switch] $Visible
 )
@@ -117,7 +117,7 @@ if ($Parts -contains "net") {
     $NetConfig = Join-Path $TestSaved "quick_net.json"
     $NetSlots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }
     "{ `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
-    Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log") -ErrorAction SilentlyContinue
+    Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
     # will gather), so that the gathering uses it up within seconds; every unload logged.
@@ -132,6 +132,15 @@ if ($Parts -contains "net") {
     if ($Parts -contains "build") { $NetSourceCommand += ",hol.Build.Speed 4,hol.Gather.LogDeposits 1" }
     # The army (J7a.6): where the server has the units, every 5 s (the units stand still after their march).
     $NetSourceCommand += (@(for ($t = 20; $t -le 500; $t += 5) { ",hol.Net.WhenClients 2 hol.Delay $t hol.Units.Where" }) -join "")
+    # The fight seen by a client (J7b.4): once client 1 frames the solo combat part's ground (its signal), the server makes
+    # 2 Men-at-arms of slot 0 and 2 Spearmen of slot 1 there (6 m apart, in each other's aggression radius), then says
+    # where every unit is each second (the client's positions compared with them).
+    $NetFightFlag = Join-Path $TestSaved "quick_net_fight1.flag"
+    $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
+    @("waitfile $NetFightFlag 900", "mark net fight", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+        "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) |
+        Set-Content -Encoding utf8 $NetServerSequence
+    $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
@@ -286,6 +295,22 @@ $FormQueuedTo = @(-2200, -2900)
 $FormBlockPeasants = @(-6000, -5000)
 $FormBlockSpearmen = @(-6000, -5500)
 $FormBlockMenAtArms = @(-6000, -6000)
+# The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1, 6 m apart on the formation's first ground.
+$CombatMenAtArms = @(-6300, -5500)
+$CombatSpearmen = @(-5700, -5500)
+# The attack-move and hold position (J7b.3), on ground clear of the parts before (more than 12 m from their soldiers).
+$OrdersMoveFrom = @(-6500, -1500)
+$OrdersMoveTo = @(-3500, -1500)
+$OrdersMoveSpearman = @(-5000, -1100)
+$OrdersHold = @(-4500, 2500)
+# (Spawn places a unit up to ~1.5 m off its point: the Peasant 5.5 m away, out of reach whatever the draw, within 12 m.)
+$OrdersHoldPeasant = @(-3950, 2500)
+$OrdersHoldSpearman = @(-4500, 3300)
+# Two enemies never push each other back (the user's trial of J7b), on the attack-move's start (left by then): 3 Men-at-arms
+# of slot 0 ordered on a Peasant of slot 1 standing behind 12 others of slot 1 (no aggression: they stand, never strike).
+$PushMenAtArms = @(-6500, -1500)
+$PushWall = @(-5700, -1500)
+$PushTarget = @(-5000, -1500)
 $GapP = @(-6000, 0)
 $GapQ = @(-6000, 600)
 $GapBuilders = @(-6000, -1500)
@@ -811,6 +836,62 @@ if ($Parts -contains "camera") {
             Key Escape
             Step "waitlog Selection: none"
         }
+        if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
+            # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
+            # first ground (left by then): they take each other on by themselves (aggression 12 m), walk into reach and strike.
+            Step "mark combat", "hol.Combat.Enabled 1", "hol.Combat.Report", "hol.Units.Spawn 3 $($CombatMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($CombatSpearmen -join ' ') 1 Spearman 150",
+                "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "wait 0.2", "hol.Combat.Report"
+            for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
+            # A player's order prevails (J7b.2): the 3 Men-at-arms, in the melee, ordered 20 m away (west): they stop striking
+            # and walk off; the Spearmen chase their last attackers, taken on again once the Men-at-arms have arrived.
+            # The health bars (J7b.5): the wounded alone while nothing is selected, then the 3 Men-at-arms selected as well.
+            Step "capture combat_fight", "hol.Combat.Report", "hol.Units.Bars", "hol.Select.BoxGround -6800 -5900 -5200 -5100", "waitlog Selection: 3 units (own): ManAtArms x3",
+                "frames 2", "hol.Combat.Report", "hol.Units.Bars", "capture combat_bars",
+                "mark combat away", "hol.Select.OrderGround $($CombatMenAtArms[0] - 2000) $($CombatMenAtArms[1])", "hol.Combat.Report",
+                "hol.Camera.Focus $($CombatMenAtArms[0] - 1000) $($CombatMenAtArms[1])"
+            for ($i = 0; $i -lt 30; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "capture combat_away", "hol.Select.Click 0.03 0.05"
+            Step "mark combat end", "hol.Combat.Report", "frames 3", "capture combat_end"
+            # The orders (J7b.3): 4 Peasants of slot 0 (no aggression of their own) and a Spearman of slot 1, 6 m apart where
+            # the melee was; the Peasants selected, a right click on the Spearman: they attack it. Then the grid's stop (S).
+            Step "mark orders attack", "hol.Units.Spawn 4 $($CombatMenAtArms -join ' ') 0 Peasant 150", "hol.Units.Spawn 1 $($CombatSpearmen -join ' ') 1 Spearman 150",
+                "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "wait 0.3",
+                "hol.Select.BoxGround $($CombatMenAtArms[0] - 350) $($CombatMenAtArms[1] - 350) $($CombatMenAtArms[0] + 350) $($CombatMenAtArms[1] + 350)",
+                "waitlog Selection: 4 units (own): Peasant x4", "hol.Select.OrderGround $($CombatSpearmen -join ' ')", "hol.Combat.Report"
+            for ($i = 0; $i -lt 4; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "capture orders_attack", "mark orders stop", "hol.Select.Stop", "wait 0.2", "hol.Combat.Report", "wait 2", "hol.Combat.Report"
+            Step "mark orders end", "hol.Select.Click 0.03 0.05"
+            # The attack-move (J7b.3): 3 Men-at-arms of slot 0 attack-move 30 m east, a Spearman of slot 1 standing 4 m off
+            # their way (within the attack-move's 12 m): they take it on, kill it, then walk on to their destination.
+            Step "mark orders attackmove", "hol.Units.Spawn 3 $($OrdersMoveFrom -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 1 $($OrdersMoveSpearman -join ' ') 1 Spearman 150",
+                "hol.Camera.Focus $($OrdersMoveFrom -join ' ')", "wait 0.3", "hol.Combat.Report",
+                "hol.Select.BoxGround $($OrdersMoveFrom[0] - 350) $($OrdersMoveFrom[1] - 350) $($OrdersMoveFrom[0] + 350) $($OrdersMoveFrom[1] + 350)",
+                "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Camera.Focus $(($OrdersMoveFrom[0] + $OrdersMoveTo[0]) / 2) $($OrdersMoveTo[1])", "wait 0.2",
+                "hol.Select.AttackMove $($OrdersMoveTo -join ' ')", "hol.Combat.Report"
+            for ($i = 0; $i -lt 22; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "capture orders_attackmove", "hol.Select.Click 0.03 0.05"
+            # Hold position (J7b.3): a Man-at-arms of slot 0 told to hold, an enemy Peasant (no aggression) just out of its
+            # reach: it does not chase; then an enemy Spearman made 8 m away walks into its reach and is struck.
+            # (The Peasant made once the hold is applied: the box takes a body's middle, above its feet, so a box tight
+            # enough to leave the Peasant out would miss the Man-at-arms.)
+            Step "mark orders hold", "hol.Units.Spawn 1 $($OrdersHold -join ' ') 0 ManAtArms 150",
+                "hol.Camera.Focus $($OrdersHold -join ' ')", "wait 0.3",
+                "hol.Select.BoxGround $($OrdersHold[0] - 350) $($OrdersHold[1] - 350) $($OrdersHold[0] + 350) $($OrdersHold[1] + 350)",
+                "waitlog Selection: ManAtArms #", "hol.Select.Hold", "waitlog Hold order of slot 0 for 1 units",
+                "hol.Units.Spawn 1 $($OrdersHoldPeasant -join ' ') 1 Peasant 150", "wait 0.2", "hol.Combat.Report"
+            for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "mark orders hold reach", "hol.Units.Spawn 1 $($OrdersHoldSpearman -join ' ') 1 Spearman 150", "hol.Combat.Report"
+            for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "capture orders_hold", "mark orders hold end", "hol.Select.Click 0.03 0.05"
+            # Two enemies never push each other back (the user's trial of J7b): the Men-at-arms walk to their target through
+            # the standing Peasants, which do not give way; they go round them and strike it all the same.
+            Step "hol.Units.Spawn 12 $($PushWall -join ' ') 1 Peasant 300", "hol.Units.Spawn 1 $($PushTarget -join ' ') 1 Peasant 10",
+                "hol.Units.Spawn 3 $($PushMenAtArms -join ' ') 0 ManAtArms 150", "hol.Camera.Focus $($PushWall -join ' ')", "wait 0.3",
+                "hol.Select.BoxGround $($PushMenAtArms[0] - 350) $($PushMenAtArms[1] - 350) $($PushMenAtArms[0] + 350) $($PushMenAtArms[1] + 350)",
+                "waitlog Selection: 3 units (own): ManAtArms x3", "mark orders push", "hol.Select.OrderGround $($PushTarget -join ' ')", "hol.Combat.Report"
+            for ($i = 0; $i -lt 10; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "capture orders_push", "mark orders push end", "hol.Select.Click 0.03 0.05"
+        }
     }
 }
 Step "mark end", "quit"
@@ -826,8 +907,10 @@ Get-ChildItem $Shots -Filter "gather_*.png" -ErrorAction SilentlyContinue | Remo
 Get-ChildItem $Shots -Filter "build_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "anims_*.png" -ErrorAction SilentlyContinue | Remove-Item
 Get-ChildItem $Shots -Filter "formation_*.png" -ErrorAction SilentlyContinue | Remove-Item
+Get-ChildItem $Shots -Filter "combat_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
-$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
+# The melee off (J7b.2) until the combat part: the parts before it make units of several slots side by side.
+$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -931,6 +1014,17 @@ if ($NetListening) {
             "hol.UI.Key Ampersand 0 0.05", "wait 0.4", "hol.Select.Report", "hol.Select.OrderNear 0 3000", "wait 18",
             "signal $(Join-Path $TestSaved "quick_net_marched$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_marched$Other.flag")", "wait 1",
             "hol.Units.Where", "hol.Camera.FocusNear 0 3000", "frames 5", "capture net_army_c$Client"
+        # The fight (J7b.4), on client 1 alone: the solo combat part's ground framed, its signal to the server, which makes 2
+        # Men-at-arms of slot 0 and 2 Spearmen of slot 1 there; once shown, its newest own unit (one of them) selected, then
+        # every half second where it has the units (hp level, target, activity) and what the HUD shows of the selection.
+        if ($Client -eq 1) {
+            $NetSteps += "mark combat", "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "frames 5",
+                "signal $NetFightFlag", "waitunits 14", "wait 0.5", "hol.Select.ClickUnit -1", "waitlog Selection:"
+            for ($i = 0; $i -lt 48; $i++) {
+                $NetSteps += "wait 0.5", "hol.Units.Where", "hol.HUD.Report", "hol.Units.Bars"
+                if ($i -eq 6) { $NetSteps += "capture net_combat_c1" }
+            }
+        }
         # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
         # "others []", the flake of 2026-10-16).
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "mark end", "quit"
@@ -944,8 +1038,9 @@ if ($NetListening) {
     }
 }
 
-# 480 s: the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the barracks (J7a.2), the start ~20 s.
-$GameTimedOut = -not $GameProcess.WaitForExit(480000)
+# 660 s: the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the barracks (J7a.2), the start ~20 s;
+# past 480 s with the combat and orders parts (J7b.3: attack-move and hold, ~45 s more).
+$GameTimedOut = -not $GameProcess.WaitForExit(660000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
@@ -1417,9 +1512,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Barracks greyed, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs; R: Caserne$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs; R: Caserne; S: Arr.+t; D: Tenir$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; R: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; R: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; S: Arr.+t \| Annule les ordres et le combat; D: Tenir la position \| N'attaque qu'.+ port.+e, ne poursuit pas$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -1630,7 +1725,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: R = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; R: Caserne$") -and
+    $Checks["the Peasants' grid: R = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; R: Caserne; S: Arr.+t; D: Tenir$") -and
         [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "R=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
     $Checks["the key R: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
@@ -1949,6 +2044,234 @@ if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     $AllOk = (Report "groups" $Checks) -and $AllOk
 }
 
+if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
+    # The melee (J7b.2), from hol.Combat.Report: "Combat report: step S units N fighting F hits H kills K population 0=a 1=b",
+    # then "#id Type slot s hp h/max target t attacking a hits n damage d kills k first f attackers c" per unit.
+    $Lines = @(Get-Section "combat") + @(Get-Section "combat away") + @(Get-Section "combat end")
+    $AwayFrom = @(Get-Section "combat").Count
+    $Reports = @()
+    $Current = $null
+    for ($LineIndex = 0; $LineIndex -lt $Lines.Count; $LineIndex++) {
+        $Line = $Lines[$LineIndex]
+        if ($Line -match "Combat report: step (\d+) units (\d+) fighting (\d+) hits (\d+) kills (\d+) population (.*)$") {
+            $Current = @{ Away = $LineIndex -ge $AwayFrom; Step = [int64]$Matches[1]; Fighting = [int]$Matches[3]; Hits = [int64]$Matches[4]; Kills = [int64]$Matches[5]; Population = @{}; Units = @{} }
+            foreach ($Pair in ($Matches[6].Trim() -split " ")) { if ($Pair -match "^(\d+)=(\d+)$") { $Current.Population[[int]$Matches[1]] = [int]$Matches[2] } }
+            $Reports += $Current
+        } elseif ($Current -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?\d+)/(\d+) target (\d+) attacking (\d) hits (\d+) damage (\d+) kills (\d+) first (-?\d+) attackers (\d+)(?: at (-?\d+) (-?\d+))?") {
+            $Current.Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [int]$Matches[4]; Target = [int]$Matches[6]; Hits = [int]$Matches[8]; Kills = [int]$Matches[10]; First = [int64]$Matches[11]; X = $(if ($Matches[13]) { [double]$Matches[13] } else { 0.0 }) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["combat reports ($($Reports.Count))"] = $Reports.Count -ge 20
+    if ($Reports.Count -ge 3) {
+        $Before = $Reports[0]; $Made = $Reports[1]; $Last = $Reports[-1]
+        $Ids = @($Made.Units.Keys | Where-Object { -not $Before.Units.ContainsKey($_) })
+        $MenAtArms = @($Ids | Where-Object { $Made.Units[$_].Type -eq "ManAtArms" -and $Made.Units[$_].Slot -eq 0 })
+        $Spearmen = @($Ids | Where-Object { $Made.Units[$_].Type -eq "Spearman" -and $Made.Units[$_].Slot -eq 1 })
+        $Checks["3 Men-at-arms and 3 Spearmen made ($($MenAtArms.Count), $($Spearmen.Count))"] = $MenAtArms.Count -eq 3 -and $Spearmen.Count -eq 3
+        $Alive = @($Spearmen | Where-Object { $Last.Units.ContainsKey($_) })
+        $Survivors = @($MenAtArms | Where-Object { $Last.Units.ContainsKey($_) })
+        $Checks["the Spearmen killed ($($Alive.Count) left)"] = $Alive.Count -eq 0
+        $Checks["the Men-at-arms survive ($($Survivors.Count))"] = $Survivors.Count -eq 3
+        $MaaHits = ($Survivors | ForEach-Object { $Last.Units[$_].Hits } | Measure-Object -Sum).Sum
+        $MaaKills = ($Survivors | ForEach-Object { $Last.Units[$_].Kills } | Measure-Object -Sum).Sum
+        $Checks["10 hits of 8 per Spearman ($MaaHits hits, $MaaKills kills)"] = $MaaHits -eq 30 -and $MaaKills -eq 3
+        $Hurt = @($Survivors | Where-Object { $Last.Units[$_].Hp -lt 155 })
+        $Checks["the Spearmen struck back ($($Hurt.Count) Men-at-arms hurt)"] = $Hurt.Count -ge 1
+        $Checks["the survivors stop (no target)"] = @($Survivors | Where-Object { $Last.Units[$_].Target -ne 0 }).Count -eq 0
+        # The order away (J7b.2): the report sent with it (the order applied at the next step), then one a second.
+        $AwayIndex = [Array]::FindIndex([object[]]$Reports, [Predicate[object]]{ param($R) $R.Away })
+        if ($AwayIndex -ge 1 -and $AwayIndex + 4 -lt $Reports.Count) {
+            $AtOrder = $Reports[$AwayIndex]; $Walking = $Reports[$AwayIndex + 1]; $Later = $Reports[$AwayIndex + 4]
+            $Struck = ($MenAtArms | Where-Object { $AtOrder.Units.ContainsKey($_) } | ForEach-Object { $AtOrder.Units[$_].Hits } | Measure-Object -Sum).Sum
+            $Checks["the Men-at-arms struck before the order ($Struck hits)"] = $Struck -ge 3
+            $Targets = @($MenAtArms | Where-Object { $Walking.Units.ContainsKey($_) -and $Walking.Units[$_].Target -ne 0 }).Count
+            $Checks["the order clears their targets (1 s later: $Targets with a target)"] = $Targets -eq 0
+            $Frozen = ($MenAtArms | Where-Object { $Later.Units.ContainsKey($_) } | ForEach-Object { $Later.Units[$_].Hits } | Measure-Object -Sum).Sum
+            $Checks["no hit while walking away (4 s: $Struck -> $Frozen)"] = $Frozen -eq $Struck
+            $X0 = ($MenAtArms | Where-Object { $AtOrder.Units.ContainsKey($_) } | ForEach-Object { $AtOrder.Units[$_].X } | Measure-Object -Average).Average
+            $X4 = ($MenAtArms | Where-Object { $Later.Units.ContainsKey($_) } | ForEach-Object { $Later.Units[$_].X } | Measure-Object -Average).Average
+            $Checks["they walk away (4 s: x $([int]$X0) -> $([int]$X4))"] = $X4 -le $X0 - 800
+            $XEnd = ($Survivors | ForEach-Object { $Last.Units[$_].X } | Measure-Object -Average).Average
+            $Checks["they fight on near their destination only (end x $([int]$XEnd))"] = $XEnd -le $CombatMenAtArms[0] - 1200
+            Write-Host "  combat away: hits $Struck at the order, $Frozen 4 s later; x $([int]$X0) -> $([int]$X4) -> $([int]$XEnd)"
+        } else {
+            $Checks["the order away's reports ($AwayIndex of $($Reports.Count))"] = $false
+        }
+        $Pop0 = if ($Made.Population.ContainsKey(1)) { $Made.Population[1] } else { 0 }
+        $Pop1 = if ($Last.Population.ContainsKey(1)) { $Last.Population[1] } else { 0 }
+        $Checks["population of slot 1 down by 3 ($Pop0 -> $Pop1)"] = $Pop1 -eq $Pop0 - 3
+        $Firsts = @($MenAtArms | ForEach-Object { $Last.Units[$_].First } | Where-Object { $_ -ge 0 })
+        $FirstHit = if ($Firsts.Count -gt 0) { (($Firsts | Measure-Object -Minimum).Minimum - $Made.Step) * 0.05 } else { -1 }
+        $KillSteps = @($Lines | Select-String -Pattern "Combat: step (\d+) #\d+ Spearman of slot 1 killed" | ForEach-Object { [int64]$_.Matches[0].Groups[1].Value })
+        $LastKill = if ($KillSteps.Count -gt 0) { (($KillSteps | Measure-Object -Maximum).Maximum - $Made.Step) * 0.05 } else { -1 }
+        $Checks["first hit within 3 s ($FirstHit s)"] = $FirstHit -ge 0 -and $FirstHit -le 3
+        Write-Host "  combat: first hit $FirstHit s after the spawn, kills at $(($KillSteps | ForEach-Object { ($_ - $Made.Step) * 0.05 }) -join ', ') s, MaA HP $(($Survivors | ForEach-Object { $Last.Units[$_].Hp }) -join ', '), total hits $($Last.Hits)"
+    }
+    # The health bars (J7b.5): each bar's unit wounded in the combat report just before (health never rises), none selected
+    # before the box, then the 3 Men-at-arms among them, selected; unhurt unselected units without one.
+    $Bars = @()
+    $Wounded = @{}
+    foreach ($Line in @(Get-Section "combat")) {
+        if ($Line -match "Combat report: step") { $Wounded = @{} }
+        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?\d+)/(\d+) ") { if ([int]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
+        elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\), unhurt unselected (\d+)") {
+            $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
+            $Bars += @{ Count = [int]$Matches[1]; Unhurt = [int]$Matches[3]; Wounded = $Wounded.Clone();
+                Ids = @($Items | ForEach-Object { if ($_ -match "^#(\d+)") { $Matches[1] } }); Selected = @($Items | Where-Object { $_ -match " selected$" } | ForEach-Object { if ($_ -match "^#(\d+)") { $Matches[1] } }) }
+        }
+    }
+    if ($Bars.Count -ge 2) {
+        $B0 = $Bars[0]; $B1 = $Bars[1]
+        $Unwounded0 = @($B0.Ids | Where-Object { -not $B0.Wounded.ContainsKey($_) })
+        $Checks["bars, nothing selected: the wounded alone ($($B0.Count) bars, $($Unwounded0.Count) unhurt among them, $($B0.Unhurt) unhurt without)"] = ($B0.Count -ge 1) -and ($Unwounded0.Count -eq 0) -and ($B0.Selected.Count -eq 0) -and ($B0.Unhurt -ge 1)
+        $Unwounded1 = @($B1.Ids | Where-Object { -not $B1.Wounded.ContainsKey($_) -and $B1.Selected -notcontains $_ })
+        $Checks["bars, 3 Men-at-arms selected: theirs too ($($B1.Selected.Count) selected, $($B1.Count) bars)"] = ($B1.Selected.Count -eq 3) -and ($Unwounded1.Count -eq 0) -and ($B1.Count -ge 3)
+        Write-Host "  combat bars: $($B0.Count) then $($B1.Count) bars ($($B1.Selected.Count) selected), unhurt unselected $($B0.Unhurt) / $($B1.Unhurt)"
+    } else {
+        $Checks["health bars reports ($($Bars.Count))"] = $false
+    }
+    $Checks["capture"] = (Test-Path (Join-Path $Shots "combat_end.png")) -and (Test-Path (Join-Path $Shots "combat_bars.png"))
+    $AllOk = (Report "combat" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
+    # The orders (J7b.3): Peasants ordered on a Spearman strike it; the stop clears their targets and their hits stay.
+    $Checks = [ordered]@{}
+    $Attack = @(Get-Section "orders attack")
+    $Stop = @(Get-Section "orders stop")
+    $Checks["right click on the enemy: attack order"] = [bool]($Attack | Select-String -SimpleMatch "Order: 4 units attack #")
+    $Checks["applied by the server"] = [bool]($Attack | Select-String -Pattern "Attack order of slot 0 for 4 units on #")
+    $PeasantHits = {
+        param($Lines)
+        $Last = @{}
+        foreach ($Line in $Lines) { if ($Line -match "#(\d+) Peasant slot 0 hp -?\d+/\d+ target (\d+) attacking \d hits (\d+)") { $Last[$Matches[1]] = @{ Target = [int]$Matches[2]; Hits = [int]$Matches[3] } } }
+        $Last
+    }
+    $AtStop = & $PeasantHits $Attack
+    $Hits = ($AtStop.Values | ForEach-Object { $_.Hits } | Measure-Object -Sum).Sum
+    $Checks["ordered Peasants strike the Spearman ($Hits hits)"] = $Hits -ge 1
+    $StopReports = @($Stop | Select-String -Pattern "Combat report:").Count
+    $After = & $PeasantHits $Stop
+    $Targets = @($After.Values | Where-Object { $_.Target -ne 0 }).Count
+    $Checks["stop applied"] = [bool]($Stop | Select-String -Pattern "Stop order of slot 0 for \d+ units")
+    $Checks["stop clears their targets ($Targets with a target)"] = $StopReports -ge 2 -and $After.Count -ge 1 -and $Targets -eq 0
+    Write-Host "  orders: Peasant hits $Hits before the stop, $(($After.Values | ForEach-Object { $_.Hits } | Measure-Object -Sum).Sum) 2 s after"
+
+    # The reports of a section: one hashtable per report, unit id -> type, slot, target, hits, position.
+    function Get-CombatReports($Lines) {
+        $Result = @()
+        $Units = $null
+        foreach ($Line in $Lines) {
+            if ($Line -match "Combat report: step (\d+)") {
+                $Units = @{}
+                $Result += , $Units
+            } elseif ($null -ne $Units -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?\d+)/\d+ target (\d+) attacking \d hits (\d+) .* at (-?\d+) (-?\d+)") {
+                $Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [int]$Matches[4]; Target = [int]$Matches[5]; Hits = [int]$Matches[6]; X = [double]$Matches[7]; Y = [double]$Matches[8] }
+            }
+        }
+        return , $Result
+    }
+
+    # The attack-move (J7b.3): engaged on the way, the Spearman killed, then on to the destination.
+    $Move = @(Get-Section "orders attackmove")
+    $Checks["attack-move ordered"] = [bool]($Move | Select-String -SimpleMatch "Order: 3 units attack-move to")
+    $MoveReports = Get-CombatReports $Move
+    if ($MoveReports.Count -ge 10) {
+        $Made = $MoveReports[0]; $Last = $MoveReports[-1]
+        $MoveMen = @($Made.Keys | Where-Object { $Made[$_].Type -eq "ManAtArms" -and $Made[$_].Slot -eq 0 -and [Math]::Abs($Made[$_].X - $OrdersMoveFrom[0]) -le 500 -and [Math]::Abs($Made[$_].Y - $OrdersMoveFrom[1]) -le 500 })
+        $MoveSpear = @($Made.Keys | Where-Object { $Made[$_].Type -eq "Spearman" -and $Made[$_].Slot -eq 1 -and [Math]::Abs($Made[$_].X - $OrdersMoveSpearman[0]) -le 300 -and [Math]::Abs($Made[$_].Y - $OrdersMoveSpearman[1]) -le 300 })
+        $Checks["3 Men-at-arms and the Spearman made ($($MoveMen.Count), $($MoveSpear.Count))"] = $MoveMen.Count -eq 3 -and $MoveSpear.Count -eq 1
+        if ($MoveMen.Count -eq 3 -and $MoveSpear.Count -eq 1) {
+            $SpearId = $MoveSpear[0]
+            $Engaged = @($MoveReports | Where-Object { $R = $_; @($MoveMen | Where-Object { $R.ContainsKey($_) -and $R[$_].Target -eq $SpearId }).Count -gt 0 }).Count
+            $Checks["they take on the Spearman on the way ($Engaged reports)"] = $Engaged -ge 1
+            $Checks["the Spearman killed"] = -not $Last.ContainsKey($SpearId)
+            $MoveHits = ($MoveMen | Where-Object { $Last.ContainsKey($_) } | ForEach-Object { $Last[$_].Hits } | Measure-Object -Sum).Sum
+            $Checks["10 hits of 8 to kill it ($MoveHits)"] = $MoveHits -eq 10
+            $Arrived = @($MoveMen | Where-Object { $Last.ContainsKey($_) -and [Math]::Sqrt([Math]::Pow($Last[$_].X - $OrdersMoveTo[0], 2) + [Math]::Pow($Last[$_].Y - $OrdersMoveTo[1], 2)) -le 400 })
+            $Checks["then on to the destination ($($Arrived.Count) of 3 within 4 m)"] = $Arrived.Count -eq 3
+            # Where they stood when the Spearman fell: off their destination (the fight on the way, not at the end).
+            $DeathIndex = [Array]::FindIndex([object[]]$MoveReports, [Predicate[object]]{ param($R) -not $R.ContainsKey($SpearId) })
+            if ($DeathIndex -ge 0) {
+                $XAtDeath = ($MoveMen | Where-Object { $MoveReports[$DeathIndex].ContainsKey($_) } | ForEach-Object { $MoveReports[$DeathIndex][$_].X } | Measure-Object -Average).Average
+                $Checks["the fight on the way (x $([int]$XAtDeath) at the kill)"] = $XAtDeath -le $OrdersMoveTo[0] - 800
+            }
+            $XEnd = ($MoveMen | Where-Object { $Last.ContainsKey($_) } | ForEach-Object { "$([int]$Last[$_].X),$([int]$Last[$_].Y)" }) -join " "
+            Write-Host "  attack-move: engaged in $Engaged reports, Spearman dead at report $DeathIndex of $($MoveReports.Count), $MoveHits hits, end $XEnd"
+        }
+    } else {
+        $Checks["attack-move reports ($($MoveReports.Count))"] = $false
+    }
+
+    # Hold position (J7b.3): no chase of the enemy Peasant out of reach; the Spearman struck once in reach.
+    $Hold = @(Get-Section "orders hold")
+    $Reach = @(Get-Section "orders hold reach")
+    $Checks["hold applied"] = [bool]($Hold | Select-String -Pattern "Hold order of slot 0 for 1 units")
+    $HoldReports = Get-CombatReports $Hold
+    $ReachReports = Get-CombatReports $Reach
+    if ($HoldReports.Count -ge 3 -and $ReachReports.Count -ge 5) {
+        $First = $HoldReports[0]
+        $Holder = @($First.Keys | Where-Object { $First[$_].Type -eq "ManAtArms" -and $First[$_].Slot -eq 0 -and [Math]::Abs($First[$_].X - $OrdersHold[0]) -le 150 -and [Math]::Abs($First[$_].Y - $OrdersHold[1]) -le 150 })
+        $Checks["the holder made ($($Holder.Count))"] = $Holder.Count -eq 1
+        if ($Holder.Count -eq 1) {
+            $Id = $Holder[0]
+            $Moved = (@($HoldReports | Where-Object { $_.ContainsKey($Id) } | ForEach-Object { [Math]::Sqrt([Math]::Pow($_[$Id].X - $First[$Id].X, 2) + [Math]::Pow($_[$Id].Y - $First[$Id].Y, 2)) }) | Measure-Object -Maximum).Maximum
+            $HoldTargets = @($HoldReports | Where-Object { $_.ContainsKey($Id) -and $_[$Id].Target -ne 0 }).Count
+            $Checks["no chase of the Peasant out of reach (moved $([int]$Moved) cm, $HoldTargets reports with a target)"] = $Moved -le 30 -and $HoldTargets -eq 0
+            # The Peasant out of reach (edge to edge over 50 cm) but within the aggression's 12 m: a unit not holding would go.
+            $PeasantIds = @($First.Keys | Where-Object { $First[$_].Type -eq "Peasant" -and $First[$_].Slot -eq 1 -and [Math]::Abs($First[$_].X - $OrdersHoldPeasant[0]) -le 300 -and [Math]::Abs($First[$_].Y - $OrdersHoldPeasant[1]) -le 300 })
+            $Gap = if ($PeasantIds.Count -eq 1) { [Math]::Sqrt([Math]::Pow($First[$PeasantIds[0]].X - $First[$Id].X, 2) + [Math]::Pow($First[$PeasantIds[0]].Y - $First[$Id].Y, 2)) - 120 } else { -1 }
+            $Checks["the Peasant out of reach, within 12 m ($([int]$Gap) cm edge to edge)"] = $Gap -gt 50 -and $Gap -lt 1200
+            $End = $ReachReports[-1]
+            $HoldHits = if ($End.ContainsKey($Id)) { $End[$Id].Hits } else { -1 }
+            $Checks["the Spearman struck once in reach ($HoldHits hits)"] = $HoldHits -ge 2
+            # Two enemies never push each other back (the user's trial of J7b): the Spearman walking into it does not move it.
+            $Start = $ReachReports[0]
+            $MovedReach = if ($Start.ContainsKey($Id)) { (@($ReachReports | Where-Object { $_.ContainsKey($Id) } | ForEach-Object { [Math]::Sqrt([Math]::Pow($_[$Id].X - $Start[$Id].X, 2) + [Math]::Pow($_[$Id].Y - $Start[$Id].Y, 2)) }) | Measure-Object -Maximum).Maximum } else { 999 }
+            $Checks["still holding while it fights, not pushed (moved $([int]$MovedReach) cm)"] = $MovedReach -le 20
+            Write-Host "  hold: moved $([int]$Moved) cm before the Spearman, $([int]$MovedReach) cm after, $HoldHits hits"
+        }
+    } else {
+        $Checks["hold reports ($($HoldReports.Count), $($ReachReports.Count))"] = $false
+    }
+
+    # Two enemies never push each other back (the user's trial of J7b): the Spearman the 4 Peasants were ordered on, once
+    # struck, stays where it is however they crowd it (it strikes back, standing).
+    $AttackReports = Get-CombatReports $Attack
+    $Spear = @(if ($AttackReports.Count -ge 1) { $AttackReports[0].Keys | Where-Object { $AttackReports[0][$_].Type -eq "Spearman" -and $AttackReports[0][$_].Slot -eq 1 -and [Math]::Abs($AttackReports[0][$_].X - $CombatSpearmen[0]) -le 300 -and [Math]::Abs($AttackReports[0][$_].Y - $CombatSpearmen[1]) -le 300 } })
+    $StruckIndex = [Array]::FindIndex([object[]]$AttackReports, [Predicate[object]]{ param($R) @($R.Values | Where-Object { $_.Type -eq "Peasant" -and $_.Slot -eq 0 -and $_.Hits -ge 1 }).Count -gt 0 })
+    if ($Spear.Count -eq 1 -and $StruckIndex -ge 0) {
+        $SpearId = $Spear[0]
+        $From = $AttackReports[$StruckIndex][$SpearId]
+        $Pushed = (@($AttackReports[$StruckIndex..($AttackReports.Count - 1)] | Where-Object { $_.ContainsKey($SpearId) } | ForEach-Object { [Math]::Sqrt([Math]::Pow($_[$SpearId].X - $From.X, 2) + [Math]::Pow($_[$SpearId].Y - $From.Y, 2)) }) | Measure-Object -Maximum).Maximum
+        $Checks["the Spearman crowded by 4 Peasants not pushed (moved $([int]$Pushed) cm)"] = $Pushed -le 20
+        Write-Host "  orders: the Spearman moved $([int]$Pushed) cm once struck (reports $StruckIndex to $($AttackReports.Count - 1))"
+    } else {
+        $Checks["the Spearman struck by the Peasants ($($Spear.Count) found, first hit at report $StruckIndex)"] = $false
+    }
+    # Two enemies never push each other back (the user's trial of J7b): the 12 standing Peasants the Men-at-arms walk
+    # through, from the order on, do not move (the separation's correction all on the walkers); the target struck all the same.
+    $PushReports = Get-CombatReports @(Get-Section "orders push")
+    if ($PushReports.Count -ge 5) {
+        $At = $PushReports[0]
+        $Wall = @($At.Keys | Where-Object { $At[$_].Type -eq "Peasant" -and $At[$_].Slot -eq 1 -and [Math]::Abs($At[$_].X - $PushWall[0]) -le 450 -and [Math]::Abs($At[$_].Y - $PushWall[1]) -le 450 })
+        $Target = @($At.Keys | Where-Object { $At[$_].Type -eq "Peasant" -and $At[$_].Slot -eq 1 -and [Math]::Abs($At[$_].X - $PushTarget[0]) -le 100 -and [Math]::Abs($At[$_].Y - $PushTarget[1]) -le 100 })
+        $Men = @($At.Keys | Where-Object { $At[$_].Type -eq "ManAtArms" -and $At[$_].Slot -eq 0 -and [Math]::Abs($At[$_].X - $PushMenAtArms[0]) -le 450 -and [Math]::Abs($At[$_].Y - $PushMenAtArms[1]) -le 450 })
+        $Checks["12 Peasants, their target and 3 Men-at-arms made ($($Wall.Count), $($Target.Count), $($Men.Count))"] = $Wall.Count -eq 12 -and $Target.Count -eq 1 -and $Men.Count -eq 3
+        $WallMoved = (@(foreach ($R in $PushReports) { foreach ($P in $Wall) { if ($R.ContainsKey($P)) { [Math]::Sqrt([Math]::Pow($R[$P].X - $At[$P].X, 2) + [Math]::Pow($R[$P].Y - $At[$P].Y, 2)) } } }) | Measure-Object -Maximum).Maximum
+        $Checks["the standing enemies not pushed by the walkers (at most $([int]$WallMoved) cm)"] = $WallMoved -le 20
+        $End = $PushReports[-1]
+        $PushHits = ($Men | Where-Object { $End.ContainsKey($_) } | ForEach-Object { $End[$_].Hits } | Measure-Object -Sum).Sum
+        $Struck = if ($Target.Count -eq 1) { -not $End.ContainsKey($Target[0]) -or $End[$Target[0]].Hp -lt 50 } else { $false }
+        $Checks["the target struck through them ($PushHits hits)"] = $Struck
+        Write-Host "  push: the 12 standing Peasants moved $([int]$WallMoved) cm at most, Men-at-arms hits $PushHits"
+    } else {
+        $Checks["push reports ($($PushReports.Count))"] = $false
+    }
+    $AllOk = (Report "orders" $Checks) -and $AllOk
+}
+
 if ($Parts -contains "net") {
     # The lines of a client's section, from its mark to the next one ("net", then "gather").
     function Get-ClientSection($Lines, [string] $Mark) {
@@ -2158,12 +2481,85 @@ if ($Parts -contains "net") {
                 ($Ids.Count -eq 5) -and ($Far -le 600) -and ($Closest -ge 100)
         }
     }
+    # The fight seen by client 1 (J7b.4): the 4 units the server made, their health levels falling (never rising), a unit
+    # striking one of the other slot (Attacking, target #id), the Spearmen Dying then gone, the Men-at-arms left where the
+    # server has them; the HUD shows the attack of its selected unit.
+    $FightClient = $NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1
+    if ($FightClient) {
+        $ClientLines = @(Get-Content $FightClient.Log -ErrorAction SilentlyContinue)
+        $Before = & $ParseWhere (@(Get-ClientSection $ClientLines "army") | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $FightLines = @(Get-ClientSection $ClientLines "combat")
+        $Wheres = @($FightLines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Fighters = @{}   # id -> @{ Slot; Levels (16 unhurt); Dying; Attacks (targets of the other slot) }
+        $LastSeen = @{}
+        foreach ($Report in $Wheres) {
+            $LastSeen = @{}
+            foreach ($Entry in ($Report -split "; ")) {
+                if ($Entry -notmatch "^#(\d+) slot (\d) at \((-?\d+), (-?\d+)\) (\w+)") { continue }
+                $Id = $Matches[1]; $Slot = [int]$Matches[2]; $X = [double]$Matches[3]; $Y = [double]$Matches[4]; $Activity = $Matches[5]
+                $LastSeen[$Id] = @($Slot, $X, $Y)
+                if ($Before.ContainsKey($Id)) { continue }
+                if (-not $Fighters.ContainsKey($Id)) { $Fighters[$Id] = @{ Slot = $Slot; Levels = @(); Dying = $false; Targets = @() } }
+                $Level = if ($Entry -match ", hp (\d+)/15") { [int]$Matches[1] } else { 16 }
+                $Fighters[$Id].Levels += $Level
+                if ($Activity -eq "Dying") { $Fighters[$Id].Dying = $true }
+                if ($Activity -eq "Attacking" -and $Entry -match ", target #(\d+)") { $Fighters[$Id].Targets += $Matches[1] }
+            }
+        }
+        $Ids = @($Fighters.Keys)
+        $Checks["client 1 : the fight's 4 units shown ($($Ids.Count), $($Wheres.Count) reports)"] = $Ids.Count -eq 4
+        $Rising = @($Ids | Where-Object { $L = $Fighters[$_].Levels; @(for ($k = 1; $k -lt $L.Count; $k++) { if ($L[$k] -gt $L[$k - 1]) { 1 } }).Count -gt 0 })
+        $Hurt = @($Ids | Where-Object { ($Fighters[$_].Levels | Measure-Object -Minimum).Minimum -lt 16 })
+        $LevelText = ($Ids | Sort-Object { [int]$_ } | ForEach-Object { "#$_ slot $($Fighters[$_].Slot): $(($Fighters[$_].Levels | Select-Object -Unique) -join '>')" }) -join "; "
+        $Checks["client 1 : health levels fall, never rise ($($Hurt.Count) hurt, $($Rising.Count) rising)"] = ($Hurt.Count -ge 3) -and ($Rising.Count -eq 0)
+        $Aimed = @($Ids | Where-Object { $F = $Fighters[$_]; @($F.Targets | Where-Object { $Fighters.ContainsKey($_) -and $Fighters[$_].Slot -ne $F.Slot }).Count -gt 0 })
+        $Checks["client 1 : units striking one of the other slot ($($Aimed.Count) seen Attacking)"] = $Aimed.Count -ge 2
+        $Spears = @($Ids | Where-Object { $Fighters[$_].Slot -eq 1 })
+        $Mens = @($Ids | Where-Object { $Fighters[$_].Slot -eq 0 })
+        $DyingSeen = @($Spears | Where-Object { $Fighters[$_].Dying })
+        $Checks["client 1 : the Spearmen seen Dying ($($DyingSeen.Count) of $($Spears.Count))"] = ($Spears.Count -eq 2) -and ($DyingSeen.Count -ge 1)
+        $Gone = @($Spears | Where-Object { -not $LastSeen.ContainsKey($_) })
+        $Left = @($Mens | Where-Object { $LastSeen.ContainsKey($_) })
+        $Checks["client 1 : then removed, the Men-at-arms left ($($Gone.Count) gone, $($Left.Count) left)"] = ($Gone.Count -eq 2) -and ($Left.Count -eq 2)
+        $Server = $null
+        foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Left.Count -and @($Left | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0 -and @($Spears | Where-Object { $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
+        $Gaps = @(if ($Server) { foreach ($Id in $Left) { [Math]::Sqrt([Math]::Pow($LastSeen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($LastSeen[$Id][2] - $Server[$Id][2], 2)) } })
+        $MaxGap = if ($Gaps.Count) { [Math]::Round(($Gaps | Measure-Object -Maximum).Maximum) } else { -1 }
+        $Checks["client 1 : the Men-at-arms where the server has them (at most $MaxGap cm off)"] = ($Gaps.Count -eq 2) -and ($MaxGap -ge 0) -and ($MaxGap -le 100)
+        $HudAttack = [bool]($FightLines | Select-String -SimpleMatch "EHOLUnitActivity::Attacking" -Quiet)
+        $Checks["client 1 : the HUD shows its selected unit's attack"] = $HudAttack
+        # The health bars on client 1 (J7b.5): its selected unit's bar, and others only for units wounded in the Units where
+        # just before (levels never rise).
+        $BarRuns = @(); $WoundedNow = @{}
+        foreach ($Line in $FightLines) {
+            if ($Line -match "Units where: \d+ units: (.*)$") {
+                $WoundedNow = @{}
+                foreach ($Entry in ($Matches[1] -split "; ")) { if ($Entry -match "^#(\d+) .*, hp \d+/15") { $WoundedNow[$Matches[1]] = $true } }
+            } elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\)") {
+                $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
+                $Wrong = @($Items | Where-Object { $_ -notmatch " selected$" -and $_ -match "^#(\d+)" -and -not $WoundedNow.ContainsKey($Matches[1]) })
+                $BarRuns += @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = $Wrong.Count }
+            }
+        }
+        $BarsSel = @($BarRuns | Where-Object { $_.Selected -ge 1 }).Count
+        $BarsOther = @($BarRuns | Where-Object { $_.Others -ge 1 }).Count
+        $BarsWrong = ($BarRuns | ForEach-Object { $_.Wrong } | Measure-Object -Sum).Sum
+        $Checks["client 1 : health bars, selected one ($BarsSel of $($BarRuns.Count)), wounded others ($BarsOther), none for an unhurt unselected ($BarsWrong)"] = ($BarRuns.Count -ge 20) -and ($BarsSel -ge 1) -and ($BarsOther -ge 1) -and ($BarsWrong -eq 0)
+        $Checks["client 1 : fight capture"] = Test-Path (Join-Path $FightClient.Shots "net_combat_c1.png")
+        $FirstDying = [Array]::FindIndex([string[]]$Wheres, [Predicate[string]]{ param($R) $R -match "\) Dying" })
+        $FirstGone = [Array]::FindIndex([string[]]$Wheres, [Predicate[string]]{ param($R) $R2 = & $ParseWhere $R; $Spears.Count -and @($Spears | Where-Object { -not $R2.ContainsKey($_) }).Count -eq $Spears.Count })
+        Write-Host "  net combat (client 1): levels $LevelText; first Dying at report $FirstDying, both Spearmen gone at $FirstGone (0.5 s apart); MaA gap $MaxGap cm"
+    }
     $Checks["two clients in slots 0 and 1 ($($HeldSlots -join ', '))"] = (($HeldSlots | Sort-Object) -join ',') -eq "0,1"
     if ($Parts -contains "sources") {
         $Checks["the same tree selected on both clients ($(($NetSelectedTrees.Values | Sort-Object) -join ' / '))"] = ($NetSelectedTrees.Count -eq 2) -and
             (@($NetSelectedTrees.Values | Sort-Object -Unique).Count -eq 1) -and ($NetSelectedTrees.Values -notcontains "")
     }
     if ($NetServerProcess -and -not $NetServerProcess.HasExited) { Stop-Process -Id $NetServerProcess.Id -Force }
+    # The melee on (J7b.2) on the dedicated server: the two armies stand at their own centres, far apart, no one killed;
+    # the fight made for client 1 (J7b.4) kills its 2 Spearmen alone.
+    $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+    $Checks["server: combat on, the fight's 2 Spearmen alone killed ($($NetKills -join ', '))"] = ($NetKills -join ',') -eq "Spearman of slot 1,Spearman of slot 1"
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     $Born = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Production: Peasant of slot (\d) done" | ForEach-Object { $_.Matches[0].Groups[1].Value } })

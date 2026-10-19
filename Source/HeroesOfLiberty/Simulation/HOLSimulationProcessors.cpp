@@ -14,6 +14,7 @@
 #include "MassNavMeshNavigationFragments.h"
 #include "MassNavigationFragments.h"
 #include "Misc/ScopeExit.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 
@@ -514,6 +515,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Ghosts.Reset();
 	FormUpSerials.Reset();
 	Moving.Reset();
+	Owners.Reset();
 	AtSource.Reset();
 	float MaxRadius = 1.f;
 	bool bAnyWalking = false;
@@ -540,6 +542,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			const bool bWalking = bMoving || (!bGhost && bSettling);
 			Walking.Add(bWalking);
 			Moving.Add(bMoving);
+			Owners.Add(States[EntityIt].OwnerPlayer);
 			AtSource.Add(States[EntityIt].Activity == EHOLUnitActivity::Gathering);
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			bAnyWalking |= bWalking;
@@ -627,10 +630,17 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 						// Two units on the same point: apart along a direction of their own, the same at every run.
 						const FVector2D Normal = Distance > UE_KINDA_SMALL_NUMBER ? Delta / Distance
 							: FVector2D(FMath::Cos(Index * 2.399), FMath::Sin(Index * 2.399));
-						// Each takes half: a walker pushes a standing unit out of its way as it would push a walker.
+						// Two units of one player take half each: a walker pushes a standing unit out of its way as it would push a
+						// walker. Two enemies never push each other back (the user's trial of J7b): a walker stops against a
+						// standing enemy, which stays where it is; the one that looks is a walker or pushed this step, so it moves.
 						const double Overlap = MinDistance - Distance;
-						Corrections[Index] += Normal * (Overlap * 0.5);
-						Corrections[Other] -= Normal * (Overlap * 0.5);
+						const double Share = HOLCombat::GetOverlapShare(Owners[Index] != Owners[Other], Walking[Index], Walking[Other]);
+						Corrections[Index] += Normal * (Overlap * Share);
+						if (Share >= 1.)
+						{
+							continue;
+						}
+						Corrections[Other] -= Normal * (Overlap * (1. - Share));
 						if (!Queued[Other])
 						{
 							Queued[Other] = true;

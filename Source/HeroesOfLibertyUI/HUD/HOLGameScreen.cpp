@@ -370,9 +370,11 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	else if (NumSelectedUnits == 1)
 	{
 		FHOLUnitView Unit;
-		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit) && Unit.CarryCapacity > 0)
+		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit))
 		{
-			RefreshUnitActivity(&Unit);
+			// A soldier's line shows while it strikes alone (J7b.4), a gatherer's always; its health as it changes (J7b.5).
+			RefreshUnitActivity(Unit.CarryCapacity > 0 || Unit.Activity == EHOLUnitActivity::Attacking ? &Unit : nullptr);
+			RefreshUnitHealth(&Unit);
 		}
 	}
 	else if (NumSelectedUnits > 1 && SinceGroupRefresh >= GroupRefreshInterval)
@@ -524,6 +526,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	if (!Building)
 	{
 		ShownSelection = TEXT("none");
+		ShownHealth.Reset();
 		RefreshUnitActivity(nullptr);
 		return;
 	}
@@ -556,6 +559,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	{
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
 	}
+	ShownHealth.Reset();
 	SetShown(SelectionHealthRow, true);
 	if (!bSite || !bOwn)
 	{
@@ -602,6 +606,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	if (Views.IsEmpty())
 	{
 		ShownSelection = TEXT("none");
+		ShownHealth.Reset();
 		RefreshUnitActivity(nullptr);
 		return;
 	}
@@ -631,6 +636,15 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	});
 	TArray<FString> ShownTypes;
 	TArray<FText> Lines;
+	// Units of several types (the user's trial of J7b): first the subgroup Tab made active, whose cells the grid shows,
+	// « Tous (8) » or « Paysan × 3 », as a group of buildings.
+	FHOLSubgroup Subgroup;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	if (bOwn && PlayerController && PlayerController->GetActiveUnitSubgroup(Subgroup))
+	{
+		Lines.Add(Subgroup.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Subgroup.Members.Num())
+			: FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), HOLGameNames::GetUnitName(Subgroup.TypeName, FindUnitType(Subgroup.TypeName)), Subgroup.Members.Num()));
+	}
 	for (const TPair<FName, int32>& Type : PerType)
 	{
 		const FText Name = HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key));
@@ -653,17 +667,11 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Owner + 1));
 	}
 	// One unit shows its health, a group does not (D288).
-	const FHOLUnitTypeRow* Type = Views.Num() == 1 ? FindUnitType(Views[0].TypeName) : nullptr;
-	SetShown(SelectionHealthRow, Type != nullptr);
-	if (SelectionHealth && Type)
-	{
-		// No damage before M5: a unit is whole.
-		SelectionHealth->SetText(FormatRatio(Type->MaxHealth, Type->MaxHealth));
-	}
+	RefreshUnitHealth(Views.Num() == 1 ? &Views[0] : nullptr);
 	if (Views.Num() == 1)
 	{
-		// One gatherer shows what it does and what it carries (J5, D298).
-		RefreshUnitActivity(Views[0].CarryCapacity > 0 ? &Views[0] : nullptr);
+		// One gatherer shows what it does and what it carries (J5, D298); any unit striking, its attack (J7b.4).
+		RefreshUnitActivity(Views[0].CarryCapacity > 0 || Views[0].Activity == EHOLUnitActivity::Attacking ? &Views[0] : nullptr);
 		return;
 	}
 	// A group, its workers by activity (J5b, D298): the round trip counts as gathering (D307); building (J6a.4) on its own.
@@ -704,10 +712,12 @@ void UHOLGameScreen::RefreshBuildingGroup(const TConstArrayView<AHOLBuilding*> B
 	// Several of the player's buildings (an F key, D30): by type and number, as a group of units; the sites among them.
 	SetShown(SelectionPanel, !Buildings.IsEmpty(), ESlateVisibility::Visible);
 	SetShown(SelectionProgressRow, false);
+	ShownHealth.Reset();
 	SetShown(SelectionHealthRow, false);
 	if (Buildings.IsEmpty())
 	{
 		ShownSelection = TEXT("none");
+		ShownHealth.Reset();
 		SetDetailLine(FString(), FText::GetEmpty());
 		return;
 	}
@@ -766,11 +776,13 @@ void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
 	if (TypeName.IsNone())
 	{
 		ShownSelection = TEXT("none");
+		ShownHealth.Reset();
 		SetDetailLine(FString(), FText::GetEmpty());
 		return;
 	}
 	// Nobody's: no owner, no health; its name, and what it still holds (« Filon d'or — 1840 », D298).
 	SetShown(SelectionOwnerRow, false);
+	ShownHealth.Reset();
 	SetShown(SelectionHealthRow, false);
 	const FString Shown = FString::Printf(TEXT("%s source %d"), *TypeName.ToString(), SourceIndex);
 	if (Shown != ShownSelection)
@@ -802,11 +814,33 @@ void UHOLGameScreen::RefreshUnitActivity(const FHOLUnitView* Unit)
 	}
 	const FText Activity = IsGatheringActivity(Unit->Activity) ? LOCTEXT("ActivityGathering", "Récolte")
 		: Unit->Activity == EHOLUnitActivity::Building ? LOCTEXT("ActivityBuilding", "Construction")
+		: Unit->Activity == EHOLUnitActivity::Attacking ? LOCTEXT("ActivityAttacking", "Attaque")
 		: Unit->Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
 	SetDetailLine(Shown, bLoad
 		? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit->LoadResource),
 			Unit->LoadAmount, Unit->CarryCapacity)
 		: Activity);
+}
+
+void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// Exact in solo and on the server; on a client, the top of the level's sixteenth (J7-Q5: the exact health stays on
+	// the server), so an unhurt unit reads its maximum and a unit at level 8 of 50 reads 27/50.
+	const bool bShown = Unit && Unit->MaxHealth > 0;
+	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (level)"))
+		: FString();
+	if (Shown == ShownHealth)
+	{
+		return;
+	}
+	ShownHealth = Shown;
+	SetShown(SelectionHealthRow, bShown);
+	if (SelectionHealth && bShown)
+	{
+		SelectionHealth->SetText(FormatRatio(Unit->Health, Unit->MaxHealth));
+	}
 }
 
 void UHOLGameScreen::SetDetailLine(const FString& Shown, const FText& Text)
@@ -1040,6 +1074,20 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				? LOCTEXT("RefundHalf", "Rend la moitié du coût") : LOCTEXT("RefundAll", "Rend tout le coût"));
 			break;
 		}
+		case EHOLGridCommand::AttackMove:
+			GridCell->SetCommand(LOCTEXT("AttackMove", "Attaque"), EHOLGridCellState::Ready);
+			GridCell->SetTooltip(LOCTEXT("AttackMoveName", "Attaque-déplacement"), FHOLResources(), FHOLResources(),
+				LOCTEXT("AttackMoveEffect", "Puis clic au sol : attaque les ennemis en chemin"));
+			break;
+		case EHOLGridCommand::Stop:
+			GridCell->SetCommand(LOCTEXT("Stop", "Arrêt"), EHOLGridCellState::Ready);
+			GridCell->SetTooltip(LOCTEXT("StopName", "Arrêt"), FHOLResources(), FHOLResources(), LOCTEXT("StopEffect", "Annule les ordres et le combat"));
+			break;
+		case EHOLGridCommand::Hold:
+			GridCell->SetCommand(LOCTEXT("Hold", "Tenir"), EHOLGridCellState::Ready);
+			GridCell->SetTooltip(LOCTEXT("HoldName", "Tenir la position"), FHOLResources(), FHOLResources(),
+				LOCTEXT("HoldEffect", "N'attaque qu'à portée, ne poursuit pas"));
+			break;
 		default:
 			GridCell->ClearUnit();
 			break;
@@ -1318,7 +1366,7 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
-	return FString::Printf(TEXT("resources %s, selection %s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *ShownActivity, *Grid, *Queue,
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *ShownActivity, *ShownHealth, *Grid, *Queue,
 		*Message, *Workers);
 }
 

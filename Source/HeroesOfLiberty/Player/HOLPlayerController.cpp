@@ -417,6 +417,77 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** The combat orders (J7b.3), without the mouse: the selected own units attack a unit (its identifier). */
+	FAutoConsoleCommand AttackCommand(
+		TEXT("hol.Select.Attack"),
+		TEXT("hol.Select.Attack <UnitId> [shift]: the local player's selected units attack that unit, as a right click on it (the server checks it is an enemy alive)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 1)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Attack <UnitId> [shift]"));
+				return;
+			}
+			const uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+			const bool bQueue = Args.Num() > 1 && Args[1].Equals(TEXT("shift"), ESearchCase::IgnoreCase);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const TArray<uint32> Own = Controller->GetOwnSelectedUnits();
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u%s"), Own.Num(), TargetId, bQueue ? TEXT(", queued") : TEXT(""));
+				Controller->RequestAttackUnit(Own, TargetId, bQueue);
+				FHOLUnitView View;
+				if (HOLUnitView::Find(*Controller->GetWorld(), TargetId, View))
+				{
+					Controller->OnAttackOrderGiven.Broadcast(View.Location);
+				}
+			}
+		}));
+
+	FAutoConsoleCommand AttackMoveCommand(
+		TEXT("hol.Select.AttackMove"),
+		TEXT("hol.Select.AttackMove <X> <Y> [shift]: the grid's attack-move (A) then a left click where that ground point (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.AttackMove <X> <Y> [shift]"));
+				return;
+			}
+			const bool bQueue = Args.Num() > 2 && Args[2].Equals(TEXT("shift"), ESearchCase::IgnoreCase);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.AttackMove: the point is not on the screen"));
+					continue;
+				}
+				Controller->AttackMoveAt(Fraction, bQueue);
+			}
+		}));
+
+	FAutoConsoleCommand StopCommand(
+		TEXT("hol.Select.Stop"),
+		TEXT("hol.Select.Stop: the local player's selected units stop, as the grid's S"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->ActivateGridCell(HOLCommandGrid::StopCell);
+			}
+		}));
+
+	FAutoConsoleCommand HoldCommand(
+		TEXT("hol.Select.Hold"),
+		TEXT("hol.Select.Hold: the local player's selected units hold their position, as the grid's D"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->ActivateGridCell(HOLCommandGrid::HoldCell);
+			}
+		}));
+
 	/** The "." key (D30, J5b), without the keyboard. */
 	FAutoConsoleCommand NextIdleCommand(
 		TEXT("hol.Select.NextIdle"),
@@ -518,7 +589,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Tab (the user's 2nd trial of J6a.5), without the keyboard: the next subgroup of a group of buildings. */
 	FAutoConsoleCommand SubgroupCommand(
 		TEXT("hol.Select.Subgroup"),
-		TEXT("hol.Select.Subgroup: the next subgroup of the selected group of buildings (All, then each type, each main centre alone), as Tab"),
+		TEXT("hol.Select.Subgroup: the next subgroup of the selected group of buildings (All, then each type, each main centre alone), or of the selected units of several types, as Tab"),
 		FConsoleCommandDelegate::CreateLambda([]()
 		{
 			for (AHOLPlayerController* Controller : GetLocalControllers())
@@ -557,6 +628,20 @@ namespace UE::HeroesOfLiberty::Player
 				if (const AHOLSelectionMarkers* Markers = Controller->GetSelectionMarkers())
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Selection markers: %s"), *Markers->Describe());
+				}
+			}
+		}));
+
+	FAutoConsoleCommand UnitsBarsCommand(
+		TEXT("hol.Units.Bars"),
+		TEXT("hol.Units.Bars: logs the health bars the local player sees (J7b.5)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (const AHOLSelectionMarkers* Markers = Controller->GetSelectionMarkers())
+				{
+					UE_LOG(LogHOLMatch, Display, TEXT("Health bars: %s"), *Markers->DescribeHealthBars());
 				}
 			}
 		}));
@@ -1119,6 +1204,35 @@ namespace UE::HeroesOfLiberty::Player
 				Controller->RequestCheatGatherSpeed(Scale);
 			}
 		}));
+
+	/** For the user's trials of the combat (J7b): enemies where the camera looks, without typing a ground point. */
+	FAutoConsoleCommand SpawnHereCommand(
+		TEXT("hol.Units.SpawnHere"),
+		TEXT("hol.Units.SpawnHere [Count=5] [Type=Spearman] [Slot=1] [Radius=600]: makes units of a slot around the local camera's focus, server or solo; free and over the population cap (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLRTSCamera* Camera = Controller->GetRTSCamera();
+				UWorld* World = Controller->GetWorld();
+				UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+				if (!Camera || !Units)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.SpawnHere: on the server or in solo, once the match runs"));
+					continue;
+				}
+				FHOLUnitSpawnRequest Request;
+				Request.Count = Args.Num() >= 1 ? FCString::Atoi(*Args[0]) : 5;
+				Request.TypeName = FName(Args.Num() >= 2 ? *Args[1] : TEXT("Spearman"));
+				Request.OwnerPlayer = static_cast<uint8>(Args.Num() >= 3 ? FCString::Atoi(*Args[2]) : 1);
+				Request.Radius = Args.Num() >= 4 ? FCString::Atof(*Args[3]) : 600.f;
+				const FVector Focus = Camera->GetFocus();
+				Request.Center = FVector(Focus.X, Focus.Y, 0.);
+				Units->RequestUnits(Request);
+				UE_LOG(LogHOLMatch, Display, TEXT("SpawnHere: %d %s of slot %d around (%.0f, %.0f)"), Request.Count,
+					*Request.TypeName.ToString(), Request.OwnerPlayer, Focus.X, Focus.Y);
+			}
+		}));
 #endif
 
 	/** For the scripted checks (D257): the delay lets a command given at start-up report once the match runs. */
@@ -1640,6 +1754,17 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	}
 	if (!Own.IsEmpty())
 	{
+		// An enemy unit under the cursor (J7b.3): attacked, its place marked in red. A unit before a source (D288).
+		const uint32 UnderId = FindUnitAt(ViewportFraction);
+		FHOLUnitView Under;
+		if (UnderId != 0 && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under) && Under.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
+				bShift ? TEXT(", queued") : TEXT(""));
+			RequestAttackUnit(Own, UnderId, bShift);
+			OnAttackOrderGiven.Broadcast(Under.Location);
+			return;
+		}
 		if (Source)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)%s"), Own.Num(), SourceIndex,
@@ -1784,6 +1909,18 @@ void AHOLPlayerController::CycleSubgroup()
 	GetSubgroups(Subgroups);
 	if (Subgroups.IsEmpty())
 	{
+		// Units of several types (the user's trial of J7b): « Tous », then each type, by the type kept.
+		GetUnitSubgroups(Subgroups);
+		if (Subgroups.IsEmpty())
+		{
+			return;
+		}
+		const int32 Active = FMath::Max(0, Subgroups.IndexOfByPredicate([this](const FHOLSubgroup& Subgroup) { return !Subgroup.bAll && Subgroup.TypeName == ActiveUnitType; }));
+		const int32 Next = (Active + 1) % Subgroups.Num();
+		ActiveUnitType = Subgroups[Next].bAll ? NAME_None : Subgroups[Next].TypeName;
+		bAttackMoveArmed = false;
+		UE_LOG(LogHOLMatch, Display, TEXT("Subgroup: %s (%d of %d)"), *DescribeSubgroup(), Next + 1, Subgroups.Num());
+		OnSelectionChanged.Broadcast();
 		return;
 	}
 	ActiveSubgroup = (ActiveSubgroup + 1) % Subgroups.Num();
@@ -1826,10 +1963,79 @@ bool AHOLPlayerController::IsInActiveSubgroup(const AHOLBuilding* Building) cons
 	return Subgroup.Members.ContainsByPredicate([&Group, Building](const int32 Member) { return Group[Member] == Building; });
 }
 
+void AHOLPlayerController::GetUnitSubgroups(TArray<FHOLSubgroup>& OutSubgroups, TArray<uint32>* OutUnits) const
+{
+	OutSubgroups.Reset();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (SelectedUnits.Num() < 2 || !HOLPlayerState || HasBuildingGroup() || Selection.IsValid())
+	{
+		return;
+	}
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	Views.RemoveAll([this, HOLPlayerState](const FHOLUnitView& View)
+	{
+		return View.OwnerPlayer != HOLPlayerState->GetPlayerIndex() || !SelectedUnits.Contains(View.UnitId);
+	});
+	// The HUD's order (J7a.5): the soldiers first, the workers (the Peasants) last, each part by name.
+	Views.StableSort([](const FHOLUnitView& A, const FHOLUnitView& B)
+	{
+		const bool bWorkerA = A.CarryCapacity > 0;
+		const bool bWorkerB = B.CarryCapacity > 0;
+		return bWorkerA != bWorkerB ? !bWorkerA : A.TypeName != B.TypeName && A.TypeName.LexicalLess(B.TypeName);
+	});
+	if (Views.IsEmpty() || !Views.ContainsByPredicate([&Views](const FHOLUnitView& View) { return View.TypeName != Views[0].TypeName; }))
+	{
+		return;
+	}
+	TArray<FHOLGroupMember> Members;
+	for (const FHOLUnitView& View : Views)
+	{
+		Members.Add({ View.TypeName, false });
+		if (OutUnits)
+		{
+			OutUnits->Add(View.UnitId);
+		}
+	}
+	OutSubgroups = HOLCommandGrid::SplitSubgroups(Members);
+}
+
+bool AHOLPlayerController::GetActiveUnitSubgroup(FHOLSubgroup& OutSubgroup) const
+{
+	TArray<FHOLSubgroup> Subgroups;
+	GetUnitSubgroups(Subgroups);
+	if (Subgroups.IsEmpty())
+	{
+		return false;
+	}
+	// The type kept, or « Tous » when none of its units is left.
+	const FHOLSubgroup* Active = Subgroups.FindByPredicate([this](const FHOLSubgroup& Subgroup) { return !Subgroup.bAll && Subgroup.TypeName == ActiveUnitType; });
+	OutSubgroup = Active ? *Active : Subgroups[0];
+	return true;
+}
+
+TArray<uint32> AHOLPlayerController::GetCommandUnits() const
+{
+	TArray<FHOLSubgroup> Subgroups;
+	TArray<uint32> Units;
+	GetUnitSubgroups(Subgroups, &Units);
+	const FHOLSubgroup* Active = Subgroups.FindByPredicate([this](const FHOLSubgroup& Subgroup) { return !Subgroup.bAll && Subgroup.TypeName == ActiveUnitType; });
+	if (!Active)
+	{
+		return GetOwnSelectedUnits();
+	}
+	TArray<uint32> Result;
+	for (const int32 Member : Active->Members)
+	{
+		Result.Add(Units[Member]);
+	}
+	return Result;
+}
+
 FString AHOLPlayerController::DescribeSubgroup() const
 {
 	FHOLSubgroup Subgroup;
-	if (!GetActiveSubgroup(Subgroup))
+	if (!GetActiveSubgroup(Subgroup) && !GetActiveUnitSubgroup(Subgroup))
 	{
 		return FString();
 	}
@@ -1898,6 +2104,8 @@ void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
 	SelectedBuildings.Reset();
 	SelectedSource = INDEX_NONE;
 	SelectedUnits = MoveTemp(UnitIds);
+	// A new selection starts on « Tous » (PurgeSelection keeps the type of the units left).
+	ActiveUnitType = NAME_None;
 	BroadcastSelection();
 }
 
@@ -2216,7 +2424,10 @@ void AHOLPlayerController::PurgeSelection(const TConstArrayView<FHOLUnitView> Vi
 	TArray<uint32> Units = SelectedUnits;
 	if (Units.RemoveAll([&Known](const uint32 Id) { return !Known.Contains(Id); }) > 0)
 	{
+		// The units' active subgroup stays while units of its type do (GetActiveUnitSubgroup).
+		const FName ActiveType = ActiveUnitType;
 		SetUnitSelection(MoveTemp(Units));
+		ActiveUnitType = ActiveType;
 	}
 }
 
@@ -2305,20 +2516,25 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 	}
 	else if (HOLPlayerState && !SelectedUnits.IsEmpty())
 	{
-		// Builders: the player's own units that gather (what the server checks for a build order, J6a.4).
-		for (const uint32 UnitId : SelectedUnits)
+		// The units of the active subgroup (Tab, the user's trial of J7b; all of them for « Tous »). Builders: those that
+		// gather (what the server checks for a build order, J6a.4); soldiers: the others. The units' commands (J7b.3): stop
+		// and hold for any own units, attack-move with soldiers among them, which hide the builders' grid (« Tous » of a
+		// mixed selection: the Peasants' subgroup has it).
+		const TArray<uint32> Units = GetCommandUnits();
+		for (const uint32 UnitId : Units)
 		{
 			FHOLUnitView View;
-			if (HOLUnitView::Find(*GetWorld(), UnitId, View) && View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.CarryCapacity > 0)
+			if (HOLUnitView::Find(*GetWorld(), UnitId, View))
 			{
-				Context.bBuilders = true;
-				break;
+				Context.bBuilders |= View.CarryCapacity > 0;
+				Context.bSoldiers |= View.CarryCapacity == 0;
 			}
 		}
 		if (Context.bBuilders)
 		{
 			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
 		}
+		Context.bOwnUnits = !Units.IsEmpty();
 	}
 	OutCommands.SetNum(NumGridCells);
 	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
@@ -2386,6 +2602,22 @@ void AHOLPlayerController::ActivateGridCell(const int32 Cell)
 			}
 		}
 		BeginPlacement(Command.TypeName);
+		return;
+	}
+	case EHOLGridCommand::AttackMove:
+		// AoE4's way: the key, then a left click on the ground (AttackMoveAt).
+		EndPlacement();
+		bAttackMoveArmed = true;
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: attack-move, click on the ground"));
+		return;
+	case EHOLGridCommand::Stop:
+	case EHOLGridCommand::Hold:
+	{
+		// The active subgroup's units (Tab), all of them for « Tous ».
+		const TArray<uint32> Own = GetCommandUnits();
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.Command == EHOLGridCommand::Hold ? TEXT("hold position") : TEXT("stop"));
+		bAttackMoveArmed = false;
+		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 		return;
 	}
 	case EHOLGridCommand::CancelConstruction:
@@ -2457,6 +2689,62 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 	{
 		ServerMoveUnits(TArray<uint32>(UnitIds), Target, bQueue);
 	}
+}
+
+void AHOLPlayerController::RequestAttackUnit(const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
+{
+	if (UnitIds.Num() > 0 && TargetUnitId != 0)
+	{
+		ServerAttackUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerAttackMove(TArray<uint32>(UnitIds), Target, bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitIds, const bool bHold)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerStopUnits(TArray<uint32>(UnitIds), bHold);
+	}
+}
+
+TArray<uint32> AHOLPlayerController::GetOwnSelectedSoldiers() const
+{
+	TArray<uint32> Soldiers;
+	for (const uint32 UnitId : GetOwnSelectedUnits())
+	{
+		FHOLUnitView View;
+		if (HOLUnitView::Find(*GetWorld(), UnitId, View) && View.CarryCapacity == 0)
+		{
+			Soldiers.Add(UnitId);
+		}
+	}
+	return Soldiers;
+}
+
+void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const bool bQueue)
+{
+	bAttackMoveArmed = false;
+	const FVector2D Pixels = ToPixels(ViewportFraction);
+	FVector Origin, Direction, Ground;
+	// The soldiers of the active subgroup (Tab), all of them for « Tous ».
+	TArray<uint32> Soldiers = GetOwnSelectedSoldiers();
+	const TArray<uint32> CommandUnits = GetCommandUnits();
+	Soldiers.RemoveAll([&CommandUnits](const uint32 UnitId) { return !CommandUnits.Contains(UnitId); });
+	if (Soldiers.IsEmpty() || !RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
+	{
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move to (%.0f, %.0f)%s"), Soldiers.Num(), Ground.X, Ground.Y, bQueue ? TEXT(", queued") : TEXT(""));
+	RequestAttackMove(Soldiers, Ground, bQueue);
+	OnAttackOrderGiven.Broadcast(Ground);
 }
 
 void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
@@ -2838,6 +3126,37 @@ void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& 
 	}
 }
 
+void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
+{
+	// As ServerMoveUnits (D288): the player's own units alone; the order processor checks the target (an enemy unit alive).
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::Attack, TargetUnitId, HOLPlayerState->GetPlayerIndex(), bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerAttackMove_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		Commands->IssueAttackMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex(), bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& UnitIds, const bool bHold)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		Commands->IssueCombatOrder(UnitIds, bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, HOLPlayerState->GetPlayerIndex());
+	}
+}
+
 void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start,
 	const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
 {
@@ -3006,6 +3325,14 @@ void AHOLPlayerController::HandleSelectStarted()
 		ClickPlacement(bSelectAddHeld);
 		return;
 	}
+	// In attack-move mode a left click gives the order (J7b.3), never selects.
+	FVector2D Cursor;
+	if (bAttackMoveArmed && GetCursorFraction(Cursor))
+	{
+		bSelectPressed = false;
+		AttackMoveAt(Cursor, bSelectAddHeld);
+		return;
+	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
 }
 
@@ -3035,10 +3362,15 @@ void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
 
 void AHOLPlayerController::HandleOrder()
 {
-	// A right click leaves placement mode (D313), without ordering anything.
+	// A right click leaves placement mode (D313), or the attack-move mode (J7b.3), without ordering anything.
 	if (IsPlacing())
 	{
 		EndPlacement();
+		return;
+	}
+	if (bAttackMoveArmed)
+	{
+		bAttackMoveArmed = false;
 		return;
 	}
 	// Resolved at the release (J7a.4): a click orders at the press, a drag along its line.
@@ -3121,10 +3453,15 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 
 void AHOLPlayerController::HandleDeselect()
 {
-	// Escape leaves placement mode first, the selection kept (D313).
+	// Escape leaves placement mode first, the selection kept (D313), and the attack-move mode (J7b.3).
 	if (IsPlacing())
 	{
 		EndPlacement();
+		return;
+	}
+	if (bAttackMoveArmed)
+	{
+		bAttackMoveArmed = false;
 		return;
 	}
 	SetSelection(nullptr);

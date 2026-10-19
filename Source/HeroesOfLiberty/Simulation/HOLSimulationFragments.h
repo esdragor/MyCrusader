@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Mass/EntityHandle.h"
 #include "MassEntityTypes.h"
 #include "Simulation/HOLFormationRules.h"
 #include "Simulation/HOLGatherRules.h"
@@ -51,6 +52,16 @@ enum class EHOLUnitActivity : uint8
 	 * wire as value 2 (HOLUnitReplication::BuildingWireValue): its enum value is above the wire's first gathering value.
 	 */
 	Building,
+	/**
+	 * In reach of its target, striking (J7b.4, J7-Q5: FHOLCombatFragment::bAttacking): the client plays the strike and
+	 * turns it towards its target, whose identifier comes with the state (FHOLNetUnitState::TargetSlot).
+	 */
+	Attacking,
+	/**
+	 * At 0 health (J7b.4, J7-Q5): kept ~1 s (HOLCombat::DyingSteps) for its fall before its deferred destruction (D224),
+	 * no corpse (D86). Nobody takes it on, it obeys no order, it cannot be selected (HOLUnitView).
+	 */
+	Dying,
 };
 
 /** True while the unit walks: to a player's order, or on its gathering's round trip. */
@@ -271,4 +282,88 @@ struct HEROESOFLIBERTY_API FHOLUnitStateFragment : public FMassFragment
 	/** Player the unit belongs to (D233): a conversion (D37) rewrites it. The client turns it into a colour. */
 	UPROPERTY()
 	uint8 OwnerPlayer = 0;
+};
+
+/** How a unit takes on enemies (J7b.2): the plan's three modes (HOLCombat::ESeekMode), orders set them from J7b.3. */
+UENUM()
+enum class EHOLCombatMode : uint8
+{
+	/** Takes on the enemies within its aggression radius (none for the Peasant). */
+	Normal,
+	/** Attack-move: as Normal, a unit with no aggression of its own looks within HOLCombat::AttackMoveRadius. */
+	AttackMove,
+	/** Hold position: only enemies in reach, never a chase. */
+	Hold,
+};
+
+/**
+ * A unit's fight (J7b.2, J7-Q4), on the server: its target, its cool-down, the last enemy that hit it (riposte), and
+ * what the combat report shows. The health is FHOLUnitStateFragment::CurrentHealth (the table's MaxHealth at birth).
+ */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
+{
+	GENERATED_BODY()
+
+	/** The enemy it takes on; unset: none. */
+	FMassEntityHandle Target;
+
+	/** The last enemy that hit it: taken on by a riposte (HOLCombat::FCandidate::bAttacksMe) even beyond its search radius. */
+	FMassEntityHandle LastAttacker;
+
+	/** Where its target stood when it last walked towards it: a new walk once the target moved away from there. */
+	FVector2D ApproachPoint = FVector2D::ZeroVector;
+
+	/** Where an attack-move takes it (its slot of the order, J7b.3): once no enemy is left, it walks on there. */
+	FVector AttackMoveGoal = FVector::ZeroVector;
+
+	/**
+	 * Changed by every player order (J7b.3, Disengage): a combat walk given before carries the old one (FHOLMoveOrder::
+	 * CombatStamp) and is dropped, never overwriting the newer order. Never 0.
+	 */
+	uint32 EngageSerial = 1;
+
+	/** Milliseconds to its next hit (HOLCombat::TickAttack). */
+	int32 CooldownMs = 0;
+
+	/** Others of its side taking it on, counted at the step's start (HOLCombat::FCandidate::AttackerCount, the report). */
+	int32 AttackerCount = 0;
+
+	/** Hits it struck, damage dealt, kills, and the step of its first hit (the combat report); -1: none yet. */
+	int32 Hits = 0;
+	int32 DamageDealt = 0;
+	int32 Kills = 0;
+	int64 FirstHitStep = -1;
+
+	EHOLCombatMode Mode = EHOLCombatMode::Normal;
+
+	/** On an attack-move, a fight took it off its way (J7b.3): once no enemy is left, it walks on to AttackMoveGoal. */
+	bool bAttackMoveDetour = false;
+
+	/** Step it fell to 0 health at (J7b.4): destroyed HOLCombat::DyingSteps later; -1: alive. */
+	int64 DeathStep = -1;
+
+	/** Its target was ordered (J7b.3): kept, never replaced by its own choice, until it dies. */
+	bool bOrderedTarget = false;
+
+	/** In reach of its target, striking (HOLCombat::StartAttack was applied): out of reach, it starts again. */
+	bool bAttacking = false;
+
+	/** It walks towards its target on a walk of its own (a task's move order): stopped once in reach or the target gone. */
+	bool bApproaching = false;
+
+	/**
+	 * A player's order prevails (J7b.2): its target, its approach, its strikes and its last attacker forgotten (no riposte
+	 * after the order). Its walk is the order's: nothing stopped here. Idle again, it looks for enemies as before.
+	 */
+	void Disengage()
+	{
+		Target = FMassEntityHandle();
+		LastAttacker = FMassEntityHandle();
+		bOrderedTarget = false;
+		bAttacking = false;
+		bApproaching = false;
+		bAttackMoveDetour = false;
+		EngageSerial = EngageSerial == MAX_uint32 ? 1u : EngageSerial + 1u;
+	}
 };

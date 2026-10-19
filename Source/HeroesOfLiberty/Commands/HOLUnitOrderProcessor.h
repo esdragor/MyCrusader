@@ -184,6 +184,13 @@ protected:
 	TArray<FHOLMoveOrder> StartedQueuedMoves;
 	/** Its queue of moves forgotten (a new order, gone): taken out of each move it waited for. */
 	void ForgetMoveQueue(uint32 UnitId);
+	/** Attack, stop, hold (J7b.3): the units stand, their task, queue and fight forgotten; an attack sets their target. */
+	void ApplyCombatOrder(FMassEntityManager& EntityManager, const UWorld& World, const struct FHOLMoveOrder& Order,
+		TConstArrayView<FMassEntityHandle> Entities, FMassEntityHandle AttackTarget);
+public:
+	/** Combat walks dropped because a newer player order came first (J7b.3). */
+	static int64 TotalStaleCombatWalks;
+protected:
 
 	uint32 NextOrderSerial = 1;
 	int64 NumPathsServed = 0;

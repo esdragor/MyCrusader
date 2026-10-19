@@ -29,7 +29,10 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("60 bits per state (~7.5 bytes, D301 and a load bit of J5)"), FHOLNetUnitState::TotalBits, 60);
+	TestEqual(TEXT("62 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit)"), FHOLNetUnitState::TotalBits, 62);
+	TestEqual(TEXT("4 bits more for a wounded unit (J7-Q5)"), FHOLNetUnitState::WoundedBits, 4);
+	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
+	TestEqual(TEXT("6 bits more for one facing its front at rest"), FHOLNetUnitState::FacingFrontBits, 6);
 	TestEqual(TEXT("2 bits more for a carrier (J5, D303: its resource, never its amount)"), FHOLNetUnitState::CarriedLoadBits, 2);
 
 	const FVector Position(12345.6, -9876.5, 123.4);
@@ -90,7 +93,23 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		FHOLNetUnitState::Make(FVector(-500.0, 600.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Building, 82, EHOLResource::Wood, 6),
 		FHOLNetUnitState(),
 	};
-	for (const FHOLNetUnitState& State : States)
+	// J7b.4 (J7-Q5): wounded, attacking (its target's slot at both ends), dying, facing its front, a wounded carrier.
+	TArray<FHOLNetUnitState> AllStates(States, UE_ARRAY_COUNT(States));
+	const auto WithCombat = [](FHOLNetUnitState State, const int32 Health, const int32 MaxHealth, const uint16 TargetSlot, const bool bFront, const float Yaw)
+	{
+		State.SetCombat(Health, MaxHealth, TargetSlot, bFront, Yaw);
+		return State;
+	};
+	const FVector Here(700.0, -800.0, 0.0);
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 90), 37, 100, 5, false, 0.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector(3.0, -4.0, 0.0), EHOLUnitActivity::Attacking, 91), 160, 160, 0, false, 0.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 92), 1, 160, FHOLNetUnitState::InvalidTargetSlot, false, 0.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 93), 80, 160, 1234, false, 0.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Dying, 94), 0, 160, 77, false, 0.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 95), 160, 160, 0, true, -135.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 96), 20, 160, 0, true, 179.f));
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::GatherTrip, 97, EHOLResource::Gold, 5), 99, 100, 0, true, 90.f));
+	for (const FHOLNetUnitState& State : AllStates)
 	{
 		alignas(16) uint8 Quantized[64] = {};
 		alignas(16) uint8 Received[64] = {};
@@ -119,8 +138,11 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("60 bits on the wire, 62 for a carrier"), Writer.GetPosBits(),
-			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)));
+		TestEqual(TEXT("62 bits on the wire, +2 for a carrier, +4 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
+			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
+				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
+				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
+				+ (State.bFacesFront ? FHOLNetUnitState::FacingFrontBits : 0)));
 
 		FNetBitStreamReader Reader;
 		Reader.InitBits(Buffer, Writer.GetPosBits());
@@ -147,13 +169,15 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	{
 		const EHOLUnitActivity Activity = static_cast<EHOLUnitActivity>(Activities->GetValueByIndex(Index));
 		TestTrue(*FString::Printf(TEXT("%s carried by the wire"), *Activities->GetNameStringByIndex(Index)), HOLUnitReplication::IsValidActivity(Activity));
-		TestTrue(*FString::Printf(TEXT("%s below the gathering values on the wire"), *Activities->GetNameStringByIndex(Index)),
-			Activity == EHOLUnitActivity::Gathering || HOLUnitReplication::EncodeActivity(Activity, EHOLResource::Food) < HOLUnitReplication::GatheringWireBase);
+		TestTrue(*FString::Printf(TEXT("%s below the gathering values on the wire, or after them (J7b.4)"), *Activities->GetNameStringByIndex(Index)),
+			Activity == EHOLUnitActivity::Gathering || HOLUnitReplication::EncodeActivity(Activity, EHOLResource::Food) < HOLUnitReplication::GatheringWireBase
+			|| HOLUnitReplication::EncodeActivity(Activity, EHOLResource::Food) >= HOLUnitReplication::GatheringWireBase + 4);
 	}
-	TestEqual(TEXT("the 4 resources fill the activity's bits"), HOLUnitReplication::GatheringWireBase + 4, 1 << FHOLNetUnitState::ActivityBits);
+	TestEqual(TEXT("the 4 resources end at the old 3 bits' end"), HOLUnitReplication::GatheringWireBase + 4, 8);
+	TestEqual(TEXT("4 bits of activity (J7-Q5)"), FHOLNetUnitState::ActivityBits, 4);
 	TArray<uint8> WireValues;
 	for (const EHOLUnitActivity Activity : { EHOLUnitActivity::Idle, EHOLUnitActivity::Moving, EHOLUnitActivity::Gathering, EHOLUnitActivity::GatherTrip,
-		EHOLUnitActivity::Building })
+		EHOLUnitActivity::Building, EHOLUnitActivity::Attacking, EHOLUnitActivity::Dying })
 	{
 		for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
 		{
@@ -162,14 +186,42 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 			EHOLResource BackResource = EHOLResource::Gold;
 			HOLUnitReplication::DecodeActivity(Wire, BackActivity, BackResource);
 			const FString What = FString::Printf(TEXT("%s %s"), *UEnum::GetValueAsString(Activity), *UEnum::GetValueAsString(Resource));
-			TestTrue(*FString::Printf(TEXT("%s fits in 3 bits"), *What), Wire < (1 << FHOLNetUnitState::ActivityBits));
+			TestTrue(*FString::Printf(TEXT("%s fits in the activity's bits"), *What), Wire < (1 << FHOLNetUnitState::ActivityBits));
 			TestEqual(*FString::Printf(TEXT("%s: activity back"), *What), BackActivity, Activity);
 			TestEqual(*FString::Printf(TEXT("%s: gathered resource back (food unless gathering)"), *What), static_cast<int32>(BackResource),
 				static_cast<int32>(Activity == EHOLUnitActivity::Gathering ? Resource : EHOLResource::Food));
 			WireValues.AddUnique(Wire);
 		}
 	}
-	TestEqual(TEXT("8 values on the wire, all of them: 4 activities and gathering each resource"), WireValues.Num(), 8);
+	{
+		const uint8 Wire = HOLUnitReplication::EncodeActivity(EHOLUnitActivity::Idle, EHOLResource::Food, true);
+		EHOLUnitActivity BackActivity = EHOLUnitActivity::Moving;
+		EHOLResource BackResource = EHOLResource::Gold;
+		bool bFacesFront = false;
+		HOLUnitReplication::DecodeActivity(Wire, BackActivity, BackResource, bFacesFront);
+		TestTrue(TEXT("idle facing its front: idle, facing it"), BackActivity == EHOLUnitActivity::Idle && bFacesFront);
+		TestEqual(TEXT("facing the front only while idle"), HOLUnitReplication::EncodeActivity(EHOLUnitActivity::Moving, EHOLResource::Food, true),
+			static_cast<uint8>(EHOLUnitActivity::Moving));
+		WireValues.AddUnique(Wire);
+	}
+	TestEqual(TEXT("11 values on the wire: 4 activities, gathering each resource, attacking, dying, facing the front (5 free)"), WireValues.Num(), 11);
+
+	// Health levels (J7-Q5): ceil(15 * health / max), 0 only dead.
+	TestEqual(TEXT("dead: 0"), HOLUnitReplication::GetHealthLevel(0, 160), static_cast<uint8>(0));
+	TestEqual(TEXT("below 0: 0"), HOLUnitReplication::GetHealthLevel(-7, 160), static_cast<uint8>(0));
+	TestEqual(TEXT("1 health: 1, alive"), HOLUnitReplication::GetHealthLevel(1, 1000), static_cast<uint8>(1));
+	TestEqual(TEXT("half: 8"), HOLUnitReplication::GetHealthLevel(80, 160), static_cast<uint8>(8));
+	TestEqual(TEXT("one sixteenth exactly: 1"), HOLUnitReplication::GetHealthLevel(10, 150), static_cast<uint8>(1));
+	TestEqual(TEXT("one hit off: 15, but wounded"), HOLUnitReplication::GetHealthLevel(152, 160), static_cast<uint8>(15));
+	FHOLNetUnitState Wounded = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
+	Wounded.SetCombat(152, 160, 0);
+	TestFalse(TEXT("one hit off: not full"), Wounded.bFullHealth);
+	FHOLNetUnitState Unhurt = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
+	Unhurt.SetCombat(160, 160, 33);
+	TestEqual(TEXT("unhurt and not attacking: the default state"), Unhurt, FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0));
+	FHOLNetUnitState Front = Unhurt;
+	Front.SetCombat(160, 160, 0, true, 90.f);
+	TestTrue(TEXT("front within half a direction"), FMath::Abs(Front.GetFrontYaw() - 90.f) <= 2.9f);
 	TestEqual(TEXT("Building in Gathering's own value (J6a.4)"), HOLUnitReplication::EncodeActivity(EHOLUnitActivity::Building, EHOLResource::Wood),
 		static_cast<uint8>(EHOLUnitActivity::Gathering));
 	return true;
@@ -388,6 +440,42 @@ bool FHOLNetDisplayedPositionTest::RunTest(const FString& Parameters)
 	Display.Correction.Start(Drawn, Display.GetDisplayedPosition(110.0, 5.0, StepSeconds), 5.0);
 	TestTrue(TEXT("no jump at the new state"), Display.GetDisplayedPosition(110.0, 5.0, StepSeconds).Equals(Drawn, 1.0e-3));
 	TestTrue(TEXT("on the new state once smoothed"), Display.GetDisplayedPosition(114.0, 5.2, StepSeconds).Equals(FVector(1190.0, 0.0, 0.0), 1.0e-3));
+	return true;
+}
+
+// J7b.4 (J7-Q5): a change of health level, of target or of front is a change of action, sent at once; a hit that keeps
+// the level sends nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetCombatSendRuleTest, "HeroesOfLiberty.Net.CombatSendRule", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetCombatSendRuleTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const FHOLUnitSendRules Rules;
+	const FVector Here(1000.0, 2000.0, 0.0);
+	const auto Make = [&Here](const EHOLUnitActivity Activity, const int32 Health, const uint16 TargetSlot, const bool bFront = false, const float Yaw = 0.f)
+	{
+		FHOLNetUnitState State = FHOLNetUnitState::Make(Here, FVector::ZeroVector, Activity, 100);
+		State.SetCombat(Health, 160, TargetSlot, bFront, Yaw);
+		return State;
+	};
+	// UnitId 1 and step 101: not its refresh step (40 steps cycle).
+	const FHOLUnitSentRecord Sent{ Make(EHOLUnitActivity::Attacking, 150, 7), 100 };
+	TestEqual(TEXT("same level (150 -> 151 of 160, both 15): nothing"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 151, 7), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::None);
+	TestEqual(TEXT("another level (150 -> 140, 14): at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 140, 7), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("another target: at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 150, 8), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("stops striking: at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Idle, 150, 7), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("dies: at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Dying, 0, 7), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
+	const FHOLUnitSentRecord Resting{ Make(EHOLUnitActivity::Idle, 160, 0, true, 90.f), 100 };
+	TestEqual(TEXT("same front: nothing"), HOLUnitReplication::GetSendReason(Resting, Here, Make(EHOLUnitActivity::Idle, 160, 0, true, 91.f), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::None);
+	TestEqual(TEXT("another front: at once"), HOLUnitReplication::GetSendReason(Resting, Here, Make(EHOLUnitActivity::Idle, 160, 0, true, 180.f), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("first wound: at once"), HOLUnitReplication::GetSendReason(Resting, Here, Make(EHOLUnitActivity::Idle, 159, 0, true, 90.f), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
 	return true;
 }
 

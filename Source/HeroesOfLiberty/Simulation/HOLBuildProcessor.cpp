@@ -198,8 +198,9 @@ void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
-			if (!Builds[EntityIt].IsBuilding())
+			if (!Builds[EntityIt].IsBuilding() || States[EntityIt].CurrentHealth <= 0)
 			{
+				// Dying (J7b.4): its task is over.
 				continue;
 			}
 			FBuilder Builder{ Context.GetEntity(EntityIt), Builds[EntityIt], Moves[EntityIt], States[EntityIt], Gathers[EntityIt],

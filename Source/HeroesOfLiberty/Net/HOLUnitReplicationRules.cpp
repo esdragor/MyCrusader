@@ -32,6 +32,44 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 	return State;
 }
 
+void FHOLNetUnitState::SetCombat(const int32 Health, const int32 MaxHealth, const uint16 InTargetSlot, const bool bInFacesFront,
+	const float InFrontYawDegrees)
+{
+	bFullHealth = Health >= MaxHealth;
+	HealthLevel = bFullHealth ? MaxHealthLevel : HOLUnitReplication::GetHealthLevel(Health, MaxHealth);
+	TargetSlot = Activity == EHOLUnitActivity::Attacking ? FMath::Min<uint16>(InTargetSlot, InvalidTargetSlot) : 0;
+	bFacesFront = bInFacesFront && Activity == EHOLUnitActivity::Idle;
+	constexpr int32 NumDirections = 1 << FrontYawBits;
+	FrontYaw = bFacesFront
+		? static_cast<uint8>(FMath::RoundToInt(FRotator::ClampAxis(InFrontYawDegrees) / 360.f * NumDirections) & (NumDirections - 1)) : 0;
+}
+
+float FHOLNetUnitState::GetFrontYaw() const
+{
+	return FRotator::NormalizeAxis(static_cast<float>(FrontYaw) * 360.f / static_cast<float>(1 << FrontYawBits));
+}
+
+uint8 HOLUnitReplication::GetHealthLevel(const int32 Health, const int32 MaxHealth)
+{
+	if (Health <= 0)
+	{
+		return 0;
+	}
+	if (MaxHealth <= 0 || Health >= MaxHealth)
+	{
+		return FHOLNetUnitState::MaxHealthLevel;
+	}
+	// Integer ceiling: 1 health of 1 000 is still level 1, alive.
+	const int64 Scaled = static_cast<int64>(FHOLNetUnitState::MaxHealthLevel) * Health;
+	return static_cast<uint8>(FMath::Clamp<int64>((Scaled + MaxHealth - 1) / MaxHealth, 1, FHOLNetUnitState::MaxHealthLevel));
+}
+
+bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B)
+{
+	return EncodeActivity(A.Activity, A.GatherResource, A.bFacesFront) == EncodeActivity(B.Activity, B.GatherResource, B.bFacesFront)
+		&& A.bFullHealth == B.bFullHealth && A.HealthLevel == B.HealthLevel && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
+}
+
 FVector FHOLNetUnitState::GetPosition() const
 {
 	return FVector(X, Y, 0.0) * PositionStep;
@@ -42,11 +80,15 @@ FVector FHOLNetUnitState::GetVelocity() const
 	return FVector(VelocityX, VelocityY, 0.0) * VelocityStep;
 }
 
-uint8 HOLUnitReplication::EncodeActivity(const EHOLUnitActivity Activity, const EHOLResource GatherResource)
+uint8 HOLUnitReplication::EncodeActivity(const EHOLUnitActivity Activity, const EHOLResource GatherResource, const bool bFacesFront)
 {
-	if (Activity == EHOLUnitActivity::Building)
+	switch (Activity)
 	{
-		return BuildingWireValue;
+	case EHOLUnitActivity::Building: return BuildingWireValue;
+	case EHOLUnitActivity::Attacking: return AttackingWireValue;
+	case EHOLUnitActivity::Dying: return DyingWireValue;
+	case EHOLUnitActivity::Idle: return bFacesFront ? IdleFacingFrontWireValue : 0;
+	default: break;
 	}
 	return Activity == EHOLUnitActivity::Gathering ? static_cast<uint8>(GatheringWireBase + static_cast<uint8>(GatherResource))
 		: static_cast<uint8>(Activity);
@@ -54,12 +96,32 @@ uint8 HOLUnitReplication::EncodeActivity(const EHOLUnitActivity Activity, const 
 
 bool HOLUnitReplication::IsValidActivity(const EHOLUnitActivity Activity)
 {
-	return static_cast<uint8>(Activity) <= static_cast<uint8>(EHOLUnitActivity::Building);
+	return static_cast<uint8>(Activity) <= static_cast<uint8>(EHOLUnitActivity::Dying);
 }
 
 void HOLUnitReplication::DecodeActivity(const uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource)
 {
-	if (WireActivity >= GatheringWireBase)
+	bool bFacesFront = false;
+	DecodeActivity(WireActivity, OutActivity, OutGatherResource, bFacesFront);
+}
+
+void HOLUnitReplication::DecodeActivity(const uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource, bool& bOutFacesFront)
+{
+	bOutFacesFront = false;
+	OutGatherResource = EHOLResource::Food;
+	switch (WireActivity)
+	{
+	case AttackingWireValue: OutActivity = EHOLUnitActivity::Attacking; return;
+	case DyingWireValue: OutActivity = EHOLUnitActivity::Dying; return;
+	case IdleFacingFrontWireValue: OutActivity = EHOLUnitActivity::Idle; bOutFacesFront = true; return;
+	default: break;
+	}
+	if (WireActivity > IdleFacingFrontWireValue)
+	{
+		// A free value (a newer server): shown idle.
+		OutActivity = EHOLUnitActivity::Idle;
+	}
+	else if (WireActivity >= GatheringWireBase)
 	{
 		OutActivity = EHOLUnitActivity::Gathering;
 		OutGatherResource = static_cast<EHOLResource>(WireActivity - GatheringWireBase);
@@ -91,7 +153,20 @@ EHOLUnitSendReason HOLUnitReplication::GetSendReason(const FHOLUnitSentRecord& S
 	const EHOLUnitActivity Activity, const uint32 UnitId, const int64 Step, const float StepSeconds, const FHOLUnitSendRules& Rules,
 	const EHOLResource GatherResource)
 {
-	if (EncodeActivity(Activity, GatherResource) != EncodeActivity(Sent.State.Activity, Sent.State.GatherResource))
+	// The fight and the front as last sent: only the activity is compared (the rule of J5c.1).
+	FHOLNetUnitState Current = Sent.State;
+	Current.Activity = Activity;
+	Current.GatherResource = Activity == EHOLUnitActivity::Gathering ? GatherResource : EHOLResource::Food;
+	Current.bFacesFront = Sent.State.bFacesFront && Activity == EHOLUnitActivity::Idle;
+	Current.FrontYaw = Current.bFacesFront ? Sent.State.FrontYaw : 0;
+	Current.TargetSlot = Activity == EHOLUnitActivity::Attacking ? Sent.State.TargetSlot : 0;
+	return GetSendReason(Sent, Position, Current, UnitId, Step, StepSeconds, Rules);
+}
+
+EHOLUnitSendReason HOLUnitReplication::GetSendReason(const FHOLUnitSentRecord& Sent, const FVector& Position,
+	const FHOLNetUnitState& Current, const uint32 UnitId, const int64 Step, const float StepSeconds, const FHOLUnitSendRules& Rules)
+{
+	if (!IsSameAction(Current, Sent.State))
 	{
 		return EHOLUnitSendReason::Activity;
 	}

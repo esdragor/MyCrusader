@@ -4,6 +4,21 @@
 
 #include "CoreMinimal.h"
 
+/** What a move order asks besides the walk (J7b.3, J7-Q4): the combat orders go through the same queue (Shift included). */
+enum class EHOLOrderKind : uint8
+{
+	/** Go there (the units take on nobody on the way). */
+	Move,
+	/** Take on the unit TargetUnitId (an enemy, alive: checked by the server), whatever the aggression radius. */
+	Attack,
+	/** Go there, taking on the enemies met on the way (HOLCombat::AttackMoveRadius), then on again. */
+	AttackMove,
+	/** Stand: walks, queue and fight forgotten. */
+	Stop,
+	/** Stand and hold the position: only enemies in reach, never a chase (until a move order). */
+	Hold,
+};
+
 /**
  * One move order (D226, D286): "go to this location", for a group of units. Orders always pass through a queue,
  * even in solo, applied at the next fixed step. The group is kept whole: its units share their paths by clusters
@@ -35,6 +50,15 @@ struct FHOLMoveOrder
 	 * UHOLUnitOrderProcessor), its places made then from the units still in it; units with no move go at once.
 	 */
 	bool bQueue = false;
+	/** What it asks besides the walk (J7b.3). */
+	EHOLOrderKind Kind = EHOLOrderKind::Move;
+	/** Attack: the unit to take on. */
+	uint32 TargetUnitId = 0;
+	/**
+	 * A walk the combat gives a unit (J7b.3: its approach to its target, its attack-move resumed): the unit's
+	 * FHOLCombatFragment::EngageSerial when it was given; a newer player order changed it, the walk is dropped. 0: none.
+	 */
+	uint32 CombatStamp = 0;
 };
 
 /** One gather order (J5, D296): "gather this source", for a group of units. Applied by the gathering at the next step. */

@@ -31,7 +31,9 @@ namespace HOLCommandGrid
 			}
 			return Result;
 		}
-		if (Context.bBuilders)
+		// Soldiers among the selection (the user's trial of J7b): their commands, A attack-move; the builders' grid is the
+		// Peasants' subgroup's (Tab).
+		if (Context.bBuilders && !Context.bSoldiers)
 		{
 			for (const TPair<FName, int32>& Buildable : Context.Buildable)
 			{
@@ -42,6 +44,11 @@ namespace HOLCommandGrid
 					return Result;
 				}
 			}
+		}
+		if (Context.bOwnUnits)
+		{
+			Result.Command = Cell == AttackMoveCell && Context.bSoldiers ? EHOLGridCommand::AttackMove
+				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell ? EHOLGridCommand::Hold : EHOLGridCommand::None;
 		}
 		return Result;
 	}

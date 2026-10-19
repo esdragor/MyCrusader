@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Simulation/HOLUnitView.h"
 #include "HOLSelectionMarkers.generated.h"
 
 class AHOLPlayerController;
@@ -20,6 +21,8 @@ class UStaticMeshComponent;
  * colour (of each building of a group's active subgroup that has one, all of them for « Tous », the user's 3rd trial
  * of J6a.5); in placement mode (J6a.3, D311), the ghost of the building: its footprint on the ground, tile by tile, and the
  * edges of its volume, green where it may go, red where not.
+ * Above the units (J7b.5, J7-Q5 and the user's nuance), their health bars: always for a selected unit, otherwise only for
+ * a wounded one, the player's own or another's; none for a dying unit.
  * Unlit masked planes (Tools/Editor/make_marker_materials.py), instanced, with no collision and no shadow.
  */
 UCLASS(NotPlaceable, Transient)
@@ -41,15 +44,23 @@ public:
 	 */
 	FString Describe() const;
 
+	/**
+	 * "bars 3 (shown #12 4/15 selected, ...), unhurt unselected 40": the health bars shown, for the scripted checks
+	 * (hol.Units.Bars), and how many units stand unhurt and unselected (without one).
+	 */
+	FString DescribeHealthBars() const;
+
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	void HandleOrderGiven(const FVector& Point);
+	void HandleAttackOrderGiven(const FVector& Point);
 	void UpdateRings();
 	void UpdateFrame();
 	void UpdateFlag();
 	void UpdateGhost();
+	void UpdateHealthBars();
 	/** A pole and its cloth more for the flags (one per building with a rally point), made the first time needed. */
 	void AddFlag();
 
@@ -58,6 +69,10 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UInstancedStaticMeshComponent> Frames;
+
+	/** The health bars (J7b.5): two planes each facing the camera, the dark back and the coloured fill. */
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UInstancedStaticMeshComponent> HealthBars;
 
 	/** The rally flags, a pole and a cloth each, as many as ever shown together (hidden beyond the number shown). */
 	UPROPERTY(Transient)
@@ -93,8 +108,23 @@ private:
 	/** The feet of the flags shown, for Describe. */
 	TArray<FVector> FlagFeet;
 
+	/** The units as drawn this frame (D271), gathered once for the rings and the health bars. */
+	TArray<FHOLUnitView> Views;
+	/** The bars shown, for DescribeHealthBars: the unit, its fill in fifteenths, whether it is selected. */
+	struct FShownBar
+	{
+		uint32 UnitId = 0;
+		int32 Fifteenths = 0;
+		bool bSelected = false;
+	};
+	TArray<FShownBar> ShownBars;
+	int32 UnhurtUnselected = 0;
+
 	TWeakObjectPtr<AHOLPlayerController> Controller;
 	FDelegateHandle OrderHandle;
+	FDelegateHandle AttackOrderHandle;
+	/** The last order's ping is an attack's (J7b.3): red. */
+	bool bAttackPing = false;
 
 	/** The last order's point, and the seconds since it was given (the ring shows while under PingSeconds). */
 	FVector PingPoint = FVector::ZeroVector;

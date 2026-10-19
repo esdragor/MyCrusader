@@ -154,6 +154,9 @@ void UHOLUnitReplicationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	UnitQuery.AddRequirement<FMassVelocityFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FHOLPreviousTransformFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadOnly);
+	// J7b.4: the fight (attacking, its target) and the front a unit at its formation place faces.
+	UnitQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly);
+	UnitQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 
 	TypeIndices.Reset();
@@ -242,10 +245,9 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 	FString Sample;
 
 	Replicator->SetServerStep(Step);
-	const auto WriteState = [this, Step](FUnitRecord& Record, const FVector& Position, const FVector& Velocity, const FHOLUnitStateFragment& State,
-		const FHOLGatherLoad& Load)
+	const auto WriteState = [this, Step](FUnitRecord& Record, const FHOLNetUnitState& Current)
 	{
-		Record.Sent.State = FHOLNetUnitState::Make(Position, Velocity, State.Activity, Step, Load.Resource, Load.Amount, State.GatherResource);
+		Record.Sent.State = Current;
 		Record.Sent.Step = Step;
 		Replicator->GetOrAddChunk(Record.Slot / AHOLUnitChunk::NumSlots)->SetState(Record.Slot % AHOLUnitChunk::NumSlots, Record.Sent.State);
 	};
@@ -258,6 +260,8 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 		const TConstArrayView<FMassVelocityFragment> Velocities = Context.GetFragmentView<FMassVelocityFragment>();
 		const TConstArrayView<FHOLPreviousTransformFragment> PreviousTransforms = Context.GetFragmentView<FHOLPreviousTransformFragment>();
 		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
+		const TConstArrayView<FHOLCombatFragment> Combats = Context.GetFragmentView<FHOLCombatFragment>();
+		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		const uint8 TypeIndex = TypeIndices.FindRef(Constants.TypeName);
 
@@ -273,6 +277,24 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			const FVector Velocity = UE::HeroesOfLiberty::Net::StepVelocity != 0 && StepSeconds > 0.f
 				? (Position - PreviousTransforms[EntityIt].Transform.GetLocation()) / StepSeconds : Velocities[EntityIt].Value;
 
+			// The state the unit would be sent with now (J7b.4, J7-Q5): Dying at 0 health, Attacking while it strikes, with
+			// its target's slot; health level; the front it faces at rest at its formation place.
+			const FHOLCombatFragment& Combat = Combats[EntityIt];
+			const FHOLMoveOrderFragment& Order = Orders[EntityIt];
+			const EHOLUnitActivity Activity = State.CurrentHealth <= 0 ? EHOLUnitActivity::Dying
+				: Combat.bAttacking ? EHOLUnitActivity::Attacking : State.Activity;
+			uint16 TargetSlot = FHOLNetUnitState::InvalidTargetSlot;
+			if (Activity == EHOLUnitActivity::Attacking && EntityManager->IsEntityValid(Combat.Target))
+			{
+				const FHOLUnitStateFragment* TargetState = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Combat.Target);
+				const FUnitRecord* TargetRecord = TargetState ? Records.Find(TargetState->UnitId) : nullptr;
+				TargetSlot = TargetRecord ? static_cast<uint16>(FMath::Min<int32>(TargetRecord->Slot, FHOLNetUnitState::InvalidTargetSlot))
+					: FHOLNetUnitState::InvalidTargetSlot;
+			}
+			const FHOLGatherLoad& Load = Gathers[EntityIt].Load;
+			FHOLNetUnitState Current = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount, State.GatherResource);
+			Current.SetCombat(State.CurrentHealth, Constants.MaxHealth, TargetSlot, Order.bFacesFront && Order.Phase == EHOLMovePhase::None,
+				Order.FrontYaw);
 			FUnitRecord* Record = Records.Find(State.UnitId);
 			if (Record == nullptr)
 			{
@@ -282,7 +304,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 				Record->OwnerPlayer = State.OwnerPlayer;
 				Replicator->GetOrAddChunk(Record->Slot / AHOLUnitChunk::NumSlots)
 					->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
-				WriteState(*Record, Position, Velocity, State, Gathers[EntityIt].Load);
+				WriteState(*Record, Current);
 				Stats.Sends[static_cast<int32>(EHOLUnitSendReason::None)]++;
 			}
 			else
@@ -294,11 +316,11 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 					Replicator->GetOrAddChunk(Record->Slot / AHOLUnitChunk::NumSlots)
 						->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
 				}
-				const EHOLUnitSendReason Reason = HOLUnitReplication::GetSendReason(Record->Sent, Position, State.Activity,
-					State.UnitId, Step, StepSeconds, Rules, State.GatherResource);
+				const EHOLUnitSendReason Reason = HOLUnitReplication::GetSendReason(Record->Sent, Position, Current,
+					State.UnitId, Step, StepSeconds, Rules);
 				if (Reason != EHOLUnitSendReason::None)
 				{
-					WriteState(*Record, Position, Velocity, State, Gathers[EntityIt].Load);
+					WriteState(*Record, Current);
 					Stats.Sends[static_cast<int32>(Reason)]++;
 				}
 			}

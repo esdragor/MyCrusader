@@ -42,6 +42,16 @@ public:
 	void IssueMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bFromTask = false,
 		const FVector2D& FrontLine = FVector2D::ZeroVector, bool bFrontWidth = false, bool bQueue = false);
 
+	/**
+	 * The combat orders (J7b.3, J7-Q4), through the move queue: Attack (TargetUnitId), Stop, Hold; PlayerIndex as for a move
+	 * order (D288). The server checks again that the target is an enemy unit alive when the order is applied.
+	 */
+	void IssueCombatOrder(TConstArrayView<uint32> UnitIds, EHOLOrderKind Kind, uint32 TargetUnitId, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
+	/** Attack-move (J7b.3): a move order (the group in formation), its units taking on the enemies met on the way. */
+	void IssueAttackMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
+	/** A combat walk of one unit (its approach, its attack-move resumed), stamped (FHOLMoveOrder::CombatStamp). */
+	void IssueCombatWalk(uint32 UnitId, const FVector& Target, uint32 CombatStamp, bool bAttackMove);
+
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
 	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);
 

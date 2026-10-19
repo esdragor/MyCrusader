@@ -224,6 +224,8 @@ private:
 	 * frame and written when it changed (D303).
 	 */
 	void RefreshUnitActivity(const struct FHOLUnitView* Unit);
+	/** One unit's health in the selection block (J7b.5), or none (nullptr: a group, a building, a source). */
+	void RefreshUnitHealth(const struct FHOLUnitView* Unit);
 	/** The line under the name: Shown is what Describe writes of it (empty: hidden); written only when it changed. */
 	void SetDetailLine(const FString& Shown, const FText& Text);
 	/** The idle workers' counter, written when their number changed. */
@@ -303,6 +305,8 @@ private:
 	 * group, ", 1840 left" for a source; else empty.
 	 */
 	FString ShownActivity;
+	/** ", hp 37/50" for one unit selected (J7b.5), for Report; empty otherwise. */
+	FString ShownHealth;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
 	bool bQueueShown = false;

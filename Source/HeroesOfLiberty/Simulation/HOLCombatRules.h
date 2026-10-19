@@ -14,6 +14,9 @@ struct FHOLUnitTypeConstants;
  */
 namespace HOLCombat
 {
+	/** Steps a unit at 0 health stays Dying before its destruction (J7b.4, J7-Q5): ~1 s at 20 Hz, for its fall. */
+	constexpr int32 DyingSteps = 20;
+
 	/**
 	 * Damage of one hit (D21): Attack, plus BonusDamage when the defender is of the attacker's BonusCategory, minus the
 	 * defender's melee armour (or its ranged armour, bRanged), 1 at least (a hit always hurts).
@@ -63,6 +66,15 @@ namespace HOLCombat
 	 * at most Range. Touching bodies (gap 0 or less, pushed into each other) are in reach.
 	 */
 	HEROESOFLIBERTY_API bool IsInRange(const FVector2D& A, float RadiusA, const FVector2D& B, float RadiusB, float Range);
+
+	/**
+	 * Share (0, 0.5 or 1) of the overlap of two bodies that the separation gives to A, the unit that looks for its
+	 * neighbours (a walker, or a standing unit pushed this step), B taking the rest. Two units of one player take half
+	 * each, the soft push of the separation (D292). Two enemies never push each other back (the user's trial of J7b: the
+	 * lines hold, as in AoE4): a walker stops against a standing enemy (1), a standing enemy is never moved, and a unit
+	 * pushed into an enemy by its own side steps back itself; two enemies both walking into each other take half each.
+	 */
+	HEROESOFLIBERTY_API double GetOverlapShare(bool bEnemies, bool bWalkingA, bool bWalkingB);
 
 	// Target choice.
 

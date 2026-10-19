@@ -198,6 +198,25 @@ bool FHOLCombatRangeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatPushTest, "HeroesOfLiberty.Combat.Push", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatPushTest::RunTest(const FString& Parameters)
+{
+	// The user's trial of J7b: two enemies never push each other back; one player's units keep the soft push (D292).
+	for (const bool bWalkingA : { false, true })
+	{
+		for (const bool bWalkingB : { false, true })
+		{
+			TestEqual(*FString::Printf(TEXT("allies (walking %d, %d): half each"), bWalkingA, bWalkingB), HOLCombat::GetOverlapShare(false, bWalkingA, bWalkingB), 0.5);
+		}
+	}
+	TestEqual(TEXT("walker against a standing enemy: it takes it all"), HOLCombat::GetOverlapShare(true, true, false), 1.);
+	TestEqual(TEXT("pushed by its own side into a standing enemy: it takes it all"), HOLCombat::GetOverlapShare(true, false, false), 1.);
+	TestEqual(TEXT("an enemy walker against a standing unit: the walker takes it all"), HOLCombat::GetOverlapShare(true, false, true), 0.);
+	TestEqual(TEXT("two enemies walking into each other: half each"), HOLCombat::GetOverlapShare(true, true, true), 0.5);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatTargetTest, "HeroesOfLiberty.Combat.Target", UE::HeroesOfLiberty::Tests::Combat::Flags)
 
 bool FHOLCombatTargetTest::RunTest(const FString& Parameters)

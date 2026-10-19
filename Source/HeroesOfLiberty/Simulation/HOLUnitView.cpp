@@ -11,7 +11,7 @@
 
 namespace HOLUnitView
 {
-	void Gather(const UWorld& World, TArray<FHOLUnitView>& OutUnits)
+	void Gather(const UWorld& World, TArray<FHOLUnitView>& OutUnits, const bool bIncludeDying)
 	{
 		OutUnits.Reset();
 		// A client simulates nothing: its units are the ones it displays (D271).
@@ -26,17 +26,26 @@ namespace HOLUnitView
 		{
 			Units->GetUnitViews(OutUnits);
 		}
+		if (!bIncludeDying)
+		{
+			OutUnits.RemoveAll([](const FHOLUnitView& Unit) { return Unit.Activity == EHOLUnitActivity::Dying; });
+		}
 	}
 
-	bool Find(const UWorld& World, const uint32 UnitId, FHOLUnitView& OutUnit)
+	bool Find(const UWorld& World, const uint32 UnitId, FHOLUnitView& OutUnit, const bool bIncludeDying)
 	{
+		bool bFound = false;
 		if (World.GetNetMode() == NM_Client)
 		{
 			const UHOLUnitReceptionSubsystem* Reception = World.GetSubsystem<UHOLUnitReceptionSubsystem>();
-			return Reception && Reception->GetDisplayedUnit(UnitId, OutUnit);
+			bFound = Reception && Reception->GetDisplayedUnit(UnitId, OutUnit);
 		}
-		const UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
-		return Units && Units->GetUnitView(UnitId, OutUnit);
+		else
+		{
+			const UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+			bFound = Units && Units->GetUnitView(UnitId, OutUnit);
+		}
+		return bFound && (bIncludeDying || OutUnit.Activity != EHOLUnitActivity::Dying);
 	}
 }
 
@@ -60,7 +69,7 @@ namespace
 					continue;
 				}
 				TArray<FHOLUnitView> Units;
-				HOLUnitView::Gather(*World, Units);
+				HOLUnitView::Gather(*World, Units, true);
 				Units.Sort([](const FHOLUnitView& A, const FHOLUnitView& B) { return A.UnitId < B.UnitId; });
 				TArray<FString> Lines;
 				for (const FHOLUnitView& Unit : Units)
@@ -78,6 +87,15 @@ namespace
 						{
 							// Last, so the activity and the load read as before (quick_check).
 							Line += FString::Printf(TEXT(", gathers %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Unit.GatherResource)));
+						}
+						// J7b.4: the health level of a wounded unit, the target of an attacking one.
+						if (!Unit.bFullHealth)
+						{
+							Line += FString::Printf(TEXT(", hp %d/15"), Unit.HealthLevel);
+						}
+						if (Unit.Activity == EHOLUnitActivity::Attacking)
+						{
+							Line += FString::Printf(TEXT(", target #%u"), Unit.TargetUnitId);
 						}
 						Lines.Add(MoveTemp(Line));
 					}

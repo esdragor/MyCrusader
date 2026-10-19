@@ -191,8 +191,9 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// Settled at the last step's separation (D309), or a few steps more once stopped (J7a.6).
 			Gathers[EntityIt].bSettling = Gathers[EntityIt].SettleSteps > 0;
 			Gathers[EntityIt].SettleSteps -= Gathers[EntityIt].SettleSteps > 0 ? 1 : 0;
-			if (!Gathers[EntityIt].IsGathering())
+			if (!Gathers[EntityIt].IsGathering() || States[EntityIt].CurrentHealth <= 0)
 			{
+				// Dying (J7b.4): its task is over.
 				continue;
 			}
 			FGatherer Gatherer{ Context.GetEntity(EntityIt), Gathers[EntityIt], Moves[EntityIt], States[EntityIt],

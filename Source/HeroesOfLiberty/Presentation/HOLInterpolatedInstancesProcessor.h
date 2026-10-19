@@ -30,4 +30,8 @@ protected:
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 
 	FMassEntityQuery EntityQuery;
+
+	/** Each slot's colour index, gathered from the actors at most twice a second (FSlotColors), and when. */
+	TArray<uint8> CachedColorIndices;
+	double ColorsRefreshedAt = -1.0;
 };

@@ -34,8 +34,11 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	static constexpr int32 HorizontalBits = 15;
 	/** Horizontal velocity, per axis: +-12.8 m/s (a walking unit goes at 3 m/s). */
 	static constexpr int32 VelocityBits = 9;
-	/** The activity, and while it is Gathering what it gathers (J5c.1: HOLUnitReplication::EncodeActivity, no bit more). */
-	static constexpr int32 ActivityBits = 3;
+	/**
+	 * The activity, and while it is Gathering what it gathers (J5c.1: HOLUnitReplication::EncodeActivity, no bit more).
+	 * 4 bits since J7b.4 (J7-Q5): values 8 to 10 are Attacking, Dying and "idle, facing its front"; 5 are left free.
+	 */
+	static constexpr int32 ActivityBits = 4;
 	/** Low bits of the step the state was taken at: 256 steps, 12.8 s at 20 Hz, unwrapped by the client (UnwrapStep). */
 	static constexpr int32 StepBits = 8;
 	/**
@@ -44,9 +47,30 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * selected alone has it, at every change (D303, AHOLPlayerController's watched unit).
 	 */
 	static constexpr int32 LoadResourceBits = 2;
-	/** Bits of a unit that carries nothing; a carrier writes CarriedLoadBits more. */
-	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1;
+	/**
+	 * Health (J7b.4, J7-Q5): one bit "full health", then only a wounded unit writes its level, in sixteenths of its maximum
+	 * (HOLUnitReplication::GetHealthLevel: 1 to 15 alive, 0 dead). A change of level is a change of action (sent at once).
+	 */
+	static constexpr int32 HealthLevelBits = 4;
+	static constexpr uint8 MaxHealthLevel = (1 << HealthLevelBits) - 1;
+	/**
+	 * Target of an Attacking unit (J7b.4, J7-Q5), written only with that activity: its replication slot (the chunks'
+	 * slots, whose identifier the client reads), cheaper than its identifier, which is never recycled. 4 096 slots,
+	 * 65 chunks, beyond the population caps; InvalidTargetSlot: a target not replicated yet (sent again once it is).
+	 */
+	static constexpr int32 TargetSlotBits = 12;
+	static constexpr uint16 InvalidTargetSlot = (1 << TargetSlotBits) - 1;
+	/**
+	 * Facing of a unit at rest at its formation place (J7b.4, deferred item of J7a.4, choice B): written only with the
+	 * activity "idle, facing its front", 64 directions (5.6 deg).
+	 */
+	static constexpr int32 FrontYawBits = 6;
+	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62); the others write the extras below. */
+	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1;
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
+	static constexpr int32 WoundedBits = HealthLevelBits;
+	static constexpr int32 AttackingBits = TargetSlotBits;
+	static constexpr int32 FacingFrontBits = FrontYawBits;
 
 	UPROPERTY()
 	int16 X = 0;
@@ -72,9 +96,39 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	UPROPERTY()
 	EHOLResource LoadResource = EHOLResource::Food;
 
+	/** Unhurt (J7b.4): HealthLevel is not sent and stays MaxHealthLevel. */
+	UPROPERTY()
+	bool bFullHealth = true;
+
+	/** Sixteenths of its maximum health while wounded (HOLUnitReplication::GetHealthLevel), MaxHealthLevel unhurt. */
+	UPROPERTY()
+	uint8 HealthLevel = MaxHealthLevel;
+
+	/** While Activity is Attacking: its target's slot (see TargetSlotBits); 0 otherwise. */
+	UPROPERTY()
+	uint16 TargetSlot = 0;
+
+	/** Idle at its formation place, held turned to its front (J7a.4's bFacesFront): FrontYaw is sent. False otherwise. */
+	UPROPERTY()
+	bool bFacesFront = false;
+
+	/** Its front, in 64ths of a turn (GetFrontYaw), while bFacesFront; 0 otherwise. */
+	UPROPERTY()
+	uint8 FrontYaw = 0;
+
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,
 		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0, EHOLResource GatherResource = EHOLResource::Food);
+
+	/**
+	 * The fight and facing of the state (J7b.4), after Make: health (Health of MaxHealth), the target's slot while
+	 * Attacking, the front (deg) while Idle with bInFacesFront. Values that do not apply are left at their defaults, so
+	 * equal states compare equal.
+	 */
+	void SetCombat(int32 Health, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f);
+
+	/** Front (deg, -180 to 180) of a state that faces it. */
+	float GetFrontYaw() const;
 
 	/** Z = 0 for both, see above. */
 	FVector GetPosition() const;
@@ -127,14 +181,31 @@ namespace HOLUnitReplication
 	 */
 	constexpr uint8 BuildingWireValue = static_cast<uint8>(EHOLUnitActivity::Gathering);
 
+	/** Attacking (J7b.4) on the wire. */
+	constexpr uint8 AttackingWireValue = 8;
+	/** Dying (J7b.4) on the wire. */
+	constexpr uint8 DyingWireValue = 9;
+	/** Idle and facing its front at its formation place (J7b.4): Idle, with FrontYaw written. */
+	constexpr uint8 IdleFacingFrontWireValue = 10;
+
+	/** Health level of a unit (J7b.4, J7-Q5): ceil(15 * Health / MaxHealth), 0 only at 0 health or below. */
+	HEROESOFLIBERTY_API uint8 GetHealthLevel(int32 Health, int32 MaxHealth);
+
 	/** The activity is one the wire can carry (EncodeActivity). */
 	HEROESOFLIBERTY_API bool IsValidActivity(EHOLUnitActivity Activity);
 
-	/** The activity as written on the wire, with what it gathers while Gathering. */
-	HEROESOFLIBERTY_API uint8 EncodeActivity(EHOLUnitActivity Activity, EHOLResource GatherResource);
+	/** The activity as written on the wire, with what it gathers while Gathering, and whether it faces its front while Idle. */
+	HEROESOFLIBERTY_API uint8 EncodeActivity(EHOLUnitActivity Activity, EHOLResource GatherResource, bool bFacesFront = false);
 
 	/** Back from the wire; GatherResource is Food unless the activity is Gathering. */
 	HEROESOFLIBERTY_API void DecodeActivity(uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource);
+	HEROESOFLIBERTY_API void DecodeActivity(uint8 WireActivity, EHOLUnitActivity& OutActivity, EHOLResource& OutGatherResource, bool& bOutFacesFront);
+
+	/**
+	 * The action of two states is the same (D269, J7b.4): activity on the wire (with what is gathered, the facing of the
+	 * front), health, target and front. Another action is sent at once, whatever the position.
+	 */
+	HEROESOFLIBERTY_API bool IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B);
 
 	/** Full step whose low bits are StepLowBits, the nearest to NearStep (the client's estimate of the server clock). */
 	HEROESOFLIBERTY_API int64 UnwrapStep(uint8 StepLowBits, int64 NearStep);
@@ -153,6 +224,10 @@ namespace HOLUnitReplication
 	HEROESOFLIBERTY_API EHOLUnitSendReason GetSendReason(const FHOLUnitSentRecord& Sent, const FVector& Position,
 		EHOLUnitActivity Activity, uint32 UnitId, int64 Step, float StepSeconds, const FHOLUnitSendRules& Rules,
 		EHOLResource GatherResource = EHOLResource::Food);
+
+	/** The same rule, the unit's present action being that of Current (IsSameAction: its health, target, front, J7b.4). */
+	HEROESOFLIBERTY_API EHOLUnitSendReason GetSendReason(const FHOLUnitSentRecord& Sent, const FVector& Position,
+		const FHOLNetUnitState& Current, uint32 UnitId, int64 Step, float StepSeconds, const FHOLUnitSendRules& Rules);
 }
 
 /**

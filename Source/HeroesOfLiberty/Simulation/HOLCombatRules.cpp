@@ -64,6 +64,16 @@ namespace HOLCombat
 		return FVector2D::DistSquared(A, B) <= Reach * Reach;
 	}
 
+	double GetOverlapShare(const bool bEnemies, const bool bWalkingA, const bool bWalkingB)
+	{
+		if (!bEnemies || (bWalkingA && bWalkingB))
+		{
+			return 0.5;
+		}
+		// B standing: it is not moved (A walking, or pushed by its own side). B walking, A standing: B stops against A.
+		return bWalkingB ? 0. : 1.;
+	}
+
 	float GetSearchRadius(const FSeeker& Seeker)
 	{
 		if (Seeker.Mode == ESeekMode::Hold)

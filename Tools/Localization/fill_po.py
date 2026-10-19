@@ -14,6 +14,17 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Con
 
 # "Namespace,Key": (English, Japanese)
 TRANSLATIONS = {
+    "HOLGameScreen,AttackMove": ("Attack", "攻撃"),
+    "HOLGameScreen,AttackMoveName": ("Attack-move", "攻撃移動"),
+    "HOLGameScreen,AttackMoveEffect": ("Then click the ground: attacks the enemies on the way", "続けて地面をクリック：途中の敵を攻撃"),
+    "HOLGameScreen,Stop": ("Stop", "停止"),
+    "HOLGameScreen,StopName": ("Stop", "停止"),
+    "HOLGameScreen,StopEffect": ("Cancels the orders and the fight", "命令と戦闘を取り消す"),
+    "HOLGameScreen,Hold": ("Hold", "待機"),
+    "HOLGameScreen,HoldName": ("Hold position", "位置を保持"),
+    "HOLGameScreen,HoldEffect": ("Attacks only in range, never chases", "射程内のみ攻撃し、追跡しない"),
+    "HOLGameScreen,ActivityAttacking": ("Attacking", "攻撃中"),
+
     "HOLPlayerColors,Blue": ("Blue", "青"),
     "HOLPlayerColors,Red": ("Red", "赤"),
     "HOLPlayerColors,Green": ("Green", "緑"),

@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
+#include "HAL/PlatformTime.h"
 #include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
@@ -57,9 +58,14 @@ namespace UE::HeroesOfLiberty::Presentation
 	 * colour. A slot's buildings carry its colour (replicated, AI slots included), its player state too (humans); the
 	 * slot's own index until either is known.
 	 */
+	/** Seconds between two gatherings of the slots' colours (FSlotColors). */
+	constexpr double SlotColorsRefreshSeconds = 0.5;
+
 	struct FSlotColors
 	{
 		TStaticArray<uint8, FHOLMatchConfig::MaxSlots> ColorIndices;
+
+		FSlotColors() = default;
 
 		explicit FSlotColors(const UWorld* World)
 		{
@@ -243,7 +249,24 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
 	FSiteFootprints Sites;
 	Sites.World = World;
-	const FSlotColors SlotColors(World);
+	// The slots' colours, gathered from the actors at most twice a second (they change only when a player picks one in the
+	// lobby or a building of a new slot appears), not at every frame.
+	const double Now = FPlatformTime::Seconds();
+	if (CachedColorIndices.Num() != FHOLMatchConfig::MaxSlots || Now - ColorsRefreshedAt >= UE::HeroesOfLiberty::Presentation::SlotColorsRefreshSeconds)
+	{
+		const FSlotColors Fresh(World);
+		CachedColorIndices.SetNumUninitialized(FHOLMatchConfig::MaxSlots);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			CachedColorIndices[Slot] = Fresh.ColorIndices[Slot];
+		}
+		ColorsRefreshedAt = Now;
+	}
+	FSlotColors SlotColors;
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		SlotColors.ColorIndices[Slot] = CachedColorIndices[Slot];
+	}
 
 	// The units' speed of the cheats (hol.Units.SpeedScale, this machine's: a client's is not the server's), for the walks'
 	// play rate (J7a.4).

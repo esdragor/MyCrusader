@@ -68,6 +68,11 @@ public:
 
 	/** Queues a destruction, applied by FlushDestructions() at the end of the step (D224). */
 	void RequestDestroyUnits(TConstArrayView<uint32> UnitIds);
+	/**
+	 * A unit at 0 health (J7b.4): its population places are free from now on (the user's trial of J7b), not when it is
+	 * destroyed DyingSteps later. Once is enough; GetPopulationByOwner skips it.
+	 */
+	void MarkUnitDying(uint32 UnitId);
 	void RequestDestroyAllUnits();
 	/** Destroys the queued units; returns how many were destroyed. Called at the end of the fixed step. */
 	int32 FlushDestructions();
@@ -86,8 +91,8 @@ public:
 	int32 GetNumPendingBirths() const { return BirthQueue.Num(); }
 	void GetUnitCountsByType(TMap<FName, int32>& OutCounts) const;
 	/**
-	 * Population places taken by each player's units (J3, D282), births waiting in the queue included: OutPopulation
-	 * gets one entry per OwnerPlayer (D233) up to the highest one with a unit.
+	 * Population places taken by each player's units (J3, D282), births waiting in the queue included, the dying left out
+	 * (MarkUnitDying): OutPopulation gets one entry per OwnerPlayer (D233) up to the highest one with a unit.
 	 */
 	void GetPopulationByOwner(TArray<int32>& OutPopulation) const;
 	/** "3 units: #1 Peasant slot 0 at (x, y, z) LOD 0 visible, drawn as instances; ...", the first MaxUnits (hol.Units.Report). */
@@ -114,6 +119,8 @@ private:
 		FMassEntityHandle Entity;
 		FName TypeName;
 		uint8 OwnerPlayer = 0;
+		/** At 0 health, waiting for its destruction (MarkUnitDying): no population place. */
+		bool bDying = false;
 	};
 
 	const UDataTable* GetTypeTable() const;

@@ -32,6 +32,8 @@ void UHOLUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
 	BuildContext.AddFragment<FHOLGatherFragment>();
 	// Its building (J6a.4, D312): site, spot, work.
 	BuildContext.AddFragment<FHOLBuildFragment>();
+	// Its fight (J7b.2): target, cool-down, riposte.
+	BuildContext.AddFragment<FHOLCombatFragment>();
 	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
 	BuildContext.AddFragment<FHOLAvoidanceHoldFragment>();
 	// Animation played by the skinned instance (D234); the visualization trait does not add it.

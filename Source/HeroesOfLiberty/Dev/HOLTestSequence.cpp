@@ -37,8 +37,9 @@
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
  *   signal <File>        writes the file (absolute path): another game on the machine waiting for it goes on
- *   waitfile <File>      waits for the file to exist: two clients wait for each other (each one's last report done
- *                        before either quits, quick_check's net part)
+ *   waitfile <File> [S]  waits for the file to exist: two clients wait for each other (each one's last report done
+ *                        before either quits, quick_check's net part); S: its own timeout in seconds, instead of 60
+ *                        (the dedicated server waits for a client's step of the end, J7b.4)
  *   anything else        runs as a console command, in the current game world
  * A wait that lasts more than 60 seconds ends the run with an error and quits.
  */
@@ -130,6 +131,7 @@ namespace UE::HeroesOfLiberty::Dev
 		{
 			WaitStart = FPlatformTime::Seconds();
 			FramesWaited = 0;
+			StepTimeout = StepTimeoutSeconds;
 		}
 
 		/** True when the current step is done; ends the run on a timeout. */
@@ -213,7 +215,17 @@ namespace UE::HeroesOfLiberty::Dev
 			}
 			else if (Verb == TEXT("waitfile"))
 			{
-				bDone = IFileManager::Get().FileExists(*Rest);
+				FString File = Rest;
+				FString Timeout;
+				if (Rest.Split(TEXT(" "), &File, &Timeout, ESearchCase::CaseSensitive, ESearchDir::FromEnd) && Timeout.IsNumeric())
+				{
+					StepTimeout = FCString::Atod(*Timeout);
+				}
+				else
+				{
+					File = Rest;
+				}
+				bDone = IFileManager::Get().FileExists(*File);
 			}
 			else
 			{
@@ -221,7 +233,7 @@ namespace UE::HeroesOfLiberty::Dev
 				GEngine->Exec(GetGameWorld(), *Step);
 			}
 
-			if (!bDone && Waited > StepTimeoutSeconds)
+			if (!bDone && Waited > StepTimeout)
 			{
 				UE_LOG(LogHOLTest, Error, TEXT("Test sequence: timeout at step %d: %s"), Next + 1, *Step);
 				Finish(/*bQuit*/ true);
@@ -260,6 +272,8 @@ namespace UE::HeroesOfLiberty::Dev
 
 		TArray<FString> Steps;
 		int32 Next = 0;
+		/** The current step's timeout: StepTimeoutSeconds, or a waitfile's own. */
+		double StepTimeout = StepTimeoutSeconds;
 		TUniquePtr<FTestLogWatcher> Watcher;
 		/** Log lines from here on are searched by waitlog: those written since the last command. */
 		int32 LogMark = 0;

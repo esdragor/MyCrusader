@@ -146,11 +146,22 @@ public:
 	void GetSubgroups(TArray<FHOLSubgroup>& OutSubgroups) const;
 	/** The subgroup Tab made active (0: « Tous », a new group's), whose cells the grid shows; false without a group. */
 	bool GetActiveSubgroup(FHOLSubgroup& OutSubgroup) const;
-	/** Tab (AoE4's way): the next subgroup of the group, back to « Tous » after the last one; nothing without a group. */
+	/**
+	 * Tab (AoE4's way): the next subgroup of the group, back to « Tous » after the last one; the same through a selection
+	 * of units of several types (GetUnitSubgroups); nothing else.
+	 */
 	void CycleSubgroup();
+	/**
+	 * The subgroups of the player's own selected units (the user's trial of J7b), when they are of several types: « Tous »,
+	 * then one per type, the soldiers first, the Peasants last (each by name); OutUnits (optional): their ids, the indices
+	 * of the subgroups' members. Empty for one type, or no own unit.
+	 */
+	void GetUnitSubgroups(TArray<FHOLSubgroup>& OutSubgroups, TArray<uint32>* OutUnits = nullptr) const;
+	/** The units' subgroup Tab made active (« Tous » for a new selection); false without unit subgroups. */
+	bool GetActiveUnitSubgroup(FHOLSubgroup& OutSubgroup) const;
 	/** Whether a building of the group is in its active subgroup (its frame drawn brighter); true outside a group. */
 	bool IsInActiveSubgroup(const AHOLBuilding* Building) const;
-	/** "All (7)", "House x6", "MainCentre": the active subgroup, for the logs; empty without a group. */
+	/** "All (7)", "House x6", "MainCentre", "Peasant x3": the active subgroup, for the logs; empty without one. */
 	FString DescribeSubgroup() const;
 	/**
 	 * The buildings the grid's commands go to: the player's own building selected alone, or the active subgroup's (the
@@ -189,6 +200,8 @@ public:
 	/** The player gave an order on the ground (units or rally point): the HUD marks the point briefly (J4.6). */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrderGiven, const FVector& /*Point*/);
 	FOnOrderGiven OnOrderGiven;
+	/** An attack order (J7b.3): the target's place marked as an order's point, in red. */
+	FOnOrderGiven OnAttackOrderGiven;
 
 	AHOLPlayerState* GetHOLPlayerState() const;
 	/** The selected building if it is the player's own, else null: only the owner gives it orders. */
@@ -300,6 +313,28 @@ public:
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
 	 */
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
+	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
+	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
+	/** Asks the server for an attack-move of units to a ground point (J7b.3), as one group. */
+	void RequestAttackMove(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
+	/** Asks the server to stop units (J7b.3), or to stop them holding their position (bHold). */
+	void RequestStopUnits(TConstArrayView<uint32> UnitIds, bool bHold);
+	/**
+	 * Attack-move mode (J7b.3, the grid's A): the next left click on the ground sends the selected soldiers there (Shift:
+	 * queued); a right click or Escape leaves it.
+	 */
+	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
+	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
+	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
+	/** The selected units that are the player's own (an order moves only them). */
+	TArray<uint32> GetOwnSelectedUnits() const;
+	/** The player's own soldiers among the selection (every type but those that gather). */
+	TArray<uint32> GetOwnSelectedSoldiers() const;
+	/**
+	 * The player's own selected units the grid's commands go to (the user's trial of J7b): those of the active unit
+	 * subgroup (Tab), all of them for « Tous » or a selection of one type.
+	 */
+	TArray<uint32> GetCommandUnits() const;
 	/**
 	 * Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. bQueue (Shift): at
 	 * the end of their queue, after their sites (the user's trial of J6a.4).
@@ -367,8 +402,6 @@ private:
 	FVector2D ToPixels(const FVector2D& ViewportFraction) const;
 	/** Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only. Ids match the candidates. */
 	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const;
-	/** The selected units that are the player's own (an order moves only them). */
-	TArray<uint32> GetOwnSelectedUnits() const;
 	/** Units that left this machine (dead, out of view of a client) leave the selection, a used-up source too. */
 	void PurgeSelection(TConstArrayView<FHOLUnitView> Views);
 	/** The player's idle workers among the units known here (Views). */
@@ -419,6 +452,14 @@ private:
 	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
 	UFUNCTION(Server, Reliable)
 	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+
+	/** The combat orders (J7b.3): attack a unit, attack-move, stop or hold (EHOLOrderKind as a byte); the server checks them. */
+	UFUNCTION(Server, Reliable)
+	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	UFUNCTION(Server, Reliable)
+	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+	UFUNCTION(Server, Reliable)
+	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold);
 
 	/**
 	 * A right-button drag (J7a.4): the units and the two ends of the front line on the ground (~4 bytes a unit and two
@@ -498,6 +539,8 @@ private:
 	uint32 LastCategoryBuilding = 0;
 	/** The group's active subgroup (Tab), an index of GetSubgroups: 0, « Tous », for a new group. */
 	int32 ActiveSubgroup = 0;
+	/** The units' active subgroup (Tab, the user's trial of J7b): its type, None for « Tous »; kept while units of it are. */
+	FName ActiveUnitType;
 	/** By unit type, the building of a group that took the last one (unique id here): the next press goes on from it. */
 	TMap<FName, uint32> LastProductionBuilding;
 	/** Left button held: where it was pressed (viewport fractions); its release clicks or ends the box. */
@@ -505,6 +548,8 @@ private:
 	FVector2D SelectPressFraction = FVector2D::ZeroVector;
 	/** Right button held (J7a.4): where it was pressed; its release orders there, or along the drag. */
 	bool bOrderPressed = false;
+	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
+	bool bAttackMoveArmed = false;
 	FVector2D OrderPressFraction = FVector2D::ZeroVector;
 	/** Shift held (IA_SelectAdd). */
 	bool bSelectAddHeld = false;

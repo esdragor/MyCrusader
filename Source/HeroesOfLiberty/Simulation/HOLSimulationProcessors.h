@@ -179,6 +179,8 @@ protected:
 	TArray<uint32> FormUpSerials;
 	/** Units walking an order (not a gatherer settling at its spot). */
 	TArray<bool> Moving;
+	/** Each unit's player: two enemies never push each other back (HOLCombat::GetOverlapShare). */
+	TArray<uint8> Owners;
 	/**
 	 * Gatherers at their source (D309): with a unit standing beside them, they keep the spots' spacing only (100 cm,
 	 * hol.Gather.SpotSpacing), not two bodies; a walker still pushes them out of its way.

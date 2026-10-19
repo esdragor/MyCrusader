@@ -383,4 +383,94 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridUnitOrdersTest, "HeroesOfLiberty.CommandGrid.UnitOrders", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
+{
+	// J7b.3, the user's trial of J7b: A attack-move (soldiers among the selection), S stop, D hold (any own units).
+	TestEqual(TEXT("A is cell 0"), HOLCommandGrid::AttackMoveCell, 0);
+	TestEqual(TEXT("S is cell 5"), HOLCommandGrid::StopCell, 5);
+	TestEqual(TEXT("D is cell 6"), HOLCommandGrid::HoldCell, 6);
+
+	// Soldiers alone: A S D, nothing else (no build cell: they do not build).
+	FHOLGridContext Soldiers;
+	Soldiers.bOwnUnits = true;
+	Soldiers.bSoldiers = true;
+	TestTrue(TEXT("soldiers: A attack-move"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("soldiers: S stop"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
+	TestTrue(TEXT("soldiers: D hold"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		if (Cell != HOLCommandGrid::AttackMoveCell && Cell != HOLCommandGrid::StopCell && Cell != HOLCommandGrid::HoldCell)
+		{
+			TestTrue(*FString::Printf(TEXT("soldiers: cell %d empty"), Cell), HOLCommandGrid::GetCommand(Soldiers, Cell).IsNone());
+		}
+	}
+
+	// Peasants alone (builders, no soldier): the table's A Z E R build, no attack-move, S and D still there; nothing on the
+	// cancel cell.
+	FHOLGridContext Peasants;
+	Peasants.bBuilders = true;
+	Peasants.bOwnUnits = true;
+	UHOLBuildingSettings::GetBuildableTypes(Peasants.Buildable);
+	for (int32 Cell = 0; Cell < 4; ++Cell)
+	{
+		TestTrue(*FString::Printf(TEXT("Peasants: cell %d still builds"), Cell), HOLCommandGrid::GetCommand(Peasants, Cell).Command == EHOLGridCommand::Build);
+	}
+	TestTrue(TEXT("Peasants: A a house"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::AttackMoveCell).TypeName == HOLBuildingTypeNames::House);
+	TestTrue(TEXT("Peasants: R still the Barracks"), HOLCommandGrid::GetCommand(Peasants, 3).TypeName == HOLBuildingTypeNames::Barracks);
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		TestTrue(*FString::Printf(TEXT("Peasants alone: no attack-move on cell %d"), Cell),
+			HOLCommandGrid::GetCommand(Peasants, Cell).Command != EHOLGridCommand::AttackMove);
+	}
+	TestTrue(TEXT("Peasants: S stop"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
+	TestTrue(TEXT("Peasants: D hold"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
+	TestTrue(TEXT("Peasants: cancel cell empty"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::CancelCell).IsNone());
+	for (const TPair<FName, int32>& Buildable : Peasants.Buildable)
+	{
+		TestTrue(*FString::Printf(TEXT("%s: not on S D"), *Buildable.Key.ToString()),
+			Buildable.Value != HOLCommandGrid::StopCell && Buildable.Value != HOLCommandGrid::HoldCell);
+	}
+
+	// Peasants and soldiers together (« Tous » of a mixed selection): the soldiers' commands, no build (the Peasants'
+	// subgroup, Tab, has them).
+	FHOLGridContext Mixed = Peasants;
+	Mixed.bSoldiers = true;
+	TestTrue(TEXT("mixed: A attack-move"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("mixed: S stop"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
+	TestTrue(TEXT("mixed: D hold"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		TestTrue(*FString::Printf(TEXT("mixed: cell %d builds nothing"), Cell), HOLCommandGrid::GetCommand(Mixed, Cell).Command != EHOLGridCommand::Build);
+	}
+
+	// An enemy selection (no own unit, whatever is selected): no unit command.
+	FHOLGridContext Enemy;
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		TestTrue(*FString::Printf(TEXT("enemy selection: cell %d empty"), Cell), HOLCommandGrid::GetCommand(Enemy, Cell).IsNone());
+	}
+
+	// A building of the player's (the Barracks, finished or a site): its own cells only, never A S D.
+	FHOLGridContext Barracks;
+	Barracks.bOwnBuilding = true;
+	Barracks.bBuildingFinished = true;
+	Barracks.Produces = { FName(TEXT("Spearman")), FName(TEXT("ManAtArms")) };
+	Barracks.bOwnUnits = true;  // never set with a building; the building's grid wins all the same
+	Barracks.bSoldiers = true;
+	for (const bool bFinished : { true, false })
+	{
+		Barracks.bBuildingFinished = bFinished;
+		for (const int32 Cell : { HOLCommandGrid::AttackMoveCell, HOLCommandGrid::StopCell, HOLCommandGrid::HoldCell })
+		{
+			const EHOLGridCommand Command = HOLCommandGrid::GetCommand(Barracks, Cell).Command;
+			TestTrue(*FString::Printf(TEXT("Barracks (finished %d): cell %d no unit command"), bFinished ? 1 : 0, Cell),
+				Command != EHOLGridCommand::AttackMove && Command != EHOLGridCommand::Stop && Command != EHOLGridCommand::Hold);
+		}
+		TestTrue(*FString::Printf(TEXT("Barracks (finished %d): A its first unit or nothing"), bFinished ? 1 : 0),
+			HOLCommandGrid::GetCommand(Barracks, 0).Command == (bFinished ? EHOLGridCommand::Produce : EHOLGridCommand::None));
+	}
+	return true;
+}
+
 #endif

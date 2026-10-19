@@ -50,6 +50,44 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	Order.bQueue = bQueue;
 }
 
+void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitIds, const EHOLOrderKind Kind, const uint32 TargetUnitId, const int32 PlayerIndex,
+	const bool bQueue)
+{
+	if (UnitIds.Num() == 0 || Kind == EHOLOrderKind::Move || Kind == EHOLOrderKind::AttackMove)
+	{
+		return;
+	}
+	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();
+	Order.UnitIds = UnitIds;
+	Order.PlayerIndex = PlayerIndex;
+	Order.Kind = Kind;
+	Order.TargetUnitId = TargetUnitId;
+	// Stop and hold are at once (AoE4): never queued.
+	Order.bQueue = bQueue && Kind == EHOLOrderKind::Attack;
+}
+
+void UHOLCommandSubsystem::IssueAttackMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bQueue)
+{
+	const int32 Before = PendingMoveOrders.Num();
+	IssueMoveOrder(UnitIds, Target, PlayerIndex, /*bFromTask*/ false, FVector2D::ZeroVector, /*bFrontWidth*/ false, bQueue);
+	if (PendingMoveOrders.Num() > Before)
+	{
+		PendingMoveOrders.Last().Kind = EHOLOrderKind::AttackMove;
+	}
+}
+
+void UHOLCommandSubsystem::IssueCombatWalk(const uint32 UnitId, const FVector& Target, const uint32 CombatStamp, const bool bAttackMove)
+{
+	const uint32 UnitIds[] = { UnitId };
+	const int32 Before = PendingMoveOrders.Num();
+	IssueMoveOrder(UnitIds, Target, INDEX_NONE, /*bFromTask*/ true);
+	if (PendingMoveOrders.Num() > Before)
+	{
+		PendingMoveOrders.Last().CombatStamp = CombatStamp;
+		PendingMoveOrders.Last().Kind = bAttackMove ? EHOLOrderKind::AttackMove : EHOLOrderKind::Move;
+	}
+}
+
 void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)
 {
 	if (UnitIds.Num() == 0 || SourceIndex == INDEX_NONE)

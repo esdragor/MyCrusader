@@ -17,6 +17,12 @@ enum class EHOLGridCommand : uint8
 	Build,
 	/** Cancels the player's selected site, refunded (D311). */
 	CancelConstruction,
+	/** Attack-move (J7b.3): the next left click on the ground sends the soldiers there, taking on the enemies on the way. */
+	AttackMove,
+	/** Stop (J7b.3): the units stand, their orders, queue and fight forgotten. */
+	Stop,
+	/** Hold position (J7b.3): stop, then only enemies in reach, never a chase, until a move order. */
+	Hold,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -76,6 +82,12 @@ struct FHOLGridContext
 	 * server checks for a build order, J6a.4).
 	 */
 	bool bBuilders = false;
+	/**
+	 * The player's own units are selected (J7b.3: stop, hold); among them soldiers (every type but the Peasant: attack-move,
+	 * on A, the builders' grid hidden: the user's trial of J7b).
+	 */
+	bool bOwnUnits = false;
+	bool bSoldiers = false;
 	/** The types builders build and their cell (BuildGridSlot of the building type table). */
 	TArray<TPair<FName, int32>> Buildable;
 };
@@ -141,10 +153,20 @@ namespace HOLCommandGrid
 	inline constexpr int32 NumCells = 12;
 	/** The cell of a selected site's « Annuler » (V, bottom right: far from the keys that build). */
 	inline constexpr int32 CancelCell = 11;
+	/**
+	 * The units' commands (J7b.3): A attack-move (AoE4's and StarCraft's key; the user's trial of J7b: A, not Q, on an
+	 * AZERTY keyboard), then on the second row, free in the builders' grid (A Z E R), S stop, D hold position. Soldiers
+	 * among the selection take A from the builders' grid (« Tous » of a mixed selection); the Peasants' subgroup (Tab)
+	 * keeps it.
+	 */
+	inline constexpr int32 AttackMoveCell = 0;
+	inline constexpr int32 StopCell = 5;
+	inline constexpr int32 HoldCell = 6;
 
 	/**
-	 * What Cell does: the selected building's production (finished) or its cancel cell (a site); else, with builders
-	 * selected, the building whose BuildGridSlot is Cell; else nothing.
+	 * What Cell does: the selected building's production (finished) or its cancel cell (a site); else, with builders and
+	 * no soldier selected, the building whose BuildGridSlot is Cell; else the units' commands (attack-move with soldiers,
+	 * stop, hold); else nothing.
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
 

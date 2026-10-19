@@ -519,6 +519,7 @@ uint32 UHOLUnitOrderProcessor::LastBlockSerial = 0;
 int64 UHOLUnitOrderProcessor::TotalStuckRepaths = 0;
 int64 UHOLUnitOrderProcessor::TotalFootprintRepaths = 0;
 int64 UHOLUnitOrderProcessor::TotalFootprintDroppedPaths = 0;
+int64 UHOLUnitOrderProcessor::TotalStaleCombatWalks = 0;
 
 UHOLUnitOrderProcessor::UHOLUnitOrderProcessor()
 	: EntityQuery(*this)
@@ -965,15 +966,49 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		Positions.Reset();
 		float Radius = 0.f;
 		int32 NumRefused = 0;
+		// An attack (J7b.3, D288): the target must be a unit alive, an enemy of the player who gave it (a client could send
+		// any identifier); a server's own order, an enemy of each unit.
+		FMassEntityHandle AttackTarget;
+		int32 TargetOwner = INDEX_NONE;
+		if (Order.Kind == EHOLOrderKind::Attack)
+		{
+			AttackTarget = Units->FindEntity(Order.TargetUnitId);
+			const FHOLUnitStateFragment* TargetState = EntityManager.IsEntityValid(AttackTarget) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(AttackTarget) : nullptr;
+			if (!TargetState || TargetState->CurrentHealth <= 0 || !EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(AttackTarget)
+				|| (Order.PlayerIndex != INDEX_NONE && TargetState->OwnerPlayer == Order.PlayerIndex))
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d on #%u refused: not an enemy unit alive"), Order.PlayerIndex, Order.TargetUnitId);
+				continue;
+			}
+			TargetOwner = TargetState->OwnerPlayer;
+		}
+		int32 NumStale = 0;
 		for (const uint32 UnitId : Order.UnitIds)
 		{
 			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
-			if (!EntityManager.IsEntityValid(Entity) || Entities.Contains(Entity))
+			// A unit Dying (J7b.4) obeys no order.
+			if (!EntityManager.IsEntityValid(Entity) || Entities.Contains(Entity)
+				|| EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).CurrentHealth <= 0)
 			{
 				continue;
 			}
 			// Only a player's own units obey it (D288): a client could send any identifier.
 			if (Order.PlayerIndex != INDEX_NONE && EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer != Order.PlayerIndex)
+			{
+				++NumRefused;
+				continue;
+			}
+			// A combat walk given before a newer player order (J7b.3): dropped, the newer order kept.
+			if (Order.CombatStamp != 0)
+			{
+				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+				if (!Combat || Combat->EngageSerial != Order.CombatStamp)
+				{
+					++NumStale;
+					continue;
+				}
+			}
+			if (TargetOwner != INDEX_NONE && EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer == TargetOwner)
 			{
 				++NumRefused;
 				continue;
@@ -986,6 +1021,11 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		if (NumRefused > 0)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Move order of slot %d: %d units ignored, not its own"), Order.PlayerIndex, NumRefused);
+		}
+		if (NumStale > 0)
+		{
+			++TotalStaleCombatWalks;
+			UE_LOG(LogHOLSimulation, Verbose, TEXT("Combat walk dropped: a newer order was given"));
 		}
 		if (Entities.Num() == 0)
 		{
@@ -1003,7 +1043,8 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entities[Unit]);
 				const FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entities[Unit]);
 				const bool bOnTask = (Gather && Gather->IsGathering()) || (Build && Build->IsBuilding());
-				bAnyWalking = MoveQueueOfUnit.Contains(EntityIds[Unit])
+				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entities[Unit]);
+				bAnyWalking = MoveQueueOfUnit.Contains(EntityIds[Unit]) || (Combat && Combat->bOrderedTarget)
 					|| (!bOnTask && State.Activity == EHOLUnitActivity::Moving && Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning);
 			}
 			if (bAnyWalking)
@@ -1023,12 +1064,19 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			}
 		}
 		// Any other order forgets the units' queued moves (J7a.4); a queued move that starts keeps those after it.
-		if (OrderIndex >= NumStartedQueued && !MoveQueueOfUnit.IsEmpty())
+		if (OrderIndex >= NumStartedQueued && !Order.bFromTask && !MoveQueueOfUnit.IsEmpty())
 		{
 			for (const uint32 UnitId : EntityIds)
 			{
 				ForgetMoveQueue(UnitId);
 			}
+		}
+		// The combat orders without a walk of their own (J7b.3): the units stand where they are, their task and fight
+		// forgotten; an attack's walk to its target is the combat's approach (UHOLCombatProcessor, the same step).
+		if (Order.Kind == EHOLOrderKind::Attack || Order.Kind == EHOLOrderKind::Stop || Order.Kind == EHOLOrderKind::Hold)
+		{
+			ApplyCombatOrder(EntityManager, *World, Order, Entities, AttackTarget);
+			continue;
 		}
 		const uint32 OrderSerial = NextOrderSerial++;
 
@@ -1196,7 +1244,17 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			{
 				Build->Clear();
 			}
+			// And its fight (J7b.2): a player's order, a queued one when it starts included, prevails over the melee; the
+			// combat processor, after this one in the step, sees it walking an order and takes on nobody until it is done.
+			FHOLCombatFragment* Combat = Order.bFromTask ? nullptr : EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
 			MoveOrder.Slot = SlotOfUnit[Unit] != INDEX_NONE ? Slots[SlotOfUnit[Unit]] : Order.Target;
+			if (Combat)
+			{
+				// Any move lets a hold go (J7b.3); an attack-move's units remember their slot, walked on to after a fight.
+				Combat->Disengage();
+				Combat->Mode = Order.Kind == EHOLOrderKind::AttackMove ? EHOLCombatMode::AttackMove : EHOLCombatMode::Normal;
+				Combat->AttackMoveGoal = MoveOrder.Slot;
+			}
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));
 			MoveOrder.Phase = EHOLMovePhase::WaitingPath;
 			MoveOrder.bShortOfSlot = false;
@@ -1692,6 +1750,52 @@ void UHOLUnitOrderProcessor::WatchArrivals(FMassEntityManager& EntityManager)
 	}
 }
 
+void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager, const UWorld& World, const FHOLMoveOrder& Order,
+	const TConstArrayView<FMassEntityHandle> Entities, const FMassEntityHandle AttackTarget)
+{
+	for (const FMassEntityHandle Entity : Entities)
+	{
+		if (FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity); Gather && Gather->IsGathering())
+		{
+			Gather->Phase = EHOLGatherPhase::None;
+			Gather->SourceIndex = INDEX_NONE;
+			Gather->bWalkIssued = false;
+		}
+		if (FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity))
+		{
+			Build->Clear();
+		}
+		// Stands dead where it is (as an arrival, D290): its order serial cleared, a path still to come is not applied.
+		FMassMoveTargetFragment& MoveTarget = EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
+		MoveTarget.Center = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
+		MoveTarget.DistanceToGoal = 0.f;
+		MoveTarget.CreateNewAction(EMassMovementAction::Stand, World);
+		EntityManager.GetFragmentDataChecked<FMassDesiredMovementFragment>(Entity).DesiredVelocity = FVector::ZeroVector;
+		FHOLMoveOrderFragment& MoveOrder = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
+		MoveOrder.Phase = EHOLMovePhase::None;
+		MoveOrder.OrderSerial = 0;
+		MoveOrder.bFormation = false;
+		MoveOrder.MarchSpeed = 0.f;
+		MoveOrder.PlaceHold.Clear();
+		MoveOrder.bFacesFront = false;
+		MoveOrder.bReforming = false;
+		EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).Activity = EHOLUnitActivity::Idle;
+		if (FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity))
+		{
+			Combat->Disengage();
+			Combat->Mode = Order.Kind == EHOLOrderKind::Hold ? EHOLCombatMode::Hold : EHOLCombatMode::Normal;
+			if (Order.Kind == EHOLOrderKind::Attack)
+			{
+				Combat->Target = AttackTarget;
+				Combat->bOrderedTarget = true;
+			}
+		}
+	}
+	UE_LOG(LogHOLSimulation, Display, TEXT("%s order of slot %d for %d units%s"), Order.Kind == EHOLOrderKind::Attack ? TEXT("Attack")
+		: Order.Kind == EHOLOrderKind::Hold ? TEXT("Hold") : TEXT("Stop"), Order.PlayerIndex, Entities.Num(),
+		Order.Kind == EHOLOrderKind::Attack ? *FString::Printf(TEXT(" on #%u"), Order.TargetUnitId) : TEXT(""));
+}
+
 void UHOLUnitOrderProcessor::ForgetMoveQueue(const uint32 UnitId)
 {
 	TArray<uint32> Queue;
@@ -1752,7 +1856,9 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			const TArray<uint32>* Queue = MoveQueueOfUnit.Find(UnitId);
 			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
 			const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
-			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move || (Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning))
+			const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move || (Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning)
+				|| (Combat && Combat->bOrderedTarget))
 			{
 				bReady = false;
 				break;

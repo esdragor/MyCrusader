@@ -45,6 +45,9 @@ public:
 	FString DescribeLooks() const;
 	/** The units displayed, where they are drawn (J4: what the player selects and orders). */
 	void GetDisplayedUnits(TArray<struct FHOLUnitView>& OutUnits) const;
+	/** The identifier and the display entity of the target of an Attacking state (J7b.4: its slot); 0 / unset: none known. */
+	uint32 GetTargetUnitId(const FHOLNetUnitState& State) const;
+	FMassEntityHandle GetTargetEntity(const FHOLNetUnitState& State) const;
 	/** One displayed unit; false when it is not displayed. */
 	bool GetDisplayedUnit(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
 	/**

@@ -54,7 +54,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	const double ClockStep = Reception->GetClock().GetStep(Now);
 	const float StepSeconds = Reception->GetStepSeconds();
 
-	EntityQuery.ForEachEntityChunk(Context, [Now, ClockStep, StepSeconds](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [Now, ClockStep, StepSeconds, Reception, &EntityManager](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLNetUnitDisplayFragment> Displays = Context.GetMutableFragmentView<FHOLNetUnitDisplayFragment>();
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
@@ -68,6 +68,22 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			if (IsWalkingActivity(Display.State.Activity) &&Display.Velocity.SizeSquared2D() > FMath::Square(MinTurnSpeed))
 			{
 				Display.Yaw = FMath::RadiansToDegrees(FMath::Atan2(Display.Velocity.Y, Display.Velocity.X));
+			}
+			else if (Display.State.Activity == EHOLUnitActivity::Attacking)
+			{
+				// Striking (J7b.4, J7-Q5): turned towards its target, where this client draws it.
+				const FMassEntityHandle Target = Reception->GetTargetEntity(Display.State);
+				const FTransformFragment* TargetTransform = EntityManager.IsEntityValid(Target) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Target) : nullptr;
+				const FVector ToTarget = TargetTransform ? TargetTransform->GetTransform().GetLocation() - Transforms[EntityIt].GetTransform().GetLocation() : FVector::ZeroVector;
+				if (ToTarget.SizeSquared2D() > 1.0)
+				{
+					Display.Yaw = FMath::RadiansToDegrees(FMath::Atan2(ToTarget.Y, ToTarget.X));
+				}
+			}
+			else if (Display.State.bFacesFront)
+			{
+				// At rest at its formation place (J7b.4, J7a.4's deferred item): its front, as the server holds it.
+				Display.Yaw = Display.State.GetFrontYaw();
 			}
 			// The drawing interpolates from the previous transform with the simulation's alpha, which is 1 on a client
 			// (no fixed step there): both get the present.

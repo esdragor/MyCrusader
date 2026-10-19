@@ -538,6 +538,14 @@ void UHOLUnitSubsystem::RequestDestroyUnits(const TConstArrayView<uint32> UnitId
 	PendingDestruction.Append(UnitIds);
 }
 
+void UHOLUnitSubsystem::MarkUnitDying(const uint32 UnitId)
+{
+	if (FHOLUnitRecord* Record = Units.Find(UnitId))
+	{
+		Record->bDying = true;
+	}
+}
+
 void UHOLUnitSubsystem::RequestDestroyAllUnits()
 {
 	PendingDestruction.Reserve(PendingDestruction.Num() + Units.Num());
@@ -653,6 +661,19 @@ namespace UE::HeroesOfLiberty::Units
 			: Transform->GetTransform().GetLocation();
 		OutView.Activity = State->Activity;
 		OutView.GatherResource = State->GatherResource;
+		// As the clients have it (J7b.4, UHOLUnitReplicationSubsystem): Dying at 0 health, Attacking while it strikes.
+		const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+		if (State->CurrentHealth <= 0)
+		{
+			OutView.Activity = EHOLUnitActivity::Dying;
+		}
+		else if (Combat && Combat->bAttacking)
+		{
+			OutView.Activity = EHOLUnitActivity::Attacking;
+			const FHOLUnitStateFragment* TargetState = EntityManager.IsEntityValid(Combat->Target)
+				? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Combat->Target) : nullptr;
+			OutView.TargetUnitId = TargetState ? TargetState->UnitId : 0;
+		}
 		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity))
 		{
 			OutView.bCarrying = Gather->Load.Amount > 0;
@@ -665,6 +686,12 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.Radius = Constants->Radius;
 			OutView.MeshScale = Constants->MeshScale;
 			OutView.CarryCapacity = Constants->CarryCapacity;
+			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
+			OutView.HealthLevel = OutView.bFullHealth ? FHOLNetUnitState::MaxHealthLevel
+				: HOLUnitReplication::GetHealthLevel(State->CurrentHealth, Constants->MaxHealth);
+			OutView.Health = FMath::Max(State->CurrentHealth, 0);
+			OutView.MaxHealth = Constants->MaxHealth;
+			OutView.bHealthExact = true;
 		}
 		return true;
 	}
@@ -753,7 +780,8 @@ void UHOLUnitSubsystem::GetPopulationByOwner(TArray<int32>& OutPopulation) const
 	};
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
-		Add(Unit.Value.TypeName, Unit.Value.OwnerPlayer, 1);
+		// A dying unit's places are free at its death (the user's trial of J7b), its destruction ~1 s later.
+		Add(Unit.Value.TypeName, Unit.Value.OwnerPlayer, Unit.Value.bDying ? 0 : 1);
 	}
 	for (const FHOLUnitSpawnRequest& Request : BirthQueue)
 	{

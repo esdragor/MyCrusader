@@ -4,12 +4,14 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLPlayerColors.h"
+#include "Match/HOLPlayerState.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -54,6 +56,8 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double PingEndRadius = 25.0;
 	constexpr double PingStroke = 8.0;
 	const FLinearColor PingColor(0.9f, 0.9f, 0.9f);
+	/** An attack order's ping (J7b.3): on its target, or an attack-move's point. */
+	const FLinearColor AttackPingColor(0.9f, 0.08f, 0.05f);
 	/** The places of a right-button drag's formation (J7a.4): thin rings, smaller than a unit's, in the ping's white. */
 	constexpr double PreviewRadiusFactor = 0.8;
 	constexpr double PreviewStroke = 8.0;
@@ -70,6 +74,31 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	/** Width (cm) of the posts and beams outlining its volume. */
 	constexpr double GhostEdgeWidth = 12.0;
 	constexpr int32 NumGhostEdges = 8;
+
+	/**
+	 * The health bars (J7b.5), facing the camera above the head: size (cm) at the reference distance, scaled with the
+	 * distance within bounds (smaller when close, larger when far, so they stay readable at every zoom, D254).
+	 */
+	constexpr double BarWidth = 90.0;
+	constexpr double BarHeight = 12.0;
+	/** The dark back's margin around the fill (cm, before scaling). */
+	constexpr double BarMargin = 2.0;
+	/** Above the unit's feet (cm, times its mesh scale): over the head of a ~180 cm figure. */
+	constexpr double BarHeadHeight = 230.0;
+	/** The fill in front of the back (cm, towards the camera), so that the two do not fight. */
+	constexpr double BarFillLift = 1.0;
+	/** The camera's distance at which the bar has its size (a default camera, 35 m high, D254), and the bounds of its scale. */
+	constexpr double BarReferenceDistance = 4500.0;
+	constexpr double BarMinScale = 0.8;
+	constexpr double BarMaxScale = 1.8;
+	/** Bars out of the camera's view are not drawn: the view's cone, its half-angle widened a little (degrees). */
+	constexpr double BarCullMarginDegrees = 8.0;
+	/** Colours (the user's nuance on J7-Q5 left the colour open): green for the player's own units, red for any other's. */
+	const FLinearColor BarOwnColor(0.12f, 0.8f, 0.12f);
+	const FLinearColor BarOtherColor(0.9f, 0.1f, 0.05f);
+	const FLinearColor BarBackColor(0.02f, 0.02f, 0.02f);
+	/** A stroke past the whole plane: the marker material fills it. */
+	constexpr float BarFullStroke = 2.f;
 
 	UStaticMesh* LoadMesh(const TCHAR* Path)
 	{
@@ -152,6 +181,7 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("Root")));
 	Rings = MakeMarkerComponent(*this, TEXT("Rings"));
 	Frames = MakeMarkerComponent(*this, TEXT("Frames"));
+	HealthBars = MakeMarkerComponent(*this, TEXT("HealthBars"));
 	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
@@ -167,6 +197,7 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	if (InController)
 	{
 		OrderHandle = InController->OnOrderGiven.AddUObject(this, &AHOLSelectionMarkers::HandleOrderGiven);
+		AttackOrderHandle = InController->OnAttackOrderGiven.AddUObject(this, &AHOLSelectionMarkers::HandleAttackOrderGiven);
 	}
 
 	UStaticMesh* Plane = LoadMesh(PlanePath);
@@ -175,6 +206,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	Rings->SetMaterial(0, LoadMaterial(RingMaterialPath));
 	Frames->SetStaticMesh(Plane);
 	Frames->SetMaterial(0, LoadMaterial(FrameMaterialPath));
+	HealthBars->SetStaticMesh(Plane);
+	HealthBars->SetMaterial(0, Frames->GetMaterial(0));
 	GhostFrames->SetStaticMesh(Plane);
 	GhostFrames->SetMaterial(0, Frames->GetMaterial(0));
 
@@ -221,8 +254,10 @@ void AHOLSelectionMarkers::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (AHOLPlayerController* PlayerController = Controller.Get())
 	{
 		PlayerController->OnOrderGiven.Remove(OrderHandle);
+		PlayerController->OnAttackOrderGiven.Remove(AttackOrderHandle);
 	}
 	OrderHandle.Reset();
+	AttackOrderHandle.Reset();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -230,6 +265,13 @@ void AHOLSelectionMarkers::HandleOrderGiven(const FVector& Point)
 {
 	PingPoint = Point;
 	PingAge = 0.f;
+	bAttackPing = false;
+}
+
+void AHOLSelectionMarkers::HandleAttackOrderGiven(const FVector& Point)
+{
+	HandleOrderGiven(Point);
+	bAttackPing = true;
 }
 
 void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
@@ -239,7 +281,13 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	{
 		PingAge += DeltaSeconds;
 	}
+	// Where the units are drawn this frame (D271), once for the rings and the bars.
+	if (const UWorld* World = GetWorld())
+	{
+		HOLUnitView::Gather(*World, Views);
+	}
 	UpdateRings();
+	UpdateHealthBars();
 	UpdateFrame();
 	UpdateFlag();
 	UpdateGhost();
@@ -255,9 +303,7 @@ void AHOLSelectionMarkers::UpdateRings()
 	const UWorld* World = GetWorld();
 	if (PlayerController && World && !PlayerController->GetSelectedUnits().IsEmpty())
 	{
-		// Where the units are drawn this frame (D271): the rings follow them.
-		TArray<FHOLUnitView> Views;
-		HOLUnitView::Gather(*World, Views);
+		// The rings follow the units as drawn (Views, gathered in Tick).
 		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
 		FVector2D Centre = FVector2D::ZeroVector;
 		double LargestRadius = 0.;
@@ -326,9 +372,81 @@ void AHOLSelectionMarkers::UpdateRings()
 	{
 		const double Radius = FMath::Lerp(PingStartRadius, PingEndRadius, static_cast<double>(PingAge / PingSeconds));
 		Transforms.Add(MarkerTransform(PingPoint, Radius * 2.0, Radius * 2.0));
-		AddCustomData(CustomData, PingColor, PingStroke / Radius);
+		AddCustomData(CustomData, bAttackPing ? AttackPingColor : PingColor, PingStroke / Radius);
 	}
 	SetInstances(*Rings, Transforms, CustomData);
+}
+
+void AHOLSelectionMarkers::UpdateHealthBars()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	ShownBars.Reset();
+	UnhurtUnselected = 0;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const APlayerCameraManager* Camera = PlayerController ? PlayerController->PlayerCameraManager.Get() : nullptr;
+	if (Camera)
+	{
+		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
+		const AHOLPlayerState* PlayerState = PlayerController->GetHOLPlayerState();
+		const int32 OwnPlayer = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+		const FVector CameraLocation = Camera->GetCameraLocation();
+		const FQuat CameraRotation = Camera->GetCameraRotation().Quaternion();
+		const FVector Forward = CameraRotation.GetForwardVector();
+		const FVector Right = CameraRotation.GetRightVector();
+		// Facing the camera: the plane's X along the screen's right, its face (Z) towards the camera.
+		const FQuat Facing = FRotationMatrix::MakeFromXZ(Right, -Forward).ToQuat();
+		// The view's cone, from its horizontal angle and a 16:9 screen, to leave out the bars off screen.
+		const double HalfTan = FMath::Tan(FMath::DegreesToRadians(static_cast<double>(Camera->GetFOVAngle()) * 0.5));
+		const double CullCos = FMath::Cos(FMath::Atan(HalfTan * FMath::Sqrt(1.0 + FMath::Square(9.0 / 16.0))) + FMath::DegreesToRadians(BarCullMarginDegrees));
+		for (const FHOLUnitView& View : Views)
+		{
+			const bool bSelected = Selected.Contains(View.UnitId);
+			// Always for a selected unit, otherwise only for a wounded one (the user's nuance on J7-Q5); Views has no dying unit.
+			if (!bSelected && View.bFullHealth)
+			{
+				++UnhurtUnselected;
+				continue;
+			}
+			const FVector Head = View.Location + FVector(0.0, 0.0, BarHeadHeight * View.MeshScale);
+			const FVector ToHead = Head - CameraLocation;
+			const double Distance = ToHead.Size();
+			if (Distance <= UE_KINDA_SMALL_NUMBER || FVector::DotProduct(ToHead / Distance, Forward) < CullCos)
+			{
+				continue;
+			}
+			const float Share = View.GetHealthShare();
+			ShownBars.Add({ View.UnitId, FMath::RoundToInt(Share * 15.f), bSelected });
+			const double Scale = FMath::Clamp(Distance / BarReferenceDistance, BarMinScale, BarMaxScale);
+			const double Width = BarWidth * Scale;
+			const double Height = BarHeight * Scale;
+			const double Margin = BarMargin * Scale;
+			Transforms.Add(FTransform(Facing, Head, FVector((Width + 2.0 * Margin) / ShapeSize, (Height + 2.0 * Margin) / ShapeSize, 1.0)));
+			CustomData.Append({ BarBackColor.R, BarBackColor.G, BarBackColor.B, BarFullStroke });
+			// The fill from the left end, its share of the width.
+			const double FillWidth = FMath::Max(Width * Share, 1.0);
+			const FVector FillCentre = Head + Right * ((FillWidth - Width) * 0.5) - Forward * BarFillLift;
+			const FLinearColor& Color = View.OwnerPlayer == OwnPlayer ? BarOwnColor : BarOtherColor;
+			Transforms.Add(FTransform(Facing, FillCentre, FVector(FillWidth / ShapeSize, Height / ShapeSize, 1.0)));
+			CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+		}
+	}
+	SetInstances(*HealthBars, Transforms, CustomData);
+}
+
+FString AHOLSelectionMarkers::DescribeHealthBars() const
+{
+	TArray<FShownBar> Sorted = ShownBars;
+	Sorted.Sort([](const FShownBar& A, const FShownBar& B) { return A.UnitId < B.UnitId; });
+	TArray<FString> Items;
+	for (const FShownBar& Bar : Sorted)
+	{
+		Items.Add(FString::Printf(TEXT("#%u %d/15%s"), Bar.UnitId, Bar.Fifteenths, Bar.bSelected ? TEXT(" selected") : TEXT("")));
+	}
+	return FString::Printf(TEXT("bars %d (%s), unhurt unselected %d, instances %d"), Sorted.Num(), *FString::Join(Items, TEXT(", ")),
+		UnhurtUnselected, HealthBars->GetInstanceCount());
 }
 
 void AHOLSelectionMarkers::UpdateFrame()
