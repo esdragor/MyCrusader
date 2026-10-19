@@ -4520,3 +4520,28 @@ d'épée).
   (524 s, tests 82/82). **Commit 258c5d0** (worktree, `main` avancé dessus). Catalogue de `AnimationsInProgress.md` mis
   à jour. Reste avant J7b.6 : polir et faire revoir le coup du Paysan (puis fabrication, hache affichée), décalage des
   unités entre elles (optionnel).
+- **Coup de hache du Paysan poli** (sous-agent, dans les limites ; rien fabriqué, reste dans `PROPOSED`). Hermite +
+  flow + leads + `hip_turn()` ; poses garde, anticipation (12 %), montée (36 %), armé suspendu (43 %), mains tirées /
+  hache qui traîne puis fouette (47 %), frappe image 30, suivi (58 %), rebond (66 %), garde dépassée (86 %). **Bassin
+  41°**, **épaules ~100°** (avant 63°) ; départs : poids 21, bassin 22, tronc 23, main et hache 27 ; tête de hache à
+  la frappe dans l'axe (−0,2 / 113,5 / 122 cm). Pieds et boucle 0 cm, mains 0,7 cm, manche jamais dans le corps.
+  GIF `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_polished.gif`, en attente de la revue de l'utilisateur.
+- Avis de l'utilisateur : **le Paysan attaque au couteau**, pas à la hache. Geste choisi : **coup de pointe à une
+  main** (épaule droite qui avance, couteau planté vers le ventre, main gauche en avant ; porté par le bassin et le
+  tronc). Couteau visible seulement pendant l'attaque (comme le marteau). Boucle suivante : pièce couteau + geste, GIF.
+- **Coup de couteau du Paysan en aperçu** (sous-agent, dans les limites ; rien fabriqué). Pièce `make_knife()`
+  (`peasant_props.py`, id 8, os `ik_hand_gun`, masque 128 = **dernier bit libre**) : manche 10 cm, garde, lame 20 cm.
+  Geste `PEASANT_ATTACK` (toujours dans `PROPOSED`) : garde poing gauche levé, anticipation, armé (épaule droite
+  reculée, temps marqué), frappe image 30 (bras tendu, poing gauche devant le visage), suivi 4,5 cm, retrait, garde
+  dépassée ; bassin 29°, épaules 69° ; départs poids 21, bassin 22, tronc 23, bras 27. Pointe à la frappe : 2,2 cm de
+  l'axe, 77 cm devant, 105 cm de haut. Contrôles 0 cm. Couteau petit vu de la caméra RTS (épaississable). GIF
+  `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_knife.gif`. Fabrication : maillage refait, geste dans `GESTURES`,
+  colonne `AttackProp` (8 pour le Paysan) sur le modèle de `BuildProp`.
+- Avis de l'utilisateur : le Paysan doit avoir une **position de peur, ce n'est pas un combattant**. Boucle suivante :
+  posture craintive (voûté, tête rentrée, poids en arrière, bras gauche en protection), coup hésitant puis recul vif.
+- **Couteau en posture de peur** (sous-agent, dans les limites ; rien fabriqué, toujours dans `PROPOSED`). `afraid()` :
+  dos voûté, épaules remontées, tête rentrée et détournée 8-14° ; bassin en arrière (−5 à −7 cm) et plus bas, couteau
+  serré à la hanche, avant-bras gauche devant le visage. Rythme : garde qui tremble (~1 cm), faux départ (14-19), se
+  ramasse (25), coup court surtout du bras (bassin 12°, poids +8 cm, sans fente) image 30, recul vif (retour plus
+  rapide que l'aller), se recroqueville (43). Pointe 3,5 / 67 / 103 cm. Contrôles 0 cm. GIF
+  `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_fear.gif`.
