@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Dev/HOLTestSequence.h"
+
 #include "Dev/HOLTestHooks.h"
 
 #include "Containers/Ticker.h"
@@ -36,12 +38,15 @@
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
+ *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
+ *                        "Scenario note: Text" (what a scenario asks to try)
  *   signal <File>        writes the file (absolute path): another game on the machine waiting for it goes on
  *   waitfile <File> [S]  waits for the file to exist: two clients wait for each other (each one's last report done
  *                        before either quits, quick_check's net part); S: its own timeout in seconds, instead of 60
  *                        (the dedicated server waits for a client's step of the end, J7b.4)
  *   anything else        runs as a console command, in the current game world
- * A wait that lasts more than 60 seconds ends the run with an error and quits.
+ * A wait that lasts more than 60 seconds ends the run with an error and quits (a scenario's run: the error is shown on
+ * the screen too and the game stays open, HOLTestSequence.h).
  */
 TFunction<bool()>& HOLTestHooks::IsInterfaceBusy()
 {
@@ -53,6 +58,32 @@ TFunction<FString()>& HOLTestHooks::DescribeInterface()
 {
 	static TFunction<FString()> Probe;
 	return Probe;
+}
+
+HOLTestHooks::FScenarioDisplay& HOLTestHooks::GetScenarioDisplay()
+{
+	static FScenarioDisplay Display;
+	return Display;
+}
+
+TFunction<void()>& HOLTestHooks::OnScenarioChanged()
+{
+	static TFunction<void()> Hook;
+	return Hook;
+}
+
+void HOLTestHooks::NotifyScenarioChanged(const FString& Fallback, const FColor& FallbackColor)
+{
+	// No interface (dedicated server): the old debug line, for whoever looks at that screen.
+	constexpr float FallbackSeconds = 30.f;
+	if (const TFunction<void()>& Hook = OnScenarioChanged())
+	{
+		Hook();
+	}
+	else if (GEngine && !Fallback.IsEmpty())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, FallbackSeconds, FallbackColor, Fallback);
+	}
 }
 
 namespace UE::HeroesOfLiberty::Dev
@@ -101,8 +132,22 @@ namespace UE::HeroesOfLiberty::Dev
 	class FTestSequence
 	{
 	public:
-		void Start(TArray<FString>&& InSteps)
+		~FTestSequence()
 		{
+			if (Ticker.IsValid())
+			{
+				Finish(/*bQuit*/ false);
+			}
+		}
+
+		void Start(TArray<FString>&& InSteps, HOLTestSequence::FRunOptions&& InOptions = {})
+		{
+			if (Ticker.IsValid())
+			{
+				UE_LOG(LogHOLTest, Warning, TEXT("Test sequence: the run still going is stopped at step %d"), Next + 1);
+				Finish(/*bQuit*/ false);
+			}
+			Options = MoveTemp(InOptions);
 			Steps = MoveTemp(InSteps);
 			Next = 0;
 			Watcher = MakeUnique<FTestLogWatcher>();
@@ -208,6 +253,12 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				UE_LOG(LogHOLTest, Display, TEXT("Test mark: %s"), *Rest);
 			}
+			else if (Verb == TEXT("note"))
+			{
+				UE_LOG(LogHOLTest, Display, TEXT("Scenario note: %s"), *Rest);
+				HOLTestHooks::GetScenarioDisplay().Notes.Add(Rest);
+				HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
+			}
 			else if (Verb == TEXT("signal"))
 			{
 				FFileHelper::SaveStringToFile(TEXT("signal"), *Rest);
@@ -236,7 +287,14 @@ namespace UE::HeroesOfLiberty::Dev
 			if (!bDone && Waited > StepTimeout)
 			{
 				UE_LOG(LogHOLTest, Error, TEXT("Test sequence: timeout at step %d: %s"), Next + 1, *Step);
-				Finish(/*bQuit*/ true);
+				if (!Options.bQuitOnTimeout)
+				{
+					HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+					Display.State = HOLTestHooks::FScenarioDisplay::EState::Failed;
+					Display.Error = FString::Printf(TEXT("étape %d jamais venue (60 s) : %s"), Next + 1, *Step);
+					HOLTestHooks::NotifyScenarioChanged(FString::Printf(TEXT("Test sequence: timeout at step %d: %s"), Next + 1, *Step), FColor::Red);
+				}
+				Finish(/*bQuit*/ Options.bQuitOnTimeout);
 			}
 			return bDone;
 		}
@@ -253,6 +311,10 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				UE_LOG(LogHOLTest, Display, TEXT("Test sequence: done in %.1f s"), FPlatformTime::Seconds() - RunStart);
 				Finish(/*bQuit*/ false);
+				if (const TFunction<void()> OnDone = MoveTemp(Options.OnDone))
+				{
+					OnDone();
+				}
 				return false;
 			}
 			return Ticker.IsValid();
@@ -271,6 +333,7 @@ namespace UE::HeroesOfLiberty::Dev
 		}
 
 		TArray<FString> Steps;
+		HOLTestSequence::FRunOptions Options;
 		int32 Next = 0;
 		/** The current step's timeout: StepTimeoutSeconds, or a waitfile's own. */
 		double StepTimeout = StepTimeoutSeconds;
@@ -283,30 +346,55 @@ namespace UE::HeroesOfLiberty::Dev
 		FTSTicker::FDelegateHandle Ticker;
 	};
 
-	FTestSequence Sequence;
+	/** One run per owner: hol.Test.Run's, a scenario's. */
+	TMap<FName, TUniquePtr<FTestSequence>> Sequences;
+
+	FTestSequence& GetSequence(const FName Owner)
+	{
+		TUniquePtr<FTestSequence>& Sequence = Sequences.FindOrAdd(Owner);
+		if (!Sequence)
+		{
+			Sequence = MakeUnique<FTestSequence>();
+		}
+		return *Sequence;
+	}
 
 	void RunSequence(const TArray<FString>& Args)
 	{
-		TArray<FString> Lines;
-		if (Args.IsEmpty() || !FFileHelper::LoadFileToStringArray(Lines, *Args[0]))
+		TArray<FString> Steps;
+		if (Args.IsEmpty() || !HOLTestSequence::LoadSteps(Args[0], Steps))
 		{
 			UE_LOG(LogHOLTest, Error, TEXT("Usage: hol.Test.Run <File> (file %s not read)"), Args.IsEmpty() ? TEXT("missing") : *Args[0]);
 			return;
 		}
-		TArray<FString> Steps;
-		for (FString& Line : Lines)
-		{
-			Line.TrimStartAndEndInline();
-			if (!Line.IsEmpty() && !Line.StartsWith(TEXT("#")))
-			{
-				Steps.Add(MoveTemp(Line));
-			}
-		}
-		Sequence.Start(MoveTemp(Steps));
+		GetSequence(TEXT("Test")).Start(MoveTemp(Steps));
 	}
 
 	FAutoConsoleCommand RunCommand(
 		TEXT("hol.Test.Run"),
 		TEXT("hol.Test.Run <File>: runs a file of steps one after the other, each as soon as the one before is done (scripted checks)"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&RunSequence));
+}
+
+bool HOLTestSequence::LoadSteps(const FString& File, TArray<FString>& OutSteps)
+{
+	TArray<FString> Lines;
+	if (!FFileHelper::LoadFileToStringArray(Lines, *File))
+	{
+		return false;
+	}
+	for (FString& Line : Lines)
+	{
+		Line.TrimStartAndEndInline();
+		if (!Line.IsEmpty() && !Line.StartsWith(TEXT("#")))
+		{
+			OutSteps.Add(MoveTemp(Line));
+		}
+	}
+	return true;
+}
+
+void HOLTestSequence::Run(const FName Owner, TArray<FString>&& Steps, FRunOptions&& Options)
+{
+	UE::HeroesOfLiberty::Dev::GetSequence(Owner).Start(MoveTemp(Steps), MoveTemp(Options));
 }

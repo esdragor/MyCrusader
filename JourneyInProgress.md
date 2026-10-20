@@ -210,7 +210,10 @@ vérifier sur S1 et S2.
    (`make_peasant_mesh.py`), geste passé dans `GESTURES` et fabriqué, colonne `AttackProp` (8 pour le Paysan) sur le
    modèle de `BuildProp` (`HOLUnitTypes.h`, `HOLUnitSubsystem.cpp`, `HOLUnitAnimation.cpp`, tests), table refaite,
    `quick_check` rapide + `-Parts combat` ; (2) essai de l'utilisateur, `-Full`, commit ; (3) option : décalage des
-   gestes par unité ; (4) J7b.6. Sous-agents : un livrable chacun, 15 min / 300k tokens, minuteur à chaque lancement.
+   gestes par unité ; (4) J7b.6. **(1) et (2) faits (2026-10-20, 33f8d63)**. Suite proposée
+   à l'utilisateur : les lignes ci-dessous, puis J7b.6 (réponse attendue sur l'ordre).
+   **À faire (demande de l'utilisateur, 2026-10-20)** : lignes entre les actions en file (Maj), rouge attaque, blanc
+   construction, jaune déplacement (journal du 2026-10-20). Sous-agents : un livrable chacun, 15 min / 300k tokens, minuteur à chaque lancement.
    Mesures au repos (fermer Opera) : S2 à la fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
@@ -4551,3 +4554,27 @@ d'épée).
   `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_fear.gif`.
 - **Couteau en posture de peur validé** par l'utilisateur, commité en aperçu (f7b0b27). **Fin de séance** (demande de
   l'utilisateur) : reprise à « Prochaine étape exacte » (fabrication du coup du Paysan).
+
+### 2026-10-20 — Fabrication du coup de couteau du Paysan
+
+- Reprise. Worktree `MyCrusader-J5c` propre, au niveau de `main` (b9d91b8), aucun Unreal en cours. Fabrication lancée
+  (sous-agent, un livrable, 15 min / 300k tokens) : maillage avec le couteau, geste dans `GESTURES` et fabriqué,
+  colonne `AttackProp` sur le modèle de `BuildProp`, Paysan qui joue son attaque, `quick_check` rapide + `-Parts combat`.
+- **Coup de couteau fabriqué et branché** (sous-agent, 14 min, 135k tokens : dans les limites ; rien de commité).
+  `peasant_attack` dans `GESTURES` (`PROPOSED` vide), geste inchangé ; `A_Peasant_Attack` (60 images, 2,000 s, frappe
+  image 30, tête du couteau 4,8 m/s max ; `verify()` : 0,003 cm à la frappe en compressé, boucle et racine 0 cm ; mains
+  à l'axe du manche ≤ 0,48 cm). Séquence 13 de `SKM_Peasant` / `TP_Peasant` (14 séquences) ; couteau (pièce 8) à tous
+  les LOD. Colonne `AttackProp` (`HOLUnitTypes.h`, contrôle dans `HOLUnitSubsystem.cpp`, `Choose` : `Prop = AttackProp`
+  pendant `Attacking`, donc ni hache, ni pioche, ni charge en frappant) ; CSV : Paysan `AttackSequence` 13,
+  `AttackProp` 8, les autres 0. Tests `Animation.Strike` et `Animation.Table` étendus. Compilation sans avertissement,
+  tests 82/82, `quick_check` rapide PASS (34 s), `-Parts combat` PASS (119 s).
+- Capture du Paysan au couteau **non obtenue** : l'ajout à `quick_check` (capture `combat_peasant`, contrôle
+  `A_Peasant_Attack prop 8`) faisait partir le clic droit des Paysans sur le Lancier en ordre au sol (2 échecs sur 2) ;
+  ajout retiré, patch gardé dans le scratchpad de la séance. Vérification par l'essai de l'utilisateur à la place.
+- **Essai : coup de couteau validé** (« super le stab »). `quick_check -Full` : tout PASS (550 s, tests 82/82) sauf
+  `net 2 clients` (`[KO] client 1 : health bars … none for an unhurt unselected (1)` : une barre de vie sur une unité
+  intacte non sélectionnée, sans lien avec le couteau) ; `-Parts net` relancé seul : **PASS** (102 s) → aléa, à
+  surveiller. **Commit 33f8d63** (worktree, `main` avancé dessus). Catalogue de `AnimationsInProgress.md` mis à jour.
+- **Nouvelle demande de l'utilisateur** (à faire) : **lignes entre les actions en file** (Maj) : plusieurs ennemis à
+  attaquer, plusieurs destinations, plusieurs bâtiments à construire, ou un mélange. Une ligne relie chaque action à la
+  suivante, colorée selon l'action : **rouge** attaque, **blanc** construction, **jaune** déplacement.

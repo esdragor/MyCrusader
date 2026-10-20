@@ -15,4 +15,34 @@ namespace HOLTestHooks
 
 	/** The screens on top of the interface layers, for the log of a capture ("menu=X modal=Y"). */
 	HEROESOFLIBERTY_API TFunction<FString()>& DescribeInterface();
+
+	/** What the scenario's panel shows (hol.Scenario, HOLScenario.cpp): kept here, for a panel made after a map opened. */
+	struct FScenarioDisplay
+	{
+		enum class EState : uint8
+		{
+			/** Its steps are running. */
+			Preparing,
+			Ready,
+			/** A step never came: Error says which. */
+			Failed,
+		};
+
+		FString Name;
+		EState State = EState::Preparing;
+		FString Error;
+		/** The notes of its steps (note <Text>), in their order. */
+		TArray<FString> Notes;
+		/** The player closed the panel: hidden until the next scenario. */
+		bool bClosed = false;
+	};
+
+	/** The scenario started last; an empty Name before any. */
+	HEROESOFLIBERTY_API FScenarioDisplay& GetScenarioDisplay();
+
+	/** Called when the scenario's display changed: the interface shows it (its game HUD's scenario panel). */
+	HEROESOFLIBERTY_API TFunction<void()>& OnScenarioChanged();
+
+	/** Calls OnScenarioChanged; when nobody set it (dedicated server), puts Fallback on the screen as a debug message. */
+	HEROESOFLIBERTY_API void NotifyScenarioChanged(const FString& Fallback, const FColor& FallbackColor);
 }

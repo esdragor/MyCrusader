@@ -8,8 +8,10 @@
 #include "Engine/Font.h"
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyUILog.h"
+#include "Dev/HOLTestHooks.h"
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
+#include "HUD/HOLScenarioPanel.h"
 #include "Player/HOLPlayerController.h"
 #include "Style/HOLUIStyles.h"
 
@@ -72,11 +74,32 @@ void AHOLGameHUD::BeginPlay()
 		CheatPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
 		CheatPanel->AddToViewport(/*ZOrder*/ 1);
 	}
+	// The test scenario's panel (hol.Scenario), at the top centre, over both: what a scenario started before this map
+	// opened shows at once, and what comes after (its notes, ready) through the hook.
+	ScenarioPanel = CreateWidget<UHOLScenarioPanel>(PlayerController, UHOLScenarioPanel::StaticClass());
+	if (ScenarioPanel)
+	{
+		ScenarioPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
+		ScenarioPanel->AddToViewport(/*ZOrder*/ 2);
+		const TWeakObjectPtr<UHOLScenarioPanel> WeakPanel(ScenarioPanel);
+		HOLTestHooks::OnScenarioChanged() = [WeakPanel]()
+		{
+			if (UHOLScenarioPanel* Panel = WeakPanel.Get())
+			{
+				Panel->Refresh();
+			}
+		};
+	}
 #endif
 }
 
 void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (ScenarioPanel)
+	{
+		ScenarioPanel->RemoveFromParent();
+		ScenarioPanel = nullptr;
+	}
 	if (CheatPanel)
 	{
 		CheatPanel->RemoveFromParent();
