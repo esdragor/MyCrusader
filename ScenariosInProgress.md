@@ -80,3 +80,14 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
   session restent hors du commit). **Chantier clos.** Suite : chaque essai demandé vient avec son scénario ;
   `-LiveCoding=0` à ajouter à `quick_check.ps1` après le commit de `MyCrusader-J5c` ; consigner la décision au GDD
   (numéro libre suivant) quand le GDD n'aura plus de changements en cours d'une autre session.
+- **Revue de 9debb86** (collée par l'utilisateur) : deux défauts, aucun bloquant.
+  1. **Corrigé** (non commité) : `AHOLGameHUD::EndPlay` laissait `HOLTestHooks::OnScenarioChanged` posé : revenu au
+     menu, une étape d'un scénario échouée avant l'ouverture de la carte n'affichait rien (le repli sur la ligne de
+     débogage ne joue que sans crochet). Le HUD efface maintenant le crochet en fin de partie, seulement s'il est
+     celui qui l'a posé (`ScenarioHookOwner`, deux joueurs locaux dans l'éditeur). Compilé ; scénario + rechargement :
+     panneau « prêt, 3 notes » les deux fois ; `quick_check` rapide PASS (24 s, 83/83, avec les lignes D328 de
+     c2b44e4 désormais sur `main`).
+  2. **Laissé tel quel** (avis de la revue) : jeu fermé pendant qu'un scénario se prépare → le destructeur statique de
+     la course appelle `Finish()` (retrait du journal et du minuteur) très tard, quand `GLog` et `FTSTicker` ne sont plus
+     garantis. Sans effet constaté ; à corriger si un plantage à la fermeture apparaît (piste : tout arrêter sur
+     `FCoreDelegates::OnEnginePreExit`).

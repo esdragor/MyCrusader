@@ -85,6 +85,7 @@ vérifier sur S1 et S2.
 | J6b.3 Vérification | **fait** (2026-10-18, **validée** à l'essai : « tout est bon », commitée) : `quick_check` complet PASS (311 s, 20 parties, tests 65/65) ; S7 avec camps d'abord FAIL (3,41 ms : `HOLBuildProcessor` 1 ms, affichage des chantiers dans le pas) → `RiseStepRatio`, pièces `QueryOnly`, puis **D325** (apparence des bâtiments hors du pas, aucune pièce sur le serveur dédié) ; **mesures de fin de J6** par le nouvel outil `chapter_measures.ps1` (7,4 min) : S1 2,37, **S2 2,995 (moyenne de 3, au seuil)**, S7 2,60 ms, S5 31 005 o/s, 22,9 cm, tous PASS. Avant : 1re boucle faite, partie **2 clients des camps** dans `quick_check` (`net` + `build`) : chaque client bâtit un camp de bûcherons près de son bois et y dépose, voit le camp de l'autre (reçu au premier coup, puis fini), le serveur refuse un camp sur un arbre (`hol.Build.PlaceAtSource`), stock de l'autre jamais reçu ; aucun code C++ ; `quick_check` complet 324 s : tout PASS (`net 2 clients` compris, tests 65/65) sauf `build cut` (solo, non touché : aléa à relancer) ; puis `build cut` revue (contrôles de remises réalignés, blocage au coin corrigé : nouveau chemin d'une unité tenue sur son chemin, `PathStuckSteps`), `quick_check` complet PASS (350 s) ; **S7 bâtit ses 24 camps pendant la mesure** (D314, `hol.StressTest.S7BuildCamps`), fermeture sans bruit, `AHOLMapBounds::Find` corrigé ; S7 court OK |
 | J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **fait** (2026-10-18) : lignes D310 à D314, D324, D325 au § 21 (précisées par ce qui a été fait : case de 3 m, fondation fantôme, camp → récolte, F1 / F2 / F3 et Tab, deux marges de D324…), paragraphe « Parcours J6 : la construction » au § 16.6, § 7.3 précisé (F1 / F2 / F3 : tous les bâtiments de la catégorie ; Tab), § 22 : numéro suivant **D326**. **J6 close.** |
 | J7a.1 Données et règles pures | **fait** (2026-10-18, commitée ; rien de visible en jeu) : `Simulation/HOLFormationRules` (largeurs Paysans / carré / mixte, largeur imposée, types par ligne, places, attribution sans croisement), les 9 scénarios de l'utilisateur reproduits ; colonnes de combat dans la table des unités (non lues), lignes `Spearman`, `ManAtArms`, `Barracks` (militaire, `BuildGridSlot` 12 = A de la 2e page) ; tests 69/69 (4 `Formation.*`, `*.Tables` étendus) |
+| J7b.5b Lignes de la file d'ordres (D328) | **en cours** (2026-10-20) : lignes (un seul ordre compris), ordre de la file, 3 correctifs de la revue validés à l'essai et commités (c2b44e4) ; restent la ligne blanche du ralliement, les contrôles des lignes |
 | J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
 
 ## Prochaine étape exacte
@@ -212,8 +213,60 @@ vérifier sur S1 et S2.
    `quick_check` rapide + `-Parts combat` ; (2) essai de l'utilisateur, `-Full`, commit ; (3) option : décalage des
    gestes par unité ; (4) J7b.6. **(1) et (2) faits (2026-10-20, 33f8d63)**. Suite proposée
    à l'utilisateur : les lignes ci-dessous, puis J7b.6 (réponse attendue sur l'ordre).
-   **À faire (demande de l'utilisateur, 2026-10-20)** : lignes entre les actions en file (Maj), rouge attaque, blanc
-   construction, jaune déplacement (journal du 2026-10-20). Sous-agents : un livrable chacun, 15 min / 300k tokens, minuteur à chaque lancement.
+   ~~**À faire (demande de l'utilisateur, 2026-10-20)** : lignes entre les actions en file (Maj), rouge attaque, blanc
+   construction, jaune déplacement~~ → **D328 faite, validée, commitée (c2b44e4)** ; restent la ligne blanche du
+   ralliement à la naissance et les contrôles des lignes (journal du 2026-10-20) ; **5 retours d'essai à faire plus
+   tard** (journal : groupe qui attend le retardataire, A clic validé trop tôt, pose sur une case occupée, pose
+   unique sauf Maj, marcheurs bloqués par des corps). **Et** : grille du Paysan façon AoE4 (capture de l'utilisateur, journal du 2026-10-20) : ordres (Q attaque-déplacement, S arrêt, W construire…) **à gauche**, panneau de construction **à droite** avec un onglet par âge (I à IV) choisi par **A Z E R** ; donc attaque-déplacement **revient de A à Q** (retour de l'essai de J7b) pour ne pas entrer en conflit avec l'onglet I. Sous-agents : un livrable chacun, 15 min / 300k tokens, minuteur à chaque lancement.
+   **Corps au sol 30 s (décision de l'utilisateur, 2026-10-20, autre session ; précise D86 et J7-Q5 « pas de
+   cadavre »)** : le serveur détruit toujours l'unité à 1 s (`DyingSteps`) ; **chaque client garde le corps** : il finit
+   de jouer la chute (sa durée n'est donc plus bornée à 1 s), garde la dernière pose **30 s**, puis le fait s'enfoncer
+   dans le sol (~1 s). 0 bit, rien au serveur ni au serveur dédié ; un maillage instancié de corps chez le client (coût
+   à mesurer en fin de J7, S3). Durée fixe, sans plafond de nombre (choix de l'utilisateur ; « 15 s au minimum », 30
+   retenu). Écartés : **serveur qui garde l'unité 15 s** (`DyingSteps` 300 : places d'unité, S3, S5) ; **cadavres objets
+   de jeu** (prépare D86 / Légions, à faire avec elles ; ce corps-ci pourra s'y brancher). Les chutes sont refaites en
+   aperçu (`AnimationsInProgress.md`, catalogue « Arc… ») : la dernière image est la pose tenue 30 s.
+   **Correctifs de la revue de code de J7b, à faire avant J7b.6** (revue en lecture seule, autre session, 2026-10-20 ;
+   diff 48affca..HEAD ; demande de l'utilisateur de les écrire ici) :
+   - **Confirmés, à corriger** :
+     1. Unité figée après avoir tué elle-même sa cible ordonnée : le coup mortel (`HOLCombatProcessor.cpp` ~l. 404)
+        efface `Target` et `bAttacking` mais pas `bOrderedTarget` (remis à zéro seulement dans la branche « cible
+        perdue », qui exige `Target.IsSet()`). Effets : `bMaySeek` faux (plus de recherche ni de riposte) et
+        `StartQueuedMoves` (`HOLUnitOrderProcessor.cpp` ~l. 1861) ne lance jamais la file Maj. Masqué dans
+        `quick_check` par S (`Disengage`). Correctif : `Combat.bOrderedTarget = false;` au coup mortel + un test du
+        processeur (clic droit sur A, Maj + clic droit sur B : B est attaqué après la mort de A).
+     2. Ligne des PV d'un bâtiment restée affichée sur un groupe d'unités : `RefreshSelection` (bâtiment) vide
+        `ShownHealth` et montre la ligne (`HOLGameScreen.cpp` ~l. 562) ; `RefreshUnitHealth(nullptr)` (~l. 834) calcule
+        "" = `ShownHealth` et sort avant `SetShown(SelectionHealthRow, false)`. Idem pour une unité seule de type
+        inconnu (`MaxHealth == 0`).
+     3. Grille fausse après une mort dans une sélection mixte : `PurgeSelection` (`HOLPlayerController.cpp` ~l. 2430)
+        appelle `SetUnitSelection` (qui remet `ActiveUnitType` à `NAME_None` et diffuse), puis remet le type sans
+        rediffuser : sous-groupe « Paysan », grille « Tous » affichée (Attaque), A pose une Maison. Correctif : remettre
+        le type avant la diffusion.
+   - **À soumettre à l'utilisateur** :
+     4. Demi-tour sec à la mort en solo / hôte : le regard vers la cible (`bFacingSource`, posé tant que `bStrike`,
+        `HOLInterpolatedInstancesProcessor.cpp` ~l. 397-424) tombe au début de la chute, l'unité revient au lacet de la
+        simulation (`FrontYaw` de sa place) : jusqu'à 180°. Un client garde `Display.Yaw` : les deux vues divergent.
+        (Le Paysan sans geste ne se tournait pas vers sa cible en solo : à revoir depuis le couteau, 33f8d63.)
+     5. Client : unité un peu blessée affichée pleine (99/100 → palier 15 → « 100/100 », barre pleine, mais barre
+        montrée car `bFullHealth` faux). Proposition : plafonner à max − 1 quand « PV pleins » est faux.
+   - **Plus tard** : `LastAttacker` n'expire jamais (riposte sans limite de distance : poursuite à travers la carte ;
+     borner à ~2 × rayon d'agression ou ~5 s) ; mort hors mêlée (`HOLCombatProcessor.cpp` ~l. 186 : ni `StopWalk`, ni
+     `Disengage`, ni activité `Dying`) **à compléter en J7c.2** (flèches) ; `hol.Combat.Enabled 0` saute aussi la
+     destruction des mourantes ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées ;
+     `AttackerCount` de la victime d'une unité tuée trop haut d'un pour la fin du pas (sans effet visible).
+   - **Relecture de 9debb86 (scénarios de test)**, par la session mycrusader-35 (2026-10-20, rien modifié) :
+     1. *À corriger* : `HOLGameHUD.cpp` `BeginPlay` (~l. 84) pose `HOLTestHooks::OnScenarioChanged()` (lambda sur
+        `WeakPanel`) mais `EndPlay` ne le remet jamais à vide : après une partie, `NotifyScenarioChanged` appelle une
+        lambda au panneau mort et le message de secours (`AddOnScreenDebugMessage`) n'apparaît jamais (retour au menu,
+        `hol.Scenario <nom>`, échec avant la carte → erreur seulement dans le journal). Correctif : dans
+        `AHOLGameHUD::EndPlay`, avant de retirer `ScenarioPanel`, `HOLTestHooks::OnScenarioChanged() = nullptr;` (même
+        `#if` que `BeginPlay`).
+     2. *Faible* : `HOLTestSequence.cpp` `~FTestSequence` (~l. 135) : `Sequences` est une `TMap` globale ; jeu fermé
+        pendant une séquence → `Finish` appelle `GLog->RemoveOutputDevice` / `FTSTicker::RemoveTicker` pendant la
+        destruction statique (ordre indéfini, surtout en monolithique). Piste si plantage à la fermeture : vider sur
+        `FCoreDelegates::OnPreExit`, ou rien dans le destructeur si `IsEngineExitRequested()`.
+     Le couteau du Paysan (33f8d63) : aucune remarque.
    Mesures au repos (fermer Opera) : S2 à la fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
@@ -999,7 +1052,43 @@ Points à trancher en cours de route :
   J7b.2.
 - **Attaquer un bâtiment** : les bâtiments ont des PV depuis J6 ; mêlée contre bâtiment en J7b, ou avec le siège
   (Bélier, D77) ? À poser avant J7b.3.
-- **Le projectile de J7c.2** (lecture ci-dessus) : à confirmer avant J7c.2.
+- ~~**Le projectile de J7c.2** (lecture ci-dessus) : à confirmer avant J7c.2.~~ → **tranché (J7c-Q1, 2026-10-20)**,
+  voir « Plan de J7c » ci-dessous.
+
+**Plan de J7c (questions une par une, 2026-10-20, autre session pendant J7b)** : J7c-Q1 projectile ; Q2 durée du vol ;
+Q3 Archer au contact d'une mêlée ; Q4 affichage des flèches chez le client ; Q5 bonus de hauteur (D23) ; Q6 choix de
+cible des tireurs.
+- **Tranché — J7c-Q1 La flèche touche toujours** (choix de l'utilisateur, B ; recommandation : A, flèche visée sur un
+  point qui peut manquer). Le dégât tombe à coup sûr sur la cible à la fin du vol ; la flèche n'est qu'un affichage.
+  Pas d'esquive en marchant. *Remplace* « peut manquer une cible qui bouge » de J7c.2. Écartés : **flèche visée sur un
+  point** (esquive lisible, liste de flèches au serveur) ; **flèche simulée qui touche n'importe qui** (coût dans S4,
+  tir ami frustrant, envoi par flèche). Rappel de la revue de J7b : la mort hors mêlée (`HOLCombatProcessor.cpp`
+  ~l. 186) est à compléter pour les flèches.
+- **Tranché — J7c-Q2 Vol selon la distance** (choix de l'utilisateur, conforme à la recommandation). Vitesse fixe
+  (~25 m/s, indicative : ~0,6 s à 15 m) ; le serveur garde une courte liste de dégâts différés (cible, montant, pas
+  d'arrivée) ; le client calcule le même vol depuis les positions, rien de plus envoyé. Cible morte pendant le vol :
+  flèche perdue ; dégât parti même si le tireur recule ensuite. Écartés : **durée fixe** (faux de près) ; **dégât au
+  lâcher** (barre qui baisse avant l'arrivée de la flèche).
+- **Tranché — J7c-Q3 Tir à bout portant, sans portée minimale** (choix de l'utilisateur, conforme à la recommandation ;
+  règle d'AoE4). L'Archer au contact d'une mêlée continue de tirer ; le repli se fait à la main. Écartés : **passage en
+  mêlée** (second profil, geste de plus, effet nul sur les contres) ; **repli automatique** (retire la micro, fuit quand
+  le joueur ne le veut pas, coût dans S4).
+- **Tranché — J7c-Q4 Flèches déduites chez le client** (choix de l'utilisateur, conforme à la recommandation). Lâcher au
+  même moment du geste de tir que le serveur (comme le coup de mêlée à 50 %), vol à la vitesse de Q2 en cloche légère
+  vers la cible suivie (elle touche toujours, Q1), disparition à l'impact ; un maillage instancié pour toutes les
+  flèches (~600 en vol dans S4), rien sur le serveur dédié ; 0 bit de plus. Écartés : **événement « tir » envoyé**
+  (~600 envois/s dans S4, au-delà de 32 Ko/s) ; **pas de flèche en J7c** (tir illisible à 15 m).
+- **Tranché — J7c-Q5 Bonus de hauteur (D23) plus tard** (choix de l'utilisateur, conforme à la recommandation) : avec
+  le relief ou les remparts (D24), rien en J7c (cartes plates, aucune colonne). Écartés : **règle pure sans terrain**
+  (code que l'essai ne juge pas) ; **règle et butte d'essai sur `Plain`** (carte, pentes, environnement des stress
+  tests touchés, hors du but de J7c).
+- **Tranché — J7c-Q6 Cible des tireurs : la règle de la mêlée, sans `MaxAttackers`** (choix de l'utilisateur, conforme
+  à la recommandation). `ChooseTarget` inchangé pour la mêlée ; pour un tireur, pas de passage à un ennemi « moins
+  entouré » : le plus proche, cible gardée tant qu'à portée (tir concentré, flèches perdues sur une cible morte en vol,
+  comme dans AoE4). Écartés : **limite comprise** (Archer qui part plus loin sans raison visible) ; **tir
+  « intelligent »** (bonus d'abord, dégâts en vol évités : micro automatisée, coût dans S4).
+- **Plan de J7c complet** (Q1 à Q6). J7c.2 se lit désormais : dégât différé selon la distance, toujours sur la cible,
+  flèche déduite chez le client ; mort par flèche à brancher sur le chemin « mourant » complet.
 - **Valeurs** (PV, attaque, armures, coûts, durées) : indicatives, inspirées d'AoE4, à régler en essai ; elles iront à
   la fiche de valeurs (§ 22).
 
@@ -4578,3 +4667,194 @@ d'épée).
 - **Nouvelle demande de l'utilisateur** (à faire) : **lignes entre les actions en file** (Maj) : plusieurs ennemis à
   attaquer, plusieurs destinations, plusieurs bâtiments à construire, ou un mélange. Une ligne relie chaque action à la
   suivante, colorée selon l'action : **rouge** attaque, **blanc** construction, **jaune** déplacement.
+- Ordre choisi par l'utilisateur : ces lignes, puis J7b.6. Lecture du code (sous-agent) : deux files sur le serveur seul,
+  sans accesseur public (déplacements / attaques de groupe dans `HOLUnitOrderProcessor` : `QueuedMoves`,
+  `MoveQueueOfUnit`, tête retirée quand elle démarre ; travail des Paysans dans `HOLBuildProcessor::Queues` : chantiers
+  et sources) ; **rien n'est répliqué** (le client ne connaît ni la file ni la destination de l'ordre en cours) ; aucune
+  ligne au sol aujourd'hui (repères en plans instanciés de `AHOLSelectionMarkers`, `M_GroundFrame`).
+- **D328 — lignes de la file d'ordres** (questions une par une, recommandations retenues sauf la couleur de la récolte) :
+  1. visibles pour les **unités sélectionnées** (comme AoE4), effacées à la désélection, chaque étape faite s'efface ;
+  2. **une chaîne par file commune** : part du centre des unités qui la portent (suit le groupe en marche), puis relie
+     l'action en cours et chaque action en file ; des Paysans aux files différentes ont chacun leur chaîne ;
+  3. couleurs : **jaune** déplacement, **rouge** attaque d'un ennemi et attaque-déplacement (rouge supposé pour A,
+     sans objection), **blanc** construction, **bleu** récolte (choix de l'utilisateur) ;
+  4. réseau : **le serveur envoie au seul propriétaire** les files de ses unités, **seulement quand elles changent**
+     (ajout, étape commencée ou faite, cible morte, chantier fini) ; rien en régime.
+- Découpage (un sous-agent = un livrable, 15 min) : **J7b.5b-1** serveur : chaînes (action en cours + file, deux files
+  réunies) en règle pure testée, envoi au propriétaire sur changement, commande de rapport ; **J7b.5b-2** dessin des
+  chaînes chez le client (`AHOLSelectionMarkers`) ; **J7b.5b-3** contrôles solo et 2 clients dans `quick_check`,
+  capture, essai de l'utilisateur.
+- Avant J7b.5b-1 : les **3 correctifs confirmés de la revue de code de J7b** (ajoutés au journal par une autre séance),
+  le premier bloquant la file Maj après une cible tuée (les lignes l'auraient montrée figée). Lancés en un sous-agent
+  (un livrable : les trois correctifs et le test du processeur, `quick_check` rapide + `-Parts combat`).
+- **Correctifs faits** (sous-agent, 8 min mesurées par l'outil — il s'en croyait à ~18 et s'est arrêté avant les
+  tests ; compilation de 211 s ; 100k tokens ; rien de commité, aucun test lancé par lui). (1) `HOLCombatProcessor.cpp` : `bOrderedTarget = false` au coup mortel (autres
+  chemins déjà justes) ; pas de test de processeur Mass possible simplement → scénario en jeu dans la partie combat
+  de `quick_check` (« orders queue » : clic droit sur A, Maj + clic droit sur B, A puis B tués ; « orders queue seek » :
+  Paysan C à 6 m pris à partie). (2) `HOLGameScreen.cpp` `RefreshUnitHealth` : `SetShown` avant la sortie anticipée.
+  (3) `SetUnitSelection(Units, ActiveType)` : type actif posé avant la diffusion, `PurgeSelection` le passe. Risque
+  signalé : après « push », les Hommes d'armes ne sont plus figés et peuvent attaquer le mur de Paysans, ce qui peut
+  fausser l'attente de « combat fall ». Bilan des 15 min : le sous-agent surestime son temps ; lui donner l'heure de
+  départ et lui faire lire l'horloge (`Get-Date`) avant de s'arrêter. Tests lancés par la session principale.
+- Tests des correctifs : `quick_check` rapide **PASS** (43 s, tests 82/82) ; `-Parts combat` **FAIL** (183 s) : délai
+  dépassé à l'étape 321 (`waitlog Selection: 3 units (own): ManAtArms x3`, le nouveau scénario de file), d'où
+  `camera 8p` en échec et `[KO] queue: A ordered, B queued`. Hypothèse : les Hommes d'armes, plus figés après
+  « push », quittent leur place. Mise au point du scénario confiée à un sous-agent (heure de départ, `Get-Date`).
+- **Scénario de file fiable** (sous-agent, 12,5 min, 95k tokens ; seul `quick_check.ps1` changé ; correctif de
+  combat **hors de cause**, il fait ce qu'on attend). Cause : les 3 Hommes d'armes frappaient encore le Paysan de
+  « combat fall », hors du cadre de sélection ; et « combat fall » captait la mort d'un Paysan du mur (désormais tué
+  par les Hommes d'armes du « push », plus figés). Changements : « combat fall » avant « push » ; 3 Hommes d'armes
+  neufs pour la file, A / B / C sur terrain dégagé (`$QueueMenAtArms`, x −2000) ; `wait 0.3` avant le rapport de C ;
+  Lancier d'« orders attack » né à 10 cm de son point (clic droit parfois au sol). `-Parts combat` **PASS** (152 s ;
+  `queue: A #39, B #40 targeted in 7 reports, C #41`), rapide **PASS** (33 s, 82/82). Rien de commité : les correctifs
+  attendent l'essai de l'utilisateur, avec les lignes (ligne des PV et grille à regarder aussi).
+- **J7b.5b-1a lancée** (sous-agent) : règle pure des chaînes (`Orders.Chains`), collecte sur le serveur depuis les deux
+  files (action en cours comprise), commande `hol.Orders.Chains`. **Précision de D328** (choix de la session, à
+  confirmer à l'essai) : une unité n'a de chaîne que si elle a au moins une action en file, ou en a eu une depuis son
+  dernier ordre sans Maj (la ligne reste jusqu'à la fin de la dernière étape) ; un simple ordre sans Maj ne fait
+  aucune ligne. Coût nul sans file (S1 / S2 / S7). L'envoi au propriétaire est la boucle suivante (J7b.5b-1b).
+- **J7b.5b-1a faite** (sous-agent, 11 min, 115k tokens ; rien de commité). `Simulation/HOLOrderChainRules.h/.cpp`
+  (`HOLOrderChain::MakeChains` : étapes identiques → une chaîne, ordre stable, `MaxSteps = 16`), test
+  `Orders.Chains` (**83/83**). Collecte : `UHOLUnitOrderProcessor::GetChainSteps` (file de groupe + action en cours
+  notée à la première mise en file : cible ordonnée, ou ordre marché retrouvé par `OrderSerial` dans `OrderSteps`,
+  table bornée à 256 → 128 ordres ; tête démarrée = action en cours) ; `UHOLBuildProcessor::GetChains` (drapeau
+  `FBuilderQueue::bChain`, posé par Maj, effacé sans Maj ; la file de travail prime). Fin de chaîne : file vide, unité
+  arrêtée et hors combat, 10 pas de grâce. Coût nul sans file (seules les tables sont lues). `hol.Orders.Chains
+  [Slot]` ; `hol.Units.Move` 4e argument `q|a|qa`. Essai solo (combat coupé) : `Move -> Move -> AttackMove`, puis
+  `AttackMove` seul, puis 0 après un ordre sans Maj. Rapide PASS (33 s). Pas encore essayé : chaînes des Paysans,
+  attaque d'un ennemi en file. **J7b.5b-1b lancée** (envoi au seul propriétaire sur changement, rapport chez le client).
+- **J7b.5b-1b faite** (sous-agent, 10,5 min, 110k tokens ; rien de commité). `AHOLPlayerState::OrderChains`
+  (`COND_OwnerOnly`, `OnRep_OrderChains`, `GetOrderChains()`, `OnOrderChainsChanged`, `SetOrderChains()` qui ne
+  réaffecte que sur changement, `LocateChainStep()` : attaque placée sur l'unité visée affichée, sinon repli) ;
+  `FHOLNetOrderChain { UnitIds, Steps }`, `FHOLNetChainStep { Kind 8 bits, Location FVector_NetQuantize, TargetId
+  (attaque seulement) }` : ~8-10 o par étape, ~40-50 o pour 3 unités et 3 étapes, par changement (estimé) ; une cible
+  qui marche ne provoque pas de renvoi. `PublishChains()` après `StartQueuedMoves`, 0,25 s au plus, ne fait rien sans
+  file (sauf vider une fois). `hol.Orders.Chains` : `Order chains (received) ...` chez le joueur local. Rapide PASS
+  (36 s, 83/83). **Essai 2 clients** (serveur dédié, `-nullrhi`) : le client du slot 0 reçoit `Move -> Move ->
+  AttackMove`, puis la chaîne raccourcie, puis 0 ; le client du slot 1 reçoit toujours 0. Non essayés : attaque en
+  file (cible affichée chez le client), Build / Gather en réseau. **J7b.5b-2 lancée** (dessin, captures).
+- **J7b.5b-2 faite** (sous-agent, 10 min, 108k tokens ; rien de commité). `AHOLSelectionMarkers::UpdateOrderLines`
+  (composants `OrderLines`, `OrderPoints`) : chaînes dont une unité est sélectionnée ; départ = centre affiché des
+  unités de la chaîne ; segments pleins (`M_GroundFrame`) de **25 cm** (`hol.Orders.LineWidth`) à 1,5 cm du sol,
+  inclinés entre les hauteurs des extrémités (pas d'échantillon au milieu) ; disque de 30 cm à chaque étape (2,2 cm) ;
+  anneaux et fanion au-dessus (3 cm). Couleurs : Move (0,95 0,8 0,05), Attack / AttackMove (0,9 0,08 0,05),
+  Build (0,9 0,9 0,9), Gather (0,1 0,4 0,95). Coût nul sans chaîne ni sélection. Rapide PASS (39 s, 83/83).
+  Captures `MyCrusader-J5c\Saved_Tests\Screenshots\WindowsEditor\HOL\ol_army.png` (jaune → rouge → rouge → jaune,
+  conforme) et `ol_peasant.png` (blanc vers la maison en file, bleu vers le bois ; le premier déplacement sans Maj
+  ne se voit pas : Paysan peut-être déjà arrivé, non vérifié). Jeu lancé pour l'essai (lignes + 3 correctifs).
+- **Essai de l'utilisateur** (lignes) : (1) **la ligne doit s'afficher même pour un seul ordre** (sans Maj) →
+  **D328 précisée**, point 1 : toute action ordonnée d'une unité sélectionnée a sa ligne (remplace la précision « au
+  moins une action en file » de la session) ; (2) **défaut** : avec P1, P2, P3 en file, l'unité part vers le point
+  le plus proche au moment du départ et saute ceux d'avant (P2 plus proche → P1 disparaît, P2 puis P3) ; attendu :
+  P1 → P2 → P3 dans l'ordre. Défaut d'abord (sous-agent : régression du jour ou ancien, cause, correctif, contrôle),
+  puis la ligne d'un seul ordre (coût à surveiller : les unités ordonnées sans file ont désormais une chaîne ; S2 à la
+  fin de J7). Pas d'avis encore sur les 3 correctifs de la revue.
+- **Points sautés corrigés** (sous-agent, 11,5 min, 100k tokens ; rien de commité). Défaut **ancien (J7a.4)**, pas du
+  jour, aucune règle ne le voulait. Cause (`HOLUnitOrderProcessor.cpp`, `StartQueuedMoves` ~l. 1944-1990) : un ordre
+  en file qui démarre passe par `StartedQueuedMoves`, appliqué au pas suivant ; pendant le reste du passage l'unité
+  semble arrêtée, l'ordre suivant (plus loin dans la `TMap`) part dans la même trame et l'écrase (P2 sauté, chemin
+  direct vers P3 : impression de « point le plus proche »). Correctif : `TSet<uint32> StartedNow` (une unité qui
+  vient de démarrer un ordre n'est pas prête pour le suivant avant le pas d'après). File de travail des Paysans déjà
+  dans l'ordre. Contrôle **« fifo »** dans la partie `move` de `quick_check` (4 Paysans, P2 plus proche que P1 : centre
+  du groupe à < 3,5 m de P1, puis P2, puis P3) : `-Parts move` PASS (54 s, « P1, P2, P3 reached at reports 3, 7, 8 »),
+  rapide PASS (40 s, 83/83). Avec `-nullrhi` les séquences s'arrêtent à `waitui` : essais en `-RenderOffScreen`.
+- **Ligne d'un seul ordre lancée** (sous-agent) : toute action ordonnée par le joueur (déplacement, attaque,
+  attaque-déplacement, construction, récolte) a sa chaîne ; rien pour l'automatique (riposte, retour à sa place,
+  aller-retour de récolte) ; coût proportionnel aux unités ordonnées, stress tests à vérifier.
+- **Ligne d'un seul ordre faite** (sous-agent, 14 min, 110k tokens ; rien de commité). Drapeau `bChain` sur les ordres
+  (`FHOLMoveOrder`, `FHOLGatherOrder`, `FHOLBuildOrder`), posé seulement dans la portée `FPlayerOrderScope` des RPC du
+  contrôleur (`ServerMoveUnits`, `…InLine`, `ServerAttackUnit`, `ServerAttackMove`, `ServerGatherUnits`,
+  `ServerBuildUnits`) et par la pose d'une fondation ; **les stress tests n'en ont pas** (appels directs ; S7 passe un
+  `PlayerIndex` : d'où le drapeau plutôt que l'index). Fin : déplacement / attaque-déplacement à l'arrivée (combats
+  en route compris), attaque tant que la cible ordonnée est tenue, construction à la fin des chantiers de la file,
+  **récolte jusqu'à la première arrivée à la source** (`UHOLGatherProcessor::ChainSources`) ; retirée aussi si
+  l'unité se met à récolter / bâtir ou meurt. Sans chaîne : ralliement à la naissance (non trivial), recherche,
+  riposte, retour à sa place, allers-retours, camp fini, chantier voisin. Priorité : bâtisseur, récolteur,
+  déplacement. Rapide PASS (32 s, 83/83), `-Parts move` PASS (54 s). Essai scripté : `Move` d'une étape puis 0 à
+  l'arrivée ; `Gather` puis 0 après l'arrivée. Restent : commentaires « Maj seulement » à reprendre (`GetChains`,
+  `FBuilderQueue::bChain`, aide de `hol.Orders.Chains`). Jeu relancé pour l'essai.
+- **Essai : lignes (un seul ordre compris), ordre de la file et 3 correctifs de la revue validés** (« sinon tout est
+  bon »). `-Full` puis commit. Restent pour J7b.5b : **ligne du ralliement à la naissance** (choix de l'utilisateur :
+  oui, **ligne blanche**, quel que soit le genre d'ordre du ralliement : D328 précisée), puis contrôles des lignes
+  dans `quick_check` (solo et 2 clients).
+- `-Full` **FAIL** (596 s, tests 83/83, `net 2 clients` PASS) : `gather` (`5 Peasants before, 12 + 4 made, one
+  produced (9 + 17)`, comptes du HUD et inactifs faux, « . »), `build gap` (`two: 2 walker(s) seen in the way (0
+  samples)`, `arrived (0 standing within 4 m)`), `orders` (`the target struck through them (0 hits)`). Tout passait
+  ce matin (33f8d63) : relance de `-Parts gather,build,combat` pour savoir si c'est reproductible.
+- Relance : `gather`, `build gap` **PASS** seuls → probablement les 4 Paysans du contrôle « fifo » (partie `move`,
+  avant eux dans `-Full`) jamais retirés (« 12 + 4 made ») ; `orders` **FAIL** autrement (`the fight on the way
+  (x -4291 at the kill)`) → instable. Sous-agent : retirer les Paysans de « fifo », cause de l'instabilité de
+  `orders` (régression du jour ou scénario fragile), `-Parts combat` deux fois PASS.
+- **Corrigé** (sous-agent, 14 min, 85k tokens ; rien de commité) : deux **scénarios qui laissaient des unités**, le jeu
+  hors de cause. Nouvelle commande **`hol.Units.Remove X Y Radius [Slot=0]`** (`HOLUnitSubsystem.cpp` ~l. 95-120, par
+  `RequestDestroyUnits`, journal `Remove: N units of slot S within R of (x, y)`). (1) « fifo » retire ses 4 Paysans
+  (ils faussaient `gather` et traversaient `build gap` en allant au centre pour `footprints`). (2) `orders` : **aléa
+  ancien** — le Paysan de « build wall » (à 8,5 m du Lancier d'attaque-déplacement, agressivité 12 m) attirait le
+  Lancier et les Hommes d'armes hors de la route (x −4291 au lieu de < −4300) ; « build wall » retire maintenant son
+  Paysan et les 3 de « gap » (nombre exact exigé). `-Parts move,gather,build,combat` **PASS** (444 s). `-Full` puis
+  `-Parts combat` relancés par la session principale.
+- `-Parts combat` (2e passe) **PASS** (156 s). `-Full` **FAIL** (414 s) : `timeout at step 1221: waitlog Remove: 3
+  units of slot 0` (le nettoyage de « build wall » exige un compte exact ; en `-Full`, la partie `sources` en plus a
+  sans doute laissé d'autres Paysans dans le cercle) → toute la suite en échec ; et `move : [KO] Escape clears the
+  selection` (dernière sélection de la partie changée par « fifo »). Journal écrasé par la passe suivante. Leçon :
+  **un nettoyage de test ne doit jamais bloquer la séquence** (attente sans compte, compte vérifié à l'analyse), et
+  le reproduire dans l'ordre de `-Full`. Sous-agent lancé (`-Parts move,sources,gather,build`).
+- **Nettoyages rendus non bloquants** (sous-agent, 15 min, 75k tokens ; seul `quick_check.ps1`). Comptes réels dans
+  cet ordre : `Remove: 4` (fifo), `1` (mur), `3` (gap) : exacts. Deuxième cause trouvée : le Paysan du mur, encore
+  sélectionné quand il est retiré, faisait écrire `Selection: none` avant la touche Échap, et l'attente qui suivait
+  Échap bloquait (`timeout at step 964`) ; Échap passe maintenant **avant** les retraits. Attentes sur le rayon et le
+  point (sans compte), comptes vérifiés à l'analyse (`fifo: its 4 Peasants taken away`, `walkers taken away: wall 1,
+  way 3`) ; « Escape clears the selection » porte sur la touche (avant : 3 Paysans, après : none). `-Parts
+  move,sources,gather,build` **PASS** (320 s). `-Full` relancé.
+- Autre séance en parallèle dans la copie principale : **scénarios de test** (`ScenariosInProgress.md`, `hol.Scenario`,
+  `Tools/Scenarios/`, premier scénario `order_lines` pour l'essai de ces lignes), code en fichiers nouveaux hors des
+  fichiers de J7b.5b : fusion sans conflit attendue.
+- `-Full` **FAIL** (646 s ; séquence allée au bout, tests 83/83) : `build gap` (`two: 2 walker(s) seen in the way`,
+  `arrived (0 standing within 4 m)`, `walkers taken away: wall 1 of 1, way 1 of 3`) et `orders` (`the target struck
+  through them (0 hits)`) : **2 sur 2 en `-Full`** depuis les changements du jour, alors que ces parties passent seules
+  ou en petits groupes → interaction avec une partie propre à `-Full` (production, menu, anims, formation) ou
+  régression qui ne se montre qu'avec plus d'unités. Sous-agent : cause prouvée par le journal (intact), reproduction
+  minimale, correctif.
+- **Cause** (sous-agent, 10,5 min, 135k tokens ; rien modifié) : **ni régression du jour, ni unités oubliées**. Un seul
+  flux aléatoire pour toutes les naissances de la partie (`HOLUnitSubsystem.h` ~l. 164 `FRandomStream SpawnRandom{
+  1066 }`, puisé à chaque naissance, `.cpp` ~l. 539-553) : toute unité créée avant un scénario change la disposition
+  des suivantes. Les scénarios ajoutés aujourd'hui (« fifo », « combat fall » avant « push ») ont décalé le flux ; en
+  `-Full` : (1) « build gap two » : les 2 Paysans naissent côte à côte (y 206 / 386), arrivent de front au passage
+  et s'y coincent (4 cm en 5 s) ; (2) « push » : 3 Hommes d'armes bloqués contre le mur de 12 Paysans serrés, sans
+  le contourner, 0 coup. **Faiblesse ancienne du jeu** : un marcheur bloqué par des corps redemande le même chemin
+  toutes les 3 s (`HOLUnitOrderProcessor.cpp` ~l. 2335-2357, `PathStuckSteps` 60), les corps n'étant pas des
+  obstacles du navmesh.
+- **Choix de l'utilisateur** : tests stables maintenant (tirage fixé au début de chaque scénario), jeu plus tard.
+  Ajouté aux retours d'essai : **5. Marcheurs bloqués par des corps** : deux de front devant un passage étroit, ou
+  un mur d'unités immobiles → l'un cède le passage ou contourne (détour latéral) au lieu de redemander le même
+  chemin ; à voir avec le point 1 (même domaine : la marche) et D292 / D293.
+- **Graine par scénario** (sous-agent, 14 min, 85k tokens ; rien de commité) : `hol.Units.SpawnSeed <N>`
+  (`HOLUnitSubsystem.cpp` ~l. 95-110, serveur / solo, journal `Spawn seed: N` ; `ResetSpawnSeed(int32)`), jeu
+  inchangé sans elle ; dans `quick_check.ps1`, graines **101 à 130** en tête de chaque scénario qui fait naître des
+  unités (après un éventuel `waitlog Selection: none` : avant, l'attente de « build camp » expirait). « build gap
+  two » 113, « orders push » 128. `-Parts production,move,sources,gather,build` **PASS** (341 s). Non lancés par lui :
+  combat, anims, formation, rapide → `-Full` lancé par la session principale.
+- **`-Full` PASS** (570 s, tests 83/83, toutes les parties). **Commit c2b44e4** (lignes D328, ordre de la file,
+  3 correctifs de la revue, contrôles), fusion de `main` (scénarios de test de l'autre séance, 9debb86) dans
+  `j5c-anims` sans conflit (c9bb408), compilation sans avertissement, rapide PASS (26 s, 83/83), `main` avancé.
+  **Reste pour J7b.5b** : (1) **ligne blanche du ralliement à la naissance** ; (2) contrôles des lignes dans
+  `quick_check` (solo : `hol.Orders.Chains` et instances dessinées ; 2 clients : seul le propriétaire reçoit) ;
+  (3) commentaires « Maj seulement » à reprendre (`GetChains`, `FBuilderQueue::bChain`, aide de `hol.Orders.Chains`).
+- **Retours d'essai à faire plus tard** (demande de l'utilisateur : « ne fais pas tout de suite », à écrire) :
+  1. **Groupe qui attend le retardataire** : 5 soldats groupés + 1 à 10 m, ordre de déplacement → les 5 attendent
+     que le loin les rejoigne avant de partir. Attendu : ils partent tout de suite ; le retardataire prend sa place
+     dans la formation quand il les a rejoints.
+  2. **Attaque-déplacement (A clic) validée trop tôt** : avec A clic puis un déplacement en file, l'unité tue un
+     ennemi sur cinq puis part vers la suite. Attendu : l'étape A clic n'est finie que quand la destination est
+     atteinte **et** qu'il n'y a plus de menace à portée ; d'ici là, elle continue de combattre.
+  3. **Pose sur une case occupée** : en mode construction, curseur sur un chantier ou un bâtiment déjà construit →
+     chercher dans les cases autour une position où la pose est possible (et y proposer le bâtiment).
+  4. **Pose unique** : choisir un bâtiment = le poser une fois ; après la pose, le mode construction se ferme, sauf
+     si **Maj** est enfoncée (poses en série).
+- **Autre demande de l'utilisateur** (à faire, capture d'AoE4) : chez les **Paysans d'AoE4**, les **ordres** sont
+  **à côté de la construction** : panneau d'ordres à gauche (attaque Q, arrêt S, construire W, déposer X, sortir F,
+  garnison G, maintien V, supprimer Suppr, âge suivant T) et, à droite, le panneau de construction en **onglets par âge**
+  (I, II, III, IV) ; **A Z E R choisissent l'onglet d'âge** avant de choisir la case de la grille. Donc
+  **l'attaque-déplacement passe de A à Q** (« A clic » devient « Q clic ») pour ne pas entrer en conflit avec l'onglet I
+  (revient sur le retour n° 2 de l'essai de J7b du 2026-10-19). À trancher au moment de le faire : ordre par rapport aux
+  lignes colorées et à J7b.6, onglets d'âge dès maintenant (un seul âge en jeu ?) ou seulement la disposition.
