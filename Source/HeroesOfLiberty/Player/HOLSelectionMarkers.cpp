@@ -102,10 +102,10 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	/** A stroke past the whole plane: the marker material fills it. */
 	constexpr float BarFullStroke = 2.f;
 
-	/** The lines between queued orders (D328, J7b.5b-2): their width (cm), read each frame. */
+	/** The lines between queued orders (D328, J7b.5b-2): their width (cm), read each frame (halved twice at the user's trials). */
 	TAutoConsoleVariable<float> CVarOrderLineWidth(
 		TEXT("hol.Orders.LineWidth"),
-		25.f,
+		6.25f,
 		TEXT("Width (cm) of the lines drawn on the ground between the queued orders (Shift) of the selected units (D328)."));
 	/**
 	 * Below the selection's rings and the flag's foot (GroundOffset): the lines, and the step discs just above them,
@@ -129,6 +129,7 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		case HOLOrderChain::EStepKind::AttackMove:
 			return OrderAttackColor;
 		case HOLOrderChain::EStepKind::Build:
+		case HOLOrderChain::EStepKind::Rally:
 			return OrderBuildColor;
 		case HOLOrderChain::EStepKind::Gather:
 			return OrderGatherColor;
@@ -462,7 +463,7 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 				continue;
 			}
 			const float Share = View.GetHealthShare();
-			ShownBars.Add({ View.UnitId, FMath::RoundToInt(Share * 15.f), bSelected });
+			ShownBars.Add({ View.UnitId, View.Health, View.MaxHealth, bSelected });
 			const double Scale = FMath::Clamp(Distance / BarReferenceDistance, BarMinScale, BarMaxScale);
 			const double Width = BarWidth * Scale;
 			const double Height = BarHeight * Scale;
@@ -491,11 +492,52 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetHOLPlayerState() : nullptr;
 	const UWorld* World = GetWorld();
+	const double Width = FMath::Max(1.0, static_cast<double>(CVarOrderLineWidth.GetValueOnGameThread()));
+	// A filled strip from one point to the next, tilted with the ground between them (X along it, Y level).
+	const auto AddLine = [&LineTransforms, &LineData, Width](const FVector& Start, const FVector& End, const FLinearColor& Color)
+	{
+		const FVector Span = End - Start;
+		const double Length = Span.Size();
+		if (Length > UE_KINDA_SMALL_NUMBER)
+		{
+			const FQuat Rotation = FRotationMatrix::MakeFromX(Span / Length).ToQuat();
+			LineTransforms.Add(FTransform(Rotation, (Start + End) * 0.5 + FVector(0.0, 0.0, OrderLineOffset),
+				FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
+			LineData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+		}
+	};
+	// The rally line (D328, the user's trial): from each building whose flag shows (UpdateFlag's set) to its flag, white as
+	// a rally. The flag stands on the rally point for every kind (the ground, a source's middle, a site's centre), so the
+	// line ends there; it leaves the edge of the building's visible shape on the flag's side. Nothing without a building.
+	if (PlayerController && (PlayerController->GetSelection() || PlayerController->HasBuildingGroup()))
+	{
+		TArray<AHOLBuilding*> Buildings;
+		PlayerController->GetCommandBuildings(Buildings);
+		for (const AHOLBuilding* Building : Buildings)
+		{
+			const FHOLBuildingTypeRow* Type = Building && Building->HasRallyPoint() ? Building->GetType() : nullptr;
+			if (!Type)
+			{
+				continue;
+			}
+			const FVector Centre = Building->GetActorLocation();
+			const FVector End = Building->GetRallyPoint();
+			const FVector2D Half = UHOLBuildingSettings::GetVisualSize(Type->Footprint) * 0.5;
+			const FVector2D Flat(End.X - Centre.X, End.Y - Centre.Y);
+			// The share of the way to the flag at which the ray leaves the shape (axis-aligned): past 1, the flag is on it.
+			const double Exit = FMath::Min(FMath::Abs(Flat.X) > UE_KINDA_SMALL_NUMBER ? Half.X / FMath::Abs(Flat.X) : UE_BIG_NUMBER,
+				FMath::Abs(Flat.Y) > UE_KINDA_SMALL_NUMBER ? Half.Y / FMath::Abs(Flat.Y) : UE_BIG_NUMBER);
+			if (Exit < 1.0)
+			{
+				const FVector Start(Centre.X + Flat.X * Exit, Centre.Y + Flat.Y * Exit, FMath::Lerp(Centre.Z, End.Z, Exit));
+				AddLine(Start, End, OrderBuildColor);
+			}
+		}
+	}
 	// Nothing walked without a queue or a selection (D328): the chains reach their owner only, empty without a queue.
 	if (World && PlayerState && !PlayerState->GetOrderChains().IsEmpty() && !PlayerController->GetSelectedUnits().IsEmpty())
 	{
 		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
-		const double Width = FMath::Max(1.0, static_cast<double>(CVarOrderLineWidth.GetValueOnGameThread()));
 		TMap<uint32, FVector> Displayed;
 		for (const FHOLNetOrderChain& Chain : PlayerState->GetOrderChains())
 		{
@@ -533,16 +575,7 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 				FVector End;
 				AHOLPlayerState::LocateChainStep(*World, Step, End);
 				const FLinearColor& Color = GetOrderColor(Step.Kind);
-				const FVector Span = End - Start;
-				const double Length = Span.Size();
-				if (Length > UE_KINDA_SMALL_NUMBER)
-				{
-					// A filled strip from one point to the next, tilted with the ground between them (X along it, Y level).
-					const FQuat Rotation = FRotationMatrix::MakeFromX(Span / Length).ToQuat();
-					LineTransforms.Add(FTransform(Rotation, (Start + End) * 0.5 + FVector(0.0, 0.0, OrderLineOffset),
-						FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
-					LineData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
-				}
+				AddLine(Start, End, Color);
 				PointTransforms.Add(FTransform(FQuat::Identity, End + FVector(0.0, 0.0, OrderPointOffset),
 					FVector(OrderPointRadius * 2.0 / ShapeSize, OrderPointRadius * 2.0 / ShapeSize, 1.0)));
 				AddCustomData(PointData, Color, 1.0);
@@ -561,7 +594,7 @@ FString AHOLSelectionMarkers::DescribeHealthBars() const
 	TArray<FString> Items;
 	for (const FShownBar& Bar : Sorted)
 	{
-		Items.Add(FString::Printf(TEXT("#%u %d/15%s"), Bar.UnitId, Bar.Fifteenths, Bar.bSelected ? TEXT(" selected") : TEXT("")));
+		Items.Add(FString::Printf(TEXT("#%u %d/%d%s"), Bar.UnitId, Bar.Health, Bar.MaxHealth, Bar.bSelected ? TEXT(" selected") : TEXT("")));
 	}
 	return FString::Printf(TEXT("bars %d (%s), unhurt unselected %d, instances %d"), Sorted.Num(), *FString::Join(Items, TEXT(", ")),
 		UnhurtUnselected, HealthBars->GetInstanceCount());
@@ -716,6 +749,8 @@ FString AHOLSelectionMarkers::Describe() const
 	{
 		Flags += FString::Printf(TEXT("%s(%.0f, %.0f)"), Index == 0 ? TEXT(" at ") : TEXT(" "), FlagFeet[Index].X, FlagFeet[Index].Y);
 	}
-	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, frames dimmed %d"), Rings->GetInstanceCount() - NumPings, Frames->GetInstanceCount(),
-		*Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"), DimmedFrames);
+	// The order lines drawn (D328): their segments and step points (quick_check's move part counts them).
+	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings,
+		Frames->GetInstanceCount(), *Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"),
+		OrderLines->GetInstanceCount(), OrderPoints->GetInstanceCount(), DimmedFrames);
 }

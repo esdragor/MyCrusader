@@ -32,9 +32,10 @@ struct FHOLNetUnitStateNetSerializer
 		uint8 LoadResource;
 		/** J7b.4: health, target while attacking, front while facing it. */
 		uint8 bFullHealth;
-		uint8 HealthLevel;
-		uint16 TargetSlot;
 		uint8 FrontYaw;
+		/** J7-Q5 revised: the exact health points of a wounded unit. */
+		uint16 Health;
+		uint16 TargetSlot;
 	};
 
 	typedef FHOLNetUnitState SourceType;
@@ -137,10 +138,10 @@ void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context,
 	{
 		Writer.WriteBits(State.LoadResource, SourceType::LoadResourceBits);
 	}
-	// Health (J7b.4, J7-Q5): its level only for a wounded unit.
+	// Health (J7b.4, J7-Q5 revised): its exact health points only for a wounded unit.
 	if (!Writer.WriteBool(State.bFullHealth != 0))
 	{
-		Writer.WriteBits(State.HealthLevel, SourceType::HealthLevelBits);
+		Writer.WriteBits(State.Health, SourceType::HealthBits);
 	}
 	// The target only while attacking, the front only while facing it (the activity says which).
 	if (State.Activity == HOLUnitReplication::AttackingWireValue)
@@ -169,7 +170,7 @@ void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Contex
 	State.bCarrying = Reader.ReadBool() ? 1 : 0;
 	State.LoadResource = State.bCarrying ? static_cast<uint8>(Reader.ReadBits(SourceType::LoadResourceBits)) : 0;
 	State.bFullHealth = Reader.ReadBool() ? 1 : 0;
-	State.HealthLevel = State.bFullHealth ? SourceType::MaxHealthLevel : static_cast<uint8>(Reader.ReadBits(SourceType::HealthLevelBits));
+	State.Health = State.bFullHealth ? 0 : static_cast<uint16>(Reader.ReadBits(SourceType::HealthBits));
 	State.TargetSlot = State.Activity == HOLUnitReplication::AttackingWireValue ? static_cast<uint16>(Reader.ReadBits(SourceType::TargetSlotBits)) : 0;
 	State.FrontYaw = State.Activity == HOLUnitReplication::IdleFacingFrontWireValue ? static_cast<uint8>(Reader.ReadBits(SourceType::FrontYawBits)) : 0;
 }
@@ -187,7 +188,7 @@ void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, 
 	Target.bCarrying = Source.bCarrying ? 1 : 0;
 	Target.LoadResource = static_cast<uint8>(Source.LoadResource);
 	Target.bFullHealth = Source.bFullHealth ? 1 : 0;
-	Target.HealthLevel = Source.HealthLevel;
+	Target.Health = Source.Health;
 	Target.TargetSlot = Source.TargetSlot;
 	Target.FrontYaw = Source.FrontYaw;
 }
@@ -205,7 +206,7 @@ void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context
 	Target.bCarrying = Source.bCarrying != 0;
 	Target.LoadResource = static_cast<EHOLResource>(Source.LoadResource);
 	Target.bFullHealth = Source.bFullHealth != 0;
-	Target.HealthLevel = Source.HealthLevel;
+	Target.Health = Source.Health;
 	Target.TargetSlot = Source.TargetSlot;
 	Target.FrontYaw = Source.FrontYaw;
 }
@@ -218,7 +219,7 @@ bool FHOLNetUnitStateNetSerializer::IsEqual(FNetSerializationContext& Context, c
 		const QuantizedType& B = *reinterpret_cast<const QuantizedType*>(Args.Source1);
 		return A.X == B.X && A.Y == B.Y && A.VelocityX == B.VelocityX && A.VelocityY == B.VelocityY
 			&& A.Activity == B.Activity && A.Step == B.Step && A.bCarrying == B.bCarrying && A.LoadResource == B.LoadResource
-			&& A.bFullHealth == B.bFullHealth && A.HealthLevel == B.HealthLevel && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
+			&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
 	}
 	return *reinterpret_cast<const SourceType*>(Args.Source0) == *reinterpret_cast<const SourceType*>(Args.Source1);
 }
@@ -233,7 +234,7 @@ bool FHOLNetUnitStateNetSerializer::Validate(FNetSerializationContext& Context, 
 		&& HOLUnitReplication::IsValidActivity(State.Activity)
 		&& static_cast<uint32>(State.GatherResource) < 4U
 		&& static_cast<uint32>(State.LoadResource) < (1U << SourceType::LoadResourceBits)
-		&& State.HealthLevel <= SourceType::MaxHealthLevel
+		&& State.Health <= SourceType::MaxWireHealth
 		&& State.TargetSlot <= SourceType::InvalidTargetSlot
 		&& State.FrontYaw < (1U << SourceType::FrontYawBits);
 }

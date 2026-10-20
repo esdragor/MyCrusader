@@ -203,6 +203,15 @@ const UDataTable* UHOLUnitSubsystem::GetTypeTable() const
 			UE_LOG(LogHOLSimulation, Error, TEXT("No unit type table at '%s': no unit can be created (D221, D227)"),
 				Settings ? *Settings->UnitTypesTable.ToString() : TEXT("unset"));
 		}
+		else
+		{
+			// J7-Q5 revised: a wounded unit sends its exact health in FHOLNetUnitState::HealthBits; a larger maximum needs more.
+			CachedTypeTable->ForeachRow<FHOLUnitTypeRow>(TEXT("UnitSubsystem"), [](const FName& Name, const FHOLUnitTypeRow& Row)
+			{
+				ensureMsgf(HOLUnitReplication::FitsWireHealth(Row.MaxHealth), TEXT("Unit type %s: MaxHealth %d does not fit the %d health bits of the wire (FHOLNetUnitState::HealthBits)"),
+					*Name.ToString(), Row.MaxHealth, FHOLNetUnitState::HealthBits);
+			});
+		}
 	}
 	return CachedTypeTable;
 }
@@ -598,6 +607,8 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 	{
 		if (UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>())
 		{
+			// Their chain is drawn (D328, the user's trial): one white step to where they go, whatever the order.
+			const UHOLCommandSubsystem::FRallyOrderScope RallyOrder(*Commands);
 			TArray<uint32> BornIds;
 			for (const FMassEntityHandle Entity : Created)
 			{
@@ -798,8 +809,6 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.MeshScale = Constants->MeshScale;
 			OutView.CarryCapacity = Constants->CarryCapacity;
 			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
-			OutView.HealthLevel = OutView.bFullHealth ? FHOLNetUnitState::MaxHealthLevel
-				: HOLUnitReplication::GetHealthLevel(State->CurrentHealth, Constants->MaxHealth);
 			OutView.Health = FMath::Max(State->CurrentHealth, 0);
 			OutView.MaxHealth = Constants->MaxHealth;
 			OutView.bHealthExact = true;

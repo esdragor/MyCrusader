@@ -64,7 +64,13 @@ public:
 	 * The chains of a player's gather orders without Shift (D328, the user's trial of J7b.5b): each unit sent by its player
 	 * to a source, by its identifier, until it first reaches it (or stops gathering it). No cost without one.
 	 */
-	const TMap<uint32, int32>& GetChainSources() const { return ChainSources; }
+	/** A unit's chain source (D328): the source; bRally, the unit was born for a rally point on it (drawn white). */
+	struct FChainSource
+	{
+		int32 SourceIndex = INDEX_NONE;
+		bool bRally = false;
+	};
+	const TMap<uint32, FChainSource>& GetChainSources() const { return ChainSources; }
 	/** The world it last ran for (hol.Orders.Chains finds it so). */
 	const UWorld* GetLastWorld() const { return LastWorld.Get(); }
 
@@ -197,7 +203,7 @@ private:
 	TArray<TArray<FHOLDepositPopup>> DepositPopups;
 	static FCounters Counters;
 	/** GetChainSources: added by a player's gather order, dropped at its first arrival (only those entries are looked at). */
-	TMap<uint32, int32> ChainSources;
+	TMap<uint32, FChainSource> ChainSources;
 	void PruneChainSources(const FStepContext& Step);
 	TWeakObjectPtr<const UWorld> LastWorld;
 

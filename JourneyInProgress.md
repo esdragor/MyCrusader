@@ -85,7 +85,7 @@ vérifier sur S1 et S2.
 | J6b.3 Vérification | **fait** (2026-10-18, **validée** à l'essai : « tout est bon », commitée) : `quick_check` complet PASS (311 s, 20 parties, tests 65/65) ; S7 avec camps d'abord FAIL (3,41 ms : `HOLBuildProcessor` 1 ms, affichage des chantiers dans le pas) → `RiseStepRatio`, pièces `QueryOnly`, puis **D325** (apparence des bâtiments hors du pas, aucune pièce sur le serveur dédié) ; **mesures de fin de J6** par le nouvel outil `chapter_measures.ps1` (7,4 min) : S1 2,37, **S2 2,995 (moyenne de 3, au seuil)**, S7 2,60 ms, S5 31 005 o/s, 22,9 cm, tous PASS. Avant : 1re boucle faite, partie **2 clients des camps** dans `quick_check` (`net` + `build`) : chaque client bâtit un camp de bûcherons près de son bois et y dépose, voit le camp de l'autre (reçu au premier coup, puis fini), le serveur refuse un camp sur un arbre (`hol.Build.PlaceAtSource`), stock de l'autre jamais reçu ; aucun code C++ ; `quick_check` complet 324 s : tout PASS (`net 2 clients` compris, tests 65/65) sauf `build cut` (solo, non touché : aléa à relancer) ; puis `build cut` revue (contrôles de remises réalignés, blocage au coin corrigé : nouveau chemin d'une unité tenue sur son chemin, `PathStuckSteps`), `quick_check` complet PASS (350 s) ; **S7 bâtit ses 24 camps pendant la mesure** (D314, `hol.StressTest.S7BuildCamps`), fermeture sans bruit, `AHOLMapBounds::Find` corrigé ; S7 court OK |
 | J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **fait** (2026-10-18) : lignes D310 à D314, D324, D325 au § 21 (précisées par ce qui a été fait : case de 3 m, fondation fantôme, camp → récolte, F1 / F2 / F3 et Tab, deux marges de D324…), paragraphe « Parcours J6 : la construction » au § 16.6, § 7.3 précisé (F1 / F2 / F3 : tous les bâtiments de la catégorie ; Tab), § 22 : numéro suivant **D326**. **J6 close.** |
 | J7a.1 Données et règles pures | **fait** (2026-10-18, commitée ; rien de visible en jeu) : `Simulation/HOLFormationRules` (largeurs Paysans / carré / mixte, largeur imposée, types par ligne, places, attribution sans croisement), les 9 scénarios de l'utilisateur reproduits ; colonnes de combat dans la table des unités (non lues), lignes `Spearman`, `ManAtArms`, `Barracks` (militaire, `BuildGridSlot` 12 = A de la 2e page) ; tests 69/69 (4 `Formation.*`, `*.Tables` étendus) |
-| J7b.5b Lignes de la file d'ordres (D328) | **en cours** (2026-10-20) : lignes (un seul ordre compris), ordre de la file, 3 correctifs de la revue validés à l'essai et commités (c2b44e4) ; restent la ligne blanche du ralliement, les contrôles des lignes |
+| J7b.5b Lignes de la file d'ordres (D328) | **en cours** (2026-10-20) : lignes (un seul ordre compris), ordre de la file, 3 correctifs de la revue validés à l'essai et commités (c2b44e4) ; lignes de ralliement (bâtiment → fanion, unité née) et traits de 6,25 cm validés et commités (ed37f00) ; contrôles des lignes solo, ralliement, 2 clients (94eb04e), `-Full` PASS. **J7b.5b close** |
 | J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
 
 ## Prochaine étape exacte
@@ -228,7 +228,7 @@ vérifier sur S1 et S2.
    aperçu (`AnimationsInProgress.md`, catalogue « Arc… ») : la dernière image est la pose tenue 30 s.
    **Correctifs de la revue de code de J7b, à faire avant J7b.6** (revue en lecture seule, autre session, 2026-10-20 ;
    diff 48affca..HEAD ; demande de l'utilisateur de les écrire ici) :
-   - **Confirmés, à corriger** :
+   - **Confirmés, à corriger** — **1 à 3 faits, validés à l'essai, commités (c2b44e4, 2026-10-20)** :
      1. Unité figée après avoir tué elle-même sa cible ordonnée : le coup mortel (`HOLCombatProcessor.cpp` ~l. 404)
         efface `Target` et `bAttacking` mais pas `bOrderedTarget` (remis à zéro seulement dans la branche « cible
         perdue », qui exige `Target.IsSet()`). Effets : `bMaySeek` faux (plus de recherche ni de riposte) et
@@ -4840,6 +4840,99 @@ d'épée).
   **Reste pour J7b.5b** : (1) **ligne blanche du ralliement à la naissance** ; (2) contrôles des lignes dans
   `quick_check` (solo : `hol.Orders.Chains` et instances dessinées ; 2 clients : seul le propriétaire reçoit) ;
   (3) commentaires « Maj seulement » à reprendre (`GetChains`, `FBuilderQueue::bChain`, aide de `hol.Orders.Chains`).
+- **Ligne du ralliement à la naissance faite** (sous-agent, 12 min, 140k tokens ; rien de commité). Genre d'étape
+  **`Rally`** (`MakeRally(Point)`, point fixé à la construction de la chaîne), dessiné en blanc ; portée
+  `FRallyOrderScope` (comme `FPlayerOrderScope`, drapeau `bRally` sur les ordres) ouverte dans le bloc du ralliement
+  à la naissance (`HOLUnitSubsystem.cpp` ~l. 601 : sol, source, camp fini, chantier). Fin : sol à l'arrivée ; source
+  (et camp fini) à la première arrivée ; **chantier quand l'unité commence à bâtir** (`StartBuilding`) ou à la fin du
+  chantier. Coût nul sans ralliement et pour les stress tests. Test `Orders.Chains` étendu ; rapide PASS (23 s,
+  83/83), `-Parts production` PASS (25 s), `-Parts build` PASS (263 s). Essai scripté (sol) : `Rally at (-13000,
+  3000)` reçu, puis 0 à l'arrivée ; captures `MyCrusader-J5c\Saved_TestsRally\Screenshots\WindowsEditor\HOL\
+  rally_line.png` / `rally_arrived.png`. Non couvert : ralliement sur un camp fini entre la naissance et le pas
+  suivant (ordre de récolte hors portée, rare, déjà le cas pour les ordres du joueur).
+- **Essai de l'utilisateur** : (1) **épaisseur de toutes les lignes divisée par deux** (25 → 12,5 cm) ; (2) **ligne de
+  ralliement du bâtiment** : bâtiment sélectionné (forum, caserne, tout producteur) → ligne blanche jusqu'à son point
+  de ralliement (fanion, source ou bâtiment visé), comme AoE4 (question posée : c'était bien cela) ; la ligne de
+  l'unité née est gardée. D328 précisée. Lancé en sous-agent (affichage seul, aucun réseau en plus).
+- **Fait** (sous-agent, 5 min, 40k tokens ; rien de commité) : `hol.Orders.LineWidth` 12,5 cm (disque d'étape gardé à
+  30 cm) ; `AddLine` commun ; ligne blanche du **bord** de la forme visible du bâtiment (côté du point) au **fanion**
+  (`GetRallyPoint` : sol, milieu de la source, centre du chantier), pour les bâtiments qui montrent un fanion
+  (`GetCommandBuildings` + `HasRallyPoint` : seul, fantôme compris, ou sous-groupe actif d'un groupe F, comme les
+  fanions) ; pas de disque au bout ; coût nul sans bâtiment sélectionné. Rapide PASS (23 s, 83/83). Captures
+  `MyCrusader-J5c\Saved_Tests\Screenshots\WindowsEditor\HOL\rl_ground.png`, `rl_source.png`, `rl_army.png`
+  (conformes). Jeu lancé pour l'essai.
+- **Essai validé** (« sinon c'est bon ») avec une retouche : épaisseur encore divisée par deux → `hol.Orders.LineWidth`
+  **6,25 cm** (disque d'étape inchangé, 30 cm). Compilé ; `-Full` lancé avant le commit.
+- `-Full` **PASS** (574 s, 83/83). **Commit ed37f00** (lignes de ralliement, 6,25 cm), fusion de `main` (panneau des
+  scénarios, 8906581) sans conflit (32631fa), compilation sans avertissement, rapide PASS (26 s), `main` avancé.
+  **Reste pour J7b.5b** : contrôles des lignes dans `quick_check` (solo : `hol.Orders.Chains` et instances dessinées ;
+  2 clients : seul le propriétaire reçoit ; ralliement), commentaires « Maj seulement » à reprendre. Puis J7b.6.
+- **Contrôles des lignes faits** (sous-agent, 11,5 min, 125k tokens ; rien de commité). `AHOLSelectionMarkers::
+  Describe()` (`hol.Select.Report`) donne `order lines N, order points N` (avant `frames dimmed`, motifs existants
+  intacts) ; outils `Get-ChainReports` / `Format-ChainReport`. **move** : 3 Hommes d'armes (graine 102), Move puis
+  Maj Move puis Maj AttackMove → chaîne `Move -> Move -> AttackMove` serveur et reçue, raccourcie jusqu'à `none`,
+  3 segments et 3 points dessinés groupe sélectionné, 0 sans sélection, retirés à la fin. **Ralliement** (dans « move
+  solo », avec `production`) : chaîne `Rally` vers (−13500, 0) pour le Paysan né, puis rien à l'arrivée. **net** :
+  client 1 reçoit sa chaîne seule, client 2 n'en reçoit aucune pendant ce temps, puis la sienne seule. Délai : le
+  serveur publie toutes les 0,25 s → `wait 0.5` avant chaque rapport. `-Parts production,move` PASS (77 s), `-Parts
+  net` PASS (93 s), rapide PASS (21 s, 83/83). `-Full` lancé.
+- `-Full` **PASS** (621 s, 83/83). **Commit 94eb04e**, fusion de `main` (GDD seul, 45ff0ab : pas de recompilation)
+  en 0308eb4, `main` avancé. **J7b.5b close** (D328 au GDD à la clôture de J7b). Petit reste : commentaires « Maj
+  seulement » (`GetChains`, `FBuilderQueue::bChain`, aide de `hol.Orders.Chains`) à reprendre à l'occasion.
+  Suite : points 4 et 5 de la revue (à soumettre à l'utilisateur), puis **J7b.6** (vérification : `quick_check` solo
+  et 2 clients du combat, essai de l'utilisateur ; S3 / S5 en combat à la fin de J7).
+- **Points 4 et 5 de la revue soumis à l'utilisateur** :
+  4. Demi-tour à la mort en solo / hôte → **l'unité garde l'orientation du moment de sa mort** (face à sa cible) pendant
+     toute la chute, partout (solo, hôte, clients). Correctif d'affichage.
+  5. PV d'une unité peu blessée affichés pleins chez un client → idée de l'utilisateur : « tableau des dégâts envoyé
+     tous les X temps, dernière valeur gardée, servira aussi au soin ». Expliqué : c'est déjà le fonctionnement
+     (état des unités changées envoyé par paquets, dernière valeur ; un changement de PV part tout de suite) ; une
+     table séparée coûterait plus (identifiant répété) ; seule la précision diffère (16 paliers). **Choix de
+     l'utilisateur : PV exacts tout de suite** (contre la recommandation « max − 1 maintenant, exact après mesure ») :
+     **J7-Q5 révisée** (numéro D donné à la clôture de J7 ; D334 est le prochain de la review du GDD, autre séance) :
+     bit « PV pleins » gardé, puis PV exacts d'une unité blessée (8 bits si le maximum de la table tient, sinon le
+     nombre de bits du plus grand maximum), un envoi à chaque changement ; le soin passera par le même champ. Coût en
+     grande bataille vérifié par S5 en combat à la fin de J7, retour aux paliers si le budget est dépassé.
+  **Note de l'utilisateur** : « ça peut être gourmand, se pencher dessus niveau perf » → **point de vigilance des
+  mesures de fin de J7** : octets par client en grande bataille (S5 en combat, comparé aux 16 paliers), nombre
+  d'envois d'état provoqués par les coups, coût CPU de la sérialisation côté serveur ; pistes si trop cher :
+  regrouper les changements de PV d'une unité sur un court délai (le dernier gagne) au lieu d'un envoi immédiat à
+  chaque coup, ou moins de bits (paliers fins, p. ex. 64).
+  Deux sous-agents à la suite (4 puis 5).
+- **Point 4 fait** (sous-agent, 7 min, 78k tokens ; rien de commité). Cause (`HOLInterpolatedInstancesProcessor.cpp`
+  ~l. 402-425) : au début de la chute, la séquence change, `bFacingSource` recalculé faux (la chute n'a ni source ni
+  chantier), `bStrike` faux → lacet de la simulation (front de sa place). Correctif (~l. 427) : en `Dying`, lacet
+  figé sur `FallYaw`, relevé une fois à l'entrée en chute sur le lacet dessiné à l'image précédente
+  (`FHOLUnitAnimationStateFragment` : `bFalling`, `FallYaw`, `FallTurnDegrees` pour le contrôle). Client déjà juste
+  (`HOLNetUnitDisplay.cpp` ~l. 66-87 garde `Display.Yaw`), même règle appliquée. Paysan : se tourne déjà vers sa cible
+  depuis le couteau (`AttackSequence` 13). Contrôle : `hol.Units.AnimReport` écrit `Anim report falls: ... largest
+  turn Y deg` ; « combat anims » : au moins une chute, écart < 3° (mesuré **0,0°**). `-Parts combat` PASS (165 s),
+  rapide PASS (35 s, 83/83). À noter : « combat anims » laisse encore de côté le Paysan qui frappe (« Peasant has no
+  strike yet ») : pourrait attendre `A_Peasant_Attack prop 8`. **Point 5 lancé** (PV exacts).
+- **Point 5 fait** (sous-agent, 13 min, 150k tokens ; rien de commité). **8 bits** (plus grand maximum de la table :
+  155, Homme d'armes ; une unité blessée a au plus max − 1 PV) ; `ensureMsgf` au chargement de la table si un maximum
+  ne tient pas ; retour aux paliers : `HealthBits`, `GetWireHealth`, `HOLUnitView::GetReceivedHealth`. Coût **estimé** :
+  +4 bits par envoi d'une unité blessée (70 au lieu de 66, +6 %) ; un envoi par coup (avant : un par palier franchi,
+  ~2,5 fois moins pour l'Homme d'armes, presque autant pour le Lancier) ; ~0,5 envoi/s de plus par unité blessée en
+  mêlée, ~35 bit/s ; ~7 kbit/s côté serveur pour 200 unités en mêlée. Tests `Net.*` étendus (aller-retour exact,
+  255/256, chaque type de la table, 1 bit intacte, envoi à 1 PV près). `quick_check` : `net` (serveur `hol.Combat.LogHits
+  1` ; chaque valeur affichée par le client est une valeur laissée par un coup du serveur, la dernière égale celle du
+  serveur), `combat` (barres bornées par les relevés de combat). Recompilé sans avertissement ; rapide PASS (29 s,
+  83/83), `-Parts net` PASS (103 s), `-Parts combat` PASS (150 s). Essai de l'utilisateur (points 4 et 5) lancé.
+- **Essai validé** (« sinon tout est bon »). Repli si les PV exacts coûtent trop cher (choix de l'utilisateur) : **une
+  minuterie sur le serveur à chaque coup reçu** : les coups reçus pendant ce court délai partent **en un seul envoi**
+  (dernière valeur), au lieu d'un envoi par coup. Nouveau retour d'essai à faire plus tard (n° 6 ci-dessous).
+  `-Full` puis commit.
+- **Retour d'essai 6 (plus tard)** : **la formation a du mal contre les ressources et entre les bâtiments** ; test
+  ultime : entre deux maisons, les unités se gênent pour passer, dans le meilleur des cas 4 sur 6 passent. À voir avec
+  les retours 1 et 5 (la marche, D292 / D293, D324).
+- Session des animations (mycrusader-6c) bloquée : « Unable to build while Live Coding is active » — le verrou de
+  Live Coding est commun à tous les worktrees du même moteur. Fenêtre de 20 min promise après `-Full`. **À faire** :
+  `-LiveCoding=0` sur les jeux d'essai lancés par la session principale et sur les instances de `quick_check.ps1`
+  (comme `play.ps1`).
+- `-Full` **PASS** (612 s, 83/83). **Commit 3f5a026** (PV exacts, lacet gardé à la mort), fusion de `main` (GDD,
+  `.gitignore` seuls : pas de recompilation) en b6d3533, `main` avancé. Fenêtre laissée à mycrusader-6c (aucun Unreal
+  de cette séance tant qu'elle n'a pas fini). Suite : `-LiveCoding=0`, puis **J7b.6** (vérification et essai du combat).
 - **Retours d'essai à faire plus tard** (demande de l'utilisateur : « ne fais pas tout de suite », à écrire) :
   1. **Groupe qui attend le retardataire** : 5 soldats groupés + 1 à 10 m, ordre de déplacement → les 5 attendent
      que le loin les rejoigne avant de partir. Attendu : ils partent tout de suite ; le retardataire prend sa place

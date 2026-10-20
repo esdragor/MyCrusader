@@ -448,9 +448,9 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 	OutView.GatherResource = Slot.State.GatherResource;
 	OutView.bCarrying = Slot.State.bCarrying;
 	OutView.LoadResource = Slot.State.LoadResource;
-	// J7b.4: health level, and the target's identifier from its slot.
+	// J7b.4: health (exact, J7-Q5 revised; its maximum from the type below), and the target's identifier from its slot.
 	OutView.bFullHealth = Slot.State.bFullHealth;
-	OutView.HealthLevel = Slot.State.HealthLevel;
+	OutView.Health = Slot.State.bFullHealth ? 0 : Slot.State.Health;
 	OutView.TargetUnitId = GetTargetUnitId(Slot.State);
 	// The amount only for the watched unit (D303): the server sends it at every change, sooner than the state.
 	if (Slot.UnitId == WatchedUnitId)
@@ -466,9 +466,10 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.Radius = Row->Radius;
 		OutView.MeshScale = Row->MeshScale;
 		OutView.CarryCapacity = Row->CarryCapacity;
-		// J7b.5: the health known from the level (the exact health stays on the server, J7-Q5).
+		// J7b.5: the health received, exact (J7-Q5 revised).
 		OutView.MaxHealth = Row->MaxHealth;
-		OutView.Health = HOLUnitView::GetLevelHealth(OutView.bFullHealth, OutView.HealthLevel, Row->MaxHealth);
+		OutView.Health = HOLUnitView::GetReceivedHealth(OutView.bFullHealth, Slot.State.Health, Row->MaxHealth);
+		OutView.bHealthExact = true;
 	}
 	return true;
 }

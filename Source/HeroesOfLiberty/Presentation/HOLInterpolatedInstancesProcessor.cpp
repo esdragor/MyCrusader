@@ -424,9 +424,27 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 							}
 						}
 					}
+					// Falling (J7b code review, point 4): it keeps, for its whole fall, the yaw it was last drawn at alive, turned
+					// towards its target if it was striking, rather than going back to the simulation's (its place's front), as a
+					// client keeps its Display.Yaw (UHOLNetUnitDisplayProcessor): no half-turn, and the views agree.
+					if (Input.Activity == EHOLUnitActivity::Dying)
+					{
+						if (!AnimationState.bFalling)
+						{
+							AnimationState.bFalling = true;
+							AnimationState.FallYaw = static_cast<float>((AnimationState.DrawnFrame != 0 ? Representation.PrevTransform : Drawn).Rotator().Yaw);
+						}
+						AnimationState.bFacingSource = true;
+						AnimationState.FacingYaw = AnimationState.FallYaw;
+					}
 					if (AnimationState.bFacingSource)
 					{
 						Drawn.SetRotation(FRotator(0.f, AnimationState.FacingYaw, 0.f).Quaternion());
+					}
+					if (AnimationState.bFalling)
+					{
+						AnimationState.FallTurnDegrees = FMath::Max(AnimationState.FallTurnDegrees,
+							FMath::Abs(FRotator::NormalizeAxis(static_cast<float>(Drawn.Rotator().Yaw) - AnimationState.FallYaw)));
 					}
 					AnimationState.Prop = Choice.Prop;
 					AnimationState.DrawnFrame = GFrameCounter;
@@ -501,6 +519,8 @@ namespace
 				TMap<FString, TMap<FString, int32>> ByState;
 				int32 NumDrawn = 0;
 				int32 NumNotDrawn = 0;
+				int32 NumFalling = 0;
+				float LargestFallTurn = 0.f;
 				for (const uint32 UnitId : UnitIds)
 				{
 					const FMassEntityHandle Entity = Units->FindEntity(UnitId);
@@ -519,6 +539,11 @@ namespace
 						continue;
 					}
 					++NumDrawn;
+					if (AnimationState->bFalling)
+					{
+						++NumFalling;
+						LargestFallTurn = FMath::Max(LargestFallTurn, AnimationState->FallTurnDegrees);
+					}
 					const FString Sequence = GetSequenceName(*Type, Animation->AnimData.SequenceIndex);
 					++Sequences.FindOrAdd(Sequence);
 					++Props.FindOrAdd(AnimationState->Prop);
@@ -565,6 +590,8 @@ namespace
 				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report: slot %d, %d drawn, %d not drawn; sequences %s; props %s"), Slot, NumDrawn, NumNotDrawn,
 					*FString::Join(SequenceParts, TEXT(", ")), *FString::Join(PropParts, TEXT(", ")));
 				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report by state: %s"), *FString::Join(StateParts, TEXT("; ")));
+				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report falls: slot %d, %d falling, largest turn %.1f deg from the yaw drawn when it died"),
+					Slot, NumFalling, LargestFallTurn);
 			}
 		}));
 }

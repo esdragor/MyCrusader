@@ -48,11 +48,15 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 */
 	static constexpr int32 LoadResourceBits = 2;
 	/**
-	 * Health (J7b.4, J7-Q5): one bit "full health", then only a wounded unit writes its level, in sixteenths of its maximum
-	 * (HOLUnitReplication::GetHealthLevel: 1 to 15 alive, 0 dead). A change of level is a change of action (sent at once).
+	 * Health (J7b.4, J7-Q5 revised): one bit "full health", then only a wounded unit writes its exact health points
+	 * (HOLUnitReplication::GetWireHealth: 1 to MaxHealth - 1 alive, 0 dead). A change of health is a change of action
+	 * (sent at once; the healing will come through the same field). A wounded unit has at most MaxHealth - 1, so 8 bits
+	 * carry every maximum up to MaxWireHealth + 1 = 256 (the table's largest: 155, the Man-at-arms); the unit table's
+	 * loading checks it (HOLUnitReplication::FitsWireHealth). Back to levels: HealthBits, GetWireHealth and
+	 * HOLUnitView::GetReceivedHealth.
 	 */
-	static constexpr int32 HealthLevelBits = 4;
-	static constexpr uint8 MaxHealthLevel = (1 << HealthLevelBits) - 1;
+	static constexpr int32 HealthBits = 8;
+	static constexpr uint16 MaxWireHealth = (1 << HealthBits) - 1;
 	/**
 	 * Target of an Attacking unit (J7b.4, J7-Q5), written only with that activity: its replication slot (the chunks'
 	 * slots, whose identifier the client reads), cheaper than its identifier, which is never recycled. 4 096 slots,
@@ -68,7 +72,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62); the others write the extras below. */
 	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1;
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
-	static constexpr int32 WoundedBits = HealthLevelBits;
+	static constexpr int32 WoundedBits = HealthBits;
 	static constexpr int32 AttackingBits = TargetSlotBits;
 	static constexpr int32 FacingFrontBits = FrontYawBits;
 
@@ -96,13 +100,13 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	UPROPERTY()
 	EHOLResource LoadResource = EHOLResource::Food;
 
-	/** Unhurt (J7b.4): HealthLevel is not sent and stays MaxHealthLevel. */
+	/** Unhurt (J7b.4): Health is not sent and stays 0. */
 	UPROPERTY()
 	bool bFullHealth = true;
 
-	/** Sixteenths of its maximum health while wounded (HOLUnitReplication::GetHealthLevel), MaxHealthLevel unhurt. */
+	/** Its health points while wounded (HOLUnitReplication::GetWireHealth, 0 dead), 0 unhurt. */
 	UPROPERTY()
-	uint8 HealthLevel = MaxHealthLevel;
+	uint16 Health = 0;
 
 	/** While Activity is Attacking: its target's slot (see TargetSlotBits); 0 otherwise. */
 	UPROPERTY()
@@ -121,11 +125,11 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0, EHOLResource GatherResource = EHOLResource::Food);
 
 	/**
-	 * The fight and facing of the state (J7b.4), after Make: health (Health of MaxHealth), the target's slot while
+	 * The fight and facing of the state (J7b.4), after Make: health (InHealth of MaxHealth), the target's slot while
 	 * Attacking, the front (deg) while Idle with bInFacesFront. Values that do not apply are left at their defaults, so
 	 * equal states compare equal.
 	 */
-	void SetCombat(int32 Health, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f);
+	void SetCombat(int32 InHealth, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f);
 
 	/** Front (deg, -180 to 180) of a state that faces it. */
 	float GetFrontYaw() const;
@@ -188,8 +192,14 @@ namespace HOLUnitReplication
 	/** Idle and facing its front at its formation place (J7b.4): Idle, with FrontYaw written. */
 	constexpr uint8 IdleFacingFrontWireValue = 10;
 
-	/** Health level of a unit (J7b.4, J7-Q5): ceil(15 * Health / MaxHealth), 0 only at 0 health or below. */
-	HEROESOFLIBERTY_API uint8 GetHealthLevel(int32 Health, int32 MaxHealth);
+	/**
+	 * Health of a wounded unit as sent (J7-Q5 revised): its health points, 0 only at 0 health or below, held at
+	 * MaxWireHealth (never reached by a table that FitsWireHealth).
+	 */
+	HEROESOFLIBERTY_API uint16 GetWireHealth(int32 Health, int32 MaxHealth);
+
+	/** Every wounded health of a type of this maximum fits the wire (MaxHealth - 1 <= MaxWireHealth). */
+	constexpr bool FitsWireHealth(const int32 MaxHealth) { return MaxHealth - 1 <= FHOLNetUnitState::MaxWireHealth; }
 
 	/** The activity is one the wire can carry (EncodeActivity). */
 	HEROESOFLIBERTY_API bool IsValidActivity(EHOLUnitActivity Activity);

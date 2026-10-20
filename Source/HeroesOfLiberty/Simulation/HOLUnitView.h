@@ -37,28 +37,25 @@ struct FHOLUnitView
 	bool bLoadAmountKnown = false;
 	/** What its type carries at most (0: it does not gather). */
 	int32 CarryCapacity = 0;
-	/**
-	 * Its health (J7b.4, J7-Q5): unhurt, or its level in sixteenths of its maximum (1 to 15, 0 Dying), what a client knows
-	 * of it (the exact health stays on the server).
-	 */
+	/** Unhurt (J7b.4): its health is its type's maximum. */
 	bool bFullHealth = true;
-	uint8 HealthLevel = 15;
 	/**
-	 * Its health points (J7b.5) and its type's maximum (0: type unknown): exact in solo and on the server (bHealthExact);
-	 * on a client, the top of its level's sixteenth (HOLUnitView::GetLevelHealth), what the selection block shows.
+	 * Its health points (J7b.5) and its type's maximum (0: type unknown): exact everywhere since J7-Q5 revised (a client
+	 * gets a wounded unit's exact health, HOLUnitView::GetReceivedHealth); bHealthExact false only for a client's unit of
+	 * unknown type. What the selection block and the health bar show.
 	 */
 	int32 Health = 0;
 	int32 MaxHealth = 0;
 	bool bHealthExact = false;
 
-	/** What its health bar shows filled, 0 to 1: the exact share where known, its level's sixteenths otherwise. */
+	/** What its health bar shows filled, 0 to 1. */
 	float GetHealthShare() const
 	{
-		if (bHealthExact && MaxHealth > 0)
+		if (MaxHealth > 0)
 		{
 			return FMath::Clamp(static_cast<float>(Health) / static_cast<float>(MaxHealth), 0.f, 1.f);
 		}
-		return bFullHealth ? 1.f : static_cast<float>(HealthLevel) / 15.f;
+		return bFullHealth ? 1.f : 0.f;
 	}
 	/** While Activity is Attacking: its target (0: none, or not known to this client yet). */
 	uint32 TargetUnitId = 0;
@@ -74,11 +71,11 @@ namespace HOLUnitView
 	/** One unit of a game world, without gathering them all (the selection block, every frame); false when it is gone. */
 	HEROESOFLIBERTY_API bool Find(const UWorld& World, uint32 UnitId, FHOLUnitView& OutUnit, bool bIncludeDying = false);
 	/**
-	 * A client's health from a level (J7b.5): the top of its sixteenth, MaxHealth * Level / 15 rounded up (the level is
-	 * the health's ceiling in sixteenths), MaxHealth when unhurt.
+	 * A client's health from the state received (J7-Q5 revised): the exact health points a wounded unit sends
+	 * (HOLUnitReplication::GetWireHealth), MaxHealth when unhurt. Back to levels: the level's health here.
 	 */
-	inline int32 GetLevelHealth(const bool bFullHealth, const uint8 HealthLevel, const int32 MaxHealth)
+	inline int32 GetReceivedHealth(const bool bFullHealth, const uint16 WireHealth, const int32 MaxHealth)
 	{
-		return bFullHealth ? MaxHealth : static_cast<int32>((static_cast<int64>(MaxHealth) * HealthLevel + 14) / 15);
+		return bFullHealth ? MaxHealth : static_cast<int32>(WireHealth);
 	}
 }

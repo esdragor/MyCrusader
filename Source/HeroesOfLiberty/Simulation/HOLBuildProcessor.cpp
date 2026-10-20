@@ -119,7 +119,8 @@ void UHOLBuildProcessor::GetChains(TArray<FChainOfBuilder>& OutChains) const
 	OutChains.Reset();
 	for (const TPair<FMassEntityHandle, FBuilderQueue>& Pair : Queues)
 	{
-		if (!Pair.Value.bChain || Pair.Value.Items.IsEmpty())
+		const bool bRallyHead = Pair.Value.IsRallyHead();
+		if ((!Pair.Value.bChain && !bRallyHead) || Pair.Value.Items.IsEmpty())
 		{
 			continue;
 		}
@@ -133,7 +134,9 @@ void UHOLBuildProcessor::GetChains(TArray<FChainOfBuilder>& OutChains) const
 			}
 			else if (const AHOLBuilding* Site = Item.Site.Get())
 			{
-				Chain.Steps.Add(HOLOrderChain::FStep::MakeBuild(Site->GetUniqueID()));
+				// Born for a rally point on this site (D328): a white step to it until the unit starts building.
+				Chain.Steps.Add(bRallyHead && Chain.Steps.IsEmpty() ? HOLOrderChain::FStep::MakeRally(Site->GetActorLocation())
+					: HOLOrderChain::FStep::MakeBuild(Site->GetUniqueID()));
 			}
 		}
 	}
@@ -143,7 +146,7 @@ bool UHOLBuildProcessor::HasChains() const
 {
 	for (const TPair<FMassEntityHandle, FBuilderQueue>& Pair : Queues)
 	{
-		if (Pair.Value.bChain && !Pair.Value.Items.IsEmpty())
+		if ((Pair.Value.bChain || Pair.Value.IsRallyHead()) && !Pair.Value.Items.IsEmpty())
 		{
 			return true;
 		}
@@ -329,7 +332,16 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 			HOLConstruction::AddToBuildQueue(Queue.Items, Item, Order.bQueue);
 			// D328 (the user's trial of J7b.5b): a player's order makes a chain, with Shift or not; the server's own (a unit born
 			// with its rally point on a site) only once queued after another.
-			Queue.bChain = Order.bChain || (Order.bQueue && (Queue.bChain || Queue.Items.Num() > 1));
+			// A unit born with its rally point on a site (D328): a Rally step until it starts building, no chain after.
+			Queue.bChain = (Order.bChain && !Order.bRally) || (Order.bQueue && (Queue.bChain || Queue.Items.Num() > 1));
+			if (!bHadQueue || !Order.bQueue)
+			{
+				Queue.RallyItem.Reset();
+			}
+			if (Order.bRally)
+			{
+				Queue.RallyItem = Item;
+			}
 			// A new head (no queue before, or no Shift): it stops gathering, its load kept (as a player's move order, D296),
 			// and its head is looked at at once; with Shift, its head so far goes on first.
 			if (!bHadQueue || !Order.bQueue)
@@ -552,6 +564,11 @@ void UHOLBuildProcessor::StartBuilding(FBuilder& Builder, const FBox2D& Footprin
 	Builder.Build.Misses = 0;
 	Builder.Build.bWalkIssued = false;
 	Builder.State.Activity = EHOLUnitActivity::Building;
+	// At its site (D328): the line of the rally point it was born for is over.
+	if (FBuilderQueue* Queue = Queues.Find(Builder.Entity))
+	{
+		Queue->RallyItem.Reset();
+	}
 }
 
 void UHOLBuildProcessor::StartGathering(const FStepContext& Step, FBuilder& Builder, const int32 SourceIndex)

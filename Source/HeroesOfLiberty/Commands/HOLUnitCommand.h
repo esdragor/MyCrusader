@@ -61,6 +61,8 @@ struct FHOLMoveOrder
 	uint32 CombatStamp = 0;
 	/** A player's order (D328, given through its controller): its units' chain is drawn, with Shift or not. */
 	bool bChain = false;
+	/** With bChain: units just born sent to their building's rally point (D328): their step is a Rally (drawn white). */
+	bool bRally = false;
 };
 
 /** One gather order (J5, D296): "gather this source", for a group of units. Applied by the gathering at the next step. */
@@ -74,4 +76,6 @@ struct FHOLGatherOrder
 	int32 PlayerIndex = INDEX_NONE;
 	/** A player's order (D328, given through its controller): its units' chain is drawn until they reach the source. */
 	bool bChain = false;
+	/** With bChain: units just born sent to their building's rally point (D328): their step is a Rally (drawn white). */
+	bool bRally = false;
 };

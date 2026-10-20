@@ -96,6 +96,9 @@ private:
 		FWorkItem Current;
 		/** Chains (D328): a queue given with Shift; false again with an order without Shift. */
 		bool bChain = false;
+		/** Chains (D328): the site of a rally point the unit was born for, drawn white while it heads its queue, until the unit starts building. */
+		TOptional<FWorkItem> RallyItem;
+		bool IsRallyHead() const { return RallyItem.IsSet() && !Items.IsEmpty() && Items[0] == *RallyItem; }
 	};
 
 	/** A spot held by a builder: walked to, or worked at. */

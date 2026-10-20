@@ -57,4 +57,6 @@ struct FHOLBuildOrder
 	int32 SourceIndex = INDEX_NONE;
 	/** A player's order (D328, given through its controller): its builders' chain is drawn, with Shift or not. */
 	bool bChain = false;
+	/** With bChain: units just born sent to their building's rally point, a site (D328): drawn as a Rally until they start building. */
+	bool bRally = false;
 };

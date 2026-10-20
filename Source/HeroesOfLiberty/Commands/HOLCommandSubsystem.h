@@ -47,6 +47,18 @@ public:
 	};
 
 	/**
+	 * While one lives, the orders issued send units just born to their building's rally point (D328, the user's trial): their
+	 * chain is drawn too, one white step (HOLOrderChain::EStepKind::Rally) until they get there, whatever the order.
+	 */
+	struct FRallyOrderScope
+	{
+		explicit FRallyOrderScope(UHOLCommandSubsystem& InCommands) : Player(InCommands.bPlayerOrders, true), Rally(InCommands.bRallyOrders, true) {}
+	private:
+		TGuardValue<bool> Player;
+		TGuardValue<bool> Rally;
+	};
+
+	/**
 	 * Queues "go to this location" for the given units, one order for the group (D286, D287). PlayerIndex: the player
 	 * who gave it, whose own units alone obey (D288); INDEX_NONE for the server's own orders (rally point, tests).
 	 */
@@ -114,6 +126,8 @@ protected:
 private:
 	/** A FPlayerOrderScope lives (D328). */
 	bool bPlayerOrders = false;
+	/** A FRallyOrderScope lives (D328). */
+	bool bRallyOrders = false;
 	TArray<FHOLMoveOrder> PendingMoveOrders;
 	TArray<FHOLGatherOrder> PendingGatherOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;
