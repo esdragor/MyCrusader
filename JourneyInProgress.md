@@ -319,7 +319,7 @@ lancent qu'à la fin d'un chapitre (règle des mesures ci-dessus).
 powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1
 
 # Lancer une session d'essai (deuxième écran, réglages de test) ; Jouer → Lancer
-Start-Process "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList '"C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash'
+Start-Process "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList '"C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -game -windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100 -saveddirsuffix=Tests -nosplash -LiveCoding=0'
 
 # Stress test court sur le deuxième écran (S1 puis S2), rapport dans Saved_Tests\Logs\HeroesOfLiberty.log
 & "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor.exe" "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" /Game/Maps/StressTest `
@@ -4922,6 +4922,11 @@ d'épée).
 - **Essai validé** (« sinon tout est bon »). Repli si les PV exacts coûtent trop cher (choix de l'utilisateur) : **une
   minuterie sur le serveur à chaque coup reçu** : les coups reçus pendant ce court délai partent **en un seul envoi**
   (dernière valeur), au lieu d'un envoi par coup. Nouveau retour d'essai à faire plus tard (n° 6 ci-dessous).
+  **Précisé par l'utilisateur** (repli seulement, en cas extrême si la mesure de fin de J7 montre un coût trop
+  élevé) : (1) le serveur apprend qu'une unité a pris un coup → il lance **sa** minuterie (une par unité) ; (2) un
+  deuxième coup pendant la minuterie → on remplace seulement la valeur à envoyer ; (3) un soin pendant la minuterie →
+  idem ; (4) minuterie finie → on envoie la valeur, les PV se mettent à jour. **Délai le plus court possible** : aucune
+  sensation de latence (de l'ordre d'un pas ou deux du serveur, à régler à la mesure).
   `-Full` puis commit.
 - **Retour d'essai 6 (plus tard)** : **la formation a du mal contre les ressources et entre les bâtiments** ; test
   ultime : entre deux maisons, les unités se gênent pour passer, dans le meilleur des cas 4 sur 6 passent. À voir avec
@@ -4933,6 +4938,11 @@ d'épée).
 - `-Full` **PASS** (612 s, 83/83). **Commit 3f5a026** (PV exacts, lacet gardé à la mort), fusion de `main` (GDD,
   `.gitignore` seuls : pas de recompilation) en b6d3533, `main` avancé. Fenêtre laissée à mycrusader-6c (aucun Unreal
   de cette séance tant qu'elle n'a pas fini). Suite : `-LiveCoding=0`, puis **J7b.6** (vérification et essai du combat).
+- `-LiveCoding=0` ajouté aux 4 lancements de `quick_check.ps1` (tests, serveur `net`, jeu, clients) et à la commande
+  d'essai de « Commandes utiles » (worktree, non commité) ; à essayer (rapide) après la fenêtre de mycrusader-6c.
+- Signalé par mycrusader-6c (non urgent) : avec `-Parts tests,camera,anims,combat`, « bars, nothing selected » échoue :
+  la sélection laissée par la partie `anims` reste active (en `-Full`, `groups` finit par Échap). Défaut de liste
+  partielle : faire finir `anims` par Échap (ou ouvrir `combat` par Échap) à l'occasion.
 - **Retours d'essai à faire plus tard** (demande de l'utilisateur : « ne fais pas tout de suite », à écrire) :
   1. **Groupe qui attend le retardataire** : 5 soldats groupés + 1 à 10 m, ordre de déplacement → les 5 attendent
      que le loin les rejoigne avant de partir. Attendu : ils partent tout de suite ; le retardataire prend sa place
