@@ -992,6 +992,9 @@ if ($Parts -contains "camera") {
                 "hol.Select.BoxGround $($CombatMenAtArms[0] - 350) $($CombatMenAtArms[1] - 350) $($CombatMenAtArms[0] + 350) $($CombatMenAtArms[1] + 350)",
                 "waitlog Selection: 4 units (own): Peasant x4", "hol.Select.OrderGround $($CombatSpearmen -join ' ')", "hol.Combat.Report"
             for ($i = 0; $i -lt 4; $i++) { Step "wait 1", "hol.Combat.Report" }
+            # The Peasant's strike (J7b.5): the ordered Peasants, striking by now, play theirs with the knife (the report of
+            # slot 0), a close-up of them (taken once the order is applied: the click and the order stay as they are).
+            Step "hol.Units.AnimReport 0", "hol.Camera.Zoom 14", "frames 3", "capture combat_peasant_strike", "hol.Camera.Zoom -14", "frames 2"
             Step "capture orders_attack", "mark orders stop", "hol.Select.Stop", "wait 0.2", "hol.Combat.Report", "wait 2", "hol.Combat.Report"
             Step "mark orders end", "hol.Select.Click 0.03 0.05"
             # The attack-move (J7b.3): 3 Men-at-arms of slot 0 attack-move 30 m east, a Spearman of slot 1 standing 4 m off
@@ -2454,18 +2457,18 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
 
 if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # The strikes and the fall (J7b.5), from hol.Units.AnimReport: in the melee the Men-at-arms and the Spearmen striking play
-    # their strike; the Peasant killed plays its fall; no unit striking or dying shows anything but its type's gesture (the
-    # Peasant has no strike yet: left out).
+    # their strike; the Peasants ordered on a Spearman strike with the knife (prop 8); the Peasant killed plays its fall; no
+    # unit striking or dying shows anything but its type's gesture.
     $Checks = [ordered]@{}
     $Shown = @{}
     $Wrong = @()
-    foreach ($Line in @(Get-Section "combat") + @(Get-Section "combat fall")) {
+    foreach ($Line in @(Get-Section "combat") + @(Get-Section "orders attack") + @(Get-Section "combat fall")) {
         if ($Line -notmatch "Anim report by state: (.*)$") { continue }
         foreach ($Part in ($Matches[1] -split '; ')) {
             if ($Part -notmatch '^(\w+) (Attacking|Dying): (.+)$') { continue }
             $Type = $Matches[1]; $State = $Matches[2]; $Outcomes = $Matches[3]
-            if ($Type -eq "Peasant" -and $State -eq "Attacking") { continue }
-            $Expected = if ($State -eq "Attacking") { "A_$Type`_Attack prop 0" } else { "A_$Type`_Fall prop 0" }
+            $Prop = if ($Type -eq "Peasant" -and $State -eq "Attacking") { 8 } else { 0 }
+            $Expected = if ($State -eq "Attacking") { "A_$Type`_Attack prop $Prop" } else { "A_$Type`_Fall prop 0" }
             $Key = "$Type $State"
             if (-not $Shown.ContainsKey($Key)) { $Shown[$Key] = 0 }
             foreach ($Outcome in ($Outcomes -split ', ')) {
@@ -2478,6 +2481,8 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $Checks["melee: Men-at-arms striking play A_ManAtArms_Attack ($Count of 3)"] = $Count -ge 2
     $Count = [int]$Shown["Spearman Attacking"]
     $Checks["melee: Spearmen striking play A_Spearman_Attack ($Count of 3)"] = $Count -ge 2
+    $Count = [int]$Shown["Peasant Attacking"]
+    $Checks["Peasants striking play A_Peasant_Attack with the knife (prop 8) ($Count)"] = $Count -ge 1
     $Count = [int]$Shown["Peasant Dying"]
     $Checks["the Peasant killed plays A_Peasant_Fall ($Count)"] = $Count -ge 1
     $Checks["striking or dying: never another sequence ($($Wrong -join '; '))"] = $Wrong.Count -eq 0
@@ -2487,7 +2492,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
         [pscustomobject]@{ Falling = [int]$Matches[1]; Turn = [double]$Matches[2] } })
     $Fall = $Falls | Select-Object -First 1
     $Checks["falling: keeps the yaw it died with ($(if ($Fall) { "$($Fall.Falling) falling, largest turn $($Fall.Turn) deg" } else { 'no report' }))"] = $Fall -and $Fall.Falling -ge 1 -and $Fall.Turn -lt 3
-    $Missing = @("melee", "fall" | Where-Object { -not (Test-Path (Join-Path $Shots "combat_$_.png")) })
+    $Missing = @("melee", "peasant_strike", "fall" | Where-Object { -not (Test-Path (Join-Path $Shots "combat_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     Write-Host "  combat anims: $(($Shown.Keys | Sort-Object | ForEach-Object { "$_ x$($Shown[$_])" }) -join ', ')"
     $AllOk = (Report "combat anims" $Checks) -and $AllOk
