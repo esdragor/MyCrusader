@@ -191,7 +191,7 @@ Règles :
 | Coup d'épée | Homme d'armes | J7b.5 | **fait** (2026-10-19) : `A_ManAtArms_Attack`, taille en diagonale portée par le bassin puis le haut du corps (épaules 124°, garde devant le bouclier au suivi), 42 images, frappe image 21 |
 | Chute (mourant) | toutes les troupes (et le Paysan) | J7b.5 | **fait** (2026-10-19) : `A_Spearman_Fall`, `A_ManAtArms_Fall`, `A_Peasant_Fall`, 1 s, bascule en arrière, arme gardée en main, jouée une fois puis figée jusqu'à la disparition |
 | Arc (pièce), tir à l'arc, repos et marche | Archer | J7c.1 / J7c.2 | **à faire** : bander, viser, lâcher (la flèche part au lâcher), arc en main gauche |
-| Attaque du Paysan | Paysan | J7b | **aperçu** (2026-10-19) : les Paysans combattent sur ordre (et plus tard contre les bêtes sauvages) ; coup de hache à deux mains en diagonale (`PEASANT_ATTACK` dans `PROPOSED`), boucle 2 s, frappe à 50 % ; à polir comme les soldats puis à faire revoir avant fabrication (afficher la hache : colonne `AttackProp`) |
+| Attaque du Paysan | Paysan | J7b | **fait** (2026-10-20, validé à l'essai : « super le stab ») : les Paysans combattent sur ordre (et plus tard contre les bêtes sauvages) ; coup de pointe au couteau à une main en posture de peur (`afraid()`), `A_Peasant_Attack` (séquence 13 de `TP_Peasant`, 60 images, 2 s, frappe image 30 = 50 %) ; couteau `make_knife()` (pièce 8, masque 128, dernier bit libre) montré seulement pendant l'attaque par la colonne `AttackProp` (sur le modèle de `BuildProp`) ; hache et coup de hache écartés par l'utilisateur |
 
 ## Prochaine étape exacte
 
