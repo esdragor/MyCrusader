@@ -338,9 +338,9 @@ def prepare(shared, gesture_name):
         r, f, u = body_terms(sk, traces[hit])
         ctx["summary"] = ", frappe a %.2f s, tete de l'outil a la frappe : droite %.0f, avant %.0f, haut %.0f cm" % (
             rig.times[hit], r, f, u)
-        handle = [rig.handle_distances(world) for world in worlds]
+        handle = [rig.handle_distances(world) for world, (_, extra) in zip(worlds, poses) if not extra.get("released")]
         ctx["checks"].append("mains a l'axe du manche porte par %s au plus : %s" % (anim_rig.TOOL_BONE, ", ".join(
-            "%s %.3f cm" % ({"l": "gauche", "r": "droite"}[side], max(h[side] for h in handle))
+            "%s %.3f cm" % ({"l": "gauche", "r": "droite"}[side], max([h[side] for h in handle] or [0.0]))
             for side in rig.tool_hands)))
     hit = ctx["hit"]
     if scene["kind"] == "trunk" and hit is not None:
@@ -374,8 +374,9 @@ def prepare(shared, gesture_name):
         for prop in ctx["props"]:
             worst = (0, 0.0, 0.0)
             for k in range(0, len(worlds), step):
+                released = ("l", "r") if poses[k][1].get("released") else ()  # a released tool: the hands count
                 count, deep = clearance(shared, prop, worlds[k], shared.posed_body(worlds[k]),
-                                        free if prop["frame"] == "tool" else ())
+                                        (free + released) if prop["frame"] == "tool" else ())
                 if (count, deep) > worst[:2]:
                     worst = (count, deep, rig.times[k])
             ctx["checks"].append("%s : points du corps%s dedans au plus %d (%.2f s), %.1f cm de profondeur au plus"
@@ -464,7 +465,11 @@ def draw_cell(canvas, shared, ctx, frame, ox, oy, view, label):
 
     world = ctx["worlds"][frame]
     # Props: filled, flat-shaded toward the camera, depth-buffered.
+    hidden = ctx["gesture"].get("hidden", {})  # {prop: (start s, end s)}: not drawn then (the Archer's arrow)
     for prop in ctx["props"]:
+        span = hidden.get(prop["name"])
+        if span and span[0] <= ctx["rig"].times[frame] <= span[1]:
+            continue
         for tri, color in peasant_props.posed_triangles(prop, sk, world, shared.prop_tris[prop["name"]]):
             normal = anim_rig.normalize(anim_rig.cross(anim_rig.sub(tri[1], tri[0]), anim_rig.sub(tri[2], tri[0])))
             light = 0.55 + 0.45 * abs(anim_rig.dot(normal, to_camera))

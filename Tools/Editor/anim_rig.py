@@ -50,12 +50,29 @@ Key (one dict per key):
             from the lower to the upper (right) hand}. The arms are solved by two-bone IK every frame so both hands
             stay on the handle; each hand grips with its palm across the handle, fingers pointing away from its
             shoulder. One-handed tool ("hands": 1): "grip" is the right hand's place on the handle, no "spacing", and
-            the key also has "hands" with the free left hand only.
+            the key also has "hands" with the free left hand only. Optional "fingers" (right, forward, up): where
+            the tool hand's fingers point (made square to the handle) instead of away from the shoulder; given on
+            every key or none (J7c, the Archer's arrow: no flip when the reach runs along the arrow). Optional
+            "roll" (degrees, 0 if missing): both tool hands, and so the tool, turned about the handle (J7c falls: the
+            spear's pennant laid flat on the ground instead of driven into it).
+  "release" (gesture, optional, seconds of key time; J7c, the Spearman's fall): from that time on the tool leaves the
+            hands: its keys ("grip", "dir", "roll") place it on its own path (the tool bone ik_hand_gun keeps its edge
+            as the right hand would hold it there), and both hands are free, keyed by "hands" (then on EVERY key, both
+            sides; ignored before the release). A gesture without it is solved exactly as before.
   "hands"   instead of a tool, free hands: {"l": {"at": (right, forward, up) cm, "palm": direction the palm faces,
             optional "fingers": direction, optional "swing": share of the same-side foot's travel the hand makes the
             other way (a walking arm, needs a base)}, "r": ...}; fingers default to pointing away from the shoulder.
   "elbows"  optional {"l": (right, forward, up), "r": ...}: directions the elbows bend toward, in the chest frame
             (carried by spine_03).
+  "feet"    optional {"l": (right, forward, up), "r": ...}: offsets of the feet from their place (reference + stance)
+            in cm, interpolated like the pelvis (J7c, the Archer's staggering fall: the feet step, slide and lift).
+            A gesture without it keeps its feet planted exactly as before.
+  "foot_rot" optional {"l": (twist, bend, side), "r": ...}: rotations of the feet in degrees, body terms as "rot",
+            applied in component space to the foot's planted rotation (by default the foot stays flat on the ground
+            whatever the leg does): bend > 0 points the toes down then back (a body lying face down, its feet
+            extended), side rolls the foot about its own length (applied first), twist turns it about up (last).
+            Interpolated like "rot", with the lead of "feet"; a missing side or key counts as zero. A gesture without
+            it is solved exactly as before (J7c, the Man-at-arms' fall).
 Values are interpolated between keys (linear for positions and angles, spherical for directions), after the key's
 easing. A missing entry counts as the reference value (zero offset or rotation). Without a base, the legs are solved
 by IK so the feet stay planted on their reference place (plus the stance offsets), whatever the pelvis does.
@@ -352,6 +369,7 @@ class Rig:
             raise ValueError("Keys must be in increasing time")
         self.key_span = keys[-1]["t"] - keys[0]["t"]
         self.has_tool = any("tool" in key or "axe" in key for key in keys)
+        self.release = gesture.get("release")
         self._strike = None
         if base is not None:
             # The source animation sets the length and the frames; the key times are stretched onto it.
@@ -418,6 +436,10 @@ class Rig:
         if "hands" in out:
             out["hands"] = at(leads.get("hands", 0.0))["hands"]
         out["elbows"] = at(leads.get("elbows", 0.0))["elbows"]
+        if "feet" in out:
+            out["feet"] = at(leads.get("feet", 0.0))["feet"]
+        if "foot_rot" in out:
+            out["foot_rot"] = at(leads.get("feet", 0.0))["foot_rot"]
         return out
 
     def _sample_keys(self, t):
@@ -442,7 +464,14 @@ class Rig:
             out["dir"] = slerp_dir(tool_a["dir"], tool_b["dir"], s)
             spacing = (tool_a.get("spacing", self.hand_spacing), tool_b.get("spacing", self.hand_spacing))
             out["spacing"] = spacing[0] + (spacing[1] - spacing[0]) * s
+            if "fingers" in tool_a and "fingers" in tool_b:
+                out["tool_fingers"] = slerp_dir(tool_a["fingers"], tool_b["fingers"], s)
+            if "roll" in tool_a or "roll" in tool_b:
+                out["tool_roll"] = tool_a.get("roll", 0.0) + (tool_b.get("roll", 0.0) - tool_a.get("roll", 0.0)) * s
         free = ("l", "r") if tool_a is None else tuple(side for side in ("l", "r") if side not in self.tool_hands)
+        if self.release is not None:
+            free = ("l", "r")
+            out["released"] = t >= self.release - 1e-6
         if free:
             out["hands"] = {}
             for side in free:
@@ -452,6 +481,12 @@ class Rig:
                 if "fingers" in ha and "fingers" in hb:
                     hand["fingers"] = slerp_dir(ha["fingers"], hb["fingers"], s)
                 out["hands"][side] = hand
+        if "feet" in a or "feet" in b:
+            out["feet"] = {side: lerp(a.get("feet", {}).get(side, zero), b.get("feet", {}).get(side, zero), s)
+                           for side in ("l", "r")}
+        if any("foot_rot" in k for k in keys):
+            out["foot_rot"] = {side: lerp(a.get("foot_rot", {}).get(side, zero), b.get("foot_rot", {}).get(side, zero),
+                                          s) for side in ("l", "r")}
         default_elbows = self.g.get("elbows", {"l": (-0.5, -0.2, -1.0), "r": (0.5, -0.2, -1.0)})
         out["elbows"] = {}
         for side in ("l", "r"):
@@ -531,7 +566,14 @@ class Rig:
             out["grip"] = curve(lambda k: tool(k)["grip"])
             out["dir"] = turn(lambda k: tool(k)["dir"])
             out["spacing"] = curve(lambda k: (tool(k).get("spacing", self.hand_spacing),))[0]
+            if all("fingers" in tool(k) for k in self.g["keys"]):
+                out["tool_fingers"] = turn(lambda k: tool(k)["fingers"])
+            if any("roll" in tool(k) for k in self.g["keys"]):
+                out["tool_roll"] = curve(lambda k: (tool(k).get("roll", 0.0),))[0]
         free = ("l", "r") if tool(a) is None else tuple(side for side in ("l", "r") if side not in self.tool_hands)
+        if self.release is not None:
+            free = ("l", "r")
+            out["released"] = t >= self.release - 1e-6
         if free:
             out["hands"] = {}
             for side in free:
@@ -542,6 +584,11 @@ class Rig:
                 if "fingers" in hand(a) and "fingers" in hand(b):
                     place["fingers"] = turn(lambda k: hand(k)["fingers"])
                 out["hands"][side] = place
+        if any("feet" in k for k in self.g["keys"]):
+            out["feet"] = {side: curve(lambda k, side=side: k.get("feet", {}).get(side, zero)) for side in ("l", "r")}
+        if any("foot_rot" in k for k in self.g["keys"]):
+            out["foot_rot"] = {side: curve(lambda k, side=side: k.get("foot_rot", {}).get(side, zero))
+                               for side in ("l", "r")}
         default_elbows = self.g.get("elbows", {"l": (-0.5, -0.2, -1.0), "r": (0.5, -0.2, -1.0)})
         out["elbows"] = {}
         for side in ("l", "r"):
@@ -610,12 +657,12 @@ class Rig:
         """Bend direction used when a reference limb is straight: knees forward, elbows backward."""
         return self.sk.forward if chain[0].startswith("thigh") else scale(self.sk.forward, -1.0)
 
-    def _hand_rotation(self, side, shoulder, grip, handle):
+    def _hand_rotation(self, side, shoulder, grip, handle, fingers_hint=None):
         """Hand gripping the handle: across-the-palm axis along the handle (index side toward the head), fingers
         pointing away from the shoulder, square to the handle (a relaxed wrist; known before solving the arm)."""
         sk = self.sk
         fingers0, across0 = self.hand_axes[side]
-        reach = sub(grip, shoulder)
+        reach = sub(grip, shoulder) if fingers_hint is None else normalize(self.sk.body(fingers_hint))
         fingers = sub(reach, scale(handle, dot(reach, handle)))
         # The reference frame is built across-first so the handle direction is matched exactly.
         r = qframes(across0, fingers0, handle, fingers)
@@ -682,7 +729,8 @@ class Rig:
         """Component-space tool frame (knob, rotation): X along the handle, Y the striking edge, fixed in the right
         hand and square to the handle."""
         world = self.sk.fk(local)
-        edge = qrot(world[self.sk.index["hand_r"]][1], self.strike()[1])
+        hand_r = axe["tool_hand_r"] if "tool_hand_r" in axe else world[self.sk.index["hand_r"]][1]
+        edge = qrot(hand_r, self.strike()[1])
         d = axe["dir"]
         edge = normalize(sub(edge, scale(d, dot(edge, d))))
         return axe["knob"], qfrom_matrix((d, edge, cross(d, edge)))
@@ -719,6 +767,10 @@ class Rig:
         if self.base is None:
             for side, chain in LEG_CHAINS.items():
                 target, foot_rot = self.feet[side]
+                if "feet" in values:
+                    target = add(target, sk.body(values["feet"][side]))
+                if "foot_rot" in values:
+                    foot_rot = qnormalize(qmul(sk.body_rotation(*values["foot_rot"][side]), foot_rot))
                 pole = qrot(pelvis_motion, add(sk.forward, scale(sk.right, 0.25 if side == "r" else -0.25)))
                 self._two_bone(local, chain, target, pole, foot_rot)
         # Steady chest: takes back part of the pelvis' own swing (a carrier keeps his load still).
@@ -755,9 +807,20 @@ class Rig:
             for k in ("grip_l", "grip_r", "knob", "head", "trace"):
                 if k in axe:
                     axe[k] = add(axe[k], moved)
+        released = values.get("released", False)
+        if released:
+            # The tool on its own path: its edge where the right hand would hold it there (continuous at the release).
+            shoulder = world[sk.index[ARM_CHAINS["r"][0]]][0]
+            rotation = self._hand_rotation("r", shoulder, axe["grip_r"], axe["dir"], values.get("tool_fingers"))
+            if values.get("tool_roll"):
+                rotation = qmul(qaxis(axe["dir"], values["tool_roll"]), rotation)
+            axe["tool_hand_r"] = rotation
+            axe["released"] = True
         if "hands" in values:
             # Free hands, in body terms; "hands_frame": "chest" makes them follow the chest (bob, sway).
             for side in values["hands"]:
+                if self.release is not None and not released and side in self.tool_hands:
+                    continue  # still on the tool
                 hand = values["hands"][side]
                 at, palm = sk.body(hand["at"]), sk.body(hand["palm"])
                 if hand["swing"] and self.base is not None:
@@ -779,8 +842,10 @@ class Rig:
             grip = axe["grip_" + side]
             pole = qrot(chest_motion, sk.body(values["elbows"][side]))
             shoulder = world[sk.index[chain[0]]][0]
-            if "dir" in axe and side in self.tool_hands:
-                rotation = self._hand_rotation(side, shoulder, grip, axe["dir"])
+            if "dir" in axe and side in self.tool_hands and not released:
+                rotation = self._hand_rotation(side, shoulder, grip, axe["dir"], values.get("tool_fingers"))
+                if values.get("tool_roll"):
+                    rotation = qmul(qaxis(axe["dir"], values["tool_roll"]), rotation)
             else:
                 rotation = self._free_hand_rotation(side, shoulder, grip, axe["palm_" + side], axe["fingers_" + side])
             wrist = sub(grip, qrot(rotation, self.grip_local[side]))

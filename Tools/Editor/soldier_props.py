@@ -10,6 +10,14 @@ ALWAYS shown (no per-instance choice), so their ids only name them (SOLDIER_MESH
   - sword (id 2): in the right hand, same tool frame (origin at the pommel, X along the blade, Y an edge).
   - shield (id 3): heater shield on the left forearm, skinned to hand_l ("bone" frame of peasant_props): its frame
     follows the left hand, which the gestures place with its palm and fingers (free hand).
+PROPOSED (J7c, previews only, nothing baked; SKM_Archer = mannequin + bow + quiver + arrow):
+  - bow (id 4): 160 cm longbow in the LEFT fist, skinned to hand_l like the shield; frame: origin at the grip, X up
+    the bow (the hand's pinky-to-index axis: the upper limb), Y toward the string (the archer's side), Z = X x Y.
+    The string is straight (braced): one rigid bone cannot bend it to the drawing hand.
+  - arrow (id 5): 78 cm, the right hand's tool on ik_hand_gun (origin at the nock, X toward the point); the attack
+    keys point it at the bow's grip. Shown only from the nock to the release (see soldier_poses ARCHER_ATTACK
+    "hidden"): the visible arrow is the client's projectile after that.
+  - quiver (id 6): on the back (spine_03, "body" frame), opening above the right shoulder, five fletchings out.
 
 PLAYER COLOUR: primitives with "player": True are drawn in PLAYER_PREVIEW here; the mesh builder must write them like
 the body (vertex alpha 0: the material then shows the player's colour) - the shield's face, the spear's pennant.
@@ -153,13 +161,100 @@ def make_shield(sk, light=False):
             "local": shield_local(sk), "prims": prims}
 
 
+# Archer (J7c, PROPOSED): longbow, arrow, quiver.
+BOW_LENGTH = 160.0         # tip to tip along the bow
+BOW_BRACE = 15.0           # grip to the string (brace height), toward the archer
+ARROW_LENGTH = 78.0        # nock to the point
+ARROW_GRIP = 2.0           # nock to the right hand's grip point (the gestures' "knob_offset")
+QUIVER_ANCHOR = (-11.0, -28.0, 104.0)   # bottom of the quiver, body terms (reference pose), behind his left hip
+QUIVER_TOP = (25.0, 0.0, 56.0)          # its opening relative to the anchor: above and behind the right shoulder
+FEATHER = (226, 222, 210)
+
+
+def bow_local(sk):
+    """The bow's frame in hand_l's reference frame: X along the bow, up when the thumb is up (the hand's pinky-to-index
+    axis), Y toward the string (back along the forearm, toward the archer), Z = X x Y; origin at the grip point."""
+    fingers, across, palm, grip = hand_axes(sk, "l")
+    x = anim_rig.normalize(across)
+    y = anim_rig.scale(fingers, -1.0)
+    y = anim_rig.normalize(anim_rig.sub(y, anim_rig.scale(x, anim_rig.dot(y, x))))
+    z = anim_rig.cross(x, y)
+    bt, bq = sk.ref_world[sk.index["hand_l"]]
+    rotation = anim_rig.qfrom_matrix((x, y, z))
+    return (anim_rig.qrot(anim_rig.qconj(bq), anim_rig.sub(grip, bt)),
+            anim_rig.qnormalize(anim_rig.qmul(anim_rig.qconj(bq), rotation)))
+
+
+def make_bow(sk, light=False):
+    sides = 4 if light else 6
+    half = BOW_LENGTH / 2.0
+    tip_y = BOW_BRACE - 1.5
+    # The braced limbs: thickest at the grip, bending toward the string to the tips (limb points in (x, y)).
+    limb = [(0.0, 0.0, 1.9), (half * 0.45, 3.5, 1.5), (half * 0.8, 9.0, 1.1), (half, tip_y, 0.6)]
+    if light:
+        limb = [limb[0], limb[2], limb[3]]
+    prims = [pp.frustum_between((-6.0, 0.0, 0.0), (6.0, 0.0, 0.0), (2.4, 2.4), (2.4, 2.4), sides, LEATHER,
+                                x_hint=(0.0, 1.0, 0.0))]  # leather grip
+    for sign in (1.0, -1.0):
+        for (xa, ya, ra), (xb, yb, rb) in zip(limb, limb[1:]):
+            prims.append(pp.frustum_between((sign * xa, ya, 0.0), (sign * xb, yb, 0.0), (ra, ra * 1.2),
+                                            (rb, rb * 1.2), sides, pp.WOOD_DARK, x_hint=(0.0, 1.0, 0.0)))
+    # The string, straight between the tips.
+    prims.append(pp.frustum_between((half, tip_y + 0.4, 0.0), (-half, tip_y + 0.4, 0.0), (0.35, 0.35), (0.35, 0.35),
+                                    3, FEATHER, caps=()))
+    return {"id": 4, "name": "bow", "label": "arc", "bone": "hand_l", "frame": "bone", "local": bow_local(sk),
+            "prims": prims}
+
+
+def fletching(x0, x1, color, radius=0.5):
+    """Three vanes around the shaft (tool frame, X along it) from x0 to x1."""
+    vanes = []
+    for k in range(3):
+        a = 2.0 * math.pi * k / 3.0
+        out = (0.0, math.cos(a), math.sin(a))
+        q = pp.rotation_xz((1.0, 0.0, 0.0), anim_rig.cross((1.0, 0.0, 0.0), out))
+        vanes.append(pp.prism([(x0, radius), (x1 - 2.0, radius + 2.2), (x1, radius)], 0.3,
+                              anim_rig.scale(anim_rig.cross((1.0, 0.0, 0.0), out), -0.15), q, color))
+    return vanes
+
+
+def make_arrow(light=False):
+    prims = [pp.frustum_between((0.0, 0.0, 0.0), (ARROW_LENGTH - 5.0, 0.0, 0.0), (0.5, 0.5), (0.5, 0.5),
+                                3 if light else 4, WOOD, x_hint=pp.FLAT),
+             pp.prism([(ARROW_LENGTH - 6.0, -1.2), (ARROW_LENGTH, 0.0), (ARROW_LENGTH - 6.0, 1.2)], 0.5,
+                      (0.0, 0.0, -0.25), pp.IDENTITY, IRON)]
+    prims += fletching(2.0, 14.0, FEATHER)[:1 if light else 3]
+    return {"id": 5, "name": "arrow", "label": "fleche", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
+
+
+def make_quiver(light=False):
+    sides = 6 if light else 8
+    b = pp.body_to_prop
+    top = b(QUIVER_TOP)
+    axis = anim_rig.normalize(top)
+    prims = [pp.frustum_between((0.0, 0.0, 0.0), top, (4.5, 5.5), (5.5, 6.5), sides, LEATHER, caps=("bottom",),
+                                x_hint=(1.0, 0.0, 0.0)),
+             player(pp.frustum_between(anim_rig.scale(top, 0.82), anim_rig.scale(top, 0.9), (5.6, 6.6), (5.7, 6.7),
+                                       sides, PLAYER_PREVIEW, caps=(), x_hint=(1.0, 0.0, 0.0)))]  # band in his colour
+    # Arrows standing out of the opening: shafts and fletchings.
+    for k, (dr, df) in enumerate(((0.0, 0.0), (2.5, 1.5), (-2.5, 1.0), (1.5, -2.0), (-1.5, -2.0))[:3 if light else 5]):
+        start = anim_rig.add(top, b((dr, df, -4.0)))
+        end = anim_rig.add(anim_rig.add(top, b((dr, df, 0.0))), anim_rig.scale(axis, 10.0 + k % 2 * 2.0))
+        prims.append(pp.box(end, (2.0, 2.0, 8.0), FEATHER, pp.rotation_z_to(axis, (1.0, 0.0, 0.0))))
+        prims.append(pp.frustum_between(start, end, (0.5, 0.5), (0.5, 0.5), 3, WOOD, caps=()))
+    return {"id": 6, "name": "quiver", "label": "carquois", "bone": "spine_03", "frame": "body",
+            "anchor": QUIVER_ANCHOR, "prims": prims}
+
+
 def build_props(sk, light=False):
-    props = [make_spear(light), make_sword(light), make_shield(sk, light)]
+    props = [make_spear(light), make_sword(light), make_shield(sk, light), make_bow(sk, light), make_arrow(light),
+             make_quiver(light)]
     return {p["name"]: p for p in props}
 
 
 # The soldiers' meshes (J7a.3) and their pieces, always shown.
 SOLDIER_MESHES = {"SKM_Spearman": ("spear",), "SKM_ManAtArms": ("sword", "shield")}
+# PROPOSED (J7c, not built): "SKM_Archer": ("bow", "arrow", "quiver"); the arrow needs hiding outside the draw.
 
 
 def main():
