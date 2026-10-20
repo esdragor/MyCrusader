@@ -72,9 +72,10 @@ bool FHOLFormationRowsTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("%d Peasants"), Case.Key), WidthsText(Widths), FString(Case.Value));
 	}
 
-	// One kind of soldier: a square.
-	for (const TPair<int32, const TCHAR*>& Case : TArray<TPair<int32, const TCHAR*>>{ { 1, TEXT("1") }, { 12, TEXT("4/4/4") },
-		{ 20, TEXT("5/5/5/5") }, { 10, TEXT("4/4/2") } })
+	// One kind of soldier (the user's rule, 2026-10-20): rows of the smallest odd width at least sqrt(N), the remainder last.
+	for (const TPair<int32, const TCHAR*>& Case : TArray<TPair<int32, const TCHAR*>>{ { 0, TEXT("") }, { 1, TEXT("1") },
+		{ 2, TEXT("2") }, { 4, TEXT("3/1") }, { 9, TEXT("3/3/3") }, { 10, TEXT("5/5") }, { 12, TEXT("5/5/2") },
+		{ 20, TEXT("5/5/5/5") }, { 30, TEXT("7/7/7/7/2") }, { 40, TEXT("7/7/7/7/7/5") }, { 50, TEXT("9/9/9/9/9/5") } })
 	{
 		HOLFormation::MakeSquareRows(Case.Key, Widths);
 		TestEqual(FString::Printf(TEXT("%d soldiers of one kind"), Case.Key), WidthsText(Widths), FString(Case.Value));
@@ -138,13 +139,13 @@ bool FHOLFormationKindsTest::RunTest(const FString& Parameters)
 		TestEqual(Name, FormationText(Widths, KindOfPlace), FString(Scenario.Expected));
 	}
 
-	// A kind with no unit is skipped; one kind fills its square.
+	// A kind with no unit is skipped; one kind fills its rows (the user's rule, 2026-10-20: 12 -> 5/5/2).
 	HOLFormation::MakeMixedRows(4, Widths);
 	HOLFormation::PlaceKinds(Widths, { 3, 0, 1 }, KindOfPlace);
 	TestEqual(TEXT("an empty kind skipped"), FormationText(Widths, KindOfPlace), FString(TEXT("3L/1A")));
 	HOLFormation::MakeSquareRows(12, Widths);
 	HOLFormation::PlaceKinds(Widths, { 12 }, KindOfPlace);
-	TestEqual(TEXT("one kind"), FormationText(Widths, KindOfPlace), FString(TEXT("4L/4L/4L")));
+	TestEqual(TEXT("one kind"), FormationText(Widths, KindOfPlace), FString(TEXT("5L/5L/2L")));
 	return true;
 }
 
@@ -224,16 +225,129 @@ bool FHOLFormationAssignTest::RunTest(const FString& Parameters)
 		{
 			continue;
 		}
+		// By depth (J7c.2): the rows filled front first by the units furthest forward (a 60 cm tie either side: 120 cm
+		// out of order at most), and no two paths of one row cross (paths of different rows may, on a sidestep).
+		TArray<int32> RowOfPlace;
+		for (int32 Row = 0; Row < Widths.Num(); ++Row)
+		{
+			for (int32 Column = 0; Column < Widths[Row]; ++Column)
+			{
+				RowOfPlace.Add(Row);
+			}
+		}
+		const FVector2D Front = Forward.GetSafeNormal();
 		int32 Crossings = 0;
+		int32 OutOfOrder = 0;
 		for (int32 First = 0; First < Count; ++First)
 		{
 			for (int32 Second = First + 1; Second < Count; ++Second)
 			{
-				Crossings += Cross(Positions[First], Places[PlaceOfUnit[First]], Positions[Second], Places[PlaceOfUnit[Second]]) ? 1 : 0;
+				const int32 RowA = RowOfPlace[PlaceOfUnit[First]];
+				const int32 RowB = RowOfPlace[PlaceOfUnit[Second]];
+				if (RowA == RowB)
+				{
+					Crossings += Cross(Positions[First], Places[PlaceOfUnit[First]], Positions[Second], Places[PlaceOfUnit[Second]]) ? 1 : 0;
+				}
+				else
+				{
+					const int32 Ahead = RowA < RowB ? First : Second;
+					const int32 Behind = RowA < RowB ? Second : First;
+					OutOfOrder += (Positions[Ahead] | Front) < (Positions[Behind] | Front) - 120.5 ? 1 : 0;
+				}
 			}
 		}
-		TestEqual(FString::Printf(TEXT("trial %d: no paths cross (%d units, %d places)"), Trial, Count, Places.Num()), Crossings, 0);
+		TestEqual(FString::Printf(TEXT("trial %d: no paths of one row cross (%d units, %d places)"), Trial, Count, Places.Num()), Crossings, 0);
+		TestEqual(FString::Printf(TEXT("trial %d: the rows filled front first"), Trial), OutOfOrder, 0);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationAssignByDepthTest, "HeroesOfLiberty.Formation.AssignByDepth", UE::HeroesOfLiberty::Tests::Formation::Flags)
+bool FHOLFormationAssignByDepthTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Formation;
+	// The user's trial (J7c.2): 50 Archers in rows 9 9 9 9 9 5 facing South, sent North on the spot: the new front row
+	// stands where the old last row stood, the new last row where the old front row stood.
+	constexpr double Spacing = 150.;
+	const TArray<int32> Widths = { 9, 9, 9, 9, 9, 5 };
+	TArray<int32> RowOfPlace;
+	for (int32 Row = 0; Row < Widths.Num(); ++Row)
+	{
+		for (int32 Column = 0; Column < Widths[Row]; ++Column)
+		{
+			RowOfPlace.Add(Row);
+		}
+	}
+	const FVector2D South(0., -1.);
+	const FVector2D North(0., 1.);
+	TArray<FVector2D> Positions;
+	HOLFormation::MakePlaces(Widths, FVector2D(1000., 2000.), South, Spacing, Spacing, Positions);
+	TArray<FVector2D> Places;
+	HOLFormation::MakePlaces(Widths, FVector2D(1000., 2000. + 5. * Spacing), North, Spacing, Spacing, Places);
+	TArray<int32> PlaceOfUnit;
+	HOLFormation::AssignPlaces(Positions, Places, North, PlaceOfUnit);
+	TSet<int32> Given(PlaceOfUnit);
+	TestEqual(TEXT("half turn: a place of its own for each of 50"), Given.Num(), 50);
+	double LongestStep = 0.;
+	bool bLastRowTurnsOnly = true;
+	bool bFrontRowEndsLast = true;
+	int32 Crossings = 0;
+	for (int32 Unit = 0; Unit < Positions.Num(); ++Unit)
+	{
+		const double Step = FVector2D::Distance(Positions[Unit], Places[PlaceOfUnit[Unit]]);
+		LongestStep = FMath::Max(LongestStep, FMath::Abs((Places[PlaceOfUnit[Unit]] - Positions[Unit]).Y));
+		// The old last row (5) turns on the spot in the middle of the new front row.
+		if (RowOfPlace[Unit] == 5)
+		{
+			bLastRowTurnsOnly &= RowOfPlace[PlaceOfUnit[Unit]] == 0 && Step < 1.;
+		}
+		// The new last row (5) is the middle of the old front row, turned on the spot.
+		if (RowOfPlace[PlaceOfUnit[Unit]] == 5)
+		{
+			bFrontRowEndsLast &= RowOfPlace[Unit] == 0 && Step < 1.;
+		}
+		for (int32 Other = Unit + 1; Other < Positions.Num(); ++Other)
+		{
+			if (RowOfPlace[PlaceOfUnit[Unit]] == RowOfPlace[PlaceOfUnit[Other]])
+			{
+				Crossings += Cross(Positions[Unit], Places[PlaceOfUnit[Unit]], Positions[Other], Places[PlaceOfUnit[Other]]) ? 1 : 0;
+			}
+		}
+	}
+	TestTrue(FString::Printf(TEXT("half turn: no unit moves more than one row deep (%.0f cm at most)"), LongestStep), LongestStep <= Spacing + 0.5);
+	TestTrue(TEXT("half turn: the old last row turns on the spot in the new front row"), bLastRowTurnsOnly);
+	TestTrue(TEXT("half turn: the new last row is the old front row's middle, on the spot"), bFrontRowEndsLast);
+	TestEqual(TEXT("half turn: no paths of one row cross"), Crossings, 0);
+
+	// A march straight ahead (same facing): each unit keeps its row and its column.
+	TArray<FVector2D> Ahead;
+	HOLFormation::MakePlaces(Widths, FVector2D(1000., -3000.), South, Spacing, Spacing, Ahead);
+	HOLFormation::AssignPlaces(Positions, Ahead, South, PlaceOfUnit);
+	bool bKept = PlaceOfUnit.Num() == Positions.Num();
+	for (int32 Unit = 0; bKept && Unit < PlaceOfUnit.Num(); ++Unit)
+	{
+		bKept = PlaceOfUnit[Unit] == Unit;
+	}
+	TestTrue(TEXT("straight ahead: each unit keeps its row and column"), bKept);
+
+	// A row with a hole (a place of the last row held back for a straggler): 49 units on 49 places, the last row's
+	// third place missing; the old last row's 5th unit is the one left behind. The four rows of 9 keep their places;
+	// the last row's 4 units fill its 4 places, in their order.
+	TArray<FVector2D> Holed = Ahead;
+	Holed.RemoveAt(45 + 2);
+	TArray<FVector2D> Four = Positions;
+	Four.RemoveAt(45 + 4);
+	HOLFormation::AssignPlaces(Four, Holed, South, PlaceOfUnit);
+	TSet<int32> HoledGiven(PlaceOfUnit);
+	TestEqual(TEXT("holed row: a place of its own for each of 49"), HoledGiven.Num(), 49);
+	bool bFrontKept = true;
+	for (int32 Unit = 0; Unit < 45; ++Unit)
+	{
+		bFrontKept &= PlaceOfUnit[Unit] == Unit;
+	}
+	TestTrue(TEXT("holed row: the rows of 9 keep their places"), bFrontKept);
+	TestEqual(TEXT("holed row: the last row's units fill its places in order"),
+		TArray<int32>{ PlaceOfUnit[45], PlaceOfUnit[46], PlaceOfUnit[47], PlaceOfUnit[48] }, TArray<int32>{ 45, 46, 47, 48 });
 	return true;
 }
 
@@ -246,7 +360,8 @@ bool FHOLFormationGroupTest::RunTest(const FString& Parameters)
 	HOLFormation::MakeGroupRows({ 15 }, true, Widths);
 	TestEqual(TEXT("15 Peasants: 6/6/3"), WidthsText(Widths), FString(TEXT("6/6/3")));
 	HOLFormation::MakeGroupRows({ 0, 12, 0 }, false, Widths);
-	TestEqual(TEXT("12 Men-at-arms alone: a square 4/4/4"), WidthsText(Widths), FString(TEXT("4/4/4")));
+	// The user's rule, 2026-10-20: odd rows, the remainder last.
+	TestEqual(TEXT("12 Men-at-arms alone: 5/5/2"), WidthsText(Widths), FString(TEXT("5/5/2")));
 	HOLFormation::MakeGroupRows({ 12, 12 }, false, Widths);
 	TestEqual(TEXT("12 Spearmen and 12 Men-at-arms: 7/7/5/5"), WidthsText(Widths), FString(TEXT("7/7/5/5")));
 

@@ -48,7 +48,9 @@ namespace HOLFormation
 
 	void MakeSquareRows(const int32 Count, TArray<int32>& OutWidths)
 	{
-		MakeRowsOfWidth(Count, CeilSqrt(Count), OutWidths);
+		// The smallest odd width at least sqrt(N): a unit in the middle, on the march's axis (the user's rule, 2026-10-20).
+		const int32 Root = CeilSqrt(Count);
+		MakeRowsOfWidth(Count, Root + ((Root & 1) ? 0 : 1), OutWidths);
 	}
 
 	void MakeMixedRows(const int32 Count, TArray<int32>& OutWidths)
@@ -194,93 +196,237 @@ namespace HOLFormation
 			return;
 		}
 
-		// A first guess: units and places in their order from left to right (the front one first on a tie).
 		FVector2D Front;
 		FVector2D Right;
 		GetFrame(Forward, Front, Right);
-		auto SortAcross = [&Front, &Right](TConstArrayView<FVector2D> Points, TArray<int32>& OutOrder)
+		auto Depth = [&Front](const FVector2D& Point) { return Point | Front; };
+		auto Across = [&Right](const FVector2D& Point) { return Point | Right; };
+		// The front one first, then from left to right.
+		auto SortByDepth = [&Depth, &Across](TConstArrayView<FVector2D> Points, TArray<int32>& OutOrder)
 		{
 			OutOrder.SetNumUninitialized(Points.Num());
 			for (int32 Index = 0; Index < Points.Num(); ++Index)
 			{
 				OutOrder[Index] = Index;
 			}
-			OutOrder.Sort([&Points, &Front, &Right](const int32 A, const int32 B)
+			OutOrder.Sort([&Points, &Depth, &Across](const int32 A, const int32 B)
 			{
-				const double AcrossA = Points[A] | Right;
-				const double AcrossB = Points[B] | Right;
+				const double DepthA = Depth(Points[A]);
+				const double DepthB = Depth(Points[B]);
+				if (!FMath::IsNearlyEqual(DepthA, DepthB, 0.1))
+				{
+					return DepthA > DepthB;
+				}
+				const double AcrossA = Across(Points[A]);
+				const double AcrossB = Across(Points[B]);
 				if (!FMath::IsNearlyEqual(AcrossA, AcrossB, 0.1))
 				{
 					return AcrossA < AcrossB;
 				}
-				const double AlongA = Points[A] | Front;
-				const double AlongB = Points[B] | Front;
-				if (!FMath::IsNearlyEqual(AlongA, AlongB, 0.1))
-				{
-					return AlongA > AlongB;
-				}
 				return A < B;
 			});
 		};
-		TArray<int32> UnitOrder;
-		TArray<int32> PlaceOrder;
-		SortAcross(Positions, UnitOrder);
-		SortAcross(Places, PlaceOrder);
-		TBitArray<> PlaceTaken(false, NumPlaces);
-		for (int32 Rank = 0; Rank < FMath::Min(NumUnits, NumPlaces); ++Rank)
+		auto SortAcross = [&Across](TConstArrayView<FVector2D> Points, TArray<int32>& InOutIndices)
 		{
-			OutPlaceOfUnit[UnitOrder[Rank]] = PlaceOrder[Rank];
-			PlaceTaken[PlaceOrder[Rank]] = true;
-		}
-
-		// Then shorter in total, swap by swap (and unit by unit towards a free place nearer): when no swap helps, no two
-		// paths cross, since two crossing paths are always longer than the same units swapped (triangle inequality).
-		// Two long paths almost in line may cross for a gain below the tolerance: those swap too. Each change shortens
-		// the total, so this ends; the cap only guards against rounding.
-		constexpr double Tolerance = 0.01;
-		constexpr int32 MaxPasses = 200;
+			InOutIndices.Sort([&Points, &Across](const int32 A, const int32 B)
+			{
+				const double AcrossA = Across(Points[A]);
+				const double AcrossB = Across(Points[B]);
+				return FMath::IsNearlyEqual(AcrossA, AcrossB, 0.1) ? A < B : AcrossA < AcrossB;
+			});
+		};
 		auto Length = [&Positions, &Places](const int32 Unit, const int32 Place)
 		{
 			return FVector2D::Distance(Positions[Unit], Places[Place]);
 		};
-		bool bChanged = true;
-		for (int32 Pass = 0; bChanged && Pass < MaxPasses; ++Pass)
+
+		// The places' rows, whatever they hold (rows cut short or with holes): a new row starts when a place lies more than
+		// PlaceRowTolerance behind the one before it, front first; each row from left to right.
+		constexpr double PlaceRowTolerance = 10.;
+		TArray<int32> PlaceOrder;
+		SortByDepth(Places, PlaceOrder);
+		TArray<TArray<int32>> Rows;
+		double LastDepth = 0.;
+		for (const int32 Place : PlaceOrder)
 		{
-			bChanged = false;
-			for (int32 First = 0; First < NumUnits; ++First)
+			const double PlaceDepth = Depth(Places[Place]);
+			if (Rows.IsEmpty() || LastDepth - PlaceDepth > PlaceRowTolerance)
 			{
-				if (OutPlaceOfUnit[First] == INDEX_NONE)
+				Rows.AddDefaulted();
+			}
+			Rows.Last().Add(Place);
+			LastDepth = PlaceDepth;
+		}
+		for (TArray<int32>& Row : Rows)
+		{
+			SortAcross(Places, Row);
+		}
+
+		// The rows filled front first by the units furthest forward (the user's rule: on a half turn, the last row turns
+		// on the spot, the one before it fills the new front row, and so on). Units within UnitTieTolerance of the last
+		// one a row takes are a tie: the row takes those nearest across to its places that the surer units leave free.
+		constexpr double UnitTieTolerance = 60.;
+		TArray<int32> UnitOrder;
+		SortByDepth(Positions, UnitOrder);
+		TBitArray<> UnitTaken(false, NumUnits);
+		TArray<int32> Remaining;
+		TArray<int32> Chosen;
+		TArray<int32> Candidates;
+		TArray<double> GapOfUnit;
+		GapOfUnit.Init(0., NumUnits);
+		for (const TArray<int32>& Row : Rows)
+		{
+			Remaining.Reset();
+			for (const int32 Unit : UnitOrder)
+			{
+				if (!UnitTaken[Unit])
+				{
+					Remaining.Add(Unit);
+				}
+			}
+			if (Remaining.IsEmpty())
+			{
+				break;
+			}
+			const int32 NumSlots = Row.Num();
+			const int32 Take = FMath::Min(NumSlots, Remaining.Num());
+			const double BoundaryDepth = Depth(Positions[Remaining[Take - 1]]);
+			Chosen.Reset();
+			Candidates.Reset();
+			for (const int32 Unit : Remaining)
+			{
+				const double UnitDepth = Depth(Positions[Unit]);
+				if (UnitDepth > BoundaryDepth + UnitTieTolerance)
+				{
+					Chosen.Add(Unit);
+				}
+				else if (UnitDepth >= BoundaryDepth - UnitTieTolerance)
+				{
+					Candidates.Add(Unit);
+				}
+			}
+			const int32 Needed = Take - Chosen.Num();
+			if (Candidates.Num() > Needed)
+			{
+				// The places the sure units take (each, from left to right, the free one nearest across); the candidates
+				// nearest across to a place left over come first, then the one further forward.
+				TBitArray<> Claimed(false, NumSlots);
+				SortAcross(Positions, Chosen);
+				for (const int32 Unit : Chosen)
+				{
+					int32 Best = INDEX_NONE;
+					for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+					{
+						if (!Claimed[Slot] && (Best == INDEX_NONE
+							|| FMath::Abs(Across(Places[Row[Slot]]) - Across(Positions[Unit])) < FMath::Abs(Across(Places[Row[Best]]) - Across(Positions[Unit]))))
+						{
+							Best = Slot;
+						}
+					}
+					Claimed[Best] = true;
+				}
+				for (const int32 Unit : Candidates)
+				{
+					double Nearest = TNumericLimits<double>::Max();
+					for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+					{
+						if (!Claimed[Slot])
+						{
+							Nearest = FMath::Min(Nearest, FMath::Abs(Across(Places[Row[Slot]]) - Across(Positions[Unit])));
+						}
+					}
+					GapOfUnit[Unit] = Nearest;
+				}
+				Candidates.Sort([&GapOfUnit, &Positions, &Depth](const int32 A, const int32 B)
+				{
+					if (!FMath::IsNearlyEqual(GapOfUnit[A], GapOfUnit[B], 0.1))
+					{
+						return GapOfUnit[A] < GapOfUnit[B];
+					}
+					const double DepthA = Depth(Positions[A]);
+					const double DepthB = Depth(Positions[B]);
+					return FMath::IsNearlyEqual(DepthA, DepthB, 0.1) ? A < B : DepthA > DepthB;
+				});
+			}
+			for (int32 Pick = 0; Pick < Needed; ++Pick)
+			{
+				Chosen.Add(Candidates[Pick]);
+			}
+			for (const int32 Unit : Chosen)
+			{
+				UnitTaken[Unit] = true;
+			}
+
+			// In the row, units and places paired in their order from left to right; a row with more places than units
+			// leaves free the ones that make the paths shortest in total (keeping that order).
+			SortAcross(Positions, Chosen);
+			const int32 NumChosen = Chosen.Num();
+			TArray<double> Cost;
+			Cost.Init(TNumericLimits<double>::Max(), (NumChosen + 1) * (NumSlots + 1));
+			auto At = [NumSlots](const int32 I, const int32 J) { return I * (NumSlots + 1) + J; };
+			for (int32 J = 0; J <= NumSlots; ++J)
+			{
+				Cost[At(0, J)] = 0.;
+			}
+			for (int32 I = 1; I <= NumChosen; ++I)
+			{
+				for (int32 J = I; J <= NumSlots; ++J)
+				{
+					const double Skip = J > I ? Cost[At(I, J - 1)] : TNumericLimits<double>::Max();
+					const double Pair = Cost[At(I - 1, J - 1)] + Length(Chosen[I - 1], Row[J - 1]);
+					Cost[At(I, J)] = FMath::Min(Skip, Pair);
+				}
+			}
+			TBitArray<> SlotTaken(false, NumSlots);
+			for (int32 I = NumChosen, J = NumSlots; I > 0; --J)
+			{
+				if (J > I && Cost[At(I, J)] == Cost[At(I, J - 1)])
 				{
 					continue;
 				}
-				for (int32 Second = First + 1; Second < NumUnits; ++Second)
+				OutPlaceOfUnit[Chosen[I - 1]] = Row[J - 1];
+				SlotTaken[J - 1] = true;
+				--I;
+			}
+
+			// Then, within the row only, shorter in total swap by swap (and unit by unit towards a free place of the row
+			// nearer): when no swap helps, no two paths of the row cross (two crossing paths are always longer than the
+			// same units swapped). Each change shortens the total, so this ends; the cap only guards against rounding.
+			constexpr double Tolerance = 0.01;
+			constexpr int32 MaxPasses = 200;
+			bool bChanged = true;
+			for (int32 Pass = 0; bChanged && Pass < MaxPasses; ++Pass)
+			{
+				bChanged = false;
+				for (int32 First = 0; First < NumChosen; ++First)
 				{
-					const int32 FirstPlace = OutPlaceOfUnit[First];
-					const int32 SecondPlace = OutPlaceOfUnit[Second];
-					if (SecondPlace == INDEX_NONE)
+					for (int32 Second = First + 1; Second < NumChosen; ++Second)
 					{
-						continue;
-					}
-					if (Length(First, SecondPlace) + Length(Second, FirstPlace) < Length(First, FirstPlace) + Length(Second, SecondPlace) - Tolerance
-						|| Cross(Positions[First], Places[FirstPlace], Positions[Second], Places[SecondPlace]))
-					{
-						Swap(OutPlaceOfUnit[First], OutPlaceOfUnit[Second]);
-						bChanged = true;
+						const int32 UnitA = Chosen[First];
+						const int32 UnitB = Chosen[Second];
+						const int32 PlaceA = OutPlaceOfUnit[UnitA];
+						const int32 PlaceB = OutPlaceOfUnit[UnitB];
+						if (Length(UnitA, PlaceB) + Length(UnitB, PlaceA) < Length(UnitA, PlaceA) + Length(UnitB, PlaceB) - Tolerance
+							|| Cross(Positions[UnitA], Places[PlaceA], Positions[UnitB], Places[PlaceB]))
+						{
+							Swap(OutPlaceOfUnit[UnitA], OutPlaceOfUnit[UnitB]);
+							bChanged = true;
+						}
 					}
 				}
-			}
-			if (NumPlaces > NumUnits)
-			{
-				for (int32 Unit = 0; Unit < NumUnits; ++Unit)
+				if (NumSlots > NumChosen)
 				{
-					for (int32 Place = 0; Place < NumPlaces; ++Place)
+					for (const int32 Unit : Chosen)
 					{
-						if (!PlaceTaken[Place] && Length(Unit, Place) < Length(Unit, OutPlaceOfUnit[Unit]) - Tolerance)
+						for (int32 Slot = 0; Slot < NumSlots; ++Slot)
 						{
-							PlaceTaken[OutPlaceOfUnit[Unit]] = false;
-							PlaceTaken[Place] = true;
-							OutPlaceOfUnit[Unit] = Place;
-							bChanged = true;
+							if (!SlotTaken[Slot] && Length(Unit, Row[Slot]) < Length(Unit, OutPlaceOfUnit[Unit]) - Tolerance)
+							{
+								SlotTaken[Row.IndexOfByKey(OutPlaceOfUnit[Unit])] = false;
+								SlotTaken[Slot] = true;
+								OutPlaceOfUnit[Unit] = Row[Slot];
+								bChanged = true;
+							}
 						}
 					}
 				}

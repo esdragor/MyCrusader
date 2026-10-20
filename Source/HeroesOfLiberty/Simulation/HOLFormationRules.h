@@ -21,7 +21,10 @@ namespace HOLFormation
 	 */
 	HEROESOFLIBERTY_API void MakePeasantRows(int32 Count, TArray<int32>& OutWidths);
 
-	/** Rows of a single kind of soldier: a square of ceil(sqrt(N)), the last row shorter (12 -> 4, 4, 4; 20 -> 5 x 4). */
+	/**
+	 * Rows of a single kind of soldier (the user's rule, 2026-10-20): W the smallest odd number at least sqrt(N), full rows
+	 * of W from the front, the remainder in a shorter last row (12 -> 5, 5, 2; 20 -> 5 x 4; 50 -> 9 x 5, 5; 2 -> 2).
+	 */
 	HEROESOFLIBERTY_API void MakeSquareRows(int32 Count, TArray<int32>& OutWidths);
 
 	/**
@@ -54,11 +57,17 @@ namespace HOLFormation
 		double ColumnSpacing, double RowSpacing, TArray<FVector2D>& OutPlaces);
 
 	/**
-	 * Gives the units of one kind the places of that kind so that no two straight paths cross (D230: two units whose
-	 * paths cross go through each other): units and places paired by their order across the march (and along it on a
-	 * tie), then any two units whose swap makes the paths shorter in total swap, until none does; two crossing paths
-	 * always get shorter once swapped, so none is left. Positions and Places are world points (as many places as units,
-	 * or more: the extra ones stay free). OutPlaceOfUnit[i] is the index in Places given to unit i.
+	 * Gives the units of one kind the places of that kind by depth (the user's rule, J7c.2: on a half turn the last row
+	 * turns on the spot, the one before it fills the new front row, and so on). The places are grouped in rows by their
+	 * depth along Forward (10 cm apart at most in a row; rows cut short or with holes are fine); the rows are filled front
+	 * first by the units furthest forward along Forward. Units within 60 cm of the depth of the last one a row takes are
+	 * a tie: the row takes those nearest across to its places the surer units leave free (each surer unit, from left to
+	 * right, takes the free place nearest across), then the one further forward. In a row, units and places are paired
+	 * by their order from left to right (a row with more places than units leaves free those making the paths shortest),
+	 * then two units of the row swap while that makes their paths shorter in total, so no two paths of a row cross
+	 * (D230: two units whose paths cross go through each other); paths of different rows may cross on a sidestep.
+	 * Positions and Places are world points (as many places as units, or more: the extra ones stay free, at the back).
+	 * OutPlaceOfUnit[i] is the index in Places given to unit i.
 	 */
 	HEROESOFLIBERTY_API void AssignPlaces(TConstArrayView<FVector2D> Positions, TConstArrayView<FVector2D> Places, const FVector2D& Forward,
 		TArray<int32>& OutPlaceOfUnit);
@@ -212,7 +221,7 @@ namespace HOLFormation
 	/**
 	 * The units' final places at a block's arrival: PlaceOfUnit[i] is the place unit i holds (one each), KindOfUnit[i] its
 	 * kind; the places of each kind are given again to its units by AssignPlaces from where they stand (Positions,
-	 * Forward the final facing), so no two straight ways of one kind cross. OutPlaceOfUnit[i] is an index into Places.
+	 * Forward the final facing): by depth, so no two straight ways of one kind and one row cross. OutPlaceOfUnit[i] is an index into Places.
 	 */
 	HEROESOFLIBERTY_API void AssignPlacesByKind(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit,
 		TConstArrayView<FVector2D> Places, const FVector2D& Forward, TArray<int32>& OutPlaceOfUnit);
