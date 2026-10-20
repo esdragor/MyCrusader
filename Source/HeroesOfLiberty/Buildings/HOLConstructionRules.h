@@ -133,6 +133,31 @@ namespace HOLConstruction
 	 */
 	HEROESOFLIBERTY_API EHOLPlacementRefusal CheckPlacement(const FHOLPlacementQuery& Query);
 
+	// A free spot beside the obstacle under the cursor (the user's trial of J7b, feedback 3).
+
+	/** The box Box grown outward to the grid lines of tiles of side Grid (a footprint already on them stays as it is). */
+	HEROESOFLIBERTY_API FBox2D SnapOutward(const FBox2D& Box, double Grid);
+
+	/**
+	 * The obstacle a refused footprint is moved away from (the user's trial of J7b, feedback 3): among the buildings and
+	 * sources Query.Footprint overlaps, the one containing Aim (the cursor's ground point), else the nearest to it, as a
+	 * box snapped outward to the grid (SnapOutward: a source's disc becomes its bounding box grown to the grid lines). False
+	 * when the footprint overlaps none of them.
+	 */
+	HEROESOFLIBERTY_API bool FindObstacle(const FHOLPlacementQuery& Query, const FVector2D& Aim, double Grid, FBox2D& OutObstacle);
+
+	/**
+	 * The first footprint of Query.Footprint's size that may go beside Obstacle (the user's trial of J7b, feedback 3): on the
+	 * grid of tiles of side Grid, not overlapping the obstacle's box, in rings around it, ring k leaving a gap of k tiles
+	 * between them (the larger of the gaps along X and along Y), from ring 0 (touching) to MaxRings; all of a ring before
+	 * the next (around first, then farther), within a ring the one whose middle is nearest Aim first (the first enumerated,
+	 * X then Y, of two as near). Each one is checked as CheckPlacement does, against the buildings and sources of Query
+	 * near the search area only (a map has many trees), then by IsOnNavMesh (the caller's probes, only for those that pass
+	 * the rest). False if none is free within MaxRings (Grid <= 0: none is looked for).
+	 */
+	HEROESOFLIBERTY_API bool FindFreeFootprint(const FHOLPlacementQuery& Query, const FBox2D& Obstacle, const FVector2D& Aim, double Grid, int32 MaxRings,
+		TFunctionRef<bool(const FBox2D&)> IsOnNavMesh, FBox2D& OutFootprint, int32* OutRing = nullptr);
+
 	/** Takes Cost from Stock if it covers all of it; otherwise leaves Stock unchanged (D311: never reserve more than owned). */
 	HEROESOFLIBERTY_API bool TryPay(FHOLResources& Stock, const FHOLResources& Cost);
 

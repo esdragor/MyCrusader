@@ -2854,19 +2854,41 @@ void AHOLPlayerController::UpdatePlacementGhost()
 		return;
 	}
 	// Checked again every frame: the stock, the buildings and the sources change under a ghost that stays still.
-	const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
+	FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
 	FString Reason;
-	const bool bValid = CheckPlacementHere(PlacementType, Footprint, Reason, &GhostFeedback);
-	const bool bChanged = !bGhostShown || bValid != bGhostValid || Reason != GhostReason || !(Footprint.Min == GhostFootprint.Min);
+	bool bValid = CheckPlacementHere(PlacementType, Footprint, Reason, &GhostFeedback);
+	// On a building or a source, the ghost goes to the nearest free spot beside it, up to 4 tiles away (the user's trial
+	// of J7b, feedback 3): a click places it there (the server checks it again). Without the resources, or refused for
+	// another reason (out of the map, an enemy centre, the navmesh), it stays red under the cursor.
+	FString Moved;
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!bValid && HOLPlayerState && GhostFeedback.Kind == EHOLCommandFeedback::PlacementRefused
+		&& (GhostFeedback.Refusal == EHOLPlacementRefusal::Building || GhostFeedback.Refusal == EHOLPlacementRefusal::Source)
+		&& HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), Type->Cost).IsNone())
+	{
+		FBox2D Free;
+		int32 Ring = 0;
+		EHOLPlacementRefusal Obstacle = EHOLPlacementRefusal::None;
+		if (UHOLConstructionSubsystem::FindFreeFootprint(*GetWorld(), Footprint, FVector2D(Ground), HOLPlayerState->GetPlayerIndex(), Free, Ring, Obstacle))
+		{
+			Footprint = Free;
+			bValid = true;
+			Reason.Reset();
+			GhostFeedback = FHOLCommandFeedback();
+			Moved = FString::Printf(TEXT(", moved beside the %s (ring %d)"), Obstacle == EHOLPlacementRefusal::Source ? TEXT("source") : TEXT("building"), Ring);
+		}
+	}
+	const bool bChanged = !bGhostShown || bValid != bGhostValid || Reason != GhostReason || Moved != GhostMoved || !(Footprint.Min == GhostFootprint.Min);
 	bGhostShown = true;
 	bGhostValid = bValid;
 	GhostReason = Reason;
+	GhostMoved = Moved;
 	GhostFootprint = Footprint;
 	GhostGroundZ = Ground.Z;
 	if (bChanged)
 	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Placement ghost: %s at (%.0f, %.0f) %s"), *PlacementType.ToString(), Footprint.GetCenter().X,
-			Footprint.GetCenter().Y, bValid ? TEXT("valid") : *FString::Printf(TEXT("refused (%s)"), *Reason));
+		UE_LOG(LogHOLMatch, Display, TEXT("Placement ghost: %s at (%.0f, %.0f) %s%s"), *PlacementType.ToString(), Footprint.GetCenter().X,
+			Footprint.GetCenter().Y, bValid ? TEXT("valid") : *FString::Printf(TEXT("refused (%s)"), *Reason), *Moved);
 	}
 }
 

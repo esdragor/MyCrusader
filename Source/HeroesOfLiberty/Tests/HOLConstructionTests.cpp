@@ -703,4 +703,96 @@ bool FHOLConstructionBodyTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The user's trial of J7b, feedback 3: a ghost on a building or a source goes to the nearest free spot beside it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionFreeFootprintTest, "HeroesOfLiberty.Construction.FreeFootprint", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionFreeFootprintTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Construction;
+	const auto Anywhere = [](const FBox2D&) { return true; };
+	const FVector2D Aim(100.0, 50.0);
+
+	// The cursor on a house at (0, 0): the obstacle is that house, the ghost touches it (ring 0) on the side nearest the
+	// aim (east: its middle 5 m from the aim, north 5.6 m).
+	{
+		const FBox2D Houses[] = { House(0.0, 0.0), House(30.0, 0.0) };
+		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
+		Query.Footprint = HOLConstruction::SnapToGrid(Aim, FVector2D(600.0, 600.0), Tile);
+		Query.Buildings = Houses;
+		FBox2D Obstacle;
+		TestTrue(TEXT("on a house: an obstacle found"), HOLConstruction::FindObstacle(Query, Aim, Tile, Obstacle));
+		TestTrue(TEXT("on a house: the house itself, already on the grid"), Obstacle.Min.Equals(Houses[0].Min) && Obstacle.Max.Equals(Houses[0].Max));
+		FBox2D Free;
+		int32 Ring = -1;
+		TestTrue(TEXT("beside a house: found"), HOLConstruction::FindFreeFootprint(Query, Obstacle, Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestEqual(TEXT("beside a house: ring 0 (touching)"), Ring, 0);
+		TestTrue(TEXT("beside a house: east, nearest the aim"), Free.GetCenter().Equals(FVector2D(600.0, 0.0)));
+		TestFalse(TEXT("beside a house: touching, not overlapping"), HOLConstruction::Overlaps(Free, Houses[0]));
+		TestTrue(TEXT("beside a house: on the grid, its size"), IsOnGrid(Free, Tile) && Free.GetSize().Equals(FVector2D(600.0, 600.0)));
+
+		// The cursor between two houses, inside the second: the one containing the aim is the obstacle.
+		const FBox2D Pair[] = { House(0.0, 0.0), House(0.0, 6.0) };
+		Query.Buildings = Pair;
+		Query.Footprint = House(0.0, 3.0);
+		TestTrue(TEXT("two houses: an obstacle found"), HOLConstruction::FindObstacle(Query, FVector2D(0.0, 400.0), Tile, Obstacle));
+		TestTrue(TEXT("two houses: the one containing the aim"), Obstacle.Min.Equals(Pair[1].Min));
+	}
+
+	// Ring 0 all taken (a frame of buildings one tile wide around the house): ring 1, east again.
+	{
+		const FBox2D Blocks[] = {
+			FBox2D(FVector2D(-600.0, -600.0), FVector2D(600.0, -300.0)), FBox2D(FVector2D(-600.0, 300.0), FVector2D(600.0, 600.0)),
+			FBox2D(FVector2D(-600.0, -300.0), FVector2D(-300.0, 300.0)), FBox2D(FVector2D(300.0, -300.0), FVector2D(600.0, 300.0)) };
+		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
+		Query.Buildings = Blocks;
+		FBox2D Free;
+		int32 Ring = -1;
+		TestTrue(TEXT("ring 0 taken: found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestEqual(TEXT("ring 0 taken: ring 1"), Ring, 1);
+		TestTrue(TEXT("ring 0 taken: one tile east of the house"), Free.GetCenter().Equals(FVector2D(900.0, 0.0)));
+
+		// The navmesh refuses that one: the next of ring 1 nearest the aim (north).
+		const auto NotEast = [](const FBox2D& Candidate) { return Candidate.GetCenter().X < 800.0; };
+		TestTrue(TEXT("off the navmesh: another found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, NotEast, Free, &Ring));
+		TestTrue(TEXT("off the navmesh: still ring 1, not east"), Ring == 1 && Free.GetCenter().X < 800.0);
+	}
+
+	// A source's disc: its bounding box grown outward to the grid lines; a footprint on the grid stays as it is.
+	{
+		const FHOLPlacementCircle Tree[] = { { FVector2D(100.0, 100.0), 250.0 } };
+		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
+		Query.Sources = Tree;
+		FBox2D Obstacle;
+		TestTrue(TEXT("on a tree: an obstacle found"), HOLConstruction::FindObstacle(Query, Aim, Tile, Obstacle));
+		TestTrue(TEXT("on a tree: its disc as a box on the grid"), Obstacle.Min.Equals(FVector2D(-300.0, -300.0)) && Obstacle.Max.Equals(FVector2D(600.0, 600.0)));
+		const FBox2D OnGrid = HOLConstruction::SnapOutward(House(3.0, 0.0), Tile);
+		TestTrue(TEXT("a footprint on the grid: unchanged"), OnGrid.Min.Equals(House(3.0, 0.0).Min) && OnGrid.Max.Equals(House(3.0, 0.0).Max));
+		FBox2D Free;
+		int32 Ring = -1;
+		TestTrue(TEXT("beside a tree: found"), HOLConstruction::FindFreeFootprint(Query, Obstacle, Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("beside a tree: ring 0, clear of the tree"), Ring == 0 && !HOLConstruction::Overlaps(Free, Tree[0]) && IsOnGrid(Free, Tile));
+	}
+
+	// Nothing free within 4 rings (a building covering them all, 50 cm into ring 4): none; with 5 rings, ring 5.
+	{
+		const FBox2D Big[] = { FBox2D(FVector2D(-1550.0, -1550.0), FVector2D(1550.0, 1550.0)) };
+		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
+		Query.Buildings = Big;
+		FBox2D Free;
+		int32 Ring = -1;
+		TestFalse(TEXT("all taken within 4 rings: none"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("5 rings: ring 5"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 5, Anywhere, Free, &Ring) && Ring == 5);
+	}
+
+	// A candidate refused by another rule is skipped: the map ends at the house's east side, the ghost goes north.
+	{
+		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
+		Query.MapArea.Max.X = 300.0;
+		FBox2D Free;
+		int32 Ring = -1;
+		TestTrue(TEXT("map edge: found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("map edge: ring 0, north (east is out of the map)"), Ring == 0 && Free.GetCenter().Equals(FVector2D(0.0, 600.0)));
+	}
+	return true;
+}
+
 #endif

@@ -32,9 +32,10 @@
 # (server); the navmesh ends 60 cm (agent) + 25 cm (BodyClearance) at least from the centre's sides.
 # J5c.1: each client knows what the other's Peasant gathers (wood), received in the activity's bits.
 # The "build" part (J6a.3, D311), in solo: placement mode, the ghost green on free ground, a house placed by a click,
-# another one touching it with Shift (still in the mode), the ghost red on them, Escape; refused (nothing taken): on a
-# house, on a tree, near the enemy centre, without enough wood; the second foundation selected by a click and cancelled
-# (refunded). With "net": each client places a house behind its centre, sees the other's, pays alone, and a house near
+# another one touching it with Shift (still in the mode), the ghost red near the enemy centre, Escape; refused (nothing
+# taken): on a house, on a tree, near the enemy centre, without enough wood; the second foundation selected by a click and cancelled
+# (refunded). The user's trial of J7b, feedback 3: the ghost on house A goes beside it (green, ring 0, nearest the
+# cursor), a click places it there (then cancelled, refunded). With "net": each client places a house behind its centre, sees the other's, pays alone, and a house near
 # the enemy centre is refused. The two clients wait for each other before quitting (each one's last report done).
 # J6b.3, with "net": each client's Peasant builds a lumber camp by the wood beside its centre and unloads there; the
 # other's camp reaches a client at its first work, then finished; a camp asked on a tree is refused by the server.
@@ -544,13 +545,14 @@ if ($Parts -contains "camera") {
             Step "mark build none", "hol.Select.Report", "waitlog Selection report: selected none"
             # Placement (J6a.3, D311), 120 wood exactly (two houses of 50): the cursor stays in the middle of the screen
             # (hol.Camera.TestCursor), the camera brings the ghost where wanted. House A behind slot 0's centre, B touching
-            # it (Shift: still in the mode), then the ghost on both: red; Escape leaves the mode.
+            # it (Shift: still in the mode), then the ghost near the enemy centre: red (on a house it now goes beside it, the
+            # user's trial of J7b, feedback 3); Escape leaves the mode.
             Step "mark build", "hol.Cheat.Wood -100000", "hol.Cheat.Wood 120", "hol.Build.Report",
                 "hol.Camera.Focus $($BuildA -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($BuildA -join ', ')) valid",
                 "frames 3", "hol.Select.Report", "capture build_ghost_green", "hol.Build.Click shift",
                 "waitlog Construction: slot 0 placed House foundation at ($($BuildA -join ', '))"
             Step "hol.Camera.Focus $($BuildB -join ' ')", "frames 3", "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($BuildB -join ', '))",
-                "hol.Camera.Focus $($BuildOver -join ' ')", "waitlog Placement ghost: House at ($($BuildOver -join ', ')) refused", "frames 3", "hol.Select.Report",
+                "hol.Camera.FocusNear -2400 0 enemy", "waitlog Placement ghost: House at", "frames 3", "hol.Select.Report",
                 "capture build_ghost_red", "hol.Build.Click", "waitlog Placement: not here"
             Key Escape
             Step "waitlog Placement: ended", "hol.Select.Report"
@@ -564,6 +566,14 @@ if ($Parts -contains "camera") {
             Step "mark build cancel", "hol.Camera.Focus $($BuildB[0]) $($BuildB[1] - 300)", "frames 3", "hol.Select.ClickGround $($BuildB -join ' ')",
                 "waitlog Selection: House of slot 0 (own), foundation", "frames 3", "hol.Select.Report", "hol.HUD.Report", "capture build_foundations",
                 "hol.Build.CancelSelected", "waitlog Construction: slot 0 cancelled House", "waitlog Selection: none", "frames 3", "hol.Build.Report", "hol.Select.Report"
+            # The user's trial of J7b, feedback 3 (70 wood): the cursor on house A, 2 m north of its middle: the ghost goes
+            # beside it, touching (ring 0), north (B's spot, now free: nearest the cursor), green; a click places it there.
+            # Then selected and cancelled (refunded): the parts below find the ground and the stock as before.
+            Step "mark build beside", "hol.Camera.Focus $($BuildA[0]) $($BuildA[1] + 200)", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($BuildB -join ', ')) valid, moved beside the building (ring 0)", "frames 3", "hol.Select.Report",
+                "capture build_ghost_beside", "hol.Build.Click", "waitlog Construction: slot 0 placed House foundation at ($($BuildB -join ', '))", "hol.Build.Report",
+                "hol.Select.ClickGround $($BuildB -join ' ')", "waitlog Selection: House of slot 0 (own), foundation", "hol.Build.CancelSelected",
+                "waitlog Construction: slot 0 cancelled House", "waitlog Selection: none", "hol.Build.Report"
             # Building (J6a.4, D312), twice as fast (hol.Build.Speed 2: house 10 s for one builder). The population cap of the
             # centre alone (the gather part's cheat taken back), 100 wood more (170). The navmesh across house A, a ghost:
             # straight. A Peasant made beside it, selected, a right click on A: it walks there, works, A blocks the navmesh
@@ -1675,8 +1685,8 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["Shift + click: house B touching it ($PlacedB)"] = [bool]($PlacedB -match "^paid F 0 W 50 S 0 G 0 \(F \d+ W 20 ")
     $Ended = @($Build | Select-String -Pattern "Placement: ended|Construction: slot 0 placed" | ForEach-Object { if ($_.Line -match "ended") { "ended" } else { "placed" } })
     $Checks["the mode left only by Escape, after both ($($Ended -join ', '))"] = ($Ended -join ',') -eq "placed,placed,ended"
-    $Checks["ghost red on the two houses, its click places nothing, shown"] = [bool]($Build | Select-String -Pattern "Placement ghost: House at \($($BuildOver -join ', ')\) refused \(on a building\)" -Quiet) -and
-        [bool]($Build | Select-String -Pattern "Placement: not here \(on a building\)" -Quiet) -and
+    $Checks["ghost red near the enemy centre, its click places nothing, shown"] = [bool]($Build | Select-String -Pattern "Placement ghost: House at \(-?\d+, -?\d+\) refused \(too near an enemy main centre\)" -Quiet) -and
+        [bool]($Build | Select-String -Pattern "Placement: not here \(too near an enemy main centre\)" -Quiet) -and
         [bool]($Build | Select-String -Pattern "Selection markers: .*, ghost refused" -Quiet) -and
         @($Build | Select-String -Pattern "Construction: slot 0 placed").Count -eq 2
     $Checks["clicks in placement mode select nothing"] = -not ($Build | Select-String -Pattern "Selection: " -Quiet)
@@ -1696,7 +1706,14 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["cancelled: 50 back, gone ($Cancelled)"] = [bool]($Cancelled -match "at \($($BuildB -join ', ')\), refund F 0 W 50 S 0 G 0 \(F \d+ W 70 ") -and
         [bool]($Report -match "W 70 ") -and [bool]($Report -match "House of slot 0 \(own\) foundation at \($($BuildA -join ', ')\)") -and
         -not ($Report -match "at \($($BuildB -join ', ')\)") -and ($Selected -eq "none")
-    $Missing = @("ghost_green", "ghost_red", "foundations" | Where-Object { -not (Test-Path (Join-Path $Shots "build_$_.png")) })
+    # The user's trial of J7b, feedback 3: on house A the ghost goes beside it, green; a click places it there.
+    $Beside = Get-Section "build beside"
+    $Moved = & $Value $Beside "Placement ghost: House at (.*moved.*)$"
+    $Checks["the ghost on house A goes beside it, touching, nearest the cursor, green ($Moved)"] = $Moved -eq "($($BuildB -join ', ')) valid, moved beside the building (ring 0)"
+    $PlacedBeside = & $Value $Beside "Construction: slot 0 placed House foundation at \($($BuildB -join ', ')\), (.*)$"
+    $Checks["a click on house A places it beside ($PlacedBeside), then cancelled: refunded"] = [bool]($PlacedBeside -match "^paid F 0 W 50 S 0 G 0 \(F \d+ W 20 ") -and
+        [bool]($Beside | Select-String -Pattern "Construction: slot 0 cancelled House at \($($BuildB -join ', ')\), refund F 0 W 50 S 0 G 0 \(F \d+ W 70 " -Quiet)
+    $Missing = @("ghost_green", "ghost_red", "ghost_beside", "foundations" | Where-Object { -not (Test-Path (Join-Path $Shots "build_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build" $Checks) -and $AllOk
 

@@ -120,6 +120,135 @@ EHOLPlacementRefusal HOLConstruction::CheckPlacement(const FHOLPlacementQuery& Q
 	return Query.bOnNavMesh ? EHOLPlacementRefusal::None : EHOLPlacementRefusal::NavMesh;
 }
 
+FBox2D HOLConstruction::SnapOutward(const FBox2D& Box, const double Grid)
+{
+	if (Grid <= 0.0)
+	{
+		return Box;
+	}
+	// Within TouchTolerance of a grid line is on it: a footprint already on the grid never grows by a tile.
+	const auto Down = [Grid](const double Value) { return FMath::FloorToDouble((Value + TouchTolerance) / Grid) * Grid; };
+	const auto Up = [Grid](const double Value) { return FMath::CeilToDouble((Value - TouchTolerance) / Grid) * Grid; };
+	return FBox2D(FVector2D(Down(Box.Min.X), Down(Box.Min.Y)), FVector2D(Up(Box.Max.X), Up(Box.Max.Y)));
+}
+
+bool HOLConstruction::FindObstacle(const FHOLPlacementQuery& Query, const FVector2D& Aim, const double Grid, FBox2D& OutObstacle)
+{
+	bool bFound = false;
+	bool bContains = false;
+	double Nearest = TNumericLimits<double>::Max();
+	// The one containing the aim wins; else the nearest; the first of two as near.
+	const auto Consider = [&](const FBox2D& Box, const bool bInside, const double Distance)
+	{
+		if ((bInside && !bContains) || (bInside == bContains && Distance < Nearest))
+		{
+			bFound = true;
+			bContains = bInside;
+			Nearest = Distance;
+			OutObstacle = Box;
+		}
+	};
+	for (const FBox2D& Building : Query.Buildings)
+	{
+		if (Overlaps(Query.Footprint, Building))
+		{
+			const double Distance = GetDistance(Building, Aim);
+			Consider(Building, Distance <= 0.0, Distance);
+		}
+	}
+	for (const FHOLPlacementCircle& Source : Query.Sources)
+	{
+		if (Overlaps(Query.Footprint, Source))
+		{
+			const double Distance = FMath::Max(0.0, FVector2D::Distance(Source.Centre, Aim) - Source.Radius);
+			const FVector2D Half(Source.Radius, Source.Radius);
+			Consider(FBox2D(Source.Centre - Half, Source.Centre + Half), Distance <= 0.0, Distance);
+		}
+	}
+	if (bFound)
+	{
+		OutObstacle = SnapOutward(OutObstacle, Grid);
+	}
+	return bFound;
+}
+
+bool HOLConstruction::FindFreeFootprint(const FHOLPlacementQuery& Query, const FBox2D& Obstacle, const FVector2D& Aim, const double Grid,
+	const int32 MaxRings, TFunctionRef<bool(const FBox2D&)> IsOnNavMesh, FBox2D& OutFootprint, int32* OutRing)
+{
+	if (Grid <= 0.0 || MaxRings < 0)
+	{
+		return false;
+	}
+	const FVector2D Size = Query.Footprint.GetSize();
+	const FBox2D Box = SnapOutward(Obstacle, Grid);
+	// In tiles: the obstacle's box and the footprint's size (a footprint is a whole number of tiles, D311).
+	const int64 MinX = FMath::RoundToInt64(Box.Min.X / Grid), MinY = FMath::RoundToInt64(Box.Min.Y / Grid);
+	const int64 MaxX = FMath::RoundToInt64(Box.Max.X / Grid), MaxY = FMath::RoundToInt64(Box.Max.Y / Grid);
+	const int64 Width = FMath::Max<int64>(1, FMath::CeilToInt64(Size.X / Grid - TouchTolerance / Grid));
+	const int64 Height = FMath::Max<int64>(1, FMath::CeilToInt64(Size.Y / Grid - TouchTolerance / Grid));
+
+	// What may refuse a candidate, gathered once: only the buildings and sources near the search area (the obstacle's box
+	// grown by MaxRings tiles and the footprint's size); the enemy centres and the map as they are.
+	const FBox2D Area = Box.ExpandBy(FVector2D(MaxRings * Grid + Size.X, MaxRings * Grid + Size.Y));
+	TArray<FBox2D> Buildings;
+	for (const FBox2D& Building : Query.Buildings)
+	{
+		if (Overlaps(Area, Building))
+		{
+			Buildings.Add(Building);
+		}
+	}
+	TArray<FHOLPlacementCircle> Sources;
+	for (const FHOLPlacementCircle& Source : Query.Sources)
+	{
+		if (Overlaps(Area, Source))
+		{
+			Sources.Add(Source);
+		}
+	}
+	FHOLPlacementQuery Candidate = Query;
+	Candidate.Buildings = Buildings;
+	Candidate.Sources = Sources;
+	Candidate.bOnNavMesh = true;
+
+	TArray<TPair<double, FBox2D>> Ring;
+	for (int32 Gap = 0; Gap <= MaxRings; ++Gap)
+	{
+		// Every lower corner whose footprint leaves exactly Gap tiles to the box (the larger of the gaps along X and Y).
+		Ring.Reset();
+		for (int64 X = MinX - Width - Gap; X <= MaxX + Gap; ++X)
+		{
+			const int64 GapX = FMath::Max(MinX - (X + Width), X - MaxX);
+			for (int64 Y = MinY - Height - Gap; Y <= MaxY + Gap; ++Y)
+			{
+				const int64 GapY = FMath::Max(MinY - (Y + Height), Y - MaxY);
+				if (FMath::Max(GapX, GapY) != Gap)
+				{
+					continue;
+				}
+				const FVector2D Corner(X * Grid, Y * Grid);
+				const FBox2D Footprint(Corner, Corner + Size);
+				Ring.Emplace(FVector2D::DistSquared(Footprint.GetCenter(), Aim), Footprint);
+			}
+		}
+		Algo::StableSortBy(Ring, [](const TPair<double, FBox2D>& Entry) { return Entry.Key; });
+		for (const TPair<double, FBox2D>& Entry : Ring)
+		{
+			Candidate.Footprint = Entry.Value;
+			if (CheckPlacement(Candidate) == EHOLPlacementRefusal::None && IsOnNavMesh(Entry.Value))
+			{
+				OutFootprint = Entry.Value;
+				if (OutRing)
+				{
+					*OutRing = Gap;
+				}
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool HOLConstruction::TryPay(FHOLResources& Stock, const FHOLResources& Cost)
 {
 	if (!Stock.Covers(Cost))
