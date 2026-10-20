@@ -274,8 +274,9 @@ bool FHOLAnimationStrikeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Peasant building: the hammer, not the knife"), static_cast<int32>(Choose(Peasant, MakeInput(EHOLUnitActivity::Building, 0.f)).Prop), 7);
 	TestEqual(TEXT("Peasant idle: no knife"), static_cast<int32>(Choose(Peasant, MakeInput(EHOLUnitActivity::Idle, 0.f)).Prop), 0);
 	TestEqual(TEXT("Peasant dying: its fall"), Choose(Peasant, MakeInput(EHOLUnitActivity::Dying, 0.f)).Sequence, 12);
-	TestEqual(TEXT("Peasant dying with a load: its fall, no prop"), static_cast<int32>(Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::Dying, 0.f),
-		EHOLResource::Wood)).Prop), 0);
+	TestEqual(TEXT("Peasant dying with a load: its fall, the knife"), static_cast<int32>(Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::Dying, 0.f),
+		EHOLResource::Wood)).Prop), 8);
+	TestEqual(TEXT("Spearman dying: no prop (its spear is in its mesh)"), static_cast<int32>(Fall.Prop), 0);
 
 	// The gestures' hit at half the loop is the server's wind-up (soldier_poses.py ATTACK_HIT_FRACTION).
 	TestEqual(TEXT("hit share = the wind-up"), HOLUnitAnimation::StrikeHitShare, static_cast<float>(HOLCombat::WindUpPercent) / 100.f);

@@ -39,8 +39,10 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 	FHOLUnitAnimationChoice Choice;
 	if (Input.Activity == EHOLUnitActivity::Dying && Type.FallSequence != INDEX_NONE)
 	{
+		// The falls keep the attack's weapon in hand (J7c): the Peasant falls with its knife, never its tool or load.
 		Choice.Sequence = Type.FallSequence;
 		Choice.bOnce = true;
+		Choice.Prop = static_cast<uint8>(Type.AttackProp);
 		return Choice;
 	}
 	if (Input.Activity == EHOLUnitActivity::Attacking && Type.AttackSequence != INDEX_NONE)

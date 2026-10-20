@@ -1035,5 +1035,9 @@ PEASANT_FALL_PROPOSED = {"name": "A_Peasant_Fall", "fps": 30, "tool": PEASANT_KN
                          "leads": dict(FALL_LEADS, feet=0.0),
                          "preview": {"frames": 12, "zoom_picks": [0, 2, 10, 12, 16, 22, 26, 28, 31, 34]}}
 
-PROPOSED.update({"spear_fall": SPEAR_FALL_PROPOSED, "maa_fall": MAA_FALL_PROPOSED,
+# Validated by the user in preview (2026-10-20, 2c8859b / 54faf78) and baked (J7c, --soldiers
+# --only=spear_fall,maa_fall,peasant_fall): they replace the refused falls of J7b.5 under the same keys and names
+# (A_Spearman_Fall, A_ManAtArms_Fall, A_Peasant_Fall, rebuilt in place). Not loops: the last frame is the pose the
+# client holds (30 s, not implemented yet; the server still destroys the body at 1 s).
+GESTURES.update({"spear_fall": SPEAR_FALL_PROPOSED, "maa_fall": MAA_FALL_PROPOSED,
                  "peasant_fall": PEASANT_FALL_PROPOSED})

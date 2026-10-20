@@ -12,6 +12,11 @@ Steps, all in one run:
   3. Reads the sequence back (get_anim_pose_at_time, raw and compressed) and compares component-space positions with
      the offline forward kinematics; checks root at the origin, first frame = last frame, length, the tool bone's
      track (present for a tool, the tool frame read back, both hands on its handle).
+A fall (name "*_Fall", J7c) is not a loop: its first / last frame gap is only logged, and its last frame is the pose
+the client holds, so the log gives how far the last frame moved from the one before. Free feet ("feet", "foot_rot")
+need nothing more (foot_l / foot_r are written by every gesture); a weapon dropped ("release") keeps its track on the
+tool bone ik_hand_gun along its own keys, read back as before, and the hands-on-the-handle check skips the frames
+after the release (the hands have let go).
 A gesture with a "base" (the loaded walk) first samples that source animation: local transforms of the pelvis and legs
 at each of its keys, written to Tools/Editor/Data/<source name>.json for the rig and the offline preview; the baked
 sequence keeps the source's length and frame rate, its feet are compared with the source's, and its play rate for the
@@ -299,10 +304,12 @@ def bake(sk, gesture):
     if rig.has_tool:
         bones.append(anim_rig.TOOL_BONE)
     locals_by_frame = []
+    rig.released_frames = []  # per frame: the tool has left the hands ("release"), for the readback
     worst_grip = 0.0
     for t in times:
         local, axe = rig.pose(t)
         locals_by_frame.append(local)
+        rig.released_frames.append(bool(axe.get("released")))
         worst_grip = max(worst_grip, max(rig.grip_errors(sk.fk(local), axe).values()))
 
     # The sequence's own times, frame k at k / fps: the keys are spread over the gesture's span, so a span that is not a
@@ -379,7 +386,7 @@ def verify(sk, sequence, rig, times, locals_by_frame):
         options.set_editor_property("evaluation_type", eval_type)
         worst, worst_at, root_worst = 0.0, "", 0.0
         tool_worst = tool_angle = hands_worst = 0.0
-        first = last = None
+        first = last = before_last = None
         heads_read, heads_offline = [], []
         for k, t in enumerate(times):
             pose = poses.get_anim_pose_at_time(sequence, t, options)
@@ -409,16 +416,27 @@ def verify(sk, sequence, rig, times, locals_by_frame):
                 for bone in ("hand_l", "hand_r"):
                     h = poses.get_bone_pose(pose, bone, WORLD)
                     read[sk.index[bone]] = (vec(h.translation), quat(h.rotation))
-                hands_worst = max(hands_worst, max(rig.handle_distances(read).values()))
+                if not rig.released_frames[k]:
+                    hands_worst = max(hands_worst, max(rig.handle_distances(read).values()))
             if k == 0:
                 first = here
-            last = here
+            before_last, last = last, here
         loop = max(anim_rig.length(anim_rig.sub(first[b], last[b])) for b in WATCHED)
+        fall = rig.g["name"].endswith("_Fall")
         log("relecture %s : ecart max FK hors ligne / Unreal %.3f cm (%s), racine a %.3f cm de l'origine au plus, "
-            "premiere / derniere image ecart %.3f cm" % (label, worst, worst_at, root_worst, loop))
+            "premiere / derniere image ecart %.3f cm%s" % (label, worst, worst_at, root_worst, loop,
+                                                          " (chute, non bouclee : sans objet)" if fall else ""))
+        if fall:
+            held = max(anim_rig.length(anim_rig.sub(before_last[b], last[b])) for b in WATCHED)
+            low = min(last[b][2] for b in WATCHED)
+            log("relecture %s, derniere image (pose tenue) : ecart a l'avant-derniere %.3f cm, os suivi le plus bas a "
+                "%.2f cm" % (label, held, low))
         if rig.has_tool:
+            released = sum(rig.released_frames)
             log("relecture %s, os porte-outil %s : ecart au repere hors ligne %.3f cm et %.3f deg ; mains a l'axe du "
-                "manche au plus %.3f cm" % (label, anim_rig.TOOL_BONE, tool_worst, tool_angle, hands_worst))
+                "manche au plus %.3f cm%s" % (label, anim_rig.TOOL_BONE, tool_worst, tool_angle, hands_worst,
+                                              " (sur les %d images avant le lacher, %d apres)"
+                                              % (len(times) - released, released) if released else ""))
             fps = 1.0 / (times[1] - times[0])
             head_err = [anim_rig.length(anim_rig.sub(a, b)) for a, b in zip(heads_read, heads_offline)]
             worst_k = max(range(len(head_err)), key=lambda k: head_err[k])

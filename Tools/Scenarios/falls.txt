@@ -1,0 +1,30 @@
+# Chutes des mourants : 4 Lanciers, 4 Hommes d'armes et 4 Paysans de chaque camp, à portée d'agression, qui s'entretuent
+# Plain, deux joueurs (falls.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme
+# order_lines : l'armée devant le centre, au-delà des rochers (vers 3000) ; les ennemis à ~9 m, dans le rayon
+# d'agression (12 m) : le combat part tout seul. Les Paysans ne combattent que sur ordre : ils meurent sous les coups.
+hol.Camera.FocusNear 4000 -600
+frames 2
+hol.Units.SpawnHere 4 Spearman 0 250
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+hol.Camera.FocusNear 4000 600
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 250
+hol.Camera.FocusNear 4900 -600
+frames 2
+hol.Units.SpawnHere 4 Spearman 1 250
+hol.Camera.FocusNear 4900 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 1 250
+hol.Camera.FocusNear 4900 600
+frames 2
+hol.Units.SpawnHere 4 Peasant 1 250
+waitunits 24
+# La caméra au-dessus de la mêlée, un cran de molette en avant pour bien voir les corps.
+hol.Camera.FocusNear 4450 0
+hol.Camera.Zoom 1
+frames 5
+note Les deux camps s'entretuent : regardez chaque type tomber (Paysan à genoux puis de côté, Lancier projeté en arrière, Homme d'armes face contre terre).
+note Le Paysan tombe couteau en main ; la lance du Lancier et l'épée de l'Homme d'armes lui échappent.
+note Ralenti : console (²) puis « slomo 0.3 » (« slomo 1 » pour revenir). Le corps disparaît encore à 1 s : la chute du Paysan (1,13 s) est coupée.

@@ -2463,7 +2463,9 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             if ($Part -notmatch '^(\w+) (Attacking|Dying): (.+)$') { continue }
             $Type = $Matches[1]; $State = $Matches[2]; $Outcomes = $Matches[3]
             if ($Type -eq "Peasant" -and $State -eq "Attacking") { continue }
-            $Expected = if ($State -eq "Attacking") { "A_$Type`_Attack prop 0" } else { "A_$Type`_Fall prop 0" }
+            # J7c: a unit falls with its attack's prop (the Peasant's knife, 8; the soldiers' weapons are in their mesh).
+            $Prop = if ($Type -eq "Peasant") { 8 } else { 0 }
+            $Expected = if ($State -eq "Attacking") { "A_$Type`_Attack prop 0" } else { "A_$Type`_Fall prop $Prop" }
             $Key = "$Type $State"
             if (-not $Shown.ContainsKey($Key)) { $Shown[$Key] = 0 }
             foreach ($Outcome in ($Outcomes -split ', ')) {
