@@ -127,7 +127,7 @@ Remove-Item $GameLog, $TestsLog -ErrorAction SilentlyContinue
 # 1. Automation tests, in the background (no window).
 $TestsProcess = $null
 if ($Parts -contains "tests") {
-    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -nosound -abslog=`"$TestsLog`""
+    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -nosound -abslog=`"$TestsLog`""
     $TestsProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor-Cmd.exe") -ArgumentList $TestsArguments -PassThru -WindowStyle Hidden
 }
 
@@ -165,7 +165,7 @@ if ($Parts -contains "net") {
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) |
         Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -910,7 +910,9 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($AnimSpearmen[0] + 300) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 2", "capture anims_soldiers_walk",
                 "hol.Camera.Zoom -14", "wait 4", "mark anims standing", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
             foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Target -join ' ')", "frames 3", "capture anims_stand_$($Group.Name)" }
-            Step "hol.Camera.Zoom -14", "hol.Build.Report"
+            # Nothing left selected (as in "fifo"): with -Parts ...,anims,combat the combat's "nothing selected" bars
+            # would otherwise see the last anims selection (in -Full, groups ends with Escape).
+            Step "hol.Camera.Zoom -14", "hol.Build.Report", "hol.Select.Click 0.03 0.05", "frames 3"
         }
         if (($Parts -contains "formation") -and $Case.Name -eq "2p") {
             # The formation (J7a.4): the units of slot 0 before (the new ones are the others), the six made, a box
@@ -1060,7 +1062,7 @@ Get-ChildItem $Shots -Filter "formation_*.png" -ErrorAction SilentlyContinue | R
 Get-ChildItem $Shots -Filter "combat_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 # The melee off (J7b.2) until the combat part: the parts before it make units of several slots side by side.
-$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
+$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -1188,7 +1190,7 @@ if ($NetListening) {
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
-        $ClientArguments = "`"$UProject`" 127.0.0.1 -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
+        $ClientArguments = "`"$UProject`" 127.0.0.1 -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots;
             Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
     }
