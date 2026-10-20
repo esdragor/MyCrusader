@@ -4992,6 +4992,11 @@ d'épée).
   2. **Attaque-déplacement (A clic) validée trop tôt** : avec A clic puis un déplacement en file, l'unité tue un
      ennemi sur cinq puis part vers la suite. Attendu : l'étape A clic n'est finie que quand la destination est
      atteinte **et** qu'il n'y a plus de menace à portée ; d'ici là, elle continue de combattre.
+     → **corrigé, validé à l'essai et commité (2026-10-20, mycrusader-db, `main`)** : la file Maj (`StartQueuedMoves`)
+     lançait l'étape suivante dès la marche finie, or une unité qui s'arrête pour frapper a fini sa marche ; elle attend
+     maintenant la fin de l'attaque-déplacement (`Combat->Mode` revenu à `Normal`, posé par le combat à la case sans
+     ennemi dans la recherche), sauf `hol.Combat.Enabled 0` ; la ligne rouge reste jusque-là. `quick_check` rapide
+     PASS (31 s, 83/83, lancé par mycrusader-9b avec ce correctif). Scénario `attack_move_queue`.
   3. **Pose sur une case occupée** : en mode construction, curseur sur un chantier ou un bâtiment déjà construit →
      chercher dans les cases autour une position où la pose est possible (et y proposer le bâtiment).
   4. **Pose unique** : choisir un bâtiment = le poser une fois ; après la pose, le mode construction se ferme, sauf

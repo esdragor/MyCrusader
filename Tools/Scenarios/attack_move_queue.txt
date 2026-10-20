@@ -1,0 +1,21 @@
+# Attaque-déplacement puis déplacement en file (retour d'essai n° 2) : 6 Hommes d'armes + 6 Lanciers face à 5 Lanciers ennemis groupés, 22 m plus loin
+# Plain, deux joueurs (attack_move_queue.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte),
+# comme order_lines : l'armée au-delà des rochers (vers 4000), les ennemis hors du rayon d'agression (12 m).
+hol.Cheat.Population 165
+hol.Camera.FocusNear 4000 -500
+frames 2
+hol.Units.SpawnHere 6 Spearman 0 300
+hol.Camera.FocusNear 4000 500
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 300
+hol.Camera.FocusNear 6200 0
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 400
+waitunits 17
+hol.Camera.FocusNear 5200 0
+hol.Camera.Zoom -1
+frames 5
+hol.Select.Army
+note Q puis clic gauche au-delà des 5 Lanciers ennemis, puis Maj + clic droit ailleurs (déplacement en file).
+note Attendu : l'armée tue les 5 ennemis et finit sa marche vers le point Q avant de partir vers le point en file.
+note Avant le correctif : elle partait vers le point en file après le premier ennemi tué.

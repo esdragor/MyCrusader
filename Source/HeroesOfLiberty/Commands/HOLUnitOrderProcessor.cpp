@@ -1909,6 +1909,17 @@ void UHOLUnitOrderProcessor::ForgetMoveQueue(const uint32 UnitId)
 	}
 }
 
+namespace
+{
+	/** An attack-move not over yet (the user's trial of J7b): its unit fights all it finds, then walks on to its slot; only
+	 * there, with nobody left in reach of its search, does the combat processor end it. With the melee off, it never would. */
+	bool IsAttackMoveOn(const FHOLCombatFragment* Combat)
+	{
+		static const IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+		return Combat && Combat->Mode == EHOLCombatMode::AttackMove && (!CombatEnabled || CombatEnabled->GetInt() != 0);
+	}
+}
+
 void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 {
 	if (QueuedMoves.IsEmpty() && ChainHeadOfUnit.IsEmpty())
@@ -1949,7 +1960,7 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
 		const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
 		const bool bWalking = Move && Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning;
-		const bool bFighting = Combat && (Combat->bOrderedTarget || Combat->bAttackMoveDetour);
+		const bool bFighting = (Combat && (Combat->bOrderedTarget || Combat->bAttackMoveDetour)) || IsAttackMoveOn(Combat);
 		// A task's walks (gathering, building: their own chains, or none) and a death end the player's move too.
 		const FHOLGatherFragment* Gather = Move ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 		const FHOLBuildFragment* Build = Move ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
@@ -1972,7 +1983,8 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			It.RemoveCurrent();
 			continue;
 		}
-		// Every unit still in it has it at the head of its queue and has ended its walk.
+		// Every unit still in it has it at the head of its queue, has ended its walk and its attack-move (a unit that stands to
+		// strike has ended its walk, not its attack-move: the next step waited for neither the fight nor the slot).
 		bool bReady = true;
 		for (const uint32 UnitId : Queued.Members)
 		{
@@ -1986,7 +1998,7 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
 			const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
 			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move || (Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning)
-				|| (Combat && Combat->bOrderedTarget))
+				|| (Combat && Combat->bOrderedTarget) || IsAttackMoveOn(Combat))
 			{
 				bReady = false;
 				break;
