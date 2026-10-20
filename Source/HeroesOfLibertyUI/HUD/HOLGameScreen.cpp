@@ -826,8 +826,8 @@ void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
-	// Exact in solo and on the server; on a client, the top of the level's sixteenth (J7-Q5: the exact health stays on
-	// the server), so an unhurt unit reads its maximum and a unit at level 8 of 50 reads 27/50.
+	// Exact everywhere (J7-Q5 revised: a client receives a wounded unit's exact health); " (level)" would mark a client's
+	// health known only by level, should the levels come back.
 	const bool bShown = Unit && Unit->MaxHealth > 0;
 	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (level)"))
 		: FString();

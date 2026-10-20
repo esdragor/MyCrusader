@@ -26,6 +26,15 @@ struct HEROESOFLIBERTY_API FHOLUnitAnimationStateFragment : public FMassFragment
 	float FacingYaw = 0.f;
 
 	/**
+	 * Falling (J7b code review, point 4): drawn for its whole fall at FallYaw (deg), the yaw it was last drawn at alive
+	 * (turned towards its target if it was striking), in solo, on the host and on a client alike. FallTurnDegrees is the
+	 * largest gap seen between its drawn yaw and FallYaw while falling (read by hol.Units.AnimReport only).
+	 */
+	bool bFalling = false;
+	float FallYaw = 0.f;
+	float FallTurnDegrees = 0.f;
+
+	/**
 	 * What the instance was last given besides its sequence (J5c.4, read by hol.Units.AnimReport only): the prop shown and
 	 * the frame it was drawn at (GFrameCounter), so a unit not drawn since (off screen) is told apart.
 	 */

@@ -157,10 +157,11 @@ if ($Parts -contains "net") {
     $NetSourceCommand += (@(for ($t = 20; $t -le 500; $t += 5) { ",hol.Net.WhenClients 2 hol.Delay $t hol.Units.Where" }) -join "")
     # The fight seen by a client (J7b.4): once client 1 frames the solo combat part's ground (its signal), the server makes
     # 2 Men-at-arms of slot 0 and 2 Spearmen of slot 1 there (6 m apart, in each other's aggression radius), then says
-    # where every unit is each second (the client's positions compared with them).
+    # where every unit is each second (the client's positions compared with them); every hit logged with the health it
+    # leaves (J7-Q5 revised: the client's health values compared with them).
     $NetFightFlag = Join-Path $TestSaved "quick_net_fight1.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
-    @("waitfile $NetFightFlag 900", "mark net fight", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+    @("waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) |
         Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
@@ -2417,12 +2418,14 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # before the box, then the 3 Men-at-arms among them, selected; unhurt unselected units without one.
     $Bars = @()
     $Wounded = @{}
+    $HpReports = @()
     foreach ($Line in @(Get-Section "combat")) {
-        if ($Line -match "Combat report: step") { $Wounded = @{} }
-        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?\d+)/(\d+) ") { if ([int]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
+        if ($Line -match "Combat report: step") { $Wounded = @{}; $HpReports += ,@{} }
+        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?\d+)/(\d+) ") { if ($HpReports.Count) { $HpReports[-1][$Matches[1]] = @([Math]::Max([int]$Matches[2], 0), [int]$Matches[3]) }; if ([int]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
         elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\), unhurt unselected (\d+)") {
             $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
-            $Bars += @{ Count = [int]$Matches[1]; Unhurt = [int]$Matches[3]; Wounded = $Wounded.Clone();
+            $Bars += @{ Count = [int]$Matches[1]; Unhurt = [int]$Matches[3]; Wounded = $Wounded.Clone(); Report = $HpReports.Count - 1;
+                Health = @($Items | ForEach-Object { if ($_ -match "^#(\d+) (\d+)/(\d+)") { @{ Id = $Matches[1]; Hp = [int]$Matches[2]; Max = [int]$Matches[3] } } });
                 Ids = @($Items | ForEach-Object { if ($_ -match "^#(\d+)") { $Matches[1] } }); Selected = @($Items | Where-Object { $_ -match " selected$" } | ForEach-Object { if ($_ -match "^#(\d+)") { $Matches[1] } }) }
         }
     }
@@ -2432,6 +2435,13 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
         $Checks["bars, nothing selected: the wounded alone ($($B0.Count) bars, $($Unwounded0.Count) unhurt among them, $($B0.Unhurt) unhurt without)"] = ($B0.Count -ge 1) -and ($Unwounded0.Count -eq 0) -and ($B0.Selected.Count -eq 0) -and ($B0.Unhurt -ge 1)
         $Unwounded1 = @($B1.Ids | Where-Object { -not $B1.Wounded.ContainsKey($_) -and $B1.Selected -notcontains $_ })
         $Checks["bars, 3 Men-at-arms selected: theirs too ($($B1.Selected.Count) selected, $($B1.Count) bars)"] = ($B1.Selected.Count -eq 3) -and ($Unwounded1.Count -eq 0) -and ($B1.Count -ge 3)
+        # J7-Q5 revised: each bar shows its unit's exact health: of its type's maximum, between its health in the combat
+        # reports just before and just after when the section has one (health never rises; the bars are those of the last
+        # frame drawn).
+        $Mismatch = @(foreach ($B in @($B0, $B1)) { foreach ($H in $B.Health) {
+            $Prev = if ($B.Report -ge 0) { $HpReports[$B.Report][$H.Id] }; $Next = if ($B.Report + 1 -lt $HpReports.Count) { $HpReports[$B.Report + 1][$H.Id] }
+            if (-not $Prev -or $H.Max -ne $Prev[1] -or $H.Hp -gt $Prev[0] -or ($Next -and $H.Hp -lt $Next[0])) { "#$($H.Id) $($H.Hp)/$($H.Max)" } } })
+        $Checks["bars, exact health between the combat reports' around ($($Mismatch.Count) off: $($Mismatch -join ', '))"] = ($B0.Health.Count -eq $B0.Count) -and ($B1.Health.Count -eq $B1.Count) -and ($Mismatch.Count -eq 0)
         Write-Host "  combat bars: $($B0.Count) then $($B1.Count) bars ($($B1.Selected.Count) selected), unhurt unselected $($B0.Unhurt) / $($B1.Unhurt)"
     } else {
         $Checks["health bars reports ($($Bars.Count))"] = $false
@@ -2469,6 +2479,12 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $Count = [int]$Shown["Peasant Dying"]
     $Checks["the Peasant killed plays A_Peasant_Fall ($Count)"] = $Count -ge 1
     $Checks["striking or dying: never another sequence ($($Wrong -join '; '))"] = $Wrong.Count -eq 0
+    # Falling (J7b code review, point 4): a unit keeps for its whole fall the yaw it was last drawn at alive (no half-turn
+    # back to its place's front); the Peasant killed is reported falling, turned by at most a few degrees.
+    $Falls = @(Get-Section "combat fall" | Where-Object { $_ -match "Anim report falls: slot 1, (\d+) falling, largest turn ([\d.]+) deg" } | ForEach-Object {
+        [pscustomobject]@{ Falling = [int]$Matches[1]; Turn = [double]$Matches[2] } })
+    $Fall = $Falls | Select-Object -First 1
+    $Checks["falling: keeps the yaw it died with ($(if ($Fall) { "$($Fall.Falling) falling, largest turn $($Fall.Turn) deg" } else { 'no report' }))"] = $Fall -and $Fall.Falling -ge 1 -and $Fall.Turn -lt 3
     $Missing = @("melee", "fall" | Where-Object { -not (Test-Path (Join-Path $Shots "combat_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     Write-Host "  combat anims: $(($Shown.Keys | Sort-Object | ForEach-Object { "$_ x$($Shown[$_])" }) -join ', ')"
@@ -2854,16 +2870,28 @@ if ($Parts -contains "net") {
                 ($Ids.Count -eq 5) -and ($Far -le 600) -and ($Closest -ge 100)
         }
     }
-    # The fight seen by client 1 (J7b.4): the 4 units the server made, their health levels falling (never rising), a unit
-    # striking one of the other slot (Attacking, target #id), the Spearmen Dying then gone, the Men-at-arms left where the
-    # server has them; the HUD shows the attack of its selected unit.
+    # The fight seen by client 1 (J7b.4): the 4 units the server made, their health falling (never rising), each value one
+    # the server's hits left (J7-Q5 revised: exact health; 0 for a unit dead, whose last hit left 0 or less) and the
+    # Men-at-arms' last one exactly the server's last; a unit striking one of the other slot (Attacking, target #id), the
+    # Spearmen Dying then gone, the Men-at-arms left where the server has them; the HUD shows the attack of its selected unit.
     $FightClient = $NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1
     if ($FightClient) {
         $ClientLines = @(Get-Content $FightClient.Log -ErrorAction SilentlyContinue)
         $Before = & $ParseWhere (@(Get-ClientSection $ClientLines "army") | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $FightLines = @(Get-ClientSection $ClientLines "combat")
         $Wheres = @($FightLines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-        $Fighters = @{}   # id -> @{ Slot; Levels (16 unhurt); Dying; Attacks (targets of the other slot) }
+        # The server's hits (hol.Combat.LogHits): id -> the health each hit left it, in order.
+        $ServerHp = @{}
+        if (Test-Path $NetServerLog) {
+            foreach ($M in (Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ \w+ hits #(\d+) \w+ for \d+, (-?\d+) HP left")) {
+                $Hit = $M.Matches[0].Groups
+                if (-not $ServerHp.ContainsKey($Hit[1].Value)) { $ServerHp[$Hit[1].Value] = @() }
+                $ServerHp[$Hit[1].Value] += [int]$Hit[2].Value
+            }
+        }
+        $Unhurt = 1000000
+        $IsServerHp = { param($Id, $Hp) $Hp -eq $Unhurt -or ($ServerHp.ContainsKey($Id) -and (($Hp -gt 0 -and $ServerHp[$Id] -contains $Hp) -or ($Hp -eq 0 -and @($ServerHp[$Id] | Where-Object { $_ -le 0 }).Count -gt 0))) }
+        $Fighters = @{}   # id -> @{ Slot; Levels (health shown, $Unhurt unhurt); Dying; Attacks (targets of the other slot) }
         $LastSeen = @{}
         foreach ($Report in $Wheres) {
             $LastSeen = @{}
@@ -2873,7 +2901,7 @@ if ($Parts -contains "net") {
                 $LastSeen[$Id] = @($Slot, $X, $Y)
                 if ($Before.ContainsKey($Id)) { continue }
                 if (-not $Fighters.ContainsKey($Id)) { $Fighters[$Id] = @{ Slot = $Slot; Levels = @(); Dying = $false; Targets = @() } }
-                $Level = if ($Entry -match ", hp (\d+)/15") { [int]$Matches[1] } else { 16 }
+                $Level = if ($Entry -match ", hp (\d+)/\d+") { [int]$Matches[1] } else { $Unhurt }
                 $Fighters[$Id].Levels += $Level
                 if ($Activity -eq "Dying") { $Fighters[$Id].Dying = $true }
                 if ($Activity -eq "Attacking" -and $Entry -match ", target #(\d+)") { $Fighters[$Id].Targets += $Matches[1] }
@@ -2882,9 +2910,12 @@ if ($Parts -contains "net") {
         $Ids = @($Fighters.Keys)
         $Checks["client 1 : the fight's 4 units shown ($($Ids.Count), $($Wheres.Count) reports)"] = $Ids.Count -eq 4
         $Rising = @($Ids | Where-Object { $L = $Fighters[$_].Levels; @(for ($k = 1; $k -lt $L.Count; $k++) { if ($L[$k] -gt $L[$k - 1]) { 1 } }).Count -gt 0 })
-        $Hurt = @($Ids | Where-Object { ($Fighters[$_].Levels | Measure-Object -Minimum).Minimum -lt 16 })
-        $LevelText = ($Ids | Sort-Object { [int]$_ } | ForEach-Object { "#$_ slot $($Fighters[$_].Slot): $(($Fighters[$_].Levels | Select-Object -Unique) -join '>')" }) -join "; "
-        $Checks["client 1 : health levels fall, never rise ($($Hurt.Count) hurt, $($Rising.Count) rising)"] = ($Hurt.Count -ge 3) -and ($Rising.Count -eq 0)
+        $Hurt = @($Ids | Where-Object { ($Fighters[$_].Levels | Measure-Object -Minimum).Minimum -lt $Unhurt })
+        $LevelText = ($Ids | Sort-Object { [int]$_ } | ForEach-Object { "#$_ slot $($Fighters[$_].Slot): $(($Fighters[$_].Levels | Select-Object -Unique | ForEach-Object { if ($_ -eq $Unhurt) { 'full' } else { $_ } }) -join '>') (server: $((@('full') + @(if ($ServerHp.ContainsKey($_)) { $ServerHp[$_] | ForEach-Object { [Math]::Max($_, 0) } })) -join '>'))" }) -join "; "
+        $Checks["client 1 : health falls, never rises ($($Hurt.Count) hurt, $($Rising.Count) rising)"] = ($Hurt.Count -ge 3) -and ($Rising.Count -eq 0)
+        $Foreign = @(foreach ($Id in $Ids) { foreach ($Hp in ($Fighters[$Id].Levels | Select-Object -Unique)) { if (-not (& $IsServerHp $Id $Hp)) { "#$Id $Hp" } } })
+        $ShownCount = @(foreach ($Id in $Ids) { $Fighters[$Id].Levels | Where-Object { $_ -ne $Unhurt } | Select-Object -Unique }).Count
+        $Checks["client 1 : each health shown one the server's hits left ($ShownCount values, $($ServerHp.Count) units hit on the server, not the server's: $($Foreign -join ', '))"] = ($ServerHp.Count -ge 3) -and ($ShownCount -ge 3) -and ($Foreign.Count -eq 0)
         $Aimed = @($Ids | Where-Object { $F = $Fighters[$_]; @($F.Targets | Where-Object { $Fighters.ContainsKey($_) -and $Fighters[$_].Slot -ne $F.Slot }).Count -gt 0 })
         $Checks["client 1 : units striking one of the other slot ($($Aimed.Count) seen Attacking)"] = $Aimed.Count -ge 2
         $Spears = @($Ids | Where-Object { $Fighters[$_].Slot -eq 1 })
@@ -2894,6 +2925,9 @@ if ($Parts -contains "net") {
         $Gone = @($Spears | Where-Object { -not $LastSeen.ContainsKey($_) })
         $Left = @($Mens | Where-Object { $LastSeen.ContainsKey($_) })
         $Checks["client 1 : then removed, the Men-at-arms left ($($Gone.Count) gone, $($Left.Count) left)"] = ($Gone.Count -eq 2) -and ($Left.Count -eq 2)
+        $Finals = @(foreach ($Id in $Left) { $LastShown = $Fighters[$Id].Levels[-1]; $LastSent = if ($ServerHp.ContainsKey($Id)) { $ServerHp[$Id][-1] } else { $Unhurt }
+            @{ Ok = $LastShown -eq $LastSent; Text = "#$Id $(if ($LastShown -eq $Unhurt) { 'full' } else { $LastShown }) (server $(if ($LastSent -eq $Unhurt) { 'full' } else { $LastSent }))" } })
+        $Checks["client 1 : the Men-at-arms' last health the server's exactly ($(($Finals | ForEach-Object { $_.Text }) -join ', '))"] = ($Finals.Count -eq 2) -and (@($Finals | Where-Object { -not $_.Ok }).Count -eq 0)
         $Server = $null
         foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Left.Count -and @($Left | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0 -and @($Spears | Where-Object { $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
         $Gaps = @(if ($Server) { foreach ($Id in $Left) { [Math]::Sqrt([Math]::Pow($LastSeen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($LastSeen[$Id][2] - $Server[$Id][2], 2)) } })
@@ -2902,26 +2936,29 @@ if ($Parts -contains "net") {
         $HudAttack = [bool]($FightLines | Select-String -SimpleMatch "EHOLUnitActivity::Attacking" -Quiet)
         $Checks["client 1 : the HUD shows its selected unit's attack"] = $HudAttack
         # The health bars on client 1 (J7b.5): its selected unit's bar, and others only for units wounded in the Units where
-        # just before (levels never rise).
+        # just before (health never rises); each bar's health one the server's hits left, or the maximum (J7-Q5 revised).
         $BarRuns = @(); $WoundedNow = @{}
         foreach ($Line in $FightLines) {
             if ($Line -match "Units where: \d+ units: (.*)$") {
                 $WoundedNow = @{}
-                foreach ($Entry in ($Matches[1] -split "; ")) { if ($Entry -match "^#(\d+) .*, hp \d+/15") { $WoundedNow[$Matches[1]] = $true } }
+                foreach ($Entry in ($Matches[1] -split "; ")) { if ($Entry -match "^#(\d+) .*, hp \d+/\d+") { $WoundedNow[$Matches[1]] = $true } }
             } elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\)") {
                 $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
                 $Wrong = @($Items | Where-Object { $_ -notmatch " selected$" -and $_ -match "^#(\d+)" -and -not $WoundedNow.ContainsKey($Matches[1]) })
-                $BarRuns += @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = $Wrong.Count }
+                $NotSent = @($Items | Where-Object { $_ -match "^#(\d+) (\d+)/(\d+)" -and -not ($Matches[2] -eq $Matches[3] -or (& $IsServerHp $Matches[1] ([int]$Matches[2]))) })
+                $BarRuns += @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = $Wrong.Count; NotSent = $NotSent.Count }
             }
         }
         $BarsSel = @($BarRuns | Where-Object { $_.Selected -ge 1 }).Count
         $BarsOther = @($BarRuns | Where-Object { $_.Others -ge 1 }).Count
         $BarsWrong = ($BarRuns | ForEach-Object { $_.Wrong } | Measure-Object -Sum).Sum
+        $BarsNotSent = ($BarRuns | ForEach-Object { $_.NotSent } | Measure-Object -Sum).Sum
+        $Checks["client 1 : each bar's health the server's ($BarsNotSent not)"] = ($BarRuns.Count -ge 20) -and ($BarsNotSent -eq 0)
         $Checks["client 1 : health bars, selected one ($BarsSel of $($BarRuns.Count)), wounded others ($BarsOther), none for an unhurt unselected ($BarsWrong)"] = ($BarRuns.Count -ge 20) -and ($BarsSel -ge 1) -and ($BarsOther -ge 1) -and ($BarsWrong -eq 0)
         $Checks["client 1 : fight capture"] = Test-Path (Join-Path $FightClient.Shots "net_combat_c1.png")
         $FirstDying = [Array]::FindIndex([string[]]$Wheres, [Predicate[string]]{ param($R) $R -match "\) Dying" })
         $FirstGone = [Array]::FindIndex([string[]]$Wheres, [Predicate[string]]{ param($R) $R2 = & $ParseWhere $R; $Spears.Count -and @($Spears | Where-Object { -not $R2.ContainsKey($_) }).Count -eq $Spears.Count })
-        Write-Host "  net combat (client 1): levels $LevelText; first Dying at report $FirstDying, both Spearmen gone at $FirstGone (0.5 s apart); MaA gap $MaxGap cm"
+        Write-Host "  net combat (client 1): health $LevelText; first Dying at report $FirstDying, both Spearmen gone at $FirstGone (0.5 s apart); MaA gap $MaxGap cm"
     }
     $Checks["two clients in slots 0 and 1 ($($HeldSlots -join ', '))"] = (($HeldSlots | Sort-Object) -join ',') -eq "0,1"
     if ($Parts -contains "sources") {

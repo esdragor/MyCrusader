@@ -32,11 +32,11 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 	return State;
 }
 
-void FHOLNetUnitState::SetCombat(const int32 Health, const int32 MaxHealth, const uint16 InTargetSlot, const bool bInFacesFront,
+void FHOLNetUnitState::SetCombat(const int32 InHealth, const int32 MaxHealth, const uint16 InTargetSlot, const bool bInFacesFront,
 	const float InFrontYawDegrees)
 {
-	bFullHealth = Health >= MaxHealth;
-	HealthLevel = bFullHealth ? MaxHealthLevel : HOLUnitReplication::GetHealthLevel(Health, MaxHealth);
+	bFullHealth = InHealth >= MaxHealth;
+	Health = bFullHealth ? 0 : HOLUnitReplication::GetWireHealth(InHealth, MaxHealth);
 	TargetSlot = Activity == EHOLUnitActivity::Attacking ? FMath::Min<uint16>(InTargetSlot, InvalidTargetSlot) : 0;
 	bFacesFront = bInFacesFront && Activity == EHOLUnitActivity::Idle;
 	constexpr int32 NumDirections = 1 << FrontYawBits;
@@ -49,25 +49,16 @@ float FHOLNetUnitState::GetFrontYaw() const
 	return FRotator::NormalizeAxis(static_cast<float>(FrontYaw) * 360.f / static_cast<float>(1 << FrontYawBits));
 }
 
-uint8 HOLUnitReplication::GetHealthLevel(const int32 Health, const int32 MaxHealth)
+uint16 HOLUnitReplication::GetWireHealth(const int32 Health, const int32 MaxHealth)
 {
-	if (Health <= 0)
-	{
-		return 0;
-	}
-	if (MaxHealth <= 0 || Health >= MaxHealth)
-	{
-		return FHOLNetUnitState::MaxHealthLevel;
-	}
-	// Integer ceiling: 1 health of 1 000 is still level 1, alive.
-	const int64 Scaled = static_cast<int64>(FHOLNetUnitState::MaxHealthLevel) * Health;
-	return static_cast<uint8>(FMath::Clamp<int64>((Scaled + MaxHealth - 1) / MaxHealth, 1, FHOLNetUnitState::MaxHealthLevel));
+	(void)MaxHealth; // Exact health points: the maximum only bounds them (FitsWireHealth); a level would scale by it.
+	return Health <= 0 ? 0 : static_cast<uint16>(FMath::Min<int32>(Health, FHOLNetUnitState::MaxWireHealth));
 }
 
 bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B)
 {
 	return EncodeActivity(A.Activity, A.GatherResource, A.bFacesFront) == EncodeActivity(B.Activity, B.GatherResource, B.bFacesFront)
-		&& A.bFullHealth == B.bFullHealth && A.HealthLevel == B.HealthLevel && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
+		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
 }
 
 FVector FHOLNetUnitState::GetPosition() const

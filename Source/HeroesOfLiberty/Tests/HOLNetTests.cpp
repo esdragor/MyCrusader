@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Engine/DataTable.h"
 #include "Iris/Serialization/NetBitStreamReader.h"
 #include "Iris/Serialization/NetBitStreamWriter.h"
 #include "Iris/Serialization/NetSerializationContext.h"
@@ -8,6 +9,8 @@
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "Net/HOLUnitReplicator.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -30,7 +33,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Redu
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("62 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit)"), FHOLNetUnitState::TotalBits, 62);
-	TestEqual(TEXT("4 bits more for a wounded unit (J7-Q5)"), FHOLNetUnitState::WoundedBits, 4);
+	TestEqual(TEXT("8 bits more for a wounded unit, its exact health (J7-Q5 revised)"), FHOLNetUnitState::WoundedBits, 8);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
 	TestEqual(TEXT("6 bits more for one facing its front at rest"), FHOLNetUnitState::FacingFrontBits, 6);
 	TestEqual(TEXT("2 bits more for a carrier (J5, D303: its resource, never its amount)"), FHOLNetUnitState::CarriedLoadBits, 2);
@@ -109,6 +112,22 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 95), 160, 160, 0, true, -135.f));
 	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 96), 20, 160, 0, true, 179.f));
 	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::GatherTrip, 97, EHOLResource::Gold, 5), 99, 100, 0, true, 90.f));
+	// J7-Q5 revised: the largest health the wire carries, and each type of the table one hit off its maximum and at 1.
+	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 98), FHOLNetUnitState::MaxWireHealth,
+		FHOLNetUnitState::MaxWireHealth + 1, 0, false, 0.f));
+	int32 TableMaxHealth = 0;
+	if (const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous(); TestNotNull(TEXT("unit type table"), UnitTypes))
+	{
+		UnitTypes->ForeachRow<FHOLUnitTypeRow>(TEXT("Net test"), [&](const FName& Name, const FHOLUnitTypeRow& Row)
+		{
+			TableMaxHealth = FMath::Max(TableMaxHealth, Row.MaxHealth);
+			TestTrue(*FString::Printf(TEXT("%s: MaxHealth %d fits the health bits"), *Name.ToString(), Row.MaxHealth), HOLUnitReplication::FitsWireHealth(Row.MaxHealth));
+			AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 99), Row.MaxHealth - 1, Row.MaxHealth, 3, false, 0.f));
+			AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 100), 1, Row.MaxHealth, 0, false, 0.f));
+		});
+	}
+	TestTrue(*FString::Printf(TEXT("the table's largest maximum (%d) is the one the bits are set for: 8 bits while it is at most 256"), TableMaxHealth),
+		TableMaxHealth > 1 && HOLUnitReplication::FitsWireHealth(TableMaxHealth) && (TableMaxHealth > 256 || FHOLNetUnitState::HealthBits == 8));
 	for (const FHOLNetUnitState& State : AllStates)
 	{
 		alignas(16) uint8 Quantized[64] = {};
@@ -138,7 +157,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("62 bits on the wire, +2 for a carrier, +4 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
+		TestEqual(TEXT("62 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +8 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
@@ -160,6 +179,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		DequantizeArgs.Target = NetSerializerValuePointer(&Back);
 		Serializer.Dequantize(ReadContext, DequantizeArgs);
 		TestEqual(TEXT("same state after the trip"), Back, State);
+		TestEqual(TEXT("exact health after the trip (0 unhurt, not sent)"), Back.Health, State.Health);
 	}
 
 	// J5c.1 (option A of the user): "gathering + resource" in the 4 values the activities leave free, at no bit more;
@@ -206,16 +226,22 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("11 values on the wire: 4 activities, gathering each resource, attacking, dying, facing the front (5 free)"), WireValues.Num(), 11);
 
-	// Health levels (J7-Q5): ceil(15 * health / max), 0 only dead.
-	TestEqual(TEXT("dead: 0"), HOLUnitReplication::GetHealthLevel(0, 160), static_cast<uint8>(0));
-	TestEqual(TEXT("below 0: 0"), HOLUnitReplication::GetHealthLevel(-7, 160), static_cast<uint8>(0));
-	TestEqual(TEXT("1 health: 1, alive"), HOLUnitReplication::GetHealthLevel(1, 1000), static_cast<uint8>(1));
-	TestEqual(TEXT("half: 8"), HOLUnitReplication::GetHealthLevel(80, 160), static_cast<uint8>(8));
-	TestEqual(TEXT("one sixteenth exactly: 1"), HOLUnitReplication::GetHealthLevel(10, 150), static_cast<uint8>(1));
-	TestEqual(TEXT("one hit off: 15, but wounded"), HOLUnitReplication::GetHealthLevel(152, 160), static_cast<uint8>(15));
+	// Health (J7-Q5 revised): exact health points while wounded, 0 only dead.
+	TestEqual(TEXT("dead: 0"), HOLUnitReplication::GetWireHealth(0, 160), static_cast<uint16>(0));
+	TestEqual(TEXT("below 0: 0"), HOLUnitReplication::GetWireHealth(-7, 160), static_cast<uint16>(0));
+	TestEqual(TEXT("1 health: 1, alive"), HOLUnitReplication::GetWireHealth(1, 160), static_cast<uint16>(1));
+	TestEqual(TEXT("exact: 80"), HOLUnitReplication::GetWireHealth(80, 160), static_cast<uint16>(80));
+	TestEqual(TEXT("one hit off the Man-at-arms' 155: 154"), HOLUnitReplication::GetWireHealth(154, 155), static_cast<uint16>(154));
+	TestEqual(TEXT("held at the wire's largest"), HOLUnitReplication::GetWireHealth(1000, 2000), FHOLNetUnitState::MaxWireHealth);
+	TestTrue(TEXT("256 fits 8 bits (255 wounded at most)"), HOLUnitReplication::FitsWireHealth(256));
+	TestFalse(TEXT("257 does not"), HOLUnitReplication::FitsWireHealth(257));
 	FHOLNetUnitState Wounded = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
 	Wounded.SetCombat(152, 160, 0);
 	TestFalse(TEXT("one hit off: not full"), Wounded.bFullHealth);
+	TestEqual(TEXT("one hit off: its exact health"), Wounded.Health, static_cast<uint16>(152));
+	FHOLNetUnitState Dead = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Dying, 0);
+	Dead.SetCombat(-3, 160, 0);
+	TestTrue(TEXT("dead: wounded at 0"), !Dead.bFullHealth && Dead.Health == 0);
 	FHOLNetUnitState Unhurt = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
 	Unhurt.SetCombat(160, 160, 33);
 	TestEqual(TEXT("unhurt and not attacking: the default state"), Unhurt, FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0));
@@ -443,8 +469,7 @@ bool FHOLNetDisplayedPositionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// J7b.4 (J7-Q5): a change of health level, of target or of front is a change of action, sent at once; a hit that keeps
-// the level sends nothing.
+// J7b.4 (J7-Q5 revised): a change of health, of target or of front is a change of action, sent at once: every hit.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetCombatSendRuleTest, "HeroesOfLiberty.Net.CombatSendRule", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetCombatSendRuleTest::RunTest(const FString& Parameters)
 {
@@ -459,9 +484,11 @@ bool FHOLNetCombatSendRuleTest::RunTest(const FString& Parameters)
 	};
 	// UnitId 1 and step 101: not its refresh step (40 steps cycle).
 	const FHOLUnitSentRecord Sent{ Make(EHOLUnitActivity::Attacking, 150, 7), 100 };
-	TestEqual(TEXT("same level (150 -> 151 of 160, both 15): nothing"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 151, 7), 1, 101, StepSeconds, Rules),
+	TestEqual(TEXT("same health: nothing"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 150, 7), 1, 101, StepSeconds, Rules),
 		EHOLUnitSendReason::None);
-	TestEqual(TEXT("another level (150 -> 140, 14): at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 140, 7), 1, 101, StepSeconds, Rules),
+	TestEqual(TEXT("one point less (150 -> 149, a level kept it): at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 149, 7), 1, 101, StepSeconds, Rules),
+		EHOLUnitSendReason::Activity);
+	TestEqual(TEXT("healed one point (150 -> 151, the same field): at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 151, 7), 1, 101, StepSeconds, Rules),
 		EHOLUnitSendReason::Activity);
 	TestEqual(TEXT("another target: at once"), HOLUnitReplication::GetSendReason(Sent, Here, Make(EHOLUnitActivity::Attacking, 150, 8), 1, 101, StepSeconds, Rules),
 		EHOLUnitSendReason::Activity);

@@ -46,7 +46,7 @@ public:
 	FString Describe() const;
 
 	/**
-	 * "bars 3 (shown #12 4/15 selected, ...), unhurt unselected 40": the health bars shown, for the scripted checks
+	 * "bars 3 (shown #12 41/155 selected, ...), unhurt unselected 40": the health bars shown, for the scripted checks
 	 * (hol.Units.Bars), and how many units stand unhurt and unselected (without one).
 	 */
 	FString DescribeHealthBars() const;
@@ -123,11 +123,12 @@ private:
 
 	/** The units as drawn this frame (D271), gathered once for the rings and the health bars. */
 	TArray<FHOLUnitView> Views;
-	/** The bars shown, for DescribeHealthBars: the unit, its fill in fifteenths, whether it is selected. */
+	/** The bars shown, for DescribeHealthBars: the unit, its health of its maximum (J7-Q5 revised), whether it is selected. */
 	struct FShownBar
 	{
 		uint32 UnitId = 0;
-		int32 Fifteenths = 0;
+		int32 Health = 0;
+		int32 MaxHealth = 0;
 		bool bSelected = false;
 	};
 	TArray<FShownBar> ShownBars;

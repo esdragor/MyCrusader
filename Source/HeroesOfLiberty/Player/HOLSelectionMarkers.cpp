@@ -463,7 +463,7 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 				continue;
 			}
 			const float Share = View.GetHealthShare();
-			ShownBars.Add({ View.UnitId, FMath::RoundToInt(Share * 15.f), bSelected });
+			ShownBars.Add({ View.UnitId, View.Health, View.MaxHealth, bSelected });
 			const double Scale = FMath::Clamp(Distance / BarReferenceDistance, BarMinScale, BarMaxScale);
 			const double Width = BarWidth * Scale;
 			const double Height = BarHeight * Scale;
@@ -594,7 +594,7 @@ FString AHOLSelectionMarkers::DescribeHealthBars() const
 	TArray<FString> Items;
 	for (const FShownBar& Bar : Sorted)
 	{
-		Items.Add(FString::Printf(TEXT("#%u %d/15%s"), Bar.UnitId, Bar.Fifteenths, Bar.bSelected ? TEXT(" selected") : TEXT("")));
+		Items.Add(FString::Printf(TEXT("#%u %d/%d%s"), Bar.UnitId, Bar.Health, Bar.MaxHealth, Bar.bSelected ? TEXT(" selected") : TEXT("")));
 	}
 	return FString::Printf(TEXT("bars %d (%s), unhurt unselected %d, instances %d"), Sorted.Num(), *FString::Join(Items, TEXT(", ")),
 		UnhurtUnselected, HealthBars->GetInstanceCount());

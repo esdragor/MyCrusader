@@ -88,10 +88,10 @@ namespace
 							// Last, so the activity and the load read as before (quick_check).
 							Line += FString::Printf(TEXT(", gathers %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Unit.GatherResource)));
 						}
-						// J7b.4: the health level of a wounded unit, the target of an attacking one.
+						// J7b.4: the health of a wounded unit (exact, J7-Q5 revised), the target of an attacking one.
 						if (!Unit.bFullHealth)
 						{
-							Line += FString::Printf(TEXT(", hp %d/15"), Unit.HealthLevel);
+							Line += FString::Printf(TEXT(", hp %d/%d"), Unit.Health, Unit.MaxHealth);
 						}
 						if (Unit.Activity == EHOLUnitActivity::Attacking)
 						{
