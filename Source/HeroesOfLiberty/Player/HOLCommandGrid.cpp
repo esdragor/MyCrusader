@@ -31,7 +31,7 @@ namespace HOLCommandGrid
 			}
 			return Result;
 		}
-		// Soldiers among the selection (the user's trial of J7b): their commands, A attack-move; the builders' grid is the
+		// Soldiers among the selection (the user's trial of J7b): their commands, Q attack-move; the builders' grid is the
 		// Peasants' subgroup's (Tab).
 		if (Context.bBuilders && !Context.bSoldiers)
 		{

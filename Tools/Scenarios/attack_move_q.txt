@@ -1,0 +1,23 @@
+# Attaque-déplacement sur Q : 6 Hommes d'armes face à 6 Lanciers ennemis, 5 Paysans près des arbres, 5000 de chaque ressource
+# Plain, deux joueurs (attack_move_q.json). Positions dans le repère du centre du joueur (comme order_lines).
+hol.Cheat.Resources 5000
+# Les Paysans d'abord, au bord des arbres, à côté du centre.
+hol.Camera.FocusNear 115 -1250
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+# L'armée devant le centre ; les ennemis ~22 m plus loin, hors du rayon d'agression (12 m).
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 300
+hol.Camera.FocusNear 6200 0
+frames 2
+hol.Units.SpawnHere 6 Spearman 1 400
+waitunits 17
+hol.Camera.FocusNear 4700 0
+hol.Camera.Zoom -1
+frames 5
+hol.Select.Army
+note Q puis clic au sol au-delà des Lanciers : attaque-déplacement (A ne fait plus rien pour les soldats).
+note Paysans + soldats (cadre) : Q attaque-déplacement dans « Tous » ; Tab vers les Paysans : A Z E R construisent.
+note S arrêt et D tenir la position : inchangés.

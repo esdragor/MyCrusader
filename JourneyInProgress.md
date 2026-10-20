@@ -5003,3 +5003,15 @@ d'épée).
   **l'attaque-déplacement passe de A à Q** (« A clic » devient « Q clic ») pour ne pas entrer en conflit avec l'onglet I
   (revient sur le retour n° 2 de l'essai de J7b du 2026-10-19). À trancher au moment de le faire : ordre par rapport aux
   lignes colorées et à J7b.6, onglets d'âge dès maintenant (un seul âge en jeu ?) ou seulement la disposition.
+
+### 2026-10-20 — Attaque-déplacement de A à Q (mycrusader-9b)
+
+- Demande de l'utilisateur (« Touche A → Q », la demande AoE4 du journal de J7b.6 : A Z E R gardées pour les onglets
+  d'âge de la construction). Fait : `HOLCommandGrid::AttackMoveCell` 0 → 4 (Q) ; commentaires, aide de
+  `hol.Select.AttackMove`, tests `CommandGrid.UnitOrders` (Q case 4 ; aucun bâtiment des Paysans sur Q S D). Le reste
+  est inchangé : soldats dans la sélection = grille de construction cachée (« Tous ») ; Paysans seuls sans
+  attaque-déplacement ; textes sans touche. Onglets d'âge et disposition AoE4 (ordres à gauche) : pas faits.
+- Compilé (88 s) ; `quick_check` rapide **PASS** (31 s, tests 83/83), avec dedans le correctif du retour n° 2 de
+  mycrusader-db (même copie, `HOLUnitOrderProcessor.cpp`, non commité). Scénario `attack_move_q` (6 Hommes d'armes,
+  6 Lanciers ennemis, 5 Paysans). **Essai validé** (« tout est bon ») ; commité sur `main` par chemins explicites (le
+  correctif de mycrusader-db et les ajouts des autres sessions au journal laissés de côté).
