@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
+#include "Simulation/HOLOrderChainRules.h"
 #include "HOLUnitOrderProcessor.generated.h"
 
 class ANavigationData;
@@ -80,6 +81,25 @@ public:
 	/** Kept paths of the task walks dropped because a new footprint cut them, since the program started (J6b.2, D314). */
 	static int64 GetTotalFootprintDroppedPaths() { return TotalFootprintDroppedPaths; }
 	int32 GetNumPathsWaiting() const { return PendingPaths.Num(); }
+
+	/**
+	 * The chains of queued orders (D328, J7b.5b-1a): the units with steps from moves and attacks, those with queued moves
+	 * (Shift) or still carrying out the last one started. Empty, at no cost, when nobody has a queue.
+	 */
+	void GetChainUnitIds(TArray<uint32>& OutUnitIds) const;
+	/** A unit's steps: its current action (when known), then its queued moves and attacks, head first. */
+	void GetChainSteps(uint32 UnitId, TArray<HOLOrderChain::FStep>& OutSteps) const;
+	/** The world it last ran for (hol.Orders.Chains finds it so). */
+	const UWorld* GetLastWorld() const { return LastWorld.Get(); }
+	/**
+	 * A player's chains now (D328; server or solo; Slot INDEX_NONE: everyone's), from these order, build and gather
+	 * processors (a builder's chain first, then a gatherer's, then its moves).
+	 */
+	static void CollectChains(const UWorld& World, const UHOLUnitOrderProcessor* Orders, const class UHOLBuildProcessor* Builds,
+		const class UHOLGatherProcessor* Gathers, int32 Slot, TArray<HOLOrderChain::FChain>& OutChains);
+	/** Where a step is now (server or solo); its target for the logs. False: its target is gone. Sites: filled at the first site. */
+	static bool LocateChainStep(const UWorld& World, const HOLOrderChain::FStep& Step, TMap<uint32, const class AHOLBuilding*>& Sites,
+		FVector& OutLocation, FString* OutTarget = nullptr);
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -184,6 +204,28 @@ protected:
 	TArray<FHOLMoveOrder> StartedQueuedMoves;
 	/** Its queue of moves forgotten (a new order, gone): taken out of each move it waited for. */
 	void ForgetMoveQueue(uint32 UnitId);
+	/**
+	 * Chains (D328): the current action of each unit with a queue (or whose last queued move still goes on), and since
+	 * which step. Set when a unit's first move is queued (its order then, from OrderSteps) and when a queued move starts;
+	 * dropped with its queue (a new order without Shift) and once its last step is over (StartQueuedMoves).
+	 */
+	struct FChainHead
+	{
+		HOLOrderChain::FStep Step;
+		uint32 SinceStep = 0;
+	};
+	TMap<uint32, FChainHead> ChainHeadOfUnit;
+	/** The step of each recent player order (one entry per order, not per unit), by its serial: a unit's current action. */
+	TMap<uint32, HOLOrderChain::FStep> OrderSteps;
+	static HOLOrderChain::FStep MakeChainStep(const FHOLMoveOrder& Order);
+	TWeakObjectPtr<const UWorld> LastWorld;
+	/** Each player's chains to its player state (D328, J7b.5b-1b): every 0.25 s at most, only while there are some. */
+	void PublishChains(const UWorld& World, float DeltaSeconds);
+	double ChainPublishWait = 0.;
+	/** Some player state holds chains: published again (emptied) when the last queue goes. */
+	bool bChainsPublished = false;
+	TWeakObjectPtr<const class UHOLBuildProcessor> ChainBuilds;
+	TWeakObjectPtr<const class UHOLGatherProcessor> ChainGathers;
 	/** Attack, stop, hold (J7b.3): the units stand, their task, queue and fight forgotten; an attack sets their target. */
 	void ApplyCombatOrder(FMassEntityManager& EntityManager, const UWorld& World, const struct FHOLMoveOrder& Order,
 		TConstArrayView<FMassEntityHandle> Entities, FMassEntityHandle AttackTarget);

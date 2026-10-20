@@ -401,7 +401,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Units->MarkUnitDying(Enemy.UnitId);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
+			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.
 			Combat.Target = FMassEntityHandle();
+			Combat.bOrderedTarget = false;
 			Combat.bAttacking = false;
 		}
 	}

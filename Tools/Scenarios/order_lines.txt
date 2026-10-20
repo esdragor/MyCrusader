@@ -1,0 +1,47 @@
+# Lignes entre ordres en file : 6 Lanciers + 6 Hommes d'armes face à 8 Lanciers ennemis, 5 Paysans près des arbres, une caserne finie, 5000 de chaque ressource
+# Plain, deux joueurs (order_lines.json). Les positions sont dans le repère du centre du joueur (X vers le milieu de la
+# carte) : le centre du slot 0 est vers (-15000, 0), l'arbre le plus proche vers (115, -1781) de lui.
+hol.Cheat.Resources 5000
+# Population 175 : la caserne peut recruter malgré les soldats offerts (hors plafond).
+hol.Cheat.Population 165
+# Les Paysans d'abord (hol.Select.Own ne prend alors qu'eux), au bord des arbres, à côté du centre.
+hol.Camera.FocusNear 115 -1250
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+# La caserne : fondation derrière le centre (la place de quick_check), bâtie d'un coup (hol.Build.Instant) par les cinq.
+hol.Build.PlaceNear Barracks -3150 4050
+waitlog Construction: slot 0 placed Barracks foundation
+hol.Build.Instant 1
+hol.Camera.FocusNear -1500 1500
+frames 5
+hol.Select.Own
+waitlog Selection: 5 units (own)
+hol.Select.OrderNear -3150 4050
+waitlog Build order of slot 0: 5 units to Barracks
+waitlog Construction: slot 0 finished Barracks
+hol.Build.Instant 0
+# Les Paysans reviennent au bord des arbres.
+hol.Camera.FocusNear 115 -1250
+frames 5
+hol.Select.OrderNear 400 -700
+# L'armée devant le centre, vers le milieu, au-delà des rochers (vers 3000) ; les ennemis ~22 m plus loin (15 m au moins entre les bords des groupes), hors du rayon d'agression (12 m).
+hol.Camera.FocusNear 4000 -500
+frames 2
+hol.Units.SpawnHere 6 Spearman 0 300
+hol.Camera.FocusNear 4000 500
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 300
+hol.Camera.FocusNear 6200 0
+frames 2
+hol.Units.SpawnHere 8 Spearman 1 400
+waitunits 25
+# La caméra au-dessus de l'armée, l'armée choisie.
+hol.Camera.FocusNear 4700 0
+# Un cran de molette en arrière : armée et ennemis tiennent entre le panneau du scénario et celui de la sélection.
+hol.Camera.Zoom -1
+frames 5
+hol.Select.Army
+note Maj + clic droit : mettez des ordres en file (déplacements en jaune, attaques en rouge).
+note Clic droit sur un Lancier ennemi : attaque (ligne rouge) ; Maj + clic droit pour enchaîner déplacement puis attaque.
+note Paysans (près des arbres) : Maj + construire puis Maj + clic droit sur un arbre (ligne blanche puis bleue).

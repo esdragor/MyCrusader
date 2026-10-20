@@ -8,8 +8,10 @@
 #include "Engine/Font.h"
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyUILog.h"
+#include "Dev/HOLTestHooks.h"
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
+#include "HUD/HOLScenarioPanel.h"
 #include "Player/HOLPlayerController.h"
 #include "Style/HOLUIStyles.h"
 
@@ -34,6 +36,11 @@ namespace UE::HeroesOfLiberty::UI::GameHUD
 	constexpr float PopupLineHeight = 24.f;
 	const FLinearColor PopupText(1.f, 0.97f, 0.88f, 1.f);
 	const FLinearColor PopupOutline(0.f, 0.f, 0.f, 0.85f);
+
+#if !UE_BUILD_SHIPPING
+	/** The HUD whose panel HOLTestHooks::OnScenarioChanged refreshes: only it clears the hook when it ends. */
+	TWeakObjectPtr<const AHOLGameHUD> ScenarioHookOwner;
+#endif
 
 	/** A resource's colour, as its marker in the top bar. */
 	const FLinearColor& GetResourceColor(const EHOLResource Resource)
@@ -72,11 +79,41 @@ void AHOLGameHUD::BeginPlay()
 		CheatPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
 		CheatPanel->AddToViewport(/*ZOrder*/ 1);
 	}
+	// The test scenario's panel (hol.Scenario), at the top centre, over both: what a scenario started before this map
+	// opened shows at once, and what comes after (its notes, ready) through the hook.
+	ScenarioPanel = CreateWidget<UHOLScenarioPanel>(PlayerController, UHOLScenarioPanel::StaticClass());
+	if (ScenarioPanel)
+	{
+		ScenarioPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
+		ScenarioPanel->AddToViewport(/*ZOrder*/ 2);
+		const TWeakObjectPtr<UHOLScenarioPanel> WeakPanel(ScenarioPanel);
+		HOLTestHooks::OnScenarioChanged() = [WeakPanel]()
+		{
+			if (UHOLScenarioPanel* Panel = WeakPanel.Get())
+			{
+				Panel->Refresh();
+			}
+		};
+		UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner = this;
+	}
 #endif
 }
 
 void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+#if !UE_BUILD_SHIPPING
+	// Back in the menu, a scenario's error before its map opens falls back to the debug line instead of a gone panel.
+	if (UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner.Get() == this)
+	{
+		HOLTestHooks::OnScenarioChanged() = nullptr;
+		UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner.Reset();
+	}
+#endif
+	if (ScenarioPanel)
+	{
+		ScenarioPanel->RemoveFromParent();
+		ScenarioPanel = nullptr;
+	}
 	if (CheatPanel)
 	{
 		CheatPanel->RemoveFromParent();

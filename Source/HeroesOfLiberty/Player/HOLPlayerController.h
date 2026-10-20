@@ -168,8 +168,11 @@ public:
 	 * whole group for « Tous »).
 	 */
 	void GetCommandBuildings(TArray<AHOLBuilding*>& OutBuildings) const;
-	/** Selects units (their identifiers), or nothing (empty). */
-	void SetUnitSelection(TArray<uint32> UnitIds);
+	/**
+	 * Selects units (their identifiers), or nothing (empty), on the subgroup of type ActiveType (« Tous » by default; a
+	 * type none of them has reads as « Tous », GetActiveUnitSubgroup).
+	 */
+	void SetUnitSelection(TArray<uint32> UnitIds, FName ActiveType = NAME_None);
 	/** Selects a standing resource source (its index in UHOLSourceSubsystem), or nothing (INDEX_NONE). */
 	void SetSourceSelection(int32 SourceIndex);
 	AHOLBuilding* GetSelection() const { return Selection.Get(); }

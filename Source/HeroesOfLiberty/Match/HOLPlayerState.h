@@ -5,7 +5,51 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Match/HOLResources.h"
+#include "Engine/NetSerialization.h"
 #include "HOLPlayerState.generated.h"
+
+/**
+ * One step of a chain of queued orders as its owner receives it (D328, J7b.5b-1b): its kind (HOLOrderChain::EStepKind)
+ * and where it is: the point of a move, the site, the source (fixed); an attack: the unit taken on (D223 identifier, the
+ * same on every machine), placed by the receiver where it shows it, Location being where it stood when the chain changed.
+ */
+USTRUCT()
+struct FHOLNetChainStep
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	uint8 Kind = 0;
+
+	/** Whole centimetres, packed (FVector_NetQuantize). */
+	UPROPERTY()
+	FVector_NetQuantize Location = FVector::ZeroVector;
+
+	/** Attack only: the unit taken on; 0 otherwise. */
+	UPROPERTY()
+	uint32 TargetId = 0;
+
+	/** An attack's Location is only a fallback: its target walking does not make the chain change (nothing resent). */
+	bool operator==(const FHOLNetChainStep& Other) const
+	{
+		return Kind == Other.Kind && TargetId == Other.TargetId && (TargetId != 0 || Location == Other.Location);
+	}
+};
+
+/** A chain of queued orders as its owner receives it (D328): its units (D223 identifiers), its steps, head first. */
+USTRUCT()
+struct FHOLNetOrderChain
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<uint32> UnitIds;
+
+	UPROPERTY()
+	TArray<FHOLNetChainStep> Steps;
+
+	bool operator==(const FHOLNetOrderChain& Other) const { return UnitIds == Other.UnitIds && Steps == Other.Steps; }
+};
 
 /**
  * A player of the match: the slot it holds in the match configuration (D244), which is the index its units carry
@@ -49,12 +93,33 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnEconomyChanged);
 	FOnEconomyChanged OnEconomyChanged;
 
+	/**
+	 * The chains of queued orders (Shift) of the player's units (D328, J7b.5b-1b): set by the server only when they change
+	 * (UHOLUnitOrderProcessor, at most every 0.25 s and only while the player has some or just lost them), replicated to
+	 * this player only. Solo and host: the same array, read where it is set. Empty without a queue: nothing is sent.
+	 */
+	const TArray<FHOLNetOrderChain>& GetOrderChains() const { return OrderChains; }
+	/** Server only: true when the chains changed (and are then sent). */
+	bool SetOrderChains(TArray<FHOLNetOrderChain>&& InChains);
+	/**
+	 * Where a received step is on this machine: an attack at its target as shown here (client: the displayed unit; solo or
+	 * server: the simulated one), else at its Location (a target no longer known: its fallback, false returned).
+	 */
+	static bool LocateChainStep(const UWorld& World, const FHOLNetChainStep& Step, FVector& OutLocation);
+
+	/** The chains changed: on the server when set, on the owner's machine when they arrive. For the drawing (J7b.5b-2). */
+	DECLARE_MULTICAST_DELEGATE(FOnOrderChainsChanged);
+	FOnOrderChainsChanged OnOrderChainsChanged;
+
 	/** "F 200 W 200 S 200 G 200, population 0/10": for the logs of the scripted checks. */
 	FString DescribeEconomy() const;
 
 private:
 	UFUNCTION()
 	void OnRep_Economy();
+
+	UFUNCTION()
+	void OnRep_OrderChains();
 
 	/** Slot index in the match configuration, INDEX_NONE for a player with no slot. */
 	UPROPERTY(Replicated)
@@ -74,4 +139,7 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Economy)
 	FHOLResources Gatherers;
+
+	UPROPERTY(ReplicatedUsing = OnRep_OrderChains)
+	TArray<FHOLNetOrderChain> OrderChains;
 };

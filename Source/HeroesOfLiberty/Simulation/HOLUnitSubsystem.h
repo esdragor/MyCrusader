@@ -104,6 +104,8 @@ public:
 
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }
+	/** Restarts it from a given seed: a test scenario's births laid out the same whatever was born before it (hol.Units.SpawnSeed). */
+	void ResetSpawnSeed(const int32 Seed) { SpawnRandom.Initialize(Seed); }
 
 	/** Mass entity template of a type, built once from its row and cached (D225); nullptr for an unknown type. */
 	const FMassEntityTemplate* FindTemplate(FName TypeName, EHOLUnitTemplateKind Kind = EHOLUnitTemplateKind::Simulation);

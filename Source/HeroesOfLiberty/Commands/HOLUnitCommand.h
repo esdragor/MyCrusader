@@ -59,6 +59,8 @@ struct FHOLMoveOrder
 	 * FHOLCombatFragment::EngageSerial when it was given; a newer player order changed it, the walk is dropped. 0: none.
 	 */
 	uint32 CombatStamp = 0;
+	/** A player's order (D328, given through its controller): its units' chain is drawn, with Shift or not. */
+	bool bChain = false;
 };
 
 /** One gather order (J5, D296): "gather this source", for a group of units. Applied by the gathering at the next step. */
@@ -70,4 +72,6 @@ struct FHOLGatherOrder
 	int32 SourceIndex = INDEX_NONE;
 	/** Slot of the player who gave it (D288): only its own units obey. INDEX_NONE: no check (the server's own orders). */
 	int32 PlayerIndex = INDEX_NONE;
+	/** A player's order (D328, given through its controller): its units' chain is drawn until they reach the source. */
+	bool bChain = false;
 };

@@ -36,6 +36,17 @@ class HEROESOFLIBERTY_API UHOLCommandSubsystem : public UWorldSubsystem
 
 public:
 	/**
+	 * While one lives, the orders issued are a player's (D328): their units' chains are drawn (bChain), with Shift or not.
+	 * The controller's order calls open one; the server's own orders (tasks, rally points, stress tests) do not.
+	 */
+	struct FPlayerOrderScope
+	{
+		explicit FPlayerOrderScope(UHOLCommandSubsystem& InCommands) : Guard(InCommands.bPlayerOrders, true) {}
+	private:
+		TGuardValue<bool> Guard;
+	};
+
+	/**
 	 * Queues "go to this location" for the given units, one order for the group (D286, D287). PlayerIndex: the player
 	 * who gave it, whose own units alone obey (D288); INDEX_NONE for the server's own orders (rally point, tests).
 	 */
@@ -101,6 +112,8 @@ protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
 private:
+	/** A FPlayerOrderScope lives (D328). */
+	bool bPlayerOrders = false;
 	TArray<FHOLMoveOrder> PendingMoveOrders;
 	TArray<FHOLGatherOrder> PendingGatherOrders;
 	TArray<FHOLProductionCommand> PendingProductionOrders;

@@ -7,6 +7,9 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerController.h"
+#include "Match/HOLPlayerState.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
@@ -25,7 +28,11 @@
 #include "NavMesh/RecastNavMeshGenerator.h"
 #include "NavigationData.h"
 #include "NavigationSystem.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLBuildProcessor.h"
+#include "Simulation/HOLGatherProcessor.h"
+#include "UObject/UObjectIterator.h"
 #include "Simulation/HOLFormationRules.h"
 #include "Simulation/HOLGroupMoveRules.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -548,6 +555,7 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 {
 	using namespace UE::HeroesOfLiberty::Orders;
 	UWorld* World = EntityManager.GetWorld();
+	LastWorld = World;
 	UNavigationSystemV1* NavSystem = World ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr;
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
 	const double StartSeconds = FPlatformTime::Seconds();
@@ -565,6 +573,10 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	AdvanceBlocks(EntityManager, Context.GetDeltaTimeSeconds(), NavData);
 	WatchArrivals(EntityManager);
 	StartQueuedMoves(EntityManager);
+	if (World)
+	{
+		PublishChains(*World, Context.GetDeltaTimeSeconds());
+	}
 	if (!ReadyFootprints.IsEmpty())
 	{
 		RequestCutPaths(EntityManager, NavSystem, NavData);
@@ -1049,6 +1061,28 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			}
 			if (bAnyWalking)
 			{
+				// Chains (D328): a unit's first queued move keeps its current action as the head of its chain.
+				for (int32 Unit = 0; Unit < Entities.Num(); ++Unit)
+				{
+					const uint32 UnitId = EntityIds[Unit];
+					if (MoveQueueOfUnit.Contains(UnitId) || ChainHeadOfUnit.Contains(UnitId))
+					{
+						continue;
+					}
+					const FHOLMoveOrderFragment& Move = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entities[Unit]);
+					const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entities[Unit]);
+					const FHOLUnitStateFragment* TargetState = Combat && Combat->bOrderedTarget && EntityManager.IsEntityValid(Combat->Target)
+						? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Combat->Target) : nullptr;
+					const HOLOrderChain::FStep* OrderStep = Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning ? OrderSteps.Find(Move.OrderSerial) : nullptr;
+					if (TargetState)
+					{
+						ChainHeadOfUnit.Add(UnitId, {HOLOrderChain::FStep::MakeAttack(TargetState->UnitId), StepCount});
+					}
+					else if (OrderStep)
+					{
+						ChainHeadOfUnit.Add(UnitId, {*OrderStep, StepCount});
+					}
+				}
 				const uint32 QueuedId = NextQueuedMoveId++;
 				FQueuedMove& Queued = QueuedMoves.Add(QueuedId);
 				Queued.Order = Order;
@@ -1064,11 +1098,23 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			}
 		}
 		// Any other order forgets the units' queued moves (J7a.4); a queued move that starts keeps those after it.
-		if (OrderIndex >= NumStartedQueued && !Order.bFromTask && !MoveQueueOfUnit.IsEmpty())
+		if (OrderIndex >= NumStartedQueued && !Order.bFromTask && (!MoveQueueOfUnit.IsEmpty() || !ChainHeadOfUnit.IsEmpty()))
 		{
 			for (const uint32 UnitId : EntityIds)
 			{
 				ForgetMoveQueue(UnitId);
+			}
+		}
+		// Chains (D328, the user's trial of J7b.5b): a player's order without Shift (or with Shift, nothing before it) has its
+		// chain too, its one step, until it is over (StartQueuedMoves). Only a player's orders: the server's own (tasks,
+		// rally points, stress tests) cost nothing here.
+		if (Order.bChain && OrderIndex >= NumStartedQueued && !Order.bFromTask
+			&& (Order.Kind == EHOLOrderKind::Move || Order.Kind == EHOLOrderKind::AttackMove || Order.Kind == EHOLOrderKind::Attack))
+		{
+			const HOLOrderChain::FStep Step = MakeChainStep(Order);
+			for (const uint32 UnitId : EntityIds)
+			{
+				ChainHeadOfUnit.Add(UnitId, {Step, StepCount});
 			}
 		}
 		// The combat orders without a walk of their own (J7b.3): the units stand where they are, their task and fight
@@ -1079,6 +1125,21 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			continue;
 		}
 		const uint32 OrderSerial = NextOrderSerial++;
+		// Chains (D328): the step of each player order, by its serial (one entry per order), the recent ones only.
+		if (!Order.bFromTask)
+		{
+			OrderSteps.Add(OrderSerial, MakeChainStep(Order));
+			if (OrderSteps.Num() > 256)
+			{
+				for (auto It = OrderSteps.CreateIterator(); It; ++It)
+				{
+					if (OrderSerial - It.Key() > 128)
+					{
+						It.RemoveCurrent();
+					}
+				}
+			}
+		}
 
 		// Slots (D287): one unit goes to the target itself; a group to a honeycomb oriented along the march.
 		FVector2D Centre = FVector2D::ZeroVector;
@@ -1796,8 +1857,43 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 		Order.Kind == EHOLOrderKind::Attack ? *FString::Printf(TEXT(" on #%u"), Order.TargetUnitId) : TEXT(""));
 }
 
+HOLOrderChain::FStep UHOLUnitOrderProcessor::MakeChainStep(const FHOLMoveOrder& Order)
+{
+	return Order.Kind == EHOLOrderKind::Attack ? HOLOrderChain::FStep::MakeAttack(Order.TargetUnitId)
+		: HOLOrderChain::FStep::MakeMove(Order.Target, Order.Kind == EHOLOrderKind::AttackMove);
+}
+
+void UHOLUnitOrderProcessor::GetChainUnitIds(TArray<uint32>& OutUnitIds) const
+{
+	MoveQueueOfUnit.GetKeys(OutUnitIds);
+	for (const TPair<uint32, FChainHead>& Pair : ChainHeadOfUnit)
+	{
+		OutUnitIds.AddUnique(Pair.Key);
+	}
+}
+
+void UHOLUnitOrderProcessor::GetChainSteps(const uint32 UnitId, TArray<HOLOrderChain::FStep>& OutSteps) const
+{
+	OutSteps.Reset();
+	if (const FChainHead* Head = ChainHeadOfUnit.Find(UnitId))
+	{
+		OutSteps.Add(Head->Step);
+	}
+	if (const TArray<uint32>* Queue = MoveQueueOfUnit.Find(UnitId))
+	{
+		for (const uint32 QueuedId : *Queue)
+		{
+			if (const FQueuedMove* Queued = QueuedMoves.Find(QueuedId))
+			{
+				OutSteps.Add(MakeChainStep(Queued->Order));
+			}
+		}
+	}
+}
+
 void UHOLUnitOrderProcessor::ForgetMoveQueue(const uint32 UnitId)
 {
+	ChainHeadOfUnit.Remove(UnitId);
 	TArray<uint32> Queue;
 	if (!MoveQueueOfUnit.RemoveAndCopyValue(UnitId, Queue))
 	{
@@ -1814,7 +1910,7 @@ void UHOLUnitOrderProcessor::ForgetMoveQueue(const uint32 UnitId)
 
 void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 {
-	if (QueuedMoves.IsEmpty())
+	if (QueuedMoves.IsEmpty() && ChainHeadOfUnit.IsEmpty())
 	{
 		return;
 	}
@@ -1841,6 +1937,32 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 	{
 		ForgetMoveQueue(UnitId);
 	}
+	// Chains (D328): a unit with no queue left keeps its line until its last step is over (a short grace for its start).
+	for (auto It = ChainHeadOfUnit.CreateIterator(); It; ++It)
+	{
+		if (MoveQueueOfUnit.Contains(It.Key()) || StepCount - It.Value().SinceStep < 10)
+		{
+			continue;
+		}
+		const FMassEntityHandle Entity = Units->FindEntity(It.Key());
+		const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
+		const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+		const bool bWalking = Move && Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning;
+		const bool bFighting = Combat && (Combat->bOrderedTarget || Combat->bAttackMoveDetour);
+		// A task's walks (gathering, building: their own chains, or none) and a death end the player's move too.
+		const FHOLGatherFragment* Gather = Move ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
+		const FHOLBuildFragment* Build = Move ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
+		const FHOLUnitStateFragment* State = Move ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		const bool bOnTask = (Gather && Gather->IsGathering()) || (Build && Build->IsBuilding()) || !State || State->CurrentHealth <= 0;
+		if ((!bWalking && !bFighting) || bOnTask)
+		{
+			It.RemoveCurrent();
+		}
+	}
+	// A unit whose queued move starts in this pass stands still until the next step applies it: the move after it in its
+	// queue must not start in the same pass, or both are applied together and the later one overrides it (P1, P2, P3:
+	// P2 skipped, the user's trial of J7b).
+	TSet<uint32> StartedNow;
 	for (auto It = QueuedMoves.CreateIterator(); It; ++It)
 	{
 		FQueuedMove& Queued = It.Value();
@@ -1853,6 +1975,11 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		bool bReady = true;
 		for (const uint32 UnitId : Queued.Members)
 		{
+			if (StartedNow.Contains(UnitId))
+			{
+				bReady = false;
+				break;
+			}
 			const TArray<uint32>* Queue = MoveQueueOfUnit.Find(UnitId);
 			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
 			const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
@@ -1872,6 +1999,8 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		Started.UnitIds = Queued.Members;
 		for (const uint32 UnitId : Queued.Members)
 		{
+			StartedNow.Add(UnitId);
+			ChainHeadOfUnit.Add(UnitId, {MakeChainStep(Queued.Order), StepCount});
 			TArray<uint32>& Queue = MoveQueueOfUnit.FindChecked(UnitId);
 			Queue.RemoveAt(0);
 			if (Queue.IsEmpty())
@@ -2336,11 +2465,208 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 	NextSlowestOfOrder.Reset();
 }
 
+void UHOLUnitOrderProcessor::CollectChains(const UWorld& World, const UHOLUnitOrderProcessor* Orders, const UHOLBuildProcessor* Builds,
+	const UHOLGatherProcessor* Gathers, const int32 Slot, TArray<HOLOrderChain::FChain>& OutChains)
+{
+	OutChains.Reset();
+	const UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+	const UMassEntitySubsystem* EntitySubsystem = World.GetSubsystem<UMassEntitySubsystem>();
+	if (!Units || !EntitySubsystem)
+	{
+		return;
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	auto StateOfSlot = [&EntityManager, Slot](const FMassEntityHandle Entity) -> const FHOLUnitStateFragment*
+	{
+		const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		return State && (Slot == INDEX_NONE || State->OwnerPlayer == Slot) ? State : nullptr;
+	};
+	TArray<HOLOrderChain::FUnitSteps> UnitSteps;
+	TSet<uint32> Builders;
+	if (Builds)
+	{
+		TArray<UHOLBuildProcessor::FChainOfBuilder> BuilderChains;
+		Builds->GetChains(BuilderChains);
+		for (UHOLBuildProcessor::FChainOfBuilder& Chain : BuilderChains)
+		{
+			if (const FHOLUnitStateFragment* State = StateOfSlot(Chain.Entity))
+			{
+				Builders.Add(State->UnitId);
+				UnitSteps.Add({State->UnitId, MoveTemp(Chain.Steps)});
+			}
+		}
+	}
+	// A player's gather order without Shift (D328): its one step until the unit first reaches the source.
+	if (Gathers)
+	{
+		for (const TPair<uint32, int32>& Pair : Gathers->GetChainSources())
+		{
+			if (!Builders.Contains(Pair.Key) && StateOfSlot(Units->FindEntity(Pair.Key)))
+			{
+				Builders.Add(Pair.Key);
+				HOLOrderChain::FUnitSteps& Steps = UnitSteps.AddDefaulted_GetRef();
+				Steps.UnitId = Pair.Key;
+				Steps.Steps.Add(HOLOrderChain::FStep::MakeGather(Pair.Value));
+			}
+		}
+	}
+	if (Orders)
+	{
+		TArray<uint32> UnitIds;
+		Orders->GetChainUnitIds(UnitIds);
+		for (const uint32 UnitId : UnitIds)
+		{
+			if (!Builders.Contains(UnitId) && StateOfSlot(Units->FindEntity(UnitId)))
+			{
+				HOLOrderChain::FUnitSteps& Steps = UnitSteps.AddDefaulted_GetRef();
+				Steps.UnitId = UnitId;
+				Orders->GetChainSteps(UnitId, Steps.Steps);
+			}
+		}
+	}
+	UnitSteps.Sort([](const HOLOrderChain::FUnitSteps& A, const HOLOrderChain::FUnitSteps& B) { return A.UnitId < B.UnitId; });
+	HOLOrderChain::MakeChains(UnitSteps, OutChains);
+}
+
+bool UHOLUnitOrderProcessor::LocateChainStep(const UWorld& World, const HOLOrderChain::FStep& Step, TMap<uint32, const AHOLBuilding*>& Sites,
+	FVector& OutLocation, FString* OutTarget)
+{
+	OutLocation = Step.Point;
+	switch (Step.Kind)
+	{
+	case HOLOrderChain::EStepKind::Attack:
+	{
+		if (OutTarget)
+		{
+			*OutTarget = FString::Printf(TEXT(" #%u"), Step.TargetId);
+		}
+		const UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+		const UMassEntitySubsystem* EntitySubsystem = World.GetSubsystem<UMassEntitySubsystem>();
+		const FMassEntityManager* EntityManager = EntitySubsystem ? &EntitySubsystem->GetEntityManager() : nullptr;
+		const FMassEntityHandle Entity = Units ? Units->FindEntity(Step.TargetId) : FMassEntityHandle();
+		const FTransformFragment* Transform = EntityManager && EntityManager->IsEntityValid(Entity) ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+		OutLocation = Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector;
+		return Transform != nullptr;
+	}
+	case HOLOrderChain::EStepKind::Build:
+	{
+		if (Sites.IsEmpty())
+		{
+			for (TActorIterator<AHOLBuilding> It(const_cast<UWorld*>(&World)); It; ++It)
+			{
+				Sites.Add(It->GetUniqueID(), *It);
+			}
+		}
+		const AHOLBuilding* const* Site = Sites.Find(Step.TargetId);
+		if (OutTarget)
+		{
+			*OutTarget = FString::Printf(TEXT(" %s"), Site ? *(*Site)->GetTypeName().ToString() : TEXT("(gone)"));
+		}
+		OutLocation = Site ? (*Site)->GetActorLocation() : FVector::ZeroVector;
+		return Site != nullptr;
+	}
+	case HOLOrderChain::EStepKind::Gather:
+	{
+		if (OutTarget)
+		{
+			*OutTarget = FString::Printf(TEXT(" source %d"), Step.SourceIndex);
+		}
+		const UHOLSourceSubsystem* Sources = World.GetSubsystem<UHOLSourceSubsystem>();
+		const bool bFound = Sources && Sources->GetSources().IsValidIndex(Step.SourceIndex);
+		OutLocation = bFound ? Sources->GetSources()[Step.SourceIndex].Location : FVector::ZeroVector;
+		return bFound;
+	}
+	default:
+		return true;
+	}
+}
+
+void UHOLUnitOrderProcessor::PublishChains(const UWorld& World, const float DeltaSeconds)
+{
+	// D328, J7b.5b-1b: at most every 0.25 s, and only while some player has chains or just lost them (nothing otherwise).
+	ChainPublishWait -= DeltaSeconds;
+	if (ChainPublishWait > 0.)
+	{
+		return;
+	}
+	ChainPublishWait = 0.25;
+	const UHOLBuildProcessor* Builds = ChainBuilds.Get();
+	if (!Builds)
+	{
+		for (TObjectIterator<UHOLBuildProcessor> It; It; ++It)
+		{
+			if (It->GetLastWorld() == &World)
+			{
+				Builds = *It;
+				ChainBuilds = *It;
+			}
+		}
+	}
+	const UHOLGatherProcessor* Gathers = ChainGathers.Get();
+	if (!Gathers)
+	{
+		for (TObjectIterator<UHOLGatherProcessor> It; It; ++It)
+		{
+			if (It->GetLastWorld() == &World)
+			{
+				Gathers = *It;
+				ChainGathers = *It;
+			}
+		}
+	}
+	const bool bAnyQueue = !MoveQueueOfUnit.IsEmpty() || !ChainHeadOfUnit.IsEmpty() || (Builds && Builds->HasChains())
+		|| (Gathers && !Gathers->GetChainSources().IsEmpty());
+	if (!bAnyQueue && !bChainsPublished)
+	{
+		return;
+	}
+	const AGameStateBase* GameState = World.GetGameState();
+	if (!GameState)
+	{
+		return;
+	}
+	bool bAnyPublished = false;
+	TMap<uint32, const AHOLBuilding*> Sites;
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+		const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+		if (Slot == INDEX_NONE)
+		{
+			continue;
+		}
+		TArray<HOLOrderChain::FChain> Chains;
+		if (bAnyQueue)
+		{
+			CollectChains(World, this, Builds, Gathers, Slot, Chains);
+		}
+		TArray<FHOLNetOrderChain> NetChains;
+		NetChains.Reserve(Chains.Num());
+		for (const HOLOrderChain::FChain& Chain : Chains)
+		{
+			FHOLNetOrderChain& NetChain = NetChains.AddDefaulted_GetRef();
+			NetChain.UnitIds = Chain.UnitIds;
+			for (const HOLOrderChain::FStep& Step : Chain.Steps)
+			{
+				FHOLNetChainStep& NetStep = NetChain.Steps.AddDefaulted_GetRef();
+				NetStep.Kind = static_cast<uint8>(Step.Kind);
+				FVector Location;
+				LocateChainStep(World, Step, Sites, Location);
+				NetStep.Location = Location;
+				NetStep.TargetId = Step.Kind == HOLOrderChain::EStepKind::Attack ? Step.TargetId : 0;
+			}
+		}
+		bAnyPublished |= !NetChains.IsEmpty();
+		HOLPlayerState->SetOrderChains(MoveTemp(NetChains));
+	}
+	bChainsPublished = bAnyPublished;
+}
+
 namespace UE::HeroesOfLiberty::Orders
 {
 	/** Scripted tries of J4 (D289): every unit, or those of one slot, ordered to a ground point as one group. */
 	FAutoConsoleCommandWithWorldAndArgs MoveCommand(TEXT("hol.Units.Move"),
-		TEXT("hol.Units.Move X Y [Slot]: orders the units (of one slot, or all) to the ground point X Y (cm), as one group (server or solo)"),
+		TEXT("hol.Units.Move X Y [Slot] [q|a|qa]: orders the units (of one slot, or all: -1) to the ground point X Y (cm), as one group; q: queued (Shift), a: attack-move (server or solo)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
 		{
 			if (Args.Num() < 2)
@@ -2350,6 +2676,8 @@ namespace UE::HeroesOfLiberty::Orders
 			}
 			const FVector Target(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
 			const int32 Slot = Args.Num() >= 3 ? FCString::Atoi(*Args[2]) : INDEX_NONE;
+			const bool bQueue = Args.Num() >= 4 && Args[3].Contains(TEXT("q"));
+			const bool bAttackMove = Args.Num() >= 4 && Args[3].Contains(TEXT("a"));
 			for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
 			{
 				UWorld* World = WorldContext.World();
@@ -2368,7 +2696,20 @@ namespace UE::HeroesOfLiberty::Orders
 					const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(UnitId));
 					return State == nullptr || (Slot != INDEX_NONE && State->OwnerPlayer != Slot);
 				});
-				Commands->IssueMoveOrder(UnitIds, Target);
+				// One slot's units: as that player's order (D328, its chain drawn); all: the server's own (no chain).
+				TOptional<UHOLCommandSubsystem::FPlayerOrderScope> PlayerOrder;
+				if (Slot != INDEX_NONE)
+				{
+					PlayerOrder.Emplace(*Commands);
+				}
+				if (bAttackMove)
+				{
+					Commands->IssueAttackMoveOrder(UnitIds, Target, INDEX_NONE, bQueue);
+				}
+				else
+				{
+					Commands->IssueMoveOrder(UnitIds, Target, INDEX_NONE, false, FVector2D::ZeroVector, false, bQueue);
+				}
 				UE_LOG(LogHOLSimulation, Display, TEXT("Move order: %d units to (%.0f, %.0f)"), UnitIds.Num(), Target.X, Target.Y);
 			}
 		}));
@@ -2407,6 +2748,96 @@ namespace UE::HeroesOfLiberty::Orders
 						Order->Slot.X, Order->Slot.Y, FVector::Dist2D(Order->Slot, Transform->GetTransform().GetLocation()), Order->StuckSteps));
 				}
 				UE_LOG(LogHOLSimulation, Display, TEXT("Unit orders: %s"), *FString::Join(Lines, TEXT("; ")));
+			}
+		}));
+
+	/**
+	 * The chains of queued orders of a player (D328, J7b.5b-1a; server or solo): one per common queue, its units, its steps
+	 * (kind, target) and where each step is now (the point; the unit taken on; the site; the source).
+	 */
+	FAutoConsoleCommandWithWorldAndArgs ChainsCommand(TEXT("hol.Orders.Chains"),
+		TEXT("hol.Orders.Chains [Slot]: logs the chains of queued orders (Shift) of a player, one per common queue: units, steps and their locations now (server or solo); on a client, the chains it received (J7b.5b-1b)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
+		{
+			const int32 Slot = Args.IsEmpty() ? INDEX_NONE : FCString::Atoi(*Args[0]);
+			for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
+			{
+				UWorld* World = WorldContext.World();
+				if (!World || !World->IsGameWorld())
+				{
+					continue;
+				}
+				// What this machine's player received (D328, J7b.5b-1b), its attack targets where it shows them.
+				const APlayerController* LocalController = World->GetFirstPlayerController();
+				const AHOLPlayerState* LocalState = LocalController && LocalController->IsLocalController() ? LocalController->GetPlayerState<AHOLPlayerState>() : nullptr;
+				if (LocalState)
+				{
+					const TArray<FHOLNetOrderChain>& Received = LocalState->GetOrderChains();
+					UE_LOG(LogHOLSimulation, Display, TEXT("Order chains (received) of slot %d: %d"), LocalState->GetPlayerIndex(), Received.Num());
+					for (int32 ChainIndex = 0; ChainIndex < Received.Num(); ++ChainIndex)
+					{
+						const FHOLNetOrderChain& Chain = Received[ChainIndex];
+						TArray<FString> UnitTexts;
+						for (const uint32 UnitId : Chain.UnitIds)
+						{
+							UnitTexts.Add(FString::Printf(TEXT("#%u"), UnitId));
+						}
+						TArray<FString> StepTexts;
+						for (const FHOLNetChainStep& Step : Chain.Steps)
+						{
+							FVector Location;
+							const bool bFound = AHOLPlayerState::LocateChainStep(*World, Step, Location);
+							const FString Target = Step.TargetId != 0 ? FString::Printf(TEXT(" #%u"), Step.TargetId) : FString();
+							StepTexts.Add(FString::Printf(TEXT("%s%s at (%.0f, %.0f)%s"), HOLOrderChain::KindName(static_cast<HOLOrderChain::EStepKind>(Step.Kind)),
+								*Target, Location.X, Location.Y, bFound ? TEXT("") : TEXT(" (fallback)")));
+						}
+						UE_LOG(LogHOLSimulation, Display, TEXT("Order chain (received) %d: units %s; steps %s"), ChainIndex + 1, *FString::Join(UnitTexts, TEXT(" ")),
+							*FString::Join(StepTexts, TEXT(" -> ")));
+					}
+				}
+				if (World->GetNetMode() == NM_Client)
+				{
+					continue;
+				}
+				const UHOLUnitOrderProcessor* Orders = nullptr;
+				for (TObjectIterator<UHOLUnitOrderProcessor> It; It; ++It)
+				{
+					Orders = It->GetLastWorld() == World ? *It : Orders;
+				}
+				const UHOLBuildProcessor* Builds = nullptr;
+				for (TObjectIterator<UHOLBuildProcessor> It; It; ++It)
+				{
+					Builds = It->GetLastWorld() == World ? *It : Builds;
+				}
+				const UHOLGatherProcessor* Gathers = nullptr;
+				for (TObjectIterator<UHOLGatherProcessor> It; It; ++It)
+				{
+					Gathers = It->GetLastWorld() == World ? *It : Gathers;
+				}
+				TArray<HOLOrderChain::FChain> Chains;
+				UHOLUnitOrderProcessor::CollectChains(*World, Orders, Builds, Gathers, Slot, Chains);
+				TMap<uint32, const AHOLBuilding*> Sites;
+				UE_LOG(LogHOLSimulation, Display, TEXT("Order chains of slot %d: %d"), Slot, Chains.Num());
+				for (int32 ChainIndex = 0; ChainIndex < Chains.Num(); ++ChainIndex)
+				{
+					const HOLOrderChain::FChain& Chain = Chains[ChainIndex];
+					TArray<FString> UnitTexts;
+					for (const uint32 UnitId : Chain.UnitIds)
+					{
+						UnitTexts.Add(FString::Printf(TEXT("#%u"), UnitId));
+					}
+					TArray<FString> StepTexts;
+					for (const HOLOrderChain::FStep& Step : Chain.Steps)
+					{
+						FString Target;
+						FVector Location;
+						const bool bFound = UHOLUnitOrderProcessor::LocateChainStep(*World, Step, Sites, Location, &Target);
+						StepTexts.Add(bFound ? FString::Printf(TEXT("%s%s at (%.0f, %.0f)"), HOLOrderChain::KindName(Step.Kind), *Target, Location.X, Location.Y)
+							: FString::Printf(TEXT("%s%s (gone)"), HOLOrderChain::KindName(Step.Kind), *Target));
+					}
+					UE_LOG(LogHOLSimulation, Display, TEXT("Order chain %d: units %s; steps %s"), ChainIndex + 1, *FString::Join(UnitTexts, TEXT(" ")),
+						*FString::Join(StepTexts, TEXT(" -> ")));
+				}
 			}
 		}));
 

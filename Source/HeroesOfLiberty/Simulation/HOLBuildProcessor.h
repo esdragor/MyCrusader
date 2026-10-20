@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
+#include "Simulation/HOLOrderChainRules.h"
 #include "HOLBuildProcessor.generated.h"
 
 class AHOLBuilding;
@@ -50,6 +51,22 @@ public:
 	/** hol.Build.CampGatherRange (cm). */
 	static double GetCampGatherRange();
 
+	/** A builder's chain (D328, J7b.5b-1a): its entity, its steps, head first (a site: its actor's unique id). */
+	struct FChainOfBuilder
+	{
+		FMassEntityHandle Entity;
+		TArray<HOLOrderChain::FStep> Steps;
+	};
+	/**
+	 * The builders whose queue was given with Shift (more than one item at some point since their last order without
+	 * Shift), their steps: sites and sources, head first. Only the builders' queues are looked at (no cost without one).
+	 */
+	void GetChains(TArray<FChainOfBuilder>& OutChains) const;
+	/** Some builder has a queue given with Shift (D328): the chains are worth collecting. */
+	bool HasChains() const;
+	/** The world it last ran for (hol.Orders.Chains finds it so). */
+	const UWorld* GetLastWorld() const { return LastWorld.Get(); }
+
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
@@ -77,6 +94,8 @@ private:
 	{
 		TArray<FWorkItem> Items;
 		FWorkItem Current;
+		/** Chains (D328): a queue given with Shift; false again with an order without Shift. */
+		bool bChain = false;
 	};
 
 	/** A spot held by a builder: walked to, or worked at. */
@@ -154,6 +173,7 @@ private:
 
 	/** Each builder's queue, by entity: a fragment holds no array. Swept of the units that no longer build. */
 	TMap<FMassEntityHandle, FBuilderQueue> Queues;
+	TWeakObjectPtr<const UWorld> LastWorld;
 	/** The spots held this step. */
 	TArray<FSpotClaim> SpotClaims;
 	/** The bodies (D324) of every building and foundation of the match this step: a spot is never on one (D310). */

@@ -175,6 +175,8 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	FullSources.Init(false, Step.Sources->GetSources().Num());
 
 	RefreshDeposits(*World);
+	LastWorld = World;
+	PruneChainSources(Step);
 	ApplyGatherOrders(Step);
 
 	// Each player's gatherers by resource, counted again at every step (J5b, D307).
@@ -234,6 +236,22 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 	}
 }
 
+void UHOLGatherProcessor::PruneChainSources(const FStepContext& Step)
+{
+	// D328: only the units sent by their player look here; one is dropped once at its source, on another, or gone.
+	for (auto It = ChainSources.CreateIterator(); It; ++It)
+	{
+		const FMassEntityHandle Entity = Step.Units->FindEntity(It.Key());
+		const FHOLGatherFragment* Gather = Step.EntityManager->IsEntityValid(Entity) ? Step.EntityManager->GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
+		const FHOLUnitStateFragment* State = Gather ? Step.EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		if (!Gather || !State || State->CurrentHealth <= 0 || !Gather->IsGathering() || Gather->SourceIndex != It.Value()
+			|| Gather->Phase == EHOLGatherPhase::Gathering)
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
+
 void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
@@ -275,6 +293,15 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 			}
 			// Another resource: what it carries is kept until its first unit of this one (D306).
 			Gather.StartTask(Order.SourceIndex, Resource);
+			// Chains (D328): a player's order is drawn until the unit first reaches its source; the server's own are not.
+			if (Order.bChain)
+			{
+				ChainSources.Add(UnitId, Order.SourceIndex);
+			}
+			else if (!ChainSources.IsEmpty())
+			{
+				ChainSources.Remove(UnitId);
+			}
 			++NumGatherers;
 		}
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d: %d units to source %d (%s)%s"), Order.PlayerIndex, NumGatherers,

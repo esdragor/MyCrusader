@@ -91,6 +91,50 @@ namespace UE::HeroesOfLiberty::Units
 			UE_LOG(LogHOLSimulation, Display, TEXT("Spawn: %d %s of slot %d around (%.0f, %.0f)"), Request.Count, *Request.TypeName.ToString(),
 				Request.OwnerPlayer, Request.Center.X, Request.Center.Y);
 		}));
+
+	/** A test scenario's births laid out independently of the units born before it (one stream feeds every birth). */
+	FAutoConsoleCommandWithWorldAndArgs CommandSpawnSeed(TEXT("hol.Units.SpawnSeed"),
+		TEXT("hol.Units.SpawnSeed Seed: restarts the draw of birth positions from Seed, server or solo; a test command"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+			if (!Units || Args.Num() < 1)
+			{
+				UE_LOG(LogHOLSimulation, Warning, TEXT("hol.Units.SpawnSeed Seed, on the server or in solo"));
+				return;
+			}
+			const int32 Seed = FCString::Atoi(*Args[0]);
+			Units->ResetSpawnSeed(Seed);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Spawn seed: %d"), Seed);
+		}));
+
+	/** The other way (the user's trial of J7b): a scenario's units taken away at its end, so they weigh on no later part. */
+	FAutoConsoleCommandWithWorldAndArgs CommandRemove(TEXT("hol.Units.Remove"),
+		TEXT("hol.Units.Remove X Y Radius [Slot=0]: destroys the units of a slot within Radius (cm) of a ground point at the end of the step, server or solo; a test command"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+			if (!Units || Args.Num() < 3)
+			{
+				UE_LOG(LogHOLSimulation, Warning, TEXT("hol.Units.Remove X Y Radius [Slot=0], on the server or in solo"));
+				return;
+			}
+			const FVector2D Center(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]));
+			const double Radius = FCString::Atod(*Args[2]);
+			const uint8 Slot = static_cast<uint8>(Args.Num() >= 4 ? FCString::Atoi(*Args[3]) : 0);
+			TArray<FHOLUnitView> Views;
+			Units->GetUnitViews(Views);
+			TArray<uint32> Removed;
+			for (const FHOLUnitView& View : Views)
+			{
+				if (View.OwnerPlayer == Slot && FVector2D::DistSquared(FVector2D(View.Location), Center) <= Radius * Radius)
+				{
+					Removed.Add(View.UnitId);
+				}
+			}
+			Units->RequestDestroyUnits(Removed);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Remove: %d units of slot %d within %.0f of (%.0f, %.0f)"), Removed.Num(), Slot, Radius, Center.X, Center.Y);
+		}));
 }
 
 bool UHOLUnitSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const

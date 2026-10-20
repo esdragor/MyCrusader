@@ -55,4 +55,6 @@ struct FHOLBuildOrder
 	 * of UHOLSourceSubsystem), Building left empty: it goes in the same queue as the sites, in the order given.
 	 */
 	int32 SourceIndex = INDEX_NONE;
+	/** A player's order (D328, given through its controller): its builders' chain is drawn, with Shift or not. */
+	bool bChain = false;
 };

@@ -114,9 +114,47 @@ void UHOLBuildProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& 
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
+void UHOLBuildProcessor::GetChains(TArray<FChainOfBuilder>& OutChains) const
+{
+	OutChains.Reset();
+	for (const TPair<FMassEntityHandle, FBuilderQueue>& Pair : Queues)
+	{
+		if (!Pair.Value.bChain || Pair.Value.Items.IsEmpty())
+		{
+			continue;
+		}
+		FChainOfBuilder& Chain = OutChains.AddDefaulted_GetRef();
+		Chain.Entity = Pair.Key;
+		for (const FWorkItem& Item : Pair.Value.Items)
+		{
+			if (Item.IsGather())
+			{
+				Chain.Steps.Add(HOLOrderChain::FStep::MakeGather(Item.SourceIndex));
+			}
+			else if (const AHOLBuilding* Site = Item.Site.Get())
+			{
+				Chain.Steps.Add(HOLOrderChain::FStep::MakeBuild(Site->GetUniqueID()));
+			}
+		}
+	}
+}
+
+bool UHOLBuildProcessor::HasChains() const
+{
+	for (const TPair<FMassEntityHandle, FBuilderQueue>& Pair : Queues)
+	{
+		if (Pair.Value.bChain && !Pair.Value.Items.IsEmpty())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	UWorld* World = EntityManager.GetWorld();
+	LastWorld = World;
 	FStepContext Step;
 	Step.EntityManager = &EntityManager;
 	Step.Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
@@ -289,6 +327,9 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 				Queue.Current = FWorkItem();
 			}
 			HOLConstruction::AddToBuildQueue(Queue.Items, Item, Order.bQueue);
+			// D328 (the user's trial of J7b.5b): a player's order makes a chain, with Shift or not; the server's own (a unit born
+			// with its rally point on a site) only once queued after another.
+			Queue.bChain = Order.bChain || (Order.bQueue && (Queue.bChain || Queue.Items.Num() > 1));
 			// A new head (no queue before, or no Shift): it stops gathering, its load kept (as a player's move order, D296),
 			// and its head is looked at at once; with Shift, its head so far goes on first.
 			if (!bHadQueue || !Order.bQueue)
@@ -363,6 +404,8 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 			Builder.State.OwnerPlayer, *Next->GetTypeName().ToString(), Location.X, Location.Y,
 			HOLConstruction::GetGap(Finished->GetBodyBounds(), Next->GetBodyBounds()));
 		Queue->Items.Add(FWorkItem::MakeBuild(Next));
+		// A site taken on its own, no player's order (D328): no chain.
+		Queue->bChain = false;
 	}
 	Build.bQueueNext = Queue->Items.Num() > 1;
 	if (Queue->Current != Queue->Items[0])

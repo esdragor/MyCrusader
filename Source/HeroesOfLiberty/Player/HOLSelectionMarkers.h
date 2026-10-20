@@ -23,6 +23,7 @@ class UStaticMeshComponent;
  * edges of its volume, green where it may go, red where not.
  * Above the units (J7b.5, J7-Q5 and the user's nuance), their health bars: always for a selected unit, otherwise only for
  * a wounded one, the player's own or another's; none for a dying unit.
+ * Between the queued orders (Shift, D328) of the selected units, lines on the ground, step by step (J7b.5b-2).
  * Unlit masked planes (Tools/Editor/make_marker_materials.py), instanced, with no collision and no shadow.
  */
 UCLASS(NotPlaceable, Transient)
@@ -61,6 +62,7 @@ private:
 	void UpdateFlag();
 	void UpdateGhost();
 	void UpdateHealthBars();
+	void UpdateOrderLines();
 	/** A pole and its cloth more for the flags (one per building with a rally point), made the first time needed. */
 	void AddFlag();
 
@@ -73,6 +75,16 @@ private:
 	/** The health bars (J7b.5): two planes each facing the camera, the dark back and the coloured fill. */
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UInstancedStaticMeshComponent> HealthBars;
+
+	/**
+	 * The lines between queued orders (D328, J7b.5b-2): for each chain with a selected unit, a filled strip on the ground from
+	 * the chain's units' centre to its first step, then step to step, coloured by the step it reaches; and a disc on each step.
+	 */
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UInstancedStaticMeshComponent> OrderLines;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UInstancedStaticMeshComponent> OrderPoints;
 
 	/** The rally flags, a pole and a cloth each, as many as ever shown together (hidden beyond the number shown). */
 	UPROPERTY(Transient)
