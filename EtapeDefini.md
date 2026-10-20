@@ -6,7 +6,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## À faire
 
 ### Parcours J7c — le tir
-- J7c.1 Archer : fabrication, ligne de la table, production à la Caserne *(en cours)*
 - J7c.2 Tir : flèches déduites chez le client, dégât différé, mort par flèche
 - J7c.3 Vérification et essai
 - J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7)
@@ -37,6 +36,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Marcheurs bloqués par des corps (passage étroit, mur d'unités)
 - Formation gênée entre les bâtiments et contre les ressources
 - « N inactifs » affiché pour des Paysans qui combattent
+- Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte)

@@ -88,6 +88,7 @@ vérifier sur S1 et S2.
 | J7b.5b Lignes de la file d'ordres (D328) | **en cours** (2026-10-20) : lignes (un seul ordre compris), ordre de la file, 3 correctifs de la revue validés à l'essai et commités (c2b44e4) ; lignes de ralliement (bâtiment → fanion, unité née) et traits de 6,25 cm validés et commités (ed37f00) ; contrôles des lignes solo, ralliement, 2 clients (94eb04e), `-Full` PASS. **J7b.5b close** |
 | J7b.6 Vérification et clôture de J7b | **fait** (2026-10-20) : contrôle du couteau du Paysan, `-Full` PASS (609 s, 83/83), essai complet du combat validé (A clic gardé pour plus tard). **J7b close** ; GDD à la clôture de J7 |
 | J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
+| J7c.1 Archer | **fait** (2026-10-20, mycrusader-37, worktree `MyCrusader-A`, branche `j7c-archer`, b739547 ; `-Full` PASS 593 s ; `main` avancé à 4dc01ad) : détails de l'Archer tranchés (A : tout garder, voir journal) ; **(a) faite** (sous-agent, 10 min, 120k tokens ; non commitée) : `SKM_Archer`, `TP_Archer`, `A_Archer_Idle` / `Walk` / `Attack` / `Fall` fabriqués, relectures PASS, flèche cachée par échelle 0,001 de `ik_hand_gun` (images 25-35 du tir, toujours au repos, en marche, en chute) ; **(b) faite** (ligne `Archer` : 584 cm/s, 70 PV, 30 nourriture + 50 bois, 15 s ; Caserne **E** ; textes fr / en / ja) ; **(c) faite** : flèche cachée vue en jeu (captures), `AnimReport` (repos, marche, tir), `build barracks` produit un Archer, `-Parts build` PASS (270 s), rapide PASS, scénario `archers` ; `j7c-archer` sur `main` 02a8963 ; **essai validé** (« tout est bon » ; retour 8 pour plus tard : hit and run impossible, geste de tir trop long) |
 
 ## Prochaine étape exacte
 
@@ -205,7 +206,10 @@ vérifier sur S1 et S2.
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
    worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
-   **➡ Reprise au 2026-10-20 (soir) : J7b close** (journal « J7b.6 : clôture de J7b ») ; suite : **J7c** (plan de J7) ;
+   **➡ Reprise au 2026-10-20 (nuit) : J7c.1 faite et validée** (journal « J7c.1 : l'Archer », `main` 4dc01ad) ; suite :
+   **J7c.2** (tir : dégât différé selon la distance, flèches déduites chez le client, mort par flèche ; J7c-Q1 à Q6 dans
+   « Plan de J7c »), à penser avec le retour d'essai 8 (hit and run) ; corps gardés 30 s : mycrusader-a6 (`MyCrusader-J5c`).
+   **Reprise au 2026-10-20 (soir) : J7b close** (journal « J7b.6 : clôture de J7b ») ; suite : **J7c** (plan de J7) ;
    7 retours d'essai en attente (journal du 2026-10-20) ; GDD et mesures à la fin de J7. Ce qui suit est l'historique.
    **Prochaine étape exacte (nouvelle séance)** : J7b.2 à J7b.5 commitées (ce6a4d2), D327 (ee63932), gestes polis,
    préchargement et ralliement sur fantôme (258c5d0). **Coup du Paysan validé en aperçu** (2026-10-19) : coup de
@@ -5009,6 +5013,28 @@ d'épée).
   (revient sur le retour n° 2 de l'essai de J7b du 2026-10-19). À trancher au moment de le faire : ordre par rapport aux
   lignes colorées et à J7b.6, onglets d'âge dès maintenant (un seul âge en jeu ?) ou seulement la disposition.
 
+### 2026-10-20 — J7c.1 : l'Archer
+
+- J7c ouverte (mycrusader-37). Plan de J7c complet (Q1 à Q6, autre séance). Worktree `MyCrusader-A` pris
+  (`IN_USE.txt`), branche **`j7c-archer`** depuis `main` 81b5966 (`j7c-archer-preview` gardée, = `main`).
+- Partage avec mycrusader-a6 (chantier animations) : elle fait les **corps gardés 30 s** dans `MyCrusader-J5c`
+  (`HOLInterpolatedInstancesProcessor.cpp`, `HOLUnitReceptionSubsystem.cpp`, `HOLUnitSubsystem.cpp`, nouveau fichier
+  de corps ; ni table des types ni séquences) ; l'Archer (questions, fabrication du tir et de la chute) revient à J7c.1.
+  Chaque session prévient l'autre avant une compilation ou un lancement d'Unreal ; jeux en `-LiveCoding=0`.
+- **Détails de l'Archer tranchés** (choix de l'utilisateur, A, la recommandation) : tout comme les aperçus validés —
+  flèche cachée du lâcher à la reprise au carquois (échelle 0 sur `ik_hand_gun`, petit ajout au baker), corde à la
+  mâchoire, carquois dans le dos, arc presque droit au tir et penché de 20° au repos, pas de flèche encochée au repos,
+  corde droite à pleine allonge. Écartés : flèche encochée au repos ; revoir les GIF d'abord.
+- Découpage de J7c.1 : **(a)** fabrication (maillage de l'Archer avec arc, carquois et flèche ; repos, marche, tir,
+  chute passés de `PROPOSED` à `GESTURES`) ; **(b)** ligne de la table (vitesse 584 cm/s, maillage, séquences,
+  coût, production) et production à la Caserne (grille, textes fr / en / ja), partie de `quick_check` ; **(c)** essai.
+  Le tir lui-même (dégât différé, flèches) est J7c.2.
+- En parallèle, mycrusader-9b (copie principale, `main`) fait passer l'attaque-déplacement de A à Q
+  (`HOLCommandGrid::AttackMoveCell` 0 → 4) : grilles des bâtiments (Caserne A / Z / E) et de construction inchangées ;
+  J7c.1b n'a donc pas à toucher `HOLCommandGrid` (refusionner `main` avant le commit de J7c.1). Validé et commité sur
+  `main` par mycrusader-9b (**0f20427**) : à refusionner dans `j7c-archer`, avec **02a8963** (mycrusader-db :
+  retour d'essai 2, `StartQueuedMoves` attend la fin de l'attaque-déplacement, `HOLUnitOrderProcessor.cpp`).
+
 ### 2026-10-20 — Attaque-déplacement de A à Q (mycrusader-9b)
 
 - Demande de l'utilisateur (« Touche A → Q », la demande AoE4 du journal de J7b.6 : A Z E R gardées pour les onglets
@@ -5020,3 +5046,53 @@ d'épée).
   mycrusader-db (même copie, `HOLUnitOrderProcessor.cpp`, non commité). Scénario `attack_move_q` (6 Hommes d'armes,
   6 Lanciers ennemis, 5 Paysans). **Essai validé** (« tout est bon ») ; commité sur `main` par chemins explicites (le
   correctif de mycrusader-db et les ajouts des autres sessions au journal laissés de côté).
+- **(a) faite** (sous-agent, ~10 min, ~120k tokens ; rien de commité ; détail dans `AnimationsInProgress.md`,
+  « Fabrication de l'Archer ») : `SKM_Archer` (arc sur `hand_l`, flèche sur `ik_hand_gun`, carquois sur `spine_03`,
+  bande à la couleur du joueur, pièces légères au LOD 3), `TP_Archer` (2 repos, 3 marche, 4 tir, 5 chute),
+  `A_Archer_Idle` (11,3 s), `A_Archer_Walk` (1,0 s), `A_Archer_Attack` (48 images, lâcher image 24), `A_Archer_Fall`
+  (1,1 s) ; nouvelle clé `"tool_hidden"` du baker : `ik_hand_gun` à l'échelle 0,001 (flèche cachée images 25-35 du
+  tir, et toujours au repos, en marche, en chute) ; `--only` ajouté aux commandlets (autres soldats non refaits) ;
+  relectures ≤ 0,071 cm, boucles fermées, os le plus bas de la chute à 0,48 cm. **Risque à vérifier en jeu** :
+  l'échelle de l'os est-elle appliquée par le fournisseur de transformées sur le GPU ? Sinon flèche visible : autre
+  moyen (C++ ou matériau). Valeurs pour la ligne `Archer` : `SKM_Archer`, `TP_Archer`, repos 2, marche 3, tir 4,
+  chute 5, `AttackProp` 0 ; vitesse de lecture de marche à recalculer sur 584 cm/s.
+- **(b) lancée** (sous-agent) : ligne `Archer` de la table, production à la Caserne (E), textes, contrôle en jeu de la
+  flèche cachée, partie de `quick_check`.
+- **(b) en partie faite** (sous-agent, ~11 min ; rien de commité ; worktree `MyCrusader-A`) : ligne `Archer` (`SKM_Archer`,
+  `TP_Archer`, repos 2, marche 3 à **3,47** (584 / 168,2), tir 4, chute 5, 584 cm/s, **70 PV**, **30 nourriture + 50 bois**,
+  15 s ; combat gardé : 15 m, 1,625 s, 5 (+5 infanterie légère), armure 0/0) ; Caserne `Produces` + `Archer` (**E**) ;
+  nom fr « Archer » / en « Archer » / ja « 弓兵 » (GatherText refait) ; tests mis à jour (`HOLAnimationTests` : l'Archer
+  rejoint Lancier / Homme d'armes, la ligne `LightInfantry` sert de fournisseur du mannequin ; `HOLProductionTests`,
+  `CommandGrid` Barracks E) ; tables refaites ; compilé sans avertissement (27 s) ; `-Parts tests` **PASS** (83/83, 24 s).
+  Flèche cachée : lecture du moteur favorable (`AnimSequenceTransformProvider` garde une échelle **uniforme** par os,
+  `FBoneTransformWithUniformScale`, en fp16 si demi-précision : 0,001 représentable) ; **capture en jeu pas faite**.
+  Reste : capture d'un Archer au repos, production E dans la partie `build barracks` de `quick_check` (seule la ligne
+  « A Lancier; Z Homme d'armes; E Archer » est changée, pas encore lancée), `AnimReport` de l'Archer.
+- Vérifié par la session principale : les stress tests prennent `LightInfantry` (`hol.StressTest.UnitType`), pas
+  l'Archer : S1 / S2 inchangés. `j7c-archer` avancée sur `main` 02a8963 (A → Q, retour d'essai 2), seul fichier
+  commun (`HOLCommandGridTests.cpp`) réappliqué sans conflit. **(c) lancée** (sous-agent) : recompilation sur 02a8963,
+  capture d'un Archer au repos (flèche cachée ?), `AnimReport`, Archer dans `build barracks`, `-Parts build` + rapide,
+  puis scénario d'essai `archers`.
+
+- **(c) faite** (sous-agent, ~13 min ; rien de commité ; `MyCrusader-A`) : recompilé sur 02a8963 (38 s, sans
+  avertissement) ; `-Parts tests` **PASS** (83/83). **Flèche cachée : OK en jeu** (captures `-RenderOffScreen` 2560×1440,
+  `MyCrusader-A\Saved_ArcherShot\Screenshots\WindowsEditor\HOL\archers_hr_*.png`) : au repos arc à la main gauche et
+  carquois au dos, main droite vide ; `AnimReport` : `A_Archer_Idle` au repos, `A_Archer_Walk` en marche,
+  `A_Archer_Attack` au tir. Aujourd'hui l'Archer tire avec le coup de mêlée à 15 m : dégât immédiat (10 au Lancier,
+  1 à l'Homme d'armes), pas de flèche qui vole (J7c.2). Scénario **`archers`** (caserne finie, 6 Archers, 4 Lanciers +
+  4 Hommes d'armes ennemis à 25 m, 5000 de tout) : `powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 archers -Root ..\MyCrusader-A`.
+  `quick_check` : `build barracks` produit A, Z puis **E** (3 nés, 3 au ralliement, 3 vers la veine) ; `build hud`
+  attend « Produit : Lancier, Homme d'armes, Archer » dans l'infobulle de la Caserne.
+- Capture regardée par la session principale (`MyCrusader-A\Saved_ArcherShot\...\archers_hr_1_crop.png`) : arcs,
+  carquois, bandes bleues, main droite vide au repos. **Essai de l'utilisateur lancé** : `play.ps1 archers -Root
+  ..\MyCrusader-A` (à juger : l'Archer et sa production sur E ; le tir a encore le dégât immédiat sans flèche, J7c.2).
+- **Essai de l'utilisateur validé** (« tout est bon ») : allure, production sur E, geste de tir.
+- **Retour d'essai 8 (plus tard, demande de l'utilisateur)** : **impossible de faire du hit and run avec l'Archer** :
+  le geste de tir dure toute la cadence (1,6 s, lâcher à 50 %), l'Archer ne peut pas tirer puis repartir aussitôt.
+  Pistes à trancher le moment venu : lâcher plus tôt dans le geste (bandé court, puis récupération interruptible par un
+  ordre de marche), geste plus court que la cadence (attente entre deux tirs, interruptible), tir gardé si l'ordre de
+  marche arrive après le lâcher. À voir avec J7c.2 (moment du lâcher partagé serveur / client, Q4).
+- Suite : commit sur `j7c-archer`, refusion de `main`, `-Full`, avance de `main`.
+- Commit **b739547** sur `j7c-archer`, fusion de `main` (d6fc962, doc seule) en 4dc01ad, **`-Full` PASS** (593 s, toutes
+  les parties, `anims` : `Archer Idle: A_Archer_Idle`, tests 83/83), **`main` avancé à 4dc01ad**. `MyCrusader-A` libéré.
+  **J7c.1 close.** Suite : **J7c.2**.
