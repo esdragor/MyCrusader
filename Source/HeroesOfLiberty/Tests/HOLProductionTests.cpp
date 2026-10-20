@@ -16,9 +16,10 @@ namespace UE::HeroesOfLiberty::Tests::Production
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	const FName Peasant(TEXT("Peasant"));
-	/** The soldiers of the Barracks (J7-Q2). */
+	/** The soldiers of the Barracks (J7-Q2; the Archer, J7c.1). */
 	const FName SpearmanType(TEXT("Spearman"));
 	const FName ManAtArmsType(TEXT("ManAtArms"));
+	const FName ArcherType(TEXT("Archer"));
 
 	/** 50 food, 4 steps, 1 place. */
 	FHOLProductionCost MakeCost()
@@ -153,14 +154,24 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Man-at-arms: no bonus"), ManAtArms->BonusDamage, 0);
 			TestTrue(TEXT("Man-at-arms: costs more than the Spearman"), Spearman && ManAtArms->Cost.Food > Spearman->Cost.Food);
 		}
+		// J7c.1: the Archer, third soldier of the Barracks (AoE4-like, indicative).
+		const FHOLUnitTypeRow* Archer = UnitTypes->FindRow<FHOLUnitTypeRow>(ArcherType, TEXT("Production test"));
+		if (TestNotNull(TEXT("Archer in the unit type table"), Archer))
+		{
+			TestTrue(TEXT("Archer: 30 food, 50 wood"), Archer->Cost == FHOLResources(30, 50, 0, 0));
+			TestEqual(TEXT("Archer: one place"), Archer->Population, 1);
+			TestEqual(TEXT("Archer: 70 health"), Archer->MaxHealth, 70);
+			TestEqual(TEXT("Archer: ranged armour category"), int32(Archer->ArmorCategory), int32(EHOLArmorCategory::Ranged));
+			TestEqual(TEXT("Archer: 584 cm/s"), Archer->Speed, 584.f);
+		}
 	}
 
 	const FHOLBuildingTypeRow* Barracks = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
 	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
 	{
 		TestEqual(TEXT("Barracks: military (F1, D30)"), int32(Barracks->Category), int32(EHOLBuildingCategory::Military));
-		TestTrue(TEXT("Barracks: produces the Spearman then the Man-at-arms"),
-			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType }));
+		TestTrue(TEXT("Barracks: produces the Spearman, the Man-at-arms then the Archer"),
+			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType, ArcherType }));
 		TestEqual(TEXT("Barracks: gives no population"), Barracks->PopulationProvided, 0);
 		TestTrue(TEXT("Barracks: not a deposit"), Barracks->Accepts.IsEmpty());
 	}

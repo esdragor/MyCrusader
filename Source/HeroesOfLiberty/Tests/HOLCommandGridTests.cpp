@@ -351,7 +351,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Context, Cell).IsNone());
 	}
 
-	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms once finished; a site produces nothing, Q cancels it.
+	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms, E Archer (J7c.1) once finished; a site produces nothing, Q cancels it.
 	const FHOLBuildingTypeRow* BarracksType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
 	if (TestNotNull(TEXT("Barracks in the building type table"), BarracksType))
 	{
@@ -361,9 +361,11 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		Barracks.Produces = BarracksType->Produces;
 		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Barracks, 0);
 		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Barracks, 1);
+		const FHOLGridCommand E = HOLCommandGrid::GetCommand(Barracks, 2);
 		TestTrue(TEXT("Barracks, A: produce a Spearman"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Spearman")));
 		TestTrue(TEXT("Barracks, Z: produce a Man-at-arms"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("ManAtArms")));
-		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		TestTrue(TEXT("Barracks, E: produce an Archer"), E.Command == EHOLGridCommand::Produce && E.TypeName == FName(TEXT("Archer")));
+		for (int32 Cell = 3; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
 			TestTrue(*FString::Printf(TEXT("Barracks, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Barracks, Cell).IsNone());
 		}

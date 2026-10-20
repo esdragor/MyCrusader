@@ -420,7 +420,7 @@ GESTURES["peasant_attack"] = PEASANT_ATTACK
 PROPOSED = {}
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Archer (J7c, PROPOSED: previews only, nothing baked). The longbow (soldier_props "bow", id 4) in the LEFT fist,
+# Archer (J7c, validated in preview, baked in J7c.1a). The longbow (soldier_props "bow", id 4) in the LEFT fist,
 # the quiver (id 6) on the back, opening above the right shoulder; the arrow (id 5) is the right hand's tool (on
 # ik_hand_gun), shown only from the nock to the release.
 from anim_rig import add, normalize, sub  # noqa: E402
@@ -662,7 +662,15 @@ ARCHER_FALL = {"name": "A_Archer_Fall", "fps": 30, "props": ("bow", "quiver"), "
                          "hands": -0.02, "elbows": -0.02, "feet": -0.04},
                "preview": {"frames": 11, "zoom_picks": [0, 2, 5, 9, 17, 26]}}
 
-PROPOSED.update({"archer_idle": ARCHER_IDLE, "archer_walk": ARCHER_WALK, "archer_attack": ARCHER_ATTACK,
+# Validated by the user in preview (2026-10-20, j7c-archer-preview) and baked (J7c.1a, --soldiers
+# --only=archer_idle,archer_walk,archer_attack,archer_fall). SKM_Archer always carries the arrow on ik_hand_gun, so the
+# baker scales that bone to 0 where the arrow is not in the hand ("tool_hidden": spans in seconds, or True = every
+# frame): from just after the release to the quiver in the attack (the preview's "hidden" span), all the time in the
+# idle, the walk and the fall (no arrow nocked at rest).
+ARCHER_ATTACK["tool_hidden"] = [ARCHER_ATTACK["hidden"]["arrow"]]
+for _gesture in (ARCHER_IDLE, ARCHER_WALK, ARCHER_FALL):
+    _gesture["tool_hidden"] = True
+GESTURES.update({"archer_idle": ARCHER_IDLE, "archer_walk": ARCHER_WALK, "archer_attack": ARCHER_ATTACK,
                  "archer_fall": ARCHER_FALL})
 
 

@@ -34,7 +34,7 @@ Run (headless, editor closed, from PowerShell; log lines start with "HOLPeasantM
   "--material-only" for the material alone, "--light-lod=N" to take the light props from LOD N instead of
   LIGHT_PROPS_LOD (99: full props everywhere, the mesh as it was before them, for an A/B measure).
 
-"--soldiers" (J7a.3) builds the soldiers instead, one mesh per type, weapons ALWAYS shown (user's choice, 2026-10-18):
+"--soldiers" (J7a.3) builds the soldiers instead ("--only=SKM_Archer[,...]": those meshes alone, J7c.1a), one mesh per type, weapons ALWAYS shown (user's choice, 2026-10-18):
   /Game/Units/Materials/M_UnitPlayerColorWeapons  M_UnitPlayerColorProps without the folding (no World Position
                                                   Offset, nothing read from custom data 3): alpha 0 = the player's
                                                   colour (body, the spear's pennant, the shield's face), alpha > 0 =
@@ -88,6 +88,9 @@ SOLDIERS = {
                                      PEASANT_ANIMATIONS + "A_Spearman_Attack", PEASANT_ANIMATIONS + "A_Spearman_Fall"]),
     "SKM_ManAtArms": ("TP_ManAtArms", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
                                        PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),
+    # J7c.1a: bow, arrow (hidden by the gestures outside the draw), quiver.
+    "SKM_Archer": ("TP_Archer", [PEASANT_ANIMATIONS + "A_Archer_Idle", PEASANT_ANIMATIONS + "A_Archer_Walk",
+                                 PEASANT_ANIMATIONS + "A_Archer_Attack", PEASANT_ANIMATIONS + "A_Archer_Fall"]),
 }
 # First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
 LIGHT_PROPS_LOD = 3
@@ -548,7 +551,10 @@ def main():
             light_lod = int(argument.split("=", 1)[1])
     if "--soldiers" in arguments:
         material = make_material(SOLDIER_MATERIAL_NAME, fold=False)
+        only = [a.split("=", 1)[1].split(",") for a in arguments if a.startswith("--only=")]
         for mesh_name, (provider_name, sequences) in SOLDIERS.items():
+            if only and mesh_name not in only[0]:
+                continue
             pieces = soldier_props.SOLDIER_MESHES[mesh_name]
             mesh = make_mesh(material, light_lod, mesh_name,
                              lambda sk, light, pieces=pieces: soldier_parts(sk, pieces, light))

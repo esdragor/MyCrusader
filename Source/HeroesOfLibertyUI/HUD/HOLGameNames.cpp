@@ -13,6 +13,7 @@ namespace HOLGameNames
 		static const FName Peasant(TEXT("Peasant"));
 		static const FName Spearman(TEXT("Spearman"));
 		static const FName ManAtArms(TEXT("ManAtArms"));
+		static const FName Archer(TEXT("Archer"));
 		if (TypeName == Peasant)
 		{
 			return LOCTEXT("Peasant", "Paysan");
@@ -24,6 +25,10 @@ namespace HOLGameNames
 		if (TypeName == ManAtArms)
 		{
 			return LOCTEXT("ManAtArms", "Homme d'armes");
+		}
+		if (TypeName == Archer)
+		{
+			return LOCTEXT("Archer", "Archer");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
