@@ -75,7 +75,7 @@ struct HEROESOFLIBERTY_API FHOLResourceSequences
  * A prop of a unit's skinned mesh for each of the four base resources (J5c.2): the tool it holds gathering each one, or
  * the load it carries. A prop is part of the mesh, hidden unless the instance's 4th custom float names it (the Peasant's
  * material, Tools/Editor/make_peasant_mesh.py): 1 axe, 2 pickaxe, 3 basket of berries, 4 logs, 5 hotte of stone, 6 hotte
- * of gold, 7 hammer (the builder's, BuildProp). 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
+ * of gold, 7 hammer (the builder's, BuildProp), 8 knife (the Peasant's strike, AttackProp). 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
  * "(Food=3,Wood=4,Stone=5,Gold=6)" in the table, like GatherRates.
  */
 USTRUCT()
@@ -209,6 +209,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	 */
 	UPROPERTY()
 	int32 AttackSequence = INDEX_NONE;
+
+	/** Prop shown while striking (J7b: the Peasant's knife, 8). 0: none. */
+	UPROPERTY()
+	int32 AttackProp = 0;
 
 	UPROPERTY()
 	int32 FallSequence = INDEX_NONE;
@@ -387,6 +391,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
 	int32 AttackSequence = INDEX_NONE;
 
+	/** Prop of SkinnedMesh shown while striking (J7b: the Peasant's knife, 8), the others hidden. 0: none. */
+	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0", ClampMax = "8"))
+	int32 AttackProp = 0;
+
 	/** Sequence played once while dying (J7b.5: the activity Dying, ~1 s), then held on its last frame. -1: none. */
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
 	int32 FallSequence = INDEX_NONE;
@@ -480,6 +488,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.BuildPlayRate = BuildPlayRate;
 	Constants.BuildProp = BuildProp;
 	Constants.AttackSequence = AttackSequence;
+	Constants.AttackProp = AttackProp;
 	Constants.FallSequence = FallSequence;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;

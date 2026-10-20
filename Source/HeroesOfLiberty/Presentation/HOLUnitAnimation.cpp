@@ -49,6 +49,7 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 		const float Length = Type.SequenceLengths.IsValidIndex(Type.AttackSequence) ? Type.SequenceLengths[Type.AttackSequence] : 0.f;
 		Choice.PlayRate = Length > UE_KINDA_SMALL_NUMBER && Type.AttackInterval > UE_KINDA_SMALL_NUMBER ? Length / Type.AttackInterval : 1.f;
 		Choice.bStrike = true;
+		Choice.Prop = static_cast<uint8>(Type.AttackProp);
 		return Choice;
 	}
 	if (Input.Activity == EHOLUnitActivity::Gathering)

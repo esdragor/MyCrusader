@@ -104,7 +104,7 @@ namespace HOLUnitAnimation
 	/**
 	 * Dying (J7b.5): the type's fall, once (bOnce), at play rate 1, no prop; else striking (Attacking): the type's strike,
 	 * looped at its attack cadence (bStrike: play rate = the sequence's length / AttackInterval, the caller sets its start),
-	 * no prop. Else gathering at its source: the gesture of the resource (axe, pick, picking berries) and its tool, whatever its speed
+	 * and its AttackProp alone (J7b: the Peasant's knife; 0, the soldiers: none). Else gathering at its source: the gesture of the resource (axe, pick, picking berries) and its tool, whatever its speed
 	 * (pushed aside, it keeps working); else working at its site (J6a.4, Building; walking there is Moving): the type's
 	 * building gesture (the Peasant's hammering) and its prop (the hammer), the same way, a load not shown; else walking
 	 * (any activity: an order, the round trip, a push) with a load: the carrying walk of the load and the load; else

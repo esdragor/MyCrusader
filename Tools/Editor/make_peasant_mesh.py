@@ -8,7 +8,8 @@
                                                  of peasant_props.py, each vertex skinned 100 % to its prop's bone
   /Game/Units/Mannequin/TP_Peasant               its animation provider: TP_Mannequin_Classic's sequences, same order
                                                  (so the same indices in the type table), then the loaded idles (8 food,
-                                                 9 wood, 10 stone and gold) and the builder's hammering (11, J6a.4) and the fall (12, J7b.5)
+                                                 9 wood, 10 stone and gold) and the builder's hammering (11, J6a.4), the fall (12, J7b.5) and the
+                                                 knife stab (13, J7b)
 
 The props (peasant_props.mesh_parts) are written in the bind pose, in component space, as peasant_props.bind_mesh() puts
 them: flat faceted primitives, one sRGB colour per face. A vertex's colour alpha holds the MASK of the props it belongs
@@ -74,6 +75,7 @@ PEASANT_SEQUENCES = [
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryStone",  # 10 standing with stone and gold
     PEASANT_ANIMATIONS + "A_Peasant_Build",           # 11 building (J6a.4: hammering, the hammer is prop 7)
     PEASANT_ANIMATIONS + "A_Peasant_Fall",            # 12 dying (J7b.5: falls backward, played once, FallSequence)
+    PEASANT_ANIMATIONS + "A_Peasant_Attack",          # 13 striking (J7b: knife stab, the knife is prop 8, AttackProp)
 ]
 SKELETON_JSON = os.path.join(TOOLS_DIR, "Data", "UE4MannequinSkeleton.json")
 # The soldiers (--soldiers): material, then per mesh its provider and its sequences appended at 2, 3 (after the

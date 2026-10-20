@@ -52,6 +52,8 @@ namespace UE::HeroesOfLiberty::Tests::Animation
 		Type.BuildSequence = 11;
 		Type.BuildPlayRate = 1.f;
 		Type.BuildProp = 7;
+		Type.AttackSequence = 13;
+		Type.AttackProp = 8;
 		Type.FallSequence = 12;
 		Type.AttackInterval = 2.f;
 		return Type;
@@ -257,9 +259,20 @@ bool FHOLAnimationStrikeTest::RunTest(const FString& Parameters)
 	NoLength.SequenceLengths.Reset();
 	TestEqual(TEXT("length unknown: the strike at rate 1"), Choose(NoLength, MakeInput(EHOLUnitActivity::Attacking, 0.f)).PlayRate, 1.f);
 
-	// The Peasant (J7b: it fights on order): no strike made yet, its idle; its fall.
-	const FHOLUnitTypeConstants Peasant = MakePeasant();
-	TestEqual(TEXT("Peasant striking, no strike yet: idle"), Choose(Peasant, MakeInput(EHOLUnitActivity::Attacking, 0.f)).Sequence, 0);
+	// The Peasant (J7b: it fights on order): its knife stab (13, 60 frames at 30 fps for its 2 s cadence) and the knife
+	// alone (prop 8, AttackProp: no axe, pick nor load while it strikes); its fall.
+	FHOLUnitTypeConstants Peasant = MakePeasant();
+	Peasant.SequenceLengths.Init(1.f, 14);
+	Peasant.SequenceLengths[13] = 2.f;
+	const FHOLUnitAnimationChoice PeasantStrike = Choose(Peasant, MakeInput(EHOLUnitActivity::Attacking, 0.f));
+	TestEqual(TEXT("Peasant striking: its stab"), PeasantStrike.Sequence, 13);
+	TestTrue(TEXT("Peasant striking: phased on the hits"), PeasantStrike.bStrike);
+	TestEqual(TEXT("Peasant striking: one loop per attack interval"), PeasantStrike.PlayRate, 1.f, UE_KINDA_SMALL_NUMBER);
+	TestEqual(TEXT("Peasant striking: the knife"), static_cast<int32>(PeasantStrike.Prop), 8);
+	TestEqual(TEXT("Peasant striking with a load: the knife only"), static_cast<int32>(Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::Attacking, 0.f),
+		EHOLResource::Wood)).Prop), 8);
+	TestEqual(TEXT("Peasant building: the hammer, not the knife"), static_cast<int32>(Choose(Peasant, MakeInput(EHOLUnitActivity::Building, 0.f)).Prop), 7);
+	TestEqual(TEXT("Peasant idle: no knife"), static_cast<int32>(Choose(Peasant, MakeInput(EHOLUnitActivity::Idle, 0.f)).Prop), 0);
 	TestEqual(TEXT("Peasant dying: its fall"), Choose(Peasant, MakeInput(EHOLUnitActivity::Dying, 0.f)).Sequence, 12);
 	TestEqual(TEXT("Peasant dying with a load: its fall, no prop"), static_cast<int32>(Choose(Peasant, WithLoad(MakeInput(EHOLUnitActivity::Dying, 0.f),
 		EHOLResource::Wood)).Prop), 0);
@@ -314,7 +327,8 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("building sequence"), Constants.BuildSequence, Expected.BuildSequence);
 	TestEqual(TEXT("building play rate"), Constants.BuildPlayRate, Expected.BuildPlayRate);
 	TestEqual(TEXT("building prop: the hammer"), Constants.BuildProp, Expected.BuildProp);
-	TestEqual(TEXT("no strike yet (J7b.5)"), Constants.AttackSequence, INDEX_NONE);
+	TestEqual(TEXT("strike sequence (J7b)"), Constants.AttackSequence, Expected.AttackSequence);
+	TestEqual(TEXT("strike prop: the knife"), Constants.AttackProp, Expected.AttackProp);
 	TestEqual(TEXT("fall sequence (J7b.5)"), Constants.FallSequence, Expected.FallSequence);
 	// The props live in the Peasant's own mesh, drawn with the material that hides all but the one named (J5c.2).
 	TestEqual(TEXT("Peasant's mesh"), Peasant->SkinnedMesh.ToSoftObjectPath().GetAssetName(), TEXT("SKM_Peasant"));
@@ -346,6 +360,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("standing with gold"), SequenceName(Constants.CarryIdleSequences.Gold), TEXT("A_Peasant_IdleCarryStone"));
 	TestEqual(TEXT("building"), SequenceName(Constants.BuildSequence), TEXT("A_Peasant_Build"));
 	TestEqual(TEXT("falling"), SequenceName(Constants.FallSequence), TEXT("A_Peasant_Fall"));
+	TestEqual(TEXT("striking"), SequenceName(Constants.AttackSequence), TEXT("A_Peasant_Attack"));
 	// Sequences 0-7 are the soldiers' provider's, in its order (the same indices for both meshes).
 	const FHOLUnitTypeRow* ArcherRow = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Archer"), TEXT("Animation test"));
 	const UAnimSequenceTransformProviderData* SoldierProvider = ArcherRow ? ArcherRow->AnimationProvider.LoadSynchronous() : nullptr;
@@ -359,7 +374,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 		}
 		TestTrue(TEXT("the Peasant's provider starts with the soldiers' sequences, same order"), bSameStart);
 	}
-	TestEqual(TEXT("the Peasant's provider: 13 sequences"), Provider->GetSequences().Num(), 13);
+	TestEqual(TEXT("the Peasant's provider: 14 sequences"), Provider->GetSequences().Num(), 14);
 
 	// The soldiers keep idle 0 and walk 1 of the same provider, and nothing else.
 	for (const TCHAR* Soldier : { TEXT("LightInfantry"), TEXT("Archer") })
@@ -370,7 +385,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			TestTrue(*FString::Printf(TEXT("%s: idle 0, walk 1, no gesture, carrying walk, loaded idle, building nor prop"), Soldier), Row->IdleSequence == 0
 				&& Row->WalkSequence == 1 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
 				&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
-				&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0 && Row->AttackSequence == INDEX_NONE && Row->FallSequence == INDEX_NONE);
+				&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0 && Row->AttackSequence == INDEX_NONE && Row->AttackProp == 0 && Row->FallSequence == INDEX_NONE);
 			TestEqual(*FString::Printf(TEXT("%s keeps the mannequin's mesh"), Soldier), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(),
 				TEXT("SKM_Mannequin_Classic"));
 		}
@@ -395,7 +410,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			&& Row->WalkSequence == 3 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
 			&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
 			&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0);
-		TestTrue(*FString::Printf(TEXT("%s: strike 4, fall 5"), Soldier.Name), Row->AttackSequence == 4 && Row->FallSequence == 5);
+		TestTrue(*FString::Printf(TEXT("%s: strike 4, fall 5"), Soldier.Name), Row->AttackSequence == 4 && Row->AttackProp == 0 && Row->FallSequence == 5);
 		const UAnimSequenceTransformProviderData* SoldierOwn = Row->AnimationProvider.LoadSynchronous();
 		if (TestNotNull(*FString::Printf(TEXT("%s's animation provider"), Soldier.Name), SoldierOwn))
 		{

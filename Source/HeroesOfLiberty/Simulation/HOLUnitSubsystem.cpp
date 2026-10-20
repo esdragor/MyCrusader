@@ -289,6 +289,11 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 		{
 			Constants.BuildProp = 0;
 		}
+		if (!ensureMsgf(Constants.AttackProp >= 0 && Constants.AttackProp <= FHOLResourceProps::MaxId, TEXT("Unit type '%s': attack prop %d out of 0-%d"),
+			*TypeName.ToString(), Constants.AttackProp, FHOLResourceProps::MaxId))
+		{
+			Constants.AttackProp = 0;
+		}
 		Constants.SequenceLengths.SetNum(NumSequences);
 		for (int32 Sequence = 0; Sequence < NumSequences; ++Sequence)
 		{

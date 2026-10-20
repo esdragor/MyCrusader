@@ -320,9 +320,8 @@ PEASANT_FALL = fall("A_Peasant_Fall", NONE, (), None, FREE_PALMS, None)
 GESTURES.update({"spear_attack": SPEAR_ATTACK, "maa_attack": MAA_ATTACK, "spear_fall": SPEAR_FALL,
                  "maa_fall": MAA_FALL, "peasant_fall": PEASANT_FALL})
 
-# Peasant attack (proposal, preview only until the user validates it: in PROPOSED, not in GESTURES, so --soldiers does
-# not bake it). User's choice (2026-10-19): the Peasant fights with a knife, not the axe: a one-handed stab into the
-# enemy's belly ~1 m in front. He is not a fighter (user's review of the first stab, 2026-10-19): a frightened villager
+# Peasant attack (validated in preview, baked with --soldiers --only=peasant_attack). User's choice (2026-10-19): the
+# Peasant fights with a knife, not the axe: a one-handed stab into the enemy's belly ~1 m in front. He is not a fighter (user's review of the first stab, 2026-10-19): a frightened villager
 # defending himself, not a boxer's guard. The knife (prop "knife", peasant_props.py, id 8) is held by the right hand
 # alone and shown only while he attacks (as the hammer while he builds). 2.0 s (AttackInterval of the Peasant): 60
 # frames at 30 fps, the hit at frame 30 (ATTACK_HIT_FRACTION).
@@ -414,5 +413,8 @@ PEASANT_ATTACK = fighting("A_Peasant_Attack", PEASANT_KNIFE_TOOL, ("knife",), [
 ], PEASANT_FIGHT_ELBOWS, 30, PEASANT_STANCE, [0, 4, 18, 25, 30, 34])
 PEASANT_ATTACK.update({"frames": 60, "curve": "hermite", "loop": True, "leads": PEASANT_LEADS})
 
+# Validated by the user in preview (2026-10-19, f7b0b27) and baked (J7b): A_Peasant_Attack, sequence 13 of TP_Peasant.
+GESTURES["peasant_attack"] = PEASANT_ATTACK
+
 # Gestures shown by the previews but not baked yet (waiting for the user's review).
-PROPOSED = {"peasant_attack": PEASANT_ATTACK}
+PROPOSED = {}
