@@ -749,6 +749,8 @@ FString AHOLSelectionMarkers::Describe() const
 	{
 		Flags += FString::Printf(TEXT("%s(%.0f, %.0f)"), Index == 0 ? TEXT(" at ") : TEXT(" "), FlagFeet[Index].X, FlagFeet[Index].Y);
 	}
-	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, frames dimmed %d"), Rings->GetInstanceCount() - NumPings, Frames->GetInstanceCount(),
-		*Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"), DimmedFrames);
+	// The order lines drawn (D328): their segments and step points (quick_check's move part counts them).
+	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings,
+		Frames->GetInstanceCount(), *Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"),
+		OrderLines->GetInstanceCount(), OrderPoints->GetInstanceCount(), DimmedFrames);
 }

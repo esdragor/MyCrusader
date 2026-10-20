@@ -369,6 +369,12 @@ $FifoFrom = @(-5500, 6000)
 $FifoP1 = @(-5500, 7800)
 $FifoP2 = @(-4300, 6000)
 $FifoP3 = @(-3500, 6500)
+# The order lines (D328), on the fifo's ground (left by then): 3 Men-at-arms sent 10 m north (L1), then with Shift 10 m
+# east (L2), then with Shift an attack-move 10 m south (L3).
+$LinesFrom = @(-5500, 6000)
+$LinesL1 = @(-5500, 7000)
+$LinesL2 = @(-4500, 7000)
+$LinesL3 = @(-4500, 6000)
 $SmokeTo = @(-5100, -1500)
 if ($Parts -contains "smoke") {
     $SmokeConfig = Join-Path $TestSaved "smoke_2p.json"
@@ -440,7 +446,8 @@ if ($Parts -contains "camera") {
                 # a right click behind the ridge: they go around it, arrive without overlapping, none in a rock; Escape.
                 Step "mark move solo", "hol.Cheat.Food 1000", "hol.Prod.BuildTime 2", "hol.Prod.Rally -13500 0",
                     "waitlog Rally: slot 0 set the rally point of MainCentre at (-13500, 0)",
-                    "hol.Prod.Queue", "hol.Prod.Queue", "hol.Prod.Queue", "waitlog (5 born here)", "hol.Prod.BuildTime 0", "wait 7", "hol.Units.Where 0", "hol.Units.Orders 0"
+                    "hol.Prod.Queue", "hol.Prod.Queue", "hol.Prod.Queue", "waitlog (5 born here)", "wait 0.5", "hol.Orders.Chains 0", "hol.Prod.BuildTime 0", "wait 7",
+                    "hol.Units.Where 0", "hol.Units.Orders 0", "hol.Orders.Chains 0"
                 Step "hol.Camera.Focus -12000 0", "frames 5", "hol.Select.BoxGround -14000 -500 -13000 500", "waitlog Selection: 3 units (own): Peasant x3",
                     "frames 3", "hol.Select.Report", "capture move_box"
                 Step "hol.Select.ClickUnit -1 add", "waitlog Selection: 2 units (own): Peasant x2", "hol.Select.ClickUnit -1 add",
@@ -463,6 +470,18 @@ if ($Parts -contains "camera") {
             # not stop the rest of the sequence).
             Step "mark move fifo end", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Units.Remove $($FifoP3 -join ' ') 800 0",
                 "waitlog units of slot 0 within 800 of ($($FifoP3 -join ', '))", "frames 3"
+            # The order lines (D328): 3 Men-at-arms boxed, a move, then Shift + a move, then Shift + an attack-move: one chain
+            # Move -> Move -> AttackMove (server and received), its 3 lines and 3 points drawn while selected, none once the
+            # selection is emptied (the chain still there); followed every half second, it shortens, then none on arrival.
+            Step "hol.Units.SpawnSeed 102", "hol.Units.Spawn 3 $($LinesFrom -join ' ') 0 ManAtArms 150", "wait 0.5", "hol.Camera.Focus $($LinesFrom -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($LinesFrom[0] - 400) $($LinesFrom[1] - 400) $($LinesFrom[0] + 400) $($LinesFrom[1] + 400)",
+                "waitlog Selection: 3 units (own): ManAtArms x3", "mark move lines", "hol.Camera.Focus $($LinesL2 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($LinesL1 -join ' ')", "frames 2", "hol.Select.OrderGround $($LinesL2 -join ' ') shift", "frames 2",
+                "hol.Select.AttackMove $($LinesL3 -join ' ') shift", "wait 0.5", "hol.Orders.Chains 0", "hol.Select.Report",
+                "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "frames 2", "hol.Select.Report", "hol.Orders.Chains 0"
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Orders.Chains 0" }
+            # Taken away at the end, around L3 (waited for without its count, checked by the analysis).
+            Step "mark move lines end", "hol.Units.Remove $($LinesL3 -join ' ') 800 0", "waitlog units of slot 0 within 800 of ($($LinesL3 -join ', '))", "frames 3"
         }
         if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
             # Resource sources (J5a.2, D297): the 376 sources placed by the map (create_match_map.py: 40 trees beside each slot,
@@ -1141,7 +1160,13 @@ if ($NetListening) {
             "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear -3150 4050 enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
             "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
             "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
-            "hol.UI.Key Ampersand 0 0.05", "wait 0.4", "hol.Select.Report", "hol.Select.OrderNear 0 3000", "wait 18",
+            "hol.UI.Key Ampersand 0 0.05", "wait 0.4", "hol.Select.Report"
+        # The order lines (D328): client 1 orders first and signals it; client 2, a second later, has received no chain
+        # (client 1's never reaches it), then orders; each one's chain (one Move, its 5 units) reaches its owner alone.
+        $ChainsFlag = Join-Path $TestSaved "quick_net_ordered1.flag"
+        if ($Client -eq 1) { $NetSteps += "hol.Select.OrderNear 0 3000", "signal $ChainsFlag", "wait 1", "hol.Orders.Chains" }
+        else { $NetSteps += "waitfile $ChainsFlag", "wait 1", "hol.Orders.Chains", "hol.Select.OrderNear 0 3000", "wait 1", "hol.Orders.Chains" }
+        $NetSteps += "wait 18",
             "signal $(Join-Path $TestSaved "quick_net_marched$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_marched$Other.flag")", "wait 1",
             "hol.Units.Where", "hol.Camera.FocusNear 0 3000", "frames 5", "capture net_army_c$Client"
         # The fight (J7b.4), on client 1 alone: the solo combat part's ground framed, its signal to the server, which makes 2
@@ -1196,6 +1221,30 @@ function Get-Section([string] $Mark) {
     }
     if ($Start -ge 0) { return $Log[$Start..($Log.Count - 1)] }
     return @()
+}
+
+# The reports of hol.Orders.Chains (D328) in some log lines, in order: the server's ("Order chains of slot S: N" and its N
+# chains) or, with -Received, the local player's ("Order chains (received) of slot S: N"). Each report: its count, its
+# slot, and per chain its number of units, its kinds ("Move -> AttackMove") and its steps as logged.
+function Get-ChainReports($Lines, [switch] $Received) {
+    $Head = if ($Received) { "Order chains \(received\) of slot (-?\d+): (\d+)$" } else { "Order chains of slot (-?\d+): (\d+)$" }
+    $Body = if ($Received) { "Order chain \(received\) \d+: units ([^;]*); steps (.*)$" } else { "Order chain \d+: units ([^;]*); steps (.*)$" }
+    $Reports = @(); $Report = $null
+    foreach ($Line in $Lines) {
+        if ($Line -match $Head) {
+            $Report = [pscustomobject]@{ Slot = [int]$Matches[1]; Count = [int]$Matches[2]; Chains = @() }; $Reports += $Report
+        } elseif ($Report -and $Line -match $Body) {
+            $Steps = $Matches[2]
+            $Report.Chains += [pscustomobject]@{ Units = @($Matches[1] -split " " | Where-Object { $_ }).Count; Steps = $Steps
+                Kinds = (@([regex]::Matches($Steps, "(?:^| -> )(\w+)") | ForEach-Object { $_.Groups[1].Value }) -join " -> ") }
+        }
+    }
+    return , $Reports
+}
+# A report in a few words: "none", or each chain's kinds and units ("Move -> AttackMove (3 units)").
+function Format-ChainReport($Report) {
+    if (-not $Report -or $Report.Count -eq 0) { return "none" }
+    return (@($Report.Chains | ForEach-Object { "$($_.Kinds) ($($_.Units) units)" }) -join " | ")
 }
 
 $SequenceChecks = [ordered]@{}
@@ -1360,6 +1409,16 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
             [bool]($Solo | Select-String -Pattern "Selection report: selected $([regex]::Escape($Wanted))" -Quiet) -and
             [bool]($Solo | Select-String -Pattern "Selection markers: rings 3" -Quiet)
         $Checks["Shift + click takes one out, then back in"] = [bool]($Solo | Select-String -Pattern "Selection: 2 units \(own\): Peasant x2" -Quiet)
+        # The rally line (D328): the Peasant(s) born and still walking have a chain "Rally" to the rally point (server and
+        # received), none once all arrived.
+        $RallyServer = Get-ChainReports $Solo
+        $RallyReceived = Get-ChainReports $Solo -Received
+        $IsRally = { param($Report) ($Report.Count -ge 1) -and ($Report.Chains.Count -eq $Report.Count) -and
+            (@($Report.Chains | Where-Object { -not ($_.Steps -match "^Rally at \((-?\d+), (-?\d+)\)$" -and [Math]::Abs([int]$Matches[1] + 13500) -le 300 -and [Math]::Abs([int]$Matches[2]) -le 300) }).Count -eq 0) }
+        $Checks["rally: a chain Rally to (-13500, 0) for the Peasant born walking, server and received ($(Format-ChainReport $RallyServer[0]); $(Format-ChainReport $RallyReceived[0]))"] =
+            ($RallyServer.Count -eq 2) -and ($RallyReceived.Count -eq 2) -and (& $IsRally $RallyServer[0]) -and (& $IsRally $RallyReceived[0])
+        $Checks["rally: no chain once arrived, server and received ($(Format-ChainReport $RallyServer[-1]); $(Format-ChainReport $RallyReceived[-1]))"] =
+            ($RallyServer.Count -eq 2) -and ($RallyReceived.Count -eq 2) -and ($RallyServer[1].Count -eq 0) -and ($RallyReceived[1].Count -eq 0)
         $Walk = @((Get-Section "move walk") | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { & $ReadWhere $_.Matches[0].Groups[1].Value })
         $Arrived = Get-Section "move arrived"
         $End = & $ReadWhere ($Arrived | Select-String -Pattern "Units where: (.*)$" | Select-Object -First 1)
@@ -1413,6 +1472,27 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
     # Taken away at the end: the 4 of the scenario, no other unit of slot 0.
     $FifoRemoved = @(Get-Section "move fifo end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
     $Checks["fifo: its 4 Peasants taken away at the end ($($FifoRemoved -join ', '))"] = ($FifoRemoved.Count -eq 1) -and ($FifoRemoved[0] -eq 4)
+    # The order lines (D328): the first report a chain Move -> Move -> AttackMove of the 3 Men-at-arms, server and received;
+    # then (repeats merged) Move -> AttackMove, AttackMove, none; 3 lines and 3 points drawn while selected, none after.
+    $LinesLog = @(Get-Section "move lines")
+    $LinesServer = Get-ChainReports $LinesLog
+    $LinesReceived = Get-ChainReports $LinesLog -Received
+    $LinesFull = "Move -> Move -> AttackMove (3 units)"
+    $Checks["lines: one chain Move -> Move -> AttackMove on the server ($(Format-ChainReport $LinesServer[0]))"] = ($LinesServer.Count -ge 1) -and ((Format-ChainReport $LinesServer[0]) -eq $LinesFull)
+    $Checks["lines: the same chain received by its owner ($(Format-ChainReport $LinesReceived[0]))"] = ($LinesReceived.Count -ge 1) -and ((Format-ChainReport $LinesReceived[0]) -eq $LinesFull)
+    $Merge = { param($Reports) $Out = @(); foreach ($R in $Reports) { $T = Format-ChainReport $R; if (-not $Out.Count -or $Out[-1] -ne $T) { $Out += $T } }; , $Out }
+    $Shortened = @("Move -> Move -> AttackMove", "Move -> AttackMove", "AttackMove" | ForEach-Object { "$_ (3 units)" }) + "none"
+    $ServerSteps = & $Merge $LinesServer
+    $Checks["lines: shortened step by step, then none on arrival, server ($($ServerSteps -join ' / '))"] = ($ServerSteps -join "|") -eq ($Shortened -join "|")
+    $ReceivedSteps = & $Merge $LinesReceived
+    $Checks["lines: the same received ($($ReceivedSteps -join ' / '))"] = ($ReceivedSteps -join "|") -eq ($Shortened -join "|")
+    $LinesMarkers = @($LinesLog | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["lines: 3 segments and 3 points drawn, the group selected ($($LinesMarkers | Select-Object -First 1))"] =
+        ($LinesMarkers.Count -eq 2) -and ($LinesMarkers[0] -match "^rings 3,.*, order lines 3, order points 3,")
+    $Checks["lines: none drawn without selection, the chain still received ($($LinesMarkers | Select-Object -Skip 1); $(Format-ChainReport $LinesReceived[1]))"] =
+        ($LinesMarkers.Count -eq 2) -and ($LinesMarkers[1] -match "^rings 0,.*, order lines 0, order points 0,") -and ($LinesReceived.Count -ge 2) -and ($LinesReceived[1].Count -eq 1)
+    $LinesRemoved = @(Get-Section "move lines end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["lines: its 3 Men-at-arms taken away at the end ($($LinesRemoved -join ', '))"] = ($LinesRemoved.Count -eq 1) -and ($LinesRemoved[0] -eq 3)
     $AllOk = (Report "move" $Checks) -and $AllOk
 }
 
@@ -2710,6 +2790,17 @@ if ($Parts -contains "net") {
         # control group 1 made of its 5 units and selected by its digit.
         $ArmyLines = @(Get-ClientSection $ClientLines "army")
         $Other = 1 - $Held
+        # The order lines (D328): client 1's chain received by it alone; client 2 none before its own order (client 1's
+        # under way), then its own alone. Each chain: one Move of its 5 units.
+        $NetChains = Get-ChainReports $ArmyLines -Received
+        $OwnChain = { param($Report) ($null -ne $Report) -and ($Report.Slot -eq $Held) -and ((Format-ChainReport $Report) -eq "Move (5 units)") }
+        if ($N -eq 1) {
+            $Checks["client 1 : its march's chain received, its own alone ($(Format-ChainReport $NetChains[0]))"] = ($NetChains.Count -eq 1) -and (& $OwnChain $NetChains[0])
+        } else {
+            $Checks["client 2 : no chain received while client 1's is under way (slot $(if ($NetChains.Count) { $NetChains[0].Slot }): $(if ($NetChains.Count) { $NetChains[0].Count }))"] =
+                ($NetChains.Count -eq 2) -and ($NetChains[0].Slot -eq $Held) -and ($NetChains[0].Count -eq 0)
+            $Checks["client 2 : then its own chain alone ($(Format-ChainReport $NetChains[-1]))"] = ($NetChains.Count -eq 2) -and (& $OwnChain $NetChains[1])
+        }
         $ArmyShown = $ArmyLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $Checks["client $N : both armies shown with their types ($ArmyShown)"] = $ArmyShown -eq "client, 10 displayed: ManAtArms of slot 0 x2, ManAtArms of slot 1 x2, Peasant of slot 0 x1, Peasant of slot 1 x1, Spearman of slot 0 x2, Spearman of slot 1 x2"
         $Looks = $ArmyLines | Select-String -Pattern "Units looks: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
