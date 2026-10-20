@@ -244,7 +244,7 @@ void UHOLGatherProcessor::PruneChainSources(const FStepContext& Step)
 		const FMassEntityHandle Entity = Step.Units->FindEntity(It.Key());
 		const FHOLGatherFragment* Gather = Step.EntityManager->IsEntityValid(Entity) ? Step.EntityManager->GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 		const FHOLUnitStateFragment* State = Gather ? Step.EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
-		if (!Gather || !State || State->CurrentHealth <= 0 || !Gather->IsGathering() || Gather->SourceIndex != It.Value()
+		if (!Gather || !State || State->CurrentHealth <= 0 || !Gather->IsGathering() || Gather->SourceIndex != It.Value().SourceIndex
 			|| Gather->Phase == EHOLGatherPhase::Gathering)
 		{
 			It.RemoveCurrent();
@@ -296,7 +296,7 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 			// Chains (D328): a player's order is drawn until the unit first reaches its source; the server's own are not.
 			if (Order.bChain)
 			{
-				ChainSources.Add(UnitId, Order.SourceIndex);
+				ChainSources.Add(UnitId, {Order.SourceIndex, Order.bRally});
 			}
 			else if (!ChainSources.IsEmpty())
 			{

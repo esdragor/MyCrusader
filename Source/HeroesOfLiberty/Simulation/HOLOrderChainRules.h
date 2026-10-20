@@ -21,12 +21,14 @@ namespace HOLOrderChain
 		AttackMove,
 		Build,
 		Gather,
+		/** A unit just born going to its building's rally point (whatever it does there, D328): drawn white, to its Point. */
+		Rally,
 	};
 
 	/**
 	 * One step: its kind and its target. Move, AttackMove: the point of the group order (not the unit's own place in the
 	 * formation); Attack: the unit to take on (D223 identifier); Build: the site (an identifier the caller gives, its
-	 * actor's unique id); Gather: the source (an index of UHOLSourceSubsystem).
+	 * actor's unique id); Gather: the source (an index of UHOLSourceSubsystem); Rally: where it goes (the rally point, the source's or the site's location).
 	 */
 	struct FStep
 	{
@@ -61,6 +63,13 @@ namespace HOLOrderChain
 			FStep Step;
 			Step.Kind = EStepKind::Gather;
 			Step.SourceIndex = InSourceIndex;
+			return Step;
+		}
+		static FStep MakeRally(const FVector& InPoint)
+		{
+			FStep Step;
+			Step.Kind = EStepKind::Rally;
+			Step.Point = InPoint;
 			return Step;
 		}
 		bool operator==(const FStep& Other) const

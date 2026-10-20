@@ -598,6 +598,8 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 	{
 		if (UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>())
 		{
+			// Their chain is drawn (D328, the user's trial): one white step to where they go, whatever the order.
+			const UHOLCommandSubsystem::FRallyOrderScope RallyOrder(*Commands);
 			TArray<uint32> BornIds;
 			for (const FMassEntityHandle Entity : Created)
 			{

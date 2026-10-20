@@ -79,6 +79,7 @@ private:
 	/**
 	 * The lines between queued orders (D328, J7b.5b-2): for each chain with a selected unit, a filled strip on the ground from
 	 * the chain's units' centre to its first step, then step to step, coloured by the step it reaches; and a disc on each step.
+	 * Also, white, from each selected building's edge to its rally flag (the flags' set, the user's trial of D328).
 	 */
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UInstancedStaticMeshComponent> OrderLines;

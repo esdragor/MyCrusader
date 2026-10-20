@@ -1859,7 +1859,8 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 
 HOLOrderChain::FStep UHOLUnitOrderProcessor::MakeChainStep(const FHOLMoveOrder& Order)
 {
-	return Order.Kind == EHOLOrderKind::Attack ? HOLOrderChain::FStep::MakeAttack(Order.TargetUnitId)
+	return Order.bRally ? HOLOrderChain::FStep::MakeRally(Order.Target)
+		: Order.Kind == EHOLOrderKind::Attack ? HOLOrderChain::FStep::MakeAttack(Order.TargetUnitId)
 		: HOLOrderChain::FStep::MakeMove(Order.Target, Order.Kind == EHOLOrderKind::AttackMove);
 }
 
@@ -2499,14 +2500,18 @@ void UHOLUnitOrderProcessor::CollectChains(const UWorld& World, const UHOLUnitOr
 	// A player's gather order without Shift (D328): its one step until the unit first reaches the source.
 	if (Gathers)
 	{
-		for (const TPair<uint32, int32>& Pair : Gathers->GetChainSources())
+		const UHOLSourceSubsystem* Sources = World.GetSubsystem<UHOLSourceSubsystem>();
+		for (const TPair<uint32, UHOLGatherProcessor::FChainSource>& Pair : Gathers->GetChainSources())
 		{
 			if (!Builders.Contains(Pair.Key) && StateOfSlot(Units->FindEntity(Pair.Key)))
 			{
 				Builders.Add(Pair.Key);
 				HOLOrderChain::FUnitSteps& Steps = UnitSteps.AddDefaulted_GetRef();
 				Steps.UnitId = Pair.Key;
-				Steps.Steps.Add(HOLOrderChain::FStep::MakeGather(Pair.Value));
+				// Born for a rally point on the source (D328): a white step to it.
+				const int32 SourceIndex = Pair.Value.SourceIndex;
+				Steps.Steps.Add(Pair.Value.bRally && Sources && Sources->GetSources().IsValidIndex(SourceIndex)
+					? HOLOrderChain::FStep::MakeRally(Sources->GetSources()[SourceIndex].Location) : HOLOrderChain::FStep::MakeGather(SourceIndex));
 			}
 		}
 	}

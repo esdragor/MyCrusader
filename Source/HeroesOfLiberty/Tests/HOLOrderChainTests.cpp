@@ -72,6 +72,18 @@ bool FHOLOrderChainsTest::RunTest(const FString& Parameters)
 		MakeChains({FUnitSteps{1, {MoveA}}, FUnitSteps{2, {FStep::MakeMove(MoveA.Point, true)}}}, Chains);
 		TestEqual(TEXT("Move and attack-move to the same point: two chains"), Chains.Num(), 2);
 	}
+	// A rally (D328): units born together share one white step to their point; a move to the same point is another chain.
+	{
+		const FStep Rally = FStep::MakeRally(FVector(500., 200., 0.));
+		MakeChains({FUnitSteps{3, {Rally}}, FUnitSteps{4, {Rally}}, FUnitSteps{5, {FStep::MakeMove(Rally.Point)}}}, Chains);
+		TestEqual(TEXT("Rally: two chains"), Chains.Num(), 2);
+		if (Chains.Num() == 2)
+		{
+			TestTrue(TEXT("Rally: born together share it"), Chains[0].UnitIds == TArray<uint32>{3, 4});
+			TestEqual(TEXT("Rally: its kind"), static_cast<int32>(Chains[0].Steps[0].Kind), static_cast<int32>(EStepKind::Rally));
+			TestEqual(TEXT("Rally: its name"), FString(KindName(EStepKind::Rally)), FString(TEXT("Rally")));
+		}
+	}
 	// The bound: at most MaxSteps steps; queues alike up to the bound share a chain.
 	{
 		TArray<FStep> Long;

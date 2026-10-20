@@ -49,6 +49,7 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	Order.bFrontWidth = bFrontWidth;
 	Order.bQueue = bQueue;
 	Order.bChain = bPlayerOrders && !bFromTask;
+	Order.bRally = bRallyOrders && !bFromTask;
 }
 
 void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitIds, const EHOLOrderKind Kind, const uint32 TargetUnitId, const int32 PlayerIndex,
@@ -112,6 +113,7 @@ void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitId
 	Order.SourceIndex = SourceIndex;
 	Order.PlayerIndex = PlayerIndex;
 	Order.bChain = bPlayerOrders;
+	Order.bRally = bRallyOrders;
 }
 
 void UHOLCommandSubsystem::ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders)
@@ -152,7 +154,9 @@ void UHOLCommandSubsystem::IssueBuildOrder(const FHOLBuildOrder& Order)
 {
 	if (Order.UnitIds.Num() > 0 && (Order.Building.IsValid() || Order.SourceIndex != INDEX_NONE))
 	{
-		PendingBuildOrders.Add_GetRef(Order).bChain |= bPlayerOrders;
+		FHOLBuildOrder& Added = PendingBuildOrders.Add_GetRef(Order);
+		Added.bChain |= bPlayerOrders;
+		Added.bRally |= bRallyOrders;
 	}
 }
 
