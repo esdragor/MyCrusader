@@ -351,7 +351,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Context, Cell).IsNone());
 	}
 
-	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms once finished; a site produces nothing, Q cancels it.
+	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms, E Archer (J7c.1) once finished; a site produces nothing, Q cancels it.
 	const FHOLBuildingTypeRow* BarracksType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
 	if (TestNotNull(TEXT("Barracks in the building type table"), BarracksType))
 	{
@@ -361,9 +361,11 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		Barracks.Produces = BarracksType->Produces;
 		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Barracks, 0);
 		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Barracks, 1);
+		const FHOLGridCommand E = HOLCommandGrid::GetCommand(Barracks, 2);
 		TestTrue(TEXT("Barracks, A: produce a Spearman"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Spearman")));
 		TestTrue(TEXT("Barracks, Z: produce a Man-at-arms"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("ManAtArms")));
-		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		TestTrue(TEXT("Barracks, E: produce an Archer"), E.Command == EHOLGridCommand::Produce && E.TypeName == FName(TEXT("Archer")));
+		for (int32 Cell = 3; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
 			TestTrue(*FString::Printf(TEXT("Barracks, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Barracks, Cell).IsNone());
 		}
@@ -386,16 +388,16 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridUnitOrdersTest, "HeroesOfLiberty.CommandGrid.UnitOrders", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
 {
-	// J7b.3, the user's trial of J7b: A attack-move (soldiers among the selection), S stop, D hold (any own units).
-	TestEqual(TEXT("A is cell 0"), HOLCommandGrid::AttackMoveCell, 0);
+	// J7b.3, the user's request of 2026-10-20: Q attack-move (soldiers among the selection), S stop, D hold (any own units).
+	TestEqual(TEXT("Q is cell 4"), HOLCommandGrid::AttackMoveCell, 4);
 	TestEqual(TEXT("S is cell 5"), HOLCommandGrid::StopCell, 5);
 	TestEqual(TEXT("D is cell 6"), HOLCommandGrid::HoldCell, 6);
 
-	// Soldiers alone: A S D, nothing else (no build cell: they do not build).
+	// Soldiers alone: Q S D, nothing else (no build cell: they do not build).
 	FHOLGridContext Soldiers;
 	Soldiers.bOwnUnits = true;
 	Soldiers.bSoldiers = true;
-	TestTrue(TEXT("soldiers: A attack-move"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("soldiers: Q attack-move"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
 	TestTrue(TEXT("soldiers: S stop"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
 	TestTrue(TEXT("soldiers: D hold"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
@@ -416,7 +418,7 @@ bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(*FString::Printf(TEXT("Peasants: cell %d still builds"), Cell), HOLCommandGrid::GetCommand(Peasants, Cell).Command == EHOLGridCommand::Build);
 	}
-	TestTrue(TEXT("Peasants: A a house"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::AttackMoveCell).TypeName == HOLBuildingTypeNames::House);
+	TestTrue(TEXT("Peasants: A a house"), HOLCommandGrid::GetCommand(Peasants, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Peasants: R still the Barracks"), HOLCommandGrid::GetCommand(Peasants, 3).TypeName == HOLBuildingTypeNames::Barracks);
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
@@ -428,15 +430,15 @@ bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Peasants: cancel cell empty"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::CancelCell).IsNone());
 	for (const TPair<FName, int32>& Buildable : Peasants.Buildable)
 	{
-		TestTrue(*FString::Printf(TEXT("%s: not on S D"), *Buildable.Key.ToString()),
-			Buildable.Value != HOLCommandGrid::StopCell && Buildable.Value != HOLCommandGrid::HoldCell);
+		TestTrue(*FString::Printf(TEXT("%s: not on Q S D"), *Buildable.Key.ToString()), Buildable.Value != HOLCommandGrid::AttackMoveCell
+			&& Buildable.Value != HOLCommandGrid::StopCell && Buildable.Value != HOLCommandGrid::HoldCell);
 	}
 
 	// Peasants and soldiers together (« Tous » of a mixed selection): the soldiers' commands, no build (the Peasants'
 	// subgroup, Tab, has them).
 	FHOLGridContext Mixed = Peasants;
 	Mixed.bSoldiers = true;
-	TestTrue(TEXT("mixed: A attack-move"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("mixed: Q attack-move"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
 	TestTrue(TEXT("mixed: S stop"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
 	TestTrue(TEXT("mixed: D hold"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
@@ -451,7 +453,7 @@ bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("enemy selection: cell %d empty"), Cell), HOLCommandGrid::GetCommand(Enemy, Cell).IsNone());
 	}
 
-	// A building of the player's (the Barracks, finished or a site): its own cells only, never A S D.
+	// A building of the player's (the Barracks, finished or a site): its own cells only, never Q S D.
 	FHOLGridContext Barracks;
 	Barracks.bOwnBuilding = true;
 	Barracks.bBuildingFinished = true;

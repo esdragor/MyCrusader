@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-19 06:30\n"
-"PO-Revision-Date: 2026-10-19 06:30\n"
+"POT-Creation-Date: 2026-10-20 17:22\n"
+"PO-Revision-Date: 2026-10-20 17:22\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -70,85 +70,92 @@ msgid "Rose"
 msgstr "Rose"
 
 #. Key:	Peasant
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(18)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(18)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(19)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(19)
 msgctxt "HOLGameNames,Peasant"
 msgid "Paysan"
 msgstr "Paysan"
 
 #. Key:	Spearman
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(22)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(22)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(23)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(23)
 msgctxt "HOLGameNames,Spearman"
 msgid "Lancier"
 msgstr "Lancier"
 
 #. Key:	ManAtArms
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(26)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(26)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(27)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(27)
 msgctxt "HOLGameNames,ManAtArms"
 msgid "Homme d'armes"
 msgstr "Homme d'armes"
 
+#. Key:	Archer
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(31)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(31)
+msgctxt "HOLGameNames,Archer"
+msgid "Archer"
+msgstr "Archer"
+
 #. Key:	MainCentre
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(39)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(39)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(44)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(44)
 msgctxt "HOLGameNames,MainCentre"
 msgid "Centre principal"
 msgstr "Centre principal"
 
 #. Key:	House
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(43)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(43)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(48)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(48)
 msgctxt "HOLGameNames,House"
 msgid "Maison"
 msgstr "Maison"
 
 #. Key:	LumberCamp
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(47)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(47)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(52)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(52)
 msgctxt "HOLGameNames,LumberCamp"
 msgid "Camp de bûcherons"
 msgstr "Camp de bûcherons"
 
 #. Key:	MiningCamp
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(51)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(51)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(56)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(56)
 msgctxt "HOLGameNames,MiningCamp"
 msgid "Camp de mineurs"
 msgstr "Camp de mineurs"
 
 #. Key:	Barracks
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(55)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(55)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(60)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(60)
 msgctxt "HOLGameNames,Barracks"
 msgid "Caserne"
 msgstr "Caserne"
 
 #. Key:	Tree
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(68)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(68)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(73)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(73)
 msgctxt "HOLGameNames,Tree"
 msgid "Arbre"
 msgstr "Arbre"
 
 #. Key:	BerryBush
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(72)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(72)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
 msgctxt "HOLGameNames,BerryBush"
 msgid "Buisson de baies"
 msgstr "Buisson de baies"
 
 #. Key:	StoneVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(76)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(76)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
 msgctxt "HOLGameNames,StoneVein"
 msgid "Filon de pierre"
 msgstr "Filon de pierre"
 
 #. Key:	GoldVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(80)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(80)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
 msgctxt "HOLGameNames,GoldVein"
 msgid "Filon d'or"
 msgstr "Filon d'or"
@@ -161,92 +168,92 @@ msgid "Produit : {0}"
 msgstr "Produit : {0}"
 
 #. Key:	Cancel
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1039)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1039)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1074)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1074)
 msgctxt "HOLGameScreen,Cancel"
 msgid "Annuler"
 msgstr "Annuler"
 
 #. Key:	CancelSite
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1040)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1040)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1075)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1075)
 msgctxt "HOLGameScreen,CancelSite"
 msgid "Annuler la construction"
 msgstr "Annuler la construction"
 
 #. Key:	RefundAll
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1041)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1041)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1076)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1076)
 msgctxt "HOLGameScreen,RefundAll"
 msgid "Rend tout le coût"
 msgstr "Rend tout le coût"
 
 #. Key:	RefundHalf
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1041)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1041)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1076)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1076)
 msgctxt "HOLGameScreen,RefundHalf"
 msgid "Rend la moitié du coût"
 msgstr "Rend la moitié du coût"
 
 #. Key:	AttackMove
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1045)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1045)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1080)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1080)
 msgctxt "HOLGameScreen,AttackMove"
 msgid "Attaque"
 msgstr "Attaque"
 
 #. Key:	AttackMoveName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1046)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1046)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1081)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1081)
 msgctxt "HOLGameScreen,AttackMoveName"
 msgid "Attaque-déplacement"
 msgstr "Attaque-déplacement"
 
 #. Key:	AttackMoveEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1047)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1047)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1082)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1082)
 msgctxt "HOLGameScreen,AttackMoveEffect"
 msgid "Puis clic au sol : attaque les ennemis en chemin"
 msgstr "Puis clic au sol : attaque les ennemis en chemin"
 
 #. Key:	Stop
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1050)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1050)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1085)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1085)
 msgctxt "HOLGameScreen,Stop"
 msgid "Arrêt"
 msgstr "Arrêt"
 
 #. Key:	StopEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1051)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1051)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1086)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1086)
 msgctxt "HOLGameScreen,StopEffect"
 msgid "Annule les ordres et le combat"
 msgstr "Annule les ordres et le combat"
 
 #. Key:	StopName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1051)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1051)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1086)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1086)
 msgctxt "HOLGameScreen,StopName"
 msgid "Arrêt"
 msgstr "Arrêt"
 
 #. Key:	Hold
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1054)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1054)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1089)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1089)
 msgctxt "HOLGameScreen,Hold"
 msgid "Tenir"
 msgstr "Tenir"
 
 #. Key:	HoldName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1055)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1055)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1090)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1090)
 msgctxt "HOLGameScreen,HoldName"
 msgid "Tenir la position"
 msgstr "Tenir la position"
 
 #. Key:	HoldEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1056)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1056)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1091)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1091)
 msgctxt "HOLGameScreen,HoldEffect"
 msgid "N'attaque qu'à portée, ne poursuit pas"
 msgstr "N'attaque qu'à portée, ne poursuit pas"
@@ -257,13 +264,6 @@ msgstr "N'attaque qu'à portée, ne poursuit pas"
 msgctxt "HOLGameScreen,PeasantEffect"
 msgid "Récolte et bâtit"
 msgstr "Récolte et bâtit"
-
-#. Key:	Population
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1459)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1459)
-msgctxt "HOLGameScreen,Population"
-msgid "Population"
-msgstr "Population"
 
 #. Key:	NotEnoughWood
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(148)
@@ -279,6 +279,13 @@ msgctxt "HOLGameScreen,NotEnoughStone"
 msgid "Pas assez de pierre"
 msgstr "Pas assez de pierre"
 
+#. Key:	Population
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1494)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1494)
+msgctxt "HOLGameScreen,Population"
+msgid "Population"
+msgstr "Population"
+
 #. Key:	NotEnoughGold
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(150)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(150)
@@ -292,13 +299,6 @@ msgstr "Pas assez d'or"
 msgctxt "HOLGameScreen,NotEnoughFood"
 msgid "Pas assez de nourriture"
 msgstr "Pas assez de nourriture"
-
-#. Key:	Health
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1516)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1516)
-msgctxt "HOLGameScreen,Health"
-msgid "Points de vie"
-msgstr "Points de vie"
 
 #. Key:	QueueFull
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(153)
@@ -314,6 +314,13 @@ msgctxt "HOLGameScreen,PopulationMax"
 msgid "Population maximale — construisez des maisons"
 msgstr "Population maximale — construisez des maisons"
 
+#. Key:	Health
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1551)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1551)
+msgctxt "HOLGameScreen,Health"
+msgid "Points de vie"
+msgstr "Points de vie"
+
 #. Key:	NoMilitaryBuilding
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(158)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(158)
@@ -328,13 +335,6 @@ msgctxt "HOLGameScreen,NoTechnologicalBuilding"
 msgid "Aucun bâtiment technologique"
 msgstr "Aucun bâtiment technologique"
 
-#. Key:	PopulationFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1597)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1597)
-msgctxt "HOLGameScreen,PopulationFull"
-msgid "Population pleine"
-msgstr "Population pleine"
-
 #. Key:	NoEconomicBuilding
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(160)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(160)
@@ -342,9 +342,16 @@ msgctxt "HOLGameScreen,NoEconomicBuilding"
 msgid "Aucun bâtiment économique"
 msgstr "Aucun bâtiment économique"
 
+#. Key:	PopulationFull
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1632)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1632)
+msgctxt "HOLGameScreen,PopulationFull"
+msgid "Population pleine"
+msgstr "Population pleine"
+
 #. Key:	CancelHint
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1603)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1603)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1638)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1638)
 msgctxt "HOLGameScreen,CancelHint"
 msgid "Clic : annuler"
 msgstr "Clic : annuler"
@@ -378,8 +385,8 @@ msgid "Emplacement occupé"
 msgstr "Emplacement occupé"
 
 #. Key:	GathererCount
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(504)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(504)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(506)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(506)
 msgctxt "HOLGameScreen,GathererCount"
 msgid "({0})"
 msgstr "({0})"
@@ -391,13 +398,6 @@ msgctxt "HOLGameScreen,Wood"
 msgid "Bois"
 msgstr "Bois"
 
-#. Key:	FoundationName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(539)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(539)
-msgctxt "HOLGameScreen,FoundationName"
-msgid "Fondation : {0}"
-msgstr "Fondation : {0}"
-
 #. Key:	Stone
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(54)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(54)
@@ -405,19 +405,19 @@ msgctxt "HOLGameScreen,Stone"
 msgid "Pierre"
 msgstr "Pierre"
 
+#. Key:	FoundationName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(542)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(542)
+msgctxt "HOLGameScreen,FoundationName"
+msgid "Fondation : {0}"
+msgstr "Fondation : {0}"
+
 #. Key:	SiteName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(540)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(540)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(543)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(543)
 msgctxt "HOLGameScreen,SiteName"
 msgid "Chantier : {0}"
 msgstr "Chantier : {0}"
-
-#. Key:	ProgressPercent
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(548)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(548)
-msgctxt "HOLGameScreen,ProgressPercent"
-msgid "{0} %"
-msgstr "{0} %"
 
 #. Key:	Gold
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(55)
@@ -426,19 +426,12 @@ msgctxt "HOLGameScreen,Gold"
 msgid "Or"
 msgstr "Or"
 
-#. Key:	PlayerN
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(557)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(557)
-msgctxt "HOLGameScreen,PlayerN"
-msgid "Joueur {0}"
-msgstr "Joueur {0}"
-
-#. Key:	You
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(557)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(557)
-msgctxt "HOLGameScreen,You"
-msgid "Vous"
-msgstr "Vous"
+#. Key:	ProgressPercent
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(551)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(551)
+msgctxt "HOLGameScreen,ProgressPercent"
+msgid "{0} %"
+msgstr "{0} %"
 
 #. Key:	Food
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(56)
@@ -447,16 +440,37 @@ msgctxt "HOLGameScreen,Food"
 msgid "Nourriture"
 msgstr "Nourriture"
 
+#. Key:	PlayerN
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(560)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(560)
+msgctxt "HOLGameScreen,PlayerN"
+msgid "Joueur {0}"
+msgstr "Joueur {0}"
+
+#. Key:	You
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(560)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(560)
+msgctxt "HOLGameScreen,You"
+msgid "Vous"
+msgstr "Vous"
+
 #. Key:	Builders
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(577)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(577)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(581)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(581)
 msgctxt "HOLGameScreen,Builders"
 msgid "Bâtisseurs : {0}"
 msgstr "Bâtisseurs : {0}"
 
+#. Key:	SubgroupAll
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(645)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(645)
+msgctxt "HOLGameScreen,SubgroupAll"
+msgid "Tous ({0})"
+msgstr "Tous ({0})"
+
 #. Key:	UnitCount
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(637)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(637)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(646)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(646)
 msgctxt "HOLGameScreen,UnitCount"
 msgid "{0} × {1}"
 msgstr "{0} × {1}"
@@ -490,95 +504,81 @@ msgid "nourriture"
 msgstr "nourriture"
 
 #. Key:	GroupGathering
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(682)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(682)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(690)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(690)
 msgctxt "HOLGameScreen,GroupGathering"
 msgid "{0} en récolte"
 msgstr "{0} en récolte"
 
 #. Key:	GroupBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(686)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(686)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(694)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(694)
 msgctxt "HOLGameScreen,GroupBuilding"
 msgid "{0} en construction"
 msgstr "{0} en construction"
 
 #. Key:	GroupMoving
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(690)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(690)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(698)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(698)
 msgctxt "HOLGameScreen,GroupMoving"
 msgid "{0} en marche"
 msgstr "{0} en marche"
 
 #. Key:	GroupIdle
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(694)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(694)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(702)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(702)
 msgctxt "HOLGameScreen,GroupIdle"
 msgid "{0} {0}|plural(one=inactif,other=inactifs)"
 msgstr "{0} {0}|plural(one=inactif,other=inactifs)"
 
-#. Key:	SubgroupAll
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(731)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(731)
-msgctxt "HOLGameScreen,SubgroupAll"
-msgid "Tous ({0})"
-msgstr "Tous ({0})"
-
 #. Key:	SourceRemaining
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(785)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(785)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(797)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(797)
 msgctxt "HOLGameScreen,SourceRemaining"
 msgid "Reste : {0}"
 msgstr "Reste : {0}"
 
 #. Key:	ActivityGathering
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(803)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(803)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(815)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(815)
 msgctxt "HOLGameScreen,ActivityGathering"
 msgid "Récolte"
 msgstr "Récolte"
 
 #. Key:	ActivityBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(804)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(804)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(816)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(816)
 msgctxt "HOLGameScreen,ActivityBuilding"
 msgid "Construction"
 msgstr "Construction"
 
 #. Key:	ActivityAttacking
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(805)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(805)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(817)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(817)
 msgctxt "HOLGameScreen,ActivityAttacking"
 msgid "Attaque"
 msgstr "Attaque"
 
 #. Key:	ActivityIdle
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(806)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(806)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(818)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(818)
 msgctxt "HOLGameScreen,ActivityIdle"
 msgid "Inactif"
 msgstr "Inactif"
 
 #. Key:	ActivityMoving
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(806)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(806)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(818)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(818)
 msgctxt "HOLGameScreen,ActivityMoving"
 msgid "En marche"
 msgstr "En marche"
 
 #. Key:	ActivityWithLoad
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(808)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(808)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(820)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(820)
 msgctxt "HOLGameScreen,ActivityWithLoad"
 msgid "{0} — {1} {2}/{3}"
 msgstr "{0} — {1} {2}/{3}"
-
-#. Key:	IdleWorkers
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(839)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(839)
-msgctxt "HOLGameScreen,IdleWorkers"
-msgid "Inactifs : {0}"
-msgstr "Inactifs : {0}"
 
 #. Key:	PopulationEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(85)
@@ -587,12 +587,12 @@ msgctxt "HOLGameScreen,PopulationEffect"
 msgid "+{0} population"
 msgstr "+{0} population"
 
-#. Key:	ControlGroupSlot
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(922)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(922)
-msgctxt "HOLGameScreen,ControlGroupSlot"
-msgid "{0} · {1}"
-msgstr "{0} · {1}"
+#. Key:	IdleWorkers
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(874)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(874)
+msgctxt "HOLGameScreen,IdleWorkers"
+msgid "Inactifs : {0}"
+msgstr "Inactifs : {0}"
 
 #. Key:	DepositEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(94)
@@ -608,9 +608,16 @@ msgctxt "HOLGameScreen,ListSeparator"
 msgid ", "
 msgstr ", "
 
+#. Key:	ControlGroupSlot
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(957)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(957)
+msgctxt "HOLGameScreen,ControlGroupSlot"
+msgid "{0} · {1}"
+msgstr "{0} · {1}"
+
 #. Key:	ControlGroupTooltip
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(946)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(946)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(981)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(981)
 msgctxt "HOLGameScreen,ControlGroupTooltip"
 msgid "Groupe {0}"
 msgstr "Groupe {0}"

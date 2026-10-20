@@ -445,7 +445,7 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand AttackMoveCommand(
 		TEXT("hol.Select.AttackMove"),
-		TEXT("hol.Select.AttackMove <X> <Y> [shift]: the grid's attack-move (A) then a left click where that ground point (cm) is drawn"),
+		TEXT("hol.Select.AttackMove <X> <Y> [shift]: the grid's attack-move (Q) then a left click where that ground point (cm) is drawn"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)

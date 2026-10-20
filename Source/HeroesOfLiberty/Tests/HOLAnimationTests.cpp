@@ -400,8 +400,8 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("falling"), SequenceName(Constants.FallSequence), TEXT("A_Peasant_Fall"));
 	TestEqual(TEXT("striking"), SequenceName(Constants.AttackSequence), TEXT("A_Peasant_Attack"));
 	// Sequences 0-7 are the soldiers' provider's, in its order (the same indices for both meshes).
-	const FHOLUnitTypeRow* ArcherRow = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Archer"), TEXT("Animation test"));
-	const UAnimSequenceTransformProviderData* SoldierProvider = ArcherRow ? ArcherRow->AnimationProvider.LoadSynchronous() : nullptr;
+	const FHOLUnitTypeRow* LightInfantryRow = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("LightInfantry"), TEXT("Animation test"));
+	const UAnimSequenceTransformProviderData* SoldierProvider = LightInfantryRow ? LightInfantryRow->AnimationProvider.LoadSynchronous() : nullptr;
 	if (TestNotNull(TEXT("soldiers' animation provider"), SoldierProvider))
 	{
 		const TArray<FAnimSequenceTransformProviderSequence>& Shared = SoldierProvider->GetSequences();
@@ -415,7 +415,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the Peasant's provider: 14 sequences"), Provider->GetSequences().Num(), 14);
 
 	// The soldiers keep idle 0 and walk 1 of the same provider, and nothing else.
-	for (const TCHAR* Soldier : { TEXT("LightInfantry"), TEXT("Archer") })
+	for (const TCHAR* Soldier : { TEXT("LightInfantry") })
 	{
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier, TEXT("Animation test"));
 		if (TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier), Row))
@@ -429,14 +429,16 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	// The Spearman and the Man-at-arms (J7a.3): their own mesh and provider, their own sequences only (0 idle and 1 walk of
+	// The Spearman, the Man-at-arms (J7a.3) and the Archer (J7c.1): their own mesh and provider, their own sequences only (0 idle and 1 walk of
 	// the mannequin, 2 the armed idle, 3 the armed walk; user's choice; J7b.5: 4 the strike, 5 the fall), idle 2, walk 3,
 	// strike 4, fall 5, no gesture nor prop.
 	struct FArmedSoldier { const TCHAR* Name; const TCHAR* Mesh; const TCHAR* Idle; const TCHAR* Walk; const TCHAR* Attack; const TCHAR* Fall; };
 	for (const FArmedSoldier& Soldier : { FArmedSoldier{ TEXT("Spearman"), TEXT("SKM_Spearman"), TEXT("A_Spearman_Idle"), TEXT("A_Spearman_Walk"),
 				TEXT("A_Spearman_Attack"), TEXT("A_Spearman_Fall") },
 			FArmedSoldier{ TEXT("ManAtArms"), TEXT("SKM_ManAtArms"), TEXT("A_ManAtArms_Idle"), TEXT("A_ManAtArms_Walk"), TEXT("A_ManAtArms_Attack"),
-				TEXT("A_ManAtArms_Fall") } })
+				TEXT("A_ManAtArms_Fall") },
+			FArmedSoldier{ TEXT("Archer"), TEXT("SKM_Archer"), TEXT("A_Archer_Idle"), TEXT("A_Archer_Walk"), TEXT("A_Archer_Attack"),
+				TEXT("A_Archer_Fall") } })
 	{
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier.Name, TEXT("Animation test"));
 		if (!TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier.Name), Row))

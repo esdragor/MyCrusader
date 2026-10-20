@@ -84,7 +84,7 @@ struct FHOLGridContext
 	bool bBuilders = false;
 	/**
 	 * The player's own units are selected (J7b.3: stop, hold); among them soldiers (every type but the Peasant: attack-move,
-	 * on A, the builders' grid hidden: the user's trial of J7b).
+	 * on Q, the builders' grid hidden: the user's trial of J7b).
 	 */
 	bool bOwnUnits = false;
 	bool bSoldiers = false;
@@ -154,12 +154,12 @@ namespace HOLCommandGrid
 	/** The cell of a selected site's « Annuler » (V, bottom right: far from the keys that build). */
 	inline constexpr int32 CancelCell = 11;
 	/**
-	 * The units' commands (J7b.3): A attack-move (AoE4's and StarCraft's key; the user's trial of J7b: A, not Q, on an
-	 * AZERTY keyboard), then on the second row, free in the builders' grid (A Z E R), S stop, D hold position. Soldiers
-	 * among the selection take A from the builders' grid (« Tous » of a mixed selection); the Peasants' subgroup (Tab)
-	 * keeps it.
+	 * The units' commands (J7b.3), on the second row, free in the builders' grid (A Z E R): Q attack-move (AoE4's grid on
+	 * an AZERTY keyboard: A Z E R are kept for the age tabs of the builders' grid, the user's request of 2026-10-20, after
+	 * A in the trial of J7b), S stop, D hold position. Soldiers among the selection hide the builders' grid (« Tous » of a
+	 * mixed selection); the Peasants' subgroup (Tab) keeps it.
 	 */
-	inline constexpr int32 AttackMoveCell = 0;
+	inline constexpr int32 AttackMoveCell = 4;
 	inline constexpr int32 StopCell = 5;
 	inline constexpr int32 HoldCell = 6;
 

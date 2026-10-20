@@ -1,0 +1,48 @@
+# Archers : une caserne finie (E = Archer), 6 Archers devant le centre, 4 Lanciers et 4 Hommes d'armes ennemis à ~25 m, 5000 de chaque ressource
+# Plain, deux joueurs (archers.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme
+# order_lines : la caserne derrière le centre (la place de quick_check), l'armée devant, au-delà des rochers (vers 3000) ;
+# les ennemis ~25 m plus loin, hors du rayon d'agression (12 m) : rien ne part tout seul.
+hol.Cheat.Resources 5000
+# Population 175 : la caserne peut recruter malgré les soldats offerts (hors plafond).
+hol.Cheat.Population 165
+# Les Paysans d'abord (hol.Select.Own ne prend alors qu'eux), au bord des arbres, à côté du centre.
+hol.Camera.FocusNear 115 -1250
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+# La caserne : fondation derrière le centre, bâtie d'un coup (hol.Build.Instant) par les cinq.
+hol.Build.PlaceNear Barracks -3150 4050
+waitlog Construction: slot 0 placed Barracks foundation
+hol.Build.Instant 1
+hol.Camera.FocusNear -1500 1500
+frames 5
+hol.Select.Own
+waitlog Selection: 5 units (own)
+hol.Select.OrderNear -3150 4050
+waitlog Build order of slot 0: 5 units to Barracks
+waitlog Construction: slot 0 finished Barracks
+hol.Build.Instant 0
+# Les Paysans reviennent au bord des arbres.
+hol.Camera.FocusNear 115 -1250
+frames 5
+hol.Select.OrderNear 400 -700
+# Les Archers devant le centre ; les ennemis ~25 m plus loin.
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 6 Archer 0 300
+hol.Camera.FocusNear 6500 -400
+frames 2
+hol.Units.SpawnHere 4 Spearman 1 250
+hol.Camera.FocusNear 6500 400
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 1 250
+waitunits 19
+# La caméra au-dessus des Archers, un cran de molette en avant pour bien voir l'arc et le carquois.
+hol.Camera.FocusNear 4600 0
+hol.Camera.Zoom 1
+frames 5
+hol.Select.Army
+note Au repos : arc penché, carquois dans le dos, pas de flèche en main. En marche : pas de flèche non plus.
+note Clic droit sur un ennemi (ou Q puis clic au sol) : l'Archer tire à 15 m. Flèche cachée du lâcher à la reprise au carquois.
+note Le tir est encore un coup au contact de portée 15 m (dégât immédiat, pas de flèche qui vole) : la flèche et le dégât différé viennent en J7c.2.
+note Caserne (derrière le centre) : E produit un Archer (30 nourriture + 50 bois, 15 s) ; A Lancier, Z Homme d'armes.

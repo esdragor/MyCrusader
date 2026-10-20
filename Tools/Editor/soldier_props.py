@@ -10,7 +10,7 @@ ALWAYS shown (no per-instance choice), so their ids only name them (SOLDIER_MESH
   - sword (id 2): in the right hand, same tool frame (origin at the pommel, X along the blade, Y an edge).
   - shield (id 3): heater shield on the left forearm, skinned to hand_l ("bone" frame of peasant_props): its frame
     follows the left hand, which the gestures place with its palm and fingers (free hand).
-PROPOSED (J7c, previews only, nothing baked; SKM_Archer = mannequin + bow + quiver + arrow):
+Archer (J7c, built in J7c.1a; SKM_Archer = mannequin + bow + quiver + arrow):
   - bow (id 4): 160 cm longbow in the LEFT fist, skinned to hand_l like the shield; frame: origin at the grip, X up
     the bow (the hand's pinky-to-index axis: the upper limb), Y toward the string (the archer's side), Z = X x Y.
     The string is straight (braced): one rigid bone cannot bend it to the drawing hand.
@@ -161,7 +161,7 @@ def make_shield(sk, light=False):
             "local": shield_local(sk), "prims": prims}
 
 
-# Archer (J7c, PROPOSED): longbow, arrow, quiver.
+# Archer (J7c): longbow, arrow, quiver.
 BOW_LENGTH = 160.0         # tip to tip along the bow
 BOW_BRACE = 15.0           # grip to the string (brace height), toward the archer
 ARROW_LENGTH = 78.0        # nock to the point
@@ -253,8 +253,10 @@ def build_props(sk, light=False):
 
 
 # The soldiers' meshes (J7a.3) and their pieces, always shown.
-SOLDIER_MESHES = {"SKM_Spearman": ("spear",), "SKM_ManAtArms": ("sword", "shield")}
-# PROPOSED (J7c, not built): "SKM_Archer": ("bow", "arrow", "quiver"); the arrow needs hiding outside the draw.
+SOLDIER_MESHES = {"SKM_Spearman": ("spear",), "SKM_ManAtArms": ("sword", "shield"),
+                  # J7c.1a: the arrow is always in the mesh; the gestures hide it (ik_hand_gun scaled to nothing,
+                  # soldier_poses "tool_hidden") outside the draw.
+                  "SKM_Archer": ("bow", "arrow", "quiver")}
 
 
 def main():
