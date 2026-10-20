@@ -25,3 +25,6 @@ DerivedDataCache/
 HeroesOfLiberty.slnx
 
 Script/Binds.Cache*
+
+# Files written by cooking the dedicated server (file open order); Build/<Platform>/ may later hold tracked icons
+Build/*/FileOpenOrder/
