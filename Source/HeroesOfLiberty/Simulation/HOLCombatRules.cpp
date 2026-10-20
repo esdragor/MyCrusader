@@ -2,6 +2,7 @@
 
 #include "Simulation/HOLCombatRules.h"
 
+#include "HAL/IConsoleManager.h"
 #include "Simulation/HOLUnitTypes.h"
 
 namespace HOLCombat
@@ -143,7 +144,7 @@ namespace HOLCombat
 			Rank.bIsBuilding = Candidate.bIsBuilding;
 			Rank.bOutOfRange = !bInRange;
 			Rank.bNotAttackingMe = !Candidate.bAttacksMe;
-			Rank.bCrowded = !bInRange && Candidate.AttackerCount >= MaxAttackers;
+			Rank.bCrowded = !Seeker.bRanged && !bInRange && Candidate.AttackerCount >= MaxAttackers;
 			Rank.Distance = GetEdgeDistance(Seeker.Position, Seeker.Radius, Candidate.Position, Candidate.Radius);
 			Rank.Id = Candidate.Id;
 			if (Best == INDEX_NONE || Rank < BestRank)
@@ -153,5 +154,48 @@ namespace HOLCombat
 			}
 		}
 		return Best;
+	}
+
+	bool IsRangedAttack(const float AttackRange)
+	{
+		return AttackRange > RangedReach;
+	}
+
+	int32 GetArrowFlightMilliseconds(const FVector2D& From, const FVector2D& To, const float SpeedCmPerSecond)
+	{
+		const double Distance = FVector2D::Distance(From, To);
+		const double Speed = FMath::Max(static_cast<double>(SpeedCmPerSecond), 1.0);
+		return FMath::Max(0, FMath::RoundToInt32(Distance * 1000.0 / Speed));
+	}
+
+	EArrowOutcome ResolveArrow(const bool bTargetStands, int32& Health, const int32 Damage)
+	{
+		if (!bTargetStands || Health <= 0)
+		{
+			return EArrowOutcome::Lost;
+		}
+		Health -= Damage;
+		return Health <= 0 ? EArrowOutcome::Kill : EArrowOutcome::Hit;
+	}
+
+	int32 GetArrowFlightSteps(const int32 FlightMs, const int32 StepMs)
+	{
+		const int32 Step = FMath::Max(StepMs, 1);
+		return FMath::Max(1, (FlightMs + Step - 1) / Step);
+	}
+}
+
+namespace HOLCombat
+{
+	namespace
+	{
+		float ArrowSpeed = DefaultArrowSpeed;
+		FAutoConsoleVariableRef CVarArrowSpeed(TEXT("hol.Combat.ArrowSpeed"), ArrowSpeed,
+			TEXT("Speed of an arrow (cm/s, 2500 = 25 m/s): its flight lasts the shooter-to-target distance at release over it (server and client alike)"));
+	}
+
+	float GetArrowSpeed()
+	{
+		return FMath::Max(ArrowSpeed, 1.f);
 	}
 }

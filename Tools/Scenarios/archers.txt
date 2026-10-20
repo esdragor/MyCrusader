@@ -44,5 +44,5 @@ frames 5
 hol.Select.Army
 note Au repos : arc penché, carquois dans le dos, pas de flèche en main. En marche : pas de flèche non plus.
 note Clic droit sur un ennemi (ou Q puis clic au sol) : l'Archer tire à 15 m. Flèche cachée du lâcher à la reprise au carquois.
-note Le tir est encore un coup au contact de portée 15 m (dégât immédiat, pas de flèche qui vole) : la flèche et le dégât différé viennent en J7c.2.
+note Le tir lâche une flèche visible (25 m/s, légère cloche) qui suit sa cible ; le dégât tombe à son arrivée, même sur une cible qui fuit (J7c.2b).
 note Caserne (derrière le centre) : E produit un Archer (30 nourriture + 50 bois, 15 s) ; A Lancier, Z Homme d'armes.

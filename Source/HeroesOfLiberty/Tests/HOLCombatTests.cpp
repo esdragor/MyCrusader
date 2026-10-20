@@ -321,4 +321,84 @@ bool FHOLCombatTargetTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatArrowTest, "HeroesOfLiberty.Combat.Arrow", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+// J7c.2 checks (J7c-Q1 to Q4, Q6): the flight of an arrow by the distance, its landing, a shooter's target.
+bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Combat;
+	FHOLUnitTypeConstants Archer;
+	FHOLUnitTypeConstants Spearman;
+	if (!GetType(*this, TEXT("Archer"), Archer) || !GetType(*this, TEXT("Spearman"), Spearman))
+	{
+		return false;
+	}
+	// Shooters: the Archer's 15 m, not a melee's reach.
+	TestTrue(TEXT("the Archer shoots"), HOLCombat::IsRangedAttack(Archer.AttackRange));
+	TestFalse(TEXT("the Spearman does not"), HOLCombat::IsRangedAttack(Spearman.AttackRange));
+	TestEqual(TEXT("default arrow speed 25 m/s"), HOLCombat::DefaultArrowSpeed, 2500.f);
+
+	// The flight: centre-to-centre distance over the speed (25 m/s): 15 m in 600 ms, 5 m in 200 ms, 0 at point-blank.
+	const float Speed = HOLCombat::DefaultArrowSpeed;
+	TestEqual(TEXT("15 m in 600 ms"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0), FVector2D(1500, 0), Speed), 600);
+	TestEqual(TEXT("5 m (3, 4) in 200 ms"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(100, 100), FVector2D(400, 500), Speed), 200);
+	TestEqual(TEXT("point-blank in 0 ms"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0), FVector2D(0, 0), Speed), 0);
+	TestEqual(TEXT("twice the speed, half the flight"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0), FVector2D(1500, 0), 2.f * Speed), 300);
+
+	// The landing step: the flight in whole steps rounded up, 1 at least (never in the release's own step).
+	TestEqual(TEXT("600 ms = 12 steps of 50 ms"), HOLCombat::GetArrowFlightSteps(600, 50), 12);
+	TestEqual(TEXT("601 ms = 13 steps"), HOLCombat::GetArrowFlightSteps(601, 50), 13);
+	TestEqual(TEXT("0 ms = 1 step"), HOLCombat::GetArrowFlightSteps(0, 50), 1);
+	TestEqual(TEXT("10 ms = 1 step"), HOLCombat::GetArrowFlightSteps(10, 50), 1);
+	const int32 Step = StepMs();
+	TestEqual(TEXT("an Archer's 15 m shot at the table's step"), HOLCombat::GetArrowFlightSteps(HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0),
+		FVector2D(Archer.AttackRange + Archer.Radius + Spearman.Radius, 0), Speed), Step), FMath::DivideAndRoundUp(FMath::RoundToInt32((Archer.AttackRange + Archer.Radius + Spearman.Radius) * 1000.f / Speed), Step));
+
+	// The landing: always hits a standing target (no dodge, J7c-Q1); lost on a dead or gone one (J7c-Q2).
+	const int32 Damage = HOLCombat::GetDamage(Archer, Spearman, /*bRanged*/ true);
+	int32 Health = Spearman.MaxHealth;
+	TestEqual(TEXT("hits a standing target"), HOLCombat::ResolveArrow(true, Health, Damage), HOLCombat::EArrowOutcome::Hit);
+	TestEqual(TEXT("its damage off the health"), Health, Spearman.MaxHealth - Damage);
+	Health = Damage;
+	TestEqual(TEXT("kills a target at its damage"), HOLCombat::ResolveArrow(true, Health, Damage), HOLCombat::EArrowOutcome::Kill);
+	TestTrue(TEXT("at 0 or less"), Health <= 0);
+	int32 Dead = 0;
+	TestEqual(TEXT("lost on a target already at 0 (died in flight)"), HOLCombat::ResolveArrow(true, Dead, Damage), HOLCombat::EArrowOutcome::Lost);
+	TestEqual(TEXT("no damage on it"), Dead, 0);
+	int32 Gone = 40;
+	TestEqual(TEXT("lost on a target gone (destroyed)"), HOLCombat::ResolveArrow(false, Gone, Damage), HOLCombat::EArrowOutcome::Lost);
+	TestEqual(TEXT("its health untouched"), Gone, 40);
+
+	// The target of a shooter (J7c-Q6): no spreading, the nearest even crowded, the current one kept while in reach.
+	HOLCombat::FSeeker Shooter;
+	Shooter.Radius = Archer.Radius;
+	Shooter.AttackRange = Archer.AttackRange;
+	Shooter.AggressionRadius = Archer.AggressionRadius;
+	Shooter.bRanged = true;
+	{
+		// Out of reach both (edges 15.2 and 15.9 m: beyond the 15 m reach, within the 16 m aggression): a melee seeker spreads, a shooter does not.
+		HOLCombat::FCandidate Near = Enemy(1, 1630.);
+		Near.AttackerCount = HOLCombat::MaxAttackers;
+		const HOLCombat::FCandidate Far = Enemy(2, 1700.);
+		const HOLCombat::FCandidate Pair[] = { Near, Far };
+		HOLCombat::FSeeker Melee = Shooter;
+		Melee.bRanged = false;
+		TestEqual(TEXT("a melee seeker passes the crowded nearest over"), Chosen(Melee, Pair), uint64(2));
+		TestEqual(TEXT("a shooter takes the nearest, crowded or not"), Chosen(Shooter, Pair), uint64(1));
+	}
+	{
+		// Its current target at 14 m kept while in reach, a nearer one at 3 m notwithstanding.
+		HOLCombat::FCandidate Current = Enemy(5, 1400.);
+		Current.bIsCurrentTarget = true;
+		const HOLCombat::FCandidate Nearer = Enemy(6, 300.);
+		const HOLCombat::FCandidate Pair[] = { Nearer, Current };
+		TestEqual(TEXT("current target kept while in reach"), Chosen(Shooter, Pair), uint64(5));
+		// Out of reach (20 m): the nearest again.
+		Current.Position = FVector2D(2000., 0.);
+		const HOLCombat::FCandidate Away[] = { Nearer, Current };
+		TestEqual(TEXT("out of reach: the nearest"), Chosen(Shooter, Away), uint64(6));
+	}
+	return true;
+}
+
 #endif

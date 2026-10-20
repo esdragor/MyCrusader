@@ -106,6 +106,8 @@ namespace HOLCombat
 		float AttackRange = 50.f;
 		float AggressionRadius = 0.f;
 		ESeekMode Mode = ESeekMode::Auto;
+		/** A shooter (IsRangedAttack, J7c-Q6): no spreading to a less crowded enemy, the nearest, kept while in reach. */
+		bool bRanged = false;
 	};
 
 	/** One enemy the grid found near the seeker (the processor fills them). */
@@ -137,8 +139,49 @@ namespace HOLCombat
 	 * not come through here). Eligible: within the search radius, or attacking the seeker (riposte) when it has a search
 	 * radius at all; on hold, in reach only. The current target, in reach, is kept. Otherwise the best by, in order: a
 	 * unit before a building; in reach before out of reach; attacking the seeker before not; (out of reach) fewer than
-	 * MaxAttackers attackers before crowded; nearest by edge distance; smallest Id. Any order of the same candidates
+	 * MaxAttackers attackers before crowded (not for a shooter, bRanged); nearest by edge distance; smallest Id. Any order of the same candidates
 	 * gives the same enemy.
 	 */
 	HEROESOFLIBERTY_API int32 ChooseTarget(const FSeeker& Seeker, TConstArrayView<FCandidate> Candidates);
+
+	// Shots (J7c.2, J7c-Q1 to Q4). A shooter's hit is an arrow: released at the strike's moment of the gesture (the
+	// wind-up, WindUpPercent of the cadence, as a melee hit), it flies the centre-to-centre distance of the shooter and its
+	// target at release at the arrow speed, and always hits: its damage (GetDamage, ranged armour, reckoned at release)
+	// falls on the target when it lands, lost when the target died meanwhile. No minimum reach, no height bonus. The client
+	// reckons the same flight from the same positions (J7c.2b): nothing more is replicated.
+
+	/** Reach (cm) above which a unit's hits are shots (the ranged armour, an arrow): the Archer's 15 m, not a melee's 50 cm. */
+	inline constexpr float RangedReach = 200.f;
+
+	/** Speed of an arrow by default (cm/s): 25 m/s (J7c-Q2), hol.Combat.ArrowSpeed. */
+	inline constexpr float DefaultArrowSpeed = 2500.f;
+
+	/** A unit of this reach shoots (AttackRange > RangedReach). */
+	HEROESOFLIBERTY_API bool IsRangedAttack(float AttackRange);
+
+	/** Flight of an arrow (whole ms): the 2D distance From -> To (centres, at release) over SpeedCmPerSecond, rounded. */
+	HEROESOFLIBERTY_API int32 GetArrowFlightMilliseconds(const FVector2D& From, const FVector2D& To, float SpeedCmPerSecond);
+
+	/**
+	 * Steps from the release to the landing: the flight rounded up to whole steps, 1 at least (an arrow released at step S
+	 * lands at the start of step S + GetArrowFlightSteps, never in its own step).
+	 */
+	HEROESOFLIBERTY_API int32 GetArrowFlightSteps(int32 FlightMs, int32 StepMs);
+
+	/** What an arrow does when it lands. */
+	enum class EArrowOutcome : uint8
+	{
+		/** Its target died or is gone meanwhile: lost, no damage (J7c-Q2). */
+		Lost,
+		/** It hurt its target, which still stands. */
+		Hit,
+		/** It took its target to 0: the target dies (the dying path, as in melee). */
+		Kill,
+	};
+
+	/** An arrow landing: on a standing target (bTargetStands, Health > 0) Damage comes off Health; Lost otherwise. */
+	HEROESOFLIBERTY_API EArrowOutcome ResolveArrow(bool bTargetStands, int32& Health, int32 Damage);
+
+	/** hol.Combat.ArrowSpeed (cm/s, 1 at least): not a pure rule, the setting the server and the client both read. */
+	HEROESOFLIBERTY_API float GetArrowSpeed();
 }

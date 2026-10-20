@@ -12,6 +12,7 @@
 #include "MassExecutionContext.h"
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
+#include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -20,6 +21,9 @@
 
 int64 UHOLCombatProcessor::TotalHits = 0;
 int64 UHOLCombatProcessor::TotalKills = 0;
+int64 UHOLCombatProcessor::TotalArrowsReleased = 0;
+int64 UHOLCombatProcessor::TotalArrowsLanded = 0;
+int64 UHOLCombatProcessor::TotalArrowsLost = 0;
 
 namespace UE::HeroesOfLiberty::Combat
 {
@@ -30,13 +34,11 @@ namespace UE::HeroesOfLiberty::Combat
 	constexpr int32 Buckets = 4096;
 	/** A new walk to the target once it stands this far (cm) from where the last one went. */
 	constexpr double ReapproachDistance = 100.0;
-	/** Reach (cm) above which a unit's hits are ranged ones (the ranged armour): the archer's 15 m, not a melee's 50 cm. */
-	constexpr float RangedReach = 200.f;
 	/** An attack-move is over this close (cm) to the unit's slot (J7b.3). */
 	constexpr double AttackMoveArrival = 150.0;
 
 	int32 LogHits = 0;
-	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee (server or solo)"));
+	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
 	int32 Enabled = 1;
 	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Combat.Enabled"), Enabled, TEXT("0: no unit fights (server or solo)"));
 }
@@ -92,6 +94,20 @@ void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
 	Fighter.Combat->bApproaching = false;
 }
 
+void UHOLCombatProcessor::KillUnit(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Victim, const int64 StepIndex) const
+{
+	// Dying (J7b.4, J7-Q5): stopped dead, out of the fight and of its task, destroyed DyingSteps later.
+	if (World)
+	{
+		StopWalk(*World, Victim);
+	}
+	Victim.Combat->Disengage();
+	Victim.Combat->DeathStep = StepIndex;
+	Victim.State->Activity = EHOLUnitActivity::Dying;
+	// Its population places free at once (the user's trial of J7b), not at its destruction.
+	Units.MarkUnitDying(Victim.UnitId);
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -138,6 +154,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	});
 	if (Fighters.Num() == 0)
 	{
+		TotalArrowsLost += Arrows.Num(); // no target left for any
+		Arrows.Reset();
 		return;
 	}
 	Fighters.Sort([](const FFighter& A, const FFighter& B) { return A.UnitId < B.UnitId; });
@@ -174,6 +192,60 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	}
 
+	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
+	// one killed in melee, its attackers look for another this step.
+	int32 Kept = 0;
+	for (int32 ArrowIndex = 0; ArrowIndex < Arrows.Num(); ++ArrowIndex)
+	{
+		const FArrow Arrow = Arrows[ArrowIndex];
+		if (Arrow.ArrivalStep > StepIndex)
+		{
+			Arrows[Kept++] = Arrow;
+			continue;
+		}
+		const int32 Victim = FindFighter(Arrow.Target);
+		int32 Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0;
+		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Arrow.Damage);
+		if (Outcome == HOLCombat::EArrowOutcome::Lost)
+		{
+			++TotalArrowsLost;
+			if (LogHits != 0)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s at #%u lost (target dead), released step %lld"), StepIndex, Arrow.ShooterId,
+					*Arrow.ShooterType.ToString(), Arrow.TargetId, Arrow.ReleaseStep);
+			}
+			continue;
+		}
+		++TotalArrowsLanded;
+		FFighter& Enemy = Fighters[Victim];
+		Enemy.State->CurrentHealth = Health;
+		const int32 Shooter = FindFighter(Arrow.Shooter);
+		if (Shooter != INDEX_NONE)
+		{
+			Enemy.Combat->LastAttacker = Arrow.Shooter;
+			Fighters[Shooter].Combat->DamageDealt += Arrow.Damage;
+		}
+		if (LogHits != 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s lands on #%u %s for %d, %d HP left (released step %lld, %lld steps)"), StepIndex,
+				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), Arrow.Damage, Health, Arrow.ReleaseStep,
+				StepIndex - Arrow.ReleaseStep);
+		}
+		if (Outcome == HOLCombat::EArrowOutcome::Kill)
+		{
+			++TotalKills;
+			if (Shooter != INDEX_NONE)
+			{
+				++Fighters[Shooter].Combat->Kills;
+			}
+			KillUnit(World, *Units, Enemy, StepIndex);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
+				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
+				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
+		}
+	}
+	Arrows.SetNum(Kept, EAllowShrinking::No);
+
 	Deaths.Reset();
 	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
 	{
@@ -185,9 +257,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// Dying (J7b.4): it stands ~1 s for its fall, then is destroyed at the end of a step (D224).
 			if (Combat.DeathStep < 0)
 			{
-				// At 0 health by another way than a hit of this processor: its population freed now all the same.
-				Combat.DeathStep = StepIndex;
-				Units->MarkUnitDying(Fighter.UnitId);
+				// At 0 health by another way than a hit or an arrow of this processor: the same dying path all the same.
+				KillUnit(World, *Units, Fighter, StepIndex);
 			}
 			if (StepIndex - Combat.DeathStep >= HOLCombat::DyingSteps)
 			{
@@ -242,6 +313,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.Radius = Constants.Radius;
 			Seeker.AttackRange = Constants.AttackRange;
 			Seeker.AggressionRadius = Constants.AggressionRadius;
+			Seeker.bRanged = HOLCombat::IsRangedAttack(Constants.AttackRange);
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
 			const float SearchRadius = HOLCombat::GetSearchRadius(Seeker);
@@ -370,7 +442,48 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			continue;
 		}
-		const int32 Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Constants.AttackRange > RangedReach);
+		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
+		const int32 Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, bShot);
+		if (bShot)
+		{
+			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight
+			// (the distance at release over the arrow speed), whatever the shooter does meanwhile.
+			const int32 FlightMs = HOLCombat::GetArrowFlightMilliseconds(Position, EnemyPosition, HOLCombat::GetArrowSpeed());
+			FArrow& Arrow = Arrows.AddDefaulted_GetRef();
+			Arrow.Shooter = Fighter.Entity;
+			Arrow.Target = Enemy.Entity;
+			Arrow.ShooterId = Fighter.UnitId;
+			Arrow.TargetId = Enemy.UnitId;
+			Arrow.ShooterType = Constants.TypeName;
+			Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
+			Arrow.Damage = Damage;
+			Arrow.ReleaseStep = StepIndex;
+			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
+			++Combat.Hits;
+			++TotalHits;
+			++TotalArrowsReleased;
+			// Drawn here in solo / host (J7c.2b, the same process; a dedicated server has no arrow display).
+			if (UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>())
+			{
+				FHOLArrowLaunch Launch;
+				Launch.From = Fighter.Location;
+				Launch.To = Enemy.Location;
+				Launch.Target = Enemy.Entity;
+				Launch.FlightMs = FlightMs;
+				ArrowDisplay->Launch(Launch);
+			}
+			if (Combat.FirstHitStep < 0)
+			{
+				Combat.FirstHitStep = StepIndex;
+			}
+			if (LogHits != 0)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s releases an arrow at #%u %s: %d damage, %.0f cm, %d ms, lands step %lld"), StepIndex,
+					Fighter.UnitId, *Constants.TypeName.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), Damage, FVector2D::Distance(Position, EnemyPosition),
+					FlightMs, Arrow.ArrivalStep);
+			}
+			continue;
+		}
 		Enemy.State->CurrentHealth -= Damage;
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		++Combat.Hits;
@@ -389,16 +502,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			++Combat.Kills;
 			++TotalKills;
-			// Dying (J7b.4, J7-Q5): stopped dead, out of the fight and of its task, destroyed DyingSteps later.
-			if (World)
-			{
-				StopWalk(*World, Enemy);
-			}
-			Enemy.Combat->Disengage();
-			Enemy.Combat->DeathStep = StepIndex;
-			Enemy.State->Activity = EHOLUnitActivity::Dying;
-			// Its population places free at once (the user's trial of J7b), not at its destruction.
-			Units->MarkUnitDying(Enemy.UnitId);
+			KillUnit(World, *Units, Enemy, StepIndex);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
 			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.
@@ -459,8 +563,11 @@ namespace UE::HeroesOfLiberty::Combat
 			{
 				PopulationText.Add(FString::Printf(TEXT("%d=%d"), Owner, Population[Owner]));
 			}
-			UE_LOG(LogHOLSimulation, Display, TEXT("Combat report: step %lld units %d fighting %d hits %lld kills %lld population %s"), Simulation ? Simulation->GetStepIndex() : 0,
-				Lines.Num(), Fighting, UHOLCombatProcessor::GetTotalHits(), UHOLCombatProcessor::GetTotalKills(), *FString::Join(PopulationText, TEXT(" ")));
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat report: step %lld units %d fighting %d hits %lld kills %lld population %s"),
+				Simulation ? Simulation->GetStepIndex() : 0, Lines.Num(), Fighting, UHOLCombatProcessor::GetTotalHits(), UHOLCombatProcessor::GetTotalKills(),
+				*FString::Join(PopulationText, TEXT(" ")));
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat report arrows: released %lld landed %lld lost %lld"), UHOLCombatProcessor::GetTotalArrowsReleased(),
+				UHOLCombatProcessor::GetTotalArrowsLanded(), UHOLCombatProcessor::GetTotalArrowsLost());
 			for (const FString& Line : Lines)
 			{
 				UE_LOG(LogHOLSimulation, Display, TEXT("  %s"), *Line);

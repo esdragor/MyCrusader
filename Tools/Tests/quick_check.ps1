@@ -343,6 +343,15 @@ $QueueMenAtArms = @(-2000, 0)
 $QueueA = @(-2000, 1500)
 $QueueB = @(-2000, 3000)
 $QueueC = @(-2000, 3600)
+# The shot (J7c.2a): 4 Archers of slot 0 on clear ground south (more than 16 m from the units left), 3 Spearmen of slot 1
+# 14 m north of them and 2 Peasants 10 m north-east.
+$ArrowArchers = @(-2000, -5000)
+$ArrowSpearmen = @(-2000, -3600)
+$ArrowPeasants = @(-1300, -4300)
+# The target that flees (J7c.2b): on the shot's ground once cleared, the Spearman 15 m north of the 3 Archers, sent 55 m north.
+$FleeArchers = @(-2000, -5000)
+$FleeSpearman = @(-2000, -3500)
+$FleeTo = @(-2000, 2000)
 $GapP = @(-6000, 0)
 $GapQ = @(-6000, 600)
 $GapBuilders = @(-6000, -1500)
@@ -1050,6 +1059,29 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Combat.Report" }
             # The bodies gone (J7c, bodies kept 30 s): ~40 s after the fall's body was laid, it has sunk and gone at 31 s.
             Step "mark combat corpse expiry", "hol.Units.CorpseReport", "mark orders queue end", "hol.Select.Click 0.03 0.05"
+            # The shot (J7c.2a): 4 Archers of slot 0, 3 Spearmen and 2 Peasants of slot 1 14 m and 10 m off (within the Archers'
+            # 16 m aggression): they shoot by themselves; each arrow lands after its flight (distance at release / 25 m/s),
+            # lost when its target died meanwhile; a Peasant killed by an arrow dies as in melee (it falls, Dying).
+            # The arrows drawn (J7c.2b): a close-up 0.15 s after a release, the arrows in the air; the display's report
+            # (hol.Combat.ArrowReport) before and after, everyone of the shot taken away at the end: none left in flight.
+            Step "mark combat arrows", "hol.Combat.ArrowReport", "hol.Units.SpawnSeed 131", "hol.Combat.LogHits 1", "hol.Camera.Focus $($ArrowArchers[0]) $(($ArrowArchers[1] + $ArrowSpearmen[1]) / 2)",
+                "hol.Units.Spawn 4 $($ArrowArchers -join ' ') 0 Archer 150", "hol.Units.Spawn 3 $($ArrowSpearmen -join ' ') 1 Spearman 150",
+                "hol.Units.Spawn 2 $($ArrowPeasants -join ' ') 1 Peasant 150", "wait 0.3", "hol.Combat.Report", "hol.Camera.Zoom 12",
+                "waitlog releases an arrow", "wait 0.15", "capture combat_arrows_1", "wait 0.1", "capture combat_arrows_2", "hol.Camera.Zoom -12",
+                "waitlog hits struck, by arrow", "frames 2", "hol.Units.AnimReport 1", "mark combat arrows fight"
+            for ($i = 0; $i -lt 12; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "hol.Units.Remove $($ArrowArchers[0]) $(($ArrowArchers[1] + $ArrowSpearmen[1]) / 2) 1500 1",
+                "hol.Units.Remove $($ArrowArchers[0]) $(($ArrowArchers[1] + $ArrowSpearmen[1]) / 2) 1500 0", "wait 1", "hol.Combat.ArrowReport",
+                "mark combat arrows end"
+            # The target that flees (J7c.2b, the user's case): every unit 1.5 times as fast (the Spearman ~8.7 m/s, an AoE4 light cavalry), 3 Archers
+            # and a Spearman of slot 1 15 m off; as soon as the first arrow is released the Spearman runs north: the arrow
+            # still lands on it (damage at the landing), the drawn arrow follows it and is gone on it.
+            Step "mark combat arrows flee", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 12000 1", "wait 0.2", "hol.Cheat.UnitSpeed 1.5", "hol.Units.SpawnSeed 132", "hol.Camera.Focus $($FleeArchers[0]) $($FleeArchers[1] + 900)",
+                "hol.Units.Spawn 3 $($FleeArchers -join ' ') 0 Archer 150", "hol.Units.Spawn 1 $($FleeSpearman -join ' ') 1 Spearman 150", "hol.Camera.Zoom 12",
+                "waitlog releases an arrow", "hol.Units.Move $($FleeTo -join ' ') 1", "hol.Units.Where 1", "hol.Units.Where 0", "wait 0.1", "capture combat_flee_1",
+                "hol.Units.Where 1", "capture combat_flee_2", "hol.Units.Where 1", "hol.Units.Where 0", "wait 0.25", "hol.Units.Where 1", "hol.Units.Where 0", "hol.Camera.Zoom -12", "wait 2", "hol.Units.Where 1", "hol.Units.Where 0",
+                "hol.Combat.ArrowReport", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 6000 1", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 6000 0",
+                "hol.Cheat.UnitSpeed 1", "wait 1", "hol.Combat.ArrowReport", "hol.Combat.LogHits 0", "mark combat arrows flee end"
         }
     }
 }
@@ -2524,6 +2556,75 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
         $Gone -and $Gone.Removed -ge 1 -and $Gone.LongestKept -ge 31.0 -and $Gone.LongestKept -le 31.5 -and $Gone.Oldest -lt 31.1
     $Checks["capture combat_corpse"] = Test-Path (Join-Path $Shots "combat_corpse.png")
     $AllOk = (Report "combat bodies" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
+    # The shot (J7c.2a): every arrow released lands after its flight (distance at release / arrow speed, in whole steps,
+    # 1 at least) or is lost (target dead in flight); a unit killed by an arrow takes the dying path (its fall).
+    $Checks = [ordered]@{}
+    $Shot = @(Get-Section "combat arrows") + @(Get-Section "combat arrows fight")
+    $StepMs = 50; $ArrowSpeed = 2500.0
+    $Releases = @{}; $BadFlight = 0
+    foreach ($Line in $Shot) {
+        if ($Line -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) \w+: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
+            $Release = [int64]$Matches[1]; $Cm = [double]$Matches[4]; $Ms = [int]$Matches[5]; $Lands = [int64]$Matches[6]
+            $Expected = [Math]::Max(1, [Math]::Ceiling($Ms / $StepMs))
+            if ([Math]::Abs($Ms - $Cm * 1000.0 / $ArrowSpeed) -gt 1.0 -or ($Lands - $Release) -ne $Expected) { $BadFlight++ }
+            $Releases["$($Matches[2]) $Release"] = $Lands
+        }
+    }
+    $Landed = 0; $Lost = 0; $BadLanding = 0; $Delays = @()
+    foreach ($Line in $Shot) {
+        if ($Line -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #\d+ \w+ for \d+, -?\d+ HP left \(released step (\d+), (\d+) steps\)") {
+            $Landed++; $Delays += [int]$Matches[4]
+            if (-not $Releases.ContainsKey("$($Matches[2]) $($Matches[3])") -or $Releases["$($Matches[2]) $($Matches[3])"] -ne [int64]$Matches[1]) { $BadLanding++ }
+        }
+        elseif ($Line -match "Combat: step \d+ arrow of #\d+ Archer at #\d+ lost \(target dead\)") { $Lost++ }
+    }
+    $Kills = @($Shot | Select-String -Pattern "Combat: step \d+ #\d+ \w+ of slot 1 killed by #\d+ Archer of slot 0 \(\d+ hits struck, by arrow\)")
+    $Falls = @(Get-Section "combat arrows" | Where-Object { $_ -match "Anim report falls: slot 1, (\d+) falling" } | ForEach-Object { [int]$Matches[1] })
+    $Delay = if ($Delays.Count) { "$(($Delays | Measure-Object -Minimum).Minimum)-$(($Delays | Measure-Object -Maximum).Maximum) steps" } else { "none" }
+    $Checks["arrows: $($Releases.Count) released, $Landed landed, $Lost lost, flights $Delay"] = $Releases.Count -ge 5 -and $Landed -ge 4 -and ($Landed + $Lost) -ge ($Releases.Count - 4) -and ($Landed + $Lost) -le $Releases.Count
+    $Checks["each flight = distance at release / 25 m/s in whole steps ($BadFlight off)"] = $Releases.Count -gt 0 -and $BadFlight -eq 0
+    $Checks["each arrow lands at its step ($BadLanding off)"] = $Landed -gt 0 -and $BadLanding -eq 0
+    $Checks["kills by arrow: $($Kills.Count), then falling: $(if ($Falls.Count) { $Falls[0] } else { 'no report' })"] = $Kills.Count -ge 1 -and $Falls.Count -ge 1 -and $Falls[0] -ge 1
+    # The arrows drawn (J7c.2b): as many launched on the display as released by the simulation (1 per shooter off at
+    # most), none left in flight once the shot's units are gone; the close-ups taken.
+    $ArrowReports = @($Shot | Where-Object { $_ -match "Arrow report: in flight (\d+) launched (\d+) landed (\d+)" } | ForEach-Object { , @([int]$Matches[1], [int]$Matches[2], [int]$Matches[3]) })
+    if ($ArrowReports.Count -ge 2) {
+        $Drawn = $ArrowReports[-1][1] - $ArrowReports[0][1]
+        $Checks["arrows drawn: $Drawn launched for $($Releases.Count) released, $($ArrowReports[-1][0]) in flight at the end"] = [Math]::Abs($Drawn - $Releases.Count) -le 4 -and $ArrowReports[-1][0] -eq 0 -and $Drawn -ge 5
+    }
+    else { $Checks["arrow reports of the display: $($ArrowReports.Count) (2 expected)"] = $false }
+    $Checks["close-ups of the arrows in the air (combat_arrows_1, _2)"] = (Test-Path (Join-Path $Shots "combat_arrows_1.png")) -and (Test-Path (Join-Path $Shots "combat_arrows_2.png"))
+    $AllOk = (Report "combat arrows" $Checks) -and $AllOk
+
+    # The target that flees (J7c.2b): the first arrow released at 15 m lands on the Spearman running away at ~8 m/s
+    # (damage at the landing), out of reach by then; none left in flight on the display at the end.
+    $Checks = [ordered]@{}
+    $Flee = @(Get-Section "combat arrows flee")
+    $FirstRelease = $Flee | Where-Object { $_ -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)" } | Select-Object -First 1
+    if ($FirstRelease -and $FirstRelease -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
+        $FleeArcher = $Matches[2]; $FleeTarget = $Matches[3]; $FleeCm = [int]$Matches[4]; $FleeMs = [int]$Matches[5]; $FleeStep = $Matches[1]; $FleeLands = $Matches[6]
+        $FleeLanding = $Flee | Where-Object { $_ -match "Combat: step $FleeLands arrow of #$FleeArcher Archer lands on #$FleeTarget Spearman for (\d+), -?\d+ HP left \(released step $FleeStep," } | Select-Object -First 1
+        # The Spearman's distance to its shooter in each pair of reports after the order (Units where: slot 1, then slot 0).
+        $Wheres = @($Flee | Where-Object { $_ -match "Units where: " })
+        $Distances = @()
+        for ($i = 0; $i -lt $Wheres.Count; $i++) {
+            if ($Wheres[$i] -match "#$FleeTarget slot 1 at \((-?\d+), (-?\d+)\)") {
+                $Tx = [double]$Matches[1]; $Ty = [double]$Matches[2]
+                $Archers = @([regex]::Matches(($Wheres | Select-Object -Skip $i -First 2) -join " ", "#$FleeArcher slot 0 at \((-?\d+), (-?\d+)\)") | ForEach-Object { [Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $Tx, 2) + [Math]::Pow([double]$_.Groups[2].Value - $Ty, 2)) })
+                if ($Archers.Count) { $Distances += [int](($Archers | Measure-Object -Minimum).Minimum) }
+            }
+        }
+        $Checks["first arrow released at $FleeCm cm, $FleeMs ms ($([int]($FleeCm * 10 / [Math]::Max($FleeMs, 1))) m/s apparent), then the Spearman runs: $($Distances -join ', ') cm off"] = $FleeCm -ge 1400 -and $FleeCm -le 1600
+        $Checks["it lands on the fleeing Spearman at its step (damage $(if ($FleeLanding -and $FleeLanding -match 'for (\d+),') { $Matches[1] } else { 'none' }))"] = [bool]$FleeLanding
+        $Checks["the Spearman out of reach meanwhile (farthest $(if ($Distances.Count) { ($Distances | Measure-Object -Maximum).Maximum } else { '?' }) cm > 1500)"] = $Distances.Count -ge 1 -and ($Distances | Measure-Object -Maximum).Maximum -gt 1500
+    }
+    else { $Checks["an arrow released at the Spearman"] = $false }
+    $FleeReports = @($Flee | Where-Object { $_ -match "Arrow report: in flight (\d+) launched" } | ForEach-Object { [int]$Matches[1] })
+    $Checks["none in flight on the display at the end ($(if ($FleeReports.Count) { $FleeReports[-1] } else { 'no report' }))"] = $FleeReports.Count -ge 1 -and $FleeReports[-1] -eq 0
+    $AllOk = (Report "combat arrows flee" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
