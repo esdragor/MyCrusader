@@ -162,7 +162,7 @@ if ($Parts -contains "net") {
     $NetFightFlag = Join-Path $TestSaved "quick_net_fight1.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     @("waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
-        "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) |
+        "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) + @("hol.Units.CorpseReport") |
         Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
@@ -1021,11 +1021,12 @@ if ($Parts -contains "camera") {
             Step "capture orders_hold", "mark orders hold end", "hol.Select.Click 0.03 0.05"
             # The fall (J7b.5): a Peasant of slot 1 made beside the 3 Men-at-arms standing at the attack-move's end (their own
             # aggression takes it on); once killed it plays its fall (the report of slot 1), captured falling (dying 1 s).
+            # Its body (J7c, bodies kept 30 s): 5 s later still on the ground, its fall ended (hol.Units.CorpseReport).
             # (Before the push: no other Peasant of slot 1 can die meanwhile, so the wait catches this one's death; after
             # it, the push's target and its wall die all along, the Men-at-arms going on from one to the next.)
             Step "mark combat fall", "hol.Units.SpawnSeed 127", "hol.Camera.Focus $($OrdersMoveTo -join ' ')", "frames 2", "hol.Units.Spawn 1 $($OrdersMoveTo[0] + 450) $($OrdersMoveTo[1]) 1 Peasant 10",
-                "waitlog Peasant of slot 1 killed by", "frames 2", "hol.Units.AnimReport 1", "hol.Camera.Zoom 14", "frames 2", "capture combat_fall", "hol.Camera.Zoom -14",
-                "hol.Units.AnimReport 0", "mark combat fall end"
+                "waitlog Peasant of slot 1 killed by", "frames 2", "hol.Units.AnimReport 1", "hol.Camera.Zoom 14", "frames 2", "capture combat_fall",
+                "wait 5", "hol.Units.CorpseReport", "capture combat_corpse", "hol.Camera.Zoom -14", "hol.Units.AnimReport 0", "mark combat fall end"
             # Two enemies never push each other back (the user's trial of J7b): the Men-at-arms walk to their target through
             # the standing Peasants, which do not give way; they go round them and strike it all the same.
             Step "hol.Units.SpawnSeed 128", "hol.Units.Spawn 12 $($PushWall -join ' ') 1 Peasant 300", "hol.Units.Spawn 1 $($PushTarget -join ' ') 1 Peasant 10",
@@ -1045,7 +1046,8 @@ if ($Parts -contains "camera") {
             # (The report a few frames after the spawn: one in the same step does not have C yet.)
             Step "mark orders queue seek", "hol.Units.SpawnSeed 130", "hol.Units.Spawn 1 $($QueueC -join ' ') 1 Peasant 10", "wait 0.3", "hol.Combat.Report"
             for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Combat.Report" }
-            Step "mark orders queue end", "hol.Select.Click 0.03 0.05"
+            # The bodies gone (J7c, bodies kept 30 s): ~40 s after the fall's body was laid, it has sunk and gone at 31 s.
+            Step "mark combat corpse expiry", "hol.Units.CorpseReport", "mark orders queue end", "hol.Select.Click 0.03 0.05"
         }
     }
 }
@@ -1185,6 +1187,8 @@ if ($NetListening) {
                 $NetSteps += "wait 0.5", "hol.Units.Where", "hol.HUD.Report", "hol.Units.Bars"
                 if ($i -eq 6) { $NetSteps += "capture net_combat_c1" }
             }
+            # The bodies (J7c, bodies kept 30 s): the fight's Spearmen killed, this client keeps theirs (the server none).
+            $NetSteps += "hol.Units.CorpseReport"
         }
         # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
         # "others []", the flake of 2026-10-16).
@@ -2499,6 +2503,25 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     Write-Host "  combat anims: $(($Shown.Keys | Sort-Object | ForEach-Object { "$_ x$($Shown[$_])" }) -join ', ')"
     $AllOk = (Report "combat anims" $Checks) -and $AllOk
+
+    # The bodies (J7c, bodies kept 30 s), from hol.Units.CorpseReport: 5 s after the fall, the Peasant's body still on the
+    # ground, its fall ended; ~40 s later, the bodies gone at 31 s (held 30 s, sunk in 1 s), none older left.
+    $Checks = [ordered]@{}
+    $CorpsePattern = "Corpse report: (\d+) corpses \((.*)\), (\d+) sinking, (\d+) fall ended, oldest ([\d.]+) s; (\d+) removed, longest kept ([\d.]+) s"
+    $ReadCorpseReport = {
+        param($Lines)
+        $Lines | Where-Object { $_ -match $CorpsePattern } | Select-Object -First 1 | ForEach-Object {
+            [pscustomobject]@{ Corpses = [int]$Matches[1]; Types = $Matches[2]; Sinking = [int]$Matches[3]; FallEnded = [int]$Matches[4]; Oldest = [double]$Matches[5]
+                Removed = [int]$Matches[6]; LongestKept = [double]$Matches[7] } }
+    }
+    $Kept = & $ReadCorpseReport @(Get-Section "combat fall")
+    $Checks["bodies kept: 5 s after the fall ($(if ($Kept) { "$($Kept.Corpses) ($($Kept.Types)), $($Kept.FallEnded) fall ended, oldest $($Kept.Oldest) s" } else { 'no report' }))"] =
+        $Kept -and $Kept.Corpses -ge 1 -and $Kept.Oldest -ge 4.5 -and $Kept.FallEnded -ge 1
+    $Gone = & $ReadCorpseReport @(Get-Section "combat corpse expiry")
+    $Checks["bodies gone at 31 s ($(if ($Gone) { "$($Gone.Removed) removed, longest kept $($Gone.LongestKept) s, oldest left $($Gone.Oldest) s" } else { 'no report' }))"] =
+        $Gone -and $Gone.Removed -ge 1 -and $Gone.LongestKept -ge 31.0 -and $Gone.LongestKept -le 31.5 -and $Gone.Oldest -lt 31.1
+    $Checks["capture combat_corpse"] = Test-Path (Join-Path $Shots "combat_corpse.png")
+    $AllOk = (Report "combat bodies" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
@@ -2980,6 +3003,16 @@ if ($Parts -contains "net") {
     # the fight made for client 1 (J7b.4) kills its 2 Spearmen alone.
     $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
     $Checks["server: combat on, the fight's 2 Spearmen alone killed ($($NetKills -join ', '))"] = ($NetKills -join ',') -eq "Spearman of slot 1,Spearman of slot 1"
+    # The bodies (J7c, bodies kept 30 s): client 1 keeps the fight's (hol.Units.CorpseReport at its end); the dedicated
+    # server lays none (its report says 0).
+    $CorpseCount = {
+        param($Lines)
+        $Lines | Where-Object { $_ -match "Corpse report: (\d+) corpses" } | Select-Object -Last 1 | ForEach-Object { [int]$Matches[1] }
+    }
+    $Client1Log = ($NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1).Log
+    $ClientCorpses = & $CorpseCount @(if ($Client1Log -and (Test-Path $Client1Log)) { Get-Content $Client1Log })
+    $ServerCorpses = & $CorpseCount @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $Checks["bodies: client 1 keeps the fight's ($ClientCorpses), the server none ($ServerCorpses)"] = ($null -ne $ClientCorpses) -and $ClientCorpses -ge 1 -and ($null -ne $ServerCorpses) -and $ServerCorpses -eq 0
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     $Born = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Production: Peasant of slot (\d) done" | ForEach-Object { $_.Matches[0].Groups[1].Value } })

@@ -20,6 +20,7 @@
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationSettings.h"
 #include "Net/HOLUnitReplicator.h"
+#include "Presentation/HOLCorpse.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -271,7 +272,18 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 
 	if (Departures.Num() > 0)
 	{
+		// The bodies this client keeps (J7c, bodies kept 30 s): read off the dying display entities (their received activity)
+		// before they go, laid once gone.
+		TArray<FHOLCorpseSeed> CorpseSeeds;
+		HOLCorpse::CollectSeeds(EntityManager, Departures, GetWorld()->GetTimeSeconds(), CorpseSeeds);
 		EntityManager.BatchDestroyEntities(Departures);
+		if (CorpseSeeds.Num() > 0)
+		{
+			if (UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>())
+			{
+				HOLCorpse::Lay(EntityManager, *Units, CorpseSeeds);
+			}
+		}
 		NumDisplayed -= Departures.Num();
 		Stats.NumDepartures += Departures.Num();
 	}

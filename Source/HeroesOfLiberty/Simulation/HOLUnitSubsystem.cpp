@@ -38,6 +38,8 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLUnitTrait.h"
 #include "Steering/MassSteeringTrait.h"
+#include "Presentation/HOLCorpse.h"
+#include "Presentation/HOLCorpseTrait.h"
 #include "StructUtils/StructUtilsTypes.h"
 
 namespace UE::HeroesOfLiberty::Units
@@ -164,15 +166,22 @@ void UHOLUnitSubsystem::PreloadTypes(UWorld& InWorld)
 	const EHOLUnitTemplateKind Kind = InWorld.GetNetMode() == NM_Client ? EHOLUnitTemplateKind::Display : EHOLUnitTemplateKind::Simulation;
 	TArray<FName> TypeNames;
 	GetTypeNames(TypeNames);
+	// Every machine that draws (client, solo, listen server) lays bodies too (J7c, bodies kept 30 s); a dedicated server none.
+	const bool bCorpses = !InWorld.IsNetMode(NM_DedicatedServer);
 	int32 NumBuilt = 0;
 	for (const FName TypeName : TypeNames)
 	{
 		NumBuilt += FindTemplate(TypeName, Kind) != nullptr ? 1 : 0;
+		if (bCorpses)
+		{
+			FindTemplate(TypeName, EHOLUnitTemplateKind::Corpse);
+		}
 	}
 	bTypesPreloaded = true;
-	UE_LOG(LogHOLSimulation, Display, TEXT("Unit types preloaded: %d of %d (%s) as %s, meshes %s, in %.0f ms"), NumBuilt, TypeNames.Num(),
+	UE_LOG(LogHOLSimulation, Display, TEXT("Unit types preloaded: %d of %d (%s) as %s%s, meshes %s, in %.0f ms"), NumBuilt, TypeNames.Num(),
 		*FString::JoinBy(TypeNames, TEXT(", "), [](const FName Name) { return Name.ToString(); }),
 		Kind == EHOLUnitTemplateKind::Display ? TEXT("display entities") : TEXT("simulated units"),
+		bCorpses ? TEXT(" and bodies") : TEXT(""),
 		InWorld.GetNetMode() == NM_DedicatedServer ? TEXT("left out (dedicated server)") : TEXT("loaded"),
 		(FPlatformTime::Seconds() - StartSeconds) * 1000.);
 }
@@ -186,6 +195,7 @@ void UHOLUnitSubsystem::Deinitialize()
 	PendingDestruction.Reset();
 	TemplateCache.Reset();
 	DisplayTemplateCache.Reset();
+	CorpseTemplateCache.Reset();
 	Traits.Reset();
 
 	Super::Deinitialize();
@@ -251,7 +261,9 @@ int32 UHOLUnitSubsystem::GetBirthBudget() const
 const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind)
 {
 	const bool bDisplay = Kind == EHOLUnitTemplateKind::Display;
-	TMap<FName, TSharedPtr<FMassEntityConfig>>& Cache = bDisplay ? DisplayTemplateCache : TemplateCache;
+	const bool bCorpse = Kind == EHOLUnitTemplateKind::Corpse;
+	TMap<FName, TSharedPtr<FMassEntityConfig>>& Cache = bDisplay ? DisplayTemplateCache : bCorpse ? CorpseTemplateCache : TemplateCache;
+	const TCHAR* KindName = bDisplay ? TEXT("display entity") : bCorpse ? TEXT("body") : TEXT("simulated unit");
 	if (const TSharedPtr<FMassEntityConfig>* Found = Cache.Find(TypeName))
 	{
 		return &(*Found)->GetOrCreateEntityTemplate(*GetWorld());
@@ -268,7 +280,7 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 	{
 		// PreloadTypes() built every type of this world's kind: this one loads its assets in the middle of the match.
 		UE_LOG(LogHOLSimulation, Warning, TEXT("Unit type '%s' built after the preload (%s): its assets load during the match"),
-			*TypeName.ToString(), bDisplay ? TEXT("display entity") : TEXT("simulated unit"));
+			*TypeName.ToString(), KindName);
 	}
 
 	FHOLUnitTypeConstants Constants = Row->ToConstants(TypeName);
@@ -440,7 +452,13 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 	VisualizationTrait->LODParams.VisibleLODDistance[EMassLOD::Off] = 1000000.f;
 
 	// A display entity is drawn like the unit, without moving by itself: it is placed from the replicated states (D271).
-	const TArray<UMassEntityTraitBase*> TypeTraits = bDisplay
+	// A body (J7c, bodies kept 30 s) is drawn like the unit too, by the same visualization trait (same mesh, provider and
+	// offset, so the same instanced mesh), with nothing of the simulation: no unit trait, so no FHOLLightUnitTag.
+	const TArray<UMassEntityTraitBase*> TypeTraits = bCorpse
+		? TArray<UMassEntityTraitBase*>{ NewObject<UHOLCorpseTrait>(this),
+			NewObject<UMassLODCollectorTrait>(this),
+			VisualizationTrait }
+		: bDisplay
 		? TArray<UMassEntityTraitBase*>{ UnitTrait,
 			NewObject<UHOLNetUnitDisplayTrait>(this),
 			NewObject<UMassLODCollectorTrait>(this),
@@ -460,7 +478,7 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 
 	Cache.Add(TypeName, Config);
 	UE_LOG(LogHOLSimulation, Log, TEXT("Unit type '%s' (%s%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm, drawn as %s"),
-		*TypeName.ToString(), *Row->DisplayName, bDisplay ? TEXT(", display entity") : TEXT(""), Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
+		*TypeName.ToString(), *Row->DisplayName, Kind == EHOLUnitTemplateKind::Simulation ? TEXT("") : *FString::Printf(TEXT(", %s"), KindName), Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
 		!bDrawn ? TEXT("nothing (dedicated server)")
 			: bSkinned ? *FString::Printf(TEXT("skinned instances of %s"), *SkinnedMesh->GetName()) : TEXT("static instances"));
 
@@ -695,6 +713,26 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 	// Deferred destruction (D224): the commands are applied by the flush, at the end of the step, once every
 	// processor has walked its chunks. Mass refuses to flush while a processor's execution scope is open.
 	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+
+	// The bodies a displaying machine keeps (J7c, bodies kept 30 s): solo and host read them off the dying units before they
+	// go, and lay them once gone; never a dedicated server (nothing drawn). A unit removed alive (stress test, end of the
+	// match) is neither Dying nor at 0 health: it leaves none.
+	TArray<FHOLCorpseSeed> CorpseSeeds;
+	const bool bCorpses = !World->IsNetMode(NM_DedicatedServer);
+	if (bCorpses)
+	{
+		TArray<FMassEntityHandle> Dying;
+		Dying.Reserve(PendingDestruction.Num());
+		for (const uint32 UnitId : PendingDestruction)
+		{
+			if (const FHOLUnitRecord* Record = Units.Find(UnitId))
+			{
+				Dying.Add(Record->Entity);
+			}
+		}
+		HOLCorpse::CollectSeeds(EntityManager, Dying, World->GetTimeSeconds(), CorpseSeeds);
+	}
+
 	FMassCommandBuffer& CommandBuffer = EntityManager.Defer();
 	int32 NumDestroyed = 0;
 	for (const uint32 UnitId : PendingDestruction)
@@ -711,6 +749,10 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 	}
 	PendingDestruction.Reset();
 	EntityManager.FlushCommands();
+	if (CorpseSeeds.Num() > 0)
+	{
+		HOLCorpse::Lay(EntityManager, *this, CorpseSeeds);
+	}
 
 	return NumDestroyed;
 }

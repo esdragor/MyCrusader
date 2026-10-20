@@ -3,6 +3,7 @@
 #include "Presentation/HOLVisualizationProcessors.h"
 
 #include "MassCommonTypes.h"
+#include "Presentation/HOLPresentationFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 
 //----------------------------------------------------------------------//
@@ -20,10 +21,12 @@ UHOLVisualizationLODProcessor::UHOLVisualizationLODProcessor()
 void UHOLVisualizationLODProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
 {
 	Super::ConfigureQueries(EntityManager);
-	CloseEntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
-	CloseEntityAdjustDistanceQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
-	FarEntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
-	DebugEntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+	// Units and bodies (J7c, bodies kept 30 s): Any matches an archetype holding at least one of the two tags.
+	for (FMassEntityQuery* Query : { &CloseEntityQuery, &CloseEntityAdjustDistanceQuery, &FarEntityQuery, &DebugEntityQuery })
+	{
+		Query->AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::Any);
+		Query->AddTagRequirement<FHOLCorpseTag>(EMassFragmentPresence::Any);
+	}
 }
 
 //----------------------------------------------------------------------//
@@ -41,5 +44,7 @@ UHOLVisualizationProcessor::UHOLVisualizationProcessor()
 void UHOLVisualizationProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
 {
 	Super::ConfigureQueries(EntityManager);
-	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+	// Units and bodies (J7c, bodies kept 30 s).
+	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::Any);
+	EntityQuery.AddTagRequirement<FHOLCorpseTag>(EMassFragmentPresence::Any);
 }

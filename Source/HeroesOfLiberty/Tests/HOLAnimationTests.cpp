@@ -5,6 +5,7 @@
 #include "Engine/SkinnedAsset.h"
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
+#include "Presentation/HOLCorpse.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -301,6 +302,42 @@ bool FHOLAnimationStrikeTest::RunTest(const FString& Parameters)
 	const int32 IntervalMs = HOLCombat::ToMilliseconds(1.875f);
 	const float ClientStart = GetStrikeStartPosition(56.f / 30.f, Strike.PlayRate, GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(IntervalMs) - 50, 50));
 	TestTrue(TEXT("a client starts a strike near the loop's start"), ClientStart >= 0.f && ClientStart <= 0.06f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAnimationCorpseTest, "HeroesOfLiberty.Animation.Corpse", UE::HeroesOfLiberty::Tests::Animation::Flags)
+bool FHOLAnimationCorpseTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Animation;
+
+	// J7c, bodies kept 30 s: the body resumes its unit's fall where it was, holds its last frame, sinks between 30 and
+	// 31 s and goes at 31 s; only a dying unit whose type has a fall leaves one.
+	using HOLCorpse::GetResumePosition;
+	TestEqual(TEXT("resumed at 1.0 s of a 1.15 s fall: 1.0 s"), GetResumePosition(1.f, 0., 1.f, 1.15f), 1.f, 0.0001f);
+	TestEqual(TEXT("0.1 s later: it goes on"), GetResumePosition(1.f, 0.1, 1.f, 1.15f), 1.1f, 0.0001f);
+	TestEqual(TEXT("0.5 s later: held on its last frame"), GetResumePosition(1.f, 0.5, 1.f, 1.15f), 1.15f, 0.0001f);
+	TestEqual(TEXT("30 s later: still its last frame"), GetResumePosition(1.f, 30., 1.f, 1.15f), 1.15f, 0.0001f);
+	TestEqual(TEXT("at its play rate"), GetResumePosition(0.f, 0.5, 2.f, 1.15f), 1.f, 0.0001f);
+	TestEqual(TEXT("never negative"), GetResumePosition(-0.5f, 0., 1.f, 1.15f), 0.f);
+
+	using HOLCorpse::GetSinkOffset;
+	TestEqual(TEXT("fresh: not sunk"), GetSinkOffset(0.), 0.f);
+	TestEqual(TEXT("at 30 s: not sunk yet"), GetSinkOffset(30.), 0.f);
+	TestEqual(TEXT("at 30.5 s: half sunk"), GetSinkOffset(30.5), HOLCorpse::SinkDepth / 2.f, 0.001f);
+	TestEqual(TEXT("at 31 s: sunk"), GetSinkOffset(31.), HOLCorpse::SinkDepth, 0.001f);
+	TestEqual(TEXT("past 31 s: no deeper"), GetSinkOffset(40.), HOLCorpse::SinkDepth, 0.001f);
+
+	TestFalse(TEXT("at 30.99 s: still there"), HOLCorpse::IsExpired(30.99));
+	TestFalse(TEXT("at 30 s: still there"), HOLCorpse::IsExpired(30.));
+	TestTrue(TEXT("at 31 s: gone"), HOLCorpse::IsExpired(31.));
+
+	const FHOLUnitTypeConstants Peasant = MakePeasant();
+	TestTrue(TEXT("dying Peasant: a body"), HOLCorpse::LeavesCorpse(Peasant, EHOLUnitActivity::Dying, 0));
+	TestTrue(TEXT("at 0 health, not yet dying: a body"), HOLCorpse::LeavesCorpse(Peasant, EHOLUnitActivity::Attacking, 0));
+	TestFalse(TEXT("alive: no body"), HOLCorpse::LeavesCorpse(Peasant, EHOLUnitActivity::Idle, 20));
+	FHOLUnitTypeConstants NoFall = Peasant;
+	NoFall.FallSequence = INDEX_NONE;
+	TestFalse(TEXT("no fall: no body"), HOLCorpse::LeavesCorpse(NoFall, EHOLUnitActivity::Dying, 0));
 	return true;
 }
 

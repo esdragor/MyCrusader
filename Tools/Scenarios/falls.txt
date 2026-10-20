@@ -27,4 +27,4 @@ hol.Camera.Zoom 1
 frames 5
 note Les deux camps s'entretuent : regardez chaque type tomber (Paysan à genoux puis de côté, Lancier projeté en arrière, Homme d'armes face contre terre).
 note Le Paysan tombe couteau en main ; la lance du Lancier et l'épée de l'Homme d'armes lui échappent.
-note Ralenti : console (²) puis « slomo 0.3 » (« slomo 1 » pour revenir). Le corps disparaît encore à 1 s : la chute du Paysan (1,13 s) est coupée.
+note Ralenti : console (²) puis « slomo 0.3 » (« slomo 1 » pour revenir). Les corps restent 30 s au sol dans leur dernière pose, puis s'enfoncent en 1 s ; la chute du Paysan va désormais jusqu'au bout.

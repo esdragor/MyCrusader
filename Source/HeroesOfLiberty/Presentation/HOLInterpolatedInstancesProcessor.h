@@ -16,6 +16,9 @@
  * and the load (J5c.1, HOLUnitAnimation::Choose; a gatherer drawn facing its source, a builder its site, J6a.4), the prop
  * shown (J5c.2) and the colour of their owner (D233): Mass pairs a skinned instance's transform, animation and custom
  * data by the order they are added in the frame, so they must come from one loop.
+ *
+ * The bodies a displaying machine keeps (J7c, bodies kept 30 s, HOLCorpse) are drawn in a second pass, the same way: their
+ * fall held at its last frame, then sunk; an expired body is destroyed here (deferred).
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLInterpolatedInstancesProcessor : public UMassProcessor
@@ -30,6 +33,10 @@ protected:
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 
 	FMassEntityQuery EntityQuery;
+	/** The bodies drawn (J7c, bodies kept 30 s): their held fall, sunk at the end (HOLCorpse). */
+	FMassEntityQuery CorpseQuery;
+	/** Every body, seen or not (no visibility filter), so an expired one goes even off screen. */
+	FMassEntityQuery CorpseExpiryQuery;
 
 	/** Each slot's colour index, gathered from the actors at most twice a second (FSlotColors), and when. */
 	TArray<uint8> CachedColorIndices;

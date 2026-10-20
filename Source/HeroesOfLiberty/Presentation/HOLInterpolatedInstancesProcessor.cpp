@@ -26,6 +26,7 @@
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
+#include "Presentation/HOLCorpse.h"
 #include "Presentation/HOLPresentationFragments.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -226,6 +227,8 @@ namespace UE::HeroesOfLiberty::Presentation
 
 UHOLInterpolatedInstancesProcessor::UHOLInterpolatedInstancesProcessor()
 	: EntityQuery(*this)
+	, CorpseQuery(*this)
+	, CorpseExpiryQuery(*this)
 {
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Client | EProcessorExecutionFlags::Standalone);
 	ExecutionOrder.ExecuteAfter.Add(UE::Mass::ProcessorGroupNames::Representation);
@@ -256,6 +259,23 @@ void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMass
 	EntityQuery.AddSharedRequirement<FMassRepresentationSubsystemSharedFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddSubsystemRequirement<UMassRepresentationSubsystem>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddTagRequirement<FMassStaticRepresentationTag>(EMassFragmentPresence::None);
+
+	// The bodies (J7c, bodies kept 30 s): drawn from FHOLCorpseFragment alone, as the units are (same representation).
+	CorpseQuery.AddTagRequirement<FHOLCorpseTag>(EMassFragmentPresence::All);
+	CorpseQuery.AddRequirement<FHOLCorpseFragment>(EMassFragmentAccess::ReadOnly);
+	CorpseQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
+	CorpseQuery.AddRequirement<FMassRepresentationFragment>(EMassFragmentAccess::ReadWrite);
+	CorpseQuery.AddRequirement<FMassRepresentationLODFragment>(EMassFragmentAccess::ReadOnly);
+	CorpseQuery.AddRequirement<FMassRepresentationAnimationFragment>(EMassFragmentAccess::ReadWrite);
+	CorpseQuery.AddChunkRequirement<FMassVisualizationChunkFragment>(EMassFragmentAccess::ReadWrite);
+	CorpseQuery.SetChunkFilter(&FMassVisualizationChunkFragment::AreAnyEntitiesVisibleInChunk);
+	CorpseQuery.AddSharedRequirement<FMassRepresentationSubsystemSharedFragment>(EMassFragmentAccess::ReadWrite);
+	CorpseQuery.AddSubsystemRequirement<UMassRepresentationSubsystem>(EMassFragmentAccess::ReadWrite);
+	CorpseQuery.AddTagRequirement<FMassStaticRepresentationTag>(EMassFragmentPresence::None);
+
+	// Their expiry, seen or not.
+	CorpseExpiryQuery.AddTagRequirement<FHOLCorpseTag>(EMassFragmentPresence::All);
+	CorpseExpiryQuery.AddRequirement<FHOLCorpseFragment>(EMassFragmentAccess::ReadOnly);
 }
 
 void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
@@ -293,7 +313,11 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	static IConsoleVariable* const SpeedScaleVariable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Units.SpeedScale"));
 	const float SpeedScale = SpeedScaleVariable ? FMath::Clamp(SpeedScaleVariable->GetFloat(), 0.1f, 10.f) : 1.f;
 
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale](FMassExecutionContext& Context)
+	// The world's clock (J7c, bodies kept 30 s): pauses and slows with the game, as the instances' animations do
+	// (AnimSequenceTrackTime::GetTime reads World->GetTimeSeconds()).
+	const double WorldSeconds = World ? World->GetTimeSeconds() : 0.;
+
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -432,6 +456,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						if (!AnimationState.bFalling)
 						{
 							AnimationState.bFalling = true;
+							AnimationState.FallStartSeconds = WorldSeconds;
 							AnimationState.FallYaw = static_cast<float>((AnimationState.DrawnFrame != 0 ? Representation.PrevTransform : Drawn).Rotator().Yaw);
 						}
 						AnimationState.bFacingSource = true;
@@ -462,6 +487,103 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 			Representation.PrevLODSignificance = RepresentationLOD.LODSignificance;
 		}
 	});
+
+	// The bodies (J7c, bodies kept 30 s): each ends its unit's fall, holds its last pose, then sinks (HOLCorpse).
+	CorpseQuery.ForEachEntityChunk(Context, [&SlotColors, WorldSeconds](FMassExecutionContext& Context)
+	{
+		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
+		check(RepresentationSubsystem);
+		FMassInstancedStaticMeshInfoArrayView ISMInfos = RepresentationSubsystem->GetMutableInstancedStaticMeshInfos();
+		FMassInstancedSkinnedMeshInfoArrayView SkinnedMeshInfos = RepresentationSubsystem->GetMutableInstancedSkinnedMeshInfos();
+
+		const TConstArrayView<FHOLCorpseFragment> Corpses = Context.GetFragmentView<FHOLCorpseFragment>();
+		const TArrayView<FMassRepresentationFragment> Representations = Context.GetMutableFragmentView<FMassRepresentationFragment>();
+		const TConstArrayView<FMassRepresentationLODFragment> RepresentationLODs = Context.GetFragmentView<FMassRepresentationLODFragment>();
+		const TArrayView<FMassRepresentationAnimationFragment> Animations = Context.GetMutableFragmentView<FMassRepresentationAnimationFragment>();
+
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			FMassRepresentationFragment& Representation = Representations[EntityIt];
+			const bool bStatic = Representation.CurrentRepresentation == EMassRepresentationType::StaticMeshInstance;
+			const bool bSkinned = Representation.CurrentRepresentation == EMassRepresentationType::SkinnedMeshInstance;
+			if (!bStatic && !bSkinned)
+			{
+				continue;
+			}
+
+			const FHOLCorpseFragment& Corpse = Corpses[EntityIt];
+			const double Age = WorldSeconds - Corpse.LaidAt;
+			FTransform Drawn = Corpse.Base;
+			Drawn.AddToTranslation(FVector(0., 0., -HOLCorpse::GetSinkOffset(Age)));
+
+			const FMassEntityHandle Entity = Context.GetEntity(EntityIt);
+			const FMassRepresentationLODFragment& RepresentationLOD = RepresentationLODs[EntityIt];
+			if (bStatic)
+			{
+				const int32 ISMInfoIndex = Representation.StaticMeshDescHandle.ToIndex();
+				if (ensureMsgf(ISMInfos.IsValidIndex(ISMInfoIndex), TEXT("Invalid handle index %u for ISMInfosView"), ISMInfoIndex))
+				{
+					UMassUpdateISMProcessor::UpdateISMTransform(Entity, ISMInfos[ISMInfoIndex], Drawn, Representation.PrevTransform,
+						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
+				}
+			}
+			else
+			{
+				const int32 SkinnedMeshInfoIndex = Representation.SkinnedMeshDescHandle.ToIndex();
+				if (ensureMsgf(SkinnedMeshInfos.IsValidIndex(SkinnedMeshInfoIndex), TEXT("Invalid handle index %u for SkinnedMeshInfosView"), SkinnedMeshInfoIndex))
+				{
+					FMassInstancedSkinnedMeshInfo& MeshInfo = SkinnedMeshInfos[SkinnedMeshInfoIndex];
+
+					// Its fall where it would be now, at every frame: Mass hands the data to an instance only when its track is
+					// allocated (the body appears, or comes back into view) or its sequence changes, and the track's reference
+					// time is then set from this position and the world's clock (AnimSequenceTransformProviderData.h,
+					// ReferenceTimestamp); the rest of the time it is ignored. So a body that (re)appears resumes its fall where
+					// it should be, or holds its last frame (Clamp).
+					FAnimSequenceTrackAutoPlayData& AnimData = Animations[EntityIt].AnimData;
+					AnimData.SequenceIndex = Corpse.Sequence;
+					AnimData.PlayRate = Corpse.PlayRate;
+					AnimData.Position = HOLCorpse::GetResumePosition(Corpse.StartPosition, Age, Corpse.PlayRate, Corpse.Length);
+					AnimData.BlendTime = 0.f;
+					AnimData.LoopMode = EAnimSequenceTrackLoopMode::Clamp;
+
+					// Transform, animation and colour (and prop) in this order for each entity: Mass pairs them by position.
+					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
+						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
+					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
+					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.Get(Corpse.OwnerPlayer), Corpse.Prop), RepresentationLOD.LODSignificance,
+						Representation.PrevLODSignificance);
+				}
+			}
+
+			Representation.PrevTransform = Drawn;
+			Representation.PrevLODSignificance = RepresentationLOD.LODSignificance;
+		}
+	});
+
+	// Expired bodies go (J7c, bodies kept 30 s), seen or not: destroyed once the processors have run (Mass removes their
+	// instances, as for a unit).
+	TArray<FMassEntityHandle> ExpiredCorpses;
+	CorpseExpiryQuery.ForEachEntityChunk(Context, [World, WorldSeconds, &ExpiredCorpses](FMassExecutionContext& Context)
+	{
+		const TConstArrayView<FHOLCorpseFragment> Corpses = Context.GetFragmentView<FHOLCorpseFragment>();
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			const double Age = WorldSeconds - Corpses[EntityIt].LaidAt;
+			if (HOLCorpse::IsExpired(Age))
+			{
+				ExpiredCorpses.Add(Context.GetEntity(EntityIt));
+				// Counted for hol.Units.CorpseReport: how many went, and how old.
+				if (World)
+				{
+					HOLCorpse::NoteRemoved(*World, Age);
+				}
+			}
+		}
+	});
+	if (!ExpiredCorpses.IsEmpty())
+	{
+		Context.Defer().DestroyEntities(MoveTemp(ExpiredCorpses));
+	}
 }
 
 namespace
@@ -592,6 +714,62 @@ namespace
 				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report by state: %s"), *FString::Join(StateParts, TEXT("; ")));
 				UE_LOG(LogHOLPresentation, Display, TEXT("Anim report falls: slot %d, %d falling, largest turn %.1f deg from the yaw drawn when it died"),
 					Slot, NumFalling, LargestFallTurn);
+			}
+		}));
+
+	/**
+	 * Scripted check of the bodies (J7c, bodies kept 30 s; quick_check's "combat" and "net" parts): the bodies this machine
+	 * keeps now, per type, those sinking, those whose fall has ended, the oldest; and those that went since the world began
+	 * (HOLCorpse::GetRemovedStats). Every game world, a dedicated server's included (it lays none: 0 bodies).
+	 */
+	FAutoConsoleCommand CorpseReportCommand(
+		TEXT("hol.Units.CorpseReport"),
+		TEXT("hol.Units.CorpseReport: logs the bodies kept now (per type, sinking, fall ended, the oldest) and those that went (how many, the longest kept)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
+			{
+				UWorld* World = WorldContext.World();
+				UMassEntitySubsystem* EntitySubsystem = World && World->IsGameWorld() ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+				if (!EntitySubsystem)
+				{
+					continue;
+				}
+				const double WorldSeconds = World->GetTimeSeconds();
+				FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+				FMassEntityQuery Query(EntityManager.AsShared());
+				Query.AddTagRequirement<FHOLCorpseTag>(EMassFragmentPresence::All);
+				Query.AddRequirement<FHOLCorpseFragment>(EMassFragmentAccess::ReadOnly);
+				TMap<FName, int32> ByType;
+				int32 NumCorpses = 0;
+				int32 NumSinking = 0;
+				int32 NumFallEnded = 0;
+				double Oldest = 0.;
+				FMassExecutionContext ExecutionContext(EntityManager);
+				Query.ForEachEntityChunk(ExecutionContext, [&](FMassExecutionContext& Context)
+				{
+					const TConstArrayView<FHOLCorpseFragment> Corpses = Context.GetFragmentView<FHOLCorpseFragment>();
+					for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+					{
+						const FHOLCorpseFragment& Corpse = Corpses[EntityIt];
+						const double Age = WorldSeconds - Corpse.LaidAt;
+						++NumCorpses;
+						++ByType.FindOrAdd(Corpse.TypeName);
+						NumSinking += HOLCorpse::GetSinkOffset(Age) > 0.f ? 1 : 0;
+						NumFallEnded += HOLCorpse::GetResumePosition(Corpse.StartPosition, Age, Corpse.PlayRate, Corpse.Length) >= Corpse.Length ? 1 : 0;
+						Oldest = FMath::Max(Oldest, Age);
+					}
+				});
+
+				ByType.KeySort(FNameLexicalLess());
+				TArray<FString> TypeParts;
+				for (const TPair<FName, int32>& Pair : ByType)
+				{
+					TypeParts.Add(FString::Printf(TEXT("%s x%d"), *Pair.Key.ToString(), Pair.Value));
+				}
+				const HOLCorpse::FRemovedStats Removed = HOLCorpse::GetRemovedStats(*World);
+				UE_LOG(LogHOLPresentation, Display, TEXT("Corpse report: %d corpses (%s), %d sinking, %d fall ended, oldest %.1f s; %d removed, longest kept %.1f s"),
+					NumCorpses, *FString::Join(TypeParts, TEXT(", ")), NumSinking, NumFallEnded, Oldest, Removed.NumRemoved, Removed.LongestKept);
 			}
 		}));
 }

@@ -20,6 +20,11 @@ enum class EHOLUnitTemplateKind : uint8
 	Simulation,
 	/** Drawing only, placed from the replicated states (UHOLNetUnitDisplayProcessor). */
 	Display,
+	/**
+	 * A body (J7c, bodies kept 30 s): drawn like the unit, laid where it died by a displaying machine (client, solo),
+	 * with nothing of the simulation (UHOLCorpseTrait).
+	 */
+	Corpse,
 };
 
 /** Birth request (D224): "Count units of TypeName, on the navmesh around Center within Radius". */
@@ -149,6 +154,8 @@ private:
 	TMap<FName, TSharedPtr<struct FMassEntityConfig>> TemplateCache;
 	/** The same, drawing only, for a client's display entities (D271). */
 	TMap<FName, TSharedPtr<struct FMassEntityConfig>> DisplayTemplateCache;
+	/** The same for the bodies (J7c, bodies kept 30 s). */
+	TMap<FName, TSharedPtr<struct FMassEntityConfig>> CorpseTemplateCache;
 	/** Fingerprint of each type's constants (D222), to catch two types sharing one copy. */
 	TMap<uint32, FName> ConstantsCrcToType;
 	/** PreloadTypes() ran: a template built from now on is a load in the middle of the match (logged as a warning). */
