@@ -1005,8 +1005,9 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: 4 units (own): Peasant x4", "hol.Select.OrderGround $($CombatSpearmen -join ' ')", "hol.Combat.Report"
             for ($i = 0; $i -lt 4; $i++) { Step "wait 1", "hol.Combat.Report" }
             # The Peasant's strike (J7b.5): the ordered Peasants, striking by now, play theirs with the knife (the report of
-            # slot 0), a close-up of them (taken once the order is applied: the click and the order stay as they are).
-            Step "hol.Units.AnimReport 0", "hol.Camera.Zoom 14", "frames 3", "capture combat_peasant_strike", "hol.Camera.Zoom -14", "frames 2"
+            # slot 0), a close-up of them (taken once the order is applied: the click and the order stay as they are). Their
+            # selection block (J7b trial feedback): fighting, none idle (hol.HUD.Report).
+            Step "hol.Units.AnimReport 0", "hol.HUD.Report", "hol.Camera.Zoom 14", "frames 3", "capture combat_peasant_strike", "hol.Camera.Zoom -14", "frames 2"
             Step "capture orders_attack", "mark orders stop", "hol.Select.Stop", "wait 0.2", "hol.Combat.Report", "wait 2", "hol.Combat.Report"
             Step "mark orders end", "hol.Select.Click 0.03 0.05"
             # The attack-move (J7b.3): 3 Men-at-arms of slot 0 attack-move 30 m east, a Spearman of slot 1 standing 4 m off
@@ -2559,6 +2560,8 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $AtStop = & $PeasantHits $Attack
     $Hits = ($AtStop.Values | ForEach-Object { $_.Hits } | Measure-Object -Sum).Sum
     $Checks["ordered Peasants strike the Spearman ($Hits hits)"] = $Hits -ge 1
+    $Block = [regex]::Match((@($Attack | Select-String -Pattern "HUD report: " | Select-Object -Last 1) -join ''), 'selection Peasant x4 \(own\), [^,]*').Value
+    $Checks["their selection block: fighting, none idle ($Block)"] = $Block -match 'fighting [1-9]\d* moving \d+ idle 0$'
     $StopReports = @($Stop | Select-String -Pattern "Combat report:").Count
     $After = & $PeasantHits $Stop
     $Targets = @($After.Values | Where-Object { $_.Target -ne 0 }).Count

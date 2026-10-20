@@ -674,13 +674,15 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		RefreshUnitActivity(Views[0].CarryCapacity > 0 || Views[0].Activity == EHOLUnitActivity::Attacking ? &Views[0] : nullptr);
 		return;
 	}
-	// A group, its workers by activity (J5b, D298): the round trip counts as gathering (D307); building (J6a.4) on its own.
-	int32 Gathering = 0, Moving = 0, Idle = 0, Building = 0;
+	// A group, its workers by activity (J5b, D298): the round trip counts as gathering (D307); building (J6a.4) on its own;
+	// fighting on its own too, never idle (J7b trial feedback).
+	int32 Gathering = 0, Moving = 0, Idle = 0, Building = 0, Fighting = 0;
 	for (const FHOLUnitView& View : Views)
 	{
 		if (View.CarryCapacity > 0)
 		{
 			++(IsGatheringActivity(View.Activity) ? Gathering : View.Activity == EHOLUnitActivity::Building ? Building
+				: View.Activity == EHOLUnitActivity::Attacking ? Fighting
 				: View.Activity == EHOLUnitActivity::Moving ? Moving : Idle);
 		}
 	}
@@ -693,6 +695,10 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	{
 		Parts.Add(FText::Format(LOCTEXT("GroupBuilding", "{0} en construction"), Building));
 	}
+	if (Fighting > 0)
+	{
+		Parts.Add(FText::Format(LOCTEXT("GroupFighting", "{0} au combat"), Fighting));
+	}
 	if (Moving > 0)
 	{
 		Parts.Add(FText::Format(LOCTEXT("GroupMoving", "{0} en marche"), Moving));
@@ -701,7 +707,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	{
 		Parts.Add(FText::Format(LOCTEXT("GroupIdle", "{0} {0}|plural(one=inactif,other=inactifs)"), Idle));
 	}
-	SetDetailLine(Parts.IsEmpty() ? FString() : FString::Printf(TEXT(", gathering %d building %d moving %d idle %d"), Gathering, Building, Moving, Idle),
+	SetDetailLine(Parts.IsEmpty() ? FString() : FString::Printf(TEXT(", gathering %d building %d fighting %d moving %d idle %d"), Gathering, Building, Fighting, Moving, Idle),
 		FText::Join(FText::AsCultureInvariant(TEXT(" · ")), Parts));
 }
 

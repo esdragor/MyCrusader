@@ -148,6 +148,7 @@ TRANSLATIONS = {
     "HOLGameScreen,GroupMoving": ("{0} walking", "移動中 {0}"),
     "HOLGameScreen,GroupIdle": ("{0} idle", "待機中 {0}"),
     "HOLGameScreen,GroupBuilding": ("{0} building", "建設中 {0}"),
+    "HOLGameScreen,GroupFighting": ("{0} fighting", "戦闘中 {0}"),
     "HOLGameScreen,SourceRemaining": ("Left: {0}", "残り：{0}"),
     "HOLGameScreen,FoundationName": ("Foundation: {0}", "{0}（基礎）"),
     # J6a.5 (D313): the builders' grid, its tooltips, the short messages, the site's block.

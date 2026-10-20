@@ -1,0 +1,18 @@
+# Paysans au combat : 6 Paysans sélectionnés face à 3 Paysans ennemis ; le bloc de sélection dit « N au combat », jamais « inactifs »
+# Plain, deux joueurs (peasant_fight.json). Positions dans le repère du centre du joueur (comme attack_move_q).
+hol.Cheat.Resources 5000
+# Les Paysans devant le centre, les ennemis ~10 m plus loin.
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Units.SpawnHere 6 Peasant 0 200
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 3 Peasant 1 150
+waitunits 9
+hol.Camera.FocusNear 3500 0
+hol.Camera.Zoom -1
+frames 5
+hol.Select.Own
+note Clic droit sur un Paysan ennemi : le bloc de sélection passe à « N au combat » (plus « N inactifs »).
+note Le bouton « Inactifs » en haut reste à 0 pendant le combat.
+note Mélange : envoie 2 Paysans récolter (Tab, clic droit sur un arbre) : « 4 au combat · 2 en récolte ».
