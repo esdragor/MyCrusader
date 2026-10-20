@@ -86,6 +86,7 @@ vérifier sur S1 et S2.
 | J6b.4 Clôture : D310 à D314, D324, D325 au GDD | **fait** (2026-10-18) : lignes D310 à D314, D324, D325 au § 21 (précisées par ce qui a été fait : case de 3 m, fondation fantôme, camp → récolte, F1 / F2 / F3 et Tab, deux marges de D324…), paragraphe « Parcours J6 : la construction » au § 16.6, § 7.3 précisé (F1 / F2 / F3 : tous les bâtiments de la catégorie ; Tab), § 22 : numéro suivant **D326**. **J6 close.** |
 | J7a.1 Données et règles pures | **fait** (2026-10-18, commitée ; rien de visible en jeu) : `Simulation/HOLFormationRules` (largeurs Paysans / carré / mixte, largeur imposée, types par ligne, places, attribution sans croisement), les 9 scénarios de l'utilisateur reproduits ; colonnes de combat dans la table des unités (non lues), lignes `Spearman`, `ManAtArms`, `Barracks` (militaire, `BuildGridSlot` 12 = A de la 2e page) ; tests 69/69 (4 `Formation.*`, `*.Tables` étendus) |
 | J7b.5b Lignes de la file d'ordres (D328) | **en cours** (2026-10-20) : lignes (un seul ordre compris), ordre de la file, 3 correctifs de la revue validés à l'essai et commités (c2b44e4) ; lignes de ralliement (bâtiment → fanion, unité née) et traits de 6,25 cm validés et commités (ed37f00) ; contrôles des lignes solo, ralliement, 2 clients (94eb04e), `-Full` PASS. **J7b.5b close** |
+| J7b.6 Vérification et clôture de J7b | **fait** (2026-10-20) : contrôle du couteau du Paysan, `-Full` PASS (609 s, 83/83), essai complet du combat validé (A clic gardé pour plus tard). **J7b close** ; GDD à la clôture de J7 |
 | J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
 
 ## Prochaine étape exacte
@@ -204,6 +205,8 @@ vérifier sur S1 et S2.
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
    worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
+   **➡ Reprise au 2026-10-20 (soir) : J7b close** (journal « J7b.6 : clôture de J7b ») ; suite : **J7c** (plan de J7) ;
+   7 retours d'essai en attente (journal du 2026-10-20) ; GDD et mesures à la fin de J7. Ce qui suit est l'historique.
    **Prochaine étape exacte (nouvelle séance)** : J7b.2 à J7b.5 commitées (ce6a4d2), D327 (ee63932), gestes polis,
    préchargement et ralliement sur fantôme (258c5d0). **Coup du Paysan validé en aperçu** (2026-10-19) : coup de
    pointe au couteau, posture de peur (`PEASANT_ATTACK` dans `PROPOSED`, pièce `make_knife()` id 8), commité en aperçu
@@ -4943,6 +4946,45 @@ d'épée).
 - Signalé par mycrusader-6c (non urgent) : avec `-Parts tests,camera,anims,combat`, « bars, nothing selected » échoue :
   la sélection laissée par la partie `anims` reste active (en `-Full`, `groups` finit par Échap). Défaut de liste
   partielle : faire finir `anims` par Échap (ou ouvrir `combat` par Échap) à l'occasion.
+- Fenêtre de mycrusader-6c finie (son `-Full` PASS). `-LiveCoding=0` essayé : rapide PASS (29 s, 83/83) ; fin de `anims`
+  par un clic dans le vide : `-Parts tests,camera,anims,combat` PASS (167 s). **Commit f73dbc7**, fusion de `main`
+  (GDD seul) en 3e72c57, `main` avancé.
+- **J7b.6 ouverte** (vérification). Plan annoncé à l'utilisateur : (1) contrôle du coup de couteau du Paysan dans
+  « combat anims » (sous-agent lancé) ; (2) `-Full` ; (3) essai complet du combat par l'utilisateur (solo, et 2 clients
+  s'il le veut) ; (4) clôture de J7b. S3 / S5 en combat (et coût des PV exacts) à la fin de J7.
+- **(1) fait** (sous-agent, 7,5 min, 85k tokens ; seul `quick_check.ps1`) : « orders attack » prend `hol.Units.AnimReport
+  0` et la capture `combat_peasant_strike` après l'ordre (clic et graine 123 inchangés) ; « combat anims » ne laisse
+  plus le Paysan de côté : `Peasants striking play A_Peasant_Attack with the knife (prop 8) (4)` (rapport : `Peasant
+  Attacking: A_Peasant_Attack prop 8 x4`). `-Parts combat` PASS ×2 (151 / 146 s), rapide PASS (28 s). Couteau peu
+  visible au zoom de la capture. **Défaut vu** : le bloc d'un groupe de Paysans qui frappent affiche « 4 inactifs »
+  (déjà avant ce changement) : à montrer à l'essai. `-Full` lancé.
+- **(2) fait** : `-Full` **PASS** (609 s, 83/83). Commit f4ca921, fusion b21ee34, `main` avancé. **(3)** jeu lancé
+  (`-LiveCoding=0`) pour l'essai complet du combat.
+- **(3) Essai complet du combat : validé** (« ça a l'air bon »), sauf le **A clic suivi d'un déplacement en file**
+  (retour d'essai n° 2) : choix de l'utilisateur, **plus tard avec les autres retours** (contre la recommandation « avant
+  de clore J7b »). Le défaut « N inactifs » d'un groupe de Paysans qui frappent n'a pas été relevé par l'utilisateur :
+  noté en retour n° 7 ci-dessous.
+- **Retour 7 (plus tard)** : le bloc d'un groupe de Paysans qui frappent affiche « N inactifs » (vu sur la capture
+  `combat_peasant_strike`) : une unité en combat ne doit pas compter comme inactive.
+
+### 2026-10-20 — J7b.6 : clôture de J7b
+
+- **J7b close.** Fait en J7b (journal ci-dessus) : processeur de combat, ordres (clic droit sur un ennemi,
+  attaque-déplacement, S / D, Maj), barres de vie et bloc de sélection, réseau du combat, gestes polis des soldats,
+  coup de couteau du Paysan (posture de peur), chutes, préchargement des types, ralliement sur un fantôme, D327
+  (`quick_check` rapide / `-Full`), **D328** (lignes de la file d'ordres et du ralliement), file Maj qui ne saute plus
+  d'étape, correctifs de la revue (1 à 5), **J7-Q5 révisée** (PV exacts en 8 bits, numéro à la clôture de J7),
+  lacet gardé à la mort, `quick_check` stabilisé (`hol.Units.SpawnSeed`, `hol.Units.Remove`, `-LiveCoding=0`).
+- **Report au GDD à la clôture de J7** (règle du plan de J7) : D327, D328 (réservés au § 22), J7-Q5 révisée et les autres
+  décisions de J7 (numéros à la suite du § 22, aujourd'hui D340).
+- **À la fin de J7** (règle des mesures) : S1 / S2 / S3 / S5 / S7 par `chapter_measures.ps1`, avec **S5 en combat**
+  (coût des PV exacts : octets par client, envois par coup ; repli : minuterie par unité qui regroupe les coups) et
+  S2 (au seuil depuis J6).
+- **Retours d'essai à faire plus tard** (7, liste dans le journal du 2026-10-20) : groupe qui attend le retardataire,
+  A clic validé trop tôt, pose sur une case occupée, pose unique sauf Maj, marcheurs bloqués par des corps, formation
+  entre les bâtiments, « inactifs » en combat. Petits restes : commentaires « Maj seulement » (D328) ; points « plus
+  tard » de la revue (`LastAttacker` sans limite, mort hors mêlée en J7c.2…).
+- Suite : **J7c** (plan dans « Plan de J7 », questions déjà tranchées en partie par une autre séance).
 - **Retours d'essai à faire plus tard** (demande de l'utilisateur : « ne fais pas tout de suite », à écrire) :
   1. **Groupe qui attend le retardataire** : 5 soldats groupés + 1 à 10 m, ordre de déplacement → les 5 attendent
      que le loin les rejoigne avant de partir. Attendu : ils partent tout de suite ; le retardataire prend sa place
