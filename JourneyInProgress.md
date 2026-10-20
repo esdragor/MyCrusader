@@ -4881,6 +4881,58 @@ d'épée).
   seulement » (`GetChains`, `FBuilderQueue::bChain`, aide de `hol.Orders.Chains`) à reprendre à l'occasion.
   Suite : points 4 et 5 de la revue (à soumettre à l'utilisateur), puis **J7b.6** (vérification : `quick_check` solo
   et 2 clients du combat, essai de l'utilisateur ; S3 / S5 en combat à la fin de J7).
+- **Points 4 et 5 de la revue soumis à l'utilisateur** :
+  4. Demi-tour à la mort en solo / hôte → **l'unité garde l'orientation du moment de sa mort** (face à sa cible) pendant
+     toute la chute, partout (solo, hôte, clients). Correctif d'affichage.
+  5. PV d'une unité peu blessée affichés pleins chez un client → idée de l'utilisateur : « tableau des dégâts envoyé
+     tous les X temps, dernière valeur gardée, servira aussi au soin ». Expliqué : c'est déjà le fonctionnement
+     (état des unités changées envoyé par paquets, dernière valeur ; un changement de PV part tout de suite) ; une
+     table séparée coûterait plus (identifiant répété) ; seule la précision diffère (16 paliers). **Choix de
+     l'utilisateur : PV exacts tout de suite** (contre la recommandation « max − 1 maintenant, exact après mesure ») :
+     **J7-Q5 révisée** (numéro D donné à la clôture de J7 ; D334 est le prochain de la review du GDD, autre séance) :
+     bit « PV pleins » gardé, puis PV exacts d'une unité blessée (8 bits si le maximum de la table tient, sinon le
+     nombre de bits du plus grand maximum), un envoi à chaque changement ; le soin passera par le même champ. Coût en
+     grande bataille vérifié par S5 en combat à la fin de J7, retour aux paliers si le budget est dépassé.
+  **Note de l'utilisateur** : « ça peut être gourmand, se pencher dessus niveau perf » → **point de vigilance des
+  mesures de fin de J7** : octets par client en grande bataille (S5 en combat, comparé aux 16 paliers), nombre
+  d'envois d'état provoqués par les coups, coût CPU de la sérialisation côté serveur ; pistes si trop cher :
+  regrouper les changements de PV d'une unité sur un court délai (le dernier gagne) au lieu d'un envoi immédiat à
+  chaque coup, ou moins de bits (paliers fins, p. ex. 64).
+  Deux sous-agents à la suite (4 puis 5).
+- **Point 4 fait** (sous-agent, 7 min, 78k tokens ; rien de commité). Cause (`HOLInterpolatedInstancesProcessor.cpp`
+  ~l. 402-425) : au début de la chute, la séquence change, `bFacingSource` recalculé faux (la chute n'a ni source ni
+  chantier), `bStrike` faux → lacet de la simulation (front de sa place). Correctif (~l. 427) : en `Dying`, lacet
+  figé sur `FallYaw`, relevé une fois à l'entrée en chute sur le lacet dessiné à l'image précédente
+  (`FHOLUnitAnimationStateFragment` : `bFalling`, `FallYaw`, `FallTurnDegrees` pour le contrôle). Client déjà juste
+  (`HOLNetUnitDisplay.cpp` ~l. 66-87 garde `Display.Yaw`), même règle appliquée. Paysan : se tourne déjà vers sa cible
+  depuis le couteau (`AttackSequence` 13). Contrôle : `hol.Units.AnimReport` écrit `Anim report falls: ... largest
+  turn Y deg` ; « combat anims » : au moins une chute, écart < 3° (mesuré **0,0°**). `-Parts combat` PASS (165 s),
+  rapide PASS (35 s, 83/83). À noter : « combat anims » laisse encore de côté le Paysan qui frappe (« Peasant has no
+  strike yet ») : pourrait attendre `A_Peasant_Attack prop 8`. **Point 5 lancé** (PV exacts).
+- **Point 5 fait** (sous-agent, 13 min, 150k tokens ; rien de commité). **8 bits** (plus grand maximum de la table :
+  155, Homme d'armes ; une unité blessée a au plus max − 1 PV) ; `ensureMsgf` au chargement de la table si un maximum
+  ne tient pas ; retour aux paliers : `HealthBits`, `GetWireHealth`, `HOLUnitView::GetReceivedHealth`. Coût **estimé** :
+  +4 bits par envoi d'une unité blessée (70 au lieu de 66, +6 %) ; un envoi par coup (avant : un par palier franchi,
+  ~2,5 fois moins pour l'Homme d'armes, presque autant pour le Lancier) ; ~0,5 envoi/s de plus par unité blessée en
+  mêlée, ~35 bit/s ; ~7 kbit/s côté serveur pour 200 unités en mêlée. Tests `Net.*` étendus (aller-retour exact,
+  255/256, chaque type de la table, 1 bit intacte, envoi à 1 PV près). `quick_check` : `net` (serveur `hol.Combat.LogHits
+  1` ; chaque valeur affichée par le client est une valeur laissée par un coup du serveur, la dernière égale celle du
+  serveur), `combat` (barres bornées par les relevés de combat). Recompilé sans avertissement ; rapide PASS (29 s,
+  83/83), `-Parts net` PASS (103 s), `-Parts combat` PASS (150 s). Essai de l'utilisateur (points 4 et 5) lancé.
+- **Essai validé** (« sinon tout est bon »). Repli si les PV exacts coûtent trop cher (choix de l'utilisateur) : **une
+  minuterie sur le serveur à chaque coup reçu** : les coups reçus pendant ce court délai partent **en un seul envoi**
+  (dernière valeur), au lieu d'un envoi par coup. Nouveau retour d'essai à faire plus tard (n° 6 ci-dessous).
+  `-Full` puis commit.
+- **Retour d'essai 6 (plus tard)** : **la formation a du mal contre les ressources et entre les bâtiments** ; test
+  ultime : entre deux maisons, les unités se gênent pour passer, dans le meilleur des cas 4 sur 6 passent. À voir avec
+  les retours 1 et 5 (la marche, D292 / D293, D324).
+- Session des animations (mycrusader-6c) bloquée : « Unable to build while Live Coding is active » — le verrou de
+  Live Coding est commun à tous les worktrees du même moteur. Fenêtre de 20 min promise après `-Full`. **À faire** :
+  `-LiveCoding=0` sur les jeux d'essai lancés par la session principale et sur les instances de `quick_check.ps1`
+  (comme `play.ps1`).
+- `-Full` **PASS** (612 s, 83/83). **Commit 3f5a026** (PV exacts, lacet gardé à la mort), fusion de `main` (GDD,
+  `.gitignore` seuls : pas de recompilation) en b6d3533, `main` avancé. Fenêtre laissée à mycrusader-6c (aucun Unreal
+  de cette séance tant qu'elle n'a pas fini). Suite : `-LiveCoding=0`, puis **J7b.6** (vérification et essai du combat).
 - **Retours d'essai à faire plus tard** (demande de l'utilisateur : « ne fais pas tout de suite », à écrire) :
   1. **Groupe qui attend le retardataire** : 5 soldats groupés + 1 à 10 m, ordre de déplacement → les 5 attendent
      que le loin les rejoigne avant de partir. Attendu : ils partent tout de suite ; le retardataire prend sa place
