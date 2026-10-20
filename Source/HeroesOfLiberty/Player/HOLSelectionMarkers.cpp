@@ -15,7 +15,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "HAL/IConsoleManager.h"
 #include "Simulation/HOLFormationRules.h"
+#include "Simulation/HOLOrderChainRules.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::SelectionMarkers
@@ -100,6 +102,41 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	/** A stroke past the whole plane: the marker material fills it. */
 	constexpr float BarFullStroke = 2.f;
 
+	/** The lines between queued orders (D328, J7b.5b-2): their width (cm), read each frame. */
+	TAutoConsoleVariable<float> CVarOrderLineWidth(
+		TEXT("hol.Orders.LineWidth"),
+		25.f,
+		TEXT("Width (cm) of the lines drawn on the ground between the queued orders (Shift) of the selected units (D328)."));
+	/**
+	 * Below the selection's rings and the flag's foot (GroundOffset): the lines, and the step discs just above them,
+	 * so that neither hides a ring.
+	 */
+	constexpr double OrderLineOffset = 1.5;
+	constexpr double OrderPointOffset = 2.2;
+	/** A step's disc (cm): its radius, filled. */
+	constexpr double OrderPointRadius = 30.0;
+	/** The colour of a segment, from the kind of the step it reaches (D328). */
+	const FLinearColor OrderMoveColor(0.95f, 0.8f, 0.05f);
+	const FLinearColor OrderAttackColor(0.9f, 0.08f, 0.05f);
+	const FLinearColor OrderBuildColor(0.9f, 0.9f, 0.9f);
+	const FLinearColor OrderGatherColor(0.1f, 0.4f, 0.95f);
+
+	const FLinearColor& GetOrderColor(const uint8 Kind)
+	{
+		switch (static_cast<HOLOrderChain::EStepKind>(Kind))
+		{
+		case HOLOrderChain::EStepKind::Attack:
+		case HOLOrderChain::EStepKind::AttackMove:
+			return OrderAttackColor;
+		case HOLOrderChain::EStepKind::Build:
+			return OrderBuildColor;
+		case HOLOrderChain::EStepKind::Gather:
+			return OrderGatherColor;
+		default:
+			return OrderMoveColor;
+		}
+	}
+
 	UStaticMesh* LoadMesh(const TCHAR* Path)
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, Path);
@@ -183,6 +220,8 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	Frames = MakeMarkerComponent(*this, TEXT("Frames"));
 	HealthBars = MakeMarkerComponent(*this, TEXT("HealthBars"));
 	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
+	OrderLines = MakeMarkerComponent(*this, TEXT("OrderLines"));
+	OrderPoints = MakeMarkerComponent(*this, TEXT("OrderPoints"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
 		GhostEdges.Add(MakeFlagComponent(*this, *FString::Printf(TEXT("GhostEdge%d"), Index)));
@@ -210,6 +249,10 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	HealthBars->SetMaterial(0, Frames->GetMaterial(0));
 	GhostFrames->SetStaticMesh(Plane);
 	GhostFrames->SetMaterial(0, Frames->GetMaterial(0));
+	OrderLines->SetStaticMesh(Plane);
+	OrderLines->SetMaterial(0, Frames->GetMaterial(0));
+	OrderPoints->SetStaticMesh(Plane);
+	OrderPoints->SetMaterial(0, Rings->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
 	CubeMesh = Cube;
@@ -288,6 +331,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	}
 	UpdateRings();
 	UpdateHealthBars();
+	UpdateOrderLines();
 	UpdateFrame();
 	UpdateFlag();
 	UpdateGhost();
@@ -436,6 +480,80 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 	SetInstances(*HealthBars, Transforms, CustomData);
 }
 
+void AHOLSelectionMarkers::UpdateOrderLines()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> LineTransforms;
+	TArray<float> LineData;
+	TArray<FTransform> PointTransforms;
+	TArray<float> PointData;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetHOLPlayerState() : nullptr;
+	const UWorld* World = GetWorld();
+	// Nothing walked without a queue or a selection (D328): the chains reach their owner only, empty without a queue.
+	if (World && PlayerState && !PlayerState->GetOrderChains().IsEmpty() && !PlayerController->GetSelectedUnits().IsEmpty())
+	{
+		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
+		const double Width = FMath::Max(1.0, static_cast<double>(CVarOrderLineWidth.GetValueOnGameThread()));
+		TMap<uint32, FVector> Displayed;
+		for (const FHOLNetOrderChain& Chain : PlayerState->GetOrderChains())
+		{
+			if (Chain.Steps.IsEmpty() || !Chain.UnitIds.ContainsByPredicate([&Selected](const uint32 Id) { return Selected.Contains(Id); }))
+			{
+				continue;
+			}
+			if (Displayed.IsEmpty())
+			{
+				Displayed.Reserve(Views.Num());
+				for (const FHOLUnitView& View : Views)
+				{
+					Displayed.Add(View.UnitId, View.Location);
+				}
+			}
+			// From the centre of the chain's units as drawn this frame (the group walking), those still standing.
+			FVector Start = FVector::ZeroVector;
+			int32 Count = 0;
+			for (const uint32 Id : Chain.UnitIds)
+			{
+				if (const FVector* Location = Displayed.Find(Id))
+				{
+					Start += *Location;
+					++Count;
+				}
+			}
+			if (Count == 0)
+			{
+				continue;
+			}
+			Start /= Count;
+			for (const FHOLNetChainStep& Step : Chain.Steps)
+			{
+				// An attack at its target as shown here (it walks), else where it stood.
+				FVector End;
+				AHOLPlayerState::LocateChainStep(*World, Step, End);
+				const FLinearColor& Color = GetOrderColor(Step.Kind);
+				const FVector Span = End - Start;
+				const double Length = Span.Size();
+				if (Length > UE_KINDA_SMALL_NUMBER)
+				{
+					// A filled strip from one point to the next, tilted with the ground between them (X along it, Y level).
+					const FQuat Rotation = FRotationMatrix::MakeFromX(Span / Length).ToQuat();
+					LineTransforms.Add(FTransform(Rotation, (Start + End) * 0.5 + FVector(0.0, 0.0, OrderLineOffset),
+						FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
+					LineData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+				}
+				PointTransforms.Add(FTransform(FQuat::Identity, End + FVector(0.0, 0.0, OrderPointOffset),
+					FVector(OrderPointRadius * 2.0 / ShapeSize, OrderPointRadius * 2.0 / ShapeSize, 1.0)));
+				AddCustomData(PointData, Color, 1.0);
+				Start = End;
+			}
+		}
+	}
+	SetInstances(*OrderLines, LineTransforms, LineData);
+	SetInstances(*OrderPoints, PointTransforms, PointData);
+}
+
 FString AHOLSelectionMarkers::DescribeHealthBars() const
 {
 	TArray<FShownBar> Sorted = ShownBars;
@@ -485,7 +603,7 @@ void AHOLSelectionMarkers::UpdateFlag()
 	using namespace UE::HeroesOfLiberty::SelectionMarkers;
 
 	// The rally point reaches its owner only (D282): shown while the player's own building is selected, or for each
-	// building of a group's active subgroup (all of them for « Tous », the user's 3rd trial of J6a.5); followed each
+	// building of a group's active subgroup (all of them for Â« Tous Â», the user's 3rd trial of J6a.5); followed each
 	// frame, so Tab and a right click on the group move them at once.
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	TArray<AHOLBuilding*> Buildings;

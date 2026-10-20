@@ -4,7 +4,13 @@
 
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "Simulation/HOLOrderChainRules.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -16,6 +22,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationUsed, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationCap, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 }
 
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
@@ -73,6 +80,56 @@ void AHOLPlayerState::SetGatherers(const FHOLResources& InGatherers)
 	Gatherers = InGatherers;
 	OnEconomyChanged.Broadcast();
 	ForceNetUpdate();
+}
+
+bool AHOLPlayerState::SetOrderChains(TArray<FHOLNetOrderChain>&& InChains)
+{
+	if (OrderChains == InChains)
+	{
+		return false;
+	}
+	OrderChains = MoveTemp(InChains);
+	OnOrderChainsChanged.Broadcast();
+	// As the economy: a player state sends once a second by default; a queue given is shown at once.
+	ForceNetUpdate();
+	return true;
+}
+
+bool AHOLPlayerState::LocateChainStep(const UWorld& World, const FHOLNetChainStep& Step, FVector& OutLocation)
+{
+	OutLocation = Step.Location;
+	if (Step.Kind != static_cast<uint8>(HOLOrderChain::EStepKind::Attack) || Step.TargetId == 0)
+	{
+		return true;
+	}
+	if (const UHOLUnitReceptionSubsystem* Reception = World.GetNetMode() == NM_Client ? World.GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr)
+	{
+		FHOLUnitView View;
+		if (Reception->GetDisplayedUnit(Step.TargetId, View))
+		{
+			OutLocation = View.Location;
+			return true;
+		}
+		return false;
+	}
+	const UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+	const UMassEntitySubsystem* EntitySubsystem = World.GetSubsystem<UMassEntitySubsystem>();
+	if (Units && EntitySubsystem)
+	{
+		const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+		const FMassEntityHandle Entity = Units->FindEntity(Step.TargetId);
+		if (const FTransformFragment* Transform = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr)
+		{
+			OutLocation = Transform->GetTransform().GetLocation();
+			return true;
+		}
+	}
+	return false;
+}
+
+void AHOLPlayerState::OnRep_OrderChains()
+{
+	OnOrderChainsChanged.Broadcast();
 }
 
 FString AHOLPlayerState::DescribeEconomy() const

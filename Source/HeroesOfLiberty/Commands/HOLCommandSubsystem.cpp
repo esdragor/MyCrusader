@@ -48,6 +48,7 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	Order.FrontLine = FrontLine;
 	Order.bFrontWidth = bFrontWidth;
 	Order.bQueue = bQueue;
+	Order.bChain = bPlayerOrders && !bFromTask;
 }
 
 void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitIds, const EHOLOrderKind Kind, const uint32 TargetUnitId, const int32 PlayerIndex,
@@ -62,6 +63,7 @@ void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitId
 	Order.PlayerIndex = PlayerIndex;
 	Order.Kind = Kind;
 	Order.TargetUnitId = TargetUnitId;
+	Order.bChain = bPlayerOrders && Kind == EHOLOrderKind::Attack;
 	// Stop and hold are at once (AoE4): never queued.
 	Order.bQueue = bQueue && Kind == EHOLOrderKind::Attack;
 }
@@ -102,12 +104,14 @@ void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitId
 		Order.SourceIndex = SourceIndex;
 		Order.PlayerIndex = PlayerIndex;
 		Order.bQueue = true;
+		Order.bChain = bPlayerOrders;
 		return;
 	}
 	FHOLGatherOrder& Order = PendingGatherOrders.AddDefaulted_GetRef();
 	Order.UnitIds = UnitIds;
 	Order.SourceIndex = SourceIndex;
 	Order.PlayerIndex = PlayerIndex;
+	Order.bChain = bPlayerOrders;
 }
 
 void UHOLCommandSubsystem::ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders)
@@ -148,7 +152,7 @@ void UHOLCommandSubsystem::IssueBuildOrder(const FHOLBuildOrder& Order)
 {
 	if (Order.UnitIds.Num() > 0 && (Order.Building.IsValid() || Order.SourceIndex != INDEX_NONE))
 	{
-		PendingBuildOrders.Add(Order);
+		PendingBuildOrders.Add_GetRef(Order).bChain |= bPlayerOrders;
 	}
 }
 

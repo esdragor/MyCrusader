@@ -831,12 +831,14 @@ void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 	const bool bShown = Unit && Unit->MaxHealth > 0;
 	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (level)"))
 		: FString();
+	// Shown or hidden whatever was shown last (the review of J7b): a building selected before left the row shown with an
+	// empty ShownHealth, which a group of units or a unit of unknown type also has.
+	SetShown(SelectionHealthRow, bShown);
 	if (Shown == ShownHealth)
 	{
 		return;
 	}
 	ShownHealth = Shown;
-	SetShown(SelectionHealthRow, bShown);
 	if (SelectionHealth && bShown)
 	{
 		SelectionHealth->SetText(FormatRatio(Unit->Health, Unit->MaxHealth));

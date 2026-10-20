@@ -278,6 +278,8 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 		BuildOrder.Building = Foundation;
 		BuildOrder.PlayerIndex = Order.PlayerIndex;
 		BuildOrder.bQueue = Order.bQueue;
+		// Only a player places a foundation with builders (its controller): their chain is drawn (D328).
+		BuildOrder.bChain = true;
 		Commands->IssueBuildOrder(BuildOrder);
 	}
 }

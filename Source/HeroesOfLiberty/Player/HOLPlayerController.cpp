@@ -2086,7 +2086,7 @@ void AHOLPlayerController::GetSelectedBuildings(TArray<AHOLBuilding*>& OutBuildi
 	}
 }
 
-void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
+void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds, const FName ActiveType)
 {
 	if (UnitIds.IsEmpty())
 	{
@@ -2105,8 +2105,9 @@ void AHOLPlayerController::SetUnitSelection(TArray<uint32> UnitIds)
 	SelectedBuildings.Reset();
 	SelectedSource = INDEX_NONE;
 	SelectedUnits = MoveTemp(UnitIds);
-	// A new selection starts on « Tous » (PurgeSelection keeps the type of the units left).
-	ActiveUnitType = NAME_None;
+	// A new selection starts on « Tous » (PurgeSelection keeps the type of the units left, set before the broadcast so the
+	// grid shows that subgroup's commands: the review of J7b).
+	ActiveUnitType = ActiveType;
 	BroadcastSelection();
 }
 
@@ -2426,9 +2427,7 @@ void AHOLPlayerController::PurgeSelection(const TConstArrayView<FHOLUnitView> Vi
 	if (Units.RemoveAll([&Known](const uint32 Id) { return !Known.Contains(Id); }) > 0)
 	{
 		// The units' active subgroup stays while units of its type do (GetActiveUnitSubgroup).
-		const FName ActiveType = ActiveUnitType;
-		SetUnitSelection(MoveTemp(Units));
-		ActiveUnitType = ActiveType;
+		SetUnitSelection(MoveTemp(Units), ActiveUnitType);
 	}
 }
 
@@ -2955,6 +2954,7 @@ void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>&
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		TArray<uint32> Workers = UnitIds;
 		SendNonWorkersTo(*GetWorld(), *Commands, HOLPlayerState->GetPlayerIndex(), Workers, Building->GetActorLocation());
 		if (Workers.IsEmpty())
@@ -3123,6 +3123,7 @@ void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& 
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		Commands->IssueMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex(), /*bFromTask*/ false, FVector2D::ZeroVector, /*bFrontWidth*/ false, bQueue);
 	}
 }
@@ -3134,6 +3135,7 @@ void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>&
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::Attack, TargetUnitId, HOLPlayerState->GetPlayerIndex(), bQueue);
 	}
 }
@@ -3144,6 +3146,7 @@ void AHOLPlayerController::ServerAttackMove_Implementation(const TArray<uint32>&
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		Commands->IssueAttackMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex(), bQueue);
 	}
 }
@@ -3154,6 +3157,7 @@ void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& 
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		Commands->IssueCombatOrder(UnitIds, bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, HOLPlayerState->GetPlayerIndex());
 	}
 }
@@ -3168,6 +3172,7 @@ void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uin
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		Commands->IssueMoveOrder(UnitIds, Start, HOLPlayerState->GetPlayerIndex(), /*bFromTask*/ false, FVector2D(End - Start), bWidth, bQueue);
 	}
 }
@@ -3179,6 +3184,7 @@ void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		TArray<uint32> Workers = UnitIds;
 		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 		if (Sources && Sources->GetSources().IsValidIndex(SourceIndex))

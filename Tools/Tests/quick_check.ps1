@@ -334,6 +334,14 @@ $OrdersHoldSpearman = @(-4500, 3300)
 $PushMenAtArms = @(-6500, -1500)
 $PushWall = @(-5700, -1500)
 $PushTarget = @(-5000, -1500)
+# A queue after an ordered target (the review of J7b): 3 Men-at-arms made for it on clear ground (more than 12 m from
+# every unit left by the parts before: the push's wall is still being fought, the hold's Peasant still stands) ordered on
+# a Peasant of slot 1 15 m north (A), then with Shift on another 15 m further north (B, out of their 12 m once A is dead):
+# B is attacked once A is killed; then a Peasant made 6 m beyond B (C) is taken on by their own aggression.
+$QueueMenAtArms = @(-2000, 0)
+$QueueA = @(-2000, 1500)
+$QueueB = @(-2000, 3000)
+$QueueC = @(-2000, 3600)
 $GapP = @(-6000, 0)
 $GapQ = @(-6000, 600)
 $GapBuilders = @(-6000, -1500)
@@ -356,6 +364,11 @@ $GapTo = @(-4500, 300)
 # kill it (the melee on for this step alone). Every step waits for its event, no fixed delays.
 $SmokeMenAtArms = @(-6500, -1500)
 $SmokeEnemy = @(-4700, -1500)
+# The Shift queue kept in order (the user's trial of J7b): 4 Peasants on clear ground north of the hold, P1, P2, P3.
+$FifoFrom = @(-5500, 6000)
+$FifoP1 = @(-5500, 7800)
+$FifoP2 = @(-4300, 6000)
+$FifoP3 = @(-3500, 6500)
 $SmokeTo = @(-5100, -1500)
 if ($Parts -contains "smoke") {
     $SmokeConfig = Join-Path $TestSaved "smoke_2p.json"
@@ -437,6 +450,19 @@ if ($Parts -contains "camera") {
                 Key Escape
                 Step "waitlog Selection: none", "hol.Select.Report"
             }
+            # Shift queue in the order given (the user's trial of J7b): 4 Peasants standing, Shift on P1 (18 m north, goes at
+            # once), P2 (12 m east of the start, nearer than P1) and P3: P1, then P2, then P3, P2 never skipped.
+            Step "hol.Units.SpawnSeed 101", "hol.Units.Spawn 4 $($FifoFrom -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($FifoFrom -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($FifoFrom[0] - 400) $($FifoFrom[1] - 400) $($FifoFrom[0] + 400) $($FifoFrom[1] + 400)",
+                "waitlog Selection: 4 units (own): Peasant x4", "mark move fifo", "hol.Units.Where 0",
+                "hol.Select.OrderGround $($FifoP1 -join ' ') shift", "frames 2", "hol.Select.OrderGround $($FifoP2 -join ' ') shift", "frames 2",
+                "hol.Select.OrderGround $($FifoP3 -join ' ') shift"
+            for ($i = 0; $i -lt 16; $i++) { Step "wait 1", "hol.Units.Where 0" }
+            # Taken away at the end (hol.Units.Remove), around P3 where they stand: the parts after it (gather's counts, the
+            # build gap's way) see none of them. Waited for without its count (checked by the analysis: a wrong count must
+            # not stop the rest of the sequence).
+            Step "mark move fifo end", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Units.Remove $($FifoP3 -join ' ') 800 0",
+                "waitlog units of slot 0 within 800 of ($($FifoP3 -join ', '))", "frames 3"
         }
         if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
             # Resource sources (J5a.2, D297): the 376 sources placed by the map (create_match_map.py: 40 trees beside each slot,
@@ -456,7 +482,7 @@ if ($Parts -contains "camera") {
             # right click on the berries; the centre's rally point on the same bush, one Peasant produced, which gathers
             # there. Then the six bushes used up (hol.Sources.TakeNear): the carriers unload, the stock rises then
             # only, all stand idle; the "." key and the HUD's counter go through them.
-            Step "mark gather", "hol.Nav.Footprints navmesh", "hol.Nav.Footprints on", "hol.Gather.LogDeposits 1", "hol.Gather.LogPopups 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
+            Step "mark gather", "hol.Units.SpawnSeed 102", "hol.Nav.Footprints navmesh", "hol.Nav.Footprints on", "hol.Gather.LogDeposits 1", "hol.Gather.LogPopups 1", "hol.Cheat.Food 1000", "hol.Cheat.Population 165", "hol.Prod.BuildTime 2", "hol.Units.Where 0",
                 "hol.Units.Spawn $GatherTrees $($GatherTreeSpawn -join ' ') 0 Peasant 250", "hol.Units.Spawn $GatherBerries $($GatherBerrySpawn -join ' ') 0 Peasant 200",
                 "waitunits $($GatherBefore + $GatherTrees + $GatherBerries)"
             Step "hol.Camera.Focus $($GatherTreeSpawn[0]) $($GatherTreeSpawn[1] + 150)", "frames 5", "hol.Select.BoxGround -15450 -1650 -14300 -850",
@@ -523,7 +549,7 @@ if ($Parts -contains "camera") {
             # straight. A Peasant made beside it, selected, a right click on A: it walks there, works, A blocks the navmesh
             # (a detour now), rises (captured), is finished alone in 200 steps, the cap 10 -> 20, the Peasant idle.
             $Uncheat = if ($Parts -contains "gather") { "hol.Cheat.Population -165" } else { "hol.Build.Report" }
-            Step "mark build site", "hol.Build.Speed 2", $Uncheat, "hol.Cheat.Wood 100", "wait 0.3", "hol.Prod.Report", "hol.HUD.Report",
+            Step "mark build site", "hol.Units.SpawnSeed 103", "hol.Build.Speed 2", $Uncheat, "hol.Cheat.Wood 100", "wait 0.3", "hol.Prod.Report", "hol.HUD.Report",
                 "hol.Nav.Path $($BuildAcross -join ' ')", "hol.Units.Spawn 1 $($BuildPeasant -join ' ') 0 Peasant 10", "wait 0.5",
                 "hol.Camera.Focus -17000 0", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Select.OrderGround $($BuildA -join ' ')",
                 "waitlog Build order of slot 0: 1 units to House at ($($BuildA -join ', '))", "waitlog Construction: slot 0 first work on House at ($($BuildA -join ', '))",
@@ -532,7 +558,7 @@ if ($Parts -contains "camera") {
                 "hol.Prod.Report", "hol.HUD.Report", "hol.Build.Report"
             # Three Peasants made behind, selected by a box; house C placed by Shift + click, D touching it by another one
             # (queued in that order), Escape. The three build C (about twice as fast as one alone), then D.
-            Step "mark build three", "hol.Units.Spawn 3 $($BuildThree -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BuildThree[0] + 600) $($BuildThree[1])", "frames 3",
+            Step "mark build three", "hol.Units.SpawnSeed 104", "hol.Units.Spawn 3 $($BuildThree -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BuildThree[0] + 600) $($BuildThree[1])", "frames 3",
                 "hol.Select.BoxGround $($BuildThree[0] - 400) $($BuildThree[1] - 400) $($BuildThree[0] + 400) $($BuildThree[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3",
                 "hol.Camera.Focus $($BuildC -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($BuildC -join ', ')) valid",
                 "hol.Build.Click shift", "waitlog Build order of slot 0: 3 units to House at ($($BuildC -join ', ')), queued",
@@ -598,7 +624,7 @@ if ($Parts -contains "camera") {
             Step "waitlog Placement: ended"
             # Two Peasants made behind, selected by a box; the key A, a click: house J placed, they build it; the site selected:
             # its block (progress, builders, "Annuler" on V), the click on it refunds half.
-            Step "mark build hud site", "hol.Units.Spawn 2 $($BuildJSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($BuildJSpawn -join ' ')", "frames 3",
+            Step "mark build hud site", "hol.Units.SpawnSeed 105", "hol.Units.Spawn 2 $($BuildJSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($BuildJSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($BuildJSpawn[0] - 400) $($BuildJSpawn[1] - 400) $($BuildJSpawn[0] + 400) $($BuildJSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3"
             Key A
@@ -654,7 +680,7 @@ if ($Parts -contains "camera") {
             # (12 s): L finished, its builders gather the wood and unload at L (the first Peasant at the centre until then, at
             # L after), the Peasant born walks to gather there too (its rally point on a camp finished meanwhile).
             Key Escape
-            Step "mark build camp", "waitlog Selection: none", "hol.Units.Move $($CampCrowd -join ' ') 0", "hol.Cheat.Wood 1000", "hol.Cheat.Food 500",
+            Step "mark build camp", "waitlog Selection: none", "hol.Units.SpawnSeed 106", "hol.Units.Move $($CampCrowd -join ' ') 0", "hol.Cheat.Wood 1000", "hol.Cheat.Food 500",
                 "hol.Build.Speed 2", "hol.Gather.SpeedScale 5", "hol.Gather.LogDeposits 1", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
                 "waitlog Selection: MainCentre of slot 0 (own)", "hol.Prod.Cancel 0", "hol.Prod.Cancel 0", "wait 0.5", "hol.Prod.Report",
                 "hol.Units.Spawn 1 $($CampEarly -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CampEarly -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
@@ -672,7 +698,7 @@ if ($Parts -contains "camera") {
             # Mining camp M by the stone vein between slots 0 and 4: its two builders gather the stone (the gold vein is 60 m
             # away) and unload at M.
             Key Escape
-            Step "mark build camp mining", "waitlog Selection: none", "hol.Units.Spawn 2 $($CampMSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampMSpawn -join ' ')", "frames 3",
+            Step "mark build camp mining", "waitlog Selection: none", "hol.Units.SpawnSeed 107", "hol.Units.Spawn 2 $($CampMSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampMSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($CampMSpawn[0] - 400) $($CampMSpawn[1] - 400) $($CampMSpawn[0] + 400) $($CampMSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($CampM -join ' ')", "frames 3", "hol.Build.Place MiningCamp", "waitlog Placement ghost: MiningCamp at ($($CampM -join ', ')) valid",
                 "hol.Build.Click", "waitlog Build order of slot 0: 2 units to MiningCamp at ($($CampM -join ', '))", "waitlog Construction: slot 0 finished MiningCamp at ($($CampM -join ', '))",
@@ -680,7 +706,7 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($CampM[0] + 400) $($CampM[1] - 300)", "frames 5", "capture build_camp_stone"
             # A lumber camp far from every wood (34 m): no accepted source within 25 m, its two builders stand idle.
             Key Escape
-            Step "mark build camp far", "waitlog Selection: none", "hol.Units.Spawn 2 $($CampFarSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampFarSpawn -join ' ')", "frames 3",
+            Step "mark build camp far", "waitlog Selection: none", "hol.Units.SpawnSeed 108", "hol.Units.Spawn 2 $($CampFarSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampFarSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($CampFarSpawn[0] - 400) $($CampFarSpawn[1] - 400) $($CampFarSpawn[0] + 400) $($CampFarSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($CampFar -join ' ')", "frames 3", "hol.Build.Place LumberCamp", "waitlog Placement ghost: LumberCamp at ($($CampFar -join ', ')) valid",
                 "hol.Build.Click", "waitlog Build order of slot 0: 2 units to LumberCamp at ($($CampFar -join ', '))", "waitlog Construction: slot 0 finished LumberCamp at ($($CampFar -join ', '))",
@@ -691,7 +717,7 @@ if ($Parts -contains "camera") {
             # Peasant made beside it: at its first work, the kept paths across it are dropped; once its tiles are rebuilt, the
             # walkers crossing it get a new path (the log line); watched 12 s (every body put back by a footprint logged).
             Key Escape
-            Step "mark build cut", "waitlog Selection: none", "hol.Gather.SpeedScale 5", "hol.Units.Spawn 6 $($CutSpawn -join ' ') 0 Peasant 100", "wait 0.5",
+            Step "mark build cut", "waitlog Selection: none", "hol.Units.SpawnSeed 109", "hol.Gather.SpeedScale 5", "hol.Units.Spawn 6 $($CutSpawn -join ' ') 0 Peasant 100", "wait 0.5",
                 "hol.Camera.Focus $($CutSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($CutSpawn[0] - 350) $($CutSpawn[1] - 300) $($CutSpawn[0] + 350) $($CutSpawn[1] + 300)", "waitlog Selection: 6 units (own): Peasant x6",
                 "hol.Select.OrderSource $($CutVein -join ' ')", "waitlog Gather order of slot 0: 6 units to source", "wait 25",
@@ -705,7 +731,7 @@ if ($Parts -contains "camera") {
             # way by a Peasant made beside it: they go round it, arrive, none put back by a footprint. The waits are on the
             # clock, not the steps: ~16.5 s of walk, 20.5 s given (J6b.3: 10 s after the capture left 2 s, 4 of 6 arrived once).
             Key Escape
-            Step "mark build cut move", "waitlog Selection: none", "hol.Gather.SpeedScale 1", "hol.Units.LogDetours 1", "hol.Units.Spawn 6 $($CutFrom -join ' ') 0 Peasant 100", "wait 0.5",
+            Step "mark build cut move", "waitlog Selection: none", "hol.Units.SpawnSeed 110", "hol.Gather.SpeedScale 1", "hol.Units.LogDetours 1", "hol.Units.Spawn 6 $($CutFrom -join ' ') 0 Peasant 100", "wait 0.5",
                 "hol.Camera.Focus $($CutFrom -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($CutFrom[0] - 350) $($CutFrom[1] - 300) $($CutFrom[0] + 350) $($CutFrom[1] + 300)", "waitlog Selection: 6 units (own): Peasant x6",
                 "hol.Camera.Focus $($CutTo -join ' ')", "frames 3", "hol.Select.OrderGround $($CutTo -join ' ')", "hol.Units.Spawn 1 $($CutNBuilder -join ' ') 0 Peasant 10", "wait 0.5",
@@ -719,7 +745,7 @@ if ($Parts -contains "camera") {
             # builders sent away; the navmesh's paths through the way (straight, and slanting); one Peasant sent across, then
             # two together: they pass through the way, one after the other, none put back by a wall.
             Key Escape
-            Step "mark build gap", "waitlog Selection: none", "hol.Cheat.FastBuild 1", "hol.Units.Spawn 2 $($GapBuilders -join ' ') 0 Peasant 100", "wait 0.5",
+            Step "mark build gap", "waitlog Selection: none", "hol.Units.SpawnSeed 111", "hol.Cheat.FastBuild 1", "hol.Units.Spawn 2 $($GapBuilders -join ' ') 0 Peasant 100", "wait 0.5",
                 "hol.Camera.Focus $($GapBuilders -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($GapBuilders[0] - 400) $($GapBuilders[1] - 400) $($GapBuilders[0] + 400) $($GapBuilders[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($GapP -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($GapP -join ', ')) valid", "hol.Build.Click shift",
@@ -730,13 +756,13 @@ if ($Parts -contains "camera") {
                 "hol.Select.OrderGround $($GapBuilders[0]) $($GapBuilders[1] - 1000)", "wait 3", "hol.Nav.Path $($GapFrom -join ' ') $($GapTo -join ' ')",
                 "hol.Nav.Path $($GapFrom[0]) $($GapFrom[1] - 200) $($GapTo[0]) $($GapTo[1] + 200)"
             Key Escape
-            Step "mark build gap one", "waitlog Selection: none", "hol.Units.Spawn 1 $($GapFrom -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($GapFrom -join ' ')", "frames 3",
+            Step "mark build gap one", "waitlog Selection: none", "hol.Units.SpawnSeed 112", "hol.Units.Spawn 1 $($GapFrom -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($GapFrom -join ' ')", "frames 3",
                 "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($GapP[0]) $($GapTo[1])", "frames 3", "hol.Nav.Footprints on", "hol.Units.KeepOut 2",
                 "hol.Select.OrderGround $($GapTo -join ' ')"
             for ($i = 0; $i -lt 14; $i++) { Step "wait 0.2", "hol.Units.Where 0"; if ($i -eq 6) { Step "capture build_gap_one" } }
             Step "wait 4", "hol.Units.Where 0", "hol.Nav.Footprints off"
             Key Escape
-            Step "mark build gap two", "waitlog Selection: none", "hol.Units.Spawn 2 $($GapFrom -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($GapFrom -join ' ')", "frames 3",
+            Step "mark build gap two", "waitlog Selection: none", "hol.Units.SpawnSeed 113", "hol.Units.Spawn 2 $($GapFrom -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($GapFrom -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($GapFrom[0] - 400) $($GapFrom[1] - 400) $($GapFrom[0] + 400) $($GapFrom[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($GapP[0]) $($GapTo[1])", "frames 3", "hol.Nav.Footprints on", "hol.Select.OrderGround $($GapTo -join ' ')"
             for ($i = 0; $i -lt 16; $i++) { Step "wait 0.2", "hol.Units.Where 0"; if ($i -eq 7) { Step "capture build_gap_two" } }
@@ -744,14 +770,21 @@ if ($Parts -contains "camera") {
             # Measure only (no check): one Peasant sent along P's south wall, 20 cm inside its tiles; the footprint watch logs how
             # close its body comes to P's body (the middle of a Peasant at the visible wall: 85 - 60 = 25 cm at BodyInset 115).
             Key Escape
-            Step "mark build wall", "waitlog Selection: none", "hol.Units.Spawn 1 $($GapP[0] - 1000) $($GapP[1] - 250) 0 Peasant 10", "wait 0.5",
+            Step "mark build wall", "waitlog Selection: none", "hol.Units.SpawnSeed 114", "hol.Units.Spawn 1 $($GapP[0] - 1000) $($GapP[1] - 250) 0 Peasant 10", "wait 0.5",
                 "hol.Camera.Focus $($GapP[0] - 1000) $($GapP[1] - 250)", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #",
                 "hol.Camera.Focus $($GapP[0]) $($GapP[1] - 250)", "frames 3", "hol.Nav.Footprints on", "hol.Select.OrderGround $($GapP[0] + 1000) $($GapP[1] - 250)"
             for ($i = 0; $i -lt 10; $i++) { Step "wait 0.25", "hol.Units.Where 0"; if ($i -eq 4) { Step "hol.Camera.Zoom 12", "frames 2", "capture build_wall_one", "hol.Camera.Zoom -12" } }
             Step "wait 3", "hol.Units.Where 0", "hol.Nav.Footprints off"
-            # Close up: the two houses in their tiles, and the ghost of a third one touching Q (its tiles, its body inside them).
+            # The walkers taken away (hol.Units.Remove): the wall's Peasant stood 8.5 m from the attack-move's Spearman (its
+            # 12 m aggression drew it off the Men-at-arms' way), the gap's three 15 m from it. Waited for without their counts
+            # (checked by the analysis of "build gap": a wrong count must not stop the rest of the sequence).
+            # Escape first, while the wall's Peasant is still selected (taken away selected, the selection's "none" may come
+            # before the Escape that waits for it).
             Key Escape
-            Step "waitlog Selection: none", "hol.Camera.Zoom 12", "hol.Build.Place House", "hol.Camera.Focus $($GapQ[0]) $($GapQ[1] + 600)",
+            Step "waitlog Selection: none", "hol.Units.Remove $($GapP[0] + 1000) $($GapP[1] - 250) 300 0", "waitlog units of slot 0 within 300 of ($($GapP[0] + 1000), $($GapP[1] - 250))",
+                "hol.Units.Remove $($GapTo -join ' ') 400 0", "waitlog units of slot 0 within 400 of ($($GapTo -join ', '))", "frames 3"
+            # Close up: the two houses in their tiles, and the ghost of a third one touching Q (its tiles, its body inside them).
+            Step "hol.Camera.Zoom 12", "hol.Build.Place House", "hol.Camera.Focus $($GapQ[0]) $($GapQ[1] + 600)",
                 "waitlog Placement ghost: House at ($($GapQ[0]), $($GapQ[1] + 600)) valid", "frames 3", "capture build_gap_houses"
             Key Escape
             Step "waitlog Placement: ended", "hol.Camera.Zoom -12"
@@ -759,7 +792,7 @@ if ($Parts -contains "camera") {
             # the ghost, a click: they build it (4 times as fast). The barracks selected: Lancier on A, Homme d'armes on Z
             # (captured); its rally point by a right click; A then Z (2 s each): both born, they walk to the rally point
             # (captured). Both sent onto the stone vein: they walk there (they do not gather). F1: the barracks selected.
-            Step "mark build barracks", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20", "hol.Build.Speed 4",
+            Step "mark build barracks", "hol.Units.SpawnSeed 115", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20", "hol.Build.Speed 4",
                 "hol.Units.Spawn 3 $($BarracksSpawn -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BarracksSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($BarracksSpawn[0] - 400) $($BarracksSpawn[1] - 400) $($BarracksSpawn[0] + 400) $($BarracksSpawn[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3",
                 "hol.Camera.Focus $($BarracksAt -join ' ')", "frames 3", "hol.HUD.Report", "capture build_barracks_peasants"
@@ -789,7 +822,7 @@ if ($Parts -contains "camera") {
             # selected by a click; a right click on the ground puts its rally point there (the flag, captured); every site
             # finished at its first blow and production in one step (hol.Cheat.FastBuild 1): a Peasant made west of it builds
             # it; a Homme d'armes produced there walks to the rally point kept since the ghost.
-            Step "mark build barracks ghost", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20",
+            Step "mark build barracks ghost", "hol.Units.SpawnSeed 116", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20",
                 "hol.Camera.Focus $($BarracksGhostAt -join ' ')", "frames 3", "hol.Build.Place Barracks",
                 "waitlog Placement ghost: Barracks at ($($BarracksGhostAt -join ', ')) valid", "hol.Build.Click",
                 "waitlog Construction: slot 0 placed Barracks foundation at ($($BarracksGhostAt -join ', '))", "wait 0.5",
@@ -815,10 +848,10 @@ if ($Parts -contains "camera") {
             Step "mark clear wood", "hol.Camera.Focus $($AnimGroups[0].Spawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($AnimGroups[0].Spawn[0] - 1900) $($AnimGroups[0].Spawn[1] - 1500) $($AnimGroups[0].Spawn[0] + 1300) $($AnimGroups[0].Spawn[1] + 800)",
                 "frames 3", "hol.Select.OrderGround $($CutTo -join ' ')", "frames 3", "wait 6"
-            Step "mark anims","hol.Cheat.FastBuild 0", "hol.Build.Speed 1", "hol.Cheat.GatherSpeed 1", "hol.Cheat.Wood 100",
+            Step "mark anims", "hol.Units.SpawnSeed 117","hol.Cheat.FastBuild 0", "hol.Build.Speed 1", "hol.Cheat.GatherSpeed 1", "hol.Cheat.Wood 100",
                 "hol.Units.Spawn 2 $($AnimBuilders -join ' ') 0 Peasant 100", "hol.Units.Spawn 3 $($AnimIdle -join ' ') 0 Peasant 150"
             foreach ($Group in $AnimGroups) { Step "hol.Units.Spawn 3 $($Group.Spawn -join ' ') 0 Peasant 150" }
-            Step "hol.Units.Spawn 3 $($AnimSpearmen -join ' ') 0 Spearman 150", "hol.Units.Spawn 3 $($AnimMenAtArms -join ' ') 0 ManAtArms 150",
+            Step "hol.Units.SpawnSeed 118", "hol.Units.Spawn 3 $($AnimSpearmen -join ' ') 0 Spearman 150", "hol.Units.Spawn 3 $($AnimMenAtArms -join ' ') 0 ManAtArms 150",
                 "hol.Units.Spawn 1 $($AnimOthers[0]) $($AnimOthers[1] - 400) 1 Spearman 10", "hol.Units.Spawn 1 $($AnimOthers -join ' ') 1 ManAtArms 10",
                 "hol.Units.Spawn 1 $($AnimOthers[0]) $($AnimOthers[1] + 400) 1 Peasant 10"
             Step "wait 0.5", "hol.Camera.Focus $($AnimBuilders -join ' ')", "frames 3",
@@ -862,7 +895,7 @@ if ($Parts -contains "camera") {
         if (($Parts -contains "formation") -and $Case.Name -eq "2p") {
             # The formation (J7a.4): the units of slot 0 before (the new ones are the others), the six made, a box
             # around them, a right click 35 m east; reported every half second on the way, then at rest.
-            Step "mark formation", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $(($FormPeasants[1] + $FormMenAtArms[1]) / 2)",
+            Step "mark formation", "hol.Units.SpawnSeed 119", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $(($FormPeasants[1] + $FormMenAtArms[1]) / 2)",
                 "hol.Units.Spawn 3 $($FormPeasants -join ' ') 0 Peasant 150", "hol.Units.Spawn 3 $($FormMenAtArms -join ' ') 0 ManAtArms 150", "wait 0.5", "frames 3",
                 "hol.Select.BoxGround $($FormPeasants[0] - 800) $($FormMenAtArms[1] - 500) $($FormPeasants[0] + 800) $($FormPeasants[1] + 500)",
                 "waitlog Selection: 6 units (own)", "hol.Units.Formation 0", "hol.Camera.Focus $($FormTo -join ' ')", "frames 3",
@@ -874,7 +907,7 @@ if ($Parts -contains "camera") {
                 "hol.Select.OrderLineGround $($FormLine -join ' ') ctrl", "waitlog Order: ", "wait 7", "hol.Units.Formation 0",
                 "hol.Camera.Zoom 14", "frames 3", "capture formation_front", "hol.Camera.Zoom -14"
             # A Peasant sent through the front, alone: the pushed ones walk back to their places.
-            Step "mark formation push", "hol.Units.Formation 0", "hol.Units.Spawn 1 $($FormWalker -join ' ') 0 Peasant 150", "wait 0.3", "frames 3",
+            Step "mark formation push", "hol.Units.SpawnSeed 120", "hol.Units.Formation 0", "hol.Units.Spawn 1 $($FormWalker -join ' ') 0 Peasant 150", "wait 0.3", "frames 3",
                 "hol.Select.BoxGround $($FormWalker[0] - 300) $($FormWalker[1] - 300) $($FormWalker[0] + 300) $($FormWalker[1] + 300)",
                 "waitlog Selection: Peasant #", "hol.Select.OrderGround $($FormWalkerTo -join ' ')", "waitlog Order: "
             for ($i = 0; $i -lt 18; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
@@ -888,7 +921,7 @@ if ($Parts -contains "camera") {
             Step "mark formation queued", "hol.Units.Formation 0", "hol.Camera.Focus $($FormQueuedTo -join ' ')", "frames 3", "capture formation_queued"
             # The block march (J7a.4, the user's 1st trial): 3 Peasants, 3 Spearmen, 3 Men-at-arms on the six's first ground,
             # sent 35 m east: form-up in place, then one block on one path at the slowest's pace, reported every half second.
-            Step "mark formation block", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $($FormBlockSpearmen[1])",
+            Step "mark formation block", "hol.Units.SpawnSeed 121", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $($FormBlockSpearmen[1])",
                 "hol.Units.Spawn 3 $($FormBlockPeasants -join ' ') 0 Peasant 150", "hol.Units.Spawn 3 $($FormBlockSpearmen -join ' ') 0 Spearman 150",
                 "hol.Units.Spawn 3 $($FormBlockMenAtArms -join ' ') 0 ManAtArms 150", "wait 0.5", "frames 3",
                 "hol.Select.BoxGround $($FormBlockPeasants[0] - 800) $($FormBlockMenAtArms[1] - 400) $($FormBlockPeasants[0] + 800) $($FormBlockPeasants[1] + 400)",
@@ -915,7 +948,7 @@ if ($Parts -contains "camera") {
         if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
             # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
             # first ground (left by then): they take each other on by themselves (aggression 12 m), walk into reach and strike.
-            Step "mark combat", "hol.Combat.Enabled 1", "hol.Combat.Report", "hol.Units.Spawn 3 $($CombatMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($CombatSpearmen -join ' ') 1 Spearman 150",
+            Step "mark combat", "hol.Units.SpawnSeed 122", "hol.Combat.Enabled 1", "hol.Combat.Report", "hol.Units.Spawn 3 $($CombatMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($CombatSpearmen -join ' ') 1 Spearman 150",
                 "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "wait 0.2", "hol.Combat.Report"
             for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
             # The strikes (J7b.5): each side's fighters play their strike (hol.Units.AnimReport per slot), a close-up of the melee.
@@ -932,7 +965,7 @@ if ($Parts -contains "camera") {
             Step "mark combat end", "hol.Combat.Report", "frames 3", "capture combat_end"
             # The orders (J7b.3): 4 Peasants of slot 0 (no aggression of their own) and a Spearman of slot 1, 6 m apart where
             # the melee was; the Peasants selected, a right click on the Spearman: they attack it. Then the grid's stop (S).
-            Step "mark orders attack", "hol.Units.Spawn 4 $($CombatMenAtArms -join ' ') 0 Peasant 150", "hol.Units.Spawn 1 $($CombatSpearmen -join ' ') 1 Spearman 150",
+            Step "mark orders attack", "hol.Units.SpawnSeed 123", "hol.Units.Spawn 4 $($CombatMenAtArms -join ' ') 0 Peasant 150", "hol.Units.Spawn 1 $($CombatSpearmen -join ' ') 1 Spearman 10",
                 "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "wait 0.3",
                 "hol.Select.BoxGround $($CombatMenAtArms[0] - 350) $($CombatMenAtArms[1] - 350) $($CombatMenAtArms[0] + 350) $($CombatMenAtArms[1] + 350)",
                 "waitlog Selection: 4 units (own): Peasant x4", "hol.Select.OrderGround $($CombatSpearmen -join ' ')", "hol.Combat.Report"
@@ -941,7 +974,7 @@ if ($Parts -contains "camera") {
             Step "mark orders end", "hol.Select.Click 0.03 0.05"
             # The attack-move (J7b.3): 3 Men-at-arms of slot 0 attack-move 30 m east, a Spearman of slot 1 standing 4 m off
             # their way (within the attack-move's 12 m): they take it on, kill it, then walk on to their destination.
-            Step "mark orders attackmove", "hol.Units.Spawn 3 $($OrdersMoveFrom -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 1 $($OrdersMoveSpearman -join ' ') 1 Spearman 150",
+            Step "mark orders attackmove", "hol.Units.SpawnSeed 124", "hol.Units.Spawn 3 $($OrdersMoveFrom -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 1 $($OrdersMoveSpearman -join ' ') 1 Spearman 150",
                 "hol.Camera.Focus $($OrdersMoveFrom -join ' ')", "wait 0.3", "hol.Combat.Report",
                 "hol.Select.BoxGround $($OrdersMoveFrom[0] - 350) $($OrdersMoveFrom[1] - 350) $($OrdersMoveFrom[0] + 350) $($OrdersMoveFrom[1] + 350)",
                 "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Camera.Focus $(($OrdersMoveFrom[0] + $OrdersMoveTo[0]) / 2) $($OrdersMoveTo[1])", "wait 0.2",
@@ -952,28 +985,42 @@ if ($Parts -contains "camera") {
             # reach: it does not chase; then an enemy Spearman made 8 m away walks into its reach and is struck.
             # (The Peasant made once the hold is applied: the box takes a body's middle, above its feet, so a box tight
             # enough to leave the Peasant out would miss the Man-at-arms.)
-            Step "mark orders hold", "hol.Units.Spawn 1 $($OrdersHold -join ' ') 0 ManAtArms 150",
+            Step "mark orders hold", "hol.Units.SpawnSeed 125", "hol.Units.Spawn 1 $($OrdersHold -join ' ') 0 ManAtArms 150",
                 "hol.Camera.Focus $($OrdersHold -join ' ')", "wait 0.3",
                 "hol.Select.BoxGround $($OrdersHold[0] - 350) $($OrdersHold[1] - 350) $($OrdersHold[0] + 350) $($OrdersHold[1] + 350)",
                 "waitlog Selection: ManAtArms #", "hol.Select.Hold", "waitlog Hold order of slot 0 for 1 units",
                 "hol.Units.Spawn 1 $($OrdersHoldPeasant -join ' ') 1 Peasant 150", "wait 0.2", "hol.Combat.Report"
             for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
-            Step "mark orders hold reach", "hol.Units.Spawn 1 $($OrdersHoldSpearman -join ' ') 1 Spearman 150", "hol.Combat.Report"
+            Step "mark orders hold reach", "hol.Units.SpawnSeed 126", "hol.Units.Spawn 1 $($OrdersHoldSpearman -join ' ') 1 Spearman 150", "hol.Combat.Report"
             for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Combat.Report" }
             Step "capture orders_hold", "mark orders hold end", "hol.Select.Click 0.03 0.05"
+            # The fall (J7b.5): a Peasant of slot 1 made beside the 3 Men-at-arms standing at the attack-move's end (their own
+            # aggression takes it on); once killed it plays its fall (the report of slot 1), captured falling (dying 1 s).
+            # (Before the push: no other Peasant of slot 1 can die meanwhile, so the wait catches this one's death; after
+            # it, the push's target and its wall die all along, the Men-at-arms going on from one to the next.)
+            Step "mark combat fall", "hol.Units.SpawnSeed 127", "hol.Camera.Focus $($OrdersMoveTo -join ' ')", "frames 2", "hol.Units.Spawn 1 $($OrdersMoveTo[0] + 450) $($OrdersMoveTo[1]) 1 Peasant 10",
+                "waitlog Peasant of slot 1 killed by", "frames 2", "hol.Units.AnimReport 1", "hol.Camera.Zoom 14", "frames 2", "capture combat_fall", "hol.Camera.Zoom -14",
+                "hol.Units.AnimReport 0", "mark combat fall end"
             # Two enemies never push each other back (the user's trial of J7b): the Men-at-arms walk to their target through
             # the standing Peasants, which do not give way; they go round them and strike it all the same.
-            Step "hol.Units.Spawn 12 $($PushWall -join ' ') 1 Peasant 300", "hol.Units.Spawn 1 $($PushTarget -join ' ') 1 Peasant 10",
+            Step "hol.Units.SpawnSeed 128", "hol.Units.Spawn 12 $($PushWall -join ' ') 1 Peasant 300", "hol.Units.Spawn 1 $($PushTarget -join ' ') 1 Peasant 10",
                 "hol.Units.Spawn 3 $($PushMenAtArms -join ' ') 0 ManAtArms 150", "hol.Camera.Focus $($PushWall -join ' ')", "wait 0.3",
                 "hol.Select.BoxGround $($PushMenAtArms[0] - 350) $($PushMenAtArms[1] - 350) $($PushMenAtArms[0] + 350) $($PushMenAtArms[1] + 350)",
                 "waitlog Selection: 3 units (own): ManAtArms x3", "mark orders push", "hol.Select.OrderGround $($PushTarget -join ' ')", "hol.Combat.Report"
             for ($i = 0; $i -lt 10; $i++) { Step "wait 1", "hol.Combat.Report" }
             Step "capture orders_push", "mark orders push end", "hol.Select.Click 0.03 0.05"
-            # The fall (J7b.5): a Peasant of slot 1 made beside the 3 Men-at-arms standing at the attack-move's end (their own
-            # aggression takes it on); once killed it plays its fall (the report of slot 1), captured falling (dying 1 s).
-            Step "mark combat fall", "hol.Camera.Focus $($OrdersMoveTo -join ' ')", "frames 2", "hol.Units.Spawn 1 $($OrdersMoveTo[0] + 450) $($OrdersMoveTo[1]) 1 Peasant 10",
-                "waitlog Peasant of slot 1 killed by", "frames 2", "hol.Units.AnimReport 1", "hol.Camera.Zoom 14", "frames 2", "capture combat_fall", "hol.Camera.Zoom -14",
-                "hol.Units.AnimReport 0", "mark combat fall end"
+            # A queue after an ordered target (the review of J7b): A by a right click, B with Shift; then C by their aggression.
+            Step "mark orders queue", "hol.Units.SpawnSeed 129", "hol.Units.Spawn 3 $($QueueMenAtArms -join ' ') 0 ManAtArms 150",
+                "hol.Units.Spawn 1 $($QueueA -join ' ') 1 Peasant 10", "hol.Units.Spawn 1 $($QueueB -join ' ') 1 Peasant 10",
+                "hol.Camera.Focus $($QueueMenAtArms -join ' ')", "wait 0.3", "hol.Combat.Report",
+                "hol.Select.BoxGround $($QueueMenAtArms[0] - 350) $($QueueMenAtArms[1] - 350) $($QueueMenAtArms[0] + 350) $($QueueMenAtArms[1] + 350)",
+                "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Camera.Focus $($QueueA[0]) $(($QueueA[1] + $QueueB[1]) / 2)", "wait 0.2",
+                "hol.Select.OrderGround $($QueueA -join ' ')", "hol.Select.OrderGround $($QueueB -join ' ') shift", "hol.Combat.Report"
+            for ($i = 0; $i -lt 20; $i++) { Step "wait 1", "hol.Combat.Report" }
+            # (The report a few frames after the spawn: one in the same step does not have C yet.)
+            Step "mark orders queue seek", "hol.Units.SpawnSeed 130", "hol.Units.Spawn 1 $($QueueC -join ' ') 1 Peasant 10", "wait 0.3", "hol.Combat.Report"
+            for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Combat.Report" }
+            Step "mark orders queue end", "hol.Select.Click 0.03 0.05"
         }
     }
 }
@@ -1308,7 +1355,6 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
         $RallyGaps = @($Three | ForEach-Object { [Math]::Round((& $Distance $AtRally[$_] @(-13500, 0))) })
         $Checks["rally point set, three Peasants walked to it ($($RallyGaps -join ', ') cm)"] = ($AtRally.Count -eq 5) -and
             (@($RallyGaps | Where-Object { $_ -le 300 }).Count -eq 3)
-        $Selected = @($Log | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Wanted = "3 units (own): Peasant x3"
         $Checks["box around them selects the three ($($Solo | Select-String -Pattern 'Selection report: selected (.*)$' | ForEach-Object { $_.Matches[0].Groups[1].Value }))"] =
             [bool]($Solo | Select-String -Pattern "Selection report: selected $([regex]::Escape($Wanted))" -Quiet) -and
@@ -1331,9 +1377,42 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
         $Checks["no overlap on arrival (closest $([Math]::Round($Closest)) cm, bodies 120 cm)"] = $Closest -ge 110
         $NavUnits = $Arrived | Select-String -Pattern "Nav units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Select-Object -First 1
         $Checks["no Peasant in a rock or a centre ($NavUnits)"] = [bool]($NavUnits -match "^5 units, 0 off the navmesh$")
-        $Checks["Escape clears the selection"] = ($Selected.Count -ge 1) -and ($Selected[-1] -eq "none")
+        # The selection reported just before the Escape of "move arrived" (the three) and just after it (none).
+        $EscapeAt = -1; for ($i = 0; $i -lt $Arrived.Count; $i++) { if ($Arrived[$i] -match "Key pressed: Escape") { $EscapeAt = $i; break } }
+        $BeforeEscape = @(if ($EscapeAt -gt 0) { $Arrived[0..($EscapeAt - 1)] | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+        $AfterEscape = @(if ($EscapeAt -ge 0) { $Arrived[$EscapeAt..($Arrived.Count - 1)] | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+        $Checks["Escape clears the selection ($(if ($BeforeEscape.Count) { $BeforeEscape[-1] }) -> $(if ($AfterEscape.Count) { $AfterEscape[0] }))"] =
+            ($BeforeEscape.Count -ge 1) -and ($BeforeEscape[-1] -eq $Wanted) -and ($AfterEscape.Count -ge 1) -and ($AfterEscape[0] -eq "none")
         $Checks["captures"] = (Test-Path (Join-Path $Shots "move_box.png")) -and (Test-Path (Join-Path $Shots "move_arrived.png"))
     }
+    # The Shift queue kept in order: the 4 Peasants' middle reaches P1, then P2, then P3 (P2 started on its own step, not
+    # overridden by P3 started in the same pass).
+    $Fifo = @(Get-Section "move fifo")
+    $FifoWhere = @($Fifo | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}; foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) {
+        $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }; , $Units })
+    if ($FifoWhere.Count -ge 10) {
+        $Mine = @($FifoWhere[0].Keys | Where-Object { [Math]::Abs($FifoWhere[0][$_][0] - $FifoFrom[0]) -le 500 -and [Math]::Abs($FifoWhere[0][$_][1] - $FifoFrom[1]) -le 500 })
+        $Checks["fifo: 4 Peasants made ($($Mine.Count))"] = $Mine.Count -eq 4
+        $Reached = @()
+        foreach ($Point in @(, $FifoP1) + @(, $FifoP2) + @(, $FifoP3)) {
+            $At = -1
+            for ($i = [Math]::Max(0, $(if ($Reached.Count) { $Reached[-1] } else { 0 })); $i -lt $FifoWhere.Count -and $At -lt 0; $i++) {
+                $R = $FifoWhere[$i]; $In = @($Mine | Where-Object { $R.ContainsKey($_) })
+                if ($In.Count -eq 4) {
+                    $X = ($In | ForEach-Object { $R[$_][0] } | Measure-Object -Average).Average; $Y = ($In | ForEach-Object { $R[$_][1] } | Measure-Object -Average).Average
+                    if ([Math]::Sqrt([Math]::Pow($X - $Point[0], 2) + [Math]::Pow($Y - $Point[1], 2)) -le 350) { $At = $i }
+                }
+            }
+            $Reached += $At
+        }
+        $Checks["fifo: P1, then P2, then P3 reached in order (reports $($Reached -join ', '))"] = ($Reached[0] -ge 0) -and ($Reached[1] -gt $Reached[0]) -and ($Reached[2] -gt $Reached[1])
+        Write-Host "  fifo: P1, P2, P3 reached at reports $($Reached -join ', ')"
+    } else {
+        $Checks["fifo reports ($($FifoWhere.Count))"] = $false
+    }
+    # Taken away at the end: the 4 of the scenario, no other unit of slot 0.
+    $FifoRemoved = @(Get-Section "move fifo end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["fifo: its 4 Peasants taken away at the end ($($FifoRemoved -join ', '))"] = ($FifoRemoved.Count -eq 1) -and ($FifoRemoved[0] -eq 4)
     $AllOk = (Report "move" $Checks) -and $AllOk
 }
 
@@ -1831,6 +1910,14 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
             ($null -ne $Watch) -and ($Watch.Out -eq 0) -and ($Watch.Repaths -eq 0)
         $Checks["$($GapCase.Name): arrived ($($Arrived.Count) standing within 4 m of the point)"] = $Arrived.Count -eq $GapCase.Count
     }
+    # The walkers taken away after the wall (hol.Units.Remove): the wall's one, the way's three, no other unit of slot 0.
+    $WallSection = @(Get-Section "build wall" | ForEach-Object { $_ })
+    $Removed = foreach ($Cut in @(@{ At = "300 of \($($GapP[0] + 1000), $($GapP[1] - 250)\)"; Count = 1 }, @{ At = "400 of \($($GapTo[0]), $($GapTo[1])\)"; Count = 3 })) {
+        $N = @($WallSection | Select-String -Pattern "Remove: (\d+) units of slot 0 within $($Cut.At)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        @{ Count = $Cut.Count; Got = $N }
+    }
+    $Checks["walkers taken away: wall $($Removed[0].Got -join ', ') of 1, way $($Removed[1].Got -join ', ') of 3"] =
+        @($Removed | Where-Object { $_.Got.Count -eq 1 -and $_.Got[0] -eq $_.Count }).Count -eq 2
     $Missing = @("one", "two", "houses" | Where-Object { -not (Test-Path (Join-Path $Shots "build_gap_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build gap" $Checks) -and $AllOk
@@ -2407,6 +2494,28 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
         }
     } else {
         $Checks["hold reports ($($HoldReports.Count), $($ReachReports.Count))"] = $false
+    }
+
+    # A queue after an ordered target (the review of J7b): A killed, B attacked from the queue and killed, then C taken on.
+    $Queue = @(Get-Section "orders queue")
+    $Seek = @(Get-Section "orders queue seek")
+    $Checks["queue: A ordered, B queued"] = [bool]($Queue | Select-String -Pattern "Order: 3 units attack #\d+ Peasant of slot 1$") -and [bool]($Queue | Select-String -Pattern "Order: 3 units attack #\d+ Peasant of slot 1, queued")
+    $QueueReports = Get-CombatReports $Queue
+    $SeekReports = Get-CombatReports $Seek
+    $Near = { param($R, $Point) @($R.Keys | Where-Object { $R[$_].Type -eq "Peasant" -and $R[$_].Slot -eq 1 -and [Math]::Abs($R[$_].X - $Point[0]) -le 300 -and [Math]::Abs($R[$_].Y - $Point[1]) -le 300 }) }
+    if ($QueueReports.Count -ge 5 -and $SeekReports.Count -ge 3) {
+        $IdA = @(& $Near $QueueReports[0] $QueueA); $IdB = @(& $Near $QueueReports[0] $QueueB); $IdC = @(); foreach ($R in $SeekReports) { $IdC = @(& $Near $R $QueueC); if ($IdC.Count -gt 0) { break } }
+        $Checks["A, B and C made ($($IdA.Count), $($IdB.Count), $($IdC.Count))"] = $IdA.Count -eq 1 -and $IdB.Count -eq 1 -and $IdC.Count -eq 1
+        if ($IdA.Count -eq 1 -and $IdB.Count -eq 1 -and $IdC.Count -eq 1) {
+            $Checks["A killed"] = -not $QueueReports[-1].ContainsKey($IdA[0])
+            $OnB = @($QueueReports | Where-Object { $R = $_; @($R.Values | Where-Object { $_.Type -eq "ManAtArms" -and $_.Slot -eq 0 -and $_.Target -eq $IdB[0] }).Count -gt 0 }).Count
+            $Checks["B attacked from the queue once A is dead ($OnB reports)"] = $OnB -ge 1
+            $Checks["B killed"] = -not $QueueReports[-1].ContainsKey($IdB[0])
+            $Checks["C taken on by their own aggression afterwards"] = -not $SeekReports[-1].ContainsKey($IdC[0])
+            Write-Host "  queue: A #$($IdA[0]), B #$($IdB[0]) targeted in $OnB reports, C #$($IdC[0])"
+        }
+    } else {
+        $Checks["queue reports ($($QueueReports.Count), $($SeekReports.Count))"] = $false
     }
 
     # Two enemies never push each other back (the user's trial of J7b): the Spearman the 4 Peasants were ordered on, once

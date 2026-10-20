@@ -60,6 +60,14 @@ public:
 	 */
 	static double GetSpotSpacing();
 
+	/**
+	 * The chains of a player's gather orders without Shift (D328, the user's trial of J7b.5b): each unit sent by its player
+	 * to a source, by its identifier, until it first reaches it (or stops gathering it). No cost without one.
+	 */
+	const TMap<uint32, int32>& GetChainSources() const { return ChainSources; }
+	/** The world it last ran for (hol.Orders.Chains finds it so). */
+	const UWorld* GetLastWorld() const { return LastWorld.Get(); }
+
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
@@ -188,6 +196,10 @@ private:
 	/** This step's unloads by owner (index), MaxDepositPopupsPerStep each at most: their « +10 » (J5c.3). */
 	TArray<TArray<FHOLDepositPopup>> DepositPopups;
 	static FCounters Counters;
+	/** GetChainSources: added by a player's gather order, dropped at its first arrival (only those entries are looked at). */
+	TMap<uint32, int32> ChainSources;
+	void PruneChainSources(const FStepContext& Step);
+	TWeakObjectPtr<const UWorld> LastWorld;
 
 	FMassEntityQuery EntityQuery;
 };
