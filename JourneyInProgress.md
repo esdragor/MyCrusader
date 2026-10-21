@@ -6063,3 +6063,45 @@ d'épée).
   - **À savoir** : comparer deux passes = même empreinte « Battle checksum » à la fin de la mesure ; lancer les jeux
     directement (`stress_ab.ps1` refuse dès qu'une autre session compile) ; se coordonner avec les sessions actives
     (mycrusader-e1, mycrusader-85 dans `MyCrusader-Galadriel`) avant tout `-Full`, partie réseau ou mesure.
+- (J7c.4, mycrusader-56) **Reprise** (2026-10-21) : point 1 lancé (sous-agent) : vérification de 299958a, S4 ×4 et
+  S3 ×2 en parallèle, puis S3 `FastSeparation 0`, S3 et S4 tous anciens chemins ; une seule empreinte attendue par
+  test. Sessions actives : mycrusader-4f (`MyCrusader-Galadriel`), mycrusader-01 (`MyCrusader-J5c`).
+- (J7c.4, mycrusader-56) **299958a vérifié** (~10 min, binaire à jour, `-nullrhi`, 300 pas) : **S4 ×4 en parallèle :
+  93587c1cc36b353c** (5 402 flèches lâchées, 3 393 arrivées) ; **S3 ×2 : 35c168b12173ffac** ; S3 `FastSeparation 0`
+  = S3 ; tous anciens chemins (`FastPaths 0`, `ParallelStandingAvoidance 0`, `FastSeparation 0`) = tous nouveaux pour
+  S3 et S4 (13,9-14,7 ms par pas contre 5,8-7,6, machine chargée, 4 jeux à la fois). **S4 enfin déterministe** ;
+  **nouvelles références : S3 35c168b12173ffac, S4 93587c1cc36b353c** (le tri par `UnitId` change le mouvement de
+  la séparation). Suite : `quick_check -Full` (sessions prévenues), puis commit.
+- (J7c.4, mycrusader-56) **Analyse des envois « error » de S5 en combat** (lecture seule, ~10 min, `net_server.log`
+  de 16:05 et ses NetSample, rejeu de la règle) : pas de défaut dans la règle (l'erreur repart de zéro à chaque envoi,
+  la vitesse nulle est bien prédite, aucun budget ne recompte). Cause : **tremblement de la séparation dans la
+  presse** : déplacement par pas p50 / p90 27 / 101 cm (pas 580-680), 17 / 66 cm (680-780), sens inversé d'un pas à
+  l'autre dans 52-56 % des cas (unité 100 : +102 puis −75 cm) ; la séparation défait tout le chevauchement d'un coup
+  sans plafond (`HOLSimulationProcessors.cpp:712-753`), un marcheur pressé contre un ennemi immobile le reprend chaque
+  pas. Rejeu (vitesse nulle, 35 cm) : 9,1 → 3,7 envois par unité et par seconde selon la fenêtre, collé à la mesure
+  (« activity » + « error » 9,7 → 5,9). Les « Moving » de la presse envoient 500-2 000 cm/s de bruit (10-12 envois
+  par seconde). Biais : la règle tourne à 20 Hz, le réplicateur part à 10 Hz (envois comptés deux fois) ; « états sur
+  le fil » (30 072/s pour 72 Ko/s) gonflé. Remèdes : (1) supprimer le tremblement (combattant bloqué au contact d'un
+  ennemi immobile arrêté, ou correction plafonnée / amortie ; change le jeu) ; (2) vitesse nulle aussi pour la marche
+  de combat ou vitesse lissée (réseau seul) ; (3) seuil 50 / 70 cm pour les immobiles (−27 / −55 % d'« error »,
+  écart affiché en hausse) ; (4) position lissée pour les immobiles ; (5) tenue 0,2 s et « engagé » ; (6) PV sur
+  minuterie (petit) ; (7) règle aux seuls pas du réplicateur. Sous 32 Ko/s : (1) ou (2), plus (3) ou (4). Sonde
+  proposée : envois par activité et par raison, histogramme des pas depuis l'envoi et du déplacement du pas.
+  Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : **corriger le tremblement à la source**
+  (combattant au contact d'un ennemi immobile arrêté au lieu de marcher dedans ; correction de la séparation
+  plafonnée ou amortie par pas), précédé de la sonde des envois par activité pour mesurer le gain ; le mouvement
+  change : nouvelles empreintes, S1 / S2 / S3 à revérifier. Après le `-Full` en cours.
+- (J7c.4, mycrusader-56) **`-Full` FAIL** sur 299958a (799 s, machine saturée : processeur à 100 %, ProjectShiva
+  compile, éditeurs ouverts) : séquence solo coupée par la limite de 780 s (lancement fini à 785 s), d'où les KO de
+  ses dernières parties (flèches du combat, file d'ordres : pas de rapport) ; **caméra 8 joueurs FAIL** (« launched
+  from the screen » KO, aucun rapport) ; tout le reste PASS (tests 87/87, menu, production, déplacement, récolte,
+  construction, animations, formation, réseau 2 clients). Journaux gardés dans le scratchpad (`full1_logs`). Relance
+  de `-Parts camera,combat` seules.
+- (J7c.4, mycrusader-56) Relance `-Parts camera,combat` : **PASS** (208 s ; caméra 8 joueurs PASS : son échec venait
+  de la machine saturée). Avec le reste du `-Full` (PASS), 299958a est vérifié. Commit **0fbafb4** sur `j7c-shot`
+  (`EtapeDefini.md` : S4 déterministe retiré, tremblement de la séparation ajouté).
+- (J7c.4, mycrusader-56) **Boucle 1 du tremblement** lancée : sonde réseau (envois par activité et par raison,
+  histogrammes pas depuis l'envoi / déplacement du pas) et mesure solo du tremblement dans le rapport de S3
+  (déplacement par pas des unités au combat, part des inversions de sens) ; empreinte S3 35c168b12173ffac inchangée
+  attendue ; chiffres de départ.
