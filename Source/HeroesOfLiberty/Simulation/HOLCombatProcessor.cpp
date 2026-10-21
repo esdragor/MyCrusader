@@ -39,6 +39,9 @@ namespace UE::HeroesOfLiberty::Combat
 	constexpr double AttackMoveArrival = 150.0;
 	/** A place around an enemy is taken by a body whose edge stands this close (cm) to its own (a melee's reach). */
 	constexpr double PlaceGap = 50.0;
+	/** J7c.4, loop 18: an attacker of the enemy takes a place up to its weapon's reach and this margin (cm), at most MaxPlaceReach. */
+	constexpr double PlaceReachMargin = 20.0;
+	constexpr double MaxPlaceReach = 200.0;
 
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
@@ -60,6 +63,40 @@ namespace UE::HeroesOfLiberty::Combat
 	float ZoneOfControl = 150.f;
 	FAutoConsoleVariableRef CVarZoneOfControl(TEXT("hol.Combat.ZoneOfControl"), ZoneOfControl,
 		TEXT("cm edge to edge (default 150): a melee walking to fight (hol.Combat.StopAtContact), no enemy in its reach, takes the nearest enemy this close and walks to it alone (its target kept while in the zone); 0: as before"));
+	/** J7c.4, loop 19: a melee out of reach keeps its target unless the new one is clearly nearer (no swing at each search). */
+	float RearTargetKeep = 200.f;
+	FAutoConsoleVariableRef CVarRearTargetKeep(TEXT("hol.Combat.RearTargetKeep"), RearTargetKeep,
+		TEXT("cm (default 200, with hol.Combat.PreferFreeTarget): a melee out of reach of its target and of the new one found keeps its target, alive with a free place around it, unless the new one is this much nearer (edge to edge); 0: as before"));
+}
+
+namespace UE::HeroesOfLiberty::Simulation
+{
+	// J7c.4 loop 21 (hol.Combat.RearFlank, HOLSimulationProcessors.cpp): each side's line of contact, of the last step.
+	extern int32 RearFlank;
+	extern float RearFlankDelay;
+	extern TMap<uint8, FHOLFrontLine> FrontLines;
+	// J7c.4 loop 22 (HOLSimulationProcessors.cpp).
+	extern float RearFlankStagger;
+	extern int32 RearFlankNearest;
+	extern float RearFlankMaxShift;
+	extern float RearFlankBack;
+	extern float RearTargetMaxShift;
+}
+
+namespace UE::HeroesOfLiberty::Combat
+{
+	/** J7c.4 loop 21 (hol.Combat.RearFlank): the flank's goal beyond the line's end and ahead of it (cm). */
+	constexpr double RearFlankOut = 200.0;
+	constexpr double RearFlankAhead = 100.0;
+	/** Held this close behind its own line (cm, along the charge) it counts as held; a free enemy this close (edge) ends the flank. */
+	constexpr double RearFlankZone = 800.0;
+	constexpr double RearFlankFreeReach = 400.0;
+	/** A free enemy ending the flank stands at most this much inside the line's end (cm); the goal reached at this distance. */
+	constexpr double RearFlankEndSlack = 100.0;
+	constexpr double RearFlankArrival = 100.0;
+	/** The flank's walk given again once its goal moved this much (cm); the flank given up after this long (s). */
+	constexpr double RearFlankRewalk = 100.0;
+	constexpr float RearFlankGiveUp = 8.f;
 }
 
 UHOLCombatProcessor::UHOLCombatProcessor()
@@ -211,7 +248,10 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 {
 	const FVector2D Position(Fighters[Index].Location);
 	const float Radius = Fighters[Index].Constants->Radius;
-	const double Reach = Gap + static_cast<double>(Radius) + static_cast<double>(MaxRadius);
+	// J7c.4, loop 18: an attacker (a body of another side than the enemy's) takes a place up to its weapon's reach (a
+	// Spearman 130 cm away fights it as one touching it), a friend of the enemy up to Gap: a ring of Spearmen is full.
+	const int32 EnemySide = SideOfFighter[Index];
+	const double Reach = FMath::Max(Gap, UE::HeroesOfLiberty::Combat::MaxPlaceReach) + static_cast<double>(Radius) + static_cast<double>(MaxRadius);
 	const int32 X0 = FMath::Max(FMath::FloorToInt32((Position.X - Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.X) - GridMin.X;
 	const int32 X1 = FMath::Min(FMath::FloorToInt32((Position.X + Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.X + GridWidth - 1) - GridMin.X;
 	const int32 Y0 = FMath::Max(FMath::FloorToInt32((Position.Y - Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.Y) - GridMin.Y;
@@ -227,8 +267,20 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 			for (int32 Slot = GridStarts[Row + X0]; Slot < End; ++Slot)
 			{
 				const FGridUnit& Unit = GridUnits[Slot];
-				if (Unit.Fighter != Index && Fighters[Unit.Fighter].State->CurrentHealth > 0
-					&& HOLCombat::GetEdgeDistance(Position, Radius, FVector2D(Unit.X, Unit.Y), Unit.Radius) <= Gap && ++Count >= Limit)
+				if (Unit.Fighter == Index || Fighters[Unit.Fighter].State->CurrentHealth <= 0)
+				{
+					continue;
+				}
+				double PlaceReach = Gap;
+				if (Side != EnemySide)
+				{
+					const float WeaponReach = Fighters[Unit.Fighter].Constants->AttackRange;
+					if (!HOLCombat::IsRangedAttack(WeaponReach))
+					{
+						PlaceReach = FMath::Clamp(static_cast<double>(WeaponReach) + UE::HeroesOfLiberty::Combat::PlaceReachMargin, Gap, UE::HeroesOfLiberty::Combat::MaxPlaceReach);
+					}
+				}
+				if (HOLCombat::GetEdgeDistance(Position, Radius, FVector2D(Unit.X, Unit.Y), Unit.Radius) <= PlaceReach && ++Count >= Limit)
 				{
 					return Count;
 				}
@@ -677,6 +729,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Candidates.Reset();
 				CandidateFighters.Reset();
 				++SearchStamp; // only read on the fast paths
+				// J7c.4 loop 22 (hol.Combat.RearTargetMaxShift): a melee of an attack-move out of reach does not take as free an
+				// enemy further along its own line than the cap (no free target at the other end of the battle).
+				const FHOLFrontLine* const ShiftLine = UE::HeroesOfLiberty::Simulation::RearFlank != 0 && UE::HeroesOfLiberty::Simulation::RearTargetMaxShift > 0.f
+					&& bPreferFree && !Seeker.bRanged && Combat.Mode == EHOLCombatMode::AttackMove
+					? UE::HeroesOfLiberty::Simulation::FrontLines.Find(Fighter.State->OwnerPlayer) : nullptr;
+				const auto IsFarAlong = [&](const FVector2D& Other)
+				{
+					return ShiftLine && ShiftLine->Count > 0
+						&& FMath::Abs(FVector2D::DotProduct(Other - Position, ShiftLine->Axis)) > UE::HeroesOfLiberty::Simulation::RearTargetMaxShift;
+				};
 				const auto AddCandidate = [&](const int32 Other)
 				{
 					const FFighter& Enemy = Fighters[Other];
@@ -695,7 +757,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						{
 							PlacesTaken[Other] = CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers);
 						}
-						Candidate.bNoPlace = PlacesTaken[Other] >= HOLCombat::MaxAttackers;
+						Candidate.bNoPlace = PlacesTaken[Other] >= HOLCombat::MaxAttackers || IsFarAlong(Candidate.Position);
 					}
 					CandidateFighters.Add(Other);
 					if (bFast)
@@ -758,6 +820,30 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 				const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Candidates);
 				NewTarget = Chosen == INDEX_NONE ? INDEX_NONE : CandidateFighters[Chosen];
+				// J7c.4 loop 19 (hol.Combat.RearTargetKeep): out of reach of both, its target alive and not full kept unless the new
+				// one is clearly nearer: the ranks behind no longer turn from one enemy to the next at each search.
+				if (RearTargetKeep > 0.f && bPreferFree && !Seeker.bRanged && Target != INDEX_NONE && NewTarget != INDEX_NONE && NewTarget != Target
+					&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].State->OwnerPlayer != Fighter.State->OwnerPlayer)
+				{
+					const FVector2D TargetPosition(Fighters[Target].Location);
+					const FVector2D NewPosition(Fighters[NewTarget].Location);
+					const float TargetRadius = Fighters[Target].Constants->Radius;
+					const float NewRadius = Fighters[NewTarget].Constants->Radius;
+					if (!HOLCombat::IsInRange(Position, Seeker.Radius, TargetPosition, TargetRadius, Seeker.AttackRange)
+						&& !HOLCombat::IsInRange(Position, Seeker.Radius, NewPosition, NewRadius, Seeker.AttackRange))
+					{
+						if (PlacesTaken[Target] < 0)
+						{
+							PlacesTaken[Target] = CountBodiesAround(Target, PlaceGap, HOLCombat::MaxAttackers);
+						}
+						if (PlacesTaken[Target] < HOLCombat::MaxAttackers && !IsFarAlong(TargetPosition)
+							&& HOLCombat::GetEdgeDistance(Position, Seeker.Radius, NewPosition, NewRadius)
+								> HOLCombat::GetEdgeDistance(Position, Seeker.Radius, TargetPosition, TargetRadius) - RearTargetKeep)
+						{
+							NewTarget = Target;
+						}
+					}
+				}
 			}
 			if (NewTarget != Target)
 			{
@@ -837,6 +923,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const int32 IntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
 		if (Target == INDEX_NONE)
 		{
+			Combat.bFlanking = false; // J7c.4 loop 21
+			Combat.FlankWaitSeconds = 0.f;
 			HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
 			if (Combat.bApproaching && World)
 			{
@@ -858,6 +946,132 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 			}
 			continue;
+		}
+
+		// J7c.4 loop 21 (hol.Combat.RearFlank): a melee of an attack-move held behind its own line goes round its end (on its
+		// slide's side, else the nearer end) on a walk of its own, until a free enemy near that end or the goal is reached.
+		if (UE::HeroesOfLiberty::Simulation::RearFlank != 0 && bPreferFree && Combat.Mode == EHOLCombatMode::AttackMove && World
+			&& !HOLCombat::IsRangedAttack(Constants.AttackRange))
+		{
+			const FHOLFrontLine* const Line = UE::HeroesOfLiberty::Simulation::FrontLines.Find(Fighter.State->OwnerPlayer);
+			const bool bInReach = HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius,
+				Constants.AttackRange);
+			const float StepSeconds = static_cast<float>(StepMs) / 1000.f;
+			if (bInReach || !Line || Line->Count <= 0)
+			{
+				Combat.bFlanking = false;
+				Combat.FlankWaitSeconds = 0.f;
+			}
+			else
+			{
+				const double Along = FVector2D::DotProduct(Position - Line->Origin, Line->Axis);
+				const double Behind = -FVector2D::DotProduct(Position - Line->Origin, Line->Charge);
+				if (!Combat.bFlanking)
+				{
+					Combat.FlankWaitSeconds = Behind > -RearFlankArrival && Behind < RearFlankZone ? Combat.FlankWaitSeconds + StepSeconds : 0.f;
+					// Loop 22: the departures spread by id (deterministic), not all on the same step.
+					const float Delay = UE::HeroesOfLiberty::Simulation::RearFlankDelay
+						+ UE::HeroesOfLiberty::Simulation::RearFlankStagger * static_cast<float>(Fighter.UnitId % 8) / 8.f;
+					if (Combat.FlankWaitSeconds >= Delay)
+					{
+						const double SlideSide = FVector2D::DotProduct(FVector2D(Combat.SlideWay.X, Combat.SlideWay.Y), Line->Axis);
+						const int8 NearSide = Along >= 0.5 * (Line->Min + Line->Max) ? 1 : -1;
+						const int8 Side = UE::HeroesOfLiberty::Simulation::RearFlankNearest != 0 ? NearSide
+							: (FMath::Abs(SlideSide) > 0.3 ? (SlideSide > 0. ? 1 : -1) : NearSide);
+						// Loop 22: its goal further along the line than the cap, it does not go round (it waits or slides).
+						const double Shift = FMath::Abs((Side > 0 ? Line->Max : Line->Min) + Side * RearFlankOut - Along);
+						const float MaxShift = UE::HeroesOfLiberty::Simulation::RearFlankMaxShift;
+						if (MaxShift <= 0.f || Shift <= MaxShift)
+						{
+							Combat.bFlanking = true;
+							Combat.FlankWaitSeconds = 0.f;
+							Combat.FlankSide = Side;
+							Combat.FlankWalkGoal = FVector2f::ZeroVector;
+							Combat.FlankBack = UE::HeroesOfLiberty::Simulation::RearFlankBack > 0.f
+								? static_cast<float>(FMath::Max(Behind, 0.) + UE::HeroesOfLiberty::Simulation::RearFlankBack) : 0.f;
+						}
+					}
+				}
+				if (Combat.bFlanking)
+				{
+					Combat.FlankWaitSeconds += StepSeconds;
+					const double End = Combat.FlankSide > 0 ? Line->Max : Line->Min;
+					const FVector2D EndGoal = Line->Origin + Line->Axis * (End + Combat.FlankSide * RearFlankOut) + Line->Charge * RearFlankAhead;
+					// Loop 22 (hol.Combat.RearFlankBack): first a point behind its rank at the end's level (not along the crowd),
+					// passed once near it or once level with the end.
+					const FVector2D BackPoint = Line->Origin + Line->Axis * (End + Combat.FlankSide * RearFlankOut) - Line->Charge * Combat.FlankBack;
+					if (Combat.FlankBack > 0.f && (Combat.FlankSide * (Along - End) >= 0.
+						|| FVector2D::DistSquared(Position, BackPoint) <= FMath::Square(2. * RearFlankArrival)))
+					{
+						Combat.FlankBack = 0.f;
+					}
+					const FVector2D Goal = Combat.FlankBack > 0.f ? BackPoint : EndGoal;
+					const bool bArrived = FVector2D::DistSquared(Position, EndGoal) <= FMath::Square(RearFlankArrival)
+						|| Combat.FlankWaitSeconds >= RearFlankGiveUp;
+					// On a search step, the nearest free enemy close by, at or beyond the line's end on its side (least id on a tie).
+					int32 Free = INDEX_NONE;
+					double FreeDistance = 0.0;
+					if (!bArrived && bSearchStep)
+					{
+						GatherNearby(Index, RearFlankFreeReach, Nearby);
+						for (const int32 Other : Nearby)
+						{
+							const FFighter& Near = Fighters[Other];
+							if (Near.State->CurrentHealth <= 0)
+							{
+								continue;
+							}
+							const FVector2D OtherPosition(Near.Location);
+							const double Distance = HOLCombat::GetEdgeDistance(Position, Constants.Radius, OtherPosition, Near.Constants->Radius);
+							if (Distance > RearFlankFreeReach
+								|| Combat.FlankSide * (FVector2D::DotProduct(OtherPosition - Line->Origin, Line->Axis) - End) < -RearFlankEndSlack
+								|| (Free != INDEX_NONE && (Distance > FreeDistance || (Distance == FreeDistance && Near.UnitId > Fighters[Free].UnitId))))
+							{
+								continue;
+							}
+							if (PlacesTaken[Other] < 0)
+							{
+								PlacesTaken[Other] = CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers);
+							}
+							if (PlacesTaken[Other] < HOLCombat::MaxAttackers)
+							{
+								Free = Other;
+								FreeDistance = Distance;
+							}
+						}
+					}
+					if (bArrived || Free != INDEX_NONE)
+					{
+						// Back to the fight: walks to its target at once (below).
+						Combat.bFlanking = false;
+						Combat.FlankWaitSeconds = 0.f;
+						Combat.bApproaching = false;
+						if (Free != INDEX_NONE && Free != Target)
+						{
+							--Fighters[Target].Combat->AttackerCount;
+							++Fighters[Free].Combat->AttackerCount;
+							Combat.Target = Fighters[Free].Entity;
+							Target = Free;
+						}
+					}
+					else
+					{
+						Combat.bAttacking = false;
+						HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
+						const FVector2f Goal2f(Goal);
+						if (Combat.FlankWalkGoal.IsZero()
+							|| (bSearchStep && (Fighter.Order->Phase == EHOLMovePhase::None || FVector2f::DistSquared(Goal2f, Combat.FlankWalkGoal) > FMath::Square(RearFlankRewalk))))
+						{
+							Commands->IssueCombatWalk(Fighter.UnitId, FVector(Goal.X, Goal.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
+							Combat.FlankWalkGoal = Goal2f;
+							Combat.ApproachPoint = FVector2D(Fighters[Target].Location);
+							Combat.bAttackMoveDetour = true;
+							Combat.bApproaching = true;
+						}
+						continue;
+					}
+				}
+			}
 		}
 
 		FFighter& Enemy = Fighters[Target];

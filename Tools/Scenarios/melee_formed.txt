@@ -39,6 +39,6 @@ wait 9
 hol.Units.Move -8400 0 0 a
 hol.Units.Move -11200 0 1 a
 waitlog Move order: 200 units to (-11200, 0)
-note Les deux armées sont d'abord rangées en formation, puis chargent : regarde le choc des fronts. Front net qui se heurte, ou dents de peigne qui s'interpénètrent ?
+note Regarde le choc : les fronts se frappent à une longueur d'arme sans se traverser ; derrière, chaque soldat bloqué choisit un côté (celui de sa cible, sinon vers le bout de ligne le plus proche) et le garde : une vague qui glisse vers les trous et le flanc, sans gauche-droite ; tenu ~0,5-0,9 s derrière sa ligne (départs étalés), il passe en retrait puis contourne le bout le plus proche (jamais à plus de 12 m le long de la ligne) et frappe le premier ennemi libre : la ligne s'allonge vite et déborde le flanc, sans traversée de toute l'armée.
 note Ralenti : console (²) puis « slomo 0.25 » (« slomo 1 » pour revenir).
-note Pour comparer : « hol.Combat.ZoneOfControl 0 » et « hol.Combat.StopAtContact 0 » (avant), puis « hol.Scenario melee_formed » ; 1 pour revenir.
+note Pour comparer : « hol.Combat.RearFlank 0 » (sans débordement), « hol.Combat.RearSlide 0 » (sans glissade), « hol.Simulation.FrontHoldsFriends 0 » (le front poussé par ses amis), puis « hol.Scenario melee_formed » ; remettre 1 pour revenir.

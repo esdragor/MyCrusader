@@ -24,16 +24,6 @@ struct FHOLUnitReplicationStats
 	 * unit would not have been sent at this step.
 	 */
 	int64 HealthSends = 0;
-	/**
-	 * Probe (J7c.4, separation jitter): per activity sent (EHOLUnitActivity), the unit-steps and the sends per reason; at
-	 * each error send, the steps since the unit's last send (1, 2-3, 4-9, 10+) and its 2D move over the step (cm: under 5,
-	 * 5-15, 15-35, 35+). Counted only.
-	 */
-	static constexpr int32 NumActivities = 8;
-	int64 UnitStepsByActivity[NumActivities] = {};
-	int64 SendsByActivity[NumActivities][4] = {};
-	int64 ErrorStepGaps[4] = {};
-	int64 ErrorStepMoves[4] = {};
 	int32 NumDepartures = 0;
 	double TotalMs = 0.0;
 	double MaxMs = 0.0;

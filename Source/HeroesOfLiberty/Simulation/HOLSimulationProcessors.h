@@ -8,6 +8,8 @@
 #include "MassProcessor.h"
 #include "HOLSimulationProcessors.generated.h"
 
+struct FHOLCombatFragment;
+
 /** First processor of each fixed step: keeps the transform the presentation interpolates from. */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLStorePreviousTransformProcessor : public UMassProcessor
@@ -53,6 +55,12 @@ protected:
 	static int32 LookAheadBucketOf(const FIntPoint& Cell);
 	/** The way a walker takes: Direction if nothing is met on it within Horizon (s), else the smallest clear turn, else Direction. */
 	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, uint32 FormUpSerial, uint8 FormUpKind, uint8 Owner) const;
+	/**
+	 * J7c.4 loop 19 (hol.Combat.RearSlide): a melee walking to fight, off the front, wanting Wanted: OutVelocity slides along
+	 * the friend barring its way (or stops when both sides are shut), smoothed from LastVelocity. False at the front.
+	 */
+	bool SlideAlongFriends(FMassEntityHandle Entity, const FVector2D& Position, float Radius, const FVector2D& Goal, const FVector2D& Wanted, float Speed,
+		const FVector2D& LastVelocity, uint8 Owner, float DeltaTime, FHOLCombatFragment& Combat, FVector2D& OutVelocity, bool& bOutSliding) const;
 
 	FMassEntityQuery EntityQuery;
 
@@ -67,7 +75,7 @@ protected:
 	 */
 	TArray<uint32> FormUpSerials;
 	TArray<uint8> FormUpKinds;
-	/** Each unit's OwnerPlayer (J7c.4 loop 11, hol.Simulation.AvoidEnemies 0: a walker does not turn aside for an enemy). */
+	/** Each unit's OwnerPlayer (J7c.4: the middle of each army, hol.Combat.RearSlide; the friends and enemies around a walker). */
 	TArray<uint8> Owners;
 	float MaxRadius = 1.f;
 	float MaxSpeed = 0.f;
@@ -75,6 +83,8 @@ protected:
 	TArray<int32> CellHeads;
 	TArray<int32> NextInCell;
 	TArray<FIntPoint> Cells;
+	/** J7c.4 loop 20: each owner's units' mean position this step (the middle of its army: a rear rank slides away from it). */
+	TMap<uint8, FVector2D> OwnerCentres;
 };
 
 /**
@@ -156,32 +166,6 @@ protected:
  * edge overlap a little, the user's trial of D309). Pairs found in a hashed grid of the step's positions, one
  * pass a step.
  */
-/** J7c.4 source probe: the pairs a class of the separation undid in a step, the overlaps and the moves of sides A and B. */
-struct FHOLSeparationSourceCell
-{
-	double Pairs = 0.;
-	double Overlap = 0.;
-	double MoveA = 0.;
-	double MoveB = 0.;
-};
-
-/**
- * J7c.4 source probe (read only): per round, per source (0 a walker of the first pass, 1 a unit queued after a push),
- * per kind (0 standing - standing, 1 walker - standing, 2 walker - walker), per side (0 friends, 1 enemies). Side A is
- * the walker of a walker and a standing unit, else the one that looks. Every pair's overlap at the start and the end.
- */
-struct FHOLSeparationSourceProbe
-{
-	FHOLSeparationSourceCell Cells[2][2][3][2];
-	double OverlapStart = 0.;
-	double PairsStart = 0.;
-	double OverlapEnd = 0.;
-	double PairsEnd = 0.;
-	double WalkerIn = 0.;
-	double StandingIn = 0.;
-	bool bValid = false;
-};
-
 UCLASS()
 class HEROESOFLIBERTY_API UHOLUnitSeparationProcessor : public UMassProcessor
 {
@@ -190,22 +174,7 @@ class HEROESOFLIBERTY_API UHOLUnitSeparationProcessor : public UMassProcessor
 public:
 	UHOLUnitSeparationProcessor();
 
-	/** J7c.4 probe, read only: the longest correction of the last step run (cm), over all units. */
-	static float GetLastMaxCorrection() { return LastMaxCorrection; }
-	/** J7c.4 source probe, read only: on while the stress test measures; the last step's figures. */
-	static void SetSourceProbe(const bool bOn) { bSourceProbe = bOn; }
-	static const FHOLSeparationSourceProbe& GetLastSourceProbe() { return LastSourceProbe; }
-
 protected:
-	static float LastMaxCorrection;
-	static bool bSourceProbe;
-	static FHOLSeparationSourceProbe LastSourceProbe;
-	/** Source probe: the round (0, 1) and whether the unit looking was queued (pushed), not a walker of the first pass. */
-	int32 ProbeRound = 0;
-	bool ProbeFromQueue = false;
-	/** Source probe: each unit's place at the end of the last separation, by identifier. */
-	TMap<uint32, FVector2D> ProbeEnds;
-
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 
@@ -234,6 +203,10 @@ protected:
 	 * hol.Gather.SpotSpacing), not two bodies; a walker still pushes them out of its way.
 	 */
 	TArray<bool> AtSource;
+	/** Soldiers (a unit type that carries nothing: not a Peasant): the units of a line of contact (J7c.4, hol.Combat.RearFlank). */
+	TArray<bool> Soldiers;
+	/** J7c.4, loop 18 (hol.Simulation.FrontHoldsFriends): units that strike or touch an enemy, never pushed by a friend. */
+	TArray<bool> Front;
 	/** Units that looked for their neighbours this step, and those to look (the walkers, then the units they pushed). */
 	TArray<bool> Looked;
 	TArray<bool> Queued;

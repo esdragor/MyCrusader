@@ -370,6 +370,21 @@ enum class EHOLCombatMode : uint8
 };
 
 /**
+ * J7c.4 loop 21 (hol.Combat.RearFlank): a side's line of contact, made each step by UHOLUnitSeparationProcessor from its
+ * units of the front: Origin their mean place, Charge the way to the other armies' middle, Axis across it (left of it),
+ * Min/Max the span of the front's units along Axis from Origin.
+ */
+struct FHOLFrontLine
+{
+	FVector2D Origin = FVector2D::ZeroVector;
+	FVector2D Axis = FVector2D::ZeroVector;
+	FVector2D Charge = FVector2D::ZeroVector;
+	double Min = 0.;
+	double Max = 0.;
+	int32 Count = 0;
+};
+
+/**
  * A unit's fight (J7b.2, J7-Q4), on the server: its target, its cool-down, the last enemy that hit it (riposte), and
  * what the combat report shows. The health is FHOLUnitStateFragment::CurrentHealth (the table's MaxHealth at birth).
  */
@@ -424,6 +439,27 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 
 	/** It walks towards its target on a walk of its own (a task's move order): stopped once in reach or the target gone. */
 	bool bApproaching = false;
+
+	/**
+	 * J7c.4 loop 20 (hol.Combat.RearSlideKeep): the way (world, unit length) it slides along the friends barring its way,
+	 * kept while it slides; zero: none. SlideShutSeconds: how long that way has been shut; SlideFreeSeconds: how long it has
+	 * walked on unbarred (the way forgotten past a while). Written by UHOLFullSpeedProcessor only.
+	 */
+	FVector2f SlideWay = FVector2f::ZeroVector;
+	float SlideShutSeconds = 0.f;
+	float SlideFreeSeconds = 0.f;
+
+	/**
+	 * J7c.4 loop 21 (hol.Combat.RearFlank): a melee of an attack-move held behind its own line goes round its end.
+	 * FlankWaitSeconds: how long it has been held (then, flanking: how long it has flanked); FlankSide: the end it goes to
+	 * (+1/-1 along FHOLFrontLine::Axis); FlankWalkGoal: the point its last walk was given (zero: none yet).
+	 */
+	float FlankWaitSeconds = 0.f;
+	bool bFlanking = false;
+	int8 FlankSide = 0;
+	FVector2f FlankWalkGoal = FVector2f::ZeroVector;
+	/** J7c.4 loop 22 (hol.Combat.RearFlankBack): how far behind its line (cm) its first point, at the end's level, lies; 0: passed or none. */
+	float FlankBack = 0.f;
 
 	/**
 	 * A player's order prevails (J7b.2): its target, its approach, its strikes and its last attacker forgotten (no riposte

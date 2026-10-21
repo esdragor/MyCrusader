@@ -1109,7 +1109,8 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 22; $i++) { Step "wait 1", "hol.Combat.Report" }
             Step "capture orders_attackmove", "hol.Select.Click 0.03 0.05"
             # Hold position (J7b.3): a Man-at-arms of slot 0 told to hold, an enemy Peasant (no aggression) just out of its
-            # reach: it does not chase; then an enemy Spearman made 8 m away walks into its reach and is struck.
+            # reach: it does not chase; then an enemy Man-at-arms made 8 m away (same 70 cm reach: a longer reach would strike
+            # it from out of its own, J7c.4) walks into its reach and is struck.
             # (The Peasant made once the hold is applied: the box takes a body's middle, above its feet, so a box tight
             # enough to leave the Peasant out would miss the Man-at-arms.)
             Step "mark orders hold", "hol.Units.SpawnSeed 125", "hol.Units.Spawn 1 $($OrdersHold -join ' ') 0 ManAtArms 150",
@@ -1118,7 +1119,7 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: ManAtArms #", "hol.Select.Hold", "waitlog Hold order of slot 0 for 1 units",
                 "hol.Units.Spawn 1 $($OrdersHoldPeasant -join ' ') 1 Peasant 150", "wait 0.2", "hol.Combat.Report"
             for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
-            Step "mark orders hold reach", "hol.Units.SpawnSeed 126", "hol.Units.Spawn 1 $($OrdersHoldSpearman -join ' ') 1 Spearman 150", "hol.Combat.Report"
+            Step "mark orders hold reach", "hol.Units.SpawnSeed 126", "hol.Units.Spawn 1 $($OrdersHoldSpearman -join ' ') 1 ManAtArms 150", "hol.Combat.Report"
             for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Combat.Report" }
             Step "capture orders_hold", "mark orders hold end", "hol.Select.Click 0.03 0.05"
             # The fall (J7b.5): a Peasant of slot 1 made beside the 3 Men-at-arms standing at the attack-move's end (their own
@@ -3006,7 +3007,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             $Checks["the Peasant out of reach, within 12 m ($([int]$Gap) cm edge to edge)"] = $Gap -gt 50 -and $Gap -lt 1200
             $End = $ReachReports[-1]
             $HoldHits = if ($End.ContainsKey($Id)) { $End[$Id].Hits } else { -1 }
-            $Checks["the Spearman struck once in reach ($HoldHits hits)"] = $HoldHits -ge 2
+            $Checks["the attacker struck once in reach ($HoldHits hits)"] = $HoldHits -ge 2
             # Two enemies never push each other back (the user's trial of J7b): the Spearman walking into it does not move it.
             $Start = $ReachReports[0]
             $MovedReach = if ($Start.ContainsKey($Id)) { (@($ReachReports | Where-Object { $_.ContainsKey($Id) } | ForEach-Object { [Math]::Sqrt([Math]::Pow($_[$Id].X - $Start[$Id].X, 2) + [Math]::Pow($_[$Id].Y - $Start[$Id].Y, 2)) }) | Measure-Object -Maximum).Maximum } else { 999 }

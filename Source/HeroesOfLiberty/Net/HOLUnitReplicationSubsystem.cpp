@@ -291,8 +291,6 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			const FHOLMoveOrderFragment& Order = Orders[EntityIt];
 			const EHOLUnitActivity Activity = State.CurrentHealth <= 0 ? EHOLUnitActivity::Dying
 				: Combat.bAttacking ? EHOLUnitActivity::Attacking : State.Activity;
-			const int32 ActivityIndex = FMath::Min<int32>(static_cast<int32>(Activity), FHOLUnitReplicationStats::NumActivities - 1);
-			Stats.UnitStepsByActivity[ActivityIndex]++;
 			// Still on the wire unless it walks (J7c.4, S5 in combat: 9 825 error sends per second, fighters in a melee crush
 			// sent with 40 to 100 cm/s of pushes). The send rule predicts from the state last sent (GetSendReason), so it
 			// measures the error from this same velocity: a stander is sent again once pushed past the threshold. Only what
@@ -348,15 +346,6 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 						{
 							Stats.HealthSends++;
 						}
-					}
-					Stats.SendsByActivity[ActivityIndex][static_cast<int32>(Reason)]++;
-					if (Reason == EHOLUnitSendReason::Error)
-					{
-						// Probe (J7c.4): before WriteState, Sent.Step is still the last send's.
-						const int64 Gap = Step - Record->Sent.Step;
-						Stats.ErrorStepGaps[Gap <= 1 ? 0 : Gap <= 3 ? 1 : Gap <= 9 ? 2 : 3]++;
-						const double Move = FVector::Dist2D(Position, PreviousTransforms[EntityIt].Transform.GetLocation());
-						Stats.ErrorStepMoves[Move < 5. ? 0 : Move < 15. ? 1 : Move < 35. ? 2 : 3]++;
 					}
 					WriteState(*Record, Current);
 					Stats.Sends[static_cast<int32>(Reason)]++;
@@ -470,25 +459,6 @@ FString UHOLUnitReplicationSubsystem::MakeReport() const
 	}
 	// Of the activity sends, those for the health alone (J7c.4): after the reasons, so the reasons' readers still match.
 	Reasons += FString::Printf(TEXT("; health %lld"), Stats.HealthSends);
-	// Probe (J7c.4): per activity, the units on average and the sends per second per reason; the error sends' step gaps
-	// and step moves. After the packets, so the existing readers still match.
-	static const TCHAR* const ActivityNames[FHOLUnitReplicationStats::NumActivities] = { TEXT("Idle"), TEXT("Moving"),
-		TEXT("Gathering"), TEXT("GatherTrip"), TEXT("Building"), TEXT("Attacking"), TEXT("Dying"), TEXT("Other") };
-	FString ByActivity;
-	for (int32 ActivityIndex = 0; ActivityIndex < FHOLUnitReplicationStats::NumActivities; ++ActivityIndex)
-	{
-		const int64* Sends = Stats.SendsByActivity[ActivityIndex];
-		if (Stats.UnitStepsByActivity[ActivityIndex] == 0 && Sends[0] + Sends[1] + Sends[2] + Sends[3] == 0)
-		{
-			continue;
-		}
-		ByActivity += FString::Printf(TEXT(" %s %.0f [act/err/ref %.0f/%.0f/%.0f]"), ActivityNames[ActivityIndex],
-			Stats.NumSteps > 0 ? static_cast<double>(Stats.UnitStepsByActivity[ActivityIndex]) / Stats.NumSteps : 0.0,
-			Sends[1] / Seconds, Sends[2] / Seconds, Sends[3] / Seconds);
-	}
-	const FString Probe = FString::Printf(TEXT("; by activity (units, sends/s):%s; error gap 1/2-3/4-9/10+ steps %lld/%lld/%lld/%lld; error step move <5/5-15/15-35/35+ cm %lld/%lld/%lld/%lld"),
-		ByActivity.IsEmpty() ? TEXT(" none") : *ByActivity, Stats.ErrorStepGaps[0], Stats.ErrorStepGaps[1], Stats.ErrorStepGaps[2],
-		Stats.ErrorStepGaps[3], Stats.ErrorStepMoves[0], Stats.ErrorStepMoves[1], Stats.ErrorStepMoves[2], Stats.ErrorStepMoves[3]);
 	// Averages over the report's span, from the connections' running totals (OutBytesPerSecond is the last second only).
 	FString Clients;
 	FString Packets;
@@ -509,8 +479,8 @@ FString UHOLUnitReplicationSubsystem::MakeReport() const
 	// States really written, against the ones the send rule wrote into the slots (a state rewritten before the next
 	// update leaves once; a lost one leaves again).
 	const double WireStates = (UE::HeroesOfLiberty::Net::GetNumSerializedUnitStates() - Stats.SerializedStates) / Seconds / FMath::Max(NumClients, 1);
-	return FString::Printf(TEXT("Net (server): %d units, %d steps in %.1f s, %.2f sends per unit and per second (%s), %d gone; %.3f ms per step (max %.3f); %.0f updates per second; %.0f states on the wire per client and per second; out B/s per client:%s; packets/s:%s%s"),
+	return FString::Printf(TEXT("Net (server): %d units, %d steps in %.1f s, %.2f sends per unit and per second (%s), %d gone; %.3f ms per step (max %.3f); %.0f updates per second; %.0f states on the wire per client and per second; out B/s per client:%s; packets/s:%s"),
 		Records.Num(), Stats.NumSteps, Seconds, TotalSends / UnitSeconds, *Reasons, Stats.NumDepartures,
 		Stats.NumSteps > 0 ? Stats.TotalMs / Stats.NumSteps : 0.0, Stats.MaxMs, Replicator->GetNetUpdateFrequency(), WireStates,
-		Clients.IsEmpty() ? TEXT(" none") : *Clients, Packets.IsEmpty() ? TEXT(" none") : *Packets, *Probe);
+		Clients.IsEmpty() ? TEXT(" none") : *Clients, Packets.IsEmpty() ? TEXT(" none") : *Packets);
 }
