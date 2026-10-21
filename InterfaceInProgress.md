@@ -54,7 +54,7 @@ choisis par **A Z E R**. Déjà fait : l'attaque-déplacement est passée de A �
 
 #### 2026-10-21
 
-- mycrusader-01. Worktree `MyCrusader-J5c` pris (`IN_USE.txt`), branche **`peasant-grid`** depuis `main` ea84b7b.
+- mycrusader-01. Worktree `HeroesOfLiberty-J5c` pris (`IN_USE.txt`), branche **`peasant-grid`** depuis `main` ea84b7b.
   Choix de l'utilisateur ci-dessus. G.1 confiée à un sous-agent (un livrable, 15 min / 300k tokens).
 - G.1, 1re passe (sous-agent, 15 min, rien de commité) : `BuildingTypes.csv` colonne **`Age`** (tous 0) et
   **`BuildGridSlot` = index de cellule de la grille 3 × 4** (Maison 4 = Q, Bûcherons 5 = S, Mineurs 6 = D, Caserne 7 = F),
@@ -206,4 +206,4 @@ choisis par **A Z E R**. Déjà fait : l'attaque-déplacement est passée de A �
   retirée, reste « barre du bas trop large sous 1500 px », review du GDD reprise à D341.
 - G.3 faite : commit f87134d sur `peasant-grid`, `main` fusionné dedans (79131ef, sans conflit), `quick_check -Parts
   tests,production,combat,build` **PASS** (444 s, tests 90/90), fusion dans `main` **3ca380b**. Worktree
-  `MyCrusader-J5c` libéré. Reste noté dans `EtapeDefini.md` : barre du bas trop large sous 1500 px. **Chantier clos.**
+  `HeroesOfLiberty-J5c` libéré. Reste noté dans `EtapeDefini.md` : barre du bas trop large sous 1500 px. **Chantier clos.**

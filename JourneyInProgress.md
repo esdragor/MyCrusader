@@ -9,8 +9,8 @@ Cohabitation (mêmes règles que le chantier menu) : M2 tourne dans une autre se
 décisions numérotées **D252 et suivantes**, tenues ici pendant le plan puis reportées au GDD (§ 21) ; commits sur `main`
 par chemins explicites, **sauf travail en parallèle (règle de l'utilisateur, 2026-10-16) : une session qui doit
 travailler en même temps qu'une autre dans la copie principale prend le worktree de réserve
-`C:\Users\baudo\Documents\MyCrusader-A`** (le chantier animations a le sien, `MyCrusader-J5c`, branche `j5c-anims`).
-Mode d'emploi de `MyCrusader-A` : vérifier qu'il est libre (pas de fichier `IN_USE.txt` à sa racine), y écrire
+`C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`** (le chantier animations a le sien, `HeroesOfLiberty-J5c`, branche `j5c-anims`).
+Mode d'emploi de `HeroesOfLiberty-Elrond` : vérifier qu'il est libre (pas de fichier `IN_USE.txt` à sa racine), y écrire
 `IN_USE.txt` (session, chantier, date), remettre sa branche au niveau de `main`, travailler sur une branche à soi,
 compiler et tester là-bas (binaires et `Saved_Tests` séparés : un jeu d'essai ouvert ailleurs ne bloque pas la
 compilation), fusionner dans `main` après validation de l'utilisateur, puis effacer `IN_USE.txt`. Les journaux
@@ -75,7 +75,7 @@ vérifier sur S1 et S2.
 | J5b.2 HUD de la récolte | **fait** (2026-10-16, **validée** par l'utilisateur, commitée) : D307 (activité « en tournée de récolte » dans les 3 bits de l'état, comptes de récolteurs au `PlayerState` du seul propriétaire) ; source sélectionnable (nom, « Reste : 1840 », anneau au sol), bloc d'un groupe (« 3 en récolte · 2 inactifs »), comptes par ressource « (2) » dans la barre du haut, compteur « Inactifs : N » cliquable et touche « . » (`IA_NextIdle` : « . », la touche « ; . » de l'AZERTY, « . » du pavé) ; textes fr / en / ja ; tests 36/36 (`Movement.Picking` étendu), essai scripté solo conforme, `quick_check` PASS (77 s) ; **essai de l'utilisateur** : « super », mais des Paysans font d'énormes détours dans leurs allers-retours → **D308** (suivi d'un chemin sans grand virage, détour gardé vérifié, sortie d'une poche du navmesh) : marches anormalement longues 37 → 2, `quick_check` PASS (75 s) ; 2e essai : moins de détours, mais les Paysans se gênent devant le centre → **D309** (choix de l'utilisateur : en aller-retour, un Paysan traverse toutes les unités ; plus de place autour d'une source → même ressource à 8 m, sinon inactif devant), faite, compile sans avertissement, `quick_check` PASS (75 s) ; 3e essai → empilement à la source et amas récolteurs / inactifs corrigés (réservations sur le point réel, toutes sources, points d'attente des inactifs), **massifs** (recherche de proche en proche dans tout le bois, D309 précisée), places serrées **à 100 cm** tournées vers le dépôt (capture d'AoE4 de l'utilisateur) ; `quick_check` PASS, tests 38/38, S7 court PASS (2,39 ms) ; **validée** (« très bien », `hol.Gather.SpotSpacing 100`) |
 | J5b.3 Vérification et essai | **fait** (2026-10-16) : D309 précisée (point 6 : bosquet voisin à ~20 m, rangées d'attente sans limite), **validée**, commitée (`516ac75`) ; parties « gather » solo et 2 clients de `quick_check` (PASS en 77-78 s, tests 39/39, verbe `waitidle`, `SoftQuit`), correctif de `Stop` (inactifs empilés au dépôt : 29-56 → 115-120 cm), essai de l'utilisateur **validé**, commitées (`a067c11`) ; mesures au repos (`684045f`) : S1 2,184 ms, S2 2,738 ms, S7 2,155 ms par pas, S5 31 227 o/s par client (écart 21,6 cm), tous PASS ; 632 bois/s du S7 court = effet de fenêtre (régime 1 201 bois/s sur 180 s) ; Paysan sans place inactif **en gardant sa charge**, comme dans AoE4 : **confirmé** par l'utilisateur |
 | J5b.4 Clôture : D307 à D309 au GDD | **fait** (2026-10-16) : lignes D307 à D309 au § 21 (D296 précisée par D309), paragraphe « Parcours J5b : les 4 ressources et le HUD » au § 16.6 (« Parcours J5a » précisé : les 15 m remplacés par les massifs). **J5b close.** |
-| J5c.1 Animations de récolte | **fait** (2026-10-16, worktree `MyCrusader-J5c`, détail dans `AnimationsInProgress.md`) : source tranchée (faites par Claude, option A) ; chaîne de fabrication par script ; 6 séquences (hache, pioche, cueillette, marches chargées nourriture / bois / pierre-or) ; ressource récoltée dans les valeurs libres de l'activité (0 bit) ; choix chez le client (`HOLUnitAnimation::Choose`), Paysan tourné vers sa source ; pas de geste au dépôt ; tests 41/41, `quick_check` PASS ; essai de l'utilisateur **validé** (« c'est bon »), commitée (a9e4269), **fusionnée dans `main`** (8d18407, tests 47/47) ; A/B S7 : +0,15 ms par image au fil de jeu |
+| J5c.1 Animations de récolte | **fait** (2026-10-16, worktree `HeroesOfLiberty-J5c`, détail dans `AnimationsInProgress.md`) : source tranchée (faites par Claude, option A) ; chaîne de fabrication par script ; 6 séquences (hache, pioche, cueillette, marches chargées nourriture / bois / pierre-or) ; ressource récoltée dans les valeurs libres de l'activité (0 bit) ; choix chez le client (`HOLUnitAnimation::Choose`), Paysan tourné vers sa source ; pas de geste au dépôt ; tests 41/41, `quick_check` PASS ; essai de l'utilisateur **validé** (« c'est bon »), commitée (a9e4269), **fusionnée dans `main`** (8d18407, tests 47/47) ; A/B S7 : +0,15 ms par image au fil de jeu |
 | J5c.2 Charge visible | **fait** (2026-10-16, worktree) : choix de l'utilisateur (hache, pioche, mains nues pour les baies ; panier, fagot, hotte de pierre ou d'or ; charge montrée à l'arrêt : repos chargés) ; `SKM_Peasant` (pièces fusionnées, outils sur `ik_hand_gun`, 4e float par instance, WPO), `TP_Peasant` ; tests 50/50, `quick_check` PASS ; essai **validé** (« très bien »), **fusionnée dans `main`** (fad246d, tests 54/54) ; A/B S7 : CPU inchangé, GPU +1,06 ms |
 | J5c.3 « +10 » au dépôt | **fait** (2026-10-16, 98858d0) : « +N » au seul propriétaire (appel client non fiable par pas, 0 bit dans l'état des unités), `hol.Gather.LogPopups`, capture `gather_popup` et contrôles solo et 2 clients dans `quick_check` (PASS en 78 s, tests 39/39) ; essai **validé** (« très bien ») |
 | J5c.4 Vérification et clôture : D318 à D323 au GDD | **fait** (2026-10-16) : mesures au repos de J6a.6 (`main` bfda9b4, toutes les animations et le bâtisseur) : S1 2,276 / S2 2,882 / S7 2,303 ms, S5 30 937 o/s par client (écart 23,3 cm), tous PASS, GPU de S7 3,34 ms (2,15 avant J5c) ; tests 62/62 et `quick_check` PASS à la dernière fusion ; partie « anims » de `quick_check` ajoutée en parallèle (partie « anims », 16 s : rapport `hol.Units.AnimReport` ; geste et pièce de chaque Paysan dessiné au travail, en marche chargée et debout chargé ; `quick_check` PASS en 163 s) ; D318 à D323 au § 21 (D298 précisée : fait en J5c), paragraphe « Parcours J5c : la vie de la récolte » au § 16.6, numéro suivant de la review (§ 22) passé à D324. **J5c close, J5 close.** |
@@ -88,8 +88,8 @@ vérifier sur S1 et S2.
 | J7b.5b Lignes de la file d'ordres (D328) | **en cours** (2026-10-20) : lignes (un seul ordre compris), ordre de la file, 3 correctifs de la revue validés à l'essai et commités (c2b44e4) ; lignes de ralliement (bâtiment → fanion, unité née) et traits de 6,25 cm validés et commités (ed37f00) ; contrôles des lignes solo, ralliement, 2 clients (94eb04e), `-Full` PASS. **J7b.5b close** |
 | J7b.6 Vérification et clôture de J7b | **fait** (2026-10-20) : contrôle du couteau du Paysan, `-Full` PASS (609 s, 83/83), essai complet du combat validé (A clic gardé pour plus tard). **J7b close** ; GDD à la clôture de J7 |
 | J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
-| J7c.1 Archer | **fait** (2026-10-20, mycrusader-37, worktree `MyCrusader-A`, branche `j7c-archer`, b739547 ; `-Full` PASS 593 s ; `main` avancé à 4dc01ad) : détails de l'Archer tranchés (A : tout garder, voir journal) ; **(a) faite** (sous-agent, 10 min, 120k tokens ; non commitée) : `SKM_Archer`, `TP_Archer`, `A_Archer_Idle` / `Walk` / `Attack` / `Fall` fabriqués, relectures PASS, flèche cachée par échelle 0,001 de `ik_hand_gun` (images 25-35 du tir, toujours au repos, en marche, en chute) ; **(b) faite** (ligne `Archer` : 584 cm/s, 70 PV, 30 nourriture + 50 bois, 15 s ; Caserne **E** ; textes fr / en / ja) ; **(c) faite** : flèche cachée vue en jeu (captures), `AnimReport` (repos, marche, tir), `build barracks` produit un Archer, `-Parts build` PASS (270 s), rapide PASS, scénario `archers` ; `j7c-archer` sur `main` 02a8963 ; **essai validé** (« tout est bon » ; retour 8 pour plus tard : hit and run impossible, geste de tir trop long) |
-| J7c.2 Tir | **en pause** (2026-10-20, mycrusader-cc, `MyCrusader-A`, branche `j7c-shot`) : dégât différé et flèches en solo (4167f03), rangs d'un seul type et places par profondeur (2e3754b), validés à l'essai ; flèches chez le client réseau (b2) commencées, non commitées ; reprise le 2026-10-21 à 9 h (fin du journal) |
+| J7c.1 Archer | **fait** (2026-10-20, mycrusader-37, worktree `HeroesOfLiberty-Elrond`, branche `j7c-archer`, b739547 ; `-Full` PASS 593 s ; `main` avancé à 4dc01ad) : détails de l'Archer tranchés (A : tout garder, voir journal) ; **(a) faite** (sous-agent, 10 min, 120k tokens ; non commitée) : `SKM_Archer`, `TP_Archer`, `A_Archer_Idle` / `Walk` / `Attack` / `Fall` fabriqués, relectures PASS, flèche cachée par échelle 0,001 de `ik_hand_gun` (images 25-35 du tir, toujours au repos, en marche, en chute) ; **(b) faite** (ligne `Archer` : 584 cm/s, 70 PV, 30 nourriture + 50 bois, 15 s ; Caserne **E** ; textes fr / en / ja) ; **(c) faite** : flèche cachée vue en jeu (captures), `AnimReport` (repos, marche, tir), `build barracks` produit un Archer, `-Parts build` PASS (270 s), rapide PASS, scénario `archers` ; `j7c-archer` sur `main` 02a8963 ; **essai validé** (« tout est bon » ; retour 8 pour plus tard : hit and run impossible, geste de tir trop long) |
+| J7c.2 Tir | **en pause** (2026-10-20, mycrusader-cc, `HeroesOfLiberty-Elrond`, branche `j7c-shot`) : dégât différé et flèches en solo (4167f03), rangs d'un seul type et places par profondeur (2e3754b), validés à l'essai ; flèches chez le client réseau (b2) commencées, non commitées ; reprise le 2026-10-21 à 9 h (fin du journal) |
 
 ## Prochaine étape exacte
 
@@ -155,7 +155,7 @@ vérifier sur S1 et S2.
    journal) ; J5c.1 y renvoie. **J5c.1a faite** (2026-10-16) : 6 séquences fabriquées et relues (hache, pioche,
    cueillette, marches chargées nourriture / bois / pierre-or), jugées sur les aperçus ; pas encore branchées.
    **Worktree** (2026-10-16, demande de l'utilisateur) : le code de J5c.1 b à f se fait dans
-   `C:\Users\baudo\Documents\MyCrusader-J5c`, branche **`j5c-anims`** (depuis cd39c6c), fusionnée dans `main` après
+   `C:\Users\baudo\Documents\HeroesOfLiberty-J5c`, branche **`j5c-anims`** (depuis cd39c6c), fusionnée dans `main` après
    validation de l'utilisateur ; les journaux restent dans la copie principale. Raisons : le jeu d'essai de
    l'utilisateur ne bloque plus la compilation, pas de code à moitié écrit dans les compilations de l'autre session.
    Fichiers binaires pris par J5c.1 (à ne pas régénérer sur `main`) : table des types d'unités, fournisseurs
@@ -206,12 +206,12 @@ vérifier sur S1 et S2.
    file, retour à sa place, couleur du joueur. Orientation au front chez le client reportée à J7b (choix B).
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
-   worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
-   **➡ Reprise au 2026-10-21 (9 h) : J7c.2 en pause** dans `MyCrusader-A`, branche `j7c-shot` : voir le point « Séance
+   worktree `HeroesOfLiberty-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
+   **➡ Reprise au 2026-10-21 (9 h) : J7c.2 en pause** dans `HeroesOfLiberty-Elrond`, branche `j7c-shot` : voir le point « Séance
    mise en pause » de l'entrée « 2026-10-20 — J7c.2 : le tir » (fin du journal). Avant :
    **J7c.1 faite et validée** (journal « J7c.1 : l'Archer », `main` 4dc01ad) ; suite :
    **J7c.2** (tir : dégât différé selon la distance, flèches déduites chez le client, mort par flèche ; J7c-Q1 à Q6 dans
-   « Plan de J7c »), à penser avec le retour d'essai 8 (hit and run) ; corps gardés 30 s : mycrusader-a6 (`MyCrusader-J5c`).
+   « Plan de J7c »), à penser avec le retour d'essai 8 (hit and run) ; corps gardés 30 s : mycrusader-a6 (`HeroesOfLiberty-J5c`).
    **Reprise au 2026-10-20 (soir) : J7b close** (journal « J7b.6 : clôture de J7b ») ; suite : **J7c** (plan de J7) ;
    7 retours d'essai en attente (journal du 2026-10-20) ; GDD et mesures à la fin de J7. Ce qui suit est l'historique.
    **Prochaine étape exacte (nouvelle séance)** : J7b.2 à J7b.5 commitées (ce6a4d2), D327 (ee63932), gestes polis,
@@ -266,11 +266,11 @@ vérifier sur S1 et S2.
      paires d'Archers de part et d'autre d'un Homme d'armes : tous le visent, il prend le plus proche et s'en
      rapproche) ; mort hors mêlée (`HOLCombatProcessor.cpp` ~l. 186 : ni `StopWalk`, ni
      `Disengage`, ni activité `Dying`) **à compléter en J7c.2** (flèches) ; `hol.Combat.Enabled 0` saute aussi la
-     destruction des mourantes (**corrigé le 2026-10-21**, branche `combat-dying-off` de `MyCrusader-J5c` : combat
+     destruction des mourantes (**corrigé le 2026-10-21**, branche `combat-dying-off` de `HeroesOfLiberty-J5c` : combat
      coupé, personne ne combat et les flèches en vol attendent, mais une unité à 0 PV tombe et part 1 s après ;
      reproduit par la partie `smoke` de `quick_check`, qui coupait le combat juste après la mort du Paysan : « 1 left
      dying » avant, 0 après ; `-Parts tests,smoke,combat` PASS, 211 s) ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées
-     (**corrigé le 2026-10-21**, branche `review-fixes` de `MyCrusader-Galadriel` : 4 095 vraies places, 0 à 4 094, en
+     (**corrigé le 2026-10-21**, branche `review-fixes` de `HeroesOfLiberty-Galadriel` : 4 095 vraies places, 0 à 4 094, en
      65 blocs ; le serveur ramenait déjà toute place ≥ 4 095 à « inconnue », mais le client lisait 4 095 comme la place
      du 66e bloc ; `FHOLNetUnitState::HasTargetSlot`, cas ajoutés à `Net.CombatSendRule`) ;
      `AttackerCount` de la victime d'une unité tuée trop haut d'un pour la fin du pas (sans effet visible ; **corrigé le
@@ -301,7 +301,7 @@ vérifier sur S1 et S2.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;
       J7a.4 a touché le mouvement (marche en bloc, `AssignPlaces`) : à surveiller aux mesures.
    2. Non commité, **hors de ce chantier** : `AnimationsInProgress.md` (session mycrusader-32 : pièces allégées au LOD 3,
-      essai de l'utilisateur en attente, worktree `MyCrusader-J5c`) ; `Build/` (non suivi).
+      essai de l'utilisateur en attente, worktree `HeroesOfLiberty-J5c`) ; `Build/` (non suivi).
 
 **Règle de cohabitation avec le stress test** : seule une carte qui a des emplacements de départ reçoit la caméra RTS ;
 une carte sans emplacement (`StressTest`, `BattleMap`) garde le pion par défaut, donc le stress test et son fichier
@@ -3069,7 +3069,7 @@ d'épée).
   lancés en même temps dans ce dossier : clients en trop sur le serveur) ; contrôle « centres sur la grille » corrigé
   (groupes de l'expression aplatis par PowerShell). À relancer seul : `quick_check`, S7 court, captures.
 - Cases de 3 m (vérification seule) : compilation à jour, table refaite, **`quick_check` PASS en 99 s** (toutes les
-  parties, tests 45/45 ; essai de l'utilisateur ouvert depuis `MyCrusader-J5c` en même temps). Captures `cam_2p_start`
+  parties, tests 45/45 ; essai de l'utilisateur ouvert depuis `HeroesOfLiberty-J5c` en même temps). Captures `cam_2p_start`
   et `gather_*` : forum de 12 m net, bosquet et baies un peu plus loin de ses bords (anneau de sources prévu pour 15 m),
   Paysans autour, aucun dans l'emprise, « +4 » au bord du centre. **S7 court non lancé** (essai en cours) : à faire.
 - **S7 court après les cases de 3 m** (sous-agent, 20 s hors écran, `j6a2_s7.log`) : **2,991 ms PASS de justesse**
@@ -3665,7 +3665,7 @@ d'épée).
   l'entrée de l'écart), `build_gap_houses` (gros plan : deux maisons rentrées dans leurs cases, l'écart, fantôme d'une troisième
   maison collée à Q : cadre des cases et arêtes du corps à l'intérieur).
 - **S1 / S2 / S7 courts** hors écran, **machine très chargée** (Overwatch, Opera ouverts ; 18-44 % avant) : S1 2,529 / 2,636 ms
-  PASS, S2 3,137 / 3,349 ms **FAIL**, S7 2,694 / 2,469 ms PASS. **A/B** (base 7595c81 compilée dans `MyCrusader-A`, rendu
+  PASS, S2 3,137 / 3,349 ms **FAIL**, S7 2,694 / 2,469 ms PASS. **A/B** (base 7595c81 compilée dans `HeroesOfLiberty-Elrond`, rendu
   à sa branche ensuite, 10 s, A B A B) : S2 base 3,368 / 3,499 contre 3,455 / 3,227 ; S7 base 2,686 / 2,546 contre 2,499 /
   2,537 : **aucun surcoût** ; l'échec de S2 vient de la charge. **S1 / S2 / S7 au repos à refaire.**
 - À juger à l'essai : la taille des bâtiments (65 % des cases pour une maison), l'écart de 2,1 m, le glissement le long d'un
@@ -3947,7 +3947,7 @@ d'épée).
 
 ### 2026-10-18 — J7a.3 : apparence des soldats
 
-- Worktree `MyCrusader-J5c` cédé par mycrusader-e3 (rien en cours, conseils sur la chaîne relayés au sous-agent).
+- Worktree `HeroesOfLiberty-J5c` cédé par mycrusader-e3 (rien en cours, conseils sur la chaîne relayés au sous-agent).
 - Choix de l'utilisateur : **un maillage par type** (`SKM_Spearman`, `SKM_ManAtArms`, plus tard `SKM_Archer` ; armes
   toujours visibles, sans repli ni choix par instance) ; **lance droite, main droite** (verticale, talon près du sol au
   repos, pointe en l'air, droite en marche).
@@ -4025,7 +4025,7 @@ d'épée).
 ### 2026-10-18 — J7a.4 : la formation
 
 - Choix de l'utilisateur : **S2 gardé pour la fin de J7** (règle des mesures), pas de marge regagnée avant J7a.4.
-- **1re boucle** lancée (sous-agent, worktree `MyCrusader-J5c`) : `HOLFormation` branché dans l'ordre de déplacement au
+- **1re boucle** lancée (sous-agent, worktree `HeroesOfLiberty-J5c`) : `HOLFormation` branché dans l'ordre de déplacement au
   sol d'un groupe (Paysans compris ; places de récolte et de chantier inchangées), rangs orientés selon la marche,
   espacements, place dans un obstacle.
 
@@ -4042,7 +4042,7 @@ d'épée).
 - Test `Formation.Group` ajouté. Compilation sans avertissement ; **tests 70/70** ; **`quick_check -Parts
   tests,camera,move,anims` PASS** (43 s ; `move` inchangée : 3 Paysans à moins de 3 m du point, sans chevauchement).
 - Reste : vitesse du plus lent, glisser du clic droit, reprise de place ; essai de l'utilisateur.
-- **2e boucle** lancée (sous-agent, worktree `MyCrusader-J5c`) : vitesse du plus lent tant que le groupe est en
+- **2e boucle** lancée (sous-agent, worktree `HeroesOfLiberty-J5c`) : vitesse du plus lent tant que le groupe est en
   formation, reprise de place après bousculade. Le glisser du clic droit suivra (3e boucle).
 - **2e boucle faite** (sous-agent, worktree, rien de commité). **Vitesse du plus lent** : un ordre en formation donne à
   chaque unité `FHOLMoveOrderFragment::bFormation` et `MarchSpeed` (vitesse de la table du plus lent du groupe) ;
@@ -4244,7 +4244,7 @@ d'épée).
 
 ### 2026-10-18 — J7a.5 : groupes de contrôle et HUD
 
-- **1re boucle** lancée (sous-agent, worktree `MyCrusader-J5c`) : groupes de contrôle de D30 (Ctrl + chiffre, chiffre,
+- **1re boucle** lancée (sous-agent, worktree `HeroesOfLiberty-J5c`) : groupes de contrôle de D30 (Ctrl + chiffre, chiffre,
   deux appuis, Maj + chiffre, Ctrl + Maj + chiffre) et Ctrl + A (soldats seuls), clavier AZERTY compris. HUD et textes
   à la 2e boucle.
 - **1re boucle faite** (sous-agent, worktree, rien de commité). `AHOLPlayerController` : `AssignControlGroup`,
@@ -4456,7 +4456,7 @@ d'épée).
   179 cm devant à 124 cm de haut), **`maa_attack`** (taille en diagonale, bouclier levé, 1,375 s, 44 images à 32 i/s),
   frappe à **50 % de la boucle** (`ATTACK_HIT_FRACTION`, accordée à la préparation de 50 % du serveur) ;
   **`spear_fall`, `maa_fall`, `peasant_fall`** (1 s, 30 images, non bouclée ; bascule **en arrière**, arme **gardée
-  en main** et posée au sol, bouclier au bras). Aperçus dans `MyCrusader-J5c\Saved\AnimPreview\` :
+  en main** et posée au sol, bouclier au bras). Aperçus dans `HeroesOfLiberty-J5c\Saved\AnimPreview\` :
   `soldiers_attack.png`, `soldiers_attack_windup.png`, `troops_fall.png`, `troops_fall_mid.png` et les planches de
   chaque geste. **En attente de la revue de l'utilisateur** (sens de la chute, arme gardée ou lâchée, taille ou estoc
   pour l'Homme d'armes, amplitude de l'estoc), puis fabrication, fournisseurs, branchement sur Attack / Dying.
@@ -4476,7 +4476,7 @@ d'épée).
   choix de J7b.3 et J7b.4), puis l'essai de J7b.
 - L'utilisateur veut **tout tester** lui-même. Ajout de `hol.Units.SpawnHere [Count=5] [Type=Spearman] [Slot=1]
   [Radius=600]` (`HOLPlayerController.cpp`, développement seulement) : fait apparaître des unités autour du centre de
-  la caméra, pour l'essai du combat. Compilé (20 s), jeu lancé depuis `MyCrusader-J5c` pour l'essai de J7b.
+  la caméra, pour l'essai du combat. Compilé (20 s), jeu lancé depuis `HeroesOfLiberty-J5c` pour l'essai de J7b.
 
 ### 2026-10-19 — Essai de J7b par l'utilisateur
 
@@ -4488,7 +4488,7 @@ d'épée).
   3. **Population libérée dès la mort**, pas à la disparition 1 s plus tard.
 - Validés par l'essai : S / D, Maj, clic droit sur un ennemi, attaque-déplacement unité par unité, Arrêt et Tenir hors
   Maj, attaque ordonnée qui annule Tenir, barres de vie vert / rouge, bloc de sélection.
-- Corrections lancées en sous-agents dans `MyCrusader-J5c` : d'abord touche A + population, puis la poussée.
+- Corrections lancées en sous-agents dans `HeroesOfLiberty-J5c` : d'abord touche A + population, puis la poussée.
 - L'utilisateur : « le quick_check devrait être quick et pas durer 8 min ». **D327** : deux niveaux (rapide < 1 min par
   défaut, complet derrière `-Full` avant un commit d'étape et à une clôture). À faire après la poussée.
 - **Touche A + population faites** (sous-agent, ~35 min, rien de commité). **A** : `AttackMoveCell` 4 → 0 ; la grille
@@ -4546,7 +4546,7 @@ d'épée).
   pieds fixes), boucle **2 s** (`AttackInterval` du Paysan), 60 images, frappe image 30 (50 %), armement à 40 %. Pour
   la fabrication : passer dans `GESTURES` et afficher la hache pendant l'attaque (colonne `AttackProp` sur le modèle de
   `BuildProp`). Aperçus : `peasant_attack_contact_sheet.png`, `peasant_attack_zoom.png`, `peasant_attack_hit.png`,
-  `peasant_attack_windup.png` (`MyCrusader-J5c\Saved\AnimPreview\`). En attente de la revue de l'utilisateur, avec
+  `peasant_attack_windup.png` (`HeroesOfLiberty-J5c\Saved\AnimPreview\`). En attente de la revue de l'utilisateur, avec
   l'essai des gestes des soldats.
 
 ### 2026-10-19 — Essai des gestes de combat
@@ -4579,7 +4579,7 @@ d'épée).
   en arc, > 1 fouet, paire arrivée / départ) ; `"leads"` (avance / retard par os, `"loop": True`), valeurs exactes sur
   les poses clés (frappe inchangée, image 21). **`maa_attack`** : anticipation, épée qui monte plus loin et marque un
   temps, taille à pleine vitesse au coup (36 m/s), rebond et garde dépassée, poids pied arrière → genou avant ; bassin
-  en avance de 6 %, bouclier en retard de 4 %. Aperçu `MyCrusader-J5c\Saved\AnimPreview\maa_attack_before_after.gif`
+  en avance de 6 %, bouclier en retard de 4 %. Aperçu `HeroesOfLiberty-J5c\Saved\AnimPreview\maa_attack_before_after.gif`
   (avant / après, côté + RTS). Reste : validation de l'utilisateur, puis Lancier, fabrication, essai.
 - **Préchargement des types d'unités fait** (sous-agent, dans les limites ; rien de commité). `UHOLUnitSubsystem::
   OnWorldBeginPlay` → `PreloadTypes` : `FindTemplate` pour chaque ligne, **synchrone au chargement de la carte**
@@ -4607,7 +4607,7 @@ d'épée).
   Rotation **bassin 30°** (avant 13,6°), **épaules 69°** (avant 60,6°) ; bassin qui mène (image 18 : bassin −11°,
   épaules −1°) ; poids −7 cm à l'armement → +8 cm au coup. Pieds, poignée, boucle : 0 cm ; frappe inchangée (image 21,
   même point, 35,7 m/s). L'épée effleure le haut du bras droit (≤ 0,9 cm, images 19-20). GIF trois vues (côté, RTS,
-  dessus avec lignes hanches / épaules) : `MyCrusader-J5c\Saved\AnimPreview\maa_attack_hips.gif`.
+  dessus avec lignes hanches / épaules) : `HeroesOfLiberty-J5c\Saved\AnimPreview\maa_attack_hips.gif`.
 - Avis de l'utilisateur : **non** — « il faut que la garde de l'épée se trouve devant la position du bouclier, que le
   haut du corps se tourne en fait ». Compris : à la fin de la taille, la poignée de l'épée passe **devant le bouclier**
   (côté gauche), portée par une vraie rotation du haut du corps, pas seulement par le bras. Boucle suivante.
@@ -4616,7 +4616,7 @@ d'épée).
   reprises. **Épaules 124°** (+54° à l'armement → −70° au suivi), **bassin 39°**. Fin du suivi (image 25) : **garde de
   l'épée devant le bouclier** (garde −36 / 45 / 104 cm, bouclier −37 / 12 / 127), bras droit croisé. Pieds, poignée,
   boucle : 0 cm ; frappe toujours image 21 (pointe −40 / 115 / 89) ; épée et bras jamais à travers le bouclier. Bouclier
-  assez loin à gauche aux images 27-28 (réglable). GIF : `MyCrusader-J5c\Saved\AnimPreview\maa_attack_torso.gif`.
+  assez loin à gauche aux images 27-28 (réglable). GIF : `HeroesOfLiberty-J5c\Saved\AnimPreview\maa_attack_torso.gif`.
 - **Attaque de l'Homme d'armes (haut du corps) validée** en aperçu (« ça m'a l'air bien »). Suite : polir l'estoc du
   Lancier de la même façon (aperçu GIF), puis fabriquer les deux, puis essai (avec préchargement et ralliement sur
   fantôme) et commit.
@@ -4626,7 +4626,7 @@ d'épée).
   avant), puis le tronc, puis les bras. Frappe identique (image 28, pointe à 205 cm devant, 133 cm de haut ; les
   179 / 124 cm étaient la pointe en garde, `preview_animation` mesure l'image 0 pour une arme à `"edge"`). Pieds et
   boucle : 0 cm ; mains sur la hampe 4,8 cm max (5,0 avant), 0 à la frappe. GIF :
-  `MyCrusader-J5c\Saved\AnimPreview\spear_attack_polished.gif`.
+  `HeroesOfLiberty-J5c\Saved\AnimPreview\spear_attack_polished.gif`.
 - Avis de l'utilisateur sur l'estoc : **la pointe plus au centre** (elle est à 17 cm à droite à la frappe) et **pas
   tout le corps en même temps** (enchaînement plus marqué : jambes → bassin → tronc → bras). Boucle suivante.
 - **Estoc v3** (sous-agent, dans les limites ; rien fabriqué). Pointe **au centre** à la frappe (droite 0, avant
@@ -4634,7 +4634,7 @@ d'épée).
   traversait le ventre). **Enchaînement** : leads augmentés (avance du bassin 0,04 → 0,12, rotation 0,08, dos
   0,065 / 0,05 / 0,038, clavicule 0,028, coudes 0,014) ; départs : poids image 19, bassin 21, tronc 22, bras et lance
   26 (écart 7 images au lieu de 1), retour dans le même ordre. Pieds et boucle 0 cm ; mains 4,1 cm max, 0 à la frappe ;
-  hampe qui frôle le corps (3 points à 0,4 cm, images 32-34). GIF `MyCrusader-J5c\Saved\AnimPreview\spear_attack_v3.gif`.
+  hampe qui frôle le corps (3 points à 0,4 cm, images 32-34). GIF `HeroesOfLiberty-J5c\Saved\AnimPreview\spear_attack_v3.gif`.
 - **Estoc v3 validé** (« très bien »). Fabrication des deux attaques polies lancée (sous-agent).
 - **Attaques polies fabriquées** (sous-agent, dans les limites ; rien de commité). `A_ManAtArms_Attack` (42 images,
   frappe image 21, arme jusqu'à 37,3 m/s) et `A_Spearman_Attack` (56 images, frappe image 28) refaites en place
@@ -4651,7 +4651,7 @@ d'épée).
   hache qui traîne puis fouette (47 %), frappe image 30, suivi (58 %), rebond (66 %), garde dépassée (86 %). **Bassin
   41°**, **épaules ~100°** (avant 63°) ; départs : poids 21, bassin 22, tronc 23, main et hache 27 ; tête de hache à
   la frappe dans l'axe (−0,2 / 113,5 / 122 cm). Pieds et boucle 0 cm, mains 0,7 cm, manche jamais dans le corps.
-  GIF `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_polished.gif`, en attente de la revue de l'utilisateur.
+  GIF `HeroesOfLiberty-J5c\Saved\AnimPreview\peasant_attack_polished.gif`, en attente de la revue de l'utilisateur.
 - Avis de l'utilisateur : **le Paysan attaque au couteau**, pas à la hache. Geste choisi : **coup de pointe à une
   main** (épaule droite qui avance, couteau planté vers le ventre, main gauche en avant ; porté par le bassin et le
   tronc). Couteau visible seulement pendant l'attaque (comme le marteau). Boucle suivante : pièce couteau + geste, GIF.
@@ -4661,7 +4661,7 @@ d'épée).
   reculée, temps marqué), frappe image 30 (bras tendu, poing gauche devant le visage), suivi 4,5 cm, retrait, garde
   dépassée ; bassin 29°, épaules 69° ; départs poids 21, bassin 22, tronc 23, bras 27. Pointe à la frappe : 2,2 cm de
   l'axe, 77 cm devant, 105 cm de haut. Contrôles 0 cm. Couteau petit vu de la caméra RTS (épaississable). GIF
-  `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_knife.gif`. Fabrication : maillage refait, geste dans `GESTURES`,
+  `HeroesOfLiberty-J5c\Saved\AnimPreview\peasant_attack_knife.gif`. Fabrication : maillage refait, geste dans `GESTURES`,
   colonne `AttackProp` (8 pour le Paysan) sur le modèle de `BuildProp`.
 - Avis de l'utilisateur : le Paysan doit avoir une **position de peur, ce n'est pas un combattant**. Boucle suivante :
   posture craintive (voûté, tête rentrée, poids en arrière, bras gauche en protection), coup hésitant puis recul vif.
@@ -4670,13 +4670,13 @@ d'épée).
   serré à la hanche, avant-bras gauche devant le visage. Rythme : garde qui tremble (~1 cm), faux départ (14-19), se
   ramasse (25), coup court surtout du bras (bassin 12°, poids +8 cm, sans fente) image 30, recul vif (retour plus
   rapide que l'aller), se recroqueville (43). Pointe 3,5 / 67 / 103 cm. Contrôles 0 cm. GIF
-  `MyCrusader-J5c\Saved\AnimPreview\peasant_attack_fear.gif`.
+  `HeroesOfLiberty-J5c\Saved\AnimPreview\peasant_attack_fear.gif`.
 - **Couteau en posture de peur validé** par l'utilisateur, commité en aperçu (f7b0b27). **Fin de séance** (demande de
   l'utilisateur) : reprise à « Prochaine étape exacte » (fabrication du coup du Paysan).
 
 ### 2026-10-20 — Fabrication du coup de couteau du Paysan
 
-- Reprise. Worktree `MyCrusader-J5c` propre, au niveau de `main` (b9d91b8), aucun Unreal en cours. Fabrication lancée
+- Reprise. Worktree `HeroesOfLiberty-J5c` propre, au niveau de `main` (b9d91b8), aucun Unreal en cours. Fabrication lancée
   (sous-agent, un livrable, 15 min / 300k tokens) : maillage avec le couteau, geste dans `GESTURES` et fabriqué,
   colonne `AttackProp` sur le modèle de `BuildProp`, Paysan qui joue son attaque, `quick_check` rapide + `-Parts combat`.
 - **Coup de couteau fabriqué et branché** (sous-agent, 14 min, 135k tokens : dans les limites ; rien de commité).
@@ -4769,7 +4769,7 @@ d'épée).
   inclinés entre les hauteurs des extrémités (pas d'échantillon au milieu) ; disque de 30 cm à chaque étape (2,2 cm) ;
   anneaux et fanion au-dessus (3 cm). Couleurs : Move (0,95 0,8 0,05), Attack / AttackMove (0,9 0,08 0,05),
   Build (0,9 0,9 0,9), Gather (0,1 0,4 0,95). Coût nul sans chaîne ni sélection. Rapide PASS (39 s, 83/83).
-  Captures `MyCrusader-J5c\Saved_Tests\Screenshots\WindowsEditor\HOL\ol_army.png` (jaune → rouge → rouge → jaune,
+  Captures `HeroesOfLiberty-J5c\Saved_Tests\Screenshots\WindowsEditor\HOL\ol_army.png` (jaune → rouge → rouge → jaune,
   conforme) et `ol_peasant.png` (blanc vers la maison en file, bleu vers le bois ; le premier déplacement sans Maj
   ne se voit pas : Paysan peut-être déjà arrivé, non vérifié). Jeu lancé pour l'essai (lignes + 3 correctifs).
 - **Essai de l'utilisateur** (lignes) : (1) **la ligne doit s'afficher même pour un seul ordre** (sans Maj) →
@@ -4877,7 +4877,7 @@ d'épée).
   (et camp fini) à la première arrivée ; **chantier quand l'unité commence à bâtir** (`StartBuilding`) ou à la fin du
   chantier. Coût nul sans ralliement et pour les stress tests. Test `Orders.Chains` étendu ; rapide PASS (23 s,
   83/83), `-Parts production` PASS (25 s), `-Parts build` PASS (263 s). Essai scripté (sol) : `Rally at (-13000,
-  3000)` reçu, puis 0 à l'arrivée ; captures `MyCrusader-J5c\Saved_TestsRally\Screenshots\WindowsEditor\HOL\
+  3000)` reçu, puis 0 à l'arrivée ; captures `HeroesOfLiberty-J5c\Saved_TestsRally\Screenshots\WindowsEditor\HOL\
   rally_line.png` / `rally_arrived.png`. Non couvert : ralliement sur un camp fini entre la naissance et le pas
   suivant (ordre de récolte hors portée, rare, déjà le cas pour les ordres du joueur).
 - **Essai de l'utilisateur** : (1) **épaisseur de toutes les lignes divisée par deux** (25 → 12,5 cm) ; (2) **ligne de
@@ -4889,7 +4889,7 @@ d'épée).
   (`GetRallyPoint` : sol, milieu de la source, centre du chantier), pour les bâtiments qui montrent un fanion
   (`GetCommandBuildings` + `HasRallyPoint` : seul, fantôme compris, ou sous-groupe actif d'un groupe F, comme les
   fanions) ; pas de disque au bout ; coût nul sans bâtiment sélectionné. Rapide PASS (23 s, 83/83). Captures
-  `MyCrusader-J5c\Saved_Tests\Screenshots\WindowsEditor\HOL\rl_ground.png`, `rl_source.png`, `rl_army.png`
+  `HeroesOfLiberty-J5c\Saved_Tests\Screenshots\WindowsEditor\HOL\rl_ground.png`, `rl_source.png`, `rl_army.png`
   (conformes). Jeu lancé pour l'essai.
 - **Essai validé** (« sinon c'est bon ») avec une retouche : épaisseur encore divisée par deux → `hol.Orders.LineWidth`
   **6,25 cm** (disque d'étape inchangé, 30 cm). Compilé ; `-Full` lancé avant le commit.
@@ -5038,9 +5038,9 @@ d'épée).
 
 ### 2026-10-20 — J7c.1 : l'Archer
 
-- J7c ouverte (mycrusader-37). Plan de J7c complet (Q1 à Q6, autre séance). Worktree `MyCrusader-A` pris
+- J7c ouverte (mycrusader-37). Plan de J7c complet (Q1 à Q6, autre séance). Worktree `HeroesOfLiberty-Elrond` pris
   (`IN_USE.txt`), branche **`j7c-archer`** depuis `main` 81b5966 (`j7c-archer-preview` gardée, = `main`).
-- Partage avec mycrusader-a6 (chantier animations) : elle fait les **corps gardés 30 s** dans `MyCrusader-J5c`
+- Partage avec mycrusader-a6 (chantier animations) : elle fait les **corps gardés 30 s** dans `HeroesOfLiberty-J5c`
   (`HOLInterpolatedInstancesProcessor.cpp`, `HOLUnitReceptionSubsystem.cpp`, `HOLUnitSubsystem.cpp`, nouveau fichier
   de corps ; ni table des types ni séquences) ; l'Archer (questions, fabrication du tir et de la chute) revient à J7c.1.
   Chaque session prévient l'autre avant une compilation ou un lancement d'Unreal ; jeux en `-LiveCoding=0`.
@@ -5081,7 +5081,7 @@ d'épée).
   chute 5, `AttackProp` 0 ; vitesse de lecture de marche à recalculer sur 584 cm/s.
 - **(b) lancée** (sous-agent) : ligne `Archer` de la table, production à la Caserne (E), textes, contrôle en jeu de la
   flèche cachée, partie de `quick_check`.
-- **(b) en partie faite** (sous-agent, ~11 min ; rien de commité ; worktree `MyCrusader-A`) : ligne `Archer` (`SKM_Archer`,
+- **(b) en partie faite** (sous-agent, ~11 min ; rien de commité ; worktree `HeroesOfLiberty-Elrond`) : ligne `Archer` (`SKM_Archer`,
   `TP_Archer`, repos 2, marche 3 à **3,47** (584 / 168,2), tir 4, chute 5, 584 cm/s, **70 PV**, **30 nourriture + 50 bois**,
   15 s ; combat gardé : 15 m, 1,625 s, 5 (+5 infanterie légère), armure 0/0) ; Caserne `Produces` + `Archer` (**E**) ;
   nom fr « Archer » / en « Archer » / ja « 弓兵 » (GatherText refait) ; tests mis à jour (`HOLAnimationTests` : l'Archer
@@ -5097,18 +5097,18 @@ d'épée).
   capture d'un Archer au repos (flèche cachée ?), `AnimReport`, Archer dans `build barracks`, `-Parts build` + rapide,
   puis scénario d'essai `archers`.
 
-- **(c) faite** (sous-agent, ~13 min ; rien de commité ; `MyCrusader-A`) : recompilé sur 02a8963 (38 s, sans
+- **(c) faite** (sous-agent, ~13 min ; rien de commité ; `HeroesOfLiberty-Elrond`) : recompilé sur 02a8963 (38 s, sans
   avertissement) ; `-Parts tests` **PASS** (83/83). **Flèche cachée : OK en jeu** (captures `-RenderOffScreen` 2560×1440,
-  `MyCrusader-A\Saved_ArcherShot\Screenshots\WindowsEditor\HOL\archers_hr_*.png`) : au repos arc à la main gauche et
+  `HeroesOfLiberty-Elrond\Saved_ArcherShot\Screenshots\WindowsEditor\HOL\archers_hr_*.png`) : au repos arc à la main gauche et
   carquois au dos, main droite vide ; `AnimReport` : `A_Archer_Idle` au repos, `A_Archer_Walk` en marche,
   `A_Archer_Attack` au tir. Aujourd'hui l'Archer tire avec le coup de mêlée à 15 m : dégât immédiat (10 au Lancier,
   1 à l'Homme d'armes), pas de flèche qui vole (J7c.2). Scénario **`archers`** (caserne finie, 6 Archers, 4 Lanciers +
-  4 Hommes d'armes ennemis à 25 m, 5000 de tout) : `powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 archers -Root ..\MyCrusader-A`.
+  4 Hommes d'armes ennemis à 25 m, 5000 de tout) : `powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 archers -Root ..\HeroesOfLiberty-Elrond`.
   `quick_check` : `build barracks` produit A, Z puis **E** (3 nés, 3 au ralliement, 3 vers la veine) ; `build hud`
   attend « Produit : Lancier, Homme d'armes, Archer » dans l'infobulle de la Caserne.
-- Capture regardée par la session principale (`MyCrusader-A\Saved_ArcherShot\...\archers_hr_1_crop.png`) : arcs,
+- Capture regardée par la session principale (`HeroesOfLiberty-Elrond\Saved_ArcherShot\...\archers_hr_1_crop.png`) : arcs,
   carquois, bandes bleues, main droite vide au repos. **Essai de l'utilisateur lancé** : `play.ps1 archers -Root
-  ..\MyCrusader-A` (à juger : l'Archer et sa production sur E ; le tir a encore le dégât immédiat sans flèche, J7c.2).
+  ..\HeroesOfLiberty-Elrond` (à juger : l'Archer et sa production sur E ; le tir a encore le dégât immédiat sans flèche, J7c.2).
 - **Essai de l'utilisateur validé** (« tout est bon ») : allure, production sur E, geste de tir.
 - **Retour d'essai 8 (plus tard, demande de l'utilisateur)** : **impossible de faire du hit and run avec l'Archer** :
   le geste de tir dure toute la cadence (1,6 s, lâcher à 50 %), l'Archer ne peut pas tirer puis repartir aussitôt.
@@ -5117,13 +5117,13 @@ d'épée).
   marche arrive après le lâcher. À voir avec J7c.2 (moment du lâcher partagé serveur / client, Q4).
 - Suite : commit sur `j7c-archer`, refusion de `main`, `-Full`, avance de `main`.
 - Commit **b739547** sur `j7c-archer`, fusion de `main` (d6fc962, doc seule) en 4dc01ad, **`-Full` PASS** (593 s, toutes
-  les parties, `anims` : `Archer Idle: A_Archer_Idle`, tests 83/83), **`main` avancé à 4dc01ad**. `MyCrusader-A` libéré.
+  les parties, `anims` : `Archer Idle: A_Archer_Idle`, tests 83/83), **`main` avancé à 4dc01ad**. `HeroesOfLiberty-Elrond` libéré.
   **J7c.1 close.** Suite : **J7c.2**.
 
 ### 2026-10-20 — J7c.2 : le tir
 
 - `main` à c666a54 (corps gardés 30 s de mycrusader-a6 fusionnés). Hit and run gardé pour plus tard (retour 8, choix
-  de l'utilisateur) : J7c.2 suit le plan (J7c-Q1 à Q6). `MyCrusader-A` repris, branche **`j7c-shot`** depuis c666a54.
+  de l'utilisateur) : J7c.2 suit le plan (J7c-Q1 à Q6). `HeroesOfLiberty-Elrond` repris, branche **`j7c-shot`** depuis c666a54.
 - Découpage (un sous-agent par livrable, 15 min / 300k tokens) : **(a)** serveur : dégât différé selon la distance
   (25 m/s, lâcher au même moment du geste que le coup de mêlée, liste courte cible / montant / pas d'arrivée, cible
   morte = flèche perdue), cible des tireurs (Q6 : la plus proche, gardée tant qu'à portée, sans `MaxAttackers`), mort
@@ -5145,7 +5145,7 @@ d'épée).
   entre dès qu'il l'atteint : en chemin s'il est plus rapide que le bloc, sinon à l'arrivée, où il prend sa place.
   Aucune vitesse ne change. Écartés : bloc ralenti à 90 % tant qu'un retardataire n'est pas rentré ; retardataire 20 %
   plus rapide que sa vitesse de la table.
-- Travail dans la copie principale, sur `main` (MyCrusader-A pris par mycrusader-37 ; mycrusader-a6 a avancé `main` à
+- Travail dans la copie principale, sur `main` (HeroesOfLiberty-Elrond pris par mycrusader-37 ; mycrusader-a6 a avancé `main` à
   c666a54 avant). Code lancé en sous-agent.
 - **Boucle 1 faite** (sous-agent, ~8 min, rien de commité) : règle pure `HOLFormation::FindStragglers` (le corps = le plus
   grand amas reliés de proche en proche par des pas de 4,5 m au plus ; retardataires seulement si le corps fait
@@ -5299,7 +5299,7 @@ d'épée).
     scénario sans `.json` demande `BattleMap` au lieu de `Plain`.
 - **Reprise (2026-10-21)** : copie principale, `main` toujours à f7f00df, `j7c-shot` pas encore fusionnée dans `main`.
   Copie du travail non commité dans le scratchpad (`backup1/retour1.patch` + scénario `straggler`). **Boucle 9** lancée :
-  (i) bloc qui balaie (écriture et compilation seulement). mycrusader-56 a repris J7c.2 (b2) dans `MyCrusader-A` :
+  (i) bloc qui balaie (écriture et compilation seulement). mycrusader-56 a repris J7c.2 (b2) dans `HeroesOfLiberty-Elrond` :
   copie principale laissée à cette session, message avant toute avance de `main`.
 - **Boucle 9 faite** (sous-agent, ~10 min, compilé en 26 s sans avertissement, rien de commité) : règle pure
   `HOLFormation::GetBlockSetBack` (repère du bloc au premier point du chemin ; par unité du corps, si elle est à plus de
@@ -5568,8 +5568,8 @@ d'épée).
 
 ### 2026-10-20 — Retours d'essai 3 et 4 : pose sur une case occupée, pose unique sauf Maj
 
-- Travail dans **`MyCrusader-J5c`** (libre, `IN_USE.txt` écrit), branche **`j7-placement`** depuis `main` c666a54 : la
-  copie principale est prise par mycrusader-c9 (retour 1), `MyCrusader-A` par mycrusader-37 (J7c.2).
+- Travail dans **`HeroesOfLiberty-J5c`** (libre, `IN_USE.txt` écrit), branche **`j7-placement`** depuis `main` c666a54 : la
+  copie principale est prise par mycrusader-c9 (retour 1), `HeroesOfLiberty-Elrond` par mycrusader-37 (J7c.2).
 - **Retour 4 (pose unique sauf Maj)** : déjà fait depuis J6a.3 (`ClickPlacement(bSelectAddHeld)` ferme le mode sans
   Maj). L'utilisateur ne sait plus ce qu'il avait vu : le scénario d'essai `placement` montre le comportement actuel, à
   confirmer à l'essai.
@@ -5583,7 +5583,7 @@ d'épée).
 - Code lancé en sous-agent (recherche pure dans `HOLConstruction`, tests, partie `build` de `quick_check` mise à jour,
   scénario `placement`).
 
-#### J7c.2 (a) faite : le tir côté serveur (2026-10-20, worktree MyCrusader-A, branche j7c-shot, non commité)
+#### J7c.2 (a) faite : le tir côté serveur (2026-10-20, worktree HeroesOfLiberty-Elrond, branche j7c-shot, non commité)
 - Règles pures (`HOLCombatRules`) : `IsRangedAttack` (portée > 200 cm, `RangedReach` déplacé du processeur),
   `GetArrowFlightMilliseconds(De, Vers, Vitesse)` (distance 2D centre à centre au lâcher / vitesse),
   `GetArrowFlightSteps` (pas entiers arrondis au-dessus, 1 au moins), `ResolveArrow` (Lost / Hit / Kill),
@@ -5600,7 +5600,7 @@ d'épée).
 - (J7c.2, mycrusader-37) **(a) vérifiée** par la session principale : `-Parts tests,combat` **PASS** (168 s, tests 85/85 ;
   `combat`, `combat anims`, `combat bodies`, `combat arrows`, `orders`). **(b) lancée** (flèches chez le client).
 - (J7c.2, mycrusader-37) La session a redémarré : le sous-agent de (b) a été coupé sans rien laisser dans
-  `MyCrusader-A` (seule (a) y est). (b) relancée en deux livrables : **(b1)** flèches affichées en solo / hôte + capture
+  `HeroesOfLiberty-Elrond` (seule (a) y est). (b) relancée en deux livrables : **(b1)** flèches affichées en solo / hôte + capture
   + cas de la cible qui fuit ; **(b2)** flèches chez un client réseau + contrôles `quick_check`.
 - **Cas à valider (demande de l'utilisateur)** : une unité rapide (cavalerie légère) pile à portée, qui s'enfuit dès
   que la flèche est décochée. Comportement prévu par J7c-Q1 / Q2 : la flèche **touche quand même** (dégât à l'arrivée,
@@ -5608,19 +5608,19 @@ d'épée).
   au lâcher : ~0,6 s à 15 m ; une cible à ~8 m/s fait ~5 m de plus, la flèche paraît filer à ~33 m/s au lieu de 25).
   À montrer à l'essai (pas encore de cavalerie : une unité accélérée par les triches de vitesse), scénario dédié.
 - (J7c.2, mycrusader-cc) En parallèle : mycrusader-c9 (retour 1, retardataire ; copie principale : ordres, formation)
-  et mycrusader-7c (retours 3 et 4, poses ; `MyCrusader-J5c`, branche `j7-placement`). Les trois touchent
+  et mycrusader-7c (retours 3 et 4, poses ; `HeroesOfLiberty-J5c`, branche `j7-placement`). Les trois touchent
   `Tools/Tests/quick_check.ps1` : fusions dans `main` l'une après l'autre, chacune refusionne `main` avant son commit.
 - 1re boucle (15 min) arrêtée à sa limite : code écrit (règles, sous-système, contrôleur, tests, partie `build`,
   scénario `placement`), compilation et `quick_check` en cours. Bilan : code + tests + scénario ne tiennent pas dans une
   boucle ; la 2e boucle ne fait que vérifier (relecture, compilation, `-Parts tests,build`, scénario sans fenêtre).
 
-- (J7c.2, mycrusader-37) (b1) partielle (sous-agent, 2026-10-20) : SM_Arrow (Tools/Editor/make_arrow_mesh.py) et UHOLArrowSubsystem (Presentation/, alimenté par le lâcher serveur, hol.Combat.ArrowReport) compilés sans avertissement dans MyCrusader-A ; scénario arrow_flee écrit ; ni capture ni journal obtenus (jeu bloqué au démarrage en -RenderOffScreen, waitui en -nullrhi), quick_check non lancé ; reste : vérifier en jeu, captures, contrôle quick_check, note de archers.txt.
+- (J7c.2, mycrusader-37) (b1) partielle (sous-agent, 2026-10-20) : SM_Arrow (Tools/Editor/make_arrow_mesh.py) et UHOLArrowSubsystem (Presentation/, alimenté par le lâcher serveur, hol.Combat.ArrowReport) compilés sans avertissement dans HeroesOfLiberty-Elrond ; scénario arrow_flee écrit ; ni capture ni journal obtenus (jeu bloqué au démarrage en -RenderOffScreen, waitui en -nullrhi), quick_check non lancé ; reste : vérifier en jeu, captures, contrôle quick_check, note de archers.txt.
 - 2e boucle (8 min) : relecture sans défaut (cases sur la grille, couronnes 0 à 4, filtre local, sonde du navmesh
   seulement pour les candidates valides, chemin du serveur inchangé), compilation OK, **`quick_check -Parts tests,build`
   PASS** (280 s, tests 85/85 dont `Construction.FreeFootprint` ; « fantôme rouge sur les maisons » devenu « rouge près du
   centre ennemi » + pose à côté d'une maison), scénario `placement` prêt (21 étapes, `-RenderOffScreen`). Reste à voir :
   chez un client, les candidates ne sondent pas le navmesh (le serveur peut refuser une pose déplacée « hors navmesh »).
-- **Essai de l'utilisateur lancé** (`play.ps1 placement -Root ..\MyCrusader-J5c`).
+- **Essai de l'utilisateur lancé** (`play.ps1 placement -Root ..\HeroesOfLiberty-J5c`).
 - (J7c.2, mycrusader-cc) Bilan de (b1) partielle : 12 min 40 dont l'essentiel perdu en deux lancements ratés
   (`-RenderOffScreen` avec un **nouveau** `-saveddirsuffix=Arrow` : jeu figé à l'image 0, sans doute shaders d'un
   dossier neuf sur machine chargée ; `-nullrhi` + `hol.Scenario` : bloqué à `waitui`, le menu ne s'affiche pas sans
@@ -5653,7 +5653,7 @@ d'épée).
 - (J7c.2, mycrusader-cc) **Essai `arrow_flee` refait : validé** (« c'est bon »). Commit **4167f03** sur `j7c-shot`
   ((a) + (b1) + scénarios). Suite : **règle de formation d'un seul type** (sous-agent, petit livrable), puis **(b2)**
   flèches chez un client réseau, puis `-Full`, refusion de `main`, avance de `main`.
-- (J7c.2, mycrusader-cc) **Règle des rangs d'un seul type faite** (sous-agent, `MyCrusader-A`, `j7c-shot`, non commité) :
+- (J7c.2, mycrusader-cc) **Règle des rangs d'un seul type faite** (sous-agent, `HeroesOfLiberty-Elrond`, `j7c-shot`, non commité) :
   `MakeSquareRows` prend W = le plus petit impair ≥ √N, rangs pleins de W, le reste en dernier rang (12 → 5/5/2 ;
   50 → 9×5/5 ; 2 → 2) ; tests `Formation.Rows/Kinds/Group` mis à jour ; compilation sans avertissement ;
   `quick_check -Parts tests,formation` PASS (96 s, 85/85).
@@ -5669,7 +5669,7 @@ d'épée).
 - `quick_check -Parts tests,combat` PASS (153 s, 85/85, contrôle « fighting, none idle » sur le bloc des Paysans qui
   frappent, capture `combat_peasant_strike` vue : « 4 au combat »), rapide PASS (26 s). Scénario `peasant_fight`.
   **Validé à l'essai par l'utilisateur** (« c'est bon »). Commit **f7f00df** (branche `j7-idle-count`,
-  MyCrusader-J5c), **`main` avancé à f7f00df**, ligne retirée d'`EtapeDefini.md`.
+  HeroesOfLiberty-J5c), **`main` avancé à f7f00df**, ligne retirée d'`EtapeDefini.md`.
 - (J7c.2, mycrusader-cc) **Essai `formation_one_kind` : règle des rangs validée** (« tout est bon » : 50 → 9 9 9 9 9 5,
   petits groupes 7 → 3 3 1 et 4 → 3 1 acceptés). **Nouveau retour (à faire tout de suite)** : 50 Archers tournés au
   Sud, ordre vers le Nord : leurs nouvelles places « semblent au hasard ». Voulu (règle de l'utilisateur) : le dernier
@@ -5678,7 +5678,7 @@ d'épée).
   ont presque le même total, d'où un mélange. Correctif : attribution **par profondeur** selon la nouvelle direction
   (les plus en avant prennent le premier rang, puis le suivant…), **ordre de gauche à droite gardé dans chaque rang** ;
   sous-agent lancé (règle pure + tests + contrôle).
-- (J7c.2, mycrusader-cc) Places par profondeur faites (MyCrusader-A, j7c-shot, non commité) : AssignPlaces regroupe les places en rangs par profondeur (10 cm), remplit les rangs de l'avant par les unités les plus en avant (égalité à 60 cm : les plus proches en travers des places libres), appariement gauche-droite dans le rang, échanges seulement dans un rang ; test Formation.AssignByDepth (demi-tour 9 9 9 9 9 5, marche droit devant, rang troué) ; quick_check tests,formation PASS (97 s), orders PASS ; capture du demi-tour non faite.
+- (J7c.2, mycrusader-cc) Places par profondeur faites (HeroesOfLiberty-Elrond, j7c-shot, non commité) : AssignPlaces regroupe les places en rangs par profondeur (10 cm), remplit les rangs de l'avant par les unités les plus en avant (égalité à 60 cm : les plus proches en travers des places libres), appariement gauche-droite dans le rang, échanges seulement dans un rang ; test Formation.AssignByDepth (demi-tour 9 9 9 9 9 5, marche droit devant, rang troué) ; quick_check tests,formation PASS (97 s), orders PASS ; capture du demi-tour non faite.
 - (J7c.2, mycrusader-cc) **Places par profondeur** (sous-agent, ~8 min, ~55k tokens ; non commitées) : places groupées
   en rangs par profondeur le long de la nouvelle direction (nouveau rang au-delà de 10 cm : rangs troués, incomplets,
   places en trop acceptés, pour `ReserveRearSlots` de mycrusader-c9), chaque rang reçoit les unités les plus en avant
@@ -5696,19 +5696,19 @@ d'épée).
   --autostash` ; `HOLFormationRules.*`, `HOLFormationTests.cpp` et `quick_check.ps1` sont touchés des deux côtés : un
   conflit au retour de l'autostash se résout à la main, sans perdre ses lignes.
 - **(J7c.2, mycrusader-cc) Séance mise en pause** (demande de l'utilisateur, 2026-10-20 ~23 h ; reprise le **2026-10-21
-  à 9 h**). État : `MyCrusader-A`, branche **`j7c-shot`** (`IN_USE.txt` « en pause ») : **commités** 4167f03 (dégât
+  à 9 h**). État : `HeroesOfLiberty-Elrond`, branche **`j7c-shot`** (`IN_USE.txt` « en pause ») : **commités** 4167f03 (dégât
   différé, flèches en solo, `arrow_flee`) et 2e3754b (rangs d'un seul type, places par profondeur), tous deux validés à
   l'essai ; **non commité** : **(b2) flèches chez le client réseau**, coupée en route par la pause (6 fichiers :
   `HOLNetUnitDisplay.*`, `HOLUnitReceptionSubsystem.cpp`, `HOLArrowSubsystem.*`, `quick_check.ps1`, ~150 lignes ;
   ni compilée ni vérifiée à coup sûr ; son `quick_check` en cours a été arrêté, aucun jeu ouvert).
-  **Reprise** : (1) relire le diff de (b2) (`git -C ..\MyCrusader-A diff`), le finir par un sous-agent (compilation,
+  **Reprise** : (1) relire le diff de (b2) (`git -C ..\HeroesOfLiberty-Elrond diff`), le finir par un sous-agent (compilation,
   `-Parts tests,combat`, `-Parts net` : comptes de flèches chez chaque client, écart flèche / PV) ; (2) essai à
   2 clients si l'utilisateur le veut ; (3) `-Full` ; (4) avancer `main` (copie du travail non commité de mycrusader-c9
   d'abord, puis `git merge --ff-only --autostash`, voir le point ci-dessus) ; (5) J7c.3 (vérification et essai), J7c.4
   (mesures de fin de J7), J7c.5 (clôture au GDD). Retours d'essai en attente : 8 (hit and run de l'Archer) et ceux de la
   liste du 2026-10-20 ; le n° 1 (retardataire) est chez mycrusader-c9, les n° 3 et 4 (poses) chez mycrusader-7c.
 - **(J7c.2, mycrusader-56) Reprise (2026-10-21, ~10 h)** : J7c.2 reprise par mycrusader-56 (`IN_USE.txt` de
-  `MyCrusader-A` réécrit) ; le retour 1 (retardataire) est chez **mycrusader-10** dans la copie principale (boucle 9 en
+  `HeroesOfLiberty-Elrond` réécrit) ; le retour 1 (retardataire) est chez **mycrusader-10** dans la copie principale (boucle 9 en
   cours : ne pas y compiler ; la prévenir avant toute avance de `main`). Diff de (b2) relu, sans défaut bloquant : chaque
   client rejoue la cadence du serveur depuis l'état `Attacking` d'un tireur (`StartAttack` / `TickAttack`, 20 pas
   rejoués au plus après un arrêt), flèche de là où il est dessiné vers là où sa cible l'est ; écart « arrivée de la
@@ -5731,7 +5731,7 @@ d'épée).
   apparie à la flèche la plus proche, plusieurs flèches en vol sur une cible l'élargissent). `play.ps1` ne lance que le
   solo : un essai à 2 clients demanderait un lanceur réseau. Question posée à l'utilisateur.
 - (J7c.2, mycrusader-56) **Choix de l'utilisateur** : pas d'essai à 2 clients (recommandation) ; `-Full` lancé dans
-  `MyCrusader-A`, puis commit de (b2) sur `j7c-shot`.
+  `HeroesOfLiberty-Elrond`, puis commit de (b2) sur `j7c-shot`.
 - (J7c.2, mycrusader-56) **`-Full` PASS** (632 s, 86/86 ; `net 2 clients` : 18 lancées pour 18 lâchées chez chaque
   client, écart moyen 7-9 ms, de -146 à +102 ms). **Commit 48faaca** sur `j7c-shot` ((b2) ; ligne J7c.2 retirée
   d'`EtapeDefini.md`). **J7c.2 close.** `main` (f7f00df) fusionné dans `j7c-shot` sans conflit ; compilation et
@@ -5744,10 +5744,10 @@ d'épée).
   à 80e4e8a proposée à mycrusader-10 (elle la fait entre deux compilations, ou me donne le feu vert).
 - (J7c.2, mycrusader-56) mycrusader-10 (mycrusader-c9) fera elle-même l'avance de `main` à 80e4e8a après l'essai
   `straggler` en cours de l'utilisateur (sauvegarde de son diff, `--autostash`, conflits gardés des deux côtés), et
-  préviendra. **J7c.3** : `-Full` déjà PASS ; scénario d'essai d'ensemble **`j7_army`** (`MyCrusader-A`, non commité) :
+  préviendra. **J7c.3** : `-Full` déjà PASS ; scénario d'essai d'ensemble **`j7_army`** (`HeroesOfLiberty-Elrond`, non commité) :
   caserne finie (A, Z, E), 5 Paysans, 4 Lanciers + 4 Hommes d'armes + 6 Archers du joueur contre 5 + 5 + 4 Archers à
   ~25 m, 5000 de chaque ressource ; vérifié en `-RenderOffScreen` : prêt en 11 s, 14 sélectionnés, aucun combat au
-  départ. Essai à lancer à la fin de l'essai en cours (`play.ps1 j7_army -Root ..\MyCrusader-A`).
+  départ. Essai à lancer à la fin de l'essai en cours (`play.ps1 j7_army -Root ..\HeroesOfLiberty-Elrond`).
 - (J7c.3, mycrusader-56) **Essai d'ensemble `j7_army` lancé** (demande de l'utilisateur).
 - (J7c.3, mycrusader-56) **Essai validé** (« tout est bon »). **J7c.3 close** : commit **db44ae1** sur `j7c-shot`
   (scénario `j7_army`, `EtapeDefini.md`). Nouveau retour, **pas dans l'immédiat** : avec Q (attaque), pendant le choix
@@ -5757,7 +5757,7 @@ d'épée).
 - (J7c.4, mycrusader-56) S3 et S4 n'existent pas encore (seuls S1, S2, S7 dans `chapter_measures.ps1`, S5 par
   `net_match.ps1`). **Choix de l'utilisateur pour S4** (recommandation) : **1 000 contre 1 000, chaque armée en tiers**
   (~333 Lanciers, ~333 Hommes d'armes, ~333 Archers) qui se chargent, ~600 flèches en vol (chiffre du plan), comparable
-  à S3 (1 000 contre 1 000 en mêlée, 3 ms par pas). **Boucle 1** lancée (sous-agent, `MyCrusader-A`) : S3 et S4
+  à S3 (1 000 contre 1 000 en mêlée, 3 ms par pas). **Boucle 1** lancée (sous-agent, `HeroesOfLiberty-Elrond`) : S3 et S4
   écrits et compilés, ajoutés à `chapter_measures.ps1` ; ni mesure ni S5 en combat dans cette boucle.
 - (J7c, mycrusader-56) **`main` avancé à db44ae1** par mycrusader-10 (avec l'accord de l'utilisateur, autostash sans
   conflit ; son retour 1 non commité par-dessus). J7c.1 à J7c.3 sont dans `main`. mycrusader-10 compile et lance des
@@ -5811,7 +5811,7 @@ d'épée).
   (1 804 unités). Les 4 passes suivantes refusées (`stress_ab` : BUSY, jeu de la copie principale lancé par
   mycrusader-10 juste après son « go ») ; attente de son nouveau signal.
 - (J7c.4, mycrusader-56) **Boucle 3 faite** (machine très chargée : CPU 37-73 % avant les passes, compilations
-  d'autres sessions dans `MyCrusader-J5c` et la copie principale, ProjectShiva « TestRunner ») : **identité prouvée**,
+  d'autres sessions dans `HeroesOfLiberty-J5c` et la copie principale, ProjectShiva « TestRunner ») : **identité prouvée**,
   S3 : empreinte 6edfa48d73507399 sur les 4 passes (`FastPaths` 0, 1, 0, 1), mêmes coups et morts ; S4 : empreinte
   caef2615dcc530e2 dans les deux modes, mêmes morts au même pas. **Combat de S3 : 6,5-7,5 → 3,0 ms** (pas entier
   12,4 / 14,3 → 9,7 / 9,4 ms, hors repos). Reste dans S3 : évitement à l'arrêt 9-10 ms un pas sur 6 (~1,6 ms en
@@ -5842,11 +5842,11 @@ d'épée).
   plus** ; 7,62 ms par pas (machine chargée) : évitement à l'arrêt 5,46 (un pas sur 6), combat 1,93, ordres 1,41,
   séparation 1,34, évitement en marche 1,08 (un pas sur 6). **Plafond de la table** : 666 Archers / 1,625 s ≈ 410
   flèches/s × 0,6 s de vol ≈ **246 en vol au plus** : les « ~600 » du plan étaient une estimation, impossible sans
-  changer cadence, portée ou nombre ; S4 garde la composition choisie. MyCrusader-A libérée pour le renommage en
-  `MyCrusader-Elrond` (mycrusader-b0, demande de l'utilisateur).
-- (J7c.4, mycrusader-56) **Renommage fait** : la copie de travail est désormais **`C:\Users\baudo\Documents\MyCrusader-Elrond`**
+  changer cadence, portée ou nombre ; S4 garde la composition choisie. HeroesOfLiberty-Elrond libérée pour le renommage en
+  `HeroesOfLiberty-Elrond` (mycrusader-b0, demande de l'utilisateur).
+- (J7c.4, mycrusader-56) **Renommage fait** : la copie de travail est désormais **`C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`**
   (branche `j7c-shot` et diff non commité intacts, `IN_USE.txt` à mon nom) ; recompilée de zéro (195 s, OK).
-  Attention à la fusion : la branche `combat-dying-off` (mycrusader-4c, `MyCrusader-J5c`) touche aussi
+  Attention à la fusion : la branche `combat-dying-off` (mycrusader-4c, `HeroesOfLiberty-J5c`) touche aussi
   `HOLCombatProcessor.*`. **Boucle 5** lancée (écriture et compilation) : évitement à l'arrêt en trois temps
   (collecte en ordre, voisins en parallèle en lecture seule, calcul en série dans le même ordre), derrière
   `hol.Simulation.ParallelStandingAvoidance`.
@@ -5909,7 +5909,7 @@ d'épée).
   relancé), CPU 43-64 % : machine pas au repos. **Séance arrêtée ici** (« on continuera tout ça dans une prochaine
   session »), pauses annulées.
   **Reprise exacte** :
-  - **État** : `MyCrusader-Elrond` (ex-`MyCrusader-A`), branche **`j7c-shot` à a6bef71**, rien de non commité (sauf
+  - **État** : `HeroesOfLiberty-Elrond` (ex-`MyCrusader-A`), branche **`j7c-shot` à a6bef71**, rien de non commité (sauf
     `IN_USE.txt`). `main` à db44ae1 (J7c.1 à J7c.3) : **a6bef71 pas encore dans `main`** ; à l'avance de `main`,
     conflit possible avec `combat-dying-off` (mycrusader-4c, `HOLCombatProcessor.*`) et avec le retour 1 non commité
     de mycrusader-10 dans la copie principale ; demander l'accord des sessions actives.
@@ -6026,7 +6026,7 @@ d'épée).
 - **Séance arrêtée ici (demande de l'utilisateur : « arrête-toi quand tu peux et commit ce que tu as, marque tout
   pour continuer plus tard dans une autre session »).**
   **Reprise exacte** :
-  - **État** : `MyCrusader-Elrond` (ex-`MyCrusader-A`), branche **`j7c-shot` à 299958a**, rien de non commité (sauf
+  - **État** : `HeroesOfLiberty-Elrond` (ex-`MyCrusader-A`), branche **`j7c-shot` à 299958a**, rien de non commité (sauf
     `IN_USE.txt`, à mon nom, « en pause »). `main` à **ea84b7b** (fusionné dans `j7c-shot` en d1f4f5f) ; **aucun commit
     de J7c.4 dans `main`**. Dernier `-Full` PASS sur a6bef71 seulement (avant S5 en combat, vitesse nulle, fusions,
     tri) ; tests 87/87 PASS sur e7d0caf.
@@ -6062,10 +6062,10 @@ d'épée).
        ImplementationInProgress.md:783).
   - **À savoir** : comparer deux passes = même empreinte « Battle checksum » à la fin de la mesure ; lancer les jeux
     directement (`stress_ab.ps1` refuse dès qu'une autre session compile) ; se coordonner avec les sessions actives
-    (mycrusader-e1, mycrusader-85 dans `MyCrusader-Galadriel`) avant tout `-Full`, partie réseau ou mesure.
+    (mycrusader-e1, mycrusader-85 dans `HeroesOfLiberty-Galadriel`) avant tout `-Full`, partie réseau ou mesure.
 - (J7c.4, mycrusader-56) **Reprise** (2026-10-21) : point 1 lancé (sous-agent) : vérification de 299958a, S4 ×4 et
   S3 ×2 en parallèle, puis S3 `FastSeparation 0`, S3 et S4 tous anciens chemins ; une seule empreinte attendue par
-  test. Sessions actives : mycrusader-4f (`MyCrusader-Galadriel`), mycrusader-01 (`MyCrusader-J5c`).
+  test. Sessions actives : mycrusader-4f (`HeroesOfLiberty-Galadriel`), mycrusader-01 (`HeroesOfLiberty-J5c`).
 - (J7c.4, mycrusader-56) **299958a vérifié** (~10 min, binaire à jour, `-nullrhi`, 300 pas) : **S4 ×4 en parallèle :
   93587c1cc36b353c** (5 402 flèches lâchées, 3 393 arrivées) ; **S3 ×2 : 35c168b12173ffac** ; S3 `FastSeparation 0`
   = S3 ; tous anciens chemins (`FastPaths 0`, `ParallelStandingAvoidance 0`, `FastSeparation 0`) = tous nouveaux pour
@@ -6125,7 +6125,7 @@ d'épée).
   mise) ; ensuite, si besoin, plafond par pas (`SeparationMaxStep`) et arrêt d'un marcheur au contact d'un ennemi
   immobile. Boucle 3 lancée : code + compilation + S3 avec / sans.
 - (J7c.4, mycrusader-56) **Boucle 3** (~14 min, arrêtée) : code écrit, **non compilé** (Build.bat bloqué derrière
-  l'UnrealBuildTool de mycrusader-4f dans `MyCrusader-Galadriel`, même moteur ; leçon : vérifier le verrou d'UBT
+  l'UnrealBuildTool de mycrusader-4f dans `HeroesOfLiberty-Galadriel`, même moteur ; leçon : vérifier le verrou d'UBT
   avant de lancer une boucle de code). `HOLSimulationProcessors.cpp` : `hol.Simulation.SeparationSettle` (1 par
   défaut) ; requête de la séparation : `FMassMoveTargetFragment` en écriture, `FMassGhostLocationFragment` (écriture)
   et `FHOLCombatFragment` (lecture) optionnels ; `Settles[i] = !bWalking && !bGhost && bAttacking`, permuté par
@@ -6193,7 +6193,7 @@ d'épée).
   commité, dans Elrond) : 200 Lanciers et Hommes d'armes de chaque côté en quatre paquets, à ~28 m, attaque-déplacement
   des deux armées vers l'arrière de l'autre (`hol.Units.Move ... a`, coordonnées du monde de Plain à deux joueurs) ;
   vérifié hors écran (`-RenderOffScreen` : `-nullrhi` bloque `waitui`) : prêt, mêlée ~7 s après la charge, ~65
-  images/s. Essai de l'utilisateur lancé (`play.ps1 melee_press -Root ...MyCrusader-Elrond`).
+  images/s. Essai de l'utilisateur lancé (`play.ps1 melee_press -Root ...HeroesOfLiberty-Elrond`).
 - (J7c.4, mycrusader-56) **Essai `melee_press` de l'utilisateur** : « ils tremblent énormément mais c'est parce qu'ils
   essaient d'accéder à une cible qui est déjà full entourée alors qu'il y a littéralement des ennemis autour qui ne
   sont pas totalement entourés et que donc s'ils essayaient de taper eux à la place, il y aurait moins ce souci ».
@@ -6320,7 +6320,7 @@ d'épée).
 - **Séance arrêtée ici (demande de l'utilisateur : « marque tout ça pour le faire plus tard », worktrees propres, aucun
   agent).**
   **Reprise exacte** :
-  - **État** : `MyCrusader-Elrond`, branche `j7c-shot`, dernier commit = **ce1dcf5** (WIP de cette séance, au-dessus de 0fbafb4) ;
+  - **État** : `HeroesOfLiberty-Elrond`, branche `j7c-shot`, dernier commit = **ce1dcf5** (WIP de cette séance, au-dessus de 0fbafb4) ;
     `IN_USE.txt` « en pause ». `main` ne contient rien de J7c.4 (seulement le journal et `EtapeDefini.md`).
   - **Dans le WIP** (toutes derrière des variables ; défaut entre parenthèses) : `hol.Combat.PreferFreeTarget` (1,
     **validé à l'œil** : « vachement mieux ») ; `hol.Combat.StopAtContact` (1) et `hol.Combat.ZoneOfControl` (150) :
@@ -6346,7 +6346,7 @@ d'épée).
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
-- Séance **mycrusader-4f**, copie **`MyCrusader-Galadriel`** (`IN_USE.txt`), branche **`archer-hit-and-run`** depuis
+- Séance **mycrusader-4f**, copie **`HeroesOfLiberty-Galadriel`** (`IN_USE.txt`), branche **`archer-hit-and-run`** depuis
   `main` ea84b7b. `EtapeDefini.md` : « Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence ».
 - **Constat (lecture du code)** : un ordre de marche (`Disengage`) garde la recharge (`CooldownMs` non remis à zéro,
   `TickIdle` pendant la marche) et une flèche lâchée part quand même (J7c-Q2). Le blocage : à chaque reprise de cible,
@@ -6412,7 +6412,7 @@ d'épée).
   des chiffres de la partie `combat` entre les deux boucles (morts à 9,4 / 14,15 / 19 s, 45 coups ; puis 10,85 / 14,4 /
   19,55 s, 64 coups) : mêlée seule (50 %, inchangée), partie jouée en temps réel dans la partie à 2 joueurs ; non
   élucidé, l'animation n'est pas lue par le serveur. **Essai de l'utilisateur lancé** : `play.ps1 archer_kite -Root
-  ..\MyCrusader-Galadriel` (5 Archers contre 3 Hommes d'armes ennemis à 25 m ; tirer, reculer, retirer).
+  ..\HeroesOfLiberty-Galadriel` (5 Archers contre 3 Hommes d'armes ennemis à 25 m ; tirer, reculer, retirer).
 - (mycrusader-4f, boucle 3) **Retour d'essai de l'utilisateur** sur `archer_kite` : « divise par 2 le temps de lancer
   d'une flèche » → élan de l'Archer **12 %** (1625 × 12 / 100 = 195 ms, lâcher au 4e pas de 50 ms, 0,2 s ; avant 406 ms,
   9e pas), **cadence inchangée** (1,625 s) ; « très difficile de cibler un ennemi, il faut cliquer précisément dessus ;
@@ -6458,7 +6458,7 @@ d'épée).
 - (mycrusader-4f) Boucle 3 relue par la session principale. Effet de bord de `FindTargetAt` (unités des autres joueurs
   seulement) : un clic droit sur une de ses propres unités placée devant un ennemi (dans la marge) attaque l'ennemi, là
   où il donnait un ordre de marche. Notes de `archer_kite` mises à jour (0,2 s, marge de 14 px). **2e essai de
-  l'utilisateur lancé** : `play.ps1 archer_kite -Root ..\MyCrusader-Galadriel`.
+  l'utilisateur lancé** : `play.ps1 archer_kite -Root ..\HeroesOfLiberty-Galadriel`.
 - (mycrusader-4f) **2e essai de l'utilisateur validé** : « Tir, très bien » ; marge essayée à la console
   (`hol.Select.TargetMargin 25`) : « est bien » → **marge par défaut 25 px** (`TargetMarginAt1080`, notes de
   `archer_kite`). Recompilé ; ligne retirée d'`EtapeDefini.md`. Suite : commit, fusion de `main` (2 commits de doc de
