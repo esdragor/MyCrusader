@@ -6105,6 +6105,65 @@ d'épée).
   histogrammes pas depuis l'envoi / déplacement du pas) et mesure solo du tremblement dans le rapport de S3
   (déplacement par pas des unités au combat, part des inversions de sens) ; empreinte S3 35c168b12173ffac inchangée
   attendue ; chiffres de départ.
+- (J7c.4, mycrusader-56) **Boucle 1 faite** (~11 min, compilé sans avertissement, non commité) : sonde réseau dans
+  `HOLUnitReplicationSubsystem` (unités et envois par activité et par raison, écart en pas et déplacement du pas des
+  envois « error », en fin de ligne du rapport ; pas encore lancée en S5) ; sonde solo `SampleJitter` / `LogJitter`
+  dans `HOLStressTestSubsystem` (ligne « Jitter », lecture seule ; classes attacking = `bAttacking`, approach =
+  `bApproaching` ou une cible, walking). Empreintes inchangées (S3 35c168b…, S4 93587c1…). **S3** : déplacement par
+  pas p50 / p90 / max 11,4 / 67,6 / 400 cm, inversions 49 % ; attacking 9,0 / 63 / 361, **inversions 54 %** ;
+  approach 15,6 / 82 / 400, 42 %. **S4** : attacking 1,0 / 36 / 361, 52 % ; approach 12 / 51 / 394. Pointes de
+  360-400 cm en un pas suspectes. Boucle 2 lancée : mécanisme exact, correction derrière une variable, S3 avec et sans.
+- (J7c.4, mycrusader-56) **Boucle 2** (~12 min, diagnostic seul : correction + compilation + 4 jeux ne tenaient pas ;
+  leçon : séparer le code et la passe de mesures). **Mécanisme** (à la lecture) : une unité qui frappe est à l'arrêt
+  (action Stand) ; l'évitement à l'arrêt (`HOLParallelStandingAvoidanceProcessor`, `HOLParallelMassProcessors.cpp:768-784`)
+  tire son fantôme, donc elle, vers `MoveTarget.Center` (point de `StopWalk`) ; la séparation (`HOLSimulationProcessors.cpp:742-747`)
+  la déplace sans toucher au centre ni au fantôme (alliés qui marchent derrière : part 0,5 ; contre un ennemi immobile
+  : part 1) ; au pas suivant le rappel la ramène dedans : **rappel élastique**, d'où 54 % d'inversions. Approche : même
+  conflit pilotage / séparation. **Pointes de 360-400 cm** non établies : corrections enchaînées sans plafond (probable),
+  retour sur la navmesh, `HOLFootprintKeepOut`. **Plan** : `hol.Simulation.SeparationSettle` (1 par défaut) : pour une
+  unité qui frappe, `MoveTarget.Center` et fantôme décalés de la correction de la séparation (elle reste où elle est
+  mise) ; ensuite, si besoin, plafond par pas (`SeparationMaxStep`) et arrêt d'un marcheur au contact d'un ennemi
+  immobile. Boucle 3 lancée : code + compilation + S3 avec / sans.
+- (J7c.4, mycrusader-56) **Boucle 3** (~14 min, arrêtée) : code écrit, **non compilé** (Build.bat bloqué derrière
+  l'UnrealBuildTool de mycrusader-4f dans `MyCrusader-Galadriel`, même moteur ; leçon : vérifier le verrou d'UBT
+  avant de lancer une boucle de code). `HOLSimulationProcessors.cpp` : `hol.Simulation.SeparationSettle` (1 par
+  défaut) ; requête de la séparation : `FMassMoveTargetFragment` en écriture, `FMassGhostLocationFragment` (écriture)
+  et `FHOLCombatFragment` (lecture) optionnels ; `Settles[i] = !bWalking && !bGhost && bAttacking`, permuté par
+  `UnitId` ; à l'écriture, centre et fantôme décalés de la correction (X, Y). Sonde des pointes : plus grande
+  correction du pas (toutes / unités qui frappent), lignes « Jitter sep max step » dans `HOLStressTestSubsystem`.
+  À vérifier : `SeparationSettle 0` = 35c168b… (les accès changés peuvent changer l'ordre des processeurs de Mass).
+  Compilation relancée par la session principale (attend le verrou).
+- (J7c.4, mycrusader-56) Boucle 3 compilée par la session principale (117 s, sans avertissement). S3 ×2 avec
+  `SeparationSettle 1`, S3 avec 0, S4 avec 1 (en parallèle) : **la correction n'a aucun effet** : empreintes
+  identiques avec et sans (S3 35c168b12173ffac, S4 93587c1cc36b353c), Jitter identique au cm près (attacking S3
+  9,0 / 63 / 361 cm, 54 %). La sonde des pointes tranche : **elles viennent de la séparation** (plus grande
+  correction du pas, unités qui frappent : p50 / p90 / max 256 / 306 / 361 cm en S3 ; toutes : 280 / 338 / 426) ; au
+  début de la mesure 5 260 paires se chevauchent (écart le plus petit −120 cm : deux unités presque l'une sur l'autre).
+  Boucle 4 lancée : pourquoi `Settles` ne s'applique pas.
+- (J7c.4, mycrusader-56) **Boucle 4** (non commitée) : **le rappel par l'évitement à l'arrêt n'existe pas** :
+  `UHOLFullSpeedProcessor` (`HOLSimulationProcessors.cpp` ~280-290) met à zéro la vitesse de toute unité hors action
+  Move ; le décalage du centre et du fantôme n'était lu par rien (d'où l'empreinte identique). **Vraie source : la
+  séparation seule** : un ami qui avance pousse la frappeuse de moitié, elle passe en file, reprend tout son
+  chevauchement contre l'ennemi (part 1), à chaque pas, dans des sens variables. Essai : décalage retiré (requête
+  revenue à l'identique), `Share = Settles[Other] ? 1 : GetOverlapShare(...)` (une frappeuse n'est jamais poussée).
+  S3 : off = 35c168b… ; **on 774d35e0f94a42d6 : Jitter attacking 0 / 0 / 0**, approach 19 / 79 / 417 (39,6 %) ; mais
+  **chevauchements à la fin 9 536 paires (3 211 avant)**, **347 morts (182)**, mêlée 2,2 s après la charge (4,7) :
+  deux frappeuses amies qui se chevauchent ne se séparent plus jamais. Pas acceptable tel quel. Question posée à
+  l'utilisateur (amortir, plafonner par pas, ou frappeuse non poussable par un marcheur ami seulement).
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : **plafonner la correction de la séparation par
+  pas** (~30 cm, un pas de marche ; règles de partage inchangées). Boucle 5 lancée : essai « jamais poussée » retiré,
+  `hol.Simulation.SeparationMaxStep` (cm, 0 = comme avant), S3 à 0 / 20 / 30 / 45 cm, S4 ensuite.
+- (J7c.4, mycrusader-56) **Boucle 5** (~6 min, non commitée) : essai « jamais poussée » retiré ; `hol.Simulation.SeparationMaxStep`
+  (cm, défaut 30, 0 = 35c168b… vérifié) appliqué à la correction totale après les 2 tours ; sonde « sep max step »
+  réduite à toutes les unités. **Le plafond ne guérit pas** : S3 à 20 / 30 / 45 cm : frappeuses à exactement le
+  plafond à chaque pas (p50 = p90 = max), inversions 48-50 % ; chevauchements à la fin 9 727 / 6 362 / 4 259 (3 211
+  sans) ; morts 361 / 246 / 133 (182) ; séparation 3,9 / 3,2 / 2,6 ms (1,9) ; mêlée 2,4-2,9 s après la charge (4,7).
+  S4 à 30 : a8526c89…, 232 morts (198), chevauchements fin 3 608 (2 723). Lecture : la correction est étalée, pas
+  supprimée ; le chevauchement est recréé à chaque pas (les marcheurs de l'approche entrent dans la presse, puis
+  ping-pong entre voisins des corrections en place). Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : plafond retiré ; **mesurer d'abord la source**
+  (sonde seule, jeu inchangé) : part des corrections de la séparation due à un marcheur qui avance dans la presse,
+  part due au renvoi entre unités debout ; remède ensuite (arrêt du marcheur bloqué, ou séparation relaxée).
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
