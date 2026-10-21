@@ -27,10 +27,13 @@ public:
 	UHOLGameScreen* GetScreen() const { return Screen; }
 	/** The cheats' panel (D291), in a development build only; null in Shipping. */
 	UHOLCheatPanel* GetCheatPanel() const { return CheatPanel; }
+	/** The test scenario's panel, in a development build only; null in Shipping. */
+	UHOLScenarioPanel* GetScenarioPanel() const { return ScenarioPanel; }
 
 	/** The game screen of a local player, if its HUD is this one. */
 	static UHOLGameScreen* FindScreen(const APlayerController* PlayerController);
 	static UHOLCheatPanel* FindCheatPanel(const APlayerController* PlayerController);
+	static UHOLScenarioPanel* FindScenarioPanel(const APlayerController* PlayerController);
 
 	virtual void DrawHUD() override;
 

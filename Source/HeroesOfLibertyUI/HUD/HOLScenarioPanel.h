@@ -14,7 +14,8 @@ class UWidget;
 /**
  * The test scenario's panel (hol.Scenario, Tools/Scenarios/README.md): at the top centre of the screen, its name and
  * its state (en préparation…, prêt, or the step that never came, in red), then its notes, one per line, what the trial
- * asks to try. Its « × » closes it until the next scenario; a scenario started again replaces it.
+ * asks to try. Its « Relancer » starts the same scenario again (hol.Scenario <Name>: the map is reloaded); its « × »
+ * closes it until the next scenario; a scenario started again replaces it.
  * What it shows is kept by the game module (HOLTestHooks::GetScenarioDisplay), so that the panel of a match opened by
  * the scenario shows it too. Only a development build makes one (AHOLGameHUD, !UE_BUILD_SHIPPING); its texts are not
  * translated, as the cheats' panel's. Built in code (D242).
@@ -36,6 +37,9 @@ public:
 	/** "scenario order_lines ready, 3 notes", "scenario closed" or "no scenario" (hol.HUD.Report). */
 	FString Describe() const;
 
+	/** Clicks ScenarioRestart or ScenarioClose as the mouse would (hol.HUD.Click); false for another name or when hidden. */
+	bool ClickWidget(FName Name);
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
@@ -43,6 +47,7 @@ protected:
 private:
 	void BuildLayout();
 	void HandleCloseClicked();
+	void HandleRestartClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> Panel;
@@ -52,6 +57,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonTextBlock> State;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLQueueItem> RestartButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLQueueItem> CloseButton;

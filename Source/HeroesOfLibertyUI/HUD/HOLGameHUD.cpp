@@ -212,3 +212,9 @@ UHOLCheatPanel* AHOLGameHUD::FindCheatPanel(const APlayerController* PlayerContr
 	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
 	return GameHUD ? GameHUD->GetCheatPanel() : nullptr;
 }
+
+UHOLScenarioPanel* AHOLGameHUD::FindScenarioPanel(const APlayerController* PlayerController)
+{
+	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
+	return GameHUD ? GameHUD->GetScenarioPanel() : nullptr;
+}
