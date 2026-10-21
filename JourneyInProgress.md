@@ -6343,6 +6343,27 @@ d'épée).
   - **À savoir** : la vidéo de référence est https://www.youtube.com/shorts/zWR2KnqUMVI (1:12-1:25) ; l'analyse est
     au-dessus. Un jeu ouvert depuis le worktree verrouille la DLL (LNK1104) : fermer le jeu avant de compiler.
     Bouton « relancer le scénario » demandé (`EtapeDefini.md`, Outils d'essai).
+- **Mesures au repos du 2026-10-21 au soir** (demande de l'utilisateur, Discord / Opera / Notepad fermés, processeur
+  3-20 % avant chaque course ; `main` d72280a recompilé, serveur dédié recuit) :
+  - `main`, `chapter_measures.ps1` (tag `rest_1021_main`) : **S1 sans rapport** (plantage, voir ci-dessous) ; **S2 FAIL**
+    3,320 / 3,293 ms (J7b1 : 2,84) ; **S7 PASS** 2,947 / 2,950 ms (J7b1 : 2,58) ; rendu 214-216 i/s partout ;
+    **S5 FAIL** 32 200 o/s (seuil 32 000, J7b1 : 30 897), erreur affichée 20,3 cm PASS.
+  - **S1 plante** : les 8 joueurs naissent mêlés au même point ; depuis le combat (J7b.2, ffc9164, après les mesures
+    J7b1) les unités immobiles attaquent l'ennemi au contact (460 morts en 10 s), puis `GetUnitLocations`
+    (`HOLStressTestSubsystem.cpp:1059`) lit le fragment d'une entité morte → `check(CurrentArchetype)` de Mass.
+  - Avec `hol.Combat.Enabled 0` (tag `rest_1021_nocombat`) : S1 2,439 / 2,560 ms PASS ; S2 3,139 / 3,114 ms
+    **toujours FAIL** : le combat ne coûte que ~0,17 ms à S2, ~0,3 ms viennent d'ailleurs depuis J7b1 (candidats non
+    vérifiés : lignes d'ordres côté serveur, déplacements de groupe d3f1408, formation).
+  - `HeroesOfLiberty-Elrond` (WIP ce1dcf5, tag `rest_1021_elrond`) : **S3 FAIL** 18,24 / 18,29 ms, 134 i/s ; **S4 FAIL**
+    17,42 / 17,32 ms, 131 i/s (avant le WIP : 5,8-7,6 ms) ; la sonde « Separation source » (O(N²), allumée par
+    `IsBattle()`) fausse ces temps : chiffres sans valeur tant qu'elle reste allumée. S5 en combat non remesuré. S6
+    n'existe pas encore (M8).
+  - **S1 corrigé** (choix de l'utilisateur, conforme à la recommandation, contre « un disque par joueur » et « un seul
+    joueur ») : S1 coupe `hol.Combat.Enabled` le temps de sa course et le rend à `StopTest` / `Deinitialize`
+    (foule et cadrage inchangés ; le coût du combat se mesure dans S2, S7, S3, S4) ; toutes les lectures de fragments du
+    stress test passent par `FragmentOf` (entité morte → aucun fragment). Vérifié : S1 deux fois sans plantage ni mort
+    (`rest_1021_s1fix_1/2`), temps à reprendre au repos (processeur à 80 % : l'autre session compilait dans Elrond).
+    Commité après l'accord de l'utilisateur.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 

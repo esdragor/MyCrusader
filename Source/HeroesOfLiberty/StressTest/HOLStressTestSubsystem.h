@@ -99,6 +99,8 @@ private:
 	/** S7: where a player's Peasants are born, between its centre and the middle of the map. */
 	FVector GetGatheringSpawnPoint(int32 Player) const;
 	int32 GetNumPlayers() const;
+	/** Gives hol.Combat.Enabled back its value from before an S1 run. */
+	void RestoreCombat();
 
 	/** Identifiers of the units of this run (D223): the stress test never holds Mass entities itself. */
 	TArray<uint32> UnitIds;
@@ -185,4 +187,6 @@ private:
 	bool bQuitPending = false;
 	float QuitDelayElapsed = 0.f;
 	uint64 UsedPhysicalBeforeSpawn = 0;
+	/** S1: hol.Combat.Enabled before the run turned it off, INDEX_NONE when the run did not touch it. */
+	int32 CombatEnabledBeforeRun = INDEX_NONE;
 };
