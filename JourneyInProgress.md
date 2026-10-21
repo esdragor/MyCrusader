@@ -6379,6 +6379,163 @@ d'épée).
   - **Choix de l'utilisateur** (conforme à la recommandation) : le correctif du coût fixe du combat se fait **dans
     Elrond, sur `j7c-shot`, avec la mêlée** (pas dans `main` : conflit avec la réécriture de `HOLCombatProcessor`) ;
     confié à mycrusader-80, qui tient Elrond. À vérifier là : S3 / S4 identiques (empreintes), S2 sous 3 ms au repos.
+  - **Mesures du matin préparées** (demande de l'utilisateur : « que je lance tout demain matin ») :
+    `Tools/Tests/rest_measures.ps1` (non commité, à valider à son premier passage) : arrêt si un Unreal ou une compilation
+    tourne, ou si le processeur dépasse 15 % (liste des applications à fermer) ; compile `main` et Elrond ; `main` S1, S2,
+    S7 (x2) puis S5 ; Elrond S3, S4 (x2) puis S5 et S5 en combat ; bilan unique `Saved_Tests/Logs/rest_measures_<date>.txt`.
+    Essai à blanc (`-DryRun`) passé.
+- (J7c.4, **mycrusader-80**, reprise) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours », `j7c-shot` au-dessus
+  de ce1dcf5). Boucle 16 lancée (sous-agent) : les trois règles derrière des variables — `hol.Combat.WeaponReach` (1)
+  avec `hol.Combat.SpearReach` (130 cm bord à bord) et `hol.Combat.SwordReach` (70) ; `hol.Simulation.FriendGap` (25 cm
+  entre soldats amis, pas les Paysans) ; `hol.Combat.WaitBehindFighting` (1) — compilation, notes de `melee_formed`,
+  un lancement sans fenêtre ; puis essai de l'utilisateur sur `melee_formed`.
+- (J7c.4, mycrusader-80) **Boucle 16** (~12 min, 136k tokens, non commitée, compilée sans avertissement) : portée par
+  `HOLCombat::GetAttackRange` (`HOLCombatRules.cpp`, bornée à 199 cm, toutes les lectures du combat) ; `FriendGap`
+  dans la séparation entre soldats du même joueur (`CarryCapacity` 0 : Paysans exclus ; cases de grille élargies) ;
+  `WaitBehindFighting` (`HOLCombatProcessor.cpp` ~853-940 : ami de mêlée qui frappe ou attend à ≤ 50 cm dans un cône de
+  ~50° → arrêt sur place, hystérésis 70 cm, profondeur d'attente plafonnée à 6, `WaitDepth` dans `FHOLCombatFragment`).
+  Formation compatible (colonnes à 30 cm bord à bord, rangs à 60). Contrôle hors écran (`-RenderOffScreen`, `waitui`
+  exige l'interface) : prêt en 10,5 s, 165 morts en ~80 s (63 / 102 : asymétrie à surveiller). À voir : `PlaceGap`
+  (50 cm) et `ZoneOfControl` (150) pas alignés sur la lance, frappe à 130 cm peut-être « dans le vide ». 4e essai
+  `melee_formed` lancé.
+- (J7c.4, mycrusader-80) **4e essai `melee_formed`** : « pas du tout ce qui doit se passer » : la moitié de la première
+  ligne est poussée / téléportée au milieu de la mêlée adverse au contact ; un soldat qui n'est pas au contact attend
+  qu'une place se libère. **Voulu** : les fronts se chargent ; à portée d'engagement ils s'arrêtent et se frappent ;
+  les rangs arrière cherchent une cible proche **non entourée**, restent en alerte, **quitte à se déplacer sur les
+  bords**. Nouvelle vidéo de référence de l'utilisateur (GIF 48 s, 6 i/s ; feuilles d'images dans le dossier de
+  travail de la session) : approche en files aérées ; au choc une **ligne de contact continue** qui ondule (bande mêlée
+  d'un ou deux corps), personne ne la traverse ; derrière, les rangs se **tassent** derrière leurs amis (pas d'écart
+  gardé) ; peu à peu les rangs arrière **débordent par les extrémités** et la ligne s'allonge et s'enroule autour du
+  flanc adverse. Donc la règle 3 telle qu'écrite (attente) est **refusée** ; l'écart entre amis n'est pas ce qu'on
+  voit au contact. Boucle 17 lancée (diagnostic seul) : sonde `hol.Debug.PassProbe` (qui fait passer une unité de
+  l'autre côté d'un ennemi : marche, séparation, ZoC…), passes avec / sans `WaitBehindFighting`, `FriendGap`.
+- (J7c.4, mycrusader-80) **Boucle 17** (~4 min, 80k tokens, sonde laissée : `HOLSimulationProcessors.cpp` ~511 et
+  ~947) : **les traversées viennent de la séparation (`Undo`), pas de la marche** (pas ≤ 29 cm ; ZoC, StopAtContact,
+  évitement Mass : 0). Traversées en 8 s après le contact : 126 (défauts, saut max 96 cm), 587 sans
+  `WaitBehindFighting` (284 cm), 28 sans `FriendGap` (63 cm). **Mécanisme** : les rangs arrière marchent dans leurs
+  amis, « moitié chacun » pousse l'ami de devant vers l'avant (cumulé sur plusieurs rangs dans le même pas) ; face à
+  l'ennemi immobile l'unité du front prend tout le chevauchement, le long de l'axe centre à centre **du moment** :
+  poussée au-delà du centre ennemi, l'axe s'inverse et `Undo` la sort du côté ennemi (la « téléportation »).
+- (J7c.4, mycrusader-80) Boucle 18 lancée (correctif) : `hol.Simulation.EnemySideGuard` (paire ennemie résolue sur la
+  normale du début du pas, jamais au-delà du centre) et `SeparationMaxStep` (plafond = rayon) ; `FrontHoldsFriends` (une
+  unité au contact d'un ennemi n'est jamais poussée par un ami : les rangs arrière se tassent) ; attente passive
+  retirée ; `FriendGap` 0 par défaut ; rangs arrière : cible libre (places comptées avec les portées d'arme), en
+  alerte, contournement vers les bords ; passe hors écran avec sonde et captures.
+- (J7c.4) **À faire avant de quitter ce soir** (demande via mycrusader-f6) : laisser Elrond **compilable** et la sonde
+  « Separation source » **coupée par défaut** : l'utilisateur lancera demain matin `Tools\Tests\rest_measures.ps1`, qui
+  compile Elrond et y mesure S3, S4 (×2), S5 et S5 en combat.
+- (J7c.4, mycrusader-80) **Boucle 18** (~12 min, non commitée, sans avertissement) : `HOLSimulationProcessors.cpp`
+  `EnemySideGuard` (1 ; paire ennemie sur la normale du début du pas, plus petit déplacement qui libère, jamais du
+  côté ennemi), `SeparationMaxStep` (-1 = rayon, 0 = sans plafond), `FrontHoldsFriends` (1 ; « front » = attaque en
+  cours ou bord à ≤ 10 cm d'un ennemi, passe 3×3 de la grille ; dans une paire amie, l'ami prend tout), `FriendGap` 0 ;
+  `WaitBehindFighting` et `WaitDepth` **retirés** ; `CountBodiesAround` : un attaquant prend une place jusqu'à sa portée
+  + 20 cm (≤ 200). Passe hors écran (`Saved__P4`) : **1 traversée** (126 avant), plus grand saut d'un traverseur 29 cm
+  (96), 146 morts en ~48 s (52 / 94). Non vérifié en image : départ des rangs arrière vers les bords (la nouvelle marche
+  peut attendre `bSearchStep`), coincement entre front et ami. 5e essai `melee_formed` lancé.
+- (J7c.4, mycrusader-80) **5e essai `melee_formed`** : « la ligne de front fait parfaitement ce qu'il faut, il y a même
+  les tentatives d'encerclement à la fin de la part des autres lignes » (**front validé** : `EnemySideGuard`,
+  `SeparationMaxStep`, `FrontHoldsFriends`, portées d'arme). **Reste** : pendant les ~30 s après le choc, les rangs qui
+  ne sont pas au front « font n'importe quoi, comme s'ils étaient perdus, et se poussent les uns les autres, ce qui les
+  secoue » ; voulu : **une vague qui glisse pour combler les trous**. Boucle 19 lancée : mesure des secousses des rangs
+  arrière (changements de direction, de cible, corrections de séparation), puis glissement derrière une variable.
+  Précision de l'utilisateur : la vague glisse pour combler les trous **« ou commencer à prendre le flanc »** (pas de
+  trou proche : glisser vers l'extrémité de la ligne, là où un ennemi n'est pas entouré).
+- (J7c.4, mycrusader-80) **Boucle 19** (non commitée, sans avertissement) : `hol.Combat.RearSlide` (1 ;
+  `SlideAlongFriends`, `HOLSimulationProcessors.cpp:367-505`, appelée par `UHOLFullSpeedProcessor` : soldat de mêlée
+  qui marche pour combattre sans frapper, ami immobile au contact dans ±60° devant → glisse sur la tangente à 70 % de sa
+  vitesse, côté de sa cible sinon côté le moins peuplé à 4 m ; deux côtés bloqués → arrêt doux ; vitesse lissée, ±30 %
+  par pas) ; `hol.Combat.RearTargetKeep` (200 cm : garde la cible hors portée tant qu'elle est vivante et pas pleine, sauf
+  nouvelle plus proche de 200 cm ; `HOLCombatProcessor.cpp:790-813`) ; sonde temporaire `hol.Debug.JitterProbe`.
+  Hors écran, 15 s après le choc, unités hors du front (avant → après) : correction de séparation 22,2 / 46,2 cm →
+  0,39 / 2,6 cm (moyenne / p95) ; demi-tours 14,8 % → 6,1 % des pas ; changements de cible 2,36 → 0,25 /unité/s ;
+  marche contre un ami immobile 33 % → 0,6 % ; traversées 1 → 0. **Mais** morts en 60 s 147 → 92 (≈ 60 au front au lieu
+  de ≈ 120 : les rangs arrière ne remplissent plus le front par la pression), choc 0,6 s plus tard (lissage). 6e essai
+  `melee_formed` lancé.
+- (J7c.4, mycrusader-80) **6e essai** : « c'est mieux, mais maintenant la ligne arrière fait plutôt des gauche-droite
+  en boucle, ce qui ne les rend pas intelligents du tout ». Boucle 20 lancée : côté de glissade **engagé** (mémoire par
+  unité, pas de retournement tant que le côté n'est pas bloqué un moment), côté choisi vers un ennemi libre ou le bout
+  de la ligne plutôt que vers le côté le moins peuplé à 4 m (qui bascule quand les voisins glissent ensemble) ; mesure
+  des retournements de côté.
+- (J7c.4, mycrusader-80) **Boucle 20** (~10 min, non commitée, sans avertissement) : `hol.Combat.RearSlideKeep` (1 ;
+  champs `SlideWay`, `SlideShutSeconds`, `SlideFreeSeconds` dans `FHOLCombatFragment` ; côté gardé, retourné seulement
+  si la cible passe nettement de l'autre côté ou si le côté est bloqué 1 s (`RearSlideShutTime`) et l'autre libre ;
+  nouveau côté = celui de la cible, sinon en s'éloignant du centre de son armée le long de la ligne (vers le bout le
+  plus proche : les voisins prennent le même côté) ; oublié au front ou après 0,5 s libre) ; `RearSlideCreep` (0 :
+  avance quand les deux côtés sont bloqués ; 0,15 remonte les morts 89 → 102 mais ramène les secousses ×12). Hors
+  écran : retournements de côté 1,06 → 0,23 /unité/s, demi-tours 6,3 % → 1,3 %, traversées 0, morts 88 → 89 (147 sans
+  glissade). 7e essai `melee_formed` lancé.
+- (J7c.4, mycrusader-80) **7e essai** : « je ne vois plus aucun problème au niveau des lignes » (**glissade validée** :
+  `RearSlide`, `RearSlideKeep`, `RearTargetKeep`) ; **reste** : la ligne de front est « extrêmement petite » par rapport
+  aux soldats derrière qui ne font qu'attendre ; s'ils essayaient de **déborder par le flanc**, moins de soldats
+  inactifs et une ligne de combat plus longue. Boucle 21 lancée : débordement actif des rangs arrière qui attendent.
+- (J7c.4, mycrusader-80) **Boucle 21** (non commitée, sans avertissement) : `hol.Combat.RearFlank` (1) et
+  `RearFlankDelay` (1,5 s) ; `FHOLFrontLine` (ligne de contact par joueur, calculée en O(N) dans la séparation :
+  point moyen, axe, bouts) ; champs `FlankWaitSeconds`, `bFlanking`, `FlankSide`, `FlankWalkGoal` ; débordement
+  (`HOLCombatProcessor.cpp:944-1045`) : soldat en attaque-déplacement tenu derrière sa ligne depuis 1,5 s → vraie marche
+  vers le bout de la ligne de son côté (+2 m dehors, +1 m vers l'ennemi), arrêt sur un ennemi libre à ≤ 4 m ou au but,
+  abandon après 8 s ; sonde `JitterProbe LINE`. Hors écran (30 s après le choc, moyenne ; RearFlank 0 → 1) : au front
+  55,7 → 69,3 (92 à 30 s), en attente 296 → 269, longueur de ligne 36,6 → 43,6 m (53 m à 30 s, ne plafonne pas), morts
+  89 → 98, traversées 0, demi-tours et retournements +6-7 %. Effet modeste : ~240 attendent encore (pistes : but
+  intermédiaire en retrait, départs étalés). 8e essai `melee_formed` lancé.
+- (J7c.4, mycrusader-80) **8e essai** : « ça marche super bien » (capture : ligne longue et enroulée des deux côtés,
+  **débordement validé**) ; deux défauts : (1) la ligne **met beaucoup de temps à se mettre en place** ; (2) **il manque
+  une limite** : un soldat bleu tout à droite peut décider d'aller tout à gauche (un paquet bleu traversait derrière la
+  ligne pendant la capture). Boucle 22 lancée : côté = bout le plus proche du soldat, distance de débordement plafonnée
+  (et cible libre cherchée près de soi), mise en place plus rapide (délai plus court, départs étalés, point en retrait
+  pour ne pas retomber dans la foule).
+- (J7c.4, mycrusader-80) **Boucle 22** (non commitée, sans avertissement) : `RearFlankDelay` 1,5 → **0,5 s**,
+  `RearFlankStagger` (0,4 s étalés par Id % 8), `RearFlankNearest` (1 : bout le plus proche par projection),
+  `RearFlankMaxShift` (1 200 cm : au-delà, pas de débordement), `RearFlankBack` (250 cm : point en retrait au niveau du
+  bout avant le but ; champ `FlankBack`), `RearTargetMaxShift` (1 200 cm : ennemi plus loin le long de la ligne compté
+  plein ; `RearTargetKeep` ne le garde plus). Hors écran (boucle 21 → 22) : au front à +10 / +20 / +30 s 68 / 84 / 91 →
+  **104 / 130 / 133** ; en attente 269 → 220 ; ligne 43 → 63 m (80 au plus fort, 66 à +30 s : raccourcit, à
+  regarder) ; morts 103 → **141** ; traversées 0 ; plus grand déplacement latéral **51 → 12 m** ; changements de cible
+  0,23 → 0,45 /soldat/s, demi-tours par soldat ×2 (plus de soldats en mouvement). 9e essai `melee_formed` lancé.
+- (J7c.4, mycrusader-80) **9e essai : validé** (« ok, nice, on garde ça pour l'instant, bien joué »). Mêlée retenue :
+  portées d'arme (Lancier 130, Homme d'armes 70 cm bord à bord), `PreferFreeTarget`, `StopAtContact`, `ZoneOfControl`,
+  `EnemySideGuard`, `SeparationMaxStep`, `FrontHoldsFriends`, `RearSlide` / `RearSlideKeep`, `RearTargetKeep`,
+  `RearFlank` (boucle 22). Boucle 23 lancée : nettoyage (essais sans effet et sondes retirés, « Separation source »
+  retirée), portées dans `UnitTypes.csv`, tests ; puis `quick_check -Parts` des parties touchées et commit sur
+  `j7c-shot`.
+- (J7c.4, mycrusader-80) **Boucle 23** (~15 min, sans avertissement) : `AttackRange` Spearman 130 / ManAtArms 70 dans
+  `UnitTypes.csv`, table refaite ; `WeaponReach` / `SpearReach` / `SwordReach` / `GetAttackRange` retirés (lecture de
+  `Constants.AttackRange`) ; retirés : `SeparationFriendPushShare`, `SeparationPushToEnemy`, `EnemyNoPush`,
+  `AvoidEnemies`, `FriendGap` ; sondes retirées : CrossProbe, PassProbe, JitterProbe, « Separation source »
+  (`SumOverlaps`), « sep max step », ligne « Jitter: » des rapports S3 / S4 et sonde réseau par activité
+  (`HOLStressTestSubsystem`, `HOLUnitReplicationSubsystem` revenus à l'état d'avant ce1dcf5). Dossiers `Saved__P*`
+  effacés. Restent : tests d'automatisation, passe `melee_formed`, relecture de `HOLUnitAnimation` (frappe à 130 / 70).
+  Boucle 24 lancée : ces trois points et `quick_check -Parts` des parties touchées.
+- (J7c.4, mycrusader-80) **Boucle 24** (~12 min) : tests 87/87 ; `quick_check -Parts tests,move,formation,combat`
+  (347 s) tout PASS sauf `orders` : le contrôle « hold reach » faisait attaquer l'Homme d'armes qui tient la position
+  par un Lancier, qui frappe désormais à ~110 cm bord à bord, hors des 70 cm de l'Homme d'armes : 0 coup rendu.
+  Contrôle changé (l'attaquant est un Homme d'armes, même portée), la règle de jeu laissée telle quelle ; **question
+  à poser à l'utilisateur** : une unité qui tient la position face à une allonge plus longue doit-elle riposter d'un
+  pas ? `-Parts combat` relancé : **tout PASS** (168 s, « hold : 5 hits »). Passe `melee_formed` hors écran : 146 morts
+  en 60 s (75 / 71), aucune erreur. Lecture de l'animation : le moment du coup ne dépend pas de la portée ; la lance
+  (~3 m du centre) atteint le corps à 130 cm ; l'épée (~1,6 m) touche de peu à 70 cm, à regarder à l'œil.
+- (J7c.4, mycrusader-80) **Commité sur `j7c-shot` : e7e0151** (mêlée validée, nettoyée, vérifiée).
+- **Séance arrêtée ici (demande de l'utilisateur : PC mis en veille prolongée après le commit).**
+  **Reprise exacte** :
+  - **État** : `HeroesOfLiberty-Elrond`, branche `j7c-shot`, dernier commit **e7e0151** ; compile sans avertissement ;
+    plus aucune sonde (S3 / S4 de nouveau mesurables) ; `IN_USE.txt` « en pause ». `main` ne contient rien de J7c.4.
+  - **Mesures du matin** : l'utilisateur lance `Tools\Tests\rest_measures.ps1` (copie principale), qui compile Elrond et
+    y mesure S3, S4 (×2), S5 et S5 en combat. Empreintes S3 / S4 changées par la mêlée (nouvelles références à
+    prendre).
+  - **À faire, dans l'ordre** :
+    1. Lire les mesures du matin.
+    2. **Coût fixe de `HOLCombatProcessor`** (S2 sans combat, 0,289 ms/pas ; choix de l'utilisateur : dans Elrond, sur
+       `j7c-shot`) : tableau index d'entité → combattant au lieu du TMap `IndexOfEntity`, sortie rapide quand aucune
+       unité ne peut chercher ni frapper ; S3 / S4 identiques (empreintes), S2 < 3 ms au repos ; A/B contre
+       `HeroesOfLiberty-Galadriel` e163490 (`stress_ab.ps1 -Test S2 -Seconds 10 -Trace`, `trace_report.py`).
+    3. Question « tenir la position face à une allonge plus longue » (ci-dessus).
+    4. S5 en combat (70 Ko/s, seuil 32) : remesurer avec la mêlée corrigée, puis le lot réseau si besoin.
+    5. Mesures de fin de chapitre, avance de `main` (accord des sessions actives), J7c.5.
+- (J7c.4) **Choix de l'utilisateur (via mycrusader-f6)** : le coût fixe de `HOLCombatProcessor` dans S2 sans combat
+  (0,289 ms/pas : rassemblement, tri, empreinte des 2 000 unités, `IndexOfEntity` en TMap) se corrige **dans Elrond,
+  sur `j7c-shot`, avec la mêlée**. Pistes : tableau index d'entité → combattant, sortie rapide quand aucune unité ne
+  peut chercher ni frapper ; S3 / S4 identiques (empreintes), S2 < 3 ms au repos. Côté A de l'A/B :
+  `HeroesOfLiberty-Galadriel` détaché à e163490, compilé avec les portées de trace (`stress_ab.ps1 -Test S2 -Seconds 10
+  -Trace`, `trace_report.py`).
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
