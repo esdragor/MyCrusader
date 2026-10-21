@@ -85,6 +85,7 @@ UHOLAvoidanceSnapshotProcessor::UHOLAvoidanceSnapshotProcessor()
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassMovingAvoidanceProcessor"));
 	ExecutionOrder.ExecuteBefore.Add(TEXT("HOLParallelMovingAvoidanceProcessor")); // Mass' one run in parallel (D302)
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassStandingAvoidanceProcessor"));
+	ExecutionOrder.ExecuteBefore.Add(TEXT("HOLParallelStandingAvoidanceProcessor")); // Mass' one, its neighbours found in parallel (J7c.4)
 }
 
 void UHOLAvoidanceSnapshotProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
@@ -120,6 +121,7 @@ UHOLAvoidanceHoldProcessor::UHOLAvoidanceHoldProcessor()
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassMovingAvoidanceProcessor"));
 	ExecutionOrder.ExecuteAfter.Add(TEXT("HOLParallelMovingAvoidanceProcessor")); // Mass' one run in parallel (D302)
 	ExecutionOrder.ExecuteAfter.Add(TEXT("MassStandingAvoidanceProcessor"));
+	ExecutionOrder.ExecuteAfter.Add(TEXT("HOLParallelStandingAvoidanceProcessor")); // Mass' one, its neighbours found in parallel (J7c.4)
 	ExecutionOrder.ExecuteBefore.Add(TEXT("MassApplyForceProcessor"));
 }
 

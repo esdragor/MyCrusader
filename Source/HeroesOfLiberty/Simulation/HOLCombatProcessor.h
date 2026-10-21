@@ -102,11 +102,68 @@ protected:
 	/** The step's units in identifier order, and the index of each entity. */
 	TArray<FFighter> Fighters;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
+	/**
+	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry
+	 * being the step's when its stamp is LookupStamp and its serial the entity's. Kept between steps (it only grows).
+	 */
+	struct FEntitySlot
+	{
+		int32 SerialNumber = 0;
+		int32 Fighter = INDEX_NONE;
+		uint32 Stamp = 0;
+	};
+	TArray<FEntitySlot> FighterOfEntity;
+	uint32 LookupStamp = 0;
+	/** The fast paths' identifier sort (J7c.4, S3): (identifier, index) keys, then the fighters moved in their order. */
+	TArray<uint64> SortKeys;
+	TArray<FFighter> SortedFighters;
 	/** Cells of the positions, hashed into buckets (as UHOLUnitSeparationProcessor's). */
 	TArray<int32> CellHeads;
 	TArray<int32> NextInCell;
 	TArray<FIntPoint> Cells;
 	float MaxRadius = 1.f;
+	/**
+	 * The fast paths' search grid (J7c.4, S3), rebuilt each step over the units' box, in the very cells of the hashed one
+	 * (CellSize): the units sorted by (side, cell, identifier) by a counting sort, so a searcher walks each enemy side's
+	 * row of cells as one contiguous range of plain position, radius and fighter values. False when the box is too large
+	 * (the hashed grid then, as before).
+	 */
+	bool BuildDenseGrid();
+	struct FGridUnit
+	{
+		double X = 0.;
+		double Y = 0.;
+		float Radius = 0.f;
+		int32 Fighter = INDEX_NONE;
+	};
+	bool bDenseGrid = false;
+	TArray<FGridUnit> GridUnits;
+	/** Start of each (side, cell) range in GridUnits, one more at the end. */
+	TArray<int32> GridStarts;
+	TArray<int32> GridCursor;
+	/** The OwnerPlayer of each side, and the side of each fighter. */
+	TArray<int32> Sides;
+	TArray<int32> SideOfFighter;
+	FIntPoint GridMin = FIntPoint::ZeroValue;
+	int32 GridWidth = 0;
+	int32 GridHeight = 0;
+	/**
+	 * The dense grid's units of other sides whose edge distance to the fighter's is at most Reach, in the hashed walk's
+	 * cells (Position +- Reach): the step's constants only (positions, radii, owners), not the health, so it can run
+	 * ahead of the serial pass, in parallel.
+	 */
+	void GatherNearby(int32 Index, double Reach, TArray<int32>& Out) const;
+	/**
+	 * Gathered ahead (J7c.4, S3), in parallel, for the units that will likely search this step: the list of each, its
+	 * Reach, and the slot of each fighter (INDEX_NONE: none, a search falls back to GatherNearby in the serial pass).
+	 */
+	TArray<int32> AheadSlotOfFighter;
+	TArray<int32> AheadFighters;
+	TArray<double> AheadReach;
+	TArray<TArray<int32>> AheadLists;
+	/** A fighter is a candidate of the current search when its stamp is SearchStamp (in place of a scan of the list). */
+	TArray<uint32> SeenStamp;
+	uint32 SearchStamp = 0;
 	/** Kept between steps to spare the allocations. */
 	TArray<int32> Nearby;
 	TArray<HOLCombat::FCandidate> Candidates;

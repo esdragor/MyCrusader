@@ -28,6 +28,7 @@
 #include "Resources/HOLSourceTypes.h"
 #include "RHIStats.h"
 #include "Simulation/HOLAvoidanceHoldProcessors.h"
+#include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationProcessors.h"
@@ -86,6 +87,39 @@ namespace UE::HeroesOfLiberty::StressTest
 	int32 TreeAmount = 400;
 	FAutoConsoleVariableRef CVarTreeAmount(TEXT("hol.StressTest.TreeAmount"), TreeAmount,
 		TEXT("S7: wood in each tree the stress test places (the source table says 100; 400 keeps the field standing through the measure)"));
+	/**
+	 * S3, S4 (J7): each army's groups are born in discs of this radius (cm), side by side along X, their front edges this
+	 * far (cm) from the middle line Y = 0 (16 m between the two fronts: a short charge before the melee); S4's Archers
+	 * stand this far (cm) behind their melee's discs. Each group's attack-move leads this far (cm) past the middle line,
+	 * behind the enemy's melee.
+	 */
+	constexpr double BattleDiscRadius = 1000.;
+	constexpr double BattleHalfGap = 800.;
+	constexpr double BattleArcherSpacing = 600.;
+	constexpr double BattleChargeDepth = 3000.;
+	/**
+	 * S3, S4: the measure begins once the armies are joined, this many melee hits struck since the charge (arrows left
+	 * out), or at the latest after BattleMaxWarmUpSeconds: the window is the melee, not the walk to it.
+	 */
+	int32 BattleContactHits = 100;
+	FAutoConsoleVariableRef CVarBattleContactHits(TEXT("hol.StressTest.BattleContactHits"), BattleContactHits,
+		TEXT("S3, S4: melee hits since the charge that start the measure (the armies are joined)"));
+	constexpr float BattleMaxWarmUpSeconds = 40.f;
+	/**
+	 * S4: the Archers of an army are born in this many discs of this radius (cm), side by side along X across the width of
+	 * the melee (2 discs of BattleDiscRadius), their front edges this far (cm) behind the back edge of their melee: a band
+	 * close behind it, so that the enemy front comes within their reach (15 m) soon after the contact. Each disc is given
+	 * its own attack-move, to the middle line (the enemy melee's front) rather than beyond it: the Archers stop and shoot
+	 * at the first enemy in reach.
+	 */
+	constexpr int32 BattleArcherDiscs = 4;
+	constexpr double BattleArcherDiscRadius = 500.;
+	constexpr double BattleArcherBandGap = 300.;
+	/** S4: besides the melee hits, the measure waits for this many arrows released in the last second (a mixed battle). */
+	int32 BattleContactArrows = 100;
+	FAutoConsoleVariableRef CVarBattleContactArrows(TEXT("hol.StressTest.BattleContactArrows"), BattleContactArrows,
+		TEXT("S4: arrows released in the last second that start the measure, with the melee hits (the battle is mixed)"));
+
 	/** Time granted to the last fixed steps after the run asked to quit, so the units are destroyed (D224). */
 	constexpr float QuitDelaySeconds = 0.5f;
 	/**
@@ -214,13 +248,13 @@ namespace UE::HeroesOfLiberty::StressTest
 
 	FAutoConsoleCommandWithWorldAndArgs StartCommand(
 		TEXT("hol.StressTest"),
-		TEXT("hol.StressTest S1|S2|C|S7 [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units crossing at hol.StressTest.CrossingAngle (avoidance check), S7: Peasants gathering wood (D299)"),
+		TEXT("hol.StressTest S1|S2|C|S7|S3|S4 [Count=2000] [Seconds=20] [quit] - S1: units standing still, S2: units walking by move orders (D190, D218, D229), C: two units crossing at hol.StressTest.CrossingAngle (avoidance check), S7: Peasants gathering wood (D299), S3: two armies in melee, S4: two armies of melee and Archers (J7)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UHOLStressTestSubsystem* Subsystem = FindSubsystem(World);
 			if (!Subsystem || Args.Num() < 1)
 			{
-				UE_LOG(LogHOLStressTest, Warning, TEXT("Usage: hol.StressTest S1|S2|C|S7 [Count=2000] [Seconds=20] [quit] (in a game world)"));
+				UE_LOG(LogHOLStressTest, Warning, TEXT("Usage: hol.StressTest S1|S2|C|S7|S3|S4 [Count=2000] [Seconds=20] [quit] (in a game world)"));
 				return;
 			}
 			EHOLStressScenario Scenario = EHOLStressScenario::S1_Idle;
@@ -235,6 +269,14 @@ namespace UE::HeroesOfLiberty::StressTest
 			else if (Args[0].Equals(TEXT("S7"), ESearchCase::IgnoreCase))
 			{
 				Scenario = EHOLStressScenario::S7_Gathering;
+			}
+			else if (Args[0].Equals(TEXT("S3"), ESearchCase::IgnoreCase))
+			{
+				Scenario = EHOLStressScenario::S3_Melee;
+			}
+			else if (Args[0].Equals(TEXT("S4"), ESearchCase::IgnoreCase))
+			{
+				Scenario = EHOLStressScenario::S4_Mixed;
 			}
 			// The crossing needs exactly two units, at two known places.
 			const int32 Count = Scenario == EHOLStressScenario::Crossing
@@ -263,6 +305,8 @@ namespace UE::HeroesOfLiberty::StressTest
 		case EHOLStressScenario::S2_Moving: return TEXT("S2 (moving)");
 		case EHOLStressScenario::Crossing: return TEXT("C (crossing)");
 		case EHOLStressScenario::S7_Gathering: return TEXT("S7 (gathering)");
+		case EHOLStressScenario::S3_Melee: return TEXT("S3 (melee)");
+		case EHOLStressScenario::S4_Mixed: return TEXT("S4 (mixed armies)");
 		default: return TEXT("S1 (idle)");
 		}
 	}
@@ -310,8 +354,27 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 	Count = InCount;
 	MeasureSeconds = InMeasureSeconds;
 	bQuitWhenDone = bInQuitWhenDone;
-	// S7 gathers: Peasants, whatever the type of the other scenarios.
+	// S7 gathers: Peasants, whatever the type of the other scenarios; S3 and S4 bring their own types (named for the report).
 	UnitTypeName = Scenario == EHOLStressScenario::S7_Gathering ? FName(TEXT("Peasant")) : FName(*UE::HeroesOfLiberty::StressTest::UnitType);
+	bChargeOrdered = false;
+	ContactSeconds = -1.f;
+	ArrowsReleasedHistory.Reset();
+	ArrowsPerSecondAtStart = 0;
+	if (IsBattle())
+	{
+		TArray<FString> TypeNames;
+		for (const FName Type : GetBattleTypes())
+		{
+			TypeNames.Add(Type.ToString());
+		}
+		UnitTypeName = FName(*FString::Join(TypeNames, TEXT("+")));
+		// The armies fight whatever the session set (quick_check turns the combat off for its early parts).
+		if (IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled")))
+		{
+			CombatEnabled->Set(1, ECVF_SetByConsole);
+			UE_LOG(LogHOLStressTest, Display, TEXT("%s: hol.Combat.Enabled %d"), UE::HeroesOfLiberty::StressTest::ToString(Scenario), CombatEnabled->GetInt());
+		}
+	}
 
 	UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>();
 	if (Simulation == nullptr)
@@ -324,8 +387,9 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 		StepStartedHandle = Simulation->GetOnStepStarted().AddUObject(this, &UHOLStressTestSubsystem::OnSimulationStep);
 	}
 	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	// S3, S4: the longest warm-up; the measure begins earlier, once the armies are joined (IsBattleJoined).
 	WarmUpSteps = FMath::CeilToInt32((Scenario == EHOLStressScenario::S7_Gathering ? UE::HeroesOfLiberty::StressTest::GatheringWarmUpSeconds
-		: UE::HeroesOfLiberty::StressTest::WarmUpSeconds) / StepSeconds);
+		: IsBattle() ? UE::HeroesOfLiberty::StressTest::BattleMaxWarmUpSeconds : UE::HeroesOfLiberty::StressTest::WarmUpSeconds) / StepSeconds);
 	MeasureSteps = FMath::Max(1, FMath::RoundToInt32(MeasureSeconds / StepSeconds));
 
 	UsedPhysicalBeforeSpawn = FPlatformMemory::GetStats().UsedPhysical;
@@ -358,8 +422,14 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 
 void UHOLStressTestSubsystem::StopTest()
 {
+	if (IsBattle() && UnitIds.Num() > 0)
+	{
+		// The fallen are gone already: only the living are destroyed.
+		RefreshBattleUnitIds();
+	}
 	const bool bHadUnits = UnitIds.Num() > 0;
 	DestroyUnits();
+	bChargeOrdered = false;
 	if (bHadUnits && (!GatheringCentres.IsEmpty() || !GatheringTrees.IsEmpty()))
 	{
 		// The units go at the tail of a step (D224): the deposits and trees wait for them (OnSimulationStep), or the
@@ -425,7 +495,8 @@ void UHOLStressTestSubsystem::Tick(const float DeltaTime)
 		else
 		{
 			const TCHAR* ScenarioName = Scenario == EHOLStressScenario::S2_Moving ? TEXT("S2") : (Scenario == EHOLStressScenario::Crossing ? TEXT("C")
-				: (Scenario == EHOLStressScenario::S7_Gathering ? TEXT("S7") : TEXT("S1")));
+				: (Scenario == EHOLStressScenario::S7_Gathering ? TEXT("S7") : (Scenario == EHOLStressScenario::S3_Melee ? TEXT("S3")
+				: (Scenario == EHOLStressScenario::S4_Mixed ? TEXT("S4") : TEXT("S1")))));
 			FScreenshotRequest::RequestScreenshot(FString::Printf(TEXT("StressTest_%s.png"), ScenarioName),
 				/*bInShowUI*/ false, /*bAddFilenameSuffix*/ false);
 		}
@@ -450,7 +521,17 @@ void UHOLStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
 	}
 
 	++PhaseSteps;
-	if (Phase == EPhase::WarmingUp && PhaseSteps >= WarmUpSteps)
+	if (Phase == EPhase::WarmingUp && Scenario == EHOLStressScenario::S4_Mixed && bChargeOrdered)
+	{
+		// One second of steps: the arrows released over it are the newest count less the oldest.
+		const int32 StepsPerSecond = FMath::Max(1, FMath::RoundToInt32(1.f / GetDefault<UHOLSimulationSettings>()->GetStepSeconds()));
+		ArrowsReleasedHistory.Add(UHOLCombatProcessor::GetTotalArrowsReleased());
+		if (ArrowsReleasedHistory.Num() > StepsPerSecond + 1)
+		{
+			ArrowsReleasedHistory.RemoveAt(0, ArrowsReleasedHistory.Num() - StepsPerSecond - 1, EAllowShrinking::No);
+		}
+	}
+	if (Phase == EPhase::WarmingUp && (IsBattle() ? IsBattleJoined() : PhaseSteps >= WarmUpSteps))
 	{
 		BeginMeasure();
 	}
@@ -482,6 +563,22 @@ void UHOLStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
 			OrderCampBuilding();
 		}
 		WatchCampSites();
+	}
+	else if (IsBattle())
+	{
+		if (!bChargeOrdered)
+		{
+			OrderCharge();
+		}
+		if (Phase == EPhase::Measuring)
+		{
+			// Released and not yet landed or lost: the server's arrow list (UHOLCombatProcessor).
+			const int64 InFlight = UHOLCombatProcessor::GetTotalArrowsReleased() - UHOLCombatProcessor::GetTotalArrowsLanded()
+				- UHOLCombatProcessor::GetTotalArrowsLost();
+			ArrowsInFlightSum += static_cast<double>(InFlight);
+			ArrowsInFlightMax = FMath::Max(ArrowsInFlightMax, InFlight);
+			++ArrowSamples;
+		}
 	}
 }
 
@@ -531,6 +628,41 @@ void UHOLStressTestSubsystem::SpawnUnits()
 		return;
 	}
 
+	if (IsBattle())
+	{
+		// S3, S4: one request per type and side, each army's share split evenly between its types (the first ones take
+		// the remainder); slot 0 on the Y < 0 side, slot 1 facing it. Not one disc per player as the others: two players.
+		const TArray<FName> Types = GetBattleTypes();
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			const int32 SideCount = Count / 2 + (Side < Count % 2 ? 1 : 0);
+			for (int32 TypeIndex = 0; TypeIndex < Types.Num(); ++TypeIndex)
+			{
+				const int32 TypeCount = SideCount / Types.Num() + (TypeIndex < SideCount % Types.Num() ? 1 : 0);
+				if (TypeCount > 0 && TypeIndex >= 2)
+				{
+					// S4's Archers: a band of small discs just behind the melee, the count shared between them.
+					using UE::HeroesOfLiberty::StressTest::BattleArcherDiscs;
+					for (int32 Disc = 0; Disc < BattleArcherDiscs; ++Disc)
+					{
+						const int32 DiscCount = TypeCount / BattleArcherDiscs + (Disc < TypeCount % BattleArcherDiscs ? 1 : 0);
+						if (DiscCount > 0)
+						{
+							Units->RequestUnits(FHOLUnitSpawnRequest{ Types[TypeIndex], DiscCount, GetArcherDiscCentre(Side, Disc),
+								static_cast<float>(UE::HeroesOfLiberty::StressTest::BattleArcherDiscRadius), static_cast<uint8>(Side) });
+						}
+					}
+				}
+				else if (TypeCount > 0)
+				{
+					Units->RequestUnits(FHOLUnitSpawnRequest{ Types[TypeIndex], TypeCount, GetBattleGroupCentre(Side, TypeIndex),
+						static_cast<float>(UE::HeroesOfLiberty::StressTest::BattleDiscRadius), static_cast<uint8>(Side) });
+				}
+			}
+		}
+		return;
+	}
+
 	if (Scenario == EHOLStressScenario::Crossing)
 	{
 		// Two units CrossingHalfDistance from the origin (15 m by default): the first walks along +X, the second
@@ -561,6 +693,241 @@ void UHOLStressTestSubsystem::SpawnUnits()
 		}
 	}
 }
+
+bool UHOLStressTestSubsystem::IsBattle() const
+{
+	return Scenario == EHOLStressScenario::S3_Melee || Scenario == EHOLStressScenario::S4_Mixed;
+}
+
+TArray<FName> UHOLStressTestSubsystem::GetBattleTypes() const
+{
+	// S3: half Spearmen, half Men-at-arms; S4 (the user's choice): thirds, the Archers last (behind the melee).
+	TArray<FName> Types = { FName(TEXT("Spearman")), FName(TEXT("ManAtArms")) };
+	if (Scenario == EHOLStressScenario::S4_Mixed)
+	{
+		Types.Add(FName(TEXT("Archer")));
+	}
+	return Types;
+}
+
+FVector UHOLStressTestSubsystem::GetBattleGroupCentre(const int32 Side, const int32 TypeIndex) const
+{
+	using namespace UE::HeroesOfLiberty::StressTest;
+	// The melee groups side by side along X, their discs touching, centred on X = 0; the Archers (S4) behind them,
+	// centred too. Slot 0 faces +Y, slot 1 faces -Y: across the view of PlaceViewer, which looks along +X.
+	constexpr int32 NumMelee = 2;
+	const double Facing = Side == 0 ? -1. : 1.;
+	if (TypeIndex >= NumMelee)
+	{
+		return FVector(0., Facing * (BattleHalfGap + 3. * BattleDiscRadius + BattleArcherSpacing), 0.);
+	}
+	const double X = (TypeIndex - (NumMelee - 1) * 0.5) * 2. * BattleDiscRadius;
+	return FVector(X, Facing * (BattleHalfGap + BattleDiscRadius), 0.);
+}
+
+FVector UHOLStressTestSubsystem::GetArcherDiscCentre(const int32 Side, const int32 Disc) const
+{
+	using namespace UE::HeroesOfLiberty::StressTest;
+	// Across the melee's width (2 discs of BattleDiscRadius, centred on X = 0), BattleArcherBandGap behind its back edge.
+	const double Facing = Side == 0 ? -1. : 1.;
+	const double X = (Disc - (BattleArcherDiscs - 1) * 0.5) * 4. * BattleDiscRadius / BattleArcherDiscs;
+	return FVector(X, Facing * (BattleHalfGap + 2. * BattleDiscRadius + BattleArcherBandGap + BattleArcherDiscRadius), 0.);
+}
+
+int32 UHOLStressTestSubsystem::GetArcherDisc(const double X) const
+{
+	using namespace UE::HeroesOfLiberty::StressTest;
+	const double DiscWidth = 4. * BattleDiscRadius / BattleArcherDiscs;
+	return FMath::Clamp(FMath::FloorToInt32((X + 2. * BattleDiscRadius) / DiscWidth), 0, BattleArcherDiscs - 1);
+}
+
+void UHOLStressTestSubsystem::OrderCharge()
+{
+	using namespace UE::HeroesOfLiberty::StressTest;
+	UWorld* World = GetWorld();
+	UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!Units || !Commands || !EntitySubsystem)
+	{
+		return;
+	}
+	Units->GetAllUnitIds(UnitIds);
+	if (UnitIds.Num() < Count && (UnitIds.IsEmpty() || Units->GetNumPendingBirths() > 0))
+	{
+		return;	// the births are served over a few steps (D224); a birth with no room on the navmesh is not waited for
+	}
+	// One attack-move per type and side, as a player sends its groups (J7b.3): the server's order path, so the formation,
+	// the walk, the target search on the way, the separation and the avoidance all run as in a game. Each group walks
+	// straight ahead, through the enemy army, to BattleChargeDepth past the middle line.
+	// S4: the Archers in one group per disc of their band (BattleArcherDiscs), each given its own attack-move.
+	const TArray<FName> Types = GetBattleTypes();
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	TArray<TArray<uint32>> Groups;
+	Groups.SetNum(2 * Types.Num());
+	TArray<TArray<uint32>> ArcherGroups;
+	ArcherGroups.SetNum(2 * BattleArcherDiscs);
+	for (const uint32 UnitId : UnitIds)
+	{
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity);
+		const int32 TypeIndex = Constants ? Types.IndexOfByKey(Constants->TypeName) : INDEX_NONE;
+		if (State && State->OwnerPlayer < 2 && TypeIndex >= 2)
+		{
+			const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+			const int32 Disc = GetArcherDisc(Transform ? Transform->GetTransform().GetLocation().X : 0.);
+			ArcherGroups[State->OwnerPlayer * BattleArcherDiscs + Disc].Add(UnitId);
+		}
+		else if (State && State->OwnerPlayer < 2 && TypeIndex != INDEX_NONE)
+		{
+			Groups[State->OwnerPlayer * Types.Num() + TypeIndex].Add(UnitId);
+		}
+	}
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		for (int32 TypeIndex = 0; TypeIndex < Types.Num(); ++TypeIndex)
+		{
+			const TArray<uint32>& Group = Groups[Side * Types.Num() + TypeIndex];
+			if (Group.IsEmpty())
+			{
+				continue;
+			}
+			const FVector Centre = GetBattleGroupCentre(Side, TypeIndex);
+			const FVector Target(Centre.X, (Side == 0 ? 1. : -1.) * BattleChargeDepth, 0.);
+			Commands->IssueAttackMoveOrder(Group, Target);
+			++NumOrdersIssued;
+		}
+		// S4's Archers: to the middle line straight ahead of their disc, the enemy melee's front; they stop at the first
+		// enemy in reach (the attack-move's target search).
+		for (int32 Disc = 0; Disc < BattleArcherDiscs; ++Disc)
+		{
+			const TArray<uint32>& Group = ArcherGroups[Side * BattleArcherDiscs + Disc];
+			if (!Group.IsEmpty())
+			{
+				Commands->IssueAttackMoveOrder(Group, FVector(GetArcherDiscCentre(Side, Disc).X, 0., 0.));
+				++NumOrdersIssued;
+			}
+		}
+	}
+	bChargeOrdered = true;
+	ChargeStep = PhaseSteps;
+	MeleeHitsAtCharge = UHOLCombatProcessor::GetTotalHits() - UHOLCombatProcessor::GetTotalArrowsReleased();
+	UE_LOG(LogHOLStressTest, Display, TEXT("%s: %d units charge, %d groups given an attack-move through the enemy army, at %.1f s from the start of the run"),
+		ToString(Scenario), UnitIds.Num(), 2 * (FMath::Min(Types.Num(), 2) + (Types.Num() > 2 ? BattleArcherDiscs : 0)), PhaseSteps * GetDefault<UHOLSimulationSettings>()->GetStepSeconds());
+}
+
+bool UHOLStressTestSubsystem::IsBattleJoined() const
+{
+	if (PhaseSteps >= WarmUpSteps)
+	{
+		return true;
+	}
+	// A shooter's hit is counted when its arrow is released (UHOLCombatProcessor): the arrows are left out.
+	const int64 MeleeHits = UHOLCombatProcessor::GetTotalHits() - UHOLCombatProcessor::GetTotalArrowsReleased();
+	if (!bChargeOrdered || MeleeHits - MeleeHitsAtCharge < UE::HeroesOfLiberty::StressTest::BattleContactHits)
+	{
+		return false;
+	}
+	// S4: a mixed battle, the Archers shooting too (the arrows released over the last second of steps).
+	return Scenario != EHOLStressScenario::S4_Mixed
+		|| (ArrowsReleasedHistory.Num() >= 2 && ArrowsReleasedHistory.Last() - ArrowsReleasedHistory[0] >= UE::HeroesOfLiberty::StressTest::BattleContactArrows);
+}
+
+void UHOLStressTestSubsystem::RefreshBattleUnitIds()
+{
+	if (const UHOLUnitSubsystem* Units = GetUnitSubsystem())
+	{
+		// The StressTest map has no other unit: every living unit is the run's (the dying included, until they go).
+		Units->GetAllUnitIds(UnitIds);
+	}
+}
+
+void UHOLStressTestSubsystem::CountBattleAlive(int32 OutAlive[2]) const
+{
+	OutAlive[0] = OutAlive[1] = 0;
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	if (!EntitySubsystem || !Units)
+	{
+		return;
+	}
+	TArray<uint32> AllUnitIds;
+	Units->GetAllUnitIds(AllUnitIds);
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	for (const uint32 UnitId : AllUnitIds)
+	{
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		if (State && State->OwnerPlayer < 2 && State->Activity != EHOLUnitActivity::Dying)
+		{
+			++OutAlive[State->OwnerPlayer];
+		}
+	}
+}
+
+void UHOLStressTestSubsystem::LogBattleSummary() const
+{
+	int32 Alive[2] = {};
+	CountBattleAlive(Alive);
+	const float Seconds = FMath::Max(MeasureSeconds, 1.f);
+	const int64 Hits = UHOLCombatProcessor::GetTotalHits() - HitsAtMeasureStart;
+	const int64 Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ArrowsReleasedAtMeasureStart;
+	const FString Start = ContactSeconds >= 0.f ? FString::Printf(TEXT("once joined, %.1f s after the charge"), ContactSeconds)
+		: FString(TEXT("without the armies joined (longest warm-up)"));
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle (J7): measure begun %s; standing at the start of the measure %d against %d, at the end %d against %d (%d of %d requested still fighting)"),
+		*Start, AliveAtMeasureStart[0], AliveAtMeasureStart[1], Alive[0], Alive[1], Alive[0] + Alive[1], Count);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle during the measure: %lld hits (%.0f per second, %lld of them arrows released), %lld kills"),
+		Hits, Hits / Seconds, Released, UHOLCombatProcessor::GetTotalKills() - KillsAtMeasureStart);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Arrows during the measure: %lld released (%.0f per second), %lld landed, %lld lost; in flight %.0f on average, %lld at most"),
+		Released, Released / Seconds, UHOLCombatProcessor::GetTotalArrowsLanded() - ArrowsLandedAtMeasureStart,
+		UHOLCombatProcessor::GetTotalArrowsLost() - ArrowsLostAtMeasureStart, ArrowSamples > 0 ? ArrowsInFlightSum / ArrowSamples : 0.0, ArrowsInFlightMax);
+
+	// The battle's state at the end of the measure (J7c.4, S3), to compare two runs (hol.Combat.FastPaths 1 and 0): every
+	// living unit in identifier order, its identifier, position to the cm, health and target (-1 for none), hashed (FNV-1a).
+	uint64 Checksum = 14695981039346656037ull;
+	const auto Mix = [&Checksum](const int64 Value)
+	{
+		for (int32 Byte = 0; Byte < 8; ++Byte)
+		{
+			Checksum = (Checksum ^ ((static_cast<uint64>(Value) >> (Byte * 8)) & 0xFFull)) * 1099511628211ull;
+		}
+	};
+	int32 Hashed = 0;
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	if (EntitySubsystem && Units)
+	{
+		TArray<uint32> AllUnitIds;
+		Units->GetAllUnitIds(AllUnitIds);
+		AllUnitIds.Sort();
+		const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+		for (const uint32 UnitId : AllUnitIds)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+			const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			if (!State || State->CurrentHealth <= 0 || State->Activity == EHOLUnitActivity::Dying)
+			{
+				continue;
+			}
+			const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+			const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+			const FVector Location = Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector;
+			const uint32 TargetId = Combat ? Units->FindUnitId(Combat->Target) : 0;
+			Mix(UnitId);
+			Mix(FMath::RoundToInt64(Location.X));
+			Mix(FMath::RoundToInt64(Location.Y));
+			Mix(FMath::RoundToInt64(Location.Z));
+			Mix(State->CurrentHealth);
+			Mix(TargetId != 0 ? static_cast<int64>(TargetId) : -1);
+			++Hashed;
+		}
+	}
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle checksum: %016llx (%d living units hashed)"), Checksum, Hashed);
+}
+
 
 int32 UHOLStressTestSubsystem::GetNumPlayers() const
 {
@@ -1086,6 +1453,8 @@ void UHOLStressTestSubsystem::PlaceViewer() const
 
 void UHOLStressTestSubsystem::BeginMeasure()
 {
+	// S3, S4: the steps of the warm-up, before they are counted again for the measure.
+	const int32 WarmedUpSteps = PhaseSteps;
 	Phase = EPhase::Measuring;
 	// The measure window in an Insights trace (stress_ab.ps1 -Trace, Tools/Tests/trace_report.py).
 	TRACE_BEGIN_REGION(TEXT("HOLMeasure"));
@@ -1101,7 +1470,30 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	bCrossingFarEnd = true;
 	OrderRandom.Initialize(1066);
 
-	if (UHOLUnitSubsystem* Units = GetUnitSubsystem())
+	if (IsBattle())
+	{
+		RefreshBattleUnitIds();
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		ContactSeconds = WarmedUpSteps < WarmUpSteps ? (WarmedUpSteps - ChargeStep) * StepSeconds : -1.f;
+		CountBattleAlive(AliveAtMeasureStart);
+		HitsAtMeasureStart = UHOLCombatProcessor::GetTotalHits();
+		KillsAtMeasureStart = UHOLCombatProcessor::GetTotalKills();
+		ArrowsReleasedAtMeasureStart = UHOLCombatProcessor::GetTotalArrowsReleased();
+		ArrowsLandedAtMeasureStart = UHOLCombatProcessor::GetTotalArrowsLanded();
+		ArrowsLostAtMeasureStart = UHOLCombatProcessor::GetTotalArrowsLost();
+		ArrowsInFlightSum = 0.0;
+		ArrowsInFlightMax = 0;
+		ArrowSamples = 0;
+		ArrowsPerSecondAtStart = ArrowsReleasedHistory.Num() >= 2 ? ArrowsReleasedHistory.Last() - ArrowsReleasedHistory[0] : 0;
+		UE_LOG(LogHOLStressTest, Display, TEXT("%s: measure begins %s"), UE::HeroesOfLiberty::StressTest::ToString(Scenario),
+			ContactSeconds >= 0.f ? *FString::Printf(TEXT("%.1f s after the charge, the armies joined"), ContactSeconds) : TEXT("after the longest warm-up, the armies not joined"));
+		if (Scenario == EHOLStressScenario::S4_Mixed)
+		{
+			UE_LOG(LogHOLStressTest, Display, TEXT("S4: %lld arrows released in the last second before the measure (hol.StressTest.BattleContactArrows %d)"),
+				ArrowsPerSecondAtStart, UE::HeroesOfLiberty::StressTest::BattleContactArrows);
+		}
+	}
+	else if (UHOLUnitSubsystem* Units = GetUnitSubsystem())
 	{
 		Units->GetUnitIdsOfType(UnitTypeName, UnitIds);
 	}
@@ -1351,6 +1743,12 @@ void UHOLStressTestSubsystem::FinishMeasure()
 
 	Phase = EPhase::Idle;
 	TRACE_END_REGION(TEXT("HOLMeasure"));
+	if (IsBattle())
+	{
+		// The fallen are gone: the summaries read the living alone (a gone unit's fragments cannot be read). Their
+		// order no longer matches the start's, so the movement line means little here.
+		RefreshBattleUnitIds();
+	}
 
 	double TotalFrameSeconds = 0.0;
 	for (const float FrameTime : FrameTimes)
@@ -1437,6 +1835,10 @@ void UHOLStressTestSubsystem::FinishMeasure()
 	if (Scenario == EHOLStressScenario::S7_Gathering)
 	{
 		LogGatheringSummary();
+	}
+	if (IsBattle())
+	{
+		LogBattleSummary();
 	}
 	if (GEngine)
 	{

@@ -1,8 +1,9 @@
 # One short stress test run, off screen, on any copy of the project (main copy or a worktree), to compare two builds
 # A / B in alternation (A B A B A B) on the same machine load. Prints the CPU load before the run and the report lines
-# (Simulation, Rendering, Frame, Draw, gather rate). Refuses to start while another HeroesOfLiberty Unreal / UBT runs.
+# (Simulation, Rendering, Frame, Draw, gather rate, S3 and S4 survivors and arrows).
+# Refuses to start while another HeroesOfLiberty Unreal / UBT runs.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths); announce timed runs to the other sessions:
-#   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-A -Test S7 -Seconds 20 -LogName a1
+#   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-Elrond -Test S7 -Seconds 20 -LogName a1
 #   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-J5c -Test S7 -Seconds 20 -LogName b1
 # A clean side A: a detached worktree at the base commit, built (git worktree add --detach <dir> <commit>; Build.bat).
 # -Trace also records an Insights trace (<LogName>.utrace; the trace costs time: compare traced runs only with traced
@@ -37,4 +38,4 @@ $Clock = [Diagnostics.Stopwatch]::StartNew()
 $P = Start-Process -FilePath $Exe -ArgumentList $ArgList -PassThru
 $P.WaitForExit(600000) | Out-Null
 Write-Host "exit: $($P.HasExited) code $($P.ExitCode) in $([math]::Round($Clock.Elapsed.TotalSeconds)) s ; log $Log"
-Select-String -Path $Log -Pattern '^  (Simulation|Rendering|Frame|Draw):|wood unloaded during' | ForEach-Object { $_.Line.Trim() }
+Select-String -Path $Log -Pattern '^  (Simulation|Rendering|Frame|Draw):|wood unloaded during|^  (Battle|Arrows during)' | ForEach-Object { $_.Line.Trim() }

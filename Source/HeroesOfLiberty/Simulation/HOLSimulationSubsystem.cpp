@@ -5,9 +5,12 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformTime.h"
+#include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
+#include "MassMovementFragments.h"
+#include "MassNavigationFragments.h"
 #include "MassProcessor.h"
 #include "MassProcessorDependencySolver.h"
 #include "MassSimulationSubsystem.h"
@@ -22,6 +25,77 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 ThrottledStepIntervalOverride = 0;
 	FAutoConsoleVariableRef CVarThrottledStepInterval(TEXT("hol.Simulation.ThrottledStepInterval"), ThrottledStepIntervalOverride,
 		TEXT("Steps between two runs of the throttled processors, 0 = UHOLSimulationSettings value"));
+
+	/** Determinism probe: hashes every unit's movement state, to find where two runs part. */
+	int32 StepHashes = 0;
+	FAutoConsoleVariableRef CVarStepHashes(TEXT("hol.Simulation.StepHashes"), StepHashes,
+		TEXT("1: logs a hash of every unit's transform, velocity, force and move target at the tail of each step; 2: after each processor too (two runs' logs then show the first step and processor that differ); 3: also every unit's place at the tail of steps 0 and 1"));
+
+	/** FNV-1a over the exact bits of each living unit's movement state, in identifier order. */
+	uint64 HashUnits(const UWorld* World, const FMassEntityManager& EntityManager, const bool bDump = false)
+	{
+		uint64 Hash = 14695981039346656037ull;
+		const auto Mix = [&Hash](const uint64 Value)
+		{
+			for (int32 Byte = 0; Byte < 8; ++Byte)
+			{
+				Hash = (Hash ^ ((Value >> (Byte * 8)) & 0xFFull)) * 1099511628211ull;
+			}
+		};
+		const auto MixVector = [&Mix](const FVector& Value)
+		{
+			Mix(BitCast<uint64>(Value.X));
+			Mix(BitCast<uint64>(Value.Y));
+			Mix(BitCast<uint64>(Value.Z));
+		};
+		const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+		if (!Units)
+		{
+			return Hash;
+		}
+		TArray<uint32> UnitIds;
+		Units->GetAllUnitIds(UnitIds);
+		UnitIds.Sort();
+		for (const uint32 UnitId : UnitIds)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+			if (!EntityManager.IsEntityValid(Entity))
+			{
+				continue;
+			}
+			Mix(UnitId);
+			if (const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity))
+			{
+				if (bDump)
+				{
+					const FVector Location = Transform->GetTransform().GetLocation();
+					const FVector Facing = Transform->GetTransform().GetRotation().Vector();
+					const FMassVelocityFragment* DumpVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
+					const FMassForceFragment* DumpForce = EntityManager.GetFragmentDataPtr<FMassForceFragment>(Entity);
+					const FMassMoveTargetFragment* DumpTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Entity);
+					UE_LOG(LogHOLSimulation, Display, TEXT("Unit dump: #%u at %.17g %.17g %.17g facing %.17g %.17g velocity %.17g %.17g force %.17g %.17g target %.17g %.17g"),
+						UnitId, Location.X, Location.Y, Location.Z, Facing.X, Facing.Y, DumpVelocity ? DumpVelocity->Value.X : 0., DumpVelocity ? DumpVelocity->Value.Y : 0.,
+						DumpForce ? DumpForce->Value.X : 0., DumpForce ? DumpForce->Value.Y : 0., DumpTarget ? DumpTarget->Center.X : 0., DumpTarget ? DumpTarget->Center.Y : 0.);
+				}
+				MixVector(Transform->GetTransform().GetLocation());
+				MixVector(Transform->GetTransform().GetRotation().Vector());
+			}
+			if (const FMassVelocityFragment* Velocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity))
+			{
+				MixVector(Velocity->Value);
+			}
+			if (const FMassForceFragment* Force = EntityManager.GetFragmentDataPtr<FMassForceFragment>(Entity))
+			{
+				MixVector(Force->Value);
+			}
+			if (const FMassMoveTargetFragment* MoveTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Entity))
+			{
+				MixVector(MoveTarget->Center);
+				Mix(static_cast<uint64>(MoveTarget->GetCurrentAction()));
+			}
+		}
+		return Hash;
+	}
 }
 
 bool UHOLSimulationSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -184,6 +258,11 @@ void UHOLSimulationSubsystem::RunStep()
 			UE::Mass::Executor::Run(*Processors[Index], ProcessingContext);
 			ProcessorStats.TotalMs += (FPlatformTime::Seconds() - ProcessorStartSeconds) * 1000.0;
 			++ProcessorStats.Runs;
+			if (UE::HeroesOfLiberty::Simulation::StepHashes >= 2)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx"), StepIndex, *Processors[Index]->GetProcessorName(),
+					UE::HeroesOfLiberty::Simulation::HashUnits(GetWorld(), *EntityManager));
+			}
 		}
 	}
 
@@ -194,6 +273,11 @@ void UHOLSimulationSubsystem::RunStep()
 		NumUnitsDestroyed = Units ? Units->FlushDestructions() : 0;
 	}
 	const double DestructionMs = (FPlatformTime::Seconds() - DestructionStartSeconds) * 1000.0;
+	if (UE::HeroesOfLiberty::Simulation::StepHashes >= 1)
+	{
+		UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld %016llx"), StepIndex, UE::HeroesOfLiberty::Simulation::HashUnits(GetWorld(), *EntityManager,
+			UE::HeroesOfLiberty::Simulation::StepHashes >= 3 && StepIndex <= 1));
+	}
 
 	const double StepMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.0;
 	++StepIndex;

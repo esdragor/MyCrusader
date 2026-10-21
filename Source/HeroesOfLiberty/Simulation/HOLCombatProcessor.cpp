@@ -2,6 +2,7 @@
 
 #include "Simulation/HOLCombatProcessor.h"
 
+#include "Async/ParallelFor.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -41,6 +42,10 @@ namespace UE::HeroesOfLiberty::Combat
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
 	int32 Enabled = 1;
 	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Combat.Enabled"), Enabled, TEXT("0: no unit fights (server or solo)"));
+	/** J7c.4, S3: the same outcome by cheaper ways (a flat entity index, a key sort, no search when the target is in reach). */
+	int32 FastPaths = 1;
+	FAutoConsoleVariableRef CVarFastPaths(TEXT("hol.Combat.FastPaths"), FastPaths,
+		TEXT("1 (default): the combat's fast paths (J7c.4, S3); 0: the former ways (TMap index, full sort, a search at every search step), the same outcome"));
 }
 
 UHOLCombatProcessor::UHOLCombatProcessor()
@@ -75,6 +80,117 @@ void UHOLCombatProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 int32 UHOLCombatProcessor::BucketOf(const FIntPoint& Cell)
 {
 	return static_cast<int32>((static_cast<uint32>(Cell.X) * 73856093u ^ static_cast<uint32>(Cell.Y) * 19349663u) & (UE::HeroesOfLiberty::Combat::Buckets - 1));
+}
+
+bool UHOLCombatProcessor::BuildDenseGrid()
+{
+	// J7c.4, S3. The box of the step's cells (Cells filled), and the sides (an owner each, few).
+	FIntPoint Min = Cells[0];
+	FIntPoint Max = Cells[0];
+	for (const FIntPoint& Cell : Cells)
+	{
+		Min = FIntPoint(FMath::Min(Min.X, Cell.X), FMath::Min(Min.Y, Cell.Y));
+		Max = FIntPoint(FMath::Max(Max.X, Cell.X), FMath::Max(Max.Y, Cell.Y));
+	}
+	Sides.Reset();
+	SideOfFighter.SetNumUninitialized(Fighters.Num());
+	int32 LastOwner = INDEX_NONE;
+	int32 LastSide = INDEX_NONE;
+	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+	{
+		const int32 Owner = Fighters[Index].State->OwnerPlayer;
+		if (LastSide == INDEX_NONE || Owner != LastOwner)
+		{
+			LastSide = Sides.Find(Owner);
+			if (LastSide == INDEX_NONE)
+			{
+				LastSide = Sides.Add(Owner);
+			}
+			LastOwner = Owner;
+		}
+		SideOfFighter[Index] = LastSide;
+	}
+	// Too many cells (units spread over a huge box): the hashed grid, as before.
+	constexpr int64 MaxKeys = 1 << 22;
+	const int64 Width = static_cast<int64>(Max.X) - Min.X + 1;
+	const int64 Height = static_cast<int64>(Max.Y) - Min.Y + 1;
+	if (Width * Height * Sides.Num() > MaxKeys)
+	{
+		return false;
+	}
+	GridMin = Min;
+	GridWidth = static_cast<int32>(Width);
+	GridHeight = static_cast<int32>(Height);
+	const int32 NumCells = GridWidth * GridHeight;
+	const int32 NumKeys = NumCells * Sides.Num();
+	const auto KeyOf = [this, NumCells](const int32 Index)
+	{
+		return SideOfFighter[Index] * NumCells + (Cells[Index].Y - GridMin.Y) * GridWidth + (Cells[Index].X - GridMin.X);
+	};
+	// Counting sort, stable: within a (side, cell), the units stay in identifier order.
+	GridStarts.Init(0, NumKeys + 1);
+	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+	{
+		++GridStarts[KeyOf(Index) + 1];
+	}
+	for (int32 Key = 0; Key < NumKeys; ++Key)
+	{
+		GridStarts[Key + 1] += GridStarts[Key];
+	}
+	GridCursor = GridStarts;
+	GridUnits.SetNumUninitialized(Fighters.Num());
+	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+	{
+		const FFighter& Fighter = Fighters[Index];
+		FGridUnit& Unit = GridUnits[GridCursor[KeyOf(Index)]++];
+		Unit.X = Fighter.Location.X;
+		Unit.Y = Fighter.Location.Y;
+		Unit.Radius = Fighter.Constants->Radius;
+		Unit.Fighter = Index;
+	}
+	return true;
+}
+
+void UHOLCombatProcessor::GatherNearby(const int32 Index, const double Reach, TArray<int32>& Out) const
+{
+	// J7c.4, S3: the same cells as the hashed walk (clamped to the box: no unit outside), the other sides only, their units
+	// of a row of cells contiguous. A squared distance with a 1 cm margin (MaxRadius bounds every radius) only spares the
+	// exact test, the hashed walk's, on the same values.
+	using namespace UE::HeroesOfLiberty::Combat;
+	Out.Reset();
+	const FVector2D Position(Fighters[Index].Location);
+	const float Radius = Fighters[Index].Constants->Radius;
+	const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / CellSize), FMath::FloorToInt32((Position.Y - Reach) / CellSize));
+	const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / CellSize), FMath::FloorToInt32((Position.Y + Reach) / CellSize));
+	const int32 X0 = FMath::Max(MinCell.X, GridMin.X) - GridMin.X;
+	const int32 X1 = FMath::Min(MaxCell.X, GridMin.X + GridWidth - 1) - GridMin.X;
+	const int32 Y0 = FMath::Max(MinCell.Y, GridMin.Y) - GridMin.Y;
+	const int32 Y1 = FMath::Min(MaxCell.Y, GridMin.Y + GridHeight - 1) - GridMin.Y;
+	const double Prefilter = FMath::Square(Reach + static_cast<double>(Radius) + static_cast<double>(MaxRadius) + 1.0);
+	const int32 MySide = SideOfFighter[Index];
+	const int32 NumCells = GridWidth * GridHeight;
+	for (int32 Side = 0; Side < Sides.Num() && X0 <= X1; ++Side)
+	{
+		if (Side == MySide)
+		{
+			continue;
+		}
+		for (int32 Y = Y0; Y <= Y1; ++Y)
+		{
+			const int32 Row = Side * NumCells + Y * GridWidth;
+			const int32 End = GridStarts[Row + X1 + 1];
+			for (int32 Slot = GridStarts[Row + X0]; Slot < End; ++Slot)
+			{
+				const FGridUnit& Unit = GridUnits[Slot];
+				const double DX = Unit.X - Position.X;
+				const double DY = Unit.Y - Position.Y;
+				if (DX * DX + DY * DY <= Prefilter && HOLCombat::GetEdgeDistance(Position, Radius, FVector2D(Unit.X, Unit.Y), Unit.Radius) <= Reach)
+				{
+					Out.Add(Unit.Fighter);
+				}
+			}
+		}
+	}
 }
 
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
@@ -158,24 +274,101 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		Arrows.Reset();
 		return;
 	}
-	Fighters.Sort([](const FFighter& A, const FFighter& B) { return A.UnitId < B.UnitId; });
+	const bool bFast = FastPaths != 0;
+	if (!bFast)
+	{
+		Fighters.Sort([](const FFighter& A, const FFighter& B) { return A.UnitId < B.UnitId; });
+	}
+	else
+	{
+		// J7c.4, S3: the identifiers are unique (the unit subsystem's table), so sorting small (identifier, index) keys and
+		// moving the fighters once gives the very order of the sort above; nothing to do when the chunks gave it already.
+		bool bSorted = true;
+		for (int32 Index = 1; Index < Fighters.Num() && bSorted; ++Index)
+		{
+			bSorted = Fighters[Index - 1].UnitId < Fighters[Index].UnitId;
+		}
+		if (!bSorted)
+		{
+			SortKeys.Reset(Fighters.Num());
+			for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+			{
+				SortKeys.Add(static_cast<uint64>(Fighters[Index].UnitId) << 32 | static_cast<uint32>(Index));
+			}
+			SortKeys.Sort();
+			SortedFighters.Reset(Fighters.Num());
+			for (const uint64 Key : SortKeys)
+			{
+				SortedFighters.Add(Fighters[static_cast<int32>(Key & 0xFFFFFFFFull)]);
+			}
+			Swap(Fighters, SortedFighters);
+		}
+		// A new stamp makes every entry of the steps before stale (all of them cleared once, at its wrap).
+		if (++LookupStamp == 0)
+		{
+			FighterOfEntity.Reset();
+			LookupStamp = 1;
+		}
+	}
 	IndexOfEntity.Reset();
-	CellHeads.Init(INDEX_NONE, Buckets);
-	NextInCell.SetNumUninitialized(Fighters.Num());
 	Cells.SetNumUninitialized(Fighters.Num());
+	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+	{
+		Cells[Index] = FIntPoint(FMath::FloorToInt32(Fighters[Index].Location.X / CellSize), FMath::FloorToInt32(Fighters[Index].Location.Y / CellSize));
+	}
+	// J7c.4, S3: the dense grid of the same cells in place of the hashed one, when the box allows it.
+	bDenseGrid = bFast && BuildDenseGrid();
+	if (bFast)
+	{
+		SeenStamp.Init(0, Fighters.Num());
+		SearchStamp = 0;
+	}
+	if (!bDenseGrid)
+	{
+		CellHeads.Init(INDEX_NONE, Buckets);
+		NextInCell.SetNumUninitialized(Fighters.Num());
+	}
 	// Inserted from the last, so each bucket lists its units in identifier order.
 	for (int32 Index = Fighters.Num() - 1; Index >= 0; --Index)
 	{
 		const FFighter& Fighter = Fighters[Index];
-		IndexOfEntity.Add(Fighter.Entity, Index);
-		Cells[Index] = FIntPoint(FMath::FloorToInt32(Fighter.Location.X / CellSize), FMath::FloorToInt32(Fighter.Location.Y / CellSize));
-		int32& Head = CellHeads[BucketOf(Cells[Index])];
-		NextInCell[Index] = Head;
-		Head = Index;
+		if (bFast)
+		{
+			const int32 EntityIndex = Fighter.Entity.Index;
+			if (EntityIndex >= FighterOfEntity.Num())
+			{
+				FighterOfEntity.SetNum(EntityIndex + 1);
+			}
+			FighterOfEntity[EntityIndex] = FEntitySlot{ Fighter.Entity.SerialNumber, Index, LookupStamp };
+		}
+		else
+		{
+			IndexOfEntity.Add(Fighter.Entity, Index);
+		}
+		if (!bDenseGrid)
+		{
+			int32& Head = CellHeads[BucketOf(Cells[Index])];
+			NextInCell[Index] = Head;
+			Head = Index;
+		}
 	}
-	const auto FindFighter = [this](const FMassEntityHandle Entity) -> int32
+	const auto FindFighter = [this, bFast](const FMassEntityHandle Entity) -> int32
 	{
-		const int32* Index = Entity.IsSet() ? IndexOfEntity.Find(Entity) : nullptr;
+		if (!Entity.IsSet())
+		{
+			return INDEX_NONE;
+		}
+		if (bFast)
+		{
+			// The entry of this step for that entity index, and that very entity (not a former one of the same index).
+			if (!FighterOfEntity.IsValidIndex(Entity.Index))
+			{
+				return INDEX_NONE;
+			}
+			const FEntitySlot& Slot = FighterOfEntity[Entity.Index];
+			return Slot.Stamp == LookupStamp && Slot.SerialNumber == Entity.SerialNumber ? Slot.Fighter : INDEX_NONE;
+		}
+		const int32* Index = IndexOfEntity.Find(Entity);
 		return Index ? *Index : INDEX_NONE;
 	};
 	// Attackers of each unit at the step's start (HOLCombat::FCandidate::AttackerCount).
@@ -190,6 +383,50 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			++Fighters[Target].Combat->AttackerCount;
 		}
+	}
+	// J7c.4, S3: the lists of the units likely to search this step (by the step's start: a search step, free to seek, no
+	// target standing in reach), gathered ahead in parallel. GatherNearby reads only what no unit changes during the
+	// step; the serial pass below reads the health, the targets and the attackers then, as before, and a unit not
+	// foreseen (or with another reach) gathers there. A wrong guess costs time only.
+	if (bDenseGrid)
+	{
+		AheadSlotOfFighter.Init(INDEX_NONE, Fighters.Num());
+		AheadFighters.Reset();
+		AheadReach.Reset();
+		for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+		{
+			const FFighter& Fighter = Fighters[Index];
+			const FHOLCombatFragment& Combat = *Fighter.Combat;
+			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
+			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
+			if (Fighter.State->CurrentHealth <= 0 || Fighter.bBusy || ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) != 0
+				|| (bWalkingOrder && Combat.Mode != EHOLCombatMode::AttackMove) || Combat.bOrderedTarget)
+			{
+				continue;
+			}
+			HOLCombat::FSeeker Seeker;
+			Seeker.AttackRange = Constants.AttackRange;
+			Seeker.AggressionRadius = Constants.AggressionRadius;
+			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
+				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
+			const float SearchRadius = HOLCombat::GetSearchRadius(Seeker);
+			const int32 Target = FindFighter(Combat.Target);
+			if (SearchRadius <= 0.f || (Target != INDEX_NONE && Fighters[Target].State->CurrentHealth > 0
+				&& HOLCombat::IsInRange(FVector2D(Fighter.Location), Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange)))
+			{
+				continue;
+			}
+			AheadSlotOfFighter[Index] = AheadFighters.Add(Index);
+			AheadReach.Add(SearchRadius + Constants.Radius + MaxRadius);
+		}
+		if (AheadLists.Num() < AheadFighters.Num())
+		{
+			AheadLists.SetNum(AheadFighters.Num());
+		}
+		ParallelFor(AheadFighters.Num(), [this](const int32 Slot)
+		{
+			GatherNearby(AheadFighters[Slot], AheadReach[Slot], AheadLists[Slot]);
+		});
 	}
 
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
@@ -296,9 +533,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Target = INDEX_NONE;
 			bLost = true;
 		}
-		if (FindFighter(Combat.LastAttacker) == INDEX_NONE || Fighters[FindFighter(Combat.LastAttacker)].State->CurrentHealth <= 0)
+		// Looked up once (J7c.4, S3): nothing below changes it before the search reads it.
+		int32 LastAttacker = FindFighter(Combat.LastAttacker);
+		if (LastAttacker == INDEX_NONE || Fighters[LastAttacker].State->CurrentHealth <= 0)
 		{
 			Combat.LastAttacker = FMassEntityHandle();
+			LastAttacker = INDEX_NONE;
 		}
 
 		// A unit walking a player's order takes on nobody by itself, but on an attack-move (J7b.3); an ordered target is
@@ -317,53 +557,91 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
 			const float SearchRadius = HOLCombat::GetSearchRadius(Seeker);
-			Candidates.Reset();
-			CandidateFighters.Reset();
-			const auto AddCandidate = [&](const int32 Other)
+			// J7c.4, S3: its target standing in reach, ChooseTarget keeps it whatever the others. With a search radius, the
+			// candidates hold it once (the grid, or the extras below: alive, of another side); ChooseTarget then does not
+			// give up at its start, and returns at it (in reach and current), the only candidate that can return early, the
+			// ones before it only ranked. So the scan is spared; it changes nothing (the candidates are the step's scratch).
+			const bool bKeepTarget = bFast && Target != INDEX_NONE && SearchRadius > 0.f
+				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].State->OwnerPlayer != Fighter.State->OwnerPlayer
+				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange);
+			int32 NewTarget = Target;
+			if (!bKeepTarget)
 			{
-				const FFighter& Enemy = Fighters[Other];
-				HOLCombat::FCandidate& Candidate = Candidates.AddDefaulted_GetRef();
-				Candidate.Id = Enemy.UnitId;
-				Candidate.Position = FVector2D(Enemy.Location);
-				Candidate.Radius = Enemy.Constants->Radius;
-				Candidate.bAttacksMe = Enemy.Combat->Target == Fighter.Entity || Enemy.Entity == Combat.LastAttacker;
-				Candidate.bIsCurrentTarget = Other == Target;
-				Candidate.AttackerCount = Enemy.Combat->AttackerCount - (Other == Target ? 1 : 0);
-				CandidateFighters.Add(Other);
-			};
-			if (SearchRadius > 0.f)
-			{
-				const double Reach = SearchRadius + Constants.Radius + MaxRadius;
-				const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / CellSize), FMath::FloorToInt32((Position.Y - Reach) / CellSize));
-				const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / CellSize), FMath::FloorToInt32((Position.Y + Reach) / CellSize));
-				for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
+				Candidates.Reset();
+				CandidateFighters.Reset();
+				++SearchStamp; // only read on the fast paths
+				const auto AddCandidate = [&](const int32 Other)
 				{
-					for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
+					const FFighter& Enemy = Fighters[Other];
+					HOLCombat::FCandidate& Candidate = Candidates.AddDefaulted_GetRef();
+					Candidate.Id = Enemy.UnitId;
+					Candidate.Position = FVector2D(Enemy.Location);
+					Candidate.Radius = Enemy.Constants->Radius;
+					Candidate.bAttacksMe = Enemy.Combat->Target == Fighter.Entity || Enemy.Entity == Combat.LastAttacker;
+					Candidate.bIsCurrentTarget = Other == Target;
+					Candidate.AttackerCount = Enemy.Combat->AttackerCount - (Other == Target ? 1 : 0);
+					CandidateFighters.Add(Other);
+					if (bFast)
 					{
-						const FIntPoint Cell(X, Y);
-						for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
+						SeenStamp[Other] = SearchStamp;
+					}
+				};
+				if (SearchRadius > 0.f)
+				{
+					const double Reach = SearchRadius + Constants.Radius + MaxRadius;
+					const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / CellSize), FMath::FloorToInt32((Position.Y - Reach) / CellSize));
+					const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / CellSize), FMath::FloorToInt32((Position.Y + Reach) / CellSize));
+					if (bDenseGrid)
+					{
+						// J7c.4, S3: the hashed walk's tests on the dense grid (GatherNearby), the list gathered ahead when it
+						// was for this very reach (it depends on the step's constants only), the health read now as before:
+						// the same candidates. Their order differs (side first); ChooseTarget does not depend on it
+						// (HOLCombatRules.h: the current target in reach returned wherever it stands, else the least of a strict
+						// order ending on the unique Id).
+						const int32 AheadSlot = AheadSlotOfFighter[Index];
+						const bool bAhead = AheadSlot != INDEX_NONE && AheadReach[AheadSlot] == Reach;
+						if (!bAhead)
 						{
-							const FFighter& Enemy = Fighters[Other];
-							if (Cells[Other] != Cell || Enemy.State->OwnerPlayer == Fighter.State->OwnerPlayer || Enemy.State->CurrentHealth <= 0
-								|| HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius) > Reach)
+							GatherNearby(Index, Reach, Nearby);
+						}
+						for (const int32 Other : bAhead ? AheadLists[AheadSlot] : Nearby)
+						{
+							if (Fighters[Other].State->CurrentHealth > 0)
 							{
-								continue;
+								AddCandidate(Other);
 							}
-							AddCandidate(Other);
+						}
+					}
+					for (int32 Y = MinCell.Y; Y <= MaxCell.Y && !bDenseGrid; ++Y)
+					{
+						for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
+						{
+							const FIntPoint Cell(X, Y);
+							for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
+							{
+								const FFighter& Enemy = Fighters[Other];
+								if (Cells[Other] != Cell || Enemy.State->OwnerPlayer == Fighter.State->OwnerPlayer || Enemy.State->CurrentHealth <= 0
+									|| HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius) > Reach)
+								{
+									continue;
+								}
+								AddCandidate(Other);
+							}
+						}
+					}
+					// The current target and the last attacker, wherever they stand (ChooseTarget weighs them).
+					for (const int32 Extra : { Target, LastAttacker })
+					{
+						const bool bListed = Extra != INDEX_NONE && (bFast ? SeenStamp[Extra] == SearchStamp : CandidateFighters.Contains(Extra));
+						if (Extra != INDEX_NONE && !bListed && Fighters[Extra].State->OwnerPlayer != Fighter.State->OwnerPlayer)
+						{
+							AddCandidate(Extra);
 						}
 					}
 				}
-				// The current target and the last attacker, wherever they stand (ChooseTarget weighs them).
-				for (const int32 Extra : { Target, FindFighter(Combat.LastAttacker) })
-				{
-					if (Extra != INDEX_NONE && !CandidateFighters.Contains(Extra) && Fighters[Extra].State->OwnerPlayer != Fighter.State->OwnerPlayer)
-					{
-						AddCandidate(Extra);
-					}
-				}
+				const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Candidates);
+				NewTarget = Chosen == INDEX_NONE ? INDEX_NONE : CandidateFighters[Chosen];
 			}
-			const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Candidates);
-			const int32 NewTarget = Chosen == INDEX_NONE ? INDEX_NONE : CandidateFighters[Chosen];
 			if (NewTarget != Target)
 			{
 				if (Target != INDEX_NONE)

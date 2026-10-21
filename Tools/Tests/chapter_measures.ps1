@@ -1,15 +1,16 @@
 # End-of-chapter measures (rule of the measures, JourneyInProgress.md): every stress test twice, off screen, at rest, in
-# alternation (S1 S2 S7, then S1 S2 S7 again), then S5 once. A test passes when both its runs pass its thresholds; one
+# alternation (S1 S2 S7 S3 S4, then the same again), then S5 once. A test passes when both its runs pass its thresholds; one
 # run on each side of a threshold: a third run, and the mean of the three decides. Prints one verdict line per test and
-# a table, written to Saved_Tests\Logs\chapter_measures.txt. Exit code 1 on any FAIL. ~4 min without S5, ~5 min with it,
-# ~8 min when the dedicated server has to be cooked again (Source, Config or Content newer than the staged server).
+# a table, written to Saved_Tests\Logs\chapter_measures.txt. Exit code 1 on any FAIL. ~6 min without S5, ~7 min with it,
+# ~10 min when the dedicated server has to be cooked again (Source, Config or Content newer than the staged server).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), the machine at rest, no Unreal open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1                 (S1, S2, S7, then S5)
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1                 (S1, S2, S7, S3, S4, then S5)
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1 -Tests S7:20 -NoS5   (one test again)
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1 -Tests none          (S5 alone)
 param(
-    # Each test as Scenario:Seconds of measure.
-    [string[]] $Tests = @("S1:10", "S2:10", "S7:20"),
+    # Each test as Scenario:Seconds of measure. S3 (1000 against 1000 in melee) and S4 (the same in thirds, Archers behind)
+    # measure from the moment the armies are joined (up to 40 s of warm-up), 15 s: most of both armies still fighting.
+    [string[]] $Tests = @("S1:10", "S2:10", "S7:20", "S3:15", "S4:15"),
     [switch] $NoS5,
     [switch] $NoStage,
     [switch] $ForceStage,

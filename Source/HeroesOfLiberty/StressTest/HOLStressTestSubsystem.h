@@ -19,11 +19,13 @@ enum class EHOLStressScenario : uint8
 	S2_Moving,	// units walking on the navmesh
 	Crossing,	// two units ordered through the same point at hol.StressTest.CrossingAngle: does the avoidance make them step aside?
 	S7_Gathering,	// Peasants gathering wood for their players' centres (J5, D299): round trips, paths, used-up trees
+	S3_Melee,	// two armies of Spearmen and Men-at-arms, slot 0 against slot 1, charging each other (J7): target search, melee
+	S4_Mixed,	// the same with each army in thirds, Spearmen, Men-at-arms and Archers behind them (J7): melee and arrows
 };
 
 /**
  * Load tests launched from the console on the StressTest map:
- *   hol.StressTest S1|S2|C|S7 [Count=2000] [Seconds=20] [quit]
+ *   hol.StressTest S1|S2|C|S7|S3|S4 [Count=2000] [Seconds=20] [quit]
  *   hol.StressTest.Stop
  * Measures the fixed-step simulation time, the frame rate and the memory, and checks them against D218.
  * Since M1 the units are created by the unit subsystem (D224) and S2 walks by move orders (D229): this
@@ -100,6 +102,27 @@ private:
 	FVector GetGatheringSpawnPoint(int32 Player) const;
 	int32 GetNumPlayers() const;
 
+	/** S3 and S4: two armies fighting each other. */
+	bool IsBattle() const;
+	/** S3, S4: the unit types of one army, melee first (each army shares its count between them). */
+	TArray<FName> GetBattleTypes() const;
+	/** S3, S4: where a group of an army is born (one disc per type and side), and where its attack-move leads. */
+	FVector GetBattleGroupCentre(int32 Side, int32 TypeIndex) const;
+	/** S4: the Archers of an army are born in BattleArcherDiscs small discs side by side, a band just behind its melee. */
+	FVector GetArcherDiscCentre(int32 Side, int32 Disc) const;
+	/** S4: which of the Archer discs a point belongs to (by X). */
+	int32 GetArcherDisc(double X) const;
+	/** S3, S4: once every unit is born, each group of each army is given an attack-move through the enemy army. */
+	void OrderCharge();
+	/** S3, S4: the armies are joined (enough melee hits since the charge) or the longest warm-up went by. */
+	bool IsBattleJoined() const;
+	/** S3, S4: the units of the run are every living unit (the dead leave: the identifiers are read again). */
+	void RefreshBattleUnitIds();
+	/** S3, S4: units standing (not dying) per side. */
+	void CountBattleAlive(int32 OutAlive[2]) const;
+	/** S3, S4: survivors, hits, kills and arrows of the measure. */
+	void LogBattleSummary() const;
+
 	/** Identifiers of the units of this run (D223): the stress test never holds Mass entities itself. */
 	TArray<uint32> UnitIds;
 	FName UnitTypeName;
@@ -170,6 +193,29 @@ private:
 	int64 CutDroppedAtRunStart = 0;
 	/** UHOLGatherProcessor::FCounters when the measure began (as plain numbers: the header stays free of the processor). */
 	int64 GatherCountersAtMeasureStart[6] = {};
+
+	/**
+	 * S3, S4: whether the charge was ordered, the step count and the combat counters (UHOLCombatProcessor, as plain numbers)
+	 * when it was, and when the measure began; the units standing per side then; the arrows in flight seen on each
+	 * measured step (sum and most).
+	 */
+	bool bChargeOrdered = false;
+	int32 ChargeStep = 0;
+	int64 MeleeHitsAtCharge = 0;
+	int64 HitsAtMeasureStart = 0;
+	int64 KillsAtMeasureStart = 0;
+	int64 ArrowsReleasedAtMeasureStart = 0;
+	int64 ArrowsLandedAtMeasureStart = 0;
+	int64 ArrowsLostAtMeasureStart = 0;
+	int32 AliveAtMeasureStart[2] = {};
+	float ContactSeconds = -1.f;
+	double ArrowsInFlightSum = 0.0;
+	int64 ArrowsInFlightMax = 0;
+	int32 ArrowSamples = 0;
+	/** S4: the arrows released by the end of each of the last steps of the warm-up (one second of them, oldest first). */
+	TArray<int64> ArrowsReleasedHistory;
+	/** S4: arrows released in the last second when the measure began. */
+	int64 ArrowsPerSecondAtStart = 0;
 
 	EHOLStressScenario Scenario = EHOLStressScenario::S1_Idle;
 	EPhase Phase = EPhase::Idle;
