@@ -48,7 +48,7 @@ choisis par **A Z E R**. Déjà fait : l'attaque-déplacement est passée de A �
 |---|---|
 | G.1 Règles, données, HUD, touches, textes fr / en / ja, tests et `quick_check` (sous-agents) | **faite** (2026-10-21, rien de commité) : tests 88/88, `quick_check -Parts build` PASS (410 s) |
 | G.2 Scénario d'essai, essai de l'utilisateur | **faite** : 4e essai **validé** (« très bien », 2026-10-21) |
-| G.3 Commit, `EtapeDefini.md`, GDD (D340 ; D30, D201, D313 précisées) | en cours |
+| G.3 Commit, `EtapeDefini.md`, GDD (D340 ; D30, D201, D313 précisées) | **faite** (2026-10-21, `main` 3ca380b) : **chantier clos** |
 
 ### Journal
 
@@ -204,3 +204,6 @@ choisis par **A Z E R**. Déjà fait : l'attaque-déplacement est passée de A �
 - **4e essai validé** (« très bien »). G.3 : **D340** au GDD (grille du Paysan et barre du bas façon AoE4 ; précise
   D30, D201 — mini-carte en bas à droite —, remplace la grille directe de D313) ; `EtapeDefini.md` : ligne de la grille
   retirée, reste « barre du bas trop large sous 1500 px », review du GDD reprise à D341.
+- G.3 faite : commit f87134d sur `peasant-grid`, `main` fusionné dedans (79131ef, sans conflit), `quick_check -Parts
+  tests,production,combat,build` **PASS** (444 s, tests 90/90), fusion dans `main` **3ca380b**. Worktree
+  `MyCrusader-J5c` libéré. Reste noté dans `EtapeDefini.md` : barre du bas trop large sous 1500 px. **Chantier clos.**
