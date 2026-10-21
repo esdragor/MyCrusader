@@ -25,8 +25,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Bouton pour relancer le scénario en cours (panneau du scénario)
 
 ### GDD
-- Review du GDD : reprendre à D341 (D340 prise par la grille du Paysan)
-- Consigner au GDD la décision des scénarios de test (`hol.Scenario`, `play.ps1`)
+- Review du GDD : reprendre à D342 (D340 prise par la grille du Paysan, D341 par les scénarios d'essai)
 - Préciser D327 au GDD : au commit, seulement les parties touchées (`-Parts`) ; `-Full` aux clôtures de chapitre (choix du 2026-10-21)
 
 ### Questions techniques ouvertes

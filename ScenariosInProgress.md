@@ -101,3 +101,6 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
   scénario temporaire sans `.json` lancé en `-RenderOffScreen` : `Scenario nojson_check: /Game/Maps/Plain.Plain`,
   `New game: launching /Game/Maps/Plain.Plain`, « prêt » en 18 s. À savoir : avec `-unattended`, le jeu s'arrête au
   démarrage (rien du scénario au journal) ; lancer comme `quick_check`, sans lui.
+- **Décision consignée au GDD** (mycrusader-82, à la demande de l'utilisateur) : **D341** (§ 21, datée du 2026-10-20),
+  paragraphe « Scénarios d'essai » à la fin du § 16.6 ; numéro suivant D342 (§ 22). Écartés notés : écran dans le menu,
+  liste fixée d'avance, ennemis menés par l'IA.
