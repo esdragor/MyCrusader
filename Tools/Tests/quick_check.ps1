@@ -1332,10 +1332,11 @@ if ($NetListening) {
     }
 }
 
-# 660 s with the camera's parts (-Full): the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the
-# barracks (J7a.2), the start ~20 s; past 480 s with the combat and orders parts (J7b.3: attack-move and hold, ~45 s more).
+# 780 s with the camera's parts (-Full): the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the
+# barracks (J7a.2), the start ~20 s; past 480 s with the combat and orders parts (J7b.3: attack-move and hold, ~45 s more);
+# ~660 s with the straggler's groups (J7b trial feedback 1, ~105 s more), when 660 s cut the last parts off.
 # 120 s otherwise: the default's smoke part is done ~40 s after the launch (D327), the menu part ~15 s.
-$GameLimitSeconds = if ($Parts -contains "camera") { 660 } else { 120 }
+$GameLimitSeconds = if ($Parts -contains "camera") { 780 } else { 120 }
 $GameTimedOut = -not $GameProcess.WaitForExit($GameLimitSeconds * 1000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)

@@ -261,13 +261,20 @@ vérifier sur S1 et S2.
      5. Client : unité un peu blessée affichée pleine (99/100 → palier 15 → « 100/100 », barre pleine, mais barre
         montrée car `bFullHealth` faux). Proposition : plafonner à max − 1 quand « PV pleins » est faux.
    - **Plus tard** : `LastAttacker` n'expire jamais (riposte sans limite de distance : poursuite à travers la carte ;
-     borner à ~2 × rayon d'agression ou ~5 s) ; mort hors mêlée (`HOLCombatProcessor.cpp` ~l. 186 : ni `StopWalk`, ni
+     borner à ~2 × rayon d'agression ou ~5 s ; **choix de l'utilisateur, 2026-10-21 : l'oublier quand il disparaît dans
+     le brouillard de guerre, donc attendre M7** ; ni durée ni vue provisoire d'ici là ; pas de ping-pong entre deux
+     paires d'Archers de part et d'autre d'un Homme d'armes : tous le visent, il prend le plus proche et s'en
+     rapproche) ; mort hors mêlée (`HOLCombatProcessor.cpp` ~l. 186 : ni `StopWalk`, ni
      `Disengage`, ni activité `Dying`) **à compléter en J7c.2** (flèches) ; `hol.Combat.Enabled 0` saute aussi la
      destruction des mourantes (**corrigé le 2026-10-21**, branche `combat-dying-off` de `MyCrusader-J5c` : combat
      coupé, personne ne combat et les flèches en vol attendent, mais une unité à 0 PV tombe et part 1 s après ;
      reproduit par la partie `smoke` de `quick_check`, qui coupait le combat juste après la mort du Paysan : « 1 left
-     dying » avant, 0 après ; `-Parts tests,smoke,combat` PASS, 211 s) ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées ;
-     `AttackerCount` de la victime d'une unité tuée trop haut d'un pour la fin du pas (sans effet visible).
+     dying » avant, 0 après ; `-Parts tests,smoke,combat` PASS, 211 s) ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées
+     (**corrigé le 2026-10-21**, branche `review-fixes` de `MyCrusader-Galadriel` : 4 095 vraies places, 0 à 4 094, en
+     65 blocs ; le serveur ramenait déjà toute place ≥ 4 095 à « inconnue », mais le client lisait 4 095 comme la place
+     du 66e bloc ; `FHOLNetUnitState::HasTargetSlot`, cas ajoutés à `Net.CombatSendRule`) ;
+     `AttackerCount` de la victime d'une unité tuée trop haut d'un pour la fin du pas (sans effet visible ; **corrigé le
+     2026-10-21**, même branche : une unité tuée au pas, par coup ou par flèche, décompte aussitôt sa propre cible).
    - **Relecture de 9debb86 (scénarios de test)**, par la session mycrusader-35 (2026-10-20, rien modifié) :
      1. *À corriger* : `HOLGameHUD.cpp` `BeginPlay` (~l. 84) pose `HOLTestHooks::OnScenarioChanged()` (lambda sur
         `WeakPanel`) mais `EndPlay` ne le remet jamais à vide : après une partie, `NotifyScenarioChanged` appelle une
@@ -278,7 +285,17 @@ vérifier sur S1 et S2.
      2. *Faible* : `HOLTestSequence.cpp` `~FTestSequence` (~l. 135) : `Sequences` est une `TMap` globale ; jeu fermé
         pendant une séquence → `Finish` appelle `GLog->RemoveOutputDevice` / `FTSTicker::RemoveTicker` pendant la
         destruction statique (ordre indéfini, surtout en monolithique). Piste si plantage à la fermeture : vider sur
-        `FCoreDelegates::OnPreExit`, ou rien dans le destructeur si `IsEngineExitRequested()`.
+        `FCoreDelegates::OnPreExit`, ou rien dans le destructeur si `IsEngineExitRequested()`. **Corrigé le
+        2026-10-21** (branche `review-fixes`) : les séquences en cours s'arrêtent sur `OnEnginePreExit` (GLog encore
+        là), le destructeur ne touche plus à rien à la sortie ; testé sur un indicateur « en cours » et non sur
+        `Ticker`, que le moteur vide juste avant `OnEnginePreExit`. Vérifié : `hol.Scenario combat_off_dying` puis
+        `quit` à 3 s, sans fenêtre → « the run is stopped at step 2 », sortie propre (code 0).
+        Avec la même branche : commentaire du test `Gather.Spots` reformulé (plus de 70 cm présenté comme l'écart en
+        vigueur). `quick_check -Parts tests,smoke,combat,net` PASS (228 s, 87/87), puis sur d3f1408 PASS (338 s). Le
+        `-Full` y était coupé à 660 s (`GameLimitSeconds`) : depuis le retardataire (d3f1408, ~105 s de plus), la
+        séquence solo dure ~660 s, les rapports des corps, flèches et ordres manquaient (c'était aussi « le jeu arrêté
+        de l'extérieur » du `-Full` de d3f1408) ; limite portée à 780 s. Nouvelle règle (choix de l'utilisateur) : au
+        commit, seulement les parties touchées ; `-Full` aux clôtures de chapitre.
      Le couteau du Paysan (33f8d63) : aucune remarque.
    Mesures au repos (fermer Opera) : S2 à la fin de J7.
    1. ⚠️ **S2 au seuil** (2,816 / 3,024 / 3,145 ms, moyenne 2,995) : gardé pour la fin de J7 (choix de l'utilisateur) ;

@@ -460,6 +460,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			GatherNearby(AheadFighters[Slot], AheadReach[Slot], AheadLists[Slot]);
 		});
 	}
+	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
+	const auto Kill = [&](FFighter& Victim)
+	{
+		const int32 FormerTarget = FindFighter(Victim.Combat->Target);
+		if (FormerTarget != INDEX_NONE)
+		{
+			--Fighters[FormerTarget].Combat->AttackerCount;
+		}
+		KillUnit(World, *Units, Victim, StepIndex);
+	};
 
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
 	// one killed in melee, its attackers look for another this step.
@@ -507,7 +517,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				++Fighters[Shooter].Combat->Kills;
 			}
-			KillUnit(World, *Units, Enemy, StepIndex);
+			Kill(Enemy);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
@@ -803,7 +813,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			++Combat.Kills;
 			++TotalKills;
-			KillUnit(World, *Units, Enemy, StepIndex);
+			Kill(Enemy);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
 			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.

@@ -12,6 +12,7 @@
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Misc/CoreDelegates.h"
 #include "Misc/FileHelper.h"
 #include "Misc/OutputDevice.h"
 #include "Misc/OutputDeviceRedirector.h"
@@ -134,8 +135,23 @@ namespace UE::HeroesOfLiberty::Dev
 	public:
 		~FTestSequence()
 		{
-			if (Ticker.IsValid())
+			// Destroyed with Sequences, at the module's static destruction: a run still going was stopped before the
+			// engine exits (StopSequences); past that point GLog and the core ticker may be gone, they are left alone.
+			if (bRunning && !IsEngineExitRequested())
 			{
+				Finish(/*bQuit*/ false);
+			}
+		}
+
+		/**
+		 * Stops a run still going, its last step not done (the game closed while a scenario was being set up). Tested on
+		 * bRunning, not Ticker: the engine empties the core ticker before OnEnginePreExit, the handle has expired by then.
+		 */
+		void Stop()
+		{
+			if (bRunning)
+			{
+				UE_LOG(LogHOLTest, Display, TEXT("Test sequence: the game exits, the run is stopped at step %d"), Next + 1);
 				Finish(/*bQuit*/ false);
 			}
 		}
@@ -152,6 +168,7 @@ namespace UE::HeroesOfLiberty::Dev
 			Next = 0;
 			Watcher = MakeUnique<FTestLogWatcher>();
 			GLog->AddOutputDevice(Watcher.Get());
+			bRunning = true;
 			RunStart = FPlatformTime::Seconds();
 			BeginWait();
 			UE_LOG(LogHOLTest, Display, TEXT("Test sequence: %d steps"), Steps.Num());
@@ -323,6 +340,7 @@ namespace UE::HeroesOfLiberty::Dev
 		void Finish(const bool bQuit)
 		{
 			GLog->RemoveOutputDevice(Watcher.Get());
+			bRunning = false;
 			FTSTicker::RemoveTicker(Ticker);
 			Ticker.Reset();
 			Next = Steps.Num();
@@ -344,13 +362,26 @@ namespace UE::HeroesOfLiberty::Dev
 		double WaitStart = 0.0;
 		int32 FramesWaited = 0;
 		FTSTicker::FDelegateHandle Ticker;
+		/** From Start to Finish: the watcher is in GLog. */
+		bool bRunning = false;
 	};
 
 	/** One run per owner: hol.Test.Run's, a scenario's. */
 	TMap<FName, TUniquePtr<FTestSequence>> Sequences;
 
+	/** Before the engine exits (OnEnginePreExit), while GLog still stands: no run left to Sequences' destruction. */
+	void StopSequences()
+	{
+		for (const TPair<FName, TUniquePtr<FTestSequence>>& Pair : Sequences)
+		{
+			Pair.Value->Stop();
+		}
+	}
+
 	FTestSequence& GetSequence(const FName Owner)
 	{
+		// Once, with the first run; a static function, no object left pointed to.
+		[[maybe_unused]] static const FDelegateHandle PreExitHandle = FCoreDelegates::OnEnginePreExit.AddStatic(&StopSequences);
 		TUniquePtr<FTestSequence>& Sequence = Sequences.FindOrAdd(Owner);
 		if (!Sequence)
 		{
