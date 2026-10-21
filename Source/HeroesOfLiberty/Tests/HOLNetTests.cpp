@@ -503,6 +503,12 @@ bool FHOLNetCombatSendRuleTest::RunTest(const FString& Parameters)
 		EHOLUnitSendReason::Activity);
 	TestEqual(TEXT("first wound: at once"), HOLUnitReplication::GetSendReason(Resting, Here, Make(EHOLUnitActivity::Idle, 159, 0, true, 90.f), 1, 101, StepSeconds, Rules),
 		EHOLUnitSendReason::Activity);
+	// The target's slot (TargetSlotBits): 0 to 4 094 real, InvalidTargetSlot unknown though a slot from the 66th chunk on.
+	TestTrue(TEXT("target in slot 0: known"), Make(EHOLUnitActivity::Attacking, 150, 0).HasTargetSlot());
+	TestTrue(TEXT("target in slot 4094, the last of 65 chunks: known"), Make(EHOLUnitActivity::Attacking, 150, 4094).HasTargetSlot());
+	TestFalse(TEXT("target not replicated yet: unknown"), Make(EHOLUnitActivity::Attacking, 150, FHOLNetUnitState::InvalidTargetSlot).HasTargetSlot());
+	TestFalse(TEXT("target in slot 5000, past 12 bits: unknown"), Make(EHOLUnitActivity::Attacking, 150, 5000).HasTargetSlot());
+	TestFalse(TEXT("not attacking: no target"), Make(EHOLUnitActivity::Idle, 150, 7).HasTargetSlot());
 	return true;
 }
 

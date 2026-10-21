@@ -498,12 +498,12 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 
 uint32 UHOLUnitReceptionSubsystem::GetTargetUnitId(const FHOLNetUnitState& State) const
 {
-	return State.Activity == EHOLUnitActivity::Attacking && Slots.IsValidIndex(State.TargetSlot) ? Slots[State.TargetSlot].UnitId : 0;
+	return State.HasTargetSlot() && Slots.IsValidIndex(State.TargetSlot) ? Slots[State.TargetSlot].UnitId : 0;
 }
 
 FMassEntityHandle UHOLUnitReceptionSubsystem::GetTargetEntity(const FHOLNetUnitState& State) const
 {
-	return State.Activity == EHOLUnitActivity::Attacking && Slots.IsValidIndex(State.TargetSlot) ? Slots[State.TargetSlot].Entity : FMassEntityHandle();
+	return State.HasTargetSlot() && Slots.IsValidIndex(State.TargetSlot) ? Slots[State.TargetSlot].Entity : FMassEntityHandle();
 }
 
 void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnits) const

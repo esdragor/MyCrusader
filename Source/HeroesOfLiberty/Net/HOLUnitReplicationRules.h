@@ -59,8 +59,9 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	static constexpr uint16 MaxWireHealth = (1 << HealthBits) - 1;
 	/**
 	 * Target of an Attacking unit (J7b.4, J7-Q5), written only with that activity: its replication slot (the chunks'
-	 * slots, whose identifier the client reads), cheaper than its identifier, which is never recycled. 4 096 slots,
-	 * 65 chunks, beyond the population caps; InvalidTargetSlot: a target not replicated yet (sent again once it is).
+	 * slots, whose identifier the client reads), cheaper than its identifier, which is never recycled. 4 095 slots
+	 * (0 to 4 094, 65 chunks), beyond the population caps; InvalidTargetSlot: a target not replicated yet (sent again
+	 * once it is), or in a slot past those (from the 66th chunk on): its attacker is then not turned to it (HasTargetSlot).
 	 */
 	static constexpr int32 TargetSlotBits = 12;
 	static constexpr uint16 InvalidTargetSlot = (1 << TargetSlotBits) - 1;
@@ -130,6 +131,9 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * equal states compare equal.
 	 */
 	void SetCombat(int32 InHealth, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f);
+
+	/** Attacking a known target: TargetSlot is a real slot, not InvalidTargetSlot (itself a slot from the 66th chunk on). */
+	bool HasTargetSlot() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot != InvalidTargetSlot; }
 
 	/** Front (deg, -180 to 180) of a state that faces it. */
 	float GetFrontYaw() const;

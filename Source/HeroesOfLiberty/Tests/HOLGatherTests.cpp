@@ -431,8 +431,8 @@ bool FHOLGatherNearbyMassifTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherSpotsTest, "HeroesOfLiberty.Gather.Spots", UE::HeroesOfLiberty::Tests::Gather::Flags)
 bool FHOLGatherSpotsTest::RunTest(const FString& Parameters)
 {
-	// Two Peasants (60 cm bodies) at their spots stand 70 cm apart at least, about one body, overlapping by half, at one
-	// source or two side by side (D309; the user's trial, after AoE IV: 140 before, two bodies and a gap).
+	// Two Peasants (60 cm bodies) at their spots stand the spacing apart at least, at one source or two side by side (D309).
+	// Checked with 70 cm, an earlier value passed explicitly: the checks hold whatever hol.Gather.SpotSpacing is.
 	constexpr double Spacing = 70.;
 	TSet<uint64> Stale;
 	int32 StaleAsked = 0;
