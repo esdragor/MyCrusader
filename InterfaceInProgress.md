@@ -207,3 +207,5 @@ choisis par **A Z E R**. Déjà fait : l'attaque-déplacement est passée de A �
 - G.3 faite : commit f87134d sur `peasant-grid`, `main` fusionné dedans (79131ef, sans conflit), `quick_check -Parts
   tests,production,combat,build` **PASS** (444 s, tests 90/90), fusion dans `main` **3ca380b**. Worktree
   `HeroesOfLiberty-J5c` libéré. Reste noté dans `EtapeDefini.md` : barre du bas trop large sous 1500 px. **Chantier clos.**
+- 2026-10-21 (mycrusader-82, choix de l'utilisateur) : la barre du bas trop large sous 1500 px **sera corrigée avec la
+  mini-carte**, quand on attaquera celle-ci (pas avant).

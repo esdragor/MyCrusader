@@ -104,3 +104,12 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - **Décision consignée au GDD** (mycrusader-82, à la demande de l'utilisateur) : **D341** (§ 21, datée du 2026-10-20),
   paragraphe « Scénarios d'essai » à la fin du § 16.6 ; numéro suivant D342 (§ 22). Écartés notés : écran dans le menu,
   liste fixée d'avance, ennemis menés par l'IA.
+- **Bouton « Relancer »** (demande de l'utilisateur, `EtapeDefini.md`, Outils d'essai ; mycrusader-82,
+  `HeroesOfLiberty-J5c`, branche `scenario-restart` depuis `main` 61893ff, rien de commité) : dans l'en-tête du panneau du
+  scénario, à gauche du « × », même style ; un clic fait `hol.Scenario <nom>` (étapes relues dans le fichier, carte
+  rechargée). `hol.HUD.Click` connaît `ScenarioRestart` et `ScenarioClose`. Compilé ; vérifié sans fenêtre
+  (`-RenderOffScreen`) avec un scénario temporaire qui clique sur son propre bouton : 3 relances de suite, carte
+  rechargée, notes remises à zéro, « prêt » à chaque fois (scénario supprimé ensuite) ; `quick_check` rapide **PASS**
+  (38 s, 90/90). Essai de l'utilisateur lancé sur `formation_one_kind` (`-Root ..\HeroesOfLiberty-J5c`).
+- **Essai validé** par l'utilisateur (« c'est bon ») : commit **c446d99** sur `scenario-restart`, `main` avancé dessus
+  (sans fusion, même point de départ). Ligne retirée d'`EtapeDefini.md`. `HeroesOfLiberty-J5c` libéré.
