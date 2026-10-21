@@ -194,4 +194,11 @@ protected:
 	TArray<int32> CellHeads;
 	TArray<int32> NextInCell;
 	TArray<FIntPoint> Cells;
+	/**
+	 * Or the dense table over the units' bounding box (J7c.4, hol.Simulation.FastSeparation): each cell's range in CellUnits
+	 * (its start, and the next cell's start), its units in descending index order as in a bucket's chain; each unit's cell.
+	 */
+	TArray<int32> CellStarts;
+	TArray<int32> CellUnits;
+	TArray<int32> DenseCells;
 };

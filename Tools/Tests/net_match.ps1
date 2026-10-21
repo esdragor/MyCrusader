@@ -4,19 +4,24 @@
 # content or configuration the server uses). Logs: Saved_Tests\Logs\net_server.log, net_client1.log, net_client2.log.
 # Each client, once in the match: a capture net_client<N> (from the game, Saved_Tests_Net<N>\Screenshots\WindowsEditor\HOL),
 # then a click in the middle of its screen, on its own centre, and a selection report.
-# With -Units N (S5, D273): the server runs on StressTest and starts S2 with N units once the clients are in; server and
-# clients log a unit replication report every 5 s and the positions of a sample of units (hol.Net.Sample); once S2 has
+# With -Units N (S5, D273): the server runs on StressTest and starts S2 (or -Test) with N units once the clients are in;
+# server and clients log a unit replication report every 5 s and the positions of a sample of units (hol.Net.Sample); once it has
 # reported, the server quits, the clients are closed and s5_report.py prints the S5 report (bandwidth, sends, step
 # times, frame rates, displayed error) with its PASS / FAIL. -Keep leaves everything running for a look, without report.
 # S5 knobs: -UpdateFrequency (updates per second of the shared actor), -Threshold (send threshold, cm), -RefreshSteps
 # (cycle of the slow refresh, in steps), -Lag (ms added to each packet, both ways), -Loss (% of packets
 # lost, both ways) and -ServerSettings (console settings of the server, for A / B measures).
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Seconds 40] [-Keep]]
+# -Test picks the server's stress test: S2 (the walk, the S5 of D273, by default), S3 (S5 in combat, J7: 1000 against
+# 1000 in melee, the worst case for the health sent per hit, ~590 hits per second; its measure begins once the armies
+# are joined, ~5 s after the charge, up to 40 s of warm-up, and lasts -Seconds, 20 by default) or S4 (mixed armies:
+# the arrows are deduced by the clients, no extra bits). S3 and S4 turn the combat on themselves (hol.Combat.Enabled 1).
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Test S2|S3|S4] [-Seconds 40] [-Keep]]
 param(
     [switch] $Stage,
     [int] $Clients = 2,
     [string] $Map = "/Game/Maps/Plain",
     [int] $Units = 0,
+    [ValidateSet("S2", "S3", "S4")] [string] $Test = "S2",
     [int] $Seconds = 40,
     [float] $UpdateFrequency = 0,
     [float] $Threshold = 0,
@@ -28,6 +33,9 @@ param(
     [string] $EngineDir = ""
 )
 if ($Units -gt 0 -and -not $PSBoundParameters.ContainsKey('Map')) { $Map = "/Game/Maps/StressTest" }
+# A battle (S3, S4): 20 s of melee by default (~10 % of the units fall in 15 s), three whole replication reports.
+$Battle = $Test -ne "S2"
+if ($Battle -and -not $PSBoundParameters.ContainsKey('Seconds')) { $Seconds = 20 }
 
 $Project = Resolve-Path "$PSScriptRoot\..\.."
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
@@ -77,7 +85,7 @@ if ($Units -gt 0) {
     if ($RefreshSteps -gt 0) { $ServerCommands += "hol.Net.RefreshSteps $RefreshSteps" }
     # Other console settings of the server, for A / B measures (e.g. -ServerSettings "hol.Units.Avoid 0").
     $ServerCommands += $ServerSettings
-    $ServerCommands += "hol.Net.WhenClients $Clients hol.StressTest S2 $Units $Seconds$(if (-not $Keep) { ' quit' })"
+    $ServerCommands += "hol.Net.WhenClients $Clients hol.StressTest $Test $Units $Seconds$(if (-not $Keep) { ' quit' })"
 }
 if ($ServerCommands) { $ServerArguments += " -ExecCmds=`"$($ServerCommands -join ',')`"" }
 $ServerProcess = Start-Process -FilePath $Server -ArgumentList $ServerArguments `
@@ -97,7 +105,8 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
     $ClientLog = Join-Path $Logs "net_client$Client.log"
     $Sequence = Join-Path $TestSaved "net_client$Client.seq"
     if ($Units -gt 0) {
-        # The walk starts once both clients are in: a capture while the units walk.
+        # The stress test starts once both clients are in: a capture while the units walk (S2) or fight (S3, S4: the
+        # armies are joined ~5 s after their birth).
         @("waitmap $(Split-Path $Map -Leaf)", "wait 20", "capture net_client$Client") | Set-Content -Encoding utf8 $Sequence
     } else {
         @("waitmap $(Split-Path $Map -Leaf)", "waitlog Camera above the start", "frames 60", "capture net_client$Client",
@@ -121,10 +130,11 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
 }
 if ($Units -le 0 -or $Keep) { exit 0 }
 
-# S5: wait for S2's report (the server quits after it), close the clients, then the report.
-$Deadline = (Get-Date).AddSeconds(60 + $Seconds + 120)
-while (-not (Select-String -Path $ServerLog -Pattern "Stress test S2 \(moving\), \d+ units" -Quiet)) {
-    if ((Get-Date) -gt $Deadline -or $ServerProcess.HasExited) { Write-Host "net_match : S2 did not report (see $ServerLog)"; break }
+# S5: wait for the stress test's report (the server quits after it), close the clients, then the report. A battle
+# waits up to 40 s more for its armies to join.
+$Deadline = (Get-Date).AddSeconds(60 + $(if ($Battle) { 40 } else { 0 }) + $Seconds + 120)
+while (-not (Select-String -Path $ServerLog -Pattern "Stress test $Test \([^)]*\), \d+ units" -Quiet)) {
+    if ((Get-Date) -gt $Deadline -or $ServerProcess.HasExited) { Write-Host "net_match : $Test did not report (see $ServerLog)"; break }
     Start-Sleep -Seconds 1
 }
 Start-Sleep -Seconds 2

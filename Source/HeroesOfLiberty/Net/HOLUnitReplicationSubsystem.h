@@ -19,6 +19,11 @@ struct FHOLUnitReplicationStats
 	int64 NumUnitSteps = 0;
 	/** Per EHOLUnitSendReason (None counts the births). */
 	int64 Sends[4] = {};
+	/**
+	 * Of the Activity sends, those whose only change is the health (J7c.4, S5 in combat): with the health last sent, the
+	 * unit would not have been sent at this step.
+	 */
+	int64 HealthSends = 0;
 	int32 NumDepartures = 0;
 	double TotalMs = 0.0;
 	double MaxMs = 0.0;

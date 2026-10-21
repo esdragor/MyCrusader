@@ -451,6 +451,16 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarSeparation(TEXT("hol.Units.Separation"), SeparationEnabled,
 		TEXT("1: no body overlaps another once the units have moved (D292); 2: the same, and its average cost logged every 200 steps; 0: off, for A / B measures"));
 
+	/**
+	 * Cells of the separation's dense table at most (J7c.4): beyond, the units are spread too far apart for a table over
+	 * their bounding box and the hashed buckets are used (1 M cells: 4 MB to clear a step).
+	 */
+	constexpr int64 SeparationDenseMaxCells = 1 << 20;
+
+	int32 FastSeparation = 1;
+	FAutoConsoleVariableRef CVarFastSeparation(TEXT("hol.Simulation.FastSeparation"), FastSeparation,
+		TEXT("1: the separation's cells in a dense table over the units' bounding box, the same pairs met in the same order as in the hashed buckets (J7c.4); 0: the hashed buckets only, for A / B measures"));
+
 	float SeparationSlop = 0.f;
 	FAutoConsoleVariableRef CVarSeparationSlop(TEXT("hol.Units.SeparationSlop"), SeparationSlop,
 		TEXT("Overlap (cm) of two bodies the separation leaves (D294): only what goes beyond is undone"));
@@ -560,15 +570,60 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	{
 		return static_cast<int32>((static_cast<uint32>(Cell.X) * 73856093u ^ static_cast<uint32>(Cell.Y) * 19349663u) & (SeparationBuckets - 1));
 	};
-	CellHeads.Init(INDEX_NONE, SeparationBuckets);
-	NextInCell.SetNumUninitialized(Positions.Num());
 	Cells.SetNumUninitialized(Positions.Num());
+	FIntPoint MinCell(MAX_int32, MAX_int32);
+	FIntPoint MaxCell(MIN_int32, MIN_int32);
 	for (int32 Index = 0; Index < Positions.Num(); ++Index)
 	{
 		Cells[Index] = FIntPoint(FMath::FloorToInt32(Positions[Index].X / CellSize), FMath::FloorToInt32(Positions[Index].Y / CellSize));
-		int32& Head = CellHeads[BucketOf(Cells[Index])];
-		NextInCell[Index] = Head;
-		Head = Index;
+		MinCell = FIntPoint(FMath::Min(MinCell.X, Cells[Index].X), FMath::Min(MinCell.Y, Cells[Index].Y));
+		MaxCell = FIntPoint(FMath::Max(MaxCell.X, Cells[Index].X), FMath::Max(MaxCell.Y, Cells[Index].Y));
+	}
+	// Or a dense table (J7c.4): every cell of the units' bounding box, its units side by side. A bucket's chain is walked
+	// from the last unit put in to the first, in descending index order; each cell's range is laid out the same way, so
+	// the pairs are met in the same order as through the buckets (the corrections are applied in place: the order matters).
+	const int64 GridWidth = static_cast<int64>(MaxCell.X) - MinCell.X + 1;
+	const int64 GridHeight = static_cast<int64>(MaxCell.Y) - MinCell.Y + 1;
+	const bool bDense = FastSeparation != 0 && GridWidth * GridHeight <= SeparationDenseMaxCells;
+	if (bDense)
+	{
+		const int32 CellCount = static_cast<int32>(GridWidth * GridHeight);
+		// Counted per cell (into the next cell's entry), then summed up: CellStarts[Cell + 1] is the end of the cell's range.
+		CellStarts.Init(0, CellCount + 1);
+		DenseCells.SetNumUninitialized(Positions.Num());
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			DenseCells[Index] = (Cells[Index].Y - MinCell.Y) * static_cast<int32>(GridWidth) + (Cells[Index].X - MinCell.X);
+			++CellStarts[DenseCells[Index] + 1];
+		}
+		for (int32 Cell = 0; Cell < CellCount; ++Cell)
+		{
+			CellStarts[Cell + 1] += CellStarts[Cell];
+		}
+		// Each range filled from its end, the units taken in ascending order: read from its start, in descending order.
+		// The end moves down to the range's start, which CellStarts[Cell + 1] then holds.
+		CellUnits.SetNumUninitialized(Positions.Num());
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			CellUnits[--CellStarts[DenseCells[Index] + 1]] = Index;
+		}
+		// Back by one entry: CellStarts[Cell] the start of the cell's range, CellStarts[Cell + 1] its end.
+		for (int32 Cell = 0; Cell < CellCount; ++Cell)
+		{
+			CellStarts[Cell] = CellStarts[Cell + 1];
+		}
+		CellStarts[CellCount] = Positions.Num();
+	}
+	else
+	{
+		CellHeads.Init(INDEX_NONE, SeparationBuckets);
+		NextInCell.SetNumUninitialized(Positions.Num());
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			int32& Head = CellHeads[BucketOf(Cells[Index])];
+			NextInCell[Index] = Head;
+			Head = Index;
+		}
 	}
 
 	// The walkers look for their neighbours, then each standing unit they pushed looks for its own (it may now overlap a
@@ -590,6 +645,47 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			ToLook.Add(Index);
 		}
 	}
+	// A pair met by the unit that looks (Index), in its cell or one around it.
+	const auto Undo = [this, Slop, AtSourceDistance](const int32 Index, const int32 Other)
+	{
+		// Two units of one form-up (J7a.4): through each other, the rows turned to the march cross (three
+		// bodies pressed together, each walking into the next, held each other still until the form-up's end).
+		if (FormUpSerials[Index] != 0u && FormUpSerials[Index] == FormUpSerials[Other])
+		{
+			return;
+		}
+		const FVector2D Delta = Corrections[Index] - Corrections[Other];
+		double MinDistance = Radii[Index] + Radii[Other] - Slop;
+		if ((AtSource[Index] || AtSource[Other]) && !Moving[Index] && !Moving[Other])
+		{
+			MinDistance = FMath::Min(MinDistance, AtSourceDistance);
+		}
+		const double DistanceSquared = Delta.SizeSquared();
+		if (DistanceSquared >= FMath::Square(MinDistance))
+		{
+			return;
+		}
+		const double Distance = FMath::Sqrt(DistanceSquared);
+		// Two units on the same point: apart along a direction of their own, the same at every run.
+		const FVector2D Normal = Distance > UE_KINDA_SMALL_NUMBER ? Delta / Distance
+			: FVector2D(FMath::Cos(Index * 2.399), FMath::Sin(Index * 2.399));
+		// Two units of one player take half each: a walker pushes a standing unit out of its way as it would push a
+		// walker. Two enemies never push each other back (the user's trial of J7b): a walker stops against a
+		// standing enemy, which stays where it is; the one that looks is a walker or pushed this step, so it moves.
+		const double Overlap = MinDistance - Distance;
+		const double Share = HOLCombat::GetOverlapShare(Owners[Index] != Owners[Other], Walking[Index], Walking[Other]);
+		Corrections[Index] += Normal * (Overlap * Share);
+		if (Share >= 1.)
+		{
+			return;
+		}
+		Corrections[Other] -= Normal * (Overlap * (1. - Share));
+		if (!Queued[Other])
+		{
+			Queued[Other] = true;
+			ToLook.Add(Other);
+		}
+	};
 	for (int32 Round = 0; Round < SeparationRounds; ++Round)
 	{
 		Looked.Init(false, Positions.Num());
@@ -602,6 +698,27 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				for (int32 DX = -1; DX <= 1; ++DX)
 				{
 					const FIntPoint Cell(Cells[Index].X + DX, Cells[Index].Y + DY);
+					if (bDense)
+					{
+						// A cell out of the bounding box holds no unit (nor did its bucket hold any of this cell).
+						const int32 X = Cell.X - MinCell.X;
+						const int32 Y = Cell.Y - MinCell.Y;
+						if (X < 0 || X >= GridWidth || Y < 0 || Y >= GridHeight)
+						{
+							continue;
+						}
+						const int32 DenseCell = Y * static_cast<int32>(GridWidth) + X;
+						for (int32 Slot = CellStarts[DenseCell]; Slot < CellStarts[DenseCell + 1]; ++Slot)
+						{
+							// A pair is undone once a round, by the first of the two to look.
+							const int32 Other = CellUnits[Slot];
+							if (Other != Index && !Looked[Other] && !Ghosts[Other])
+							{
+								Undo(Index, Other);
+							}
+						}
+						continue;
+					}
 					for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 					{
 						// A pair is undone once a round, by the first of the two to look; another cell of the same bucket is not this one.
@@ -609,43 +726,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 						{
 							continue;
 						}
-						// Two units of one form-up (J7a.4): through each other, the rows turned to the march cross (three
-						// bodies pressed together, each walking into the next, held each other still until the form-up's end).
-						if (FormUpSerials[Index] != 0u && FormUpSerials[Index] == FormUpSerials[Other])
-						{
-							continue;
-						}
-						const FVector2D Delta = Corrections[Index] - Corrections[Other];
-						double MinDistance = Radii[Index] + Radii[Other] - Slop;
-						if ((AtSource[Index] || AtSource[Other]) && !Moving[Index] && !Moving[Other])
-						{
-							MinDistance = FMath::Min(MinDistance, AtSourceDistance);
-						}
-						const double DistanceSquared = Delta.SizeSquared();
-						if (DistanceSquared >= FMath::Square(MinDistance))
-						{
-							continue;
-						}
-						const double Distance = FMath::Sqrt(DistanceSquared);
-						// Two units on the same point: apart along a direction of their own, the same at every run.
-						const FVector2D Normal = Distance > UE_KINDA_SMALL_NUMBER ? Delta / Distance
-							: FVector2D(FMath::Cos(Index * 2.399), FMath::Sin(Index * 2.399));
-						// Two units of one player take half each: a walker pushes a standing unit out of its way as it would push a
-						// walker. Two enemies never push each other back (the user's trial of J7b): a walker stops against a
-						// standing enemy, which stays where it is; the one that looks is a walker or pushed this step, so it moves.
-						const double Overlap = MinDistance - Distance;
-						const double Share = HOLCombat::GetOverlapShare(Owners[Index] != Owners[Other], Walking[Index], Walking[Other]);
-						Corrections[Index] += Normal * (Overlap * Share);
-						if (Share >= 1.)
-						{
-							continue;
-						}
-						Corrections[Other] -= Normal * (Overlap * (1. - Share));
-						if (!Queued[Other])
-						{
-							Queued[Other] = true;
-							ToLook.Add(Other);
-						}
+						Undo(Index, Other);
 					}
 				}
 			}

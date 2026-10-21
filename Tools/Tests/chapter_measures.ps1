@@ -1,12 +1,14 @@
 # End-of-chapter measures (rule of the measures, JourneyInProgress.md): every stress test twice, off screen, at rest, in
-# alternation (S1 S2 S7 S3 S4, then the same again), then S5 once. A test passes when both its runs pass its thresholds; one
-# run on each side of a threshold: a third run, and the mean of the three decides. Prints one verdict line per test and
-# a table, written to Saved_Tests\Logs\chapter_measures.txt. Exit code 1 on any FAIL. ~6 min without S5, ~7 min with it,
-# ~10 min when the dedicated server has to be cooked again (Source, Config or Content newer than the staged server).
+# alternation (S1 S2 S7 S3 S4, then the same again), then S5 once (net_match.ps1: S2's walk, 40 s) and S5 in combat once
+# (net_match.ps1 -Test S3: 1000 against 1000 in melee, 20 s from contact; same staged server). A test passes when both its
+# runs pass its thresholds; one run on each side of a threshold: a third run, and the mean of the three decides. Prints
+# one verdict line per test and a table, written to Saved_Tests\Logs\chapter_measures.txt. Exit code 1 on any FAIL.
+# ~6 min without S5, ~8 min with both S5 runs, ~11 min when the dedicated server has to be cooked again (Source, Config
+# or Content newer than the staged server). -NoS5 skips both S5 runs.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), the machine at rest, no Unreal open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1                 (S1, S2, S7, S3, S4, then S5)
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1                 (S1, S2, S7, S3, S4, S5, S5 combat)
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1 -Tests S7:20 -NoS5   (one test again)
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1 -Tests none          (S5 alone)
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\chapter_measures.ps1 -Tests none          (S5 and S5 combat alone)
 param(
     # Each test as Scenario:Seconds of measure. S3 (1000 against 1000 in melee) and S4 (the same in thirds, Archers behind)
     # measure from the moment the armies are joined (up to 40 s of warm-up), 15 s: most of both armies still fighting.
@@ -92,6 +94,25 @@ if (-not $NoS5) {
     $Verdict = ($S5Out -split "`r?`n" | Where-Object { $_ -match "PASS|FAIL" } | Select-Object -Last 3) -join " | "
     $Lines += "S5 : $(if ($S5Code -eq 0) { 'PASS' } else { 'FAIL' }) - $Verdict"
     $Failed = $Failed -or ($S5Code -ne 0)
+
+    # S5 in combat (J7-Q5 revised): the same measure during S3, 1000 against 1000 in melee, the worst case of the health
+    # sent per hit; the server staged above, never cooked again. Its own verdict, and the activity sends per melee hit.
+    if ($S5Out -match "staging FAILED|no staged server") {
+        $Lines += "S5 combat : FAIL - no staged server"
+        $Failed = $true
+    } else {
+        $CombatOut = & (Join-Path $PSScriptRoot "net_match.ps1") -Units 2000 -Test S3 2>&1 | Out-String
+        $CombatCode = $LASTEXITCODE
+        Write-Host $CombatOut
+        $Verdict = ($CombatOut -split "`r?`n" | Where-Object { $_ -match "PASS|FAIL" } | Select-Object -Last 3) -join " | "
+        $PerHit = [regex]::Match($CombatOut, "([\d.]+) activity sends per second, ([\d.]+) per melee hit")
+        if ($PerHit.Success) { $Verdict += " | $($PerHit.Groups[1].Value) activity sends per second, $($PerHit.Groups[2].Value) per melee hit" }
+        # J7c.4: those for the health alone, counted apart by the server.
+        $HealthPerHit = [regex]::Match($CombatOut, "([\d.]+) health sends per second, ([\d.]+) per melee hit")
+        if ($HealthPerHit.Success) { $Verdict += " | $($HealthPerHit.Groups[1].Value) health sends per second, $($HealthPerHit.Groups[2].Value) per melee hit" }
+        $Lines += "S5 combat : $(if ($CombatCode -eq 0) { 'PASS' } else { 'FAIL' }) - $Verdict"
+        $Failed = $Failed -or ($CombatCode -ne 0)
+    }
 }
 
 $Summary = @("End-of-chapter measures $Stamp ($([math]::Round($Clock.Elapsed.TotalMinutes, 1)) min) : $(if ($Failed) { 'FAIL' } else { 'PASS' })") + $Lines

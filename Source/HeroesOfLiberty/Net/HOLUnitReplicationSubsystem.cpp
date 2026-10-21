@@ -320,6 +320,19 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 					State.UnitId, Step, StepSeconds, Rules);
 				if (Reason != EHOLUnitSendReason::None)
 				{
+					// The sends for the health alone (J7c.4, S5 in combat): a change of action, but the same state with the health
+					// last sent would not have left at all. Counted only: what is sent does not change.
+					if (Reason == EHOLUnitSendReason::Activity)
+					{
+						FHOLNetUnitState SameHealth = Current;
+						SameHealth.bFullHealth = Record->Sent.State.bFullHealth;
+						SameHealth.Health = Record->Sent.State.Health;
+						if (HOLUnitReplication::GetSendReason(Record->Sent, Position, SameHealth, State.UnitId, Step, StepSeconds, Rules)
+							== EHOLUnitSendReason::None)
+						{
+							Stats.HealthSends++;
+						}
+					}
 					WriteState(*Record, Current);
 					Stats.Sends[static_cast<int32>(Reason)]++;
 				}
@@ -430,6 +443,8 @@ FString UHOLUnitReplicationSubsystem::MakeReport() const
 		Reasons += FString::Printf(TEXT("%s%s %lld"), Reasons.IsEmpty() ? TEXT("") : TEXT(", "),
 			UE::HeroesOfLiberty::Net::GetSendReasonName(Reason), Stats.Sends[Reason]);
 	}
+	// Of the activity sends, those for the health alone (J7c.4): after the reasons, so the reasons' readers still match.
+	Reasons += FString::Printf(TEXT("; health %lld"), Stats.HealthSends);
 	// Averages over the report's span, from the connections' running totals (OutBytesPerSecond is the last second only).
 	FString Clients;
 	FString Packets;
