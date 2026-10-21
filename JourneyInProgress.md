@@ -6363,7 +6363,22 @@ d'épée).
     (foule et cadrage inchangés ; le coût du combat se mesure dans S2, S7, S3, S4) ; toutes les lectures de fragments du
     stress test passent par `FragmentOf` (entité morte → aucun fragment). Vérifié : S1 deux fois sans plantage ni mort
     (`rest_1021_s1fix_1/2`), temps à reprendre au repos (processeur à 80 % : l'autre session compilait dans Elrond).
-    Commité après l'accord de l'utilisateur.
+    Commité après l'accord de l'utilisateur (fc184fc).
+  - **S2, A/B lancé** (accord de l'utilisateur) : côté A = `HeroesOfLiberty-Galadriel` détaché à **e163490** (code des
+    mesures `j7b1_rest2`, S2 2,84 ms ; `archer-hit-and-run` fusionnée, rien perdu ; `IN_USE.txt`), compilé ; côté B =
+    `main` fc184fc ; S2 de 10 s, A B A B A B (`s2ab_1021_*`).
+  - **Résultat S2** : tours propres A 2,780 / 2,823 ms, B 3,006 / 3,018 (**+0,21 ms**) ; 3e tour faussé (processeur
+    20-44 %, l'autre session). Traces (portées 623fab4 appliquées au côté A, non commitées) : A 2,716 / 2,810, B 3,178 /
+    3,155 ; par processeur (moyenne de 2 traces) **`HOLCombatProcessor` 0 → 0,289 ms** par pas sans aucun combat,
+    `HOLUnitOrderProcessor` 0,541 → 0,602 (+0,06), séparation 0,792 → 0,827 (+0,03) ; le reste à moins de 0,005.
+    **Le dépassement de S2 est le coût fixe du combat** (2 000 unités rassemblées, triées, `IndexOfEntity` en `TMap`,
+    grille, recherches des immobiles), pas une autre régression. Pas corrigé dans `main` : `j7c-shot` réécrit déjà
+    `HOLCombatProcessor` (516 lignes, grille dense, collecte parallèle), le correctif irait dans Elrond ou après sa
+    fusion. Pistes : table index d'entité → combattant en tableau au lieu du `TMap`, rien à refaire quand aucune unité
+    ne peut chercher ni frapper. Côté A laissé en place (`HeroesOfLiberty-Galadriel` détaché à e163490, `IN_USE.txt`).
+  - **Choix de l'utilisateur** (conforme à la recommandation) : le correctif du coût fixe du combat se fait **dans
+    Elrond, sur `j7c-shot`, avec la mêlée** (pas dans `main` : conflit avec la réécriture de `HOLCombatProcessor`) ;
+    confié à mycrusader-80, qui tient Elrond. À vérifier là : S3 / S4 identiques (empreintes), S2 sous 3 ms au repos.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 

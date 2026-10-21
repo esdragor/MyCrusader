@@ -9,7 +9,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7) *(en cours dans HeroesOfLiberty-Elrond : boucle 16, les trois règles de mêlée, puis essai `melee_formed`)*
   - Mêlée : les deux lignes se traversent au lieu de se heurter (portée d'arme, espacement entre amis, attente derrière un ami qui combat)
   - S5 en combat au-dessus du seuil (70 Ko/s pour 32)
-  - S2 au-dessus du seuil (3,3 ms, dont ~0,3 ms hors combat depuis J7b1), S5 hors combat juste au-dessus (32,2 Ko/s)
+  - S2 au-dessus du seuil (3,3 ms) : coût fixe du combat sans bataille (0,29 ms par pas) ; S5 hors combat juste au-dessus (32,2 Ko/s)
   - S3 et S4 à remesurer sans la sonde « Separation source » (18 ms faussés)
   - S1 à remesurer au repos (plantage corrigé, combat coupé pendant S1)
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
