@@ -37,6 +37,16 @@ public:
 	 */
 	static EHOLPlacementRefusal CheckPlacement(const UWorld& World, const FBox2D& Footprint, int32 PlayerIndex, bool* bOutNavChecked = nullptr);
 
+	/**
+	 * A footprint of Footprint's size where a foundation of PlayerIndex may go, beside what Footprint is on (the user's
+	 * trial of J7b, feedback 3): only when Footprint is refused on a building or a source (OutObstacle says which, or the
+	 * refusal found), around that obstacle (HOLConstruction::FindObstacle, the one under Aim, the cursor's ground point),
+	 * up to 4 tiles away (HOLConstruction::FindFreeFootprint, OutRing the gap in tiles), every rule of CheckPlacement
+	 * applied to it. False otherwise: the ghost stays red under the cursor.
+	 */
+	static bool FindFreeFootprint(const UWorld& World, const FBox2D& Footprint, const FVector2D& Aim, int32 PlayerIndex, FBox2D& OutFootprint,
+		int32& OutRing, EHOLPlacementRefusal& OutObstacle);
+
 	/** "on a building", "too near an enemy main centre"...: for the logs (J6a.5 turns them into short messages). */
 	static const TCHAR* DescribeRefusal(EHOLPlacementRefusal Refusal);
 

@@ -590,6 +590,8 @@ private:
 	FBox2D GhostFootprint = FBox2D(ForceInit);
 	double GhostGroundZ = 0.0;
 	FString GhostReason;
+	/** ", moved beside the building (ring 1)" when the ghost left the cursor for a free spot (the user's trial of J7b, feedback 3). */
+	FString GhostMoved;
 	/** Why the ghost is red, as told to the player when it is clicked (D313). */
 	FHOLCommandFeedback GhostFeedback;
 };

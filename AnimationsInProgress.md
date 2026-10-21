@@ -233,7 +233,9 @@ réécrire. Suite, dans l'ordre proposé à l'utilisateur :
 2. **Corps gardés 30 s chez le client** : décision au point de reprise de `JourneyInProgress.md` (la chute n'est plus
    bornée à 1 s ; la dernière image est la pose tenue).
 3. **Variantes** : 2 ou 3 chutes par type, choisies par numéro d'unité chez le client (souhait de l'utilisateur :
-   « éviter au max qu'ils aient tous la même animation ») — à proposer.
+   « éviter au max qu'ils aient tous la même animation ») — **reporté après le prototype** (choix de l'utilisateur,
+   2026-10-20 : « tellement peu prioritaire ») ; question de cadrage prête : A 2 par type, B 3 par type (recommandé, avec
+   vitesse de lecture variée de 0,85 à 1,15), C variations seules (vitesse, direction).
 4. **Questions de l'Archer encore ouvertes** (avant de fabriquer son tir, J7c.1) : flèche cachée après le lâcher
    (recommandé : échelle 0 sur `ik_hand_gun` du lâcher au carquois, petit ajout au baker) ; corde à la mâchoire ;
    carquois dans le dos ; arc presque droit au tir, penché de 20° au repos ; pas de flèche encochée au repos ; corde
@@ -1001,3 +1003,10 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
   aujourd'hui), `AttackSequence` 4, `FallSequence` 5, `AttackProp` 0 (comme les soldats). À voir en jeu : que le
   fournisseur de transformées honore bien l'échelle de l'os sur le GPU (flèche invisible du lâcher au carquois, et
   au repos) ; sinon, autre moyen à trouver (C++ ou matériau).
+
+### 2026-10-20 — Variantes de chute reportées après le prototype (session mycrusader-a6)
+
+- Question de cadrage posée (A 2 chutes par type, B 3 par type avec vitesse variée, recommandé ; C variations seules).
+  Réponse de l'utilisateur : **à faire après le prototype**, « tellement peu prioritaire ». Point 3 de « Prochaine étape
+  exacte » marqué ainsi. **Plus rien en cours dans le chantier animations** : prochaines animations à la demande des
+  étapes de jeu.

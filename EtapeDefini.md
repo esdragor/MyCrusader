@@ -30,11 +30,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Retours d'essai
 - Groupe qui attend le retardataire avant de partir
-- Pose sur une case occupée : chercher une case libre autour
-- Pose unique : le mode construction se ferme après la pose, sauf avec Maj
 - Marcheurs bloqués par des corps (passage étroit, mur d'unités)
 - Formation gênée entre les bâtiments et contre les ressources
-- « N inactifs » affiché pour des Paysans qui combattent
 - Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence
 
 ### Revue de code
