@@ -5,6 +5,7 @@
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLGameScreen.h"
+#include "HUD/HOLScenarioPanel.h"
 
 /**
  * The game HUD for the scripted checks (J3, D284): what it shows, and a click on it by the same path as the mouse.
@@ -71,7 +72,9 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		WithGameScreen(World, Delay, [Name](UHOLGameScreen& Screen)
 		{
 			UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer());
-			const bool bClicked = Screen.ClickWidget(Name) || (CheatPanel && CheatPanel->ClickWidget(Name));
+			UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(Screen.GetOwningPlayer());
+			const bool bClicked = Screen.ClickWidget(Name) || (CheatPanel && CheatPanel->ClickWidget(Name))
+				|| (ScenarioPanel && ScenarioPanel->ClickWidget(Name));
 			UE_LOG(LogHOLUI, Display, TEXT("HUD click %s: %s"), *Name.ToString(), bClicked ? TEXT("done") : TEXT("hidden, greyed or unknown"));
 		});
 	}
@@ -83,6 +86,6 @@ namespace UE::HeroesOfLiberty::UI::HUD
 
 	FAutoConsoleCommandWithWorldAndArgs ClickCommand(
 		TEXT("hol.HUD.Click"),
-		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command panel (GridCell00-11: production, or the units' orders GridCell04 attack-move, GridCell05 stop, GridCell11 hold), a building of the builders' age panels (AgeCell<age><cell>, one row per category: AgeCell000 the house, AgeCell004 the barracks), an item of the production queue (QueueItem0-4), the idle workers' counter (IdleWorkers) or a button of the cheats' panel (CheatToggle, CheatFood, ...), as the mouse would"),
+		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command panel (GridCell00-11: production, or the units' orders GridCell04 attack-move, GridCell05 stop, GridCell11 hold), a building of the builders' age panels (AgeCell<age><cell>, one row per category: AgeCell000 the house, AgeCell004 the barracks), an item of the production queue (QueueItem0-4), the idle workers' counter (IdleWorkers) a button of the cheats' panel (CheatToggle, CheatFood, ...) or of the scenario's panel (ScenarioRestart, ScenarioClose), as the mouse would"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Click));
 }

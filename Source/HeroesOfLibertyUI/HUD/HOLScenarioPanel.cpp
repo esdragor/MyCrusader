@@ -12,6 +12,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Dev/HOLTestHooks.h"
+#include "Engine/Engine.h"
 #include "HeroesOfLibertyUILog.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLQueueItem.h"
@@ -24,8 +25,12 @@ namespace UE::HeroesOfLiberty::UI::ScenarioPanel
 	/** Its width at most: a long note wraps (the top bar on the left, the screen's middle third or so). */
 	constexpr float MaxWidth = 860.f;
 	constexpr float CloseSize = 29.f;
+	/** Wide enough for « Relancer » in the HUD button's text style, as high as the « × ». */
+	constexpr float RestartMinWidth = 96.f;
+	constexpr float RestartGap = 6.f;
 	constexpr float NoteGap = 4.f;
 	const FName CloseName(TEXT("ScenarioClose"));
+	const FName RestartName(TEXT("ScenarioRestart"));
 
 	using FDisplay = HOLTestHooks::FScenarioDisplay;
 }
@@ -48,6 +53,10 @@ void UHOLScenarioPanel::NativeOnInitialized()
 	if (CloseButton)
 	{
 		CloseButton->OnClicked().AddUObject(this, &UHOLScenarioPanel::HandleCloseClicked);
+	}
+	if (RestartButton)
+	{
+		RestartButton->OnClicked().AddUObject(this, &UHOLScenarioPanel::HandleRestartClicked);
 	}
 	Refresh();
 }
@@ -139,11 +148,46 @@ FString UHOLScenarioPanel::Describe() const
 	return FString::Printf(TEXT("scenario %s %s, %d notes"), *Display.Name, StateName, ShownNotes.Num());
 }
 
+bool UHOLScenarioPanel::ClickWidget(const FName Name)
+{
+	using namespace UE::HeroesOfLiberty::UI::ScenarioPanel;
+
+	if (!Panel || Panel->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		return false;
+	}
+	if (Name == RestartName)
+	{
+		HandleRestartClicked();
+		return true;
+	}
+	if (Name == CloseName)
+	{
+		HandleCloseClicked();
+		return true;
+	}
+	return false;
+}
+
 void UHOLScenarioPanel::HandleCloseClicked()
 {
 	HOLTestHooks::GetScenarioDisplay().bClosed = true;
 	Refresh();
 	UE_LOG(LogHOLUI, Display, TEXT("HUD: scenario panel closed"));
+}
+
+void UHOLScenarioPanel::HandleRestartClicked()
+{
+	// The same path as the console's hol.Scenario <Name> (HOLScenario.cpp, game module): its steps are read from the
+	// file again, so a scenario edited since its start runs as it is now. The map is opened again by a later step, not
+	// in this click: the panel is still here when the command returns.
+	const FString Name = HOLTestHooks::GetScenarioDisplay().Name;
+	if (Name.IsEmpty() || !GEngine)
+	{
+		return;
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("HUD: scenario %s restarted"), *Name);
+	GEngine->Exec(GetWorld(), *FString::Printf(TEXT("hol.Scenario %s"), *Name));
 }
 
 void UHOLScenarioPanel::BuildLayout()
@@ -173,7 +217,7 @@ void UHOLScenarioPanel::BuildLayout()
 	Column->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	Panel->SetContent(Column);
 
-	// The title and its state on one line, the « × » on the right.
+	// The title and its state on one line, « Relancer » and the « × » on the right.
 	UHorizontalBox* Header = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("ScenarioHeader"));
 	Header->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	Column->AddChildToVerticalBox(Header);
@@ -190,6 +234,16 @@ void UHOLScenarioPanel::BuildLayout()
 	StateSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	StateSlot->SetVerticalAlignment(VAlign_Center);
 	StateSlot->SetPadding(FMargin(10.f, 0.f, 16.f, 0.f));
+
+	USizeBox* RestartBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("ScenarioRestartBox"));
+	RestartBox->SetMinDesiredWidth(RestartMinWidth);
+	RestartBox->SetHeightOverride(CloseSize);
+	RestartButton = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), RestartName);
+	RestartButton->SetLabel(INVTEXT("Relancer"));
+	RestartBox->SetContent(RestartButton);
+	UHorizontalBoxSlot* RestartSlot = Header->AddChildToHorizontalBox(RestartBox);
+	RestartSlot->SetVerticalAlignment(VAlign_Top);
+	RestartSlot->SetPadding(FMargin(0.f, 0.f, RestartGap, 0.f));
 
 	USizeBox* CloseBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("ScenarioCloseBox"));
 	CloseBox->SetWidthOverride(CloseSize);
