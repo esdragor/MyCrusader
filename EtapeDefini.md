@@ -7,6 +7,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Parcours J7c — le tir
 - J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7) *(en cours dans MyCrusader-Elrond : S3 et S4 écrits, combat optimisé à l'identique)*
+  - Mêlée : les deux lignes se traversent au lieu de se heurter (portée d'arme, espacement entre amis, attente derrière un ami qui combat)
+  - S5 en combat au-dessus du seuil (70 Ko/s pour 32)
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
 ### Animations

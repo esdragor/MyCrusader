@@ -6243,6 +6243,106 @@ d'épée).
   (note : `hol.Combat.StopAtContact 0` pour comparer).
 - (J7c.4, mycrusader-56) Demande de l'utilisateur (« il faut un bouton pour relancer le scénario ») : ligne ajoutée
   à `EtapeDefini.md` (Outils d'essai). 3e essai relancé à sa demande.
+- (J7c.4, mycrusader-56) **3e essai `melee_press`** (avec `StopAtContact`) : « non » : capture de l'utilisateur, les
+  deux camps sont **mélangés sur toute la profondeur** (rouges dans la ligne bleue et l'inverse). Proposition de
+  l'utilisateur : **deux soldats ennemis ne peuvent pas se pousser**. Boucle 11 lancée : règle derrière une variable
+  (paire ennemie : l'autre n'est jamais déplacé), recherche des autres poussées entre ennemis (évitement Mass,
+  pilotage), sonde de croisement, captures hors écran avec / sans.
+- (J7c.4, mycrusader-56) **Boucle 11** (~8 min, non commitée, sans avertissement) : `hol.Simulation.EnemyNoPush` (1 :
+  paire ennemie, l'autre jamais déplacé ni mis en file ; `HOLSimulationProcessors.cpp:491-493, 782-787`) ;
+  `hol.Simulation.AvoidEnemies` (0 : le regard en avant `AvoidBodies`, 231-330, ne se détourne plus d'un ennemi ;
+  tableau `Owners`). Évitement Mass (`HOLParallelMassProcessors.cpp:69, 590`) sans notion de camp (non touché).
+  Sonde affinée (unités avec un ennemi derrière elles à moins de 3 m, histogramme de X par 2 m) : **aucune différence
+  nette** on / off / sans évitement des ennemis (pic « ennemi derrière » 96/93, 85/103, 92/108) ; histogrammes déjà
+  recouverts sur 8 m au contact. Capture `cross11_off_3s.png` : deux armées en croissant, emmêlées en fermeture
+  éclair (les autres captures vides : deux jeux hors écran en même temps). S3 EnemyNoPush 1 : 0db99bd7…, 195 morts.
+  **Lecture** : le mélange ne vient ni de la poussée entre ennemis ni du regard en avant ; les armées arrivent en
+  paquets lâches (4 paquets de 50 en rayon de 5 m), chaque unité s'arrête à sa portée et celles de derrière passent
+  dans les trous. Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : **zone de contrôle** (un soldat de mêlée qui
+  passe à moins de ~1,5 m d'un ennemi s'arrête et l'engage ; un trou de moins de ~3 m entre deux ennemis devient un
+  mur). L'utilisateur est absent : rien à essayer pour lui ; boucle 12 hors écran (captures une passe à la fois).
+  `EnemyNoPush` remis à 0 par défaut (sans effet net).
+- (J7c.4, mycrusader-56) **Boucle 12** (~8 min, non commitée, sans avertissement) : `EnemyNoPush` remis à 0 ;
+  `hol.Combat.ZoneOfControl` (cm bord à bord, défaut 150 ; `HOLCombatProcessor.cpp:59-62, 783-823`, marche forcée
+  vers l'ennemi pris : 655, 781, 822, 873). **Ne règle pas la fermeture éclair** : sonde dans le bruit (pic « ennemi
+  derrière » 70-93 à 0, 82-88 à 150, 75-81 à 250) ; captures `z12_*` (Saved_Tests\Screenshots\WindowsEditor\HOL)
+  emmêlées en peigne à 150 et 250. S3 ZoC 150 : 338cd979…, combat 2,05 ms (1,94), 225 morts (213). **Lecture de la
+  session principale sur `z12_150_3s.png`** : les deux armées arrivent **en files régulières** (marche en bloc de
+  J7a, attaque-déplacement de 200 unités), avec un écart entre les files plus large qu'un corps : les files de l'une
+  passent entre celles de l'autre (dents de peigne). Boucle 13 lancée : vérifier cette piste (écart des files de la
+  marche en bloc, bloc encore en marche au contact, zone de contrôle et arrêt au contact actifs pendant la marche en
+  bloc ?), captures juste avant le contact, essai sans marche en bloc.
+- (J7c.4, mycrusader-56) **Boucle 13** (~5 min, lecture et captures, rien de modifié) : **piste des files fausse** :
+  `melee_press` ne déclenche aucune marche en bloc (marche de ~28 m plus courte que la taille du bloc,
+  `BlockMarchMinDistanceInDepths` 1 ; 200 en FinalLeg, droit vers leur place) ; formation d'arrivée : rangs tous les
+  180 cm, colonnes tous les 75 cm, 26 m de large, alors que les unités sortent des disques d'apparition sur 35 m :
+  convergence en diagonale (10-30° pour 121 sur 200). Au premier mort : 120 arrêtées, 80 en marche de combat
+  individuelle vers la position de leur cible (`IssueCombatWalk`, `HOLCombatProcessor.cpp:876`). `CanPassThrough`
+  hors jeu. `hol.Units.BlockMarch 0` et `PreferFreeTarget 0` : même peigne. Interpénétration dès ~1,5 s après l'ordre
+  (deux nuées à 5,2-5,8 m/s chacune : ~58 cm de rapprochement par pas). Les bleus apparaissent en treillis lâche (un
+  corps entre voisins), les rouges en tas. **Lecture** : deux nuées lâches qui courent l'une dans l'autre, trajets
+  individuels vers des cibles prises à 12 m qui se croisent. Boucle 14 lancée : variante du scénario où chaque armée se
+  met d'abord en formation à l'arrêt, puis attaque (le cas d'une vraie partie) ; captures et sonde.
+- (J7c.4, mycrusader-56) **Boucle 14** (~9 min, rien compilé) : scénario **`melee_formed`** (gardé, non commité :
+  mêmes paquets, déplacement simple de chaque armée près de son camp, `wait 9`, puis la même attaque-déplacement) :
+  **le défaut est réel** : peigne même entre deux armées formées (sonde « ennemi derrière » 90/85 à +3 s du premier
+  mort ; 96/110 sans ZoC ni StopAtContact). Pas de verbe pour attendre une formation ; formations non vérifiées en
+  chiffres (le bleu encore à moitié rangé). **Lecture des captures par la session principale** : `z14_def_pre.png`
+  rouge en bloc net face au bleu ; `z14_def_c30.png` (premier contact) **le rouge s'est étiré en longues files
+  séparées d'environ un corps**, qui entrent dans le bleu ; `z14_def_k3.png` mélange en bandes sur tout le front.
+  Hypothèse : l'attaque-déplacement envoie chaque unité droit à sa place d'une formation d'arrivée derrière l'ennemi
+  (FinalLeg, sans marche en bloc : marche plus courte que le bloc) : l'armée se réorganise en files pendant la charge,
+  et les files passent dans les trous adverses. Bilan après 14 boucles : arrêt, question à l'utilisateur à son retour.
+- (J7c.4, mycrusader-56) **Analyse de l'utilisateur** (sa référence, 1:12 à 1:25) : « il y a juste une bonne distance
+  d'avoidance entre les unités et pour donner un coup, ils sont à la portée d'une épée et pas l'un contre l'autre ».
+  Chiffres du jeu (`Tools/Data/UnitTypes.csv`) : rayon 60 cm, **portée de mêlée 50 cm bord à bord pour tous**
+  (Lancier compris) ; la séparation garde les corps juste au contact. Boucle 15 lancée : portée de mêlée plus longue
+  (variable d'essai) et marge entre corps amis, captures `melee_formed`, S3.
+- (J7c.4, mycrusader-56) Boucle 15 arrêtée à la demande de l'utilisateur (« ne pars pas dans de la recherche, analyse
+  la vidéo ») avant toute modification. **Analyse de la vidéo de référence** (AoE4, 100 contre 100, 1:12-1:25 ;
+  téléchargée, images toutes les 0,5 s) : (1) les deux armées approchent **en files aérées** (environ un corps entre
+  voisins, de côté comme en profondeur), comme chez nous ; (2) juste avant le choc, un vide de 2-3 m entre les fronts ;
+  (3) au choc, **la frontière rouge / jaune reste une ligne continue** (bande mêlée d'un ou deux soldats au plus, aucun
+  jaune au fond du rouge), les soldats du front face à face à une longueur d'arme, pas corps contre corps ; (4)
+  derrière, les rangs restent aérés et **attendent derrière leurs amis** (ils ne se faufilent pas vers l'avant) ; (5)
+  la ligne ondule ensuite là où un camp gagne, les corps tombent sur la ligne. Différence avec nous : chez nous les
+  membres d'une file continuent vers leur cible et passent entre les ennemis arrêtés ; là-bas la tête de file s'arrête
+  à portée d'arme et la file s'arrête derrière elle.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** : essayer les trois règles tirées de la vidéo, **avec « ils ne
+  poussent plus en attaque »** : (1) **portée d'arme** (frappe à une longueur d'arme, la lance plus loin que l'épée ;
+  aujourd'hui 50 cm bord à bord pour tous) ; (2) **espacement entre amis** (petit écart, armée aérée) ; (3) **en
+  attaque, un soldat dont le chemin est barré par un ami qui combat attend derrière lui** au lieu de le pousser ou de
+  le contourner (révise « un marcheur pousse toujours », limité à l'attaque). **Les trois règles sont validées par
+  l'utilisateur, sous condition d'essai** (« je valide les 3 règles sous conditions de test »). **À faire plus tard** : l'utilisateur
+  doit lancer des choses qui demandent qu'aucun agent ne tourne et que les worktrees soient propres. Travail en cours
+  commité tel quel sur `j7c-shot` (WIP, compilé, non vérifié par `quick_check`).
+- **Séance arrêtée ici (demande de l'utilisateur : « marque tout ça pour le faire plus tard », worktrees propres, aucun
+  agent).**
+  **Reprise exacte** :
+  - **État** : `MyCrusader-Elrond`, branche `j7c-shot`, dernier commit = **ce1dcf5** (WIP de cette séance, au-dessus de 0fbafb4) ;
+    `IN_USE.txt` « en pause ». `main` ne contient rien de J7c.4 (seulement le journal et `EtapeDefini.md`).
+  - **Dans le WIP** (toutes derrière des variables ; défaut entre parenthèses) : `hol.Combat.PreferFreeTarget` (1,
+    **validé à l'œil** : « vachement mieux ») ; `hol.Combat.StopAtContact` (1) et `hol.Combat.ZoneOfControl` (150) :
+    sans effet net sur le mélange, à garder ou retirer selon les règles ci-dessous ; essais sans effet, **à retirer** :
+    `hol.Simulation.SeparationFriendPushShare` (0,5), `SeparationPushToEnemy` (0), `EnemyNoPush` (0), `AvoidEnemies`
+    (1) ; sondes : Jitter et « sep max step » (lecture seule), « Separation source » (`SumOverlaps` en O(N²) pendant
+    la mesure : **fausse les temps de S3**, à couper par défaut ou retirer), `hol.Debug.CrossProbe` (temporaire, à
+    retirer), sonde réseau par activité ; scénarios `melee_press` et `melee_formed` (Tools/Scenarios).
+  - **Empreintes** : S3 / S4 de référence 35c168b12173ffac / 93587c1cc36b353c avec toutes les nouvelles règles à 0 ;
+    avec les défauts du WIP elles changent (S3 PreferFreeTarget seul a2a470378f3c128b ; avec StopAtContact
+    18f713a534f17114 ; avec ZoC 150 338cd979…).
+  - **À faire, dans l'ordre** :
+    1. Écrire les trois règles (portée d'arme par type, espacement entre amis, attente derrière un ami qui combat en
+       attaque), chacune derrière une variable ; compiler ; **essai de l'utilisateur sur `melee_formed`** tout de suite
+       (sans série de mesures avant ; « ne pars pas dans de la recherche »).
+    2. Selon l'essai : nettoyage (variables sans effet, sondes), valeurs dans `UnitTypes.csv`, `quick_check -Parts`
+       des parties touchées (combat, move, formation), S3 / S4, commit sur `j7c-shot`.
+    3. Reprendre S5 en combat (70 Ko/s, seuil 32) : remesurer avec la mêlée corrigée, puis le lot réseau si besoin.
+    4. Mesures au repos du soir (`chapter_measures.ps1`), avance de `main`, J7c.5.
+  - **À savoir** : la vidéo de référence est https://www.youtube.com/shorts/zWR2KnqUMVI (1:12-1:25) ; l'analyse est
+    au-dessus. Un jeu ouvert depuis le worktree verrouille la DLL (LNK1104) : fermer le jeu avant de compiler.
+    Bouton « relancer le scénario » demandé (`EtapeDefini.md`, Outils d'essai).
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
