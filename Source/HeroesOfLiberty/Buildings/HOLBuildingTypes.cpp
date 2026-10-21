@@ -31,7 +31,7 @@ const FHOLBuildingTypeRow* UHOLBuildingSettings::FindType(const FName TypeName)
 	return Row;
 }
 
-void UHOLBuildingSettings::GetBuildableTypes(TArray<TPair<FName, int32>>& OutTypes)
+void UHOLBuildingSettings::GetBuildableTypes(TArray<FHOLBuildable>& OutTypes)
 {
 	OutTypes.Reset();
 	const UDataTable* Table = GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous();
@@ -43,7 +43,7 @@ void UHOLBuildingSettings::GetBuildableTypes(TArray<TPair<FName, int32>>& OutTyp
 	{
 		if (Row.IsBuildable())
 		{
-			OutTypes.Emplace(Name, Row.BuildGridSlot);
+			OutTypes.Add({ Name, Row.BuildGridSlot, Row.Age });
 		}
 	});
 }

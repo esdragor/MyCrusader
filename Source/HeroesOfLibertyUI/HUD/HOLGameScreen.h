@@ -11,24 +11,28 @@ class AHOLBuilding;
 class AHOLPlayerController;
 class AHOLPlayerState;
 class UBorder;
+class USizeBox;
 class UCommonTextBlock;
 class UHOLGridCell;
 class UHOLQueueItem;
 class UHorizontalBox;
 class UImage;
 class UProgressBar;
+class UWrapBox;
 struct FHOLUnitTypeRow;
 
 /**
  * Game screen of a match (J3, D281): the HUD of D201 with only the blocks the game has a use for so far, at their
  * final places. Top left, the four resources with how many of the player's units gather each (J5b, D298), the
- * population and the idle workers ("." selects the next one, so does a click); bottom centre, the selected building (its
+ * population and the idle workers ("." selects the next one, so does a click); along the bottom, from the left (the user's
+ * 2nd trial of G.1, AoE4's way, fixed places), the selection's block: the selected building (its
  * own or another player's, D203: name, owner, health), units (J4, D288: one unit as a building, several by type and
  * number, the workers among them by activity) or resource source (J5b: its name and what it still holds);
- * bottom right, the command grid (D30) of the player's own selected
- * building and, above it, that building's production queue, whose head shows its progress, computed on this machine
+ * then the command panel (D30, 3 x 4, the orders of the player's units or the grid of its own selected building) and,
+ * above it, that building's production queue, whose head shows its progress, computed on this machine
  * every frame from the server's clock (D282). With the player's Peasants selected, the grid shows the buildings they
- * build (J6a.5, D313: A house, Z lumber camp, E mining camp). A cell shows its name only (no icon yet, no cost: the
+ * build in four age panels right of the command panel (G.1: I to IV, a medallion each, Q S D F / W X C V); bottom right,
+ * the minimap's place (none yet). A cell shows its name only (no icon yet, no cost: the
  * user's trial of J6a.5); its tooltip gives name, cost (the missing amounts in red) and effect; greyed when the stock
  * does not cover it. A site selected shows its progress, its builders and an « Annuler » cell (V). Several of the
  * player's buildings selected together (F1, F2, F3, D30) show their active subgroup (Tab: « Tous (7) », « Maison × 6 »,
@@ -184,8 +188,14 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> QueueNote;
 
+	/**
+	 * The one command panel (the user's 2nd trial of G.1, AoE4's way): 3 x 4 cells at fixed places, the empty ones dark,
+	 * right of the selection's block: the orders of the player's units (Q attack-move, S stop, V hold) or the grid of its
+	 * building or group (production, « Annuler »). Hidden (its place kept) without anything of the player's selected.
+	 */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> GridPanel;
+
 
 private:
 	/** What the head of the queue shows. */
@@ -220,6 +230,13 @@ private:
 	/** Several of the player's buildings (an F key, D30): the active subgroup, then by type and number, the sites among them. */
 	void RefreshBuildingGroup(TConstArrayView<AHOLBuilding*> Buildings);
 	/**
+	 * The selection's chips (G.1e, AoE4's way), from ChipLabels and ActiveChip that the selection's refresh filled: shown
+	 * in place of the name, wrapping in the block's width, the active one's edge lit; none: the name alone. Written when changed.
+	 */
+	void RefreshChips();
+	/** A chip clicked: its subgroup made active, as Tab (chip N is the subgroup N, « Tous » the first). */
+	void HandleChipClicked(int32 Chip);
+	/**
 	 * The line of a gatherer selected alone (J5, D298), or hidden (null): what it does and carries, read again every
 	 * frame and written when it changed (D303).
 	 */
@@ -247,7 +264,16 @@ private:
 	/** The head of the queue: its progress (every frame) or the population note. */
 	void UpdateHead();
 
+	/** A cell of the command panel: an order with the player's units, else the grid's command. */
 	void HandleGridCellClicked(int32 Cell);
+	/** A building of the builders' age panels clicked (AHOLPlayerController::ClickAge); the medallions take no click. */
+	void HandleAgeClicked(int32 Age, int32 Cell);
+	/**
+	 * The builders' age panels (the user's trials of G.1, AoE4's way), right of the command panel: each the width of its
+	 * buildings' columns, only its rows used, a medallion (numeral, key) on its top edge; an age not reached faded, the
+	 * chosen one's medallion and edge lit.
+	 */
+	void RefreshAges(const AHOLPlayerState* PlayerState);
 	void HandleQueueItemClicked(int32 Index);
 
 	/** A command that did not go through (D313), from the controller: its short message. */
@@ -267,8 +293,40 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;
 
+	/** The builders' age panels, I to IV, and their medallions (numeral, key A Z E R; no click). */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> AgePanels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> AgeMedallions;
+	/** Each medallion's tooltip as Report writes it (« Palier II — Essor | Palier non atteint »), and the look shown (-1: none yet). */
+	TArray<FString> ShownAgeTooltips;
+	TArray<int32> ShownAgeLooks;
+
+	/** Each age's building cells, Q S D F / W X C V (NumAges x NumAgeCells), and their boxes in the panel's grid. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHOLGridCell>> AgeCells;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USizeBox>> AgeCellBoxes;
+
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLQueueItem>> QueueItems;
+
+	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
+	UPROPERTY(Transient)
+	TObjectPtr<UWrapBox> SelectionChips;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHOLQueueItem>> ChipItems;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> ChipFrames;
+	/** What the selection's refresh wants shown (empty: the name alone), and what the chips show (-2: nothing yet). */
+	TArray<FText> ChipLabels;
+	int32 ActiveChip = INDEX_NONE;
+	TArray<FString> ShownChips;
+	int32 ShownActiveChip = -2;
 
 	/** The control groups' slots, by group (0 to 9). */
 	UPROPERTY(Transient)
@@ -309,6 +367,13 @@ private:
 	FString ShownHealth;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
+	bool bOrdersShown = false;
+	TArray<FName> ShownOrderTypes;
+	/** The builders' age panels, for Report: their buildings (NumAges x NumAgeCells), the ages reached, the chosen one. */
+	bool bAgesShown = false;
+	TArray<FName> ShownAgeTypes;
+	TArray<bool> ShownAgeReached;
+	int32 ShownChosenAge = INDEX_NONE;
 	bool bQueueShown = false;
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;

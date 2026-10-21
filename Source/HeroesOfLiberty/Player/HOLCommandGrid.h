@@ -30,6 +30,9 @@ struct FHOLGridCommand
 {
 	EHOLGridCommand Command = EHOLGridCommand::None;
 	FName TypeName;
+	/** Build: the age of its panel (0 to 3); bGreyed: an age the player has not reached, shown greyed, a press does nothing. */
+	int32 Age = INDEX_NONE;
+	bool bGreyed = false;
 
 	bool IsNone() const { return Command == EHOLGridCommand::None; }
 	bool operator==(const FHOLGridCommand& Other) const = default;
@@ -88,8 +91,50 @@ struct FHOLGridContext
 	 */
 	bool bOwnUnits = false;
 	bool bSoldiers = false;
-	/** The types builders build and their cell (BuildGridSlot of the building type table). */
-	TArray<TPair<FName, int32>> Buildable;
+	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
+	TArray<FHOLBuildable> Buildable;
+	/** The last age the player has reached (HOLCommandGrid::GetReachedAge): the panels after it greyed. */
+	int32 ReachedAge = 0;
+};
+
+/** Where a key of the grid goes (the user's choice of 2026-10-21, AoE4's way): the grid on the right, the orders on the left. */
+enum class EHOLGridKeyTarget : uint8
+{
+	/** Nothing (an age not reached, an empty cell of the chosen age). */
+	None,
+	/** The grid on the right: a building's production or its site's « Annuler ». */
+	Grid,
+	/** The orders' panel on the left: attack-move, stop, hold. */
+	Orders,
+	/** An age chosen (A Z E R, or a click on its header): its keys build. */
+	Age,
+	/** The ghost of TypeName, a building of the chosen age (a ghost shown before: replaced). */
+	Build,
+};
+
+struct FHOLGridKeyResult
+{
+	EHOLGridKeyTarget Target = EHOLGridKeyTarget::None;
+	/** The age chosen after the press (INDEX_NONE: none). */
+	int32 ChosenAge = INDEX_NONE;
+	/** Build: the building whose ghost starts. */
+	FName TypeName;
+
+	bool operator==(const FHOLGridKeyResult& Other) const = default;
+};
+
+/** What closes the chosen age (the user's 1st trial of G.1): the ghost placed or cancelled, Escape, another selection. */
+enum class EHOLAgeEvent : uint8
+{
+	/** The ghost placed (a left click): the placement ends. */
+	Placed,
+	/** The ghost placed with Shift: the ghost kept for the next one, and the age. */
+	PlacedKept,
+	/** The ghost cancelled (Escape, a right click). */
+	Cancelled,
+	/** Escape with no ghost. */
+	Escape,
+	SelectionChanged,
 };
 
 /** One of the player's buildings in the cycle of an F key (D30): its rank (its type) and a key stable on this machine. */
@@ -149,26 +194,71 @@ struct FHOLGridCellFace
  */
 namespace HOLCommandGrid
 {
-	/** Cells of the grid (A Z E R / Q S D F / W X C V). */
+	/** Cells of the grid (A Z E R / Q S D F / W X C V), and of the orders' panel on its left (the same keys). */
 	inline constexpr int32 NumCells = 12;
 	/** The cell of a selected site's « Annuler » (V, bottom right: far from the keys that build). */
 	inline constexpr int32 CancelCell = 11;
 	/**
-	 * The units' commands (J7b.3), on the second row, free in the builders' grid (A Z E R): Q attack-move (AoE4's grid on
-	 * an AZERTY keyboard: A Z E R are kept for the age tabs of the builders' grid, the user's request of 2026-10-20, after
-	 * A in the trial of J7b), S stop, D hold position. Soldiers among the selection hide the builders' grid (« Tous » of a
-	 * mixed selection); the Peasants' subgroup (Tab) keeps it.
+	 * The builders' panels (the user's trials of G.1, AoE4's way): the 4 ages side by side (I to IV, ages 0 to 3: Fondation,
+	 * Essor, Puissance, Légende), each a medallion (its numeral, its key A Z E R) over its buildings at the places of their
+	 * keys, all 12 cells (BuildGridSlot), one row per category (the user's 3rd trial of G.1): A Z E R economic, Q S D F
+	 * military, W X C V technology (the F keys' F2 / F1 / F3); an age not reached greyed.
+	 */
+	inline constexpr int32 NumAges = 4;
+	inline constexpr int32 GridColumns = 4;
+	inline constexpr int32 NumGridRows = NumCells / GridColumns;
+
+	/** The row of the builders' panels where the buildings of Category stand: 0 economic, 1 military, 2 technology. */
+	HEROESOFLIBERTY_API int32 GetCategoryRow(EHOLBuildingCategory Category);
+	/**
+	 * The units' orders, in the panel left of the grid at AoE4's places (the user's choice of 2026-10-21): Q attack-move
+	 * (soldiers among the selection: a Peasant alone has none), S stop, V hold position.
 	 */
 	inline constexpr int32 AttackMoveCell = 4;
 	inline constexpr int32 StopCell = 5;
-	inline constexpr int32 HoldCell = 6;
+	inline constexpr int32 HoldCell = 11;
 
 	/**
-	 * What Cell does: the selected building's production (finished) or its cancel cell (a site); else, with builders and
-	 * no soldier selected, the building whose BuildGridSlot is Cell; else the units' commands (attack-move with soldiers,
-	 * stop, hold); else nothing.
+	 * What Cell of the grid on the right does: the selected building's production (finished) or its cancel cell (a site);
+	 * else nothing (the builders' are the age panels': GetAgeBuilding; the units' orders the orders' panel's: GetOrder).
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
+
+	/** What Cell of the orders' panel does: with own units and no building, attack-move with soldiers (Q), stop (S), hold (V). */
+	HEROESOFLIBERTY_API FHOLGridCommand GetOrder(const FHOLGridContext& Context, int32 Cell);
+
+	/** The builders' age panels are shown: builders selected, no soldier among them, no building. */
+	HEROESOFLIBERTY_API bool IsBuildGrid(const FHOLGridContext& Context);
+
+	/** The last age the player has reached: 0 (Fondation) until the ages come (GDD § 11.1). */
+	HEROESOFLIBERTY_API int32 GetReachedAge();
+
+	/** Age (0 to 3) is reached: its panel's buildings may be placed. */
+	HEROESOFLIBERTY_API bool IsAgeReached(const FHOLGridContext& Context, int32 Age);
+
+	/**
+	 * The building at Cell (0 to 11) of the panel of Age, the builders' (IsBuildGrid): Build, its type, its age, greyed
+	 * when the age is not reached; else nothing.
+	 */
+	HEROESOFLIBERTY_API FHOLGridCommand GetAgeBuilding(const FHOLGridContext& Context, int32 Age, int32 Cell);
+
+	/**
+	 * Where a key of Cell goes, ChosenAge the age chosen before it (the user's 1st trial of G.1, AoE4's way). A building
+	 * selected: the grid, no age. The builders' panels, no age chosen: A Z E R choose their age (one not reached: nothing),
+	 * Q S D F / W X C V the orders; an age chosen, every key of the grid starts the ghost of its building there (the user's
+	 * 3rd trial of G.1: A then A the house; an empty cell: nothing, never another age), the age kept until the ghost is
+	 * placed or cancelled (GetChosenAgeAfter): another key of it changes the ghost. Else: the orders.
+	 */
+	HEROESOFLIBERTY_API FHOLGridKeyResult PressKey(const FHOLGridContext& Context, int32 ChosenAge, int32 Cell);
+
+	/**
+	 * A click on the builders' panel of Age: on its header (Cell INDEX_NONE) the age chosen, as its key; on its building at
+	 * Cell its ghost, the age chosen. An age not reached: nothing, the chosen age kept.
+	 */
+	HEROESOFLIBERTY_API FHOLGridKeyResult ClickAge(const FHOLGridContext& Context, int32 ChosenAge, int32 Age, int32 Cell);
+
+	/** The age chosen after Event: kept only by a ghost placed with Shift (the next one); else closed. */
+	HEROESOFLIBERTY_API int32 GetChosenAgeAfter(int32 ChosenAge, EHOLAgeEvent Event);
 
 	/** The first resource of Cost the stock does not cover (Food, Wood, Stone, Gold); false when it covers it all. */
 	HEROESOFLIBERTY_API bool FindMissingResource(const FHOLResources& Stock, const FHOLResources& Cost, EHOLResource& OutResource);

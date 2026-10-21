@@ -48,8 +48,8 @@
 # its first blow (hol.Cheat.FastBuild 1): the Peasant produced builds E, goes on to F 9 m away (hol.Build.NextSiteRange,
 # 20 m), not to G 39 m away, then stands idle; Shift + place H, Shift + place I, Shift + right click on a tree: H built,
 # then I, then it gathers wood.
-# J6a.5 (D313), solo: every Peasant selected without wood, the grid shows house, lumber camp and mining camp on A, Z, E,
-# greyed, their tooltips; a click on the lumber camp: no ghost, the message "Pas assez de bois" (captured in French,
+# J6a.5 (D313), solo: every Peasant selected without wood, the age panels I to IV (II to IV locked), panel I's house, lumber camp, mining camp and
+# barracks on Q, S, D, F greyed, their tooltips; a click on the lumber camp: no ghost, the message "Pas assez de bois" (captured in French,
 # English and Japanese); with wood, the key Z starts the lumber camp's ghost; two Peasants place house J by the key A,
 # the site selected shows its progress, its builders and "Annuler" (V), clicked: refunded; the population full, the key
 # A at the centre: the message "Population maximale". The user's trial of J6a.5: the cells write the name alone (the cost
@@ -684,23 +684,35 @@ if ($Parts -contains "camera") {
             # The construction HUD (J6a.5, D313). Every Peasant selected, no wood: the builders' grid greyed, its tooltips; a
             # click on Z (lumber camp): no ghost, "Pas assez de bois", captured in the three languages.
             Step "mark build hud", "hol.Cheat.Wood -100000", "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3", "hol.Select.Own", "waitlog Select own:", "frames 3",
-                "hol.HUD.Report", "capture build_hud_greyed", "hol.HUD.Click GridCell01", "waitlog HUD message: NotEnoughWood", "frames 3", "hol.HUD.Report",
+                "hol.HUD.Report", "capture build_hud_greyed", "hol.HUD.Click AgeCell001", "waitlog HUD message: NotEnoughWood", "frames 3", "hol.HUD.Report",
                 "capture build_hud_fr"
             foreach ($Culture in "en", "ja") {
-                Step "hol.UI.Language $Culture", "frames 5", "hol.HUD.Click GridCell01", "waitlog HUD message: NotEnoughWood", "frames 3", "capture build_hud_$Culture"
+                Step "hol.UI.Language $Culture", "frames 5", "hol.HUD.Click AgeCell001", "waitlog HUD message: NotEnoughWood", "frames 3", "capture build_hud_$Culture"
             }
             Step "hol.UI.Language fr", "frames 5"
             # With wood, the key Z: the lumber camp's ghost; Escape.
             Step "mark build hud ghost", "hol.Cheat.Wood 500", "wait 0.3", "hol.HUD.Report"
+            Key A
             Key Z
             Step "waitlog Placement: LumberCamp (cost", "frames 3", "hol.HUD.Report", "capture build_hud_ghost"
             Key Escape
             Step "waitlog Placement: ended"
+            # The age panels and the command panel (G.1c, G.1d, G.1f): the key Z (age II, not reached) does nothing; A then A
+            # by their keys (hol.Select.Grid 0, 0): the house's ghost, age I kept; then E: the mining camp's ghost instead;
+            # then Z, age I chosen: the lumber camp's (never age II); Escape: the placement ended and age I closed; a click
+            # on S of the command panel (the Peasants' orders): stop.
+            Step "mark build hud ages", "hol.Select.Grid 1", "waitlog Grid: age 1 not reached", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 0", "hol.Select.Grid 0", "waitlog Placement: House (cost", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 2", "waitlog Placement: MiningCamp (cost", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Placement: LumberCamp (cost", "frames 3", "hol.HUD.Report"
+            Key Escape
+            Step "waitlog Placement: ended", "frames 3", "hol.HUD.Report", "hol.HUD.Click GridCell05", "waitlog Order: ", "frames 3"
             # Two Peasants made behind, selected by a box; the key A, a click: house J placed, they build it; the site selected:
             # its block (progress, builders, "Annuler" on V), the click on it refunds half.
             Step "mark build hud site", "hol.Units.SpawnSeed 105", "hol.Units.Spawn 2 $($BuildJSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($BuildJSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($BuildJSpawn[0] - 400) $($BuildJSpawn[1] - 400) $($BuildJSpawn[0] + 400) $($BuildJSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3"
+            Key A
             Key A
             Step "waitlog Placement ghost: House at ($($BuildJ -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 2 units to House at ($($BuildJ -join ', '))",
                 "waitlog Construction: slot 0 first work on House at ($($BuildJ -join ', '))", "wait 2", "hol.Camera.Focus $($BuildJ[0]) $($BuildJ[1] - 300)", "frames 3",
@@ -870,7 +882,8 @@ if ($Parts -contains "camera") {
                 "hol.Units.Spawn 3 $($BarracksSpawn -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BarracksSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($BarracksSpawn[0] - 400) $($BarracksSpawn[1] - 400) $($BarracksSpawn[0] + 400) $($BarracksSpawn[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3",
                 "hol.Camera.Focus $($BarracksAt -join ' ')", "frames 3", "hol.HUD.Report", "capture build_barracks_peasants"
-            Key R
+            Key A
+            Key Q
             Step "waitlog Placement ghost: Barracks at ($($BarracksAt -join ', ')) valid", "frames 3", "capture build_barracks_ghost", "hol.Build.Click",
                 "waitlog Build order of slot 0: 3 units to Barracks at ($($BarracksAt -join ', '))", "waitlog Construction: slot 0 finished Barracks at ($($BarracksAt -join ', '))",
                 "wait 1", "hol.Build.Speed 1", "hol.Build.Report", "hol.Camera.Focus $($BarracksAt[0]) $($BarracksAt[1] - 300)", "frames 3",
@@ -1930,21 +1943,31 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudF1 = Get-Section "build hud f1"
     $HudF2 = Get-Section "build hud f2"
     $HudTab = Get-Section "build hud tab"
+    $HudAges = Get-Section "build hud ages"
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
-    $Checks["Peasants without wood: house, lumber camp, mining camp, barracks on A, Z, E, R, greyed ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Barracks greyed, queue ")
+    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp on A, Z, E, barracks on Q, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed Q=Barracks greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs; R: Caserne; S: Arr.+t; D: Tenir$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I Q: Caserne$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; R: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; S: Arr.+t \| Annule les ordres et le combat; D: Tenir la position \| N'attaque qu'.+ port.+e, ne poursuit pas$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
     $Checks["the message in the three languages (HUD message lines: $(@($Hud | Select-String -Pattern 'HUD message: NotEnoughWood').Count))"] = @($Hud | Select-String -Pattern "HUD message: NotEnoughWood").Count -eq 3
     $Checks["with wood, the key Z: the lumber camp's ghost, the cells ready"] = [bool]($HudGhost | Select-String -Pattern "Placement: LumberCamp \(cost F 0 W 100 S 0 G 0\)" -Quiet) -and
-        [bool]($HudGhost | Select-String -Pattern "grid A=House enabled Z=LumberCamp enabled E=MiningCamp enabled" -Quiet) -and [bool]($HudGhost | Select-String -Pattern "Placement: ended" -Quiet)
+        [bool]($HudGhost | Select-String -Pattern "A=House enabled Z=LumberCamp enabled E=MiningCamp enabled" -Quiet) -and [bool]($HudGhost | Select-String -Pattern "Placement: ended" -Quiet)
+    $AgesReports = @($HudAges | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $Checks["the key Z (II not reached): nothing; A then A: the house's ghost, I chosen; then E: the mining camp's instead; then Z: the lumber camp's, I kept; Escape: ended, I closed; S of the command panel: stop ($(& $Value $HudAges '(Order: .*)$'))"] =
+        [bool]($HudAges | Select-String -Pattern "Grid: age 1 not reached" -Quiet) -and -not ($HudAges | Select-String -Pattern "Grid: age -1" -Quiet) -and
+        -not ($HudAges | Select-String -Pattern "Grid: age 1 chosen" -Quiet) -and ($AgesReports.Count -ge 5) -and ($AgesReports[0] -match "\(chosen none\)") -and
+        [bool]($HudAges | Select-String -Pattern "Placement: House \(cost" -Quiet) -and ($AgesReports[1] -match "\(chosen I\)") -and
+        [bool]($HudAges | Select-String -Pattern "Placement: MiningCamp \(cost" -Quiet) -and ($AgesReports[2] -match "\(chosen I\)") -and
+        [bool]($HudAges | Select-String -Pattern "Placement: LumberCamp \(cost" -Quiet) -and ($AgesReports[3] -match "\(chosen I\)") -and
+        [bool]($HudAges | Select-String -Pattern "Grid: age 0 closed" -Quiet) -and ($AgesReports[4] -match "\(chosen none\)") -and
+        [bool]($HudAges | Select-String -Pattern "Order: \d+ units stop" -Quiet)
     $Checks["the key A with two Peasants: house J placed, they build it"] = [bool]($HudSite | Select-String -Pattern "Placement: House \(cost" -Quiet) -and
         [bool]($HudSite | Select-String -Pattern "Build order of slot 0: 2 units to House at \($($BuildJ -join ', ')\)$" -Quiet)
     $Block = & $Value $HudSite "HUD report: (.*)$"
@@ -1960,7 +1983,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         [bool]($HudF1 | Select-String -Pattern 'HUD message: NoMilitaryBuilding "Aucun b.+timent militaire"' -Quiet) -and
         [bool]($HudF1 | Select-String -Pattern "Category Technological: no building" -Quiet) -and [bool]($HudF1 | Select-String -Pattern "HUD message: NoTechnologicalBuilding" -Quiet) -and
         (@($HudF1 | Select-String -Pattern "Selection report: selected none").Count -eq 2) -and
-        [bool](($HudF1 | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "selection none, grid hidden, queue hidden, message NoMilitaryBuilding")
+        [bool](($HudF1 | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "selection none, grid hidden, orders none, queue hidden, message NoMilitaryBuilding")
     # F2: every economic building of slot 0 (finished, sites and its ghosts: the user's 2nd trial of J6a.5) as the build
     # report lists them; the ghost G of the build trial among them.
     $Owned = @(([string](& $Value $HudF1 "(Build report: .*)$")) -split "; " | Where-Object { $_ -match "of slot 0 \(own\) (finished|under construction|foundation)" })
@@ -2157,10 +2180,10 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: R = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; R: Caserne; S: Arr.+t; D: Tenir$") -and
-        [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "R=Barracks enabled")
+    $Checks["the Peasants' grid: Q = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne$") -and
+        [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
-    $Checks["the key R: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
+    $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["the barracks selected: A Lancier, Z Homme d'armes, E Archer ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and

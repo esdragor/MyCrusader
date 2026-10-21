@@ -280,7 +280,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		{
 			continue;
 		}
-		TestEqual(Name + TEXT(": slot in the Peasant's grid (D313: A, Z, E)"), Row->BuildGridSlot, Type.Slot);
+		TestEqual(Name + TEXT(": slot in the Peasant's grid (D313, age I, economic row: A, Z, E)"), Row->BuildGridSlot, Type.Slot);
 		TestEqual(Name + TEXT(": population given"), Row->PopulationProvided, Type.Population);
 		TestTrue(Name + TEXT(": resources accepted"), Row->Accepts == Type.Accepts);
 		TestTrue(Name + TEXT(": its cost, in wood only"), Row->Cost == FHOLResources(0, Type.Wood, 0, 0));
@@ -295,7 +295,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
 	{
 		TestTrue(TEXT("Barracks: built by Peasants"), Barracks->IsBuildable());
-		TestEqual(TEXT("Barracks: R of the Peasant's grid (slot 3, D313)"), Barracks->BuildGridSlot, 3);
+		TestEqual(TEXT("Barracks: Q of the Peasant's grid (slot 4, military row, D313)"), Barracks->BuildGridSlot, 4);
 		TestEqual(TEXT("Barracks: 3 x 3 tiles (9 m)"), Barracks->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
 		TestTrue(TEXT("Barracks: 150 wood"), Barracks->Cost == FHOLResources(0, 150, 0, 0));
 		TestEqual(TEXT("Barracks: 40 s for one builder"), Barracks->BuildTime, 40.f);
