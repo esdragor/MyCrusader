@@ -410,7 +410,7 @@ if ($Parts -contains "smoke") {
         "hol.Select.BoxGround $($SmokeMenAtArms[0] - 350) $($SmokeMenAtArms[1] - 350) $($SmokeMenAtArms[0] + 350) $($SmokeMenAtArms[1] + 350)",
         "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Combat.Enabled 1", "hol.Select.OrderGround $($SmokeTo -join ' ')",
         "waitlog Peasant of slot 1 killed by", "mark smoke combat", "hol.Units.Where 0", "hol.Combat.Report", "capture qc_smoke_melee",
-        "hol.Combat.Enabled 0", "mark smoke end"
+        "hol.Combat.Enabled 0", "mark smoke dying", "wait 1.5", "hol.Units.Report 200", "mark smoke end"
 }
 if ($Parts -contains "camera") {
     # After the smoke part, the match it launched is left for the main menu first.
@@ -1366,6 +1366,10 @@ if ($Parts -contains "smoke") {
     $Walked = @([regex]::Matches([string]$Where, "slot 0 at \((-?\d+), (-?\d+)\)") | ForEach-Object {
         [Math]::Round([Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $SmokeTo[0], 2) + [Math]::Pow([double]$_.Groups[2].Value - $SmokeTo[1], 2)) / 100, 1) })
     $Checks["the 3 walked there (m from the point: $($Walked -join ', '))"] = ($Walked.Count -eq 3) -and (@($Walked | Where-Object { $_ -le 6 }).Count -eq 3)
+    # The melee off right after the kill: the dying Peasant is destroyed all the same, 1 s after its death.
+    $Report = (Get-Section "smoke dying") | Select-String -Pattern "Units report: (\d+) units: (.*)$" | Select-Object -First 1
+    $Dying = if ($Report) { @([regex]::Matches($Report.Matches[0].Groups[2].Value, "#\d+ \w+ slot \d+ [^;]*, Dying(;|$)")).Count } else { -1 }
+    $Checks["combat off: the dead Peasant destroyed all the same 1.5 s later ($Dying left dying)"] = $Dying -eq 0
     $AllOk = (Report "smoke" $Checks) -and $AllOk
 }
 

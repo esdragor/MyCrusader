@@ -108,6 +108,20 @@ void UHOLCombatProcessor::KillUnit(const UWorld* World, UHOLUnitSubsystem& Units
 	Units.MarkUnitDying(Victim.UnitId);
 }
 
+void UHOLCombatProcessor::FinishDying(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Fighter, const int64 StepIndex)
+{
+	// Dying (J7b.4): it stands ~1 s for its fall, then is destroyed at the end of a step (D224).
+	if (Fighter.Combat->DeathStep < 0)
+	{
+		// At 0 health by another way than a hit or an arrow of this processor: the same dying path all the same.
+		KillUnit(World, Units, Fighter, StepIndex);
+	}
+	if (StepIndex - Fighter.Combat->DeathStep >= HOLCombat::DyingSteps)
+	{
+		Deaths.Add(Fighter.UnitId);
+	}
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -115,10 +129,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
 	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
-	if (!Units || !Commands || Enabled == 0)
+	if (!Units || !Commands)
 	{
 		return;
 	}
+	// Off (hol.Combat.Enabled 0): no unit fights and the arrows in flight wait, but the dying still fall and go.
+	const bool bFighting = Enabled != 0;
 	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
 	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
 
@@ -156,6 +172,22 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		TotalArrowsLost += Arrows.Num(); // no target left for any
 		Arrows.Reset();
+		return;
+	}
+	if (!bFighting)
+	{
+		Deaths.Reset();
+		for (FFighter& Fighter : Fighters)
+		{
+			if (Fighter.State->CurrentHealth <= 0)
+			{
+				FinishDying(World, *Units, Fighter, StepIndex);
+			}
+		}
+		if (Deaths.Num() > 0)
+		{
+			Units->RequestDestroyUnits(Deaths);
+		}
 		return;
 	}
 	Fighters.Sort([](const FFighter& A, const FFighter& B) { return A.UnitId < B.UnitId; });
@@ -254,16 +286,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 		if (Fighter.State->CurrentHealth <= 0)
 		{
-			// Dying (J7b.4): it stands ~1 s for its fall, then is destroyed at the end of a step (D224).
-			if (Combat.DeathStep < 0)
-			{
-				// At 0 health by another way than a hit or an arrow of this processor: the same dying path all the same.
-				KillUnit(World, *Units, Fighter, StepIndex);
-			}
-			if (StepIndex - Combat.DeathStep >= HOLCombat::DyingSteps)
-			{
-				Deaths.Add(Fighter.UnitId);
-			}
+			FinishDying(World, *Units, Fighter, StepIndex);
 			continue;
 		}
 		const FVector2D Position(Fighter.Location);
