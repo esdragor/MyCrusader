@@ -18,6 +18,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### GDD
 - Review du GDD : reprendre à D340
 - Consigner au GDD la décision des scénarios de test (`hol.Scenario`, `play.ps1`)
+- Préciser D327 au GDD : au commit, seulement les parties touchées (`-Parts`) ; `-Full` aux clôtures de chapitre (choix du 2026-10-21)
 
 ### Questions techniques ouvertes
 - Croisement de deux unités de face (avant M5)
@@ -33,13 +34,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Q (attaque) : curseur de souris et couleur qui changent pendant le choix du point
 
 ### Revue de code
-- `LastAttacker` n'expire jamais (riposte à travers la carte)
+- `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 - Mort hors mêlée incomplète (avec J7c.2)
-- Place 4095 = « cible invalide », mais vraie place au-delà de 4 096 entrées
-- `AttackerCount` trop haut d'un après la mort d'un attaquant
-- Scénario fermé en cours de préparation : nettoyage trop tard (plantage possible à la fermeture)
 
 ### Aléas et petits restes
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
-- Commentaire du test `Gather.Spots` qui parle encore de 70 cm
