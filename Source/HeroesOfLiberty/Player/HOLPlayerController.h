@@ -96,6 +96,12 @@ public:
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
 	/** The unit drawn under a point of the viewport, the one in front (D288), or 0. */
 	uint32 FindUnitAt(const FVector2D& ViewportFraction) const;
+	/**
+	 * Another player's unit a right click there takes as its target (J7c, retour d'essai 8, loop 3): the one drawn under
+	 * the point (bOutDirect true), or else the one drawn nearest to it within hol.Select.TargetMargin (pixels at 1080
+	 * high, HOLUnitPicking::PickNear); 0 when none.
+	 */
+	uint32 FindTargetAt(const FVector2D& ViewportFraction, bool& bOutDirect) const;
 	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
 	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
 	/**
@@ -403,8 +409,11 @@ private:
 	void UpdateDrag();
 	/** Pixels of a point of the viewport given in fractions. */
 	FVector2D ToPixels(const FVector2D& ViewportFraction) const;
-	/** Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only. Ids match the candidates. */
-	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const;
+	/**
+	 * Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only; with bOthersOnly, the other
+	 * players' only. Ids match the candidates.
+	 */
+	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds, bool bOthersOnly = false) const;
 	/** Units that left this machine (dead, out of view of a client) leave the selection, a used-up source too. */
 	void PurgeSelection(TConstArrayView<FHOLUnitView> Views);
 	/** The player's idle workers among the units known here (Views). */

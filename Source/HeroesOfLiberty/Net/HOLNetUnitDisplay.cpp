@@ -12,6 +12,7 @@
 #include "MassRepresentationTypes.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Presentation/HOLArrowSubsystem.h"
+#include "Presentation/HOLUnitAnimation.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -105,16 +106,16 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			// Its arrows (J7c.2b2, Q4): deduced, nothing more received. The server's cadence replayed on the clock from the
 			// step its Attacking state was taken at (that step already ticked, HOLCombat::StartAttack then TickAttack), an
 			// arrow at each step the replayed cool-down runs out, from where it is drawn to where its target is drawn, as
-			// long as it stays Attacking (a new target keeps the cadence, as on the server).
+			// long as it stays Attacking (a new target keeps the cadence, as on the server). Not Attacking, the cool-down
+			// keeps running down (hit and run, J7c, retour d'essai 8): attacking again, it resumes from what is left.
 			if (!bShooter || Display.State.Activity != EHOLUnitActivity::Attacking)
 			{
-				Display.ShotStep = -1;
+				Display.StopShots();
 				continue;
 			}
 			if (Display.ShotStep < 0)
 			{
-				Display.ShotStep = Display.StateStep;
-				Display.ShotCooldownMs = HOLCombat::GetWindUpMilliseconds(IntervalMs) - StepMs;
+				Display.StartShots(Display.StateStep, StepMs, IntervalMs, Constants.AttackWindUpPercent);
 			}
 			const int64 ClockWhole = FMath::FloorToInt64(ClockStep);
 			if (ClockWhole - Display.ShotStep > MaxShotStepsAtOnce)
@@ -141,6 +142,30 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), FVector2D(Launch.To), HOLCombat::GetArrowSpeed());
 				ArrowDisplay->Launch(Launch);
 			}
+			// Its gesture's phase (UHOLInterpolatedInstancesProcessor): its next release, from the clock's present.
+			Display.ShotSecondsToHit = HOLUnitAnimation::GetSecondsToHit(Display.ShotCooldownMs, StepMs)
+				+ static_cast<float>((static_cast<double>(Display.ShotStep) - ClockStep) * StepSeconds);
 		}
 	});
+}
+
+void FHOLNetUnitDisplayFragment::StartShots(const int64 AttackStep, const int32 StepMs, const int32 IntervalMs, const int32 WindUpPercent)
+{
+	int32 LeftMs = 0;
+	if (ShotIdleStep >= 0)
+	{
+		const int64 IdleSteps = FMath::Max<int64>(AttackStep - 1 - ShotIdleStep, 0);
+		LeftMs = static_cast<int32>(FMath::Max<int64>(static_cast<int64>(ShotCooldownMs) - IdleSteps * StepMs, 0));
+	}
+	ShotStep = AttackStep;
+	ShotCooldownMs = HOLCombat::StartAttack(LeftMs, IntervalMs, WindUpPercent) - StepMs;
+}
+
+void FHOLNetUnitDisplayFragment::StopShots()
+{
+	if (ShotStep >= 0)
+	{
+		ShotIdleStep = ShotStep;
+		ShotStep = -1;
+	}
 }

@@ -480,7 +480,7 @@ def verify(sk, sequence, rig, times, locals_by_frame):
             log("relecture %s, tete de l'arme : ecart au hors ligne %.3f cm au plus (image %d) ; vitesse max %.1f m/s "
                 "(images %d-%d)" % (label, head_err[worst_k], worst_k, speeds[fast], fast, fast + 1))
             if rig.g["name"].endswith("_Attack"):
-                hit = int(round((len(times) - 1) * soldier_poses.ATTACK_HIT_FRACTION))
+                hit = int(round((len(times) - 1) * rig.g.get("hit_fraction", soldier_poses.ATTACK_HIT_FRACTION)))
                 near = min(range(len(heads_read)),
                            key=lambda k: anim_rig.length(anim_rig.sub(heads_read[k], heads_offline[hit])))
                 log("relecture %s, frappe : tete de l'arme la plus proche de la cle de frappe a l'image %d (attendue %d), "

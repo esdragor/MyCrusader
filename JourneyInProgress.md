@@ -5928,3 +5928,123 @@ d'épée).
     (3) mesures complètes de fin de chapitre (S1, S2 au seuil, S3, S4, S5 en combat avec le coût des PV exacts, S7) ;
     (4) avance de `main` ; (5) J7c.5 (clôture de J7 au GDD : D327, D328, J7-Q5 révisée, J7-Q1 à Q6, et les décisions
     de J7c.4 : S4 en tiers, optimisations identiques, tirage déterministe).
+
+### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
+
+- Séance **mycrusader-4f**, copie **`MyCrusader-Galadriel`** (`IN_USE.txt`), branche **`archer-hit-and-run`** depuis
+  `main` ea84b7b. `EtapeDefini.md` : « Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence ».
+- **Constat (lecture du code)** : un ordre de marche (`Disengage`) garde la recharge (`CooldownMs` non remis à zéro,
+  `TickIdle` pendant la marche) et une flèche lâchée part quand même (J7c-Q2). Le blocage : à chaque reprise de cible,
+  `StartAttack` impose l'élan de **50 % de la cadence** (812 ms pour l'Archer, 1,625 s), partagé avec la mêlée
+  (`HOLCombat::WindUpPercent`, `HOLUnitAnimation::StrikeHitShare`) ; un ordre pendant l'élan perd le tir. Chez le
+  client, la cadence rejouée (`HOLNetUnitDisplay`) repart toujours de l'élan : faux si la recharge n'était pas finie.
+- **Tranché — Lâcher au quart pour les tireurs** (choix de l'utilisateur, A, conforme à la recommandation) : élan par
+  type dans la table (Archer ~25 %, soit ~0,4 s ; mêlée inchangée à 50 %) ; geste de tir refait avec le lâcher au quart
+  (bandé plus vite, recharge plus longue), toujours une boucle à vitesse unique, coupée par la marche ; chez le client,
+  la recharge rejouée continue pendant la marche (0 bit de plus). Écartés : **tir joué une fois puis pose « prêt »**
+  (plus lisible, mais vitesses changeantes dans l'affichage, une pose de plus) ; **lâcher au quart pour tous** (refait
+  les coups de mêlée validés en J7b). Au GDD à la clôture de J7 (J7c.5).
+- (mycrusader-4f, boucle 1) **Code écrit** (pas encore compilé) : colonne **`AttackWindUpPercent`** (int, 50 par
+  défaut, bornée 1..100) dans `FHOLUnitTypeRow` / `FHOLUnitTypeConstants` (`HOLUnitTypes.h`) et `UnitTypes.csv`
+  (Archer 25, les autres 50) ; `HOLCombat::GetWindUpMilliseconds` / `StartAttack` prennent le pourcentage du type
+  (`DefaultWindUpPercent` = 50 garde l'ancienne valeur) ; `HOLUnitAnimation::StrikeHitShare` devient
+  `GetStrikeHitShare(Type)` et `GetStrikeStartPosition` prend la part du coup. Client : `FHOLNetUnitDisplayFragment`
+  garde la recharge rejouée hors attaque (`StopShots` : tenue au dernier pas rejoué, `ShotIdleStep`) ; à la reprise
+  (`StartShots`) : reste = recharge − pas d'arrêt × 50 ms (plancher 0), puis `StartAttack` moins le pas déjà compté,
+  0 bit de plus. Le geste d'un tireur chez le client se cale sur cette cadence rejouée (`ShotSecondsToHit`, calculé
+  par `UHOLNetUnitDisplayProcessor`, lu par `UHOLInterpolatedInstancesProcessor`) : lâcher dessiné sur la flèche
+  dessinée. Tests : `Combat.Damage` (Archer 25 %, mêlée 50 %), `Combat.Cadence` (406 ms), nouveau
+  **`Combat.HitAndRun`** (tir au pas 9, marche de 10 pas → tir suivant au pas 41 comme debout, 25 pas → élan après
+  l'arrêt, jamais plus tôt que debout), `Animation.Strike` (part au quart), nouveau **`Net.ShotReplay`** (flèches du
+  client sur les pas du serveur à travers arrêts et marches). Le geste de l'Archer garde son lâcher à 50 % : décalé
+  d'un quart de boucle jusqu'à sa refonte (boucle suivante).
+- (mycrusader-4f, boucle 1) **Compilation** `HeroesOfLibertyEditor Win64 Development` : **OK, 0 avertissement**
+  (153 s ; un premier essai refusé, « Live Coding is active », à cause de deux bancs S4 de la copie Elrond : attendus).
+  **Table refaite** depuis le CSV (`make_unit_types.py`, `UnrealEditor-Cmd -run=pythonscript ... -nullrhi -nosound`,
+  18 s, 0 erreur) : `Content/Units/UnitTypes.uasset` modifié.
+- (mycrusader-4f, boucle 1) `quick_check` rapide **PASS** (87 s, tests 89/89, smoke PASS). `-Parts tests,combat`
+  **PASS** (208 s, 89/89) : combat (premier coup 0,75 s après l'apparition, morts à 9,4 / 14,15 / 19 s, 45 coups),
+  combat anims, bodies, arrows, arrows flee, orders (attack-move : Lancier mort au rapport 8 sur 24, 10 coups ; push :
+  0 cm, 13 coups) tous PASS. `-Parts net` **pas lancé** (une autre session occupait le serveur dédié, consigne du
+  coordinateur) : à faire à la boucle suivante. Pas de référence chiffrée de `main` sous la main pour la mêlée ; la
+  règle est la même au bit près pour la mêlée (50 % → mêmes 937 / 687 ms, test `Combat.Cadence` inchangé et PASS).
+- (mycrusader-4f, boucle 2) **Geste de tir refait, lâcher au quart** (`soldier_poses.py`, `ARCHER_ATTACK`, nouvelle
+  constante `ARCHER_RELEASE` = 0,25) : bandé deux fois plus vite (assise 0,05, levée et bandé 0,14, pleine allonge
+  0,19, visée 0,23, **lâcher 0,25 = image 12 sur 48**), suivi au même rythme (main rejetée 0,31, tenue 0,40), recharge
+  un peu plus lente (carquois 0,56, flèche sortie 0,68, ramenée sur l'arc 0,82, encochée 0,90) puis pose « prêt »
+  tenue jusqu'à la fin de la boucle (dernière clé = première). Flèche cachée de 0,41 à 0,896 s (images 13 à 26, au
+  lieu de 25 à 35) ; images zoomées de l'aperçu `[0, 2, 7, 9, 12, 15]` (prêt, assise, levée, pleine allonge, lâcher,
+  suivi ; avant `[0, 5, 14, 18, 24, 27]`) ; clé de geste **`"hit_fraction"`** lue par la relecture du baker
+  (`make_peasant_animations.py`, lâcher attendu à l'image 12 au lieu de `ATTACK_HIT_FRACTION`).
+  `make_peasant_mesh.py --provider-only --soldiers` honore désormais `--only=SKM_Archer` (ne refait que `TP_Archer`).
+- (mycrusader-4f, boucle 2) **Aperçus** (`preview_animation.py`, sans Unreal) dans `Saved_HitAndRun\` :
+  `archer_attack_release.png` (images 9 à 16 : flèche encochée à pleine allonge jusqu'à l'image 12, partie à l'image
+  13, main rejetée) et `archer_attack_loop.png` (une image sur 3). Contrôles : mains à 0,000 cm, pieds 0,000 cm,
+  boucle 0,000 cm ; flèche dans le corps 0,5 cm au plus (0,13 s, levée).
+- (mycrusader-4f, boucle 2) **Fabriqué** (PowerShell, `UnrealEditor-Cmd ... -run=pythonscript -unattended -nop4
+  -nosplash -nullrhi -nosound`) : `make_peasant_animations.py --soldiers --only=archer_attack` (3 min 51, 0 erreur) →
+  `A_Archer_Attack` 48 images / 1,6 s (longueur inchangée : rien à changer dans la table), relecture brute ≤ 0,118 cm
+  (`foot_r` à 0,1 s), compressée ≤ 0,116 cm, boucle 0,000, `ik_hand_gun` ≤ 0,004 cm / 0,072°, mains à la flèche
+  ≤ 0,025 cm, **lâcher lu à l'image 12 (attendue 12)**, **flèche cachée images 13 à 26** (14 sur 49, lues identiques).
+  Puis `make_peasant_mesh.py --soldiers --provider-only --only=SKM_Archer` (34 s, 0 erreur) : `TP_Archer` refait,
+  mêmes 6 séquences, fichier identique à l'octet (il ne garde que les références aux séquences).
+- (mycrusader-4f, boucle 2) `quick_check -Parts tests,anims,combat` **PASS** (217 s, tests 89/89 ; combat : premier
+  coup 0,75 s, morts à 10,85 / 14,4 / 19,55 s, 64 coups ; anims, combat anims, bodies, arrows, arrows flee, orders
+  PASS). `-Parts net` **PASS** (129 s, aucun autre test réseau en cours ; flèches : 18 lâchées, 18 lancées chez
+  chaque client, écart arrivée → perte de vie moyen −12 / −30 ms). Reste : essai en jeu par l'utilisateur
+  (`Tools/Scenarios/archer_kite.txt`), puis commit après validation.
+- (mycrusader-4f) Boucles 1 et 2 relues par la session principale (rejeu du client, planche du lâcher au quart). Écart
+  des chiffres de la partie `combat` entre les deux boucles (morts à 9,4 / 14,15 / 19 s, 45 coups ; puis 10,85 / 14,4 /
+  19,55 s, 64 coups) : mêlée seule (50 %, inchangée), partie jouée en temps réel dans la partie à 2 joueurs ; non
+  élucidé, l'animation n'est pas lue par le serveur. **Essai de l'utilisateur lancé** : `play.ps1 archer_kite -Root
+  ..\MyCrusader-Galadriel` (5 Archers contre 3 Hommes d'armes ennemis à 25 m ; tirer, reculer, retirer).
+- (mycrusader-4f, boucle 3) **Retour d'essai de l'utilisateur** sur `archer_kite` : « divise par 2 le temps de lancer
+  d'une flèche » → élan de l'Archer **12 %** (1625 × 12 / 100 = 195 ms, lâcher au 4e pas de 50 ms, 0,2 s ; avant 406 ms,
+  9e pas), **cadence inchangée** (1,625 s) ; « très difficile de cibler un ennemi, il faut cliquer précisément dessus ;
+  une marge autour d'une cible serait bien » → marge en pixels autour d'un ennemi pour le clic droit.
+- (mycrusader-4f, boucle 3) **Élan 12 %** : `UnitTypes.csv` (Archer 25 → 12), commentaires de `HOLUnitTypes.h`,
+  `HOLCombatRules.h`, `HOLUnitAnimation.h` (lâcher dessiné à 0,125 de la boucle, 0,005 de boucle ≈ 8 ms après la flèche
+  du serveur, accepté). Tests mis à jour : `Combat.Damage` (12 %), `Combat.Cadence` (195 ms), `Combat.HitAndRun` (tir
+  au pas 4, debout le suivant au pas 37 ; marche de 10 pas → 37, de 25 pas → 37 aussi (370 ms restants > 195), de 30
+  pas → 4 + 30 + 4 = 38, de 60 pas → 68 ; jamais avant debout), `Animation.Strike` (part 0,12, départ de boucle 0,045 s),
+  `Net.ShotReplay` (12 % ; tir au pas 103, après une marche de 0,5 s le suivant au pas 136 comme debout, pas 124).
+- (mycrusader-4f, boucle 3) **Geste de tir refait, lâcher à 0,125** (`ARCHER_RELEASE` = 0,125, **image 6 sur 48**,
+  0,2 s) : bandé deux fois plus vite encore — levée et bandé 0,06, pleine allonge 0,095, visée 0,113, lâcher 0,125 ;
+  **assise supprimée** (0,025 : trop serrée ; `ARCHER_SET` retiré) ; suivi au même rythme 0,185 ; la suite étalée sur le
+  reste de la boucle : tenue 0,29, carquois 0,48, flèche sortie 0,62, ramenée sur l'arc 0,78, encochée 0,88, puis
+  « prêt » tenu jusqu'à la fin. Flèche cachée de 0,21 à 0,768 s ; images zoomées `[0, 2, 3, 5, 6, 9]` ;
+  `"hit_fraction"` suit `ARCHER_RELEASE`. Aperçus (`preview_animation.py`) : `Saved_HitAndRun\archer_attack_release_12.png`
+  (images 3 à 10 : flèche encochée à pleine allonge jusqu'à l'image 6, partie à l'image 7, main rejetée) et
+  `archer_attack_loop_12.png` (une image sur 3) ; regardés. Mains 0,000 cm, pieds 0,000 cm, boucle 0,000 cm ; flèche
+  dans le corps 0,5 cm au plus (0,13 s).
+- (mycrusader-4f, boucle 3) **Marge de cible** : le choix d'une unité sous le curseur est `HOLUnitPicking::PickAt`
+  (corps projeté à l'écran, D288), appelé par `FindUnitAt` (clic gauche `SelectAt`, clic droit `OrderAt`). Nouveaux
+  `HOLUnitPicking::GetBodyDistance`, **`PickNear`** (un clic sur un corps gagne toujours ; sinon le corps le plus proche
+  du curseur dans la marge, à égalité celui de devant), `GetScaledMargin` (marge donnée à 1080 px de haut, à l'échelle
+  de la fenêtre) ; constante **`TargetMarginAt1080` = 14 px**, variable **`hol.Select.TargetMargin`** (0 = sur le corps
+  seulement). `AHOLPlayerController::FindTargetAt` (unités des autres joueurs seulement, `GatherPickCandidates` prend
+  `bOthersOnly`) remplace `FindUnitAt` dans `OrderAt` ; un ennemi pris par la marge seule cède à une ressource cliquée
+  directement (le chantier à soi reste testé avant). **Sélection au clic gauche inchangée** (sur le corps seulement :
+  cliquer à côté d'une unité pour désélectionner reste possible). Il n'existe **ni teinte de survol** ni choix d'unité
+  par Q (l'attaque-marche Q vise un point du sol) : rien à aligner. Test `Movement.Picking` étendu (distance au corps,
+  marge prise / refusée, coup direct gagnant, le plus proche plutôt que celui de devant, marge à l'échelle).
+- (mycrusader-4f, boucle 3) **Compilation** `HeroesOfLibertyEditor Win64 Development` : **OK, 0 avertissement**
+  (852 s, machine chargée par une compilation ProjectShiva). **Table refaite** (`make_unit_types.py`, 427 s, 0 erreur,
+  6 lignes). **Fabriqué** `make_peasant_animations.py --soldiers --only=archer_attack` (14 s, 0 erreur) :
+  `A_Archer_Attack` 48 images / 1,6 s (longueur inchangée), relecture brute ≤ 0,013 cm, compressée ≤ 0,012 cm, boucle
+  0,000, `ik_hand_gun` ≤ 0,007 cm / 0,072°, **lâcher lu à l'image 6 (attendue 6)**, **flèche cachée images 7 à 23**
+  (17 sur 49, lues identiques). `TP_Archer` pas refait (il ne garde que les références, longueur inchangée).
+- (mycrusader-4f, boucle 3) `quick_check` rapide **PASS** (89 s, tests 89/89, smoke PASS). `-Parts tests,anims,combat`
+  **PASS** (214 s, 89/89 ; combat : premier coup 0,7 s, morts à 9,15 / 14,35 / 19,65 s, 63 coups ; anims, combat
+  anims, bodies, arrows, arrows flee PASS ; **orders PASS** : clic droit sur l'ennemi par `hol.Select.OrderGround` →
+  attaque, file A/B/C, attaque-marche, tenue, poussée). `-Parts net` **PASS** (141 s, aucun autre test réseau ; flèches :
+  18 lâchées, 18 lancées chez chaque client, écart arrivée → perte de vie moyen −18 / −18 ms). Reste : essai en jeu par
+  l'utilisateur (`archer_kite` : tir ~0,2 s après l'arrêt ; clic droit à côté d'un ennemi), puis commit après validation.
+- (mycrusader-4f) Boucle 3 relue par la session principale. Effet de bord de `FindTargetAt` (unités des autres joueurs
+  seulement) : un clic droit sur une de ses propres unités placée devant un ennemi (dans la marge) attaque l'ennemi, là
+  où il donnait un ordre de marche. Notes de `archer_kite` mises à jour (0,2 s, marge de 14 px). **2e essai de
+  l'utilisateur lancé** : `play.ps1 archer_kite -Root ..\MyCrusader-Galadriel`.
+- (mycrusader-4f) **2e essai de l'utilisateur validé** : « Tir, très bien » ; marge essayée à la console
+  (`hol.Select.TargetMargin 25`) : « est bien » → **marge par défaut 25 px** (`TargetMarginAt1080`, notes de
+  `archer_kite`). Recompilé ; ligne retirée d'`EtapeDefini.md`. Suite : commit, fusion de `main` (2 commits de doc de
+  J7c.4), `-Parts tests,combat` sur la base à jour, avance de `main`.

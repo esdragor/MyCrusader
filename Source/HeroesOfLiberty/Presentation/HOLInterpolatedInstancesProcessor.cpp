@@ -406,12 +406,17 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						if (Choice.bStrike)
 						{
 							// Its hit on the server's (J7b.5): in solo from its cool-down, plus the drawing's lag behind the last step
-							// (it draws between the last two steps); on a client, which does not receive the cool-down, as a strike
-							// that just started (the wind-up, HOLCombat::StartAttack, less the step that brought the state).
+							// (it draws between the last two steps); on a client, which does not receive the cool-down, a shooter
+							// from its replayed cadence (UHOLNetUnitDisplayProcessor, its release on its drawn arrow, a cool-down left
+							// from a hit and run included), else as a strike that just started (the type's wind-up,
+							// HOLCombat::StartAttack, less the step that brought the state). Its hit at the type's share of the loop.
 							const float SecondsToHit = Combat
 								? HOLUnitAnimation::GetSecondsToHit(Combat->CooldownMs, StepMs) + (1.f - Alpha) * StepSeconds
-								: HOLUnitAnimation::GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(HOLCombat::ToMilliseconds(Constants.AttackInterval)) - StepMs, StepMs);
-							AnimData.Position = HOLUnitAnimation::GetStrikeStartPosition(Length, Choice.PlayRate, SecondsToHit);
+								: NetDisplay && NetDisplay->ShotStep >= 0 ? NetDisplay->ShotSecondsToHit
+								: HOLUnitAnimation::GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(HOLCombat::ToMilliseconds(Constants.AttackInterval),
+									Constants.AttackWindUpPercent) - StepMs, StepMs);
+							AnimData.Position = HOLUnitAnimation::GetStrikeStartPosition(Length, Choice.PlayRate, SecondsToHit,
+								HOLUnitAnimation::GetStrikeHitShare(Constants));
 						}
 						else
 						{

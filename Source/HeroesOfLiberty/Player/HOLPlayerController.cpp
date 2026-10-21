@@ -54,6 +54,10 @@ namespace UE::HeroesOfLiberty::Player
 	/** Height (cm) of a unit's body drawn at scale 1 (the mannequin), and its drawn width over its radius: what a click aims at (D288). */
 	constexpr double PickBodyHeight = 180.0;
 	constexpr double PickWidthFactor = 1.3;
+	/** Margin of a right click's target around an enemy's drawn body (J7c, retour d'essai 8, loop 3; HOLUnitPicking::PickNear). */
+	float TargetMargin = static_cast<float>(HOLUnitPicking::TargetMarginAt1080);
+	FAutoConsoleVariableRef CVarTargetMargin(TEXT("hol.Select.TargetMargin"), TargetMargin,
+		TEXT("Pixels (on a viewport 1080 high, scaled with its height) around another player's unit within which a right click still attacks it, the nearest one; a click on a body always wins; 0: on the body only"));
 	/** Seconds between two checks of the selected units still known here. */
 	constexpr float SelectionPurgeInterval = 0.25f;
 
@@ -1542,14 +1546,15 @@ FVector2D AHOLPlayerController::ToPixels(const FVector2D& ViewportFraction) cons
 	return FVector2D(ViewportFraction.X * SizeX, ViewportFraction.Y * SizeY);
 }
 
-void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const
+void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds,
+	const bool bOthersOnly) const
 {
 	using namespace UE::HeroesOfLiberty::Player;
 
 	OutCandidates.Reset();
 	OutUnitIds.Reset();
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	if (bOwnOnly && !HOLPlayerState)
+	if ((bOwnOnly || bOthersOnly) && !HOLPlayerState)
 	{
 		return;
 	}
@@ -1562,7 +1567,7 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	HOLUnitView::Gather(*GetWorld(), Views);
 	for (const FHOLUnitView& View : Views)
 	{
-		if (bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
+		if ((bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex()) || (bOthersOnly && View.OwnerPlayer == HOLPlayerState->GetPlayerIndex()))
 		{
 			continue;
 		}
@@ -1628,6 +1633,21 @@ uint32 AHOLPlayerController::FindUnitAt(const FVector2D& ViewportFraction) const
 	TArray<uint32> UnitIds;
 	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds);
 	const int32 Index = HOLUnitPicking::PickAt(Candidates, ToPixels(ViewportFraction));
+	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
+}
+
+uint32 AHOLPlayerController::FindTargetAt(const FVector2D& ViewportFraction, bool& bOutDirect) const
+{
+	using namespace UE::HeroesOfLiberty::Player;
+
+	bOutDirect = false;
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<uint32> UnitIds;
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds, /*bOthersOnly*/ true);
+	int32 SizeX = 0, SizeY = 0;
+	GetViewportSize(SizeX, SizeY);
+	const double Margin = HOLUnitPicking::GetScaledMargin(FMath::Max(static_cast<double>(TargetMargin), 0.), SizeY);
+	const int32 Index = HOLUnitPicking::PickNear(Candidates, ToPixels(ViewportFraction), Margin, bOutDirect);
 	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
 }
 
@@ -1754,10 +1774,14 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	}
 	if (!Own.IsEmpty())
 	{
-		// An enemy unit under the cursor (J7b.3): attacked, its place marked in red. A unit before a source (D288).
-		const uint32 UnderId = FindUnitAt(ViewportFraction);
+		// An enemy unit under the cursor (J7b.3): attacked, its place marked in red. A unit before a source (D288). Near
+		// the cursor within the target margin (J7c, retour d'essai 8, loop 3: FindTargetAt), unless a source is drawn
+		// under it: a click on a body always wins.
+		bool bDirect = false;
+		const uint32 UnderId = FindTargetAt(ViewportFraction, bDirect);
 		FHOLUnitView Under;
-		if (UnderId != 0 && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under) && Under.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
+		if (UnderId != 0 && (bDirect || !Source) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
+			&& Under.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
 				bShift ? TEXT(", queued") : TEXT(""));
