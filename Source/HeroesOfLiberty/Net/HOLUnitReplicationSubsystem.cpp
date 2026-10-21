@@ -51,6 +51,14 @@ namespace UE::HeroesOfLiberty::Net
 	FAutoConsoleVariableRef CVarStepVelocity(TEXT("hol.Net.StepVelocity"), StepVelocity,
 		TEXT("1: the velocity sent with a unit's state is its whole move over the last step, the separation's pushes included (D294); 0: the velocity it walks at"));
 
+	/**
+	 * 1: a unit that does not walk is sent still (J7c.4, S5 in combat: HOLUnitReplication::SendsVelocity), its pushes in a
+	 * melee no longer extrapolated by the clients; 0: every unit with its velocity, as before.
+	 */
+	int32 StillZeroVelocity = 1;
+	FAutoConsoleVariableRef CVarStillZeroVelocity(TEXT("hol.Net.StillZeroVelocity"), StillZeroVelocity,
+		TEXT("1: a unit that does not walk (attacking, idle, gathering, building, dying) is sent with a zero velocity (J7c.4); 0: every unit with its velocity (hol.Net.StepVelocity)"));
+
 	FAutoConsoleCommandWithWorld CommandReport(TEXT("hol.Net.Report"),
 		TEXT("Unit replication report: on the server what it sent since the last report, on a client what it received"),
 		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
@@ -274,7 +282,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			// The instant velocity: S5 measured more sends with the move over the last 4 steps (it lags in turns). The
 			// move of the last step, not the walk's velocity: in a crowd, the separation's pushes (D292) are part of it,
 			// and a client extrapolating the walk alone drifted away (S5: 1.4 -> 2.0 sends per unit and per second).
-			const FVector Velocity = UE::HeroesOfLiberty::Net::StepVelocity != 0 && StepSeconds > 0.f
+			const FVector StepMove = UE::HeroesOfLiberty::Net::StepVelocity != 0 && StepSeconds > 0.f
 				? (Position - PreviousTransforms[EntityIt].Transform.GetLocation()) / StepSeconds : Velocities[EntityIt].Value;
 
 			// The state the unit would be sent with now (J7b.4, J7-Q5): Dying at 0 health, Attacking while it strikes, with
@@ -283,6 +291,12 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			const FHOLMoveOrderFragment& Order = Orders[EntityIt];
 			const EHOLUnitActivity Activity = State.CurrentHealth <= 0 ? EHOLUnitActivity::Dying
 				: Combat.bAttacking ? EHOLUnitActivity::Attacking : State.Activity;
+			// Still on the wire unless it walks (J7c.4, S5 in combat: 9 825 error sends per second, fighters in a melee crush
+			// sent with 40 to 100 cm/s of pushes). The send rule predicts from the state last sent (GetSendReason), so it
+			// measures the error from this same velocity: a stander is sent again once pushed past the threshold. Only what
+			// is sent changes, not the simulation.
+			const FVector Velocity = UE::HeroesOfLiberty::Net::StillZeroVelocity != 0 && !HOLUnitReplication::SendsVelocity(Activity)
+				? FVector::ZeroVector : StepMove;
 			uint16 TargetSlot = FHOLNetUnitState::InvalidTargetSlot;
 			if (Activity == EHOLUnitActivity::Attacking && EntityManager->IsEntityValid(Combat.Target))
 			{

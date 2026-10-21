@@ -318,6 +318,50 @@ bool FHOLNetSendRuleTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("pushed past the threshold"), GetSendReason(Resting, Rest + FVector(Past, 0.0, 0.0), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::Error);
 	TestEqual(TEXT("height changed: nothing, the client finds the ground (D301)"), GetSendReason(Resting, Rest + FVector(0.0, 0.0, Past), EHOLUnitActivity::Idle, 7, 1, StepSeconds, Rules), EHOLUnitSendReason::None);
 
+	// J7c.4, S5 in combat: only a walking unit is sent with a velocity; a stander is sent still.
+	TestTrue(TEXT("a walking unit sends its velocity"), HOLUnitReplication::SendsVelocity(EHOLUnitActivity::Moving));
+	TestTrue(TEXT("a gatherer on its round trip sends its velocity"), HOLUnitReplication::SendsVelocity(EHOLUnitActivity::GatherTrip));
+	for (const EHOLUnitActivity Still : { EHOLUnitActivity::Idle, EHOLUnitActivity::Gathering, EHOLUnitActivity::Building,
+		EHOLUnitActivity::Attacking, EHOLUnitActivity::Dying })
+	{
+		TestFalse(FString::Printf(TEXT("activity %d is sent still"), static_cast<int32>(Still)), HOLUnitReplication::SendsVelocity(Still));
+	}
+	// A fighter in a melee crush, pushed 40 to 100 cm/s in random directions around where it strikes (10 s): sent with its
+	// step's move, the server sends it again at each error past the threshold the extrapolated jitter makes; sent still,
+	// only once it really drifted that far. The rule measures the error from the velocity sent: it holds either way.
+	{
+		const auto CountSends = [&Rules, &Rest](const bool bStill, double& OutWorstError)
+		{
+			FRandomStream Random(1234);
+			FVector Position = Rest;
+			FHOLUnitSentRecord Sent = Send(Rest, FVector::ZeroVector, EHOLUnitActivity::Attacking, 0);
+			int32 Sends = 0;
+			OutWorstError = 0.0;
+			for (int64 Step = 1; Step <= 200; ++Step)
+			{
+				// Pushed off in a random direction, and back towards its place as it keeps striking: a jitter around Rest.
+				const double Angle = Random.FRandRange(0.f, 2.f * UE_PI);
+				const FVector StepMove = FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0) * Random.FRandRange(40.f, 100.f) + (Rest - Position) * 0.5;
+				Position += StepMove * StepSeconds;
+				if (GetSendReason(Sent, Position, EHOLUnitActivity::Attacking, 7, Step, StepSeconds, Rules) != EHOLUnitSendReason::None)
+				{
+					Sent = Send(Position, bStill ? FVector::ZeroVector : StepMove, EHOLUnitActivity::Attacking, Step);
+					++Sends;
+				}
+				OutWorstError = FMath::Max(OutWorstError, FVector::Dist2D(HOLUnitReplication::PredictPosition(Sent.State, static_cast<double>(Step - Sent.Step), StepSeconds), Position));
+			}
+			return Sends;
+		};
+		double StepMoveWorst = 0.0;
+		double StillWorst = 0.0;
+		const int32 StepMoveSends = CountSends(false, StepMoveWorst);
+		const int32 StillSends = CountSends(true, StillWorst);
+		AddInfo(FString::Printf(TEXT("pushed fighter, 10 s: %d sends with its step's move (worst %.1f cm), %d sent still (worst %.1f cm)"),
+			StepMoveSends, StepMoveWorst, StillSends, StillWorst));
+		TestTrue(TEXT("pushed fighter: fewer sends sent still"), StillSends < StepMoveSends);
+		TestTrue(TEXT("pushed fighter sent still: error held under the threshold"), StillWorst <= Rules.ErrorThreshold);
+	}
+
 	// Walking in a straight line: the client's prediction holds, only the refresh sends.
 	const FVector Velocity(300.0, 120.0, 0.0);
 	const FHOLUnitSentRecord Walking = Send(Rest, Velocity, EHOLUnitActivity::Moving, 0);

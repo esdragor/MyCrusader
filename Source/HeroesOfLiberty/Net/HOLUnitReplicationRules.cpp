@@ -135,6 +135,11 @@ int64 HOLUnitReplication::UnwrapStep(const uint8 StepLowBits, const int64 NearSt
 	return NearStep + Ahead;
 }
 
+bool HOLUnitReplication::SendsVelocity(const EHOLUnitActivity Activity)
+{
+	return IsWalkingActivity(Activity);
+}
+
 FVector HOLUnitReplication::PredictPosition(const FHOLNetUnitState& State, const double StepsElapsed, const float StepSeconds)
 {
 	return State.GetPosition() + State.GetVelocity() * (StepsElapsed * StepSeconds);

@@ -217,6 +217,15 @@ namespace HOLUnitReplication
 	 */
 	HEROESOFLIBERTY_API bool IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B);
 
+	/**
+	 * A unit doing Activity (as on the wire: Attacking, Dying over its simulation activity) is sent with its velocity (J7c.4,
+	 * S5 in combat) only while it walks (IsWalkingActivity: Moving, GatherTrip). The others stand (an attacker stops its
+	 * walk once in reach, UHOLCombatProcessor::StopWalk; a gatherer, a builder at their spot; a dying unit stopped dead):
+	 * their step's move is only the separation's pushes (D292), jitter a client would extrapolate and the server resend
+	 * at the threshold. Sent still, a stander drifting by pushes is sent again once it really drifted past the threshold.
+	 */
+	HEROESOFLIBERTY_API bool SendsVelocity(EHOLUnitActivity Activity);
+
 	/** Full step whose low bits are StepLowBits, the nearest to NearStep (the client's estimate of the server clock). */
 	HEROESOFLIBERTY_API int64 UnwrapStep(uint8 StepLowBits, int64 NearStep);
 

@@ -173,7 +173,9 @@ if ($Parts -contains "net") {
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") |
         Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
+    # -useperfthreads (J7c.4): a dedicated server, the editor's -server too, runs every ParallelFor on one thread by the
+    # engine's default (FApp::ShouldUseThreadingForPerformance); the parallel processors of D302 run as in the game.
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -useperfthreads -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 

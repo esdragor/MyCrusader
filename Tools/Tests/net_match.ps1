@@ -70,7 +70,10 @@ $Config = Join-Path $TestSaved "net_match.json"
 $ServerLog = Join-Path $Logs "net_server.log"
 # The logs of the last run go first: the waits below read the new ones.
 Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_client*.log")
-$ServerArguments = "$Map -log -unattended -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
+# -useperfthreads (J7c.4, S5 in combat): a dedicated server runs every ParallelFor on one thread by the engine's default
+# (FApp::ShouldUseThreadingForPerformance is false there), so the parallel processors of D302 did not run in parallel
+# (server step 14 ms in combat against ~6 ms in the game).
+$ServerArguments = "$Map -log -unattended -useperfthreads -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
 # Commands both sides run at start: reports and samples of S5, network emulation.
 $NetCommands = @()
 if ($Units -gt 0) { $NetCommands += "hol.Net.ReportInterval 5", "hol.Net.Sample 100" }
