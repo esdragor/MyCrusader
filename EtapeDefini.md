@@ -44,4 +44,5 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Aléas et petits restes
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
+- `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 - Commentaire du test `Gather.Spots` qui parle encore de 70 cm
