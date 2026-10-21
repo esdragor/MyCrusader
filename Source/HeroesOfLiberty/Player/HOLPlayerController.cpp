@@ -472,23 +472,23 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand StopCommand(
 		TEXT("hol.Select.Stop"),
-		TEXT("hol.Select.Stop: the local player's selected units stop, as the grid's S"),
+		TEXT("hol.Select.Stop: the local player's selected units stop, as the orders' S"),
 		FConsoleCommandDelegate::CreateLambda([]()
 		{
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				Controller->ActivateGridCell(HOLCommandGrid::StopCell);
+				Controller->ActivateOrderCell(HOLCommandGrid::StopCell);
 			}
 		}));
 
 	FAutoConsoleCommand HoldCommand(
 		TEXT("hol.Select.Hold"),
-		TEXT("hol.Select.Hold: the local player's selected units hold their position, as the grid's D"),
+		TEXT("hol.Select.Hold: the local player's selected units hold their position, as the orders' V"),
 		FConsoleCommandDelegate::CreateLambda([]()
 		{
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				Controller->ActivateGridCell(HOLCommandGrid::HoldCell);
+				Controller->ActivateOrderCell(HOLCommandGrid::HoldCell);
 			}
 		}));
 
@@ -576,7 +576,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** A cell of the command grid (J6a.5), as its key or a click on the HUD: 0 to 11, A Z E R / Q S D F / W X C V. */
 	FAutoConsoleCommand GridCommand(
 		TEXT("hol.Select.Grid"),
-		TEXT("hol.Select.Grid <Cell>: activates a cell of the command grid (0 = A ... 11 = V), as its key"),
+		TEXT("hol.Select.Grid <Cell>: presses the key of a cell (0 = A ... 11 = V), as the keyboard: the grid on the right (production), an age chosen (A Z E R, none chosen) then its buildings' ghosts (every key: 0 then 0 the house), or the orders on the left"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.IsEmpty())
@@ -586,7 +586,24 @@ namespace UE::HeroesOfLiberty::Player
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				Controller->ActivateGridCell(FCString::Atoi(*Args[0]));
+				Controller->PressGridKey(FCString::Atoi(*Args[0]));
+			}
+		}));
+
+	/** The orders' panel (the user's choice of 2026-10-21), as a click on its cell. */
+	FAutoConsoleCommand OrderCellCommand(
+		TEXT("hol.Select.OrderCell"),
+		TEXT("hol.Select.OrderCell <Cell>: activates a cell of the orders' panel (4 = Q attack-move, 5 = S stop, 11 = V hold), as a click"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderCell <Cell>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->ActivateOrderCell(FCString::Atoi(*Args[0]));
 			}
 		}));
 
@@ -1273,6 +1290,8 @@ void AHOLPlayerController::BeginPlay()
 	using namespace UE::HeroesOfLiberty::Player;
 
 	Super::BeginPlay();
+	// A change of selection closes the chosen age (the user's 1st trial of G.1).
+	OnSelectionChanged.AddWeakLambda(this, [this]() { SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::SelectionChanged)); });
 	if (!IsLocalController())
 	{
 		return;
@@ -2538,7 +2557,21 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		OutCommands = HOLCommandGrid::MergeCommands(PerBuilding, HOLCommandGrid::GetCommandPriority(Members));
 		return;
 	}
-	else if (HOLPlayerState && !SelectedUnits.IsEmpty())
+	else
+	{
+		GetUnitsContext(Context);
+	}
+	OutCommands.SetNum(NumGridCells);
+	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
+	{
+		OutCommands[Cell] = HOLCommandGrid::GetCommand(Context, Cell);
+	}
+}
+
+void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
+{
+	Context.ReachedAge = HOLCommandGrid::GetReachedAge();
+	if (GetHOLPlayerState() && !SelectedUnits.IsEmpty())
 	{
 		// The units of the active subgroup (Tab, the user's trial of J7b; all of them for « Tous »). Builders: those that
 		// gather (what the server checks for a build order, J6a.4); soldiers: the others. The units' commands (J7b.3): stop
@@ -2560,10 +2593,89 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		}
 		Context.bOwnUnits = !Units.IsEmpty();
 	}
+}
+
+void AHOLPlayerController::GetOrderCommands(TArray<FHOLGridCommand>& OutCommands) const
+{
+	// A building or a group of buildings: no orders, its grid alone (the user's choice of 2026-10-21).
+	FHOLGridContext Context;
+	if (!GetOwnSelection() && !HasBuildingGroup())
+	{
+		GetUnitsContext(Context);
+	}
 	OutCommands.SetNum(NumGridCells);
 	for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
 	{
-		OutCommands[Cell] = HOLCommandGrid::GetCommand(Context, Cell);
+		OutCommands[Cell] = HOLCommandGrid::GetOrder(Context, Cell);
+	}
+}
+
+void AHOLPlayerController::ActivateOrderCell(const int32 Cell)
+{
+	TArray<FHOLGridCommand> Commands;
+	GetOrderCommands(Commands);
+	if (Commands.IsValidIndex(Cell) && !Commands[Cell].IsNone())
+	{
+		ExecuteGridCommand(Commands[Cell]);
+	}
+}
+
+void AHOLPlayerController::PressGridKey(const int32 Cell)
+{
+	// A building or a group: its grid. Units: HOLCommandGrid::PressKey (an age, then its buildings, AoE4's way).
+	if (GetOwnSelection() || HasBuildingGroup())
+	{
+		SetChosenAge(INDEX_NONE);
+		ActivateGridCell(Cell);
+		return;
+	}
+	FHOLGridContext Context;
+	GetUnitsContext(Context);
+	const FHOLGridKeyResult Result = HOLCommandGrid::PressKey(Context, ChosenAge, Cell);
+	UE_CLOG(Result.Target == EHOLGridKeyTarget::None && ChosenAge == INDEX_NONE && Cell < HOLCommandGrid::NumAges, LogHOLMatch, Display, TEXT("Grid: age %d not reached"), Cell);
+	ApplyAgeKey(Result, Cell);
+}
+
+void AHOLPlayerController::ClickAge(const int32 Age, const int32 Cell)
+{
+	FHOLGridContext Context;
+	GetUnitsContext(Context);
+	UE_CLOG(HOLCommandGrid::IsBuildGrid(Context) && !HOLCommandGrid::IsAgeReached(Context, Age), LogHOLMatch, Display, TEXT("Grid: age %d not reached"), Age);
+	ApplyAgeKey(HOLCommandGrid::ClickAge(Context, ChosenAge, Age, Cell), Cell);
+}
+
+void AHOLPlayerController::ApplyAgeKey(const FHOLGridKeyResult& Result, const int32 Cell)
+{
+	switch (Result.Target)
+	{
+	case EHOLGridKeyTarget::Grid:
+		ActivateGridCell(Cell);
+		break;
+	case EHOLGridKeyTarget::Orders:
+		ActivateOrderCell(Cell);
+		break;
+	case EHOLGridKeyTarget::Build:
+	{
+		// The ghost of the chosen age's building (one shown before: replaced), the age kept until it is placed or cancelled.
+		FHOLGridCommand Command;
+		Command.Command = EHOLGridCommand::Build;
+		Command.TypeName = Result.TypeName;
+		SetChosenAge(Result.ChosenAge);
+		ExecuteGridCommand(Command);
+		return;
+	}
+	default:
+		break;
+	}
+	SetChosenAge(Result.ChosenAge);
+}
+
+void AHOLPlayerController::SetChosenAge(const int32 Age)
+{
+	if (Age != ChosenAge)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: age %s"), Age == INDEX_NONE ? *FString::Printf(TEXT("%d closed"), ChosenAge) : *FString::Printf(TEXT("%d chosen"), Age));
+		ChosenAge = Age;
 	}
 }
 
@@ -2575,7 +2687,11 @@ void AHOLPlayerController::ActivateGridCell(const int32 Cell)
 	{
 		return;
 	}
-	const FHOLGridCommand Command = Commands[Cell];
+	ExecuteGridCommand(Commands[Cell]);
+}
+
+void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
+{
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	switch (Command.Command)
 	{
@@ -2937,6 +3053,8 @@ void AHOLPlayerController::ClickPlacement(const bool bKeep)
 	const FVector2D Centre = GhostFootprint.GetCenter();
 	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s at (%.0f, %.0f)%s"), *PlacementType.ToString(), Centre.X, Centre.Y, bKeep ? TEXT(", Shift: next one") : TEXT(""));
 	RequestPlaceBuilding(PlacementType, FVector(Centre, GhostGroundZ), bKeep);
+	// Placed: the chosen age closed, kept with Shift (the next one, the user's 1st trial of G.1).
+	SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, bKeep ? EHOLAgeEvent::PlacedKept : EHOLAgeEvent::Placed));
 	if (!bKeep)
 	{
 		EndPlacement();
@@ -3415,9 +3533,10 @@ void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
 
 void AHOLPlayerController::HandleOrder()
 {
-	// A right click leaves placement mode (D313), or the attack-move mode (J7b.3), without ordering anything.
+	// A right click leaves placement mode (D313), the chosen age closed, or the attack-move mode (J7b.3), without ordering anything.
 	if (IsPlacing())
 	{
+		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Cancelled));
 		EndPlacement();
 		return;
 	}
@@ -3506,10 +3625,17 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 
 void AHOLPlayerController::HandleDeselect()
 {
-	// Escape leaves placement mode first, the selection kept (D313), and the attack-move mode (J7b.3).
+	// Escape leaves placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of
+	// G.1: an age chosen without a ghost is closed alone), then the attack-move mode (J7b.3).
 	if (IsPlacing())
 	{
+		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Cancelled));
 		EndPlacement();
+		return;
+	}
+	if (ChosenAge != INDEX_NONE)
+	{
+		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Escape));
 		return;
 	}
 	if (bAttackMoveArmed)
@@ -3546,7 +3672,7 @@ void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const i
 		}
 		return;
 	}
-	ActivateGridCell(Cell);
+	PressGridKey(Cell);
 }
 
 void AHOLPlayerController::HandleGroupKey(const FInputActionValue& Value, const int32 Group)

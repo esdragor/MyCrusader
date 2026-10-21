@@ -19,5 +19,5 @@ hol.Camera.Zoom -1
 frames 5
 hol.Select.Army
 note Q puis clic au sol au-delà des Lanciers : attaque-déplacement (A ne fait plus rien pour les soldats).
-note Paysans + soldats (cadre) : Q attaque-déplacement dans « Tous » ; Tab vers les Paysans : A Z E R construisent.
-note S arrêt et D tenir la position : inchangés.
+note Paysans + soldats (cadre) : Q attaque-déplacement dans « Tous » ; Tab vers les Paysans : leurs paliers (A Z E R choisit le palier, puis toutes les touches ses bâtiments : A puis A Maison, A puis Q Caserne) ; ordres à gauche (S arrêt, V maintien).
+note S arrêt et V tenir la position (panneau d'ordres à gauche de la grille).

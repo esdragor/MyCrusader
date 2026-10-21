@@ -15,12 +15,12 @@ namespace UE::HeroesOfLiberty::Tests::CommandGrid
 
 	const FName Peasant(TEXT("Peasant"));
 
-	/** The builders' grid of J6a: A house, Z lumber camp, E mining camp. */
+	/** The builders' grid: in the panel of age I, its economic row, A house, Z lumber camp, E mining camp (the user's 3rd trial of G.1). */
 	FHOLGridContext MakeBuilders()
 	{
 		FHOLGridContext Context;
 		Context.bBuilders = true;
-		Context.Buildable = { { HOLBuildingTypeNames::House, 0 }, { HOLBuildingTypeNames::LumberCamp, 1 }, { HOLBuildingTypeNames::MiningCamp, 2 } };
+		Context.Buildable = { { HOLBuildingTypeNames::House, 0, 0 }, { HOLBuildingTypeNames::LumberCamp, 1, 0 }, { HOLBuildingTypeNames::MiningCamp, 2, 0 } };
 		return Context;
 	}
 }
@@ -30,22 +30,25 @@ bool FHOLCommandGridCommandsTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;
 
-	// Builders selected: the three buildings directly on A, Z, E (D313); nothing elsewhere.
+	// Builders selected (the user's trials of G.1): the age panels, panel I A Z E the three buildings (D313); nothing
+	// elsewhere, nothing in the grid on the right.
 	FHOLGridContext Builders = MakeBuilders();
-	const FHOLGridCommand A = HOLCommandGrid::GetCommand(Builders, 0);
-	TestTrue(TEXT("A: build a house"), A.Command == EHOLGridCommand::Build && A.TypeName == HOLBuildingTypeNames::House);
-	TestTrue(TEXT("Z: build a lumber camp"), HOLCommandGrid::GetCommand(Builders, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
-	TestTrue(TEXT("E: build a mining camp"), HOLCommandGrid::GetCommand(Builders, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
-	for (int32 Cell = 3; Cell < HOLCommandGrid::NumCells; ++Cell)
+	const FHOLGridCommand A = HOLCommandGrid::GetAgeBuilding(Builders, 0, 0);
+	TestTrue(TEXT("I A: build a house"), A.Command == EHOLGridCommand::Build && A.TypeName == HOLBuildingTypeNames::House && A.Age == 0 && !A.bGreyed);
+	TestTrue(TEXT("I Z: build a lumber camp"), HOLCommandGrid::GetAgeBuilding(Builders, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
+	TestTrue(TEXT("I E: build a mining camp"), HOLCommandGrid::GetAgeBuilding(Builders, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
-		TestTrue(*FString::Printf(TEXT("cell %d empty for builders"), Cell), HOLCommandGrid::GetCommand(Builders, Cell).IsNone());
+		TestTrue(*FString::Printf(TEXT("cell %d of the grid empty for builders"), Cell), HOLCommandGrid::GetCommand(Builders, Cell).IsNone());
+		TestTrue(*FString::Printf(TEXT("cell %d of panel I: a building on A Z E only"), Cell), HOLCommandGrid::GetAgeBuilding(Builders, 0, Cell).IsNone() == (Cell > 2));
 	}
-	TestTrue(TEXT("out of the grid: nothing"), HOLCommandGrid::GetCommand(Builders, -1).IsNone() && HOLCommandGrid::GetCommand(Builders, 12).IsNone());
+	TestTrue(TEXT("out of the panels: nothing"), HOLCommandGrid::GetAgeBuilding(Builders, -1, 0).IsNone() && HOLCommandGrid::GetAgeBuilding(Builders, 4, 0).IsNone()
+		&& HOLCommandGrid::GetAgeBuilding(Builders, 0, 12).IsNone());
 
 	// Units that do not build (no gatherer among them): nothing.
 	FHOLGridContext Soldiers = MakeBuilders();
 	Soldiers.bBuilders = false;
-	TestTrue(TEXT("no builder: A empty"), HOLCommandGrid::GetCommand(Soldiers, 0).IsNone());
+	TestTrue(TEXT("no builder: A empty"), HOLCommandGrid::GetCommand(Soldiers, 0).IsNone() && HOLCommandGrid::GetAgeBuilding(Soldiers, 0, 0).IsNone());
 
 	// The player's centre selected: A produces the Peasant (the same key, another meaning: D281).
 	FHOLGridContext Centre;
@@ -335,18 +338,33 @@ bool FHOLCommandGridDistributionTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridTablesTest, "HeroesOfLiberty.CommandGrid.Tables", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 {
-	// The builders' grid of the table (D313): A house, Z lumber camp, E mining camp, R barracks (J7a.2: no military page,
-	// the pages come later by age); the centre is nobody's to build.
+	// The builders' grid of the table (D313, the user's 3rd trial of G.1): the panel of age I, one row per category, A house,
+	// Z lumber camp, E mining camp (economic), Q barracks (military); every type of age 0 for now; the centre is nobody's to build.
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
 	TestEqual(TEXT("four buildable types"), Context.Buildable.Num(), 4);
-	TestTrue(TEXT("A: house"), HOLCommandGrid::GetCommand(Context, 0).TypeName == HOLBuildingTypeNames::House);
-	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetCommand(Context, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
-	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetCommand(Context, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
-	TestTrue(TEXT("R: barracks"), HOLCommandGrid::GetCommand(Context, 3).TypeName == HOLBuildingTypeNames::Barracks);
-	TestTrue(TEXT("R: a build command"), HOLCommandGrid::GetCommand(Context, 3).Command == EHOLGridCommand::Build);
-	for (int32 Cell = 4; Cell < HOLCommandGrid::NumCells; ++Cell)
+	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
+	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
+	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
+	TestTrue(TEXT("Q: barracks"), HOLCommandGrid::GetAgeBuilding(Context, 0, 4).TypeName == HOLBuildingTypeNames::Barracks);
+	TestTrue(TEXT("Q: a build command"), HOLCommandGrid::GetAgeBuilding(Context, 0, 4).Command == EHOLGridCommand::Build);
+	for (const FHOLBuildable& Buildable : Context.Buildable)
+	{
+		TestEqual(*FString::Printf(TEXT("%s: age I"), *Buildable.TypeName.ToString()), Buildable.Age, 0);
+		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology.
+		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(Buildable.TypeName);
+		if (TestNotNull(*FString::Printf(TEXT("%s in the table"), *Buildable.TypeName.ToString()), Type))
+		{
+			TestTrue(*FString::Printf(TEXT("%s: a cell of the grid"), *Buildable.TypeName.ToString()), Buildable.Cell >= 0 && Buildable.Cell < HOLCommandGrid::NumCells);
+			TestEqual(*FString::Printf(TEXT("%s: the row of its category"), *Buildable.TypeName.ToString()),
+				Buildable.Cell / HOLCommandGrid::GridColumns, HOLCommandGrid::GetCategoryRow(Type->Category));
+		}
+	}
+	TestEqual(TEXT("economic: row 1"), HOLCommandGrid::GetCategoryRow(EHOLBuildingCategory::Economic), 0);
+	TestEqual(TEXT("military: row 2"), HOLCommandGrid::GetCategoryRow(EHOLBuildingCategory::Military), 1);
+	TestEqual(TEXT("technology: row 3"), HOLCommandGrid::GetCategoryRow(EHOLBuildingCategory::Technological), 2);
+	for (int32 Cell = 8; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
 		TestTrue(*FString::Printf(TEXT("cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Context, Cell).IsNone());
 	}
@@ -378,9 +396,9 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Barracks site: the cancel cell cancels it"),
 			HOLCommandGrid::GetCommand(Barracks, HOLCommandGrid::CancelCell).Command == EHOLGridCommand::CancelConstruction);
 	}
-	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const TPair<FName, int32>& Type)
+	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const FHOLBuildable& Type)
 	{
-		return Type.Key == HOLBuildingTypeNames::MainCentre;
+		return Type.TypeName == HOLBuildingTypeNames::MainCentre;
 	}));
 	return true;
 }
@@ -388,90 +406,154 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridUnitOrdersTest, "HeroesOfLiberty.CommandGrid.UnitOrders", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
 {
-	// J7b.3, the user's request of 2026-10-20: Q attack-move (soldiers among the selection), S stop, D hold (any own units).
+	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;
+
+	// The orders' panel left of the grid (the user's choice of 2026-10-21, AoE4's places): Q attack-move (soldiers among the
+	// selection), S stop, V hold (any own units).
 	TestEqual(TEXT("Q is cell 4"), HOLCommandGrid::AttackMoveCell, 4);
 	TestEqual(TEXT("S is cell 5"), HOLCommandGrid::StopCell, 5);
-	TestEqual(TEXT("D is cell 6"), HOLCommandGrid::HoldCell, 6);
+	TestEqual(TEXT("V is cell 11"), HOLCommandGrid::HoldCell, 11);
 
-	// Soldiers alone: Q S D, nothing else (no build cell: they do not build).
+	// Soldiers alone: Q S V on the left, nothing else; nothing on the right (they do not build).
 	FHOLGridContext Soldiers;
 	Soldiers.bOwnUnits = true;
 	Soldiers.bSoldiers = true;
-	TestTrue(TEXT("soldiers: Q attack-move"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
-	TestTrue(TEXT("soldiers: S stop"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
-	TestTrue(TEXT("soldiers: D hold"), HOLCommandGrid::GetCommand(Soldiers, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
+	TestTrue(TEXT("soldiers: Q attack-move"), HOLCommandGrid::GetOrder(Soldiers, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("soldiers: S stop"), HOLCommandGrid::GetOrder(Soldiers, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
+	TestTrue(TEXT("soldiers: V hold"), HOLCommandGrid::GetOrder(Soldiers, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
 		if (Cell != HOLCommandGrid::AttackMoveCell && Cell != HOLCommandGrid::StopCell && Cell != HOLCommandGrid::HoldCell)
 		{
-			TestTrue(*FString::Printf(TEXT("soldiers: cell %d empty"), Cell), HOLCommandGrid::GetCommand(Soldiers, Cell).IsNone());
+			TestTrue(*FString::Printf(TEXT("soldiers: order %d empty"), Cell), HOLCommandGrid::GetOrder(Soldiers, Cell).IsNone());
 		}
+		TestTrue(*FString::Printf(TEXT("soldiers: grid cell %d empty"), Cell), HOLCommandGrid::GetCommand(Soldiers, Cell).IsNone());
 	}
+	TestTrue(TEXT("D is no order any more"), HOLCommandGrid::GetOrder(Soldiers, 6).IsNone());
 
-	// Peasants alone (builders, no soldier): the table's A Z E R build, no attack-move, S and D still there; nothing on the
-	// cancel cell.
+	// Peasants alone (builders, no soldier): no attack-move, S and V still there; the builders' grid on the right.
 	FHOLGridContext Peasants;
 	Peasants.bBuilders = true;
 	Peasants.bOwnUnits = true;
 	UHOLBuildingSettings::GetBuildableTypes(Peasants.Buildable);
-	for (int32 Cell = 0; Cell < 4; ++Cell)
-	{
-		TestTrue(*FString::Printf(TEXT("Peasants: cell %d still builds"), Cell), HOLCommandGrid::GetCommand(Peasants, Cell).Command == EHOLGridCommand::Build);
-	}
-	TestTrue(TEXT("Peasants: A a house"), HOLCommandGrid::GetCommand(Peasants, 0).TypeName == HOLBuildingTypeNames::House);
-	TestTrue(TEXT("Peasants: R still the Barracks"), HOLCommandGrid::GetCommand(Peasants, 3).TypeName == HOLBuildingTypeNames::Barracks);
+	TestTrue(TEXT("Peasants: the builders' grid"), HOLCommandGrid::IsBuildGrid(Peasants));
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
-		TestTrue(*FString::Printf(TEXT("Peasants alone: no attack-move on cell %d"), Cell),
-			HOLCommandGrid::GetCommand(Peasants, Cell).Command != EHOLGridCommand::AttackMove);
+		TestTrue(*FString::Printf(TEXT("Peasants alone: no attack-move on order %d"), Cell),
+			HOLCommandGrid::GetOrder(Peasants, Cell).Command != EHOLGridCommand::AttackMove);
 	}
-	TestTrue(TEXT("Peasants: S stop"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
-	TestTrue(TEXT("Peasants: D hold"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
-	TestTrue(TEXT("Peasants: cancel cell empty"), HOLCommandGrid::GetCommand(Peasants, HOLCommandGrid::CancelCell).IsNone());
-	for (const TPair<FName, int32>& Buildable : Peasants.Buildable)
-	{
-		TestTrue(*FString::Printf(TEXT("%s: not on Q S D"), *Buildable.Key.ToString()), Buildable.Value != HOLCommandGrid::AttackMoveCell
-			&& Buildable.Value != HOLCommandGrid::StopCell && Buildable.Value != HOLCommandGrid::HoldCell);
-	}
+	TestTrue(TEXT("Peasants: S stop"), HOLCommandGrid::GetOrder(Peasants, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
+	TestTrue(TEXT("Peasants: V hold"), HOLCommandGrid::GetOrder(Peasants, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
+	TestTrue(TEXT("Peasants: A of panel I the house, on the right"), HOLCommandGrid::GetAgeBuilding(Peasants, 0, 0).TypeName == HOLBuildingTypeNames::House);
 
-	// Peasants and soldiers together (« Tous » of a mixed selection): the soldiers' commands, no build (the Peasants'
-	// subgroup, Tab, has them).
+	// Peasants and soldiers together (« Tous » of a mixed selection): the orders, Q included; the builders' grid hidden
+	// (the Peasants' subgroup, Tab, has it).
 	FHOLGridContext Mixed = Peasants;
 	Mixed.bSoldiers = true;
-	TestTrue(TEXT("mixed: Q attack-move"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
-	TestTrue(TEXT("mixed: S stop"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
-	TestTrue(TEXT("mixed: D hold"), HOLCommandGrid::GetCommand(Mixed, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
+	TestFalse(TEXT("mixed: no builders' grid"), HOLCommandGrid::IsBuildGrid(Mixed));
+	TestTrue(TEXT("mixed: Q attack-move"), HOLCommandGrid::GetOrder(Mixed, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
-		TestTrue(*FString::Printf(TEXT("mixed: cell %d builds nothing"), Cell), HOLCommandGrid::GetCommand(Mixed, Cell).Command != EHOLGridCommand::Build);
+		TestTrue(*FString::Printf(TEXT("mixed: cell %d empty on the right"), Cell), HOLCommandGrid::GetCommand(Mixed, Cell).IsNone());
 	}
 
-	// An enemy selection (no own unit, whatever is selected): no unit command.
+	// An enemy selection (no own unit): no order.
 	FHOLGridContext Enemy;
 	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 	{
-		TestTrue(*FString::Printf(TEXT("enemy selection: cell %d empty"), Cell), HOLCommandGrid::GetCommand(Enemy, Cell).IsNone());
+		TestTrue(*FString::Printf(TEXT("enemy selection: order %d empty"), Cell), HOLCommandGrid::GetOrder(Enemy, Cell).IsNone());
 	}
 
-	// A building of the player's (the Barracks, finished or a site): its own cells only, never Q S D.
+	// A building of the player's (the Barracks, finished or a site): its grid only, no orders.
 	FHOLGridContext Barracks;
 	Barracks.bOwnBuilding = true;
-	Barracks.bBuildingFinished = true;
 	Barracks.Produces = { FName(TEXT("Spearman")), FName(TEXT("ManAtArms")) };
-	Barracks.bOwnUnits = true;  // never set with a building; the building's grid wins all the same
+	Barracks.bOwnUnits = true;  // never set with a building; the building wins all the same
 	Barracks.bSoldiers = true;
 	for (const bool bFinished : { true, false })
 	{
 		Barracks.bBuildingFinished = bFinished;
-		for (const int32 Cell : { HOLCommandGrid::AttackMoveCell, HOLCommandGrid::StopCell, HOLCommandGrid::HoldCell })
+		for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
-			const EHOLGridCommand Command = HOLCommandGrid::GetCommand(Barracks, Cell).Command;
-			TestTrue(*FString::Printf(TEXT("Barracks (finished %d): cell %d no unit command"), bFinished ? 1 : 0, Cell),
-				Command != EHOLGridCommand::AttackMove && Command != EHOLGridCommand::Stop && Command != EHOLGridCommand::Hold);
+			TestTrue(*FString::Printf(TEXT("Barracks (finished %d): no order %d"), bFinished ? 1 : 0, Cell), HOLCommandGrid::GetOrder(Barracks, Cell).IsNone());
 		}
 		TestTrue(*FString::Printf(TEXT("Barracks (finished %d): A its first unit or nothing"), bFinished ? 1 : 0),
 			HOLCommandGrid::GetCommand(Barracks, 0).Command == (bFinished ? EHOLGridCommand::Produce : EHOLGridCommand::None));
+		TestTrue(*FString::Printf(TEXT("Barracks (finished %d): keys to the grid"), bFinished ? 1 : 0),
+			HOLCommandGrid::PressKey(Barracks, INDEX_NONE, 4).Target == EHOLGridKeyTarget::Grid);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridAgesTest, "HeroesOfLiberty.CommandGrid.Ages", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridAgesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;
+	using Key = FHOLGridKeyResult;
+
+	// The 4 age panels (the user's 1st trial of G.1): only age I reached for now; a building of an age not reached greyed.
+	FHOLGridContext Builders = MakeBuilders();
+	Builders.bOwnUnits = true;
+	Builders.Buildable.Add({ HOLBuildingTypeNames::Barracks, 4, 1 });
+	TestEqual(TEXT("the age reached: I for now"), HOLCommandGrid::GetReachedAge(), 0);
+	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
+	{
+		TestEqual(*FString::Printf(TEXT("age %d reached: I only"), Age), HOLCommandGrid::IsAgeReached(Builders, Age), Age == 0);
+	}
+	const FHOLGridCommand Locked = HOLCommandGrid::GetAgeBuilding(Builders, 1, 4);
+	TestTrue(TEXT("II Q: the barracks, greyed"), Locked.TypeName == HOLBuildingTypeNames::Barracks && Locked.Age == 1 && Locked.bGreyed);
+	TestTrue(TEXT("III: empty"), HOLCommandGrid::GetAgeBuilding(Builders, 2, 4).IsNone());
+
+	// No age chosen: A chooses I; Z (not reached) nothing; Q S V the orders (a Peasant has no attack-move: GetOrder).
+	TestTrue(TEXT("A: age I chosen"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 0) == Key{ EHOLGridKeyTarget::Age, 0 });
+	TestTrue(TEXT("Z, not reached: nothing"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 1) == Key{ EHOLGridKeyTarget::None, INDEX_NONE });
+	TestTrue(TEXT("Q, no age: the orders"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 4) == Key{ EHOLGridKeyTarget::Orders, INDEX_NONE });
+	TestTrue(TEXT("S, no age: the orders (stop)"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 5).Target == EHOLGridKeyTarget::Orders
+		&& HOLCommandGrid::GetOrder(Builders, 5).Command == EHOLGridCommand::Stop);
+	TestTrue(TEXT("V, no age: the orders"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 11).Target == EHOLGridKeyTarget::Orders);
+
+	// Age I chosen (the user's 3rd trial of G.1): every key its building's, A then A the house's ghost, the age kept; then
+	// E the mining camp's instead (the ghost changed), Z the lumber camp's (never another age), still I.
+	TestTrue(TEXT("A then A: the house, I kept"), HOLCommandGrid::PressKey(Builders, 0, 0) == Key{ EHOLGridKeyTarget::Build, 0, HOLBuildingTypeNames::House });
+	TestTrue(TEXT("then E: the mining camp, I kept"), HOLCommandGrid::PressKey(Builders, 0, 2) == Key{ EHOLGridKeyTarget::Build, 0, HOLBuildingTypeNames::MiningCamp });
+	TestTrue(TEXT("then Z: the lumber camp, I kept"), HOLCommandGrid::PressKey(Builders, 0, 1) == Key{ EHOLGridKeyTarget::Build, 0, HOLBuildingTypeNames::LumberCamp });
+	// An empty cell of the chosen age: nothing, never an order nor an age, the age kept.
+	TestTrue(TEXT("I, V (empty): nothing, I kept"), HOLCommandGrid::PressKey(Builders, 0, 11) == Key{ EHOLGridKeyTarget::None, 0 });
+	TestTrue(TEXT("I, R (empty): nothing, I kept"), HOLCommandGrid::PressKey(Builders, 0, 3) == Key{ EHOLGridKeyTarget::None, 0 });
+	TestTrue(TEXT("I, Q (empty): nothing, I kept"), HOLCommandGrid::PressKey(Builders, 0, 4) == Key{ EHOLGridKeyTarget::None, 0 });
+	TestTrue(TEXT("out of the grid: nothing, I kept"), HOLCommandGrid::PressKey(Builders, 0, 12) == Key{ EHOLGridKeyTarget::None, 0 });
+
+	// Age II reached (later): Z chooses it with no age chosen, its Q the barracks; an age chosen, Z is its building's.
+	FHOLGridContext Later = Builders;
+	Later.ReachedAge = 1;
+	TestTrue(TEXT("II reached, no age, Z: II chosen"), HOLCommandGrid::PressKey(Later, INDEX_NONE, 1) == Key{ EHOLGridKeyTarget::Age, 1 });
+	TestTrue(TEXT("II reached, I chosen, Z: the lumber camp, I kept"), HOLCommandGrid::PressKey(Later, 0, 1) == Key{ EHOLGridKeyTarget::Build, 0, HOLBuildingTypeNames::LumberCamp });
+	TestTrue(TEXT("II, A (empty): nothing, II kept"), HOLCommandGrid::PressKey(Later, 1, 0) == Key{ EHOLGridKeyTarget::None, 1 });
+	TestTrue(TEXT("II, Q: the barracks"), HOLCommandGrid::PressKey(Later, 1, 4) == Key{ EHOLGridKeyTarget::Build, 1, HOLBuildingTypeNames::Barracks });
+	TestTrue(TEXT("II, S (empty): nothing"), HOLCommandGrid::PressKey(Later, 1, 5) == Key{ EHOLGridKeyTarget::None, 1 });
+
+	// The mouse: a header chooses its age, a building its ghost (its age chosen); an age not reached nothing, the chosen kept.
+	TestTrue(TEXT("click header I"), HOLCommandGrid::ClickAge(Builders, INDEX_NONE, 0, INDEX_NONE) == Key{ EHOLGridKeyTarget::Age, 0 });
+	TestTrue(TEXT("click header II (not reached): nothing"), HOLCommandGrid::ClickAge(Builders, 0, 1, INDEX_NONE) == Key{ EHOLGridKeyTarget::None, 0 });
+	TestTrue(TEXT("click header I, I chosen: I"), HOLCommandGrid::ClickAge(Builders, 0, 0, INDEX_NONE) == Key{ EHOLGridKeyTarget::Age, 0 });
+	TestTrue(TEXT("click I Z: the lumber camp, I chosen"), HOLCommandGrid::ClickAge(Builders, INDEX_NONE, 0, 1) == Key{ EHOLGridKeyTarget::Build, 0, HOLBuildingTypeNames::LumberCamp });
+	TestTrue(TEXT("click II Q (not reached): nothing"), HOLCommandGrid::ClickAge(Builders, INDEX_NONE, 1, 4) == Key{ EHOLGridKeyTarget::None, INDEX_NONE });
+
+	// The chosen age closed by a placement, a cancel, Escape, another selection; kept by a placement with Shift.
+	TestEqual(TEXT("placed: closed"), HOLCommandGrid::GetChosenAgeAfter(0, EHOLAgeEvent::Placed), int32(INDEX_NONE));
+	TestEqual(TEXT("placed with Shift: kept"), HOLCommandGrid::GetChosenAgeAfter(0, EHOLAgeEvent::PlacedKept), 0);
+	TestEqual(TEXT("cancelled: closed"), HOLCommandGrid::GetChosenAgeAfter(0, EHOLAgeEvent::Cancelled), int32(INDEX_NONE));
+	TestEqual(TEXT("Escape: closed"), HOLCommandGrid::GetChosenAgeAfter(0, EHOLAgeEvent::Escape), int32(INDEX_NONE));
+	TestEqual(TEXT("another selection: closed"), HOLCommandGrid::GetChosenAgeAfter(0, EHOLAgeEvent::SelectionChanged), int32(INDEX_NONE));
+
+	// Soldiers among the selection: no panels, A Z E R go to the orders (nothing there), Q to the attack-move.
+	FHOLGridContext Mixed = Builders;
+	Mixed.bSoldiers = true;
+	TestTrue(TEXT("mixed, A: the orders"), HOLCommandGrid::PressKey(Mixed, INDEX_NONE, 0) == Key{ EHOLGridKeyTarget::Orders, INDEX_NONE });
+	TestTrue(TEXT("mixed, Q: the orders"), HOLCommandGrid::PressKey(Mixed, INDEX_NONE, 4).Target == EHOLGridKeyTarget::Orders);
+	TestTrue(TEXT("mixed, Q: attack-move"), HOLCommandGrid::GetOrder(Mixed, 4).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("mixed: no panel"), HOLCommandGrid::GetAgeBuilding(Mixed, 0, 0).IsNone());
+	TestTrue(TEXT("mixed: a click on a panel does nothing"), HOLCommandGrid::ClickAge(Mixed, INDEX_NONE, 0, 0) == Key{ EHOLGridKeyTarget::None, INDEX_NONE });
 	return true;
 }
 

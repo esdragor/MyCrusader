@@ -1,0 +1,16 @@
+# Grille du Paysan façon AoE4 : 6 Paysans près des arbres, 4 Hommes d'armes à côté, 5000 de chaque ressource
+# Configuration par défaut (un joueur, Plain). Positions dans le repère du centre du joueur (comme attack_move_q).
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 115 -1250
+frames 2
+hol.Units.SpawnHere 6 Peasant 0 150
+waitunits 6
+hol.Camera.FocusNear 2500 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 10
+hol.Camera.FocusNear 1500 -600
+frames 5
+note Barre du bas à gauche : sélection, panneau de commandes 3 × 4 (Paysans : S arrêt, V maintien, pas de Q), puis les paliers I à IV (II à IV estompés), 3 rangées chacun : économie A Z E R, militaire Q S D F, technologie W X C V.
+note A puis A : fantôme de la Maison ; puis E : Camp de mineurs, Z : Camp de bûcherons (le palier reste choisi, Z ne change pas de palier) ; A puis Q : Caserne ; pose ou Échap : palier refermé, Maj garde.
+note Sans palier choisi, Z E R : rien ; clic sur un bâtiment : fantôme ; médaillons (I A…) sans clic ; Hommes d'armes : Q S V au même endroit, pas de paliers.

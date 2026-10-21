@@ -243,6 +243,24 @@ public:
 	 * through (not enough resources, queue full) or waits (population full) is told (OnCommandFeedback).
 	 */
 	void ActivateGridCell(int32 Cell);
+	/**
+	 * The orders' panel left of the grid (the user's choice of 2026-10-21, AoE4's places): with own units selected and no
+	 * building, Q attack-move (soldiers among them), S stop, V hold; NumGridCells commands.
+	 */
+	void GetOrderCommands(TArray<FHOLGridCommand>& OutCommands) const;
+	/** A cell of the orders' panel, by its key or a click on the HUD. */
+	void ActivateOrderCell(int32 Cell);
+	/**
+	 * A key of the grid (A Z E R / Q S D F / W X C V, HOLCommandGrid::PressKey): to the grid on the right (production),
+	 * the builders' age panels (A Z E R choose an age, then all 12 keys start its buildings' ghosts) or the orders' panel.
+	 */
+	void PressGridKey(int32 Cell);
+	/** A click on the builders' panel of Age: its header (Cell INDEX_NONE) or its building at Cell (HOLCommandGrid::ClickAge). */
+	void ClickAge(int32 Age, int32 Cell);
+	/** The age chosen to the keys (0 to 3; INDEX_NONE: none), kept until its ghost is placed or cancelled. */
+	int32 GetChosenAge() const { return ChosenAge; }
+	/** The context of the selected units (no building): builders, soldiers, what they build, the age reached (HOLCommandGrid). */
+	void GetUnitsContext(FHOLGridContext& OutContext) const;
 
 	/** A command did not go through as asked (D313): the HUD shows a short message above the grid. */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnCommandFeedback, const FHOLCommandFeedback& /*Feedback*/);
@@ -562,6 +580,13 @@ private:
 	bool bOrderPressed = false;
 	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
 	bool bAttackMoveArmed = false;
+	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
+	int32 ChosenAge = INDEX_NONE;
+	void SetChosenAge(int32 Age);
+	/** Does what a key or a click of the builders' panels gives (HOLCommandGrid::PressKey, ClickAge), the chosen age after it. */
+	void ApplyAgeKey(const FHOLGridKeyResult& Result, int32 Cell);
+	/** Does a command of the grid or of the orders' panel. */
+	void ExecuteGridCommand(const FHOLGridCommand& Command);
 	FVector2D OrderPressFraction = FVector2D::ZeroVector;
 	/** Shift held (IA_SelectAdd). */
 	bool bSelectAddHeld = false;

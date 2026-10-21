@@ -31,26 +31,120 @@ namespace HOLCommandGrid
 			}
 			return Result;
 		}
-		// Soldiers among the selection (the user's trial of J7b): their commands, Q attack-move; the builders' grid is the
-		// Peasants' subgroup's (Tab).
-		if (Context.bBuilders && !Context.bSoldiers)
-		{
-			for (const TPair<FName, int32>& Buildable : Context.Buildable)
-			{
-				if (Buildable.Value == Cell && !Buildable.Key.IsNone())
-				{
-					Result.Command = EHOLGridCommand::Build;
-					Result.TypeName = Buildable.Key;
-					return Result;
-				}
-			}
-		}
-		if (Context.bOwnUnits)
+		return Result;
+	}
+
+	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
+	{
+		FHOLGridCommand Result;
+		if (Context.bOwnUnits && !Context.bOwnBuilding)
 		{
 			Result.Command = Cell == AttackMoveCell && Context.bSoldiers ? EHOLGridCommand::AttackMove
 				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell ? EHOLGridCommand::Hold : EHOLGridCommand::None;
 		}
 		return Result;
+	}
+
+	bool IsBuildGrid(const FHOLGridContext& Context)
+	{
+		return !Context.bOwnBuilding && Context.bBuilders && !Context.bSoldiers;
+	}
+
+	int32 GetReachedAge()
+	{
+		return 0;
+	}
+
+	bool IsAgeReached(const FHOLGridContext& Context, const int32 Age)
+	{
+		return Age >= 0 && Age < NumAges && Age <= Context.ReachedAge;
+	}
+
+	int32 GetCategoryRow(const EHOLBuildingCategory Category)
+	{
+		return Category == EHOLBuildingCategory::Economic ? 0 : Category == EHOLBuildingCategory::Military ? 1 : 2;
+	}
+
+	FHOLGridCommand GetAgeBuilding(const FHOLGridContext& Context, const int32 Age, const int32 Cell)
+	{
+		FHOLGridCommand Result;
+		if (!IsBuildGrid(Context) || Age < 0 || Age >= NumAges || Cell < 0 || Cell >= NumCells)
+		{
+			return Result;
+		}
+		for (const FHOLBuildable& Buildable : Context.Buildable)
+		{
+			if (Buildable.Cell == Cell && Buildable.Age == Age && !Buildable.TypeName.IsNone())
+			{
+				Result.Command = EHOLGridCommand::Build;
+				Result.TypeName = Buildable.TypeName;
+				Result.Age = Age;
+				Result.bGreyed = !IsAgeReached(Context, Age);
+				break;
+			}
+		}
+		return Result;
+	}
+
+	FHOLGridKeyResult PressKey(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Cell)
+	{
+		FHOLGridKeyResult Result;
+		if (Cell < 0 || Cell >= NumCells)
+		{
+			Result.ChosenAge = ChosenAge;
+			return Result;
+		}
+		if (Context.bOwnBuilding)
+		{
+			Result.Target = EHOLGridKeyTarget::Grid;
+			return Result;
+		}
+		if (!IsBuildGrid(Context))
+		{
+			Result.Target = EHOLGridKeyTarget::Orders;
+			return Result;
+		}
+		// No age chosen: A Z E R choose one (one not reached: nothing), the others are the orders'.
+		if (ChosenAge == INDEX_NONE)
+		{
+			const bool bAgeKey = Cell < NumAges;
+			const bool bReached = bAgeKey && IsAgeReached(Context, Cell);
+			Result.Target = bReached ? EHOLGridKeyTarget::Age : bAgeKey ? EHOLGridKeyTarget::None : EHOLGridKeyTarget::Orders;
+			Result.ChosenAge = bReached ? Cell : INDEX_NONE;
+			return Result;
+		}
+		// An age chosen: every key is its buildings' (an empty cell: nothing, never an order nor another age), the age kept.
+		Result.ChosenAge = ChosenAge;
+		const FHOLGridCommand Building = GetAgeBuilding(Context, ChosenAge, Cell);
+		if (!Building.IsNone() && !Building.bGreyed)
+		{
+			Result.Target = EHOLGridKeyTarget::Build;
+			Result.TypeName = Building.TypeName;
+		}
+		return Result;
+	}
+
+	FHOLGridKeyResult ClickAge(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
+	{
+		if (!IsBuildGrid(Context) || !IsAgeReached(Context, Age))
+		{
+			FHOLGridKeyResult Result;
+			Result.ChosenAge = ChosenAge;
+			return Result;
+		}
+		if (Cell == INDEX_NONE)
+		{
+			FHOLGridKeyResult Result;
+			Result.Target = EHOLGridKeyTarget::Age;
+			Result.ChosenAge = Age;
+			return Result;
+		}
+		return PressKey(Context, Age, Cell);
+	}
+
+	int32 GetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEvent Event)
+	{
+		return Event == EHOLAgeEvent::PlacedKept ? ChosenAge : INDEX_NONE;
 	}
 
 	bool FindMissingResource(const FHOLResources& Stock, const FHOLResources& Cost, EHOLResource& OutResource)
