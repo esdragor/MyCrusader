@@ -168,7 +168,7 @@ protected:
 
 	FMassEntityQuery EntityQuery;
 
-	/** The step's units, in the order the query visits them (kept between steps to spare the allocations). */
+	/** The step's units, in identifier order (kept between steps to spare the allocations). */
 	TArray<FVector2D> Positions;
 	TArray<FVector2D> Corrections;
 	TArray<float> Radii;
@@ -206,4 +206,14 @@ protected:
 	TArray<int32> CellStarts;
 	TArray<int32> CellUnits;
 	TArray<int32> DenseCells;
+	/**
+	 * J7c.4, determinism: the units are put in identifier order once gathered, as the combat's fighters, so the cells' lists,
+	 * the units to look and the in-place corrections do not depend on the chunks' order (which differs between runs for the
+	 * same state). Each unit's identifier, the sorted (identifier, gather index) keys, each gathered unit's sorted index, and
+	 * a scratch buffer for the moves.
+	 */
+	TArray<uint32> UnitIds;
+	TArray<uint64> SortKeys;
+	TArray<int32> SortedIndexOf;
+	TArray<uint8> PermuteScratch;
 };

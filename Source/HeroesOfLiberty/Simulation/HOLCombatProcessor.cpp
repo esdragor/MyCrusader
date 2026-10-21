@@ -238,6 +238,28 @@ void UHOLCombatProcessor::FinishDying(const UWorld* World, UHOLUnitSubsystem& Un
 	}
 }
 
+uint64 UHOLCombatProcessor::HashArrows() const
+{
+	uint64 Hash = 14695981039346656037ull;
+	const auto Mix = [&Hash](const uint64 Value)
+	{
+		for (int32 Byte = 0; Byte < 8; ++Byte)
+		{
+			Hash = (Hash ^ ((Value >> (Byte * 8)) & 0xFFull)) * 1099511628211ull;
+		}
+	};
+	for (const FArrow& Arrow : Arrows)
+	{
+		Mix(Arrow.ShooterId);
+		Mix(Arrow.TargetId);
+		Mix(static_cast<uint64>(Arrow.ShooterSlot));
+		Mix(static_cast<uint64>(Arrow.Damage));
+		Mix(static_cast<uint64>(Arrow.ReleaseStep));
+		Mix(static_cast<uint64>(Arrow.ArrivalStep));
+	}
+	return Hash;
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;

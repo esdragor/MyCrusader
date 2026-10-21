@@ -16,7 +16,11 @@
 #include "MassSimulationSubsystem.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HeroesOfLibertyLog.h"
+#include "Avoidance/MassAvoidanceFragments.h"
+#include "Simulation/HOLCombatProcessor.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Steering/MassSteeringFragments.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
 namespace UE::HeroesOfLiberty::Simulation
@@ -32,15 +36,43 @@ namespace UE::HeroesOfLiberty::Simulation
 		TEXT("1: logs a hash of every unit's transform, velocity, force and move target at the tail of each step; 2: after each processor too (two runs' logs then show the first step and processor that differ); 3: also every unit's place at the tail of steps 0 and 1"));
 
 	/** FNV-1a over the exact bits of each living unit's movement state, in identifier order. */
-	uint64 HashUnits(const UWorld* World, const FMassEntityManager& EntityManager, const bool bDump = false)
+	/**
+	 * Separate hashes of the other simulation state (J7c.4, determinism): combat, ghost, steering and standing steering,
+	 * order, and the raw entity handles; logged beside the movement hash, so two runs' logs name the part that differs.
+	 */
+	struct FPartHashes
+	{
+		uint64 Combat = 14695981039346656037ull;
+		uint64 Ghost = 14695981039346656037ull;
+		uint64 Steering = 14695981039346656037ull;
+		uint64 Order = 14695981039346656037ull;
+		uint64 Handles = 14695981039346656037ull;
+	};
+
+	void MixInto(uint64& Hash, const uint64 Value)
+	{
+		for (int32 Byte = 0; Byte < 8; ++Byte)
+		{
+			Hash = (Hash ^ ((Value >> (Byte * 8)) & 0xFFull)) * 1099511628211ull;
+		}
+	}
+
+	uint64 HashUnits(const UWorld* World, const FMassEntityManager& EntityManager, const bool bDump = false, FPartHashes* Parts = nullptr)
 	{
 		uint64 Hash = 14695981039346656037ull;
 		const auto Mix = [&Hash](const uint64 Value)
 		{
-			for (int32 Byte = 0; Byte < 8; ++Byte)
+			MixInto(Hash, Value);
+		};
+		// A handle by the unit it designates (entity indices may be handed out in another order without harm).
+		const auto UnitIdOf = [&EntityManager](const FMassEntityHandle Other) -> uint64
+		{
+			if (!Other.IsSet() || !EntityManager.IsEntityValid(Other))
 			{
-				Hash = (Hash ^ ((Value >> (Byte * 8)) & 0xFFull)) * 1099511628211ull;
+				return MAX_uint64;
 			}
+			const FHOLUnitStateFragment* OtherState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Other);
+			return OtherState ? OtherState->UnitId : MAX_uint64 - 1;
 		};
 		const auto MixVector = [&Mix](const FVector& Value)
 		{
@@ -92,6 +124,70 @@ namespace UE::HeroesOfLiberty::Simulation
 			{
 				MixVector(MoveTarget->Center);
 				Mix(static_cast<uint64>(MoveTarget->GetCurrentAction()));
+			}
+			if (!Parts)
+			{
+				continue;
+			}
+			const auto MixV = [](uint64& Into, const FVector& Value)
+			{
+				MixInto(Into, BitCast<uint64>(Value.X));
+				MixInto(Into, BitCast<uint64>(Value.Y));
+				MixInto(Into, BitCast<uint64>(Value.Z));
+			};
+			MixInto(Parts->Combat, UnitId);
+			if (const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity))
+			{
+				MixInto(Parts->Combat, UnitIdOf(Combat->Target));
+				MixInto(Parts->Combat, UnitIdOf(Combat->LastAttacker));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->CooldownMs));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->AttackerCount));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->Hits));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->DamageDealt));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->Kills));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->Mode));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->DeathStep));
+				MixInto(Parts->Combat, (Combat->bAttacking ? 1u : 0u) | (Combat->bApproaching ? 2u : 0u) | (Combat->bAttackMoveDetour ? 4u : 0u) | (Combat->bOrderedTarget ? 8u : 0u));
+				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.X));
+				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.Y));
+				MixInto(Parts->Handles, ((uint64(uint32(Combat->Target.Index)) << 32) | uint32(Combat->Target.SerialNumber)));
+				MixInto(Parts->Handles, ((uint64(uint32(Combat->LastAttacker.Index)) << 32) | uint32(Combat->LastAttacker.SerialNumber)));
+			}
+			if (const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity))
+			{
+				MixInto(Parts->Combat, static_cast<uint64>(State->CurrentHealth));
+			}
+			MixInto(Parts->Handles, ((uint64(uint32(Entity.Index)) << 32) | uint32(Entity.SerialNumber)));
+			if (const FMassGhostLocationFragment* Ghost = EntityManager.GetFragmentDataPtr<FMassGhostLocationFragment>(Entity))
+			{
+				MixV(Parts->Ghost, Ghost->Location);
+				MixV(Parts->Ghost, Ghost->Velocity);
+				MixInto(Parts->Ghost, Ghost->LastSeenActionID);
+			}
+			if (const FMassSteeringFragment* Steering = EntityManager.GetFragmentDataPtr<FMassSteeringFragment>(Entity))
+			{
+				MixV(Parts->Steering, Steering->DesiredVelocity);
+			}
+			if (const FMassStandingSteeringFragment* Standing = EntityManager.GetFragmentDataPtr<FMassStandingSteeringFragment>(Entity))
+			{
+				MixV(Parts->Steering, Standing->TargetLocation);
+				MixInto(Parts->Steering, BitCast<uint32>(Standing->TrackedTargetSpeed));
+				MixInto(Parts->Steering, BitCast<uint32>(Standing->TargetSelectionCooldown));
+				MixInto(Parts->Steering, (Standing->bIsUpdatingTarget ? 1u : 0u) | (Standing->bEnteredFromMoveAction ? 2u : 0u));
+			}
+			if (const FHOLMoveOrderFragment* Order = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity))
+			{
+				MixInto(Parts->Order, UnitId);
+				MixInto(Parts->Order, static_cast<uint64>(Order->Phase));
+				MixV(Parts->Order, Order->Slot);
+				MixInto(Parts->Order, Order->OrderSerial);
+				MixInto(Parts->Order, (Order->bFormation ? 1u : 0u) | (Order->bReforming ? 2u : 0u) | (Order->bStraggler ? 4u : 0u) | (Order->bFacesFront ? 8u : 0u) | (Order->bShortOfSlot ? 16u : 0u));
+				MixInto(Parts->Order, Order->RowKind | (Order->BlockIndex << 8) | (uint64(Order->StuckSteps) << 16) | (uint64(Order->BuildingPushes) << 32));
+				MixInto(Parts->Order, BitCast<uint32>(Order->MarchSlot.X));
+				MixInto(Parts->Order, BitCast<uint32>(Order->MarchSlot.Y));
+				MixInto(Parts->Order, BitCast<uint32>(Order->LastSlotDistance));
+				MixInto(Parts->Order, BitCast<uint32>(Order->MarchSpeed));
+				MixInto(Parts->Order, BitCast<uint32>(Order->FrontYaw));
 			}
 		}
 		return Hash;
@@ -260,8 +356,12 @@ void UHOLSimulationSubsystem::RunStep()
 			++ProcessorStats.Runs;
 			if (UE::HeroesOfLiberty::Simulation::StepHashes >= 2)
 			{
-				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx"), StepIndex, *Processors[Index]->GetProcessorName(),
-					UE::HeroesOfLiberty::Simulation::HashUnits(GetWorld(), *EntityManager));
+				UE::HeroesOfLiberty::Simulation::FPartHashes Parts;
+				const uint64 MoveHash = UE::HeroesOfLiberty::Simulation::HashUnits(GetWorld(), *EntityManager, false, &Parts);
+				const UHOLCombatProcessor* CombatProcessor = Cast<UHOLCombatProcessor>(Processors[Index]);
+				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx combat %016llx ghost %016llx steering %016llx order %016llx handles %016llx arrows %016llx"),
+					StepIndex, *Processors[Index]->GetProcessorName(), MoveHash, Parts.Combat, Parts.Ghost, Parts.Steering, Parts.Order, Parts.Handles,
+					CombatProcessor ? CombatProcessor->HashArrows() : 0ull);
 			}
 		}
 	}

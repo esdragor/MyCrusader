@@ -543,6 +543,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Moving.Reset();
 	Owners.Reset();
 	AtSource.Reset();
+	UnitIds.Reset();
 	float MaxRadius = 1.f;
 	bool bAnyWalking = false;
 	EntityQuery.ForEachEntityChunk(Context, [this, &MaxRadius, &bAnyWalking](FMassExecutionContext& Context)
@@ -571,6 +572,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			Moving.Add(bMoving);
 			Owners.Add(States[EntityIt].OwnerPlayer);
 			AtSource.Add(States[EntityIt].Activity == EHOLUnitActivity::Gathering);
+			UnitIds.Add(States[EntityIt].UnitId);
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			bAnyWalking |= bWalking;
 		}
@@ -578,6 +580,50 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	if (!bAnyWalking)
 	{
 		return;
+	}
+
+	// J7c.4, determinism: the units in identifier order, as the combat's fighters (unique identifiers, the unit subsystem's
+	// table): the chunks' order differs between runs for the same state, and everything below follows the units' indices
+	// (the cells' lists, the units to look, the corrections applied in place). Nothing to do when the chunks gave it already.
+	bool bSorted = true;
+	for (int32 Index = 1; Index < UnitIds.Num() && bSorted; ++Index)
+	{
+		bSorted = UnitIds[Index - 1] < UnitIds[Index];
+	}
+	if (!bSorted)
+	{
+		SortKeys.Reset(UnitIds.Num());
+		for (int32 Index = 0; Index < UnitIds.Num(); ++Index)
+		{
+			SortKeys.Add(static_cast<uint64>(UnitIds[Index]) << 32 | static_cast<uint32>(Index));
+		}
+		SortKeys.Sort();
+		SortedIndexOf.SetNumUninitialized(UnitIds.Num());
+		for (int32 Sorted = 0; Sorted < SortKeys.Num(); ++Sorted)
+		{
+			SortedIndexOf[static_cast<int32>(SortKeys[Sorted] & 0xFFFFFFFFull)] = Sorted;
+		}
+		// Each array moved once, through one scratch buffer (all of them plain values).
+		const auto Permute = [this](auto& Array)
+		{
+			using FElement = typename TRemoveReference<decltype(Array)>::Type::ElementType;
+			PermuteScratch.SetNumUninitialized(Array.Num() * sizeof(FElement), EAllowShrinking::No);
+			FElement* const Moved = reinterpret_cast<FElement*>(PermuteScratch.GetData());
+			for (int32 Sorted = 0; Sorted < SortKeys.Num(); ++Sorted)
+			{
+				Moved[Sorted] = Array[static_cast<int32>(SortKeys[Sorted] & 0xFFFFFFFFull)];
+			}
+			FMemory::Memcpy(Array.GetData(), Moved, Array.Num() * sizeof(FElement));
+		};
+		Permute(Positions);
+		Permute(Radii);
+		Permute(Walking);
+		Permute(Ghosts);
+		Permute(FormUpSerials);
+		Permute(FormUpKinds);
+		Permute(Moving);
+		Permute(Owners);
+		Permute(AtSource);
 	}
 
 	// Cells as wide as the largest pair of bodies, whatever the map's size: the overlaps of a unit are all in the 3 x 3
@@ -754,12 +800,14 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 
 	SeparationRoundsSeconds += FPlatformTime::Seconds() - GridSeconds;
 
-	int32 Index = 0;
-	EntityQuery.ForEachEntityChunk(Context, [this, &Index](FMassExecutionContext& Context)
+	// The chunks visited in the gathering's order: each unit's sorted index (J7c.4, determinism).
+	int32 Gathered = 0;
+	EntityQuery.ForEachEntityChunk(Context, [this, &Gathered, bSorted](FMassExecutionContext& Context)
 	{
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
-		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt, ++Index)
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt, ++Gathered)
 		{
+			const int32 Index = bSorted ? Gathered : SortedIndexOf[Gathered];
 			if (Corrections[Index] != Positions[Index])
 			{
 				FTransform& Transform = Transforms[EntityIt].GetMutableTransform();

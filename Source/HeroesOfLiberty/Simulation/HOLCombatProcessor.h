@@ -51,6 +51,8 @@ public:
 	static int64 GetTotalArrowsLost() { return TotalArrowsLost; }
 	/** Arrows in flight (the tests). */
 	int32 GetArrowsInFlight() const { return Arrows.Num(); }
+	/** FNV-1a over the arrows in flight, in list order (J7c.4, determinism probe, hol.Simulation.StepHashes). */
+	uint64 HashArrows() const;
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;

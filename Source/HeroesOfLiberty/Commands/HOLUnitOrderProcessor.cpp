@@ -2,6 +2,7 @@
 
 #include "Commands/HOLUnitOrderProcessor.h"
 
+#include "Algo/Sort.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
@@ -824,7 +825,12 @@ void UHOLUnitOrderProcessor::RequestCutPaths(FMassEntityManager& EntityManager, 
 	}
 	// One request per cluster of each order (D286): a group cut by the footprint goes round it together, each one to its
 	// own slot after the path.
-	CutWalkers.StableSort([](const FCutWalker& A, const FCutWalker& B) { return A.OrderSerial < B.OrderSerial; });
+	// J7c.4, determinism: within an order, by entity (the same handles at every run), not in the chunks' order, which
+	// differs between runs for the same state (the clusters, their sums and their units' order follow this one).
+	CutWalkers.Sort([](const FCutWalker& A, const FCutWalker& B)
+	{
+		return A.OrderSerial != B.OrderSerial ? A.OrderSerial < B.OrderSerial : A.Entity.Index < B.Entity.Index;
+	});
 	TArray<FVector2D> Positions;
 	TArray<int32> ClusterOfUnit;
 	for (int32 First = 0; First < CutWalkers.Num();)
@@ -2849,6 +2855,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 	const float Tolerance = Settings->OrderArrivalTolerance;
 	const int32 StuckLimit = Settings->FinalLegStuckSteps;
+	const int32 FirstNewPath = PendingPaths.Num();
 
 	EntityQuery.ForEachEntityChunk(Context, [this, World, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
 	{
@@ -3049,6 +3056,15 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			Order.MarchSpeed = 0.f;
 		}
 	});
+	// J7c.4, determinism: the new paths of this pass (one unit each) by entity, not in the chunks' order, which differs
+	// between runs for the same state: the step's path budget serves the first ones.
+	if (PendingPaths.Num() - FirstNewPath > 1)
+	{
+		Algo::Sort(MakeArrayView(PendingPaths).RightChop(FirstNewPath), [](const FPathRequest& A, const FPathRequest& B)
+		{
+			return A.Entities[0].Index < B.Entities[0].Index;
+		});
+	}
 	Swap(SlowestOfOrder, NextSlowestOfOrder);
 	NextSlowestOfOrder.Reset();
 }
