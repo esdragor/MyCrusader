@@ -15,6 +15,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Interface
 - Grille du Paysan façon AoE4 : ordres à gauche, construction à droite, onglets d'âge A Z E R
 
+### Outils d'essai
+- Bouton pour relancer le scénario en cours (panneau du scénario)
+
 ### GDD
 - Review du GDD : reprendre à D340
 - Consigner au GDD la décision des scénarios de test (`hol.Scenario`, `play.ps1`)

@@ -6164,6 +6164,85 @@ d'épée).
 - (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : plafond retiré ; **mesurer d'abord la source**
   (sonde seule, jeu inchangé) : part des corrections de la séparation due à un marcheur qui avance dans la presse,
   part due au renvoi entre unités debout ; remède ensuite (arrêt du marcheur bloqué, ou séparation relaxée).
+- (J7c.4, mycrusader-56) **Boucle 6** (~10 min, sonde seule, non commitée ; plafond retiré, empreintes inchangées
+  35c168b… / 93587c1…) : sonde « Separation source » dans `HOLSimulationProcessors` (classes de paires, tour, file ou
+  premier passage, chevauchement au début / à la fin de la séparation, déplacement depuis la fin précédente ;
+  `SumOverlaps` en O(N²) pendant la fenêtre seulement : temps faussés). **S3 par pas moyen** : chevauchement 95 510 cm
+  (3 793 paires) au début de la séparation, 77 014 cm à la fin ; la séparation déplace ~256 000 cm pour n'en retirer
+  que 18 500 (**7 % d'efficacité**) ; entre deux séparations seuls les marcheurs bougent (11 163 cm). Par classe :
+  debout–debout ami 41 %, debout–debout ennemi 27 % (tout sur celle qui regarde), marcheur–debout ami 47 141 cm
+  (moitié chacun), marcheur–marcheur ami 22 098, marcheur–debout ennemi 12 797 ; **toutes les paires debout–debout
+  viennent de la file**, ouverte seulement par la poussée d'un marcheur ami ; tour 2 ≈ tour 1 (pas de convergence).
+  S4 de même en plus petit. **Lecture** : l'énergie entre par les marcheurs qui poussent leurs amis debout ; la poussée
+  se propage, la frappeuse reprend tout contre l'ennemi et revient dans ses amis. Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** : le marcheur pousse toujours (« un marcheur pousse toujours mais
+  on peut affiner ») ; deux affinages à essayer, chacun derrière sa variable, puis choix sur les chiffres : **poussée
+  plus douce** (l'ami debout prend 25 % du chevauchement au lieu de 50 %) et **poussée transmise à l'ennemi** (une
+  paire debout–debout ennemie se partage à moitié au lieu de tout sur celle qui regarde). Écarté : un seul rang poussé.
+  Boucle 7 lancée : S3 sans / doux / transmis / les deux, sonde allumée.
+- (J7c.4, mycrusader-56) **Boucle 7** (~8 min, non commitée) : `hol.Simulation.SeparationFriendPushShare` (0,5 par
+  défaut) et `hol.Simulation.SeparationPushToEnemy` (0 par défaut) dans `Undo` (`HOLSimulationProcessors.cpp:483-489,
+  759-771`) ; défauts = 35c168b… vérifié. **Aucun gain net** : S3 doux 0,25 : attacking 7,5 / 58 / 408, 53,6 % ;
+  transmis : 15,9 / 66 / 279, 47,5 % (p50 en hausse) ; les deux : 14,5 / 51 / 313, 53,7 % ; efficacité de la
+  séparation 6,9-7,6 % partout (7,2) ; 7-20 % de coups en moins ; chevauchements fin 3 263 / 3 521 / 3 860 (3 211).
+  S4 doux : attacking p90 36 → 25,5 cm, 188 morts (198) ; transmis : 3,2 / 42 / 265. Ces affinages ne touchent pas
+  la cause (presse surcomprimée : ~77 000 cm de chevauchement résiduel, corrections en place qui se renvoient).
+  Bilan après 7 boucles : question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : **regarder d'abord à l'écran** ; s'il ne se
+  voit pas, débit par le réseau seul ; s'il se voit, séparation relaxée. Scénario **`melee_press`** écrit (non
+  commité, dans Elrond) : 200 Lanciers et Hommes d'armes de chaque côté en quatre paquets, à ~28 m, attaque-déplacement
+  des deux armées vers l'arrière de l'autre (`hol.Units.Move ... a`, coordonnées du monde de Plain à deux joueurs) ;
+  vérifié hors écran (`-RenderOffScreen` : `-nullrhi` bloque `waitui`) : prêt, mêlée ~7 s après la charge, ~65
+  images/s. Essai de l'utilisateur lancé (`play.ps1 melee_press -Root ...MyCrusader-Elrond`).
+- (J7c.4, mycrusader-56) **Essai `melee_press` de l'utilisateur** : « ils tremblent énormément mais c'est parce qu'ils
+  essaient d'accéder à une cible qui est déjà full entourée alors qu'il y a littéralement des ennemis autour qui ne
+  sont pas totalement entourés et que donc s'ils essayaient de taper eux à la place, il y aurait moins ce souci ».
+  **La cause est le choix de la cible**, pas la règle de la séparation : un combattant garde une cible pleine et
+  pousse vers elle. Boucle 8 lancée : lecture du choix de cible (places autour d'une cible, `AttackerCount`), puis
+  préférence pour un ennemi qui a encore de la place, derrière une variable ; S3 avec / sans.
+- (J7c.4, mycrusader-56) **Boucle 8** (~9 min, non commitée, compilé sans avertissement) : **diagnostic** : cible
+  rechoisie un pas sur 4 (`SearchSteps`) ou à la mort, gardée sans recherche si à portée ; `ChooseTarget`
+  (`HOLCombatRules.cpp:116`) trie : unité, à portée, m'attaque, « encombré », plus proche, Id ; « encombré » = hors
+  portée et `AttackerCount` ≥ `MaxAttackers` 6 (attaquants à toute distance) : un ennemi du front collé aux siens est
+  entouré avec 2-3 attaquants et n'est jamais plein ; si tout est encombré, le plus proche. Pas de règle de places
+  de combat au GDD. Le clic droit (`bOrderedTarget`) ne passe jamais par `ChooseTarget`. (Le « slot 4095 » est le
+  joueur de la cible dans la réplication.) **Changement** `hol.Combat.PreferFreeTarget` (1 par défaut) : un ennemi
+  hors portée est **plein** quand 6 corps vivants (tous camps) ont leur bord à 50 cm ou moins du sien
+  (`CountBodiesAround` sur la grille dense, une fois par pas à la demande) ; plein passe après tous ceux qui ont une
+  place ; si tous pleins, la cible actuelle d'abord (pas d'oscillation). 0 = 35c168b… / 93587c1… vérifiés.
+  **S3** a2a470378f3c128b : attacking 5,3 / 52 / 384 (9,0 / 63 / 361), 50,7 % ; approach 18 / 54 / 411, **26,5 %**
+  (41,5) ; chevauchements fin 2 988 (3 211) ; séparation −16 % de cm déplacés ; 201 morts (182) ; marcheurs 468 (361).
+  **S4** 061585e3b17e519e : attacking 0,7 / 21 / 325 (1,0 / 36 / 361), 46,5 % ; approach 22,1 % (37,5) ; 222 morts
+  (198). 2e essai `melee_press` lancé (note : `hol.Combat.PreferFreeTarget 0` pour comparer).
+- (J7c.4, mycrusader-56) **2e essai `melee_press`** : « C'est vachement mieux » (cible pleine laissée : validé à l'œil).
+  **Nouveau défaut** : « au début du scénario, la ligne rouge et la ligne bleue se sont "traversées" et se sont
+  emmêlées ; normalement ce sont deux lignes qui se choquent et ce sont les morts qui vont faire cet emmêlement »
+  (référence de l'utilisateur : https://www.youtube.com/shorts/zWR2KnqUMVI). Pistes : recherche de cible un pas sur 4
+  (deux lignes à ~11,7 m/s de rapprochement : 2,3 m entre deux recherches), `CanPassThrough` de la séparation entre
+  marcheurs ennemis. Boucle 9 lancée : diagnostic et mesure du croisement.
+- (J7c.4, mycrusader-56) **Boucle 9** (~6 min, arrêtée : édition de liens LNK1104, DLL verrouillée par le jeu de
+  l'essai encore ouvert ; compilé sans avertissement). Sonde temporaire `hol.Debug.CrossProbe N` (à retirer avant
+  commit : unités passées au-delà de la médiane X adverse, paires ennemies à plus d'un demi-rayon, marcheurs au contact
+  d'un ennemi). **Diagnostic** (lecture) : `CanPassThrough` hors de cause (même `OrderSerial` exigé, global : deux
+  ordres différents) ; la séparation sépare bien deux marcheurs ennemis. **Cause probable** : le test « à portée »
+  (`HOLCombatProcessor.cpp:796`, arrêt 815-819) ne vise que `Combat.Target` : une unité qui touche un AUTRE ennemi
+  continue de marcher ; la séparation n'annule que la composante normale, la marche tangentielle continue : elle
+  glisse autour du corps et se faufile dans la ligne. `PreferFreeTarget` peut aggraver (cible plus loin, derrière le
+  front). **Plan** : `hol.Combat.StopAtContact` (1 par défaut) : un combattant de mêlée qui marche et dont la cible
+  n'est pas à portée prend, à chaque pas, l'ennemi vivant à portée de plus petit `UnitId` (grille dense, `GatherNearby`)
+  comme cible ; l'arrêt existant fait le reste. En attente : fermeture du jeu par l'utilisateur.
+- (J7c.4, mycrusader-56) **Boucle 10** (~8 min, non commitée, sans avertissement) : `hol.Combat.StopAtContact` (1 par
+  défaut ; `HOLCombatProcessor.cpp:55-58, 422, 773-801`) : un combattant de mêlée en marche d'ordre (`bMaySeek`, donc
+  jamais une cible de clic droit) dont la cible n'est pas à portée prend, à chaque pas, l'ennemi vivant à portée de plus
+  petit `UnitId` (grille dense seulement). 0 = a2a470378f3c128b vérifié. **Sonde de croisement** (`melee_press`,
+  toutes les 0,5 s) : premier choc meilleur (paires ennemies profondes 5 → 0, marcheurs au contact 2 → 0 ; sans :
+  17-23 et 9-13) ; mais **unités au-delà de la médiane adverse** 35-44 par camp à +8 s (20-31 sans) : sonde grossière
+  (médiane à ~5 m du front), cause non tranchée (faufilement dans les trous entre ennemis debout, ou enveloppement par
+  les ailes qui convergent vers un seul point). **S3** 18f713a534f17114 : attacking 0,0 / 37,5 / 410, 68 % sous 5 cm,
+  48,2 % (5,3 / 52 / 384) ; approach 24,5 % ; 234 morts (201) ; combat 3,22 ms (3,09). 3e essai `melee_press` lancé
+  (note : `hol.Combat.StopAtContact 0` pour comparer).
+- (J7c.4, mycrusader-56) Demande de l'utilisateur (« il faut un bouton pour relancer le scénario ») : ligne ajoutée
+  à `EtapeDefini.md` (Outils d'essai). 3e essai relancé à sa demande.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
