@@ -6,7 +6,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## À faire
 
 ### Parcours J7c — le tir
-- J7c.3 Vérification et essai
 - J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7)
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
@@ -33,6 +32,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Marcheurs bloqués par des corps (passage étroit, mur d'unités)
 - Formation gênée entre les bâtiments et contre les ressources
 - Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence
+- Q (attaque) : curseur de souris et couleur qui changent pendant le choix du point
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte)
