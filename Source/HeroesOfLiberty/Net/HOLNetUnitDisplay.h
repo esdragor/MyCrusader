@@ -30,6 +30,13 @@ struct HEROESOFLIBERTY_API FHOLNetUnitDisplayFragment : public FMassFragment
 	FVector Velocity = FVector::ZeroVector;
 	/** Facing (deg), turned towards the velocity: the orientation is not sent. */
 	float Yaw = 0.f;
+	/**
+	 * A shooter's arrows deduced by this client (J7c.2b2, Q4, 0 bit more): the server's cadence replayed on the clock from
+	 * the step its Attacking state was taken at (HOLCombat::StartAttack, TickAttack). ShotStep: the last step replayed,
+	 * -1 while not shooting; ShotCooldownMs: the replayed cool-down.
+	 */
+	int64 ShotStep = -1;
+	int32 ShotCooldownMs = 0;
 
 	/** Where the unit is drawn at LocalSeconds, the server clock then being at ClockStep (D271). */
 	FVector GetDisplayedPosition(const double ClockStep, const double LocalSeconds, const float StepSeconds) const

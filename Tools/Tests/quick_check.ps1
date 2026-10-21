@@ -159,10 +159,17 @@ if ($Parts -contains "net") {
     # 2 Men-at-arms of slot 0 and 2 Spearmen of slot 1 there (6 m apart, in each other's aggression radius), then says
     # where every unit is each second (the client's positions compared with them); every hit logged with the health it
     # leaves (J7-Q5 revised: the client's health values compared with them).
+    # The arrows (J7c.2b2): once client 1's fight window is closed (its second signal, its bodies counted), 3 Archers of
+    # slot 0 and 2 Spearmen of slot 1, 40 m off the fight, shoot for 12 s, then all removed (the server's signal: each
+    # client's arrow report once they have landed); no Units where meanwhile (the fight's comparisons stay on its own).
     $NetFightFlag = Join-Path $TestSaved "quick_net_fight1.flag"
+    $NetArrowsFlag = Join-Path $TestSaved "quick_net_arrows1.flag"
+    $NetArrowsEndFlag = Join-Path $TestSaved "quick_net_arrows_end.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     @("waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
-        "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) + @("hol.Units.CorpseReport") |
+        "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
+        @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
+        "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") |
         Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
@@ -1222,11 +1229,15 @@ if ($NetListening) {
                 if ($i -eq 6) { $NetSteps += "capture net_combat_c1" }
             }
             # The bodies (J7c, bodies kept 30 s): the fight's Spearmen killed, this client keeps theirs (the server none).
-            $NetSteps += "hol.Units.CorpseReport"
+            # Then the fight's window closed (its own mark): the server's arrows fight starts, this client waits for its end
+            # and the last arrows' landing.
+            $NetSteps += "hol.Units.CorpseReport", "mark arrows", "signal $NetArrowsFlag", "waitfile $NetArrowsEndFlag 120", "wait 3"
         }
         # Each client waits for the other one's last report before quitting: a player gone leaves the other's reports (D282's
         # "others []", the flake of 2026-10-16).
-        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "mark end", "quit"
+        # The arrows (J7c.2b2): deduced by each client from the Attacking state of the server's Archers (net arrows), all
+        # landed by now (client 1 signals its end once they have).
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport", "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
@@ -3104,7 +3115,19 @@ if ($Parts -contains "net") {
     if ($NetServerProcess -and -not $NetServerProcess.HasExited) { Stop-Process -Id $NetServerProcess.Id -Force }
     # The melee on (J7b.2) on the dedicated server: the two armies stand at their own centres, far apart, no one killed;
     # the fight made for client 1 (J7b.4) kills its 2 Spearmen alone.
-    $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+    $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | Where-Object { $_.Line -notmatch "by arrow" } | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+    # The arrows on the clients (J7c.2b2, Q4: deduced, 0 bit more): 3 Archers of slot 0 shoot 2 Spearmen for 12 s, after
+    # client 1's fight window, then all removed; each client launched about as many arrows as the server released (1 more or less per shooter), none
+    # left in flight at the end; the gap between a drawn arrow's landing and the health drop received, reported.
+    $NetReleased = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "releases an arrow" }).Count
+    foreach ($NetClient in $NetClients) {
+        $ArrowLine = @(if (Test-Path $NetClient.Log) { Select-String -Path $NetClient.Log -Pattern "Arrow report: in flight (\d+) launched (\d+) landed (\d+) gaps (\d+) mean (-?\d+) min (-?\d+) max (-?\d+) ms" }) | Select-Object -Last 1
+        $InFlight = if ($ArrowLine) { [int]$ArrowLine.Matches[0].Groups[1].Value } else { -1 }
+        $Launched = if ($ArrowLine) { [int]$ArrowLine.Matches[0].Groups[2].Value } else { -1 }
+        $GapText = if ($ArrowLine) { "gaps $($ArrowLine.Matches[0].Groups[4].Value) mean $($ArrowLine.Matches[0].Groups[5].Value) min $($ArrowLine.Matches[0].Groups[6].Value) max $($ArrowLine.Matches[0].Groups[7].Value) ms" } else { "no report" }
+        Write-Host "  net arrows (client $($NetClient.Client)): server released $NetReleased, launched $Launched, in flight $InFlight; arrow landing -> health drop: $GapText"
+        $Checks["client $($NetClient.Client) : arrows deduced ($Launched launched for $NetReleased released, $InFlight in flight at the end)"] = $NetReleased -gt 0 -and [math]::Abs($Launched - $NetReleased) -le 3 -and $InFlight -eq 0
+    }
     $Checks["server: combat on, the fight's 2 Spearmen alone killed ($($NetKills -join ', '))"] = ($NetKills -join ',') -eq "Spearman of slot 1,Spearman of slot 1"
     # The bodies (J7c, bodies kept 30 s): client 1 keeps the fight's (hol.Units.CorpseReport at its end); the dedicated
     # server lays none (its report says 0).

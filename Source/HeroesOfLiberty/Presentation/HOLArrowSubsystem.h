@@ -40,6 +40,17 @@ public:
 	int32 GetInFlightCount() const { return Arrows.Num(); }
 	int64 GetLaunchedCount() const { return Launched; }
 	int64 GetLandedCount() const { return Landed; }
+	int64 GetGapCount() const { return GapCount; }
+	double GetGapMeanMs() const { return GapCount > 0 ? GapSumMs / GapCount : 0.0; }
+	double GetGapMinMs() const { return GapMinMs; }
+	double GetGapMaxMs() const { return GapMaxMs; }
+
+	/**
+	 * A client received Target's health going down (J7c.2b2): the gap (ms) between that and the arrow drawn on it, its
+	 * earliest one in flight (negative: the health came first) or else its last landed within MaxGapSeconds, measured
+	 * for hol.Combat.ArrowReport. No arrow then: not counted (a melee hit).
+	 */
+	void NoteHealthDrop(const FMassEntityHandle& Target);
 
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	virtual void Tick(float DeltaTime) override;
@@ -58,6 +69,8 @@ private:
 		double Duration = 0.0;
 	};
 
+	static constexpr double MaxGapSeconds = 2.0;
+
 	bool EnsureComponent();
 
 	TArray<FArrow> Arrows;
@@ -65,5 +78,11 @@ private:
 	TObjectPtr<UInstancedStaticMeshComponent> Instances;
 	int64 Launched = 0;
 	int64 Landed = 0;
+	/** The last arrow landed on each target (world seconds), for the gaps; pruned past MaxGapSeconds. */
+	TMap<FMassEntityHandle, double> LastLanding;
+	int64 GapCount = 0;
+	double GapSumMs = 0.0;
+	double GapMinMs = 0.0;
+	double GapMaxMs = 0.0;
 	bool bMeshMissing = false;
 };

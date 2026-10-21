@@ -20,6 +20,7 @@
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationSettings.h"
 #include "Net/HOLUnitReplicator.h"
+#include "Presentation/HOLArrowSubsystem.h"
 #include "Presentation/HOLCorpse.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -366,6 +367,15 @@ void UHOLUnitReceptionSubsystem::ApplyState(FSlot& Slot, const double Now)
 
 	// Where the unit is drawn now, from the previous state and its correction, against where the new state puts it.
 	const FVector Displayed = Display.GetDisplayedPosition(ClockStep, Now, StepSeconds);
+	// Its health went down (J7c.2b2): measured against the arrow this client draws on it, if any.
+	const bool bHealthDown = !Slot.State.bFullHealth && (Display.State.bFullHealth || Slot.State.Health < Display.State.Health);
+	if (bHealthDown)
+	{
+		if (UHOLArrowSubsystem* ArrowDisplay = GetWorld()->GetSubsystem<UHOLArrowSubsystem>())
+		{
+			ArrowDisplay->NoteHealthDrop(Slot.Entity);
+		}
+	}
 	Display.State = Slot.State;
 	Display.StateStep = HOLUnitReplication::UnwrapStep(Slot.State.Step, FMath::RoundToInt64(ClockStep));
 	Display.Velocity = Slot.State.GetVelocity();

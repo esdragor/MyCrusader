@@ -36,8 +36,9 @@ namespace
 				UE_LOG(LogHOLPresentation, Display, TEXT("Arrow report: no arrow display on this machine"));
 				return;
 			}
-			UE_LOG(LogHOLPresentation, Display, TEXT("Arrow report: in flight %d launched %lld landed %lld"), ArrowSubsystem->GetInFlightCount(),
-				ArrowSubsystem->GetLaunchedCount(), ArrowSubsystem->GetLandedCount());
+			UE_LOG(LogHOLPresentation, Display, TEXT("Arrow report: in flight %d launched %lld landed %lld gaps %lld mean %.0f min %.0f max %.0f ms"),
+				ArrowSubsystem->GetInFlightCount(), ArrowSubsystem->GetLaunchedCount(), ArrowSubsystem->GetLandedCount(), ArrowSubsystem->GetGapCount(),
+				ArrowSubsystem->GetGapMeanMs(), ArrowSubsystem->GetGapMinMs(), ArrowSubsystem->GetGapMaxMs());
 		}));
 }
 
@@ -116,6 +117,43 @@ void UHOLArrowSubsystem::Launch(const FHOLArrowLaunch& Launch)
 	++Launched;
 }
 
+void UHOLArrowSubsystem::NoteHealthDrop(const FMassEntityHandle& Target)
+{
+	const UWorld* World = GetWorld();
+	if (!World || !Target.IsSet())
+	{
+		return;
+	}
+	const double Now = World->GetTimeSeconds();
+	double GapSeconds = 0.0;
+	bool bFound = false;
+	for (const FArrow& Arrow : Arrows)
+	{
+		if (Arrow.Target == Target)
+		{
+			// The earliest to land: the largest (least negative) gap.
+			const double Gap = Now - (Arrow.Start + Arrow.Duration);
+			GapSeconds = bFound ? FMath::Max(GapSeconds, Gap) : Gap;
+			bFound = true;
+		}
+	}
+	if (const double* Landing = !bFound ? LastLanding.Find(Target) : nullptr; Landing && Now - *Landing <= MaxGapSeconds)
+	{
+		GapSeconds = Now - *Landing;
+		bFound = true;
+		LastLanding.Remove(Target);
+	}
+	if (!bFound)
+	{
+		return;
+	}
+	const double GapMs = GapSeconds * 1000.0;
+	GapMinMs = GapCount == 0 ? GapMs : FMath::Min(GapMinMs, GapMs);
+	GapMaxMs = GapCount == 0 ? GapMs : FMath::Max(GapMaxMs, GapMs);
+	GapSumMs += GapMs;
+	++GapCount;
+}
+
 void UHOLArrowSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -127,6 +165,13 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
 	FMassEntityManager* EntityManager = EntitySubsystem ? &EntitySubsystem->GetMutableEntityManager() : nullptr;
 	const double Now = World->GetTimeSeconds();
+	for (auto It = LastLanding.CreateIterator(); It; ++It)
+	{
+		if (Now - It.Value() > MaxGapSeconds)
+		{
+			It.RemoveCurrent();
+		}
+	}
 
 	TArray<FTransform> Transforms;
 	Transforms.Reserve(Arrows.Num());
@@ -145,6 +190,10 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		if (Alpha >= 1.0)
 		{
 			++Landed;
+			if (Arrow.Target.IsSet())
+			{
+				LastLanding.Add(Arrow.Target, Now);
+			}
 			Arrows.RemoveAtSwap(Index, EAllowShrinking::No);
 			continue;
 		}
