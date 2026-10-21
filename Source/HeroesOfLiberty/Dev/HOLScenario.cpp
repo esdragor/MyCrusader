@@ -83,7 +83,8 @@ namespace UE::HeroesOfLiberty::Dev
 			return;
 		}
 		const FString ConfigFile = FPaths::Combine(GetScenarioDir(), Name + TEXT(".json"));
-		if (IFileManager::Get().FileExists(*ConfigFile))
+		const bool bHasConfigFile = IFileManager::Get().FileExists(*ConfigFile);
+		if (bHasConfigFile)
 		{
 			if (!Match->LoadFromFile(ConfigFile))
 			{
@@ -96,7 +97,9 @@ namespace UE::HeroesOfLiberty::Dev
 		}
 		FHOLMatchConfig Config = Match->GetConfigOrDefault();
 		Config.Normalize();
-		if (Config.Map.IsNull())
+		// Without a .json the default configuration names BattleMap, which the New game screen does not offer: Plain,
+		// as for a .json without a map.
+		if (!bHasConfigFile || Config.Map.IsNull())
 		{
 			Config.Map = FSoftObjectPath(TEXT("/Game/Maps/Plain.Plain"));
 		}

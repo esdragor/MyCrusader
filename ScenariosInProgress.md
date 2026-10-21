@@ -91,3 +91,13 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
      la course appelle `Finish()` (retrait du journal et du minuteur) très tard, quand `GLog` et `FTSTicker` ne sont plus
      garantis. Sans effet constaté ; à corriger si un plantage à la fermeture apparaît (piste : tout arrêter sur
      `FCoreDelegates::OnEnginePreExit`).
+
+### 2026-10-21
+- **Scénario sans `.json` : BattleMap au lieu de Plain** (défaut vu par la session du retardataire, `EtapeDefini.md`) :
+  corrigé dans `MyCrusader-J5c`, branche `scenario-default-plain` (non commité). Cause : sans `.json`, `hol.Scenario`
+  prenait `FHOLMatchConfig::MakeDefault()`, qui nomme `/Game/Level/BattleMap` ; le repli sur Plain ne jouait que pour
+  une carte vide. Depuis le menu, l'écran Nouvelle partie, qui ne propose pas BattleMap, lançait sa première carte
+  (Plain) et `waitmap BattleMap` expirait. Maintenant : sans `.json`, Plain (comme le dit le README). Compilé (110 s) ;
+  scénario temporaire sans `.json` lancé en `-RenderOffScreen` : `Scenario nojson_check: /Game/Maps/Plain.Plain`,
+  `New game: launching /Game/Maps/Plain.Plain`, « prêt » en 18 s. À savoir : avec `-unattended`, le jeu s'arrête au
+  démarrage (rien du scénario au journal) ; lancer comme `quick_check`, sans lui.
