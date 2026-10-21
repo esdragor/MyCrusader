@@ -47,13 +47,40 @@ public:
 	struct FBlockReport
 	{
 		int32 Units = 0;
+		/** Steps of a stop before the march: 0, the block forms its rows on the move (playtest note 1 of J7b); -1 no block. */
 		int32 FormUpSteps = -1;
-		/** Steps of the march spent taking the slots on the move (the user's 4th trial). */
+		/** Steps of the march until every unit of the body stood in its file (within BlockLagDistance across; files on the move; -1 not yet). */
 		int32 JoinSteps = -1;
+		/** Distance the block marched (cm) until then (-1 not yet); its point's start behind its path's (cm); units still sliding to their files as it began re-forming at its end. */
+		float JoinDistance = -1.f;
+		float SetBack = 0.f;
+		int32 FormingAtEnd = 0;
 		int32 MarchSteps = 0;
+		/** Steps the block's point was held: only while it re-forms at its end (rows on the move: never on the march). */
 		int32 HeldSteps = 0;
+		/**
+		 * Members that left the block as stragglers: none since files on the move (the user's 5th trial of playtest note 1
+		 * of J7b: a member's depth is its own, it never falls behind a slot); kept for the reports.
+		 */
 		int32 LeftUnits = 0;
+		/**
+		 * The closest two of its members stood (cm, centre to centre) from its first half second (BlockSpacingFromStep)
+		 * until its arrival's blend, re-forming left out (the units taking their slots keep apart, the user's trial of
+		 * playtest note 1 of J7c); -1 not measured.
+		 */
+		float MinSpacing = -1.f;
+		/**
+		 * Units left behind at the start, far from the group's body (HOLFormation::FindStragglers), plus the members that fell
+		 * behind on the way (LeftUnits, counted in both), and those of them that joined it on the way.
+		 */
+		int32 Stragglers = 0;
+		int32 JoinedStragglers = 0;
+		/** Stragglers whose kind had no slot in the block's last row (a mixed group): they follow it, their places at the arrival. */
+		int32 QueuedStragglers = 0;
+		/** Units of smaller blocks of its order merged into it on the march (HOLFormation::BlockMergeDistance). */
+		int32 MergedUnits = 0;
 		float Pace = 0.f;
+		/** The farthest a member stood across from its file on the march (cm), its first steps left out. */
 		float MaxSlotGap = 0.f;
 		float MaxSpeed = 0.f;
 		bool bArrived = false;
@@ -66,6 +93,24 @@ public:
 		int32 Crossings = 0;
 		int32 Pushes = 0;
 		float ArrivalOff = 0.f;
+		/**
+		 * Steps of the march (its arrival's re-forming left out) on which a unit of the block walked against the march
+		 * (its velocity along the block's direction below -1 cm/s): the user's 4th trial of playtest note 1, never.
+		 */
+		int32 BackSteps = 0;
+		/**
+		 * Steps of the march (its first half second and its arrival's re-forming left out, stragglers too) on which a member
+		 * walked along the march below BlockSlowedShare of the pace (the user's 5th trial of playtest note 1: nobody slows
+		 * down on the march; only the slowest kind sliding to its file loses a little, cos FileSlideMaxAngle of it).
+		 */
+		int32 SlowedSteps = 0;
+		/**
+		 * Steps of the arrival's re-forming (its blend, before the final legs) on which a unit of the block walked against
+		 * the march (below -1 cm/s along it), and the ground so walked back by all its units (cm): the rows closing up
+		 * should not send the head back (the user's 5th trial of playtest note 1).
+		 */
+		int32 ArrivalBackSteps = 0;
+		float ArrivalBackDistance = 0.f;
 	};
 	static const FBlockReport& GetLastBlockReport() { return LastBlockReport; }
 
@@ -127,26 +172,71 @@ protected:
 		TArray<FMassEntityHandle> Entities;
 		TArray<FVector2D> Offsets;
 		TArray<FVector> Places;
-		/** Steps in a row each unit held the block back. */
+		/** Steps in a row each member was far from its slot while re-forming (beyond BlockSoftHoldDistance). */
 		TArray<int32> HeldSteps;
+		/**
+		 * Each member's own depth in the block (cm along the march from the block's point, the user's 5th trial of playtest
+		 * note 1: files on the move, rows at the arrival): read from where it stands every step of the march, kept from the
+		 * arrival's blend on (its slot then that depth in its file, sliding to its place).
+		 */
+		TArray<double> Depths;
 		TArray<FVector2D> Path;
 		double Length = 0.;
 		double Progress = 0.;
 		/** Pace (cm/s, the table's, before hol.Units.SpeedScale). */
 		float Pace = 0.f;
 		int32 Steps = 0;
-		bool bMarching = false;
 		/** Each unit's kind (row priority index), and the final facing: its re-forming at the end (the user's 3rd trial). */
 		TArray<int32> Kinds;
 		FVector2D FinalForward = FVector2D(1., 0.);
-		/** Units still taking their slots on the move; the arrival's blend started, over the path's last BlendDistance. */
-		bool bJoining = false;
+		/**
+		 * The arrival's blend started, over the path's last BlendDistance. (Its units still sliding to their files on the
+		 * move, playtest note 1 of J7b, are those in the FormUp phase; Progress starts at the units' mean depth.)
+		 */
 		bool bBlending = false;
 		double BlendDistance = 0.;
+		/**
+		 * Its stragglers (a playtest note of J7c): out of the block from the start, each with a slot kept in the block's
+		 * last row (HOLFormation::ReserveRearSlots), on its own path at its own speed, then straight into its slot, never
+		 * holding the block; one within BlockLagDistance of its slot is one of the block (the user's trial of playtest
+		 * note 1); a queued one, and those that never catch up, stand on their places at the end.
+		 */
+		struct FStraggler
+		{
+			FMassEntityHandle Entity;
+			FVector2D Offset = FVector2D::ZeroVector;
+			FVector Place = FVector::ZeroVector;
+			int32 Kind = 0;
+			/** Its type's speed (cm/s, the table's): the block slows down to it once it is one of the block. */
+			float Speed = 0.f;
+			/** Its slot is not in the block's last row (HOLFormation::ReserveRearSlots): it follows behind, its place at the arrival. */
+			bool bQueued = false;
+			/** Steered straight to its slot (or its queue's point), through the units of its order, instead of its own path. */
+			bool bSteering = false;
+		};
+		TArray<FStraggler> Stragglers;
+		/** Where a queued straggler walks: this far along the path from the block's point (behind it: a row behind its last row). */
+		double QueueOffset = 0.;
 		/** Its own report (the last block's is LastBlockReport). */
 		FBlockReport Report;
+		/**
+		 * Its order, its number in the order's blocks and how many there are (playtest note 1 of J7b, the user's 2nd trial:
+		 * small blocks): block 0 is the body (with the stragglers), each other one a separate packet of two units or more
+		 * (HOLFormation::FindPackets) marching in its own formation, on its own path from where its units stand, at its own
+		 * pace. All the blocks of an order share one formation (the same Offsets frame, the same arrival places), each with
+		 * the offsets of its own units: at the arrival every unit already stands in the common formation. When two meet (their
+		 * points within HOLFormation::BlockMergeDistance on the march), the smaller merges into the larger (AdvanceBlocks):
+		 * its units slide to their files at the larger one's point, keeping their depths.
+		 */
+		uint32 Serial = 0;
+		int32 Index = 0;
+		int32 NumBlocks = 1;
+		/** Its tag in the logs: none for the body (the scripted checks read its lines), "block 2 of 3: " for the others. */
+		FString GetTag() const { return Index > 0 ? FString::Printf(TEXT("block %d of %d: "), Index + 1, NumBlocks) : FString(); }
 	};
-	TMap<uint32, FBlockMarch> Blocks;
+	/** The blocks on the march, by MakeBlockKey(order serial, block number). */
+	TMap<uint64, FBlockMarch> Blocks;
+	static uint64 MakeBlockKey(const uint32 Serial, const int32 Index) { return (static_cast<uint64>(Serial) << 32) | static_cast<uint32>(Index); }
 	/** A block's units after its end, watched until they all stand on their places (FBlockReport::SettleSteps). */
 	struct FArrivalWatch
 	{
@@ -155,22 +245,28 @@ protected:
 		TArray<double> LastOff;
 		int32 Steps = 0;
 		FBlockReport Report;
+		/** Its block's order and number (FBlockMarch::Serial, Index). */
+		uint32 Serial = 0;
+		int32 Index = 0;
+		FString Tag;
 	};
-	TMap<uint32, FArrivalWatch> Arrivals;
+	TMap<uint64, FArrivalWatch> Arrivals;
 	void WatchArrivals(FMassEntityManager& EntityManager);
 	static FBlockReport LastBlockReport;
-	/** Order serial of the last block march started. */
+	/** Order serial of the last block march started (its body's report, block 0, is LastBlockReport). */
 	static uint32 LastBlockSerial;
 	/**
 	 * A group's move in formation made a block march (J7a.4) unless it is short (within the block's size): its one path,
-	 * its form-up places around its centre facing the path's start, its units' offsets in the block, their arrival places
-	 * (Places, given again from where the block will stand), the clusters' requests (FirstRequest, NumClusters) dropped.
+	 * its rows around its centre facing the path's start, its units' offsets in the block, their arrival places (Places,
+	 * given again from where the block will stand), the clusters' requests (FirstRequest, NumClusters) dropped; the block
+	 * starts at once at full pace, its point at its units' mean depth (playtest note 1 of J7b, the user's 5th trial: files
+	 * on the move, rows at the arrival).
 	 */
 	void StartBlockMarch(FMassEntityManager& EntityManager, UWorld& World, UNavigationSystemV1* NavSystem, const ANavigationData* NavData, uint32 OrderSerial,
 		TConstArrayView<FMassEntityHandle> Entities, TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, bool bPeasantsOnly,
 		const FVector2D& Target, const FVector2D& Forward, double ColumnSpacing, double RowSpacing, int32 FrontWidth, TConstArrayView<FVector> Places,
 		float Pace, int32 FirstRequest, int32 NumClusters);
-	/** The blocks' step: form-up, then the march along the path, then each unit to its arrival place (its final leg). */
+	/** The blocks' step: the march along the path (its units sliding to their files on the move), then each unit to its arrival place (its final leg). */
 	void AdvanceBlocks(FMassEntityManager& EntityManager, float DeltaTime, const ANavigationData* NavData);
 
 	/** One cluster of an order waiting for its path. */

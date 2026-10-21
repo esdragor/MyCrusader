@@ -327,6 +327,34 @@ $FormQueuedTo = @(-2200, -2900)
 $FormBlockPeasants = @(-6000, -5000)
 $FormBlockSpearmen = @(-6000, -5500)
 $FormBlockMenAtArms = @(-6000, -6000)
+# Then the straggler (the user's 1st trial of J7b), after the groups: 5 Men-at-arms close together on the six's first
+# ground (gone by then) and a 6th 10 m behind them (west), sent 37 m east-north-east (between the block's end and the
+# six's queued point, more than 12 m from every enemy of the combat parts): the five leave at once, the 6th walks on its
+# own path to its place. Then the same with an Archer (584 cm/s against 523) as the 6th, sent 35 m north-east.
+$StragFrom = @(-6000, -5500)
+$StragLate = @(-7000, -5500)
+$StragTo = @(-2500, -4200)
+$StragArcherTo = @(-3500, -3000)
+# Then the scattered group (the user's trial of playtest note 1 of J7c): 2 groups of 3 Men-at-arms 10 m apart, side by side
+# across the order (north and south of the six's first ground, gone by then), sent 37 m east-south-east (14 m south of the
+# block of nine's end): no straggler (the body is half the group), the block forms its rows on the move at once (playtest note 1 of J7b).
+$ScatterNorth = @(-6000, -5000)
+$ScatterSouth = @(-6000, -6000)
+$ScatterTo = @(-2500, -6900)
+# Then the close straggler (the user's trial of playtest note 1 of J7b): 5 Men-at-arms in a file along the order (1.5 m
+# apart, on the six's first ground, gone by then) and a 6th 3 m behind and beside the last (within the body's 4.5 m, far
+# from its slot), sent 38 m east-south-east, between the block of nine's end and the scattered group's (9 m from each):
+# no straggler, the block forms its rows on the move at once, nobody held nor left; the six removed at the end (the parts after unchanged).
+$NearFile = @(-6000, -5500)
+$NearLate = @(-6200, -5750)
+$NearTo = @(-1900, -6200)
+# Then two blocks meeting (the user's rule for playtest note 1 of J7b: the blocks merge when they meet, else at the arrival):
+# 2 files of 3 Men-at-arms along the order (1.5 m apart), 5 m apart across it (two packets), on the six's first ground (gone
+# by then), sent 28 m east to the point between them (west of the block of nine's end, 8 m from it): the two blocks' paths
+# converge, their points meet on the way, the smaller merges into the main block; removed at the end.
+$MeetNorth = @(-6200, -5200)
+$MeetSouth = @(-6200, -5700)
+$MeetTo = @(-3300, -5450)
 # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1, 6 m apart on the formation's first ground.
 $CombatMenAtArms = @(-6300, -5500)
 $CombatSpearmen = @(-5700, -5500)
@@ -994,6 +1022,49 @@ if ($Parts -contains "camera") {
                 "waitlog Group 1: removed", "wait 0.4", "hol.HUD.Click ControlGroup2", "waitlog Group 2: selected", "hol.Select.Group Select 0", "hol.Select.Group Double 2", "hol.Camera.Report", "mark groups end"
             Key Escape
             Step "waitlog Selection: none"
+            # The straggler (the user's 1st trial of J7b): 5 Men-at-arms and a 6th 10 m behind, a box around the six, an
+            # order 37 m away; then 5 Men-at-arms and an Archer 10 m behind. Each reported every half second, then at rest.
+            foreach ($Strag in @(@{ Mark = "straggler"; Seed = 131; Late = "ManAtArms"; To = $StragTo }, @{ Mark = "straggler archer"; Seed = 132; Late = "Archer"; To = $StragArcherTo })) {
+                Step "mark $($Strag.Mark)", "hol.Units.SpawnSeed $($Strag.Seed)", "hol.Units.Formation 0", "hol.Camera.Focus $(($StragFrom[0] + $StragLate[0]) / 2) $($StragFrom[1])", "frames 3",
+                    "hol.Units.Spawn 5 $($StragFrom -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 1 $($StragLate -join ' ') 0 $($Strag.Late) 10", "wait 0.5", "frames 3",
+                    "hol.Select.BoxGround $($StragLate[0] - 400) $($StragFrom[1] - 500) $($StragFrom[0] + 500) $($StragFrom[1] + 500)",
+                    "waitlog Selection: 6 units (own)", "hol.Units.Formation 0", "hol.Select.OrderGround $($Strag.To -join ' ')", "waitlog Order: "
+                for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+                Step "wait 2", "mark $($Strag.Mark) end", "hol.Units.Formation 0"
+                Key Escape
+                Step "waitlog Selection: none"
+            }
+            # The scattered group (the user's trial of playtest note 1 of J7c): 2 groups of 3 Men-at-arms 10 m apart, a box
+            # around the six, an order 37 m away; reported every half second, then at rest.
+            Step "mark scattered", "hol.Units.SpawnSeed 133", "hol.Units.Formation 0", "hol.Camera.Focus $($ScatterNorth[0]) $(($ScatterNorth[1] + $ScatterSouth[1]) / 2)", "frames 3",
+                "hol.Units.Spawn 3 $($ScatterNorth -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($ScatterSouth -join ' ') 0 ManAtArms 150", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($ScatterNorth[0] - 500) $($ScatterSouth[1] - 500) $($ScatterNorth[0] + 500) $($ScatterNorth[1] + 500)",
+                "waitlog Selection: 6 units (own)", "hol.Units.Formation 0", "hol.Select.OrderGround $($ScatterTo -join ' ')", "waitlog Order: "
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+            Step "wait 2", "mark scattered end", "hol.Units.Formation 0"
+            Key Escape
+            Step "waitlog Selection: none"
+            # The close straggler (the user's trial of playtest note 1 of J7b): 5 Men-at-arms in a file and a 6th 3 m behind
+            # and beside, a box around the six, an order 38 m away; reported every half second, then at rest, then removed.
+            Step "mark straggler near", "hol.Units.SpawnSeed 134", "hol.Units.Formation 0", "hol.Camera.Focus $($NearFile[0] + 300) $($NearFile[1])", "frames 3"
+            for ($i = 0; $i -lt 5; $i++) { Step "hol.Units.Spawn 1 $($NearFile[0] + 150 * $i) $($NearFile[1]) 0 ManAtArms 10" }
+            Step "hol.Units.Spawn 1 $($NearLate -join ' ') 0 ManAtArms 10", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($NearLate[0] - 300) $($NearLate[1] - 300) $($NearFile[0] + 900) $($NearFile[1] + 300)",
+                "waitlog Selection: 6 units (own)", "hol.Units.Formation 0", "hol.Select.OrderGround $($NearTo -join ' ')", "waitlog Order: "
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+            Step "wait 2", "mark straggler near end", "hol.Units.Formation 0"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Units.Remove $($NearTo -join ' ') 500 0", "wait 0.3"
+            # Two blocks meeting: 2 files of 3 Men-at-arms 5 m apart across the order, a box around the six, an order 28 m
+            # east between them; reported every half second, then at rest, then removed.
+            Step "mark blocks meet", "hol.Units.SpawnSeed 135", "hol.Units.Formation 0", "hol.Camera.Focus $($MeetNorth[0] + 150) $(($MeetNorth[1] + $MeetSouth[1]) / 2)", "frames 3"
+            for ($i = 0; $i -lt 3; $i++) { Step "hol.Units.Spawn 1 $($MeetNorth[0] + 150 * $i) $($MeetNorth[1]) 0 ManAtArms 10", "hol.Units.Spawn 1 $($MeetSouth[0] + 150 * $i) $($MeetSouth[1]) 0 ManAtArms 10" }
+            Step "wait 0.5", "frames 3", "hol.Select.BoxGround $($MeetNorth[0] - 300) $($MeetSouth[1] - 300) $($MeetNorth[0] + 600) $($MeetNorth[1] + 300)",
+                "waitlog Selection: 6 units (own)", "hol.Units.Formation 0", "hol.Select.OrderGround $($MeetTo -join ' ')", "waitlog Order: "
+            for ($i = 0; $i -lt 20; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+            Step "wait 2", "mark blocks meet end", "hol.Units.Formation 0"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Units.Remove $($MeetTo -join ' ') 500 0", "wait 0.3"
         }
         if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
             # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
@@ -2332,7 +2403,7 @@ if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     }
     # The drag's and the queued move's block marches: the six were already in rows, so no stop (the user's 4th trial: formed
     # up on the move, 2 steps at most), nobody left the block, none faster than the slowest + 10 %.
-    $PlainBlocks = @($PlainLines + @(Get-Section "formation queued") | Select-String -Pattern "Block march: arrived after (\d+) steps of form-up and (\d+) of march \((\d+) held\), slot gap (\d+) cm at most, speed (\d+) cm/s at most, (\d+) units left it")
+    $PlainBlocks = @($PlainLines + @(Get-Section "formation queued") | Select-String -Pattern "Block march: arrived after (\d+) steps of form-up and (\d+) of march \((\d+) held\), file gap (\d+) cm at most, speed (\d+) cm/s at most, (\d+) units left it")
     $Checks["plain drag and queued move: two block marches arrived ($($PlainBlocks.Count))"] = $PlainBlocks.Count -eq 2
     $PlainStarts = @($PlainLines + @(Get-Section "formation queued") | Select-String -Pattern "Block march: \d+ units, path of \d+ points, (\d+) cm, pace (\d+) cm/s")
     for ($i = 0; $i -lt $PlainBlocks.Count; $i++) {
@@ -2424,6 +2495,186 @@ if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     $Checks["capture groups_bar"] = Test-Path (Join-Path $Shots "groups_bar.png")
     $Checks["group 2 twice: the camera to it"] = [bool]($G | Select-String -Pattern "Group 2: selected, $Soldiers units, 0 buildings, camera to")
     $AllOk = (Report "groups" $Checks) -and $AllOk
+
+    # The straggler (the user's 1st trial of J7b): the five leave at once (rows formed on the move, formup 0), one straggler
+    # left behind, the block hardly held, the six on their places at the end; the Archer (faster) is only reported: does it
+    # join the block on the way?
+    $Checks = [ordered]@{}
+    foreach ($Mark in "straggler", "straggler archer") {
+        $Lines = @(Get-Section $Mark)
+        $EndLines = @(Get-Section "$Mark end")
+        $Reports = @(& $AllReports $Lines)
+        $StragIds = @()
+        if ($Reports.Count -ge 2) { $StragIds = @($Reports[1].Units.Keys | Where-Object { -not $Reports[0].Units.ContainsKey($_) } | Sort-Object) }
+        $Checks["${Mark}: six units made ($($StragIds.Count))"] = $StragIds.Count -eq 6
+        $Checks["${Mark}: files on the move at once"] = [bool]($Lines | Select-String -Pattern "Block march: files on the move, start")
+        $Left = $Lines | Select-String -Pattern "Block march: (\d+) stragglers left behind" | Select-Object -First 1
+        $Checks["${Mark}: one straggler left behind ($(if ($Left) { $Left.Matches[0].Groups[1].Value } else { 'no line' }))"] = $Left -and [int]$Left.Matches[0].Groups[1].Value -eq 1
+        $Report = $Lines + $EndLines | Select-String -Pattern "Block report: units (\d+) formup (-?\d+) march (\d+) held (\d+) left (\d+) pace (\d+) gap (\d+) speed (\d+) arrived (\d) settle (-?\d+) crossings (\d+) pushes (\d+) arrivaloff (\d+) stragglers (\d+) joined (\d+)" | Select-Object -Last 1
+        $Text = if ($Report) { $Report.Matches[0].Value } else { 'no report' }
+        Write-Host "  ${Mark}: $Text"
+        foreach ($J in @($Lines + $EndLines | Select-String -Pattern "Block march: (a straggler joined.*|\d+ stragglers, \d+ joined.*)$")) { Write-Host "  ${Mark}: $($J.Matches[0].Value)" }
+        if ($Report) {
+            $G = $Report.Matches[0].Groups
+            # Held: the steps the block waited (formup 0, it never waits for the straggler); a few for the start allowed. Settle
+            # (steps of 50 ms) runs until the straggler too is on its place: 10 m behind at the same pace, it comes ~2 s after
+            # the block (34 steps measured; the Archer 15): 50 at most, against 8 for a block without one.
+            $Checks["${Mark}: left at once, not held, arrived, settled, one straggler ($Text)"] = ([int]$G[2].Value -eq 0) -and ([int]$G[4].Value -le 4) -and
+                ([int]$G[9].Value -eq 1) -and ([int]$G[10].Value -ge 0) -and ([int]$G[10].Value -le 50) -and ([int]$G[14].Value -eq 1)
+            if ($Mark -eq "straggler") { $Checks["${Mark}: the Man-at-arms behind does not join (joined $($G[15].Value))"] = [int]$G[15].Value -eq 0 }
+        } else { $Checks["${Mark}: block report"] = $false }
+        $End = (& $ReadFormation $EndLines).Units
+        $Offs = @($StragIds | ForEach-Object { if ($End.ContainsKey($_)) { $End[$_].Off } else { 1e9 } })
+        $Checks["${Mark}: the six on their places at the end ($($Offs -join ', ') cm, 60 at most)"] = $StragIds.Count -eq 6 -and @($Offs | Where-Object { $_ -le 60 }).Count -eq 6
+    }
+    $AllOk = (Report "straggler" $Checks) -and $AllOk
+
+    # The scattered group (the user's trial of playtest note 1 of J7c): no straggler, the block forms its rows on the move at once (playtest
+    # note 1 of J7b: no gathering first); the units keep clear of each other meanwhile (the closest two members, measured by the server until the
+    # arrival's blend: 2 radii of 60 cm, a little less allowed for the separation's slack), it arrives, the six on their places.
+    # Small blocks (the user's 2nd trial): the two packets of three 10 m apart march as two blocks of three (one formation for the
+    # order, each block its own path and slots), no gathering (formup 0), never held, never a step back, both arrive and settle,
+    # the six on their places (60 cm at most). The body's numbers from its Block report, the 2nd block's from its tagged lines.
+    $Checks = [ordered]@{}
+    $Lines = @(Get-Section "scattered")
+    $EndLines = @(Get-Section "scattered end")
+    $Reports = @(& $AllReports $Lines)
+    $ScatterIds = @()
+    if ($Reports.Count -ge 2) { $ScatterIds = @($Reports[1].Units.Keys | Where-Object { -not $Reports[0].Units.ContainsKey($_) } | Sort-Object) }
+    $Checks["scattered: six units made ($($ScatterIds.Count))"] = $ScatterIds.Count -eq 6
+    $Checks["scattered: files on the move at once"] = [bool]($Lines | Select-String -Pattern "Block march: files on the move, start")
+    $Left = $Lines | Select-String -Pattern "Block march: (\d+) stragglers left behind" | Select-Object -First 1
+    $Checks["scattered: no straggler left behind ($(if ($Left) { $Left.Matches[0].Groups[1].Value } else { 'no line' }))"] = $Left -and [int]$Left.Matches[0].Groups[1].Value -eq 0
+    $Split = $Lines | Select-String -Pattern "Block march: (\d+) blocks \(sizes ([\d, ]+)\), (\d+) stragglers" | Select-Object -First 1
+    $Checks["scattered: two blocks of three ($(if ($Split) { $Split.Matches[0].Value } else { 'no line' }))"] = $Split -and $Split.Matches[0].Groups[1].Value -eq "2" -and
+        $Split.Matches[0].Groups[2].Value -eq "3, 3" -and $Split.Matches[0].Groups[3].Value -eq "0"
+    $Small = @($Lines + $EndLines | Select-String -Pattern "Block march: block 2 of 2: .*$" | ForEach-Object { $_.Matches[0].Value })
+    foreach ($S in $Small) { Write-Host "  scattered: $S" }
+    $SArr = $Small | Select-String -Pattern "arrived after (\d+) steps of form-up and (\d+) of march \((\d+) held\).*?, (\d+) units left it" | Select-Object -First 1
+    $SBack = $Small | Select-String -Pattern ": (\d+) backsteps on the march" | Select-Object -First 1
+    $SSettle = $Small | Select-String -Pattern "settled after (-?\d+) steps" | Select-Object -First 1
+    $SSpacing = $Small | Select-String -Pattern "closest two units (-?\d+) cm apart" | Select-Object -First 1
+    $Checks["scattered: block 2 arrived, no gathering, not held, nobody left ($(if ($SArr) { $SArr.Matches[0].Value } else { 'no line' }))"] = $SArr -and
+        [int]$SArr.Matches[0].Groups[1].Value -eq 0 -and [int]$SArr.Matches[0].Groups[3].Value -eq 0 -and [int]$SArr.Matches[0].Groups[4].Value -eq 0
+    $Checks["scattered: block 2 no step back ($(if ($SBack) { $SBack.Matches[0].Groups[1].Value } else { 'no line' }))"] = $SBack -and [int]$SBack.Matches[0].Groups[1].Value -eq 0
+    $Checks["scattered: block 2 settled in 50 steps at most ($(if ($SSettle) { $SSettle.Matches[0].Groups[1].Value } else { 'no line' }))"] = $SSettle -and
+        [int]$SSettle.Matches[0].Groups[1].Value -ge 0 -and [int]$SSettle.Matches[0].Groups[1].Value -le 50
+    $Checks["scattered: block 2 no two units closer than 100 cm on the way ($(if ($SSpacing) { $SSpacing.Matches[0].Groups[1].Value } else { 'no line' }) cm)"] = $SSpacing -and
+        [int]$SSpacing.Matches[0].Groups[1].Value -ge 100
+    $Report = $Lines + $EndLines | Select-String -Pattern "Block report: units (\d+) formup (-?\d+) march (\d+) held (\d+) left (\d+) pace (\d+) gap (\d+) speed (\d+) arrived (\d) settle (-?\d+) crossings (\d+) pushes (\d+) arrivaloff (\d+) stragglers (\d+) joined (\d+) queued (\d+) spacing (-?\d+)" | Select-Object -Last 1
+    $Text = if ($Report) { $Report.Matches[0].Value } else { 'no report' }
+    Write-Host "  scattered: $Text"
+    foreach ($J in @($Lines + $EndLines | Select-String -Pattern "Block march: (a unit fell behind.*|files on the move.*)$")) { Write-Host "  scattered: $($J.Matches[0].Value)" }
+    if ($Report) {
+        $G = $Report.Matches[0].Groups
+        $Checks["scattered: block 1 of three, no gathering, not held, nobody left, arrived, settled in $($G[10].Value) steps (50 at most) ($Text)"] =
+            ([int]$G[1].Value -eq 3) -and ([int]$G[2].Value -eq 0) -and ([int]$G[4].Value -eq 0) -and ([int]$G[5].Value -eq 0) -and ([int]$G[14].Value -eq 0) -and
+            ([int]$G[9].Value -eq 1) -and ([int]$G[10].Value -ge 0) -and ([int]$G[10].Value -le 50)
+        $Checks["scattered: no two members closer than 100 cm on the way ($($G[17].Value) cm)"] = [int]$G[17].Value -ge 100
+    } else { $Checks["scattered: block report"] = $false }
+    $End = (& $ReadFormation $EndLines).Units
+    $Offs = @($ScatterIds | ForEach-Object { if ($End.ContainsKey($_)) { $End[$_].Off } else { 1e9 } })
+    $Checks["scattered: the six on their places at the end ($($Offs -join ', ') cm, 60 at most)"] = $ScatterIds.Count -eq 6 -and @($Offs | Where-Object { $_ -le 60 }).Count -eq 6
+    $AllOk = (Report "scattered" $Checks) -and $AllOk
+
+    # The close straggler (the user's trial of playtest note 1 of J7b): the 6th within the body's 4.5 m is one of the body
+    # (no straggler), the block forms its rows on the move at once (formup 0) and is hardly held (a few steps for the start), nobody falls
+    # behind, it arrives, the six on their places.
+    $Checks = [ordered]@{}
+    $Lines = @(Get-Section "straggler near")
+    $EndLines = @(Get-Section "straggler near end")
+    $Reports = @(& $AllReports $Lines)
+    $NearIds = @()
+    if ($Reports.Count -ge 2) { $NearIds = @($Reports[1].Units.Keys | Where-Object { -not $Reports[0].Units.ContainsKey($_) } | Sort-Object) }
+    $Checks["straggler near: six units made ($($NearIds.Count))"] = $NearIds.Count -eq 6
+    $Checks["straggler near: files on the move at once"] = [bool]($Lines | Select-String -Pattern "Block march: files on the move, start")
+    $Left = $Lines | Select-String -Pattern "Block march: (\d+) stragglers left behind" | Select-Object -First 1
+    $Checks["straggler near: no straggler, the 6th one of the body ($(if ($Left) { $Left.Matches[0].Groups[1].Value } else { 'no line' }))"] = $Left -and [int]$Left.Matches[0].Groups[1].Value -eq 0
+    $Report = $Lines + $EndLines | Select-String -Pattern "Block report: units (\d+) formup (-?\d+) march (\d+) held (\d+) left (\d+) pace (\d+) gap (\d+) speed (\d+) arrived (\d) settle (-?\d+) crossings (\d+) pushes (\d+) arrivaloff (\d+) stragglers (\d+) joined (\d+) queued (\d+) spacing (-?\d+)" | Select-Object -Last 1
+    $Text = if ($Report) { $Report.Matches[0].Value } else { 'no report' }
+    Write-Host "  straggler near: $Text"
+    foreach ($J in @($Lines + $EndLines | Select-String -Pattern "Block march: (a unit fell behind.*|files on the move.*)$")) { Write-Host "  straggler near: $($J.Matches[0].Value)" }
+    $Checks["straggler near: nobody fell behind"] = -not ($Lines + $EndLines | Select-String -Pattern "Block march: a unit fell behind")
+    if ($Report) {
+        $G = $Report.Matches[0].Groups
+        $Checks["straggler near: left at once, not held, nobody left, arrived ($Text)"] = ([int]$G[1].Value -eq 6) -and ([int]$G[2].Value -eq 0) -and
+            ([int]$G[4].Value -le 4) -and ([int]$G[5].Value -eq 0) -and ([int]$G[9].Value -eq 1)
+    } else { $Checks["straggler near: block report"] = $false }
+    $End = (& $ReadFormation $EndLines).Units
+    $Offs = @($NearIds | ForEach-Object { if ($End.ContainsKey($_)) { $End[$_].Off } else { 1e9 } })
+    $Checks["straggler near: the six on their places at the end ($($Offs -join ', ') cm, 60 at most)"] = $NearIds.Count -eq 6 -and @($Offs | Where-Object { $_ -le 60 }).Count -eq 6
+    $AllOk = (Report "straggler near" $Checks) -and $AllOk
+
+    # Two blocks meeting (the user's rule for playtest note 1 of J7b: each separate packet marches in its own formation, the
+    # blocks merge when they meet, else at the arrival): the two files 5 m apart march as two blocks of three, their paths
+    # converge, the smaller merges into the main block on the way (its three units counted by the main block's stragglers line),
+    # never held, never a step back (the merged units take their slots on the move), the six on their places (60 cm at most).
+    $Checks = [ordered]@{}
+    $Lines = @(Get-Section "blocks meet")
+    $EndLines = @(Get-Section "blocks meet end")
+    $Reports = @(& $AllReports $Lines)
+    $MeetIds = @()
+    if ($Reports.Count -ge 2) { $MeetIds = @($Reports[1].Units.Keys | Where-Object { -not $Reports[0].Units.ContainsKey($_) } | Sort-Object) }
+    $Checks["blocks meet: six units made ($($MeetIds.Count))"] = $MeetIds.Count -eq 6
+    $Split = $Lines | Select-String -Pattern "Block march: (\d+) blocks \(sizes ([\d, ]+)\), (\d+) stragglers" | Select-Object -First 1
+    $Checks["blocks meet: two blocks of three ($(if ($Split) { $Split.Matches[0].Value } else { 'no line' }))"] = $Split -and $Split.Matches[0].Groups[1].Value -eq "2" -and
+        $Split.Matches[0].Groups[2].Value -eq "3, 3" -and $Split.Matches[0].Groups[3].Value -eq "0"
+    foreach ($J in @($Lines + $EndLines | Select-String -Pattern "Block march: (block \d+ of \d+.*|a unit fell behind.*|files on the move.*|\d+ stragglers, .*)$")) { Write-Host "  blocks meet: $($J.Matches[0].Value)" }
+    $Merge = $Lines + $EndLines | Select-String -Pattern "Block march: block 2 of 2 merged into the main block after (\d+) steps \((\d+) cm apart\)" | Select-Object -First 1
+    $Checks["blocks meet: block 2 merged into the main block on the way ($(if ($Merge) { $Merge.Matches[0].Value } else { 'no line' }))"] = [bool]$Merge
+    $Merged = $Lines + $EndLines | Select-String -Pattern "Block march: \d+ stragglers, \d+ joined it on the way, \d+ queued behind it, (\d+) units of other blocks merged into it" | Select-Object -Last 1
+    $Checks["blocks meet: the main block counts the 3 merged units ($(if ($Merged) { $Merged.Matches[0].Groups[1].Value } else { 'no line' }))"] = $Merged -and [int]$Merged.Matches[0].Groups[1].Value -eq 3
+    $Backs = @($Lines + $EndLines | Select-String -Pattern "Block march: (block \d+ of \d+: )?(\d+) backsteps on the march" | ForEach-Object { [int]$_.Matches[0].Groups[2].Value })
+    $Checks["blocks meet: no step back ($($Backs -join ', '))"] = $Backs.Count -ge 1 -and @($Backs | Where-Object { $_ -ne 0 }).Count -eq 0
+    $Report = $Lines + $EndLines | Select-String -Pattern "Block report: units (\d+) formup (-?\d+) march (\d+) held (\d+) left (\d+) pace (\d+) gap (\d+) speed (\d+) arrived (\d) settle (-?\d+) crossings (\d+) pushes (\d+) arrivaloff (\d+) stragglers (\d+) joined (\d+) queued (\d+) spacing (-?\d+)" | Select-Object -Last 1
+    $Text = if ($Report) { $Report.Matches[0].Value } else { 'no report' }
+    Write-Host "  blocks meet: $Text"
+    if ($Report) {
+        $G = $Report.Matches[0].Groups
+        $Checks["blocks meet: the main block of six, not held, arrived ($Text)"] = ([int]$G[1].Value -eq 6) -and ([int]$G[4].Value -eq 0) -and ([int]$G[9].Value -eq 1)
+    } else { $Checks["blocks meet: block report"] = $false }
+    $End = (& $ReadFormation $EndLines).Units
+    $Offs = @($MeetIds | ForEach-Object { if ($End.ContainsKey($_)) { $End[$_].Off } else { 1e9 } })
+    $Checks["blocks meet: the six on their places at the end ($($Offs -join ', ') cm, 60 at most)"] = $MeetIds.Count -eq 6 -and @($Offs | Where-Object { $_ -le 60 }).Count -eq 6
+    $AllOk = (Report "blocks meet" $Checks) -and $AllOk
+
+    # Never a half turn on the march (the user's 4th trial of playtest note 1 of J7b: a unit a little ahead of its slot turned
+    # back into its row): in every block march of the part (formation, straggler, scattered, blocks meet), no step on which a unit of the
+    # block walked against the march (its velocity along it below -1 cm/s; the arrival's re-forming left out).
+    $Checks = [ordered]@{}
+    $BackLines = @(); $SlowLines = @(); $FileLines = @(); $ArrBackLines = @(); $InPart = $false
+    foreach ($Line in $Log) {
+        if ($Line -match "Test mark: (.*)$") { $InPart = $Matches[1] -match "^(formation|straggler|scattered|blocks meet)" }
+        elseif ($InPart -and $Line -match "Block march: (?:block \d+ of \d+: )?(\d+) backsteps on the march") { $BackLines += [int]$Matches[1] }
+        elseif ($InPart -and $Line -match "Block march: (?:block \d+ of \d+: )?(\d+) slowed steps on the march") { $SlowLines += [int]$Matches[1] }
+        elseif ($InPart -and $Line -match "Block march: (?:block \d+ of \d+: )?arrived after \d+ steps of form-up and (\d+) of march \((\d+) held\), file gap (\d+) cm at most.*?files formed after (-?\d+) steps") {
+            $FileLines += , @([int]$Matches[1], [int]$Matches[2], [int]$Matches[3], [int]$Matches[4]) }
+        elseif ($InPart -and $Line -match "Block march: (?:block \d+ of \d+: )?(\d+) arrival backsteps, (\d+) cm walked back") { $ArrBackLines += , @([int]$Matches[1], [int]$Matches[2]) }
+    }
+    # Files on the move, rows at the arrival (the user's 5th trial of playtest note 1 of J7b: nobody slowed down on the march).
+    # Slowed: steps on which a member walked along the march below 90 % of the pace (its first half second left out: the
+    # start). The slowest kind sliding to its file keeps cos 20 degrees = 94 % of it, so a slide is never one; 2 steps (0.1 s)
+    # allowed for a blip of the avoidance between two of one kind in one file, anything slowed on purpose lasts far longer.
+    # Held: the arrival's re-forming waiting for a unit far off its slot, none (every unit already in its file by then).
+    # File gap: a unit is a member within 40 cm across of its file, then pushed a little by its neighbours: 60 cm at most.
+    # Files formed: a unit slides across at a third of the pace at least (Pace tan 20 degrees, ~1.8 m/s), so 4 s (80 steps)
+    # cover the 7 m of the widest gathering of the part; -1 (never) fails. Arrival backsteps (the head walking back while
+    # the rows close up, all its units summed): a shuffle of a few cm while the rows close up, 50 cm at most (no head turning
+    # back; 27 measured for the mixed block of nine, 0-9 elsewhere).
+    Write-Host "  slowed steps per block march: $($SlowLines -join ', ')"
+    Write-Host "  march, held, file gap, files formed after (steps) per block march: $(($FileLines | ForEach-Object { $_ -join '/' }) -join ', ')"
+    Write-Host "  arrival backsteps (steps/cm) per block march: $(($ArrBackLines | ForEach-Object { $_ -join '/' }) -join ', ')"
+    $Checks["slowed: block marches measured ($($SlowLines.Count))"] = $SlowLines.Count -eq $BackLines.Count
+    $Checks["slowed: 2 steps at most on the march ($($SlowLines -join ', '))"] = $SlowLines.Count -gt 0 -and @($SlowLines | Where-Object { $_ -gt 2 }).Count -eq 0
+    $Checks["files: block marches measured ($($FileLines.Count))"] = $FileLines.Count -eq $BackLines.Count
+    $Checks["files: never held ($(($FileLines | ForEach-Object { $_[1] }) -join ', '))"] = $FileLines.Count -gt 0 -and @($FileLines | Where-Object { $_[1] -ne 0 }).Count -eq 0
+    $Checks["files: file gap 60 cm at most ($(($FileLines | ForEach-Object { $_[2] }) -join ', '))"] = $FileLines.Count -gt 0 -and @($FileLines | Where-Object { $_[2] -gt 60 }).Count -eq 0
+    $Checks["files: formed after 80 steps at most ($(($FileLines | ForEach-Object { $_[3] }) -join ', '))"] = $FileLines.Count -gt 0 -and @($FileLines | Where-Object { $_[3] -lt 0 -or $_[3] -gt 80 }).Count -eq 0
+    $Checks["arrival backsteps: block marches measured ($($ArrBackLines.Count))"] = $ArrBackLines.Count -eq $BackLines.Count
+    $Checks["arrival backsteps: 50 cm walked back at most ($(($ArrBackLines | ForEach-Object { $_[1] }) -join ', '))"] = $ArrBackLines.Count -gt 0 -and @($ArrBackLines | Where-Object { $_[1] -gt 50 }).Count -eq 0
+    $Checks["backsteps: block marches measured ($($BackLines.Count))"] = $BackLines.Count -ge 9
+    $Checks["backsteps: none on the march ($($BackLines -join ', '))"] = $BackLines.Count -gt 0 -and @($BackLines | Where-Object { $_ -ne 0 }).Count -eq 0
+    $AllOk = (Report "backsteps" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "combat") -and ($Parts -contains "camera")) {

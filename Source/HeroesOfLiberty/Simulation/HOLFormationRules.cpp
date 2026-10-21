@@ -3,6 +3,7 @@
 #include "Simulation/HOLFormationRules.h"
 
 #include "Simulation/HOLGroupMoveRules.h"
+#include "Algo/StableSort.h"
 
 namespace HOLFormation
 {
@@ -546,6 +547,189 @@ namespace HOLFormation
 	double GetBlockSoftPace(const double MaxGap)
 	{
 		return FMath::Clamp(1. - (MaxGap - BlockLagDistance) / (BlockSoftHoldDistance - BlockLagDistance), 0., 1.);
+	}
+
+	int32 FindPackets(TConstArrayView<FVector2D> Positions, const double LinkDistance, TArray<int32>& OutPacketOfUnit, TArray<int32>& OutPacketSizes)
+	{
+		const int32 Num = Positions.Num();
+		// Each unit's cluster, grown from one unit through every unit within LinkDistance of one already in it.
+		TArray<int32> ClusterOf;
+		ClusterOf.Init(INDEX_NONE, Num);
+		TArray<int32> Sizes;
+		TArray<int32> Open;
+		const double LinkSquared = FMath::Square(LinkDistance);
+		for (int32 Seed = 0; Seed < Num; ++Seed)
+		{
+			if (ClusterOf[Seed] != INDEX_NONE)
+			{
+				continue;
+			}
+			const int32 Cluster = Sizes.Add(0);
+			ClusterOf[Seed] = Cluster;
+			Open.Reset();
+			Open.Add(Seed);
+			while (!Open.IsEmpty())
+			{
+				const int32 Unit = Open.Pop(EAllowShrinking::No);
+				++Sizes[Cluster];
+				for (int32 Other = 0; Other < Num; ++Other)
+				{
+					if (ClusterOf[Other] == INDEX_NONE && FVector2D::DistSquared(Positions[Unit], Positions[Other]) <= LinkSquared)
+					{
+						ClusterOf[Other] = Cluster;
+						Open.Add(Other);
+					}
+				}
+			}
+		}
+		// Largest first; clusters are made in the order of their first unit, so a stable sort keeps ties that way.
+		TArray<int32> Order;
+		for (int32 Cluster = 0; Cluster < Sizes.Num(); ++Cluster)
+		{
+			Order.Add(Cluster);
+		}
+		Algo::StableSort(Order, [&Sizes](const int32 A, const int32 B) { return Sizes[A] > Sizes[B]; });
+		TArray<int32> Rank;
+		Rank.SetNumZeroed(Sizes.Num());
+		OutPacketSizes.Reset();
+		for (int32 Index = 0; Index < Order.Num(); ++Index)
+		{
+			Rank[Order[Index]] = Index;
+			OutPacketSizes.Add(Sizes[Order[Index]]);
+		}
+		OutPacketOfUnit.SetNum(Num);
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			OutPacketOfUnit[Unit] = Rank[ClusterOf[Unit]];
+		}
+		return OutPacketSizes.Num();
+	}
+
+	int32 FindStragglers(TConstArrayView<FVector2D> Positions, const double LinkDistance, TArray<bool>& OutIsStraggler)
+	{
+		const int32 Num = Positions.Num();
+		OutIsStraggler.Init(false, Num);
+		TArray<int32> PacketOfUnit;
+		TArray<int32> PacketSizes;
+		// Everyone apart (no packet of two): no body, the whole group one block.
+		if (FindPackets(Positions, LinkDistance, PacketOfUnit, PacketSizes) < 2 || PacketSizes[0] < 2)
+		{
+			return 0;
+		}
+		int32 Stragglers = 0;
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			OutIsStraggler[Unit] = PacketOfUnit[Unit] != 0 && PacketSizes[PacketOfUnit[Unit]] == 1;
+			Stragglers += OutIsStraggler[Unit] ? 1 : 0;
+		}
+		return Stragglers;
+	}
+
+	int32 ReserveRearSlots(TConstArrayView<FVector2D> Slots, TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit,
+		TConstArrayView<bool> IsStraggler, TArray<int32>& OutSlotOfUnit, TArray<bool>& OutQueued)
+	{
+		const int32 Num = FMath::Min3(Slots.Num(), Positions.Num(), FMath::Min(KindOfUnit.Num(), IsStraggler.Num()));
+		OutSlotOfUnit.Init(INDEX_NONE, Slots.Num());
+		OutQueued.Init(false, Slots.Num());
+		double RearX = TNumericLimits<double>::Max();
+		for (int32 Slot = 0; Slot < Num; ++Slot)
+		{
+			RearX = FMath::Min(RearX, Slots[Slot].X);
+		}
+		TArray<bool> Taken;
+		Taken.Init(false, Num);
+		int32 Queued = 0;
+		// Each straggler: the free slot of its kind furthest back (rows within RearRowTolerance of each other are one), then
+		// the nearest to it across the march.
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			if (!IsStraggler[Unit])
+			{
+				continue;
+			}
+			int32 Best = INDEX_NONE;
+			for (int32 Slot = 0; Slot < Num; ++Slot)
+			{
+				if (Taken[Slot] || KindOfUnit[Slot] != KindOfUnit[Unit])
+				{
+					continue;
+				}
+				if (Best == INDEX_NONE || Slots[Slot].X < Slots[Best].X - RearRowTolerance
+					|| (Slots[Slot].X <= Slots[Best].X + RearRowTolerance
+						&& FMath::Abs(Slots[Slot].Y - Positions[Unit].Y) < FMath::Abs(Slots[Best].Y - Positions[Unit].Y)))
+				{
+					Best = Slot;
+				}
+			}
+			if (Best == INDEX_NONE)
+			{
+				// No free slot of its kind (cannot happen: one slot per unit): its own if free, else the first free one.
+				Best = !Taken[Unit] ? Unit : Taken.Find(false);
+			}
+			if (Best == INDEX_NONE)
+			{
+				continue;
+			}
+			Taken[Best] = true;
+			OutSlotOfUnit[Unit] = Best;
+			OutQueued[Unit] = Slots[Best].X > RearX + RearRowTolerance;
+			Queued += OutQueued[Unit] ? 1 : 0;
+		}
+		// The body: each kind's units the other slots of their kind.
+		TArray<int32> Kinds;
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			Kinds.AddUnique(KindOfUnit[Unit]);
+		}
+		TArray<int32> Units, FreeSlots, SlotOfKindUnit;
+		TArray<FVector2D> KindPositions, KindSlots;
+		for (const int32 Kind : Kinds)
+		{
+			Units.Reset();
+			FreeSlots.Reset();
+			KindPositions.Reset();
+			KindSlots.Reset();
+			for (int32 Index = 0; Index < Num; ++Index)
+			{
+				if (KindOfUnit[Index] != Kind)
+				{
+					continue;
+				}
+				if (!IsStraggler[Index])
+				{
+					Units.Add(Index);
+					KindPositions.Add(Positions[Index]);
+				}
+				if (!Taken[Index])
+				{
+					FreeSlots.Add(Index);
+					KindSlots.Add(Slots[Index]);
+				}
+			}
+			AssignPlaces(KindPositions, KindSlots, FVector2D(1., 0.), SlotOfKindUnit);
+			for (int32 Index = 0; Index < Units.Num(); ++Index)
+			{
+				const int32 Slot = SlotOfKindUnit.IsValidIndex(Index) && FreeSlots.IsValidIndex(SlotOfKindUnit[Index]) ? FreeSlots[SlotOfKindUnit[Index]] : INDEX_NONE;
+				if (Slot != INDEX_NONE)
+				{
+					Taken[Slot] = true;
+				}
+				OutSlotOfUnit[Units[Index]] = Slot;
+			}
+		}
+		// Any unit left without one (cannot happen): the first free slot.
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			if (OutSlotOfUnit[Unit] == INDEX_NONE)
+			{
+				OutSlotOfUnit[Unit] = Taken.Find(false);
+				if (OutSlotOfUnit[Unit] != INDEX_NONE)
+				{
+					Taken[OutSlotOfUnit[Unit]] = true;
+				}
+			}
+		}
+		return Queued;
 	}
 
 	double GetBlockBlendDistance(const double BlockSize, const double PathLength)

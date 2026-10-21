@@ -1,0 +1,74 @@
+# Retardataire : deux groupes de 5 Hommes d'armes, l'un avec un Homme d'armes à 10 m, l'autre avec un Archer (plus rapide) à 7 m ; 5 Hommes
+# d'armes en colonne avec un sixième tout proche (3 m) ; un groupe mêlé de 9 (3 Paysans, 3 Lanciers, 3 Hommes d'armes) ; deux paquets de 3 à 10 m ; 5000 de chaque
+# ressource
+# Plain, deux joueurs (straggler.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme archers : l'armée
+# devant le centre, au-delà des rochers (vers 3000). Retour d'essai 1 de J7b : le groupe ne doit plus attendre.
+hol.Cheat.Resources 5000
+# Groupe de gauche : 5 Hommes d'armes serrés, un sixième 10 m derrière eux (côté centre : un ordre vers le milieu de la carte le laisse en arrière).
+hol.Camera.FocusNear 5500 -1500
+frames 2
+hol.Units.SpawnHere 5 ManAtArms 0 150
+waitunits 5
+hol.Camera.FocusNear 4500 -1500
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 50
+waitunits 6
+# Groupe de droite : 5 Hommes d'armes serrés, un Archer (plus rapide : 584 contre 523 cm/s) 7 m derrière eux (côté centre) : il
+# regagne ~0,6 m par seconde de marche, il entre dans le bloc en chemin sur une marche de 50 m ou plus.
+hol.Camera.FocusNear 5200 1500
+frames 2
+hol.Units.SpawnHere 5 ManAtArms 0 150
+waitunits 11
+hol.Camera.FocusNear 4500 1500
+frames 2
+hol.Units.SpawnHere 1 Archer 0 50
+waitunits 12
+# Colonne de 5 Hommes d'armes (le long d'un ordre vers le milieu de la carte), un sixième à ~3 m derrière et à côté du dernier.
+hol.Camera.FocusNear 5600 -4500
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 10
+hol.Camera.FocusNear 5450 -4500
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 10
+hol.Camera.FocusNear 5300 -4500
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 10
+hol.Camera.FocusNear 5150 -4500
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 10
+hol.Camera.FocusNear 5000 -4500
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 10
+hol.Camera.FocusNear 4750 -4750
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 10
+waitunits 18
+# Groupe mêlé de 9, les types côte à côte (comme le bloc de 9 de quick_check) : ils se croisent pour se mettre en rangs.
+hol.Camera.FocusNear 5000 4300
+frames 2
+hol.Units.SpawnHere 3 Peasant 0 150
+hol.Camera.FocusNear 5000 4600
+frames 2
+hol.Units.SpawnHere 3 Spearman 0 150
+hol.Camera.FocusNear 5000 4900
+frames 2
+hol.Units.SpawnHere 3 ManAtArms 0 150
+waitunits 27
+# Deux paquets de 3 Hommes d'armes côte à côte, à 10 m l'un de l'autre (au centre, plus loin vers le milieu de la carte).
+hol.Camera.FocusNear 7000 -500
+frames 2
+hol.Units.SpawnHere 3 ManAtArms 0 100
+hol.Camera.FocusNear 7000 500
+frames 2
+hol.Units.SpawnHere 3 ManAtArms 0 100
+waitunits 33
+hol.Camera.FocusNear 5000 0
+hol.Camera.Zoom -1
+frames 5
+note Cadre sur le groupe de gauche et son retardataire, clic droit à 30 m ou plus vers le milieu de la carte : les 5 partent tout de suite.
+note Le retardataire suit à son pas et prend sa place à l'arrivée.
+note Groupe de droite avec l'Archer, clic droit à 60 m ou plus vers le milieu de la carte : l'Archer, plus rapide, rattrape le bloc et y entre en chemin.
+note Tous : le bloc part tout de suite, à plein pas, sans rassemblement ni arrêt ; personne ne ralentit : chacun garde sa profondeur et glisse en oblique vers sa file ; les rangs se resserrent à l'arrivée.
+note Colonne de 5 + 1 tout proche (à gauche, plus loin) : clic droit vers le milieu de la carte : pas d'attente, chacun glisse vers sa file à plein pas en gardant sa profondeur, les rangs se forment à l'arrivée.
+note Groupe mêlé de 9 (à droite, plus loin) : clic droit loin : les types se croisent en marche pour se mettre en rangs, sans arrêt.
+note Deux paquets de 3 (au centre, plus loin) : sélectionnez les 6, clic droit loin : chaque paquet marche en son propre bloc ; quand ils se rejoignent en chemin, le petit entre dans l'autre, sinon ils se rangent ensemble à l'arrivée.
