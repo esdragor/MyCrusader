@@ -28,14 +28,14 @@ namespace HOLCombat
 		return static_cast<int32>(FMath::RoundToInt(static_cast<double>(Seconds) * 1000.));
 	}
 
-	int32 GetWindUpMilliseconds(const int32 IntervalMs)
+	int32 GetWindUpMilliseconds(const int32 IntervalMs, const int32 WindUpPercent)
 	{
-		return IntervalMs * WindUpPercent / 100;
+		return IntervalMs * FMath::Clamp(WindUpPercent, 1, 100) / 100;
 	}
 
-	int32 StartAttack(const int32 CooldownMs, const int32 IntervalMs)
+	int32 StartAttack(const int32 CooldownMs, const int32 IntervalMs, const int32 WindUpPercent)
 	{
-		return FMath::Max(CooldownMs, GetWindUpMilliseconds(IntervalMs));
+		return FMath::Max(CooldownMs, GetWindUpMilliseconds(IntervalMs, WindUpPercent));
 	}
 
 	bool TickAttack(int32& CooldownMs, const int32 StepMs, const int32 IntervalMs)

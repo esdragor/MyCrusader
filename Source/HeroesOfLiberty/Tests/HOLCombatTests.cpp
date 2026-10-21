@@ -33,10 +33,10 @@ namespace UE::HeroesOfLiberty::Tests::Combat
 	}
 
 	/** Steps from the start of an attack to each of the first HitCount hits. */
-	TArray<int32> HitSteps(const int32 IntervalMs, const int32 HitCount)
+	TArray<int32> HitSteps(const int32 IntervalMs, const int32 HitCount, const int32 WindUpPercent = HOLCombat::DefaultWindUpPercent)
 	{
 		TArray<int32> Steps;
-		int32 Cooldown = HOLCombat::StartAttack(0, IntervalMs);
+		int32 Cooldown = HOLCombat::StartAttack(0, IntervalMs, WindUpPercent);
 		for (int32 Step = 1; Steps.Num() < HitCount && Step < 100000; ++Step)
 		{
 			if (HOLCombat::TickAttack(Cooldown, StepMs(), IntervalMs))
@@ -101,6 +101,11 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Peasant: every 2 s"), Peasant.AttackInterval, 2.f);
 	TestEqual(TEXT("Peasant: no aggression"), Peasant.AggressionRadius, 0.f);
 	TestEqual(TEXT("Archer: reach 15 m"), Archer.AttackRange, 1500.f);
+	// The wind-up per type (J7c, retour d'essai 8: hit and run): the Archer looses at 12 % (~0.2 s), the melee at half.
+	TestEqual(TEXT("Archer: wind-up 12 %"), Archer.AttackWindUpPercent, 12);
+	TestEqual(TEXT("Spearman: wind-up 50 %"), Spearman.AttackWindUpPercent, 50);
+	TestEqual(TEXT("Man-at-arms: wind-up 50 %"), ManAtArms.AttackWindUpPercent, 50);
+	TestEqual(TEXT("Peasant: wind-up 50 %"), Peasant.AttackWindUpPercent, 50);
 
 	// Damage = attack + bonus - armour, 1 at least (D21).
 	TestEqual(TEXT("Spearman on Man-at-arms: 8 - 4"), HOLCombat::GetDamage(Spearman, ManAtArms, false), 4);
@@ -137,7 +142,10 @@ bool FHOLCombatCadenceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("fixed step of 50 ms"), StepMs(), 50);
 	TestEqual(TEXT("1.875 s"), HOLCombat::ToMilliseconds(1.875f), 1875);
 	TestEqual(TEXT("1.375 s"), HOLCombat::ToMilliseconds(1.375f), 1375);
-	TestEqual(TEXT("wind-up: half the interval"), HOLCombat::GetWindUpMilliseconds(1875), 937);
+	TestEqual(TEXT("wind-up: half the interval"), HOLCombat::GetWindUpMilliseconds(1875, 50), 937);
+	TestEqual(TEXT("wind-up: 12 % of the Archer's 1.625 s"), HOLCombat::GetWindUpMilliseconds(1625, 12), 195);
+	TestEqual(TEXT("wind-up: 1 % at least"), HOLCombat::GetWindUpMilliseconds(1000, 0), 10);
+	TestEqual(TEXT("wind-up: the whole interval at most"), HOLCombat::GetWindUpMilliseconds(1000, 250), 1000);
 
 	// Spearman: first hit after the wind-up (937 ms -> 19 steps), then 37 or 38 steps apart, exactly 1.875 s on average.
 	const TArray<int32> Spear = HitSteps(1875, 9);
@@ -161,8 +169,9 @@ bool FHOLCombatCadenceTest::RunTest(const FString& Parameters)
 	}
 
 	// A switch of target keeps the rhythm, never a free hit; idle runs the cool-down down to 0.
-	TestEqual(TEXT("start: wind-up at least"), HOLCombat::StartAttack(100, 1375), 687);
-	TestEqual(TEXT("start: keeps a longer wait"), HOLCombat::StartAttack(1000, 1375), 1000);
+	TestEqual(TEXT("start: wind-up at least"), HOLCombat::StartAttack(100, 1375, 50), 687);
+	TestEqual(TEXT("start: keeps a longer wait"), HOLCombat::StartAttack(1000, 1375, 50), 1000);
+	TestEqual(TEXT("start: the type's wind-up"), HOLCombat::StartAttack(100, 1625, 12), 195);
 	int32 Cooldown = 120;
 	HOLCombat::TickIdle(Cooldown, 50);
 	TestEqual(TEXT("idle: runs down"), Cooldown, 70);
@@ -178,6 +187,82 @@ bool FHOLCombatCadenceTest::RunTest(const FString& Parameters)
 		Hits += HOLCombat::TickAttack(Cooldown, 50, 10) ? 1 : 0;
 	}
 	TestEqual(TEXT("short interval: one hit per step"), Hits, 10);
+	return true;
+}
+
+// J7c, retour d'essai 8 (hit and run): the Archer looses 12 % of its cadence after it stops (the table's wind-up),
+// walks off while it reloads (TickIdle, as a player's move leaves its cool-down, Disengage), and stops again: its next
+// arrow then falls when the cool-down left runs out, the wind-up at least, never sooner than had it stood.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatHitAndRunTest, "HeroesOfLiberty.Combat.HitAndRun", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatHitAndRunTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Combat;
+	FHOLUnitTypeConstants Archer, Spearman;
+	if (!GetType(*this, TEXT("Archer"), Archer) || !GetType(*this, TEXT("Spearman"), Spearman))
+	{
+		return false;
+	}
+	const int32 Step = StepMs();
+	const int32 IntervalMs = HOLCombat::ToMilliseconds(Archer.AttackInterval);
+	TestEqual(TEXT("Archer: 1625 ms"), IntervalMs, 1625);
+
+	// First arrow: the wind-up (195 ms -> 4 steps, 0.2 s), a fifth of the melee's (Spearman: 937 ms -> 19 steps).
+	const TArray<int32> Shots = HitSteps(IntervalMs, 2, Archer.AttackWindUpPercent);
+	if (TestEqual(TEXT("2 arrows"), Shots.Num(), 2))
+	{
+		TestEqual(TEXT("Archer: first arrow at step 4 (0.2 s)"), Shots[0], 4);
+		const int32 Gap = Shots[1] - Shots[0];
+		TestTrue(FString::Printf(TEXT("Archer: second 32 or 33 steps later, 1.625 s (%d)"), Gap), Gap == 32 || Gap == 33);
+	}
+	const TArray<int32> Strikes = HitSteps(HOLCombat::ToMilliseconds(Spearman.AttackInterval), 1, Spearman.AttackWindUpPercent);
+	TestEqual(TEXT("Spearman: first hit still at step 19 (0.95 s)"), Strikes.Num() == 1 ? Strikes[0] : 0, 19);
+
+	// Shoot, walk WalkSteps (idle), stop and shoot again: the step of the next arrow, counted from the first step.
+	const auto NextShot = [Step, IntervalMs, &Archer](const int32 WalkSteps, int32& OutFirst)
+	{
+		int32 Cooldown = HOLCombat::StartAttack(0, IntervalMs, Archer.AttackWindUpPercent);
+		int32 At = 0;
+		OutFirst = 0;
+		while (OutFirst == 0 && At < 1000)
+		{
+			++At;
+			OutFirst = HOLCombat::TickAttack(Cooldown, Step, IntervalMs) ? At : 0;
+		}
+		for (int32 Walk = 0; Walk < WalkSteps; ++Walk)
+		{
+			++At;
+			HOLCombat::TickIdle(Cooldown, Step);
+		}
+		Cooldown = HOLCombat::StartAttack(Cooldown, IntervalMs, Archer.AttackWindUpPercent);
+		while (At < 10000)
+		{
+			++At;
+			if (HOLCombat::TickAttack(Cooldown, Step, IntervalMs))
+			{
+				return At;
+			}
+		}
+		return 0;
+	};
+	int32 First = 0;
+	const int32 Stood = NextShot(0, First);
+	TestEqual(TEXT("first arrow at step 4"), First, 4);
+	TestEqual(TEXT("standing: the next arrow one interval later, step 37"), Stood, 37);
+	// A short walk (10 steps, 0.5 s): the cool-down left (1120 ms) is longer than the wind-up: the same step as standing.
+	TestEqual(TEXT("short walk: the next arrow when the cool-down runs out, as had it stood"), NextShot(10, First), 37);
+	// A walk of 25 steps (1.25 s): 370 ms left, still longer than the wind-up (195 ms): the same step as standing.
+	TestEqual(TEXT("walk of 1.25 s: still as had it stood"), NextShot(25, First), 37);
+	// A walk of 30 steps (1.5 s): 120 ms left, the wind-up longer: 4 steps after it stops (step 34 + 4).
+	TestEqual(TEXT("walk of 1.5 s: the wind-up after it stops"), NextShot(30, First), 4 + 30 + 4);
+	// A long walk (3 s): reloaded, the wind-up only.
+	TestEqual(TEXT("long walk: the wind-up after it stops"), NextShot(60, First), 4 + 60 + 4);
+	// Never sooner than had it stood.
+	for (int32 Walk = 0; Walk <= 40; ++Walk)
+	{
+		const int32 Next = NextShot(Walk, First);
+		TestTrue(*FString::Printf(TEXT("walk of %d steps: next arrow at %d, not before %d"), Walk, Next, Stood), Next >= Stood && Next >= 4 + Walk + 4);
+	}
 	return true;
 }
 

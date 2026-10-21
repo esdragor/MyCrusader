@@ -15,6 +15,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte)
 
+### Outils d'essai
+- Bouton pour relancer le scénario en cours (panneau du scénario)
+
 ### GDD
 - Review du GDD : reprendre à D341 (D340 prise par la grille du Paysan)
 - Consigner au GDD la décision des scénarios de test (`hol.Scenario`, `play.ps1`)
@@ -30,7 +33,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Retours d'essai
 - Marcheurs bloqués par des corps (passage étroit, mur d'unités)
 - Formation gênée entre les bâtiments et contre les ressources
-- Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence
 - Q (attaque) : curseur de souris et couleur qui changent pendant le choix du point
 
 ### Revue de code

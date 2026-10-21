@@ -239,6 +239,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	float AttackInterval = 1.5f;
 
+	/** Share (%) of AttackInterval its first hit waits once it starts attacking (HOLCombat::GetWindUpMilliseconds). */
+	UPROPERTY()
+	int32 AttackWindUpPercent = 50;
+
 	/** Reach (cm) between the two bodies' edges. */
 	UPROPERTY()
 	float AttackRange = 50.f;
@@ -385,7 +389,7 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 
 	/**
 	 * Sequence played striking (J7b.5: the activity Attacking), looped at the attack cadence: its play rate is its length over
-	 * AttackInterval, and its loop starts so that its hit (HOLUnitAnimation::StrikeHitShare of the loop) falls on the
+	 * AttackInterval, and its loop starts so that its hit (HOLUnitAnimation::GetStrikeHitShare of the loop) falls on the
 	 * server's. -1: none, it plays its idle.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
@@ -433,6 +437,15 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	/** Time (s) between two hits. */
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0.05", ForceUnits = "s"))
 	float AttackInterval = 1.5f;
+
+	/**
+	 * Wind-up (J7c, retour d'essai 8: hit and run): the share (%) of AttackInterval its first hit waits once it starts
+	 * attacking (HOLCombat::StartAttack), and where the hit falls in its strike's loop (HOLUnitAnimation::GetStrikeHitShare).
+	 * 50 for the melee (its gestures, J7b); 12 for the Archer (~0.2 s), which looses soon after it stops, so it can shoot
+	 * and walk off.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "1", ClampMax = "100"))
+	int32 AttackWindUpPercent = 50;
 
 	/** Reach (cm) between the edges of the two bodies: a short one for a melee unit, a long one for a ranged unit. */
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
@@ -495,6 +508,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.ArmorCategory = ArmorCategory;
 	Constants.Attack = Attack;
 	Constants.AttackInterval = AttackInterval;
+	Constants.AttackWindUpPercent = FMath::Clamp(AttackWindUpPercent, 1, 100);
 	Constants.AttackRange = AttackRange;
 	Constants.MeleeArmor = MeleeArmor;
 	Constants.RangedArmor = RangedArmor;

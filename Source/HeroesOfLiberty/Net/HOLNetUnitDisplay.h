@@ -33,10 +33,25 @@ struct HEROESOFLIBERTY_API FHOLNetUnitDisplayFragment : public FMassFragment
 	/**
 	 * A shooter's arrows deduced by this client (J7c.2b2, Q4, 0 bit more): the server's cadence replayed on the clock from
 	 * the step its Attacking state was taken at (HOLCombat::StartAttack, TickAttack). ShotStep: the last step replayed,
-	 * -1 while not shooting; ShotCooldownMs: the replayed cool-down.
+	 * -1 while not shooting; ShotCooldownMs: the replayed cool-down, kept while it does not shoot (J7c, retour d'essai 8:
+	 * hit and run): it then runs down from ShotIdleStep, the step it was last replayed at (-1 before its first shot), as
+	 * the server's (HOLCombat::TickIdle), so a shooter that walked off and stops again looses when the server's does.
+	 * ShotSecondsToHit: while shooting, the time from this frame to its next replayed release (its gesture's phase).
 	 */
 	int64 ShotStep = -1;
 	int32 ShotCooldownMs = 0;
+	int64 ShotIdleStep = -1;
+	float ShotSecondsToHit = 0.f;
+
+	/**
+	 * Starts replaying its shots from its Attacking state of AttackStep (that step already ticked on the server): the
+	 * cool-down left from its last shots, run down over the steps between (ShotIdleStep + 1 to AttackStep - 1, idle on
+	 * the server), 0 before its first shot; then HOLCombat::StartAttack (the wind-up at least) less that step's tick.
+	 */
+	void StartShots(int64 AttackStep, int32 StepMs, int32 IntervalMs, int32 WindUpPercent);
+
+	/** Stops replaying its shots (no longer Attacking): the cool-down is kept, held at the last step replayed. */
+	void StopShots();
 
 	/** Where the unit is drawn at LocalSeconds, the server clock then being at ClockStep (D271). */
 	FVector GetDisplayedPosition(const double ClockStep, const double LocalSeconds, const float StepSeconds) const

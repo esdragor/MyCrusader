@@ -79,18 +79,20 @@ namespace HOLUnitAnimation
 	HEROESOFLIBERTY_API float GetWalkRateShare(float Speed, float WalkSpeed);
 
 	/**
-	 * Where the hit falls in a strike's loop (J7b.5), as a share of it: the gestures are made with the hit at half the loop
-	 * (soldier_poses.py, ATTACK_HIT_FRACTION), the server's first hit falls half an interval after the unit starts
-	 * attacking (HOLCombat::WindUpPercent, checked by HeroesOfLiberty.Animation.Strike).
+	 * Where the hit falls in a strike's loop (J7b.5), as a share of it: the type's wind-up (AttackWindUpPercent / 100, J7c,
+	 * retour d'essai 8: hit and run), as the server's first hit falls that share of an interval after the unit starts
+	 * attacking (HOLCombat::GetWindUpMilliseconds, checked by HeroesOfLiberty.Animation.Strike). The melee gestures are
+	 * made with the hit at half the loop (soldier_poses.py, ATTACK_HIT_FRACTION); the Archer's release at 0.125 of its loop
+	 * (ARCHER_RELEASE, frame 6 of 48) for its 12 %: 0.005 of a loop (~8 ms) after its arrow, accepted.
 	 */
-	constexpr float StrikeHitShare = 0.5f;
+	HEROESOFLIBERTY_API float GetStrikeHitShare(const FHOLUnitTypeConstants& Type);
 
 	/**
-	 * Position (s, in the sequence's time) to start a strike's loop of Length seconds played at PlayRate, for its hit to
-	 * fall in SecondsToHit: the hit's position minus the time to it, wrapped into the loop. A loop lasting one attack
-	 * interval then keeps every hit of the server's cadence on its hit frame.
+	 * Position (s, in the sequence's time) to start a strike's loop of Length seconds played at PlayRate, for its hit (at
+	 * HitShare of the loop) to fall in SecondsToHit: the hit's position minus the time to it, wrapped into the loop. A loop
+	 * lasting one attack interval then keeps every hit of the server's cadence on its hit frame.
 	 */
-	HEROESOFLIBERTY_API float GetStrikeStartPosition(float Length, float PlayRate, float SecondsToHit);
+	HEROESOFLIBERTY_API float GetStrikeStartPosition(float Length, float PlayRate, float SecondsToHit, float HitShare);
 
 	/**
 	 * Seconds until a unit's next hit (J7b.5), from its cool-down on the fixed step: the hit falls at the first step that

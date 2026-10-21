@@ -25,8 +25,27 @@ namespace HOLUnitPicking
 	/** A press that moves farther than this (pixels) before its release draws a box instead of clicking. */
 	inline constexpr double BoxThreshold = 6.;
 
+	/**
+	 * Margin (pixels on a viewport 1080 pixels high, scaled with its height) around an enemy's drawn body within which a
+	 * right click still takes it as the target (J7c, retour d'essai 8, loop 3: "very hard to target an enemy"; 25 px chosen
+	 * at the user's trial); the console variable hol.Select.TargetMargin starts at it.
+	 */
+	inline constexpr double TargetMarginAt1080 = 25.;
+
 	/** Index of the candidate under Cursor, or INDEX_NONE. */
 	HEROESOFLIBERTY_API int32 PickAt(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& Cursor);
+
+	/** Distance (pixels) from Cursor to a candidate's drawn body (the one PickAt tests), 0 on it. */
+	HEROESOFLIBERTY_API double GetBodyDistance(const FHOLPickCandidate& Candidate, const FVector2D& Cursor);
+
+	/**
+	 * The candidate under Cursor as PickAt (bOutDirect true): a direct hit always wins. Else the one whose body is the
+	 * nearest to Cursor within Margin pixels (bOutDirect false; the one in front at the same distance); INDEX_NONE.
+	 */
+	HEROESOFLIBERTY_API int32 PickNear(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& Cursor, double Margin, bool& bOutDirect);
+
+	/** A margin given at 1080 pixels high, in pixels on a viewport ViewportHeight pixels high (as is when unknown). */
+	HEROESOFLIBERTY_API double GetScaledMargin(double MarginAt1080, double ViewportHeight);
 
 	/** Indices of the candidates whose body's middle is inside the box between two corners (any order). */
 	HEROESOFLIBERTY_API void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices);

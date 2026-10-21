@@ -279,17 +279,31 @@ bool FHOLAnimationStrikeTest::RunTest(const FString& Parameters)
 		EHOLResource::Wood)).Prop), 8);
 	TestEqual(TEXT("Spearman dying: no prop (its spear is in its mesh)"), static_cast<int32>(Fall.Prop), 0);
 
-	// The gestures' hit at half the loop is the server's wind-up (soldier_poses.py ATTACK_HIT_FRACTION).
-	TestEqual(TEXT("hit share = the wind-up"), HOLUnitAnimation::StrikeHitShare, static_cast<float>(HOLCombat::WindUpPercent) / 100.f);
+	// The gestures' hit is the server's wind-up, the type's (J7c, retour d'essai 8: hit and run): half the loop for the
+	// melee (soldier_poses.py ATTACK_HIT_FRACTION, the table's default), 12 % for the Archer (its ARCHER_RELEASE 0.125).
+	using HOLUnitAnimation::GetStrikeHitShare;
+	TestEqual(TEXT("hit share = the wind-up: 50 % by default"), GetStrikeHitShare(Spearman), static_cast<float>(HOLCombat::DefaultWindUpPercent) / 100.f);
+	TestEqual(TEXT("hit share: half the loop for the melee"), GetStrikeHitShare(Spearman), 0.5f);
+	FHOLUnitTypeConstants Shooter = Spearman;
+	Shooter.AttackWindUpPercent = 12;
+	TestEqual(TEXT("hit share: 0.12 at 12 %"), GetStrikeHitShare(Shooter), 0.12f);
+	Shooter.AttackWindUpPercent = 0;
+	TestEqual(TEXT("hit share: 1 % at least"), GetStrikeHitShare(Shooter), 0.01f);
+	Shooter.AttackWindUpPercent = 150;
+	TestEqual(TEXT("hit share: the whole loop at most"), GetStrikeHitShare(Shooter), 1.f);
 
-	// Start position: the hit (at half the loop) falls in SecondsToHit, at the play rate, wrapped into the loop.
+	// Start position: the hit (at HitShare of the loop) falls in SecondsToHit, at the play rate, wrapped into the loop.
 	using HOLUnitAnimation::GetStrikeStartPosition;
-	TestEqual(TEXT("hit now: start on the hit"), GetStrikeStartPosition(1.875f, 1.f, 0.f), 0.9375f, 0.0001f);
-	TestEqual(TEXT("hit in half an interval: start at the loop's start"), GetStrikeStartPosition(1.875f, 1.f, 0.9375f), 0.f, 0.0001f);
-	TestEqual(TEXT("hit in a whole interval: half a loop back, wrapped"), GetStrikeStartPosition(1.875f, 1.f, 1.875f), 0.9375f, 0.0001f);
-	TestEqual(TEXT("hit in 1.2 s: wrapped into the loop"), GetStrikeStartPosition(1.875f, 1.f, 1.2f), 1.875f + 0.9375f - 1.2f, 0.0001f);
-	TestEqual(TEXT("at the play rate: the sequence's own time"), GetStrikeStartPosition(1.4f, 1.4f / 1.375f, 0.6875f), 0.f, 0.0001f);
-	TestEqual(TEXT("no length: 0"), GetStrikeStartPosition(0.f, 1.f, 0.5f), 0.f);
+	TestEqual(TEXT("hit now: start on the hit"), GetStrikeStartPosition(1.875f, 1.f, 0.f, 0.5f), 0.9375f, 0.0001f);
+	TestEqual(TEXT("hit in half an interval: start at the loop's start"), GetStrikeStartPosition(1.875f, 1.f, 0.9375f, 0.5f), 0.f, 0.0001f);
+	TestEqual(TEXT("hit in a whole interval: half a loop back, wrapped"), GetStrikeStartPosition(1.875f, 1.f, 1.875f, 0.5f), 0.9375f, 0.0001f);
+	TestEqual(TEXT("hit in 1.2 s: wrapped into the loop"), GetStrikeStartPosition(1.875f, 1.f, 1.2f, 0.5f), 1.875f + 0.9375f - 1.2f, 0.0001f);
+	TestEqual(TEXT("at the play rate: the sequence's own time"), GetStrikeStartPosition(1.4f, 1.4f / 1.375f, 0.6875f, 0.5f), 0.f, 0.0001f);
+	TestEqual(TEXT("no length: 0"), GetStrikeStartPosition(0.f, 1.f, 0.5f, 0.5f), 0.f);
+	// The Archer's (1.625 s, release at 12 %, 0.195 s): released now, start on the release; in 0.195 s, at the start.
+	TestEqual(TEXT("release at 12 %, now: start on it"), GetStrikeStartPosition(1.625f, 1.f, 0.f, 0.12f), 0.195f, 0.0001f);
+	TestEqual(TEXT("release at 12 %, in 0.195 s: the loop's start"), GetStrikeStartPosition(1.625f, 1.f, 0.195f, 0.12f), 0.f, 0.0001f);
+	TestEqual(TEXT("release at 12 %, in half an interval: wrapped"), GetStrikeStartPosition(1.625f, 1.f, 0.8125f, 0.12f), 1.625f + 0.195f - 0.8125f, 0.0001f);
 
 	// Time to the next hit: whole steps (the hit falls at the step that takes the cool-down to 0).
 	using HOLUnitAnimation::GetSecondsToHit;
@@ -300,8 +314,12 @@ bool FHOLAnimationStrikeTest::RunTest(const FString& Parameters)
 	// A strike that just started (a client's guess): the wind-up less the step that brought it, its hit at half the loop
 	// within a step.
 	const int32 IntervalMs = HOLCombat::ToMilliseconds(1.875f);
-	const float ClientStart = GetStrikeStartPosition(56.f / 30.f, Strike.PlayRate, GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(IntervalMs) - 50, 50));
+	const float ClientStart = GetStrikeStartPosition(56.f / 30.f, Strike.PlayRate, GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(IntervalMs,
+		Spearman.AttackWindUpPercent) - 50, 50), GetStrikeHitShare(Spearman));
 	TestTrue(TEXT("a client starts a strike near the loop's start"), ClientStart >= 0.f && ClientStart <= 0.06f);
+	// The same at 12 % (the Archer's 1.625 s): its wind-up and its release, both 12 %, start the loop near 0.
+	const float ShooterStart = GetStrikeStartPosition(1.625f, 1.f, GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(1625, 12) - 50, 50), 0.12f);
+	TestTrue(FString::Printf(TEXT("a shooter starts near the loop's start (%.3f)"), ShooterStart), ShooterStart >= 0.f && ShooterStart <= 0.06f);
 	return true;
 }
 

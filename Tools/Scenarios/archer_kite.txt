@@ -1,0 +1,14 @@
+# Hit and run (retour d'essai 8) : 5 Archers et 3 Hommes d'armes ennemis à 25 m (hors de portée et d'agression). Les Hommes d'armes
+# (5,2 m/s) sont plus lents que les Archers (5,8 m/s) : tirer, reculer, s'arrêter, tirer encore. L'Archer lâche à 12 % de sa cadence
+# (~0,2 s après avoir pris sa cible) ; sa recharge (1,6 s) continue pendant la marche. Plain, deux joueurs (archer_kite.json).
+hol.Combat.LogHits 1
+hol.Camera.Focus -2000 -4000
+hol.Camera.Zoom 12
+frames 2
+hol.Units.Spawn 5 -2000 -5000 0 Archer 150
+hol.Units.Spawn 3 -2000 -2500 1 ManAtArms 120
+waitunits 8
+hol.Select.Army
+note Archers sélectionnés : clic droit sur un Homme d'armes rouge. Les Archers s'approchent à 15 m et tirent ~0,2 s après l'arrêt. Le clic droit prend un ennemi même un peu à côté (marge de 25 px).
+note Juste après le lâcher, clic droit au sol vers le sud : la flèche part quand même et touche ; ils reculent plus vite que leurs poursuivants.
+note Clic droit à nouveau sur l'ennemi : recharge finie, ils retirent ~0,2 s après l'arrêt. Le clic droit prend un ennemi même un peu à côté (marge de 25 px). Ralenti : console (²) puis « slomo 0.3 ».

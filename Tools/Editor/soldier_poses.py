@@ -439,15 +439,22 @@ ARCHER_WALK = {"name": "A_Archer_Walk", "base": UNARMED_WALK, "hands_frame": "ch
                         for t in (0.0, 1.0)]}
 
 # Attack: AttackInterval of the Archer 1.625 s (Tools/Data/UnitTypes.csv); 48 frames at 30 fps (1.6 s, played at
-# 1.6 / 1.625 in the game, like the soldiers), the RELEASE on frame 24 (ATTACK_HIT_FRACTION): the client launches the
-# visual arrow there. Feet planted side-on (left foot toward the target). The loop starts nocked, bow low:
-#   dip (anticipation) -> raise and draw together, the hips then the trunk turning to his right (left shoulder to the
+# 1.6 / 1.625 in the game, like the soldiers), the RELEASE on frame 6 (ARCHER_RELEASE, 0.125 of the loop, ~0.2 s: its
+# AttackWindUpPercent 12 in the table, HOLUnitAnimation::GetStrikeHitShare): the client launches the visual arrow there.
+# The 0.005 of a loop between the two (0.125 against 0.12, ~8 ms in the game) is accepted: frame 6 is the nearest one.
+# Retimed for the hit and run (trial feedback 8, 2026-10-21): release on frame 24 at first, frame 12 in loop 2, frame 6
+# in loop 3 ("halve the time to shoot an arrow"). The draw twice as fast again (raise 0.06, full draw 0.095, aim
+# 0.113, release 0.125; the settle key dropped, too cramped at 0.025), the follow-through at its pace (0.185), the
+# rest of the loop spread out (hold 0.29, quiver 0.48, arrow out 0.62, swing 0.78, nocked 0.88), then the ready pose
+# held to the end of the loop. Feet planted side-on (left foot toward the target). The loop starts nocked, bow low:
+#   raise and draw together, the hips then the trunk turning to his right (left shoulder to the
 #   target), the right shoulder blade pulled back, the string to the corner of the jaw -> a short aim hold creeping
 #   back a cm -> RELEASE (the hand stops, then snaps back past the ear: flow (0, 2.5)) -> follow-through held, bow arm
 #   still on the target -> the bow drops, the right hand reaches over the shoulder to the quiver -> draws an arrow
 #   out, swings it down onto the bow and nocks it. Hermite keys, the pelvis leading the spine, the spine the
 #   shoulders, the hands last.
 ARCHER_PERIOD = 1.6
+ARCHER_RELEASE = 0.125  # share of the loop at the release, frame 6 of 48 (AttackWindUpPercent 12 / 100, ~8 ms apart)
 ARROW_TOOL = {"kind": "arrow", "hands": 1, "handle_length": sp.ARROW_LENGTH, "knob_offset": sp.ARROW_GRIP,
               "edge": (0.0, 0.0, 1.0)}
 ARCHER_STANCE = {"l": (-6.0, 16.0, 0.0), "r": (8.0, -14.0, 0.0)}
@@ -484,9 +491,6 @@ DRAW_ELBOWS = {"l": (-1.0, -0.1, -0.4), "r": (0.6, -1.0, 0.15)}
 A_READY_L, A_READY_R = (-12.0, 40.0, 110.0), (3.0, 12.0, 110.0)
 ARCHER_READY = {"pelvis": (0.0, 0.0, -4.0), "rot": hip_turn(30.0, 5.0, 10.0, nod=-4.0),
                 "tool": nocked(A_READY_R, A_READY_L), "hands": bow_hand(A_READY_L, 20.0)}
-A_SET_L, A_SET_R = (-12.0, 38.0, 106.0), (3.0, 10.0, 106.0)
-ARCHER_SET = {"pelvis": (0.0, 1.0, -6.5), "rot": hip_turn(32.0, 7.0, 11.0, nod=-5.0),
-              "tool": nocked(A_SET_R, A_SET_L), "hands": bow_hand(A_SET_L, 20.0)}
 # Round 2 (user's review of the GIF, 2026-10-20: "il tire en cloche donc plus haut l'arc"): the arrows fly in a light
 # arc (J7c-Q4), so he shoots upward. The draw line rises to DRAW_ELEVATION at full draw and release: the drawing hand
 # stays at the jaw, the bow fist goes up the shot line (shot_left), the bow across the shot (upright in its own
@@ -551,21 +555,22 @@ ARCHER_LEADS = {"pelvis": 0.06, "rot": {"pelvis": 0.06, "spine_01": 0.045, "spin
 
 ARCHER_ATTACK = fighting("A_Archer_Attack", ARROW_TOOL, ("bow", "quiver", "arrow"), [
     archer_key(0.0, ARCHER_READY),
-    archer_key(at(ARCHER_PERIOD, 0.10), ARCHER_SET),                  # anticipation: settles, a breath in
-    archer_key(at(ARCHER_PERIOD, 0.28), ARCHER_RAISE, 0.8),           # raising and drawing together
-    archer_key(at(ARCHER_PERIOD, 0.38), ARCHER_FULL),                 # full draw: string to the jaw
-    archer_key(at(ARCHER_PERIOD, 0.46), ARCHER_AIM),                  # aim hold, creeping back
-    archer_key(at(ARCHER_PERIOD, 0.50), ARCHER_LOOSE, (0.0, 2.5)),    # RELEASE (frame 24 of 48): the arrow leaves
-    archer_key(at(ARCHER_PERIOD, 0.55), ARCHER_FOLLOW),               # the hand snapped back past the ear
-    archer_key(at(ARCHER_PERIOD, 0.62), ARCHER_HOLD, 0.4),            # follow-through held, bow on the target
-    archer_key(at(ARCHER_PERIOD, 0.74), ARCHER_REACH, 0.6),           # bow down, the hand at the quiver
-    archer_key(at(ARCHER_PERIOD, 0.82), ARCHER_OUT, 1.0),             # draws an arrow out
-    archer_key(at(ARCHER_PERIOD, 0.92), ARCHER_SWING, 0.8),           # swings it down onto the bow
-    archer_key(ARCHER_PERIOD, ARCHER_READY),                          # nocked
-], ARCHER_ELBOWS, 30, ARCHER_STANCE, [0, 5, 14, 18, 24, 27])
+    archer_key(at(ARCHER_PERIOD, 0.06), ARCHER_RAISE, 0.8),           # raising and drawing together
+    archer_key(at(ARCHER_PERIOD, 0.095), ARCHER_FULL),                # full draw: string to the jaw
+    archer_key(at(ARCHER_PERIOD, 0.113), ARCHER_AIM),                 # aim hold, creeping back
+    archer_key(at(ARCHER_PERIOD, ARCHER_RELEASE), ARCHER_LOOSE, (0.0, 2.5)),  # RELEASE (frame 6 of 48): arrow leaves
+    archer_key(at(ARCHER_PERIOD, 0.185), ARCHER_FOLLOW),              # the hand snapped back past the ear
+    archer_key(at(ARCHER_PERIOD, 0.29), ARCHER_HOLD, 0.4),            # follow-through held, bow on the target
+    archer_key(at(ARCHER_PERIOD, 0.48), ARCHER_REACH, 0.6),           # bow down, the hand at the quiver
+    archer_key(at(ARCHER_PERIOD, 0.62), ARCHER_OUT, 1.0),             # draws an arrow out
+    archer_key(at(ARCHER_PERIOD, 0.78), ARCHER_SWING, 0.8),           # swings it down onto the bow
+    archer_key(at(ARCHER_PERIOD, 0.88), ARCHER_READY),                # nocked, then ready until the loop ends
+    archer_key(ARCHER_PERIOD, ARCHER_READY),
+], ARCHER_ELBOWS, 30, ARCHER_STANCE, [0, 2, 3, 5, 6, 9])
 ARCHER_ATTACK.update({"frames": 48, "curve": "hermite", "loop": True, "leads": ARCHER_LEADS,
+                      "hit_fraction": ARCHER_RELEASE,  # the baker's readback looks for the release there
                       # Preview: the arrow in the hand is hidden from just after the release to the quiver (seconds).
-                      "hidden": {"arrow": (at(ARCHER_PERIOD, 0.5) + 0.01, at(ARCHER_PERIOD, 0.74))}})
+                      "hidden": {"arrow": (at(ARCHER_PERIOD, ARCHER_RELEASE) + 0.01, at(ARCHER_PERIOD, 0.48))}})
 
 # Fall: the soldiers' body motion (FALL_BODY), both hands free-placed (the bow follows the left fist), quiver on.
 # Round 3 (user's review, 2026-10-20: "horrible, on dirait qu'il a les pieds cimentés, fais comme s'il prenait une

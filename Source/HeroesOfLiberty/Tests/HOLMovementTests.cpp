@@ -158,6 +158,28 @@ bool FHOLMovementPickingTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("where two bodies overlap, the one in front"), HOLUnitPicking::PickAt(Units, FVector2D(104., 185.)), 1);
 	TestEqual(TEXT("the one behind where only it is drawn"), HOLUnitPicking::PickAt(Units, FVector2D(95., 162.)), 0);
 
+	// The target margin of a right click (J7c, retour d'essai 8, loop 3): near a body within the margin, the nearest one;
+	// a click on a body always wins, even over one nearer the camera within the margin.
+	using HOLUnitPicking::PickNear;
+	bool bDirect = false;
+	TestEqual(TEXT("body distance: 0 on it"), HOLUnitPicking::GetBodyDistance(Units[2], FVector2D(402., 280.)), 0.);
+	TestEqual(TEXT("body distance: 20 px beside the middle, 10 px beside the body"), HOLUnitPicking::GetBodyDistance(Units[2], FVector2D(420., 280.)), 10.);
+	TestEqual(TEXT("body distance: above the head, from the top of its margin"), HOLUnitPicking::GetBodyDistance(Units[2], FVector2D(400., 240.)), 15.);
+	TestEqual(TEXT("margin: 10 px beside the lone unit, taken"), PickNear(Units, FVector2D(420., 280.), 14., bDirect), 2);
+	TestFalse(TEXT("margin: not a direct hit"), bDirect);
+	TestEqual(TEXT("margin: 20 px beside it, nothing"), PickNear(Units, FVector2D(430., 280.), 14., bDirect), INDEX_NONE);
+	TestEqual(TEXT("margin: 15 px above the head, nothing at 14"), PickNear(Units, FVector2D(400., 240.), 14., bDirect), INDEX_NONE);
+	TestEqual(TEXT("margin: 15 px above the head, taken at 16"), PickNear(Units, FVector2D(400., 240.), 16., bDirect), 2);
+	TestEqual(TEXT("margin: on a body, the direct hit"), PickNear(Units, FVector2D(402., 280.), 14., bDirect), 2);
+	TestTrue(TEXT("margin: on a body, direct"), bDirect);
+	TestEqual(TEXT("margin: the direct hit behind wins over one in front 3 px away"), PickNear(Units, FVector2D(95., 162.), 14., bDirect), 0);
+	TestTrue(TEXT("margin: the one behind, direct"), bDirect);
+	TestEqual(TEXT("margin: between two, the nearest (8 px), not the one in front (16 px)"), PickNear(Units, FVector2D(82., 190.), 20., bDirect), 0);
+	TestEqual(TEXT("margin: 0, on the body only"), PickNear(Units, FVector2D(420., 280.), 0., bDirect), INDEX_NONE);
+	TestEqual(TEXT("margin scaled: as is at 1080 px"), HOLUnitPicking::GetScaledMargin(14., 1080.), 14.);
+	TestEqual(TEXT("margin scaled: twice at 2160 px"), HOLUnitPicking::GetScaledMargin(14., 2160.), 28.);
+	TestEqual(TEXT("margin scaled: as is when the height is unknown"), HOLUnitPicking::GetScaledMargin(14., 0.), 14.);
+
 	TArray<int32> Boxed;
 	HOLUnitPicking::PickInBox(Units, FVector2D(150., 150.), FVector2D(50., 250.), Boxed);
 	TestTrue(TEXT("a box takes the two units whose middle is in it, corners in any order"), Boxed == TArray<int32>({ 0, 1 }));
