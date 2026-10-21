@@ -177,39 +177,96 @@ namespace HOLFormation
 	HEROESOFLIBERTY_API bool WatchPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, double Radius);
 
 	/**
-	 * The block march (J7a.4, the user's 1st trial: as in AoE4). A group's move in formation first forms up in place (its
-	 * rows around its centre, facing the start of its path), then the whole block follows one path at its slowest unit's
-	 * pace, each unit at its offset in the block (ahead, to the right) turned with the path, then re-forms on its arrival
-	 * places. Shorter than BlockMarchMinDistanceInDepths of the block's size (its larger side, plus a row): straight to
-	 * the places. Form-up: done when every unit stands within FormUpTolerance of its place, or after FormUpMaxSteps
-	 * (3 s). March: the block's point moves on only while every unit is within BlockLagDistance of its slot; a unit that
-	 * holds it BlockWaitMaxSteps steps in a row leaves the block (its own path to its place). A unit walks to its slot
-	 * at most BlockCatchUpShare of the block's pace (its own speed at most), to catch up. The path's direction is read
-	 * over BlockTurnWindow before and after the block's point, so the block turns smoothly at a corner.
+	 * The block march (J7a.4, the user's 1st trial: as in AoE4). A group's move in formation is one block (its rows around
+	 * its centre, facing the start of its path) that follows one path at its slowest unit's pace, each unit at its offset
+	 * in the block (ahead, to the right) turned with the path, then re-forms on its arrival places. Shorter than
+	 * BlockMarchMinDistanceInDepths of the block's size (its larger side, plus a row): straight to the places. Files on
+	 * the move, rows at the arrival (playtest note 1 of J7b, the user's 5th trial: nobody slows down on the march, not
+	 * even to take its slot): every member walks along the march at the block's pace all the way, its depth its own,
+	 * sliding across to its file (its slot's offset across) at FileSlideMaxAngle at most; within BlockLagDistance of
+	 * its file it is in it (a member). The block's point never waits for its members; its rows close up at the arrival's
+	 * re-forming. A straggler or a re-forming unit walks to its slot at most BlockCatchUpShare of the block's pace (its own
+	 * speed at most), to catch up. The path's direction is read over BlockTurnWindow before and after the block's point,
+	 * so the block turns smoothly at a corner. FormUpTolerance: a unit stands on its arrival place.
 	 */
 	inline constexpr double BlockMarchMinDistanceInDepths = 1.;
 	inline constexpr double FormUpTolerance = 30.;
-	inline constexpr int32 FormUpMaxSteps = 60;
 	inline constexpr double BlockLagDistance = 40.;
-	inline constexpr int32 BlockWaitMaxSteps = 60;
+	/**
+	 * A member sliding to its file (the user's 5th trial of playtest note 1): across at most this angle (degrees) off the
+	 * march, so the eye reads a slide, not a hook. One faster than the pace slides at the pace along (it loses no depth);
+	 * the slowest kind (its speed the pace) loses 1 - cos of it along while it slides (6 % at 20 degrees), its depth
+	 * following: nothing waits for it.
+	 */
+	inline constexpr double FileSlideMaxAngle = 20.;
+	/** A member walking along the march below this share of the pace counts a slowed step (FBlockReport::SlowedSteps). */
+	inline constexpr double BlockSlowedShare = 0.9;
 	inline constexpr double BlockCatchUpShare = 1.08;
 	inline constexpr double BlockTurnWindow = 200.;
 	/**
 	 * The block's arrival (the user's 3rd trial of J7a.4, as in AoE4): no rigid turn of the block. Over its last
 	 * GetBlockBlendDistance cm each unit slides from its slot to a final place of its own kind (its row group), so the
 	 * front stays the front of the new facing: a half turn mirrors the rows in place, a quarter turn is a short re-shuffle;
-	 * the units of the order go through each other meanwhile (as in the form-up).
+	 * the units of the order go through each other meanwhile (taking their slots, only units of two kinds do).
 	 */
 	/**
-	 * Forming up on the move (the user's 4th trial of J7a.4): a group whose units all stand within BlockJoinDistance of
-	 * their form-up places (already in rows, or close together) does not stop; the block starts at once and its units
-	 * take their slots walking, through each other (a scattered group first gathers, until all are that close). While
-	 * units join, and while the block re-forms at its end, the block's point slows down with the worst gap instead of
-	 * stopping (GetBlockSoftPace): full pace up to BlockLagDistance, nothing from BlockSoftHoldDistance.
+	 * While the block re-forms at its end (the user's 4th trial of J7a.4), its point slows down with the worst gap instead
+	 * of stopping (GetBlockSoftPace): full pace up to BlockLagDistance, nothing from BlockSoftHoldDistance.
+	 * BlockJoinDistance: the link of the group's body (FindStragglers).
 	 */
 	inline constexpr double BlockJoinDistance = 450.;
+	/**
+	 * Small blocks meeting (playtest note 1 of J7b, the user's rule: each separate packet marches in its own formation, the
+	 * blocks merge when they meet, else at the arrival; never waiting nor slowing down, never a half turn on the march):
+	 * all the blocks of an order share one formation, so when a smaller block's point (its point on its path) comes within
+	 * BlockMergeDistance (cm) of a larger one's, on the march, its slots are about where the larger block's would put them
+	 * and it merges into it: its units slide to their files at the larger block's point on the move (FormUp), keeping
+	 * their depths (a little less than a row: 150 cm for Men-at-arms).
+	 */
+	inline constexpr double BlockMergeDistance = 130.;
 	inline constexpr double BlockSoftHoldDistance = 160.;
 	HEROESOFLIBERTY_API double GetBlockSoftPace(double MaxGap);
+	/**
+	 * The group's packets (playtest note 1 of J7b, the user's 2nd trial, small blocks: each separate packet marches in its
+	 * own formation to the destination). A packet is a cluster of units linked by steps of at most LinkDistance (each unit
+	 * of it within that distance of another one of it: a block of any size is one packet, however wide). OutPacketOfUnit[i]
+	 * is unit i's packet, OutPacketSizes its units; packets numbered largest first (the body, packet 0), ties by their first
+	 * unit. Returns the number of packets.
+	 */
+	HEROESOFLIBERTY_API int32 FindPackets(TConstArrayView<FVector2D> Positions, double LinkDistance, TArray<int32>& OutPacketOfUnit, TArray<int32>& OutPacketSizes);
+	/**
+	 * Stragglers (playtest note 1 of J7b: five soldiers waited for a sixth 10 m away before they set off): the units alone
+	 * in their packet (FindPackets) outside the body (packet 0), when the body holds two units or more (OutIsStraggler[i]);
+	 * each walks its own path to its slot kept in the block's last row. A packet of two or more is a small block of its own
+	 * (two clusters of three: two blocks, no straggler); everyone apart: no stragglers, the whole group one block. Returns
+	 * the number of stragglers.
+	 */
+	HEROESOFLIBERTY_API int32 FindStragglers(TConstArrayView<FVector2D> Positions, double LinkDistance, TArray<bool>& OutIsStraggler);
+	/**
+	 * A slot kept for each straggler (the user's trial of playtest note 1 of J7b: a straggler that came in by the middle
+	 * or the side of the block shoved the others, who held it in turn and left it). Slots[i] is the slot first given to
+	 * unit i (PlaceGroup's offset in the block: X ahead, Y to the right), so a slot of unit i's kind; Positions the units
+	 * in the same frame. Each straggler (IsStraggler) keeps a free slot of its kind in the rearmost row its kind holds,
+	 * the one nearest to its side (across the march, from where it comes); in the block's last row (within
+	 * RearRowTolerance of its rearmost slot) the block marches with that gap and the straggler walks into it from
+	 * behind; in a row ahead (a mixed group, its kind's rows in front), it is queued (OutQueued): it follows behind the
+	 * block and takes its place at the arrival only. The units of the body then get the other slots of their kinds
+	 * (AssignPlaces from their positions, no two ways of one kind crossing). OutSlotOfUnit[i] is the index in Slots
+	 * given to unit i. Returns the number of queued stragglers.
+	 */
+	inline constexpr double RearRowTolerance = 10.;
+	HEROESOFLIBERTY_API int32 ReserveRearSlots(TConstArrayView<FVector2D> Slots, TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit,
+		TConstArrayView<bool> IsStraggler, TArray<int32>& OutSlotOfUnit, TArray<bool>& OutQueued);
+	/**
+	 * A straggler on its way (the user's trial of playtest note 1 of J7b): on its own path at its own speed while far;
+	 * within BlockStragglerSteerDistance of its slot (or of its queue's point, a row behind the block), the line there
+	 * clear on the navmesh, straight to it at its own speed, through the units of its order; back to a path beyond
+	 * BlockStragglerPathDistance, or when the line is cut. Within BlockLagDistance of its slot, it is one of the block.
+	 */
+	inline constexpr double BlockStragglerSteerDistance = 600.;
+	/** The block's report measures the closest two of its members from this step of its life on (0.5 s at 20 steps a second). */
+	inline constexpr int32 BlockSpacingFromStep = 10;
+	inline constexpr double BlockStragglerPathDistance = 900.;
 	/**
 	 * The arrival blended into the march (the user's 4th trial): over the last GetBlockBlendDistance of the path (the
 	 * block's size + BlockBlendMargin, half the path at most), each unit's target slides from its slot in the block to its

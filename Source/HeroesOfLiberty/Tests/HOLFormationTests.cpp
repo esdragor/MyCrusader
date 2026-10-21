@@ -599,8 +599,8 @@ bool FHOLFormationBlockTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(FString::Printf(TEXT("half turn: straight across the block, no wheel round (%.0f cm at most)"), Longest), Longest <= 181.);
 
-	// Forming up on the move and the blended arrival (the user's 4th trial): the block slows down with the worst gap
-	// instead of stopping; the targets slide from the slots to the final places over the path's last part.
+	// The blended arrival (the user's 4th trial): the block slows down with the worst gap instead of stopping; the targets
+	// slide from the slots to the final places over the path's last part.
 	TestEqual(TEXT("soft pace: full on the slots"), HOLFormation::GetBlockSoftPace(HOLFormation::BlockLagDistance), 1., 1e-9);
 	TestEqual(TEXT("soft pace: half way"), HOLFormation::GetBlockSoftPace(0.5 * (HOLFormation::BlockLagDistance + HOLFormation::BlockSoftHoldDistance)), 0.5, 1e-9);
 	TestEqual(TEXT("soft pace: stopped far behind"), HOLFormation::GetBlockSoftPace(HOLFormation::BlockSoftHoldDistance + 50.), 0., 1e-9);
@@ -609,7 +609,79 @@ bool FHOLFormationBlockTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("blend: none before"), HOLFormation::GetBlockBlend(800., 650.), 0., 1e-9);
 	TestEqual(TEXT("blend: half way"), HOLFormation::GetBlockBlend(325., 650.), 0.5, 1e-9);
 	TestEqual(TEXT("blend: all at the end"), HOLFormation::GetBlockBlend(0., 650.), 1., 1e-9);
-	TestTrue(TEXT("join distance: a half turn of two rows is formed on the move"), 2. * 180. < HOLFormation::BlockJoinDistance);
+
+	// Stragglers (playtest note 1 of J7b): five close together and one 10 m away, the block leaves without it; two
+	// clusters of three, no body (the whole group's block forms on the move); a tight group, or a wide block, none.
+	TArray<bool> IsStraggler;
+	const TArray<FVector2D> FiveAndOne = { FVector2D(0., 0.), FVector2D(150., 0.), FVector2D(-150., 0.), FVector2D(0., 150.),
+		FVector2D(150., 150.), FVector2D(1000., 0.) };
+	TestEqual(TEXT("stragglers: five and one 10 m away"), HOLFormation::FindStragglers(FiveAndOne, HOLFormation::BlockJoinDistance, IsStraggler), 1);
+	TestTrue(TEXT("stragglers: the one 10 m away"), IsStraggler.Num() == 6 && IsStraggler[5] && !IsStraggler[0] && !IsStraggler[4]);
+	const TArray<FVector2D> TwoClusters = { FVector2D(0., 0.), FVector2D(150., 0.), FVector2D(0., 150.), FVector2D(1500., 0.),
+		FVector2D(1650., 0.), FVector2D(1500., 150.) };
+	TestEqual(TEXT("stragglers: two clusters of three, none"), HOLFormation::FindStragglers(TwoClusters, HOLFormation::BlockJoinDistance, IsStraggler), 0);
+	// The packets (playtest note 1 of J7b, the user's 2nd trial: small blocks): largest first.
+	{
+		TArray<int32> PacketOfUnit;
+		TArray<int32> PacketSizes;
+		const TArray<FVector2D> TwoAt10 = { FVector2D(0., 0.), FVector2D(150., 0.), FVector2D(0., 150.), FVector2D(1000., 0.),
+			FVector2D(1150., 0.), FVector2D(1000., 150.) };
+		TestEqual(TEXT("packets: two of three 10 m apart"), HOLFormation::FindPackets(TwoAt10, HOLFormation::BlockJoinDistance, PacketOfUnit, PacketSizes), 2);
+		TestTrue(TEXT("packets: three and three, each its own"), PacketSizes == TArray<int32>({ 3, 3 }) && PacketOfUnit == TArray<int32>({ 0, 0, 0, 1, 1, 1 }));
+		TestEqual(TEXT("packets: five and one 10 m away"), HOLFormation::FindPackets(FiveAndOne, HOLFormation::BlockJoinDistance, PacketOfUnit, PacketSizes), 2);
+		TestTrue(TEXT("packets: five, then the one alone"), PacketSizes == TArray<int32>({ 5, 1 }) && PacketOfUnit[5] == 1 && PacketOfUnit[0] == 0);
+		TestEqual(TEXT("packets: a tight group, one"), HOLFormation::FindPackets(TArrayView<const FVector2D>(FiveAndOne).Left(5), HOLFormation::BlockJoinDistance, PacketOfUnit, PacketSizes), 1);
+		// A chain linked step by step (each 4 m from the next, 16 m end to end): one packet.
+		const TArray<FVector2D> Chain = { FVector2D(0., 0.), FVector2D(400., 0.), FVector2D(800., 0.), FVector2D(1200., 0.), FVector2D(1600., 0.) };
+		TestEqual(TEXT("packets: a chain linked step by step, one"), HOLFormation::FindPackets(Chain, HOLFormation::BlockJoinDistance, PacketOfUnit, PacketSizes), 1);
+		// The smaller packet first in the list: still numbered after the larger one.
+		const TArray<FVector2D> SmallFirst = { FVector2D(1000., 0.), FVector2D(1150., 0.), FVector2D(0., 0.), FVector2D(150., 0.), FVector2D(0., 150.) };
+		HOLFormation::FindPackets(SmallFirst, HOLFormation::BlockJoinDistance, PacketOfUnit, PacketSizes);
+		TestTrue(TEXT("packets: the larger is packet 0"), PacketSizes == TArray<int32>({ 3, 2 }) && PacketOfUnit == TArray<int32>({ 1, 1, 0, 0, 0 }));
+		// Everyone apart: no body, no stragglers (the whole group one block).
+		const TArray<FVector2D> Apart = { FVector2D(0., 0.), FVector2D(1000., 0.), FVector2D(2000., 0.) };
+		TestEqual(TEXT("stragglers: everyone apart, none"), HOLFormation::FindStragglers(Apart, HOLFormation::BlockJoinDistance, IsStraggler), 0);
+	}
+	TestFalse(TEXT("stragglers: two clusters of three, nobody marked"), IsStraggler.Contains(true));
+	TArray<FVector2D> WideBlock;
+	for (int32 Row = 0; Row < 5; ++Row)
+	{
+		for (int32 Column = 0; Column < 10; ++Column)
+		{
+			WideBlock.Add(FVector2D(Row * 180., Column * 150.));
+		}
+	}
+	TestEqual(TEXT("stragglers: a tight group, none"), HOLFormation::FindStragglers(TArrayView<const FVector2D>(FiveAndOne).Left(5), HOLFormation::BlockJoinDistance, IsStraggler), 0);
+	TestEqual(TEXT("stragglers: a block 13.5 m wide, none"), HOLFormation::FindStragglers(WideBlock, HOLFormation::BlockJoinDistance, IsStraggler), 0);
+	// A slot kept for each straggler (the user's trial of playtest note 1 of J7b): five and one of one kind, two rows of
+	// three, the straggler far behind on the right: the last row's slot on the right, the body on the other five; a mixed
+	// group whose straggler's kind stands in front (its rows ahead of the last one): queued.
+	const TArray<FVector2D> Slots = { FVector2D(0., -150.), FVector2D(0., 0.), FVector2D(0., 150.), FVector2D(-180., -150.),
+		FVector2D(-180., 0.), FVector2D(-180., 150.) };
+	const TArray<FVector2D> Local = { FVector2D(0., -150.), FVector2D(0., 0.), FVector2D(0., 150.), FVector2D(-180., -150.),
+		FVector2D(-180., 0.), FVector2D(-1000., 300.) };
+	const TArray<bool> LastIsStraggler = { false, false, false, false, false, true };
+	TArray<int32> SlotOfUnit;
+	TArray<bool> Queued;
+	const TArray<int32> OneKind = { 0, 0, 0, 0, 0, 0 };
+	const TArray<int32> TwoKinds = { 0, 0, 0, 1, 1, 1 };
+	TestEqual(TEXT("rear slots: one kind, none queued"), HOLFormation::ReserveRearSlots(Slots, Local, OneKind, LastIsStraggler, SlotOfUnit, Queued), 0);
+	TestTrue(TEXT("rear slots: the straggler in the last row on its side"), SlotOfUnit.Num() == 6 && SlotOfUnit[5] == 5 && !Queued[5]);
+	const TArray<FVector2D> LeftLocal = { FVector2D(0., -150.), FVector2D(0., 0.), FVector2D(0., 150.), FVector2D(-180., 0.),
+		FVector2D(-180., 150.), FVector2D(-1000., -400.) };
+	HOLFormation::ReserveRearSlots(Slots, LeftLocal, OneKind, LastIsStraggler, SlotOfUnit, Queued);
+	TArray<int32> Sorted = SlotOfUnit;
+	Sorted.Sort();
+	TestTrue(TEXT("rear slots: from the left, the last row's left slot"), SlotOfUnit.Num() == 6 && SlotOfUnit[5] == 3 && !Queued[5]);
+	TestTrue(TEXT("rear slots: one slot each"), Sorted == TArray<int32>({ 0, 1, 2, 3, 4, 5 }));
+	TestTrue(TEXT("rear slots: the body keeps its rows (no one of the front row sent back)"), SlotOfUnit[0] == 0 && SlotOfUnit[1] == 1 && SlotOfUnit[2] == 2);
+	// Mixed: kind 0 in front (three), kind 1 behind (three); the straggler is of kind 0.
+	const TArray<bool> FirstIsStraggler = { true, false, false, false, false, false };
+	const TArray<FVector2D> MixedLocal = { FVector2D(-1000., 0.), FVector2D(0., 0.), FVector2D(0., 150.), FVector2D(-180., -150.),
+		FVector2D(-180., 0.), FVector2D(-180., 150.) };
+	TestEqual(TEXT("rear slots: mixed, its kind in front, queued"), HOLFormation::ReserveRearSlots(Slots, MixedLocal, TwoKinds, FirstIsStraggler, SlotOfUnit, Queued), 1);
+	TestTrue(TEXT("rear slots: mixed, a slot of its kind kept, the other kind on its own"), SlotOfUnit.Num() == 6 && Queued[0] && SlotOfUnit[0] <= 2
+		&& SlotOfUnit[3] >= 3 && SlotOfUnit[4] >= 3 && SlotOfUnit[5] >= 3);
 	return true;
 }
 

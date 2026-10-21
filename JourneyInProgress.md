@@ -89,6 +89,7 @@ vérifier sur S1 et S2.
 | J7b.6 Vérification et clôture de J7b | **fait** (2026-10-20) : contrôle du couteau du Paysan, `-Full` PASS (609 s, 83/83), essai complet du combat validé (A clic gardé pour plus tard). **J7b close** ; GDD à la clôture de J7 |
 | J7a.2 Caserne | **fait** (2026-10-18, **validée** à l'essai : « c'est bon », commitée) : Caserne sur **R** (pas de page militaire ; pages par palier plus tard), grille A Lancier / Z Homme d'armes, infobulle « Produit : … », textes fr / en / ja ; soldats : ralliement ou clic droit sur une source ou un chantier = marche ; vitesses de la fiche (Paysan 1,41, Lancier 1,37 = 583 cm/s, Homme d'armes 1,23 = 523 cm/s ; règle × 1,098214) ; partie `build barracks` de `quick_check`, `quick_check` complet PASS (347 s), tests 69/69 ; **reste : partie 2 clients de la Caserne** (à faire en J7a.6) |
 | J7c.1 Archer | **fait** (2026-10-20, mycrusader-37, worktree `MyCrusader-A`, branche `j7c-archer`, b739547 ; `-Full` PASS 593 s ; `main` avancé à 4dc01ad) : détails de l'Archer tranchés (A : tout garder, voir journal) ; **(a) faite** (sous-agent, 10 min, 120k tokens ; non commitée) : `SKM_Archer`, `TP_Archer`, `A_Archer_Idle` / `Walk` / `Attack` / `Fall` fabriqués, relectures PASS, flèche cachée par échelle 0,001 de `ik_hand_gun` (images 25-35 du tir, toujours au repos, en marche, en chute) ; **(b) faite** (ligne `Archer` : 584 cm/s, 70 PV, 30 nourriture + 50 bois, 15 s ; Caserne **E** ; textes fr / en / ja) ; **(c) faite** : flèche cachée vue en jeu (captures), `AnimReport` (repos, marche, tir), `build barracks` produit un Archer, `-Parts build` PASS (270 s), rapide PASS, scénario `archers` ; `j7c-archer` sur `main` 02a8963 ; **essai validé** (« tout est bon » ; retour 8 pour plus tard : hit and run impossible, geste de tir trop long) |
+| J7c.2 Tir | **en pause** (2026-10-20, mycrusader-cc, `MyCrusader-A`, branche `j7c-shot`) : dégât différé et flèches en solo (4167f03), rangs d'un seul type et places par profondeur (2e3754b), validés à l'essai ; flèches chez le client réseau (b2) commencées, non commitées ; reprise le 2026-10-21 à 9 h (fin du journal) |
 
 ## Prochaine étape exacte
 
@@ -206,7 +207,9 @@ vérifier sur S1 et S2.
    **J7a.5 faite et validée** (groupes de contrôle, Ctrl + chiffre retiré). **J7a.6 faite, J7a close** (2be3be1 ;
    armée à 2 clients, correctif de `gather`). **J7b.1 commitée** (ecc260e). **J7b.2 à J7b.5 (1re partie) faites dans le
    worktree `MyCrusader-J5c`, non commitées** (journal « J7b.2 » à « J7b.5 »).
-   **➡ Reprise au 2026-10-20 (nuit) : J7c.1 faite et validée** (journal « J7c.1 : l'Archer », `main` 4dc01ad) ; suite :
+   **➡ Reprise au 2026-10-21 (9 h) : J7c.2 en pause** dans `MyCrusader-A`, branche `j7c-shot` : voir le point « Séance
+   mise en pause » de l'entrée « 2026-10-20 — J7c.2 : le tir » (fin du journal). Avant :
+   **J7c.1 faite et validée** (journal « J7c.1 : l'Archer », `main` 4dc01ad) ; suite :
    **J7c.2** (tir : dégât différé selon la distance, flèches déduites chez le client, mort par flèche ; J7c-Q1 à Q6 dans
    « Plan de J7c »), à penser avec le retour d'essai 8 (hit and run) ; corps gardés 30 s : mycrusader-a6 (`MyCrusader-J5c`).
    **Reprise au 2026-10-20 (soir) : J7b close** (journal « J7b.6 : clôture de J7b ») ; suite : **J7c** (plan de J7) ;
@@ -260,7 +263,10 @@ vérifier sur S1 et S2.
    - **Plus tard** : `LastAttacker` n'expire jamais (riposte sans limite de distance : poursuite à travers la carte ;
      borner à ~2 × rayon d'agression ou ~5 s) ; mort hors mêlée (`HOLCombatProcessor.cpp` ~l. 186 : ni `StopWalk`, ni
      `Disengage`, ni activité `Dying`) **à compléter en J7c.2** (flèches) ; `hol.Combat.Enabled 0` saute aussi la
-     destruction des mourantes ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées ;
+     destruction des mourantes (**corrigé le 2026-10-21**, branche `combat-dying-off` de `MyCrusader-J5c` : combat
+     coupé, personne ne combat et les flèches en vol attendent, mais une unité à 0 PV tombe et part 1 s après ;
+     reproduit par la partie `smoke` de `quick_check`, qui coupait le combat juste après la mort du Paysan : « 1 left
+     dying » avant, 0 après ; `-Parts tests,smoke,combat` PASS, 211 s) ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées ;
      `AttackerCount` de la victime d'une unité tuée trop haut d'un pour la fin du pas (sans effet visible).
    - **Relecture de 9debb86 (scénarios de test)**, par la session mycrusader-35 (2026-10-20, rien modifié) :
      1. *À corriger* : `HOLGameHUD.cpp` `BeginPlay` (~l. 84) pose `HOLTestHooks::OnScenarioChanged()` (lambda sur
@@ -5096,3 +5102,812 @@ d'épée).
 - Commit **b739547** sur `j7c-archer`, fusion de `main` (d6fc962, doc seule) en 4dc01ad, **`-Full` PASS** (593 s, toutes
   les parties, `anims` : `Archer Idle: A_Archer_Idle`, tests 83/83), **`main` avancé à 4dc01ad**. `MyCrusader-A` libéré.
   **J7c.1 close.** Suite : **J7c.2**.
+
+### 2026-10-20 — J7c.2 : le tir
+
+- `main` à c666a54 (corps gardés 30 s de mycrusader-a6 fusionnés). Hit and run gardé pour plus tard (retour 8, choix
+  de l'utilisateur) : J7c.2 suit le plan (J7c-Q1 à Q6). `MyCrusader-A` repris, branche **`j7c-shot`** depuis c666a54.
+- Découpage (un sous-agent par livrable, 15 min / 300k tokens) : **(a)** serveur : dégât différé selon la distance
+  (25 m/s, lâcher au même moment du geste que le coup de mêlée, liste courte cible / montant / pas d'arrivée, cible
+  morte = flèche perdue), cible des tireurs (Q6 : la plus proche, gardée tant qu'à portée, sans `MaxAttackers`), mort
+  par flèche sur le chemin « mourant » complet (revue de J7b : `StopWalk`, `Disengage`, activité `Dying`), tests,
+  contrôle dans `quick_check` ; **(b)** client : flèches déduites (activité « attaque » + cible), maillage instancié,
+  cloche légère, disparition à l'impact, rien sur le serveur dédié, capture ; **(c)** vérification et essai (J7c.3).
+- **(a) lancée.**
+
+### 2026-10-20 — Retour d'essai 1 : le groupe qui attend le retardataire (mycrusader-c9)
+
+- Cause (lecture du code) : la marche en bloc (`StartBlockMarch` / `AdvanceBlocks`, `HOLUnitOrderProcessor.cpp`) part
+  du centre de **tout** le groupe ; une unité à plus de `BlockJoinDistance` (4,5 m) de sa place de départ fait d'abord
+  rassembler le groupe (jusqu'à `FormUpMaxSteps`, 3 s), puis le bloc s'arrête tant qu'une unité a plus de
+  `BlockSoftHoldDistance` (1,6 m) de retard sur sa case, et ne la lâche qu'après `BlockWaitMaxSteps` (3 s) : ~6 s
+  d'attente.
+- **Choix de l'utilisateur (A, la recommandation)** : le bloc part tout de suite sans le retardataire (une unité à plus
+  de 4,5 m du groupe, quand le reste fait au moins la moitié du groupe ; un groupe vraiment éparpillé se rassemble
+  d'abord, comme aujourd'hui). Le retardataire marche **à sa vitesse**, sur son propre chemin, vers sa case du bloc, et y
+  entre dès qu'il l'atteint : en chemin s'il est plus rapide que le bloc, sinon à l'arrivée, où il prend sa place.
+  Aucune vitesse ne change. Écartés : bloc ralenti à 90 % tant qu'un retardataire n'est pas rentré ; retardataire 20 %
+  plus rapide que sa vitesse de la table.
+- Travail dans la copie principale, sur `main` (MyCrusader-A pris par mycrusader-37 ; mycrusader-a6 a avancé `main` à
+  c666a54 avant). Code lancé en sous-agent.
+- **Boucle 1 faite** (sous-agent, ~8 min, rien de commité) : règle pure `HOLFormation::FindStragglers` (le corps = le plus
+  grand amas reliés de proche en proche par des pas de 4,5 m au plus ; retardataires seulement si le corps fait
+  **strictement** plus de la moitié : deux amas de 3 se rassemblent comme avant ; les coins d'un grand bloc ne sont pas
+  des retardataires) ; `StartBlockMarch` : centre, chemin et rassemblement sur le corps ; les retardataires gardent leur
+  case et leur place d'arrivée, partent sur leur propre chemin du navmesh vers leur place (comme une unité qui a quitté
+  le bloc), ne retiennent jamais le bloc ; `AdvanceBlocks` : un retardataire qui passe à moins de 1,6 m de sa case entre
+  dans le bloc (pas pendant le rassemblement ni la fusion d'arrivée) ; l'arrivée attend aussi les retardataires.
+  Rapport : `stragglers N joined M`. Limite : l'allure du bloc reste celle du plus lent de tout le groupe, retardataire
+  compris. Compilé sans avertissement (33 s), tests 84/84, `quick_check -Parts tests,formation` **PASS** (111 s ; le
+  bloc de 9 de la partie n'a aucun retardataire, inchangé). Scénario d'essai `straggler` écrit (non vérifié).
+- **Boucle 2** lancée : cas « retardataire » dans la partie `formation` de `quick_check`, scénario `straggler` vérifié
+  sans fenêtre.
+- **Boucle 2 faite** (sous-agent, ~10 min, rien de commité) : 2 cas ajoutés à la partie `formation` de `quick_check`
+  (après `groups`) : 5 Hommes d'armes + 1 à 10 m derrière, puis 5 + 1 Archer ; vérifiés : `forming up on the move`,
+  `1 stragglers left behind`, `formup 0`, `held` ≤ 4, `arrived 1`, les 6 à 60 cm de leur place. Mesuré :
+  `units 6 formup 0 march 149 held 0 ... settle 34 ... stragglers 1 joined 0` et, Archer, `held 1 ... settle 15 ...
+  joined 0`. Run FAIL sur la seule borne `settle` (8, celle des autres cas) : 34 pas = 1,7 s, les 10 m de retard ;
+  borne relevée à 50 pour ces cas, pas encore relancé. L'Archer ne gagne que 61 cm/s : sur 35 m il ne rattrape pas
+  le bloc (il lui faudrait ~85 m depuis 10 m) ; scénario changé : Archer à 7 m, ordre à 60 m ou plus.
+- Scénario `straggler` : sans `.json`, la partie a voulu `BattleMap` (`Scenario straggler: /Game/Level/BattleMap...`)
+  alors que `Plain` s'est chargée, puis `waitmap` a expiré (README : « sans .json : Plain » ; sans doute une config
+  gardée dans `Saved_Tests` ; **petit défaut à regarder plus tard**) ; `straggler.json` ajouté (Plain, 2 joueurs). En
+  `-nullrhi` les scénarios ne tournent pas (`waitui`) : les vérifier en `-RenderOffScreen`.
+- **Boucle 3** lancée : `quick_check -Parts tests,formation` relancé, scénario vérifié en `-RenderOffScreen` avec les
+  deux ordres.
+- **Boucle 3 faite** (sous-agent, ~10 min) : `quick_check -Parts tests,formation` **PASS** (134 s, 84/84 ; cas
+  `straggler` : `formup 0 ... held 0 ... settle 34 stragglers 1 joined 0` ; Archer : `held 1 ... settle 15 ... joined 0`).
+  Scénario `straggler` vérifié en `-RenderOffScreen` (prêt, 12 unités) ; retardataires replacés **derrière** leur
+  groupe (côté centre : devant, l'Archer gardait une place du premier rang et marchait devant le bloc). Ordres joués :
+  gauche à 35 m `formup 0 march 137 held 0 ... settle 33 stragglers 1 joined 0` ; droite à 60 m `a straggler joined
+  the block after 102 steps of march`, `formup 0 march 242 held 7 gap 129 speed 565 ... stragglers 1 joined 1`. À
+  surveiller : l'Archer rentré marche à 565 cm/s (> pas du bloc 523) le temps de gagner sa case.
+- **Essai de l'utilisateur lancé** : `play.ps1 straggler`.
+- **Essai de l'utilisateur : raté.** (1) « de temps en temps ça marche, mais par chance » ; (2) quand le retardataire
+  arrive près du groupe en mouvement, ils s'arrêtent, se groupent et repartent ; (3) il essaie de s'insérer dans sa
+  case, casse la formation, et ils se bloquent ; (4) 2 groupes de 3 se superposent au moment de se rejoindre.
+  Hypothèses (lecture du code) : (1) deux critères (`FindStragglers` par voisin le plus proche, « gathering first »
+  par la distance à la place de départ) ; (2) entré à 1,6 m de sa case, il a ensuite la borne de marche (40 cm) et
+  retient le bloc ; (3) sa case au milieu ou sur le côté du bloc ; (4) cas sans retardataire : le rassemblement
+  d'avant, où les unités d'un ordre se traversent. Enquête lancée (sous-agent, sans changer le code).
+- **Choix de l'utilisateur (A, la recommandation)** : le retardataire ne retient jamais le bloc ni ne le traverse ; au
+  départ, on lui garde une **case vide du dernier rang**, du côté où il arrive ; le bloc marche avec ce trou, il y entre
+  par l'arrière ; s'il est d'un type dont les rangs sont devant (groupe mêlé), il marche en queue et prend sa place à
+  l'arrivée. Écartés : en queue jusqu'à l'arrivée dans tous les cas ; bloc refait à sa jonction.
+- **Précision de l'utilisateur** : « tant qu'une unité n'est pas dans le bloc, elle garde sa vitesse » : l'allure du
+  bloc est celle du plus lent **du bloc** (plus celle d'un retardataire) ; une unité qui entre prend le pas du bloc
+  (le bloc ralentit à elle seulement si elle est plus lente).
+- **Enquête faite** (sous-agent, ~6 min, aucun code changé ; 9 essais scriptés + 3 obliques, terrain plat) : (1)
+  non reproduit (toujours 1 retardataire, « on the move ») ; (2) mécanisme confirmé (entré à ~130-160 cm, borne 40 cm
+  ensuite : bloc retenu) ; (3) mécanisme établi : entré, il est en phase `Block` sans traversée (`GetPassThroughSerial`,
+  `HOLSimulationFragments.h:171` : seules `FormUp` / `bReforming` se traversent) ; il bute sur les corps, ceux qu'il
+  pousse dépassent 40 cm et retiennent le bloc à leur tour, et chacun **quitte le bloc** après 3 s ; (4) établi : 3
+  contre 3, pas de retardataire, rassemblement en `FormUp` où l'évitement entre unités du même ordre est coupé
+  (`HOLSimulationProcessors.cpp:614` et le regard en avant vers 250) : paires à moins de 60 cm dès 0,5 s.
+- **Journal de l'essai de l'utilisateur** (`Saved/Logs/HeroesOfLiberty.log`) : sur un ordre de 106 m, `a straggler
+  joined the block after 242 steps of march`, puis `arrived after 0 steps of form-up and 536 of march (126 held),
+  slot gap 178 cm at most ... 5 units left it` : la formation cassée (symptôme 3). Aussi, groupe éparpillé
+  (`gathering first`, 959 cm, 0 retardataire) : `72 held ... 5 units left it`. Beaucoup d'ordres relancés en marche.
+- **Plan du correctif** (choix A et précision de l'utilisateur) : (a) à l'ordre, pour chaque retardataire, une case
+  **réservée au dernier rang** de son type (la plus proche de son côté) ; les autres prennent les autres cases ; si les
+  rangs de son type ne sont pas le dernier rang du bloc : **en queue** (point derrière le bloc), place prise à
+  l'arrivée ; (b) le retardataire marche **à sa vitesse** : son chemin tant qu'il est loin, puis droit vers sa case
+  (ou la queue) en traversant les unités de son ordre (comme `bReforming`), sans jamais retenir le bloc ; il est
+  membre à 40 cm de sa case, prend alors le pas du bloc ; (c) **allure du bloc = le plus lent de ses membres** ; (d) un
+  membre trop longtemps en retard (`BlockWaitMaxSteps`) redevient retardataire (rattrape sa case) au lieu de quitter le
+  bloc pour de bon ; (e) rassemblement d'un groupe éparpillé **avec évitement** entre unités de l'ordre (plus de
+  superposition), la traversée gardée pour la reformation de l'arrivée.
+- **Boucle 4 faite** (sous-agent, ~12 min, rien de commité) : plan (a) à (c). Règle pure `ReserveRearSlots` (par
+  retardataire, la case libre de son type la plus en arrière, puis la plus proche de lui en travers ; pas au dernier
+  rang du bloc : **en queue** ; le corps prend les autres cases par `AssignPlaces`) ; `bStraggler` (fragment) : traverse
+  les unités de son ordre en phase `Block` ; loin, son chemin vers sa place d'arrivée ; à 6 m de sa cible avec la ligne
+  libre, droit vers sa case à sa vitesse ; repart sur un chemin au-delà de 9 m ou ligne coupée ; membre à 40 cm (pas
+  du bloc, plus de traversée) ; jamais dans `bHeld` / `MaxGap` / `HeldSteps`. Allure = le plus lent du corps, le bloc
+  ralentit à un membre plus lent qui entre. Rapport `queued N`. Compilé sans avertissement, tests 85/85,
+  `quick_check -Parts tests,formation` **PASS** (129 s) : cas straggler `held 0 left 0 ... joined 0` (« its slot kept
+  in the last row (150 cm across) ») ; Archer `held 1 left 0 settle 8 ... joined 0` (35 m, trop court pour rattraper).
+- **Boucle 5** lancée : plan (d) et (e) (membre en retard redevient retardataire ; rassemblement avec évitement).
+- **Boucle 5 arrêtée à sa limite** (15 min, ~160k tokens) : (d) et (e) écrits et compilés (DLL de 22:19 après le
+  source de 22:18) : `GetPassThroughSerial` ne traverse plus en `FormUp` (seulement `bReforming` et un retardataire
+  droit vers sa case), commentaires de la séparation et du regard en avant ; cas `scattered` ajouté à la partie
+  `formation` de `quick_check`, champ `spacing` (distance minimale entre membres) au rapport ; `quick_check` coupé en
+  cours (cas straggler : `held 0 left 0 ... settle 35 ... spacing 150`). **Bilan** : code + compilation + nouveau cas +
+  `quick_check` ne tiennent pas dans une boucle (comme pour les poses de mycrusader-7c) ; **amélioration** : une boucle
+  écrit et compile, la suivante ne fait que vérifier (relecture du diff, `-Parts tests,formation`, rapport).
+- **Boucle 6** lancée : vérification seule.
+- **Boucle 6 faite** (vérification, ~5 min) : `quick_check -Parts tests,formation` **FAIL** (149 s ; tests 85/85,
+  `straggler`, `scattered`, `groups` PASS). `scattered` : `gathering first (512 cm)`, `formup 4 march 165 held 15 left
+  0 ... spacing 120` (plus de superposition). KO : le **bloc de 9** (3 Paysans, 3 Lanciers, 3 Hommes d'armes côte à
+  côte, `gathering first` 673 cm) : sans traversée en `FormUp`, deux membres restent à ~228 cm de leur case pendant 3 s,
+  redeviennent retardataires (`left 2`, `held 63`, 204 cm de leur place, un plus rapide que le plus lent + 10 %) ; et le
+  **glisser simple** (demi-tour) : 126 pas pour 120 au plus (16 retenus). Cause : les rangs de types différents doivent
+  se croiser pour se mettre en place (la raison de la traversée en J7a.4).
+- **Correctif retenu** (même règle que l'arrivée : « deux types se traversent, deux du même type se contournent ») :
+  pendant le rassemblement, deux unités de l'ordre **de types différents** se traversent, **deux du même type**
+  s'évitent (leurs places sont données sans croisement par type) ; reformation de l'arrivée et retardataire droit vers
+  sa case inchangés. **Boucle 7** lancée (écriture et compilation seulement).
+- **Boucle 7 faite** (~4 min, écriture et compilation, 27 s sans avertissement) : `RowKind` (type de rang + 1, posé
+  au passage en `FormUp`, remis à zéro par un nouvel ordre), `GetPassThroughKind`, `CanPassThrough` (même ordre, sauf
+  deux unités en `FormUp` du même type) dans le regard en avant et la séparation. Commentaires harmonisés (« playtest
+  note 1 of J7b »). Vérification à suivre, après l'avance de `main` de mycrusader-7c (« N inactifs »).
+- **Boucle 8 faite** (vérification, ~6 min) : compilé sur f7f00df (43 s, sans avertissement) ; `quick_check -Parts
+  tests,formation` **PASS** (143 s, 85/85) : bloc de 9 `formup 11 march 151 held 14 left 0`, écart 40 cm, 565 cm/s au
+  plus (≤ 575) ; glisser simple 116 pas (≤ 120) ; straggler `held 0 left 0 settle 35 stragglers 1` ; Archer `held 1
+  left 0 settle 8` ; scattered `formup 4 march 165 held 15 left 0 ... spacing 120`. Aucun « fell behind ». Rapide PASS
+  (24 s). **2e essai de l'utilisateur lancé** (`play.ps1 straggler`).
+- **2e essai de l'utilisateur** : groupe de gauche (retardataire à 10 m) et groupe de droite (Archer qui rentre en
+  chemin) : **0 problème**. À changer : (1) **2 paquets de 3** : « je ne veux plus ça » (le rassemblement) : ils vont
+  à la destination, et s'ils se croisent en chemin ils peuvent fusionner, pas avant ; (2) **retardataire tout proche**
+  (capture : 5 en colonne, 1 à ~3 m, donc dans le corps à moins de 4,5 m mais loin de sa case) : la formation attend
+  d'être complète avant de partir (jonction en marche, bloc retenu à 160 cm) : « le même correctif que les 2 groupes
+  de 3 ». Règle générale : **la formation ne s'arrête jamais pour attendre**.
+- **Choix de l'utilisateur** (une question, deux points) : (1) **bloc qui balaie** (A, la recommandation) : le bloc
+  part tout de suite, placé juste derrière l'unité la plus en arrière (assez loin pour que chaque unité ait le temps de
+  gagner la ligne de sa case avant qu'elle n'arrive) ; les unités devant leur case se décalent sur le côté et la
+  laissent venir ; plus de rassemblement ni de bloc retenu à la jonction. Écarté : retardataire dès 0,5 m derrière sa
+  case. (2) **petits blocs** (B, contre la recommandation « en vrac ») : chaque paquet séparé marche en sa propre
+  formation vers la destination ; les blocs fusionnent quand ils se rencontrent, sinon à l'arrivée. Écarté : l'autre
+  paquet en retardataires.
+- Découpage : (i) bloc qui balaie (écriture + compilation), (ii) vérification + cas « proche » dans `quick_check`,
+  (iii) petits blocs (plusieurs blocs par ordre, places finales par paquet), (iv) fusion des blocs + vérification,
+  (v) scénario et essai.
+- **Séance arrêtée ici (demande de l'utilisateur : « marque tout pour continuer dans une prochaine session »).**
+  **Reprise exacte** :
+  - **État** : copie principale, `main` à f7f00df, **rien de commité** pour ce retour (validation partielle seulement) :
+    `HOLUnitOrderProcessor.cpp/.h`, `HOLFormationRules.cpp/.h`, `HOLSimulationFragments.h`,
+    `HOLSimulationProcessors.cpp/.h`, `HOLFormationTests.cpp`, `quick_check.ps1` (cas `straggler`, `straggler archer`,
+    `scattered` de la partie `formation`), scénario `Tools/Scenarios/straggler.txt/.json` (non suivis). Compilé,
+    `quick_check -Parts tests,formation` PASS et rapide PASS (boucle 8). Les autres sessions avancent `main` par
+    `git merge --ff-only --autostash` après signal : le diff reste dans l'arbre de travail.
+  - **Validé à l'essai** : retardataire à 10 m (case gardée au dernier rang, à sa vitesse, jamais de bloc retenu,
+    membre en retard qui redevient retardataire) ; Archer plus rapide qui rentre en chemin.
+  - **À faire, dans l'ordre** : (i) **bloc qui balaie** : dans `StartBlockMarch`, plus de « gathering first » ni de
+    jonction retenue (`bJoining`, `GetBlockSoftPace`, `FormUpMaxSteps`) ; le bloc part tout de suite, son point de départ
+    reculé sur le prolongement du chemin derrière l'unité la plus en arrière, assez pour que chaque unité ait le temps
+    (écart en long ≥ écart en travers + marge) de gagner la ligne de sa case ; une unité devant sa case se décale sur le
+    côté et attend que la case arrive (cible = la case avancée jusqu'à elle, pas de marche arrière) ; (ii) vérification
+    + cas « retardataire proche » dans `quick_check` (5 en colonne + 1 à 3 m : `formup 0`, `held` ≈ 0, aucun membre
+    retenu) ; (iii) **petits blocs** : un bloc par paquet séparé (`FindStragglers` devient « les paquets » ; paquet d'une
+    seule unité = retardataire comme aujourd'hui), chacun avec sa part des places finales et son propre chemin ;
+    `Blocks` aujourd'hui indexé par numéro d'ordre : passer à plusieurs blocs par ordre ; (iv) **fusion** : quand deux
+    blocs d'un ordre se rencontrent (le petit près de l'arrière du grand), le petit se dissout et ses unités rejoignent
+    leurs cases gardées au dernier rang du grand (mécanisme des retardataires) ; sinon chacun se reforme à l'arrivée ;
+    vérification + cas `scattered` (2 × 3 : `held` ≈ 0, pas de rassemblement) ; (v) scénario `straggler` complété
+    (5 + 1 proche, 2 × 3) et 3e essai de l'utilisateur ; puis `-Full`, commit sur `main` (avec `EtapeDefini.md`).
+  - **À savoir** : mycrusader-cc a commité sur `j7c-shot` (2e3754b) une nouvelle règle des rangs d'un seul type
+    (`MakeSquareRows`) et l'attribution des places par profondeur (`AssignPlaces` / `AssignPlacesByKind`), pas encore
+    dans `main` : `ReserveRearSlots` appelle `AssignPlaces` sur les cases restantes (un rang troué) ; celle de nous deux
+    qui fusionne en second refusionne `main` et vérifie ce point. Méthode : boucles de 15 min, une boucle écrit et
+    compile, la suivante vérifie ; scénarios vérifiés en `-RenderOffScreen` (pas `-nullrhi`). Petit défaut noté : un
+    scénario sans `.json` demande `BattleMap` au lieu de `Plain`.
+- **Reprise (2026-10-21)** : copie principale, `main` toujours à f7f00df, `j7c-shot` pas encore fusionnée dans `main`.
+  Copie du travail non commité dans le scratchpad (`backup1/retour1.patch` + scénario `straggler`). **Boucle 9** lancée :
+  (i) bloc qui balaie (écriture et compilation seulement). mycrusader-56 a repris J7c.2 (b2) dans `MyCrusader-A` :
+  copie principale laissée à cette session, message avant toute avance de `main`.
+- **Boucle 9 faite** (sous-agent, ~10 min, compilé en 26 s sans avertissement, rien de commité) : règle pure
+  `HOLFormation::GetBlockSetBack` (repère du bloc au premier point du chemin ; par unité du corps, si elle est à plus de
+  40 cm en travers de sa case : avance demandée = écart en travers + `BlockSweepMargin` 100 cm, sinon 0 ; recul = le
+  plus grand manque, jamais négatif ; retardataires exclus) et 5 cas de test ; `StartBlockMarch` : plus de « gathering
+  first », `Progress = -recul` (point du bloc sur le prolongement du chemin vers l'arrière), le corps en `FormUp` ;
+  `AdvanceBlocks` : plus de `bJoining` ni d'allure réduite ni de délais de rassemblement (`FormUpMaxSteps` retirée) ;
+  une unité en `FormUp` ne retient jamais le bloc ; membre à 40 cm de sa case ; devant sa case : cible = sa case
+  avancée jusqu'à elle (décalage de côté puis attente, pas de marche arrière) ; derrière : droit vers sa case à sa
+  vitesse. Journal « Block march: sweeping, start set back N cm » ; `formup` vaut toujours 0 ; `quick_check` : contrôles
+  « forming up on the move » / « gathering first » devenus « sweeping in at once ». Risques : point reculé hors navmesh
+  (mur derrière le groupe), un membre déjà entré qui ne laisse pas passer une unité en `FormUp`.
+- **Boucle 10** lancée : vérification + cas « retardataire proche » dans `quick_check`.
+- **Boucle 10 faite** (~15 min, à sa limite ; code C++ inchangé) : cas `straggler near` ajouté à la partie `formation`
+  (5 Hommes d'armes en file + 1 à ~3,2 m derrière et à côté ; ordre à 38 m ; unités retirées à la fin) : **PASS**
+  (`sweeping` recul 501 cm, `formup 0 march 173 held 0 left 0 ... spacing 137`). `-Parts tests,formation` **FAIL**
+  (164 s, 85/85) : tous les cas d'un seul type passent (straggler, straggler archer, scattered `held 0 spacing 119`,
+  straggler near), **tous les groupes mêlés échouent** (formation 6 mixtes `held 71`, `plain` `held 76`, bloc de 9
+  `held 180`, pas arrivé dans la fenêtre). Cause (journal) : des unités devant leur case (Paysans, un Homme d'armes)
+  restent en `FormUp` toute la marche, **poussées** par les membres d'un autre type des rangs de derrière : un membre
+  (`Block`) ne traverse jamais (`GetPassThroughSerial` = 0) ; la cible « case avancée jusqu'à elle » se recale sur la
+  position poussée, la case ne les atteint jamais ; les membres gênés retiennent le bloc un pas sur deux.
+- **Correctif** (règle déjà tranchée : deux types se traversent, deux du même type se contournent) : un membre traverse
+  les unités de son ordre d'un autre type de rang (`GetPassThroughSerial` / `GetPassThroughKind` aussi en `Block` hors
+  retardataire et reformation). **Boucle 11** lancée : correctif, compilation, `-Parts tests,formation`, rapide.
+- **Boucle 11 faite** (~12 min) : `IsBlockMemberWithKind` (membre en `Block`, ni retardataire ni reformation,
+  `RowKind` ≠ 0) dans `GetPassThroughSerial` / `GetPassThroughKind` ; un retardataire qui entre dans le bloc reçoit son
+  `RowKind` (il restait à 0). Compilé (55 s, sans avertissement). `-Parts tests,formation` **PASS** (181 s, 85/85),
+  **`held 0` partout**, `formup 0`, `left 0` : 6 mêlés `sweeping 676 cm march 165 gap 10 speed 565` ; bloc de 9
+  `855 cm march 166 gap 3` (avant : `held 180`) ; straggler `236 cm march 155 settle 28` ; Archer `285 cm march 149` ;
+  scattered `738 cm march 175 spacing 119` ; straggler near `501 cm march 173 spacing 137`. Rapide PASS (29 s). À
+  savoir : `spacing` des groupes mêlés à 1-4 cm (paire la plus proche tous types confondus, normal puisqu'ils se
+  traversent ; à mesurer par type si besoin) ; cas « même type, devant sa case dans la file d'un membre » non montré
+  par les cas.
+- **Choix de l'utilisateur** : essai court du bloc qui balaie maintenant (A, la recommandation), avant (iii) et (iv).
+  Scénario `straggler` complété : colonne de 5 Hommes d'armes + 1 à ~3 m (Y -4500), groupe mêlé de 9 (3 Paysans,
+  3 Lanciers, 3 Hommes d'armes, Y 4300 / 4600 / 4900). Vérifié en `-RenderOffScreen` (sous-agent, ~4 min) : Plain,
+  `ready`, 27 unités, rien hors navmesh ; colonne à 34 m `sweeping 538 cm ... 156 of march (0 held) ... settled after
+  2 steps, 0 pushes` ; groupe mêlé d'abord à 6 m d'écart entre types : un type entier à ~9 m mis **en queue** (3
+  retardataires, cas des petits blocs pas encore traité) : écart resserré à 3 m. **3e essai de l'utilisateur lancé**.
+- **3e essai de l'utilisateur : bloc qui balaie refusé.** (1) groupe de gauche : « ils se sont rejoints et ont attendu
+  avant de partir, se sont gênés pour partir et ont marché tout du long » : **échec** ; (2) groupe de l'Archer : mis
+  en formation avant de partir, partis sans l'Archer qui s'est bien inséré plus tard : « bien, mais on enlève la
+  formation au départ : si on doit être en formation, c'est **pendant le trajet ou après, pas avant** ». Référence :
+  `C:\Users\baudo\Desktop\zza.gif` (une foule serrée d'Hommes d'armes et de Lanciers). Journal : 1er ordre 6 Hommes
+  d'armes, `0 stragglers`, recul 562 cm, `346 of march (143 held)` (sans doute la colonne + 1 proche : deux du même
+  type dans une file, celui de devant attend sa case, le membre derrière le contourne mal : le cas connu non traité) ;
+  Archer : recul 312 cm, 0 retenu, entré après 97 pas ; ordre de 18 unités de trois groupes : **recul 8075 cm**,
+  `settled after 36 steps ... 883 cm from its place` (le recul n'a pas de borne ; groupes séparés : cas des petits
+  blocs). Le défaut de fond : avec le recul, toutes les unités sont devant leur case et l'attendent, ce qui se voit
+  comme une mise en formation avant le départ.
+- **Règle de l'utilisateur** (réponse à la question A rangs en marche / B bloc à plein pas / C en vrac) : « pas
+  d'attente ni de ralentissement ; si le retardataire arrive à s'intégrer, tant mieux, sinon ce sera à l'arrivée ; le
+  bloc, par contre, essaie de se mettre en rangs pendant sa marche, intelligemment ». Et : **tentative de formation en
+  déplacement, que ce soit un ordre de marche ou une attaque-déplacement (Q clic) ; dès qu'on attaque ou engage un
+  ennemi, plus de formation.**
+- Lecture retenue (« rangs en marche ») : le bloc part tout de suite, à plein pas, jamais ralenti ni retenu ; places
+  données par profondeur (`AssignPlaces` par profondeur de `j7c-shot`) ; point de départ calé au plus près des unités
+  (recul seulement pour qu'aucune unité ne soit derrière sa case en long, sans marge en travers, borné à la profondeur
+  du bloc) ; une unité devant sa case continue d'avancer, plus lentement (jamais arrêtée), en oblique vers sa file,
+  jusqu'à ce que sa case la rattrape ; derrière sa case : à son pas, en file derrière, entre si elle peut, sinon à
+  l'arrivée. Pour cela, **fusionner d'abord `j7c-shot` (db44ae1) dans `main`** : refusé par la permission automatique
+  (« modification d'une ressource partagée »), à demander à l'utilisateur. Copie du travail : `backup2/retour1.patch`.
+- **Accord de l'utilisateur** : `main` avancé à **db44ae1** dans la copie principale (`merge --ff-only --autostash`,
+  copie avant : `backup2/retour1.patch` + fichiers ; l'autostash est revenu **sans conflit**). mycrusader-56 prévenue
+  (ses mesures J7c.4 attendront nos compilations). **Boucle 12** lancée : rangs en marche (écriture et compilation).
+- **Boucle 12 faite** (~12 min, compilé sans avertissement) : `GetBlockSetBack` = `min(max(0, max_i(Case.X - Pos.X)),
+  profondeur du bloc)`, sans marge en travers (`BlockSweepMargin` retirée ; 6 cas de test) ; unité devant sa case :
+  jamais arrêtée, `FormUpLeadShare` 0,5 du pas en long, le reste de sa vitesse en travers vers sa file ; derrière :
+  droit vers sa case à sa vitesse, membre à 40 cm, sinon à l'arrivée ; **en marche, le bloc n'est plus jamais
+  retenu** (`bHeld` seulement pendant la reformation de l'arrivée) ; un membre à plus de 40 cm de sa case pendant
+  `BlockWaitMaxSteps` redevient retardataire. Journal « Block march: rows on the move, start set back N cm »
+  (`quick_check` adapté). **Engagement déjà conforme** : un ordre Q marche en bloc (`HOLUnitOrderProcessor.cpp:1338`) ;
+  une unité qui engage reçoit un ordre solo (`IssueCombatWalk`, `HOLCombatProcessor.cpp:421`) ou `StopWalk` (89-91) :
+  nouveau numéro d'ordre, `AdvanceBlocks` la retire du bloc, la reprise se fait en solo (399). Risque principal :
+  sans marge en travers, une unité décalée de côté se fait dépasser par sa case et, au pas du bloc, n'entre qu'à
+  l'arrivée. **Boucle 13** lancée : vérification.
+- **Boucle 13 faite** (~14 min) : mesure ajoutée au rapport (« rows formed after N steps (X cm marched, -1 never), K
+  still forming at the re-forming » ; `joinsteps joincm formingatend`). `-Parts tests,formation` **FAIL** (164 s,
+  87/87) sur `arrival` du bloc mêlé (`settled in 10 steps ... 200 cm`) ; rapide PASS (27 s). held 0, left 0, 0
+  croisement, 0 poussée partout ; mais **en rangs pendant la marche dans 3 marches sur 8 seulement** (front 6,5 m,
+  plain 7,8 m et 2,6 m) ; formation march / block : 3 unités sur 6 n'entrent qu'à l'arrivée ; scattered : aucune des
+  6 (407 cm à l'arrivée) ; straggler, Archer, near : 1 ou 2 du corps entrent pendant la reformation. Cause : le risque
+  prévu (sans marge en travers, une unité décalée de côté se fait dépasser par sa case et, au pas du bloc, ne la
+  rattrape jamais ; `HeldSteps` remis à 0 en `FormUp` : elle ne redevient pas retardataire).
+- **Correctif** : avance en long proportionnelle à l'écart en travers, juste ce qu'il faut pour que l'unité gagne sa
+  file avant que sa case l'atteigne : avec la part `s` = `FormUpLeadShare` en long, la case gagne `(1 - s)` du pas et
+  l'unité file de côté à `√(1 - s²)` : avance = `√((1 - s) / (1 + s))` × écart en travers (0,58 à s = 0,5) ; recul
+  = le plus grand manque, borné à la profondeur. **Boucle 14** lancée (correctif, compilation, vérification).
+- **Boucle 14 faite** (~13 min, à sa limite) : avance proportionnelle dans `GetBlockSetBack` (tests 87/87, 3 cas de
+  plus) ; unité en `FormUp` derrière sa case : retardataire après `BlockWaitMaxSteps` (`ToStraggler`) ; défaut trouvé :
+  l'entrée en `FormUp` mesurait la case du pas courant (un membre : celle du pas d'avant) : une unité qui suit sa case
+  au pas du bloc restait à 23-70 cm et n'entrait jamais ; tolérance d'entrée = 40 cm + l'avance d'un pas de la case
+  (~23 cm). **En rangs en marche sans sortie : 6 marches sur 9** (3 sur 8 avant) : plain 6,0 / 7,3 / 2,4 m, straggler
+  1,1 m, Archer 2,1 m, near 11,5 m ; `formingatend 0`, held 0, 0 croisement, 0 poussée partout. `-Parts
+  tests,formation` **FAIL** (166 s) : bloc de 9 (recul 473 cm, 2 sorties, écart 139 cm) et scattered (recul plafonné
+  à 360, 4 sorties, reformé en 12 pas à 0 cm) ; 1re marche (plafond 360) : 1 sortie. Cause : le **plafond à la
+  profondeur du bloc** coupe l'avance nécessaire. Rapport : une unité passée en `ToStraggler` compte dans `left`, pas
+  dans `stragglers`.
+- **Correctif** : plafond = profondeur + `√((1 - s) / (1 + s))` × largeur du bloc (l'avance qu'il faut à une unité
+  à l'intérieur de l'emprise du bloc ; au-delà, c'est un paquet séparé : petits blocs) ; rapport : une sortie en
+  marche compte comme retardataire ; contrôle `scattered` : retardataires admis jusqu'aux petits blocs (iii).
+  **Boucle 15** lancée.
+- **Boucle 15 faite** (~11 min) : plafond = profondeur + 0,577 × largeur (`ColumnSpacing` passé à `GetBlockSetBack`,
+  tests 87/87) ; `ToStraggler` compte aussi dans `stragglers` ; ligne « rows formed after N steps (...), K left it as
+  stragglers » ; contrôle `scattered` : retardataires admis jusqu'aux petits blocs. `-Parts tests,formation` **FAIL**
+  (200 s) sur le seul **bloc de 9** (recul 473 cm, non plafonné : mêmes chiffres qu'en boucle 14, 2 sorties aux pas 95
+  et 102, écart 139 cm) ; 1re marche : 1 sortie (recul 398) ; scattered 4 → 1 sortie (admise) ; rapide PASS (29 s).
+  Toujours 6 marches sur 9 en rangs en marche sans sortie. Le plafond n'était pas la cause pour le bloc de 9.
+  **Boucle 16** lancée : diagnostic des sorties (lignes `Formation report` des unités sorties).
+- **Boucle 16 faite** (~14 min ; une passe `-Parts formation` lancée pendant les tests de charge de mycrusader-56,
+  qui ont été refusés : même dossier `Saved_Tests` ; depuis, aucun lancement sans accord entre les deux sessions).
+  Cause : les 4 sorties sont des **Hommes d'armes**, le type le plus lent, qui fait le pas du bloc (523) : derrière
+  sa case, une unité va à `min(sa vitesse, 1,08 × pas)` : pour eux, la vitesse exacte de la case, le moindre retard
+  reste acquis jusqu'à `ToStraggler` (Paysans 600 et Lanciers 583 rattrapent). Pourquoi ils prennent du retard : (1)
+  en `FormUp` devant sa case, la marche de côté était `min(écart en travers, 453)` **par seconde** : approche
+  exponentielle de sa file, bien plus lente que ce que suppose le recul ; (2) bloc de 9 : places des Hommes d'armes
+  **croisées en travers** (ordre au départ 15, 16, 14 ; #16 reçoit la place au-delà de celle de #14 car il part 59 cm
+  plus en arrière) : #16 coupe la file de #14, qui finit 138 cm derrière sa case. Correctif (1) écrit et compilé
+  (27 s), non vérifié : de côté à pleine vitesse jusqu'à sa file (borné par ce qui reste à faire dans le pas).
+  Si (2) reste : garder l'ordre de gauche à droite dans le rang d'un type au départ d'une marche en bloc (la règle
+  déjà donnée par l'utilisateur pour les places par profondeur). Écartés : vitesse de rattrapage au-delà de la vitesse
+  du type (déjà refusé par l'utilisateur) ; admettre la sortie dans le contrôle du bloc de 9.
+- En attente de la fin des tests de charge de mycrusader-56 pour vérifier (**boucle 17**).
+- **Boucle 17 faite** (~7 min) : `-Parts tests,formation` **PASS** (166 s, 87/87), rapide PASS (57 s). Bloc de 9 :
+  **0 sortie** (2 avant), rangs formés en 13,6 m (26,7 avant), écart 37 cm (140). **7 marches sur 9** en rangs en
+  marche sans sortie. Places croisées : plus de sortie, correctif non fait (prêt : `bKeepAcrossOrder` qui saute la
+  passe d'échanges d'`AssignPlaces` au départ d'une marche en bloc). Sorties restantes : 2 Hommes d'armes (1re marche,
+  scattered admise) partis tournés, arrivés **dans leur file à 41-42 cm derrière leur case** et restés là jusqu'à
+  `ToStraggler` (60 pas) : au pas du bloc, un écart d'1 cm au-delà de 40 ne se rattrape jamais.
+- **Correctif** : un membre ou une unité dans sa file ne redevient retardataire qu'au-delà de 80 cm de sa case (la
+  borne « within 80 cm of its slot on the path » de `quick_check`), pas 40 : à 41 cm dans sa file, il est en rang à
+  l'œil. **Boucle 18** lancée (correctif, compilation, vérification), puis essai.
+- **Boucle 18 faite** (~10 min) : `HOLFormation::BlockDropDistance` 80 cm : un membre en marche ne compte vers
+  `ToStraggler` qu'au-delà ; une unité en `FormUp` derrière sa case aussi ; elle **devient membre** derrière sa case,
+  dans sa file (≤ 40 cm en travers), à 80 cm au plus (sinon elle restait en `FormUp`). 40 cm gardés ailleurs.
+  Compilé (42 s, sans avertissement). `-Parts tests,formation` **PASS** (159 s, 87/87), rapide PASS (98 s). **Aucune
+  sortie** dans les 9 marches ; 1re marche en rangs à 9,2 m (19,6) ; scattered 0 sortie, settle 2 (8) ; bloc de 9 à
+  13,6 m ; seuls retardataires : ceux que prévoient les cas straggler et Archer.
+- Notes du scénario `straggler` mises à jour (rangs en marche). **4e essai de l'utilisateur lancé.**
+- **4e essai de l'utilisateur : « c'est beaucoup mieux »** (les 4 configurations essayées). Reste : (1) « je n'aime
+  pas trop qu'une unité fasse **demi-tour** pour se mettre dans le rang en pleine marche parce qu'elle est un peu trop
+  devant » ; (2) deux paquets de 3 : pas encore (petits blocs, attendu). Journal de l'essai copié
+  (`scratchpad/trial4.log`).
+- **Correctif (1)**, sans nouvelle règle : **jamais de demi-tour en marche** : une unité du bloc (en `FormUp` ou
+  membre) devant sa case ne marche jamais contre le sens de la marche ; elle ralentit (au plus bas `FormUpLeadShare`
+  du pas) et laisse sa case revenir à elle. **Boucle 19** lancée (trouver le cas dans le journal, corriger, compiler,
+  vérifier). Puis (iii) petits blocs et (iv) fusion.
+- **Boucle 19 faite** (15 min, à sa limite) : cas de l'essai (par lecture du code, le journal de l'essai n'a pas de
+  `Formation report`) : l'**entrée en membre** d'une unité encore devant sa case (à 40 cm + `Pace*dt`) : membre, elle
+  visait sa case derrière elle à 1,08 × pas : demi-tour. Autres chemins : membre poussé devant sa case, retardataire
+  qui rejoint ou guidé vers sa case alors qu'il est devant. Correctif : `SteerOnMarch` (toutes les unités du bloc en
+  marche, hors reformation) : si aller droit à sa cible donne moins de `FormUpLeadShare` du pas en long, l'unité avance
+  à cette part, file vers sa file avec le reste, vise un point 1 s devant elle ; `MarchSlot` (la vraie case de marche,
+  `Order.Slot` pouvant être le point visé) ; compteur `backsteps` (vitesse en long < -1 cm/s) et partie `backsteps` de
+  `quick_check` (9 marches, toutes à 0). Compilé sans avertissement. `-Parts tests,formation` **FAIL** sur le seul
+  `backsteps 1` du bloc de 9 (cause non trouvée : sans doute un pas d'évitement). Prix : **écart `gap` 77-80 cm
+  partout** (29-51 avant) : un membre entré jusqu'à ~66 cm devant sa case y reste quelques pas.
+- **Boucle 20** lancée : entrée en membre **devant** sa case à 40 cm seulement (la marge `Pace*dt` ne sert qu'à celle
+  qui suit derrière) ; trouver et corriger le pas à contresens du bloc de 9.
+- **Boucle 20 faite** (~15 min) : entrée en membre devant sa case à 40 cm seulement : `gap` 42-53 cm (77-80) ; le pas
+  à contresens : Paysan en `FormUp` au 1er pas compté, `SteerOnMarch` le faisait avancer (+262 en long) mais
+  l'évitement (`AvoidBodies`, `UHOLFullSpeedProcessor`) entre unités de la même sorte, apparues collées, tournait sa
+  vitesse de 38° (-147 en long) ; correctif : `MarchDirection` (fragment, posé par `SteerOnMarch`) ; après
+  l'évitement, en `FormUp` / `Block` hors reformation, la part en long négative est retirée (de côté ou en avant,
+  jamais en arrière). Journal `Block march: backstep step …` gardé (ne s'écrit qu'au cas compté). `-Parts
+  tests,formation` **PASS** (160 s, 87/87, `backsteps 0` partout), rapide PASS (26 s). Rangs formés 1-2 pas plus
+  tard (~50 cm).
+- **Boucle 21** lancée : (iii) **petits blocs** (écriture et compilation). Conception : une seule formation finale pour
+  tout l'ordre (mêmes décalages pour tous) ; `FindStragglers` devient « les paquets » (amas reliés par 4,5 m ; paquet
+  d'une unité = retardataire comme aujourd'hui) ; places finales attribuées à tout le groupe, chaque paquet de 2 ou
+  plus marche en **son propre bloc** (son allure, son chemin depuis son point, ses cases = la part des décalages de
+  ses unités) ; à l'arrivée, chacun est déjà à sa place dans la formation commune ; (iv) **fusion** (boucle
+  suivante) : deux blocs du même ordre dont les points de référence se rejoignent passent au point du plus grand,
+  les unités du petit gagnent leurs cases en rangs en marche.
+- **Boucle 21 faite** (~15 min, compilé en 54 s sans avertissement, rien lancé) : règle pure `FindPackets` (amas par
+  pas ≤ 4,5 m, numérotés du plus grand au plus petit ; paquet 0 = le corps) ; `FindStragglers` par-dessus : une unité
+  seule hors du corps (corps ≥ 2) ; l'exception « corps > moitié » disparaît ; tout dispersé (aucun paquet ≥ 2) : un
+  seul bloc comme avant. `Blocks` : `TMap` à clé (ordre, numéro de bloc) ; `FBlockMarch` : `Serial`, `Index`,
+  `NumBlocks` ; `BlockIndex` dans le fragment d'ordre (retardataires rattachés au bloc 0). Une formation pour tout
+  l'ordre (`PlaceGroup` + `ReserveRearSlots` + `AssignPlaces`) : un paquet de gauche reçoit les places de gauche.
+  Chaque bloc : point de référence = milieu de ses unités - milieu de ses décalages, son chemin navmesh, son recul,
+  son allure ; groupe compact : calcul identique à avant. Rapport publié pour le bloc 0 seul (lignes inchangées) ;
+  petits blocs : mêmes lignes avec « block 2 of 2: » ; au départ `Block march: N blocks (sizes a, b), M stragglers`.
+  Tests de `FindPackets` (2 × 3, 5 + 1, compact, chaîne, ordre de numérotation, tout dispersé).
+- **Boucle 22** lancée : vérification, contrôle `scattered` adapté (2 blocs, aucun rassemblement, les 6 à leur place).
+- **Boucle 22 faite** (~12 min) : relecture sans défaut ; défaut trouvé à la passe : chaque petit bloc allait à
+  l'allure de son propre plus lent (Paysans à 600) : **tous les blocs d'un ordre prennent l'allure du plus lent de
+  l'ordre** (règle J7a.4 « une seule allure » ; retardataires exclus) : ils restent alignés sur la formation commune
+  et arrivent ensemble. Ligne `Block march: [tag]closest two units N cm apart on the way`. `quick_check` : contrôle
+  `scattered` en 2 blocs (`2 blocks (sizes 3, 3), 0 stragglers`, formup 0, held 0, backsteps 0, settle ≤ 50,
+  closest ≥ 100, les 6 à ≤ 60 cm) ; tolérance « until the small blocks » retirée ; `backsteps` lit aussi les lignes
+  des petits blocs (11 marches, toutes à 0). `-Parts tests,formation` **PASS** (157 s, 87/87), rapide PASS (23 s).
+  scattered : rangs formés après 7 et 16 pas (49 avant), 2 cm de leur place à la fin. 1re marche de la partie (3
+  Paysans + 3 Hommes d'armes à plus de 4,5 m) : désormais 2 blocs de 3 (voulu). Groupes compacts identiques. À
+  savoir : `closest` 1-2 cm dans les groupes mêlés compacts (plain, bloc de 9) : deux types se traversent (règle).
+- **Boucle 23** lancée : (iv) fusion de deux blocs d'un ordre dont les points de référence se rejoignent.
+- **Boucle 23, écriture faite** (~11 min, compilé sans avertissement ; rien lancé : `quick_check -Full` de
+  mycrusader-56 en cours, même `Saved_Tests` et port réseau) : `HOLFormation::BlockMergeDistance` 130 cm (une unité à
+  D cm de côté de sa case finit ~0,58 × D derrière : ≤ 75 cm, sous `BlockDropDistance` : elle reste membre) ; au début
+  d'`AdvanceBlocks`, deux blocs d'un ordre en marche (hors reformation) dont les points de référence sont à ≤ 130 cm :
+  le petit (moins d'unités ; à égalité le numéro le plus haut) passe dans le grand (unités en `FormUp` vers leurs
+  cases au point du grand, retardataires, compteurs ; le grand garde son chemin). Ligne `Block march: block K of N
+  merged into the main block after S steps (D cm apart), n units, b backsteps before` ; `MergedUnits` au rapport.
+  Cas `blocks meet` dans `quick_check` (deux files de 3 Hommes d'armes à 5 m en travers, ordre à 28 m entre les deux :
+  chemins qui convergent ; non vérifié). Vérification en attente de la fin du `-Full` de mycrusader-56.
+- **Boucle 23 faite** (vérification, ~6 min après le `-Full` de mycrusader-56, PASS) : `-Parts tests,formation`
+  **PASS** (171 s, 87/87), rapide PASS (24 s). `blocks meet` : `2 blocks (sizes 3, 3)`, `block 2 of 2 merged into the
+  main block after 64 steps (128 cm apart), 3 units, 0 backsteps before`, puis `units 6 ... held 0 left 0 ... settle
+  2 ... spacing 150`, rangs formés après 11 pas. scattered : pas de fusion, chiffres identiques ; les 11 autres marches
+  identiques à la boucle 22. **À surveiller** : fusion à 128 cm pour un seuil de 130 : cas peut-être fragile (à
+  revoir si le `-Full` le fait échouer).
+- Scénario `straggler` complété : deux paquets de 3 Hommes d'armes côte à côte à 10 m (`FocusNear 7000 ±500`,
+  `waitunits 33`) ; vérification sans fenêtre lancée, puis 5e essai de l'utilisateur.
+- Scénario vérifié (`-RenderOffScreen`, ~8 min) : `ready` en 1,2-1,6 s, 33 unités ; les 6 des deux paquets à ~40 m :
+  `2 blocks (sizes 3, 3), 0 stragglers`, pas de fusion en chemin (côte à côte, perpendiculaires à la marche), 0
+  backstep, `settled after 2 steps ... 0 cm`, 2 rangs de 3 à l'arrivée ; bloc 1 : `slot gap 114 cm at most` (à
+  regarder). **5e essai de l'utilisateur lancé.**
+- **5e essai de l'utilisateur** : **multi-bloc validé** (« le multi bloc fonctionne »). **Refusé** : « tous les
+  groupes trichent en ralentissant jusqu'à ce qu'ils soient ensemble ou en formation, sans les retardataires » :
+  l'unité devant sa case à `FormUpLeadShare` (50 % du pas) se voit comme un groupe qui ralentit pour se former. La
+  règle « pas de ralentissement » vaut pour **chaque unité**, pas seulement pour le bloc.
+- **Choix de l'utilisateur (A, la recommandation) : files en marche, rangs à l'arrivée.** Tout le monde marche à plein
+  pas tout le trajet ; en marche, chaque unité ne fait que glisser de côté vers sa **file** (sa colonne de la
+  formation) en gardant sa profondeur dans le groupe ; jamais ralentie ; les rangs se resserrent à l'arrivée. Un
+  groupe déjà en rangs le reste ; un groupe en vrac arrive en colonnes propres puis se range. Écarté : aucune
+  formation en marche (chacun vers sa place, formation seulement à l'arrivée). Gardés : multi-bloc et fusion (validés),
+  retardataires (case au dernier rang, à leur vitesse, entrent s'ils rattrapent), jamais de demi-tour, plus de
+  formation dès qu'on engage. À savoir : pour le type le plus lent (vitesse = pas), glisser de côté coûte un peu de
+  profondeur (angle borné : ~0,18 × l'écart de côté à 20°) : sa profondeur suit, rien n'attend.
+- **Boucle 24** lancée (écriture et compilation).
+- **Boucle 24 faite** (~18 min, un peu au-delà ; compilé sans avertissement, rien lancé) : `SteerInFile` mène toute
+  unité du bloc en marche : en travers vers sa file à `min(écart/pas, min(Pace·tan θ, Vitesse·sin θ))`, en long
+  `min(Pace, √(Vitesse² - Side²))`, θ = `FileSlideMaxAngle` 20° ; profondeur relue chaque pas (`FBlockMarch::Depths`),
+  `MarchSlot` = sa file à sa profondeur ; membre à ≤ 40 cm de sa file ; point du bloc parti de la profondeur moyenne
+  des unités, à l'allure ; à l'arrivée, profondeurs figées et glissement vers la vraie case (rangs resserrés,
+  ralentissement doux de la reformation gardé). Fusion : file et profondeur gardées. Retardataires : visent leur
+  file à la profondeur du dernier membre. **Retirés** : `FormUpLeadShare`, `GetBlockSetBack` (et ses 10 tests),
+  `BlockDropDistance`, `BlockWaitMaxSteps`, `ToStraggler`. Rapport : « files on the move, start X cm behind the
+  path's », « file gap », « files formed after N steps », `N slowed steps on the march` (membre à moins de 90 % de
+  l'allure en long, hors 10 premiers pas, reformation, retardataires) ; `quick_check` adapté a minima, **bornes
+  `gap` / `joinsteps` / `slowed` à revoir**. Risques : unités de tête qui reculent à l'arrivée (non comptées),
+  virages d'une longue colonne, retardataires.
+- **Boucle 25** lancée : vérification et bornes.
+- **Boucle 25 faite** (~16 min) : défaut : deux Hommes d'armes presque à la même profondeur dont les files se croisaient
+  se bloquaient toute la marche (même type : ils s'évitent, chacun garde sa profondeur : écart 301 cm) ; correctif :
+  dans chaque bloc et pour chaque type, files données **de gauche à droite** selon la position en travers au départ
+  (plus de croisement dans un type ; l'arrivée redonne les places par type). Compteur `arrival backsteps` (reculs
+  pendant la reformation, `arrivalback N X` au rapport). `-Parts tests,formation` **PASS** (168 s, 87/87), rapide PASS
+  (26 s). 12 marches : départ immédiat, **slowed 0**, held 0, backsteps 0, file gap 32-40 cm, files formées en 1 à 15
+  pas (bloc mêlé de 9 : 58 pas), reculs à l'arrivée 0 à 27 cm au total (tassement, pas de demi-tour). Bornes posées :
+  slowed ≤ 2, held 0, file gap ≤ 60, files formées ≤ 80 pas, reculs à l'arrivée ≤ 50 cm (rejouées sur le journal, pas
+  encore dans une passe réelle). Notes du scénario `straggler` mises à jour. Risque : un groupe très étiré, tête qui
+  recule à l'arrivée. Archer à 35 m : n'entre pas en chemin (trop court).
+- **6e essai de l'utilisateur lancé** (`straggler`).
+- **6e essai : validé** (« bien »). Pendant ce temps, mycrusader-85 a fusionné `scenario-default-plain` (db3bfe2) et
+  `combat-dying-off` (2ac3092) dans `main` depuis la copie principale (notre travail mis de côté en `stash@{0}`
+  « straggler WIP », revenu intact, conflit d'`EtapeDefini.md` résolu) : un premier `-Full` lancé sur l'ancienne DLL a
+  été arrêté ; recompilé (81 s), `-Full` relancé avant le commit.
+- `-Full` : FAIL en 681 s, mais toutes les parties de formation PASS (formation, groups, straggler, scattered,
+  straggler near, blocks meet, backsteps : slowed 0 partout) ; le jeu s'est fermé seul pendant `combat bodies`, sans
+  plantage ni erreur dans son journal (coupure extérieure probable), d'où combat bodies / arrows / arrows flee /
+  orders KO, et `camera 8p` KO au lancement. Relance `-Parts camera,combat` : **PASS** (195 s, tout vert). **Commit
+  sur `main`**, ligne retirée d'`EtapeDefini.md` (avec les changements d'`EtapeDefini.md` et du README des scénarios
+  de mycrusader-b0). Retour d'essai 1 clos.
+
+### 2026-10-20 — Retours d'essai 3 et 4 : pose sur une case occupée, pose unique sauf Maj
+
+- Travail dans **`MyCrusader-J5c`** (libre, `IN_USE.txt` écrit), branche **`j7-placement`** depuis `main` c666a54 : la
+  copie principale est prise par mycrusader-c9 (retour 1), `MyCrusader-A` par mycrusader-37 (J7c.2).
+- **Retour 4 (pose unique sauf Maj)** : déjà fait depuis J6a.3 (`ClickPlacement(bSelectAddHeld)` ferme le mode sans
+  Maj). L'utilisateur ne sait plus ce qu'il avait vu : le scénario d'essai `placement` montre le comportement actuel, à
+  confirmer à l'essai.
+- **Retour 3 (case occupée)**, choix de l'utilisateur : seulement quand la pose est refusée **sur un bâtiment** (chantier,
+  fondation) **ou une source** ; autres refus (carte, anti-rush, navmesh) et ressources manquantes : rouge, inchangé.
+  Recherche **autour de l'obstacle visé** (celui sous le curseur, sinon le plus proche ; une source vaut sa boîte calée
+  sur les cases), **jusqu'à 4 cases de chacun de ses bords**, couronne collée d'abord puis la suivante ; dans une
+  couronne, la plus proche du curseur ; la première pose entièrement valide gagne (fantôme vert là, le clic y pose,
+  serveur qui revérifie, rien de neuf sur le réseau). Rien trouvé : rouge au curseur. Écartés : 2 ou 3 cases autour
+  de la case visée, recherche sans limite.
+- Code lancé en sous-agent (recherche pure dans `HOLConstruction`, tests, partie `build` de `quick_check` mise à jour,
+  scénario `placement`).
+
+#### J7c.2 (a) faite : le tir côté serveur (2026-10-20, worktree MyCrusader-A, branche j7c-shot, non commité)
+- Règles pures (`HOLCombatRules`) : `IsRangedAttack` (portée > 200 cm, `RangedReach` déplacé du processeur),
+  `GetArrowFlightMilliseconds(De, Vers, Vitesse)` (distance 2D centre à centre au lâcher / vitesse),
+  `GetArrowFlightSteps` (pas entiers arrondis au-dessus, 1 au moins), `ResolveArrow` (Lost / Hit / Kill),
+  `GetArrowSpeed` (`hol.Combat.ArrowSpeed`, 2500 cm/s) ; `FSeeker::bRanged` : pas d'étalement `MaxAttackers` (Q6).
+- Processeur : au coup d'un tireur (même instant qu'en mêlée, 50 %), flèche en file (tireur, cible, dégât au
+  lâcher, pas d'arrivée) ; arrivées appliquées en début de pas, perdue si la cible est morte ou partie ; mort par
+  flèche et mort « par une autre voie » sur le même chemin que la mêlée (`KillUnit` : `StopWalk`, `Disengage`,
+  `Dying`, population libérée). Journaux sous `hol.Combat.LogHits 1` (lâcher, arrivée, perte) ; ligne de mort
+  « (… hits struck, by arrow) » ; `hol.Combat.Report` ajoute « Combat report arrows: released N landed N lost N ».
+- Test `HeroesOfLiberty.Combat.Arrow` ; `quick_check` : partie « combat arrows » (4 Archers contre 3 Lanciers et
+  2 Paysans) PASS : 44 lâchées, 40 arrivées, 4 perdues, vols conformes, 1 mort par flèche puis chute ; tests 85/85.
+  À relancer : `-Parts tests,combat` après le déplacement du total des flèches sur sa propre ligne (la première
+  version cassait la lecture « combat reports » de la partie combat).
+- (J7c.2, mycrusader-37) **(a) vérifiée** par la session principale : `-Parts tests,combat` **PASS** (168 s, tests 85/85 ;
+  `combat`, `combat anims`, `combat bodies`, `combat arrows`, `orders`). **(b) lancée** (flèches chez le client).
+- (J7c.2, mycrusader-37) La session a redémarré : le sous-agent de (b) a été coupé sans rien laisser dans
+  `MyCrusader-A` (seule (a) y est). (b) relancée en deux livrables : **(b1)** flèches affichées en solo / hôte + capture
+  + cas de la cible qui fuit ; **(b2)** flèches chez un client réseau + contrôles `quick_check`.
+- **Cas à valider (demande de l'utilisateur)** : une unité rapide (cavalerie légère) pile à portée, qui s'enfuit dès
+  que la flèche est décochée. Comportement prévu par J7c-Q1 / Q2 : la flèche **touche quand même** (dégât à l'arrivée,
+  même si la cible est sortie de portée) ; la flèche affichée suit la cible et la rejoint à la fin du vol (durée fixée
+  au lâcher : ~0,6 s à 15 m ; une cible à ~8 m/s fait ~5 m de plus, la flèche paraît filer à ~33 m/s au lieu de 25).
+  À montrer à l'essai (pas encore de cavalerie : une unité accélérée par les triches de vitesse), scénario dédié.
+- (J7c.2, mycrusader-cc) En parallèle : mycrusader-c9 (retour 1, retardataire ; copie principale : ordres, formation)
+  et mycrusader-7c (retours 3 et 4, poses ; `MyCrusader-J5c`, branche `j7-placement`). Les trois touchent
+  `Tools/Tests/quick_check.ps1` : fusions dans `main` l'une après l'autre, chacune refusionne `main` avant son commit.
+- 1re boucle (15 min) arrêtée à sa limite : code écrit (règles, sous-système, contrôleur, tests, partie `build`,
+  scénario `placement`), compilation et `quick_check` en cours. Bilan : code + tests + scénario ne tiennent pas dans une
+  boucle ; la 2e boucle ne fait que vérifier (relecture, compilation, `-Parts tests,build`, scénario sans fenêtre).
+
+- (J7c.2, mycrusader-37) (b1) partielle (sous-agent, 2026-10-20) : SM_Arrow (Tools/Editor/make_arrow_mesh.py) et UHOLArrowSubsystem (Presentation/, alimenté par le lâcher serveur, hol.Combat.ArrowReport) compilés sans avertissement dans MyCrusader-A ; scénario arrow_flee écrit ; ni capture ni journal obtenus (jeu bloqué au démarrage en -RenderOffScreen, waitui en -nullrhi), quick_check non lancé ; reste : vérifier en jeu, captures, contrôle quick_check, note de archers.txt.
+- 2e boucle (8 min) : relecture sans défaut (cases sur la grille, couronnes 0 à 4, filtre local, sonde du navmesh
+  seulement pour les candidates valides, chemin du serveur inchangé), compilation OK, **`quick_check -Parts tests,build`
+  PASS** (280 s, tests 85/85 dont `Construction.FreeFootprint` ; « fantôme rouge sur les maisons » devenu « rouge près du
+  centre ennemi » + pose à côté d'une maison), scénario `placement` prêt (21 étapes, `-RenderOffScreen`). Reste à voir :
+  chez un client, les candidates ne sondent pas le navmesh (le serveur peut refuser une pose déplacée « hors navmesh »).
+- **Essai de l'utilisateur lancé** (`play.ps1 placement -Root ..\MyCrusader-J5c`).
+- (J7c.2, mycrusader-cc) Bilan de (b1) partielle : 12 min 40 dont l'essentiel perdu en deux lancements ratés
+  (`-RenderOffScreen` avec un **nouveau** `-saveddirsuffix=Arrow` : jeu figé à l'image 0, sans doute shaders d'un
+  dossier neuf sur machine chargée ; `-nullrhi` + `hol.Scenario` : bloqué à `waitui`, le menu ne s'affiche pas sans
+  rendu). **Amélioration du processus** : pour vérifier en jeu, un sous-agent reprend **la ligne de lancement de
+  `quick_check.ps1`** (même `-saveddirsuffix=Tests`, séquence `hol.Test.Run <fichier>`), jamais un lancement maison.
+  **(b1-vérif) lancée** : flèches vues en capture, cas de la cible qui fuit, contrôle dans « combat arrows ».
+- **(J7c.2, mycrusader-cc) (b1) vérifiée** (worktree A, `j7c-shot`, non commité) : flèches affichées regardées en capture (`combat_arrows_1/2`, `combat_flee_1/2`) ; au vrai calibre (fût 1,2 cm) presque invisibles, donc dessinées ×1,5 en longueur et ×4 en épaisseur (`ArrowScale`) : visibles, pointe vers la cible, empennage côté tireur. `quick_check` : `combat arrows` + `hol.Combat.ArrowReport` (44 lancées à l'affichage = 44 lâchées, 0 en vol) ; nouvelle partie `combat arrows flee` (Lancier ×2,3, ~14,6 m/s mesurés, fuit au 1er lâcher à 14 m : 3 flèches arrivent, dégâts portés, cible à ~18 m à l'arrivée ; 0 en vol). Note de `archers.txt` mise à jour ; `arrow_flee_cap` supprimé. **`-Parts tests,combat` PASS** (85/85, 177 s) ; rapide (smoke) non relancé.
+- (Retours 3 et 4, mycrusader-7c) **Validé à l'essai par l'utilisateur** (« c'est exactement ça ») ; `quick_check`
+  rapide PASS (31 s, 85/85) ; commit **d7b1fbe** sur `j7-placement`, fusion de `main` (4dea179, doc) en 499096a,
+  **`main` avancé à 499096a**. Retours 3 et 4 clos (retirés d'`EtapeDefini.md` dans d7b1fbe).
+- (J7c.2, mycrusader-cc) Capture regardée par la session principale (`combat_arrows_1_crop.png`) : deux flèches en vol
+  entre Archers et Lanciers, pointe vers la cible. Flèches dessinées **×1,5 en longueur, ×4 en épaisseur**
+  (`ArrowScale` : à la vraie taille, 1-2 pixels à la caméra RTS) : à faire juger à l'essai. Vitesse de la cible qui
+  fuit ramenée de ×2,3 (14,6 m/s mesurés) à **×1,5** : Lancier 583 → ~875 cm/s, la vitesse d'un Cavalier léger
+  d'AoE4 (1,875 × 1,098214 = 2,06) ; `-Parts tests,combat` relancé.
+- (J7c.2, mycrusader-cc) À ×1,5 : `-Parts tests,combat` **PASS** (175 s, 85/85 ; `combat arrows flee` PASS). Question à
+  l'utilisateur : essai solo maintenant (`archers`, `arrow_flee`) ou (b2) client réseau d'abord.
+- (J7c.2, mycrusader-cc) **Essai solo `archers` : « ça allait »** (flèches, moment du dégât, production). Retour :
+  **formation d'un seul type** (50 Archers ou 50 Hommes d'armes) : voulu **9, 9, 9, 9, 9, 5** ; la règle actuelle
+  (`MakeSquareRows`, carré de ⌈√N⌉) donne 8 × 6 + 2. **Règle tranchée par l'utilisateur (A ; précise J7-Q3 et le
+  scénario 12 → 4, 4, 4 du 2026-10-18)** : largeur = **plus petit impair ≥ √N**, **rangs pleins**, le **reste en dernier
+  rang, centré** (50 → 9 × 5 + 5 ; 40 → 7 × 5 + 5 ; 30 → 7 × 4 + 2 ; 20 → 5 × 4 ; 12 → 5, 5, 2 ; 10 → 5, 5). Groupes
+  mixtes (`MakeMixedRows`) et Paysans inchangés. Écartés : front large qui rétrécit vers l'arrière (trapèze) ; les deux
+  selon la taille. À faire après la fusion du travail de mycrusader-c9 sur `HOLFormationRules` (retour 1), pour ne pas
+  se croiser. Essai 2 (`arrow_flee`) lancé.
+- (J7c.2, mycrusader-cc) Essai `arrow_flee` : « rien vu ». Journal : la 1re volée part 0,85 s après l'apparition,
+  **avant** « Scenario ready » (rien à l'écran) ; le Lancier, touché, revient charger les Archers (tirs suivants à 9 m
+  puis 2 m) : riposte de `LastAttacker` sans limite (point « plus tard » de la revue de J7b). Scénario refait : Lancier à
+  **25 m** (hors de portée), **clic droit de l'utilisateur** sur lui, fuite à 100 m au premier lâcher ; relancé.
+- (J7c.2, mycrusader-cc) **Essai `arrow_flee` refait : validé** (« c'est bon »). Commit **4167f03** sur `j7c-shot`
+  ((a) + (b1) + scénarios). Suite : **règle de formation d'un seul type** (sous-agent, petit livrable), puis **(b2)**
+  flèches chez un client réseau, puis `-Full`, refusion de `main`, avance de `main`.
+- (J7c.2, mycrusader-cc) **Règle des rangs d'un seul type faite** (sous-agent, `MyCrusader-A`, `j7c-shot`, non commité) :
+  `MakeSquareRows` prend W = le plus petit impair ≥ √N, rangs pleins de W, le reste en dernier rang (12 → 5/5/2 ;
+  50 → 9×5/5 ; 2 → 2) ; tests `Formation.Rows/Kinds/Group` mis à jour ; compilation sans avertissement ;
+  `quick_check -Parts tests,formation` PASS (96 s, 85/85).
+
+### 2026-10-20 — Retour d'essai 7 : « N inactifs » pour des Paysans qui combattent
+
+- Cause : le bloc de sélection d'un groupe (`HOLGameScreen.cpp`) comptait comme inactif tout travailleur ni en
+  récolte, ni en construction, ni en marche, donc aussi `Attacking`. Correctif : une part « {0} au combat » (en
+  « {0} fighting », ja « 戦闘中 {0} »), entre « en construction » et « en marche ». La liste des inactifs (bouton,
+  touche « . ») était juste : seulement `Idle`. Reste : ~0,2 s d'`Idle` possible après la mort de la cible (jusqu'à la
+  recherche suivante), laissé (il faudrait un bit « cible de combat » chez le client) ; les groupes de soldats ne sont
+  pas comptés dans ce bloc (travailleurs seulement, comme avant).
+- `quick_check -Parts tests,combat` PASS (153 s, 85/85, contrôle « fighting, none idle » sur le bloc des Paysans qui
+  frappent, capture `combat_peasant_strike` vue : « 4 au combat »), rapide PASS (26 s). Scénario `peasant_fight`.
+  **Validé à l'essai par l'utilisateur** (« c'est bon »). Commit **f7f00df** (branche `j7-idle-count`,
+  MyCrusader-J5c), **`main` avancé à f7f00df**, ligne retirée d'`EtapeDefini.md`.
+- (J7c.2, mycrusader-cc) **Essai `formation_one_kind` : règle des rangs validée** (« tout est bon » : 50 → 9 9 9 9 9 5,
+  petits groupes 7 → 3 3 1 et 4 → 3 1 acceptés). **Nouveau retour (à faire tout de suite)** : 50 Archers tournés au
+  Sud, ordre vers le Nord : leurs nouvelles places « semblent au hasard ». Voulu (règle de l'utilisateur) : le dernier
+  rang, devenu premier, se tourne simplement ; l'avant-dernier comble le nouveau premier rang, le 3e le 2e, etc. Cause :
+  `AssignPlaces` cherche le total de trajets le plus court sans croisement ; retourné sur place, beaucoup d'attributions
+  ont presque le même total, d'où un mélange. Correctif : attribution **par profondeur** selon la nouvelle direction
+  (les plus en avant prennent le premier rang, puis le suivant…), **ordre de gauche à droite gardé dans chaque rang** ;
+  sous-agent lancé (règle pure + tests + contrôle).
+- (J7c.2, mycrusader-cc) Places par profondeur faites (MyCrusader-A, j7c-shot, non commité) : AssignPlaces regroupe les places en rangs par profondeur (10 cm), remplit les rangs de l'avant par les unités les plus en avant (égalité à 60 cm : les plus proches en travers des places libres), appariement gauche-droite dans le rang, échanges seulement dans un rang ; test Formation.AssignByDepth (demi-tour 9 9 9 9 9 5, marche droit devant, rang troué) ; quick_check tests,formation PASS (97 s), orders PASS ; capture du demi-tour non faite.
+- (J7c.2, mycrusader-cc) **Places par profondeur** (sous-agent, ~8 min, ~55k tokens ; non commitées) : places groupées
+  en rangs par profondeur le long de la nouvelle direction (nouveau rang au-delà de 10 cm : rangs troués, incomplets,
+  places en trop acceptés, pour `ReserveRearSlots` de mycrusader-c9), chaque rang reçoit les unités les plus en avant
+  (égalités à 60 cm près : les plus proches en travers des places libres ; dans le 9 9 9 9 9 5, les ailes montent),
+  appariement de gauche à droite, échanges **dans un rang seulement**. **Contrat changé** : aucun croisement dans un
+  rang, mais possible entre rangs (marche de côté) : `Formation.Assign` adapté, à dire au GDD (D230). Test
+  `Formation.AssignByDepth` (demi-tour du 9 9 9 9 9 5 : aucune unité ne bouge de plus d'un rang ; marche droit devant :
+  rang et colonne gardés ; rang troué). `-Parts tests,formation` PASS (97 s, 86/86), `-Parts orders` PASS. Essai lancé.
+- (J7c.2, mycrusader-cc) **Essai du demi-tour : validé** (« c'est tellement mieux »). Commit sur `j7c-shot` (règle des
+  rangs d'un seul type + places par profondeur + scénario `formation_one_kind`). Suite : **(b2)** flèches chez un client
+  réseau.
+- (J7c.2, mycrusader-cc) mycrusader-c9 s'est arrêtée (retour 1 non commité dans la copie principale : ordres,
+  formation, séparation, `quick_check`, scénario `straggler`). Pour avancer `main` sur `j7c-shot` : **d'abord une copie
+  de son travail** (`git diff` en patch + fichiers non suivis, dans le scratchpad), puis `git merge --ff-only
+  --autostash` ; `HOLFormationRules.*`, `HOLFormationTests.cpp` et `quick_check.ps1` sont touchés des deux côtés : un
+  conflit au retour de l'autostash se résout à la main, sans perdre ses lignes.
+- **(J7c.2, mycrusader-cc) Séance mise en pause** (demande de l'utilisateur, 2026-10-20 ~23 h ; reprise le **2026-10-21
+  à 9 h**). État : `MyCrusader-A`, branche **`j7c-shot`** (`IN_USE.txt` « en pause ») : **commités** 4167f03 (dégât
+  différé, flèches en solo, `arrow_flee`) et 2e3754b (rangs d'un seul type, places par profondeur), tous deux validés à
+  l'essai ; **non commité** : **(b2) flèches chez le client réseau**, coupée en route par la pause (6 fichiers :
+  `HOLNetUnitDisplay.*`, `HOLUnitReceptionSubsystem.cpp`, `HOLArrowSubsystem.*`, `quick_check.ps1`, ~150 lignes ;
+  ni compilée ni vérifiée à coup sûr ; son `quick_check` en cours a été arrêté, aucun jeu ouvert).
+  **Reprise** : (1) relire le diff de (b2) (`git -C ..\MyCrusader-A diff`), le finir par un sous-agent (compilation,
+  `-Parts tests,combat`, `-Parts net` : comptes de flèches chez chaque client, écart flèche / PV) ; (2) essai à
+  2 clients si l'utilisateur le veut ; (3) `-Full` ; (4) avancer `main` (copie du travail non commité de mycrusader-c9
+  d'abord, puis `git merge --ff-only --autostash`, voir le point ci-dessus) ; (5) J7c.3 (vérification et essai), J7c.4
+  (mesures de fin de J7), J7c.5 (clôture au GDD). Retours d'essai en attente : 8 (hit and run de l'Archer) et ceux de la
+  liste du 2026-10-20 ; le n° 1 (retardataire) est chez mycrusader-c9, les n° 3 et 4 (poses) chez mycrusader-7c.
+- **(J7c.2, mycrusader-56) Reprise (2026-10-21, ~10 h)** : J7c.2 reprise par mycrusader-56 (`IN_USE.txt` de
+  `MyCrusader-A` réécrit) ; le retour 1 (retardataire) est chez **mycrusader-10** dans la copie principale (boucle 9 en
+  cours : ne pas y compiler ; la prévenir avant toute avance de `main`). Diff de (b2) relu, sans défaut bloquant : chaque
+  client rejoue la cadence du serveur depuis l'état `Attacking` d'un tireur (`StartAttack` / `TickAttack`, 20 pas
+  rejoués au plus après un arrêt), flèche de là où il est dessiné vers là où sa cible l'est ; écart « arrivée de la
+  flèche → baisse de PV reçue » mesuré (`hol.Combat.ArrowReport`) ; partie `net` : 3 Archers contre 2 Lanciers 12 s,
+  flèches lancées chez chaque client ≈ lâchées au serveur (±3), 0 en vol. Risque vu : un Archer tué en mêlée casserait
+  le contrôle « seuls les 2 Lanciers du combat tués ». **Boucle 1** lancée : compilation, `-Parts tests,combat`,
+  `-Parts net`.
+- (J7c.2, mycrusader-56) **Boucle 1 faite** (~13 min) : compilé sans avertissement (27 s, aucun changement de code) ;
+  `-Parts tests,combat` **PASS** (223 s, 86/86). `-Parts net` **FAIL** (103 s), mais **les flèches sont bonnes** :
+  chaque client 18 lancées pour 18 lâchées, 0 en vol ; écart arrivée → PV : 9 mesures, moyenne ~29 ms, de -26 à
+  +86 ms (au pas réseau près). Le risque vu ne s'est pas produit (aucun Archer tué en mêlée). KO : 8 contrôles du combat
+  du client 1 (unités vues, Lanciers mourants, PV et barres, barre d'une unité intacte, attaque au HUD, corps) comptent
+  les 5 unités du combat de flèches avec celles du combat. **Boucle 2** lancée : combat de flèches dans sa propre
+  fenêtre côté client, après le combat (les contrôles existants inchangés), `-Parts net` seul.
+- (J7c.2, mycrusader-56) **Boucle 2 faite** (~4 min, `quick_check.ps1` seul) : le combat de flèches attend un signal
+  du client 1 (`quick_net_arrows1.flag`, après son `hol.Units.CorpseReport` et une marque `arrows` qui ferme sa
+  section `combat`), 12 s de tir, retrait, `quick_net_arrows_end.flag` ; aucun `hol.Units.Where` pendant ce combat.
+  **`-Parts net` PASS** (120 s) : combat du client 1 revenu à 4 unités, PV conformes ; flèches : chaque client 18
+  lancées pour 18 lâchées, 0 en vol ; écart arrivée → PV : 13 mesures, moyenne ~24 ms, de -140 à +300 ms (la mesure
+  apparie à la flèche la plus proche, plusieurs flèches en vol sur une cible l'élargissent). `play.ps1` ne lance que le
+  solo : un essai à 2 clients demanderait un lanceur réseau. Question posée à l'utilisateur.
+- (J7c.2, mycrusader-56) **Choix de l'utilisateur** : pas d'essai à 2 clients (recommandation) ; `-Full` lancé dans
+  `MyCrusader-A`, puis commit de (b2) sur `j7c-shot`.
+- (J7c.2, mycrusader-56) **`-Full` PASS** (632 s, 86/86 ; `net 2 clients` : 18 lancées pour 18 lâchées chez chaque
+  client, écart moyen 7-9 ms, de -146 à +102 ms). **Commit 48faaca** sur `j7c-shot` ((b2) ; ligne J7c.2 retirée
+  d'`EtapeDefini.md`). **J7c.2 close.** `main` (f7f00df) fusionné dans `j7c-shot` sans conflit ; compilation et
+  `-Parts tests,build,combat,net` en cours avant d'avancer `main` (à faire avec mycrusader-10 : son retour 1 non
+  commité dans la copie principale touche `HOLFormationRules.*`, changés aussi par 2e3754b).
+- (J7c.2, mycrusader-56) Fusion **c7638a8** : compilation OK (40 s) ; `-Parts tests,build,combat` PASS ; `net` FAIL
+  une fois (aléa : la maison du slot 0, ouvrier plus prompt, arrivée chez le client 1 avant son `waitlog Building
+  arrived: House of slot`, qui ne lit que les lignes écrites depuis la commande précédente ; séquence arrêtée au délai),
+  puis **PASS** relancé seul (118 s, flèches 18/18). Aléa noté dans `EtapeDefini.md` (**80e4e8a**). Avance de `main`
+  à 80e4e8a proposée à mycrusader-10 (elle la fait entre deux compilations, ou me donne le feu vert).
+- (J7c.2, mycrusader-56) mycrusader-10 (mycrusader-c9) fera elle-même l'avance de `main` à 80e4e8a après l'essai
+  `straggler` en cours de l'utilisateur (sauvegarde de son diff, `--autostash`, conflits gardés des deux côtés), et
+  préviendra. **J7c.3** : `-Full` déjà PASS ; scénario d'essai d'ensemble **`j7_army`** (`MyCrusader-A`, non commité) :
+  caserne finie (A, Z, E), 5 Paysans, 4 Lanciers + 4 Hommes d'armes + 6 Archers du joueur contre 5 + 5 + 4 Archers à
+  ~25 m, 5000 de chaque ressource ; vérifié en `-RenderOffScreen` : prêt en 11 s, 14 sélectionnés, aucun combat au
+  départ. Essai à lancer à la fin de l'essai en cours (`play.ps1 j7_army -Root ..\MyCrusader-A`).
+- (J7c.3, mycrusader-56) **Essai d'ensemble `j7_army` lancé** (demande de l'utilisateur).
+- (J7c.3, mycrusader-56) **Essai validé** (« tout est bon »). **J7c.3 close** : commit **db44ae1** sur `j7c-shot`
+  (scénario `j7_army`, `EtapeDefini.md`). Nouveau retour, **pas dans l'immédiat** : avec Q (attaque), pendant le choix
+  du point, le curseur de souris change d'icône et de couleur (rouge d'attaque). mycrusader-10 prévenue : l'avance de
+  `main` prendra db44ae1. Suite : **J7c.4** (mesures au repos S1, S2, S3, S4, S5 en combat, S7 : machine au repos,
+  à coordonner avec les autres sessions), puis J7c.5 (clôture au GDD).
+- (J7c.4, mycrusader-56) S3 et S4 n'existent pas encore (seuls S1, S2, S7 dans `chapter_measures.ps1`, S5 par
+  `net_match.ps1`). **Choix de l'utilisateur pour S4** (recommandation) : **1 000 contre 1 000, chaque armée en tiers**
+  (~333 Lanciers, ~333 Hommes d'armes, ~333 Archers) qui se chargent, ~600 flèches en vol (chiffre du plan), comparable
+  à S3 (1 000 contre 1 000 en mêlée, 3 ms par pas). **Boucle 1** lancée (sous-agent, `MyCrusader-A`) : S3 et S4
+  écrits et compilés, ajoutés à `chapter_measures.ps1` ; ni mesure ni S5 en combat dans cette boucle.
+- (J7c, mycrusader-56) **`main` avancé à db44ae1** par mycrusader-10 (avec l'accord de l'utilisateur, autostash sans
+  conflit ; son retour 1 non commité par-dessus). J7c.1 à J7c.3 sont dans `main`. mycrusader-10 compile et lance des
+  `quick_check` ~30-40 min : mesures au repos de J7c.4 seulement après accord avec elle.
+- (J7c.4, mycrusader-56) **Boucle 1 faite** (~9 min, compilé sans avertissement, rien de lancé) :
+  `HOLStressTestSubsystem` : `S3_Melee` (par camp 500 Lanciers + 500 Hommes d'armes, disques de 10 m côte à côte à
+  Y = ±18 m, 16 m entre les fronts) et `S4_Mixed` (334 / 333 / 333, Archers en disque à Y = ±44 m, 6 m derrière leur
+  mêlée) ; une attaque-déplacement par groupe (type et camp) par le chemin normal du serveur, 30 m au-delà de la ligne
+  médiane ; combat forcé à 1 ; mesure dès 100 coups de mêlée depuis la charge (`hol.StressTest.BattleContactHits`,
+  sinon après 40 s), puis la durée donnée ; lignes en plus : délai de contact, debout par camp au début et à la fin,
+  coups, morts, flèches (lâchées, arrivées, perdues, en vol moyenne et max). `chapter_measures.ps1` : liste par défaut
+  S1:10, S2:10, S7:20, S3:15, S4:15. **Boucle 2** : vérification (une passe de S3 et S4 hors repos : contact, survivants
+  à la fin, flèches en vol), mycrusader-10 prévenue.
+- (J7c.4, mycrusader-56) **S3, 1re passe** (hors repos, CPU ~37 % avant) : marche comme voulu (contact 4,8 s après la
+  charge ; 1000 contre 1000 au début de la mesure, 892 contre 912 à la fin, 8 830 coups, 196 morts en 15 s) mais
+  **10,88 ms par pas** (max 24,5 ; seuil 3) et 84 images/s (seuil 144). Détail : **`HOLCombatProcessor` 5,64 ms**,
+  **`MassStandingAvoidance` 8,02 ms un pas sur 6** (~1,34 ms en moyenne), séparation 1,44, ordres 0,84, plein régime
+  0,58, évitement en marche 0,47 (un pas sur 6). 5 188 paires superposées au début de la mesure, 3 218 à la fin. S4 pas
+  encore lancé (mycrusader-10 lance un `quick_check`, rien de neuf avant son signal). Analyse des causes lancée en
+  lecture seule (sous-agent).
+- (J7c.4, mycrusader-56) **Analyse de S3** (lecture seule, estimations, pas de mesures) : dans le combat, la
+  **recherche de cible** (`HOLCombatProcessor.cpp:309-365`) fait ~75-85 % des 5,6 ms : ~500 chercheurs par pas
+  (un pas sur 4), grille hachée de 400 cm sur 1 320 cm de rayon (~56 cases, ~600 unités vues, alliés compris), et la
+  recherche complète même quand la cible actuelle est vivante et à portée (`ChooseTarget` la garde alors toujours :
+  ~la moitié des recherches pour rien). Puis `TMap` entité → indice (~14 000 accès par pas), tri, journaux de mort.
+  Séparation : corrections en place, propagation dans la foule (ennemis ne se poussent pas : superpositions qui
+  restent). Pistes **au résultat identique au bit près**, par gain : (1) pas de recherche si la cible est vivante et
+  à portée (~2-2,5 ms) ; (2) tableau plat au lieu du `TMap` (~0,3) ; (3) grille dense par camp, distances au carré en
+  préfiltre (~1) ; (4) listes de voisins en parallèle puis décision en ordre (~0,5-0,8) ; (5) grille dense pour la
+  séparation (~0,3-0,5) ; (6) tri de clés (~0,1) ; (7) ordres de marche du combat sans allocation (~0,2-0,4) ;
+  (8) évitement à l'arrêt en parallèle (sous-classe D302) **seulement si** le code 5.8 (`C:\UE\UE_5.8_AS_3`, que le
+  sous-agent n'a pas lu) ne lit pas les fantômes des voisins pendant qu'il écrit (~1). Total estimé : **~5,5-6,5 ms**,
+  toujours au-dessus de 3 ms. Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation, comme D302) : **les optimisations identiques
+  d'abord**, la plus rentable en premier, mesure après chacune, le reste décidé sur les chiffres réels. Écartés pour
+  l'instant : changements équivalents mais pas identiques (recherche moins fréquente, pas d'évitement à l'arrêt pour
+  les unités qui frappent) ; seuil revu pour S3 / S4 (D218). **Boucle 2** lancée (écriture et compilation) : pistes
+  (1), (2), (6) derrière `hol.Combat.FastPaths` (0 = anciens chemins, pour comparer dans une même compilation) et
+  ligne « Battle checksum » (empreinte des unités vivantes à la fin de la mesure) au rapport de S3 / S4.
+- (J7c.4, mycrusader-56) **Boucle 2 faite** (~5 min, compilé sans avertissement, rien lancé) : `hol.Combat.FastPaths`
+  (défaut 1) ; (6) rien si déjà trié, sinon tri de clés (UnitId << 32 | indice) ; (2) tableau plat par indice
+  d'entité (numéro de série + tampon du pas, jamais vidé), `LastAttacker` cherché une fois par unité ; (1) raccourci si
+  cible vivante, d'un autre propriétaire, `SearchRadius > 0` et à portée (`ChooseTarget` la rend alors toujours : retour
+  immédiat `bInRange && bIsCurrentTarget`, aucun effet de bord dans le code sauté). « Battle checksum » : FNV-1a 64 des
+  unités vivantes triées (UnitId, position au cm, PV, cible). **Boucle 3** (vérification) après le signal de
+  mycrusader-10 : S3 deux fois en `FastPaths 0` (le test est-il déterministe ? fin de mesure au même pas ?), puis en
+  `FastPaths 1`, empreintes comparées, gain mesuré ; puis S4.
+- (J7c.4, mycrusader-56) Boucle 3 commencée : `s3_f0a` (`FastPaths 0`) : 12,39 ms (combat 6,48 ; machine chargée,
+  un ProjectShiva « TestRunner » d'une session playable tourne), **mêmes chiffres exacts que la 1re passe** d'avant les
+  optimisations (892 contre 912, 8 830 coups, 196 morts) : S3 paraît déterministe ; empreinte **6edfa48d73507399**
+  (1 804 unités). Les 4 passes suivantes refusées (`stress_ab` : BUSY, jeu de la copie principale lancé par
+  mycrusader-10 juste après son « go ») ; attente de son nouveau signal.
+- (J7c.4, mycrusader-56) **Boucle 3 faite** (machine très chargée : CPU 37-73 % avant les passes, compilations
+  d'autres sessions dans `MyCrusader-J5c` et la copie principale, ProjectShiva « TestRunner ») : **identité prouvée**,
+  S3 : empreinte 6edfa48d73507399 sur les 4 passes (`FastPaths` 0, 1, 0, 1), mêmes coups et morts ; S4 : empreinte
+  caef2615dcc530e2 dans les deux modes, mêmes morts au même pas. **Combat de S3 : 6,5-7,5 → 3,0 ms** (pas entier
+  12,4 / 14,3 → 9,7 / 9,4 ms, hors repos). Reste dans S3 : évitement à l'arrêt 9-10 ms un pas sur 6 (~1,6 ms en
+  moyenne), séparation ~1,8, ordres ~0,9. **S4 ne mesure pas encore ce qui est voulu** : 37 flèches lâchées en 15 s,
+  1 en vol en moyenne (9 au plus) au lieu de ~600 : les Archers (à 34 m de la mêlée, rassemblement « gathering first »
+  puis 61 m de marche vers 30 m au-delà de la ligne médiane) n'arrivent pas à portée dans la fenêtre ; ordres 2,5 ms
+  dans S4 (marches en bloc de 333). À faire : S4 corrigé (Archers à portée vite, mesure quand les flèches volent),
+  puis pistes (3), (4), (5), (7), (8) (code 5.8 de l'évitement à l'arrêt à lire dans `C:\UE\UE_5.8_AS_3`).
+- (J7c.4, mycrusader-56) Boucle 4 lancée en deux sous-agents : correction de S4 (Archers à portée vite, mesure quand
+  les flèches volent) et lecture du code 5.8 de l'évitement à l'arrêt.
+- (J7c.4, mycrusader-56) **Évitement à l'arrêt lu** (`MassAvoidanceProcessors.cpp` 5.8, 1108-1410) : chaque unité
+  écrit son propre fantôme et **lit le fantôme de ses 6 plus proches voisins** (1312, 1322, 1327), écrit dans la même
+  passe (ordre Gauss-Seidel) : **pas de parallèle façon D302 au bit près** (course et dépendance à l'ordre) ; double
+  tampon = Jacobi, pas identique. **Voie identique** : sous-classe en deux phases, (A) en parallèle, lecture seule :
+  recherche des voisins dans la grille (`FindCloseObstacles` recopié tel quel, plafond 24, tri instable gardé),
+  filtre, tri, les 6 plus proches et leurs données qui ne changent pas dans la passe ; (B) en série, dans le même
+  ordre : le calcul qui lit les fantômes en direct (1219-1235, 1293-1406). Légal sans toucher au moteur (classe
+  `MinimalAPI`, requête recopiée, `DefaultGame.ini:46`, l'étalement un pas sur 6 suit par `IsChildOf`, noms d'ordre de
+  `HOLAvoidanceHoldProcessors.cpp:87, 122`). Gain estimé : 9-10 → ~1,5-2,3 ms sur le pas concerné (~1,2 ms en
+  moyenne). Séparation : grille dense à l'ordre de visite identique possible (indices décroissants par case, ~0,3-0,6
+  sur 1,8 ms), données chaudes regroupées par unité en plus ; pas de parallèle (corrections en place).
+- (J7c.4, mycrusader-56) **S4 corrigé** (compilé sans avertissement, une passe) : Archers en 4 disques de 5 m, 3 m
+  derrière leur mêlée, une attaque-déplacement par disque vers la ligne médiane ; mesure quand 100 coups de mêlée **et**
+  100 flèches lâchées dans la dernière seconde (`hol.StressTest.BattleContactArrows`), repli à 40 s ; S3 inchangé par
+  construction (chemins propres à S4), empreinte de S3 **à reconfirmer**. Passe : mesure 21,7 s après la charge
+  (rassemblement puis marche des Archers, mêlée qui les gêne), 950 contre 945 au début, 850 contre 840 à la fin ;
+  2 053 flèches lâchées (137/s), 1 414 arrivées, 588 perdues (29 %, cause à voir), **75 en vol en moyenne, 203 au
+  plus** ; 7,62 ms par pas (machine chargée) : évitement à l'arrêt 5,46 (un pas sur 6), combat 1,93, ordres 1,41,
+  séparation 1,34, évitement en marche 1,08 (un pas sur 6). **Plafond de la table** : 666 Archers / 1,625 s ≈ 410
+  flèches/s × 0,6 s de vol ≈ **246 en vol au plus** : les « ~600 » du plan étaient une estimation, impossible sans
+  changer cadence, portée ou nombre ; S4 garde la composition choisie. MyCrusader-A libérée pour le renommage en
+  `MyCrusader-Elrond` (mycrusader-b0, demande de l'utilisateur).
+- (J7c.4, mycrusader-56) **Renommage fait** : la copie de travail est désormais **`C:\Users\baudo\Documents\MyCrusader-Elrond`**
+  (branche `j7c-shot` et diff non commité intacts, `IN_USE.txt` à mon nom) ; recompilée de zéro (195 s, OK).
+  Attention à la fusion : la branche `combat-dying-off` (mycrusader-4c, `MyCrusader-J5c`) touche aussi
+  `HOLCombatProcessor.*`. **Boucle 5** lancée (écriture et compilation) : évitement à l'arrêt en trois temps
+  (collecte en ordre, voisins en parallèle en lecture seule, calcul en série dans le même ordre), derrière
+  `hol.Simulation.ParallelStandingAvoidance`.
+- (J7c.4, mycrusader-56) **Boucle 5 faite** (~10 min, compilé sans avertissement) : `UHOLParallelStandingAvoidanceProcessor`
+  (`HOLParallelMassProcessors.*`) : (A) collecte en ordre (MAP:1149-1217), (B) `ParallelFor` en lecture seule
+  (MAP:1237-1277, 1294-1316 : voisins, tri, les 6 plus proches, pointeurs de leurs fantômes), (C) en série dans le même
+  ordre (MAP:1165-1169, 1219-1235, 1279, 1293-1406 : fantômes des voisins lus en direct, écriture du sien) ;
+  `FindCloseObstacles` recopié tel quel ; `DefaultGame.ini` (processeur remplacé, étalement un pas sur 6 gardé par
+  `IsChildOf`), `HOLAvoidanceHoldProcessors.cpp` (noms d'ordre). **Vérifié** (machine chargée) : S3 en
+  `ParallelStandingAvoidance` 1 / 0 et `FastPaths` 1 / 0 : **empreinte 6edfa48d73507399 dans les 3 passes**, mêmes
+  coups et morts ; évitement à l'arrêt **10,2 → 2,4 ms** sur son pas (~-1,3 ms en moyenne) ; pas de S3 **14,2 (rien
+  d'optimisé) → 8,6 ms** (tout optimisé), même machine chargée. Restent : combat 3,15, séparation 1,78, ordres 0,95.
+  **Boucle 6** lancée (écriture et compilation) : combat, pistes (3) grille dense par camp et (4) voisins en parallèle.
+- (J7c.4, mycrusader-56) **Boucle 6 faite** (~10 min, compilé) : (3) `BuildDenseGrid` (mêmes cases de 400 cm, tri par
+  comptage par camp et case, repli sur la grille hachée si la boîte est trop grande), `GatherNearby` (préfiltre au carré
+  puis test exact), tampon « vu » au lieu de `Contains` ; (4) collecte en parallèle pour les chercheurs prévus
+  (`AheadLists`), repli en série sinon. **Vérification** : S3 identique (6edfa48d73507399), **combat 7,89 → 2,15 ms**
+  (pas 13,6 → 7,2 ms, machine chargée) ; **S4 diverge** : `FastPaths` 1 = c91c8e4b4aeb8e73 (6 911 coups, 220 morts)
+  contre 0 = 235652bf6163a5c0 (6 985, 205, comme le 1er tour) : (3) ou (4) change un cas propre à S4 (tireurs : portée
+  1 500 cm, rayon 52, pas de `MaxAttackers`). **Boucle 7** lancée : trouver la cause et corriger (S4 et S3 identiques).
+- (J7c.4, mycrusader-56) **Boucle 7 faite** (~9 min, aucun changement gardé) : **pas de défaut dans le 2e tour** ;
+  **S4 n'est pas déterministe** : avec `FastPaths 0` et les mêmes réglages, 4 passes = 4 empreintes (235652bf…,
+  10930bfb…, 97675f36…, 02a31de9… ; deux passes côte à côte divergent au pas 306 ; contact 20,9 à 24,6 s après la
+  charge). S3 a donné 6edfa48d73507399 sur 11 passes sous des charges très différentes : preuve valable pour S3.
+  Relecture du 2e tour sans écart (mêmes cases, test exact, `MaxRadius` sur toutes les unités, listes d'avance
+  dépendant du seul état de début de pas, `ChooseTarget` indépendant de l'ordre). **Piste de l'aléa** (non prouvée) :
+  l'évitement en marche de Mass (`MassAvoidanceProcessors.cpp:328, 432`) dose le départ d'une marche par
+  `World->GetTimeSeconds()` (temps réel des images, pas le pas fixe) contre l'heure de début d'action posée par
+  `CreateNewAction(..., World)` (`StopWalk` du combat, ordres) ; S4 a bien plus de marches (Archers, reprises de
+  marche du combat). Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : **corriger l'aléa maintenant** (simulation qui
+  dépend de la charge de la machine ; garder la preuve par empreinte pour S4 ; le mouvement peut changer un peu, à
+  revoir à l'essai). Écarté : le noter pour plus tard. **Boucle 8** lancée : recenser les entrées de temps réel dans
+  la simulation, les rendre dépendantes du pas fixe sans toucher au moteur, S4 deux fois (même empreinte attendue).
+- (J7c.4, mycrusader-56) **Boucle 8 faite** (~12 min) : **la piste du temps réel était fausse** (pas fixe passé à
+  tous les processeurs ; la ligne d'évitement qui lit l'heure du monde est sous `GetPreviousAction() != Move`, jamais
+  vrai en 5.8 : `PreviousAction` n'est jamais écrit). Ajout d'une sonde `hol.Simulation.StepHashes` (1 : empreinte par
+  pas, 2 : par processeur, 3 : vidage des pas 0 et 1). S4 : 3 passes sur 4 identiques (235652bf…), l'aléa est
+  intermittent ; l'écart naît dans le pilotage (`HOLParallelSteerToMoveTargetProcessor`), sur un état non couvert par
+  la sonde. **Cause trouvée** (lecture du moteur) : `MassSteeringProcessors.cpp:272, 304` tire le délai de rechoix de
+  cible à l'arrêt par **`FMath::RandRange`, le générateur global** (partagé par tout le jeu, appelé dans un ordre qui
+  dépend des fils depuis D302) ; le moteur a un tirage par unité trois lignes plus haut (`:259`,
+  `UE::RandomSequence::FRand(Entity.Index)`). **Boucle 9** lancée : pilotage recopié dans la sous-classe D302 avec un
+  tirage déterministe par unité et par pas (même plage), autres tirages globaux recherchés, S4 ×3 (dont 2 en
+  parallèle) et S3 ×2.
+- (J7c.4, mycrusader-56) **Boucle 9 faite** (~9 min, compilé sans avertissement) : `UHOLParallelSteerToMoveTargetProcessor`
+  porte une copie du pilotage du moteur (`MassSteeringProcessors.cpp` 5.8, 21-52, 66-87, 93-433 ; journal visuel
+  retiré), toujours en parallèle par morceau, les deux `FMath::RandRange` (272, 304) remplacés par
+  `DeterministicRandRange(UnitId, pas, site d'appel)` (splitmix64 puis `UE::RandomSequence::FRandRange`, même plage) ;
+  `hol.Simulation.DeterministicSteering` (0 = fonction du moteur). Aucun autre tirage global dans le pipeline ni dans
+  le projet (seulement des `FRandomStream` à graine). **S4 ×3 (dont 2 en parallèle) : 235652bf6163a5c0 ; S3 ×2 (en
+  parallèle) : 6edfa48d73507399** : stables, et **les mêmes qu'avant** (le tirage ne pesait que quand l'ordre des fils
+  tombait mal) : mouvement inchangé. Les optimisations du combat (1er et 2e tours) sont donc aussi prouvées sur S4
+  (`FastPaths` 0 = 1 = 235652bf…). Suite : `-Full` dans Elrond, puis commit sur `j7c-shot`, puis mesure au repos.
+- (J7c.4, mycrusader-56) **`-Full` PASS** (630 s, 87/87, mycrusader-10 en pause pendant ce temps). **Commit a6bef71**
+  sur `j7c-shot` (S3, S4, optimisations identiques, tirage déterministe du pilotage, sonde `StepHashes`). Pas encore
+  dans `main`. Reste de J7c.4 : mesure au repos (S3 face aux 3 ms), puis décider du reste sur les chiffres réels.
+- (J7c.4, mycrusader-56) Choix de l'utilisateur : S3 / S4 au repos tout de suite ; pause obtenue de mycrusader-e1, pas
+  de réponse de mycrusader-10 ; deux ProjectShiva encore ouverts (éditeur `Playable-mercy`, banc `Playable-genji`
+  relancé), CPU 43-64 % : machine pas au repos. **Séance arrêtée ici** (« on continuera tout ça dans une prochaine
+  session »), pauses annulées.
+  **Reprise exacte** :
+  - **État** : `MyCrusader-Elrond` (ex-`MyCrusader-A`), branche **`j7c-shot` à a6bef71**, rien de non commité (sauf
+    `IN_USE.txt`). `main` à db44ae1 (J7c.1 à J7c.3) : **a6bef71 pas encore dans `main`** ; à l'avance de `main`,
+    conflit possible avec `combat-dying-off` (mycrusader-4c, `HOLCombatProcessor.*`) et avec le retour 1 non commité
+    de mycrusader-10 dans la copie principale ; demander l'accord des sessions actives.
+  - **Fait dans J7c.4** : S3 (1000 contre 1000 en mêlée) et S4 (tiers, Archers derrière leur mêlée, mesure quand les
+    flèches volent ; plafond ~246 en vol avec la table) dans `chapter_measures.ps1` ; empreinte « Battle checksum » ;
+    optimisations identiques au bit près (combat : `hol.Combat.FastPaths` ; évitement à l'arrêt en trois temps :
+    `hol.Simulation.ParallelStandingAvoidance`) ; tirage déterministe du pilotage (`hol.Simulation.DeterministicSteering`) ;
+    sonde `hol.Simulation.StepHashes`. Références : **S3 6edfa48d73507399, S4 235652bf6163a5c0**. Chiffres hors repos
+    (machine chargée) : S3 ~7,2 ms par pas (combat 2,15, évitement à l'arrêt ~1,8 sur son pas, séparation 1,7,
+    ordres 0,95), S4 ~5,8 ms.
+  - **À faire, dans l'ordre** : (1) **mesure au repos de S3 et S4** (deux passes chacun, `stress_ab.ps1` ou
+    `chapter_measures.ps1 -Tests S3:15,S4:15 -NoS5`), après avoir obtenu le calme : pause des sessions MyCrusader,
+    **ProjectShiva fermés par l'utilisateur** (éditeurs et bancs `TestRunner` des sessions playable), CPU vérifié ;
+    (2) décider du reste sur ces chiffres (pistes identiques restantes : séparation en grille dense ~0,3-0,6 ms,
+    ordres de marche du combat sans allocation ; sinon question à l'utilisateur : écarts acceptés ou seuil de S3 / S4) ;
+    (3) mesures complètes de fin de chapitre (S1, S2 au seuil, S3, S4, S5 en combat avec le coût des PV exacts, S7) ;
+    (4) avance de `main` ; (5) J7c.5 (clôture de J7 au GDD : D327, D328, J7-Q5 révisée, J7-Q1 à Q6, et les décisions
+    de J7c.4 : S4 en tiers, optimisations identiques, tirage déterministe).

@@ -80,6 +80,8 @@ protected:
 	 * fight and of its task, Dying, its population freed at once, destroyed DyingSteps later.
 	 */
 	void KillUnit(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Victim, int64 StepIndex) const;
+	/** A unit at 0 health: Dying if it is not yet, into Deaths once Dying for DyingSteps (the combat off too). */
+	void FinishDying(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Fighter, int64 StepIndex);
 
 	/** An arrow in flight (J7c.2): its damage falls on Target at the start of ArrivalStep, if it still stands. */
 	struct FArrow

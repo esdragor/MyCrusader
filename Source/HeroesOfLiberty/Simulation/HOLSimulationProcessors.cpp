@@ -174,6 +174,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	Velocities.Reset();
 	Radii.Reset();
 	FormUpSerials.Reset();
+	FormUpKinds.Reset();
 	MaxRadius = 1.f;
 	MaxSpeed = 0.f;
 	bool bAnyWalking = false;
@@ -199,6 +200,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 			Velocities.Add(Velocity);
 			Radii.Add(AgentRadii[EntityIt].Radius);
 			FormUpSerials.Add(GetPassThroughSerial(Orders[EntityIt]));
+			FormUpKinds.Add(GetPassThroughKind(Orders[EntityIt]));
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			MaxSpeed = FMath::Max(MaxSpeed, static_cast<float>(Velocity.Size()));
 			bAnyWalking |= MoveTargets[EntityIt].GetCurrentAction() == EMassMovementAction::Move;
@@ -227,7 +229,7 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 }
 
 FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
-	const uint32 FormUpSerial) const
+	const uint32 FormUpSerial, const uint8 FormUpKind) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
@@ -247,7 +249,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			const FIntPoint Cell(X, Y);
 			for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 			{
-				if (Cells[Other] != Cell || Entities[Other] == Entity || (FormUpSerial != 0u && FormUpSerials[Other] == FormUpSerial))
+				if (Cells[Other] != Cell || Entities[Other] == Entity || CanPassThrough(FormUpSerial, FormUpKind, FormUpSerials[Other], FormUpKinds[Other]))
 				{
 					continue;
 				}
@@ -425,10 +427,23 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				// Around the bodies on its way (D293), those beyond its slot aside: Mass' avoidance runs one step out of 6
 				// (D220) and turns too late at full speed, so the walker pushed through them.
 				const double Horizon = bToSlot ? FMath::Min(LookAheadTime, SlotDistance / Speed) : LookAheadTime;
-				// A unit forming up for a block march, or re-forming at its arrival, goes through the others doing so (J7a.4, as
-				// the separation lets it).
+				// A unit forming up for a block march goes through the others of its order forming up in other kinds of rows
+				// (two of one kind keep clear of each other, the user's trial of playtest note 1 of J7b); one re-forming at a
+				// block's arrival, or a straggler walking into its slot, through all of its order (J7a.4, J7b note 1: CanPassThrough),
+				// as the separation lets it.
 				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon,
-					GetPassThroughSerial(Order));
+					GetPassThroughSerial(Order), GetPassThroughKind(Order));
+				// On a block's march, never against it (playtest note 1, loop 20: a unit forming up, going round one of
+				// its kind, took a step back): the turn's part against the march dropped, sideways or on.
+				if ((Order.Phase == EHOLMovePhase::FormUp || Order.Phase == EHOLMovePhase::Block) && !Order.bReforming && !Order.MarchDirection.IsNearlyZero())
+				{
+					const FVector March(Order.MarchDirection.X, Order.MarchDirection.Y, 0.);
+					const double Along = FVector::DotProduct(Direction, March);
+					if (Along < 0.)
+					{
+						Direction = (Direction - March * Along).GetSafeNormal();
+					}
+				}
 			}
 			Velocity = Direction * Speed;
 		}
@@ -524,6 +539,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Walking.Reset();
 	Ghosts.Reset();
 	FormUpSerials.Reset();
+	FormUpKinds.Reset();
 	Moving.Reset();
 	Owners.Reset();
 	AtSource.Reset();
@@ -541,6 +557,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		{
 			const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
 			FormUpSerials.Add(!Orders.IsEmpty() ? GetPassThroughSerial(Orders[EntityIt]) : 0u);
+			FormUpKinds.Add(!Orders.IsEmpty() ? GetPassThroughKind(Orders[EntityIt]) : uint8(0));
 			Positions.Add(FVector2D(Location.X, Location.Y));
 			Radii.Add(AgentRadii[EntityIt].Radius);
 			// A gatherer on its round trip neither pushes nor is pushed (D309): it never looks, nobody finds it. Landed at
@@ -648,9 +665,11 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	// A pair met by the unit that looks (Index), in its cell or one around it.
 	const auto Undo = [this, Slop, AtSourceDistance](const int32 Index, const int32 Other)
 	{
-		// Two units of one form-up (J7a.4): through each other, the rows turned to the march cross (three
-		// bodies pressed together, each walking into the next, held each other still until the form-up's end).
-		if (FormUpSerials[Index] != 0u && FormUpSerials[Index] == FormUpSerials[Other])
+		// Two units of one order forming up in different kinds of rows, of one block's re-forming, or a
+		// straggler walking into its slot (J7a.4, J7b note 1: CanPassThrough): through each other, the ways to the
+		// new rows cross (three bodies pressed together, each walking into the next, held each other still).
+		// Two forming up in one kind of row keep apart (the user's trial of playtest note 1 of J7b).
+		if (CanPassThrough(FormUpSerials[Index], FormUpKinds[Index], FormUpSerials[Other], FormUpKinds[Other]))
 		{
 			return;
 		}

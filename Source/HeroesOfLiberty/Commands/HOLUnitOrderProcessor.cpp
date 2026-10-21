@@ -1326,6 +1326,10 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			MoveOrder.FrontYaw = FrontYaw;
 			MoveOrder.bFacesFront = false;
 			MoveOrder.bReforming = false;
+			MoveOrder.bStraggler = false;
+			MoveOrder.RowKind = 0;
+			MoveOrder.BlockIndex = 0;
+			MoveOrder.MarchDirection = FVector2f::ZeroVector;
 			SlotClaims.FindOrAdd(GetClaimCell(FVector2D(MoveOrder.Slot))).AddUnique(Entity);
 			// Moving from now on: the unit keeps its current walk until its path comes (S2 orders only idle units).
 			EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).Activity = EHOLUnitActivity::Moving;
@@ -1366,15 +1370,45 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 		Min = FVector2D::Min(Min, Local);
 		Max = FVector2D::Max(Max, Local);
 	}
+	// The group's body and its stragglers (playtest note 1 of J7b: five soldiers waited for a sixth 10 m away): the block
+	// starts from the body alone (its centre, its path, its rows), the stragglers walk their own paths to their places.
+	// Small blocks (the user's 2nd trial: two packets of three marched as one block gathered first): each packet of two
+	// units or more is a block of its own (BlockOfUnit; 0 the body, the largest), a unit alone in its packet a straggler
+	// (INDEX_NONE); everyone apart (no packet of two), the whole group one block.
+	TArray<int32> PacketOfUnit;
+	TArray<int32> PacketSizes;
+	const int32 NumPackets = HOLFormation::FindPackets(Positions, HOLFormation::BlockJoinDistance, PacketOfUnit, PacketSizes);
+	const bool bOneBlock = NumPackets < 2 || PacketSizes[0] < 2;
+	TArray<int32> BlockOfPacket;
+	int32 NumBlocks = bOneBlock ? 1 : 0;
+	for (int32 Packet = 0; Packet < NumPackets; ++Packet)
+	{
+		BlockOfPacket.Add(bOneBlock ? 0 : PacketSizes[Packet] >= 2 ? NumBlocks++ : INDEX_NONE);
+	}
+	TArray<int32> BlockOfUnit;
+	TArray<bool> IsStraggler;
+	TArray<int32> BlockSizes;
+	BlockSizes.SetNumZeroed(NumBlocks);
+	int32 NumStragglers = 0;
+	for (int32 Unit = 0; Unit < Num; ++Unit)
+	{
+		BlockOfUnit.Add(BlockOfPacket[PacketOfUnit[Unit]]);
+		IsStraggler.Add(BlockOfUnit[Unit] == INDEX_NONE);
+		NumStragglers += IsStraggler[Unit] ? 1 : 0;
+		BlockSizes[FMath::Max(BlockOfUnit[Unit], 0)] += IsStraggler[Unit] ? 0 : 1;
+	}
 	double Height = 0.;
 	FVector2D Centre = FVector2D::ZeroVector;
 	for (int32 Unit = 0; Unit < Num; ++Unit)
 	{
-		Height += EntityManager.GetFragmentDataChecked<FTransformFragment>(Entities[Unit]).GetTransform().GetLocation().Z;
-		Centre += Positions[Unit];
+		if (BlockOfUnit[Unit] == 0)
+		{
+			Height += EntityManager.GetFragmentDataChecked<FTransformFragment>(Entities[Unit]).GetTransform().GetLocation().Z;
+			Centre += Positions[Unit];
+		}
 	}
-	Height /= Num;
-	Centre /= Num;
+	Height /= BlockSizes[0];
+	Centre /= BlockSizes[0];
 	const double Size = FMath::Max(Max.X - Min.X, Max.Y - Min.Y) + RowSpacing;
 	// A short move (within the block's size): straight to the places, no form-up.
 	if (FVector2D::Distance(Centre, FVector2D(EndCentre)) <= Size * HOLFormation::BlockMarchMinDistanceInDepths)
@@ -1382,33 +1416,41 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 		return;
 	}
 
-	// The group's one path, from its centre (on the navmesh) to the middle of its arrival places; none: straight.
-	FBlockMarch Block;
-	FVector Start(Centre.X, Centre.Y, Height);
-	if (NavSystem && NavData && DirectPaths == 0)
+	// A block's one path, from its point (on the navmesh; else Fallback's) to the middle of its arrival places; none: straight.
+	const auto FindBlockPath = [&](FVector& Start, const FVector& Fallback)
 	{
-		FNavLocation StartOnNav;
-		if (NavSystem->ProjectPointToNavigation(Start, StartOnNav, FVector(500.f, 500.f, 500.f), NavData))
+		TArray<FVector2D> Path;
+		if (NavSystem && NavData && DirectPaths == 0)
 		{
-			Start = StartOnNav.Location;
-			const FPathFindingQuery Query(&World, *NavData, Start, EndCentre);
-			const FPathFindingResult Result = NavSystem->FindPathSync(Query);
-			if (Result.IsSuccessful() && Result.Path.IsValid())
+			FNavLocation StartOnNav;
+			if (NavSystem->ProjectPointToNavigation(Start, StartOnNav, FVector(500.f, 500.f, 500.f), NavData)
+				|| NavSystem->ProjectPointToNavigation(Fallback, StartOnNav, FVector(500.f, 500.f, 500.f), NavData))
 			{
-				Result.Path->RemoveOverlappingPoints(FNavCorridor::OverlappingPointTolerance);
-				for (const FNavPathPoint& Point : Result.Path->GetPathPoints())
+				Start = StartOnNav.Location;
+				const FPathFindingQuery Query(&World, *NavData, Start, EndCentre);
+				const FPathFindingResult Result = NavSystem->FindPathSync(Query);
+				if (Result.IsSuccessful() && Result.Path.IsValid())
 				{
-					Block.Path.Add(FVector2D(Point.Location));
+					Result.Path->RemoveOverlappingPoints(FNavCorridor::OverlappingPointTolerance);
+					for (const FNavPathPoint& Point : Result.Path->GetPathPoints())
+					{
+						Path.Add(FVector2D(Point.Location));
+					}
 				}
 			}
+			++NumPathsServed;
+			++TotalPathsServed;
 		}
-		++NumPathsServed;
-		++TotalPathsServed;
-	}
-	if (Block.Path.Num() < 2)
-	{
-		Block.Path = { FVector2D(Start), FVector2D(EndCentre) };
-	}
+		if (Path.Num() < 2)
+		{
+			Path = { FVector2D(Start), FVector2D(EndCentre) };
+		}
+		return Path;
+	};
+	// The body's path, from its centre.
+	FBlockMarch Block;
+	FVector Start(Centre.X, Centre.Y, Height);
+	Block.Path = FindBlockPath(Start, FVector(Start));
 	Block.Length = HOLFormation::GetLineLength(Block.Path);
 	if (Block.Length <= Size * HOLFormation::BlockMarchMinDistanceInDepths)
 	{
@@ -1416,7 +1458,7 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 	}
 	const FVector2D StartForward = HOLFormation::GetDirectionOnLine(Block.Path, 0., HOLFormation::BlockTurnWindow, Forward);
 
-	// Form-up: the same rows facing the path's start, their middle on the path's first point; each unit's offset in the block.
+	// The block's rows facing the path's start, their middle on the path's first point; each unit's offset in the block.
 	TArray<FVector2D> UpPlaces;
 	TArray<int32> UpOfUnit;
 	HOLFormation::PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, FVector2D::ZeroVector, StartForward, ColumnSpacing, RowSpacing,
@@ -1428,50 +1470,182 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 	}
 	Middle /= Num;
 	TArray<FVector2D> RawUp;
-	TArray<FVector> UpSlots;
 	HOLFormation::PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, Block.Path[0] - Middle, StartForward, ColumnSpacing, RowSpacing,
 		[&](const FVector2D& Place)
 		{
 			RawUp.Add(Place);
-			const FVector OnNav = ProjectFormationPlace(Start, Place, ColumnSpacing, NavSystem, NavData);
-			UpSlots.Add(OnNav);
-			return FVector2D(OnNav);
+			return FVector2D(ProjectFormationPlace(Start, Place, ColumnSpacing, NavSystem, NavData));
 		}, UpPlaces, UpOfUnit, FrontWidth);
 	// Each unit's offset in the block; its arrival place the one of its slot (the same rows, same row and column: the
 	// form-up's place index is the arrival's, the user's 2nd trial), so the block turned at the end stands on them.
+	TArray<FVector2D> Offsets;
 	for (int32 Unit = 0; Unit < Num; ++Unit)
 	{
-		const FVector2D Offset = UpOfUnit[Unit] != INDEX_NONE ? HOLFormation::WorldToBlockOffset(RawUp[UpOfUnit[Unit]] - Block.Path[0], StartForward) : FVector2D::ZeroVector;
-		Block.Offsets.Add(Offset);
+		Offsets.Add(UpOfUnit[Unit] != INDEX_NONE ? HOLFormation::WorldToBlockOffset(RawUp[UpOfUnit[Unit]] - Block.Path[0], StartForward) : FVector2D::ZeroVector);
 	}
-	Block.FinalForward = Forward.GetSafeNormal();
-	Block.BlendDistance = HOLFormation::GetBlockBlendDistance(Size, Block.Length);
-	// Already in rows, or close together (the user's 4th trial): no stop, the block starts at once and its units take their
-	// slots walking (FormUp phase while they join, through each other).
-	double FarthestUp = 0.;
+	// Where each unit stands in the block's frame at the path's first point.
+	TArray<FVector2D> Local;
 	for (int32 Unit = 0; Unit < Num; ++Unit)
 	{
-		const FVector2D Up = UpOfUnit[Unit] != INDEX_NONE ? FVector2D(UpSlots[UpOfUnit[Unit]]) : Block.Path[0];
-		FarthestUp = FMath::Max(FarthestUp, FVector2D::Distance(Positions[Unit], Up));
+		Local.Add(HOLFormation::WorldToBlockOffset(Positions[Unit] - Block.Path[0], StartForward));
 	}
-	if (FarthestUp <= HOLFormation::BlockJoinDistance)
+	// A slot kept for each straggler in the block's last row, on its side (the user's trial of playtest note 1 of J7b: one
+	// that came in by the middle or the side shoved the others, who held the block and left it); the body takes the other
+	// slots. A straggler whose kind has no slot in the last row (a mixed group) is queued: it follows behind the block.
+	TArray<bool> IsQueued;
+	IsQueued.Init(false, Num);
+	int32 NumQueued = 0;
+	if (NumStragglers > 0)
 	{
-		Block.bMarching = true;
-		Block.bJoining = true;
-		Block.Report.FormUpSteps = 0;
+		TArray<int32> Kinds;
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			Kinds.Add(KindOfUnit.IsValidIndex(Unit) ? KindOfUnit[Unit] : 0);
+		}
+		TArray<int32> SlotOfUnit;
+		NumQueued = HOLFormation::ReserveRearSlots(Offsets, Local, Kinds, IsStraggler, SlotOfUnit, IsQueued);
+		const TArray<int32> FirstUp = UpOfUnit;
+		const TArray<FVector2D> FirstOffsets = Offsets;
+		double RearX = 0.;
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			if (SlotOfUnit.IsValidIndex(Unit) && FirstUp.IsValidIndex(SlotOfUnit[Unit]))
+			{
+				UpOfUnit[Unit] = FirstUp[SlotOfUnit[Unit]];
+				Offsets[Unit] = FirstOffsets[SlotOfUnit[Unit]];
+			}
+			RearX = FMath::Min(RearX, Offsets[Unit].X);
+		}
+		Block.QueueOffset = RearX - RowSpacing;
 	}
-
-	// The clusters' paths are not needed: the block walks its own.
+	// The clusters' paths are not needed: the blocks walk their own.
 	PendingPaths.RemoveAt(FirstRequest, NumClusters, EAllowShrinking::No);
+
+	// The blocks (playtest note 1 of J7b, the user's 2nd trial: small blocks). One formation for the whole order: the
+	// offsets above and the arrival places, given to all the units at once (PlaceGroup by depth, left to right: a packet
+	// on the left gets places on the left, one ahead the front rows, so no two packets cross), the stragglers' slots kept
+	// in the last row (ReserveRearSlots). Each block takes the offsets of its own units; with small blocks, each block's
+	// point starts where its slots stand closest to its units (its units' middle less its offsets' middle, along the line
+	// to the destination), on its own path to the same end point, at its own pace (its slowest unit's), its files formed
+	// on the move. A compact group (one packet): the body's block as before.
+	TArray<FBlockMarch> NewBlocks;
+	NewBlocks.SetNum(NumBlocks);
+	NewBlocks[0] = MoveTemp(Block);
+	for (int32 Index = 0; Index < NumBlocks; ++Index)
+	{
+		FBlockMarch& Each = NewBlocks[Index];
+		Each.Serial = OrderSerial;
+		Each.Index = Index;
+		Each.NumBlocks = NumBlocks;
+		Each.FinalForward = Forward.GetSafeNormal();
+		FVector2D Forward0 = StartForward;
+		if (NumBlocks > 1)
+		{
+			FVector2D UnitsMiddle = FVector2D::ZeroVector;
+			FVector2D OffsetsMiddle = FVector2D::ZeroVector;
+			double EachHeight = 0.;
+			for (int32 Unit = 0; Unit < Num; ++Unit)
+			{
+				if (BlockOfUnit[Unit] == Index)
+				{
+					UnitsMiddle += Positions[Unit];
+					OffsetsMiddle += Offsets[Unit];
+					EachHeight += EntityManager.GetFragmentDataChecked<FTransformFragment>(Entities[Unit]).GetTransform().GetLocation().Z;
+				}
+			}
+			UnitsMiddle /= BlockSizes[Index];
+			OffsetsMiddle /= BlockSizes[Index];
+			EachHeight /= BlockSizes[Index];
+			const FVector2D Towards = (FVector2D(EndCentre) - UnitsMiddle).GetSafeNormal();
+			const FVector2D Line = Towards.IsNearlyZero() ? StartForward : Towards;
+			FVector EachStart(UnitsMiddle - HOLFormation::BlockOffsetToWorld(OffsetsMiddle, Line), EachHeight);
+			Each.Path = FindBlockPath(EachStart, FVector(UnitsMiddle, EachHeight));
+			Each.Length = HOLFormation::GetLineLength(Each.Path);
+			Forward0 = HOLFormation::GetDirectionOnLine(Each.Path, 0., HOLFormation::BlockTurnWindow, Line);
+		}
+		Each.BlendDistance = HOLFormation::GetBlockBlendDistance(Size, Each.Length);
+		// Files on the move, rows at the arrival (playtest note 1 of J7b, the user's 5th trial: nobody slows down on the
+		// march, not even to take its slot): the block starts at once at full pace, its point where its units stand as
+		// deep on average as its offsets (their mean depth less its offsets' mean depth, on the line of its path's start),
+		// so its units follow it at their own depths; each slides to its file on the move (AdvanceBlocks).
+		double UnitsDepth = 0.;
+		double OffsetsDepth = 0.;
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			if (BlockOfUnit[Unit] == Index)
+			{
+				UnitsDepth += NumBlocks > 1 ? HOLFormation::WorldToBlockOffset(Positions[Unit] - Each.Path[0], Forward0).X : Local[Unit].X;
+				OffsetsDepth += Offsets[Unit].X;
+			}
+		}
+		const double StartProgress = BlockSizes[Index] > 0 ? (UnitsDepth - OffsetsDepth) / BlockSizes[Index] : 0.;
+		Each.Progress = StartProgress;
+		Each.Report.FormUpSteps = 0;
+		Each.Report.SetBack = static_cast<float>(-StartProgress);
+		// Its pace: its slowest unit's, stragglers left out (the user's trial of playtest note 1 of J7b); one slower than
+		// it slows it down once it is one of the block. Small blocks: the order's one pace (J7a.4), the slowest of all its
+		// blocks' units, so a block of Peasants does not run ahead of the Men-at-arms' one.
+		float EachPace = TNumericLimits<float>::Max();
+		for (int32 Unit = 0; Unit < Num; ++Unit)
+		{
+			if (NumBlocks > 1 ? BlockOfUnit[Unit] != INDEX_NONE : BlockOfUnit[Unit] == Index)
+			{
+				EachPace = FMath::Min(EachPace, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entities[Unit]).Speed);
+			}
+		}
+		Each.Pace = (NumStragglers > 0 || NumBlocks > 1) && EachPace < TNumericLimits<float>::Max() ? EachPace : Pace;
+		Each.Report.Pace = Each.Pace;
+		Each.Report.Units = BlockSizes[Index] + (Index == 0 ? NumStragglers : 0);
+	}
+	NewBlocks[0].Report.Stragglers = NumStragglers;
+	NewBlocks[0].Report.QueuedStragglers = NumQueued;
+
 	for (int32 Unit = 0; Unit < Num; ++Unit)
 	{
 		const FMassEntityHandle Entity = Entities[Unit];
 		FHOLMoveOrderFragment& MoveOrder = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
-		Block.Entities.Add(Entity);
-		Block.Kinds.Add(KindOfUnit.IsValidIndex(Unit) ? KindOfUnit[Unit] : 0);
-		Block.Places.Add(UpOfUnit[Unit] != INDEX_NONE && Places.IsValidIndex(UpOfUnit[Unit]) ? Places[UpOfUnit[Unit]] : MoveOrder.Slot);
-		Block.HeldSteps.Add(0);
-		MoveOrder.Slot = UpOfUnit[Unit] != INDEX_NONE ? UpSlots[UpOfUnit[Unit]] : FVector(Block.Path[0].X, Block.Path[0].Y, Start.Z);
+		const FVector Place = UpOfUnit[Unit] != INDEX_NONE && Places.IsValidIndex(UpOfUnit[Unit]) ? Places[UpOfUnit[Unit]] : MoveOrder.Slot;
+		if (IsStraggler[Unit])
+		{
+			// A straggler (of the body's block): its slot kept, out of the block from the start, on its own path to its
+			// arrival place (as a unit that left the block), at its own speed (not the group's slowest: bStraggler).
+			FBlockMarch& Body = NewBlocks[0];
+			FBlockMarch::FStraggler& Straggler = Body.Stragglers.AddDefaulted_GetRef();
+			Straggler.Entity = Entity;
+			Straggler.Offset = Offsets[Unit];
+			Straggler.Place = Place;
+			Straggler.Kind = KindOfUnit.IsValidIndex(Unit) ? KindOfUnit[Unit] : 0;
+			Straggler.Speed = EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).Speed;
+			Straggler.bQueued = IsQueued[Unit];
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: a straggler %.0f cm from the block, %s"), FVector2D::Distance(Positions[Unit], Centre),
+				Straggler.bQueued ? TEXT("queued behind it") : *FString::Printf(TEXT("its slot kept in the last row (%.0f cm across)"), Straggler.Offset.Y));
+			MoveOrder.bStraggler = true;
+			MoveOrder.BlockIndex = 0;
+			MoveOrder.MarchSpeed = 0.f;
+			MoveOrder.Slot = Place;
+			MoveOrder.Phase = EHOLMovePhase::WaitingPath;
+			FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
+			Request.OrderSerial = OrderSerial;
+			Request.Start = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
+			Request.Target = Place;
+			Request.Entities.Add(Entity);
+			SlotClaims.FindOrAdd(GetClaimCell(FVector2D(Place))).AddUnique(Entity);
+			continue;
+		}
+		FBlockMarch& Each = NewBlocks[BlockOfUnit[Unit]];
+		Each.Entities.Add(Entity);
+		Each.Offsets.Add(Offsets[Unit]);
+		Each.Kinds.Add(KindOfUnit.IsValidIndex(Unit) ? KindOfUnit[Unit] : 0);
+		Each.Places.Add(Place);
+		// Its kind of row, for the crossings while it takes its slot (GetPassThroughKind): two kinds go through each other,
+		// two of one kind keep clear of each other (their places are given without crossings within a kind).
+		MoveOrder.RowKind = static_cast<uint8>(FMath::Clamp(Each.Kinds.Last() + 1, 1, 255));
+		MoveOrder.BlockIndex = static_cast<uint8>(FMath::Clamp(BlockOfUnit[Unit], 0, 255));
+		Each.HeldSteps.Add(0);
+		Each.Depths.Add(Offsets[Unit].X);
+		MoveOrder.MarchSpeed = Each.Pace;
+		// Sliding to its file on the move, steered from this step on by AdvanceBlocks (after the orders).
+		MoveOrder.Slot = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
 		MoveOrder.Phase = EHOLMovePhase::FormUp;
 		FMassNavMeshShortPathFragment& ShortPath = EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity);
 		FMassNavMeshCachedPathFragment& CachedPath = EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Entity);
@@ -1479,19 +1653,85 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 		CachedPath.NavPath.Reset();
 		CachedPath.Corridor.Reset();
 		CachedPath.PathSource = EMassNavigationPathSource::Unset;
-		// To its form-up place at its own speed: the stop is short.
-		SteerInBlock(World, EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity), MoveOrder,
-			EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity),
-			GetWalkSpeed(EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity)), static_cast<float>(Block.Length), StartForward);
 	}
-	Block.Pace = Pace;
-	Block.Report.Units = Num;
-	UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %s (farthest %.0f cm from its form-up place)"), Block.bJoining ? TEXT("forming up on the move") : TEXT("gathering first"), FarthestUp);
-	Block.Report.Pace = Pace;
-	LastBlockReport = Block.Report;
-	LastBlockSerial = OrderSerial;
-	UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %d units, path of %d points, %.0f cm, pace %.0f cm/s"), Num, Block.Path.Num(), Block.Length, Pace);
-	Blocks.Add(OrderSerial, MoveTemp(Block));
+	// Files without crossings within a kind (playtest note 1, loop 25): on the march each unit keeps its depth and only
+	// slides across, so two of one kind level with each other whose files cross block each other for good (two of one kind
+	// keep clear of each other; seen: a Man-at-arms pushed 3 m off its file to the end). Within each block and kind, the
+	// files (and their places, given again at the arrival) go to the units from left to right as they stand across the
+	// path's start.
+	for (FBlockMarch& Each : NewBlocks)
+	{
+		if (Each.Path.IsEmpty())
+		{
+			continue;
+		}
+		const FVector2D FileStart = HOLFormation::GetDirectionOnLine(Each.Path, 0., HOLFormation::BlockTurnWindow, StartForward);
+		TArray<int32> KindsSeen;
+		for (const int32 Kind : Each.Kinds)
+		{
+			KindsSeen.AddUnique(Kind);
+		}
+		for (const int32 Kind : KindsSeen)
+		{
+			TArray<int32> Members;
+			TArray<double> Across;
+			for (int32 Unit = 0; Unit < Each.Entities.Num(); ++Unit)
+			{
+				if (Each.Kinds[Unit] == Kind)
+				{
+					Members.Add(Unit);
+				}
+				const FVector2D Location(EntityManager.GetFragmentDataChecked<FTransformFragment>(Each.Entities[Unit]).GetTransform().GetLocation());
+				Across.Add(HOLFormation::WorldToBlockOffset(Location - Each.Path[0], FileStart).Y);
+			}
+			if (Members.Num() < 2)
+			{
+				continue;
+			}
+			TArray<int32> ByUnit = Members;
+			ByUnit.StableSort([&Across](const int32 A, const int32 B) { return Across[A] < Across[B]; });
+			TArray<int32> ByFile = Members;
+			ByFile.StableSort([&Each](const int32 A, const int32 B) { return Each.Offsets[A].Y < Each.Offsets[B].Y; });
+			TArray<FVector2D> Offsets0;
+			TArray<FVector> Places0;
+			for (const int32 Unit : ByFile)
+			{
+				Offsets0.Add(Each.Offsets[Unit]);
+				Places0.Add(Each.Places[Unit]);
+			}
+			for (int32 Rank = 0; Rank < ByUnit.Num(); ++Rank)
+			{
+				Each.Offsets[ByUnit[Rank]] = Offsets0[Rank];
+				Each.Places[ByUnit[Rank]] = Places0[Rank];
+				Each.Depths[ByUnit[Rank]] = Offsets0[Rank].X;
+			}
+		}
+	}
+	TArray<FString> SizeTexts;
+	for (const int32 BlockSize : BlockSizes)
+	{
+		SizeTexts.Add(FString::FromInt(BlockSize));
+	}
+	UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %d blocks (sizes %s), %d stragglers"), NumBlocks, *FString::Join(SizeTexts, TEXT(", ")), NumStragglers);
+	for (FBlockMarch& Each : NewBlocks)
+	{
+		// The body's lines as before (the scripted checks read them), the small blocks' tagged.
+		if (Each.Index == 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: files on the move, start %.0f cm behind the path's"), Each.Report.SetBack);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %d stragglers left behind, %d queued"), NumStragglers, NumQueued);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %d units, path of %d points, %.0f cm, pace %.0f cm/s"), Num, Each.Path.Num(), Each.Length, Each.Pace);
+			LastBlockReport = Each.Report;
+			LastBlockSerial = OrderSerial;
+		}
+		else
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sfiles on the move, start %.0f cm behind the path's, %d units, path of %d points, %.0f cm, pace %.0f cm/s"),
+				*Each.GetTag(), Each.Report.SetBack, Each.Entities.Num(), Each.Path.Num(), Each.Length, Each.Pace);
+		}
+		const uint64 Key = MakeBlockKey(OrderSerial, Each.Index);
+		Blocks.Add(Key, MoveTemp(Each));
+	}
 }
 
 void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, const float DeltaTime, const ANavigationData* NavData)
@@ -1503,17 +1743,190 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		return;
 	}
 	const float Scale = FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
-	const auto Publish = [](const uint32 Serial, const FBlockReport& Report)
+	// The last order's body (block 0) is the one reported (the small blocks have their own lines).
+	const auto Publish = [](const FBlockMarch& Block)
 	{
-		if (Serial == LastBlockSerial)
+		if (Block.Serial == LastBlockSerial && Block.Index == 0)
 		{
-			LastBlockReport = Report;
+			LastBlockReport = Block.Report;
 		}
 	};
+	// A straggler back on its own path to its place (the user's trial of playtest note 1 of J7b): far from its slot again,
+	// the line there cut, the block re-forming at its end, or gone.
+	const auto ToOwnPath = [this, &EntityManager](const uint32 Serial, FBlockMarch::FStraggler& Straggler)
+	{
+		FHOLMoveOrderFragment& Order = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Straggler.Entity);
+		Straggler.bSteering = false;
+		Order.Slot = Straggler.Place;
+		Order.Phase = EHOLMovePhase::WaitingPath;
+		FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
+		Request.OrderSerial = Serial;
+		Request.Start = EntityManager.GetFragmentDataChecked<FTransformFragment>(Straggler.Entity).GetTransform().GetLocation();
+		Request.Target = Straggler.Place;
+		Request.Entities.Add(Straggler.Entity);
+	};
+	const auto ReleaseStragglers = [&EntityManager, &ToOwnPath](const uint32 Serial, FBlockMarch& Block)
+	{
+		for (FBlockMarch::FStraggler& Straggler : Block.Stragglers)
+		{
+			const FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Straggler.Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Straggler.Entity) : nullptr;
+			if (Straggler.bSteering && Order && Order->OrderSerial == Serial)
+			{
+				ToOwnPath(Serial, Straggler);
+			}
+		}
+	};
+	// A member on the march sliding to its file (playtest note 1 of J7b, the user's 5th trial: files on the move, rows at
+	// the arrival, nobody slowed down): along the march at the block's pace (its own speed at most), its depth its own,
+	// across to its file (Across: from it to its file, cm) at most FileSlideMaxAngle off the march (a slide to the eye, not
+	// a hook) and no more than it is off; the slowest kind loses only what the slide takes of its speed. Never against
+	// the march (the user's 4th trial), never stopping.
+	const auto SteerInFile = [&EntityManager, World, DeltaTime](const FMassEntityHandle Entity, FHOLMoveOrderFragment& Order, const double Across,
+		const float Speed, const double Pace, const FVector2D& Direction, const float DistanceToGoal)
+	{
+		const FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity);
+		FMassMoveTargetFragment& MoveTarget = EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
+		const FVector Location = Transform.GetTransform().GetLocation();
+		const double Step = FMath::Clamp(static_cast<double>(DeltaTime), 0.001, 0.1);
+		const double Angle = FMath::DegreesToRadians(HOLFormation::FileSlideMaxAngle);
+		const double MaxSide = FMath::Min(Pace * FMath::Tan(Angle), Speed * FMath::Sin(Angle));
+		const double Side = FMath::Min(FMath::Abs(Across) / Step, MaxSide);
+		const double Along = FMath::Min(Pace, FMath::Sqrt(FMath::Max(FMath::Square(static_cast<double>(Speed)) - FMath::Square(Side), 0.)));
+		// Where it would be in a second.
+		const FVector2D Ahead(Along, Across < 0. ? -Side : Side);
+		Order.MarchDirection = FVector2f(Direction);
+		Order.Slot = FVector(FVector2D(Location) + HOLFormation::BlockOffsetToWorld(Ahead, Direction), Location.Z);
+		SteerInBlock(*World, Transform, Order, MoveTarget, static_cast<float>(Ahead.Size()), DistanceToGoal, Direction);
+	};
+	// A straggler steered to its slot (or its queue's point) to Target at Speed, never against the march (the user's 4th
+	// trial of playtest note 1 of J7b): its velocity along the march (straight there, as UHOLFullSpeedProcessor gives it:
+	// the step that lands on it, else at Speed) never below the block's pace (its own speed at most); short of that (ahead
+	// of Target, or level with it off to the side), it walks on at that pace, across to Target's file at the rest of its
+	// speed (no more than it is off), facing the march. The arrival's re-forming steers straight.
+	const auto SteerOnMarch = [&EntityManager, World, DeltaTime](const FMassEntityHandle Entity, FHOLMoveOrderFragment& Order, const FVector& Target,
+		const float Speed, const double Pace, const FVector2D& Direction, const float DistanceToGoal)
+	{
+		const FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity);
+		FMassMoveTargetFragment& MoveTarget = EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
+		const FVector Location = Transform.GetTransform().GetLocation();
+		const FVector2D FromTarget =HOLFormation::WorldToBlockOffset(FVector2D(Location) - FVector2D(Target), Direction);
+		const double Distance = FromTarget.Size();
+		const double Step = FMath::Clamp(static_cast<double>(DeltaTime), 0.001, 0.1);
+		const double StraightAlong = Distance <= Speed * Step ? -FromTarget.X / Step : Distance > 0. ? -FromTarget.X / Distance * Speed : 0.;
+		const double MinAlong = FMath::Min(Pace, static_cast<double>(Speed));
+		Order.MarchDirection = FVector2f(Direction);
+		if (StraightAlong >= MinAlong)
+		{
+			Order.Slot = Target;
+			SteerInBlock(*World, Transform, Order, MoveTarget, Speed, DistanceToGoal, Direction);
+			return;
+		}
+		// Across at the rest of its speed until it is in its file (no more than what is left this step): not |Y| per
+		// second, which slows it down near its file and lets its slot pass it to the side (playtest note 1, loop 16).
+		const double Across = FMath::Min(FMath::Abs(FromTarget.Y) / Step, FMath::Sqrt(FMath::Max(FMath::Square(static_cast<double>(Speed)) - FMath::Square(MinAlong), 0.)));
+		// Where it would be in a second: on along the march, to Target's file across.
+		const FVector2D Ahead(MinAlong, FromTarget.Y > 0. ? -Across : Across);
+		Order.Slot = FVector(FVector2D(Location) + HOLFormation::BlockOffsetToWorld(Ahead, Direction), Target.Z);
+		SteerInBlock(*World, Transform, Order, MoveTarget, static_cast<float>(Ahead.Size()), DistanceToGoal, Direction);
+	};
+	// Small blocks meeting (the user's rule for playtest note 1 of J7b: each separate packet marches in its own formation,
+	// the blocks merge when they meet, else at the arrival). All the blocks of an order share one formation (the same
+	// offsets frame): a block's point (where its path has brought it, or behind its path's start while set back) within
+	// BlockMergeDistance of a larger one's of its order, both on the march (not re-forming at the arrival), the smaller
+	// merges into the larger: its units, offsets, places and kinds pass to it, each taking its slot at the larger block's
+	// point on the move (FormUp: never a half turn, SteerOnMarch), its stragglers become the larger one's; the larger keeps
+	// its own path and the order's pace; the smaller's key is dropped. Equal sizes: into the lower number (the body first).
+	{
+		const auto GetBlockPoint = [](const FBlockMarch& Each)
+		{
+			const FVector2D Start = HOLFormation::GetDirectionOnLine(Each.Path, 0., HOLFormation::BlockTurnWindow, FVector2D(1., 0.));
+			return Each.Progress < 0. ? Each.Path[0] + Start * Each.Progress : HOLFormation::GetPointOnLine(Each.Path, Each.Progress);
+		};
+		TArray<uint64> Keys;
+		Blocks.GetKeys(Keys);
+		Keys.Sort();
+		for (int32 SmallIndex = Keys.Num() - 1; SmallIndex >= 0; --SmallIndex)
+		{
+			const uint64 SmallKey = Keys[SmallIndex];
+			FBlockMarch* Small = Blocks.Find(SmallKey);
+			if (Small == nullptr || Small->bBlending || Small->Entities.IsEmpty() || Small->Path.IsEmpty())
+			{
+				continue;
+			}
+			const FVector2D SmallPoint = GetBlockPoint(*Small);
+			FBlockMarch* Large = nullptr;
+			double LargeDistance = HOLFormation::BlockMergeDistance;
+			for (const uint64 OtherKey : Keys)
+			{
+				FBlockMarch* Other = OtherKey != SmallKey ? Blocks.Find(OtherKey) : nullptr;
+				if (Other == nullptr || Other->Serial != Small->Serial || Other->bBlending || Other->Entities.IsEmpty() || Other->Path.IsEmpty())
+				{
+					continue;
+				}
+				const bool bLarger = Other->Entities.Num() > Small->Entities.Num() || (Other->Entities.Num() == Small->Entities.Num() && Other->Index < Small->Index);
+				const double Distance = FVector2D::Distance(SmallPoint, GetBlockPoint(*Other));
+				if (bLarger && Distance <= LargeDistance)
+				{
+					Large = Other;
+					LargeDistance = Distance;
+				}
+			}
+			if (Large == nullptr)
+			{
+				continue;
+			}
+			const int32 Merged = Small->Entities.Num();
+			for (int32 Unit = 0; Unit < Merged; ++Unit)
+			{
+				const FMassEntityHandle Entity = Small->Entities[Unit];
+				Large->Entities.Add(Entity);
+				Large->Offsets.Add(Small->Offsets[Unit]);
+				Large->Places.Add(Small->Places[Unit]);
+				Large->Kinds.Add(Small->Kinds[Unit]);
+				Large->HeldSteps.Add(0);
+				// Its depth its own, read from where it stands at the larger block's point (AdvanceBlocks, below).
+				Large->Depths.Add(Small->Depths[Unit]);
+				if (FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr)
+				{
+					if (Order->OrderSerial == Small->Serial && (Order->Phase == EHOLMovePhase::FormUp || Order->Phase == EHOLMovePhase::Block))
+					{
+						// Its file now at the larger block's point: slid to on the move (AdvanceBlocks' FormUp, below).
+						Order->Phase = EHOLMovePhase::FormUp;
+						Order->BlockIndex = static_cast<uint8>(FMath::Clamp(Large->Index, 0, 255));
+						Order->MarchSpeed = Large->Pace;
+					}
+				}
+			}
+			for (const FBlockMarch::FStraggler& Straggler : Small->Stragglers)
+			{
+				if (FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Straggler.Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Straggler.Entity) : nullptr)
+				{
+					Order->BlockIndex = static_cast<uint8>(FMath::Clamp(Large->Index, 0, 255));
+				}
+				Large->Stragglers.Add(Straggler);
+			}
+			// A queued straggler follows a row behind the rearmost row of the two.
+			Large->QueueOffset = FMath::Min(Large->QueueOffset, Small->QueueOffset);
+			Large->Report.MergedUnits += Merged;
+			Large->Report.Units += Small->Report.Units;
+			Large->Report.Stragglers += Small->Report.Stragglers;
+			Large->Report.JoinedStragglers += Small->Report.JoinedStragglers;
+			Large->Report.LeftUnits += Small->Report.LeftUnits;
+			Large->Report.BackSteps += Small->Report.BackSteps;
+			if (Small->Report.MinSpacing >= 0.f)
+			{
+				Large->Report.MinSpacing = Large->Report.MinSpacing < 0.f ? Small->Report.MinSpacing : FMath::Min(Large->Report.MinSpacing, Small->Report.MinSpacing);
+			}
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: block %d of %d merged into %s after %d steps (%.0f cm apart), %d units, %d backsteps before"),
+				Small->Index + 1, Small->NumBlocks, Large->Index == 0 ? TEXT("the main block") : *FString::Printf(TEXT("block %d of %d"), Large->Index + 1, Large->NumBlocks),
+				Small->Steps, LargeDistance, Merged, Small->Report.BackSteps);
+			Blocks.Remove(SmallKey);
+		}
+	}
 	for (auto It = Blocks.CreateIterator(); It; ++It)
 	{
-		const uint32 Serial = It.Key();
 		FBlockMarch& Block = It.Value();
+		const uint32 Serial = Block.Serial;
 		// Its units still in it (a new order, gone: out).
 		for (int32 Unit = Block.Entities.Num() - 1; Unit >= 0; --Unit)
 		{
@@ -1526,114 +1939,107 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				Block.Places.RemoveAt(Unit);
 				Block.Kinds.RemoveAt(Unit);
 				Block.HeldSteps.RemoveAt(Unit);
+				Block.Depths.RemoveAt(Unit);
 			}
 		}
 		if (Block.Entities.IsEmpty())
 		{
-			Publish(Serial, Block.Report);
+			ReleaseStragglers(Serial, Block);
+			Publish(Block);
 			It.RemoveCurrent();
 			continue;
+		}
+		// The closest two of its units (the user's trial of playtest note 1 of J7b: a scattered group's units overlapped while
+		// it gathered), from its first half second (units made overlapping are pulled apart by then) until the arrival's
+		// blend (re-forming, they go through each other).
+		if (!Block.bBlending && Block.Steps >= HOLFormation::BlockSpacingFromStep)
+		{
+			for (int32 First = 0; First < Block.Entities.Num(); ++First)
+			{
+				const FVector A = EntityManager.GetFragmentDataChecked<FTransformFragment>(Block.Entities[First]).GetTransform().GetLocation();
+				for (int32 Second = First + 1; Second < Block.Entities.Num(); ++Second)
+				{
+					const float Spacing = static_cast<float>(FVector::Dist2D(A, EntityManager.GetFragmentDataChecked<FTransformFragment>(Block.Entities[Second]).GetTransform().GetLocation()));
+					Block.Report.MinSpacing = Block.Report.MinSpacing < 0.f ? Spacing : FMath::Min(Block.Report.MinSpacing, Spacing);
+				}
+			}
 		}
 		++Block.Steps;
 		const FVector2D Fallback = HOLFormation::GetDirectionOnLine(Block.Path, 0., HOLFormation::BlockTurnWindow, FVector2D(1., 0.));
 		const double Pace = Block.Pace * Scale;
 
-		// Form-up: everyone on its place, or long enough.
-		if (!Block.bMarching)
-		{
-			bool bAllThere = true;
-			for (const FMassEntityHandle Entity : Block.Entities)
-			{
-				const FVector Location = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
-				bAllThere &= FVector::Dist2D(Location, EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).Slot) <= HOLFormation::BlockJoinDistance;
-			}
-			if (!bAllThere && Block.Steps < HOLFormation::FormUpMaxSteps)
-			{
-				continue;
-			}
-			// Close enough (the user's 4th trial): the rest is done on the move.
-			Block.bMarching = true;
-			Block.bJoining = true;
-			Block.Report.FormUpSteps = Block.Steps;
-			Block.Steps = 0;
-		}
-
-		// The march: the block's point moves on only while every unit keeps up with its slot.
+		// The march: the block's point never waits (playtest note 1 of J7b, the user's 3rd trial: no waiting, no slowing
+		// down), nor does any member (the user's 5th trial: each at the block's pace, its depth its own, sliding to its
+		// file). Only the arrival's re-forming (blending) slows the block down with the worst gap, held by a unit far behind.
 		bool bHeld = false;
 		float MaxGap = 0.f;
+		// The march's direction of the step before (the block's point not moved on yet): a unit walking against it, a
+		// backstep (the user's 4th trial of playtest note 1: never on the march, SteerInFile); one walking along it below
+		// BlockSlowedShare of the pace from its first half second, a slowed step (the user's 5th trial: none).
+		const FVector2D LastDirection = Block.Progress < 0. ? Fallback : HOLFormation::GetDirectionOnLine(Block.Path, Block.Progress, HOLFormation::BlockTurnWindow, Fallback);
+		bool bBackStep = false;
+		bool bSlowed = false;
+		bool bArrivalBackStep = false;
 		for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
 		{
 			const FMassEntityHandle Entity = Block.Entities[Unit];
+			const FHOLMoveOrderFragment& Order = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
 			const FVector Location = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
-			const float Gap = static_cast<float>(FVector::Dist2D(Location, EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).Slot));
-			MaxGap = FMath::Max(MaxGap, Gap);
-			// Joining or re-forming: the block slows down instead of stopping; only a unit far behind holds it.
-			const bool bLagging = Gap > (Block.bJoining || Block.bBlending ? HOLFormation::BlockSoftHoldDistance : HOLFormation::BlockLagDistance);
-			bHeld |= bLagging;
-			Block.HeldSteps[Unit] = bLagging ? Block.HeldSteps[Unit] + 1 : 0;
-			if (Block.Steps > 1)
+			const FMassVelocityFragment* Velocity = Block.Steps > 1 ? EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity) : nullptr;
+			if (Velocity)
 			{
-				if (const FMassVelocityFragment* Velocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity))
+				Block.Report.MaxSpeed = FMath::Max(Block.Report.MaxSpeed, static_cast<float>(Velocity->Value.Size2D()) / Scale);
+			}
+			if (Block.bBlending)
+			{
+				// Re-forming: a unit far behind its slot holds the block.
+				const float Gap = static_cast<float>(FVector2D::Distance(FVector2D(Location), FVector2D(Order.MarchSlot)));
+				MaxGap = FMath::Max(MaxGap, Gap);
+				Block.HeldSteps[Unit] = Gap > HOLFormation::BlockSoftHoldDistance ? Block.HeldSteps[Unit] + 1 : 0;
+				bHeld |= Block.HeldSteps[Unit] > 0;
+				// Walking back while the rows close up (measured, playtest note 1, loop 25).
+				const double BackAlong = Velocity ? FVector2D::DotProduct(FVector2D(Velocity->Value), LastDirection) : 0.;
+				if (BackAlong < -1.)
 				{
-					Block.Report.MaxSpeed = FMath::Max(Block.Report.MaxSpeed, static_cast<float>(Velocity->Value.Size2D()) / Scale);
+					bArrivalBackStep = true;
+					Block.Report.ArrivalBackDistance += static_cast<float>(-BackAlong * DeltaTime / Scale);
 				}
+				continue;
 			}
-		}
-		// Joined: everyone on its slot (or long enough), the march proper.
-		if (Block.bJoining && (MaxGap <= HOLFormation::BlockLagDistance || Block.Steps >= HOLFormation::FormUpMaxSteps))
-		{
-			Block.bJoining = false;
-			Block.Report.JoinSteps = Block.Steps;
-			for (const FMassEntityHandle Entity : Block.Entities)
-			{
-				EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).Phase = EHOLMovePhase::Block;
-			}
-		}
-		if (Block.Steps > 1 && !Block.bJoining && !Block.bBlending)
-		{
-			Block.Report.MaxSlotGap = FMath::Max(Block.Report.MaxSlotGap, MaxGap);
-		}
-		Block.Report.HeldSteps += bHeld ? 1 : 0;
-		Block.Report.MarchSteps = Block.Steps;
-		// A unit that holds the block too long leaves it: its own path to its place.
-		for (int32 Unit = Block.Entities.Num() - 1; Unit >= 0; --Unit)
-		{
-			if (Block.HeldSteps[Unit] < HOLFormation::BlockWaitMaxSteps)
+			Block.HeldSteps[Unit] = 0;
+			if (Velocity == nullptr)
 			{
 				continue;
 			}
-			const FMassEntityHandle Entity = Block.Entities[Unit];
-			FHOLMoveOrderFragment& Order = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
-			Order.Slot = Block.Places[Unit];
-			Order.Phase = EHOLMovePhase::WaitingPath;
-			FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
-			Request.OrderSerial = Serial;
-			Request.Start = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
-			Request.Target = Order.Slot;
-			Request.Entities.Add(Entity);
-			SlotClaims.FindOrAdd(GetClaimCell(FVector2D(Order.Slot))).AddUnique(Entity);
-			++Block.Report.LeftUnits;
-			Block.Entities.RemoveAt(Unit);
-			Block.Offsets.RemoveAt(Unit);
-			Block.Places.RemoveAt(Unit);
-			Block.Kinds.RemoveAt(Unit);
-			Block.HeldSteps.RemoveAt(Unit);
-			bHeld = false;
+			const double Along = FVector2D::DotProduct(FVector2D(Velocity->Value), LastDirection);
+			bSlowed |= Block.Steps >= HOLFormation::BlockSpacingFromStep && Along < Pace * HOLFormation::BlockSlowedShare;
+			if (Along < -1.)
+			{
+				bBackStep = true;
+				// Why (playtest note 1, loop 20): where it stands from its file at its depth, what it was steered to and
+				// the velocity asked for against the one it took.
+				const FMassMoveTargetFragment& MoveTarget = EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
+				const FVector2D FromSlot = HOLFormation::WorldToBlockOffset(FVector2D(Location) - FVector2D(Order.MarchSlot), LastDirection);
+				const FVector2D Wanted = HOLFormation::WorldToBlockOffset(FVector2D(MoveTarget.Forward) * MoveTarget.DesiredSpeed.Get(), LastDirection);
+				const FVector2D Taken = HOLFormation::WorldToBlockOffset(FVector2D(Velocity->Value), LastDirection);
+				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sbackstep step %d unit %d %s phase %s from slot (%.0f, %.0f) wanted (%.0f, %.0f) took (%.0f, %.0f)"),
+					*Block.GetTag(), Block.Steps, Unit, *EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).TypeName.ToString(),
+					Order.Phase == EHOLMovePhase::FormUp ? TEXT("FormUp") : TEXT("Block"), FromSlot.X, FromSlot.Y, Wanted.X, Wanted.Y, Taken.X, Taken.Y);
+			}
 		}
-		if (Block.Entities.IsEmpty())
-		{
-			Publish(Serial, Block.Report);
-			It.RemoveCurrent();
-			continue;
-		}
+		Block.Report.BackSteps += bBackStep ? 1 : 0;
+		Block.Report.SlowedSteps += bSlowed ? 1 : 0;
+		Block.Report.ArrivalBackSteps += bArrivalBackStep ? 1 : 0;
+		Block.Report.HeldSteps += bHeld ? 1 : 0;
+		Block.Report.MarchSteps = Block.Steps;
 		if (!bHeld)
 		{
-			const double Share = Block.bJoining || Block.bBlending ? HOLFormation::GetBlockSoftPace(MaxGap) : 1.;
+			const double Share = Block.bBlending ? HOLFormation::GetBlockSoftPace(MaxGap) : 1.;
 			Block.Progress = FMath::Min(Block.Progress + Pace * Share * DeltaTime, Block.Length);
 		}
 
 		// The arrival blended into the march (the user's 4th trial): over the last BlendDistance, each unit's target slides
-		// from its slot to a final place of its own kind, given once here from the slots where the block would stand at the
+		// from its slot (its file at its depth, kept from now on: its rows close up there) to a final place of its own kind, given once here from the slots where the block would stand at the
 		// end (no two ways of one kind crossing), through the others of its order meanwhile.
 		if (!Block.bBlending && Block.Length - Block.Progress <= Block.BlendDistance)
 		{
@@ -1642,8 +2048,13 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			TArray<FVector2D> Starts, Targets;
 			for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
 			{
-				Starts.Add(EndPoint + HOLFormation::BlockOffsetToWorld(Block.Offsets[Unit], EndDirection));
+				// Where its file would bring it at its own depth (files on the move, the user's 5th trial).
+				Starts.Add(EndPoint + HOLFormation::BlockOffsetToWorld(FVector2D(Block.Depths[Unit], Block.Offsets[Unit].Y), EndDirection));
 				Targets.Add(FVector2D(Block.Places[Unit]));
+			}
+			for (const FMassEntityHandle Entity : Block.Entities)
+			{
+				Block.Report.FormingAtEnd += EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).Phase == EHOLMovePhase::FormUp ? 1 : 0;
 			}
 			TArray<int32> PlaceOfUnit;
 			HOLFormation::AssignPlacesByKind(Starts, Block.Kinds, Targets, Block.FinalForward, PlaceOfUnit);
@@ -1688,6 +2099,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 					EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity),
 					EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Entity));
 			}
+			ReleaseStragglers(Serial, Block);
 			Block.Report.bArrived = true;
 			{
 				// The arrival watched (the user's 2nd trial): the straight ways to the places that cross, then the settling.
@@ -1721,29 +2133,65 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 						}
 					}
 				}
-				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: re-forming, %d crossings of one kind, %d in all"), Block.Report.Crossings, KindCrossings);
+				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sre-forming, %d crossings of one kind, %d in all"), *Block.GetTag(), Block.Report.Crossings, KindCrossings);
+				// The stragglers still on their own paths (playtest note 1 of J7b): the block settles when they stand on
+				// their places too.
+				for (const FBlockMarch::FStraggler& Straggler : Block.Stragglers)
+				{
+					const FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Straggler.Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Straggler.Entity) : nullptr;
+					if (Order && Order->OrderSerial == Serial)
+					{
+						Watch.Entities.Add(Straggler.Entity);
+						Watch.Places.Add(Straggler.Place);
+						Watch.LastOff.Add(FVector::Dist2D(EntityManager.GetFragmentDataChecked<FTransformFragment>(Straggler.Entity).GetTransform().GetLocation(), Straggler.Place));
+					}
+				}
 				Watch.Report = Block.Report;
-				Arrivals.Add(Serial, MoveTemp(Watch));
+				Watch.Serial = Block.Serial;
+				Watch.Index = Block.Index;
+				Watch.Tag = Block.GetTag();
+				Arrivals.Add(It.Key(), MoveTemp(Watch));
 			}
-			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: arrived after %d steps of form-up and %d of march (%d held), slot gap %.0f cm at most, speed %.0f cm/s at most, %d units left it"),
-				Block.Report.FormUpSteps, Block.Steps, Block.Report.HeldSteps, Block.Report.MaxSlotGap, Block.Report.MaxSpeed, Block.Report.LeftUnits);
-			Publish(Serial, Block.Report);
+			// The files formed by the body (the units still in the block): those that left it as stragglers named after.
+			const FString LeftAsStragglers = Block.Report.LeftUnits > 0 ? FString::Printf(TEXT(", %d left it as stragglers"), Block.Report.LeftUnits) : FString();
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sarrived after %d steps of form-up and %d of march (%d held), file gap %.0f cm at most, speed %.0f cm/s at most, %d units left it, files formed after %d steps (%.0f cm marched, -1 never)%s, %d still forming at the re-forming"),
+				*Block.GetTag(), Block.Report.FormUpSteps, Block.Steps, Block.Report.HeldSteps, Block.Report.MaxSlotGap, Block.Report.MaxSpeed, Block.Report.LeftUnits,
+				Block.Report.JoinSteps, Block.Report.JoinDistance, *LeftAsStragglers, Block.Report.FormingAtEnd);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %s%d stragglers, %d joined it on the way, %d queued behind it, %d units of other blocks merged into it"), *Block.GetTag(), Block.Report.Stragglers, Block.Report.JoinedStragglers, Block.Report.QueuedStragglers, Block.Report.MergedUnits);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %s%d backsteps on the march"), *Block.GetTag(), Block.Report.BackSteps);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %s%d slowed steps on the march"), *Block.GetTag(), Block.Report.SlowedSteps);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %s%d arrival backsteps, %.0f cm walked back"), *Block.GetTag(), Block.Report.ArrivalBackSteps, Block.Report.ArrivalBackDistance);
+			// The closest two of its units on the way (the small blocks have no Block report of their own).
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sclosest two units %.0f cm apart on the way"), *Block.GetTag(), Block.Report.MinSpacing);
+			Publish(Block);
 			It.RemoveCurrent();
 			continue;
 		}
 
-		// Each unit's slot: the block's point plus its offset turned with the path; off the navmesh (a tree, an edge), pulled
-		// in towards the path, the unit squeezed in.
-		const FVector2D Point = HOLFormation::GetPointOnLine(Block.Path, Block.Progress);
-		const FVector2D Direction = HOLFormation::GetDirectionOnLine(Block.Path, Block.Progress, HOLFormation::BlockTurnWindow, Fallback);
+		// Each unit's slot: its file at its own depth from the block's point (behind the path's start while it starts behind
+		// it: on the line of the path's first direction), turned with the path (the user's 5th trial of playtest note 1:
+		// files on the move, rows at the arrival); off the navmesh (a tree, an edge), pulled in towards the path, the unit
+		// squeezed in. On the march its depth is read from where it stands; from the arrival's blend on it is kept, and
+		// its slot slides from there to its place.
+		const FVector2D Point = Block.Progress < 0. ? Block.Path[0] + Fallback * Block.Progress : HOLFormation::GetPointOnLine(Block.Path, Block.Progress);
+		const FVector2D Direction = Block.Progress < 0. ? Fallback : HOLFormation::GetDirectionOnLine(Block.Path, Block.Progress, HOLFormation::BlockTurnWindow, Fallback);
+		const float ToGo = static_cast<float>(Block.Length - Block.Progress);
+		bool bAllInFiles = true;
+		double RearDepth = TNumericLimits<double>::Max();
 		for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
 		{
 			const FMassEntityHandle Entity = Block.Entities[Unit];
 			FHOLMoveOrderFragment& Order = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
 			const FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity);
 			const FHOLUnitTypeConstants& Constants = EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity);
+			const FVector2D Location(Transform.GetTransform().GetLocation());
 			const double Z = Transform.GetTransform().GetLocation().Z;
-			FVector Slot(Point + HOLFormation::BlockOffsetToWorld(Block.Offsets[Unit], Direction), Z);
+			if (!Block.bBlending)
+			{
+				Block.Depths[Unit] = HOLFormation::WorldToBlockOffset(Location - Point, Direction).X;
+			}
+			RearDepth = FMath::Min(RearDepth, Block.Depths[Unit]);
+			FVector Slot(Point + HOLFormation::BlockOffsetToWorld(FVector2D(Block.Depths[Unit], Block.Offsets[Unit].Y), Direction), Z);
 			FVector Hit;
 			const FVector OnPath(Point, Z);
 			if (NavData && NavData->Raycast(OnPath, Slot, Hit, NavData->GetDefaultQueryFilter()))
@@ -1752,17 +2200,141 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				const double Room = FMath::Max(Back.Size() - Constants.Radius, 0.);
 				Slot = FVector(Point + Back.GetSafeNormal() * Room, Z);
 			}
+			const float WalkSpeed = GetWalkSpeed(Constants);
 			if (Block.bBlending)
 			{
-				const double Blend = HOLFormation::GetBlockBlend(Block.Length - Block.Progress, Block.BlendDistance);
-				Slot = FVector(FMath::Lerp(FVector2D(Slot), FVector2D(Block.Places[Unit]), Blend), Z);
+				// Re-forming: straight to its slot sliding to its place (a member at most BlockCatchUpShare of the pace).
+				Slot = FVector(FMath::Lerp(FVector2D(Slot), FVector2D(Block.Places[Unit]), HOLFormation::GetBlockBlend(Block.Length - Block.Progress, Block.BlendDistance)), Z);
+				Order.MarchSlot = FVector2f(FVector2D(Slot));
+				Order.Slot = Slot;
+				const float Speed = Order.Phase == EHOLMovePhase::FormUp ? WalkSpeed : FMath::Min(WalkSpeed, static_cast<float>(Pace * HOLFormation::BlockCatchUpShare));
+				SteerInBlock(*World, Transform, Order, EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), Speed, ToGo, Direction);
+				continue;
 			}
-			Order.Slot = Slot;
-			const float Speed = FMath::Min(GetWalkSpeed(Constants), static_cast<float>(Pace * HOLFormation::BlockCatchUpShare));
-			SteerInBlock(*World, Transform, Order, EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), Speed,
-				static_cast<float>(Block.Length - Block.Progress), Direction);
+			// On the march: in its file within BlockLagDistance across (a member from then on), else sliding to it.
+			Order.MarchSlot = FVector2f(FVector2D(Slot));
+			const double Across = HOLFormation::WorldToBlockOffset(FVector2D(Slot) - Location, Direction).Y;
+			if (Order.Phase == EHOLMovePhase::FormUp && FMath::Abs(Across) <= HOLFormation::BlockLagDistance)
+			{
+				Order.Phase = EHOLMovePhase::Block;
+			}
+			if (Order.Phase == EHOLMovePhase::Block)
+			{
+				Block.Report.MaxSlotGap = FMath::Max(Block.Report.MaxSlotGap, static_cast<float>(FMath::Abs(Across)));
+			}
+			else
+			{
+				bAllInFiles = false;
+			}
+			SteerInFile(Entity, Order, Across, WalkSpeed, Pace, Direction, ToGo);
 		}
-		Publish(Serial, Block.Report);
+		// Every unit of the body in its file: its files formed on the move.
+		if (bAllInFiles && Block.Report.JoinSteps < 0)
+		{
+			Block.Report.JoinSteps = Block.Steps;
+			Block.Report.JoinDistance = static_cast<float>(Block.Progress + Block.Report.SetBack);
+		}
+
+		// The stragglers (the user's trial of playtest note 1 of J7b): never holding the block, each at its own speed. Far
+		// from its slot (its queue's point for a queued one, a row behind the block on its path), its own path to its
+		// place; within BlockStragglerSteerDistance, the line there clear, straight to it through the units of its order
+		// (the Block phase while bStraggler: GetPassThroughSerial), back to a path beyond BlockStragglerPathDistance or
+		// with the line cut. Within BlockLagDistance of its slot it is one of the block (no longer going through the
+		// others, at the block's pace, a slower one slowing it down). A queued one follows until the arrival's blend; then
+		// every straggler still out walks its own path to its place. One given another order, or gone, is dropped.
+		for (int32 Index = Block.Stragglers.Num() - 1; Index >= 0; --Index)
+		{
+			FBlockMarch::FStraggler& Straggler = Block.Stragglers[Index];
+			FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Straggler.Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Straggler.Entity) : nullptr;
+			if (!Order || Order->OrderSerial != Serial)
+			{
+				Block.Stragglers.RemoveAt(Index);
+				continue;
+			}
+			if (Block.bBlending)
+			{
+				if (Straggler.bSteering)
+				{
+					ToOwnPath(Serial, Straggler);
+				}
+				continue;
+			}
+			if (Order->Phase == EHOLMovePhase::WaitingPath)
+			{
+				continue;
+			}
+			const FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Straggler.Entity);
+			const FVector Location = Transform.GetTransform().GetLocation();
+			const double Z = Location.Z;
+			// Its slot: its file at the depth of the block's rearmost member (files on the move, the user's 5th trial).
+			const FVector Target = Straggler.bQueued
+				? FVector(HOLFormation::GetPointOnLine(Block.Path, FMath::Max(Block.Progress + Block.QueueOffset, 0.)), Z)
+				: FVector(Point + HOLFormation::BlockOffsetToWorld(FVector2D(RearDepth, Straggler.Offset.Y), Direction), Z);
+			const FVector2D FromTarget = HOLFormation::WorldToBlockOffset(FVector2D(Location) - FVector2D(Target), Direction);
+			const double Distance = FVector::Dist2D(Location, Target);
+			const double Reach = Straggler.bSteering ? HOLFormation::BlockStragglerPathDistance : HOLFormation::BlockStragglerSteerDistance;
+			FVector Hit;
+			const bool bClear = Distance <= Reach && !(NavData && NavData->Raycast(Location, Target, Hit, NavData->GetDefaultQueryFilter()));
+			if (!bClear)
+			{
+				if (Straggler.bSteering)
+				{
+					ToOwnPath(Serial, Straggler);
+				}
+				continue;
+			}
+			const FHOLUnitTypeConstants& Constants = EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Straggler.Entity);
+			if (!Straggler.bSteering)
+			{
+				Straggler.bSteering = true;
+				FMassNavMeshShortPathFragment& ShortPath = EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Straggler.Entity);
+				FMassNavMeshCachedPathFragment& CachedPath = EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Straggler.Entity);
+				ShortPath.Reset();
+				CachedPath.NavPath.Reset();
+				CachedPath.Corridor.Reset();
+				CachedPath.PathSource = EMassNavigationPathSource::Unset;
+			}
+			Order->Slot = Target;
+			if (!Straggler.bQueued && FromTarget.X >= -HOLFormation::BlockLagDistance && FMath::Abs(FromTarget.Y) <= HOLFormation::BlockLagDistance)
+			{
+				// One of the block once it caught up with its last row's depth in its file: going through the units of its
+				// order of other kinds of rows only (its RowKind, as the others of the block: GetPassThroughKind), at its
+				// pace (the slower of the two).
+				Block.Entities.Add(Straggler.Entity);
+				Block.Offsets.Add(Straggler.Offset);
+				Block.Places.Add(Straggler.Place);
+				Block.Kinds.Add(Straggler.Kind);
+				Block.HeldSteps.Add(0);
+				Block.Depths.Add(RearDepth);
+				Order->bStraggler = false;
+				Order->RowKind = static_cast<uint8>(FMath::Clamp(Straggler.Kind + 1, 1, 255));
+				Order->Phase = EHOLMovePhase::Block;
+				if (Straggler.Speed > 0.f && Straggler.Speed < Block.Pace)
+				{
+					Block.Pace = Straggler.Speed;
+					Block.Report.Pace = Block.Pace;
+				}
+				Order->MarchSpeed = Block.Pace;
+				Order->MarchSlot = FVector2f(FVector2D(Target));
+				const float Speed = FMath::Min(GetWalkSpeed(Constants), static_cast<float>(Block.Pace * Scale * HOLFormation::BlockCatchUpShare));
+				SteerOnMarch(Straggler.Entity, *Order, Target, Speed, Block.Pace * Scale, Direction, static_cast<float>(Block.Length - Block.Progress));
+				++Block.Report.JoinedStragglers;
+				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sa straggler joined the block after %d steps of march, %.0f cm from its slot, %s, pace %.0f cm/s"),
+					*Block.GetTag(), Block.Steps, Distance, Straggler.bQueued ? TEXT("queued") : TEXT("its slot in the last row"), Block.Pace);
+				Block.Stragglers.RemoveAt(Index);
+				continue;
+			}
+			// Straight to its slot through the units of its order (Block phase while bStraggler), at its own speed; a queued
+			// one at its queue's point keeps the block's pace.
+			// Ahead of it (a straggler that started ahead of the block), never turning back either (SteerOnMarch).
+			Order->Phase = EHOLMovePhase::Block;
+			Order->MarchSlot = FVector2f(FVector2D(Target));
+			const float OwnSpeed = GetWalkSpeed(Constants);
+			const float Speed = Straggler.bQueued && Distance <= HOLFormation::BlockSoftHoldDistance
+				? FMath::Min(OwnSpeed, static_cast<float>(Pace * HOLFormation::BlockCatchUpShare)) : OwnSpeed;
+			SteerOnMarch(Straggler.Entity, *Order, Target, Speed, Pace, Direction, static_cast<float>(Block.Length - Block.Progress));
+		}
+		Publish(Block);
 	}
 }
 
@@ -1777,7 +2349,7 @@ void UHOLUnitOrderProcessor::WatchArrivals(FMassEntityManager& EntityManager)
 		{
 			const FMassEntityHandle Entity = Watch.Entities[Unit];
 			const FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
-			if (!Order || Order->OrderSerial != It.Key())
+			if (!Order || Order->OrderSerial != Watch.Serial)
 			{
 				continue;
 			}
@@ -1794,15 +2366,15 @@ void UHOLUnitOrderProcessor::WatchArrivals(FMassEntityManager& EntityManager)
 			for (const FMassEntityHandle Entity : Watch.Entities)
 			{
 				FHOLMoveOrderFragment* Order = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
-				if (Order && Order->OrderSerial == It.Key())
+				if (Order && Order->OrderSerial == Watch.Serial)
 				{
 					Order->bReforming = false;
 				}
 			}
 			Watch.Report.SettleSteps = bAllThere ? Watch.Steps : -1;
-			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: settled after %d steps, %d crossings, %d pushes, %.0f cm from its place at most at the end"),
-				Watch.Report.SettleSteps, Watch.Report.Crossings, Watch.Report.Pushes, Watch.Report.ArrivalOff);
-			if (It.Key() == LastBlockSerial)
+			UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %ssettled after %d steps, %d crossings, %d pushes, %.0f cm from its place at most at the end"),
+				*Watch.Tag, Watch.Report.SettleSteps, Watch.Report.Crossings, Watch.Report.Pushes, Watch.Report.ArrivalOff);
+			if (Watch.Serial == LastBlockSerial && Watch.Index == 0)
 			{
 				LastBlockReport = Watch.Report;
 			}
@@ -1840,6 +2412,8 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 		MoveOrder.PlaceHold.Clear();
 		MoveOrder.bFacesFront = false;
 		MoveOrder.bReforming = false;
+		MoveOrder.bStraggler = false;
+		MoveOrder.MarchDirection = FVector2f::ZeroVector;
 		EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).Activity = EHOLUnitActivity::Idle;
 		if (FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity))
 		{
@@ -2303,8 +2877,9 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			// A walker takes the units' speed of the cheats at once (hol.Units.SpeedScale): Mass moves its path's point on at
 			// that speed too.
 			// A group in formation (J7a.4): no faster than the slowest of its order's walkers at the step before (its own
-			// speed once the slowest are there or gone to another order); this step's slowest for the next one.
-			if (Order.bFormation && Order.Phase != EHOLMovePhase::None)
+			// speed once the slowest are there or gone to another order); this step's slowest for the next one. A block's
+			// straggler walks at its own speed and slows no one (the user's trial of playtest note 1 of J7b).
+			if (Order.bFormation && Order.Phase != EHOLMovePhase::None && !Order.bStraggler)
 			{
 				if (const float* Slowest = SlowestOfOrder.Find(Order.OrderSerial))
 				{
@@ -2894,18 +3469,21 @@ namespace UE::HeroesOfLiberty::Orders
 						continue;
 					}
 					const FVector Location = Transform->GetTransform().GetLocation();
+					// On a block's march, its slot there (MarchSlot), not the point ahead it may be steered to.
+					const bool bMarching = (Order->Phase == EHOLMovePhase::FormUp || Order->Phase == EHOLMovePhase::Block) && !Order->bReforming;
+					const FVector2D Shown = bMarching ? FVector2D(Order->MarchSlot) : FVector2D(Order->Slot);
 					Lines.Add(FString::Printf(TEXT("#%u %s at (%.0f, %.0f) yaw %.1f speed %.0f own %.0f march %.0f front %.1f faces %d held %d returning %d place (%.0f, %.0f) off %.0f"),
 						UnitId, *Constants->TypeName.ToString(), Location.X, Location.Y, Transform->GetTransform().Rotator().Yaw,
 						Velocity ? Velocity->Value.Size2D() : -1., GetWalkSpeed(*Constants), Order->bFormation ? GetOrderWalkSpeed(*Constants, *Order) : 0.f,
 						Order->FrontYaw, Order->bFacesFront ? 1 : 0, Order->PlaceHold.bHeld ? 1 : 0, Order->PlaceHold.bReturning ? 1 : 0,
-						Order->Slot.X, Order->Slot.Y, FVector::Dist2D(Order->Slot, Location)) + FString::Printf(TEXT(" phase %s"),
+						Shown.X, Shown.Y, FVector2D::Distance(Shown, FVector2D(Location))) + FString::Printf(TEXT(" phase %s"),
 						Order->Phase == EHOLMovePhase::Block && Order->bReforming ? TEXT("Reform") : *StaticEnum<EHOLMovePhase>()->GetNameStringByValue(static_cast<int64>(Order->Phase))));
 				}
 				UE_LOG(LogHOLSimulation, Display, TEXT("Formation report: returns %lld; %s"), UHOLUnitOrderProcessor::GetTotalPlaceReturns(), *FString::Join(Lines, TEXT("; ")));
 				const UHOLUnitOrderProcessor::FBlockReport& Block = UHOLUnitOrderProcessor::GetLastBlockReport();
-				UE_LOG(LogHOLSimulation, Display, TEXT("Block report: units %d formup %d march %d held %d left %d pace %.0f gap %.0f speed %.0f arrived %d settle %d crossings %d pushes %d arrivaloff %.0f"),
+				UE_LOG(LogHOLSimulation, Display, TEXT("Block report: units %d formup %d march %d held %d left %d pace %.0f gap %.0f speed %.0f arrived %d settle %d crossings %d pushes %d arrivaloff %.0f stragglers %d joined %d queued %d spacing %.0f joinsteps %d joincm %.0f formingatend %d backsteps %d slowed %d arrivalback %d %.0f"),
 					Block.Units, Block.FormUpSteps, Block.MarchSteps, Block.HeldSteps, Block.LeftUnits, Block.Pace, Block.MaxSlotGap, Block.MaxSpeed, Block.bArrived ? 1 : 0,
-					Block.SettleSteps, Block.Crossings, Block.Pushes, Block.ArrivalOff);
+					Block.SettleSteps, Block.Crossings, Block.Pushes, Block.ArrivalOff, Block.Stragglers, Block.JoinedStragglers, Block.QueuedStragglers, Block.MinSpacing, Block.JoinSteps, Block.JoinDistance, Block.FormingAtEnd, Block.BackSteps, Block.SlowedSteps, Block.ArrivalBackSteps, Block.ArrivalBackDistance);
 			}
 		}));
 }

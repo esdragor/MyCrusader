@@ -82,7 +82,10 @@ enum class EHOLMovePhase : uint8
 	Path,
 	/** From the end of the path straight to its own slot, then it stands. */
 	FinalLeg,
-	/** A group's block march (J7a.4): walking to its form-up place in the block, waiting there for the others. */
+	/**
+	 * A group's block march (J7a.4): taking its slot on the move (playtest note 1 of J7b), never holding it; ahead of its
+	 * slot, walking on slower along the march to its slot's file until its slot catches it up; behind it, to it.
+	 */
 	FormUp,
 	/** A group's block march (J7a.4): at its slot in the block marching along the group's path (Slot moves with it). */
 	Block,
@@ -96,6 +99,20 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 
 	/** Its slot around the target, on the navmesh. */
 	FVector Slot = FVector::ZeroVector;
+
+	/**
+	 * Its slot in its block march, set each step of the march (J7a.4): Slot is where it is steered, a point ahead along the
+	 * march while it is ahead of its slot (the user's 4th trial of playtest note 1 of J7b: it never turns back, it slows
+	 * down and lets its slot come back to it). A member's gap, and the formation report's, are read from here.
+	 */
+	FVector2f MarchSlot = FVector2f::ZeroVector;
+
+	/**
+	 * The march's direction where it is steered on a block's march (SteerOnMarch; zero otherwise, a new order clears it):
+	 * the avoidance's turn never sends it against the march (playtest note 1, loop 20: a unit forming up going round
+	 * one of its kind took a step back).
+	 */
+	FVector2f MarchDirection = FVector2f::ZeroVector;
 
 	/** Distance to the slot at the last step of the final leg, to tell a unit that no longer gets closer. */
 	float LastSlotDistance = 0.f;
@@ -144,10 +161,17 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 
 	/**
 	 * Its final leg is a block's re-forming at its arrival (the user's 3rd trial of J7a.4): it goes through the others of
-	 * its order re-forming too, walking or standing, as in the form-up (GetPassThroughSerial), until the arrival is
+	 * its order re-forming too, walking or standing (GetPassThroughSerial), until the arrival is
 	 * settled (UHOLUnitOrderProcessor::WatchArrivals). A new order clears it.
 	 */
 	bool bReforming = false;
+
+	/**
+	 * A straggler of its order's block march (the user's trial of playtest note 1 of J7b): out of the block, it walks at
+	 * its own speed (not its order's slowest); steered straight to its slot (Block phase), it goes through the units of
+	 * its order, until it is one of the block. A new order, or its joining the block, clears it.
+	 */
+	bool bStraggler = false;
 
 	/**
 	 * It reached its formation place (or the end of its walk back there, J7a.4): standing, it faces FrontYaw. A new order,
@@ -160,15 +184,64 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	 * buildings); it walks to the path's end. A task that sent it there takes that end for no arrival.
 	 */
 	bool bShortOfSlot = false;
+
+	/**
+	 * Its kind of row in its block march, plus one (HOLFormation::GetRowPriority + 1, set as the block starts); 0: none.
+	 * Two units taking their slots (FormUp) go through each other unless they share it (GetPassThroughKind). A new order
+	 * clears it.
+	 */
+	uint8 RowKind = 0;
+
+	/**
+	 * Its block in its order's block march (UHOLUnitOrderProcessor::FBlockMarch::Index, playtest note 1 of J7b: small
+	 * blocks): 0 the body (and its stragglers), 1 and on a separate packet's own block. A new order clears it.
+	 */
+	uint8 BlockIndex = 0;
 };
 
 /**
- * The order whose walkers a unit goes through (J7a.4): its order's while it forms up for a block march or re-forms at the
- * block's arrival (until all stand); 0 otherwise (it keeps clear of everyone).
+ * A member of its order's block march (Block phase, neither a straggler nor re-forming) with its kind of row (RowKind): as
+ * one forming up, it goes through the units of its order of other kinds of rows only (the user's trial of playtest note 1
+ * of J7b: members never going through pushed the units forming up of another kind ahead of their slots, and held the
+ * block). One with no kind (RowKind 0) keeps clear of everyone.
+ */
+inline bool IsBlockMemberWithKind(const FHOLMoveOrderFragment& Order)
+{
+	return Order.Phase == EHOLMovePhase::Block && !Order.bStraggler && !Order.bReforming && Order.RowKind != 0;
+}
+
+/**
+ * The order whose walkers a unit goes through (J7a.4): its order's while it forms up for a block march, marches in the
+ * block with its kind of row (IsBlockMemberWithKind, J7b note 1), re-forms at the block's arrival (until all stand), or, a
+ * straggler, walks straight into its slot (J7b note 1); 0 otherwise (it keeps clear of everyone). Forming up or marching in
+ * the block, it goes only through the units of other kinds of rows (GetPassThroughKind, CanPassThrough).
  */
 inline uint32 GetPassThroughSerial(const FHOLMoveOrderFragment& Order)
 {
-	return Order.Phase == EHOLMovePhase::FormUp || Order.bReforming ? Order.OrderSerial : 0u;
+	return Order.Phase == EHOLMovePhase::FormUp || Order.bReforming || (Order.bStraggler && Order.Phase == EHOLMovePhase::Block)
+		|| IsBlockMemberWithKind(Order)
+		? Order.OrderSerial : 0u;
+}
+
+/**
+ * Its kind of row while it forms up for a block march or marches in the block (RowKind: the kind plus one), 0 otherwise
+ * (a straggler, or re-forming: through all of its order). Two units of one order with the same one keep clear of each
+ * other (the user's trial of playtest note 1 of J7b: two groups of one kind gathering walked into each other and
+ * overlapped), their places given without crossings within a kind; two kinds go through each other (their rows cross, as
+ * at the block's arrival), a member and one forming up as two forming up.
+ */
+inline uint8 GetPassThroughKind(const FHOLMoveOrderFragment& Order)
+{
+	return Order.Phase == EHOLMovePhase::FormUp || IsBlockMemberWithKind(Order) ? Order.RowKind : uint8(0);
+}
+
+/**
+ * Two units go through each other: of one order (GetPassThroughSerial, not 0), and not two forming up or marching in the
+ * block in the same kind of row (GetPassThroughKind).
+ */
+inline bool CanPassThrough(const uint32 Serial, const uint8 Kind, const uint32 OtherSerial, const uint8 OtherKind)
+{
+	return Serial != 0u && Serial == OtherSerial && (Kind == 0 || Kind != OtherKind);
 }
 
 /** Where a gatherer is in its round trip (J5, D296). */

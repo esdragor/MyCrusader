@@ -1,0 +1,20 @@
+# Combat coupé juste après une mort : 6 Hommes d'armes et 3 Paysans ennemis ; au premier Paysan tué, hol.Combat.Enabled 0 ; le mort tombe et son corps s'enfonce ~31 s plus tard
+# Plain, deux joueurs (combat_off_dying.json). Positions dans le repère du centre du joueur, comme falls : les Paysans
+# ennemis à ~9 m, dans le rayon d'agression (12 m) : les Hommes d'armes attaquent tout seuls, les Paysans ne ripostent pas.
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 250
+hol.Camera.FocusNear 4900 0
+frames 2
+hol.Units.SpawnHere 3 Peasant 1 250
+waitunits 9
+hol.Camera.FocusNear 4450 0
+hol.Camera.Zoom 1
+frames 5
+waitlog Peasant of slot 1 killed by
+hol.Combat.Enabled 0
+wait 1.5
+hol.Units.Report 20
+note Le combat a été coupé (hol.Combat.Enabled 0) dès le premier Paysan tué : les Hommes d'armes ne frappent plus, les autres Paysans restent debout.
+note Le Paysan tué tombe, puis son corps s'enfonce ~31 s après sa mort. Avant la correction, il restait « mourant » pour toujours et ne s'enfonçait jamais.
+note Console (²) : « hol.Combat.Enabled 1 » relance le combat ; les morts suivants s'enfoncent eux aussi.
