@@ -37,7 +37,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte)
 - Mort hors mêlée incomplète (avec J7c.2)
-- `hol.Combat.Enabled 0` saute aussi la destruction des mourantes
 - Place 4095 = « cible invalide », mais vraie place au-delà de 4 096 entrées
 - `AttackerCount` trop haut d'un après la mort d'un attaquant
 - Scénario fermé en cours de préparation : nettoyage trop tard (plantage possible à la fermeture)

@@ -260,7 +260,10 @@ vérifier sur S1 et S2.
    - **Plus tard** : `LastAttacker` n'expire jamais (riposte sans limite de distance : poursuite à travers la carte ;
      borner à ~2 × rayon d'agression ou ~5 s) ; mort hors mêlée (`HOLCombatProcessor.cpp` ~l. 186 : ni `StopWalk`, ni
      `Disengage`, ni activité `Dying`) **à compléter en J7c.2** (flèches) ; `hol.Combat.Enabled 0` saute aussi la
-     destruction des mourantes ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées ;
+     destruction des mourantes (**corrigé le 2026-10-21**, branche `combat-dying-off` de `MyCrusader-J5c` : combat
+     coupé, personne ne combat et les flèches en vol attendent, mais une unité à 0 PV tombe et part 1 s après ;
+     reproduit par la partie `smoke` de `quick_check`, qui coupait le combat juste après la mort du Paysan : « 1 left
+     dying » avant, 0 après ; `-Parts tests,smoke,combat` PASS, 211 s) ; place 4095 = « cible invalide » mais vraie place au-delà de 4 096 entrées ;
      `AttackerCount` de la victime d'une unité tuée trop haut d'un pour la fin du pas (sans effet visible).
    - **Relecture de 9debb86 (scénarios de test)**, par la session mycrusader-35 (2026-10-20, rien modifié) :
      1. *À corriger* : `HOLGameHUD.cpp` `BeginPlay` (~l. 84) pose `HOLTestHooks::OnScenarioChanged()` (lambda sur
