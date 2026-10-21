@@ -158,6 +158,13 @@ protected:
 	 */
 	void GatherNearby(int32 Index, double Reach, TArray<int32>& Out) const;
 	/**
+	 * J7c.4, trial feedback (hol.Combat.PreferFreeTarget): the living bodies of every side (the fighter left out) whose
+	 * edge stands within Gap of the fighter's on the dense grid, at most Limit counted: the places taken around it.
+	 */
+	int32 CountBodiesAround(int32 Index, double Gap, int32 Limit) const;
+	/** Its count of the step for each fighter, -1 not yet counted. */
+	TArray<int32> PlacesTaken;
+	/**
 	 * Gathered ahead (J7c.4, S3), in parallel, for the units that will likely search this step: the list of each, its
 	 * Reach, and the slot of each fighter (INDEX_NONE: none, a search falls back to GatherNearby in the serial pass).
 	 */

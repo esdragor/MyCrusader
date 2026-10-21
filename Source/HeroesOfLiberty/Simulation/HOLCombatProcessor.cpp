@@ -37,6 +37,8 @@ namespace UE::HeroesOfLiberty::Combat
 	constexpr double ReapproachDistance = 100.0;
 	/** An attack-move is over this close (cm) to the unit's slot (J7b.3). */
 	constexpr double AttackMoveArrival = 150.0;
+	/** A place around an enemy is taken by a body whose edge stands this close (cm) to its own (a melee's reach). */
+	constexpr double PlaceGap = 50.0;
 
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
@@ -46,6 +48,18 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 FastPaths = 1;
 	FAutoConsoleVariableRef CVarFastPaths(TEXT("hol.Combat.FastPaths"), FastPaths,
 		TEXT("1 (default): the combat's fast paths (J7c.4, S3); 0: the former ways (TMap index, full sort, a search at every search step), the same outcome"));
+	/** J7c.4, trial feedback: a melee out of reach leaves an enemy with no place left around it for one with a place. */
+	int32 PreferFreeTarget = 1;
+	FAutoConsoleVariableRef CVarPreferFreeTarget(TEXT("hol.Combat.PreferFreeTarget"), PreferFreeTarget,
+		TEXT("1 (default): a melee out of reach takes the nearest enemy with a free place around it (MaxAttackers bodies of any side touching it: full), its target kept when none; 0: as before"));
+	/** J7c.4, trial feedback: a walking melee stops at the first enemy in its reach, not only at its target. */
+	int32 StopAtContact = 1;
+	FAutoConsoleVariableRef CVarStopAtContact(TEXT("hol.Combat.StopAtContact"), StopAtContact,
+		TEXT("1 (default): a melee walking to fight, its target out of reach, takes at every step the enemy in its reach of least unit id (an ordered target kept; dense grid only); 0: as before"));
+	/** J7c.4, loop 12: a walking melee does not pass by an enemy this close (cm, edge to edge): it takes it on. */
+	float ZoneOfControl = 150.f;
+	FAutoConsoleVariableRef CVarZoneOfControl(TEXT("hol.Combat.ZoneOfControl"), ZoneOfControl,
+		TEXT("cm edge to edge (default 150): a melee walking to fight (hol.Combat.StopAtContact), no enemy in its reach, takes the nearest enemy this close and walks to it alone (its target kept while in the zone); 0: as before"));
 }
 
 UHOLCombatProcessor::UHOLCombatProcessor()
@@ -191,6 +205,37 @@ void UHOLCombatProcessor::GatherNearby(const int32 Index, const double Reach, TA
 			}
 		}
 	}
+}
+
+int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap, const int32 Limit) const
+{
+	const FVector2D Position(Fighters[Index].Location);
+	const float Radius = Fighters[Index].Constants->Radius;
+	const double Reach = Gap + static_cast<double>(Radius) + static_cast<double>(MaxRadius);
+	const int32 X0 = FMath::Max(FMath::FloorToInt32((Position.X - Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.X) - GridMin.X;
+	const int32 X1 = FMath::Min(FMath::FloorToInt32((Position.X + Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.X + GridWidth - 1) - GridMin.X;
+	const int32 Y0 = FMath::Max(FMath::FloorToInt32((Position.Y - Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.Y) - GridMin.Y;
+	const int32 Y1 = FMath::Min(FMath::FloorToInt32((Position.Y + Reach) / UE::HeroesOfLiberty::Combat::CellSize), GridMin.Y + GridHeight - 1) - GridMin.Y;
+	const int32 NumCells = GridWidth * GridHeight;
+	int32 Count = 0;
+	for (int32 Side = 0; Side < Sides.Num() && X0 <= X1; ++Side)
+	{
+		for (int32 Y = Y0; Y <= Y1; ++Y)
+		{
+			const int32 Row = Side * NumCells + Y * GridWidth;
+			const int32 End = GridStarts[Row + X1 + 1];
+			for (int32 Slot = GridStarts[Row + X0]; Slot < End; ++Slot)
+			{
+				const FGridUnit& Unit = GridUnits[Slot];
+				if (Unit.Fighter != Index && Fighters[Unit.Fighter].State->CurrentHealth > 0
+					&& HOLCombat::GetEdgeDistance(Position, Radius, FVector2D(Unit.X, Unit.Y), Unit.Radius) <= Gap && ++Count >= Limit)
+				{
+					return Count;
+				}
+			}
+		}
+	}
+	return Count;
 }
 
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
@@ -376,6 +421,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		SeenStamp.Init(0, Fighters.Num());
 		SearchStamp = 0;
+	}
+	const bool bPreferFree = PreferFreeTarget != 0 && bDenseGrid;
+	const bool bStopAtContact = StopAtContact != 0 && bDenseGrid;
+	if (bPreferFree)
+	{
+		PlacesTaken.Init(-1, Fighters.Num());
 	}
 	if (!bDenseGrid)
 	{
@@ -601,6 +652,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 		const bool bMaySeek = (!bWalkingOrder || Combat.Mode == EHOLCombatMode::AttackMove) && !Combat.bOrderedTarget;
 		const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
+		const int32 TargetBeforeSearch = Target;
 		if (bMaySeek && (bSearchStep || bLost))
 		{
 			HOLCombat::FSeeker Seeker;
@@ -635,6 +687,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Candidate.bAttacksMe = Enemy.Combat->Target == Fighter.Entity || Enemy.Entity == Combat.LastAttacker;
 					Candidate.bIsCurrentTarget = Other == Target;
 					Candidate.AttackerCount = Enemy.Combat->AttackerCount - (Other == Target ? 1 : 0);
+					// Counted once a step, the first time needed (a melee out of its reach only: in reach, it is hit now).
+					if (bPreferFree && !Seeker.bRanged
+						&& !HOLCombat::IsInRange(Position, Seeker.Radius, Candidate.Position, Candidate.Radius, Seeker.AttackRange))
+					{
+						if (PlacesTaken[Other] < 0)
+						{
+							PlacesTaken[Other] = CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers);
+						}
+						Candidate.bNoPlace = PlacesTaken[Other] >= HOLCombat::MaxAttackers;
+					}
 					CandidateFighters.Add(Other);
 					if (bFast)
 					{
@@ -713,6 +775,65 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 		}
 
+		// J7c.4, trial feedback: a melee walking to fight (an attack-move or an approach), its target out of reach, takes
+		// the enemy it already touches, of least unit id (no draw), and stops below: it no longer slides past a body to its
+		// target. Every step, the full search at its rate unchanged; an ordered target is never replaced (bMaySeek).
+		bool bZoneTaken = false; // a target taken by the zone of control: walked to at once, not to the former one
+		if (bStopAtContact && bMaySeek && Fighter.Order->Phase != EHOLMovePhase::None && !HOLCombat::IsRangedAttack(Constants.AttackRange)
+			&& (Target == INDEX_NONE || !HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange)))
+		{
+			const double Zone = FMath::Max(static_cast<double>(ZoneOfControl), 0.0);
+			const double ContactReach = Constants.Radius + Constants.AttackRange + MaxRadius;
+			GatherNearby(Index, Zone > 0.0 ? FMath::Max(ContactReach, Zone) : ContactReach, Nearby);
+			int32 Touched = INDEX_NONE;
+			int32 Nearest = INDEX_NONE; // the zone of control: the nearest living enemy within Zone, least unit id on a tie
+			double NearestDistance = 0.0;
+			bool bTargetInZone = false;
+			for (const int32 Other : Nearby)
+			{
+				const FFighter& Enemy = Fighters[Other];
+				if (Enemy.State->CurrentHealth <= 0)
+				{
+					continue;
+				}
+				if ((Touched == INDEX_NONE || Enemy.UnitId < Fighters[Touched].UnitId)
+					&& HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius, Constants.AttackRange))
+				{
+					Touched = Other;
+				}
+				if (Zone > 0.0)
+				{
+					const double Distance = HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius);
+					if (Distance <= Zone)
+					{
+						bTargetInZone |= Other == Target;
+						if (Nearest == INDEX_NONE || Distance < NearestDistance || (Distance == NearestDistance && Enemy.UnitId < Fighters[Nearest].UnitId))
+						{
+							Nearest = Other;
+							NearestDistance = Distance;
+						}
+					}
+				}
+			}
+			// None in reach: the nearest in the zone, its target kept while in the zone (no swing between two).
+			if (Touched == INDEX_NONE && Nearest != INDEX_NONE && !bTargetInZone)
+			{
+				Touched = Nearest;
+				bZoneTaken = Nearest != TargetBeforeSearch; // the one it already walked to, taken back from the search: no new walk
+			}
+			if (Touched != INDEX_NONE && Touched != Target)
+			{
+				if (Target != INDEX_NONE)
+				{
+					--Fighters[Target].Combat->AttackerCount;
+				}
+				++Fighters[Touched].Combat->AttackerCount;
+				Combat.Target = Fighters[Touched].Entity;
+				Combat.bAttacking = false;
+				Target = Touched;
+			}
+		}
+
 		const int32 IntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
 		if (Target == INDEX_NONE)
 		{
@@ -748,7 +869,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// A walk to it at most at the search rate: the first, or once it moved off, or once the last one ended short.
 			const bool bWalkOver = Fighter.Order->Phase == EHOLMovePhase::None;
 			const bool bMoved = FVector2D::DistSquared(EnemyPosition, Combat.ApproachPoint) > FMath::Square(ReapproachDistance);
-			if (Combat.Mode != EHOLCombatMode::Hold && (bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))
+			if (Combat.Mode != EHOLCombatMode::Hold
+				&& (bZoneTaken || ((bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))))
 			{
 				// Stamped (J7b.3): a player's order given meanwhile drops it.
 				Commands->IssueCombatWalk(Fighter.UnitId, Enemy.Location, Combat.EngageSerial, /*bAttackMove*/ false);

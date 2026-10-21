@@ -96,6 +96,8 @@ namespace HOLCombat
 		{
 			bool bIsBuilding = false;
 			bool bOutOfRange = false;
+			bool bNoPlace = false;
+			bool bNoPlaceNotCurrent = false;
 			bool bNotAttackingMe = false;
 			bool bCrowded = false;
 			double Distance = 0.;
@@ -105,6 +107,8 @@ namespace HOLCombat
 			{
 				if (bIsBuilding != Other.bIsBuilding) { return Other.bIsBuilding; }
 				if (bOutOfRange != Other.bOutOfRange) { return Other.bOutOfRange; }
+				if (bNoPlace != Other.bNoPlace) { return Other.bNoPlace; }
+				if (bNoPlaceNotCurrent != Other.bNoPlaceNotCurrent) { return Other.bNoPlaceNotCurrent; }
 				if (bNotAttackingMe != Other.bNotAttackingMe) { return Other.bNotAttackingMe; }
 				if (bCrowded != Other.bCrowded) { return Other.bCrowded; }
 				if (Distance != Other.Distance) { return Distance < Other.Distance; }
@@ -143,6 +147,8 @@ namespace HOLCombat
 			FRank Rank;
 			Rank.bIsBuilding = Candidate.bIsBuilding;
 			Rank.bOutOfRange = !bInRange;
+			Rank.bNoPlace = !bInRange && Candidate.bNoPlace;
+			Rank.bNoPlaceNotCurrent = Rank.bNoPlace && !Candidate.bIsCurrentTarget;
 			Rank.bNotAttackingMe = !Candidate.bAttacksMe;
 			Rank.bCrowded = !Seeker.bRanged && !bInRange && Candidate.AttackerCount >= MaxAttackers;
 			Rank.Distance = GetEdgeDistance(Seeker.Position, Seeker.Radius, Candidate.Position, Candidate.Radius);

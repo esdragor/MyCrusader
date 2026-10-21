@@ -10,6 +10,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
   - Mesures au repos de S3 / S4 (ce soir, ProjectShiva et sessions fermés)
   - S5 en combat au-dessus du seuil (70 Ko/s pour 32, écart affiché 72 cm pour 25)
   - Tremblement de la séparation dans la presse (cause des envois « error » de S5 en combat)
+  - Mêlée : les deux lignes se traversent au lieu de se heurter (portée d'arme, espacement entre amis, attente derrière un ami qui combat)
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
 ### Animations

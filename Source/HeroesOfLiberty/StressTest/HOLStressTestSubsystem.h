@@ -6,6 +6,7 @@
 #include "Commands/HOLConstructionCommand.h"
 #include "Mass/EntityHandle.h"
 #include "Match/HOLResources.h"
+#include "Simulation/HOLSimulationProcessors.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLStressTestSubsystem.generated.h"
 
@@ -122,6 +123,10 @@ private:
 	void CountBattleAlive(int32 OutAlive[2]) const;
 	/** S3, S4: survivors, hits, kills and arrows of the measure. */
 	void LogBattleSummary() const;
+	/** S3, S4 (J7c.4, jitter probe): each fighting unit's 2D move over the step just run, read only (no fragment written). */
+	void SampleJitter();
+	/** S3, S4: the "Jitter:" line of the report (per step moves of the fighting units, reversals). */
+	void LogJitter() const;
 
 	/** Identifiers of the units of this run (D223): the stress test never holds Mass entities itself. */
 	TArray<uint32> UnitIds;
@@ -216,6 +221,27 @@ private:
 	TArray<int64> ArrowsReleasedHistory;
 	/** S4: arrows released in the last second when the measure began. */
 	int64 ArrowsPerSecondAtStart = 0;
+	/**
+	 * S3, S4 jitter probe (J7c.4): per unit, its location and its move at the last sampled step; per class (0 attacking,
+	 * 1 approaching or with a target, 2 walking without one), the 2D moves of the measured steps (cm), the step pairs whose
+	 * moves both exceed 5 cm, and those of them whose moves point opposite ways.
+	 */
+	struct FJitterTrack
+	{
+		FVector2D Location = FVector2D::ZeroVector;
+		FVector2D Move = FVector2D::ZeroVector;
+		int64 Step = -1;
+	};
+	TMap<uint32, FJitterTrack> JitterTracks;
+	TArray<float> JitterMoves[3];
+	int64 JitterPairs[3] = {};
+	int64 JitterReversals[3] = {};
+	int64 JitterStep = 0;
+	/** Per sampled step, the separation's longest correction over all units (cm, read only). */
+	TArray<float> SeparationMaxes;
+	/** The separation's source probe summed over the measured steps (UHOLUnitSeparationProcessor, read only). */
+	FHOLSeparationSourceProbe SourceSum;
+	int64 SourceSteps = 0;
 
 	EHOLStressScenario Scenario = EHOLStressScenario::S1_Idle;
 	EPhase Phase = EPhase::Idle;

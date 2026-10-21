@@ -52,7 +52,7 @@ protected:
 	bool BuildLookAhead(FMassExecutionContext& Context);
 	static int32 LookAheadBucketOf(const FIntPoint& Cell);
 	/** The way a walker takes: Direction if nothing is met on it within Horizon (s), else the smallest clear turn, else Direction. */
-	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, uint32 FormUpSerial, uint8 FormUpKind) const;
+	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, uint32 FormUpSerial, uint8 FormUpKind, uint8 Owner) const;
 
 	FMassEntityQuery EntityQuery;
 
@@ -67,6 +67,8 @@ protected:
 	 */
 	TArray<uint32> FormUpSerials;
 	TArray<uint8> FormUpKinds;
+	/** Each unit's OwnerPlayer (J7c.4 loop 11, hol.Simulation.AvoidEnemies 0: a walker does not turn aside for an enemy). */
+	TArray<uint8> Owners;
 	float MaxRadius = 1.f;
 	float MaxSpeed = 0.f;
 	/** Cells of the positions, hashed into buckets: first unit of each bucket, the next unit of the same bucket, each unit's cell. */
@@ -154,6 +156,32 @@ protected:
  * edge overlap a little, the user's trial of D309). Pairs found in a hashed grid of the step's positions, one
  * pass a step.
  */
+/** J7c.4 source probe: the pairs a class of the separation undid in a step, the overlaps and the moves of sides A and B. */
+struct FHOLSeparationSourceCell
+{
+	double Pairs = 0.;
+	double Overlap = 0.;
+	double MoveA = 0.;
+	double MoveB = 0.;
+};
+
+/**
+ * J7c.4 source probe (read only): per round, per source (0 a walker of the first pass, 1 a unit queued after a push),
+ * per kind (0 standing - standing, 1 walker - standing, 2 walker - walker), per side (0 friends, 1 enemies). Side A is
+ * the walker of a walker and a standing unit, else the one that looks. Every pair's overlap at the start and the end.
+ */
+struct FHOLSeparationSourceProbe
+{
+	FHOLSeparationSourceCell Cells[2][2][3][2];
+	double OverlapStart = 0.;
+	double PairsStart = 0.;
+	double OverlapEnd = 0.;
+	double PairsEnd = 0.;
+	double WalkerIn = 0.;
+	double StandingIn = 0.;
+	bool bValid = false;
+};
+
 UCLASS()
 class HEROESOFLIBERTY_API UHOLUnitSeparationProcessor : public UMassProcessor
 {
@@ -162,7 +190,22 @@ class HEROESOFLIBERTY_API UHOLUnitSeparationProcessor : public UMassProcessor
 public:
 	UHOLUnitSeparationProcessor();
 
+	/** J7c.4 probe, read only: the longest correction of the last step run (cm), over all units. */
+	static float GetLastMaxCorrection() { return LastMaxCorrection; }
+	/** J7c.4 source probe, read only: on while the stress test measures; the last step's figures. */
+	static void SetSourceProbe(const bool bOn) { bSourceProbe = bOn; }
+	static const FHOLSeparationSourceProbe& GetLastSourceProbe() { return LastSourceProbe; }
+
 protected:
+	static float LastMaxCorrection;
+	static bool bSourceProbe;
+	static FHOLSeparationSourceProbe LastSourceProbe;
+	/** Source probe: the round (0, 1) and whether the unit looking was queued (pushed), not a walker of the first pass. */
+	int32 ProbeRound = 0;
+	bool ProbeFromQueue = false;
+	/** Source probe: each unit's place at the end of the last separation, by identifier. */
+	TMap<uint32, FVector2D> ProbeEnds;
+
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 

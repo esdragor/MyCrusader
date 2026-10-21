@@ -578,6 +578,7 @@ void UHOLStressTestSubsystem::OnSimulationStep(const int64 StepIndex)
 			ArrowsInFlightSum += static_cast<double>(InFlight);
 			ArrowsInFlightMax = FMath::Max(ArrowsInFlightMax, InFlight);
 			++ArrowSamples;
+			SampleJitter();
 		}
 	}
 }
@@ -928,6 +929,183 @@ void UHOLStressTestSubsystem::LogBattleSummary() const
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle checksum: %016llx (%d living units hashed)"), Checksum, Hashed);
 }
 
+void UHOLStressTestSubsystem::SampleJitter()
+{
+	// Read only (J7c.4 probe): the fragments are read, never written, and nothing is drawn, so the checksum stays.
+	++JitterStep;
+	// The separation's longest correction of the step just run (all units).
+	SeparationMaxes.Add(UHOLUnitSeparationProcessor::GetLastMaxCorrection());
+	// The separation's source probe of the step just run, summed over the window.
+	const FHOLSeparationSourceProbe& Source = UHOLUnitSeparationProcessor::GetLastSourceProbe();
+	if (Source.bValid)
+	{
+		++SourceSteps;
+		for (int32 Round = 0; Round < 2; ++Round)
+		{
+			for (int32 From = 0; From < 2; ++From)
+			{
+				for (int32 Kind = 0; Kind < 3; ++Kind)
+				{
+					for (int32 Side = 0; Side < 2; ++Side)
+					{
+						const FHOLSeparationSourceCell& In = Source.Cells[Round][From][Kind][Side];
+						FHOLSeparationSourceCell& Sum = SourceSum.Cells[Round][From][Kind][Side];
+						Sum.Pairs += In.Pairs;
+						Sum.Overlap += In.Overlap;
+						Sum.MoveA += In.MoveA;
+						Sum.MoveB += In.MoveB;
+					}
+				}
+			}
+		}
+		SourceSum.OverlapStart += Source.OverlapStart;
+		SourceSum.PairsStart += Source.PairsStart;
+		SourceSum.OverlapEnd += Source.OverlapEnd;
+		SourceSum.PairsEnd += Source.PairsEnd;
+		SourceSum.WalkerIn += Source.WalkerIn;
+		SourceSum.StandingIn += Source.StandingIn;
+	}
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	if (!EntitySubsystem || !Units)
+	{
+		return;
+	}
+	TArray<uint32> AllUnitIds;
+	Units->GetAllUnitIds(AllUnitIds);
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	for (const uint32 UnitId : AllUnitIds)
+	{
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		if (!EntityManager.IsEntityValid(Entity))
+		{
+			continue;
+		}
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		if (!State || !Transform || State->Activity == EHOLUnitActivity::Dying || State->CurrentHealth <= 0)
+		{
+			JitterTracks.Remove(UnitId);
+			continue;
+		}
+		const FVector2D Location(Transform->GetTransform().GetLocation());
+		FJitterTrack& Track = JitterTracks.FindOrAdd(UnitId);
+		const bool bFollows = Track.Step == JitterStep - 1;
+		const FVector2D Move = Location - Track.Location;
+		const FVector2D PreviousMove = Track.Move;
+		Track.Location = Location;
+		Track.Move = bFollows ? Move : FVector2D::ZeroVector;
+		Track.Step = JitterStep;
+		if (!bFollows)
+		{
+			continue;
+		}
+		int32 Class = -1;
+		// Attacking is the combat fragment's flag on the server (the replication sends it as the activity).
+		if (Combat && Combat->bAttacking)
+		{
+			Class = 0;
+		}
+		else if (Combat && (Combat->bApproaching || Combat->Target.IsSet()))
+		{
+			Class = 1;
+		}
+		else if (IsWalkingActivity(State->Activity))
+		{
+			Class = 2;
+		}
+		if (Class < 0)
+		{
+			continue;
+		}
+		const double Length = Move.Size();
+		JitterMoves[Class].Add(static_cast<float>(Length));
+		if (Length > 5. && PreviousMove.Size() > 5.)
+		{
+			++JitterPairs[Class];
+			if (FVector2D::DotProduct(Move, PreviousMove) < 0.)
+			{
+				++JitterReversals[Class];
+			}
+		}
+	}
+}
+
+void UHOLStressTestSubsystem::LogJitter() const
+{
+	static const TCHAR* const Names[3] = { TEXT("attacking"), TEXT("approach"), TEXT("walking") };
+	const auto Describe = [](TArray<float> Moves, const int64 Pairs, const int64 Reversals)
+	{
+		if (Moves.IsEmpty())
+		{
+			return FString(TEXT("no sample"));
+		}
+		Moves.Sort();
+		const auto At = [&Moves](const double Fraction) { return Moves[FMath::Clamp(FMath::FloorToInt32(Fraction * (Moves.Num() - 1)), 0, Moves.Num() - 1)]; };
+		int32 Still = 0;
+		for (const float Move : Moves)
+		{
+			Still += Move < 5.f ? 1 : 0;
+		}
+		return FString::Printf(TEXT("%d unit-steps, p50/p90/max %.1f/%.1f/%.1f cm, %.0f%% under 5 cm, reversed %.1f%% of %lld step pairs over 5 cm"),
+			Moves.Num(), At(0.5), At(0.9), Moves.Last(), 100. * Still / Moves.Num(), Pairs > 0 ? 100. * Reversals / Pairs : 0., Pairs);
+	};
+	TArray<float> All;
+	int64 AllPairs = 0;
+	int64 AllReversals = 0;
+	for (int32 Class = 0; Class < 3; ++Class)
+	{
+		All.Append(JitterMoves[Class]);
+		AllPairs += JitterPairs[Class];
+		AllReversals += JitterReversals[Class];
+	}
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Jitter: all fighting %s"), *Describe(MoveTemp(All), AllPairs, AllReversals));
+	for (int32 Class = 0; Class < 3; ++Class)
+	{
+		UE_LOG(LogHOLStressTest, Display, TEXT("  Jitter %s: %s"), Names[Class], *Describe(JitterMoves[Class], JitterPairs[Class], JitterReversals[Class]));
+	}
+	if (!SeparationMaxes.IsEmpty())
+	{
+		TArray<float> Maxes = SeparationMaxes;
+		Maxes.Sort();
+		const auto At = [&Maxes](const double Fraction) { return Maxes[FMath::Clamp(FMath::FloorToInt32(Fraction * (Maxes.Num() - 1)), 0, Maxes.Num() - 1)]; };
+		UE_LOG(LogHOLStressTest, Display, TEXT("  Jitter sep max step all units: %d steps, p50/p90/max %.1f/%.1f/%.1f cm"), Maxes.Num(), At(0.5), At(0.9), Maxes.Last());
+	}
+	if (SourceSteps > 0)
+	{
+		// Per step on average: pairs undone, overlap undone, moves of side A (the walker, or the one that looks) and side B.
+		const double Steps = static_cast<double>(SourceSteps);
+		static const TCHAR* const Kinds[3] = { TEXT("stand-stand"), TEXT("walk-stand"), TEXT("walk-walk") };
+		static const TCHAR* const Sides[2] = { TEXT("friend"), TEXT("enemy") };
+		static const TCHAR* const Froms[2] = { TEXT("first"), TEXT("queue") };
+		UE_LOG(LogHOLStressTest, Display, TEXT("  Separation source: %lld steps; per step, pairs overlapping at start %.0f (%.0f cm summed), at end %.0f (%.0f cm); came in since last end: walkers %.0f cm, standing %.0f cm"),
+			SourceSteps, SourceSum.PairsStart / Steps, SourceSum.OverlapStart / Steps, SourceSum.PairsEnd / Steps, SourceSum.OverlapEnd / Steps, SourceSum.WalkerIn / Steps, SourceSum.StandingIn / Steps);
+		for (int32 Kind = 0; Kind < 3; ++Kind)
+		{
+			for (int32 Side = 0; Side < 2; ++Side)
+			{
+				FString Line;
+				FHOLSeparationSourceCell Total;
+				for (int32 Round = 0; Round < 2; ++Round)
+				{
+					for (int32 From = 0; From < 2; ++From)
+					{
+						const FHOLSeparationSourceCell& Cell = SourceSum.Cells[Round][From][Kind][Side];
+						Total.Pairs += Cell.Pairs;
+						Total.Overlap += Cell.Overlap;
+						Total.MoveA += Cell.MoveA;
+						Total.MoveB += Cell.MoveB;
+						Line += FString::Printf(TEXT(" | r%d %s %.0f p %.0f cm A %.0f B %.0f"), Round + 1, Froms[From], Cell.Pairs / Steps, Cell.Overlap / Steps, Cell.MoveA / Steps, Cell.MoveB / Steps);
+					}
+				}
+				UE_LOG(LogHOLStressTest, Display, TEXT("  Separation source %s %s: %.0f pairs, %.0f cm, A %.0f cm, B %.0f cm%s"), Kinds[Kind], Sides[Side],
+					Total.Pairs / Steps, Total.Overlap / Steps, Total.MoveA / Steps, Total.MoveB / Steps, *Line);
+			}
+		}
+	}
+}
 
 int32 UHOLStressTestSubsystem::GetNumPlayers() const
 {
@@ -1484,6 +1662,17 @@ void UHOLStressTestSubsystem::BeginMeasure()
 		ArrowsInFlightSum = 0.0;
 		ArrowsInFlightMax = 0;
 		ArrowSamples = 0;
+		JitterTracks.Reset();
+		for (int32 Class = 0; Class < 3; ++Class)
+		{
+			JitterMoves[Class].Reset();
+			JitterPairs[Class] = JitterReversals[Class] = 0;
+		}
+		SeparationMaxes.Reset();
+		SourceSum = FHOLSeparationSourceProbe();
+		SourceSteps = 0;
+		UHOLUnitSeparationProcessor::SetSourceProbe(IsBattle());
+		JitterStep = 0;
 		ArrowsPerSecondAtStart = ArrowsReleasedHistory.Num() >= 2 ? ArrowsReleasedHistory.Last() - ArrowsReleasedHistory[0] : 0;
 		UE_LOG(LogHOLStressTest, Display, TEXT("%s: measure begins %s"), UE::HeroesOfLiberty::StressTest::ToString(Scenario),
 			ContactSeconds >= 0.f ? *FString::Printf(TEXT("%.1f s after the charge, the armies joined"), ContactSeconds) : TEXT("after the longest warm-up, the armies not joined"));
@@ -1839,7 +2028,9 @@ void UHOLStressTestSubsystem::FinishMeasure()
 	if (IsBattle())
 	{
 		LogBattleSummary();
+		LogJitter();
 	}
+	UHOLUnitSeparationProcessor::SetSourceProbe(false);
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 30.f, bSimulationPassed && bRenderPassed ? FColor::Green : FColor::Red, Report);

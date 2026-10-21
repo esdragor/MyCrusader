@@ -35,6 +35,9 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 AvoidEnabled = 1;
 	FAutoConsoleVariableRef CVarAvoid(TEXT("hol.Units.Avoid"), AvoidEnabled,
 		TEXT("1: a walker turns aside from the bodies it would meet within hol.Units.AvoidTime, and pushes only when no way within hol.Units.AvoidMaxAngle is clear (D293); 2: the same, and its average cost logged every 200 steps; 0: off, for A / B measures"));
+	int32 AvoidEnemies = 1;
+	FAutoConsoleVariableRef CVarAvoidEnemies(TEXT("hol.Simulation.AvoidEnemies"), AvoidEnemies,
+		TEXT("1: a walker looking ahead turns aside from enemies as from friends, as before (D293); 0: not from enemies, it walks into them and stops against them (J7c.4 loop 11)"));
 	float AvoidTime = 0.5f;
 	FAutoConsoleVariableRef CVarAvoidTime(TEXT("hol.Units.AvoidTime"), AvoidTime,
 		TEXT("Seconds a walker looks ahead for bodies on its way (D293)"));
@@ -175,6 +178,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	Radii.Reset();
 	FormUpSerials.Reset();
 	FormUpKinds.Reset();
+	Owners.Reset();
 	MaxRadius = 1.f;
 	MaxSpeed = 0.f;
 	bool bAnyWalking = false;
@@ -201,6 +205,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 			Radii.Add(AgentRadii[EntityIt].Radius);
 			FormUpSerials.Add(GetPassThroughSerial(Orders[EntityIt]));
 			FormUpKinds.Add(GetPassThroughKind(Orders[EntityIt]));
+			Owners.Add(States[EntityIt].OwnerPlayer);
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			MaxSpeed = FMath::Max(MaxSpeed, static_cast<float>(Velocity.Size()));
 			bAnyWalking |= MoveTargets[EntityIt].GetCurrentAction() == EMassMovementAction::Move;
@@ -229,7 +234,7 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 }
 
 FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
-	const uint32 FormUpSerial, const uint8 FormUpKind) const
+	const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
@@ -249,7 +254,8 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			const FIntPoint Cell(X, Y);
 			for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 			{
-				if (Cells[Other] != Cell || Entities[Other] == Entity || CanPassThrough(FormUpSerial, FormUpKind, FormUpSerials[Other], FormUpKinds[Other]))
+				if (Cells[Other] != Cell || Entities[Other] == Entity || CanPassThrough(FormUpSerial, FormUpKind, FormUpSerials[Other], FormUpKinds[Other])
+					|| (AvoidEnemies == 0 && Owners[Other] != Owner))
 				{
 					continue;
 				}
@@ -432,7 +438,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				// block's arrival, or a straggler walking into its slot, through all of its order (J7a.4, J7b note 1: CanPassThrough),
 				// as the separation lets it.
 				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon,
-					GetPassThroughSerial(Order), GetPassThroughKind(Order));
+					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer);
 				// On a block's march, never against it (playtest note 1, loop 20: a unit forming up, going round one of
 				// its kind, took a step back): the turn's part against the march dropped, sideways or on.
 				if ((Order.Phase == EHOLMovePhase::FormUp || Order.Phase == EHOLMovePhase::Block) && !Order.bReforming && !Order.MarchDirection.IsNearlyZero())
@@ -480,6 +486,25 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarSeparationSlop(TEXT("hol.Units.SeparationSlop"), SeparationSlop,
 		TEXT("Overlap (cm) of two bodies the separation leaves (D294): only what goes beyond is undone"));
 
+	float SeparationFriendPushShare = 0.5f;
+	FAutoConsoleVariableRef CVarSeparationFriendPushShare(TEXT("hol.Simulation.SeparationFriendPushShare"), SeparationFriendPushShare,
+		TEXT("Of a walker and a standing friend's overlap, the standing one's part (J7c.4 jitter trial; the walker takes the rest): 0.5 as before"));
+
+	int32 SeparationPushToEnemy = 0;
+	FAutoConsoleVariableRef CVarSeparationPushToEnemy(TEXT("hol.Simulation.SeparationPushToEnemy"), SeparationPushToEnemy,
+		TEXT("1: two standing enemies take half each, both moved (J7c.4 jitter trial); 0: all on the one that looks, as before"));
+
+	int32 EnemyNoPush = 0;
+	FAutoConsoleVariableRef CVarEnemyNoPush(TEXT("hol.Simulation.EnemyNoPush"), EnemyNoPush,
+		TEXT("1: two enemies never push each other, the one that looks takes the whole overlap (J7c.4 loop 11); 0: as before"));
+
+	// J7c.4 crossing probe (temporary): every N steps, the units past the enemy's median along X, the enemy pairs
+	// overlapping by more than half a radius, and the walkers touching an enemy.
+	int32 CrossProbeSteps = 0;
+	FAutoConsoleVariableRef CVarCrossProbe(TEXT("hol.Debug.CrossProbe"), CrossProbeSteps,
+		TEXT("J7c.4 crossing probe: every N separation steps, log the crossing counts (0: off)"));
+	int32 CrossProbeCounter = 0;
+
 	/** Time spent and steps run since the last log (hol.Units.Separation 2). */
 	double SeparationSeconds = 0.;
 	int32 SeparationRuns = 0;
@@ -509,10 +534,20 @@ void UHOLUnitSeparationProcessor::ConfigureQueries(const TSharedRef<FMassEntityM
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
+float UHOLUnitSeparationProcessor::LastMaxCorrection = 0.f;
+bool UHOLUnitSeparationProcessor::bSourceProbe = false;
+FHOLSeparationSourceProbe UHOLUnitSeparationProcessor::LastSourceProbe;
+
 void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
+	LastMaxCorrection = 0.f;
+	LastSourceProbe = FHOLSeparationSourceProbe();
+	if (!bSourceProbe)
+	{
+		ProbeEnds.Reset();
+	}
 	if (SeparationEnabled == 0)
 	{
 		return;
@@ -738,7 +773,34 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		// walker. Two enemies never push each other back (the user's trial of J7b): a walker stops against a
 		// standing enemy, which stays where it is; the one that looks is a walker or pushed this step, so it moves.
 		const double Overlap = MinDistance - Distance;
-		const double Share = HOLCombat::GetOverlapShare(Owners[Index] != Owners[Other], Walking[Index], Walking[Other]);
+		const bool bEnemies = Owners[Index] != Owners[Other];
+		double Share = HOLCombat::GetOverlapShare(bEnemies, Walking[Index], Walking[Other]);
+		// J7c.4 jitter trials, off by default: the standing friend of a walker takes less; two standing enemies half each.
+		if (!bEnemies && Walking[Index] != Walking[Other] && SeparationFriendPushShare != 0.5f)
+		{
+			const double FriendShare = FMath::Clamp(static_cast<double>(SeparationFriendPushShare), 0., 1.);
+			Share = Walking[Index] ? 1. - FriendShare : FriendShare;
+		}
+		else if (bEnemies && !Walking[Index] && !Walking[Other] && SeparationPushToEnemy != 0 && EnemyNoPush == 0)
+		{
+			Share = 0.5;
+		}
+		// J7c.4 loop 11 (the user's proposal): two enemies never push each other, the one that looks takes the whole
+		// overlap and the other is neither moved nor queued (a pair is undone once a round, by the first to look).
+		if (bEnemies && EnemyNoPush != 0)
+		{
+			Share = 1.;
+		}
+		if (bSourceProbe)
+		{
+			// Side A: the walker of a walker and a standing unit, else the one that looks.
+			const bool bOtherIsA = Walking[Other] && !Walking[Index];
+			FHOLSeparationSourceCell& Cell = LastSourceProbe.Cells[ProbeRound][ProbeFromQueue ? 1 : 0][int32(Walking[Index]) + int32(Walking[Other])][Owners[Index] != Owners[Other] ? 1 : 0];
+			Cell.Pairs += 1.;
+			Cell.Overlap += Overlap;
+			Cell.MoveA += Overlap * (bOtherIsA ? 1. - Share : Share);
+			Cell.MoveB += Overlap * (bOtherIsA ? Share : 1. - Share);
+		}
 		Corrections[Index] += Normal * (Overlap * Share);
 		if (Share >= 1.)
 		{
@@ -751,12 +813,62 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			ToLook.Add(Other);
 		}
 	};
+	// J7c.4 source probe, read only: a unit's identifier at its sorted index, and every pair's overlap (each pair once, in
+	// the cells of the step's start; the same rules as Undo, a pair whatever looks).
+	const auto ProbeIdOf = [this, bSorted](const int32 Index)
+	{
+		return bSorted ? UnitIds[Index] : static_cast<uint32>(SortKeys[Index] >> 32);
+	};
+	const auto SumOverlaps = [&](const TArray<FVector2D>& Places, double& OutSum, double& OutPairs)
+	{
+		for (int32 Index = 0; Index < Places.Num(); ++Index)
+		{
+			if (Ghosts[Index])
+			{
+				continue;
+			}
+			for (int32 Other = 0; Other < Places.Num(); ++Other)
+			{
+				if (Other <= Index || Ghosts[Other] || FMath::Abs(Cells[Other].X - Cells[Index].X) > 1 || FMath::Abs(Cells[Other].Y - Cells[Index].Y) > 1
+					|| CanPassThrough(FormUpSerials[Index], FormUpKinds[Index], FormUpSerials[Other], FormUpKinds[Other]))
+				{
+					continue;
+				}
+				double MinDistance = Radii[Index] + Radii[Other] - Slop;
+				if ((AtSource[Index] || AtSource[Other]) && !Moving[Index] && !Moving[Other])
+				{
+					MinDistance = FMath::Min(MinDistance, AtSourceDistance);
+				}
+				const double DistanceSquared = (Places[Index] - Places[Other]).SizeSquared();
+				if (DistanceSquared < FMath::Square(MinDistance))
+				{
+					OutSum += MinDistance - FMath::Sqrt(DistanceSquared);
+					OutPairs += 1.;
+				}
+			}
+		}
+	};
+	// J7c.4 source probe, read only: every pair's overlap before the rounds, and how far the units came since the last end.
+	const int32 WalkersToLook = ToLook.Num();
+	if (bSourceProbe)
+	{
+		SumOverlaps(Positions, LastSourceProbe.OverlapStart, LastSourceProbe.PairsStart);
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			if (const FVector2D* const End = ProbeEnds.Find(ProbeIdOf(Index)))
+			{
+				(Walking[Index] ? LastSourceProbe.WalkerIn : LastSourceProbe.StandingIn) += (Positions[Index] - *End).Size();
+			}
+		}
+	}
 	for (int32 Round = 0; Round < SeparationRounds; ++Round)
 	{
 		Looked.Init(false, Positions.Num());
+		ProbeRound = FMath::Min(Round, 1);
 		for (int32 Next = 0; Next < ToLook.Num(); ++Next)
 		{
 			const int32 Index = ToLook[Next];
+			ProbeFromQueue = Next >= WalkersToLook;
 			Looked[Index] = true;
 			for (int32 DY = -1; DY <= 1; ++DY)
 			{
@@ -799,6 +911,101 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	}
 
 	SeparationRoundsSeconds += FPlatformTime::Seconds() - GridSeconds;
+
+	// J7c.4 source probe, read only: the overlap left at the end, and each unit's place for the next step's energy.
+	if (bSourceProbe)
+	{
+		SumOverlaps(Corrections, LastSourceProbe.OverlapEnd, LastSourceProbe.PairsEnd);
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			ProbeEnds.Add(ProbeIdOf(Index), Corrections[Index]);
+		}
+		LastSourceProbe.bValid = true;
+	}
+
+	// J7c.4 crossing probe (temporary), read only.
+	if (CrossProbeSteps > 0 && ++CrossProbeCounter >= CrossProbeSteps)
+	{
+		CrossProbeCounter = 0;
+		TArray<double> Xs[2];
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			if (Owners[Index] == 0 || Owners[Index] == 1)
+			{
+				Xs[Owners[Index]].Add(Corrections[Index].X);
+			}
+		}
+		if (Xs[0].Num() > 0 && Xs[1].Num() > 0)
+		{
+			Xs[0].Sort();
+			Xs[1].Sort();
+			const double Median0 = Xs[0][Xs[0].Num() / 2];
+			const double Median1 = Xs[1][Xs[1].Num() / 2];
+			// The side starting at the lower X goes up.
+			const bool bZeroLow = Median0 < Median1;
+			int32 Past[2] = { 0, 0 };
+			for (const double X : Xs[0]) { Past[0] += bZeroLow ? X > Median1 : X < Median1; }
+			for (const double X : Xs[1]) { Past[1] += bZeroLow ? X < Median0 : X > Median0; }
+			int32 DeepPairs = 0;
+			int32 WalkersTouching = 0;
+			// Units with an enemy behind them (more than 50 cm further back along their charge, within 3 m).
+			int32 EnemyBehind[2] = { 0, 0 };
+			if (Positions.Num() <= 2500)
+			{
+				for (int32 Index = 0; Index < Positions.Num(); ++Index)
+				{
+					bool bTouching = false;
+					bool bBehind = false;
+					const bool bGoesUp = (Owners[Index] == 0) == bZeroLow;
+					for (int32 Other = 0; Other < Positions.Num(); ++Other)
+					{
+						if (Other == Index || Owners[Other] == Owners[Index] || Ghosts[Other])
+						{
+							continue;
+						}
+						const double Distance = FVector2D::Distance(Corrections[Index], Corrections[Other]);
+						const double Sum = Radii[Index] + Radii[Other];
+						DeepPairs += Other > Index && Distance < Sum - 0.5 * Radii[Index];
+						bTouching |= Distance < Sum + 5.;
+						const double Back = bGoesUp ? Corrections[Index].X - Corrections[Other].X : Corrections[Other].X - Corrections[Index].X;
+						bBehind |= Back > 50. && Distance < 300.;
+					}
+					WalkersTouching += bTouching && Walking[Index];
+					if (bBehind && (Owners[Index] == 0 || Owners[Index] == 1))
+					{
+						++EnemyBehind[Owners[Index]];
+					}
+				}
+			}
+			// Histogram of X by side, 2 m bins from 10 m on the low side of the medians' midpoint to 10 m on the high side.
+			const double Front = 0.5 * (Median0 + Median1);
+			FString Histogram[2];
+			for (int32 Side = 0; Side < 2; ++Side)
+			{
+				int32 Bins[10] = {};
+				for (const double X : Xs[Side])
+				{
+					const int32 Bin = FMath::FloorToInt32((X - Front + 1000.) / 200.);
+					if (Bin >= 0 && Bin < 10)
+					{
+						++Bins[Bin];
+					}
+				}
+				for (int32 Bin = 0; Bin < 10; ++Bin)
+				{
+					Histogram[Side] += FString::Printf(TEXT("%s%d"), Bin > 0 ? TEXT(",") : TEXT(""), Bins[Bin]);
+				}
+			}
+			UE_LOG(LogHOLSimulation, Display, TEXT("CrossProbe: units %d/%d, medians %.0f/%.0f, past the enemy median %d/%d, deep enemy pairs %d, walkers touching an enemy %d, enemy behind (3 m) %d/%d, front %.0f, X bins (2 m, low to high) [%s] / [%s]"),
+				Xs[0].Num(), Xs[1].Num(), Median0, Median1, Past[0], Past[1], DeepPairs, WalkersTouching, EnemyBehind[0], EnemyBehind[1], Front, *Histogram[0], *Histogram[1]);
+		}
+	}
+
+	// J7c.4 probe, read only: the step's longest correction, over all units.
+	for (int32 Index = 0; Index < Positions.Num(); ++Index)
+	{
+		LastMaxCorrection = FMath::Max(LastMaxCorrection, static_cast<float>((Corrections[Index] - Positions[Index]).Size()));
+	}
 
 	// The chunks visited in the gathering's order: each unit's sorted index (J7c.4, determinism).
 	int32 Gathered = 0;

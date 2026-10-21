@@ -1,0 +1,44 @@
+# Presse de mêlée : 200 Lanciers et Hommes d'armes de chaque côté, face à face à ~25 m, lancés l'un contre l'autre (tremblement au contact, J7c.4)
+# Plain, deux joueurs (melee_press.json). Positions dans le repère du centre du joueur, comme j7_army : au-delà des
+# rochers (vers 3000). Chaque armée : quatre paquets de 50 (Lanciers sur les ailes, Hommes d'armes au milieu), sur un
+# front de ~30 m ; l'ennemi ~25 m plus loin (bords à ~18 m, hors du rayon d'agression de 12 m).
+# L'armée du joueur.
+hol.Camera.FocusNear 3800 -1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 0 500
+hol.Camera.FocusNear 3800 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 3800 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 3800 1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 0 500
+# L'ennemi, même disposition.
+hol.Camera.FocusNear 6600 -1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 1 500
+hol.Camera.FocusNear 6600 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+hol.Camera.FocusNear 6600 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+hol.Camera.FocusNear 6600 1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 1 500
+waitunits 400
+# La caméra au-dessus du point de rencontre (5200 0), un cran de molette en avant.
+hol.Camera.FocusNear 5200 0
+hol.Camera.Zoom 1
+frames 10
+# La charge : chaque armée en attaque-déplacement vers l'arrière de l'autre, pour que la presse pousse. hol.Units.Move
+# prend des coordonnées du monde : sur Plain à deux, le centre du joueur (slot 0) est en (-15000, 0), sans rotation
+# (FocusNear 3800 0 = monde -11200 0, FocusNear 6600 0 = monde -8400 0).
+hol.Units.Move -8400 0 0 a
+hol.Units.Move -11200 0 1 a
+waitlog Move order: 200 units to (-11200, 0)
+note Regarde les unités au contact, au cœur de la presse : tremblent-elles, sautent-elles d'un pas à l'autre ?
+note Ralenti : console (²) puis « slomo 0.25 » (« slomo 1 » pour revenir).
+note Nouveau : arrêt au premier ennemi touché. Pour comparer : « hol.Combat.StopAtContact 0 » (avant), puis « hol.Scenario melee_press » ; 1 pour revenir.

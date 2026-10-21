@@ -1,0 +1,44 @@
+# Charge en formation : 200 Lanciers et Hommes d'armes par camp, d'abord rangés en formation à l'arrêt, fronts face à face à ~25 m, puis chargés l'un contre l'autre en attaque-déplacement (J7c.4 : le peigne de melee_press vient-il des nuées lâches ?)
+# Plain, deux joueurs (melee_formed.json). Mêmes paquets que melee_press, apparus 2 m plus loin de chaque côté
+# (3600 et 7000 dans le repère du joueur), puis un déplacement SIMPLE de 2 m vers l'ennemi : la formation se range
+# face à l'ennemi (front perpendiculaire à l'axe X), centres à 30 m, fronts à ~25 m.
+hol.Camera.FocusNear 3600 -1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 0 500
+hol.Camera.FocusNear 3600 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 3600 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 3600 1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 0 500
+hol.Camera.FocusNear 7000 -1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 1 500
+hol.Camera.FocusNear 7000 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+hol.Camera.FocusNear 7000 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+hol.Camera.FocusNear 7000 1500
+frames 2
+hol.Units.SpawnHere 50 Spearman 1 500
+waitunits 400
+hol.Camera.FocusNear 5200 0
+hol.Camera.Zoom 1
+frames 10
+# La mise en formation : centre du joueur (slot 0) en (-15000, 0) ; local 3800 = monde -11200, local 6800 = monde -8200.
+hol.Units.Move -11200 0 0
+hol.Units.Move -8200 0 1
+waitlog Move order: 200 units to (-8200, 0)
+wait 9
+# CHARGE : comme melee_press, chaque armée en attaque-déplacement vers l'arrière de l'autre.
+hol.Units.Move -8400 0 0 a
+hol.Units.Move -11200 0 1 a
+waitlog Move order: 200 units to (-11200, 0)
+note Les deux armées sont d'abord rangées en formation, puis chargent : regarde le choc des fronts. Front net qui se heurte, ou dents de peigne qui s'interpénètrent ?
+note Ralenti : console (²) puis « slomo 0.25 » (« slomo 1 » pour revenir).
+note Pour comparer : « hol.Combat.ZoneOfControl 0 » et « hol.Combat.StopAtContact 0 » (avant), puis « hol.Scenario melee_formed » ; 1 pour revenir.

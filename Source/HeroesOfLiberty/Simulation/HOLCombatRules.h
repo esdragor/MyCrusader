@@ -125,6 +125,11 @@ namespace HOLCombat
 		bool bIsCurrentTarget = false;
 		/** Others of the seeker's side already attacking it (the seeker left out). */
 		int32 AttackerCount = 0;
+		/**
+		 * Out of the seeker's reach, every place around it taken (MaxAttackers bodies of any side touching it; the processor
+		 * sets it under hol.Combat.PreferFreeTarget): one with a place comes first, the current target first among the full.
+		 */
+		bool bNoPlace = false;
 	};
 
 	/**
