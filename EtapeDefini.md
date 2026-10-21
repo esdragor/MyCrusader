@@ -17,6 +17,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Animations
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
+### Unités
+- Tableau complet des stats des unités (vitesse, armure à distance et au corps à corps, cadence d'attaque et de tir, etc.)
+
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 - Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point *(pas dans l'immédiat)*
