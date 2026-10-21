@@ -5928,3 +5928,138 @@ d'épée).
     (3) mesures complètes de fin de chapitre (S1, S2 au seuil, S3, S4, S5 en combat avec le coût des PV exacts, S7) ;
     (4) avance de `main` ; (5) J7c.5 (clôture de J7 au GDD : D327, D328, J7-Q5 révisée, J7-Q1 à Q6, et les décisions
     de J7c.4 : S4 en tiers, optimisations identiques, tirage déterministe).
+- (J7c.4, mycrusader-56) **Reprise dans la même séance** (proposition de l'utilisateur) : la **mesure au repos de S3 /
+  S4 se fera ce soir**, quand tout sera fermé (ligne ajoutée sous J7c.4 dans `EtapeDefini.md`) ; on continue d'ici
+  là. Ordre : **S5 en combat** d'abord (manque aux mesures de ce soir : `net_match.ps1 -Units` ne lance que S2 sur le
+  serveur ; S5 en combat = S3 sur le serveur, pire cas des PV avec 589 coups/s, les flèches de S4 étant déduites sans
+  envoi), puis la grille dense de la séparation. mycrusader-10 lance `-Full` dans la copie principale (port du
+  serveur) : rien de lancé avant son signal.
+- (J7c.4, mycrusader-56) **S5 en combat écrit** (~6 min, scripts seuls, rien lancé) : `net_match.ps1 -Test S2|S3|S4`
+  (défaut S2 : S5 inchangé ; S3/S4 : 20 s de mesure par défaut, 40 s de plus d'attente) ; `s5_report.py` : fenêtre de
+  S3 / S4 dès « measure begins », lignes « Combat: » (coups, morts, envois d'activité par seconde et par coup ;
+  `STATE_BITS` 60 → 61) ; `chapter_measures.ps1` : « S5 combat » (`-Test S3`) après le S5 habituel, sa ligne au
+  tableau. Les envois de PV sont mêlés aux envois d'« activité » (majorant seulement). **Boucle** lancée (écriture et
+  compilation) : compteur des envois dus aux seuls PV dans le rapport « Net (server) » (rien ne change dans ce qui est
+  envoyé) et grille dense de la séparation au même ordre de visite (`hol.Simulation.FastSeparation`).
+- (J7c.4, mycrusader-56) **Boucle faite** (~5 min, compilé sans avertissement, rien lancé) : (A) `HealthSends` dans
+  `FHOLUnitReplicationStats` : un envoi d'« activité » qui n'aurait pas eu lieu avec les PV déjà envoyés (état refait
+  avec les PV envoyés, `GetSendReason` = None) ; rapport « Net (server) » : `(birth N, activity N, error N, refresh N;
+  health N)` ; `s5_report.py` : envois de PV par seconde, par coup, et leur débit par client ; `chapter_measures.ps1`
+  les reprend. (B) séparation : grille dense par tri par comptage (chaque case lue en indices décroissants, comme les
+  chaînes hachées), repli sur le hachage au-delà de 2^20 cases, corps de la paire inchangé (lambda commune).
+  Vérification à faire (S3 6edfa48d…, S4 235652bf… inchangés ; gain de la séparation) après le signal de mycrusader-10.
+- (J7c.4, mycrusader-56) Séparation **vérifiée** : empreintes inchangées (S3, S4), séparation 1,62 → 1,38 ms (S3),
+  1,24 → 1,04 (S4). Commit **69e63d6**. `main` avait avancé (d3f1408 retardataire de mycrusader-10, terminée ;
+  2ac3092 `combat-dying-off`) : **fusion 7c7174c** dans `j7c-shot`, conflits résolus (combat : fin des mourantes combat
+  coupé de `main` avant le tri rapide ; séparation : corps commun `Undo` avec la règle `CanPassThrough` de `main` ;
+  `EtapeDefini.md`). Tous anciens chemins contre tous nouveaux : **S3 6edfa48d73507399** dans les deux (pas 12,68 →
+  5,79 ms, machine chargée) ; **S4 9598a723d88909af** dans les deux (**nouvelle référence** : les marches en blocs du
+  retardataire font tirer bien plus les Archers, 5 309 flèches en 15 s, 354/s). **1er S5 en combat** lancé
+  (`net_match -Stage -Units 2000 -Test S3`, clients en fenêtres sur l'écran 2 comme d'habitude).
+- (J7c.4, mycrusader-56) **1er S5 en combat : FAIL** (machine chargée ; mesure de 20 s, 3 rapports, début 5,2 s après
+  la charge) : **87 466 B/s par client** (seuil 32 000 ; S5 en marche ~24-25 000), **écart affiché 105,5 cm** (seuil
+  25), corrections ~112 cm, ~1 200-1 400 sauts par client, 1 % bas 6 images/s ; serveur 8,14 envois par unité et par
+  seconde, simulation 14,1 ms par pas sur le serveur dédié. Combat : 12 124 coups (606/s), 310 morts. **Envois
+  d'« activité » : 5 543/s = 9,15 par coup** (~47 800 B/s par client) ; **envois dus aux seuls PV : 515/s = 0,85 par
+  coup (~4 400 B/s)** : les PV ne sont pas le gros poste. Analyse lancée (lecture seule) : ce qui déclenche une
+  « activité », pourquoi 9 par coup, cause de l'écart affiché, 14 ms du serveur, options.
+- (J7c.4, mycrusader-56) **Analyse du S5 en combat** (lecture du code et des journaux) : (1) envois par raison dans la
+  fenêtre : **« error » 9 825/s** (5,4 par unité et par seconde), « activity » 5 543/s (3,0), refresh 103, PV seuls
+  515 ; le client lit ~8 000 états/s sur ~15 470 voulus. (2) **Vitesses bruitées** : `hol.Net.StepVelocity 1` (D294)
+  envoie le déplacement du dernier pas, poussées de séparation comprises : un combattant debout dans la presse a
+  40-100 cm/s au hasard, le client l'extrapole (jusqu'à 3 s), le serveur renvoie dès 35 cm. (3) **Activité** :
+  surtout le **bord de portée** (`IsInRange` sans hystérésis, poussé de part et d'autre : Attacking → Idle → Moving →
+  Attacking, 2-3 envois par aller-retour), marches de combat bloquées, changements de cible (mineurs). (4) **Écart de
+  105 cm** : lien saturé (plafond du moteur `MaxClientRate` 100 000 B/s, ~3,3 Ko par tick à 30 Hz) + vitesses
+  bruitées livrées en retard ; le lissage D271 n'est pas en cause. (5) **Serveur à 14 ms** : sur un serveur dédié,
+  `FApp::ShouldUseThreadingForPerformance()` est faux, donc **tous les `ParallelFor` tournent sur un fil** (et 4
+  ouvriers au plus) ; remède : **`-useperfthreads`** au lancement du serveur (jeu inchangé, à vérifier par
+  l'empreinte). Options réseau seules (empreinte inchangée) : (a) vitesse nulle pour les unités qui ne marchent pas
+  (~-35 à -45 Ko/s, mieux à l'œil) ; (b) tenue minimale de 0,2 s des changements d'activité (~-20 Ko/s, geste jusqu'à
+  0,2 s en retard) ; (c) « engagé » = Attacking sur le fil tant qu'une cible est tenue (~-5 à -10) ; (d) PV sur
+  minuterie (~-4) ; (e) codage « immobile » 1 bit ; (f) priorité par client. (a)+(b)+(d) ≈ 40-60 Ko/s : sous 32 il
+  faut aussi (c) ou (e). Hors réseau (change le jeu) : hystérésis de portée. Question posée à l'utilisateur.
+- (J7c.4, mycrusader-56) **Choix de l'utilisateur** (recommandation) : **vitesse nulle d'abord** (une unité qui ne
+  marche pas est envoyée avec une vitesse nulle ; réseau seul, jeu identique) **+ `-useperfthreads`** au serveur
+  dédié, puis S5 en combat remesuré et le reste décidé sur les chiffres. Écartés pour l'instant : tout le lot réseau
+  d'un coup (tenue 0,2 s, « engagé », PV sur minuterie) ; seuil revu pour la mêlée (D274). Boucle lancée (écriture et
+  compilation) ; mesure après le `-Full` de mycrusader-85 (port du serveur).
+- (J7c.4, mycrusader-56) À savoir (mycrusader-85) : depuis d3f1408 (retardataire), la séquence solo de `-Full` prend
+  ~660 s et `quick_check` tue le jeu à 660 s (`GameLimitSeconds`) : à passer à **780** dans `j7c-shot` aussi (même
+  valeur que sa branche) avant le prochain `-Full`. Mieux (proposé par elle) : **refusionner `main`** dans `j7c-shot`
+  quand elle y aura fusionné sa correction, au lieu de l'écrire soi-même.
+- (J7c.4, mycrusader-56) **Vitesse nulle écrite** (~17 min, compilé sans avertissement) : `HOLUnitReplication::SendsVelocity`
+  (= `IsWalkingActivity` : Moving et GatherTrip gardent la vitesse du pas, D294 ; Idle, IdleFacingFront, Gathering,
+  Building, Attacking, Dying envoyés immobiles), `hol.Net.StillZeroVelocity` (0 = comme avant) ; une unité qui frappe
+  ne marche jamais au serveur (`StopWalk` avant `bAttacking`) ; l'erreur se mesure contre l'état envoyé, donc cohérente
+  sans autre code. Client : orientation et animations ne dépendent pas de la vitesse sauf Idle (toujours au repos
+  désormais ; à voir à l'essai : unité inactive poussée vite). Test `Net.SendRule` étendu (combattant poussé 40-100 cm/s :
+  moins d'envois, erreur sous le seuil). **`-useperfthreads`** dans `net_match.ps1` et le serveur de `quick_check.ps1`
+  (GDD.md:1991, D275 GDD.md:2454, ImplementationInProgress.md:783 décrivent le lancement : à compléter à J7c.5).
+- (J7c.4, mycrusader-56) Tests 87/87 PASS (67 s). **2e S5 en combat : FAIL mais mieux** : **70 333 B/s** par client
+  (87 466), **écart affiché 71,8 cm** (105,5), sauts 420 / 255 (1 371 / 1 116) ; mais envois « error » toujours ~10 000/s
+  (48-70 000 par rapport de 5 s), « activity » 6 989/s (en hausse), PV seuls 499/s ; serveur toujours 14,3 ms par pas
+  malgré `-useperfthreads` (bien sur sa ligne de commande ; évitement à l'arrêt 14,9 ms sur son pas : 4 ouvriers au plus
+  sur un serveur dédié, machine chargée). Commit **e7d0caf** (vitesse nulle, `-useperfthreads`). `main` refusionné
+  (ea84b7b : limite 780 s de mycrusader-85, compte d'attaquants à la mort) : **d1f4f5f**, conflit du combat résolu en
+  gardant les deux. Empreintes : S3 6edfa48d… identique ; **S4 de nouveau instable** (nouveaux chemins : 9598a723…,
+  9598a723…, 3bcd2baa… ; anciens : 9598a723…, bb0706a6… ; `FastPaths 0` seul : cbaac7e6…) : une autre source d'aléa,
+  propre à S4. Boucle lancée : sonde `StepHashes` étendue (combat, fantôme, pilotage, ordre, flèches), paires de S4
+  jusqu'à divergence, processeur et champ fautifs.
+- (J7c.4, mycrusader-56) **Sonde étendue** (non commitée : `HashUnits` par parties combat / fantôme / pilotage /
+  ordre / identités d'entités, `HashArrows`) : une paire de S4 en parallèle diverge (f053c377… contre c6eb1144…) ;
+  tout identique jusqu'au pas 307 ; **au pas 308, tout est identique en entrée de `HOLUnitSeparationProcessor` et les
+  positions diffèrent à sa sortie**. Cause probable : la séparation **collecte les unités dans l'ordre des morceaux de
+  Mass** (variable d'une passe à l'autre : changements d'archétype vidés dans un ordre qui dépend des fils) et tout
+  ce qui suit (cases, `ToLook`, corrections en place) dépend de cet ordre ; le combat, lui, trie par `UnitId`.
+  **Boucle lancée** : séparation triée par `UnitId` (et revue des autres processeurs dépendant de l'ordre :
+  `HOLFootprintKeepOutProcessor`, ordres, maintien, plein régime…) ; nouvelles références d'empreinte attendues.
+- (J7c.4, mycrusader-56) Boucle arrêtée à la demande de l'utilisateur (compile, **rien vérifié**) : séparation en ordre
+  d'`UnitId` (clés triées, 9 tableaux permutés une fois, retour en écriture par `SortedIndexOf`) ; ordres : marcheurs
+  coupés triés par (série d'ordre, indice d'entité) au lieu d'un tri stable sur la seule série, nouvelles demandes de
+  chemin du pas triées par entité (budget de chemins servi dans l'ordre). Revue : `HOLFootprintKeepOut`, `HOLFullSpeed`,
+  `HOLAvoidanceHold` indépendants de l'ordre ; **dépendants de l'ordre, non corrigés** : phase C de l'évitement à
+  l'arrêt (fantômes des voisins lus en direct dans l'ordre des morceaux, voisins tirés de la grille d'obstacles du
+  moteur remplie dans cet ordre et plafonnée : copie fidèle de Mass, la trier la séparerait de `ParallelMass 0`),
+  `HOLBuildProcessor` et `HOLGatherProcessor` (places, stocks, dépôts pris dans l'ordre des morceaux ; pas dans S4).
+  Commit **299958a** (avec la sonde étendue et `EtapeDefini.md` : S4 déterministe et S5 en combat encore ouverts).
+- **Séance arrêtée ici (demande de l'utilisateur : « arrête-toi quand tu peux et commit ce que tu as, marque tout
+  pour continuer plus tard dans une autre session »).**
+  **Reprise exacte** :
+  - **État** : `MyCrusader-Elrond` (ex-`MyCrusader-A`), branche **`j7c-shot` à 299958a**, rien de non commité (sauf
+    `IN_USE.txt`, à mon nom, « en pause »). `main` à **ea84b7b** (fusionné dans `j7c-shot` en d1f4f5f) ; **aucun commit
+    de J7c.4 dans `main`**. Dernier `-Full` PASS sur a6bef71 seulement (avant S5 en combat, vitesse nulle, fusions,
+    tri) ; tests 87/87 PASS sur e7d0caf.
+  - **Commits de J7c.4 sur `j7c-shot`** : a6bef71 (S3, S4, empreinte « Battle checksum », optimisations identiques
+    du combat `hol.Combat.FastPaths` et de l'évitement à l'arrêt `hol.Simulation.ParallelStandingAvoidance`, tirage
+    déterministe du pilotage `hol.Simulation.DeterministicSteering`, sonde `hol.Simulation.StepHashes`) ; 69e63d6
+    (S5 en combat : `net_match.ps1 -Test S3`, `s5_report.py`, ligne de `chapter_measures.ps1` ; compteur des envois de
+    PV seuls ; séparation en grille dense `hol.Simulation.FastSeparation`) ; 7c7174c et d1f4f5f (fusions de `main`) ;
+    e7d0caf (vitesse nulle des unités qui ne marchent pas `hol.Net.StillZeroVelocity`, `-useperfthreads` au serveur
+    dédié) ; **299958a (non vérifié)** (tri par `UnitId` de la séparation, deux ordres d'ordres, sonde étendue).
+  - **Chiffres** (machine chargée) : S3 tous anciens chemins 12,7-14 ms par pas → tous nouveaux 5,8-7,4 ms (seuil 3) ;
+    S4 ~5-6 ms. **S5 en combat** : 87 Ko/s → **70 Ko/s par client** (seuil 32), écart affiché 105 → **72 cm** (seuil
+    25) ; envois « error » ~10 000/s inchangés par la vitesse nulle (à comprendre), « activity » ~7 000/s, PV seuls
+    ~500/s (~4 Ko/s) ; serveur dédié 14 ms par pas même avec `-useperfthreads` (4 ouvriers au plus).
+  - **À faire, dans l'ordre** :
+    1. **Vérifier 299958a** : S4 ×4 (deux paires en parallèle) et S3 ×2 en parallèle → une seule empreinte chacun
+       (nouvelles références ; S3 n'est plus 6edfa48d…) ; S3 avec `hol.Simulation.FastSeparation 0` = S3 par défaut ;
+       et tous anciens chemins (`FastPaths 0`, `ParallelStandingAvoidance 0`, `FastSeparation 0`) = tous nouveaux. Si S4
+       diverge encore : sonde `StepHashes 2` après l'évitement à l'arrêt et la grille d'obstacles (phase C dépendante
+       de l'ordre des morceaux : la trier, quitte à ne plus coïncider avec `ParallelMass 0`, à demander à l'utilisateur
+       si le résultat change).
+    2. `quick_check -Full` (limite de 780 s déjà dans la branche), puis commit.
+    3. **S5 en combat** : sonde des envois « error » par activité et par vitesse (pourquoi ~10 000/s restent), puis
+       le reste du lot réseau (tenue minimale de 0,2 s des changements d'activité, « engagé » gardé tant qu'une cible est
+       tenue, PV sur minuterie) ; sinon question à l'utilisateur (seuil de la mêlée, D274). Chaque S5 : `net_match.ps1
+       -Stage -Units 2000 -Test S3` (serveur recuit si le code change ; clients en fenêtres sur l'écran 2 ; prévenir les
+       sessions pour le port du serveur).
+    4. **Mesures au repos, le soir** (ProjectShiva fermés par l'utilisateur, sessions en pause, CPU vérifié) :
+       `chapter_measures.ps1` (S1, S2, S7, S3, S4, S5, S5 combat) ; décider du seuil de S3 / S4 sur ces chiffres.
+    5. Avance de `main` (accord des sessions actives), puis **J7c.5** (clôture de J7 au GDD : D327, D328, J7-Q5 révisée,
+       J7-Q1 à Q6, décisions de J7c.4 : S4 en tiers, optimisations identiques, tirage déterministe, vitesse nulle,
+       `-useperfthreads`, ordre de visite par identifiant ; lancement du serveur dans GDD.md:1991, D275 GDD.md:2454,
+       ImplementationInProgress.md:783).
+  - **À savoir** : comparer deux passes = même empreinte « Battle checksum » à la fin de la mesure ; lancer les jeux
+    directement (`stress_ab.ps1` refuse dès qu'une autre session compile) ; se coordonner avec les sessions actives
+    (mycrusader-e1, mycrusader-85 dans `MyCrusader-Galadriel`) avant tout `-Full`, partie réseau ou mesure.
