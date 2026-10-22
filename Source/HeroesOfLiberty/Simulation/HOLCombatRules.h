@@ -157,6 +157,55 @@ namespace HOLCombat
 	 */
 	HEROESOFLIBERTY_API int32 ChooseTarget(const FSeeker& Seeker, TConstArrayView<FCandidate> Candidates);
 
+	// Attacks on buildings (D345.2b). Against a building a unit always uses its building attack (FHOLUnitTypeConstants::
+	// BuildingAttack, its type, interval and reach). It takes one on by order (a right click on an enemy building), on an
+	// attack-move when no enemy unit is found, or at rest within its aggression radius when no enemy unit is (the Peasant,
+	// without one, only by order); an enemy unit it takes on makes it drop the building. Never an own or allied building,
+	// never a bare foundation (unseen by the enemy).
+
+	/** Edge gap (cm) from a body (Position, Radius) to a building's body box (D324): 0 or less when it touches it. */
+	HEROESOFLIBERTY_API double GetEdgeDistanceToBox(const FVector2D& Position, float Radius, const FBox2D& Box);
+
+	/**
+	 * A melee attacker walking to a building stops once this close (cm, its edge to the body), at most its building reach:
+	 * its reach of a tile (4 m) is kept while it strikes and when its walk ends short (the footprint keeps it off), so it
+	 * strikes from beside the wall, not from 4 m away.
+	 */
+	inline constexpr float BuildingApproachReach = 150.f;
+
+	/**
+	 * In reach of a building at EdgeDistance: within its building reach once striking, on hold, or when its walk ended
+	 * there; else (walking to it, or idle and taking it on) within BuildingApproachReach for a melee (a shooter, its reach).
+	 */
+	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
+	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
+
+	HEROESOFLIBERTY_API bool IsBuildingInReach(const FHOLUnitTypeConstants& Attacker, double EdgeDistance, bool bStriking, bool bWalkEndedShort, bool bHold);
+
+	/**
+	 * Radius (cm, its edge to the box) within which the seeker takes on an enemy building by itself, when it found no enemy
+	 * unit: 0 without a building attack; on hold, its building reach; on an attack-move, its aggression radius or
+	 * AttackMoveRadius; at rest, its aggression radius (0: none, the Peasant); never less than its building reach.
+	 */
+	HEROESOFLIBERTY_API float GetBuildingSearchRadius(const FSeeker& Seeker, const FHOLUnitTypeConstants& Attacker);
+
+	/** An enemy building near the seeker (the processor fills them from the step's buildings). */
+	struct FBuildingCandidate
+	{
+		/** Tie-break: a stable id (the actor's unique id). */
+		uint64 Id = 0;
+		FBox2D Box = FBox2D(ForceInit);
+	};
+
+	/**
+	 * The building the seeker takes on by itself, an index into Candidates or INDEX_NONE: within SearchRadius of its edge,
+	 * the nearest by edge distance, then smallest Id. Only called with no enemy unit chosen (a unit always comes first).
+	 */
+	HEROESOFLIBERTY_API int32 ChooseBuilding(const FVector2D& Position, float Radius, float SearchRadius, TConstArrayView<FBuildingCandidate> Candidates);
+
+	/** Where a unit walks to strike a building: the box's point nearest it, pushed out by its radius and Gap (cm). */
+	HEROESOFLIBERTY_API FVector2D GetBuildingApproachPoint(const FVector2D& Position, float Radius, const FBox2D& Box, double Gap);
+
 	// Shots (J7c.2, J7c-Q1 to Q4). A shooter's hit is an arrow: released at the strike's moment of the gesture (the
 	// wind-up, the type's AttackWindUpPercent of the cadence, 12 % for the Archer), it flies the centre-to-centre
 	// distance of the shooter and its target at release at the arrow speed, and always hits: its damage (GetDamage, the armour of its attack type, reckoned at release)

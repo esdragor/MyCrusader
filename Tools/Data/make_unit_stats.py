@@ -43,6 +43,9 @@ CATEGORIES = {
 ATTACK_TYPES = {"Melee": "Mêlée", "Ranged": "Distance", "Siege": "Siège", "Hero": "Héros"}
 ARMOR_OF_TYPE = {"Melee": "MeleeArmor", "Ranged": "RangedArmor", "Siege": "SiegeArmor", "Hero": "HeroArmor"}
 
+BUILDING_RANGED_ARMOR = 40  # Tools/Data/BuildingTypes.csv RangedArmor (D345)
+
+
 def read_tile_cm():
     """TileSize (cm) of Config/DefaultGame.ini (D311, D344: 400 = 4 m); 400 if missing."""
     ini = ROOT / "Config" / "DefaultGame.ini"
@@ -122,7 +125,8 @@ def load():
             u = dict(row)
             for k in ("Radius", "Speed", "MaxHealth", "AvoidanceDistance", "BuildTime", "Population",
                       "CarryCapacity", "Attack", "AttackInterval", "AttackWindUpPercent", "AttackRange",
-                      "MeleeArmor", "RangedArmor", "SiegeArmor", "HeroArmor", "AggressionRadius"):
+                      "MeleeArmor", "RangedArmor", "SiegeArmor", "HeroArmor", "AggressionRadius",
+                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange"):
                 u[k] = float(row[k])
             u["ArmorCategories"] = parse_list(row["ArmorCategories"])
             u["Bonuses"] = parse_bonuses(row["Bonuses"])
@@ -180,6 +184,27 @@ def main():
     L.append(f"- Au plus {MAX_ATTACKERS} attaquants de mêlée vont sur une même cible hors de portée ; les autres en "
              f"prennent une moins entourée.")
     L.append(f"- Une unité à 0 PV reste {DYING_STEPS} pas ({num(DYING_STEPS / STEP_HZ)} s à {STEP_HZ} Hz) pour sa chute.")
+    L.append("")
+
+    L.append("## Attaque contre bâtiment")
+    L.append("")
+    rows = []
+    for u in fighters:
+        if u["BuildingAttack"] <= 0:
+            rows.append([name(u), "—", "—", "—", "—", "—", "—"])
+            continue
+        hit = max(u["BuildingAttack"] - (BUILDING_RANGED_ARMOR if u["BuildingAttackType"] == "Ranged" else 0), 1)
+        rows.append([name(u), num(u["BuildingAttack"]), ATTACK_TYPES[u["BuildingAttackType"]], num(hit),
+                     num(u["BuildingAttackInterval"]) + " s", num(round(hit / u["BuildingAttackInterval"], 2)),
+                     metres(u["BuildingAttackRange"])])
+    L.append(table(["Unité", "Attaque", "Type", "Dégâts par coup (armure distance des bâtiments retirée)", "Cadence",
+                    "Dégâts / s", "Portée (bord du corps au bâtiment)"], rows))
+    L.append("")
+    L.append(f"- Contre un bâtiment, l'unité se sert toujours de cette attaque (D345). Les bâtiments ont "
+             f"{BUILDING_RANGED_ARMOR} d'armure distance, rien contre les autres types ; 1 dégât au moins.")
+    L.append("- Cibles : sur ordre (clic droit), en attaque-déplacement quand aucune unité ennemie n'est à portée de "
+             "recherche, au repos dans le rayon d'agressivité sans unité ennemie (le Paysan seulement sur ordre) ; une unité "
+             "ennemie qui arrive fait lâcher le bâtiment.")
     L.append("")
 
     L.append("## Déplacement et corps")

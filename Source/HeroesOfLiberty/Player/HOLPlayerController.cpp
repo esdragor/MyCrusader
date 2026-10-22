@@ -9,6 +9,7 @@
 #include "Simulation/HOLUnitTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Containers/Ticker.h"
+#include "Dev/HOLTestHooks.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/HUD.h"
@@ -1245,6 +1246,27 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand CheatSpawnBuildingCommand(
+		TEXT("hol.Cheat.SpawnBuilding"),
+		TEXT("hol.Cheat.SpawnBuilding <Type> <Slot> <Dx> <Dy> [enemy]: a finished building of that type for that slot, free, at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame, on the tile grid (D345.2b scenarios; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 4)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.SpawnBuilding <Type> <Slot> <Dx> <Dy> [enemy]"));
+				return;
+			}
+			const TArray<FString> PointArgs(&Args[2], FMath::Min(Args.Num() - 2, 3));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector Point;
+				if (GetPointNear(*Controller, PointArgs, Point))
+				{
+					Controller->RequestCheatSpawnBuilding(FName(*Args[0]), FCString::Atoi(*Args[1]), Point);
+				}
+			}
+		}));
+
 	FAutoConsoleCommand CheatDamageSelectedCommand(
 		TEXT("hol.Cheat.DamageSelected"),
 		TEXT("hol.Cheat.DamageSelected [Amount=100] [melee|ranged|siege|hero]: one attack of Amount on the selected building, its armour taken off (D345.2a; development only)"),
@@ -1470,6 +1492,12 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 {
 	// Input first (the bindings fill KeyPan), then the camera.
 	Super::PlayerTick(DeltaTime);
+	// Enter: a test scenario's continue key (waitkey, HOLTestSequence.cpp); free in game (IMC_UI's Enter is the menus').
+	// Read from the viewport's key state, nothing bound nor consumed: the console open or a focused menu keeps it.
+	if (IsLocalController() && WasInputKeyJustPressed(EKeys::Enter))
+	{
+		HandleContinueKey();
+	}
 	if (!RTSCamera)
 	{
 		return;
@@ -1842,16 +1870,27 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		// An enemy unit under the cursor (J7b.3): attacked, its place marked in red. A unit before a source (D288). Near
 		// the cursor within the target margin (J7c, retour d'essai 8, loop 3: FindTargetAt), unless a source is drawn
 		// under it: a click on a body always wins.
+		// D345.2b: an enemy building under the cursor (finished, or a site this machine shows: a bare foundation of the enemy
+		// is never drawn here), struck by the selected units; a unit's body drawn over it still wins.
+		AHOLBuilding* EnemyBuilding = Site && HOLPlayerState && Site->GetOwnerPlayer() != HOLPlayerState->GetPlayerIndex() && Site->IsSeenHere()
+			&& !Site->IsFoundation() ? Site : nullptr;
 		bool bDirect = false;
 		const uint32 UnderId = FindTargetAt(ViewportFraction, bDirect);
 		FHOLUnitView Under;
-		if (UnderId != 0 && (bDirect || !Source) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
+		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
 			&& Under.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
 				bShift ? TEXT(", queued") : TEXT(""));
 			RequestAttackUnit(Own, UnderId, bShift);
 			OnAttackOrderGiven.Broadcast(Under.Location);
+			return;
+		}
+		if (EnemyBuilding)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s"), Own.Num(), *DescribeBuilding(EnemyBuilding));
+			RequestAttackBuilding(Own, EnemyBuilding);
+			OnAttackOrderGiven.Broadcast(EnemyBuilding->GetActorLocation());
 			return;
 		}
 		if (Source)
@@ -3312,6 +3351,38 @@ void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale
 #endif
 }
 
+void AHOLPlayerController::RequestCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector& Point)
+{
+	ServerCheatSpawnBuilding(TypeName, Slot, Point);
+}
+
+void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName TypeName, const int32 Slot, const FVector_NetQuantize Point)
+{
+#if !UE_BUILD_SHIPPING
+	// As a player's placement (D311: on the tile grid, no rotation), finished at once and free, for any slot, unchecked.
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
+	UWorld* World = GetWorld();
+	if (!Type || !World || Slot < 0 || Slot > 255)
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: cannot spawn %s for slot %d"), *TypeName.ToString(), Slot);
+		return;
+	}
+	const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Point);
+	const FVector2D Centre = Footprint.GetCenter();
+	const FTransform Transform(FRotator::ZeroRotator, FVector(Centre, UHOLConstructionSubsystem::FindGroundZ(*World, Centre, Point.Z)));
+	AHOLBuilding* Building = World->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!Building)
+	{
+		return;
+	}
+	Building->Setup(TypeName, static_cast<uint8>(Slot), static_cast<uint8>(Slot));
+	Building->FinishSpawning(Transform);
+	Building->ForceNetUpdate();
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: spawned %s of slot %d at (%.0f, %.0f)"), *TypeName.ToString(), Slot, Centre.X, Centre.Y);
+#endif
+}
+
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
 	ServerCheatDamageBuilding(Point, Amount, AttackType);
@@ -3379,6 +3450,26 @@ void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>&
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::Attack, TargetUnitId, HOLPlayerState->GetPlayerIndex(), bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+{
+	if (UnitIds.Num() > 0 && Building)
+	{
+		ServerAttackBuilding(TArray<uint32>(UnitIds), Building);
+	}
+}
+
+void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
+{
+	// As ServerAttackUnit (D288): the player's own units alone; the order processor checks the building (an enemy's, standing).
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueAttackBuildingOrder(UnitIds, Building, HOLPlayerState->GetPlayerIndex());
 	}
 }
 
@@ -3722,6 +3813,15 @@ void AHOLPlayerController::HandleDeselect()
 		return;
 	}
 	SetSelection(nullptr);
+}
+
+void AHOLPlayerController::HandleContinueKey()
+{
+	// Alt + Enter: the window's full screen (DefaultInput.ini), not a scenario's step.
+	if (!IsInputKeyDown(EKeys::LeftAlt) && !IsInputKeyDown(EKeys::RightAlt))
+	{
+		HOLTestHooks::PressContinueKey();
+	}
 }
 
 void AHOLPlayerController::HandleNextIdle()

@@ -9,6 +9,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
@@ -252,14 +253,19 @@ int32 AHOLBuilding::TakeDamagePoints(const int32 Points)
 	if (Taken > 0)
 	{
 		DamageTaken = static_cast<uint16>(FMath::Min(static_cast<int32>(DamageTaken) + Taken, static_cast<int32>(MAX_uint16)));
+		LastHitTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
 		ForceNetUpdate();
 		OnConstructionChanged.Broadcast();
 	}
 	return Health - Taken;
 }
 
-void AHOLBuilding::OnRep_DamageTaken()
+void AHOLBuilding::OnRep_DamageTaken(const uint16 OldDamageTaken)
 {
+	if (DamageTaken > OldDamageTaken)
+	{
+		LastHitTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	}
 	OnConstructionChanged.Broadcast();
 }
 
@@ -288,6 +294,30 @@ FVector2D AHOLBuilding::GetBodySize() const
 {
 	const FHOLBuildingTypeRow* Type = GetType();
 	return Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D::ZeroVector;
+}
+
+bool AHOLBuilding::FindNearestBodyPoint(const UWorld& World, const FVector2D& From, const double MaxDistance, const int32 OwnerToSkip, FVector2D& OutPoint)
+{
+	double Best = FMath::Square(MaxDistance);
+	bool bFound = false;
+	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	{
+		const AHOLBuilding* Building = *It;
+		if (!IsValid(Building) || Building->IsFoundation() || !Building->IsSeenHere() || static_cast<int32>(Building->GetOwnerPlayer()) == OwnerToSkip)
+		{
+			continue;
+		}
+		const FBox2D Box = Building->GetBodyBounds();
+		const FVector2D Point(FMath::Clamp(From.X, Box.Min.X, Box.Max.X), FMath::Clamp(From.Y, Box.Min.Y, Box.Max.Y));
+		const double Distance = FVector2D::DistSquared(Point, From);
+		if (Distance <= Best)
+		{
+			Best = Distance;
+			OutPoint = Point;
+			bFound = true;
+		}
+	}
+	return bFound;
 }
 
 FBox2D AHOLBuilding::GetBodyBounds() const

@@ -106,6 +106,8 @@ public:
 	int32 GetDamageTaken() const { return DamageTaken; }
 	/** It took damage (its health bar shows, D345.2a). */
 	bool IsHurt() const { return DamageTaken > 0; }
+	/** This machine's world time (s) of its last hit (DamageTaken grew, server or client), negative if never hit here. */
+	double GetLastHitTime() const { return LastHitTime; }
 	/**
 	 * Server only, through UHOLConstructionSubsystem::DamageBuilding (armour already taken off): Points taken off its health,
 	 * no further than 0. Returns the health left; the caller destroys it at 0.
@@ -158,6 +160,12 @@ public:
 	void ClearRallyPoint();
 	/** True when a ground point is on the building's body (D324; a rally order there clears the rally point). */
 	bool IsOnBody(const FVector& Point) const;
+
+	/**
+	 * D345.2b, the drawing of a unit striking a building: the nearest point of the body (D324) of the nearest building this
+	 * machine shows, not a bare foundation, nor OwnerToSkip's (-1: none), within MaxDistance (cm) of From. False if none.
+	 */
+	static bool FindNearestBodyPoint(const UWorld& World, const FVector2D& From, double MaxDistance, int32 OwnerToSkip, FVector2D& OutPoint);
 
 	/** The rally point changed: on the server, on the owner's machine when it arrives. For the flag (J4.6). */
 	DECLARE_MULTICAST_DELEGATE(FOnRallyChanged);
@@ -220,7 +228,7 @@ private:
 	void OnRep_BuildersAtWork();
 
 	UFUNCTION()
-	void OnRep_DamageTaken();
+	void OnRep_DamageTaken(uint16 OldDamageTaken);
 
 	/** The forbidden area of the navmesh, then the look, both at once (BeginPlay: a building is seen the frame it appears). */
 	void RefreshAppearance();
@@ -302,6 +310,9 @@ private:
 	/** Health taken off it (D345.2a), at most its health: two bytes, to everyone, only when it is hit. */
 	UPROPERTY(ReplicatedUsing = OnRep_DamageTaken)
 	uint16 DamageTaken = 0;
+
+	/** Local, not replicated: the world time of the last growth of DamageTaken on this machine (its bar shows a while, D345.2b). */
+	double LastHitTime = -1.0;
 
 	/** What the pieces show (J6a.4): nothing, a ghost, a site, the finished building. */
 	enum class ELook : uint8

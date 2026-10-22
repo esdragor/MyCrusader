@@ -99,6 +99,8 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	/** A building's bar (D345.2a): this many times as wide as a unit's, this far above its top (cm). */
 	constexpr double BuildingBarWidthFactor = 3.0;
 	constexpr double BuildingBarLift = 150.0;
+	/** A building hit within this many seconds shows its bar, selected or not (D345.2b, the user's request at trial 5). */
+	constexpr double BuildingBarAfterHitSeconds = 5.0;
 	/** Colours (the user's nuance on J7-Q5 left the colour open): green for the player's own units, red for any other's. */
 	const FLinearColor BarOwnColor(0.12f, 0.8f, 0.12f);
 	const FLinearColor BarOtherColor(0.9f, 0.1f, 0.05f);
@@ -484,14 +486,16 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 			Transforms.Add(FTransform(Facing, FillCentre, FVector(FillWidth / ShapeSize, Height / ShapeSize, 1.0)));
 			CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
 		}
-		// The buildings' bars (D345.2a): over the selected building only (the user's choice), as the units' but wider; above its top
-		// (a site's, risen with its work).
+		// The buildings' bars (D345.2a): over the selected building (the user's choice) and, D345.2b, over one hit within
+		// BuildingBarAfterHitSeconds (an attacked building); as the units' but wider; above its top (a site's, risen with its work).
 		const AHOLBuilding* SelectedBuilding = PlayerController->GetSelection();
+		const double Now = GetWorld()->GetTimeSeconds();
 		for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 		{
 			const AHOLBuilding* Building = *It;
 			const FHOLBuildingTypeRow* Type = Building->GetType();
-			if (!Type || !Building->IsSeenHere() || Building != SelectedBuilding || Building->GetMaxHealth() <= 0)
+			const bool bRecentlyHit = Building->GetLastHitTime() >= 0.0 && Now - Building->GetLastHitTime() <= BuildingBarAfterHitSeconds;
+			if (!Type || !Building->IsSeenHere() || (Building != SelectedBuilding && !bRecentlyHit) || Building->GetMaxHealth() <= 0)
 			{
 				continue;
 			}

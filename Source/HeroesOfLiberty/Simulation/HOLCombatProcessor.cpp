@@ -3,8 +3,11 @@
 #include "Simulation/HOLCombatProcessor.h"
 
 #include "Async/ParallelFor.h"
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
@@ -42,6 +45,8 @@ namespace UE::HeroesOfLiberty::Combat
 	/** J7c.4, loop 18: an attacker of the enemy takes a place up to its weapon's reach and this margin (cm), at most MaxPlaceReach. */
 	constexpr double PlaceReachMargin = 20.0;
 	constexpr double MaxPlaceReach = 200.0;
+	/** D345.2b: a unit walking to strike a building aims this far (cm) beyond its radius off the body's box. */
+	constexpr double BuildingApproachGap = 40.0;
 
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
@@ -347,6 +352,22 @@ void UHOLCombatProcessor::FinishDying(const UWorld* World, UHOLUnitSubsystem& Un
 	}
 }
 
+int32 UHOLCombatProcessor::FindStepBuilding(const AHOLBuilding* Building) const
+{
+	if (!Building)
+	{
+		return INDEX_NONE;
+	}
+	for (int32 Index = 0; Index < StepBuildings.Num(); ++Index)
+	{
+		if (StepBuildings[Index].Building == Building)
+		{
+			return StepBuildings[Index].bGone ? INDEX_NONE : Index;
+		}
+	}
+	return INDEX_NONE;
+}
+
 uint64 UHOLCombatProcessor::HashArrows() const
 {
 	uint64 Hash = 14695981039346656037ull;
@@ -463,7 +484,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 			const bool bMaySeek = (!bWalkingOrder || Combat.Mode == EHOLCombatMode::AttackMove) && !Combat.bOrderedTarget;
 			const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
-			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
+			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
 				&& !Combat.bAttacking && Combat.Mode != EHOLCombatMode::AttackMove && (Fighter.bBusy || !bMaySeek || !bSearchStep);
 		}
 		if (bIdle)
@@ -660,6 +681,35 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		KillUnit(World, *Units, Victim, StepIndex);
 	};
 
+	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).
+	StepBuildings.Reset();
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		AHOLBuilding* Building = *It;
+		if (!IsValid(Building) || Building->IsActorBeingDestroyed() || Building->IsFoundation() || !Building->GetType() || Building->GetHealth() <= 0)
+		{
+			continue;
+		}
+		FStepBuilding& Step = StepBuildings.AddDefaulted_GetRef();
+		Step.Building = Building;
+		Step.Box = Building->GetBodyBounds();
+		Step.Id = Building->GetUniqueID();
+		Step.OwnerPlayer = Building->GetOwnerPlayer();
+	}
+	// A building hit to 0 this step: no longer a target of anyone (true when it is gone).
+	const auto MarkBuildingGone = [this](const AHOLBuilding* Building)
+	{
+		if (!IsValid(Building) || Building->IsActorBeingDestroyed() || Building->GetHealth() <= 0)
+		{
+			for (FStepBuilding& Step : StepBuildings)
+			{
+				Step.bGone |= Step.Building == Building;
+			}
+			return true;
+		}
+		return false;
+	};
+
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
 	// one killed in melee, its attackers look for another this step.
 	int32 Kept = 0;
@@ -669,6 +719,32 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		if (Arrow.ArrivalStep > StepIndex)
 		{
 			Arrows[Kept++] = Arrow;
+			continue;
+		}
+		// D345.2b: an arrow at a building, its damage through DamageBuilding (the building's ranged armour off), lost if gone.
+		if (!Arrow.TargetBuilding.IsExplicitlyNull())
+		{
+			AHOLBuilding* Building = Arrow.TargetBuilding.Get();
+			if (Building && FindStepBuilding(Building) != INDEX_NONE)
+			{
+				++TotalArrowsLanded;
+				const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Building, Arrow.Damage, static_cast<EHOLAttackType>(Arrow.BuildingAttackType));
+				const int32 Shooter = FindFighter(Arrow.Shooter);
+				if (Shooter != INDEX_NONE)
+				{
+					Fighters[Shooter].Combat->DamageDealt += Dealt;
+				}
+				if (LogHits != 0)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s lands on a building for %d"), StepIndex, Arrow.ShooterId,
+						*Arrow.ShooterType.ToString(), Dealt);
+				}
+				MarkBuildingGone(Building);
+			}
+			else
+			{
+				++TotalArrowsLost;
+			}
 			continue;
 		}
 		const int32 Victim = FindFighter(Arrow.Target);
@@ -732,7 +808,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// search (it needs bMaySeek on a walk, so an attack-move), then the branch without target: bFlanking false,
 		// FlankWaitSeconds 0, TickIdle, no walk to stop (not approaching), no end of attack-move. Its AttackerCount is left
 		// as is there too.
-		if (FastIdleUnit != 0 && !Combat.Target.IsSet() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching && !Combat.bAttacking
+		if (FastIdleUnit != 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching && !Combat.bAttacking
 			&& Combat.Mode != EHOLCombatMode::AttackMove)
 		{
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None; // not approaching
@@ -953,6 +1029,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// target. Every step, the full search at its rate unchanged; an ordered target is never replaced (bMaySeek).
 		bool bZoneTaken = false; // a target taken by the zone of control: walked to at once, not to the former one
 		if (bStopAtContact && bMaySeek && Fighter.Order->Phase != EHOLMovePhase::None && !HOLCombat::IsRangedAttack(Constants.AttackRange)
+			&& (Combat.TargetBuilding.IsExplicitlyNull() || Constants.AggressionRadius > 0.f) // D345.2b: not a Peasant sent to a building
 			&& (Target == INDEX_NONE || !HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange)))
 		{
 			const double Zone = FMath::Max(static_cast<double>(ZoneOfControl), 0.0);
@@ -1007,9 +1084,154 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 		}
 
+		// D345.2b: an enemy unit taken on makes it drop the building it attacked.
+		if (Target != INDEX_NONE && !Combat.TargetBuilding.IsExplicitlyNull())
+		{
+			// Rare (once per drop): a scenario waits for it.
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d drops a building for #%u %s"), StepIndex, Fighter.UnitId,
+				*Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Fighters[Target].UnitId, *Fighters[Target].Constants->TypeName.ToString());
+			Combat.TargetBuilding.Reset();
+		}
 		const int32 IntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
 		if (Target == INDEX_NONE)
 		{
+			// D345.2b: no enemy unit. Its building (ordered, or taken on before), else one it takes on by itself: on an
+			// attack-move, at rest within its aggression radius (none for the Peasant), on hold within its reach.
+			int32 BuildingIndex = INDEX_NONE;
+			if (!Combat.TargetBuilding.IsExplicitlyNull())
+			{
+				BuildingIndex = FindStepBuilding(Combat.TargetBuilding.Get());
+				if (BuildingIndex != INDEX_NONE && StepBuildings[BuildingIndex].OwnerPlayer == Fighter.State->OwnerPlayer)
+				{
+					BuildingIndex = INDEX_NONE;
+				}
+				if (BuildingIndex == INDEX_NONE)
+				{
+					Combat.TargetBuilding.Reset();
+					Combat.bAttacking = false;
+				}
+			}
+			if (BuildingIndex == INDEX_NONE && Constants.BuildingAttack > 0 && bMaySeek && (bSearchStep || bLost) && StepBuildings.Num() > 0)
+			{
+				HOLCombat::FSeeker Seeker;
+				Seeker.AggressionRadius = Constants.AggressionRadius;
+				Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
+					: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
+				const float BuildingSearch = HOLCombat::GetBuildingSearchRadius(Seeker, Constants);
+				if (BuildingSearch > 0.f)
+				{
+					BuildingCandidates.Reset();
+					BuildingCandidateIndices.Reset();
+					for (int32 Other = 0; Other < StepBuildings.Num(); ++Other)
+					{
+						const FStepBuilding& Step = StepBuildings[Other];
+						if (!Step.bGone && Step.OwnerPlayer != Fighter.State->OwnerPlayer)
+						{
+							HOLCombat::FBuildingCandidate& Candidate = BuildingCandidates.AddDefaulted_GetRef();
+							Candidate.Id = Step.Id;
+							Candidate.Box = Step.Box;
+							BuildingCandidateIndices.Add(Other);
+						}
+					}
+					const int32 Chosen = HOLCombat::ChooseBuilding(Position, Constants.Radius, BuildingSearch, BuildingCandidates);
+					if (Chosen != INDEX_NONE)
+					{
+						BuildingIndex = BuildingCandidateIndices[Chosen];
+						Combat.TargetBuilding = StepBuildings[BuildingIndex].Building;
+						Combat.bAttacking = false;
+					}
+				}
+			}
+			if (BuildingIndex != INDEX_NONE && World)
+			{
+				Combat.bFlanking = false;
+				Combat.FlankWaitSeconds = 0.f;
+				FStepBuilding& Step = StepBuildings[BuildingIndex];
+				const bool bHold = Combat.Mode == EHOLCombatMode::Hold;
+				const double Edge = HOLCombat::GetEdgeDistanceToBox(Position, Constants.Radius, Step.Box);
+				const bool bWalkEndedShort = Combat.bApproaching && Fighter.Order->Phase == EHOLMovePhase::None;
+				if (!HOLCombat::IsBuildingInReach(Constants, Edge, Combat.bAttacking, bWalkEndedShort, bHold))
+				{
+					Combat.bAttacking = false;
+					HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
+					if (bHold)
+					{
+						Combat.TargetBuilding.Reset(); // on hold, never a walk to it
+						continue;
+					}
+					// A walk beside its wall: the first, or again at the search rate once the last one ended short.
+					if (!Combat.bApproaching || (bSearchStep && Fighter.Order->Phase == EHOLMovePhase::None))
+					{
+						const FVector2D Point = HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.Box, BuildingApproachGap);
+						Commands->IssueCombatWalk(Fighter.UnitId, FVector(Point.X, Point.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
+						Combat.ApproachPoint = Point;
+						Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
+						Combat.bApproaching = true;
+					}
+					continue;
+				}
+				// In reach: it stands and strikes, with its building attack.
+				if (Fighter.Order->Phase != EHOLMovePhase::None)
+				{
+					Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
+					StopWalk(*World, Fighter);
+				}
+				Combat.bApproaching = false;
+				const int32 BuildingIntervalMs = HOLCombat::ToMilliseconds(Constants.BuildingAttackInterval);
+				if (!Combat.bAttacking)
+				{
+					Combat.CooldownMs = HOLCombat::StartAttack(Combat.CooldownMs, BuildingIntervalMs, Constants.AttackWindUpPercent);
+					Combat.bAttacking = true;
+				}
+				if (!HOLCombat::TickAttack(Combat.CooldownMs, StepMs, BuildingIntervalMs))
+				{
+					continue;
+				}
+				++Combat.Hits;
+				++TotalHits;
+				if (Combat.FirstHitStep < 0)
+				{
+					Combat.FirstHitStep = StepIndex;
+				}
+				const FVector2D Aim(FMath::Clamp(Position.X, Step.Box.Min.X, Step.Box.Max.X), FMath::Clamp(Position.Y, Step.Box.Min.Y, Step.Box.Max.Y));
+				if (HOLCombat::IsBuildingShot(Constants))
+				{
+					// An arrow, as at a unit: it lands after its flight to the wall's nearest point.
+					const int32 FlightMs = HOLCombat::GetArrowFlightMilliseconds(Position, Aim, HOLCombat::GetArrowSpeed());
+					FArrow& Arrow = Arrows.AddDefaulted_GetRef();
+					Arrow.Shooter = Fighter.Entity;
+					Arrow.ShooterId = Fighter.UnitId;
+					Arrow.ShooterType = Constants.TypeName;
+					Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
+					Arrow.Damage = Constants.BuildingAttack;
+					Arrow.ReleaseStep = StepIndex;
+					Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
+					Arrow.TargetBuilding = Step.Building;
+					Arrow.BuildingAttackType = static_cast<uint8>(Constants.BuildingAttackType);
+					++TotalArrowsReleased;
+					if (UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>())
+					{
+						FHOLArrowLaunch Launch;
+						Launch.From = Fighter.Location;
+						Launch.To = FVector(Aim.X, Aim.Y, Fighter.Location.Z);
+						Launch.FlightMs = FlightMs;
+						ArrowDisplay->Launch(Launch);
+					}
+					continue;
+				}
+				const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Step.Building, Constants.BuildingAttack, Constants.BuildingAttackType);
+				Combat.DamageDealt += Dealt;
+				if (LogHits != 0)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s hits a building for %d"), StepIndex, Fighter.UnitId, *Constants.TypeName.ToString(), Dealt);
+				}
+				if (MarkBuildingGone(Step.Building))
+				{
+					Combat.TargetBuilding.Reset();
+					Combat.bAttacking = false;
+				}
+				continue;
+			}
 			Combat.bFlanking = false; // J7c.4 loop 21
 			Combat.FlankWaitSeconds = 0.f;
 			HOLCombat::TickIdle(Combat.CooldownMs, StepMs);

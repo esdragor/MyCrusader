@@ -68,11 +68,16 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/**
 	 * Target of an Attacking unit (J7b.4, J7-Q5), written only with that activity: its replication slot (the chunks'
 	 * slots, whose identifier the client reads), cheaper than its identifier, which is never recycled. 4 095 slots
-	 * (0 to 4 094, 65 chunks), beyond the population caps; InvalidTargetSlot: a target not replicated yet (sent again
+	 * (0 to 4 093, BuildingTargetSlot taken off, 65 chunks), beyond the population caps; InvalidTargetSlot: a target not replicated yet (sent again
 	 * once it is), or in a slot past those (from the 66th chunk on): its attacker is then not turned to it (HasTargetSlot).
 	 */
 	static constexpr int32 TargetSlotBits = 12;
 	static constexpr uint16 InvalidTargetSlot = (1 << TargetSlotBits) - 1;
+	/**
+	 * D345.2b: the target is a building (no bit more: one value of the slot's 12 bits, so 4 094 unit slots, 0 to 4 093).
+	 * The client turns the striker to the nearest building body by it (AHOLBuilding::FindNearestBodyPoint).
+	 */
+	static constexpr uint16 BuildingTargetSlot = InvalidTargetSlot - 1;
 	/**
 	 * Facing of a unit at rest at its formation place (J7b.4, deferred item of J7a.4, choice B): written only with the
 	 * activity "idle, facing its front", 64 directions (5.6 deg).
@@ -141,7 +146,9 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	void SetCombat(int32 InHealth, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f);
 
 	/** Attacking a known target: TargetSlot is a real slot, not InvalidTargetSlot (itself a slot from the 66th chunk on). */
-	bool HasTargetSlot() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot != InvalidTargetSlot; }
+	bool HasTargetSlot() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot < BuildingTargetSlot; }
+	/** Attacking a building (D345.2b). */
+	bool HasBuildingTarget() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot == BuildingTargetSlot; }
 
 	/** Front (deg, -180 to 180) of a state that faces it. */
 	float GetFrontYaw() const;

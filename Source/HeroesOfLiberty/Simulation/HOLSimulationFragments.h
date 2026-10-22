@@ -9,6 +9,8 @@
 #include "Simulation/HOLGatherRules.h"
 #include "HOLSimulationFragments.generated.h"
 
+class AHOLBuilding;
+
 /** Transform at the start of the last fixed step: the presentation interpolates from it to FTransformFragment. */
 USTRUCT()
 struct HEROESOFLIBERTY_API FHOLPreviousTransformFragment : public FMassFragment
@@ -431,6 +433,13 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	/** Step it fell to 0 health at (J7b.4): destroyed HOLCombat::DyingSteps later; -1: alive. */
 	int64 DeathStep = -1;
 
+	/**
+	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
+	 * on an attack-move with no enemy unit found, or at rest within its aggression radius. Only while it has no unit
+	 * target: an enemy unit it takes on makes it drop the building. Unset: none.
+	 */
+	TWeakObjectPtr<AHOLBuilding> TargetBuilding;
+
 	/** Its target was ordered (J7b.3): kept, never replaced by its own choice, until it dies. */
 	bool bOrderedTarget = false;
 
@@ -468,6 +477,7 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	void Disengage()
 	{
 		Target = FMassEntityHandle();
+		TargetBuilding.Reset();
 		LastAttacker = FMassEntityHandle();
 		bOrderedTarget = false;
 		bAttacking = false;

@@ -342,6 +342,8 @@ public:
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
+	/** Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building. */
+	void RequestAttackBuilding(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
 	/** Asks the server for an attack-move of units to a ground point (J7b.3), as one group. */
 	void RequestAttackMove(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to stop units (J7b.3), or to stop them holding their position (bHold). */
@@ -391,6 +393,8 @@ public:
 	 * nearest Point on the server (any player's), its armour taken off; destroyed at 0 (hol.Cheat.DamageNear, DamageSelected).
 	 */
 	void RequestCheatDamageBuilding(const FVector& Point, int32 Amount, uint8 AttackType);
+	/** D345.2b, scenarios: a finished building of TypeName for Slot, on the tile grid around Point (hol.Cheat.SpawnBuilding). */
+	void RequestCheatSpawnBuilding(FName TypeName, int32 Slot, const FVector& Point);
 
 	/** A « +10 » shown on this machine (J5c.3): the unload, when it arrived, and its line over others at the same place. */
 	struct FShownDepositPopup
@@ -460,6 +464,8 @@ private:
 	void HandleOrderCompleted();
 	void HandleDeselect();
 	void HandleNextIdle();
+	/** Enter: a test scenario waiting on a waitkey step goes on (HOLTestHooks::PressContinueKey). */
+	void HandleContinueKey();
 	void HandleCategoryKey(EHOLBuildingCategory Category);
 	void HandleSubgroupKey();
 	/** The group's buildings as the pure rules read them (their type, a main centre alone). */
@@ -491,6 +497,8 @@ private:
 	/** The combat orders (J7b.3): attack a unit, attack-move, stop or hold (EHOLOrderKind as a byte); the server checks them. */
 	UFUNCTION(Server, Reliable)
 	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	UFUNCTION(Server, Reliable)
+	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
 	UFUNCTION(Server, Reliable)
 	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
 	UFUNCTION(Server, Reliable)
@@ -543,6 +551,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatSpawnBuilding(FName TypeName, int32 Slot, FVector_NetQuantize Point);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

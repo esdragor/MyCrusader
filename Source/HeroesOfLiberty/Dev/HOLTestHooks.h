@@ -33,6 +33,8 @@ namespace HOLTestHooks
 		FString Error;
 		/** The notes of its steps (note <Text>), in their order. */
 		TArray<FString> Notes;
+		/** Not empty while a step waits for the continue key (waitkey): what the panel says, in its own colour. */
+		FString WaitingForKey;
 		/** The player closed the panel: hidden until the next scenario. */
 		bool bClosed = false;
 	};
@@ -45,4 +47,10 @@ namespace HOLTestHooks
 
 	/** Calls OnScenarioChanged; when nobody set it (dedicated server), puts Fallback on the screen as a debug message. */
 	HEROESOFLIBERTY_API void NotifyScenarioChanged(const FString& Fallback, const FColor& FallbackColor);
+
+	/**
+	 * The continue key was pressed in game (Enter, the player controller; not while the console or a menu has it): a
+	 * run waiting on a waitkey step goes on. False when none was waiting (the key did nothing).
+	 */
+	HEROESOFLIBERTY_API bool PressContinueKey();
 }

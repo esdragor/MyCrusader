@@ -219,3 +219,82 @@ namespace HOLCombat
 		return FMath::Max(ArrowSpeed, 1.f);
 	}
 }
+
+double HOLCombat::GetEdgeDistanceToBox(const FVector2D& Position, const float Radius, const FBox2D& Box)
+{
+	const double DX = FMath::Max3(Box.Min.X - Position.X, 0.0, Position.X - Box.Max.X);
+	const double DY = FMath::Max3(Box.Min.Y - Position.Y, 0.0, Position.Y - Box.Max.Y);
+	return FMath::Sqrt(DX * DX + DY * DY) - Radius;
+}
+
+bool HOLCombat::IsBuildingShot(const FHOLUnitTypeConstants& Attacker)
+{
+	return Attacker.BuildingAttackType == EHOLAttackType::Ranged;
+}
+
+bool HOLCombat::IsBuildingInReach(const FHOLUnitTypeConstants& Attacker, const double EdgeDistance, const bool bStriking, const bool bWalkEndedShort, const bool bHold)
+{
+	const double Reach = Attacker.BuildingAttackRange;
+	if (bStriking || bWalkEndedShort || bHold || IsBuildingShot(Attacker))
+	{
+		return EdgeDistance <= Reach;
+	}
+	return EdgeDistance <= FMath::Min(Reach, static_cast<double>(BuildingApproachReach));
+}
+
+float HOLCombat::GetBuildingSearchRadius(const FSeeker& Seeker, const FHOLUnitTypeConstants& Attacker)
+{
+	if (Attacker.BuildingAttack <= 0)
+	{
+		return 0.f;
+	}
+	switch (Seeker.Mode)
+	{
+	case ESeekMode::Hold:
+		return Attacker.BuildingAttackRange;
+	case ESeekMode::AttackMove:
+		return FMath::Max(Seeker.AggressionRadius > 0.f ? Seeker.AggressionRadius : AttackMoveRadius, Attacker.BuildingAttackRange);
+	default:
+		return Seeker.AggressionRadius > 0.f ? FMath::Max(Seeker.AggressionRadius, Attacker.BuildingAttackRange) : 0.f;
+	}
+}
+
+int32 HOLCombat::ChooseBuilding(const FVector2D& Position, const float Radius, const float SearchRadius, const TConstArrayView<FBuildingCandidate> Candidates)
+{
+	int32 Best = INDEX_NONE;
+	double BestDistance = 0.0;
+	if (SearchRadius <= 0.f)
+	{
+		return Best;
+	}
+	for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+	{
+		const double Distance = GetEdgeDistanceToBox(Position, Radius, Candidates[Index].Box);
+		if (Distance > SearchRadius)
+		{
+			continue;
+		}
+		if (Best == INDEX_NONE || Distance < BestDistance || (Distance == BestDistance && Candidates[Index].Id < Candidates[Best].Id))
+		{
+			Best = Index;
+			BestDistance = Distance;
+		}
+	}
+	return Best;
+}
+
+FVector2D HOLCombat::GetBuildingApproachPoint(const FVector2D& Position, const float Radius, const FBox2D& Box, const double Gap)
+{
+	const FVector2D Nearest(FMath::Clamp(Position.X, Box.Min.X, Box.Max.X), FMath::Clamp(Position.Y, Box.Min.Y, Box.Max.Y));
+	FVector2D Out = Position - Nearest;
+	if (Out.IsNearlyZero())
+	{
+		// Inside the box (pushed in): out through the nearest side.
+		const double Left = Position.X - Box.Min.X, Right = Box.Max.X - Position.X, Down = Position.Y - Box.Min.Y, Up = Box.Max.Y - Position.Y;
+		const double Least = FMath::Min(FMath::Min(Left, Right), FMath::Min(Down, Up));
+		Out = Least == Left ? FVector2D(-1, 0) : Least == Right ? FVector2D(1, 0) : Least == Down ? FVector2D(0, -1) : FVector2D(0, 1);
+		const FVector2D Side(Out.X < 0 ? Box.Min.X : Out.X > 0 ? Box.Max.X : Position.X, Out.Y < 0 ? Box.Min.Y : Out.Y > 0 ? Box.Max.Y : Position.Y);
+		return Side + Out * (Radius + Gap);
+	}
+	return Nearest + Out.GetSafeNormal() * (Radius + Gap);
+}

@@ -20,6 +20,19 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 - Au plus 6 attaquants de mêlée vont sur une même cible hors de portée ; les autres en prennent une moins entourée.
 - Une unité à 0 PV reste 20 pas (1 s à 20 Hz) pour sa chute.
 
+## Attaque contre bâtiment
+
+| Unité | Attaque | Type | Dégâts par coup (armure distance des bâtiments retirée) | Cadence | Dégâts / s | Portée (bord du corps au bâtiment) |
+|---|---|---|---|---|---|---|
+| Infanterie légère | — | — | — | — | — | — |
+| Archer | 5 | Distance | 1 | 1,625 s | 0,62 | 5 cases (20 m) |
+| Paysan | 10 | Mêlée | 10 | 2,1 s | 4,76 | 1 case (4 m) |
+| Piquier | 20 | Mêlée | 20 | 2,1 s | 9,52 | 1 case (4 m) |
+| Homme d'armes | 20 | Mêlée | 20 | 2,1 s | 9,52 | 1 case (4 m) |
+
+- Contre un bâtiment, l'unité se sert toujours de cette attaque (D345). Les bâtiments ont 40 d'armure distance, rien contre les autres types ; 1 dégât au moins.
+- Cibles : sur ordre (clic droit), en attaque-déplacement quand aucune unité ennemie n'est à portée de recherche, au repos dans le rayon d'agressivité sans unité ennemie (le Paysan seulement sur ordre) ; une unité ennemie qui arrive fait lâcher le bâtiment.
+
 ## Déplacement et corps
 
 | Unité | Vitesse | Rayon du corps | Distance d'évitement |

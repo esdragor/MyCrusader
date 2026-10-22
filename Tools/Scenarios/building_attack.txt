@@ -1,0 +1,106 @@
+# Unités contre bâtiments (D345.2b) : Archers à 1 par flèche, ordre sur une maison ennemie, attaque seule au repos, unité ennemie qui fait lâcher, attaque-déplacement (unités d'abord), Paysans sur ordre
+# Plain, deux joueurs (building_attack.json). Positions dans le repère du centre du joueur (X vers le milieu), comme
+# j7_army : l'armée devant, au-delà des rochers ; le camp ennemi (joueur 2, bâtiments posés par hol.Cheat.SpawnBuilding)
+# ~25 m plus loin, hors du rayon d'agressivité (16 m ; 21,3 m pour les Archers) : rien ne part tout seul.
+# Chaque étape attend la touche Entrée (waitkey) : regarder aussi longtemps qu'on veut, puis Entrée.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# Quatre Paysans devant le centre.
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 150
+waitunits 4
+# Le camp ennemi : une maison (600 PV) ; plus loin, une caserne (1500 PV). La 2e maison vient à l'étape c.
+hol.Cheat.SpawnBuilding House 1 7000 -1000
+hol.Cheat.SpawnBuilding Barracks 1 10800 0
+waitlog Cheat: spawned Barracks of slot 1
+# Les Archers d'abord, seuls soldats : hol.Select.Army ne prend qu'eux, rangés dans le groupe 1 (étape b).
+hol.Camera.FocusNear 3800 0
+frames 2
+hol.Units.SpawnHere 6 Archer 0 300
+waitunits 10
+hol.Camera.FocusNear 4300 0
+frames 5
+hol.Select.Army
+waitlog Selection: 6 units
+hol.Select.Group Add 1
+# Puis la mêlée, devant eux.
+hol.Camera.FocusNear 4500 -500
+frames 2
+hol.Units.SpawnHere 4 Spearman 0 250
+hol.Camera.FocusNear 4500 500
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 18
+hol.Camera.FocusNear 5600 -500
+frames 2
+note L'armée et le camp ennemi sont en place.
+# b (d'abord). Les Archers seuls sur la maison : 1 PV par flèche (armure distance 40).
+waitkey Entrée : les Archers tirent sur la maison
+hol.Select.Group Select 1
+hol.Camera.FocusNear 6000 -600
+frames 5
+hol.Select.OrderNear 7000 -1000
+waitlog for 6 units on building House of slot 1
+note b. Les Archers (seuls) tirent sur la maison : chaque flèche n'ôte qu'1 PV (barre de vie au-dessus).
+waitlog EHOLAttackType::Ranged), health
+# a. Toute l'armée sur la maison : la mêlée la frappe (20 par coup, toutes les 2,1 s).
+waitkey Entrée : clic droit de l'armée sur la maison
+hol.Select.Army
+hol.Camera.FocusNear 6000 -600
+frames 5
+hol.Select.OrderNear 7000 -1000
+waitlog for 14 units on building House of slot 1
+note a. Toute l'armée reçoit un clic droit sur la maison : la mêlée va la frapper.
+waitlog Building destroyed: House of slot 1
+# c. Une maison ennemie paraît à ~10 m de l'armée au repos (moins de 16 m) : elle la frappe d'elle-même.
+waitkey Entrée : une maison ennemie près de l'armée au repos
+hol.Cheat.SpawnBuilding House 1 7000 1200
+hol.Camera.FocusNear 6600 300
+frames 5
+note c. Une maison ennemie paraît à ~10 m de l'armée, qui n'a pas d'ordre : elle va la frapper toute seule.
+waitlog EHOLAttackType::Melee), health
+# d. Des Lanciers ennemis au milieu de l'armée (à portée des Archers, contre la mêlée) : chaque unité lâche la maison.
+waitkey Entrée : des Lanciers ennemis arrivent
+# La maison de c est peut-être déjà tombée : une maison neuve à la place de la première (ses décombres sont partis),
+# à moins de 16 m de l'armée ; les Lanciers n'arrivent qu'une fois l'armée dessus.
+hol.Cheat.SpawnBuilding House 1 7000 -1000
+hol.Camera.FocusNear 6600 -300
+frames 5
+note d. Une maison ennemie est reconstruite près de l'armée : elle va la frapper.
+waitlog EHOLAttackType::Melee), health
+# Les Lanciers naissent au centre de l'écran : la caméra remise en place (elle a pu glisser pendant l'attente).
+hol.Camera.FocusNear 6600 -300
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 200
+note d. Trois Lanciers ennemis arrivent : chaque unité lâche la maison pour eux, puis y revient.
+waitlog drops a building for
+# e. La caserne et sa garde : attaque-déplacement au-delà (unités d'abord, puis la caserne).
+waitkey Entrée : attaque-déplacement vers la caserne gardée
+hol.Camera.FocusNear 10300 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 1 250
+waitunits 4
+wait 1
+hol.Camera.FocusNear 9800 0
+frames 5
+hol.Select.Army
+note e. Attaque-déplacement au-delà de la caserne : la garde d'abord, la caserne ensuite.
+hol.Select.AttackMove -2600 0
+# La garde tombe en ~30 s, la caserne (1500 PV) ~30 s plus tard.
+wait 30
+waitlog Building destroyed: Barracks of slot 1
+# f. Les Paysans ne frappent un bâtiment que sur ordre.
+waitkey Entrée : une maison ennemie près des Paysans
+hol.Cheat.SpawnBuilding House 1 1500 0
+hol.Camera.FocusNear 400 0
+frames 5
+hol.Select.NextIdle
+# La caméra glisse vers le Paysan : la laisser finir, puis la remettre sur la maison.
+wait 2
+hol.Camera.FocusNear 1000 0
+frames 5
+note f. Une maison ennemie près du centre : les Paysans ne la frappent pas d'eux-mêmes ; un Paysan reçoit un clic droit dessus (10 par coup).
+hol.Select.OrderNear 1500 0
+waitlog on building House of slot 1
+note Essaie aussi : les autres Paysans, Maj + clic droit, tenir la position (V) près d'un bâtiment ennemi.

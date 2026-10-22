@@ -1219,13 +1219,6 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	RefreshAges(PlayerState);
 
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
-	TArray<AHOLBuilding*> CommandBuildings;
-	if (PlayerController)
-	{
-		PlayerController->GetCommandBuildings(CommandBuildings);
-	}
-	const AHOLBuilding* Site = CommandBuildings.Num() == 1 ? CommandBuildings[0] : nullptr;
-	const FHOLBuildingTypeRow* Type = Site ? Site->GetType() : nullptr;
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
@@ -1271,12 +1264,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		}
 		case EHOLGridCommand::CancelConstruction:
 		{
-			// What a cancel gives back (D345): all before the first work, then the share of the cost not built. The tooltip
-			// shows the amount under its name, without an effect line (the user's choice).
-			const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Site->GetConstructionState(),
-				Site->GetConstructionWork(), Site->GetTotalWork()) : FHOLResources();
+			// The tooltip is its name alone: no amount, no effect line (the user's choice; the cancel refunds the share of
+			// the cost not built, D345).
 			GridCell->SetCommand(LOCTEXT("Cancel", "Annuler"), EHOLGridCellState::Ready);
-			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), Refund, FHOLResources(), FText());
+			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), FHOLResources(), FHOLResources(), FText());
 			break;
 		}
 		case EHOLGridCommand::AttackMove:

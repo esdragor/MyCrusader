@@ -12,6 +12,7 @@
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Misc/App.h"
 #include "Misc/CoreDelegates.h"
 #include "Misc/FileHelper.h"
 #include "Misc/OutputDevice.h"
@@ -41,6 +42,11 @@
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
  *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
  *                        "Scenario note: Text" (what a scenario asks to try)
+ *   waitkey [Text]       waits for the user to press the continue key (Enter, in game), Text (else « Entrée : étape
+ *                        suivante ») shown on the panel in its own colour meanwhile; no timeout. Logs "Scenario waits
+ *                        for the key: Text", then "Scenario key: go on (key|auto)". Goes on by itself after
+ *                        AutoContinueSeconds in a scripted check (hol.Test.Run), with -unattended, under automation or
+ *                        with hol.Scenario.AutoContinue 1 (dry runs of a scenario)
  *   signal <File>        writes the file (absolute path): another game on the machine waiting for it goes on
  *   waitfile <File> [S]  waits for the file to exist: two clients wait for each other (each one's last report done
  *                        before either quits, quick_check's net part); S: its own timeout in seconds, instead of 60
@@ -92,6 +98,14 @@ namespace UE::HeroesOfLiberty::Dev
 	constexpr double StepTimeoutSeconds = 60.0;
 	/** Frames before waitui looks: a screen opened by a command is pushed on the next frame, its fade starts after. */
 	constexpr int32 WaitUIMinFrames = 3;
+	/** A waitkey that nobody will answer (scripted check, unattended, auto-continue) goes on after this. */
+	constexpr double AutoContinueSeconds = 1.0;
+	const TCHAR* const DefaultWaitKeyText = TEXT("Entrée : étape suivante");
+
+	TAutoConsoleVariable<int32> CVarScenarioAutoContinue(
+		TEXT("hol.Scenario.AutoContinue"),
+		0,
+		TEXT("1: a scenario's waitkey steps go on by themselves after 1 s, without the continue key (dry runs off-screen)"));
 
 	/** Keeps the log lines written during a run, from any thread. */
 	class FTestLogWatcher : public FOutputDevice
@@ -276,6 +290,27 @@ namespace UE::HeroesOfLiberty::Dev
 				HOLTestHooks::GetScenarioDisplay().Notes.Add(Rest);
 				HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
 			}
+			else if (Verb == TEXT("waitkey"))
+			{
+				// As long as the user wants: no timeout.
+				StepTimeout = TNumericLimits<double>::Max();
+				HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+				if (FramesWaited++ == 0)
+				{
+					bKeyPressed = false;
+					bWaitingForKey = true;
+					Display.WaitingForKey = Rest.IsEmpty() ? FString(DefaultWaitKeyText) : Rest;
+					UE_LOG(LogHOLTest, Display, TEXT("Scenario waits for the key: %s"), *Display.WaitingForKey);
+					HOLTestHooks::NotifyScenarioChanged(Display.WaitingForKey, FColor::Cyan);
+				}
+				const bool bAuto = ShouldAutoContinue() && Waited >= AutoContinueSeconds;
+				bDone = bKeyPressed || bAuto;
+				if (bDone)
+				{
+					EndWaitForKey();
+					UE_LOG(LogHOLTest, Display, TEXT("Scenario key: go on (%s)"), bKeyPressed ? TEXT("key") : TEXT("auto"));
+				}
+			}
 			else if (Verb == TEXT("signal"))
 			{
 				FFileHelper::SaveStringToFile(TEXT("signal"), *Rest);
@@ -337,8 +372,30 @@ namespace UE::HeroesOfLiberty::Dev
 			return Ticker.IsValid();
 		}
 
+		/** True when nobody will press the key: a scripted check, an unattended or automated run, or auto-continue. */
+		bool ShouldAutoContinue() const
+		{
+			return Options.bQuitOnTimeout || FApp::IsUnattended() || GIsAutomationTesting
+				|| CVarScenarioAutoContinue.GetValueOnGameThread() > 0;
+		}
+
+		/** bNotify false at the end of a run: the game may be exiting, the panel is left alone. */
+		void EndWaitForKey(const bool bNotify = true)
+		{
+			if (bWaitingForKey)
+			{
+				bWaitingForKey = false;
+				HOLTestHooks::GetScenarioDisplay().WaitingForKey.Empty();
+				if (bNotify)
+				{
+					HOLTestHooks::NotifyScenarioChanged(FString(), FColor::White);
+				}
+			}
+		}
+
 		void Finish(const bool bQuit)
 		{
+			EndWaitForKey(/*bNotify*/ false);
 			GLog->RemoveOutputDevice(Watcher.Get());
 			bRunning = false;
 			FTSTicker::RemoveTicker(Ticker);
@@ -364,6 +421,22 @@ namespace UE::HeroesOfLiberty::Dev
 		FTSTicker::FDelegateHandle Ticker;
 		/** From Start to Finish: the watcher is in GLog. */
 		bool bRunning = false;
+		/** The current step is a waitkey: the panel says so, the key is awaited. */
+		bool bWaitingForKey = false;
+		/** The continue key was pressed during the current waitkey. */
+		bool bKeyPressed = false;
+
+	public:
+		/** The continue key: true when this run was waiting for it. */
+		bool PressKey()
+		{
+			if (!bRunning || !bWaitingForKey)
+			{
+				return false;
+			}
+			bKeyPressed = true;
+			return true;
+		}
 	};
 
 	/** One run per owner: hol.Test.Run's, a scenario's. */
@@ -376,6 +449,16 @@ namespace UE::HeroesOfLiberty::Dev
 		{
 			Pair.Value->Stop();
 		}
+	}
+
+	bool PressContinueKey()
+	{
+		bool bWaited = false;
+		for (const TPair<FName, TUniquePtr<FTestSequence>>& Pair : Sequences)
+		{
+			bWaited |= Pair.Value->PressKey();
+		}
+		return bWaited;
 	}
 
 	FTestSequence& GetSequence(const FName Owner)
@@ -423,6 +506,13 @@ bool HOLTestSequence::LoadSteps(const FString& File, TArray<FString>& OutSteps)
 		}
 	}
 	return true;
+}
+
+bool HOLTestHooks::PressContinueKey()
+{
+	const bool bWaited = UE::HeroesOfLiberty::Dev::PressContinueKey();
+	UE_LOG(LogHOLTest, Display, TEXT("Scenario key: pressed (%s)"), bWaited ? TEXT("a step was waiting") : TEXT("nothing waiting"));
+	return bWaited;
 }
 
 void HOLTestSequence::Run(const FName Owner, TArray<FString>&& Steps, FRunOptions&& Options)

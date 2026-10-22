@@ -29,6 +29,8 @@ namespace UE::HeroesOfLiberty::UI::ScenarioPanel
 	constexpr float RestartMinWidth = 96.f;
 	constexpr float RestartGap = 6.f;
 	constexpr float NoteGap = 4.f;
+	/** The line of a step waiting for the continue key: a light cyan, unlike the notes and the gold « prêt ». */
+	const FLinearColor WaitKeyColor(0.35f, 0.85f, 0.95f, 1.f);
 	const FName CloseName(TEXT("ScenarioClose"));
 	const FName RestartName(TEXT("ScenarioRestart"));
 
@@ -127,6 +129,11 @@ void UHOLScenarioPanel::Refresh()
 		}
 		NoteColumn->SetVisibility(ShownNotes.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
+	if (WaitKeyLine)
+	{
+		WaitKeyLine->SetText(FText::AsCultureInvariant(Display.WaitingForKey));
+		WaitKeyLine->SetVisibility(Display.WaitingForKey.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
 	UE_LOG(LogHOLUI, Display, TEXT("Scenario panel: %s"), *Describe());
 }
 
@@ -145,7 +152,8 @@ FString UHOLScenarioPanel::Describe() const
 	}
 	const TCHAR* StateName = Display.State == FDisplay::EState::Ready ? TEXT("ready")
 		: Display.State == FDisplay::EState::Failed ? TEXT("failed") : TEXT("preparing");
-	return FString::Printf(TEXT("scenario %s %s, %d notes"), *Display.Name, StateName, ShownNotes.Num());
+	return FString::Printf(TEXT("scenario %s %s, %d notes%s"), *Display.Name, StateName, ShownNotes.Num(),
+		Display.WaitingForKey.IsEmpty() ? TEXT("") : TEXT(", waiting for the key"));
 }
 
 bool UHOLScenarioPanel::ClickWidget(const FName Name)
@@ -257,4 +265,11 @@ void UHOLScenarioPanel::BuildLayout()
 	NoteColumn = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("ScenarioNotes"));
 	NoteColumn->SetVisibility(ESlateVisibility::Collapsed);
 	Column->AddChildToVerticalBox(NoteColumn)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+
+	WaitKeyLine = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), TEXT("ScenarioWaitKey"));
+	WaitKeyLine->SetStyle(UHOLTextStyleHUDHeading::StaticClass());
+	WaitKeyLine->SetAutoWrapText(true);
+	WaitKeyLine->SetColorAndOpacity(WaitKeyColor);
+	WaitKeyLine->SetVisibility(ESlateVisibility::Collapsed);
+	Column->AddChildToVerticalBox(WaitKeyLine)->SetPadding(FMargin(0.f, 8.f, 0.f, 0.f));
 }

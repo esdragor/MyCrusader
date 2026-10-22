@@ -2,6 +2,7 @@
 
 #include "Commands/HOLCommandSubsystem.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
 #include "NavigationSystem.h"
@@ -89,6 +90,19 @@ void UHOLCommandSubsystem::IssueCombatWalk(const uint32 UnitId, const FVector& T
 		PendingMoveOrders.Last().CombatStamp = CombatStamp;
 		PendingMoveOrders.Last().Kind = bAttackMove ? EHOLOrderKind::AttackMove : EHOLOrderKind::Move;
 	}
+}
+
+void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const int32 PlayerIndex)
+{
+	if (UnitIds.Num() == 0 || !Building)
+	{
+		return;
+	}
+	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();
+	Order.UnitIds = UnitIds;
+	Order.PlayerIndex = PlayerIndex;
+	Order.Kind = EHOLOrderKind::AttackBuilding;
+	Order.TargetBuilding = Building;
 }
 
 void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)

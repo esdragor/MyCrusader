@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLConstructionRules.h"
 #include "Engine/DataTable.h"
 #include "Math/RandomStream.h"
 #include "Misc/AutomationTest.h"
@@ -544,6 +545,101 @@ bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
 		const HOLCombat::FCandidate Away[] = { Nearer, Current };
 		TestEqual(TEXT("out of reach: the nearest"), Chosen(Shooter, Away), uint64(6));
 	}
+	return true;
+}
+
+// D345.2b: units attack buildings. A unit before a building; a building only with no enemy unit (the processor asks
+// ChooseBuilding only then); the Peasant never at rest; reach measured to the body's box; the table's building attacks.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatBuildingAttackTest, "HeroesOfLiberty.Combat.BuildingAttack", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatBuildingAttackTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Combat;
+	FHOLUnitTypeConstants Peasant, Spearman, ManAtArms, Archer, Light;
+	if (!GetType(*this, TEXT("Peasant"), Peasant) || !GetType(*this, TEXT("Spearman"), Spearman) || !GetType(*this, TEXT("ManAtArms"), ManAtArms)
+		|| !GetType(*this, TEXT("Archer"), Archer) || !GetType(*this, TEXT("LightInfantry"), Light))
+	{
+		return false;
+	}
+	// The table's columns.
+	TestEqual(TEXT("Peasant building attack"), Peasant.BuildingAttack, 10);
+	TestEqual(TEXT("Spearman building attack"), Spearman.BuildingAttack, 20);
+	TestEqual(TEXT("Man-at-arms building attack"), ManAtArms.BuildingAttack, 20);
+	TestEqual(TEXT("Archer building attack"), Archer.BuildingAttack, 5);
+	TestTrue(TEXT("Archer's building attack is ranged"), HOLCombat::IsBuildingShot(Archer) && !HOLCombat::IsBuildingShot(Spearman));
+	TestTrue(TEXT("Spearman's building attack is melee, 1 tile"), Spearman.BuildingAttackType == EHOLAttackType::Melee && FMath::IsNearlyEqual(Spearman.BuildingAttackRange, 400.f));
+	TestEqual(TEXT("Light infantry (stress tests) never attacks a building"), Light.BuildingAttack, 0);
+	TestEqual(TEXT("An Archer's arrow does 1 to a building (ranged armour 40)"), HOLConstruction::GetBuildingDamage(Archer.BuildingAttack, Archer.BuildingAttackType, 40), 1);
+	TestEqual(TEXT("A Spearman's blow does 20 to a building"), HOLConstruction::GetBuildingDamage(Spearman.BuildingAttack, Spearman.BuildingAttackType, 40), 20);
+
+	// A unit before a building, whatever the order and the distance.
+	HOLCombat::FSeeker Seeker;
+	Seeker.Radius = Spearman.Radius;
+	Seeker.AttackRange = Spearman.AttackRange;
+	Seeker.AggressionRadius = Spearman.AggressionRadius;
+	TArray<HOLCombat::FCandidate> Candidates;
+	HOLCombat::FCandidate& Building = Candidates.AddDefaulted_GetRef();
+	Building.Id = 1;
+	Building.Position = FVector2D(100.0, 0.0);
+	Building.bIsBuilding = true;
+	HOLCombat::FCandidate& Unit = Candidates.AddDefaulted_GetRef();
+	Unit.Id = 2;
+	Unit.Position = FVector2D(1200.0, 0.0);
+	TestEqual(TEXT("An enemy unit is taken before a building"), HOLCombat::ChooseTarget(Seeker, Candidates), 1);
+
+	// An Archer shooting a building (trial 5): an enemy unit within its aggression, even beyond its reach, is taken (it
+	// drops the building); one beyond its aggression is not. Edge to edge: 21 m within 21.33 m, 22 m beyond.
+	HOLCombat::FSeeker ArcherSeeker;
+	ArcherSeeker.Radius = Archer.Radius;
+	ArcherSeeker.AttackRange = Archer.AttackRange;
+	ArcherSeeker.AggressionRadius = Archer.AggressionRadius;
+	ArcherSeeker.bRanged = HOLCombat::IsRangedAttack(Archer.AttackRange);
+	TArray<HOLCombat::FCandidate> ArcherCandidates;
+	HOLCombat::FCandidate& Near = ArcherCandidates.AddDefaulted_GetRef();
+	Near.Id = 3;
+	Near.Radius = Spearman.Radius;
+	Near.Position = FVector2D(static_cast<double>(Archer.Radius) + Spearman.Radius + 2100.0, 0.0);
+	TestEqual(TEXT("An Archer takes an enemy 21 m away, beyond its reach, within its aggression"), HOLCombat::ChooseTarget(ArcherSeeker, ArcherCandidates), 0);
+	Near.Position.X += 100.0;
+	TestEqual(TEXT("An Archer takes no enemy 22 m away, beyond its aggression"), HOLCombat::ChooseTarget(ArcherSeeker, ArcherCandidates), INDEX_NONE);
+
+	// Search radii: at rest the aggression, the Peasant none; attack-move; hold its reach.
+	TestTrue(TEXT("A Spearman at rest looks for buildings within its aggression"), FMath::IsNearlyEqual(HOLCombat::GetBuildingSearchRadius(Seeker, Spearman), Spearman.AggressionRadius));
+	HOLCombat::FSeeker PeasantSeeker;
+	PeasantSeeker.AggressionRadius = Peasant.AggressionRadius;
+	TestEqual(TEXT("A Peasant at rest never takes on a building"), HOLCombat::GetBuildingSearchRadius(PeasantSeeker, Peasant), 0.f);
+	PeasantSeeker.Mode = HOLCombat::ESeekMode::AttackMove;
+	TestTrue(TEXT("A Peasant on an attack-move looks within AttackMoveRadius"), FMath::IsNearlyEqual(HOLCombat::GetBuildingSearchRadius(PeasantSeeker, Peasant), HOLCombat::AttackMoveRadius));
+	HOLCombat::FSeeker HoldSeeker = Seeker;
+	HoldSeeker.Mode = HOLCombat::ESeekMode::Hold;
+	TestTrue(TEXT("On hold, only its building reach"), FMath::IsNearlyEqual(HOLCombat::GetBuildingSearchRadius(HoldSeeker, Spearman), Spearman.BuildingAttackRange));
+	HOLCombat::FSeeker LightSeeker;
+	LightSeeker.AggressionRadius = Light.AggressionRadius;
+	TestEqual(TEXT("Light infantry never looks for buildings"), HOLCombat::GetBuildingSearchRadius(LightSeeker, Light), 0.f);
+
+	// Reach to the body's box (D324), edge to edge.
+	const FBox2D Box(FVector2D(0.0, 0.0), FVector2D(400.0, 400.0));
+	TestTrue(TEXT("Edge distance to the box's side"), FMath::IsNearlyEqual(HOLCombat::GetEdgeDistanceToBox(FVector2D(600.0, 200.0), 60.f, Box), 140.0));
+	TestTrue(TEXT("Edge distance to the box's corner"), FMath::IsNearlyEqual(HOLCombat::GetEdgeDistanceToBox(FVector2D(700.0, 800.0), 0.f, Box), 500.0));
+	TestTrue(TEXT("Walking in, a melee strikes once beside the wall"), HOLCombat::IsBuildingInReach(Spearman, 140.0, false, false, false));
+	TestFalse(TEXT("Walking in, not yet from 3 m"), HOLCombat::IsBuildingInReach(Spearman, 300.0, false, false, false));
+	TestTrue(TEXT("Striking, it keeps its tile of reach"), HOLCombat::IsBuildingInReach(Spearman, 390.0, true, false, false));
+	TestTrue(TEXT("Its walk ended short (the footprint), it strikes within its tile"), HOLCombat::IsBuildingInReach(Spearman, 300.0, false, true, false));
+	TestFalse(TEXT("Beyond its tile, never"), HOLCombat::IsBuildingInReach(Spearman, 410.0, true, true, true));
+	TestTrue(TEXT("An Archer shoots from 19 m"), HOLCombat::IsBuildingInReach(Archer, 1900.0, false, false, false));
+
+	// The nearest building within the radius, smallest id on a tie.
+	TArray<HOLCombat::FBuildingCandidate> Buildings;
+	Buildings.Add({ 7, FBox2D(FVector2D(1000.0, 0.0), FVector2D(1400.0, 400.0)) });
+	Buildings.Add({ 5, FBox2D(FVector2D(-1400.0, 0.0), FVector2D(-1000.0, 400.0)) });
+	Buildings.Add({ 9, FBox2D(FVector2D(0.0, 3000.0), FVector2D(400.0, 3400.0)) });
+	TestEqual(TEXT("Nearest building, smallest id on a tie"), HOLCombat::ChooseBuilding(FVector2D(0.0, 200.0), 60.f, 1600.f, Buildings), 1);
+	TestEqual(TEXT("None within the radius"), HOLCombat::ChooseBuilding(FVector2D(0.0, 200.0), 60.f, 500.f, Buildings), INDEX_NONE);
+	TestEqual(TEXT("No radius, none"), HOLCombat::ChooseBuilding(FVector2D(0.0, 200.0), 60.f, 0.f, Buildings), INDEX_NONE);
+
+	// The approach point: off the nearest side by its radius and the gap.
+	const FVector2D Point = HOLCombat::GetBuildingApproachPoint(FVector2D(1000.0, 200.0), 60.f, Box, 40.0);
+	TestTrue(TEXT("Approach point beside the nearest side"), Point.Equals(FVector2D(500.0, 200.0), 0.01));
 	return true;
 }
 

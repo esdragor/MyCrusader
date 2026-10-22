@@ -1035,6 +1035,18 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			}
 			TargetOwner = TargetState->OwnerPlayer;
 		}
+		// D345.2b: a building standing (finished or a site with work: a bare foundation is unseen by the enemy), an enemy's.
+		else if (Order.Kind == EHOLOrderKind::AttackBuilding)
+		{
+			const AHOLBuilding* Building = Order.TargetBuilding.Get();
+			if (!IsValid(Building) || Building->IsActorBeingDestroyed() || Building->IsFoundation() || Building->GetHealth() <= 0
+				|| (Order.PlayerIndex != INDEX_NONE && Building->GetOwnerPlayer() == Order.PlayerIndex))
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d on a building refused: not an enemy building standing"), Order.PlayerIndex);
+				continue;
+			}
+			TargetOwner = Building->GetOwnerPlayer();
+		}
 		int32 NumStale = 0;
 		for (const uint32 UnitId : Order.UnitIds)
 		{
@@ -1160,7 +1172,8 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		}
 		// The combat orders without a walk of their own (J7b.3): the units stand where they are, their task and fight
 		// forgotten; an attack's walk to its target is the combat's approach (UHOLCombatProcessor, the same step).
-		if (Order.Kind == EHOLOrderKind::Attack || Order.Kind == EHOLOrderKind::Stop || Order.Kind == EHOLOrderKind::Hold)
+		if (Order.Kind == EHOLOrderKind::Attack || Order.Kind == EHOLOrderKind::Stop || Order.Kind == EHOLOrderKind::Hold
+			|| Order.Kind == EHOLOrderKind::AttackBuilding)
 		{
 			ApplyCombatOrder(EntityManager, *World, Order, Entities, AttackTarget);
 			continue;
@@ -2545,7 +2558,19 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 				Combat->Target = AttackTarget;
 				Combat->bOrderedTarget = true;
 			}
+			// D345.2b: struck until it falls; an enemy unit it takes on (its aggression) makes it drop it.
+			if (Order.Kind == EHOLOrderKind::AttackBuilding)
+			{
+				Combat->TargetBuilding = Order.TargetBuilding;
+			}
 		}
+	}
+	if (Order.Kind == EHOLOrderKind::AttackBuilding)
+	{
+		const AHOLBuilding* Building = Order.TargetBuilding.Get();
+		UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d for %d units on building %s of slot %d"), Order.PlayerIndex, Entities.Num(),
+			Building ? *Building->GetTypeName().ToString() : TEXT("?"), Building ? Building->GetOwnerPlayer() : -1);
+		return;
 	}
 	UE_LOG(LogHOLSimulation, Display, TEXT("%s order of slot %d for %d units%s"), Order.Kind == EHOLOrderKind::Attack ? TEXT("Attack")
 		: Order.Kind == EHOLOrderKind::Hold ? TEXT("Hold") : TEXT("Stop"), Order.PlayerIndex, Entities.Num(),

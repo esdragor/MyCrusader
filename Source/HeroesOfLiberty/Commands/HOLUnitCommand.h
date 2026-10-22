@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+class AHOLBuilding;
+
 /** What a move order asks besides the walk (J7b.3, J7-Q4): the combat orders go through the same queue (Shift included). */
 enum class EHOLOrderKind : uint8
 {
@@ -17,6 +19,8 @@ enum class EHOLOrderKind : uint8
 	Stop,
 	/** Stand and hold the position: only enemies in reach, never a chase (until a move order). */
 	Hold,
+	/** Strike the enemy building TargetBuilding (D345.2b: finished or a site seen; checked by the server) until it falls. */
+	AttackBuilding,
 };
 
 /**
@@ -54,6 +58,8 @@ struct FHOLMoveOrder
 	EHOLOrderKind Kind = EHOLOrderKind::Move;
 	/** Attack: the unit to take on. */
 	uint32 TargetUnitId = 0;
+	/** AttackBuilding: the building to strike (D345.2b). */
+	TWeakObjectPtr<AHOLBuilding> TargetBuilding;
 	/**
 	 * A walk the combat gives a unit (J7b.3: its approach to its target, its attack-move resumed): the unit's
 	 * FHOLCombatFragment::EngageSerial when it was given; a newer player order changed it, the walk is dropped. 0: none.

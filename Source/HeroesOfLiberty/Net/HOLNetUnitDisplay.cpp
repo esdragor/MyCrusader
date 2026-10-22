@@ -2,6 +2,7 @@
 
 #include "Net/HOLNetUnitDisplay.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
 #include "MassCommonFragments.h"
@@ -23,6 +24,8 @@ namespace UE::HeroesOfLiberty::NetDisplay
 	constexpr float MinTurnSpeed = 20.f;
 	/** At most this many steps replayed at once for a shooter's arrows (a long stall: the rest skipped, not a burst). */
 	constexpr int64 MaxShotStepsAtOnce = 20;
+	/** D345.2b: a unit striking a building looks for its body this far (cm) beyond its building reach and radius. */
+	constexpr double BuildingFacingSlack = 100.0;
 }
 
 void UHOLNetUnitDisplayTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const
@@ -63,7 +66,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	const int32 StepMs = FMath::Max(FMath::RoundToInt32(StepSeconds * 1000.f), 1);
 	UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>();
 
-	EntityQuery.ForEachEntityChunk(Context, [Now, ClockStep, StepSeconds, StepMs, Reception, ArrowDisplay, &EntityManager](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [Now, ClockStep, StepSeconds, StepMs, Reception, ArrowDisplay, World, &EntityManager](FMassExecutionContext& Context)
 	{
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		const bool bShooter = ArrowDisplay && HOLCombat::IsRangedAttack(Constants.AttackRange);
@@ -90,6 +93,15 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				if (ToTarget.SizeSquared2D() > 1.0)
 				{
 					Display.Yaw = FMath::RadiansToDegrees(FMath::Atan2(ToTarget.Y, ToTarget.X));
+				}
+				// D345.2b: striking a building, turned to the nearest body by it.
+				FVector2D Wall;
+				const FVector2D Here(Transforms[EntityIt].GetTransform().GetLocation());
+				if (Display.State.HasBuildingTarget() && World
+					&& AHOLBuilding::FindNearestBodyPoint(*World, Here, Constants.BuildingAttackRange + Constants.Radius + BuildingFacingSlack, -1, Wall)
+					&& FVector2D::DistSquared(Wall, Here) > 1.0)
+				{
+					Display.Yaw = FMath::RadiansToDegrees(FMath::Atan2(Wall.Y - Here.Y, Wall.X - Here.X));
 				}
 			}
 			else if (Display.State.bFacesFront)
@@ -131,6 +143,18 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				}
 				const FMassEntityHandle Target = Reception->GetTargetEntity(Display.State);
 				const FTransformFragment* TargetTransform = EntityManager.IsEntityValid(Target) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Target) : nullptr;
+				// D345.2b: an arrow at a building flies to the nearest point of its body.
+				FVector2D Wall;
+				if (TargetTransform == nullptr && Display.State.HasBuildingTarget() && World
+					&& AHOLBuilding::FindNearestBodyPoint(*World, FVector2D(Drawn.GetLocation()), Constants.BuildingAttackRange + Constants.Radius + BuildingFacingSlack, -1, Wall))
+				{
+					FHOLArrowLaunch Launch;
+					Launch.From = Drawn.GetLocation();
+					Launch.To = FVector(Wall.X, Wall.Y, Drawn.GetLocation().Z);
+					Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), Wall, HOLCombat::GetArrowSpeed());
+					ArrowDisplay->Launch(Launch);
+					continue;
+				}
 				if (TargetTransform == nullptr)
 				{
 					continue;

@@ -315,8 +315,12 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			{
 				const FHOLUnitStateFragment* TargetState = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Combat.Target);
 				const FUnitRecord* TargetRecord = TargetState ? Records.Find(TargetState->UnitId) : nullptr;
-				TargetSlot = TargetRecord ? static_cast<uint16>(FMath::Min<int32>(TargetRecord->Slot, FHOLNetUnitState::InvalidTargetSlot))
+				TargetSlot = TargetRecord && TargetRecord->Slot < FHOLNetUnitState::BuildingTargetSlot ? static_cast<uint16>(TargetRecord->Slot)
 					: FHOLNetUnitState::InvalidTargetSlot;
+			}
+			else if (Activity == EHOLUnitActivity::Attacking && !Combat.TargetBuilding.IsExplicitlyNull())
+			{
+				TargetSlot = FHOLNetUnitState::BuildingTargetSlot; // D345.2b
 			}
 			const FHOLGatherLoad& Load = Gathers[EntityIt].Load;
 			FHOLNetUnitState Current = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount, State.GatherResource);

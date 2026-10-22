@@ -71,6 +71,10 @@ private:
 	/** The notes shown, so that a refresh with the same ones keeps their texts. */
 	TArray<FString> ShownNotes;
 
+	/** Under the notes, in its own colour, while a step waits for the continue key (waitkey); collapsed otherwise. */
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> WaitKeyLine;
+
 	TWeakObjectPtr<UWidget> Anchor;
 	/** The anchor's height last placed under, so that the slot is touched only when it changes. */
 	float PlacedAnchorHeight = -1.f;

@@ -6,6 +6,8 @@
 #include "Commands/HOLProductionCommand.h"
 #include "Commands/HOLUnitCommand.h"
 #include "CoreMinimal.h"
+
+class AHOLBuilding;
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLCommandSubsystem.generated.h"
 
@@ -74,6 +76,8 @@ public:
 	void IssueAttackMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
 	/** A combat walk of one unit (its approach, its attack-move resumed), stamped (FHOLMoveOrder::CombatStamp). */
 	void IssueCombatWalk(uint32 UnitId, const FVector& Target, uint32 CombatStamp, bool bAttackMove);
+	/** D345.2b: units strike an enemy building (a right click on it); the order processor checks it. Never queued. */
+	void IssueAttackBuildingOrder(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, int32 PlayerIndex = INDEX_NONE);
 
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
 	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);

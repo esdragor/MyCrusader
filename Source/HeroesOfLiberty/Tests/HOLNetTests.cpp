@@ -636,9 +636,13 @@ bool FHOLNetCombatSendRuleTest::RunTest(const FString& Parameters)
 		EHOLUnitSendReason::Activity);
 	TestEqual(TEXT("first wound: at once"), HOLUnitReplication::GetSendReason(Resting, Here, Make(EHOLUnitActivity::Idle, 159, 0, true, 90.f), 1, 101, StepSeconds, Rules),
 		EHOLUnitSendReason::Activity);
-	// The target's slot (TargetSlotBits): 0 to 4 094 real, InvalidTargetSlot unknown though a slot from the 66th chunk on.
+	// The target's slot (TargetSlotBits): 0 to 4 093 real, 4 094 a building (D345.2b), InvalidTargetSlot unknown though a
+	// slot from the 66th chunk's last on.
 	TestTrue(TEXT("target in slot 0: known"), Make(EHOLUnitActivity::Attacking, 150, 0).HasTargetSlot());
-	TestTrue(TEXT("target in slot 4094, the last of 65 chunks: known"), Make(EHOLUnitActivity::Attacking, 150, 4094).HasTargetSlot());
+	TestTrue(TEXT("target in slot 4093: known"), Make(EHOLUnitActivity::Attacking, 150, 4093).HasTargetSlot());
+	TestFalse(TEXT("slot 4094 is a building, not a unit"), Make(EHOLUnitActivity::Attacking, 150, FHOLNetUnitState::BuildingTargetSlot).HasTargetSlot());
+	TestTrue(TEXT("slot 4094: a building target"), Make(EHOLUnitActivity::Attacking, 150, FHOLNetUnitState::BuildingTargetSlot).HasBuildingTarget());
+	TestFalse(TEXT("a unit target is not a building"), Make(EHOLUnitActivity::Attacking, 150, 7).HasBuildingTarget());
 	TestFalse(TEXT("target not replicated yet: unknown"), Make(EHOLUnitActivity::Attacking, 150, FHOLNetUnitState::InvalidTargetSlot).HasTargetSlot());
 	TestFalse(TEXT("target in slot 5000, past 12 bits: unknown"), Make(EHOLUnitActivity::Attacking, 150, 5000).HasTargetSlot());
 	TestFalse(TEXT("not attacking: no target"), Make(EHOLUnitActivity::Idle, 150, 7).HasTargetSlot());

@@ -315,6 +315,16 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	/** Radius (cm, edge to edge) of the riposte; 0: only when ordered. */
 	UPROPERTY()
 	float AggressionRadius = 0.f;
+
+	/** Its attack against a building (D345.2b): type, damage (0: it cannot hit buildings), interval (s), reach (cm, its edge to the body's box). */
+	UPROPERTY()
+	EHOLAttackType BuildingAttackType = EHOLAttackType::Melee;
+	UPROPERTY()
+	int32 BuildingAttack = 0;
+	UPROPERTY()
+	float BuildingAttackInterval = 2.1f;
+	UPROPERTY()
+	float BuildingAttackRange = 400.f;
 };
 
 /**
@@ -539,6 +549,20 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float AggressionRadius = 0.f;
 
+	/**
+	 * Its attack against a building (D345.2b, always this one against a building): its type (the building's armour of that
+	 * type taken off, HOLConstruction::GetBuildingDamage), damage (0: it never attacks a building), interval (s) and reach
+	 * (cm, from its body's edge to the building's body box, D324).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	EHOLAttackType BuildingAttackType = EHOLAttackType::Melee;
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 BuildingAttack = 0;
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0.05", ForceUnits = "s"))
+	float BuildingAttackInterval = 2.1f;
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float BuildingAttackRange = 400.f;
+
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };
 
@@ -588,5 +612,9 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.HeroArmor = HeroArmor;
 	Constants.Bonuses = Bonuses;
 	Constants.AggressionRadius = AggressionRadius;
+	Constants.BuildingAttackType = BuildingAttackType;
+	Constants.BuildingAttack = BuildingAttack;
+	Constants.BuildingAttackInterval = BuildingAttackInterval;
+	Constants.BuildingAttackRange = BuildingAttackRange;
 	return Constants;
 }

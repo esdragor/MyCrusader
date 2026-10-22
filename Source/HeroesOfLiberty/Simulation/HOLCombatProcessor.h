@@ -14,7 +14,9 @@ struct FHOLUnitStateFragment;
 struct FHOLUnitTypeConstants;
 struct FMassDesiredMovementFragment;
 struct FMassMoveTargetFragment;
+class AHOLBuilding;
 class UHOLUnitSubsystem;
+enum class EHOLAttackType : uint8;
 
 /**
  * The melee (J7b.2, J7-Q4: a processor of our own, AoE4-like rules in HOLCombat), on the server. Last of the Tasks group,
@@ -97,11 +99,32 @@ protected:
 		int32 Damage = 0;
 		int64 ReleaseStep = 0;
 		int64 ArrivalStep = 0;
+		/** D345.2b: an arrow at a building (Target unset): its damage of BuildingAttackType through DamageBuilding when it lands. */
+		TWeakObjectPtr<AHOLBuilding> TargetBuilding;
+		uint8 BuildingAttackType = 0;
 	};
 	/** In release order (the outcome does not depend on the chunks). */
 	TArray<FArrow> Arrows;
 
 	FMassEntityQuery EntityQuery;
+
+	/**
+	 * The step's buildings that can be attacked (D345.2b): standing, not a bare foundation (unseen by the enemy), their body
+	 * box (D324). Gathered once a step, before the units are taken; one destroyed in the step is marked gone.
+	 */
+	struct FStepBuilding
+	{
+		AHOLBuilding* Building = nullptr;
+		FBox2D Box = FBox2D(ForceInit);
+		uint32 Id = 0;
+		uint8 OwnerPlayer = 0;
+		bool bGone = false;
+	};
+	TArray<FStepBuilding> StepBuildings;
+	TArray<HOLCombat::FBuildingCandidate> BuildingCandidates;
+	TArray<int32> BuildingCandidateIndices;
+	/** The step's entry of a building, INDEX_NONE if it is not one of them (gone, a foundation). */
+	int32 FindStepBuilding(const AHOLBuilding* Building) const;
 
 	/** The step's units in identifier order, and the index of each entity. */
 	TArray<FFighter> Fighters;

@@ -453,6 +453,21 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 							}
 						}
 					}
+					// D345.2b: striking a building, turned to the nearest point of its body.
+					else if (Choice.bStrike && Combat && !Combat->TargetBuilding.IsExplicitlyNull())
+					{
+						if (const AHOLBuilding* Struck = Combat->TargetBuilding.Get())
+						{
+							const FBox2D Box = Struck->GetBodyBounds();
+							const FVector Here = To.GetLocation();
+							const FVector2D Wall(FMath::Clamp(Here.X, Box.Min.X, Box.Max.X), FMath::Clamp(Here.Y, Box.Min.Y, Box.Max.Y));
+							if (FVector2D::DistSquared(Wall, FVector2D(Here)) > 1.)
+							{
+								AnimationState.bFacingSource = true;
+								AnimationState.FacingYaw = static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(Wall.Y - Here.Y, Wall.X - Here.X)));
+							}
+						}
+					}
 					// Falling (J7b code review, point 4): it keeps, for its whole fall, the yaw it was last drawn at alive, turned
 					// towards its target if it was striking, rather than going back to the simulation's (its place's front), as a
 					// client keeps its Display.Yaw (UHOLNetUnitDisplayProcessor): no half-turn, and the views agree.
