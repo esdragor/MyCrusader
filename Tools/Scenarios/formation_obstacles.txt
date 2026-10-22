@@ -6,10 +6,10 @@
 # repère - 15000), qui ne dépendent ni de la taille de l'écran ni de la souris.
 hol.Units.SpawnSeed 204
 hol.Cheat.Resources 5000
-# Quatre maisons : P et Q se touchent (centres à 6 m : la place d'un Paysan entre elles, D324), R et S à une case d'écart.
-hol.Build.PlaceNear House 6000 -3300
+# Quatre maisons : P et Q se touchent (centres à 8 m : la place d'un Paysan entre elles, D324), R et S à une case d'écart.
+hol.Build.PlaceNear House 6000 -3400
 waitlog Construction: slot 0 placed House
-hol.Build.PlaceNear House 6000 -2700
+hol.Build.PlaceNear House 6000 -2600
 waitlog Construction: slot 0 placed House
 hol.Build.PlaceNear House 6000 -600
 waitlog Construction: slot 0 placed House
@@ -25,18 +25,18 @@ hol.Camera.FocusNear 5200 -1700
 frames 3
 hol.Select.Own
 waitlog Selection: 6 units (own): Peasant x6
-hol.Select.OrderNear 6000 -3300
+hol.Select.OrderNear 6000 -3200
 waitlog Construction: slot 0 finished House
-hol.Select.OrderNear 6000 -2700
+hol.Select.OrderNear 6000 -2400
 waitlog Construction: slot 0 finished House
 hol.Select.OrderNear 6000 -600
 waitlog Construction: slot 0 finished House
 hol.Select.OrderNear 6000 600
 waitlog Construction: slot 0 finished House
 hol.Build.Instant 0
-hol.Camera.FocusNear 5000 -3000
+hol.Camera.FocusNear 5000 -2800
 frames 3
-hol.Select.OrderNear 4200 -3000
+hol.Select.OrderNear 4200 -2800
 # 6 Hommes d'armes devant le passage large.
 hol.Camera.FocusNear 4200 0
 frames 2
@@ -57,15 +57,15 @@ waitunits 30
 # Le temps que les 6 Paysans arrivent devant le passage étroit (jusqu'à 40 m depuis la maison la plus loin).
 wait 8
 # Cas 1 : les 6 Paysans à travers le passage étroit.
-hol.Camera.FocusNear 4200 -3000
+hol.Camera.FocusNear 4200 -2800
 frames 3
 hol.Select.BoxGround -11600 -3800 -10000 -2200
 frames 2
 hol.Select.Report
 waitlog Selection report: selected 6 units (own): Peasant x6
-hol.Camera.FocusNear 6000 -3000
+hol.Camera.FocusNear 6000 -2800
 frames 3
-hol.Select.OrderNear 7800 -3000
+hol.Select.OrderNear 7800 -2800
 wait 10
 # Cas 2 : les 6 Hommes d'armes à travers le passage large.
 hol.Camera.FocusNear 4200 0
