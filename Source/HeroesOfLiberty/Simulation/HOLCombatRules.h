@@ -157,11 +157,22 @@ namespace HOLCombat
 	 */
 	HEROESOFLIBERTY_API int32 ChooseTarget(const FSeeker& Seeker, TConstArrayView<FCandidate> Candidates);
 
+	/**
+	 * The unit takes on enemies by itself (its search, its riposte, its zone of control), J7b.3 and D345: not while it walks a
+	 * player's order but on an attack-move; never with an ordered target (a unit, until it dies) nor an ordered building
+	 * (a right click on it, Shift or not: until it falls, whatever enemy unit comes).
+	 */
+	inline bool MaySeek(const bool bWalkingOrder, const bool bAttackMove, const bool bOrderedTarget, const bool bOrderedBuilding)
+	{
+		return (!bWalkingOrder || bAttackMove) && !bOrderedTarget && !bOrderedBuilding;
+	}
+
 	// Attacks on buildings (D345.2b). Against a building a unit always uses its building attack (FHOLUnitTypeConstants::
 	// BuildingAttack, its type, interval and reach). It takes one on by order (a right click on an enemy building), on an
 	// attack-move when no enemy unit is found, or at rest within its aggression radius when no enemy unit is (the Peasant,
-	// without one, only by order); an enemy unit it takes on makes it drop the building. Never an own or allied building,
-	// never a bare foundation (unseen by the enemy).
+	// without one, only by order). One taken on by itself is dropped for an enemy unit it takes on; an ordered one never
+	// (D345: no search while it stands, MaySeek), struck until it falls. Never an own or allied building, never a bare
+	// foundation (unseen by the enemy).
 
 	/** Edge gap (cm) from a body (Position, Radius) to a building's body box (D324): 0 or less when it touches it. */
 	HEROESOFLIBERTY_API double GetEdgeDistanceToBox(const FVector2D& Position, float Radius, const FBox2D& Box);

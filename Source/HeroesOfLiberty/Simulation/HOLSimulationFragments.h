@@ -436,9 +436,16 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	/**
 	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
 	 * on an attack-move with no enemy unit found, or at rest within its aggression radius. Only while it has no unit
-	 * target: an enemy unit it takes on makes it drop the building. Unset: none.
+	 * target: an enemy unit it takes on makes it drop the building (one taken on by itself: an ordered one, never). Unset: none.
 	 */
 	TWeakObjectPtr<AHOLBuilding> TargetBuilding;
+
+	/**
+	 * The enemy building it was ordered to strike (D345: a right click, Shift or not), its current order until it falls (gone, or
+	 * no longer an enemy's): TargetBuilding too, never dropped, as it takes on no enemy unit meanwhile (HOLCombat::MaySeek). While
+	 * set, its queued orders (Shift) wait, as behind an ordered target. Unset: none.
+	 */
+	TWeakObjectPtr<AHOLBuilding> OrderedBuilding;
 
 	/** Its target was ordered (J7b.3): kept, never replaced by its own choice, until it dies. */
 	bool bOrderedTarget = false;
@@ -478,6 +485,7 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	{
 		Target = FMassEntityHandle();
 		TargetBuilding.Reset();
+		OrderedBuilding.Reset();
 		LastAttacker = FMassEntityHandle();
 		bOrderedTarget = false;
 		bAttacking = false;

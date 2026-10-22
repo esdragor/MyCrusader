@@ -342,8 +342,11 @@ public:
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
-	/** Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building. */
-	void RequestAttackBuilding(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
+	/**
+	 * Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building.
+	 * bQueue (Shift, D345): at the end of each unit's queue, as an attack on a unit.
+	 */
+	void RequestAttackBuilding(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
 	/** Asks the server for an attack-move of units to a ground point (J7b.3), as one group. */
 	void RequestAttackMove(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to stop units (J7b.3), or to stop them holding their position (bHold). */
@@ -498,7 +501,7 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
 	UFUNCTION(Server, Reliable)
-	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
+	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
 	UFUNCTION(Server, Reliable)
 	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
 	UFUNCTION(Server, Reliable)

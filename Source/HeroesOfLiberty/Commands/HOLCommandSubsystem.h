@@ -76,8 +76,11 @@ public:
 	void IssueAttackMoveOrder(TConstArrayView<uint32> UnitIds, const FVector& Target, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
 	/** A combat walk of one unit (its approach, its attack-move resumed), stamped (FHOLMoveOrder::CombatStamp). */
 	void IssueCombatWalk(uint32 UnitId, const FVector& Target, uint32 CombatStamp, bool bAttackMove);
-	/** D345.2b: units strike an enemy building (a right click on it); the order processor checks it. Never queued. */
-	void IssueAttackBuildingOrder(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, int32 PlayerIndex = INDEX_NONE);
+	/**
+	 * D345.2b: units strike an enemy building (a right click on it); the order processor checks it. bQueue (Shift, D345): at
+	 * the end of each unit's queue, as an attack on a unit; it starts once the action before it is over.
+	 */
+	void IssueAttackBuildingOrder(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
 
 	/** Takes the orders waiting for the simulation (the order processor calls this at each step). */
 	void ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders);

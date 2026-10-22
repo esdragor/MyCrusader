@@ -1,0 +1,64 @@
+# Maj sur les bâtiments (D345) : attaques de bâtiments en file, ligne rouge ; un ordre direct sur un bâtiment ne se
+# lâche pas pour des ennemis (seuls l'attaque-déplacement et le repos donnent la priorité aux unités) ; les deux
+# maisons en file tombent ; déplacement puis Maj + bâtiment.
+# Plain, deux joueurs (building_queue.json). Positions des commandes Near dans le repère du centre du joueur (X vers le
+# milieu) ; hol.Select.OrderGround (qui prend Maj) en coordonnées du monde : centre du joueur vers (-14800, 0).
+# Chaque étape attend la touche Entrée.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# Deux maisons ennemies à ~25 m de l'armée, à 40 m l'une de l'autre.
+hol.Cheat.SpawnBuilding House 1 7200 -2000
+hol.Cheat.SpawnBuilding House 1 7200 2000
+waitlog Cheat: spawned House of slot 1
+# L'armée : 4 Lanciers, 4 Hommes d'armes.
+hol.Camera.FocusNear 4500 -400
+frames 2
+hol.Units.SpawnHere 4 Spearman 0 250
+hol.Camera.FocusNear 4500 400
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 8
+hol.Camera.FocusNear 6000 0
+hol.Camera.Zoom -1
+frames 5
+note L'armée et deux maisons ennemies sont en place.
+# 1. Clic droit sur la maison du bas, puis Maj + clic droit sur celle du haut : ligne rouge vers chacune.
+waitkey Entrée : clic droit sur une maison, Maj + clic droit sur l'autre
+hol.Select.Army
+waitlog Selection: 8 units
+hol.Camera.FocusNear 6000 0
+frames 5
+hol.Select.OrderGround -7600 -2000
+waitlog for 8 units on building House of slot 1
+hol.Select.OrderGround -7600 2000 shift
+waitlog queued (Shift) for 8 units on building House of slot 1
+note 1. Une maison sur ordre, l'autre en file (Maj) : deux lignes rouges. L'armée frappe la première, puis va à la seconde.
+# 2. Des Lanciers ennemis pendant la première maison : sur ordre direct, l'armée les ignore et finit ses maisons.
+waitkey Entrée : des Lanciers ennemis arrivent
+hol.Camera.FocusNear 6600 -1400
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 150
+note 2. Trois Lanciers ennemis : l'armée, sur ordre direct, ne lâche pas la maison ; elle finit les deux maisons, puis seulement se défend.
+waitlog Building destroyed: House of slot 1
+waitlog Queued attack started for
+# La caméra sur la seconde maison (une commande : l'attente suivante ne lit que les lignes d'après).
+hol.Camera.FocusNear 6600 1400
+frames 2
+note La première maison est tombée : l'armée passe à la maison en file.
+waitlog Building destroyed: House of slot 1
+# 3. Un déplacement, puis Maj + clic droit sur une maison : ligne jaune, puis rouge.
+waitkey Entrée : déplacement, puis Maj + clic droit sur une maison
+hol.Cheat.SpawnBuilding House 1 10000 0
+hol.Camera.FocusNear 8000 1000
+frames 5
+hol.Select.Army
+frames 2
+hol.Camera.FocusNear 8000 1000
+frames 5
+hol.Select.OrderGround -6400 2400
+hol.Select.OrderGround -4800 0 shift
+waitlog queued (Shift) for
+note 3. Un déplacement (ligne jaune), puis une maison en file (ligne rouge) : l'armée va au point, puis frappe la maison.
+waitlog Queued attack started for
+waitlog Building destroyed: House of slot 1
+note Essaie aussi : Maj + clic droit sur plusieurs bâtiments, avec des Paysans, ou mêlé à des attaques d'unités.

@@ -1888,8 +1888,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		}
 		if (EnemyBuilding)
 		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s"), Own.Num(), *DescribeBuilding(EnemyBuilding));
-			RequestAttackBuilding(Own, EnemyBuilding);
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s%s"), Own.Num(), *DescribeBuilding(EnemyBuilding), bShift ? TEXT(", queued") : TEXT(""));
+			RequestAttackBuilding(Own, EnemyBuilding, bShift);
 			OnAttackOrderGiven.Broadcast(EnemyBuilding->GetActorLocation());
 			return;
 		}
@@ -3453,15 +3453,15 @@ void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>&
 	}
 }
 
-void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerAttackBuilding(TArray<uint32>(UnitIds), Building);
+		ServerAttackBuilding(TArray<uint32>(UnitIds), Building, bQueue);
 	}
 }
 
-void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
+void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
 	// As ServerAttackUnit (D288): the player's own units alone; the order processor checks the building (an enemy's, standing).
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -3469,7 +3469,7 @@ void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint
 	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackBuildingOrder(UnitIds, Building, HOLPlayerState->GetPlayerIndex());
+		Commands->IssueAttackBuildingOrder(UnitIds, Building, HOLPlayerState->GetPlayerIndex(), bQueue);
 	}
 }
 

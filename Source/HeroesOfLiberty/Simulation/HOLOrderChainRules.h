@@ -23,6 +23,8 @@ namespace HOLOrderChain
 		Gather,
 		/** A unit just born going to its building's rally point (whatever it does there, D328): drawn white, to its Point. */
 		Rally,
+		/** An enemy building to strike (D345, Shift): drawn red as an attack, to its centre; TargetId as Build's. */
+		AttackBuilding,
 	};
 
 	/**
@@ -56,6 +58,13 @@ namespace HOLOrderChain
 			FStep Step;
 			Step.Kind = EStepKind::Build;
 			Step.TargetId = SiteId;
+			return Step;
+		}
+		static FStep MakeAttackBuilding(const uint32 BuildingId)
+		{
+			FStep Step;
+			Step.Kind = EStepKind::AttackBuilding;
+			Step.TargetId = BuildingId;
 			return Step;
 		}
 		static FStep MakeGather(const int32 InSourceIndex)
@@ -100,4 +109,27 @@ namespace HOLOrderChain
 	HEROESOFLIBERTY_API void MakeChains(TConstArrayView<FUnitSteps> Units, TArray<FChain>& OutChains);
 
 	HEROESOFLIBERTY_API const TCHAR* KindName(EStepKind Kind);
+
+	/**
+	 * A unit's current order is over (J7a.4, D345, Shift): its next queued order (Shift) may start. Not while it walks a player's
+	 * order, keeps an ordered target (a unit until it dies, a building until it falls) or is on an attack-move.
+	 */
+	inline bool IsCurrentOrderOver(const bool bWalkingOrder, const bool bOrderedTarget, const bool bOrderedBuilding, const bool bAttackMoveOn)
+	{
+		return !bWalkingOrder && !bOrderedTarget && !bOrderedBuilding && !bAttackMoveOn;
+	}
+
+	/**
+	 * Its building fell, or is no longer an enemy's (D345): Target, the building it strikes; Ordered, its order's (TWeakObjectPtr,
+	 * or any reference with IsExplicitlyNull, Reset and ==). Struck no more; its order's, the order is over (the queue goes on).
+	 */
+	template <typename TBuildingRef>
+	void EndBuildingTarget(TBuildingRef& Target, TBuildingRef& Ordered)
+	{
+		if (Ordered == Target)
+		{
+			Ordered.Reset();
+		}
+		Target.Reset();
+	}
 }

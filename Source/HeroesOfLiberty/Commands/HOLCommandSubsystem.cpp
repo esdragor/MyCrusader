@@ -92,7 +92,7 @@ void UHOLCommandSubsystem::IssueCombatWalk(const uint32 UnitId, const FVector& T
 	}
 }
 
-void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const int32 PlayerIndex)
+void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const int32 PlayerIndex, const bool bQueue)
 {
 	if (UnitIds.Num() == 0 || !Building)
 	{
@@ -103,6 +103,8 @@ void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32
 	Order.PlayerIndex = PlayerIndex;
 	Order.Kind = EHOLOrderKind::AttackBuilding;
 	Order.TargetBuilding = Building;
+	Order.bChain = bPlayerOrders;
+	Order.bQueue = bQueue;
 }
 
 void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)

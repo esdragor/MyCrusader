@@ -1109,7 +1109,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				const FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entities[Unit]);
 				const bool bOnTask = (Gather && Gather->IsGathering()) || (Build && Build->IsBuilding());
 				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entities[Unit]);
-				bAnyWalking = MoveQueueOfUnit.Contains(EntityIds[Unit]) || (Combat && Combat->bOrderedTarget)
+				bAnyWalking = MoveQueueOfUnit.Contains(EntityIds[Unit]) || (Combat && (Combat->bOrderedTarget || Combat->OrderedBuilding.IsValid()))
 					|| (!bOnTask && State.Activity == EHOLUnitActivity::Moving && Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning);
 			}
 			if (bAnyWalking)
@@ -1131,6 +1131,10 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 					{
 						ChainHeadOfUnit.Add(UnitId, {HOLOrderChain::FStep::MakeAttack(TargetState->UnitId), StepCount});
 					}
+					else if (const AHOLBuilding* Ordered = Combat ? Combat->OrderedBuilding.Get() : nullptr)
+					{
+						ChainHeadOfUnit.Add(UnitId, {HOLOrderChain::FStep::MakeAttackBuilding(Ordered->GetUniqueID()), StepCount});
+					}
 					else if (OrderStep)
 					{
 						ChainHeadOfUnit.Add(UnitId, {*OrderStep, StepCount});
@@ -1145,8 +1149,17 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				{
 					MoveQueueOfUnit.FindOrAdd(UnitId).Add(QueuedId);
 				}
-				UE_LOG(LogHOLSimulation, Display, TEXT("Move order of slot %d queued (Shift) for %d units to (%.0f, %.0f)"), Order.PlayerIndex,
-					EntityIds.Num(), Order.Target.X, Order.Target.Y);
+				if (Order.Kind == EHOLOrderKind::AttackBuilding)
+				{
+					const AHOLBuilding* Building = Order.TargetBuilding.Get();
+					UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d queued (Shift) for %d units on building %s of slot %d"), Order.PlayerIndex,
+						EntityIds.Num(), Building ? *Building->GetTypeName().ToString() : TEXT("?"), Building ? Building->GetOwnerPlayer() : -1);
+				}
+				else
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Move order of slot %d queued (Shift) for %d units to (%.0f, %.0f)"), Order.PlayerIndex,
+						EntityIds.Num(), Order.Target.X, Order.Target.Y);
+				}
 				continue;
 			}
 		}
@@ -1162,7 +1175,8 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		// chain too, its one step, until it is over (StartQueuedMoves). Only a player's orders: the server's own (tasks,
 		// rally points, stress tests) cost nothing here.
 		if (Order.bChain && OrderIndex >= NumStartedQueued && !Order.bFromTask
-			&& (Order.Kind == EHOLOrderKind::Move || Order.Kind == EHOLOrderKind::AttackMove || Order.Kind == EHOLOrderKind::Attack))
+			&& (Order.Kind == EHOLOrderKind::Move || Order.Kind == EHOLOrderKind::AttackMove || Order.Kind == EHOLOrderKind::Attack
+				|| Order.Kind == EHOLOrderKind::AttackBuilding))
 		{
 			const HOLOrderChain::FStep Step = MakeChainStep(Order);
 			for (const uint32 UnitId : EntityIds)
@@ -2558,10 +2572,11 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 				Combat->Target = AttackTarget;
 				Combat->bOrderedTarget = true;
 			}
-			// D345.2b: struck until it falls; an enemy unit it takes on (its aggression) makes it drop it.
+			// D345: struck until it falls, whatever enemy unit comes (only an attack-move puts the enemy units first).
 			if (Order.Kind == EHOLOrderKind::AttackBuilding)
 			{
 				Combat->TargetBuilding = Order.TargetBuilding;
+				Combat->OrderedBuilding = Order.TargetBuilding; // its order until it falls, its queue (Shift) behind it
 			}
 		}
 	}
@@ -2581,6 +2596,7 @@ HOLOrderChain::FStep UHOLUnitOrderProcessor::MakeChainStep(const FHOLMoveOrder& 
 {
 	return Order.bRally ? HOLOrderChain::FStep::MakeRally(Order.Target)
 		: Order.Kind == EHOLOrderKind::Attack ? HOLOrderChain::FStep::MakeAttack(Order.TargetUnitId)
+		: Order.Kind == EHOLOrderKind::AttackBuilding ? HOLOrderChain::FStep::MakeAttackBuilding(Order.TargetBuilding.IsValid() ? Order.TargetBuilding->GetUniqueID() : 0u)
 		: HOLOrderChain::FStep::MakeMove(Order.Target, Order.Kind == EHOLOrderKind::AttackMove);
 }
 
@@ -2680,7 +2696,7 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
 		const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
 		const bool bWalking = Move && Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning;
-		const bool bFighting = (Combat && (Combat->bOrderedTarget || Combat->bAttackMoveDetour)) || IsAttackMoveOn(Combat);
+		const bool bFighting = (Combat && (Combat->bOrderedTarget || Combat->OrderedBuilding.IsValid() || Combat->bAttackMoveDetour)) || IsAttackMoveOn(Combat);
 		// A task's walks (gathering, building: their own chains, or none) and a death end the player's move too.
 		const FHOLGatherFragment* Gather = Move ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 		const FHOLBuildFragment* Build = Move ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
@@ -2717,8 +2733,9 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
 			const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
 			const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
-			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move || (Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning)
-				|| (Combat && Combat->bOrderedTarget) || IsAttackMoveOn(Combat))
+			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move
+				|| !HOLOrderChain::IsCurrentOrderOver(Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning, Combat && Combat->bOrderedTarget,
+					Combat && Combat->OrderedBuilding.IsValid(), IsAttackMoveOn(Combat)))
 			{
 				bReady = false;
 				break;
@@ -2741,7 +2758,16 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 				MoveQueueOfUnit.Remove(UnitId);
 			}
 		}
-		UE_LOG(LogHOLSimulation, Display, TEXT("Queued move started for %d units to (%.0f, %.0f)"), Started.UnitIds.Num(), Started.Target.X, Started.Target.Y);
+		if (Started.Kind == EHOLOrderKind::AttackBuilding)
+		{
+			const AHOLBuilding* Building = Started.TargetBuilding.Get();
+			UE_LOG(LogHOLSimulation, Display, TEXT("Queued attack started for %d units on building %s of slot %d"), Started.UnitIds.Num(),
+				Building ? *Building->GetTypeName().ToString() : TEXT("(gone)"), Building ? Building->GetOwnerPlayer() : -1);
+		}
+		else
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Queued move started for %d units to (%.0f, %.0f)"), Started.UnitIds.Num(), Started.Target.X, Started.Target.Y);
+		}
 		It.RemoveCurrent();
 	}
 }
@@ -3297,6 +3323,7 @@ bool UHOLUnitOrderProcessor::LocateChainStep(const UWorld& World, const HOLOrder
 		return Transform != nullptr;
 	}
 	case HOLOrderChain::EStepKind::Build:
+	case HOLOrderChain::EStepKind::AttackBuilding: // D345, Shift: to its centre, as an attack to its target's
 	{
 		if (Sites.IsEmpty())
 		{
