@@ -6778,6 +6778,31 @@ d'épée).
   (1) mesures au repos quand l'utilisateur le décide (applications fermées) : cuire le serveur d'Elrond
   (`net_match.ps1 -Stage`), puis S2 `main` contre Elrond et `FrontNeedsCombat` 0 / 1, puis `rest_measures.ps1` ;
   (2) avance de `main` sur `j7c-shot` (accord des sessions) ; (3) J7c.5.
+- (J7c.4, mycrusader-43) **L'utilisateur demande l'avance de `main` avant les mesures au repos** (« 2 du coup »).
+  `main` avait reçu le Moulin (3f2053d, D346) et D345 (7f0e206) : fusionnés dans `j7c-shot` sans conflit (**9d92772**) ;
+  compilation et `-Parts tests,build,combat` en cours. Obstacle à l'avance rapide dans la copie principale :
+  `Tools/Data/UnitTypes.csv` y est modifié sans commit (copie restée là du chantier stats des unités, passé dans
+  `HeroesOfLiberty-Haldir`, branche `unit-stats` ; à retirer, accord de l'utilisateur requis). **Conflit de règle à
+  trancher** : le chantier stats fixe la portée de mêlée à **116 cm (0,29 case) pour tous les soldats de mêlée**,
+  alors que la mêlée validée de J7c.4 utilise **Piquier 130 / Homme d'armes 70**.
+- (J7c.4, mycrusader-43) Fusion 9d92772 vérifiée : `build.ps1` PASS (94 s), `-Parts tests,build,combat` **PASS** (460 s,
+  90/90). **Choix de l'utilisateur** : (1) la copie restée dans la copie principale est retirée (`UnitTypes.csv`
+  restauré, `UnitStats.md` et `make_unit_stats.py` effacés, identiques à ceux de `HeroesOfLiberty-Haldir`) ; (2)
+  **Tranché — portée de mêlée par arme** (conforme à la recommandation) : Lancier 130, Homme d'armes 70 (la mêlée
+  validée) ; le chantier stats reprend ces valeurs au lieu de 116 pour tous (à lui transmettre). Avance rapide refusée :
+  `main` avait reçu MV.5 (e123afc, 5bd8b98, d368a3c ; recouvrement : `HOLUnitOrderProcessor.cpp`) → fusionné dans
+  `j7c-shot` sans conflit (**48ffa00**) ; compilation et `-Parts tests,formation,move,combat` en cours.
+  mycrusader-e0 (MV.2) prévenu : ne pas avancer `main` pendant l'atterrissage.
+- (J7c.4, mycrusader-43) Fusion 48ffa00 vérifiée : `build.ps1` PASS (71 s), `-Parts tests,formation,move,combat`
+  **PASS** (355 s, tests 92/92 ; move, formation, groupes, retardataires, blocs, combat, flèches, ordres). **`main`
+  avancé sur `j7c-shot` : 48ffa00** (avance rapide dans la copie principale, recompilée par `build.ps1`, 52 s).
+  mycrusader-e0 (MV.2) et mycrusader-c1 (stats des unités, `HeroesOfLiberty-Haldir` : portée par arme transmise, elle
+  fusionnera `main` dans `unit-stats`) prévenus. Empreintes de référence sur `main` : S3 8a9b34cde2035b53, S4
+  91a23fabb162056d. `HeroesOfLiberty-Elrond` libéré.
+  **Reprise exacte (J7c.4)** : il ne reste que les **mesures au repos** quand l'utilisateur le décide (applications
+  fermées), depuis la copie principale : cuire le serveur (`net_match.ps1 -Stage -Units 2000 -Seconds 40`), puis
+  `rest_measures.ps1` (à adapter : tout se mesure maintenant sur `main`, S1, S2, S7, S5, S3, S4, S5 en combat) ; S2
+  doit tenir sous 3 ms avec la mêlée (sinon `FrontNeedsCombat` / `EnemySideGuard` à revoir). Puis **J7c.5**.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
