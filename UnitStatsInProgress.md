@@ -375,3 +375,114 @@ Suite : **D345.2b** — colonnes d'attaque contre bâtiment des unités (`Buildi
 5 / 5 cases / 1,625 s, Distance), cibles : ordre (clic droit sur un bâtiment ennemi), attaque-déplacement après les
 unités, au repos dans le rayon d'agressivité sans unité ennemie, une unité ennemie fait lâcher le bâtiment, Paysan
 sur ordre seulement ; dégâts par `UHOLConstructionSubsystem::DamageBuilding`. Puis D345.3 (deuxième attaque, charge).
+- **D345.2b lancée** (sous-agent, Haldir à 233e31e) : colonnes d'attaque contre bâtiment, cibles, scénario `building_attack`.
+- Correction de l'utilisateur (« il ne montre pas le montant rendu ») : l'infobulle d'annulation n'affiche plus que
+  son nom, « Annuler la construction », sans montant (Haldir, HOLGameScreen.cpp, variables Site/Type inutiles
+  retirées) ; non compilé ni commité : compilé avec D345.2b, commité avec elle. Sous-agent prévenu.
+
+### D345.2b fait (sous-agent, 2026-10-22, Haldir, non commité)
+
+- CSV : `BuildingAttackType`, `BuildingAttack`, `BuildingAttackInterval`, `BuildingAttackRange` (Paysan 10/2,1 s/400,
+  Piquier et Homme d'armes 20/2,1 s/400, Mêlée ; Archer 5/1,625 s/2000, Distance ; Infanterie légère 0 : S1/S2
+  inchangés). Réimporté ; `UnitStats.md` : section « Attaque contre bâtiment ».
+- `FHOLCombatFragment::TargetBuilding` (pointeur faible) ; règles pures `GetEdgeDistanceToBox`, `ChooseBuilding`,
+  `GetBuildingApproachPoint`… ; ordre `AttackBuilding` (clic droit sur un bâtiment ennemi, `ServerAttackBuilding`) ;
+  au repos : bâtiment ennemi le plus proche dans l'agressivité sans unité ennemie ; attaque-déplacement : unités
+  d'abord ; toute unité ennemie prise pour cible fait lâcher le bâtiment (même sur ordre ; le Paysan, sans zone de
+  contact, continue) ; tenue : seulement un bâtiment déjà à portée. Mêlée : s'approche à 1,5 m du mur, garde 4 m de
+  portée en frappant. Flèches en vol, 1 dégât (armure 40).
+- Réseau : 0 bit de plus, activité Attaque et emplacement de cible réservé 4094 (4 094 unités au lieu de 4 095).
+- Triche `hol.Cheat.SpawnBuilding <Type> <Slot> <Dx> <Dy> [enemy]` ; scénario `building_attack` (+ .json, Humain
+  contre IA), répété hors écran jusqu'au bout.
+- Compilation PASS ; quick_check court PASS (99/99, 23 s) ; `-Parts tests,combat,orders,production` PASS (175 s).
+- Choix à confirmer : arrêt à 1,5 m du mur ; lâcher même sur ordre ; pas de reprise de l'ordre après la chute ; le
+  client tourne vers le bâtiment le plus proche quel qu'en soit le propriétaire ; camp vers dx 7000-10800.
+- Non fait : Maj (file) pour l'attaque de bâtiment ; pas de partie quick_check de bout en bout.
+- **Processus** : le sous-agent a dépassé la boucle (≈ 45 min, ≈ 280k jetons), surtout en trois répétitions du
+  scénario. À l'avenir : un sous-agent pour le code et les tests, un autre pour le scénario et sa répétition.
+- **Essai 5 lancé : `building_attack`.**
+
+### Essai 5 (building_attack) : a, b, f fonctionnent ; c, d, e « le scénario ne l'a pas fait »
+
+- Journal : c, d et e ont tourné (2e maison frappée au repos, détruite à 17:11:52 ; caserne à 17:12:45), mais le
+  scénario enchaîne trop vite (les Lanciers ennemis de d arrivent 4 s après la note c) : rien de visible.
+- **Défaut trouvé en d** : les Archers ont continué de tirer sur la maison (1 par flèche) pendant que les Lanciers
+  ennemis se battaient contre la mêlée : un ennemi dans leur agressivité doit leur faire lâcher le bâtiment.
+- **Demande de l'utilisateur** : un bâtiment attaqué affiche ses PV (barre). Choix de Claude : barre si sélectionné
+  **ou frappé dans les 5 dernières secondes**.
+- **Rythme des scénarios — B** (choix de l'utilisateur, contre la recommandation A « un scénario par cas ») : une
+  **touche « suite »** ; le scénario attend que l'utilisateur l'appuie avant chaque étape (ajout au lanceur, pour
+  tous les scénarios). Écartés : A (trois scénarios courts), C (longues pauses).
+- Deux sous-agents à la suite (même worktree) : 1) barre de PV et lâcher des Archers ; 2) touche « suite » et
+  `building_attack` réécrit avec elle.
+- Journal du jeu à 444 Mo : `LogAudio: RecursiveApplyAdjuster failed` en boucle (moteur, pas notre code).
+
+### Corrections après l'essai 5 (sous-agent, Haldir, non commité)
+
+- Barre de PV d'un bâtiment : sélectionné **ou frappé dans les 5 dernières secondes** (`LastHitTime` local, posé par
+  `TakeDamagePoints` sur le serveur et `OnRep_DamageTaken` sur le client ; `BuildingBarAfterHitSeconds` 5).
+- Archers : pas de bug ; seul un Archer tirait, à 20 m, et les Lanciers ennemis étaient au-delà de ses 21,33 m.
+  **Choix de l'utilisateur : C, règle telle quelle** (seul un ennemi dans le rayon de l'unité fait lâcher ; écartés :
+  A rayon mesuré aussi depuis le bâtiment, B appel à l'aide d'un allié attaqué). Test ajouté (Archer : ennemi à 21 m
+  → lâche, à 22 m → non) ; ligne de journal `drops a building for` à chaque lâcher.
+- Compilation PASS ; `-Parts tests,combat` PASS (173 s, 99/99) ; quick_check court PASS (26 s).
+- Main avancé à 464c9f0 par mycrusader-1e (chantier déplacement) : à fusionner dans unit-stats avant le commit.
+
+### EN PAUSE (demande de l'utilisateur, 2026-10-22)
+
+- Sous-agent « touche suite » arrêté en cours : verbe `waitkey` du lanceur (touche Entrée si libre, sans délai
+  maximal, passe tout seul en `-unattended` / `hol.Scenario.AutoContinue 1`), puis `building_attack` réécrit avec un
+  `waitkey` avant chaque étape (c : armée au repos à moins de 16 m de la 2e maison ; d : Lanciers ennemis à moins de
+  21,33 m des Archers, attendre `drops a building for` ; e : garde puis caserne). État exact : voir son rapport
+  ci-dessous.
+- Une session (mycrusader-f3) fait une mesure au repos : ne rien compiler ni lancer avant son message de fin.
+- Reprise : lire le rapport du sous-agent, finir la touche « suite » et le scénario, compiler, quick_check court,
+  essai `building_attack` ; puis commit (D345.2b + corrections + touche suite), fusion de main 464c9f0, fusion dans main.
+
+#### Rapport du sous-agent « touche suite » (arrêté proprement à la pause)
+
+- **Partie 1 faite** (compile, quick_check court PASS 24 s, 99/99) : verbe `waitkey [texte]` (défaut « Entrée : étape
+  suivante »), sans délai maximal ; touche **Entrée** (libre en jeu : seul `IMC_UI` l'a), lue dans `PlayerTick`
+  (`WasInputKeyJustPressed`), sauf avec Alt (plein écran) ; ligne bleu clair dans le panneau du scénario ; passe
+  seule après 1 s sous `hol.Test.Run` (quick_check), `-unattended`, tests d'automatisation ou
+  `hol.Scenario.AutoContinue 1`. Fichiers : HOLTestHooks.h, HOLTestSequence.cpp, HOLPlayerController, HOLScenarioPanel.
+- **Partie 2 écrite, répétition en échec à l'étape b** : `waitlog lands on a building for 1` jamais vu en 60 s (la
+  ligne existe pourtant, HOLCombatProcessor.cpp:739 ; à l'essai 5, des flèches touchaient bien : « took 1 (5 Ranged) ») ;
+  et les deux maisons sont tombées pendant b (la 2e à 20 m de la 1re : l'armée y va seule dès la chute) : c et d cassés.
+- **Reprise exacte** : dans `Tools/Scenarios/building_attack.txt` (sans compilation) : b → attendre
+  `Building destroyed: House of slot 1` (ou comprendre pourquoi aucune flèche n'est journalisée) ; 2e maison posée à
+  l'étape c seulement (`hol.Cheat.SpawnBuilding House 1 …` à ~10 m devant l'armée au repos) ou à plus de 25 m de la
+  1re ; d : Lanciers à moins de 21,33 m des Archers, `waitlog drops a building for`. Puis une répétition :
+  `powershell -ExecutionPolicy Bypass -File <scratchpad>\dryrun.ps1` (scratchpad de la session du 2026-10-22 ; sinon
+  `-RenderOffScreen -nosound -LiveCoding=0 -ExecCmds="hol.Scenario.AutoContinue 1,hol.Scenario building_attack"`).
+- Mesure S3 de mycrusader-f3 (2026-10-22) : le code de D345.1 / D345.2a ne coûte rien de mesurable (combat 2,73 contre
+  2,74 ms par pas) ; la hausse de S3 depuis 48ffa00 vient des valeurs d'unités d'eb73ead (plus de coups : 82 → 97-104
+  par seconde).
+
+### Reprise (« reprends », 2026-10-22) : scénario building_attack fini par Claude
+
+- Pas de flèche journalisée : la ligne « lands on a building » n'est écrite qu'avec `hol.Combat.LogHits 1` ; et la
+  mêlée abattait la maison avant que les Archers arrivent. Scénario réécrit : Archers créés seuls et rangés dans le
+  groupe 1 ; b d'abord (Archers seuls, attente de « EHOLAttackType::Ranged), health ») ; a (toute l'armée) ;
+  c : 2e maison posée à l'étape c, à ~10 m de l'armée au repos ; d : Lanciers ennemis au milieu de l'armée, attente
+  de `drops a building for` ; e ; f. Caméra remise sur la cible avant chaque ordre (OrderNear exige le point à
+  l'écran) ; après `hol.Select.NextIdle`, 2 s pour que la caméra finisse de glisser.
+- Quatre répétitions hors écran ; la dernière **prête** (b-f : ordres pris, 11 lâchers, maisons et caserne détruites).
+- **Essai 6 lancé : `building_attack`** (Entrée entre les étapes).
+- Essai 6 : à l'étape d, la maison de c était déjà tombée quand les Lanciers sont arrivés (l'utilisateur regardait c).
+  Corrigé : d reconstruit une maison à la place de la première, attend que l'armée la frappe, puis fait venir les
+  Lanciers ; caméra remise en place juste avant (elle avait glissé pendant l'attente : Lanciers nés 44 m plus loin).
+  Répétition prête (13 lâchers). **Essai 7 lancé.**
+- **Essai 7 : « works »** — validé. Commit 4663530 sur unit-stats (D345.2b, barre de PV, touche « suite »,
+  scénario building_attack), main 464c9f0 puis 02d8ea4 fusionnés dans unit-stats (compilation PASS ;
+  `-Parts tests,combat,bodies` PASS 204 s, 101/101 ; quick_check court PASS 40 s) ; **main avancé à 1473564**.
+- GDD : D345 point 9 (lâcher dans le rayon de l'unité, approche à 1,5 m, barre 5 s) ; ScenariosInProgress :
+  touche « suite » ; EtapeDefini : reste la deuxième attaque et Maj pour l'attaque d'un bâtiment.
+
+## Reprise après D345.2b
+
+Reste de D345 : **D345.3 — deuxième attaque à déclencheur** (premier déclencheur : Charge, premier coup après X cases
+de course, sa vitesse = recharge ; colonnes et règle pure ; aucune unité ne l'utilise avant la cavalerie : tests
+seulement) ; **Maj (file)** pour l'attaque d'un bâtiment (aujourd'hui toujours immédiate). Plus tard : ×0,3 contre les
+héros sauf Siège, attaques de type Héros (avec les héros), tours. À l'avenir : un sous-agent pour le code et les tests,
+un autre pour le scénario (minuteur de 15 min à chaque lancement).

@@ -13,7 +13,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités
-- D345 à coder : attaque des unités contre les bâtiments (ordre, attaque-déplacement, au repos), deuxième attaque à déclencheur (charge) *(types, armures, bonus et destruction des bâtiments faits ; suite dans `UnitStatsInProgress.md`)*
+- D345 à coder : deuxième attaque à déclencheur (charge) ; Maj (file) pour l'attaque d'un bâtiment *(le reste de D345 est fait ; suite dans `UnitStatsInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide, abandon, vaincu effondré *(D347 à D360, GDD § 14.1)*

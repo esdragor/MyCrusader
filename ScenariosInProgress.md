@@ -20,6 +20,12 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - `hol.Scenario <nom>` : charge la configuration, ouvre la carte, attend qu'elle soit prête, joue les étapes. Sans
   argument : liste les scénarios. Une étape qui n'arrive pas **ne quitte pas** le jeu (contrairement aux contrôles
   scriptés) : message d'erreur à l'écran et dans le journal.
+- **Touche « suite »** (choix de l'utilisateur, 2026-10-22, chantier D345) : `waitkey [texte]` attend que
+  l'utilisateur appuie sur **Entrée** (pas avec Alt), sans délai maximal, une ligne bleu clair dans le panneau ; elle
+  passe seule après 1 s sous `hol.Test.Run`, `-unattended`, les tests d'automatisation ou `hol.Scenario.AutoContinue 1`
+  (pour répéter un scénario hors écran). Mettre un `waitkey` avant chaque étape d'un scénario à plusieurs temps, et
+  remettre la caméra sur la cible juste avant chaque ordre ou apparition (`OrderNear` exige le point à l'écran,
+  `SpawnHere` fait naître au centre de l'écran, la caméra peut glisser pendant une attente).
 - Code en fichiers nouveaux (`Dev/`), hors des fichiers modifiés dans `HeroesOfLiberty-J5c` (J7b.5b en cours) : fusion sans
   conflit.
 
