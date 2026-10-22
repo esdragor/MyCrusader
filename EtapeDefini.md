@@ -14,14 +14,17 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités
-- D345 à coder : types d'attaque et quatre armures, attaque contre bâtiment (aussi au repos), armure Distance des bâtiments (40), catégories multiples et bonus en liste, deuxième attaque à déclencheur (charge) *(valeurs dans `UnitStatsInProgress.md`)*
+- D345 à coder : attaque des unités contre les bâtiments (ordre, attaque-déplacement, au repos), deuxième attaque à déclencheur (charge) *(types, armures, bonus et destruction des bâtiments faits ; suite dans `UnitStatsInProgress.md`)*
+
+### Fin de partie
+- Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide, abandon, vaincu effondré *(D347 à D360, GDD § 14.1)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 - Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point *(pas dans l'immédiat)*
 
 ### GDD
-- Review du GDD : reprendre à D344 (D341 scénarios d'essai, D342 seuil de S3 / S4, D343 état d'unité sur 59 bits)
+- Review du GDD : prochain numéro D361 (D347 à D360 conditions de victoire ; reprise au § 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*

@@ -4,6 +4,7 @@
 
 #include "Algo/StableSort.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Simulation/HOLUnitTypes.h"
 
 FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
 {
@@ -259,13 +260,15 @@ bool HOLConstruction::TryPay(FHOLResources& Stock, const FHOLResources& Cost)
 	return true;
 }
 
-FHOLResources HOLConstruction::GetRefund(const FHOLResources& Cost, const bool bWorkStarted)
+FHOLResources HOLConstruction::GetRefund(const FHOLResources& Cost, const int64 Work, const int64 TotalWork)
 {
-	if (!bWorkStarted)
+	if (TotalWork <= 0 || Work <= 0)
 	{
 		return Cost;
 	}
-	return FHOLResources(Cost.Food / 2, Cost.Wood / 2, Cost.Stone / 2, Cost.Gold / 2);
+	const int64 Left = TotalWork - FMath::Min(Work, TotalWork);
+	const auto Share = [Left, TotalWork](const int32 Amount) { return static_cast<int32>(static_cast<int64>(Amount) * Left / TotalWork); };
+	return FHOLResources(Share(Cost.Food), Share(Cost.Wood), Share(Cost.Stone), Share(Cost.Gold));
 }
 
 int32 HOLConstruction::GetBuildSteps(const float BuildTime, const float StepSeconds)
@@ -318,6 +321,17 @@ int32 HOLConstruction::GetHealth(const int32 MaxHealth, const int64 Work, const 
 	return FMath::Max(1, static_cast<int32>(static_cast<int64>(MaxHealth) * Done / TotalWork));
 }
 
+int32 HOLConstruction::GetHealthWithDamage(const int32 MaxHealth, const int64 Work, const int64 TotalWork, const int32 Damage)
+{
+	return FMath::Max(0, GetHealth(MaxHealth, Work, TotalWork) - FMath::Max(Damage, 0));
+}
+
+int32 HOLConstruction::GetBuildingDamage(const int32 Damage, const EHOLAttackType AttackType, const int32 RangedArmor)
+{
+	const int32 Armor = AttackType == EHOLAttackType::Ranged ? FMath::Max(RangedArmor, 0) : 0;
+	return FMath::Max(1, Damage - Armor);
+}
+
 int32 HOLConstruction::GetPopulationProvided(const int32 TypePopulation, const bool bFinished)
 {
 	return bFinished ? FMath::Max(TypePopulation, 0) : 0;
@@ -343,9 +357,9 @@ bool HOLConstruction::HasWorkStarted(const EHOLConstructionState State, const in
 	return State != EHOLConstructionState::Foundation || Work > 0;
 }
 
-FHOLResources HOLConstruction::GetCancelRefund(const FHOLResources& Cost, const EHOLConstructionState State, const int64 Work)
+FHOLResources HOLConstruction::GetCancelRefund(const FHOLResources& Cost, const EHOLConstructionState State, const int64 Work, const int64 TotalWork)
 {
-	return CanCancel(State) ? GetRefund(Cost, HasWorkStarted(State, Work)) : FHOLResources();
+	return CanCancel(State) ? GetRefund(Cost, Work, TotalWork) : FHOLResources();
 }
 
 FBox2D HOLConstruction::GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, const float Yaw)

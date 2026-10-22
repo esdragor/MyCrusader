@@ -386,6 +386,11 @@ public:
 	void RequestCheatPopulation(int32 Places);
 	void RequestCheatUnitSpeed(float Scale);
 	void RequestCheatGatherSpeed(float Scale);
+	/**
+	 * D345.2a, until the units attack buildings: Amount of damage of AttackType (EHOLAttackType as a byte) on the building
+	 * nearest Point on the server (any player's), its armour taken off; destroyed at 0 (hol.Cheat.DamageNear, DamageSelected).
+	 */
+	void RequestCheatDamageBuilding(const FVector& Point, int32 Amount, uint8 AttackType);
 
 	/** A « +10 » shown on this machine (J5c.3): the unload, when it arrived, and its line over others at the same place. */
 	struct FShownDepositPopup
@@ -535,6 +540,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatGatherSpeed(float Scale);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

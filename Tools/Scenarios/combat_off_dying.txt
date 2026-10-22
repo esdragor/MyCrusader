@@ -1,6 +1,6 @@
 # Combat coupé juste après une mort : 6 Hommes d'armes et 3 Paysans ennemis ; au premier Paysan tué, hol.Combat.Enabled 0 ; le mort tombe et son corps s'enfonce ~31 s plus tard
 # Plain, deux joueurs (combat_off_dying.json). Positions dans le repère du centre du joueur, comme falls : les Paysans
-# ennemis à ~9 m, dans le rayon d'agression (12 m) : les Hommes d'armes attaquent tout seuls, les Paysans ne ripostent pas.
+# ennemis à ~9 m, dans le rayon d'agression (16 m) : les Hommes d'armes attaquent tout seuls, les Paysans ne ripostent pas.
 hol.Camera.FocusNear 4000 0
 frames 2
 hol.Units.SpawnHere 6 ManAtArms 0 250

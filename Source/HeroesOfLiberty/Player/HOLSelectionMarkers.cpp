@@ -9,6 +9,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
@@ -95,6 +96,9 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double BarMaxScale = 1.8;
 	/** Bars out of the camera's view are not drawn: the view's cone, its half-angle widened a little (degrees). */
 	constexpr double BarCullMarginDegrees = 8.0;
+	/** A building's bar (D345.2a): this many times as wide as a unit's, this far above its top (cm). */
+	constexpr double BuildingBarWidthFactor = 3.0;
+	constexpr double BuildingBarLift = 150.0;
 	/** Colours (the user's nuance on J7-Q5 left the colour open): green for the player's own units, red for any other's. */
 	const FLinearColor BarOwnColor(0.12f, 0.8f, 0.12f);
 	const FLinearColor BarOtherColor(0.9f, 0.1f, 0.05f);
@@ -477,6 +481,38 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 			const double FillWidth = FMath::Max(Width * Share, 1.0);
 			const FVector FillCentre = Head + Right * ((FillWidth - Width) * 0.5) - Forward * BarFillLift;
 			const FLinearColor& Color = View.OwnerPlayer == OwnPlayer ? BarOwnColor : BarOtherColor;
+			Transforms.Add(FTransform(Facing, FillCentre, FVector(FillWidth / ShapeSize, Height / ShapeSize, 1.0)));
+			CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+		}
+		// The buildings' bars (D345.2a): over the selected building only (the user's choice), as the units' but wider; above its top
+		// (a site's, risen with its work).
+		const AHOLBuilding* SelectedBuilding = PlayerController->GetSelection();
+		for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+		{
+			const AHOLBuilding* Building = *It;
+			const FHOLBuildingTypeRow* Type = Building->GetType();
+			if (!Type || !Building->IsSeenHere() || Building != SelectedBuilding || Building->GetMaxHealth() <= 0)
+			{
+				continue;
+			}
+			const float Rise = Building->IsFinished() ? 1.f : FMath::Max(AHOLBuilding::MinRiseRatio, Building->GetProgress());
+			const FVector Top = Building->GetActorLocation() + FVector(0.0, 0.0, Type->Height * Rise + BuildingBarLift);
+			const FVector ToTop = Top - CameraLocation;
+			const double Distance = ToTop.Size();
+			if (Distance <= UE_KINDA_SMALL_NUMBER || FVector::DotProduct(ToTop / Distance, Forward) < CullCos)
+			{
+				continue;
+			}
+			const float Share = FMath::Clamp(static_cast<float>(Building->GetHealth()) / static_cast<float>(Building->GetMaxHealth()), 0.f, 1.f);
+			const double Scale = FMath::Clamp(Distance / BarReferenceDistance, BarMinScale, BarMaxScale);
+			const double Width = BarWidth * BuildingBarWidthFactor * Scale;
+			const double Height = BarHeight * Scale;
+			const double Margin = BarMargin * Scale;
+			Transforms.Add(FTransform(Facing, Top, FVector((Width + 2.0 * Margin) / ShapeSize, (Height + 2.0 * Margin) / ShapeSize, 1.0)));
+			CustomData.Append({ BarBackColor.R, BarBackColor.G, BarBackColor.B, BarFullStroke });
+			const double FillWidth = FMath::Max(Width * Share, 1.0);
+			const FVector FillCentre = Top + Right * ((FillWidth - Width) * 0.5) - Forward * BarFillLift;
+			const FLinearColor& Color = Building->GetOwnerPlayer() == OwnPlayer ? BarOwnColor : BarOtherColor;
 			Transforms.Add(FTransform(Facing, FillCentre, FVector(FillWidth / ShapeSize, Height / ShapeSize, 1.0)));
 			CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
 		}

@@ -290,3 +290,88 @@ reste) ; quick_check : file d'attente (B à 15 m, dans l'agression de 16 m : l'�
 of reach » de la tenue (50 cm alors que l'Homme d'armes a 70 cm), commentaires « 12 m » périmés ; commentaire
 « 3 m/s » de `HOLUnitReplicationRules.h` (la vitesse répliquée va jusqu'à 12,8 m/s). Les scénarios doivent écarter
 les groupes ennemis de plus de 16 m (21,3 m avec des Archers).
+
+## Code de D345 (reprise du 2026-10-22, nouvelle session)
+
+- Haldir : `unit-stats` avancée en avance rapide jusqu'à main 275581a ; `IN_USE.txt` repris (« EN COURS »).
+- **D345.1 (types et armures) confiée à un sous-agent** dans Haldir (décisions déjà tranchées, aucune question) :
+  `AttackType`, armures Siège et Héros, catégories multiples, bonus en liste, catégorie Infanterie à poudre,
+  `UnitStats.md` étendu, petits restes (AttackMoveRadius 1600, quick_check file d'attente et seuil, commentaires).
+- En parallèle : question à l'utilisateur pour D345.2 (dégâts et destruction des bâtiments).
+
+### Questions de D345.2 (attaque contre bâtiment), une à la fois
+
+1. **À 0 point de vie — B** (choix de l'utilisateur, contre la recommandation A « détruit net ») : le bâtiment est
+   détruit et laisse des **décombres** quelques secondes, qui ne bloquent pas le passage ; vie répliquée sur le
+   bâtiment, barre de vie visible quand il est abîmé ; navmesh rouvert, il cesse de servir (population, dépôt,
+   production). Pas de réparation pour l'instant. Écartés : A (disparaît net), C (abîmé seulement, vie arrêtée à 1).
+2. **File de production d'un bâtiment détruit — A** (choix de l'utilisateur, la recommandation) : tout est
+   remboursé, comme une annulation. Écartés : B (tout perdu), C (tête perdue, reste remboursé).
+3. **Chantier détruit — au prorata** (réponse de l'utilisateur : « au prorata et annuler est la même chose
+   désormais ») : un chantier détruit rend le coût × la part qui restait à construire ((TotalWork − Work) / TotalWork,
+   arrondi vers le bas), et **l'annulation suit la même règle** (remplace « annuler un chantier commencé rend la
+   moitié » de D311 ; une fondation nue rend donc tout). Une fondation nue reste invisible à l'ennemi (pas de cible).
+4. **Centre principal — A** (choix de l'utilisateur, la recommandation) : détruit comme les autres bâtiments, la partie
+   continue ; la défaite (écran de fin, joueur éliminé) devient une ligne d'EtapeDefini (au commit de D345.2).
+   Écartés : B (défaite tout de suite), C (indestructible pour l'instant).
+- Choix de Claude, à corriger au besoin : décombres pendant **10 s**.
+
+**Découpage de D345.2** (après la fin de D345.1, même worktree) : 2a — vie des bâtiments (répliquée, barre de vie),
+dégâts, destruction et décombres, navmesh rouvert, service arrêté, remboursements (file, chantier au prorata, annulation
+au prorata), `RangedArmor` 40 dans `BuildingTypes.csv` ; 2b — colonnes d'attaque contre bâtiment des unités et cibles
+(ordre, attaque-déplacement après les unités, au repos dans le rayon d'agressivité, lâcher pour une unité ennemie,
+Paysan sur ordre seulement).
+
+### D345.1 fait (sous-agent, 2026-10-22, Haldir, non commité)
+
+- CSV : `ArmorCategories` (liste, ex. `(Ranged,GunpowderInfantry)`), `AttackType` (Melee, Ranged, Siege, Hero),
+  `SiegeArmor`, `HeroArmor` (Homme d'armes 2), `Bonuses` (`((Category=LightInfantry,Damage=5),(Category=GunpowderInfantry,Damage=5))`).
+  Fragment partagé : `ArmorCategoryMask` (masque int32), `AttackType`, armures, `TArray<FHOLAttackBonus>`, tout en UPROPERTY.
+- `HOLCombat::GetDamage(Attacker, Defender)` : attaque + bonus de chaque catégorie visée − `GetArmor(Defender, type)`,
+  1 au moins. `IsRangedAttack` (portée > 2 m) ne sert plus qu'au comportement (flèche, choix de cible, rang, affichage).
+- `AttackMoveRadius` 1600 ; quick_check : file B à 20 m, seuil de la tenue > 70 cm, commentaires 16 m ; commentaire
+  3 m/s corrigé. `UnitStats.md` étendu et régénéré (matrice inchangée).
+- Compilation PASS (35 s), réimport PASS, quick_check court PASS (23 s, 93/93), `-Parts tests,combat,orders` PASS (169 s).
+- Reste : commentaires « 12 m » dans 8 scénarios ; `order_lines.txt` groupes à 15 m bord à bord (dans les 16 m).
+- Pas d'essai propre (effet invisible en partie) : à valider avec l'essai de D345.2.
+- **D345.2a lancée** (sous-agent, Haldir).
+- Scénarios (Claude, Haldir) : ennemis écartés au-delà de l'agression — `archers` 6500 → 7000 (bords ~24 m, Archers
+  21,3 m), `attack_move_q`, `attack_move_queue`, `order_lines` 6200 → 6800 (bords ~21 m), caméras suivies ;
+  commentaires « 12 m » → 16 m dans 8 scénarios.
+
+### D345.2a fait (sous-agent, 2026-10-22, Haldir, non commité)
+
+- Vie : `DamageTaken` (uint16 répliqué) sur `AHOLBuilding` ; `GetHealth()` = vie du chantier (D312) ou MaxHealth,
+  moins les dégâts. `RangedArmor` 40 dans `BuildingTypes.csv` (réimporté) ; `HOLConstruction::GetBuildingDamage`
+  (Distance − 40, 1 au moins ; autres types entiers, 1 au moins).
+- `UHOLConstructionSubsystem::DamageBuilding` / `DestroyBuilding` : file remboursée en entier, chantier au prorata,
+  `AHOLRubble` (nouveau, 10 s, sans collision ni navmesh), `ReleaseFootprint`, puis `Destroy()`. Annulation au prorata
+  (`GetRefund(Cost, Work, TotalWork)`), info-bulle « Rend la part du coût non bâtie » (`RefundRest`, en/ja dans fill_po.py).
+- Barre de vie des bâtiments (abîmé ou sélectionné), vie dans le panneau de sélection.
+- Triches : `hol.Cheat.DamageNear <n> <dx> <dy> [enemy|own] [melee|ranged|siege|hero]`, `hol.Cheat.DamageSelected`.
+- Tests : `Construction.Damage`, `Buildings.Damage` ; 95/95. quick_check court PASS (22 s) ; `-Parts build` PASS
+  (285 s, deux vérifications du remboursement passées au prorata) ; tests, production PASS. `gather` non relancé.
+- Choix du sous-agent à confirmer : fondation nue détruite sans décombres (remboursée en entier) ; barre si abîmé ou
+  sélectionné ; 1 dégât au moins pour tout type ; l'annulation ne prévient pas le navmesh (déjà le cas avant).
+- Restes : .po/.locres non régénérés pour `RefundRest`.
+- **Essai 4 lancé : `building_destroy`** (jamais joué avant).
+
+### Essai 4 (building_destroy) : « works » — validé, corrections de l'utilisateur
+
+- Choix du sous-agent acceptés : fondation nue détruite sans décombres (remboursée en entier) ; 1 dégât au moins pour
+  tout type. **Corrigés** : barre de vie sur le **seul bâtiment sélectionné** (plus quand il est abîmé) ; infobulle
+  d'annulation « Annuler la construction » avec le montant rendu, **sans ligne d'effet** (traductions RefundAll,
+  RefundHalf, RefundRest retirées de fill_po.py). Compilation PASS, quick_check court PASS (95/95, 22 s).
+- Commits sur unit-stats : 95afb99 (D345.1 + D345.2a), cd091c8 (corrections) ; **fusionnés dans main 2e086ed**.
+- GDD : D345 complété (point 8 : destruction, décombres, remboursements, annulation au prorata, centre provisoire
+  avant D347) ; D311 et le résumé de J6 renvoient au prorata. EtapeDefini : ligne D345 réduite à ce qui reste.
+- À savoir : D347 (review du GDD, même jour) fait du forum un bâtiment à vies (ruine qui se reconstruit) ; notre
+  « centre détruit comme les autres » est provisoire, jusqu'au code des conditions de victoire.
+
+## Reprise après D345.2a
+
+Suite : **D345.2b** — colonnes d'attaque contre bâtiment des unités (`BuildingAttack`, `BuildingAttackRange`,
+`BuildingAttackInterval`, type : Paysan 10 / 1 case / 2,1 s ; Piquier et Homme d'armes 20 / 1 case / 2,1 s ; Archer
+5 / 5 cases / 1,625 s, Distance), cibles : ordre (clic droit sur un bâtiment ennemi), attaque-déplacement après les
+unités, au repos dans le rayon d'agressivité sans unité ennemie, une unité ennemie fait lâcher le bâtiment, Paysan
+sur ordre seulement ; dégâts par `UHOLConstructionSubsystem::DamageBuilding`. Puis D345.3 (deuxième attaque, charge).

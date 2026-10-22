@@ -1,0 +1,77 @@
+# Bâtiments détruits (D345.2a) : une maison abîmée par paliers puis détruite, une caserne qui produit détruite (file remboursée), un chantier détruit (part non bâtie rendue)
+# Configuration par défaut (un joueur, Plain). Positions dans le repère du centre du joueur (X vers le milieu de la carte),
+# celles de tile_4m : maisons derrière le centre, caserne de l'autre côté. Les dégâts viennent de hol.Cheat.DamageNear
+# (les unités n'attaquent pas encore les bâtiments : D345.2b).
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# Quatre Paysans devant le centre.
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 150
+waitunits 4
+# Une maison et une caserne, bâties d'un coup (hol.Build.Instant) par les quatre.
+hol.Build.PlaceNear House -1400 1200
+waitlog Construction: slot 0 placed House foundation
+hol.Build.PlaceNear Barracks -1800 -1400
+waitlog Construction: slot 0 placed Barracks foundation
+hol.Build.Instant 1
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Camera.FocusNear -1400 1200
+frames 5
+hol.Select.OrderNear -1400 1200
+waitlog Construction: slot 0 finished House
+hol.Camera.FocusNear -1800 -1400
+frames 5
+hol.Select.OrderNear -1800 -1400
+waitlog Construction: slot 0 finished Barracks
+hol.Build.Instant 0
+# 1. La maison (600 PV) abîmée par paliers : sa barre de vie paraît dès le premier coup.
+hol.Camera.FocusNear -1400 600
+frames 5
+note 1. Maison : 150 dégâts au corps à corps, puis une flèche de 50 (armure à distance 40 : 10 seulement), puis 200 ; regarde sa barre de vie.
+wait 2
+hol.Cheat.DamageNear 150 -1400 1200
+wait 2
+hol.Cheat.DamageNear 50 -1400 1200 own ranged
+wait 2
+hol.Cheat.DamageNear 200 -1400 1200
+wait 3
+# Détruite : des décombres 10 s, qui ne bloquent rien ; la population perd ses 10 places.
+note 2. La maison est détruite : décombres pendant 10 s, population 20 -> 10. Les Paysans traversent son emplacement.
+hol.Cheat.DamageNear 1000 -1400 1200
+waitlog Building destroyed: House
+wait 1
+hol.Select.Own
+hol.Select.OrderNear -1400 1200
+wait 6
+# 3. Un chantier de maison bâti un moment par les quatre, arrêté, puis détruit : rend la part du coût non bâtie.
+hol.Build.PlaceNear House -1400 2000
+waitlog Construction: slot 0 placed House foundation
+hol.Camera.FocusNear -1400 1600
+frames 5
+hol.Select.Own
+hol.Select.OrderNear -1400 2000
+waitlog Build order of slot 0
+wait 6
+hol.Select.Stop
+note 3. Un chantier de maison (50 bois) détruit en cours : il rend la part du coût non bâtie (le bois remonte d'autant).
+wait 2
+hol.Cheat.DamageNear 1000 -1400 2000
+waitlog Building destroyed: House
+wait 3
+# 4. La caserne : trois unités en file, puis détruite : toute la file remboursée.
+hol.Camera.FocusNear -1800 -1000
+frames 5
+hol.Select.Category Military
+frames 2
+hol.Select.Grid 0
+hol.Select.Grid 1
+hol.Select.Grid 2
+waitlog Production: slot 0 queued
+note 4. Une caserne produit (3 unités en file) puis est détruite : toute la file est remboursée (regarde les ressources), la sélection se vide.
+wait 3
+hol.Prod.Report
+hol.Cheat.DamageNear 5000 -1800 -1400
+waitlog Building destroyed: Barracks
+note Essaie aussi : sélectionne un bâtiment puis hol.Cheat.DamageSelected 100 (ou ranged) ; annule un chantier (V) : la part non bâtie revient.

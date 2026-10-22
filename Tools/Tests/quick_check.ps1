@@ -42,7 +42,7 @@
 # J6a.4 (D312), solo: a Peasant sent by a right click on house A (a ghost until then): its first work blocks the navmesh,
 # it rises, finished alone in the table's time (hol.Build.Speed 2), the population cap 10 -> 20, the builder idle; three
 # Peasants place house C, then D with Shift: C built by the three (about twice as fast), then D; the first Peasant helps
-# on D (a right click on the site), D cancelled after its first work (half refunded), its builders idle. With "net": each
+# on D (a right click on the site), D cancelled after its first work (the share not built refunded, D345: 1 to 49 of its 50 wood), its builders idle. With "net": each
 # client's Peasant builds its house; the other's foundation never reaches a client before its first work, then it does.
 # The user's trial of J6a.4, solo: the centre's rally point on a ghost house E (the flag on it), every site finished at
 # its first blow (hol.Cheat.FastBuild 1): the Peasant produced builds E, goes on to F 8 m away (hol.Build.NextSiteRange,
@@ -357,7 +357,7 @@ $FormBlockSpearmen = @(-6000, -5500)
 $FormBlockMenAtArms = @(-6000, -6000)
 # Then the straggler (the user's 1st trial of J7b), after the groups: 5 Men-at-arms close together on the six's first
 # ground (gone by then) and a 6th 10 m behind them (west), sent 37 m east-north-east (between the block's end and the
-# six's queued point, more than 12 m from every enemy of the combat parts): the five leave at once, the 6th walks on its
+# six's queued point, more than 16 m from every enemy of the combat parts): the five leave at once, the 6th walks on its
 # own path to its place. Then the same with an Archer (779 cm/s against 697) as the 6th, sent 35 m north-east.
 $StragFrom = @(-6000, -5500)
 $StragLate = @(-7000, -5500)
@@ -386,7 +386,7 @@ $MeetTo = @(-3300, -5450)
 # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1, 6 m apart on the formation's first ground.
 $CombatMenAtArms = @(-6300, -5500)
 $CombatSpearmen = @(-5700, -5500)
-# The attack-move and hold position (J7b.3), on ground clear of the parts before (more than 12 m from their soldiers).
+# The attack-move and hold position (J7b.3), on ground clear of the parts before (more than 16 m from their soldiers).
 # D345 (aggression 16 m): the Men-at-arms start 10 m further west and the Spearman 8 m north of their way (4 m before),
 # more than 16 m edge to edge from them and from the Peasants left at (-5900, -2500) whatever the spawn's draw, so that
 # only the attack-move (within 16 m of their way) takes it on.
@@ -394,7 +394,7 @@ $OrdersMoveFrom = @(-7500, -1500)
 $OrdersMoveTo = @(-3500, -1500)
 $OrdersMoveSpearman = @(-5000, -700)
 $OrdersHold = @(-4500, 2500)
-# (Spawn places a unit up to ~1.5 m off its point: the Peasant 5.5 m away, out of reach whatever the draw, within 12 m.)
+# (Spawn places a unit up to ~1.5 m off its point: the Peasant 5.5 m away, out of reach whatever the draw, within 16 m.)
 $OrdersHoldPeasant = @(-3950, 2500)
 $OrdersHoldSpearman = @(-4500, 3300)
 # Two enemies never push each other back (the user's trial of J7b), on the attack-move's start (left by then): 3 Men-at-arms
@@ -402,14 +402,15 @@ $OrdersHoldSpearman = @(-4500, 3300)
 $PushMenAtArms = @(-6500, -1500)
 $PushWall = @(-5700, -1500)
 $PushTarget = @(-5000, -1500)
-# A queue after an ordered target (the review of J7b): 3 Men-at-arms made for it on clear ground (more than 12 m from
+# A queue after an ordered target (the review of J7b): 3 Men-at-arms made for it on clear ground (more than 16 m from
 # every unit left by the parts before: the push's wall is still being fought, the hold's Peasant still stands) ordered on
-# a Peasant of slot 1 15 m north (A), then with Shift on another 15 m further north (B, out of their 12 m once A is dead):
-# B is attacked once A is killed; then a Peasant made 6 m beyond B (C) is taken on by their own aggression.
+# a Peasant of slot 1 15 m north (A), then with Shift on another 20 m further north (B, out of their 16 m aggression once A
+# is dead, D345: only the queue takes them there): B is attacked once A is killed; then a Peasant made 6 m beyond B (C) is
+# taken on by their own aggression.
 $QueueMenAtArms = @(-2000, 0)
 $QueueA = @(-2000, 1500)
-$QueueB = @(-2000, 3000)
-$QueueC = @(-2000, 3600)
+$QueueB = @(-2000, 3500)
+$QueueC = @(-2000, 4100)
 # The shot (J7c.2a): 4 Archers of slot 0 on clear ground south (more than 16 m from the units left), 3 Spearmen of slot 1
 # 14 m north of them and 2 Peasants 10 m north-east.
 $ArrowArchers = @(-2000, -5000)
@@ -444,7 +445,7 @@ $BarracksGhostRally = @(-17000, 8600)
 $GapTo = @(-4500, 400)
 # The smoke part (D327), the default's single short game: the title screen and New game in French, a 2-player match
 # launched from it, the camera moved by the arrow, its own centre selected then nothing; 3 Men-at-arms of slot 0 made 18 m
-# from a Peasant of slot 1 (out of their 12 m aggression), boxed and sent 4 m short of it: once there they take it on and
+# from a Peasant of slot 1 (beyond their 16 m aggression with this seed's draw), boxed and sent 4 m short of it: once there they take it on and
 # kill it (the melee on for this step alone). Every step waits for its event, no fixed delays.
 $SmokeMenAtArms = @(-6500, -1500)
 $SmokeEnemy = @(-4700, -1500)
@@ -942,7 +943,7 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 10; $i++) { Step "wait 0.25", "hol.Units.Where 0"; if ($i -eq 4) { Step "hol.Camera.Zoom 12", "frames 2", "capture build_wall_one", "hol.Camera.Zoom -12" } }
             Step "wait 3", "hol.Units.Where 0", "hol.Nav.Footprints off"
             # The walkers taken away (hol.Units.Remove): the wall's Peasant stood 8.5 m from the attack-move's Spearman (its
-            # 12 m aggression drew it off the Men-at-arms' way), the gap's three 15 m from it. Waited for without their counts
+            # aggression drew it off the Men-at-arms' way), the gap's three 15 m from it. Waited for without their counts
             # (checked by the analysis of "build gap": a wrong count must not stop the rest of the sequence).
             # Escape first, while the wall's Peasant is still selected (taken away selected, the selection's "none" may come
             # before the Escape that waits for it).
@@ -1161,7 +1162,7 @@ if ($Parts -contains "camera") {
         }
         if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
             # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
-            # first ground (left by then): they take each other on by themselves (aggression 12 m), walk into reach and strike.
+            # first ground (left by then): they take each other on by themselves (aggression 16 m), walk into reach and strike.
             Step "mark combat", "hol.Units.SpawnSeed 122", "hol.Combat.Enabled 1", "hol.Combat.Report", "hol.Units.Spawn 3 $($CombatMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($CombatSpearmen -join ' ') 1 Spearman 150",
                 "hol.Camera.Focus $(($CombatMenAtArms[0] + $CombatSpearmen[0]) / 2) $($CombatMenAtArms[1])", "wait 0.2", "hol.Combat.Report"
             for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.Report" }
@@ -1191,7 +1192,7 @@ if ($Parts -contains "camera") {
             Step "capture orders_attack", "mark orders stop", "hol.Select.Stop", "wait 0.2", "hol.Combat.Report", "wait 2", "hol.Combat.Report"
             Step "mark orders end", "hol.Select.Click 0.03 0.05"
             # The attack-move (J7b.3): 3 Men-at-arms of slot 0 attack-move 30 m east, a Spearman of slot 1 standing 4 m off
-            # their way (within the attack-move's 12 m): they take it on, kill it, then walk on to their destination.
+            # their way (within the attack-move's 16 m): they take it on, kill it, then walk on to their destination.
             Step "mark orders attackmove", "hol.Units.SpawnSeed 124", "hol.Units.Spawn 3 $($OrdersMoveFrom -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 1 $($OrdersMoveSpearman -join ' ') 1 Spearman 150",
                 "hol.Camera.Focus $($OrdersMoveFrom -join ' ')", "wait 0.3", "hol.Combat.Report",
                 "hol.Select.BoxGround $($OrdersMoveFrom[0] - 350) $($OrdersMoveFrom[1] - 350) $($OrdersMoveFrom[0] + 350) $($OrdersMoveFrom[1] + 350)",
@@ -2027,7 +2028,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["a right click on the site D: the first Peasant helps, 4 builders at work"] = [bool]($Help | Select-String -Pattern "Order: 1 units build House of slot 0 \(own\), under construction" -Quiet) -and
         [bool]($Help | Select-String -Pattern "House at \($($BuildD -join ', ')\), 4 builders at work" -Quiet)
     $CancelledD = & $Value $Help "(Construction: slot 0 cancelled House .*)$"
-    $Checks["D cancelled after its first work: half refunded ($CancelledD)"] = [bool]($CancelledD -match "at \($($BuildD -join ', ')\), refund F 0 W 25 S 0 G 0 \(F \d+ W 95 ")
+    # D345: the share of its 50 wood not built (1 to 49 once some work is done), added to the 70 wood left.
+    $Checks["D cancelled after its first work: the share not built refunded ($CancelledD)"] = [bool]($CancelledD -match "at \($($BuildD -join ', ')\), refund F 0 W (\d+) S 0 G 0 \(F \d+ W (\d+) ") -and
+        ([int]$Matches[1] -ge 1) -and ([int]$Matches[1] -le 49) -and ([int]$Matches[2] -eq 70 + [int]$Matches[1])
     $Idle = @($Help | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle").Count
     $Checks["its four builders idle ($Idle)"] = $Idle -eq 4
     $FinalReport = & $Value $Help "Build report: (.*)$"
@@ -2114,7 +2117,8 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["the site's block: progress, builders, Annuler on V ($([regex]::Match([string]$Block, 'selection House[^,]*, under construction \d+%, builders \d+').Value); $([regex]::Match([string]$Block, 'V=Cancel \w+').Value))"] =
         [bool]($Block -match "selection House \(own\), under construction (\d+)%, builders (\d+), grid V=Cancel enabled") -and ([int]$Matches[1] -ge 1) -and ([int]$Matches[1] -le 60) -and ([int]$Matches[2] -ge 1)
     $CancelledJ = & $Value $HudSite "(Construction: slot 0 cancelled House .*)$"
-    $Checks["Annuler clicked: half refunded ($CancelledJ)"] = [bool]($CancelledJ -match "at \($($BuildJ -join ', ')\), refund F 0 W 25 S 0 G 0 ")
+    $Checks["Annuler clicked: the share not built refunded ($CancelledJ)"] = [bool]($CancelledJ -match "at \($($BuildJ -join ', ')\), refund F 0 W (\d+) S 0 G 0 ") -and
+        ([int]$Matches[1] -ge 1) -and ([int]$Matches[1] -le 49)
     $Checks["population full: the key A queues, the message"] = [bool]($HudPopulation | Select-String -Pattern "Command feedback: population full" -Quiet) -and
         [bool]($HudPopulation | Select-String -Pattern "HUD message: PopulationFull" -Quiet) -and [bool]($HudPopulation | Select-String -Pattern "queued Peasant" -Quiet) -and
         [bool](($HudPopulation | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "message PopulationFull")
@@ -3173,10 +3177,11 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             $Moved = (@($HoldReports | Where-Object { $_.ContainsKey($Id) } | ForEach-Object { [Math]::Sqrt([Math]::Pow($_[$Id].X - $First[$Id].X, 2) + [Math]::Pow($_[$Id].Y - $First[$Id].Y, 2)) }) | Measure-Object -Maximum).Maximum
             $HoldTargets = @($HoldReports | Where-Object { $_.ContainsKey($Id) -and $_[$Id].Target -ne 0 }).Count
             $Checks["no chase of the Peasant out of reach (moved $([int]$Moved) cm, $HoldTargets reports with a target)"] = $Moved -le 30 -and $HoldTargets -eq 0
-            # The Peasant out of reach (edge to edge over 50 cm) but within the aggression's 12 m: a unit not holding would go.
+            # The Peasant out of reach (edge to edge over the Man-at-arms' 70 cm) but within the aggression's 16 m: a unit
+            # not holding would go.
             $PeasantIds = @($First.Keys | Where-Object { $First[$_].Type -eq "Peasant" -and $First[$_].Slot -eq 1 -and [Math]::Abs($First[$_].X - $OrdersHoldPeasant[0]) -le 300 -and [Math]::Abs($First[$_].Y - $OrdersHoldPeasant[1]) -le 300 })
             $Gap = if ($PeasantIds.Count -eq 1) { [Math]::Sqrt([Math]::Pow($First[$PeasantIds[0]].X - $First[$Id].X, 2) + [Math]::Pow($First[$PeasantIds[0]].Y - $First[$Id].Y, 2)) - 120 } else { -1 }
-            $Checks["the Peasant out of reach, within 12 m ($([int]$Gap) cm edge to edge)"] = $Gap -gt 50 -and $Gap -lt 1200
+            $Checks["the Peasant out of reach, within 16 m ($([int]$Gap) cm edge to edge)"] = $Gap -gt 70 -and $Gap -lt 1600
             $End = $ReachReports[-1]
             $HoldHits = if ($End.ContainsKey($Id)) { $End[$Id].Hits } else { -1 }
             $Checks["the attacker struck once in reach ($HoldHits hits)"] = $HoldHits -ge 2

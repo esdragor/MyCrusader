@@ -668,12 +668,8 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	}
 	if (SelectionHealth)
 	{
-		// No damage before M5: a building has the health of its work (D312), whole once finished.
-		const int32 MaxHealth = Type ? Type->MaxHealth : 0;
-		const int64 TotalWork = Type && !Building->IsFinished()
-			? HOLConstruction::GetTotalWork(HOLConstruction::GetBuildSteps(Type->BuildTime, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())) : 0;
-		SelectionHealth->SetText(FormatRatio(HOLConstruction::GetHealth(MaxHealth, Building->IsFinished() ? 1 : Building->GetConstructionWork(),
-			Building->IsFinished() ? 1 : TotalWork), MaxHealth));
+		// The health of its work (D312), whole once finished, less the damage it took (D345.2a).
+		SelectionHealth->SetText(FormatRatio(Building->GetHealth(), Building->GetMaxHealth()));
 	}
 	if (bSite && bOwn)
 	{
@@ -1275,12 +1271,12 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		}
 		case EHOLGridCommand::CancelConstruction:
 		{
-			// What a cancel gives back (D311): all before the first work, half after.
+			// What a cancel gives back (D345): all before the first work, then the share of the cost not built. The tooltip
+			// shows the amount under its name, without an effect line (the user's choice).
 			const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Site->GetConstructionState(),
-				Site->GetConstructionWork()) : FHOLResources();
+				Site->GetConstructionWork(), Site->GetTotalWork()) : FHOLResources();
 			GridCell->SetCommand(LOCTEXT("Cancel", "Annuler"), EHOLGridCellState::Ready);
-			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), Refund, FHOLResources(), Site && Site->HasWorkStarted()
-				? LOCTEXT("RefundHalf", "Rend la moitié du coût") : LOCTEXT("RefundAll", "Rend tout le coût"));
+			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), Refund, FHOLResources(), FText());
 			break;
 		}
 		case EHOLGridCommand::AttackMove:

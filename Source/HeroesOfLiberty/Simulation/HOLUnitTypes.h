@@ -25,6 +25,43 @@ enum class EHOLArmorCategory : uint8
 	Cavalry,
 	Siege,
 	Peasant,
+	GunpowderInfantry,
+};
+
+/** Bit of a category in FHOLUnitTypeConstants::ArmorCategoryMask (D345: a unit has 1 to any number of categories). */
+inline int32 HOLArmorCategoryBit(const EHOLArmorCategory Category)
+{
+	return 1 << static_cast<int32>(Category);
+}
+
+/**
+ * Type of an attack (D345): which of the target's four armours it takes off (MeleeArmor, RangedArmor, SiegeArmor,
+ * HeroArmor). Explicit in the table, no longer inferred from the reach.
+ */
+UENUM()
+enum class EHOLAttackType : uint8
+{
+	Melee,
+	Ranged,
+	Siege,
+	Hero,
+};
+
+/**
+ * One bonus of an attack (D345): Damage added to each hit on a unit of Category. A unit's bonuses add up for each of
+ * the target's categories they aim at. Written "((Category=LightInfantry,Damage=5),(Category=GunpowderInfantry,Damage=5))"
+ * in the table, "()" for none.
+ */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLAttackBonus
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	EHOLArmorCategory Category = EHOLArmorCategory::LightInfantry;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 Damage = 0;
 };
 
 /**
@@ -228,9 +265,16 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	int32 CarryCapacity = 0;
 
-	/** Combat (J7-Q4, J7b.1): the table's combat columns, read by HOLCombat and the combat processor (J7b.2). */
+	/**
+	 * Combat (J7-Q4, J7b.1, D345): the table's combat columns, read by HOLCombat and the combat processor (J7b.2). Its
+	 * armour categories as a mask of HOLArmorCategoryBit (a UPROPERTY like every field: the shared fragment is told apart
+	 * by its properties).
+	 */
 	UPROPERTY()
-	EHOLArmorCategory ArmorCategory = EHOLArmorCategory::LightInfantry;
+	int32 ArmorCategoryMask = 0;
+
+	UPROPERTY()
+	EHOLAttackType AttackType = EHOLAttackType::Melee;
 
 	UPROPERTY()
 	int32 Attack = 0;
@@ -254,10 +298,19 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	int32 RangedArmor = 0;
 
 	UPROPERTY()
-	EHOLArmorCategory BonusCategory = EHOLArmorCategory::LightInfantry;
+	int32 SiegeArmor = 0;
 
 	UPROPERTY()
-	int32 BonusDamage = 0;
+	int32 HeroArmor = 0;
+
+	/** Its attack's bonuses (D345), added up for each of the target's categories they aim at. */
+	UPROPERTY()
+	TArray<FHOLAttackBonus> Bonuses;
+
+	bool HasArmorCategory(const EHOLArmorCategory Category) const
+	{
+		return (ArmorCategoryMask & HOLArmorCategoryBit(Category)) != 0;
+	}
 
 	/** Radius (cm, edge to edge) of the riposte; 0: only when ordered. */
 	UPROPERTY()
@@ -423,12 +476,17 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Gathering", meta = (ClampMin = "0"))
 	int32 CarryCapacity = 0;
 
-	// Combat (J7-Q4, J7a.1): filled in the table, copied into the shared fragment (J7b.1), read by HOLCombat. Damage of a
-	// hit = Attack + BonusDamage if the target is of BonusCategory - the target's armour (melee or ranged), 1 at least.
+	// Combat (J7-Q4, J7a.1, D345): filled in the table, copied into the shared fragment (J7b.1), read by HOLCombat. Damage
+	// of a hit = Attack + the bonuses aimed at any of the target's categories - the target's armour of the attack's type
+	// (melee, ranged, siege or hero), 1 at least.
 
-	/** Armour category (D21): what the others' bonus damage is aimed at. */
+	/** Armour categories (D21, D345: 1 to any number), what the others' bonuses aim at. Written "(Ranged,GunpowderInfantry)". */
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	EHOLArmorCategory ArmorCategory = EHOLArmorCategory::LightInfantry;
+	TArray<EHOLArmorCategory> ArmorCategories;
+
+	/** Type of its attack (D345): which armour of the target it takes off. */
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	EHOLAttackType AttackType = EHOLAttackType::Melee;
 
 	/** Damage of one hit, before bonus and armour. */
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
@@ -459,13 +517,23 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
 	int32 RangedArmor = 0;
 
-	/** The category its bonus damage is aimed at (one pair for now); no bonus while BonusDamage is 0. */
-	UPROPERTY(EditAnywhere, Category = "Combat")
-	EHOLArmorCategory BonusCategory = EHOLArmorCategory::LightInfantry;
-
-	/** Damage added to each hit on a unit of BonusCategory (the Spearman's +17 against cavalry). */
+	/** Taken off each siege hit received. */
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
-	int32 BonusDamage = 0;
+	int32 SiegeArmor = 0;
+
+	/** Taken off each hero hit received. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	int32 HeroArmor = 0;
+
+	/** Its attack's bonuses (D345: the Spearman's +17 against cavalry, the Archer's +5 against light and gunpowder infantry). */
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	TArray<FHOLAttackBonus> Bonuses;
+
+	/** True if the row lists this armour category. */
+	bool HasArmorCategory(const EHOLArmorCategory Category) const
+	{
+		return ArmorCategories.Contains(Category);
+	}
 
 	/** Radius (cm) within which the unit takes on an enemy it sees by itself (J7-Q4 riposte); 0: only when ordered. */
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
@@ -505,15 +573,20 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.FallSequence = FallSequence;
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
-	Constants.ArmorCategory = ArmorCategory;
+	for (const EHOLArmorCategory Category : ArmorCategories)
+	{
+		Constants.ArmorCategoryMask |= HOLArmorCategoryBit(Category);
+	}
+	Constants.AttackType = AttackType;
 	Constants.Attack = Attack;
 	Constants.AttackInterval = AttackInterval;
 	Constants.AttackWindUpPercent = FMath::Clamp(AttackWindUpPercent, 1, 100);
 	Constants.AttackRange = AttackRange;
 	Constants.MeleeArmor = MeleeArmor;
 	Constants.RangedArmor = RangedArmor;
-	Constants.BonusCategory = BonusCategory;
-	Constants.BonusDamage = BonusDamage;
+	Constants.SiegeArmor = SiegeArmor;
+	Constants.HeroArmor = HeroArmor;
+	Constants.Bonuses = Bonuses;
 	Constants.AggressionRadius = AggressionRadius;
 	return Constants;
 }

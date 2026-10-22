@@ -1,7 +1,7 @@
 # Presse de mêlée : 200 Lanciers et Hommes d'armes de chaque côté, face à face à ~25 m, lancés l'un contre l'autre (tremblement au contact, J7c.4)
 # Plain, deux joueurs (melee_press.json). Positions dans le repère du centre du joueur, comme j7_army : au-delà des
 # rochers (vers 3000). Chaque armée : quatre paquets de 50 (Lanciers sur les ailes, Hommes d'armes au milieu), sur un
-# front de ~30 m ; l'ennemi ~25 m plus loin (bords à ~18 m, hors du rayon d'agression de 12 m).
+# front de ~30 m ; l'ennemi ~25 m plus loin (bords à ~18 m, hors du rayon d'agression de 16 m).
 # L'armée du joueur.
 hol.Camera.FocusNear 3800 -1500
 frames 2

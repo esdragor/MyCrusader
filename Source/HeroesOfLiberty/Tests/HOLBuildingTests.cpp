@@ -11,6 +11,10 @@
 #include "Match/HOLPlayerColors.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/AutomationTest.h"
+#include "Buildings/HOLConstructionSubsystem.h"
+#include "Buildings/HOLRubble.h"
+#include "EngineUtils.h"
+#include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -259,6 +263,57 @@ bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
 		const FVector Beside(2000.0, 0.0, 5000.0);
 		TestFalse(TEXT("nothing beside it"),
 			World->LineTraceSingleByChannel(Hit, Beside, Beside - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D345.2a: a building's health (its work's share, the damage kept), its armour against arrows, its destruction (its
+// footprint reopened, rubble that blocks nothing nor answers a click).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingDamageTest, "HeroesOfLiberty.Buildings.Damage", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingDamageTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	const FHOLBuildingTypeRow* House = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
+	AHOLBuilding* Site = World->SpawnActor<AHOLBuilding>();
+	if (TestNotNull(TEXT("house in the table"), House) && TestNotNull(TEXT("site spawned"), Site))
+	{
+		TestEqual(TEXT("every building: 40 ranged armour (D345)"), House->RangedArmor, 40);
+		Site->Setup(HOLBuildingTypeNames::House, 0, 1, EHOLConstructionState::Foundation);
+		TestEqual(TEXT("a bare foundation: 1 health"), Site->GetHealth(), 1);
+		Site->SetConstructionState(EHOLConstructionState::UnderConstruction);
+		Site->SetConstructionWork(Site->GetTotalWork() / 2);
+		TestEqual(TEXT("half built: half the health"), Site->GetHealth(), House->MaxHealth / 2);
+		TestEqual(TEXT("50 ranged: 10 dealt"), UHOLConstructionSubsystem::DamageBuilding(*Site, 50, EHOLAttackType::Ranged), 10);
+		TestTrue(TEXT("hurt"), Site->IsHurt());
+		Site->SetConstructionWork(Site->GetTotalWork());
+		Site->SetConstructionState(EHOLConstructionState::Finished);
+		TestEqual(TEXT("finished: the damage kept"), Site->GetHealth(), House->MaxHealth - 10);
+
+		TArray<UBoxComponent*> Boxes;
+		Site->GetComponents(Boxes);
+		TestTrue(TEXT("its footprint blocks the navmesh"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation());
+		TestEqual(TEXT("a blow of all its health: all of it dealt"), UHOLConstructionSubsystem::DamageBuilding(*Site, 100000, EHOLAttackType::Melee),
+			House->MaxHealth - 10);
+		TestTrue(TEXT("destroyed"), !IsValid(Site));
+		TestTrue(TEXT("its footprint no longer blocks"), Boxes.Num() == 1 && !Boxes[0]->CanEverAffectNavigation());
+		int32 Rubbles = 0;
+		for (TActorIterator<AHOLRubble> It(World); It; ++It)
+		{
+			++Rubbles;
+			TestEqual(TEXT("the rubble of a house"), It->GetTypeName(), HOLBuildingTypeNames::House);
+			TestTrue(TEXT("it goes away after 10 s"), FMath::IsNearlyEqual(It->GetLifeSpan(), AHOLRubble::LifeSeconds, 0.5f));
+			FHitResult Hit;
+			const FVector Above = It->GetActorLocation() + FVector(0.0, 0.0, 5000.0);
+			TestFalse(TEXT("the rubble answers no click"), World->LineTraceSingleByChannel(Hit, Above, Above - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection));
+		}
+		TestEqual(TEXT("rubble left"), Rubbles, 1);
 	}
 
 	GEngine->DestroyWorldContext(World);

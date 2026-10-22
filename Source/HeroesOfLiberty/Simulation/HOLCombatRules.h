@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 struct FHOLUnitTypeConstants;
+enum class EHOLAttackType : uint8;
 
 /**
  * Pure rules of the melee (J7b.1, J7-Q4: home-made processor, AoE4-like rules): the damage of a hit, the cadence of the
@@ -17,11 +18,15 @@ namespace HOLCombat
 	/** Steps a unit at 0 health stays Dying before its destruction (J7b.4, J7-Q5): ~1 s at 20 Hz, for its fall. */
 	constexpr int32 DyingSteps = 20;
 
+	/** The defender's armour against an attack of this type (D345): melee, ranged, siege or hero armour. */
+	HEROESOFLIBERTY_API int32 GetArmor(const FHOLUnitTypeConstants& Defender, EHOLAttackType AttackType);
+
 	/**
-	 * Damage of one hit (D21): Attack, plus BonusDamage when the defender is of the attacker's BonusCategory, minus the
-	 * defender's melee armour (or its ranged armour, bRanged), 1 at least (a hit always hurts).
+	 * Damage of one hit (D21, D345): Attack, plus each of the attacker's bonuses aimed at one of the defender's armour
+	 * categories (they add up), minus the defender's armour of the attacker's AttackType, 1 at least (a hit always hurts).
+	 * The hero's x0.3 against buildings (D345) has no carrier yet.
 	 */
-	HEROESOFLIBERTY_API int32 GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, bool bRanged);
+	HEROESOFLIBERTY_API int32 GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender);
 
 	/** Hits that take Health down to 0 (0 when Health <= 0). */
 	HEROESOFLIBERTY_API int32 GetHitsToKill(int32 Health, int32 Damage);
@@ -92,8 +97,8 @@ namespace HOLCombat
 		Hold,
 	};
 
-	/** Search radius (cm, edge to edge) on an attack-move of a unit with no aggression of its own (the soldiers' 12 m). */
-	inline constexpr float AttackMoveRadius = 1200.f;
+	/** Search radius (cm, edge to edge) on an attack-move of a unit with no aggression of its own (16 m, 4 tiles of 4 m, D345). */
+	inline constexpr float AttackMoveRadius = 1600.f;
 
 	/**
 	 * Spreading: an enemy out of reach already taken on by MaxAttackers others comes after one less crowded (about six
@@ -154,11 +159,11 @@ namespace HOLCombat
 
 	// Shots (J7c.2, J7c-Q1 to Q4). A shooter's hit is an arrow: released at the strike's moment of the gesture (the
 	// wind-up, the type's AttackWindUpPercent of the cadence, 12 % for the Archer), it flies the centre-to-centre
-	// distance of the shooter and its target at release at the arrow speed, and always hits: its damage (GetDamage, ranged armour, reckoned at release)
+	// distance of the shooter and its target at release at the arrow speed, and always hits: its damage (GetDamage, the armour of its attack type, reckoned at release)
 	// falls on the target when it lands, lost when the target died meanwhile. No minimum reach, no height bonus. The client
 	// reckons the same flight from the same positions (J7c.2b): nothing more is replicated.
 
-	/** Reach (cm) above which a unit's hits are shots (the ranged armour, an arrow): the Archer's 15 m, not a melee's 50 cm. */
+	/** Reach (cm) above which a unit's hits are shots (an arrow in flight; the armour taken off comes from its AttackType, D345): the Archer's 15 m, not a melee's 50 cm. */
 	inline constexpr float RangedReach = 200.f;
 
 	/** Speed of an arrow by default (cm/s): 37.5 m/s (J7c-Q2 25 m/s, x1.5 at the trial of D345), hol.Combat.ArrowSpeed. */
