@@ -25,7 +25,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
-- Unités qui tremblent (droite-gauche) en s'évitant quand elles se croisent
 - Écart inexpliqué des mesures de rendu
 
 ## Bugs remontés

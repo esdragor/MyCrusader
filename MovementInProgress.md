@@ -16,7 +16,7 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 
 | Cas | Ligne d'`EtapeDefini.md` | Scénario | État |
 |---|---|---|---|
-| 1. Croisement de face | Croisement de deux unités de face (avant M5) | `crossing` | essayé : évitement **OK** ; **tremblement** droite-gauche pendant l'évitement |
+| 1. Croisement de face | Croisement de deux unités de face (avant M5) | `crossing` | **réglé** (MV.2) : évitement OK, plus de tremblement, croisement de biais réglé |
 | 2. Immobiles superposées | Unités immobiles qui restent superposées (vitesse d'arrêt nulle) | `standing_overlap` | essayé : **accepté** par l'utilisateur (pas grave à l'arrêt) |
 | 3. Marcheurs bloqués par des corps | Marcheurs bloqués par des corps (passage étroit, mur d'unités) | `blocked_bodies` | essayé : passage étroit **KO**, mur à nous **KO** (trop lent), mur ennemi OK |
 | 4. Formation gênée | Formation gênée entre les bâtiments et contre les ressources | `formation_obstacles`, `formation_resources` | **réglé** (MV.5) : maisons OK ; veine, filon et arbres OK |
@@ -81,10 +81,10 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 |---|---|
 | MV.0 Journal, un scénario par cas | **fait** (2026-10-22, `main`, rien de commité) : 4 scénarios lancés sans fenêtre jusqu'au bout |
 | MV.1 Essai de l'utilisateur sur les 4 scénarios : ce qui est déjà bon, ce qui ne l'est pas | **fait** (2026-10-22) : les 4 scénarios essayés |
-| MV.2 Croisement de face : clos par une mesure, ou instruit | après MV.1 |
+| MV.2 Croisement de face : clos par une mesure, ou instruit | **fait** (2026-10-22) : tremblement réglé (détour mémorisé), règle de croisement (le second passe derrière) ; essai « super » ; `main` 35a8be9 (fusion deb9b93) |
 | MV.3 Immobiles superposées | **sans objet** : accepté par l'utilisateur (2026-10-22) |
 | MV.4 Marcheurs bloqués par des corps | après MV.1 |
-| MV.5 Formation gênée | **en cours** (2026-10-22) : avancée avant MV.2 / MV.4 à la demande de l'utilisateur (sans lien avec la mêlée de J7c.4) ; **fait** (2026-10-22) : arrivée et marche, essai de l'utilisateur « 0 problème détecté », `main` e123afc (fusion 5bd8b98) |
+| MV.5 Formation gênée | **fait** (2026-10-22, avancée avant MV.2 / MV.4 à la demande de l'utilisateur) : arrivée et marche, essai de l'utilisateur « 0 problème détecté », `main` e123afc (fusion 5bd8b98) |
 | MV.6 Mesures (S1 à S5), décisions au GDD, clôture | à la fin |
 
 ## Journal
@@ -236,3 +236,98 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   (accord de mycrusader-c1, seule session de la copie principale). Ligne d'`EtapeDefini.md` retirée.
 - Décisions à reporter au GDD à la clôture du chantier (MV.6) : arrivée A (place libre la plus proche), marche « B si
   le détour est court, sinon A ».
+- **MV.2 commencée** (demande de l'utilisateur, « tu peux travailler sur MV.2 ? ») : le tremblement droite-gauche en
+  s'évitant (paires 2 à 4 de `crossing`). Worktree `HeroesOfLiberty-J5c`, branche `mv2-tremble` depuis `main` d368a3c.
+  Attention : `j7c-shot` (mycrusader-43, pas encore sur `main`) change beaucoup `HOLSimulationProcessors.cpp` et
+  `HOLParallelMassProcessors.cpp` ; question posée à mycrusader-43 (touche-t-elle l'évitement hors combat, quand
+  arrive-t-elle). Diagnostic d'abord (sous-agent, mesures par pas de la paire 2), sans correctif.
+- **Diagnostic MV.2** (sous-agent, hors écran, paires 1 et 2 de `crossing`, trace temporaire `hol.Units.LookAheadTrace`
+  laissée non commitée dans `HOLSimulationProcessors.cpp`) : **cause = le regard en avant (D293, `AvoidBodies`) n'a pas
+  de mémoire**. Chaque pas repart de la direction « tout droit vers la place » (phases `FinalLeg` et `Path` ; la force
+  de Mass n'y joue pas), et l'autre est prévu à sa vitesse du pas d'avant. Au pas N, chacun voit l'autre en route de
+  collision et tourne de 10° ; au pas N+1, l'autre s'écarte déjà, tout droit est libre, chacun repart tout droit ; au
+  pas N+2, collision prévue de nouveau. **Période 2 pas (10 Hz)** : Hommes d'armes, détour 0 / −10° un pas sur deux,
+  11 inversions en 0,6 s, saut de cap jusqu'à 31° par pas, déport 2 à 7 cm par pas. L'évitement de Mass (un pas sur
+  six) n'y est pour rien. **Les Paysans (paire 1) tremblent aussi**, plus fort : de face exacte, les deux tournent du
+  même côté du monde, restent face à face et repassent la ligne à chaque pas (cap ±20 à ±48°, sauts jusqu'à 92°) ;
+  les positions zigzaguent, pas seulement l'affichage. L'orientation affichée suit `atan2(vitesse)` à chaque pas
+  (`UHOLInstantOrientationProcessor`) : chaque bascule se voit telle quelle.
+- Pistes : (1) garder le détour en mémoire (côté et angle tant que le même gêneur est devant, relâché de 10° par pas
+  quand la voie est libre : ce que dit D293) ; (2) évitement réciproque (chacun la moitié de l'écart, l'autre prévu à
+  sa vitesse voulue) ; départage fixe de face (sa propre droite) dans les deux cas ; (3) rotation affichée bornée, en
+  complément seulement.
+- **Choix de l'utilisateur (A, la recommandation)** : **détour mémorisé** : chaque unité garde son côté et son angle de
+  détour tant que le même gêneur est devant elle, ne revient vers sa place que de 10° par pas et seulement quand la voie
+  est libre ; de face exacte, chacune passe sur **sa droite**. Écartés : B (évitement partagé à la RVO, chacun la
+  moitié de l'écart) ; C (A + rotation affichée bornée). Au GDD à la clôture (MV.6), comme précision de D293.
+- `j7c-shot` touche `BuildLookAhead` et ajoute du code après `AvoidBodies`, pas son corps : correctif tenu dans
+  `AvoidBodies` et un petit fragment de mémoire, pour limiter les conflits à la fusion.
+- **Réponse de mycrusader-43** : `j7c-shot` arrive sur `main` maintenant (fusion de MV.5 dedans, puis avance de
+  `main`) ; ne pas avancer `main` d'ici là. Hors combat, `j7c-shot` change la séparation : `EnemySideGuard` (une paire
+  ennemie écartée le long de la normale du début du pas, jamais au-delà du centre) et `SeparationMaxStep` (poussée
+  bornée à un rayon) valent pour **toute paire ennemie**, combat ou non ; `FrontHoldsFriends` seulement où il y a
+  combat ; `RearSlide` seulement pour les unités qui vont se battre. **Le détour D293 lui-même n'est pas touché.**
+  `mv2-tremble` sera remise sur ce `main` et revérifiée avant l'essai.
+- **Boucle 1 du correctif (sous-agent, 15 min, rien de commité)** : règles pures `HOLAvoid::ChooseDetourSide` (côté
+  opposé au corps ; de face, à moins de 0,15 contact de travers, sa propre droite) et `NextDetourTurn` (du cran retenu :
+  revenir d'un cran si libre, sinon le garder, sinon élargir ; jamais 0) ; fragment `FHOLDetourFragment` (gêneur,
+  ordre, phase, côté, cran) ; tests `Movement.DetourSide` / `DetourTurn`. Mesures (trace) : **paire 1 réglée** (sauts
+  92° → 10°, une inversion) ; **paire 2 encore** : le cran alterne 10° ↔ 20° du même côté un pas sur deux (sauts 31° →
+  20°) ; **paire 3** (angle droit) pas mieux (14 inversions, sauts jusqu'à 82°) ; groupes 0 à 9 inversions. Personne
+  bloqué. Reste : le retour d'un cran paraît libre parce que l'autre est prévu à sa vitesse du pas d'avant.
+- Bilan de la boucle : la mise en place de la mesure a pris la moitié du temps ; elle est prête maintenant (banc de
+  40 s). `main` 48ffa00 (`j7c-shot`) fusionné dans `mv2-tremble`, conflits d'ajouts résolus à la main (`AvoidBodies`
+  prend le joueur et la mémoire), compilation PASS.
+- **Boucle 2 (sous-agent)** : **hystérésis** : le retour d'un cran n'a lieu qu'après 4 pas d'affilée où ce cap plus
+  étroit est libre (`ClearSteps` dans `FHOLDetourFragment`, `HOLAvoid::EaseBackSteps = 4`) ; élargir reste immédiat.
+  Paire 3 : un détour élargi jusqu'à 60° (les deux couraient côte à côte) était oublié au bout et le côté re-choisi à
+  l'opposé (saut de 82°) : maintenant, corps passé ou aucun cran libre jusqu'à 60° → il garde son côté et revient d'un
+  cran par pas (puis pousse tout droit, D293). Tests `Movement` + `Formation` 18/18.
+  | Cas | Avant : inversions / saut max / virage max | Après |
+  |---|---|---|
+  | Paire 1 (Paysans de face) | 1 / 10° / 10° (boucle 1) | 1 / 10° / 10° |
+  | Paire 2 (Hommes d'armes de face) | 11-12 / 20-21° / 20° | 1 / 20° / 20° |
+  | Paire 3 (Paysans à angle droit) | 14 / 82° / 60° | 1-3 / 12-20° / 60° |
+  | Groupes de 5 | 0-9 / 31° / 50° | 1-5 / 11-50° / 30-60° |
+  Sauts restants > 12° : seulement le premier virage d'un détour (20°, jusqu'à 50° pour un nouveau détour en route) et
+  l'élargissement de sécurité (20° par pas). Reste : à angle droit, les deux s'écartent du même sens et courent côte à
+  côte jusqu'à 60° (choisir le côté selon la vitesse de l'autre, passer derrière celui qui croise : nouvelle règle, à
+  faire décider) ; détours un peu plus longs (paire 3 : 30-34 pas au lieu de 20). Trace `hol.Units.LookAheadTrace` à
+  retirer avant le commit.
+- `quick_check -Parts tests,move,formation` (boucle 2) : tout PASS (tests 94/94) **sauf la partie « backsteps »** : une
+  marche en bloc à « file gap 99 cm » (60 au plus) ; aucun pas en arrière. Cause probable : la mémoire garde plus
+  longtemps hors de sa file un membre qui évite un voisin du bloc. Boucle 3 (sous-agent) : cause et correctif.
+- **Boucle 3 arrêtée à 15 min** (sous-agent) : cause trouvée (avec la mémoire, des membres d'un bloc dérivaient jusqu'à
+  2,4 m de leur file en marche) ; correctif : **pas de mémoire autour d'une unité du même ordre** (membre de son bloc,
+  unité qui se met en rang : sa file la ramène au pas suivant), dans `AvoidBodies`. A/B sur le croisement : identique
+  (le tremblement reste réglé). Arrêté pendant la recompilation finale, avant le `quick_check` : relancé par la session
+  principale. Bilan : la boucle a fait cause + correctif + A/B, trop pour 15 min avec un `quick_check` de 3,5 min ;
+  à l'avenir, la session principale lance elle-même la vérification finale.
+- Recompilé ; `quick_check -Parts tests,move,formation` **PASS** (196 s, tests 94/94 ; dérive de file en marche 32 à
+  40 cm, aucun pas ralenti, aucun pas en arrière). Essai de l'utilisateur lancé : `play.ps1 crossing` depuis J5c.
+- **Essai de l'utilisateur sur `crossing`** : « tout fonctionne », mais l'angle droit **gêne** (les deux Paysans
+  s'écartent dans le même sens et courent côte à côte, détour jusqu'à 60°) : règle de croisement à décider.
+- **Choix de l'utilisateur pour le croisement de biais (A, la recommandation)** : celle qui arriverait **la seconde**
+  au point de croisement **passe derrière** l'autre (tourne vers le côté d'où l'autre vient) ; la première **garde sa
+  route** ; arrivée quasi simultanée : **priorité à droite** (celle qui a l'autre sur sa droite passe derrière).
+  Écartés : B (toujours la priorité à droite) ; C (ralentir au lieu de tourner). Boucle 4 (sous-agent).
+- **Boucle 4 (sous-agent)** : règle pure `HOLAvoid::ChooseCrossingRole` (croisement si l'écart des caps est entre 30° et
+  150° ; on prolonge les deux trajectoires, la première au point garde son cap, la seconde passe derrière, du côté d'où
+  vient l'autre ; à 0,2 s près, priorité à droite) ; rôle décidé une fois au premier contact prévu, gardé tant que
+  l'autre est proche (`Crosser`, `CrossRole`, `CrossSide` dans `FHOLDetourFragment`), jamais entre unités du même
+  ordre ; « garder le cap » ignore l'autre sauf contact prévu à moins de 0,2 s (détour de sécurité). Test
+  `Movement.CrossingRole`. Banc : paire 3 : une unité garde son cap (0°), l'autre passe derrière (virage 40° au lieu de
+  60°, 20 pas de détour au lieu de 35) ; plus de course côte à côte ; paire 1 10° ; paire 2 3-4 inversions / 35° avec
+  ou sans la règle (état du code après la fusion de `main`, pas cette règle) ; groupes à peu près pareils. Reste : le
+  rôle est décidé tard (horizon 0,5 s), d'où un virage de 40° ; pistes : horizon de croisement plus long, ou ralentir.
+- `quick_check -Parts tests,move,formation` **PASS** (196 s, tests 95/95). 2e essai de l'utilisateur lancé (`crossing`).
+- **2e essai de l'utilisateur sur `crossing`** : « super ». **MV.2 close.**
+- Trace temporaire `hol.Units.LookAheadTrace` et scénario `_mv2_check` retirés. Commit `35a8be9` sur `mv2-tremble`,
+  `main` d7fa072 fusionné dedans (c0df8c4) : compilation PASS, `quick_check -Parts tests,move,formation` PASS (199 s,
+  tests 96/96) ; fusion dans `main` (deb9b93 ; `main` n'avait reçu que deux commits de journal). Ligne
+  d'`EtapeDefini.md` retirée.
+- Décisions à reporter au GDD à la clôture (MV.6), comme précisions de D293 : détour mémorisé (côté et angle gardés
+  tant que le même corps est devant, retour d'un cran de 10° après 4 pas libres d'affilée ; de face, sa propre droite ;
+  pas de mémoire entre unités du même ordre) ; croisement de biais : la seconde au point passe derrière, la première
+  garde sa route, à 0,2 s près priorité à droite. Reste connu : le rôle de croisement se décide à 0,5 s du contact
+  (virage de 40° pour celle qui passe derrière) ; accepté à l'essai.
