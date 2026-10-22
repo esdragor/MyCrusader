@@ -19,7 +19,7 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 | 1. Croisement de face | Croisement de deux unités de face (avant M5) | `crossing` | essayé : évitement **OK** ; **tremblement** droite-gauche pendant l'évitement |
 | 2. Immobiles superposées | Unités immobiles qui restent superposées (vitesse d'arrêt nulle) | `standing_overlap` | essayé : **accepté** par l'utilisateur (pas grave à l'arrêt) |
 | 3. Marcheurs bloqués par des corps | Marcheurs bloqués par des corps (passage étroit, mur d'unités) | `blocked_bodies` | essayé : passage étroit **KO**, mur à nous **KO** (trop lent), mur ennemi OK |
-| 4. Formation gênée | Formation gênée entre les bâtiments et contre les ressources | `formation_obstacles` | essayé : maisons OK ; veine de pierre et arbres **KO** |
+| 4. Formation gênée | Formation gênée entre les bâtiments et contre les ressources | `formation_obstacles`, `formation_resources` | **réglé** (MV.5) : maisons OK ; veine, filon et arbres OK |
 
 ### 1. Croisement de face
 
@@ -84,7 +84,7 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 | MV.2 Croisement de face : clos par une mesure, ou instruit | après MV.1 |
 | MV.3 Immobiles superposées | **sans objet** : accepté par l'utilisateur (2026-10-22) |
 | MV.4 Marcheurs bloqués par des corps | après MV.1 |
-| MV.5 Formation gênée | après MV.4 (même cause probable : passages étroits) |
+| MV.5 Formation gênée | **en cours** (2026-10-22) : avancée avant MV.2 / MV.4 à la demande de l'utilisateur (sans lien avec la mêlée de J7c.4) ; **fait** (2026-10-22) : arrivée et marche, essai de l'utilisateur « 0 problème détecté », `main` e123afc (fusion 5bd8b98) |
 | MV.6 Mesures (S1 à S5), décisions au GDD, clôture | à la fin |
 
 ## Journal
@@ -173,3 +173,66 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   passe, mur à nous qui ralentit (choix C), renforts contre leur ligne en mêlée, foules ennemies qui se croisent (cas
   3) ; formation qui découvre mine et arbres au contact (cas 4). Clos : croisement de face (D293), immobiles
   superposées (accepté), mur ennemi, passages entre maisons, même point donné un par un.
+- **MV.5 avancée** (demande de l'utilisateur, « oui, go ») : le cas 4 touche les places et le chemin du bloc, pas la
+  mêlée ; mené avant MV.2 / MV.4, sans attendre la clôture de J7.
+- **Cause** (lecture du code, `HOLUnitOrderProcessor.cpp`) : les sources sont bien interdites sur le navmesh (D297,
+  `HOLSourceNavComponent`), mais :
+  1. **Arrivée** : `ProjectFormationPlace` ramène une place hors du navmesh vers le point cliqué (3/4, 1/2, 1/4 du
+     chemin, sinon le point lui-même) : plusieurs places tombent au même endroit, les unités s'écrasent en tas.
+  2. **Marche** : le bloc suit le chemin de son centre ; une file dont la case sort du navmesh n'est resserrée vers le
+     chemin qu'à ce pas-là (rayon du chemin vers la case) : découverte au contact. Dans `formation_obstacles`, le chemin
+     des 9 soldats passe à ~4 m du centre de la veine (rayon 3 m) : les files de droite la heurtent.
+- **Choix de l'utilisateur pour l'arrivée (A, la recommandation)** : chaque place bloquée va à la **place libre la plus
+  proche**, à au moins un écart des autres places, du côté libre ; la formation reste au point cliqué et contourne la
+  ressource. Écartés : B (toute la formation décalée hors de la ressource, forme intacte) ; C (places bloquées retirées,
+  rangs rallongés du côté libre).
+- **Choix de l'utilisateur pour la marche** : « B si ce n'est pas trop long de faire le tour, sinon A » : le chemin du
+  bloc s'écarte de la ressource pour garder sa demi-largeur libre de chaque côté quand le détour reste court ; sinon
+  les files se **resserrent d'avance** (chacune regarde quelques mètres devant elle sur le chemin, glisse de biais
+  avant la ressource, reprend sa place après). Personne ne touche la ressource.
+- **MV.5.1 Arrivée faite** (sous-agent, worktree `HeroesOfLiberty-J5c`, branche `mv5-formation` depuis `main` 0886717,
+  rien de commité) : règle pure `HOLFormation::SettleBlockedPlaces` : chaque place bloquée cherche sur des anneaux
+  autour d'elle (pas d'un demi-écart, jusqu'à 8 écarts) le point libre du premier anneau qui convient le plus proche de
+  la cible, à 0,9 écart au moins des autres places ; sans point libre, l'ancien repli (3/4, 1/2, 1/4, la cible).
+  Surcharge de `PlaceGroup` avec `IsFree` ; côté serveur `FindFreeFormationPoint` / `IsFormationPlaceFree` (même test
+  qu'avant : navmesh à 0,4 écart, ligne droite depuis la cible). Places d'arrivée et places de mise en rang du bloc ;
+  les écarts du bloc en marche restent ceux de la grille d'origine (sinon il marcherait déformé). Test
+  `Formation.Settle` (veine de 3 m à 1 m de la cible ; cas sans point libre). Compilation PASS ; `Formation` 11/11 ;
+  `quick_check -Parts tests,formation` PASS (180 s, tests 91/91). Coût au pire ~850 sondes navmesh par place bloquée
+  sans point libre à 8 écarts (une fois par ordre). Pas encore vu en jeu.
+- **MV.5.2 Marche faite** (sous-agent, même branche, rien de commité) : règle pure `HOLFormation::MakeCorridor`
+  (échantillons tous les 100 cm du chemin du bloc ; par échantillon le resserrement le plus grand pour lequel un
+  décalage d'au plus `MaxShift` suffit, puis resserrement et décalage lissés à la pente tan 20° avant et après
+  l'obstacle) et `GetCorridorAt`. `FBlockMarch` garde le couloir, construit au premier pas de chaque bloc
+  (`BuildCorridor` : 2 rayons navmesh en travers par mètre de chemin, portée la demi-étendue + `MaxShift` + 20 cm,
+  1000 cm au plus ; `MaxShift` = max(demi-largeur du bloc, 300 cm)), refait quand un bloc absorbé ou un retardataire
+  élargit l'étendue. Chaque unité lit le couloir à sa propre place le long du chemin (`Progress` + sa profondeur) : sa
+  case = point + (profondeur, décalage + resserrement × écart). Le rayon qui ramène la case vers le chemin reste en
+  filet. Test `Formation.Corridor` (champ libre, obstacle d'un côté, passage étroit, décalage plafonné) ; `Formation`
+  12/12, compilation PASS. Limites connues : décalage et resserrement bornés chacun en pente, pas leur somme ; les
+  points de départ de l'attribution d'arrivée ignorent le couloir.
+- Scénario d'essai **`formation_resources`** (J5c) : 16 Hommes d'armes qui longent le filon d'or, 9 soldats mêlés
+  contre la veine de pierre, 9 Hommes d'armes à la lisière des arbres.
+- **MV.5.3 Vérification** (sous-agent, hors écran) : `quick_check -Parts tests,formation,move` **PASS** (228 s, tests
+  92/92, marches de bloc toutes PASS). `formation_resources` : le repère du centre est à **X −14800** dans le monde
+  (pas −15000, `hol.Sources.Nearest` : filon d'or (−11087, 4592), veine de pierre (−11087, −4592), rangée d'arbres à
+  y −1781 / −1816) ; les ordres des cas veine et arbres ne mettaient aucune place sur la ressource : corrigés
+  (`OrderNear 3950 −4250` à 4,1 m du centre de la veine ; `OrderNear 115 −1650`, rang du fond sur les arbres). À noter :
+  `formation_obstacles` (MV.1) a le même décalage.
+  1. Filon d'or (bloc de 16) : **OK** : couloir « shift −300 cm at most, squeeze 1.00 » ; le bloc s'écarte ~12 m avant
+     le filon, au plus près 323 cm de son centre (rayon 300), paire la plus proche en marche 120 cm, revient sur sa
+     ligne après.
+  2. Veine de pierre : **OK** : places déplacées, au plus près 369 cm du centre, paire la plus proche 131 cm, au repos.
+  3. Arbres : **OK à l'image** (en colonne le long de la lisière, à 124 cm d'un arbre au plus près), mais une paire à
+     **103 cm** : le contrôle d'écart portait sur la place avant sa projection (jusqu'à 0,4 écart). Correctif :
+     `IsFormationPlaceFree` exige le point du navmesh à 5 cm de la place (`FreePlaceMaxPull`) ; compilé, à revérifier.
+- **Revérifié après `FreePlaceMaxPull`** : veine : paire la plus proche au repos **140 cm**, 389 cm du centre ; arbres :
+  **139 cm**, 145 cm d'un arbre ; les deux « settled after 3 steps, 0 crossings, 0 pushes » ; `Formation` 12/12.
+  Cas 1 du scénario : `wait 15` (le bloc arrive en 13,3 s). Reste : essai de l'utilisateur sur `formation_resources`
+  (`play.ps1 formation_resources -Root ..\HeroesOfLiberty-J5c`), puis commit et fusion dans `main` après validation.
+- **Essai de l'utilisateur sur `formation_resources`** : « 0 problème détecté ». **MV.5 close.**
+- Commit `e123afc` (code, tests, scénario) sur `mv5-formation`, `main` 7f0e206 fusionné dedans (5bd8b98) :
+  compilation PASS, `quick_check -Parts tests,formation,move` PASS (210 s, tests 92/92) ; `main` avancé à 5bd8b98
+  (accord de mycrusader-c1, seule session de la copie principale). Ligne d'`EtapeDefini.md` retirée.
+- Décisions à reporter au GDD à la clôture du chantier (MV.6) : arrivée A (place libre la plus proche), marche « B si
+  le détour est court, sinon A ».

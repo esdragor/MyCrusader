@@ -32,7 +32,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Retours d'essai
 - Marcheurs bloqués par des corps (passage étroit : personne ne passe ; mur d'unités à nous : très ralentis ; renforts qui butent contre leur propre ligne en mêlée ; deux foules ennemies qui se croisent à grand-peine)
-- Formation gênée contre les ressources (mine, arbres : découvertes au contact, pas prises comme obstacles dès l'ordre)
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
