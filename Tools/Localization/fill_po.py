@@ -197,6 +197,7 @@ TRANSLATIONS = {
     "HOLGameNames,House": ("House", "家"),
     "HOLGameNames,LumberCamp": ("Lumber Camp", "伐採所"),
     "HOLGameNames,MiningCamp": ("Mining Camp", "採掘所"),
+    "HOLGameNames,Mill": ("Mill", "製粉所"),
     "HOLGameNames,Barracks": ("Barracks", "兵舎"),
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),

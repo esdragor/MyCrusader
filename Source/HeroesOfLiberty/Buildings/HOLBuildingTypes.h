@@ -216,6 +216,8 @@ namespace HOLBuildingTypeNames
 	inline const FName LumberCamp(TEXT("LumberCamp"));
 	/** Stone and gold deposit (D310). */
 	inline const FName MiningCamp(TEXT("MiningCamp"));
+	/** Food deposit, the food camp (D346): on R of the Peasant's grid. */
+	inline const FName Mill(TEXT("Mill"));
 	/** Military (J7-Q2): produces the Spearman and the Man-at-arms; on R of the Peasant's grid (J7a.2). */
 	inline const FName Barracks(TEXT("Barracks"));
 }

@@ -55,6 +55,10 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("MiningCamp", "Camp de mineurs");
 		}
+		if (TypeName == HOLBuildingTypeNames::Mill)
+		{
+			return LOCTEXT("Mill", "Moulin");
+		}
 		if (TypeName == HOLBuildingTypeNames::Barracks)
 		{
 			return LOCTEXT("Barracks", "Caserne");

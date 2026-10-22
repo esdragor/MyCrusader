@@ -1,0 +1,18 @@
+# Moulin (D346) : le camp de la nourriture, près des baies ; ses bâtisseurs cueillent, la nourriture déposée au moulin
+# Configuration par défaut (un joueur, Plain). Positions dans le repère du centre du joueur (X vers le milieu de la carte) ;
+# les baies du joueur sont à 20-23 m sur sa droite (Y), plus près du moulin que du forum.
+hol.Cheat.Resources 5000
+# Un moulin posé (fondation, pas encore bâti) au bord des baies, du côté opposé au forum (4 m des buissons).
+hol.Build.PlaceNear Mill -200 3200
+waitlog Construction: slot 0 placed Mill
+# Quatre Paysans entre le forum et les baies, sélectionnés.
+hol.Camera.FocusNear -200 1400
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 150
+waitunits 4
+hol.Select.Own
+hol.Camera.FocusNear -200 2200
+frames 5
+note Le moulin (D346) : camp de la nourriture, 2 x 2 cases, 100 bois, 25 s. Une fondation de moulin est posée au bord des baies.
+note Clic droit des Paysans sur la fondation : ils le bâtissent, puis cueillent les baies et déposent la nourriture au moulin (plus au forum).
+note Bâtis ton propre moulin : A puis R, près d'autres baies. Ralliement du forum (clic droit) sur un moulin, même pas fini : les Paysans produits vont cueillir.

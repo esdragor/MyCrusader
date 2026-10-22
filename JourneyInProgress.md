@@ -6749,6 +6749,35 @@ d'épée).
   empreintes S3 / S4 (nouvelles références probables avec la case de 4 m) ; (2) mesures au repos (l'utilisateur ferme
   ses applications) : S2 `main` contre Elrond et `FrontNeedsCombat` 0 / 1, puis `rest_measures.ps1` (S1, S2, S7, S5,
   S3, S4, S5 en combat) ; (3) avance de `main` sur `j7c-shot` (accord des sessions), J7c.5.
+- (J7c.4, mycrusader-43) `main` avancé par mycrusader-4b (2dd6a66 D344, e5815db GDD). **Boucle 33 lancée** (accord de
+  l'utilisateur) : fusion de `main` e5815db dans `j7c-shot` (34 commits, 21 fichiers modifiés des deux côtés dont
+  `UnitTypes.csv` / `.uasset`, `HOLCombatProcessor.cpp`, `Net/`, UI, scripts de test) ; table refaite depuis le CSV
+  fusionné, `-Parts tests,combat,move,formation`, nouvelles empreintes S3 / S4 ; commit de fusion par la session
+  principale ; partie `net` dans une boucle à part.
+- (J7c.4, mycrusader-43) **Boucle 33** (~14 min) : fusion en cours, tous les conflits résolus et indexés (7 :
+  `UnitTypes.csv` en-tête de `main` avec `AttackWindUpPercent` + portées de mêlée de `j7c-shot` ; `UnitTypes.uasset`
+  refait depuis le CSV fusionné, 6 lignes, 0 erreur ; `HOLUIHUD.cpp` version de `main`, texte d'aide complet ;
+  `net_match.ps1` les deux côtés ; `s5_report.py` 57 bits + `HEALTH_BITS` ; `stress_ab.ps1` chemins de `main` ;
+  `EtapeDefini.md` version de `main`) ; fusion automatique vérifiée (élan par type de l'Archer présent dans tous les
+  `StartAttack`, format 57 bits + `StillZeroVelocity`). Compilation 0 avertissement. `quick_check -Parts
+  tests,camera,combat,move,formation` : tests 90/90, tout PASS **sauf `move`** (« lines: the same received » côté
+  client : une étape `AttackMove (1 units)` en trop ; serveur PASS ; hasard d'échantillonnage ou effet de la fusion, à
+  voir). Empreintes S3 / S4 pas prises. Relance `-Parts camera,move` puis empreintes par la session principale.
+- (J7c.4, mycrusader-43) `-Parts camera,move` relancé : **PASS** (65 s ; l'échec de `move` était un raté
+  d'échantillonnage). Empreintes (lancement direct, `-LiveCoding=0`, nouvelle règle de cohabitation) : **S3
+  8a9b34cde2035b53 inchangée**, **S4 91a23fabb162056d** (avant 8b0790f36386d0ea ; seul S4 a des Archers : élan de 12 %
+  de `main`). **Fusion commitée : 3654caf**, puis `main` 0886717 (`build.ps1`) fusionné sans conflit : **005eaee**.
+  Boucle 34 lancée : serveur dédié d'Elrond avec le code fusionné, `quick_check -Parts net`, S5 indicatif.
+- (J7c.4, mycrusader-43) **Boucle 34** (~13 min, rien de modifié) : **`quick_check -Parts net` PASS** (136 s ; serveur =
+  éditeur en serveur dédié, aucune cuisson nécessaire) : `net 2 clients` PASS, mêlée (PV affichés = valeurs du
+  serveur, écart du Man-at-Arms 5 cm), flèches 18 / 18 / 18, impact → PV 11 / 6 ms en moyenne. Le format 57 bits, la
+  vitesse nulle des immobiles et `-useperfthreads` passent ensemble. **Serveur cuit d'Elrond** (pour `net_match` / S5)
+  : `build.ps1 -Target HeroesOfLibertyServer` PASS (383 s) ; **reste à cuire** (`net_match.ps1 -Stage -Units 2000
+  -Seconds 40`) avant S5, à faire avec les mesures au repos.
+  **Reprise exacte (fusion faite)** : `j7c-shot` **005eaee** contient `main` jusqu'à 0886717. Reste, dans l'ordre :
+  (1) mesures au repos quand l'utilisateur le décide (applications fermées) : cuire le serveur d'Elrond
+  (`net_match.ps1 -Stage`), puis S2 `main` contre Elrond et `FrontNeedsCombat` 0 / 1, puis `rest_measures.ps1` ;
+  (2) avance de `main` sur `j7c-shot` (accord des sessions) ; (3) J7c.5.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
