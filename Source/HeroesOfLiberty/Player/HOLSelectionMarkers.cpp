@@ -365,7 +365,7 @@ void AHOLSelectionMarkers::UpdateRings()
 				AddCustomData(CustomData, SelectionColor, RingStroke / Radius);
 				Centre += FVector2D(View.Location);
 				LargestRadius = FMath::Max(LargestRadius, static_cast<double>(View.Radius));
-				const int32 Priority = HOLFormation::GetRowPriority(View.TypeName, View.CarryCapacity);
+				const int32 Priority = HOLFormation::GetRowPriority(View.TypeName, View.CarryCapacity, View.bRanged, View.bSiege);
 				++CountOfKind[Priority];
 				bPeasantsOnly &= Priority == HOLFormation::PeasantRowPriority;
 				Height += View.Location.Z;
@@ -393,6 +393,9 @@ void AHOLSelectionMarkers::UpdateRings()
 			{
 				HOLFormation::MakeGroupRows(CountOfKind, bPeasantsOnly, Widths);
 			}
+			// The rows as the kinds fill them (the shooters behind the melee, the siege in rows of its own), as the server.
+			TArray<int32> KindOfPlace;
+			HOLFormation::PlaceKinds(Widths, CountOfKind, KindOfPlace);
 			TArray<FVector2D> Places;
 			HOLFormation::MakePlaces(Widths, Middle, HOLFormation::GetFrontFacing(Line), ColumnSpacing, RowSpacing, Places);
 			const double Radius = LargestRadius * PreviewRadiusFactor;

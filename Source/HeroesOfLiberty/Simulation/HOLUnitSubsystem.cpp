@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/DataTable.h"
@@ -850,6 +851,8 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.Radius = Constants->Radius;
 			OutView.MeshScale = Constants->MeshScale;
 			OutView.CarryCapacity = Constants->CarryCapacity;
+			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
+			OutView.bSiege = Constants->ArmorCategory == EHOLArmorCategory::Siege;
 			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
 			OutView.Health = FMath::Max(State->CurrentHealth, 0);
 			OutView.MaxHealth = Constants->MaxHealth;
