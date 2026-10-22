@@ -183,6 +183,16 @@ protected:
 		TArray<FVector2D> Path;
 		double Length = 0.;
 		double Progress = 0.;
+		/**
+		 * Its corridor along the path (MV.5, HOLFormation::MakeCorridor): per sample (CorridorSampleStep apart), the
+		 * files' shift across and squeeze, so they clear an obstacle ahead of time; built for its files' span across
+		 * (CorridorMinY, CorridorMaxY), again when units joining it widen that span.
+		 */
+		TArray<double> CorridorShift;
+		TArray<double> CorridorSqueeze;
+		double CorridorMinY = 0.;
+		double CorridorMaxY = 0.;
+		bool bCorridor = false;
 		/** Pace (cm/s, the table's, before hol.Units.SpeedScale). */
 		float Pace = 0.f;
 		int32 Steps = 0;
@@ -268,6 +278,8 @@ protected:
 		float Pace, int32 FirstRequest, int32 NumClusters);
 	/** The blocks' step: the march along the path (its units sliding to their files on the move), then each unit to its arrival place (its final leg). */
 	void AdvanceBlocks(FMassEntityManager& EntityManager, float DeltaTime, const ANavigationData* NavData);
+	/** A block's corridor (MV.5) for its files spanning [MinY, MaxY] across: its path sampled, the free width across read on the navmesh at height Z. */
+	static void BuildCorridor(FBlockMarch& Block, double MinY, double MaxY, double Z, const ANavigationData* NavData);
 
 	/** One cluster of an order waiting for its path. */
 	struct FPathRequest
