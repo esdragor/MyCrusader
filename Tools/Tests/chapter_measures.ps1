@@ -23,6 +23,9 @@ $LogDir = Join-Path $Project "Saved_Tests\Logs"
 New-Item -ItemType Directory -Force $LogDir | Out-Null
 $Stamp = if ($Tag) { $Tag } else { Get-Date -Format "MMdd_HHmm" }
 $Thresholds = @{ StepMs = 3.0; Fps = 144.0 }
+# The battles S3 and S4 have their own simulation threshold (D342).
+$BattleStepMs = @{ S3 = 6.0; S4 = 6.0 }
+function Get-StepThreshold([string] $Scenario) { if ($BattleStepMs.ContainsKey($Scenario)) { $BattleStepMs[$Scenario] } else { $Thresholds.StepMs } }
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
 function Read-Report([string] $Log) {
@@ -39,7 +42,7 @@ function Invoke-Run([string] $Scenario, [int] $Seconds, [int] $Round) {
     & (Join-Path $PSScriptRoot "stress_ab.ps1") -Project $Project -Test $Scenario -Seconds $Seconds -LogName $Name | Out-Host
     $Report = Read-Report (Join-Path $LogDir "$Name.log")
     if (-not $Report) { Write-Host "  $Scenario run $Round : no report (see $Name.log)"; return $null }
-    $Pass = $Report.StepMs -le $Thresholds.StepMs -and $Report.Fps -ge $Thresholds.Fps
+    $Pass = $Report.StepMs -le (Get-StepThreshold $Scenario) -and $Report.Fps -ge $Thresholds.Fps
     Write-Host ("  {0} run {1} : {2:N3} ms per step (max {3:N1}), {4:N0} fps : {5}" -f $Scenario, $Round, $Report.StepMs, $Report.MaxMs, $Report.Fps, $(if ($Pass) { "PASS" } else { "FAIL" }))
     $Report | Add-Member Pass $Pass
     return $Report
@@ -66,11 +69,11 @@ foreach ($Test in $Plan) {
     }
     $Step = ($Runs | Measure-Object StepMs -Average).Average
     $Fps = ($Runs | Measure-Object Fps -Average).Average
-    $Pass = if ($Runs.Count -eq 3) { $Step -le $Thresholds.StepMs -and $Fps -ge $Thresholds.Fps } else { -not ($Runs | Where-Object { -not $_.Pass }) }
+    $Pass = if ($Runs.Count -eq 3) { $Step -le (Get-StepThreshold $Test.Scenario) -and $Fps -ge $Thresholds.Fps } else { -not ($Runs | Where-Object { -not $_.Pass }) }
     $Failed = $Failed -or -not $Pass
     $Each = ($Runs | ForEach-Object { "{0:N3}" -f $_.StepMs }) -join " / "
     $Lines += ("{0} : {1} - {2} ms per step (mean {3:N3}, threshold {4}), {5:N0} fps (threshold {6}){7}" -f $Test.Scenario, $(if ($Pass) { "PASS" } else { "FAIL" }),
-        $Each, $Step, $Thresholds.StepMs, $Fps, $Thresholds.Fps, $(if ($Runs.Count -eq 3) { ", decided by the mean of 3 runs" } else { "" }))
+        $Each, $Step, (Get-StepThreshold $Test.Scenario), $Fps, $Thresholds.Fps, $(if ($Runs.Count -eq 3) { ", decided by the mean of 3 runs" } else { "" }))
 }
 
 if (-not $NoS5) {

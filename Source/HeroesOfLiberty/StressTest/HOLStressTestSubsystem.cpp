@@ -229,8 +229,9 @@ namespace UE::HeroesOfLiberty::StressTest
 		return FMath::Clamp(CrossingAngle, 0.f, MaxCrossingAngle);
 	}
 
-	// D218 thresholds.
+	// D218 thresholds; the battles S3 and S4 have their own simulation threshold (D342).
 	constexpr double MaxSimulationMs = 3.0;
+	constexpr double MaxBattleSimulationMs = 6.0;
 	constexpr double MinFramesPerSecond = 144.0;
 
 	UHOLStressTestSubsystem* FindSubsystem(UWorld* World)
@@ -1784,7 +1785,8 @@ void UHOLStressTestSubsystem::FinishMeasure()
 	const double AverageDisplacementM = LocationsAtMeasureEnd.Num() > 0 ? TotalDisplacement / LocationsAtMeasureEnd.Num() / 100.0 : 0.0;
 	const int32 NumUnitsInFrame = CountLocationsInFrame(LocationsAtMeasureEnd);
 
-	const bool bSimulationPassed = StepStats.GetAverageMs() <= MaxSimulationMs;
+	const double SimulationThresholdMs = IsBattle() ? MaxBattleSimulationMs : MaxSimulationMs;
+	const bool bSimulationPassed = StepStats.GetAverageMs() <= SimulationThresholdMs;
 	const bool bRenderPassed = AverageFps >= MinFramesPerSecond;
 
 	const FString Report = FString::Printf(
@@ -1796,7 +1798,7 @@ void UHOLStressTestSubsystem::FinishMeasure()
 		TEXT("  Memory: %.0f MB used (%+.0f MB since spawn)\n")
 		TEXT("  Movement: units moved %.1f m on average during the measure, %d move orders issued (D229)"),
 		ToString(Scenario), UnitIds.Num(), *UnitTypeName.ToString(), MeasureSeconds, IsGameView() ? TEXT("Game") : TEXT("Wide"), GetSpawnRadius() / 100.f,
-		StepStats.GetAverageMs(), StepStats.MaxMs, StepStats.NumSteps, StepStats.NumDroppedFrames, MaxSimulationMs, Verdict(bSimulationPassed),
+		StepStats.GetAverageMs(), StepStats.MaxMs, StepStats.NumSteps, StepStats.NumDroppedFrames, SimulationThresholdMs, Verdict(bSimulationPassed),
 		AverageFps, OnePercentLowFps, FrameTimes.Num(), MinFramesPerSecond, Verdict(bRenderPassed),
 		GameThreadMs, RenderThreadMs, GpuMs,
 		DrawCalls, NumUnitsInFrame, LocationsAtMeasureEnd.Num(),
