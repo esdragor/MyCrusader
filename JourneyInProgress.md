@@ -14,10 +14,14 @@ Mode d'emploi de `HeroesOfLiberty-Elrond` : vérifier qu'il est libre (pas de fi
 `IN_USE.txt` (session, chantier, date), remettre sa branche au niveau de `main`, travailler sur une branche à soi,
 compiler et tester là-bas (binaires et `Saved_Tests` séparés : un jeu d'essai ouvert ailleurs ne bloque pas la
 compilation), fusionner dans `main` après validation de l'utilisateur, puis effacer `IN_USE.txt`. Les journaux
-(`*InProgress.md`, `GDD.md`) restent écrits dans la copie principale. Le moteur reste commun : annoncer aux autres
-sessions chaque compilation ou lancement d'Unreal ; ne compiler que si aucun éditeur ni compilation du projet ne tourne ; jamais
-de code qui ne compile pas ; ne pas changer l'environnement du stress test (GameMode global, pion, caméra) sans le
-vérifier sur S1 et S2.
+(`*InProgress.md`, `GDD.md`) restent écrits dans la copie principale. **Compiler et tester sans attendre les autres
+sessions (2026-10-22)** : on compile toujours par `Tools\build.ps1 [-Root <copie>]`, qui se met seul dans la file
+derrière une compilation en cours (un seul UnrealBuildTool à la fois sur le moteur commun, quelle que soit la copie) et
+ne s'arrête (`BUSY`) que si Unreal tourne **dans la même copie** (DLL verrouillées). Les jeux, tests et éditeurs d'une
+autre copie ne bloquent rien : pas d'annonce, pas d'attente. Tout lancement scripté d'Unreal porte `-LiveCoding=0`
+(sinon il bloque les compilations de toutes les copies). Seules les mesures au repos (S1-S7, fin de chapitre) demandent
+la machine pour elles seules. Jamais de code qui ne compile pas ; ne pas changer l'environnement du stress test
+(GameMode global, pion, caméra) sans le vérifier sur S1 et S2.
 
 ---
 
@@ -335,8 +339,10 @@ route sont lus à la lumière de cette règle (la mesure passe à la fin du chap
 
 ## Commandes utiles
 
-Compilation, traductions : voir `FrontEndInProgress.md` (« Commandes utiles »). Toujours depuis **PowerShell** (Git
-Bash réécrit `/Game/...`), aucun éditeur du projet ouvert.
+Compilation : `powershell -ExecutionPolicy Bypass -File Tools\build.ps1 [-Root ..\HeroesOfLiberty-Elrond]` (file
+d'attente automatique, `BUSY` si Unreal tourne dans la même copie ; journal dans `<copie>\Saved\Logs\build.log`).
+Traductions : voir `FrontEndInProgress.md` (« Commandes utiles »). Toujours depuis **PowerShell** (Git Bash réécrit
+`/Game/...`).
 
 **Vérification de tous les jours (D267) : `quick_check.ps1`**, ~30 s : tests d'automatisation en parallèle d'un seul
 lancement du jeu (menu fr / en / ja avec bascule de langue en direct, liste déroulante, partie à 2 puis 8 joueurs avec
