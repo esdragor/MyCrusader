@@ -6444,6 +6444,10 @@ d'épée).
     chargée par Elrond (images des clients basses, sans effet sur le débit). Aucun avertissement de limites (Plaine).
     **Validé par l'utilisateur, commité** (D343 au GDD). Question de l'utilisateur ensuite : une case de 4,2 m et des
     cartes de 220 × 220 cases au plus (924 m) feraient-elles gagner plus ? (réponse dans la conversation, voir plus bas).
+  - Suite (choix de l'utilisateur) : **case de 4 m = grille des bâtiments** (D311 passe de 3 à 4 m), **cartes de 220 × 220
+    cases (880 m)**, emprises gardées en cases (Centre 16 m, Caserne 12 m, Maison et camps 8 m) ; positions sur 13 bits
+    au pas de 11 cm. **Chantier mené par mycrusader-4b** (`HeroesOfLiberty-J5c`, branche `tile-4m`, D344 et suivantes) ;
+    mycrusader-80 lui a passé D343 (à remettre au niveau de `main`) et les outils de S5. Rien de plus ici.
 - (J7c.4, **mycrusader-80**, reprise) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours », `j7c-shot` au-dessus
   de ce1dcf5). Boucle 16 lancée (sous-agent) : les trois règles derrière des variables — `hol.Combat.WeaponReach` (1)
   avec `hol.Combat.SpearReach` (130 cm bord à bord) et `hol.Combat.SwordReach` (70) ; `hol.Simulation.FriendGap` (25 cm
