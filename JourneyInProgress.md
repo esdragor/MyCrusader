@@ -6803,6 +6803,47 @@ d'épée).
   fermées), depuis la copie principale : cuire le serveur (`net_match.ps1 -Stage -Units 2000 -Seconds 40`), puis
   `rest_measures.ps1` (à adapter : tout se mesure maintenant sur `main`, S1, S2, S7, S5, S3, S4, S5 en combat) ; S2
   doit tenir sous 3 ms avec la mêlée (sinon `FrontNeedsCombat` / `EnemySideGuard` à revoir). Puis **J7c.5**.
+- (J7c.4, mycrusader-f3, 2026-10-22) **Mesures au repos faites** sur `main` 233e31e (mêlée + D345.1 + D345.2a + MV.5),
+  autres sessions mises en pause, processeur 4 % avant le départ (Discord resté ouvert, impossible à fermer
+  cette fois ; Edge, IMF, ShivaGet fermés par l'utilisateur). `rest_measures.ps1` adapté : tout sur `main` (S1, S2, S7, S3, S4 x2, S5, S5 combat), Elrond retiré.
+  Tag `rest_1022_2003_main`, résumé `Saved_Tests\Logs\rest_measures_1022_2003.txt`, 11,3 min :
+  - **S1 PASS** 1,141 / 1,196 ms, 277 i/s ; **S7 PASS** 2,018 / 1,991 ms, 262 i/s.
+  - **S2 PASS de justesse** 2,987 / 3,047 / 2,939 ms (moyenne 2,991, 3e passe nécessaire), 260 i/s.
+  - **S3 FAIL** 6,207 / 6,156 ms (seuil 6 de D342), 243 i/s ; **S4 FAIL** 6,010 / 6,038 ms, 228 i/s. Au repos sur
+    `j7c-shot` (2026-10-21) : S3 5,003 / 5,102 ms → **+1,1 ms**. Détail S3 : combat 2,33, pleine vitesse 1,68,
+    évitement en marche 1,19 (1 pas sur 6), séparation 0,97, ordres 0,38.
+  - **S5 PASS** 29 924 o/s (seuil 32 000), 23,0 cm ; **S5 en combat PASS** 22 823 o/s, 13,5 cm ; 234 envois
+    d'activité et 112 de PV par seconde.
+  - Piste : depuis la mesure de référence, `main` a reçu D345.1 (attaques typées, armures, bonus) et D345.2a (bâtiments
+    attaquables) ; le combat pèse 2,33 ms au repos contre ~1,5-1,9 ms sous charge avant. À confirmer par un A/B au
+    repos 48ffa00 contre 233e31e (S3) avant de toucher au code. **Suite : choix de l'utilisateur.**
+- (J7c.4, mycrusader-f3) **A/B au repos de S3** (accord de l'utilisateur ; sessions 1e et 8c en pause ; Discord ouvert,
+  processeur 3-18 % avant chaque passe). A = **48ffa00** (`HeroesOfLiberty-Galadriel` détaché ; ses portées de trace de
+  623fab4 mises dans `git stash` de cette copie), B = **`main` 464c9f0** (233e31e + MV.4 mur ennemi). Alterné A B A B,
+  15 s (script de séance `s3_ab.ps1`, logs `ab_s3_A1/A2` dans Galadriel, `ab_s3_B1/B2` dans la copie principale).
+  Un premier essai faussé (compilation et tests de Haldir en plein milieu) a été jeté.
+  - A : 5,690 / 5,036 ms (moyenne **5,36**) ; B : 6,168 / 6,262 ms (moyenne **6,21**) → **+0,85 ms**.
+  - Par étape (moyennes A → B) : **combat 1,60 → 2,33 (+0,73)**, pleine vitesse 1,44 → 1,67 (+0,23), évitement en
+    marche 1,25 → 1,21, séparation 1,06 → 0,99, ordres 0,37 → 0,39.
+  - La bataille elle-même a changé : A 82 coups/s, 26 morts ; B **104 coups/s, 51 morts** (valeurs des unités de
+    eb73ead : vitesses, portées, PV ; plus d'unités au contact). Le combat coûte plus, en partie parce qu'il y a plus de
+    combat. Reste à séparer **valeurs (eb73ead, voulu)** et **code de D345.1 / D345.2a (armures, bonus, bâtiments
+    comme cibles)** : A/B eb73ead contre `main`, ou trace du combat. Galadriel reste détaché sur 48ffa00 en attendant.
+- (J7c.4, mycrusader-f3) **2e A/B au repos de S3** (dernier de la soirée, accord de l'utilisateur ; 1e et 8c en pause) :
+  A = **275581a** (valeurs de eb73ead, sans MV.2, D345.1, D345.2a, MV.4), B = `main` 464c9f0. Logs `ab2_s3_*`.
+  Machine un peu plus chargée qu'au 1er A/B (tout ~+0,7 ms), mais alternée :
+  - A : 7,133 / 7,065 ms (7,10), combat 2,704 / 2,751 ; 97 coups/s, 45 morts.
+  - B : 6,892 / 7,036 ms (6,96), combat 2,732 / 2,748 ; 104 coups/s, 51 morts.
+  - **Conclusion : le code de D345.1 / D345.2a ne coûte rien de mesurable** (combat identique, malgré 7 % de coups en
+    plus). **Le dépassement de S3 / S4 vient des valeurs des unités de eb73ead** (bataille plus dense : 82 → 97-104
+    coups/s, 26 → 45-51 morts dans la mesure), pas d'une régression du code.
+  - Galadriel remise dans son état d'avant (e163490 détaché + portées de trace de 623fab4 rendues par `git stash pop`,
+    `IN_USE.txt` d'origine, mention de l'emprunt) ; ses binaires sont ceux de 275581a (recompiler avant usage).
+  **Reprise exacte (J7c.4, mesures)** : mesures au repos faites (S1, S2 de justesse, S7, S5, S5 combat PASS ; S3 6,18
+  et S4 6,02 ms FAIL au seuil 6 de D342). Cause : valeurs des unités (eb73ead), pas le code. **À trancher avec
+  l'utilisateur (demain, pas de mesure avant)** : optimiser le combat (2,3 ms au repos, le plus gros poste de S3) pour
+  repasser sous 6 ms, ou revoir le seuil des batailles (D342) avec les nouvelles valeurs. `rest_measures.ps1` adapté
+  (tout sur `main`) et ce journal : non commités. Puis **J7c.5**.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 

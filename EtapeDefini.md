@@ -6,8 +6,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## À faire
 
 ### Parcours J7c — le tir
-- J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7) *(mêlée dans `main` 48ffa00 ; reste : mesures au repos)*
-  - S2 avec la mêlée : allégée hors combat (raccourcis du combat, front seulement en combat), à mesurer au repos
+- J7c.4 S3 et S4 au-dessus du seuil des batailles (6,18 et 6,02 ms pour 6) *(mesures au repos faites ; cause : valeurs des unités, pas le code ; à trancher : optimiser le combat ou revoir D342)*
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
 ### Animations
@@ -21,7 +20,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
-- Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point *(pas dans l'immédiat)*
+- Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point
+- Double clic sur une unité : sélectionne toutes les unités de ce type à l'écran
 
 ### GDD
 - Review du GDD : prochain numéro D361 (D347 à D360 conditions de victoire ; reprise au § 22)
