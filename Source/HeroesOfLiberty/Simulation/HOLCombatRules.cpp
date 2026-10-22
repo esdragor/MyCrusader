@@ -7,14 +7,28 @@
 
 namespace HOLCombat
 {
-	int32 GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const bool bRanged)
+	int32 GetArmor(const FHOLUnitTypeConstants& Defender, const EHOLAttackType AttackType)
+	{
+		switch (AttackType)
+		{
+		case EHOLAttackType::Ranged: return Defender.RangedArmor;
+		case EHOLAttackType::Siege: return Defender.SiegeArmor;
+		case EHOLAttackType::Hero: return Defender.HeroArmor;
+		default: return Defender.MeleeArmor;
+		}
+	}
+
+	int32 GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender)
 	{
 		int32 Damage = Attacker.Attack;
-		if (Attacker.BonusDamage > 0 && Attacker.BonusCategory == Defender.ArmorCategory)
+		for (const FHOLAttackBonus& Bonus : Attacker.Bonuses)
 		{
-			Damage += Attacker.BonusDamage;
+			if (Bonus.Damage > 0 && Defender.HasArmorCategory(Bonus.Category))
+			{
+				Damage += Bonus.Damage;
+			}
 		}
-		Damage -= bRanged ? Defender.RangedArmor : Defender.MeleeArmor;
+		Damage -= GetArmor(Defender, Attacker.AttackType);
 		return FMath::Max(Damage, 1);
 	}
 

@@ -36,7 +36,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * The replication warns at start for a map past that reach.
 	 */
 	static constexpr int32 HorizontalBits = 13;
-	/** Horizontal velocity, per axis: +-12.8 m/s (a walking unit goes at 3 m/s). */
+	/** Horizontal velocity, per axis: +-12.8 m/s (the fastest unit walks at ~8 m/s, D345). */
 	static constexpr int32 VelocityBits = 9;
 	/**
 	 * The activity, and while it is Gathering what it gathers (J5c.1: HOLUnitReplication::EncodeActivity, no bit more).

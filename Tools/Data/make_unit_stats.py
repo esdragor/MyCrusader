@@ -13,9 +13,9 @@ CSV_PATH = ROOT / "Tools" / "Data" / "UnitTypes.csv"
 OUT_PATH = ROOT / "UnitStats.md"
 
 # HOLCombatRules.h
-RANGED_REACH = 200.0  # cm: above it, the hits are shots (ranged armour)
+RANGED_REACH = 200.0  # cm: above it, the hits are shots (an arrow in flight)
 ARROW_SPEED = 3750.0  # cm/s, hol.Combat.ArrowSpeed by default (D345 trial: x1.5)
-ATTACK_MOVE_RADIUS = 1200.0  # cm
+ATTACK_MOVE_RADIUS = 1600.0  # cm
 MAX_ATTACKERS = 6
 DYING_STEPS = 20
 STEP_HZ = 20
@@ -38,7 +38,10 @@ CATEGORIES = {
     "Cavalry": "Cavalerie",
     "Siege": "Siège",
     "Peasant": "Paysan",
+    "GunpowderInfantry": "Infanterie à poudre",
 }
+ATTACK_TYPES = {"Melee": "Mêlée", "Ranged": "Distance", "Siege": "Siège", "Hero": "Héros"}
+ARMOR_OF_TYPE = {"Melee": "MeleeArmor", "Ranged": "RangedArmor", "Siege": "SiegeArmor", "Hero": "HeroArmor"}
 
 def read_tile_cm():
     """TileSize (cm) of Config/DefaultGame.ini (D311, D344: 400 = 4 m); 400 if missing."""
@@ -55,6 +58,16 @@ RESOURCES = [("Food", "Nourriture"), ("Wood", "Bois"), ("Stone", "Pierre"), ("Go
 def parse_struct(text):
     """'(Food=30,Wood=50,Stone=0,Gold=0)' -> {'Food': 30.0, ...}"""
     return {k: float(v) for k, v in re.findall(r"(\w+)=(-?[\d.]+)", text)}
+
+
+def parse_list(text):
+    """'(Ranged,GunpowderInfantry)' -> ['Ranged', 'GunpowderInfantry']"""
+    return re.findall(r"\w+", text)
+
+
+def parse_bonuses(text):
+    """'((Category=LightInfantry,Damage=5),(Category=Cavalry,Damage=17))' -> [('LightInfantry', 5.0), ...]"""
+    return [(c, float(d)) for c, d in re.findall(r"Category=(\w+),\s*Damage=(-?[\d.]+)", text)]
 
 
 def num(x):
@@ -84,10 +97,13 @@ def is_ranged(u):
 
 
 def damage(att, dfn):
+    """HOLCombat::GetDamage (D345): attack + every bonus aimed at one of the target's categories - its armour of the
+    attack's type, 1 at least."""
     d = att["Attack"]
-    if att["BonusDamage"] > 0 and att["BonusCategory"] == dfn["ArmorCategory"]:
-        d += att["BonusDamage"]
-    d -= dfn["RangedArmor"] if is_ranged(att) else dfn["MeleeArmor"]
+    for cat, bonus in att["Bonuses"]:
+        if bonus > 0 and cat in dfn["ArmorCategories"]:
+            d += bonus
+    d -= dfn[ARMOR_OF_TYPE[att["AttackType"]]]
     return max(d, 1)
 
 
@@ -106,8 +122,10 @@ def load():
             u = dict(row)
             for k in ("Radius", "Speed", "MaxHealth", "AvoidanceDistance", "BuildTime", "Population",
                       "CarryCapacity", "Attack", "AttackInterval", "AttackWindUpPercent", "AttackRange",
-                      "MeleeArmor", "RangedArmor", "BonusDamage", "AggressionRadius"):
+                      "MeleeArmor", "RangedArmor", "SiegeArmor", "HeroArmor", "AggressionRadius"):
                 u[k] = float(row[k])
+            u["ArmorCategories"] = parse_list(row["ArmorCategories"])
+            u["Bonuses"] = parse_bonuses(row["Bonuses"])
             u["Cost"] = parse_struct(row["Cost"])
             u["GatherRates"] = parse_struct(row["GatherRates"])
             units.append(u)
@@ -137,27 +155,26 @@ def main():
     L.append("")
     rows = []
     for u in units:
-        ranged = is_ranged(u)
-        bonus = (f"+{num(u['BonusDamage'])} contre {CATEGORIES[u['BonusCategory']]}"
-                 if u["BonusDamage"] > 0 else "—")
+        bonus = ", ".join(f"+{num(b)} contre {CATEGORIES[c]}" for c, b in u["Bonuses"] if b > 0) or "—"
         aggro = metres(u["AggressionRadius"]) if u["AggressionRadius"] > 0 else "aucun (seulement sur ordre)"
         rows.append([
             name(u), num(u["MaxHealth"]), num(u["Attack"]), bonus,
             num(u["AttackInterval"]) + " s", num(round(60.0 / u["AttackInterval"], 1)),
             num(round(u["Attack"] / u["AttackInterval"], 2)),
             f"{num(u['AttackWindUpPercent'])} % ({num(round(u['AttackInterval'] * u['AttackWindUpPercent'] / 100, 3))} s)",
-            ("tir, " if ranged else "mêlée, ") + metres(u["AttackRange"]),
-            num(u["MeleeArmor"]), num(u["RangedArmor"]), CATEGORIES[u["ArmorCategory"]], aggro,
+            ATTACK_TYPES[u["AttackType"]] + (" (tir)" if is_ranged(u) else ""), metres(u["AttackRange"]),
+            num(u["MeleeArmor"]), num(u["RangedArmor"]), num(u["SiegeArmor"]), num(u["HeroArmor"]),
+            ", ".join(CATEGORIES[c] for c in u["ArmorCategories"]), aggro,
         ])
     L.append(table(["Unité", "PV", "Attaque", "Bonus", "Cadence", "Coups / min", "Dégâts / s (sans bonus ni armure)",
-                    "Élan du 1er coup", "Type, portée", "Armure mêlée", "Armure distance", "Catégorie d'armure",
-                    "Rayon d'agressivité"], rows))
+                    "Élan du 1er coup", "Type d'attaque", "Portée", "Armure mêlée", "Armure distance", "Armure siège",
+                    "Armure héros", "Catégories d'armure", "Rayon d'agressivité"], rows))
     L.append("")
-    L.append("- Dégâts d'un coup = attaque + bonus si la cible est de la catégorie visée − armure de la cible (de mêlée, "
-             "ou à distance pour un tir), 1 au moins.")
+    L.append("- Dégâts d'un coup = attaque + chaque bonus visant une des catégories de la cible (ils s'additionnent) − "
+             "armure de la cible du type de l'attaque (mêlée, distance, siège ou héros), 1 au moins.")
     L.append("- Cadence : temps entre deux coups. Élan : part de la cadence qu'attend le premier coup sur une cible.")
     L.append(f"- Portée : entre les bords des deux corps. Au-delà de {metres(RANGED_REACH)}, les coups sont des tirs "
-             f"(flèche à {num(ARROW_SPEED / 100)} m/s, qui touche toujours).")
+             f"(flèche à {num(ARROW_SPEED / 100)} m/s, qui touche toujours) ; l'armure retirée vient du type d'attaque.")
     L.append(f"- Rayon d'agressivité : riposte et prise de cible automatiques, de bord à bord. Sur attaque-déplacement, "
              f"une unité qui n'en a pas cherche à {metres(ATTACK_MOVE_RADIUS)}.")
     L.append(f"- Au plus {MAX_ATTACKERS} attaquants de mêlée vont sur une même cible hors de portée ; les autres en "

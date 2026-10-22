@@ -68,7 +68,7 @@ public:
 	bool BlocksNavigation() const;
 	/** Work done on it (HOLConstruction::WorkPerBuilder per builder and step, J6a.4); 0 for a foundation. */
 	int64 GetConstructionWork() const { return ConstructionWork; }
-	/** Some work has been done (D311: a cancel refunds half). */
+	/** Some work has been done (D345: a cancel refunds the share not built). */
 	bool HasWorkStarted() const;
 	/** Work it needs from nothing to finished (its type's BuildTime for one builder, J6a.2); 0 without a type. */
 	int64 GetTotalWork() const;
@@ -92,9 +92,30 @@ public:
 	int32 GetBuildersAtWork() const { return BuildersAtWork; }
 	void SetBuildersAtWork(int32 InBuilders);
 
-	/** The construction state or work changed: on the server when set, on every machine when it arrives. For the HUD. */
+	/** The construction state, work or damage taken changed: on the server when set, on every machine when it arrives. For the HUD. */
 	DECLARE_MULTICAST_DELEGATE(FOnConstructionChanged);
 	FOnConstructionChanged OnConstructionChanged;
+
+	/**
+	 * Health (D312, D345.2a): the type's MaxHealth once finished, a site's grows with its work (HOLConstruction::GetHealth,
+	 * 1 for a bare foundation), less the damage it took (kept through the construction). Every machine reckons it from the
+	 * type, the work and the damage taken, the only value added to the replication (two bytes, to everyone).
+	 */
+	int32 GetMaxHealth() const;
+	int32 GetHealth() const;
+	int32 GetDamageTaken() const { return DamageTaken; }
+	/** It took damage (its health bar shows, D345.2a). */
+	bool IsHurt() const { return DamageTaken > 0; }
+	/**
+	 * Server only, through UHOLConstructionSubsystem::DamageBuilding (armour already taken off): Points taken off its health,
+	 * no further than 0. Returns the health left; the caller destroys it at 0.
+	 */
+	int32 TakeDamagePoints(int32 Points);
+	/**
+	 * Server only, as it leaves the world (D345.2a): its footprint no longer counts for the navmesh, at once, and the
+	 * walkers' paths kept across it are forgotten.
+	 */
+	void ReleaseFootprint();
 
 	/** Its footprint on the ground (cm), turned by its yaw: its tiles, the box placements are checked against (D311). */
 	FBox2D GetFootprintBounds() const;
@@ -198,6 +219,9 @@ private:
 	UFUNCTION()
 	void OnRep_BuildersAtWork();
 
+	UFUNCTION()
+	void OnRep_DamageTaken();
+
 	/** The forbidden area of the navmesh, then the look, both at once (BeginPlay: a building is seen the frame it appears). */
 	void RefreshAppearance();
 	/** What the simulation needs of the look (D325): the navmesh's forbidden area, fitted to the type and the state. */
@@ -274,6 +298,10 @@ private:
 	/** Changes only when a builder arrives or leaves (one byte, to the owner alone). */
 	UPROPERTY(ReplicatedUsing = OnRep_BuildersAtWork)
 	uint8 BuildersAtWork = 0;
+
+	/** Health taken off it (D345.2a), at most its health: two bytes, to everyone, only when it is hit. */
+	UPROPERTY(ReplicatedUsing = OnRep_DamageTaken)
+	uint16 DamageTaken = 0;
 
 	/** What the pieces show (J6a.4): nothing, a ghost, a site, the finished building. */
 	enum class ELook : uint8

@@ -4,6 +4,8 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "Buildings/HOLRubble.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -15,6 +17,7 @@
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 
 namespace UE::HeroesOfLiberty::Construction
 {
@@ -355,8 +358,8 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
-	const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Building->GetConstructionState(), Building->GetConstructionWork())
-		: FHOLResources();
+	const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Building->GetConstructionState(), Building->GetConstructionWork(),
+		Building->GetTotalWork()) : FHOLResources();
 	FHOLResources Stock = PlayerState.GetResources();
 	Stock += Refund;
 	PlayerState.SetResources(Stock);
@@ -364,4 +367,92 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 	UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cancelled %s at (%.0f, %.0f), refund %s (%s)"), Order.PlayerIndex,
 		*Building->GetTypeName().ToString(), Location.X, Location.Y, *Refund.ToString(), *Stock.ToString());
 	Building->Destroy();
+}
+
+int32 UHOLConstructionSubsystem::DamageBuilding(AHOLBuilding& Building, const int32 Damage, const EHOLAttackType AttackType)
+{
+	const FHOLBuildingTypeRow* Type = Building.GetType();
+	if (!Building.HasAuthority() || !Type || !IsValid(&Building) || Building.GetHealth() <= 0)
+	{
+		return 0;
+	}
+	const int32 Before = Building.GetHealth();
+	const int32 Left = Building.TakeDamagePoints(HOLConstruction::GetBuildingDamage(Damage, AttackType, Type->RangedArmor));
+	const int32 Dealt = Before - Left;
+	UE_LOG(LogHOLCommands, Display, TEXT("Building damaged: %s of slot %d took %d (%d %s), health %d/%d"), *Building.GetTypeName().ToString(),
+		Building.GetOwnerPlayer(), Dealt, Damage, *UEnum::GetValueAsString(AttackType), Left, Type->MaxHealth);
+	if (Left <= 0)
+	{
+		DestroyBuilding(Building);
+	}
+	return Dealt;
+}
+
+void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
+{
+	UWorld* World = Building.GetWorld();
+	if (!World || !Building.HasAuthority() || !IsValid(&Building))
+	{
+		return;
+	}
+	// Its owner's stock: every item of its queue back in full (as a cancel, the head too), a site the share not built (D345).
+	AHOLPlayerState* PlayerState = nullptr;
+	if (const AGameStateBase* GameState = World->GetGameState())
+	{
+		for (APlayerState* Each : GameState->PlayerArray)
+		{
+			AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(Each);
+			if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Building.GetOwnerPlayer())
+			{
+				PlayerState = HOLPlayerState;
+				break;
+			}
+		}
+	}
+	FHOLResources Refund;
+	TArray<FHOLProductionItem>& Queue = Building.GetMutableProductionQueue();
+	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	const int32 QueueLength = Queue.Num();
+	while (!Queue.IsEmpty())
+	{
+		const FName TypeName = Queue.Last().TypeName;
+		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName) : FHOLProductionCost(), Refund);
+	}
+	if (QueueLength > 0)
+	{
+		Building.NotifyProductionChanged();
+	}
+	const FHOLBuildingTypeRow* Type = Building.GetType();
+	if (Type)
+	{
+		Refund += HOLConstruction::GetCancelRefund(Type->Cost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
+	}
+	FHOLResources Stock;
+	if (PlayerState)
+	{
+		Stock = PlayerState->GetResources();
+		Stock += Refund;
+		PlayerState->SetResources(Stock);
+	}
+	const FVector Location = Building.GetActorLocation();
+	UE_LOG(LogHOLCommands, Display, TEXT("Building destroyed: %s of slot %d at (%.0f, %.0f), %s, queue of %d refunded, refund %s (%s)"),
+		*Building.GetTypeName().ToString(), Building.GetOwnerPlayer(), Location.X, Location.Y,
+		Building.IsFinished() ? TEXT("finished") : Building.IsFoundation() ? TEXT("foundation") : TEXT("under construction"), QueueLength,
+		*Refund.ToString(), PlayerState ? *Stock.ToString() : TEXT("no player state"));
+
+	// Rubble for 10 s where it stood (D345.2a), seen by everyone; none for a bare foundation, which the others never saw.
+	if (!Building.IsFoundation() && Type)
+	{
+		const FTransform Transform = Building.GetActorTransform();
+		if (AHOLRubble* Rubble = World->SpawnActorDeferred<AHOLRubble>(AHOLRubble::StaticClass(), Transform, nullptr, nullptr,
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn))
+		{
+			Rubble->Setup(Building.GetTypeName(), Building.GetColorIndex());
+			Rubble->FinishSpawning(Transform);
+		}
+	}
+	// Its footprint reopens at once (the walkers' kept paths across it forgotten), then it leaves the world: everything
+	// that reads the buildings at each step (population, deposits, production, builders, selection) no longer finds it.
+	Building.ReleaseFootprint();
+	Building.Destroy();
 }

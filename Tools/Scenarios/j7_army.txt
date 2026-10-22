@@ -1,7 +1,7 @@
 # Fin de J7 : caserne finie (A Lancier, Z Homme d'armes, E Archer), armée mixte des deux côtés à ~25 m, 5000 de chaque ressource
 # Plain, deux joueurs (j7_army.json). Essai d'ensemble de J7c.3 : formation, mêlée, tir, production d'Archers. Positions
 # dans le repère du centre du joueur, comme archers : la caserne derrière le centre, l'armée devant, au-delà des rochers
-# (vers 3000) ; l'ennemi ~25 m plus loin, hors du rayon d'agression (12 m) : rien ne part tout seul.
+# (vers 3000) ; l'ennemi ~25 m plus loin, hors du rayon d'agression (16 m ; 21,3 m pour les Archers) : rien ne part tout seul.
 hol.Cheat.Resources 5000
 # Population 175 : la caserne peut recruter malgré les soldats offerts (hors plafond).
 hol.Cheat.Population 165

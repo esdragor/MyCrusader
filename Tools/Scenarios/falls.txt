@@ -1,7 +1,7 @@
 # Chutes des mourants : 4 Lanciers, 4 Hommes d'armes et 4 Paysans de chaque camp, à portée d'agression, qui s'entretuent
 # Plain, deux joueurs (falls.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme
 # order_lines : l'armée devant le centre, au-delà des rochers (vers 3000) ; les ennemis à ~9 m, dans le rayon
-# d'agression (12 m) : le combat part tout seul. Les Paysans ne combattent que sur ordre : ils meurent sous les coups.
+# d'agression (16 m) : le combat part tout seul. Les Paysans ne combattent que sur ordre : ils meurent sous les coups.
 hol.Camera.FocusNear 4000 -600
 frames 2
 hol.Units.SpawnHere 4 Spearman 0 250
