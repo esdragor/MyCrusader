@@ -30,7 +30,7 @@ if ($Trace) {
 }
 $Others = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'HeroesOfLiberty' -and $_.Name -match 'Unreal|UnrealBuildTool|dotnet' }
 if ($Others) { Write-Host "BUSY: $($Others | ForEach-Object { $_.ProcessId })"; exit 1 }
-$ArgList = "`"$UProject`" /Game/Maps/StressTest -game -RenderOffScreen -ResX=888 -ResY=500 -saveddirsuffix=Tests -nosplash -nosound $Extra -abslog=`"$Log`" -ExecCmds=`"r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,$ExtraExec hol.StressTest $Test 2000 $Seconds quit`""
+$ArgList = "`"$UProject`" /Game/Maps/StressTest -game -RenderOffScreen -ResX=888 -ResY=500 -saveddirsuffix=Tests -nosplash -nosound -LiveCoding=0 $Extra -abslog=`"$Log`" -ExecCmds=`"r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,$ExtraExec hol.StressTest $Test 2000 $Seconds quit`""
 $Cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 2 -MaxSamples 3).CounterSamples | ForEach-Object { [math]::Round($_.CookedValue, 1) }
 Write-Host "project: $Project ; cpu before: $($Cpu -join ', ')"
 $Clock = [Diagnostics.Stopwatch]::StartNew()

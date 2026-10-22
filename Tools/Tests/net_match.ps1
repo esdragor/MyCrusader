@@ -116,7 +116,7 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
         -replace '^(ResolutionSizeY|LastUserConfirmedResolutionSizeY)=.*', '$1=1000' `
         -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
     $X = 3840 + ($Client - 1) * $Width
-    $Arguments = "`"$UProject`" 127.0.0.1 -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Client -nosplash -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
+    $Arguments = "`"$UProject`" 127.0.0.1 -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
     $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru
     $ClientProcesses += $ClientProcess
     $ClientLogs += $ClientLog
