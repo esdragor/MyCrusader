@@ -458,10 +458,86 @@ namespace HOLFormation
 		}
 	}
 
+	int32 SettleBlockedPlaces(TArray<FVector2D>& Places, TConstArrayView<bool> IsBlocked, const FVector2D& Anchor,
+		const double Spacing, TFunctionRef<bool(const FVector2D&)> IsFree, TArray<bool>& OutSettled)
+	{
+		OutSettled.Init(false, Places.Num());
+		if (Spacing <= 0.)
+		{
+			return 0;
+		}
+		const double MinGapSquared = FMath::Square(SettleMinGapInSpacings * Spacing);
+		const double Step = Spacing * 0.5;
+		const int32 Rings = FMath::RoundToInt32(SettleMaxRadiusInSpacings * Spacing / Step);
+		auto Blocked = [&IsBlocked](const int32 Index) { return IsBlocked.IsValidIndex(Index) && IsBlocked[Index]; };
+		TArray<FVector2D> Candidates;
+		int32 Settled = 0;
+		for (int32 Index = 0; Index < Places.Num(); ++Index)
+		{
+			if (!Blocked(Index))
+			{
+				continue;
+			}
+			const FVector2D Origin = Places[Index];
+			// Clear of the unblocked places and of the ones already settled.
+			auto KeepsGap = [&](const FVector2D& Point)
+			{
+				for (int32 Other = 0; Other < Places.Num(); ++Other)
+				{
+					if (Other != Index && (!Blocked(Other) || OutSettled[Other])
+						&& FVector2D::DistSquared(Places[Other], Point) < MinGapSquared)
+					{
+						return false;
+					}
+				}
+				return true;
+			};
+			for (int32 Ring = 1; Ring <= Rings && !OutSettled[Index]; ++Ring)
+			{
+				const double Radius = Step * Ring;
+				const int32 Count = FMath::Max(12, FMath::CeilToInt32(UE_DOUBLE_TWO_PI * Radius / Step));
+				Candidates.Reset();
+				for (int32 Angle = 0; Angle < Count; ++Angle)
+				{
+					const double Theta = UE_DOUBLE_TWO_PI * Angle / Count;
+					const FVector2D Point = Origin + Radius * FVector2D(FMath::Cos(Theta), FMath::Sin(Theta));
+					if (KeepsGap(Point))
+					{
+						Candidates.Add(Point);
+					}
+				}
+				Candidates.Sort([&Anchor](const FVector2D& A, const FVector2D& B)
+				{
+					return FVector2D::DistSquared(A, Anchor) < FVector2D::DistSquared(B, Anchor);
+				});
+				for (const FVector2D& Point : Candidates)
+				{
+					if (IsFree(Point))
+					{
+						Places[Index] = Point;
+						OutSettled[Index] = true;
+						++Settled;
+						break;
+					}
+				}
+			}
+		}
+		return Settled;
+	}
+
 	void PlaceGroup(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, const bool bPeasantsOnly,
 		const FVector2D& Target, const FVector2D& Forward, const double ColumnSpacing, const double RowSpacing,
 		TFunctionRef<FVector2D(const FVector2D&)> ProjectPlace, TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit,
 		const int32 FrontWidth)
+	{
+		PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, Target, Forward, ColumnSpacing, RowSpacing,
+			[](const FVector2D&) { return true; }, ProjectPlace, OutPlaces, OutPlaceOfUnit, FrontWidth);
+	}
+
+	void PlaceGroup(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, const bool bPeasantsOnly,
+		const FVector2D& Target, const FVector2D& Forward, const double ColumnSpacing, const double RowSpacing,
+		TFunctionRef<bool(const FVector2D&)> IsFree, TFunctionRef<FVector2D(const FVector2D&)> ProjectPlace,
+		TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit, const int32 FrontWidth)
 	{
 		OutPlaces.Reset();
 		OutPlaceOfUnit.Init(INDEX_NONE, Positions.Num());
@@ -491,6 +567,17 @@ namespace HOLFormation
 		TArray<int32> KindOfPlace;
 		PlaceKinds(Widths, CountOfKind, KindOfPlace);
 		MakePlaces(Widths, Target, Forward, ColumnSpacing, RowSpacing, OutPlaces);
+		TArray<bool> IsBlocked;
+		bool bAnyBlocked = false;
+		for (const FVector2D& Place : OutPlaces)
+		{
+			bAnyBlocked |= IsBlocked.Add_GetRef(!IsFree(Place));
+		}
+		if (bAnyBlocked)
+		{
+			TArray<bool> Settled;
+			SettleBlockedPlaces(OutPlaces, IsBlocked, Target, ColumnSpacing, IsFree, Settled);
+		}
 		for (FVector2D& Place : OutPlaces)
 		{
 			Place = ProjectPlace(Place);
@@ -896,5 +983,97 @@ namespace HOLFormation
 	{
 		const FVector2D Direction = GetDirectionOnLine(Points, Distance, BlockTurnWindow, Fallback);
 		return GetPointOnLine(Points, Distance) + BlockOffsetToWorld(Offset, Direction);
+	}
+
+	void MakeCorridor(TConstArrayView<double> FreeLeft, TConstArrayView<double> FreeRight, const double SampleStep,
+		const double OffsetMinY, const double OffsetMaxY, const double MaxShift, const double MaxSlope, TArray<double>& OutShift, TArray<double>& OutSqueeze)
+	{
+		const int32 Count = FMath::Min(FreeLeft.Num(), FreeRight.Num());
+		OutShift.Init(0., Count);
+		OutSqueeze.Init(1., Count);
+		if (Count == 0)
+		{
+			return;
+		}
+		const double MinY = FMath::Min(OffsetMinY, 0.);
+		const double MaxY = FMath::Max(OffsetMaxY, 0.);
+		const double Span = MaxY - MinY;
+		const double Reach = FMath::Max(-MinY, MaxY);
+		// The largest squeeze each sample allows with a shift of MaxShift at most.
+		for (int32 Sample = 0; Sample < Count; ++Sample)
+		{
+			const double Left = FMath::Max(FreeLeft[Sample], 0.);
+			const double Right = FMath::Max(FreeRight[Sample], 0.);
+			double Squeeze = 1.;
+			if (Span > UE_KINDA_SMALL_NUMBER)
+			{
+				Squeeze = FMath::Min(Squeeze, (Left + Right) / Span);
+			}
+			if (MinY < 0.)
+			{
+				Squeeze = FMath::Min(Squeeze, (MaxShift + Left) / -MinY);
+			}
+			if (MaxY > 0.)
+			{
+				Squeeze = FMath::Min(Squeeze, (MaxShift + Right) / MaxY);
+			}
+			OutSqueeze[Sample] = FMath::Clamp(Squeeze, 0., 1.);
+		}
+		// The squeeze ramps: down ahead of the obstacle, up after it (a distance transform of the slope).
+		const double SqueezeStep = Reach > UE_KINDA_SMALL_NUMBER ? MaxSlope * SampleStep / Reach : 1.;
+		for (int32 Sample = 1; Sample < Count; ++Sample)
+		{
+			OutSqueeze[Sample] = FMath::Min(OutSqueeze[Sample], OutSqueeze[Sample - 1] + SqueezeStep);
+		}
+		for (int32 Sample = Count - 2; Sample >= 0; --Sample)
+		{
+			OutSqueeze[Sample] = FMath::Min(OutSqueeze[Sample], OutSqueeze[Sample + 1] + SqueezeStep);
+		}
+		// Each sample's interval of shifts keeping its files free, then the slope-limited envelopes of its bounds; the
+		// shift is the one nearest the centre line between them.
+		TArray<double> Lower;
+		TArray<double> Upper;
+		Lower.SetNumUninitialized(Count);
+		Upper.SetNumUninitialized(Count);
+		for (int32 Sample = 0; Sample < Count; ++Sample)
+		{
+			Lower[Sample] = FMath::Max(-FMath::Max(FreeLeft[Sample], 0.) - OutSqueeze[Sample] * MinY, -MaxShift);
+			Upper[Sample] = FMath::Min(FMath::Max(FreeRight[Sample], 0.) - OutSqueeze[Sample] * MaxY, MaxShift);
+		}
+		const double ShiftStep = MaxSlope * SampleStep;
+		for (int32 Sample = 1; Sample < Count; ++Sample)
+		{
+			Lower[Sample] = FMath::Max(Lower[Sample], Lower[Sample - 1] - ShiftStep);
+			Upper[Sample] = FMath::Min(Upper[Sample], Upper[Sample - 1] + ShiftStep);
+		}
+		for (int32 Sample = Count - 2; Sample >= 0; --Sample)
+		{
+			Lower[Sample] = FMath::Max(Lower[Sample], Lower[Sample + 1] - ShiftStep);
+			Upper[Sample] = FMath::Min(Upper[Sample], Upper[Sample + 1] + ShiftStep);
+		}
+		for (int32 Sample = 0; Sample < Count; ++Sample)
+		{
+			// Bounds crossed (no shift fits within the slope): their middle.
+			OutShift[Sample] = Lower[Sample] <= Upper[Sample] ? FMath::Clamp(0., Lower[Sample], Upper[Sample])
+				: FMath::Clamp(0.5 * (Lower[Sample] + Upper[Sample]), -MaxShift, MaxShift);
+		}
+	}
+
+	void GetCorridorAt(TConstArrayView<double> Shift, TConstArrayView<double> Squeeze, const double SampleStep, const double Distance,
+		double& OutShift, double& OutSqueeze)
+	{
+		const int32 Count = FMath::Min(Shift.Num(), Squeeze.Num());
+		OutShift = 0.;
+		OutSqueeze = 1.;
+		if (Count == 0 || SampleStep <= 0.)
+		{
+			return;
+		}
+		const double At = FMath::Clamp(Distance / SampleStep, 0., double(Count - 1));
+		const int32 First = FMath::Min(FMath::FloorToInt32(At), Count - 1);
+		const int32 Next = FMath::Min(First + 1, Count - 1);
+		const double Alpha = At - First;
+		OutShift = FMath::Lerp(Shift[First], Shift[Next], Alpha);
+		OutSqueeze = FMath::Lerp(Squeeze[First], Squeeze[Next], Alpha);
 	}
 }

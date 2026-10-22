@@ -486,31 +486,64 @@ namespace UE::HeroesOfLiberty::Orders
 	}
 
 	/**
-	 * A formation place brought where a unit can stand (J7a.4): the navmesh's point under it if the navmesh has it there
-	 * (not in an obstacle) and reaches it straight from the target, as the slots of D287; otherwise the first such point
-	 * on the way back to the target (3/4, 1/2, 1/4 of the way), else the target itself. Units sent to one point then
-	 * share it and stand side by side (D292).
+	 * A point where a formation place may stand (J7a.4, MV.5): the navmesh has it within 0.4 spacing (not in an
+	 * obstacle: resources and buildings are off the navmesh, D297) and reaches it straight from the target, as the
+	 * slots of D287. OutOnNav: the navmesh's point. Without a navmesh, every point is free.
+	 */
+	bool FindFreeFormationPoint(const FVector& Target, const FVector2D& Point, const double Spacing, const UNavigationSystemV1* NavSystem,
+		const ANavigationData* NavData, FVector& OutOnNav)
+	{
+		const FVector Wanted(Point.X, Point.Y, Target.Z);
+		if (NavSystem == nullptr || NavData == nullptr)
+		{
+			OutOnNav = Wanted;
+			return true;
+		}
+		const FVector Extent(Spacing * 0.5, Spacing * 0.5, 500.);
+		FNavLocation OnNav;
+		FVector Hit;
+		if (NavSystem->ProjectPointToNavigation(Wanted, OnNav, Extent, NavData)
+			&& FVector::Dist2D(OnNav.Location, Wanted) <= Spacing * 0.4
+			&& !NavData->Raycast(Target, OnNav.Location, Hit, NavData->GetDefaultQueryFilter()))
+		{
+			OutOnNav = OnNav.Location;
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * A place the navmesh brings no farther than this (cm) counts as free for HOLFormation::SettleBlockedPlaces: the gap
+	 * it keeps between places then holds after ProjectFormationPlace (with 0.4 spacing, two places pulled towards each
+	 * other ended 103 cm apart at a forest edge, MV.5).
+	 */
+	constexpr double FreePlaceMaxPull = 5.;
+
+	/** Whether a formation place is free (FindFreeFormationPoint, the navmesh's point on it): the test of HOLFormation::SettleBlockedPlaces. */
+	bool IsFormationPlaceFree(const FVector& Target, const FVector2D& Place, const double Spacing, const UNavigationSystemV1* NavSystem,
+		const ANavigationData* NavData)
+	{
+		FVector OnNav;
+		return FindFreeFormationPoint(Target, Place, Spacing, NavSystem, NavData, OnNav)
+			&& FVector2D::Distance(FVector2D(OnNav), Place) <= FreePlaceMaxPull;
+	}
+
+	/**
+	 * A formation place brought where a unit can stand (J7a.4): the navmesh's point under it if free
+	 * (FindFreeFormationPoint); otherwise the first free point on the way back to the target (3/4, 1/2, 1/4 of the way),
+	 * else the target itself. Units sent to one point then share it and stand side by side (D292). Blocked places are
+	 * settled around the obstacle first (HOLFormation::SettleBlockedPlaces, MV.5): this pull is their last resort.
 	 */
 	FVector ProjectFormationPlace(const FVector& Target, const FVector2D& Place, const double Spacing, const UNavigationSystemV1* NavSystem,
 		const ANavigationData* NavData)
 	{
-		if (NavSystem == nullptr || NavData == nullptr)
-		{
-			return FVector(Place.X, Place.Y, Target.Z);
-		}
-		const FVector Extent(Spacing * 0.5, Spacing * 0.5, 500.);
 		static constexpr double Fractions[] = { 1., 0.75, 0.5, 0.25 };
 		for (const double Fraction : Fractions)
 		{
-			const FVector2D Point = FMath::Lerp(FVector2D(Target), Place, Fraction);
-			const FVector Wanted(Point.X, Point.Y, Target.Z);
-			FNavLocation OnNav;
-			FVector Hit;
-			if (NavSystem->ProjectPointToNavigation(Wanted, OnNav, Extent, NavData)
-				&& FVector::Dist2D(OnNav.Location, Wanted) <= Spacing * 0.4
-				&& !NavData->Raycast(Target, OnNav.Location, Hit, NavData->GetDefaultQueryFilter()))
+			FVector OnNav;
+			if (FindFreeFormationPoint(Target, FMath::Lerp(FVector2D(Target), Place, Fraction), Spacing, NavSystem, NavData, OnNav))
 			{
-				return OnNav.Location;
+				return OnNav;
 			}
 		}
 		return Target;
@@ -1222,6 +1255,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			// Ctrl + drag (the user's 1st trial): its width too; a plain drag keeps the default rows, turned to face across it.
 			FrontWidth = bFront && Order.bFrontWidth ? HOLFormation::GetFrontWidth(Order.FrontLine.Size(), ColumnSpacing, Entities.Num()) : 0;
 			HOLFormation::PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, FVector2D(Order.Target), Forward, ColumnSpacing, RowSpacing,
+				[&](const FVector2D& Place) { return IsFormationPlaceFree(Order.Target, Place, ColumnSpacing, NavSystem, NavData); },
 				[&](const FVector2D& Place)
 				{
 					const FVector OnNav = ProjectFormationPlace(Order.Target, Place, ColumnSpacing, NavSystem, NavData);
@@ -1469,13 +1503,16 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 		Middle += UpOfUnit[Unit] != INDEX_NONE ? UpPlaces[UpOfUnit[Unit]] : FVector2D::ZeroVector;
 	}
 	Middle /= Num;
+	// The block's own places (its offsets keep the rows' grid), before any is settled around an obstacle (MV.5).
 	TArray<FVector2D> RawUp;
+	for (const FVector2D& Place : UpPlaces)
+	{
+		RawUp.Add(Place + Block.Path[0] - Middle);
+	}
 	HOLFormation::PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, Block.Path[0] - Middle, StartForward, ColumnSpacing, RowSpacing,
-		[&](const FVector2D& Place)
-		{
-			RawUp.Add(Place);
-			return FVector2D(ProjectFormationPlace(Start, Place, ColumnSpacing, NavSystem, NavData));
-		}, UpPlaces, UpOfUnit, FrontWidth);
+		[&](const FVector2D& Place) { return IsFormationPlaceFree(Start, Place, ColumnSpacing, NavSystem, NavData); },
+		[&](const FVector2D& Place) { return FVector2D(ProjectFormationPlace(Start, Place, ColumnSpacing, NavSystem, NavData)); },
+		UpPlaces, UpOfUnit, FrontWidth);
 	// Each unit's offset in the block; its arrival place the one of its slot (the same rows, same row and column: the
 	// form-up's place index is the arrival's, the user's 2nd trial), so the block turned at the end stands on them.
 	TArray<FVector2D> Offsets;
@@ -2175,6 +2212,19 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		// its slot slides from there to its place.
 		const FVector2D Point = Block.Progress < 0. ? Block.Path[0] + Fallback * Block.Progress : HOLFormation::GetPointOnLine(Block.Path, Block.Progress);
 		const FVector2D Direction = Block.Progress < 0. ? Fallback : HOLFormation::GetDirectionOnLine(Block.Path, Block.Progress, HOLFormation::BlockTurnWindow, Fallback);
+		// Its corridor (MV.5, the user's rule: B if the detour is not too long, otherwise A): built once for its files' span
+		// across, again when units joining it widen it; each file then reads it at its own depth along the path.
+		double MinY = 0.;
+		double MaxY = 0.;
+		for (const FVector2D& Offset : Block.Offsets)
+		{
+			MinY = FMath::Min(MinY, Offset.Y);
+			MaxY = FMath::Max(MaxY, Offset.Y);
+		}
+		if (!Block.bCorridor || MinY < Block.CorridorMinY - 1. || MaxY > Block.CorridorMaxY + 1.)
+		{
+			BuildCorridor(Block, MinY, MaxY, EntityManager.GetFragmentDataChecked<FTransformFragment>(Block.Entities[0]).GetTransform().GetLocation().Z, NavData);
+		}
 		const float ToGo = static_cast<float>(Block.Length - Block.Progress);
 		bool bAllInFiles = true;
 		double RearDepth = TNumericLimits<double>::Max();
@@ -2191,7 +2241,12 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				Block.Depths[Unit] = HOLFormation::WorldToBlockOffset(Location - Point, Direction).X;
 			}
 			RearDepth = FMath::Min(RearDepth, Block.Depths[Unit]);
-			FVector Slot(Point + HOLFormation::BlockOffsetToWorld(FVector2D(Block.Depths[Unit], Block.Offsets[Unit].Y), Direction), Z);
+			double Shift = 0.;
+			double Squeeze = 1.;
+			HOLFormation::GetCorridorAt(Block.CorridorShift, Block.CorridorSqueeze, HOLFormation::CorridorSampleStep,
+				FMath::Clamp(Block.Progress + Block.Depths[Unit], 0., Block.Length), Shift, Squeeze);
+			FVector Slot(Point + HOLFormation::BlockOffsetToWorld(FVector2D(Block.Depths[Unit], Shift + Squeeze * Block.Offsets[Unit].Y), Direction), Z);
+			// Kept as a safety net: an obstacle the corridor missed (a unit, a corner between samples).
 			FVector Hit;
 			const FVector OnPath(Point, Z);
 			if (NavData && NavData->Raycast(OnPath, Slot, Hit, NavData->GetDefaultQueryFilter()))
@@ -2336,6 +2391,64 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		}
 		Publish(Block);
 	}
+}
+
+void UHOLUnitOrderProcessor::BuildCorridor(FBlockMarch& Block, const double MinY, const double MaxY, const double Z, const ANavigationData* NavData)
+{
+	// A sample every CorridorSampleStep along the path, two raycasts across (left, right) on the navmesh, eroded by the
+	// units' radius: the free distance is a unit centre's, less CorridorMargin.
+	Block.bCorridor = true;
+	Block.CorridorMinY = MinY;
+	Block.CorridorMaxY = MaxY;
+	Block.CorridorShift.Reset();
+	Block.CorridorSqueeze.Reset();
+	if (NavData == nullptr || Block.Path.Num() < 2)
+	{
+		return;
+	}
+	const double MaxShift = FMath::Max(0.5 * (MaxY - MinY), HOLFormation::CorridorMinShift);
+	const double Reach = FMath::Min(FMath::Max(-MinY, MaxY) + MaxShift + HOLFormation::CorridorMargin, HOLFormation::CorridorMaxReach);
+	const int32 Count = FMath::FloorToInt32(Block.Length / HOLFormation::CorridorSampleStep) + 1;
+	TArray<double> FreeLeft;
+	TArray<double> FreeRight;
+	FreeLeft.Reserve(Count);
+	FreeRight.Reserve(Count);
+	const FVector2D Fallback = HOLFormation::GetDirectionOnLine(Block.Path, 0., HOLFormation::BlockTurnWindow, FVector2D(1., 0.));
+	for (int32 Sample = 0; Sample < Count; ++Sample)
+	{
+		const double Distance = FMath::Min(Sample * HOLFormation::CorridorSampleStep, Block.Length);
+		const FVector2D Point = HOLFormation::GetPointOnLine(Block.Path, Distance);
+		const FVector2D Direction = HOLFormation::GetDirectionOnLine(Block.Path, Distance, HOLFormation::BlockTurnWindow, Fallback);
+		const FVector2D Right(-Direction.Y, Direction.X);
+		const FVector Start(Point, Z);
+		const auto FreeTowards = [&](const FVector2D& Side)
+		{
+			FVector Hit;
+			return NavData->Raycast(Start, FVector(Point + Side * Reach, Z), Hit, NavData->GetDefaultQueryFilter())
+				? FMath::Max(FVector2D::Distance(FVector2D(Hit), Point) - HOLFormation::CorridorMargin, 0.) : Reach;
+		};
+		double Left = FreeTowards(-Right);
+		double RightFree = FreeTowards(Right);
+		if (Left <= 0. && RightFree <= 0.)
+		{
+			// Both sides shut: the point is off the navmesh (a height the query missed), nothing known there.
+			Left = Reach;
+			RightFree = Reach;
+		}
+		FreeLeft.Add(Left);
+		FreeRight.Add(RightFree);
+	}
+	HOLFormation::MakeCorridor(FreeLeft, FreeRight, HOLFormation::CorridorSampleStep, MinY, MaxY, MaxShift,
+		FMath::Tan(FMath::DegreesToRadians(HOLFormation::FileSlideMaxAngle)), Block.CorridorShift, Block.CorridorSqueeze);
+	double MostShift = 0.;
+	double LeastSqueeze = 1.;
+	for (int32 Sample = 0; Sample < Block.CorridorShift.Num(); ++Sample)
+	{
+		MostShift = FMath::Abs(Block.CorridorShift[Sample]) > FMath::Abs(MostShift) ? Block.CorridorShift[Sample] : MostShift;
+		LeastSqueeze = FMath::Min(LeastSqueeze, Block.CorridorSqueeze[Sample]);
+	}
+	UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %scorridor of %d samples (files %.0f to %.0f cm across), shift %.0f cm at most, squeeze %.2f at least"),
+		*Block.GetTag(), Count, MinY, MaxY, MostShift, LeastSqueeze);
 }
 
 void UHOLUnitOrderProcessor::WatchArrivals(FMassEntityManager& EntityManager)

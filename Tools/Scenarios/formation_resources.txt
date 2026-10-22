@@ -1,0 +1,60 @@
+# Formation et ressources : un bloc de 16 Hommes d'armes qui longe le filon d'or, 9 soldats mêlés envoyés contre la veine de pierre, 9 Hommes d'armes à la lisière des arbres
+# Chantier déplacement (MovementInProgress.md), MV.5 : la formation tient compte des ressources dès l'ordre (choix de
+# l'utilisateur : à l'arrivée, chaque place bloquée va à la place libre la plus proche ; en marche, le bloc s'écarte si
+# le détour est court, sinon ses files se resserrent d'avance). Plain, un joueur. Positions dans le repère du centre du
+# joueur (X vers le milieu de la carte) ; sélections par hol.Select.BoxGround en coordonnées du monde (centre du slot 0
+# à -14800, 0 : X du monde = X du repère - 14800). Les ordres sont donnés par le scénario, un cas après l'autre, la
+# caméra suit ; « Relancer » rejoue tout.
+hol.Units.SpawnSeed 205
+# 16 Hommes d'armes à 29 m à l'ouest du filon d'or (3713, 4592), sur sa ligne.
+hol.Camera.FocusNear 800 4400
+frames 2
+hol.Units.SpawnHere 16 ManAtArms 0 250
+waitunits 16
+# 9 soldats mêlés (3 Lanciers, 3 Hommes d'armes, 3 Archers) à 25 m de la veine de pierre (3713, -4592).
+hol.Camera.FocusNear 5600 -6200
+frames 2
+hol.Units.SpawnHere 3 Spearman 0 150
+hol.Units.SpawnHere 3 ManAtArms 0 150
+hol.Units.SpawnHere 3 Archer 0 150
+waitunits 25
+# 9 Hommes d'armes derrière le centre, à gauche, pour la lisière des arbres (l'arbre le plus proche : 116, -1806, rangée d'arbres à y -1781 à -1816).
+hol.Camera.FocusNear -2500 -900
+frames 2
+hol.Units.SpawnHere 9 ManAtArms 0 250
+waitunits 34
+# Cas 1 : le bloc de 16 longe le filon d'or (son chemin passe à côté) jusqu'à 35 m à l'est.
+hol.Camera.FocusNear 800 4400
+frames 3
+hol.Select.BoxGround -15400 3200 -13000 5600
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 16 units (own): ManAtArms x16
+hol.Camera.FocusNear 4000 4400
+frames 3
+hol.Select.OrderNear 7200 4400
+wait 15
+# Cas 2 : les 9 soldats mêlés envoyés à ~4 m du centre de la veine de pierre : leur formation tombe en partie dessus.
+hol.Camera.FocusNear 5600 -6200
+frames 3
+hol.Select.BoxGround -10200 -7000 -8600 -5400
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 9 units (own)
+hol.Camera.FocusNear 4400 -4600
+frames 3
+hol.Select.OrderNear 3950 -4250
+wait 10
+# Cas 3 : les 9 Hommes d'armes envoyés sur la lisière des arbres (le rang du fond tombe sur la rangée d'arbres).
+hol.Camera.FocusNear -2500 -900
+frames 3
+hol.Select.BoxGround -18300 -1700 -16700 -100
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 9 units (own): ManAtArms x9
+hol.Camera.FocusNear -500 -1300
+frames 3
+hol.Select.OrderNear 115 -1650
+note Trois cas joués l'un après l'autre (la caméra suit), « Relancer » rejoue tout.
+note Filon d'or : attendu : le bloc de 16 s'écarte du filon avant d'y arriver (ou se resserre d'avance), personne ne le touche.
+note Veine de pierre et lisière des arbres : attendu : les places sur la ressource vont à côté, sans tas ni poussée contre elle.

@@ -685,4 +685,159 @@ bool FHOLFormationBlockTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationSettleTest, "HeroesOfLiberty.Formation.Settle", UE::HeroesOfLiberty::Tests::Formation::Flags)
+bool FHOLFormationSettleTest::RunTest(const FString& Parameters)
+{
+	// MV.5 (the user's option A): 9 mixed soldiers sent 1 m from a stone vein's edge (radius 300 cm, a body of 60 cm):
+	// the places it takes go to the nearest free point, a gap from every other place; the others do not move.
+	const FVector2D Centre(0., 400.);
+	const double Clearance = 300. + 60.;
+	auto IsFree = [&Centre, Clearance](const FVector2D& Point) { return FVector2D::Distance(Point, Centre) >= Clearance; };
+	TArray<FVector2D> Positions;
+	TArray<int32> KindOfUnit;
+	for (int32 Unit = 0; Unit < 9; ++Unit)
+	{
+		Positions.Add(FVector2D(-2000. - 200. * (Unit / 3), 200. * (Unit % 3)));
+		KindOfUnit.Add(Unit % 3);
+	}
+	TArray<FVector2D> Raw;
+	TArray<int32> PlaceOfUnit;
+	HOLFormation::PlaceGroup(Positions, KindOfUnit, false, FVector2D::ZeroVector, FVector2D(1., 0.), 150., 180.,
+		[](const FVector2D& Place) { return Place; }, Raw, PlaceOfUnit);
+	TArray<FVector2D> Places;
+	int32 Projected = 0;
+	HOLFormation::PlaceGroup(Positions, KindOfUnit, false, FVector2D::ZeroVector, FVector2D(1., 0.), 150., 180.,
+		IsFree, [&Projected](const FVector2D& Place) { ++Projected; return Place; }, Places, PlaceOfUnit);
+	TestEqual(TEXT("one projection per place"), Projected, Places.Num());
+	int32 Blocked = 0;
+	bool bOutside = Places.Num() == Raw.Num() && Raw.Num() == 9;
+	bool bUnblockedKept = bOutside;
+	bool bNear = bOutside;
+	for (int32 Place = 0; bOutside && Place < Places.Num(); ++Place)
+	{
+		bOutside &= IsFree(Places[Place]);
+		if (IsFree(Raw[Place]))
+		{
+			bUnblockedKept &= Places[Place].Equals(Raw[Place], 1e-6);
+			continue;
+		}
+		++Blocked;
+		// The nearest free point: out of the obstacle, then at most a couple of gaps aside.
+		bNear &= FVector2D::Distance(Places[Place], Raw[Place]) <= Clearance - FVector2D::Distance(Raw[Place], Centre) + 2. * 150.;
+	}
+	TestTrue(TEXT("the vein takes some places"), Blocked >= 2);
+	TestTrue(TEXT("no place left in the vein"), bOutside);
+	TestTrue(TEXT("the places the vein does not take do not move"), bUnblockedKept);
+	TestTrue(TEXT("each place moved goes to a near free point"), bNear);
+	double MinGap = TNumericLimits<double>::Max();
+	for (int32 A = 0; A < Places.Num(); ++A)
+	{
+		for (int32 B = A + 1; B < Places.Num(); ++B)
+		{
+			MinGap = FMath::Min(MinGap, FVector2D::Distance(Places[A], Places[B]));
+		}
+	}
+	TestTrue(FString::Printf(TEXT("no pile: places %.0f cm apart at least (>= 135)"), MinGap), MinGap >= HOLFormation::SettleMinGapInSpacings * 150. - 1e-6);
+	bool bEachOwn = PlaceOfUnit.Num() == 9 && !PlaceOfUnit.Contains(INDEX_NONE);
+	TSet<int32> Given;
+	Given.Append(PlaceOfUnit);
+	TestTrue(TEXT("each unit a place of its own"), bEachOwn && Given.Num() == 9);
+
+	// No free point at all: nothing settled, the places left for the caller's fallback (ProjectPlace's rule).
+	TArray<FVector2D> Walled = Raw;
+	TArray<bool> AllBlocked;
+	AllBlocked.Init(true, Walled.Num());
+	TArray<bool> Settled;
+	const int32 NumSettled = HOLFormation::SettleBlockedPlaces(Walled, AllBlocked, FVector2D::ZeroVector, 150.,
+		[](const FVector2D&) { return false; }, Settled);
+	TestEqual(TEXT("walled in: nothing settled"), NumSettled, 0);
+	TestTrue(TEXT("walled in: the places stay"), Walled == Raw && !Settled.Contains(true));
+	int32 Fallbacks = 0;
+	HOLFormation::PlaceGroup(Positions, KindOfUnit, false, FVector2D::ZeroVector, FVector2D(1., 0.), 150., 180.,
+		[](const FVector2D&) { return false; }, [&Fallbacks](const FVector2D&) { ++Fallbacks; return FVector2D::ZeroVector; },
+		Places, PlaceOfUnit);
+	bool bFallback = Fallbacks == 9;
+	for (const FVector2D& Place : Places)
+	{
+		bFallback &= Place.IsNearlyZero();
+	}
+	TestTrue(TEXT("walled in: the fallback gives every place"), bFallback);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationCorridorTest, "HeroesOfLiberty.Formation.Corridor", UE::HeroesOfLiberty::Tests::Formation::Flags)
+bool FHOLFormationCorridorTest::RunTest(const FString& Parameters)
+{
+	// MV.5 (the user's rule: B if the detour is not too long, otherwise A): 3 files 150 cm apart, a sample every 100 cm,
+	// an obstacle over samples 20 to 29 of 50.
+	const double Step = 100.;
+	const double Slope = FMath::Tan(FMath::DegreesToRadians(HOLFormation::FileSlideMaxAngle));
+	const double MinY = -150.;
+	const double MaxY = 150.;
+	auto Make = [&](const double Left, const double Right, const double MaxShift, TArray<double>& Shift, TArray<double>& Squeeze)
+	{
+		TArray<double> FreeLeft;
+		TArray<double> FreeRight;
+		FreeLeft.Init(1000., 50);
+		FreeRight.Init(1000., 50);
+		for (int32 Sample = 20; Sample < 30; ++Sample)
+		{
+			FreeLeft[Sample] = Left;
+			FreeRight[Sample] = Right;
+		}
+		HOLFormation::MakeCorridor(FreeLeft, FreeRight, Step, MinY, MaxY, MaxShift, Slope, Shift, Squeeze);
+		bool bInside = Shift.Num() == 50 && Squeeze.Num() == 50;
+		bool bSlope = bInside;
+		for (int32 Sample = 0; bInside && Sample < 50; ++Sample)
+		{
+			bInside &= Shift[Sample] + Squeeze[Sample] * MinY >= -FreeLeft[Sample] - 1e-6
+				&& Shift[Sample] + Squeeze[Sample] * MaxY <= FreeRight[Sample] + 1e-6 && FMath::Abs(Shift[Sample]) <= MaxShift + 1e-6;
+			if (Sample > 0)
+			{
+				bSlope &= FMath::Abs(Shift[Sample] - Shift[Sample - 1]) <= Slope * Step + 1e-6
+					&& FMath::Abs(Squeeze[Sample] - Squeeze[Sample - 1]) * MaxY <= Slope * Step + 1e-6;
+			}
+		}
+		TestTrue(TEXT("files inside the free interval"), bInside);
+		TestTrue(TEXT("slope bounded"), bSlope);
+	};
+	TArray<double> Shift;
+	TArray<double> Squeeze;
+	// Open field: nothing changes.
+	Make(1000., 1000., 300., Shift, Squeeze);
+	bool bOpen = true;
+	for (int32 Sample = 0; Sample < Shift.Num(); ++Sample)
+	{
+		bOpen &= FMath::IsNearlyZero(Shift[Sample]) && FMath::IsNearlyEqual(Squeeze[Sample], 1.);
+	}
+	TestTrue(TEXT("open field: no shift, no squeeze"), bOpen);
+	// B: an obstacle 60 cm right of the path, room on the left: the block shifts left, 90 cm, ahead of time.
+	Make(1000., 60., 300., Shift, Squeeze);
+	bool bWhole = true;
+	for (int32 Sample = 0; Sample < Squeeze.Num(); ++Sample)
+	{
+		bWhole &= FMath::IsNearlyEqual(Squeeze[Sample], 1.);
+	}
+	TestTrue(TEXT("B: no squeeze"), bWhole);
+	TestEqual(TEXT("B: shifted left by what fits"), Shift[25], -90., 1e-6);
+	TestTrue(TEXT("B: the shift starts before the obstacle"), Shift[18] < -1.);
+	TestTrue(TEXT("B: back on the path after it"), FMath::IsNearlyZero(Shift[40]));
+	// A: a gap 200 cm wide for 300 cm of files: they squeeze there, ahead of time, and reopen after.
+	Make(100., 100., 300., Shift, Squeeze);
+	TestEqual(TEXT("A: squeezed in the gap"), Squeeze[25], 2. / 3., 1e-6);
+	TestTrue(TEXT("A: the squeeze starts before the gap"), Squeeze[19] < 1. - 1e-3);
+	TestTrue(TEXT("A: reopened after it"), FMath::IsNearlyEqual(Squeeze[40], 1.));
+	// The shift needed (150 cm) beyond the cap (100 cm): shifted by the cap, squeezed for the rest.
+	Make(1000., 0., 100., Shift, Squeeze);
+	TestEqual(TEXT("cap: shifted by the cap"), Shift[25], -100., 1e-6);
+	TestEqual(TEXT("cap: squeezed for the rest"), Squeeze[25], 100. / 150., 1e-6);
+	double At = 0.;
+	double Scale = 0.;
+	HOLFormation::GetCorridorAt(Shift, Squeeze, Step, 2550., At, Scale);
+	TestEqual(TEXT("read between samples"), At, -100., 1e-6);
+	HOLFormation::GetCorridorAt({}, {}, Step, 100., At, Scale);
+	TestTrue(TEXT("no corridor: no change"), At == 0. && Scale == 1.);
+	return true;
+}
+
 #endif

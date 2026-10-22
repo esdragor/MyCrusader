@@ -100,6 +100,33 @@ namespace HOLFormation
 		int32 FrontWidth = 0);
 
 	/**
+	 * The same, the places an obstacle takes (a resource, a building: IsFree false) first settled around it
+	 * (SettleBlockedPlaces), so the formation stays on Target and wraps around the obstacle; ProjectPlace then brings
+	 * every place where a unit can stand (a settled one is free, so stays there; one left blocked falls back on
+	 * ProjectPlace's own rule).
+	 */
+	HEROESOFLIBERTY_API void PlaceGroup(TConstArrayView<FVector2D> Positions, TConstArrayView<int32> KindOfUnit, bool bPeasantsOnly,
+		const FVector2D& Target, const FVector2D& Forward, double ColumnSpacing, double RowSpacing,
+		TFunctionRef<bool(const FVector2D&)> IsFree, TFunctionRef<FVector2D(const FVector2D&)> ProjectPlace,
+		TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit, int32 FrontWidth = 0);
+
+	/**
+	 * Settling of the formation places an obstacle takes (the user's option A, MV.5): each blocked place goes to the
+	 * nearest free point, at least SettleMinGapInSpacings spacings from every other place, so no two units pile up and
+	 * the formation wraps around the obstacle. Blocked places are settled in the order of Places (front rows first, as
+	 * MakePlaces gives them), each looking on rings around its own place (half a spacing apart, a point every half
+	 * spacing along each ring, up to SettleMaxRadiusInSpacings spacings away); on the nearest ring with a point that
+	 * keeps the gap from the unblocked places and the ones already settled and that IsFree, the point nearest Anchor
+	 * (the formation's target: it stays tight). Unblocked places do not move. OutSettled[i] is true for a blocked place
+	 * moved; a blocked place with no such point is left where it was, for the caller's fallback. Returns the number of
+	 * places settled.
+	 */
+	inline constexpr double SettleMinGapInSpacings = 0.9;
+	inline constexpr double SettleMaxRadiusInSpacings = 8.;
+	HEROESOFLIBERTY_API int32 SettleBlockedPlaces(TArray<FVector2D>& Places, TConstArrayView<bool> IsBlocked, const FVector2D& Anchor,
+		double Spacing, TFunctionRef<bool(const FVector2D&)> IsFree, TArray<bool>& OutSettled);
+
+	/**
 	 * Row priority of a unit's kind in a group's formation (J7-Q3): Spearman 0, Man-at-arms 1, Archer 2 (the kind in
 	 * front first), other soldiers 3, then the Peasants (workers: CarryCapacity > 0) PeasantRowPriority, behind them.
 	 * Shared by the server's formation and the drag's preview.
@@ -304,4 +331,26 @@ namespace HOLFormation
 	 * right) turned with the path's direction there (GetDirectionOnLine over BlockTurnWindow).
 	 */
 	HEROESOFLIBERTY_API FVector2D GetSlotOnPath(TConstArrayView<FVector2D> Points, double Distance, const FVector2D& Offset, const FVector2D& Fallback);
+
+	/**
+	 * The block's corridor along its path (MV.5, the user's rule: "B if the detour is not too long, otherwise A"), so its
+	 * files clear an obstacle ahead of time instead of finding it on contact. Samples every SampleStep cm along the path;
+	 * FreeLeft[i] / FreeRight[i] the free distances (cm, >= 0) from the path's centre line across, to the left and to the
+	 * right (a unit's centre can stand there: the navmesh is eroded by its radius). The block's files span
+	 * [OffsetMinY, OffsetMaxY] across (Y to the right, as BlockOffsetToWorld). A file at offset Y walks at
+	 * OutShift[i] + OutSqueeze[i] * Y across: B, the whole block shifts sideways (by as little as fits, MaxShift at
+	 * most); A, where that is not enough, the files squeeze (the largest squeeze in [0, 1] that fits with such a shift).
+	 * Both then ramp along the path, never faster than MaxSlope across per cm along for the outermost file (anticipation
+	 * before the obstacle, recovery after), the shift kept inside each sample's free interval when the slope allows it.
+	 */
+	inline constexpr double CorridorSampleStep = 100.;
+	inline constexpr double CorridorMinShift = 300.;
+	inline constexpr double CorridorMaxReach = 1000.;
+	inline constexpr double CorridorMargin = 20.;
+	HEROESOFLIBERTY_API void MakeCorridor(TConstArrayView<double> FreeLeft, TConstArrayView<double> FreeRight, double SampleStep,
+		double OffsetMinY, double OffsetMaxY, double MaxShift, double MaxSlope, TArray<double>& OutShift, TArray<double>& OutSqueeze);
+
+	/** The corridor's shift and squeeze at Distance along the path (linear between samples, clamped; none: 0 and 1). */
+	HEROESOFLIBERTY_API void GetCorridorAt(TConstArrayView<double> Shift, TConstArrayView<double> Squeeze, double SampleStep, double Distance,
+		double& OutShift, double& OutSqueeze);
 }
