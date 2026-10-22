@@ -1,0 +1,32 @@
+# Rangs mêlés : tireurs toujours derrière la mêlée (1re ligne sans Archer), Archers au centre et mêlée aux ailes dès la 2e ligne ; 4 groupes à 30 m
+# Règle de l'utilisateur du 2026-10-22 (HOLFormation::PlaceKinds). Plain, un joueur, aucun ennemi. Quatre groupes du
+# joueur sur une ligne (Y = -5000), 30 m l'un de l'autre, chacun sur sa zone dégagée (comme formation_one_kind) ;
+# le premier est sélectionné à la fin. Lignes attendues, la 1re devant (L Lancier, H Homme d'armes, A Archer) :
+#   1 : 5 L + 2 H + 6 A -> L L L L L / H A A A H / A A A
+#   2 : 5 L + 7 A       -> L L L L L / A A A A A / A A
+#   3 : 1 L + 8 A       -> L / A A A / A A A / A A
+#   4 : 1 L + 1 H + 1 A -> H L / A
+hol.Camera.Focus -5500 -5000
+frames 2
+hol.Units.Spawn 5 -5500 -5000 0 Spearman 400
+hol.Units.Spawn 2 -5500 -5000 0 ManAtArms 400
+hol.Units.Spawn 6 -5500 -5000 0 Archer 400
+hol.Units.Spawn 5 -2500 -5000 0 Spearman 400
+hol.Units.Spawn 7 -2500 -5000 0 Archer 400
+hol.Units.Spawn 1 500 -5000 0 Spearman 300
+hol.Units.Spawn 8 500 -5000 0 Archer 300
+hol.Units.Spawn 1 3500 -5000 0 Spearman 200
+hol.Units.Spawn 1 3500 -5000 0 ManAtArms 200
+hol.Units.Spawn 1 3500 -5000 0 Archer 200
+waitunits 37
+# Le premier groupe sélectionné (cadre au sol autour de lui, la caméra au-dessus).
+hol.Camera.Focus -5500 -5000
+frames 5
+hol.Select.BoxGround -6700 -6200 -4300 -3800
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 13 units (own)
+note Quatre groupes en ligne, 30 m l'un de l'autre ; le 1er (à gauche, 5 Lanciers, 2 Hommes d'armes, 6 Archers) est sélectionné.
+note Clic droit au sol (ou glisser au bouton droit) : la 1re ligne n'a jamais d'Archer ; dès la 2e, Archers au centre, mêlée aux ailes.
+note Attendu : 1) 5 L / H A A A H / 3 A ; 2) 5 L / 5 A / 2 A ; 3) L / 3 A / 3 A / 2 A ; 4) H L / A.
+note Pour les autres groupes : cadre autour d'un seul groupe à la fois (plus à droite), puis clic droit au sol.

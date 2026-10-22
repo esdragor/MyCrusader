@@ -37,6 +37,9 @@ struct FHOLUnitView
 	bool bLoadAmountKnown = false;
 	/** What its type carries at most (0: it does not gather). */
 	int32 CarryCapacity = 0;
+	/** Its type's class in a group's formation (HOLFormation::GetRowPriority): a shooter (HOLCombat::IsRangedAttack), a siege unit. */
+	bool bRanged = false;
+	bool bSiege = false;
 	/** Unhurt (J7b.4): its health is its type's maximum. */
 	bool bFullHealth = true;
 	/**

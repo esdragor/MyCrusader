@@ -32,6 +32,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLBuildProcessor.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLGatherProcessor.h"
 #include "UObject/UObjectIterator.h"
 #include "Simulation/HOLFormationRules.h"
@@ -480,10 +481,11 @@ namespace UE::HeroesOfLiberty::Orders
 
 namespace UE::HeroesOfLiberty::Orders
 {
-	/** Row priority of a unit's kind in a group's formation (J7-Q3): HOLFormation::GetRowPriority. */
+	/** Row priority of a unit's kind in a group's formation (J7-Q3, its class of 2026-10-22): HOLFormation::GetRowPriority. */
 	int32 GetFormationPriority(const FHOLUnitTypeConstants& Constants)
 	{
-		return HOLFormation::GetRowPriority(Constants.TypeName, Constants.CarryCapacity);
+		return HOLFormation::GetRowPriority(Constants.TypeName, Constants.CarryCapacity, HOLCombat::IsRangedAttack(Constants.AttackRange),
+			Constants.ArmorCategory == EHOLArmorCategory::Siege);
 	}
 
 	/**

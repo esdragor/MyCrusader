@@ -148,8 +148,82 @@ mise en œuvre, § 6.1 siège, § 9.1 bis résistance héroïque, tableau des d�
       (IN_USE.txt posé) : la session du moulin travaille dans la copie principale. Le CSV, `make_unit_stats.py` et
       `UnitStats.md` y sont copiés ; les copies de la copie principale (CSV modifié, deux fichiers non suivis) sont à
       retirer avant la fusion (le classificateur a refusé de les effacer : demander à l'utilisateur).
-- [ ] Dans Haldir (sous-agent) : compilation par `Toolsuild.ps1 -Root`, réimport de `/Game/Units/UnitTypes`, tests
-      mis à jour (HOLCombatTests, HOLAnimationTests, HOLProductionTests), `quick_check -Parts tests,production,gather,build,anims,combat`.
+- [x] Dans Haldir (sous-agent, 2026-10-22) : compilation PASS, `/Game/Units/UnitTypes` réimporté, tests mis à jour
+      (HOLCombatTests, HOLAnimationTests, HOLProductionTests), `quick_check -Parts tests,production,gather,build,anims,combat`
+      **PASS** (tests 90/90, 467 s). Scénarios de quick_check adaptés : build cut (fenêtre 12 → 17 s, Paysans plus
+      rapides en phase), combat et attack-move (7 coups de 12 au lieu de 10 de 8 ; groupes écartés de plus de 16 m,
+      l'agression plus longue faisait partir le Lancier tout seul), arrows flee (Lancier à 20 m, tir attendu 1800-2120).
+      À savoir : les scénarios doivent espacer les groupes de plus de 16 m (21,3 m pour les Archers) ; vitesse répliquée
+      jusqu'à 12,8 m/s (800 cm/s tient), commentaire « 3 m/s » de HOLUnitReplicationRules.h périmé.
+- [ ] Essai de l'utilisateur (`play.ps1 j7_army -Root ..\HeroesOfLiberty-Haldir`), puis validation et commit sur
+      unit-stats, fusion dans main (retirer d'abord les copies du CSV, du script et du tableau dans la copie principale).
 - [ ] Tests touchés (combat, récolte) après l'import, puis validation de l'utilisateur et commit.
 - [ ] Code de D345 (types d'attaque, 4 armures, attaque contre bâtiment, catégories multiples, bonus en liste,
       deuxième attaque) ; avec lui `HOLCombat::AttackMoveRadius` 1200 → 1600 (4 cases).
+
+## Portée de mêlée par arme (choix de l'utilisateur, relayé par mycrusader-43, J7c.4, 2026-10-22)
+
+La portée de mêlée reste **propre à chaque arme**, comme la mêlée validée à l'essai de J7c.4 : **Piquier 130 cm,
+Homme d'armes 70 cm** (bord à bord). Remplace les 0,29 case (116 cm) des soldats de mêlée ; **le Paysan garde 116 cm**.
+Ces valeurs arrivent dans main avec la branche j7c-shot (avec ses AttackWindUpPercent) : à la fusion de main dans
+unit-stats, garder dans UnitTypes.csv la portée et l'élan de j7c-shot, et le reste de unit-stats ; réimporter, puis
+tests et combat. Copies de la copie principale (CSV, script, tableau) retirées par mycrusader-43 à la demande de
+l'utilisateur (identiques à Haldir).
+
+## Essai 1 (2026-10-22, j7_army dans Haldir) et fusion de main 48ffa00
+
+- Vitesses : **bonnes** (utilisateur). Portée non testée : le scénario s'arrêtait avant l'ennemi (ordre de bâtir la
+  caserne hors de l'écran, caméra ailleurs) ; corrigé dans Haldir (`hol.Camera.FocusNear -3800 4600` avant l'ordre).
+- Superposition d'un Lancier, d'un Homme d'armes et d'un Archer envoyés au même point : à revoir après la fusion
+  (MV.3 « immobiles superposées » avait été accepté, pas corrigé) ; sinon, au chantier déplacement.
+- Ligne ajoutée à EtapeDefini (retours d'essai) : unité repoussée par un chantier posée dans ses murs.
+- unit-stats avancée jusqu'à main 48ffa00 (j7c-shot, MV.5, moulin), travail remis par-dessus (stash gardé en réserve
+  jusqu'à la fin) ; CSV : portées de main gardées (Piquier 130, Homme d'armes 70), le reste de unit-stats ; test
+  « Spearman: reach » → 130. Sous-agent : compilation, réimport, quick_check court puis `-Parts tests,combat`.
+- Après la fusion (sous-agent) : compilation PASS, réimport PASS, `quick_check` court PASS (21 s, tests 92/92),
+  `-Parts tests,combat` PASS (165 s), aucune retouche de test. À reprendre avec le code de D345 : dans quick_check,
+  la file d'attente (B à 15 m, désormais dans l'agression de 16 m : la vérification ne distingue plus Maj de
+  l'agression ; éloigner B au-delà de 16 m), seuil « Peasant out of reach » de la tenue de position à 50 cm (Homme
+  d'armes 70 cm), commentaires « 12 m » périmés. Essai 2 (j7_army corrigé) lancé.
+
+## Essai 2 (2026-10-22, j7_army corrigé) : « tout a l'air bon », deux demandes
+
+1. **Flèches 1,5 fois plus rapides** : `HOLCombat::DefaultArrowSpeed` 2500 → **3750 cm/s** (37,5 m/s) ; test de la
+   vitesse par défaut suivi, tests du vol gardés sur une vitesse ronde de 25 m/s ; `UnitStats.md` régénéré.
+2. **Règle de formation absolue** (à coder dans unit-stats, choix de l'utilisateur) : un tireur est **toujours
+   derrière la mêlée** ; la **première ligne n'a jamais de tireur** ; dès la ligne 2, une ligne peut avoir des tireurs
+   **au centre, flanqués de mêlée sur ses ailes** (« l'inverse » de la proposition « mêlée au centre, tireurs aux
+   ailes »). Même règle pour le **siège derrière les tireurs**. Exemple 1 Lancier + 1 Homme d'armes + 1 Archer :
+   ligne 1 `L H`, ligne 2 `A` (aujourd'hui : une seule ligne de 3).
+   **Confirmé par l'utilisateur sur exemples** (largeurs des lignes : `MakeMixedRows`) :
+   - 5 Lanciers + 2 Hommes d'armes + 6 Archers : `L L L L L` / `H A A A H` / `A A A` (tireurs au centre, flanqués par la
+     mêlée restante dès la ligne 2) ;
+   - 5 Lanciers + 7 Archers + 1 engin : `L L L L L` / `A A A A A` / `A A` / `M` — **le siège n'est pas flanqué** : il
+     prend des lignes à lui, derrière toutes les lignes de tireurs (correction de l'utilisateur) ;
+   - 1 Lancier + 8 Archers : `L` / `A A A` / `A A A` / `A A` — règle stricte : la première ligne n'a que la mêlée,
+     même réduite à une unité.
+- Flèches à 37,5 m/s : compilation PASS, `quick_check -Parts tests,combat` PASS après mise à jour de la vérification
+  « each flight = distance / 37.5 m/s » (`$ArrowSpeed` 3750 dans quick_check.ps1), 171 s.
+- Règle de formation : confiée à un sous-agent dans Haldir (HOLFormationRules, tests, scénario `formation_ranks`).
+- Règle de formation codée (sous-agent) : `PlaceKinds` reçoit et rend les lignes (ligne 1 sans tireur ni siège,
+  raccourcie ; siège en lignes à lui ; débordement en lignes de plus, larges comme l'avant-dernière donnée ; dans une
+  ligne la classe la plus en arrière au centre) ; `GetRowPriority` 0-6 (Lancier, Homme d'armes, autre mêlée, Archer,
+  autre tireur, siège, Paysan : l'Infanterie légère passe devant les Archers) ; `bRanged` / `bSiege` dans la vue des
+  unités (non répliqué) ; aperçu du tracé aligné. Test `HeroesOfLiberty.Formation.Classes` ; tests 93/93. Exemples
+  obtenus conformes (1 L + 1 H + 1 A : `H L` / `A`). quick_check formation : seuil de vitesse du bloc codé en dur à
+  523 cm/s → lu dans le journal (`pace`, 697 cm/s). Scénario `formation_ranks` (4 groupes, 30 m d'écart). Choix du
+  sous-agent à faire confirmer : largeur des lignes de débordement ; Paysans mêlés aux soldats au centre des Archers.
+  Essai 3 lancé (formation_ranks).
+- Formation : quick_check formation PASS (168 s). **Essai 3 (formation_ranks) : « ça fonctionne »** (validé, choix
+  du sous-agent acceptés). Commit eb73ead sur unit-stats, **fusionné dans main 7bda727**. EtapeDefini : ligne du
+  tableau des stats remplacée par « D345 à coder » ; ligne du chantier qui pose une unité dans ses murs.
+
+## Reprise
+
+Prochaine étape : **coder les règles de D345** dans Haldir (branche unit-stats, à remettre au niveau de main) :
+types d'attaque et quatre armures (colonnes du CSV, `HOLCombat::GetDamage`), ×0,3 des troupes contre les héros sauf
+Siège (quand les héros existeront dans la simulation légère), attaque contre bâtiment (ordre, attaque-déplacement,
+repos), armure Distance 40 des bâtiments (`BuildingTypes.csv`, Moulin compris), catégories multiples et bonus en
+liste, deuxième attaque à déclencheur Charge ; avec : `HOLCombat::AttackMoveRadius` 1200 → 1600, file d'attente de
+quick_check (B au-delà de 16 m), seuil « Peasant out of reach » de la tenue (70 cm), commentaires « 12 m » périmés.
+Stash « unit-stats WIP before merging main 48ffa00 » dans le dépôt : réserve devenue inutile (contenu commité).

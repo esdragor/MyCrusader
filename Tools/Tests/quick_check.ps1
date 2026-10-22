@@ -350,7 +350,7 @@ $FormWalkerTo = @(-700, -4300)
 # columns) and, with Shift, a move queued while they walk there, 26 m north: the six go there once that walk is over.
 $FormPlainLine = @(-2900, -5900, -2100, -5100)
 $FormQueuedTo = @(-2200, -2900)
-# Then the block march (the user's 1st trial of J7a.4): 3 Peasants, 3 Spearmen and 3 Men-at-arms (600, 583, 523 cm/s) on
+# Then the block march (the user's 1st trial of J7a.4): 3 Peasants, 3 Spearmen and 3 Men-at-arms (800, 777, 697 cm/s since D345) on
 # the six's first ground (gone by then), sent to the same point 35 m east.
 $FormBlockPeasants = @(-6000, -5000)
 $FormBlockSpearmen = @(-6000, -5500)
@@ -358,7 +358,7 @@ $FormBlockMenAtArms = @(-6000, -6000)
 # Then the straggler (the user's 1st trial of J7b), after the groups: 5 Men-at-arms close together on the six's first
 # ground (gone by then) and a 6th 10 m behind them (west), sent 37 m east-north-east (between the block's end and the
 # six's queued point, more than 12 m from every enemy of the combat parts): the five leave at once, the 6th walks on its
-# own path to its place. Then the same with an Archer (584 cm/s against 523) as the 6th, sent 35 m north-east.
+# own path to its place. Then the same with an Archer (779 cm/s against 697) as the 6th, sent 35 m north-east.
 $StragFrom = @(-6000, -5500)
 $StragLate = @(-7000, -5500)
 $StragTo = @(-2500, -4200)
@@ -387,9 +387,12 @@ $MeetTo = @(-3300, -5450)
 $CombatMenAtArms = @(-6300, -5500)
 $CombatSpearmen = @(-5700, -5500)
 # The attack-move and hold position (J7b.3), on ground clear of the parts before (more than 12 m from their soldiers).
-$OrdersMoveFrom = @(-6500, -1500)
+# D345 (aggression 16 m): the Men-at-arms start 10 m further west and the Spearman 8 m north of their way (4 m before),
+# more than 16 m edge to edge from them and from the Peasants left at (-5900, -2500) whatever the spawn's draw, so that
+# only the attack-move (within 16 m of their way) takes it on.
+$OrdersMoveFrom = @(-7500, -1500)
 $OrdersMoveTo = @(-3500, -1500)
-$OrdersMoveSpearman = @(-5000, -1100)
+$OrdersMoveSpearman = @(-5000, -700)
 $OrdersHold = @(-4500, 2500)
 # (Spawn places a unit up to ~1.5 m off its point: the Peasant 5.5 m away, out of reach whatever the draw, within 12 m.)
 $OrdersHoldPeasant = @(-3950, 2500)
@@ -412,9 +415,10 @@ $QueueC = @(-2000, 3600)
 $ArrowArchers = @(-2000, -5000)
 $ArrowSpearmen = @(-2000, -3600)
 $ArrowPeasants = @(-1300, -4300)
-# The target that flees (J7c.2b): on the shot's ground once cleared, the Spearman 15 m north of the 3 Archers, sent 55 m north.
+# The target that flees (J7c.2b): on the shot's ground once cleared, the Spearman 20 m north of the 3 Archers (their reach
+# since D345; 15 m before, within its own 16 m aggression since D345, it would charge them), sent 50 m north.
 $FleeArchers = @(-2000, -5000)
-$FleeSpearman = @(-2000, -3500)
+$FleeSpearman = @(-2000, -3000)
 $FleeTo = @(-2000, 2000)
 $GapP = @(-6000, 0)
 $GapQ = @(-6000, 800)
@@ -843,7 +847,8 @@ if ($Parts -contains "camera") {
             # Paths cut by a footprint (J6b.2, D314). Six Peasants gather the vein (5 times as fast: they walk most of the time)
             # and unload at the centre; 25 s later (a round trip each: their paths kept), house K placed across their way by a
             # Peasant made beside it: at its first work, the kept paths across it are dropped; once its tiles are rebuilt, the
-            # walkers crossing it get a new path (the log line); watched 12 s (every body put back by a footprint logged).
+            # walkers crossing it get a new path (the log line); watched 17 s (every body put back by a footprint logged),
+            # longer than a round trip (~15 s at the D345 speed) so a batch of unloads falls in it whatever its phase.
             Key Escape
             Step "mark build cut", "waitlog Selection: none", "hol.Units.SpawnSeed 109", "hol.Gather.SpeedScale 5", "hol.Units.Spawn 6 $($CutSpawn -join ' ') 0 Peasant 100", "wait 0.5",
                 "hol.Camera.Focus $($CutSpawn -join ' ')", "frames 3",
@@ -853,7 +858,7 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: Peasant #", "hol.Build.Place House", "waitlog Placement ghost: House at ($($CutK -join ', ')) valid", "hol.Build.Click",
                 "waitlog Build order of slot 0: 1 units to House at ($($CutK -join ', '))", "waitlog Construction: slot 0 first work on House at ($($CutK -join ', '))",
                 "waitlog Buildings (D310): footprint House at ($($CutK -join ', '))", "hol.Nav.Footprints on", "hol.Units.KeepOut 2", "wait 1.5",
-                "hol.Camera.Focus $($CutK[0]) $($CutK[1] + 200)", "frames 3", "capture build_cut_gather", "wait 10", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
+                "hol.Camera.Focus $($CutK[0]) $($CutK[1] + 200)", "frames 3", "capture build_cut_gather", "wait 15", "hol.Nav.Footprints off", "hol.Units.KeepOut 1",
                 "hol.Units.Where 0"
             # Six Peasants made 50 m north of house N, sent 90 m south (straight on open ground); house N started across their
             # way by a Peasant made beside it: they go round it, arrive, none put back by a footprint. The waits are on the
@@ -1205,7 +1210,7 @@ if ($Parts -contains "camera") {
             # The bodies gone (J7c, bodies kept 30 s): ~40 s after the fall's body was laid, it has sunk and gone at 31 s.
             Step "mark combat corpse expiry", "hol.Units.CorpseReport", "mark orders queue end", "hol.Select.Click 0.03 0.05"
             # The shot (J7c.2a): 4 Archers of slot 0, 3 Spearmen and 2 Peasants of slot 1 14 m and 10 m off (within the Archers'
-            # 16 m aggression): they shoot by themselves; each arrow lands after its flight (distance at release / 25 m/s),
+            # 16 m aggression): they shoot by themselves; each arrow lands after its flight (distance at release / 37.5 m/s),
             # lost when its target died meanwhile; a Peasant killed by an arrow dies as in melee (it falls, Dying).
             # The arrows drawn (J7c.2b): a close-up 0.15 s after a release, the arrows in the air; the display's report
             # (hol.Combat.ArrowReport) before and after, everyone of the shot taken away at the end: none left in flight.
@@ -1219,7 +1224,7 @@ if ($Parts -contains "camera") {
                 "hol.Units.Remove $($ArrowArchers[0]) $(($ArrowArchers[1] + $ArrowSpearmen[1]) / 2) 1500 0", "wait 1", "hol.Combat.ArrowReport",
                 "mark combat arrows end"
             # The target that flees (J7c.2b, the user's case): every unit 1.5 times as fast (the Spearman ~8.7 m/s, an AoE4 light cavalry), 3 Archers
-            # and a Spearman of slot 1 15 m off; as soon as the first arrow is released the Spearman runs north: the arrow
+            # and a Spearman of slot 1 20 m off (D345); as soon as the first arrow is released the Spearman runs north: the arrow
             # still lands on it (damage at the landing), the drawn arrow follows it and is gone on it.
             Step "mark combat arrows flee", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 12000 1", "wait 0.2", "hol.Cheat.UnitSpeed 1.5", "hol.Units.SpawnSeed 132", "hol.Camera.Focus $($FleeArchers[0]) $($FleeArchers[1] + 900)",
                 "hol.Units.Spawn 3 $($FleeArchers -join ' ') 0 Archer 150", "hol.Units.Spawn 1 $($FleeSpearman -join ' ') 1 Spearman 150", "hol.Camera.Zoom 12",
@@ -2153,7 +2158,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $PushedK = @($Cut | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
     # Same rule as house N below (J6b.3): a walker brushing K's wall is put back by the guard (a few cm a step, D310), 10 in
     # a row give it one new path; none in the footprint, a few put back, a new path at most.
-    $Checks["none in it over 12 s after it, a few put back, a new path at most ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Inside) unit-steps in it, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it" }) $($PushedK -join '; '))"] =
+    $Checks["none in it over 17 s after it, a few put back, a new path at most ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Inside) unit-steps in it, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it" }) $($PushedK -join '; '))"] =
         ($null -ne $WatchK) -and ($WatchK.Steps -ge 200) -and ($WatchK.Inside -eq 0) -and ($WatchK.Out -le 20) -and ($WatchK.Repaths -le 1)
     $KLine = -1; for ($i = 0; $i -lt $Cut.Count; $i++) { if ($Cut[$i] -match "Buildings \(D310\): footprint House at \($($CutK -join ', ')\)") { $KLine = $i; break } }
     $UnloadsK = if ($KLine -ge 0) { @($Cut[$KLine..($Cut.Count - 1)] | Select-String -Pattern "Gather: slot 0 unloaded \d+ \w+ \(stock [^)]*\) at MainCentre ").Count } else { 0 }
@@ -2490,8 +2495,10 @@ if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
         # second), + 20 % (the user's 4th trial: the block slows down while its units take their slots on the move and
         # while it re-forms in its last metres, instead of stopping before and after).
         $Expected = if ($i -lt $PlainStarts.Count) { [Math]::Ceiling([double]$PlainStarts[$i].Matches[0].Groups[1].Value / [double]$PlainStarts[$i].Matches[0].Groups[2].Value * 20 * 1.2) } else { 0 }
-        $Checks["plain/queued block: form-up $($G[1].Value) steps (2 at most), march $($G[2].Value) steps ($Expected at most), $($G[6].Value) left, speed $($G[5].Value) cm/s (523 + 10 % at most), held $($G[3].Value), gap $($G[4].Value) cm"] =
-            ([int]$G[1].Value -le 2) -and ([int]$G[2].Value -le $Expected) -and ([int]$G[6].Value -eq 0) -and ([int]$G[5].Value -le 523 * 1.1)
+        # The block walks at its slowest unit's pace (the Man-at-arms, read from the table: 697 cm/s since D345).
+        $Pace = if ($i -lt $PlainStarts.Count) { [double]$PlainStarts[$i].Matches[0].Groups[2].Value } else { 697.0 }
+        $Checks["plain/queued block: form-up $($G[1].Value) steps (2 at most), march $($G[2].Value) steps ($Expected at most), $($G[6].Value) left, speed $($G[5].Value) cm/s ($Pace + 10 % at most), held $($G[3].Value), gap $($G[4].Value) cm"] =
+            ([int]$G[1].Value -le 2) -and ([int]$G[2].Value -le $Expected) -and ([int]$G[6].Value -eq 0) -and ([int]$G[5].Value -le $Pace * 1.1)
     }
     # The arrivals (the user's 2nd and 3rd trials): no rigid turn, each unit from the last 1.5 m of the path straight to a
     # place of its kind: no two straight ways of one kind crossing, (almost) nobody pushed, everyone standing within 1 s.
@@ -2786,7 +2793,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
         $Checks["the Men-at-arms survive ($($Survivors.Count))"] = $Survivors.Count -eq 3
         $MaaHits = ($Survivors | ForEach-Object { $Last.Units[$_].Hits } | Measure-Object -Sum).Sum
         $MaaKills = ($Survivors | ForEach-Object { $Last.Units[$_].Kills } | Measure-Object -Sum).Sum
-        $Checks["10 hits of 8 per Spearman ($MaaHits hits, $MaaKills kills)"] = $MaaHits -eq 30 -and $MaaKills -eq 3
+        $Checks["7 hits of 12 per Spearman, D345 ($MaaHits hits, $MaaKills kills)"] = $MaaHits -eq 21 -and $MaaKills -eq 3
         $Hurt = @($Survivors | Where-Object { $Last.Units[$_].Hp -lt 155 })
         $Checks["the Spearmen struck back ($($Hurt.Count) Men-at-arms hurt)"] = $Hurt.Count -ge 1
         $Checks["the survivors stop (no target)"] = @($Survivors | Where-Object { $Last.Units[$_].Target -ne 0 }).Count -eq 0
@@ -2925,7 +2932,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # 1 at least) or is lost (target dead in flight); a unit killed by an arrow takes the dying path (its fall).
     $Checks = [ordered]@{}
     $Shot = @(Get-Section "combat arrows") + @(Get-Section "combat arrows fight")
-    $StepMs = 50; $ArrowSpeed = 2500.0
+    $StepMs = 50; $ArrowSpeed = 3750.0  # HOLCombat::DefaultArrowSpeed (37.5 m/s since the D345 trial)
     $Releases = @{}; $BadFlight = 0
     foreach ($Line in $Shot) {
         if ($Line -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) \w+: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
@@ -2947,7 +2954,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $Falls = @(Get-Section "combat arrows" | Where-Object { $_ -match "Anim report falls: slot 1, (\d+) falling" } | ForEach-Object { [int]$Matches[1] })
     $Delay = if ($Delays.Count) { "$(($Delays | Measure-Object -Minimum).Minimum)-$(($Delays | Measure-Object -Maximum).Maximum) steps" } else { "none" }
     $Checks["arrows: $($Releases.Count) released, $Landed landed, $Lost lost, flights $Delay"] = $Releases.Count -ge 5 -and $Landed -ge 4 -and ($Landed + $Lost) -ge ($Releases.Count - 4) -and ($Landed + $Lost) -le $Releases.Count
-    $Checks["each flight = distance at release / 25 m/s in whole steps ($BadFlight off)"] = $Releases.Count -gt 0 -and $BadFlight -eq 0
+    $Checks["each flight = distance at release / 37.5 m/s in whole steps ($BadFlight off)"] = $Releases.Count -gt 0 -and $BadFlight -eq 0
     $Checks["each arrow lands at its step ($BadLanding off)"] = $Landed -gt 0 -and $BadLanding -eq 0
     $Checks["kills by arrow: $($Kills.Count), then falling: $(if ($Falls.Count) { $Falls[0] } else { 'no report' })"] = $Kills.Count -ge 1 -and $Falls.Count -ge 1 -and $Falls[0] -ge 1
     # The arrows drawn (J7c.2b): as many launched on the display as released by the simulation (1 per shooter off at
@@ -2961,7 +2968,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $Checks["close-ups of the arrows in the air (combat_arrows_1, _2)"] = (Test-Path (Join-Path $Shots "combat_arrows_1.png")) -and (Test-Path (Join-Path $Shots "combat_arrows_2.png"))
     $AllOk = (Report "combat arrows" $Checks) -and $AllOk
 
-    # The target that flees (J7c.2b): the first arrow released at 15 m lands on the Spearman running away at ~8 m/s
+    # The target that flees (J7c.2b): the first arrow released at 20 m (D345) lands on the Spearman running away at ~8 m/s
     # (damage at the landing), out of reach by then; none left in flight on the display at the end.
     $Checks = [ordered]@{}
     $Flee = @(Get-Section "combat arrows flee")
@@ -2979,9 +2986,9 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
                 if ($Archers.Count) { $Distances += [int](($Archers | Measure-Object -Minimum).Minimum) }
             }
         }
-        $Checks["first arrow released at $FleeCm cm, $FleeMs ms ($([int]($FleeCm * 10 / [Math]::Max($FleeMs, 1))) m/s apparent), then the Spearman runs: $($Distances -join ', ') cm off"] = $FleeCm -ge 1400 -and $FleeCm -le 1600
+        $Checks["first arrow released at $FleeCm cm, $FleeMs ms ($([int]($FleeCm * 10 / [Math]::Max($FleeMs, 1))) m/s apparent), then the Spearman runs: $($Distances -join ', ') cm off"] = $FleeCm -ge 1800 -and $FleeCm -le 2120
         $Checks["it lands on the fleeing Spearman at its step (damage $(if ($FleeLanding -and $FleeLanding -match 'for (\d+),') { $Matches[1] } else { 'none' }))"] = [bool]$FleeLanding
-        $Checks["the Spearman out of reach meanwhile (farthest $(if ($Distances.Count) { ($Distances | Measure-Object -Maximum).Maximum } else { '?' }) cm > 1500)"] = $Distances.Count -ge 1 -and ($Distances | Measure-Object -Maximum).Maximum -gt 1500
+        $Checks["the Spearman out of reach meanwhile (farthest $(if ($Distances.Count) { ($Distances | Measure-Object -Maximum).Maximum } else { '?' }) cm > 2000)"] = $Distances.Count -ge 1 -and ($Distances | Measure-Object -Maximum).Maximum -gt 2000
     }
     else { $Checks["an arrow released at the Spearman"] = $false }
     $FleeReports = @($Flee | Where-Object { $_ -match "Arrow report: in flight (\d+) launched" } | ForEach-Object { [int]$Matches[1] })
@@ -3044,7 +3051,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             $Checks["they take on the Spearman on the way ($Engaged reports)"] = $Engaged -ge 1
             $Checks["the Spearman killed"] = -not $Last.ContainsKey($SpearId)
             $MoveHits = ($MoveMen | Where-Object { $Last.ContainsKey($_) } | ForEach-Object { $Last[$_].Hits } | Measure-Object -Sum).Sum
-            $Checks["10 hits of 8 to kill it ($MoveHits)"] = $MoveHits -eq 10
+            $Checks["7 hits of 12 to kill it, D345 ($MoveHits)"] = $MoveHits -eq 7
             $Arrived = @($MoveMen | Where-Object { $Last.ContainsKey($_) -and [Math]::Sqrt([Math]::Pow($Last[$_].X - $OrdersMoveTo[0], 2) + [Math]::Pow($Last[$_].Y - $OrdersMoveTo[1], 2)) -le 400 })
             $Checks["then on to the destination ($($Arrived.Count) of 3 within 4 m)"] = $Arrived.Count -eq 3
             # Where they stood when the Spearman fell: off their destination (the fight on the way, not at the end).

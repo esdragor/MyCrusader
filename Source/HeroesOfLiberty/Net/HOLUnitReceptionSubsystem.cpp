@@ -22,6 +22,7 @@
 #include "Net/HOLUnitReplicator.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Presentation/HOLCorpse.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -488,6 +489,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.Radius = Row->Radius;
 		OutView.MeshScale = Row->MeshScale;
 		OutView.CarryCapacity = Row->CarryCapacity;
+		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
+		OutView.bSiege = Row->ArmorCategory == EHOLArmorCategory::Siege;
 		// J7b.5: the health received, exact (J7-Q5 revised).
 		OutView.MaxHealth = Row->MaxHealth;
 		OutView.Health = HOLUnitView::GetReceivedHealth(OutView.bFullHealth, Slot.State.Health, Row->MaxHealth);

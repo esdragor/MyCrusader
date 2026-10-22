@@ -148,7 +148,7 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Man-at-arms: one place"), ManAtArms->Population, 1);
 			TestEqual(TEXT("Man-at-arms: 155 health"), ManAtArms->MaxHealth, 155);
 			TestEqual(TEXT("Man-at-arms: heavy infantry"), int32(ManAtArms->ArmorCategory), int32(EHOLArmorCategory::HeavyInfantry));
-			TestEqual(TEXT("Man-at-arms: attack 8"), ManAtArms->Attack, 8);
+			TestEqual(TEXT("Man-at-arms: attack 12"), ManAtArms->Attack, 12);
 			TestEqual(TEXT("Man-at-arms: melee armour 4"), ManAtArms->MeleeArmor, 4);
 			TestEqual(TEXT("Man-at-arms: ranged armour 4"), ManAtArms->RangedArmor, 4);
 			TestEqual(TEXT("Man-at-arms: no bonus"), ManAtArms->BonusDamage, 0);
@@ -162,7 +162,7 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Archer: one place"), Archer->Population, 1);
 			TestEqual(TEXT("Archer: 70 health"), Archer->MaxHealth, 70);
 			TestEqual(TEXT("Archer: ranged armour category"), int32(Archer->ArmorCategory), int32(EHOLArmorCategory::Ranged));
-			TestEqual(TEXT("Archer: 584 cm/s"), Archer->Speed, 584.f);
+			TestEqual(TEXT("Archer: 779 cm/s"), Archer->Speed, 779.f);
 		}
 	}
 
