@@ -6610,6 +6610,76 @@ d'épée).
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
 - Séance **mycrusader-4f**, copie **`HeroesOfLiberty-Galadriel`** (`IN_USE.txt`), branche **`archer-hit-and-run`** depuis
+- (J7c.4, mycrusader-43) **Boucle 25** (~11 min, non commitée, 0 avertissement) : la piste « tableau au lieu du TMap »
+  était **déjà faite** (`FighterOfEntity` derrière `hol.Combat.FastPaths` ; `IndexOfEntity` ne sert qu'avec
+  `FastPaths 0`). Dans S2, pas de combat parce que presque toutes les unités marchent sous un ordre (8 joueurs mêlés
+  dans un disque). **Sortie rapide** `hol.Combat.FastIdle` (1 ; `HOLCombatProcessor.cpp`, +41 lignes, après le test
+  `!bFighting`, avant le tri) : si aucune flèche en vol et aucune unité vivante n'a cible, dernier attaquant, approche,
+  attaque, attaque-mouvement ni recherche à ce pas → `AttackerCount` 0, flanc remis à zéro (non occupées), `TickIdle`,
+  `Deaths.Reset()`, retour. **Empreintes identiques** (nouvelles références après la mêlée, rapports de 5 s) : S3
+  **8a9b34cde2035b53**, S4 **8b0790f36386d0ea**. `-Parts tests,combat` PASS (176 s, 87/87). S2 tracé (machine
+  chargée, 17-34 %, chiffres indicatifs) : `HOLCombatProcessor` 0,478 → **0,434 ms**/pas seulement ; cause probable :
+  une seule unité libre à son pas de recherche suffit à reprendre le chemin complet. Suite (boucle 26) : compter les pas
+  qui prennent la sortie rapide, portées de trace dans `Execute` (rassemblement, tri, grille, passe en avance, boucle).
+- (J7c.4, mycrusader-43) **Boucle 26** (~13 min, non commitée, 0 avertissement ; +121 / −3 lignes, compteurs
+  `hol.Combat.CountIdle` 0 par défaut et portées de trace « loop 26 (temporary) ») : S2 de 10 s, pas 100-199 (marche
+  sous ordre, aucun combat) : 16 en sortie rapide, **84 bloqués seulement par des chercheurs**, **2,0 chercheurs en
+  moyenne par pas** sur 2 000 (tous avec une unité à portée : joueurs mêlés) ; fenêtre mesurée 36 / 200 en sortie
+  rapide. Trace (machine chargée, 17 %, pas 4,54 ms ; combat 0,513 ms dont 0,052 de compteurs), par pas en chemin
+  complet : boucle principale 0,211, grille 0,127, rassemblement 0,092, comptage des attaquants 0,031, passe en avance
+  0,023 + 0,027, tri 0,008. `trace_report.py --scopes "HOLCombat*"` ne montre pas les portées (sommes faites sur
+  `events.csv`). Proposé : (1) **sortie rapide par unité** dans la boucle principale (même critère que `FastIdle`,
+  testé au tour de l'unité, pas à l'avance, pour rester bit-identique) ; (2) sauter le comptage des attaquants si
+  aucune unité n'a de cible ; estimé 0,29 → ~0,18 ms au repos. Boucle 27 lancée : (1) et (2) derrière des variables,
+  empreintes S3 / S4.
+- (J7c.4, mycrusader-43) **Boucle 27** (~13 min, non commitée, 0 avertissement ; boucles 25-27 : +174 / −10 lignes dans
+  `HOLCombatProcessor.cpp`) : **`hol.Combat.FastIdleUnit`** (1 ; boucle Main, juste après le test des mourants : unité
+  sans cible, dernier attaquant, approche, attaque ni attaque-mouvement, et occupée ou pas en droit de chercher à ce
+  pas, critère testé à son tour → flanc remis à zéro si non occupée, `TickIdle`, `continue` ; chemin complet relu : rien
+  d'autre n'est touché) ; **`hol.Combat.SkipAttackerCount`** (1 ; `AttackerCount` mis à 0 au rassemblement, comptage
+  sauté si aucune unité n'a de cible). **Empreintes identiques** S3 8a9b34cde2035b53, S4 8b0790f36386d0ea, variables
+  à 1 comme à 0. `-Parts tests,combat` PASS (173 s, 87/87). Sous-agent arrêté par la session principale (une attente de
+  fond restait). **A/B de S2 au calme lancé** (10:53, processeur 3-5 %, autres sessions prévenues) : même binaire
+  Elrond, A = `FastIdle` / `FastIdleUnit` / `SkipAttackerCount` à 0, B = défauts, A B A B A B (`l27ab_*`).
+- (J7c.4, mycrusader-43) **Résultats de l'A/B de S2** (machine pas au repos : Discord, VS Code, processeur 5-22 %
+  selon les tours ; chiffres indicatifs) :
+  - Non tracé (`l27ab_*`, 10 s) : A 3,243 / 3,140 / 4,012 ms, B 3,137 / 3,377 / 3,727 : trop bruité (charge montée à
+    16-18 % aux tours 2-3).
+  - Tracé (`l27tr_*`, processeur 3-10 %) : `HOLCombatProcessor` A 0,437 / 0,449 → B 0,408 / 0,389 ms : **gain ~0,045
+    ms seulement** (estimé 0,1-0,15). Pas entiers A 3,620 / 3,648, B 3,698 / 3,558.
+  - **`main` contre Elrond, tracé** (`l27mv_*`, main c446d99 pour le code ; 2e paire la plus propre) : pas 3,396 → 3,597
+    ms (**+0,20**) ; séparation 0,864 → 0,930 (+0,07), combat 0,302 → 0,377 (+0,075, raccourcis compris), marche à
+    pleine vitesse 0,562 → 0,597 (+0,035), ordres 0,640 → 0,660 (+0,02). 1re paire plus chargée (Elrond 4,110,
+    22 % avant) : même sens.
+  - **Constat** : `j7c-shot` coûte ~0,2 ms de plus que `main` dans S2 (tracé), réparti entre la mêlée (séparation :
+    `EnemySideGuard` / `FrontHoldsFriends` ; `RearSlide` dans la marche ; combat réécrit) ; or `main` est à 2,91 ms au
+    repos pour 3 : **fusionner `j7c-shot` ferait probablement passer S2 au-dessus du seuil**. Le coût fixe du combat
+    seul n'explique pas tout. Question à l'utilisateur.
+- (J7c.4) **Choix de l'utilisateur (conforme à la recommandation) : garder et alléger.** Les raccourcis du combat
+  (`FastIdle`, `FastIdleUnit`, `SkipAttackerCount`) sont gardés et commités sur `j7c-shot` sans les compteurs de la
+  boucle 26 ; puis les règles de mêlée (`EnemySideGuard`, `FrontHoldsFriends`, `RearSlide`…) ne s'appliquent qu'aux
+  unités proches d'un ennemi ; enfin S2 au repos sur `main` et Elrond (l'utilisateur ferme ses applications). Boucle
+  28 lancée : retrait des compteurs et portées de la boucle 26, compilation, empreintes, `-Parts tests,combat`.
+- (J7c.4, mycrusader-43) **Boucle 28** (~10 min) : compteurs `CountIdle`, `FIdleCounts` et portées de trace retirés ;
+  restent `FastIdle`, `FastIdleUnit`, `SkipAttackerCount` (+94 / −7 lignes). 0 avertissement ; empreintes S3
+  8a9b34cde2035b53, S4 8b0790f36386d0ea identiques ; `-Parts tests,combat` PASS (176 s, 87/87). **Commité sur
+  `j7c-shot` : 60f3005.** Boucle 29 lancée : prix de chaque règle de mêlée dans S2 (traces avec les variables coupées),
+  sauts bit-identiques hors combat, propositions qui changeraient une règle sans les écrire.
+- (J7c.4, mycrusader-43) **Boucle 29** (~13 min, non commitée, 0 avertissement) : prix des règles dans S2 (traces de
+  10 s, machine chargée 16-34 %) : séparation 0,926 ms par défaut → 0,632 les trois coupées ; **`FrontHoldsFriends`
+  ~0,24 ms** (0,682 seule coupée), `EnemySideGuard` ~0,07, `SeparationMaxStep` ~0,07 ; `RearSlide` ~0 (ne tourne pas
+  dans S2). Cause : la passe « front » (3×3, ennemi à ≤ 10 cm) rend « front » presque toute la foule mêlée sans combat,
+  et `Undo` traite les paires amies en « mur ». Écrit, bit-identique : `hol.Simulation.MeleeRuleSkips` (1 ; milieux
+  d'armée de `BuildLookAhead` seulement si une unité peut glisser, `FrontLines` en tableaux par joueur au lieu de
+  `TMap`), +111 / −3 dans `HOLSimulationProcessors.cpp` ; empreintes S3 / S4 identiques ; gain non mesuré (quelques
+  dizaines de µs estimées). `quick_check` pas passé : le sous-agent a lancé celui de la copie principale (il ignore
+  `-Project`), arrêté aussitôt, rien de touché. **Leçon** : dans les énoncés, donner le chemin complet du
+  `quick_check.ps1` d'Elrond.
+- (J7c.4) **Question « front = en combat »** posée (A : front seulement si l'unité ou l'ennemi touché est en combat,
+  ~0,24 ms ; B : en plus, garde côté ennemi et plafond seulement en combat, ~0,38 ms) : l'utilisateur veut **voir un
+  scénario pour décider**. Boucle 30 lancée : A (`hol.Simulation.FrontNeedsCombat`) et B
+  (`hol.Simulation.EnemyGuardNeedsCombat`), défaut 0 ; scénarios `melee_front_a`, `melee_reinforce` (renforts par
+  simple ordre de marche contre la ligne), `crowds_cross` (deux foules ennemies qui se croisent) ; empreintes, traces S2.
   `main` ea84b7b. `EtapeDefini.md` : « Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence ».
 - **Constat (lecture du code)** : un ordre de marche (`Disengage`) garde la recharge (`CooldownMs` non remis à zéro,
   `TickIdle` pendant la marche) et une flèche lâchée part quand même (J7c-Q2). Le blocage : à chaque reprise de cible,
