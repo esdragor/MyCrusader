@@ -1,18 +1,18 @@
 # Pose à côté : le fantôme posé sur une maison ou un arbre se colle au plus près, à côté (retour d'essai 3 de J7b)
 # Plain, deux joueurs (placement.json). Positions dans le repère du centre du joueur (comme attack_move_q).
 hol.Cheat.Resources 5000
-# Une maison derrière le centre, un camp de bûcherons au bord des arbres.
-hol.Build.PlaceNear House -1200 900
+# Une maison derrière le centre (une case de 4 m entre eux), un camp de bûcherons (8 m) au bord arrière des arbres.
+hol.Build.PlaceNear House -1600 800
 waitlog Construction: slot 0 placed House
-hol.Build.PlaceNear LumberCamp -300 -1300
+hol.Build.PlaceNear LumberCamp -1600 -2000
 waitlog Construction: slot 0 placed LumberCamp
 # Quatre Paysans entre les deux, sélectionnés.
-hol.Camera.FocusNear -600 0
+hol.Camera.FocusNear -1600 -600
 frames 2
 hol.Units.SpawnHere 4 Peasant 0 150
 waitunits 4
 hol.Select.Own
-hol.Camera.FocusNear -600 -200
+hol.Camera.FocusNear -1600 -400
 frames 5
 note Choisis une maison (A) et vise une maison déjà posée : le fantôme va se coller à côté, au plus près du curseur.
 note Vise un arbre : pareil.

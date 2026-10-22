@@ -30,7 +30,7 @@ tools' weights, so it stays in it).
 Run (headless, editor closed, from PowerShell; log lines start with "HOLPeasantMesh"):
   UnrealEditor-Cmd.exe <project> -run=pythonscript -script="<this file>" -unattended -nop4 -nosplash
   add "--provider-only" inside the -script value to refresh TP_Peasant alone (mesh and material kept; with
-  "--soldiers": TP_Spearman and TP_ManAtArms alone), or
+  "--soldiers": the soldiers' TP_ alone, "--only=SKM_Archer[,...]" those meshes' providers alone), or
   "--material-only" for the material alone, "--light-lod=N" to take the light props from LOD N instead of
   LIGHT_PROPS_LOD (99: full props everywhere, the mesh as it was before them, for an A/B measure).
 
@@ -537,9 +537,12 @@ def main():
     if "--material-only" in arguments:
         make_material()
         return
+    only = [a.split("=", 1)[1].split(",") for a in arguments if a.startswith("--only=")]
     if "--provider-only" in arguments:
         if "--soldiers" in arguments:
             for mesh_name, (provider_name, sequences) in SOLDIERS.items():
+                if only and mesh_name not in only[0]:
+                    continue
                 make_provider(load(MESH_FOLDER + "/" + mesh_name), provider_name, sequences, SOLDIER_BASE_SEQUENCES)
         else:
             make_provider(load(MESH_FOLDER + "/" + MESH_NAME))
@@ -551,7 +554,6 @@ def main():
             light_lod = int(argument.split("=", 1)[1])
     if "--soldiers" in arguments:
         material = make_material(SOLDIER_MATERIAL_NAME, fold=False)
-        only = [a.split("=", 1)[1].split(",") for a in arguments if a.startswith("--only=")]
         for mesh_name, (provider_name, sequences) in SOLDIERS.items():
             if only and mesh_name not in only[0]:
                 continue

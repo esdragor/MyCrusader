@@ -15,9 +15,13 @@
 #include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
+#include "Components/Spacer.h"
 #include "Components/UniformGridPanel.h"
+#include "Components/UniformGridSlot.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/WrapBox.h"
+#include "Components/WrapBoxSlot.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -182,17 +186,37 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr int32 GridColumns = 4;
 	constexpr float CellSize = 76.f;
 	constexpr float CellGap = 2.f;
-	constexpr float QueueItemWidth = 58.f;
+	constexpr float QueueItemWidth = 56.f;
 	constexpr float QueueItemHeight = 36.f;
 	constexpr float ScreenMargin = 16.f;
 	constexpr float MarkerSize = 12.f;
 	constexpr float SwatchSize = 14.f;
-	constexpr float SelectionMinWidth = 320.f;
 	constexpr float IdleWorkersWidth = 130.f;
 	/** The site's progress bar in the selection block (J6a.5). */
 	constexpr float SiteBarWidth = 200.f;
 	/** The grid panel's width: the short message above it wraps within it (D313). */
 	constexpr float GridWidth = 4 * (CellSize + 2 * CellGap) + 12.f;
+	/**
+	 * The bottom bar (the user's 2nd trial of G.1, AoE4's way, D201), left to right at fixed places whatever the selection:
+	 * the selection's block (a fixed width), the command panel (3 x 4), the builders' age panels; its height the panel's.
+	 */
+	constexpr float SelectionWidth = 340.f;
+	constexpr float BarHeight = 3 * (CellSize + 2 * CellGap) + 12.f;
+	constexpr float BarGap = 6.f;
+	/** The minimap's place, bottom right (D201): no minimap yet, the place kept free. */
+	constexpr float MinimapSize = 240.f;
+	/** An age's medallion (AoE4's « (I) A »): its numeral's disc, its key's square, how far it rises over the panel's top edge. */
+	constexpr float MedallionSize = 40.f;
+	constexpr float KeyBadgeSize = 24.f;
+	constexpr float MedallionRise = 26.f;
+	/** The selection's chips (G.1e): how many (« Tous » and 11 types), their height, at most two on a line, a long name cut. */
+	constexpr int32 NumChips = 12;
+	constexpr float ChipHeight = 30.f;
+	constexpr float ChipGap = 4.f;
+	constexpr float ChipMaxWidth = (SelectionWidth - 24.f - ChipGap) / 2.f;
+	constexpr int32 ChipNameChars = 12;
+	/** A medallion's look: its age not reached (faded), reached, chosen (lit). */
+	enum EMedallionLook : int32 { Locked, Reached, Chosen };
 	/** The name the HUD's report gives the « Annuler » cell of a site. */
 	const FName CancelName(TEXT("Cancel"));
 	/** Seconds between two readings of a selected group's activities. */
@@ -205,6 +229,42 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	FName GridCellName(const int32 Cell)
 	{
 		return *FString::Printf(TEXT("GridCell%02d"), Cell);
+	}
+
+	/** The ages' numerals (I to IV) and names (GDD § 11.1). */
+	const TCHAR* const AgeNumerals[HOLCommandGrid::NumAges] = { TEXT("I"), TEXT("II"), TEXT("III"), TEXT("IV") };
+
+	/** A chip's label (G.1e): « Paysan (5) », a long name cut short (« Homme d'arme. (3) »); Count 0: the name alone. */
+	FText MakeChipLabel(const FText& Name, const int32 Count)
+	{
+		const FString Full = Name.ToString();
+		const FText Shown = Full.Len() <= ChipNameChars ? Name : FText::AsCultureInvariant(Full.Left(ChipNameChars - 1).TrimEnd() + TEXT("."));
+		return Count > 0 ? FText::Format(LOCTEXT("SelectionChip", "{0} ({1})"), Shown, Count) : Shown;
+	}
+
+	FText GetAgeName(const int32 Age)
+	{
+		switch (Age)
+		{
+		case 0: return LOCTEXT("Age0", "Fondation");
+		case 1: return LOCTEXT("Age1", "Essor");
+		case 2: return LOCTEXT("Age2", "Puissance");
+		default: return LOCTEXT("Age3", "Légende");
+		}
+	}
+
+	/** The building cells of an age's panel: the grid's 12 keys, one row per category (HOLCommandGrid::GetCategoryRow). */
+	constexpr int32 NumAgeCells = HOLCommandGrid::NumCells;
+
+	FName AgeMedallionName(const int32 Age)
+	{
+		return *FString::Printf(TEXT("AgeMedallion%d"), Age);
+	}
+
+	/** AgeCell<age><cell>: AgeCell000 the house (age 0, A), AgeCell004 the barracks (Q). */
+	FName AgeCellName(const int32 Age, const int32 Cell)
+	{
+		return *FString::Printf(TEXT("AgeCell%d%02d"), Age, Cell);
 	}
 
 	FName QueueItemName(const int32 Index)
@@ -296,8 +356,41 @@ void UHOLGameScreen::NativeOnInitialized()
 			GroupSlot->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGroupSlotClicked, Group);
 		}
 	}
+	SelectionChips = Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
+	for (int32 Chip = 0; Chip < NumChips; ++Chip)
+	{
+		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChip%d"), Chip)));
+		ChipItems.Add(Item);
+		ChipFrames.Add(Cast<UBorder>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChipFrame%d"), Chip))));
+		if (Item)
+		{
+			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleChipClicked, Chip);
+		}
+	}
 	ShownGroups.Init(FString(), AHOLPlayerController::NumControlGroups);
 	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
+	ShownOrderTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
+	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
+	{
+		AgePanels.Add(Cast<UBorder>(WidgetTree->FindWidget(*FString::Printf(TEXT("AgePanel%d"), Age))));
+		AgeMedallions.Add(Cast<UBorder>(WidgetTree->FindWidget(AgeMedallionName(Age))));
+		for (int32 Index = 0; Index < NumAgeCells; ++Index)
+		{
+			const int32 Cell = Index;
+			UHOLGridCell* AgeCell = Cast<UHOLGridCell>(WidgetTree->FindWidget(AgeCellName(Age, Cell)));
+			AgeCells.Add(AgeCell);
+			AgeCellBoxes.Add(AgeCell ? Cast<USizeBox>(AgeCell->GetParent()) : nullptr);
+			if (AgeCell)
+			{
+				AgeCell->SetKey(FText::AsCultureInvariant(FString(GridKeys[Cell])));
+				AgeCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleAgeClicked, Age, Cell);
+			}
+		}
+	}
+	ShownAgeTypes.Init(NAME_None, HOLCommandGrid::NumAges * NumAgeCells);
+	ShownAgeReached.Init(false, HOLCommandGrid::NumAges);
+	ShownAgeTooltips.Init(FString(), HOLCommandGrid::NumAges);
+	ShownAgeLooks.Init(INDEX_NONE, HOLCommandGrid::NumAges);
 
 	// For the scripted checks (hol.Test.Run): the captures of a match name the HUD.
 	const TWeakObjectPtr<UHOLGameScreen> WeakThis(this);
@@ -386,6 +479,11 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	{
 		RefreshSourceSelection(Controller->GetSelectedSource());
 	}
+	// The chosen age (a key, a placement, Escape) changes without a delegate: its header follows it (the 2nd check of G.1c).
+	if (bAgesShown && Controller.IsValid() && Controller->GetChosenAge() != ShownChosenAge)
+	{
+		RefreshAges(BoundPlayerState.Get());
+	}
 	RefreshIdleWorkers();
 	RefreshControlGroups(InDeltaTime);
 	UpdateHead();
@@ -448,6 +546,8 @@ void UHOLGameScreen::Refresh()
 	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
 
 	RefreshTopBar(PlayerState);
+	ChipLabels.Reset();
+	ActiveChip = INDEX_NONE;
 	if (PlayerController && !PlayerController->GetSelectedUnits().IsEmpty())
 	{
 		RefreshUnitSelection(PlayerController->GetSelectedUnits());
@@ -466,6 +566,7 @@ void UHOLGameScreen::Refresh()
 	{
 		RefreshSelection(Selected, Selected && Selected == Own);
 	}
+	RefreshChips();
 	RefreshIdleWorkers();
 	RefreshGrid(Own, PlayerController && PlayerController->HasBuildingGroup(), PlayerState);
 	RefreshQueue(Own);
@@ -635,27 +736,41 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		return bWorkerA != WorkerTypes.Contains(B) ? !bWorkerA : A.LexicalLess(B);
 	});
 	TArray<FString> ShownTypes;
-	TArray<FText> Lines;
-	// Units of several types (the user's trial of J7b): first the subgroup Tab made active, whose cells the grid shows,
-	// « Tous (8) » or « Paysan × 3 », as a group of buildings.
-	FHOLSubgroup Subgroup;
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	if (bOwn && PlayerController && PlayerController->GetActiveUnitSubgroup(Subgroup))
-	{
-		Lines.Add(Subgroup.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Subgroup.Members.Num())
-			: FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), HOLGameNames::GetUnitName(Subgroup.TypeName, FindUnitType(Subgroup.TypeName)), Subgroup.Members.Num()));
-	}
 	for (const TPair<FName, int32>& Type : PerType)
 	{
-		const FText Name = HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key));
-		Lines.Add(Views.Num() == 1 ? Name : FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), Name, Type.Value));
 		ShownTypes.Add(Views.Num() == 1 ? Type.Key.ToString() : FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
 	}
 	ShownSelection = FString::Printf(TEXT("%s (%s)"), *FString::Join(ShownTypes, TEXT(", ")), bOwn ? TEXT("own") : TEXT("other"));
-
-	if (SelectionName)
+	if (SelectionName && Views.Num() == 1)
 	{
-		SelectionName->SetText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
+		SelectionName->SetText(HOLGameNames::GetUnitName(Views[0].TypeName, FindUnitType(Views[0].TypeName)));
+	}
+	// A group (G.1e, AoE4's way): chips, the player's units of several types by their subgroups (Tab's, « Tous (8) » first,
+	// the active one lit, the soldiers first, the Peasants last); else « Tous » (several types) then one per type.
+	TArray<FHOLSubgroup> Subgroups;
+	FHOLSubgroup Subgroup;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	if (Views.Num() > 1 && bOwn && PlayerController && PlayerController->GetActiveUnitSubgroup(Subgroup))
+	{
+		PlayerController->GetUnitSubgroups(Subgroups);
+		for (const FHOLSubgroup& Each : Subgroups)
+		{
+			ChipLabels.Add(Each.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Each.Members.Num())
+				: MakeChipLabel(HOLGameNames::GetUnitName(Each.TypeName, FindUnitType(Each.TypeName)), Each.Members.Num()));
+		}
+		ActiveChip = Subgroups.IndexOfByKey(Subgroup);
+	}
+	else if (Views.Num() > 1)
+	{
+		if (PerType.Num() > 1)
+		{
+			ChipLabels.Add(FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Views.Num()));
+		}
+		for (const TPair<FName, int32>& Type : PerType)
+		{
+			ChipLabels.Add(MakeChipLabel(HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key)), Type.Value));
+		}
+		ActiveChip = bOwn ? 0 : INDEX_NONE;
 	}
 	SetShown(SelectionOwnerRow, true);
 	if (SelectionSwatch)
@@ -736,28 +851,28 @@ void UHOLGameScreen::RefreshBuildingGroup(const TConstArrayView<AHOLBuilding*> B
 		Sites += Building->IsFinished() ? 0 : 1;
 	}
 	TArray<FString> ShownTypes;
-	TArray<FText> Lines;
-	// First the subgroup Tab made active (the user's 2nd trial of J6a.5), whose cells the grid shows: « Tous (7) »,
-	// « Maison × 3 », « Centre principal » (each main centre is one alone).
+	for (const TPair<FName, int32>& Type : PerType)
+	{
+		ShownTypes.Add(FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
+	}
+	// Chips (G.1e, as a group of units): the subgroups Tab goes through, « Tous (7) », « Maison (3) », « Centre principal »
+	// (each main centre one alone), the active one lit.
 	FHOLSubgroup Subgroup;
+	TArray<FHOLSubgroup> Subgroups;
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	if (PlayerController && PlayerController->GetActiveSubgroup(Subgroup))
 	{
-		const FText TypeName = Subgroup.bAll ? FText::GetEmpty() : HOLGameNames::GetBuildingName(Subgroup.TypeName, UHOLBuildingSettings::FindType(Subgroup.TypeName));
-		Lines.Add(Subgroup.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Subgroup.Members.Num())
-			: HOLCommandGrid::IsAloneInGroup(Subgroup.TypeName) ? TypeName : FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), TypeName, Subgroup.Members.Num()));
-	}
-	for (const TPair<FName, int32>& Type : PerType)
-	{
-		Lines.Add(FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), HOLGameNames::GetBuildingName(Type.Key, UHOLBuildingSettings::FindType(Type.Key)), Type.Value));
-		ShownTypes.Add(FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
+		PlayerController->GetSubgroups(Subgroups);
+		for (const FHOLSubgroup& Each : Subgroups)
+		{
+			ChipLabels.Add(Each.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Each.Members.Num())
+				: MakeChipLabel(HOLGameNames::GetBuildingName(Each.TypeName, UHOLBuildingSettings::FindType(Each.TypeName)),
+					HOLCommandGrid::IsAloneInGroup(Each.TypeName) ? 0 : Each.Members.Num()));
+		}
+		ActiveChip = Subgroups.IndexOfByKey(Subgroup);
 	}
 	ShownSelection = FString::Printf(TEXT("%d buildings (own): %s, subgroup %s"), Buildings.Num(), *FString::Join(ShownTypes, TEXT(" ")),
 		PlayerController ? *PlayerController->DescribeSubgroup() : TEXT(""));
-	if (SelectionName)
-	{
-		SelectionName->SetText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
-	}
 	SetShown(SelectionOwnerRow, true);
 	if (SelectionSwatch)
 	{
@@ -768,6 +883,70 @@ void UHOLGameScreen::RefreshBuildingGroup(const TConstArrayView<AHOLBuilding*> B
 		SelectionOwner->SetText(LOCTEXT("You", "Vous"));
 	}
 	SetDetailLine(Sites > 0 ? FString::Printf(TEXT(", sites %d"), Sites) : FString(), FText::Format(LOCTEXT("GroupBuilding", "{0} en construction"), Sites));
+}
+
+void UHOLGameScreen::RefreshChips()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// The chips in place of the name (G.1e), each written when it changed; the active one's frame lit as the chosen age.
+	const bool bChips = !ChipLabels.IsEmpty();
+	SetShown(SelectionName, !bChips);
+	SetShown(SelectionChips, bChips, ESlateVisibility::SelfHitTestInvisible);
+	ShownChips.SetNum(ChipItems.Num());
+	for (int32 Chip = 0; Chip < ChipItems.Num(); ++Chip)
+	{
+		const FText Label = ChipLabels.IsValidIndex(Chip) ? ChipLabels[Chip] : FText::GetEmpty();
+		const FString Shown = Label.ToString();
+		UBorder* Frame = ChipFrames.IsValidIndex(Chip) ? ChipFrames[Chip].Get() : nullptr;
+		if (ShownChips[Chip] != Shown)
+		{
+			ShownChips[Chip] = Shown;
+			if (ChipItems[Chip])
+			{
+				ChipItems[Chip]->SetLabel(Label);
+			}
+			SetShown(Frame, !Shown.IsEmpty(), ESlateVisibility::SelfHitTestInvisible);
+		}
+		if (Frame && (ShownActiveChip == Chip) != (ActiveChip == Chip))
+		{
+			Frame->SetBrushColor(ActiveChip == Chip ? HOLUIStyle::Accent : FLinearColor::Transparent);
+		}
+	}
+	ShownActiveChip = ActiveChip;
+}
+
+void UHOLGameScreen::HandleChipClicked(const int32 Chip)
+{
+	// Tab as many times as it takes from the active subgroup to the chip's (the same path and logs as the key).
+	AHOLPlayerController* PlayerController = Controller.Get();
+	if (!PlayerController)
+	{
+		return;
+	}
+	TArray<FHOLSubgroup> Subgroups;
+	FHOLSubgroup Active;
+	const bool bUnits = !PlayerController->GetSelectedUnits().IsEmpty();
+	const bool bFound = bUnits ? PlayerController->GetActiveUnitSubgroup(Active) : PlayerController->GetActiveSubgroup(Active);
+	if (bUnits)
+	{
+		PlayerController->GetUnitSubgroups(Subgroups);
+	}
+	else
+	{
+		PlayerController->GetSubgroups(Subgroups);
+	}
+	const int32 From = bFound ? Subgroups.IndexOfByKey(Active) : INDEX_NONE;
+	if (From == INDEX_NONE || !Subgroups.IsValidIndex(Chip))
+	{
+		return;
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("HUD: chip %d clicked"), Chip);
+	for (int32 Step = (Chip - From + Subgroups.Num()) % Subgroups.Num(); Step > 0; --Step)
+	{
+		PlayerController->CycleSubgroup();
+	}
+	Refresh();
 }
 
 void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
@@ -1025,7 +1204,23 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		PlayerController->GetGridCommands(Commands);
 	}
 	bGridShown = OwnBuilding != nullptr || bOwnGroup || Commands.ContainsByPredicate([](const FHOLGridCommand& Command) { return !Command.IsNone(); });
-	SetShown(GridPanel, bGridShown, ESlateVisibility::Visible);
+	// The player's units (never with a building): their orders in the same panel, Q attack-move (soldiers), S stop, V hold.
+	TArray<FHOLGridCommand> Orders;
+	if (PlayerController && !bGridShown)
+	{
+		PlayerController->GetOrderCommands(Orders);
+	}
+	bOrdersShown = Orders.ContainsByPredicate([](const FHOLGridCommand& Command) { return !Command.IsNone(); });
+	// Hidden, never collapsed: its place in the bottom bar kept (nothing moves from a selection to the next).
+	if (GridPanel)
+	{
+		const ESlateVisibility Wanted = bGridShown || bOrdersShown ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+		if (GridPanel->GetVisibility() != Wanted)
+		{
+			GridPanel->SetVisibility(Wanted);
+		}
+	}
+	RefreshAges(PlayerState);
 
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
 	TArray<AHOLBuilding*> CommandBuildings;
@@ -1038,8 +1233,14 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
-		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell] : FHOLGridCommand();
-		ShownGridTypes[Cell] = Command.Command == EHOLGridCommand::CancelConstruction ? CancelName : Command.TypeName;
+		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
+			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
+		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName : Command.TypeName;
+		if (ShownOrderTypes.IsValidIndex(Cell))
+		{
+			ShownOrderTypes[Cell] = Command.Command == EHOLGridCommand::AttackMove ? FName(TEXT("AttackMove"))
+				: Command.Command == EHOLGridCommand::Stop ? FName(TEXT("Stop")) : Command.Command == EHOLGridCommand::Hold ? FName(TEXT("Hold")) : NAME_None;
+		}
 		UHOLGridCell* GridCell = GridCells[Cell];
 		if (!GridCell)
 		{
@@ -1097,8 +1298,117 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				LOCTEXT("HoldEffect", "N'attaque qu'à portée, ne poursuit pas"));
 			break;
 		default:
+			// An empty cell stays, dark (disabled), at its key's place.
 			GridCell->ClearUnit();
 			break;
+		}
+	}
+}
+
+void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	// The builders' age panels (the user's trials of G.1, AoE4's way), right of the command panel: I to IV side by side,
+	// each its medallion (numeral, key; no click) on its top edge over its buildings at their keys' places; only the
+	// columns and rows its buildings use (an empty age: its medallion alone); an age not reached faded, medallion and
+	// buildings; the chosen one's medallion and edge lit.
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	FHOLGridContext Context;
+	if (PlayerController && !PlayerController->GetOwnSelection() && !PlayerController->HasBuildingGroup())
+	{
+		PlayerController->GetUnitsContext(Context);
+	}
+	bAgesShown = HOLCommandGrid::IsBuildGrid(Context);
+	ShownChosenAge = bAgesShown && PlayerController ? PlayerController->GetChosenAge() : INDEX_NONE;
+	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
+	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
+	{
+		UBorder* AgePanel = AgePanels.IsValidIndex(Age) ? AgePanels[Age].Get() : nullptr;
+		SetShown(AgePanel, bAgesShown, ESlateVisibility::Visible);
+		const bool bReached = HOLCommandGrid::IsAgeReached(Context, Age);
+		ShownAgeReached[Age] = bReached;
+		// The medallion's look, written when it changed: its disc (lit when chosen), the panel's edge, the panel faded.
+		const int32 Look = !bReached ? EMedallionLook::Locked : Age == ShownChosenAge ? EMedallionLook::Chosen : EMedallionLook::Reached;
+		UBorder* Medallion = AgeMedallions.IsValidIndex(Age) ? AgeMedallions[Age].Get() : nullptr;
+		if (ShownAgeLooks.IsValidIndex(Age) && ShownAgeLooks[Age] != Look)
+		{
+			ShownAgeLooks[Age] = Look;
+			const bool bChosen = Look == EMedallionLook::Chosen;
+			if (Medallion)
+			{
+				Medallion->SetBrush(FSlateRoundedBoxBrush(bChosen ? HOLUIStyle::Accent : FLinearColor(0.1f, 0.11f, 0.14f, 1.f), MedallionSize / 2.f,
+					bChosen ? HOLUIStyle::Text : HOLUIStyle::TextMuted, 1.5f));
+			}
+			if (AgePanel)
+			{
+				AgePanel->SetBrush(bChosen ? FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f, HOLUIStyle::Accent, 2.f) : FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f));
+				AgePanel->SetRenderOpacity(Look == EMedallionLook::Locked ? 0.55f : 1.f);
+			}
+		}
+		// « Palier II — Essor », and « Palier non atteint » under it while not reached; read on every refresh (the language may
+		// change), written when it changed.
+		const FText AgeName = FText::Format(LOCTEXT("AgeHeaderName", "Palier {0} — {1}"), FText::AsCultureInvariant(FString(AgeNumerals[Age])), GetAgeName(Age));
+		const FText Locked = LOCTEXT("AgeLocked", "Palier non atteint");
+		const FString Tooltip = bReached ? AgeName.ToString() : FString::Printf(TEXT("%s | %s"), *AgeName.ToString(), *Locked.ToString());
+		if (ShownAgeTooltips.IsValidIndex(Age) && ShownAgeTooltips[Age] != Tooltip)
+		{
+			ShownAgeTooltips[Age] = Tooltip;
+			if (Medallion)
+			{
+				Medallion->SetToolTipText(bReached ? AgeName : FText::Format(INVTEXT("{0}\n{1}"), AgeName, Locked));
+			}
+		}
+		// The columns its buildings use, packed (the panel the width of its content; an empty age one column); its 3 rows
+		// always kept, empty or not (the user's 3rd trial of G.1): a category always at the same height.
+		bool bUsedColumns[GridColumns] = {};
+		TArray<FHOLGridCommand> Buildings;
+		for (int32 Index = 0; Index < NumAgeCells; ++Index)
+		{
+			const FHOLGridCommand& Building = Buildings.Add_GetRef(HOLCommandGrid::GetAgeBuilding(Context, Age, Index));
+			bUsedColumns[Index % GridColumns] |= !Building.IsNone();
+		}
+		bUsedColumns[0] |= !bUsedColumns[1] && !bUsedColumns[2] && !bUsedColumns[3];
+		for (int32 Index = 0; Index < NumAgeCells; ++Index)
+		{
+			const int32 AgeIndex = Age * NumAgeCells + Index;
+			const FHOLGridCommand& Building = Buildings[Index];
+			ShownAgeTypes[AgeIndex] = bAgesShown ? Building.TypeName : NAME_None;
+			UHOLGridCell* AgeCell = AgeCells.IsValidIndex(AgeIndex) ? AgeCells[AgeIndex].Get() : nullptr;
+			USizeBox* Box = AgeCellBoxes.IsValidIndex(AgeIndex) ? AgeCellBoxes[AgeIndex].Get() : nullptr;
+			const int32 Column = Index % GridColumns;
+			const int32 Row = Index / GridColumns;
+			if (Box)
+			{
+				// Unused columns collapsed; a cell of a used one without a building shown dark (disabled), as the commands'.
+				Box->SetVisibility(bUsedColumns[Column] ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+				if (UUniformGridSlot* GridSlot = Cast<UUniformGridSlot>(Box->Slot))
+				{
+					int32 PackedColumn = 0;
+					for (int32 Before = 0; Before < Column; ++Before)
+					{
+						PackedColumn += bUsedColumns[Before] ? 1 : 0;
+					}
+					GridSlot->SetColumn(PackedColumn);
+					GridSlot->SetRow(Row);
+				}
+			}
+			if (!AgeCell)
+			{
+				continue;
+			}
+			if (Building.IsNone())
+			{
+				AgeCell->ClearUnit();
+				continue;
+			}
+			// Greyed when its age is not reached, or when the stock does not cover the cost (in red in the tooltip, D313).
+			const FHOLBuildingTypeRow* BuildType = UHOLBuildingSettings::FindType(Building.TypeName);
+			const FHOLResources Cost = BuildType ? BuildType->Cost : FHOLResources();
+			const FHOLResources Missing = GetMissing(Stock, Cost);
+			const FText Name = HOLGameNames::GetBuildingName(Building.TypeName, BuildType);
+			AgeCell->SetCommand(Name, !Building.bGreyed && Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			AgeCell->SetTooltip(Name, Cost, Missing, Building.bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType));
 		}
 	}
 }
@@ -1180,10 +1490,30 @@ void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
 	AHOLPlayerController* PlayerController = Controller.Get();
-	if (PlayerController && Cell >= 0 && Cell < AHOLPlayerController::NumGridCells)
+	if (!PlayerController || Cell < 0 || Cell >= AHOLPlayerController::NumGridCells)
 	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: grid cell %s clicked"), GridKeys[Cell]);
-		PlayerController->ActivateGridCell(Cell);
+		return;
+	}
+	// The player's units: the panel shows their orders (never with a building's grid).
+	if (!bGridShown && bOrdersShown && ShownOrderTypes.IsValidIndex(Cell) && !ShownOrderTypes[Cell].IsNone())
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: order cell %s clicked"), GridKeys[Cell]);
+		PlayerController->ActivateOrderCell(Cell);
+		return;
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("HUD: grid cell %s clicked"), GridKeys[Cell]);
+	PlayerController->ActivateGridCell(Cell);
+}
+
+void UHOLGameScreen::HandleAgeClicked(const int32 Age, const int32 Cell)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	AHOLPlayerController* PlayerController = Controller.Get();
+	if (PlayerController && Age >= 0 && Age < HOLCommandGrid::NumAges)
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: age %s %s clicked"), AgeNumerals[Age], Cell >= 0 && Cell < AHOLPlayerController::NumGridCells ? GridKeys[Cell] : TEXT("?"));
+		PlayerController->ClickAge(Age, Cell);
 	}
 }
 
@@ -1306,11 +1636,26 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 		const UHOLGridCell* GridCell = GridCells[Cell];
 		if (GridCell && GridCell->GetFName() == Name)
 		{
-			if (!bGridShown || !GridCell->GetIsEnabled())
+			if ((!bGridShown && !bOrdersShown) || !GridCell->GetIsEnabled())
 			{
 				return false;
 			}
 			HandleGridCellClicked(Cell);
+			return true;
+		}
+	}
+	// The builders' age panels' buildings, AgeCell<age><cell> (AgeCell000 the house, AgeCell004 the barracks); an age not reached takes the click
+	// and does nothing, as a greyed cell. Their medallions take no click.
+	for (int32 AgeIndex = 0; AgeIndex < AgeCells.Num(); ++AgeIndex)
+	{
+		const UHOLGridCell* AgeCell = AgeCells[AgeIndex];
+		if (AgeCell && AgeCell->GetFName() == Name)
+		{
+			if (!bAgesShown || !ShownAgeTypes.IsValidIndex(AgeIndex) || ShownAgeTypes[AgeIndex].IsNone())
+			{
+				return false;
+			}
+			HandleAgeClicked(AgeIndex / UE::HeroesOfLiberty::UI::GameScreen::NumAgeCells, AgeIndex % UE::HeroesOfLiberty::UI::GameScreen::NumAgeCells);
 			return true;
 		}
 	}
@@ -1340,6 +1685,29 @@ FString UHOLGameScreen::Describe() const
 
 	FString Grid = TEXT("hidden");
 	FString Queue = TEXT("hidden");
+	if (bAgesShown)
+	{
+		// The builders' age panels: "ages I=open [A=House enabled Z=LumberCamp greyed] II=locked [] ... (chosen I)".
+		TArray<FString> Ages;
+		for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
+		{
+			TArray<FString> Cells;
+			for (int32 Index = 0; Index < NumAgeCells; ++Index)
+			{
+				const int32 AgeIndex = Age * NumAgeCells + Index;
+				if (ShownAgeTypes.IsValidIndex(AgeIndex) && !ShownAgeTypes[AgeIndex].IsNone())
+				{
+					const EHOLGridCellState State = AgeCells.IsValidIndex(AgeIndex) && AgeCells[AgeIndex] ? AgeCells[AgeIndex]->GetState() : EHOLGridCellState::Disabled;
+					Cells.Add(FString::Printf(TEXT("%s=%s %s"), GridKeys[Index], *ShownAgeTypes[AgeIndex].ToString(),
+						State == EHOLGridCellState::Ready ? TEXT("enabled") : State == EHOLGridCellState::Greyed ? TEXT("greyed") : TEXT("disabled")));
+				}
+			}
+			Ages.Add(FString::Printf(TEXT("%s=%s [%s]"), AgeNumerals[Age], ShownAgeReached.IsValidIndex(Age) && ShownAgeReached[Age] ? TEXT("open") : TEXT("locked"),
+				*FString::Join(Cells, TEXT(" "))));
+		}
+		Grid = FString::Printf(TEXT("ages %s (chosen %s)"), *FString::Join(Ages, TEXT(" ")),
+			ShownChosenAge >= 0 && ShownChosenAge < HOLCommandGrid::NumAges ? AgeNumerals[ShownChosenAge] : TEXT("none"));
+	}
 	if (bGridShown)
 	{
 		TArray<FString> Cells;
@@ -1368,6 +1736,16 @@ FString UHOLGameScreen::Describe() const
 		}
 		Queue = FString::Printf(TEXT("%d [%s]"), Items.Num(), *FString::Join(Items, TEXT(", ")));
 	}
+	// The orders' panel (the user's choice of 2026-10-21), after the grid: Q=AttackMove S=Stop V=Hold.
+	TArray<FString> Orders;
+	for (int32 Cell = 0; bOrdersShown && Cell < ShownOrderTypes.Num(); ++Cell)
+	{
+		if (!ShownOrderTypes[Cell].IsNone())
+		{
+			Orders.Add(FString::Printf(TEXT("%s=%s"), GridKeys[Cell], *ShownOrderTypes[Cell].ToString()));
+		}
+	}
+	Grid += FString::Printf(TEXT(", orders %s"), Orders.IsEmpty() ? TEXT("none") : *FString::Join(Orders, TEXT(" ")));
 	// The gatherers and the idle workers last (J5b): the checks of J3 read the line from its start.
 	const FString Workers = bEconomyShown
 		? FString::Printf(TEXT(", gatherers %s, idle %d"), *ShownGatherers.ToString(), FMath::Max(ShownIdleWorkers, 0))
@@ -1385,10 +1763,21 @@ FString UHOLGameScreen::DescribeCells() const
 	TArray<FString> Parts;
 	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
 	{
-		const FString Content = bGridShown && GridCells[Cell] ? GridCells[Cell]->DescribeContent() : FString();
+		const FString Content = (bGridShown || bOrdersShown) && GridCells[Cell] ? GridCells[Cell]->DescribeContent() : FString();
 		if (!Content.IsEmpty())
 		{
 			Parts.Add(FString::Printf(TEXT("%s: %s"), GridKeys[Cell], *Content.Replace(TEXT("\n"), TEXT(" "))));
+		}
+	}
+	// The builders' age panels' buildings (their medallions are no cells): "I A: Maison; I Z: Camp de bûcherons; ...".
+	for (int32 AgeIndex = 0; bAgesShown && AgeIndex < AgeCells.Num(); ++AgeIndex)
+	{
+		const UHOLGridCell* Cell = ShownAgeTypes.IsValidIndex(AgeIndex) && !ShownAgeTypes[AgeIndex].IsNone() ? AgeCells[AgeIndex].Get() : nullptr;
+		const FString Content = Cell ? Cell->DescribeContent() : FString();
+		if (!Content.IsEmpty())
+		{
+			Parts.Add(FString::Printf(TEXT("%s %s: %s"), AgeNumerals[AgeIndex / NumAgeCells], GridKeys[AgeIndex % NumAgeCells],
+				*Content.Replace(TEXT("\n"), TEXT(" "))));
 		}
 	}
 	return Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT("; "));
@@ -1401,10 +1790,26 @@ FString UHOLGameScreen::DescribeTooltips() const
 	TArray<FString> Parts;
 	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
 	{
-		const FString Tooltip = bGridShown && GridCells[Cell] ? GridCells[Cell]->DescribeTooltip() : FString();
+		const FString Tooltip = (bGridShown || bOrdersShown) && GridCells[Cell] ? GridCells[Cell]->DescribeTooltip() : FString();
 		if (!Tooltip.IsEmpty())
 		{
 			Parts.Add(FString::Printf(TEXT("%s: %s"), GridKeys[Cell], *Tooltip));
+		}
+	}
+	// The builders' age panels: each medallion's, then its buildings': "I A: Palier I — Fondation; I A: Maison | W 50 | ...".
+	for (int32 Age = 0; bAgesShown && Age < HOLCommandGrid::NumAges; ++Age)
+	{
+		for (int32 Index = INDEX_NONE; Index < NumAgeCells; ++Index)
+		{
+			const int32 AgeIndex = Age * NumAgeCells + Index;
+			const UHOLGridCell* Cell = Index != INDEX_NONE && AgeCells.IsValidIndex(AgeIndex) && ShownAgeTypes.IsValidIndex(AgeIndex)
+				&& !ShownAgeTypes[AgeIndex].IsNone() ? AgeCells[AgeIndex].Get() : nullptr;
+			const FString Tooltip = Index == INDEX_NONE ? (ShownAgeTooltips.IsValidIndex(Age) ? ShownAgeTooltips[Age] : FString()) : Cell ? Cell->DescribeTooltip() : FString();
+			if (!Tooltip.IsEmpty())
+			{
+				Parts.Add(FString::Printf(TEXT("%s %s: %s"), AgeNumerals[Age], GridKeys[Index == INDEX_NONE ? Age : Index],
+					*Tooltip.Replace(TEXT("\n"), TEXT(" "))));
+			}
 		}
 	}
 	return Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT("; "));
@@ -1507,14 +1912,15 @@ void UHOLGameScreen::BuildLayout()
 	IdleBox->SetContent(IdleWorkers);
 	AddToRow(Resources, IdleBox, 0.f);
 
-	// The control groups' bar (J7a.5, D30), bottom left (the cheats' panel holds the top left): a slot per group not empty, « 1 · 9 », in the keys' order.
+	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
+	// a slot per group not empty, « 1 · 9 », in the keys' order.
 	GroupsPanel = MakePanel(TEXT("GroupsPanel"));
 	GroupsPanel->SetPadding(FMargin(6.f, 4.f));
 	GroupsPanel->SetVisibility(ESlateVisibility::Collapsed);
 	UOverlaySlot* GroupsSlot = Frame->AddChildToOverlay(GroupsPanel);
 	GroupsSlot->SetHorizontalAlignment(HAlign_Left);
 	GroupsSlot->SetVerticalAlignment(VAlign_Bottom);
-	GroupsSlot->SetPadding(FMargin(ScreenMargin));
+	GroupsSlot->SetPadding(FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + BarHeight + BarGap));
 	UHorizontalBox* GroupsRow = MakeHorizontalBox(TEXT("GroupsRow"));
 	GroupsPanel->SetContent(GroupsRow);
 	for (int32 Index = 1; Index <= AHOLPlayerController::NumControlGroups; ++Index)
@@ -1530,20 +1936,63 @@ void UHOLGameScreen::BuildLayout()
 		AddToRow(GroupsRow, GroupBox, 4.f);
 	}
 
-	// Selection block, bottom centre: name, owner (with its colour), health.
+	// The bottom bar, bottom left (the user's 2nd trial of G.1, AoE4's way, D201): the selection's block, the command
+	// panel, the builders' age panels, each at a fixed place whatever the selection (a block hidden keeps its place).
+	UHorizontalBox* BottomBar = MakeHorizontalBox(TEXT("BottomBar"));
+	UOverlaySlot* BottomBarSlot = Frame->AddChildToOverlay(BottomBar);
+	BottomBarSlot->SetHorizontalAlignment(HAlign_Left);
+	BottomBarSlot->SetVerticalAlignment(VAlign_Bottom);
+	BottomBarSlot->SetPadding(FMargin(ScreenMargin));
+	const auto AddToBar = [BottomBar](UWidget* Widget, const float LeftPadding)
+	{
+		UHorizontalBoxSlot* WidgetSlot = BottomBar->AddChildToHorizontalBox(Widget);
+		WidgetSlot->SetVerticalAlignment(VAlign_Bottom);
+		WidgetSlot->SetPadding(FMargin(LeftPadding, 0.f, 0.f, 0.f));
+	};
+
+	// Selection block, a fixed width and the bar's height (a spacer holds its place while it is collapsed): name, owner
+	// (with its colour), health.
+	UOverlay* SelectionPlace = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("SelectionPlace"));
+	SelectionPlace->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	AddToBar(SelectionPlace, 0.f);
+	USpacer* SelectionSpacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass(), TEXT("SelectionSpacer"));
+	SelectionSpacer->SetSize(FVector2D(SelectionWidth, BarHeight));
+	SelectionPlace->AddChildToOverlay(SelectionSpacer);
 	SelectionPanel = MakePanel(TEXT("SelectionPanel"));
-	UOverlaySlot* SelectionSlot = Frame->AddChildToOverlay(SelectionPanel);
-	SelectionSlot->SetHorizontalAlignment(HAlign_Center);
-	SelectionSlot->SetVerticalAlignment(VAlign_Bottom);
-	SelectionSlot->SetPadding(FMargin(0.f, 0.f, 0.f, ScreenMargin));
+	UOverlaySlot* SelectionSlot = SelectionPlace->AddChildToOverlay(SelectionPanel);
+	SelectionSlot->SetHorizontalAlignment(HAlign_Fill);
+	SelectionSlot->SetVerticalAlignment(VAlign_Fill);
 	USizeBox* SelectionBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionBox"));
-	SelectionBox->SetMinDesiredWidth(SelectionMinWidth);
+	SelectionBox->SetWidthOverride(SelectionWidth - 24.f);
 	SelectionPanel->SetContent(SelectionBox);
 	UVerticalBox* SelectionColumn = MakeVerticalBox(TEXT("SelectionColumn"));
 	SelectionBox->SetContent(SelectionColumn);
 
 	SelectionName = MakeText(TEXT("SelectionName"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
 	SelectionColumn->AddChildToVerticalBox(SelectionName)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
+	// A group's chips (G.1e, AoE4's way), in place of the name: wrapping in the block's width, each at most half of it (a
+	// long name cut short), in a frame lit for the active subgroup; a click makes it active, as Tab.
+	SelectionChips = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("SelectionChips"));
+	SelectionChips->SetInnerSlotPadding(FVector2D(ChipGap, ChipGap));
+	SelectionChips->SetExplicitWrapSize(true);
+	SelectionChips->SetWrapSize(SelectionWidth - 24.f);
+	SelectionChips->SetVisibility(ESlateVisibility::Collapsed);
+	SelectionColumn->AddChildToVerticalBox(SelectionChips)->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
+	for (int32 Chip = 0; Chip < NumChips; ++Chip)
+	{
+		UBorder* ChipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("SelectionChipFrame%d"), Chip));
+		ChipFrame->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White, 5.f));
+		ChipFrame->SetBrushColor(FLinearColor::Transparent);
+		ChipFrame->SetPadding(FMargin(2.f));
+		ChipFrame->SetVisibility(ESlateVisibility::Collapsed);
+		USizeBox* ChipBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		ChipBox->SetHeightOverride(ChipHeight);
+		ChipBox->SetMaxDesiredWidth(ChipMaxWidth - 4.f);
+		ChipBox->SetClipping(EWidgetClipping::ClipToBounds);
+		ChipBox->SetContent(WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), *FString::Printf(TEXT("SelectionChip%d"), Chip)));
+		ChipFrame->SetContent(ChipBox);
+		SelectionChips->AddChildToWrapBox(ChipFrame);
+	}
 	UHorizontalBox* OwnerRow = MakeHorizontalBox(TEXT("SelectionOwnerRow"));
 	SelectionOwnerRow = OwnerRow;
 	SelectionColumn->AddChildToVerticalBox(OwnerRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 2.f));
@@ -1575,19 +2024,21 @@ void UHOLGameScreen::BuildLayout()
 	AddToRow(ProgressRow, SelectionProgressText, 0.f);
 	ProgressRow->SetVisibility(ESlateVisibility::Collapsed);
 	SelectionActivity = MakeText(TEXT("SelectionActivity"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+	SelectionActivity->SetAutoWrapText(true);
 	SelectionColumn->AddChildToVerticalBox(SelectionActivity)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
 
-	// Bottom right: the production queue, then the command grid under it.
+	// Right of the selection's block, the command panel's width: the short message, the production queue, then the
+	// command panel under them (the column grows upwards, the panel stays at the bar's bottom).
+	USizeBox* CommandBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("CommandBox"));
+	CommandBox->SetWidthOverride(GridWidth);
+	AddToBar(CommandBox, BarGap);
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
-	UOverlaySlot* CommandSlot = Frame->AddChildToOverlay(CommandColumn);
-	CommandSlot->SetHorizontalAlignment(HAlign_Right);
-	CommandSlot->SetVerticalAlignment(VAlign_Bottom);
-	CommandSlot->SetPadding(FMargin(ScreenMargin));
+	CommandBox->SetContent(CommandColumn);
 
 	// The short message (D313), above the queue and the grid, wrapped within the grid's width; it lets the clicks through.
 	MessagePanel = MakePanel(TEXT("MessagePanel"));
 	UVerticalBoxSlot* MessageSlot = CommandColumn->AddChildToVerticalBox(MessagePanel);
-	MessageSlot->SetHorizontalAlignment(HAlign_Right);
+	MessageSlot->SetHorizontalAlignment(HAlign_Left);
 	MessageSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
 	USizeBox* MessageBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MessageBox"));
 	MessageBox->SetMaxDesiredWidth(GridWidth);
@@ -1646,10 +2097,11 @@ void UHOLGameScreen::BuildLayout()
 	HintSlot->SetHorizontalAlignment(HAlign_Right);
 	HintSlot->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
 
-	// Command grid (D30): 3 rows of 4 square cells, A Z E R / Q S D F / W X C V.
+	// The command panel (D30, the user's 2nd trial of G.1): 3 rows of 4 square cells, A Z E R / Q S D F / W X C V, always
+	// all there (an empty one dark): the orders of the player's units or the grid of its building.
 	GridPanel = MakePanel(TEXT("GridPanel"));
 	GridPanel->SetPadding(FMargin(6.f));
-	CommandColumn->AddChildToVerticalBox(GridPanel)->SetHorizontalAlignment(HAlign_Fill);
+	CommandColumn->AddChildToVerticalBox(GridPanel)->SetHorizontalAlignment(HAlign_Left);
 	UUniformGridPanel* Grid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("Grid"));
 	Grid->SetSlotPadding(FMargin(CellGap));
 	GridPanel->SetContent(Grid);
@@ -1662,10 +2114,72 @@ void UHOLGameScreen::BuildLayout()
 		Grid->AddChildToUniformGrid(CellBox, Cell / GridColumns, Cell % GridColumns);
 	}
 
+	// The secondary panel, right of the command panel: the builders' age panels (the user's trials of G.1, AoE4's way), I
+	// to IV side by side, each a medallion (numeral in a disc, its key A Z E R in a square beside; no click) on its top
+	// edge over its buildings, Q S D F / W X C V (RefreshAges packs the used ones). Absent otherwise, nothing moves.
+	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
+	{
+		UBorder* AgePanel = MakePanel(*FString::Printf(TEXT("AgePanel%d"), Age));
+		AgePanel->SetPadding(FMargin(6.f));
+		AddToBar(AgePanel, Age == 0 ? BarGap : 4.f);
+		UVerticalBox* AgeColumn = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		AgePanel->SetContent(AgeColumn);
+		// The medallion rises over the panel's top edge (drawn higher, its place in the panel mostly given back).
+		UHorizontalBox* MedallionRow = MakeHorizontalBox(*FString::Printf(TEXT("AgeMedallionRow%d"), Age));
+		MedallionRow->SetRenderTranslation(FVector2D(0.f, -MedallionRise));
+		UVerticalBoxSlot* MedallionSlot = AgeColumn->AddChildToVerticalBox(MedallionRow);
+		MedallionSlot->SetHorizontalAlignment(HAlign_Center);
+		MedallionSlot->SetPadding(FMargin(0.f, 0.f, 0.f, -MedallionRise + 4.f));
+		USizeBox* MedallionBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		MedallionBox->SetWidthOverride(MedallionSize);
+		MedallionBox->SetHeightOverride(MedallionSize);
+		UBorder* Medallion = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), AgeMedallionName(Age));
+		Medallion->SetBrush(FSlateRoundedBoxBrush(FLinearColor(0.1f, 0.11f, 0.14f, 1.f), MedallionSize / 2.f, HOLUIStyle::TextMuted, 1.5f));
+		Medallion->SetPadding(FMargin(0.f));
+		Medallion->SetHorizontalAlignment(HAlign_Center);
+		Medallion->SetVerticalAlignment(VAlign_Center);
+		Medallion->SetContent(MakeText(*FString::Printf(TEXT("AgeNumeral%d"), Age), UHOLTextStyleHUDHeading::StaticClass(), FText::AsCultureInvariant(FString(AgeNumerals[Age]))));
+		MedallionBox->SetContent(Medallion);
+		AddToRow(MedallionRow, MedallionBox, 3.f);
+		USizeBox* KeyBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		KeyBox->SetWidthOverride(KeyBadgeSize);
+		KeyBox->SetHeightOverride(KeyBadgeSize);
+		UBorder* KeyBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("AgeKey%d"), Age));
+		KeyBadge->SetBrush(FSlateRoundedBoxBrush(FLinearColor(0.06f, 0.065f, 0.08f, 1.f), 3.f, HOLUIStyle::TextMuted, 1.f));
+		KeyBadge->SetPadding(FMargin(0.f));
+		KeyBadge->SetHorizontalAlignment(HAlign_Center);
+		KeyBadge->SetVerticalAlignment(VAlign_Center);
+		KeyBadge->SetContent(MakeText(NAME_None, UHOLTextStyleHUDSmall::StaticClass(), FText::AsCultureInvariant(FString(GridKeys[Age]))));
+		KeyBox->SetContent(KeyBadge);
+		AddToRow(MedallionRow, KeyBox, 0.f);
+		UUniformGridPanel* AgeGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass());
+		AgeGrid->SetSlotPadding(FMargin(CellGap));
+		AgeColumn->AddChildToVerticalBox(AgeGrid)->SetHorizontalAlignment(HAlign_Left);
+		for (int32 Index = 0; Index < NumAgeCells; ++Index)
+		{
+			USizeBox* CellBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+			CellBox->SetWidthOverride(CellSize);
+			CellBox->SetHeightOverride(CellSize);
+			CellBox->SetContent(WidgetTree->ConstructWidget<UHOLGridCell>(UHOLGridCell::StaticClass(), AgeCellName(Age, Index)));
+			AgeGrid->AddChildToUniformGrid(CellBox, Index / GridColumns, Index % GridColumns);
+		}
+		AgePanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	// The minimap's place, bottom right (D201): no minimap yet; nothing else goes there.
+	USizeBox* MinimapPlace = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MinimapPlace"));
+	MinimapPlace->SetWidthOverride(MinimapSize);
+	MinimapPlace->SetHeightOverride(MinimapSize);
+	MinimapPlace->SetVisibility(ESlateVisibility::HitTestInvisible);
+	UOverlaySlot* MinimapSlot = Frame->AddChildToOverlay(MinimapPlace);
+	MinimapSlot->SetHorizontalAlignment(HAlign_Right);
+	MinimapSlot->SetVerticalAlignment(VAlign_Bottom);
+	MinimapSlot->SetPadding(FMargin(ScreenMargin));
+
 	// Nothing selected yet.
 	SelectionPanel->SetVisibility(ESlateVisibility::Collapsed);
 	QueuePanel->SetVisibility(ESlateVisibility::Collapsed);
-	GridPanel->SetVisibility(ESlateVisibility::Collapsed);
+	GridPanel->SetVisibility(ESlateVisibility::Hidden);
 }
 
 #undef LOCTEXT_NAMESPACE

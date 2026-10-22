@@ -11,10 +11,10 @@ Origine : J5c (la vie de la récolte), source des animations tranchée le 2026-1
 Écartés : Mixamo (compte Adobe et reciblage), pack Fab (achat). Une animation faite ici reste **remplaçable** plus
 tard sans toucher au code : la table des types les désigne par leur nom.
 
-**Où travailler (règle de l'utilisateur, 2026-10-16) : dans le worktree `C:\Users\baudo\Documents\MyCrusader-J5c`,
+**Où travailler (règle de l'utilisateur, 2026-10-16) : dans le worktree `C:\Users\baudo\Documents\HeroesOfLiberty-J5c`,
 branche `j5c-anims`**, jamais dans la copie principale pour ce chantier : scripts de `Tools/Editor/`, fabrication par
 commandlet, séquences de `Content/Units/Mannequin/Animations/`, C++ du branchement, compilation (`Build.bat … 
--Project="C:\Users\baudo\Documents\MyCrusader-J5c\HeroesOfLiberty.uproject"`), tests et jeu d'essai, tous lancés
+-Project="C:\Users\baudo\Documents\HeroesOfLiberty-J5c\HeroesOfLiberty.uproject"`), tests et jeu d'essai, tous lancés
 depuis ce dossier. Commits sur `j5c-anims`, **fusionnés dans `main` après validation de l'utilisateur** ; après une
 fusion, remettre `j5c-anims` au niveau de `main` avant la tâche d'animation suivante. Seuls les journaux
 (`AnimationsInProgress.md`, `JourneyInProgress.md`) restent dans la copie principale, partagée avec les autres sessions.
@@ -190,7 +190,7 @@ Règles :
 | Coup de lance | Lancier | J7b.5 | **fait** (2026-10-19) : `A_Spearman_Attack`, estoc à deux mains, 56 images à 30 i/s jouées sur la cadence, frappe image 28 calée sur le coup du serveur ; poli après l'essai (« robot ») : pointe dans l'axe, chaîne poids → bassin → tronc → lance (hermite, `flow`, `leads`) |
 | Coup d'épée | Homme d'armes | J7b.5 | **fait** (2026-10-19) : `A_ManAtArms_Attack`, taille en diagonale portée par le bassin puis le haut du corps (épaules 124°, garde devant le bouclier au suivi), 42 images, frappe image 21 |
 | Chute (mourant) | toutes les troupes (et le Paysan) | J7b.5 | **refaite** (2026-10-20, dans `main` 39eae38) : nouvelles chutes validées à l'essai (Paysan à genoux puis de côté, couteau en main ; Lancier projeté en arrière, lance lâchée ; Homme d'armes face contre terre, épée lâchée), détail ligne « Arc… » ; 1re version (2026-10-19, refusée) : `A_Spearman_Fall`, `A_ManAtArms_Fall`, `A_Peasant_Fall`, 1 s, bascule en arrière, arme gardée en main, jouée une fois puis figée jusqu'à la disparition |
-| Arc (pièce), tir à l'arc, repos et marche | Archer | J7c.1 / J7c.2 | **fabriqués dans Unreal** (J7c.1a, 2026-10-20, worktree `MyCrusader-A`, branche `j7c-archer`, non commité, pas encore branchés : journal « Fabrication de l'Archer ») : `A_Archer_Idle` (11,333 s), `A_Archer_Walk` (1,0 s), `A_Archer_Attack` (48 images, 1,6 s, lâcher image 24, flèche cachée images 25-35 par `ik_hand_gun` à l'échelle 0,001), `A_Archer_Fall` (33 images, 1,1 s) ; `SKM_Archer` (arc, flèche, carquois à bande couleur du joueur) et `TP_Archer` (séquences 2 à 5) ; ligne `Archer` de la table à changer en J7c.1b. Historique : **aperçus faits, revue de l'utilisateur en attente** (2026-10-20, sous-agent, worktree `MyCrusader-A`, branche `j7c-archer-preview`, non commité, rien de fabriqué) : `soldier_props.py` (`make_bow` id 4, arc long 160 cm sur `hand_l` ; `make_arrow` id 5 sur `ik_hand_gun` ; `make_quiver` id 6 sur `spine_03`, bande à la couleur du joueur), `soldier_poses.py` (`archer_idle`, `archer_walk`, `archer_attack`, `archer_fall` dans `PROPOSED`), `preview_animation.py` (clé `"hidden"`, aperçu seulement) ; tir : boucle 48 images à 30 i/s (cadence 1,625 s de `UnitTypes.csv`), lâcher image 24 (50 %), corde à la mâchoire, flèche reprise au carquois dans le dos ; **marche validée** par l'utilisateur (« très bien ») ; tir **en cloche** à sa demande (« plus haut l'arc ») : `DRAW_ELEVATION` 32° à pleine allonge et au lâcher, buste penché de 9-10° en arrière, montée dans la phase de bandé ; chute de `spear_fall` refusée (« horrible, pieds cimentés ») → **`archer_fall` propre** (3e aperçu, 1,1 s, 33 images) : impact en pleine poitrine (buste puis tête puis bras, bassin en dernier), pas en arrière en titubant (pieds libres, clé `"feet"` ajoutée à `anim_rig.py`), genou gauche qui lâche, assis puis sur le dos, rebond de 4 cm, tête qui roule en dernier ; arc gardé dans la main molle (le lâcher demanderait un os libre, `ik_hand_l`) ; **main droite tournée de 73° en une image** à l'encoche (images 44-46, vue par l'utilisateur) corrigée par une clé `"fingers"` (`anim_rig.py`) : 11,5°, pas plus de 27° par image ; **tir validé** par l'utilisateur (« tire très bien »). **chute de l'Archer validée** (« fall très bien »). Les chutes fabriquées `spear_fall`, `maa_fall`, `peasant_fall` **refusées** par l'utilisateur (« les 3 falls sont nulles », pieds cloués) : refaites en aperçu sur le modèle de l'Archer (sous-agent, 2026-10-20, même worktree), chacune différente, arme gardée en main ; durée libre (~1,3 s au plus, à terre vers 1 s) depuis la décision **corps gardés 30 s par le client** (`JourneyInProgress.md`, 2026-10-20) : `archer_fall` gardée à 1,1 s ; **dernière image = pose tenue 30 s** (stable, rien en l'air, rien dans le sol) ; refabrication dans Unreal ensuite. 1er jet des trois refusé (« ça va pas … ils semblaient se coucher pour dormir ») : refaites **une par une**, d'abord le **Paysan** (« tomber à genoux puis tomber de côté ») ; règle de méthode tirée de ce retour : **tout contact avec le sol arrive vite** (accélération jusqu'à l'impact, petit rebond, arrêt net), jamais de ralenti avant une pose couchée (c'est ce qui donne « se coucher ») ; pose finale asymétrique et molle, pas de position fœtale ni de main près du visage. **Paysan : mouvement validé** (« le mouvement est bien » ; 1,15 s : sursaut 0,07, genoux au sol 0,33 + rebond, mou à genoux 0,52, bascule à gauche 0,74, épaule au sol 0,88 + rebond 3 cm) ; polissage technique fait (corps ≥ −1,4 cm, couteau tenu à 0,2 cm, poignet 162° → 31° par image, coude gauche qui ne bascule plus). **Lancier : B** (choix de l'utilisateur) : touché en pleine poitrine, part **en arrière d'un bloc**, raide, s'écrase sur le dos, la lance lui échappe et tombe en travers (écartés : A appuyé sur la lance à genoux ; C comme le Paysan). 1er aperçu (planche raide autour des talons, lance lâchée au coup par une clé `"release"` d'`anim_rig.py`, la lance étant déjà sur `ik_hand_gun` : ni os ni maillage à refaire) → retour : **« comme s'il prenait une charge, il décolle un peu du sol (un peu, pas beaucoup) et tombe en arrière »** → 2e aperçu **validé** (« très bien » ; 1,0 s : choc 0,06, envol 0,14-0,30, pieds à 14 cm au plus, réception sur le dos 0,44, rebond 3 cm, glissade 14 cm, arrêt 0,58 ; projeté de ~0,8 m, bassin à 1,9 m de son départ : corps hors de la position de l'unité ; lance projetée à droite, à plat près des jambes). **Homme d'armes : A** (choix de l'utilisateur) : la seule chute **vers l'avant** : touché, un pas lourd en avant, l'épée glisse de la main, les jambes lâchent, il s'écrase face contre terre, bouclier sous lui ou à côté (écartés : B pivote et tombe sur le flanc ; C s'affaisse sur place à genoux). Aperçu **validé** (« très bien » ; 1,0 s : sursaut 0,07, épée lâchée 0,18 et pas lourd en avant, genoux au sol 0,47 + rebond 2 cm, bascule 0,63, face contre terre 0,72 + rebond 3 cm, arrêt 0,86 ; épée à plat près de la main droite ; bouclier sur `hand_l`, ne peut quitter le bras : bras gauche rejeté, bouclier à plat à côté ; pieds à plat faute de rotation de pied par clé). **Les quatre chutes sont validées en aperçu** (Paysan, Lancier, Homme d'armes, Archer). Retouches faites : **orteils tournés vers l'arrière** sur l'Homme d'armes (demande de l'utilisateur ; option par clé `"foot_rot"` dans `anim_rig.py`, chevilles levées pendant le pivot ; le baker prend déjà `foot_l` / `foot_r`, rien à ajouter) ; main droite d'`archer_fall` (166° → 22° par image au plus). Retouches **validées** (« très bien l'archer et le maa »). Pieds du Lancier (orteils vers le haut, tombant en dehors) et du Paysan (pied du dessous sur sa tranche, celui du dessus posé dessus) : **validés** (« très bien »). **Tout est commité sur la branche `j7c-archer-preview` du worktree `MyCrusader-A` (2c8859b, pas dans `main`).** Restes : fabrication dans Unreal (`"release"` et `"feet"` à apprendre au baker ; épée et lance déjà sur `ik_hand_gun`) ; corps gardés 30 s chez le client (`JourneyInProgress.md`) ; variantes par type (souhait de l'utilisateur). Souhait de l'utilisateur : **« éviter au max qu'ils aient tous la même animation »** (chute propre à chaque type ; variantes par type à proposer) ; corde droite à pleine allonge (os rigide) ; aperçus dans `MyCrusader-A\Saved\AnimPreview\archer_*` ; plan de J7c (Q1 à Q6) dans `JourneyInProgress.md` |
+| Arc (pièce), tir à l'arc, repos et marche | Archer | J7c.1 / J7c.2 | **fabriqués dans Unreal** (J7c.1a, 2026-10-20, worktree `HeroesOfLiberty-Elrond`, branche `j7c-archer`, non commité, pas encore branchés : journal « Fabrication de l'Archer ») : `A_Archer_Idle` (11,333 s), `A_Archer_Walk` (1,0 s), `A_Archer_Attack` (48 images, 1,6 s, lâcher image 24, flèche cachée images 25-35 par `ik_hand_gun` à l'échelle 0,001), `A_Archer_Fall` (33 images, 1,1 s) ; `SKM_Archer` (arc, flèche, carquois à bande couleur du joueur) et `TP_Archer` (séquences 2 à 5) ; ligne `Archer` de la table à changer en J7c.1b. Historique : **aperçus faits, revue de l'utilisateur en attente** (2026-10-20, sous-agent, worktree `HeroesOfLiberty-Elrond`, branche `j7c-archer-preview`, non commité, rien de fabriqué) : `soldier_props.py` (`make_bow` id 4, arc long 160 cm sur `hand_l` ; `make_arrow` id 5 sur `ik_hand_gun` ; `make_quiver` id 6 sur `spine_03`, bande à la couleur du joueur), `soldier_poses.py` (`archer_idle`, `archer_walk`, `archer_attack`, `archer_fall` dans `PROPOSED`), `preview_animation.py` (clé `"hidden"`, aperçu seulement) ; tir : boucle 48 images à 30 i/s (cadence 1,625 s de `UnitTypes.csv`), lâcher image 24 (50 %), corde à la mâchoire, flèche reprise au carquois dans le dos ; **marche validée** par l'utilisateur (« très bien ») ; tir **en cloche** à sa demande (« plus haut l'arc ») : `DRAW_ELEVATION` 32° à pleine allonge et au lâcher, buste penché de 9-10° en arrière, montée dans la phase de bandé ; chute de `spear_fall` refusée (« horrible, pieds cimentés ») → **`archer_fall` propre** (3e aperçu, 1,1 s, 33 images) : impact en pleine poitrine (buste puis tête puis bras, bassin en dernier), pas en arrière en titubant (pieds libres, clé `"feet"` ajoutée à `anim_rig.py`), genou gauche qui lâche, assis puis sur le dos, rebond de 4 cm, tête qui roule en dernier ; arc gardé dans la main molle (le lâcher demanderait un os libre, `ik_hand_l`) ; **main droite tournée de 73° en une image** à l'encoche (images 44-46, vue par l'utilisateur) corrigée par une clé `"fingers"` (`anim_rig.py`) : 11,5°, pas plus de 27° par image ; **tir validé** par l'utilisateur (« tire très bien »). **chute de l'Archer validée** (« fall très bien »). Les chutes fabriquées `spear_fall`, `maa_fall`, `peasant_fall` **refusées** par l'utilisateur (« les 3 falls sont nulles », pieds cloués) : refaites en aperçu sur le modèle de l'Archer (sous-agent, 2026-10-20, même worktree), chacune différente, arme gardée en main ; durée libre (~1,3 s au plus, à terre vers 1 s) depuis la décision **corps gardés 30 s par le client** (`JourneyInProgress.md`, 2026-10-20) : `archer_fall` gardée à 1,1 s ; **dernière image = pose tenue 30 s** (stable, rien en l'air, rien dans le sol) ; refabrication dans Unreal ensuite. 1er jet des trois refusé (« ça va pas … ils semblaient se coucher pour dormir ») : refaites **une par une**, d'abord le **Paysan** (« tomber à genoux puis tomber de côté ») ; règle de méthode tirée de ce retour : **tout contact avec le sol arrive vite** (accélération jusqu'à l'impact, petit rebond, arrêt net), jamais de ralenti avant une pose couchée (c'est ce qui donne « se coucher ») ; pose finale asymétrique et molle, pas de position fœtale ni de main près du visage. **Paysan : mouvement validé** (« le mouvement est bien » ; 1,15 s : sursaut 0,07, genoux au sol 0,33 + rebond, mou à genoux 0,52, bascule à gauche 0,74, épaule au sol 0,88 + rebond 3 cm) ; polissage technique fait (corps ≥ −1,4 cm, couteau tenu à 0,2 cm, poignet 162° → 31° par image, coude gauche qui ne bascule plus). **Lancier : B** (choix de l'utilisateur) : touché en pleine poitrine, part **en arrière d'un bloc**, raide, s'écrase sur le dos, la lance lui échappe et tombe en travers (écartés : A appuyé sur la lance à genoux ; C comme le Paysan). 1er aperçu (planche raide autour des talons, lance lâchée au coup par une clé `"release"` d'`anim_rig.py`, la lance étant déjà sur `ik_hand_gun` : ni os ni maillage à refaire) → retour : **« comme s'il prenait une charge, il décolle un peu du sol (un peu, pas beaucoup) et tombe en arrière »** → 2e aperçu **validé** (« très bien » ; 1,0 s : choc 0,06, envol 0,14-0,30, pieds à 14 cm au plus, réception sur le dos 0,44, rebond 3 cm, glissade 14 cm, arrêt 0,58 ; projeté de ~0,8 m, bassin à 1,9 m de son départ : corps hors de la position de l'unité ; lance projetée à droite, à plat près des jambes). **Homme d'armes : A** (choix de l'utilisateur) : la seule chute **vers l'avant** : touché, un pas lourd en avant, l'épée glisse de la main, les jambes lâchent, il s'écrase face contre terre, bouclier sous lui ou à côté (écartés : B pivote et tombe sur le flanc ; C s'affaisse sur place à genoux). Aperçu **validé** (« très bien » ; 1,0 s : sursaut 0,07, épée lâchée 0,18 et pas lourd en avant, genoux au sol 0,47 + rebond 2 cm, bascule 0,63, face contre terre 0,72 + rebond 3 cm, arrêt 0,86 ; épée à plat près de la main droite ; bouclier sur `hand_l`, ne peut quitter le bras : bras gauche rejeté, bouclier à plat à côté ; pieds à plat faute de rotation de pied par clé). **Les quatre chutes sont validées en aperçu** (Paysan, Lancier, Homme d'armes, Archer). Retouches faites : **orteils tournés vers l'arrière** sur l'Homme d'armes (demande de l'utilisateur ; option par clé `"foot_rot"` dans `anim_rig.py`, chevilles levées pendant le pivot ; le baker prend déjà `foot_l` / `foot_r`, rien à ajouter) ; main droite d'`archer_fall` (166° → 22° par image au plus). Retouches **validées** (« très bien l'archer et le maa »). Pieds du Lancier (orteils vers le haut, tombant en dehors) et du Paysan (pied du dessous sur sa tranche, celui du dessus posé dessus) : **validés** (« très bien »). **Tout est commité sur la branche `j7c-archer-preview` du worktree `HeroesOfLiberty-Elrond` (2c8859b, pas dans `main`).** Restes : fabrication dans Unreal (`"release"` et `"feet"` à apprendre au baker ; épée et lance déjà sur `ik_hand_gun`) ; corps gardés 30 s chez le client (`JourneyInProgress.md`) ; variantes par type (souhait de l'utilisateur). Souhait de l'utilisateur : **« éviter au max qu'ils aient tous la même animation »** (chute propre à chaque type ; variantes par type à proposer) ; corde droite à pleine allonge (os rigide) ; aperçus dans `HeroesOfLiberty-Elrond\Saved\AnimPreview\archer_*` ; plan de J7c (Q1 à Q6) dans `JourneyInProgress.md` |
 | Attaque du Paysan | Paysan | J7b | **fait** (2026-10-20, validé à l'essai : « super le stab ») : les Paysans combattent sur ordre (et plus tard contre les bêtes sauvages) ; coup de pointe au couteau à une main en posture de peur (`afraid()`), `A_Peasant_Attack` (séquence 13 de `TP_Peasant`, 60 images, 2 s, frappe image 30 = 50 %) ; couteau `make_knife()` (pièce 8, masque 128, dernier bit libre) montré seulement pendant l'attaque par la colonne `AttackProp` (sur le modèle de `BuildProp`) ; hache et coup de hache écartés par l'utilisateur |
 
 ## Prochaine étape exacte
@@ -200,11 +200,11 @@ Règles :
 **Point de reprise (2026-10-20, fin de la session parallèle « revue J7b / plan J7c / aperçus »)** : l'Archer (arc,
 carquois, flèche, repos, marche, tir en cloche) et **quatre nouvelles chutes** (Paysan, Lancier, Homme d'armes, Archer),
 toutes **validées en aperçu** par l'utilisateur, sont **commitées sur la branche `j7c-archer-preview`** du worktree
-`C:\Users\baudo\Documents\MyCrusader-A` (2c8859b, outils 54faf78), **pas dans `main`**, rien fabriqué dans Unreal
-(détail : ligne « Arc… » du catalogue ci-dessus). Aperçus : `MyCrusader-A\Saved\AnimPreview\` (`*_fall.gif`,
+`C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` (2c8859b, outils 54faf78), **pas dans `main`**, rien fabriqué dans Unreal
+(détail : ligne « Arc… » du catalogue ci-dessus). Aperçus : `HeroesOfLiberty-Elrond\Saved\AnimPreview\` (`*_fall.gif`,
 `archer_*.gif`). Outils ajoutés à la branche : `python3 Tools/Editor/preview_gif.py <geste>…` (GIF vue de côté + vue RTS,
 Pillow requis : `python3`) et `python3 Tools/Editor/fall_check.py <geste>` (profondeur sous le sol, pièces dans le
-corps, rotation des mains et poignets par image). `IN_USE.txt` de `MyCrusader-A` : « en pause », branche à ne pas
+corps, rotation des mains et poignets par image). `IN_USE.txt` de `HeroesOfLiberty-Elrond` : « en pause », branche à ne pas
 réécrire. Suite, dans l'ordre proposé à l'utilisateur :
 1. **[FAIT, 2026-10-20, session mycrusader-6c : validé à l'essai (« très bien »), commité (e9e4472), `main` avancé à
    39eae38 avec l'accord de la session du parcours]** Fait : les trois chutes passées de `PROPOSED`
@@ -222,8 +222,8 @@ réécrire. Suite, dans l'ordre proposé à l'utilisateur :
    Leçon : la compilation est refusée tant qu'**un** jeu d'une autre session tourne avec le Live Coding (mutex commun à
    tous les worktrees du même moteur) : demander une fenêtre à la session qui teste ; `-Parts tests,camera,anims,combat`
    fait échouer « bars, nothing selected » (la sélection laissée par `anims` n'est vidée que par la partie des groupes de
-   `-Full`), sans rapport avec les chutes. **`quick_check -Full` PASS** dans `MyCrusader-A` (611 s, 2026-10-20 17 h 23).
-   Essai (`play.ps1 falls -Root ..\MyCrusader-A`) : « très bien ». Commit e9e4472, refusion de `main` (conflit dans le
+   `-Full`), sans rapport avec les chutes. **`quick_check -Full` PASS** dans `HeroesOfLiberty-Elrond` (611 s, 2026-10-20 17 h 23).
+   Essai (`play.ps1 falls -Root ..\HeroesOfLiberty-Elrond`) : « très bien ». Commit e9e4472, refusion de `main` (conflit dans le
    contrôle « combat anims » de `quick_check` : le Paysan attendu avec le couteau, prop 8, en frappant **et** en
    tombant), recompilé, `-Full` PASS (598 s), **`main` avancé à 39eae38**. **Fabriquer les trois chutes dans Unreal** (remplacent `spear_fall` / `maa_fall` / `peasant_fall` de `main`) :
    passer les dictionnaires de `PROPOSED` à `GESTURES` ; apprendre la clé `"release"` (arme lâchée, suit ses propres clés
@@ -245,7 +245,7 @@ réécrire. Suite, dans l'ordre proposé à l'utilisateur :
 bâtisseur de J6a.4 sont dans `main`.
 
 **Rien en cours (2026-10-18, mycrusader-e3).** Pièces allégées au LOD 3 closes : validées par l'utilisateur, dans `main`
-(dc451aa), D326 au GDD (journaux du 2026-10-17 et du 2026-10-18). Worktree `MyCrusader-J5c` propre, **`j5c-anims` =
+(dc451aa), D326 au GDD (journaux du 2026-10-17 et du 2026-10-18). Worktree `HeroesOfLiberty-J5c` propre, **`j5c-anims` =
 `main` (4d00135)**, binaires du worktree compilés à ce point.
 
 **Suivant : animations des troupes de J7** (demande de l'utilisateur du 2026-10-18), au rythme du parcours J7 mené dans
@@ -360,7 +360,7 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
 ### 2026-10-16 — Worktree pour le branchement
 
 - Marches chargées bois et pierre-or montrées à l'utilisateur. À sa demande, le travail continue dans le **worktree**
-  `MyCrusader-J5c` (branche `j5c-anims`, depuis cd39c6c ; voir « Où travailler » en tête). Les six séquences et les
+  `HeroesOfLiberty-J5c` (branche `j5c-anims`, depuis cd39c6c ; voir « Où travailler » en tête). Les six séquences et les
   outils (`anim_rig.py`, `peasant_poses.py`, `preview_animation.py`, `make_peasant_animations.py`, `Data/`) y sont
   copiés : **les refabriquer là-bas désormais** ; leurs copies non suivies dans la copie principale sont à effacer à la
   fusion. Première compilation du module dans le worktree lancée.
@@ -616,11 +616,11 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
   automatique sans conflit : compilation du worktree **réussie du premier coup** (89 s, aucune correction) ; tests
   **54/54**, `quick_check` **PASS en 146 s** (toutes les parties, dont build, build site, build trial, net 2 clients),
   du premier coup, sans flake.
-- **A/B S7** : A = worktree détaché `MyCrusader-A` à cd75e85 (sans J5c.2, compilé pour l'occasion ; la copie
+- **A/B S7** : A = worktree détaché `HeroesOfLiberty-Elrond` à cd75e85 (sans J5c.2, compilé pour l'occasion ; la copie
   principale avait le travail en cours de J6a.5), B = worktree `j5c-anims` fusionné. Même moteur AS_3, S7 20 s hors
   écran (888 × 500, scalability 2), un échauffement par côté puis alterné A B A B A B, un processus à la fois, de 17:57
   à 18:10. **Aucun chevauchement** avec les compilations des autres sessions (journaux d'UBT : compilation de la copie
-  principale à 18:10:39, de `MyCrusader-A` par une autre session à 18:12, après la dernière mesure à 18:10:05 ; aucune
+  principale à 18:10:39, de `HeroesOfLiberty-Elrond` par une autre session à 18:12, après la dernière mesure à 18:10:05 ; aucune
   partie lancée depuis la copie principale entre 17:50 et 18:10). Machine chargée (autres sessions, ProjectShiva,
   navigateurs) : 13-84 % de CPU avant les mesures. Journaux : `ab_logs/j5c2_*` du scratchpad de la session.
 
@@ -676,7 +676,7 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
 ### 2026-10-16 — Bâtisseur : marteau et coup de marteau (worktree, rien de commité)
 
 - Première phase seulement (geste, pièce, aperçus, fabrication) : **aucun C++, ni table, ni fournisseur, ni maillage**
-  touchés. Worktree `MyCrusader-J5c` (`j5c-anims` au niveau de `main` aaa38dc, avec `EHOLUnitActivity::Building` de
+  touchés. Worktree `HeroesOfLiberty-J5c` (`j5c-anims` au niveau de `main` aaa38dc, avec `EHOLUnitActivity::Building` de
   J6a.4).
 - **Marteau** (`peasant_props.py`, **pièce 7**, bit 6 du masque : 7 pièces sur 8 possibles) : marteau de charpentier
   tenu d'une main, sur `ik_hand_gun` comme la hache et la pioche (repère d'outil : origine au pommeau, X le long du
@@ -732,7 +732,7 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
 
 ### 2026-10-16 — Bâtisseur branché : marteau, séquence 11, orientation vers le chantier (worktree, rien de commité)
 
-- Worktree `MyCrusader-J5c` (`j5c-anims` 65c765f = `main` aaa38dc + `A_Peasant_Build` et le marteau).
+- Worktree `HeroesOfLiberty-J5c` (`j5c-anims` 65c765f = `main` aaa38dc + `A_Peasant_Build` et le marteau).
 - **Maillage et fournisseur** (`make_peasant_mesh.py`, un lancement de 13 s) : `SKM_Peasant` refait avec le marteau
   (pièce 7, masque 64, `ik_hand_gun`) ; sommets de rendu par LOD **25 203 / 8 831 / 5 864 / 4 157** (avant 25 055 / 8 683 /
   5 716 / 4 009 : **+148 à chaque LOD**), pièces **+1 894 sommets, +940 triangles** (avant +1 746 / +868) ; relecture de
@@ -898,7 +898,7 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
 
 ### 2026-10-20 — Les trois nouvelles chutes fabriquées, validées, dans `main` (session mycrusader-6c)
 
-- Sous-agent dans `MyCrusader-A` (`j7c-archer-preview`) : chutes du Paysan, du Lancier et de l'Homme d'armes passées
+- Sous-agent dans `HeroesOfLiberty-Elrond` (`j7c-archer-preview`) : chutes du Paysan, du Lancier et de l'Homme d'armes passées
   de `PROPOSED` à `GESTURES` (mêmes noms, mêmes séquences, refaites en place) ; baker : contrôle « mains au manche »
   sauté après le lâcher, lignes « chute, non bouclée » et « dernière image (pose tenue) ». Arrêté avant la
   compilation : refusée tant qu'un jeu d'une autre session tourne avec le Live Coding (mutex commun au moteur) ; fenêtre
@@ -916,8 +916,8 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
 
 ### 2026-10-20 — Corps gardés 30 s chez le client : commencé (session mycrusader-a6)
 
-- Point 2 de « Prochaine étape exacte ». Worktree `MyCrusader-J5c` (`IN_USE.txt` posé), `j5c-anims` avancé à `main`
-  (81b5966) ; binaires du worktree à recompiler. `MyCrusader-A` pris par mycrusader-37 pour J7c.1 (l'Archer, ses
+- Point 2 de « Prochaine étape exacte ». Worktree `HeroesOfLiberty-J5c` (`IN_USE.txt` posé), `j5c-anims` avancé à `main`
+  (81b5966) ; binaires du worktree à recompiler. `HeroesOfLiberty-Elrond` pris par mycrusader-37 pour J7c.1 (l'Archer, ses
   questions et sa fabrication, point 4, passent avec J7c.1).
 - Conception en cours (sous-agent en lecture seule) : corps séparé de l'unité, créé à la destruction de l'entité
   affichée (solo : `HOLUnitSubsystem.cpp` ~l. 709 ; client : `HOLUnitReceptionSubsystem.cpp` ~l. 274), invisible
@@ -959,16 +959,16 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
   `combat_corpse` : Paysan rouge couché parmi les Hommes d'armes. `Lay` sans paramètre monde ; scénario `falls` :
   note des corps. Précision : le corps tient 30 s **depuis la destruction de l'unité** (~1 s après sa mort, quand la
   chute se termine), soit ~32 s de la mort à la disparition ; commentaire de `HoldSeconds` corrigé dans ce sens.
-- Suite : essai de l'utilisateur (`Tools\Scenarios\play.ps1 falls` depuis `MyCrusader-J5c`), puis `-Full`, commit,
+- Suite : essai de l'utilisateur (`Tools\Scenarios\play.ps1 falls` depuis `HeroesOfLiberty-J5c`), puis `-Full`, commit,
   fusion dans `main` avec l'accord des sessions actives.
-- **Essai de l'utilisateur (scénario `falls`, depuis `MyCrusader-J5c`) : validé (« parfait »).** Suite : `-Full`,
+- **Essai de l'utilisateur (scénario `falls`, depuis `HeroesOfLiberty-J5c`) : validé (« parfait »).** Suite : `-Full`,
   commit sur `j5c-anims`, fusion de `main` (qui reçoit l'Archer de mycrusader-37), avance de `main` avec accord.
 - Commité sur `j5c-anims` : **a0cd250**. En attente : avance de `main` par mycrusader-37 (Archer), puis fusion dans
   `j5c-anims`, compilation, `-Full`, avance rapide de `main` avec accord.
 - `main` (Archer, 9a7ecc8) fusionné sans conflit (c82725e), compilé, **`-Full` PASS** (591 s, tests 84/84, « combat
   bodies » compris) ; **`main` avancé à c82725e** avec l'accord de mycrusader-37 et mycrusader-c9.
 
-### 2026-10-20 — Fabrication de l'Archer (J7c.1a, sous-agent, worktree `MyCrusader-A`, branche `j7c-archer`)
+### 2026-10-20 — Fabrication de l'Archer (J7c.1a, sous-agent, worktree `HeroesOfLiberty-Elrond`, branche `j7c-archer`)
 
 - **Gestes** : `archer_idle`, `archer_walk`, `archer_attack`, `archer_fall` passés de `PROPOSED` à `GESTURES`
   (`soldier_poses.py` ; `PROPOSED` est vide). Nouvelle clé de geste **`"tool_hidden"`** (intervalles en secondes, ou

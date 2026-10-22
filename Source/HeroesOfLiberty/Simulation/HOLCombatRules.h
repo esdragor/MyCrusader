@@ -35,18 +35,21 @@ namespace HOLCombat
 	HEROESOFLIBERTY_API int32 ToMilliseconds(float Seconds);
 
 	/**
-	 * Wind-up: the first hit on a target falls half an interval after the unit starts attacking it (in reach), not at
-	 * once, so the strike gesture has time to show and a unit coming into reach does not hit in the same step.
+	 * Wind-up: the first hit on a target falls WindUpPercent of an interval after the unit starts attacking it (in reach),
+	 * not at once, so the strike gesture has time to show and a unit coming into reach does not hit in the same step. The
+	 * percent is the type's (FHOLUnitTypeConstants::AttackWindUpPercent, J7c, retour d'essai 8: hit and run): half the
+	 * interval for the melee, 12 % for the Archer (it looses ~0.2 s after it stops, then may walk off while it
+	 * reloads, the cool-down running down meanwhile, TickIdle). Clamped to 1..100.
 	 */
-	inline constexpr int32 WindUpPercent = 50;
+	inline constexpr int32 DefaultWindUpPercent = 50;
 
-	HEROESOFLIBERTY_API int32 GetWindUpMilliseconds(int32 IntervalMs);
+	HEROESOFLIBERTY_API int32 GetWindUpMilliseconds(int32 IntervalMs, int32 WindUpPercent);
 
 	/**
 	 * The cool-down when a unit starts (or switches) an attack: what it still had to wait, the wind-up at least. A unit
 	 * that just struck keeps its own rhythm; a switch of target never gives a free hit.
 	 */
-	HEROESOFLIBERTY_API int32 StartAttack(int32 CooldownMs, int32 IntervalMs);
+	HEROESOFLIBERTY_API int32 StartAttack(int32 CooldownMs, int32 IntervalMs, int32 WindUpPercent);
 
 	/**
 	 * One step of an attacking unit (in reach of its target): the cool-down loses StepMs; when it reaches 0 the unit
@@ -150,8 +153,8 @@ namespace HOLCombat
 	HEROESOFLIBERTY_API int32 ChooseTarget(const FSeeker& Seeker, TConstArrayView<FCandidate> Candidates);
 
 	// Shots (J7c.2, J7c-Q1 to Q4). A shooter's hit is an arrow: released at the strike's moment of the gesture (the
-	// wind-up, WindUpPercent of the cadence, as a melee hit), it flies the centre-to-centre distance of the shooter and its
-	// target at release at the arrow speed, and always hits: its damage (GetDamage, ranged armour, reckoned at release)
+	// wind-up, the type's AttackWindUpPercent of the cadence, 12 % for the Archer), it flies the centre-to-centre
+	// distance of the shooter and its target at release at the arrow speed, and always hits: its damage (GetDamage, ranged armour, reckoned at release)
 	// falls on the target when it lands, lost when the target died meanwhile. No minimum reach, no height bonus. The client
 	// reckons the same flight from the same positions (J7c.2b): nothing more is replicated.
 

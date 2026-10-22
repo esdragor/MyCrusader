@@ -1,0 +1,91 @@
+# Croisements : deux Paysans de face, deux Hommes d'armes de face, deux groupes de 5 Paysans de face, deux Paysans à angle droit
+# Chantier déplacement (MovementInProgress.md), cas 1 : « croisement de deux unités de face ». Plain, un joueur. Positions
+# dans le repère du centre du joueur (X vers le milieu de la carte), au-delà des rochers (vers 3000) comme les autres
+# scénarios. Les ordres sont donnés par le scénario, une paire après l'autre, la caméra suit ; « Relancer » rejoue tout.
+# Unités par identifiant (hol.Select.ClickUnit) : Paysans de face 0 et 1, Hommes d'armes 2 et 3, Paysans à angle droit
+# 4 et 5, puis les deux groupes de 5.
+# Sélections par hol.Select.BoxGround en coordonnées du monde (centre du slot 0 à -15000, 0 sur Plain : X du monde = X du
+# repère - 15000), qui ne dépendent ni de la taille de l'écran ni de la souris.
+hol.Units.SpawnSeed 201
+# Paire 1 : deux Paysans sur la même ligne, 16 m d'écart (le face-à-face exact de la question ouverte d'avant M5).
+hol.Camera.FocusNear 4200 -3000
+frames 2
+hol.Units.SpawnHere 1 Peasant 0 0
+hol.Camera.FocusNear 5800 -3000
+frames 2
+hol.Units.SpawnHere 1 Peasant 0 0
+# Paire 2 : deux Hommes d'armes, pareil.
+hol.Camera.FocusNear 4200 0
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 0
+hol.Camera.FocusNear 5800 0
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 0
+# Paire 3 : deux Paysans à angle droit, qui arrivent en même temps au milieu (5000, 3000).
+hol.Camera.FocusNear 4200 3000
+frames 2
+hol.Units.SpawnHere 1 Peasant 0 0
+hol.Camera.FocusNear 5000 2200
+frames 2
+hol.Units.SpawnHere 1 Peasant 0 0
+waitunits 6
+# Groupes : 5 Paysans serrés de chaque côté, 16 m d'écart.
+hol.Camera.FocusNear 4200 6000
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+hol.Camera.FocusNear 5800 6000
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 16
+# Paire 1 : chacun vers la place de l'autre, coup sur coup.
+hol.Camera.FocusNear 5000 -3000
+frames 3
+hol.Select.ClickUnit 0
+waitlog Selection: Peasant #
+hol.Select.OrderNear 5800 -3000
+hol.Select.ClickUnit 1
+waitlog Selection: Peasant #
+hol.Select.OrderNear 4200 -3000
+wait 5
+# Paire 2.
+hol.Camera.FocusNear 5000 0
+frames 3
+hol.Select.ClickUnit 2
+waitlog Selection: ManAtArms #
+hol.Select.OrderNear 5800 0
+hol.Select.ClickUnit 3
+waitlog Selection: ManAtArms #
+hol.Select.OrderNear 4200 0
+wait 5
+# Paire 3 : l'un vers +X, l'autre vers +Y.
+hol.Camera.FocusNear 5000 3000
+frames 3
+hol.Select.ClickUnit 4
+waitlog Selection: Peasant #
+hol.Select.OrderNear 5800 3000
+hol.Select.ClickUnit 5
+waitlog Selection: Peasant #
+hol.Select.OrderNear 5000 3800
+wait 5
+# Groupes : chacun vers la place de l'autre (rectangle de sélection au sol, 16 m de côté autour du groupe).
+hol.Camera.FocusNear 4200 6000
+frames 3
+hol.Select.BoxGround -11600 5200 -10000 6800
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 5 units (own): Peasant x5
+hol.Camera.FocusNear 5000 6000
+frames 3
+hol.Select.OrderNear 5800 6000
+hol.Camera.FocusNear 5800 6000
+frames 3
+hol.Select.BoxGround -10000 5200 -8400 6800
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 5 units (own): Peasant x5
+hol.Camera.FocusNear 5000 6000
+frames 3
+hol.Select.OrderNear 4200 6000
+note Le scénario a fait se croiser quatre paires, l'une après l'autre (la caméra suit) ; « Relancer » rejoue tout.
+note Attendu : chacun passe à côté de l'autre sans s'arrêter, sans le traverser ni le bousculer, et va jusqu'à sa place.
+note À la main : sélectionne une unité ou un groupe, clic droit sur la place d'en face, au même moment pour l'autre (Maj pour enchaîner).

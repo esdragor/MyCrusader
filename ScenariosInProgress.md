@@ -20,7 +20,7 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - `hol.Scenario <nom>` : charge la configuration, ouvre la carte, attend qu'elle soit prête, joue les étapes. Sans
   argument : liste les scénarios. Une étape qui n'arrive pas **ne quitte pas** le jeu (contrairement aux contrôles
   scriptés) : message d'erreur à l'écran et dans le journal.
-- Code en fichiers nouveaux (`Dev/`), hors des fichiers modifiés dans `MyCrusader-J5c` (J7b.5b en cours) : fusion sans
+- Code en fichiers nouveaux (`Dev/`), hors des fichiers modifiés dans `HeroesOfLiberty-J5c` (J7b.5b en cours) : fusion sans
   conflit.
 
 ## Étapes
@@ -49,17 +49,17 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
   Caserne finie. Corrigé après la 1re capture : l'armée naissait **sur les rochers** devant le centre (2 unités hors
   navmesh) → avancée à 40 m du centre, ennemis à 70 m ; population **17/10** → `hol.Cheat.Population 165` (17/175) ;
   caméra reculée (4600) ; les notes d'un passage restaient sous celles du rechargement →
-  `ClearOnScreenDebugMessages()` au début (**pas encore compilé** : Live Coding du jeu de `MyCrusader-J5c` ouvert,
+  `ClearOnScreenDebugMessages()` au début (**pas encore compilé** : Live Coding du jeu de `HeroesOfLiberty-J5c` ouvert,
   il bloque toute compilation du projet, même depuis un autre worktree).
 - `quick_check` rapide **PASS** (46 s, tests 82/82) avec le lanceur modifié.
-- Note : sur `main`, les lignes colorées de J7b.5b ne sont pas encore là (non commitées, `MyCrusader-J5c`) ; l'essai
-  valide le mécanisme. Une fois commité sur `main`, `MyCrusader-J5c` le récupère sans conflit (fichiers nouveaux).
+- Note : sur `main`, les lignes colorées de J7b.5b ne sont pas encore là (non commitées, `HeroesOfLiberty-J5c`) ; l'essai
+  valide le mécanisme. Une fois commité sur `main`, `HeroesOfLiberty-J5c` le récupère sans conflit (fichiers nouveaux).
 - **Essai de l'utilisateur (1)** : le scénario tourne jusqu'au bout chez lui (journal : 3 notes, prêt en 11 s), mais il
   **ne voit ni « prêt » ni les notes**. Cause : messages de débogage d'Unreal, police fixe minuscule sur son écran
   **3840 × 2160**, en haut à gauche sous le panneau des triches, 30 s alors que le jeu met ~30 s à s'ouvrir.
   → **SC.1b** (sous-agent) : **panneau du scénario** dans l'interface (en haut au centre, titre + état + notes, reste
   jusqu'à fermeture « × » ou au scénario suivant), branché par `HOLTestHooks` (le cœur ne dépend pas de l'interface,
-  D247), hors des fichiers modifiés dans `MyCrusader-J5c`.
+  D247), hors des fichiers modifiés dans `HeroesOfLiberty-J5c`.
 - **SC.1b faite** (sous-agent arrêté à 15 min / ~120k tokens ; dernière retouche compilée et vérifiée par la session
   principale). `HOLTestHooks::FScenarioDisplay` (nom, état en préparation / prêt / erreur, notes, fermé) +
   `OnScenarioChanged` / `NotifyScenarioChanged` (repli sur les messages de débogage sans interface : serveur dédié) ;
@@ -70,7 +70,7 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - **Live Coding** : un jeu ouvert (n'importe quel worktree, même moteur) fait refuser toute compilation par UBT
   (« Unable to build while Live Coding is active »). Contournements : compiler avec **`-NoHotReloadFromIDE`** (la
   garde ne sert à rien entre worktrees : DLL distinctes) ; lancer les jeux avec **`-LiveCoding=0`** (`play.ps1` le
-  fait ; à ajouter à `quick_check.ps1` quand `MyCrusader-J5c` aura commité ses changements de ce fichier).
+  fait ; à ajouter à `quick_check.ps1` quand `HeroesOfLiberty-J5c` aura commité ses changements de ce fichier).
 - Preuve sans fenêtre en **3840 × 2160** : panneau lisible en haut au centre, 3 notes une seule fois après
   rechargement, « prêt ». Cadrage repris : ennemis à **22 m** (6200 ; 15 m au moins entre les bords des groupes),
   caméra 4700 et un cran de molette en arrière : armée et ennemis entre le panneau du scénario et celui de la sélection.
@@ -78,7 +78,7 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - **Essai (2) validé** par l'utilisateur : « tout est bon ». `quick_check -Full` **PASS** (545 s, toutes les parties,
   82/82). Commit sur `main` des seuls fichiers du chantier (les .md GDD / Journey / Animations modifiés par une autre
   session restent hors du commit). **Chantier clos.** Suite : chaque essai demandé vient avec son scénario ;
-  `-LiveCoding=0` à ajouter à `quick_check.ps1` après le commit de `MyCrusader-J5c` ; consigner la décision au GDD
+  `-LiveCoding=0` à ajouter à `quick_check.ps1` après le commit de `HeroesOfLiberty-J5c` ; consigner la décision au GDD
   (numéro libre suivant) quand le GDD n'aura plus de changements en cours d'une autre session.
 - **Revue de 9debb86** (collée par l'utilisateur) : deux défauts, aucun bloquant.
   1. **Corrigé** (non commité) : `AHOLGameHUD::EndPlay` laissait `HOLTestHooks::OnScenarioChanged` posé : revenu au
@@ -94,10 +94,22 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 
 ### 2026-10-21
 - **Scénario sans `.json` : BattleMap au lieu de Plain** (défaut vu par la session du retardataire, `EtapeDefini.md`) :
-  corrigé dans `MyCrusader-J5c`, branche `scenario-default-plain` (non commité). Cause : sans `.json`, `hol.Scenario`
+  corrigé dans `HeroesOfLiberty-J5c`, branche `scenario-default-plain` (non commité). Cause : sans `.json`, `hol.Scenario`
   prenait `FHOLMatchConfig::MakeDefault()`, qui nomme `/Game/Level/BattleMap` ; le repli sur Plain ne jouait que pour
   une carte vide. Depuis le menu, l'écran Nouvelle partie, qui ne propose pas BattleMap, lançait sa première carte
   (Plain) et `waitmap BattleMap` expirait. Maintenant : sans `.json`, Plain (comme le dit le README). Compilé (110 s) ;
   scénario temporaire sans `.json` lancé en `-RenderOffScreen` : `Scenario nojson_check: /Game/Maps/Plain.Plain`,
   `New game: launching /Game/Maps/Plain.Plain`, « prêt » en 18 s. À savoir : avec `-unattended`, le jeu s'arrête au
   démarrage (rien du scénario au journal) ; lancer comme `quick_check`, sans lui.
+- **Décision consignée au GDD** (mycrusader-82, à la demande de l'utilisateur) : **D341** (§ 21, datée du 2026-10-20),
+  paragraphe « Scénarios d'essai » à la fin du § 16.6 ; numéro suivant D342 (§ 22). Écartés notés : écran dans le menu,
+  liste fixée d'avance, ennemis menés par l'IA.
+- **Bouton « Relancer »** (demande de l'utilisateur, `EtapeDefini.md`, Outils d'essai ; mycrusader-82,
+  `HeroesOfLiberty-J5c`, branche `scenario-restart` depuis `main` 61893ff, rien de commité) : dans l'en-tête du panneau du
+  scénario, à gauche du « × », même style ; un clic fait `hol.Scenario <nom>` (étapes relues dans le fichier, carte
+  rechargée). `hol.HUD.Click` connaît `ScenarioRestart` et `ScenarioClose`. Compilé ; vérifié sans fenêtre
+  (`-RenderOffScreen`) avec un scénario temporaire qui clique sur son propre bouton : 3 relances de suite, carte
+  rechargée, notes remises à zéro, « prêt » à chaque fois (scénario supprimé ensuite) ; `quick_check` rapide **PASS**
+  (38 s, 90/90). Essai de l'utilisateur lancé sur `formation_one_kind` (`-Root ..\HeroesOfLiberty-J5c`).
+- **Essai validé** par l'utilisateur (« c'est bon ») : commit **c446d99** sur `scenario-restart`, `main` avancé dessus
+  (sans fusion, même point de départ). Ligne retirée d'`EtapeDefini.md`. `HeroesOfLiberty-J5c` libéré.

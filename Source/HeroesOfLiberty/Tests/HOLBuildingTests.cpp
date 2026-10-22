@@ -48,7 +48,7 @@ bool FHOLBuildingTypesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("main centre in the building type table"), MainCentre))
 	{
 		TestFalse(TEXT("named"), MainCentre->DisplayName.IsEmpty());
-		TestEqual(TEXT("12 x 12 m: 4 x 4 tiles (D261, D311)"), MainCentre->Footprint, FVector2D(1200.0, 1200.0));
+		TestEqual(TEXT("16 x 16 m: 4 x 4 tiles of 4 m (D261, D311, D344)"), MainCentre->Footprint, FVector2D(1600.0, 1600.0));
 		TestEqual(TEXT("~10 m high (D261)"), MainCentre->Height, 1000.f);
 		TestTrue(TEXT("health points"), MainCentre->MaxHealth > 0);
 		TestTrue(TEXT("provisional shape: no final mesh yet"), MainCentre->Mesh.IsNull());
@@ -80,20 +80,20 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		Building->GetComponents(Pieces);
 		TestEqual(TEXT("a block, its top, a tower and its roof"), Pieces.Num(), 4);
 
-		// The shape fills the type's visible size (D324 refined: its 12 x 12 m of tiles inset by VisualInset on every side,
+		// The shape fills the type's visible size (D324 refined: its 16 x 16 m of tiles inset by VisualInset on every side,
 		// at least 90 % of them) and height, standing on the ground, centred on the actor; its body, narrower, blocks.
 		FBox Box(ForceInit);
 		for (const UStaticMeshComponent* Piece : Pieces)
 		{
 			Box += Piece->Bounds.GetBox();
 		}
-		const double Seen = 1200.0 - 2.0 * UHOLBuildingSettings::GetVisualInset();
-		const double Body = 1200.0 - 2.0 * UHOLBuildingSettings::GetBodyInset();
-		TestTrue(FString::Printf(TEXT("the visible size of its 12 x 12 m (%.0f cm)"), Seen), Box.GetSize().Equals(FVector(Seen, Seen, 1000.0), 1.0));
-		TestTrue(TEXT("at least 90 % of its tiles"), Seen >= 0.9 * 1200.0 - 0.01);
+		const double Seen = 1600.0 - 2.0 * UHOLBuildingSettings::GetVisualInset();
+		const double Body = 1600.0 - 2.0 * UHOLBuildingSettings::GetBodyInset();
+		TestTrue(FString::Printf(TEXT("the visible size of its 16 x 16 m (%.0f cm)"), Seen), Box.GetSize().Equals(FVector(Seen, Seen, 1000.0), 1.0));
+		TestTrue(TEXT("at least 90 % of its tiles"), Seen >= 0.9 * 1600.0 - 0.01);
 		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-Seen * 0.5, -Seen * 0.5, 0.0), 1.0));
 		TestTrue(TEXT("its body box"), Building->GetBodyBounds().GetSize().Equals(FVector2D(Body), 0.01));
-		TestTrue(TEXT("its tiles box"), Building->GetFootprintBounds().GetSize().Equals(FVector2D(1200.0), 0.01));
+		TestTrue(TEXT("its tiles box"), Building->GetFootprintBounds().GetSize().Equals(FVector2D(1600.0), 0.01));
 
 		// The navmesh's forbidden area: the body widened by the bodies' clearance (D310), as tall as the shape.
 		TArray<UBoxComponent*> Boxes;

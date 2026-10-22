@@ -25,13 +25,17 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 {
 	GENERATED_BODY()
 
-	/** Position precision (cm): ~10 cm (D269). */
-	static constexpr float PositionStep = 10.f;
+	/** Position precision (cm): ~10 cm (D269), 11 cm since D344 (13 bits cover the 880 m maps). */
+	static constexpr float PositionStep = 11.f;
 	/** Velocity precision (cm/s): at most 2.5 cm/s off per axis, ~5 cm of drift over a 2 s refresh. */
 	static constexpr float VelocityStep = 5.f;
 
-	/** X and Y: +-1 638 m around the map's origin. */
-	static constexpr int32 HorizontalBits = 15;
+	/**
+	 * X and Y: +-450 m around the map's origin (D344: 13 bits at 11 cm), the largest map, 220 x 220 tiles of 4 m (880 m,
+	 * AHOLMapBounds::MaxSideTiles), centred on it, with 10 m to spare; Plaine is 400 m. D343 had 14 bits at 10 cm (1.6 km).
+	 * The replication warns at start for a map past that reach.
+	 */
+	static constexpr int32 HorizontalBits = 13;
 	/** Horizontal velocity, per axis: +-12.8 m/s (a walking unit goes at 3 m/s). */
 	static constexpr int32 VelocityBits = 9;
 	/**
@@ -39,8 +43,12 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * 4 bits since J7b.4 (J7-Q5): values 8 to 10 are Attacking, Dying and "idle, facing its front"; 5 are left free.
 	 */
 	static constexpr int32 ActivityBits = 4;
-	/** Low bits of the step the state was taken at: 256 steps, 12.8 s at 20 Hz, unwrapped by the client (UnwrapStep). */
-	static constexpr int32 StepBits = 8;
+	/**
+	 * Low bits of the step the state was taken at, unwrapped by the client (UnwrapStep): 128 steps (D343), so a state
+	 * is read right up to 64 steps (3.2 s at 20 Hz) from the client's clock, beyond the slow refresh (RefreshSteps, 40
+	 * steps: no unit goes longer unsent) and the network's delays.
+	 */
+	static constexpr int32 StepBits = 7;
 	/**
 	 * Load carried (J5, D298): one bit says whether the unit carries something, then only a carrier writes the resource
 	 * (what J5c will show it carrying): a soldier pays one bit. The amount is not sent to everyone: only the owner's unit
@@ -70,7 +78,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * activity "idle, facing its front", 64 directions (5.6 deg).
 	 */
 	static constexpr int32 FrontYawBits = 6;
-	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62); the others write the extras below. */
+	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62, D343: 59, D344: 57); the others write the extras below. */
 	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1;
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
 	static constexpr int32 WoundedBits = HealthBits;

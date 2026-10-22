@@ -1,0 +1,26 @@
+# Unités immobiles superposées : 12 Paysans et 12 Hommes d'armes nés en tas, un groupe de 9 envoyé sur un même point
+# Chantier déplacement (MovementInProgress.md), cas 2 : « unités immobiles qui restent superposées (vitesse d'arrêt nulle) ».
+# Plain, un joueur. Positions dans le repère du centre du joueur (X vers le milieu de la carte), au-delà des rochers.
+# La séparation (D292) ne défait un recouvrement que si une unité en marche y prend part : deux unités à l'arrêt qui se
+# recouvrent restent ainsi.
+hol.Units.SpawnSeed 202
+# Tas 1 : 12 Paysans dans un rayon de 1 m (la somme de deux rayons fait 1,2 m : ils se recouvrent tous).
+hol.Camera.FocusNear 4800 -2400
+frames 2
+hol.Units.SpawnHere 12 Peasant 0 100
+waitunits 12
+# Tas 2 : 12 Hommes d'armes, pareil, à côté.
+hol.Camera.FocusNear 4800 -600
+frames 2
+hol.Units.SpawnHere 12 ManAtArms 0 100
+waitunits 24
+# Groupe de 9 Paysans à droite, à l'aise (rayon 10 m), pour l'essai à la main.
+hol.Camera.FocusNear 4800 2400
+frames 2
+hol.Units.SpawnHere 9 Peasant 0 1000
+waitunits 33
+hol.Camera.FocusNear 4800 0
+frames 5
+note Deux tas à gauche (12 Paysans, 12 Hommes d'armes) : les corps restent l'un dans l'autre tant que personne ne bouge.
+note Attendu : ils s'écartent d'eux-mêmes jusqu'à ne plus se toucher, sans longue glissade.
+note Groupe de 9 à droite : sélectionne-en un par un et donne-leur le même point en clic droit : arrivés, ils doivent se mettre côte à côte, pas l'un dans l'autre.

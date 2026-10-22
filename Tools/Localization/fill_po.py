@@ -181,9 +181,16 @@ TRANSLATIONS = {
     # The user's trial of J6a.5: F1, F2, F3 while the player has no building of the category.
     "HOLGameScreen,NoMilitaryBuilding": ("No military building", "軍事施設がありません"),
     "HOLGameScreen,NoEconomicBuilding": ("No economic building", "経済施設がありません"),
+    "HOLGameScreen,Age0": ("Foundation", "基盤"),
+    "HOLGameScreen,Age1": ("Rise", "興隆"),
+    "HOLGameScreen,Age2": ("Power", "権勢"),
+    "HOLGameScreen,Age3": ("Legend", "伝説"),
+    "HOLGameScreen,AgeHeaderName": ("Tier {0} — {1}", "段階{0}：{1}"),
+    "HOLGameScreen,AgeLocked": ("Tier not reached", "未到達の段階"),
     "HOLGameScreen,NoTechnologicalBuilding": ("No technological building", "技術施設がありません"),
     # The user's 2nd trial of J6a.5: the subgroup « Tous » of a group of buildings (Tab).
     "HOLGameScreen,SubgroupAll": ("All ({0})", "すべて ({0})"),
+    "HOLGameScreen,SelectionChip": ("{0} ({1})", "{0} ({1})"),
 
     "HOLGameNames,Peasant": ("Peasant", "農民"),
     "HOLGameNames,MainCentre": ("Main Center", "本拠地"),

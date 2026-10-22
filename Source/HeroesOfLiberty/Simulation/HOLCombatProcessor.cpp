@@ -1191,7 +1191,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		Combat.bApproaching = false;
 		if (!Combat.bAttacking)
 		{
-			Combat.CooldownMs = HOLCombat::StartAttack(Combat.CooldownMs, IntervalMs);
+			Combat.CooldownMs = HOLCombat::StartAttack(Combat.CooldownMs, IntervalMs, Constants.AttackWindUpPercent);
 			Combat.bAttacking = true;
 		}
 		if (!HOLCombat::TickAttack(Combat.CooldownMs, StepMs, IntervalMs))

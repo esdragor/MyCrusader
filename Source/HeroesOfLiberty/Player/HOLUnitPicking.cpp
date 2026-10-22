@@ -32,6 +32,50 @@ namespace HOLUnitPicking
 		return Best;
 	}
 
+	double GetBodyDistance(const FHOLPickCandidate& Candidate, const FVector2D& Cursor)
+	{
+		// The same body as PickAt: outside it, how far above or below, and how far beside its slanted middle line.
+		const double Top = FMath::Min(Candidate.Foot.Y, Candidate.Head.Y) - Candidate.HalfWidth * 0.5;
+		const double Bottom = FMath::Max(Candidate.Foot.Y, Candidate.Head.Y) + Candidate.HalfWidth * 0.5;
+		const double Vertical = FMath::Max3(Top - Cursor.Y, Cursor.Y - Bottom, 0.);
+		const double Span = Candidate.Head.Y - Candidate.Foot.Y;
+		const double Along = FMath::IsNearlyZero(Span) ? 0. : FMath::Clamp((Cursor.Y - Candidate.Foot.Y) / Span, 0., 1.);
+		const double CentreX = FMath::Lerp(Candidate.Foot.X, Candidate.Head.X, Along);
+		const double Horizontal = FMath::Max(FMath::Abs(Cursor.X - CentreX) - Candidate.HalfWidth, 0.);
+		return FMath::Sqrt(Vertical * Vertical + Horizontal * Horizontal);
+	}
+
+	int32 PickNear(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& Cursor, const double Margin, bool& bOutDirect)
+	{
+		const int32 Direct = PickAt(Candidates, Cursor);
+		bOutDirect = Direct != INDEX_NONE;
+		if (bOutDirect || Margin <= 0.)
+		{
+			return Direct;
+		}
+		int32 Best = INDEX_NONE;
+		double BestDistance = 0.;
+		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+		{
+			const double Distance = GetBodyDistance(Candidates[Index], Cursor);
+			if (Distance > Margin)
+			{
+				continue;
+			}
+			if (Best == INDEX_NONE || Distance < BestDistance || (Distance == BestDistance && Candidates[Index].Depth < Candidates[Best].Depth))
+			{
+				Best = Index;
+				BestDistance = Distance;
+			}
+		}
+		return Best;
+	}
+
+	double GetScaledMargin(const double MarginAt1080, const double ViewportHeight)
+	{
+		return ViewportHeight > 0. ? MarginAt1080 * ViewportHeight / 1080. : MarginAt1080;
+	}
+
 	void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices)
 	{
 		OutIndices.Reset();

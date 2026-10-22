@@ -39,6 +39,16 @@
 #include "UnrealClient.h"
 #include "Widgets/SWindow.h"
 
+namespace
+{
+/** A unit's fragment, or none once it is gone: a unit killed during a run leaves a stale handle (J7b combat). */
+template <typename T>
+const T* FragmentOf(const FMassEntityManager& EntityManager, const FMassEntityHandle Entity)
+{
+	return EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<T>(Entity) : nullptr;
+}
+}
+
 namespace UE::HeroesOfLiberty::StressTest
 {
 	constexpr float WarmUpSeconds = 3.f;
@@ -333,6 +343,7 @@ void UHOLStressTestSubsystem::Deinitialize()
 	UnitIds.Reset();
 	FrameTimes.Reset();
 	LocationsAtMeasureStart.Reset();
+	RestoreCombat();
 	Super::Deinitialize();
 }
 
@@ -374,6 +385,18 @@ void UHOLStressTestSubsystem::StartTest(const EHOLStressScenario InScenario, con
 		{
 			CombatEnabled->Set(1, ECVF_SetByConsole);
 			UE_LOG(LogHOLStressTest, Display, TEXT("%s: hol.Combat.Enabled %d"), UE::HeroesOfLiberty::StressTest::ToString(Scenario), CombatEnabled->GetInt());
+		}
+	}
+
+	// S1 measures units standing still: the 8 players' units are born mixed, so with the combat on they would fight (J7b).
+	// The combat stays off until the run's units are gone (StopTest); S2, S7, S3 and S4 keep it on.
+	if (Scenario == EHOLStressScenario::S1_Idle)
+	{
+		if (IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled")))
+		{
+			CombatEnabledBeforeRun = CombatEnabled->GetInt();
+			CombatEnabled->Set(0, ECVF_SetByConsole);
+			UE_LOG(LogHOLStressTest, Display, TEXT("S1: combat off during the run (hol.Combat.Enabled 0, was %d)"), CombatEnabledBeforeRun);
 		}
 	}
 
@@ -443,6 +466,19 @@ void UHOLStressTestSubsystem::StopTest()
 		TearDownGathering();
 	}
 	Phase = EPhase::Idle;
+	RestoreCombat();
+}
+
+void UHOLStressTestSubsystem::RestoreCombat()
+{
+	if (CombatEnabledBeforeRun != INDEX_NONE)
+	{
+		if (IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled")))
+		{
+			CombatEnabled->Set(CombatEnabledBeforeRun, ECVF_SetByConsole);
+		}
+		CombatEnabledBeforeRun = INDEX_NONE;
+	}
 }
 
 void UHOLStressTestSubsystem::Tick(const float DeltaTime)
@@ -1070,7 +1106,7 @@ void UHOLStressTestSubsystem::OrderGathering()
 	PlayerUnits.SetNum(GatheringTrees.Num());
 	for (const uint32 UnitId : UnitIds)
 	{
-		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(UnitId));
+		const FHOLUnitStateFragment* State = FragmentOf<FHOLUnitStateFragment>(EntityManager, Units->FindEntity(UnitId));
 		if (State && PlayerUnits.IsValidIndex(State->OwnerPlayer))
 		{
 			PlayerUnits[State->OwnerPlayer].Add(UnitId);
@@ -1168,7 +1204,7 @@ void UHOLStressTestSubsystem::LogGatheringSummary() const
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
 	for (const uint32 UnitId : UnitIds)
 	{
-		if (const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Units->FindEntity(UnitId)))
+		if (const FHOLGatherFragment* Gather = FragmentOf<FHOLGatherFragment>(EntityManager, Units->FindEntity(UnitId)))
 		{
 			++Phases[static_cast<int32>(Gather->Phase)];
 			Carrying += Gather->Load.Amount > 0 ? 1 : 0;
@@ -1244,10 +1280,10 @@ void UHOLStressTestSubsystem::MaintainCrossing()
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
 	const FMassEntityHandle First = Units->FindEntity(UnitIds[0]);
 	const FMassEntityHandle Second = Units->FindEntity(UnitIds[1]);
-	const FTransformFragment* FirstTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(First);
-	const FTransformFragment* SecondTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Second);
-	const FHOLUnitStateFragment* FirstState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(First);
-	const FHOLUnitStateFragment* SecondState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Second);
+	const FTransformFragment* FirstTransform = FragmentOf<FTransformFragment>(EntityManager, First);
+	const FTransformFragment* SecondTransform = FragmentOf<FTransformFragment>(EntityManager, Second);
+	const FHOLUnitStateFragment* FirstState = FragmentOf<FHOLUnitStateFragment>(EntityManager, First);
+	const FHOLUnitStateFragment* SecondState = FragmentOf<FHOLUnitStateFragment>(EntityManager, Second);
 	if (FirstTransform == nullptr || SecondTransform == nullptr || FirstState == nullptr || SecondState == nullptr)
 	{
 		return;
@@ -1294,8 +1330,8 @@ void UHOLStressTestSubsystem::LogCrossingSummary() const
 	}
 
 	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
-	const FAgentRadiusFragment* FirstRadius = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(Units->FindEntity(UnitIds[0]));
-	const FAgentRadiusFragment* SecondRadius = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(Units->FindEntity(UnitIds[1]));
+	const FAgentRadiusFragment* FirstRadius = FragmentOf<FAgentRadiusFragment>(EntityManager, Units->FindEntity(UnitIds[0]));
+	const FAgentRadiusFragment* SecondRadius = FragmentOf<FAgentRadiusFragment>(EntityManager, Units->FindEntity(UnitIds[1]));
 	const double RadiusSum = (FirstRadius ? FirstRadius->Radius : 0.0) + (SecondRadius ? SecondRadius->Radius : 0.0);
 	const double Closest = CrossingClosestDistance == TNumericLimits<double>::Max() ? 0.0 : CrossingClosestDistance;
 
@@ -1349,8 +1385,8 @@ void UHOLStressTestSubsystem::KeepUnitsWalking()
 		}
 
 		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
-		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
-		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		const FHOLUnitStateFragment* State = FragmentOf<FHOLUnitStateFragment>(EntityManager, Entity);
+		const FTransformFragment* Transform = FragmentOf<FTransformFragment>(EntityManager, Entity);
 		if (State == nullptr || Transform == nullptr || State->Activity != EHOLUnitActivity::Idle)
 		{
 			continue;
@@ -1423,7 +1459,7 @@ TArray<FVector> UHOLStressTestSubsystem::GetUnitLocations() const
 	Locations.Reserve(Entities.Num());
 	for (const FMassEntityHandle Entity : Entities)
 	{
-		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		const FTransformFragment* Transform = FragmentOf<FTransformFragment>(EntityManager, Entity);
 		Locations.Add(Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector);
 	}
 	return Locations;
@@ -1541,8 +1577,8 @@ void UHOLStressTestSubsystem::LogRepresentationSummary() const
 	TMap<FString, int32> Histogram;
 	for (const FMassEntityHandle Entity : GetUnitEntities())
 	{
-		const FMassRepresentationFragment* Representation = EntityManager.GetFragmentDataPtr<FMassRepresentationFragment>(Entity);
-		const FMassRepresentationLODFragment* LOD = EntityManager.GetFragmentDataPtr<FMassRepresentationLODFragment>(Entity);
+		const FMassRepresentationFragment* Representation = FragmentOf<FMassRepresentationFragment>(EntityManager, Entity);
+		const FMassRepresentationLODFragment* LOD = FragmentOf<FMassRepresentationLODFragment>(EntityManager, Entity);
 		const FString Key = FString::Printf(TEXT("%s / LOD %d"),
 			Representation ? *UEnum::GetValueAsString(Representation->CurrentRepresentation) : TEXT("no representation"),
 			LOD ? static_cast<int32>(LOD->LOD) : -1);
@@ -1567,11 +1603,11 @@ void UHOLStressTestSubsystem::LogUnitStateSummary() const
 	TMap<FString, int32> UnitStates;
 	for (const FMassEntityHandle Entity : GetUnitEntities())
 	{
-		const FMassMoveTargetFragment* MoveTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Entity);
+		const FMassMoveTargetFragment* MoveTarget = FragmentOf<FMassMoveTargetFragment>(EntityManager, Entity);
 		const FString MoveAction = MoveTarget ? UEnum::GetDisplayValueAsText(MoveTarget->GetCurrentAction()).ToString() : TEXT("no move target");
 		++MoveActions.FindOrAdd(MoveAction);
 
-		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		const FHOLUnitStateFragment* State = FragmentOf<FHOLUnitStateFragment>(EntityManager, Entity);
 		const FString UnitState = State ? UEnum::GetDisplayValueAsText(State->Activity).ToString() : TEXT("no unit state");
 		++UnitStates.FindOrAdd(UnitState);
 	}
@@ -1641,8 +1677,8 @@ void UHOLStressTestSubsystem::CountInterpenetration(int32& OutNumPairs, double& 
 	for (const uint32 UnitId : AllUnitIds)
 	{
 		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
-		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
-		const FAgentRadiusFragment* Radius = EntityManager.GetFragmentDataPtr<FAgentRadiusFragment>(Entity);
+		const FTransformFragment* Transform = FragmentOf<FTransformFragment>(EntityManager, Entity);
+		const FAgentRadiusFragment* Radius = FragmentOf<FAgentRadiusFragment>(EntityManager, Entity);
 		if (Transform == nullptr || Radius == nullptr)
 		{
 			continue;
@@ -1728,7 +1764,7 @@ void UHOLStressTestSubsystem::LogUnitRegistrySummary() const
 	int32 NumMismatched = 0;
 	for (const uint32 UnitId : UnitIds)
 	{
-		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(UnitId));
+		const FHOLUnitStateFragment* State = FragmentOf<FHOLUnitStateFragment>(EntityManager, Units->FindEntity(UnitId));
 		if (State == nullptr || State->UnitId != UnitId)
 		{
 			++NumMismatched;

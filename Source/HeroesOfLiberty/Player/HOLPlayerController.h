@@ -96,6 +96,12 @@ public:
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
 	/** The unit drawn under a point of the viewport, the one in front (D288), or 0. */
 	uint32 FindUnitAt(const FVector2D& ViewportFraction) const;
+	/**
+	 * Another player's unit a right click there takes as its target (J7c, retour d'essai 8, loop 3): the one drawn under
+	 * the point (bOutDirect true), or else the one drawn nearest to it within hol.Select.TargetMargin (pixels at 1080
+	 * high, HOLUnitPicking::PickNear); 0 when none.
+	 */
+	uint32 FindTargetAt(const FVector2D& ViewportFraction, bool& bOutDirect) const;
 	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
 	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
 	/**
@@ -237,6 +243,24 @@ public:
 	 * through (not enough resources, queue full) or waits (population full) is told (OnCommandFeedback).
 	 */
 	void ActivateGridCell(int32 Cell);
+	/**
+	 * The orders' panel left of the grid (the user's choice of 2026-10-21, AoE4's places): with own units selected and no
+	 * building, Q attack-move (soldiers among them), S stop, V hold; NumGridCells commands.
+	 */
+	void GetOrderCommands(TArray<FHOLGridCommand>& OutCommands) const;
+	/** A cell of the orders' panel, by its key or a click on the HUD. */
+	void ActivateOrderCell(int32 Cell);
+	/**
+	 * A key of the grid (A Z E R / Q S D F / W X C V, HOLCommandGrid::PressKey): to the grid on the right (production),
+	 * the builders' age panels (A Z E R choose an age, then all 12 keys start its buildings' ghosts) or the orders' panel.
+	 */
+	void PressGridKey(int32 Cell);
+	/** A click on the builders' panel of Age: its header (Cell INDEX_NONE) or its building at Cell (HOLCommandGrid::ClickAge). */
+	void ClickAge(int32 Age, int32 Cell);
+	/** The age chosen to the keys (0 to 3; INDEX_NONE: none), kept until its ghost is placed or cancelled. */
+	int32 GetChosenAge() const { return ChosenAge; }
+	/** The context of the selected units (no building): builders, soldiers, what they build, the age reached (HOLCommandGrid). */
+	void GetUnitsContext(FHOLGridContext& OutContext) const;
 
 	/** A command did not go through as asked (D313): the HUD shows a short message above the grid. */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnCommandFeedback, const FHOLCommandFeedback& /*Feedback*/);
@@ -403,8 +427,11 @@ private:
 	void UpdateDrag();
 	/** Pixels of a point of the viewport given in fractions. */
 	FVector2D ToPixels(const FVector2D& ViewportFraction) const;
-	/** Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only. Ids match the candidates. */
-	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds) const;
+	/**
+	 * Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only; with bOthersOnly, the other
+	 * players' only. Ids match the candidates.
+	 */
+	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds, bool bOthersOnly = false) const;
 	/** Units that left this machine (dead, out of view of a client) leave the selection, a used-up source too. */
 	void PurgeSelection(TConstArrayView<FHOLUnitView> Views);
 	/** The player's idle workers among the units known here (Views). */
@@ -553,6 +580,13 @@ private:
 	bool bOrderPressed = false;
 	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
 	bool bAttackMoveArmed = false;
+	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
+	int32 ChosenAge = INDEX_NONE;
+	void SetChosenAge(int32 Age);
+	/** Does what a key or a click of the builders' panels gives (HOLCommandGrid::PressKey, ClickAge), the chosen age after it. */
+	void ApplyAgeKey(const FHOLGridKeyResult& Result, int32 Cell);
+	/** Does a command of the grid or of the orders' panel. */
+	void ExecuteGridCommand(const FHOLGridCommand& Command);
 	FVector2D OrderPressFraction = FVector2D::ZeroVector;
 	/** Shift held (IA_SelectAdd). */
 	bool bSelectAddHeld = false;

@@ -15,7 +15,7 @@ namespace UE::HeroesOfLiberty::Tests::Construction
 	/** The diminishing returns of the settings' default (ln 2 / ln 3). */
 	constexpr float Exponent = 0.63f;
 
-	/** A tile (UHOLBuildingSettings::TileSize, D311): 3 m. */
+	/** A tile for the pure rules below, which take it as an argument: 3 m (the setting, UHOLBuildingSettings::TileSize, is 4 m since D344). */
 	constexpr double Tile = 300.0;
 
 	/** A house, 2 x 2 tiles (6 m), placed with its middle at (X, Y) m. */
@@ -247,7 +247,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 {
 	const UHOLBuildingSettings* Settings = GetDefault<UHOLBuildingSettings>();
 	const double Grid = UHOLBuildingSettings::GetTileSize();
-	TestEqual(TEXT("3 m tiles (D311)"), Grid, 300.0);
+	TestEqual(TEXT("4 m tiles (D311, D344)"), Grid, 400.0);
 	TestTrue(TEXT("anti-rush radius set (D22)"), Settings->AntiRushRadius > 0.f);
 	TestTrue(TEXT("3 builders ~2x as fast (D312)"),
 		FMath::Abs(HOLConstruction::GetWorkPerStep(3, Settings->BuilderExponent) / float(HOLConstruction::WorkPerBuilder) - 2.f) < 0.05f);
@@ -256,7 +256,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("main centre"), MainCentre))
 	{
 		TestFalse(TEXT("the main centre is not built by Peasants"), MainCentre->IsBuildable());
-		TestEqual(TEXT("the main centre: 4 x 4 tiles (12 m)"), MainCentre->Footprint, FVector2D(4.0 * Grid, 4.0 * Grid));
+		TestEqual(TEXT("the main centre: 4 x 4 tiles (16 m)"), MainCentre->Footprint, FVector2D(4.0 * Grid, 4.0 * Grid));
 	}
 
 	struct FExpected
@@ -280,7 +280,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		{
 			continue;
 		}
-		TestEqual(Name + TEXT(": slot in the Peasant's grid (D313: A, Z, E)"), Row->BuildGridSlot, Type.Slot);
+		TestEqual(Name + TEXT(": slot in the Peasant's grid (D313, age I, economic row: A, Z, E)"), Row->BuildGridSlot, Type.Slot);
 		TestEqual(Name + TEXT(": population given"), Row->PopulationProvided, Type.Population);
 		TestTrue(Name + TEXT(": resources accepted"), Row->Accepts == Type.Accepts);
 		TestTrue(Name + TEXT(": its cost, in wood only"), Row->Cost == FHOLResources(0, Type.Wood, 0, 0));
@@ -295,8 +295,8 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
 	{
 		TestTrue(TEXT("Barracks: built by Peasants"), Barracks->IsBuildable());
-		TestEqual(TEXT("Barracks: R of the Peasant's grid (slot 3, D313)"), Barracks->BuildGridSlot, 3);
-		TestEqual(TEXT("Barracks: 3 x 3 tiles (9 m)"), Barracks->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestEqual(TEXT("Barracks: Q of the Peasant's grid (slot 4, military row, D313)"), Barracks->BuildGridSlot, 4);
+		TestEqual(TEXT("Barracks: 3 x 3 tiles (12 m)"), Barracks->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
 		TestTrue(TEXT("Barracks: 150 wood"), Barracks->Cost == FHOLResources(0, 150, 0, 0));
 		TestEqual(TEXT("Barracks: 40 s for one builder"), Barracks->BuildTime, 40.f);
 		TestEqual(TEXT("Barracks: 1 500 health"), Barracks->MaxHealth, 1500);

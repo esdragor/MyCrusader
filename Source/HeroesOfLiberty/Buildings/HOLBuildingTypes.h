@@ -97,18 +97,30 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	float BuildTime = 0.f;
 
 	/**
-	 * Its slot in the construction grid of the builders (D313), the grid of D30 read row by row: 0 = A, 1 = Z,
-	 * 2 = E, 3 = R (the Barracks, J7a.2), 4 = Q... -1: nobody builds it (the main centre comes with the map). One page
-	 * for now: the pages come later, by age (AoE4).
+	 * Its cell in the construction grid of the builders (D313), in the page of its age tab: the grid of D30 read row by
+	 * row, the page under the tabs (A Z E R) from 4 = Q (the House), 5 = S, 6 = D, 7 = F (the Barracks), 8 = W ... 11 = V.
+	 * -1: nobody builds it (the main centre comes with the map).
 	 */
 	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
 	int32 BuildGridSlot = INDEX_NONE;
+
+	/** Its age (0 to 3: Fondation, Essor, Puissance, Légende, GDD § 11.1): the tab of the builders' grid it is in (I to IV). */
+	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "0", ClampMax = "3"))
+	int32 Age = 0;
 
 	bool IsBuildable() const { return BuildGridSlot != INDEX_NONE; }
 
 	/** Its category (D30): the F key that selects it with the others of its kind (F1 military, F2 economic, F3 technological). */
 	UPROPERTY(EditAnywhere, Category = "Display")
 	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
+};
+
+/** A type builders build: its cell in the builders' grid (4 to 11, the page under the tabs) and its age tab (0 to 3). */
+struct FHOLBuildable
+{
+	FName TypeName;
+	int32 Cell = INDEX_NONE;
+	int32 Age = 0;
 };
 
 /** Where the building type table lives (DefaultGame.ini). */
@@ -164,12 +176,12 @@ public:
 	static FVector2D GetVisualSize(const FVector2D& Footprint);
 
 	/**
-	 * Side of a tile (cm, D311, user's choice of 2026-10-16): the placement grid. Footprints are whole tiles (main
-	 * centre 4 x 4, houses and camps 2 x 2), their corners on the grid lines, the main centres included (placed on it
+	 * Side of a tile (cm, D311, user's choice of 2026-10-16; 4 m since D344, 3 m before): the placement grid. Footprints
+	 * are whole tiles (main centre 4 x 4, houses and camps 2 x 2), their corners on the grid lines, the main centres included (placed on it
 	 * at their start, AHOLStartSlot::GetMainCentreLocation): every building lines up and touches its neighbours.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Construction", meta = (ClampMin = "1", ForceUnits = "cm"))
-	float TileSize = 300.f;
+	float TileSize = 400.f;
 
 	static double GetTileSize() { return FMath::Max(1.0, static_cast<double>(GetDefault<UHOLBuildingSettings>()->TileSize)); }
 
@@ -190,8 +202,8 @@ public:
 	/** The row of a type, or null (logged) if the table or the row is missing. */
 	static const FHOLBuildingTypeRow* FindType(FName TypeName);
 
-	/** The types builders build, each with its cell in their grid (BuildGridSlot, D313), in the table's order. */
-	static void GetBuildableTypes(TArray<TPair<FName, int32>>& OutTypes);
+	/** The types builders build, each with its cell in their grid and its age tab (BuildGridSlot, Age, D313), in the table's order. */
+	static void GetBuildableTypes(TArray<FHOLBuildable>& OutTypes);
 };
 
 /** Row names of the building type table used by the code. */

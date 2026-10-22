@@ -13,11 +13,14 @@
  *   the grid shown, "HUD cells: A: Maison; ..." (what the cells write) and "HUD tooltips: A: Maison | W 50 | +10
  *   population; ..." (J6a.5); a group of buildings' selection ends with its active subgroup (Tab): "7 buildings (own):
  *   MainCentre x1 House x6, subgroup All (7)", the cells being that subgroup's
- *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the grid (GridCell00 to GridCell11, A to V: with
- *   Peasants selected GridCell00 house, GridCell01 lumber camp, GridCell02 mining camp; a site's « Annuler » GridCell11) or an
- *   item of the queue (QueueItem0 to QueueItem4), the idle workers' counter (IdleWorkers), or a button of the cheats'
- *   panel (CheatToggle, CheatFood, CheatWood, CheatStone, CheatGold, CheatAll, CheatPopulation, CheatFastBuild); a
- *   hidden or greyed one is not clicked
+ *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the command panel (GridCell00 to GridCell11, A to
+ *   V: a building's production, a site's « Annuler » GridCell11; with the player's units their orders, GridCell04
+ *   attack-move, GridCell05 stop, GridCell11 hold), with Peasants selected the buildings of the age panels
+ *   AgeCell<age><cell> (AgeCell000 house, AgeCell001 lumber camp, AgeCell002 mining camp, AgeCell004 barracks; an age not
+ *   reached takes the click and does nothing; the medallions take none), an item of the queue (QueueItem0 to
+ *   QueueItem4), the idle workers' counter (IdleWorkers),
+ *   or a button of the cheats' panel (CheatToggle, CheatFood, CheatWood, CheatStone, CheatGold, CheatAll,
+ *   CheatPopulation, CheatFastBuild); a hidden or greyed one is not clicked
  */
 namespace UE::HeroesOfLiberty::UI::HUD
 {
@@ -83,6 +86,6 @@ namespace UE::HeroesOfLiberty::UI::HUD
 
 	FAutoConsoleCommandWithWorldAndArgs ClickCommand(
 		TEXT("hol.HUD.Click"),
-		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command grid (GridCell00-11), an item of the production queue (QueueItem0-4) the idle workers' counter (IdleWorkers), a button of the cheats' panel (CheatToggle, CheatFood, ...) or of the scenario's panel (ScenarioRestart, ScenarioClose), as the mouse would"),
+		TEXT("hol.HUD.Click <WidgetName> [DelaySeconds=0]: clicks a cell of the command panel (GridCell00-11: production, or the units' orders GridCell04 attack-move, GridCell05 stop, GridCell11 hold), a building of the builders' age panels (AgeCell<age><cell>, one row per category: AgeCell000 the house, AgeCell004 the barracks), an item of the production queue (QueueItem0-4), the idle workers' counter (IdleWorkers) a button of the cheats' panel (CheatToggle, CheatFood, ...) or of the scenario's panel (ScenarioRestart, ScenarioClose), as the mouse would"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Click));
 }

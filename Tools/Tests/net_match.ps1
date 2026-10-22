@@ -29,6 +29,8 @@ param(
     [int] $Lag = 0,
     [int] $Loss = 0,
     [string[]] $ServerSettings = @(),
+    # Extra command-line arguments of the server (e.g. a network trace: -ServerArgs "-trace=net -NetTrace=3 -tracefile=...").
+    [string] $ServerArgs = "",
     [switch] $Keep,
     [string] $EngineDir = ""
 )
@@ -74,6 +76,7 @@ Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_clie
 # (FApp::ShouldUseThreadingForPerformance is false there), so the parallel processors of D302 did not run in parallel
 # (server step 14 ms in combat against ~6 ms in the game).
 $ServerArguments = "$Map -log -unattended -useperfthreads -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
+if ($ServerArgs) { $ServerArguments += " $ServerArgs" }
 # Commands both sides run at start: reports and samples of S5, network emulation.
 $NetCommands = @()
 if ($Units -gt 0) { $NetCommands += "hol.Net.ReportInterval 5", "hol.Net.Sample 100" }

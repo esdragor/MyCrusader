@@ -1,0 +1,105 @@
+# Formation gênée : 6 Paysans entre deux maisons qui se touchent, 6 Hommes d'armes entre deux maisons à une case d'écart, 9 soldats mêlés contre une veine de pierre, 9 Hommes d'armes au bord des arbres
+# Chantier déplacement (MovementInProgress.md), cas 4 (retour d'essai 6 de J7b : « entre deux maisons, au mieux 4 sur 6
+# passent »). Plain, un joueur. Positions dans le repère du centre du joueur (X vers le milieu de la carte). Les ordres
+# sont donnés par le scénario, un cas après l'autre, la caméra suit ; « Relancer » rejoue tout.
+# Sélections par hol.Select.BoxGround en coordonnées du monde (centre du slot 0 à -15000, 0 sur Plain : X du monde = X du
+# repère - 15000), qui ne dépendent ni de la taille de l'écran ni de la souris.
+hol.Units.SpawnSeed 204
+hol.Cheat.Resources 5000
+# Quatre maisons : P et Q se touchent (centres à 8 m : la place d'un Paysan entre elles, D324), R et S à une case d'écart.
+hol.Build.PlaceNear House 6000 -3400
+waitlog Construction: slot 0 placed House
+hol.Build.PlaceNear House 6000 -2600
+waitlog Construction: slot 0 placed House
+hol.Build.PlaceNear House 6000 -600
+waitlog Construction: slot 0 placed House
+hol.Build.PlaceNear House 6000 600
+waitlog Construction: slot 0 placed House
+# Bâties d'un coup par 6 Paysans, qui se rangent ensuite devant le passage étroit.
+hol.Camera.FocusNear 4300 -1700
+frames 2
+hol.Units.SpawnHere 6 Peasant 0 200
+waitunits 6
+hol.Build.Instant 1
+hol.Camera.FocusNear 5200 -1700
+frames 3
+hol.Select.Own
+waitlog Selection: 6 units (own): Peasant x6
+hol.Select.OrderNear 6000 -3200
+waitlog Construction: slot 0 finished House
+hol.Select.OrderNear 6000 -2400
+waitlog Construction: slot 0 finished House
+hol.Select.OrderNear 6000 -600
+waitlog Construction: slot 0 finished House
+hol.Select.OrderNear 6000 600
+waitlog Construction: slot 0 finished House
+hol.Build.Instant 0
+hol.Camera.FocusNear 5000 -2800
+frames 3
+hol.Select.OrderNear 4200 -2800
+# 6 Hommes d'armes devant le passage large.
+hol.Camera.FocusNear 4200 0
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 200
+waitunits 12
+# 9 soldats mêlés (3 Lanciers, 3 Hommes d'armes, 3 Archers) à 15 m de la veine de pierre (3913, -4592 du centre).
+hol.Camera.FocusNear 5600 -6200
+frames 2
+hol.Units.SpawnHere 3 Spearman 0 150
+hol.Units.SpawnHere 3 ManAtArms 0 150
+hol.Units.SpawnHere 3 Archer 0 150
+waitunits 21
+# 9 Hommes d'armes derrière le centre, à gauche, pour la lisière des arbres (l'arbre le plus proche : 115, -1781).
+hol.Camera.FocusNear -2500 -900
+frames 2
+hol.Units.SpawnHere 9 ManAtArms 0 250
+waitunits 30
+# Le temps que les 6 Paysans arrivent devant le passage étroit (jusqu'à 40 m depuis la maison la plus loin).
+wait 8
+# Cas 1 : les 6 Paysans à travers le passage étroit.
+hol.Camera.FocusNear 4200 -2800
+frames 3
+hol.Select.BoxGround -11600 -3800 -10000 -2200
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 6 units (own): Peasant x6
+hol.Camera.FocusNear 6000 -2800
+frames 3
+hol.Select.OrderNear 7800 -2800
+wait 10
+# Cas 2 : les 6 Hommes d'armes à travers le passage large.
+hol.Camera.FocusNear 4200 0
+frames 3
+hol.Select.BoxGround -11600 -800 -10000 800
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 6 units (own): ManAtArms x6
+hol.Camera.FocusNear 6000 0
+frames 3
+hol.Select.OrderNear 7800 0
+wait 10
+# Cas 3 : les 9 soldats mêlés envoyés à ~4 m de la veine de pierre (3913, -4592) : leur formation tombe en partie dessus.
+hol.Camera.FocusNear 5600 -6200
+frames 3
+hol.Select.BoxGround -10200 -7000 -8600 -5400
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 9 units (own)
+hol.Camera.FocusNear 4400 -4600
+frames 3
+hol.Select.OrderNear 4150 -4250
+wait 10
+# Cas 4 : les 9 Hommes d'armes envoyés entre le centre et la lisière des arbres.
+hol.Camera.FocusNear -2500 -900
+frames 3
+hol.Select.BoxGround -18300 -1700 -16700 -100
+frames 2
+hol.Select.Report
+waitlog Selection report: selected 9 units (own): ManAtArms x9
+hol.Camera.FocusNear -500 -1300
+frames 3
+hol.Select.OrderNear 115 -1400
+note Quatre cas joués l'un après l'autre (la caméra suit), « Relancer » rejoue tout.
+note Passage étroit (à gauche) : attendu : les 6 Paysans passent l'un après l'autre et se remettent en rangs de l'autre côté.
+note Passage large (au centre, une case) : attendu : les 6 Hommes d'armes passent sans se gêner, en se resserrant si besoin.
+note Veine de pierre (en haut à gauche) et lisière des arbres (à gauche du centre) : attendu : chacun trouve une place libre près du point, personne ne reste à pousser contre la ressource.

@@ -3,8 +3,8 @@
 # (Simulation, Rendering, Frame, Draw, gather rate, S3 and S4 survivors and arrows).
 # Refuses to start while another HeroesOfLiberty Unreal / UBT runs.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths); announce timed runs to the other sessions:
-#   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-Elrond -Test S7 -Seconds 20 -LogName a1
-#   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\MyCrusader-J5c -Test S7 -Seconds 20 -LogName b1
+#   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\HeroesOfLiberty-Elrond -Test S7 -Seconds 20 -LogName a1
+#   & .\Tools\Tests\stress_ab.ps1 -Project C:\Users\baudo\Documents\HeroesOfLiberty-J5c -Test S7 -Seconds 20 -LogName b1
 # A clean side A: a detached worktree at the base commit, built (git worktree add --detach <dir> <commit>; Build.bat).
 # -Trace also records an Insights trace (<LogName>.utrace; the trace costs time: compare traced runs only with traced
 # runs), to read with: python Tools\Tests\trace_report.py Saved_Tests\Logs\<LogName>.utrace

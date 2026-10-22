@@ -23,9 +23,10 @@ import sys
 from datetime import datetime
 
 STEP_SECONDS = 0.05
-# Bits of one unit state on the wire (FHOLNetUnitState::TotalBits: 61 since J7b.4, the full-health bit), the least:
-# a wounded unit writes HEALTH_BITS more, an attacker its target's slot (12), a unit facing its front the yaw (6).
-STATE_BITS = 61
+# Bits of one unit state on the wire (FHOLNetUnitState::TotalBits: 57 since D344 (59 from D343), an unhurt unit that
+# carries nothing and does not fight), the least: a wounded unit writes HEALTH_BITS more, an attacker its target's slot
+# (12), a unit facing its front the yaw (6).
+STATE_BITS = 57
 HEALTH_BITS = 8
 
 

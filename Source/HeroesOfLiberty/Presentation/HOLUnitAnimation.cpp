@@ -14,13 +14,18 @@ float HOLUnitAnimation::GetWalkRateShare(const float Speed, const float WalkSpee
 	return WalkSpeed > UE_KINDA_SMALL_NUMBER ? FMath::Clamp(Speed / WalkSpeed, MinWalkRateShare, MaxWalkRateShare) : 1.f;
 }
 
-float HOLUnitAnimation::GetStrikeStartPosition(const float Length, const float PlayRate, const float SecondsToHit)
+float HOLUnitAnimation::GetStrikeHitShare(const FHOLUnitTypeConstants& Type)
+{
+	return static_cast<float>(FMath::Clamp(Type.AttackWindUpPercent, 1, 100)) / 100.f;
+}
+
+float HOLUnitAnimation::GetStrikeStartPosition(const float Length, const float PlayRate, const float SecondsToHit, const float HitShare)
 {
 	if (Length <= UE_KINDA_SMALL_NUMBER)
 	{
 		return 0.f;
 	}
-	const float Position = FMath::Fmod(StrikeHitShare * Length - FMath::Max(SecondsToHit, 0.f) * PlayRate, Length);
+	const float Position = FMath::Fmod(HitShare * Length -FMath::Max(SecondsToHit, 0.f) * PlayRate, Length);
 	return Position < 0.f ? Position + Length : Position;
 }
 

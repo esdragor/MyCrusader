@@ -45,11 +45,11 @@
 # on D (a right click on the site), D cancelled after its first work (half refunded), its builders idle. With "net": each
 # client's Peasant builds its house; the other's foundation never reaches a client before its first work, then it does.
 # The user's trial of J6a.4, solo: the centre's rally point on a ghost house E (the flag on it), every site finished at
-# its first blow (hol.Cheat.FastBuild 1): the Peasant produced builds E, goes on to F 9 m away (hol.Build.NextSiteRange,
-# 20 m), not to G 39 m away, then stands idle; Shift + place H, Shift + place I, Shift + right click on a tree: H built,
+# its first blow (hol.Cheat.FastBuild 1): the Peasant produced builds E, goes on to F 8 m away (hol.Build.NextSiteRange,
+# 20 m), not to G 40 m away, then stands idle; Shift + place H, Shift + place I, Shift + right click on a tree: H built,
 # then I, then it gathers wood.
-# J6a.5 (D313), solo: every Peasant selected without wood, the grid shows house, lumber camp and mining camp on A, Z, E,
-# greyed, their tooltips; a click on the lumber camp: no ghost, the message "Pas assez de bois" (captured in French,
+# J6a.5 (D313), solo: every Peasant selected without wood, the age panels I to IV (II to IV locked), panel I's house, lumber camp, mining camp and
+# barracks on Q, S, D, F greyed, their tooltips; a click on the lumber camp: no ghost, the message "Pas assez de bois" (captured in French,
 # English and Japanese); with wood, the key Z starts the lumber camp's ghost; two Peasants place house J by the key A,
 # the site selected shows its progress, its builders and "Annuler" (V), clicked: refunded; the population full, the key
 # A at the centre: the message "Population maximale". The user's trial of J6a.5: the cells write the name alone (the cost
@@ -66,12 +66,12 @@
 # J6b.1 (D312), solo: a lumber camp placed by the wood and built by two Peasants: once finished, they gather the nearest
 # wood and unload at the camp (a gatherer nearby unloads at the centre until then); the centre's rally point on the camp:
 # the Peasant born once it is finished gathers there too; a mining camp by the stone vein: its builders gather the stone;
-# a camp 34 m from any wood: its builders stand idle.
+# a camp 30 m from any wood: its builders stand idle.
 # J6b.2 (D314), solo: six Peasants on round trips between the vein north-east of slot 0 and its centre, 50 m (their kept
 # paths, D305); house K placed across their way and started: the kept paths across it dropped, those walking across it
 # given a new path once its tiles are rebuilt (one log line), no body in a footprint after; six Peasants sent 90 m
 # across open ground, house N started across their way: they go round it and arrive.
-# J6b.2b (D324), solo: houses P and Q whose tiles touch, their bodies inset 105 cm in them (2.1 m apart): the navmesh's
+# J6b.2b (D324), solo: houses P and Q whose tiles touch, their bodies inset 115 cm in them (2.3 m apart): the navmesh's
 # paths go through the way between them; one Peasant sent across passes through it, on its middle line; two sent together
 # pass one after the other; none put back by a wall, none given a new path, all arrive.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
@@ -213,14 +213,33 @@ if ($Parts -contains "menu") {
 }
 
 # Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles; each main
-# centre (4 x 4 tiles) stands on the 3 m tile grid (D311), its middle on the grid point nearest its slot (diagonal slots:
-# 1.07 m off on each axis), where the camera starts and the scripted checks aim.
+# centre (4 x 4 tiles, 16 m) stands on the 4 m tile grid (D311, D344), its middle on the grid point nearest its slot,
+# halves rounded up as FMath::RoundToDouble does (slot 0: (-14800, 0), slot 1: (15200, 0); diagonal slots: 1.93 m off on
+# each axis), where the camera starts and the scripted checks aim.
 $SlotAngles = @(180, 0, 270, 90, 225, 45, 315, 135)
-$Tile = 300
+$Tile = 400
 function Get-SlotStart([int] $Slot) {
     $Radians = $SlotAngles[$Slot] * [Math]::PI / 180
-    return @(([Math]::Round(15000 * [Math]::Cos($Radians) / $Tile) * $Tile), ([Math]::Round(15000 * [Math]::Sin($Radians) / $Tile) * $Tile))
+    return @(([Math]::Floor(15000 * [Math]::Cos($Radians) / $Tile + 0.5) * $Tile), ([Math]::Floor(15000 * [Math]::Sin($Radians) / $Tile + 0.5) * $Tile))
 }
+# Where hol.Build.PlaceNear <Type> <Dx> <Dy> puts a building of Tiles x Tiles tiles: slot's main centre plus (Dx, Dy) in
+# its frame (X toward the map's middle), the footprint's corner then snapped to the nearest grid point
+# (HOLConstruction::SnapToGrid). The two centres of the 2-player map are not mirrors of each other on the 4 m grid
+# ((-14800, 0) and (15200, 0)): the same offset gives spots that are not mirrors either.
+function Get-NearSpot([int] $Slot, [double] $Dx, [double] $Dy, [int] $Tiles) {
+    $At = Get-SlotStart $Slot
+    $Yaw = ($SlotAngles[$Slot] + 180) * [Math]::PI / 180
+    $Half = $Tiles * $Tile / 2
+    $Point = @(($At[0] + $Dx * [Math]::Cos($Yaw) - $Dy * [Math]::Sin($Yaw)), ($At[1] + $Dx * [Math]::Sin($Yaw) + $Dy * [Math]::Cos($Yaw)))
+    return @($Point | ForEach-Object { [Math]::Floor(($_ - $Half) / $Tile + 0.5) * $Tile + $Half })
+}
+# The "net" part's buildings, in each client's centre's frame: its house 24 m behind (12 m behind its back side), the
+# house asked near the enemy centre 32 m behind it (touching that centre's house, 28 m from its middle: within the
+# anti-rush 40 m), its lumber camp by its wood, its barracks (slot 0's: the solo part's).
+$NetHouseNear = @(-2400, 0)
+$NetEnemyNear = @(-3200, 0)
+$NetCampNear = @(1500, -2100)
+$NetBarracksNear = @(-3800, 4600)
 # The local player takes the first human slot (D243): 2 players -> slot 0; 8 players, seven AI first -> slot 7.
 $Cases = @(
     @{ Name = "2p"; Slot = 0; Other = 1; States = @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") },
@@ -236,37 +255,38 @@ $GatherTree = @(-14885, -1781)
 $GatherTreeSpawn = @(-14885, -1250)
 $GatherBerry = @(-15000, 2000)
 $GatherBerrySpawn = @(-15000, 1350)
-# Placement in solo (J6a.3): house A 12 m behind slot 0's centre (its middle on a grid point, 2 x 2 tiles), house B
-# touching it, a spot across both.
-$BuildA = @(-16200, 0)
-$BuildB = @(-16200, 600)
-$BuildOver = @(-16200, 300)
+# Placement in solo (J6a.3): house A 16 m behind slot 0's centre's middle, a tile (4 m) behind its back side (its middle
+# on a grid point, 2 x 2 tiles of 4 m: 8 m), house B touching it, a spot across both. Behind slot 0's centre, the map
+# ends 44 m from its back side (x -20000): the buildings behind it stand within 11 tiles.
+$BuildA = @(-16400, 0)
+$BuildB = @(-16400, 800)
+$BuildOver = @(-16400, 400)
 # Building in solo (J6a.4): the Peasant sent to A, then three Peasants for house C and house D touching it (Shift), all
-# behind slot 0's centre; the navmesh probed across A (14 m, through its middle).
-$BuildPeasant = @(-18000, -300)
-$BuildThree = @(-19000, 600)
-$BuildC = @(-17400, 600)
-$BuildD = @(-17400, 1200)
-$BuildAcross = @(-16200, -700, -16200, 700)
-# The user's trial of J6a.4 (solo): house E behind slot 0's centre, on the wood's side, its rally point on it; F 9 m from
-# E, G 39 m from it on the other side; H and I behind F; a tree of the wood's back rows.
-$BuildE = @(-16800, -1500)
-$BuildF = @(-16800, -3000)
-$BuildG = @(-16800, 3000)
-$BuildH = @(-17700, -3000)
-$BuildI = @(-18300, -3000)
+# behind slot 0's centre; the navmesh probed across A (16 m, through its middle).
+$BuildPeasant = @(-18400, -400)
+$BuildThree = @(-19400, 800)
+$BuildC = @(-17600, 800)
+$BuildD = @(-17600, 1600)
+$BuildAcross = @(-16400, -800, -16400, 800)
+# The user's trial of J6a.4 (solo): house E behind slot 0's centre, on the wood's side, its rally point on it; F 8 m from
+# E (between their tiles), G 40 m from it on the other side; H and I behind F; a tree of the wood's back rows.
+$BuildE = @(-17200, -1600)
+$BuildF = @(-17200, -3200)
+$BuildG = @(-17200, 3200)
+$BuildH = @(-18400, -3200)
+$BuildI = @(-19200, -3200)
 $BuildTree = @(-15770, -2400)
-# The construction HUD (J6a.5): house J behind slot 0's centre, away from the others, two Peasants made beside it.
-$BuildJ = @(-18600, 1800)
-$BuildJSpawn = @(-19500, 1800)
+# The construction HUD (J6a.5): house J behind slot 0's centre, away from the others, two Peasants made beside it (south).
+$BuildJ = @(-19200, 2400)
+$BuildJSpawn = @(-19200, 1400)
 # The rally flags of a group (the user's 3rd trial of J6a.5): a right click on the ground behind slot 0's centre.
-$BuildRally = @(-18000, -1500)
+$BuildRally = @(-18400, -1600)
 # The animations (J5c.4), solo: house K behind slot 0's centre and its wood, its builders made beside it; each group of
 # gatherers made a few metres from its source (the wood's edge, the stone and gold veins on either side of slot 0, slot 4's
 # berries: slot 0's are used up by the gather part), then sent ~20 m away with its load; three idle Peasants on their own.
 # Look: where its close-up at work is taken from (the wood's edge, not under the crowns).
-$AnimHouse = @(-18600, -5100)
-$AnimBuilders = @(-19400, -5100)
+$AnimHouse = @(-19200, -5200)
+$AnimBuilders = @(-18000, -5200)
 $AnimIdle = @(-9000, 2000)
 # The soldiers (J7a.3): 3 Spearmen and 3 Men-at-arms made apart (east of the idle Peasants, north of the gap's walls),
 # shown at rest, then sent 12 m east together: their armed idle and walk.
@@ -282,34 +302,35 @@ $AnimGroups = @(
     @{ Name = "gold"; Spawn = @(-11087, 5400); Source = @(-11087, 4592); Target = @(-11087, 6600); Look = @(-11087, 4592) },
     @{ Name = "berries"; Spawn = @(-11668, -9546); Source = @(-12021, -9193); Target = @(-10200, -8000); Look = @(-12021, -9193) }
 )
-# The camps (J6b.1): every Peasant of slot 0 sent behind its centre; lumber camp L 4 m off the edge of slot 0's wood (on
-# the map's side), a Peasant made beside the wood sent to its tree nearest L, two builders made beyond L; mining camp M
-# 4 m off the stone vein between slots 0 and 4 (at (-11087, -4592)), its two builders made beside it; a lumber camp 34 m
-# from every wood, behind the centre.
-$CampCrowd = @(-18600, 1500)
-$CampL = @(-13500, -2100)
-$CampLSpawn = @(-12600, -2100)
-$CampEarly = @(-13700, -1300)
+# The camps (J6b.1): every Peasant of slot 0 sent behind its centre; lumber camp L (2 x 2 tiles, 8 m) 2 m off the edge
+# of slot 0's wood (on the map's side: nearer than the centre to the first trees of its front rows, so that the Peasant
+# gathering there unloads at L once it is finished), a Peasant made beside the wood sent to its tree nearest L, two
+# builders made beyond L; mining camp M 5 m off the stone vein between slots 0 and 4 (at (-11087, -4592)), its two
+# builders made beside it; a lumber camp 30 m from every wood, behind the centre.
+$CampCrowd = @(-19200, 1400)
+$CampL = @(-13600, -2000)
+$CampLSpawn = @(-12000, -2000)
+$CampEarly = @(-13800, -1100)
 $CampTree = @(-14230, -1800)
-$CampM = @(-12000, -3900)
-$CampMSpawn = @(-12000, -3000)
-$CampFar = @(-19500, -900)
-$CampFarSpawn = @(-19500, -1800)
+$CampM = @(-12000, -3600)
+$CampMSpawn = @(-12000, -2600)
+$CampFar = @(-19200, -800)
+$CampFarSpawn = @(-19200, -2000)
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
 # sent from 50 m north of house N to 40 m south of it, its builder made east of it.
 $CutSpawn = @(-11800, 3900)
 $CutVein = @(-11087, 4592)
-$CutK = @(-12900, 2700)
-$CutKBuilder = @(-13700, 2700)
-$CutN = @(-9000, 0)
-$CutNBuilder = @(-8100, 0)
-$CutFrom = @(-9000, 5000)
-$CutTo = @(-9000, -4000)
+$CutK = @(-12800, 2400)
+$CutKBuilder = @(-13700, 2400)
+$CutN = @(-8800, 0)
+$CutNBuilder = @(-7800, 0)
+$CutFrom = @(-8800, 5000)
+$CutTo = @(-8800, -4000)
 # The way between two houses (J6b.2b, D324): houses P and Q whose tiles touch (Q north of P) on open ground east of house N,
 # their builders made south of them; walkers made 15 m west of the way, sent 15 m east of it (the way runs along X at
-# y = 300, between bodies 2.1 m apart, from x -6195 to -5805).
+# y = 400, between bodies 2.3 m apart (2 x BodyInset 115), from x -6285 to -5715: 8 m tiles less 1.15 m on each side).
 # The formation (J7a.4), solo: 3 Peasants and 3 Men-at-arms made side by side (the soldiers south of them) on open
 # ground between slot 0's ridge, slot 4's and the grove, sent 35 m east together: one pace (the slowest's), rows, the
 # soldiers in front. Then a Ctrl + right-button drag, an arrow of 3.6 m north-east of them (its front of 3 columns
@@ -391,21 +412,27 @@ $FleeArchers = @(-2000, -5000)
 $FleeSpearman = @(-2000, -3500)
 $FleeTo = @(-2000, 2000)
 $GapP = @(-6000, 0)
-$GapQ = @(-6000, 600)
+$GapQ = @(-6000, 800)
 $GapBuilders = @(-6000, -1500)
-$GapFrom = @(-7500, 300)
-# The barracks (J7a.2), solo: its middle on a tile's middle (3 x 3 tiles) behind slot 0's centre, north of house G; its
-# three builders made west of it; its rally point 18 m north-east; the soldiers then sent onto the vein of the cut part, then
-# back to the rally point (the anims part boxes Peasants beside that vein).
-$BarracksAt = @(-18150, 4050)
-$BarracksSpawn = @(-19500, 4050)
-$BarracksRally = @(-17000, 5400)
+$GapFrom = @(-7500, 400)
+# Half the width of a house's body (D324): 8 m tiles less BodyInset (115 cm) on each side; the way between P and Q spans
+# x GapP[0] -+ this.
+$GapHalfBody = 285
+# The wall walk (measure only): a line 50 cm inside P's tiles on its south side (65 cm off its body).
+$GapWallY = $GapP[1] - 350
+# The barracks (J7a.2), solo: its middle on a tile's middle (3 x 3 tiles, 12 m) behind slot 0's centre, north-west of
+# house G; its three builders made south of it; its rally point 17 m north-east; the soldiers then sent onto the vein of
+# the cut part, then back to the rally point (the anims part boxes Peasants beside that vein). The same spot, in each
+# centre's frame, for the "net" part's barracks ($NetBarracksNear).
+$BarracksAt = @(-18600, 4600)
+$BarracksSpawn = @(-18600, 3400)
+$BarracksRally = @(-17400, 5800)
 # The rally point of a barracks' ghost (the user's request of 2026-10-19), solo: a second barracks north of the first one,
-# placed with nothing selected (a ghost, no builder); its rally point 18 m north-east of it; its builder made west of it.
-$BarracksGhostAt = @(-18150, 6450)
-$BarracksGhostSpawn = @(-19500, 6450)
-$BarracksGhostRally = @(-16500, 7500)
-$GapTo = @(-4500, 300)
+# placed with nothing selected (a ghost, no builder); its rally point 18 m north-east of it; its builder made east of it.
+$BarracksGhostAt = @(-18600, 7400)
+$BarracksGhostSpawn = @(-17400, 7400)
+$BarracksGhostRally = @(-17000, 8600)
+$GapTo = @(-4500, 400)
 # The smoke part (D327), the default's single short game: the title screen and New game in French, a 2-player match
 # launched from it, the camera moved by the arrow, its own centre selected then nothing; 3 Men-at-arms of slot 0 made 18 m
 # from a Peasant of slot 1 (out of their 12 m aggression), boxed and sent 4 m short of it: once there they take it on and
@@ -654,7 +681,7 @@ if ($Parts -contains "camera") {
             # The user's trial of J6a.4. With the centre selected (no builder), houses E, F and G placed (Shift: still in the
             # mode), every site finished at its first blow (hol.Cheat.FastBuild 1, production in one step too); a right click
             # on the ghost E puts the centre's rally point on it (the flag on its middle, captured); a Peasant produced builds
-            # E, goes on to F (9 m), not to G (39 m), then stands idle.
+            # E, goes on to F (8 m), not to G (40 m), then stands idle.
             Step "mark build rally", "hol.Cheat.FastBuild 1", "hol.Cheat.Wood 300", "hol.Cheat.Food 100", "hol.Cheat.Population 20",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "hol.Select.Report", "waitlog Selection report: selected MainCentre of slot 0 (own)",
                 "hol.Camera.Focus $($BuildE -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($BuildE -join ', ')) valid",
@@ -686,23 +713,35 @@ if ($Parts -contains "camera") {
             # The construction HUD (J6a.5, D313). Every Peasant selected, no wood: the builders' grid greyed, its tooltips; a
             # click on Z (lumber camp): no ghost, "Pas assez de bois", captured in the three languages.
             Step "mark build hud", "hol.Cheat.Wood -100000", "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3", "hol.Select.Own", "waitlog Select own:", "frames 3",
-                "hol.HUD.Report", "capture build_hud_greyed", "hol.HUD.Click GridCell01", "waitlog HUD message: NotEnoughWood", "frames 3", "hol.HUD.Report",
+                "hol.HUD.Report", "capture build_hud_greyed", "hol.HUD.Click AgeCell001", "waitlog HUD message: NotEnoughWood", "frames 3", "hol.HUD.Report",
                 "capture build_hud_fr"
             foreach ($Culture in "en", "ja") {
-                Step "hol.UI.Language $Culture", "frames 5", "hol.HUD.Click GridCell01", "waitlog HUD message: NotEnoughWood", "frames 3", "capture build_hud_$Culture"
+                Step "hol.UI.Language $Culture", "frames 5", "hol.HUD.Click AgeCell001", "waitlog HUD message: NotEnoughWood", "frames 3", "capture build_hud_$Culture"
             }
             Step "hol.UI.Language fr", "frames 5"
             # With wood, the key Z: the lumber camp's ghost; Escape.
             Step "mark build hud ghost", "hol.Cheat.Wood 500", "wait 0.3", "hol.HUD.Report"
+            Key A
             Key Z
             Step "waitlog Placement: LumberCamp (cost", "frames 3", "hol.HUD.Report", "capture build_hud_ghost"
             Key Escape
             Step "waitlog Placement: ended"
+            # The age panels and the command panel (G.1c, G.1d, G.1f): the key Z (age II, not reached) does nothing; A then A
+            # by their keys (hol.Select.Grid 0, 0): the house's ghost, age I kept; then E: the mining camp's ghost instead;
+            # then Z, age I chosen: the lumber camp's (never age II); Escape: the placement ended and age I closed; a click
+            # on S of the command panel (the Peasants' orders): stop.
+            Step "mark build hud ages", "hol.Select.Grid 1", "waitlog Grid: age 1 not reached", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 0", "hol.Select.Grid 0", "waitlog Placement: House (cost", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 2", "waitlog Placement: MiningCamp (cost", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Placement: LumberCamp (cost", "frames 3", "hol.HUD.Report"
+            Key Escape
+            Step "waitlog Placement: ended", "frames 3", "hol.HUD.Report", "hol.HUD.Click GridCell05", "waitlog Order: ", "frames 3"
             # Two Peasants made behind, selected by a box; the key A, a click: house J placed, they build it; the site selected:
             # its block (progress, builders, "Annuler" on V), the click on it refunds half.
             Step "mark build hud site", "hol.Units.SpawnSeed 105", "hol.Units.Spawn 2 $($BuildJSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($BuildJSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($BuildJSpawn[0] - 400) $($BuildJSpawn[1] - 400) $($BuildJSpawn[0] + 400) $($BuildJSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
                 "hol.Camera.Focus $($BuildJ -join ' ')", "frames 3"
+            Key A
             Key A
             Step "waitlog Placement ghost: House at ($($BuildJ -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 2 units to House at ($($BuildJ -join ', '))",
                 "waitlog Construction: slot 0 first work on House at ($($BuildJ -join ', '))", "wait 2", "hol.Camera.Focus $($BuildJ[0]) $($BuildJ[1] - 300)", "frames 3",
@@ -780,7 +819,7 @@ if ($Parts -contains "camera") {
                 "hol.Build.Click", "waitlog Build order of slot 0: 2 units to MiningCamp at ($($CampM -join ', '))", "waitlog Construction: slot 0 finished MiningCamp at ($($CampM -join ', '))",
                 "waitlog Construction: slot 0 camp MiningCamp at ($($CampM -join ', ')) finished: ", "wait 9", "hol.Units.Where 0",
                 "hol.Camera.Focus $($CampM[0] + 400) $($CampM[1] - 300)", "frames 5", "capture build_camp_stone"
-            # A lumber camp far from every wood (34 m): no accepted source within 25 m, its two builders stand idle.
+            # A lumber camp far from every wood (30 m): no accepted source within 25 m, its two builders stand idle.
             Key Escape
             Step "mark build camp far", "waitlog Selection: none", "hol.Units.SpawnSeed 108", "hol.Units.Spawn 2 $($CampFarSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampFarSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($CampFarSpawn[0] - 400) $($CampFarSpawn[1] - 400) $($CampFarSpawn[0] + 400) $($CampFarSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
@@ -846,9 +885,9 @@ if ($Parts -contains "camera") {
             # Measure only (no check): one Peasant sent along P's south wall, 20 cm inside its tiles; the footprint watch logs how
             # close its body comes to P's body (the middle of a Peasant at the visible wall: 85 - 60 = 25 cm at BodyInset 115).
             Key Escape
-            Step "mark build wall", "waitlog Selection: none", "hol.Units.SpawnSeed 114", "hol.Units.Spawn 1 $($GapP[0] - 1000) $($GapP[1] - 250) 0 Peasant 10", "wait 0.5",
-                "hol.Camera.Focus $($GapP[0] - 1000) $($GapP[1] - 250)", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #",
-                "hol.Camera.Focus $($GapP[0]) $($GapP[1] - 250)", "frames 3", "hol.Nav.Footprints on", "hol.Select.OrderGround $($GapP[0] + 1000) $($GapP[1] - 250)"
+            Step "mark build wall", "waitlog Selection: none", "hol.Units.SpawnSeed 114", "hol.Units.Spawn 1 $($GapP[0] - 1000) $GapWallY 0 Peasant 10", "wait 0.5",
+                "hol.Camera.Focus $($GapP[0] - 1000) $GapWallY", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #",
+                "hol.Camera.Focus $($GapP[0]) $GapWallY", "frames 3", "hol.Nav.Footprints on", "hol.Select.OrderGround $($GapP[0] + 1000) $GapWallY"
             for ($i = 0; $i -lt 10; $i++) { Step "wait 0.25", "hol.Units.Where 0"; if ($i -eq 4) { Step "hol.Camera.Zoom 12", "frames 2", "capture build_wall_one", "hol.Camera.Zoom -12" } }
             Step "wait 3", "hol.Units.Where 0", "hol.Nav.Footprints off"
             # The walkers taken away (hol.Units.Remove): the wall's Peasant stood 8.5 m from the attack-move's Spearman (its
@@ -857,11 +896,11 @@ if ($Parts -contains "camera") {
             # Escape first, while the wall's Peasant is still selected (taken away selected, the selection's "none" may come
             # before the Escape that waits for it).
             Key Escape
-            Step "waitlog Selection: none", "hol.Units.Remove $($GapP[0] + 1000) $($GapP[1] - 250) 300 0", "waitlog units of slot 0 within 300 of ($($GapP[0] + 1000), $($GapP[1] - 250))",
+            Step "waitlog Selection: none", "hol.Units.Remove $($GapP[0] + 1000) $GapWallY 300 0", "waitlog units of slot 0 within 300 of ($($GapP[0] + 1000), $GapWallY)",
                 "hol.Units.Remove $($GapTo -join ' ') 400 0", "waitlog units of slot 0 within 400 of ($($GapTo -join ', '))", "frames 3"
             # Close up: the two houses in their tiles, and the ghost of a third one touching Q (its tiles, its body inside them).
-            Step "hol.Camera.Zoom 12", "hol.Build.Place House", "hol.Camera.Focus $($GapQ[0]) $($GapQ[1] + 600)",
-                "waitlog Placement ghost: House at ($($GapQ[0]), $($GapQ[1] + 600)) valid", "frames 3", "capture build_gap_houses"
+            Step "hol.Camera.Zoom 12", "hol.Build.Place House", "hol.Camera.Focus $($GapQ[0]) $($GapQ[1] + 800)",
+                "waitlog Placement ghost: House at ($($GapQ[0]), $($GapQ[1] + 800)) valid", "frames 3", "capture build_gap_houses"
             Key Escape
             Step "waitlog Placement: ended", "hol.Camera.Zoom -12"
             # The barracks (J7a.2). Three Peasants made beside its spot, selected by a box: R on their grid (captured); the key R,
@@ -872,7 +911,8 @@ if ($Parts -contains "camera") {
                 "hol.Units.Spawn 3 $($BarracksSpawn -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BarracksSpawn -join ' ')", "frames 3",
                 "hol.Select.BoxGround $($BarracksSpawn[0] - 400) $($BarracksSpawn[1] - 400) $($BarracksSpawn[0] + 400) $($BarracksSpawn[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3",
                 "hol.Camera.Focus $($BarracksAt -join ' ')", "frames 3", "hol.HUD.Report", "capture build_barracks_peasants"
-            Key R
+            Key A
+            Key Q
             Step "waitlog Placement ghost: Barracks at ($($BarracksAt -join ', ')) valid", "frames 3", "capture build_barracks_ghost", "hol.Build.Click",
                 "waitlog Build order of slot 0: 3 units to Barracks at ($($BarracksAt -join ', '))", "waitlog Construction: slot 0 finished Barracks at ($($BarracksAt -join ', '))",
                 "wait 1", "hol.Build.Speed 1", "hol.Build.Report", "hol.Camera.Focus $($BarracksAt[0]) $($BarracksAt[1] - 300)", "frames 3",
@@ -1258,24 +1298,25 @@ if ($NetListening) {
             }
             $NetSteps += "hol.Sources.Report", "hol.Prod.Report", "capture qcnet_${Client}_gather"
         }
-        # Placement (J6a.3, D311): its Peasant sent aside first (no unload meanwhile), then selected, a house 18 m behind its
+        # Placement (J6a.3, D311): its Peasant sent aside first, 15 m in front of its centre (no unload meanwhile; born on
+        # the -X side of every centre, behind slot 0's, it would else reach its house before the other client's report), then selected, a house 24 m behind its
         # centre, which its Peasant builds (J6a.4); once both placed (each waits for the other), its own foundation seen here
         # and not the other's (a ghost for its owner alone until its first work), its own wood 50 less, the other's stock
-        # never received; then the other's site arrives at its first work (captured); a house 24 m behind the enemy centre,
+        # never received; then the other's site arrives at its first work (captured); a house 32 m behind the enemy centre,
         # refused by the server (anti-rush radius, D22).
         $Other = 3 - $Client
         if ($Parts -contains "build") {
-            $NetSteps += "mark build", "hol.Units.OrderNear -1000 2500", "wait 1", "hol.Prod.Report", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear House -1800 0",
+            $NetSteps += "mark build", "hol.Units.OrderNear 1500 2500", "wait 3", "hol.Prod.Report", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear House $($NetHouseNear -join ' ')",
                 "signal $(Join-Path $TestSaved "quick_net_placed$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_placed$Other.flag")", "wait 2",
                 "hol.Build.Report", "hol.Prod.Report", "hol.Camera.FocusSlot 0", "frames 5", "capture qcnet_${Client}_build0", "hol.Camera.FocusSlot 1", "frames 5",
                 "capture qcnet_${Client}_build1", "waitlog Building arrived: House of slot", "wait 1", "hol.Build.Report", "hol.Camera.FocusSlot 0", "frames 5",
-                "capture qcnet_${Client}_site0", "hol.Camera.FocusSlot 1", "frames 5", "capture qcnet_${Client}_site1", "hol.Build.PlaceNear House -2400 0 enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
-            # The camps (J6b.3, D312): once both houses are seen, its Peasant places a lumber camp 4 m off the wood beside its
-            # centre (slot 0's L of the solo part, mirrored for slot 1) and builds it (hol.Build.Speed 4 on the server); once
+                "capture qcnet_${Client}_site0", "hol.Camera.FocusSlot 1", "frames 5", "capture qcnet_${Client}_site1", "hol.Build.PlaceNear House $($NetEnemyNear -join ' ') enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
+            # The camps (J6b.3, D312): once both houses are seen, its Peasant places a lumber camp 2 to 6 m off the wood beside its
+            # centre ($NetCampNear: slot 0's 6 m off, 4 m farther out than the solo part's L; slot 1's, the same offset in its frame, 2 m off: the centres are not mirrors on the 4 m grid) and builds it (hol.Build.Speed 4 on the server); once
             # its first unload at the camp shows (the +10), each waits for the other's, then sees both camps finished; then,
             # its selection emptied, a camp asked on the tree nearest slot 0's L (a cheating client): refused by the server.
             $NetSteps += "signal $(Join-Path $TestSaved "quick_net_built$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_built$Other.flag")",
-                "mark camp", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear LumberCamp 1500 -2100", "wait 2", "hol.Prod.Report",
+                "mark camp", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear LumberCamp $($NetCampNear -join ' ')", "wait 2", "hol.Prod.Report",
                 "waitlog Deposit popup: +", "signal $(Join-Path $TestSaved "quick_net_camp$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_camp$Other.flag")",
                 "wait 1", "hol.Build.Report", "hol.Prod.Report", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
                 "hol.Build.PlaceAtSource LumberCamp $($CampTree -join ' ')", "wait 2", "hol.Build.Report", "hol.Prod.Report"
@@ -1287,11 +1328,11 @@ if ($NetListening) {
         # Then its 5 units (Peasant included) in control group 1 (Shift + &), the selection emptied, & selects them again,
         # a right click 30 m beside its centre: the group arrives in rows; each waits for the other's, then reports where.
         $NetSteps += "mark army", "hol.Cheat.Resources 2000", "hol.Cheat.Population 20", "hol.Cheat.FastBuild 1", "wait 1",
-            "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear Barracks -3150 4050", "waitlog Building arrived: Barracks of slot", "waitlog , finished",
+            "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear Barracks $($NetBarracksNear -join ' ')", "waitlog Building arrived: Barracks of slot", "waitlog , finished",
             "signal $(Join-Path $TestSaved "quick_net_barracks$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_barracks$Other.flag")", "wait 3",
             "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue ManAtArms Barracks", "hol.Prod.Queue ManAtArms Barracks",
             "waitunits 10", "wait 8", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
-            "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear -3150 4050 enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
+            "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear $($NetBarracksNear -join ' ') enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
             "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
             "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
             "hol.UI.Key Ampersand 0 0.05", "wait 0.4", "hol.Select.Report"
@@ -1490,7 +1531,7 @@ if ($Parts -contains "camera") {
         $OffGrid = @($Centres | Where-Object { $G = $_.Groups; $At = Get-SlotStart ([int]$G[1].Value)
             ([int]$G[2].Value -ne $At[0]) -or ([int]$G[3].Value -ne $At[1]) -or ([int]$G[2].Value % $Tile -ne 0) -or ([int]$G[3].Value % $Tile -ne 0) -or ([int]$G[4].Value % 90 -ne 0) })
         $OpenSlots = @($Case.States | Where-Object { $_ -ne "Closed" }).Count
-        $Checks["main centres on the 3 m grid, along its lines ($($Centres.Count) of $OpenSlots; $(($Centres | ForEach-Object { "$($_.Groups[1].Value): ($($_.Groups[2].Value), $($_.Groups[3].Value)) yaw $($_.Groups[4].Value)" }) -join '; '))"] =
+        $Checks["main centres on the 4 m grid, along its lines ($($Centres.Count) of $OpenSlots; $(($Centres | ForEach-Object { "$($_.Groups[1].Value): ($($_.Groups[2].Value), $($_.Groups[3].Value)) yaw $($_.Groups[4].Value)" }) -join '; '))"] =
             ($Centres.Count -eq $OpenSlots) -and ($OffGrid.Count -eq 0)
 
         # Selection: four reports, in the order of the steps.
@@ -1902,11 +1943,11 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $FinishedE = & $Value $Rally "(Construction: slot 0 finished House at \($($BuildE -join ', ')\) .*)$"
     $Checks["E finished at its first blow, one step after contact ($FinishedE)"] = [bool]($FinishedE -match "after 1 steps of work \(by builders: 1 x1\), speed 1, instant$")
     $Nearby = @($Rally | Select-String -Pattern "Build: a builder of slot 0 goes on to the nearby site (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    # D324: measured between the bodies, 9 m between their tiles + 2 x 115 cm (BodyInset).
-    $Checks["E finished, its builder goes on to F 9 m away ($($Nearby -join '; '))"] = ($Nearby.Count -eq 1) -and
-        [bool]($Nearby[0] -match "^House at \($($BuildF -join ', ')\), 1130 cm from the one finished$")
+    # D324: measured between the bodies, 8 m between their tiles + 2 x 115 cm (BodyInset).
+    $Checks["E finished, its builder goes on to F 8 m away ($($Nearby -join '; '))"] = ($Nearby.Count -eq 1) -and
+        [bool]($Nearby[0] -match "^House at \($($BuildF -join ', ')\), 1030 cm from the one finished$")
     $Sites = @($Rally | Select-String -Pattern "Construction: slot 0 (finished|first work on) House at \((-?\d+), (-?\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" })
-    $Checks["E then F, each at its first blow, G (39 m) never started ($($Sites -join '; '))"] = ($Sites -join '|') -eq
+    $Checks["E then F, each at its first blow, G (40 m) never started ($($Sites -join '; '))"] = ($Sites -join '|') -eq
         "first work on ($($BuildE -join ', '))|finished ($($BuildE -join ', '))|first work on ($($BuildF -join ', '))|finished ($($BuildF -join ', '))"
     $FinishedF = & $Value $Rally "(Construction: slot 0 finished House at \($($BuildF -join ', ')\) .*)$"
     $Checks["F at its first blow too ($FinishedF)"] = [bool]($FinishedF -match "after 1 steps of work \(by builders: 1 x1\), speed 1, instant$")
@@ -1933,21 +1974,31 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudF1 = Get-Section "build hud f1"
     $HudF2 = Get-Section "build hud f2"
     $HudTab = Get-Section "build hud tab"
+    $HudAges = Get-Section "build hud ages"
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
-    $Checks["Peasants without wood: house, lumber camp, mining camp, barracks on A, Z, E, R, greyed ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Barracks greyed, queue ")
+    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp on A, Z, E, barracks on Q, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed Q=Barracks greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^A: Maison; Z: Camp de b.+cherons; E: Camp de mineurs; R: Caserne; S: Arr.+t; D: Tenir$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I Q: Caserne$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^A: Maison \| W 50 missing \| \+10 population; Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; R: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; S: Arr.+t \| Annule les ordres et le combat; D: Tenir la position \| N'attaque qu'.+ port.+e, ne poursuit pas$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
     $Checks["the message in the three languages (HUD message lines: $(@($Hud | Select-String -Pattern 'HUD message: NotEnoughWood').Count))"] = @($Hud | Select-String -Pattern "HUD message: NotEnoughWood").Count -eq 3
     $Checks["with wood, the key Z: the lumber camp's ghost, the cells ready"] = [bool]($HudGhost | Select-String -Pattern "Placement: LumberCamp \(cost F 0 W 100 S 0 G 0\)" -Quiet) -and
-        [bool]($HudGhost | Select-String -Pattern "grid A=House enabled Z=LumberCamp enabled E=MiningCamp enabled" -Quiet) -and [bool]($HudGhost | Select-String -Pattern "Placement: ended" -Quiet)
+        [bool]($HudGhost | Select-String -Pattern "A=House enabled Z=LumberCamp enabled E=MiningCamp enabled" -Quiet) -and [bool]($HudGhost | Select-String -Pattern "Placement: ended" -Quiet)
+    $AgesReports = @($HudAges | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $Checks["the key Z (II not reached): nothing; A then A: the house's ghost, I chosen; then E: the mining camp's instead; then Z: the lumber camp's, I kept; Escape: ended, I closed; S of the command panel: stop ($(& $Value $HudAges '(Order: .*)$'))"] =
+        [bool]($HudAges | Select-String -Pattern "Grid: age 1 not reached" -Quiet) -and -not ($HudAges | Select-String -Pattern "Grid: age -1" -Quiet) -and
+        -not ($HudAges | Select-String -Pattern "Grid: age 1 chosen" -Quiet) -and ($AgesReports.Count -ge 5) -and ($AgesReports[0] -match "\(chosen none\)") -and
+        [bool]($HudAges | Select-String -Pattern "Placement: House \(cost" -Quiet) -and ($AgesReports[1] -match "\(chosen I\)") -and
+        [bool]($HudAges | Select-String -Pattern "Placement: MiningCamp \(cost" -Quiet) -and ($AgesReports[2] -match "\(chosen I\)") -and
+        [bool]($HudAges | Select-String -Pattern "Placement: LumberCamp \(cost" -Quiet) -and ($AgesReports[3] -match "\(chosen I\)") -and
+        [bool]($HudAges | Select-String -Pattern "Grid: age 0 closed" -Quiet) -and ($AgesReports[4] -match "\(chosen none\)") -and
+        [bool]($HudAges | Select-String -Pattern "Order: \d+ units stop" -Quiet)
     $Checks["the key A with two Peasants: house J placed, they build it"] = [bool]($HudSite | Select-String -Pattern "Placement: House \(cost" -Quiet) -and
         [bool]($HudSite | Select-String -Pattern "Build order of slot 0: 2 units to House at \($($BuildJ -join ', ')\)$" -Quiet)
     $Block = & $Value $HudSite "HUD report: (.*)$"
@@ -1963,7 +2014,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         [bool]($HudF1 | Select-String -Pattern 'HUD message: NoMilitaryBuilding "Aucun b.+timent militaire"' -Quiet) -and
         [bool]($HudF1 | Select-String -Pattern "Category Technological: no building" -Quiet) -and [bool]($HudF1 | Select-String -Pattern "HUD message: NoTechnologicalBuilding" -Quiet) -and
         (@($HudF1 | Select-String -Pattern "Selection report: selected none").Count -eq 2) -and
-        [bool](($HudF1 | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "selection none, grid hidden, queue hidden, message NoMilitaryBuilding")
+        [bool](($HudF1 | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match "selection none, grid hidden, orders none, queue hidden, message NoMilitaryBuilding")
     # F2: every economic building of slot 0 (finished, sites and its ghosts: the user's 2nd trial of J6a.5) as the build
     # report lists them; the ghost G of the build trial among them.
     $Owned = @(([string](& $Value $HudF1 "(Build report: .*)$")) -split "; " | Where-Object { $_ -match "of slot 0 \(own\) (finished|under construction|foundation)" })
@@ -2058,7 +2109,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($StoneUnits.Count -ge 2) -and (@($Stone | Where-Object { $_.At -ne $AtM }).Count -eq 0)
     $SentFar = & $Value $Far "(camp LumberCamp at \($($CampFar -join ', ')\) finished: .*)$"
     $IdleFar = @($Far | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle").Count
-    $Checks["a camp 34 m from any wood: no source within 25 m, its two builders idle ($SentFar; $IdleFar idle)"] =
+    $Checks["a camp 30 m from any wood: no source within 25 m, its two builders idle ($SentFar; $IdleFar idle)"] =
         [bool]($SentFar -match "finished: no accepted source within 25 m, 2 builders go on as after a house$") -and ($IdleFar -eq 2) -and
         -not ($Far | Select-String -Pattern "goes on to the nearby site" -Quiet)
     $Missing = @("wood", "stone", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "build_camp_$_.png")) })
@@ -2089,12 +2140,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["house N across a move order: its walkers given a new path ($(if ($N) { $N.Text }))"] = ($null -ne $N) -and ($N.Walkers -ge 6) -and $N.Rebuilt
     $WatchN = & $ReadWatch $CutMove
     $PushedN = @($CutMove | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
-    # D324: round N's body (3.9 m, 6 m before), the group of six squeezes its inner Peasant against the west wall, which the
+    # D324: round N's body (5.7 m; its 8 m tiles before D324), the group of six squeezes its inner Peasant against the west wall, which the
     # footprints' guard keeps out (a few cm a step, D310): a slide along the wall, not a walk into the building. A slide of 10
     # steps in a row (half a second) gives that walker one new path from where it stands (RepathBuildingPushes, D310), as
     # #48 at the full quick_check of J6b.3: one at most, and no body in the footprint after the guard.
+    # D344: with 4 m tiles the wall it slides along is 5.7 m (3.7 m before): 25 to 40 put back measured, limit 50 (20 before).
     $Checks["no walk into it: none in it, a few slides along its wall, a new path at most ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Inside) unit-steps in it, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
-        ($null -ne $WatchN) -and ($WatchN.Inside -eq 0) -and ($WatchN.Out -le 20) -and ($WatchN.Repaths -le 1)
+        ($null -ne $WatchN) -and ($WatchN.Inside -eq 0) -and ($WatchN.Out -le 50) -and ($WatchN.Repaths -le 1)
     $Arrived = @($CutMove | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object {
         [regex]::Matches($_.Matches[0].Groups[1].Value, "#\d+ slot 0 at \((-?\d+), (-?\d+)\) (\w+)") } |
         Where-Object { [Math]::Sqrt([Math]::Pow([double]$_.Groups[1].Value - $CutTo[0], 2) + [Math]::Pow([double]$_.Groups[2].Value - $CutTo[1], 2)) -le 600 -and $_.Groups[3].Value -eq "Idle" })
@@ -2104,7 +2156,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $AllOk = (Report "build cut" $Checks) -and $AllOk
 
     # J6b.2b (D324): the way between two houses whose tiles touch. The navmesh's paths through it; the walkers' samples (every
-    # 0.2 s) while they are between the two bodies (x -6195 to -5805): in the way (within 60 cm of its middle line), one at
+    # 0.2 s) while they are between the two bodies (x -6285 to -5715): in the way (within 60 cm of its middle line), one at
     # a time; none put back by a wall, no new path; all arrived.
     $Gap = @(Get-Section "build gap" | ForEach-Object { $_ })
     $GapOne = @(Get-Section "build gap one" | ForEach-Object { $_ })
@@ -2121,7 +2173,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
             , $Units })
         $Walkers = if ($Samples.Count -gt 0) { @($Samples[0].Keys | Where-Object { $P = $Samples[0][$_]; [Math]::Abs($P[0] - $GapFrom[0]) -le 400 -and [Math]::Abs($P[1] - $GapFrom[1]) -le 400 }) } else { @() }
         [pscustomobject]@{ Samples = $Samples; Walkers = $Walkers } }
-    $InWay = { param($P) $P[0] -ge -6195 -and $P[0] -le -5805 }
+    $InWay = { param($P) $P[0] -ge $GapP[0] - $GapHalfBody -and $P[0] -le $GapP[0] + $GapHalfBody }
     foreach ($GapCase in @(@{ Name = "one"; Lines = $GapOne; Count = 1 }, @{ Name = "two"; Lines = $GapTwo; Count = 2 })) {
         $R = & $ReadSamples $GapCase.Lines
         $Between = @(); $Abreast = 0; $Off = @()
@@ -2144,7 +2196,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     }
     # The walkers taken away after the wall (hol.Units.Remove): the wall's one, the way's three, no other unit of slot 0.
     $WallSection = @(Get-Section "build wall" | ForEach-Object { $_ })
-    $Removed = foreach ($Cut in @(@{ At = "300 of \($($GapP[0] + 1000), $($GapP[1] - 250)\)"; Count = 1 }, @{ At = "400 of \($($GapTo[0]), $($GapTo[1])\)"; Count = 3 })) {
+    $Removed = foreach ($Cut in @(@{ At = "300 of \($($GapP[0] + 1000), $GapWallY\)"; Count = 1 }, @{ At = "400 of \($($GapTo[0]), $($GapTo[1])\)"; Count = 3 })) {
         $N = @($WallSection | Select-String -Pattern "Remove: (\d+) units of slot 0 within $($Cut.At)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
         @{ Count = $Cut.Count; Got = $N }
     }
@@ -2160,10 +2212,10 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: R = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; R: Caserne; S: Arr.+t; D: Tenir$") -and
-        [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "R=Barracks enabled")
+    $Checks["the Peasants' grid: Q = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne$") -and
+        [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
-    $Checks["the key R: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
+    $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["the barracks selected: A Lancier, Z Homme d'armes, E Archer ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
@@ -3186,8 +3238,8 @@ if ($Parts -contains "net") {
             $BuildLines = @(Get-ClientSection $ClientLines "build")
             $Other = 1 - $Held
             $Behind = { param($Slot, $Distance) $At = Get-SlotStart $Slot; @(($At[0] + $(if ($At[0] -lt 0) { -$Distance } else { $Distance })), $At[1]) }
-            $OwnHouse = & $Behind $Held 1800
-            $OtherHouse = & $Behind $Other 1800
+            $OwnHouse = Get-NearSpot $Held $NetHouseNear[0] $NetHouseNear[1] 2
+            $OtherHouse = Get-NearSpot $Other $NetHouseNear[0] $NetHouseNear[1] 2
             $Reports = @($BuildLines | Select-String -Pattern "Build report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $Stocks = @($BuildLines | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $Woods = @($Stocks | ForEach-Object { if ($_ -match "^F \d+ W (\d+) ") { [int]$Matches[1] } else { -1 } })
@@ -3208,7 +3260,7 @@ if ($Parts -contains "net") {
             # The camps (J6b.3): its camp paid (100 wood), its +10 at its camp; the other's camp received at its first work,
             # then both finished here; the camp on a tree refused (nothing taken); the other's stock never received.
             $CampLines = @(Get-ClientSection $ClientLines "camp")
-            $CampAt = { param($Slot) if ($Slot -eq 0) { $CampL } else { @(-$CampL[0], -$CampL[1]) } }
+            $CampAt = { param($Slot) Get-NearSpot $Slot $NetCampNear[0] $NetCampNear[1] 2 }
             $OwnCamp = & $CampAt $Held; $OtherCamp = & $CampAt $Other
             $CampReports = @($CampLines | Select-String -Pattern "Build report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $CampStocks = @($CampLines | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
@@ -3438,14 +3490,15 @@ if ($Parts -contains "net") {
     if ($Parts -contains "build") {
         $ServerLines = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
         $Placed = @($ServerLines | Select-String -Pattern "Construction: slot (\d) placed House foundation at \((-?\d+), (-?\d+)\), paid F 0 W 50 S 0 G 0" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
-        $Checks["server: one house paid and placed per slot, behind its centre ($($Placed -join '; '))"] = ($Placed -join '|') -eq "0: (-16800, 0)|1: (16800, 0)"
+        $HousesWanted = "0: ($((Get-NearSpot 0 $NetHouseNear[0] $NetHouseNear[1] 2) -join ', '))|1: ($((Get-NearSpot 1 $NetHouseNear[0] $NetHouseNear[1] 2) -join ', '))"
+        $Checks["server: one house paid and placed per slot, behind its centre ($($Placed -join '; '))"] = ($Placed -join '|') -eq $HousesWanted
         $NearEnemy = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place House at \((-?\d+), (-?\d+)\): too near an enemy main centre" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
-        $Checks["server: each house near the enemy centre refused ($($NearEnemy -join '; '))"] = ($NearEnemy -join '|') -eq "0: (17400, 0)|1: (-17400, 0)"
+        $Checks["server: each house near the enemy centre refused ($($NearEnemy -join '; '))"] = ($NearEnemy -join '|') -eq "0: ($((Get-NearSpot 1 $NetEnemyNear[0] $NetEnemyNear[1] 2) -join ', '))|1: ($((Get-NearSpot 0 $NetEnemyNear[0] $NetEnemyNear[1] 2) -join ', '))"
         $Started = @($ServerLines | Select-String -Pattern "Construction: slot (\d) first work on House at \((-?\d+), (-?\d+)\), 1 builders" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
-        $Checks["server: each house's first work by its Peasant ($($Started -join '; '))"] = ($Started -join '|') -eq "0: (-16800, 0)|1: (16800, 0)"
+        $Checks["server: each house's first work by its Peasant ($($Started -join '; '))"] = ($Started -join '|') -eq $HousesWanted
         # The camps (J6b.3): one lumber camp paid per slot, finished, its builder sent to the wood, unloading at the camp;
         # each camp asked on a tree refused.
-        $CampsWanted = "0: ($($CampL -join ', '))|1: ($(-$CampL[0]), $(-$CampL[1]))"
+        $CampsWanted = "0: ($((Get-NearSpot 0 $NetCampNear[0] $NetCampNear[1] 2) -join ', '))|1: ($((Get-NearSpot 1 $NetCampNear[0] $NetCampNear[1] 2) -join ', '))"
         $CampPlaced = @($ServerLines | Select-String -Pattern "Construction: slot (\d) placed LumberCamp foundation at \((-?\d+), (-?\d+)\), paid F 0 W 100 S 0 G 0" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)
         $Checks["server: one lumber camp paid and placed per slot by its wood ($($CampPlaced -join '; '))"] = ($CampPlaced -join '|') -eq $CampsWanted
         $CampSent = @($ServerLines | Select-String -Pattern "Construction: slot (\d) camp LumberCamp at \((-?\d+), (-?\d+)\) finished: 1 builders sent to gather Wood" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): ($($_.Matches[0].Groups[2].Value), $($_.Matches[0].Groups[3].Value))" } | Sort-Object)

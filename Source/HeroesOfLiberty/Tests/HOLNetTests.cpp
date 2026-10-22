@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Algo/AnyOf.h"
 #include "Engine/DataTable.h"
 #include "Iris/Serialization/NetBitStreamReader.h"
 #include "Iris/Serialization/NetBitStreamWriter.h"
@@ -9,6 +10,7 @@
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "Net/HOLUnitReplicator.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 
@@ -32,7 +34,8 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("62 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit)"), FHOLNetUnitState::TotalBits, 62);
+	TestEqual(TEXT("57 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position)"),
+		FHOLNetUnitState::TotalBits, 57);
 	TestEqual(TEXT("8 bits more for a wounded unit, its exact health (J7-Q5 revised)"), FHOLNetUnitState::WoundedBits, 8);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
 	TestEqual(TEXT("6 bits more for one facing its front at rest"), FHOLNetUnitState::FacingFrontBits, 6);
@@ -42,14 +45,14 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	const FVector Velocity(212.3, -147.9, 35.0);
 	const FHOLNetUnitState State = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000);
 	const FVector Back = State.GetPosition();
-	TestTrue(TEXT("position within half a step per axis"), FMath::Abs(Back.X - Position.X) <= 5.0 && FMath::Abs(Back.Y - Position.Y) <= 5.0);
+	TestTrue(TEXT("position within half a step per axis"), FMath::Abs(Back.X - Position.X) <= 5.5 && FMath::Abs(Back.Y - Position.Y) <= 5.5);
 	TestEqual(TEXT("no height: the client puts the unit on the ground (D301)"), Back.Z, 0.0);
 	const FVector BackVelocity = State.GetVelocity();
 	TestTrue(TEXT("horizontal velocity within half a step"),
 		FMath::Abs(BackVelocity.X - Velocity.X) <= 2.5 && FMath::Abs(BackVelocity.Y - Velocity.Y) <= 2.5);
 	TestEqual(TEXT("no vertical velocity"), BackVelocity.Z, 0.0);
 	TestEqual(TEXT("activity kept"), State.Activity, EHOLUnitActivity::Moving);
-	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % 256));
+	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % (1 << FHOLNetUnitState::StepBits)));
 	TestEqual(TEXT("same values, same state"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000), State);
 	const FHOLNetUnitState Carrier = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Wood, 7);
 	TestTrue(TEXT("a carrier"), Carrier.bCarrying);
@@ -71,6 +74,8 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Y held at the range's edge"), static_cast<int32>(Far.Y), -(1 << (FHOLNetUnitState::HorizontalBits - 1)));
 	TestEqual(TEXT("velocity held at the range's edge"), static_cast<int32>(Far.VelocityX), (1 << (FHOLNetUnitState::VelocityBits - 1)) - 1);
 	TestTrue(TEXT("the 400 m maps fit"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep > 25000.f);
+	TestTrue(TEXT("the largest maps fit, 220 tiles of 4 m centred on the origin (D344)"),
+		(1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep >= 44000.f);
 	return true;
 }
 
@@ -157,7 +162,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("62 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +8 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
+		TestEqual(TEXT("57 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +8 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
@@ -257,14 +262,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetUnwrapStepTest, "HeroesOfLiberty.Net.Unw
 bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
 {
 	using HOLUnitReplication::UnwrapStep;
-	const auto Low = [](const int64 Step) { return static_cast<uint8>(Step % 256); };
+	const auto Low = [](const int64 Step) { return static_cast<uint8>(Step % (int64(1) << FHOLNetUnitState::StepBits)); };
 	TestEqual(TEXT("same step"), UnwrapStep(Low(1000), 1000), int64(1000));
 	TestEqual(TEXT("a little behind"), UnwrapStep(Low(990), 1000), int64(990));
 	TestEqual(TEXT("a little ahead"), UnwrapStep(Low(1010), 1000), int64(1010));
 	TestEqual(TEXT("behind, across a wrap"), UnwrapStep(Low(1020), 1030), int64(1020));
 	TestEqual(TEXT("ahead, across a wrap"), UnwrapStep(Low(1030), 1020), int64(1030));
-	TestEqual(TEXT("127 steps behind"), UnwrapStep(Low(5000 - 127), 5000), int64(5000 - 127));
-	TestEqual(TEXT("127 steps ahead"), UnwrapStep(Low(5000 + 127), 5000), int64(5000 + 127));
+	TestEqual(TEXT("63 steps behind"), UnwrapStep(Low(5000 - 63), 5000), int64(5000 - 63));
+	TestEqual(TEXT("63 steps ahead"), UnwrapStep(Low(5000 + 63), 5000), int64(5000 + 63));
+	TestTrue(TEXT("read right beyond the slow refresh (D343)"), (1 << (FHOLNetUnitState::StepBits - 1)) > 40 + 10);
 	TestEqual(TEXT("first steps of the match"), UnwrapStep(Low(3), 0), int64(3));
 	return true;
 }
@@ -273,10 +279,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetPredictionTest, "HeroesOfLiberty.Net.Pre
 bool FHOLNetPredictionTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::Net;
-	const FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(1000.0, 2000.0, 50.0), FVector(300.0, -100.0, 0.0), EHOLUnitActivity::Moving, 0);
-	TestEqual(TEXT("at the state's step"), HOLUnitReplication::PredictPosition(State, 0.0, StepSeconds), FVector(1000.0, 2000.0, 0.0));
-	TestEqual(TEXT("one second later, in a straight line"), HOLUnitReplication::PredictPosition(State, 20.0, StepSeconds), FVector(1300.0, 1900.0, 0.0));
-	TestEqual(TEXT("between two steps"), HOLUnitReplication::PredictPosition(State, 2.5, StepSeconds), FVector(1037.5, 1987.5, 0.0));
+	// Positions on the 11 cm step (D344): 1100 and 2200 cm travel exact.
+	const FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(1100.0, 2200.0, 50.0), FVector(300.0, -100.0, 0.0), EHOLUnitActivity::Moving, 0);
+	TestEqual(TEXT("at the state's step"), HOLUnitReplication::PredictPosition(State, 0.0, StepSeconds), FVector(1100.0, 2200.0, 0.0));
+	TestEqual(TEXT("one second later, in a straight line"), HOLUnitReplication::PredictPosition(State, 20.0, StepSeconds), FVector(1400.0, 2100.0, 0.0));
+	TestEqual(TEXT("between two steps"), HOLUnitReplication::PredictPosition(State, 2.5, StepSeconds), FVector(1137.5, 2187.5, 0.0));
 	return true;
 }
 
@@ -494,22 +501,104 @@ bool FHOLNetDisplayedPositionTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::Net;
 	FHOLNetUnitDisplayFragment Display;
-	Display.State = FHOLNetUnitState::Make(FVector(1000.0, 0.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::Moving, 100);
+	// Positions on the 11 cm step (D344): 1100 and 1232 cm travel exact.
+	Display.State = FHOLNetUnitState::Make(FVector(1100.0, 0.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::Moving, 100);
 	Display.StateStep = 100;
-	TestEqual(TEXT("half a second after the state"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1150.0, 0.0, 0.0));
+	TestEqual(TEXT("half a second after the state"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1250.0, 0.0, 0.0));
 	TestEqual(TEXT("a lost state is not walked on past 3 s"), Display.GetDisplayedPosition(200.0, 0.0, StepSeconds),
-		FVector(1000.0 + 300.0 * FHOLNetUnitDisplayFragment::MaxPredictionSeconds, 0.0, 0.0));
+		FVector(1100.0 + 300.0 * FHOLNetUnitDisplayFragment::MaxPredictionSeconds, 0.0, 0.0));
 	Display.GroundZ = 50.0;
-	TestEqual(TEXT("on the ground the client found (D301)"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1150.0, 0.0, 50.0));
+	TestEqual(TEXT("on the ground the client found (D301)"), Display.GetDisplayedPosition(110.0, 0.0, StepSeconds), FVector(1250.0, 0.0, 50.0));
 	Display.GroundZ = 0.0;
 
-	// A new state 20 cm behind where the unit is drawn: drawn where it was, then the gap fades out.
+	// A new state 18 cm behind where the unit is drawn: drawn where it was, then the gap fades out.
 	const FVector Drawn = Display.GetDisplayedPosition(110.0, 5.0, StepSeconds);
-	Display.State = FHOLNetUnitState::Make(FVector(1130.0, 0.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::Moving, 110);
+	Display.State = FHOLNetUnitState::Make(FVector(1232.0, 0.0, 0.0), FVector(300.0, 0.0, 0.0), EHOLUnitActivity::Moving, 110);
 	Display.StateStep = 110;
 	Display.Correction.Start(Drawn, Display.GetDisplayedPosition(110.0, 5.0, StepSeconds), 5.0);
 	TestTrue(TEXT("no jump at the new state"), Display.GetDisplayedPosition(110.0, 5.0, StepSeconds).Equals(Drawn, 1.0e-3));
-	TestTrue(TEXT("on the new state once smoothed"), Display.GetDisplayedPosition(114.0, 5.2, StepSeconds).Equals(FVector(1190.0, 0.0, 0.0), 1.0e-3));
+	TestTrue(TEXT("on the new state once smoothed"), Display.GetDisplayedPosition(114.0, 5.2, StepSeconds).Equals(FVector(1292.0, 0.0, 0.0), 1.0e-3));
+	return true;
+}
+
+// J7c, retour d'essai 8 (hit and run): a client replays a shooter's cadence (no bit sent, J7c-Q4); its cool-down keeps
+// running down while the shooter walks, so its arrows fall on the server's steps across a stop, a walk and a new stop.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetShotReplayTest, "HeroesOfLiberty.Net.ShotReplay", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetShotReplayTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 StepMs = 50;
+	constexpr int32 IntervalMs = 1625;
+	constexpr int32 WindUpPercent = 12;  // the Archer's (Tools/Data/UnitTypes.csv)
+	// The server's steps: Attacking on [AttackFrom, AttackTo] spans, idle between (TickIdle), from step 100.
+	const auto ServerShots = [](TConstArrayView<TPair<int64, int64>> Spans)
+	{
+		TArray<int64> Shots;
+		int32 Cooldown = 0;
+		bool bAttacking = false;
+		for (int64 Step = 100; Step <= Spans.Last().Value; ++Step)
+		{
+			const bool bInSpan = Algo::AnyOf(Spans, [Step](const TPair<int64, int64>& Span) { return Step >= Span.Key && Step <= Span.Value; });
+			if (!bInSpan)
+			{
+				bAttacking = false;
+				HOLCombat::TickIdle(Cooldown, StepMs);
+				continue;
+			}
+			if (!bAttacking)
+			{
+				Cooldown = HOLCombat::StartAttack(Cooldown, IntervalMs, WindUpPercent);
+				bAttacking = true;
+			}
+			if (HOLCombat::TickAttack(Cooldown, StepMs, IntervalMs))
+			{
+				Shots.Add(Step);
+			}
+		}
+		return Shots;
+	};
+	// The client: told each Attacking state at its step, replays the steps after it (as UHOLNetUnitDisplayProcessor).
+	const auto ClientShots = [](TConstArrayView<TPair<int64, int64>> Spans)
+	{
+		TArray<int64> Shots;
+		FHOLNetUnitDisplayFragment Display;
+		for (const TPair<int64, int64>& Span : Spans)
+		{
+			Display.StartShots(Span.Key, StepMs, IntervalMs, WindUpPercent);
+			while (Display.ShotStep < Span.Value)
+			{
+				++Display.ShotStep;
+				if (HOLCombat::TickAttack(Display.ShotCooldownMs, StepMs, IntervalMs))
+				{
+					Shots.Add(Display.ShotStep);
+				}
+			}
+			Display.StopShots();
+		}
+		return Shots;
+	};
+	const auto Check = [this, &ServerShots, &ClientShots](const TCHAR* What, TConstArrayView<TPair<int64, int64>> Spans)
+	{
+		const TArray<int64> Server = ServerShots(Spans);
+		const TArray<int64> Client = ClientShots(Spans);
+		FString Steps;
+		for (const int64 Shot : Server)
+		{
+			Steps += FString::Printf(TEXT(" %lld"), Shot);
+		}
+		TestTrue(FString::Printf(TEXT("%s: the client's arrows on the server's steps (%s)"), What, *Steps), Server == Client && !Server.IsEmpty());
+	};
+	const TPair<int64, int64> Stand[] = { { 100, 200 } };
+	Check(TEXT("standing"), Stand);
+	// Shoots at 103, walks 0.5 s (111 to 120), stops: the cool-down left (770 ms) and not the wind-up.
+	const TPair<int64, int64> ShortWalk[] = { { 100, 110 }, { 121, 200 } };
+	Check(TEXT("short walk"), ShortWalk);
+	const TArray<int64> ShortWalkShots = ServerShots(ShortWalk);
+	TestTrue(TEXT("short walk: the next arrow as had it stood (step 136), not a wind-up after the stop (124)"),
+		ShortWalkShots.Num() >= 2 && ShortWalkShots[0] == 103 && ShortWalkShots[1] == 136);
+	const TPair<int64, int64> LongWalk[] = { { 100, 110 }, { 171, 260 } };
+	Check(TEXT("long walk: reloaded, the wind-up"), LongWalk);
+	const TPair<int64, int64> Several[] = { { 100, 109 }, { 115, 118 }, { 130, 160 }, { 162, 162 }, { 165, 240 } };
+	Check(TEXT("several stops"), Several);
 	return true;
 }
 

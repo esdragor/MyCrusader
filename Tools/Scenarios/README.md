@@ -14,7 +14,7 @@ Depuis PowerShell (pas Git Bash, qui réécrit les chemins `/Game/...`) :
 ```
 powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 order_lines
 powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1              # la liste, avec leur description
-powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 order_lines -Root ..\MyCrusader-Elrond
+powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 order_lines -Root ..\HeroesOfLiberty-Elrond
 ```
 
 Le jeu s'ouvre avec les réglages habituels de l'utilisateur (écran, fenêtre). Dans la console du jeu (²) :

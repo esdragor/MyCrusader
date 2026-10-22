@@ -23,6 +23,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Map/HOLMapBounds.h"
 
 namespace UE::HeroesOfLiberty::Net
 {
@@ -186,6 +187,18 @@ void UHOLUnitReplicationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	const UHOLUnitReplicationSettings* Settings = GetDefault<UHOLUnitReplicationSettings>();
 	UE_LOG(LogHOLNet, Log, TEXT("Unit replication on: threshold %.0f cm, refresh every %d steps, %.0f updates per second, %d unit types, chunks of %d slots"),
 		Settings->ErrorThreshold, Settings->RefreshSteps, Settings->NetUpdateFrequency, TypeIndices.Num(), AHOLUnitChunk::NumSlots);
+
+	// D344: positions travel within +-450 m of the origin; a unit beyond would be shown held at the edge.
+	if (const AHOLMapBounds* Bounds = AHOLMapBounds::Find(&InWorld))
+	{
+		const FBox2D Area = Bounds->GetArea();
+		const double Reach = static_cast<double>(1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep;
+		if (Area.bIsValid && FMath::Max(Area.Min.GetAbsMax(), Area.Max.GetAbsMax()) > Reach)
+		{
+			UE_LOG(LogHOLNet, Warning, TEXT("Unit replication: the map's bounds (%s) go past the %.0f m the positions travel within (D344)"),
+				*Area.ToString(), Reach / 100.0);
+		}
+	}
 }
 
 void UHOLUnitReplicationSubsystem::Deinitialize()
