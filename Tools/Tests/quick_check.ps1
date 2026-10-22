@@ -66,6 +66,7 @@
 # J6b.1 (D312), solo: a lumber camp placed by the wood and built by two Peasants: once finished, they gather the nearest
 # wood and unload at the camp (a gatherer nearby unloads at the centre until then); the centre's rally point on the camp:
 # the Peasant born once it is finished gathers there too; a mining camp by the stone vein: its builders gather the stone;
+# a mill by slot 7's berries (D346): its builders gather the berries and unload the food there;
 # a camp 30 m from any wood: its builders stand idle.
 # J6b.2 (D314), solo: six Peasants on round trips between the vein north-east of slot 0 and its centre, 50 m (their kept
 # paths, D305); house K placed across their way and started: the kept paths across it dropped, those walking across it
@@ -314,6 +315,10 @@ $CampEarly = @(-13800, -1100)
 $CampTree = @(-14230, -1800)
 $CampM = @(-12000, -3600)
 $CampMSpawn = @(-12000, -2600)
+# Mill Mi (D346) 4 m off slot 7's berries (a closed slot: its patch is never used up, unlike slot 0's), 146 m from slot
+# 0's centre; its two builders made beyond it.
+$CampMill = @(-8400, 13200)
+$CampMillSpawn = @(-7400, 14000)
 $CampFar = @(-19200, -800)
 $CampFarSpawn = @(-19200, -2000)
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
@@ -819,6 +824,14 @@ if ($Parts -contains "camera") {
                 "hol.Build.Click", "waitlog Build order of slot 0: 2 units to MiningCamp at ($($CampM -join ', '))", "waitlog Construction: slot 0 finished MiningCamp at ($($CampM -join ', '))",
                 "waitlog Construction: slot 0 camp MiningCamp at ($($CampM -join ', ')) finished: ", "wait 9", "hol.Units.Where 0",
                 "hol.Camera.Focus $($CampM[0] + 400) $($CampM[1] - 300)", "frames 5", "capture build_camp_stone"
+            # Mill Mi (D346) by slot 7's berries: its two builders gather the berries and unload the food at Mi.
+            Key Escape
+            Step "mark build camp mill", "waitlog Selection: none", "hol.Units.SpawnSeed 110", "hol.Units.Spawn 2 $($CampMillSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampMillSpawn -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($CampMillSpawn[0] - 400) $($CampMillSpawn[1] - 400) $($CampMillSpawn[0] + 400) $($CampMillSpawn[1] + 400)", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($CampMill -join ' ')", "frames 3", "hol.Build.Place Mill", "waitlog Placement ghost: Mill at ($($CampMill -join ', ')) valid",
+                "hol.Build.Click", "waitlog Build order of slot 0: 2 units to Mill at ($($CampMill -join ', '))", "waitlog Construction: slot 0 finished Mill at ($($CampMill -join ', '))",
+                "waitlog Construction: slot 0 camp Mill at ($($CampMill -join ', ')) finished: ", "wait 9", "hol.Units.Where 0",
+                "hol.Camera.Focus $($CampMill[0] - 400) $($CampMill[1] - 400)", "frames 5", "capture build_camp_food"
             # A lumber camp far from every wood (30 m): no accepted source within 25 m, its two builders stand idle.
             Key Escape
             Step "mark build camp far", "waitlog Selection: none", "hol.Units.SpawnSeed 108", "hol.Units.Spawn 2 $($CampFarSpawn -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($CampFarSpawn -join ' ')", "frames 3",
@@ -1977,13 +1990,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudAges = Get-Section "build hud ages"
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
-    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp on A, Z, E, barracks on Q, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed Q=Barracks greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks on Q, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I Q: Caserne$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -2073,6 +2086,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     # J6b.1 (D312): the camps. Each unload: what, where, who (hol.Gather.LogDeposits).
     $Camp = @(Get-Section "build camp" | ForEach-Object { $_ })
     $Mining = @(Get-Section "build camp mining" | ForEach-Object { $_ })
+    $MillLines = @(Get-Section "build camp mill" | ForEach-Object { $_ })
     $Far = @(Get-Section "build camp far" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $ReadUnloads = { param($Lines) @($Lines | Select-String -Pattern "Gather: slot 0 unloaded (\d+) (\w+) \(stock [^)]*\) at (\w+) \((-?\d+), (-?\d+)\), unit #(\d+)" | ForEach-Object {
@@ -2107,12 +2121,20 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $StoneUnits = @($Stone | ForEach-Object { $_.Unit } | Sort-Object -Unique)
     $Checks["they unload their stone at M ($($Stone.Count) unloads by $($StoneUnits.Count) units: $(($Stone | ForEach-Object { $_.At } | Sort-Object -Unique) -join ', '))"] =
         ($StoneUnits.Count -ge 2) -and (@($Stone | Where-Object { $_.At -ne $AtM }).Count -eq 0)
+    $AtMill = "Mill ($($CampMill -join ', '))"
+    $SentMill = & $Value $MillLines "(camp Mill at \($($CampMill -join ', ')\) finished: .*)$"
+    $Checks["Mi (D346) built by its two Peasants, its builders sent to the berries ($SentMill)"] = [bool]($MillLines | Select-String -Pattern "Build order of slot 0: 2 units to Mill at \($($CampMill -join ', ')\)$" -Quiet) -and
+        [bool]($SentMill -match "finished: (\d+) builders sent to gather Food \(source \d+, (\d+\.\d) m\)$") -and ([int]$Matches[1] -ge 2) -and ([double]$Matches[2] -le 25)
+    $Food = @(& $ReadUnloads $MillLines | Where-Object { $_.Resource -eq "Food" })
+    $FoodUnits = @($Food | ForEach-Object { $_.Unit } | Sort-Object -Unique)
+    $Checks["they unload their food at Mi ($($Food.Count) unloads by $($FoodUnits.Count) units: $(($Food | ForEach-Object { $_.At } | Sort-Object -Unique) -join ', '))"] =
+        ($FoodUnits.Count -ge 2) -and (@($Food | Where-Object { $_.At -ne $AtMill }).Count -eq 0)
     $SentFar = & $Value $Far "(camp LumberCamp at \($($CampFar -join ', ')\) finished: .*)$"
     $IdleFar = @($Far | Select-String -Pattern "Build: a builder of slot 0 stops \(no site left\), idle").Count
     $Checks["a camp 30 m from any wood: no source within 25 m, its two builders idle ($SentFar; $IdleFar idle)"] =
         [bool]($SentFar -match "finished: no accepted source within 25 m, 2 builders go on as after a house$") -and ($IdleFar -eq 2) -and
         -not ($Far | Select-String -Pattern "goes on to the nearby site" -Quiet)
-    $Missing = @("wood", "stone", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "build_camp_$_.png")) })
+    $Missing = @("wood", "stone", "food", "idle" | Where-Object { -not (Test-Path (Join-Path $Shots "build_camp_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build camp" $Checks) -and $AllOk
 

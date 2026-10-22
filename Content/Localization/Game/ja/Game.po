@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-21 17:20\n"
-"PO-Revision-Date: 2026-10-21 17:20\n"
+"POT-Creation-Date: 2026-10-22 12:59\n"
+"PO-Revision-Date: 2026-10-22 12:59\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -125,37 +125,44 @@ msgctxt "HOLGameNames,MiningCamp"
 msgid "Camp de mineurs"
 msgstr "採掘所"
 
-#. Key:	Barracks
+#. Key:	Mill
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(60)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(60)
+msgctxt "HOLGameNames,Mill"
+msgid "Moulin"
+msgstr "製粉所"
+
+#. Key:	Barracks
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(64)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(64)
 msgctxt "HOLGameNames,Barracks"
 msgid "Caserne"
 msgstr "兵舎"
 
 #. Key:	Tree
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(73)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(73)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
 msgctxt "HOLGameNames,Tree"
 msgid "Arbre"
 msgstr "木"
 
 #. Key:	BerryBush
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
 msgctxt "HOLGameNames,BerryBush"
 msgid "Buisson de baies"
 msgstr "ベリーの茂み"
 
 #. Key:	StoneVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
 msgctxt "HOLGameNames,StoneVein"
 msgid "Filon de pierre"
 msgstr "石の鉱脈"
 
 #. Key:	GoldVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(89)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(89)
 msgctxt "HOLGameNames,GoldVein"
 msgid "Filon d'or"
 msgstr "金の鉱脈"
@@ -441,29 +448,29 @@ msgid "Emplacement occupé"
 msgstr "場所がふさがっています"
 
 #. Key:	Population
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1910)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1910)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1905)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1905)
 msgctxt "HOLGameScreen,Population"
 msgid "Population"
 msgstr "人口"
 
 #. Key:	Health
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2011)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2011)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2006)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2006)
 msgctxt "HOLGameScreen,Health"
 msgid "Points de vie"
 msgstr "耐久力"
 
 #. Key:	PopulationFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2094)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2094)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2089)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2089)
 msgctxt "HOLGameScreen,PopulationFull"
 msgid "Population pleine"
 msgstr "人口上限"
 
 #. Key:	CancelHint
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2100)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2100)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2095)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2095)
 msgctxt "HOLGameScreen,CancelHint"
 msgid "Clic : annuler"
 msgstr "クリック：キャンセル"
