@@ -486,3 +486,9 @@ de course, sa vitesse = recharge ; colonnes et règle pure ; aucune unité ne l'
 seulement) ; **Maj (file)** pour l'attaque d'un bâtiment (aujourd'hui toujours immédiate). Plus tard : ×0,3 contre les
 héros sauf Siège, attaques de type Héros (avec les héros), tours. À l'avenir : un sous-agent pour le code et les tests,
 un autre pour le scénario (minuteur de 15 min à chaque lancement).
+
+### D345.3 (deuxième attaque, Charge) — lancée (« vas y », 2026-10-22)
+
+- Sous-agent dans Haldir (au niveau de main) : colonnes de la deuxième attaque et du déclencheur, règle pure de la
+  Charge, combat, tests ; aucune unité du socle ne l'a (valeurs vides), essai par tests seulement. Minuteur 15 min.
+- Ensuite, à part : Maj (file) pour l'attaque d'un bâtiment.
