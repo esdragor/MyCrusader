@@ -1,7 +1,8 @@
 ﻿"""Creates the matte materials of the game (D265: no specular, full roughness, nothing metallic):
   /Game/Rendering/M_MatteColor    one colour, parameter "Color" (buildings, D261: written per piece by AHOLBuilding)
   /Game/Rendering/M_FlatColor     one colour, unlit: exactly the colour on every face (the owner's colour, D261)
-  /Game/Rendering/M_MatteGround   grey ground with a line every 10 m, aligned on the world (the camera's movement shows)
+  /Game/Rendering/M_MatteGround   grey ground with a line every tile (4 m, D344), on the building grid's lines (through the
+                                  world's origin): a building fills whole squares (the camera's movement shows too)
 Only the missing ones are made: delete a material's .uasset to make it again. Editing one in place crashes the editor
 (DeleteAllMaterialExpressions, "!IsRooted()"): AHOLBuilding references them from C++, so they load with the editor.
 The usage flags are set on existing materials too (a flag, no node touched): M_MatteColor is drawn on instanced meshes
@@ -12,8 +13,8 @@ Run (the editor quits when done):
 import unreal
 
 FOLDER = "/Game/Rendering"
-GRID_CELL = 1000.0  # cm
-GRID_LINE = 0.015  # fraction of a cell
+GRID_CELL = 400.0  # cm: UHOLBuildingSettings::TileSize (D344; a line every 10 m before)
+GRID_LINE = 0.015  # fraction of a cell, each side of the line: 12 cm wide
 GROUND_COLOR = unreal.LinearColor(0.16, 0.16, 0.15, 1.0)
 LINE_COLOR = unreal.LinearColor(0.09, 0.09, 0.09, 1.0)
 

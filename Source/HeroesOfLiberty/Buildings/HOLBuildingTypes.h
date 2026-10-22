@@ -176,12 +176,12 @@ public:
 	static FVector2D GetVisualSize(const FVector2D& Footprint);
 
 	/**
-	 * Side of a tile (cm, D311, user's choice of 2026-10-16): the placement grid. Footprints are whole tiles (main
-	 * centre 4 x 4, houses and camps 2 x 2), their corners on the grid lines, the main centres included (placed on it
+	 * Side of a tile (cm, D311, user's choice of 2026-10-16; 4 m since D344, 3 m before): the placement grid. Footprints
+	 * are whole tiles (main centre 4 x 4, houses and camps 2 x 2), their corners on the grid lines, the main centres included (placed on it
 	 * at their start, AHOLStartSlot::GetMainCentreLocation): every building lines up and touches its neighbours.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Construction", meta = (ClampMin = "1", ForceUnits = "cm"))
-	float TileSize = 300.f;
+	float TileSize = 400.f;
 
 	static double GetTileSize() { return FMath::Max(1.0, static_cast<double>(GetDefault<UHOLBuildingSettings>()->TileSize)); }
 

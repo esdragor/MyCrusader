@@ -2,7 +2,7 @@
 map bounds. Provisional: no terrain nor resources yet. The main centres are not in the map: the game mode puts one
 on each occupied slot when a match starts (D259).
 
-  ground       500 m x 500 m, matte grid material, a line every 10 m (the camera's movement shows; D265)
+  ground       500 m x 500 m, matte grid material, a line every tile of 4 m on the building grid (D265, D344)
   bounds       400 m x 400 m (AHOLMapBounds): the camera's focus stays inside
   navmesh      over the bounds (NavMeshBoundsVolume), built here and saved with the map: the project's navmesh only
                takes modifiers at run time (D286, the buildings' footprints), so the map must carry it

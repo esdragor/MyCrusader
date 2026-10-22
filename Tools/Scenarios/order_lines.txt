@@ -10,14 +10,14 @@ frames 2
 hol.Units.SpawnHere 5 Peasant 0 150
 waitunits 5
 # La caserne : fondation derrière le centre (la place de quick_check), bâtie d'un coup (hol.Build.Instant) par les cinq.
-hol.Build.PlaceNear Barracks -3150 4050
+hol.Build.PlaceNear Barracks -3800 4600
 waitlog Construction: slot 0 placed Barracks foundation
 hol.Build.Instant 1
 hol.Camera.FocusNear -1500 1500
 frames 5
 hol.Select.Own
 waitlog Selection: 5 units (own)
-hol.Select.OrderNear -3150 4050
+hol.Select.OrderNear -3800 4600
 waitlog Build order of slot 0: 5 units to Barracks
 waitlog Construction: slot 0 finished Barracks
 hol.Build.Instant 0

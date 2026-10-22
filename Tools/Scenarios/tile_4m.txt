@@ -1,0 +1,24 @@
+# Case de 4 m (D344) : forum 16 m, caserne 12 m, maisons et camps 8 m, une maison collée à une autre
+# Plain, deux joueurs. Positions dans le repère du centre du joueur (X vers le milieu de la carte).
+hol.Cheat.Resources 5000
+# Deux maisons derrière le centre, leurs cases bord à bord (8 m d'un milieu à l'autre).
+hol.Build.PlaceNear House -1400 1200
+waitlog Construction: slot 0 placed House
+hol.Build.PlaceNear House -1400 2000
+waitlog Construction: slot 0 placed House
+# Une caserne (3 x 3 cases) de l'autre côté, derrière le centre (hors des arbres), un camp de bûcherons au bord des arbres.
+hol.Build.PlaceNear Barracks -1800 -1400
+waitlog Construction: slot 0 placed Barracks
+hol.Build.PlaceNear LumberCamp -300 -1300
+waitlog Construction: slot 0 placed LumberCamp
+# Quatre Paysans devant le centre, sélectionnés.
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 150
+waitunits 4
+hol.Select.Own
+hol.Camera.FocusNear -800 200
+frames 5
+note Une case fait maintenant 4 m : forum 16 m (4 x 4 cases), caserne 12 m (3 x 3), maisons et camps 8 m (2 x 2).
+note Choisis une maison (A) : le fantôme se pose case par case sur la grille de 4 m ; colle-la aux maisons posées.
+note Fais bâtir les deux maisons collées puis envoie les Paysans entre elles : ils passent à la file, jamais deux de front.

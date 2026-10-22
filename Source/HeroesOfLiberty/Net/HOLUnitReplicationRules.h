@@ -25,16 +25,17 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 {
 	GENERATED_BODY()
 
-	/** Position precision (cm): ~10 cm (D269). */
-	static constexpr float PositionStep = 10.f;
+	/** Position precision (cm): ~10 cm (D269), 11 cm since D344 (13 bits cover the 880 m maps). */
+	static constexpr float PositionStep = 11.f;
 	/** Velocity precision (cm/s): at most 2.5 cm/s off per axis, ~5 cm of drift over a 2 s refresh. */
 	static constexpr float VelocityStep = 5.f;
 
 	/**
-	 * X and Y: +-819 m around the map's origin, maps up to 1.6 x 1.6 km centred on it (D343, 14 bits: S5 back under its
-	 * budget once the fight took 2 bits per state; Plaine is 400 m). The replication warns at start for a larger map.
+	 * X and Y: +-450 m around the map's origin (D344: 13 bits at 11 cm), the largest map, 220 x 220 tiles of 4 m (880 m,
+	 * AHOLMapBounds::MaxSideTiles), centred on it, with 10 m to spare; Plaine is 400 m. D343 had 14 bits at 10 cm (1.6 km).
+	 * The replication warns at start for a map past that reach.
 	 */
-	static constexpr int32 HorizontalBits = 14;
+	static constexpr int32 HorizontalBits = 13;
 	/** Horizontal velocity, per axis: +-12.8 m/s (a walking unit goes at 3 m/s). */
 	static constexpr int32 VelocityBits = 9;
 	/**
@@ -77,7 +78,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * activity "idle, facing its front", 64 directions (5.6 deg).
 	 */
 	static constexpr int32 FrontYawBits = 6;
-	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62, D343: 59); the others write the extras below. */
+	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62, D343: 59, D344: 57); the others write the extras below. */
 	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1;
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
 	static constexpr int32 WoundedBits = HealthBits;

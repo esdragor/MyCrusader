@@ -4,6 +4,7 @@
 #include "Engine/Level.h"
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Map/HOLMapBounds.h"
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLMatchConfig.h"
@@ -131,6 +132,10 @@ bool FHOLMapStartSlotsTest::RunTest(const FString& Parameters)
 	const FVector2D Centre = Place(*Bounds);
 	const FVector2D HalfSize = Bounds->GetArea().GetExtent();
 	const FBox2D Area(Centre - HalfSize, Centre + HalfSize);
+	TestTrue(TEXT("the match map within the largest map, 220 x 220 tiles centred on the origin (D344)"), AHOLMapBounds::FitsMaxSize(Area));
+	const double Half = 0.5 * AHOLMapBounds::MaxSideTiles * UHOLBuildingSettings::GetTileSize();
+	TestFalse(TEXT("a map one tile wider does not fit"), AHOLMapBounds::FitsMaxSize(FBox2D(FVector2D(-Half - UHOLBuildingSettings::GetTileSize()), FVector2D(Half))));
+	TestTrue(TEXT("the largest map fits"), AHOLMapBounds::FitsMaxSize(FBox2D(FVector2D(-Half), FVector2D(Half))));
 	const double Radius = FVector2D::Distance(Starts[0], Centre);
 	const auto Angle = [&Starts, &Centre](const int32 Slot)
 	{
