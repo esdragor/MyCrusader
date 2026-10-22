@@ -36,6 +36,8 @@ void UHOLUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
 	BuildContext.AddFragment<FHOLCombatFragment>();
 	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
 	BuildContext.AddFragment<FHOLAvoidanceHoldFragment>();
+	// Memory of the look-ahead's detour (D293, MV.2): without it the heading flipped every 2 steps.
+	BuildContext.AddFragment<FHOLDetourFragment>();
 	// Animation played by the skinned instance (D234); the visualization trait does not add it.
 	BuildContext.AddFragment<FMassRepresentationAnimationFragment>();
 	BuildContext.AddFragment<FHOLUnitAnimationStateFragment>();
