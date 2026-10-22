@@ -24,7 +24,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### GDD
 - Review du GDD : reprendre à D343 (D340 grille du Paysan, D341 scénarios d'essai, D342 seuil de S3 / S4)
-- Préciser D327 au GDD : au commit, seulement les parties touchées (`-Parts`) ; `-Full` aux clôtures de chapitre (choix du 2026-10-21)
 
 ### Questions techniques ouvertes
 - Croisement de deux unités de face (avant M5)
