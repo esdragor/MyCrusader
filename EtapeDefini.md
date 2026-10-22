@@ -10,7 +10,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
   - Tenir la position face à une allonge plus longue (Lancier contre Homme d'armes) : l'unité ne riposte pas, riposter d'un pas ? (question à poser)
   - S2 juste sous le seuil (2,93 ms) : enlever le coût fixe du combat sans bataille (0,29 ms par pas)
   - S5 hors combat juste au-dessus du seuil (32,4 Ko/s pour 32)
-  - S3 et S4 à 5,7 ms (seuil 3 de D218) : seuil propre à décider ou optimiser
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
 ### Animations
