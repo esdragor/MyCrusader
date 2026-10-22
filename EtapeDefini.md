@@ -13,7 +13,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités
-- Maj (file) pour l'attaque d'un bâtiment *(D345 ; le reste est fait)*
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
 
 ### Fin de partie
