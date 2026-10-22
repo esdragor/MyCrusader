@@ -53,8 +53,12 @@ protected:
 	/** Takes the units' positions, velocities and radii into a hashed grid; false when no unit walks (nothing to do). */
 	bool BuildLookAhead(FMassExecutionContext& Context);
 	static int32 LookAheadBucketOf(const FIntPoint& Cell);
-	/** The way a walker takes: Direction if nothing is met on it within Horizon (s), else the smallest clear turn, else Direction. */
-	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, uint32 FormUpSerial, uint8 FormUpKind, uint8 Owner) const;
+	/**
+	 * The way a walker takes: Direction if nothing is met on it within Horizon (s), else the smallest clear turn, else
+	 * Direction; from the detour remembered in Detour while its body is ahead, eased back one turn a step (MV.2).
+	 */
+	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, uint32 FormUpSerial, uint8 FormUpKind,
+		uint8 Owner, struct FHOLDetourFragment& Detour) const;
 	/**
 	 * J7c.4 loop 19 (hol.Combat.RearSlide): a melee walking to fight, off the front, wanting Wanted: OutVelocity slides along
 	 * the friend barring its way (or stops when both sides are shut), smoothed from LastVelocity. False at the front.

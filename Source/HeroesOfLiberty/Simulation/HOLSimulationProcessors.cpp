@@ -14,6 +14,8 @@
 #include "MassNavMeshNavigationFragments.h"
 #include "MassNavigationFragments.h"
 #include "Misc/ScopeExit.h"
+#include "Simulation/HOLAvoidanceHoldFragments.h"
+#include "Simulation/HOLAvoidRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -223,6 +225,7 @@ void UHOLFullSpeedProcessor::ConfigureQueries(const TSharedRef<FMassEntityManage
 	EntityQuery.AddRequirement<FMassNavMeshShortPathFragment>(EMassFragmentAccess::ReadOnly);
 	// ReadWrite for the rear slide's way (J7c.4 loop 20, FHOLCombatFragment::SlideWay).
 	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLDetourFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::Optional);
 }
@@ -335,7 +338,7 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 }
 
 FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
-	const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner) const
+	const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
@@ -369,20 +372,41 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			}
 		}
 	}
-	if (Near.IsEmpty())
+	// The detour is forgotten once eased back onto the straight course (MV.2).
+	const auto Forget = [&Detour]
+	{
+		Detour.Blocker.Reset();
+		Detour.Side = 0;
+		Detour.Turn = 0;
+		Detour.ClearSteps = 0;
+	};
+	// The part at a crossing is kept while that walker is near (MV.2).
+	if (!Detour.Crosser.IsSet() || !Near.ContainsByPredicate([this, &Detour](const int32 Other) { return Entities[Other] == Detour.Crosser; }))
+	{
+		Detour.Crosser.Reset();
+		Detour.CrossRole = 0;
+		Detour.CrossSide = 0;
+	}
+	if (Near.IsEmpty() && Detour.Turn == 0)
 	{
 		return Direction;
 	}
+	// One keeping its course at a crossing does not turn from the other but for a contact very close, as a safety.
+	const double KeepCourseHorizon = HOLAvoid::KeepCourseSafetyScale * Horizon;
+	const auto ContactLimit = [this, &Detour, Horizon, KeepCourseHorizon](const int32 Other)
+	{
+		return Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::KeepCourse) && Entities[Other] == Detour.Crosser ? KeepCourseHorizon : Horizon;
+	};
 
 	// The first body met going this way, and when.
-	const auto FirstContact = [this, &Near, &Position, Radius, Speed](const FVector2D& Way, int32& OutOther)
+	const auto FirstContact = [this, &Near, &Position, Radius, Speed, &ContactLimit](const FVector2D& Way, int32& OutOther)
 	{
 		double First = TNumericLimits<double>::Max();
 		OutOther = INDEX_NONE;
 		for (const int32 Other : Near)
 		{
 			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale);
-			if (Time < First)
+			if (Time < First && Time < ContactLimit(Other))
 			{
 				First = Time;
 				OutOther = Other;
@@ -391,11 +415,11 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return First;
 	};
 	// Whether nothing is met going this way within the horizon: the first contact found is enough (D302).
-	const auto IsClear = [this, &Near, &Position, Radius, Speed, Horizon](const FVector2D& Way)
+	const auto IsClear = [this, &Near, &Position, Radius, Speed, &ContactLimit](const FVector2D& Way)
 	{
 		for (const int32 Other : Near)
 		{
-			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale) < Horizon)
+			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale) < ContactLimit(Other))
 			{
 				return false;
 			}
@@ -403,23 +427,77 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return true;
 	};
 	int32 Blocker = INDEX_NONE;
-	if (FirstContact(Ahead, Blocker) >= Horizon)
+	bool bStraightClear = FirstContact(Ahead, Blocker) >= Horizon;
+	// At a crossing, the second to the crossing point passes behind the first, which keeps its course (MV.2, user's choice
+	// A: both turned away from each other the same way and ran side by side). Chosen once, at the first contact met on
+	// the straight course, and kept while that walker is near; not against one of its own order.
+	if (!bStraightClear && Detour.Turn == 0 && Entities[Blocker] != Detour.Crosser && (FormUpSerial == 0u || FormUpSerials[Blocker] != FormUpSerial))
+	{
+		// None (face to face) is kept too: once both turned, their ways looked like a crossing (MV.2: Men-at-arms face to face).
+		const HOLAvoid::FCrossingChoice Choice = HOLAvoid::ChooseCrossingRole(Position, Ahead * Speed, Positions[Blocker], Velocities[Blocker]);
+		Detour.Crosser = Entities[Blocker];
+		Detour.CrossRole = static_cast<uint8>(Choice.Role);
+		Detour.CrossSide = static_cast<int8>(Choice.Side);
+		if (Choice.Role == HOLAvoid::ECrossingRole::KeepCourse)
+		{
+			bStraightClear = FirstContact(Ahead, Blocker) >= Horizon;
+		}
+	}
+	// Its body passed (no longer near and ahead): the detour eases back one turn a step while the way is clear, without
+	// waiting for a run of clear steps (MV.2: forgotten at once, the heading jumped back up to 60 degrees in a step).
+	if (Detour.Turn > 0 && !Near.ContainsByPredicate([this, &Detour](const int32 Other) { return Entities[Other] == Detour.Blocker; }))
+	{
+		Detour.ClearSteps = static_cast<uint8>(FMath::Max<int32>(Detour.ClearSteps, HOLAvoid::EaseBackSteps - 1));
+	}
+	if (bStraightClear && Detour.Turn == 0)
 	{
 		return Direction;
 	}
 
-	// Around it on the side away from it (the same at every step while it passes; head-on, both bodies keep the same
-	// hand and pass each other), the smallest turn first; a turn beyond the largest is too long a detour: on, pushing.
-	const FVector2D ToBlocker = Positions[Blocker] - Position;
-	const double Side = FVector2D::CrossProduct(Ahead, ToBlocker) > 0. ? -1. : 1.;
 	const int32 Turns = FMath::FloorToInt32(FMath::Max(0.f, AvoidMaxAngle) / AvoidAngleStep);
-	for (int32 Turn = 1; Turn <= Turns; ++Turn)
+	const auto WayOf = [&Ahead](const double Hand, const int32 Turn) { return Ahead.GetRotated(Hand * Turn * AvoidAngleStep); };
+	if (Detour.Turn > 0)
 	{
-		for (const double Hand : { Side, -Side })
+		// Without memory, each step started again from the straight course: both walkers turned, the way looked clear,
+		// both went straight and met again, the heading flipping every 2 steps (MV.2). On the remembered hand from the
+		// remembered turn: one turn back towards the place (the last one onto the straight course) after a run of clear
+		// steps, else held, else wider.
+		const double Hand = Detour.Side;
+		const int32 Turn = HOLAvoid::NextDetourTurn(Detour.Turn, Turns, Detour.ClearSteps, [&WayOf, &IsClear, Hand](const int32 Each) { return IsClear(WayOf(Hand, Each)); });
+		// No turn clear up to the largest: on its hand, one turn a step back towards its place, pushing (MV.2: forgetting
+		// it flipped the hand, the heading jumping up to 80 degrees in a step at a crossing; held, it circled its slot).
+		Detour.Turn = static_cast<uint8>(Turn != INDEX_NONE ? Turn : Detour.Turn - 1);
+		if (Detour.Turn == 0)
 		{
-			const FVector2D Way = Ahead.GetRotated(Hand * Turn * AvoidAngleStep);
+			Forget();
+			return Direction;
+		}
+		const FVector2D Way = WayOf(Hand, Detour.Turn);
+		return FVector(Way.X, Way.Y, 0.);
+	}
+
+	// Around it on the side away from it, face to face on its own right (two walkers face to face take opposite sides
+	// and pass each other, MV.2), the smallest turn first; a turn beyond the largest is too long a detour: on, pushing.
+	// Passing behind one at a crossing: on the side it comes from, every turn on that hand before the other hand.
+	const FVector2D ToBlocker = Positions[Blocker] - Position;
+	const bool bPassBehind = Entities[Blocker] == Detour.Crosser && Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::PassBehind);
+	const double Side = bPassBehind ? static_cast<double>(Detour.CrossSide) : HOLAvoid::ChooseDetourSide(Ahead, ToBlocker, (Radius + Radii[Blocker]) * AvoidRadiusScale);
+	for (int32 Index = 0; Index < 2 * Turns; ++Index)
+	{
+		const int32 Turn = bPassBehind ? Index % Turns + 1 : Index / 2 + 1;
+		const double Hand = bPassBehind ? (Index < Turns ? Side : -Side) : (Index % 2 == 0 ? Side : -Side);
+		{
+			const FVector2D Way = WayOf(Hand, Turn);
 			if (IsClear(Way))
 			{
+				// Not remembered around one of its own order (a member of its block, one forming up): its file pulls it
+				// back at the next step (MV.2: remembered, members drifted up to 2.4 m off their files on the march).
+				if (FormUpSerial == 0u || FormUpSerials[Blocker] != FormUpSerial)
+				{
+					Detour.Blocker = Entities[Blocker];
+					Detour.Side = static_cast<int8>(Hand);
+					Detour.Turn = static_cast<uint8>(Turn);
+				}
 				return FVector(Way.X, Way.Y, 0.);
 			}
 		}
@@ -673,6 +751,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 		// J7c.4 loop 19 (hol.Combat.RearSlide): a melee only (a ranged unit stops at its range, far behind).
 		const bool bMayRearSlide = bLookAhead && RearSlide != 0 && !Combats.IsEmpty()
 			&& (!TypeConstants || !HOLCombat::IsRangedAttack(TypeConstants->AttackRange));
+		const TArrayView<FHOLDetourFragment> Detours = Context.GetMutableFragmentView<FHOLDetourFragment>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -755,8 +834,16 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				// (two of one kind keep clear of each other, the user's trial of playtest note 1 of J7b); one re-forming at a
 				// block's arrival, or a straggler walking into its slot, through all of its order (J7a.4, J7b note 1: CanPassThrough),
 				// as the separation lets it.
+				// A detour is kept for one order's leg (MV.2).
+				FHOLDetourFragment& Detour = Detours[EntityIt];
+				if (Detour.OrderSerial != Order.OrderSerial || Detour.Phase != static_cast<uint8>(Order.Phase))
+				{
+					Detour = FHOLDetourFragment();
+					Detour.OrderSerial = Order.OrderSerial;
+					Detour.Phase = static_cast<uint8>(Order.Phase);
+				}
 				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon,
-					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer);
+					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour);
 				// On a block's march, never against it (playtest note 1, loop 20: a unit forming up, going round one of
 				// its kind, took a step back): the turn's part against the march dropped, sideways or on.
 				if ((Order.Phase == EHOLMovePhase::FormUp || Order.Phase == EHOLMovePhase::Block) && !Order.bReforming && !Order.MarchDirection.IsNearlyZero())
