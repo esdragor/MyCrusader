@@ -484,14 +484,14 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 			Transforms.Add(FTransform(Facing, FillCentre, FVector(FillWidth / ShapeSize, Height / ShapeSize, 1.0)));
 			CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
 		}
-		// The buildings' bars (D345.2a): over a hurt building, or the selected one, as the units' but wider; above its top
+		// The buildings' bars (D345.2a): over the selected building only (the user's choice), as the units' but wider; above its top
 		// (a site's, risen with its work).
 		const AHOLBuilding* SelectedBuilding = PlayerController->GetSelection();
 		for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 		{
 			const AHOLBuilding* Building = *It;
 			const FHOLBuildingTypeRow* Type = Building->GetType();
-			if (!Type || !Building->IsSeenHere() || (!Building->IsHurt() && Building != SelectedBuilding) || Building->GetMaxHealth() <= 0)
+			if (!Type || !Building->IsSeenHere() || Building != SelectedBuilding || Building->GetMaxHealth() <= 0)
 			{
 				continue;
 			}

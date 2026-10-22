@@ -1271,12 +1271,12 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		}
 		case EHOLGridCommand::CancelConstruction:
 		{
-			// What a cancel gives back (D345): all before the first work, then the share of the cost not built.
+			// What a cancel gives back (D345): all before the first work, then the share of the cost not built. The tooltip
+			// shows the amount under its name, without an effect line (the user's choice).
 			const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Site->GetConstructionState(),
 				Site->GetConstructionWork(), Site->GetTotalWork()) : FHOLResources();
 			GridCell->SetCommand(LOCTEXT("Cancel", "Annuler"), EHOLGridCellState::Ready);
-			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), Refund, FHOLResources(), Site && Site->HasWorkStarted()
-				? LOCTEXT("RefundRest", "Rend la part du coût non bâtie") : LOCTEXT("RefundAll", "Rend tout le coût"));
+			GridCell->SetTooltip(LOCTEXT("CancelSite", "Annuler la construction"), Refund, FHOLResources(), FText());
 			break;
 		}
 		case EHOLGridCommand::AttackMove:

@@ -176,9 +176,6 @@ TRANSLATIONS = {
     "HOLGameScreen,Builders": ("Builders: {0}", "建設者：{0}"),
     "HOLGameScreen,Cancel": ("Cancel", "キャンセル"),
     "HOLGameScreen,CancelSite": ("Cancel construction", "建設をキャンセル"),
-    "HOLGameScreen,RefundAll": ("Refunds the full cost", "費用を全額返却"),
-    "HOLGameScreen,RefundHalf": ("Refunds half the cost", "費用の半分を返却"),
-    "HOLGameScreen,RefundRest": ("Refunds the unbuilt share of the cost", "未建設分の費用を返却"),
     # The user's trial of J6a.5: F1, F2, F3 while the player has no building of the category.
     "HOLGameScreen,NoMilitaryBuilding": ("No military building", "軍事施設がありません"),
     "HOLGameScreen,NoEconomicBuilding": ("No economic building", "経済施設がありません"),
