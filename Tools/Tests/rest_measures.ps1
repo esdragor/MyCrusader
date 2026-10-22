@@ -1,22 +1,19 @@
 # Every rest measure in one go, for a moment when nothing else runs on the machine (asked 2026-10-21):
-#   main copy  : S1, S2, S7 (each twice, chapter_measures.ps1), then S5
-#   Elrond     : S3, S4 (each twice, only written there for now), then S5 and S5 in combat
-# Checks first that no Unreal / build runs and that the processor is calm, builds both copies, then runs the measures
-# and writes one summary: Saved_Tests\Logs\rest_measures_<date>.txt (main copy). ~25-30 min (more when a dedicated
-# server has to be cooked again). Run from Windows PowerShell (never Git Bash), from the main copy:
+#   main copy : S1, S2, S7, S3, S4 (each twice, chapter_measures.ps1), then S5 and S5 in combat
+#   (S3 / S4 live on main since the melee merge 48ffa00: the Elrond copy is no longer needed)
+# Checks first that no Unreal / build runs and that the processor is calm, builds the main copy, then runs the measures
+# and writes one summary: Saved_Tests\Logs\rest_measures_<date>.txt. ~10-15 min (more when the dedicated server has to
+# be cooked again). Run from Windows PowerShell (never Git Bash), from the main copy:
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\rest_measures.ps1            (everything)
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\rest_measures.ps1 -DryRun    (checks and plan only)
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\rest_measures.ps1 -NoElrond  (main copy only, ~10 min)
 param(
     [switch] $DryRun,
-    [switch] $NoElrond,
     [switch] $NoBuild,
     # Runs even when the processor is above MaxCpu before the start (the numbers are then worth less).
     [switch] $Force,
     [double] $MaxCpu = 15
 )
 $Main = (Resolve-Path "$PSScriptRoot\..\..").Path
-$Elrond = Join-Path (Split-Path $Main) "HeroesOfLiberty-Elrond"
 $Stamp = Get-Date -Format "MMdd_HHmm"
 $SummaryFile = Join-Path $Main "Saved_Tests\Logs\rest_measures_$Stamp.txt"
 New-Item -ItemType Directory -Force (Split-Path $SummaryFile) | Out-Null
@@ -61,33 +58,22 @@ if ($CpuMean -gt $MaxCpu -and -not $Force) {
     exit 2
 }
 
-$RunElrond = -not $NoElrond -and (Test-Path (Join-Path $Elrond "HeroesOfLiberty.uproject"))
 Say "Rest measures $Stamp - processor $CpuMean % before the start$(if ($Heavy) { " ; open: $($Heavy -join ', ')" })"
-Say "  main   : $(Describe-Copy $Main) -> S1, S2, S7 (x2), S5"
-if ($RunElrond) { Say "  Elrond : $(Describe-Copy $Elrond) -> S3, S4 (x2), S5, S5 combat" }
-elseif (-not $NoElrond) { Say "  Elrond : not found, S3 / S4 skipped" }
+Say "  main : $(Describe-Copy $Main) -> S1, S2, S7, S3, S4 (x2), S5, S5 combat"
 if ($DryRun) { Write-Host "Dry run: nothing built or measured."; exit 0 }
 
-# 2. Both copies built (the measures run the editor binaries of each copy).
+# 2. The main copy built (the measures run its editor binaries).
 if (-not $NoBuild) {
     if (-not (Build-Copy $Main)) { Say "main : BUILD FAILED, nothing measured"; $Summary | Set-Content -Encoding utf8 $SummaryFile; exit 1 }
-    if ($RunElrond -and -not (Build-Copy $Elrond)) { Say "Elrond : BUILD FAILED, S3 / S4 skipped"; $RunElrond = $false }
 }
 
-# 3. The measures, one copy after the other (each script refuses to start while another Unreal runs).
+# 3. The measures.
 $Failed = $false
 & (Join-Path $Main "Tools\Tests\chapter_measures.ps1") -Tag "rest_${Stamp}_main"
 $Failed = $Failed -or ($LASTEXITCODE -ne 0)
 Say ""
 Say "== main"
 Get-Content (Join-Path $Main "Saved_Tests\Logs\chapter_measures.txt") | ForEach-Object { Say $_ }
-if ($RunElrond) {
-    & (Join-Path $Elrond "Tools\Tests\chapter_measures.ps1") -Tests "S3:15", "S4:15" -Tag "rest_${Stamp}_elrond"
-    $Failed = $Failed -or ($LASTEXITCODE -ne 0)
-    Say ""
-    Say "== Elrond"
-    Get-Content (Join-Path $Elrond "Saved_Tests\Logs\chapter_measures.txt") | ForEach-Object { Say $_ }
-}
 
 Say ""
 Say "All done in $([math]::Round($Clock.Elapsed.TotalMinutes, 1)) min : $(if ($Failed) { 'FAIL' } else { 'PASS' }) - summary in $SummaryFile"
