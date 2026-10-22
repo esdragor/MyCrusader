@@ -6398,6 +6398,17 @@ d'épée).
   numéro suivant D343. Code sur `j7c-shot` (Elrond) : `MaxBattleSimulationMs` 6,0 dans le rapport du stress test
   (`IsBattle()`), `Get-StepThreshold` dans `chapter_measures.ps1` (S3, S4 = 6 ms ; les autres 3 ms). Vérifié : S3 deux
   fois au repos, **5,003 / 5,102 ms PASS** (seuil 6), 243-252 i/s. S1, S2, S5, S7 inchangés.
+- **S5 hors combat, 32,4 Ko/s (seuil 32) : diagnostic commencé, arrêté là (fin de séance demandée par l'utilisateur).**
+  - Comparaison au rapport de J6 (lignes « Client : états … le reste … ») : envois par unité inchangés (1,79 par seconde,
+    1,76-1,78 en J6), paquets 43/s (42) ; **états** 25,6-25,7 Ko/s par client (25,2-25,5 : **+0,3**, bits par état :
+    PV exacts sur 8 bits, 3f5a026 ?) ; **le reste** 6,76 Ko/s (5,9 : **+0,85 Ko/s**, la plus grosse part).
+  - **Écarté** : les lignes d'ordres (D328, `OrderChains` de `AHOLPlayerState`) : seuls les ordres d'un joueur en ont,
+    pas ceux du stress test (`HOLUnitOrderProcessor.cpp` ~1108, « the server's own … cost nothing here »).
+  - **Reprise** : (1) trace réseau du serveur de S5 (Network Insights, `-NetTrace=1 -trace=net` par
+    `net_match.ps1 -ServerSettings` ou ligne de commande du serveur) pour lire, propriété par propriété, ce qui fait
+    « le reste » ; (2) si besoin, A/B de S5 contre le côté A (`HeroesOfLiberty-Galadriel` détaché à e163490 : serveur
+    dédié à cuire là, ~5-8 min) ; candidats : réplication de l'état de combat ou des PV hors états, acteurs ajoutés
+    depuis J7b (corps, flèches), état du joueur. Une boucle à part (cuisson + mesures).
 - (J7c.4, **mycrusader-80**, reprise) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours », `j7c-shot` au-dessus
   de ce1dcf5). Boucle 16 lancée (sous-agent) : les trois règles derrière des variables — `hol.Combat.WeaponReach` (1)
   avec `hol.Combat.SpearReach` (130 cm bord à bord) et `hol.Combat.SwordReach` (70) ; `hol.Simulation.FriendGap` (25 cm
@@ -6556,6 +6567,10 @@ d'épée).
   tactique ; au joueur de lâcher la tenue (S ou un autre ordre). Écartés : **riposte d'un pas** (avancer d'~1 m pour
   frapper puis revenir) ; **petite zone tenue** (~2-3 m). Rien à coder (règle actuelle, contrôle « hold reach » de
   `orders` déjà fait avec un Homme d'armes). Au GDD à la clôture de J7 (J7c.5).
+- (J7c.4, **mycrusader-43**, reprise 2026-10-22 10:20) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours »,
+  `j7c-shot` ea447f9). D327 précisé (d69b666). **Boucle 25 lancée** (sous-agent) : coût fixe de `HOLCombatProcessor`
+  (tableau index d'entité → combattant, sortie rapide sans combat possible), empreintes S3 / S4 de référence prises
+  avant le changement puis comparées, `-Parts tests,combat`, S2 tracé si le temps le permet.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
