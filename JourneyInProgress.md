@@ -6384,6 +6384,15 @@ d'épée).
     tourne, ou si le processeur dépasse 15 % (liste des applications à fermer) ; compile `main` et Elrond ; `main` S1, S2,
     S7 (x2) puis S5 ; Elrond S3, S4 (x2) puis S5 et S5 en combat ; bilan unique `Saved_Tests/Logs/rest_measures_<date>.txt`.
     Essai à blanc (`-DryRun`) passé.
+- **Mesures au repos du 2026-10-22 matin** (`rest_measures.ps1`, lancé par l'utilisateur, 15,2 min ; processeur 12,7 %
+  au départ, 3-5 % avant les courses ; `main` 05056c5, Elrond `j7c-shot` e7e0151 sans aucune sonde) :
+  - `main` : **S1 PASS** 2,270 / 2,250 ms (combat coupé pendant S1, plus de plantage) ; **S2 PASS** 2,908 / 2,945 ms
+    (marge 0,07 : le coût fixe du combat, 0,29 ms, reste à enlever) ; **S7 PASS** 2,604 / 2,776 ms ; rendu 252-272 i/s ;
+    **S5 FAIL** 32 380 o/s (seuil 32 000), erreur affichée 20,7 cm PASS.
+  - Elrond : **S3 FAIL** 5,710 / 5,694 ms, 208 i/s ; **S4 FAIL** 5,635 / 5,764 ms, 199 i/s (seuil de D218, 3 ms ; le
+    seuil propre à S3 / S4 restait à décider sur ces chiffres) ; **S5 FAIL** 32 355 o/s ; **S5 en combat PASS**
+    24 498 o/s (70 Ko/s avant la mêlée corrigée), 10,2 cm ; 169 envois d'activité et 87 de PV par seconde.
+  - `rest_measures.ps1` a fait tout le parcours (compilation des deux copies comprise) : à commiter une fois validé.
 - (J7c.4, **mycrusader-80**, reprise) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours », `j7c-shot` au-dessus
   de ce1dcf5). Boucle 16 lancée (sous-agent) : les trois règles derrière des variables — `hol.Combat.WeaponReach` (1)
   avec `hol.Combat.SpearReach` (130 cm bord à bord) et `hol.Combat.SwordReach` (70) ; `hol.Simulation.FriendGap` (25 cm
