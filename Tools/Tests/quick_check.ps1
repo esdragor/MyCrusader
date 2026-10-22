@@ -1,4 +1,4 @@
-# Quick check of the project (D267), on two levels (D327):
+﻿# Quick check of the project (D267), on two levels (D327):
 #   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
 #     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
 #     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
@@ -585,12 +585,14 @@ if ($Parts -contains "camera") {
                 "hol.Units.Spawn 3 -10400 3000 0 Peasant 150", "hol.Units.Spawn 5 -10800 6000 0 Peasant 150", "hol.Units.Spawn 5 -9200 6000 0 Peasant 150"
             # The enemy wall posed one by one, two ranks of 6 staggered, bodies touching (1.25 m apart): no gap to walk through.
             $Wall = @(); for ($w = 0; $w -lt 12; $w++) { $Wall += "hol.Units.Spawn 1 $(if ($w -lt 6) { -9000 } else { -8880 }) $(3000 + (($w % 6) - 2.5) * 125 + $(if ($w -lt 6) { 0 } else { 62.5 })) 1 Peasant 0" }
-            Step (@($Wall) + @("wait 1",
+            # The contacts with still bodies counted from the orders (MV.4.4, hol.Units.ContactReport: the count reset here).
+            Step (@($Wall) + @("wait 1", "hol.Units.ContactReport",
                                 "hol.Camera.Focus -9700 3000", "frames 3", "hol.Select.BoxGround -11000 2300 -9800 3700", "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.OrderGround -7600 3000",
                 "hol.Camera.Focus -9700 0", "frames 3", "hol.Select.BoxGround -11000 -700 -9800 700", "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Select.OrderGround -7600 0",
                 "hol.Camera.Focus -9700 -2800", "frames 3", "hol.Select.BoxGround -10900 -3300 -9800 -2300", "waitlog Selection: 5 units (own): Peasant x5", "hol.Select.OrderGround -7500 -2800",
                 "mark bodies walk"))
             for ($i = 0; $i -lt 26; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "hol.Units.ContactReport"
             # The crossing alone, once the others stand (the heading flips are counted over all walkers, MV.4.3): the count
             # reset, the two orders, a sample every 0.5 s for 8 s, the count.
             Step "hol.Units.TurnReport", "mark bodies crossing",
@@ -1260,7 +1262,7 @@ if ($Parts -contains "camera") {
             # The target that flees (J7c.2b, the user's case): every unit 1.5 times as fast (the Spearman ~8.7 m/s, an AoE4 light cavalry), 3 Archers
             # and a Spearman of slot 1 20 m off (D345); as soon as the first arrow is released the Spearman runs north: the arrow
             # still lands on it (damage at the landing), the drawn arrow follows it and is gone on it.
-            Step "mark combat arrows flee", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 12000 1", "wait 0.2", "hol.Cheat.UnitSpeed 1.5", "hol.Units.SpawnSeed 132", "hol.Camera.Focus $($FleeArchers[0]) $($FleeArchers[1] + 900)",
+            Step "mark combat arrows flee", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 12000 1", "hol.Units.Remove $($FleeSpearman[0]) $($FleeSpearman[1]) 4000 0", "wait 0.2", "hol.Cheat.UnitSpeed 1.5", "hol.Units.SpawnSeed 132", "hol.Camera.Focus $($FleeArchers[0]) $($FleeArchers[1] + 900)",
                 "hol.Units.Spawn 3 $($FleeArchers -join ' ') 0 Archer 150", "hol.Units.Spawn 1 $($FleeSpearman -join ' ') 1 Spearman 150", "hol.Camera.Zoom 12",
                 "waitlog releases an arrow", "hol.Units.Move $($FleeTo -join ' ') 1", "hol.Units.Where 1", "hol.Units.Where 0", "wait 0.1", "capture combat_flee_1",
                 "hol.Units.Where 1", "capture combat_flee_2", "hol.Units.Where 1", "hol.Units.Where 0", "wait 0.25", "hol.Units.Where 1", "hol.Units.Where 0", "hol.Camera.Zoom -12", "wait 2", "hol.Units.Where 1", "hol.Units.Where 0",
@@ -1768,6 +1770,16 @@ if (($Parts -contains "bodies") -and ($Parts -contains "camera")) {
     $OursLimit = [Math]::Round(0.5 + $OursLeft / $Speed * 1.5, 1)
     $OursTime = & $TimeAll $Ours { param($P) [Math]::Abs($P[0] + 7600) -le 400 -and [Math]::Abs($P[1]) -le 400 }
     $Checks["our wall: $($Ours.Count) of 3 Men-at-arms behind it in $OursTime s (at most $OursLimit s, $([Math]::Round($Speed)) cm/s)"] = ($Ours.Count -eq 3) -and ($OursTime -le $OursLimit)
+    # MV.4.4 (the user's trial blocked_bodies: "they hit the still ones a little, then go round them"): the detour begun
+    # soon enough that no walker touches a still body (closer than the two radii, hol.Units.ContactReport, every step,
+    # out of a fight) over the three cases; a tolerance of 3 cm (a step's rounding).
+    $ContactTolerance = 3
+    $Contact = @(Get-Section "bodies walk" | Select-String -Pattern "Contact report: (\d+) contacts with still bodies in (\d+) walker-steps, closest gap (-?\d+) cm at \((-?\d+), (-?\d+)\)" | Select-Object -Last 1)
+    $StillContacts = if ($Contact.Count) { [int]$Contact[0].Matches[0].Groups[1].Value } else { -1 }
+    $StillGap = if ($Contact.Count) { [int]$Contact[0].Matches[0].Groups[3].Value } else { -9999 }
+    $StillAt = if ($Contact.Count) { "($($Contact[0].Matches[0].Groups[4].Value), $($Contact[0].Matches[0].Groups[5].Value))" } else { "none" }
+    Write-Host "bodies: $StillContacts contacts with still bodies in $(if ($Contact.Count) { $Contact[0].Matches[0].Groups[2].Value } else { '?' }) walker-steps, closest gap $StillGap cm at $StillAt"
+    $Checks["no still body touched: closest gap $StillGap cm at $StillAt, $StillContacts walker-steps in contact (at least -$ContactTolerance cm)"] = ($Contact.Count -eq 1) -and ($StillGap -ge -$ContactTolerance)
     # The crossing (the user's trial crossing), on its own after the others: two groups of 5 Peasants face to face, 16 m apart,
     # each to the other's place. All arrived (within 4 m), and the heading flips counted by the game at every step (MV.4.3,
     # hol.Units.TurnReport: turns of more than 25 degrees between two steps) at most $FlipLimit: without the remembered detour

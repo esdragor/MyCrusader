@@ -61,9 +61,39 @@ namespace UE::HeroesOfLiberty::Simulation
 			UE_LOG(LogHOLSimulation, Display, TEXT("Turn report: %lld flips over %.0f deg in %lld walker-steps"), Flips, TurnFlipDegrees, Steps);
 		}));
 
+	/**
+	 * The walkers' contacts with still bodies (MV.4.4): a walker out of a fight, at a step, closer (centre to centre) than
+	 * the two radii to a body moving less than StillBodySpeed; counted until hol.Units.ContactReport, with the closest gap.
+	 */
+	constexpr double StillBodySpeed = 10.;
+	std::atomic<int64> StillContacts{0};
+	std::atomic<int64> StillWalkerSteps{0};
+	FCriticalSection StillClosestLock;
+	double StillClosestGap = TNumericLimits<double>::Max();
+	FVector2D StillClosestAt = FVector2D::ZeroVector;
+	FAutoConsoleCommand ContactReportCommand(TEXT("hol.Units.ContactReport"),
+		TEXT("Logs the walkers' contacts with still bodies (closer than the two radii) since the last report, with the closest gap, then counts again from zero (MV.4.4)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			const int64 Contacts = StillContacts.exchange(0);
+			const int64 Steps = StillWalkerSteps.exchange(0);
+			FScopeLock Lock(&StillClosestLock);
+			const double Closest = StillClosestGap == TNumericLimits<double>::Max() ? 9999. : StillClosestGap;
+			UE_LOG(LogHOLSimulation, Display, TEXT("Contact report: %lld contacts with still bodies in %lld walker-steps, closest gap %.0f cm at (%.0f, %.0f)"),
+				Contacts, Steps, Closest, StillClosestAt.X, StillClosestAt.Y);
+			StillClosestGap = TNumericLimits<double>::Max();
+			StillClosestAt = FVector2D::ZeroVector;
+		}));
+
 	float AvoidTime = 0.5f;
 	FAutoConsoleVariableRef CVarAvoidTime(TEXT("hol.Units.AvoidTime"), AvoidTime,
 		TEXT("Seconds a walker looks ahead for bodies on its way (D293)"));
+	float AvoidStillTime = 1.0f;
+	FAutoConsoleVariableRef CVarAvoidStillTime(TEXT("hol.Units.AvoidStillTime"), AvoidStillTime,
+		TEXT("Seconds a walker looks ahead for still bodies on its way, at least hol.Units.AvoidTime (MV.4.4: seen at 0.5 s, a wall of still ones was touched before being gone round)"));
+	float AvoidStillMaxAngle = 90.f;
+	FAutoConsoleVariableRef CVarAvoidStillMaxAngle(TEXT("hol.Units.AvoidStillMaxAngle"), AvoidStillMaxAngle,
+		TEXT("Largest turn (degrees) a walker makes along still bodies near it, at least hol.Units.AvoidMaxAngle (MV.4.4)"));
 	float AvoidMaxAngle = 60.f;
 	FAutoConsoleVariableRef CVarAvoidMaxAngle(TEXT("hol.Units.AvoidMaxAngle"), AvoidMaxAngle,
 		TEXT("Largest turn (degrees) a walker makes around a body ahead; beyond, the detour is too long and it pushes its way (D293)"));
@@ -245,6 +275,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	Entities.Reset();
 	Positions.Reset();
 	Velocities.Reset();
+	Stills.Reset();
 	Radii.Reset();
 	FormUpSerials.Reset();
 	FormUpKinds.Reset();
@@ -274,6 +305,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 			Entities.Add(Context.GetEntity(EntityIt));
 			Positions.Add(FVector2D(Location.X, Location.Y));
 			Velocities.Add(Velocity);
+			Stills.Add(MoveTargets[EntityIt].GetCurrentAction() != EMassMovementAction::Move && Velocity.SizeSquared() < FMath::Square(StillBodySpeed));
 			Radii.Add(AgentRadii[EntityIt].Radius);
 			FormUpSerials.Add(GetPassThroughSerial(Orders[EntityIt]));
 			FormUpKinds.Add(GetPassThroughKind(Orders[EntityIt]));
@@ -346,16 +378,19 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 }
 
 FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
-	const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour, const bool bAroundEnemies) const
+	const double StillHorizonIn, const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour, const bool bAroundEnemies) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
+	// A still body is seen further (MV.4.4: the walkers touched a wall of still ones before going round it).
+	const double StillHorizon = FMath::Max(Horizon, StillHorizonIn);
+	const auto IsStill = [this](const int32 Other) { return Stills[Other]; };
 	// The bodies that could be met within the horizon, whatever way this one takes: in the reach of both speeds, and not
 	// behind it (no turn reaches them; one catching up from behind is its own to avoid).
 	const FVector2D Position(Location.X, Location.Y);
 	const FVector2D Ahead(Direction.X, Direction.Y);
 	// Only the cells the square around that reach overlaps (D302: 9 to 16 instead of 25 at 3 m/s), in the same order.
-	const double Reach = (Speed + MaxSpeed) * Horizon + (Radius + MaxRadius) * FMath::Max(1.f, AvoidRadiusScale);
+	const double Reach = FMath::Max((Speed + MaxSpeed) * Horizon, Speed * StillHorizon) + (Radius + MaxRadius) * FMath::Max(1.f, AvoidRadiusScale);
 	const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y - Reach) / LookAheadCellSize));
 	const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y + Reach) / LookAheadCellSize));
 	TArray<int32, TInlineAllocator<64>> Near;
@@ -372,7 +407,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 				}
 				const FVector2D ToOther = Positions[Other] - Position;
 				const double ContactDistance = (Radius + Radii[Other]) * AvoidRadiusScale;
-				const double OtherReach = (Speed + Velocities[Other].Size()) * Horizon + ContactDistance;
+				const double OtherReach = (IsStill(Other) ? FMath::Max(Speed * Horizon, Speed * StillHorizon) : (Speed + Velocities[Other].Size()) * Horizon) + ContactDistance;
 				if (FVector2D::DotProduct(ToOther, Ahead) > -ContactDistance && ToOther.SizeSquared() < FMath::Square(OtherReach))
 				{
 					Near.Add(Other);
@@ -407,9 +442,10 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	}
 	// One keeping its course at a crossing does not turn from the other but for a contact very close, as a safety.
 	const double KeepCourseHorizon = HOLAvoid::KeepCourseSafetyScale * Horizon;
-	const auto ContactLimit = [this, &Detour, Horizon, KeepCourseHorizon](const int32 Other)
+	const auto ContactLimit = [this, &Detour, Horizon, StillHorizon, KeepCourseHorizon, &IsStill](const int32 Other)
 	{
-		return Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::KeepCourse) && Entities[Other] == Detour.Crosser ? KeepCourseHorizon : Horizon;
+		return Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::KeepCourse) && Entities[Other] == Detour.Crosser ? KeepCourseHorizon
+			: IsStill(Other) ? StillHorizon : Horizon;
 	};
 
 	// The first body met going this way, and when.
@@ -443,7 +479,9 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return true;
 	};
 	int32 Blocker = INDEX_NONE;
-	bool bStraightClear = FirstContact(Ahead, Blocker) >= Horizon;
+	// A body met within its own limit (a still one's further, MV.4.4): not clear.
+	FirstContact(Ahead, Blocker);
+	bool bStraightClear = Blocker == INDEX_NONE;
 	// At a crossing, the second to the crossing point passes behind the first, which keeps its course (MV.2, user's choice
 	// A: both turned away from each other the same way and ran side by side). Chosen once, at the first contact met on
 	// the straight course, and kept while that walker is near; not against one of its own order.
@@ -456,7 +494,8 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.CrossSide = static_cast<int8>(Choice.Side);
 		if (Choice.Role == HOLAvoid::ECrossingRole::KeepCourse)
 		{
-			bStraightClear = FirstContact(Ahead, Blocker) >= Horizon;
+			FirstContact(Ahead, Blocker);
+			bStraightClear = Blocker == INDEX_NONE;
 		}
 	}
 	// Its body passed (no longer near and ahead): the detour eases back one turn a step while the way is clear, without
@@ -470,7 +509,10 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return Direction;
 	}
 
-	const int32 Turns = FMath::FloorToInt32(FMath::Max(0.f, AvoidMaxAngle) / AvoidAngleStep);
+	// Along a still body up to hol.Units.AvoidStillMaxAngle (MV.4.4: at 60 degrees the walkers still closed in on a wide
+	// wall of still ones and touched it); the wider turns tried only once none up to the usual largest is clear.
+	const bool bStillNear = Near.ContainsByPredicate(IsStill);
+	const int32 Turns = FMath::FloorToInt32(FMath::Max3(0.f, AvoidMaxAngle, bStillNear ? AvoidStillMaxAngle : 0.f) / AvoidAngleStep);
 	const auto WayOf = [&Ahead](const double Hand, const int32 Turn) { return Ahead.GetRotated(Hand * Turn * AvoidAngleStep); };
 	if (Detour.Turn > 0)
 	{
@@ -485,8 +527,8 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		// An enemy is not pushed (D293): against one, one turn a step wider up to the largest, held along it (MV.4: eased
 		// back, the Paysans walked straight into a wall of enemies and stuck in it).
 		int32 EnemyAhead = INDEX_NONE;
-		const bool bHoldAlongEnemy = Turn == INDEX_NONE && bAroundEnemies && FirstContact(WayOf(Hand, Turns), EnemyAhead) < Horizon
-			&& EnemyAhead != INDEX_NONE && Owners[EnemyAhead] != Owner;
+		const bool bHoldAlongEnemy = Turn == INDEX_NONE && bAroundEnemies && (FirstContact(WayOf(Hand, Turns), EnemyAhead), EnemyAhead != INDEX_NONE)
+			&& Owners[EnemyAhead] != Owner;
 		Detour.Turn = static_cast<uint8>(Turn != INDEX_NONE ? Turn : HOLAvoid::TurnWithoutClearWay(Detour.Turn, Turns, bHoldAlongEnemy));
 		if (Detour.Turn == 0)
 		{
@@ -762,9 +804,10 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	};
 	const bool bLookAhead = AvoidEnabled != 0 && BuildLookAhead(Context);
 	const double LookAheadTime = FMath::Max(0.f, AvoidTime);
+	const double StillLookAheadTime = FMath::Max<double>(LookAheadTime, AvoidStillTime);
 
 	// Chunks taken by the threads as they come free: a chunk of a dense crowd costs more (D302).
-	EntityQuery.ParallelForEachEntityChunk(Context, [this, bLookAhead, LookAheadTime](FMassExecutionContext& Context)
+	EntityQuery.ParallelForEachEntityChunk(Context, [this, bLookAhead, LookAheadTime, StillLookAheadTime](FMassExecutionContext& Context)
 	{
 		// As UMassApplyMovementProcessor, which moves the unit by this velocity next.
 		const float DeltaTime = FMath::Min(0.1f, Context.GetDeltaTimeSeconds());
@@ -797,10 +840,54 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				ChunkFlips += FVector2D::DotProduct(Before.GetSafeNormal(), After.GetSafeNormal()) < FlipCosine ? 1 : 0;
 			}
 		};
+		// The contacts with still bodies of this chunk (MV.4.4), added once at its end.
+		int64 ChunkContacts = 0;
+		int64 ChunkStillSteps = 0;
+		double ChunkClosest = TNumericLimits<double>::Max();
+		FVector2D ChunkClosestAt = FVector2D::ZeroVector;
+		const auto CountStillContact = [this, &ChunkContacts, &ChunkStillSteps, &ChunkClosest, &ChunkClosestAt](const FMassEntityHandle Entity, const FVector2D& Position, const float Radius)
+		{
+			const double Reach = Radius + MaxRadius;
+			const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y - Reach) / LookAheadCellSize));
+			const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y + Reach) / LookAheadCellSize));
+			double Gap = TNumericLimits<double>::Max();
+			for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
+			{
+				for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
+				{
+					const FIntPoint Cell(X, Y);
+					for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
+					{
+						if (Cells[Other] == Cell && Entities[Other] != Entity && Stills[Other])
+						{
+							Gap = FMath::Min(Gap, FVector2D::Distance(Positions[Other], Position) - (Radius + Radii[Other]));
+						}
+					}
+				}
+			}
+			++ChunkStillSteps;
+			ChunkContacts += Gap < 0. ? 1 : 0;
+			if (Gap < ChunkClosest)
+			{
+				ChunkClosest = Gap;
+				ChunkClosestAt = Position;
+			}
+		};
 		ON_SCOPE_EXIT
 		{
 			TurnFlips += ChunkFlips;
 			TurnWalkerSteps += ChunkWalkerSteps;
+			StillContacts += ChunkContacts;
+			StillWalkerSteps += ChunkStillSteps;
+			if (ChunkClosest < TNumericLimits<double>::Max())
+			{
+				FScopeLock Lock(&StillClosestLock);
+				if (ChunkClosest < StillClosestGap)
+				{
+					StillClosestGap = ChunkClosest;
+					StillClosestAt = ChunkClosestAt;
+				}
+			}
 		};
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
@@ -880,6 +967,8 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				// Around the bodies on its way (D293), those beyond its slot aside: Mass' avoidance runs one step out of 6
 				// (D220) and turns too late at full speed, so the walker pushed through them.
 				const double Horizon = bToSlot ? FMath::Min(LookAheadTime, SlotDistance / Speed) : LookAheadTime;
+				// A still body further (MV.4.4), but none beyond its slot either.
+				const double StillHorizon = bToSlot ? FMath::Min(StillLookAheadTime, SlotDistance / Speed) : StillLookAheadTime;
 				// A unit forming up for a block march goes through the others of its order forming up in other kinds of rows
 				// (two of one kind keep clear of each other, the user's trial of playtest note 1 of J7b); one re-forming at a
 				// block's arrival, or a straggler walking into its slot, through all of its order (J7a.4, J7b note 1: CanPassThrough),
@@ -892,9 +981,13 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 					Detour.OrderSerial = Order.OrderSerial;
 					Detour.Phase = static_cast<uint8>(Order.Phase);
 				}
-				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon,
-					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour,
-					Combats.IsEmpty() || (!Combats[EntityIt].bAttacking && !Combats[EntityIt].bApproaching && Combats[EntityIt].Mode != EHOLCombatMode::AttackMove));
+				const bool bOutOfFight = Combats.IsEmpty() || (!Combats[EntityIt].bAttacking && !Combats[EntityIt].bApproaching && Combats[EntityIt].Mode != EHOLCombatMode::AttackMove);
+				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon, StillHorizon,
+					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour, bOutOfFight);
+				if (bOutOfFight)
+				{
+					CountStillContact(Context.GetEntity(EntityIt), FVector2D(Location.X, Location.Y), AgentRadii[EntityIt].Radius);
+				}
 				// On a block's march, never against it (playtest note 1, loop 20: a unit forming up, going round one of
 				// its kind, took a step back): the turn's part against the march dropped, sideways or on.
 				if ((Order.Phase == EHOLMovePhase::FormUp || Order.Phase == EHOLMovePhase::Block) && !Order.bReforming && !Order.MarchDirection.IsNearlyZero())
