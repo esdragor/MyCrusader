@@ -51,6 +51,18 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 FastPaths = 1;
 	FAutoConsoleVariableRef CVarFastPaths(TEXT("hol.Combat.FastPaths"), FastPaths,
 		TEXT("1 (default): the combat's fast paths (J7c.4, S3); 0: the former ways (TMap index, full sort, a search at every search step), the same outcome"));
+	/** J7c.4, S2: a step where no unit can search, strike or be struck ends after a single pass (the same outcome). */
+	int32 FastIdle = 1;
+	FAutoConsoleVariableRef CVarFastIdle(TEXT("hol.Combat.FastIdle"), FastIdle,
+		TEXT("1 (default): a step where no unit can fight (no target, no attacker, no arrow, nobody dying, nobody free to search this step, no attack-move) only ticks the units' idle state, without the sort, the grid and the searches (J7c.4, S2); 0: the full pass, the same outcome"));
+	/** J7c.4, S2: in the full pass, a unit whose outcome is its own idle tick gets it at once (the same outcome). */
+	int32 FastIdleUnit = 1;
+	FAutoConsoleVariableRef CVarFastIdleUnit(TEXT("hol.Combat.FastIdleUnit"), FastIdleUnit,
+		TEXT("1 (default): in the full pass, a unit with no target, no attacker, no approach, no attack, no attack-move and no search this step, checked at its own turn, only ticks its idle state (J7c.4, S2); 0: its whole turn, the same outcome"));
+	/** J7c.4, S2: no attacker to count when no unit has a target (the same outcome: all counts 0). */
+	int32 SkipAttackerCount = 1;
+	FAutoConsoleVariableRef CVarSkipAttackerCount(TEXT("hol.Combat.SkipAttackerCount"), SkipAttackerCount,
+		TEXT("1 (default): the attackers' counts zeroed at the gathering and counted only when a unit has a target (J7c.4, S2); 0: zeroed and counted every step, the same outcome"));
 	/** J7c.4, trial feedback: a melee out of reach leaves an enemy with no place left around it for one with a place. */
 	int32 PreferFreeTarget = 1;
 	FAutoConsoleVariableRef CVarPreferFreeTarget(TEXT("hol.Combat.PreferFreeTarget"), PreferFreeTarget,
@@ -376,7 +388,11 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// The step's units, in identifier order (the outcome does not depend on the chunks).
 	Fighters.Reset();
 	MaxRadius = 1.f;
-	EntityQuery.ForEachEntityChunk(Context, [this](FMassExecutionContext& Context)
+	// J7c.4, S2 (hol.Combat.SkipAttackerCount): the counts zeroed here (the attackers' count below starts with it; nothing
+	// reads them before), and whether any unit has a target (none: no attacker to count).
+	const bool bZeroAtGather = bFighting && SkipAttackerCount != 0;
+	bool bAnyTarget = false;
+	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
@@ -401,6 +417,11 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.Movement = &Movements[EntityIt];
 			Fighter.Constants = &Constants;
 			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding();
+			if (bZeroAtGather)
+			{
+				bAnyTarget |= Combats[EntityIt].Target.IsSet();
+				Combats[EntityIt].AttackerCount = 0;
+			}
 		}
 	});
 	if (Fighters.Num() == 0)
@@ -424,6 +445,43 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Units->RequestDestroyUnits(Deaths);
 		}
 		return;
+	}
+	// J7c.4, S2 (hol.Combat.FastIdle): a step where every unit's outcome below is its own idle tick, whatever the others.
+	// Such a unit stands, has no target and no last attacker (nothing to look up, no attacker to count: 0), is not
+	// approaching nor attacking (no walk to stop, nothing to disengage), is not on an attack-move (no contact search, no end
+	// of attack-move) and does not search this step (busy, walking an order, an ordered target, or not its search step).
+	// With no arrow in flight, the pass below then only sets AttackerCount 0 and, for each unit: busy, TickIdle; else the
+	// branch without target (bFlanking false, FlankWaitSeconds 0, TickIdle). Checked first, then applied: no unit changes
+	// another, so the order does not matter.
+	if (FastIdle != 0 && Arrows.Num() == 0)
+	{
+		bool bIdle = true;
+		for (int32 Index = 0; Index < Fighters.Num() && bIdle; ++Index)
+		{
+			const FFighter& Fighter = Fighters[Index];
+			const FHOLCombatFragment& Combat = *Fighter.Combat;
+			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
+			const bool bMaySeek = (!bWalkingOrder || Combat.Mode == EHOLCombatMode::AttackMove) && !Combat.bOrderedTarget;
+			const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
+			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
+				&& !Combat.bAttacking && Combat.Mode != EHOLCombatMode::AttackMove && (Fighter.bBusy || !bMaySeek || !bSearchStep);
+		}
+		if (bIdle)
+		{
+			for (FFighter& Fighter : Fighters)
+			{
+				FHOLCombatFragment& Combat = *Fighter.Combat;
+				Combat.AttackerCount = 0;
+				if (!Fighter.bBusy)
+				{
+					Combat.bFlanking = false;
+					Combat.FlankWaitSeconds = 0.f;
+				}
+				HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
+			}
+			Deaths.Reset();
+			return;
+		}
 	}
 	const bool bFast = FastPaths != 0;
 	if (!bFast)
@@ -529,16 +587,22 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		return Index ? *Index : INDEX_NONE;
 	};
 	// Attackers of each unit at the step's start (HOLCombat::FCandidate::AttackerCount).
-	for (FFighter& Fighter : Fighters)
+	if (!bZeroAtGather) // else zeroed at the gathering
 	{
-		Fighter.Combat->AttackerCount = 0;
-	}
-	for (const FFighter& Fighter : Fighters)
-	{
-		const int32 Target = FindFighter(Fighter.Combat->Target);
-		if (Target != INDEX_NONE)
+		for (FFighter& Fighter : Fighters)
 		{
-			++Fighters[Target].Combat->AttackerCount;
+			Fighter.Combat->AttackerCount = 0;
+		}
+	}
+	if (!bZeroAtGather || bAnyTarget) // else no target: no attacker
+	{
+		for (const FFighter& Fighter : Fighters)
+		{
+			const int32 Target = FindFighter(Fighter.Combat->Target);
+			if (Target != INDEX_NONE)
+			{
+				++Fighters[Target].Combat->AttackerCount;
+			}
 		}
 	}
 	// J7c.4, S3: the lists of the units likely to search this step (by the step's start: a search step, free to seek, no
@@ -660,6 +724,29 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			FinishDying(World, *Units, Fighter, StepIndex);
 			continue;
+		}
+		// J7c.4, S2 (hol.Combat.FastIdleUnit): hol.Combat.FastIdle's test, on this unit alone and by its state now (a unit
+		// before it may have taken it as target or struck it: then a last attacker, the whole turn). Such a unit's turn below
+		// is its idle tick only: busy, nothing to disengage (TickIdle); else no target to look up nor lose, no last attacker
+		// to clear, no search (busy, walking an order, an ordered target, or not its search step; bLost false), no contact
+		// search (it needs bMaySeek on a walk, so an attack-move), then the branch without target: bFlanking false,
+		// FlankWaitSeconds 0, TickIdle, no walk to stop (not approaching), no end of attack-move. Its AttackerCount is left
+		// as is there too.
+		if (FastIdleUnit != 0 && !Combat.Target.IsSet() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching && !Combat.bAttacking
+			&& Combat.Mode != EHOLCombatMode::AttackMove)
+		{
+			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None; // not approaching
+			const bool bMaySeek = !bWalkingOrder && !Combat.bOrderedTarget; // not on an attack-move
+			if (Fighter.bBusy || !bMaySeek || ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) != 0)
+			{
+				if (!Fighter.bBusy)
+				{
+					Combat.bFlanking = false;
+					Combat.FlankWaitSeconds = 0.f;
+				}
+				HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
+				continue;
+			}
 		}
 		const FVector2D Position(Fighter.Location);
 
