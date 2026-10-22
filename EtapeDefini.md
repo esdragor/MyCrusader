@@ -24,7 +24,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point *(pas dans l'immédiat)*
 
 ### GDD
-- Review du GDD : reprendre à D342 (D340 prise par la grille du Paysan, D341 par les scénarios d'essai)
+- Review du GDD : reprendre à D343 (D340 grille du Paysan, D341 scénarios d'essai, D342 seuil de S3 / S4)
 - Préciser D327 au GDD : au commit, seulement les parties touchées (`-Parts`) ; `-Full` aux clôtures de chapitre (choix du 2026-10-21)
 
 ### Questions techniques ouvertes

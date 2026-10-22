@@ -6392,7 +6392,12 @@ d'épée).
   - Elrond : **S3 FAIL** 5,710 / 5,694 ms, 208 i/s ; **S4 FAIL** 5,635 / 5,764 ms, 199 i/s (seuil de D218, 3 ms ; le
     seuil propre à S3 / S4 restait à décider sur ces chiffres) ; **S5 FAIL** 32 355 o/s ; **S5 en combat PASS**
     24 498 o/s (70 Ko/s avant la mêlée corrigée), 10,2 cm ; 169 envois d'activité et 87 de PV par seconde.
-  - `rest_measures.ps1` a fait tout le parcours (compilation des deux copies comprise) : à commiter une fois validé.
+  - `rest_measures.ps1` a fait tout le parcours (compilation des deux copies comprise) : validé et commité (a0a922d).
+- **Tranché — D342 : seuil propre aux batailles S3 et S4, ≤ 6 ms** (choix de l'utilisateur, conforme à la
+  recommandation ; écarté : optimiser jusqu'à 3 ms). GDD : ligne D342, tableau des seuils de § 16.6, renvoi depuis D218,
+  numéro suivant D343. Code sur `j7c-shot` (Elrond) : `MaxBattleSimulationMs` 6,0 dans le rapport du stress test
+  (`IsBattle()`), `Get-StepThreshold` dans `chapter_measures.ps1` (S3, S4 = 6 ms ; les autres 3 ms). Vérifié : S3 deux
+  fois au repos, **5,003 / 5,102 ms PASS** (seuil 6), 243-252 i/s. S1, S2, S5, S7 inchangés.
 - (J7c.4, **mycrusader-80**, reprise) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours », `j7c-shot` au-dessus
   de ce1dcf5). Boucle 16 lancée (sous-agent) : les trois règles derrière des variables — `hol.Combat.WeaponReach` (1)
   avec `hol.Combat.SpearReach` (130 cm bord à bord) et `hol.Combat.SwordReach` (70) ; `hol.Simulation.FriendGap` (25 cm
