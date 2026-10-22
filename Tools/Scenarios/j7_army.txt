@@ -14,7 +14,7 @@ waitunits 5
 hol.Build.PlaceNear Barracks -3800 4600
 waitlog Construction: slot 0 placed Barracks foundation
 hol.Build.Instant 1
-hol.Camera.FocusNear -1500 1500
+hol.Camera.FocusNear -3800 4600
 frames 5
 hol.Select.Own
 waitlog Selection: 5 units (own)

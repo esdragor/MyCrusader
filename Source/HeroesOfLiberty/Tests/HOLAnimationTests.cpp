@@ -374,9 +374,10 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("gathering sequences reach the shared fragment"), Constants.GatherSequences == Expected.GatherSequences);
 	TestTrue(TEXT("carrying walks reach the shared fragment"), Constants.CarryWalkSequences == Expected.CarryWalkSequences);
 	TestEqual(TEXT("gathering play rate"), Constants.GatherPlayRate, Expected.GatherPlayRate);
-	// The project's rule (D234): Speed / planted-foot speed of the walk, 600 / 168.2 for A_SW_Unarmed_Walk's legs.
-	TestEqual(TEXT("carrying walk play rate (600 / 168.2)"), Constants.CarryWalkPlayRate, 3.57f, 0.005f);
-	TestEqual(TEXT("walk play rate unchanged (600 / 246.2)"), Constants.WalkPlayRate, 2.44f, 0.005f);
+	// The project's rule (D234): Speed / planted-foot speed of the walk, 800 / 168.2 for A_SW_Unarmed_Walk's legs (D345 speed).
+	TestEqual(TEXT("Peasant: 800 cm/s (D345)"), Constants.Speed, 800.f);
+	TestEqual(TEXT("carrying walk play rate (800 / 168.2)"), Constants.CarryWalkPlayRate, 4.76f, 0.005f);
+	TestEqual(TEXT("walk play rate (800 / 246.2)"), Constants.WalkPlayRate, 3.25f, 0.005f);
 	TestTrue(TEXT("loaded idles reach the shared fragment"), Constants.CarryIdleSequences == Expected.CarryIdleSequences);
 	TestTrue(TEXT("gathering props reach the shared fragment"), Constants.GatherProps == Expected.GatherProps);
 	TestTrue(TEXT("carrying props reach the shared fragment"), Constants.CarryProps == Expected.CarryProps);

@@ -8,9 +8,9 @@
  * Pure rules of the simple formation (J7a, J7-Q3), on the ground plane (cm). A group's move order makes it arrive in
  * rows across the march: how wide the rows are (one shape for Peasants, a square for one kind of soldier, odd rows for
  * several kinds, or the width the right-button drag gives), which kind of soldier stands where (the kind in front
- * first, a shared row with the new kind in its centre and the kind that ends there on its wings), where the places
- * are in the world, and which unit goes to which place without two paths crossing. No engine state: tested on their
- * own.
+ * first, a shared row with the new kind in its centre and the kind that ends there on its wings; the shooters always
+ * behind the melee, the siege in rows of its own at the back), where the places are in the world, and which unit goes
+ * to which place without two paths crossing. No engine state: tested on their own.
  */
 namespace HOLFormation
 {
@@ -38,14 +38,35 @@ namespace HOLFormation
 	HEROESOFLIBERTY_API void MakeRowsOfWidth(int32 Count, int32 Width, TArray<int32>& OutWidths);
 
 	/**
-	 * Which kind stands on each place. CountOfKind holds the number of units of each kind, sorted by row priority (the
-	 * kind in front first: Spearman, then Man-at-arms, then Archer). The kinds fill the rows in that order, front to
-	 * back; in a row, the places are taken from the centre outwards by the kinds that start in it (by priority), then
-	 * by the kind that ends in it (started in a row in front), on the wings; an odd wing has its extra unit on the left.
-	 * OutKindOfPlace is row by row, front first, each row from left to right; it holds an index into CountOfKind
-	 * (INDEX_NONE on a place left over when the rows hold more places than units).
+	 * Class of a kind in a mixed formation (the user's rule, 2026-10-22): melee, shooters (HOLCombat::IsRangedAttack),
+	 * siege (EHOLArmorCategory::Siege), then the Peasants (workers) with soldiers. Read from the kind's row priority
+	 * (GetRowClass), so the kinds sorted by priority are sorted by class.
 	 */
-	HEROESOFLIBERTY_API void PlaceKinds(TConstArrayView<int32> RowWidths, TConstArrayView<int32> CountOfKind, TArray<int32>& OutKindOfPlace);
+	enum class ERowClass : uint8
+	{
+		Melee,
+		Ranged,
+		Siege,
+		Worker,
+	};
+
+	/**
+	 * Which kind stands on each place. CountOfKind holds the number of units of each kind, indexed by row priority
+	 * (GetRowPriority: Spearman, Man-at-arms, other melee, Archer, other shooters, siege, Peasants; zero counts allowed).
+	 * InOutRowWidths holds the rows the group's shape gives (MakeGroupRows, or MakeRowsOfWidth for the drag); the kinds
+	 * fill them in priority order, front to back, under the classes' rule (the user's rule, 2026-10-22):
+	 * - the front row holds only melee when the group has some (cut to the melee's number when it is smaller), so a
+	 *   shooter always stands behind the melee; from the second row on, a row may hold both;
+	 * - the siege never shares a row: it starts a row of its own behind the others, and the Peasants after it too;
+	 * - what does not fit because of that goes to more rows at the back, as wide as the next-to-last row given (the last
+	 *   one shorter); without a cut (one class, or none needed), the rows stay as given.
+	 * On return, InOutRowWidths holds the rows as filled. In a row, the places are taken from the centre outwards: the
+	 * class further back first (shooters in the centre, melee on the wings), and within a class by the kinds that start
+	 * in it (by priority), then by the kind that ends in it (started in a row in front), on the wings; an odd wing has its
+	 * extra unit on the left. OutKindOfPlace is row by row, front first, each row from left to right; it holds an index
+	 * into CountOfKind (INDEX_NONE on a place left over when the rows hold more places than units).
+	 */
+	HEROESOFLIBERTY_API void PlaceKinds(TArray<int32>& InOutRowWidths, TConstArrayView<int32> CountOfKind, TArray<int32>& OutKindOfPlace);
 
 	/**
 	 * The places in the world, in the order of PlaceKinds (row by row, front first, each from left to right). Target is
@@ -88,7 +109,7 @@ namespace HOLFormation
 	HEROESOFLIBERTY_API void MakeGroupRows(TConstArrayView<int32> CountOfKind, bool bPeasantsOnly, TArray<int32>& OutWidths);
 
 	/**
-	 * A group's places (J7a.4): its rows (MakeGroupRows), the kinds on them (PlaceKinds), the places in the world
+	 * A group's places (J7a.4): its rows (MakeGroupRows, as PlaceKinds fills them), the kinds on them (PlaceKinds), the places in the world
 	 * (MakePlaces, Target in the middle of the front row), each brought where a unit can stand by ProjectPlace (the
 	 * navmesh, called once per place in the order of OutPlaces), then each kind's units given its places
 	 * (AssignPlaces, from the projected places). KindOfUnit[i] is the kind of unit i, an index into the kinds sorted by
@@ -127,17 +148,28 @@ namespace HOLFormation
 		double Spacing, TFunctionRef<bool(const FVector2D&)> IsFree, TArray<bool>& OutSettled);
 
 	/**
-	 * Row priority of a unit's kind in a group's formation (J7-Q3): Spearman 0, Man-at-arms 1, Archer 2 (the kind in
-	 * front first), other soldiers 3, then the Peasants (workers: CarryCapacity > 0) PeasantRowPriority, behind them.
-	 * Shared by the server's formation and the drag's preview.
+	 * Row priority of a unit's kind in a group's formation (J7-Q3, the classes of 2026-10-22): the melee first (Spearman
+	 * 0, Man-at-arms 1, other melee 2), then the shooters (bRanged: Archer 3, others 4), the siege (bSiege) 5, then the
+	 * Peasants (workers: CarryCapacity > 0) PeasantRowPriority, behind them. Shared by the server's formation and the
+	 * drag's preview. GetRowClass: the class of a priority.
 	 */
-	inline constexpr int32 PeasantRowPriority = 4;
-	HEROESOFLIBERTY_API int32 GetRowPriority(FName TypeName, int32 CarryCapacity);
+	inline constexpr int32 OtherMeleeRowPriority = 2;
+	inline constexpr int32 ArcherRowPriority = 3;
+	inline constexpr int32 OtherRangedRowPriority = 4;
+	inline constexpr int32 SiegeRowPriority = 5;
+	inline constexpr int32 PeasantRowPriority = 6;
+	HEROESOFLIBERTY_API int32 GetRowPriority(FName TypeName, int32 CarryCapacity, bool bRanged, bool bSiege);
+	inline ERowClass GetRowClass(const int32 RowPriority)
+	{
+		return RowPriority >= PeasantRowPriority ? ERowClass::Worker : RowPriority >= SiegeRowPriority ? ERowClass::Siege
+			: RowPriority >= ArcherRowPriority ? ERowClass::Ranged : ERowClass::Melee;
+	}
 
 	/**
 	 * The front's width (columns) a right-button drag gives (J7a.4, J7-Q3): one column at each end of the drag and one
 	 * every ColumnSpacing between them, so the front row spans the drag at most (floor(Length / ColumnSpacing) + 1),
-	 * at least 1, at most Count (the group's units). It replaces the default widths of MakeGroupRows.
+	 * at least 1, at most Count (the group's units). It replaces the default widths of MakeGroupRows (PlaceKinds then
+	 * fills them under the classes' rule, as it does the default ones).
 	 */
 	HEROESOFLIBERTY_API int32 GetFrontWidth(double Length, double ColumnSpacing, int32 Count);
 

@@ -55,7 +55,7 @@ namespace UE::HeroesOfLiberty::Tests::Combat
 		return Candidate;
 	}
 
-	/** A soldier at the origin: body 60 cm, reach 50 cm, aggression 12 m (the table's Spearman). */
+	/** A soldier at the origin: body 60 cm, reach 50 cm, aggression 12 m (pure-rule numbers, not the table's). */
 	HOLCombat::FSeeker Soldier(const HOLCombat::ESeekMode Mode = HOLCombat::ESeekMode::Auto, const float Aggression = 1200.f)
 	{
 		HOLCombat::FSeeker Seeker;
@@ -84,23 +84,28 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// The table reaches the shared fragment (J7a.1 numbers).
+	// The table reaches the shared fragment (J7a.1 numbers, D345 speeds, reaches and aggression).
 	TestEqual(TEXT("Spearman: 80 HP"), Spearman.MaxHealth, 80);
 	TestEqual(TEXT("Spearman: attack 8"), Spearman.Attack, 8);
 	TestEqual(TEXT("Spearman: every 1.875 s"), Spearman.AttackInterval, 1.875f);
 	TestEqual(TEXT("Spearman: +17"), Spearman.BonusDamage, 17);
 	TestEqual(TEXT("Spearman: against cavalry"), int32(Spearman.BonusCategory), int32(EHOLArmorCategory::Cavalry));
 	TestEqual(TEXT("Spearman: armours 0 / 0"), Spearman.MeleeArmor + Spearman.RangedArmor, 0);
-	TestEqual(TEXT("Spearman: aggression 12 m"), Spearman.AggressionRadius, 1200.f);
+	TestEqual(TEXT("Spearman: reach 1.3 m, its spear (J7c.4)"), Spearman.AttackRange, 130.f);
+	TestEqual(TEXT("Spearman: aggression 16 m"), Spearman.AggressionRadius, 1600.f);
 	TestEqual(TEXT("Man-at-arms: 155 HP"), ManAtArms.MaxHealth, 155);
+	TestEqual(TEXT("Man-at-arms: attack 12"), ManAtArms.Attack, 12);
 	TestEqual(TEXT("Man-at-arms: every 1.375 s"), ManAtArms.AttackInterval, 1.375f);
+	TestEqual(TEXT("Man-at-arms: aggression 16 m"), ManAtArms.AggressionRadius, 1600.f);
 	TestEqual(TEXT("Man-at-arms: melee armour 4"), ManAtArms.MeleeArmor, 4);
 	TestEqual(TEXT("Man-at-arms: ranged armour 4"), ManAtArms.RangedArmor, 4);
 	TestEqual(TEXT("Man-at-arms: heavy infantry"), int32(ManAtArms.ArmorCategory), int32(EHOLArmorCategory::HeavyInfantry));
 	TestEqual(TEXT("Peasant: attack 3"), Peasant.Attack, 3);
-	TestEqual(TEXT("Peasant: every 2 s"), Peasant.AttackInterval, 2.f);
+	TestEqual(TEXT("Peasant: every 3.7 s"), Peasant.AttackInterval, 3.7f);
+	TestEqual(TEXT("Peasant: reach 1.16 m"), Peasant.AttackRange, 116.f);
 	TestEqual(TEXT("Peasant: no aggression"), Peasant.AggressionRadius, 0.f);
-	TestEqual(TEXT("Archer: reach 15 m"), Archer.AttackRange, 1500.f);
+	TestEqual(TEXT("Archer: reach 20 m"), Archer.AttackRange, 2000.f);
+	TestEqual(TEXT("Archer: aggression 21.33 m"), Archer.AggressionRadius, 2133.f);
 	// The wind-up per type (J7c, retour d'essai 8: hit and run): the Archer looses at 12 % (~0.2 s), the melee at half.
 	TestEqual(TEXT("Archer: wind-up 12 %"), Archer.AttackWindUpPercent, 12);
 	TestEqual(TEXT("Spearman: wind-up 50 %"), Spearman.AttackWindUpPercent, 50);
@@ -109,7 +114,7 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 
 	// Damage = attack + bonus - armour, 1 at least (D21).
 	TestEqual(TEXT("Spearman on Man-at-arms: 8 - 4"), HOLCombat::GetDamage(Spearman, ManAtArms, false), 4);
-	TestEqual(TEXT("Man-at-arms on Spearman: 8 - 0"), HOLCombat::GetDamage(ManAtArms, Spearman, false), 8);
+	TestEqual(TEXT("Man-at-arms on Spearman: 12 - 0"), HOLCombat::GetDamage(ManAtArms, Spearman, false), 12);
 	TestEqual(TEXT("Spearman on Spearman: no bonus"), HOLCombat::GetDamage(Spearman, Spearman, false), 8);
 	FHOLUnitTypeConstants Horseman;
 	Horseman.ArmorCategory = EHOLArmorCategory::Cavalry;
@@ -126,7 +131,7 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 
 	// Hits to kill (the matchup the user will see first).
 	TestEqual(TEXT("Spearman kills a Man-at-arms in 39 hits"), HOLCombat::GetHitsToKill(ManAtArms.MaxHealth, HOLCombat::GetDamage(Spearman, ManAtArms, false)), 39);
-	TestEqual(TEXT("Man-at-arms kills a Spearman in 10 hits"), HOLCombat::GetHitsToKill(Spearman.MaxHealth, HOLCombat::GetDamage(ManAtArms, Spearman, false)), 10);
+	TestEqual(TEXT("Man-at-arms kills a Spearman in 7 hits"), HOLCombat::GetHitsToKill(Spearman.MaxHealth, HOLCombat::GetDamage(ManAtArms, Spearman, false)), 7);
 	TestEqual(TEXT("Spearman kills a Spearman in 10 hits"), HOLCombat::GetHitsToKill(80, 8), 10);
 	TestEqual(TEXT("one more HP, one more hit"), HOLCombat::GetHitsToKill(81, 8), 11);
 	TestEqual(TEXT("dead: no hit"), HOLCombat::GetHitsToKill(0, 8), 0);
@@ -418,13 +423,13 @@ bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	// Shooters: the Archer's 15 m, not a melee's reach.
+	// Shooters: the Archer's 20 m, not a melee's reach.
 	TestTrue(TEXT("the Archer shoots"), HOLCombat::IsRangedAttack(Archer.AttackRange));
 	TestFalse(TEXT("the Spearman does not"), HOLCombat::IsRangedAttack(Spearman.AttackRange));
-	TestEqual(TEXT("default arrow speed 25 m/s"), HOLCombat::DefaultArrowSpeed, 2500.f);
+	TestEqual(TEXT("default arrow speed 37.5 m/s (D345 trial)"), HOLCombat::DefaultArrowSpeed, 3750.f);
 
-	// The flight: centre-to-centre distance over the speed (25 m/s): 15 m in 600 ms, 5 m in 200 ms, 0 at point-blank.
-	const float Speed = HOLCombat::DefaultArrowSpeed;
+	// The flight: centre-to-centre distance over the speed (a round 25 m/s here): 15 m in 600 ms, 5 m in 200 ms, 0 at point-blank.
+	const float Speed = 2500.f;
 	TestEqual(TEXT("15 m in 600 ms"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0), FVector2D(1500, 0), Speed), 600);
 	TestEqual(TEXT("5 m (3, 4) in 200 ms"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(100, 100), FVector2D(400, 500), Speed), 200);
 	TestEqual(TEXT("point-blank in 0 ms"), HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0), FVector2D(0, 0), Speed), 0);
@@ -436,7 +441,7 @@ bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("0 ms = 1 step"), HOLCombat::GetArrowFlightSteps(0, 50), 1);
 	TestEqual(TEXT("10 ms = 1 step"), HOLCombat::GetArrowFlightSteps(10, 50), 1);
 	const int32 Step = StepMs();
-	TestEqual(TEXT("an Archer's 15 m shot at the table's step"), HOLCombat::GetArrowFlightSteps(HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0),
+	TestEqual(TEXT("an Archer's full-reach shot at the table's step"), HOLCombat::GetArrowFlightSteps(HOLCombat::GetArrowFlightMilliseconds(FVector2D(0, 0),
 		FVector2D(Archer.AttackRange + Archer.Radius + Spearman.Radius, 0), Speed), Step), FMath::DivideAndRoundUp(FMath::RoundToInt32((Archer.AttackRange + Archer.Radius + Spearman.Radius) * 1000.f / Speed), Step));
 
 	// The landing: always hits a standing target (no dodge, J7c-Q1); lost on a dead or gone one (J7c-Q2).
@@ -461,10 +466,10 @@ bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
 	Shooter.AggressionRadius = Archer.AggressionRadius;
 	Shooter.bRanged = true;
 	{
-		// Out of reach both (edges 15.2 and 15.9 m: beyond the 15 m reach, within the 16 m aggression): a melee seeker spreads, a shooter does not.
-		HOLCombat::FCandidate Near = Enemy(1, 1630.);
+		// Out of reach both (edges 20.2 and 20.9 m: beyond the 20 m reach, within the 21.33 m aggression): a melee seeker spreads, a shooter does not.
+		HOLCombat::FCandidate Near = Enemy(1, 2130.);
 		Near.AttackerCount = HOLCombat::MaxAttackers;
-		const HOLCombat::FCandidate Far = Enemy(2, 1700.);
+		const HOLCombat::FCandidate Far = Enemy(2, 2200.);
 		const HOLCombat::FCandidate Pair[] = { Near, Far };
 		HOLCombat::FSeeker Melee = Shooter;
 		Melee.bRanged = false;
@@ -478,8 +483,8 @@ bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
 		const HOLCombat::FCandidate Nearer = Enemy(6, 300.);
 		const HOLCombat::FCandidate Pair[] = { Nearer, Current };
 		TestEqual(TEXT("current target kept while in reach"), Chosen(Shooter, Pair), uint64(5));
-		// Out of reach (20 m): the nearest again.
-		Current.Position = FVector2D(2000., 0.);
+		// Out of reach (22 m, edge 20.9 m): the nearest again.
+		Current.Position = FVector2D(2200., 0.);
 		const HOLCombat::FCandidate Away[] = { Nearer, Current };
 		TestEqual(TEXT("out of reach: the nearest"), Chosen(Shooter, Away), uint64(6));
 	}

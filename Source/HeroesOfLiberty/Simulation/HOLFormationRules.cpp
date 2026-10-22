@@ -101,9 +101,26 @@ namespace HOLFormation
 		}
 	}
 
-	void PlaceKinds(TConstArrayView<int32> RowWidths, TConstArrayView<int32> CountOfKind, TArray<int32>& OutKindOfPlace)
+	void PlaceKinds(TArray<int32>& InOutRowWidths, TConstArrayView<int32> CountOfKind, TArray<int32>& OutKindOfPlace)
 	{
 		OutKindOfPlace.Reset();
+		const TArray<int32> Given = InOutRowWidths;
+		InOutRowWidths.Reset();
+		int32 Total = 0;
+		bool bAnyMelee = false;
+		for (int32 Kind = 0; Kind < CountOfKind.Num(); ++Kind)
+		{
+			Total += FMath::Max(CountOfKind[Kind], 0);
+			bAnyMelee |= CountOfKind[Kind] > 0 && GetRowClass(Kind) == ERowClass::Melee;
+		}
+		// The rows' widths: the ones given, then (what a cut pushes back) rows as wide as the next-to-last one given: the
+		// last one given is the shorter remainder, filled anyway when nothing is cut.
+		const int32 BackWidth = Given.IsEmpty() ? FMath::Max(Total, 1) : FMath::Max(Given[FMath::Max(Given.Num() - 2, 0)], 1);
+		auto WidthOfRow = [&Given, BackWidth](const int32 Row)
+		{
+			return Row < Given.Num() - 1 ? FMath::Max(Given[Row], 0) : BackWidth;
+		};
+
 		int32 Kind = 0;
 		int32 KindLeft = CountOfKind.Num() > 0 ? FMath::Max(CountOfKind[0], 0) : 0;
 		auto SkipEmptyKinds = [&]()
@@ -121,43 +138,63 @@ namespace HOLFormation
 			int32 Count;
 		};
 		TArray<FPart, TInlineAllocator<4>> Parts;
-		for (const int32 Width : RowWidths)
+		int32 Placed = 0;
+		for (int32 Row = 0; Row < Given.Num() || Placed < Total; ++Row)
 		{
-			const int32 RowStart = OutKindOfPlace.Num();
-			OutKindOfPlace.AddUninitialized(FMath::Max(Width, 0));
-			for (int32 Column = 0; Column < Width; ++Column)
-			{
-				OutKindOfPlace[RowStart + Column] = INDEX_NONE;
-			}
-
-			// The row's parts, in the kinds' order; the first one ends here when its kind began in a row in front.
+			const int32 Width = WidthOfRow(Row);
+			// The row's parts, in the kinds' order; the first one ends here when its kind began in a row in front. A shooter
+			// never in the front row when there is melee; the siege never shares its row.
 			Parts.Reset();
 			const bool bFirstEnds = Kind < CountOfKind.Num() && KindLeft > 0 && KindLeft < CountOfKind[Kind];
-			for (int32 Taken = 0; Taken < Width && KindLeft > 0;)
+			int32 Taken = 0;
+			while (Taken < Width && KindLeft > 0)
 			{
+				const ERowClass Class = GetRowClass(Kind);
+				if ((Row == 0 && bAnyMelee && Class != ERowClass::Melee)
+					|| (!Parts.IsEmpty() && (Class == ERowClass::Siege) != (GetRowClass(Parts.Last().Kind) == ERowClass::Siege)))
+				{
+					break;
+				}
 				const int32 Count = FMath::Min(KindLeft, Width - Taken);
 				Parts.Add({ Kind, Count });
 				Taken += Count;
 				KindLeft -= Count;
 				SkipEmptyKinds();
 			}
-			// The kinds that start here hold the centre, the kind that ends here the wings.
+			if (Taken == 0 && Row >= Given.Num())
+			{
+				break;
+			}
+			// Once every unit has its place, a row given keeps its width (its places left free, INDEX_NONE); a row cut
+			// short, or one more at the back, keeps only its units' places.
+			const int32 RowWidth = KindLeft == 0 && Row < Given.Num() ? FMath::Max(Given[Row], Taken) : Taken;
+			Placed += Taken;
+			InOutRowWidths.Add(RowWidth);
+			const int32 RowStart = OutKindOfPlace.Num();
+			OutKindOfPlace.AddUninitialized(RowWidth);
+			for (int32 Column = 0; Column < RowWidth; ++Column)
+			{
+				OutKindOfPlace[RowStart + Column] = INDEX_NONE;
+			}
+			// The kinds that start here hold the centre, the kind that ends here the wings; across classes, the class
+			// further back holds the centre (shooters in the middle, the melee left over on the wings).
 			if (bFirstEnds && Parts.Num() > 1)
 			{
 				const FPart Ending = Parts[0];
 				Parts.RemoveAt(0);
 				Parts.Add(Ending);
 			}
+			Algo::StableSort(Parts, [](const FPart& A, const FPart& B) { return GetRowClass(A.Kind) > GetRowClass(B.Kind); });
 
 			// Centred blocks that grow outwards, part after part; an odd wing has its extra place on the left, so a block
 			// of K places in the row starts at ceil((Width - K) / 2).
 			int32 Held = 0;
 			for (const FPart& Part : Parts)
 			{
-				const int32 OldFirst = (Width - Held + 1) / 2;
+				const int32 OldFirst = (RowWidth - Held + 1) / 2;
 				const int32 OldEnd = OldFirst + Held;
 				Held += Part.Count;
-				const int32 First = (Width - Held + 1) / 2;
+				const int32 First = (RowWidth - Held + 1) / 2;
 				for (int32 Column = First; Column < First + Held; ++Column)
 				{
 					// The blocks are nested: the old one sits inside the new one.
@@ -870,7 +907,7 @@ namespace HOLFormation
 		return Direction.IsNearlyZero() ? FVector2D(1., 0.) : Direction;
 	}
 
-	int32 GetRowPriority(const FName TypeName, const int32 CarryCapacity)
+	int32 GetRowPriority(const FName TypeName, const int32 CarryCapacity, const bool bRanged, const bool bSiege)
 	{
 		static const FName Spearman(TEXT("Spearman"));
 		static const FName ManAtArms(TEXT("ManAtArms"));
@@ -879,7 +916,15 @@ namespace HOLFormation
 		{
 			return PeasantRowPriority;
 		}
-		return TypeName == Spearman ? 0 : TypeName == ManAtArms ? 1 : TypeName == Archer ? 2 : 3;
+		if (bSiege)
+		{
+			return SiegeRowPriority;
+		}
+		if (bRanged)
+		{
+			return TypeName == Archer ? ArcherRowPriority : OtherRangedRowPriority;
+		}
+		return TypeName == Spearman ? 0 : TypeName == ManAtArms ? 1 : OtherMeleeRowPriority;
 	}
 
 	void EndWalkToPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, const double Radius)

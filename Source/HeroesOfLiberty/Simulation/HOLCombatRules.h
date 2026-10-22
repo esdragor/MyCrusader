@@ -161,8 +161,8 @@ namespace HOLCombat
 	/** Reach (cm) above which a unit's hits are shots (the ranged armour, an arrow): the Archer's 15 m, not a melee's 50 cm. */
 	inline constexpr float RangedReach = 200.f;
 
-	/** Speed of an arrow by default (cm/s): 25 m/s (J7c-Q2), hol.Combat.ArrowSpeed. */
-	inline constexpr float DefaultArrowSpeed = 2500.f;
+	/** Speed of an arrow by default (cm/s): 37.5 m/s (J7c-Q2 25 m/s, x1.5 at the trial of D345), hol.Combat.ArrowSpeed. */
+	inline constexpr float DefaultArrowSpeed = 3750.f;
 
 	/** A unit of this reach shoots (AttackRange > RangedReach). */
 	HEROESOFLIBERTY_API bool IsRangedAttack(float AttackRange);

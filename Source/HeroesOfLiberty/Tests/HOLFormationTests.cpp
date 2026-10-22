@@ -22,10 +22,14 @@ namespace UE::HeroesOfLiberty::Tests::Formation
 		return Text;
 	}
 
-	/** A formation written as the user draws it, front row first, each row from left to right: "7L/3L2H2L/5H/5H". */
+	/**
+	 * A formation written as the user draws it, front row first, each row from left to right: "7L/3L2H2L/5H/5H". The
+	 * kinds by row priority (HOLFormation::GetRowPriority): L Spearman, H Man-at-arms, I other melee, A Archer, R other
+	 * shooter, M siege, P Peasant.
+	 */
 	FString FormationText(TConstArrayView<int32> Widths, TConstArrayView<int32> KindOfPlace)
 	{
-		static const TCHAR* const Letters = TEXT("LHA");
+		static const TCHAR* const Letters = TEXT("LHIARMP");
 		FString Text;
 		int32 Place = 0;
 		for (int32 Row = 0; Row < Widths.Num(); ++Row)
@@ -40,7 +44,7 @@ namespace UE::HeroesOfLiberty::Tests::Formation
 					++Run;
 					++Column;
 				}
-				Text += FString::Printf(TEXT("%d%c"), Run, Kind >= 0 && Kind < 3 ? Letters[Kind] : TEXT('?'));
+				Text += FString::Printf(TEXT("%d%c"), Run, Kind >= 0 && Kind < 7 ? Letters[Kind] : TEXT('?'));
 			}
 			Place += Widths[Row];
 		}
@@ -118,7 +122,7 @@ bool FHOLFormationKindsTest::RunTest(const FString& Parameters)
 		{ { 14, 5 }, TEXT("5L/5L/2L1H2L/4H") },
 		{ { 7, 17 }, TEXT("7L/7H/5H/5H") },
 		{ { 3, 21 }, TEXT("2H3L2H/7H/5H/5H") },
-		{ { 8, 8, 8 }, TEXT("7L/1L6H/1H3A1H/5A") },
+		{ { 8, 8, 0, 8 }, TEXT("7L/1L6H/1H3A1H/5A") },
 		{ { 3, 1 }, TEXT("3L/1H") },
 		{ { 30, 30 }, TEXT("11L/11L/4L3H4L/9H/9H/9H") },
 		{ { 20, 20 }, TEXT("9L/9L/1L6H1L/7H/7H") },
@@ -141,11 +145,85 @@ bool FHOLFormationKindsTest::RunTest(const FString& Parameters)
 
 	// A kind with no unit is skipped; one kind fills its rows (the user's rule, 2026-10-20: 12 -> 5/5/2).
 	HOLFormation::MakeMixedRows(4, Widths);
-	HOLFormation::PlaceKinds(Widths, { 3, 0, 1 }, KindOfPlace);
+	HOLFormation::PlaceKinds(Widths, { 3, 0, 0, 1 }, KindOfPlace);
 	TestEqual(TEXT("an empty kind skipped"), FormationText(Widths, KindOfPlace), FString(TEXT("3L/1A")));
 	HOLFormation::MakeSquareRows(12, Widths);
 	HOLFormation::PlaceKinds(Widths, { 12 }, KindOfPlace);
 	TestEqual(TEXT("one kind"), FormationText(Widths, KindOfPlace), FString(TEXT("5L/5L/2L")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationClassesTest, "HeroesOfLiberty.Formation.Classes", UE::HeroesOfLiberty::Tests::Formation::Flags)
+bool FHOLFormationClassesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Formation;
+
+	// The classes by row priority: melee first (other melee before the Archers), then shooters, siege, Peasants.
+	TestEqual(TEXT("Spearman: 0"), HOLFormation::GetRowPriority(TEXT("Spearman"), 0, false, false), 0);
+	TestEqual(TEXT("Man-at-arms: 1"), HOLFormation::GetRowPriority(TEXT("ManAtArms"), 0, false, false), 1);
+	TestEqual(TEXT("light infantry: other melee"), HOLFormation::GetRowPriority(TEXT("LightInfantry"), 0, false, false), HOLFormation::OtherMeleeRowPriority);
+	TestEqual(TEXT("Archer: a shooter"), HOLFormation::GetRowPriority(TEXT("Archer"), 0, true, false), HOLFormation::ArcherRowPriority);
+	TestEqual(TEXT("another shooter"), HOLFormation::GetRowPriority(TEXT("Crossbowman"), 0, true, false), HOLFormation::OtherRangedRowPriority);
+	TestEqual(TEXT("siege"), HOLFormation::GetRowPriority(TEXT("Mangonel"), 0, true, true), HOLFormation::SiegeRowPriority);
+	TestEqual(TEXT("Peasant"), HOLFormation::GetRowPriority(TEXT("Peasant"), 10, false, false), HOLFormation::PeasantRowPriority);
+	TestTrue(TEXT("classes in priority order"), HOLFormation::GetRowClass(HOLFormation::OtherMeleeRowPriority) == HOLFormation::ERowClass::Melee
+		&& HOLFormation::GetRowClass(HOLFormation::ArcherRowPriority) == HOLFormation::ERowClass::Ranged
+		&& HOLFormation::GetRowClass(HOLFormation::OtherRangedRowPriority) == HOLFormation::ERowClass::Ranged
+		&& HOLFormation::GetRowClass(HOLFormation::SiegeRowPriority) == HOLFormation::ERowClass::Siege
+		&& HOLFormation::GetRowClass(HOLFormation::PeasantRowPriority) == HOLFormation::ERowClass::Worker);
+
+	// The user's examples (2026-10-22; L Spearman, H Man-at-arms, A Archer, M siege; front row first, left to right): no
+	// shooter in the front row when there is melee (cut to the melee), shooters in the centre and the melee left over on
+	// the wings from the second row, the siege in a row of its own at the back, what is pushed back in rows as wide.
+	struct FScenario
+	{
+		const TCHAR* Name;
+		TArray<int32> CountOfKind;
+		const TCHAR* Expected;
+	};
+	const TArray<FScenario> Scenarios = {
+		{ TEXT("5 L + 2 H + 6 A"), { 5, 2, 0, 6 }, TEXT("5L/1H3A1H/3A") },
+		{ TEXT("5 L + 7 A + 1 M"), { 5, 0, 0, 7, 0, 1 }, TEXT("5L/5A/2A/1M") },
+		{ TEXT("1 L + 8 A"), { 1, 0, 0, 8 }, TEXT("1L/3A/3A/2A") },
+		// The odd wing's extra unit on the left: the Spearman in the middle of two is on the right.
+		{ TEXT("1 L + 1 H + 1 A"), { 1, 1, 0, 1 }, TEXT("1H1L/1A") },
+		// No melee: the shooters hold the front row; the siege still alone at the back.
+		{ TEXT("6 A + 1 M"), { 0, 0, 0, 6, 0, 1 }, TEXT("4A/2A/1M") },
+		// No shooter: the melee rows as before, the siege alone behind them.
+		{ TEXT("5 L + 2 H + 1 M"), { 5, 2, 0, 0, 0, 1 }, TEXT("5L/2H/1M") },
+		// Other melee (light infantry) in front of the Archers.
+		{ TEXT("3 I + 3 A"), { 0, 0, 3, 3 }, TEXT("3I/3A") },
+	};
+	TArray<int32> Widths;
+	TArray<int32> KindOfPlace;
+	for (const FScenario& Scenario : Scenarios)
+	{
+		int32 Count = 0;
+		for (const int32 KindCount : Scenario.CountOfKind)
+		{
+			Count += KindCount;
+		}
+		HOLFormation::MakeGroupRows(Scenario.CountOfKind, false, Widths);
+		const FString Given = WidthsText(Widths);
+		HOLFormation::PlaceKinds(Widths, Scenario.CountOfKind, KindOfPlace);
+		TestEqual(FString::Printf(TEXT("%s (rows given %s)"), Scenario.Name, *Given), FormationText(Widths, KindOfPlace), FString(Scenario.Expected));
+		TestEqual(FString::Printf(TEXT("%s: a place per unit"), Scenario.Name), KindOfPlace.Num(), Count);
+	}
+
+	// The right-button drag's width keeps the rule: 1 L + 8 A on 4 columns.
+	HOLFormation::MakeRowsOfWidth(9, 4, Widths);
+	HOLFormation::PlaceKinds(Widths, { 1, 0, 0, 8 }, KindOfPlace);
+	TestEqual(TEXT("drag of 4 columns: 1 L + 8 A"), FormationText(Widths, KindOfPlace), FString(TEXT("1L/4A/4A")));
+
+	// A group in the world: 1 Spearman, 1 Man-at-arms, 1 Archer along +X, the Archer on the second row.
+	TArray<FVector2D> Places;
+	TArray<int32> PlaceOfUnit;
+	const TArray<int32> KindOfUnit = { HOLFormation::ArcherRowPriority, 0, 1 };
+	HOLFormation::PlaceGroup({ FVector2D(0., 0.), FVector2D(0., 200.), FVector2D(0., -200.) }, KindOfUnit, false, FVector2D(2000., 0.),
+		FVector2D(1., 0.), 150., 180., [](const FVector2D& Place) { return Place; }, Places, PlaceOfUnit);
+	TestTrue(TEXT("the Archer 180 cm behind the front row"), Places.Num() == 3 && PlaceOfUnit.Num() == 3 && !PlaceOfUnit.Contains(INDEX_NONE)
+		&& FMath::IsNearlyEqual(Places[PlaceOfUnit[0]].X, 1820., 0.5) && FMath::IsNearlyEqual(Places[PlaceOfUnit[1]].X, 2000., 0.5)
+		&& FMath::IsNearlyEqual(Places[PlaceOfUnit[2]].X, 2000., 0.5));
 	return true;
 }
 

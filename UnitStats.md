@@ -1,0 +1,57 @@
+# Stats des unités
+
+Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/UnitTypes.csv` (la source de l'asset `/Game/Units/UnitTypes`, D227) et des constantes de `HOLCombatRules.h`. Ne pas modifier à la main : changer le CSV, puis relancer le script. Valeurs provisoires, à équilibrer. Distances et vitesses en cases (une case = 4 m, D344), en mètres entre parenthèses.
+
+## Combat
+
+| Unité | PV | Attaque | Bonus | Cadence | Coups / min | Dégâts / s (sans bonus ni armure) | Élan du 1er coup | Type, portée | Armure mêlée | Armure distance | Catégorie d'armure | Rayon d'agressivité |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Infanterie légère | 100 | 8 | — | 1,875 s | 32 | 4,27 | 50 % (0,938 s) | mêlée, 0,12 case (0,5 m) | 0 | 0 | Infanterie légère | 3 cases (12 m) |
+| Infanterie légère (essai Nanite) | 100 | 8 | — | 1,875 s | 32 | 4,27 | 50 % (0,938 s) | mêlée, 0,12 case (0,5 m) | 0 | 0 | Infanterie légère | 3 cases (12 m) |
+| Archer | 70 | 5 | +5 contre Infanterie légère | 1,625 s | 36,9 | 3,08 | 12 % (0,195 s) | tir, 5 cases (20 m) | 0 | 0 | Distance | 5,33 cases (21,33 m) |
+| Paysan | 50 | 3 | — | 3,7 s | 16,2 | 0,81 | 50 % (1,85 s) | mêlée, 0,29 case (1,16 m) | 0 | 0 | Paysan | aucun (seulement sur ordre) |
+| Piquier | 80 | 8 | +17 contre Cavalerie | 1,875 s | 32 | 4,27 | 50 % (0,938 s) | mêlée, 0,33 case (1,3 m) | 0 | 0 | Infanterie légère | 4 cases (16 m) |
+| Homme d'armes | 155 | 12 | — | 1,375 s | 43,6 | 8,73 | 50 % (0,688 s) | mêlée, 0,17 case (0,7 m) | 4 | 4 | Infanterie lourde | 4 cases (16 m) |
+
+- Dégâts d'un coup = attaque + bonus si la cible est de la catégorie visée − armure de la cible (de mêlée, ou à distance pour un tir), 1 au moins.
+- Cadence : temps entre deux coups. Élan : part de la cadence qu'attend le premier coup sur une cible.
+- Portée : entre les bords des deux corps. Au-delà de 0,5 case (2 m), les coups sont des tirs (flèche à 37,5 m/s, qui touche toujours).
+- Rayon d'agressivité : riposte et prise de cible automatiques, de bord à bord. Sur attaque-déplacement, une unité qui n'en a pas cherche à 3 cases (12 m).
+- Au plus 6 attaquants de mêlée vont sur une même cible hors de portée ; les autres en prennent une moins entourée.
+- Une unité à 0 PV reste 20 pas (1 s à 20 Hz) pour sa chute.
+
+## Déplacement et corps
+
+| Unité | Vitesse | Rayon du corps | Distance d'évitement |
+|---|---|---|---|
+| Infanterie légère | 0,75 case/s (3 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
+| Infanterie légère (essai Nanite) | 0,75 case/s (3 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
+| Archer | 1,95 case/s (7,79 m/s) | 0,13 case (0,52 m) | 0,55 case (2,2 m) |
+| Paysan | 2 cases/s (8 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
+| Piquier | 1,94 case/s (7,77 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
+| Homme d'armes | 1,74 case/s (6,97 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
+
+## Production et économie
+
+| Unité | Coût | Temps de production | Population | Récolte | Charge portée |
+|---|---|---|---|---|---|
+| Infanterie légère | — | 20 s | 1 | — | — |
+| Infanterie légère (essai Nanite) | — | 20 s | 1 | — | — |
+| Archer | 30 Nourriture + 50 Bois | 15 s | 1 | — | — |
+| Paysan | 50 Nourriture | 20 s | 1 | Nourriture 0,7/s, Bois 0,7/s, Pierre 0,7/s, Or 0,7/s | 10 |
+| Piquier | 60 Nourriture + 20 Bois | 15 s | 1 | — | — |
+| Homme d'armes | 100 Nourriture + 20 Or | 22 s | 1 | — | — |
+
+## Affrontements
+
+Ligne = l'attaquant, colonne = la cible. Chaque case : dégâts d'un coup · coups pour tuer · temps pour tuer une cible seule et immobile (élan du premier coup, puis un coup par cadence ; sans le vol de la flèche).
+
+| Attaquant \ Cible | Infanterie légère | Archer | Paysan | Piquier | Homme d'armes |
+|---|---|---|---|---|---|
+| **Infanterie légère** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s |
+| **Archer** | 10 · 10 · 14,8 s | 5 · 14 · 21,3 s | 5 · 10 · 14,8 s | 10 · 8 · 11,6 s | 1 · 155 · 250,4 s |
+| **Paysan** | 3 · 34 · 124 s | 3 · 24 · 87 s | 3 · 17 · 61,1 s | 3 · 27 · 98 s | 1 · 155 · 571,7 s |
+| **Piquier** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s |
+| **Homme d'armes** | 12 · 9 · 11,7 s | 12 · 6 · 7,6 s | 12 · 5 · 6,2 s | 12 · 7 · 8,9 s | 8 · 20 · 26,8 s |
+
+Les lignes d'essai (Infanterie légère (essai Nanite)) sont laissées de côté : elles se battent comme le type qu'elles copient.
