@@ -1,7 +1,10 @@
 # Stats des unités — valeurs demandées par l'utilisateur
 
-Questionnaire du 2026-10-22, une unité à la fois. Rien n'est encore appliqué au CSV (`Tools/Data/UnitTypes.csv`) :
-on applique une fois toutes les unités passées. **Vitesses et portées fixées en cases** (choix de l'utilisateur, 2026-10-22) : elles suivent la grille. Une case = **4 m** (D311 revu par la session mycrusader-4b le 2026-10-22, branche tile-4m ; avant 3 m). Portées entre les bords des corps.
+> **Pour reprendre : lire la section « Reprise » en bas de ce fichier.** Valeurs dans main (7bda727) ; les règles de
+> D345 restent à coder. Les sections suivent l'ordre du chantier ; les portées de mêlée des tableaux ci-dessous sont
+> remplacées par la portée par arme (Piquier 130 cm, Homme d'armes 70 cm, voir plus bas).
+
+Questionnaire du 2026-10-22, une unité à la fois. **Vitesses et portées fixées en cases** (choix de l'utilisateur, 2026-10-22) : elles suivent la grille. Une case = **4 m** (D311 revu par la session mycrusader-4b le 2026-10-22, branche tile-4m ; avant 3 m). Portées entre les bords des corps.
 
 Colonnes nouvelles (règles à coder, décision au GDD) : armure contre Siège, armure contre Héros, attaque contre
 bâtiment (dégâts, portée, vitesse), deuxième attaque (dégâts, bonus, portée, vitesse).
@@ -218,12 +221,72 @@ l'utilisateur (identiques à Haldir).
   du sous-agent acceptés). Commit eb73ead sur unit-stats, **fusionné dans main 7bda727**. EtapeDefini : ligne du
   tableau des stats remplacée par « D345 à coder » ; ligne du chantier qui pose une unité dans ses murs.
 
-## Reprise
+## Reprise (passation du 2026-10-22, pour une autre session)
 
-Prochaine étape : **coder les règles de D345** dans Haldir (branche unit-stats, à remettre au niveau de main) :
-types d'attaque et quatre armures (colonnes du CSV, `HOLCombat::GetDamage`), ×0,3 des troupes contre les héros sauf
-Siège (quand les héros existeront dans la simulation légère), attaque contre bâtiment (ordre, attaque-déplacement,
-repos), armure Distance 40 des bâtiments (`BuildingTypes.csv`, Moulin compris), catégories multiples et bonus en
-liste, deuxième attaque à déclencheur Charge ; avec : `HOLCombat::AttackMoveRadius` 1200 → 1600, file d'attente de
-quick_check (B au-delà de 16 m), seuil « Peasant out of reach » de la tenue (70 cm), commentaires « 12 m » périmés.
-Stash « unit-stats WIP before merging main 48ffa00 » dans le dépôt : réserve devenue inutile (contenu commité).
+**État** : la demande de départ (tableau complet des stats) est faite : valeurs choisies une à une par l'utilisateur
+(sections ci-dessus), reportées dans `Tools/Data/UnitTypes.csv`, lisibles dans `UnitStats.md` (produit par
+`python Tools/Data/make_unit_stats.py`, ne pas l'écrire à la main) ; flèches à 37,5 m/s ; rangs de formation (tireurs
+derrière la mêlée, siège derrière les tireurs). Tout est validé à l'essai et dans main (eb73ead fusionné en 7bda727).
+Les **règles** de D345 (GDD, journal § 21 et § 7.2 « Fiche de combat ») restent à **coder** : c'est la suite.
+
+**Où travailler** : worktree `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir` (nom choisi par l'utilisateur),
+branche `unit-stats` à eb73ead, **en retard sur main** : la remettre au niveau (`git merge main`) avant tout. Son
+`IN_USE.txt` dit « en pause » : la session qui reprend y écrit son nom. La copie principale garde les journaux
+(`UnitStatsInProgress.md`, `GDD.md`, `EtapeDefini.md`). Un `git stash` « unit-stats WIP before merging main 48ffa00 »
+traîne dans le dépôt : son contenu est commité, c'est une réserve inutile (ne pas l'appliquer).
+
+**Règles de travail** (de l'utilisateur) :
+- compiler par `powershell -ExecutionPolicy Bypass -File Tools\build.ps1 -Root <copie>`, sans attendre les autres
+  sessions ; tout lancement Unreal scripté avec `-LiveCoding=0`, depuis PowerShell (jamais Git Bash) ;
+- réimporter la table après chaque changement du CSV : `UnrealEditor-Cmd.exe <uproject> -run=pythonscript
+  -script=<copie>\Tools\Editor\make_unit_types.py -unattended -nop4 -nosplash -LiveCoding=0` (de même
+  `make_building_types.py` pour les bâtiments) ;
+- **quick_check court** (sans argument, < 1 min) à chaque correction ; les parties touchées une seule fois avant le
+  commit (l'utilisateur a trouvé 8 min trop long) ;
+- sous-agents pour le code et les tests ; chaque essai demandé vient avec son scénario (`Tools/Scenarios/<nom>.txt`,
+  `play.ps1 <nom> -Root <copie>`) ; une question à la fois, avec options et recommandation ;
+- commit seulement après validation de l'utilisateur, en anglais, sans ligne Co-Authored-By ; mettre ce fichier à
+  jour à chaque étape.
+
+**Code existant à connaître** :
+- Table des unités : `Simulation/HOLUnitTypes.h` (`FHOLUnitTypeRow`, ligne du CSV ; `FHOLUnitTypeConstants`, fragment
+  partagé de Mass : **chaque champ doit être un UPROPERTY**, sinon deux types partagent une copie). Combat
+  aujourd'hui : `ArmorCategory` (une seule, `EHOLArmorCategory` : LightInfantry, HeavyInfantry, Ranged, Cavalry, Siege,
+  Peasant), `Attack`, `AttackInterval`, `AttackWindUpPercent`, `AttackRange`, `MeleeArmor`, `RangedArmor`,
+  `BonusCategory` + `BonusDamage` (un seul bonus), `AggressionRadius`.
+- Règles pures : `Simulation/HOLCombatRules.h/.cpp` (`GetDamage` : attaque + bonus − armure de mêlée ou à distance,
+  1 au moins ; le type vient de `IsRangedAttack(AttackRange)`, portée > 2 m ; cadence, élan, choix de cible,
+  `AttackMoveRadius` = 1200, flèches). Processeur : `Simulation/HOLCombatProcessor.cpp`. Tests :
+  `Tests/HOLCombatTests.cpp`, parties `combat` et `orders` de quick_check.
+- Bâtiments : `Buildings/HOLBuildingTypes.h` (`MaxHealth`, table `Tools/Data/BuildingTypes.csv`). **Aucun bâtiment
+  ne peut encore être abîmé ni détruit** : la vie sert au chantier (`HOLConstructionRules::GetHealth`, D312). L'attaque
+  contre bâtiment demande donc d'abord les dégâts aux bâtiments et leur destruction (navmesh rouvert, dépôt et
+  population retirés, réplication) : à poser comme question à l'utilisateur avant de coder.
+- Pas de héros dans la simulation légère : le ×0,3 et le type Héros n'ont pas encore de porteur.
+- Rangs de formation : `Simulation/HOLFormationRules` (`PlaceKinds`, `GetRowPriority` 0-6, `ERowClass`), test
+  `HeroesOfLiberty.Formation.Classes`.
+
+**Plan proposé** (à présenter à l'utilisateur ; une partie jouable à la fois, chacune avec essai et scénario) :
+1. **D345.1 — Types et armures** : par attaque un `AttackType` (Melee, Ranged, Siege, Hero ; Mêlée ou Distance pour
+   les unités d'aujourd'hui) ; quatre armures (`SiegeArmor` et `HeroArmor` en plus) ; **catégories multiples** (liste
+   sans plafond, ex. `(Ranged,GunpowderInfantry)` ; un masque de bits sur `EHOLArmorCategory` suffit si le fragment
+   partagé l'exige) ; **bonus en liste** `(LightInfantry=5,GunpowderInfantry=5)` qui s'additionnent ; nouvelle
+   catégorie `GunpowderInfantry`. Valeurs : Homme d'armes `HeroArmor` 2 ; Archer +5 Infanterie légère et +5 Infanterie
+   à poudre ; armures Siège et Héros à 0 ailleurs. `GetDamage` et ses tests ; `UnitStats.md` à étendre (nouvelles
+   colonnes). Peu d'effet visible (le bonus de l'Archer est inchangé) : essai léger.
+2. **D345.2 — Attaque contre bâtiment** : colonnes par unité (dégâts, portée, vitesse : Paysan 10, 1 case, 2,1 s ;
+   Piquier et Homme d'armes 20, 1 case, 2,1 s ; Archer 5, 5 cases, 1,625 s, type Distance) ; `RangedArmor` 40 dans
+   `BuildingTypes.csv` (tous les bâtiments, Moulin compris) ; cibles : ordre (clic droit sur un bâtiment ennemi),
+   attaque-déplacement après les unités, **au repos** si un bâtiment ennemi est dans le rayon d'agressivité sans unité
+   ennemie (choix de l'utilisateur, contre AoE4) ; une unité ennemie qui arrive fait lâcher le bâtiment ; le Paysan
+   seulement sur ordre. D'abord la question des dégâts et de la destruction des bâtiments (ci-dessus).
+3. **D345.3 — Deuxième attaque** à déclencheur, premier déclencheur **Charge** (premier coup après X cases de course,
+   sa vitesse = recharge) : colonnes et règle pure ; aucune unité ne l'utilise avant la cavalerie (tests seulement, ou
+   une ligne d'essai).
+4. **Plus tard** : ×0,3 des troupes contre un héros sauf type Siège, attaques de type Héros (avec les héros) ; tours.
+
+**Petits restes à reprendre avec D345.1** : `HOLCombat::AttackMoveRadius` 1200 → 1600 (4 cases, en cases comme le
+reste) ; quick_check : file d'attente (B à 15 m, dans l'agression de 16 m : l'éloigner au-delà), seuil « Peasant out
+of reach » de la tenue (50 cm alors que l'Homme d'armes a 70 cm), commentaires « 12 m » périmés ; commentaire
+« 3 m/s » de `HOLUnitReplicationRules.h` (la vitesse répliquée va jusqu'à 12,8 m/s). Les scénarios doivent écarter
+les groupes ennemis de plus de 16 m (21,3 m avec des Archers).
