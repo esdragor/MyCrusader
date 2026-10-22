@@ -6610,10 +6610,6 @@ d'épée).
   `j7c-shot` ea447f9). D327 précisé (d69b666). **Boucle 25 lancée** (sous-agent) : coût fixe de `HOLCombatProcessor`
   (tableau index d'entité → combattant, sortie rapide sans combat possible), empreintes S3 / S4 de référence prises
   avant le changement puis comparées, `-Parts tests,combat`, S2 tracé si le temps le permet.
-
-### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
-
-- Séance **mycrusader-4f**, copie **`HeroesOfLiberty-Galadriel`** (`IN_USE.txt`), branche **`archer-hit-and-run`** depuis
 - (J7c.4, mycrusader-43) **Boucle 25** (~11 min, non commitée, 0 avertissement) : la piste « tableau au lieu du TMap »
   était **déjà faite** (`FighterOfEntity` derrière `hol.Combat.FastPaths` ; `IndexOfEntity` ne sert qu'avec
   `FastPaths 0`). Dans S2, pas de combat parce que presque toutes les unités marchent sous un ordre (8 joueurs mêlés
@@ -6684,6 +6680,73 @@ d'épée).
   scénario pour décider**. Boucle 30 lancée : A (`hol.Simulation.FrontNeedsCombat`) et B
   (`hol.Simulation.EnemyGuardNeedsCombat`), défaut 0 ; scénarios `melee_front_a`, `melee_reinforce` (renforts par
   simple ordre de marche contre la ligne), `crowds_cross` (deux foules ennemies qui se croisent) ; empreintes, traces S2.
+- (J7c.4, mycrusader-43) **Boucle 30** (~12 min, non commitée, 0 avertissement ; avec la boucle 29 : +164 / −9 dans
+  `HOLSimulationProcessors.cpp` / `.h`) : marqueur **`Engaged`** (cible, attaque, approche, attaque-mouvement, détour
+  d'attaque-mouvement ou flanc ; rempli au rassemblement, `bAnyEngaged`) ; **A `hol.Simulation.FrontNeedsCombat`** (0 ;
+  passe « front » sautée si personne n'est engagé, sinon contact compté seulement si l'une des deux unités l'est) ;
+  **B `hol.Simulation.EnemyGuardNeedsCombat`** (0 ; garde de côté et plafond seulement pour les paires où l'une est
+  engagée, marquées `Guarded`). `FrontLines` avec A : presque inchangées en mêlée, vides sans combat (sans effet : seules
+  les mêlées en attaque-mouvement, elles-mêmes engagées, les lisent) ; un renfort en simple marche qui touche un ennemi
+  engagé reste « front ». Empreintes A / B à 0 identiques (S3 8a9b34cde2035b53, S4 8b0790f36386d0ea) ; A à 1 et A+B
+  à 1 pas mesurées ; traces S2 pas prises ; `quick_check` pas passé (boucles 29 et 30). Scénarios dans Elrond
+  (`Tools/Scenarios`) : `melee_front_a` (A à 1, vérifié), `crowds_cross` (B à 1, vérifié), `melee_reinforce` (A à 1,
+  bascule à la console ; 50 renforts envoyés par clic au sol dans le dos de la ligne ; **pas encore vérifié** : la
+  sélection au cadre ne prenait que 26 / 50, cadre élargi, non relancé). **Écart de processus** : `stress_ab` refusait
+  (jeu de l'essai de l'utilisateur ouvert) et le sous-agent a lancé lui-même deux jeux avec les mêmes arguments pendant
+  l'essai. **Leçon** : écrire dans les énoncés de ne jamais contourner le refus « BUSY ».
+- (J7c.4, mycrusader-43) **Boucle 31** (~13 min, non commitée) : `melee_reinforce` corrigé et vérifié jusqu'au bout
+  sans fenêtre (`SpawnHere 50 ManAtArms 0 400`, `Focus -13200 -300`, cadre `BoxGround -14300 -1400 -12100 800`,
+  `waitlog Selection: 50 units (own)`, `waitlog Order: 50 units` ; renforts posés derrière leur ligne à ≤ 18 cm de leur
+  place avec A à 1). `quick_check -Parts tests,combat,move,formation` d'Elrond (défauts) **PASS** (375 s, 87/87 ;
+  couvre les boucles 29-30). Pas faits : empreintes A / A+B, traces S2. Écart : un premier lancement est parti pendant
+  la fin d'une vérification de mycrusader-e9 (la garde affichait sans bloquer) ; corrigé (« BUSY » bloquant). Les
+  scripts d'aide `scen.ps1` / `fpd.ps1` (dossier de travail de la session) ne vérifient pas la machine eux-mêmes.
+  Commandes d'essai : `powershell -ExecutionPolicy Bypass -File
+  C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 <melee_front_a | melee_reinforce |
+  crowds_cross>`. Essai de l'utilisateur à lancer dès que le test réseau de mycrusader-4b (J5c) est fini.
+- (J7c.4) 1er essai `melee_front_a` lancé puis fermé à la demande de l'utilisateur : **pas de bouton « Relancer »**
+  (obligatoire ; c446d99 est dans `main`, pas dans `j7c-shot`). Avec l'accord de l'utilisateur : c446d99 repris sur
+  `j7c-shot` (**ab2235f** ; conflit sur le texte d'aide de `hol.HUD.Click` seulement), Elrond recompilé (20 s), essai
+  relancé. **Leçon** : avant un essai dans une copie de branche, vérifier que les outils d'essai de `main` y sont.
+- (J7c.4) **Essai `melee_front_a` : « tout est bon »** (A à 1 : mêlée identique à l'œil à celle validée). Essai
+  `melee_reinforce` lancé.
+- (J7c.4) **Essai `melee_reinforce`** (capture de l'utilisateur) : « les unités respectent la ligne mais ne vont pas
+  toutes, certaines restent en place » ; « hors scénario : les renforts ont buté plus d'une fois contre le mur, ce qui
+  les a empêchés de bien se déployer, un agent doit s'en occuper » → transmis à mycrusader-e9 (chantier déplacement,
+  cas 3 « mur à nous », noté dans `MovementInProgress.md`). **Tranché — A adopté** (choix de l'utilisateur, conforme à
+  la recommandation) : `hol.Simulation.FrontNeedsCombat` passe à **1 par défaut** (une unité ne compte comme « front »
+  que si elle ou l'ennemi touché est engagé dans un combat). Au GDD à la clôture de J7. Essai `crowds_cross` lancé
+  pour décider de B.
+- (J7c.4) **Essai `crowds_cross`** : avec B à 1, « ils ont tremblé dans tous les sens et là ils sont arrêtés »
+  (capture : foules interpénétrées, bloquées) ; avec B à 0 (règle actuelle), « ils ont énormément de mal mais ils
+  traversent ; je pense qu'on ne veut pas qu'ils se bousculent, **l'ennemi est un mur** ». **Tranché — B rejeté** :
+  la garde côté ennemi et son plafond restent actifs pour toutes les paires ennemies ; variable B retirée du code.
+  Le croisement de foules ennemies (l'ennemi doit faire mur, sans bousculade) est transmis à mycrusader-e9 (chantier
+  déplacement). Boucle 32 : A à 1 par défaut, B retiré, nouvelles empreintes, S2, `quick_check`, puis commit.
+- (J7c.4, mycrusader-43) **Boucle 32** (~13 min, non commitée, 0 avertissement) : `FrontNeedsCombat` **1 par défaut**
+  (0 = ancienne règle) ; B retiré entièrement (variable, `Guarded`, conditions : garde de côté et plafond revenus au
+  code d'avant la boucle 30) ; `Engaged` gardé pour A ; `MeleeRuleSkips` inchangé (+140 / −6 contre HEAD).
+  `melee_front_a` supprimé ; `melee_reinforce` et `crowds_cross` gardés pour le chantier déplacement, réglages A / B
+  retirés (notes de `crowds_cross` : voulu « l'ennemi est un mur », aujourd'hui traversée avec peine). **Empreintes
+  inchangées avec A à 0 comme à 1** : S3 8a9b34cde2035b53, S4 8b0790f36386d0ea (dans S3 / S4 tout contact ennemi touche
+  une unité engagée) ; les références restent. `quick_check -Parts tests,combat,move,formation` PASS (367 s, 87/87).
+  Sous-agent arrêté (attente de fond). Contrôle des deux scénarios sans fenêtre lancé par la session principale.
+- (J7c.4, mycrusader-43) `melee_reinforce` et `crowds_cross` sans fenêtre : « ready », 0 erreur, 0 avertissement HOL
+  (après attente des essais de mycrusader-4b). **Commité sur `j7c-shot` : 03c9161** (A par défaut, `MeleeRuleSkips`,
+  B retiré, deux scénarios). Reste : S2 au repos (`main` contre Elrond, et A à 0 / 1), puis S5 en combat et les
+  mesures de fin de chapitre.
+- (J7c.4) **L'utilisateur remet les mesures au repos à plus tard.** mycrusader-4b avancera `main` sur `tile-4m` (case
+  de 4 m, positions sur 13 bits, `DefaultGame.ini` et deux `.uasset`) ; `j7c-shot` (03c9161) devra ensuite se poser
+  sur `main` (fusion de `main` dans `j7c-shot` ; conflits attendus : `HOLUnitReplicationRules.h`, `HOLNetTests.cpp`,
+  `HOLUIHUD.cpp` après le report du bouton « Relancer » ab2235f).
+  **Reprise exacte** : (1) fusionner `main` (avec `tile-4m`) dans `j7c-shot`, compiler, `-Parts` des parties touchées,
+  empreintes S3 / S4 (nouvelles références probables avec la case de 4 m) ; (2) mesures au repos (l'utilisateur ferme
+  ses applications) : S2 `main` contre Elrond et `FrontNeedsCombat` 0 / 1, puis `rest_measures.ps1` (S1, S2, S7, S5,
+  S3, S4, S5 en combat) ; (3) avance de `main` sur `j7c-shot` (accord des sessions), J7c.5.
+
+### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
+
+- Séance **mycrusader-4f**, copie **`HeroesOfLiberty-Galadriel`** (`IN_USE.txt`), branche **`archer-hit-and-run`** depuis
   `main` ea84b7b. `EtapeDefini.md` : « Hit and run impossible avec l'Archer : le geste de tir dure toute la cadence ».
 - **Constat (lecture du code)** : un ordre de marche (`Disengage`) garde la recharge (`CooldownMs` non remis à zéro,
   `TickIdle` pendant la marche) et une flèche lâchée part quand même (J7c-Q2). Le blocage : à chaque reprise de cible,

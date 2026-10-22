@@ -6,8 +6,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## À faire
 
 ### Parcours J7c — le tir
-- J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7) *(en cours dans HeroesOfLiberty-Elrond : lignes de mêlée validées et commitées sur `j7c-shot` ; suite : coût fixe du combat, S5 en combat)*
-  - S2 au seuil sur `j7c-shot` (~0,2 ms de plus que `main`) : alléger la mêlée hors combat (raccourcis du combat faits)
+- J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7) *(en pause dans HeroesOfLiberty-Elrond, `j7c-shot` 03c9161 ; suite : fusion de `main` avec la case de 4 m, puis mesures au repos)*
+  - S2 sur `j7c-shot` : mêlée allégée hors combat (raccourcis du combat, front seulement en combat), à mesurer au repos
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
 ### Animations
