@@ -232,8 +232,8 @@ Les **règles** de D345 (GDD, journal § 21 et § 7.2 « Fiche de combat ») res
 **Où travailler** : worktree `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir` (nom choisi par l'utilisateur),
 branche `unit-stats` à eb73ead, **en retard sur main** : la remettre au niveau (`git merge main`) avant tout. Son
 `IN_USE.txt` dit « en pause » : la session qui reprend y écrit son nom. La copie principale garde les journaux
-(`UnitStatsInProgress.md`, `GDD.md`, `EtapeDefini.md`). Un `git stash` « unit-stats WIP before merging main 48ffa00 »
-traîne dans le dépôt : son contenu est commité, c'est une réserve inutile (ne pas l'appliquer).
+(`UnitStatsInProgress.md`, `GDD.md`, `EtapeDefini.md`). Le `git stash` de réserve du chantier a été supprimé
+(demande de l'utilisateur) ; le stash « mv2 wip » est celui d'une autre session.
 
 **Règles de travail** (de l'utilisateur) :
 - compiler par `powershell -ExecutionPolicy Bypass -File Tools\build.ps1 -Root <copie>`, sans attendre les autres
