@@ -21,6 +21,8 @@
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
 
+#include <atomic>
+
 namespace UE::HeroesOfLiberty::Simulation
 {
 	/** Buckets of the look-ahead's cell table (a power of two), and the width (cm) of its cells. */
@@ -38,6 +40,27 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 AvoidEnabled = 1;
 	FAutoConsoleVariableRef CVarAvoid(TEXT("hol.Units.Avoid"), AvoidEnabled,
 		TEXT("1: a walker turns aside from the bodies it would meet within hol.Units.AvoidTime, and pushes only when no way within hol.Units.AvoidMaxAngle is clear (D293); 2: the same, and its average cost logged every 200 steps; 0: off, for A / B measures"));
+	int32 DetourMemory = 1;
+	FAutoConsoleVariableRef CVarDetourMemory(TEXT("hol.Units.DetourMemory"), DetourMemory,
+		TEXT("1: a walker remembers its detour and its part at a crossing from step to step (MV.2); 0: forgotten each step, for A / B measures (the heading flipped every step)"));
+
+	/**
+	 * The walkers' heading flips (MV.4.3): a turn of more than TurnFlipDegrees between the last step's velocity and this
+	 * one's, both moving at least TurnFlipMinStep cm in the step; counted until hol.Units.TurnReport (no log a step).
+	 */
+	constexpr double TurnFlipDegrees = 25.;
+	constexpr double TurnFlipMinStep = 3.;
+	std::atomic<int64> TurnFlips{0};
+	std::atomic<int64> TurnWalkerSteps{0};
+	FAutoConsoleCommand TurnReportCommand(TEXT("hol.Units.TurnReport"),
+		TEXT("Logs the walkers' heading flips over 25 degrees between two steps since the last report, then counts again from zero (MV.4.3)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			const int64 Flips = TurnFlips.exchange(0);
+			const int64 Steps = TurnWalkerSteps.exchange(0);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Turn report: %lld flips over %.0f deg in %lld walker-steps"), Flips, TurnFlipDegrees, Steps);
+		}));
+
 	float AvoidTime = 0.5f;
 	FAutoConsoleVariableRef CVarAvoidTime(TEXT("hol.Units.AvoidTime"), AvoidTime,
 		TEXT("Seconds a walker looks ahead for bodies on its way (D293)"));
@@ -156,23 +179,8 @@ namespace UE::HeroesOfLiberty::Simulation
 	double AvoidSeconds = 0.;
 	int32 AvoidRuns = 0;
 
-	/**
-	 * Time (s) at which two bodies come into contact, the other one at RelativePosition from this one and this one moving
-	 * at RelativeVelocity towards it; never (the largest double) if they do not meet, move apart or already overlap
-	 * (the separation's business).
-	 */
-	double TimeToContact(const FVector2D& RelativePosition, const FVector2D& RelativeVelocity, const double ContactDistance)
-	{
-		const double SpeedSquared = RelativeVelocity.SizeSquared();
-		const double Approach = FVector2D::DotProduct(RelativePosition, RelativeVelocity);
-		const double Gap = RelativePosition.SizeSquared() - FMath::Square(ContactDistance);
-		if (Gap <= 0. || Approach <= 0. || SpeedSquared <= UE_KINDA_SMALL_NUMBER)
-		{
-			return TNumericLimits<double>::Max();
-		}
-		const double Discriminant = FMath::Square(Approach) - SpeedSquared * Gap;
-		return Discriminant < 0. ? TNumericLimits<double>::Max() : (Approach - FMath::Sqrt(Discriminant)) / SpeedSquared;
-	}
+	/** Time (s) to contact with a body ahead (pure rule, tested on its own: HOLAvoid, MV.4). */
+	using HOLAvoid::TimeToContact;
 }
 
 UHOLStorePreviousTransformProcessor::UHOLStorePreviousTransformProcessor()
@@ -338,7 +346,7 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 }
 
 FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
-	const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour) const
+	const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour, const bool bAroundEnemies) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
@@ -380,6 +388,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.Turn = 0;
 		Detour.ClearSteps = 0;
 	};
+	// A / B (hol.Units.DetourMemory 0): every step from the straight course, as before MV.2.
+	if (DetourMemory == 0)
+	{
+		Forget();
+		Detour.Crosser.Reset();
+	}
 	// The part at a crossing is kept while that walker is near (MV.2).
 	if (!Detour.Crosser.IsSet() || !Near.ContainsByPredicate([this, &Detour](const int32 Other) { return Entities[Other] == Detour.Crosser; }))
 	{
@@ -399,13 +413,14 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	};
 
 	// The first body met going this way, and when.
-	const auto FirstContact = [this, &Near, &Position, Radius, Speed, &ContactLimit](const FVector2D& Way, int32& OutOther)
+	const auto FirstContact = [this, &Near, &Position, Radius, Speed, &ContactLimit, Owner, bAroundEnemies](const FVector2D& Way, int32& OutOther)
 	{
 		double First = TNumericLimits<double>::Max();
 		OutOther = INDEX_NONE;
 		for (const int32 Other : Near)
 		{
-			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale);
+			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
+				bAroundEnemies && Owners[Other] != Owner);
 			if (Time < First && Time < ContactLimit(Other))
 			{
 				First = Time;
@@ -415,11 +430,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return First;
 	};
 	// Whether nothing is met going this way within the horizon: the first contact found is enough (D302).
-	const auto IsClear = [this, &Near, &Position, Radius, Speed, &ContactLimit](const FVector2D& Way)
+	const auto IsClear = [this, &Near, &Position, Radius, Speed, &ContactLimit, Owner, bAroundEnemies](const FVector2D& Way)
 	{
 		for (const int32 Other : Near)
 		{
-			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale) < ContactLimit(Other))
+			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
+				bAroundEnemies && Owners[Other] != Owner) < ContactLimit(Other))
 			{
 				return false;
 			}
@@ -466,7 +482,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		const int32 Turn = HOLAvoid::NextDetourTurn(Detour.Turn, Turns, Detour.ClearSteps, [&WayOf, &IsClear, Hand](const int32 Each) { return IsClear(WayOf(Hand, Each)); });
 		// No turn clear up to the largest: on its hand, one turn a step back towards its place, pushing (MV.2: forgetting
 		// it flipped the hand, the heading jumping up to 80 degrees in a step at a crossing; held, it circled its slot).
-		Detour.Turn = static_cast<uint8>(Turn != INDEX_NONE ? Turn : Detour.Turn - 1);
+		// An enemy is not pushed (D293): against one, one turn a step wider up to the largest, held along it (MV.4: eased
+		// back, the Paysans walked straight into a wall of enemies and stuck in it).
+		int32 EnemyAhead = INDEX_NONE;
+		const bool bHoldAlongEnemy = Turn == INDEX_NONE && bAroundEnemies && FirstContact(WayOf(Hand, Turns), EnemyAhead) < Horizon
+			&& EnemyAhead != INDEX_NONE && Owners[EnemyAhead] != Owner;
+		Detour.Turn = static_cast<uint8>(Turn != INDEX_NONE ? Turn : HOLAvoid::TurnWithoutClearWay(Detour.Turn, Turns, bHoldAlongEnemy));
 		if (Detour.Turn == 0)
 		{
 			Forget();
@@ -501,6 +522,15 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 				return FVector(Way.X, Way.Y, 0.);
 			}
 		}
+	}
+	// No way clear against an enemy (it is not pushed, D293): along it at the largest turn on its side, remembered (MV.4).
+	if (bAroundEnemies && Turns > 0 && Owners[Blocker] != Owner && !bPassBehind)
+	{
+		Detour.Blocker = Entities[Blocker];
+		Detour.Side = static_cast<int8>(Side);
+		Detour.Turn = static_cast<uint8>(Turns);
+		const FVector2D Way = WayOf(Side, Turns);
+		return FVector(Way.X, Way.Y, 0.);
 	}
 	return Direction;
 }
@@ -752,6 +782,26 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 		const bool bMayRearSlide = bLookAhead && RearSlide != 0 && !Combats.IsEmpty()
 			&& (!TypeConstants || !HOLCombat::IsRangedAttack(TypeConstants->AttackRange));
 		const TArrayView<FHOLDetourFragment> Detours = Context.GetMutableFragmentView<FHOLDetourFragment>();
+		// The heading flips of this chunk (MV.4.3), added once at its end.
+		int64 ChunkFlips = 0;
+		int64 ChunkWalkerSteps = 0;
+		const double MinStepSpeed = DeltaTime > 0.f ? TurnFlipMinStep / DeltaTime : TNumericLimits<double>::Max();
+		const double FlipCosine = FMath::Cos(FMath::DegreesToRadians(TurnFlipDegrees));
+		const auto CountTurn = [&ChunkFlips, &ChunkWalkerSteps, MinStepSpeed, FlipCosine](const FVector& Last, const FVector& Now)
+		{
+			const FVector2D Before(Last.X, Last.Y);
+			const FVector2D After(Now.X, Now.Y);
+			if (Before.SizeSquared() >= FMath::Square(MinStepSpeed) && After.SizeSquared() >= FMath::Square(MinStepSpeed))
+			{
+				++ChunkWalkerSteps;
+				ChunkFlips += FVector2D::DotProduct(Before.GetSafeNormal(), After.GetSafeNormal()) < FlipCosine ? 1 : 0;
+			}
+		};
+		ON_SCOPE_EXIT
+		{
+			TurnFlips += ChunkFlips;
+			TurnWalkerSteps += ChunkWalkerSteps;
+		};
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -843,7 +893,8 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 					Detour.Phase = static_cast<uint8>(Order.Phase);
 				}
 				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon,
-					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour);
+					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour,
+					Combats.IsEmpty() || (!Combats[EntityIt].bAttacking && !Combats[EntityIt].bApproaching && Combats[EntityIt].Mode != EHOLCombatMode::AttackMove));
 				// On a block's march, never against it (playtest note 1, loop 20: a unit forming up, going round one of
 				// its kind, took a step back): the turn's part against the march dropped, sideways or on.
 				if ((Order.Phase == EHOLMovePhase::FormUp || Order.Phase == EHOLMovePhase::Block) && !Order.bReforming && !Order.MarchDirection.IsNearlyZero())
@@ -870,6 +921,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 					Wanted, Speed, Last, States[EntityIt].OwnerPlayer, DeltaTime, Combats[EntityIt], Slid, bSliding))
 				{
 					Velocity = FVector(Slid.X, Slid.Y, 0.);
+					CountTurn(LastVelocities[EntityIt].Value, Velocity);
 					continue;
 				}
 			}
@@ -881,6 +933,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				Combats[EntityIt].SlideFreeSeconds = 0.f;
 			}
 			Velocity = Direction * Speed;
+			CountTurn(LastVelocities[EntityIt].Value, Velocity);
 		}
 	}, FMassEntityQuery::EParallelExecutionFlags::AutoBalance);
 }

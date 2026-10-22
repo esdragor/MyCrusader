@@ -31,7 +31,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Retours d'essai
 - Unité repoussée par un chantier qui démarre : posée dans les murs du bâtiment, à repousser au-delà de la marge
-- Marcheurs bloqués par des corps (passage étroit : personne ne passe ; mur d'unités à nous : très ralentis ; renforts qui butent contre leur propre ligne en mêlée ; deux foules ennemies qui se croisent à grand-peine)
+- Marcheurs bloqués par des corps (renforts qui butent contre leur propre ligne en mêlée ; deux foules ennemies qui se croisent à grand-peine)
+- Marcheurs qui touchent un mur d'unités immobiles avant de le contourner
+- Ligne qui perd sa forme dès le premier combat (tenir le rang, R1 à R11 validées)
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
