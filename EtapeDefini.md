@@ -24,15 +24,15 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Review du GDD : reprendre à D344 (D341 scénarios d'essai, D342 seuil de S3 / S4, D343 état d'unité sur 59 bits)
 
 ### Questions techniques ouvertes
-- Croisement de deux unités de face (avant M5)
-- Unités immobiles qui restent superposées (vitesse d'arrêt nulle)
+*(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
+- Unités qui tremblent (droite-gauche) en s'évitant quand elles se croisent
 - Écart inexpliqué des mesures de rendu
 
 ## Bugs remontés
 
 ### Retours d'essai
-- Marcheurs bloqués par des corps (passage étroit, mur d'unités)
-- Formation gênée entre les bâtiments et contre les ressources
+- Marcheurs bloqués par des corps (passage étroit : personne ne passe ; mur d'unités à nous : très ralentis ; renforts qui butent contre leur propre ligne en mêlée ; deux foules ennemies qui se croisent à grand-peine)
+- Formation gênée contre les ressources (mine, arbres : découvertes au contact, pas prises comme obstacles dès l'ordre)
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
