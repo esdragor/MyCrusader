@@ -6541,7 +6541,7 @@ d'épée).
        `j7c-shot`) : tableau index d'entité → combattant au lieu du TMap `IndexOfEntity`, sortie rapide quand aucune
        unité ne peut chercher ni frapper ; S3 / S4 identiques (empreintes), S2 < 3 ms au repos ; A/B contre
        `HeroesOfLiberty-Galadriel` e163490 (`stress_ab.ps1 -Test S2 -Seconds 10 -Trace`, `trace_report.py`).
-    3. Question « tenir la position face à une allonge plus longue » (ci-dessus).
+    3. ~~Question « tenir la position face à une allonge plus longue »~~ : tranchée, aucune riposte (plus bas).
     4. S5 en combat (70 Ko/s, seuil 32) : remesurer avec la mêlée corrigée, puis le lot réseau si besoin.
     5. Mesures de fin de chapitre, avance de `main` (accord des sessions actives), J7c.5.
 - (J7c.4) **Choix de l'utilisateur (via mycrusader-f6)** : le coût fixe de `HOLCombatProcessor` dans S2 sans combat
@@ -6550,6 +6550,12 @@ d'épée).
   peut chercher ni frapper ; S3 / S4 identiques (empreintes), S2 < 3 ms au repos. Côté A de l'A/B :
   `HeroesOfLiberty-Galadriel` détaché à e163490, compilé avec les portées de trace (`stress_ab.ps1 -Test S2 -Seconds 10
   -Trace`, `trace_report.py`).
+- (J7c.4) **Tranché — Tenir la position face à une allonge plus longue : aucune riposte** (choix de l'utilisateur,
+  contre la recommandation « riposte d'un pas ») : une unité qui tient la position (D) ne bouge jamais, même frappée
+  par un ennemi hors de sa portée (Homme d'armes 70 cm contre Lancier 130 cm : 0 coup rendu). L'allonge est un avantage
+  tactique ; au joueur de lâcher la tenue (S ou un autre ordre). Écartés : **riposte d'un pas** (avancer d'~1 m pour
+  frapper puis revenir) ; **petite zone tenue** (~2-3 m). Rien à coder (règle actuelle, contrôle « hold reach » de
+  `orders` déjà fait avec un Homme d'armes). Au GDD à la clôture de J7 (J7c.5).
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
