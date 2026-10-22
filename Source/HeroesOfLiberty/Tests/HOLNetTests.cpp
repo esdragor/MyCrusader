@@ -34,7 +34,8 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("62 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit)"), FHOLNetUnitState::TotalBits, 62);
+	TestEqual(TEXT("59 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, 14 per position)"),
+		FHOLNetUnitState::TotalBits, 59);
 	TestEqual(TEXT("8 bits more for a wounded unit, its exact health (J7-Q5 revised)"), FHOLNetUnitState::WoundedBits, 8);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
 	TestEqual(TEXT("6 bits more for one facing its front at rest"), FHOLNetUnitState::FacingFrontBits, 6);
@@ -51,7 +52,7 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 		FMath::Abs(BackVelocity.X - Velocity.X) <= 2.5 && FMath::Abs(BackVelocity.Y - Velocity.Y) <= 2.5);
 	TestEqual(TEXT("no vertical velocity"), BackVelocity.Z, 0.0);
 	TestEqual(TEXT("activity kept"), State.Activity, EHOLUnitActivity::Moving);
-	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % 256));
+	TestEqual(TEXT("low bits of the step"), State.Step, static_cast<uint8>(1000 % (1 << FHOLNetUnitState::StepBits)));
 	TestEqual(TEXT("same values, same state"), FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Moving, 1000), State);
 	const FHOLNetUnitState Carrier = FHOLNetUnitState::Make(Position, Velocity, EHOLUnitActivity::Gathering, 1000, EHOLResource::Wood, 7);
 	TestTrue(TEXT("a carrier"), Carrier.bCarrying);
@@ -73,6 +74,7 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Y held at the range's edge"), static_cast<int32>(Far.Y), -(1 << (FHOLNetUnitState::HorizontalBits - 1)));
 	TestEqual(TEXT("velocity held at the range's edge"), static_cast<int32>(Far.VelocityX), (1 << (FHOLNetUnitState::VelocityBits - 1)) - 1);
 	TestTrue(TEXT("the 400 m maps fit"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep > 25000.f);
+	TestTrue(TEXT("the 1.6 km maps fit (D343)"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep >= 80000.f);
 	return true;
 }
 
@@ -159,7 +161,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("62 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +8 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
+		TestEqual(TEXT("59 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +8 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
@@ -259,14 +261,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetUnwrapStepTest, "HeroesOfLiberty.Net.Unw
 bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
 {
 	using HOLUnitReplication::UnwrapStep;
-	const auto Low = [](const int64 Step) { return static_cast<uint8>(Step % 256); };
+	const auto Low = [](const int64 Step) { return static_cast<uint8>(Step % (int64(1) << FHOLNetUnitState::StepBits)); };
 	TestEqual(TEXT("same step"), UnwrapStep(Low(1000), 1000), int64(1000));
 	TestEqual(TEXT("a little behind"), UnwrapStep(Low(990), 1000), int64(990));
 	TestEqual(TEXT("a little ahead"), UnwrapStep(Low(1010), 1000), int64(1010));
 	TestEqual(TEXT("behind, across a wrap"), UnwrapStep(Low(1020), 1030), int64(1020));
 	TestEqual(TEXT("ahead, across a wrap"), UnwrapStep(Low(1030), 1020), int64(1030));
-	TestEqual(TEXT("127 steps behind"), UnwrapStep(Low(5000 - 127), 5000), int64(5000 - 127));
-	TestEqual(TEXT("127 steps ahead"), UnwrapStep(Low(5000 + 127), 5000), int64(5000 + 127));
+	TestEqual(TEXT("63 steps behind"), UnwrapStep(Low(5000 - 63), 5000), int64(5000 - 63));
+	TestEqual(TEXT("63 steps ahead"), UnwrapStep(Low(5000 + 63), 5000), int64(5000 + 63));
+	TestTrue(TEXT("read right beyond the slow refresh (D343)"), (1 << (FHOLNetUnitState::StepBits - 1)) > 40 + 10);
 	TestEqual(TEXT("first steps of the match"), UnwrapStep(Low(3), 0), int64(3));
 	return true;
 }

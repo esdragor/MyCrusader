@@ -6409,6 +6409,41 @@ d'épée).
     « le reste » ; (2) si besoin, A/B de S5 contre le côté A (`HeroesOfLiberty-Galadriel` détaché à e163490 : serveur
     dédié à cuire là, ~5-8 min) ; candidats : réplication de l'état de combat ou des PV hors états, acteurs ajoutés
     depuis J7b (corps, flèches), état du joueur. Une boucle à part (cuisson + mesures).
+  - (**mycrusader-80**, 2026-10-22 ~10:35) **Trace réseau prise** : `net_match.ps1 -ServerArgs` ajouté (arguments de
+    ligne de commande du serveur) ; S5 tracée sur la copie principale (5dd09bc, serveur cuit à 9:10, à jour) :
+    `-trace=net -NetTrace=3 -tracefile=Saved_Tests\Logs\s5_net.utrace` (2 Mo). Même mesure qu'au repos : **32,8 Ko/s**
+    par client, le reste 6,8 Ko/s côté client, 44 paquets/s. Insights n'a pas d'export automatique du réseau : lecteur
+    Python de la trace (`Tools/Tests/net_trace_report.py`) confié à un sous-agent (boucle 1).
+  - **Boucle 1 finie (6 min, 112k)** : `net_trace_report.py` lit la trace en pur Python (LZ4 écrit à la main), ~2 s.
+    Sur 40 s, par client, 31,2 Ko/s comptés par la trace (sans les en-têtes UDP/IP) : **états des unités 27,0 Ko/s**
+    (`HOLUnitChunk_State > States`) ; emballage Iris des morceaux d'unités ~3,2 (`ChangeMasks` 2,15 : masque d'éléments
+    de tableau de 64 bits par morceau envoyé ; `BatchSize` 0,46 ; en-têtes d'objet 0,6) ; en-tête de paquet 0,47 ;
+    **tout le reste ~1 Ko/s** (`GameStateBase` temps du monde 0,06, `HOLUnitReplicator` 0,06, destructions en attente
+    0,09, RPC `HugeObjectState` d'un morceau trop gros pour un paquet ~0,07). Ni corps, ni flèches, ni état du joueur.
+  - **Cause trouvée : « le reste » n'a pas grossi, ce sont les états** : depuis J7b un état fait **62 bits** au lieu de
+    60 (activité 3 → 4 bits pour Attaque / Mort / Face au front, + 1 bit « PV pleins », J7-Q5), mais `s5_report.py`
+    comptait 60 bits fixes : les 2 bits × ~3 440 états/s = **~0,86 Ko/s** passaient dans « le reste ». `STATE_BITS`
+    corrigé à 62 : le reste retombe à **5,95-5,97 Ko/s** côté client (5,9 en J6). Croissance de S5 depuis J6 = ~0,3 (un
+    peu plus d'états) + ~0,86 (2 bits par état). **A/B contre Galadriel inutile**, pas de cuisson.
+  - Reste à décider (question à l'utilisateur) : regagner ~0,4-0,8 Ko/s (2 bits dans l'état, ou l'emballage Iris), ou
+    accepter ce coût du combat dans le seuil de S5.
+  - **Choix de l'utilisateur (D343, 2026-10-22)** : regagner des bits. (1) **Pas sur 7 bits** au lieu de 8 (128 pas,
+    lu juste jusqu'à ±64 pas = 3,2 s de l'horloge du client ; le rappel lent renvoie chaque unité au moins tous les
+    40 pas). (2) **Positions sur 14 bits** au lieu de 15 : ±819 m autour de l'origine, **cartes jusqu'à 1,6 × 1,6 km**
+    (Plaine 400 m) ; avertissement au démarrage de la réplication si les limites de la carte dépassent. Écartée : vitesse
+    sur 8 bits (±6,4 m/s, le Paysan va déjà à 6 m/s). État 62 → **59 bits** ; S5 attendue vers ~30,7 Ko/s. Fait dans la
+    copie principale (`main`, rien de J7c.4 touché ; j7c-shot change d'autres lignes des mêmes fichiers). Patch prêt,
+    appliqué après l'A/B de S2 de mycrusader-43 (qui court sur les binaires de la copie principale).
+  - D343 appliquée dans la copie principale (`HOLUnitReplicationRules.h` : `HorizontalBits` 14, `StepBits` 7 ;
+    avertissement des limites de carte dans `HOLUnitReplicationSubsystem.cpp` ; `HOLNetTests.cpp` : 59 bits, pas sur 7
+    bits, ±63 pas, cartes de 1,6 km ; `s5_report.py` `STATE_BITS` 59). Compile ; `quick_check -Parts tests,net` : net à
+    2 clients PASS (combat, flèches), tests 89/90 (le test du pas attendait `% 256`, corrigé) puis **90/90 PASS**.
+    Cuisson du serveur et S5 lancées.
+  - **S5 PASS : 30 756 B/s par client** (avant 32 380-32 812), erreur affichée 21,8 cm (inchangée), 1,77 envoi par
+    unité et par seconde, 42 paquets/s ; le reste 5,9 Ko/s côté client (comme J6). Cuisson + S5 en 202 s. Machine
+    chargée par Elrond (images des clients basses, sans effet sur le débit). Aucun avertissement de limites (Plaine).
+    **Validé par l'utilisateur, commité** (D343 au GDD). Question de l'utilisateur ensuite : une case de 4,2 m et des
+    cartes de 220 × 220 cases au plus (924 m) feraient-elles gagner plus ? (réponse dans la conversation, voir plus bas).
 - (J7c.4, **mycrusader-80**, reprise) `HeroesOfLiberty-Elrond` repris (`IN_USE.txt` « en cours », `j7c-shot` au-dessus
   de ce1dcf5). Boucle 16 lancée (sous-agent) : les trois règles derrière des variables — `hol.Combat.WeaponReach` (1)
   avec `hol.Combat.SpearReach` (130 cm bord à bord) et `hol.Combat.SwordReach` (70) ; `hol.Simulation.FriendGap` (25 cm

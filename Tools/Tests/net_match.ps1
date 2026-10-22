@@ -24,6 +24,8 @@ param(
     [int] $Lag = 0,
     [int] $Loss = 0,
     [string[]] $ServerSettings = @(),
+    # Extra command-line arguments of the server (e.g. a network trace: -ServerArgs "-trace=net -NetTrace=3 -tracefile=...").
+    [string] $ServerArgs = "",
     [switch] $Keep,
     [string] $EngineDir = ""
 )
@@ -63,6 +65,7 @@ $ServerLog = Join-Path $Logs "net_server.log"
 # The logs of the last run go first: the waits below read the new ones.
 Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_client*.log")
 $ServerArguments = "$Map -log -unattended -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
+if ($ServerArgs) { $ServerArguments += " $ServerArgs" }
 # Commands both sides run at start: reports and samples of S5, network emulation.
 $NetCommands = @()
 if ($Units -gt 0) { $NetCommands += "hol.Net.ReportInterval 5", "hol.Net.Sample 100" }

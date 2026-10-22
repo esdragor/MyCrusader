@@ -17,8 +17,9 @@ import sys
 from datetime import datetime
 
 STEP_SECONDS = 0.05
-# Bits of one unit state on the wire (FHOLNetUnitState::TotalBits: 59 since D301, the height is no longer sent).
-STATE_BITS = 60
+# Bits of one unit state on the wire (FHOLNetUnitState::TotalBits: 59 since D343, an unhurt unit that carries nothing and
+# does not fight; the extras of the others are not counted).
+STATE_BITS = 59
 
 
 def log_time(line):

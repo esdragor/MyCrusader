@@ -8,7 +8,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Parcours J7c — le tir
 - J7c.4 Mesures de fin de J7 (S1, S2 au seuil, S3, S4, S5 en combat, S7) *(en cours dans HeroesOfLiberty-Elrond : lignes de mêlée validées et commitées sur `j7c-shot` ; suite : coût fixe du combat, S5 en combat)*
   - S2 juste sous le seuil (2,93 ms) : enlever le coût fixe du combat sans bataille (0,29 ms par pas)
-  - S5 hors combat juste au-dessus du seuil (32,4 Ko/s pour 32)
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6)
 
 ### Animations
@@ -22,7 +21,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point *(pas dans l'immédiat)*
 
 ### GDD
-- Review du GDD : reprendre à D343 (D340 grille du Paysan, D341 scénarios d'essai, D342 seuil de S3 / S4)
+- Review du GDD : reprendre à D344 (D341 scénarios d'essai, D342 seuil de S3 / S4, D343 état d'unité sur 59 bits)
 
 ### Questions techniques ouvertes
 - Croisement de deux unités de face (avant M5)
