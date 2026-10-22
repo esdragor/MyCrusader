@@ -59,9 +59,13 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Building", meta = (ClampMin = "1", ForceUnits = "cm"))
 	float Height = 1000.f;
 
-	/** Health points (M5 will spend them, with GAS). */
+	/** Health points (D312: they grow with the work; D345: damage takes them off, destroyed at 0). */
 	UPROPERTY(EditAnywhere, Category = "Building", meta = (ClampMin = "1"))
 	int32 MaxHealth = 2000;
+
+	/** Armour against ranged attacks (D345: 40 for every building): an arrow loses this much, 1 damage at least. */
+	UPROPERTY(EditAnywhere, Category = "Building", meta = (ClampMin = "0"))
+	int32 RangedArmor = 40;
 
 	/** Final model; empty = the provisional shape of D261 (a block and a tower, the top at the owner's colour). */
 	UPROPERTY(EditAnywhere, Category = "Presentation")
@@ -88,7 +92,7 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 
 	bool AcceptsResource(const EHOLResource Resource) const { return Accepts.Contains(Resource); }
 
-	/** What placing its foundation costs (D311: taken at placement, given back in full or by half if cancelled). */
+	/** What placing its foundation costs (D311: taken at placement, given back if cancelled or lost unfinished: the share not built, D345). */
 	UPROPERTY(EditAnywhere, Category = "Construction")
 	FHOLResources Cost;
 

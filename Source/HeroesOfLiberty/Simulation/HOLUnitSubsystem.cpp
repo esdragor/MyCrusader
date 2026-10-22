@@ -852,7 +852,7 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.MeshScale = Constants->MeshScale;
 			OutView.CarryCapacity = Constants->CarryCapacity;
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
-			OutView.bSiege = Constants->ArmorCategory == EHOLArmorCategory::Siege;
+			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
 			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
 			OutView.Health = FMath::Max(State->CurrentHealth, 0);
 			OutView.MaxHealth = Constants->MaxHealth;

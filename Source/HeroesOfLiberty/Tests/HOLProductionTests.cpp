@@ -122,7 +122,7 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("50 food (D283)"), Row->Cost == FHOLResources(50, 0, 0, 0));
 			TestEqual(TEXT("20 s (D283)"), Row->BuildTime, 20.f);
 			TestEqual(TEXT("one place"), Row->Population, 1);
-			TestEqual(TEXT("Peasant: its own armour category (J7-Q4)"), int32(Row->ArmorCategory), int32(EHOLArmorCategory::Peasant));
+			TestTrue(TEXT("Peasant: its own armour category only (J7-Q4)"), Row->ArmorCategories.Num() == 1 && Row->HasArmorCategory(EHOLArmorCategory::Peasant));
 			TestTrue(TEXT("Peasant: a weak attack (J7-Q4)"), Row->Attack > 0 && Row->Attack < 8);
 			TestEqual(TEXT("Peasant: takes on nobody by itself"), Row->AggressionRadius, 0.f);
 		}
@@ -134,10 +134,10 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Spearman: 60 food, 20 wood"), Spearman->Cost == FHOLResources(60, 20, 0, 0));
 			TestEqual(TEXT("Spearman: one place"), Spearman->Population, 1);
 			TestEqual(TEXT("Spearman: 80 health"), Spearman->MaxHealth, 80);
-			TestEqual(TEXT("Spearman: light infantry"), int32(Spearman->ArmorCategory), int32(EHOLArmorCategory::LightInfantry));
+			TestTrue(TEXT("Spearman: light infantry only"), Spearman->ArmorCategories.Num() == 1 && Spearman->HasArmorCategory(EHOLArmorCategory::LightInfantry));
 			TestEqual(TEXT("Spearman: attack 8"), Spearman->Attack, 8);
-			TestEqual(TEXT("Spearman: bonus against cavalry"), int32(Spearman->BonusCategory), int32(EHOLArmorCategory::Cavalry));
-			TestEqual(TEXT("Spearman: +17"), Spearman->BonusDamage, 17);
+			TestTrue(TEXT("Spearman: +17 against cavalry"), Spearman->Bonuses.Num() == 1 && Spearman->Bonuses[0].Category == EHOLArmorCategory::Cavalry
+				&& Spearman->Bonuses[0].Damage == 17);
 			TestTrue(TEXT("Spearman: a cadence, a melee reach, an aggression radius"),
 				Spearman->AttackInterval > 0.f && Spearman->AttackRange > 0.f && Spearman->AttackRange < 200.f && Spearman->AggressionRadius > 0.f);
 		}
@@ -147,11 +147,12 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Man-at-arms: 100 food, 20 gold"), ManAtArms->Cost == FHOLResources(100, 0, 0, 20));
 			TestEqual(TEXT("Man-at-arms: one place"), ManAtArms->Population, 1);
 			TestEqual(TEXT("Man-at-arms: 155 health"), ManAtArms->MaxHealth, 155);
-			TestEqual(TEXT("Man-at-arms: heavy infantry"), int32(ManAtArms->ArmorCategory), int32(EHOLArmorCategory::HeavyInfantry));
+			TestTrue(TEXT("Man-at-arms: heavy infantry only"), ManAtArms->ArmorCategories.Num() == 1 && ManAtArms->HasArmorCategory(EHOLArmorCategory::HeavyInfantry));
 			TestEqual(TEXT("Man-at-arms: attack 12"), ManAtArms->Attack, 12);
 			TestEqual(TEXT("Man-at-arms: melee armour 4"), ManAtArms->MeleeArmor, 4);
 			TestEqual(TEXT("Man-at-arms: ranged armour 4"), ManAtArms->RangedArmor, 4);
-			TestEqual(TEXT("Man-at-arms: no bonus"), ManAtArms->BonusDamage, 0);
+			TestEqual(TEXT("Man-at-arms: no bonus"), ManAtArms->Bonuses.Num(), 0);
+			TestEqual(TEXT("Man-at-arms: hero armour 2 (D345)"), ManAtArms->HeroArmor, 2);
 			TestTrue(TEXT("Man-at-arms: costs more than the Spearman"), Spearman && ManAtArms->Cost.Food > Spearman->Cost.Food);
 		}
 		// J7c.1: the Archer, third soldier of the Barracks (AoE4-like, indicative).
@@ -161,7 +162,12 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Archer: 30 food, 50 wood"), Archer->Cost == FHOLResources(30, 50, 0, 0));
 			TestEqual(TEXT("Archer: one place"), Archer->Population, 1);
 			TestEqual(TEXT("Archer: 70 health"), Archer->MaxHealth, 70);
-			TestEqual(TEXT("Archer: ranged armour category"), int32(Archer->ArmorCategory), int32(EHOLArmorCategory::Ranged));
+			TestTrue(TEXT("Archer: Ranged category only"), Archer->ArmorCategories.Num() == 1 && Archer->HasArmorCategory(EHOLArmorCategory::Ranged));
+			TestEqual(TEXT("Archer: ranged attack (D345)"), int32(Archer->AttackType), int32(EHOLAttackType::Ranged));
+			const bool bArcherBonuses = Archer->Bonuses.Num() == 2
+				&& Archer->Bonuses[0].Category == EHOLArmorCategory::LightInfantry && Archer->Bonuses[0].Damage == 5
+				&& Archer->Bonuses[1].Category == EHOLArmorCategory::GunpowderInfantry && Archer->Bonuses[1].Damage == 5;
+			TestTrue(TEXT("Archer: +5 against light infantry and +5 against gunpowder infantry (D345)"), bArcherBonuses);
 			TestEqual(TEXT("Archer: 779 cm/s"), Archer->Speed, 779.f);
 		}
 	}

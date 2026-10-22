@@ -88,6 +88,7 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AHOLBuilding, ColorIndex);
 	DOREPLIFETIME(AHOLBuilding, ConstructionState);
 	DOREPLIFETIME(AHOLBuilding, ConstructionWork);
+	DOREPLIFETIME(AHOLBuilding, DamageTaken);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
@@ -229,6 +230,51 @@ void AHOLBuilding::SetBuildersAtWork(const int32 InBuilders)
 void AHOLBuilding::OnRep_BuildersAtWork()
 {
 	OnConstructionChanged.Broadcast();
+}
+
+int32 AHOLBuilding::GetMaxHealth() const
+{
+	const FHOLBuildingTypeRow* Type = GetType();
+	return Type ? Type->MaxHealth : 0;
+}
+
+int32 AHOLBuilding::GetHealth() const
+{
+	// Finished: the whole of it; a site: its work's share (D312); both less the damage taken.
+	const bool bFinished = IsFinished();
+	return HOLConstruction::GetHealthWithDamage(GetMaxHealth(), bFinished ? 1 : ConstructionWork, bFinished ? 1 : GetTotalWork(), DamageTaken);
+}
+
+int32 AHOLBuilding::TakeDamagePoints(const int32 Points)
+{
+	const int32 Health = GetHealth();
+	const int32 Taken = FMath::Clamp(Points, 0, Health);
+	if (Taken > 0)
+	{
+		DamageTaken = static_cast<uint16>(FMath::Min(static_cast<int32>(DamageTaken) + Taken, static_cast<int32>(MAX_uint16)));
+		ForceNetUpdate();
+		OnConstructionChanged.Broadcast();
+	}
+	return Health - Taken;
+}
+
+void AHOLBuilding::OnRep_DamageTaken()
+{
+	OnConstructionChanged.Broadcast();
+}
+
+void AHOLBuilding::ReleaseFootprint()
+{
+	if (!NavObstacle || !NavObstacle->CanEverAffectNavigation())
+	{
+		return;
+	}
+	const FBox Area = NavObstacle->Bounds.GetBox();
+	NavObstacle->SetCanEverAffectNavigation(false);
+	if (UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+	{
+		Commands->NotifyNavigationChanged(Area);
+	}
 }
 
 FBox2D AHOLBuilding::GetFootprintBounds() const

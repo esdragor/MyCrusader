@@ -11,6 +11,7 @@ class AHOLBuilding;
 class AHOLPlayerState;
 struct FHOLBuildingTypeRow;
 struct FHOLConstructionCommand;
+enum class EHOLAttackType : uint8;
 
 /**
  * Construction of the buildings (J6, D311, D312), on the server (or a solo match) only, at the start of each simulation
@@ -18,8 +19,10 @@ struct FHOLConstructionCommand;
  * (D288: grid, map, buildings and foundations, sources, enemy main centres and their anti-rush radius, the navmesh under
  * the footprint), paid (taken at placement, all or nothing) and spawns a replicated foundation (AHOLBuilding in the
  * Foundation state) owned by the player, and sends the units selected to build it (a build order, UHOLBuildProcessor,
- * J6a.4); a cancel refunds (all before the first work, half after) and removes it. The placement check is shared with the client's ghost (CheckPlacement), which
+ * J6a.4); a cancel refunds (the share of the cost not built, D345: all before the first work) and removes it. The placement check is shared with the client's ghost (CheckPlacement), which
  * shows what the server would answer from what the client knows.
+ * Damage to buildings (D345.2a): DamageBuilding takes health off (HOLConstruction::GetBuildingDamage); at 0 the building is
+ * destroyed (DestroyBuilding): its queue refunded in full, a site the share not built, rubble left for 10 s.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLConstructionSubsystem : public UWorldSubsystem
@@ -52,6 +55,21 @@ public:
 
 	/** Height of the ground at a point, buildings ignored; DefaultZ if no ground is found there. */
 	static double FindGroundZ(const UWorld& World, const FVector2D& Point, double DefaultZ);
+
+	/**
+	 * Server only (D345.2a): one attack of Damage of AttackType on Building, less its armour (HOLConstruction::
+	 * GetBuildingDamage); at 0 health it is destroyed (DestroyBuilding). Returns the health it lost (no more than it had; 0
+	 * if it was not hit).
+	 */
+	static int32 DamageBuilding(AHOLBuilding& Building, int32 Damage, EHOLAttackType AttackType);
+
+	/**
+	 * Server only (D345.2a): Building destroyed at once. It stops serving its owner (it leaves the world: population, deposit,
+	 * production, rally, selection, its builders as on a cancel), its footprint reopens; every item of its queue is refunded
+	 * in full, a site the share of its cost not built (HOLConstruction::GetCancelRefund); rubble (AHOLRubble) stays 10 s
+	 * where it stood, blocking nothing (none for a bare foundation, which nothing showed to the others).
+	 */
+	static void DestroyBuilding(AHOLBuilding& Building);
 
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;

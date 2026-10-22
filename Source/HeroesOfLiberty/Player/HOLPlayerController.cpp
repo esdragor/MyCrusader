@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Buildings/HOLProductionSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
@@ -1211,6 +1212,51 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->RequestCheatUnitSpeed(Scale);
+			}
+		}));
+
+	/** The attack type named by a cheat's argument (melee by default: full damage on a building, D345). */
+	uint8 ParseAttackType(const TArray<FString>& Args, const int32 Index)
+	{
+		const FString Name = Args.IsValidIndex(Index) ? Args[Index].ToLower() : FString();
+		const EHOLAttackType Type = Name == TEXT("ranged") ? EHOLAttackType::Ranged : Name == TEXT("siege") ? EHOLAttackType::Siege
+			: Name == TEXT("hero") ? EHOLAttackType::Hero : EHOLAttackType::Melee;
+		return static_cast<uint8>(Type);
+	}
+
+	FAutoConsoleCommand CheatDamageNearCommand(
+		TEXT("hol.Cheat.DamageNear"),
+		TEXT("hol.Cheat.DamageNear <Amount> <Dx> <Dy> [enemy|own] [melee|ranged|siege|hero]: one attack of Amount on the building nearest the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame, its armour taken off (D345.2a; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.DamageNear <Amount> <Dx> <Dy> [enemy|own] [melee|ranged|siege|hero]"));
+				return;
+			}
+			const TArray<FString> PointArgs(&Args[1], FMath::Min(Args.Num() - 1, 3));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector Point;
+				if (GetPointNear(*Controller, PointArgs, Point))
+				{
+					Controller->RequestCheatDamageBuilding(Point, FCString::Atoi(*Args[0]), ParseAttackType(Args, 4));
+				}
+			}
+		}));
+
+	FAutoConsoleCommand CheatDamageSelectedCommand(
+		TEXT("hol.Cheat.DamageSelected"),
+		TEXT("hol.Cheat.DamageSelected [Amount=100] [melee|ranged|siege|hero]: one attack of Amount on the selected building, its armour taken off (D345.2a; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Amount = Args.IsEmpty() ? 100 : FCString::Atoi(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				if (const AHOLBuilding* Building = Controller->GetSelection())
+				{
+					Controller->RequestCheatDamageBuilding(Building->GetActorLocation(), Amount, ParseAttackType(Args, 1));
+				}
 			}
 		}));
 
@@ -3263,6 +3309,38 @@ void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale
 	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d unit speed x%.2f"), HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE, Held);
+#endif
+}
+
+void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
+{
+	ServerCheatDamageBuilding(Point, Amount, AttackType);
+}
+
+void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVector_NetQuantize Point, const int32 Amount, const uint8 AttackType)
+{
+#if !UE_BUILD_SHIPPING
+	// The building nearest the point on the ground, any player's (a bare foundation too: its owner's test).
+	AHOLBuilding* Nearest = nullptr;
+	double NearestDistance = TNumericLimits<double>::Max();
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		const double Distance = FVector::DistSquared2D(It->GetActorLocation(), Point);
+		if (It->GetType() && Distance < NearestDistance)
+		{
+			Nearest = *It;
+			NearestDistance = Distance;
+		}
+	}
+	const EHOLAttackType Type = static_cast<EHOLAttackType>(FMath::Min<uint8>(AttackType, static_cast<uint8>(EHOLAttackType::Hero)));
+	if (!Nearest)
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: no building to damage"));
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: %d %s damage on %s of slot %d"), Amount, *UEnum::GetValueAsString(Type),
+		*Nearest->GetTypeName().ToString(), Nearest->GetOwnerPlayer());
+	UHOLConstructionSubsystem::DamageBuilding(*Nearest, FMath::Max(Amount, 0), Type);
 #endif
 }
 

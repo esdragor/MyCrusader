@@ -4,6 +4,7 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -161,9 +162,51 @@ bool FHOLConstructionPaymentTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("third refused: 20 wood left"), HOLConstruction::TryPay(Stock, Cost));
 	TestTrue(TEXT("nothing taken by a refusal"), Stock == FHOLResources(200, 20, 0, 0));
 
-	TestTrue(TEXT("cancelled before the first work: all back"), HOLConstruction::GetRefund(Cost, false) == Cost);
-	TestTrue(TEXT("cancelled after: half back"), HOLConstruction::GetRefund(Cost, true) == FHOLResources(0, 25, 0, 0));
-	TestTrue(TEXT("half rounded down, each resource"), HOLConstruction::GetRefund(FHOLResources(1, 75, 3, 0), true) == FHOLResources(0, 37, 1, 0));
+	// D345 (replacing D311's half): the share of the cost not built, rounded down for each resource.
+	TestTrue(TEXT("cancelled before the first work: all back"), HOLConstruction::GetRefund(Cost, 0, 1000) == Cost);
+	TestTrue(TEXT("half built: half back"), HOLConstruction::GetRefund(Cost, 500, 1000) == FHOLResources(0, 25, 0, 0));
+	TestTrue(TEXT("a quarter built: three quarters back"), HOLConstruction::GetRefund(FHOLResources(0, 100, 0, 0), 250, 1000) == FHOLResources(0, 75, 0, 0));
+	TestTrue(TEXT("rounded down, each resource"), HOLConstruction::GetRefund(FHOLResources(1, 75, 3, 0), 500, 1000) == FHOLResources(0, 37, 1, 0));
+	TestTrue(TEXT("a third built: 2/3 of 50 rounded down"), HOLConstruction::GetRefund(Cost, 1, 3) == FHOLResources(0, 33, 0, 0));
+	TestTrue(TEXT("all built: nothing back"), HOLConstruction::GetRefund(Cost, 1000, 1000) == FHOLResources());
+	TestTrue(TEXT("work past the total: nothing back"), HOLConstruction::GetRefund(Cost, 2000, 1000) == FHOLResources());
+	TestTrue(TEXT("no total: all back"), HOLConstruction::GetRefund(Cost, 10, 0) == Cost);
+	return true;
+}
+
+// D345.2a: the damage an attack deals a building (its ranged armour, 40) and its health with the damage taken.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionDamageTest, "HeroesOfLiberty.Construction.Damage", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionDamageTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("5 ranged: 1 at least"), HOLConstruction::GetBuildingDamage(5, EHOLAttackType::Ranged, 40), 1);
+	TestEqual(TEXT("40 ranged: 1 at least"), HOLConstruction::GetBuildingDamage(40, EHOLAttackType::Ranged, 40), 1);
+	TestEqual(TEXT("50 ranged: 10"), HOLConstruction::GetBuildingDamage(50, EHOLAttackType::Ranged, 40), 10);
+	TestEqual(TEXT("20 melee: 20, no armour"), HOLConstruction::GetBuildingDamage(20, EHOLAttackType::Melee, 40), 20);
+	TestEqual(TEXT("30 siege: 30, no armour"), HOLConstruction::GetBuildingDamage(30, EHOLAttackType::Siege, 40), 30);
+	TestEqual(TEXT("12 hero: 12, no armour"), HOLConstruction::GetBuildingDamage(12, EHOLAttackType::Hero, 40), 12);
+
+	// Health during construction (D312): it grows with the work, the damage taken stays.
+	const int64 Total = 1000;
+	TestEqual(TEXT("a bare foundation: 1"), HOLConstruction::GetHealthWithDamage(600, 0, Total, 0), 1);
+	TestEqual(TEXT("a bare foundation hit once: 0"), HOLConstruction::GetHealthWithDamage(600, 0, Total, 1), 0);
+	TestEqual(TEXT("half built, 100 taken: 200"), HOLConstruction::GetHealthWithDamage(600, 500, Total, 100), 200);
+	TestEqual(TEXT("then finished: 500, the damage kept"), HOLConstruction::GetHealthWithDamage(600, Total, Total, 100), 500);
+	TestEqual(TEXT("never below 0"), HOLConstruction::GetHealthWithDamage(600, 500, Total, 1000), 0);
+	// The same as adding the difference of GetHealth at each step (D312's rule), damage taken on the way.
+	int32 Health = HOLConstruction::GetHealth(600, 0, Total);
+	int32 Damage = 0;
+	for (int64 Work = 0; Work < Total; Work += 37)
+	{
+		const int64 Next = FMath::Min(Work + 37, Total);
+		Health += HOLConstruction::GetHealth(600, Next, Total) - HOLConstruction::GetHealth(600, Work, Total);
+		if (Work == 370)
+		{
+			Health -= 50;
+			Damage += 50;
+		}
+		TestEqual(TEXT("step by step: the same health"), HOLConstruction::GetHealthWithDamage(600, Next, Total, Damage), Health);
+	}
+	TestEqual(TEXT("finished with 50 taken: 550"), Health, 550);
 	return true;
 }
 
@@ -318,21 +361,23 @@ bool FHOLConstructionStatesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a foundation serves nothing"), HOLConstruction::IsServing(EState::Foundation));
 	TestTrue(TEXT("a foundation may be cancelled"), HOLConstruction::CanCancel(EState::Foundation));
 	TestFalse(TEXT("a foundation has no work"), HOLConstruction::HasWorkStarted(EState::Foundation, 0));
-	TestTrue(TEXT("a foundation cancelled: all back (D311)"), HOLConstruction::GetCancelRefund(Cost, EState::Foundation, 0) == Cost);
+	TestTrue(TEXT("a foundation cancelled: all back (D311)"), HOLConstruction::GetCancelRefund(Cost, EState::Foundation, 0, 1000) == Cost);
 
-	// Under construction: blocks, serves nothing yet, cancelled with half back.
+	// Under construction: blocks, serves nothing yet, cancelled with the share not built back (D345).
 	TestTrue(TEXT("under construction: blocks the navmesh (D312)"), HOLConstruction::BlocksNavigation(EState::UnderConstruction));
 	TestFalse(TEXT("under construction: serves nothing yet"), HOLConstruction::IsServing(EState::UnderConstruction));
 	TestTrue(TEXT("under construction: work started"), HOLConstruction::HasWorkStarted(EState::UnderConstruction, 0));
-	TestTrue(TEXT("under construction, cancelled: half back"),
-		HOLConstruction::GetCancelRefund(Cost, EState::UnderConstruction, 1000) == FHOLResources(0, 25, 0, 0));
-	TestTrue(TEXT("any work done halves the refund"), HOLConstruction::GetCancelRefund(Cost, EState::Foundation, 1) == FHOLResources(0, 25, 0, 0));
+	TestTrue(TEXT("under construction, half built, cancelled: half back"),
+		HOLConstruction::GetCancelRefund(Cost, EState::UnderConstruction, 1000, 2000) == FHOLResources(0, 25, 0, 0));
+	TestTrue(TEXT("under construction, 80 % built: 10 back"),
+		HOLConstruction::GetCancelRefund(Cost, EState::UnderConstruction, 1600, 2000) == FHOLResources(0, 10, 0, 0));
+	TestTrue(TEXT("under construction with no work yet: all back"), HOLConstruction::GetCancelRefund(Cost, EState::UnderConstruction, 0, 2000) == Cost);
 
 	// Finished: blocks, serves, never cancelled.
 	TestTrue(TEXT("finished: blocks the navmesh"), HOLConstruction::BlocksNavigation(EState::Finished));
 	TestTrue(TEXT("finished: serves its owner"), HOLConstruction::IsServing(EState::Finished));
 	TestFalse(TEXT("finished: not cancelled"), HOLConstruction::CanCancel(EState::Finished));
-	TestTrue(TEXT("finished: nothing back"), HOLConstruction::GetCancelRefund(Cost, EState::Finished, 0) == FHOLResources());
+	TestTrue(TEXT("finished: nothing back"), HOLConstruction::GetCancelRefund(Cost, EState::Finished, 0, 1000) == FHOLResources());
 
 	// Population (D312): only once finished.
 	TestEqual(TEXT("a house's foundation gives no place"), HOLConstruction::GetPopulationProvided(10, HOLConstruction::IsServing(EState::Foundation)), 0);

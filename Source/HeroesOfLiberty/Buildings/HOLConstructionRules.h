@@ -6,6 +6,7 @@
 #include "Match/HOLResources.h"
 
 enum class EHOLConstructionState : uint8;
+enum class EHOLAttackType : uint8;
 
 /**
  * Pure rules of construction (J6, D311, D312), applied by the server (and the client's ghost, J6a.3): where a
@@ -162,10 +163,11 @@ namespace HOLConstruction
 	HEROESOFLIBERTY_API bool TryPay(FHOLResources& Stock, const FHOLResources& Cost);
 
 	/**
-	 * What cancelling a foundation gives back (D311): all of Cost before its first work, half of each resource after
-	 * (rounded down: 50 wood -> 25).
+	 * What cancelling or losing a site gives back (D345, replacing D311's half): the share of Cost not yet built,
+	 * Cost * (TotalWork - Work) / TotalWork, rounded down for each resource (100 wood at a quarter of its work -> 75);
+	 * all of it for a bare foundation (Work 0) or without a total.
 	 */
-	HEROESOFLIBERTY_API FHOLResources GetRefund(const FHOLResources& Cost, bool bWorkStarted);
+	HEROESOFLIBERTY_API FHOLResources GetRefund(const FHOLResources& Cost, int64 Work, int64 TotalWork);
 
 	/** Simulation steps a single builder takes, at least 1 (BuildTime and StepSeconds in seconds). */
 	HEROESOFLIBERTY_API int32 GetBuildSteps(float BuildTime, float StepSeconds);
@@ -195,9 +197,20 @@ namespace HOLConstruction
 	/**
 	 * Health of a building with Work done and never hurt (D312): MaxHealth * Work / TotalWork rounded down, at least 1
 	 * (a bare foundation can be destroyed by one blow). The caller adds the difference of two of these at each step,
-	 * so damage taken during construction stays (M5), and an unhurt building ends at exactly MaxHealth.
+	 * so damage taken during construction stays (M5), and an unhurt building ends at exactly MaxHealth. AHOLBuilding keeps
+	 * the damage taken instead and shows this minus it (GetHealthWithDamage): the same sum, the steps added up.
 	 */
 	HEROESOFLIBERTY_API int32 GetHealth(int32 MaxHealth, int64 Work, int64 TotalWork);
+
+	/** Health of a building with Work done that took Damage (D312, D345): GetHealth minus Damage, 0 at least. */
+	HEROESOFLIBERTY_API int32 GetHealthWithDamage(int32 MaxHealth, int64 Work, int64 TotalWork, int32 Damage);
+
+	/**
+	 * Damage one attack deals a building (D345): a ranged attack loses the building's RangedArmor (40 for every building
+	 * today), 1 at least (an arrow always scratches it: 5 -> 1, 50 -> 10); melee, siege and hero attacks meet no armour
+	 * (full damage, 1 at least). The hero's x0.3 against buildings has no carrier yet.
+	 */
+	HEROESOFLIBERTY_API int32 GetBuildingDamage(int32 Damage, EHOLAttackType AttackType, int32 RangedArmor);
 
 	/** Population places a building gives its owner (D312: only once finished; D83: centres and houses). */
 	HEROESOFLIBERTY_API int32 GetPopulationProvided(int32 TypePopulation, bool bFinished);
@@ -213,11 +226,14 @@ namespace HOLConstruction
 	/** Its owner may cancel it and be refunded (D311): a foundation or a building under construction, never a finished one. */
 	HEROESOFLIBERTY_API bool CanCancel(EHOLConstructionState State);
 
-	/** Some work has been done on it (D311: the refund is then halved): under construction, or Work above 0. */
+	/** Some work has been done on it (D345: the refund is then the share not built): under construction, or Work above 0. */
 	HEROESOFLIBERTY_API bool HasWorkStarted(EHOLConstructionState State, int64 Work);
 
-	/** What cancelling a building in State with Work done gives back (D311); nothing for a finished one. */
-	HEROESOFLIBERTY_API FHOLResources GetCancelRefund(const FHOLResources& Cost, EHOLConstructionState State, int64 Work);
+	/**
+	 * What cancelling a building in State with Work done of TotalWork gives back, or losing it (D345: GetRefund, the
+	 * share not built); nothing for a finished one.
+	 */
+	HEROESOFLIBERTY_API FHOLResources GetCancelRefund(const FHOLResources& Cost, EHOLConstructionState State, int64 Work, int64 TotalWork);
 
 	/**
 	 * The ground box a footprint of size Footprint covers, centred on Centre and turned by Yaw (degrees): the footprint

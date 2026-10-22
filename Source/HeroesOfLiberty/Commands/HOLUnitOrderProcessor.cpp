@@ -485,7 +485,7 @@ namespace UE::HeroesOfLiberty::Orders
 	int32 GetFormationPriority(const FHOLUnitTypeConstants& Constants)
 	{
 		return HOLFormation::GetRowPriority(Constants.TypeName, Constants.CarryCapacity, HOLCombat::IsRangedAttack(Constants.AttackRange),
-			Constants.ArmorCategory == EHOLArmorCategory::Siege);
+			Constants.HasArmorCategory(EHOLArmorCategory::Siege));
 	}
 
 	/**
