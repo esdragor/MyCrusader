@@ -153,7 +153,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridCategoriesTest, "HeroesOfLiberty
 bool FHOLCommandGridCategoriesTest::RunTest(const FString& Parameters)
 {
 	// The table's types are all economic (§ 17, the column Category): F2 takes them, F1 and F3 none.
-	for (const FName TypeName : { HOLBuildingTypeNames::MainCentre, HOLBuildingTypeNames::House, HOLBuildingTypeNames::LumberCamp, HOLBuildingTypeNames::MiningCamp })
+	for (const FName TypeName : { HOLBuildingTypeNames::MainCentre, HOLBuildingTypeNames::House, HOLBuildingTypeNames::LumberCamp, HOLBuildingTypeNames::MiningCamp, HOLBuildingTypeNames::Mill })
 	{
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
 		if (TestNotNull(*TypeName.ToString(), Type))
@@ -339,14 +339,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridTablesTest, "HeroesOfLiberty.Com
 bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 {
 	// The builders' grid of the table (D313, the user's 3rd trial of G.1): the panel of age I, one row per category, A house,
-	// Z lumber camp, E mining camp (economic), Q barracks (military); every type of age 0 for now; the centre is nobody's to build.
+	// Z lumber camp, E mining camp, R mill (economic), Q barracks (military); every type of age 0 for now; the centre is nobody's to build.
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("four buildable types"), Context.Buildable.Num(), 4);
+	TestEqual(TEXT("five buildable types"), Context.Buildable.Num(), 5);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
+	TestTrue(TEXT("R: mill (D346)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 3).TypeName == HOLBuildingTypeNames::Mill);
 	TestTrue(TEXT("Q: barracks"), HOLCommandGrid::GetAgeBuilding(Context, 0, 4).TypeName == HOLBuildingTypeNames::Barracks);
 	TestTrue(TEXT("Q: a build command"), HOLCommandGrid::GetAgeBuilding(Context, 0, 4).Command == EHOLGridCommand::Build);
 	for (const FHOLBuildable& Buildable : Context.Buildable)

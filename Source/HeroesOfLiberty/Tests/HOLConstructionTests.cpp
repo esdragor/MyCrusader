@@ -271,6 +271,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		{ HOLBuildingTypeNames::House, 0, 10, {}, 50 },
 		{ HOLBuildingTypeNames::LumberCamp, 1, 0, { EHOLResource::Wood }, 100 },
 		{ HOLBuildingTypeNames::MiningCamp, 2, 0, { EHOLResource::Stone, EHOLResource::Gold }, 100 },
+		{ HOLBuildingTypeNames::Mill, 3, 0, { EHOLResource::Food }, 100 },
 	};
 	for (const FExpected& Type : Expected)
 	{
@@ -280,7 +281,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		{
 			continue;
 		}
-		TestEqual(Name + TEXT(": slot in the Peasant's grid (D313, age I, economic row: A, Z, E)"), Row->BuildGridSlot, Type.Slot);
+		TestEqual(Name + TEXT(": slot in the Peasant's grid (D313, age I, economic row: A, Z, E, R)"), Row->BuildGridSlot, Type.Slot);
 		TestEqual(Name + TEXT(": population given"), Row->PopulationProvided, Type.Population);
 		TestTrue(Name + TEXT(": resources accepted"), Row->Accepts == Type.Accepts);
 		TestTrue(Name + TEXT(": its cost, in wood only"), Row->Cost == FHOLResources(0, Type.Wood, 0, 0));
@@ -548,6 +549,7 @@ bool FHOLConstructionCampSourceTest::RunTest(const FString& Parameters)
 	// J6b.1 (D312): a camp finished at (0, 0) m, 6 m wide; its builders gather the nearest source it accepts within 25 m of it.
 	TestTrue(TEXT("a lumber camp sends its builders to gather"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::LumberCamp, TArray<EHOLResource>({ EHOLResource::Wood })));
 	TestTrue(TEXT("a mining camp too"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::MiningCamp, TArray<EHOLResource>({ EHOLResource::Stone, EHOLResource::Gold })));
+	TestTrue(TEXT("a mill too (D346, the food camp)"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::Mill, TArray<EHOLResource>({ EHOLResource::Food })));
 	TestFalse(TEXT("a house does not (no deposit)"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::House, TArray<EHOLResource>()));
 	TestFalse(TEXT("a main centre does not (the four resources)"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::MainCentre,
 		TArray<EHOLResource>({ EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })));
@@ -577,6 +579,10 @@ bool FHOLConstructionCampSourceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("its gap"), Gap, 540.0, 0.01);
 	TestEqual(TEXT("mining camp: the nearer of stone and gold"), HOLConstruction::FindCampSource(Camp, Mining, Sources, 2500.0, &Gap), 5);
 	TestEqual(TEXT("its gap (to the vein's edge)"), Gap, 1400.0, 0.01);
+	TestEqual(TEXT("mill (D346): the berries, not the trees"), HOLConstruction::FindCampSource(Camp, TArray<EHOLResource>({ EHOLResource::Food }), Sources, 2500.0, &Gap), 0);
+	TestEqual(TEXT("its gap (to the bush's edge)"), Gap, 190.0, 0.01);
+	TestEqual(TEXT("mill with no bush left: none, never a tree"), HOLConstruction::FindCampSource(Camp, TArray<EHOLResource>({ EHOLResource::Food }),
+		TArray<FHOLCampSource>({ Source(-6.0, 0.0, 1.1, EHOLResource::Food, false), Source(10.0, 0.0, 0.6, EHOLResource::Wood) }), 2500.0), INDEX_NONE);
 	TestEqual(TEXT("mining camp within 10 m: none"), HOLConstruction::FindCampSource(Camp, Mining, Sources, 1000.0), INDEX_NONE);
 	TestEqual(TEXT("exactly at the range: still near"), HOLConstruction::FindCampSource(Camp, Wood, Sources, 540.0), 3);
 	TestEqual(TEXT("only the far tree standing: none within 25 m, they go on as after a house"),
