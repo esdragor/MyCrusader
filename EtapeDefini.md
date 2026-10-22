@@ -14,7 +14,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités
-- Tableau complet des stats des unités (vitesse, armure à distance et au corps à corps, cadence d'attaque et de tir, etc.)
+- D345 à coder : types d'attaque et quatre armures, attaque contre bâtiment (aussi au repos), armure Distance des bâtiments (40), catégories multiples et bonus en liste, deuxième attaque à déclencheur (charge) *(valeurs dans `UnitStatsInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
@@ -31,6 +31,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
+- Unité repoussée par un chantier qui démarre : posée dans les murs du bâtiment, à repousser au-delà de la marge
 - Marcheurs bloqués par des corps (passage étroit : personne ne passe ; mur d'unités à nous : très ralentis ; renforts qui butent contre leur propre ligne en mêlée ; deux foules ennemies qui se croisent à grand-peine)
 
 ### Revue de code
