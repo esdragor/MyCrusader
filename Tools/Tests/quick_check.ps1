@@ -1,4 +1,4 @@
-﻿# Quick check of the project (D267), on two levels (D327):
+# Quick check of the project (D267), on two levels (D327):
 #   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
 #     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
 #     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
@@ -94,7 +94,7 @@ if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "source
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
-if (@($Parts | Where-Object { $_ -in "production", "move", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
+if (@($Parts | Where-Object { $_ -in "production", "move", "bodies", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
     $Parts += "camera"
 }
 Write-Host "parts: $($Parts -join ', ')"
@@ -567,6 +567,39 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Orders.Chains 0" }
             # Taken away at the end, around L3 (waited for without its count, checked by the analysis).
             Step "mark move lines end", "hol.Units.Remove $($LinesL3 -join ' ') 800 0", "waitlog units of slot 0 within 800 of ($($LinesL3 -join ', '))", "frames 3"
+        }
+        if (($Parts -contains "bodies") -and $Case.Name -eq "2p") {
+            # Walkers blocked by bodies (MV.4, the user's trial blocked_bodies), in world coordinates beyond the ridge (slot 0's
+            # centre at -15000, 0): two houses touching (centres 8 m apart, as "build gap") built at once by 5 Peasants taken
+            # away after; then 5 Peasants abreast (a rank, 1.5 m apart) 9 m before their narrow way, 3 Men-at-arms before a tight wall of 12 Peasants of
+            # ours, 3 Peasants before a tight wall of 12 enemy Peasants (aggression radius 0: no fight). The three orders given
+            # one after the other (the narrow way last: its time is the exact one), then a sample every 0.5 s for 13 s.
+            Step "mark bodies", "hol.Units.Remove -9500 0 2500 0", "hol.Units.Remove -9500 -3000 1500 0", "hol.Units.Remove -9500 3000 1500 0", "frames 3",
+                "hol.Cheat.Resources 5000", "hol.Units.SpawnSeed 121",
+                "hol.Build.PlaceNear House 6000 -3400", "waitlog Construction: slot 0 placed House", "hol.Build.PlaceNear House 6000 -2600", "waitlog Construction: slot 0 placed House",
+                "hol.Units.Spawn 5 -10000 -4300 0 Peasant 150", "wait 0.5", "hol.Camera.Focus -9500 -3100", "frames 3",
+                "hol.Select.BoxGround -10600 -4900 -9400 -3700", "waitlog Selection: 5 units (own): Peasant x5", "hol.Build.Instant 1",
+                "hol.Select.OrderNear 6000 -3200", "waitlog Construction: slot 0 finished House", "hol.Select.OrderNear 6000 -2400", "waitlog Construction: slot 0 finished House",
+                "hol.Build.Instant 0", "hol.Units.Remove -9000 -3000 1500 0", "waitlog units of slot 0 within 1500 of (-9000, -3000)", "frames 3",
+                "hol.Units.Spawn 1 -10000 -3100 0 Peasant 0", "hol.Units.Spawn 1 -10000 -2950 0 Peasant 0", "hol.Units.Spawn 1 -10000 -2800 0 Peasant 0", "hol.Units.Spawn 1 -10000 -2650 0 Peasant 0", "hol.Units.Spawn 1 -10000 -2500 0 Peasant 0", "hol.Units.Spawn 12 -9000 0 0 Peasant 300", "hol.Units.Spawn 3 -10400 0 0 ManAtArms 150",
+                "hol.Units.Spawn 3 -10400 3000 0 Peasant 150", "hol.Units.Spawn 5 -10800 6000 0 Peasant 150", "hol.Units.Spawn 5 -9200 6000 0 Peasant 150"
+            # The enemy wall posed one by one, two ranks of 6 staggered, bodies touching (1.25 m apart): no gap to walk through.
+            $Wall = @(); for ($w = 0; $w -lt 12; $w++) { $Wall += "hol.Units.Spawn 1 $(if ($w -lt 6) { -9000 } else { -8880 }) $(3000 + (($w % 6) - 2.5) * 125 + $(if ($w -lt 6) { 0 } else { 62.5 })) 1 Peasant 0" }
+            Step (@($Wall) + @("wait 1",
+                                "hol.Camera.Focus -9700 3000", "frames 3", "hol.Select.BoxGround -11000 2300 -9800 3700", "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.OrderGround -7600 3000",
+                "hol.Camera.Focus -9700 0", "frames 3", "hol.Select.BoxGround -11000 -700 -9800 700", "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Select.OrderGround -7600 0",
+                "hol.Camera.Focus -9700 -2800", "frames 3", "hol.Select.BoxGround -10900 -3300 -9800 -2300", "waitlog Selection: 5 units (own): Peasant x5", "hol.Select.OrderGround -7500 -2800",
+                "mark bodies walk"))
+            for ($i = 0; $i -lt 26; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            # The crossing alone, once the others stand (the heading flips are counted over all walkers, MV.4.3): the count
+            # reset, the two orders, a sample every 0.5 s for 8 s, the count.
+            Step "hol.Units.TurnReport", "mark bodies crossing",
+                "hol.Camera.Focus -10800 6000", "frames 3", "hol.Select.BoxGround -11400 5400 -10200 6600", "waitlog Selection: 5 units (own): Peasant x5", "hol.Select.OrderGround -9200 6000",
+                "hol.Camera.Focus -9200 6000", "frames 3", "hol.Select.BoxGround -9800 5400 -8600 6600", "waitlog Selection: 5 units (own): Peasant x5", "hol.Select.OrderGround -10800 6000"
+            for ($i = 0; $i -lt 16; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "hol.Units.TurnReport"
+            # Taken away at the end (the parts after see none of them; the two houses stay).
+            Step "mark bodies end", "hol.Select.Click 0.03 0.05", "hol.Units.Remove -9000 0 5000 0", "hol.Units.Remove -9000 3000 2500 1", "hol.Units.Remove -10000 6000 2000 0", "frames 3"
         }
         if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
             # Resource sources (J5a.2, D297): the 376 sources placed by the map (create_match_map.py: 40 trees beside each slot,
@@ -1699,6 +1732,64 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
     $LinesRemoved = @(Get-Section "move lines end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
     $Checks["lines: its 3 Men-at-arms taken away at the end ($($LinesRemoved -join ', '))"] = ($LinesRemoved.Count -eq 1) -and ($LinesRemoved[0] -eq 3)
     $AllOk = (Report "move" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "bodies") -and ($Parts -contains "camera")) {
+    # MV.4: walkers blocked by bodies. The samples after the last order (every 0.5 s); the walkers of each case told by
+    # where they stand in the first one; the time of a case: the first sample where all its walkers are there.
+    $Checks = [ordered]@{}
+    $Samples = @(Get-Section "bodies walk" | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}
+        foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)")) { $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
+        , $Units })
+    $Checks["samples ($($Samples.Count) of 26)"] = $Samples.Count -eq 26
+    $First = if ($Samples.Count -gt 0) { $Samples[0] } else { @{} }
+    $Pick = { param($Y) @($First.Keys | Where-Object { $First[$_][0] -lt -9400 -and [Math]::Abs($First[$_][1] - $Y) -le 700 }) }
+    $TimeAll = { param($Units, $There) $Units = @($Units | Where-Object { $null -ne $_ }); if ($Units.Count -eq 0) { return 99.0 }; for ($i = 0; $i -lt $Samples.Count; $i++) { $S = $Samples[$i]
+            if (@($Units | Where-Object { $S.ContainsKey($_) -and (& $There $S[$_]) }).Count -eq $Units.Count) { return ($i + 1) * 0.5 } }
+        return 99.0 }
+    # The narrow way (the houses snapped at x -8800, y -3200 and -2400): past their bodies (x -9085 to -8515) on the far side.
+    $Narrow = & $Pick -2800
+    $NarrowTime = & $TimeAll $Narrow { param($P) $P[0] -ge -8400 }
+    $Checks["narrow way: $($Narrow.Count) of 5 Peasants through in $NarrowTime s (at most 4 s)"] = ($Narrow.Count -eq 5) -and ($NarrowTime -le 4.0)
+    # The enemy wall: the 3 Peasants arrived (within 4 m of the point) behind it.
+    $Enemy = & $Pick 3000
+    $EnemyTime = & $TimeAll $Enemy { param($P) [Math]::Abs($P[0] + 7600) -le 400 -and [Math]::Abs($P[1] - 3000) -le 400 }
+    $Checks["enemy wall: $($Enemy.Count) of 3 Peasants behind it in $EnemyTime s (at most 12 s)"] = ($Enemy.Count -eq 3) -and ($EnemyTime -le 12.0)
+    # Our wall: the 3 Men-at-arms arrived within the first sample's 0.5 s + the distance left from there / speed x 1.5. Their
+    # order was given before the narrow way's, the samples timed from the latter: the distance and the time both from the
+    # first sample (once over the whole 28 m with the walk before it counted as half a second: the speed seen ~3 times too
+    # high, the limit 4 s instead of ~6). Their speed: the best half second of their mean advance along x.
+    $Ours = & $Pick 0
+    $Speed = 1.0
+    for ($i = 1; $i -lt $Samples.Count -and $Ours.Count -gt 0; $i++) { $S0 = $Samples[$i - 1]; $S1 = $Samples[$i]
+        if (@($Ours | Where-Object { $S0.ContainsKey($_) -and $S1.ContainsKey($_) }).Count -ne $Ours.Count) { continue }
+        $Speed = [Math]::Max($Speed, (($Ours | ForEach-Object { $S1[$_][0] - $S0[$_][0] }) | Measure-Object -Average).Average / 0.5) }
+    $OursLeft = if ($Ours.Count -gt 0) { [Math]::Max(0.0, (($Ours | ForEach-Object { -7600 - $First[$_][0] }) | Measure-Object -Maximum).Maximum) } else { 2800.0 }
+    $OursLimit = [Math]::Round(0.5 + $OursLeft / $Speed * 1.5, 1)
+    $OursTime = & $TimeAll $Ours { param($P) [Math]::Abs($P[0] + 7600) -le 400 -and [Math]::Abs($P[1]) -le 400 }
+    $Checks["our wall: $($Ours.Count) of 3 Men-at-arms behind it in $OursTime s (at most $OursLimit s, $([Math]::Round($Speed)) cm/s)"] = ($Ours.Count -eq 3) -and ($OursTime -le $OursLimit)
+    # The crossing (the user's trial crossing), on its own after the others: two groups of 5 Peasants face to face, 16 m apart,
+    # each to the other's place. All arrived (within 4 m), and the heading flips counted by the game at every step (MV.4.3,
+    # hol.Units.TurnReport: turns of more than 25 degrees between two steps) at most $FlipLimit: without the remembered detour
+    # (hol.Units.DetourMemory 0, before MV.2) 72 in 403 walker-steps, with it 6 in 431 (MV.4.3; the samples every 0.5 s missed them).
+    $FlipLimit = 20
+    $CrossSection = @(Get-Section "bodies crossing")
+    $Samples = @($CrossSection | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}
+        foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)")) { $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
+        , $Units })
+    $Checks["crossing samples ($($Samples.Count) of 16)"] = $Samples.Count -eq 16
+    $First = if ($Samples.Count -gt 0) { $Samples[0] } else { @{} }
+    $CrossA = @($First.Keys | Where-Object { $First[$_][0] -lt -10000 -and [Math]::Abs($First[$_][1] - 6000) -le 700 })
+    $CrossB = @($First.Keys | Where-Object { $First[$_][0] -ge -10000 -and [Math]::Abs($First[$_][1] - 6000) -le 700 })
+    $CrossTime = [Math]::Max((& $TimeAll $CrossA { param($P) [Math]::Abs($P[0] + 9200) -le 400 -and [Math]::Abs($P[1] - 6000) -le 400 }),
+        (& $TimeAll $CrossB { param($P) [Math]::Abs($P[0] + 10800) -le 400 -and [Math]::Abs($P[1] - 6000) -le 400 }))
+    $Turn = @($CrossSection | Select-String -Pattern "Turn report: (\d+) flips over 25 deg in (\d+) walker-steps" | Select-Object -Last 1)
+    $Flips = if ($Turn.Count) { [int]$Turn[0].Matches[0].Groups[1].Value } else { -1 }
+    $WalkerSteps = if ($Turn.Count) { [int]$Turn[0].Matches[0].Groups[2].Value } else { -1 }
+    Write-Host "bodies: narrow way $NarrowTime s, enemy wall $EnemyTime s, our wall $OursTime s (limit $OursLimit s); crossing arrived in $CrossTime s, $Flips heading flips in $WalkerSteps walker-steps"
+    $Checks["crossing: $($CrossA.Count) + $($CrossB.Count) Peasants arrived in $CrossTime s (all, at most 8 s)"] = ($CrossA.Count -eq 5) -and ($CrossB.Count -eq 5) -and ($CrossTime -le 8.0)
+    $Checks["crossing: $Flips heading flips over 25 degrees in $WalkerSteps walker-steps (at most $FlipLimit)"] = ($Flips -ge 0) -and ($WalkerSteps -gt 0) -and ($Flips -le $FlipLimit)
+    $AllOk = (Report "bodies" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "sources") -and ($Parts -contains "camera")) {

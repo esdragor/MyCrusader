@@ -1,4 +1,4 @@
-# Marcheurs bloqués par des corps : deux Paysans de front devant un passage étroit, 3 Hommes d'armes face à un mur de 12 Paysans à nous, 3 Paysans face à un mur de 12 Paysans ennemis
+# Marcheurs bloqués par des corps : 5 Paysans de front devant un passage étroit, 3 Hommes d'armes face à un mur de 12 Paysans à nous, 3 Paysans face à un mur de 12 Paysans ennemis
 # Chantier déplacement (MovementInProgress.md), cas 3 (retour d'essai 5 de J7b). Plain, deux joueurs (blocked_bodies.json).
 # Positions dans le repère du centre du joueur (X vers le milieu de la carte), au-delà des rochers. Les ordres sont donnés
 # par le scénario, un cas après l'autre, la caméra suit ; « Relancer » rejoue tout. Les Paysans n'attaquent jamais d'eux-
@@ -8,26 +8,26 @@
 hol.Units.SpawnSeed 203
 hol.Cheat.Resources 5000
 # Passage étroit : deux maisons qui se touchent (centres à 8 m, comme « build gap » de quick_check) ; entre elles, la
-# place d'un Paysan, pas de deux (D324). Bâties d'un coup par les deux Paysans du cas, qui reviennent ensuite devant.
+# place d'un Paysan, pas de deux (D324). Bâties d'un coup par les 5 Paysans du cas, qui reviennent ensuite devant.
 hol.Build.PlaceNear House 6000 -3400
 waitlog Construction: slot 0 placed House
 hol.Build.PlaceNear House 6000 -2600
 waitlog Construction: slot 0 placed House
 hol.Camera.FocusNear 5000 -4300
 frames 2
-hol.Units.SpawnHere 2 Peasant 0 100
-waitunits 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
 hol.Build.Instant 1
 hol.Camera.FocusNear 5500 -3100
 frames 3
 hol.Select.Own
-waitlog Selection: 2 units (own): Peasant x2
+waitlog Selection: 5 units (own): Peasant x5
 hol.Select.OrderNear 6000 -3200
 waitlog Construction: slot 0 finished House
 hol.Select.OrderNear 6000 -2400
 waitlog Construction: slot 0 finished House
 hol.Build.Instant 0
-# Les deux Paysans se rangent côte à côte devant le passage (un groupe de 2 : un rang de front).
+# Les 5 Paysans se rangent côte à côte devant le passage (un groupe de 5 : un rang de front).
 hol.Camera.FocusNear 5000 -2800
 frames 3
 hol.Select.OrderNear 4500 -2800
@@ -39,7 +39,7 @@ hol.Units.SpawnHere 12 Peasant 0 300
 hol.Camera.FocusNear 4600 0
 frames 2
 hol.Units.SpawnHere 3 ManAtArms 0 150
-waitunits 17
+waitunits 20
 # Mur de 12 Paysans ennemis, serrés, et 3 Paysans à nous devant lui.
 hol.Camera.FocusNear 6000 3000
 frames 2
@@ -47,14 +47,14 @@ hol.Units.SpawnHere 12 Peasant 1 300
 hol.Camera.FocusNear 4600 3000
 frames 2
 hol.Units.SpawnHere 3 Peasant 0 150
-waitunits 32
-# Cas 1 : les deux Paysans de front traversent le passage.
+waitunits 35
+# Cas 1 : les 5 Paysans de front traversent le passage (D324 : à la file, un seul de front).
 hol.Camera.FocusNear 4500 -2800
 frames 3
-hol.Select.BoxGround -11300 -3800 -9700 -2200
+hol.Select.BoxGround -11300 -4800 -9700 -800
 frames 2
 hol.Select.Report
-waitlog Selection report: selected 2 units (own): Peasant x2
+waitlog Selection report: selected 5 units (own): Peasant x5
 hol.Camera.FocusNear 6000 -2800
 frames 3
 hol.Select.OrderNear 7500 -2800
@@ -81,6 +81,6 @@ hol.Camera.FocusNear 6000 3000
 frames 3
 hol.Select.OrderNear 7400 3000
 note Trois cas joués l'un après l'autre (la caméra suit), « Relancer » rejoue tout. Les maisons sont à gauche, les murs au centre et à droite.
-note Passage étroit : les deux Paysans arrivent de front ; attendu : l'un passe, l'autre lui cède la place et passe derrière, sans rester coincé.
+note Passage étroit : les 5 Paysans arrivent de front ; attendu (D324) : ils passent à la file, un seul de front, sans rester coincés.
 note Mur à nous : attendu : les Hommes d'armes contournent le mur, ou le traversent en écartant les Paysans, sans s'arrêter devant.
 note Mur ennemi (il ne se laisse pas pousser) : attendu : les 3 Paysans en font le tour, au lieu de buter contre lui.

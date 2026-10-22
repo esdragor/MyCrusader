@@ -77,3 +77,25 @@ int32 HOLAvoid::NextDetourTurn(const int32 RememberedTurn, const int32 MaxTurns,
 	}
 	return INDEX_NONE;
 }
+
+int32 HOLAvoid::TurnWithoutClearWay(const int32 RememberedTurn, const int32 MaxTurns, const bool bEnemyAhead)
+{
+	return bEnemyAhead ? FMath::Min(RememberedTurn + 1, MaxTurns) : RememberedTurn - 1;
+}
+
+double HOLAvoid::TimeToContact(const FVector2D& RelativePosition, const FVector2D& RelativeVelocity, const double ContactDistance, const bool bPressedCounts)
+{
+	const double SpeedSquared = RelativeVelocity.SizeSquared();
+	const double Approach = FVector2D::DotProduct(RelativePosition, RelativeVelocity);
+	const double Gap = RelativePosition.SizeSquared() - FMath::Square(ContactDistance);
+	if (Approach <= 0. || SpeedSquared <= UE_KINDA_SMALL_NUMBER)
+	{
+		return TNumericLimits<double>::Max();
+	}
+	if (Gap <= 0.)
+	{
+		return bPressedCounts ? 0. : TNumericLimits<double>::Max();
+	}
+	const double Discriminant = FMath::Square(Approach) - SpeedSquared * Gap;
+	return Discriminant < 0. ? TNumericLimits<double>::Max() : (Approach - FMath::Sqrt(Discriminant)) / SpeedSquared;
+}

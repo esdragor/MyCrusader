@@ -69,4 +69,18 @@ namespace HOLAvoid
 	 * remembered turn, else at once wider, up to MaxTurns. INDEX_NONE when no turn up to MaxTurns is clear.
 	 */
 	HEROESOFLIBERTY_API int32 NextDetourTurn(int32 RememberedTurn, int32 MaxTurns, uint8& ClearSteps, TFunctionRef<bool(int32 Turn)> IsClear);
+
+	/**
+	 * The detour's turn when no turn up to MaxTurns is clear: against an enemy ahead (not pushed, D293, MV.4), one turn
+	 * wider up to MaxTurns, held along it; else one turn back towards the place, pushing (MV.2).
+	 */
+	HEROESOFLIBERTY_API int32 TurnWithoutClearWay(int32 RememberedTurn, int32 MaxTurns, bool bEnemyAhead);
+
+	/**
+	 * Time (s) at which two bodies come into contact, the other one at RelativePosition from this one and this one moving
+	 * at RelativeVelocity towards it: never (the largest double) if they do not meet or move apart; 0 when already within
+	 * ContactDistance and closing in on a body pressed against that counts (bPressedCounts: an enemy walked around; MV.4: never, every way into an enemy pressed against looked clear and the Paysans
+	 * wedged into a wall of enemies); never on a friend (it gives way: counting it held back Paysans abreast before a narrow way).
+	 */
+	HEROESOFLIBERTY_API double TimeToContact(const FVector2D& RelativePosition, const FVector2D& RelativeVelocity, double ContactDistance, bool bPressedCounts);
 }

@@ -95,4 +95,33 @@ bool FHOLAvoidCrossingRoleTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// MV.4 checks (D293): a body already in contact and a wall of enemies.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidTimeToContactTest, "HeroesOfLiberty.Movement.TimeToContact",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAvoidTimeToContactTest::RunTest(const FString& Parameters)
+{
+	const double Contact = 100.;
+	const double Never = TNumericLimits<double>::Max();
+	TestEqual(TEXT("ahead out of contact: met when the gap is closed"), HOLAvoid::TimeToContact({ 300., 0. }, { 100., 0. }, Contact, true), 2., 1.e-6);
+	TestEqual(TEXT("in contact, closing in: met now"), HOLAvoid::TimeToContact({ 80., 0. }, { 100., 0. }, Contact, true), 0.);
+	TestEqual(TEXT("in contact, sliding along it at a slant inwards: met now"), HOLAvoid::TimeToContact({ 80., 0. }, { 20., 100. }, Contact, true), 0.);
+	TestEqual(TEXT("in contact, moving away: never"), HOLAvoid::TimeToContact({ 80., 0. }, { -100., 0. }, Contact, true), Never);
+	TestEqual(TEXT("in contact, along it: never"), HOLAvoid::TimeToContact({ 80., 0. }, { 0., 100. }, Contact, true), Never);
+	TestEqual(TEXT("passing wide: never"), HOLAvoid::TimeToContact({ 300., 200. }, { 100., 0. }, Contact, true), Never);
+	TestEqual(TEXT("a friend in contact, closing in: never (it gives way)"), HOLAvoid::TimeToContact({ 80., 0. }, { 100., 0. }, Contact, false), Never);
+	TestEqual(TEXT("a friend ahead out of contact: met as an enemy"), HOLAvoid::TimeToContact({ 300., 0. }, { 100., 0. }, Contact, false), 2., 1.e-6);
+	TestEqual(TEXT("standing: never"), HOLAvoid::TimeToContact({ 80., 0. }, FVector2D::ZeroVector, Contact, true), Never);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidNoClearWayTest, "HeroesOfLiberty.Movement.NoClearWay",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAvoidNoClearWayTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("against an enemy: one turn wider"), HOLAvoid::TurnWithoutClearWay(3, 6, true), 4);
+	TestEqual(TEXT("against an enemy: held at the largest turn"), HOLAvoid::TurnWithoutClearWay(6, 6, true), 6);
+	TestEqual(TEXT("against a friend: one turn back, pushing"), HOLAvoid::TurnWithoutClearWay(3, 6, false), 2);
+	return true;
+}
+
 #endif
