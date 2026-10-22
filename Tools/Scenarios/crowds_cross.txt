@@ -1,0 +1,26 @@
+# Deux foules ennemies qui se croisent en marchant (chantier déplacement, cas 3) : voulu, l'ennemi est un mur, pas de bousculade
+# Plain, deux joueurs (crowds_cross.json). 100 Hommes d'armes par camp, 34 m l'un de l'autre, chacun envoyé par un SIMPLE
+# ordre de marche 20 m au-delà de l'autre : les deux foules se rencontrent sans être « au combat ».
+hol.Camera.FocusNear 3600 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 3600 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 7000 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+hol.Camera.FocusNear 7000 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+waitunits 200
+hol.Camera.FocusNear 5300 0
+hol.Camera.Zoom 1
+frames 10
+wait 2
+# Croisement : chacun marche jusqu'à 20 m derrière le départ de l'autre (monde : -11400 et -8000 au départ).
+hol.Units.Move -6000 0 0
+hol.Units.Move -13400 0 1
+waitlog Move order: 100 units to (-13400, 0)
+note Voulu : l'ennemi est un mur, les foules ne se bousculent pas pour se traverser. Aujourd'hui (2026-10-22) elles se traversent avec peine : défaut connu du chantier déplacement (MovementInProgress.md, cas 3).
+note Ralenti : console (²) puis « slomo 0.25 » (« slomo 1 » pour revenir) ; « hol.Scenario crowds_cross » rejoue.

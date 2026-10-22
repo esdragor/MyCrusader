@@ -207,6 +207,11 @@ protected:
 	TArray<bool> Soldiers;
 	/** J7c.4, loop 18 (hol.Simulation.FrontHoldsFriends): units that strike or touch an enemy, never pushed by a friend. */
 	TArray<bool> Front;
+	/**
+	 * J7c.4 loop 30 (hol.Simulation.FrontNeedsCombat): units concerned by a fight (a target, striking, approaching, on an
+	 * attack-move or its detour, flanking); an enemy contact makes the front only when one of the two is.
+	 */
+	TArray<bool> Engaged;
 	/** Units that looked for their neighbours this step, and those to look (the walkers, then the units they pushed). */
 	TArray<bool> Looked;
 	TArray<bool> Queued;

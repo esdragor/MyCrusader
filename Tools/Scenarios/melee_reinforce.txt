@@ -1,0 +1,45 @@
+# Renforts contre l'arrière d'une ligne en mêlée : 50 Hommes d'armes envoyés par un SIMPLE ordre de marche dans le dos de leur ligne qui se bat
+# Plain, deux joueurs (melee_reinforce.json). 100 Hommes d'armes par camp rangés face à face (comme melee_formed, deux
+# paquets du milieu), chargés en attaque-déplacement ; puis 50 Hommes d'armes du joueur apparaissent 20 m derrière sa
+# ligne, sont sélectionnés et envoyés à pied (clic droit au sol, pas d'attaque) contre l'arrière de la ligne.
+hol.Camera.FocusNear 3600 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 3600 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 500
+hol.Camera.FocusNear 7000 -500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+hol.Camera.FocusNear 7000 500
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 1 500
+waitunits 200
+# La mise en formation (centre du joueur en (-15000, 0) : local 3800 = monde -11200).
+hol.Units.Move -11200 0 0
+hol.Units.Move -8200 0 1
+waitlog Move order: 100 units to (-8200, 0)
+wait 9
+# CHARGE en attaque-déplacement, comme melee_formed.
+hol.Units.Move -8400 0 0 a
+hol.Units.Move -11200 0 1 a
+waitlog Move order: 100 units to (-11200, 0)
+# Les renforts : 50 Hommes d'armes au monde (-13500, 0), loin derrière.
+hol.Camera.FocusNear 1500 0
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 400
+waitunits 250
+wait 6
+# Sélectionnés au cadre puis envoyés au sol derrière la ligne (simple marche : ils ne sont pas « au combat »).
+hol.Camera.Focus -13200 -300
+frames 5
+hol.Select.BoxGround -14300 -1400 -12100 800
+waitlog Selection: 50 units (own)
+hol.Camera.Focus -11000 0
+frames 5
+hol.Select.OrderGround -10300 0
+waitlog Order: 50 units
+hol.Camera.FocusNear 4500 0
+frames 10
+note Regarde l'arrivée des renforts dans le dos de leur ligne : la ligne qui frappe est un mur pour eux (elle est au front, jamais poussée par un ami) ; ils s'arrêtent contre elle sans la pousser à travers l'ennemi.
+note Ralenti : console (²) puis « slomo 0.25 » (« slomo 1 » pour revenir) ; « hol.Scenario melee_reinforce » rejoue.

@@ -44,6 +44,10 @@ namespace UE::HeroesOfLiberty::Simulation
 		TEXT("Largest turn (degrees) a walker makes around a body ahead; beyond, the detour is too long and it pushes its way (D293)"));
 
 	/** J7c.4, loop 19: the ranks behind the front slide along their friends instead of walking into them. */
+	/** J7c.4 loop 29: the melee rules' bookkeeping (army middles, lines of contact) skipped or done without maps when it cannot change anything. */
+	int32 MeleeRuleSkips = 1;
+	FAutoConsoleVariableRef CVarMeleeRuleSkips(TEXT("hol.Simulation.MeleeRuleSkips"), MeleeRuleSkips,
+		TEXT("1 (default): the army middles of the rear slide only on a step where a unit may slide, the lines of contact summed per owner without maps (the same results); 0: as before (loop 29)"));
 	int32 RearSlide = 1;
 	FAutoConsoleVariableRef CVarRearSlide(TEXT("hol.Combat.RearSlide"), RearSlide,
 		TEXT("1 (default): a melee walking to fight, off the front, its way barred by a friend ahead, slides along that friend (towards its target's side, else the side with fewer friends: a gap or the line's end), stops gently when both sides are shut, its velocity smoothed; 0: as before"));
@@ -237,8 +241,10 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	MaxRadius = 1.f;
 	MaxSpeed = 0.f;
 	bool bAnyWalking = false;
-	EntityQuery.ForEachEntityChunk(Context, [this, &bAnyWalking](FMassExecutionContext& Context)
+	bool bAnySlider = false;
+	EntityQuery.ForEachEntityChunk(Context, [this, &bAnyWalking, &bAnySlider](FMassExecutionContext& Context)
 	{
+		const TConstArrayView<FHOLCombatFragment> Combats = Context.GetFragmentView<FHOLCombatFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FMassVelocityFragment> UnitVelocities = Context.GetFragmentView<FMassVelocityFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
@@ -264,6 +270,8 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			MaxSpeed = FMath::Max(MaxSpeed, static_cast<float>(Velocity.Size()));
 			bAnyWalking |= MoveTargets[EntityIt].GetCurrentAction() == EMassMovementAction::Move;
+			// Loop 29: a unit that may slide this step (more than the slide's own test, below: melee, walking, not striking).
+			bAnySlider |= !Combats.IsEmpty() && (Combats[EntityIt].bApproaching || Combats[EntityIt].Mode == EHOLCombatMode::AttackMove);
 		}
 	});
 	if (!bAnyWalking)
@@ -272,7 +280,30 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	}
 	// J7c.4 loop 20: the middle of each owner's army (a rear rank slides away from it, towards the nearer end of the line).
 	OwnerCentres.Reset();
-	if (RearSlide != 0 && RearSlideKeep != 0)
+	if (RearSlide != 0 && RearSlideKeep != 0 && MeleeRuleSkips != 0)
+	{
+		// Loop 29: only read by a sliding unit (SlideAlongFriends); summed per owner in the units' order, as below.
+		if (bAnySlider)
+		{
+			FVector2D Sums[256];
+			int32 Counts[256] = {};
+			for (int32 Index = 0; Index < Positions.Num(); ++Index)
+			{
+				const uint8 Owner = Owners[Index];
+				Sums[Owner] = Counts[Owner] == 0 ? Positions[Index] : Sums[Owner] + Positions[Index];
+				++Counts[Owner];
+			}
+			for (int32 Owner = 0; Owner < 256; ++Owner)
+			{
+				if (Counts[Owner] > 0)
+				{
+					FVector2D& Centre = OwnerCentres.Add(static_cast<uint8>(Owner), Sums[Owner]);
+					Centre /= FMath::Max(1, Counts[Owner]); // as below, to the bit
+				}
+			}
+		}
+	}
+	else if (RearSlide != 0 && RearSlideKeep != 0)
 	{
 		TMap<uint8, int32> OwnerCounts;
 		for (int32 Index = 0; Index < Positions.Num(); ++Index)
@@ -813,6 +844,11 @@ namespace UE::HeroesOfLiberty::Simulation
 	/** An enemy this close (cm, edge to edge) makes a unit of the front. */
 	constexpr double FrontContactGap = 10.0;
 
+	/** J7c.4 loop 30 (the rule since loop 32): the front only where a fight is; a unit brushing an enemy on a walk is not of it. */
+	int32 FrontNeedsCombat = 1;
+	FAutoConsoleVariableRef CVarFrontNeedsCombat(TEXT("hol.Simulation.FrontNeedsCombat"), FrontNeedsCombat,
+		TEXT("1 (default): a unit touching an enemy is of the front only when it or that enemy is concerned by a fight (target, strike, approach, attack-move, flank); no such unit: no front pass at all; 0: any enemy contact makes the front (before loop 30)"));
+
 	/** Time spent and steps run since the last log (hol.Units.Separation 2). */
 	double SeparationSeconds = 0.;
 	int32 SeparationRuns = 0;
@@ -881,9 +917,11 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Soldiers.Reset();
 	UnitIds.Reset();
 	Front.Reset();
+	Engaged.Reset();
 	float MaxRadius = 1.f;
 	bool bAnyWalking = false;
-	EntityQuery.ForEachEntityChunk(Context, [this, &MaxRadius, &bAnyWalking](FMassExecutionContext& Context)
+	bool bAnyEngaged = false;
+	EntityQuery.ForEachEntityChunk(Context, [this, &MaxRadius, &bAnyWalking, &bAnyEngaged](FMassExecutionContext& Context)
 	{
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
@@ -915,6 +953,15 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			AtSource.Add(States[EntityIt].Activity == EHOLUnitActivity::Gathering);
 			UnitIds.Add(States[EntityIt].UnitId);
 			Front.Add(!Combats.IsEmpty() && Combats[EntityIt].bAttacking); // the contacts are added once the grid is built
+			bool bEngaged = false;
+			if (!Combats.IsEmpty() && !bGhost)
+			{
+				const FHOLCombatFragment& Combat = Combats[EntityIt];
+				bEngaged = Combat.Target.IsSet() || Combat.bAttacking || Combat.bApproaching || Combat.Mode == EHOLCombatMode::AttackMove
+					|| Combat.bAttackMoveDetour || Combat.bFlanking;
+			}
+			Engaged.Add(bEngaged);
+			bAnyEngaged |= bEngaged;
 			MaxRadius = FMath::Max(MaxRadius, AgentRadii[EntityIt].Radius);
 			bAnyWalking |= bWalking;
 		}
@@ -968,6 +1015,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		Permute(AtSource);
 		Permute(Soldiers);
 		Permute(Front);
+		Permute(Engaged);
 	}
 
 	// Cells as wide as the largest pair of bodies, whatever the map's size: the overlaps of a unit are all in the 3 x 3
@@ -1043,7 +1091,10 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	// short of its spot; two gatherers on their spots are not pushed apart, a unit on a gatherer's spot is.
 	const double AtSourceDistance = FMath::Max(0., UHOLGatherProcessor::GetSpotSpacing() - AtSourceTolerance);
 	// J7c.4, loop 18 (hol.Simulation.FrontHoldsFriends): a unit touching an enemy is of the front as one that strikes.
-	if (FrontHoldsFriends != 0)
+	// Loop 30 (hol.Simulation.FrontNeedsCombat): only a contact where one of the two is concerned by a fight; none such
+	// this step, no pass at all (a striking unit is concerned: the front is then empty).
+	const bool bFrontNeedsCombat = FrontNeedsCombat != 0;
+	if (FrontHoldsFriends != 0 && (!bFrontNeedsCombat || bAnyEngaged))
 	{
 		for (int32 Index = 0; Index < Positions.Num(); ++Index)
 		{
@@ -1051,6 +1102,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			{
 				continue;
 			}
+			const bool bSelfEngaged = !bFrontNeedsCombat || Engaged[Index];
 			for (int32 DY = -1; DY <= 1 && !Front[Index]; ++DY)
 			{
 				for (int32 DX = -1; DX <= 1 && !Front[Index]; ++DX)
@@ -1058,7 +1110,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					const FIntPoint Cell(Cells[Index].X + DX, Cells[Index].Y + DY);
 					const auto Touches = [&](const int32 Other)
 					{
-						return Other != Index && !Ghosts[Other] && Owners[Other] != Owners[Index]
+						return Other != Index && !Ghosts[Other] && Owners[Other] != Owners[Index] && (bSelfEngaged || Engaged[Other])
 							&& FVector2D::DistSquared(Positions[Index], Positions[Other]) <= FMath::Square(Radii[Index] + Radii[Other] + FrontContactGap);
 					};
 					if (bDense)
@@ -1087,7 +1139,84 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	// J7c.4 loop 21 (hol.Combat.RearFlank): each side's line of contact, O(N): its front's units across the way to the
 	// other armies' middle (their span, their mean place).
 	FrontLines.Reset();
-	if (FrontHoldsFriends != 0)
+	if (FrontHoldsFriends != 0 && MeleeRuleSkips != 0)
+	{
+		// Loop 29: as below, summed per owner in the units' order without maps (the same sums, the same lines).
+		FVector2D OwnSums[256];
+		FVector2D LineSums[256];
+		int32 OwnCounts[256] = {};
+		int32 LineCounts[256] = {};
+		for (int32 Owner = 0; Owner < 256; ++Owner)
+		{
+			OwnSums[Owner] = FVector2D::ZeroVector;
+			LineSums[Owner] = FVector2D::ZeroVector;
+		}
+		FVector2D AllSum = FVector2D::ZeroVector;
+		int32 AllCount = 0;
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			if (Ghosts[Index] || !Soldiers[Index])
+			{
+				continue;
+			}
+			const uint8 Owner = Owners[Index];
+			OwnSums[Owner] += Positions[Index];
+			++OwnCounts[Owner];
+			AllSum += Positions[Index];
+			++AllCount;
+			if (Front[Index])
+			{
+				LineSums[Owner] += Positions[Index];
+				++LineCounts[Owner];
+			}
+		}
+		FHOLFrontLine* LineOf[256] = {};
+		bool bAnyLine = false;
+		for (int32 Owner = 0; Owner < 256; ++Owner)
+		{
+			if (LineCounts[Owner] == 0 || AllCount <= OwnCounts[Owner])
+			{
+				continue;
+			}
+			const FVector2D EnemyMiddle = (AllSum - OwnSums[Owner]) / (AllCount - OwnCounts[Owner]);
+			const FVector2D Charge = (EnemyMiddle - OwnSums[Owner] / OwnCounts[Owner]).GetSafeNormal();
+			if (Charge.IsNearlyZero())
+			{
+				continue;
+			}
+			FHOLFrontLine& Line = FrontLines.Add(static_cast<uint8>(Owner));
+			Line.Charge = Charge;
+			Line.Axis = FVector2D(-Charge.Y, Charge.X);
+			Line.Origin = LineSums[Owner];
+			Line.Count = LineCounts[Owner];
+			Line.Origin /= Line.Count;
+			Line.Min = TNumericLimits<double>::Max();
+			Line.Max = TNumericLimits<double>::Lowest();
+			bAnyLine = true;
+		}
+		// The map's entries stay put once all are added.
+		if (bAnyLine)
+		{
+			for (TPair<uint8, FHOLFrontLine>& Pair : FrontLines)
+			{
+				LineOf[Pair.Key] = &Pair.Value;
+			}
+			for (int32 Index = 0; Index < Positions.Num(); ++Index)
+			{
+				if (!Front[Index] || Ghosts[Index] || !Soldiers[Index])
+				{
+					continue;
+				}
+				if (FHOLFrontLine* const Line = LineOf[Owners[Index]])
+				{
+					const double Along = FVector2D::DotProduct(Positions[Index] - Line->Origin, Line->Axis);
+					Line->Min = FMath::Min(Line->Min, Along);
+					Line->Max = FMath::Max(Line->Max, Along);
+				}
+			}
+		}
+	}
+	else if (FrontHoldsFriends != 0)
 	{
 		TMap<uint8, FVector2D> OwnerSums;
 		TMap<uint8, int32> OwnerCounts;
