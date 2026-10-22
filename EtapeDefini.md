@@ -14,7 +14,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités
-- D345 à coder : types d'attaque et quatre armures, attaque contre bâtiment (aussi au repos), armure Distance des bâtiments (40), catégories multiples et bonus en liste, deuxième attaque à déclencheur (charge) *(valeurs dans `UnitStatsInProgress.md`)*
+- D345 à coder : attaque des unités contre les bâtiments (ordre, attaque-déplacement, au repos), deuxième attaque à déclencheur (charge) *(types, armures, bonus et destruction des bâtiments faits ; suite dans `UnitStatsInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide, abandon, vaincu effondré *(D347 à D360, GDD § 14.1)*
