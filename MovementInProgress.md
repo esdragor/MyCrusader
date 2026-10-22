@@ -331,3 +331,8 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   pas de mémoire entre unités du même ordre) ; croisement de biais : la seconde au point passe derrière, la première
   garde sa route, à 0,2 s près priorité à droite. Reste connu : le rôle de croisement se décide à 0,5 s du contact
   (virage de 40° pour celle qui passe derrière) ; accepté à l'essai.
+- **Reprise (prochaine session)** : **MV.4** (marcheurs bloqués par des corps : passage étroit où personne ne passe ;
+  mur d'unités à nous qui ralentit, choix C « contourner si le détour est court, sinon traverser sans ralentir » ;
+  renforts contre leur ligne en mêlée, `melee_reinforce` ; foules ennemies qui se croisent, `crowds_cross`, ces deux
+  scénarios étant maintenant sur `main` avec `j7c-shot`), puis **MV.6** (décisions de MV.2 et MV.5 au GDD, clôture).
+  Travailler dans un worktree libre (`HeroesOfLiberty-J5c`, `IN_USE.txt`), compiler par `Toolsuild.ps1`.
