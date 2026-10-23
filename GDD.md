@@ -955,6 +955,13 @@ Technologies propres du palier 3 : vues avec la spécialisation de chaque factio
 | **Éruption** | lave, feu, destruction, zone dangereuse, routes coupées |
 | **Après** | terrain modifié, nouvelles ressources éventuelles, nouvelles routes, zone temporairement inaccessible |
 
+**Règles du volcan au prototype** *(séance du 2026-10-23, § 22)* :
+
+- **L'éruption : des coulées qui avancent *(décision D377)*.** Dès l'alerte (60 à 90 s, D28), les **tracés des coulées** sont dessinés au sol, du cratère vers la plaine, visibles de tous. À l'éruption, la lave **avance le long de ces tracés** à la vitesse d'un fantassin lent (indicatif, à régler en test) et **détruit tout ce qu'elle touche** : unités, bâtiments, héros (résurrection normale, § 9.8 ; jamais un héros en duel, § 10.2). Puis elle s'arrête et refroidit (l'après : question 3). On peut fuir une coulée ; une armée engagée sur un tracé doit décrocher, et l'on peut y attirer l'ennemi. Technique : la lave est un obstacle qui grandit (comme un bâtiment posé petit à petit).
+- **L'enjeu du site *(décision D378)*** : la règle, ce sont des **gisements riches** (or, pierre) **sur les pentes**, en partie sur les tracés : une expansion là-bas rapporte plus, mais doit être évacuée et parfois perdue à chaque éruption. Le **placement** (sur l'axe le plus court entre les bases, hauteur, passage) relève du **level design**, carte par carte *(précision de l'utilisateur)* : à varier pour que le volcan ne devienne pas **la** carte à chaque partie.
+- **L'après *(décision D379)*** : la coulée arrêtée **refroidit** et reste **infranchissable ~2 à 3 min**, puis devient un **sol de basalte praticable**, trace visible jusqu'à la fin de la partie, où **apparaît un gisement neuf** (or ou pierre) : la course aux nouvelles ressources suit la catastrophe. La lave **ne détruit pas les gisements** (seulement unités et bâtiments) ; **direction des coulées potentiellement aléatoire** *(nuance de l'utilisateur)* : à chaque éruption, les tracés peuvent être tirés parmi plusieurs directions possibles du site, toujours dessinés au sol dès l'alerte (D377). ⚠️ Vigilance : un tirage qui vise toujours le même joueur serait injuste (§ 12.2 : ne pas décider du vainqueur) ; tirage à équilibrer entre les côtés. Durées et quantités indicatives, à régler en test.
+- **Le réveil volontaire *(décision D380)*, au prototype** : tenir un **autel ancien** près du cratère **~60 s** réveille le volcan plus tôt (D28) ; l'autel se tient **comme la ruine** (D348 : une unité adverse dans la zone gèle le compte) ; alerte de 60 à 90 s **inchangée** ; **direction tirée** comme d'habitude (D379), jamais choisie. À tester plus tard si le réveil paraît trop fade : laisser celui qui réveille **choisir la direction** parmi celles du site, annoncée à tous dès l'alerte.
+
 ### 12.2 Principes
 
 Les événements doivent :
@@ -2101,7 +2108,7 @@ Avant de créer les six factions complètes :
 | Duel | 1 |
 | Système de mort / résurrection | 1 |
 | Événement volcanique | **1** *(D205, revient au prototype pour l'option Catastrophe ; révise D28)* |
-| Mode et options *(D205)* | mode **Standard** (le forum à vies, D347 à D360) + options **Nomade**, **Régicide** et **Catastrophe** (D204) |
+| Mode et options *(D205, D366)* | mode **Standard** (le forum à vies, D347 à D360) + options **Nomade**, **Régicide** et **Catastrophe** (D204) ; mode ***Diplomatie*** entre humains (D366 à D376) |
 
 **Objectif :** tester si le jeu est amusant AVANT d'investir dans le contenu.
 
@@ -2129,7 +2136,7 @@ Avant de créer les six factions complètes :
 5. Mort + résurrection.
 6. Duel.
 7. Technologies liées au niveau du héros.
-8. Premier événement mondial (après validation du prototype).
+8. Premier événement mondial : le volcan, au prototype (D205, D208) ; les suivants après validation du prototype (D209).
 9. Deuxième faction complète.
 10. Tests de matchup.
 11. Six factions.
@@ -2593,6 +2600,10 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D374 | 2026-10-23 | Alliés — Garnison et remparts | **Pas de garnison chez un allié** (règle de l'utilisateur, révise D371 en standard comme en *Diplomatie*) ; les remparts praticables de l'allié (D24) restent ouverts. **À la rupture, les unités sur les remparts de l'ancien allié y restent et ne peuvent plus descendre** (« tant pis », motif de l'utilisateur). Écartés : éjection de la garnison (défaut, sans objet), garnison prisonnière. | § 14.1, § 14.3 |
 | D375 | 2026-10-23 | *Diplomatie* — Postures qui ne concordent pas | **La plus hostile s'applique aux deux** (choix de l'utilisateur, conforme à la recommandation) : un Ennemi suffit pour que les deux soient ennemis (les unités du trahi ripostent), Neutre + Allié = Neutres ; une seule relation par paire. La trahison garde le choix du moment et du lieu (D370). Écarté : chacun sa posture comme AoE2 (armée trahie passive). Précise D369. | § 14.3 |
 | D376 | 2026-10-23 | Victoire — Le spectateur et la fuite d'information | **En chacun pour soi et en *Diplomatie* : vision complète, discussion avec les seuls spectateurs** (choix de l'utilisateur, contre la recommandation B « vision et discussion des anciens alliés ») ; **en équipe, D357 tient** (précision de l'utilisateur, conforme à la recommandation : vision de l'équipe, discussion avec les coéquipiers). Écartés : vision et discussion des anciens alliés en *Diplomatie*, tout voir et parler à tous (l'éliminé fait le vainqueur). Précise D357, D363. | § 14.1 |
+| D377 | 2026-10-23 | Volcan — Ce que fait l'éruption | **Des coulées qui avancent** (choix de l'utilisateur, conforme à la recommandation) : tracés dessinés au sol dès l'alerte, lave qui avance le long d'eux à la vitesse d'un fantassin lent et détruit tout ce qu'elle touche (unités, bâtiments, héros hors duel), puis s'arrête et refroidit. L'éruption change la forme de la bataille (routes coupées, décrocher, attirer l'ennemi). Écartés : zone fixe où tout est détruit (statique), zone fixe à dégâts lourds (flou). | § 12.1 |
+| D378 | 2026-10-23 | Volcan — L'enjeu du site | **Gisements riches sur les pentes** (or, pierre, en partie sur les tracés) comme règle ; **placement sur l'axe entre les bases = level design**, carte par carte (choix de l'utilisateur, corrigé : « A et C en fait, mais c'est que du LD »). Écartée comme règle : position militaire (hauteur, passage), laissée au level design. | § 12.1 |
+| D379 | 2026-10-23 | Volcan — L'après | **Terre neuve** (choix de l'utilisateur, conforme à la recommandation) : coulée infranchissable ~2-3 min, puis sol de basalte praticable (trace jusqu'à la fin) avec un gisement neuf (or ou pierre) ; gisements jamais détruits par la lave. **Nuance de l'utilisateur : la direction des coulées est potentiellement aléatoire** (tracés tirés à chaque éruption parmi les directions du site, annoncés dès l'alerte ; vigilance : tirage équilibré entre les côtés). Écartés : lave qui disparaît (carte qui n'évolue pas), roche permanente (carte qui se ferme avec Catastrophe). | § 12.1 |
+| D380 | 2026-10-23 | Volcan — Le réveil volontaire | **Au prototype, sans choix de direction** (choix de l'utilisateur, conforme à la recommandation) : autel ancien tenu ~60 s, contesté comme la ruine (D348), alerte inchangée, direction tirée (D379). **Accord de l'utilisateur : le choix de la direction par celui qui réveille pourra se tester plus tard, si le réveil paraît trop fade.** Écartés : réveil après le prototype, direction choisie dès le prototype. | § 12.1, § 12.2 bis |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2761,4 +2772,13 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Relecture du § 14 close (D375, D376).** Côté code (2026-10-23) : équipes réglées au lancement, victoire et sélection par camp ; le combat ignore encore les équipes (bug noté dans `EtapeDefini.md`) ; rien de D371 à D376 n'est codé (pas encore de brouillard de guerre). Piste : une règle unique de relation entre deux joueurs (à moi, allié, neutre, ennemi), lue par le combat, la sélection et la victoire.
 
-Prochain numéro : **D377**.
+**Séance du 2026-10-23 (suite) : le volcan au prototype (§ 12.1, D205, D208).** Seul événement du prototype, il n'a que ses quatre étapes en intentions. Corrigé (rédactionnel) : § 17 (mode *Diplomatie* au prototype, D366 ; volcan au prototype dans la feuille de route, D205). Questions à traiter dans cet ordre :
+
+1. ~~Ce que fait l'éruption~~ → **tranché (D377)** : des coulées qui avancent le long de tracés annoncés, et détruisent tout ce qu'elles touchent.
+2. ~~Pourquoi aller près d'un volcan~~ → **tranché (D378)** : gisements riches sur les pentes ; le placement (axe entre les bases) relève du level design.
+3. ~~L'après~~ → **tranché (D379)** : infranchissable ~2-3 min, puis basalte praticable avec un gisement neuf ; direction des coulées potentiellement aléatoire.
+4. ~~Le réveil volontaire~~ → **tranché (D380)** : au prototype, autel tenu ~60 s, direction tirée ; choix de la direction à tester plus tard si trop fade.
+
+**Séance du volcan close (D377 à D380).**
+
+Prochain numéro : **D381**.
