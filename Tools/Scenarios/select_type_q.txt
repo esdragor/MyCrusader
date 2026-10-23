@@ -1,0 +1,25 @@
+# Double clic sur une unité (toutes celles de ce type à l'écran) et curseur rouge pendant Q : armée mêlée, ennemis à distance
+# Plain, deux joueurs (select_type_q.json). Positions dans le repère du centre du joueur (comme attack_move_q).
+hol.Cheat.Resources 5000
+# Trois Hommes d'armes loin à gauche, hors de l'écran : le double clic ne doit pas les prendre.
+hol.Camera.FocusNear 4000 -6000
+frames 2
+hol.Units.SpawnHere 3 ManAtArms 0 200
+waitunits 3
+# L'armée mêlée devant le centre ; les ennemis ~28 m plus loin, hors du rayon d'agression (16 m).
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 350
+hol.Units.SpawnHere 6 Spearman 0 350
+hol.Units.SpawnHere 4 Archer 0 350
+waitunits 19
+hol.Camera.FocusNear 6800 0
+frames 2
+hol.Units.SpawnHere 6 Spearman 1 400
+waitunits 25
+hol.Camera.FocusNear 5000 0
+hol.Camera.Zoom -1
+frames 5
+note Double clic sur un Homme d'armes : les 6 à l'écran, pas les 3 restés hors de l'écran à gauche. Pareil sur un Lancier, un Archer.
+note Ctrl + clic fait la même chose ; Maj + double clic ajoute le type à la sélection ; double clic sur un ennemi : lui seul.
+note Q avec des soldats sélectionnés : le curseur devient un viseur rouge ; il redevient la flèche au clic au sol, à Échap ou au clic droit.

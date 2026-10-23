@@ -492,3 +492,43 @@ un autre pour le scénario (minuteur de 15 min à chaque lancement).
 - Sous-agent dans Haldir (au niveau de main) : colonnes de la deuxième attaque et du déclencheur, règle pure de la
   Charge, combat, tests ; aucune unité du socle ne l'a (valeurs vides), essai par tests seulement. Minuteur 15 min.
 - Ensuite, à part : Maj (file) pour l'attaque d'un bâtiment.
+- **Maj pour l'attaque d'un bâtiment lancée** (« go ») : sous-agent code + tests dans Haldir (minuteur 15 min), puis
+  scénario d'essai à part.
+
+### Maj pour l'attaque d'un bâtiment (sous-agent, ~14 min, Haldir, non commité)
+
+- Maj + clic droit sur un bâtiment ennemi : l'attaque se met en file (`ServerAttackBuilding` avec Maj) ; sans Maj,
+  inchangé. `FHOLCombatFragment::OrderedBuilding` : le bâtiment de l'ordre, gardé jusqu'à sa chute ; la file attend.
+  **Changement de comportement à confirmer** : après un lâcher pour un ennemi, l'unité **revient à son bâtiment**
+  (avant : oublié) ; la file ne passe à la suite qu'une fois le bâtiment tombé (comme une attaque d'unité en file).
+- Ligne rouge vers le centre du bâtiment (`EStepKind::AttackBuilding`). Test `HeroesOfLiberty.Orders.BuildingQueue`.
+- Compilation PASS ; quick_check court PASS (102/102, 29 s) ; `-Parts tests,orders,combat` PASS (173 s).
+- Étiquettes « D345.3 » du sous-agent corrigées en « D345, Shift » (D345.3 = deuxième attaque, remise).
+- Scénario `building_queue` (+ .json) écrit par Claude : 1) une maison sur ordre, une autre en file (Maj) ; 2) des
+  Lanciers ennemis : lâcher, combat, retour à la même maison, puis la suivante ; 3) déplacement puis Maj + maison.
+  Trois répétitions ; la dernière prête (trois maisons détruites dans l'ordre, 9 lâchers). Leçon : `waitlog` lit
+  depuis la dernière commande console, deux attentes de suite de la même ligne se satisfont de la même : glisser une
+  commande (caméra) entre les deux. **Essai 8 lancé : `building_queue`.**
+- **Essai 8 — correction de l'utilisateur** : « la priorité ne fonctionne que si tu A-clic ; en ordre direct, clic
+  direct sur bâtiment, on attaque ce bâtiment sans prendre en compte le reste tant que notre cible n'est pas morte, et
+  si on Maj-clic sur deux bâtiments, il faut que les deux tombent ». Donc : **un ordre direct sur un bâtiment (clic
+  droit, avec ou sans Maj) ne se lâche pas** pour une unité ennemie, ni riposte, jusqu'à sa chute ; le lâcher pour une
+  unité ennemie ne vaut que pour un bâtiment pris **en attaque-déplacement ou au repos**. Remplace le « lâcher même sur
+  ordre » de D345.2b et le retour au bâtiment de la file. Sous-agent lancé (code + tests) ; scénario `building_queue`
+  étape 2 à revoir ensuite (l'armée ignore les Lanciers).
+- Fait (sous-agent, ~8 min) : `HOLCombat::MaySeek(bWalkingOrder, bAttackMove, bOrderedTarget, bOrderedBuilding)` —
+  pas de recherche d'ennemi (donc ni riposte, ni zone de contact, ni lâcher) pour un bâtiment ordonné ; un bâtiment
+  pris au repos ou en attaque-déplacement se lâche toujours (`drops a building for`). Retour au bâtiment après lâcher
+  retiré (`UpdateBuildingTarget` supprimé). Tests mis à jour (102/102) ; quick_check court PASS (25 s) ;
+  `-Parts tests,orders,combat` PASS (173 s). Gardé : un Paysan qui marche vers un bâtiment pris de lui-même en
+  attaque-déplacement ne bascule pas sur un ennemi qu'il touche (comme avant).
+- `building_queue` étape 2 : l'armée ignore les Lanciers et finit les deux maisons. Répétition prête (0 lâcher, deux
+  maisons dans l'ordre, puis la 3e ; un soldat tué, sans riposte). **Essai 9 lancé.**
+- **Essai 9 : « good »** — validé. Commit 4b2aee5 sur unit-stats, **main avancé à 4b2aee5**. GDD : D345 point 10
+  (priorité aux unités seulement en attaque-déplacement et au repos ; ordre direct sur un bâtiment jusqu'à sa chute ;
+  Maj en file). EtapeDefini : ligne Maj retirée.
+
+## Reprise après Maj sur les bâtiments
+
+D345 est fait, sauf **D345.3 (deuxième attaque, Charge)**, remise à la cavalerie (choix de l'utilisateur). Plus tard :
+×0,3 des troupes contre un héros sauf Siège, attaques de type Héros (avec les héros), tours. Haldir libre (en pause).

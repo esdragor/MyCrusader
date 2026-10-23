@@ -18,6 +18,7 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLOrderChainRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -519,9 +520,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FFighter& Fighter = Fighters[Index];
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
-			const bool bMaySeek = (!bWalkingOrder || Combat.Mode == EHOLCombatMode::AttackMove) && !Combat.bOrderedTarget;
+			const bool bMaySeek = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget,
+				!Combat.OrderedBuilding.IsExplicitlyNull());
 			const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
-			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
+			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && Combat.OrderedBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
 				&& !Combat.bAttacking && Combat.Mode != EHOLCombatMode::AttackMove && (Fighter.bBusy || !bMaySeek || !bSearchStep);
 		}
 		if (bIdle)
@@ -679,7 +681,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 			if (Fighter.State->CurrentHealth <= 0 || Fighter.bBusy || ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) != 0
-				|| (bWalkingOrder && Combat.Mode != EHOLCombatMode::AttackMove) || Combat.bOrderedTarget)
+				|| !HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull()))
 			{
 				continue;
 			}
@@ -845,7 +847,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// search (it needs bMaySeek on a walk, so an attack-move), then the branch without target: bFlanking false,
 		// FlankWaitSeconds 0, TickIdle, no walk to stop (not approaching), no end of attack-move. Its AttackerCount is left
 		// as is there too.
-		if (FastIdleUnit != 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching && !Combat.bAttacking
+		if (FastIdleUnit != 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && Combat.OrderedBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching && !Combat.bAttacking
 			&& Combat.Mode != EHOLCombatMode::AttackMove)
 		{
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None; // not approaching
@@ -900,9 +902,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 
 		// A unit walking a player's order takes on nobody by itself, but on an attack-move (J7b.3); an ordered target is
-		// kept until it dies.
+		// kept until it dies, an ordered building until it falls (D345: no enemy unit makes it drop it).
 		const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
-		const bool bMaySeek = (!bWalkingOrder || Combat.Mode == EHOLCombatMode::AttackMove) && !Combat.bOrderedTarget;
+		const bool bMaySeek = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget,
+			!Combat.OrderedBuilding.IsExplicitlyNull());
 		const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
 		const int32 TargetBeforeSearch = Target;
 		if (bMaySeek && (bSearchStep || bLost))
@@ -1162,7 +1165,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 		}
 
-		// D345.2b: an enemy unit taken on makes it drop the building it attacked.
+		// D345.2b: an enemy unit taken on makes it drop the building it attacked; only one taken on by itself (at rest, on an
+		// attack-move): with an ordered one it takes on no enemy unit (D345, bMaySeek).
 		if (Target != INDEX_NONE && !Combat.TargetBuilding.IsExplicitlyNull())
 		{
 			// Rare (once per drop): a scenario waits for it.
@@ -1185,7 +1189,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 				if (BuildingIndex == INDEX_NONE)
 				{
-					Combat.TargetBuilding.Reset();
+					// Its building gone (fallen, or no longer an enemy's): an ordered one's order is over, its queue goes on (D345).
+					HOLOrderChain::EndBuildingTarget(Combat.TargetBuilding, Combat.OrderedBuilding);
 					Combat.bAttacking = false;
 				}
 			}
@@ -1305,7 +1310,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 				if (MarkBuildingGone(Step.Building))
 				{
-					Combat.TargetBuilding.Reset();
+					HOLOrderChain::EndBuildingTarget(Combat.TargetBuilding, Combat.OrderedBuilding); // D345: an ordered one's order over, its queue goes on
 					Combat.bAttacking = false;
 				}
 				continue;

@@ -627,6 +627,13 @@ bool FHOLCombatBuildingAttackTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("An Archer takes an enemy 21 m away, beyond its reach, within its aggression"), HOLCombat::ChooseTarget(ArcherSeeker, ArcherCandidates), 0);
 	Near.Position.X += 100.0;
 	TestEqual(TEXT("An Archer takes no enemy 22 m away, beyond its aggression"), HOLCombat::ChooseTarget(ArcherSeeker, ArcherCandidates), INDEX_NONE);
+	// D345: that search runs for a building taken on by itself, at rest or on an attack-move (it drops it for the enemy 21 m
+	// away); never for an ordered one (a right click, Shift or not): struck until it falls. An ordered unit target as before.
+	TestTrue(TEXT("Its own building, at rest: it looks for enemy units (drops it)"), HOLCombat::MaySeek(false, false, false, false));
+	TestTrue(TEXT("Its own building, on an attack-move: it looks for enemy units (drops it)"), HOLCombat::MaySeek(true, true, false, false));
+	TestFalse(TEXT("An ordered building: no enemy unit taken on (never dropped)"), HOLCombat::MaySeek(false, false, false, true));
+	TestFalse(TEXT("An ordered unit target: none taken on either"), HOLCombat::MaySeek(false, false, true, false));
+	TestFalse(TEXT("A plain walk: none taken on"), HOLCombat::MaySeek(true, false, false, false));
 
 	// Search radii: at rest the aggression, the Peasant none; attack-move; hold its reach.
 	TestTrue(TEXT("A Spearman at rest looks for buildings within its aggression"), FMath::IsNearlyEqual(HOLCombat::GetBuildingSearchRadius(Seeker, Spearman), Spearman.AggressionRadius));

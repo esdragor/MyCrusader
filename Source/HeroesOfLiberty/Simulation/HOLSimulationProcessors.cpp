@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
@@ -1808,8 +1809,12 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		}
 	}
 
+	// From a body to the navmesh's edge (D310) and to the visible wall (D324).
+	const double Clearance = UHOLBuildingSettings::GetBodyClearance();
+	const double VisualGap = FMath::Max(0., static_cast<double>(UHOLBuildingSettings::GetBodyInset() - UHOLBuildingSettings::GetVisualInset()));
+
 	// One thread: a light loop (S7, 2 000 units and 32 buildings: ~0.11 ms a step, as much as on the workers).
-	EntityQuery.ForEachEntityChunk(Context, [this, GetCell](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [this, GetCell, Clearance, VisualGap](FMassExecutionContext& Context)
 	{
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
@@ -1825,6 +1830,8 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 			// against a building touches it. Not the clearance: on the turned buildings of S7 the navmesh's cells leave the
 			// walkers' paths 11 cm from the wall, a keep-out at 25 cm would put them back at every step.
 			const double Keep = AgentRadii[EntityIt].Radius + KeepOutSlack;
+			// Its centre inside (a site started under it, J6a.1): out beyond the navmesh's margin and the visible wall.
+			const double KeepInside = HOLConstruction::GetKeepOutInsideGap(AgentRadii[EntityIt].Radius, Clearance, VisualGap);
 			bool bMoved = false;
 			for (int32 Pass = 0; Pass < KeepOutPasses; ++Pass)
 			{
@@ -1845,31 +1852,9 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 					// In the footprint's frame.
 					const FVector2D Offset = Position - Footprint.Centre;
 					FVector2D Local(Offset.X * Footprint.Cos + Offset.Y * Footprint.Sin, -Offset.X * Footprint.Sin + Offset.Y * Footprint.Cos);
-					const FVector2D& Half = Footprint.HalfExtent;
-					const FVector2D Outside(FMath::Abs(Local.X) - Half.X, FMath::Abs(Local.Y) - Half.Y);
-					if (Outside.X <= 0. && Outside.Y <= 0.)
+					if (!HOLConstruction::KeepOutOfBody(Footprint.HalfExtent, KeepInside, Keep, Local))
 					{
-						// Its centre inside: out by the nearest side.
-						if (Outside.X >= Outside.Y)
-						{
-							Local.X = (Local.X >= 0. ? 1. : -1.) * (Half.X + Keep);
-						}
-						else
-						{
-							Local.Y = (Local.Y >= 0. ? 1. : -1.) * (Half.Y + Keep);
-						}
-					}
-					else
-					{
-						// Its centre outside, its body too near: away from the footprint's nearest point.
-						const FVector2D Nearest(FMath::Clamp(Local.X, -Half.X, Half.X), FMath::Clamp(Local.Y, -Half.Y, Half.Y));
-						const FVector2D Away = Local - Nearest;
-						const double Distance = Away.Size();
-						if (Distance >= Keep - UE_KINDA_SMALL_NUMBER)
-						{
-							continue;
-						}
-						Local = Nearest + Away / Distance * Keep;
+						continue;
 					}
 					Position = Footprint.Centre + FVector2D(Local.X * Footprint.Cos - Local.Y * Footprint.Sin, Local.X * Footprint.Sin + Local.Y * Footprint.Cos);
 					bMovedThisPass = true;

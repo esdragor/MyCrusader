@@ -48,6 +48,7 @@ namespace HOLOrderChain
 		case EStepKind::Build: return TEXT("Build");
 		case EStepKind::Gather: return TEXT("Gather");
 		case EStepKind::Rally: return TEXT("Rally");
+		case EStepKind::AttackBuilding: return TEXT("AttackBuilding");
 		}
 		return TEXT("?");
 	}

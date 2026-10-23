@@ -110,6 +110,11 @@ public:
 	 * when nothing is under the cursor.
 	 */
 	void SelectAt(const FVector2D& ViewportFraction, bool bAdd = false);
+	/**
+	 * A double click or Ctrl + click there (A.1): on one of the player's own units, all its own units of that type on the
+	 * screen (HOLUnitPicking::PickSameTypeOnScreen), added to its own selected units with bAdd; elsewhere, as SelectAt.
+	 */
+	void SelectSameTypeAt(const FVector2D& ViewportFraction, bool bAdd = false);
 	/** A box between two points of the viewport: the player's own units in it; with bAdd, added, or removed when all already are. */
 	void SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, bool bAdd = false);
 	/**
@@ -342,8 +347,11 @@ public:
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
-	/** Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building. */
-	void RequestAttackBuilding(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
+	/**
+	 * Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building.
+	 * bQueue (Shift, D345): at the end of each unit's queue, as an attack on a unit.
+	 */
+	void RequestAttackBuilding(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
 	/** Asks the server for an attack-move of units to a ground point (J7b.3), as one group. */
 	void RequestAttackMove(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to stop units (J7b.3), or to stop them holding their position (bHold). */
@@ -498,7 +506,7 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
 	UFUNCTION(Server, Reliable)
-	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
+	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
 	UFUNCTION(Server, Reliable)
 	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
 	UFUNCTION(Server, Reliable)
@@ -595,6 +603,10 @@ private:
 	/** Left button held: where it was pressed (viewport fractions); its release clicks or ends the box. */
 	bool bSelectPressed = false;
 	FVector2D SelectPressFraction = FVector2D::ZeroVector;
+	/** When it was pressed (real seconds); the last single click's press and pixels, the first of a double click (A.1). */
+	double SelectPressTime = -1.;
+	double LastClickTime = -1.;
+	FVector2D LastClickPixels = FVector2D::ZeroVector;
 	/** Right button held (J7a.4): where it was pressed; its release orders there, or along the drag. */
 	bool bOrderPressed = false;
 	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */

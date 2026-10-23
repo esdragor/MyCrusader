@@ -133,6 +133,7 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		{
 		case HOLOrderChain::EStepKind::Attack:
 		case HOLOrderChain::EStepKind::AttackMove:
+		case HOLOrderChain::EStepKind::AttackBuilding:
 			return OrderAttackColor;
 		case HOLOrderChain::EStepKind::Build:
 		case HOLOrderChain::EStepKind::Rally:

@@ -336,3 +336,431 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   renforts contre leur ligne en mêlée, `melee_reinforce` ; foules ennemies qui se croisent, `crowds_cross`, ces deux
   scénarios étant maintenant sur `main` avec `j7c-shot`), puis **MV.6** (décisions de MV.2 et MV.5 au GDD, clôture).
   Travailler dans un worktree libre (`HeroesOfLiberty-J5c`, `IN_USE.txt`), compiler par `Toolsuild.ps1`.
+- **MV.4 commencée** (« continuons le chantier déplacement ») : worktree `HeroesOfLiberty-J5c`, branche `mv4-bodies`
+  depuis `main` 0ba89e9 ; `HeroesOfLiberty-Elrond`, branche `mv4-diag` (traces temporaires seulement). Attention :
+  `HeroesOfLiberty-Haldir` (D345, en cours) touche `HOLUnitOrderProcessor.cpp` et `HOLCombatProcessor.cpp`.
+  Diagnostic d'abord, sans correctif, deux sous-agents en parallèle : (a) passage étroit + (b) mur à nous dans J5c
+  (`blocked_bodies`) ; (c) renforts contre leur ligne + (d) foules ennemies dans Elrond (`melee_reinforce`,
+  `crowds_cross`).
+- **Diagnostic (a) + (b)** (sous-agent, J5c, 11 min, trace temporaire `hol.Units.BodiesTrace` laissée non commitée dans
+  `HOLSimulationProcessors.cpp`, `UHOLFullSpeedProcessor::Execute` autour d'`AvoidBodies`) : **aucun des deux défauts
+  ne se reproduit sur `main` 0ba89e9** (une passe hors écran ; `-nullrhi` impossible, le scénario attend l'interface :
+  `-RenderOffScreen`). Probablement réglés depuis MV.1 par MV.2 (détour mémorisé, chacun son côté) et D344 / D345.
+  1. Passage étroit : les deux Paysans partent au premier pas (40 cm/pas), aucune redemande de chemin, chacun garde son
+     côté ; ils passent **de front**, à 108 cm l'un de l'autre (chevauchement ~12 cm, ~9 cm dans le corps d'une maison :
+     les corps des maisons laissent 2 × `BodyInset` = 210 cm pour un Paysan de 120 cm). Plus de blocage, mais le
+     passage n'est plus « un seul Paysan » (D324). « Ils ne bougent pas au début » pas reproduit hors écran.
+  2. Mur de Paysans à nous : les 3 Hommes d'armes **contournent à pleine vitesse** (34-35 cm/pas = 697 cm/s, détour
+     jusqu'à 50°, aucun pas ralenti) : c'est déjà le choix C pour un mur court.
+  Lu dans le code, non mesuré : un mur trop large pour le détour (aucun cap libre jusqu'à `AvoidMaxAngle`) → tout
+  droit, et `HOLCombat::GetOverlapShare` (`HOLCombatRules.cpp:68`) donne 0,5 entre amis même marcheur contre immobile :
+  le marcheur rend la moitié du chevauchement, d'où le ralentissement. Piste : 0 pour le marcheur contre un ami
+  immobile (hors unités engagées), à mesurer sur un mur plus large (~30 Paysans sur 600).
+  Suite proposée : nouvel essai de l'utilisateur sur `blocked_bodies` avant tout correctif.
+- **Essai de l'utilisateur relancé** : `play.ps1 blocked_bodies -Root ..\HeroesOfLiberty-J5c` (cas 1 et 2 à revoir).
+- **Diagnostic (c) + (d)** (sous-agent, Elrond, 11 min, trace temporaire `MV4DIAG` non commitée dans
+  `HOLSimulationProcessors.cpp`, une passe `-RenderOffScreen` par cas ; journaux dans le scratchpad de la session) :
+  - (c) `melee_reinforce` : le simple clic sur 50 fait **une marche en bloc** ; le bloc se **fige** (X moyen immobile
+    ≥ 17 s, à ~8 m du point d'ordre), ses 49 membres restent « en marche » (31 `Block`, 18 encore `FormUp`), arrivée
+    jamais déclarée. Causes : `AvoidBodies` ne trouve aucun cap libre à 60° contre la ligne (≈ 700 « tout droit » par
+    0,5 s contre 0-30 détours) → pousse ; `FrontHoldsFriends` lui rend tout le recouvrement (300-560 fois / 0,5 s) →
+    bute ; le bloc marche au pas de son membre le plus lent (`SlowestOfOrder`, « held ») → tout le bloc gèle ; aucun
+    filet en `Block` / `FormUp` (`PathStuckSteps` seulement en `Path`, `FinalLegStuckSteps` près des cases) ; places
+    d'arrivée dans la ligne qui se bat. Pistes : A places d'arrivée hors de la ligne (`SettleBlockedPlaces` avec les
+    unités du front comme obstacles) ; B le bloc cesse d'attendre une file bloquée par un mur (ou se défait en jambes
+    finales) ; C contournement plus large contre le front ami. Recommandation du sous-agent : A + B, C ensuite.
+  - (d) `crowds_cross` : au contact, aucun cap libre (le front d'en face est un mur de la largeur du bloc) → 1 000 à
+    1 300 « tout droit » par 0,5 s, jusqu'à 2 444 paires ennemies recouvertes (834 m cumulés) ; ~4 s de bousculade
+    puis traversée de biais ; arrivée désordonnée (joueur 0 : 33 pas en arrière ; joueur 1 : 17 s, 183 pas en arrière,
+    ~9 s presque immobile à 6,6 m du but ; dissymétrie non expliquée). Le chemin du bloc ignore l'autre bloc ; la règle
+    de croisement de MV.2 ne joue pas de face exacte. Pistes : A **le bloc évite le bloc** (chemin / couloir du bloc
+    écarté de l'enveloppe du groupe d'en face, chacun sa droite de face, hors attaque-déplacement et mêlée) ; B
+    évitement par unité plus loin et plus large contre les ennemis ; C pas de poussée contre un ennemi (risque : les
+    deux foules se figent). Recommandation du sous-agent : A.
+- **Essai de l'utilisateur sur `blocked_bodies`** : « les deux Paysans peuvent désormais passer côte à côte, donc ça
+  fausse le résultat » ; « l'évitement fonctionne » (mur à nous : **OK**, contourné). Le passage étroit ne respecte
+  plus D324 (corps rentré de 115 cm, `Config/DefaultGame.ini` `BodyInset=115` : 230 cm pour deux Paysans de 120 cm
+  qui passent à 108 cm l'un de l'autre et mordent ~9 cm dans le corps) : **régression**, à retrouver avant de juger
+  le « céder le passage ». Boucle MV.4.1 (sous-agent, J5c). Reste du choix C non essayé : mur trop large pour être
+  contourné (traverser sans ralentir), scénario à ajouter.
+- **MV.4.1 (sous-agent, J5c, 5 min, pas de correctif)** : **pas une régression** : rien n'a jamais mis deux marcheurs
+  à la file ; avant MV.2 ils se bloquaient (c'est ce qui empêchait le passage de front), depuis MV.2 chacun garde son
+  côté et ils passent de front. Par pas dans le passage : séparation (`UHOLUnitSeparationProcessor`, poussée en travers
+  du passage, jamais l'un derrière l'autre) puis garde des emprises (`UHOLFootprintKeepOutProcessor`, rayon +
+  `KeepOutSlack` = 61 cm du mur, a le dernier mot) → centres à 230 − 2 × 61 = **108 cm, 12 cm de chevauchement**,
+  17 pas sans ralentir, arrivés en ~6 s. Les « 9 cm dans le corps » n'existent qu'à l'intérieur du pas. Chemins
+  parallèles (navmesh `AgentRadius=60` : bande de 110 cm), `role=0` (la règle de croisement ne joue pas entre
+  marcheurs parallèles). « build gap two » (graine 113) passait sans doute parce que les Paysans naissent décalés.
+  Options : A céder dans la garde des emprises (chevauchement restant réglé le long du passage : celui de derrière
+  cède ; ex æquo : plus petit index, D231) ; B les murs dans `AvoidBodies` (plus coûteux, départage quand même
+  nécessaire) ; C ligne du milieu dans un passage étroit + règle de croisement élargie aux marcheurs qui convergent.
+  Recommandation du sous-agent : A. Question à poser après celle des renforts (c).
+- **Demande de l'utilisateur** : le passage étroit se teste avec **5 Paysans**, pas 2. `blocked_bodies` (J5c) : cas 1
+  à 5 Paysans (naissance rayon 150, sélection élargie, note D324 « à la file, un seul de front ») ; vérifié hors écran
+  jusqu'au bout. Choix de la règle de passage (A / B / C de MV.4.1) après l'essai à 5.
+- **Renforts (c), réponse de l'utilisateur** : « ce qui pose problème, c'est que dès qu'un élément d'un bloc est au
+  combat, il n'y a plus de bloc et formation qui tienne » ; A / B / C proposés (places hors de la ligne, etc.) écartés
+  tels quels. Question de précision posée.
+- **Précision de l'utilisateur (« les deux »)** : (1) la **ligne qui se bat perd sa formation dès le premier combat** :
+  un bloc doit garder sa forme au combat (les renforts trouveraient une ligne nette) ; (2) les **renforts** doivent se
+  défaire (chacun finit seul) en arrivant à la mêlée, au lieu que tout le bloc gèle. Diagnostic du (1) d'abord
+  (sous-agent, Elrond : que devient un bloc quand un membre entre au combat), avant de proposer les règles.
+- Essai de l'utilisateur lancé : `blocked_bodies` à 5 Paysans (J5c).
+- **Essai de l'utilisateur sur `blocked_bodies` à 5 Paysans** : passage étroit **très bien** (cas a clos sans règle
+  nouvelle ; options A / B / C de MV.4.1 sans objet). **Mur ennemi : KO, régression** depuis MV.1 (« OK » alors) :
+  relancé plusieurs fois, **un seul Paysan sur 3 passe**, « ils foncent dans le pack d'ennemis ». Suspects : MV.2
+  (détour mémorisé, règle de croisement), `j7c-shot` (`EnemySideGuard`, `SeparationMaxStep`). Boucle MV.4.2
+  (sous-agent, J5c) : cause et correctif.
+- **Demande de l'utilisateur** : « il devrait y avoir des tests qui vérifient ça pour éviter les régressions ». Constat :
+  `quick_check` n'a que « build gap two » (2 Paysans, passait parce qu'ils naissent décalés) et « orders push » ; rien
+  pour le croisement (MV.2), le mur à nous, le mur ennemi ; MV.2 / MV.5 n'ont ajouté que des tests de règles pures.
+  **MV.4.3 ajoutée** : nouvelle partie `quick_check` **« bodies »** (cible ~1 min), chaque cas jugé par un chiffre :
+  croisement (paires de `crossing` : arrivées, inversions de cap bornées) ; passage étroit à 5 (tous passent, un seul
+  de front) ; mur à nous (contourné sans pas ralenti) ; mur ennemi (3 sur 3 arrivés, recouvrements ennemis ~0). Écrite
+  après le correctif du mur ennemi, et vérifiée **en échec sans le correctif** (preuve qu'elle attrape la régression).
+  Lancée à chaque commit qui touche le déplacement (`-Parts bodies`).
+- **Diagnostic « bloc au combat »** (sous-agent, Elrond, 14 min ; compteurs ajoutés à la trace `MV4DIAG`, non
+  compilés : deux jeux `-nullrhi` du premier diagnostic, bloqués depuis 17 h 32, tiennent les DLL d'Elrond ; chiffres
+  tirés de la passe précédente) :
+  - **La ligne qui charge n'est jamais un bloc** : charge d'~28 m, trop courte pour une marche en bloc
+    (`BlockMarchMinDistanceInDepths`, `HOLFormationRules.h:242-251`) : chacun marche seul vers sa case (`FinalLeg`),
+    cases d'attaque-déplacement derrière la ligne ennemie.
+  - **Au contact, tout est soldat par soldat** (`HOLCombatProcessor.cpp`) : en attaque-déplacement chacun cherche un
+    ennemi (16 m) pendant sa marche, hors de portée `IssueCombatWalk` (marche à lui seul), à portée `StopWalk` (planté) ;
+    face à une ligne presque tous ont un ennemi à 16 m et foncent chacun vers le plus proche. `FrontLines`,
+    `FrontHoldsFriends`, `RearSlide`, `EnemySideGuard`, `RearFlank` ne tiennent **aucune forme** (ni rangs, ni largeur,
+    ni retour à la case). G0 : marcheurs 81 → 65 (+2 s) → 38 (+5 s) → ~30 immobiles derrière la ligne.
+  - Renforts (simple clic) : personne ne cherche d'ennemi en marche, aucun n'entre au combat, le bloc ne se défait
+    jamais (fige à ~6 s).
+  - Pistes, souhait 1 (la ligne garde sa forme) : A **tenir le rang** (seuls les soldats du front / à portée frappent,
+    les rangs de derrière gardent leur case relative qui avance avec le front et comblent les morts) ; B recaler sur sa
+    case après chaque mise à mort ; C vraie marche en bloc même courte, cases posées au contact. Reco : A. Souhait 2
+    (renforts) : A le bloc se défait près de l'ennemi / quand le front ami bloque une file (tous en `FinalLeg`) ; B
+    membre par membre (les bloqués quittent le bloc) ; C arrivée en garde (change le simple clic). Reco : A + filet B.
+- Jeux bloqués d'Elrond (41888, 21568) arrêtés avec l'accord de l'utilisateur. À l'avenir, un lancement sans fenêtre
+  se fait en `-RenderOffScreen` (jamais `-nullrhi` : le scénario attend l'interface) et avec un délai qui tue le jeu.
+- **Choix de l'utilisateur pour la ligne au combat (A, la recommandation) : tenir le rang** : seul le premier rang (ou
+  ceux déjà à portée) frappe ; les rangs de derrière restent à leur case, un pas derrière, et avancent pour combler quand
+  un soldat devant tombe ; la ligne reste droite et nette. Écartés : B revenir à sa case après chaque combat ; C charge
+  en vraie marche en bloc. Au GDD à la clôture (MV.6), avec J7-Q5 / D327 / D328 à relire.
+- **Choix de l'utilisateur pour les renforts (A, la recommandation)** : le bloc marche formé ; dès que l'un d'eux arrive
+  à quelques mètres de la mêlée (ennemi proche, ou ligne amie qui se bat devant lui), **tout le bloc se défait** et
+  chacun finit seul jusqu'à sa case derrière la ligne ; filet : un membre bloqué plus de 2 s ne retient plus les
+  autres. Écartés : B membre par membre ; C en garde à l'arrivée (changerait le simple clic).
+- Suite : **MV.4.4** renforts (Elrond, sous-agent : correctif) ; **MV.4.5** tenir le rang (d'abord un plan de règles
+  précises, sous-agent en lecture seule, questions de jeu à poser ensuite). Attention : `HeroesOfLiberty-Haldir` (D345)
+  a des changements non commités dans `HOLUnitOrderProcessor.cpp` et `HOLCombatProcessor.cpp`.
+- **Règle permanente de l'utilisateur (2026-10-22) : test rouge d'abord.** Chaque développement commence par un test
+  qui échoue sur le code actuel et doit passer avec le dev ; on boucle jusqu'au vert ; le test reste comme
+  anti-régression (sauf l'esthétique). Transmise aux deux sous-agents en cours (mur ennemi, renforts). MV.4.3 (partie
+  `quick_check` « bodies ») en devient le socle : chaque cas réglé du chantier y a son chiffre.
+- **Plan MV.4.5 « tenir le rang »** (sous-agent en lecture seule) : rang et file connus à l'ordre (`PlaceGroup`) puis
+  perdus (seule la case est gardée) ; un retour à la case existe déjà (`PlaceHold` / `WatchPlace`, ligne droite sans
+  chemin). Règles proposées (recommandations) : R1 seulement en attaque-déplacement d'un groupe en formation ; R2 premier
+  rang = par file, le premier vivant (+ quiconque a un ennemi à portée frappe) ; R3 rang 2+ : frappe seulement à portée,
+  ne marche jamais vers l'ennemi (zone de 16 m fermée) ; R4 tireurs : tirent depuis leur case ; R5 la case avance par
+  file derrière le soldat de devant, front aligné sur la médiane des premiers de file, jamais au-delà de la case
+  d'origine ; R6 comblement par la file, file vide → la voisine la plus fournie glisse (une par seconde au plus) ; R7
+  celui qui tue reste en ligne, pas de poursuite ; R8 flanc / arrière : tout soldat frappe ce qui est à portée, files
+  extrêmes et dernier rang cherchent jusqu'à ~2 m ; R9 fin : plus d'ennemi à 16 m pendant ~2 s, ou nouvel ordre, ou
+  moins d'une file × 2 rangs ; R10 suit l'ordre, pas le camp (l'IA aussi) ; R11 `RearFlank` coupé pour une ligne tenue
+  (contredit la boucle 21 de J7c.4, à noter au GDD). Code : `LineFile` / `LineRank` / `LineSerial` / `bHoldsLine` dans
+  `FHOLMoveOrderFragment` (0 bit répliqué), règles pures `HOLFormation::GetRankAndFile` / `MakeHeldLine`,
+  `HOLCombat::MayWalkToFight`, passe par ordre dans `UHOLCombatProcessor` (~0,2 ms à 2000), variante `StandInLine` de
+  `StopWalk`. Tests rouges d'abord : `Formation.HeldLine.*`, `Combat.MayWalkToFight`, partie `quick_check`
+  « holdline » (rapport `hol.Combat.LineReport`, en échec avec `hol.Combat.HoldLine 0`). 8 sous-étapes de ≤ 15 min.
+  Risques : `melee_press` (nuées en formation), marche en bloc longue, conflit avec D345 (Haldir) dans
+  `HOLCombatProcessor.cpp`. Code après MV.4.4 (même worktree, mêmes fichiers).
+- **MV.4.2 mur ennemi (sous-agent, J5c, 11 min, rien de commité)** : reproduit (1/3 : e=34 pousse tout droit, e=35
+  figé > 10 s dans un creux du paquet). Deux causes dans `HOLSimulationProcessors.cpp` : (1) le détour mémorisé de
+  MV.2 revient d'un cran par pas quand rien n'est libre jusqu'à 60° → retombe à 0 → pousse tout droit dans l'ennemi ;
+  (2) `TimeToContact` ignore un corps déjà au contact (`Gap <= 0` → `Max`) : foncer dans un ennemi touché est jugé
+  libre. Pas `EnemySideGuard` (même blocage sans lui). Correctif : `TimeToContact` = 0 pour un corps au contact dont
+  on se rapproche (amis compris) ; `AvoidBodies(bAroundEnemies)` (marche hors combat seulement : pas en frappe, ni
+  approche de cible, ni attaque-déplacement) : contre un ennemi, élargir jusqu'à 60° et y rester au lieu de revenir,
+  et sans voie libre prendre le virage le plus large de son côté au lieu de pousser. Résultats : mur ennemi 1/3 → 2/3
+  (correctif 1 seul) → **3/3** (~3,8 s) ; mur à nous 3/3 ; passage à 5 : 5/5 mais deux Paysans en ~11 s au lieu de
+  ≤ 4,5 s (à voir) ; `crossing` non comparé à `main`. **Pas encore de test rouge** (temps) : propositions : cas chiffré
+  « bodies » (3/3 en 12 s : rouge 1/3 sur `main`) et test pur `TimeToContact` déplacé dans `HOLAvoid`.
+  Suite : MV.4.3 (sous-agent, J5c) : tests rouges puis verts, partie `quick_check` « bodies », comparaison `crossing`
+  et passage à 5 avec `main`.
+- **MV.4.4 renforts (sous-agent, Elrond, 14 min, rien de commité)** : test `Formation.BreakAtMelee` (rouge sur la règle
+  vide, vert avec : `Formation` + `Movement` 21/21). Règle pure dans `HOLFormationRules.h` : `BlockBreakDistance` 400 cm
+  (ennemi ou ami au combat d'un autre ordre), `BlockMemberStuckSteps` 40 (2 s), `ShouldBreakBlock`, `IsMemberStuck` ;
+  dans `AdvanceBlocks` (`HOLUnitOrderProcessor.cpp`) : relevé de la mêlée par pas (trié par id), tout le bloc en jambe
+  finale (« broke up at the melee »), filet cumulé (« held the block 40 steps, left it »). Mesure `melee_reinforce` :
+  plus aucun membre en bloc à 10 s (avant : gel ≥ 17 s), mais à 26 s 35 renforts encore en `FinalLeg` à ~3-4 m de leur
+  case (médiane 290 cm). **Constat** : ce qui arrête les renforts n'est pas la mêlée (à 15-25 m) mais les **amis
+  immobiles derrière la ligne** et les cases posées sur eux ; c'est le filet de 2 s qui défait le bloc. **Effet de
+  bord** : la règle défait dès le 10e pas les deux blocs de la mise en ligne du début (ami d'un autre ordre « au
+  combat » à 1,5 m). Reste : effet de bord ; cases des renforts sur des amis ; cas chiffré `quick_check` ; parties
+  `move` / `formation`.
+- **Réponses de l'utilisateur sur « tenir le rang »** : R1, R2, R4, R5, R6, R9, R10, R11 : **oui** (recommandations).
+  **R3 précisée** : rang 2+ frappe ce qui est à portée et ne marche pas vers l'ennemi, **mais peut aller de côté pour
+  se battre, avec une distance maximale** (réglage ; proposé : une file, ~2 m, sans avancer au-delà de sa case).
+  **R8 précisée** : attaqué par derrière (ou le flanc), un soldat **qui n'a pas de cible se retourne pour combattre
+  celui qui le frappe**, même hors des files extrêmes. R7 sans réponse (« jamais vu » à éclaircir).
+- **R3 confirmée** (exemple dessiné) : un soldat de rang 2+ peut se **décaler de côté** vers un trou du premier rang ou
+  un ennemi libre sur le côté pour frapper, à **une file (~2 m) au plus** de sa case (réglage), jamais en avant de sa
+  case. **R7 : oui.** Les 11 règles de « tenir le rang » sont validées.
+- **Choix de l'utilisateur pour les places des renforts (A, la recommandation)** : dès l'ordre, une place qui tombe sur
+  un soldat à nous immobile va à la **place libre la plus proche**, de notre côté (`SettleBlockedPlaces` de MV.5 avec
+  les amis immobiles comme obstacles) : les renforts se rangent derrière la ligne sans la toucher. Écartés : B pousser
+  les nôtres ; C s'arrêter où ils sont. À faire après la boucle en cours (test rouge d'abord).
+- **MV.4.3 boucle 1 (sous-agent, J5c, 15 min)** : règles déplacées dans `HOLAvoid` (`TimeToContact`,
+  `TurnWithoutClearWay`) ; tests `Movement.TimeToContact` (7 cas) et `Movement.NoClearWay` (3 cas) : **rouge** avec les
+  anciennes règles (4 vérifications), **vert** avec le correctif (`Movement` 9/9). Mesures : passage à 5 : `main`
+  2,0-2,7 s, correctif 2,1-2,5 puis **5,7 / 5,9 s** ; `crossing` : sauts de cap > 25° dans les groupes de 5 : `main`
+  6 et 2, correctif **12** (tous arrivent). Cause probable : « au contact → 0 » s'applique aussi aux amis. Piège : un
+  fichier restauré par `Copy-Item` garde sa date, UBT ne recompile pas (toucher la date). Partie « bodies » pas faite.
+  Boucle 2 : partie « bodies » d'abord (passage à 5 ≤ ~4 s : rouge sur le correctif actuel ; mur ennemi 3/3 ≤ 12 s :
+  rouge sur `main`), puis correctif limité aux ennemis, jusqu'au vert.
+- **MV.4.4 boucle 2 (sous-agent, Elrond, 9 min)** : `ShouldBreakBlock(bPlainMove, …)` (simple marche seulement ; un
+  bloc est en attaque-déplacement si un membre a `EHOLCombatMode::AttackMove`) et `IsFightingFriend` (seulement
+  `bAttacking`) ; `Formation.BreakAtMelee` : **rouge** sur 4 cas nouveaux, **vert** (`Formation` + `Movement` 21/21).
+  Les deux blocs de la charge (attaque-déplacement, donc bien des marches en bloc) ne se défont plus. `quick_check
+  -Parts tests,move,formation` **PASS** (202 s, tests 97/97, « held » 0 et « left » 0 sur les 12 marches en bloc).
+  `melee_reinforce` : le bloc des renforts arrive (« arrived after 217 steps of march, 28 held »), la règle « près de
+  la mêlée » ne joue pas ici (mêlée trop loin) ; 26-30 renforts restent en `FinalLeg` à ~3 m de leur case (cases sur
+  les amis immobiles). Suite : **MV.4.6 places des renforts** (choix A), test rouge d'abord.
+- **MV.4.3 boucle 2 (sous-agent, J5c, 13 min)** : partie `quick_check` **« bodies »** (cas `2p`, après `move`, ~40 s) :
+  maisons bâties d'un coup en (-8800, -3200) / (-8800, -2400) ; passage étroit 5 sur 5 en ≤ 4 s ; mur ennemi 3 sur 3 à
+  < 4 m en ≤ 12 s ; mur à nous 3 sur 3 en ≤ 28 m / vitesse × 1,5. **Rouge prouvé** : passage étroit sur le correctif
+  complet d'avant (5,5 s). **Pas rouge** : mur ennemi sur `main` (dispersion 300 trop lâche, ils traversent en ligne
+  droite) : à durcir. Correctif : `HOLAvoid::TimeToContact(..., bPressedCounts)`, « au contact → 0 » seulement contre
+  un ennemi en marche hors combat (`bAroundEnemies && Owners[Other] != Owner`) ; `Movement.TimeToContact` + 2 cas
+  amis. **Vert** : `quick_check -Parts tests,bodies` PASS (53 s, tests 98/98) : passage 3,0 s, mur ennemi 4,0 s, mur à
+  nous 4,5 s (plafond ~6 s). Incident : une ligne écrite par erreur dans `quick_check.ps1` de la copie principale,
+  remise par `git checkout` (vérifié propre). Boucle 3 : mur ennemi durci (rouge sur `main`), cas de croisement.
+- **MV.4.6 places des renforts (sous-agent, Elrond, 14 min, rien de commité)** : `HOLFormation::FStillBody`,
+  `IsClearOfBodies` (place prise à moins de rayon ami + rayon unité d'un ami immobile ; avec des amis, pas de place
+  devant le premier rang), relevé une fois par ordre des amis immobiles (`ObstacleGrid`, trié par `UnitId`) avant
+  `PlaceGroup`. Test `Formation.StillFriends` : **rouge** (4 échecs) puis **vert** (`Formation` 15/15). Mais sur
+  `melee_reinforce`, **aucun gain** (19-21 posés, 29-33 en `FinalLeg`, médiane ~286 cm) : à l'ordre aucun ami n'est
+  immobile (51 `Moving`, 49 `Attacking`), et les cases des bloqués ne sont pas leurs cases de formation (7-14 m devant
+  la cible, parfois partagées). **Hypothèse** : une fois posés, les renforts prennent un ennemi dans leur zone
+  d'agression ; leur approche de combat est un nouveau `FinalLeg` bloqué derrière la ligne qui se bat → relève du
+  combat / « tenir le rang ». Cas `quick_check` « formation reinforce » écrit (6 Hommes d'armes immobiles en travers de
+  la cible) mais pas lancé. Boucle suivante : vérifier l'hypothèse, rouge / vert du cas, `quick_check`.
+- **MV.4.3 boucle 3 (sous-agent, J5c, 11 min)** : mur ennemi durci (12 ennemis posés un par un, deux rangs de 6
+  décalés à 1,25 m, corps qui se touchent) : **rouge sur `main`** (« 3 of 3 behind it in 99 s », jamais, deux passes),
+  **vert** avec le correctif (4 s). Cas croisement ajouté (deux groupes de 5 Paysans de face, 16 m) : tous arrivés en
+  2,5 s ; sauts de cap > 25° affichés mais **non jugés** (0,5 s d'échantillonnage trop grossier : `main` 13 / 11,
+  correctif 12). `quick_check -Parts tests,move,formation,bodies` **PASS** (238 s ; « bodies » ~41 s). Fragile : le
+  mur à nous passe pile au seuil (4 s pour 4 s). Boucle 4 : compteur de volte-face côté jeu (chaque pas) pour juger le
+  croisement (rouge prouvé sans le détour mémorisé de MV.2), seuil du mur à nous revu.
+- **MV.4.6 diagnostic (sous-agent, Elrond, 15 min)** : **hypothèse confirmée** : dès +12 s, 100 % des renforts bloqués
+  en `FinalLeg` à plus de 1,5 m de leur case (30-37) sont en **approche de combat** (case = position de leur cible),
+  sans jamais frapper, à 2,3-4,6 m de la cible, la ligne amie entre les deux ; l'approche est relancée toutes les ~2 s
+  (`HOLCombatProcessor.cpp` ~1165-1177, cible hors de portée → `IssueCombatWalk` vers l'ennemi), parfois vers une autre
+  cible. MV.4.6 (places hors des amis immobiles) n'y peut rien : à garder seulement si le cas « formation reinforce »
+  est rouge sans elle. Options de jeu pour un renfort arrivé derrière une ligne amie qui se bat : **A** il se range
+  et attend son tour (R3 / R8 appliquées aux renforts : frappe à portée, décalage d'une file vers un trou, prend la
+  place d'un mort, se retourne si frappé) ; B il cherche une prise libre sur les ailes ; C il ne s'engage pas sans ordre
+  d'attaque. Reco du sous-agent : A. **Question à poser à l'utilisateur** à son retour.
+- **MV.4.3 boucle 4 (sous-agent, J5c, 11 min)** : compteur de volte-face permanent (`HOLSimulationProcessors.cpp` :
+  cap qui tourne de plus de 25° entre deux pas d'au moins 3 cm ; commande `hol.Units.TurnReport`, sans allocation) et
+  variable d'essai `hol.Units.DetourMemory` (0 = détour et rôle de croisement oubliés à chaque pas, comme avant MV.2).
+  Croisement jugé à part dans « bodies » : **rouge** sans le détour mémorisé (72 volte-face / 403 pas), **vert** avec
+  (6 / 431) ; seuil 20 ; arrivée ≤ 8 s. Seuil du mur à nous corrigé (la vitesse était lue ~3 fois trop haute) : 4-4,5 s
+  pour une limite de 5,6-5,8 s. `quick_check -Parts tests,move,formation,bodies` PASS (235 s).
+- Trace temporaire `MV4 TEMP TRACE` retirée de J5c par la session principale ; compilé PASS ; `quick_check -Parts
+  tests,bodies` **PASS** (54 s, tests 98/98 ; passage 3 s, mur ennemi 4 s, mur à nous 4 s / 5,6, croisement 2,5 s et
+  10 volte-face / 432 pas). J5c prêt pour l'essai de l'utilisateur (`blocked_bodies`, `crossing`), puis commit.
+- **MV.4.6 tranchée par le test rouge (session principale)** : cas « formation reinforce » rendu probant (6 amis posés
+  exactement sur les places de la formation) : **vert avec la règle ET sans elle** (les amis au repos s'écartent, D292).
+  La règle n'a aucun test rouge et ne règle pas `melee_reinforce` : **retirée** (`FStillBody`, `IsClearOfBodies`, relevé
+  des amis immobiles, test `Formation.StillFriends`) ; le cas `quick_check` est gardé comme anti-régression (renforts
+  posés sur des places occupées par des amis au repos). Elrond recompilé ; `quick_check -Parts tests,move,formation`
+  **PASS** (212 s, tests 97/97). Elrond = MV.4.4 seule (+ traces `MV4DIAG` à retirer avant commit).
+- **Pause** (demande de mycrusader-f3 : mesures au repos de J7c.4, ~20-30 min) : aucun sous-agent, build ni jeu de cette
+  session. **Reprise exacte** :
+  1. Essai de l'utilisateur sur J5c (`play.ps1 blocked_bodies -Root ..\HeroesOfLiberty-J5c`, puis `crossing`) → commit
+     de `mv4-bodies` (correctif mur ennemi, `TimeToContact` / `TurnWithoutClearWay`, compteur de volte-face,
+     `hol.Units.DetourMemory`, partie « bodies », `blocked_bodies` à 5 Paysans ; trace déjà retirée) et fusion dans
+     `main` (`quick_check -Parts tests,move,formation,bodies`).
+  2. Question à l'utilisateur : renfort arrivé derrière notre ligne qui se bat (A se range et attend son tour, R3 / R8 ;
+     B prise libre sur les ailes ; C pas d'engagement sans ordre). Reco A.
+  3. Elrond : retirer les traces `MV4DIAG`, commit de MV.4.4 après essai `melee_reinforce` (une fois la question 2
+     tranchée et codée, test rouge d'abord).
+  4. MV.4.5 « tenir le rang » (R1-R11 validées) : sous-étapes du plan, tests rouges d'abord.
+- Mesures au repos de mycrusader-f3 finies : reprise. Essai `blocked_bodies` (J5c) relancé pour l'utilisateur.
+  **MV.4.5.1** lancée (sous-agent, Elrond) : règles pures de « tenir le rang » (rang et file, comblement, front aligné,
+  décalage d'une file, glissement des files vides) et leurs tests, rouges d'abord.
+- **Essai de l'utilisateur sur `blocked_bodies` (J5c, correctif)** : murs à nous (cas 2) et ennemi (cas 3) : « ils
+  tapent un peu les gens immobiles mais les contournent après » : contournement OK, mais **contact avant le détour**
+  (D293 : contourner avant de bousculer). Question posée : commit maintenant puis boucle « détour sans contact », ou
+  avant le commit.
+- **Choix de l'utilisateur** : commit maintenant, puis une boucle « détour sans contact » (test rouge « aucun contact
+  avec le mur »). Commit `213f470` sur `mv4-bodies` (EtapeDefini : ligne des marcheurs bloqués réduite aux renforts et
+  aux foules ; ajoutées : contact avant de contourner, ligne qui perd sa forme au combat) ; `main` 233e31e (D345.2a)
+  fusionné dedans (464c9f0) ; compilé PASS ; `quick_check -Parts tests,move,formation,bodies,combat` **PASS** (376 s,
+  tests 100/100 ; bodies : passage 3 s, mur ennemi 4,5 s, mur à nous 4,5 / 5,8 s, croisement 6 volte-face).
+  Avance de `main` demandée à mycrusader-8c et mycrusader-f3 (EtapeDefini.md modifié non commité dans la copie
+  principale). Essai `crossing` pas encore fait par l'utilisateur.
+- **`main` avancé à 464c9f0** (accord de mycrusader-8c et mycrusader-f3) : EtapeDefini.md non commité (d'une autre
+  session) remis par stash ; perte de BOM de `quick_check.ps1` dans la copie principale (changement de personne)
+  écartée. **Attention** : `quick_check.ps1` a perdu son BOM UTF-8 dans 213f470 : remis par la boucle en cours (J5c).
+- **MV.4.5.1 règles pures de « tenir le rang »** (sous-agent, Elrond, 10 min, rien de commité) :
+  `HOLFormation::GetRankAndFile`, `FHeldLineMember` / `FHeldLineSlot`, `MakeHeldLine` (tri stable file / rang / id ;
+  comblement ; glissement : seul le **dernier vivant** de la voisine la plus fournie (≥ 2) glisse, au plus un par appel ;
+  médiane des premiers vivants, jamais au-delà de la case d'origine ; les morts restent passés tant que l'ordre vit),
+  `HOLCombat::ELineFight { No, Strike, Step, Walk }`, `GetLineFight` (rang 0 : Walk ; rang 1+ à portée : Strike ; point
+  à portée à une file au plus et pas en avant : Step ; sinon No), `ShouldTurnOnAttacker` (R8). Tests
+  `Formation.HeldLine.RankAndFile` / `FillsDead` / `EmptyFileSlides` / `FrontMedian` / `Deterministic`,
+  `Combat.MayWalkToFight` : **rouge** (6 tests sur 27, 41 vérifications) puis **vert** (27/27). Boucle « détour sans
+  contact » lancée dans J5c (sous-agent, test rouge d'abord).
+- **Pause** pour l'A/B au repos de S3 de mycrusader-f3 (~8 min) : sous-agents arrêtés, machine libérée.
+  - Elrond : traces `MV4DIAG` retirées (`HOLSimulationProcessors.cpp` sans diff), `main` 464c9f0 amené sans conflit
+    (stash / avance rapide / pop) ; reste : compiler, `quick_check -Parts tests,move,formation,bodies,combat`.
+  - J5c (« détour sans contact », non commité) : compteur `hol.Units.ContactReport` (marcheur hors combat plus près que
+    la somme des rayons d'un corps immobile < 10 cm/s ; « Contact report: N contacts with still bodies in M
+    walker-steps, closest gap X cm at (x, y) ») ; vérification « no still body touched » (plus petit écart ≥ −3 cm)
+    dans « bodies » (les trois cas ensemble : risque de faux rouge au passage étroit, filtrer par zone au besoin) ; BOM
+    de `quick_check.ps1` remis. Compilé. Reste : mesurer le rouge ; dev prévu : horizon des corps immobiles 1,0 s
+    (`hol.Units.AvoidStillTime`), « bloqué » = un corps trouvé (plus seulement avant l'horizon), angle max 90° près d'un
+    corps immobile (`hol.Units.AvoidStillMaxAngle`) ; puis vert.
+- **« Détour sans contact » (sous-agent, J5c, ~12 min, rien de commité)** : `hol.Units.ContactReport` (pas où un
+  marcheur hors combat est plus près que la somme des rayons d'un corps immobile : sans ordre de marche et < 10 cm/s) ;
+  vérification « no still body touched » dans « bodies » (plus petit écart ≥ −3 cm). **Rouge** (réglages d'avant :
+  `AvoidStillTime 0.5`, `AvoidStillMaxAngle 60`) : 43 pas en contact sur 864, −12 cm au bord du mur ennemi. Dev
+  (`HOLSimulationProcessors.cpp/.h`) : horizon des corps immobiles `hol.Units.AvoidStillTime` 1,0 s (plafonné par la
+  distance à la case) ; un corps trouvé dans sa limite bloque (au lieu de `>= Horizon`) ; angle max 90° près d'un corps
+  immobile (`hol.Units.AvoidStillMaxAngle`, 70-90° essayés seulement si rien n'est libre à 60°). **Vert** `-Parts
+  bodies` (48 s) : 0 contact / 844 pas, écart minimal +6 cm ; passage 3 s, mur ennemi 3,5 s, mur à nous 5 s / 6 s (ils
+  contournent au lieu de bousculer), croisement 2,5 s et 6 volte-face. BOM de `quick_check.ps1` remis. Reste : `-Parts
+  tests,move,formation,bodies`, essai de l'utilisateur, commit.
+- Nouvelle pause (dernier A/B de S3 de mycrusader-f3, ~3 min) ; l'arrêt de mon jeu de test d'Elrond m'a été refusé
+  (auto mode) : attendu sa fin d'elle-même.
+- **Elrond après fusion de `main` 464c9f0** : compilé PASS ; `quick_check -Parts tests,move,formation,bodies,combat`
+  **FAIL** (381 s) : (1) tests 105/107 : `Formation.HeldLine.Deterministic` et `EmptyFileSlides` (MV.4.5.1) :
+  `MakeHeldLine` ne fait pas glisser le dernier de la file -1 (attendu un id, obtenu -1) ; verts 27/27 juste avant
+  (lancés seuls) : à comprendre ; (2) `combat arrows flee` (première flèche à 1613 cm en 430 ms, vitesse apparente
+  38 m/s refusée) : passait sur 464c9f0 dans J5c → MV.4.4 ou hasard, à vérifier. Le reste PASS (dont formation
+  reinforce, bodies, combat bodies).
+- J5c (« détour sans contact »), `quick_check -Parts tests,move,formation,bodies,combat` : tout PASS (tests 100/100 ;
+  bodies : 0 contact, écart +6 cm ; passage 3 s, mur ennemi 3,5 s, mur à nous 5 / 6 s, croisement 6 volte-face)
+  **sauf `combat arrows flee`** (même échec que dans Elrond : première flèche à 1586 cm en 423 ms, « 37 m/s
+  apparent »). Il passait dans J5c sur 464c9f0 nu : instable, ou lié aux deux changements ; à l'étude (sous-agent
+  d'Elrond).
+- **Elrond (sous-agent, 14 min)** : (1) vrai bug de `MakeHeldLine` : `INDEX_NONE` (-1) servait de « personne » pour
+  la file qui cède, or -1 est aussi la file à gauche de l'axe : corrigé (`HOLFormationRules.cpp` ~1193) ; `Formation`
+  19/19, `tests` 107/107. (2) `combat arrows flee` : **test fragile** (pas MV.4) : la première flèche venait d'un Archer
+  laissé par un cas précédent (camp 0) ; correctif du test : `hol.Units.Remove` du camp 0 à 40 m du Lancier au début du
+  cas (`quick_check.ps1`). Vérifié par la session principale : Elrond `-Parts formation,combat` PASS (332 s) ; même
+  correctif porté dans J5c : `-Parts tests,move,formation,bodies,combat` **PASS** (375 s, tests 100/100, 0 contact).
+- J5c prêt pour l'essai de l'utilisateur (`blocked_bodies` : murs contournés sans contact ; puis `crossing`).
+  **MV.4.5.2** lancée dans Elrond : champs de la ligne tenue dans l'ordre, remplissage à l'ordre, `hol.Combat.HoldLine`.
+- **MV.4.5.2 (sous-agent, Elrond, 15 min)** : `FHOLMoveOrderFragment` : `bHoldsLine`, `LineFile` (int16), `LineRank`
+  (uint8), `LineSerial` (uint32, distinct d'`OrderSerial`) ; 0 bit répliqué. Remplis à l'ordre si `bFormation &&
+  AttackMove && HOLCombat::IsHoldLineOn()` (R1), rang / file par `GetRankAndFile` ; remis à zéro par tout autre ordre
+  (marche, tâche, `ApplyCombatOrder`). Cvar `hol.Combat.HoldLine` (1). Rapport `hol.Units.LineReport [Slot]`. Cas
+  `quick_check` « formation held line » (12 Hommes d'armes en attaque-déplacement : 1 ligne de 12, ≥ 2 rangs ; simple
+  marche : 0 ligne) : **rouge** (0 ligne) puis **vert**. `quick_check -Parts tests,move,formation,combat` PASS (381 s).
+  Files / rangs exacts à figer à la prochaine passe. **MV.4.5.3** lancée : passe du processeur de combat.
+- **MV.4.5.3 boucle 1 (sous-agent, Elrond, 13 min)** : cvar `hol.Combat.HoldLineFight` (0 = comportement d'avant,
+  sert au rouge) ; `bLineMember` / `bLineBack` ; zone de contrôle fermée au rang ≥ 1 ; `RearFlank` coupé (R11) ; R8
+  (dernier attaquant à portée) ; hors de portée au rang ≥ 1 : `GetLineFight` (Step : marche de combat vers le point à
+  portée le plus proche de sa case, ≤ 200 cm ; sinon cible lâchée, `StopWalk`) ; une marche de combat d'un membre garde
+  sa ligne ; `StopWalk` garde déjà la ligne (`StandInLine` inutile). Rapport étendu (`back N walking N striking N off
+  <médiane>, front <largeur> of <largeur des cases>`). Cas `quick_check` « combat held line » (12 contre 12 Hommes
+  d'armes, rapports à 2 s pendant 20 s ; à partir du 6e : walking 0, médiane ≤ 60 cm, front ≥ 80 %). **Rouge**
+  (`HoldLineFight 0`) : walking 2-3, médiane 373-377 cm, front 810-883 / 600 ; **avec le dev : encore rouge** (walking
+  1, médiane 222-257 cm) : manque la passe `MakeHeldLine` (la mêlée se fait avant les cases d'origine, R5). Boucle 2 :
+  passe `MakeHeldLine`, compteur « walking » sans les pas de côté, fin R9, puis `-Parts tests,formation,combat`.
+- **MV.4.5.3 boucle 2 (sous-agent, Elrond, 12 min)** : `UHOLCombatProcessor::UpdateHeldLines` (groupe par
+  `LineSerial`, active au premier `bAttacking`, ancre recalculée, `MakeHeldLine`, glissement ≤ 1 / s, réécrit rang /
+  file) ; case tenue dans un **nouveau champ `LinePlace`** (écrire dans `AttackMoveGoal` cassait la reprise de
+  l'attaque-déplacement après le combat) ; état par ligne `HeldLines` ; fin R9 (moins de 2 vivants, ou 2 s sans membre
+  engagé) ; retour à la case (rang ≥ 1 sans cible arrêté à > 50 cm de `LinePlace`) ; compteur « walking » = buts à plus
+  d'une file de la case. « combat held line » : walking 0, front 668 / 600, ligne tenue (12 → 10 membres, 5 files) mais
+  **écart médian 167 / 159 cm (seuil 60) : KO** ; tout figé du 3e au dernier rapport. Autres cas `combat` PASS.
+  Boucle 3 : pourquoi les rangs ≥ 1 ne rejoignent pas `LinePlace` (retour non lancé ? bloqué ? ancre fausse ?).
+- **Essai de l'utilisateur** : `blocked_bodies` (détour sans contact) : « good ». Commit `6ab675c` (EtapeDefini : ligne
+  « contact avant de contourner » retirée), `main` 3f59aec fusionné (02d8ea4 ; seulement des docs et
+  `rest_measures.ps1`, pas de code), **`main` avancé à 02d8ea4** (`quick_check.ps1` local de la copie principale =
+  seulement le BOM, que le commit remet : écarté). Essai `crossing` lancé (J5c).
+- **Essai de l'utilisateur sur `crossing`** (avec détour sans contact) : « tout est bon ». Cas 1 et 3 du chantier
+  (croisement, marcheurs contre des murs) clos ; restent au cas 3 : renforts derrière leur ligne, foules ennemies.
+- **Renforts derrière leur ligne** : à la question A / B / C, l'utilisateur répond « on n'a pas déjà défini ce point ? » :
+  oui, il découle de R3 / R8 (rangs de derrière : frappe à portée, décalage d'une file, se retourne si frappé, ne
+  marche pas vers l'ennemi). **Retenu : A**, les renforts suivent les règles des rangs de derrière (R1 ne couvrait
+  formellement que l'attaque-déplacement). À coder après MV.4.5.3, test rouge d'abord (`melee_reinforce` : plus aucun
+  renfort en approche de combat bloquée derrière la ligne).
+- `main` avancé par mycrusader-8c à 1473564 puis 2c2e574 (D345.2b : unités qui attaquent les bâtiments ;
+  `FHOLCombatFragment::TargetBuilding`, approche des bâtiments dans `HOLCombatProcessor`) : **conflits à prévoir** avec
+  MV.4.5.3 (Elrond) dans `HOLCombatProcessor.cpp` à la prochaine fusion de `main`.
+- **MV.4.5.3 boucle 3 (sous-agent, Elrond, 12,5 min)** : cause (trace `MV453 TEMP`, retirée) : le retour à la case
+  n'était jamais lancé (aux pas de recherche, la branche `No` lâchait la cible puis `continue` ; hors pas de recherche,
+  le retour exigeait `bSearchStep`) ; ancre, cap et `LinePlace` justes. Correctif : même retour dans la branche `No`.
+  « combat held line » **vert** (walking 0 ; écart médian 42 → 10 → 5 cm ; front 603-630 / 600) et **rouge** avec
+  `HoldLineFight 0` (walking 1-2, écart 286-381 cm). Rangs ≥ 1 jamais atteints dans ce cas (R3 Step / R8 non exercés).
+  `combat away` a échoué une fois dans le run rouge (avant le cas, sans ligne) : instable ? Reste : `quick_check`.
+- Vérifié par la session principale : Elrond `quick_check -Parts tests,move,formation,bodies,combat` **PASS** (416 s,
+  tests 107/107, formation held line, combat held line, formation reinforce, bodies, combat away PASS).
+  Suite : fusion de `main` 2c2e574 (D345.2b, conflits dans `HOLCombatProcessor.cpp`), puis renforts = rangs de
+  derrière (test rouge), puis essai de l'utilisateur (`melee_formed`, `melee_reinforce`).
+- **Fusion de `main` dans Elrond** (sous-agent, 15 min, rien de commité ; sauvegarde
+  `scratchpad\elrond_mv45_before_merge.patch`) : avance rapide 464c9f0 → 3b53b51, un conflit de texte
+  (`HOLCombatTests.cpp` : `Combat.BuildingAttack` et `Combat.MayWalkToFight` gardés). Choix bâtiments : frapper un
+  bâtiment ne compte pas comme contact / engagement de la ligne ; rang ≥ 1 : bâtiment seulement à portée de frappe
+  (comme Hold), jamais de marche vers lui ; l'ordre explicite d'attaquer un bâtiment retire la ligne. Compilé PASS ;
+  `quick_check` : tests 108/108 et combat PASS **sauf « combat held line »** (écart médian des rangs ≥ 1 : 107 → 76
+  → 51 puis **151 / 190 cm** après les morts du front ; avant la fusion 42 → 10 → 5). Suspect : le détour sans contact
+  (corps immobiles vus à 1 s, `AvoidStillTime`) gêne les rangs de derrière qui avancent vers une case juste derrière
+  un ami immobile. Stash `stash@{0}` « mv45 wip before merge main » resté (contenu déjà appliqué ; son retrait a été
+  refusé au sous-agent : à faire avec l'accord de l'utilisateur).
+- Stashs supprimés avec l'accord de l'utilisateur : « mv45 wip before merge main » (déjà appliqué dans Elrond) et
+  « mv2 wip » (état intermédiaire de la boucle 1 de MV.2, version finale dans `main`). Plus aucun stash.
+- **Correctif après fusion (sous-agent, Elrond, 14 min)** : départage : avec `AvoidStillTime 0.5` /
+  `AvoidStillMaxAngle 60`, « combat held line » repasse vert → cause = détour sans contact (un rang de derrière qui
+  revient à une case à moins de (60 + 60) × 1,1 = 132 cm d'un ami immobile voit ce corps comme un mur). Correctif :
+  `AvoidBodies(..., const FVector2D* Goal)` : un corps immobile **qui touche le but** du marcheur (but à moins de la
+  distance de contact) n'est pas un mur (le marcheur passe `&Order.Slot` dès qu'il a une phase). Ligne entière : écart
+  médian 0-25 cm. Mais après des morts (3 → 2 rangs) : **171-175 cm**, avec 1-4 rangs de derrière qui frappent
+  (`striking`) : pas de côté R3 (légitime) ou marcheur gêné ? Décision de la session principale : la médiane d'écart ne
+  porte que sur les rangs de derrière **qui ne frappent pas** (R3 les autorise à frapper à une file de leur case) ; un
+  contrôle à part vérifie que ceux qui frappent restent à une file (200 cm) au plus de leur case. Boucle suivante.
+- **Boucle 2 (sous-agent, Elrond, 14 min)** : trace : au moment des 153-260 cm, les rangs ≥ 1 éloignés sont **tous
+  des frappeurs** (pas de côté puis frappe ; dérive de 60-110 cm au-delà du point de pas, #56 à 260 cm pendant 5
+  rapports) ; ceux qui ne frappent pas sont à 0-36 cm. Mesure appliquée : médiane « off » sur les rangs ≥ 1 qui ne
+  frappent ni ne font un pas de côté (`bApproaching` avec cible compté comme frappeur), et contrôle nouveau « striking
+  off max ≤ 200 cm » (R3). `-Parts combat` PASS une fois (off 4 → 31 cm, striking off max 0). Reste : la **dérive des
+  frappeurs** au-delà d'une file (rouge possible selon le passage) : correctif R3 (un rang ≥ 1 qui frappe à plus d'une
+  file de sa case lâche sa cible et revient), répété plusieurs fois ; puis `quick_check` complet (« bodies » 0 contact).
+- **Fin de séance (2026-10-22, demande de l'utilisateur)** : sous-agent de la boucle 3 (dérive des frappeurs) arrêté.
+
+### Reprise exacte (MV.4)
+
+État :
+- **Dans `main`** (essais de l'utilisateur OK) : MV.4.2 mur ennemi contourné, détour sans contact devant un mur
+  d'unités immobiles, partie `quick_check` « bodies » (passage à 5, mur ennemi, mur à nous, croisement, 0 contact),
+  compteurs `hol.Units.TurnReport` / `ContactReport`, correctif du test « combat arrows flee ». J5c (`mv4-bodies`) =
+  `main` 02d8ea4 : libre.
+- **Dans Elrond (`mv4-diag`, à `main` 3b53b51, rien de commité, pas d'essai de l'utilisateur encore)** :
+  MV.4.4 renforts (le bloc se défait près de la mêlée, simple marche seulement) ; MV.4.5 « tenir le rang » (règles
+  pures `MakeHeldLine` / `GetLineFight` / `ShouldTurnOnAttacker`, champs `bHoldsLine` / `LineFile` / `LineRank` /
+  `LineSerial` / `LinePlace`, `UpdateHeldLines`, rangs de derrière, fin R9, cvars `hol.Combat.HoldLine` /
+  `HoldLineFight`, `hol.Units.LineReport`, cas « formation held line » et « combat held line ») ; choix bâtiments
+  (D345.2b) ; correctif `AvoidBodies(..., Goal)` (un corps immobile qui touche le but n'est pas un mur) ; mesure
+  « off » sur les rangs de derrière qui ne frappent pas + « striking off max ≤ 200 cm ». Sauvegarde d'avant fusion :
+  `scratchpad\elrond_mv45_before_merge.patch` (session 8c4bb130).
+
+À faire, dans l'ordre :
+1. État laissé par la boucle 3 (arrêtée) : trace `MV453B` retirée ; **correctif R3 douteux** dans
+   `HOLCombatProcessor.cpp` (juste avant le test de portée : un rang ≥ 1 avec une cible à plus de `LineStepReach`
+   200 cm de sa `LinePlace` lâche sa cible et revient) : 1 passage sur 2 rouge (médiane des non-frappeurs 230 puis
+   66 cm et front 470 / 600 au passage de 3 à 2 rangs : sans doute des membres qui viennent de changer de case
+   renvoyés marcher). Le rouge sans correctif n'a pas été reproduit (cas déterministe ; 260 cm vu une seule fois, boucle
+   2). À revoir (ne l'appliquer qu'à un membre qui frappe vraiment) ou retirer.
+2. **Dérive des frappeurs** (R3) : rouge reproductible (« striking off max » > 200 cm), correctif (un rang ≥ 1 qui
+   frappe à plus d'une file de sa case lâche sa cible et revient), vert sur 3 passages de `-Parts combat`.
+3. `quick_check -Parts tests,move,formation,bodies,combat` (« bodies » : 0 contact avec la règle `Goal`).
+4. **Renforts = rangs de derrière** (choix A, découle de R3 / R8) : test rouge d'abord sur `melee_reinforce` (plus
+   aucun renfort en approche de combat bloquée derrière la ligne).
+5. Essai de l'utilisateur : `melee_formed`, `melee_reinforce` (`play.ps1 <nom> -Root ..\HeroesOfLiberty-Elrond`), puis
+   commit (EtapeDefini : lignes « renforts » et « ligne qui perd sa forme »), fusion dans `main` (accord des sessions).
+6. Foules ennemies qui se croisent (`crowds_cross`, piste A du diagnostic : le bloc évite le bloc), test rouge d'abord.
+7. MV.6 : décisions au GDD (MV.2, MV.5, MV.4 : détour sans contact, renforts, tenir le rang R1-R11 avec R11 qui
+   défait la boucle 21 de J7c.4), mesures S1-S5, clôture.
+Règles : test rouge d'abord (mémoire `red-test-first`) ; boucles de 15 min ; rien de commité avant l'essai.

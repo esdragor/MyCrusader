@@ -558,4 +558,16 @@ bool FHOLCommandGridAgesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridMouseCursorTest, "HeroesOfLiberty.CommandGrid.MouseCursor", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+
+bool FHOLCommandGridMouseCursorTest::RunTest(const FString& Parameters)
+{
+	// The user's trial of A.2: the red attack cursor while Q waits for its point, the arrow again once chosen or cancelled.
+	TestEqual(TEXT("Q pressed, the point not chosen: the attack cursor"), int32(HOLCommandGrid::GetMouseCursor(/*bAttackMoveArmed*/ true, /*bPlacing*/ false)), int32(EMouseCursor::Crosshairs));
+	TestEqual(TEXT("the point chosen or the mode cancelled: the arrow"), int32(HOLCommandGrid::GetMouseCursor(false, false)), int32(EMouseCursor::Default));
+	TestEqual(TEXT("placement mode: the arrow (the ghost shows it)"), int32(HOLCommandGrid::GetMouseCursor(false, true)), int32(EMouseCursor::Default));
+	TestEqual(TEXT("placement wins over a mode left armed"), int32(HOLCommandGrid::GetMouseCursor(true, true)), int32(EMouseCursor::Default));
+	return true;
+}
+
 #endif

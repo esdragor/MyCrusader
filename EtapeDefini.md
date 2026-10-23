@@ -13,7 +13,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités
-- Maj (file) pour l'attaque d'un bâtiment *(D345 ; le reste est fait)*
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
 
 ### Fin de partie
@@ -21,8 +20,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
-- Q (attaque) : curseur qui change d'icône et passe au rouge pendant le choix du point
-- Double clic sur une unité : sélectionne toutes les unités de ce type à l'écran
 
 ### GDD
 - Review du GDD : prochain numéro D361 (D347 à D360 conditions de victoire ; reprise au § 22)
@@ -34,12 +31,14 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
-- Unité repoussée par un chantier qui démarre : posée dans les murs du bâtiment, à repousser au-delà de la marge
+- Unité bousculée contre un bâtiment (par les bâtisseurs) : reste à moitié dans le mur visible
 - Deux foules ennemies qui se croisent à grand-peine
 - Unité apparue ou poussée sur un rocher : y reste coincée (ne suit plus aucun ordre)
+- Unités d'un groupe remises en formation sur place (ordre de bouger d'un rien) : elles peinent, elles ne poussent presque pas les autres
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 ### Aléas et petits restes
+- `quick_check -Parts build` rouge sur main : « build cut » et « build gap » (marcheurs remis dehors le long d'un mur)
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)

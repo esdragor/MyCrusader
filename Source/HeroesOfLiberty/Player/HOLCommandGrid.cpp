@@ -45,6 +45,11 @@ namespace HOLCommandGrid
 		return Result;
 	}
 
+	EMouseCursor::Type GetMouseCursor(const bool bAttackMoveArmed, const bool bPlacing)
+	{
+		return bAttackMoveArmed && !bPlacing ? EMouseCursor::Crosshairs : EMouseCursor::Default;
+	}
+
 	bool IsBuildGrid(const FHOLGridContext& Context)
 	{
 		return !Context.bOwnBuilding && Context.bBuilders && !Context.bSoldiers;
