@@ -166,6 +166,8 @@ Le joueur possède une base principale et peut développer des expansions pour :
 
 Une expansion comporte un risque : plus elle est éloignée, plus elle est difficile à défendre.
 
+**Le centre secondaire *(décision D384)* : un vrai forum de plus, comme le centre-ville d'AoE4.** Débloqué au palier 1 (§ 11.1), coûteux (surtout en pierre) : il **produit des Paysans**, sert de **dépôt de toutes les ressources**, a une **garnison et tire**, donne une base de population et un lieu de réapparition du héros (§ 5.3, § 9.8). Pas de plafond : le **boom** (plusieurs centres pour produire plus de Paysans) est un pari économique que le rush punit. Il n'a **pas de vies** et ne protège jamais de la défaite : seul le forum principal compte (D347) ; pas de zone anti-construction autour de lui (D22 : seulement le centre principal). ⚠️ À surveiller en test : le boom ne doit pas devenir systématiquement optimal.
+
 Le joueur choisit entre investir dans sa base, prendre une expansion, investir dans l'armée ou accélérer sa technologie. Aucune option ne doit être systématiquement optimale.
 
 ### 5.5 Marché *(décision D70)*
@@ -1393,7 +1395,7 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
 | ***La Lignée*** | commandement à pied et armée : *Aura draconique*, *Lame draconique*, Champions, Gardes d'écailles | *Pierre de résonance*, *Forge d'écailles* | ***Sang draconique*** *(D155)* : Champions Draconiques et Gardes d'écailles ~+10 % PV | ***Écho élémentaire*** *(D155)* (transforme *Aura draconique*) : quand le héros change d'élément, les unités dans l'aura **gardent l'effet de l'ancien élément ~8 s** en plus du nouveau. Chaque changement devient un pic de puissance. Contre-jeu : changement visible, reculer pendant la fenêtre |
 | ***La Mue*** *(D156)* : « L'instinct du wyrm » | adaptation : changements d'élément, Nids, Mages, duel élémentaire | *Foyer élémentaire* | ***Esprit vif*** : délai de changement d'élément des emblématiques et des Nids ~−25 % ; Mages ~+5 % de portée (cumulable avec *Foyer élémentaire*) | ***Mue instinctive*** (transforme le changement d'élément du héros) : **en RTS aussi**, changement **instantané** qui libère autour du héros l'éclat de la *Mue élémentaire* (brûlure ; bouclier allié ; interruption). Recharge entre deux changements. ⚠️ Vigilance : pas d'éclats en boucle |
 
-- **Rangées 2 à 6 *(décision D157)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : plus tard (bloc 4).
+- **Rangées 2 à 6 *(décision D157)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : D198, ci-dessous.
 
   | Rangée | **Le Ciel** | **La Lignée** | **La Mue** |
   |---|---|---|---|
@@ -1523,7 +1525,7 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 | ***Le Miroir*** *(D165)* : « La rumeur » | commandement (par la manipulation) | *Murmures*, *Mensonge*, Illusionnistes, confusion, conversion (*Serment de l'Ombre*, *Discours du Maître*) | *Salle des miroirs* | ***Voix porteuse*** : *Murmures* ~+15 % de rayon ; Illusionnistes ~15 % plus vite formés | ***Murmures contagieux*** (transforme *Murmures*) : quand une unité ennemie dans l'aura subit un contrôle (confusion, peur, piège), **ses voisins immédiats reçoivent le malus de moral de *Murmures*** (D74). La panique se propage, sans contrôle supplémentaire. Contre-jeu : se disperser, purification (D125) |
 | ***La Toile*** *(D166)* : « L'appât » | stratégique | Piégeurs et pièges, *Comptoir* et ordres du marché noir, *Mensonge* (partagé avec le Miroir) : préparer un coup que le monde déclenche (D159, D161) | *Atelier du piégeur*, *Comptoir du marché noir* | ***Fils tendus*** : Piégeurs ~15 % plus vite formés, +1 piège actif par Piégeur ; avec le *Comptoir*, +1 ordre actif | ***L'Appât*** (transforme *Mensonge*) : la fausse armée peut être posée **sur des pièges alliés** ; attaquée, elle se dissipe et déclenche les pièges dessous, **avec leur signal habituel (~1 s, D159)**. Contre-jeu : indice de la fausse armée (D37), éclairage, recul pendant le signal |
 
-- **Rangées 2 à 6 *(décision D167)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : plus tard (bloc 4).
+- **Rangées 2 à 6 *(décision D167)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : D199, ci-dessous.
 
   | Rangée | **La Lame** | **Le Miroir** | **La Toile** |
   |---|---|---|---|
@@ -1626,7 +1628,7 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 | ***La Flamme*** *(D176)* : « La Chaleur qui circule » | commandement : *Transmission*, Prêtres de la Flamme, *Armes chauffées à blanc* | *Temple de la Flamme* | ***Flamme des pères*** : Prêtres de la Flamme formés ~15 % plus vite ; recharge de *Transmission* ~−15 % | ***Héritage vivant*** (transforme *Transmission*) : les armes embrasées **gardent la flamme tant que l'unité combat** (chaque coup la prolonge, plafond ~15 s) et chaque coup d'une unité embrasée **rend un peu de Chaleur au Champion**. Contre-jeu : se désengager, la flamme s'éteint dès que l'unité ne frappe plus |
 
 - ⚠️ **Vigilance (D173) :** l'Enclume aide à survivre, jamais à être remboursé ni à couvrir plus de terrain ; elle n'adoucit ni le coût des pertes ni « je ne peux pas être partout » (D169).
-- **Rangées 2 à 6 *(décision D177)*** : grille validée avec amendements (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : plus tard (bloc 4).
+- **Rangées 2 à 6 *(décision D177)*** : grille validée avec amendements (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : D200, ci-dessous.
 
   | Rangée | **Le Marteau** | **L'Enclume** | **La Flamme** |
   |---|---|---|---|
@@ -2614,6 +2616,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D381 | 2026-10-23 | Brouillard — La carte au départ | **Noire, avec une option « Carte explorée »** (choix de l'utilisateur, conforme à la recommandation) : inexplorée par défaut comme AoE2 / AoE4 (scouting au cœur du jeu, Nomade intact) ; option de partie qui révèle terrain et ressources. Écartés : noire sans option, terrain révélé d'office (StarCraft, Warcraft 3). | § 8.2, § 14.3 |
 | D382 | 2026-10-23 | Brouillard — Mémoire sous le brouillard | **Comme AoE** (choix de l'utilisateur, conforme à la recommandation) : terrain, ressources et bâtiments au dernier coup d'œil (fantômes), jamais les unités ; destruction apprise en retournant voir (le forum reste public, D353). Écartés : destruction apprise d'office (information gratuite), rien en mémoire. | § 8.2 |
 | D383 | 2026-10-23 | Brouillard — La vue et le terrain | **Comme AoE4, avec une furtivité à part** (choix de l'utilisateur : A, précisé) : cercle de vue par unité, hauteur = vue plus longue (modérée), forêt = vue bloquée à travers (D33) sans furtivité ; **pour l'instant, la furtivité vient de zones dédiées posées par la carte**, ni forêt ni hautes herbes (cachées sauf ennemi tout proche ou dans la zone). Écartés : vraie ligne de vue façon Warcraft 3 (double avantage de la hauteur avec D23), cercle simple sans rien. | § 8.1, § 8.2 |
+| D384 | 2026-10-23 | Économie — Le centre secondaire | **Un vrai forum de plus, comme AoE4** (choix de l'utilisateur, conforme à la recommandation) : produit des Paysans, dépôt de toutes ressources, garnison et tir, population, réapparition ; coûteux (pierre), sans plafond (boom façon AoE4, puni par le rush) ; pas de vies, pas de zone anti-construction. Écartés : avant-poste sans Paysans, plafond par palier. | § 5.4 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2799,4 +2802,6 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Séance du brouillard close (D381 à D383).**
 
-Prochain numéro : **D384**.
+**Centre secondaire (2026-10-23)** → **tranché (D384)** : un vrai forum de plus façon AoE4, sans plafond (la question du plafond tombe). Corrigé (rédactionnel) : « Rangées 7 à 9 : plus tard (bloc 4) » du Dragon, de l'Ombre et des Héritiers renvoyé à D198, D199, D200.
+
+Prochain numéro : **D385**.
