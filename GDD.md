@@ -94,7 +94,7 @@ Le jeu doit produire ce type d'histoires émergentes.
 | Ouverture → Développement | ~ 5 min |
 | Premier vrai conflit | ~ 10-12 min |
 | Dernier palier de civilisation (héros niveau 9, joueur actif) | ~ 20-23 min, soit environ 70-80 % de la partie |
-| Événements mondiaux majeurs | 1 à 2 par partie |
+| Événements mondiaux majeurs | 1 à 2 par partie (au prototype : seulement avec l'option Catastrophe, D398) |
 | Fenêtre de récupération du héros | ≈ 40 s (niveau 1) à ≈ 110 s (niveau 10), soit 2 à 6 % de la partie (D25) |
 
 | Phase | Objectifs | Rôle du héros |
@@ -694,6 +694,7 @@ La civilisation continue de progresser : l'XP de développement, de territoire, 
 | **Rachat** | **aucun** : le temps de récupération ne peut pas être réduit en payant |
 | **Prix** | **prix de résurrection obligatoire, payé à la fin du délai.** Base selon le niveau, modérée (un prix fixe reste l'alternative à comparer en test). |
 | **Prix dégressif** | si le joueur ne paie pas à la fin du délai, **le prix baisse progressivement jusqu'à zéro** (indicatif : sur 60 s). Le joueur peut payer à tout moment pendant cette baisse. Un joueur ruiné récupère donc toujours son héros, simplement plus tard. |
+| **Ressource et paiement *(D397)*** | **de l'or**, payé par un **bouton « Ramener le héros »** dans le bloc du héros (D201), prix affiché qui baisse sous les yeux du joueur ; clic = paiement, au forum par défaut ; clic sur un centre secondaire ou sur la ruine (D351) pour un autre lieu. Payer tout de suite et cher, ou plus tard et moins cher : la décision est au joueur. Alerte mineure (D202) quand le héros est prêt à revenir |
 | **Lieu de réapparition** | au choix : le centre principal ou un centre secondaire contrôlé |
 | **Morts répétées** | aucune aggravation |
 | **Bâtiment dédié** | non par défaut ; possible comme mécanique propre à une faction |
@@ -975,6 +976,7 @@ Technologies propres du palier 3 : vues avec la spécialisation de chaque factio
 - **L'enjeu du site *(décision D378)*** : la règle, ce sont des **gisements riches** (or, pierre) **sur les pentes**, en partie sur les tracés : une expansion là-bas rapporte plus, mais doit être évacuée et parfois perdue à chaque éruption. Le **placement** (sur l'axe le plus court entre les bases, hauteur, passage) relève du **level design**, carte par carte *(précision de l'utilisateur)* : à varier pour que le volcan ne devienne pas **la** carte à chaque partie.
 - **L'après *(décision D379)*** : la coulée arrêtée **refroidit** et reste **infranchissable ~2 à 3 min**, puis devient un **sol de basalte praticable**, trace visible jusqu'à la fin de la partie, où **apparaît un gisement neuf** (or ou pierre) : la course aux nouvelles ressources suit la catastrophe. La lave **ne détruit pas les gisements** (seulement unités et bâtiments) ; **direction des coulées potentiellement aléatoire** *(nuance de l'utilisateur)* : à chaque éruption, les tracés peuvent être tirés parmi plusieurs directions possibles du site, toujours dessinés au sol dès l'alerte (D377). ⚠️ Vigilance : un tirage qui vise toujours le même joueur serait injuste (§ 12.2 : ne pas décider du vainqueur) ; tirage à équilibrer entre les côtés. Durées et quantités indicatives, à régler en test.
 - **Le réveil volontaire *(décision D380)*, au prototype** : tenir un **autel ancien** près du cratère **~60 s** réveille le volcan plus tôt (D28) ; l'autel se tient **comme la ruine** (D348 : une unité adverse dans la zone gèle le compte) ; alerte de 60 à 90 s **inchangée** ; **direction tirée** comme d'habitude (D379), jamais choisie. À tester plus tard si le réveil paraît trop fade : laisser celui qui réveille **choisir la direction** parmi celles du site, annoncée à tous dès l'alerte.
+- **Seulement avec l'option Catastrophe *(décision D398)*** : en standard, un volcan **n'entre jamais en éruption**, même sur une carte qui en a un ; l'option Catastrophe le réveille (D208). Contrepartie *(remarque de l'utilisateur)* : **Catastrophe ne se joue que sur les cartes qui ont des sites d'événement** (volcaniques, tant que le volcan est le seul événement) ; un événement plus simple à placer partout (le séisme, par exemple, reporté par D209) élargira plus tard le choix des cartes. **Le volcan endormi *(décision D399)*** : en standard, le site **reste, sans danger** : ses **gisements riches** sont là (une zone riche à disputer), **pas d'autel** ; c'est du level design.
 
 ### 12.2 Principes
 
@@ -995,7 +997,7 @@ Le joueur doit pouvoir dire « J'ai perdu cette position parce que j'ai mal anti
 - **Sites d'événement définis par la carte**, sur des **zones neutres et symétriques**, jamais sur une base de départ. L'équité est garantie sur les cartes de 2 à 8 joueurs.
 - **Fenêtre de déclenchement** propre à chaque site (exemple : éruption entre la 14e et la 18e minute).
 - **Préavis visible de tous** : 60 à 90 s de phase d'alerte (état `Warning` du World State Manager).
-- **Fréquence :** 1 à 2 événements majeurs par partie (§ 4).
+- **Fréquence :** 1 à 2 événements majeurs par partie (§ 4). **Au prototype *(D398)*** : aucun événement en standard ; le volcan n'entre en éruption qu'avec l'option Catastrophe.
 - **Déclenchement volontaire :** certains sites peuvent être réveillés plus tôt par un joueur qui remplit un **objectif** (par exemple, contrôler un autel ancien pendant 60 s). Le préavis reste obligatoire, même dans ce cas.
 - Les Enfants du Dragon pourraient avoir un accès privilégié à ces déclenchements (climat, éléments).
 
@@ -2641,6 +2643,9 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D394 | 2026-10-23 | Prototype — Le Spectre Assassin | **Il entre au prototype** (choix de l'utilisateur, contre la recommandation A « version générale de *Lames spectrales* ») : troisième emblématique des Légions (D82 n'est pas un plafond) ; la famille *Effroi* garde son pilier, *Lames spectrales* n'est plus un talent mort (D194). Écartés : version générale du talent, talent grisé. | § 13.3, § 17 |
 | D395 | 2026-10-23 | Spectre Assassin — Palier et bâtiment | **Palier 1, Caserne** (choix de l'utilisateur, conforme à la recommandation) : avec les autres emblématiques, de l'infanterie à la Caserne (D128) ; disponible quand *Lames spectrales* l'est. Écartés : palier 2 (talent à moitié mort), Nécropole (file partagée avec le Nécromancien). | § 11.1, § 17 |
 | D396 | 2026-10-23 | Spectre Assassin — Furtivité | **Pas de furtivité propre, la *Dématérialisation* à la place** (choix de l'utilisateur, conforme à la recommandation) : vitesse ; active ~3 s intangible (ne subit pas les tirs, traverse les unités), longue recharge, pour atteindre les tireurs ; marquage ; zones de furtivité de la carte comme tout le monde (D383) ; invisibilité réservée au Maître des Ombres. Écartés : camouflage à l'arrêt (harcèlement invisible, doublon), camouflage actif court (doublon avec le Cercle). | § 13.3 |
+| D397 | 2026-10-23 | Héros — Prix de résurrection | **De l'or, payé par un bouton** (choix de l'utilisateur, conforme à la recommandation) : « Ramener le héros » dans le bloc du héros, prix qui baisse à vue (D25), forum par défaut, autre lieu au clic (centre secondaire, ruine) ; alerte mineure quand il est prêt. Écartés : or et nourriture, paiement automatique avec case « attendre ». Précise D25. | § 9.8 |
+| D398 | 2026-10-23 | Volcan — En standard | **Pas d'éruption sans l'option Catastrophe** (choix de l'utilisateur, contre la recommandation A « le volcan existe aussi en standard ») : un volcan reste endormi en standard. **Contrepartie notée par l'utilisateur : Catastrophe ne se joue que sur les cartes à sites d'événement** (volcaniques tant que le volcan est seul) ; un événement facile à placer partout (séisme, D209) élargira le choix plus tard. Révise D28 pour le prototype (1 à 2 événements par partie). | § 4, § 12.2 bis |
+| D399 | 2026-10-23 | Volcan — Endormi en standard | **Le site reste, sans danger** (choix de l'utilisateur, contre la recommandation B « gisements riches seulement avec Catastrophe ») : gisements riches présents en standard (zone riche à disputer), pas d'autel. Écartés : gisements riches liés à l'option, choix carte par carte. | § 12.1 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2847,11 +2852,11 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 3. ~~Squelette et population pleine~~ → **tranché (D391)** : bloqué, comme une production. Plafond des serviteurs temporaires → **tranché (D392)** : commun par joueur, le plus ancien cède sa place.
 4. ~~Catégories d'armure~~ → socle **corrigé (rédactionnel)** sur D345 ; catégories des emblématiques : au chantier des stats (`UnitStatsInProgress.md`) ; « profane » **tranché (D393)** : catégorie « Profane » en plus. Reste pour le Cavalier lourd (hors prototype) : comment l'Arbalétrier le vise avec une seule catégorie « Cavalerie ».
 5. ~~Famille *Effroi* sans Spectre~~ → **tranché (D394)** : le Spectre Assassin entre au prototype. Palier et bâtiment → **tranché (D395)** : palier 1, Caserne. Furtivité → **tranché (D396)** : aucune propre, *Dématérialisation* (~3 s intangible) à la place.
-6. Prix de résurrection : quelle ressource, paiement automatique ou bouton.
-7. Volcan en standard sans Catastrophe ; réarmement d'un site, autel réutilisable, fenêtre après un réveil.
+6. ~~Prix de résurrection~~ → **tranché (D397)** : de l'or, par un bouton « Ramener le héros ».
+7. ~~Volcan en standard~~ → **tranché (D398)** : pas d'éruption sans Catastrophe ; Catastrophe limitée aux cartes à sites d'événement. Volcan endormi → **tranché (D399)** : gisements riches présents, pas d'autel. Restent : réarmement d'un site, autel réutilisable, fenêtre après un réveil.
 8. Posture Neutre face aux règles qui disent « ennemi » (ruine, relais, autel, anti-construction, duel).
 9. Départ de Nomade : ressources ou forum offert.
 10. Zone anti-duel : de qui, et le centre secondaire compte-t-il.
 11. *Lumière sacrée* et le moral négatif (D125, « à trancher en test »).
 
-Prochain numéro : **D397**.
+Prochain numéro : **D400**.
