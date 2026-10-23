@@ -31,7 +31,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
-- Unité repoussée par un chantier qui démarre : posée dans les murs du bâtiment, à repousser au-delà de la marge
+- Unité bousculée contre un bâtiment (par les bâtisseurs) : reste à moitié dans le mur visible
 - Marcheurs bloqués par des corps (renforts qui butent contre leur propre ligne en mêlée ; deux foules ennemies qui se croisent à grand-peine)
 - Ligne qui perd sa forme dès le premier combat (tenir le rang, R1 à R11 validées)
 - Unités d'un groupe remises en formation sur place (ordre de bouger d'un rien) : elles peinent, elles ne poussent presque pas les autres
