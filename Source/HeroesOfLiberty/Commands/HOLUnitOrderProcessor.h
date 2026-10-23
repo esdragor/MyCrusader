@@ -175,6 +175,11 @@ protected:
 		/** Steps in a row each member was far from its slot while re-forming (beyond BlockSoftHoldDistance). */
 		TArray<int32> HeldSteps;
 		/**
+		 * Steps in a row the re-forming block crawled (its soft pace under BlockCrawlShare, held by a member just short of
+		 * BlockSoftHoldDistance that could not close in: ridge_army, 17 s): at BlockMemberStuckSteps, its slow members leave it.
+		 */
+		int32 CrawlSteps = 0;
+		/**
 		 * Each member's own depth in the block (cm along the march from the block's point, the user's 5th trial of playtest
 		 * note 1: files on the move, rows at the arrival): read from where it stands every step of the march, kept from the
 		 * arrival's blend on (its slot then that depth in its file, sliding to its place).

@@ -341,10 +341,11 @@ namespace HOLFormation
 	 */
 	inline constexpr double BlockBreakDistance = 400.;
 	/**
-	 * The safety net (MV.4.4): a member holding the re-forming block this long (2 s at 20 steps a second: its HeldSteps,
+	 * The safety net (MV.4.4): a member holding the re-forming block this long (0.5 s at 20 steps a second: its HeldSteps,
 	 * farther than BlockSoftHoldDistance from its slot) no longer holds the others; it leaves the block and ends alone.
+	 * 2 s at first; 0.5 s by the user's choice (ridge_army, 2026-10-23: the block stopped ~1 s for one unit 1.7 m off).
 	 */
-	inline constexpr int32 BlockMemberStuckSteps = 40;
+	inline constexpr int32 BlockMemberStuckSteps = 10;
 	/**
 	 * The block breaks up (MV.4.4): on a plain move only, one of its
 	 * members' closest enemy or striking friend (cm; negative: none) within BlockBreakDistance.

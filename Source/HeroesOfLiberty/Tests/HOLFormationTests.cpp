@@ -952,9 +952,9 @@ bool FHOLFormationBreakAtMeleeTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a friend with only a target: not fighting"), HOLFormation::IsFightingFriend(false, false, true));
 	TestFalse(TEXT("a friend idle: not fighting"), HOLFormation::IsFightingFriend(false, false, false));
 	// The safety net: a member holding the re-forming block for 2 s no longer holds the others.
-	TestFalse(TEXT("holding just under 2 s: still in the block"), HOLFormation::IsMemberStuck(HOLFormation::BlockMemberStuckSteps - 1));
-	TestTrue(TEXT("holding 2 s: it leaves the block"), HOLFormation::IsMemberStuck(HOLFormation::BlockMemberStuckSteps));
-	TestEqual(TEXT("2 s at 20 steps a second"), HOLFormation::BlockMemberStuckSteps, 40);
+	TestFalse(TEXT("holding just under 0.5 s: still in the block"), HOLFormation::IsMemberStuck(HOLFormation::BlockMemberStuckSteps - 1));
+	TestTrue(TEXT("holding 0.5 s: it leaves the block"), HOLFormation::IsMemberStuck(HOLFormation::BlockMemberStuckSteps));
+	TestEqual(TEXT("0.5 s at 20 steps a second"), HOLFormation::BlockMemberStuckSteps, 10);
 	return true;
 }
 

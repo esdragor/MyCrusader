@@ -28,3 +28,7 @@ Script/Binds.Cache*
 
 # Files written by cooking the dedicated server (file open order); Build/<Platform>/ may later hold tracked icons
 Build/*/FileOpenOrder/
+
+# Manager (C#, M6 R2): build outputs
+Manager/**/bin/
+Manager/**/obj/

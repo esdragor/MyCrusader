@@ -181,6 +181,12 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr double LeavePathDistance = 300.0;
 	/** Steps in a row a building puts a walker back (D310) before it gets a new path: half a second. */
 	constexpr uint8 RepathBuildingPushes = 10;
+	/** A block member put back out of a rock this many steps in a row leaves its block for a path of its own (ridge_army). */
+	constexpr uint8 BlockObstaclePushes = 4;
+	/** The re-forming block crawls below this share of its pace (ridge_army: see FBlockMarch::CrawlSteps). */
+	constexpr double BlockCrawlShare = 0.25;
+	/** While its rear rows round the path's last corner, the re-forming block slows down for them to this share at most (ridge_army). */
+	constexpr double BlockCornerShare = 0.5;
 	/** Steps (3 s) a unit following its path may stay within PathStuckDistance of one spot before it gets a new path (J6b.3). */
 	constexpr uint16 PathStuckSteps = 60;
 	/** Distance (cm) a unit following its path must move away from its anchor to count as moving on (J6b.3). */
@@ -1514,8 +1520,21 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 	Height /= BlockSizes[0];
 	Centre /= BlockSizes[0];
 	const double Size = FMath::Max(Max.X - Min.X, Max.Y - Min.Y) + RowSpacing;
-	// A short move (within the block's size): straight to the places, no form-up.
-	if (FVector2D::Distance(Centre, FVector2D(EndCentre)) <= Size * HOLFormation::BlockMarchMinDistanceInDepths)
+	// A short move (within the block's size): straight to the places, no form-up; unless an obstacle stands between
+	// (ridge_army: 50 units sent across the ridge each went round its end alone and crowded there, 17 s).
+	// Each unit's own straight way (its position moved as the group's centre moves) is tried too: the centre's line passed
+	// beside the rock's end while the units on the other side walked into it.
+	const auto IsWayCut = [&](const FVector2D& From)
+	{
+		FVector ShortHit;
+		return NavData && NavData->Raycast(FVector(From, Height), FVector(From + FVector2D(EndCentre) - Centre, EndCentre.Z), ShortHit, NavData->GetDefaultQueryFilter());
+	};
+	bool bWayCut = IsWayCut(Centre);
+	for (int32 Unit = 0; Unit < Num && !bWayCut && FVector2D::Distance(Centre, FVector2D(EndCentre)) <= Size * HOLFormation::BlockMarchMinDistanceInDepths; ++Unit)
+	{
+		bWayCut = IsWayCut(Positions[Unit]);
+	}
+	if (FVector2D::Distance(Centre, FVector2D(EndCentre)) <= Size * HOLFormation::BlockMarchMinDistanceInDepths && !bWayCut)
 	{
 		return;
 	}
@@ -1556,7 +1575,7 @@ void UHOLUnitOrderProcessor::StartBlockMarch(FMassEntityManager& EntityManager, 
 	FVector Start(Centre.X, Centre.Y, Height);
 	Block.Path = FindBlockPath(Start, FVector(Start));
 	Block.Length = HOLFormation::GetLineLength(Block.Path);
-	if (Block.Length <= Size * HOLFormation::BlockMarchMinDistanceInDepths)
+	if (Block.Length <= Size * HOLFormation::BlockMarchMinDistanceInDepths && !bWayCut)
 	{
 		return;
 	}
@@ -2177,6 +2196,25 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		bool bBackStep = false;
 		bool bSlowed = false;
 		bool bArrivalBackStep = false;
+		// Its rear rows still rounding the path's last corner (ridge_army: the re-forming began at the rock's corner, the rows
+		// on the outside of the turn, far from their slots, held the block 1.5 s): nobody holds it until they are round.
+		double LastCorner = 0.;
+		for (int32 Index = 1; Index + 1 < Block.Path.Num(); ++Index)
+		{
+			LastCorner += FVector2D::Distance(Block.Path[Index - 1], Block.Path[Index]);
+		}
+		double Rear = 0.;
+		for (const double Depth : Block.Depths)
+		{
+			Rear = FMath::Min(Rear, Depth);
+		}
+		const bool bRoundingCorner = Block.Path.Num() > 2 && Block.Progress + Rear < LastCorner;
+		// Re-forming members whose slot is behind an obstacle (ridge_army: a rock between it and its slot, the keep-out holding
+		// it against the rock): they hold nobody and leave the block at once, by a path to their place.
+		TArray<bool, TInlineAllocator<64>> CutOff;
+		CutOff.Init(false, Block.Entities.Num());
+		TArray<float, TInlineAllocator<64>> Gaps;
+		Gaps.Init(0.f, Block.Entities.Num());
 		for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
 		{
 			const FMassEntityHandle Entity = Block.Entities[Unit];
@@ -2191,10 +2229,20 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			{
 				// Re-forming: a unit far behind its slot holds the block.
 				const float Gap = static_cast<float>(FVector2D::Distance(FVector2D(Location), FVector2D(Order.MarchSlot)));
+				FVector Hit;
+				if (Order.ObstaclePushes >= UE::HeroesOfLiberty::Orders::BlockObstaclePushes || (Gap > HOLFormation::BlockSoftHoldDistance && NavData
+					&& NavData->Raycast(Location, FVector(FVector2D(Order.MarchSlot), Location.Z), Hit, NavData->GetDefaultQueryFilter())))
+				{
+					CutOff[Unit] = true;
+					continue;
+				}
+				// It slows it down meanwhile, never below BlockCornerShare (the soft pace stopped it at the corner: its rear
+				// never got round, 20 s).
 				MaxGap = FMath::Max(MaxGap, Gap);
+				Gaps[Unit] = bRoundingCorner ? 0.f : Gap;
 				// Its steps holding it counted over the whole re-forming (MV.4.4: 2 s in all and it leaves the block).
-				Block.HeldSteps[Unit] += Gap > HOLFormation::BlockSoftHoldDistance ? 1 : 0;
-				bHeld |= Gap > HOLFormation::BlockSoftHoldDistance;
+				Block.HeldSteps[Unit] += Gap > HOLFormation::BlockSoftHoldDistance && !bRoundingCorner ? 1 : 0;
+				bHeld |= Gap > HOLFormation::BlockSoftHoldDistance && !bRoundingCorner;
 				// Walking back while the rows close up (measured, playtest note 1, loop 25).
 				const double BackAlong = Velocity ? FVector2D::DotProduct(FVector2D(Velocity->Value), LastDirection) : 0.;
 				if (BackAlong < -1.)
@@ -2205,6 +2253,13 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				continue;
 			}
 			Block.HeldSteps[Unit] = 0;
+			// On the march, pressed against a rock step after step (ridge_army: its file's straight way runs into it, the
+			// keep-out holding it there until the block's end): it leaves the block, a path of its own to its place.
+			if (Order.ObstaclePushes >= UE::HeroesOfLiberty::Orders::BlockObstaclePushes)
+			{
+				CutOff[Unit] = true;
+				continue;
+			}
 			if (Velocity == nullptr)
 			{
 				continue;
@@ -2225,14 +2280,39 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 					Order.Phase == EHOLMovePhase::FormUp ? TEXT("FormUp") : TEXT("Block"), FromSlot.X, FromSlot.Y, Wanted.X, Wanted.Y, Taken.X, Taken.Y);
 			}
 		}
+		// The re-forming block crawling 2 s (ridge_army: a member just short of the hold, unable to close in, kept its pace
+		// near nothing for 17 s): its members slowing it (off their slots by more than BlockLagDistance) leave it, alone.
+		const bool bCrawling = Block.bBlending && !bHeld && !bRoundingCorner && HOLFormation::GetBlockSoftPace(MaxGap) < UE::HeroesOfLiberty::Orders::BlockCrawlShare;
+		Block.CrawlSteps = bCrawling ? Block.CrawlSteps + 1 : 0;
+		if (Block.CrawlSteps >= HOLFormation::BlockMemberStuckSteps)
+		{
+			Block.CrawlSteps = 0;
+			for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
+			{
+				if (Gaps[Unit] > HOLFormation::BlockLagDistance)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sunit %d slowed the re-forming block %d steps (%.0f cm off its slot), left it after %d steps"),
+						*Block.GetTag(), Unit, HOLFormation::BlockMemberStuckSteps, Gaps[Unit], Block.Steps);
+					CutOff[Unit] = true;
+				}
+			}
+		}
 		// A member holding the re-forming block 2 s (MV.4.4, far off its slot: HeldSteps) no longer holds the others: it
 		// leaves the block and ends alone.
 		for (int32 Unit = Block.Entities.Num() - 1; Unit >= 0; --Unit)
 		{
 			const FMassEntityHandle Entity = Block.Entities[Unit];
-			if (HOLFormation::IsMemberStuck(Block.HeldSteps[Unit]))
+			if (CutOff[Unit] || HOLFormation::IsMemberStuck(Block.HeldSteps[Unit]))
 			{
-				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sunit %d held the block %d steps, left it after %d steps"), *Block.GetTag(), Unit, HOLFormation::BlockMemberStuckSteps, Block.Steps);
+				if (CutOff[Unit])
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sunit %d cut off from its slot by an obstacle, left it after %d steps"), *Block.GetTag(), Unit, Block.Steps);
+					EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).ObstaclePushes = 0;
+				}
+				else
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sunit %d held the block %d steps, left it after %d steps"), *Block.GetTag(), Unit, HOLFormation::BlockMemberStuckSteps, Block.Steps);
+				}
 				ToFinalLeg(Serial, Entity, Block.Places[Unit]);
 				Block.Entities.RemoveAt(Unit);
 				Block.Offsets.RemoveAt(Unit);
@@ -2256,7 +2336,8 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		Block.Report.MarchSteps = Block.Steps;
 		if (!bHeld)
 		{
-			const double Share = Block.bBlending ? HOLFormation::GetBlockSoftPace(MaxGap) : 1.;
+			const double Share = !Block.bBlending ? 1. : bRoundingCorner ? FMath::Max(HOLFormation::GetBlockSoftPace(MaxGap), UE::HeroesOfLiberty::Orders::BlockCornerShare)
+				: HOLFormation::GetBlockSoftPace(MaxGap);
 			Block.Progress = FMath::Min(Block.Progress + Pace * Share * DeltaTime, Block.Length);
 		}
 
@@ -3218,9 +3299,12 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 
 			// Its way crosses a building the navmesh did not show yet when its path was found (S7's first paths, a building
 			// placed): put back at the wall step after step (D310), it gets a new path from where it stands.
-			if ((Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg) && Order.BuildingPushes >= RepathBuildingPushes)
+			// The same against a rock or a trunk (ridge_army): its straight way runs into it.
+			if ((Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg)
+				&& (Order.BuildingPushes >= RepathBuildingPushes || Order.ObstaclePushes >= RepathBuildingPushes))
 			{
 				Order.BuildingPushes = 0;
+				Order.ObstaclePushes = 0;
 				FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
 				Request.OrderSerial = Order.OrderSerial;
 				Request.Start = Transform.GetTransform().GetLocation();
@@ -3254,6 +3338,17 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				else if (++Order.StuckSteps >= PathStuckSteps)
 				{
 					Order.StuckSteps = 0;
+					// Near its slot (ridge_army: a place squeezed between a rock and the rows standing already, walked round
+					// for 15 s, a new path each 3 s): it stands where it is, as the final leg does near a slot it cannot reach.
+					if (FVector2f::Distance(Here, FVector2f(FVector2D(Order.Slot))) <= StuckCountDistance)
+					{
+						StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+						Order.StuckSteps = static_cast<uint16>(FMath::Max(StuckLimit, 1));
+						Order.LastSlotDistance = 0.f;
+						Order.ObstaclePushes = 0;
+						Order.BuildingPushes = 0;
+						continue;
+					}
 					FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
 					Request.OrderSerial = Order.OrderSerial;
 					Request.Start = Transform.GetTransform().GetLocation();

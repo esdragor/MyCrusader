@@ -5,6 +5,8 @@
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMeshActor.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
@@ -14,6 +16,7 @@
 #include "MassMovementFragments.h"
 #include "MassNavMeshNavigationFragments.h"
 #include "MassNavigationFragments.h"
+#include "NavigationSystem.h"
 #include "Misc/ScopeExit.h"
 #include "Simulation/HOLAvoidanceHoldFragments.h"
 #include "Simulation/HOLAvoidRules.h"
@@ -1739,6 +1742,17 @@ namespace UE::HeroesOfLiberty::Simulation
 	/** Side (cm) of the cells of the keep-out's grid, and cells at most (a larger side past that). */
 	constexpr double KeepOutCellSize = 2000.;
 	constexpr int32 KeepOutMaxCells = 4096;
+	/**
+	 * The map's fixed obstacles (ridge_army): a static mesh wider than this (cm) is the ground, not an obstacle; one whose
+	 * bottom is higher than this (cm) stands above the units' heads (the grove's crowns, from 4.75 m).
+	 */
+	constexpr double ObstacleMaxSize = 5000.;
+	constexpr double ObstacleMaxBottom = 250.;
+	/** A body in an obstacle is put back onto the navmesh's nearest point within this reach across (cm) and height. */
+	constexpr double ObstacleProbeReach = 400.;
+	constexpr double ObstacleProbeHeight = 60.;
+	/** A put back of less than this (cm) is none: a body on the navmesh's edge stays where it is. */
+	constexpr double ObstacleSlack = 1.;
 
 	int32 KeepOutEnabled = 1;
 	FAutoConsoleVariableRef CVarKeepOut(TEXT("hol.Units.KeepOut"), KeepOutEnabled,
@@ -1747,6 +1761,7 @@ namespace UE::HeroesOfLiberty::Simulation
 
 std::atomic<int64> UHOLFootprintKeepOutProcessor::NumPushedOut{ 0 };
 std::atomic<int64> UHOLFootprintKeepOutProcessor::NumEasedOut{ 0 };
+std::atomic<int64> UHOLFootprintKeepOutProcessor::NumPutOutOfObstacles{ 0 };
 
 UHOLFootprintKeepOutProcessor::UHOLFootprintKeepOutProcessor()
 	: EntityQuery(*this)
@@ -1798,7 +1813,34 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		const FVector2D Margin(KeepOutMaxRadius);
 		Footprint.Reach = FBox2D(Footprint.Centre - Half - Margin, Footprint.Centre + Half + Margin);
 	}
-	if (Footprints.IsEmpty())
+	// The map's fixed obstacles, once per world (ridge_army: a block's files walked into the ridge's rocks, nothing held
+	// them out but their paths). The navmesh, cut by them, is the rule: a body whose centre is off it is in one.
+	if (ObstacleWorld.Get() != World)
+	{
+		ObstacleWorld = World;
+		ObstacleReaches.Reset();
+		ObstacleBounds = FBox2D(ForceInit);
+		for (TActorIterator<AStaticMeshActor> It(World); It; ++It)
+		{
+			const UStaticMeshComponent* Mesh = It->GetStaticMeshComponent();
+			if (!Mesh || !Mesh->CanEverAffectNavigation() || !Mesh->IsCollisionEnabled())
+			{
+				continue;
+			}
+			const FBox Box = Mesh->Bounds.GetBox();
+			if (Box.GetSize().X > ObstacleMaxSize || Box.GetSize().Y > ObstacleMaxSize || Box.Min.Z > ObstacleMaxBottom)
+			{
+				continue;
+			}
+			const FBox2D Reach(FVector2D(Box.Min) - FVector2D(KeepOutMaxRadius), FVector2D(Box.Max) + FVector2D(KeepOutMaxRadius));
+			ObstacleReaches.Add(Reach);
+			ObstacleBounds += Reach;
+		}
+		UE_LOG(LogHOLSimulation, Display, TEXT("Keep-out: %d fixed obstacles of the map"), ObstacleReaches.Num());
+	}
+	const UNavigationSystemV1* NavSystem = ObstacleReaches.IsEmpty() ? nullptr : FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
+	if (Footprints.IsEmpty() && NavData == nullptr)
 	{
 		return;
 	}
@@ -1808,8 +1850,13 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	{
 		GridBounds += Footprint.Reach;
 	}
+	if (Footprints.IsEmpty())
+	{
+		// No building: an empty cell no unit is in.
+		GridBounds = FBox2D(FVector2D(TNumericLimits<double>::Max()), FVector2D(TNumericLimits<double>::Max()));
+	}
 	double CellSize = KeepOutCellSize;
-	const FVector2D Extent = GridBounds.GetSize();
+	const FVector2D Extent = Footprints.IsEmpty() ? FVector2D(1.) : GridBounds.GetSize();
 	while (FMath::CeilToDouble(Extent.X / CellSize) * FMath::CeilToDouble(Extent.Y / CellSize) > KeepOutMaxCells)
 	{
 		CellSize *= 2.;
@@ -1867,6 +1914,10 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	{
 		bool bMoved = false;
 		bPutBack = false;
+		if (Footprints.IsEmpty())
+		{
+			return false;
+		}
 		for (int32 Pass = 0; Pass < KeepOutPasses; ++Pass)
 		{
 			bool bMovedThisPass = false;
@@ -1920,7 +1971,27 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	};
 
 	// One thread: a light loop (S7, 2 000 units and 32 buildings: ~0.11 ms a step, as much as on the workers).
-	EntityQuery.ForEachEntityChunk(Context, [this, PushOut, Clearance, VisualGap](FMassExecutionContext& Context)
+	// Out of the map's fixed obstacles (ridge_army): a body near one whose centre is off the navmesh is put back on its
+	// nearest point (the navmesh is eroded by the units' radius: its body then touches the rock at most). Only near them:
+	// the buildings keep their own rule above (a crowd against a wall touches it, closer than the navmesh's edge).
+	const auto PutOutOfObstacles = [this, NavSystem, NavData](FVector2D& Position, const double Z)
+	{
+		if (NavData == nullptr || !ObstacleBounds.IsInsideOrOn(Position))
+		{
+			return false;
+		}
+		const bool bNear = ObstacleReaches.ContainsByPredicate([&Position](const FBox2D& Reach) { return Reach.IsInsideOrOn(Position); });
+		FNavLocation OnNav;
+		if (!bNear || !NavSystem->ProjectPointToNavigation(FVector(Position, Z), OnNav, FVector(ObstacleProbeReach, ObstacleProbeReach, ObstacleProbeHeight), NavData)
+			|| FVector2D::Distance(FVector2D(OnNav.Location), Position) <= ObstacleSlack)
+		{
+			return false;
+		}
+		Position = FVector2D(OnNav.Location);
+		return true;
+	};
+
+	EntityQuery.ForEachEntityChunk(Context, [this, PushOut, PutOutOfObstacles, Clearance, VisualGap](FMassExecutionContext& Context)
 	{
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
@@ -1929,6 +2000,7 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		const TConstArrayView<FHOLCombatFragment> Combats = Context.GetFragmentView<FHOLCombatFragment>();
 		int64 Pushed = 0;
 		int64 Eased = 0;
+		int64 OutOfObstacles = 0;
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			FTransform& Transform = Transforms[EntityIt].GetMutableTransform();
@@ -1970,6 +2042,19 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 				Transform.SetLocation(FVector(Position.X, Position.Y, Location.Z));
 				++(bPutBack ? Pushed : Eased);
 			}
+			// Out of a rock or a trunk (ridge_army), after the buildings: never into one of them.
+			if (!bPutBack && PutOutOfObstacles(Position, Location.Z))
+			{
+				UE_CLOG(KeepOutEnabled == 2, LogHOLSimulation, Display, TEXT("Keep-out: #%u at (%.0f, %.0f) put out of a fixed obstacle at (%.0f, %.0f)"),
+					States[EntityIt].UnitId, Location.X, Location.Y, Position.X, Position.Y);
+				Transform.SetLocation(FVector(Position.X, Position.Y, Location.Z));
+				++OutOfObstacles;
+				Order.ObstaclePushes = static_cast<uint8>(FMath::Min<int32>(Order.ObstaclePushes + 1, MAX_uint8));
+			}
+			else if (Order.ObstaclePushes != 0)
+			{
+				Order.ObstaclePushes = 0;
+			}
 			// A walker put back step after step: its way crosses the building, the order processor finds it a new path.
 			if (bMoved && (Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg))
 			{
@@ -1987,6 +2072,10 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		if (Eased > 0)
 		{
 			NumEasedOut += Eased;
+		}
+		if (OutOfObstacles > 0)
+		{
+			NumPutOutOfObstacles += OutOfObstacles;
 		}
 	});
 }

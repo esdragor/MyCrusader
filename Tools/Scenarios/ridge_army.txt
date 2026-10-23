@@ -1,0 +1,20 @@
+# Armée derrière la crête : 50 Hommes d'armes entre le centre et la crête de rochers, envoyés juste derrière elle
+# Chantier déplacement (MovementInProgress.md). Plain, un joueur. Positions dans le repère du centre du joueur (X vers le
+# milieu de la carte) : la crête (trois rochers soudés, ~20 m de large sur 5 m d'épaisseur, create_match_map.py) est à
+# 30 m devant le centre (X = 3000, Y de -1000 à +1000). L'armée naît à mi-chemin (X = 1600), l'ordre la pose à 20 m
+# derrière la crête (X = 5000, Y = 0) : le chemin doit en faire le tour.
+hol.Units.SpawnSeed 210
+hol.Camera.FocusNear 1600 0
+frames 2
+hol.Units.SpawnHere 50 ManAtArms 0 600
+waitunits 50
+frames 10
+hol.Select.Own
+waitlog Selection: 50 units (own)
+hol.Camera.FocusNear 3000 0
+frames 3
+hol.Select.OrderNear 5000 0
+mark Ridge: ordered
+note 50 Hommes d'armes nés entre le centre et la crête, envoyés 20 m derrière elle (la caméra regarde la crête).
+note Attendu : l'armée fait le tour des rochers par un côté ou les deux, sans s'y coincer, et se range derrière.
+note « Relancer » rejoue tout.

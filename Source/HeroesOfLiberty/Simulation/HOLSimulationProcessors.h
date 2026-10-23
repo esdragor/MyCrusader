@@ -121,6 +121,8 @@ public:
 	static int64 GetNumPushedOut() { return NumPushedOut.load(); }
 	/** Units standing still eased out of a visible wall (EtapeDefini C.1), apart from the bodies put back (C.2). */
 	static int64 GetNumEasedOut() { return NumEasedOut.load(); }
+	/** Bodies put back out of a fixed obstacle of the map (a rock, a trunk: ridge_army) since the program started. */
+	static int64 GetNumPutOutOfObstacles() { return NumPutOutOfObstacles.load(); }
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -149,8 +151,17 @@ protected:
 	TArray<int32> CellStarts;
 	TArray<int32> CellFootprints;
 
+	/**
+	 * The map's fixed obstacles (rocks, trunks: the static meshes that cut the navmesh, gathered once per world), each one's
+	 * bounds widened by the largest body: a unit inside one of them is held on the navmesh, nowhere else (ridge_army).
+	 */
+	TArray<FBox2D> ObstacleReaches;
+	FBox2D ObstacleBounds;
+	TWeakObjectPtr<const UWorld> ObstacleWorld;
+
 	static std::atomic<int64> NumPushedOut;
 	static std::atomic<int64> NumEasedOut;
+	static std::atomic<int64> NumPutOutOfObstacles;
 };
 
 /**
