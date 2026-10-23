@@ -891,6 +891,12 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   mycrusader-3c (J5c, `build-red`) cherche pourquoi `-Parts build` est rouge sur `main` (suspect : 6ab675c, détour sans
   contact) : prévenue de ce que touche MV.4 (`AvoidBodies` Goal, `ShouldBreakBlock`, `AidRadius`). mycrusader-e8
   fusionnera MV.4 dans `victory-v1` avant d'avancer `main`.
+- **Foules ennemies (« go » de l'utilisateur)** : la piste A du diagnostic (le bloc évite le bloc) n'a jamais été
+  tranchée par l'utilisateur, et le diagnostic date d'avant le mur ennemi contourné, le détour sans contact et MV.2.
+  Essai `crowds_cross` sur l'état actuel (Elrond = `main` 8021c71) lancé avant toute question.
+- **Essai de l'utilisateur sur `crowds_cross`** : « c'est bon ». Les correctifs déjà dans `main` (mur ennemi contourné,
+  détour sans contact, MV.2) suffisent : **cas clos sans code** (piste A abandonnée). EtapeDefini : ligne des foules
+  retirée. `main` avancé par mycrusader-e8 à 4541266 (Victory V1, accord de cette session).
 
 ### Reprise exacte (MV.4)
 
@@ -903,7 +909,7 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   0b11c55e). Elrond (`mv4-diag`) = `main` 8021c71.
 
 À faire, dans l'ordre :
-1. Foules ennemies qui se croisent (`crowds_cross`, piste A du diagnostic : le bloc évite le bloc), test rouge d'abord.
+1. ~~Foules ennemies qui se croisent~~ : clos à l'essai sans code (« c'est bon »).
 2. (ligne EtapeDefini à part) Unité apparue ou poussée sur un rocher : y reste coincée (vue dans `melee_reinforce`).
 3. MV.6 : décisions au GDD (MV.2, MV.5, MV.4 : détour sans contact, renforts, porter secours ; « tenir le rang »
    essayé et refusé au profit de la vague de J7c.4), mesures S1-S5, clôture.
