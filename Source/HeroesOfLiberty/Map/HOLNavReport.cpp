@@ -175,6 +175,8 @@ namespace
 		TSet<uint32> InsideNow;
 		/** UHOLFootprintKeepOutProcessor's count when the watch started. */
 		int64 PushedOutAtStart = 0;
+		/** Units standing still eased out of a visible wall (C.1), counted apart (C.2). */
+		int64 EasedOutAtStart = 0;
 		/** UHOLUnitOrderProcessor's new paths for a building in the way, when the watch started. */
 		int64 RepathsAtStart = 0;
 	};
@@ -328,9 +330,10 @@ namespace
 			ByActivity.Add(FString::Printf(TEXT("%s %.0f"), *Pair.Key, Pair.Value));
 		}
 		ByActivity.Sort();
-		UE_LOG(LogHOLMatch, Display, TEXT("Footprint watch: %lld steps, %lld samples, closest body gap %.0f cm (%s); bodies in a footprint: %lld unit-steps, %d units; closest by activity: %s; put back out: %lld, new paths: %lld"),
+		UE_LOG(LogHOLMatch, Display, TEXT("Footprint watch: %lld steps, %lld samples, closest body gap %.0f cm (%s); bodies in a footprint: %lld unit-steps, %d units; closest by activity: %s; eased out of a visible wall: %lld; put back out: %lld, new paths: %lld"),
 			Watch.Steps, Watch.Samples, Watch.Samples > 0 ? Watch.Closest : 0., *Watch.ClosestWhat, Watch.Inside, Watch.UnitsInside.Num(),
-			*FString::Join(ByActivity, TEXT(", ")), UHOLFootprintKeepOutProcessor::GetNumPushedOut() - Watch.PushedOutAtStart,
+			*FString::Join(ByActivity, TEXT(", ")), UHOLFootprintKeepOutProcessor::GetNumEasedOut() - Watch.EasedOutAtStart,
+			UHOLFootprintKeepOutProcessor::GetNumPushedOut() - Watch.PushedOutAtStart,
 			UHOLUnitOrderProcessor::GetTotalBuildingRepaths() - Watch.RepathsAtStart);
 	}
 
@@ -366,6 +369,7 @@ namespace
 					FFootprintWatch* Watch = FootprintWatches.Add_GetRef(MakeUnique<FFootprintWatch>()).Get();
 					Watch->World = World;
 					Watch->PushedOutAtStart = UHOLFootprintKeepOutProcessor::GetNumPushedOut();
+					Watch->EasedOutAtStart = UHOLFootprintKeepOutProcessor::GetNumEasedOut();
 					Watch->RepathsAtStart = UHOLUnitOrderProcessor::GetTotalBuildingRepaths();
 					Watch->StepHandle = Simulation->GetOnStepEnded().AddLambda([Watch](int64) { WatchFootprints(*Watch); });
 					UE_LOG(LogHOLMatch, Display, TEXT("Footprint watch: on"));
