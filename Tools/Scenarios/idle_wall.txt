@@ -1,0 +1,50 @@
+# Unités arrêtées hors du mur visible : un soldat bousculé contre une maison en sort, un marcheur garde « une épaule » (EtapeDefini C)
+# Configuration par défaut (un joueur, Plain). Positions dans le repère du centre du joueur (comme site_push).
+hol.Cheat.Resources 5000
+# Deux maisons collées, bâties d'un coup, et une troisième posée, à bâtir.
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 150
+waitunits 4
+hol.Build.PlaceNear House -1400 2000
+waitlog Construction: slot 0 placed House
+hol.Build.PlaceNear House -1400 2800
+waitlog Construction: slot 0 placed House
+hol.Build.Instant 1
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Camera.FocusNear -1400 2400
+frames 2
+hol.Select.OrderNear -1400 2000
+waitlog Construction: slot 0 finished House
+hol.Select.OrderNear -1400 2800
+waitlog Construction: slot 0 finished House
+hol.Build.Instant 0
+# Les bâtisseurs de la 2e maison finissent entre les deux (au joint) : renvoyés devant le centre, pour qu'on les retrouve au repos.
+hol.Camera.FocusNear -1300 0
+frames 2
+hol.Select.OrderNear -1300 0
+wait 2
+waitidle 4
+# La maison à bâtir, et des soldats debout dessus (ils sortent au premier coup, puis les bâtisseurs les bousculent).
+hol.UI.Key Escape 0 0.1
+wait 0.2
+hol.Select.Report
+waitlog Selection report: selected none
+hol.Build.PlaceNear House -1400 800
+waitlog Construction: slot 0 placed House
+hol.Camera.FocusNear -1400 800
+frames 2
+hol.Units.SpawnHere 2 ManAtArms 0 120
+hol.Units.SpawnHere 2 Spearman 0 120
+hol.Units.SpawnHere 2 Archer 0 120
+waitunits 10
+hol.Camera.FocusNear -1300 0
+frames 2
+hol.Select.BoxGround -16500 -400 -15700 300
+waitlog Selection: 4 units (own)
+hol.Camera.FocusNear -1400 1600
+frames 5
+note Paysans sélectionnés : clic droit sur la fondation. Les soldats sortent ; ceux que les bâtisseurs bousculent ensuite ressortent du mur doucement.
+note Envoie un soldat se coller contre une maison, puis laisse-le : arrêté, il glisse hors du mur visible (pas plus d'une seconde).
+note Fais passer un Paysan entre les deux maisons collées : en marche, il garde « une épaule » dans les murs et passe toujours.

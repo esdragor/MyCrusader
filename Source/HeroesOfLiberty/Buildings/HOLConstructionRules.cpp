@@ -4,6 +4,7 @@
 
 #include "Algo/StableSort.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
 
 FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
@@ -560,4 +561,138 @@ FVector2D HOLConstruction::PushOutOfFootprint(const FBox2D& Footprint, const dou
 	const double ToX = FMath::IsNearlyZero(Direction.X) ? TNumericLimits<double>::Max() : Half.X / FMath::Abs(Direction.X);
 	const double ToY = FMath::IsNearlyZero(Direction.Y) ? TNumericLimits<double>::Max() : Half.Y / FMath::Abs(Direction.Y);
 	return Centre + Direction * FMath::Min(ToX, ToY);
+}
+
+double HOLConstruction::GetKeepOutInsideGap(const double Radius, const double Clearance, const double VisualGap)
+{
+	// The farther of the two, its whole body beyond it, and 1 cm: the rounding does not leave it a hair short.
+	return FMath::Max(Clearance, VisualGap) + Radius + 1.0;
+}
+
+bool HOLConstruction::KeepOutOfBody(const FVector2D& HalfExtent, const double InsideGap, const double OutsideGap, FVector2D& Local)
+{
+	const FVector2D Outside(FMath::Abs(Local.X) - HalfExtent.X, FMath::Abs(Local.Y) - HalfExtent.Y);
+	if (Outside.X <= 0. && Outside.Y <= 0.)
+	{
+		// Its centre inside: out by the nearest side.
+		if (Outside.X >= Outside.Y)
+		{
+			Local.X = (Local.X >= 0. ? 1. : -1.) * (HalfExtent.X + InsideGap);
+		}
+		else
+		{
+			Local.Y = (Local.Y >= 0. ? 1. : -1.) * (HalfExtent.Y + InsideGap);
+		}
+		return true;
+	}
+	// Its centre outside, its body too near: away from the body's nearest point.
+	const FVector2D Nearest(FMath::Clamp(Local.X, -HalfExtent.X, HalfExtent.X), FMath::Clamp(Local.Y, -HalfExtent.Y, HalfExtent.Y));
+	const FVector2D Away = Local - Nearest;
+	const double Distance = Away.Size();
+	if (Distance >= OutsideGap - UE_KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+	Local = Nearest + Away / Distance * OutsideGap;
+	return true;
+}
+
+bool HOLConstruction::StandsClearOfVisibleWall(const EHOLUnitActivity Activity, const EHOLMovePhase Phase, const bool bFighting)
+{
+	return Activity == EHOLUnitActivity::Idle && Phase == EHOLMovePhase::None && !bFighting;
+}
+
+bool HOLConstruction::KeepOutOfVisibleWall(const FVector2D& HalfExtent, const double InsideGap, const double OutsideGap, const double Radius,
+	const double VisualGap, const bool bStandsStill, const double MaxStep, FVector2D& Local, bool* bOutEased)
+{
+	bool bMoved = KeepOutOfBody(HalfExtent, InsideGap, OutsideGap, Local);
+	if (bOutEased)
+	{
+		*bOutEased = false;
+	}
+	const double WallGap = VisualGap + Radius + 1.0;
+	if (!bStandsStill || WallGap <= OutsideGap)
+	{
+		return bMoved;
+	}
+	// Out of the body now: away from its nearest point, to the visible wall and its whole radius, a step at a time.
+	const FVector2D Nearest(FMath::Clamp(Local.X, -HalfExtent.X, HalfExtent.X), FMath::Clamp(Local.Y, -HalfExtent.Y, HalfExtent.Y));
+	const FVector2D Away = Local - Nearest;
+	const double Distance = Away.Size();
+	if (Distance >= WallGap - UE_KINDA_SMALL_NUMBER || Distance <= UE_KINDA_SMALL_NUMBER)
+	{
+		return bMoved;
+	}
+	const double Move = MaxStep > 0. ? FMath::Min(WallGap - Distance, MaxStep) : WallGap - Distance;
+	Local += Away / Distance * Move;
+	if (bOutEased)
+	{
+		*bOutEased = !bMoved;
+	}
+	return true;
+}
+
+bool HOLConstruction::EaseOutOfVisibleWalls(const TConstArrayView<FWallBody> Bodies, const double Radius, const double VisualGap, const double MaxStep,
+	FVector2D& Position)
+{
+	const double WallGap = VisualGap + Radius + 1.0;
+	if (VisualGap <= 0.)
+	{
+		return false;
+	}
+	// The way out of Body's wall (world), or false when Point is not in it (or its centre in the body: the guard's).
+	const auto WayOut = [WallGap](const FWallBody& Body, const FVector2D& Point, FVector2D& OutAway, double& OutDistance)
+	{
+		const FVector2D Offset = Point - Body.Centre;
+		const FVector2D Local(Offset.X * Body.Cos + Offset.Y * Body.Sin, -Offset.X * Body.Sin + Offset.Y * Body.Cos);
+		const FVector2D Nearest(FMath::Clamp(Local.X, -Body.HalfExtent.X, Body.HalfExtent.X), FMath::Clamp(Local.Y, -Body.HalfExtent.Y, Body.HalfExtent.Y));
+		const FVector2D Away = Local - Nearest;
+		OutDistance = Away.Size();
+		if (OutDistance >= WallGap - UE_KINDA_SMALL_NUMBER)
+		{
+			return false;
+		}
+		const FVector2D Dir = OutDistance > UE_KINDA_SMALL_NUMBER ? Away / OutDistance : FVector2D::ZeroVector;
+		OutAway = FVector2D(Dir.X * Body.Cos - Dir.Y * Body.Sin, Dir.X * Body.Sin + Dir.Y * Body.Cos);
+		return true;
+	};
+	int32 InWall = INDEX_NONE;
+	FVector2D Away = FVector2D::ZeroVector;
+	double Distance = 0.;
+	for (int32 Index = 0; Index < Bodies.Num(); ++Index)
+	{
+		FVector2D BodyAway;
+		double BodyDistance = 0.;
+		if (!WayOut(Bodies[Index], Position, BodyAway, BodyDistance))
+		{
+			continue;
+		}
+		// In two walls at once, or its centre in a body: stays.
+		if (InWall != INDEX_NONE || BodyAway.IsZero())
+		{
+			return false;
+		}
+		InWall = Index;
+		Away = BodyAway;
+		Distance = BodyDistance;
+	}
+	if (InWall == INDEX_NONE)
+	{
+		return false;
+	}
+	// Its way out (the step and the end) clear of every other wall, or it stays.
+	const double Move = MaxStep > 0. ? FMath::Min(WallGap - Distance, MaxStep) : WallGap - Distance;
+	const FVector2D Stepped = Position + Away * Move;
+	const FVector2D Out = Position + Away * (WallGap - Distance);
+	for (int32 Index = 0; Index < Bodies.Num(); ++Index)
+	{
+		FVector2D Unused;
+		double Unused2 = 0.;
+		if (Index != InWall && (WayOut(Bodies[Index], Stepped, Unused, Unused2) || WayOut(Bodies[Index], Out, Unused, Unused2)))
+		{
+			return false;
+		}
+	}
+	Position = Stepped;
+	return true;
 }

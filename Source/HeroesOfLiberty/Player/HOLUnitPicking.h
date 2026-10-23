@@ -16,6 +16,14 @@ struct FHOLPickCandidate
 	double Depth = 0.;
 };
 
+/** A unit as drawn, with its type and whether it is the player's own: the double click (A.1) takes its type. */
+struct FHOLTypedPickCandidate
+{
+	FHOLPickCandidate Pick;
+	FName TypeName;
+	bool bOwn = false;
+};
+
 /**
  * Pure rules of the selection of units on the screen (J4, D288), tested on their own: a click takes the unit whose
  * drawn body holds the cursor, the one in front when bodies overlap; a box takes the units whose body's middle is in it.
@@ -52,6 +60,23 @@ namespace HOLUnitPicking
 
 	/** True when a press at Start released at End is a box, not a click. */
 	HEROESOFLIBERTY_API bool IsBox(const FVector2D& Start, const FVector2D& End);
+
+	/** Two clicks closer in time than this (seconds, Windows' default) make a double click (A.1). */
+	inline constexpr double DoubleClickSeconds = 0.5;
+
+	/**
+	 * True when a click at Second (pixels, time SecondTime) ends a double click begun at First: soon enough and no farther
+	 * than a box's threshold. FirstTime negative: no click before.
+	 */
+	HEROESOFLIBERTY_API bool IsDoubleClick(double FirstTime, const FVector2D& First, double SecondTime, const FVector2D& Second);
+
+	/**
+	 * A double click (or Ctrl + click, as AoE4) on the candidate Clicked (A.1): every one of the player's own candidates of
+	 * its type whose body's middle is on the screen (0 to ViewportSize), Clicked first. Clicked not the player's own:
+	 * itself alone. Clicked not a candidate: none.
+	 */
+	HEROESOFLIBERTY_API void PickSameTypeOnScreen(TConstArrayView<FHOLTypedPickCandidate> Candidates, int32 Clicked, const FVector2D& ViewportSize,
+		TArray<int32>& OutIndices);
 
 	/**
 	 * The "." key (D30, J5b): of the idle workers (identifiers in increasing order), the first one after Last, or the

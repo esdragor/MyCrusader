@@ -96,6 +96,38 @@ namespace HOLUnitPicking
 		return FVector2D::Distance(Start, End) > BoxThreshold;
 	}
 
+	bool IsDoubleClick(const double FirstTime, const FVector2D& First, const double SecondTime, const FVector2D& Second)
+	{
+		return FirstTime >= 0. && SecondTime >= FirstTime && SecondTime - FirstTime <= DoubleClickSeconds && !IsBox(First, Second);
+	}
+
+	void PickSameTypeOnScreen(TConstArrayView<FHOLTypedPickCandidate> Candidates, const int32 Clicked, const FVector2D& ViewportSize,
+		TArray<int32>& OutIndices)
+	{
+		OutIndices.Reset();
+		if (!Candidates.IsValidIndex(Clicked))
+		{
+			return;
+		}
+		OutIndices.Add(Clicked);
+		const FHOLTypedPickCandidate& Picked = Candidates[Clicked];
+		if (!Picked.bOwn)
+		{
+			return;
+		}
+		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+		{
+			const FHOLTypedPickCandidate& Candidate = Candidates[Index];
+			// On the screen: the body's middle, as a box takes it (PickInBox).
+			const FVector2D Middle = (Candidate.Pick.Foot + Candidate.Pick.Head) * 0.5;
+			if (Index != Clicked && Candidate.bOwn && Candidate.TypeName == Picked.TypeName
+				&& Middle.X >= 0. && Middle.X <= ViewportSize.X && Middle.Y >= 0. && Middle.Y <= ViewportSize.Y)
+			{
+				OutIndices.Add(Index);
+			}
+		}
+	}
+
 	uint32 NextInCycle(const TConstArrayView<uint32> SortedIds, const uint32 Last)
 	{
 		for (const uint32 Id : SortedIds)

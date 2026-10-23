@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
@@ -1682,6 +1683,8 @@ namespace UE::HeroesOfLiberty::Simulation
 	constexpr double KeepOutMaxRadius = 200.;
 	/** Gap (cm) a body put back is left from the wall: the rounding of the move back does not leave it a hair inside. */
 	constexpr double KeepOutSlack = 1.;
+	/** EtapeDefini C.1: a unit standing still goes out of a visible wall this much a step at most (200 cm/s at 20 steps a second). */
+	constexpr double KeepOutWallStep = 10.;
 	/** Side (cm) of the cells of the keep-out's grid, and cells at most (a larger side past that). */
 	constexpr double KeepOutCellSize = 2000.;
 	constexpr int32 KeepOutMaxCells = 4096;
@@ -1692,6 +1695,7 @@ namespace UE::HeroesOfLiberty::Simulation
 }
 
 std::atomic<int64> UHOLFootprintKeepOutProcessor::NumPushedOut{ 0 };
+std::atomic<int64> UHOLFootprintKeepOutProcessor::NumEasedOut{ 0 };
 
 UHOLFootprintKeepOutProcessor::UHOLFootprintKeepOutProcessor()
 	: EntityQuery(*this)
@@ -1710,6 +1714,7 @@ void UHOLFootprintKeepOutProcessor::ConfigureQueries(const TSharedRef<FMassEntit
 	EntityQuery.AddRequirement<FAgentRadiusFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
 
@@ -1800,14 +1805,79 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		}
 	}
 
+	// From a body to the navmesh's edge (D310) and to the visible wall (D324).
+	const double Clearance = UHOLBuildingSettings::GetBodyClearance();
+	const double VisualGap = FMath::Max(0., static_cast<double>(UHOLBuildingSettings::GetBodyInset() - UHOLBuildingSettings::GetVisualInset()));
+
+	// A point put out of the bodies near it (a few passes: two neighbours); then, if no body was put back, a unit standing
+	// still out of their visible walls, one bounded step a step, unless wedged between two (C.3). bPutBack: a body put back (C.2).
+	const auto PushOut = [this, GetCell, VisualGap](FVector2D& Position, const double Radius, const double KeepInside, const double Keep, const bool bStill,
+		bool& bPutBack)
+	{
+		bool bMoved = false;
+		bPutBack = false;
+		for (int32 Pass = 0; Pass < KeepOutPasses; ++Pass)
+		{
+			bool bMovedThisPass = false;
+			if (!GridBounds.IsInsideOrOn(Position))
+			{
+				break;
+			}
+			const FIntPoint Cell = GetCell(Position);
+			const int32 CellIndex = Cell.Y * GridSize.X + Cell.X;
+			for (int32 Item = CellStarts[CellIndex]; Item < CellStarts[CellIndex + 1]; ++Item)
+			{
+				const FFootprint& Footprint = Footprints[CellFootprints[Item]];
+				if (!Footprint.Reach.IsInsideOrOn(Position))
+				{
+					continue;
+				}
+				// In the footprint's frame.
+				const FVector2D Offset = Position - Footprint.Centre;
+				FVector2D Local(Offset.X * Footprint.Cos + Offset.Y * Footprint.Sin, -Offset.X * Footprint.Sin + Offset.Y * Footprint.Cos);
+				if (!HOLConstruction::KeepOutOfBody(Footprint.HalfExtent, KeepInside, Keep, Local))
+				{
+					continue;
+				}
+				bPutBack = true;
+				Position = Footprint.Centre + FVector2D(Local.X * Footprint.Cos - Local.Y * Footprint.Sin, Local.X * Footprint.Sin + Local.Y * Footprint.Cos);
+				bMovedThisPass = true;
+			}
+			bMoved |= bMovedThisPass;
+			if (!bMovedThisPass)
+			{
+				break;
+			}
+		}
+		if (bMoved || !bStill || !GridBounds.IsInsideOrOn(Position))
+		{
+			return bMoved;
+		}
+		// The walls near it, all at once: out of one alone, never into another (C.3).
+		TArray<HOLConstruction::FWallBody, TInlineAllocator<8>> Near;
+		const FIntPoint Cell = GetCell(Position);
+		const int32 CellIndex = Cell.Y * GridSize.X + Cell.X;
+		for (int32 Item = CellStarts[CellIndex]; Item < CellStarts[CellIndex + 1]; ++Item)
+		{
+			const FFootprint& Footprint = Footprints[CellFootprints[Item]];
+			if (Footprint.Reach.ExpandBy(KeepOutMaxRadius).IsInsideOrOn(Position))
+			{
+				Near.Add({ Footprint.Centre, Footprint.HalfExtent, Footprint.Cos, Footprint.Sin });
+			}
+		}
+		return HOLConstruction::EaseOutOfVisibleWalls(Near, Radius, VisualGap, KeepOutWallStep, Position);
+	};
+
 	// One thread: a light loop (S7, 2 000 units and 32 buildings: ~0.11 ms a step, as much as on the workers).
-	EntityQuery.ForEachEntityChunk(Context, [this, GetCell](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [this, PushOut, Clearance, VisualGap](FMassExecutionContext& Context)
 	{
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
 		const TConstArrayView<FAgentRadiusFragment> AgentRadii = Context.GetFragmentView<FAgentRadiusFragment>();
 		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		const TConstArrayView<FHOLCombatFragment> Combats = Context.GetFragmentView<FHOLCombatFragment>();
 		int64 Pushed = 0;
+		int64 Eased = 0;
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			FTransform& Transform = Transforms[EntityIt].GetMutableTransform();
@@ -1817,72 +1887,39 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 			// against a building touches it. Not the clearance: on the turned buildings of S7 the navmesh's cells leave the
 			// walkers' paths 11 cm from the wall, a keep-out at 25 cm would put them back at every step.
 			const double Keep = AgentRadii[EntityIt].Radius + KeepOutSlack;
-			bool bMoved = false;
-			for (int32 Pass = 0; Pass < KeepOutPasses; ++Pass)
+			// Its centre inside (a site started under it, J6a.1): out beyond the navmesh's margin and the visible wall.
+			const double Radius = AgentRadii[EntityIt].Radius;
+			const double KeepInside = HOLConstruction::GetKeepOutInsideGap(Radius, Clearance, VisualGap);
+			// Standing still (EtapeDefini C.1): wholly out of the visible wall, a step at a time; a walker, a worker or a
+			// fighter keeps D324's shoulder.
+			FHOLMoveOrderFragment& Order = Orders[EntityIt];
+			const FHOLCombatFragment* Combat = Combats.Num() > 0 ? &Combats[EntityIt] : nullptr;
+			const bool bFighting = Combat && (Combat->Target.IsSet() || Combat->TargetBuilding.IsValid() || Combat->bAttacking);
+			const bool bStill = HOLConstruction::StandsClearOfVisibleWall(States[EntityIt].Activity, Order.Phase, bFighting);
+			bool bPutBack = false;
+			const bool bMoved = PushOut(Position, Radius, KeepInside, Keep, bStill, bPutBack);
+			// Its formation place goes out with it: held in the wall, it would walk back in (C.1).
+			if (bStill && Order.PlaceHold.bHeld)
 			{
-				bool bMovedThisPass = false;
-				if (!GridBounds.IsInsideOrOn(Position))
+				FVector2D Place(Order.Slot.X, Order.Slot.Y);
+				bool bPlacePutBack = false;
+				if (PushOut(Place, Radius, KeepInside, Keep, true, bPlacePutBack))
 				{
-					break;
-				}
-				const FIntPoint Cell = GetCell(Position);
-				const int32 CellIndex = Cell.Y * GridSize.X + Cell.X;
-				for (int32 Item = CellStarts[CellIndex]; Item < CellStarts[CellIndex + 1]; ++Item)
-				{
-					const FFootprint& Footprint = Footprints[CellFootprints[Item]];
-					if (!Footprint.Reach.IsInsideOrOn(Position))
-					{
-						continue;
-					}
-					// In the footprint's frame.
-					const FVector2D Offset = Position - Footprint.Centre;
-					FVector2D Local(Offset.X * Footprint.Cos + Offset.Y * Footprint.Sin, -Offset.X * Footprint.Sin + Offset.Y * Footprint.Cos);
-					const FVector2D& Half = Footprint.HalfExtent;
-					const FVector2D Outside(FMath::Abs(Local.X) - Half.X, FMath::Abs(Local.Y) - Half.Y);
-					if (Outside.X <= 0. && Outside.Y <= 0.)
-					{
-						// Its centre inside: out by the nearest side.
-						if (Outside.X >= Outside.Y)
-						{
-							Local.X = (Local.X >= 0. ? 1. : -1.) * (Half.X + Keep);
-						}
-						else
-						{
-							Local.Y = (Local.Y >= 0. ? 1. : -1.) * (Half.Y + Keep);
-						}
-					}
-					else
-					{
-						// Its centre outside, its body too near: away from the footprint's nearest point.
-						const FVector2D Nearest(FMath::Clamp(Local.X, -Half.X, Half.X), FMath::Clamp(Local.Y, -Half.Y, Half.Y));
-						const FVector2D Away = Local - Nearest;
-						const double Distance = Away.Size();
-						if (Distance >= Keep - UE_KINDA_SMALL_NUMBER)
-						{
-							continue;
-						}
-						Local = Nearest + Away / Distance * Keep;
-					}
-					Position = Footprint.Centre + FVector2D(Local.X * Footprint.Cos - Local.Y * Footprint.Sin, Local.X * Footprint.Sin + Local.Y * Footprint.Cos);
-					bMovedThisPass = true;
-				}
-				bMoved |= bMovedThisPass;
-				if (!bMovedThisPass)
-				{
-					break;
+					Order.Slot = FVector(Place.X, Place.Y, Order.Slot.Z);
 				}
 			}
 			if (bMoved)
 			{
-				UE_CLOG(KeepOutEnabled == 2, LogHOLSimulation, Display, TEXT("Keep-out: #%u %s/%s at (%.0f, %.0f) put back at (%.0f, %.0f), its slot (%.0f, %.0f)"),
+				// Put back (a body in a building's, counted as D310's) or eased out of the visible wall alone (C.2, apart).
+				UE_CLOG(KeepOutEnabled == 2, LogHOLSimulation, Display, TEXT("Keep-out: #%u %s/%s at (%.0f, %.0f) %s at (%.0f, %.0f), its slot (%.0f, %.0f)%s"),
 					States[EntityIt].UnitId, *StaticEnum<EHOLUnitActivity>()->GetNameStringByValue(static_cast<int64>(States[EntityIt].Activity)),
 					*StaticEnum<EHOLMovePhase>()->GetNameStringByValue(static_cast<int64>(Orders[EntityIt].Phase)), Location.X, Location.Y,
-					Position.X, Position.Y, Orders[EntityIt].Slot.X, Orders[EntityIt].Slot.Y);
+					bPutBack ? TEXT("put back") : TEXT("eased out of the visible wall"), Position.X, Position.Y,
+					Orders[EntityIt].Slot.X, Orders[EntityIt].Slot.Y, Order.PlaceHold.bHeld ? TEXT(" held") : TEXT(" not held"));
 				Transform.SetLocation(FVector(Position.X, Position.Y, Location.Z));
-				++Pushed;
+				++(bPutBack ? Pushed : Eased);
 			}
 			// A walker put back step after step: its way crosses the building, the order processor finds it a new path.
-			FHOLMoveOrderFragment& Order = Orders[EntityIt];
 			if (bMoved && (Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg))
 			{
 				Order.BuildingPushes = static_cast<uint8>(FMath::Min<int32>(Order.BuildingPushes + 1, MAX_uint8));
@@ -1895,6 +1932,10 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		if (Pushed > 0)
 		{
 			NumPushedOut += Pushed;
+		}
+		if (Eased > 0)
+		{
+			NumEasedOut += Eased;
 		}
 	});
 }
