@@ -27,6 +27,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UCommonTextBlock> Title;
 
+	/** The game's version (R1.7), bottom right. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UCommonTextBlock> Version;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> PlayButton;
 

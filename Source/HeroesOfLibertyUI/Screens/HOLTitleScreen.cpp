@@ -1,8 +1,12 @@
 #include "Screens/HOLTitleScreen.h"
 
+#include "Blueprint/WidgetTree.h"
 #include "CommonTextBlock.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "Components/VerticalBox.h"
 #include "HeroesOfLibertyUILog.h"
+#include "HOLVersion.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Screens/HOLConfirmDialog.h"
 #include "Screens/HOLNewGameScreen.h"
@@ -26,6 +30,18 @@ void UHOLTitleScreen::BuildLayout()
 	PlayButton = AddButton(Column, TEXT("PlayButton"), LOCTEXT("Play", "Jouer"));
 	SettingsButton = AddButton(Column, TEXT("SettingsButton"), LOCTEXT("Settings", "Réglages"));
 	QuitButton = AddButton(Column, TEXT("QuitButton"), LOCTEXT("Quit", "Quitter"));
+
+	// The version (R1.7), small in the bottom right corner, not translated.
+	if (UOverlay* Frame = Cast<UOverlay>(WidgetTree->RootWidget))
+	{
+		Version = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), TEXT("Version"));
+		Version->SetStyle(UHOLTextStyleNote::StaticClass());
+		Version->SetText(FText::AsCultureInvariant(HOLVersion::Get()));
+		UOverlaySlot* VersionSlot = Frame->AddChildToOverlay(Version);
+		VersionSlot->SetHorizontalAlignment(HAlign_Right);
+		VersionSlot->SetVerticalAlignment(VAlign_Bottom);
+		VersionSlot->SetPadding(FMargin(0.f, 0.f, 16.f, 12.f));
+	}
 }
 
 void UHOLTitleScreen::NativeOnInitialized()
