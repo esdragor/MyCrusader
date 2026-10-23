@@ -16,7 +16,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
 
 ### Fin de partie
-- Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide, abandon, vaincu effondré *(D347 à D360, GDD § 14.1)*
+- Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
