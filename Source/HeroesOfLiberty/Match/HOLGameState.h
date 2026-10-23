@@ -10,6 +10,7 @@
 #include "HOLGameState.generated.h"
 
 class AHOLBuilding;
+class FHOLForumPresenceCounter;
 
 /** Why a slot lost (D356; the dead King comes with Regicide). None: still in the match. */
 UENUM()
@@ -117,6 +118,32 @@ public:
 	/** Server only (V2.2): the Peasants rebuilding the slot's forum this step (D312; nothing during the ruin). */
 	void SetForumBuilders(int32 Slot, int32 Builders);
 
+	/**
+	 * V3.1: who stands in the zone of a slot's forum down, asked by the server each step (HOLForumRules::Step). Replaceable:
+	 * V3.2 gives the units counted by team; none given, nobody (the rule then lets the hold recede).
+	 */
+	using FForumPresenceProvider = TFunction<FHOLForumPresence(const AHOLGameState& GameState, int32 Slot)>;
+	void SetForumPresenceProvider(FForumPresenceProvider Provider) { ForumPresenceProvider = MoveTemp(Provider); }
+
+	/**
+	 * Server only, cheat and tests (hol.Victory.HoldPresence): the slot's presence fixed, over the provider's, until cleared.
+	 * With attackers and no AttackerSlot, the first slot of another camp holds.
+	 */
+	void SetForumPresenceOverride(int32 Slot, const FHOLForumPresence& Presence);
+	void ClearForumPresenceOverride(int32 Slot);
+
+	/**
+	 * V3.2: the units counted by team, the provider InitVictory gives on the server (FHOLForumPresenceCounter); its cost
+	 * (walks, units walked). Null on a client.
+	 */
+	const FHOLForumPresenceCounter* GetForumPresenceCounter() const { return ForumPresenceCounter.Get(); }
+
+	/** Server: the simulation step under way (its start), -1 before the first. */
+	int64 GetCurrentStep() const { return CurrentStep; }
+
+	/** Server: the presence the rule gets for the slot this step (the override, else the provider, else nobody). */
+	FHOLForumPresence GetForumPresence(int32 Slot) const;
+
 	/** Server only: forum phases and the deferred defeats follow the simulation's steps from InitVictory on. */
 	void AdvanceForums();
 	void ApplyPendingDefeats();
@@ -150,6 +177,12 @@ private:
 
 	/** Server only: Peasants rebuilding each slot's forum (V2.2). */
 	TArray<int32> ForumBuilders;
+
+	/** Server only (V3.1): the presence in each forum's zone, fixed by the cheat or the tests. */
+	TArray<TOptional<FHOLForumPresence>> ForumPresenceOverrides;
+	FForumPresenceProvider ForumPresenceProvider;
+	TSharedPtr<FHOLForumPresenceCounter> ForumPresenceCounter;
+	int64 CurrentStep = -1;
 
 	/** Server only, bit Slot: its forum fell with no life left, its defeat waits for the end of the step. */
 	uint8 PendingForumDefeats = 0;

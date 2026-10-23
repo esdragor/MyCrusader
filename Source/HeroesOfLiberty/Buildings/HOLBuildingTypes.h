@@ -215,6 +215,18 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "0"))
 	int32 ForumLivesTier = 0;
 
+	/** V3 (D348): a main forum down held this long (s) by attackers without contest has its foundations razed, a new fall. */
+	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "0.1", ForceUnits = "s"))
+	float ForumHoldTime = 60.f;
+
+	/** V3 (V3-Q3): with no attacker in the zone, the hold goes back down this many seconds a second (rounded to whole steps). */
+	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "0"))
+	float ForumHoldDecay = 2.f;
+
+	/** V3.2 (V3-Q1): the hold's zone reaches this far from the forum's edge (cm). */
+	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float ForumHoldRadius = 1200.f;
+
 	/** The row of a type, or null (logged) if the table or the row is missing. */
 	static const FHOLBuildingTypeRow* FindType(FName TypeName);
 

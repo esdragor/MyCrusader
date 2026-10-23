@@ -1374,6 +1374,27 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand VictoryHoldPresenceCommand(
+		TEXT("hol.Victory.HoldPresence"),
+		TEXT("hol.Victory.HoldPresence <Slot> <Attackers 0|1> <Defenders 0|1> [AttackerSlot] | <Slot> off: fixes who stands in the zone of that slot's forum down, until off (V3.1; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bOff = Args.Num() >= 2 && Args[1].Equals(TEXT("off"), ESearchCase::IgnoreCase);
+			if (Args.IsEmpty() || !Args[0].IsNumeric() || (!bOff && (Args.Num() < 3 || !Args[1].IsNumeric() || !Args[2].IsNumeric())))
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Victory.HoldPresence <Slot> <Attackers 0|1> <Defenders 0|1> [AttackerSlot] | <Slot> off"));
+				return;
+			}
+			const int32 Slot = FCString::Atoi(*Args[0]);
+			const bool bAttackers = !bOff && FCString::Atoi(*Args[1]) != 0;
+			const bool bDefenders = !bOff && FCString::Atoi(*Args[2]) != 0;
+			const int32 Attacker = !bOff && Args.Num() >= 4 && Args[3].IsNumeric() ? FCString::Atoi(*Args[3]) : INDEX_NONE;
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, Attacker);
+			}
+		}));
+
 	FAutoConsoleCommand CheatGatherSpeedCommand(
 		TEXT("hol.Cheat.GatherSpeed"),
 		TEXT("hol.Cheat.GatherSpeed [Scale=1]: every gatherer of every player gathers Scale times as fast (0.1 to 10; 1: the table's rates; development only)"),
@@ -3673,6 +3694,34 @@ void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
 	{
 		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: the forum of slot %d has no phase to skip (standing, or the slot defeated)"), Slot);
 	}
+#endif
+}
+
+void AHOLPlayerController::RequestCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
+{
+	ServerCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, AttackerSlot);
+}
+
+void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders,
+	const int32 AttackerSlot)
+{
+#if !UE_BUILD_SHIPPING
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!HOLGameState)
+	{
+		return;
+	}
+	if (bOff)
+	{
+		HOLGameState->ClearForumPresenceOverride(Slot);
+		UE_LOG(LogHOLMatch, Display, TEXT("Victory: presence at the forum of slot %d no longer fixed"), Slot);
+		return;
+	}
+	FHOLForumPresence Presence;
+	Presence.bAttackers = bAttackers;
+	Presence.bDefenders = bDefenders;
+	Presence.AttackerSlot = bAttackers ? AttackerSlot : INDEX_NONE;
+	HOLGameState->SetForumPresenceOverride(Slot, Presence);
 #endif
 }
 

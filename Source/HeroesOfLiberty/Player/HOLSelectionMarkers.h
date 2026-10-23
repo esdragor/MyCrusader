@@ -69,8 +69,17 @@ private:
 	void UpdateGhost();
 	void UpdateHealthBars();
 	void UpdateOrderLines();
+	/** V3.3 (V3-Q5): the hold's ring around each main forum down (HOLForumRules::GetRing), from the replicated state. */
+	void UpdateForumRings();
 	/** A pole and its cloth more for the flags (one per building with a rally point), made the first time needed. */
 	void AddFlag();
+
+	/**
+	 * V3.3 (V3-Q5): the rings of the forums down, to everyone (D353, no fog yet): strips on the ground along the zone's
+	 * outline (HOLForumRules::GetZoneOutlinePoint), the hold's arc thick in its colour, the rest a thin dark line.
+	 */
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UInstancedStaticMeshComponent> ForumRings;
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UInstancedStaticMeshComponent> Rings;

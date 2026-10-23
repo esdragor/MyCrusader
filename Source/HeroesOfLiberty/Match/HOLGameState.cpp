@@ -7,6 +7,7 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLForumPresence.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -39,7 +40,18 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 	WinnerMask = 0;
 	ForumStates.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
 	ForumBuilders.Init(0, FHOLMatchConfig::MaxSlots);
+	ForumPresenceOverrides.Reset();
+	ForumPresenceOverrides.SetNum(FHOLMatchConfig::MaxSlots);
 	PendingForumDefeats = 0;
+	CurrentStep = -1;
+	// V3.2: who stands near a forum down, the living units counted by team, on the server.
+	ForumPresenceCounter.Reset();
+	ForumPresenceProvider = nullptr;
+	if (HasAuthority())
+	{
+		ForumPresenceCounter = MakeShared<FHOLForumPresenceCounter>();
+		ForumPresenceProvider = FHOLForumPresenceCounter::MakeProvider(ForumPresenceCounter.ToSharedRef());
+	}
 
 	// V2: the forums' phases and their deferred defeats follow the server's simulation steps (not the wall clock).
 	UnbindSteps();
@@ -71,6 +83,7 @@ void AHOLGameState::UnbindSteps()
 
 void AHOLGameState::OnStepStarted(const int64 StepIndex)
 {
+	CurrentStep = StepIndex;
 	AdvanceForums();
 }
 
@@ -234,12 +247,54 @@ void AHOLGameState::AdvanceForums()
 			bTuning = true;
 		}
 		FHOLForumState State = ForumStates[Slot];
+		const FHOLForumState Old = State;
 		const EHOLForumPhase Before = State.Phase;
-		const bool bChanged = HOLForumRules::Advance(State, Tuning, ForumBuilders.IsValidIndex(Slot) ? ForumBuilders[Slot] : 0);
+		// V3.1: the hold with who stands in the zone (D348); it can raze the foundations, a new fall.
+		const HOLForumRules::FStepResult Result = HOLForumRules::Step(State, Tuning, ForumBuilders.IsValidIndex(Slot) ? ForumBuilders[Slot] : 0,
+			GetForumPresence(Slot));
+		const bool bChanged = Result.bPhaseChanged;
 		const bool bLookChanged = UE::HeroesOfLiberty::Forums::LookChanged(ForumStates[Slot], State, Tuning);
+		const bool bHoldChanged = Old.Hold != State.Hold || (State.Hold == EHOLForumHold::Holding && Old.HolderSlot != State.HolderSlot);
 		ForumStates[Slot] = State;
+		if (Result.bRazed)
+		{
+			ForumBuilders[Slot] = 0;
+			UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d razed, lives %d"), Slot, Result.Lives);
+			SetForumState(Slot, State);
+			if (Result.Lives <= 0)
+			{
+				// As a fall with no life left (V2): the defeat at the end of the step.
+				PendingForumDefeats |= 1 << Slot;
+			}
+			continue;
+		}
+		if (bHoldChanged)
+		{
+			switch (State.Hold)
+			{
+			case EHOLForumHold::Holding:
+				UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d held by slot %d (%d s)"), Slot, State.HolderSlot,
+					HOLForumRules::GetHoldSeconds(State, Tuning));
+				break;
+			case EHOLForumHold::Contested:
+				UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d contested (%d s)"), Slot, HOLForumRules::GetHoldSeconds(State, Tuning));
+				break;
+			case EHOLForumHold::Receding:
+				UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d released (%d s)"), Slot, HOLForumRules::GetHoldSeconds(State, Tuning));
+				break;
+			default:
+				UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d no longer held"), Slot);
+				break;
+			}
+		}
 		if (!bChanged)
 		{
+			if (bHoldChanged)
+			{
+				// The HUD hears a change of hold at once (the ring of V3.3); the count itself travels without telling it.
+				SetForumState(Slot, State);
+				continue;
+			}
 			// The count and the progress travel too (the table, the selection block), without telling the HUD every step;
 			// the forum rising again redoes its look by visible steps (V2.3a).
 			ForceNetUpdate();
@@ -294,6 +349,53 @@ bool AHOLGameState::SkipForumPhase(const int32 Slot)
 	}
 	SetForumState(Slot, State);
 	return true;
+}
+
+void AHOLGameState::SetForumPresenceOverride(const int32 Slot, const FHOLForumPresence& Presence)
+{
+	if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+	{
+		return;
+	}
+	if (ForumPresenceOverrides.Num() < FHOLMatchConfig::MaxSlots)
+	{
+		ForumPresenceOverrides.SetNum(FHOLMatchConfig::MaxSlots);
+	}
+	FHOLForumPresence Fixed = Presence;
+	if (Fixed.bAttackers && Fixed.AttackerSlot == INDEX_NONE)
+	{
+		// The first slot of another camp (D357's camps of the launch).
+		const int32 Camp = HOLVictoryRules::GetCamp(LaunchConfig, Slot);
+		for (int32 Other = 0; Other < FHOLMatchConfig::MaxSlots; ++Other)
+		{
+			const int32 OtherCamp = HOLVictoryRules::GetCamp(LaunchConfig, Other);
+			if (Other != Slot && OtherCamp != INDEX_NONE && OtherCamp != Camp)
+			{
+				Fixed.AttackerSlot = Other;
+				break;
+			}
+		}
+	}
+	ForumPresenceOverrides[Slot] = Fixed;
+	UE_LOG(LogHOLMatch, Display, TEXT("Victory: presence at the forum of slot %d fixed: attackers %d (slot %d), defenders %d"), Slot,
+		Fixed.bAttackers ? 1 : 0, Fixed.AttackerSlot, Fixed.bDefenders ? 1 : 0);
+}
+
+void AHOLGameState::ClearForumPresenceOverride(const int32 Slot)
+{
+	if (ForumPresenceOverrides.IsValidIndex(Slot))
+	{
+		ForumPresenceOverrides[Slot].Reset();
+	}
+}
+
+FHOLForumPresence AHOLGameState::GetForumPresence(const int32 Slot) const
+{
+	if (ForumPresenceOverrides.IsValidIndex(Slot) && ForumPresenceOverrides[Slot].IsSet())
+	{
+		return ForumPresenceOverrides[Slot].GetValue();
+	}
+	return ForumPresenceProvider ? ForumPresenceProvider(*this, Slot) : FHOLForumPresence();
 }
 
 void AHOLGameState::SetForumBuilders(const int32 Slot, const int32 Builders)

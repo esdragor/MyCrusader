@@ -1,0 +1,47 @@
+# Tenir la ruine (V3.5) : les ennemis restent sur ton forum tombé (anneau à leur couleur, « Tenue ») ; tes soldats contestent (gris), le compte redescend, tes Paysans reconstruisent ; 2e vague sans défense 60 s : fondations rasées, Défaite
+# Plain, deux joueurs (forum_hold.json) : slot 0 humain, slot 1 IA. Positions dans le repère du centre du joueur (X vers le
+# milieu de la carte). Zone tenue = 12 m du bord du forum. Tes Paysans derrière (~29 m du bord) et tes 6 Hommes d'armes sur
+# l'autre flanc (~29 m) sont hors de la zone et à plus de 16 m (rayon d'agressivité) des 4 Piquiers ennemis : ils ne se
+# battent pas d'eux-mêmes. 6 Hommes d'armes contre 4 Piquiers : le combat dure quelques secondes (état contesté visible).
+# Durées réelles : ruine 30 s, tenue 60 s pour raser, recul ~2 s par seconde.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# 1. Six Paysans derrière le forum, six Hommes d'armes sur son flanc, hors de la zone.
+hol.Camera.FocusNear -4000 -400
+frames 2
+hol.Units.SpawnHere 6 Peasant 0 150
+hol.Camera.FocusNear 0 -4000
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 250
+waitunits 12
+hol.Camera.FocusNear 1500 0
+hol.Camera.Zoom -3
+frames 5
+note 1. Ton forum (2 vies) ; 6 Paysans et 6 Hommes d'armes hors de la zone (12 m du bord du forum).
+waitkey Entrée : des Piquiers ennemis abattent ton forum, puis restent dessus
+# 2. Quatre Piquiers ennemis sur l'autre flanc (~8 m du bord) : ils frappent le forum ; la triche abrège.
+hol.Camera.FocusNear 0 1900
+frames 2
+hol.Units.SpawnHere 4 Spearman 1 200
+waitunits 16
+hol.Camera.FocusNear 1500 0
+frames 5
+waitlog EHOLAttackType::Melee), health
+wait 1
+hol.Cheat.DamageNear 2300 0 0
+waitlog Victory: forum of slot 0 fell
+note 2. Forum tombé, Piquiers dans la zone : anneau à leur couleur, « Tenue — N s ». À 60 s : rasé (Défaite) !
+waitkey Vite : sélectionne tes 6 Hommes d'armes, clic droit sur les Piquiers. Dans la zone : anneau gris, compte figé. Puis Entrée
+# 3. Le combat : contesté tant que les deux camps sont dans la zone.
+note 3. Contestée : anneau gris foncé, compte figé. Piquiers morts : l'arc sombre recule (~2 s par seconde).
+waitkey Entrée quand les Piquiers sont morts et l'anneau a disparu
+note 4. Plus personne : décombres (30 s), puis « Reconstruction — N % ».
+waitkey Envoie tes 6 Paysans : clic droit sur les décombres (ils frappent). Puis Entrée tout de suite, avant que le forum soit debout
+# 5. La 2e vague, sans défense : tes unités près du forum retirées (triche), quatre Piquiers dans la zone.
+hol.Units.Remove -14800 0 3500 0
+hol.Camera.FocusNear 0 1900
+frames 2
+hol.Units.SpawnHere 4 Spearman 1 200
+hol.Camera.FocusNear 1500 0
+frames 5
+note 5. 2e vague sans défense (tes unités retirées) : reconstruction gelée ; 60 s réelles : rasé, 0 vie, Défaite.

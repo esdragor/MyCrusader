@@ -18,6 +18,9 @@ FHOLForumTuning FHOLForumTuning::FromSettings()
 	Tuning.RebuildSteps = FMath::Max(FMath::RoundToInt(Settings->ForumRebuildTime / StepSeconds), 1);
 	Tuning.BuilderExponent = Settings->BuilderExponent;
 	Tuning.StepSeconds = StepSeconds;
+	Tuning.HoldSteps = FMath::Max(FMath::RoundToInt(Settings->ForumHoldTime / StepSeconds), 1);
+	Tuning.HoldDecaySteps = FMath::Max(FMath::RoundToInt(Settings->ForumHoldDecay), 0);
+	Tuning.HoldRadius = FMath::Max(Settings->ForumHoldRadius, 0.f);
 	return Tuning;
 }
 
@@ -83,6 +86,10 @@ int32 HOLForumRules::Fall(FHOLForumState& State, const FHOLForumTuning& Tuning)
 	State.Phase = EHOLForumPhase::Ruin;
 	State.RuinStepsLeft = FMath::Max(Tuning.RuinSteps, 0);
 	State.RebuildWork = 0;
+	// V3 (D352): the hold counts from the fall on.
+	State.HoldSteps = 0;
+	State.Hold = EHOLForumHold::None;
+	State.HolderSlot = INDEX_NONE;
 	return GetLives(State, Tuning);
 }
 
@@ -114,6 +121,219 @@ bool HOLForumRules::Advance(FHOLForumState& State, const FHOLForumTuning& Tuning
 	}
 }
 
+HOLForumRules::FStepResult HOLForumRules::Step(FHOLForumState& State, const FHOLForumTuning& Tuning, const int32 Builders, const FHOLForumPresence& Presence)
+{
+	FStepResult Result;
+	if (!State.IsDown())
+	{
+		State.HoldSteps = 0;
+		State.Hold = EHOLForumHold::None;
+		State.HolderSlot = INDEX_NONE;
+		return Result;
+	}
+
+	// D348: attackers without defenders hold, with defenders the count freezes (contested); nobody, it recedes (V3-Q3).
+	if (Presence.bAttackers)
+	{
+		State.Hold = Presence.bDefenders ? EHOLForumHold::Contested : EHOLForumHold::Holding;
+		if (Presence.AttackerSlot != INDEX_NONE)
+		{
+			State.HolderSlot = static_cast<int8>(Presence.AttackerSlot);
+		}
+		if (!Presence.bDefenders)
+		{
+			++State.HoldSteps;
+		}
+	}
+	else
+	{
+		State.HoldSteps = FMath::Max(State.HoldSteps - FMath::Max(Tuning.HoldDecaySteps, 0), 0);
+		State.Hold = State.HoldSteps > 0 ? EHOLForumHold::Receding : EHOLForumHold::None;
+		if (State.HoldSteps == 0)
+		{
+			State.HolderSlot = INDEX_NONE;
+		}
+	}
+
+	if (State.HoldSteps >= FMath::Max(Tuning.HoldSteps, 1))
+	{
+		// V3-Q4: the foundations razed, a new complete fall; nothing else this step.
+		Result.Lives = Raze(State, Tuning);
+		Result.bRazed = true;
+		Result.bPhaseChanged = true;
+		return Result;
+	}
+
+	// D348: the rebuilding frozen while attackers stand there, contested or not; the ruin counts down as ever.
+	if (State.Phase == EHOLForumPhase::Rebuilding && Presence.bAttackers)
+	{
+		return Result;
+	}
+	Result.bPhaseChanged = Advance(State, Tuning, Builders);
+	if (!State.IsDown())
+	{
+		State.HoldSteps = 0;
+		State.Hold = EHOLForumHold::None;
+		State.HolderSlot = INDEX_NONE;
+	}
+	return Result;
+}
+
+int32 HOLForumRules::Raze(FHOLForumState& State, const FHOLForumTuning& Tuning)
+{
+	if (!State.IsDown())
+	{
+		return INDEX_NONE;
+	}
+	State.Falls = static_cast<uint8>(FMath::Min(static_cast<int32>(State.Falls) + 1, static_cast<int32>(MAX_uint8)));
+	State.Phase = EHOLForumPhase::Ruin;
+	State.RuinStepsLeft = FMath::Max(Tuning.RuinSteps, 0);
+	State.RebuildWork = 0;
+	State.HoldSteps = 0;
+	State.Hold = EHOLForumHold::None;
+	State.HolderSlot = INDEX_NONE;
+	return GetLives(State, Tuning);
+}
+
+int32 HOLForumRules::GetHoldSeconds(const FHOLForumState& State, const FHOLForumTuning& Tuning)
+{
+	// Rounded down, with a small margin: 25 steps of 0.1 s show 2 s, 600 show 60.
+	return FMath::Max(FMath::FloorToInt(static_cast<float>(FMath::Max(State.HoldSteps, 0)) * Tuning.StepSeconds + UE_KINDA_SMALL_NUMBER), 0);
+}
+
+float HOLForumRules::GetHoldProgress(const FHOLForumState& State, const FHOLForumTuning& Tuning)
+{
+	return FMath::Clamp(static_cast<float>(FMath::Max(State.HoldSteps, 0)) / static_cast<float>(FMath::Max(Tuning.HoldSteps, 1)), 0.f, 1.f);
+}
+
+const TCHAR* HOLForumRules::GetHoldName(const EHOLForumHold Hold)
+{
+	switch (Hold)
+	{
+	case EHOLForumHold::Holding: return TEXT("holding");
+	case EHOLForumHold::Contested: return TEXT("contested");
+	case EHOLForumHold::Receding: return TEXT("receding");
+	default: return TEXT("none");
+	}
+}
+
+bool HOLForumRules::ShowsHold(const FHOLForumState& State)
+{
+	return State.IsDown() && (State.HoldSteps > 0 || State.Hold != EHOLForumHold::None);
+}
+
+FString HOLForumRules::DescribeHold(const FHOLForumState& State, const FHOLForumTuning& Tuning)
+{
+	if (!ShowsHold(State))
+	{
+		return FString();
+	}
+	FString Shown = FString::Printf(TEXT("hold %d s %s"), GetHoldSeconds(State, Tuning), GetHoldName(State.Hold));
+	if (State.HolderSlot != INDEX_NONE)
+	{
+		Shown += FString::Printf(TEXT(" by slot %d"), static_cast<int32>(State.HolderSlot));
+	}
+	return Shown;
+}
+
+FHOLForumRing HOLForumRules::GetRing(const FHOLForumState& State, const FHOLForumTuning& Tuning)
+{
+	FHOLForumRing Ring;
+	Ring.bShown = ShowsHold(State);
+	if (!Ring.bShown)
+	{
+		Ring.Shown = TEXT("none");
+		return Ring;
+	}
+	Ring.Fill = GetHoldProgress(State, Tuning);
+	Ring.HolderSlot = State.HolderSlot;
+	// Contested, or no holder known (a cheat without an attacker): grey; receding: the holder's colour faded.
+	Ring.Tint = State.Hold == EHOLForumHold::Contested || Ring.HolderSlot == INDEX_NONE ? EHOLForumRingTint::Grey
+		: State.Hold == EHOLForumHold::Holding ? EHOLForumRingTint::Holder : EHOLForumRingTint::Faded;
+	Ring.Shown = FString::Printf(TEXT("fill %.2f %s"), Ring.Fill, Ring.Tint == EHOLForumRingTint::Grey ? TEXT("grey")
+		: *FString::Printf(TEXT("%s slot %d"), Ring.Tint == EHOLForumRingTint::Holder ? TEXT("holder") : TEXT("faded"), Ring.HolderSlot));
+	return Ring;
+}
+
+FLinearColor HOLForumRules::GetRingColor(const EHOLForumRingTint Tint, const FLinearColor& HolderColor)
+{
+	// V3.4b: a dark grey for a frozen count, which stands out on the light ground (a mid grey melted into it); a darker
+	// grey the receding colour is darkened halfway to (a light one paled it), still apart from the contested grey.
+	static const FLinearColor ContestedGrey(0.18f, 0.18f, 0.18f);
+	static const FLinearColor FadeGrey(0.1f, 0.1f, 0.1f);
+	switch (Tint)
+	{
+	case EHOLForumRingTint::Holder: return HolderColor;
+	case EHOLForumRingTint::Faded: return HolderColor * 0.5f + FadeGrey * 0.5f;
+	default: return ContestedGrey;
+	}
+}
+
+FVector2D HOLForumRules::GetZoneOutlinePoint(const FBox2D& Body, const double Radius, const double Share)
+{
+	// The outline's pieces in order from the +X side's middle, clockwise seen from above (+X up, +Y right): a straight
+	// piece runs along a side, at Radius out; an arc turns around a corner of the footprint.
+	const double R = FMath::Max(Radius, 0.0);
+	const FVector2D Min = Body.Min;
+	const FVector2D Max = Body.Max;
+	const double CentreY = (Min.Y + Max.Y) * 0.5;
+	const double SizeX = FMath::Max(Max.X - Min.X, 0.0);
+	const double SizeY = FMath::Max(Max.Y - Min.Y, 0.0);
+	const double Quarter = UE_HALF_PI * R;
+	const double Length = 2.0 * (SizeX + SizeY) + 4.0 * Quarter;
+	if (Length <= UE_KINDA_SMALL_NUMBER)
+	{
+		return Body.GetCenter();
+	}
+	double Left = FMath::Clamp(Share - FMath::FloorToDouble(Share), 0.0, 1.0) * Length;
+	if (Share >= 1.0)
+	{
+		Left = Length;
+	}
+	struct FPiece
+	{
+		FVector2D Start;
+		FVector2D End;
+		/** An arc: its corner and its first angle (radians); a straight piece otherwise. */
+		bool bArc;
+		FVector2D Corner;
+		double Angle;
+	};
+	const FPiece Pieces[] = {
+		{ FVector2D(Max.X + R, CentreY), FVector2D(Max.X + R, Max.Y), false, FVector2D::ZeroVector, 0.0 },
+		{ FVector2D::ZeroVector, FVector2D::ZeroVector, true, FVector2D(Max.X, Max.Y), 0.0 },
+		{ FVector2D(Max.X, Max.Y + R), FVector2D(Min.X, Max.Y + R), false, FVector2D::ZeroVector, 0.0 },
+		{ FVector2D::ZeroVector, FVector2D::ZeroVector, true, FVector2D(Min.X, Max.Y), UE_HALF_PI },
+		{ FVector2D(Min.X - R, Max.Y), FVector2D(Min.X - R, Min.Y), false, FVector2D::ZeroVector, 0.0 },
+		{ FVector2D::ZeroVector, FVector2D::ZeroVector, true, FVector2D(Min.X, Min.Y), UE_PI },
+		{ FVector2D(Min.X, Min.Y - R), FVector2D(Max.X, Min.Y - R), false, FVector2D::ZeroVector, 0.0 },
+		{ FVector2D::ZeroVector, FVector2D::ZeroVector, true, FVector2D(Max.X, Min.Y), 1.5 * UE_PI },
+		{ FVector2D(Max.X + R, Min.Y), FVector2D(Max.X + R, CentreY), false, FVector2D::ZeroVector, 0.0 },
+	};
+	FVector2D Point = Pieces[0].Start;
+	for (const FPiece& Piece : Pieces)
+	{
+		const double PieceLength = Piece.bArc ? Quarter : FVector2D::Distance(Piece.Start, Piece.End);
+		const double Along = FMath::Min(Left, PieceLength);
+		const double Alpha = PieceLength > UE_KINDA_SMALL_NUMBER ? Along / PieceLength : 1.0;
+		if (Piece.bArc)
+		{
+			const double Angle = Piece.Angle + Alpha * UE_HALF_PI;
+			Point = Piece.Corner + R * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+		}
+		else
+		{
+			Point = FMath::Lerp(Piece.Start, Piece.End, Alpha);
+		}
+		Left -= Along;
+		if (Left <= 0.0)
+		{
+			break;
+		}
+	}
+	return Point;
+}
+
 bool HOLForumRules::Skip(FHOLForumState& State)
 {
 	switch (State.Phase)
@@ -126,6 +346,10 @@ bool HOLForumRules::Skip(FHOLForumState& State)
 	case EHOLForumPhase::Rebuilding:
 		State.Phase = EHOLForumPhase::Standing;
 		State.RebuildWork = 0;
+		// Standing: no hold (V3).
+		State.HoldSteps = 0;
+		State.Hold = EHOLForumHold::None;
+		State.HolderSlot = INDEX_NONE;
 		return true;
 	default:
 		return false;
@@ -194,6 +418,14 @@ FHOLForumBlock HOLForumRules::GetSelectionBlock(const FHOLForumState* State, con
 			Lines.Add(FText::Format(LOCTEXT("Builders", "Bâtisseurs : {0}"), AtWork));
 		}
 	}
+	// V3.3 (V3-Q5): the hold, to anyone: « Tenue » while held or receding (its seconds going down), « Contestée » frozen.
+	if (ShowsHold(*State))
+	{
+		const int32 HoldSeconds = GetHoldSeconds(*State, Tuning);
+		Block.Shown += TEXT(", ") + DescribeHold(*State, Tuning);
+		Lines.Add(State->IsContested() ? FText::Format(LOCTEXT("ForumHoldContested", "Contestée — {0} s"), FText::AsNumber(HoldSeconds))
+			: FText::Format(LOCTEXT("ForumHold", "Tenue — {0} s"), FText::AsNumber(HoldSeconds)));
+	}
 	// Its lives on a row of their own, as the health's (V2.3d): the HUD gives them their label.
 	Block.Shown += FString::Printf(TEXT(", lives %d"), Lives);
 	Block.Lives = Lives;
@@ -261,6 +493,14 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		else
 		{
 			Phase = TEXT("standing");
+		}
+		// V3.3 (V3-Q5): the hold after the phase, short: « Ruine · tenue 35 s », « Reconstruction 40 % · contestée 35 s ».
+		if (!bDefeated && ShowsHold(State))
+		{
+			const int32 HoldSeconds = GetHoldSeconds(State, Tuning);
+			Phase += TEXT(" ") + DescribeHold(State, Tuning);
+			Row.State = FText::Format(State.IsContested() ? LOCTEXT("TableHoldContested", "{0} · contestée {1} s") : LOCTEXT("TableHold", "{0} · tenue {1} s"),
+				Row.State, FText::AsNumber(HoldSeconds));
 		}
 		Row.Shown = FString::Printf(TEXT("slot %d%s%s colour %d lives %d %s"), Slot, bLocal ? TEXT(" you") : TEXT(""),
 			Row.Team > 0 ? *FString::Printf(TEXT(" team %d"), Row.Team) : TEXT(""), Row.ColorIndex, Lives, *Phase);

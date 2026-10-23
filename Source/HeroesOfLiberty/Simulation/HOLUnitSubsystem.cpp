@@ -744,6 +744,31 @@ int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner)
 	return Killed;
 }
 
+int32 UHOLUnitSubsystem::ForEachLivingUnit(const TFunctionRef<void(uint8 Owner, const FVector& Location)> Visit) const
+{
+	const UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!EntitySubsystem)
+	{
+		return 0;
+	}
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		const FHOLUnitRecord& Record = Unit.Value;
+		if (Record.bDying)
+		{
+			continue;
+		}
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Record.Entity);
+		if (State && Transform && State->CurrentHealth > 0 && State->Activity != EHOLUnitActivity::Dying)
+		{
+			Visit(Record.OwnerPlayer, Transform->GetTransform().GetLocation());
+		}
+	}
+	return Units.Num();
+}
+
 void UHOLUnitSubsystem::RequestDestroyAllUnits()
 {
 	PendingDestruction.Reserve(PendingDestruction.Num() + Units.Num());

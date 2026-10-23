@@ -11,6 +11,9 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLForumRules.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -145,6 +148,17 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		}
 	}
 
+	/**
+	 * V3.3 (V3-Q5): the hold's ring around a forum down: the arc's width, the rest's (a thin dark outline of the zone), the
+	 * pieces a whole ring is cut in, and its height above the forum's foot (cm; below the selection's rings, GroundOffset).
+	 * V3.4b: both thickened (60 and 16 cm were 3-4 and 2 px at the default camera).
+	 */
+	constexpr double ForumRingFillWidth = 120.0;
+	constexpr double ForumRingRestWidth = 28.0;
+	constexpr double ForumRingPieces = 128.0;
+	constexpr double ForumRingOffset = 2.0;
+	const FLinearColor ForumRingRestColor(0.12f, 0.12f, 0.12f);
+
 	UStaticMesh* LoadMesh(const TCHAR* Path)
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, Path);
@@ -230,6 +244,7 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
 	OrderLines = MakeMarkerComponent(*this, TEXT("OrderLines"));
 	OrderPoints = MakeMarkerComponent(*this, TEXT("OrderPoints"));
+	ForumRings = MakeMarkerComponent(*this, TEXT("ForumRings"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
 		GhostEdges.Add(MakeFlagComponent(*this, *FString::Printf(TEXT("GhostEdge%d"), Index)));
@@ -261,6 +276,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	OrderLines->SetMaterial(0, Frames->GetMaterial(0));
 	OrderPoints->SetStaticMesh(Plane);
 	OrderPoints->SetMaterial(0, Rings->GetMaterial(0));
+	ForumRings->SetStaticMesh(Plane);
+	ForumRings->SetMaterial(0, Frames->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
 	CubeMesh = Cube;
@@ -340,6 +357,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	UpdateRings();
 	UpdateHealthBars();
 	UpdateOrderLines();
+	UpdateForumRings();
 	UpdateFrame();
 	UpdateFlag();
 	UpdateGhost();
@@ -530,6 +548,69 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 		}
 	}
 	SetInstances(*HealthBars, Transforms, CustomData);
+}
+
+void AHOLSelectionMarkers::UpdateForumRings()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (GameState)
+	{
+		const FHOLForumTuning Tuning = FHOLForumTuning::FromSettings();
+		const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+		// A strip on the ground between two points of the outline, at the forum's height (below the selection's rings).
+		const auto AddStrip = [&Transforms, &CustomData](const FVector& Start, const FVector& End, const double Width, const FLinearColor& Color)
+		{
+			const FVector Span = End - Start;
+			const double Length = Span.Size();
+			if (Length > UE_KINDA_SMALL_NUMBER)
+			{
+				Transforms.Add(FTransform(FRotationMatrix::MakeFromX(Span / Length).ToQuat(), (Start + End) * 0.5,
+					FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
+				CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+			}
+		};
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			const FHOLForumRing Ring = HOLForumRules::GetRing(GameState->GetForumState(Slot), Tuning);
+			const AHOLBuilding* Forum = Ring.bShown && !GameState->IsSlotDefeated(Slot) ? AHOLGameState::FindPrimaryForum(*World, Slot) : nullptr;
+			if (!Forum)
+			{
+				continue;
+			}
+			FLinearColor HolderColor = ForumRingRestColor;
+			if (Config.Slots.IsValidIndex(Ring.HolderSlot))
+			{
+				const FVector3f& Linear = HOLPlayerColors::GetLinearColor(Config.Slots[Ring.HolderSlot].ColorIndex);
+				HolderColor = FLinearColor(Linear.X, Linear.Y, Linear.Z);
+			}
+			const FLinearColor FillColor = HOLForumRules::GetRingColor(Ring.Tint, HolderColor);
+			const FBox2D Body = Forum->GetBodyBounds();
+			const double Height = Forum->GetActorLocation().Z + ForumRingOffset;
+			const auto PointAt = [&Body, &Tuning, Height](const double Share)
+			{
+				const FVector2D Point = HOLForumRules::GetZoneOutlinePoint(Body, Tuning.HoldRadius, Share);
+				return FVector(Point.X, Point.Y, Height);
+			};
+			// The hold's arc from the top, clockwise, then the rest of the outline, each cut in pieces of the same length.
+			const auto AddArc = [&AddStrip, &PointAt](const double From, const double To, const double Width, const FLinearColor& Color)
+			{
+				const int32 Pieces = FMath::CeilToInt((To - From) * ForumRingPieces);
+				for (int32 Piece = 0; Piece < Pieces; ++Piece)
+				{
+					AddStrip(PointAt(FMath::Lerp(From, To, static_cast<double>(Piece) / Pieces)),
+						PointAt(FMath::Lerp(From, To, static_cast<double>(Piece + 1) / Pieces)), Width, Color);
+				}
+			};
+			AddArc(0.0, Ring.Fill, ForumRingFillWidth, FillColor);
+			AddArc(Ring.Fill, 1.0, ForumRingRestWidth, ForumRingRestColor);
+		}
+	}
+	SetInstances(*ForumRings, Transforms, CustomData);
 }
 
 void AHOLSelectionMarkers::UpdateOrderLines()

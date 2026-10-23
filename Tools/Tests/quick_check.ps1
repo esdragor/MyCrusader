@@ -306,6 +306,13 @@ if ($Parts -contains "victory") {
     Step "mark victory forum fall", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60",
         "hol.Victory.FallForum 0", "waitlog Victory: forum of slot 0 fell", "frames 3",
         "hol.Prod.Queue", "waitlog Production order of slot 0 ignored: its forum is down", "frames 3", "hol.HUD.Report"
+    # V3.5 (D348), the hold by the real presence (the units alive 12 m from the forum's edge; Plain's slot 0 centre at
+    # -14800 0, 16 m wide): 3 Spearmen of slot 1 made 5 m from its edge: held by slot 1; a Peasant of mine in the zone:
+    # contested; the Spearmen taken away: released, the count recedes, no longer held; my Peasant taken away after.
+    Step "mark victory forum held", "hol.Units.Spawn 3 -14800 1300 1 Spearman 150", "waitlog Victory: forum of slot 0 held by slot 1", "wait 3", "hol.HUD.Report"
+    Step "mark victory forum contested", "hol.Units.Spawn 1 -14800 -1300 0 Peasant 0", "waitlog Victory: forum of slot 0 contested", "frames 3", "hol.HUD.Report"
+    Step "mark victory forum released", "hol.Units.Remove -14800 1300 800 1", "waitlog Victory: forum of slot 0 released", "wait 0.4", "hol.HUD.Report",
+        "waitlog Victory: forum of slot 0 no longer held", "frames 3", "hol.HUD.Report", "hol.Units.Remove -14800 -1300 800 0", "frames 3", "mark victory forum hold end"
     # The match starts with no unit: 2 Peasants of slot 0 made 20 m beside its centre (Plain's slot 0, -14800 0).
     Step "mark victory forum build", "hol.Units.Spawn 2 -14800 2000 0 Peasant 150", "waitunits 2", "frames 3", "hol.Select.Own", "waitlog Select own: 2 units", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.OrderNear 0 0", "wait 1",
         "hol.Victory.SkipRuin 0", "waitlog Victory: forum of slot 0 ruin -> rebuilding", "waitlog Construction: slot 0 rebuilds its forum",
@@ -1688,7 +1695,10 @@ if ($NetListening) {
             $ForumFell = Join-Path $TestSaved "quick_net_forum_fell.flag"
             $ForumSeen = Join-Path $TestSaved "quick_net_forum_seen.flag"
             if ($Client -eq 1) {
-                $NetSteps += "mark victory", "waitfile $VictoryReady", "hol.Cheat.DamageNear 99999 0 0 own melee", "wait 0.5", "hol.HUD.Report", "signal $ForumFell",
+                $NetSteps += "mark victory", "waitfile $VictoryReady", "hol.Cheat.DamageNear 99999 0 0 own melee", "wait 0.5",
+                    # V3.5: its forum down held by the other slot (the presence fixed on both slots, slots known only once joined:
+                    # the standing forum ignores it); client 2 sees the hold in its table too.
+                    "hol.Victory.HoldPresence 0 1 0 1", "hol.Victory.HoldPresence 1 1 0 0", "wait 1", "hol.HUD.Report", "signal $ForumFell",
                     "waitfile $ForumSeen", "hol.Victory.Surrender", "waitlog End banner: Defeat", "waitfile $VictoryDone"
             }
             else {
@@ -1832,6 +1842,24 @@ if ($Parts -contains "victory") {
     $Hud = ForumHud "victory forum fall"
     $Checks["table: slot 0 you, lives 1, ruin ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 ruin$"
     $Checks["selection block: in ruin, lives 1 ($([regex]::Match($Hud.Line, ', in ruin[^,]*, lives \d+').Value))"] = $Hud.Line -match ", in ruin \d+ s, lives 1"
+    # V3.5 (D348): the hold by the real presence; the HUD's table row "... ruin hold N s <state> by slot A".
+    $Section = Get-Section "victory forum held"
+    $Checks["3 Spearmen of slot 1 at 5 m: held by slot 1"] = [bool]($Section | Select-String -Pattern "Victory: forum of slot 0 held by slot 1 \(\d+ s\)" -Quiet)
+    $Hud = ForumHud "victory forum held"
+    $Held = [regex]::Match($Hud.Row0, " hold (\d+) s holding by slot 1$")
+    $Checks["table: slot 0 hold N s holding by slot 1 ($($Hud.Row0))"] = $Held.Success -and [int]$Held.Groups[1].Value -ge 1
+    $Checks["selection block: hold holding by slot 1 ($([regex]::Match($Hud.Line, ', hold [^,]*').Value))"] = $Hud.Line -match ", hold \d+ s holding by slot 1, lives 1"
+    $Section = Get-Section "victory forum contested"
+    $Checks["a Peasant of mine in the zone: contested"] = [bool]($Section | Select-String -Pattern "Victory: forum of slot 0 contested \(\d+ s\)" -Quiet)
+    $Hud = ForumHud "victory forum contested"
+    $Checks["table: slot 0 hold contested ($($Hud.Row0))"] = $Hud.Row0 -match " hold \d+ s contested( by slot 1)?$"
+    $Section = Get-Section "victory forum released"
+    $Released = @($Section | Select-String -Pattern "Victory: forum of slot 0 released \((\d+) s\)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }) | Select-Object -First 1
+    $Receding = @($Section | Select-String -Pattern "HUD forum: .*\[slot 0 [^|\]]* hold (\d+) s receding" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }) | Select-Object -First 1
+    $Checks["the Spearmen taken away: released ($Released s), the count receding ($Receding s)"] = ($null -ne $Released) -and ($null -ne $Receding) -and $Receding -lt $Released
+    $Checks["then no longer held"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 no longer held" -Quiet)
+    $Hud = ForumHud "victory forum released"
+    $Checks["table: slot 0 ruin, no hold shown ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 ruin$"
     $Section = Get-Section "victory forum build"
     $Checks["SkipRuin 0: ruin -> rebuilding"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 ruin -> rebuilding" -Quiet)
     $AtWork = @($Section | Select-String -Pattern "Construction: slot 0 rebuilds its forum at .*, (\d+) builders at work" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
@@ -4153,7 +4181,7 @@ if ($Parts -contains "net") {
         $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD forum: .*, players \[([^\]]*)\]" |
             ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
         $LoserRow = @("$Table2" -split " \| " | Where-Object { $_ -match "^slot $Loser " }) | Select-Object -First 1
-        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser colour \d+ lives 1 ruin$"
+        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

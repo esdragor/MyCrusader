@@ -415,6 +415,8 @@ public:
 	void RequestCheatFallForum(int32 Slot);
 	/** V2.1: the slot's main forum leaves its phase at once, ruin -> rebuilding -> rebuilt (hol.Victory.SkipRuin). */
 	void RequestCheatSkipForum(int32 Slot);
+	/** V3.1: who stands in the zone of the slot's forum down, fixed until off (hol.Victory.HoldPresence). */
+	void RequestCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
 	/**
 	 * D356: the player gives up, an immediate defeat (hol.Victory.Surrender until the in-game menu of V1.3). The server
@@ -608,6 +610,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatSkipForum(int32 Slot);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSurrender();

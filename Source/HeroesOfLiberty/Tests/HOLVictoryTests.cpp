@@ -13,6 +13,8 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
+#include "MassCommonFragments.h"
+#include "Match/HOLForumPresence.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
@@ -71,6 +73,47 @@ namespace UE::HeroesOfLiberty::Tests::Victory
 			Result |= 1 << Slot;
 		}
 		return Result;
+	}
+
+	/** V3.2: a unit of Type born for Owner at Location (no walk: the test world runs no movement); its identifier, 0 if none. */
+	uint32 PlaceUnit(UHOLUnitSubsystem& Units, const FName Type, const int32 Owner, const FVector& Location)
+	{
+		TArray<uint32> Before;
+		Units.GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = Type;
+		Request.Count = 1;
+		Request.OwnerPlayer = static_cast<uint8>(Owner);
+		Request.Center = Location;
+		Units.RequestUnits(Request);
+		Units.ServeBirthRequests();
+		TArray<uint32> After;
+		Units.GetAllUnitIds(After);
+		for (const uint32 Id : After)
+		{
+			if (!Before.Contains(Id))
+			{
+				return Id;
+			}
+		}
+		return 0;
+	}
+
+	/** V3.2: the unit put at Location, as if it had walked there. */
+	void MoveUnit(UWorld& World, const UHOLUnitSubsystem& Units, const uint32 Id, const FVector& Location)
+	{
+		FMassEntityManager& EntityManager = World.GetSubsystem<UMassEntitySubsystem>()->GetMutableEntityManager();
+		if (FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Units.FindEntity(Id)))
+		{
+			Transform->GetMutableTransform().SetLocation(Location);
+		}
+	}
+
+	/** V3.2: the unit's ground distance to the body's edge. */
+	double DistanceToEdge(const UHOLUnitSubsystem& Units, const uint32 Id, const FBox2D& Body)
+	{
+		FHOLUnitView View;
+		return Units.GetUnitView(Id, View) ? HOLConstruction::GetDistance(Body, FVector2D(View.Location)) : -1.0;
 	}
 
 	constexpr EHOLSlotState Human = EHOLSlotState::Human;
@@ -566,6 +609,429 @@ bool FHOLVictoryForumFallTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// V3.1 (D348, D352, V3-Q3, V3-Q4): holding a forum down, pure, with the presence given to the rule.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldRulesTest, "HeroesOfLiberty.Victory.Forum.Hold.Rules", UE::HeroesOfLiberty::Tests::Victory::Flags)
+bool FHOLVictoryForumHoldRulesTest::RunTest(const FString& Parameters)
+{
+	// The game's values (DefaultGame.ini): 60 s held, 2 s given back a second, a zone of 12 m from the edge.
+	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	const FHOLForumTuning Game = FHOLForumTuning::FromSettings();
+	TestEqual(TEXT("the game's hold: 60 s"), Game.HoldSteps * StepSeconds, 60.f, 0.1f);
+	TestEqual(TEXT("the game's decay: 2 s a second"), Game.HoldDecaySteps, 2);
+	TestEqual(TEXT("the game's zone: 12 m"), Game.HoldRadius, 1200.f, 0.1f);
+
+	FHOLForumTuning Tuning;
+	Tuning.Tier = 1;
+	Tuning.RuinSteps = 3;
+	Tuning.RebuildSteps = 4;
+	Tuning.HoldSteps = 10;
+	Tuning.HoldDecaySteps = 2;
+	const FHOLForumPresence Nobody;
+	const FHOLForumPresence Held = FHOLForumPresence::Attackers(1);
+	FHOLForumPresence Contested = Held;
+	Contested.bDefenders = true;
+	FHOLForumPresence DefendersOnly;
+	DefendersOnly.bDefenders = true;
+
+	FHOLForumState State;
+	TestFalse(TEXT("standing: nothing razed"), HOLForumRules::Step(State, Tuning, 0, Held).bRazed);
+	TestEqual(TEXT("standing: no hold"), State.HoldSteps, 0);
+	TestTrue(TEXT("standing: hold none"), State.Hold == EHOLForumHold::None);
+	TestEqual(TEXT("standing: nothing to raze"), HOLForumRules::Raze(State, Tuning), static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("first fall: 2 lives (tier 1)"), HOLForumRules::Fall(State, Tuning), 2);
+
+	// The count runs from the fall, the ruin included (D352); the ruin counts down as ever.
+	HOLForumRules::Step(State, Tuning, 0, Held);
+	TestEqual(TEXT("held in ruin: 1 step"), State.HoldSteps, 1);
+	TestTrue(TEXT("held in ruin: holding"), State.Hold == EHOLForumHold::Holding);
+	TestEqual(TEXT("held by slot 1"), static_cast<int32>(State.HolderSlot), 1);
+	TestEqual(TEXT("the ruin counts down while held"), State.RuinStepsLeft, 2);
+	HOLForumRules::Step(State, Tuning, 0, Held);
+	TestTrue(TEXT("ruin over while held: rebuilding"), HOLForumRules::Step(State, Tuning, 0, Held).bPhaseChanged && State.Phase == EHOLForumPhase::Rebuilding);
+	TestEqual(TEXT("3 steps held"), State.HoldSteps, 3);
+
+	// The rebuilding frozen while attackers stand there (D348), contested or not.
+	HOLForumRules::Step(State, Tuning, 5, Held);
+	TestEqual(TEXT("held: 4 steps"), State.HoldSteps, 4);
+	TestEqual(TEXT("held: the rebuilding frozen, Peasants or not"), State.RebuildWork, static_cast<int64>(0));
+	HOLForumRules::Step(State, Tuning, 5, Contested);
+	HOLForumRules::Step(State, Tuning, 5, Contested);
+	TestEqual(TEXT("contested: the count frozen"), State.HoldSteps, 4);
+	TestTrue(TEXT("contested"), State.IsContested() && State.Hold == EHOLForumHold::Contested);
+	TestEqual(TEXT("contested: the holder kept"), static_cast<int32>(State.HolderSlot), 1);
+	TestEqual(TEXT("contested: the rebuilding frozen"), State.RebuildWork, static_cast<int64>(0));
+
+	// No attacker: the count recedes 2 steps a step, never below 0 (V3-Q3); the rebuilding goes on.
+	HOLForumRules::Step(State, Tuning, 0, Nobody);
+	TestEqual(TEXT("nobody: 2 steps given back"), State.HoldSteps, 2);
+	TestTrue(TEXT("nobody: receding"), State.Hold == EHOLForumHold::Receding);
+	TestEqual(TEXT("receding: the holder's colour kept"), static_cast<int32>(State.HolderSlot), 1);
+	TestTrue(TEXT("nobody: the rebuilding goes on"), State.RebuildWork > 0);
+	HOLForumRules::Step(State, Tuning, 0, DefendersOnly);
+	TestEqual(TEXT("defenders alone: back to 0"), State.HoldSteps, 0);
+	TestTrue(TEXT("back to 0: hold none, no holder"), State.Hold == EHOLForumHold::None && State.HolderSlot == INDEX_NONE);
+	HOLForumRules::Step(State, Tuning, 0, Nobody);
+	TestEqual(TEXT("never below 0"), State.HoldSteps, 0);
+	TestTrue(TEXT("still rebuilding"), State.Phase == EHOLForumPhase::Rebuilding);
+	const int64 WorkBefore = State.RebuildWork;
+
+	// Held 10 steps without contest: the foundations razed at the 10th, a new complete fall (V3-Q4).
+	for (int32 Index = 0; Index < 9; ++Index)
+	{
+		if (HOLForumRules::Step(State, Tuning, 3, Held).bRazed)
+		{
+			AddError(FString::Printf(TEXT("razed too early, step %d"), Index + 1));
+		}
+	}
+	TestEqual(TEXT("9 steps held"), State.HoldSteps, 9);
+	TestEqual(TEXT("held: the rebuilding kept where it was"), State.RebuildWork, WorkBefore);
+	const HOLForumRules::FStepResult Razed = HOLForumRules::Step(State, Tuning, 3, Held);
+	TestTrue(TEXT("10th step: razed"), Razed.bRazed && Razed.bPhaseChanged);
+	TestEqual(TEXT("razed: a life less"), Razed.Lives, 1);
+	TestEqual(TEXT("razed: a fall more"), static_cast<int32>(State.Falls), 2);
+	TestTrue(TEXT("razed: in ruin again"), State.Phase == EHOLForumPhase::Ruin);
+	TestEqual(TEXT("razed: the whole ruin again"), State.RuinStepsLeft, 3);
+	TestEqual(TEXT("razed: the rebuilding from nothing"), State.RebuildWork, static_cast<int64>(0));
+	TestEqual(TEXT("razed: the count at 0"), State.HoldSteps, 0);
+	TestTrue(TEXT("razed: hold none"), State.Hold == EHOLForumHold::None && State.HolderSlot == INDEX_NONE);
+
+	// The last life: razed again, the defeat (0 lives).
+	for (int32 Index = 0; Index < 9; ++Index)
+	{
+		HOLForumRules::Step(State, Tuning, 0, Held);
+	}
+	const HOLForumRules::FStepResult Last = HOLForumRules::Step(State, Tuning, 0, Held);
+	TestTrue(TEXT("razed on the last life"), Last.bRazed);
+	TestEqual(TEXT("razed on the last life: 0 lives, the defeat"), Last.Lives, 0);
+
+	// What the HUD shows (V3.3): whole seconds held, the ring's fill.
+	FHOLForumTuning Shown = Tuning;
+	Shown.HoldSteps = 50;
+	FHOLForumState Half;
+	HOLForumRules::Fall(Half, Shown);
+	Half.HoldSteps = 25;
+	TestEqual(TEXT("25 steps of 0.1 s: 2 s"), HOLForumRules::GetHoldSeconds(Half, Shown), 2);
+	TestEqual(TEXT("25 of 50: half the ring"), HOLForumRules::GetHoldProgress(Half, Shown), 0.5f, 0.001f);
+
+	// Standing again: the count at 0.
+	FHOLForumState Rebuilt;
+	HOLForumRules::Fall(Rebuilt, Tuning);
+	HOLForumRules::Step(Rebuilt, Tuning, 0, Held);
+	HOLForumRules::Skip(Rebuilt);
+	HOLForumRules::Skip(Rebuilt);
+	TestTrue(TEXT("rebuilt: standing, the count at 0"), Rebuilt.Phase == EHOLForumPhase::Standing && Rebuilt.HoldSteps == 0
+		&& Rebuilt.Hold == EHOLForumHold::None);
+	return true;
+}
+
+// V3.1 on the server's chain (V2's fall, real steps): slot 0's forum hit to 0 health by DamageBuilding falls; attackers fixed
+// in its zone (the override, as hol.Victory.HoldPresence) hold it, a contest by the replaceable provider freezes it, nobody
+// lets it recede, then held to ForumHoldTime its foundations are razed: its last life, the defeat at the end of the step.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldChainTest, "HeroesOfLiberty.Victory.Forum.Hold.Chain", UE::HeroesOfLiberty::Tests::Victory::Flags)
+bool FHOLVictoryForumHoldChainTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Victory;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLPlayerState* Owner = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Enemy = World->SpawnActor<AHOLPlayerState>();
+	AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* EnemyForum = World->SpawnActor<AHOLBuilding>(FVector(-5000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("player states"), Owner)
+		&& TestNotNull(TEXT("player states"), Enemy) && TestNotNull(TEXT("buildings"), Forum) && TestNotNull(TEXT("buildings"), EnemyForum))
+	{
+		State->InitVictory(MakeConfig({ { Human, 0 }, { AI, 0 } }));
+		Owner->SetMatchSlot(0, 0);
+		Enemy->SetMatchSlot(1, 1);
+		Forum->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Forum->SetPrimaryForum(true);
+		EnemyForum->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		EnemyForum->SetPrimaryForum(true);
+		const FHOLForumTuning Tuning = FHOLForumTuning::FromSettings();
+		int64 Step = 0;
+		const auto RunSteps = [Simulation, &Step](const int32 Count)
+		{
+			for (int32 Index = 0; Index < Count; ++Index)
+			{
+				++Step;
+				Simulation->GetOnStepStarted().Broadcast(Step);
+				Simulation->GetOnStepEnded().Broadcast(Step);
+			}
+		};
+
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 fell, lives 1"), EAutomationExpectedMessageFlags::Contains, 1);
+		int32 Hits = 0;
+		while (Forum->GetHealth() > 0 && Hits++ < 1000)
+		{
+			UHOLConstructionSubsystem::DamageBuilding(*Forum, 500, EHOLAttackType::Melee);
+		}
+		TestTrue(TEXT("fallen: in ruin"), State->GetForumState(0).Phase == EHOLForumPhase::Ruin);
+		TestEqual(TEXT("fallen: 1 life"), State->GetLives(0), 1);
+
+		// Attackers fixed in the zone, no attacker slot given: the first slot of the other camp holds.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 held by slot 1"), EAutomationExpectedMessageFlags::Contains, 2);
+		FHOLForumPresence Attackers;
+		Attackers.bAttackers = true;
+		State->SetForumPresenceOverride(0, Attackers);
+		RunSteps(50);
+		TestEqual(TEXT("held 50 steps"), State->GetForumState(0).HoldSteps, 50);
+		TestTrue(TEXT("holding"), State->GetForumState(0).Hold == EHOLForumHold::Holding);
+		TestEqual(TEXT("held by slot 1"), static_cast<int32>(State->GetForumState(0).HolderSlot), 1);
+		TestEqual(TEXT("the enemy's forum untouched"), State->GetForumState(1).HoldSteps, 0);
+
+		// A contest by the replaceable provider (V3.2's way): the count frozen.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 contested"), EAutomationExpectedMessageFlags::Contains, 1);
+		State->ClearForumPresenceOverride(0);
+		State->SetForumPresenceProvider([](const AHOLGameState&, const int32 Slot)
+		{
+			FHOLForumPresence Presence;
+			Presence.bAttackers = Slot == 0;
+			Presence.bDefenders = Slot == 0;
+			Presence.AttackerSlot = Slot == 0 ? 1 : INDEX_NONE;
+			return Presence;
+		});
+		RunSteps(10);
+		TestEqual(TEXT("contested: still 50 steps"), State->GetForumState(0).HoldSteps, 50);
+		TestTrue(TEXT("contested"), State->GetForumState(0).IsContested());
+
+		// Nobody: it recedes 2 steps a step.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 released"), EAutomationExpectedMessageFlags::Contains, 1);
+		State->SetForumPresenceProvider(nullptr);
+		RunSteps(5);
+		TestEqual(TEXT("nobody: 10 steps given back"), State->GetForumState(0).HoldSteps, 40);
+
+		// Held again to ForumHoldTime: the foundations razed, the last life, the defeat at the end of that step.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 razed, lives 0"), EAutomationExpectedMessageFlags::Contains, 1);
+		AddExpectedMessage(TEXT("Victory: slot 0 defeated \\(Forum\\)"), EAutomationExpectedMessageFlags::Contains, 1);
+		State->SetForumPresenceOverride(0, FHOLForumPresence::Attackers(1));
+		FHOLForumState BeforeRaze = State->GetForumState(0);
+		int32 HeldSteps = 0;
+		while (State->GetForumState(0).Falls < 2 && HeldSteps < 100000)
+		{
+			BeforeRaze = State->GetForumState(0);
+			++Step;
+			++HeldSteps;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			if (State->GetForumState(0).Falls >= 2)
+			{
+				break;
+			}
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		}
+		TestEqual(TEXT("razed after the hold's steps left (~60 s in all)"), HeldSteps, Tuning.HoldSteps - 40);
+		TestTrue(TEXT("held through the ruin's end: rebuilding before the razing"), BeforeRaze.Phase == EHOLForumPhase::Rebuilding);
+		TestEqual(TEXT("the rebuilding frozen while held"), BeforeRaze.RebuildWork, static_cast<int64>(0));
+		TestEqual(TEXT("razed: 0 life"), State->GetLives(0), 0);
+		TestFalse(TEXT("the defeat waits for the end of the step"), State->IsSlotDefeated(0));
+		Simulation->GetOnStepEnded().Broadcast(Step);
+		TestTrue(TEXT("slot 0 defeated by its forum"), State->IsSlotDefeated(0) && State->GetDefeatReason(0) == EHOLDefeatReason::Forum);
+		TestTrue(TEXT("the enemy wins"), State->IsMatchOver() && State->IsWinner(1));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// V3.2 on the server's chain: the presence given at the launch (InitVictory) counts the real units near slot 0's forum down,
+// by team, from its edge (12 m). Standing, no walk of the units; fallen by DamageBuilding and rebuilding, 3 enemy soldiers
+// 5 m from its edge hold it (the rebuilding frozen), a Peasant of the defender contests it, 4 soldiers of slot 2 take the
+// ring (the most), dead (Dying) they no longer count, the enemies 20 m off let it recede and the rebuilding go on.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldPresenceTest, "HeroesOfLiberty.Victory.Forum.Hold.Presence", UE::HeroesOfLiberty::Tests::Victory::Flags)
+bool FHOLVictoryForumHoldPresenceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Victory;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("forum"), Forum))
+	{
+		State->InitVictory(MakeConfig({ { Human, 0 }, { AI, 0 }, { AI, 0 } }));
+		Forum->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Forum->SetPrimaryForum(true);
+		const FHOLForumTuning Tuning = FHOLForumTuning::FromSettings();
+		int64 Step = 0;
+		const auto RunSteps = [Simulation, &Step](const int32 Count)
+		{
+			for (int32 Index = 0; Index < Count; ++Index)
+			{
+				++Step;
+				Simulation->GetOnStepStarted().Broadcast(Step);
+				Simulation->GetOnStepEnded().Broadcast(Step);
+			}
+		};
+		const FBox2D Body = Forum->GetBodyBounds();
+		const FVector2D Middle = Body.GetCenter();
+		const auto East = [&Body, &Middle](const double FromEdge, const double Along) { return FVector(Body.Max.X + FromEdge, Middle.Y + Along, 0.0); };
+		const auto North = [&Body, &Middle](const double FromEdge, const double Along) { return FVector(Middle.X + Along, Body.Max.Y + FromEdge, 0.0); };
+		const auto West = [&Body, &Middle](const double FromEdge, const double Along) { return FVector(Body.Min.X - FromEdge, Middle.Y + Along, 0.0); };
+		const FHOLForumPresenceCounter* Counter = State->GetForumPresenceCounter();
+		TestNotNull(TEXT("the server counts the units near a forum down"), Counter);
+		const auto Walks = [Counter] { return Counter ? Counter->GetWalks() : -1; };
+
+		// 3 enemy soldiers 5 m from its edge, the forum standing: no walk of the units, nobody holds.
+		TArray<uint32> Enemies;
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			Enemies.Add(PlaceUnit(*Units, FName(TEXT("Spearman")), 1, East(500.0, (Index - 1) * 150.0)));
+			TestTrue(TEXT("an enemy soldier placed 5 m from the edge"), Enemies.Last() != 0 && FMath::Abs(DistanceToEdge(*Units, Enemies.Last(), Body) - 500.0) < 5.0);
+		}
+		RunSteps(10);
+		TestEqual(TEXT("standing: nobody holds"), State->GetForumState(0).HoldSteps, 0);
+		TestEqual(TEXT("standing: no walk of the units"), Walks(), 0);
+
+		// Fallen (DamageBuilding), its ruin skipped, 2 builders at work: the 3 enemies hold, the rebuilding frozen.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 fell, lives 1"), EAutomationExpectedMessageFlags::Contains, 1);
+		int32 Hits = 0;
+		while (Forum->GetHealth() > 0 && Hits++ < 1000)
+		{
+			UHOLConstructionSubsystem::DamageBuilding(*Forum, 500, EHOLAttackType::Melee);
+		}
+		TestTrue(TEXT("fallen"), State->GetForumState(0).IsDown());
+		TestTrue(TEXT("its ruin skipped: rebuilding"), State->SkipForumPhase(0) && State->GetForumState(0).Phase == EHOLForumPhase::Rebuilding);
+		State->SetForumBuilders(0, 2);
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 held by slot 1"), EAutomationExpectedMessageFlags::Contains, 0);
+		RunSteps(20);
+		TestEqual(TEXT("1) 3 enemies 5 m off: held 20 steps"), State->GetForumState(0).HoldSteps, 20);
+		TestTrue(TEXT("1) holding"), State->GetForumState(0).Hold == EHOLForumHold::Holding);
+		TestEqual(TEXT("1) held by slot 1"), static_cast<int32>(State->GetForumState(0).HolderSlot), 1);
+		TestEqual(TEXT("1) the rebuilding frozen"), State->GetForumState(0).RebuildWork, static_cast<int64>(0));
+		TestEqual(TEXT("1) one walk of the units a step"), Walks(), 20);
+
+		// 2) A Peasant of the defender 5 m off: contested, the count frozen.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 contested"), EAutomationExpectedMessageFlags::Contains, 0);
+		const uint32 Defender = PlaceUnit(*Units, FName(TEXT("Peasant")), 0, North(500.0, 0.0));
+		RunSteps(10);
+		TestTrue(TEXT("2) contested"), State->GetForumState(0).IsContested());
+		TestEqual(TEXT("2) the count frozen"), State->GetForumState(0).HoldSteps, 20);
+		TestEqual(TEXT("2) the rebuilding still frozen"), State->GetForumState(0).RebuildWork, static_cast<int64>(0));
+
+		// 6) The Peasant 20 m off, 4 soldiers of slot 2 5 m off the west edge: slot 2 has the most, its colour.
+		MoveUnit(*World, *Units, Defender, North(2000.0, 0.0));
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 held by slot 2"), EAutomationExpectedMessageFlags::Contains, 0);
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			TestTrue(TEXT("a soldier of slot 2 placed"), PlaceUnit(*Units, FName(TEXT("Spearman")), 2, West(500.0, (Index - 2) * 150.0)) != 0);
+		}
+		RunSteps(5);
+		TestTrue(TEXT("6) holding again"), State->GetForumState(0).Hold == EHOLForumHold::Holding);
+		TestEqual(TEXT("6) the most numerous holds: slot 2"), static_cast<int32>(State->GetForumState(0).HolderSlot), 2);
+		TestEqual(TEXT("6) 25 steps held"), State->GetForumState(0).HoldSteps, 25);
+
+		// 5) Slot 2's soldiers dead (Dying, KillUnitsOfOwner): no longer counted, slot 1 holds again.
+		TestEqual(TEXT("5) slot 2's soldiers killed"), Units->KillUnitsOfOwner(2), 4);
+		RunSteps(5);
+		TestEqual(TEXT("5) the dying do not count: slot 1"), static_cast<int32>(State->GetForumState(0).HolderSlot), 1);
+		TestEqual(TEXT("5) 30 steps held"), State->GetForumState(0).HoldSteps, 30);
+
+		// 3) The enemies 20 m off the edge (out of the zone): it recedes, the rebuilding goes on.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 released"), EAutomationExpectedMessageFlags::Contains, 0);
+		for (const uint32 Id : Enemies)
+		{
+			MoveUnit(*World, *Units, Id, FVector(Body.Max.X + 2000.0, Middle.Y, 0.0));
+		}
+		RunSteps(5);
+		TestTrue(TEXT("3) receding"), State->GetForumState(0).Hold == EHOLForumHold::Receding);
+		TestEqual(TEXT("3) the count goes back down"), State->GetForumState(0).HoldSteps, FMath::Max(30 - 5 * Tuning.HoldDecaySteps, 0));
+		TestTrue(TEXT("3) the rebuilding goes on"), State->GetForumState(0).RebuildWork > 0);
+		TestEqual(TEXT("cost: one walk a step while down (45 steps)"), Walks(), 45);
+		if (Counter)
+		{
+			AddInfo(FString::Printf(TEXT("Cost: %d walks, %lld units walked (%d units)"), Counter->GetWalks(), Counter->GetUnitsWalked(), Units->GetNumUnits()));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// V3.2, teams (V3-Q2): slot 0 and slot 1 in team 1, slot 2 in team 2. Slot 2's soldiers hold slot 0's forum down; an ally
+// (slot 1) in the zone contests it as the defender's own would; an owner out of the launch's slots (Neutral, D401) attacks.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldPresenceTeamsTest, "HeroesOfLiberty.Victory.Forum.Hold.PresenceTeams", UE::HeroesOfLiberty::Tests::Victory::Flags)
+bool FHOLVictoryForumHoldPresenceTeamsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Victory;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("forum"), Forum))
+	{
+		State->InitVictory(MakeConfig({ { Human, 1 }, { AI, 1 }, { AI, 2 } }));
+		Forum->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Forum->SetPrimaryForum(true);
+		int64 Step = 0;
+		const auto RunSteps = [Simulation, &Step](const int32 Count)
+		{
+			for (int32 Index = 0; Index < Count; ++Index)
+			{
+				++Step;
+				Simulation->GetOnStepStarted().Broadcast(Step);
+				Simulation->GetOnStepEnded().Broadcast(Step);
+			}
+		};
+		const FBox2D Body = Forum->GetBodyBounds();
+		const FVector2D Middle = Body.GetCenter();
+
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 fell, lives 1"), EAutomationExpectedMessageFlags::Contains, 1);
+		int32 Hits = 0;
+		while (Forum->GetHealth() > 0 && Hits++ < 1000)
+		{
+			UHOLConstructionSubsystem::DamageBuilding(*Forum, 500, EHOLAttackType::Melee);
+		}
+		TestTrue(TEXT("fallen"), State->GetForumState(0).IsDown());
+
+		// Slot 2 (the other team) holds.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 held by slot 2"), EAutomationExpectedMessageFlags::Contains, 0);
+		PlaceUnit(*Units, FName(TEXT("Spearman")), 2, FVector(Body.Max.X + 500.0, Middle.Y, 0.0));
+		PlaceUnit(*Units, FName(TEXT("Spearman")), 2, FVector(Body.Max.X + 500.0, Middle.Y + 150.0, 0.0));
+		RunSteps(5);
+		TestTrue(TEXT("the other team holds"), State->GetForumState(0).Hold == EHOLForumHold::Holding && State->GetForumState(0).HolderSlot == 2);
+		TestEqual(TEXT("5 steps held"), State->GetForumState(0).HoldSteps, 5);
+
+		// 4) An ally (slot 1, same team) 5 m off: contested, the count frozen.
+		AddExpectedMessage(TEXT("Victory: forum of slot 0 contested"), EAutomationExpectedMessageFlags::Contains, 0);
+		const uint32 Ally = PlaceUnit(*Units, FName(TEXT("Spearman")), 1, FVector(Middle.X, Body.Min.Y - 500.0, 0.0));
+		RunSteps(5);
+		TestTrue(TEXT("4) an ally contests"), State->GetForumState(0).IsContested());
+		TestEqual(TEXT("4) the count frozen"), State->GetForumState(0).HoldSteps, 5);
+
+		// Slot 2 dead, the ally gone 20 m off, a Neutral unit (owner 5, a closed slot) 5 m off: it holds (D401).
+		Units->KillUnitsOfOwner(2);
+		MoveUnit(*World, *Units, Ally, FVector(Middle.X, Body.Min.Y - 2000.0, 0.0));
+		PlaceUnit(*Units, FName(TEXT("Spearman")), 5, FVector(Body.Min.X - 500.0, Middle.Y, 0.0));
+		RunSteps(5);
+		TestTrue(TEXT("a Neutral unit holds"), State->GetForumState(0).Hold == EHOLForumHold::Holding && State->GetForumState(0).HolderSlot == 5);
+		TestEqual(TEXT("10 steps held"), State->GetForumState(0).HoldSteps, 10);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 // V2.2 (D352, V2-Q2 "as a site") on the server's chain: the build order of slot 0's Peasants on its main forum down goes
 // through the command queue and the builders' processor (UHOLBuildProcessor, as on a site); the Peasants, born at contact
 // with its body (no walk: the test world runs no movement), wait at their places through the ruin, then their number at
@@ -706,6 +1172,8 @@ bool FHOLVictoryForumBuildersTest::RunTest(const FString& Parameters)
 			{
 				TestEqual(TEXT("in ruin: slot 0's Peasants at their places"), CountBuilding(OwnIds), 2);
 				TestEqual(TEXT("slot 1's Peasant refused"), CountBuilding(EnemyIds), 0);
+				// V3.2: an enemy standing at the forum would freeze its rebuilding (D348); it dies here (Dying, not counted).
+				TestEqual(TEXT("slot 1's Peasant killed"), Units->KillUnitsOfOwner(1), 1);
 			}
 		}
 		TestEqual(TEXT("in ruin: no builder at work (they wait)"), MaxAtWorkInRuin, 0);
@@ -811,6 +1279,135 @@ bool FHOLVictoryForumBlockTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("rebuilding, another's: no builders"), OtherRebuilding.Text.BuildSourceString(),
 		FString(TEXT("Reconstruction \u2014 40 %")));
 	TestEqual(TEXT("rebuilding, another's: its lives"), OtherRebuilding.Lives, 1);
+	return true;
+}
+
+// V3.3 (V3-Q5), pure: the hold shown, on the selection block (« Tenue — 35 s », « Contestée — 35 s »), in the players'
+// table (« Ruine · tenue 35 s ») and on the HUD's forum line; the ring (fill, holder's colour, grey contested, faded
+// receding; nothing with no count and no one) and the zone's outline it follows.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldDisplayTest, "HeroesOfLiberty.Victory.Forum.Hold.Display", UE::HeroesOfLiberty::Tests::Victory::Flags)
+bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
+{
+	FHOLForumTuning Tuning;
+	Tuning.Tier = 0;
+	Tuning.RuinSteps = 300;
+	Tuning.RebuildSteps = 1200;
+	Tuning.StepSeconds = 0.1f;
+	Tuning.HoldSteps = 600;
+
+	// Standing: nothing of the hold.
+	FHOLForumState State;
+	TestFalse(TEXT("standing: no hold shown"), HOLForumRules::ShowsHold(State));
+	TestEqual(TEXT("standing: no ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("none")));
+	TestFalse(TEXT("standing: ring hidden"), HOLForumRules::GetRing(State, Tuning).bShown);
+
+	// In ruin, no one there, count 0: nothing either.
+	HOLForumRules::Fall(State, Tuning);
+	State.RuinStepsLeft = 250;
+	TestFalse(TEXT("ruin, no one: no hold shown"), HOLForumRules::ShowsHold(State));
+	TestEqual(TEXT("ruin, no one: no ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("none")));
+	TestEqual(TEXT("ruin, no one: block unchanged"), HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0).Shown,
+		FString(TEXT(", in ruin 25 s, lives 1")));
+	TestEqual(TEXT("ruin, no one: nothing on the HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString());
+
+	// Held by slot 1 for 35 s: the block's line, the HUD's, the ring at 0.58 in the holder's colour.
+	State.Hold = EHOLForumHold::Holding;
+	State.HoldSteps = 350;
+	State.HolderSlot = 1;
+	TestTrue(TEXT("holding: shown"), HOLForumRules::ShowsHold(State));
+	TestEqual(TEXT("holding: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 35 s holding by slot 1")));
+	FHOLForumBlock Block = HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0);
+	TestEqual(TEXT("holding: block described"), Block.Shown, FString(TEXT(", in ruin 25 s, hold 35 s holding by slot 1, lives 1")));
+	TestEqual(TEXT("holding: block lines"), Block.Text.BuildSourceString(), FString(TEXT("En ruine — 25 s\nTenue — 35 s")));
+	FHOLForumRing Ring = HOLForumRules::GetRing(State, Tuning);
+	TestTrue(TEXT("holding: ring shown"), Ring.bShown);
+	TestEqual(TEXT("holding: ring"), Ring.Shown, FString(TEXT("fill 0.58 holder slot 1")));
+	TestTrue(TEXT("holding: tint"), Ring.Tint == EHOLForumRingTint::Holder);
+	TestEqual(TEXT("holding: holder"), Ring.HolderSlot, 1);
+
+	// Contested: grey and frozen, « Contestée ».
+	State.Hold = EHOLForumHold::Contested;
+	TestEqual(TEXT("contested: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 35 s contested by slot 1")));
+	Block = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 2);
+	TestEqual(TEXT("contested: block lines"), Block.Text.BuildSourceString(), FString(TEXT("En ruine — 25 s\nContestée — 35 s")));
+	Ring = HOLForumRules::GetRing(State, Tuning);
+	TestEqual(TEXT("contested: ring"), Ring.Shown, FString(TEXT("fill 0.58 grey")));
+	TestTrue(TEXT("contested: tint"), Ring.Tint == EHOLForumRingTint::Grey);
+
+	// Receding at 20 s, rising again at 40 %: « Tenue » going down, the ring faded in the holder's colour.
+	State.Phase = EHOLForumPhase::Rebuilding;
+	State.RuinStepsLeft = 0;
+	State.RebuildWork = HOLForumRules::GetRebuildTotalWork(Tuning) * 40 / 100;
+	State.Hold = EHOLForumHold::Receding;
+	State.HoldSteps = 200;
+	Block = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 3);
+	TestEqual(TEXT("receding: block described"), Block.Shown, FString(TEXT(", rebuilding 40%, builders 3, hold 20 s receding by slot 1, lives 1")));
+	TestEqual(TEXT("receding: block lines"), Block.Text.BuildSourceString(),
+		FString(TEXT("Reconstruction — 40 %\nBâtisseurs : 3\nTenue — 20 s")));
+	Ring = HOLForumRules::GetRing(State, Tuning);
+	TestEqual(TEXT("receding: ring"), Ring.Shown, FString(TEXT("fill 0.33 faded slot 1")));
+	TestTrue(TEXT("receding: tint"), Ring.Tint == EHOLForumRingTint::Faded);
+
+	// Contested at 0 (defenders came first): the ring shown, empty and grey; held with no holder known: grey too.
+	State.Hold = EHOLForumHold::Contested;
+	State.HoldSteps = 0;
+	TestEqual(TEXT("contested at 0: ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("fill 0.00 grey")));
+	TestEqual(TEXT("contested at 0: block lines"), HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0).Text.BuildSourceString(),
+		FString(TEXT("Reconstruction — 40 %\nContestée — 0 s")));
+	State.Hold = EHOLForumHold::Holding;
+	State.HoldSteps = 300;
+	State.HolderSlot = INDEX_NONE;
+	TestEqual(TEXT("no holder: ring grey"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("fill 0.50 grey")));
+	TestEqual(TEXT("no holder: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 30 s holding")));
+
+	// The colours (V3.4b): the holder's own, a neutral dark grey contested (it stands out on the light ground), halfway to
+	// a dark grey receding (darkened, not paled, and still apart from the contested grey).
+	const FLinearColor Red(1.f, 0.f, 0.f);
+	TestTrue(TEXT("colour: the holder's"), HOLForumRules::GetRingColor(EHOLForumRingTint::Holder, Red).Equals(Red));
+	const FLinearColor Grey = HOLForumRules::GetRingColor(EHOLForumRingTint::Grey, Red);
+	TestTrue(TEXT("colour: grey is neutral and dark"), FMath::IsNearlyEqual(Grey.R, Grey.G) && FMath::IsNearlyEqual(Grey.G, Grey.B)
+		&& Grey.R >= 0.15f && Grey.R <= 0.2f);
+	TestTrue(TEXT("colour: faded halfway to a dark grey"), HOLForumRules::GetRingColor(EHOLForumRingTint::Faded, Red).Equals(FLinearColor(0.55f, 0.05f, 0.05f), 0.01f));
+
+	// The players' table: slot 0's forum in ruin held by slot 1, slot 1's rising again contested.
+	FHOLMatchConfig Duel;
+	Duel.Normalize();
+	Duel.Slots[0].State = EHOLSlotState::Human;
+	Duel.Slots[0].ColorIndex = 3;
+	Duel.Slots[1].State = EHOLSlotState::AI;
+	Duel.Slots[1].ColorIndex = 5;
+	TArray<FHOLForumState> Forums;
+	Forums.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
+	HOLForumRules::Fall(Forums[0], Tuning);
+	Forums[0].Hold = EHOLForumHold::Holding;
+	Forums[0].HoldSteps = 350;
+	Forums[0].HolderSlot = 1;
+	Forums[1] = State;
+	Forums[1].Hold = EHOLForumHold::Contested;
+	Forums[1].HolderSlot = 0;
+	const TArray<FHOLPlayersTableRow> Rows = HOLForumRules::GetPlayersTable(Duel, Forums, 0, 0, Tuning);
+	TestEqual(TEXT("table: two rows"), Rows.Num(), 2);
+	if (Rows.Num() == 2)
+	{
+		TestEqual(TEXT("table: held, described"), Rows[0].Shown, FString(TEXT("slot 0 you colour 3 lives 1 ruin hold 35 s holding by slot 1")));
+		TestEqual(TEXT("table: held, its state"), Rows[0].State.BuildSourceString(), FString(TEXT("Ruine · tenue 35 s")));
+		TestEqual(TEXT("table: contested, described"), Rows[1].Shown, FString(TEXT("slot 1 colour 5 lives 1 rebuilding 40% hold 30 s contested by slot 0")));
+		TestEqual(TEXT("table: contested, its state"), Rows[1].State.BuildSourceString(), FString(TEXT("Reconstruction 40 % · contestée 30 s")));
+	}
+
+	// The zone's outline: 1200 cm around a 10 m x 6 m footprint, from the top's middle, clockwise (towards +Y first).
+	const FBox2D Body(FVector2D(-500.0, -300.0), FVector2D(500.0, 300.0));
+	TestTrue(TEXT("outline: starts at the top's middle"), HOLForumRules::GetZoneOutlinePoint(Body, 1200.0, 0.0).Equals(FVector2D(1700.0, 0.0), 0.5));
+	TestTrue(TEXT("outline: ends there"), HOLForumRules::GetZoneOutlinePoint(Body, 1200.0, 1.0).Equals(FVector2D(1700.0, 0.0), 0.5));
+	TestTrue(TEXT("outline: a quarter on the right side's middle"), HOLForumRules::GetZoneOutlinePoint(Body, 1200.0, 0.25).Equals(FVector2D(0.0, 1500.0), 0.5));
+	TestTrue(TEXT("outline: half at the bottom's middle"), HOLForumRules::GetZoneOutlinePoint(Body, 1200.0, 0.5).Equals(FVector2D(-1700.0, 0.0), 0.5));
+	TestTrue(TEXT("outline: clockwise"), HOLForumRules::GetZoneOutlinePoint(Body, 1200.0, 0.05).Y > 0.0);
+	for (int32 Index = 0; Index <= 40; ++Index)
+	{
+		const FVector2D Point = HOLForumRules::GetZoneOutlinePoint(Body, 1200.0, Index / 40.0);
+		const double Distance = FVector2D(FMath::Max(FMath::Abs(Point.X) - 500.0, 0.0), FMath::Max(FMath::Abs(Point.Y) - 300.0, 0.0)).Size();
+		TestTrue(*FString::Printf(TEXT("outline: point %d at the zone's reach (%.1f)"), Index, Distance), FMath::IsNearlyEqual(Distance, 1200.0, 1.0));
+	}
 	return true;
 }
 

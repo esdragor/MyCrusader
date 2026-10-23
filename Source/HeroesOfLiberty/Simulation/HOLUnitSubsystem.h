@@ -85,6 +85,11 @@ public:
 	 * killed in combat; its births waiting are dropped. Returns how many units were killed.
 	 */
 	int32 KillUnitsOfOwner(uint8 Owner);
+	/**
+	 * V3.2: calls Visit(Owner, Location) for every living unit (not dying, health above 0), in one walk of the units; the
+	 * births waiting are not there yet. Returns how many units were walked (the dying included).
+	 */
+	int32 ForEachLivingUnit(TFunctionRef<void(uint8 Owner, const FVector& Location)> Visit) const;
 	/** Destroys the queued units; returns how many were destroyed. Called at the end of the fixed step. */
 	int32 FlushDestructions();
 
