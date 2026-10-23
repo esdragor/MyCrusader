@@ -897,6 +897,104 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 - **Essai de l'utilisateur sur `crowds_cross`** : « c'est bon ». Les correctifs déjà dans `main` (mur ennemi contourné,
   détour sans contact, MV.2) suffisent : **cas clos sans code** (piste A abandonnée). EtapeDefini : ligne des foules
   retirée. `main` avancé par mycrusader-e8 à 4541266 (Victory V1, accord de cette session).
+- Commit `2d15cff` (foules closes). Elrond avancé à `main` 2d15cff. **Rocher** : diagnostic + test rouge lancés
+  (sous-agent, Elrond, minuteur de 15 min lancé avec lui).
+- **Rocher, diagnostic (sous-agent, Elrond, 10 min, pas de C++)** : le haut plat des rochers de la crête
+  (`create_match_map.py:42` et `:127`, sphères aplaties à demi enterrées, jusqu'à 8 × 5 m et 1,8 m de haut) porte **sa
+  propre tache de navmesh, coupée du sol** (marche trop haute). Naissance : `CreateUnitEntities`
+  (`HOLUnitSubsystem.cpp:594`) projette avec une boîte 10×10×500 cm → dans un rocher, sur la tache du haut (dans
+  `melee_reinforce`, les deux premiers `SpawnHere` chevauchent la crête du joueur 0 à x ≈ −12000 : les deux coincés
+  sont nés là). Ordre : chemin « partial » (`hol.Nav.Path -12000 0 -10300 -1500` : 2 points, 2,6 m, droit 22,7 m) →
+  il marche au bord de la tache et y reste. `hol.Nav.Units` le voit « sur le navmesh ». Poussée sur un rocher en jeu :
+  pas vérifiée. **Cas rouge** (partie `move`, « move rock » : `SpawnSeed 103`, 1 Homme d'armes à (−12000, 0), ordre
+  vers (−10300, −1500), relevé 12 s, fini à ≤ 3 m) : **FAIL** (« moved 2.5 m, 20.4 m left »). Options : A navmesh
+  interdit sur les rochers (NavArea_Null ou `MinRegionArea`, navmesh de Plain à refaire par `create_match_map.py`) ; B
+  naissance refusée au-dessus d'une marche ; C unité sur une tache coupée : marche droit vers le sol le plus proche.
+  Reco du sous-agent : A + C. Question à l'utilisateur.
+- **Choix de l'utilisateur : A** (la recommandation de la session principale : haut des rochers non marchable ; C
+  seulement si un cas reste à l'essai). Boucle lancée (sous-agent, Elrond, minuteur).
+- **Rocher, correctif A (sous-agent, Elrond, 11 min, rien de commité)** : `Tools/Editor/create_match_map.py` : un
+  NavModifierVolume en NavArea_Null par rocher de la crête (24, `RidgeNoNav<slot>_<n>`, même lacet, emprise + 1 m, z de
+  50 à 450 cm : le haut perd son navmesh, le sol autour le garde ; `MinRegionArea` écarté) ; `Content/Maps/Plain.umap`
+  refait par le script (éditeur lancé de PowerShell, `-RenderOffScreen`, « navmesh built » ; ancienne carte :
+  `scratchpad\Plain_before_rocknull.umap`) ; `HOLUnitSubsystem.cpp` (`CreateUnitEntities`) : si les 4 tirages ne
+  trouvent pas de navmesh, projection du centre dans ±800 cm → naissance sur le sol navigable le plus proche (log) ;
+  cas « move rock » élargi à ±6 m. **Vert** : né à (−12328, 30), arrivé à (−10293, −1504). `-Parts
+  tests,move,formation,bodies,build` : tests 121/121, move, bodies (0 contact) PASS, mais **séquence arrêtée** dans
+  `build` (`waitlog Placement: ended` après `Key Escape`, ~719-721) : formation non jouée. Rouge connu de `main` ou
+  nouveau ? Question posée à mycrusader-3c ; `-Parts formation,combat` lancé par la session principale.
+- **Réponse de mycrusader-3c** (détail : section E d'`EtapeDefiniInProgress.md`, E.1-E.4) : pas d'arrêt à `waitlog
+  Placement: ended` jusqu'à 239a9a9 (2d15cff jamais lancé) → **nouveau** : notre correctif du rocher, MV.4 (8021c71) ou
+  Victory V1 (4541266, qui touche aussi `quick_check.ps1`). Les deux rouges constants de `-Parts build` viennent de ce
+  chantier : (1) « build gap » de **MV.2 35a8be9** (côté de détour mémorisé : `ChooseDetourSide` rend +1 quand le corps
+  est presque droit devant, `FHOLDetourFragment` ne revient que d'un cran après 4 pas libres ; le 2e Paysan suit le 1er
+  entre deux maisons, longe le mur, remis dehors à côté du 1er au lieu de derrière) ; (2) « build cut » de **MV.4
+  6ab675c** (détour sans contact : corps immobiles vus à 1 s, virage jusqu'à 90°, blocage dès un corps dans sa limite :
+  le marcheur tourne plus tôt et plus large, droit dans le mur visible). Piste : `AvoidBodies` qui tient compte des
+  emprises des bâtiments, ou qui lâche un virage mémorisé qui mène dans une emprise. Selon 3c, l'utilisateur veut que
+  cette session règle ces deux rouges (à confirmer avec lui). J5c libéré par 3c.
+- **L'utilisateur confirme** : cette session règle « build cut » et « build gap ». J5c (`build-red`) avancé à `main`
+  ce7c9f3, marqué pris. Sous-agent lancé (J5c, minuteur) : d'abord `-Parts build` sur `main` (rouges + arrêt à
+  `Placement: ended` ou non), puis correctif.
+- Elrond (rocher), `-Parts formation,combat` **PASS** (367 s). Essai de l'utilisateur lancé : `melee_reinforce` (les
+  deux renforts nés sur les rochers doivent naître à côté et aller au combat).
+- **Build cut / gap (sous-agent, J5c, 14 min, rien de commité)** : **arrêt à `Placement: ended` déjà sur `main`**
+  ce7c9f3 (pas le rocher) : `quick_check.ps1:695` envoie `Key Escape` sans sélection, ce qui ouvre depuis D356
+  (Victoire V1) le menu de partie, qui prend l'Échap suivant. Correctif du script (~693-697) : clic au sol
+  (`hol.Select.ClickGround`) au lieu d'Échap. Correctif (`HOLAvoidRules.h/.cpp` ~104 : `FFootprintBox`,
+  `GetFootprintDistance`, `LeadsIntoFootprint` : cap qui, à mi-chemin ou au bout de la vue, entre dans l'emprise élargie
+  du rayon plus profond qu'on n'est ; longer un mur ou s'en écarter n'est pas « entrer » ; test
+  `Movement.DetourFootprint`, écrit **sans rouge d'abord**) ; `HOLSimulationProcessors.cpp` `BuildLookAhead` (~325 :
+  emprises des bâtiments qui bloquent le navmesh, lues seulement si quelqu'un marche), `AvoidBodies` (~489 : bâtiments
+  proches, tableau en ligne ; un virage qui mène dans une emprise n'est pas libre, pour le virage mémorisé et le premier
+  détour ; jamais le cap droit). `-Parts tests,build` **PASS** (360 s, tests 122/122, cut et gap PASS). Manquent : le
+  rouge (jamais vu, la séquence s'arrêtait avant) et `move,bodies`. Session principale : C++ retiré par patch
+  (`scratchpad\j5c_buildred_source.patch`), `-Parts build` (rouge attendu), puis remis, `-Parts move,bodies,build`.
+  Le même correctif de script sera à porter dans Elrond (rocher).
+- **Essai `melee_reinforce` (rocher)** : « super » (pris comme validation du rocher). Commit `67cdb08` sur `mv4-diag`
+  (Elrond ; EtapeDefini : ligne du rocher retirée). `main` attendra le correctif build cut / gap (J5c) : les deux
+  fusionnés ensemble, puis avance de `main` (accord des sessions).
+- **mycrusader-3c** : même cause trouvée pour l'arrêt (D356) ; son correctif (HeroesOfLiberty-Arwen, branche
+  `quickcheck-cases`, seulement `quick_check.ps1` ~750 : sélectionner son centre puis Échap, qui désélectionne sans
+  ouvrir le menu) garde l'Échap du test : **retenu à la place de notre clic au sol** (à reprendre tel quel au commit de
+  `build-red`). Avec lui, sur `main` : `-Parts build` 298 s, tout passe sauf cut et gap (mêmes chiffres que E :
+  **rouge confirmé sur `main`**). Sa branche ajoute `-Parts build:cut` / `build:gap` (54 s / 93 s). Chiffres exacts
+  du rouge (ce7c9f3 + correctif d'Échap) : cut 412 pas (411-413 selon le passage), 23 remis dehors, 2 nouveaux chemins,
+  10 sortis d'un mur visible (#29 le long du mur) ; gap « two » 149 pas, 15 remis dehors, 0 nouveau chemin, « one
+  after the other » KO (#36 le long du mur).
+- **Session principale, J5c** : **rouge sans le C++** (script corrigé seul) : cut FAIL (413 pas, 23 remis dehors, 2
+  nouveaux chemins, #29), gap FAIL (« one after the other » 1 relevé ; 155 pas, 15 remis dehors, #36). **Avec le
+  correctif**, `-Parts move,bodies,build` : move PASS, bodies PASS (0 contact / 828 pas, écart +6 cm ; passage 3 s, mur
+  ennemi 3,5 s, mur à nous 4 s / 5,7 ; croisement 2,5 s, 6 volte-face : MV.2 et MV.4 tenus), cut et gap PASS, mais
+  **« build site » FAIL** (plafond de population 30 → 40 au lieu de 10 → 20 : +20, sans doute laissé par `move` /
+  `bodies` avant `build` ; `tests,build` passait). Vérification : même enchaînement sans le C++.
+- **Sans le C++, `-Parts move,bodies,build`** : « build site » **FAIL pareil** (30 → 40) : reste laissé par les parties
+  d'avant, **antérieur au correctif** (à noter en aléa) ; cut FAIL (59 remis dehors, 4 nouveaux chemins), gap FAIL.
+  Correctif remis, compilé PASS. Scénario d'essai `build_walkers` (gap et cut à l'œil) confié à un sous-agent (J5c,
+  minuteur).
+- `main` à efaa230 (mycrusader-3c) : correctif d'Échap + `-Parts build:cut` / `build:gap` (0ee0f19) et code de
+  sélection d'ennemis ; `-Parts build` 322 s, seuls cut et gap rouges. **À la fusion de `main` dans `build-red`** :
+  remettre nos lignes ~693-697 de `quick_check.ps1` comme sur `main` (garder la version de 3c), après le sous-agent
+  du scénario.
+- **Scénario `build_walkers`** (sous-agent, J5c, non commité ; répétition hors écran : toutes les étapes, « ready ») :
+  1. gap : maisons P (−6000, 0) et Q (−6000, 800), un Paysan puis deux de (−7500, 400) à (−4500, 400) ; 2. cut en
+  récolte : 6 Paysans sur l'or (−11087, 4592), maison K (−12800, 2400) posée en travers 25 s après ; 3. cut en marche :
+  6 Paysans de (−8800, 5000) à (−8800, −4000), maison N (−8800, 0) posée en travers. Entrée entre les cas. Essai de
+  l'utilisateur lancé (J5c).
+- **Essai `build_walkers`** : « tout a l'air bon ». Commit `dd5a66e` sur `build-red` (J5c ; notre correctif d'Échap
+  retiré au profit de celui de `main` ; EtapeDefini : ligne build cut / gap retirée, aléa « build site » après
+  move,bodies ajouté), `main` efaa230 fusionné (`2cba6f1`), puis `mv4-diag` (rocher 67cdb08) fusionné (`25979ef`), sans
+  conflit. Compilation + `-Parts tests,move,bodies,build` puis `formation,combat` en cours, puis avance de `main`.
+- **« Formation sur place »** (ligne EtapeDefini : unités d'un groupe remises en formation d'un rien, elles peinent et
+  ne poussent presque pas) : « go » de l'utilisateur. Elrond avancé à `build-red` 25979ef, marqué pris ; sous-agent
+  (diagnostic + test rouge, minuteur).
+- J5c (`build-red` 25979ef), compilé PASS ; `-Parts tests,move,bodies,build` : tests 124/124, 0 contact, tout PASS sauf
+  l'aléa « build site » (connu) ; `-Parts formation,combat` **PASS** (398 s). `main` b165f7b (GDD seul) fusionné
+  (`c761fc2`). Accord pour l'avance rapide demandé à mycrusader-7d et mycrusader-d4 (playable-* : autre projet).
+- **`main` avancé à c761fc2** (accord de mycrusader-d4 et mycrusader-7d) : rochers non marchables + contournement qui
+  voit les bâtiments (build cut / gap verts). mycrusader-7d (Haldir, `ridge-rock`) corrige des soldats qui entrent
+  dans les rochers de la crête (`ridge_army` ; `UHOLFootprintKeepOutProcessor` pour les obstacles fixes, sortie d'un
+  membre coupé de sa case, partie `rocks`) : prévenue du recoupement. J5c libéré.
 
 ### Reprise exacte (MV.4)
 
