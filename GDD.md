@@ -120,6 +120,8 @@ Quatre ressources de base. Valeurs, taux de collecte et coûts restent à équil
 | **Pierre** | fortifications, bâtiments avancés, centres secondaires, murs, défenses | — | ressource **contestable** pour créer des points de tension |
 | **Or** | unités avancées, technologies, héros / capacités selon faction, unités élites | — | devient progressivement la ressource stratégique majeure |
 
+**La ferme *(décision D390)* : inépuisable, comme AoE4.** **Un Paysan** par ferme ; coût en bois ; posée librement, de préférence près d'un **moulin** (dépôt de nourriture, D346) ou d'un forum ; collecte **plus lente** que les baies ou la chasse mais **sans fin**, rien à ressemer : la nourriture du milieu et de la fin de partie. Le *Sanctuaire* de l'Aube (D67) augmente le rendement des fermes dans son rayon. Taille, coût et rendement à régler en test.
+
 ### 5.2 Ressources spéciales
 
 Le jeu n'utilise pas, par défaut, de ressource spéciale propre à chaque faction.
@@ -143,6 +145,8 @@ Le joueur arbitre en permanence : **plus de travailleurs = meilleure économie**
 Règle spéciale des Héritiers du Feu : une unité d'élite coûte environ 2 places de population.
 
 **Population maximale *(décision D03)* : 175 par joueur.**
+
+**Population pleine *(décision D391)* : bloqué, comme une production.** Une unité qui arrive sans file mais compte dans la population (Squelette levé par le Nécromancien, D86 ; escouade de *Renforts de l'Aube*) **n'arrive pas** quand la place manque : capacité ou pouvoir **grisé** avec « population pleine » ; *Renforts de l'Aube* exige la place de **toute** l'escouade (pas de renfort partiel). Les Légions choisissent qui garder et qui sacrifier pour faire place aux Squelettes.
 
 Répartition indicative en milieu et fin de partie (à valider en test) :
 
@@ -256,14 +260,14 @@ Chaque unité possède au minimum : rôle, coût, population, temps de productio
 
 | Rôle | Unité commune | Catégorie d'armure |
 |---|---|---|
-| Travailleur | Paysan | infanterie légère |
+| Travailleur | Paysan | Paysan *(D345)* |
 | Anti-cavalerie | Lancier | infanterie légère |
 | Infanterie lourde | Homme d'armes | infanterie lourde |
 | Tireur léger | Archer | distance |
 | Tireur anti-armure | Arbalétrier | distance |
-| Tireur à poudre *(palier 3, D38)* | Arquebusier | distance |
-| Cavalerie légère | Cavalier léger | cavalerie légère |
-| Cavalerie lourde | Cavalier lourd | cavalerie lourde |
+| Tireur à poudre *(palier 3, D38)* | Arquebusier | infanterie à poudre *(D345)* |
+| Cavalerie légère | Cavalier léger | cavalerie *(D345 : une seule catégorie)* |
+| Cavalerie lourde | Cavalier lourd | cavalerie *(D345 ; comment l'Arbalétrier le vise : à trancher avec le Cavalier lourd, hors prototype)* |
 | Siège | Bélier, Mangonneau, Trébuchet, Canon (§ 6.1) | siège |
 | Soigneur *(D134)* | Moine | infanterie légère |
 
@@ -577,7 +581,7 @@ La progression du **héros** et celle de la **civilisation** sont distinctes :
 - **Annoncé et contrable :** un signal visuel clair au lancement, et une réponse possible pour l'adversaire (reculer, changer de terrain, etc.).
 - Le héros doit être sur place : pas d'effet à l'échelle de la carte, pas de transformation (pour garder le repère de D17).
 - **L'ultime de duel est distinct :** c'est une capacité du kit de duel (§ 10.3), séparée de l'ultime RTS. *Révision D43 :* il se débloque lui aussi au niveau 10 (D36 le prévoyait indépendant du niveau).
-- **Serviteurs temporaires** créés par un ultime : hors population, mais plafonnés (proposition, à confirmer en test).
+- **Serviteurs temporaires** (ultimes, *Éclats d'os*, *Cimetière maudit*, *Relève impie*…) : hors population. **Plafond commun par joueur *(décision D392)*** (indicatif : ~20, à régler en test) : au-delà, une nouvelle levée fait **s'effondrer le serviteur temporaire le plus ancien** (l'effet n'est jamais perdu, la horde se renouvelle). Le *Champion damné* (victoire en duel, unique) n'y entre pas.
 - Hors prototype (niveaux 1 à 6) ; la capacité est prévue dans `HeroData` dès le départ.
 
 | Niveau | Héros | Civilisation (noms temporaires) | Moment indicatif (1v1, joueur actif) |
@@ -924,7 +928,7 @@ Réponses aux contres garanties (D07) : le Lancier (anti-cavalerie) dès le pali
 | **Aube** | *Liturgie* (gains d'Honneur +10 %) ; *Hallebardes trempées* (Hallebardier : bonus contre l'infanterie lourde accru) | *Bénédiction des armes* (Chevaliers et Hallebardiers +attaque contre le « profane » : morts-vivants et unités invoquées ou temporaires *(D316)*) ; *Vœu de pauvreté* (Moines moins chers) |
 | **Légions** | *Os taillés* (Squelettes +armure) ; *Chair putride* (Zombies +PV) | *Rites funèbres* (chaque levée d'un Nécromancien soigne les Squelettes proches de ~10 % de leurs PV *(D317)*) ; *Lames empoisonnées* (Guerriers Damnés : dégâts sur la durée) |
 
-*Bénédiction des armes* *(D316)* vise le « profane » : morts-vivants, serviteurs relevés, illusions de l'Ombre, dragons de l'*Appel de la Couvée* ; ni les troupes de croisade ni les mercenaires templiers. Liste exacte à fixer en écrivant les unités. Elle reste surtout tournée contre les Légions (voulu au prototype). Recoupements avec les talents *(D317)* : *Os taillés* (armure) et le sceau *Os durcis* (PV) s'additionnent, *Liturgie* (tous les gains d'Honneur) et les Serments (une source chacun) aussi : cumuls voulus entre un effet général et un effet de build. *Rites funèbres* ne touche plus la durée des cadavres, qui reste à *Charnier fertile* et à l'*Autel de sang*.
+*Bénédiction des armes* *(D316)* vise le « profane » : morts-vivants, serviteurs relevés, illusions de l'Ombre, dragons de l'*Appel de la Couvée* ; ni les troupes de croisade ni les mercenaires templiers. **Au prototype *(décision D393)*** : une **catégorie d'armure « Profane »**, portée en plus de la catégorie normale (D345), sur le **Zombie**, le **Squelette**, le **Guerrier Damné**, les **serviteurs temporaires** et le **Champion damné** ; **pas** le Nécromancien (sorcier vivant) ni le héros ; *Bénédiction des armes* ajoute un bonus contre « Profane ». Les autres factions : en écrivant leurs unités. Elle reste surtout tournée contre les Légions (voulu au prototype). Recoupements avec les talents *(D317)* : *Os taillés* (armure) et le sceau *Os durcis* (PV) s'additionnent, *Liturgie* (tous les gains d'Honneur) et les Serments (une source chacun) aussi : cumuls voulus entre un effet général et un effet de build. *Rites funèbres* ne touche plus la durée des cadavres, qui reste à *Charnier fertile* et à l'*Autel de sang*.
 
 ### 11.2 Tronc commun du palier 3 *(décision D180)*
 
@@ -1080,8 +1084,8 @@ L'équilibrage ne cherche pas à rendre les factions identiques : chacune est fo
 | Palier | Choix (définitif) | Rôle |
 |---|---|---|
 | **1 — Essor** *(D123)* | ***Bastion de l'Aube*** : murs et tours plus solides ; les **tours bénies** soignent lentement les alliés proches. Marque visible (D333, D336) : bannières de l'Aube sur les murs et les tours | **repli** : une base imprenable |
-| | ***Chapelle de campagne*** : petit bâtiment constructible loin de la base ; étend l'effet du *Sanctuaire* aux fermes proches, sert de point de ralliement et forme des Moines | **projection** : l'Aube s'étend (répond à la vigilance de D67) |
-| **2 — Puissance** *(D124)* | ***Lices de l'Aube*** : Chevaliers Vertueux formés plus vite, *Défi du Chevalier* renforcé Marque visible (D336) : banderoles et barrière de joute dans la cour de l'Écurie. | **l'Acier** |
+| | ***Chapelle de campagne*** : petit bâtiment constructible loin de la base ; étend l'effet du *Sanctuaire* aux fermes proches, sert de point de ralliement et forme des Moines Lumineux | **projection** : l'Aube s'étend (répond à la vigilance de D67) |
+| **2 — Puissance** *(D124)* | ***Lices de l'Aube*** : Chevaliers Vertueux formés plus vite, *Défi du Chevalier* renforcé Marque visible (D336) : banderoles et barrière de joute dans la cour de la Caserne (le Chevalier Vertueux est de l'infanterie lourde). | **l'Acier** |
 | | ***Monastère*** : Moines Lumineux qui soignent mieux, atténuent plus fortement les malus de moral et les malédictions (D125), et dont les soins rapportent plus d'Honneur Marque visible (D336) : une cloche au fronton des Chapelles. | **la Foi** |
 | **3 — Légende** *(D182)* | ***Autel du Jugement*** : le pouvoir *Jugement* (D85) coûte moins d'Honneur, frappe une zone plus large et fait de gros dégâts aux bâtiments Marque visible (D336) : un autel lumineux devant le Centre principal. | **finir** (D179) : la lumière qui conclut |
 | | ***Crypte des saints*** : un second pouvoir d'Honneur au palier 3, ***Veille des saints*** *(D183)* : pendant ~10 s, aucun bâtiment de la zone (centre principal compris) ne descend sous 1 PV, et les paysans y réparent ~50 % plus vite. Zone annoncée ; ne touche jamais les unités (distinct de *Dernier Rempart*) Marque visible (D336) : des statues de saints autour du Centre principal. | **renverser** (D179) : tenir le temps que l'armée revienne |
@@ -2118,8 +2122,8 @@ Avant de créer les six factions complètes :
 | Ressources | 4 |
 | Centre principal | 1 |
 | Bâtiments économiques *(D83, D84)* | maison, camps de collecte (bois, pierre, or), moulin (D346), ferme, marché (D70) ; *Sanctuaire* pour l'Aube (D67) |
-| Bâtiment militaire | 1 au départ, puis le découpage par catégorie (D128) une fois les combats validés |
-| Bâtiment technologique | 1 |
+| Bâtiments militaires | Caserne, Champ de tir, Écurie, Atelier de siège (D128 ; un bâtiment unique possible au tout début du développement, données conçues pour le découpage) ; *Chapelle* (Moine Lumineux, D211, D212) ; *Nécropole* (Nécromancien, D338). Emblématiques : depuis le bâtiment de leur catégorie (Chevalier Vertueux et Guerrier Damné : Caserne) |
+| Bâtiments technologiques | Forge (palier 1), Académie (palier 2) (§ 11.1) |
 | Fortifications | murs de pierre praticables, porte, tour (D24) |
 | Niveaux de héros | 1 à 6 (paliers 0, 1 et 2) |
 | Duel | 1 |
@@ -2630,6 +2634,10 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D387 | 2026-10-23 | Communication — Le panneau « Diplomatie » | **Bouton en haut, panneau par-dessus la partie, comme AoE2** (choix de l'utilisateur, conforme à la recommandation) : une ligne par joueur (couleur, nom, faction, vies ; posture ; vision ; tribut grisé sans Marché, taxe affichée ; message privé) ; en standard, postures verrouillées, tributs et messages disponibles. Écarté : liste compacte toujours visible, tributs au Marché (place à l'écran, fonctions éclatées). | § 15 |
 | D388 | 2026-10-23 | XP — Les points stratégiques | **Centres secondaires et relais neutres** (choix de l'utilisateur, conforme à la recommandation ; conforme à D22) : relais (nom provisoire) posés par la carte, pris en s'y tenant sans ennemi (règle de D348, D380), gardés jusqu'à reprise ; XP par minute seulement, pas de vision. Parts dans les ~15 % à régler en test. Écartés : expansion seule (XP de développement déguisée), relais seuls. | § 6, § 9.4 |
 | D389 | 2026-10-23 | Options de partie — « Carte explorée » au prototype | **Au prototype** (choix de l'utilisateur, conforme à la recommandation) : une case qui marque terrain et ressources comme explorés ; sert aussi aux essais et aux scénarios d'essai (D341). Écarté : après le prototype. Précise D205, D381. | § 14.3, § 17 |
+| D390 | 2026-10-23 | Économie — La ferme | **Inépuisable, comme AoE4** (choix de l'utilisateur, conforme à la recommandation) : un Paysan par ferme, coût en bois, posée librement (près d'un moulin ou d'un forum), collecte plus lente que les baies mais sans fin, rien à ressemer ; le Sanctuaire augmente le rendement dans son rayon. Écartés : ferme épuisable à ressemer (AoE2), champ partagé à 2-3 Paysans. Précise D346. | § 5.1 |
+| D391 | 2026-10-23 | Population — Unités gratuites à la population pleine | **Bloqué, comme une production** (choix de l'utilisateur, conforme à la recommandation) : levée de Squelette et *Renforts de l'Aube* grisés sans place (« population pleine »), escouade entière ou rien. Écartés : dépassement permis puis production bloquée, dépassement avec plafond absolu. | § 5.3 |
+| D392 | 2026-10-23 | Population — Plafond des serviteurs temporaires | **Un plafond commun par joueur, le plus ancien cède sa place** (choix de l'utilisateur, conforme à la recommandation) : ~20 indicatif, toutes sources confondues (hors population) ; une levée au-delà fait s'effondrer le plus ancien ; Champion damné hors plafond. Écartés : levée qui échoue au plafond (effet mort), plafond par source (cumul trop haut avec *Relève impie*). | § 9.5, § 13.3 |
+| D393 | 2026-10-23 | Combat — Le « profane » au prototype | **Une catégorie d'armure « Profane » en plus** (choix de l'utilisateur, conforme à la recommandation) : Zombie, Squelette, Guerrier Damné, serviteurs temporaires, Champion damné ; pas le Nécromancien ni le héros ; *Bénédiction des armes* = bonus contre « Profane » (D345). Écartés : levés seulement, toute l'armée des Légions. Précise D316. | § 7.2, § 11.1 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2829,4 +2837,18 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Carte explorée au prototype** → **tranché (D389)**.
 
-Prochain numéro : **D390**.
+**Séance du 2026-10-23 (nuit) : trous qui bloquent le prototype** (relevés en balayant le § 17 contre le reste du GDD). Dans cet ordre :
+
+1. ~~La ferme~~ → **tranché (D390)** : inépuisable comme AoE4, un Paysan par ferme.
+2. ~~Bâtiments de production~~ → **corrigé (rédactionnel)** : § 17 aligné sur § 11.1 et D128, D211, D338 ; Chevalier Vertueux et Guerrier Damné à la Caserne (D128 : bâtiment de leur catégorie) ; marque des *Lices* dans la cour de la Caserne ; la *Chapelle de campagne* forme des Moines Lumineux.
+3. ~~Squelette et population pleine~~ → **tranché (D391)** : bloqué, comme une production. Plafond des serviteurs temporaires → **tranché (D392)** : commun par joueur, le plus ancien cède sa place.
+4. ~~Catégories d'armure~~ → socle **corrigé (rédactionnel)** sur D345 ; catégories des emblématiques : au chantier des stats (`UnitStatsInProgress.md`) ; « profane » **tranché (D393)** : catégorie « Profane » en plus. Reste pour le Cavalier lourd (hors prototype) : comment l'Arbalétrier le vise avec une seule catégorie « Cavalerie ».
+5. Famille *Effroi* des Légions et Spectre hors prototype (talent mort, contraire à D194).
+6. Prix de résurrection : quelle ressource, paiement automatique ou bouton.
+7. Volcan en standard sans Catastrophe ; réarmement d'un site, autel réutilisable, fenêtre après un réveil.
+8. Posture Neutre face aux règles qui disent « ennemi » (ruine, relais, autel, anti-construction, duel).
+9. Départ de Nomade : ressources ou forum offert.
+10. Zone anti-duel : de qui, et le centre secondaire compte-t-il.
+11. *Lumière sacrée* et le moral négatif (D125, « à trancher en test »).
+
+Prochain numéro : **D394**.
