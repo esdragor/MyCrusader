@@ -166,6 +166,8 @@ Le joueur possède une base principale et peut développer des expansions pour :
 
 Une expansion comporte un risque : plus elle est éloignée, plus elle est difficile à défendre.
 
+**Le centre secondaire *(décision D384)* : un vrai forum de plus, comme le centre-ville d'AoE4.** Débloqué au palier 1 (§ 11.1), coûteux (surtout en pierre) : il **produit des Paysans**, sert de **dépôt de toutes les ressources**, a une **garnison et tire**, donne une base de population et un lieu de réapparition du héros (§ 5.3, § 9.8). Pas de plafond : le **boom** (plusieurs centres pour produire plus de Paysans) est un pari économique que le rush punit. Il n'a **pas de vies** et ne protège jamais de la défaite : seul le forum principal compte (D347) ; pas de zone anti-construction autour de lui (D22 : seulement le centre principal). ⚠️ À surveiller en test : le boom ne doit pas devenir systématiquement optimal.
+
 Le joueur choisit entre investir dans sa base, prendre une expansion, investir dans l'armée ou accélérer sa technologie. Aucune option ne doit être systématiquement optimale.
 
 ### 5.5 Marché *(décision D70)*
@@ -417,6 +419,12 @@ Le terrain doit créer des décisions, pas seulement des bonus numériques.
 Le joueur ne voit pas toute la carte. La vision dépend des unités, bâtiments, héros, tours, éclaireurs et capacités.
 
 La reconnaissance est une ressource stratégique. Le Cercle de l'Ombre doit exceller dans cette dimension.
+
+**Règles du brouillard** *(séance du 2026-10-23, § 22)* :
+
+- **Carte au départ *(décision D381)*** : **noire** (inexplorée : ni terrain, ni ressources, ni bases), comme AoE2 et AoE4 ; option de partie **« Carte explorée »** cochable au lancement (terrain et ressources révélés, unités et bâtiments ennemis cachés hors de vue), pour l'entraînement, les tournois ou les parties rapides.
+- **Mémoire sous le brouillard *(décision D382)*** : comme AoE, une zone explorée hors de vue garde le **terrain**, les **ressources** et les **bâtiments ennemis tels qu'au dernier coup d'œil** (« fantômes », parfois déjà détruits), sur la carte et la mini-carte ; **jamais les unités**. Une destruction hors de vue ne s'apprend qu'en retournant voir (sauf le forum, D353).
+- **Vue et terrain *(décision D383)*** : la vue est un **cercle par unité** ; une unité en **hauteur voit plus loin** (bonus modéré, comme AoE4) ; la **forêt bloque la vue à travers elle** (D33) sans rendre furtives les unités qui s'y trouvent. **La furtivité vient, pour l'instant, de zones dédiées posées par la carte** *(précision de l'utilisateur)*, ni forêt ni hautes herbes : les unités qui s'y tiennent sont cachées, sauf pour un ennemi tout proche ou entré dans la zone (comme les bosquets d'AoE4). Placement symétrique (level design).
 
 ### 8.3 Exploration
 
@@ -1387,7 +1395,7 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
 | ***La Lignée*** | commandement à pied et armée : *Aura draconique*, *Lame draconique*, Champions, Gardes d'écailles | *Pierre de résonance*, *Forge d'écailles* | ***Sang draconique*** *(D155)* : Champions Draconiques et Gardes d'écailles ~+10 % PV | ***Écho élémentaire*** *(D155)* (transforme *Aura draconique*) : quand le héros change d'élément, les unités dans l'aura **gardent l'effet de l'ancien élément ~8 s** en plus du nouveau. Chaque changement devient un pic de puissance. Contre-jeu : changement visible, reculer pendant la fenêtre |
 | ***La Mue*** *(D156)* : « L'instinct du wyrm » | adaptation : changements d'élément, Nids, Mages, duel élémentaire | *Foyer élémentaire* | ***Esprit vif*** : délai de changement d'élément des emblématiques et des Nids ~−25 % ; Mages ~+5 % de portée (cumulable avec *Foyer élémentaire*) | ***Mue instinctive*** (transforme le changement d'élément du héros) : **en RTS aussi**, changement **instantané** qui libère autour du héros l'éclat de la *Mue élémentaire* (brûlure ; bouclier allié ; interruption). Recharge entre deux changements. ⚠️ Vigilance : pas d'éclats en boucle |
 
-- **Rangées 2 à 6 *(décision D157)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : plus tard (bloc 4).
+- **Rangées 2 à 6 *(décision D157)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : D198, ci-dessous.
 
   | Rangée | **Le Ciel** | **La Lignée** | **La Mue** |
   |---|---|---|---|
@@ -1517,7 +1525,7 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 | ***Le Miroir*** *(D165)* : « La rumeur » | commandement (par la manipulation) | *Murmures*, *Mensonge*, Illusionnistes, confusion, conversion (*Serment de l'Ombre*, *Discours du Maître*) | *Salle des miroirs* | ***Voix porteuse*** : *Murmures* ~+15 % de rayon ; Illusionnistes ~15 % plus vite formés | ***Murmures contagieux*** (transforme *Murmures*) : quand une unité ennemie dans l'aura subit un contrôle (confusion, peur, piège), **ses voisins immédiats reçoivent le malus de moral de *Murmures*** (D74). La panique se propage, sans contrôle supplémentaire. Contre-jeu : se disperser, purification (D125) |
 | ***La Toile*** *(D166)* : « L'appât » | stratégique | Piégeurs et pièges, *Comptoir* et ordres du marché noir, *Mensonge* (partagé avec le Miroir) : préparer un coup que le monde déclenche (D159, D161) | *Atelier du piégeur*, *Comptoir du marché noir* | ***Fils tendus*** : Piégeurs ~15 % plus vite formés, +1 piège actif par Piégeur ; avec le *Comptoir*, +1 ordre actif | ***L'Appât*** (transforme *Mensonge*) : la fausse armée peut être posée **sur des pièges alliés** ; attaquée, elle se dissipe et déclenche les pièges dessous, **avec leur signal habituel (~1 s, D159)**. Contre-jeu : indice de la fausse armée (D37), éclairage, recul pendant le signal |
 
-- **Rangées 2 à 6 *(décision D167)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : plus tard (bloc 4).
+- **Rangées 2 à 6 *(décision D167)*** : grille validée d'un bloc (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : D199, ci-dessous.
 
   | Rangée | **La Lame** | **Le Miroir** | **La Toile** |
   |---|---|---|---|
@@ -1620,7 +1628,7 @@ Même logique que l'Aube : le palier 1 décide de la forme de la partie, le pali
 | ***La Flamme*** *(D176)* : « La Chaleur qui circule » | commandement : *Transmission*, Prêtres de la Flamme, *Armes chauffées à blanc* | *Temple de la Flamme* | ***Flamme des pères*** : Prêtres de la Flamme formés ~15 % plus vite ; recharge de *Transmission* ~−15 % | ***Héritage vivant*** (transforme *Transmission*) : les armes embrasées **gardent la flamme tant que l'unité combat** (chaque coup la prolonge, plafond ~15 s) et chaque coup d'une unité embrasée **rend un peu de Chaleur au Champion**. Contre-jeu : se désengager, la flamme s'éteint dès que l'unité ne frappe plus |
 
 - ⚠️ **Vigilance (D173) :** l'Enclume aide à survivre, jamais à être remboursé ni à couvrir plus de terrain ; elle n'adoucit ni le coût des pertes ni « je ne peux pas être partout » (D169).
-- **Rangées 2 à 6 *(décision D177)*** : grille validée avec amendements (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : plus tard (bloc 4).
+- **Rangées 2 à 6 *(décision D177)*** : grille validée avec amendements (méthode D110). Valeurs indicatives, à régler en test. Rangées 7 à 9 : D200, ci-dessous.
 
   | Rangée | **Le Marteau** | **L'Enclume** | **La Flamme** |
   |---|---|---|---|
@@ -1868,6 +1876,7 @@ Les modes secondaires seront développés après validation du mode standard.
   - **Garnison *(D365)*** : le Roi entre dans tout bâtiment à garnison, comme dans AoE2 ; éjecté quand le bâtiment est détruit. L'IA le replie vers le bâtiment sûr le plus proche.
   - **Immunités *(décision D368)*** : le Roi n'est **jamais converti, retourné ni relevé** (comme les héros, D37, D57, D63), *Serment de l'Ombre* compris ; aucune faction n'a de raccourci vers la victoire en Régicide. PV et vitesse à régler en test.
 - **Catastrophe** : événements mondiaux plus fréquents (dépend du système d'événements, D28).
+- **Carte explorée *(D381)*** : terrain et ressources révélés au départ (la carte est noire par défaut, § 8.2).
 - ***Sites sacrés*** *(D359, à envisager, après le prototype)* : option façon AoE4, cochable au lancement : des points de la carte à **tenir tous ensemble ~5 min** donnent la victoire, **en plus** de la voie du forum. Proche du mode Domination : à distinguer quand on les concevra.
 
 **Domination, Reliques et Scénario** sont repoussés **après la création du prototype**. ***Diplomatie* entre dans le prototype, entre humains seulement *(décision D366)*** : règles et interface (postures, rupture, partage de vision, tributs, annonce à tous, victoire alliée ; D369 à D374) ; l'IA diplomatique vient après le prototype. **Les IA *(décision D367)*** : chaque IA est **seule contre tous** ; elle reste **Ennemie** envers tous, quelle que soit la posture qu'on prend envers elle (en V2, elle refusera toute proposition) ; la victoire alliée oblige donc à éliminer les IA. **Les trois options sont dans le prototype *(D205)*.**
@@ -2604,6 +2613,10 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D378 | 2026-10-23 | Volcan — L'enjeu du site | **Gisements riches sur les pentes** (or, pierre, en partie sur les tracés) comme règle ; **placement sur l'axe entre les bases = level design**, carte par carte (choix de l'utilisateur, corrigé : « A et C en fait, mais c'est que du LD »). Écartée comme règle : position militaire (hauteur, passage), laissée au level design. | § 12.1 |
 | D379 | 2026-10-23 | Volcan — L'après | **Terre neuve** (choix de l'utilisateur, conforme à la recommandation) : coulée infranchissable ~2-3 min, puis sol de basalte praticable (trace jusqu'à la fin) avec un gisement neuf (or ou pierre) ; gisements jamais détruits par la lave. **Nuance de l'utilisateur : la direction des coulées est potentiellement aléatoire** (tracés tirés à chaque éruption parmi les directions du site, annoncés dès l'alerte ; vigilance : tirage équilibré entre les côtés). Écartés : lave qui disparaît (carte qui n'évolue pas), roche permanente (carte qui se ferme avec Catastrophe). | § 12.1 |
 | D380 | 2026-10-23 | Volcan — Le réveil volontaire | **Au prototype, sans choix de direction** (choix de l'utilisateur, conforme à la recommandation) : autel ancien tenu ~60 s, contesté comme la ruine (D348), alerte inchangée, direction tirée (D379). **Accord de l'utilisateur : le choix de la direction par celui qui réveille pourra se tester plus tard, si le réveil paraît trop fade.** Écartés : réveil après le prototype, direction choisie dès le prototype. | § 12.1, § 12.2 bis |
+| D381 | 2026-10-23 | Brouillard — La carte au départ | **Noire, avec une option « Carte explorée »** (choix de l'utilisateur, conforme à la recommandation) : inexplorée par défaut comme AoE2 / AoE4 (scouting au cœur du jeu, Nomade intact) ; option de partie qui révèle terrain et ressources. Écartés : noire sans option, terrain révélé d'office (StarCraft, Warcraft 3). | § 8.2, § 14.3 |
+| D382 | 2026-10-23 | Brouillard — Mémoire sous le brouillard | **Comme AoE** (choix de l'utilisateur, conforme à la recommandation) : terrain, ressources et bâtiments au dernier coup d'œil (fantômes), jamais les unités ; destruction apprise en retournant voir (le forum reste public, D353). Écartés : destruction apprise d'office (information gratuite), rien en mémoire. | § 8.2 |
+| D383 | 2026-10-23 | Brouillard — La vue et le terrain | **Comme AoE4, avec une furtivité à part** (choix de l'utilisateur : A, précisé) : cercle de vue par unité, hauteur = vue plus longue (modérée), forêt = vue bloquée à travers (D33) sans furtivité ; **pour l'instant, la furtivité vient de zones dédiées posées par la carte**, ni forêt ni hautes herbes (cachées sauf ennemi tout proche ou dans la zone). Écartés : vraie ligne de vue façon Warcraft 3 (double avantage de la hauteur avec D23), cercle simple sans rien. | § 8.1, § 8.2 |
+| D384 | 2026-10-23 | Économie — Le centre secondaire | **Un vrai forum de plus, comme AoE4** (choix de l'utilisateur, conforme à la recommandation) : produit des Paysans, dépôt de toutes ressources, garnison et tir, population, réapparition ; coûteux (pierre), sans plafond (boom façon AoE4, puni par le rush) ; pas de vies, pas de zone anti-construction. Écartés : avant-poste sans Paysans, plafond par palier. | § 5.4 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2781,4 +2794,14 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Séance du volcan close (D377 à D380).**
 
-Prochain numéro : **D381**.
+**Séance du 2026-10-23 (suite) : le brouillard de guerre (§ 8.2).** Questions à traiter dans cet ordre :
+
+1. ~~La carte au départ~~ → **tranché (D381)** : noire, option « Carte explorée ».
+2. ~~Ce qu'on garde en mémoire~~ → **tranché (D382)** : comme AoE, bâtiments au dernier coup d'œil, jamais les unités.
+3. ~~La vue et le terrain~~ → **tranché (D383)** : hauteur = vue plus longue, forêt bloque la vue, furtivité par des zones dédiées de la carte.
+
+**Séance du brouillard close (D381 à D383).**
+
+**Centre secondaire (2026-10-23)** → **tranché (D384)** : un vrai forum de plus façon AoE4, sans plafond (la question du plafond tombe). Corrigé (rédactionnel) : « Rangées 7 à 9 : plus tard (bloc 4) » du Dragon, de l'Ombre et des Héritiers renvoyé à D198, D199, D200.
+
+Prochain numéro : **D385**.
