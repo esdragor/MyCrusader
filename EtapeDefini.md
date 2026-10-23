@@ -20,6 +20,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
+- Sélection d'un groupe d'ennemis : ouvre le panneau d'info (pastille avec leur nombre) et montre leurs barres de vie, même pleines ; sélection mêlée : on ne garde que le camp prioritaire, Moi > Allié > Ennemi > Neutre
 
 ### GDD
 - Review du GDD : prochain numéro D361 (D347 à D360 conditions de victoire ; reprise au § 22)
