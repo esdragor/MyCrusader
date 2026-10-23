@@ -327,6 +327,37 @@ namespace HOLFormation
 	inline constexpr int32 BlockSpacingFromStep = 10;
 	inline constexpr double BlockStragglerPathDistance = 900.;
 	/**
+	 * Reinforcements at the melee (MV.4.4, the user's rule A): the block marches formed; once one of its members comes
+	 * within BlockBreakDistance (centre to centre, ~2 rows' depth) of an enemy alive or of a friend of its side fighting,
+	 * the whole block breaks up and each member ends alone on its final leg to its place (no attack: a plain move).
+	 */
+	inline constexpr double BlockBreakDistance = 400.;
+	/**
+	 * The safety net (MV.4.4): a member holding the re-forming block this long (2 s at 20 steps a second: its HeldSteps,
+	 * farther than BlockSoftHoldDistance from its slot) no longer holds the others; it leaves the block and ends alone.
+	 */
+	inline constexpr int32 BlockMemberStuckSteps = 40;
+	/**
+	 * The block breaks up (MV.4.4): on a plain move only, one of its
+	 * members' closest enemy or striking friend (cm; negative: none) within BlockBreakDistance.
+	 */
+	inline bool ShouldBreakBlock(const bool bPlainMove, const double ClosestEnemy, const double ClosestFightingFriend)
+	{
+		return bPlainMove && ((ClosestEnemy >= 0. && ClosestEnemy <= BlockBreakDistance) || (ClosestFightingFriend >= 0. && ClosestFightingFriend <= BlockBreakDistance));
+	}
+
+	/** A friend fighting for ShouldBreakBlock (MV.4.4): one striking (in reach of its target), not one only seeking or nearing it. */
+	inline bool IsFightingFriend(const bool bAttacking, const bool bApproaching, const bool bHasTarget)
+	{
+		return bAttacking;
+	}
+
+	/** It no longer holds the others (MV.4.4): held BlockMemberStuckSteps steps, it leaves the block and ends alone. */
+	inline bool IsMemberStuck(const int32 Steps)
+	{
+		return Steps >= BlockMemberStuckSteps;
+	}
+	/**
 	 * The arrival blended into the march (the user's 4th trial): over the last GetBlockBlendDistance of the path (the
 	 * block's size + BlockBlendMargin, half the path at most), each unit's target slides from its slot in the block to its
 	 * final place (given once by kind when the blend starts), GetBlockBlend of the way at Remaining cm from the end.

@@ -180,6 +180,8 @@ protected:
 	 * ahead of the serial pass, in parallel.
 	 */
 	void GatherNearby(int32 Index, double Reach, TArray<int32>& Out) const;
+	/** MV.4 (coming to aid): GatherNearby on the fighter's own side, itself left out (the dense grid only). */
+	void GatherFriends(int32 Index, double Reach, TArray<int32>& Out) const;
 	/**
 	 * J7c.4, trial feedback (hol.Combat.PreferFreeTarget): the living bodies of every side (the fighter left out) whose
 	 * edge stands within Gap of the fighter's on the dense grid, at most Limit counted: the places taken around it.
@@ -200,6 +202,8 @@ protected:
 	uint32 SearchStamp = 0;
 	/** Kept between steps to spare the allocations. */
 	TArray<int32> Nearby;
+	/** Scratch of GatherFriends (coming to aid). */
+	TArray<int32> Friends;
 	TArray<HOLCombat::FCandidate> Candidates;
 	/** The fighter of each candidate. */
 	TArray<int32> CandidateFighters;

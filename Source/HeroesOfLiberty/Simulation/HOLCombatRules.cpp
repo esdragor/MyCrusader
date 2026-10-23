@@ -181,6 +181,17 @@ namespace HOLCombat
 		return AttackRange > RangedReach;
 	}
 
+	bool IsFriendFighting(const bool bAttacking, const int32 AttackerCount, const bool bHasLastAttacker)
+	{
+		return bAttacking || AttackerCount > 0 || bHasLastAttacker;
+	}
+
+	bool ShouldComeToAid(const ESeekMode Mode, const bool bRanged, const float AggressionRadius, const bool bHasTarget, const double FightingFriendDistance, const float AidRadius)
+	{
+		return Mode == ESeekMode::Auto && !bRanged && AggressionRadius > 0.f && !bHasTarget && AidRadius > 0.f
+			&& FightingFriendDistance >= 0. && FightingFriendDistance <= AidRadius;
+	}
+
 	int32 GetArrowFlightMilliseconds(const FVector2D& From, const FVector2D& To, const float SpeedCmPerSecond)
 	{
 		const double Distance = FVector2D::Distance(From, To);

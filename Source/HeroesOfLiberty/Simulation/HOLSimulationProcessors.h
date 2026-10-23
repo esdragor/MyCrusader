@@ -58,10 +58,11 @@ protected:
 	 * Direction; from the detour remembered in Detour while its body is ahead, eased back one turn a step (MV.2). With
 	 * bAroundEnemies (a walk that is not a fight's), an enemy in the way is a wall: no turn clear, the largest turn is
 	 * taken and held on its hand, never a push straight into it (MV.4). A still body is looked for within StillHorizon (at
-	 * least Horizon), and gone along up to hol.Units.AvoidStillMaxAngle (MV.4.4).
+	 * least Horizon), and gone along up to hol.Units.AvoidStillMaxAngle (MV.4.4); none touching its goal (Goal, if any:
+	 * its slot), where it is to stand beside it (MV.4.5.3).
 	 */
 	FVector AvoidBodies(FMassEntityHandle Entity, const FVector& Location, float Radius, const FVector& Direction, float Speed, double Horizon, double StillHorizon, uint32 FormUpSerial, uint8 FormUpKind,
-		uint8 Owner, struct FHOLDetourFragment& Detour, bool bAroundEnemies) const;
+		uint8 Owner, struct FHOLDetourFragment& Detour, bool bAroundEnemies, const FVector2D* Goal = nullptr) const;
 	/**
 	 * J7c.4 loop 19 (hol.Combat.RearSlide): a melee walking to fight, off the front, wanting Wanted: OutVelocity slides along
 	 * the friend barring its way (or stops when both sides are shut), smoothed from LastVelocity. False at the front.

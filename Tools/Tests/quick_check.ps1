@@ -415,6 +415,7 @@ $NearTo = @(-1900, -6200)
 $MeetNorth = @(-6200, -5200)
 $MeetSouth = @(-6200, -5700)
 $MeetTo = @(-3300, -5450)
+$AidBack = 1850
 # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1, 6 m apart on the formation's first ground.
 $CombatMenAtArms = @(-6300, -5500)
 $CombatSpearmen = @(-5700, -5500)
@@ -1193,6 +1194,16 @@ if ($Parts -contains "camera") {
             Step "wait 2", "mark blocks meet end", "hol.Units.Formation 0"
             Key Escape
             Step "waitlog Selection: none", "hol.Units.Remove $($MeetTo -join ' ') 500 0", "wait 0.3"
+            # Reinforcements onto friends standing on their places (MV.4.6): a line of 6 Men-at-arms standing exactly on the
+            # formation's places, 6 more sent onto it from 29 m west; friends at rest give way (D292), every one sent sets down.
+            # Reported at 12 s (hol.Units.Orders: the 6 sent are the 6 last identifiers), then all removed.
+            Step "mark reinforce", "hol.Units.SpawnSeed 136", "hol.Camera.Focus $($MeetTo[0] - 1400) $($MeetTo[1])", "frames 3"
+            for ($i = 0; $i -lt 6; $i++) { Step "hol.Units.Spawn 1 $($MeetTo[0] - 175 * [Math]::Floor($i / 3)) $($MeetTo[1] - 150 + 150 * ($i % 3)) 0 ManAtArms 0" }
+            Step "hol.Units.Spawn 6 $($MeetNorth[0]) $($MeetTo[1]) 0 ManAtArms 150", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($MeetNorth[0] - 500) $($MeetTo[1] - 500) $($MeetNorth[0] + 500) $($MeetTo[1] + 500)",
+                "waitlog Selection: 6 units (own)", "hol.Select.OrderGround $($MeetTo -join ' ')", "waitlog Order: ", "wait 12", "hol.Units.Orders 0", "mark reinforce end"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Units.Remove $($MeetTo -join ' ') 1200 0", "wait 0.3"
         }
         if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
             # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
@@ -1300,6 +1311,35 @@ if ($Parts -contains "camera") {
                 "hol.Units.Where 1", "capture combat_flee_2", "hol.Units.Where 1", "hol.Units.Where 0", "wait 0.25", "hol.Units.Where 1", "hol.Units.Where 0", "hol.Camera.Zoom -12", "wait 2", "hol.Units.Where 1", "hol.Units.Where 0",
                 "hol.Combat.ArrowReport", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 6000 1", "hol.Units.Remove $($FleeArchers[0]) $($FleeArchers[1]) 6000 0",
                 "hol.Cheat.UnitSpeed 1", "wait 1", "hol.Combat.ArrowReport", "hol.Combat.LogHits 0", "mark combat arrows flee end"
+            # Reinforcements behind their friends in the fight (MV.4): 12 Men-at-arms of slot 0 attack-move in formation onto 12 of
+            # slot 1; 6 s on, 6 more Men-at-arms made where they started and sent by a plain move to the ground 7 m behind the
+            # line's point (on the point itself the click is an attack on the enemy there); 20 s more, then all removed.
+            # Coming to aid (MV.4, choice C): sent 17 m behind the point, they stand out of the enemies' 16 m aggression but
+            # within 20 m of their friends fighting (hol.Combat.AidReport each second; hol.Combat.AidRadius 0: they stay idle).
+            # Control first (MV.4, choice C): 6 against 6 Men-at-arms made in contact at the meeting point, 6 more of slot 0 made idle
+            # 18.5 m behind: out of the enemies' 16 m aggression, within 20 m of their friends fighting. Aid off (hol.Combat.AidRadius 0)
+            # they stay idle there (the case is meaningful); aid back on (2000 cm) none is left idle near the fight within 3 s.
+            Step "mark combat aid", "hol.Units.Remove $($MeetTo -join ' ') 4000 0", "hol.Units.Remove $($MeetTo -join ' ') 4000 1", "wait 0.2",
+                "hol.Units.SpawnSeed 141", "hol.Camera.Focus $($MeetTo[0] - 900) $($MeetTo[1])", "frames 3", "hol.Combat.AidRadius 0",
+                "hol.Units.Spawn 6 $($MeetTo -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 6 $($MeetTo[0] + 300) $($MeetTo[1]) 1 ManAtArms 150", "wait 1",
+                "hol.Units.Spawn 6 $($MeetTo[0] - $AidBack) $($MeetTo[1]) 0 ManAtArms 150", "wait 1"
+            for ($i = 0; $i -lt 3; $i++) { Step "wait 1", "hol.Combat.AidReport 0 2000 $($MeetTo[0] - $AidBack) $($MeetTo[1]) 1000" }
+            Step "mark combat aid on", "hol.Combat.AidRadius 2000"
+            for ($i = 0; $i -lt 4; $i++) { Step "wait 1", "hol.Combat.AidReport 0 2000 $($MeetTo[0] - $AidBack) $($MeetTo[1]) 1000" }
+            Step "mark combat aid end"
+            Step "mark combat reinforce", "hol.Units.Remove $($MeetTo -join ' ') 4000 0", "hol.Units.Remove $($MeetTo -join ' ') 4000 1", "wait 0.2",
+                "hol.Units.SpawnSeed 139", "hol.Camera.Focus $($MeetTo[0] - 1400) $($MeetTo[1])", "frames 3",
+                "hol.Units.Spawn 12 $($MeetNorth[0]) $($MeetTo[1]) 0 ManAtArms 150", "hol.Units.Spawn 12 $($MeetTo[0] + 600) $($MeetTo[1]) 1 ManAtArms 150", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($MeetNorth[0] - 900) $($MeetTo[1] - 900) $($MeetNorth[0] + 900) $($MeetTo[1] + 900)",
+                "waitlog Selection: 12 units (own)", "hol.Select.AttackMove $($MeetTo -join ' ')", "wait 6",
+                "hol.Camera.Focus $($MeetNorth[0]) $($MeetTo[1])", "frames 3", "mark combat reinforce sent",
+                "hol.Units.Spawn 6 $($MeetNorth[0]) $($MeetTo[1]) 0 ManAtArms 150", "wait 0.5", "frames 3",
+                "hol.Select.BoxGround $($MeetNorth[0] - 700) $($MeetTo[1] - 700) $($MeetNorth[0] + 700) $($MeetTo[1] + 700)",
+                "waitlog Selection: 6 units (own)", "hol.Camera.Focus $($MeetTo[0] - 1400) $($MeetTo[1])", "frames 3", "hol.Select.OrderGround $($MeetTo[0] - 1700) $($MeetTo[1])", "waitlog Order: 6 units to ("
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 1", "hol.Combat.AidReport 0" }
+            Step "mark combat reinforce end"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Units.Remove $($MeetTo -join ' ') 4000 0", "hol.Units.Remove $($MeetTo -join ' ') 4000 1", "wait 0.3"
         }
     }
 }
@@ -2546,6 +2586,22 @@ if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
 }
 
 if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
+    # Reinforcements onto friends at rest (MV.4.6): within 12 s every one sent set down (phase None) at most 60 cm from its
+    # place, none left on its final leg more than 1 m off (before: places on the friends, stuck ~3 m off).
+    $Checks = [ordered]@{}
+    $OrdersLine = @(Get-Section "reinforce") | Where-Object { $_ -match "Unit orders: " } | Select-Object -Last 1
+    $Sent = @()
+    if ($OrdersLine) {
+        $Sent = @([regex]::Matches($OrdersLine, "#(\d+) EHOLMovePhase::(\w+) slot \(-?\d+, -?\d+\) at (\d+) cm") | ForEach-Object { @{ Id = [int]$_.Groups[1].Value; Phase = $_.Groups[2].Value; Off = [int]$_.Groups[3].Value } } |
+            Sort-Object { $_.Id } | Select-Object -Last 6)
+    }
+    $Set = @($Sent | Where-Object { $_.Phase -eq "None" -and $_.Off -le 60 })
+    $Stuck = @($Sent | Where-Object { $_.Phase -eq "FinalLeg" -and $_.Off -gt 100 })
+    $Checks["reinforcements: $($Set.Count)/6 set down within 60 cm of their places at 12 s, $($Stuck.Count) on their final leg > 1 m off ($(($Sent | ForEach-Object { "$($_.Phase) $($_.Off)" }) -join ', '))"] = $Sent.Count -eq 6 -and $Set.Count -eq 6 -and $Stuck.Count -eq 0
+    $AllOk = (Report "formation reinforce" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     # The formation (J7a.4), from hol.Units.Formation: id -> type, location, yaw, speed (velocity), own speed, march
     # speed, front yaw, facing the front, holding its place, distance to it; and the place returns so far.
     $ReadFormation = { param($Lines)
@@ -3088,7 +3144,9 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $AllOk = (Report "combat anims" $Checks) -and $AllOk
 
     # The bodies (J7c, bodies kept 30 s), from hol.Units.CorpseReport: 5 s after the fall, the Peasant's body still on the
-    # ground, its fall ended; ~40 s later, the bodies gone at 31 s (held 30 s, sunk in 1 s), none older left.
+    # ground, its fall ended, laid ~4 s before (once its 1 s of Dying is over: HOLCombat::DyingSteps; no older body to count
+    # on: the Peasants the orders' Spearman killed later are now helped by the idle Men-at-arms, MV.4 coming to aid);
+    # ~40 s later, the bodies gone at 31 s (held 30 s, sunk in 1 s), none older left.
     $Checks = [ordered]@{}
     $CorpsePattern = "Corpse report: (\d+) corpses \((.*)\), (\d+) sinking, (\d+) fall ended, oldest ([\d.]+) s; (\d+) removed, longest kept ([\d.]+) s"
     $ReadCorpseReport = {
@@ -3099,7 +3157,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     }
     $Kept = & $ReadCorpseReport @(Get-Section "combat fall")
     $Checks["bodies kept: 5 s after the fall ($(if ($Kept) { "$($Kept.Corpses) ($($Kept.Types)), $($Kept.FallEnded) fall ended, oldest $($Kept.Oldest) s" } else { 'no report' }))"] =
-        $Kept -and $Kept.Corpses -ge 1 -and $Kept.Oldest -ge 4.5 -and $Kept.FallEnded -ge 1
+        $Kept -and $Kept.Corpses -ge 1 -and $Kept.Oldest -ge 3.9 -and $Kept.FallEnded -ge 1
     $Gone = & $ReadCorpseReport @(Get-Section "combat corpse expiry")
     $Checks["bodies gone at 31 s ($(if ($Gone) { "$($Gone.Removed) removed, longest kept $($Gone.LongestKept) s, oldest left $($Gone.Oldest) s" } else { 'no report' }))"] =
         $Gone -and $Gone.Removed -ge 1 -and $Gone.LongestKept -ge 31.0 -and $Gone.LongestKept -le 31.5 -and $Gone.Oldest -lt 31.1
@@ -3174,6 +3232,26 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $FleeReports = @($Flee | Where-Object { $_ -match "Arrow report: in flight (\d+) launched" } | ForEach-Object { [int]$Matches[1] })
     $Checks["none in flight on the display at the end ($(if ($FleeReports.Count) { $FleeReports[-1] } else { 'no report' }))"] = $FleeReports.Count -ge 1 -and $FleeReports[-1] -eq 0
     $AllOk = (Report "combat arrows flee" $Checks) -and $AllOk
+
+    # Reinforcements behind their friends in the fight (MV.4): the 6 sent by a plain move on the ground.
+    # Coming to aid (MV.4, choice C): from 12 s after the order (walked there), no idle melee of slot 0 stays within 20 m of a
+    # fighting friend (hol.Combat.AidReport each second, with the ids). One that just killed its target is idle until its next
+    # search (every 4 steps, 0.2 s) and may be caught by one sample: the same id in two samples running stayed idle 1 s.
+    $Checks = [ordered]@{}
+    $Checks["a plain move on the ground (no attack order)"] = [bool](Get-Section "combat reinforce sent" | Select-String -SimpleMatch "Order: 6 units to (")
+    $AidRows = @(Get-Section "combat reinforce sent" | Where-Object { $_ -match "Aid report: slot 0 idle melee \d+ near a fighting friend (\d+) .*closest enemy -?\d+ cm(.*)$" } |
+        ForEach-Object { [pscustomobject]@{ Near = [int]$Matches[1]; Ids = @($Matches[2] -split ' ' | Where-Object { $_ }) } })
+    $AidStayed = @(for ($i = 12; $i -lt $AidRows.Count - 1; $i++) { $Next = $AidRows[$i + 1].Ids; $AidRows[$i].Ids | Where-Object { $Next -contains $_ } })
+    $Checks["idle melee near a fighting friend, each second: $(($AidRows | ForEach-Object { $_.Near }) -join ',') (from 12 s on, none in two samples running: $(if ($AidStayed.Count) { $AidStayed -join ' ' } else { 'none' }))"] = $AidRows.Count -ge 20 -and $AidStayed.Count -eq 0
+    $AllOk = (Report "combat reinforce" $Checks) -and $AllOk
+
+    # Coming to aid, control (MV.4, choice C): aid off, idle melee near their fighting friends; aid on, none left within 3 s.
+    $Checks = [ordered]@{}
+    $AidOff = @(Get-Section "combat aid" | Where-Object { $_ -match "Aid report: slot 0 idle melee (\d+) near a fighting friend (\d+)" } | ForEach-Object { "$($Matches[1])/$($Matches[2])" })
+    $AidOn = @(Get-Section "combat aid on" | Where-Object { $_ -match "Aid report: slot 0 idle melee (\d+) near a fighting friend (\d+)" } | ForEach-Object { "$($Matches[1])/$($Matches[2])" })
+    $Checks["aid off: idle/near the fight each second $($AidOff -join ', ') (some near, the case is meaningful)"] = $AidOff.Count -ge 3 -and @($AidOff | Where-Object { [int]($_ -split '/')[1] -ge 1 }).Count -eq $AidOff.Count
+    $Checks["aid on: idle/near the fight each second $($AidOn -join ', ') (none idle from 3 s on)"] = $AidOn.Count -ge 4 -and @($AidOn | Select-Object -Skip 2 | Where-Object { [int]($_ -split '/')[0] -ne 0 }).Count -eq 0
+    $AllOk = (Report "combat aid" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
