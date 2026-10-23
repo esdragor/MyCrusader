@@ -52,10 +52,10 @@ et 6 60/60 ; `tests` (132), `move`, `bodies`, `formation`, `combat` PASS.
 Essai rejeté : faire suivre le chemin à chaque file à sa propre profondeur (le bloc n'arrivait plus, 12 membres
 retenant tour à tour ; sauvegarde `scratchpad\files_follow_path.patch`, session 0efba1aa).
 
-## Décisions à porter au GDD
+## Décisions au GDD
 
-Les six points ci-dessus (§ 16.6, chantier déplacement ; prochain numéro au § 22). Le n° 6 révise la valeur du filet
-de MV.4.4 ; le n° 1 étend D310 aux obstacles fixes de la carte.
+Les six points ci-dessus : **D439 à D444** (§ 21), paragraphe « Chantier rochers » au § 16.6, § 22 : prochain numéro
+D445 (2026-10-23). D444 révise la valeur du filet de D410 / MV.4.4 ; D439 étend D310 aux obstacles fixes de la carte.
 
 ## Après le commit
 
@@ -66,6 +66,6 @@ de MV.4.4 ; le n° 1 étend D310 aux obstacles fixes de la carte.
 
 ## Reprise exacte
 
-Tout est commité (`main`). Reste : les décisions au GDD (ligne d'`EtapeDefini.md`). Pour revérifier :
+**Chantier clos** : code, tests et décisions (D439 à D444) dans `main`. Pour revérifier :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\Tests\crossings.ps1 -Count 60 -Seed 7`
 et `quick_check.ps1 -Parts rocks`.

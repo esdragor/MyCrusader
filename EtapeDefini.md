@@ -33,8 +33,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : prochain numéro D439 (reprise au § 22)
-- Décisions du chantier rochers à porter au GDD (obstacles fixes hors des corps, bloc et rochers, filet de MV.4.4 à 0,5 s) *(`RidgeRockInProgress.md`)*
+- Review du GDD : prochain numéro D445 (reprise au § 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
