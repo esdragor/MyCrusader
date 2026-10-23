@@ -9,7 +9,10 @@
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
-#     "victory", it ends with the end of the match (~10 s more, see below).
+#     "victory", it ends with the end of the match (~10 s more, see below);
+#   - -Parts part:case (EtapeDefini F): only that case of the part, its steps and its checks (build:cut, build:gap; several
+#     with commas: build:cut,build:gap). Only "build" has cases so far ($SubCaseTable): the build cases before it are
+#     skipped (a short set-up instead: its wood, its logs), the camera part only plays its 2-player match (no 8-player).
 # The full run: a single game launch goes through the menu in French, English and Japanese (language switched live), a
 # drop-down list, then a match at 2 and at 8 players with the camera checks of D257 and the selection checks of D264 (own
 # centre, another's, void, Escape).
@@ -98,6 +101,29 @@ param(
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "net") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+# part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
+# section and the ones its report reads) and the set-up that stands for the cases skipped before it (the state it needs:
+# wood, logs; then a selection, so that its Escape logs "Selection: none"). "build gap" reads "build wall" too (the
+# walkers taken away, the houses' capture).
+$SubCaseTable = @{
+    build = [ordered]@{
+        cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
+        gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
+    }
+}
+$SubCases = @{}
+foreach ($Asked in @($Parts | Where-Object { $_ -match ":" })) {
+    $Part, $Case = $Asked -split ":", 2
+    if (-not $SubCaseTable.ContainsKey($Part)) { Write-Host "quick_check : FAIL (sub-cases not supported for $Part)"; exit 1 }
+    if (-not $SubCaseTable[$Part].Contains($Case)) {
+        Write-Host "quick_check : FAIL (unknown case '$Case' of $Part; cases: $(@($SubCaseTable[$Part].Keys) -join ', '))"; exit 1
+    }
+    if (-not $SubCases.ContainsKey($Part)) { $SubCases[$Part] = @() }
+    $SubCases[$Part] += $Case
+}
+# A part asked whole as well as by case (build,build:cut) is played whole.
+foreach ($Part in @($SubCases.Keys)) { if ($Parts -contains $Part) { $SubCases.Remove($Part) } }
+$Parts = @($Parts | ForEach-Object { ($_ -split ":")[0] } | Select-Object -Unique)
 # The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
 if (@($Parts | Where-Object { $_ -in "production", "move", "bodies", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
     $Parts += "camera"
@@ -187,7 +213,31 @@ if ($Parts -contains "net") {
 
 # 2. One game launch for the menu and the camera.
 $Steps = New-Object System.Collections.Generic.List[string]
-function Step([string[]] $Lines) { $Lines | ForEach-Object { $Steps.Add($_) } }
+# Inside a part played by cases (Start-CaseFilter): each "mark <part> <name>" starts a case, kept if it is one of the
+# marks asked, else skipped with every step and key up to the next mark; the first kept after a skip gets its set-up.
+$CaseFilter = $null
+function Start-CaseFilter([string] $Part) {
+    if (-not $SubCases.ContainsKey($Part)) { return }
+    $Marks = @{}
+    foreach ($Case in $SubCases[$Part]) { foreach ($Mark in $SubCaseTable[$Part][$Case].Marks) { $Marks["$Part $Mark"] = $SubCaseTable[$Part][$Case].Setup } }
+    $script:CaseFilter = @{ Part = $Part; Marks = $Marks; Skipping = $true }
+}
+function Stop-CaseFilter { $script:CaseFilter = $null }
+function Step([string[]] $Lines) {
+    foreach ($Line in $Lines) {
+        $Filter = $script:CaseFilter
+        if ($Filter -and $Line -match "^mark ($([regex]::Escape($Filter.Part))(?: .*)?)$") {
+            $Kept = $Filter.Marks.ContainsKey($Matches[1])
+            if ($Kept -and $Filter.Skipping) {
+                # The set-up, then the centre selected and Escape: the case's "waitlog Selection: none" finds its line.
+                $Filter.Marks[$Matches[1]] + @("hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)",
+                    "hol.UI.Key Escape 0 0.1", "wait 0.15") | ForEach-Object { $Steps.Add($_) }
+            }
+            $Filter.Skipping = -not $Kept
+        }
+        if (-not ($Filter -and $Filter.Skipping)) { $Steps.Add($Line) }
+    }
+}
 # A key press and its release (a tenth of a second).
 function Key([string] $Key, [string] $Hold = "0.1") { Step "hol.UI.Key $Key 0 $Hold", "wait $([double]$Hold + 0.05)" }
 # A menu screen opened by the same path as its button, once it has finished fading in.
@@ -278,6 +328,9 @@ $Cases = @(
     @{ Name = "2p"; Slot = 0; Other = 1; States = @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") },
     @{ Name = "8p"; Slot = 7; Other = 0; States = @("AI", "AI", "AI", "AI", "AI", "AI", "AI", "Human") }
 )
+# A part played by cases (part:case) only needs the camera part's 2-player match, where the solo parts run: no 8-player
+# match (its launch and checks, ~20 s), nothing the cases read.
+if ($SubCases.Count -gt 0) { $Cases = @($Cases[0]) }
 # Gathering in solo (J5b.3): the Peasants of slot 0 left by the parts before (2 produced, 3 more with the orders), the
 # tree clicked (source 3, the 4th of the first row of slot 0's wood) and the berry bush (the middle one of the front row
 # of slot 0's patch), where the two groups are made.
@@ -690,8 +743,12 @@ if ($Parts -contains "camera") {
                 "hol.Nav.Footprints off", "hol.Nav.Units"
         }
         if (($Parts -contains "build") -and $Case.Name -eq "2p") {
-            # Nothing selected: the placements of J6a.3 send no builder (J6a.4). Escape logs nothing when nothing is selected
-            # (the build part asked alone): the report says it, after a mark (the selection part counts its reports).
+            # -Parts build:<case>: only the marks of that case (Step), the others skipped.
+            Start-CaseFilter "build"
+            # Nothing selected: the placements of J6a.3 send no builder (J6a.4). The own centre selected, then Escape: never
+            # Escape with nothing selected, which opens the in-game menu (D356) and took the placement's Escape below. The
+            # report says it, after a mark (the selection part counts its reports).
+            Step "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "mark build none", "hol.Select.Report", "waitlog Selection report: selected none"
             # Placement (J6a.3, D311), 120 wood exactly (two houses of 50): the cursor stays in the middle of the screen
@@ -1044,6 +1101,7 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3", "capture build_barracks_ghost_soldier"
             Key Escape
             Step "waitlog Selection: none"
+            Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
             # The animations (J5c.4), at the table's rates of construction (two builders: ~10 s a house) and gathering.
@@ -1526,6 +1584,11 @@ $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $true
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
+    # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
+    # (their checks still read their empty sections: [regex]::Match on "$X", never on null).
+    foreach ($Played in @($SubCases.Keys)) {
+        if ($Part -match "^$([regex]::Escape($Played))( |$)" -and -not (@($SubCases[$Played] | ForEach-Object { "$Played $_" }) -contains $Part)) { return $true }
+    }
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
     Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
     $Checks.Keys | Where-Object { -not $Checks[$_] } | ForEach-Object { Write-Host "  [KO] $_" }
@@ -1989,7 +2052,7 @@ if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
 
     # The HUD's counts (D307): gatherers per resource, idle workers.
     $HudWorking = & $Value $Working "HUD report: (.*)$"
-    $Checks["HUD while gathering: F $($GatherBerries + 1), W $GatherTrees, idle $GatherBefore ($([regex]::Match([string]$HudWorking, 'gatherers .*$').Value))"] =
+    $Checks["HUD while gathering: F $($GatherBerries + 1), W $GatherTrees, idle $GatherBefore ($([regex]::Match("$HudWorking", 'gatherers .*$').Value))"] =
         [bool]($HudWorking -match ", gatherers F $($GatherBerries + 1) W $GatherTrees S 0 G 0, idle $GatherBefore$")
 
     # An order on a tree with more Peasants than its free spots (D309): the others gather the trees beside it.
@@ -2009,7 +2072,7 @@ if (($Parts -contains "gather") -and ($Parts -contains "camera")) {
     $Checks["six bushes used up, the berry Peasants idle ($($GoneBushes.Count) used up, $($IdleIds.Count) idle)"] = ($GoneBushes.Count -eq 6) -and
         ($IdleIds.Count -eq $WantIdle) -and (@(@($Berries) + @($Newborn) | Where-Object { $_ -notin $IdleIds }).Count -eq 0)
     $HudIdle = & $Value $UsedUp "HUD report: (.*)$"
-    $Checks["HUD: idle $WantIdle, F 0, W $GatherTrees ($([regex]::Match([string]$HudIdle, 'gatherers .*$').Value))"] =
+    $Checks["HUD: idle $WantIdle, F 0, W $GatherTrees ($([regex]::Match("$HudIdle", 'gatherers .*$').Value))"] =
         [bool]($HudIdle -match ", gatherers F 0 W $GatherTrees S 0 G 0, idle $WantIdle$")
     $Picks = @($Idle | Select-String -Pattern "Next idle worker: #(\d+) \((\d+) idle\) at \((-?\d+), (-?\d+)\)" | ForEach-Object { $_.Matches[0] })
     $Cameras = @($Idle | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | ForEach-Object { @{ X = [double]$_.Matches[0].Groups[1].Value; Y = [double]$_.Matches[0].Groups[2].Value } })
@@ -2128,7 +2191,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["a right click on the ghost: its Peasant sent to build it"] = [bool]($Site | Select-String -Pattern "Order: 1 units build House of slot 0 \(own\), foundation" -Quiet) -and
         [bool]($Site | Select-String -Pattern "Build order of slot 0: 1 units to House at \($($BuildA -join ', ')\)$" -Quiet)
     $SiteReport = & $Value $Site "Build report: (.*House of slot 0 \(own\) under construction.*)$"
-    $Checks["A rises with its work ($([regex]::Match([string]$SiteReport, 'House of slot 0 \(own\) under construction \d+%').Value))"] = [bool]($SiteReport -match "House of slot 0 \(own\) under construction (\d+)% at \($($BuildA -join ', ')\)") -and
+    $Checks["A rises with its work ($([regex]::Match("$SiteReport", 'House of slot 0 \(own\) under construction \d+%').Value))"] = [bool]($SiteReport -match "House of slot 0 \(own\) under construction (\d+)% at \($($BuildA -join ', ')\)") -and
         ([int]$Matches[1] -ge 10) -and ([int]$Matches[1] -le 90)
     $FinishedA = & $Value $Site "(Construction: slot 0 finished House at \($($BuildA -join ', ')\) .*)$"
     $StepsA = if ([string]$FinishedA -match "after (\d+) steps") { [int]$Matches[1] } else { -1 }
@@ -2197,7 +2260,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         elseif ([string]$_ -match "Build: a builder of slot 0 goes on to gather source \d+ \((\w+)\)") { "gather $($Matches[1])" } })
     $Checks["H, then I, then the wood ($($Tokens -join '; '))"] = ($Tokens -join '|') -eq "finished ($($BuildH -join ', '))|finished ($($BuildI -join ', '))|gather Wood"
     $QueueHud = & $Value $Queued "HUD report: (.*)$"
-    $Checks["the Peasant on its gathering's round trip ($([regex]::Match([string]$QueueHud, 'EHOLUnitActivity::\w+( EHOLResource::\w+ \d+/\d+)?').Value))"] =
+    $Checks["the Peasant on its gathering's round trip ($([regex]::Match("$QueueHud", 'EHOLUnitActivity::\w+( EHOLResource::\w+ \d+/\d+)?').Value))"] =
         [bool]($QueueHud -match "EHOLUnitActivity::(Gathering|GatherTrip)")
     $Checks["capture (rally)"] = Test-Path (Join-Path $Shots "build_rally.png")
     $AllOk = (Report "build trial" $Checks) -and $AllOk
@@ -2238,7 +2301,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["the key A with two Peasants: house J placed, they build it"] = [bool]($HudSite | Select-String -Pattern "Placement: House \(cost" -Quiet) -and
         [bool]($HudSite | Select-String -Pattern "Build order of slot 0: 2 units to House at \($($BuildJ -join ', ')\)$" -Quiet)
     $Block = & $Value $HudSite "HUD report: (.*)$"
-    $Checks["the site's block: progress, builders, Annuler on V ($([regex]::Match([string]$Block, 'selection House[^,]*, under construction \d+%, builders \d+').Value); $([regex]::Match([string]$Block, 'V=Cancel \w+').Value))"] =
+    $Checks["the site's block: progress, builders, Annuler on V ($([regex]::Match("$Block", 'selection House[^,]*, under construction \d+%, builders \d+').Value); $([regex]::Match("$Block", 'V=Cancel \w+').Value))"] =
         [bool]($Block -match "selection House \(own\), under construction (\d+)%, builders (\d+), grid V=Cancel enabled") -and ([int]$Matches[1] -ge 1) -and ([int]$Matches[1] -le 60) -and ([int]$Matches[2] -ge 1)
     $CancelledJ = & $Value $HudSite "(Construction: slot 0 cancelled House .*)$"
     $Checks["Annuler clicked: the share not built refunded ($CancelledJ)"] = [bool]($CancelledJ -match "at \($($BuildJ -join ', ')\), refund F 0 W (\d+) S 0 G 0 ") -and
@@ -3588,7 +3651,7 @@ if ($Parts -contains "net") {
         $ArmyShown = $ArmyLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $Checks["client $N : both armies shown with their types ($ArmyShown)"] = $ArmyShown -eq "client, 10 displayed: ManAtArms of slot 0 x2, ManAtArms of slot 1 x2, Peasant of slot 0 x1, Peasant of slot 1 x1, Spearman of slot 0 x2, Spearman of slot 1 x2"
         $Looks = $ArmyLines | Select-String -Pattern "Units looks: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-        $OtherLooks = @(foreach ($Type in "Spearman", "ManAtArms") { [regex]::Match([string]$Looks, "$Type of slot $Other skinned (\w+) colour (\d+) x2") })
+        $OtherLooks = @(foreach ($Type in "Spearman", "ManAtArms") { [regex]::Match("$Looks", "$Type of slot $Other skinned (\w+) colour (\d+) x2") })
         $Checks["client $N : the other's soldiers drawn, their meshes, the other's colour ($Looks)"] = (@($OtherLooks | Where-Object { $_.Success -and $_.Groups[2].Value -eq "$Other" }).Count -eq 2) -and
             ($OtherLooks[0].Groups[1].Value -ne $OtherLooks[1].Groups[1].Value)
         $Checks["client $N : control group 1 made of its 5 units, its digit selects them"] = [bool]($ArmyLines | Select-String -Pattern "Group 1: created" -Quiet) -and
@@ -3606,7 +3669,7 @@ if ($Parts -contains "net") {
             $Where = (Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "net") | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
             foreach ($Slot in 0, 1) {
                 $Start = Get-SlotStart $Slot
-                $Seen = [regex]::Match([string]$Where, "slot $Slot at \((-?\d+), (-?\d+)\)")
+                $Seen = [regex]::Match("$Where", "slot $Slot at \((-?\d+), (-?\d+)\)")
                 $Gap = if ($Seen.Success) { [Math]::Sqrt([Math]::Pow([int]$Seen.Groups[1].Value - ($Start[0] - 1000), 2) + [Math]::Pow([int]$Seen.Groups[2].Value - ($Start[1] + 2500), 2)) } else { -1 }
                 $Checks["client $N : Peasant of slot $Slot where its owner sent it ($([Math]::Round($Gap)) cm off)"] = ($Gap -ge 0) -and ($Gap -le 150)
             }
