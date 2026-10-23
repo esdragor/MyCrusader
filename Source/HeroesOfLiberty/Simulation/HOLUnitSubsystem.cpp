@@ -117,7 +117,7 @@ namespace UE::HeroesOfLiberty::Units
 
 	/** The other way (the user's trial of J7b): a scenario's units taken away at its end, so they weigh on no later part. */
 	FAutoConsoleCommandWithWorldAndArgs CommandRemove(TEXT("hol.Units.Remove"),
-		TEXT("hol.Units.Remove X Y Radius [Slot=0]: destroys the units of a slot within Radius (cm) of a ground point at the end of the step, server or solo; a test command"),
+		TEXT("hol.Units.Remove X Y Radius [Slot=0] [Type]: destroys the units of a slot (of one type: all if none) within Radius (cm) of a ground point at the end of the step, server or solo; a test command"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
@@ -129,18 +129,21 @@ namespace UE::HeroesOfLiberty::Units
 			const FVector2D Center(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]));
 			const double Radius = FCString::Atod(*Args[2]);
 			const uint8 Slot = static_cast<uint8>(Args.Num() >= 4 ? FCString::Atoi(*Args[3]) : 0);
+			// One type only (the part "rocks" of quick_check: its soldiers, never the centre's Peasants the parts after count).
+			const FName Type = Args.Num() >= 5 ? FName(*Args[4]) : NAME_None;
 			TArray<FHOLUnitView> Views;
 			Units->GetUnitViews(Views);
 			TArray<uint32> Removed;
 			for (const FHOLUnitView& View : Views)
 			{
-				if (View.OwnerPlayer == Slot && FVector2D::DistSquared(FVector2D(View.Location), Center) <= Radius * Radius)
+				if (View.OwnerPlayer == Slot && (Type.IsNone() || View.TypeName == Type) && FVector2D::DistSquared(FVector2D(View.Location), Center) <= Radius * Radius)
 				{
 					Removed.Add(View.UnitId);
 				}
 			}
 			Units->RequestDestroyUnits(Removed);
-			UE_LOG(LogHOLSimulation, Display, TEXT("Remove: %d units of slot %d within %.0f of (%.0f, %.0f)"), Removed.Num(), Slot, Radius, Center.X, Center.Y);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Remove: %d units of slot %d within %.0f of (%.0f, %.0f)%s"), Removed.Num(), Slot, Radius, Center.X, Center.Y,
+				Type.IsNone() ? TEXT("") : *FString::Printf(TEXT(", %s only"), *Type.ToString()));
 		}));
 }
 
