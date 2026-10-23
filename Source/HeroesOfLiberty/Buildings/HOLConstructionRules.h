@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "Match/HOLResources.h"
 
+enum class EHOLUnitActivity : uint8;
+enum class EHOLMovePhase : uint8;
+
 enum class EHOLConstructionState : uint8;
 enum class EHOLAttackType : uint8;
 
@@ -411,4 +414,36 @@ namespace HOLConstruction
 	 * body's nearest point, to OutsideGap. True when Local moved.
 	 */
 	HEROESOFLIBERTY_API bool KeepOutOfBody(const FVector2D& HalfExtent, double InsideGap, double OutsideGap, FVector2D& Local);
+
+	/**
+	 * A unit standing still (EtapeDefini C.1: idle, no move order, not fighting) is kept wholly beyond a building's visible
+	 * wall. A walker, a worker (building, gathering, at a deposit) or a fighter keeps D324's shoulder: its middle up to the
+	 * wall's line, so that a Peasant goes between two houses side by side.
+	 */
+	HEROESOFLIBERTY_API bool StandsClearOfVisibleWall(EHOLUnitActivity Activity, EHOLMovePhase Phase, bool bFighting);
+
+	/**
+	 * KeepOutOfBody, then a body of Radius standing still (bStandsStill) nearer than the visible wall (VisualGap from the
+	 * body) and its radius goes away from the body's nearest point, MaxStep a step at most (0: at once), to VisualGap +
+	 * Radius + 1 cm. True when Local moved; bOutEased (if given) true when that move was the easing out of the visible wall
+	 * alone (C.2: not a body put back, counted apart).
+	 */
+	HEROESOFLIBERTY_API bool KeepOutOfVisibleWall(const FVector2D& HalfExtent, double InsideGap, double OutsideGap, double Radius,
+		double VisualGap, bool bStandsStill, double MaxStep, FVector2D& Local, bool* bOutEased = nullptr);
+
+	/** A building's body in the world: its middle, half its size, its yaw's cosine and sine. */
+	struct FWallBody
+	{
+		FVector2D Centre = FVector2D::ZeroVector;
+		FVector2D HalfExtent = FVector2D::ZeroVector;
+		double Cos = 1.;
+		double Sin = 0.;
+	};
+
+	/**
+	 * EtapeDefini C.3: a unit standing still (out of the bodies) in the visible wall of one of Bodies goes away from it, MaxStep
+	 * a step at most, to VisualGap + Radius + 1 cm, if its way out leaves it clear of every other wall. In two walls at once
+	 * (the passage between two houses side by side), or led into another, it stays: D324's shoulder. True when it moved.
+	 */
+	HEROESOFLIBERTY_API bool EaseOutOfVisibleWalls(TConstArrayView<FWallBody> Bodies, double Radius, double VisualGap, double MaxStep, FVector2D& Position);
 }

@@ -4,6 +4,8 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLFormationRules.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -725,6 +727,115 @@ bool FHOLConstructionSiteKeepOutTest::RunTest(const FString& Parameters)
 		FVector2D Clear(Half.X + Radius + 11.0, 0.0);
 		TestFalse(TEXT("a centre outside, its body clear: as it is"), HOLConstruction::KeepOutOfBody(Half, InsideGap, OutsideGap, Clear));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionIdleWallTest, "HeroesOfLiberty.Construction.IdleWall", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionIdleWallTest::RunTest(const FString& Parameters)
+{
+	// EtapeDefini C.1 (trial of 2026-10-23): a Spearman standing still, jostled by builders, stayed half in a visible wall.
+	// A unit standing still goes wholly beyond it, a step at a time; a walker or a worker keeps D324's shoulder.
+	const FVector2D Half = HOLConstruction::GetBodySize(FVector2D(800.0, 800.0), 115.0) * 0.5;
+	const double VisualGap = 115.0 - 30.0;
+	const double Radius = 60.0;
+	const double InsideGap = HOLConstruction::GetKeepOutInsideGap(Radius, 25.0, VisualGap);
+	const double OutsideGap = Radius + 1.0;
+	const double MaxStep = 10.0;
+	const FBox2D Body(-Half, Half);
+	TestTrue(TEXT("idle, no order, not fighting: stands still"),
+		HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Idle, EHOLMovePhase::None, false));
+	TestFalse(TEXT("walking: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Moving, EHOLMovePhase::Path, false));
+	TestFalse(TEXT("idle but given a path: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Idle, EHOLMovePhase::WaitingPath, false));
+	TestFalse(TEXT("building: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Building, EHOLMovePhase::None, false));
+	TestFalse(TEXT("gathering: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Gathering, EHOLMovePhase::None, false));
+	TestFalse(TEXT("at a deposit: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::GatherTrip, EHOLMovePhase::None, false));
+	TestFalse(TEXT("striking: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Attacking, EHOLMovePhase::None, false));
+	TestFalse(TEXT("idle with a target: shoulder"), HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Idle, EHOLMovePhase::None, true));
+
+	// Its middle on the wall's line: half its body in the wall.
+	const FVector2D Start(Half.X + VisualGap, 40.0);
+	FVector2D Walker = Start;
+	TestFalse(TEXT("a walker there: as it is"), HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, false, MaxStep, Walker));
+	TestTrue(TEXT("a walker there: not moved"), Walker.Equals(Start, 0.01));
+
+	// Standing still, holding its formation place where it stands: the place goes out with it, it never walks back in.
+	FVector2D Unit = Start;
+	FVector2D Place = Start;
+	HOLFormation::FPlaceHold Hold;
+	HOLFormation::EndWalkToPlace(Hold, Unit, Place, Radius);
+	int32 Steps = 0;
+	bool bWalkedBack = false;
+	double LongestStep = 0.0;
+	for (int32 Step = 0; Step < 100; ++Step)
+	{
+		const FVector2D Before = Unit;
+		Steps += HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Unit) ? 1 : 0;
+		HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Place);
+		LongestStep = FMath::Max(LongestStep, FVector2D::Distance(Before, Unit));
+		bWalkedBack |= HOLFormation::WatchPlace(Hold, Unit, Place, Radius);
+	}
+	const double FromBody = HOLConstruction::GetDistance(Body, Unit);
+	TestTrue(FString::Printf(TEXT("wholly beyond the visible wall: %.1f cm >= %.1f"), FromBody, VisualGap + Radius), FromBody >= VisualGap + Radius);
+	TestTrue(FString::Printf(TEXT("a step at a time: %d steps, %.1f cm at most"), Steps, LongestStep), Steps > 1 && LongestStep <= MaxStep + 0.01);
+	TestTrue(FString::Printf(TEXT("its place out with it: %.1f cm from the body"), HOLConstruction::GetDistance(Body, Place)),
+		HOLConstruction::GetDistance(Body, Place) >= VisualGap + Radius);
+	TestFalse(TEXT("no walk back into the wall"), bWalkedBack);
+	FVector2D Again = Unit;
+	TestFalse(TEXT("out, it stays"), HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Again));
+
+	// C.2: the easing out of the visible wall is told apart from a body put back (the guard's count of walkers walking in).
+	FVector2D Eased = Start;
+	bool bEased = false;
+	TestTrue(TEXT("in the visible wall: eased out"),
+		HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Eased, &bEased) && bEased);
+	FVector2D Touching(Half.X + Radius * 0.5, 0.0);
+	bool bTouchingEased = true;
+	TestTrue(TEXT("its body in the building's: put back, not eased"),
+		HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Touching, &bTouchingEased) && !bTouchingEased);
+	FVector2D Inside(Half.X - 10.0, 0.0);
+	bool bInsideEased = true;
+	TestTrue(TEXT("its centre inside: put back, not eased"),
+		HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Inside, &bInsideEased) && !bInsideEased);
+	bool bAgainEased = true;
+	TestFalse(TEXT("out: not moved, not eased"),
+		HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Again, &bAgainEased) || bAgainEased);
+
+	// A builder there: as it is (the shoulder; the unit's state says it does not stand still).
+	FVector2D Builder = Start;
+	const bool bBuilderStill = HOLConstruction::StandsClearOfVisibleWall(EHOLUnitActivity::Building, EHOLMovePhase::None, false);
+	TestFalse(TEXT("a builder there: as it is"),
+		HOLConstruction::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, bBuilderStill, MaxStep, Builder));
+
+	// C.3 (trial of 2026-10-23): two houses side by side (tiles edge to edge, bodies 230 cm apart, narrower than both walls
+	// and a body): a unit standing still in the passage cannot be out of both, it stays (D324's shoulder), nothing eased.
+	HOLConstruction::FWallBody Left;
+	Left.HalfExtent = Half;
+	HOLConstruction::FWallBody Right = Left;
+	Right.Centre = FVector2D(800.0, 0.0);
+	const HOLConstruction::FWallBody Pair[] = { Left, Right };
+	for (const FVector2D& InPassage : { FVector2D(400.0, 40.0), FVector2D(360.0, -100.0), FVector2D(430.0, Half.Y - 20.0) })
+	{
+		FVector2D Wedged = InPassage;
+		int32 EasedSteps = 0;
+		double Farthest = 0.0;
+		for (int32 Step = 0; Step < 100; ++Step)
+		{
+			EasedSteps += HOLConstruction::EaseOutOfVisibleWalls(Pair, Radius, VisualGap, MaxStep, Wedged) ? 1 : 0;
+			Farthest = FMath::Max(Farthest, FVector2D::Distance(InPassage, Wedged));
+		}
+		TestTrue(FString::Printf(TEXT("in the passage at (%.0f, %.0f): stays, %d steps eased, %.1f cm moved at most"), InPassage.X, InPassage.Y,
+			EasedSteps, Farthest), EasedSteps == 0 && Farthest < 0.01);
+	}
+	// Near one of the two only (the far side of the left house): eased out as before, a step at a time.
+	FVector2D Alone(-Half.X - VisualGap, 40.0);
+	int32 AloneSteps = 0;
+	for (int32 Step = 0; Step < 100; ++Step)
+	{
+		AloneSteps += HOLConstruction::EaseOutOfVisibleWalls(Pair, Radius, VisualGap, MaxStep, Alone) ? 1 : 0;
+	}
+	const double AloneFrom = HOLConstruction::GetDistance(Body, Alone);
+	TestTrue(FString::Printf(TEXT("by one wall: eased out, %d steps, %.1f cm from the body"), AloneSteps, AloneFrom),
+		AloneSteps > 1 && AloneFrom >= VisualGap + Radius);
 	return true;
 }
 

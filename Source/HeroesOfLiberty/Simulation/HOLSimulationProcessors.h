@@ -115,6 +115,8 @@ public:
 
 	/** Bodies put back out of a footprint since the program started (hol.Nav.Footprints report). */
 	static int64 GetNumPushedOut() { return NumPushedOut.load(); }
+	/** Units standing still eased out of a visible wall (EtapeDefini C.1), apart from the bodies put back (C.2). */
+	static int64 GetNumEasedOut() { return NumEasedOut.load(); }
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -144,6 +146,7 @@ protected:
 	TArray<int32> CellFootprints;
 
 	static std::atomic<int64> NumPushedOut;
+	static std::atomic<int64> NumEasedOut;
 };
 
 /**

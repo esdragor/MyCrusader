@@ -2296,16 +2296,17 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $ReadCut = { param($Lines, $At) $Line = $Lines | Select-String -Pattern "Buildings \(D310\): footprint House at \($($At -join ', ')\): (\d+) walkers given a new path, (\d+) reused gather paths dropped(.*)\((.*)\)$" | Select-Object -First 1
         if ($Line) { $G = $Line.Matches[0].Groups; [pscustomobject]@{ Walkers = [int]$G[1].Value; Dropped = [int]$G[2].Value; Text = ($Line.Matches[0].Value -replace '^Buildings \(D310\): ', ''); Rebuilt = ($G[4].Value -match '^tiles rebuilt') } } }
-    $ReadWatch = { param($Lines) $W = $Lines | Select-String -Pattern "Footprint watch: (\d+) steps, .*; bodies in a footprint: (\d+) unit-steps, .*; put back out: (\d+), new paths: (\d+)$" | Select-Object -Last 1
-        if ($W) { [pscustomobject]@{ Steps = [int]$W.Matches[0].Groups[1].Value; Inside = [int]$W.Matches[0].Groups[2].Value; Out = [int]$W.Matches[0].Groups[3].Value; Repaths = [int]$W.Matches[0].Groups[4].Value } } }
+    # C.2: a unit standing still eased out of a visible wall (C.1) is counted apart, not as put back.
+    $ReadWatch = { param($Lines) $W = $Lines | Select-String -Pattern "Footprint watch: (\d+) steps, .*; bodies in a footprint: (\d+) unit-steps, .*; eased out of a visible wall: (\d+); put back out: (\d+), new paths: (\d+)$" | Select-Object -Last 1
+        if ($W) { [pscustomobject]@{ Steps = [int]$W.Matches[0].Groups[1].Value; Inside = [int]$W.Matches[0].Groups[2].Value; Eased = [int]$W.Matches[0].Groups[3].Value; Out = [int]$W.Matches[0].Groups[4].Value; Repaths = [int]$W.Matches[0].Groups[5].Value } } }
     $K = & $ReadCut $Cut $CutK
     $Checks["house K across the round trips: its kept paths dropped, its walkers given a new path once its tiles were rebuilt ($(if ($K) { $K.Text }))"] =
         ($null -ne $K) -and ($K.Walkers -ge 1) -and ($K.Dropped -ge 1) -and $K.Rebuilt
     $WatchK = & $ReadWatch $Cut
-    $PushedK = @($Cut | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
+    $PushedK = @($Cut | Select-String -Pattern "Keep-out: .* put back .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
     # Same rule as house N below (J6b.3): a walker brushing K's wall is put back by the guard (a few cm a step, D310), 10 in
     # a row give it one new path; none in the footprint, a few put back, a new path at most.
-    $Checks["none in it over 17 s after it, a few put back, a new path at most ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Inside) unit-steps in it, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it" }) $($PushedK -join '; '))"] =
+    $Checks["none in it over 17 s after it, a few put back, a new path at most ($(if ($WatchK) { "$($WatchK.Steps) steps, $($WatchK.Inside) unit-steps in it, $($WatchK.Out) put back, $($WatchK.Repaths) new paths for it, $($WatchK.Eased) eased out of a visible wall" }) $($PushedK -join '; '))"] =
         ($null -ne $WatchK) -and ($WatchK.Steps -ge 200) -and ($WatchK.Inside -eq 0) -and ($WatchK.Out -le 20) -and ($WatchK.Repaths -le 1)
     $KLine = -1; for ($i = 0; $i -lt $Cut.Count; $i++) { if ($Cut[$i] -match "Buildings \(D310\): footprint House at \($($CutK -join ', ')\)") { $KLine = $i; break } }
     $UnloadsK = if ($KLine -ge 0) { @($Cut[$KLine..($Cut.Count - 1)] | Select-String -Pattern "Gather: slot 0 unloaded \d+ \w+ \(stock [^)]*\) at MainCentre ").Count } else { 0 }
@@ -2313,13 +2314,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $N = & $ReadCut $CutMove $CutN
     $Checks["house N across a move order: its walkers given a new path ($(if ($N) { $N.Text }))"] = ($null -ne $N) -and ($N.Walkers -ge 6) -and $N.Rebuilt
     $WatchN = & $ReadWatch $CutMove
-    $PushedN = @($CutMove | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
+    $PushedN = @($CutMove | Select-String -Pattern "Keep-out: .* put back .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
     # D324: round N's body (5.7 m; its 8 m tiles before D324), the group of six squeezes its inner Peasant against the west wall, which the
     # footprints' guard keeps out (a few cm a step, D310): a slide along the wall, not a walk into the building. A slide of 10
     # steps in a row (half a second) gives that walker one new path from where it stands (RepathBuildingPushes, D310), as
     # #48 at the full quick_check of J6b.3: one at most, and no body in the footprint after the guard.
     # D344: with 4 m tiles the wall it slides along is 5.7 m (3.7 m before): 25 to 40 put back measured, limit 50 (20 before).
-    $Checks["no walk into it: none in it, a few slides along its wall, a new path at most ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Inside) unit-steps in it, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it" }) $($PushedN -join '; '))"] =
+    $Checks["no walk into it: none in it, a few slides along its wall, a new path at most ($(if ($WatchN) { "$($WatchN.Steps) steps, $($WatchN.Inside) unit-steps in it, $($WatchN.Out) put back, $($WatchN.Repaths) new paths for it, $($WatchN.Eased) eased out of a visible wall" }) $($PushedN -join '; '))"] =
         ($null -ne $WatchN) -and ($WatchN.Inside -eq 0) -and ($WatchN.Out -le 50) -and ($WatchN.Repaths -le 1)
     $Arrived = @($CutMove | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object {
         [regex]::Matches($_.Matches[0].Groups[1].Value, "#\d+ slot 0 at \((-?\d+), (-?\d+)\) (\w+)") } |
@@ -2360,11 +2361,11 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         $Last = if ($R.Samples.Count -gt 0) { $R.Samples[-1] } else { @{} }
         $Arrived = @($R.Walkers | Where-Object { $Last.ContainsKey($_) -and [Math]::Abs($Last[$_][0] - $GapTo[0]) -le 400 -and [Math]::Abs($Last[$_][1] - $GapTo[1]) -le 400 -and $Last[$_][2] -eq "Idle" })
         $Watch = & $ReadWatch $GapCase.Lines
-        $Pushed = @($GapCase.Lines | Select-String -Pattern "Keep-out: .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
+        $Pushed = @($GapCase.Lines | Select-String -Pattern "Keep-out: .* put back .*$" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 2)
         $Checks["$($GapCase.Name): $($R.Walkers.Count) walker(s) seen in the way ($($Between.Count) samples: $(($Between | Select-Object -First 4) -join ', '))"] = ($R.Walkers.Count -eq $GapCase.Count) -and ($Between.Count -ge $GapCase.Count)
         $Checks["$($GapCase.Name): on the way's middle line, within 60 cm (off: $($Off -join ', '))"] = $Off.Count -eq 0
         if ($GapCase.Count -ge 2) { $Checks["two: one after the other ($Abreast samples with both in the way less than 1 m apart along it)"] = $Abreast -eq 0 }
-        $Checks["$($GapCase.Name): none put back by a wall ($(if ($Watch) { "$($Watch.Steps) steps, $($Watch.Out) put back, $($Watch.Repaths) new paths" }) $($Pushed -join '; '))"] =
+        $Checks["$($GapCase.Name): none put back by a wall ($(if ($Watch) { "$($Watch.Steps) steps, $($Watch.Out) put back, $($Watch.Repaths) new paths, $($Watch.Eased) eased out of a visible wall" }) $($Pushed -join '; '))"] =
             ($null -ne $Watch) -and ($Watch.Out -eq 0) -and ($Watch.Repaths -eq 0)
         $Checks["$($GapCase.Name): arrived ($($Arrived.Count) standing within 4 m of the point)"] = $Arrived.Count -eq $GapCase.Count
     }

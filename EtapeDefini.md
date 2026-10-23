@@ -20,6 +20,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
+- Sélection d'un groupe d'ennemis : ouvre le panneau d'info (pastille avec leur nombre) et montre leurs barres de vie, même pleines ; sélection mêlée : on ne garde que le camp prioritaire, Moi > Allié > Ennemi > Neutre
 
 ### GDD
 - Review du GDD : prochain numéro D361 (D347 à D360 conditions de victoire ; reprise au § 22)
@@ -31,7 +32,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
-- Unité bousculée contre un bâtiment (par les bâtisseurs) : reste à moitié dans le mur visible
 - Deux foules ennemies qui se croisent à grand-peine
 - Unité apparue ou poussée sur un rocher : y reste coincée (ne suit plus aucun ordre)
 - Unités d'un groupe remises en formation sur place (ordre de bouger d'un rien) : elles peinent, elles ne poussent presque pas les autres
