@@ -57,6 +57,13 @@ retenant tour à tour ; sauvegarde `scratchpad\files_follow_path.patch`, session
 Les six points ci-dessus (§ 16.6, chantier déplacement ; prochain numéro au § 22). Le n° 6 révise la valeur du filet
 de MV.4.4 ; le n° 1 étend D310 aux obstacles fixes de la carte.
 
+## Après le commit
+
+- (2026-10-23, signalé par mycrusader-c8) `quick_check -Full` cassait en chaîne : les `hol.Units.Remove` de « rocks »
+  (1800 cm) emportaient 3 Paysans du centre, `gather` n'en trouvait plus (« waitunits 21 »). Corrigé :
+  `hol.Units.Remove X Y Radius [Slot] [Type]`, « rocks » n'enlève que ses soldats ; « rocks » sort de `-Full` (comme
+  « bodies », par `-Parts` seulement : ~4 min de plus dépassaient la limite de 960 s). `-Parts rocks,sources,gather` PASS.
+
 ## Reprise exacte
 
 Tout est commité (`main`). Reste : les décisions au GDD (ligne d'`EtapeDefini.md`). Pour revérifier :

@@ -5,7 +5,7 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, net). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     formation, combat, bodies, rocks, victory, sides, net; bodies and rocks only when asked, not in -Full). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
@@ -98,7 +98,7 @@ param(
     [switch] $Visible
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "rocks", "victory", "sides", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -151,11 +151,11 @@ $RockCases = @(
     # The same army formed, ordered again and again (the user's 2nd trial of ridge_army: after the scenario's order, the
     # army sent back past the rock's end stood pressed against it): Chain, no spawn, the units standing round the last target.
     @{ Name = "army formed behind"; Count = 50; Type = "ManAtArms"; X = -13400; Y = 0; R = 600; TX = -10000; TY = 0 },
-    @{ Name = "chain to front left"; Count = 50; Chain = $true; X = -10000; Y = 0; R = 1200; TX = -13300; TY = -700 },
-    @{ Name = "chain to back right"; Count = 50; Chain = $true; X = -13300; Y = -700; R = 1200; TX = -10300; TY = 1500 },
-    @{ Name = "chain to front right"; Count = 50; Chain = $true; X = -10300; Y = 1500; R = 1200; TX = -13300; TY = 800 },
-    @{ Name = "chain to back left"; Count = 50; Chain = $true; X = -13300; Y = 800; R = 1200; TX = -10000; TY = -1200 },
-    @{ Name = "chain to front"; Count = 50; Chain = $true; X = -10000; Y = -1200; R = 1200; TX = -13600; TY = 0 },
+    @{ Name = "chain to front left"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -10000; Y = 0; R = 1200; TX = -13300; TY = -700 },
+    @{ Name = "chain to back right"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -13300; Y = -700; R = 1200; TX = -10300; TY = 1500 },
+    @{ Name = "chain to front right"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -10300; Y = 1500; R = 1200; TX = -13300; TY = 800 },
+    @{ Name = "chain to back left"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -13300; Y = 800; R = 1200; TX = -10000; TY = -1200 },
+    @{ Name = "chain to front"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -10000; Y = -1200; R = 1200; TX = -13600; TY = 0 },
     # Through the grove at the map's middle (12 trunks on a disc of 14 m, create_match_map.py): Zone, where a unit off the
     # navmesh is in a trunk (the ridge's otherwise).
     @{ Name = "grove west to east"; Count = 50; Type = "ManAtArms"; X = -2600; Y = 0; R = 600; TX = 2600; TY = 0; Zone = @(-1700, 1700, -1700, 1700) },
@@ -807,17 +807,17 @@ if ($Parts -contains "camera") {
                 $c++
                 # The ground of the case cleared (its start and its target, not the centre's Peasants), the box short of the centre (x -14400).
                 if ($R.Chain) { Step "mark rocks $c", "wait 0.5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none" }
-                else { Step "mark rocks $c", "hol.Units.Remove $($R.X) $($R.Y) $($R.R + 900) 0", "hol.Units.Remove $($R.TX) $($R.TY) 1800 0", "frames 3", "hol.Units.SpawnSeed $(210 + $c)", "hol.Units.Spawn $($R.Count) $($R.X) $($R.Y) 0 $($R.Type) $($R.R)", "wait 0.5" }
+                else { Step "mark rocks $c", "hol.Units.Remove $($R.X) $($R.Y) $($R.R + 900) 0 $($R.Type)", "hol.Units.Remove $($R.TX) $($R.TY) 1800 0 $($R.Type)", "frames 3", "hol.Units.SpawnSeed $(210 + $c)", "hol.Units.Spawn $($R.Count) $($R.X) $($R.Y) 0 $($R.Type) $($R.R)", "wait 0.5" }
                 # The box wholly on the screen (the camera over the start), then the target (the camera over it).
                 Step "hol.Camera.Focus $($R.X) $($R.Y)", "frames 3", "hol.Select.BoxGround $([Math]::Max($R.X - $R.R - 500, -14300)) $($R.Y - $R.R - 500) $($R.X + $R.R + 500) $($R.Y + $R.R + 500)", "waitlog Selection: $($R.Count) units (own)",
                     "hol.Camera.Focus $($R.TX) $($R.TY)", "frames 3", "hol.Select.OrderGround $($R.TX) $($R.TY)", "mark rocks walk $c"
                 # 25 cm (hol.Nav.Units): a unit as drawn between two steps cuts the navmesh's voxel corner round a trunk (27 cm clear of it).
                 for ($i = 0; $i -lt 160; $i++) { Step "wait 0.1", "hol.Nav.Units 25"; if ($i % 5 -eq 4) { Step "hol.Units.Where 0" } }
                 # Taken away, unless the next case orders it again.
-                if (-not ($c -lt $RockCases.Count -and $RockCases[$c].Chain)) { Step "hol.Units.Remove $($R.TX) $($R.TY) 1800 0", "frames 3" }
+                if (-not ($c -lt $RockCases.Count -and $RockCases[$c].Chain)) { Step "hol.Units.Remove $($R.TX) $($R.TY) 1800 0 $($R.Type)", "frames 3" }
             }
             Step "mark rocks end", "hol.Select.Click 0.03 0.05"
-            foreach ($R in $RockCases) { Step "hol.Units.Remove $($R.TX) $($R.TY) 1800 0" }
+            foreach ($R in $RockCases) { Step "hol.Units.Remove $($R.TX) $($R.TY) 1800 0 $($R.Type)" }
             Step "frames 3"
         }
         if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
