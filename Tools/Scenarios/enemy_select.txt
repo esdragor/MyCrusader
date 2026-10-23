@@ -1,0 +1,37 @@
+# Sélection des ennemis et des alliés : cadre (camp prioritaire Moi > Allié > Ennemi), panneau des autres, barres de vie, Maj + clic, double clic par propriétaire
+# Plain, trois joueurs (enemy_select.json) : moi (slot 0) et le joueur 3 (slot 2) dans l'équipe 1, le joueur 2 (slot 1) dans l'équipe 2.
+# Positions dans le repère du centre du joueur (comme select_type_q).
+# Le combat ne connaît pas encore les équipes (un allié frappe aussi les miens) : chaque groupe à plus de 20 m bord à bord
+# de tous les autres (agression : 16 m) et à plus de 22 m des Archers (21,3 m) : aucun combat seul.
+hol.Cheat.Resources 5000
+# Mes 4 Hommes d'armes devant le centre.
+hol.Camera.FocusNear 4800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+# En face, sur la gauche : l'ennemi (joueur 2, slot 1), 5 Lanciers et 3 Archers derrière eux.
+hol.Camera.FocusNear 6800 -1800
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 350
+waitunits 9
+hol.Camera.FocusNear 7300 -1800
+frames 2
+hol.Units.SpawnHere 3 Archer 1 250
+waitunits 12
+# En face, sur la droite : l'allié (joueur 3, slot 2), 3 Lanciers et 2 Archers derrière eux.
+hol.Camera.FocusNear 6800 1800
+frames 2
+hol.Units.SpawnHere 3 Spearman 2 250
+waitunits 15
+hol.Camera.FocusNear 7300 1800
+frames 2
+hol.Units.SpawnHere 2 Archer 2 200
+waitunits 17
+# Caméra assez reculée pour que les trois groupes passent sous le panneau des notes.
+hol.Camera.FocusNear 6600 0
+hol.Camera.Zoom -3
+frames 5
+note Cadre sur les ennemis (à gauche) : leurs 8, panneau « Tous (8) » sans commande, barres pleines visibles. Cadre sur les alliés (à droite) : leurs 5, de même.
+note Cadre qui prend mes Hommes d'armes et des ennemis, ou des alliés : seulement mes 4. Cadre sur les alliés et les ennemis ensemble : seulement les 5 alliés.
+note Alliés sélectionnés puis Maj + clic sur un ennemi : les alliés restent. Mes 4 sélectionnés puis Maj + clic sur un ennemi, puis sur un allié : mes 4 restent.
+note Double clic (ou Ctrl + clic) sur un Lancier allié : ses 3 Lanciers, pas ceux de l'ennemi ; sur un Lancier ennemi : ses 5.

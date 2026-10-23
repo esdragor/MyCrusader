@@ -166,18 +166,42 @@ namespace UE::HeroesOfLiberty::Player
 	/** The same on one of the player's own units, wherever it is drawn: a script does not know where units stand on the screen. */
 	FAutoConsoleCommand ClickUnitCommand(
 		TEXT("hol.Select.ClickUnit"),
-		TEXT("hol.Select.ClickUnit <N> [add] [double]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last)"),
+		TEXT("hol.Select.ClickUnit <N> [add] [double] [enemy|ally|slot=<S>]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last); 'enemy': of the other players' units instead, 'ally': of the players' of its team (D.3), 'slot=<S>': of slot S's (D.2)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const int32 Wanted = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
 			const bool bAdd = Args.Contains(TEXT("add"));
 			const bool bDouble = Args.Contains(TEXT("double"));
+			const bool bEnemy = Args.Contains(TEXT("enemy"));
+			const bool bAlly = Args.Contains(TEXT("ally"));
+			int32 Slot = INDEX_NONE;
+			for (const FString& Arg : Args)
+			{
+				if (Arg.StartsWith(TEXT("slot=")))
+				{
+					Slot = FCString::Atoi(*Arg.RightChop(5));
+				}
+			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				TArray<FHOLUnitView> Views;
 				HOLUnitView::Gather(*Controller->GetWorld(), Views);
-				Views.RemoveAll([PlayerState](const FHOLUnitView& View) { return !PlayerState || View.OwnerPlayer != PlayerState->GetPlayerIndex(); });
+				const AHOLGameState* GameState = Controller->GetWorld()->GetGameState<AHOLGameState>();
+				Views.RemoveAll([PlayerState, GameState, bEnemy, bAlly, Slot](const FHOLUnitView& View)
+				{
+					if (Slot != INDEX_NONE)
+					{
+						return View.OwnerPlayer != Slot;
+					}
+					if (bAlly)
+					{
+						return !PlayerState || !GameState
+							|| HOLUnitPicking::GetSide(GameState->GetLaunchConfig(), View.OwnerPlayer, PlayerState->GetPlayerIndex()) != EHOLSelectionSide::Ally;
+					}
+					const bool bOwn = PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex();
+					return bEnemy ? bOwn || !PlayerState : !bOwn;
+				});
 				Views.Sort([](const FHOLUnitView& A, const FHOLUnitView& B) { return A.UnitId < B.UnitId; });
 				// Negative: from the last one (-1), whatever units the steps before made.
 				const int32 N = Wanted < 0 ? Views.Num() + Wanted : Wanted;
@@ -187,7 +211,7 @@ namespace UE::HeroesOfLiberty::Player
 				if (!Views.IsValidIndex(N) || SizeX <= 0 || SizeY <= 0 || !Controller->ProjectWorldLocationToScreen(
 					Views[N].Location + FVector(0.0, 0.0, PickBodyHeight * 0.5 * Views[N].MeshScale), Middle))
 				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickUnit: no own unit %d on the screen"), N);
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickUnit: no %s unit %d on the screen"), Slot != INDEX_NONE ? TEXT("such") : bAlly ? TEXT("ally") : bEnemy ? TEXT("enemy") : TEXT("own"), N);
 					continue;
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Click on unit #%u at (%.3f, %.3f)"), Views[N].UnitId, Middle.X / SizeX, Middle.Y / SizeY);
@@ -198,7 +222,7 @@ namespace UE::HeroesOfLiberty::Player
 
 	FAutoConsoleCommand BoxCommand(
 		TEXT("hol.Select.Box"),
-		TEXT("hol.Select.Box <X1> <Y1> <X2> <Y2> [add]: selects as a box drawn between those points of the viewport (0 to 1 each way) would; 'add' as with Shift"),
+		TEXT("hol.Select.Box <X1> <Y1> <X2> <Y2> [add]: selects as a box drawn between those points of the viewport (0 to 1 each way) would (any side's units, the first side present kept: own > ally > enemy > neutral); 'add' as with Shift"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 4)
@@ -1845,24 +1869,44 @@ void AHOLPlayerController::SelectAt(const FVector2D& ViewportFraction, const boo
 		}
 		return;
 	}
-	// Shift adds to the player's own units only: another player's unit is always selected alone.
-	const TArray<uint32> Own = GetOwnSelectedUnits();
+	// Shift (D.2): the first side of the selection and the unit wins (own > ally > enemy > neutral): an enemy is never
+	// added to the player's own units; of the selection's side, it is added, or removed when it already is selected.
+	TMap<uint32, EHOLSelectionSide> SideOf;
+	TArray<uint32> Selected;
+	EHOLSelectionSide SelectedSide = EHOLSelectionSide::Neutral;
+	GatherSelectionSides(SideOf, Selected, SelectedSide);
+	const EHOLSelectionSide* Side = SideOf.Find(UnitId);
+	TArray<uint32> Units;
+	HOLUnitPicking::CombineClick(Selected, SelectedSide, UnitId, Side ? *Side : EHOLSelectionSide::Enemy, bAdd, Units);
+	SetUnitSelection(MoveTemp(Units));
+}
+
+void AHOLPlayerController::GatherSelectionSides(TMap<uint32, EHOLSelectionSide>& OutSideOf, TArray<uint32>& OutSelected,
+	EHOLSelectionSide& OutSelectedSide) const
+{
+	OutSideOf.Reset();
+	OutSelected.Reset();
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const int32 LocalPlayer = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+	// D.3: the camps of the match's configuration (the game state's, replicated): a slot of the player's team is an ally.
+	const AHOLGameState* GameState = GetWorld()->GetGameState<AHOLGameState>();
+	const FHOLMatchConfig Config = GameState ? GameState->GetLaunchConfig() : FHOLMatchConfig::MakeDefault();
 	TArray<FHOLUnitView> Views;
 	HOLUnitView::Gather(*GetWorld(), Views);
-	const FHOLUnitView* Unit = Views.FindByPredicate([UnitId](const FHOLUnitView& View) { return View.UnitId == UnitId; });
-	const bool bOwnUnit = Unit && HOLPlayerState && Unit->OwnerPlayer == HOLPlayerState->GetPlayerIndex();
-	if (!bAdd || !bOwnUnit || Own.Num() != SelectedUnits.Num())
+	for (const FHOLUnitView& View : Views)
 	{
-		SetUnitSelection({ UnitId });
-		return;
+		OutSideOf.Add(View.UnitId, HOLUnitPicking::GetSide(Config, View.OwnerPlayer, LocalPlayer));
 	}
-	TArray<uint32> Units = SelectedUnits;
-	if (Units.Remove(UnitId) == 0)
+	TArray<EHOLSelectionSide> SelectedSides;
+	for (const uint32 Id : SelectedUnits)
 	{
-		Units.Add(UnitId);
+		if (const EHOLSelectionSide* Side = OutSideOf.Find(Id))
+		{
+			OutSelected.Add(Id);
+			SelectedSides.Add(*Side);
+		}
 	}
-	SetUnitSelection(MoveTemp(Units));
+	HOLUnitPicking::GetTopSide(SelectedSides, OutSelectedSide);
 }
 
 void AHOLPlayerController::SelectSameTypeAt(const FVector2D& ViewportFraction, const bool bAdd)
@@ -1887,9 +1931,10 @@ void AHOLPlayerController::SelectSameTypeAt(const FVector2D& ViewportFraction, c
 		Candidate.Pick = Candidates[Index];
 		Candidate.TypeName = View ? (*View)->TypeName : NAME_None;
 		Candidate.bOwn = View && HOLPlayerState && (*View)->OwnerPlayer == HOLPlayerState->GetPlayerIndex();
+		Candidate.OwnerPlayer = View ? (*View)->OwnerPlayer : INDEX_NONE;
 	}
-	// Not on one of the player's own units (another's, a building, nothing): a single click.
-	if (!Typed.IsValidIndex(Clicked) || !Typed[Clicked].bOwn)
+	// Not on a unit known here (a building, nothing): a single click.
+	if (!Typed.IsValidIndex(Clicked) || !ById.Contains(UnitIds[Clicked]))
 	{
 		SelectAt(ViewportFraction, bAdd);
 		return;
@@ -1898,50 +1943,59 @@ void AHOLPlayerController::SelectSameTypeAt(const FVector2D& ViewportFraction, c
 	GetViewportSize(SizeX, SizeY);
 	TArray<int32> Indices;
 	HOLUnitPicking::PickSameTypeOnScreen(Typed, Clicked, FVector2D(SizeX, SizeY), Indices);
-	// Shift adds them to the player's own selected units (as a box does).
-	TArray<uint32> Units;
-	if (bAdd && GetOwnSelectedUnits().Num() == SelectedUnits.Num())
-	{
-		Units = SelectedUnits;
-	}
+	// The player's own units of its type, or (D.2) its owner's, another player's. Shift adds them to the selection of
+	// their side (as before, never removing them), the first side of the whole kept: enemies never join own units.
+	TMap<uint32, EHOLSelectionSide> SideOf;
+	TArray<uint32> Selected;
+	EHOLSelectionSide SelectedSide = EHOLSelectionSide::Neutral;
+	GatherSelectionSides(SideOf, Selected, SelectedSide);
+	TArray<uint32> Picked;
+	TArray<EHOLSelectionSide> PickedSides;
 	for (const int32 Index : Indices)
 	{
-		Units.AddUnique(UnitIds[Index]);
+		Picked.Add(UnitIds[Index]);
+		PickedSides.Add(SideOf.FindRef(UnitIds[Index], EHOLSelectionSide::Enemy));
 	}
-	UE_LOG(LogHOLMatch, Display, TEXT("Select: %d units of type %s on the screen"), Indices.Num(), *Typed[Clicked].TypeName.ToString());
+	TArray<uint32> Units;
+	HOLUnitPicking::CombineBox(Selected, SelectedSide, Picked, PickedSides, bAdd, Units, /*bRemoveWhenAll*/ false);
+	UE_LOG(LogHOLMatch, Display, TEXT("Select: %d units of type %s of slot %d on the screen"), Indices.Num(), *Typed[Clicked].TypeName.ToString(),
+		Typed[Clicked].OwnerPlayer);
 	SetUnitSelection(MoveTemp(Units));
 }
 
 void AHOLPlayerController::SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, const bool bAdd)
 {
+	// Every unit in the box (D.1): only the first side present is kept, Own > Ally > Enemy > Neutral (an enemy group
+	// selected shows its panel and its bars, without commands).
 	TArray<FHOLPickCandidate> Candidates;
 	TArray<uint32> UnitIds;
-	GatherPickCandidates(/*bOwnOnly*/ true, Candidates, UnitIds);
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds);
 	TArray<int32> Indices;
 	HOLUnitPicking::PickInBox(Candidates, ToPixels(CornerA), ToPixels(CornerB), Indices);
+	// Shift (D.1): the first side of the selection and the box together wins; of the same side, the boxed ones are added,
+	// or removed when all of them already are. The selection's side: its first one present (a single side since D.1).
+	TMap<uint32, EHOLSelectionSide> SideOf;
+	TArray<uint32> Selected;
+	EHOLSelectionSide SelectedSide = EHOLSelectionSide::Neutral;
+	GatherSelectionSides(SideOf, Selected, SelectedSide);
 	TArray<uint32> Boxed;
+	TArray<EHOLSelectionSide> BoxedSides;
 	for (const int32 Index : Indices)
 	{
-		Boxed.Add(UnitIds[Index]);
-	}
-	// Shift adds to the player's own selected units, or removes the boxed ones when all of them already are.
-	if (!bAdd || SelectedUnits.IsEmpty() || GetOwnSelectedUnits().Num() != SelectedUnits.Num())
-	{
-		SetUnitSelection(MoveTemp(Boxed));
-		return;
-	}
-	TArray<uint32> Units = SelectedUnits;
-	const bool bAllSelected = !Boxed.IsEmpty() && !Boxed.ContainsByPredicate([&Units](const uint32 Id) { return !Units.Contains(Id); });
-	for (const uint32 Id : Boxed)
-	{
-		if (bAllSelected)
+		if (const EHOLSelectionSide* Side = SideOf.Find(UnitIds[Index]))
 		{
-			Units.Remove(Id);
+			Boxed.Add(UnitIds[Index]);
+			BoxedSides.Add(*Side);
 		}
-		else
-		{
-			Units.AddUnique(Id);
-		}
+	}
+	TArray<uint32> Units;
+	HOLUnitPicking::CombineBox(Selected, SelectedSide, Boxed, BoxedSides, bAdd, Units);
+	if (!Units.IsEmpty() && Units != SelectedUnits)
+	{
+		const EHOLSelectionSide* Side = SideOf.Find(Units[0]);
+		UE_LOG(LogHOLMatch, Display, TEXT("Select: box, %d units (%s)"), Units.Num(),
+			!Side ? TEXT("?") : *Side == EHOLSelectionSide::Own ? TEXT("own") : *Side == EHOLSelectionSide::Ally ? TEXT("ally")
+			: *Side == EHOLSelectionSide::Enemy ? TEXT("enemy") : TEXT("neutral"));
 	}
 	SetUnitSelection(MoveTemp(Units));
 }
@@ -3828,7 +3882,7 @@ FString AHOLPlayerController::DescribeSelection() const
 	{
 		return FString::Printf(TEXT("%s #%u of slot %d (%s)"), *Views[0].TypeName.ToString(), Views[0].UnitId, Views[0].OwnerPlayer, OwnText);
 	}
-	// Several units are always the player's own.
+	// Several units are of one side (D.1: the player's own, or a box's enemies).
 	TMap<FName, int32> PerType;
 	for (const FHOLUnitView& View : Views)
 	{

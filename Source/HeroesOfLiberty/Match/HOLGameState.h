@@ -73,6 +73,12 @@ public:
 
 	static const TCHAR* GetReasonName(EHOLDefeatReason Reason);
 
+	/**
+	 * The configuration of the launch, on every machine (D.3: the selection's allies are the slots of the player's camp,
+	 * HOLUnitPicking::GetSide); the default one before InitVictory, or on a client before its replication.
+	 */
+	const FHOLMatchConfig& GetLaunchConfig() const { return LaunchConfig; }
+
 private:
 	UFUNCTION()
 	void OnRep_Victory();
@@ -85,7 +91,11 @@ private:
 	 */
 	void CollapseSlot(int32 Slot);
 
-	/** The configuration of the launch, server only: its occupied slots and teams make the camps (D357). */
+	/**
+	 * The configuration of the launch: its occupied slots and teams make the camps (D357). Written by the server alone;
+	 * replicated (D.3) so that each client knows its allies.
+	 */
+	UPROPERTY(Replicated)
 	FHOLMatchConfig LaunchConfig;
 
 	/** One per slot (MaxSlots). */

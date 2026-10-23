@@ -432,6 +432,11 @@ void AHOLSelectionMarkers::UpdateRings()
 	SetInstances(*Rings, Transforms, CustomData);
 }
 
+bool AHOLSelectionMarkers::ShowsHealthBar(const bool bSelected, const bool bFullHealth)
+{
+	return bSelected || !bFullHealth;
+}
+
 void AHOLSelectionMarkers::UpdateHealthBars()
 {
 	using namespace UE::HeroesOfLiberty::SelectionMarkers;
@@ -459,8 +464,9 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 		for (const FHOLUnitView& View : Views)
 		{
 			const bool bSelected = Selected.Contains(View.UnitId);
-			// Always for a selected unit, otherwise only for a wounded one (the user's nuance on J7-Q5); Views has no dying unit.
-			if (!bSelected && View.bFullHealth)
+			// Always for a selected unit, whatever its side (D.1), otherwise only for a wounded one (the user's nuance on
+			// J7-Q5); Views has no dying unit.
+			if (!ShowsHealthBar(bSelected, View.bFullHealth))
 			{
 				++UnhurtUnselected;
 				continue;

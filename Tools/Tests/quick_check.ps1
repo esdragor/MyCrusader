@@ -5,7 +5,7 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, victory, net). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     formation, combat, victory, sides, net). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
@@ -98,7 +98,7 @@ param(
     [switch] $Visible
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -293,6 +293,44 @@ if ($Parts -contains "victory") {
         "hol.Victory.Defeat 1", "waitlog End banner: Victory", "waitui", "frames 5", "hol.UI.Focus QuitButton", "frames 3"
     Key Enter
     Step "waitlog End banner: quit to menu", "waitmap MainMenu", "waitui", "mark victory end"
+}
+
+# The "sides" part (EtapeDefini D.3), in solo on Plain, three players: me (slot 0, team 1), an enemy AI (slot 1, team
+# 2), an allied AI (slot 2, team 1). Groups in front of my centre (combat off, as the whole launch): my 4 Men-at-arms,
+# slot 1's 5 Spearmen and 3 Archers on one side, slot 2's 3 Spearmen and 2 Archers on the other. The eight cases of the
+# priority Own > Ally > Enemy, each judged by "Select: box, N units (side)", hol.Select.Report, hol.Units.Bars and
+# hol.HUD.Report: a box on enemies, on allies (their panel "other" without commands, their full bars shown), on mine and
+# enemies, on mine and allies, on allies and enemies (the allies alone), Shift + click on an enemy with allies selected,
+# then on an enemy and an ally with mine selected, a double click on an ally and on an enemy (its owner's units of
+# its type on the screen).
+$SidesMine = @(-10800, 0); $SidesEnemy = @(-8000, -1900); $SidesEnemyArchers = @(-7400, -1900)
+$SidesAlly = @(-8000, 1900); $SidesAllyArchers = @(-7400, 1900)
+if ($Parts -contains "sides") {
+    $SidesConfig = Join-Path $TestSaved "sides_3p.json"
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0, "team": 1 }, { "state": "AI", "colorIndex": 1, "team": 2 }, { "state": "AI", "colorIndex": 2, "team": 1 } ] }' |
+        Set-Content -Encoding ascii $SidesConfig
+    # A ground box around the points (cm), and the reports after it.
+    function SidesBox([double] $X1, [double] $Y1, [double] $X2, [double] $Y2, [string] $Add = "") { Step "hol.Select.BoxGround $X1 $Y1 $X2 $Y2 $Add".Trim() }
+    function SidesReport { Step "frames 3", "hol.Select.Report", "hol.Units.Bars", "hol.HUD.Report", "frames 2" }
+    $EnemyBox = @(-8700, -2600, -6900, -1100); $AllyBox = @(-8700, 1100, -6900, 2600); $MineBox = @(-11300, -500, -10300, 500)
+    Step "mark sides start", "hol.Camera.TestCursor 0.5 0.5", "hol.UI.NewGame.Launch $SidesConfig 0", "waitmap Plain", "frames 30",
+        "hol.Units.Spawn 4 $($SidesMine -join ' ') 0 ManAtArms 250", "hol.Units.Spawn 5 $($SidesEnemy -join ' ') 1 Spearman 350",
+        "hol.Units.Spawn 3 $($SidesEnemyArchers -join ' ') 1 Archer 250", "hol.Units.Spawn 3 $($SidesAlly -join ' ') 2 Spearman 250",
+        "hol.Units.Spawn 2 $($SidesAllyArchers -join ' ') 2 Archer 200", "waitunits 17", "hol.Camera.Focus -9000 0", "hol.Camera.Zoom -2", "frames 10",
+        "capture qc_sides_view"
+    # Each case from nothing selected (a click on the void): its box logged even when it takes the case before's units.
+    function SidesCase([string] $Name) { Step "mark sides $Name", "hol.Select.Click 0.03 0.05", "frames 2" }
+    SidesCase "1"; SidesBox $EnemyBox[0] $EnemyBox[1] $EnemyBox[2] $EnemyBox[3]; SidesReport
+    SidesCase "2"; SidesBox $AllyBox[0] $AllyBox[1] $AllyBox[2] $AllyBox[3]; SidesReport
+    SidesCase "3"; SidesBox $MineBox[0] $EnemyBox[1] $EnemyBox[2] $MineBox[3]; SidesReport
+    SidesCase "4"; SidesBox $MineBox[0] $MineBox[1] $AllyBox[2] $AllyBox[3]; SidesReport
+    SidesCase "5"; SidesBox $EnemyBox[0] $EnemyBox[1] $AllyBox[2] $AllyBox[3]; SidesReport
+    SidesCase "6"; SidesBox $AllyBox[0] $AllyBox[1] $AllyBox[2] $AllyBox[3]; Step "hol.Select.ClickUnit 0 add slot=1"; SidesReport
+    SidesCase "7"; SidesBox $MineBox[0] $MineBox[1] $MineBox[2] $MineBox[3]; Step "hol.Select.ClickUnit 0 add slot=1"; SidesReport
+    Step "hol.Select.ClickUnit 0 add slot=2"; SidesReport
+    SidesCase "8 ally"; Step "hol.Select.ClickUnit 0 double slot=2"; SidesReport
+    SidesCase "8 enemy"; Step "hol.Select.ClickUnit 0 double slot=1"; SidesReport
+    Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
 # Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles; each main
@@ -1681,6 +1719,48 @@ if ($Parts -contains "victory") {
     $After = if ($Quit.Count) { $Section[($Quit[0].LineNumber - 1)..($Section.Count - 1)] } else { @() }
     $Checks["Quitter vers le menu: MainMenu loaded"] = [bool]($After | Select-String -Pattern "LoadMap: /Game/Maps/MainMenu" -Quiet)
     $AllOk = (Report "victory" $Checks) -and $AllOk
+}
+
+if ($Parts -contains "sides") {
+    $Checks = [ordered]@{}
+    # A section's box line, its reports (selection, bars, HUD), each the n-th of the section (-1: the last).
+    function SidesLine($Section, [string] $Pattern, [int] $Index = -1) {
+        $Found = @($Section | Select-String -Pattern $Pattern | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        if ($Found.Count -eq 0) { return "" }; return $Found[$Index]
+    }
+    # Every bar of the line selected and full ("#12 140/140 selected"), and as many as N.
+    function SidesFullBars([string] $Bars, [int] $N) {
+        $Items = @([regex]::Matches($Bars, "#\d+ (\d+)/(\d+)( selected)?"))
+        return ($Items.Count -eq $N) -and -not ($Items | Where-Object { $_.Groups[1].Value -ne $_.Groups[2].Value -or -not $_.Groups[3].Success })
+    }
+    $Wanted = [ordered]@{
+        "1" = @{ What = "box on enemies alone: the enemies"; Box = "8 units (enemy)"; Sel = "8 units (other): Archer x3, Spearman x5"; Bars = 8 }
+        "2" = @{ What = "box on allies alone: the allies"; Box = "5 units (ally)"; Sel = "5 units (other): Archer x2, Spearman x3"; Bars = 5 }
+        "3" = @{ What = "box on mine and enemies: mine"; Box = "4 units (own)"; Sel = "4 units (own): ManAtArms x4" }
+        "4" = @{ What = "box on mine and allies: mine"; Box = "4 units (own)"; Sel = "4 units (own): ManAtArms x4" }
+        "5" = @{ What = "box on allies and enemies: the allies alone"; Box = "5 units (ally)"; Sel = "5 units (other): Archer x2, Spearman x3"; Bars = 5 }
+        "6" = @{ What = "allies selected, Shift + click on an enemy: the allies stay"; Sel = "5 units (other): Archer x2, Spearman x3" }
+        "7" = @{ What = "mine selected, Shift + click on an enemy then an ally: mine stay"; Sel = "4 units (own): ManAtArms x4"; Twice = $true }
+        "8 ally" = @{ What = "double click on an ally Spearman: its owner's 3"; Type = "3 units of type Spearman of slot 2"; Sel = "3 units (other): Spearman x3" }
+        "8 enemy" = @{ What = "double click on an enemy Spearman: its owner's 5"; Type = "5 units of type Spearman of slot 1"; Sel = "5 units (other): Spearman x5" }
+    }
+    foreach ($Case in $Wanted.Keys) {
+        $Want = $Wanted[$Case]; $Section = Get-Section "sides $Case"
+        $Sel = SidesLine $Section "Selection report: selected (.*)$"
+        $Seen = "selection '$Sel'"
+        $Ok = $Sel -eq $Want.Sel
+        if ($Want.Twice) { $First = SidesLine $Section "Selection report: selected (.*)$" 0; $Seen = "selections '$First', '$Sel'"; $Ok = $Ok -and $First -eq $Want.Sel }
+        if ($Want.Box) { $Box = SidesLine $Section "Select: box, (.*)$" 0; $Seen += ", box '$Box'"; $Ok = $Ok -and $Box -eq $Want.Box }
+        if ($Want.Type) { $Type = SidesLine $Section "Select: (\d+ units of type \w+ of slot \d+) on the screen"; $Seen += ", '$Type'"; $Ok = $Ok -and $Type -eq $Want.Type }
+        if ($Want.Bars) {
+            $Bars = SidesLine $Section "Health bars: (.*)$"; $Hud = SidesLine $Section "HUD report: (.*)$"
+            # Another player's units: no command (the grid hidden, no order), their count in the panel's chips.
+            $Full = SidesFullBars $Bars $Want.Bars; $Hidden = $Hud -match "\(other\), grid hidden, orders none,"
+            $Seen += ", $($Want.Bars) full bars $Full, no command $Hidden"; $Ok = $Ok -and $Full -and $Hidden
+        }
+        $Checks["$Case. $($Want.What) ($Seen)"] = $Ok
+    }
+    $AllOk = (Report "sides" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "smoke") {
