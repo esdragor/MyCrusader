@@ -906,7 +906,7 @@ Cela évite le schéma : « Je monte d'âge et tout est instantanément débloqu
 | Palier | Bâtiments débloqués | Unités du socle débloquées | Emblématiques (prototype) |
 |---|---|---|---|
 | **0 — Fondation** | Centre principal, Maison, Camps de collecte (bois, pierre, or), **Moulin** *(D346)*, Ferme, **Caserne**, **Champ de tir**, Palissade, Tour de guet en bois ; *Sanctuaire* (Aube) ; *Nid élémentaire* (Dragon, D339) | Paysan / Zombie, Lancier / Hallebardier, Archer | — |
-| **1 — Essor** | **Écurie**, **Forge**, Marché, **Atelier de siège**, Centre secondaire, Murs de pierre, Porte, Tour de pierre, ***Chapelle*** *(D211, D212 ; sauf Légions)* ; bâtiment des lanceurs de sorts *(D338 : Nécropole, Tour des mages, Salle des voiles, Pyrée)* ; spécialisation (D123, D126) | Homme d'armes, Arbalétrier, Cavalier léger, Bélier, **Moine** *(D134, D212 ; Chapelle)* | Chevalier Vertueux, Moine Lumineux ; Guerrier Damné, Nécromancien |
+| **1 — Essor** | **Écurie**, **Forge**, Marché, **Atelier de siège**, Centre secondaire, Murs de pierre, Porte, Tour de pierre, ***Chapelle*** *(D211, D212 ; sauf Légions)* ; bâtiment des lanceurs de sorts *(D338 : Nécropole, Tour des mages, Salle des voiles, Pyrée)* ; spécialisation (D123, D126) | Homme d'armes, Arbalétrier, Cavalier léger, Bélier, **Moine** *(D134, D212 ; Chapelle)* | Chevalier Vertueux, Moine Lumineux ; Guerrier Damné, Nécromancien, Spectre Assassin *(D394, D395 : Caserne)* |
 | **2 — Puissance** | **Académie** (technologies avancées), Tour renforcée ; spécialisation (D124, D127) | Cavalier lourd (hors prototype), Mangonneau | — |
 
 Réponses aux contres garanties (D07) : le Lancier (anti-cavalerie) dès le palier 0, l'Arbalétrier (anti-armure) et l'Homme d'armes au palier 1.
@@ -1195,7 +1195,7 @@ Le palier 1 décide de la forme de la partie (repli ou expansion), le palier 2 d
 |---|---|---|
 | **Guerrier Damné** | frontline / berserker | massue ou hache, dégâts élevés, rage nécrotique, se consume au combat |
 | **Nécromancien** | soutien / invocation | lève des Squelettes à partir des cadavres (D86), malédictions, drain de vie |
-| **Spectre Assassin** | furtivité / DPS | dagues spectrales, dématérialisation, marquage de cibles, mobilité |
+| **Spectre Assassin** | harcèlement anti-tireurs / DPS *(D396)* | dagues spectrales, rapide ; ***Dématérialisation*** (active, ~3 s intangible : ne subit pas les tirs, traverse les unités ; longue recharge) pour franchir les tirs jusqu'aux tireurs ; marquage de cibles. **Pas de furtivité propre** : il profite des zones de furtivité de la carte comme tout le monde (D383) ; l'invisibilité reste au Maître des Ombres (Cercle). Palier 1, Caserne (D395) |
 
 **Économie *(D66)* :** les unités des Légions **coûtent moins cher** que celles des autres factions (valeur à régler en test, en tenant compte de la réduction de l'*Ossuaire*). Leurs travailleurs, les Zombies, collectent plus lentement : la faction vit avec moins de revenu.
 
@@ -1280,7 +1280,7 @@ Pendant inversé de l'Aube : l'Aube choisit entre se replier et s'étendre, les 
     - Contre-jeu *(révisé par D125)* : le sol maudit **ne se purifie pas** ; le Moine Lumineux atténue le malus sur les unités, *Lumière sacrée* pourrait le retirer (à trancher en test) ; sinon, combattre ailleurs ou attendre la fin (~90 s).
     - ⚠️ Vigilance : nombre de zones maudites plafonné (performance, lisibilité). Une bataille au pied des murs de l'Aube maudit son propre terrain : tension voulue, à surveiller. Valeurs à régler en test.
   - **Rite de l'Effroi — pistes écartées** (choix de l'utilisateur, 2026-10-08) : vision forte (cadavres qui voient), panique des travailleurs ou des villages (jugée ultra frustrante), *Aura de terreur* portée par un Spectre, saut du Seigneur vers un cadavre.
-  - ⚠️ Vigilance : au prototype, l'Effroi n'a ni l'*Ossuaire* (palier 3) ni la corruption de zone ; son contenu repose sur l'*Aura de terreur* et les Spectres.
+  - ⚠️ Vigilance : au prototype, l'Effroi n'a ni l'*Ossuaire* (palier 3) ni la corruption de zone ; son contenu repose sur l'*Aura de terreur* et les Spectres, **qui entrent au prototype *(D394)*** pour que *Lames spectrales* ne soit pas un talent mort (D194).
   - **Talents des rangées 2 à 6 (prototype)** : méthode D110. **Grille validée *(D116)*** (valeurs indicatives, à régler en test) :
 
     | Rangée | Moisson | Charnier | Effroi |
@@ -2117,12 +2117,12 @@ Avant de créer les six factions complètes :
 | Factions | 2 |
 | Héros | 1 par faction |
 | Unités | *proposition* : Paysan, Lancier, Homme d'armes, Archer, Arbalétrier, Cavalier léger (Cavalier lourd hors prototype, sauf besoin). Variantes : Zombie (Légions, D66), Hallebardier (Aube, D79) |
-| Unités emblématiques *(D82)* | **au moins 2 par faction** : Chevalier Vertueux + Moine Lumineux (Aube) ; Guerrier Damné + Nécromancien (Légions). Ce n'est pas un plafond : d'autres peuvent s'ajouter si de bonnes idées apparaissent. Archer de l'Aube et Spectre Assassin prévus après. |
+| Unités emblématiques *(D82)* | **au moins 2 par faction** : Chevalier Vertueux + Moine Lumineux (Aube) ; Guerrier Damné + Nécromancien + **Spectre Assassin** *(D394)* (Légions). Ce n'est pas un plafond : d'autres peuvent s'ajouter si de bonnes idées apparaissent. Archer de l'Aube prévu après. |
 | Siège *(D77)* | **Bélier** (palier 1) + **Mangonneau** (palier 2) : de quoi tester toute la boucle fortifications / siège de D23 et D24 (portes, segments abattus, cible prioritaire sur rempart, chute des occupants) |
 | Ressources | 4 |
 | Centre principal | 1 |
 | Bâtiments économiques *(D83, D84)* | maison, camps de collecte (bois, pierre, or), moulin (D346), ferme, marché (D70) ; *Sanctuaire* pour l'Aube (D67) |
-| Bâtiments militaires | Caserne, Champ de tir, Écurie, Atelier de siège (D128 ; un bâtiment unique possible au tout début du développement, données conçues pour le découpage) ; *Chapelle* (Moine Lumineux, D211, D212) ; *Nécropole* (Nécromancien, D338). Emblématiques : depuis le bâtiment de leur catégorie (Chevalier Vertueux et Guerrier Damné : Caserne) |
+| Bâtiments militaires | Caserne, Champ de tir, Écurie, Atelier de siège (D128 ; un bâtiment unique possible au tout début du développement, données conçues pour le découpage) ; *Chapelle* (Moine Lumineux, D211, D212) ; *Nécropole* (Nécromancien, D338). Emblématiques : depuis le bâtiment de leur catégorie (Chevalier Vertueux, Guerrier Damné et Spectre Assassin : Caserne, D395) |
 | Bâtiments technologiques | Forge (palier 1), Académie (palier 2) (§ 11.1) |
 | Fortifications | murs de pierre praticables, porte, tour (D24) |
 | Niveaux de héros | 1 à 6 (paliers 0, 1 et 2) |
@@ -2638,6 +2638,9 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D391 | 2026-10-23 | Population — Unités gratuites à la population pleine | **Bloqué, comme une production** (choix de l'utilisateur, conforme à la recommandation) : levée de Squelette et *Renforts de l'Aube* grisés sans place (« population pleine »), escouade entière ou rien. Écartés : dépassement permis puis production bloquée, dépassement avec plafond absolu. | § 5.3 |
 | D392 | 2026-10-23 | Population — Plafond des serviteurs temporaires | **Un plafond commun par joueur, le plus ancien cède sa place** (choix de l'utilisateur, conforme à la recommandation) : ~20 indicatif, toutes sources confondues (hors population) ; une levée au-delà fait s'effondrer le plus ancien ; Champion damné hors plafond. Écartés : levée qui échoue au plafond (effet mort), plafond par source (cumul trop haut avec *Relève impie*). | § 9.5, § 13.3 |
 | D393 | 2026-10-23 | Combat — Le « profane » au prototype | **Une catégorie d'armure « Profane » en plus** (choix de l'utilisateur, conforme à la recommandation) : Zombie, Squelette, Guerrier Damné, serviteurs temporaires, Champion damné ; pas le Nécromancien ni le héros ; *Bénédiction des armes* = bonus contre « Profane » (D345). Écartés : levés seulement, toute l'armée des Légions. Précise D316. | § 7.2, § 11.1 |
+| D394 | 2026-10-23 | Prototype — Le Spectre Assassin | **Il entre au prototype** (choix de l'utilisateur, contre la recommandation A « version générale de *Lames spectrales* ») : troisième emblématique des Légions (D82 n'est pas un plafond) ; la famille *Effroi* garde son pilier, *Lames spectrales* n'est plus un talent mort (D194). Écartés : version générale du talent, talent grisé. | § 13.3, § 17 |
+| D395 | 2026-10-23 | Spectre Assassin — Palier et bâtiment | **Palier 1, Caserne** (choix de l'utilisateur, conforme à la recommandation) : avec les autres emblématiques, de l'infanterie à la Caserne (D128) ; disponible quand *Lames spectrales* l'est. Écartés : palier 2 (talent à moitié mort), Nécropole (file partagée avec le Nécromancien). | § 11.1, § 17 |
+| D396 | 2026-10-23 | Spectre Assassin — Furtivité | **Pas de furtivité propre, la *Dématérialisation* à la place** (choix de l'utilisateur, conforme à la recommandation) : vitesse ; active ~3 s intangible (ne subit pas les tirs, traverse les unités), longue recharge, pour atteindre les tireurs ; marquage ; zones de furtivité de la carte comme tout le monde (D383) ; invisibilité réservée au Maître des Ombres. Écartés : camouflage à l'arrêt (harcèlement invisible, doublon), camouflage actif court (doublon avec le Cercle). | § 13.3 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2843,7 +2846,7 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 2. ~~Bâtiments de production~~ → **corrigé (rédactionnel)** : § 17 aligné sur § 11.1 et D128, D211, D338 ; Chevalier Vertueux et Guerrier Damné à la Caserne (D128 : bâtiment de leur catégorie) ; marque des *Lices* dans la cour de la Caserne ; la *Chapelle de campagne* forme des Moines Lumineux.
 3. ~~Squelette et population pleine~~ → **tranché (D391)** : bloqué, comme une production. Plafond des serviteurs temporaires → **tranché (D392)** : commun par joueur, le plus ancien cède sa place.
 4. ~~Catégories d'armure~~ → socle **corrigé (rédactionnel)** sur D345 ; catégories des emblématiques : au chantier des stats (`UnitStatsInProgress.md`) ; « profane » **tranché (D393)** : catégorie « Profane » en plus. Reste pour le Cavalier lourd (hors prototype) : comment l'Arbalétrier le vise avec une seule catégorie « Cavalerie ».
-5. Famille *Effroi* des Légions et Spectre hors prototype (talent mort, contraire à D194).
+5. ~~Famille *Effroi* sans Spectre~~ → **tranché (D394)** : le Spectre Assassin entre au prototype. Palier et bâtiment → **tranché (D395)** : palier 1, Caserne. Furtivité → **tranché (D396)** : aucune propre, *Dématérialisation* (~3 s intangible) à la place.
 6. Prix de résurrection : quelle ressource, paiement automatique ou bouton.
 7. Volcan en standard sans Catastrophe ; réarmement d'un site, autel réutilisable, fenêtre après un réveil.
 8. Posture Neutre face aux règles qui disent « ennemi » (ruine, relais, autel, anti-construction, duel).
@@ -2851,4 +2854,4 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 10. Zone anti-duel : de qui, et le centre secondaire compte-t-il.
 11. *Lumière sacrée* et le moral négatif (D125, « à trancher en test »).
 
-Prochain numéro : **D394**.
+Prochain numéro : **D397**.
