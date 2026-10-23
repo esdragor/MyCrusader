@@ -110,6 +110,10 @@ $SubCaseTable = @{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
     }
+    formation = [ordered]@{
+        regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
+            "regroup formed spear", "regroup formed spear end", "regroup formed centre", "regroup formed centre end"); Setup = @() }
+    }
 }
 $SubCases = @{}
 foreach ($Asked in @($Parts | Where-Object { $_ -match ":" })) {
@@ -506,6 +510,17 @@ $NearTo = @(-1900, -6200)
 $MeetNorth = @(-6200, -5200)
 $MeetSouth = @(-6200, -5700)
 $MeetTo = @(-3300, -5450)
+# Formed up in place inside a mixed army (the user's trial of select_type_q: "elles peinent"), where the two blocks met
+# (removed by then): one type picked by a double click on one of its units (ClickUnit's index from the last made, the
+# click's point found by trial: in the crowd it may fall on a neighbour's body) and sent Dx east of the army's middle.
+$RegroupAt = @(-3300, -5450)
+$RegroupCases = @(
+    @{ Name = "regroup"; Type = "ManAtArms"; Others = @("Spearman", "Archer"); Dx = 100; Group = 1 },
+    @{ Name = "regroup spear"; Type = "Spearman"; Others = @("ManAtArms", "Archer"); Dx = 100; Group = 2 },
+    @{ Name = "regroup formed"; Type = "ManAtArms"; Others = @("Spearman", "Archer"); Dx = 100; Group = 3; Formed = 1 },
+    @{ Name = "regroup formed spear"; Type = "Spearman"; Others = @("ManAtArms", "Archer"); Dx = 100; Group = 4; Formed = 1 },
+    @{ Name = "regroup formed centre"; Type = "ManAtArms"; Others = @("Spearman", "Archer"); Dx = 0; Group = 5; Formed = 1 }
+)
 $AidBack = 1850
 # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1, 6 m apart on the formation's first ground.
 $CombatMenAtArms = @(-6300, -5500)
@@ -1208,6 +1223,7 @@ if ($Parts -contains "camera") {
             Step "hol.Camera.Zoom -14", "hol.Build.Report", "hol.Select.Click 0.03 0.05", "frames 3"
         }
         if (($Parts -contains "formation") -and $Case.Name -eq "2p") {
+            Start-CaseFilter "formation"
             # The formation (J7a.4): the units of slot 0 before (the new ones are the others), the six made, a box
             # around them, a right click 35 m east; reported every half second on the way, then at rest.
             Step "mark formation", "hol.Units.SpawnSeed 119", "hol.Units.Formation 0", "hol.Camera.Focus $($FormPeasants[0]) $(($FormPeasants[1] + $FormMenAtArms[1]) / 2)",
@@ -1312,6 +1328,36 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: 6 units (own)", "hol.Select.OrderGround $($MeetTo -join ' ')", "waitlog Order: ", "wait 12", "hol.Units.Orders 0", "mark reinforce end"
             Key Escape
             Step "waitlog Selection: none", "hol.Units.Remove $($MeetTo -join ' ') 1200 0", "wait 0.3"
+            # Formed up in place inside a mixed army (the user's trial of select_type_q, "elles peinent"): 6 Men-at-arms,
+            # 6 Spearmen and 4 Archers made within 3.5 m and at rest, one type picked by a double click (its units
+            # scattered among the others) and sent 1 m east of the army's middle; reported every half second for 8 s.
+            foreach ($Regroup in $RegroupCases) {
+                # The type made first and alone, picked by a double click then kept as a control group (a click in the
+                # mixed army lands on whichever body is drawn on top: not the same type from one run of parts to another).
+                $OtherCounts = @{ ManAtArms = 6; Spearman = 6; Archer = 4 }
+                # The ground cleared first (the double click takes every unit of the type on the screen: the formation
+                # cases before leave Men-at-arms around).
+                Step "mark formation $($Regroup.Name)", "hol.Units.Remove $($RegroupAt -join ' ') 3500 0", "wait 0.3", "hol.Units.SpawnSeed 137", "hol.Camera.Focus $($RegroupAt -join ' ')", "frames 3",
+                    "hol.Units.Spawn 6 $($RegroupAt -join ' ') 0 $($Regroup.Type) 350", "wait 1", "frames 3",
+                    "hol.Select.ClickUnit -1 double", "waitlog Selection: 6 units (own): $($Regroup.Type) x6", "hol.Select.Group Add $($Regroup.Group)", "wait 0.2"
+                Key Escape
+                Step "waitlog Selection: none", "hol.Units.Spawn $($OtherCounts[$Regroup.Others[0]]) $($RegroupAt -join ' ') 0 $($Regroup.Others[0]) 350",
+                    "hol.Units.Spawn $($OtherCounts[$Regroup.Others[1]]) $($RegroupAt -join ' ') 0 $($Regroup.Others[1]) 350", "wait 2", "frames 3"
+                if ($Regroup.Formed) {
+                    # The army first formed up as one (each one then holds its place).
+                    Step "hol.Select.BoxGround $($RegroupAt[0] - 600) $($RegroupAt[1] - 600) $($RegroupAt[0] + 600) $($RegroupAt[1] + 600)",
+                        "waitlog Selection: 16 units (own)", "hol.Select.OrderGround $($RegroupAt -join ' ')", "waitlog Order: ", "wait 8"
+                    Key Escape
+                    Step "waitlog Selection: none"
+                }
+                Step "hol.Select.Group Select $($Regroup.Group)", "waitlog Selection: 6 units (own): $($Regroup.Type) x6"
+                Step "wait 1", "hol.Units.Formation 0", "hol.Select.OrderGround $($RegroupAt[0] + $Regroup.Dx) $($RegroupAt[1])", "waitlog Order: "
+                for ($i = 0; $i -lt 16; $i++) { Step "wait 0.5", "hol.Units.Formation 0" }
+                Step "mark formation $($Regroup.Name) end", "hol.Units.Formation 0"
+                Key Escape
+                Step "waitlog Selection: none", "hol.Units.Remove $($RegroupAt -join ' ') 1200 0", "wait 0.3"
+            }
+            Stop-CaseFilter
         }
         if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
             # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
@@ -2754,6 +2800,44 @@ if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
 }
 
 if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
+    # Formed up in place inside a mixed army (the user's trial of select_type_q, "elles peinent"): within 6 s the 6 of
+    # the type picked set down (phase None) at most 60 cm from their places; each one's time, and how far the others moved.
+    $Checks = [ordered]@{}
+    $ParseFormation = {
+        param($Line)
+        $Units = @{}
+        foreach ($M in [regex]::Matches("$Line", "#(\d+) (\w+) at \((-?\d+), (-?\d+)\) .*? place \((-?\d+), (-?\d+)\) off (\d+) phase (\w+)")) {
+            $Units[[int]$M.Groups[1].Value] = @{ Type = $M.Groups[2].Value; X = [double]$M.Groups[3].Value; Y = [double]$M.Groups[4].Value; Off = [int]$M.Groups[7].Value; Phase = $M.Groups[8].Value }
+        }
+        $Units
+    }
+    foreach ($Regroup in $RegroupCases) {
+        $RegroupLines = @(@(Get-Section "formation $($Regroup.Name)") + @(Get-Section "formation $($Regroup.Name) end") | Where-Object { $_ -match "Formation report: " })
+        $Reports = @($RegroupLines | ForEach-Object { & $ParseFormation $_ })
+        $Ids = if ($Reports.Count) { @($Reports[0].Keys | Where-Object { [Math]::Abs($Reports[0][$_].X - $RegroupAt[0]) -lt 1500 -and [Math]::Abs($Reports[0][$_].Y - $RegroupAt[1]) -lt 1500 } | Sort-Object) } else { @() }
+        $Last = if ($Reports.Count) { $Reports[-1] } else { @{} }
+        $Sent = @($Ids | Where-Object { $Reports[0][$_].Type -eq $Regroup.Type })
+        $Others = @($Ids | Where-Object { $Sent -notcontains $_ })
+        # Each one's time: the first report it is set down within 60 cm (-1: never).
+        $Times = @($Sent | ForEach-Object { $Id = $_; $T = -1
+            for ($r = 1; $r -lt $Reports.Count; $r++) { if ($Reports[$r][$Id] -and $Reports[$r][$Id].Phase -eq "None" -and $Reports[$r][$Id].Off -le 60) { $T = $r * 0.5; break } }
+            $T })
+        $MaxTime = if (@($Times | Where-Object { $_ -lt 0 }).Count -or -not $Times.Count) { -1 } else { ($Times | Measure-Object -Maximum).Maximum }
+        $At6 = if ($Reports.Count -gt 12) { $Reports[12] } else { @{} }
+        $Walking = @($Sent | Where-Object { -not $At6[$_] -or $At6[$_].Phase -ne "None" -or $At6[$_].Off -gt 60 })
+        $SentText = (@(0..($Sent.Count - 1)) | Where-Object { $Sent.Count } | ForEach-Object { "#$($Sent[$_]) $($Times[$_]) s ($($Last[$Sent[$_]].Phase) $($Last[$Sent[$_]].Off))" }) -join ", "
+        $Moved = @($Others | ForEach-Object { if ($Last[$_]) { [Math]::Round([Math]::Sqrt([Math]::Pow($Last[$_].X - $Reports[0][$_].X, 2) + [Math]::Pow($Last[$_].Y - $Reports[0][$_].Y, 2))) } })
+        $MovedMax = if ($Moved.Count) { ($Moved | Measure-Object -Maximum).Maximum } else { 0 }
+        $Text = "$($Regroup.Name) ($($Regroup.Type)): $($Ids.Count) units ($($Sent.Count) sent), all set within 60 cm at $(if ($MaxTime -ge 0) { "$MaxTime s" } else { 'never (8 s)' }), $($Walking.Count) still off at 6 s ($SentText); the others moved up to $MovedMax cm ($($Moved -join ' '))"
+        Write-Host "  $Text"
+        # Set down there and kept: none off its place at 6 s nor at the end (not set down then pushed off, nor set short).
+        $EndOff = @($Sent | Where-Object { -not $Last[$_] -or $Last[$_].Phase -ne "None" -or $Last[$_].Off -gt 60 })
+        $Checks[$Text] = $Ids.Count -eq 16 -and $Sent.Count -eq 6 -and $MaxTime -ge 0 -and $MaxTime -le 6 -and $Walking.Count -eq 0 -and $EndOff.Count -eq 0
+    }
+    $AllOk = (Report "formation regroup" $Checks) -and $AllOk
+}
+
+if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     # Reinforcements onto friends at rest (MV.4.6): within 12 s every one sent set down (phase None) at most 60 cm from its
     # place, none left on its final leg more than 1 m off (before: places on the friends, stuck ~3 m off).
     $Checks = [ordered]@{}
@@ -2769,7 +2853,8 @@ if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
     $AllOk = (Report "formation reinforce" $Checks) -and $AllOk
 }
 
-if (($Parts -contains "formation") -and ($Parts -contains "camera")) {
+# The formation's other reports (groups, stragglers, blocks meet, backsteps) are not cases: not read when cases are asked.
+if (($Parts -contains "formation") -and ($Parts -contains "camera") -and -not $SubCases.ContainsKey("formation")) {
     # The formation (J7a.4), from hol.Units.Formation: id -> type, location, yaw, speed (velocity), own speed, march
     # speed, front yaw, facing the front, holding its place, distance to it; and the place returns so far.
     $ReadFormation = { param($Lines)

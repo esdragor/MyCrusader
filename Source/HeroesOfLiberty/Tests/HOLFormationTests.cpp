@@ -607,6 +607,21 @@ bool FHOLFormationReturnTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationYieldPlaceTest, "HeroesOfLiberty.Formation.YieldPlace", UE::HeroesOfLiberty::Tests::Formation::Flags)
+bool FHOLFormationYieldPlaceTest::RunTest(const FString& Parameters)
+{
+	// The newest order wins (MV.4, choice A): two bodies of 60 cm, new places 150 cm apart, sorted by X.
+	const double RadiusSum = 120.;
+	const TArray<FVector2D> NewPlaces = {FVector2D(-150., 0.), FVector2D(0., 0.), FVector2D(0., 150.), FVector2D(150., 0.)};
+	TestTrue(TEXT("held place 80 cm from a new one: let go"), HOLFormation::ShouldYieldHeldPlace(FVector2D(75., 30.), NewPlaces, RadiusSum));
+	TestTrue(TEXT("on a new place: let go"), HOLFormation::ShouldYieldHeldPlace(FVector2D(150., 0.), NewPlaces, RadiusSum));
+	TestTrue(TEXT("found among places sorted by X, not only the first"), HOLFormation::ShouldYieldHeldPlace(FVector2D(10., 200.), NewPlaces, RadiusSum));
+	TestFalse(TEXT("two bodies away exactly: both fit, kept"), HOLFormation::ShouldYieldHeldPlace(FVector2D(270., 0.), NewPlaces, RadiusSum));
+	TestFalse(TEXT("a row behind the new ones, 167 cm from the nearest: kept"), HOLFormation::ShouldYieldHeldPlace(FVector2D(-75., -150.), NewPlaces, RadiusSum));
+	TestFalse(TEXT("no new place: kept"), HOLFormation::ShouldYieldHeldPlace(FVector2D(0., 0.), TArray<FVector2D>(), RadiusSum));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationBlockTest, "HeroesOfLiberty.Formation.Block", UE::HeroesOfLiberty::Tests::Formation::Flags)
 bool FHOLFormationBlockTest::RunTest(const FString& Parameters)
 {

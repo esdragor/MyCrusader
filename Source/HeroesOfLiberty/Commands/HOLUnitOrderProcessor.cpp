@@ -1006,6 +1006,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 	TArray<int32> ClusterOfUnit;
 	TArray<FVector2D> Occupied;
 	TArray<FMassNavigationObstacleItem> Nearby;
+	TArray<FVector2D> NewPlacesByX;
 	const UMassNavigationSubsystem* Navigation = World->GetSubsystem<UMassNavigationSubsystem>();
 	const FNavigationObstacleHashGrid2D* ObstacleGrid = Navigation ? &Navigation->GetObstacleGrid() : nullptr;
 	TArray<uint32> EntityIds;
@@ -1402,6 +1403,40 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			SlotClaims.FindOrAdd(GetClaimCell(FVector2D(MoveOrder.Slot))).AddUnique(Entity);
 			// Moving from now on: the unit keeps its current walk until its path comes (S2 orders only idle units).
 			EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).Activity = EHOLUnitActivity::Moving;
+		}
+
+		// The newest order wins (MV.4, formation in place, the user's choice A): a friend left out of this formation order
+		// whose held place lies within two bodies of a new place lets it go; pushed aside by the newcomer, it stays there
+		// instead of walking back in turn with it (each decision reads only the new places: the same in any order).
+		if (bFormation && ObstacleGrid && Slots.Num() > 0)
+		{
+			NewPlacesByX.Reset();
+			FBox Bounds(ForceInit);
+			for (const FVector& Slot : Slots)
+			{
+				NewPlacesByX.Add(FVector2D(Slot));
+				Bounds += Slot;
+			}
+			NewPlacesByX.Sort([](const FVector2D& A, const FVector2D& B) { return A.X < B.X; });
+			const uint8 Owner = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entities[0]).OwnerPlayer;
+			// A friend pushed off its place stands a few bodies from it at most (it walks back, or lets it go).
+			const double Margin = 6. * Radius + 300.;
+			Nearby.Reset();
+			ObstacleGrid->Query(Bounds.ExpandBy(FVector(Margin, Margin, 1000.)), Nearby);
+			for (const FMassNavigationObstacleItem& Item : Nearby)
+			{
+				FHOLMoveOrderFragment* Friend = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Item.Entity);
+				const FHOLUnitStateFragment* FriendState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Item.Entity);
+				if (!Friend || !FriendState || !Friend->PlaceHold.bHeld || FriendState->OwnerPlayer != Owner || Entities.Contains(Item.Entity))
+				{
+					continue;
+				}
+				const double RadiusSum = Radius + EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Item.Entity).Radius;
+				if (HOLFormation::ShouldYieldHeldPlace(FVector2D(Friend->Slot), NewPlacesByX, RadiusSum))
+				{
+					Friend->PlaceHold.Clear();
+				}
+			}
 		}
 
 		// A group's move in formation far enough: a block march (J7a.4, the user's 1st trial, as in AoE4) instead of the

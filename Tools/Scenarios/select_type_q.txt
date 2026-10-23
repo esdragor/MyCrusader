@@ -23,3 +23,4 @@ frames 5
 note Double clic sur un Homme d'armes : les 6 à l'écran, pas les 3 restés hors de l'écran à gauche. Pareil sur un Lancier, un Archer.
 note Ctrl + clic fait la même chose ; Maj + double clic ajoute le type à la sélection ; double clic sur un ennemi : lui seul.
 note Q avec des soldats sélectionnés : le curseur devient un viseur rouge ; il redevient la flèche au clic au sol, à Échap ou au clic droit.
+note Formation sur place (MV.4) : boîte sur toute l'armée et ordre juste à côté (chacun prend sa case) ; puis double clic sur un type et petit ordre à 1 m, ou sur place : le type se forme vite en bousculant les autres, qui ne reviennent pas.
