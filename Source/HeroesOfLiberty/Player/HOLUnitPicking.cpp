@@ -2,6 +2,9 @@
 
 #include "Player/HOLUnitPicking.h"
 
+#include "Match/HOLMatchConfig.h"
+#include "Match/HOLVictoryRules.h"
+
 namespace HOLUnitPicking
 {
 	int32 PickAt(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& Cursor)
@@ -110,17 +113,15 @@ namespace HOLUnitPicking
 			return;
 		}
 		OutIndices.Add(Clicked);
+		// The player's own units of its type, or (D.2) those of its owner, another player.
 		const FHOLTypedPickCandidate& Picked = Candidates[Clicked];
-		if (!Picked.bOwn)
-		{
-			return;
-		}
 		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
 		{
 			const FHOLTypedPickCandidate& Candidate = Candidates[Index];
 			// On the screen: the body's middle, as a box takes it (PickInBox).
 			const FVector2D Middle = (Candidate.Pick.Foot + Candidate.Pick.Head) * 0.5;
-			if (Index != Clicked && Candidate.bOwn && Candidate.TypeName == Picked.TypeName
+			if (Index != Clicked && Candidate.bOwn == Picked.bOwn && (Picked.bOwn || Candidate.OwnerPlayer == Picked.OwnerPlayer)
+				&& Candidate.TypeName == Picked.TypeName
 				&& Middle.X >= 0. && Middle.X <= ViewportSize.X && Middle.Y >= 0. && Middle.Y <= ViewportSize.Y)
 			{
 				OutIndices.Add(Index);
@@ -138,5 +139,101 @@ namespace HOLUnitPicking
 			}
 		}
 		return SortedIds.IsEmpty() ? 0 : SortedIds[0];
+	}
+
+	EHOLSelectionSide GetSide(const FHOLMatchConfig& Config, const int32 OwnerSlot, const int32 LocalSlot)
+	{
+		if (OwnerSlot == LocalSlot)
+		{
+			return EHOLSelectionSide::Own;
+		}
+		// The camps of the victory (D357): a team 1..4 is one camp, a slot of team 0 alone in its own; a closed slot none.
+		const int32 LocalCamp = HOLVictoryRules::GetCamp(Config, LocalSlot);
+		return LocalCamp != INDEX_NONE && HOLVictoryRules::GetCamp(Config, OwnerSlot) == LocalCamp ? EHOLSelectionSide::Ally : EHOLSelectionSide::Enemy;
+	}
+
+	bool GetTopSide(const TConstArrayView<EHOLSelectionSide> Sides, EHOLSelectionSide& OutSide)
+	{
+		if (Sides.IsEmpty())
+		{
+			return false;
+		}
+		// The enum's order is the selection's (Own first).
+		OutSide = Sides[0];
+		for (const EHOLSelectionSide Side : Sides)
+		{
+			OutSide = FMath::Min(OutSide, Side);
+		}
+		return true;
+	}
+
+	void KeepTopSide(const TConstArrayView<EHOLSelectionSide> Sides, TArray<int32>& OutIndices)
+	{
+		OutIndices.Reset();
+		EHOLSelectionSide Top;
+		if (!GetTopSide(Sides, Top))
+		{
+			return;
+		}
+		for (int32 Index = 0; Index < Sides.Num(); ++Index)
+		{
+			if (Sides[Index] == Top)
+			{
+				OutIndices.Add(Index);
+			}
+		}
+	}
+
+	void CombineBox(const TConstArrayView<uint32> Selected, const EHOLSelectionSide SelectedSide, const TConstArrayView<uint32> Boxed,
+		const TConstArrayView<EHOLSelectionSide> BoxedSides, const bool bAdd, TArray<uint32>& OutUnits, const bool bRemoveWhenAll)
+	{
+		OutUnits.Reset();
+		TArray<int32> Kept;
+		KeepTopSide(BoxedSides, Kept);
+		TArray<uint32> Taken;
+		for (const int32 Index : Kept)
+		{
+			if (Boxed.IsValidIndex(Index))
+			{
+				Taken.Add(Boxed[Index]);
+			}
+		}
+		if (!bAdd || Selected.IsEmpty())
+		{
+			OutUnits = MoveTemp(Taken);
+			return;
+		}
+		OutUnits = Selected;
+		// Of a worse side than the selection, or none: the selection as is; of a better side: they replace it.
+		if (Taken.IsEmpty() || BoxedSides[Kept[0]] > SelectedSide)
+		{
+			return;
+		}
+		if (BoxedSides[Kept[0]] < SelectedSide)
+		{
+			OutUnits = MoveTemp(Taken);
+			return;
+		}
+		// Of its side: added, or removed when all of them already are.
+		const bool bAllSelected = bRemoveWhenAll && !Taken.ContainsByPredicate([Selected](const uint32 Id) { return !Selected.Contains(Id); });
+		for (const uint32 Id : Taken)
+		{
+			if (bAllSelected)
+			{
+				OutUnits.Remove(Id);
+			}
+			else
+			{
+				OutUnits.AddUnique(Id);
+			}
+		}
+	}
+
+	void CombineClick(const TConstArrayView<uint32> Selected, const EHOLSelectionSide SelectedSide, const uint32 Clicked,
+		const EHOLSelectionSide ClickedSide, const bool bAdd, TArray<uint32>& OutUnits)
+	{
+		const uint32 Boxed[] = { Clicked };
+		const EHOLSelectionSide Sides[] = { ClickedSide };
+		CombineBox(Selected, SelectedSide, Boxed, Sides, bAdd, OutUnits);
 	}
 }

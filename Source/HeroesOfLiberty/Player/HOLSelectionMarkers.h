@@ -51,6 +51,12 @@ public:
 	 */
 	FString DescribeHealthBars() const;
 
+	/**
+	 * Whether a unit shows its health bar (J7-Q5 and the user's nuance, D.1): always when selected, whatever its side (an
+	 * enemy group selected shows its bars, full or not), otherwise only when wounded.
+	 */
+	static bool ShowsHealthBar(bool bSelected, bool bFullHealth);
+
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 

@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
+#include "Player/HOLUnitPicking.h"
 #include "HOLPlayerController.generated.h"
 
 class AHOLBuilding;
@@ -105,17 +106,22 @@ public:
 	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
 	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
 	/**
-	 * A left click at a point of the viewport: the unit under it, else the building, else the source, else nothing. With bAdd (Shift), one
-	 * of the player's own units is added to its selected units, or removed when it already is one; the selection stays
-	 * when nothing is under the cursor.
+	 * A left click at a point of the viewport: the unit under it, else the building, else the source, else nothing. With bAdd (Shift), the
+	 * first side of the selection and the unit wins (D.2, HOLUnitPicking::CombineClick): of the selection's side, the unit is added, or
+	 * removed when it already is one; an enemy never joins the player's own units; the selection stays when nothing is under the cursor.
 	 */
 	void SelectAt(const FVector2D& ViewportFraction, bool bAdd = false);
 	/**
-	 * A double click or Ctrl + click there (A.1): on one of the player's own units, all its own units of that type on the
-	 * screen (HOLUnitPicking::PickSameTypeOnScreen), added to its own selected units with bAdd; elsewhere, as SelectAt.
+	 * A double click or Ctrl + click there (A.1): on a unit, all the units of its type and of its owner on the screen
+	 * (HOLUnitPicking::PickSameTypeOnScreen; D.2: an enemy's too), added with bAdd to the selection of their side (the first
+	 * side of the whole kept); elsewhere, as SelectAt.
 	 */
 	void SelectSameTypeAt(const FVector2D& ViewportFraction, bool bAdd = false);
-	/** A box between two points of the viewport: the player's own units in it; with bAdd, added, or removed when all already are. */
+	/**
+	 * A box between two points of the viewport: the units in it of the first side present, own > ally > enemy > neutral
+	 * (D.1: an enemy group too, its panel without commands); with bAdd, the first side of the selection and the box wins,
+	 * of the same side added, or removed when all already are (HOLUnitPicking::CombineBox).
+	 */
 	void SelectInBox(const FVector2D& CornerA, const FVector2D& CornerB, bool bAdd = false);
 	/**
 	 * A right click at a point of the viewport: the selected own units gather the source under it (J5, D298), build the
@@ -471,6 +477,11 @@ private:
 	 * players' only. Ids match the candidates.
 	 */
 	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds, bool bOthersOnly = false) const;
+	/**
+	 * Every unit known here by its side for the local player (D.1), and the selected units known here with their first
+	 * side (OutSelectedSide untouched when none is).
+	 */
+	void GatherSelectionSides(TMap<uint32, EHOLSelectionSide>& OutSideOf, TArray<uint32>& OutSelected, EHOLSelectionSide& OutSelectedSide) const;
 	/** Units that left this machine (dead, out of view of a client) leave the selection, a used-up source too. */
 	void PurgeSelection(TConstArrayView<FHOLUnitView> Views);
 	/** The player's idle workers among the units known here (Views). */

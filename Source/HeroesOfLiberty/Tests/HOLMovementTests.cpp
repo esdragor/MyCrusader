@@ -1,7 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Algo/Reverse.h"
+#include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
+#include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
 #include "Simulation/HOLGroupMoveRules.h"
 
@@ -236,6 +238,221 @@ bool FHOLMovementPickSameTypeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("an enemy archer: itself alone"), Picked == TArray<int32>({ 5 }));
 	HOLUnitPicking::PickSameTypeOnScreen(Units, INDEX_NONE, Screen, Picked);
 	TestTrue(TEXT("no unit clicked: none"), Picked.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMovementPickTopSideTest, "HeroesOfLiberty.Movement.PickTopSide", UE::HeroesOfLiberty::Tests::Movement::Flags)
+bool FHOLMovementPickTopSideTest::RunTest(const FString& Parameters)
+{
+	// D.1: a box over several sides keeps the first one present, Own > Ally > Enemy > Neutral; an enemy group selected
+	// shows its health bars, full or not.
+	using HOLUnitPicking::KeepTopSide;
+	using HOLUnitPicking::CombineBox;
+	constexpr EHOLSelectionSide Own = EHOLSelectionSide::Own;
+	constexpr EHOLSelectionSide Ally = EHOLSelectionSide::Ally;
+	constexpr EHOLSelectionSide Enemy = EHOLSelectionSide::Enemy;
+	constexpr EHOLSelectionSide Neutral = EHOLSelectionSide::Neutral;
+
+	EHOLSelectionSide Top = Neutral;
+	TestFalse(TEXT("no unit: no side"), HOLUnitPicking::GetTopSide({}, Top));
+	TestTrue(TEXT("enemies and neutrals: the enemies' side"), HOLUnitPicking::GetTopSide({ Neutral, Enemy, Neutral }, Top) && Top == Enemy);
+
+	TArray<int32> Kept;
+	KeepTopSide({ Enemy, Own, Enemy, Own, Enemy, Enemy, Own, Enemy }, Kept);
+	TestTrue(TEXT("3 own and 5 enemies: the 3 own"), Kept == TArray<int32>({ 1, 3, 6 }));
+	KeepTopSide({ Enemy, Neutral, Enemy, Enemy, Neutral, Enemy, Enemy }, Kept);
+	TestTrue(TEXT("5 enemies and 2 neutrals: the 5 enemies"), Kept == TArray<int32>({ 0, 2, 3, 5, 6 }));
+	KeepTopSide({ Enemy, Ally, Neutral }, Kept);
+	TestTrue(TEXT("an ally before an enemy"), Kept == TArray<int32>({ 1 }));
+	KeepTopSide({ Neutral, Neutral }, Kept);
+	TestTrue(TEXT("neutrals alone: kept"), Kept == TArray<int32>({ 0, 1 }));
+	KeepTopSide({}, Kept);
+	TestTrue(TEXT("no unit: none"), Kept.IsEmpty());
+
+	TArray<uint32> Units;
+	CombineBox({}, Own, { 10, 20, 30 }, { Enemy, Own, Enemy }, false, Units);
+	TestTrue(TEXT("a box on own units and enemies: the own"), Units == TArray<uint32>({ 20 }));
+	CombineBox({ 1, 2 }, Own, { 10, 30 }, { Enemy, Enemy }, false, Units);
+	TestTrue(TEXT("a box on enemies, no Shift: the enemies replace the own"), Units == TArray<uint32>({ 10, 30 }));
+	CombineBox({ 1, 2 }, Own, { 10, 30 }, { Enemy, Enemy }, true, Units);
+	TestTrue(TEXT("Shift + box on enemies with own selected: the own kept"), Units == TArray<uint32>({ 1, 2 }));
+	CombineBox({ 10 }, Enemy, { 1, 2 }, { Own, Own }, true, Units);
+	TestTrue(TEXT("Shift + box on own units with an enemy selected: the own"), Units == TArray<uint32>({ 1, 2 }));
+	CombineBox({ 10 }, Enemy, { 30, 40 }, { Enemy, Enemy }, true, Units);
+	TestTrue(TEXT("Shift + box on enemies with an enemy selected: added"), Units == TArray<uint32>({ 10, 30, 40 }));
+	CombineBox({ 1, 2 }, Own, { 3, 2 }, { Own, Own }, true, Units);
+	TestTrue(TEXT("Shift + box on own units: added (as before D.1)"), Units == TArray<uint32>({ 1, 2, 3 }));
+	CombineBox({ 1, 2, 3 }, Own, { 3, 2, 50 }, { Own, Own, Enemy }, true, Units);
+	TestTrue(TEXT("Shift + box on own units all selected: removed (as before D.1)"), Units == TArray<uint32>({ 1 }));
+	CombineBox({ 1, 2 }, Own, {}, {}, true, Units);
+	TestTrue(TEXT("Shift + an empty box: the selection kept"), Units == TArray<uint32>({ 1, 2 }));
+	CombineBox({ 1, 2 }, Own, {}, {}, false, Units);
+	TestTrue(TEXT("an empty box, no Shift: nothing"), Units.IsEmpty());
+
+	// D.2: Shift + click as a box on that unit alone; Shift + double click only adds.
+	using HOLUnitPicking::CombineClick;
+	CombineClick({ 1, 2 }, Own, 10, Enemy, false, Units);
+	TestTrue(TEXT("a click on an enemy: itself alone"), Units == TArray<uint32>({ 10 }));
+	CombineClick({ 1, 2 }, Own, 10, Enemy, true, Units);
+	TestTrue(TEXT("Shift + click on an enemy with own selected: the own kept"), Units == TArray<uint32>({ 1, 2 }));
+	CombineClick({ 10 }, Enemy, 30, Enemy, true, Units);
+	TestTrue(TEXT("Shift + click on an enemy with an enemy selected: added"), Units == TArray<uint32>({ 10, 30 }));
+	CombineClick({ 10, 30 }, Enemy, 30, Enemy, true, Units);
+	TestTrue(TEXT("Shift + click on a selected enemy: removed"), Units == TArray<uint32>({ 10 }));
+	CombineClick({ 10 }, Enemy, 1, Own, true, Units);
+	TestTrue(TEXT("Shift + click on an own unit with an enemy selected: itself alone"), Units == TArray<uint32>({ 1 }));
+	CombineClick({ 1 }, Own, 2, Own, true, Units);
+	TestTrue(TEXT("Shift + click on an own unit with own selected: added (as before D.2)"), Units == TArray<uint32>({ 1, 2 }));
+	CombineClick({}, Own, 10, Enemy, true, Units);
+	TestTrue(TEXT("Shift + click on an enemy, nothing selected: itself"), Units == TArray<uint32>({ 10 }));
+	CombineBox({ 10, 30 }, Enemy, { 30, 10 }, { Enemy, Enemy }, true, Units, /*bRemoveWhenAll*/ false);
+	TestTrue(TEXT("Shift + double click on enemies all selected: kept, not removed"), Units == TArray<uint32>({ 10, 30 }));
+
+	// D.2: a double click on an enemy takes its owner's units of its type on the screen.
+	auto Unit = [](double X, FName Type, bool bOwn, int32 Owner)
+	{
+		FHOLTypedPickCandidate Candidate;
+		Candidate.Pick.Foot = FVector2D(X, 300.);
+		Candidate.Pick.Head = FVector2D(X, 260.);
+		Candidate.Pick.HalfWidth = 10.;
+		Candidate.TypeName = Type;
+		Candidate.bOwn = bOwn;
+		Candidate.OwnerPlayer = Owner;
+		return Candidate;
+	};
+	const FName Archer(TEXT("Archer"));
+	const FName Spearman(TEXT("Spearman"));
+	// Slot 1's archers (two on the screen, one beyond its right side), slot 2's archer, slot 1's spearman, an own archer.
+	const TArray<FHOLTypedPickCandidate> Typed = { Unit(100., Archer, false, 1), Unit(400., Archer, false, 1), Unit(2100., Archer, false, 1),
+		Unit(500., Archer, false, 2), Unit(600., Spearman, false, 1), Unit(700., Archer, true, 0) };
+	TArray<int32> Picked;
+	HOLUnitPicking::PickSameTypeOnScreen(Typed, 1, FVector2D(1920., 1080.), Picked);
+	TestTrue(TEXT("double click on slot 1's archer: slot 1's archers on the screen, the clicked one first"), Picked == TArray<int32>({ 1, 0 }));
+	HOLUnitPicking::PickSameTypeOnScreen(Typed, 5, FVector2D(1920., 1080.), Picked);
+	TestTrue(TEXT("double click on the own archer: itself, no enemy archer"), Picked == TArray<int32>({ 5 }));
+
+	TestTrue(TEXT("a selected unit at full health (an enemy's too): its bar"), AHOLSelectionMarkers::ShowsHealthBar(true, true));
+	TestTrue(TEXT("a selected wounded unit: its bar"), AHOLSelectionMarkers::ShowsHealthBar(true, false));
+	TestTrue(TEXT("an unselected wounded unit: its bar"), AHOLSelectionMarkers::ShowsHealthBar(false, false));
+	TestFalse(TEXT("an unselected unhurt unit: no bar"), AHOLSelectionMarkers::ShowsHealthBar(false, true));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMovementPickSideByTeamsTest, "HeroesOfLiberty.Movement.PickSideByTeams", UE::HeroesOfLiberty::Tests::Movement::Flags)
+bool FHOLMovementPickSideByTeamsTest::RunTest(const FString& Parameters)
+{
+	// D.3: the sides come from the match's teams (a real configuration, through HOLVictoryRules::GetCamp), never given by
+	// hand: me slot 0 (team 1), slot 1 (team 2) an enemy, slot 2 (team 1) an ally; then the same match without teams.
+	auto MakeConfig = [](const int32 Team0, const int32 Team1, const int32 Team2)
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		Config.Slots.Reset();
+		Config.Slots.AddDefaulted(FHOLMatchConfig::MaxSlots);
+		Config.Slots[0].State = EHOLSlotState::Human;
+		Config.Slots[1].State = EHOLSlotState::AI;
+		Config.Slots[2].State = EHOLSlotState::AI;
+		Config.Slots[0].Team = Team0;
+		Config.Slots[1].Team = Team1;
+		Config.Slots[2].Team = Team2;
+		Config.Normalize();
+		return Config;
+	};
+	const FHOLMatchConfig Teams = MakeConfig(1, 2, 1);
+	const FHOLMatchConfig NoTeams = MakeConfig(0, 0, 0);
+	constexpr int32 Me = 0;
+	const FName ManAtArms(TEXT("ManAtArms"));
+	const FName Spearman(TEXT("Spearman"));
+	const FName Archer(TEXT("Archer"));
+	// The units of the match: mine 1, 2 (Men-at-arms); slot 1's 10, 11 (Spearmen), 12 (Archer); slot 2's 20, 21
+	// (Spearmen), 22 (Archer). Each one's slot, type and place on a 1920 x 1080 screen.
+	struct FUnit { uint32 Id; int32 Slot; FName Type; double X; };
+	const TArray<FUnit> Match = { { 1, 0, ManAtArms, 100. }, { 2, 0, ManAtArms, 150. }, { 10, 1, Spearman, 400. }, { 11, 1, Spearman, 450. },
+		{ 12, 1, Archer, 500. }, { 20, 2, Spearman, 900. }, { 21, 2, Spearman, 950. }, { 22, 2, Archer, 1000. } };
+	auto SlotOf = [&Match](const uint32 Id)
+	{
+		const FUnit* Unit = Match.FindByPredicate([Id](const FUnit& U) { return U.Id == Id; });
+		return Unit ? Unit->Slot : INDEX_NONE;
+	};
+	auto SidesOf = [&SlotOf](const FHOLMatchConfig& Config, const TArray<uint32>& Ids)
+	{
+		TArray<EHOLSelectionSide> Sides;
+		for (const uint32 Id : Ids)
+		{
+			Sides.Add(HOLUnitPicking::GetSide(Config, SlotOf(Id), Me));
+		}
+		return Sides;
+	};
+	// A box as the player controller makes it: the sides of the boxed units and of the selection, then CombineBox.
+	auto Box = [&SidesOf](const FHOLMatchConfig& Config, const TArray<uint32>& Selected, const TArray<uint32>& Boxed, const bool bAdd)
+	{
+		EHOLSelectionSide SelectedSide = EHOLSelectionSide::Neutral;
+		HOLUnitPicking::GetTopSide(SidesOf(Config, Selected), SelectedSide);
+		TArray<uint32> Units;
+		HOLUnitPicking::CombineBox(Selected, SelectedSide, Boxed, SidesOf(Config, Boxed), bAdd, Units);
+		return Units;
+	};
+	auto Click = [&SidesOf](const FHOLMatchConfig& Config, const TArray<uint32>& Selected, const uint32 Clicked, const bool bAdd)
+	{
+		EHOLSelectionSide SelectedSide = EHOLSelectionSide::Neutral;
+		HOLUnitPicking::GetTopSide(SidesOf(Config, Selected), SelectedSide);
+		TArray<uint32> Units;
+		HOLUnitPicking::CombineClick(Selected, SelectedSide, Clicked, SidesOf(Config, { Clicked })[0], bAdd, Units);
+		return Units;
+	};
+	// A double click as SelectSameTypeAt: the same type of the same owner on the screen, then CombineBox without removal.
+	auto DoubleClick = [&Match, &SidesOf](const FHOLMatchConfig& Config, const uint32 Clicked)
+	{
+		TArray<FHOLTypedPickCandidate> Typed;
+		int32 ClickedIndex = INDEX_NONE;
+		for (const FUnit& Unit : Match)
+		{
+			FHOLTypedPickCandidate& Candidate = Typed.AddDefaulted_GetRef();
+			Candidate.Pick.Foot = FVector2D(Unit.X, 500.);
+			Candidate.Pick.Head = FVector2D(Unit.X, 460.);
+			Candidate.Pick.HalfWidth = 10.;
+			Candidate.TypeName = Unit.Type;
+			Candidate.bOwn = Unit.Slot == Me;
+			Candidate.OwnerPlayer = Unit.Slot;
+			ClickedIndex = Unit.Id == Clicked ? Typed.Num() - 1 : ClickedIndex;
+		}
+		TArray<int32> Indices;
+		HOLUnitPicking::PickSameTypeOnScreen(Typed, ClickedIndex, FVector2D(1920., 1080.), Indices);
+		TArray<uint32> Picked;
+		for (const int32 Index : Indices)
+		{
+			Picked.Add(Match[Index].Id);
+		}
+		TArray<uint32> Units;
+		HOLUnitPicking::CombineBox({}, EHOLSelectionSide::Neutral, Picked, SidesOf(Config, Picked), false, Units, /*bRemoveWhenAll*/ false);
+		return Units;
+	};
+
+	TestTrue(TEXT("teams: my unit, own"), HOLUnitPicking::GetSide(Teams, 0, Me) == EHOLSelectionSide::Own);
+	TestTrue(TEXT("teams: slot 1 (team 2), an enemy"), HOLUnitPicking::GetSide(Teams, 1, Me) == EHOLSelectionSide::Enemy);
+	TestTrue(TEXT("teams: slot 2 (my team 1), an ally"), HOLUnitPicking::GetSide(Teams, 2, Me) == EHOLSelectionSide::Ally);
+	TestTrue(TEXT("teams: from slot 2's eyes, slot 0 an ally"), HOLUnitPicking::GetSide(Teams, 0, 2) == EHOLSelectionSide::Ally);
+
+	// The eight cases of D.3.
+	TestTrue(TEXT("1. box on enemies alone: the enemies"), Box(Teams, {}, { 10, 11, 12 }, false) == TArray<uint32>({ 10, 11, 12 }));
+	TestTrue(TEXT("1. their side: enemy"), SidesOf(Teams, { 10 })[0] == EHOLSelectionSide::Enemy);
+	TestTrue(TEXT("1. selected at full health: their bars shown"), AHOLSelectionMarkers::ShowsHealthBar(true, true));
+	TestTrue(TEXT("2. box on allies alone: the allies"), Box(Teams, {}, { 20, 21, 22 }, false) == TArray<uint32>({ 20, 21, 22 }));
+	TestTrue(TEXT("2. their side: ally"), SidesOf(Teams, { 20 })[0] == EHOLSelectionSide::Ally);
+	TestTrue(TEXT("3. box on mine and enemies: mine"), Box(Teams, {}, { 10, 1, 11, 2 }, false) == TArray<uint32>({ 1, 2 }));
+	TestTrue(TEXT("4. box on mine and allies: mine"), Box(Teams, {}, { 20, 1, 21, 2 }, false) == TArray<uint32>({ 1, 2 }));
+	TestTrue(TEXT("5. box on allies and enemies: the allies alone"), Box(Teams, {}, { 10, 20, 11, 21 }, false) == TArray<uint32>({ 20, 21 }));
+	TestTrue(TEXT("6. allies selected, Shift + click on an enemy: the allies stay"), Click(Teams, { 20, 21 }, 10, true) == TArray<uint32>({ 20, 21 }));
+	const TArray<uint32> AfterEnemy = Click(Teams, { 1, 2 }, 10, true);
+	TestTrue(TEXT("7. mine selected, Shift + click on an enemy: mine stay"), AfterEnemy == TArray<uint32>({ 1, 2 }));
+	TestTrue(TEXT("7. then Shift + click on an ally: mine stay"), Click(Teams, AfterEnemy, 20, true) == TArray<uint32>({ 1, 2 }));
+	TestTrue(TEXT("8. double click on an ally Spearman: its owner's Spearmen on the screen"), DoubleClick(Teams, 21) == TArray<uint32>({ 21, 20 }));
+	TestTrue(TEXT("8. double click on an enemy Spearman: its owner's Spearmen on the screen"), DoubleClick(Teams, 10) == TArray<uint32>({ 10, 11 }));
+
+	// Without teams, everyone alone: every other slot an enemy, a box over slots 1 and 2 takes them all.
+	TestTrue(TEXT("no teams: slot 2 an enemy"), HOLUnitPicking::GetSide(NoTeams, 2, Me) == EHOLSelectionSide::Enemy);
+	TestTrue(TEXT("no teams: box on slots 1 and 2, all four (enemies all)"), Box(NoTeams, {}, { 10, 20, 11, 21 }, false) == TArray<uint32>({ 10, 20, 11, 21 }));
+	TestTrue(TEXT("no teams: Shift + click on slot 1 with slot 2's selected: added (one side)"), Click(NoTeams, { 20, 21 }, 10, true) == TArray<uint32>({ 20, 21, 10 }));
+	TestTrue(TEXT("no teams: box on mine and slot 2's: mine"), Box(NoTeams, {}, { 20, 1, 21, 2 }, false) == TArray<uint32>({ 1, 2 }));
 	return true;
 }
 
