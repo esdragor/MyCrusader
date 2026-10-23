@@ -1342,6 +1342,38 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand VictoryFallForumCommand(
+		TEXT("hol.Victory.FallForum"),
+		TEXT("hol.Victory.FallForum <Slot>: that slot's main forum at 0 health by the path of damage, a fall and a life less (V2.1; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty() || !Args[0].IsNumeric())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Victory.FallForum <Slot>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatFallForum(FCString::Atoi(*Args[0]));
+			}
+		}));
+
+	FAutoConsoleCommand VictorySkipRuinCommand(
+		TEXT("hol.Victory.SkipRuin"),
+		TEXT("hol.Victory.SkipRuin <Slot>: that slot's main forum leaves its phase at once, ruin -> rebuilding, rebuilding -> rebuilt (V2.1; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty() || !Args[0].IsNumeric())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Victory.SkipRuin <Slot>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatSkipForum(FCString::Atoi(*Args[0]));
+			}
+		}));
+
 	FAutoConsoleCommand CheatGatherSpeedCommand(
 		TEXT("hol.Cheat.GatherSpeed"),
 		TEXT("hol.Cheat.GatherSpeed [Scale=1]: every gatherer of every player gathers Scale times as fast (0.1 to 10; 1: the table's rates; development only)"),
@@ -2020,10 +2052,11 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
 	const TArray<uint32> Own = GetOwnSelectedUnits();
-	// One of the player's sites not finished under the cursor (J6a.4, D312): its selected units go and help build it.
+	// One of the player's sites not finished under the cursor (J6a.4, D312), or its main forum down (V2.2): its selected
+	// units go and help build it.
 	AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(ViewportFraction) : nullptr;
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	if (Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->IsFinished())
+	if (Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && Site->NeedsBuilders())
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units build %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
 		RequestBuildUnits(Own, Site, bShift);
@@ -2079,7 +2112,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		// camps, finished or not: once it is, they gather the nearest source it accepts (D312, J6b.1); the flag on its
 		// middle, as on a source.
 		AHOLBuilding* RallySite = Under && !bOnBuilding && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex()
-			&& (!Under->IsFinished() || Under->IsCamp()) ? Under : nullptr;
+			&& (Under->NeedsBuilders() || Under->IsCamp()) ? Under : nullptr;
 		const FVector Point = bOnBuilding ? Building->GetActorLocation() : RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
 		const int32 RallySource = !bOnBuilding && !RallySite && Source ? SourceIndex : INDEX_NONE;
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s"), *DescribeBuilding(Building), Point.X, Point.Y,
@@ -2100,7 +2133,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			return;
 		}
 		AHOLBuilding* RallySite = Under && HOLPlayerState && Under->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex()
-			&& (!Under->IsFinished() || Under->IsCamp()) ? Under : nullptr;
+			&& (Under->NeedsBuilders() || Under->IsCamp()) ? Under : nullptr;
 		const FVector Point = RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
 		const int32 RallySource = !RallySite && Source ? SourceIndex : INDEX_NONE;
 		int32 Rallied = 0;
@@ -2758,9 +2791,9 @@ AHOLBuilding* AHOLPlayerController::GetOwnSelection() const
 
 FName AHOLPlayerController::GetGridCellUnitType(const int32 Cell) const
 {
-	// A building under construction produces nothing (D312).
+	// A building under construction produces nothing (D312), nor a main forum down (V2.3a).
 	const AHOLBuilding* Building = GetOwnSelection();
-	const FHOLBuildingTypeRow* Type = Building && Building->IsFinished() ? Building->GetType() : nullptr;
+	const FHOLBuildingTypeRow* Type = Building && Building->IsFinished() && !Building->IsForumDown() ? Building->GetType() : nullptr;
 	return Type && Type->Produces.IsValidIndex(Cell) ? Type->Produces[Cell] : NAME_None;
 }
 
@@ -2779,6 +2812,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		const FHOLBuildingTypeRow* Type = Building->GetType();
 		Context.bOwnBuilding = Type != nullptr;
 		Context.bBuildingFinished = Building->IsFinished();
+		Context.bForumDown = Building->IsForumDown();
 		if (Type)
 		{
 			Context.Produces = Type->Produces;
@@ -2809,6 +2843,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			One.bOwnBuilding = Type != nullptr;
 			One.bBuildingGroup = bSeveral;
 			One.bBuildingFinished = Group[Member]->IsFinished();
+			One.bForumDown = Group[Member]->IsForumDown();
 			if (Type)
 			{
 				One.Produces = Type->Produces;
@@ -3065,8 +3100,8 @@ AHOLBuilding* AHOLPlayerController::FindProductionBuilding(const FName TypeName,
 	TArray<FHOLQueueChoice> Choices;
 	for (AHOLBuilding* Building : Buildings)
 	{
-		// A building under construction produces nothing (D312).
-		const FHOLBuildingTypeRow* Type = Building->IsFinished() ? Building->GetType() : nullptr;
+		// A building under construction produces nothing (D312), nor a main forum down (V2.3a).
+		const FHOLBuildingTypeRow* Type = Building->IsFinished() && !Building->IsForumDown() ? Building->GetType() : nullptr;
 		if (Type && Type->Produces.Contains(TypeName))
 		{
 			Producers.Add(Building);
@@ -3607,6 +3642,40 @@ void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
 #endif
 }
 
+void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
+{
+	ServerCheatFallForum(Slot);
+}
+
+void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
+{
+#if !UE_BUILD_SHIPPING
+	// The same path as the combat's damage: melee (no armour) of exactly its health.
+	AHOLBuilding* Forum = AHOLGameState::FindPrimaryForum(*GetWorld(), Slot);
+	const int32 Health = Forum ? Forum->GetHealth() : 0;
+	if (!Forum || Health <= 0 || UHOLConstructionSubsystem::DamageBuilding(*Forum, Health, EHOLAttackType::Melee) <= 0)
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: the forum of slot %d cannot fall (none, or down already)"), Slot);
+	}
+#endif
+}
+
+void AHOLPlayerController::RequestCheatSkipForum(const int32 Slot)
+{
+	ServerCheatSkipForum(Slot);
+}
+
+void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
+{
+#if !UE_BUILD_SHIPPING
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!HOLGameState || !HOLGameState->SkipForumPhase(Slot))
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: the forum of slot %d has no phase to skip (standing, or the slot defeated)"), Slot);
+	}
+#endif
+}
+
 void AHOLPlayerController::RequestSurrender()
 {
 	ServerSurrender();
@@ -4044,7 +4113,7 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 	const TArray<uint32> Own = GetOwnSelectedUnits();
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	const AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(Start) : nullptr;
-	const bool bOnSite = Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->IsFinished();
+	const bool bOnSite = Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && Site->NeedsBuilders();
 	FVector Origin, Direction, GroundStart, GroundEnd;
 	const FVector2D StartPixels = ToPixels(Start);
 	const FVector2D EndPixels = ToPixels(End);

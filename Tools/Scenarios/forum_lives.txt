@@ -1,0 +1,53 @@
+# Forum à vies (V2.5) : ton forum tombe sous des soldats ennemis, ruine 30 s, tes Paysans le reconstruisent ; le forum de l'IA tombe ; 2e chute de ton forum : Défaite
+# Plain, deux joueurs (forum_lives.json) : slot 0 humain, slot 1 IA, équipes séparées. Positions dans le repère du centre
+# du joueur (X vers le milieu de la carte). Les Paysans derrière le forum, les ennemis sur son flanc : ~30 m entre eux,
+# plus que le rayon d'agressivité (16 m) : les ennemis ne frappent que le forum.
+# Chaque temps attend la touche Entrée (waitkey). Durées réelles : ruine 30 s, reconstruction ~30 s avec 6 Paysans.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# 1. Six Paysans derrière le forum.
+hol.Camera.FocusNear -2000 -400
+frames 2
+hol.Units.SpawnHere 6 Peasant 0 150
+waitunits 6
+hol.Camera.FocusNear -400 300
+hol.Camera.Zoom -1
+frames 5
+note 1. Ton forum (2 400 PV, 2 vies) et 6 Paysans derrière lui ; en haut à droite, le tableau : « 2 vies » chacun.
+waitkey Entrée : des soldats ennemis attaquent ton forum
+# 2. Huit Hommes d'armes ennemis sur le flanc du forum (à ~8 m de son bord) : ils le frappent d'eux-mêmes.
+hol.Camera.FocusNear 0 1900
+frames 2
+hol.Units.SpawnHere 8 ManAtArms 1 250
+waitunits 14
+hol.Camera.FocusNear -500 700
+frames 5
+note 2. Huit Hommes d'armes ennemis frappent ton forum ; pour abréger, il perd 2 000 PV d'un coup (triche) et ils l'achèvent.
+waitlog EHOLAttackType::Melee), health
+wait 2
+hol.Cheat.DamageNear 2000 0 0
+waitlog Victory: forum of slot 0 fell
+# Les ennemis retirés (pas de prise de ruine avant V3) : le forum reste tranquille.
+wait 2
+hol.Units.Remove -14800 0 3000 1
+note 3. Le forum est tombé : décombres 30 s (vrai temps), incassables, ni production ni dépôt ; les ennemis sont retirés.
+waitkey Vite, pendant les 30 s : tes 6 Paysans, clic droit sur les décombres (ils l'entourent et attendent) ; clique le forum (« En ruine — N s ») ; tableau « 1 vie », « Ruine ». Puis Entrée
+note 4. Reconstruction : les Paysans frappent ; bloc « Reconstruction — N % », « Bâtisseurs : 6 » ; le forum remonte (~30 s ; 120 s sans Paysans).
+note    À la fin : forum debout, pleins PV, Paysans qui repartent ; tableau « 1 vie ».
+waitkey Entrée quand ton forum est debout : le forum de l'IA tombe (triche)
+# 5. Le forum de l'IA tombe : la caméra sur lui 5 s, puis retour.
+hol.Camera.FocusNear 0 0 enemy
+frames 5
+hol.Victory.FallForum 1
+waitlog Victory: forum of slot 1 fell
+note 5. Le forum de l'IA tombe : sa ligne du tableau passe à « 1 vie », « Ruine » ; la caméra revient chez toi dans 5 s.
+wait 5
+hol.Camera.FocusNear -400 300
+frames 5
+waitkey Entrée : ton forum tombe une 2e fois (triche) : Défaite
+hol.Camera.FocusNear -400 300
+frames 2
+hol.Victory.FallForum 0
+waitlog Victory: slot 0 defeated (Forum)
+waitlog End banner: Defeat
+note 6. Deuxième chute, plus de vie : bandeau Défaite ; ta ligne du tableau : « Vaincu ».

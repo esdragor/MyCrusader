@@ -178,6 +178,12 @@ void UHOLProductionSubsystem::ApplyOrders()
 			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: %s not finished"), Order.PlayerIndex, *Building->GetTypeName().ToString());
 			continue;
 		}
+		// A main forum in ruin or rebuilding produces nothing (D351); its rally point stays its owner's to move.
+		if (Building->IsForumDown() && Order.Kind != FHOLProductionCommand::EKind::Rally)
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: its forum is down"), Order.PlayerIndex);
+			continue;
+		}
 
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
@@ -193,7 +199,8 @@ void UHOLProductionSubsystem::ApplyOrders()
 				// of its camps, finished or not: once it is, they gather the nearest source it accepts (D312, J6b.1); the flag
 				// on its middle (as on a source); a client could name any building (D288).
 				AHOLBuilding* Site = Order.RallySite.Get();
-				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (Site->IsFinished() && !Site->IsCamp())))
+				// Its main forum down is rebuilt as a site (V2.3a).
+				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (!Site->NeedsBuilders() && !Site->IsCamp())))
 				{
 					Site = nullptr;
 				}

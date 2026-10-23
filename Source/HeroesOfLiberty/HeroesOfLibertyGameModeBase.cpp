@@ -149,6 +149,8 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 			continue;
 		}
 		Centre->Setup(HOLBuildingTypeNames::MainCentre, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
+		// V2 (D350): the centre given at the start is the slot's main forum, the one with lives.
+		Centre->SetPrimaryForum(true);
 		Centre->FinishSpawning(Transform);
 		AssignBuildingOwners(Slot);
 		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f), yaw %.0f"), Slot, SlotConfig.ColorIndex,

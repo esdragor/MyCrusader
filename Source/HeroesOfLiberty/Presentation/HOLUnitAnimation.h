@@ -32,6 +32,11 @@ struct FHOLUnitAnimationInput
 	float WalkSpeed = 0.f;
 	/** Sequence it plays now, INDEX_NONE before its first: a walk keeps walking down to a lower speed (hysteresis). */
 	int32 PlayingSequence = INDEX_NONE;
+	/**
+	 * Building, at a site that waits (V2.3a: its main forum in ruin, HOLForumRules::BuildersWait): it stands there without
+	 * striking, still not idle.
+	 */
+	bool bSiteWaits = false;
 };
 
 /** The animation to play. Mass hands it to the instance only when Sequence changes (play rate and start fixed then). */

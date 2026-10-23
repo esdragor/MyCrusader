@@ -411,6 +411,10 @@ public:
 	void RequestCheatSpawnBuilding(FName TypeName, int32 Slot, const FVector& Point);
 	/** V1.1: any slot loses at once, an AI's too (hol.Victory.Defeat), as a surrender would but with the reason Cheat. */
 	void RequestCheatDefeat(int32 Slot);
+	/** V2.1: the slot's main forum at 0 health by the path of damage (hol.Victory.FallForum): a fall, a life less. */
+	void RequestCheatFallForum(int32 Slot);
+	/** V2.1: the slot's main forum leaves its phase at once, ruin -> rebuilding -> rebuilt (hol.Victory.SkipRuin). */
+	void RequestCheatSkipForum(int32 Slot);
 
 	/**
 	 * D356: the player gives up, an immediate defeat (hol.Victory.Surrender until the in-game menu of V1.3). The server
@@ -598,6 +602,12 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatDefeat(int32 Slot);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatFallForum(int32 Slot);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatSkipForum(int32 Slot);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSurrender();

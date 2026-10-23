@@ -664,8 +664,9 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 			const bool bWorker = Constants.CarryCapacity > 0;
 			AHOLBuilding* Site = bWorker ? Request.BuildSite.Get() : nullptr;
 			double CampGap = 0.;
-			const int32 CampSource = Site && Site->IsFinished() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site, &CampGap) : INDEX_NONE;
-			if (Site && !Site->IsFinished())
+			// Its main forum down: they rebuild it, as a site (V2.3a).
+			const int32 CampSource = Site && !Site->NeedsBuilders() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site, &CampGap) : INDEX_NONE;
+			if (Site && Site->NeedsBuilders())
 			{
 				FHOLBuildOrder Order;
 				Order.UnitIds = BornIds;

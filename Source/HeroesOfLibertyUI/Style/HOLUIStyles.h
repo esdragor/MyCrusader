@@ -127,6 +127,19 @@ public:
 };
 
 /**
+ * The players' names in the players' table, in their colour (V2.3d): bold, with a dark outline and a drop shadow so a
+ * dark colour (blue, green, violet) still reads on the HUD's dark panel.
+ */
+UCLASS()
+class HEROESOFLIBERTYUI_API UHOLTextStyleHUDPlayerName : public UHOLTextStyle
+{
+	GENERATED_BODY()
+
+public:
+	UHOLTextStyleHUDPlayerName();
+};
+
+/**
  * The names in the cells of the command grid (J6a.5: « Camp de bûcherons » on two lines of a 76 px cell, the cell
  * showing nothing else, at 1440p as at 900p).
  */

@@ -166,6 +166,13 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionActivity;
 
+	/** A main forum's lives (V2.3d), under the line above, styled as the health's row: « Vies » small and grey, then « 2 ». */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHorizontalBox> SelectionLivesRow;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> SelectionLives;
+
 	/** A building not finished (J6a.5, D313): its progress, a bar and « 45 % ». */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHorizontalBox> SelectionProgressRow;
@@ -352,7 +359,36 @@ private:
 	FDelegateHandle EconomyHandle;
 	FDelegateHandle ProductionHandle;
 	FDelegateHandle ConstructionHandle;
+	/** V2.3b: the game state's forums, followed while a main forum is selected. */
+	TWeakObjectPtr<class AHOLGameState> BoundForumState;
+	FDelegateHandle ForumsHandle;
 	FDelegateHandle FeedbackHandle;
+
+	/**
+	 * V2.4 (V2-Q4, D353): the players' table, top right under the top bar: a row per occupied slot (HOLForumRules::
+	 * GetPlayersTable), its name in its colour, its lives, its forum's phase; a defeated slot greyed. Followed on every
+	 * machine (OnForumsChanged, OnVictoryChanged) and read four times a second (a rebuilding's percent, the launch
+	 * configuration reaching a client).
+	 */
+	void BindTableState(class AHOLGameState* GameState);
+	void RefreshPlayersTable();
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PlayersPanel;
+	/** One row per slot at most (MaxSlots): its box, its name, its lives, its forum's phase. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHorizontalBox>> PlayerRows;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCommonTextBlock>> PlayerNames;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCommonTextBlock>> PlayerLives;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCommonTextBlock>> PlayerStates;
+	TWeakObjectPtr<class AHOLGameState> BoundTableState;
+	FDelegateHandle TableForumsHandle;
+	FDelegateHandle TableVictoryHandle;
+	float SinceTableRefresh = 1.f;
+	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
+	FString ShownPlayersTable;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;
@@ -371,6 +407,8 @@ private:
 	FString ShownActivity;
 	/** ", hp 37/50" for one unit selected (J7b.5), for Report; empty otherwise. */
 	FString ShownHealth;
+	/** A main forum's lives last written in SelectionLives (V2.3d). */
+	int32 ShownForumLives = INDEX_NONE;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
 	bool bOrdersShown = false;

@@ -506,7 +506,8 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 			{
 				continue;
 			}
-			const float Rise = Building->IsFinished() ? 1.f : FMath::Max(AHOLBuilding::MinRiseRatio, Building->GetProgress());
+			// As shown: a site's rise, a forum's rubble or rising again (V2.3a).
+			const float Rise = Building->GetShownRise();
 			const FVector Top = Building->GetActorLocation() + FVector(0.0, 0.0, Type->Height * Rise + BuildingBarLift);
 			const FVector ToTop = Top - CameraLocation;
 			const double Distance = ToTop.Size();

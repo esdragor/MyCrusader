@@ -99,14 +99,26 @@ void AHOLRubble::BuildLook()
 		return;
 	}
 	bBuilt = true;
+	TArray<FLookPiece> Heap;
+	GetLookPieces(UHOLBuildingSettings::GetVisualSize(Type->Footprint), ColorIndex, Heap);
+	for (const FLookPiece& Piece : Heap)
+	{
+		AddPiece(Piece.Size, Piece.Offset, Piece.Yaw, Piece.Color);
+	}
+}
+
+void AHOLRubble::GetLookPieces(const FVector2D& VisualSize, const uint8 InColorIndex, TArray<FLookPiece>& OutPieces)
+{
+	using namespace UE::HeroesOfLiberty::Rubble;
+
+	OutPieces.Reset();
 	// A flat heap over the building's visible shape, then broken pieces lying on it, lower than a man.
-	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type->Footprint);
-	AddPiece(FVector(Footprint * 0.92, HeapHeight), FVector2D::ZeroVector, 0.f, AshColor);
-	const FLinearColor OwnerShade = FLinearColor(HOLPlayerColors::GetLinearColor(ColorIndex)) * OwnerTone;
+	OutPieces.Add({ FVector(VisualSize * 0.92, HeapHeight), FVector2D::ZeroVector, 0.f, AshColor });
+	const FLinearColor OwnerShade = FLinearColor(HOLPlayerColors::GetLinearColor(InColorIndex)) * OwnerTone;
 	for (const FPiece& Piece : Pieces)
 	{
 		const FLinearColor Color = Piece.Tone == 2 ? FLinearColor(OwnerShade.R, OwnerShade.G, OwnerShade.B, 1.f) : Piece.Tone == 1 ? StoneColor : DarkStoneColor;
-		AddPiece(FVector(Footprint * Piece.Size, HeapHeight + PieceMaxHeight * Piece.Height), Footprint * 0.5 * Piece.Offset, Piece.Yaw, Color);
+		OutPieces.Add({ FVector(VisualSize * Piece.Size, HeapHeight + PieceMaxHeight * Piece.Height), VisualSize * 0.5 * Piece.Offset, Piece.Yaw, Color });
 	}
 }
 

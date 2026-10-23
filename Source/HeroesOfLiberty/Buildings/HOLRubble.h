@@ -31,6 +31,20 @@ public:
 
 	FName GetTypeName() const { return TypeName; }
 
+	/** A piece of the heap: its size (cm), its middle's offset from the heap's middle, its turn, its colour. */
+	struct FLookPiece
+	{
+		FVector Size = FVector::ZeroVector;
+		FVector2D Offset = FVector2D::ZeroVector;
+		float Yaw = 0.f;
+		FLinearColor Color = FLinearColor::Black;
+	};
+	/**
+	 * The heap over a building's visible size (UHOLBuildingSettings::GetVisualSize) in the owner's colour ColorIndex: what
+	 * the rubble shows, and a main forum in ruin (V2.3a, AHOLBuilding) the same.
+	 */
+	static void GetLookPieces(const FVector2D& VisualSize, uint8 InColorIndex, TArray<FLookPiece>& OutPieces);
+
 	/** Seconds the rubble stays (D345.2a). */
 	static constexpr float LifeSeconds = 10.f;
 	/** Height of the flattened heap (cm) and of its pieces at most. */

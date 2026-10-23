@@ -15,6 +15,11 @@ namespace HOLCommandGrid
 		}
 		if (Context.bOwnBuilding)
 		{
+			// A main forum down produces nothing and is no site to cancel (V2.3a, D351).
+			if (Context.bForumDown)
+			{
+				return Result;
+			}
 			// A building under construction produces nothing (D312); its site may be cancelled (D311), one at a time.
 			if (!Context.bBuildingFinished)
 			{

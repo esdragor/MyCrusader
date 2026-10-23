@@ -80,6 +80,8 @@ struct FHOLGridContext
 	bool bOwnBuilding = false;
 	bool bBuildingGroup = false;
 	bool bBuildingFinished = false;
+	/** V2.3a: the main forum down (ruin or rebuilding): it produces nothing, nothing to cancel; its cells are empty. */
+	bool bForumDown = false;
 	TArray<FName> Produces;
 	/**
 	 * The player's own selected units count at least one builder (a unit that gathers, CarryCapacity > 0: what the

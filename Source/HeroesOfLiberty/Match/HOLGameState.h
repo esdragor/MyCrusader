@@ -4,17 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "HOLGameState.generated.h"
 
-/** Why a slot lost (D356; the forum at 0 lives and the dead King come with V2 and Regicide). None: still in the match. */
+class AHOLBuilding;
+
+/** Why a slot lost (D356; the dead King comes with Regicide). None: still in the match. */
 UENUM()
 enum class EHOLDefeatReason : uint8
 {
 	None,
 	Surrender,
 	Cheat,
+	/** V2 (D349): its main forum fell with no life left. */
+	Forum,
 };
 
 /**
@@ -79,7 +84,79 @@ public:
 	 */
 	const FHOLMatchConfig& GetLaunchConfig() const { return LaunchConfig; }
 
+	/**
+	 * V2 (D349-D353): each slot's main forum, public (every machine, the players' table of V2.4): its falls, its phase,
+	 * its ruin's steps left, its rebuilding's work. The default (standing, no fall) for a closed slot.
+	 */
+	const FHOLForumState& GetForumState(int32 Slot) const;
+	/** Lives left of a slot's main forum (D349: 1 + tier - falls; 0 once it fell for good). */
+	int32 GetLives(int32 Slot) const;
+	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
+	bool IsForumDown(int32 Slot) const { return GetForumState(Slot).IsDown(); }
+	/** Share of its rebuilding done (0 to 1; 1 standing). */
+	float GetForumRebuildProgress(int32 Slot) const;
+	/** V2.3a: a main forum is in ruin, its Peasants waiting without striking (HOLForumRules::BuildersWait): the drawing looks. */
+	bool AnyForumBuildersWait() const;
+
+	/**
+	 * Server only, by UHOLConstructionSubsystem::DamageBuilding when a main forum (AHOLBuilding::IsPrimaryForum) reaches 0
+	 * health: it falls instead of being destroyed (true; false: not a main forum standing, of a slot still in the match,
+	 * the caller destroys it). A life less (HOLForumRules::Fall), in ruin, its production queue refunded in full as on a
+	 * destruction, its rally point kept, the population it gives kept. With no life left, the slot is defeated (reason
+	 * Forum) at the end of the step: the damage can come from a Mass processor, whose entities the collapse must not
+	 * touch while they are processed. Logs "Victory: forum of slot N fell, lives L".
+	 */
+	bool HandleForumFall(AHOLBuilding& Forum);
+
+	/**
+	 * Server only, cheat (hol.Victory.SkipRuin): the slot's forum leaves its phase at once (ruin -> rebuilding, rebuilding ->
+	 * rebuilt). False when it stands.
+	 */
+	bool SkipForumPhase(int32 Slot);
+
+	/** Server only (V2.2): the Peasants rebuilding the slot's forum this step (D312; nothing during the ruin). */
+	void SetForumBuilders(int32 Slot, int32 Builders);
+
+	/** Server only: forum phases and the deferred defeats follow the simulation's steps from InitVictory on. */
+	void AdvanceForums();
+	void ApplyPendingDefeats();
+
+	/** The slot's main forum in World (AHOLBuilding::IsPrimaryForum), null if none (destroyed, never placed). */
+	static AHOLBuilding* FindPrimaryForum(const UWorld& World, int32 Slot);
+
+	/** Every machine: a forum's state changed (server at once, a client by OnRep). For the HUD of V2.3, V2.4. */
+	DECLARE_MULTICAST_DELEGATE(FOnForumsChanged);
+	FOnForumsChanged OnForumsChanged;
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 private:
+	UFUNCTION()
+	void OnRep_Forums(const TArray<FHOLForumState>& OldForumStates);
+
+	void OnStepStarted(int64 StepIndex);
+	void OnStepEnded(int64 StepIndex);
+	void UnbindSteps();
+	void SetForumState(int32 Slot, const FHOLForumState& State);
+	/**
+	 * V2.3a: the main forums' look follows their state (rubble, a site rising, itself), on every machine that draws, at the
+	 * frame after (AHOLBuilding::NotifyForumChanged, D325).
+	 */
+	void RefreshForumLooks() const;
+
+	/** One per slot (MaxSlots), public (D353). */
+	UPROPERTY(ReplicatedUsing = OnRep_Forums)
+	TArray<FHOLForumState> ForumStates;
+
+	/** Server only: Peasants rebuilding each slot's forum (V2.2). */
+	TArray<int32> ForumBuilders;
+
+	/** Server only, bit Slot: its forum fell with no life left, its defeat waits for the end of the step. */
+	uint8 PendingForumDefeats = 0;
+
+	FDelegateHandle StepStartedHandle;
+	FDelegateHandle StepEndedHandle;
+
 	UFUNCTION()
 	void OnRep_Victory();
 

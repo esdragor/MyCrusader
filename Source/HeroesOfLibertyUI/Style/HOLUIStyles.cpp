@@ -52,6 +52,16 @@ UHOLTextStyleHUDSmall::UHOLTextStyleHUDSmall()
 	SetFont(13.f, TEXT("Regular"), HOLUIStyle::Text);
 }
 
+UHOLTextStyleHUDPlayerName::UHOLTextStyleHUDPlayerName()
+{
+	SetFont(13.f, TEXT("Bold"), HOLUIStyle::Text);
+	Font.OutlineSettings.OutlineSize = 1;
+	Font.OutlineSettings.OutlineColor = FLinearColor(0.f, 0.f, 0.f, 0.9f);
+	bUsesDropShadow = true;
+	ShadowOffset = FVector2D(1.f, 1.f);
+	ShadowColor = FLinearColor(0.f, 0.f, 0.f, 0.8f);
+}
+
 UHOLTextStyleHUDTiny::UHOLTextStyleHUDTiny()
 {
 	SetFont(11.f, TEXT("Regular"), HOLUIStyle::Text);

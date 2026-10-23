@@ -22,6 +22,8 @@
 #include "MassUpdateSkinnedMeshProcessor.h"
 #include "MassVisualizationComponent.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLForumRules.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
@@ -167,17 +169,26 @@ namespace UE::HeroesOfLiberty::Presentation
 		UWorld* World = nullptr;
 		bool bGathered = false;
 		TArray<FBox2D, TInlineAllocator<16>> Footprints;
+		/** V2.3a: a main forum is in ruin somewhere (AHOLGameState::AnyForumBuildersWait), and the footprints of those. */
+		bool bAnyWaiting = false;
+		TArray<FBox2D, TInlineAllocator<4>> Waiting;
 
 		TConstArrayView<FBox2D> Get()
 		{
 			if (!bGathered && World)
 			{
 				bGathered = true;
+				const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
 				for (TActorIterator<AHOLBuilding> It(World); It; ++It)
 				{
-					if (!It->IsFinished() && It->GetType())
+					// A main forum down is built as a site (V2.2), in ruin its builders wait (V2.3a).
+					if (It->NeedsBuilders() && It->GetType())
 					{
 						Footprints.Add(It->GetFootprintBounds());
+						if (GameState && It->IsPrimaryForum() && HOLForumRules::BuildersWait(GameState->GetForumState(It->GetOwnerPlayer())))
+						{
+							Waiting.Add(It->GetFootprintBounds());
+						}
 					}
 				}
 			}
@@ -190,11 +201,11 @@ namespace UE::HeroesOfLiberty::Presentation
 	 * side). In solo its site in the simulation (FHOLBuildFragment); on a client, which does not receive it, the building
 	 * not finished whose footprint is nearest the unit, within MaxSiteGap of its body. False if none is known.
 	 */
-	bool FindBuiltSite(FSiteFootprints& Sites, const FHOLBuildFragment* Build, const FVector& Location, const float BodyRadius,
-		FVector& OutLocation)
+	bool FindSiteFootprint(FSiteFootprints& Sites, const FHOLBuildFragment* Build, const FVector& Location, const float BodyRadius,
+		FBox2D& Footprint)
 	{
 		const FVector2D Location2D(Location);
-		FBox2D Footprint(ForceInit);
+		Footprint = FBox2D(ForceInit);
 		if (Build)
 		{
 			if (Build->Phase == EHOLBuildPhase::Building)
@@ -215,13 +226,34 @@ namespace UE::HeroesOfLiberty::Presentation
 				}
 			}
 		}
-		if (!Footprint.bIsValid)
+		return Footprint.bIsValid != 0;
+	}
+
+	bool FindBuiltSite(FSiteFootprints& Sites, const FHOLBuildFragment* Build, const FVector& Location, const float BodyRadius,
+		FVector& OutLocation)
+	{
+		const FVector2D Location2D(Location);
+		FBox2D Footprint(ForceInit);
+		if (!FindSiteFootprint(Sites, Build, Location, BodyRadius, Footprint))
 		{
 			return false;
 		}
 		const FVector2D Nearest = Footprint.GetClosestPointTo(Location2D);
 		OutLocation = FVector(Nearest.X, Nearest.Y, Location.Z);
 		return true;
+	}
+
+	/** V2.3a: a builder's site is a main forum in ruin: it waits there standing, no hammer (HOLForumRules::BuildersWait). */
+	bool IsAtWaitingSite(FSiteFootprints& Sites, const FHOLBuildFragment* Build, const FVector& Location, const float BodyRadius)
+	{
+		FBox2D Footprint(ForceInit);
+		if (!Sites.bAnyWaiting || !FindSiteFootprint(Sites, Build, Location, BodyRadius, Footprint))
+		{
+			return false;
+		}
+		Sites.Get();
+		const FVector2D Centre = Footprint.GetCenter();
+		return Sites.Waiting.ContainsByPredicate([&Centre](const FBox2D& Waiting) { return Waiting.IsInside(Centre); });
 	}
 }
 
@@ -289,6 +321,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
 	FSiteFootprints Sites;
 	Sites.World = World;
+	const AHOLGameState* ForumGameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	Sites.bAnyWaiting = ForumGameState && ForumGameState->AnyForumBuildersWait();
 	// The slots' colours, gathered from the actors at most twice a second (they change only when a player picks one in the
 	// lobby or a building of a new slot appears), not at every frame.
 	const double Now = FPlatformTime::Seconds();
@@ -396,6 +430,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					Input.PlayingSequence = AnimationState.bStarted ? AnimData.SequenceIndex : INDEX_NONE;
 					// Its feet keep pace with a walk slower than its own (J7a.4: a group in formation at its slowest unit's speed).
 					Input.WalkSpeed = Constants.Speed * SpeedScale;
+					// At its main forum in ruin (V2.3a): standing, not striking the rubble; still Building (not idle).
+					Input.bSiteWaits = Input.Activity == EHOLUnitActivity::Building && IsAtWaitingSite(Sites, Build, To.GetLocation(), Constants.Radius);
 					const FHOLUnitAnimationChoice Choice = HOLUnitAnimation::Choose(Constants, Input);
 					if (!AnimationState.bStarted || AnimData.SequenceIndex != Choice.Sequence)
 					{

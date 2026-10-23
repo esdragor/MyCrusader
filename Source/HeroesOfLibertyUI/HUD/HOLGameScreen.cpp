@@ -27,6 +27,8 @@
 #include "EngineUtils.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
+#include "Match/HOLForumRules.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLPlayerController.h"
@@ -425,7 +427,9 @@ void UHOLGameScreen::NativeConstruct()
 	}
 	BindPlayerState(PlayerController ? PlayerController->GetHOLPlayerState() : nullptr);
 	BindBuilding(PlayerController ? PlayerController->GetSelection() : nullptr);
+	BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 	Refresh();
+	RefreshPlayersTable();
 }
 
 void UHOLGameScreen::NativeDestruct()
@@ -440,6 +444,7 @@ void UHOLGameScreen::NativeDestruct()
 	Controller.Reset();
 	BindPlayerState(nullptr);
 	BindBuilding(nullptr);
+	BindTableState(nullptr);
 	Super::NativeDestruct();
 }
 
@@ -453,6 +458,21 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	{
 		BindPlayerState(PlayerState);
 		Refresh();
+	}
+	// The players' table (V2.4): its game state reaches a client after the HUD is up; a rebuilding's percent moves without
+	// telling the server's HUD, the launch configuration reaches a client late: read four times a second.
+	SinceTableRefresh += InDeltaTime;
+	if (SinceTableRefresh >= UE::HeroesOfLiberty::UI::GameScreen::GroupRefreshInterval)
+	{
+		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
+		RefreshPlayersTable();
+		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
+		// (the forum's state changes only at its phases): its block is read at the same pace.
+		const AHOLBuilding* SelectedBuilding = BoundBuilding.Get();
+		if (BoundForumState.IsValid() && SelectedBuilding && SelectedBuilding->IsForumDown())
+		{
+			Refresh();
+		}
 	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
 	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
@@ -528,14 +548,96 @@ void UHOLGameScreen::BindBuilding(AHOLBuilding* Building)
 		Previous->OnProductionChanged.Remove(ProductionHandle);
 		Previous->OnConstructionChanged.Remove(ConstructionHandle);
 	}
+	if (AHOLGameState* GameState = BoundForumState.Get())
+	{
+		GameState->OnForumsChanged.Remove(ForumsHandle);
+	}
 	ProductionHandle.Reset();
 	ConstructionHandle.Reset();
+	ForumsHandle.Reset();
+	BoundForumState.Reset();
 	BoundBuilding = Building;
 	if (Building)
 	{
 		ProductionHandle = Building->OnProductionChanged.AddUObject(this, &UHOLGameScreen::Refresh);
 		// A foundation's state and work (J6a.3, D312): its name, its health.
 		ConstructionHandle = Building->OnConstructionChanged.AddUObject(this, &UHOLGameScreen::Refresh);
+		// A main forum's phase (V2.3b): its ruin counting down, its rebuilding rising, its lives, on a client too (replicated).
+		AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+		if (Building->IsPrimaryForum() && GameState)
+		{
+			BoundForumState = GameState;
+			ForumsHandle = GameState->OnForumsChanged.AddUObject(this, &UHOLGameScreen::Refresh);
+		}
+	}
+}
+
+void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
+{
+	if (BoundTableState.Get() == GameState)
+	{
+		return;
+	}
+	if (AHOLGameState* Previous = BoundTableState.Get())
+	{
+		Previous->OnForumsChanged.Remove(TableForumsHandle);
+		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
+	}
+	TableForumsHandle.Reset();
+	TableVictoryHandle.Reset();
+	BoundTableState = GameState;
+	if (GameState)
+	{
+		// Every machine: the server at once, a client by its OnReps (D353: public).
+		TableForumsHandle = GameState->OnForumsChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
+		TableVictoryHandle = GameState->OnVictoryChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
+	}
+}
+
+void UHOLGameScreen::RefreshPlayersTable()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	SinceTableRefresh = 0.f;
+	const AHOLGameState* GameState = BoundTableState.Get();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	TArray<FHOLPlayersTableRow> Rows;
+	if (GameState)
+	{
+		TArray<FHOLForumState> Forums;
+		for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
+		{
+			Forums.Add(GameState->GetForumState(Seat));
+		}
+		Rows = HOLForumRules::GetPlayersTable(GameState->GetLaunchConfig(), Forums, GameState->GetDefeatedMask(),
+			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings());
+	}
+	const FString Shown = FString::JoinBy(Rows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
+	if (Shown == ShownPlayersTable)
+	{
+		return;
+	}
+	ShownPlayersTable = Shown;
+	SetShown(PlayersPanel, !Rows.IsEmpty(), ESlateVisibility::HitTestInvisible);
+	for (int32 Index = 0; Index < PlayerRows.Num(); ++Index)
+	{
+		const FHOLPlayersTableRow* Row = Rows.IsValidIndex(Index) ? &Rows[Index] : nullptr;
+		SetShown(PlayerRows[Index], Row != nullptr, ESlateVisibility::SelfHitTestInvisible);
+		if (!Row)
+		{
+			continue;
+		}
+		// A new team: a gap above its first row.
+		if (UVerticalBoxSlot* RowSlot = Cast<UVerticalBoxSlot>(PlayerRows[Index]->Slot))
+		{
+			RowSlot->SetPadding(FMargin(0.f, Row->bNewGroup ? 6.f : 0.f, 0.f, 0.f));
+		}
+		// The name in the player's colour, the whole row faded once defeated.
+		PlayerRows[Index]->SetRenderOpacity(Row->bGreyed ? 0.45f : 1.f);
+		PlayerNames[Index]->SetText(Row->Name);
+		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(FLinearColor(HOLPlayerColors::GetColor(Row->ColorIndex))));
+		PlayerLives[Index]->SetText(Row->Lives);
+		PlayerStates[Index]->SetText(Row->State);
 	}
 }
 
@@ -556,6 +658,13 @@ void UHOLGameScreen::Refresh()
 	RefreshTopBar(PlayerState);
 	ChipLabels.Reset();
 	ActiveChip = INDEX_NONE;
+	// A main forum's lives row (V2.3d): RefreshSelection alone shows it, for a single building.
+	const bool bSingleBuilding = !PlayerController || (PlayerController->GetSelectedUnits().IsEmpty()
+		&& PlayerController->GetSelectedSource() == INDEX_NONE && !PlayerController->HasBuildingGroup());
+	if (!bSingleBuilding)
+	{
+		UE::HeroesOfLiberty::UI::GameScreen::SetShown(SelectionLivesRow, false);
+	}
 	if (PlayerController && !PlayerController->GetSelectedUnits().IsEmpty())
 	{
 		RefreshUnitSelection(PlayerController->GetSelectedUnits());
@@ -671,8 +780,23 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
 	}
 	ShownHealth.Reset();
-	SetShown(SelectionHealthRow, true);
-	if (!bSite || !bOwn)
+	// A main forum (V2.3b): its lives to anyone (D353); down, its ruin or its rebuilding in place of its health (0 until up).
+	const FHOLForumBlock Forum = Building->GetForumBlock(bOwn);
+	SetShown(SelectionHealthRow, !Forum.bHideHealth);
+	// Its lives on their own row (V2.3d), styled as the health's.
+	SetShown(SelectionLivesRow, Forum.bShown);
+	if (Forum.bShown)
+	{
+		SetDetailLine(Forum.Shown, Forum.Text);
+		// Standing: no line of its own, its lives alone (the description keeps them for the reports).
+		SetShown(SelectionActivity, !Forum.Text.IsEmpty());
+		if (SelectionLives && Forum.Lives != ShownForumLives)
+		{
+			ShownForumLives = Forum.Lives;
+			SelectionLives->SetText(FText::AsNumber(Forum.Lives));
+		}
+	}
+	else if (!bSite || !bOwn)
 	{
 		RefreshUnitActivity(nullptr);
 	}
@@ -1759,8 +1883,10 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
-	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *ShownActivity, *ShownHealth, *Grid, *Queue,
-		*Message, *Workers);
+	// The players' table (V2.4) last of all.
+	const FString Players = ShownPlayersTable.IsEmpty() ? FString() : FString::Printf(TEXT(", players [%s]"), *ShownPlayersTable);
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ShownSelection, *ShownActivity, *ShownHealth, *Grid, *Queue,
+		*Message, *Workers, *Players);
 }
 
 FString UHOLGameScreen::DescribeCells() const
@@ -1933,6 +2059,43 @@ void UHOLGameScreen::BuildLayout()
 	MenuBox->SetContent(Menu);
 	MenuPanel->SetContent(MenuBox);
 
+	// The players' table (V2.4, V2-Q4: AoE2's score), top right under the menu's button (the minimap holds the bottom
+	// right): a row per occupied slot, its name in its colour, its lives, its forum's phase. Small, it lets the clicks through.
+	PlayersPanel = MakePanel(TEXT("PlayersPanel"));
+	// Darker than the other panels (V2.3d): the names in a dark colour (blue, green, violet) read on it.
+	PlayersPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
+	PlayersPanel->SetPadding(FMargin(8.f, 4.f));
+	PlayersPanel->SetVisibility(ESlateVisibility::Collapsed);
+	UOverlaySlot* PlayersSlot = Frame->AddChildToOverlay(PlayersPanel);
+	PlayersSlot->SetHorizontalAlignment(HAlign_Right);
+	PlayersSlot->SetVerticalAlignment(VAlign_Top);
+	PlayersSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 0.8f + 8.f + 6.f, ScreenMargin, ScreenMargin));
+	UVerticalBox* PlayersList = MakeVerticalBox(TEXT("PlayersList"));
+	PlayersPanel->SetContent(PlayersList);
+	PlayerRows.Reset();
+	PlayerNames.Reset();
+	PlayerLives.Reset();
+	PlayerStates.Reset();
+	for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
+	{
+		UHorizontalBox* Row = MakeHorizontalBox(*FString::Printf(TEXT("PlayerRow%d"), Seat));
+		Row->SetVisibility(ESlateVisibility::Collapsed);
+		PlayersList->AddChildToVerticalBox(Row);
+		const auto AddCell = [&](const TCHAR* Name, const TSubclassOf<UCommonTextStyle> TextStyle, const float Width, const float RightPadding)
+		{
+			UCommonTextBlock* Text = MakeText(*FString::Printf(TEXT("Player%s%d"), Name, Seat), TextStyle, FText::GetEmpty());
+			USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("Player%sBox%d"), Name, Seat));
+			Box->SetMinDesiredWidth(Width);
+			Box->SetContent(Text);
+			AddToRow(Row, Box, RightPadding);
+			return Text;
+		};
+		PlayerRows.Add(Row);
+		PlayerNames.Add(AddCell(TEXT("Name"), UHOLTextStyleHUDPlayerName::StaticClass(), 64.f, 10.f));
+		PlayerLives.Add(AddCell(TEXT("Lives"), UHOLTextStyleHUDLabel::StaticClass(), 44.f, 10.f));
+		PlayerStates.Add(AddCell(TEXT("State"), UHOLTextStyleHUDLabel::StaticClass(), 0.f, 0.f));
+	}
+
 	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
 	// a slot per group not empty, « 1 · 9 », in the keys' order.
 	GroupsPanel = MakePanel(TEXT("GroupsPanel"));
@@ -2047,6 +2210,14 @@ void UHOLGameScreen::BuildLayout()
 	SelectionActivity = MakeText(TEXT("SelectionActivity"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	SelectionActivity->SetAutoWrapText(true);
 	SelectionColumn->AddChildToVerticalBox(SelectionActivity)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
+	// A main forum's lives (V2.3d): a row as the health's, under the ruin's or the rebuilding's lines.
+	UHorizontalBox* LivesRow = MakeHorizontalBox(TEXT("SelectionLivesRow"));
+	SelectionLivesRow = LivesRow;
+	SelectionColumn->AddChildToVerticalBox(LivesRow)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
+	AddToRow(LivesRow, MakeText(TEXT("SelectionLivesLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("ForumLivesLabel", "Vies")), 8.f);
+	SelectionLives = MakeText(TEXT("SelectionLives"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+	AddToRow(LivesRow, SelectionLives, 0.f);
+	LivesRow->SetVisibility(ESlateVisibility::Collapsed);
 
 	// Right of the selection's block, the command panel's width: the short message, the production queue, then the
 	// command panel under them (the column grows upwards, the panel stays at the bar's bottom).

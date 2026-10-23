@@ -173,6 +173,11 @@ private:
 	static void SyncActivity(FBuilder& Builder);
 	/** Each site worked this step: its builders' work added, its first work, its end (D312). */
 	void ApplyWork(const FStepContext& Step);
+	/**
+	 * V2.2 (D352): each slot's Peasants at their places around its main forum down, to AHOLGameState::SetForumBuilders
+	 * (the rules count them only while it rebuilds); the slots that had some and have none any more get 0.
+	 */
+	void PublishForumBuilders(UWorld* World, const TMap<int32, int32>& BuildersBySlot);
 
 	/** Each builder's queue, by entity: a fragment holds no array. Swept of the units that no longer build. */
 	TMap<FMassEntityHandle, FBuilderQueue> Queues;
@@ -188,6 +193,8 @@ private:
 	/** This step's camps whose builders went on (J6b.1). */
 	TMap<TWeakObjectPtr<AHOLBuilding>, FCampSend> CampSends;
 	int32 StepsSinceSweep = 0;
+	/** Bit Slot: Peasants were passed to its main forum down last time (PublishForumBuilders). */
+	uint32 ForumBuilderSlots = 0;
 
 	FMassEntityQuery EntityQuery;
 };

@@ -203,6 +203,18 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Construction", meta = (ClampMin = "0", ClampMax = "1"))
 	float BuilderExponent = 0.63f;
 
+	/** V2 (D352): a main forum that fell lies in ruin this long (s), unbreakable and inert, before its rebuilding starts. */
+	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "0", ForceUnits = "s"))
+	float ForumRuinTime = 30.f;
+
+	/** V2 (D352): its rebuilding alone (s); each Peasant adds by BuilderExponent, one as much as the rebuilding alone. */
+	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "1", ForceUnits = "s"))
+	float ForumRebuildTime = 120.f;
+
+	/** V2 (D349): a main forum's lives are 2 + this tier - its falls (no tier in the game yet: 0, 2 lives). */
+	UPROPERTY(config, EditAnywhere, Category = "Forum", meta = (ClampMin = "0"))
+	int32 ForumLivesTier = 0;
+
 	/** The row of a type, or null (logged) if the table or the row is missing. */
 	static const FHOLBuildingTypeRow* FindType(FName TypeName);
 

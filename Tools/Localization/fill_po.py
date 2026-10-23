@@ -186,6 +186,15 @@ TRANSLATIONS = {
     "HOLGameScreen,SiteName": ("Construction site: {0}", "{0}（建設中）"),
     "HOLGameScreen,ProgressPercent": ("{0}%", "{0}%"),
     "HOLGameScreen,Builders": ("Builders: {0}", "建設者：{0}"),
+    # V2.3b / V2.4 (D349-D353): the main forum's lives, its selection block and the players' table.
+    "HOLGameScreen,ForumLivesLabel": ("Lives", "ライフ"),
+    "HOLGameScreen,ForumRuin": ("In ruins — {0} s", "廃墟 — 残り{0}秒"),
+    "HOLGameScreen,ForumRebuilding": ("Rebuilding — {0}%", "再建中 — {0}%"),
+    "HOLGameScreen,TableLives": ("{0} lives", "ライフ{0}"),
+    "HOLGameScreen,TableLife": ("{0} life", "ライフ{0}"),
+    "HOLGameScreen,TableDefeated": ("Defeated", "敗退"),
+    "HOLGameScreen,TableRuin": ("Ruins", "廃墟"),
+    "HOLGameScreen,TableRebuilding": ("Rebuilding {0}%", "再建中 {0}%"),
     "HOLGameScreen,Cancel": ("Cancel", "キャンセル"),
     "HOLGameScreen,CancelSite": ("Cancel construction", "建設をキャンセル"),
     # The user's trial of J6a.5: F1, F2, F3 while the player has no building of the category.

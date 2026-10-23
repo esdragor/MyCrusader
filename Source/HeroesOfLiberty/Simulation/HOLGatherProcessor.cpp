@@ -219,8 +219,8 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
-		// Only a finished building takes deliveries (D312): a camp's foundation is no deposit yet.
-		if (!Type || Type->Accepts.IsEmpty() || !It->IsFinished())
+		// Only a finished building takes deliveries (D312): a camp's foundation is no deposit yet, nor a forum down (D351).
+		if (!Type || Type->Accepts.IsEmpty() || !It->TakesDeliveries())
 		{
 			continue;
 		}

@@ -5,6 +5,7 @@
 #include "AI/NavigationSystemBase.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "Buildings/HOLRubble.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -13,6 +14,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NavAreas/NavArea_Null.h"
@@ -90,6 +92,7 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AHOLBuilding, ConstructionState);
 	DOREPLIFETIME(AHOLBuilding, ConstructionWork);
 	DOREPLIFETIME(AHOLBuilding, DamageTaken);
+	DOREPLIFETIME(AHOLBuilding, bPrimaryForum);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
@@ -258,6 +261,41 @@ int32 AHOLBuilding::TakeDamagePoints(const int32 Points)
 		OnConstructionChanged.Broadcast();
 	}
 	return Health - Taken;
+}
+
+void AHOLBuilding::RestoreHealth()
+{
+	if (DamageTaken > 0)
+	{
+		DamageTaken = 0;
+		ForceNetUpdate();
+		OnConstructionChanged.Broadcast();
+	}
+}
+
+bool AHOLBuilding::IsForumDown() const
+{
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = bPrimaryForum && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return GameState && GameState->IsForumDown(OwnerPlayer);
+}
+
+FHOLForumBlock AHOLBuilding::GetForumBlock(const bool bOwn) const
+{
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = bPrimaryForum && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return HOLForumRules::GetSelectionBlock(GameState ? &GameState->GetForumState(OwnerPlayer) : nullptr, FHOLForumTuning::FromSettings(), bOwn,
+		BuildersAtWork);
+}
+
+bool AHOLBuilding::TakesDeliveries() const
+{
+	return IsFinished() && !IsForumDown();
+}
+
+bool AHOLBuilding::NeedsBuilders() const
+{
+	return !IsFinished() || IsForumDown();
 }
 
 void AHOLBuilding::OnRep_DamageTaken(const uint16 OldDamageTaken)
@@ -434,6 +472,68 @@ void AHOLBuilding::ApplyPendingAppearance()
 	SetActorTickEnabled(false);
 }
 
+EHOLForumLook AHOLBuilding::GetShownLook() const
+{
+	return BuiltLook == ELook::Rubble ? EHOLForumLook::Rubble : BuiltLook == ELook::Site ? EHOLForumLook::Site : EHOLForumLook::Standing;
+}
+
+void AHOLBuilding::NotifyForumChanged()
+{
+	if (bPrimaryForum)
+	{
+		MarkAppearanceDirty();
+	}
+}
+
+void AHOLBuilding::OnRep_PrimaryForum()
+{
+	MarkAppearanceDirty();
+}
+
+FHOLForumLookChoice AHOLBuilding::GetForumLook() const
+{
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = bPrimaryForum && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return GameState && GameState->IsForumDown(OwnerPlayer)
+		? HOLForumRules::GetLook(GameState->GetForumState(OwnerPlayer), FHOLForumTuning::FromSettings()) : FHOLForumLookChoice();
+}
+
+float AHOLBuilding::GetTargetRise() const
+{
+	const FHOLForumLookChoice Forum = GetForumLook();
+	if (Forum.Look == EHOLForumLook::Rubble)
+	{
+		// Its heap's height (the health bar over it).
+		const FHOLBuildingTypeRow* Type = GetType();
+		const float Height = Type ? static_cast<float>(Type->Height) : 0.f;
+		return Height > 0.f ? FMath::Clamp((AHOLRubble::HeapHeight + AHOLRubble::PieceMaxHeight) / Height, MinRiseRatio, 1.f) : MinRiseRatio;
+	}
+	// A forum rising again rises as any site, at the rebuilding's progress (V2.3a), not its own work.
+	if (Forum.Look == EHOLForumLook::Site)
+	{
+		return FMath::Max(MinRiseRatio, Forum.Progress);
+	}
+	return IsFinished() ? 1.f : FMath::Max(MinRiseRatio, GetProgress());
+}
+
+void AHOLBuilding::BuildRubbleShape(const FHOLBuildingTypeRow& Type)
+{
+	TArray<AHOLRubble::FLookPiece> Heap;
+	AHOLRubble::GetLookPieces(UHOLBuildingSettings::GetVisualSize(Type.Footprint), ColorIndex, Heap);
+	for (const AHOLRubble::FLookPiece& Piece : Heap)
+	{
+		if (UStaticMeshComponent* Component = AddPiece(CubeMesh, Piece.Size, 0.f, Piece.Color, /*bOwnerColor*/ false))
+		{
+			Component->SetRelativeLocationAndRotation(Component->GetRelativeLocation() + FVector(Piece.Offset, 0.0), FRotator(0.f, Piece.Yaw, 0.f));
+		}
+	}
+}
+
+float AHOLBuilding::GetShownRise() const
+{
+	return RiseRoot ? static_cast<float>(RiseRoot->GetRelativeScale3D().Z) : 1.f;
+}
+
 void AHOLBuilding::RefreshAppearance()
 {
 	RefreshNavObstacle();
@@ -457,7 +557,10 @@ void AHOLBuilding::RefreshVisuals()
 	}
 	// A bare foundation is a ghost its owner alone sees (J6a.4); a site, the foundation's slab under the building rising
 	// with its work; then the building.
-	const ELook Look = IsFinished() ? ELook::Finished : !IsFoundation() ? ELook::Site : IsSeenHere() ? ELook::Ghost : ELook::Hidden;
+	// A main forum down (V2.3a, V2-Q1): rubble through the ruin, then any site's look while it rises again.
+	const FHOLForumLookChoice Forum = GetForumLook();
+	const ELook Look = Forum.Look == EHOLForumLook::Rubble ? ELook::Rubble : Forum.Look == EHOLForumLook::Site ? ELook::Site
+		: IsFinished() ? ELook::Finished : !IsFoundation() ? ELook::Site : IsSeenHere() ? ELook::Ghost : ELook::Hidden;
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
 	if (BuiltTypeName != TypeName || BuiltLook != Look)
 	{
@@ -476,7 +579,11 @@ void AHOLBuilding::RefreshVisuals()
 		{
 			return;
 		}
-		if (Look == ELook::Ghost)
+		if (Look == ELook::Rubble)
+		{
+			BuildRubbleShape(*Type);
+		}
+		else if (Look == ELook::Ghost)
 		{
 			BuildGhostShape(*Type);
 		}
@@ -505,7 +612,7 @@ void AHOLBuilding::RefreshVisuals()
 void AHOLBuilding::UpdateRise()
 {
 	// Squashed from the ground up: the building grows out of its slab (J6a.4); whole once finished.
-	const float Rise = IsFinished() ? 1.f : FMath::Max(MinRiseRatio, GetProgress());
+	const float Rise = GetTargetRise();
 	if (!RiseRoot)
 	{
 		return;

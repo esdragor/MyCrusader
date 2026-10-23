@@ -13,6 +13,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLMapBounds.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -372,7 +373,8 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 int32 UHOLConstructionSubsystem::DamageBuilding(AHOLBuilding& Building, const int32 Damage, const EHOLAttackType AttackType)
 {
 	const FHOLBuildingTypeRow* Type = Building.GetType();
-	if (!Building.HasAuthority() || !Type || !IsValid(&Building) || Building.GetHealth() <= 0)
+	// A main forum in ruin or rebuilding is unbreakable (D351).
+	if (!Building.HasAuthority() || !Type || !IsValid(&Building) || Building.GetHealth() <= 0 || Building.IsForumDown())
 	{
 		return 0;
 	}
@@ -383,9 +385,62 @@ int32 UHOLConstructionSubsystem::DamageBuilding(AHOLBuilding& Building, const in
 		Building.GetOwnerPlayer(), Dealt, Damage, *UEnum::GetValueAsString(AttackType), Left, Type->MaxHealth);
 	if (Left <= 0)
 	{
-		DestroyBuilding(Building);
+		// V2 (D350): a main forum falls into ruin instead (a life less); destroyed only when it is not one.
+		AHOLGameState* GameState = Building.IsPrimaryForum() && Building.GetWorld() ? Building.GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+		if (!GameState || !GameState->HandleForumFall(Building))
+		{
+			DestroyBuilding(Building);
+		}
 	}
 	return Dealt;
+}
+
+namespace UE::HeroesOfLiberty::Construction
+{
+	AHOLPlayerState* FindOwnerState(const UWorld& World, const int32 PlayerIndex)
+	{
+		if (const AGameStateBase* GameState = World.GetGameState())
+		{
+			for (APlayerState* Each : GameState->PlayerArray)
+			{
+				AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(Each);
+				if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == PlayerIndex)
+				{
+					return HOLPlayerState;
+				}
+			}
+		}
+		return nullptr;
+	}
+}
+
+FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Building)
+{
+	FHOLResources Refund;
+	UWorld* World = Building.GetWorld();
+	if (!World || !Building.HasAuthority())
+	{
+		return Refund;
+	}
+	TArray<FHOLProductionItem>& Queue = Building.GetMutableProductionQueue();
+	if (Queue.IsEmpty())
+	{
+		return Refund;
+	}
+	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	while (!Queue.IsEmpty())
+	{
+		const FName TypeName = Queue.Last().TypeName;
+		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName) : FHOLProductionCost(), Refund);
+	}
+	Building.NotifyProductionChanged();
+	if (AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Construction::FindOwnerState(*World, Building.GetOwnerPlayer()))
+	{
+		FHOLResources Stock = PlayerState->GetResources();
+		Stock += Refund;
+		PlayerState->SetResources(Stock);
+	}
+	return Refund;
 }
 
 void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
@@ -396,42 +451,21 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 		return;
 	}
 	// Its owner's stock: every item of its queue back in full (as a cancel, the head too), a site the share not built (D345).
-	AHOLPlayerState* PlayerState = nullptr;
-	if (const AGameStateBase* GameState = World->GetGameState())
-	{
-		for (APlayerState* Each : GameState->PlayerArray)
-		{
-			AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(Each);
-			if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Building.GetOwnerPlayer())
-			{
-				PlayerState = HOLPlayerState;
-				break;
-			}
-		}
-	}
-	FHOLResources Refund;
-	TArray<FHOLProductionItem>& Queue = Building.GetMutableProductionQueue();
-	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
-	const int32 QueueLength = Queue.Num();
-	while (!Queue.IsEmpty())
-	{
-		const FName TypeName = Queue.Last().TypeName;
-		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName) : FHOLProductionCost(), Refund);
-	}
-	if (QueueLength > 0)
-	{
-		Building.NotifyProductionChanged();
-	}
+	AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Construction::FindOwnerState(*World, Building.GetOwnerPlayer());
+	const int32 QueueLength = Building.GetProductionQueue().Num();
+	FHOLResources Refund = RefundProductionQueue(Building);
 	const FHOLBuildingTypeRow* Type = Building.GetType();
+	FHOLResources SiteRefund;
 	if (Type)
 	{
-		Refund += HOLConstruction::GetCancelRefund(Type->Cost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
+		SiteRefund = HOLConstruction::GetCancelRefund(Type->Cost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
+		Refund += SiteRefund;
 	}
 	FHOLResources Stock;
 	if (PlayerState)
 	{
 		Stock = PlayerState->GetResources();
-		Stock += Refund;
+		Stock += SiteRefund;
 		PlayerState->SetResources(Stock);
 	}
 	const FVector Location = Building.GetActorLocation();

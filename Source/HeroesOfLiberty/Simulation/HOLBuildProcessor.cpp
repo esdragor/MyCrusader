@@ -13,6 +13,7 @@
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
+#include "Match/HOLGameState.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
@@ -195,6 +196,11 @@ void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 				Site->SetBuildersAtWork(0);
 			}
 		}
+		// Nobody at a forum down any more (V2.2).
+		if (ForumBuilderSlots != 0)
+		{
+			PublishForumBuilders(World, TMap<int32, int32>());
+		}
 		return;
 	}
 	Step.NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
@@ -277,7 +283,7 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 		}
 		// A camp finished meanwhile (a unit born with its rally point on it a step too late, a right click on a site finishing
 		// at once): the nearest source it accepts, as its builders (D312, J6b.1), by a gather order of its owner's.
-		if (!bGather && Site && Site->IsFinished() && !Order.bQueue && (Order.PlayerIndex == INDEX_NONE || Site->GetOwnerPlayer() == Order.PlayerIndex))
+		if (!bGather && Site && !Site->NeedsBuilders() && !Order.bQueue && (Order.PlayerIndex == INDEX_NONE || Site->GetOwnerPlayer() == Order.PlayerIndex))
 		{
 			double Gap = 0.;
 			const int32 CampSource = FindCampSource(*Step.Sources, *Site, &Gap);
@@ -291,8 +297,8 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 				continue;
 			}
 		}
-		// Only the player's own site, not finished yet (D288): a client could name any building.
-		if (!bGather && (!Site || Site->IsFinished() || (Order.PlayerIndex != INDEX_NONE && Site->GetOwnerPlayer() != Order.PlayerIndex)))
+		// Only the player's own site, not finished yet, or its main forum down (D288, V2.2): a client could name any building.
+		if (!bGather && (!Site || !Site->NeedsBuilders() || (Order.PlayerIndex != INDEX_NONE && Site->GetOwnerPlayer() != Order.PlayerIndex)))
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d ignored: not its site under construction"), Order.PlayerIndex);
 			continue;
@@ -397,10 +403,11 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 	// J6a.4), else idle.
 	const FWorkItem Before = Queue->Current;
 	if (!HOLConstruction::AdvanceWorkQueue<TWeakObjectPtr<AHOLBuilding>>(Queue->Items, bGatherHead,
-		[](const TWeakObjectPtr<AHOLBuilding>& Site) { return Site.IsValid() && !Site->IsFinished(); }))
+		[](const TWeakObjectPtr<AHOLBuilding>& Site) { return Site.IsValid() && Site->NeedsBuilders(); }))
 	{
+		// A main forum rebuilt (V2.2) ends as a site finished.
 		AHOLBuilding* Finished = !Before.IsGather() ? Before.Site.Get() : nullptr;
-		const bool bFinished = Finished && Finished->IsFinished();
+		const bool bFinished = Finished && !Finished->NeedsBuilders();
 		if (bFinished && GatherForCamp(Step, Builder, *Finished))
 		{
 			return;
@@ -601,7 +608,7 @@ AHOLBuilding* UHOLBuildProcessor::FindNextSite(const FBuilder& Builder, const AH
 	for (int32 Index = 0; Index < FootprintBuildings.Num(); ++Index)
 	{
 		AHOLBuilding* Site = FootprintBuildings[Index].Get();
-		if (Site && Site != &Finished && !Site->IsFinished() && Site->GetOwnerPlayer() == Builder.State.OwnerPlayer)
+		if (Site && Site != &Finished && Site->NeedsBuilders() && Site->GetOwnerPlayer() == Builder.State.OwnerPlayer)
 		{
 			Boxes.Add(Footprints[Index]);
 			Sites.Add(Site);
@@ -714,10 +721,31 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 #if !UE_BUILD_SHIPPING
 	bInstant = Instant != 0;
 #endif
+	UWorld* World = LastWorld.IsValid() ? const_cast<UWorld*>(LastWorld.Get()) : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	TMap<int32, int32> ForumBuilders;
 	for (const TPair<TWeakObjectPtr<AHOLBuilding>, int32>& Pair : WorkersBySite)
 	{
 		AHOLBuilding* Site = Pair.Key.Get();
 		const int32 Builders = Pair.Value;
+		// A main forum down (V2.2, D352): the Peasants at their places go to its rules (which count them only while it
+		// rebuilds: in ruin they wait), no work of a site; its block shows those at work.
+		if (Site && GameState && Site->IsForumDown())
+		{
+			const int32 Slot = Site->GetOwnerPlayer();
+			const bool bRebuilding = GameState->GetForumState(Slot).Phase == EHOLForumPhase::Rebuilding;
+			ForumBuilders.Add(Slot, Builders);
+			Site->SetBuildersAtWork(bRebuilding ? Builders : 0);
+			FSiteStats& Stats = SiteStats.FindOrAdd(Pair.Key);
+			if (bRebuilding && Stats.LastBuilders != Builders)
+			{
+				const FVector Location = Site->GetActorLocation();
+				UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d rebuilds its forum at (%.0f, %.0f), %d builders at work"), Slot, Location.X, Location.Y,
+					Builders);
+				Stats.LastBuilders = Builders;
+			}
+			continue;
+		}
 		if (!Site || Site->IsFinished() || Builders <= 0)
 		{
 			continue;
@@ -788,6 +816,40 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 		else if (!WorkersBySite.Contains(It.Key()))
 		{
 			It.Key()->SetBuildersAtWork(0);
+			// A main forum rebuilt (V2.2): nothing more to keep.
+			if (!It.Key()->NeedsBuilders())
+			{
+				It.RemoveCurrent();
+			}
 		}
 	}
+	PublishForumBuilders(World, ForumBuilders);
+}
+
+void UHOLBuildProcessor::PublishForumBuilders(UWorld* World, const TMap<int32, int32>& BuildersBySlot)
+{
+	AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		ForumBuilderSlots = 0;
+		return;
+	}
+	uint32 Slots = 0;
+	for (const TPair<int32, int32>& Pair : BuildersBySlot)
+	{
+		if (Pair.Key >= 0 && Pair.Key < 32)
+		{
+			GameState->SetForumBuilders(Pair.Key, Pair.Value);
+			Slots |= 1u << Pair.Key;
+		}
+	}
+	// The slots that had Peasants at their forum and have none any more.
+	for (int32 Slot = 0; Slot < 32; ++Slot)
+	{
+		if ((ForumBuilderSlots & ~Slots) & (1u << Slot))
+		{
+			GameState->SetForumBuilders(Slot, 0);
+		}
+	}
+	ForumBuilderSlots = Slots;
 }

@@ -8,6 +8,10 @@
 #include "GameFramework/Actor.h"
 #include "HOLBuilding.generated.h"
 
+enum class EHOLForumLook : uint8;
+struct FHOLForumLookChoice;
+struct FHOLForumBlock;
+
 class UBoxComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
@@ -113,6 +117,28 @@ public:
 	 * no further than 0. Returns the health left; the caller destroys it at 0.
 	 */
 	int32 TakeDamagePoints(int32 Points);
+	/** Server only (V2): all its health back, the damage taken forgotten (a main forum rebuilt, D352). */
+	void RestoreHealth();
+	/**
+	 * V2 (D350): the main forum of its owner, the centre the match gave it at the start (J2), the only building with lives:
+	 * at 0 health it falls into ruin instead of being destroyed (AHOLGameState::HandleForumFall). Replicated to everyone.
+	 * A secondary centre is destroyed as any building. Server only to set, before FinishSpawning.
+	 */
+	bool IsPrimaryForum() const { return bPrimaryForum; }
+	void SetPrimaryForum(bool bInPrimaryForum) { bPrimaryForum = bInPrimaryForum; }
+	/** V2.3a: its owner's forum state changed (AHOLGameState): a main forum redoes its look at the frame (D325). */
+	void NotifyForumChanged();
+	/** The main forum, in ruin or rebuilding (AHOLGameState's forum of its owner): unbreakable and inert (D351). */
+	bool IsForumDown() const;
+	/** V2.3b: its selection block as its owner (bOwn) or another player sees it (HOLForumRules::GetSelectionBlock). */
+	FHOLForumBlock GetForumBlock(bool bOwn) const;
+	/** It takes the gatherers' deliveries of what its type accepts: finished, not a forum down (D312, D351). */
+	bool TakesDeliveries() const;
+	/**
+	 * Its owner's Peasants can build it (D312): not finished (a bare foundation included), or the main forum down, rebuilt
+	 * as a site (V2.2, V2-Q2: the same order, the same places around it).
+	 */
+	bool NeedsBuilders() const;
 	/**
 	 * Server only, as it leaves the world (D345.2a): its footprint no longer counts for the navmesh, at once, and the
 	 * walkers' paths kept across it are forgotten.
@@ -206,6 +232,11 @@ public:
 	 */
 	void ApplyPendingAppearance();
 
+	/** V2.3a, what the pieces show now (the tests): Rubble, Site (any site, a forum rising again included) or Standing. */
+	EHOLForumLook GetShownLook() const;
+	/** The share of its height its building is shown at (a site's rise, J6a.4; 1 finished). */
+	float GetShownRise() const;
+
 	virtual void Tick(float DeltaSeconds) override;
 
 protected:
@@ -229,6 +260,16 @@ private:
 
 	UFUNCTION()
 	void OnRep_DamageTaken(uint16 OldDamageTaken);
+
+	UFUNCTION()
+	void OnRep_PrimaryForum();
+
+	/** V2.3a: what its owner's forum state shows (AHOLGameState); Standing for any other building. */
+	FHOLForumLookChoice GetForumLook() const;
+	/** The share of its height the look's pieces are raised to: a site's work, a forum's rebuilding, its rubble's height. */
+	float GetTargetRise() const;
+	/** V2.3a: a main forum in ruin, the heap of AHOLRubble at its size (selectable, D262), its body hidden. */
+	void BuildRubbleShape(const FHOLBuildingTypeRow& Type);
 
 	/** The forbidden area of the navmesh, then the look, both at once (BeginPlay: a building is seen the frame it appears). */
 	void RefreshAppearance();
@@ -311,6 +352,10 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_DamageTaken)
 	uint16 DamageTaken = 0;
 
+	/** V2: the main forum of its owner (IsPrimaryForum). */
+	UPROPERTY(ReplicatedUsing = OnRep_PrimaryForum)
+	bool bPrimaryForum = false;
+
 	/** Local, not replicated: the world time of the last growth of DamageTaken on this machine (its bar shows a while, D345.2b). */
 	double LastHitTime = -1.0;
 
@@ -322,6 +367,8 @@ private:
 		Ghost,
 		Site,
 		Finished,
+		/** V2.3a: a main forum in ruin. */
+		Rubble,
 	};
 	/** The type the pieces were built for, and their look: the look is rebuilt only when either changes. */
 	FName BuiltTypeName;

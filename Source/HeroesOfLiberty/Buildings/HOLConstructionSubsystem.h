@@ -71,6 +71,12 @@ public:
 	 */
 	static void DestroyBuilding(AHOLBuilding& Building);
 
+	/**
+	 * Server only: every item of Building's production queue cancelled and refunded in full to its owner's stock (as a
+	 * cancel, the head too; D345.2a on a destruction, V2-Q3 on a main forum's fall). Returns the refund.
+	 */
+	static FHOLResources RefundProductionQueue(AHOLBuilding& Building);
+
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
 

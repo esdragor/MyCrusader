@@ -293,6 +293,21 @@ if ($Parts -contains "victory") {
         "hol.Victory.Defeat 1", "waitlog End banner: Victory", "waitui", "frames 5", "hol.UI.Focus QuitButton", "frames 3"
     Key Enter
     Step "waitlog End banner: quit to menu", "waitmap MainMenu", "waitui", "mark victory end"
+    # V2.5 (D349-D353), a third match: the main forum's lives. Slot 0's forum falls (2 lives -> 1, in ruin): the table and
+    # its selection block say so, a production on it is refused by the server; 2 Peasants sent on it (a right click on
+    # the centre), its ruin skipped: rebuilding, its builders at work; skipped again: rebuilt; it falls again,
+    # its last life: defeated (Forum), the banner Defeat, the table's row defeated. Back to the menu.
+    Step "mark victory forum fall", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60",
+        "hol.Victory.FallForum 0", "waitlog Victory: forum of slot 0 fell", "frames 3",
+        "hol.Prod.Queue", "waitlog Production order of slot 0 ignored: its forum is down", "frames 3", "hol.HUD.Report"
+    # The match starts with no unit: 2 Peasants of slot 0 made 20 m beside its centre (Plain's slot 0, -14800 0).
+    Step "mark victory forum build", "hol.Units.Spawn 2 -14800 2000 0 Peasant 150", "waitunits 2", "frames 3", "hol.Select.Own", "waitlog Select own: 2 units", "hol.Select.OrderNear 0 0", "wait 1",
+        "hol.Victory.SkipRuin 0", "waitlog Victory: forum of slot 0 ruin -> rebuilding", "waitlog Construction: slot 0 rebuilds its forum",
+        # The units unselected by hol.Prod.Queue (the centre selected first, its order refused again): the block read.
+        "frames 3", "hol.Select.Report", "hol.Prod.Queue", "frames 3", "hol.HUD.Report"
+    Step "mark victory forum rebuilt", "hol.Victory.SkipRuin 0", "waitlog Victory: forum of slot 0 rebuilt", "frames 3", "hol.HUD.Report"
+    Step "mark victory forum defeat", "hol.Victory.FallForum 0", "waitlog End banner: Defeat", "waitui", "frames 3", "hol.HUD.Report",
+        "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark victory forum end"
 }
 
 # The "sides" part (EtapeDefini D.3), in solo on Plain, three players: me (slot 0, team 1), an enemy AI (slot 1, team
@@ -1605,9 +1620,18 @@ if ($NetListening) {
         if ($Parts -contains "victory") {
             $VictoryReady = Join-Path $TestSaved "quick_net_victory_ready.flag"
             $VictoryDone = Join-Path $TestSaved "quick_net_victory_done.flag"
-            if ($Client -eq 1) { $NetSteps += "mark victory", "waitfile $VictoryReady", "hol.Victory.Surrender", "waitlog End banner: Defeat", "waitfile $VictoryDone" }
+            # V2.5 (D353, the lives public): first client 1's main forum falls on the server (its own cheat of damage, the
+            # server's path: a dedicated server has no local controller for hol.Victory.FallForum); client 2's players'
+            # table then shows that slot at 1 life, in ruin.
+            $ForumFell = Join-Path $TestSaved "quick_net_forum_fell.flag"
+            $ForumSeen = Join-Path $TestSaved "quick_net_forum_seen.flag"
+            if ($Client -eq 1) {
+                $NetSteps += "mark victory", "waitfile $VictoryReady", "hol.Cheat.DamageNear 99999 0 0 own melee", "wait 0.5", "hol.HUD.Report", "signal $ForumFell",
+                    "waitfile $ForumSeen", "hol.Victory.Surrender", "waitlog End banner: Defeat", "waitfile $VictoryDone"
+            }
             else {
-                $NetSteps += "mark victory", "hol.Units.Report", "signal $VictoryReady", "waitlog End banner: Victory"
+                $NetSteps += "mark victory", "hol.Units.Report", "signal $VictoryReady", "waitfile $ForumFell", "wait 1", "hol.HUD.Report", "signal $ForumSeen",
+                    "waitlog End banner: Victory"
                 for ($i = 0; $i -lt 5; $i++) { $NetSteps += "wait 1", "hol.Units.Report" }
                 $NetSteps += "signal $VictoryDone"
             }
@@ -1731,6 +1755,40 @@ if ($Parts -contains "victory") {
     $After = if ($Quit.Count) { $Section[($Quit[0].LineNumber - 1)..($Section.Count - 1)] } else { @() }
     $Checks["Quitter vers le menu: MainMenu loaded"] = [bool]($After | Select-String -Pattern "LoadMap: /Game/Maps/MainMenu" -Quiet)
     $AllOk = (Report "victory" $Checks) -and $AllOk
+
+    # V2.5: the main forum's lives (the third match). The last HUD report of a section: its players' table and the rest.
+    function ForumHud([string] $Mark) {
+        $Line = @(Get-Section $Mark | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+        $Table = if ("$Line" -match ", players \[([^\]]*)\]") { $Matches[1] } else { "" }
+        $Row0 = @($Table -split " \| " | Where-Object { $_ -match "^slot 0 " }) | Select-Object -First 1
+        return [pscustomobject]@{ Line = "$Line"; Row0 = "$Row0" }
+    }
+    $Checks = [ordered]@{}
+    $Section = Get-Section "victory forum fall"
+    $Checks["FallForum 0: the forum fell, lives 1"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 fell, lives 1 " -Quiet)
+    $Checks["a production on the forum down refused by the server"] = [bool]($Section | Select-String -SimpleMatch "Production order of slot 0 ignored: its forum is down" -Quiet)
+    $Hud = ForumHud "victory forum fall"
+    $Checks["table: slot 0 you, lives 1, ruin ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 ruin$"
+    $Checks["selection block: in ruin, lives 1 ($([regex]::Match($Hud.Line, ', in ruin[^,]*, lives \d+').Value))"] = $Hud.Line -match ", in ruin \d+ s, lives 1"
+    $Section = Get-Section "victory forum build"
+    $Checks["SkipRuin 0: ruin -> rebuilding"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 ruin -> rebuilding" -Quiet)
+    $AtWork = @($Section | Select-String -Pattern "Construction: slot 0 rebuilds its forum at .*, (\d+) builders at work" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["the units sent on it rebuild it ($($AtWork -join ', ') builders at work)"] = $AtWork.Count -gt 0 -and ($AtWork | Measure-Object -Maximum).Maximum -ge 1
+    $Hud = ForumHud "victory forum build"
+    $Builders = [regex]::Match($Hud.Line, ", rebuilding \d+%, builders (\d+), lives 1")
+    $Checks["selection block: rebuilding, builders $($Builders.Groups[1].Value), lives 1"] = $Builders.Success -and [int]$Builders.Groups[1].Value -ge 1
+    $Checks["table: slot 0 rebuilding ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 rebuilding \d+%$"
+    $Section = Get-Section "victory forum rebuilt"
+    $Checks["SkipRuin 0: rebuilt"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 rebuilt" -Quiet)
+    $Hud = ForumHud "victory forum rebuilt"
+    $Checks["table: slot 0 standing, lives 1 ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 standing$"
+    $Section = Get-Section "victory forum defeat"
+    foreach ($Want in "Victory: forum of slot 0 fell, lives 0 ", "Victory: slot 0 defeated (Forum)", "Victory: match over, winners 1", "End banner: Defeat") {
+        $Checks["its last life: $($Want.Trim())"] = [bool]($Section | Select-String -SimpleMatch $Want -Quiet)
+    }
+    $Hud = ForumHud "victory forum defeat"
+    $Checks["table: slot 0 defeated ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives \d+ defeated greyed$"
+    $AllOk = (Report "victory forum" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "sides") {
@@ -3989,6 +4047,12 @@ if ($Parts -contains "net") {
             $Text = $_.Matches[0].Groups[1].Value
             ([regex]::Matches($Text, "of slot $Loser x(\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Measure-Object -Sum).Sum })
         $Checks["victory: client 2 sees client 1's units go ($($Shown -join ' -> '))"] = ($Shown.Count -eq 6) -and ($Shown[0] -ge 1) -and ($Shown[-1] -eq 0)
+        # V2.5 (D353): client 1's forum fell on the server (lives 1); client 2's players' table shows it (the lives public).
+        $Checks["victory: server, the forum of slot $Loser (client 1) fell, lives 1"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Victory: forum of slot $Loser fell, lives 1 " -Quiet)
+        $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD report: .*, players \[([^\]]*)\]" |
+            ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+        $LoserRow = @("$Table2" -split " \| " | Where-Object { $_ -match "^slot $Loser " }) | Select-Object -First 1
+        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser colour \d+ lives 1 ruin$"
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

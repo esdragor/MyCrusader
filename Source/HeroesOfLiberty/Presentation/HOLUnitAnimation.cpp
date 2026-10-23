@@ -71,7 +71,8 @@ FHOLUnitAnimationChoice HOLUnitAnimation::Choose(const FHOLUnitTypeConstants& Ty
 			return Choice;
 		}
 	}
-	if (Input.Activity == EHOLUnitActivity::Building && Type.BuildSequence != INDEX_NONE)
+	// At a forum in ruin (V2.3a): standing there, no hammer on the rubble.
+	if (Input.Activity == EHOLUnitActivity::Building && !Input.bSiteWaits && Type.BuildSequence != INDEX_NONE)
 	{
 		Choice.Sequence = Type.BuildSequence;
 		Choice.PlayRate = Type.BuildPlayRate;
