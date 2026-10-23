@@ -124,4 +124,29 @@ bool FHOLAvoidNoClearWayTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// EtapeDefini E (build gap, build cut): a detour into a building's body is no clear way.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidFootprintTest, "HeroesOfLiberty.Movement.DetourFootprint",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAvoidFootprintTest::RunTest(const FString& Parameters)
+{
+	// A house 400 x 400 around (0, 0); a body of 40 walking along its south wall, its centre 40 off it (y = -240).
+	HOLAvoid::FFootprintBox House;
+	House.HalfExtent = { 200., 200. };
+	const double Keep = 40.;
+	TestEqual(TEXT("distance out of the wall, beyond the keep"), HOLAvoid::GetFootprintDistance(House, Keep, { 0., -300. }), 60., 1.e-6);
+	TestTrue(TEXT("inside: negative"), HOLAvoid::GetFootprintDistance(House, Keep, { 0., 0. }) < 0.);
+	const FVector2D Along(-1000., -240.);
+	TestFalse(TEXT("along the wall: not led in"), HOLAvoid::LeadsIntoFootprint(House, Keep, Along, { 1., 0. }, 450.));
+	TestTrue(TEXT("turned towards the wall: led in"), HOLAvoid::LeadsIntoFootprint(House, Keep, { -100., -240. }, FVector2D(1., 0.).GetRotated(30.), 450.));
+	TestFalse(TEXT("turned away from the wall: not led in"), HOLAvoid::LeadsIntoFootprint(House, Keep, { -100., -240. }, FVector2D(1., 0.).GetRotated(-30.), 450.));
+	TestFalse(TEXT("far from it: not led in"), HOLAvoid::LeadsIntoFootprint(House, Keep, { -3000., 0. }, { 1., 0. }, 450.));
+	// Turned by 90 degrees: the same body, the frame turned.
+	HOLAvoid::FFootprintBox Turned = House;
+	Turned.HalfExtent = { 100., 300. };
+	Turned.Cos = 0.;
+	Turned.Sin = 1.;
+	TestEqual(TEXT("turned: its long side along x"), HOLAvoid::GetFootprintDistance(Turned, 0., { 0., -150. }), 50., 1.e-6);
+	return true;
+}
+
 #endif

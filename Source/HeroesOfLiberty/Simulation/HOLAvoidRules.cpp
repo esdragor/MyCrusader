@@ -99,3 +99,28 @@ double HOLAvoid::TimeToContact(const FVector2D& RelativePosition, const FVector2
 	const double Discriminant = FMath::Square(Approach) - SpeedSquared * Gap;
 	return Discriminant < 0. ? TNumericLimits<double>::Max() : (Approach - FMath::Sqrt(Discriminant)) / SpeedSquared;
 }
+
+double HOLAvoid::GetFootprintDistance(const FFootprintBox& Box, const double Keep, const FVector2D& Point)
+{
+	// In the box's frame (as the keep-out's), then the distance to the rectangle, rounded by Keep.
+	const FVector2D Offset = Point - Box.Centre;
+	const FVector2D Local(Offset.X * Box.Cos + Offset.Y * Box.Sin, -Offset.X * Box.Sin + Offset.Y * Box.Cos);
+	const FVector2D Out(FMath::Abs(Local.X) - Box.HalfExtent.X, FMath::Abs(Local.Y) - Box.HalfExtent.Y);
+	return FVector2D(FMath::Max(Out.X, 0.), FMath::Max(Out.Y, 0.)).Size() + FMath::Min(FMath::Max(Out.X, Out.Y), 0.) - Keep;
+}
+
+bool HOLAvoid::LeadsIntoFootprint(const FFootprintBox& Box, const double Keep, const FVector2D& Position, const FVector2D& Way, const double Distance)
+{
+	// Deeper by more than a centimetre: along the wall, the keep-out's own slack is no wall.
+	constexpr double DeeperSlack = 1.;
+	const double Start = GetFootprintDistance(Box, Keep, Position);
+	for (const double Part : { 0.5, 1. })
+	{
+		const double There = GetFootprintDistance(Box, Keep, Position + Way * (Distance * Part));
+		if (There < 0. && There < Start - DeeperSlack)
+		{
+			return true;
+		}
+	}
+	return false;
+}

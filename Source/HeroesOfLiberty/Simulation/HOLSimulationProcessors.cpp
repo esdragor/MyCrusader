@@ -322,6 +322,26 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	{
 		return false;
 	}
+	// The buildings' bodies (EtapeDefini E): a few per player, read again at each step as the keep-out's.
+	Footprints.Reset();
+	FootprintRadii.Reset();
+	if (const UWorld* World = Context.GetWorld())
+	{
+		for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+		{
+			const FHOLBuildingTypeRow* Type = It->GetType();
+			// A bare foundation is walked over (D312).
+			if (!Type || !It->BlocksNavigation())
+			{
+				continue;
+			}
+			HOLAvoid::FFootprintBox& Box = Footprints.AddDefaulted_GetRef();
+			Box.Centre = FVector2D(It->GetActorLocation());
+			Box.HalfExtent = UHOLBuildingSettings::GetBodySize(Type->Footprint) * 0.5;
+			FMath::SinCos(&Box.Sin, &Box.Cos, FMath::DegreesToRadians(It->GetActorRotation().Yaw));
+			FootprintRadii.Add(Box.HalfExtent.Size());
+		}
+	}
 	// J7c.4 loop 20: the middle of each owner's army (a rear rank slides away from it, towards the nearer end of the line).
 	OwnerCentres.Reset();
 	if (RearSlide != 0 && RearSlideKeep != 0 && MeleeRuleSkips != 0)
@@ -486,6 +506,25 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		}
 		return true;
 	};
+	// A turn into a building's body within the still horizon is no way (EtapeDefini E: the avoidance did not see them, a
+	// follower held its remembered turn into a house's wall, MV.2, and a walker turned wide from still builders into the
+	// site's wall, MV.4; the keep-out put them back). The straight course is the path's, along the navmesh.
+	const double WallDistance = Speed * StillHorizon;
+	TArray<int32, TInlineAllocator<8>> Walls;
+	for (int32 Index = 0; Index < Footprints.Num(); ++Index)
+	{
+		if (FVector2D::DistSquared(Footprints[Index].Centre, Position) < FMath::Square(FootprintRadii[Index] + Radius + WallDistance))
+		{
+			Walls.Add(Index);
+		}
+	}
+	const auto IntoWall = [this, &Walls, &Position, Radius, WallDistance](const FVector2D& Way)
+	{
+		return Walls.ContainsByPredicate([this, &Position, Radius, WallDistance, &Way](const int32 Index)
+		{
+			return HOLAvoid::LeadsIntoFootprint(Footprints[Index], Radius, Position, Way, WallDistance);
+		});
+	};
 	int32 Blocker = INDEX_NONE;
 	// A body met within its own limit (a still one's further, MV.4.4): not clear.
 	FirstContact(Ahead, Blocker);
@@ -529,7 +568,11 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		// remembered turn: one turn back towards the place (the last one onto the straight course) after a run of clear
 		// steps, else held, else wider.
 		const double Hand = Detour.Side;
-		const int32 Turn = HOLAvoid::NextDetourTurn(Detour.Turn, Turns, Detour.ClearSteps, [&WayOf, &IsClear, Hand](const int32 Each) { return IsClear(WayOf(Hand, Each)); });
+		const int32 Turn = HOLAvoid::NextDetourTurn(Detour.Turn, Turns, Detour.ClearSteps, [&WayOf, &IsClear, &IntoWall, Hand](const int32 Each)
+			{
+				const FVector2D Way = WayOf(Hand, Each);
+				return IsClear(Way) && (Each == 0 || !IntoWall(Way));
+			});
 		// No turn clear up to the largest: on its hand, one turn a step back towards its place, pushing (MV.2: forgetting
 		// it flipped the hand, the heading jumping up to 80 degrees in a step at a crossing; held, it circled its slot).
 		// An enemy is not pushed (D293): against one, one turn a step wider up to the largest, held along it (MV.4: eased
@@ -559,7 +602,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		const double Hand = bPassBehind ? (Index < Turns ? Side : -Side) : (Index % 2 == 0 ? Side : -Side);
 		{
 			const FVector2D Way = WayOf(Hand, Turn);
-			if (IsClear(Way))
+			if (IsClear(Way) && !IntoWall(Way))
 			{
 				// Not remembered around one of its own order (a member of its block, one forming up): its file pulls it
 				// back at the next step (MV.2: remembered, members drifted up to 2.4 m off their files on the march).

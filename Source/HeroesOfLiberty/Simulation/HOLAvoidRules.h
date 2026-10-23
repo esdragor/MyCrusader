@@ -83,4 +83,24 @@ namespace HOLAvoid
 	 * wedged into a wall of enemies); never on a friend (it gives way: counting it held back Paysans abreast before a narrow way).
 	 */
 	HEROESOFLIBERTY_API double TimeToContact(const FVector2D& RelativePosition, const FVector2D& RelativeVelocity, double ContactDistance, bool bPressedCounts);
+
+	/** A building's body as a walker sees it (D324's body, turned by the building's yaw: Cos, Sin). */
+	struct FFootprintBox
+	{
+		FVector2D Centre = FVector2D::ZeroVector;
+		FVector2D HalfExtent = FVector2D::ZeroVector;
+		double Cos = 1.;
+		double Sin = 0.;
+	};
+
+	/** Distance from Point to Box widened by Keep (a body's radius), negative inside. */
+	HEROESOFLIBERTY_API double GetFootprintDistance(const FFootprintBox& Box, double Keep, const FVector2D& Point);
+
+	/**
+	 * Whether a detour going Distance along Way (unit) from Position leads into Box widened by Keep: a point on it (half
+	 * way, the end) inside and deeper than Position. One along the wall or turning away from it is not led in. EtapeDefini
+	 * E: the avoidance did not see the buildings, a follower held its remembered turn into a house's wall (MV.2) and a
+	 * walker turned wide from still builders straight into the site's wall (MV.4); the keep-out put them back.
+	 */
+	HEROESOFLIBERTY_API bool LeadsIntoFootprint(const FFootprintBox& Box, double Keep, const FVector2D& Position, const FVector2D& Way, double Distance);
 }

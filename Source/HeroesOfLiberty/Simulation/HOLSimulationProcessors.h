@@ -6,6 +6,7 @@
 #include <atomic>
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
+#include "Simulation/HOLAvoidRules.h"
 #include "HOLSimulationProcessors.generated.h"
 
 struct FHOLCombatFragment;
@@ -95,6 +96,9 @@ protected:
 	TArray<FIntPoint> Cells;
 	/** J7c.4 loop 20: each owner's units' mean position this step (the middle of its army: a rear rank slides away from it). */
 	TMap<uint8, FVector2D> OwnerCentres;
+	/** The bodies of the buildings the navmesh forbids, this step (EtapeDefini E: no detour into them), and their bounding radii. */
+	TArray<HOLAvoid::FFootprintBox> Footprints;
+	TArray<double> FootprintRadii;
 };
 
 /**
