@@ -1930,6 +1930,12 @@ Les modes secondaires seront développés après validation du mode standard.
 - Le défi de duel garde sa fenêtre propre (D117).
 - But : les mécaniques « annoncées, donc contrables » n'ont de sens que si l'annonce est perçue.
 
+**Communication entre joueurs** *(séance du 2026-10-23, § 22)* :
+
+- **Canaux de discussion *(décision D385)*** : **Alliés** et **Tous** (Entrée pour écrire, un raccourci pour basculer), plus des **messages privés à un joueur précis** (choisi dans une liste ou par son nom), invisibles des autres, comme le choix des destinataires d'AoE2 : en *Diplomatie*, on négocie et l'on complote en secret. Les spectateurs ont leur canal (D376). Les annonces de diplomatie (postures, tributs) passent dans le fil.
+- **Signaux sur la carte *(décision D386)*** : **roue de signaux typés** (Alt maintenu + clic, sur le monde ou la mini-carte) : **Attaque ici**, **Défends ici**, **Besoin d'aide**, **Regroupement**, **Éclaire ici** ; chacun avec son icône, son son et une ligne dans le fil (traduite d'office, fr / en / ja) ; un simple Alt + clic pose un signal neutre. Vus des **alliés seulement** (en *Diplomatie*, des alliés mutuels, D369) ; nombre limité contre le spam (indicatif : 3 toutes les 5 s). Une IA alliée pourra plus tard y réagir.
+- **Panneau « Diplomatie » *(décision D387)*** : comme AoE2, un **bouton dans la barre du haut** (et un raccourci clavier) ouvre un panneau **par-dessus la partie, qui continue** : **une ligne par joueur** (couleur, nom, faction, vies du forum ; posture Allié / Neutre / Ennemi, D369 ; case « partager ma vision », D371 ; tribut : quatre ressources et « Envoyer », grisé sans Marché, taxe affichée, D372 ; bouton « message privé », D385). En standard, même panneau, postures **verrouillées et grisées** (équipes fixes), tributs et messages disponibles.
+
 **Lecture de l'adversaire *(décision D203)* : l'inspection seulement.** Un clic sur un héros, une unité ou un bâtiment adverse **visible** affiche sa fiche (héros : niveau, sceaux et talents clés, D103, état). La spécialisation adverse se reconnaît à son bâtiment ou à son unité propre. Sans vision, aucune information : pas de carnet de renseignements, pas d'information publique sur le palier ou les spécialisations. L'éclairage garde toute sa valeur (D07).
 
 **Duel :** fenêtre de défi reçu (Accepter / Refuser, compte à rebours, sans pause, D117), indicateur de défi envoyé, recharge du défi, posture active et kit de duel pendant l'affrontement.
@@ -2617,6 +2623,9 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D382 | 2026-10-23 | Brouillard — Mémoire sous le brouillard | **Comme AoE** (choix de l'utilisateur, conforme à la recommandation) : terrain, ressources et bâtiments au dernier coup d'œil (fantômes), jamais les unités ; destruction apprise en retournant voir (le forum reste public, D353). Écartés : destruction apprise d'office (information gratuite), rien en mémoire. | § 8.2 |
 | D383 | 2026-10-23 | Brouillard — La vue et le terrain | **Comme AoE4, avec une furtivité à part** (choix de l'utilisateur : A, précisé) : cercle de vue par unité, hauteur = vue plus longue (modérée), forêt = vue bloquée à travers (D33) sans furtivité ; **pour l'instant, la furtivité vient de zones dédiées posées par la carte**, ni forêt ni hautes herbes (cachées sauf ennemi tout proche ou dans la zone). Écartés : vraie ligne de vue façon Warcraft 3 (double avantage de la hauteur avec D23), cercle simple sans rien. | § 8.1, § 8.2 |
 | D384 | 2026-10-23 | Économie — Le centre secondaire | **Un vrai forum de plus, comme AoE4** (choix de l'utilisateur, conforme à la recommandation) : produit des Paysans, dépôt de toutes ressources, garnison et tir, population, réapparition ; coûteux (pierre), sans plafond (boom façon AoE4, puni par le rush) ; pas de vies, pas de zone anti-construction. Écartés : avant-poste sans Paysans, plafond par palier. | § 5.4 |
+| D385 | 2026-10-23 | Communication — Canaux de discussion | **Alliés, Tous, et messages privés à un joueur** (choix de l'utilisateur, conforme à la recommandation) : négocier et comploter en secret en *Diplomatie* ; canal des spectateurs (D376) ; annonces de diplomatie dans le fil. Écartés : deux canaux seulement, messages prédéfinis seulement (négociation impossible). | § 15 |
+| D386 | 2026-10-23 | Communication — Signaux sur la carte | **Roue de signaux typés** (choix de l'utilisateur, conforme à la recommandation) : Attaque ici, Défends ici, Besoin d'aide, Regroupement, Éclaire ici (icône, son, ligne traduite dans le fil) ; Alt + clic = signal neutre ; alliés seulement ; limite contre le spam ; lisible plus tard par une IA alliée. Écartés : signal simple sans sens, aucun signal. | § 15 |
+| D387 | 2026-10-23 | Communication — Le panneau « Diplomatie » | **Bouton en haut, panneau par-dessus la partie, comme AoE2** (choix de l'utilisateur, conforme à la recommandation) : une ligne par joueur (couleur, nom, faction, vies ; posture ; vision ; tribut grisé sans Marché, taxe affichée ; message privé) ; en standard, postures verrouillées, tributs et messages disponibles. Écarté : liste compacte toujours visible, tributs au Marché (place à l'écran, fonctions éclatées). | § 15 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2804,4 +2813,12 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Centre secondaire (2026-10-23)** → **tranché (D384)** : un vrai forum de plus façon AoE4, sans plafond (la question du plafond tombe). Corrigé (rédactionnel) : « Rangées 7 à 9 : plus tard (bloc 4) » du Dragon, de l'Ombre et des Héritiers renvoyé à D198, D199, D200.
 
-Prochain numéro : **D385**.
+**Séance du 2026-10-23 (suite) : la communication entre joueurs (§ 15).** Questions à traiter dans cet ordre :
+
+1. ~~Canaux de discussion~~ → **tranché (D385)** : Alliés, Tous, messages privés à un joueur.
+2. ~~Signaux sur la carte~~ → **tranché (D386)** : roue de cinq signaux typés, alliés seulement.
+3. ~~Le tableau des postures~~ → **tranché (D387)** : bouton en haut, panneau « Diplomatie » par-dessus la partie, une ligne par joueur.
+
+**Séance de la communication close (D385 à D387).**
+
+Prochain numéro : **D388**.
