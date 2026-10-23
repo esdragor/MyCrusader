@@ -16,7 +16,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
 
 ### Fin de partie
-- Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
+- Conditions de victoire à coder : ruine à tenir (V3), messages (V4), vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
 
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
@@ -25,7 +25,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : prochain numéro D361 (D347 à D360 conditions de victoire ; reprise au § 22)
+- Review du GDD : prochain numéro D421 (reprise au § 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
@@ -39,6 +39,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Le combat ignore les équipes : des alliés se battent entre eux *(`OwnerPlayer` comparé dans le combat et l'évitement ; vu en EtapeDefini D ; le camp Neutre de la sélection se branchera sur les postures de D369)*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 ### Aléas et petits restes
+- `quick_check` enchaîné (`tests,menu,production,gather,…,anims`) : gather « deux Paysans à moins de 90 cm » (69 cm) et anims « walking with Wood » rouges, verts lancés seuls *(déjà sur `main` 8fef24f, vu à la clôture de V2)*
 - `quick_check -Parts move,bodies,build` : « build site » rouge (plafond de population +20, laissé par les parties d'avant ; `-Parts build` seul passe)
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
