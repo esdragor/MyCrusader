@@ -180,10 +180,12 @@ if ($Parts -contains "net") {
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
-    # will gather), so that the gathering uses it up within seconds; every unload logged.
+    # will gather), so that the gathering uses it up within seconds; every unload logged. The starts are the main centres'
+    # middles, (-14800, 0) and (15200, 0) (Get-SlotStart, on the 4 m grid), where hol.Select.OrderSourceNear looks: from
+    # (15000, 0), the tree nearest was another one than slot 1's Peasant's (43, not 45), never used up.
     $NetSourceCommand = if ($Parts -contains "sources") {
         ",hol.Net.WhenClients 2 hol.Delay 5 hol.Sources.Take 0" +
-        ",hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear -15000 0 95,hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear 15000 0 95" +
+        ",hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear -14800 0 95,hol.Net.WhenClients 2 hol.Delay 6 hol.Sources.TakeNear 15200 0 95" +
         ",hol.Gather.LogDeposits 1" +
         # No body in a footprint (J6a.1, D310): the Peasants' round trips to both centres watched at every step.
         ",hol.Net.WhenClients 2 hol.Nav.Footprints on,hol.Net.WhenClients 2 hol.Delay 30 hol.Nav.Footprints report,hol.Net.WhenClients 2 hol.Delay 45 hol.Nav.Footprints report"
@@ -1202,11 +1204,16 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: 2 units (own): Peasant x2", "hol.Camera.Focus $($AnimHouse -join ' ')", "frames 3", "hol.Build.Place House",
                 "waitlog Placement ghost: House at ($($AnimHouse -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 2 units to House at ($($AnimHouse -join ', '))",
                 "waitlog Construction: slot 0 first work on House at ($($AnimHouse -join ', '))"
-            # Each group selected by a box around it, a right click on its source.
-            foreach ($Group in $AnimGroups) {
+            # Each group selected by a box around it, a right click on its source. Each also kept as control group 6 to 9
+            # (emptied at the end, the groups part reads the bar): sent away later by its digit, not by a box around its
+            # source (after gather and build, the lumber camp's gatherers fell trees there and the wood group's own
+            # Peasants may fell a tree outside such a box).
+            for ($i = 0; $i -lt $AnimGroups.Count; $i++) {
+                $Group = $AnimGroups[$i]
                 Step "hol.Camera.Focus $($Group.Spawn -join ' ')", "frames 3",
                     "hol.Select.BoxGround $($Group.Spawn[0] - 400) $($Group.Spawn[1] - 400) $($Group.Spawn[0] + 400) $($Group.Spawn[1] + 400)",
-                    "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.OrderSource $($Group.Source -join ' ')", "waitlog Gather order of slot 0: 3 units to source"
+                    "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.Group Add $(6 + $i)", "waitlog Group $(6 + $i): created, 3 units",
+                    "hol.Select.OrderSource $($Group.Source -join ' ')", "waitlog Gather order of slot 0: 3 units to source"
             }
             # At their sources within ~1.5 s (spawned 5 to 8 m away): all at work, the report, close-ups.
             Step "wait 3", "mark anims working", "hol.Units.AnimReport", "hol.Units.Where 0", "hol.Camera.Zoom 14"
@@ -1215,12 +1222,12 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($AnimIdle -join ' ')", "frames 3", "capture anims_work_idle",
                 "hol.Camera.Focus $($AnimSpearmen[0]) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 3", "capture anims_soldiers_idle",
                 "hol.Camera.Focus $(($AnimOthers[0] + $AnimSpearmen[0]) / 2) $($AnimOthers[1])", "frames 3", "capture anims_colors", "hol.Camera.Zoom -14", "wait 3"
-            # Each group (a few wood, stone, gold or food each by now: 0.7 a second) selected around its source, sent ~20 m
-            # away: it keeps its load (D296). Reported on the way, then once they stand there.
-            foreach ($Group in $AnimGroups) {
-                Step "hol.Camera.Focus $($Group.Source -join ' ')", "frames 3",
-                    "hol.Select.BoxGround $($Group.Source[0] - 700) $($Group.Source[1] - 700) $($Group.Source[0] + 700) $($Group.Source[1] + 700)",
-                    "waitlog Selection: ", "hol.Select.OrderGround $($Group.Target -join ' ')", "waitlog Order: "
+            # Each group (a few wood, stone, gold or food each by now: 0.7 a second) selected by its control group (its three
+            # Peasants and only them), sent ~20 m away: it keeps its load (D296). Reported on the way, then once they stand there.
+            for ($i = 0; $i -lt $AnimGroups.Count; $i++) {
+                $Group = $AnimGroups[$i]
+                Step "hol.Camera.Focus $($Group.Source -join ' ')", "frames 3", "hol.Select.Group Select $(6 + $i)",
+                    "waitlog Group $(6 + $i): selected, 3 units", "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.OrderGround $($Group.Target -join ' ')", "waitlog Order: "
             }
             # The soldiers, selected by a box around both groups, sent last (on their way at the report).
             Step "hol.Camera.Focus $($AnimSpearmen[0]) $(($AnimSpearmen[1] + $AnimMenAtArms[1]) / 2)", "frames 3",
@@ -1235,7 +1242,12 @@ if ($Parts -contains "camera") {
             foreach ($Group in $AnimGroups) { Step "hol.Camera.Focus $($Group.Target -join ' ')", "frames 3", "capture anims_stand_$($Group.Name)" }
             # Nothing left selected (as in "fifo"): with -Parts ...,anims,combat the combat's "nothing selected" bars
             # would otherwise see the last anims selection (in -Full, groups ends with Escape).
-            Step "hol.Camera.Zoom -14", "hol.Build.Report", "hol.Select.Click 0.03 0.05", "frames 3"
+            Step "hol.Camera.Zoom -14", "hol.Build.Report"
+            # Control groups 6 to 9 emptied (the groups part reads the whole bar).
+            for ($i = 0; $i -lt $AnimGroups.Count; $i++) {
+                Step "hol.Select.Group Select $(6 + $i)", "hol.Select.Group Remove $(6 + $i)", "waitlog Group $(6 + $i): removed, 0 units"
+            }
+            Step "hol.Select.Click 0.03 0.05", "frames 3"
         }
         if (($Parts -contains "formation") -and $Case.Name -eq "2p") {
             Start-CaseFilter "formation"
@@ -1352,7 +1364,9 @@ if ($Parts -contains "camera") {
                 $OtherCounts = @{ ManAtArms = 6; Spearman = 6; Archer = 4 }
                 # The ground cleared first (the double click takes every unit of the type on the screen: the formation
                 # cases before leave Men-at-arms around).
-                Step "mark formation $($Regroup.Name)", "hol.Units.Remove $($RegroupAt -join ' ') 3500 0", "wait 0.3", "hol.Units.SpawnSeed 137", "hol.Camera.Focus $($RegroupAt -join ' ')", "frames 3",
+                Step "mark formation $($Regroup.Name)", "hol.Units.Remove $($RegroupAt -join ' ') 3500 0", "wait 0.3",
+                    # Its control group emptied first (the part groups leaves units in group 2, far from here: Add would keep them).
+                    "hol.Select.Group Select $($Regroup.Group)", "hol.Select.Group Remove $($Regroup.Group)", "wait 0.2", "hol.Units.SpawnSeed 137", "hol.Camera.Focus $($RegroupAt -join ' ')", "frames 3",
                     "hol.Units.Spawn 6 $($RegroupAt -join ' ') 0 $($Regroup.Type) 350", "wait 1", "frames 3",
                     "hol.Select.ClickUnit -1 double", "waitlog Selection: 6 units (own): $($Regroup.Type) x6", "hol.Select.Group Add $($Regroup.Group)", "wait 0.2"
                 Key Escape
@@ -1575,7 +1589,9 @@ if ($NetListening) {
             $NetSteps += "hol.Units.OrderNear -1000 2500 all", "wait 12", "hol.Units.Where", "capture qcnet_${Client}_moved"
         }
         # Sources (J5a.2): the 376 sources received, the tree the server used up gone (5 s after both joined, long done).
+        # Without the orders' 12 s, the clients get here ~5 s after joining: 4 s more, the server's takes done (5 and 6 s).
         if ($Parts -contains "sources") {
+            if (-not ($Parts -contains "move")) { $NetSteps += "wait 4" }
             $NetSteps += "hol.Sources.Report"
             # Gathering (J5a.5, D299, D303): its Peasant selected alone, a right click on the tree nearest its start (5
             # wood left by the server): it gathers it, the tree is used up, it goes on with a neighbour, unloads 10 at
@@ -1697,7 +1713,7 @@ if ($NetListening) {
 # barracks (J7a.2), the start ~20 s; past 480 s with the combat and orders parts (J7b.3: attack-move and hold, ~45 s more);
 # ~660 s with the straggler's groups (J7b trial feedback 1, ~105 s more), when 660 s cut the last parts off.
 # 120 s otherwise: the default's smoke part is done ~40 s after the launch (D327), the menu part ~15 s.
-$GameLimitSeconds = if ($Parts -contains "camera") { 780 } else { 120 }
+$GameLimitSeconds = if ($Parts -contains "camera") { 960 } else { 120 }
 $GameTimedOut = -not $GameProcess.WaitForExit($GameLimitSeconds * 1000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)

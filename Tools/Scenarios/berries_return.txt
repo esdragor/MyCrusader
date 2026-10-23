@@ -1,0 +1,71 @@
+# Retour au dépôt : des Paysans qui rentrent ensemble au forum, leur source épuisée, s'y rangent sans se chevaucher (D309)
+# Configuration par défaut (un joueur, Plain), coordonnées du monde comme la partie gather de quick_check : ton forum au
+# milieu de (-14800, 0) ; ses 6 buissons de baies (200 chacun) au nord, autour de (-15000, 2150) ; son bois (40 arbres de
+# 100) au sud, dès y = -1800. Un massif (les 6 buissons, le bois) épuisé renvoie ses récolteurs déposer et s'arrêter :
+# chaque temps vide tout le massif sauf une source, qui garde peu.
+hol.Cheat.Population 165
+hol.Gather.LogDeposits 1
+# 1. Les baies : cinq buissons vidés, le dernier garde 40 de nourriture (~10-15 s à 5 Paysans) ; 5 Paysans au nord du forum.
+hol.Sources.TakeNear -15000 2150
+hol.Sources.TakeNear -15000 2150
+hol.Sources.TakeNear -15000 2150
+hol.Sources.TakeNear -15000 2150
+hol.Sources.TakeNear -15000 2150
+hol.Sources.TakeNear -15000 2150 160
+hol.Camera.Focus -15000 1100
+frames 2
+hol.Units.Spawn 5 -15000 1350 0 Peasant 200
+waitunits 5
+frames 5
+note 1. Au nord du forum : 5 Paysans et le dernier buisson de baies (40 de nourriture).
+waitkey Sélectionne tes 5 Paysans, clic droit sur le buisson. Quand il est vide, ils rentrent déposer au forum : regarde qu'ils se rangent le long du mur sans se chevaucher. Entrée pour recommencer avec 3 Paysans
+# 2. Le bois (sources 0 à 39 de la carte) : 39 arbres vidés, le dernier (source 0, au premier rang, à (-14221, -1816))
+# garde 20 de bois ; 3 Paysans au sud du forum.
+hol.Sources.Take 1
+hol.Sources.Take 2
+hol.Sources.Take 3
+hol.Sources.Take 4
+hol.Sources.Take 5
+hol.Sources.Take 6
+hol.Sources.Take 7
+hol.Sources.Take 8
+hol.Sources.Take 9
+hol.Sources.Take 10
+hol.Sources.Take 11
+hol.Sources.Take 12
+hol.Sources.Take 13
+hol.Sources.Take 14
+hol.Sources.Take 15
+hol.Sources.Take 16
+hol.Sources.Take 17
+hol.Sources.Take 18
+hol.Sources.Take 19
+hol.Sources.Take 20
+hol.Sources.Take 21
+hol.Sources.Take 22
+hol.Sources.Take 23
+hol.Sources.Take 24
+hol.Sources.Take 25
+hol.Sources.Take 26
+hol.Sources.Take 27
+hol.Sources.Take 28
+hol.Sources.Take 29
+hol.Sources.Take 30
+hol.Sources.Take 31
+hol.Sources.Take 32
+hol.Sources.Take 33
+hol.Sources.Take 34
+hol.Sources.Take 35
+hol.Sources.Take 36
+hol.Sources.Take 37
+hol.Sources.Take 38
+hol.Sources.Take 39
+hol.Sources.Take 0 80
+hol.Camera.Focus -14400 -1200
+frames 2
+hol.Units.Spawn 3 -14400 -1150 0 Peasant 150
+waitunits 8
+frames 5
+note 2. Au sud du forum : 3 Paysans et le dernier arbre du bois (20 de bois) ; les 5 premiers restent au nord.
+waitkey Sélectionne les 3 nouveaux Paysans, clic droit sur le dernier arbre. Quand il tombe, ils rentrent déposer au forum : même chose, rangés le long du mur sans se chevaucher. Puis Entrée
+note 3. Fini : aucun Paysan sur un autre, au nord comme au sud du forum (au moins un corps d'écart, ~1 m).

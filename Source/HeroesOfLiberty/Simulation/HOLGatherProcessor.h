@@ -116,6 +116,12 @@ private:
 	};
 
 	void RefreshDeposits(UWorld& World);
+	/** RestingBodies, when a gatherer stopped idle is still settling. */
+	void CollectRestingBodies(FMassExecutionContext& Context);
+	/** Moves Position out of the visible wall of a deposit (EtapeDefini C.3) at once; true when it moved. */
+	bool EaseOutOfDeposits(float Radius, FVector2D& Position) const;
+	/** Whether a body at rest other than this one overlaps it (SettledTolerance), among RestingBodies. */
+	bool OverlapsRestingBody(FMassEntityHandle Entity, const FVector2D& Location, float Radius) const;
 	void ApplyGatherOrders(const FStepContext& Step);
 	void Advance(const FStepContext& Step, FGatherer& Gatherer);
 
@@ -197,6 +203,15 @@ private:
 	 * own source is never skipped this way: its own claim may be there.
 	 */
 	TBitArray<> FullSources;
+	/** A body at rest this step (not on a round trip, not at its source): what a gatherer stopped idle must not overlap. */
+	struct FRestingBody
+	{
+		FMassEntityHandle Entity;
+		FVector2D Location;
+		float Radius = 0.f;
+	};
+	/** This step's bodies at rest, gathered only when a gatherer stopped idle is still settling (J7a.6). */
+	TArray<FRestingBody> RestingBodies;
 	/** This step's gatherers by owner (index) and resource. */
 	TArray<FHOLResources> GathererCounts;
 	/** This step's unloads by owner (index), MaxDepositPopupsPerStep each at most: their « +10 » (J5c.3). */

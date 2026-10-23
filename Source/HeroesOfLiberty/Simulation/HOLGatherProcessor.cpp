@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
@@ -57,6 +58,14 @@ namespace UE::HeroesOfLiberty::Gather
 	constexpr double SpotGap = 15.;
 	/** Steps a gatherer stopped idle keeps settling after the first (J7a.6): a few looks undo what one leaves. */
 	constexpr uint8 StopSettleSteps = 10;
+	/**
+	 * Steps at most a gatherer stopped idle keeps settling while it still overlaps a body at rest (3 s at 20 Hz): two or
+	 * three stopped at one deposit point in the same step, pressed against its wall, needed more than StopSettleSteps
+	 * (quick_check: 69 cm apart). Never forever: one pinned between a wall and others stops looking.
+	 */
+	constexpr uint8 StopSettleMaxSteps = 60;
+	/** Two bodies closer than their radii less this (cm) still overlap: the stopped gatherer keeps settling. */
+	constexpr double SettledTolerance = 10.;
 	/**
 	 * Gap (cm) between two idle gatherers' bodies at their points in front of a full source, and between those points and
 	 * the gatherers' spots (D309): they never overlap, nor stand on a spot.
@@ -150,7 +159,7 @@ void UHOLGatherProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FHOLGatherFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadWrite);
-	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
+	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite); // a stopped gatherer leaves a deposit's wall
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
@@ -181,18 +190,40 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 	// Each player's gatherers by resource, counted again at every step (J5b, D307).
 	GathererCounts.Reset();
+	CollectRestingBodies(Context);
 	EntityQuery.ForEachEntityChunk(Context, [this, &Step](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLGatherFragment> Gathers = Context.GetMutableFragmentView<FHOLGatherFragment>();
 		const TConstArrayView<FHOLMoveOrderFragment> Moves = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
-		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
+		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
-			// Settled at the last step's separation (D309), or a few steps more once stopped (J7a.6).
-			Gathers[EntityIt].bSettling = Gathers[EntityIt].SettleSteps > 0;
-			Gathers[EntityIt].SettleSteps -= Gathers[EntityIt].SettleSteps > 0 ? 1 : 0;
+			// Settled at the last step's separation (D309), or a few steps more once stopped (J7a.6), and on until it no
+			// longer overlaps a body at rest (StopSettleMaxSteps at most).
+			FHOLGatherFragment& Settler = Gathers[EntityIt];
+			using namespace UE::HeroesOfLiberty::Gather;
+			if (Settler.SettleSteps > 0 && !Settler.IsGathering() && Moves[EntityIt].Phase == EHOLMovePhase::None)
+			{
+				// Out of a deposit's visible wall at once: pushed into it by the others stopped there with it, it was eased
+				// out 10 cm a step once it stopped looking (EtapeDefini C.3), back onto them (quick_check: 69 cm apart).
+				// Out of it, the settling parts them along the wall.
+				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
+				FVector2D Position(Location);
+				if (EaseOutOfDeposits(Constants.Radius, Position))
+				{
+					Transforms[EntityIt].GetMutableTransform().SetLocation(FVector(Position.X, Position.Y, Location.Z));
+				}
+			}
+			if (Settler.SettleSteps > 0 && Settler.SettleSteps <= StopSettleMaxSteps - StopSettleSteps
+				&& (Settler.IsGathering() || (Moves[EntityIt].Phase == EHOLMovePhase::None
+					&& !OverlapsRestingBody(Context.GetEntity(EntityIt), FVector2D(Transforms[EntityIt].GetTransform().GetLocation()), Constants.Radius))))
+			{
+				Settler.SettleSteps = 0;
+			}
+			Settler.bSettling = Settler.SettleSteps > 0;
+			Settler.SettleSteps -= Settler.SettleSteps > 0 ? 1 : 0;
 			if (!Gathers[EntityIt].IsGathering() || States[EntityIt].CurrentHealth <= 0)
 			{
 				// Dying (J7b.4): its task is over.
@@ -210,6 +241,66 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	});
 	PublishGathererCounts(Step);
 	SendDepositPopups(Step);
+}
+
+void UHOLGatherProcessor::CollectRestingBodies(FMassExecutionContext& Context)
+{
+	RestingBodies.Reset();
+	bool bAnySettler = false;
+	EntityQuery.ForEachEntityChunk(Context, [this, &bAnySettler](FMassExecutionContext& Context)
+	{
+		const TConstArrayView<FHOLGatherFragment> Gathers = Context.GetFragmentView<FHOLGatherFragment>();
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			bAnySettler |= Gathers[EntityIt].SettleSteps > 0 && !Gathers[EntityIt].IsGathering();
+		}
+	});
+	if (!bAnySettler)
+	{
+		return;
+	}
+	EntityQuery.ForEachEntityChunk(Context, [this](FMassExecutionContext& Context)
+	{
+		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
+		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
+		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
+		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
+		{
+			// On a round trip it walks through every unit (D309); at its source it stands at the spots' spacing.
+			const EHOLUnitActivity Activity = States[EntityIt].Activity;
+			if (States[EntityIt].CurrentHealth <= 0 || Activity == EHOLUnitActivity::GatherTrip || Activity == EHOLUnitActivity::Gathering)
+			{
+				continue;
+			}
+			RestingBodies.Add({ Context.GetEntity(EntityIt), FVector2D(Transforms[EntityIt].GetTransform().GetLocation()), Constants.Radius });
+		}
+	});
+}
+
+bool UHOLGatherProcessor::EaseOutOfDeposits(const float Radius, FVector2D& Position) const
+{
+	TArray<HOLConstruction::FWallBody, TInlineAllocator<8>> Near;
+	for (const FDeposit& Deposit : Deposits)
+	{
+		const double Yaw = FMath::DegreesToRadians(static_cast<double>(Deposit.Footprint.Yaw));
+		Near.Add({ Deposit.Footprint.Centre, Deposit.Footprint.HalfExtent, FMath::Cos(Yaw), FMath::Sin(Yaw) });
+	}
+	const double VisualGap = FMath::Max(0., static_cast<double>(UHOLBuildingSettings::GetBodyInset() - UHOLBuildingSettings::GetVisualInset()));
+	// The whole way out in one step (the keep-out's ease goes 10 cm a step).
+	return !Near.IsEmpty() && HOLConstruction::EaseOutOfVisibleWalls(Near, Radius, VisualGap, 1000., Position);
+}
+
+bool UHOLGatherProcessor::OverlapsRestingBody(const FMassEntityHandle Entity, const FVector2D& Location, const float Radius) const
+{
+	using namespace UE::HeroesOfLiberty::Gather;
+	for (const FRestingBody& Body : RestingBodies)
+	{
+		if (Body.Entity != Entity && FVector2D::DistSquared(Body.Location, Location) < FMath::Square(Radius + Body.Radius - SettledTolerance))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
@@ -845,7 +936,7 @@ void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 	// UHOLUnitOrderProcessor): it looks once, as a walker, and parts from a unit it stands on (J5b.3: Peasants idle at the
 	// centre 29 cm apart once their berries were used up).
 	Gatherer.Gather.bSettling = true;
-	Gatherer.Gather.SettleSteps = UE::HeroesOfLiberty::Gather::StopSettleSteps;
+	Gatherer.Gather.SettleSteps = UE::HeroesOfLiberty::Gather::StopSettleMaxSteps;
 	Gatherer.Gather.Phase = EHOLGatherPhase::None;
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
 	Gatherer.Gather.bWalkIssued = false;
