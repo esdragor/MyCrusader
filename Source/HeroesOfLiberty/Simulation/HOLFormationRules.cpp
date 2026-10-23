@@ -971,6 +971,35 @@ namespace HOLFormation
 		return true;
 	}
 
+	bool ShouldYieldHeldPlace(const FVector2D& HeldPlace, TConstArrayView<FVector2D> NewPlacesByX, const double RadiusSum)
+	{
+		// The first new place no farther left than RadiusSum, then those up to RadiusSum to the right.
+		int32 Low = 0;
+		int32 High = NewPlacesByX.Num();
+		const double MinX = HeldPlace.X - RadiusSum;
+		while (Low < High)
+		{
+			const int32 Mid = (Low + High) / 2;
+			if (NewPlacesByX[Mid].X < MinX)
+			{
+				Low = Mid + 1;
+			}
+			else
+			{
+				High = Mid;
+			}
+		}
+		const double MaxX = HeldPlace.X + RadiusSum;
+		for (int32 Index = Low; Index < NewPlacesByX.Num() && NewPlacesByX[Index].X <= MaxX; ++Index)
+		{
+			if (FVector2D::DistSquared(HeldPlace, NewPlacesByX[Index]) < FMath::Square(RadiusSum))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	double GetLineLength(TConstArrayView<FVector2D> Points)
 	{
 		double Length = 0.;

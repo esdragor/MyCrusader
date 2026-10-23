@@ -236,6 +236,14 @@ namespace HOLFormation
 	HEROESOFLIBERTY_API bool WatchPlace(FPlaceHold& Hold, const FVector2D& Location, const FVector2D& Place, double Radius);
 
 	/**
+	 * The newest order wins (MV.4, formation in place, the user's choice A): a friend left out of an order, holding a
+	 * place closer than RadiusSum (two bodies: both radii) to one of the order's new places, lets its place go. Both
+	 * cannot be taken at once; pushed aside by the newcomer it stays where it is pushed, no walk back and forth.
+	 * NewPlacesByX: the new places sorted by X.
+	 */
+	HEROESOFLIBERTY_API bool ShouldYieldHeldPlace(const FVector2D& HeldPlace, TConstArrayView<FVector2D> NewPlacesByX, double RadiusSum);
+
+	/**
 	 * The block march (J7a.4, the user's 1st trial: as in AoE4). A group's move in formation is one block (its rows around
 	 * its centre, facing the start of its path) that follows one path at its slowest unit's pace, each unit at its offset
 	 * in the block (ahead, to the right) turned with the path, then re-forms on its arrival places. Shorter than
