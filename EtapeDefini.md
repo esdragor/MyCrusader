@@ -38,6 +38,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 ### Aléas et petits restes
-- `quick_check -Parts build` rouge sur main : « build cut » et « build gap » (marcheurs remis dehors le long d'un mur)
+- `quick_check -Parts build` rouge sur main : « build cut » et « build gap » (marcheurs remis dehors le long d'un mur) *(causes : MV.2 35a8be9 et MV.4 6ab675c, contournements qui ignorent les bâtiments ; confié au chantier déplacement)*
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
