@@ -396,4 +396,19 @@ namespace HOLConstruction
 	 * toward +X. A point already out of the widened footprint is returned as it is.
 	 */
 	HEROESOFLIBERTY_API FVector2D PushOutOfFootprint(const FBox2D& Footprint, double Margin, const FVector2D& Point);
+
+	/**
+	 * Gap (cm) from a building's body at which a body of Radius whose centre stood inside it is put back (D310; trial of
+	 * 2026-10-22: a site started under a unit left it in the walls): beyond the navmesh's margin (Clearance, D310) and the
+	 * visible wall (VisualGap: from the body to the visible shape, D324), so that it stands neither in the walls nor off the
+	 * navmesh.
+	 */
+	HEROESOFLIBERTY_API double GetKeepOutInsideGap(double Radius, double Clearance, double VisualGap);
+
+	/**
+	 * The footprints' guard on one building's body (D310), in its frame (its middle at the origin, HalfExtent): a centre
+	 * inside goes out by the nearest side, InsideGap beyond it; a centre outside nearer than OutsideGap goes away from the
+	 * body's nearest point, to OutsideGap. True when Local moved.
+	 */
+	HEROESOFLIBERTY_API bool KeepOutOfBody(const FVector2D& HalfExtent, double InsideGap, double OutsideGap, FVector2D& Local);
 }

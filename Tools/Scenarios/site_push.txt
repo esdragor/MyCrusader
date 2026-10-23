@@ -1,0 +1,29 @@
+# Chantier qui démarre sur des unités : elles sortent au-delà du mur visible, pas dans les murs (EtapeDefini B)
+# Configuration par défaut (un joueur, Plain). Positions dans le repère du centre du joueur (comme building_destroy).
+hol.Cheat.Resources 5000
+# Quatre Paysans devant le centre (ce seront les bâtisseurs), pas encore sélectionnés.
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Units.SpawnHere 4 Peasant 0 150
+waitunits 4
+# La maison d'abord, rien de sélectionné : personne n'y est envoyé, le clic droit reste à faire. Simple fantôme
+# tant que personne n'y a donné un coup de marteau : les soldats peuvent naître dessus.
+hol.Camera.FocusNear -1400 1200
+frames 2
+hol.Build.PlaceNear House -1400 1200
+waitlog Construction: slot 0 placed House
+# Des soldats de chaque type (l'Archer a un rayon plus petit) debout sur la fondation.
+hol.Units.SpawnHere 2 ManAtArms 0 120
+hol.Units.SpawnHere 2 Spearman 0 120
+hol.Units.SpawnHere 2 Archer 0 120
+waitunits 10
+# Les quatre Paysans sélectionnés (un cadre autour d'eux, loin des soldats).
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Select.BoxGround -15700 -500 -15100 500
+waitlog Selection: 4 units (own)
+hol.Camera.FocusNear -1400 1000
+frames 5
+note Les 4 Paysans sont sélectionnés : clic droit sur la fondation. Au premier coup de marteau, les soldats dessus doivent sortir.
+note Regarde où ils s'arrêtent : corps entier hors des murs de la maison (avant : à moitié dedans), Archers compris.
+note Ensuite, pose toi-même une maison (Paysans, A puis A) sur des unités au repos, et à côté d'une autre maison.

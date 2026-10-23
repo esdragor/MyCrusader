@@ -561,3 +561,37 @@ FVector2D HOLConstruction::PushOutOfFootprint(const FBox2D& Footprint, const dou
 	const double ToY = FMath::IsNearlyZero(Direction.Y) ? TNumericLimits<double>::Max() : Half.Y / FMath::Abs(Direction.Y);
 	return Centre + Direction * FMath::Min(ToX, ToY);
 }
+
+double HOLConstruction::GetKeepOutInsideGap(const double Radius, const double Clearance, const double VisualGap)
+{
+	// The farther of the two, its whole body beyond it, and 1 cm: the rounding does not leave it a hair short.
+	return FMath::Max(Clearance, VisualGap) + Radius + 1.0;
+}
+
+bool HOLConstruction::KeepOutOfBody(const FVector2D& HalfExtent, const double InsideGap, const double OutsideGap, FVector2D& Local)
+{
+	const FVector2D Outside(FMath::Abs(Local.X) - HalfExtent.X, FMath::Abs(Local.Y) - HalfExtent.Y);
+	if (Outside.X <= 0. && Outside.Y <= 0.)
+	{
+		// Its centre inside: out by the nearest side.
+		if (Outside.X >= Outside.Y)
+		{
+			Local.X = (Local.X >= 0. ? 1. : -1.) * (HalfExtent.X + InsideGap);
+		}
+		else
+		{
+			Local.Y = (Local.Y >= 0. ? 1. : -1.) * (HalfExtent.Y + InsideGap);
+		}
+		return true;
+	}
+	// Its centre outside, its body too near: away from the body's nearest point.
+	const FVector2D Nearest(FMath::Clamp(Local.X, -HalfExtent.X, HalfExtent.X), FMath::Clamp(Local.Y, -HalfExtent.Y, HalfExtent.Y));
+	const FVector2D Away = Local - Nearest;
+	const double Distance = Away.Size();
+	if (Distance >= OutsideGap - UE_KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+	Local = Nearest + Away / Distance * OutsideGap;
+	return true;
+}

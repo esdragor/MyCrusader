@@ -685,6 +685,49 @@ bool FHOLConstructionCutPathsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionSiteKeepOutTest, "HeroesOfLiberty.Construction.SiteKeepOut", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionSiteKeepOutTest::RunTest(const FString& Parameters)
+{
+	// Trial of 2026-10-22 (D310): a site started under a unit put it back against its body, in the visible walls. A centre
+	// inside the body goes out beyond the navmesh's margin (the clearance) and the visible wall, with its whole radius. A
+	// house (2 x 2 tiles of 4 m), the settings' values: body inset 105 cm, visible shape 30 cm, clearance 25 cm.
+	const FVector2D Tiles(800.0, 800.0);
+	const double BodyInset = 105.0;
+	const double VisualInset = 30.0;
+	const double Clearance = 25.0;
+	const FVector2D Half = HOLConstruction::GetBodySize(Tiles, BodyInset) * 0.5;
+	const FVector2D VisualHalf = HOLConstruction::GetBodySize(Tiles, VisualInset) * 0.5;
+	const FBox2D Body(-Half, Half);
+	const FBox2D Visual(-VisualHalf, VisualHalf);
+	// Every kind's radius (UnitTypes.csv): Peasant, Man-at-arms, Spearman 60 cm, Archer 52 cm; a larger body to come.
+	for (const double Radius : { 60.0, 52.0, 90.0 })
+	{
+		const double InsideGap = HOLConstruction::GetKeepOutInsideGap(Radius, Clearance, BodyInset - VisualInset);
+		const double OutsideGap = Radius + 1.0;
+		for (const FVector2D& Start : { FVector2D(0.0, 0.0), FVector2D(280.0, 50.0), FVector2D(-100.0, -290.0), FVector2D(290.0, 290.0) })
+		{
+			FVector2D Local = Start;
+			const bool bMoved = HOLConstruction::KeepOutOfBody(Half, InsideGap, OutsideGap, Local);
+			const FString Where = FString::Printf(TEXT("radius %.0f cm, from (%.0f, %.0f) to (%.0f, %.0f)"), Radius, Start.X, Start.Y, Local.X, Local.Y);
+			TestTrue(FString::Printf(TEXT("put out (%s)"), *Where), bMoved);
+			const double FromBody = HOLConstruction::GetDistance(Body, Local);
+			TestTrue(FString::Printf(TEXT("beyond the navmesh's margin: %.0f cm >= %.0f (%s)"), FromBody, Clearance + Radius, *Where), FromBody >= Clearance + Radius);
+			const double FromWall = HOLConstruction::GetDistance(Visual, Local);
+			TestTrue(FString::Printf(TEXT("not in the visible walls: %.0f cm >= %.0f (%s)"), FromWall, Radius, *Where), FromWall >= Radius);
+			// Put out once, it stays: the guard does not move it again.
+			FVector2D Again = Local;
+			TestFalse(FString::Printf(TEXT("left as it is at the next step (%s)"), *Where), HOLConstruction::KeepOutOfBody(Half, InsideGap, OutsideGap, Again));
+		}
+		// A body outside brushing the wall (a walker of the navmesh, S7: 11 cm from the wall): only against it, as before.
+		FVector2D Brushing(Half.X + 40.0, 0.0);
+		TestTrue(TEXT("a centre outside, nearer than its radius: moved"), HOLConstruction::KeepOutOfBody(Half, InsideGap, OutsideGap, Brushing));
+		TestEqual(TEXT("to its radius and 1 cm, no farther"), Brushing.X, Half.X + OutsideGap, 0.01);
+		FVector2D Clear(Half.X + Radius + 11.0, 0.0);
+		TestFalse(TEXT("a centre outside, its body clear: as it is"), HOLConstruction::KeepOutOfBody(Half, InsideGap, OutsideGap, Clear));
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionBodyTest, "HeroesOfLiberty.Construction.Body", UE::HeroesOfLiberty::Tests::Construction::Flags)
 bool FHOLConstructionBodyTest::RunTest(const FString& Parameters)
 {
