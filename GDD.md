@@ -1875,6 +1875,7 @@ Le but est **Avantage → pression → possibilité de victoire**, et non **Avan
 | Catastrophe | événements mondiaux plus fréquents |
 | Scénario | objectifs narratifs |
 | ***Diplomatie*** *(D357, nom provisoire ; prototype entre humains, IA seules contre tous : D366, D367)* | chacun pour soi avec **diplomatie en cours de partie** (alliances et ruptures annoncées à tous) et **victoire alliée** façon AoE2 : si les survivants sont tous alliés entre eux, ils gagnent ensemble, à condition qu'au moins un joueur ait été vaincu (D373) |
+| ***Battlefield*** *(D416, nom provisoire, après le prototype)* | un **salon** où chaque joueur **choisit son armée**, puis tous **apparaissent avec** sur la carte : pour des **batailles** pures ou des **essais** |
 
 Les modes secondaires seront développés après validation du mode standard.
 
@@ -1887,6 +1888,8 @@ Les modes secondaires seront développés après validation du mode standard.
 - **Catastrophe** : événements mondiaux plus fréquents (dépend du système d'événements, D28).
 - **Carte explorée *(D381, D389)*** : terrain et ressources révélés au départ (la carte est noire par défaut, § 8.2). **Au prototype *(D389)*** : utile aussi aux essais et aux scénarios d'essai (D341).
 - ***Sites sacrés*** *(D359, à envisager, après le prototype)* : option façon AoE4, cochable au lancement : des points de la carte à **tenir tous ensemble ~5 min** donnent la victoire, **en plus** de la voie du forum. Proche du mode Domination : à distinguer quand on les concevra.
+
+***Battlefield* *(décision D416, nom provisoire, après le prototype)*** : un **salon** où chacun **compose son armée** (faction, unités, héros) avant le lancement ; la partie s'ouvre avec ces armées **déjà sur la carte**. Usage : se livrer des **batailles** sans passer par l'économie, ou **essayer** une composition, un contre, un héros. C'est un mode du **menu**, ouvert aux joueurs, à ne pas confondre avec les **scénarios d'essai** (D341), fichiers de développement. À préciser quand on le concevra : budget de l'armée (points, population ou libre), bâtiments et économie (aucun ou optionnels), condition de victoire (dernière armée debout par défaut), placement de départ.
 
 **Domination, Reliques et Scénario** sont repoussés **après la création du prototype**. ***Diplomatie* entre dans le prototype, entre humains seulement *(décision D366)*** : règles et interface (postures, rupture, partage de vision, tributs, annonce à tous, victoire alliée ; D369 à D374) ; l'IA diplomatique vient après le prototype. **Les IA *(décision D367)*** : chaque IA est **seule contre tous** ; elle reste **Ennemie** envers tous, quelle que soit la posture qu'on prend envers elle (en V2, elle refusera toute proposition) ; la victoire alliée oblige donc à éliminer les IA. **Les trois options sont dans le prototype *(D205)*.**
 
@@ -2666,6 +2669,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D413 | 2026-10-23 | Technique — Rochers non marchables | **Le haut des rochers n'a pas de navmesh** (deux renforts nés sur un rocher de la crête y restaient coincés : le haut plat portait sa propre tache de navmesh, coupée du sol ; choix A) : un volume de navigation interdit par rocher de la crête (emprise + 1 m, du haut seulement : le sol autour reste marchable), posé par `create_match_map.py` ; une unité dont la naissance ne trouve pas de navmesh naît sur le **sol navigable le plus proche** (8 m au plus). Écartés : naissance refusée au-dessus d'une marche ; marche droite vers le sol le plus proche (gardée en réserve si un cas reste). Essai : « super ». | § 16.6 |
 | D414 | 2026-10-23 | Technique — Le contournement voit les bâtiments | **Un détour qui mène dans un bâtiment n'est pas libre** (le détour sans contact de D409 faisait tourner plus tôt et plus large, droit dans le mur visible d'une maison ; le détour mémorisé de D407 faisait longer le mur au second Paysan) : un cap qui, à mi-chemin ou au bout du regard, entre dans l'emprise élargie du rayon d'un bâtiment plus profond qu'on n'y est n'est pas libre, pour le virage mémorisé comme pour le premier détour ; longer un mur ou s'en écarter n'est pas « entrer » ; le cap droit n'est jamais refusé (`HOLAvoid::LeadsIntoFootprint`, emprises lues seulement si quelqu'un marche). Essai `build_walkers` : « tout a l'air bon ». | § 16.6 |
 | D415 | 2026-10-23 | Technique — Formation sur place | **Le dernier ordre l'emporte** (retour d'essai : des unités d'un groupe remises en formation d'un rien « peinent, elles ne poussent presque pas les autres » ; cause : leurs nouvelles cases tombaient sur des cases que des amis tenaient encore, et chacun revenait à la sienne à tour de rôle ; choix A) : à un ordre en formation, un ami du même joueur **hors de l'ordre** dont la case tenue est à moins de deux corps d'une nouvelle case la **lâche** ; bousculé, il reste où il finit au lieu de revenir (`HOLFormation::ShouldYieldHeldPlace`). Limite : un ami encore en marche de son propre ordre de formation tiendra sa case à l'arrivée. Écartés : nouvelles cases qui évitent les cases tenues (le type ne se forme pas où on l'a dit) ; pousser les amis immobiles à pleine force. Mesuré : 6 Hommes d'armes dans une armée mêlée de 16 serrée, tous à ≤ 60 cm de leur case en 2 s (sans la règle : 2 à 3 encore hors à 6 s). Essai `select_type_q` : « tout est bon ». | § 16.6 |
+| D416 | 2026-10-23 | Modes — *Battlefield* | **Un salon où l'on choisit ses armées et où l'on apparaît avec, après le prototype** (demande de l'utilisateur ; nom provisoire) : chacun compose son armée dans le salon, la partie s'ouvre avec les armées déjà sur la carte ; pour des batailles ou des essais. Mode du menu, distinct des scénarios d'essai (D341). À préciser à sa conception : budget de l'armée, bâtiments et économie, condition de victoire, placement. | § 14.3 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2883,4 +2887,6 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Chantier déplacement clos (D405 à D415, décisions techniques reportées à sa clôture, § 16.6).**
 
-Prochain numéro : **D416**.
+**Mode *Battlefield* ajouté (D416, après le prototype, § 14.3).**
+
+Prochain numéro : **D417**.

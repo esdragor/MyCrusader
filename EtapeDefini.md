@@ -18,6 +18,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Fin de partie
 - Conditions de victoire à coder : forum à vies, ruine à tenir, vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
 
+### Modes de jeu
+- Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
+
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
