@@ -103,7 +103,7 @@ Le jeu doit produire ce type d'histoires émergentes.
 | **2. Développement** | augmenter la production, construire les bâtiments militaires, premières technologies, contrôler les ressources contestées, première armée | commence à avoir un impact réel |
 | **3. Conflit** | attaquer, défendre, harceler, contrôler les expansions, chercher les ouvertures, provoquer ou accepter un duel | premiers gros pics de puissance |
 | **4. Domination / Crise** | sécuriser les ressources rares, technologies avancées, exploiter les faiblesses, gérer les événements de carte | commandant majeur |
-| **5. Fin de partie** | supériorité militaire ou économique, détruire le centre principal adverse, accomplir la condition de victoire, empêcher le retour de l'adversaire | — |
+| **5. Fin de partie** | supériorité militaire ou économique, faire tomber le forum adverse et tenir sa ruine jusqu'à sa dernière vie (D347, D348), empêcher le retour de l'adversaire | — |
 
 ---
 
@@ -1878,7 +1878,7 @@ Les modes secondaires seront développés après validation du mode standard.
   - **Garnison *(D365)*** : le Roi entre dans tout bâtiment à garnison, comme dans AoE2 ; éjecté quand le bâtiment est détruit. L'IA le replie vers le bâtiment sûr le plus proche.
   - **Immunités *(décision D368)*** : le Roi n'est **jamais converti, retourné ni relevé** (comme les héros, D37, D57, D63), *Serment de l'Ombre* compris ; aucune faction n'a de raccourci vers la victoire en Régicide. PV et vitesse à régler en test.
 - **Catastrophe** : événements mondiaux plus fréquents (dépend du système d'événements, D28).
-- **Carte explorée *(D381)*** : terrain et ressources révélés au départ (la carte est noire par défaut, § 8.2).
+- **Carte explorée *(D381, D389)*** : terrain et ressources révélés au départ (la carte est noire par défaut, § 8.2). **Au prototype *(D389)*** : utile aussi aux essais et aux scénarios d'essai (D341).
 - ***Sites sacrés*** *(D359, à envisager, après le prototype)* : option façon AoE4, cochable au lancement : des points de la carte à **tenir tous ensemble ~5 min** donnent la victoire, **en plus** de la voie du forum. Proche du mode Domination : à distinguer quand on les concevra.
 
 **Domination, Reliques et Scénario** sont repoussés **après la création du prototype**. ***Diplomatie* entre dans le prototype, entre humains seulement *(décision D366)*** : règles et interface (postures, rupture, partage de vision, tributs, annonce à tous, victoire alliée ; D369 à D374) ; l'IA diplomatique vient après le prototype. **Les IA *(décision D367)*** : chaque IA est **seule contre tous** ; elle reste **Ennemie** envers tous, quelle que soit la posture qu'on prend envers elle (en V2, elle refusera toute proposition) ; la victoire alliée oblige donc à éliminer les IA. **Les trois options sont dans le prototype *(D205)*.**
@@ -2125,7 +2125,7 @@ Avant de créer les six factions complètes :
 | Duel | 1 |
 | Système de mort / résurrection | 1 |
 | Événement volcanique | **1** *(D205, revient au prototype pour l'option Catastrophe ; révise D28)* |
-| Mode et options *(D205, D366)* | mode **Standard** (le forum à vies, D347 à D360) + options **Nomade**, **Régicide** et **Catastrophe** (D204) ; mode ***Diplomatie*** entre humains (D366 à D376) |
+| Mode et options *(D205, D366, D389)* | mode **Standard** (le forum à vies, D347 à D360) + options **Nomade**, **Régicide**, **Catastrophe** (D204) et **Carte explorée** (D389) ; mode ***Diplomatie*** entre humains (D366 à D376) |
 
 **Objectif :** tester si le jeu est amusant AVANT d'investir dans le contenu.
 
@@ -2629,6 +2629,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D386 | 2026-10-23 | Communication — Signaux sur la carte | **Roue de signaux typés** (choix de l'utilisateur, conforme à la recommandation) : Attaque ici, Défends ici, Besoin d'aide, Regroupement, Éclaire ici (icône, son, ligne traduite dans le fil) ; Alt + clic = signal neutre ; alliés seulement ; limite contre le spam ; lisible plus tard par une IA alliée. Écartés : signal simple sans sens, aucun signal. | § 15 |
 | D387 | 2026-10-23 | Communication — Le panneau « Diplomatie » | **Bouton en haut, panneau par-dessus la partie, comme AoE2** (choix de l'utilisateur, conforme à la recommandation) : une ligne par joueur (couleur, nom, faction, vies ; posture ; vision ; tribut grisé sans Marché, taxe affichée ; message privé) ; en standard, postures verrouillées, tributs et messages disponibles. Écarté : liste compacte toujours visible, tributs au Marché (place à l'écran, fonctions éclatées). | § 15 |
 | D388 | 2026-10-23 | XP — Les points stratégiques | **Centres secondaires et relais neutres** (choix de l'utilisateur, conforme à la recommandation ; conforme à D22) : relais (nom provisoire) posés par la carte, pris en s'y tenant sans ennemi (règle de D348, D380), gardés jusqu'à reprise ; XP par minute seulement, pas de vision. Parts dans les ~15 % à régler en test. Écartés : expansion seule (XP de développement déguisée), relais seuls. | § 6, § 9.4 |
+| D389 | 2026-10-23 | Options de partie — « Carte explorée » au prototype | **Au prototype** (choix de l'utilisateur, conforme à la recommandation) : une case qui marque terrain et ressources comme explorés ; sert aussi aux essais et aux scénarios d'essai (D341). Écarté : après le prototype. Précise D205, D381. | § 14.3, § 17 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2824,6 +2825,8 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Séance de la communication close (D385 à D387).**
 
-**Points stratégiques (2026-10-23)** → **tranché (D388)** : centres secondaires et relais neutres (XP par minute seulement).
+**Points stratégiques (2026-10-23)** → **tranché (D388)** : centres secondaires et relais neutres (XP par minute seulement). Corrigé (rédactionnel) : fin de partie du § 4 alignée sur le forum à vies.
 
-Prochain numéro : **D389**.
+**Carte explorée au prototype** → **tranché (D389)**.
+
+Prochain numéro : **D390**.
