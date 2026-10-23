@@ -35,6 +35,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
+#include "Screens/HOLGameMenu.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLGridCell.h"
 #include "Widgets/HOLQueueItem.h"
@@ -222,6 +223,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	/** Seconds between two readings of a selected group's activities. */
 	constexpr float GroupRefreshInterval = 0.25f;
 	const FName IdleWorkersName(TEXT("IdleWorkers"));
+	const FName MenuButtonName(TEXT("MenuButton"));
 	/** A control group's slot (J7a.5): its width, and how long it stays lit once its group is selected (s, real time). */
 	constexpr float GroupSlotWidth = 64.f;
 	constexpr double GroupLightSeconds = 0.5;
@@ -346,6 +348,12 @@ void UHOLGameScreen::NativeOnInitialized()
 	if (IdleWorkers)
 	{
 		IdleWorkers->OnClicked().AddUObject(this, &UHOLGameScreen::HandleIdleWorkersClicked);
+	}
+	MenuButton = Cast<UHOLQueueItem>(WidgetTree->FindWidget(MenuButtonName));
+	if (MenuButton)
+	{
+		MenuButton->SetLabel(LOCTEXT("Menu", "Menu"));
+		MenuButton->OnClicked().AddUObject(this, &UHOLGameScreen::HandleMenuClicked);
 	}
 	for (int32 Group = 0; Group < AHOLPlayerController::NumControlGroups; ++Group)
 	{
@@ -568,7 +576,9 @@ void UHOLGameScreen::Refresh()
 	}
 	RefreshChips();
 	RefreshIdleWorkers();
-	RefreshGrid(Own, PlayerController && PlayerController->HasBuildingGroup(), PlayerState);
+	// D357: a spectator commands nothing, its grid hidden.
+	const bool bSpectator = PlayerController && PlayerController->IsSpectator();
+	RefreshGrid(bSpectator ? nullptr : Own, !bSpectator && PlayerController && PlayerController->HasBuildingGroup(), PlayerState);
 	RefreshQueue(Own);
 	UpdateHead();
 }
@@ -1594,8 +1604,18 @@ void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
 	}
 }
 
+void UHOLGameScreen::HandleMenuClicked()
+{
+	UHOLGameMenu::Open(GetOwningPlayer());
+}
+
 bool UHOLGameScreen::ClickWidget(const FName Name)
 {
+	if (MenuButton && Name == UE::HeroesOfLiberty::UI::GameScreen::MenuButtonName)
+	{
+		HandleMenuClicked();
+		return true;
+	}
 	if (IdleWorkers && Name == UE::HeroesOfLiberty::UI::GameScreen::IdleWorkersName)
 	{
 		if (!IdleWorkers->GetIsEnabled())
@@ -1898,6 +1918,20 @@ void UHOLGameScreen::BuildLayout()
 	IdleWorkers = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), IdleWorkersName);
 	IdleBox->SetContent(IdleWorkers);
 	AddToRow(Resources, IdleBox, 0.f);
+
+	// The in-game menu's button (D356), top right: opens the menu, as Escape with nothing selected.
+	UBorder* MenuPanel = MakePanel(TEXT("MenuPanel"));
+	MenuPanel->SetPadding(FMargin(6.f, 4.f));
+	UOverlaySlot* MenuPanelSlot = Frame->AddChildToOverlay(MenuPanel);
+	MenuPanelSlot->SetHorizontalAlignment(HAlign_Right);
+	MenuPanelSlot->SetVerticalAlignment(VAlign_Top);
+	MenuPanelSlot->SetPadding(FMargin(ScreenMargin));
+	USizeBox* MenuBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MenuButtonBox"));
+	MenuBox->SetWidthOverride(IdleWorkersWidth * 0.75f);
+	MenuBox->SetHeightOverride(QueueItemHeight * 0.8f);
+	UHOLQueueItem* Menu = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), MenuButtonName);
+	MenuBox->SetContent(Menu);
+	MenuPanel->SetContent(MenuBox);
 
 	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
 	// a slot per group not empty, « 1 · 9 », in the keys' order.

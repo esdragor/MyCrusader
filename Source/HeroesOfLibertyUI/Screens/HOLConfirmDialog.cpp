@@ -45,7 +45,7 @@ void UHOLConfirmDialog::SetUp(const FText& InQuestion, const FText& ConfirmLabel
 	{
 		Question->SetText(InQuestion);
 	}
-	if (ConfirmButton)
+	if (ConfirmButton && !ConfirmLabel.IsEmpty())
 	{
 		ConfirmButton->SetLabel(ConfirmLabel);
 	}

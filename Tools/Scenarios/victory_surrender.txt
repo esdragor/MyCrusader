@@ -1,0 +1,33 @@
+# Défaite (V1) : le joueur abandonne lui-même (Échap ou bouton Menu → Abandonner → Oui) ; ses unités tombent, ses bâtiments partent en décombres, bandeau Défaite, puis spectateur
+# Plain, deux joueurs (victory_surrender.json) : slot 0 humain, slot 1 IA, équipes séparées. Positions dans le repère du
+# centre de chaque joueur (X vers le milieu de la carte ; « enemy » : celui de l'IA). Chaque camp près de son centre,
+# derrière lui (places sans rochers de building_destroy) : ~300 m entre les deux, rien ne se bat tout seul.
+# Pas d'abandon automatique : c'est l'utilisateur qui le fait.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# L'IA d'abord (loin) : une Caserne finie et 8 Lanciers, pour que la partie continue après la défaite.
+hol.Cheat.SpawnBuilding Barracks 1 -1800 -1400 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Camera.FocusNear -2100 0 enemy
+frames 2
+hol.Units.SpawnHere 8 Spearman 1 300
+waitunits 8
+# L'humain : une Maison finie, 5 Paysans et 6 Lanciers derrière son centre (hors de son emprise, ~11 m de rayon).
+hol.Cheat.SpawnBuilding House 0 -1800 -1400
+waitlog Cheat: spawned House of slot 0
+hol.Camera.FocusNear -2000 -400
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+hol.Camera.FocusNear -2100 500
+frames 2
+hol.Units.SpawnHere 6 Spearman 0 250
+waitunits 19
+# La caméra sur la base du joueur : son centre, sa Maison, ses Paysans et ses Lanciers.
+hol.Camera.FocusNear -900 0
+hol.Camera.Zoom -1
+frames 5
+note 1. Abandonne : Échap (sans sélection) ou le bouton Menu en haut à droite → Abandonner → Oui.
+note Attendu : tes unités tombent, tes bâtiments partent en décombres, ressources à 0, bandeau Défaite.
+note 2. Bandeau ouvert : bouton Menu à la souris, puis « Reprendre » ; Échap doit encore fermer le bandeau.
+note 3. Spectateur : la grille est cachée, le clic droit ne fait rien ; le menu n'a plus « Abandonner ».
+note 4. Bouton « Relancer » du panneau, abandonne de nouveau, et ferme le bandeau par « Continuer à regarder ».

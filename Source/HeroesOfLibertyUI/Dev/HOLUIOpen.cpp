@@ -5,6 +5,7 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/FileHelper.h"
+#include "Screens/HOLGameMenu.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
 #include "Screens/HOLTitleScreen.h"
@@ -13,10 +14,11 @@
 /**
  * Opens a menu screen or launches a match by the same path as their buttons, for the scripted end-to-end checks
  * (D246).
- *   hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]   (Tab: 0 Video, 1 Sound, 2 Controls, 3 Language)
+ *   hol.UI.Open <NewGame|Settings[:Tab]|Quit|GameMenu|Surrender> [DelaySeconds=0]   (Tab: 0 Video, 1 Sound, 2 Controls, 3 Language;
+ *   GameMenu and Surrender in a match, D356: the in-game menu, then its surrender confirmation over it)
  *   hol.UI.NewGame.Launch [ConfigFile|-] [DelaySeconds=0]   (the file, JSON as for -MatchConfig=, is shown on the screen
  *   first; - launches what the screen shows)
- *   hol.UI.Focus <WidgetName> [DelaySeconds=0]   (gives the focus to a widget of the open menu screen, found by its name,
+ *   hol.UI.Focus <WidgetName> [DelaySeconds=0]   (gives the focus to a widget of the open confirmation or menu screen, found by its name,
  *   as the keyboard would; then hol.UI.Key drives it)
  *   hol.UI.Language <fr|en|ja>   (switches the language live and saves it, as Settings > Language does)
  */
@@ -40,7 +42,7 @@ namespace UE::HeroesOfLiberty::UI
 	{
 		if (Args.IsEmpty())
 		{
-			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]"));
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Open <NewGame|Settings[:Tab]|Quit|GameMenu|Surrender> [DelaySeconds=0]"));
 			return;
 		}
 		const FString Screen = Args[0];
@@ -66,6 +68,22 @@ namespace UE::HeroesOfLiberty::UI
 			else if (Screen == TEXT("Quit"))
 			{
 				UHOLTitleScreen::AskToQuit(PlayerController);
+			}
+			else if (Screen == TEXT("GameMenu"))
+			{
+				if (!UHOLGameMenu::Open(PlayerController))
+				{
+					UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Open: no match to open the in-game menu over"));
+					return;
+				}
+			}
+			else if (Screen == TEXT("Surrender"))
+			{
+				if (!UHOLGameMenu::AskToSurrender(PlayerController))
+				{
+					UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Open: no in-game menu open, or surrender not offered"));
+					return;
+				}
 			}
 			else
 			{
@@ -121,11 +139,14 @@ namespace UE::HeroesOfLiberty::UI
 		AfterDelay(Delay, [Name, WeakWorld = TWeakObjectPtr<UWorld>(World)]()
 		{
 			const UHOLRootLayout* Layout = UHOLRootLayout::Get(GetPlayer(WeakWorld));
+			// A confirmation open (modal layer) is searched first: it is on top.
+			const UCommonActivatableWidget* Modal = Layout ? Layout->GetActiveModal() : nullptr;
 			const UCommonActivatableWidget* Screen = Layout ? Layout->GetActiveMenu() : nullptr;
-			UWidget* Widget = Screen ? Screen->WidgetTree->FindWidget(Name) : nullptr;
+			UWidget* Widget = Modal ? Modal->WidgetTree->FindWidget(Name) : nullptr;
+			Widget = Widget ? Widget : Screen ? Screen->WidgetTree->FindWidget(Name) : nullptr;
 			if (!Widget)
 			{
-				UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Focus: no widget '%s' on the open menu screen"), *Name.ToString());
+				UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Focus: no widget '%s' on the open menu screen or confirmation"), *Name.ToString());
 				return;
 			}
 			Widget->SetFocus();
@@ -146,7 +167,7 @@ namespace UE::HeroesOfLiberty::UI
 
 	FAutoConsoleCommandWithWorldAndArgs OpenCommand(
 		TEXT("hol.UI.Open"),
-		TEXT("hol.UI.Open <NewGame|Settings[:Tab]|Quit> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
+		TEXT("hol.UI.Open <NewGame|Settings[:Tab]|Quit|GameMenu|Surrender> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Open));
 
 	FAutoConsoleCommandWithWorldAndArgs LaunchCommand(

@@ -24,10 +24,12 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Map/HOLMapBounds.h"
+#include "Match/HOLGameState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLGameMenuRules.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
@@ -1141,6 +1143,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** D356, until the in-game menu of V1.3: the local players give up (the server checks it). */
+	FAutoConsoleCommand VictorySurrenderCommand(
+		TEXT("hol.Victory.Surrender"),
+		TEXT("hol.Victory.Surrender: the local player gives up, an immediate defeat (D356)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestSurrender();
+			}
+		}));
+
 #if !UE_BUILD_SHIPPING
 	/**
 	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
@@ -1279,6 +1293,22 @@ namespace UE::HeroesOfLiberty::Player
 				{
 					Controller->RequestCheatDamageBuilding(Building->GetActorLocation(), Amount, ParseAttackType(Args, 1));
 				}
+			}
+		}));
+
+	FAutoConsoleCommand VictoryDefeatCommand(
+		TEXT("hol.Victory.Defeat"),
+		TEXT("hol.Victory.Defeat <Slot>: that slot loses at once, an AI's too, reason Cheat (V1.1; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty() || !Args[0].IsNumeric())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Victory.Defeat <Slot>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatDefeat(FCString::Atoi(*Args[0]));
 			}
 		}));
 
@@ -1842,6 +1872,11 @@ void AHOLPlayerController::SelectInBox(const FVector2D& CornerA, const FVector2D
 
 void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool bQueue)
 {
+	// D357: a spectator's right click does nothing (no order bound to be refused).
+	if (IsSpectator())
+	{
+		return;
+	}
 	// Shift held, or a script's Shift: a site or a source at the end of the units' queue (D311, the user's trial of J6a.4).
 	const bool bShift = bSelectAddHeld || bQueue;
 	const FVector2D Pixels = ToPixels(ViewportFraction);
@@ -2576,6 +2611,14 @@ AHOLPlayerState* AHOLPlayerController::GetHOLPlayerState() const
 	return GetPlayerState<AHOLPlayerState>();
 }
 
+bool AHOLPlayerController::IsSpectator() const
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const UWorld* World = GetWorld();
+	const AHOLGameState* HOLGameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return HOLPlayerState && HOLGameState && HOLGameState->IsSlotDefeated(HOLPlayerState->GetPlayerIndex());
+}
+
 AHOLBuilding* AHOLPlayerController::GetOwnSelection() const
 {
 	AHOLBuilding* Building = Selection.Get();
@@ -2593,6 +2636,12 @@ FName AHOLPlayerController::GetGridCellUnitType(const int32 Cell) const
 
 void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands) const
 {
+	// D357: a spectator's grid is empty (the HUD hides it).
+	if (IsSpectator())
+	{
+		OutCommands.Init(FHOLGridCommand(), NumGridCells);
+		return;
+	}
 	FHOLGridContext Context;
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	if (const AHOLBuilding* Building = GetOwnSelection())
@@ -2682,6 +2731,11 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 
 void AHOLPlayerController::GetOrderCommands(TArray<FHOLGridCommand>& OutCommands) const
 {
+	if (IsSpectator())
+	{
+		OutCommands.Init(FHOLGridCommand(), NumGridCells);
+		return;
+	}
 	// A building or a group of buildings: no orders, its grid alone (the user's choice of 2026-10-21).
 	FHOLGridContext Context;
 	if (!GetOwnSelection() && !HasBuildingGroup())
@@ -2707,6 +2761,10 @@ void AHOLPlayerController::ActivateOrderCell(const int32 Cell)
 
 void AHOLPlayerController::PressGridKey(const int32 Cell)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	// A building or a group: its grid. Units: HOLCommandGrid::PressKey (an age, then its buildings, AoE4's way).
 	if (GetOwnSelection() || HasBuildingGroup())
 	{
@@ -2723,6 +2781,10 @@ void AHOLPlayerController::PressGridKey(const int32 Cell)
 
 void AHOLPlayerController::ClickAge(const int32 Age, const int32 Cell)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	FHOLGridContext Context;
 	GetUnitsContext(Context);
 	UE_CLOG(HOLCommandGrid::IsBuildGrid(Context) && !HOLCommandGrid::IsAgeReached(Context, Age), LogHOLMatch, Display, TEXT("Grid: age %d not reached"), Age);
@@ -2777,6 +2839,10 @@ void AHOLPlayerController::ActivateGridCell(const int32 Cell)
 
 void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	switch (Command.Command)
 	{
@@ -2902,6 +2968,10 @@ void AHOLPlayerController::RequestProduction(const FName TypeName)
 
 void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
 		ServerCancelProduction(Building, Index);
@@ -2990,6 +3060,10 @@ void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 S
 
 void AHOLPlayerController::BeginPlacement(const FName TypeName)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
 	if (!Type || !Type->IsBuildable())
 	{
@@ -3221,6 +3295,10 @@ void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>&
 
 void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	if (Building)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Cancel request: %s"), *DescribeBuilding(Building));
@@ -3381,6 +3459,39 @@ void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName T
 	Building->ForceNetUpdate();
 	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: spawned %s of slot %d at (%.0f, %.0f)"), *TypeName.ToString(), Slot, Centre.X, Centre.Y);
 #endif
+}
+
+void AHOLPlayerController::RequestCheatDefeat(const int32 Slot)
+{
+	ServerCheatDefeat(Slot);
+}
+
+void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
+{
+#if !UE_BUILD_SHIPPING
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!HOLGameState || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Cheat))
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: slot %d cannot lose (closed, already defeated or the match over)"), Slot);
+	}
+#endif
+}
+
+void AHOLPlayerController::RequestSurrender()
+{
+	ServerSurrender();
+}
+
+void AHOLPlayerController::ServerSurrender_Implementation()
+{
+	// The player's own slot only (D356); DefeatSlot refuses a slot already defeated and a match over.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+	if (!HOLGameState || Slot == INDEX_NONE || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Surrender))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Victory: surrender of slot %d refused"), Slot);
+	}
 }
 
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
@@ -3658,6 +3769,16 @@ FString AHOLPlayerController::DescribeSelection() const
 
 void AHOLPlayerController::HandleSelectStarted()
 {
+	// D357: defeated with a mode armed, the mode is left and the click only selects (to watch).
+	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || ChosenAge != INDEX_NONE))
+	{
+		if (IsPlacing())
+		{
+			EndPlacement();
+		}
+		SetChosenAge(INDEX_NONE);
+		bAttackMoveArmed = false;
+	}
 	// In placement mode a left click places (J6a.3): it never selects nor starts a box.
 	if (IsPlacing())
 	{
@@ -3702,6 +3823,15 @@ void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
 
 void AHOLPlayerController::HandleOrder()
 {
+	if (IsSpectator())
+	{
+		bOrderPressed = false;
+		if (IsPlacing())
+		{
+			EndPlacement();
+		}
+		return;
+	}
 	// A right click leaves placement mode (D313), the chosen age closed, or the attack-move mode (J7b.3), without ordering anything.
 	if (IsPlacing())
 	{
@@ -3764,6 +3894,10 @@ bool AHOLPlayerController::IsOrderWidthHeld() const
 
 void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& End, const bool bWidth, const bool bQueue)
 {
+	if (IsSpectator())
+	{
+		return;
+	}
 	// Ctrl (or a script's): the front's width too; Shift (or a script's): after the current move (the user's 1st trial).
 	const bool bWithWidth = bWidth || IsOrderWidthHeld();
 	const bool bShift = bQueue || bSelectAddHeld;
@@ -3794,25 +3928,41 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 
 void AHOLPlayerController::HandleDeselect()
 {
-	// Escape leaves placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of
-	// G.1: an age chosen without a ghost is closed alone), then the attack-move mode (J7b.3).
-	if (IsPlacing())
+	// D356: the menu open, Escape closes it (its Back, which the menu input mode routes there first); else Escape leaves
+	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
+	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
+	// selected, it opens the in-game menu.
+	switch (HOLGameMenuRules::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed, HasSelection()))
 	{
-		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Cancelled));
-		EndPlacement();
+	case EHOLEscapeAction::CloseMenu:
+		return;
+	case EHOLEscapeAction::CancelMode:
+		if (IsPlacing())
+		{
+			SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Cancelled));
+			EndPlacement();
+		}
+		else if (ChosenAge != INDEX_NONE)
+		{
+			SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Escape));
+		}
+		else
+		{
+			bAttackMoveArmed = false;
+		}
+		return;
+	case EHOLEscapeAction::Deselect:
+		SetSelection(nullptr);
+		return;
+	case EHOLEscapeAction::OpenMenu:
+		OnGameMenuRequested.Broadcast();
 		return;
 	}
-	if (ChosenAge != INDEX_NONE)
-	{
-		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::Escape));
-		return;
-	}
-	if (bAttackMoveArmed)
-	{
-		bAttackMoveArmed = false;
-		return;
-	}
-	SetSelection(nullptr);
+}
+
+bool AHOLPlayerController::HasSelection() const
+{
+	return Selection.IsValid() || !SelectedUnits.IsEmpty() || SelectedSource != INDEX_NONE || !SelectedBuildings.IsEmpty();
 }
 
 void AHOLPlayerController::HandleContinueKey()

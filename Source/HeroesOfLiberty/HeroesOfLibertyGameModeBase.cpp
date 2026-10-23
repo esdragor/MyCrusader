@@ -10,6 +10,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLStartSlot.h"
 #include "EngineUtils.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerState.h"
@@ -18,6 +19,7 @@
 AHeroesOfLibertyGameModeBase::AHeroesOfLibertyGameModeBase()
 {
 	PlayerStateClass = AHOLPlayerState::StaticClass();
+	GameStateClass = AHOLGameState::StaticClass();
 }
 
 void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
@@ -29,6 +31,11 @@ void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FStrin
 	MatchConfig = bHasConfig ? Match->GetConfigOrDefault() : FHOLMatchConfig::MakeDefault();
 	UE_LOG(LogHOLMatch, Log, TEXT("Match on %s: %s configuration, %d occupied slots"), *MapName,
 		bHasConfig ? TEXT("given") : TEXT("default"), MatchConfig.GetNumOccupiedSlots());
+	// The camps of the match are locked now, at the launch (D357).
+	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
+	{
+		HOLGameState->InitVictory(MatchConfig);
+	}
 
 	// Before any player logs in: the classes are read when each controller is made.
 	if (AHOLStartSlot::WorldHasSlots(GetWorld()))
@@ -36,6 +43,16 @@ void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FStrin
 		PlayerControllerClass = AHOLPlayerController::StaticClass();
 		DefaultPawnClass = nullptr;
 		UE_LOG(LogHOLMatch, Log, TEXT("Match map: RTS camera, no pawn"));
+	}
+}
+
+void AHeroesOfLibertyGameModeBase::InitGameState()
+{
+	Super::InitGameState();
+	// Whichever of InitGame and InitGameState comes last gives the game state the configuration of the launch.
+	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
+	{
+		HOLGameState->InitVictory(MatchConfig);
 	}
 }
 

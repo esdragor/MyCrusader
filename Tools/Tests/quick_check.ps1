@@ -5,10 +5,11 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, net). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     formation, combat, victory, net). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
-#     go through their orders, gathering, houses and camps (the server's commands for those come with them).
+#     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
+#     "victory", it ends with the end of the match (~10 s more, see below).
 # The full run: a single game launch goes through the menu in French, English and Japanese (language switched live), a
 # drop-down list, then a match at 2 and at 8 players with the camera checks of D257 and the selection checks of D264 (own
 # centre, another's, void, Escape).
@@ -17,6 +18,10 @@
 # when units, the simulation or rendering change, and at a closure).
 # Alongside, the "net" part (D273, M2.5.6): a two-client match on a dedicated server, the editor in server mode (D275),
 # each client checking its camera, the two centres in their colours and a click on each.
+# With "victory" (V1.4c, D356-D358), last in the net part (the match is over after it): client 1 gives up
+# (hol.Victory.Surrender in its console, the server's ServerSurrender); the server defeats its slot, collapses it and ends
+# the match, client 2's slot the winner; the banner Defeat on client 1, Victory on client 2 (the game state's replication
+# and OnRep); client 2 sees client 1's units go (Units report each second, none left after 5 s).
 # The "sources" part (J5a.2, D297): the wood beside slot 0, forbidden on the navmesh tree by tree; a tree used up
 # leaves the map on the server and on both clients. With "net" (J5a.5, D299, D303): each client sends its Peasant to
 # the tree nearest its start, the server having left 5 wood in it; the tree is used up on both clients, the wood rises
@@ -90,7 +95,7 @@ param(
     [switch] $Visible
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "net") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
@@ -211,6 +216,33 @@ if ($Parts -contains "menu") {
         Back
     }
     Step "hol.UI.Language fr", "waitui"
+}
+
+# The "victory" part (V1.4a, D356-D358), in solo on Plain, a human (slot 0) against an AI (slot 1): the surrender by
+# its real path (Escape with nothing selected, the menu, "Abandonner", "Oui"), the end banner (Defeat), the menu opened
+# over it then closed by Escape, Escape again closes the banner (V1.4a: the menu input kept under the closing menu);
+# an order of the fallen player refused by the server (D358); then a second match where the AI is defeated (hol.Victory.Defeat 1): Victory, "Quitter vers le menu", the menu again.
+if ($Parts -contains "victory") {
+    $VictoryConfig = Join-Path $TestSaved "victory_1v1.json"
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $VictoryConfig
+    Step "mark victory surrender", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60"
+    Key Escape
+    Step "waitlog Game menu: opened", "frames 5", "hol.UI.Focus SurrenderButton", "frames 3"
+    Key Enter
+    Step "waitui", "frames 5", "hol.UI.Focus ConfirmButton", "frames 3"
+    Key Enter
+    Step "waitlog End banner: Defeat", "waitui", "frames 10"
+    # D358: an order of the fallen player (a foundation asked by the server's path, its own centre gone) is refused.
+    Step "mark victory order", "hol.Build.PlaceNear House -6000 0 enemy", "waitlog Victory: orders of defeated slot 0 refused", "frames 5"
+    Step "mark victory escape", "hol.UI.Open GameMenu", "waitui", "frames 5"
+    Key Escape
+    Step "waitlog Game menu: closed", "waitui", "frames 10"
+    Key Escape
+    Step "waitlog End banner: closed", "waitui", "frames 10"
+    Step "mark victory win", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60",
+        "hol.Victory.Defeat 1", "waitlog End banner: Victory", "waitui", "frames 5", "hol.UI.Focus QuitButton", "frames 3"
+    Key Enter
+    Step "waitlog End banner: quit to menu", "waitmap MainMenu", "waitui", "mark victory end"
 }
 
 # Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles; each main
@@ -1417,7 +1449,22 @@ if ($NetListening) {
         # "others []", the flake of 2026-10-16).
         # The arrows (J7c.2b2): deduced by each client from the Attacking state of the server's Archers (net arrows), all
         # landed by now (client 1 signals its end once they have).
-        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport", "mark end", "quit"
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
+        # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
+        # then signals; client 1 gives up (hol.Victory.Surrender, the server's ServerSurrender), its banner Defeat; client 2's
+        # banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
+        # Client 1 waits for client 2's last report before quitting.
+        if ($Parts -contains "victory") {
+            $VictoryReady = Join-Path $TestSaved "quick_net_victory_ready.flag"
+            $VictoryDone = Join-Path $TestSaved "quick_net_victory_done.flag"
+            if ($Client -eq 1) { $NetSteps += "mark victory", "waitfile $VictoryReady", "hol.Victory.Surrender", "waitlog End banner: Defeat", "waitfile $VictoryDone" }
+            else {
+                $NetSteps += "mark victory", "hol.Units.Report", "signal $VictoryReady", "waitlog End banner: Victory"
+                for ($i = 0; $i -lt 5; $i++) { $NetSteps += "wait 1", "hol.Units.Report" }
+                $NetSteps += "signal $VictoryDone"
+            }
+        }
+        $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
@@ -1507,6 +1554,31 @@ $Errors = @($Log | Select-String -Pattern "LogHOLUI: (Error|Warning)|LogHOLMatch
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
 $AllOk = (Report "sequence" $SequenceChecks) -and $AllOk
 $Errors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
+
+if ($Parts -contains "victory") {
+    $Checks = [ordered]@{}
+    $Section = Get-Section "victory surrender"
+    foreach ($Want in "Game menu: opened", "Game menu: Surrender", "Victory: slot 0 defeated (Surrender)", "Victory: slot 0 collapsed", "Victory: match over, winners 1", "End banner: Defeat") {
+        $Checks["surrender by Escape, menu, Abandonner, Oui: $Want"] = [bool]($Section | Select-String -SimpleMatch $Want -Quiet)
+    }
+    $Section = Get-Section "victory order"
+    $Checks["an order after the defeat refused by the server (D358)"] = [bool]($Section | Select-String -SimpleMatch "Victory: orders of defeated slot 0 refused (D358)" -Quiet) -and
+        -not ($Section | Select-String -SimpleMatch "Construction: slot 0 placed" -Quiet)
+    $Section = Get-Section "victory escape"
+    $Checks["menu over the banner opened then closed by Escape"] = [bool]($Section | Select-String -SimpleMatch "Game menu: opened" -Quiet) -and
+        [bool]($Section | Select-String -SimpleMatch "Game menu: closed" -Quiet)
+    # V1.4a: Escape still the banner's Back (Continuer a regarder) once the menu over it is closed, not the menu again.
+    $Reopened = @($Section | Select-String -SimpleMatch "Game menu: opened").Count
+    $Checks["then Escape closes the banner (End banner: closed, menu opened $Reopened time(s))"] = [bool]($Section | Select-String -SimpleMatch "End banner: closed" -Quiet) -and $Reopened -eq 1
+    $Section = Get-Section "victory win"
+    $Checks["AI defeated: match over, winners 0"] = [bool]($Section | Select-String -SimpleMatch "Victory: match over, winners 0" -Quiet)
+    $Checks["End banner: Victory"] = [bool]($Section | Select-String -SimpleMatch "End banner: Victory" -Quiet)
+    # The menu's map loaded after the click (the section's first LoadMap is the way to the second match).
+    $Quit = @($Section | Select-String -SimpleMatch "End banner: quit to menu" | Select-Object -First 1)
+    $After = if ($Quit.Count) { $Section[($Quit[0].LineNumber - 1)..($Section.Count - 1)] } else { @() }
+    $Checks["Quitter vers le menu: MainMenu loaded"] = [bool]($After | Select-String -Pattern "LoadMap: /Game/Maps/MainMenu" -Quiet)
+    $AllOk = (Report "victory" $Checks) -and $AllOk
+}
 
 if ($Parts -contains "smoke") {
     $Checks = [ordered]@{}
@@ -3277,6 +3349,7 @@ if ($Parts -contains "net") {
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetListening
     $HeldSlots = @()
+    $NetHeld = @{}
     $NetSelectedTrees = @{}
     $NetPopups = @{}
     foreach ($NetClient in $NetClients) {
@@ -3289,7 +3362,8 @@ if ($Parts -contains "net") {
         $Checks["client $N : holds a slot ($Held)"] = $null -ne $Held
         if ($null -eq $Held) { continue }
         $HeldSlots += $Held
-        $Camera = $ClientLines | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\)" | Select-Object -First 1
+        $NetHeld[$N] = $Held
+        $Camera =$ClientLines | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\)" | Select-Object -First 1
         $Start = Get-SlotStart $Held
         $Checks["client $N : camera above slot $Held"] = $Camera -and ([Math]::Abs([int]$Camera.Matches[0].Groups[1].Value - $Start[0]) -le 2) -and
             ([Math]::Abs([int]$Camera.Matches[0].Groups[2].Value - $Start[1]) -le 2)
@@ -3644,6 +3718,30 @@ if ($Parts -contains "net") {
         $Checks["server: each builder unloaded at its camp ($($CampUnloads -join '; '))"] = ($CampUnloads -join '|') -eq $CampsWanted
         $OnTree = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place LumberCamp at \(-?\d+, -?\d+\): (.*)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): $($_.Matches[0].Groups[2].Value)" } | Sort-Object)
         $Checks["server: each camp on a tree refused ($($OnTree -join '; '))"] = (@($OnTree | ForEach-Object { $_.Substring(0, 1) }) -join ',') -eq "0,1"
+    }
+    # The end of the match (V1.4c, D356-D358), the net part's last: client 1 gave up; the server defeats its slot,
+    # collapses it and ends the match, client 2's slot the winner; the banners Defeat on client 1, Victory on client 2
+    # (the game state's replication and OnRep); client 2 sees client 1's units go (none left 5 s after its banner).
+    if ($Parts -contains "victory") {
+        $Loser = $NetHeld[1]; $Winner = $NetHeld[2]
+        $ServerLines = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+        $Checks["victory: server, slot $Loser (client 1) defeated by its surrender"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Victory: slot $Loser defeated (Surrender)" -Quiet)
+        $Collapsed = $ServerLines | Select-String -Pattern "Victory: slot $Loser collapsed \((\d+) units, (\d+) buildings\)" | Select-Object -First 1
+        $Checks["victory: server, slot $Loser collapsed ($(if ($Collapsed) { "$($Collapsed.Matches[0].Groups[1].Value) units, $($Collapsed.Matches[0].Groups[2].Value) buildings" }))"] =
+            ($null -ne $Collapsed) -and ([int]$Collapsed.Matches[0].Groups[1].Value -ge 1) -and ([int]$Collapsed.Matches[0].Groups[2].Value -ge 1)
+        $Over = @($ServerLines | Select-String -Pattern "Victory: match over, (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Checks["victory: server, match over, winners $Winner ($($Over -join '; '))"] = ($null -ne $Winner) -and (($Over -join '|') -eq "winners $Winner")
+        $Banner = @{}
+        foreach ($NetClient in $NetClients) {
+            $Banner[$NetClient.Client] = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "victory" | Select-String -Pattern "End banner: (\w+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        }
+        $Checks["victory: client 1, End banner: Defeat ($($Banner[1] -join ', '))"] = ($Banner[1] -join ',') -eq "Defeat"
+        $Checks["victory: client 2, End banner: Victory ($($Banner[2] -join ', '))"] = ($Banner[2] -join ',') -eq "Victory"
+        $Client2Log = ($NetClients | Where-Object { $_.Client -eq 2 } | Select-Object -First 1).Log
+        $Shown = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Units report: (.*)$" | ForEach-Object {
+            $Text = $_.Matches[0].Groups[1].Value
+            ([regex]::Matches($Text, "of slot $Loser x(\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Measure-Object -Sum).Sum })
+        $Checks["victory: client 2 sees client 1's units go ($($Shown -join ' -> '))"] = ($Shown.Count -eq 6) -and ($Shown[0] -ge 1) -and ($Shown[-1] -eq 0)
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

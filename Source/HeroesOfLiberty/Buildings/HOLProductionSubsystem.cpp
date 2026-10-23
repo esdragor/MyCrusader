@@ -315,23 +315,33 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		}
 	}
 
-	// The population each player sees: its units (the births just asked for included) and its units in production.
+	// The population each player sees: its units (the births just asked for included) and its units in production. Every
+	// player, not only those with a building: one left without any (a defeated one's collapse, D358) shows 0 / 0, not the
+	// population it had before (seen at the trial of victory_surrender).
 	Units->GetPopulationByOwner(UnitPopulation);
-	for (const TPair<int32, int32>& Cap : Caps)
+	const AGameStateBase* GameState = World->GetGameState();
+	if (!GameState)
 	{
-		if (AHOLPlayerState* PlayerState = FindPlayerState(Cap.Key))
+		return;
+	}
+	for (APlayerState* Each : GameState->PlayerArray)
+	{
+		AHOLPlayerState* PlayerState = Cast<AHOLPlayerState>(Each);
+		const int32 PlayerIndex = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+		if (PlayerIndex == INDEX_NONE)
 		{
-			int32 InProduction = 0;
-			for (const AHOLBuilding* Building : Buildings)
-			{
-				if (Building->GetOwnerPlayer() == Cap.Key)
-				{
-					InProduction += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
-				}
-			}
-			const int32 Used = (UnitPopulation.IsValidIndex(Cap.Key) ? UnitPopulation[Cap.Key] : 0) + InProduction;
-			PlayerState->SetPopulation(Used, HOLProduction::GetPopulationCap(Cap.Value));
+			continue;
 		}
+		int32 InProduction = 0;
+		for (const AHOLBuilding* Building : Buildings)
+		{
+			if (Building->GetOwnerPlayer() == PlayerIndex)
+			{
+				InProduction += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
+			}
+		}
+		const int32 Used = (UnitPopulation.IsValidIndex(PlayerIndex) ? UnitPopulation[PlayerIndex] : 0) + InProduction;
+		PlayerState->SetPopulation(Used, HOLProduction::GetPopulationCap(Caps.FindRef(PlayerIndex)));
 	}
 }
 

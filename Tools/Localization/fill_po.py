@@ -37,6 +37,18 @@ TRANSLATIONS = {
     "HOLConfirmDialog,Yes": ("Yes", "はい"),
     "HOLConfirmDialog,No": ("No", "いいえ"),
 
+    "HOLGameMenu,Title": ("Menu", "メニュー"),
+    "HOLGameMenu,Resume": ("Resume", "再開"),
+    "HOLGameMenu,Surrender": ("Surrender", "降伏"),
+    "HOLGameMenu,SurrenderQuestion": ("Surrender the match?", "降伏しますか？"),
+    "HOLGameScreen,Menu": ("Menu", "メニュー"),
+
+    "HOLEndBanner,Victory": ("Victory", "勝利"),
+    "HOLEndBanner,Defeat": ("Defeat", "敗北"),
+    "HOLEndBanner,ContinueWatching": ("Keep watching", "観戦を続ける"),
+    "HOLEndBanner,Continue": ("Continue", "続ける"),
+    "HOLEndBanner,QuitToMenu": ("Quit to menu", "メニューに戻る"),
+
     "HOLTitleScreen,Play": ("Play", "プレイ"),
     "HOLTitleScreen,Settings": ("Settings", "設定"),
     "HOLTitleScreen,Quit": ("Quit", "終了"),

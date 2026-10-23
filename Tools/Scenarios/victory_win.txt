@@ -1,0 +1,39 @@
+# Victoire (V1) : l'IA abandonne (triche hol.Victory.Defeat 1) ; ses unités tombent, ses bâtiments partent en décombres, bandeau Victoire
+# Plain, deux joueurs (victory_win.json) : slot 0 humain, slot 1 IA, équipes séparées. Positions dans le repère du centre
+# de chaque joueur (X vers le milieu de la carte ; « enemy » : celui de l'IA). Chaque camp près de son centre, derrière
+# lui (places sans rochers de building_destroy) : ~300 m entre les deux, rien ne se bat tout seul.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+# L'humain : 5 Paysans et 6 Lanciers derrière son centre (hors de son emprise, ~11 m de rayon).
+hol.Camera.FocusNear -2000 -400
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+hol.Camera.FocusNear -2100 500
+frames 2
+hol.Units.SpawnHere 6 Spearman 0 250
+waitunits 11
+# L'IA : une Caserne finie et une Maison derrière son centre, 8 Lanciers à côté de la Maison,
+# à gauche de l'écran : le bandeau, au milieu, ne les cache pas.
+hol.Cheat.SpawnBuilding Barracks 1 -1800 -1400 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding House 1 -1400 1200 enemy
+waitlog Cheat: spawned House of slot 1
+hol.Camera.FocusNear -1000 2400 enemy
+frames 2
+hol.Units.SpawnHere 8 Spearman 1 300
+waitunits 19
+# La caméra sur la base de l'IA : son centre, sa Caserne, sa Maison, ses Lanciers.
+hol.Camera.FocusNear -1700 0 enemy
+hol.Camera.Zoom -1
+frames 5
+note La caméra est sur la base de l'IA : son centre, sa Caserne, sa Maison et ses 8 Lanciers.
+waitkey Entrée : l'IA abandonne (triche)
+hol.Camera.FocusNear -1700 0 enemy
+frames 2
+hol.Victory.Defeat 1
+waitlog Victory: slot 1 collapsed
+note Les Lanciers de l'IA tombent (corps 30 s), ses bâtiments partent en décombres (10 s) ; bandeau Victoire.
+waitlog End banner: Victory
+note 1. « Continuer » : le bandeau se ferme, la partie reste ouverte (tu regardes).
+note 2. Puis Échap (sans sélection) ou le bouton Menu en haut à droite : le menu s'ouvre, sans « Abandonner » ; « Reprendre » le ferme.
+note 3. Bouton « Relancer » du panneau, Entrée, puis « Quitter vers le menu » sur le bandeau : retour à l'écran titre.

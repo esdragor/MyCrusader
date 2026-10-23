@@ -6,6 +6,7 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Dev/HOLTestHooks.h"
+#include "HUD/HOLGameHUD.h"
 #include "Menu/HOLMenuPlayerController.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
@@ -19,6 +20,12 @@ void UHOLRootLayout::NativeOnInitialized()
 
 		UImage* Background = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Background"));
 		Background->SetColorAndOpacity(HOLUIStyle::Background);
+		// Over a match (D356: the in-game menu), the game shows through and the clicks go to it while no screen is open.
+		if (IsOverMatch())
+		{
+			Background->SetVisibility(ESlateVisibility::Collapsed);
+			SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		}
 		MenuLayer = WidgetTree->ConstructWidget<UCommonActivatableWidgetStack>(UCommonActivatableWidgetStack::StaticClass(), TEXT("MenuLayer"));
 		ModalLayer = WidgetTree->ConstructWidget<UCommonActivatableWidgetStack>(UCommonActivatableWidgetStack::StaticClass(), TEXT("ModalLayer"));
 
@@ -30,6 +37,19 @@ void UHOLRootLayout::NativeOnInitialized()
 		}
 	}
 	Super::NativeOnInitialized();
+	if (IsOverMatch())
+	{
+		// No fade over a match (V1.3b): a dialog half faded let the in-game menu be read through it.
+		for (UCommonActivatableWidgetStack* Layer : { MenuLayer.Get(), ModalLayer.Get() })
+		{
+			if (Layer)
+			{
+				Layer->SetTransitionDuration(0.f);
+			}
+		}
+		// The game screen keeps the scripted checks' hooks (hud=...).
+		return;
+	}
 
 	// For the scripted checks (hol.Test.Run): wait for the screens to stop fading, name the screens shown.
 	for (UCommonActivatableWidgetStack* Layer : { MenuLayer.Get(), ModalLayer.Get() })
@@ -77,8 +97,38 @@ UCommonActivatableWidget* UHOLRootLayout::GetActiveMenu() const
 	return MenuLayer ? MenuLayer->GetActiveWidget() : nullptr;
 }
 
+bool UHOLRootLayout::HasMenuOtherThan(const UCommonActivatableWidget* Screen) const
+{
+	if (!MenuLayer)
+	{
+		return false;
+	}
+	for (const UCommonActivatableWidget* Widget : MenuLayer->GetWidgetList())
+	{
+		if (Widget && Widget != Screen)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+UCommonActivatableWidget* UHOLRootLayout::GetActiveModal() const
+{
+	return ModalLayer ? ModalLayer->GetActiveWidget() : nullptr;
+}
+
 UHOLRootLayout* UHOLRootLayout::Get(const APlayerController* PlayerController)
 {
-	const AHOLMenuPlayerController* MenuController = Cast<AHOLMenuPlayerController>(PlayerController);
-	return MenuController ? MenuController->GetRootLayout() : nullptr;
+	if (const AHOLMenuPlayerController* MenuController = Cast<AHOLMenuPlayerController>(PlayerController))
+	{
+		return MenuController->GetRootLayout();
+	}
+	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
+	return GameHUD ? GameHUD->GetMenuLayout() : nullptr;
+}
+
+bool UHOLRootLayout::IsOverMatch() const
+{
+	return !Cast<AHOLMenuPlayerController>(GetOwningPlayer());
 }

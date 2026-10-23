@@ -42,6 +42,7 @@ struct FHOLUnitTypeRow;
  * The HUD reads the match and never changes it: a click on a cell or on
  * an item of the queue goes to the controller, then the server (D252); the grid's keys are the controller's own
  * (IMC_Game). Built in code when no Blueprint gives it a layout (D242).
+ * Top right, « Menu » opens the in-game menu (D356), as Escape with nothing selected.
  * Input stays the game's: input mode All, no Back handler (Escape deselects through IA_Deselect), never the keyboard
  * focus. A click on a panel stops at the HUD; a click anywhere else reaches the game (only the panels are hit-test
  * visible).
@@ -64,7 +65,7 @@ public:
 
 	/**
 	 * Clicks a cell of the grid (GridCell00 to GridCell11), an item of the queue (QueueItem0 to QueueItem4) or the idle
-	 * workers' counter (IdleWorkers), found by its name, by the same path as the mouse (hol.HUD.Click). False when it is
+	 * workers' counter (IdleWorkers) or « Menu » (MenuButton), found by its name, by the same path as the mouse (hol.HUD.Click). False when it is
 	 * hidden or greyed.
 	 */
 	bool ClickWidget(FName Name);
@@ -127,6 +128,10 @@ protected:
 	/** The idle workers' counter (J5b, D298, D30): a click selects the next one, as ".". Greyed when there is none. */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLQueueItem> IdleWorkers;
+
+	/** Top right: opens the in-game menu (D356). */
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLQueueItem> MenuButton;
 
 	/** The control groups' bar (J7a.5, D30), bottom left: one slot per group not empty, 1 to 9 then 0. */
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -248,6 +253,7 @@ private:
 	/** The idle workers' counter, written when their number changed. */
 	void RefreshIdleWorkers();
 	void HandleIdleWorkersClicked();
+	void HandleMenuClicked();
 	/**
 	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not
 	 * empty, its digit and number, its types in the tooltip; the group just selected lit briefly. Logs « HUD groups: ... »

@@ -398,6 +398,28 @@ public:
 	void RequestCheatDamageBuilding(const FVector& Point, int32 Amount, uint8 AttackType);
 	/** D345.2b, scenarios: a finished building of TypeName for Slot, on the tile grid around Point (hol.Cheat.SpawnBuilding). */
 	void RequestCheatSpawnBuilding(FName TypeName, int32 Slot, const FVector& Point);
+	/** V1.1: any slot loses at once, an AI's too (hol.Victory.Defeat), as a surrender would but with the reason Cheat. */
+	void RequestCheatDefeat(int32 Slot);
+
+	/**
+	 * D356: the player gives up, an immediate defeat (hol.Victory.Surrender until the in-game menu of V1.3). The server
+	 * defeats the player's own slot only, not already defeated, the match not over.
+	 */
+	void RequestSurrender();
+
+	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
+	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
+	FOnGameMenuRequested OnGameMenuRequested;
+	/** The interface says when its in-game menu opens or closes (D356: Escape then closes it). */
+	void SetGameMenuOpen(bool bOpen) { bGameMenuOpen = bOpen; }
+	bool IsGameMenuOpen() const { return bGameMenuOpen; }
+	/**
+	 * D357: the player's slot is defeated, it only watches: camera and selection kept (the units' details), no order,
+	 * no grid, no placement sent from this machine (the server refuses them anyway, V1.2).
+	 */
+	bool IsSpectator() const;
+	/** Units, a building, a group of buildings or a source selected. */
+	bool HasSelection() const;
 
 	/** A « +10 » shown on this machine (J5c.3): the unload, when it arrived, and its line over others at the same place. */
 	struct FShownDepositPopup
@@ -558,6 +580,12 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerCheatSpawnBuilding(FName TypeName, int32 Slot, FVector_NetQuantize Point);
 
+	UFUNCTION(Server, Reliable)
+	void ServerCheatDefeat(int32 Slot);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSurrender();
+
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;
 
@@ -577,6 +605,8 @@ private:
 	TArray<uint32> SelectedUnits;
 	/** Selected resource source, never with a building or units; INDEX_NONE: none. */
 	int32 SelectedSource = INDEX_NONE;
+	/** The interface's in-game menu is open (D356). */
+	bool bGameMenuOpen = false;
 	TArray<uint32> IdleWorkers;
 	/** The idle worker the last "." selected: the next press goes on from it. */
 	uint32 LastIdleWorker = 0;

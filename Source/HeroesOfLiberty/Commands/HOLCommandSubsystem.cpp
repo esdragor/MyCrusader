@@ -5,6 +5,7 @@
 #include "Buildings/HOLBuilding.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "NavigationSystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 
@@ -13,10 +14,37 @@ bool UHOLCommandSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
 }
 
+bool UHOLCommandSubsystem::IsRefused(const int32 PlayerIndex)
+{
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World && PlayerIndex != INDEX_NONE ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState || !GameState->IsSlotDefeated(PlayerIndex))
+	{
+		return false;
+	}
+	const uint32 Bit = 1u << (PlayerIndex & 31);
+	if (!(RefusalsLogged & Bit))
+	{
+		RefusalsLogged |= Bit;
+		UE_LOG(LogHOLCommands, Display, TEXT("Victory: orders of defeated slot %d refused (D358)"), PlayerIndex);
+	}
+	return true;
+}
+
+void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
+{
+	const auto OfPlayer = [PlayerIndex](const auto& Order) { return Order.PlayerIndex == PlayerIndex; };
+	PendingMoveOrders.RemoveAll(OfPlayer);
+	PendingGatherOrders.RemoveAll(OfPlayer);
+	PendingProductionOrders.RemoveAll(OfPlayer);
+	PendingConstructionOrders.RemoveAll(OfPlayer);
+	PendingBuildOrders.RemoveAll(OfPlayer);
+}
+
 void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask,
 	const FVector2D& FrontLine, const bool bFrontWidth, const bool bQueue)
 {
-	if (UnitIds.Num() == 0)
+	if (UnitIds.Num() == 0 || IsRefused(PlayerIndex))
 	{
 		return;
 	}
@@ -56,7 +84,7 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitIds, const EHOLOrderKind Kind, const uint32 TargetUnitId, const int32 PlayerIndex,
 	const bool bQueue)
 {
-	if (UnitIds.Num() == 0 || Kind == EHOLOrderKind::Move || Kind == EHOLOrderKind::AttackMove)
+	if (UnitIds.Num() == 0 || Kind == EHOLOrderKind::Move || Kind == EHOLOrderKind::AttackMove || IsRefused(PlayerIndex))
 	{
 		return;
 	}
@@ -94,7 +122,7 @@ void UHOLCommandSubsystem::IssueCombatWalk(const uint32 UnitId, const FVector& T
 
 void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const int32 PlayerIndex, const bool bQueue)
 {
-	if (UnitIds.Num() == 0 || !Building)
+	if (UnitIds.Num() == 0 || !Building || IsRefused(PlayerIndex))
 	{
 		return;
 	}
@@ -109,7 +137,7 @@ void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32
 
 void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)
 {
-	if (UnitIds.Num() == 0 || SourceIndex == INDEX_NONE)
+	if (UnitIds.Num() == 0 || SourceIndex == INDEX_NONE || IsRefused(PlayerIndex))
 	{
 		return;
 	}
@@ -146,7 +174,10 @@ void UHOLCommandSubsystem::ConsumeMoveOrders(TArray<FHOLMoveOrder>& OutOrders)
 
 void UHOLCommandSubsystem::IssueProductionOrder(const FHOLProductionCommand& Command)
 {
-	PendingProductionOrders.Add(Command);
+	if (!IsRefused(Command.PlayerIndex))
+	{
+		PendingProductionOrders.Add(Command);
+	}
 }
 
 void UHOLCommandSubsystem::ConsumeProductionOrders(TArray<FHOLProductionCommand>& OutCommands)
@@ -157,7 +188,10 @@ void UHOLCommandSubsystem::ConsumeProductionOrders(TArray<FHOLProductionCommand>
 
 void UHOLCommandSubsystem::IssueConstructionOrder(const FHOLConstructionCommand& Command)
 {
-	PendingConstructionOrders.Add(Command);
+	if (!IsRefused(Command.PlayerIndex))
+	{
+		PendingConstructionOrders.Add(Command);
+	}
 }
 
 void UHOLCommandSubsystem::ConsumeConstructionOrders(TArray<FHOLConstructionCommand>& OutCommands)
@@ -168,7 +202,7 @@ void UHOLCommandSubsystem::ConsumeConstructionOrders(TArray<FHOLConstructionComm
 
 void UHOLCommandSubsystem::IssueBuildOrder(const FHOLBuildOrder& Order)
 {
-	if (Order.UnitIds.Num() > 0 && (Order.Building.IsValid() || Order.SourceIndex != INDEX_NONE))
+	if (Order.UnitIds.Num() > 0 && (Order.Building.IsValid() || Order.SourceIndex != INDEX_NONE) && !IsRefused(Order.PlayerIndex))
 	{
 		FHOLBuildOrder& Added = PendingBuildOrders.Add_GetRef(Order);
 		Added.bChain |= bPlayerOrders;

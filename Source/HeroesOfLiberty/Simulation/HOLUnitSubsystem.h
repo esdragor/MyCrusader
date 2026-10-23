@@ -79,6 +79,12 @@ public:
 	 */
 	void MarkUnitDying(uint32 UnitId);
 	void RequestDestroyAllUnits();
+	/**
+	 * D358: a defeated slot collapses. Every living unit of Owner goes to 0 health and Dying (MarkUnitDying): the combat
+	 * processor takes it on its dying path at its next step (FinishDying: its fall, then its body kept 30 s), as a unit
+	 * killed in combat; its births waiting are dropped. Returns how many units were killed.
+	 */
+	int32 KillUnitsOfOwner(uint8 Owner);
 	/** Destroys the queued units; returns how many were destroyed. Called at the end of the fixed step. */
 	int32 FlushDestructions();
 

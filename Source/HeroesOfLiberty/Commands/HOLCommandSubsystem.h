@@ -127,10 +127,20 @@ public:
 	/** Takes the footprints blocked since the last step (the order processor calls this at each step). */
 	void ConsumeBlockedFootprints(TArray<FHOLBlockedFootprint>& OutFootprints);
 
+	/** D358: drops every order of PlayerIndex still waiting (a slot just defeated). */
+	void DropOrdersOf(int32 PlayerIndex);
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
 private:
+	/**
+	 * D358: PlayerIndex is a defeated slot (AHOLGameState): its orders, productions and constructions are refused here,
+	 * where every order of a player enters (the first refusal of each slot logged). INDEX_NONE (the server's own) never is.
+	 */
+	bool IsRefused(int32 PlayerIndex);
+	/** Bit Slot: its first refusal was logged. */
+	uint32 RefusalsLogged = 0;
 	/** A FPlayerOrderScope lives (D328). */
 	bool bPlayerOrders = false;
 	/** A FRallyOrderScope lives (D328). */

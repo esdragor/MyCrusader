@@ -39,6 +39,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLUnitTrait.h"
 #include "Steering/MassSteeringTrait.h"
+#include "Match/HOLGameState.h"
 #include "Presentation/HOLCorpse.h"
 #include "Presentation/HOLCorpseTrait.h"
 #include "StructUtils/StructUtilsTypes.h"
@@ -504,6 +505,12 @@ void UHOLUnitSubsystem::RequestUnits(const FHOLUnitSpawnRequest& Request)
 		UE_LOG(LogHOLSimulation, Error, TEXT("Birth request for unknown unit type '%s' ignored (D221)"), *Request.TypeName.ToString());
 		return;
 	}
+	// D358: a defeated slot has nothing born any more.
+	if (const AHOLGameState* GameState = World->GetGameState<AHOLGameState>(); GameState && GameState->IsSlotDefeated(Request.OwnerPlayer))
+	{
+		UE_LOG(LogHOLSimulation, Verbose, TEXT("Birth of %d '%s' of defeated slot %d refused (D358)"), Request.Count, *Request.TypeName.ToString(), Request.OwnerPlayer);
+		return;
+	}
 	BirthQueue.Add(Request);
 }
 
@@ -685,6 +692,33 @@ void UHOLUnitSubsystem::MarkUnitDying(const uint32 UnitId)
 	{
 		Record->bDying = true;
 	}
+}
+
+int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner)
+{
+	BirthQueue.RemoveAll([Owner](const FHOLUnitSpawnRequest& Request) { return Request.OwnerPlayer == Owner; });
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!EntitySubsystem)
+	{
+		return 0;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	int32 Killed = 0;
+	for (TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		FHOLUnitRecord& Record = Unit.Value;
+		FHOLUnitStateFragment* State = Record.OwnerPlayer == Owner && !Record.bDying
+			? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity) : nullptr;
+		if (State && State->CurrentHealth > 0)
+		{
+			// At 0 health "by another way" (UHOLCombatProcessor::FinishDying): the same dying path as a unit killed in combat.
+			State->CurrentHealth = 0;
+			State->Activity = EHOLUnitActivity::Dying;
+			Record.bDying = true;
+			++Killed;
+		}
+	}
+	return Killed;
 }
 
 void UHOLUnitSubsystem::RequestDestroyAllUnits()

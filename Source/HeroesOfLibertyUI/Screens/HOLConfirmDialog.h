@@ -16,6 +16,7 @@ class HEROESOFLIBERTYUI_API UHOLConfirmDialog : public UHOLScreen
 public:
 	UHOLConfirmDialog();
 
+	/** An empty ConfirmLabel keeps « Oui » (D356: « Abandonner la partie ? » Oui / Non). */
 	void SetUp(const FText& Question, const FText& ConfirmLabel, TFunction<void()> InOnConfirm);
 
 protected:

@@ -12,8 +12,15 @@
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
 #include "HUD/HOLScenarioPanel.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLPlayerState.h"
+#include "Player/HOLGameMenuRules.h"
+#include "Screens/HOLEndBanner.h"
+#include "TimerManager.h"
 #include "Player/HOLPlayerController.h"
+#include "Screens/HOLGameMenu.h"
 #include "Style/HOLUIStyles.h"
+#include "Widgets/HOLRootLayout.h"
 
 namespace UE::HeroesOfLiberty::UI::GameHUD
 {
@@ -97,6 +104,76 @@ void AHOLGameHUD::BeginPlay()
 		UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner = this;
 	}
 #endif
+	// D356: the in-game menu's layers, over everything; Escape with nothing to undo opens the menu.
+	MenuLayout = CreateWidget<UHOLRootLayout>(PlayerController, UHOLRootLayout::StaticClass());
+	if (MenuLayout)
+	{
+		MenuLayout->AddToViewport(/*ZOrder*/ 10);
+	}
+	if (AHOLPlayerController* HOLController = Cast<AHOLPlayerController>(PlayerController))
+	{
+		const TWeakObjectPtr<AHOLPlayerController> WeakController(HOLController);
+		HOLController->OnGameMenuRequested.AddWeakLambda(this, [WeakController]()
+		{
+			UHOLGameMenu::Open(WeakController.Get());
+		});
+	}
+	// D357, V1-Q2: the end banner, at each defeat or the match's end.
+	ClosedEndBanner = EHOLEndBanner::None;
+	WatchVictory();
+}
+
+void AHOLGameHUD::WatchVictory()
+{
+	UWorld* World = GetWorld();
+	AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (GameState && WatchedGameState.Get() != GameState)
+	{
+		GameState->OnVictoryChanged.AddUObject(this, &AHOLGameHUD::RefreshEndBanner);
+		WatchedGameState = GameState;
+	}
+	const AHOLPlayerController* Controller = Cast<AHOLPlayerController>(GetOwningPlayerController());
+	if (GameState && Controller && Controller->GetHOLPlayerState())
+	{
+		GetWorldTimerManager().ClearTimer(WatchVictoryTimer);
+		RefreshEndBanner();
+	}
+	else if (World && !GetWorldTimerManager().IsTimerActive(WatchVictoryTimer))
+	{
+		GetWorldTimerManager().SetTimer(WatchVictoryTimer, this, &AHOLGameHUD::WatchVictory, 0.25f, /*bLoop*/ true);
+	}
+}
+
+void AHOLGameHUD::RefreshEndBanner()
+{
+	APlayerController* PlayerController = GetOwningPlayerController();
+	const AHOLPlayerController* Controller = Cast<AHOLPlayerController>(PlayerController);
+	const AHOLPlayerState* PlayerState = Controller ? Controller->GetHOLPlayerState() : nullptr;
+	const AHOLGameState* GameState = WatchedGameState.Get();
+	if (!PlayerState || !GameState)
+	{
+		return;
+	}
+	const EHOLEndBanner Due = HOLGameMenuRules::GetEndBanner(PlayerState->GetPlayerIndex(), GameState->GetDefeatedMask(),
+		GameState->IsMatchOver(), GameState->GetWinnerMask());
+	const bool bShown = EndBanner && EndBanner->IsActivated();
+	if (!HOLGameMenuRules::ShouldOpenEndBanner(Due, bShown ? EndBanner->GetResult() : EHOLEndBanner::None, ClosedEndBanner))
+	{
+		return;
+	}
+	if (bShown)
+	{
+		EndBanner->SetResult(Due);
+		return;
+	}
+	EndBanner = UHOLEndBanner::Open(PlayerController, Due);
+	if (EndBanner)
+	{
+		EndBanner->OnClosedByPlayer.AddWeakLambda(this, [this](const EHOLEndBanner Closed)
+		{
+			ClosedEndBanner = Closed;
+		});
+	}
 }
 
 void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -109,6 +186,11 @@ void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner.Reset();
 	}
 #endif
+	if (MenuLayout)
+	{
+		MenuLayout->RemoveFromParent();
+		MenuLayout = nullptr;
+	}
 	if (ScenarioPanel)
 	{
 		ScenarioPanel->RemoveFromParent();

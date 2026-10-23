@@ -239,7 +239,8 @@ UHorizontalBox* UHOLScreen::AddButtonRow(UVerticalBox* Column)
 UHOLButton* UHOLScreen::AddButton(UHorizontalBox* Row, const FName Name, const FText& Label)
 {
 	USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-	Box->SetWidthOverride(UE::HeroesOfLiberty::UI::RowButtonWidth);
+	// A minimum, not a fixed width: a long label (« Continuer à regarder ») widens its button instead of overflowing it.
+	Box->SetMinDesiredWidth(UE::HeroesOfLiberty::UI::RowButtonWidth);
 	UHOLButton* Button = WidgetTree->ConstructWidget<UHOLButton>(UHOLButton::StaticClass(), Name);
 	Button->SetLabel(Label);
 	Box->SetContent(Button);
