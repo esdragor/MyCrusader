@@ -23,6 +23,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, SlotDefeats);
 	DOREPLIFETIME(AHOLGameState, bMatchOver);
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
+	DOREPLIFETIME(AHOLGameState, LaunchConfig);
 }
 
 void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)

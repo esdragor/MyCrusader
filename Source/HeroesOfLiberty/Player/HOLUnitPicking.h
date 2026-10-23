@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+struct FHOLMatchConfig;
+
 /** A unit as drawn on the screen (pixels), for the selection (J4, D288): light units have no collision to trace. */
 struct FHOLPickCandidate
 {
@@ -16,12 +18,27 @@ struct FHOLPickCandidate
 	double Depth = 0.;
 };
 
-/** A unit as drawn, with its type and whether it is the player's own: the double click (A.1) takes its type. */
+/** A unit as drawn, with its type, its owner and whether it is the player's own: the double click (A.1) takes its type. */
 struct FHOLTypedPickCandidate
 {
 	FHOLPickCandidate Pick;
 	FName TypeName;
 	bool bOwn = false;
+	/** Its owner's slot (D.2: a double click on an enemy takes that enemy's units of its type alone). */
+	int32 OwnerPlayer = INDEX_NONE;
+};
+
+/**
+ * The side of a unit for the local player, in the order a selection keeps them (D.1, AoE4's way): a box that takes
+ * several sides keeps only the first present, the player's own, then an ally's, then an enemy's, then a neutral one.
+ * Allies are the slots of the player's team (D.3, GetSide); no neutral unit exists yet.
+ */
+enum class EHOLSelectionSide : uint8
+{
+	Own,
+	Ally,
+	Enemy,
+	Neutral
 };
 
 /**
@@ -72,11 +89,47 @@ namespace HOLUnitPicking
 
 	/**
 	 * A double click (or Ctrl + click, as AoE4) on the candidate Clicked (A.1): every one of the player's own candidates of
-	 * its type whose body's middle is on the screen (0 to ViewportSize), Clicked first. Clicked not the player's own:
-	 * itself alone. Clicked not a candidate: none.
+	 * its type whose body's middle is on the screen (0 to ViewportSize), Clicked first. Clicked another player's (D.2): the
+	 * candidates of its type and of its owner (OwnerPlayer) on the screen, never the player's own nor another enemy's.
+	 * Clicked not a candidate: none.
 	 */
 	HEROESOFLIBERTY_API void PickSameTypeOnScreen(TConstArrayView<FHOLTypedPickCandidate> Candidates, int32 Clicked, const FVector2D& ViewportSize,
 		TArray<int32>& OutIndices);
+
+	/**
+	 * The side of a unit of the slot OwnerSlot for the local player of LocalSlot (D.1, D.3): its own; an ally when the two
+	 * slots are of one camp of the match's configuration (HOLVictoryRules::GetCamp: the same team 1..4); else an enemy.
+	 * No neutral unit exists yet.
+	 */
+	HEROESOFLIBERTY_API EHOLSelectionSide GetSide(const FHOLMatchConfig& Config, int32 OwnerSlot, int32 LocalSlot);
+
+	/**
+	 * The first side present among Sides (D.1): Own before Ally before Enemy before Neutral; false (OutSide untouched) when
+	 * Sides is empty.
+	 */
+	HEROESOFLIBERTY_API bool GetTopSide(TConstArrayView<EHOLSelectionSide> Sides, EHOLSelectionSide& OutSide);
+
+	/** Indices (in their order) of the units of the first side present among Sides (D.1, GetTopSide); none if empty. */
+	HEROESOFLIBERTY_API void KeepTopSide(TConstArrayView<EHOLSelectionSide> Sides, TArray<int32>& OutIndices);
+
+	/**
+	 * What a box selects (D.1) from the boxed units (and their sides) and, with Shift (bAdd), the selection so far
+	 * (Selected, all of the side SelectedSide). The boxed units keep their first side present only. Without Shift, or
+	 * nothing selected: those. With Shift, the first side of the whole wins: the boxed ones of a better side than the
+	 * selection replace it, of a worse side (or none boxed) leave it as is; of its side, they are added to it, or removed
+	 * from it when all of them already are (Shift + box on own units, as before D.1); without bRemoveWhenAll, only added
+	 * (Shift + double click, A.1 and D.2).
+	 */
+	HEROESOFLIBERTY_API void CombineBox(TConstArrayView<uint32> Selected, EHOLSelectionSide SelectedSide, TConstArrayView<uint32> Boxed,
+		TConstArrayView<EHOLSelectionSide> BoxedSides, bool bAdd, TArray<uint32>& OutUnits, bool bRemoveWhenAll = true);
+
+	/**
+	 * What a click on the unit Clicked (of the side ClickedSide) selects (D.2): itself alone without Shift (bAdd) or with
+	 * nothing selected; with Shift, as a box on it alone (CombineBox): of a better side than the selection, itself alone;
+	 * of a worse side, the selection as is; of its side, added, or removed when it already is selected.
+	 */
+	HEROESOFLIBERTY_API void CombineClick(TConstArrayView<uint32> Selected, EHOLSelectionSide SelectedSide, uint32 Clicked,
+		EHOLSelectionSide ClickedSide, bool bAdd, TArray<uint32>& OutUnits);
 
 	/**
 	 * The "." key (D30, J5b): of the idle workers (identifiers in increasing order), the first one after Last, or the
