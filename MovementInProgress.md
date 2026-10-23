@@ -995,24 +995,94 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   voit les bâtiments (build cut / gap verts). mycrusader-7d (Haldir, `ridge-rock`) corrige des soldats qui entrent
   dans les rochers de la crête (`ridge_army` ; `UHOLFootprintKeepOutProcessor` pour les obstacles fixes, sortie d'un
   membre coupé de sa case, partie `rocks`) : prévenue du recoupement. J5c libéré.
+- **Formation sur place, boucle 1 (sous-agent, Elrond, 13 min, pas de C++)** : cas `formation:regroup` (49 Hommes
+  d'armes à 1,25 m, 7×7 ; boîte au milieu, ordre 1 m à l'est ; arrivée ≤ 60 cm de sa case en 6 s) : **vert** (arrivés
+  en 1-1,5 s ; variante formée d'abord : nouvelles cases exactement sur place, ne mesure rien). Pas reproduit. Pistes
+  lues : `GetOverlapShare` 0,5 (`HOLSimulationProcessors.cpp:1625`), amis immobiles vus comme murs à 1 s
+  (`AvoidStillTime`, `TurnWithoutClearWay`), amis formés qui reviennent à leur case. À corriger : le filtre `formation:`
+  laisse tourner les autres rapports de la partie (FAIL global). **Leçon** : le retour venait de l'essai `select_type_q`
+  (armée **mêlée** de 16 serrée à 3,5 m, sélection d'**un type** par double clic ou Q, donc **éparpillé** parmi les
+  autres, petit ordre) : le cas doit reproduire ça. Boucle 2 lancée (minuteur).
+- **Formation sur place, boucle 2 (sous-agent, Elrond, 15 min, pas de C++)** : **ROUGE**. Cas `formation:regroup`
+  (`quick_check.ps1` ~113, ~512, ~1326, ~2785 ; seed 137 ; 6 Hommes d'armes, 6 Lanciers, 4 Archers à 3,5 m comme
+  `select_type_q` ; un type par `hol.Select.ClickUnit <i> double`, index −6 / −7 pour ce seed ; ordre 1 m à l'est ou
+  au centre ; relevé 0,5 s pendant 8 s ; vert si les 6 sont à ≤ 60 cm à 6 s et à la fin). Armée **jamais ordonnée** :
+  vert (1 s). Armée **formée d'abord** (un ordre pour tous, chacun tient sa case ; type en groupe de contrôle, ordre
+  8 s après) : **rouge** : Hommes d'armes 1 m à l'est, 2 encore hors de leur case à 6 s (amis poussés jusqu'à 128 cm) ;
+  Lanciers, 1 ; Hommes d'armes au centre, 3. Vu : posés sur leur case puis repoussés de 0,9-1,2 m, reviennent sans
+  pouvoir rentrer (jusqu'à 97 cm) ; ou 5-8 relevés de suite à ~33 cm de leur case, l'ami qui y est ne s'écarte pas.
+  Piste : les amis qui tiennent leur case (`PlaceHold` / `WatchPlace`) repoussent ou ne cèdent pas. Filtre corrigé
+  (~2836 : les autres rapports de `formation` sautés avec `formation:...`, ~104 s). Boucle 3 lancée (cause, minuteur).
+- **Formation sur place, boucle 3 (sous-agent, ~5 min, lecture du journal du jeu seulement)** : **cause** : les
+  nouvelles cases du type réordonné tombent **sur des cases que des amis tiennent encore** (`SettleBlockedPlaces` /
+  `IsFormationPlaceFree`, `HOLUnitOrderProcessor.cpp:526`, n'évitent que le navmesh). Deux cases tenues à moins de deux
+  corps (120 cm) ne peuvent pas être occupées ensemble ; `WatchPlace` fait revenir chacun à tour de rôle. Preuve (cas
+  « formé, au centre », #65-#70) : avant l'ordre, cases tenues à 150 cm de la plus proche ; après, six paires Homme
+  d'armes / Lancier non choisi à 74-86 cm (1 m à l'est : 30-108 cm ; Lanciers : 46-107 cm) ; jamais ordonnée : personne
+  ne tient de case, d'où le vert. Va-et-vient de #65-#67 et #75-#76 pendant 8 s (compteur de retours 54 → 73) ; arrêt à
+  ~33 cm : tolérance de retour 60 cm (`ReturnDistanceInRadii` 1), chacun se croit « sur sa case ». Écartés : (b) partage
+  50/50 (`GetOverlapShare`, `HOLCombatRules.cpp:82`) ; (c) règle Goal d'`AvoidBodies` (`HOLSimulationProcessors.cpp:434`).
+  Pas un bogue mais une règle manquante. Options : A **l'ordre le plus récent l'emporte** (un ami dont la case tenue est
+  à < 120 cm d'une nouvelle case la lâche, ou la reprend là où il a été poussé : bousculé 50/50, il ne revient pas) ; B
+  les nouvelles cases évitent les cases tenues (le type ne se forme pas où on l'a dit dans une armée serrée) ; C pousser
+  les amis immobiles à pleine force (complément de A seulement). Question à l'utilisateur.
+- **Choix de l'utilisateur : A** (la recommandation) : le dernier ordre l'emporte ; l'ami dont la case tenue gêne une
+  nouvelle case la lâche (ou la reprend là où il a été poussé) et ne revient pas. Boucle lancée (Elrond, minuteur),
+  rouge = `formation:regroup`.
+- **Choix A codé (sous-agent, Elrond, 11 min, rien de commité)** : **rouge** d'abord (« formed » : 2 hors de leur case
+  à 6 s ; « formed spear » : jusqu'à 73 cm ; « formed centre » : 3 hors, #65 / #66 encore en `FinalLeg`, #67 à 100 cm).
+  Règle pure `HOLFormation::ShouldYieldHeldPlace(HeldPlace, NewPlacesByX, RadiusSum)` (`HOLFormationRules.h:239`,
+  `.cpp:974` : case tenue strictement plus près que la somme des rayons d'une nouvelle case ; cases triées par X) ; test
+  `Formation.YieldPlace` (`HOLFormationTests.cpp:611`, écrit avec le code, pas vu rouge). À l'ordre
+  (`HOLUnitOrderProcessor.cpp:1408`, ordres en formation seulement, après la pose des cases) : grille d'obstacles sur la
+  boîte des nouvelles cases (+ 6 rayons + 300 cm) ; toute unité du même joueur hors de l'ordre qui tient une case en
+  conflit : `PlaceHold.Clear()` (bousculée, elle reste où elle finit). **Vert** ×3 (`formation:regroup` 105-109 s : les 6
+  à ≤ 60 cm en 2 s, 0 hors à 6 s, au plus 53 cm ; amis écartés jusqu'à 171 cm et restés) ; tests 125/125. Limite : un
+  ami encore en marche de son propre ordre de formation tiendra sa case à l'arrivée. `-Parts tests,move,formation,bodies`
+  lancé par la session principale, puis essai `select_type_q`.
+- `-Parts tests,move,formation,bodies` : **séquence arrêtée** à l'étape 1187 (`waitlog Selection: 6 units (own):
+  ManAtArms x6`) : le double clic par index (−6 / −7) tombe sur le corps dessiné au-dessus, autre type après les
+  parties d'avant ; « regroup » jamais joué, « camera 8p » perdu. Correctif du cas (session principale,
+  `quick_check.ps1` ~517-522, ~1335-1351) : le type étudié naît d'abord seul, double clic sur lui, groupe de contrôle
+  1-5 ; puis les deux autres types ; l'armée formée par une boîte si besoin ; le type repris par son groupe. Le rouge
+  avait été vu avec l'ancienne mise en place (même mélange, ordre de naissance différent). Relancé.
+- 2e relance : séquence encore arrêtée (étape 1185) : le double clic a pris **26** Hommes d'armes (« sur l'écran » :
+  les restes des cas de formation d'avant). Correctif : `hol.Units.Remove <RegroupAt> 3500 0` au début de chaque cas
+  « regroup ». 3e relance **arrêtée à la demande de l'utilisateur** (« stop tout, on continuera dans une autre
+  session ») avant sa fin : non jugée.
 
 ### Reprise exacte (MV.4)
 
 État :
-- **Dans `main` (8021c71, essais de l'utilisateur OK)** : MV.4.2 mur ennemi contourné, détour sans contact devant un
-  mur d'unités immobiles, partie `quick_check` « bodies » ; MV.4.4 bloc de renforts qui se défait près de la mêlée ;
-  **porter secours** (choix C : soldat de mêlée au repos qui voit un des siens se battre à `hol.Combat.AidRadius` 20 m
-  va l'aider ; cas « combat aid ») ; `AvoidBodies(..., Goal)`. **« Tenir le rang » (MV.4.5) essayé et refusé** : la
-  vague de J7c.4 est gardée (sauvegarde du code retiré : `scratchpad\elrond_mv45_holdline_full.patch`, session
-  0b11c55e). Elrond (`mv4-diag`) = `main` 8021c71.
+- **Dans `main` (c761fc2 et après, essais de l'utilisateur OK)** : MV.4.2 mur ennemi contourné, détour sans contact,
+  partie « bodies » ; MV.4.4 bloc de renforts qui se défait près de la mêlée ; **porter secours** (choix C,
+  `hol.Combat.AidRadius` 20 m, cas « combat aid ») ; `AvoidBodies(..., Goal)` ; foules ennemies (closes sans code) ;
+  **rochers non marchables** (NavArea_Null sur les 24 rochers, `Plain.umap` refait, naissance sur le sol le plus
+  proche, cas « move rock ») ; **contournement qui voit les bâtiments** (`LeadsIntoFootprint`, build cut / gap verts,
+  scénario `build_walkers`). « Tenir le rang » essayé et refusé (sauvegarde : `scratchpad\elrond_mv45_holdline_full.patch`,
+  session 0b11c55e). J5c libre (`build-red` = c761fc2).
+- **Dans Elrond (`mv4-diag` = 25979ef + travail NON COMMITÉ, pas encore essayé par l'utilisateur)** : « formation sur
+  place », choix A (le dernier ordre l'emporte) : `HOLFormation::ShouldYieldHeldPlace` (`HOLFormationRules.h:239`,
+  `.cpp:974`), à l'ordre `HOLUnitOrderProcessor.cpp:1408` (`PlaceHold.Clear()` des amis hors de l'ordre dont la case
+  tenue gêne une nouvelle case), test `Formation.YieldPlace` ; cas `quick_check` `formation:regroup` (~113, ~517-522,
+  ~1335-1355, ~2785, filtre ~2836). Compilé. `formation:regroup` seul : rouge puis **vert ×3** (ancienne mise en place par
+  index de clic) ; la nouvelle mise en place (type né seul, groupe de contrôle, zone vidée) **pas encore jouée**.
 
 À faire, dans l'ordre :
-1. ~~Foules ennemies qui se croisent~~ : clos à l'essai sans code (« c'est bon »).
-2. (ligne EtapeDefini à part) Unité apparue ou poussée sur un rocher : y reste coincée (vue dans `melee_reinforce`).
-3. MV.6 : décisions au GDD (MV.2, MV.5, MV.4 : détour sans contact, renforts, porter secours ; « tenir le rang »
-   essayé et refusé au profit de la vague de J7c.4), mesures S1-S5, clôture.
+1. Elrond : `-Parts formation:regroup` (nouvelle mise en place) : doit passer ; vérifier qu'il est **rouge** sans la
+   règle (retirer l'appel à `ShouldYieldHeldPlace` à ~1408, ou une cvar de coupure), sinon la mise en place ne prouve
+   rien. Puis `-Parts tests,move,formation,bodies` (avec « camera 8p » qui doit repasser).
+2. Fusionner `main` (c761fc2 et suivants) dans `mv4-diag`, compiler.
+3. Essai de l'utilisateur : `play.ps1 select_type_q -Root ..\HeroesOfLiberty-Elrond` (armée mêlée, double clic sur un
+   type, petit ordre ; d'abord un ordre pour toute l'armée, puis le type), puis commit (EtapeDefini : ligne « unités
+   d'un groupe remises en formation sur place » retirée), avance de `main` (accord des sessions).
+4. MV.6 : décisions au GDD (MV.2, MV.5, MV.4 : détour sans contact, renforts, porter secours, rochers, contournement des
+   bâtiments, formation sur place ; « tenir le rang » essayé et refusé au profit de la vague de J7c.4), mesures S1-S5
+   au repos, clôture.
+5. (aléa, EtapeDefini) « build site » rouge quand `build` suit `move,bodies` (plafond de population +20).
 Règles : test rouge d'abord (mémoire `red-test-first`) ; boucles de 15 min **avec minuteur lancé dans le même message
-que le sous-agent** ; rien de commité avant l'essai.
+que le sous-agent** ; chemins absolus dans les énoncés (un sous-agent a lu la copie principale par un chemin relatif) ;
+rien de commité avant l'essai.
 - (2026-10-23, session EtapeDefini) **Retour d'essai de l'utilisateur**, noté pour ce chantier : quand il sélectionne
   des unités au sein d'un groupe et leur donne l'ordre de bouger d'un rien (juste se mettre en formation là où elles
   sont), elles peinent, car elles ne poussent presque pas les autres. Ligne ajoutée à `EtapeDefini.md` (main 9c8e5f4).
