@@ -83,9 +83,9 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 | MV.1 Essai de l'utilisateur sur les 4 scénarios : ce qui est déjà bon, ce qui ne l'est pas | **fait** (2026-10-22) : les 4 scénarios essayés |
 | MV.2 Croisement de face : clos par une mesure, ou instruit | **fait** (2026-10-22) : tremblement réglé (détour mémorisé), règle de croisement (le second passe derrière) ; essai « super » ; `main` 35a8be9 (fusion deb9b93) |
 | MV.3 Immobiles superposées | **sans objet** : accepté par l'utilisateur (2026-10-22) |
-| MV.4 Marcheurs bloqués par des corps | après MV.1 |
+| MV.4 Marcheurs bloqués par des corps | **fait** (2026-10-23) : murs contournés sans contact, renforts, porter secours, rochers, contournement des bâtiments, formation sur place ; « tenir le rang » essayé et refusé ; `main` e28b00b |
 | MV.5 Formation gênée | **fait** (2026-10-22, avancée avant MV.2 / MV.4 à la demande de l'utilisateur) : arrivée et marche, essai de l'utilisateur « 0 problème détecté », `main` e123afc (fusion 5bd8b98) |
-| MV.6 Mesures (S1 à S5), décisions au GDD, clôture | à la fin |
+| MV.6 Mesures (S1 à S5), décisions au GDD, clôture | **décisions au GDD faites** (2026-10-23, D405-D415, § 16.6) ; **mesures S1-S5 au repos à faire** (machine pas libre) |
 
 ## Journal
 
@@ -1050,39 +1050,41 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
   les restes des cas de formation d'avant). Correctif : `hol.Units.Remove <RegroupAt> 3500 0` au début de chaque cas
   « regroup ». 3e relance **arrêtée à la demande de l'utilisateur** (« stop tout, on continuera dans une autre
   session ») avant sa fin : non jugée.
+- **Reprise (2026-10-23, nouvelle session)** : compilé, `-Parts formation:regroup` (nouvelle mise en place) **PASS**
+  (115 s ; les 5 cas à ≤ 60 cm en 2 s au plus, 0 hors à 6 s ; amis écartés jusqu'à 171 cm). **Sans la règle** (appel
+  coupé par `if (false && …)` à ~1411, puis remis à l'identique) : **FAIL** : « formed » 2 hors à 6 s (jusqu'à 64 cm),
+  « formed centre » 3 hors (#65 / #66 en `FinalLeg`, #67 à 97 cm) ; « formed spear » passe sans la règle (le cas le plus
+  faible). La mise en place prouve donc la règle. `-Parts tests,move,formation,bodies` lancé.
+- `-Parts tests,move,formation,bodies` **PASS** (347 s ; tests 125/125, « camera 8p » repasse, les 5 « regroup » verts,
+  au plus 2,5 s). `main` (c435f9b, docs seulement) fusionné dans `mv4-diag` en avance rapide, compilé. Note d'essai
+  ajoutée à `select_type_q.txt` (formation sur place). Essai de l'utilisateur lancé (`select_type_q`, Elrond).
+- **Essai `select_type_q`** : « tout est bon ». Commit `e28b00b` sur `mv4-diag` (Elrond ; EtapeDefini : ligne
+  « formation sur place » retirée). Accord pour l'avance rapide de `main` demandé à mycrusader-7d, -c8, -40, -d4
+  (playable-* : autre projet). Puis MV.6.
+- **`main` avancé à e28b00b** (accord de mycrusader-7d, -c8, -40, -d4 ; avance rapide, fichiers non commités de la
+  copie principale intacts). mycrusader-7d (Haldir, `ridge-rock`) touche aussi `HOLUnitOrderProcessor.cpp` (marche en
+  bloc ~2150-2240) : prévenue. **MV.6** : 11 décisions D405-D415 au brouillon
+  (`scratchpad\mv6_rows.md`, session 3cd7bda6) ; ordre convenu avec mycrusader-d4 (review du GDD dans la même copie) :
+  d4 commite D400-D404, puis cette session écrit D405-D415 + paragraphe du § 16.6 + « prochain numéro » du § 22,
+  commite, et prévient d4. Mesures S1-S5 au repos : question à l'utilisateur (sessions 7d et c8 au travail).
+- d4 a commité D400-D404 (ea8efe4). **MV.6, décisions au GDD** : D405-D415 au § 21 (après D404), paragraphe
+  « Chantier déplacement » au § 16.6 (garde-fous de `quick_check` ; « formation reinforce » noté sans rouge), § 22 :
+  prochain numéro **D416**. Mesures S1-S5 au repos **à faire** (notées ainsi au GDD). Elrond libéré.
 
-### Reprise exacte (MV.4)
+### Reprise exacte (MV.6)
 
-État :
-- **Dans `main` (c761fc2 et après, essais de l'utilisateur OK)** : MV.4.2 mur ennemi contourné, détour sans contact,
-  partie « bodies » ; MV.4.4 bloc de renforts qui se défait près de la mêlée ; **porter secours** (choix C,
-  `hol.Combat.AidRadius` 20 m, cas « combat aid ») ; `AvoidBodies(..., Goal)` ; foules ennemies (closes sans code) ;
-  **rochers non marchables** (NavArea_Null sur les 24 rochers, `Plain.umap` refait, naissance sur le sol le plus
-  proche, cas « move rock ») ; **contournement qui voit les bâtiments** (`LeadsIntoFootprint`, build cut / gap verts,
-  scénario `build_walkers`). « Tenir le rang » essayé et refusé (sauvegarde : `scratchpad\elrond_mv45_holdline_full.patch`,
-  session 0b11c55e). J5c libre (`build-red` = c761fc2).
-- **Dans Elrond (`mv4-diag` = 25979ef + travail NON COMMITÉ, pas encore essayé par l'utilisateur)** : « formation sur
-  place », choix A (le dernier ordre l'emporte) : `HOLFormation::ShouldYieldHeldPlace` (`HOLFormationRules.h:239`,
-  `.cpp:974`), à l'ordre `HOLUnitOrderProcessor.cpp:1408` (`PlaceHold.Clear()` des amis hors de l'ordre dont la case
-  tenue gêne une nouvelle case), test `Formation.YieldPlace` ; cas `quick_check` `formation:regroup` (~113, ~517-522,
-  ~1335-1355, ~2785, filtre ~2836). Compilé. `formation:regroup` seul : rouge puis **vert ×3** (ancienne mise en place par
-  index de clic) ; la nouvelle mise en place (type né seul, groupe de contrôle, zone vidée) **pas encore jouée**.
+État (2026-10-23) : **tout le code du chantier est dans `main`** (e28b00b : formation sur place ; avant : MV.2, MV.5,
+MV.4 murs, renforts, porter secours, rochers, contournement des bâtiments). Décisions au GDD : D405-D415 (§ 21),
+paragraphe « Chantier déplacement » (§ 16.6). « Tenir le rang » essayé et refusé (sauvegarde :
+`scratchpad\elrond_mv45_holdline_full.patch`, session 0b11c55e). Elrond libre.
 
-À faire, dans l'ordre :
-1. Elrond : `-Parts formation:regroup` (nouvelle mise en place) : doit passer ; vérifier qu'il est **rouge** sans la
-   règle (retirer l'appel à `ShouldYieldHeldPlace` à ~1408, ou une cvar de coupure), sinon la mise en place ne prouve
-   rien. Puis `-Parts tests,move,formation,bodies` (avec « camera 8p » qui doit repasser).
-2. Fusionner `main` (c761fc2 et suivants) dans `mv4-diag`, compiler.
-3. Essai de l'utilisateur : `play.ps1 select_type_q -Root ..\HeroesOfLiberty-Elrond` (armée mêlée, double clic sur un
-   type, petit ordre ; d'abord un ordre pour toute l'armée, puis le type), puis commit (EtapeDefini : ligne « unités
-   d'un groupe remises en formation sur place » retirée), avance de `main` (accord des sessions).
-4. MV.6 : décisions au GDD (MV.2, MV.5, MV.4 : détour sans contact, renforts, porter secours, rochers, contournement des
-   bâtiments, formation sur place ; « tenir le rang » essayé et refusé au profit de la vague de J7c.4), mesures S1-S5
-   au repos, clôture.
-5. (aléa, EtapeDefini) « build site » rouge quand `build` suit `move,bodies` (plafond de population +20).
+Reste :
+1. Mesures S1-S5 au repos (`Tools/Tests/rest_measures.ps1`, mémoire `measures-at-chapter-end`), quand aucune autre
+   session ne compile ni ne joue ; reporter les chiffres au paragraphe du § 16.6 (« Mesures S1 à S5 au repos : à
+   faire ») ; puis le chantier est entièrement clos.
+2. (aléa, EtapeDefini) « build site » rouge quand `build` suit `move,bodies` (plafond de population +20).
 Règles : test rouge d'abord (mémoire `red-test-first`) ; boucles de 15 min **avec minuteur lancé dans le même message
-que le sous-agent** ; chemins absolus dans les énoncés (un sous-agent a lu la copie principale par un chemin relatif) ;
-rien de commité avant l'essai.
+que le sous-agent** ; chemins absolus dans les énoncés ; rien de commité avant l'essai.
 - (2026-10-23, session EtapeDefini) **Retour d'essai de l'utilisateur**, noté pour ce chantier : quand il sélectionne
   des unités au sein d'un groupe et leur donne l'ordre de bouger d'un rien (juste se mettre en formation là où elles
-  sont), elles peinent, car elles ne poussent presque pas les autres. Ligne ajoutée à `EtapeDefini.md` (main 9c8e5f4).
+  sont), elles peinent, car elles ne poussent presque pas les autres. Ligne ajoutée à `EtapeDefini.md` (main 9c8e5f4). **Traité** : D415, `main` e28b00b.
