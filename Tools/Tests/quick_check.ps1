@@ -305,7 +305,7 @@ if ($Parts -contains "victory") {
         "hol.Victory.FallForum 0", "waitlog Victory: forum of slot 0 fell", "frames 3",
         "hol.Prod.Queue", "waitlog Production order of slot 0 ignored: its forum is down", "frames 3", "hol.HUD.Report"
     # The match starts with no unit: 2 Peasants of slot 0 made 20 m beside its centre (Plain's slot 0, -14800 0).
-    Step "mark victory forum build", "hol.Units.Spawn 2 -14800 2000 0 Peasant 150", "waitunits 2", "frames 3", "hol.Select.Own", "waitlog Select own: 2 units", "hol.Select.OrderNear 0 0", "wait 1",
+    Step "mark victory forum build", "hol.Units.Spawn 2 -14800 2000 0 Peasant 150", "waitunits 2", "frames 3", "hol.Select.Own", "waitlog Select own: 2 units", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.OrderNear 0 0", "wait 1",
         "hol.Victory.SkipRuin 0", "waitlog Victory: forum of slot 0 ruin -> rebuilding", "waitlog Construction: slot 0 rebuilds its forum",
         # The units unselected by hol.Prod.Queue (the centre selected first, its order refused again): the block read.
         "frames 3", "hol.Select.Report", "hol.Prod.Queue", "frames 3", "hol.HUD.Report"
@@ -1804,7 +1804,7 @@ if ($Parts -contains "victory") {
 
     # V2.5: the main forum's lives (the third match). The last HUD report of a section: its players' table and the rest.
     function ForumHud([string] $Mark) {
-        $Line = @(Get-Section $Mark | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+        $Line = @(Get-Section $Mark | Select-String -Pattern "HUD forum: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
         $Table = if ("$Line" -match ", players \[([^\]]*)\]") { $Matches[1] } else { "" }
         $Row0 = @($Table -split " \| " | Where-Object { $_ -match "^slot 0 " }) | Select-Object -First 1
         return [pscustomobject]@{ Line = "$Line"; Row0 = "$Row0" }
@@ -4134,7 +4134,7 @@ if ($Parts -contains "net") {
         $Checks["victory: client 2 sees client 1's units go ($($Shown -join ' -> '))"] = ($Shown.Count -eq 6) -and ($Shown[0] -ge 1) -and ($Shown[-1] -eq 0)
         # V2.5 (D353): client 1's forum fell on the server (lives 1); client 2's players' table shows it (the lives public).
         $Checks["victory: server, the forum of slot $Loser (client 1) fell, lives 1"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Victory: forum of slot $Loser fell, lives 1 " -Quiet)
-        $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD report: .*, players \[([^\]]*)\]" |
+        $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD forum: .*, players \[([^\]]*)\]" |
             ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
         $LoserRow = @("$Table2" -split " \| " | Where-Object { $_ -match "^slot $Loser " }) | Select-Object -First 1
         $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser colour \d+ lives 1 ruin$"

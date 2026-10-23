@@ -782,6 +782,8 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	ShownHealth.Reset();
 	// A main forum (V2.3b): its lives to anyone (D353); down, its ruin or its rebuilding in place of its health (0 until up).
 	const FHOLForumBlock Forum = Building->GetForumBlock(bOwn);
+	// Reported on the line "HUD forum", not in Describe (the checks read the report's line to its end).
+	ShownForum = Forum.bShown ? Forum.Shown : FString();
 	SetShown(SelectionHealthRow, !Forum.bHideHealth);
 	// Its lives on their own row (V2.3d), styled as the health's.
 	SetShown(SelectionLivesRow, Forum.bShown);
@@ -1883,10 +1885,17 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
-	// The players' table (V2.4) last of all.
-	const FString Players = ShownPlayersTable.IsEmpty() ? FString() : FString::Printf(TEXT(", players [%s]"), *ShownPlayersTable);
-	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ShownSelection, *ShownActivity, *ShownHealth, *Grid, *Queue,
-		*Message, *Workers, *Players);
+	// A main forum's lives and state (V2.3b) and the players' table (V2.4): on their own line (DescribeForum).
+	const FString Activity = !ShownForum.IsEmpty() && ShownActivity == ShownForum ? FString() : ShownActivity;
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
+		*Message, *Workers);
+}
+
+FString UHOLGameScreen::DescribeForum() const
+{
+	// "selection, in ruin 27 s, lives 1, players [slot 0 you colour 0 lives 1 ruin | ...]" ("selection none" without a main forum selected).
+	const bool bForum = !ShownForum.IsEmpty() && ShownActivity == ShownForum;
+	return FString::Printf(TEXT("selection%s, players [%s]"), bForum ? *ShownForum : TEXT(" none"), *ShownPlayersTable);
 }
 
 FString UHOLGameScreen::DescribeCells() const

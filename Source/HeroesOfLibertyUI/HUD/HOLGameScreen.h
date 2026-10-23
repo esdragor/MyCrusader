@@ -63,6 +63,9 @@ public:
 	 */
 	FString Describe() const;
 
+	/** A main forum selected (its lives, ruin or rebuilding) and the players' table (V2): the line "HUD forum" of hol.HUD.Report. */
+	FString DescribeForum() const;
+
 	/**
 	 * Clicks a cell of the grid (GridCell00 to GridCell11), an item of the queue (QueueItem0 to QueueItem4) or the idle
 	 * workers' counter (IdleWorkers) or « Menu » (MenuButton), found by its name, by the same path as the mouse (hol.HUD.Click). False when it is
@@ -409,6 +412,9 @@ private:
 	FString ShownHealth;
 	/** A main forum's lives last written in SelectionLives (V2.3d). */
 	int32 ShownForumLives = INDEX_NONE;
+
+	/** The selected main forum's part of the description (", in ruin 27 s, lives 1"), empty for anything else. */
+	FString ShownForum;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
 	bool bOrdersShown = false;

@@ -52,6 +52,8 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			// On their own lines too (J6a.5): what the grid's cells write, and their tooltips.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD cells: %s"), *Screen.DescribeCells());
 			UE_LOG(LogHOLUI, Display, TEXT("HUD tooltips: %s"), *Screen.DescribeTooltips());
+			// The main forums (V2): the selected one's lives and state, the players' table.
+			UE_LOG(LogHOLUI, Display, TEXT("HUD forum: %s"), *Screen.DescribeForum());
 			// On its own line: the checks read the report's line to its end.
 			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
 			{
