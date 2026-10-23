@@ -191,7 +191,7 @@ Le joueur choisit entre investir dans sa base, prendre une expansion, investir d
 - On construit partout sur le terrain constructible où l'on a la **vision**, murs et portes compris.
 - **Règle anti-rush :** aucune construction dans un rayon autour d'un **centre principal ennemi** (rayon à régler en test).
 - Les règles propres à certains bâtiments restent possibles (bâtiment de pêche près de l'eau, mine sur un gisement…).
-- Le **territoire** (XP de territoire, D05) se mesure aux **points stratégiques et centres secondaires contrôlés**, pas à une zone de construction.
+- Le **territoire** (XP de territoire, D05) se mesure aux **points stratégiques et centres secondaires contrôlés**, pas à une zone de construction. Points stratégiques au prototype : les **relais** neutres (D388, § 9.4).
 
 | Catégorie | Exemples |
 |---|---|
@@ -540,6 +540,8 @@ Toutes les capacités ont des temps de recharge. Le héros ne doit pas pouvoir e
 | **Événements** | participation à certains événements mondiaux, objectifs spécifiques |
 
 Le but est d'éviter que « tuer le plus d'unités » soit la seule voie de progression.
+
+**XP de territoire *(décision D388)* : l'expansion et des relais neutres.** Comptent pour l'XP de territoire, au prototype : les **centres secondaires** (D384) et des **relais** (nom provisoire), lieux **neutres posés par la carte** (placement symétrique, nombre : level design), façon bâtiments capturables de BFME. Un relais se **prend en s'y tenant sans ennemi** (règle de la ruine, D348, et de l'autel, D380) et reste à son preneur jusqu'à ce qu'un ennemi le reprenne. Il donne **de l'XP par minute** au héros, **rien d'autre** (pas de vision : pas d'effet trop fort). Part de chaque source dans les ~15 % à régler en test.
 
 **Répartition *(décision D05)* : un socle de développement, un bonus militaire.**
 
@@ -2626,6 +2628,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D385 | 2026-10-23 | Communication — Canaux de discussion | **Alliés, Tous, et messages privés à un joueur** (choix de l'utilisateur, conforme à la recommandation) : négocier et comploter en secret en *Diplomatie* ; canal des spectateurs (D376) ; annonces de diplomatie dans le fil. Écartés : deux canaux seulement, messages prédéfinis seulement (négociation impossible). | § 15 |
 | D386 | 2026-10-23 | Communication — Signaux sur la carte | **Roue de signaux typés** (choix de l'utilisateur, conforme à la recommandation) : Attaque ici, Défends ici, Besoin d'aide, Regroupement, Éclaire ici (icône, son, ligne traduite dans le fil) ; Alt + clic = signal neutre ; alliés seulement ; limite contre le spam ; lisible plus tard par une IA alliée. Écartés : signal simple sans sens, aucun signal. | § 15 |
 | D387 | 2026-10-23 | Communication — Le panneau « Diplomatie » | **Bouton en haut, panneau par-dessus la partie, comme AoE2** (choix de l'utilisateur, conforme à la recommandation) : une ligne par joueur (couleur, nom, faction, vies ; posture ; vision ; tribut grisé sans Marché, taxe affichée ; message privé) ; en standard, postures verrouillées, tributs et messages disponibles. Écarté : liste compacte toujours visible, tributs au Marché (place à l'écran, fonctions éclatées). | § 15 |
+| D388 | 2026-10-23 | XP — Les points stratégiques | **Centres secondaires et relais neutres** (choix de l'utilisateur, conforme à la recommandation ; conforme à D22) : relais (nom provisoire) posés par la carte, pris en s'y tenant sans ennemi (règle de D348, D380), gardés jusqu'à reprise ; XP par minute seulement, pas de vision. Parts dans les ~15 % à régler en test. Écartés : expansion seule (XP de développement déguisée), relais seuls. | § 6, § 9.4 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -2821,4 +2824,6 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 **Séance de la communication close (D385 à D387).**
 
-Prochain numéro : **D388**.
+**Points stratégiques (2026-10-23)** → **tranché (D388)** : centres secondaires et relais neutres (XP par minute seulement).
+
+Prochain numéro : **D389**.
