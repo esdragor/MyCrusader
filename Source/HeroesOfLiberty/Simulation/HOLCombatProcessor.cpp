@@ -84,6 +84,10 @@ namespace UE::HeroesOfLiberty::Combat
 	float RearTargetKeep = 200.f;
 	FAutoConsoleVariableRef CVarRearTargetKeep(TEXT("hol.Combat.RearTargetKeep"), RearTargetKeep,
 		TEXT("cm (default 200, with hol.Combat.PreferFreeTarget): a melee out of reach of its target and of the new one found keeps its target, alive with a free place around it, unless the new one is this much nearer (edge to edge); 0: as before"));
+	/** MV.4, choice C (AoE4): an idle melee soldier comes to the aid of a friend fighting within this radius (HOLCombat::ShouldComeToAid). */
+	float AidRadius = HOLCombat::DefaultAidRadius;
+	FAutoConsoleVariableRef CVarAidRadius(TEXT("hol.Combat.AidRadius"), AidRadius,
+		TEXT("cm (default 2000): an idle melee soldier with no enemy within its aggression comes to the aid of a friend fighting within this radius (edge to edge), taking the nearest enemy engaged with such a friend; 0: off"));
 }
 
 namespace UE::HeroesOfLiberty::Simulation
@@ -256,6 +260,39 @@ void UHOLCombatProcessor::GatherNearby(const int32 Index, const double Reach, TA
 				{
 					Out.Add(Unit.Fighter);
 				}
+			}
+		}
+	}
+}
+
+void UHOLCombatProcessor::GatherFriends(const int32 Index, const double Reach, TArray<int32>& Out) const
+{
+	// MV.4 (coming to aid): GatherNearby's walk on its own side only (the dense grid), itself left out.
+	using namespace UE::HeroesOfLiberty::Combat;
+	Out.Reset();
+	const FVector2D Position(Fighters[Index].Location);
+	const float Radius = Fighters[Index].Constants->Radius;
+	const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / CellSize), FMath::FloorToInt32((Position.Y - Reach) / CellSize));
+	const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / CellSize), FMath::FloorToInt32((Position.Y + Reach) / CellSize));
+	const int32 X0 = FMath::Max(MinCell.X, GridMin.X) - GridMin.X;
+	const int32 X1 = FMath::Min(MaxCell.X, GridMin.X + GridWidth - 1) - GridMin.X;
+	const int32 Y0 = FMath::Max(MinCell.Y, GridMin.Y) - GridMin.Y;
+	const int32 Y1 = FMath::Min(MaxCell.Y, GridMin.Y + GridHeight - 1) - GridMin.Y;
+	const double Prefilter = FMath::Square(Reach + static_cast<double>(Radius) + static_cast<double>(MaxRadius) + 1.0);
+	const int32 Side = SideOfFighter[Index];
+	const int32 NumCells = GridWidth * GridHeight;
+	for (int32 Y = Y0; Y <= Y1 && X0 <= X1; ++Y)
+	{
+		const int32 Row = Side * NumCells + Y * GridWidth;
+		const int32 End = GridStarts[Row + X1 + 1];
+		for (int32 Slot = GridStarts[Row + X0]; Slot < End; ++Slot)
+		{
+			const FGridUnit& Unit = GridUnits[Slot];
+			const double DX = Unit.X - Position.X;
+			const double DY = Unit.Y - Position.Y;
+			if (Unit.Fighter != Index && DX * DX + DY * DY <= Prefilter && HOLCombat::GetEdgeDistance(Position, Radius, FVector2D(Unit.X, Unit.Y), Unit.Radius) <= Reach)
+			{
+				Out.Add(Unit.Fighter);
 			}
 		}
 	}
@@ -1008,6 +1045,47 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					}
 				}
 			}
+			// MV.4, choice C (hol.Combat.AidRadius): no enemy found within its own aggression, an idle melee soldier comes to the
+			// aid of a friend fighting within the radius: the nearest enemy (edge to edge, least id on a tie) that such a friend
+			// strikes or is hit by. Walked to as any target (below); the next searches keep it while no other is in reach.
+			if (NewTarget == INDEX_NONE && AidRadius > 0.f && bDenseGrid &&Combat.TargetBuilding.IsExplicitlyNull()
+				&& HOLCombat::ShouldComeToAid(Seeker.Mode, Seeker.bRanged, Seeker.AggressionRadius, false, 0., AidRadius))
+			{
+				GatherFriends(Index, AidRadius, Friends);
+				double FriendDistance = -1.;
+				int32 Aided = INDEX_NONE;
+				double AidedDistance = 0.;
+				for (const int32 Friend : Friends)
+				{
+					const FFighter& Near = Fighters[Friend];
+					const FHOLCombatFragment& NearCombat = *Near.Combat;
+					if (Near.State->CurrentHealth <= 0 || Near.State->OwnerPlayer != Fighter.State->OwnerPlayer
+						|| !HOLCombat::IsFriendFighting(NearCombat.bAttacking, NearCombat.AttackerCount, NearCombat.LastAttacker.IsSet()))
+					{
+						continue;
+					}
+					const double Distance = HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Near.Location), Near.Constants->Radius);
+					FriendDistance = FriendDistance < 0. ? Distance : FMath::Min(FriendDistance, Distance);
+					for (const FMassEntityHandle Foe : { NearCombat.Target, NearCombat.LastAttacker })
+					{
+						const int32 Other = FindFighter(Foe);
+						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].State->OwnerPlayer == Fighter.State->OwnerPlayer)
+						{
+							continue;
+						}
+						const double FoeDistance = HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius);
+						if (Aided == INDEX_NONE || FoeDistance < AidedDistance || (FoeDistance == AidedDistance && Fighters[Other].UnitId < Fighters[Aided].UnitId))
+						{
+							Aided = Other;
+							AidedDistance = FoeDistance;
+						}
+					}
+				}
+				if (Aided != INDEX_NONE && HOLCombat::ShouldComeToAid(Seeker.Mode, Seeker.bRanged, Seeker.AggressionRadius, false, FriendDistance, AidRadius))
+				{
+					NewTarget = Aided;
+				}
+			}
 			if (NewTarget != Target)
 			{
 				if (Target != INDEX_NONE)
@@ -1551,5 +1629,82 @@ namespace UE::HeroesOfLiberty::Combat
 			{
 				UE_LOG(LogHOLSimulation, Display, TEXT("  %s"), *Line);
 			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs AidReportCommand(TEXT("hol.Combat.AidReport"),
+		TEXT("hol.Combat.AidReport Slot [Radius] [X Y Area]: logs the slot's idle melee soldiers (only those within Area cm of X Y if given) (Auto, no target, no order walked) and how many stand within Radius (default hol.Combat.AidRadius, else 2000 cm) of a fighting friend, with the closest enemy to them (server or solo)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
+		{
+			UHOLUnitSubsystem* Units = InWorld ? InWorld->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+			UMassEntitySubsystem* EntitySubsystem = InWorld ? InWorld->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+			if (!Units || !EntitySubsystem || InWorld->GetNetMode() == NM_Client || Args.Num() < 1)
+			{
+				UE_LOG(LogHOLSimulation, Warning, TEXT("hol.Combat.AidReport Slot [Radius]: on the server or in solo"));
+				return;
+			}
+			const int32 Slot = FCString::Atoi(*Args[0]);
+			const double Radius = Args.Num() > 1 ? FCString::Atod(*Args[1]) : (AidRadius > 0.f ? AidRadius : HOLCombat::DefaultAidRadius);
+			const bool bArea = Args.Num() > 4;
+			const FVector2D AreaCentre = bArea ? FVector2D(FCString::Atod(*Args[2]), FCString::Atod(*Args[3])) : FVector2D::ZeroVector;
+			const double AreaRadius = bArea ? FCString::Atod(*Args[4]) : 0.;
+			const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+			struct FUnit { FVector2D Position; float Radius; int32 Owner; bool bFighting; bool bIdleMelee; uint32 Id; };
+			TArray<FUnit> All;
+			TArray<uint32> UnitIds;
+			Units->GetAllUnitIds(UnitIds);
+			for (const uint32 UnitId : UnitIds)
+			{
+				const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+				const FHOLCombatFragment* Combat = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+				const FHOLUnitStateFragment* State = Combat ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+				const FHOLMoveOrderFragment* Order = Combat ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
+				if (!State || !Order || State->CurrentHealth <= 0)
+				{
+					continue;
+				}
+				const FHOLUnitTypeConstants& Constants = EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity);
+				FUnit& Unit = All.AddDefaulted_GetRef();
+				Unit.Position = FVector2D(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation());
+				Unit.Radius = Constants.Radius;
+				Unit.Owner = State->OwnerPlayer;
+				Unit.Id = UnitId;
+				Unit.bFighting = Combat->bAttacking || Combat->AttackerCount > 0 || Combat->LastAttacker.IsSet();
+				Unit.bIdleMelee = Combat->Mode == EHOLCombatMode::Normal &&!Combat->Target.IsSet() && Combat->TargetBuilding.IsExplicitlyNull()
+					&& Order->Phase == EHOLMovePhase::None && !HOLCombat::IsRangedAttack(Constants.AttackRange) && Constants.AggressionRadius > 0.f;
+			}
+			int32 Idle = 0;
+			int32 Near = 0;
+			double ClosestEnemy = -1.;
+			TArray<FString> NearIds;
+			for (const FUnit& Unit : All)
+			{
+				if (Unit.Owner != Slot || !Unit.bIdleMelee || (bArea && FVector2D::Distance(Unit.Position, AreaCentre) > AreaRadius))
+				{
+					continue;
+				}
+				++Idle;
+				bool bNear = false;
+				double Enemy = -1.;
+				for (const FUnit& Other : All)
+				{
+					const double Distance = HOLCombat::GetEdgeDistance(Unit.Position, Unit.Radius, Other.Position, Other.Radius);
+					if (Other.Owner == Slot)
+					{
+						bNear |= &Other != &Unit && Other.bFighting && Distance <= Radius;
+					}
+					else
+					{
+						Enemy = Enemy < 0. ? Distance : FMath::Min(Enemy, Distance);
+					}
+				}
+				if (bNear)
+				{
+					++Near;
+					NearIds.Add(FString::Printf(TEXT("#%u"), Unit.Id));
+					ClosestEnemy = Enemy < 0. ? ClosestEnemy : (ClosestEnemy < 0. ? Enemy : FMath::Min(ClosestEnemy, Enemy));
+				}
+			}
+			UE_LOG(LogHOLSimulation, Display, TEXT("Aid report: slot %d idle melee %d near a fighting friend %d (within %.0f cm) closest enemy %.0f cm %s"), Slot, Idle, Near, Radius,
+				ClosestEnemy, *FString::Join(NearIds, TEXT(" ")));
 		}));
 }

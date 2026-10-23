@@ -1801,6 +1801,57 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		return;
 	}
 	const float Scale = FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+	// The melee (MV.4.4, reinforcements): the units alive, by their ids (D231: a stable order), with whether they fight.
+	struct FMeleePoint
+	{
+		FVector2D Location;
+		uint8 Owner = 0;
+		bool bFighting = false;
+		uint32 OrderSerial = 0;
+	};
+	TArray<FMeleePoint> MeleePoints;
+	if (const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>())
+	{
+		TArray<uint32> UnitIds;
+		Units->GetAllUnitIds(UnitIds);
+		UnitIds.Sort();
+		for (const uint32 UnitId : UnitIds)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+			const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			const FTransformFragment* Transform = State ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+			if (!Transform || State->CurrentHealth <= 0)
+			{
+				continue;
+			}
+			const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+			const FHOLMoveOrderFragment* Order = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+			MeleePoints.Add({FVector2D(Transform->GetTransform().GetLocation()), State->OwnerPlayer, Combat && HOLFormation::IsFightingFriend(Combat->bAttacking, Combat->bApproaching, Combat->Target.IsSet()),
+				Order ? Order->OrderSerial : 0u});
+		}
+	}
+	// A member leaving its block to end alone (MV.4.4): its final leg to its place, a path there if the line is cut.
+	const auto ToFinalLeg = [this, World, &EntityManager, NavData](const uint32 Serial, const FMassEntityHandle Entity, const FVector& Place)
+	{
+		FHOLMoveOrderFragment& Order = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
+		const FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity);
+		Order.Slot = Place;
+		Order.bReforming = true;
+		FVector Hit;
+		if (NavData && NavData->Raycast(Transform.GetTransform().GetLocation(), Order.Slot, Hit, NavData->GetDefaultQueryFilter()))
+		{
+			Order.Phase = EHOLMovePhase::WaitingPath;
+			FPathRequest& Request = PendingPaths.AddDefaulted_GetRef();
+			Request.OrderSerial = Serial;
+			Request.Start = Transform.GetTransform().GetLocation();
+			Request.Target = Order.Slot;
+			Request.Entities.Add(Entity);
+			return;
+		}
+		StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity), Order,
+			EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity),
+			EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Entity));
+	};
 	// The last order's body (block 0) is the one reported (the small blocks have their own lines).
 	const auto Publish = [](const FBlockMarch& Block)
 	{
@@ -2007,6 +2058,45 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			It.RemoveCurrent();
 			continue;
 		}
+		// At the melee (MV.4.4, the user's rule A): one of its members within BlockBreakDistance of an enemy or of a friend
+		// fighting, the whole block breaks up, each member on its final leg to its place (no attack: a plain move).
+		{
+			// A plain move (MV.4.4): no member on an attack-move.
+			bool bPlainMove = true;
+			double ClosestEnemy = -1.;
+			double ClosestFighting = -1.;
+			for (const FMassEntityHandle Entity : Block.Entities)
+			{
+				const FVector2D Location(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation());
+				const uint8 Owner = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer;
+				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+				bPlainMove &= !(Combat && Combat->Mode == EHOLCombatMode::AttackMove);
+				for (const FMeleePoint& Point : MeleePoints)
+				{
+					// Its own order's units never break it (an attack-move's members seeking their enemies).
+					if (Point.Owner == Owner && (!Point.bFighting || Point.OrderSerial == Serial))
+					{
+						continue;
+					}
+					const double Distance = FVector2D::Distance(Location, Point.Location);
+					double& Closest = Point.Owner != Owner ? ClosestEnemy : ClosestFighting;
+					Closest = Closest < 0. ? Distance : FMath::Min(Closest, Distance);
+				}
+			}
+			if (HOLFormation::ShouldBreakBlock(bPlainMove, ClosestEnemy, ClosestFighting))
+			{
+				for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
+				{
+					ToFinalLeg(Serial, Block.Entities[Unit], Block.Places[Unit]);
+				}
+				ReleaseStragglers(Serial, Block);
+				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sbroke up at the melee after %d steps, %d units (enemy %.0f cm, fighting friend %.0f cm)"),
+					*Block.GetTag(), Block.Steps, Block.Entities.Num(), ClosestEnemy, ClosestFighting);
+				Publish(Block);
+				It.RemoveCurrent();
+				continue;
+			}
+		}
 		// The closest two of its units (the user's trial of playtest note 1 of J7b: a scattered group's units overlapped while
 		// it gathered), from its first half second (units made overlapping are pulled apart by then) until the arrival's
 		// blend (re-forming, they go through each other).
@@ -2053,8 +2143,9 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				// Re-forming: a unit far behind its slot holds the block.
 				const float Gap = static_cast<float>(FVector2D::Distance(FVector2D(Location), FVector2D(Order.MarchSlot)));
 				MaxGap = FMath::Max(MaxGap, Gap);
-				Block.HeldSteps[Unit] = Gap > HOLFormation::BlockSoftHoldDistance ? Block.HeldSteps[Unit] + 1 : 0;
-				bHeld |= Block.HeldSteps[Unit] > 0;
+				// Its steps holding it counted over the whole re-forming (MV.4.4: 2 s in all and it leaves the block).
+				Block.HeldSteps[Unit] += Gap > HOLFormation::BlockSoftHoldDistance ? 1 : 0;
+				bHeld |= Gap > HOLFormation::BlockSoftHoldDistance;
 				// Walking back while the rows close up (measured, playtest note 1, loop 25).
 				const double BackAlong = Velocity ? FVector2D::DotProduct(FVector2D(Velocity->Value), LastDirection) : 0.;
 				if (BackAlong < -1.)
@@ -2084,6 +2175,30 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 					*Block.GetTag(), Block.Steps, Unit, *EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).TypeName.ToString(),
 					Order.Phase == EHOLMovePhase::FormUp ? TEXT("FormUp") : TEXT("Block"), FromSlot.X, FromSlot.Y, Wanted.X, Wanted.Y, Taken.X, Taken.Y);
 			}
+		}
+		// A member holding the re-forming block 2 s (MV.4.4, far off its slot: HeldSteps) no longer holds the others: it
+		// leaves the block and ends alone.
+		for (int32 Unit = Block.Entities.Num() - 1; Unit >= 0; --Unit)
+		{
+			const FMassEntityHandle Entity = Block.Entities[Unit];
+			if (HOLFormation::IsMemberStuck(Block.HeldSteps[Unit]))
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sunit %d held the block %d steps, left it after %d steps"), *Block.GetTag(), Unit, HOLFormation::BlockMemberStuckSteps, Block.Steps);
+				ToFinalLeg(Serial, Entity, Block.Places[Unit]);
+				Block.Entities.RemoveAt(Unit);
+				Block.Offsets.RemoveAt(Unit);
+				Block.Places.RemoveAt(Unit);
+				Block.Kinds.RemoveAt(Unit);
+				Block.HeldSteps.RemoveAt(Unit);
+				Block.Depths.RemoveAt(Unit);
+			}
+		}
+		if (Block.Entities.IsEmpty())
+		{
+			ReleaseStragglers(Serial, Block);
+			Publish(Block);
+			It.RemoveCurrent();
+			continue;
 		}
 		Block.Report.BackSteps += bBackStep ? 1 : 0;
 		Block.Report.SlowedSteps += bSlowed ? 1 : 0;

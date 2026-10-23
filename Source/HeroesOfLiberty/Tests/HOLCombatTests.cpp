@@ -73,6 +73,31 @@ namespace UE::HeroesOfLiberty::Tests::Combat
 	}
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatComeToAidTest, "HeroesOfLiberty.Combat.ComeToAid", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatComeToAidTest::RunTest(const FString& Parameters)
+{
+	// MV.4, choice C (AoE4): an idle melee soldier comes to the aid of a friend fighting within the aid radius.
+	using HOLCombat::ESeekMode;
+	constexpr float Aid = HOLCombat::DefaultAidRadius;
+	constexpr float Aggression = 1600.f;
+	TestTrue(TEXT("a friend striking: fighting"), HOLCombat::IsFriendFighting(true, 0, false));
+	TestTrue(TEXT("a friend taken on by an enemy: fighting"), HOLCombat::IsFriendFighting(false, 1, false));
+	TestTrue(TEXT("a friend hit (an arrow): fighting"), HOLCombat::IsFriendFighting(false, 0, true));
+	TestFalse(TEXT("a friend idle: not fighting"), HOLCombat::IsFriendFighting(false, 0, false));
+	TestTrue(TEXT("an idle melee, a fighting friend 18 m off: comes to its aid"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, Aggression, false, 1800., Aid));
+	TestTrue(TEXT("a fighting friend at the radius: comes to its aid"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, Aggression, false, Aid, Aid));
+	TestFalse(TEXT("a fighting friend beyond the radius: stays"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, Aggression, false, Aid + 1., Aid));
+	TestFalse(TEXT("no fighting friend: stays"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, Aggression, false, -1., Aid));
+	TestFalse(TEXT("aid off (radius 0): stays"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, Aggression, false, 0., 0.f));
+	TestFalse(TEXT("on Hold: stays"), HOLCombat::ShouldComeToAid(ESeekMode::Hold, false, Aggression, false, 500., Aid));
+	TestFalse(TEXT("on an attack-move: its own search"), HOLCombat::ShouldComeToAid(ESeekMode::AttackMove, false, Aggression, false, 500., Aid));
+	TestFalse(TEXT("a ranged unit: stays"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, true, Aggression, false, 500., Aid));
+	TestFalse(TEXT("a Peasant (no aggression): stays"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, 0.f, false, 500., Aid));
+	TestFalse(TEXT("a target already: keeps it"), HOLCombat::ShouldComeToAid(ESeekMode::Auto, false, Aggression, true, 500., Aid));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatDamageTest, "HeroesOfLiberty.Combat.Damage", UE::HeroesOfLiberty::Tests::Combat::Flags)
 
 bool FHOLCombatDamageTest::RunTest(const FString& Parameters)

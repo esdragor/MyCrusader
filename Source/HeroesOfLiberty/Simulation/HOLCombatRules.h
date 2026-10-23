@@ -221,6 +221,19 @@ namespace HOLCombat
 	/** A unit of this reach shoots (AttackRange > RangedReach). */
 	HEROESOFLIBERTY_API bool IsRangedAttack(float AttackRange);
 
+	/** Radius (cm, edge to edge) within which an idle soldier comes to a fighting friend's aid by default (hol.Combat.AidRadius). */
+	inline constexpr float DefaultAidRadius = 2000.f;
+
+	/** A friend fighting for ShouldComeToAid: striking, or taken on by an enemy (its attackers, or one that hit it). */
+	HEROESOFLIBERTY_API bool IsFriendFighting(bool bAttacking, int32 AttackerCount, bool bHasLastAttacker);
+
+	/**
+	 * Coming to a friend's aid (MV.4, choice C, AoE4): a melee soldier free to seek by itself (Auto: not on Hold nor an
+	 * attack-move; a Peasant has no aggression), with no target found, goes to help a friend fighting within AidRadius
+	 * (FightingFriendDistance, edge to edge; negative: none). AidRadius 0: off.
+	 */
+	HEROESOFLIBERTY_API bool ShouldComeToAid(ESeekMode Mode, bool bRanged, float AggressionRadius, bool bHasTarget, double FightingFriendDistance, float AidRadius);
+
 	/** Flight of an arrow (whole ms): the 2D distance From -> To (centres, at release) over SpeedCmPerSecond, rounded. */
 	HEROESOFLIBERTY_API int32 GetArrowFlightMilliseconds(const FVector2D& From, const FVector2D& To, float SpeedCmPerSecond);
 

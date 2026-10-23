@@ -378,7 +378,7 @@ int32 UHOLFullSpeedProcessor::LookAheadBucketOf(const FIntPoint& Cell)
 }
 
 FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, const FVector& Location, const float Radius, const FVector& Direction, const float Speed, const double Horizon,
-	const double StillHorizonIn, const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour, const bool bAroundEnemies) const
+	const double StillHorizonIn, const uint32 FormUpSerial, const uint8 FormUpKind, const uint8 Owner, FHOLDetourFragment& Detour, const bool bAroundEnemies, const FVector2D* Goal) const
 {
 	using namespace UE::HeroesOfLiberty::Simulation;
 
@@ -407,6 +407,13 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 				}
 				const FVector2D ToOther = Positions[Other] - Position;
 				const double ContactDistance = (Radius + Radii[Other]) * AvoidRadiusScale;
+				// A still body touching its goal is no wall (MV.4.5.3: a rank of a held line walking back to its place, just
+				// behind a still friend of the rank ahead, saw it as a wall at 1 s and stopped or went round, 1.5 m off its
+				// place): it is to stand beside it, the separation keeping them apart.
+				if (Goal && IsStill(Other) && FVector2D::DistSquared(*Goal, Positions[Other]) < FMath::Square(ContactDistance))
+				{
+					continue;
+				}
 				const double OtherReach = (IsStill(Other) ? FMath::Max(Speed * Horizon, Speed * StillHorizon) : (Speed + Velocities[Other].Size()) * Horizon) + ContactDistance;
 				if (FVector2D::DotProduct(ToOther, Ahead) > -ContactDistance && ToOther.SizeSquared() < FMath::Square(OtherReach))
 				{
@@ -982,8 +989,9 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 					Detour.Phase = static_cast<uint8>(Order.Phase);
 				}
 				const bool bOutOfFight = Combats.IsEmpty() || (!Combats[EntityIt].bAttacking && !Combats[EntityIt].bApproaching && Combats[EntityIt].Mode != EHOLCombatMode::AttackMove);
+				const FVector2D Goal(Order.Slot.X, Order.Slot.Y);
 				Direction = AvoidBodies(Context.GetEntity(EntityIt), Location, AgentRadii[EntityIt].Radius, Direction, Speed, Horizon, StillHorizon,
-					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour, bOutOfFight);
+					GetPassThroughSerial(Order), GetPassThroughKind(Order), States[EntityIt].OwnerPlayer, Detour, bOutOfFight, Order.Phase != EHOLMovePhase::None ? &Goal : nullptr);
 				if (bOutOfFight)
 				{
 					CountStillContact(Context.GetEntity(EntityIt), FVector2D(Location.X, Location.Y), AgentRadii[EntityIt].Radius);

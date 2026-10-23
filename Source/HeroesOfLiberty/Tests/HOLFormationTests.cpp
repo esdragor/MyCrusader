@@ -918,4 +918,29 @@ bool FHOLFormationCorridorTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFormationBreakAtMeleeTest, "HeroesOfLiberty.Formation.BreakAtMelee", UE::HeroesOfLiberty::Tests::Formation::Flags)
+bool FHOLFormationBreakAtMeleeTest::RunTest(const FString& Parameters)
+{
+	// MV.4.4: the block breaks up at the melee (an enemy or a fighting friend within BlockBreakDistance), not before.
+	TestFalse(TEXT("nobody around: the block holds"), HOLFormation::ShouldBreakBlock(true, -1., -1.));
+	TestFalse(TEXT("an enemy far: the block holds"), HOLFormation::ShouldBreakBlock(true, HOLFormation::BlockBreakDistance + 1., -1.));
+	TestFalse(TEXT("a fighting friend far: the block holds"), HOLFormation::ShouldBreakBlock(true, -1., HOLFormation::BlockBreakDistance + 1.));
+	TestTrue(TEXT("an enemy close: the block breaks up"), HOLFormation::ShouldBreakBlock(true, HOLFormation::BlockBreakDistance - 1., -1.));
+	TestTrue(TEXT("a fighting friend close: the block breaks up"), HOLFormation::ShouldBreakBlock(true, -1., HOLFormation::BlockBreakDistance - 1.));
+	TestTrue(TEXT("touching (0 cm): the block breaks up"), HOLFormation::ShouldBreakBlock(true, 0., -1.));
+	// An attack-move's block never breaks up (its line holds its rows, MV.4.5); only a plain move's does.
+	TestFalse(TEXT("an attack-move close to an enemy: the block holds"), HOLFormation::ShouldBreakBlock(false, 0., -1.));
+	TestFalse(TEXT("an attack-move close to a striking friend: the block holds"), HOLFormation::ShouldBreakBlock(false, -1., 0.));
+	// A friend fighting is one striking, not one with only a target or nearing it.
+	TestTrue(TEXT("a friend striking: fighting"), HOLFormation::IsFightingFriend(true, false, true));
+	TestFalse(TEXT("a friend nearing its target: not fighting"), HOLFormation::IsFightingFriend(false, true, true));
+	TestFalse(TEXT("a friend with only a target: not fighting"), HOLFormation::IsFightingFriend(false, false, true));
+	TestFalse(TEXT("a friend idle: not fighting"), HOLFormation::IsFightingFriend(false, false, false));
+	// The safety net: a member holding the re-forming block for 2 s no longer holds the others.
+	TestFalse(TEXT("holding just under 2 s: still in the block"), HOLFormation::IsMemberStuck(HOLFormation::BlockMemberStuckSteps - 1));
+	TestTrue(TEXT("holding 2 s: it leaves the block"), HOLFormation::IsMemberStuck(HOLFormation::BlockMemberStuckSteps));
+	TestEqual(TEXT("2 s at 20 steps a second"), HOLFormation::BlockMemberStuckSteps, 40);
+	return true;
+}
+
 #endif
