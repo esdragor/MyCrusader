@@ -31,7 +31,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
-- Unité apparue ou poussée sur un rocher : y reste coincée (ne suit plus aucun ordre)
 - Unités d'un groupe remises en formation sur place (ordre de bouger d'un rien) : elles peinent, elles ne poussent presque pas les autres
 
 ### Revue de code

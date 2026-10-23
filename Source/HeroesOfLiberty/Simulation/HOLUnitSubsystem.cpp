@@ -53,6 +53,9 @@ namespace UE::HeroesOfLiberty::Units
 
 	/** Draws of a birth position before giving up on finding the navmesh under it. */
 	constexpr int32 MaxSpawnProjectionAttempts = 4;
+	/** After the draws, the nearest navmesh within this horizontal half-size (cm): a unit born in an obstacle, a boulder
+	 * of the map's ridges (no navmesh on top of them, MV.4: up to 8 x 5 m), is put on the ground beside it. */
+	constexpr float SpawnFallbackHalfExtent = 800.f;
 	/** Seconds a unit takes from standing to its full speed (Mass' 250 cm/s² at the 300 cm/s of the first types). */
 	constexpr float SecondsToFullSpeed = 1.2f;
 
@@ -560,6 +563,7 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 	const FHOLUnitTypeConstants Constants = Row->ToConstants(Request.TypeName);
 
 	int32 NumProjectionFailures = 0;
+	int32 NumProjectionFallbacks = 0;
 	TArray<FMassEntityHandle> Created;
 	{
 		TSharedRef<FMassEntityManager::FEntityCreationContext> CreationContext =
@@ -595,6 +599,19 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 				{
 					Location = Projected.Location;
 					bProjected = true;
+				}
+			}
+			if (!bProjected)
+			{
+				// Every draw off the navmesh (inside a boulder): the nearest navigable ground point, rather than a unit
+				// standing in the obstacle with no way out.
+				FNavLocation Projected;
+				const float HalfExtent = UE::HeroesOfLiberty::Units::SpawnFallbackHalfExtent;
+				if (NavSystem->ProjectPointToNavigation(Request.Center, Projected, FVector(HalfExtent, HalfExtent, 500.f)))
+				{
+					Location = Projected.Location;
+					bProjected = true;
+					++NumProjectionFallbacks;
 				}
 			}
 			NumProjectionFailures += bProjected ? 0 : 1;
@@ -674,6 +691,11 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		}
 	}
 
+	if (NumProjectionFallbacks > 0)
+	{
+		UE_LOG(LogHOLSimulation, Log, TEXT("%d of %d '%s' units found no navmesh under their birth position after %d draws: born on the nearest navigable ground"),
+			NumProjectionFallbacks, Created.Num(), *Request.TypeName.ToString(), UE::HeroesOfLiberty::Units::MaxSpawnProjectionAttempts);
+	}
 	if (NumProjectionFailures > 0)
 	{
 		UE_LOG(LogHOLSimulation, Warning, TEXT("%d of %d '%s' units found no navmesh under their birth position after %d draws: born off the navmesh, at their last draw"),

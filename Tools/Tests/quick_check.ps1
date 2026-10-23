@@ -584,6 +584,10 @@ $LinesFrom = @(-5500, 6000)
 $LinesL1 = @(-5500, 7000)
 $LinesL2 = @(-4500, 7000)
 $LinesL3 = @(-4500, 6000)
+# Born on a rock (EtapeDefini, the user's trial melee_reinforce): the middle boulder of slot 0's ridge (create_match_map.py:
+# 8 x 5 x 3.6 m, half buried, its long side across), a Man-at-arms sent from it 17 m towards the middle, beside its axis.
+$RockAt = @(-12000, 0)
+$RockGoal = @(-10300, -1500)
 $SmokeTo = @(-5100, -1500)
 if ($Parts -contains "smoke") {
     $SmokeConfig = Join-Path $TestSaved "smoke_2p.json"
@@ -691,6 +695,14 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Orders.Chains 0" }
             # Taken away at the end, around L3 (waited for without its count, checked by the analysis).
             Step "mark move lines end", "hol.Units.Remove $($LinesL3 -join ' ') 800 0", "waitlog units of slot 0 within 800 of ($($LinesL3 -join ', '))", "frames 3"
+            # Born on a rock (the user's trial melee_reinforce): a Man-at-arms made at the middle boulder of slot 0's ridge
+            # (-12000, 0), boxed and sent 17 m beyond it; it must leave the rock and reach the point (sampled every 0.5 s).
+            Step "hol.Units.SpawnSeed 103", "hol.Units.Spawn 1 $($RockAt -join ' ') 0 ManAtArms 30", "wait 0.5", "mark move rock", "hol.Units.Where 0", "hol.Nav.Units",
+                "hol.Nav.Path $($RockAt -join ' ') $($RockGoal -join ' ')", "hol.Camera.Focus $($RockAt -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($RockAt[0] - 600) $($RockAt[1] - 600) $($RockAt[0] + 600) $($RockAt[1] + 600)",
+                "waitlog Selection: ManAtArms #", "hol.Select.OrderGround $($RockGoal -join ' ')"
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "mark move rock end", "hol.Select.Click 0.03 0.05", "hol.Units.Remove $($RockGoal -join ' ') 800 0", "hol.Units.Remove $($RockAt -join ' ') 600 0", "frames 3"
         }
         if (($Parts -contains "bodies") -and $Case.Name -eq "2p") {
             # Walkers blocked by bodies (MV.4, the user's trial blocked_bodies), in world coordinates beyond the ridge (slot 0's
@@ -1988,6 +2000,19 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
         ($LinesMarkers.Count -eq 2) -and ($LinesMarkers[1] -match "^rings 0,.*, order lines 0, order points 0,") -and ($LinesReceived.Count -ge 2) -and ($LinesReceived[1].Count -eq 1)
     $LinesRemoved = @(Get-Section "move lines end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
     $Checks["lines: its 3 Men-at-arms taken away at the end ($($LinesRemoved -join ', '))"] = ($LinesRemoved.Count -eq 1) -and ($LinesRemoved[0] -eq 3)
+    # Born on a rock: the Man-at-arms made at the boulder (put on the ground beside it, within 6 m) leaves it and reaches its point (within 3 m) in 12 s.
+    $RockWhere = @(Get-Section "move rock" | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}; foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) {
+        $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }; , $Units })
+    $RockUnit = @($(if ($RockWhere.Count) { $RockWhere[0].Keys | Where-Object { [Math]::Abs($RockWhere[0][$_][0] - $RockAt[0]) -le 600 -and [Math]::Abs($RockWhere[0][$_][1] - $RockAt[1]) -le 600 } }))
+    $Checks["rock: 1 Man-at-arms made on the boulder ($($RockUnit.Count))"] = $RockUnit.Count -eq 1
+    if ($RockUnit.Count -eq 1 -and $RockWhere.Count -ge 2) {
+        $RockFirst = $RockWhere[0][$RockUnit[0]]; $RockLast = $RockWhere[-1][$RockUnit[0]]
+        $RockLeft = [Math]::Sqrt([Math]::Pow($RockLast[0] - $RockGoal[0], 2) + [Math]::Pow($RockLast[1] - $RockGoal[1], 2))
+        $RockMoved = [Math]::Sqrt([Math]::Pow($RockLast[0] - $RockFirst[0], 2) + [Math]::Pow($RockLast[1] - $RockFirst[1], 2))
+        $Checks["rock: it reaches its point from the boulder (born at ($($RockFirst -join ', ')), at ($($RockLast -join ', ')) after 12 s, moved $([Math]::Round($RockMoved / 100, 1)) m, $([Math]::Round($RockLeft / 100, 1)) m left)"] = $RockLeft -le 300
+    }
+    $RockPath = @(Get-Section "move rock" | Select-String -Pattern "Nav (path|units): (.*)$" | ForEach-Object { $_.Matches[0].Value })
+    Write-Host "  rock: $($RockPath -join ' | ')"
     $AllOk = (Report "move" $Checks) -and $AllOk
 }
 
