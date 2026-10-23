@@ -87,9 +87,12 @@ namespace
 	/** Scripted checks of the orders (J4.7, D289): no unit stands in a rock or a building, where the navmesh has a hole. */
 	FAutoConsoleCommand NavUnitsCommand(
 		TEXT("hol.Nav.Units"),
-		TEXT("hol.Nav.Units: logs the units whose centre is off the navmesh (by more than 10 cm), on the machines that have one"),
-		FConsoleCommandDelegate::CreateLambda([]()
+		TEXT("hol.Nav.Units [Tolerance=10]: logs the units whose centre is off the navmesh (by more than Tolerance cm), on the machines that have one"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
+			// The part "rocks" passes 25 (ridge_army): a unit as drawn, between two fixed steps, cuts across the corner of the
+			// navmesh's voxel edge round a trunk, 27 cm clear of the trunk itself.
+			const double Tolerance = Args.IsEmpty() ? 10. : FMath::Max(1., FCString::Atod(*Args[0]));
 			for (const FWorldContext& Context : GEngine->GetWorldContexts())
 			{
 				UWorld* World = Context.World();
@@ -106,7 +109,7 @@ namespace
 				for (const FHOLUnitView& Unit : Units)
 				{
 					FNavLocation OnNav;
-					if (!NavSystem->ProjectPointToNavigation(Unit.Location, OnNav, FVector(10., 10., 1000.), NavMesh))
+					if (!NavSystem->ProjectPointToNavigation(Unit.Location, OnNav, FVector(Tolerance, Tolerance, 1000.), NavMesh))
 					{
 						Off.Add(FString::Printf(TEXT("#%u at (%.0f, %.0f)"), Unit.UnitId, Unit.Location.X, Unit.Location.Y));
 					}

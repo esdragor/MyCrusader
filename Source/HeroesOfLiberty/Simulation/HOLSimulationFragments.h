@@ -156,6 +156,12 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	 */
 	uint8 BuildingPushes = 0;
 
+	/**
+	 * Steps in a row a fixed obstacle of the map put it back (a rock, a trunk: UHOLFootprintKeepOutProcessor, ridge_army):
+	 * its way runs into it; a block member leaves its block for a path of its own, a walker gets a new path.
+	 */
+	uint8 ObstaclePushes = 0;
+
 	EHOLMovePhase Phase = EHOLMovePhase::None;
 
 	/** Its order is a group's move in formation (J7a.4): it ends holding its place (PlaceHold), the group marches at MarchSpeed. */
