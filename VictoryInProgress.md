@@ -243,3 +243,80 @@ Décisions à numéroter au report dans le GDD (§ 21) ; réponses de l'utilisat
   à voir : gather « deux Paysans à moins de 90 cm » (69 cm) et anims « walking with Wood » (1 de 3), peut-être venus de
   `main` (MV) ou d'aléas. Relance en cours.
 - 2026-10-23 : relance PASS sauf gather (90 cm) et anims (walking with Wood), **aussi rouges sur `main` 8fef24f** avec la même liste (Glorfindel emprunté et rendu), verts lancés seuls : noté dans `EtapeDefini.md`, pas de V2. Commit `aa1ac36` (ligne `HUD forum`, caméra) ; `main` avancée à aa1ac36 (autostash : fichiers des autres sessions intacts, fins de ligne seules réécrites). Arwen libérée. **Suite : V3 (tenir la ruine), puis V4 (messages)** ; plan de V3 à trancher question par question.
+
+## V3 — Tenir la ruine (questions préparées pendant l'absence de l'utilisateur, 2026-10-23, à poser une à une)
+
+Déjà fixé : D348 (reconstruction gelée tant que des ennemis sont près ; ~60 s tenus sans contestation → fondations
+rasées, −1 vie, le cycle recommence ; une unité du défenseur gèle le compte, les Paysans qui reconstruisent contestent
+aussi), D352 (compte dès la chute, ruine comprise ; rasé = reconstruction de zéro), D353 (anneau pour qui a la vision ;
+sans brouillard pour l'instant : tout le monde), D401 (Neutre conteste comme un adversaire). Ouvert :
+
+- **V3-Q1 Rayon de la zone** : A ~12 m autour du bord du forum (3 cases, anneau serré, combat au pied de la ruine) —
+  recommandé ; B ~20 m (5 cases, archers qui tiennent de loin) ; C la zone anti-construction (bien plus large, une armée
+  postée à distance « tient » sans se battre).
+- **V3-Q2 Qui compte** : A par **équipe** (toute unité vivante d'un adversaire du défenseur = attaquant ; toute unité du
+  défenseur ou de ses alliés = contestation ; Neutre = adversaire, D401 ; bâtiments non) — recommandé ; B le défenseur
+  seul conteste (ses alliés ne gèlent rien) ; C les tours et bâtiments comptent aussi (une tour posée à côté tient).
+- **V3-Q3 Le compte quand personne ne tient** (attaquants partis) : A **gardé** (ni remis à zéro ni rendu ; il reprend
+  au retour des attaquants ; remis à zéro quand le forum est debout) — recommandé ; B remis à zéro dès que la zone est
+  vide d'ennemis ; C qui redescend peu à peu (~2 s rendues par seconde).
+- **V3-Q4 Après les fondations rasées** : A **nouvelle chute complète** (décombres ~30 s, compte reparti de 0, même
+  message) — recommandé ; B reconstruction de zéro tout de suite, sans nouvelle ruine (compte reparti de 0) ; C le compte
+  continue (une vie par minute tenue tant que l'attaquant reste).
+- **V3-Q5 L'anneau** : A anneau au sol autour du forum, qui se remplit avec le compte, à la couleur de l'attaquant ; gris
+  et figé quand c'est contesté — recommandé ; B une barre au-dessus du forum ; C seulement dans le bloc de sélection et le
+  tableau (« Tenue 35 s »).
+
+## À côté : échecs de `quick_check` enchaîné (pendant l'absence de l'utilisateur, 2026-10-23, Arwen branche `qc-chain`)
+
+- Diagnostic (sous-agent, ~10 min, ~70k, rien corrigé) : **gather** « < 90 cm » reproduit par `-Parts production,gather`
+  (73 s) : **vrai défaut du jeu** : des Paysans qui rentrent décharger ensemble au même point du dépôt n'ont que
+  `StopSettleSteps = 10` pas pour s'écarter (`HOLGatherProcessor.cpp` l. 59, `Stop` l. 837) et restent superposés (69 cm
+  pour des corps de 120 cm), contre D309 ; l'ordre d'arrivée change avec le temps pris par la partie production.
+  **anims** « walking with Wood » : il faut `gather`/`production` **et** `build` avant ; hypothèse : 2 des 3 bûcherons
+  coupent un arbre voisin hors de la boîte de ±700 cm de la sélection, le `waitlog Selection:` accepte n'importe quelle
+  sélection. Logs : scratchpad `qcchain\`.
+- Suite lancée : anims d'abord (confirmer par `-Parts gather,build,anims`, corriger la sélection du test), puis gather
+  (se séparer jusqu'à ne plus se chevaucher, rouge `-Parts production,gather`). Rien de commité sans l'utilisateur.
+- **anims corrigé** (test seul, ~13 min, ~60k, `quick_check.ps1`) : cause confirmée : l'arbre visé près de (-14221, -1900)
+  abattu par gather et build, le groupe bois envoyé à 8,7 m (`source 4 at (-15093, -1810)`), la boîte de ±700 cm n'en
+  sélectionnait qu'un (`Selection: Peasant #70`) ; pierre et or sélectionnaient 5 et 7 au lieu de 3. Correctif : chaque
+  groupe mis à sa naissance dans un groupe de contrôle 6 à 9 (`hol.Select.Group Add`), resélectionné par
+  `hol.Select.Group Select` en exigeant `Selection: 3 units (own): Peasant x3`, groupes vidés à la fin (la partie
+  groups compare la barre exactement). `-Parts gather,build,anims` FAIL 334 s → **PASS** 332 s ; `anims` seul PASS 39 s.
+  Gather (défaut du jeu) lancé.
+- **gather corrigé** (jeu, ~13 min, ~80k, 4 compilations, `HOLGatherProcessor.cpp/.h` seuls) : cause vraie : l'écartement
+  de fin de récolte poussait un Paysan dans le **mur visible** du centre ; après les 10 pas, la sortie du mur (EtapeDefini
+  C.3, `EaseOutOfVisibleWalls`, 10 cm par pas) le ramenait tout droit sur son voisin (69 cm). Correctif : un Paysan
+  arrêté qui s'écarte encore sort **d'un coup** du mur visible des dépôts (`EaseOutOfDeposits`, `FTransformFragment` en
+  ReadWrite), et l'écartement continue **jusqu'à ne plus chevaucher** un corps au repos (`StopSettleMaxSteps` = 60 pas,
+  3 s au plus ; `CollectRestingBodies`). Paysan seul : comme avant (sauf sortie du mur en un pas : petit saut possible).
+  Rouge = `-Parts production,gather` (69 cm, 3 fois ; pas de test d'automatisation, pas de monde Mass dans `Gather.*`),
+  vert PASS 46 s (119 / 121 cm), `gather` seul PASS, tests Gather + Construction + Movement 39/39. **À l'essai** : épuiser
+  les baies avec 3-5 Paysans, retour au centre réparti le long du mur. `-Full` lancé.
+- `-Full` sur Arwen : arrêt à « formation regroup » (`timeout … waitlog Selection: 6 units (own): Spearman x6`), cascade
+  de FAIL derrière (combat, orders, net…), camera 8p FAIL ; **identique sur `main` f7269a8** (Glorfindel, rendu). Cause :
+  la partie groups laisse 10 unités dans le groupe 2 hors de la zone nettoyée par regroup (`HUD groups: 2=10`) ;
+  `hol.Select.Group Add 2` les garde (16). Correctif du test : chaque cas de regroup vide son groupe d'abord (`Group
+  Select N` + `Group Remove N`). `-Full` relancé.
+- `-Full` relancé : regroup **PASS** ; arrêt nouveau : « game launch ended by itself » (jeu coupé par quick_check à
+  `$GameLimitSeconds` = 780 s : la séquence complète, débloquée, dure plus) → limite portée à **960 s**. Restent à voir :
+  camera 8p (« launched from the screen ») et net « both gathered trees used up », aussi rouges sur `main`. `-Full` relancé.
+- `-Full` (limite 960 s) : **42 PASS** (camera 8p comprise, débloquée), en 891 s ; seul FAIL : net « both gathered trees
+  used up » (un seul arbre épuisé sur 2, chez les 2 clients ; aussi sur `main` en `-Full`, vert avec la liste de V2.6).
+  Diagnostic lancé (sous-agent, test seul).
+- **net corrigé** (test seul, ~10 min, ~60k) : la vérification « both gathered trees used up » ne tourne qu'avec la partie
+  `sources` (d'où le vert de V2.6) ; le serveur entamait l'arbre le plus proche de (-15000, 0) / (15000, 0), anciens
+  départs d'avant D344, alors que les clients visent depuis (-14800, 0) / (15200, 0) : pour le slot 1, arbre 43 entamé,
+  arbre 45 récolté, jamais épuisé. Correctif : `TakeNear -14800 0 95` / `TakeNear 15200 0 95` ; sans `move`, `wait 4`
+  avant le rapport des sources (le serveur n'a pas encore retiré / entamé les arbres). `-Parts net,sources,move` PASS
+  160 s (sources 3 et 45 épuisées, 373 debout). Vu une fois : client 1 bloqué sur `Waiting on static mesh SM_Arrow`
+  (`net,sources` seul), sans doute passager. `-Full` final lancé.
+- **`-Full` PASS** en 895 s (44 parties, tests 132/132) sur Arwen `qc-chain` : premier `-Full` vert depuis les fusions
+  du 2026-10-23. L'utilisateur est revenu ; il choisit l'essai du correctif de récolte d'abord (scénario `berries_return`
+  en préparation), puis les questions de V3.
+- `-Full` final **PASS** 895 s (44 parties). Scénario `berries_return` (~9 min, ~75k) : baies avec 5 Paysans, puis bois
+  avec 3 ; répétition : 119,7 cm et 120,4 cm au plus près. **Essai de l'utilisateur validé** (« works »). Commit
+  `f2acad7` (Arwen, `qc-chain`), `main` b4a8c8c (doc D421-D427) fusionnée (7cba45b) ; ligne « quick_check enchaîné »
+  retirée d'`EtapeDefini.md`. `main` **avancée à 7cba45b** avec l'accord de mycrusader-05, -e5, -7d (autostash : fichiers des autres intacts).
+- **Suite : V3 (tenir la ruine)**, questions préparées plus haut (V3-Q1 à Q5), à poser une à une.

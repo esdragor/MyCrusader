@@ -42,7 +42,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Le combat ignore les équipes : des alliés se battent entre eux *(`OwnerPlayer` comparé dans le combat et l'évitement ; vu en EtapeDefini D ; le camp Neutre de la sélection se branchera sur les postures de D369)*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 ### Aléas et petits restes
-- `quick_check` enchaîné (`tests,menu,production,gather,…,anims`) : gather « deux Paysans à moins de 90 cm » (69 cm) et anims « walking with Wood » rouges, verts lancés seuls *(déjà sur `main` 8fef24f, vu à la clôture de V2)*
 - `quick_check -Parts move,bodies,build` : « build site » rouge (plafond de population +20, laissé par les parties d'avant ; `-Parts build` seul passe)
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
