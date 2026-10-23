@@ -17,7 +17,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Catégorie « Lourd » dans la table : Homme d'armes, bonus de l'Arbalétrier contre Lourd *(D428)*
 
 ### Fin de partie
-- Conditions de victoire à coder : ruine à tenir (V3), messages (V4), vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
+- Conditions de victoire à coder : messages (V4), vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
 
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
@@ -33,7 +33,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : prochain numéro D434 (reprise au § 22)
+- Review du GDD : prochain numéro D439 (reprise au § 22)
 - Décisions du chantier rochers à porter au GDD (obstacles fixes hors des corps, bloc et rochers, filet de MV.4.4 à 0,5 s) *(`RidgeRockInProgress.md`)*
 
 ### Questions techniques ouvertes

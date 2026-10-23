@@ -320,3 +320,56 @@ sans brouillard pour l'instant : tout le monde), D401 (Neutre conteste comme un 
   `f2acad7` (Arwen, `qc-chain`), `main` b4a8c8c (doc D421-D427) fusionnée (7cba45b) ; ligne « quick_check enchaîné »
   retirée d'`EtapeDefini.md`. `main` **avancée à 7cba45b** avec l'accord de mycrusader-05, -e5, -7d (autostash : fichiers des autres intacts).
 - **Suite : V3 (tenir la ruine)**, questions préparées plus haut (V3-Q1 à Q5), à poser une à une.
+
+## Plan de V3 — Tenir la ruine (tranché le 2026-10-23)
+
+Réponses de l'utilisateur :
+- **V3-Q1 Rayon** : **~12 m du bord du forum** (recommandation).
+- **V3-Q2 Qui compte** : **par équipe** (recommandation) : unité vivante d'un adversaire du défenseur = attaquant (Neutre
+  compris, D401) ; unité du défenseur ou de ses alliés = contestation ; bâtiments et corps ne comptent pas.
+- **V3-Q3 Compte sans personne** : **redescend peu à peu** (~2 s rendues par seconde) (contre la recommandation « gardé »).
+- **V3-Q4 Après les fondations rasées** : **nouvelle chute complète** (recommandation) : −1 vie, décombres ~30 s,
+  reconstruction de zéro, compte à 0 ; dernière vie → défaite.
+- **V3-Q5 Affichage** : **anneau au sol** (recommandation) au rayon de la zone, qui se remplit à la couleur de
+  l'attaquant, gris et figé si contesté, qui recule quand le compte redescend ; bloc et tableau : « Tenue — 35 s ».
+
+Rappel D348 / D352 : reconstruction gelée tant qu'un ennemi est dans la zone ; le compte court dès la chute (ruine
+comprise) ; il n'avance que si des attaquants sont là **sans** unité du camp défenseur ; contesté = figé.
+
+| Étape | Contenu | État |
+|---|---|---|
+| V3.1 Règles et état | Règles pures (présence attaquants / défenseurs → compte qui avance, figé, redescend ; reconstruction gelée ; 60 s → nouvelle chute ou défaite), état répliqué, logs, triche ; test rouge d'abord avec la présence passée à la règle | **fait** (2026-10-23, non commité, ~12 min, ~90k, 2 compilations) : `HOLForumRules::Step(State, Tuning, Builders, FHOLForumPresence)`, `Raze`, `GetHoldSeconds` / `GetHoldProgress` / `GetHoldName` ; `FHOLForumState` + `HoldSteps`, `Hold` (`EHOLForumHold` None / Holding / Contested / Receding), `HolderSlot` (int8) ; attaquant de l'anneau = le plus nombreux, slot le plus bas à égalité (V3.2) ; `ForumHoldTime=60`, `ForumHoldDecay=2`, `ForumHoldRadius=1200` ; `AHOLGameState::AdvanceForums` → `GetForumPresence(Slot)` (triche d'abord, puis `SetForumPresenceProvider`, sinon personne) ; logs `held by slot A (H s)`, `contested`, `released`, `no longer held`, `razed, lives L` ; triche `hol.Victory.HoldPresence <Slot> <0|1> <0|1> [Attacker]` / `<Slot> off` ; tests `Victory.Forum.Hold.Rules` / `.Chain` rouge 0/2 puis vert, Victory + Construction + Buildings **46/46** ; pas = 0,05 s (60 s = 1200 pas) |
+| V3.2 Présence réelle | Unités dans la zone (12 m du bord) par équipe, au serveur, chaque pas ; test sur la vraie chaîne (unités posées près de la ruine) | **fait** (2026-10-23, non commité, ~11 min, ~75k, 4 compilations) : `Match/HOLForumPresence` (`FHOLForumPresenceCounter`, `MakeProvider`, branché par `InitVictory` au serveur) : forums principaux à terre d'emplacements non vaincus, **un seul parcours des unités par pas** (aucun si tous debout), distance au rectangle de l'emprise (`HOLConstruction::GetDistance` sur `GetBodyBounds`) ≤ `HoldRadius` ; défenseur = propriétaire ou allié (`GetCamp`), tout autre = attaquant (Neutre = emplacement fermé / hors limites pour l'instant, en attendant les postures de D369) ; `UHOLUnitSubsystem::ForEachLivingUnit` ; `AHOLGameState::GetCurrentStep` ; tests `Victory.Forum.Hold.Presence` / `.PresenceTeams` rouge 0/2 puis vert, Victory + Construction + Buildings + Combat **57/57** ; `Forum.Builders` adapté (le Paysan ennemi au contact gelait la reconstruction : tué après le refus de son ordre). Non testé : égalité entre deux attaquants |
+| V3.3 Affichage | Anneau au sol (remplissage, couleur, gris, recul), « Tenue — N s » au bloc et au tableau | **fait** (2026-10-23, non commité, ~15 min, ~85k, 3 compilations) : règles `ShowsHold`, `DescribeHold`, `GetRing` → `FHOLForumRing` (Fill, Tint Holder / Grey / Faded), `GetRingColor`, `GetZoneOutlinePoint` (emprise + `HoldRadius`, coins arrondis, départ au milieu du côté +X, sens horaire) ; anneau dans `AHOLSelectionMarkers::UpdateForumRings` (à l'image, bandes au sol `M_GroundFrame`, 128 morceaux, arc 60 cm, contour sombre 16 cm ; gris 0,5 contesté ; atténué = couleur mêlée de gris clair au recul), `AHOLGameState::FindPrimaryForum` ; textes `ForumHold` « Tenue — {0} s », `ForumHoldContested` « Contestée — {0} s », `TableHold` « {0} · tenue {1} s », `TableHoldContested` « {0} · contestée {1} s » ; `HUD forum` : `, hold N s holding|contested|receding by slot A` (avant `, lives`) et ` hold N s <état> by slot A` au tableau ; test `Victory.Forum.Hold.Display` rouge 0/1 puis vert, Victory + CommandGrid + Localization **37/37**. À voir : relief (anneau à la hauteur du pied du forum), lisibilité du trait, gris vs atténué, longueur du bloc à 3 lignes, largeur du tableau |
+| V3.4 Traductions, captures | fr / en / ja, captures hors écran | **fait** (2026-10-23, non commité, ~15 min, ~70k) : `ForumHold` « Held — {0} s » / « 占拠中 — {0}秒 », `ForumHoldContested` « Contested — {0} s » / « 争奪中 — {0}秒 », `TableHold` « {0} · held {1} s » / « {0} · 占拠{1}秒 », `TableHoldContested` « {0} · contested {1} s » / « {0} · 争奪{1}秒 » ; 195 → 199 entrées, aucune traduction changée. Captures `v34_*` (Arwen, `Saved_Tests\Screenshots\WindowsEditor\HOL`, 1600×900) relues aussi par la session principale : arc rouge qui part de midi en sens horaire, coins arrondis propres, bloc à 3-4 lignes et tableau qui tiennent, japonais complet, 60 s → `razed, lives 0` → Défaite. **Défauts** : anneau fin (piste ~2 px, arc 3-4 px) ; arc gris « contestée » presque invisible sur le sol gris de `Plain`, recul rose pâle peu contrasté → retouche V3.4b (arc plus épais, gris foncé, recul plus sombre). Non capturé : rasé avec une vie restante (couvert par `Hold.Chain`) |
+| V3.5 Vérification | `quick_check` (solo, 2 clients), scénario, essai | **fait** : partie `victory` (held, contested, released ; 2 clients), scénario `forum_hold`, essai de l'utilisateur **validé** (« fonctionne ») |
+| V3.6 Clôture | GDD, `EtapeDefini.md`, fusion | **fait** (2026-10-23) : D434 à D438 au GDD (prochain D439), `EtapeDefini.md` sans « ruine à tenir » ; commit `28c1d3a`, `main` fusionnée deux fois (7cacb4c, ecc0190) ; `-Full` sans rocks PASS 913 s (44 parties, 138/138), puis tests,victory,sources,gather,net PASS ; `main` **avancée à a74a5d1** avec l'accord de mycrusader-7d, -e5, -15 et d'une session sans nom. **V3 close** |
+
+### Suivi de V3
+
+- 2026-10-23 : V3.4b (~10 min, ~40k) : arc 60 → 120 cm, piste 16 → 28 cm, contesté gris 0,5 → 0,18, recul = couleur mêlée
+  de gris foncé 0,1 (rouge → 0,55 / 0,05 / 0,05) ; captures `v34b_*` : contesté et recul lisibles ; `Hold.Display`
+  rouge puis vert, Victory + CommandGrid 36/36. Incident : un lancement de tests de V3.4 terminé par `,Quit` (au lieu
+  de `;SoftQuit`) restait ouvert et bloquait la compilation : arrêté. V3.5 lancée (quick_check + scénario, sans
+  compilation). `main` avancée entre-temps par e5 (M6) et 7d (rochers, f6703a9) avec mon accord : à fusionner avant le
+  commit de V3 (recoupements : `DefaultGame.ini`, `quick_check.ps1`).
+- 2026-10-23 : **scénario `forum_hold` prêt** (~8 min, ~70k) : départ (6 Paysans, 6 Hommes d'armes hors zone) → 4 Piquiers
+  abattent le forum et restent (tenue) → l'utilisateur envoie ses Hommes d'armes (contestée) → Piquiers morts (recul) →
+  Paysans à la reconstruction, Entrée avant la fin → unités retirées, 2e vague qui tient 60 s → rasé, 0 vie, Défaite.
+  Répétition (`-saveddirsuffix=V35s`) : `held`, `contested (10 s)`, `released`, `ruin -> rebuilding`, `no longer held`,
+  `6 builders at work`, `razed, lives 0`, `defeated (Forum)` ; captures `v35s_*` (scratchpad) relues. Points : rasé au
+  temps 2 si l'utilisateur tarde plus de 60 s ; Entrée avant la fin de la reconstruction au temps 4 ; 2e vague au bord
+  de l'anneau. **Essai demandé.**
+- 2026-10-23 : **partie `victory` étendue pour V3** (~11 min, ~70k, `quick_check.ps1` seul, +30/−2) : sections `victory forum
+  held` (3 Lanciers de l'emplacement 1 à 5 m du bord : `held by slot 1`, `HUD forum` `hold N s holding by slot 1`),
+  `contested` (un Paysan à soi), `released` (Lanciers retirés : `released`, `receding` qui baisse, `no longer held`) ;
+  2 clients : `HoldPresence` fixé par le client 1, le client 2 lit `slot 1 colour 1 lives 1 ruin hold 2 s holding by
+  slot 0`. Rouge rejoué hors jeu sur 3 logs. `-Parts victory` PASS 32 s, `-Parts victory,net` PASS 126 s. Non couvert
+  par quick_check : le rasage (60 s réelles ; `slomo` ignoré dans une séquence de test : `HOLTestSequence.cpp:336` passe
+  par `GEngine->Exec`, pas le CheatManager) → couvert par `Hold.Chain`.
+- 2026-10-23 : **V3 validée** (« fonctionne »). Commit `28c1d3a` (Arwen, `victory-v3`), `main` 7cacb4c (M6, rochers) fusionnée sans conflit ; GDD **D434 à D438** (prochain D439), `EtapeDefini.md` sans « ruine à tenir » ; `-Full` lancé avant l'avance de `main`.
+- 2026-10-23 : `-Full` d'abord cassé par la partie `rocks` de main (ses `hol.Units.Remove` à 1800 cm emportaient 3 Paysans
+  du centre, gather attendait 21 unités) : signalé à mycrusader-7d, corrigé par lui (ecc0190 : `Remove [Type]`, rocks hors
+  de `-Full`). **Attention** : `-Full` dure ~913 s pour une limite de 960 s (`$GameLimitSeconds`). **V3 close.**
+- **Suite : V4 (messages, D353)** : « tel joueur se fait pousser » à tous ; alerte complète et ping plus tard (D202,
+  mini-carte). Plan à trancher question par question.
