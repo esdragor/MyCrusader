@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GenericPlatform/ICursor.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Match/HOLResources.h"
@@ -217,6 +218,12 @@ namespace HOLCommandGrid
 	inline constexpr int32 AttackMoveCell = 4;
 	inline constexpr int32 StopCell = 5;
 	inline constexpr int32 HoldCell = 11;
+
+	/**
+	 * The mouse cursor (the user's trial of A.2, AoE4's way): the red attack cursor (Crosshairs, SHOLAttackCursor) while
+	 * the attack-move waits for its point (Q), the default arrow otherwise, placement mode included (its ghost shows it).
+	 */
+	HEROESOFLIBERTY_API EMouseCursor::Type GetMouseCursor(bool bAttackMoveArmed, bool bPlacing);
 
 	/**
 	 * What Cell of the grid on the right does: the selected building's production (finished) or its cancel cell (a site);

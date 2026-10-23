@@ -199,4 +199,44 @@ bool FHOLMovementPickingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMovementPickSameTypeTest, "HeroesOfLiberty.Movement.PickSameType", UE::HeroesOfLiberty::Tests::Movement::Flags)
+bool FHOLMovementPickSameTypeTest::RunTest(const FString& Parameters)
+{
+	// A.1: a double click (or Ctrl + click) on one of the player's units takes all its own units of that type on the screen.
+	using HOLUnitPicking::IsDoubleClick;
+	TestTrue(TEXT("two clicks 0.3 s and 3 px apart: a double click"), IsDoubleClick(10., FVector2D(100., 100.), 10.3, FVector2D(102., 102.)));
+	TestFalse(TEXT("0.6 s apart: two clicks"), IsDoubleClick(10., FVector2D(100., 100.), 10.6, FVector2D(100., 100.)));
+	TestFalse(TEXT("20 px apart: two clicks"), IsDoubleClick(10., FVector2D(100., 100.), 10.2, FVector2D(120., 100.)));
+	TestFalse(TEXT("no click before: a single click"), IsDoubleClick(-1., FVector2D(100., 100.), 0.1, FVector2D(100., 100.)));
+
+	auto Unit = [](double X, double FootY, FName Type, bool bOwn)
+	{
+		FHOLTypedPickCandidate Candidate;
+		Candidate.Pick.Foot = FVector2D(X, FootY);
+		Candidate.Pick.Head = FVector2D(X, FootY - 40.);
+		Candidate.Pick.HalfWidth = 10.;
+		Candidate.TypeName = Type;
+		Candidate.bOwn = bOwn;
+		return Candidate;
+	};
+	const FName Archer(TEXT("Archer"));
+	const FName ManAtArms(TEXT("ManAtArms"));
+	const FVector2D Screen(1920., 1080.);
+	// Own archers: two on the screen, one beyond its right side, one whose feet only are off its bottom; a man-at-arms of
+	// the player's own; an enemy archer.
+	const TArray<FHOLTypedPickCandidate> Units = { Unit(100., 200., Archer, true), Unit(500., 300., Archer, true),
+		Unit(2100., 300., Archer, true), Unit(800., 1090., Archer, true), Unit(600., 300., ManAtArms, true), Unit(700., 300., Archer, false) };
+
+	TArray<int32> Picked;
+	HOLUnitPicking::PickSameTypeOnScreen(Units, 1, Screen, Picked);
+	TestTrue(TEXT("own archer: the own archers on the screen, the clicked one first"), Picked == TArray<int32>({ 1, 0, 3 }));
+	HOLUnitPicking::PickSameTypeOnScreen(Units, 4, Screen, Picked);
+	TestTrue(TEXT("own man-at-arms: itself, the only one of its type"), Picked == TArray<int32>({ 4 }));
+	HOLUnitPicking::PickSameTypeOnScreen(Units, 5, Screen, Picked);
+	TestTrue(TEXT("an enemy archer: itself alone"), Picked == TArray<int32>({ 5 }));
+	HOLUnitPicking::PickSameTypeOnScreen(Units, INDEX_NONE, Screen, Picked);
+	TestTrue(TEXT("no unit clicked: none"), Picked.IsEmpty());
+	return true;
+}
+
 #endif

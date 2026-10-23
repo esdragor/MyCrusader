@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Player/HOLPlayerController.h"
+#include "Player/HOLAttackCursor.h"
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -16,6 +17,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
 #include "EngineUtils.h"
+#include "Framework/Application/SlateApplication.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/IConsoleManager.h"
@@ -142,7 +144,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Scripted checks (D264, D289): a left click at a point of the viewport, without the desktop's mouse. */
 	FAutoConsoleCommand ClickCommand(
 		TEXT("hol.Select.Click"),
-		TEXT("hol.Select.Click <X> <Y> [add]: selects as a left click at that point of the viewport (0 to 1 each way) would; 'add' as with Shift"),
+		TEXT("hol.Select.Click <X> <Y> [add] [double]: selects as a left click at that point of the viewport (0 to 1 each way) would; 'add' as with Shift; 'double' as a double click (A.1)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 2)
@@ -150,21 +152,24 @@ namespace UE::HeroesOfLiberty::Player
 				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Click <X> <Y> [add]"));
 				return;
 			}
-			const bool bAdd = Args.Num() >= 3 && Args[2] == TEXT("add");
+			const bool bAdd = Args.Contains(TEXT("add"));
+			const bool bDouble = Args.Contains(TEXT("double"));
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				Controller->SelectAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])), bAdd);
+				const FVector2D Fraction(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]));
+				bDouble ? Controller->SelectSameTypeAt(Fraction, bAdd) : Controller->SelectAt(Fraction, bAdd);
 			}
 		}));
 
 	/** The same on one of the player's own units, wherever it is drawn: a script does not know where units stand on the screen. */
 	FAutoConsoleCommand ClickUnitCommand(
 		TEXT("hol.Select.ClickUnit"),
-		TEXT("hol.Select.ClickUnit <N> [add]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last)"),
+		TEXT("hol.Select.ClickUnit <N> [add] [double]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const int32 Wanted = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
-			const bool bAdd = Args.Num() >= 2 && Args[1] == TEXT("add");
+			const bool bAdd = Args.Contains(TEXT("add"));
+			const bool bDouble = Args.Contains(TEXT("double"));
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
@@ -184,7 +189,8 @@ namespace UE::HeroesOfLiberty::Player
 					continue;
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Click on unit #%u at (%.3f, %.3f)"), Views[N].UnitId, Middle.X / SizeX, Middle.Y / SizeY);
-				Controller->SelectAt(FVector2D(Middle.X / SizeX, Middle.Y / SizeY), bAdd);
+				const FVector2D Fraction(Middle.X / SizeX, Middle.Y / SizeY);
+				bDouble ? Controller->SelectSameTypeAt(Fraction, bAdd) : Controller->SelectAt(Fraction, bAdd);
 			}
 		}));
 
@@ -1359,10 +1365,23 @@ void AHOLPlayerController::BeginPlay()
 
 	Super::BeginPlay();
 	// A change of selection closes the chosen age (the user's 1st trial of G.1).
-	OnSelectionChanged.AddWeakLambda(this, [this]() { SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::SelectionChanged)); });
+	OnSelectionChanged.AddWeakLambda(this, [this]()
+	{
+		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::SelectionChanged));
+		// No soldier left to give the attack-move to (A.2): its mode ends, and its red cursor with it.
+		if (bAttackMoveArmed && GetOwnSelectedSoldiers().IsEmpty())
+		{
+			bAttackMoveArmed = false;
+		}
+	});
 	if (!IsLocalController())
 	{
 		return;
+	}
+	// The red attack cursor of the attack-move mode (A.2), a Slate widget: no asset.
+	if (UGameViewportClient* Viewport = GetWorld()->GetGameViewport())
+	{
+		Viewport->SetSoftwareCursorWidget(EMouseCursor::Crosshairs, HOLAttackCursor::Make());
 	}
 
 	if (UEnhancedInputLocalPlayerSubsystem* Input = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
@@ -1497,6 +1516,16 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 	if (IsLocalController() && WasInputKeyJustPressed(EKeys::Enter))
 	{
 		HandleContinueKey();
+	}
+	// The red attack cursor while Q waits for its point (A.2): every way out of the mode brings the arrow back.
+	const EMouseCursor::Type Cursor = HOLCommandGrid::GetMouseCursor(bAttackMoveArmed, IsPlacing());
+	if (IsLocalController() && CurrentMouseCursor != Cursor)
+	{
+		CurrentMouseCursor = Cursor;
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().QueryCursor();
+		}
 	}
 	if (!RTSCamera)
 	{
@@ -1803,6 +1832,53 @@ void AHOLPlayerController::SelectAt(const FVector2D& ViewportFraction, const boo
 	{
 		Units.Add(UnitId);
 	}
+	SetUnitSelection(MoveTemp(Units));
+}
+
+void AHOLPlayerController::SelectSameTypeAt(const FVector2D& ViewportFraction, const bool bAdd)
+{
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<uint32> UnitIds;
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds);
+	const int32 Clicked = HOLUnitPicking::PickAt(Candidates, ToPixels(ViewportFraction));
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	TMap<uint32, const FHOLUnitView*> ById;
+	for (const FHOLUnitView& View : Views)
+	{
+		ById.Add(View.UnitId, &View);
+	}
+	TArray<FHOLTypedPickCandidate> Typed;
+	for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+	{
+		const FHOLUnitView* const* View = ById.Find(UnitIds[Index]);
+		FHOLTypedPickCandidate& Candidate = Typed.AddDefaulted_GetRef();
+		Candidate.Pick = Candidates[Index];
+		Candidate.TypeName = View ? (*View)->TypeName : NAME_None;
+		Candidate.bOwn = View && HOLPlayerState && (*View)->OwnerPlayer == HOLPlayerState->GetPlayerIndex();
+	}
+	// Not on one of the player's own units (another's, a building, nothing): a single click.
+	if (!Typed.IsValidIndex(Clicked) || !Typed[Clicked].bOwn)
+	{
+		SelectAt(ViewportFraction, bAdd);
+		return;
+	}
+	int32 SizeX = 0, SizeY = 0;
+	GetViewportSize(SizeX, SizeY);
+	TArray<int32> Indices;
+	HOLUnitPicking::PickSameTypeOnScreen(Typed, Clicked, FVector2D(SizeX, SizeY), Indices);
+	// Shift adds them to the player's own selected units (as a box does).
+	TArray<uint32> Units;
+	if (bAdd && GetOwnSelectedUnits().Num() == SelectedUnits.Num())
+	{
+		Units = SelectedUnits;
+	}
+	for (const int32 Index : Indices)
+	{
+		Units.AddUnique(UnitIds[Index]);
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Select: %d units of type %s on the screen"), Indices.Num(), *Typed[Clicked].TypeName.ToString());
 	SetUnitSelection(MoveTemp(Units));
 }
 
@@ -3674,6 +3750,7 @@ void AHOLPlayerController::HandleSelectStarted()
 		return;
 	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
+	SelectPressTime = GetWorld()->GetRealTimeSeconds();
 }
 
 void AHOLPlayerController::HandleSelectCompleted()
@@ -3688,11 +3765,20 @@ void AHOLPlayerController::HandleSelectCompleted()
 	if (GetCursorFraction(Release) && HOLUnitPicking::IsBox(ToPixels(SelectPressFraction), ToPixels(Release)))
 	{
 		SelectInBox(SelectPressFraction, Release, bSelectAddHeld);
+		LastClickTime = -1.;
+		return;
 	}
-	else
+	// A double click (presses close in time and place) or Ctrl + click (AoE4): the unit's type on the screen (A.1).
+	const FVector2D Pixels = ToPixels(SelectPressFraction);
+	if (IsCtrlHeld() || HOLUnitPicking::IsDoubleClick(LastClickTime, LastClickPixels, SelectPressTime, Pixels))
 	{
-		SelectAt(SelectPressFraction, bSelectAddHeld);
+		LastClickTime = -1.;
+		SelectSameTypeAt(SelectPressFraction, bSelectAddHeld);
+		return;
 	}
+	LastClickTime = SelectPressTime;
+	LastClickPixels = Pixels;
+	SelectAt(SelectPressFraction, bSelectAddHeld);
 }
 
 void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
