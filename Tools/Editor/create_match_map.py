@@ -9,7 +9,8 @@ on each occupied slot when a match starts (D259).
   start slots  AHOLStartSlot 0 to 7 on a circle of 150 m, facing the centre; the first ones far apart (slot 0 and 1
                face to face for one against one, 0 to 3 at the four points of the compass...)
   obstacles    so that the paths show (D286, J4): in front of each slot, towards the middle, a ridge of three
-               boulders; in the middle of the map, a grove of trees (the units walk between the trunks). Symmetric.
+               boulders, no navmesh on their tops (a NavArea_Null volume each); in the middle of the map, a grove of
+               trees (the units walk between the trunks). Symmetric.
                Their matte materials /Game/Rendering/MI_Rock and MI_Tree are made when missing.
   sources      the resources of the match (D295, D297), as data in an AHOLSourceLayout the server reads at the start:
                a wood of 40 trees beside each slot (J5a), on its left seen from the slot, 18 to 27 m from it, out of the
@@ -40,6 +41,12 @@ PLAYER_START_HALF_HEIGHT = 92.0
 # front of the main centre, out of the 12 m centre's way and of the Peasants born at its foot.
 RIDGE_RADIUS = 12000.0
 RIDGE_BOULDERS = [(-650.0, unreal.Vector(7.0, 4.5, 3.0)), (0.0, unreal.Vector(8.0, 5.0, 3.6)), (650.0, unreal.Vector(6.5, 4.0, 2.8))]
+# No navmesh on a boulder's top (MV.4, the user's choice A): its flat top would carry its own patch, cut off from the
+# ground, where a unit born in the rock stays stuck. A NavArea_Null volume over each boulder, from ROCK_NULL_BOTTOM up
+# (above the ground's spans: the ground around the rock keeps its navmesh), its footprint the rock's with a margin.
+ROCK_NULL_BOTTOM = 50.0
+ROCK_NULL_TOP = 450.0
+ROCK_NULL_MARGIN = 100.0
 # Grove: trunks of 5 m, crowns from 4 m up (the units pass under them, the trunks block), on a disc of 14 m.
 GROVE_TREES = [(0.0, 0.0), (700.0, 250.0), (-500.0, 600.0), (-650.0, -400.0), (250.0, -750.0), (1200.0, -300.0),
                (-1250.0, 100.0), (400.0, 1150.0), (-200.0, -1300.0), (1000.0, 900.0), (-1000.0, -1000.0), (-900.0, 1150.0)]
@@ -124,8 +131,15 @@ def spawn_obstacles():
         for number, (offset, scale) in enumerate(RIDGE_BOULDERS):
             # The engine's 1 m sphere, flattened and half buried.
             location = radial * RIDGE_RADIUS + across * offset
+            yaw = angle + 90.0 + (number - 1) * 12.0
             spawn_shape("/Engine/BasicShapes/Sphere", unreal.Vector(location.x, location.y, 0), scale, "Ridge%d_%d" % (index, number),
-                        rock, yaw=angle + 90.0 + (number - 1) * 12.0)
+                        rock, yaw=yaw)
+            # The volume's default brush is a 2 m cube centred on the actor.
+            null_volume = spawn(unreal.NavModifierVolume, unreal.Vector(location.x, location.y, (ROCK_NULL_BOTTOM + ROCK_NULL_TOP) / 2),
+                                unreal.Rotator(roll=0, pitch=0, yaw=yaw), "RidgeNoNav%d_%d" % (index, number))
+            null_volume.set_area_class(unreal.NavArea_Null)
+            null_volume.set_actor_scale3d(unreal.Vector((scale.x * 50 + ROCK_NULL_MARGIN) / 100, (scale.y * 50 + ROCK_NULL_MARGIN) / 100,
+                                                        (ROCK_NULL_TOP - ROCK_NULL_BOTTOM) / 200))
     for number, (x, y) in enumerate(GROVE_TREES):
         # The engine's 1 m cylinder is centred: a 5 m trunk stands on the ground at Z = 250 cm.
         spawn_shape("/Engine/BasicShapes/Cylinder", unreal.Vector(x, y, 250), unreal.Vector(0.8, 0.8, 5.0), "Trunk%d" % number, trunk)
