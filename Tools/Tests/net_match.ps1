@@ -63,6 +63,9 @@ if ($Stage) {
 }
 $Server = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Binaries\Win64\HeroesOfLibertyServer.exe"
 if (-not (Test-Path $Server)) { Write-Host "net_match : no staged server ($Server); run with -Stage"; exit 1 }
+# A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion, R3.3): this test stage serves
+# "dev", as the clients from the editor (package.ps1 writes the real version into a package).
+[IO.File]::WriteAllText((Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"), "dev", (New-Object Text.UTF8Encoding $false))
 
 # Two humans in slots 0 and 1, the colours of their slots; the clients take the free human slots in order.
 $Slots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt $Clients) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }
