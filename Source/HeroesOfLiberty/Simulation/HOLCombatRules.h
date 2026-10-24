@@ -66,14 +66,21 @@ namespace HOLCombat
 	/** One step of a unit that does not attack: the cool-down runs down to 0 and stays there. */
 	HEROESOFLIBERTY_API void TickIdle(int32& CooldownMs, int32 StepMs);
 
-	/** Gap between the edges of two bodies (negative when they overlap). */
-	HEROESOFLIBERTY_API double GetEdgeDistance(const FVector2D& A, float RadiusA, const FVector2D& B, float RadiusB);
+	/** Gap between the edges of two bodies (negative when they overlap). Inline (perf, 2026-10-24): met per neighbour. */
+	inline double GetEdgeDistance(const FVector2D& A, const float RadiusA, const FVector2D& B, const float RadiusB)
+	{
+		return FVector2D::Distance(A, B) - static_cast<double>(RadiusA) - static_cast<double>(RadiusB);
+	}
 
 	/**
 	 * Reach (AttackRange is between the two bodies' edges): the gap between the edges, centre distance minus both radii,
-	 * at most Range. Touching bodies (gap 0 or less, pushed into each other) are in reach.
+	 * at most Range. Touching bodies (gap 0 or less, pushed into each other) are in reach. Inline (perf): met per neighbour.
 	 */
-	HEROESOFLIBERTY_API bool IsInRange(const FVector2D& A, float RadiusA, const FVector2D& B, float RadiusB, float Range);
+	inline bool IsInRange(const FVector2D& A, const float RadiusA, const FVector2D& B, const float RadiusB, const float Range)
+	{
+		const double Reach = static_cast<double>(RadiusA) + static_cast<double>(RadiusB) + FMath::Max(static_cast<double>(Range), 0.);
+		return FVector2D::DistSquared(A, B) <= Reach * Reach;
+	}
 
 	/**
 	 * Share (0, 0.5 or 1) of the overlap of two bodies that the separation gives to A, the unit that looks for its
@@ -229,8 +236,11 @@ namespace HOLCombat
 	/** Speed of an arrow by default (cm/s): 37.5 m/s (J7c-Q2 25 m/s, x1.5 at the trial of D345), hol.Combat.ArrowSpeed. */
 	inline constexpr float DefaultArrowSpeed = 3750.f;
 
-	/** A unit of this reach shoots (AttackRange > RangedReach). */
-	HEROESOFLIBERTY_API bool IsRangedAttack(float AttackRange);
+	/** A unit of this reach shoots (AttackRange > RangedReach). Inline (perf): met per neighbour. */
+	inline bool IsRangedAttack(const float AttackRange)
+	{
+		return AttackRange > RangedReach;
+	}
 
 	/** Radius (cm, edge to edge) within which an idle soldier comes to a fighting friend's aid by default (hol.Combat.AidRadius). */
 	inline constexpr float DefaultAidRadius = 2000.f;

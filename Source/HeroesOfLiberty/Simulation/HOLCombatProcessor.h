@@ -197,6 +197,20 @@ protected:
 	TArray<int32> AheadFighters;
 	TArray<double> AheadReach;
 	TArray<TArray<int32>> AheadLists;
+	/**
+	 * Perf (hol.Combat.ParallelAhead): the contact list (hol.Combat.StopAtContact) of each unit walking to fight at the
+	 * step's start, gathered ahead in parallel with the lists above; its slot by fighter (INDEX_NONE: gathered serially).
+	 */
+	TArray<int32> ContactSlotOfFighter;
+	TArray<int32> ContactFighters;
+	TArray<TArray<int32>> ContactLists;
+	/**
+	 * Perf (hol.Combat.ParallelAhead): the places taken around each living enemy of the melee units gathered ahead,
+	 * counted in parallel once the arrows have landed (-1: not counted); read in place of CountBodiesAround while no unit
+	 * has died since (the count would then be the same).
+	 */
+	TArray<int32> AheadPlaces;
+	TArray<int32> AheadPlaceFighters;
 	/** A fighter is a candidate of the current search when its stamp is SearchStamp (in place of a scan of the list). */
 	TArray<uint32> SeenStamp;
 	uint32 SearchStamp = 0;

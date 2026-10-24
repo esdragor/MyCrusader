@@ -69,6 +69,10 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 SkipAttackerCount = 1;
 	FAutoConsoleVariableRef CVarSkipAttackerCount(TEXT("hol.Combat.SkipAttackerCount"), SkipAttackerCount,
 		TEXT("1 (default): the attackers' counts zeroed at the gathering and counted only when a unit has a target (J7c.4, S2); 0: zeroed and counted every step, the same outcome"));
+	/** Perf (2026-10-24): more of the serial pass's lists and counts made ahead, in parallel (the same outcome). */
+	int32 ParallelAhead = 1;
+	FAutoConsoleVariableRef CVarParallelAhead(TEXT("hol.Combat.ParallelAhead"), ParallelAhead,
+		TEXT("1 (default): the contact lists of the units walking to fight and the places taken around the enemies the searchers will see, made ahead in parallel (a count read only while no unit has died since); 0: in the serial pass, as before, the same outcome"));
 	/** J7c.4, trial feedback: a melee out of reach leaves an enemy with no place left around it for one with a place. */
 	int32 PreferFreeTarget = 1;
 	FAutoConsoleVariableRef CVarPreferFreeTarget(TEXT("hol.Combat.PreferFreeTarget"), PreferFreeTarget,
@@ -322,6 +326,13 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 			for (int32 Slot = GridStarts[Row + X0]; Slot < End; ++Slot)
 			{
 				const FGridUnit& Unit = GridUnits[Slot];
+				// Perf: a body beyond any place's reach (MaxPlaceReach or Gap, and 1 cm) first, before its health is read.
+				const double DX = Unit.X - Position.X;
+				const double DY = Unit.Y - Position.Y;
+				if (DX * DX + DY * DY > FMath::Square(Reach + 1.0))
+				{
+					continue;
+				}
 				if (Unit.Fighter == Index || Fighters[Unit.Fighter].State->CurrentHealth <= 0)
 				{
 					continue;
@@ -669,19 +680,36 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// target standing in reach), gathered ahead in parallel. GatherNearby reads only what no unit changes during the
 	// step; the serial pass below reads the health, the targets and the attackers then, as before, and a unit not
 	// foreseen (or with another reach) gathers there. A wrong guess costs time only.
+	// The contact search's reach (hol.Combat.StopAtContact), the same ahead and in the serial pass.
+	const auto ContactReachOf = [this](const FHOLUnitTypeConstants& Constants)
+	{
+		const double Zone = FMath::Max(static_cast<double>(ZoneOfControl), 0.0);
+		const double ContactReach = Constants.Radius + Constants.AttackRange + MaxRadius;
+		return Zone > 0.0 ? FMath::Max(ContactReach, Zone) : ContactReach;
+	};
+	const bool bParallelAhead = ParallelAhead != 0 && bDenseGrid;
 	if (bDenseGrid)
 	{
 		AheadSlotOfFighter.Init(INDEX_NONE, Fighters.Num());
 		AheadFighters.Reset();
 		AheadReach.Reset();
+		ContactSlotOfFighter.Init(INDEX_NONE, Fighters.Num());
+		ContactFighters.Reset();
 		for (int32 Index = 0; Index < Fighters.Num(); ++Index)
 		{
 			const FFighter& Fighter = Fighters[Index];
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
+			const bool bMaySeekNow = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull());
+			// Perf: a melee walking to fight will likely search for contact (the serial pass's test, by the step's start).
+			if (bParallelAhead && bStopAtContact && bMaySeekNow && Fighter.State->CurrentHealth > 0 && !Fighter.bBusy && Fighter.Order->Phase != EHOLMovePhase::None
+				&& !HOLCombat::IsRangedAttack(Constants.AttackRange) && (Combat.TargetBuilding.IsExplicitlyNull() || Constants.AggressionRadius > 0.f))
+			{
+				ContactSlotOfFighter[Index] = ContactFighters.Add(Index);
+			}
 			if (Fighter.State->CurrentHealth <= 0 || Fighter.bBusy || ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) != 0
-				|| !HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull()))
+				|| !bMaySeekNow)
 			{
 				continue;
 			}
@@ -704,14 +732,27 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			AheadLists.SetNum(AheadFighters.Num());
 		}
-		ParallelFor(AheadFighters.Num(), [this](const int32 Slot)
+		if (ContactLists.Num() < ContactFighters.Num())
 		{
-			GatherNearby(AheadFighters[Slot], AheadReach[Slot], AheadLists[Slot]);
+			ContactLists.SetNum(ContactFighters.Num());
+		}
+		ParallelFor(TEXT("HOLCombatAhead"), AheadFighters.Num() + ContactFighters.Num(), 32, [this, &ContactReachOf](const int32 Slot)
+		{
+			if (Slot < AheadFighters.Num())
+			{
+				GatherNearby(AheadFighters[Slot], AheadReach[Slot], AheadLists[Slot]);
+				return;
+			}
+			const int32 Contact = Slot - AheadFighters.Num();
+			GatherNearby(ContactFighters[Contact], ContactReachOf(*Fighters[ContactFighters[Contact]].Constants), ContactLists[Contact]);
 		});
 	}
+	// Perf (hol.Combat.ParallelAhead): a unit died since the places were counted ahead (they may count it).
+	bool bDeathSincePlaces = false;
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
 	const auto Kill = [&](FFighter& Victim)
 	{
+		bDeathSincePlaces = true;
 		const int32 FormerTarget = FindFighter(Victim.Combat->Target);
 		if (FormerTarget != INDEX_NONE)
 		{
@@ -828,6 +869,66 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	}
 	Arrows.SetNum(Kept, EAllowShrinking::No);
+
+	// Perf (hol.Combat.ParallelAhead): the places around the living enemies the melee searchers gathered ahead will see
+	// (and their targets), counted in parallel now, the arrows landed: what CountBodiesAround gives in the serial pass
+	// while no unit dies (it reads only the positions, the constants and whether each body still stands).
+	const bool bPlacesAhead = bParallelAhead && bPreferFree && AheadFighters.Num() > 0;
+	if (bPlacesAhead)
+	{
+		AheadPlaces.Init(-1, Fighters.Num());
+		AheadPlaceFighters.Reset();
+		const auto Mark = [this](const int32 Other)
+		{
+			if (Other != INDEX_NONE && AheadPlaces[Other] == -1 && Fighters[Other].State->CurrentHealth > 0)
+			{
+				AheadPlaces[Other] = -2; // to count
+				AheadPlaceFighters.Add(Other);
+			}
+		};
+		// Lists longer than the fighters together (a dense battle): every living fighter counted, rather than each marked.
+		int32 Listed = 0;
+		for (int32 Slot = 0; Slot < AheadFighters.Num(); ++Slot)
+		{
+			Listed += AheadLists[Slot].Num();
+		}
+		if (Listed > Fighters.Num())
+		{
+			for (int32 Other = 0; Other < Fighters.Num(); ++Other)
+			{
+				Mark(Other);
+			}
+		}
+		for (int32 Slot = 0; Slot < AheadFighters.Num() && Listed <= Fighters.Num(); ++Slot)
+		{
+			const FFighter& Seeker = Fighters[AheadFighters[Slot]];
+			if (HOLCombat::IsRangedAttack(Seeker.Constants->AttackRange))
+			{
+				continue; // a shooter's candidates are never counted
+			}
+			for (const int32 Other : AheadLists[Slot])
+			{
+				Mark(Other);
+			}
+			Mark(FindFighter(Seeker.Combat->Target));
+		}
+		ParallelFor(TEXT("HOLCombatPlaces"), AheadPlaceFighters.Num(), 32, [this](const int32 Slot)
+		{
+			const int32 Other = AheadPlaceFighters[Slot];
+			AheadPlaces[Other] = CountBodiesAround(Other, UE::HeroesOfLiberty::Combat::PlaceGap, HOLCombat::MaxAttackers);
+		});
+		bDeathSincePlaces = false;
+	}
+	// The places taken around a fighter, counted once a step, the first time needed.
+	const auto PlacesAround = [&](const int32 Other)
+	{
+		if (PlacesTaken[Other] < 0)
+		{
+			PlacesTaken[Other] = bPlacesAhead && !bDeathSincePlaces && AheadPlaces[Other] >= 0 ? AheadPlaces[Other]
+				: CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers);
+		}
+		return PlacesTaken[Other];
+	};
 
 	Deaths.Reset();
 	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
@@ -956,11 +1057,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					if (bPreferFree && !Seeker.bRanged
 						&& !HOLCombat::IsInRange(Position, Seeker.Radius, Candidate.Position, Candidate.Radius, Seeker.AttackRange))
 					{
-						if (PlacesTaken[Other] < 0)
-						{
-							PlacesTaken[Other] = CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers);
-						}
-						Candidate.bNoPlace = PlacesTaken[Other] >= HOLCombat::MaxAttackers || IsFarAlong(Candidate.Position);
+						Candidate.bNoPlace = PlacesAround(Other) >= HOLCombat::MaxAttackers || IsFarAlong(Candidate.Position);
 					}
 					CandidateFighters.Add(Other);
 					if (bFast)
@@ -1035,11 +1132,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					if (!HOLCombat::IsInRange(Position, Seeker.Radius, TargetPosition, TargetRadius, Seeker.AttackRange)
 						&& !HOLCombat::IsInRange(Position, Seeker.Radius, NewPosition, NewRadius, Seeker.AttackRange))
 					{
-						if (PlacesTaken[Target] < 0)
-						{
-							PlacesTaken[Target] = CountBodiesAround(Target, PlaceGap, HOLCombat::MaxAttackers);
-						}
-						if (PlacesTaken[Target] < HOLCombat::MaxAttackers && !IsFarAlong(TargetPosition)
+						if (PlacesAround(Target) < HOLCombat::MaxAttackers && !IsFarAlong(TargetPosition)
 							&& HOLCombat::GetEdgeDistance(Position, Seeker.Radius, NewPosition, NewRadius)
 								> HOLCombat::GetEdgeDistance(Position, Seeker.Radius, TargetPosition, TargetRadius) - RearTargetKeep)
 						{
@@ -1114,13 +1207,18 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			&& (Target == INDEX_NONE || !HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange)))
 		{
 			const double Zone = FMath::Max(static_cast<double>(ZoneOfControl), 0.0);
-			const double ContactReach = Constants.Radius + Constants.AttackRange + MaxRadius;
-			GatherNearby(Index, Zone > 0.0 ? FMath::Max(ContactReach, Zone) : ContactReach, Nearby);
+			// Perf: the list gathered ahead when this unit was foreseen (the same reach, the positions unchanged).
+			const int32 ContactSlot = bParallelAhead ? ContactSlotOfFighter[Index] : INDEX_NONE;
+			if (ContactSlot == INDEX_NONE)
+			{
+				GatherNearby(Index, ContactReachOf(Constants), Nearby);
+			}
+			const TArray<int32>& Contacts = ContactSlot != INDEX_NONE ? ContactLists[ContactSlot] : Nearby;
 			int32 Touched = INDEX_NONE;
 			int32 Nearest = INDEX_NONE; // the zone of control: the nearest living enemy within Zone, least unit id on a tie
 			double NearestDistance = 0.0;
 			bool bTargetInZone = false;
-			for (const int32 Other : Nearby)
+			for (const int32 Other : Contacts)
 			{
 				const FFighter& Enemy = Fighters[Other];
 				if (Enemy.State->CurrentHealth <= 0)
@@ -1421,11 +1519,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 							{
 								continue;
 							}
-							if (PlacesTaken[Other] < 0)
-							{
-								PlacesTaken[Other] = CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers);
-							}
-							if (PlacesTaken[Other] < HOLCombat::MaxAttackers)
+							if (PlacesAround(Other) < HOLCombat::MaxAttackers)
 							{
 								Free = Other;
 								FreeDistance = Distance;

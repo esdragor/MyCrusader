@@ -94,6 +94,23 @@ protected:
 	TArray<int32> CellHeads;
 	TArray<int32> NextInCell;
 	TArray<FIntPoint> Cells;
+	/**
+	 * Perf (hol.Units.FastNear): the same cells in a dense table over the units' bounding box when it is not too large,
+	 * each cell's units side by side in descending index order (the order of a bucket's chain): its range
+	 * LookAheadBodies[LookAheadStarts[Cell] .. LookAheadStarts[Cell + 1]), with their positions and radii for the first tests.
+	 */
+	struct FLookAheadBody
+	{
+		FVector2D Position = FVector2D::ZeroVector;
+		float Radius = 0.f;
+		int32 Index = INDEX_NONE;
+	};
+	bool bLookAheadDense = false;
+	FIntPoint LookAheadMin = FIntPoint::ZeroValue;
+	int32 LookAheadWidth = 0;
+	int32 LookAheadHeight = 0;
+	TArray<int32> LookAheadStarts;
+	TArray<FLookAheadBody> LookAheadBodies;
 	/** J7c.4 loop 20: each owner's units' mean position this step (the middle of its army: a rear rank slides away from it). */
 	TMap<uint8, FVector2D> OwnerCentres;
 	/** The bodies of the buildings the navmesh forbids, this step (EtapeDefini E: no detour into them), and their bounding radii. */

@@ -40,6 +40,15 @@ namespace UE::HeroesOfLiberty::Simulation
 	float AvoidRadiusScale = 1.1f;
 	FAutoConsoleVariableRef CVarAvoidClearance(TEXT("hol.Units.AvoidClearance"), AvoidRadiusScale,
 		TEXT("Distance a walker keeps from the bodies it looks ahead for, as a part of the two radii (D293, D294): above 1, a margin"));
+	/**
+	 * Perf (hol.Units.FastNear): cells of the look-ahead's dense table at most, per unit (beyond, the hashed buckets): a
+	 * crowd's box only; units spread over the map (S7's gatherers) would clear a large table each step for nothing.
+	 */
+	constexpr int64 LookAheadDenseCellsPerUnit = 8;
+	/** Perf (2026-10-24): the avoidance's near bodies found by the cheapest tests first, their terms read once (the same ways). */
+	int32 FastNear = 1;
+	FAutoConsoleVariableRef CVarFastNear(TEXT("hol.Units.FastNear"), FastNear,
+		TEXT("1 (default): the full-speed avoidance's near bodies by the same tests, the cheapest first, and their contact terms read once a step; 0: as before, the same ways"));
 
 	int32 AvoidEnabled = 1;
 	FAutoConsoleVariableRef CVarAvoid(TEXT("hol.Units.Avoid"), AvoidEnabled,
@@ -386,12 +395,50 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	CellHeads.Init(INDEX_NONE, LookAheadBuckets);
 	NextInCell.SetNumUninitialized(Positions.Num());
 	Cells.SetNumUninitialized(Positions.Num());
+	FIntPoint MinCell(MAX_int32, MAX_int32);
+	FIntPoint MaxCell(MIN_int32, MIN_int32);
 	for (int32 Index = 0; Index < Positions.Num(); ++Index)
 	{
 		Cells[Index] = FIntPoint(FMath::FloorToInt32(Positions[Index].X / LookAheadCellSize), FMath::FloorToInt32(Positions[Index].Y / LookAheadCellSize));
 		int32& Head = CellHeads[LookAheadBucketOf(Cells[Index])];
 		NextInCell[Index] = Head;
 		Head = Index;
+		MinCell = FIntPoint(FMath::Min(MinCell.X, Cells[Index].X), FMath::Min(MinCell.Y, Cells[Index].Y));
+		MaxCell = FIntPoint(FMath::Max(MaxCell.X, Cells[Index].X), FMath::Max(MaxCell.Y, Cells[Index].Y));
+	}
+	// Perf (hol.Units.FastNear): the dense table, as the separation's (J7c.4): counted per cell, each range filled from its
+	// end with the units in ascending order, so read from its start in descending order, as a bucket's chain.
+	const int64 Width = Positions.Num() > 0 ? static_cast<int64>(MaxCell.X) - MinCell.X + 1 : 0;
+	const int64 Height = Positions.Num() > 0 ? static_cast<int64>(MaxCell.Y) - MinCell.Y + 1 : 0;
+	bLookAheadDense = FastNear != 0 && Positions.Num() > 0 && Width * Height <= LookAheadDenseCellsPerUnit * Positions.Num();
+	if (bLookAheadDense)
+	{
+		LookAheadMin = MinCell;
+		LookAheadWidth = static_cast<int32>(Width);
+		LookAheadHeight = static_cast<int32>(Height);
+		const int32 CellCount = LookAheadWidth * LookAheadHeight;
+		LookAheadStarts.Init(0, CellCount + 1);
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			++LookAheadStarts[(Cells[Index].Y - MinCell.Y) * LookAheadWidth + (Cells[Index].X - MinCell.X) + 1];
+		}
+		for (int32 Cell = 0; Cell < CellCount; ++Cell)
+		{
+			LookAheadStarts[Cell + 1] += LookAheadStarts[Cell];
+		}
+		LookAheadBodies.SetNumUninitialized(Positions.Num());
+		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		{
+			FLookAheadBody& Body = LookAheadBodies[--LookAheadStarts[(Cells[Index].Y - MinCell.Y) * LookAheadWidth + (Cells[Index].X - MinCell.X) + 1]];
+			Body.Position = Positions[Index];
+			Body.Radius = Radii[Index];
+			Body.Index = Index;
+		}
+		for (int32 Cell = 0; Cell < CellCount; ++Cell)
+		{
+			LookAheadStarts[Cell] = LookAheadStarts[Cell + 1];
+		}
+		LookAheadStarts[CellCount] = Positions.Num();
 	}
 	return true;
 }
@@ -417,14 +464,86 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	const double Reach = FMath::Max((Speed + MaxSpeed) * Horizon, Speed * StillHorizon) + (Radius + MaxRadius) * FMath::Max(1.f, AvoidRadiusScale);
 	const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y - Reach) / LookAheadCellSize));
 	const FIntPoint MaxCell(FMath::FloorToInt32((Position.X + Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y + Reach) / LookAheadCellSize));
-	TArray<int32, TInlineAllocator<64>> Near;
+	TArray<int32, TInlineAllocator<192>> Near; // perf: a dense crowd keeps up to ~150 (no heap allocation in the threads)
+	// Perf (hol.Units.FastNear): the same tests, all of them pure filters, the cheapest first: a body further than Reach
+	// (which bounds every OtherReach below, the 1 cm covering MaxSpeed's float rounding), then one behind, is out before the
+	// others; the same bodies kept, in the same order.
+	const bool bFastNear = FastNear != 0 && AvoidRadiusScale >= 0.f;
+	const double PrefilterSquared = FMath::Square(Reach + 1.0);
+	// A whole cell (widened by 1 cm for the rounding of its units' cells) beyond the prefilter, or behind by more than any
+	// contact distance: none of its units would be kept.
+	const double BehindLimit = (Radius + MaxRadius) * AvoidRadiusScale + 1.0;
 	for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
 	{
 		for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
 		{
 			const FIntPoint Cell(X, Y);
+			if (bFastNear)
+			{
+				const double X0 = X * LookAheadCellSize - 1.0 - Position.X;
+				const double X1 = (X + 1) * LookAheadCellSize + 1.0 - Position.X;
+				const double Y0 = Y * LookAheadCellSize - 1.0 - Position.Y;
+				const double Y1 = (Y + 1) * LookAheadCellSize + 1.0 - Position.Y;
+				const double NearX = FMath::Clamp(0.0, X0, X1);
+				const double NearY = FMath::Clamp(0.0, Y0, Y1);
+				const double FarAhead = (Ahead.X > 0. ? X1 : X0) * Ahead.X + (Ahead.Y > 0. ? Y1 : Y0) * Ahead.Y;
+				if (NearX * NearX + NearY * NearY >= PrefilterSquared || FarAhead < -BehindLimit)
+				{
+					continue;
+				}
+			}
+			// The fast tests on one body, from its position and radius (the same values as Positions and Radii hold).
+			const auto TestNear = [&](const int32 Other, const FVector2D& OtherPosition, const float OtherRadius)
+			{
+				const FVector2D ToOther = OtherPosition - Position;
+				const double DistanceSquared = ToOther.SizeSquared();
+				if (DistanceSquared >= PrefilterSquared)
+				{
+					return;
+				}
+				const double ContactDistance = (Radius + OtherRadius) * AvoidRadiusScale;
+				if (!(FVector2D::DotProduct(ToOther, Ahead) > -ContactDistance) || Entities[Other] == Entity
+					|| CanPassThrough(FormUpSerial, FormUpKind, FormUpSerials[Other], FormUpKinds[Other]))
+				{
+					return;
+				}
+				if (Goal && IsStill(Other) && FVector2D::DistSquared(*Goal, OtherPosition) < FMath::Square(ContactDistance))
+				{
+					return;
+				}
+				const double OtherReach = (IsStill(Other) ? FMath::Max(Speed * Horizon, Speed * StillHorizon) : (Speed + Velocities[Other].Size()) * Horizon) + ContactDistance;
+				if (DistanceSquared < FMath::Square(OtherReach))
+				{
+					Near.Add(Other);
+				}
+			};
+			// The dense table's range of the cell (none out of the box), its bodies side by side, in the bucket's order.
+			if (bFastNear && bLookAheadDense)
+			{
+				const int32 DenseX = X - LookAheadMin.X;
+				const int32 DenseY = Y - LookAheadMin.Y;
+				if (DenseX < 0 || DenseX >= LookAheadWidth || DenseY < 0 || DenseY >= LookAheadHeight)
+				{
+					continue;
+				}
+				const int32 SlotEnd = LookAheadStarts[DenseY * LookAheadWidth + DenseX + 1];
+				for (int32 Slot = LookAheadStarts[DenseY * LookAheadWidth + DenseX]; Slot < SlotEnd; ++Slot)
+				{
+					const FLookAheadBody& Body = LookAheadBodies[Slot];
+					TestNear(Body.Index, Body.Position, Body.Radius);
+				}
+				continue;
+			}
 			for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 			{
+				if (bFastNear)
+				{
+					if (Cells[Other] == Cell)
+					{
+						TestNear(Other, Positions[Other], Radii[Other]);
+					}
+					continue;
+				}
 				if (Cells[Other] != Cell || Entities[Other] == Entity || CanPassThrough(FormUpSerial, FormUpKind, FormUpSerials[Other], FormUpKinds[Other]))
 				{
 					continue;
@@ -444,6 +563,29 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 					Near.Add(Other);
 				}
 			}
+		}
+	}
+	// Perf (hol.Units.FastNear): each near body's terms of TimeToContact, read once (the same values at every way tried).
+	TArray<FVector2D, TInlineAllocator<192>> NearOffsets;
+	TArray<FVector2D, TInlineAllocator<192>> NearVelocities;
+	TArray<double, TInlineAllocator<192>> NearContacts;
+	TArray<bool, TInlineAllocator<192>> NearPressed;
+	TArray<bool, TInlineAllocator<192>> NearStills;
+	if (bFastNear)
+	{
+		NearOffsets.SetNumUninitialized(Near.Num());
+		NearVelocities.SetNumUninitialized(Near.Num());
+		NearContacts.SetNumUninitialized(Near.Num());
+		NearPressed.SetNumUninitialized(Near.Num());
+		NearStills.SetNumUninitialized(Near.Num());
+		for (int32 Slot = 0; Slot < Near.Num(); ++Slot)
+		{
+			const int32 Other = Near[Slot];
+			NearOffsets[Slot] = Positions[Other] - Position;
+			NearVelocities[Slot] = Velocities[Other];
+			NearContacts[Slot] = (Radius + Radii[Other]) * AvoidRadiusScale;
+			NearPressed[Slot] = bAroundEnemies && Owners[Other] != Owner;
+			NearStills[Slot] = Stills[Other];
 		}
 	}
 	// The detour is forgotten once eased back onto the straight course (MV.2).
@@ -478,12 +620,32 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::KeepCourse) && Entities[Other] == Detour.Crosser ? KeepCourseHorizon
 			: IsStill(Other) ? StillHorizon : Horizon;
 	};
+	// The same limit by the near body's slot (its stillness read once).
+	const auto SlotLimit = [this, &Detour, &Near, &NearStills, Horizon, StillHorizon, KeepCourseHorizon](const int32 Slot)
+	{
+		return Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::KeepCourse) && Entities[Near[Slot]] == Detour.Crosser ? KeepCourseHorizon
+			: NearStills[Slot] ? StillHorizon : Horizon;
+	};
 
 	// The first body met going this way, and when.
-	const auto FirstContact = [this, &Near, &Position, Radius, Speed, &ContactLimit, Owner, bAroundEnemies](const FVector2D& Way, int32& OutOther)
+	const auto FirstContact = [this, &Near, &Position, Radius, Speed, &ContactLimit, &SlotLimit, Owner, bAroundEnemies, bFastNear, &NearOffsets, &NearVelocities, &NearContacts, &NearPressed](const FVector2D& Way, int32& OutOther)
 	{
 		double First = TNumericLimits<double>::Max();
 		OutOther = INDEX_NONE;
+		if (bFastNear)
+		{
+			const FVector2D Own = Way * Speed;
+			for (int32 Slot = 0; Slot < Near.Num(); ++Slot)
+			{
+				const double Time = TimeToContact(NearOffsets[Slot], Own - NearVelocities[Slot], NearContacts[Slot], NearPressed[Slot]);
+				if (Time < First && Time < SlotLimit(Slot))
+				{
+					First = Time;
+					OutOther = Near[Slot];
+				}
+			}
+			return First;
+		}
 		for (const int32 Other : Near)
 		{
 			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
@@ -497,8 +659,20 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return First;
 	};
 	// Whether nothing is met going this way within the horizon: the first contact found is enough (D302).
-	const auto IsClear = [this, &Near, &Position, Radius, Speed, &ContactLimit, Owner, bAroundEnemies](const FVector2D& Way)
+	const auto IsClear = [this, &Near, &Position, Radius, Speed, &ContactLimit, &SlotLimit, Owner, bAroundEnemies, bFastNear, &NearOffsets, &NearVelocities, &NearContacts, &NearPressed](const FVector2D& Way)
 	{
+		if (bFastNear)
+		{
+			const FVector2D Own = Way * Speed;
+			for (int32 Slot = 0; Slot < Near.Num(); ++Slot)
+			{
+				if (TimeToContact(NearOffsets[Slot], Own - NearVelocities[Slot], NearContacts[Slot], NearPressed[Slot]) < SlotLimit(Slot))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
 		for (const int32 Other : Near)
 		{
 			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
@@ -657,14 +831,32 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 	TArray<int32, TInlineAllocator<64>> Touching;
 	int32 Blocker = INDEX_NONE;
 	double BlockerEdge = 0.;
+	// Perf (hol.Units.FastNear): only a body within the contact gaps counts here (an enemy within RearSlideFrontGap, a
+	// friend within RearSlideContact); the cells and the bodies further than both (and 1 cm) are skipped, the rest met in
+	// the same order.
+	const bool bFastNear = FastNear != 0;
+	const double ContactReach = FMath::Max(RearSlideContact, RearSlideFrontGap) + Radius + MaxRadius + 1.0;
 	for (int32 Y = MinCell.Y; Y <= MaxCell.Y; ++Y)
 	{
 		for (int32 X = MinCell.X; X <= MaxCell.X; ++X)
 		{
 			const FIntPoint Cell(X, Y);
+			if (bFastNear)
+			{
+				const double NearX = FMath::Clamp(Position.X, X * LookAheadCellSize - 1.0, (X + 1) * LookAheadCellSize + 1.0) - Position.X;
+				const double NearY = FMath::Clamp(Position.Y, Y * LookAheadCellSize - 1.0, (Y + 1) * LookAheadCellSize + 1.0) - Position.Y;
+				if (NearX * NearX + NearY * NearY > FMath::Square(ContactReach))
+				{
+					continue;
+				}
+			}
 			for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 			{
 				if (Cells[Other] != Cell || Entities[Other] == Entity)
+				{
+					continue;
+				}
+				if (bFastNear && FVector2D::DistSquared(Positions[Other], Position) > FMath::Square(ContactReach))
 				{
 					continue;
 				}
@@ -1129,6 +1321,10 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 FrontHoldsFriends = 1;
 	FAutoConsoleVariableRef CVarFrontHoldsFriends(TEXT("hol.Simulation.FrontHoldsFriends"), FrontHoldsFriends,
 		TEXT("1 (default): a unit that strikes, or touches an enemy, is never pushed by a friend (the friend takes the whole overlap); 0: as before"));
+	/** Perf (2026-10-24): the front's flags found in parallel (the same flags). */
+	int32 ParallelFront = 1;
+	FAutoConsoleVariableRef CVarParallelFront(TEXT("hol.Simulation.ParallelFront"), ParallelFront,
+		TEXT("1 (default): the separation's front (FrontHoldsFriends) found in parallel; 0: in one pass, the same flags"));
 	/** An enemy this close (cm, edge to edge) makes a unit of the front. */
 	constexpr double FrontContactGap = 10.0;
 
@@ -1384,11 +1580,13 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	const bool bFrontNeedsCombat = FrontNeedsCombat != 0;
 	if (FrontHoldsFriends != 0 && (!bFrontNeedsCombat || bAnyEngaged))
 	{
-		for (int32 Index = 0; Index < Positions.Num(); ++Index)
+		// Perf (hol.Simulation.ParallelFront): each unit sets only its own flag and reads only the others' fixed data (the
+		// same flags in any order): in parallel.
+		const auto FrontOf = [&](const int32 Index)
 		{
 			if (Front[Index] || Ghosts[Index])
 			{
-				continue;
+				return;
 			}
 			const bool bSelfEngaged = !bFrontNeedsCombat || Engaged[Index];
 			for (int32 DY = -1; DY <= 1 && !Front[Index]; ++DY)
@@ -1421,6 +1619,17 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 						Front[Index] = Cells[Other] == Cell && Touches(Other);
 					}
 				}
+			}
+		};
+		if (ParallelFront != 0)
+		{
+			ParallelFor(TEXT("HOLSepFront"), Positions.Num(), 128, FrontOf);
+		}
+		else
+		{
+			for (int32 Index = 0; Index < Positions.Num(); ++Index)
+			{
+				FrontOf(Index);
 			}
 		}
 	}
@@ -1582,7 +1791,9 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		// straggler walking into its slot (J7a.4, J7b note 1: CanPassThrough): through each other, the ways to the
 		// new rows cross (three bodies pressed together, each walking into the next, held each other still).
 		// Two forming up in one kind of row keep apart (the user's trial of playtest note 1 of J7b).
-		if (CanPassThrough(FormUpSerials[Index], FormUpKinds[Index], FormUpSerials[Other], FormUpKinds[Other]))
+		// Perf (hol.Units.FastNear): the overlap tested first, the pass-through after (both only end the pair, in any order).
+		const bool bOverlapFirst = FastNear != 0;
+		if (!bOverlapFirst && CanPassThrough(FormUpSerials[Index], FormUpKinds[Index], FormUpSerials[Other], FormUpKinds[Other]))
 		{
 			return;
 		}
@@ -1594,6 +1805,10 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		}
 		const double DistanceSquared = Delta.SizeSquared();
 		if (DistanceSquared >= FMath::Square(MinDistance))
+		{
+			return;
+		}
+		if (bOverlapFirst && CanPassThrough(FormUpSerials[Index], FormUpKinds[Index], FormUpSerials[Other], FormUpKinds[Other]))
 		{
 			return;
 		}

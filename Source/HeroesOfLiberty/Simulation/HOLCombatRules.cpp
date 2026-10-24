@@ -68,17 +68,6 @@ namespace HOLCombat
 		CooldownMs = FMath::Max(CooldownMs - StepMs, 0);
 	}
 
-	double GetEdgeDistance(const FVector2D& A, const float RadiusA, const FVector2D& B, const float RadiusB)
-	{
-		return FVector2D::Distance(A, B) - static_cast<double>(RadiusA) - static_cast<double>(RadiusB);
-	}
-
-	bool IsInRange(const FVector2D& A, const float RadiusA, const FVector2D& B, const float RadiusB, const float Range)
-	{
-		const double Reach = static_cast<double>(RadiusA) + static_cast<double>(RadiusB) + FMath::Max(static_cast<double>(Range), 0.);
-		return FVector2D::DistSquared(A, B) <= Reach * Reach;
-	}
-
 	double GetOverlapShare(const bool bEnemies, const bool bWalkingA, const bool bWalkingB)
 	{
 		if (!bEnemies || (bWalkingA && bWalkingB))
@@ -117,6 +106,18 @@ namespace HOLCombat
 			double Distance = 0.;
 			uint64 Id = 0;
 
+			/** Perf: the flags alone (all but Distance and Id) rank this one after Other: it cannot come first, whatever its distance. */
+			bool FlagsAfter(const FRank& Other) const
+			{
+				if (bIsBuilding != Other.bIsBuilding) { return bIsBuilding; }
+				if (bOutOfRange != Other.bOutOfRange) { return bOutOfRange; }
+				if (bNoPlace != Other.bNoPlace) { return bNoPlace; }
+				if (bNoPlaceNotCurrent != Other.bNoPlaceNotCurrent) { return bNoPlaceNotCurrent; }
+				if (bNotAttackingMe != Other.bNotAttackingMe) { return bNotAttackingMe; }
+				if (bCrowded != Other.bCrowded) { return bCrowded; }
+				return false;
+			}
+
 			bool operator<(const FRank& Other) const
 			{
 				if (bIsBuilding != Other.bIsBuilding) { return Other.bIsBuilding; }
@@ -143,7 +144,11 @@ namespace HOLCombat
 		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
 		{
 			const FCandidate& Candidate = Candidates[Index];
-			const bool bInRange = IsInRange(Seeker.Position, Seeker.Radius, Candidate.Position, Candidate.Radius, Seeker.AttackRange);
+			// Perf: IsInRange's and GetEdgeDistance's very sums on one squared distance (the same values, bit for bit).
+			const double DistanceSquared = FVector2D::DistSquared(Seeker.Position, Candidate.Position);
+			const double Radii = static_cast<double>(Seeker.Radius) + static_cast<double>(Candidate.Radius);
+			const double RangeReach = Radii + FMath::Max(static_cast<double>(Seeker.AttackRange), 0.);
+			const bool bInRange = DistanceSquared <= RangeReach * RangeReach;
 			if (Seeker.Mode == ESeekMode::Hold && !bInRange)
 			{
 				continue;
@@ -152,8 +157,8 @@ namespace HOLCombat
 			{
 				return Index;
 			}
-			const bool bInSearch = bInRange
-				|| IsInRange(Seeker.Position, Seeker.Radius, Candidate.Position, Candidate.Radius, SearchRadius);
+			const double SearchReach = Radii + FMath::Max(static_cast<double>(SearchRadius), 0.);
+			const bool bInSearch = bInRange || DistanceSquared <= SearchReach * SearchReach;
 			if (!bInSearch && !Candidate.bAttacksMe)
 			{
 				continue;
@@ -165,7 +170,11 @@ namespace HOLCombat
 			Rank.bNoPlaceNotCurrent = Rank.bNoPlace && !Candidate.bIsCurrentTarget;
 			Rank.bNotAttackingMe = !Candidate.bAttacksMe;
 			Rank.bCrowded = !Seeker.bRanged && !bInRange && Candidate.AttackerCount >= MaxAttackers;
-			Rank.Distance = GetEdgeDistance(Seeker.Position, Seeker.Radius, Candidate.Position, Candidate.Radius);
+			if (Best != INDEX_NONE && Rank.FlagsAfter(BestRank))
+			{
+				continue; // ranked after the best by its flags: never chosen, its distance not needed
+			}
+			Rank.Distance = FMath::Sqrt(DistanceSquared) - static_cast<double>(Seeker.Radius) - static_cast<double>(Candidate.Radius);
 			Rank.Id = Candidate.Id;
 			if (Best == INDEX_NONE || Rank < BestRank)
 			{
@@ -174,11 +183,6 @@ namespace HOLCombat
 			}
 		}
 		return Best;
-	}
-
-	bool IsRangedAttack(const float AttackRange)
-	{
-		return AttackRange > RangedReach;
 	}
 
 	bool IsFriendFighting(const bool bAttacking, const int32 AttackerCount, const bool bHasLastAttacker)

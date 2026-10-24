@@ -82,7 +82,23 @@ namespace HOLAvoid
 	 * ContactDistance and closing in on a body pressed against that counts (bPressedCounts: an enemy walked around; MV.4: never, every way into an enemy pressed against looked clear and the Paysans
 	 * wedged into a wall of enemies); never on a friend (it gives way: counting it held back Paysans abreast before a narrow way).
 	 */
-	HEROESOFLIBERTY_API double TimeToContact(const FVector2D& RelativePosition, const FVector2D& RelativeVelocity, double ContactDistance, bool bPressedCounts);
+	inline double TimeToContact(const FVector2D& RelativePosition, const FVector2D& RelativeVelocity, const double ContactDistance, const bool bPressedCounts)
+	{
+		// Inline (perf, 2026-10-24): the avoidance calls it some 200 times per walker and step.
+		const double SpeedSquared = RelativeVelocity.SizeSquared();
+		const double Approach = FVector2D::DotProduct(RelativePosition, RelativeVelocity);
+		const double Gap = RelativePosition.SizeSquared() - FMath::Square(ContactDistance);
+		if (Approach <= 0. || SpeedSquared <= UE_KINDA_SMALL_NUMBER)
+		{
+			return TNumericLimits<double>::Max();
+		}
+		if (Gap <= 0.)
+		{
+			return bPressedCounts ? 0. : TNumericLimits<double>::Max();
+		}
+		const double Discriminant = FMath::Square(Approach) - SpeedSquared * Gap;
+		return Discriminant < 0. ? TNumericLimits<double>::Max() : (Approach - FMath::Sqrt(Discriminant)) / SpeedSquared;
+	}
 
 	/** A building's body as a walker sees it (D324's body, turned by the building's yaw: Cos, Sin). */
 	struct FFootprintBox
