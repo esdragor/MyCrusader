@@ -425,6 +425,30 @@ if ($Parts -contains "sides") {
     Step "hol.Select.ClickUnit 0 add slot=2"; SidesReport
     SidesCase "8 ally"; Step "hol.Select.ClickUnit 0 double slot=2"; SidesReport
     SidesCase "8 enemy"; Step "hol.Select.ClickUnit 0 double slot=1"; SidesReport
+    # Allied combat (bug: the camps were ignored): the groups above removed, my 4 Men-at-arms and the ally's 4 Spearmen
+    # side by side before my centre, combat on: nobody fights in Auto, on Hold (mine), on an attack-move of mine onto
+    # the ally's group (each judged by hol.Combat.Report: no hit struck, every body full, no target of the same camp);
+    # then 3 enemy Spearmen come beside them: mine and the ally's fight them (both struck), still no target of the camp.
+    Step "mark sides fight setup", "hol.Units.Remove -9000 0 6000 0", "hol.Units.Remove -9000 0 6000 1", "hol.Units.Remove -9000 0 6000 2", "frames 5",
+        "hol.Units.Spawn 4 -10800 0 0 ManAtArms 200", "hol.Units.Spawn 4 -10250 0 2 Spearman 200", "frames 10", "hol.Combat.Enabled 1", "hol.Combat.Report"
+    Step "mark sides fight auto", "wait 3", "hol.Combat.Report"
+    Step "mark sides fight hold"; SidesBox $MineBox[0] $MineBox[1] -10600 $MineBox[3]; Step "hol.Select.Hold", "wait 2", "hol.Combat.Report"
+    Step "mark sides fight attackmove", "hol.Select.AttackMove -10250 0", "wait 3", "hol.Combat.Report"
+    # Case 3: an attack order of mine on the ally's unit, refused by the server (no hit); case 4: a right click on the
+    # ally's unit, a move as on my own (no attack order sent). Mine boxed with the ally's (mine kept, own first).
+    Step "mark sides fight order"; SidesBox $MineBox[0] $MineBox[1] -9700 $MineBox[3]; Step "hol.Select.Attack slot=2", "wait 3", "hol.Combat.Report"
+    Step "mark sides fight rightclick"; SidesBox $MineBox[0] $MineBox[1] -9700 $MineBox[3]; Step "hol.Select.ClickUnit 0 order slot=2", "wait 3", "hol.Combat.Report"
+    Step "mark sides fight enemy", "hol.Units.Spawn 3 -10500 900 1 Spearman 150", "wait 6", "hol.Combat.Report", "hol.Combat.Enabled 0"
+    # Allied avoidance (the camps ignored by the avoidance and the pushes): my 4 Men-at-arms sent straight through a
+    # standing wall of 25 allied Spearmen, combat off: they pass as through my own (the ally's pushed aside), not round a
+    # wall of enemies: as through a wall of mine (hol.Units.Where 0 after 2 s and 4 s: where my 4 are, the ids last spawned).
+    foreach ($Wall in @(0, 2)) {
+        # Same seed for both walls: the same shape, only the owner changes (the gap between them was the draw).
+        Step "mark sides avoid $Wall", "hol.Units.Remove -9000 0 6000 0", "hol.Units.Remove -9000 0 6000 1", "hol.Units.Remove -9000 0 6000 2", "frames 5", "hol.Units.SpawnSeed 1234",
+            "hol.Units.Spawn 5 -9600 -800 $Wall Spearman 60", "hol.Units.Spawn 5 -9600 -400 $Wall Spearman 60", "hol.Units.Spawn 5 -9600 0 $Wall Spearman 60",
+            "hol.Units.Spawn 5 -9600 400 $Wall Spearman 60", "hol.Units.Spawn 5 -9600 800 $Wall Spearman 60", "hol.Units.Spawn 4 -10800 0 0 ManAtArms 150", "frames 20", "hol.Units.Where $Wall"
+        SidesBox -11100 -450 -10500 450; Step "hol.Select.OrderGround -8400 0", "wait 2", "hol.Units.Where 0", "wait 2", "hol.Units.Where 0", "hol.Units.Where $Wall"
+    }
     Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
@@ -2026,6 +2050,57 @@ if ($Parts -contains "sides") {
         }
         $Checks["$Case. $($Want.What) ($Seen)"] = $Ok
     }
+    # Allied combat: each report of a section (its last), "#id Type slot S hp H/M target T ... hits N damage D".
+    function SidesFight([string] $Case) {
+        $Section = Get-Section "sides fight $Case"
+        $Units = @{}; $Head = $null
+        foreach ($Line in $Section) {
+            if ($Line -match "Combat report: step \d+ units \d+ fighting \d+ hits (\d+)") { $Head = [int64]$Matches[1]; $Units = @{} }
+            elseif ($Line -match "  #(\d+) \w+ slot (\d+) hp (\d+)/(\d+) target (\d+) attacking \d+ hits (\d+) damage (\d+)") {
+                $Units[$Matches[1]] = @{ Slot = [int]$Matches[2]; Hp = [int]$Matches[3]; Max = [int]$Matches[4]; Target = $Matches[5]; Hits = [int]$Matches[6]; Damage = [int]$Matches[7] }
+            }
+        }
+        $Camp = @{ 0 = "A"; 2 = "A"; 1 = "B" }
+        $SameCamp = @($Units.Keys | Where-Object { $T = $Units[$_].Target; $T -ne "0" -and $Units.ContainsKey($T) -and $Camp[$Units[$T].Slot] -eq $Camp[$Units[$_].Slot] })
+        $Hurt = @($Units.Keys | Where-Object { $Units[$_].Slot -ne 1 -and $Units[$_].Hp -lt $Units[$_].Max })
+        $Dealt = @{}; foreach ($Id in $Units.Keys) { $Dealt[$Units[$Id].Slot] += $Units[$Id].Damage }
+        return @{ Hits = $Head; SameCamp = $SameCamp.Count; Hurt = $Hurt.Count; Dealt0 = [int]$Dealt[0]; Dealt2 = [int]$Dealt[2]; Units = $Units.Count }
+    }
+    $FightStart = SidesFight "setup"
+    foreach ($Case in @("auto", "hold", "attackmove", "order", "rightclick")) {
+        $F = SidesFight $Case
+        $Checks["fight $Case. me and my ally side by side: nobody fights (hits $($FightStart.Hits) -> $($F.Hits), hurt $($F.Hurt), targets in the camp $($F.SameCamp), units $($F.Units))"] =
+            $F.Hits -eq $FightStart.Hits -and $F.Hurt -eq 0 -and $F.SameCamp -eq 0
+    }
+    $Order = Get-Section "sides fight order"
+    $Refused = @($Order | Select-String -Pattern "Attack order of slot 0 on #\d+ refused").Count
+    $Checks["fight order. an attack order of mine on the ally's unit: refused by the server ($Refused refusal)"] = $Refused -ge 1
+    $Right = Get-Section "sides fight rightclick"
+    $Clicked = @($Right | Select-String -Pattern "Right click on unit #\d+").Count
+    $Attacks = @($Right | Select-String -Pattern "Order: \d+ units attack").Count
+    $Moves = @($Right | Select-String -Pattern "Order: \d+ units to \(").Count
+    $Checks["fight rightclick. a right click on the ally's unit: a move as on mine, no attack (clicks $Clicked, attack orders $Attacks, moves $Moves)"] =
+        $Clicked -eq 1 -and $Attacks -eq 0 -and $Moves -eq 1
+    $F = SidesFight "enemy"
+    $Checks["fight enemy. an enemy comes: mine and the ally's fight it (damage by slot 0 $($F.Dealt0), by slot 2 $($F.Dealt2), targets in the camp $($F.SameCamp))"] =
+        $F.Dealt0 -gt 0 -and $F.Dealt2 -gt 0 -and $F.SameCamp -eq 0
+    # Allied avoidance: my 4's distances to the order's point (the farthest, the sum) after 2 s and 4 s, and the wall's
+    # units moved (mine excluded). The Units where reports: the wall's, mine after 2 s and 4 s, the wall's.
+    function SidesAvoid([int] $Wall) {
+        $Avoid = Get-Section "sides avoid $Wall"
+        $Wheres = @($Avoid | Where-Object { $_ -match "Units where: " })
+        $Left = @(); $Moved = 0
+        if ($Wheres.Count -eq 4) {
+            $Mine = @([regex]::Matches($Wheres[1], "#(\d+) slot 0 at") | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Descending | Select-Object -First 4)
+            $Left = @($Wheres[1], $Wheres[2] | ForEach-Object { $D = @([regex]::Matches($_, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)") | Where-Object { $Mine -contains [int]$_.Groups[1].Value } | ForEach-Object { [int][math]::Sqrt([math]::Pow([double]$_.Groups[2].Value + 8400, 2) + [math]::Pow([double]$_.Groups[3].Value, 2)) }); @{ Max = ($D | Measure-Object -Maximum).Maximum; Sum = ($D | Measure-Object -Sum).Sum; N = $D.Count } })
+            $Before = @{}; foreach ($M in [regex]::Matches($Wheres[0], "#(\d+) slot $Wall at \((-?\d+), (-?\d+)\)")) { $Before[$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
+            foreach ($M in [regex]::Matches($Wheres[3], "#(\d+) slot $Wall at \((-?\d+), (-?\d+)\)")) { $B = $Before[$M.Groups[1].Value]; if ($B -and $Mine -notcontains [int]$M.Groups[1].Value -and [math]::Sqrt([math]::Pow($B[0] - [double]$M.Groups[2].Value, 2) + [math]::Pow($B[1] - [double]$M.Groups[3].Value, 2)) -gt 30) { ++$Moved } }
+        }
+        return @{ Left = $Left; Moved = $Moved; Text = (($Left | ForEach-Object { "max $($_.Max) sum $($_.Sum) of $($_.N)" }) -join " then ") + ", wall moved $Moved" }
+    }
+    $Own = SidesAvoid 0; $Ally = SidesAvoid 2
+    $Checks["avoid. mine sent through a wall of the ally's: as through a wall of mine (mine: $($Own.Text); the ally's: $($Ally.Text))"] =
+        $Own.Left.Count -eq 2 -and $Ally.Left.Count -eq 2 -and $Own.Left[1].N -eq 4 -and $Ally.Left[1].N -eq 4 -and [math]::Abs($Ally.Left[1].Sum - $Own.Left[1].Sum) -le 200 -and [math]::Abs($Ally.Moved - $Own.Moved) -le 2
     $AllOk = (Report "sides" $Checks) -and $AllOk
 }
 

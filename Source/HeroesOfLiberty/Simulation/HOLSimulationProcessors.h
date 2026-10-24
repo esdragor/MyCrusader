@@ -6,6 +6,7 @@
 #include <atomic>
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
+#include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLAvoidRules.h"
 #include "HOLSimulationProcessors.generated.h"
 
@@ -88,6 +89,8 @@ protected:
 	TArray<uint8> FormUpKinds;
 	/** Each unit's OwnerPlayer (J7c.4: the middle of each army, hol.Combat.RearSlide; the friends and enemies around a walker). */
 	TArray<uint8> Owners;
+	/** The owners' camps this step: an enemy is of another camp (an ally's unit is gone round and pushed as a friend). */
+	FHOLCampTable CampTable;
 	float MaxRadius = 1.f;
 	float MaxSpeed = 0.f;
 	/** Cells of the positions, hashed into buckets: first unit of each bucket, the next unit of the same bucket, each unit's cell. */
@@ -243,6 +246,8 @@ protected:
 	TArray<bool> Moving;
 	/** Each unit's player: two enemies never push each other back (HOLCombat::GetOverlapShare). */
 	TArray<uint8> Owners;
+	/** The owners' camps this step: two units are enemies when of two camps (allies push each other as friends). */
+	FHOLCampTable CampTable;
 	/**
 	 * Gatherers at their source (D309): with a unit standing beside them, they keep the spots' spacing only (100 cm,
 	 * hol.Gather.SpotSpacing), not two bodies; a walker still pushes them out of its way.

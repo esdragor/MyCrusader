@@ -45,7 +45,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Retours d'essai
 
 ### Revue de code
-- Le combat ignore les équipes : des alliés se battent entre eux *(`OwnerPlayer` comparé dans le combat et l'évitement ; vu en EtapeDefini D ; le camp Neutre de la sélection se branchera sur les postures de D369)*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes

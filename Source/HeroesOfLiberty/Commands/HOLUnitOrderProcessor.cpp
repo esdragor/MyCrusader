@@ -9,6 +9,7 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLVictoryRules.h"
 #include "GameFramework/PlayerController.h"
 #include "Match/HOLPlayerState.h"
 #include "Engine/World.h"
@@ -1030,12 +1031,15 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		// any identifier); a server's own order, an enemy of each unit.
 		FMassEntityHandle AttackTarget;
 		int32 TargetOwner = INDEX_NONE;
+		// An ally's unit or building (one camp, FHOLCampTable) is refused as one's own (no attack).
+		const FHOLCampTable CampTable = Order.Kind == EHOLOrderKind::Attack || Order.Kind == EHOLOrderKind::AttackBuilding
+			? FHOLCampTable::FromWorld(EntityManager.GetWorld()) : FHOLCampTable();
 		if (Order.Kind == EHOLOrderKind::Attack)
 		{
 			AttackTarget = Units->FindEntity(Order.TargetUnitId);
 			const FHOLUnitStateFragment* TargetState = EntityManager.IsEntityValid(AttackTarget) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(AttackTarget) : nullptr;
 			if (!TargetState || TargetState->CurrentHealth <= 0 || !EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(AttackTarget)
-				|| (Order.PlayerIndex != INDEX_NONE && TargetState->OwnerPlayer == Order.PlayerIndex))
+				|| (Order.PlayerIndex != INDEX_NONE && !CampTable.AreHostile(TargetState->OwnerPlayer, Order.PlayerIndex)))
 			{
 				UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d on #%u refused: not an enemy unit alive"), Order.PlayerIndex, Order.TargetUnitId);
 				continue;
@@ -1047,7 +1051,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		{
 			const AHOLBuilding* Building = Order.TargetBuilding.Get();
 			if (!IsValid(Building) || Building->IsActorBeingDestroyed() || Building->IsFoundation() || Building->GetHealth() <= 0
-				|| (Order.PlayerIndex != INDEX_NONE && Building->GetOwnerPlayer() == Order.PlayerIndex))
+				|| (Order.PlayerIndex != INDEX_NONE && !CampTable.AreHostile(Building->GetOwnerPlayer(), Order.PlayerIndex)))
 			{
 				UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d on a building refused: not an enemy building standing"), Order.PlayerIndex);
 				continue;
@@ -1080,7 +1084,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 					continue;
 				}
 			}
-			if (TargetOwner != INDEX_NONE && EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer == TargetOwner)
+			if (TargetOwner != INDEX_NONE && !CampTable.AreHostile(EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, TargetOwner))
 			{
 				++NumRefused;
 				continue;
@@ -1878,6 +1882,8 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		uint32 OrderSerial = 0;
 	};
 	TArray<FMeleePoint> MeleePoints;
+	// One camp (FHOLCampTable): an ally's unit is a friend, like one's own (enemy or fighting friend by camp).
+	const FHOLCampTable Camps = FHOLCampTable::FromWorld(World);
 	if (const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>())
 	{
 		TArray<uint32> UnitIds;
@@ -2141,13 +2147,15 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				bPlainMove &= !(Combat && Combat->Mode == EHOLCombatMode::AttackMove);
 				for (const FMeleePoint& Point : MeleePoints)
 				{
-					// Its own order's units never break it (an attack-move's members seeking their enemies).
-					if (Point.Owner == Owner && (!Point.bFighting || Point.OrderSerial == Serial))
+					// A friend of its camp (own or ally's) not fighting never breaks it, nor its own order's units (an attack-move's
+					// members seeking their enemies: one player's order).
+					const bool bHostile = Camps.AreHostile(Point.Owner, Owner);
+					if (!bHostile && (!Point.bFighting || (Point.Owner == Owner && Point.OrderSerial == Serial)))
 					{
 						continue;
 					}
 					const double Distance = FVector2D::Distance(Location, Point.Location);
-					double& Closest = Point.Owner != Owner ? ClosestEnemy : ClosestFighting;
+					double& Closest = bHostile ? ClosestEnemy : ClosestFighting;
 					Closest = Closest < 0. ? Distance : FMath::Min(Closest, Distance);
 				}
 			}
