@@ -247,12 +247,24 @@ R8, R9.
 
 ## Reprise exacte (pour une nouvelle session)
 
-- **État au 2026-10-23 soir** : worktree `HeroesOfLiberty-Glorfindel`, branche `net-playtest` (depuis `main` f7269a8,
-  **rien commité**, `main` a avancé depuis : à fusionner avant commit). **R1 fait jusqu'à R1.7**, essai **E1** en
-  attente de l'utilisateur (paquet `Saved\Packages\2026-10-23-f7269a8`). **R2 fini** (158/158 `dotnet test`), choix
-  ouverts de `Manager\PROTOCOL.md` soumis à l'utilisateur (surtout : emplacement fixe dans le salon). Prochaines
-  étapes : E1 ; R6 (équipes) dans un autre worktree ; R3 (serveur C++ : R3.1 lit
-  `Manager/HOLManager.Tests/Data/match_v2_reference.json`, champ `playerName`). Outils : `Tools\Package\package.ps1`,
+- **État au 2026-10-23 soir** : **R1 et R2 finis et dans `main` (7cacb4c)**, E1 validé, choix de `PROTOCOL.md`
+  acceptés. Worktree `HeroesOfLiberty-Glorfindel`, branche `net-playtest` = `main` 7cacb4c, gardé pour la suite
+  (`IN_USE.txt`). **Prochaine étape : R3** (serveur de partie C++) : R3.1 lit
+  `Manager/HOLManager.Tests/Data/match_v2_reference.json` (champ `playerName`, version 2) ; R3.6-R3.7 parlent aux
+  routes `/matches/{id}/...` de `Manager/PROTOCOL.md`. **R6 est mené par une autre session** (EtapeDefini G, combat
+  entre alliés, worktree Elrond, mycrusader-15) : ne pas le refaire.
+- **Découpage de R3 en boucles** (une boucle = un sous-agent ≤ 15 min, minuteur lancé avec lui ; après chaque
+  boucle, la session principale note ici et dans « Suivi » ce qui est fait et la boucle suivante, pour qu'une autre
+  session reprenne) : **B1** R3.1 (config version 2) + R3.3 (contrôle de version à la connexion) ; **B2** R3.2
+  (emplacement par le nom, spectateur, test à 2 clients) ; **B3** R3.4 + R3.5 (triches) ; **B4** R3.6 + R3.7 (appels
+  HTTP au gestionnaire) ; **B5** R3.8 (fin du serveur) ; **B6** R3.9 + R3.10 (départ ensemble). Puis commit de R3
+  (accord des sessions actives, `EtapeDefini.md` dans le même commit), puis R4.
+- **Au 2026-10-24 : R3 fini, non commité** (worktree Glorfindel) ; prochaine étape écrite à la fin du « Suivi »
+  (commit de R3, puis R4).
+- **Boucle en cours** : voir la dernière ligne de « Suivi ». Si elle dit « lancée » sans « rendue », la
+  boucle a été coupée : regarder `git -C C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel status` et `diff`,
+  relancer les tests de la boucle, et la reprendre.
+- Outils : `Tools\Package\package.ps1`,
   `Tools\Tests\packaged_smoke.ps1 [-Culture]`, `Tools\Manager\build_manager.ps1 [-Test]`,
   `install_startup.ps1 / uninstall_startup.ps1 [-StartupDir]`. Un sous-agent n'attend jamais un empaquetage.
 - État initial (2026-10-23 matin) : **toutes les questions tranchées, plan figé, rien codé.** Ce fichier, `LauncherInProgress.md`
@@ -467,3 +479,121 @@ R8, R9.
   horloge avancée avant la mort), rien d'affaibli : **20 lancements de suite à 158/158**. R6 (équipes au combat) est
   déjà mené par une autre session (EtapeDefini G, worktree Elrond) : ne pas le refaire ici. `main` f6703a9 fusionné ;
   compilation et `quick_check` PASS (133/133).
+- 2026-10-23 : **R1 et R2 commités et dans `main` : 7cacb4c** « M6 R1 and R2: packaged game and lobby manager »
+  (avance rapide de la copie principale après l'accord des sessions mycrusader-7d, -15, -c8 ; `EtapeDefini.md`,
+  ce fichier et `LauncherInProgress.md` dans le même commit). Prochaine étape : R3.
+- 2026-10-23 : **R3 B1 lancée** (R3.1 config version 2 + R3.3 contrôle de version), worktree Glorfindel, branche
+  `net-playtest` = `main` 7cacb4c.
+- 2026-10-23 : **R3 B1 rendue : R3.1 et R3.3 faits** (non commités). `FHOLMatchSlot::PlayerName` (dernier champ),
+  `CurrentVersion` = 2 ; test `HeroesOfLiberty.Match.ManagerReference` lit le fichier de référence du gestionnaire
+  (tous les champs, « Chloé » compris) ; `OlderJson` : version 1 → nom vide. `HOLVersion::IsAccepted` (sans
+  `?Version=` : accepté seulement si le serveur est `dev` ; `unknown` toujours refusé), test
+  `HeroesOfLiberty.VersionCheck` (8 cas) ; `PreLogin` du mode de jeu refuse avec « Version mismatch: server X, client
+  Y » ; `Net/HOLLocalPlayer` (`GetGameLoginOptions` → `Version=<v>` sur toute connexion), `DefaultEngine.ini`
+  `LocalPlayerClassName`. **Rouge 133/135** puis **vert 135/135**, `net` à 2 clients PASS (journal du serveur :
+  `?Name=…?Version=dev`). Reste de R3.3 : aucun essai bout en bout d'un client refusé (règle pure seule). **Piège
+  pour R3.2** : le moteur ajoute lui-même `Name=<pseudo du système>` (`LocalPlayer->GetNickname()`), et
+  `FURL::AddOption` remplace une option de même clé : le `?Name=` du gestionnaire serait écrasé ; surcharger
+  `GetNickname()` dans `UHOLLocalPlayer` (ou une autre clé), à tester. **R3 B2 lancée** (R3.2).
+- 2026-10-23 : **R3 B2 arrêtée à 15 min** (minuteur), pendant son test rouge. Laissé (non commité) :
+  `FHOLMatchConfig::HasPlayerNames()` et `FindSlotForName(Name, TakenSlots)` (sans noms : premier libre ; nom connu
+  et libre : son emplacement ; inconnu, vide ou pris : `INDEX_NONE` = spectateur), tests dans
+  `HOLMatchConfigTests.cpp`, branchement dans le mode de jeu, nom passé par `-PlayerName=` (client 1, Bob) ou
+  `?Name=` (client 2, Alice) via `HOLLocalPlayer` / `HOLPlayerController` ; partie `net` de `quick_check` :
+  configuration version 2 nommant Alice en 0 et Bob en 1 (ordre inverse de l'arrivée), contrôles « holds the slot
+  of » et « logged in as ». La session principale compile et lance `-Parts tests,net` pour fixer l'état.
+- 2026-10-23 : **R3.2 fait** (session principale). Premier `tests,net` rouge **pour une autre raison** : la partie
+  `net` de `quick_check` lançait son serveur sur 7777 en dur ; le serveur de test d'**Arwen** tenait 7777, le nôtre
+  s'est replié sur 7778 et les clients sont allés chez l'autre (même cause que l'alerte « Protocol mismatch
+  HOLPlayerController » de mycrusader-15 sur `main`). Corrigé : `$NetPort` = premier port UDP libre dès 7777,
+  `-Port=` au serveur, `127.0.0.1:${NetPort}` aux clients (attention : `$NetPort?Name` est lu par PowerShell comme une
+  variable `NetPort?Name`). Puis **`tests,net` PASS** (136/136, `net 2 clients` PASS) : « Login request:
+  ?Name=Bob?Version=dev » → « Bob holds slot 1 », « ?Name=Alice » → « Alice holds slot 0 » (ordre inverse de
+  l'arrivée). Le piège du pseudo du système est réglé (`Name=` reçu = le nom passé). **Restes de R3.2** : rouge de la
+  règle pure non relevé (boucle coupée pendant ce lancement) ; cas **spectateur** (nom inconnu) testé seulement en règle
+  pure, pas sur la vraie chaîne (à couvrir en R4.7 / R5.3). **R3 B3 lancée** (R3.4 + R3.5 triches).
+- 2026-10-23 : **R3 B3 rendue (~15 min) : R3.4 fait, R3.5 codé, vert à lancer.** Inventaire : 10 RPC
+  `ServerCheat*` de `HOLPlayerController` (ressources, chantiers rapides, population, vitesses, dégâts, bâtiment,
+  défaite, forum tombé, ruine sautée) et **trou du moteur** `APlayerController::ServerExecRPC` (`ServerExec <cmd>` :
+  toute commande console sur le serveur hors Shipping, seul chemin des scénarios, du stress test et de
+  `hol.Units.Spawn` vers le serveur) ; non gardés : `ServerSurrender`, les ordres ; **noté, non traité** :
+  `ServerPause` (un client peut mettre le serveur en pause). `Net/HOLCheatRules.h/.cpp`
+  (`AreCheatsAllowed(NetMode, -HOLCheats, hol.Cheat.Refuse)` : solo oui, client jamais, serveur seulement avec
+  `-HOLCheats`), garde unique `IsCheatRefused` dans les 10 RPC et `ServerExecRPC_Implementation` (« Cheat refused:
+  <quoi> from <nom> (slot N) ») ; test `HeroesOfLiberty.Net.CheatRule` (7 cas) ; `net_match.ps1` passe `-HOLCheats` ;
+  partie `net` : serveur `-HOLCheats` + `hol.Cheat.Refuse 1`, client 1 tente `hol.Cheat.Wood 500` après sa capture de
+  départ, puis le serveur remet `Refuse 0` (fichiers `quick_net_cheat_tried.flag` / `_back.flag`). **Rouge** : tests
+  136/137, `[KO] server: client 1's cheat refused (0), the army's granted (3 of 2)`. Prochain : `quick_check -Parts
+  tests,net` (attendu 137/137, « 1 refused, 2 of 2 »).
+- 2026-10-23 : **R3.5 vert** (session principale) : `tests,net` PASS en 114 s, **137/137**, `net 2 clients` PASS ; une
+  seule ligne « Cheat refused: resources from Bob (slot 1) » au serveur. **R3 B4 lancée** (R3.6 + R3.7 : appels HTTP
+  du serveur au gestionnaire).
+- 2026-10-23 : **R3 B4 rendue : R3.6 + R3.7 codés, vert sur `tests,net`.** `Net/HOLManagerLink.h/.cpp`
+  (`FHOLManagerRules` : route `{url}/matches/{id}/{event}`, corps `{"port":N}`, `{"winners":[…]}`, `{}` ;
+  `UHOLManagerLink` : lit `-ManagerUrl=` / `-MatchId=`, envoi HTTP asynchrone, chaque événement une fois) ; mode de
+  jeu : `listening` en fin de `StartPlay` (port écouté), `started` au `PostLogin` qui complète les emplacements
+  humains, `finished` sur `AHOLGameState::OnMatchOver`, `empty` au `Logout` du dernier après `started` ; test
+  `HeroesOfLiberty.Net.ManagerRoutes` ; `quick_check` partie `net` : écouteur HTTP de test (`HttpListener`, fichier
+  `Saved_Tests\quick_net_manager.txt`), serveur lancé avec `-ManagerUrl=… -MatchId=QC1`. `tests,net` PASS 138/138,
+  appels reçus : `listening {"port":7777}`, `started {}`, `empty {}`. **Pas fait** : rouge (non montré) et `finished`
+  (`-Parts tests,net,victory`, attendu `finished {"winners":[0]}`). La session principale les lance.
+- 2026-10-23 : **R3.7 complet** : `-Parts tests,net,victory` PASS en 121 s (138/138) ; appels reçus dans l'ordre
+  `listening {"port":7777}`, `started {}`, `finished {"winners":[0]}`, `empty {}`. **Rouge non montré** pour B4 (les
+  contrôles comptent exactement un appel de chaque sorte : sans envoi ils échouent ; à montrer si une boucle repasse
+  par là). **R3 B5 lancée** (R3.8 fin du serveur).
+- 2026-10-24 : **R3 B5 rendue (~7 min) : R3.8 fait.** `FHOLManagerRules::ShouldQuit` (non géré ou avant `started` :
+  reste ; 0 joueur : quitte ; sinon quitte `hol.Net.QuitAfterFinished` = 120 s après `finished`) ; `UHOLManagerLink`
+  vérifie toutes les 0,25 s (serveur géré seulement), attend la réponse à `empty` (≤ `hol.Net.QuitEmptyWait` = 2 s),
+  écrit « Server quits: … » puis `RequestEngineExit`. Test `HeroesOfLiberty.Net.ServerQuit` (8 cas) ; partie `net` :
+  contrôle « server quits alone once empty » (arrêt de secours gardé). **Rouge** 138/139 + `[KO] server quits alone
+  once empty`, **vert** 139/139, `net` PASS. Le cas « 120 s après la fin » n'est couvert que par le test unitaire.
+  **Fin de R3 redécoupée** : **B6** = R3.9 (règle du départ ensemble) + gel de R3.10 (simulation, ordres, production) ;
+  **B7** = bandeau « En attente de … » + traductions. **R3 B6 lancée.**
+- 2026-10-24 : **R3 B6 rendue (~8 min) : R3.9 et gel de R3.10 faits.** `Match/HOLStartRules.h/.cpp`
+  (`GetMissing` dans l'ordre de la configuration, casse ignorée ; `ShouldStart(manquants, écoulé, max)`), test
+  `HeroesOfLiberty.Match.StartRules` ; mode de jeu : CVar `hol.Match.StartWaitSeconds` (60), attente posée avant
+  `Super::StartPlay` si la configuration a des noms, vérifiée à `StartPlay`, à chaque `PostLogin` et chaque seconde ;
+  journal « Match waits for: … » / « Match starts: all here (simulation step N) » / « … after 60 s without: … » ;
+  accroche R7 commentée ; `started` envoyé au démarrage effectif (sans noms : comme avant). Garde unique dans
+  `AHOLGameState` (`bWaitingForPlayers`, `MissingPlayers` répliqués) lue par `UHOLSimulationSubsystem` (aucun pas) et
+  `UHOLCommandSubsystem::IsRefused` (ordres refusés). Partie `net` : contrôle attente puis « all here (simulation step
+  0) », aucune production avant. **Rouge** 139/140 + `[KO] server: waits for the absent`, **vert** 140/140, `net` PASS,
+  `smoke` PASS. Échéance des 60 s couverte par la règle pure seulement. **R3 B7 lancée** (bandeau + traductions).
+- 2026-10-24 : **R3 B7 rendue à 15 min : bandeau et traductions faits, test encore rouge à cause du test.**
+  `AHOLGameState::WaitEndSeconds` répliqué ; `HOLGameScreen` : `WaitPanel` / `WaitText` en haut au centre,
+  « En attente de {Players} ({Time}) » (en « Waiting for … », ja 「…を待っています（…）」), rafraîchi 4 fois par
+  seconde, journal « Wait banner: shown, … » / « hidden » ; chaîne de traduction refaite (GatherText, `fill_po.py`,
+  GatherText : `.po`, `.archive`, `.locres`, manifeste à jour), tests 140/140. Partie `net` : capture
+  `qcnet_N_wait` et contrôle « first client's wait banner ». **Rouge** puis **toujours rouge** : les deux clients
+  arrivent à 0,9 s d'écart, la capture précède le bandeau (« shown, En attente de Bob (0:57) » 0,44 s après la
+  capture). **R3 B7b lancée** : lancer Alice, attendre « Camera above the start » dans son journal, puis Bob ;
+  capture d'Alice après « Wait banner: shown ».
+- 2026-10-24 : **R3 B7b rendue : R3 fini (non commité).** `quick_check` partie `net` : Alice (client 2) lancée
+  d'abord, Bob seulement quand elle est au-dessus de son départ (60 s au plus, contrôle « client 2 (Alice) above her
+  start before client 1's launch ») ; capture d'Alice après « Wait banner: shown » ; contrôle « client 2's wait
+  banner » (affiché, capture, caché, PNG). `tests,net` **PASS** en 124 s, 140/140. Capture
+  `Saved_Tests_Net2\Screenshots\WindowsEditor\HOL\qcnet_2_wait.png` : « En attente de Bob (0:57) » en haut au centre,
+  blanc sur cartouche gris foncé, lisible. **Prochaine étape : commit de R3** (après accord de l'utilisateur) :
+  `main` a avancé (a74a5d1 et peut-être plus ; recoupements attendus : `HOLPlayerController`, `DefaultGame.ini`,
+  `quick_check.ps1`) → dans Glorfindel, `git stash`, `git merge main`, `git stash pop`, résoudre, `build.ps1`,
+  `quick_check -Parts tests,smoke,net,victory`, `dotnet test` du gestionnaire ; `EtapeDefini.md` (ligne M6 : R3
+  fait) dans le même commit ; accord des sessions actives ; avance rapide de la copie principale. Puis R4 (écrans du
+  jeu).
+- 2026-10-24 : l'utilisateur dit de faire la suite (commit de R3 compris). `main` e8a0e36 fusionné dans
+  `net-playtest` (travail de R3 mis de côté par `git stash` « r3 », **toujours gardé** dans la liste des stash par
+  sécurité : `git stash drop` seulement après le commit). Recoupements de code fusionnés sans conflit ; conflits
+  seulement sur les traductions : `fill_po.py` (les deux côtés gardés : textes V3 `ForumHold*` / `TableHold*` et
+  `WaitingFor`), fichiers générés (`Content/Localization/Game/**`) repris de `main`, **à régénérer** (GatherText,
+  `fill_po.py`, GatherText). Sous-agent lancé : régénération, compilation, `quick_check -Parts
+  tests,smoke,net,victory`, `dotnet test`.
+- 2026-10-24 : **mis en pause à la demande de l'utilisateur** (une autre session fait des mesures au repos) : le
+  sous-agent a été arrêté pendant sa compilation, rien ne tourne dans Glorfindel. **À reprendre, une fois les mesures
+  finies** : exactement l'étape précédente (compiler, régénérer les traductions, `quick_check -Parts
+  tests,smoke,net,victory`, `dotnet test`), puis le commit de R3.
+- 2026-10-24 17:59 : mesures au repos finies (aucun processus de mesure depuis 3 min) ; **vérification relancée**
+  (même étape).
+- 2026-10-24 : **vérification verte sur `main` e8a0e36** : compilation PASS ; traductions régénérées (GatherText,
+  `fill_po.py` 200 textes en / ja, 0 clé inconnue, GatherText ; `WaitingFor` et `ForumHold*` dans les trois `.po`) ;
+  `quick_check -Parts tests,smoke,net,victory` PASS en 137 s (145/145) ; `dotnet test` 158/158. `EtapeDefini.md` :
+  ligne M6 (serveur de partie fait), ligne `ServerPause` ajoutée. **Commit de R3 en cours** (accord des sessions
+  actives, puis avance rapide de la copie principale ; ensuite `git stash drop` du stash « r3 » dans Glorfindel).

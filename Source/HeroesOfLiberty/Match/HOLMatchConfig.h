@@ -54,6 +54,10 @@ struct HEROESOFLIBERTY_API FHOLMatchSlot
 	UPROPERTY()
 	int32 Team = 0;
 
+	/** Name of the human the lobby manager put in this slot (version 2, R3.1); empty otherwise. */
+	UPROPERTY()
+	FString PlayerName;
+
 	bool operator==(const FHOLMatchSlot&) const = default;
 };
 
@@ -68,7 +72,7 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	GENERATED_BODY()
 
 	/** Format version: a file of an older version is read with defaults for its missing fields. */
-	static constexpr int32 CurrentVersion = 1;
+	static constexpr int32 CurrentVersion = 2;
 	static constexpr int32 MaxSlots = 8;
 	static constexpr int32 MaxTeams = 4;
 
@@ -112,6 +116,16 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 
 	/** First human slot not in TakenSlots, or INDEX_NONE. */
 	int32 FindFreeHumanSlot(TConstArrayView<int32> TakenSlots) const;
+
+	/** True when the lobby manager named the human slots (R3.2); a configuration without names seats by arrival. */
+	bool HasPlayerNames() const;
+
+	/**
+	 * The slot of a player who logs in under Name (R3.2, M6-Q8, M6-Q9). Without names in the configuration: the first free
+	 * human slot. With names: the human slot of that name (case ignored, as the lobby manager), if not taken; an unknown,
+	 * empty or taken name gets none (INDEX_NONE: a spectator).
+	 */
+	int32 FindSlotForName(const FString& Name, TConstArrayView<int32> TakenSlots) const;
 
 	FString ToJson() const;
 

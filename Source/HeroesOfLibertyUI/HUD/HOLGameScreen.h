@@ -193,6 +193,13 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> MessageText;
 
+	/** R3.10: « En attente de Bob (0:42) », top centre, while the match waits for its named players. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UBorder> WaitPanel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> WaitText;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
@@ -299,6 +306,12 @@ private:
 	/** The message's age: it fades, then hides. */
 	void UpdateMessage(float DeltaSeconds);
 	/**
+	 * R3.10: the wait banner, read from the game state (IsWaitingForPlayers, GetMissingPlayers, GetWaitEndSeconds) four
+	 * times a second on every machine. Logs "Wait banner: shown, <text>" when the missing players change, then
+	 * "Wait banner: hidden".
+	 */
+	void RefreshWaitBanner();
+	/**
 	 * One of the player's buildings has a unit waiting for room in the population (D313): when that starts, the message
 	 * « Population maximale — construisez des maisons ».
 	 */
@@ -392,6 +405,8 @@ private:
 	float SinceTableRefresh = 1.f;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;
+	/** The missing players last logged by the wait banner (empty: hidden). */
+	FString ShownWaitPlayers;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;

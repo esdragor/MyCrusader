@@ -75,7 +75,8 @@ Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_clie
 # -useperfthreads (J7c.4, S5 in combat): a dedicated server runs every ParallelFor on one thread by the engine's default
 # (FApp::ShouldUseThreadingForPerformance is false there), so the parallel processors of D302 did not run in parallel
 # (server step 14 ms in combat against ~6 ms in the game).
-$ServerArguments = "$Map -log -unattended -useperfthreads -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
+# -HOLCheats (R3.5, R-Q7): a test server keeps the clients' cheats; the manager's servers refuse them.
+$ServerArguments = "$Map -log -unattended -useperfthreads -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
 if ($ServerArgs) { $ServerArguments += " $ServerArgs" }
 # Commands both sides run at start: reports and samples of S5, network emulation.
 $NetCommands = @()

@@ -23,4 +23,13 @@ namespace HOLVersion
 
 	/** Path of Version.txt in a package (the project folder beside the cooked content). */
 	HEROESOFLIBERTY_API FString GetFilePath();
+
+	/** URL option a client sends its version in (?Version=), checked by the server at login (R3.3). */
+	inline const TCHAR* UrlOption = TEXT("Version");
+
+	/**
+	 * Whether a server of version Server lets in a client that sent ClientOption (empty: no ?Version=). Same
+	 * version only; a client without one only on a dev server (editor tests). OutError says why not, for the log.
+	 */
+	HEROESOFLIBERTY_API bool IsAccepted(const FString& Server, const FString& ClientOption, FString* OutError = nullptr);
 }

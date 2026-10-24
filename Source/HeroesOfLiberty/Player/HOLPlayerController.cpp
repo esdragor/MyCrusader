@@ -26,6 +26,7 @@
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Map/HOLMapBounds.h"
+#include "Net/HOLCheatRules.h"
 #include "Match/HOLGameState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/UnrealNetwork.h"
@@ -2798,6 +2799,10 @@ AHOLPlayerState* AHOLPlayerController::GetHOLPlayerState() const
 bool AHOLPlayerController::IsSpectator() const
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (HOLPlayerState && HOLPlayerState->IsOnlyASpectator())
+	{
+		return true;
+	}
 	const UWorld* World = GetWorld();
 	const AHOLGameState* HOLGameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
 	return HOLPlayerState && HOLGameState && HOLGameState->IsSlotDefeated(HOLPlayerState->GetPlayerIndex());
@@ -3528,6 +3533,27 @@ void AHOLPlayerController::ServerCancelBuilding_Implementation(AHOLBuilding* Bui
 	}
 }
 
+void AHOLPlayerController::ServerExecRPC_Implementation(const FString& Msg)
+{
+	if (!IsCheatRefused(*FString::Printf(TEXT("exec '%s'"), *Msg)))
+	{
+		Super::ServerExecRPC_Implementation(Msg);
+	}
+}
+
+bool AHOLPlayerController::IsCheatRefused(const TCHAR* What) const
+{
+	const UWorld* World = GetWorld();
+	if (World && FHOLCheatRules::AreCheatsAllowed(*World))
+	{
+		return false;
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat refused: %s from %s (slot %d)"), What, HOLPlayerState ? *HOLPlayerState->GetPlayerName() : TEXT("?"),
+		HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE);
+	return true;
+}
+
 void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 {
 	ServerCheatResources(Amount);
@@ -3556,6 +3582,10 @@ void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("resources")))
+	{
+		return;
+	}
 	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	if (!HOLPlayerState)
 	{
@@ -3572,6 +3602,10 @@ void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResourc
 void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("fast build")))
+	{
+		return;
+	}
 	// One step for every unit (hol.Prod.BuildTime, on this server).
 	if (IConsoleVariable* BuildTime = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Prod.BuildTime")))
 	{
@@ -3591,6 +3625,10 @@ void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
 void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Places)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("population")))
+	{
+		return;
+	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLProductionSubsystem* Production = GetWorld()->GetSubsystem<UHOLProductionSubsystem>();
 	if (HOLPlayerState && Production)
@@ -3604,6 +3642,10 @@ void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Plac
 void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("unit speed")))
+	{
+		return;
+	}
 	// Every walker of every player (hol.Units.SpeedScale, on this server), at the next step.
 	const float Held = FMath::Clamp(FMath::IsFinite(Scale) ? Scale : 1.f, 0.1f, 10.f);
 	if (IConsoleVariable* SpeedScale = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Units.SpeedScale")))
@@ -3623,6 +3665,10 @@ void AHOLPlayerController::RequestCheatSpawnBuilding(const FName TypeName, const
 void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName TypeName, const int32 Slot, const FVector_NetQuantize Point)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("spawn building")))
+	{
+		return;
+	}
 	// As a player's placement (D311: on the tile grid, no rotation), finished at once and free, for any slot, unchecked.
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
 	UWorld* World = GetWorld();
@@ -3655,6 +3701,10 @@ void AHOLPlayerController::RequestCheatDefeat(const int32 Slot)
 void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("defeat")))
+	{
+		return;
+	}
 	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
 	if (!HOLGameState || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Cheat))
 	{
@@ -3671,6 +3721,10 @@ void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
 void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("fall forum")))
+	{
+		return;
+	}
 	// The same path as the combat's damage: melee (no armour) of exactly its health.
 	AHOLBuilding* Forum = AHOLGameState::FindPrimaryForum(*GetWorld(), Slot);
 	const int32 Health = Forum ? Forum->GetHealth() : 0;
@@ -3689,6 +3743,10 @@ void AHOLPlayerController::RequestCheatSkipForum(const int32 Slot)
 void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("skip forum")))
+	{
+		return;
+	}
 	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
 	if (!HOLGameState || !HOLGameState->SkipForumPhase(Slot))
 	{
@@ -3750,6 +3808,10 @@ void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, cons
 void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVector_NetQuantize Point, const int32 Amount, const uint8 AttackType)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("damage building")))
+	{
+		return;
+	}
 	// The building nearest the point on the ground, any player's (a bare foundation too: its owner's test).
 	AHOLBuilding* Nearest = nullptr;
 	double NearestDistance = TNumericLimits<double>::Max();
@@ -3777,6 +3839,10 @@ void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVecto
 void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Scale)
 {
 #if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("gather speed")))
+	{
+		return;
+	}
 	// Every gatherer of every player (hol.Gather.SpeedScale, on this server), at the next step.
 	const float Held = FMath::Clamp(FMath::IsFinite(Scale) ? Scale : 1.f, 0.1f, 10.f);
 	if (IConsoleVariable* SpeedScale = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Gather.SpeedScale")))

@@ -16,6 +16,7 @@
 #include "MassSimulationSubsystem.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Avoidance/MassAvoidanceFragments.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -292,6 +293,13 @@ void UHOLSimulationSubsystem::Deinitialize()
 
 void UHOLSimulationSubsystem::OnPrePhysicsPhaseStarted(const float DeltaSeconds)
 {
+	// R3.10: no step (movement, combat, production) while the match waits for its named players.
+	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	if (GameState && GameState->IsWaitingForPlayers())
+	{
+		Accumulator = 0.f;
+		return;
+	}
 	Accumulator += DeltaSeconds;
 
 	int32 NumSteps = 0;

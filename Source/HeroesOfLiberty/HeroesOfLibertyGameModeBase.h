@@ -25,7 +25,16 @@ public:
 
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void InitGameState() override;
+	/** Refuses a client of another version than the server (R3.3, HOLVersion::IsAccepted). */
+	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	/** Reads the player's ?Name= (URL-decoded): his PlayerState name and, in PostLogin, his slot (R3.2). */
+	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options,
+		const FString& Portal) override;
+	/** The slot of the player's name (FHOLMatchConfig::FindSlotForName); none: a spectator (M6-Q8). */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	/** The last player gone after the start: "empty" to the lobby manager (R3.7). */
+	virtual void Logout(AController* Exiting) override;
+	/** The server listens by now: "listening" to the lobby manager, with the port listened on (R3.6). */
 	virtual void StartPlay() override;
 
 	const FHOLMatchConfig& GetMatchConfig() const { return MatchConfig; }
@@ -40,5 +49,24 @@ private:
 	 */
 	void AssignBuildingOwners(int32 Slot);
 
+	/** "started" to the lobby manager once every human slot of the configuration is held (R3.7), for a configuration without names. */
+	void SendStartedIfAllHere();
+	/**
+	 * R3.9: a configuration with names waits for them (hol.Match.StartWaitSeconds at most), the simulation and the orders
+	 * frozen (R3.10); at the start, "started" to the lobby manager. Called at the start of play, at each login and each second.
+	 */
+	void UpdateStartWait();
+
+	FTimerHandle StartWaitTimer;
+	/** Game time of the start of the wait. */
+	double StartWaitSince = 0.0;
+	/** The missing names last logged. */
+	TArray<FString> LoggedMissing;
+	/** "finished" to the lobby manager, with the winning slots (R3.7). */
+	void OnMatchOver();
+
 	FHOLMatchConfig MatchConfig;
+
+	/** The ?Name= of each player between InitNewPlayer and PostLogin (absent: no entry). */
+	TMap<TWeakObjectPtr<APlayerController>, FString> LoginNames;
 };

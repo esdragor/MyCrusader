@@ -37,4 +37,17 @@ namespace HOLVersion
 		}();
 		return Version;
 	}
+
+	bool IsAccepted(const FString& Server, const FString& ClientOption, FString* OutError)
+	{
+		// An unknown version is no proof of the same build: refused even against itself.
+		const bool bAccepted = ClientOption.IsEmpty() ? Server == Dev : ClientOption == Server && Server != Unknown;
+		if (!bAccepted && OutError)
+		{
+			*OutError = ClientOption.IsEmpty()
+				? FString::Printf(TEXT("Version mismatch: server %s, client sent no version"), *Server)
+				: FString::Printf(TEXT("Version mismatch: server %s, client %s"), *Server, *ClientOption);
+		}
+		return bAccepted;
+	}
 }

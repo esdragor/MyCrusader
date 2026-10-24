@@ -6,6 +6,8 @@
 #include "Iris/Serialization/NetBitStreamWriter.h"
 #include "Iris/Serialization/NetSerializationContext.h"
 #include "Misc/AutomationTest.h"
+#include "Net/HOLCheatRules.h"
+#include "Net/HOLManagerLink.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReplicationRules.h"
@@ -646,6 +648,54 @@ bool FHOLNetCombatSendRuleTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("target not replicated yet: unknown"), Make(EHOLUnitActivity::Attacking, 150, FHOLNetUnitState::InvalidTargetSlot).HasTargetSlot());
 	TestFalse(TEXT("target in slot 5000, past 12 bits: unknown"), Make(EHOLUnitActivity::Attacking, 150, 5000).HasTargetSlot());
 	TestFalse(TEXT("not attacking: no target"), Make(EHOLUnitActivity::Idle, 150, 7).HasTargetSlot());
+	return true;
+}
+
+// R3.4 (R-Q7): who may cheat. The solo game keeps its cheats; a server refuses a client's unless launched with -HOLCheats;
+// hol.Cheat.Refuse refuses even then.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetCheatRuleTest, "HeroesOfLiberty.Net.CheatRule", UE::HeroesOfLiberty::Tests::Net::Flags)
+
+bool FHOLNetCheatRuleTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("solo: allowed"), FHOLCheatRules::AreCheatsAllowed(NM_Standalone, false, false));
+	TestFalse(TEXT("dedicated server: refused"), FHOLCheatRules::AreCheatsAllowed(NM_DedicatedServer, false, false));
+	TestFalse(TEXT("listen server: refused"), FHOLCheatRules::AreCheatsAllowed(NM_ListenServer, false, false));
+	TestTrue(TEXT("dedicated server with -HOLCheats: allowed"), FHOLCheatRules::AreCheatsAllowed(NM_DedicatedServer, true, false));
+	TestTrue(TEXT("listen server with -HOLCheats: allowed"), FHOLCheatRules::AreCheatsAllowed(NM_ListenServer, true, false));
+	TestFalse(TEXT("dedicated server with -HOLCheats and hol.Cheat.Refuse: refused"), FHOLCheatRules::AreCheatsAllowed(NM_DedicatedServer, true, true));
+	TestFalse(TEXT("client: never (its cheats go to the server)"), FHOLCheatRules::AreCheatsAllowed(NM_Client, true, false));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetManagerRoutesTest, "HeroesOfLiberty.Net.ManagerRoutes", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetManagerRoutesTest::RunTest(const FString& Parameters)
+{
+	// R3.6, R3.7: the routes and bodies of Manager/PROTOCOL.md ("Routes du serveur Unreal").
+	TestEqual(TEXT("listening route"), FHOLManagerRules::MakeRouteUrl(TEXT("http://127.0.0.1:7700"), TEXT("M20261023-153012-3"), TEXT("listening")),
+		FString(TEXT("http://127.0.0.1:7700/matches/M20261023-153012-3/listening")));
+	TestEqual(TEXT("a trailing slash of the manager's address dropped"), FHOLManagerRules::MakeRouteUrl(TEXT("http://127.0.0.1:7700/"), TEXT("QC1"), TEXT("empty")),
+		FString(TEXT("http://127.0.0.1:7700/matches/QC1/empty")));
+	TestEqual(TEXT("listening body: the port"), FHOLManagerRules::MakeListeningBody(7778), FString(TEXT("{\"port\":7778}")));
+	TestEqual(TEXT("finished body: the winning slots"), FHOLManagerRules::MakeFinishedBody({ 0, 2 }), FString(TEXT("{\"winners\":[0,2]}")));
+	TestEqual(TEXT("finished body: no winner"), FHOLManagerRules::MakeFinishedBody({}), FString(TEXT("{\"winners\":[]}")));
+	TestEqual(TEXT("started and empty: an empty object"), FHOLManagerRules::MakeEmptyBody(), FString(TEXT("{}")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetServerQuitTest, "HeroesOfLiberty.Net.ServerQuit", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetServerQuitTest::RunTest(const FString& Parameters)
+{
+	// R3.8 (M6-Q9): one match per server; a server launched by the manager quits by itself.
+	using EQuit = FHOLManagerRules::EQuit;
+	auto Check = [this](const TCHAR* What, const EQuit Got, const EQuit Expected) { TestEqual(What, (int32)Got, (int32)Expected); };
+	Check(TEXT("managed, empty after the start: quits"), FHOLManagerRules::ShouldQuit(true, true, 0, -1.0, 120.0), EQuit::Empty);
+	Check(TEXT("managed, empty before the start (waiting for players): stays"), FHOLManagerRules::ShouldQuit(true, false, 0, -1.0, 120.0), EQuit::None);
+	Check(TEXT("managed, players in the match: stays"), FHOLManagerRules::ShouldQuit(true, true, 2, -1.0, 120.0), EQuit::None);
+	Check(TEXT("managed, finished 60 s ago with players: stays"), FHOLManagerRules::ShouldQuit(true, true, 2, 60.0, 120.0), EQuit::None);
+	Check(TEXT("managed, finished 120 s ago with players: quits"), FHOLManagerRules::ShouldQuit(true, true, 2, 120.0, 120.0), EQuit::Finished);
+	Check(TEXT("managed, finished and empty: quits at once"), FHOLManagerRules::ShouldQuit(true, true, 0, 5.0, 120.0), EQuit::Empty);
+	Check(TEXT("not managed (solo, tests, net_match.ps1), empty after the start: stays"), FHOLManagerRules::ShouldQuit(false, true, 0, -1.0, 120.0), EQuit::None);
+	Check(TEXT("not managed, finished long ago: stays"), FHOLManagerRules::ShouldQuit(false, true, 2, 600.0, 120.0), EQuit::None);
 	return true;
 }
 

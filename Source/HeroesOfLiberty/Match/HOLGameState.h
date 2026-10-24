@@ -48,6 +48,18 @@ public:
 	 */
 	bool DefeatSlot(int32 Slot, EHOLDefeatReason Reason);
 
+	/**
+	 * R3.9-R3.10: a match launched by the lobby manager waits for its named players; meanwhile no simulation step and
+	 * no order (the one guard: UHOLSimulationSubsystem and UHOLCommandSubsystem::IsRefused read it).
+	 */
+	bool IsWaitingForPlayers() const { return bWaitingForPlayers; }
+	/** The named players still missing while waiting (the configuration's names). */
+	const TArray<FString>& GetMissingPlayers() const { return MissingPlayers; }
+	/** The server's world time (GetServerWorldTimeSeconds) when the wait ends at the latest: the banner's countdown. */
+	double GetWaitEndSeconds() const { return WaitEndSeconds; }
+	/** Server only, by the game mode. */
+	void SetWaitingForPlayers(bool bWaiting, const TArray<FString>& Missing, double EndSeconds = 0.);
+
 	bool IsSlotDefeated(int32 Slot) const { return GetDefeatReason(Slot) != EHOLDefeatReason::None; }
 	EHOLDefeatReason GetDefeatReason(int32 Slot) const { return SlotDefeats.IsValidIndex(Slot) ? SlotDefeats[Slot] : EHOLDefeatReason::None; }
 	bool IsMatchOver() const { return bMatchOver; }
@@ -214,6 +226,16 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Victory)
 	bool bMatchOver = false;
+
+	/** R3.10: replicated for the waiting banner (B7). */
+	UPROPERTY(Replicated)
+	bool bWaitingForPlayers = false;
+
+	UPROPERTY(Replicated)
+	TArray<FString> MissingPlayers;
+
+	UPROPERTY(Replicated)
+	double WaitEndSeconds = 0.;
 
 	/** Bit Slot: that slot won (FHOLVictoryResult). */
 	UPROPERTY(ReplicatedUsing = OnRep_Victory)

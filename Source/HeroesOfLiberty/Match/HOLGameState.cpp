@@ -29,6 +29,17 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
 	DOREPLIFETIME(AHOLGameState, LaunchConfig);
 	DOREPLIFETIME(AHOLGameState, ForumStates);
+	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
+	DOREPLIFETIME(AHOLGameState, MissingPlayers);
+	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
+}
+
+void AHOLGameState::SetWaitingForPlayers(const bool bWaiting, const TArray<FString>& Missing, const double EndSeconds)
+{
+	bWaitingForPlayers = bWaiting;
+	MissingPlayers = Missing;
+	WaitEndSeconds = EndSeconds;
+	ForceNetUpdate();
 }
 
 void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)

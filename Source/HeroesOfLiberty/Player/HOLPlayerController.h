@@ -397,6 +397,9 @@ public:
 	 * fast (hol.Units.SpeedScale, for every player), every gatherer gathering Scale times as fast (hol.Gather.SpeedScale,
 	 * for every player).
 	 */
+	/** The engine's ServerExec (any console command on the server): a cheat, refused as the others (R3.5). */
+	virtual void ServerExecRPC_Implementation(const FString& Msg) override;
+
 	void RequestCheatResources(const FHOLResources& Amount);
 	void RequestCheatFastBuild(bool bOn);
 	void RequestCheatPopulation(int32 Places);
@@ -431,8 +434,8 @@ public:
 	void SetGameMenuOpen(bool bOpen) { bGameMenuOpen = bOpen; }
 	bool IsGameMenuOpen() const { return bGameMenuOpen; }
 	/**
-	 * D357: the player's slot is defeated, it only watches: camera and selection kept (the units' details), no order,
-	 * no grid, no placement sent from this machine (the server refuses them anyway, V1.2).
+	 * D357: the player's slot is defeated, or he joined without a slot (R3.2, M6-Q8): he only watches: camera and selection
+	 * kept (the units' details), no order, no grid, no placement sent from this machine (the server refuses them anyway, V1.2).
 	 */
 	bool IsSpectator() const;
 	/** Units, a building, a group of buildings or a source selected. */
@@ -580,6 +583,9 @@ private:
 	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
 	UFUNCTION(Server, Reliable)
 	void ServerWatchUnit(uint32 UnitId);
+
+	/** R3.5 (R-Q7): true, and logged, when this server refuses a client's cheat (FHOLCheatRules); every cheat RPC asks it. */
+	bool IsCheatRefused(const TCHAR* What) const;
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatResources(FHOLResources Amount);

@@ -42,6 +42,9 @@ public class HeroesOfLiberty : ModuleRules
 		// SlateCore: the stress test checks the game window state before asking for a capture (D190); Slate: the attack cursor (A.2).
 		PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "DeveloperSettings", "RHI", "RenderCore", "Slate", "SlateCore", "Json", "JsonUtilities" });
 
+		// HTTP: the player names of the login URLs are URL-encoded (R3.2).
+		PrivateDependencyModuleNames.Add("HTTP");
+
 		// The match controller's camera keys (D255).
 		PrivateDependencyModuleNames.Add("EnhancedInput");
 

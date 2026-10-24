@@ -200,6 +200,8 @@ TRANSLATIONS = {
     "HOLGameScreen,ForumHoldContested": ("Contested — {0} s", "争奪中 — {0}秒"),
     "HOLGameScreen,TableHold": ("{0} · held {1} s", "{0} · 占拠{1}秒"),
     "HOLGameScreen,TableHoldContested": ("{0} · contested {1} s", "{0} · 争奪{1}秒"),
+    # R3.10: the banner while the match waits for its named players.
+    "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,Cancel": ("Cancel", "キャンセル"),
     "HOLGameScreen,CancelSite": ("Cancel construction", "建設をキャンセル"),
     # The user's trial of J6a.5: F1, F2, F3 while the player has no building of the category.

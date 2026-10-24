@@ -17,8 +17,14 @@ bool UHOLCommandSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType
 bool UHOLCommandSubsystem::IsRefused(const int32 PlayerIndex)
 {
 	const UWorld* World = GetWorld();
-	const AHOLGameState* GameState = World && PlayerIndex != INDEX_NONE ? World->GetGameState<AHOLGameState>() : nullptr;
-	if (!GameState || !GameState->IsSlotDefeated(PlayerIndex))
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	// R3.10: no order while the match waits for its named players.
+	if (GameState && GameState->IsWaitingForPlayers())
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Match waits: order of slot %d refused"), PlayerIndex);
+		return true;
+	}
+	if (!GameState || PlayerIndex == INDEX_NONE || !GameState->IsSlotDefeated(PlayerIndex))
 	{
 		return false;
 	}

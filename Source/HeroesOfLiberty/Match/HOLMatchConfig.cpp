@@ -60,6 +60,36 @@ int32 FHOLMatchConfig::FindFreeHumanSlot(const TConstArrayView<int32> TakenSlots
 	return INDEX_NONE;
 }
 
+bool FHOLMatchConfig::HasPlayerNames() const
+{
+	return Slots.ContainsByPredicate([](const FHOLMatchSlot& Slot)
+	{
+		return Slot.State == EHOLSlotState::Human && !Slot.PlayerName.TrimStartAndEnd().IsEmpty();
+	});
+}
+
+int32 FHOLMatchConfig::FindSlotForName(const FString& Name, const TConstArrayView<int32> TakenSlots) const
+{
+	if (!HasPlayerNames())
+	{
+		return FindFreeHumanSlot(TakenSlots);
+	}
+	const FString Wanted = Name.TrimStartAndEnd();
+	if (Wanted.IsEmpty())
+	{
+		return INDEX_NONE;
+	}
+	for (int32 Index = 0; Index < Slots.Num(); ++Index)
+	{
+		if (Slots[Index].State == EHOLSlotState::Human && Slots[Index].PlayerName.TrimStartAndEnd().Equals(Wanted, ESearchCase::IgnoreCase))
+		{
+			// A name held by a player still here: the second login watches (its slot is freed when the first one leaves).
+			return TakenSlots.Contains(Index) ? INDEX_NONE : Index;
+		}
+	}
+	return INDEX_NONE;
+}
+
 FString FHOLMatchConfig::ToJson() const
 {
 	FString Json;

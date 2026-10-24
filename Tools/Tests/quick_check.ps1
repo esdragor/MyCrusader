@@ -200,11 +200,18 @@ if ($Parts -contains "tests") {
 # server mode on Plain (D275: no cooking, always the code of the moment; the cooked server of net_match.ps1 stays for
 # S5 and the user's trials), two humans in slots 0 and 1 at the colours of their slots.
 $NetServerProcess = $null
+$ManagerListener = $null
 $NetServerLog = Join-Path $TestSaved "Logs\quick_net_server.log"
 if ($Parts -contains "net") {
     $NetConfig = Join-Path $TestSaved "quick_net.json"
-    $NetSlots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }
-    "{ `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
+    # The slots named by the lobby manager (R3.2), in the reverse of the clients' order: client 1 (Bob, -PlayerName=) holds
+    # slot 1, client 2 (Alice, ?Name= in the URL it opens) slot 0, whoever arrives first.
+    $NetNames = @("Alice", "Bob")
+    $NetSlots = for ($i = 0; $i -lt 8; $i++) {
+        $NetSlotName = if ($i -lt 2) { ", `"playerName`": `"$($NetNames[$i])`"" } else { "" }
+        "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i$NetSlotName }"
+    }
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
@@ -233,7 +240,12 @@ if ($Parts -contains "net") {
     $NetArrowsFlag = Join-Path $TestSaved "quick_net_arrows1.flag"
     $NetArrowsEndFlag = Join-Path $TestSaved "quick_net_arrows_end.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
-    @("waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+    # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
+    # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
+    # them again for the rest (the army's resources) and answers.
+    $NetCheatTriedFlag = Join-Path $TestSaved "quick_net_cheat_tried.flag"
+    $NetCheatBackFlag = Join-Path $TestSaved "quick_net_cheat_back.flag"
+    @("waitfile $NetCheatTriedFlag 300", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") |
@@ -241,7 +253,34 @@ if ($Parts -contains "net") {
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     # -useperfthreads (J7c.4): a dedicated server, the editor's -server too, runs every ParallelFor on one thread by the
     # engine's default (FApp::ShouldUseThreadingForPerformance); the parallel processors of D302 run as in the game.
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -useperfthreads -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2$NetSourceCommand`""
+    # A free UDP port from 7777 (M6): another copy's net part may hold 7777, and the server would fall back to 7778
+    # while the clients joined the other copy's server.
+    $NetPort = 7777
+    while ($NetPort -lt 7877) {
+        try { $Probe = New-Object Net.Sockets.UdpClient($NetPort); $Probe.Close(); break } catch { $NetPort++ }
+    }
+    # The lobby manager (R3.6, R3.7): a test listener on a free TCP port of 127.0.0.1 answers 204 to every call and writes
+    # each one (method, path, body) in a file; the server gets its address and a match id, as from the manager.
+    $ManagerCallsFile = Join-Path $TestSaved "quick_net_manager.txt"
+    Remove-Item $ManagerCallsFile -ErrorAction SilentlyContinue
+    $ManagerProbe = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
+    $ManagerProbe.Start(); $ManagerPort = $ManagerProbe.LocalEndpoint.Port; $ManagerProbe.Stop()
+    $ManagerListener = New-Object Net.HttpListener
+    $ManagerListener.Prefixes.Add("http://127.0.0.1:${ManagerPort}/")
+    $ManagerListener.Start()
+    $ManagerRunspace = [PowerShell]::Create()
+    $null = $ManagerRunspace.AddScript({
+        param($Listener, $File)
+        while ($Listener.IsListening) {
+            try { $Context = $Listener.GetContext() } catch { break }
+            $Body = (New-Object IO.StreamReader($Context.Request.InputStream)).ReadToEnd()
+            Add-Content -Path $File -Encoding utf8 -Value "$($Context.Request.HttpMethod) $($Context.Request.Url.AbsolutePath) $Body"
+            $Context.Response.StatusCode = 204
+            $Context.Response.Close()
+        }
+    }).AddArgument($ManagerListener).AddArgument($ManagerCallsFile)
+    $null = $ManagerRunspace.BeginInvoke()
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -1615,7 +1654,9 @@ if ($NetServerProcess) {
 }
 if ($NetListening) {
     Remove-Item (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
-    for ($Client = 1; $Client -le 2; $Client++) {
+    # R3.10: Alice (client 2) first, Bob (client 1) once she is above her start: she alone waits, for Bob.
+    $NetAliceReady = $false
+    foreach ($Client in 2, 1) {
         $ClientSaved = Join-Path $Project "Saved_Tests_Net$Client"
         $ClientShots = Join-Path $ClientSaved "Screenshots\WindowsEditor\HOL"
         Get-ChildItem $ClientShots -Filter "qcnet_*.png" -ErrorAction SilentlyContinue | Remove-Item
@@ -1629,8 +1670,12 @@ if ($NetListening) {
         # waitlog reads the lines since the last command: nothing between waitmap and it. The cursor is held in the middle
         # from the start (-ExecCmds below), or the camera scrolls at the edge before the first step. Each client waits for
         # the other one (a client done and gone frees its slot for the one still joining).
-        $NetSteps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark net", "frames 30",
-            "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start")
+        # R3.10: Alice, here first, captures her wait banner before waiting for Bob (Bob waits for nobody).
+        $NetSteps = @("waitmap Plain", "waitlog Camera above the start")
+        if ($Client -eq 2) { $NetSteps += "waitlog Wait banner: shown", "frames 5", "capture qcnet_${Client}_wait" }
+        $NetSteps += "waitplayers 2", "mark net", "frames 30", "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start"
+        # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
+        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
                 "frames 2", "hol.Select.Report", "capture qcnet_${Client}_slot$Slot"
@@ -1762,10 +1807,22 @@ if ($NetListening) {
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
-        $ClientArguments = "`"$UProject`" 127.0.0.1 -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
-        $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots;
-            Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
+        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
+        Remove-Item $ClientLog -ErrorAction SilentlyContinue
+        $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
+        $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
+        if ($Client -eq 2) {
+            $Deadline = (Get-Date).AddSeconds(60)
+            while (-not $NetAliceReady -and (Get-Date) -lt $Deadline -and -not $ClientProcess.HasExited) {
+                Start-Sleep -Milliseconds 250
+                $NetAliceReady = (Test-Path $ClientLog) -and (Select-String -Path $ClientLog -Pattern "Camera above the start" -Quiet)
+            }
+            if (-not $NetAliceReady) { Write-Host "net: client 2 (Alice) not above her start within 60 s; client 1 (Bob) launched anyway" }
+        }
     }
+    # Client 1 first again for the reports below.
+    $NetClients = @($NetClients | Sort-Object { $_.Client })
 }
 
 # 780 s with the camera's parts (-Full): the sequence takes ~285 s since J6b.2b (the build gap part), ~30 s more with the
@@ -3883,6 +3940,11 @@ if ($Parts -contains "net") {
         $Checks["client $N : holds a slot ($Held)"] = $null -ne $Held
         if ($null -eq $Held) { continue }
         $HeldSlots += $Held
+        # R3.2: the slot of its name (client 1 Bob in slot 1, client 2 Alice in slot 0), its name sent to the server.
+        $NetName = @("Bob", "Alice")[$N - 1]
+        $Checks["client $N : holds the slot of $NetName ($Held)"] = $Held -eq (2 - $N)
+        $Checks["client $N : logged in as $NetName"] = (Test-Path $NetServerLog) -and [bool](Select-String -Path $NetServerLog -Pattern "Login request: .*[?&]Name=$NetName(\?|&|\s|$)" -Quiet) -and
+            [bool](Select-String -Path $NetServerLog -Pattern "$NetName holds slot $(2 - $N) " -Quiet)
         $NetHeld[$N] = $Held
         $Camera =$ClientLines | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\)" | Select-Object -First 1
         $Start = Get-SlotStart $Held
@@ -4175,7 +4237,26 @@ if ($Parts -contains "net") {
         $Checks["the same tree selected on both clients ($(($NetSelectedTrees.Values | Sort-Object) -join ' / '))"] = ($NetSelectedTrees.Count -eq 2) -and
             (@($NetSelectedTrees.Values | Sort-Object -Unique).Count -eq 1) -and ($NetSelectedTrees.Values -notcontains "")
     }
+    # The lobby manager's calls (R3.6, R3.7): "empty" once both clients are gone (10 s at most), then the listener stops.
+    $ManagerDeadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $ManagerDeadline -and -not ((Test-Path $ManagerCallsFile) -and (Select-String -Path $ManagerCallsFile -SimpleMatch "/matches/QC1/empty" -Quiet))) {
+        Start-Sleep -Milliseconds 250
+    }
+    # R3.8: the server launched by the manager quits by itself once empty (10 s at most), killed only as a last resort.
+    $NetQuitDeadline = (Get-Date).AddSeconds(10)
+    while ($NetServerProcess -and -not $NetServerProcess.HasExited -and (Get-Date) -lt $NetQuitDeadline) { Start-Sleep -Milliseconds 250 }
+    $NetServerQuitAlone = [bool]($NetServerProcess -and $NetServerProcess.HasExited)
     if ($NetServerProcess -and -not $NetServerProcess.HasExited) { Stop-Process -Id $NetServerProcess.Id -Force }
+    $ManagerListener.Close()
+    $NetQuitLine = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -SimpleMatch "Server quits: empty after the match" }).Count
+    $Checks["server quits alone once empty ($NetQuitLine log line, exited: $NetServerQuitAlone)"] = $NetServerQuitAlone -and ($NetQuitLine -eq 1)
+    $ManagerCalls = @(if (Test-Path $ManagerCallsFile) { Get-Content $ManagerCallsFile })
+    $ManagerEvents = @($ManagerCalls | ForEach-Object { if ($_ -match "^POST /matches/QC1/(\w+) ") { $Matches[1] } })
+    Write-Host "  manager calls: $($ManagerCalls -join ' | ')"
+    $Checks["manager: listening with port $NetPort"] = $ManagerCalls -contains "POST /matches/QC1/listening {`"port`":$NetPort}"
+    $Checks["manager: started once, after listening ($($ManagerEvents -join ', '))"] = (@($ManagerCalls | Where-Object { $_ -eq "POST /matches/QC1/started {}" }).Count -eq 1) -and
+        ([array]::IndexOf($ManagerEvents, "started") -gt [array]::IndexOf($ManagerEvents, "listening")) -and ([array]::IndexOf($ManagerEvents, "listening") -ge 0)
+    $Checks["manager: empty once, last"] = (@($ManagerCalls | Where-Object { $_ -eq "POST /matches/QC1/empty {}" }).Count -eq 1) -and ($ManagerEvents[-1] -eq "empty")
     # The melee on (J7b.2) on the dedicated server: the two armies stand at their own centres, far apart, no one killed;
     # the fight made for client 1 (J7b.4) kills its 2 Spearmen alone.
     $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | Where-Object { $_.Line -notmatch "by arrow" } | ForEach-Object { $_.Matches[0].Groups[1].Value } })
@@ -4202,10 +4283,41 @@ if ($Parts -contains "net") {
     $ClientCorpses = & $CorpseCount @(if ($Client1Log -and (Test-Path $Client1Log)) { Get-Content $Client1Log })
     $ServerCorpses = & $CorpseCount @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
     $Checks["bodies: client 1 keeps the fight's ($ClientCorpses), the server none ($ServerCorpses)"] = ($null -ne $ClientCorpses) -and $ClientCorpses -ge 1 -and ($null -ne $ServerCorpses) -and $ServerCorpses -eq 0
+    # R3.4: client 1's 500 wood refused by the server (its log), the two army cheats of resources alone granted.
+    $CheatRefused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat refused: resources from Bob" }).Count
+    $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" }).Count
+    $Checks["server: client 1's cheat refused ($CheatRefused), the army's granted ($CheatGranted of 2)"] = $CheatRefused -eq 1 -and $CheatGranted -eq 2
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     $Born = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Production: Peasant of slot (\d) done" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
     $Checks["server: one Peasant born per slot ($($Born -join ', '))"] = (($Born | Sort-Object) -join ',') -eq "0,1"
+    # R3.9-R3.10: the server waits for the named players (one of them alone missing at some point), then starts all
+    # here at simulation step 0: no step and no production line before the start.
+    $WaitOne = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Match waits for: (Alice|Bob)$" })
+    $StartLines = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Match starts: all here \(simulation step (\d+)\)" })
+    $StartStep = if ($StartLines.Count -eq 1) { [int]$StartLines[0].Matches[0].Groups[1].Value } else { -1 }
+    $ProdBefore = @(if ($StartLines.Count -eq 1) { Select-String -Path $NetServerLog -Pattern "Production: " | Where-Object { $_.LineNumber -lt $StartLines[0].LineNumber } })
+    $Checks["server: waits for the absent ($(($WaitOne | ForEach-Object { $_.Matches[0].Groups[1].Value }) -join ', ')), then starts all here ($($StartLines.Count)) at step $StartStep, $($ProdBefore.Count) production lines before"] =
+        $WaitOne.Count -ge 1 -and $StartLines.Count -eq 1 -and $StartStep -eq 0 -and $ProdBefore.Count -eq 0
+    # R3.10: client 2 (Alice), launched first, shows « En attente de Bob (0:SS) » before its capture during the wait,
+    # then hides it once the match starts.
+    $Checks["client 2 (Alice) above her start before client 1's launch"] = $NetAliceReady
+    $AliceClient = @($NetClients | Where-Object { $_.Client -eq 2 })
+    $WaitShown = ""; $WaitCaptured = $false; $WaitHidden = $false
+    if ($AliceClient.Count -eq 1) {
+        $AliceLines = @(if (Test-Path $AliceClient[0].Log) { Get-Content $AliceClient[0].Log })
+        $ShownAt = -1; $CaptureAt = -1; $HiddenAt = -1
+        for ($i = 0; $i -lt $AliceLines.Count; $i++) {
+            if ($ShownAt -lt 0 -and $AliceLines[$i] -match "Wait banner: shown, (.*)$") { $ShownAt = $i; $WaitShown = $Matches[1] }
+            if ($CaptureAt -lt 0 -and $AliceLines[$i] -match "Test capture: qcnet_2_wait ") { $CaptureAt = $i }
+            if ($HiddenAt -lt 0 -and $AliceLines[$i] -match "Wait banner: hidden") { $HiddenAt = $i }
+        }
+        $WaitCaptured = ($ShownAt -ge 0) -and ($CaptureAt -gt $ShownAt) -and ($HiddenAt -gt $CaptureAt) -and
+            (Test-Path (Join-Path $AliceClient[0].Shots "qcnet_2_wait.png"))
+        $WaitHidden = $HiddenAt -ge 0
+    }
+    $Checks["client 2's wait banner ($WaitShown), captured while shown, hidden at the start ($WaitHidden)"] = $WaitCaptured -and
+        ($WaitShown -match "^En attente de Bob \((0:[0-5]\d|1:00)\)$")
     if ($Parts -contains "sources") {
         $Unloaded = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Gather: slot (\d) unloaded 10 Wood" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique })
         $Checks["server: each player's Peasant unloaded 10 wood at its centre ($($Unloaded -join ', '))"] = ($Unloaded -join ',') -eq "0,1"
@@ -4256,6 +4368,7 @@ if ($Parts -contains "net") {
         foreach ($NetClient in $NetClients) {
             $Banner[$NetClient.Client] = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "victory" | Select-String -Pattern "End banner: (\w+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         }
+        $Checks["manager: finished, winners [$Winner]"] = ($null -ne $Winner) -and (@($ManagerCalls | Where-Object { $_ -eq "POST /matches/QC1/finished {`"winners`":[$Winner]}" }).Count -eq 1)
         $Checks["victory: client 1, End banner: Defeat ($($Banner[1] -join ', '))"] = ($Banner[1] -join ',') -eq "Defeat"
         $Checks["victory: client 2, End banner: Victory ($($Banner[2] -join ', '))"] = ($Banner[2] -join ',') -eq "Victory"
         $Client2Log = ($NetClients | Where-Object { $_.Client -eq 2 } | Select-Object -First 1).Log

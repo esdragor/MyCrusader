@@ -22,7 +22,7 @@ namespace UE::HeroesOfLiberty::Tests
 		Config.Seed = 1234;
 		Config.Map = FSoftObjectPath(TEXT("/Game/Maps/StressTest.StressTest"));
 		Config.Slots[1] = { EHOLSlotState::AI, EHOLFaction::BlackLegions, 5, 2 };
-		Config.Slots[3] = { EHOLSlotState::Human, EHOLFaction::Templars, 7, 1 };
+		Config.Slots[3] = { EHOLSlotState::Human, EHOLFaction::Templars, 7, 1, TEXT("Chloé") };
 		Config.bRegicide = true;
 		Config.bCatastrophe = true;
 		return Config;
@@ -78,6 +78,59 @@ bool FHOLMatchConfigOlderJsonTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("faction read by name"), Read.Slots[1].Faction == EHOLFaction::BlackLegions);
 	TestFalse(TEXT("missing option keeps its default"), Read.bCatastrophe);
 	TestEqual(TEXT("upgraded to the current version"), Read.Version, FHOLMatchConfig::CurrentVersion);
+	TestTrue(TEXT("no player name before version 2"), Read.Slots[0].PlayerName.IsEmpty());
+
+	FHOLMatchConfig ReadV1;
+	TestTrue(TEXT("reads a version 1 file"), FHOLMatchConfig::FromJson(TEXT(R"({ "version": 1, "slots": [ { "state": "Human" } ] })"), ReadV1));
+	TestEqual(TEXT("version 1 upgraded"), ReadV1.Version, FHOLMatchConfig::CurrentVersion);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMatchConfigManagerReferenceTest, "HeroesOfLiberty.Match.ManagerReference", UE::HeroesOfLiberty::Tests::Flags)
+bool FHOLMatchConfigManagerReferenceTest::RunTest(const FString& Parameters)
+{
+	// The match.json the lobby manager writes (R3.1, Manager\PROTOCOL.md), from the manager's own reference file.
+	const FString Path = FPaths::Combine(FPaths::ProjectDir(), TEXT("Manager/HOLManager.Tests/Data/match_v2_reference.json"));
+	FString Json;
+	if (!TestTrue(FString::Printf(TEXT("reference file read (%s)"), *Path), FFileHelper::LoadFileToString(Json, *Path)))
+	{
+		return false;
+	}
+	FHOLMatchConfig Read;
+	FString Error;
+	const bool bParsed = FHOLMatchConfig::FromJson(Json, Read, &Error);
+	if (!TestTrue(FString::Printf(TEXT("reference parsed (%s)"), *Error), bParsed))
+	{
+		return false;
+	}
+	TestEqual(TEXT("version 2"), Read.Version, 2);
+	TestEqual(TEXT("seed"), Read.Seed, 184467);
+	TestEqual(TEXT("map"), Read.Map.ToString(), FString(TEXT("/Game/Maps/Plain.Plain")));
+	TestTrue(TEXT("Standard, nomad only"), Read.Mode == EHOLMatchMode::Standard && Read.bNomad && !Read.bRegicide
+		&& !Read.bCatastrophe);
+	TestEqual(TEXT("eight slots"), Read.Slots.Num(), FHOLMatchConfig::MaxSlots);
+	TestEqual(TEXT("three humans"), Read.GetNumOccupiedSlots(), 3);
+
+	struct FExpected { EHOLSlotState State; int32 ColorIndex; int32 Team; const TCHAR* Name; };
+	const FExpected Expected[] = {
+		{ EHOLSlotState::Human, 0, 1, TEXT("Bob") },
+		{ EHOLSlotState::Closed, 1, 0, TEXT("") },
+		{ EHOLSlotState::Human, 3, 2, TEXT("Alice") },
+		{ EHOLSlotState::Human, 5, 1, TEXT("Chloé") },
+		{ EHOLSlotState::Closed, 4, 0, TEXT("") },
+		{ EHOLSlotState::Closed, 5, 0, TEXT("") },
+		{ EHOLSlotState::Closed, 6, 0, TEXT("") },
+		{ EHOLSlotState::Closed, 7, 0, TEXT("") },
+	};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Expected) && Index < Read.Slots.Num(); ++Index)
+	{
+		const FHOLMatchSlot& Slot = Read.Slots[Index];
+		TestTrue(FString::Printf(TEXT("slot %d state"), Index), Slot.State == Expected[Index].State);
+		TestTrue(FString::Printf(TEXT("slot %d faction"), Index), Slot.Faction == EHOLFaction::DawnOrder);
+		TestEqual(FString::Printf(TEXT("slot %d colour"), Index), Slot.ColorIndex, Expected[Index].ColorIndex);
+		TestEqual(FString::Printf(TEXT("slot %d team"), Index), Slot.Team, Expected[Index].Team);
+		TestEqual(FString::Printf(TEXT("slot %d name"), Index), Slot.PlayerName, FString(Expected[Index].Name));
+	}
 	return true;
 }
 
@@ -99,6 +152,34 @@ bool FHOLMatchConfigSlotsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("first human slot"), Config.FindFreeHumanSlot({}), 0);
 	TestEqual(TEXT("AI slot skipped"), Config.FindFreeHumanSlot({ 0 }), 3);
 	TestEqual(TEXT("no human slot left"), Config.FindFreeHumanSlot({ 0, 3 }), INDEX_NONE);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMatchConfigSlotForNameTest, "HeroesOfLiberty.Match.SlotForName", UE::HeroesOfLiberty::Tests::Flags)
+bool FHOLMatchConfigSlotForNameTest::RunTest(const FString& Parameters)
+{
+	// R3.2: the lobby manager names the human slots, each player gets the one of his name.
+	FHOLMatchConfig Named = FHOLMatchConfig::MakeDefault();
+	Named.Slots[0].PlayerName = TEXT("Alice");
+	Named.Slots[1] = { EHOLSlotState::AI, EHOLFaction::BlackLegions, 1, 0 };
+	Named.Slots[2] = { EHOLSlotState::Human, EHOLFaction::DawnOrder, 2, 0, TEXT("Bob") };
+	TestTrue(TEXT("names given"), Named.HasPlayerNames());
+	TestEqual(TEXT("known name, whatever the arrival"), Named.FindSlotForName(TEXT("Bob"), {}), 2);
+	TestEqual(TEXT("first named slot"), Named.FindSlotForName(TEXT("Alice"), { 2 }), 0);
+	TestEqual(TEXT("case ignored"), Named.FindSlotForName(TEXT("bOB"), {}), 2);
+	TestEqual(TEXT("spaces around ignored"), Named.FindSlotForName(TEXT(" Bob "), {}), 2);
+	TestEqual(TEXT("unknown name: spectator"), Named.FindSlotForName(TEXT("Chloé"), {}), INDEX_NONE);
+	TestEqual(TEXT("no name: spectator"), Named.FindSlotForName(FString(), {}), INDEX_NONE);
+	TestEqual(TEXT("name already held: spectator"), Named.FindSlotForName(TEXT("Bob"), { 2 }), INDEX_NONE);
+
+	// Without names (solo, tests, net_match.ps1, version 1): by arrival, as before.
+	const FHOLMatchConfig Unnamed = UE::HeroesOfLiberty::Tests::MakeFilledConfig();
+	FHOLMatchConfig NoNames = Unnamed;
+	NoNames.Slots[3].PlayerName.Reset();
+	TestFalse(TEXT("no names"), NoNames.HasPlayerNames());
+	TestEqual(TEXT("no names: first free slot"), NoNames.FindSlotForName(TEXT("Bob"), {}), 0);
+	TestEqual(TEXT("no names, no name: first free slot"), NoNames.FindSlotForName(FString(), { 0 }), 3);
+	TestEqual(TEXT("no names, all taken"), NoNames.FindSlotForName(TEXT("Bob"), { 0, 3 }), INDEX_NONE);
 	return true;
 }
 

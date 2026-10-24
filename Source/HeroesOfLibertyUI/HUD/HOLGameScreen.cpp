@@ -466,6 +466,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	{
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 		RefreshPlayersTable();
+		RefreshWaitBanner();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace.
 		const AHOLBuilding* SelectedBuilding = BoundBuilding.Get();
@@ -638,6 +639,40 @@ void UHOLGameScreen::RefreshPlayersTable()
 		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(FLinearColor(HOLPlayerColors::GetColor(Row->ColorIndex))));
 		PlayerLives[Index]->SetText(Row->Lives);
 		PlayerStates[Index]->SetText(Row->State);
+	}
+}
+
+void UHOLGameScreen::RefreshWaitBanner()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const AHOLGameState* GameState = BoundTableState.Get();
+	const bool bWaiting = GameState && GameState->IsWaitingForPlayers() && !GameState->GetMissingPlayers().IsEmpty();
+	if (!bWaiting)
+	{
+		if (!ShownWaitPlayers.IsEmpty())
+		{
+			ShownWaitPlayers.Reset();
+			SetShown(WaitPanel, false);
+			UE_LOG(LogHOLUI, Display, TEXT("Wait banner: hidden"));
+		}
+		return;
+	}
+	const FString Players = FString::Join(GameState->GetMissingPlayers(), TEXT(", "));
+	const int32 Left = FMath::Max(0, FMath::CeilToInt(GameState->GetWaitEndSeconds() - GameState->GetServerWorldTimeSeconds()));
+	FFormatNamedArguments Arguments;
+	Arguments.Add(TEXT("Players"), FText::AsCultureInvariant(Players));
+	Arguments.Add(TEXT("Time"), FText::AsCultureInvariant(FString::Printf(TEXT("%d:%02d"), Left / 60, Left % 60)));
+	const FText Text = FText::Format(LOCTEXT("WaitingFor", "En attente de {Players} ({Time})"), Arguments);
+	if (WaitText)
+	{
+		WaitText->SetText(Text);
+	}
+	if (Players != ShownWaitPlayers)
+	{
+		ShownWaitPlayers = Players;
+		SetShown(WaitPanel, true, ESlateVisibility::HitTestInvisible);
+		UE_LOG(LogHOLUI, Display, TEXT("Wait banner: shown, %s"), *Text.ToString());
 	}
 }
 
@@ -2067,6 +2102,17 @@ void UHOLGameScreen::BuildLayout()
 	UHOLQueueItem* Menu = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), MenuButtonName);
 	MenuBox->SetContent(Menu);
 	MenuPanel->SetContent(MenuBox);
+
+	// R3.10: the wait banner, top centre under the top bar, while the match waits for its named players.
+	WaitPanel = MakePanel(TEXT("WaitPanel"));
+	WaitPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
+	WaitPanel->SetVisibility(ESlateVisibility::Collapsed);
+	UOverlaySlot* WaitSlot = Frame->AddChildToOverlay(WaitPanel);
+	WaitSlot->SetHorizontalAlignment(HAlign_Center);
+	WaitSlot->SetVerticalAlignment(VAlign_Top);
+	WaitSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
+	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
+	WaitPanel->SetContent(WaitText);
 
 	// The players' table (V2.4, V2-Q4: AoE2's score), top right under the menu's button (the minimap holds the bottom
 	// right): a row per occupied slot, its name in its colour, its lives, its forum's phase. Small, it lets the clicks through.

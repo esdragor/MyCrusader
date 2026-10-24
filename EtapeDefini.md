@@ -23,8 +23,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : serveur de partie relié au gestionnaire, salon et liste Multijoueur dans le jeu, spectateur, déconnexion, équipes au combat, essai à deux PC *(R3 à R9 ; jeu empaqueté et gestionnaire faits ; chantier `NetPlaytestInProgress.md`)*
+- M6 en parallèle : salon et liste Multijoueur dans le jeu, spectateur, déconnexion, équipes au combat, essai à deux PC *(R4 à R9 ; jeu empaqueté, gestionnaire et serveur de partie faits ; chantier `NetPlaytestInProgress.md`)*
 - Lanceur : télécharge, met à jour et lance le jeu *(questions L-Q1 à L-Q6 à trancher ; chantier `LauncherInProgress.md`)*
+- Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
 - IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; chantier à découper par système)*
