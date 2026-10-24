@@ -293,6 +293,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	FormUpSerials.Reset();
 	FormUpKinds.Reset();
 	Owners.Reset();
+	CampTable = FHOLCampTable::FromWorld(Context.GetWorld());
 	MaxRadius = 1.f;
 	MaxSpeed = 0.f;
 	bool bAnyWalking = false;
@@ -584,7 +585,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			NearOffsets[Slot] = Positions[Other] - Position;
 			NearVelocities[Slot] = Velocities[Other];
 			NearContacts[Slot] = (Radius + Radii[Other]) * AvoidRadiusScale;
-			NearPressed[Slot] = bAroundEnemies && Owners[Other] != Owner;
+			NearPressed[Slot] = bAroundEnemies && CampTable.AreHostile(Owners[Other], Owner);
 			NearStills[Slot] = Stills[Other];
 		}
 	}
@@ -649,7 +650,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		for (const int32 Other : Near)
 		{
 			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
-				bAroundEnemies && Owners[Other] != Owner);
+				bAroundEnemies && CampTable.AreHostile(Owners[Other], Owner));
 			if (Time < First && Time < ContactLimit(Other))
 			{
 				First = Time;
@@ -676,7 +677,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		for (const int32 Other : Near)
 		{
 			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
-				bAroundEnemies && Owners[Other] != Owner) < ContactLimit(Other))
+				bAroundEnemies && CampTable.AreHostile(Owners[Other], Owner)) < ContactLimit(Other))
 			{
 				return false;
 			}
@@ -756,7 +757,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		// back, the Paysans walked straight into a wall of enemies and stuck in it).
 		int32 EnemyAhead = INDEX_NONE;
 		const bool bHoldAlongEnemy = Turn == INDEX_NONE && bAroundEnemies && (FirstContact(WayOf(Hand, Turns), EnemyAhead), EnemyAhead != INDEX_NONE)
-			&& Owners[EnemyAhead] != Owner;
+			&& CampTable.AreHostile(Owners[EnemyAhead], Owner);
 		Detour.Turn = static_cast<uint8>(Turn != INDEX_NONE ? Turn : HOLAvoid::TurnWithoutClearWay(Detour.Turn, Turns, bHoldAlongEnemy));
 		if (Detour.Turn == 0)
 		{
@@ -794,7 +795,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		}
 	}
 	// No way clear against an enemy (it is not pushed, D293): along it at the largest turn on its side, remembered (MV.4).
-	if (bAroundEnemies && Turns > 0 && Owners[Blocker] != Owner && !bPassBehind)
+	if (bAroundEnemies && Turns > 0 && CampTable.AreHostile(Owners[Blocker], Owner) && !bPassBehind)
 	{
 		Detour.Blocker = Entities[Blocker];
 		Detour.Side = static_cast<int8>(Side);
@@ -863,7 +864,7 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 				const FVector2D ToOther = Positions[Other] - Position;
 				const double Distance = ToOther.Size();
 				const double Edge = Distance - Radius - Radii[Other];
-				if (Owners[Other] != Owner)
+				if (CampTable.AreHostile(Owners[Other], Owner))
 				{
 					if (Edge <= RearSlideFrontGap)
 					{
@@ -941,7 +942,7 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 					const FIntPoint Cell(X, Y);
 					for (int32 Other = CellHeads[LookAheadBucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 					{
-						if (Cells[Other] != Cell || Entities[Other] == Entity || Owners[Other] != Owner)
+						if (Cells[Other] != Cell || Entities[Other] == Entity || CampTable.AreHostile(Owners[Other], Owner))
 						{
 							continue;
 						}
@@ -1397,6 +1398,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	FormUpKinds.Reset();
 	Moving.Reset();
 	Owners.Reset();
+	CampTable = FHOLCampTable::FromWorld(Context.GetWorld());
 	AtSource.Reset();
 	Soldiers.Reset();
 	UnitIds.Reset();
@@ -1596,7 +1598,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					const FIntPoint Cell(Cells[Index].X + DX, Cells[Index].Y + DY);
 					const auto Touches = [&](const int32 Other)
 					{
-						return Other != Index && !Ghosts[Other] && Owners[Other] != Owners[Index] && (bSelfEngaged || Engaged[Other])
+						return Other != Index && !Ghosts[Other] && CampTable.AreHostile(Owners[Other], Owners[Index]) && (bSelfEngaged || Engaged[Other])
 							&& FVector2D::DistSquared(Positions[Index], Positions[Other]) <= FMath::Square(Radii[Index] + Radii[Other] + FrontContactGap);
 					};
 					if (bDense)
@@ -1813,7 +1815,7 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			return;
 		}
 		const double Distance = FMath::Sqrt(DistanceSquared);
-		const bool bEnemies = Owners[Index] != Owners[Other];
+		const bool bEnemies = CampTable.AreHostile(Owners[Index], Owners[Other]);
 		// Two units on the same point: apart along a direction of their own, the same at every run.
 		FVector2D Normal = Distance > UE_KINDA_SMALL_NUMBER ? Delta / Distance
 			: FVector2D(FMath::Cos(Index * 2.399), FMath::Sin(Index * 2.399));

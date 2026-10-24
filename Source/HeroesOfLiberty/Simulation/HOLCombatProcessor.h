@@ -74,6 +74,8 @@ protected:
 		const FHOLUnitTypeConstants* Constants = nullptr;
 		/** It gathers or builds: a worker at its task takes on nobody by itself (J7b.3 gives orders). */
 		bool bBusy = false;
+		/** Its owner's camp of the step (FHOLCampTable): units of one camp never fight each other. */
+		uint8 Camp = 0;
 	};
 
 	/** Stops it dead where it stands (as the order processor's arrival, D290): its walk to the target is over. */
@@ -118,6 +120,8 @@ protected:
 		FBox2D Box = FBox2D(ForceInit);
 		uint32 Id = 0;
 		uint8 OwnerPlayer = 0;
+		/** Its owner's camp (FHOLCampTable): a building of the fighter's camp is never attacked. */
+		uint8 Camp = 0;
 		bool bGone = false;
 	};
 	TArray<FStepBuilding> StepBuildings;
@@ -168,7 +172,7 @@ protected:
 	/** Start of each (side, cell) range in GridUnits, one more at the end. */
 	TArray<int32> GridStarts;
 	TArray<int32> GridCursor;
-	/** The OwnerPlayer of each side, and the side of each fighter. */
+	/** The camp of each side (FHOLCampTable: allies are one side), and the side of each fighter. */
 	TArray<int32> Sides;
 	TArray<int32> SideOfFighter;
 	FIntPoint GridMin = FIntPoint::ZeroValue;

@@ -263,6 +263,10 @@ Choix de l'utilisateur le 2026-10-23 (« peux-tu faire quelque chose de EtapeDef
   plus que le fermer. Correctif (Arwen) : centre sélectionné puis Échap (désélection, pas de menu), comme la mise en
   place des cas seuls. `-Parts build` **298 s** : tout PASS sauf build cut et build gap (mêmes chiffres : 23 / 15 put
   back). Session MV.4 prévenue. Attend la validation de l'utilisateur pour le commit.
+- **Validé par l'utilisateur** (« go »). Commit 0ee0f19 (Arwen, `quickcheck-cases`) ; `main` (sélection ennemie, GDD
+  D369-D376) fusionné dedans, compilation PASS (34 s), `-Parts build` 322 s : tout PASS sauf build cut et build gap
+  (mêmes chiffres) ; `main` avancé à efaa230. Arwen libérée. Rien à retirer d'EtapeDefini (ni l'option ni le blocage
+  d'Échap n'y avaient de ligne). **F close.**
 - **D.3 faite** (sous-agent, Haldir, non commitée, ~19 min) : `GetSide(Config, OwnerSlot, LocalSlot)` par
   `HOLVictoryRules::GetCamp` (même camp = Allié) ; `AHOLGameState::LaunchConfig` répliquée (`GetLaunchConfig`), sans
   quoi un client ignore ses alliés ; `hol.Select.ClickUnit … ally`. Tests sur la vraie chaîne :
@@ -287,3 +291,139 @@ Choix de l'utilisateur le 2026-10-23 (« peux-tu faire quelque chose de EtapeDef
   scénario) et 926090f (EtapeDefini : ligne retirée ; ajoutée en revue de code « le combat ignore les équipes », le camp
   Neutre de la sélection à brancher sur les postures de D369), `main` (7e869e4, doc seule) fusionné dans
   `enemy-selection`, `main` avancé en avance rapide (rien ne tournait dans la copie principale). Haldir libre. **D close.**
+
+## G — Le combat ignore les équipes (des alliés se battent entre eux)
+
+- Ligne de « Revue de code » d'`EtapeDefini.md`, vue à la clôture de D (D.3 : la sélection suit les équipes, le combat
+  non). Choix de l'utilisateur le 2026-10-23 (« go » sur la recommandation : ce bug d'abord, avant J7c.4).
+- Worktree `HeroesOfLiberty-Elrond`, branche `allied-combat` (depuis `main` e26ede1).
+- Règle : deux joueurs sont hostiles s'ils ne sont pas du même camp (`HOLVictoryRules::GetCamp`, comme `GetSide` de la
+  sélection) ; une seule fonction, où se brancheront les postures de D369 plus tard. Le combat est sous surveillance
+  (J7c.4, S3/S4 au-dessus du seuil) : le correctif ne doit rien coûter (camp par slot lu dans un petit tableau).
+- Cas à couvrir, chacun par un test sur la vraie chaîne (vrai `FHOLMatchConfig` → camp → combat) **et** par la
+  répétition avant l'essai : (1) mes unités et celles d'un allié côte à côte : personne ne se bat, en Auto, Tenir et
+  attaque-déplacement ; (2) un ennemi arrive : mes unités et celles de l'allié le combattent ; (3) clic droit sur une
+  unité ou un bâtiment allié : pas d'attaque (comme sur les miens) ; (4) les bâtiments alliés ne sont pas pris pour
+  cible d'office ; (5) les tirs ne blessent pas les alliés si ceux de mon camp sont épargnés ; (6) l'évitement traite
+  l'allié comme les miens, pas comme un ennemi ; (7) sans équipes (chacun pour soi), tout le monde se bat comme avant.
+- Attention : Haldir (ridge-rock, non commité) touche aussi `HOLSimulationProcessors.cpp` (évitement) : conflit
+  possible à la fusion.
+- **Boucle 1** (sous-agent, ~9 min, arrêtée à la limite) : règle unique `FHOLCampTable` (`HOLVictoryRules.h/.cpp`, un
+  camp par propriétaire sur 256 octets, `FromWorld` lit `GetLaunchConfig`, sans game state chacun seul) et
+  `HOLVictoryRules::AreHostile`. Combat (`HOLCombatProcessor`) : `Camp` dans `FFighter` et `FStepBuilding`, rempli une
+  fois par pas ; toutes les comparaisons d'unités et de bâtiments par camp ; grille dense groupée par camp ; lignes de
+  front gardées par joueur (sa propre armée). Ordres (`HOLUnitOrderProcessor`) : attaque sur unité ou bâtiment allié
+  refusée. Tirs (cas 5) : une flèche ne touche que sa cible, pas de zone : rien à corriger. Partie `sides` : 4 contrôles
+  (côte à côte en Auto, Tenir, attaque-déplacement ; ennemi qui arrive) **rouges** (10, 18, 32 coups entre alliés ;
+  allié qui ne frappe pas l'ennemi) puis **verts** (`-Parts sides` PASS 31 s).
+- Reste : `-Parts tests,combat` (cas 7) ; test d'automatisation de `FHOLCampTable` sur vrais `FHOLMatchConfig` ;
+  cas 3 testé ; clic droit sur un allié (`HOLPlayerController` ~2073) envoie encore une attaque (refusée par le
+  serveur : l'unité ne fait rien) → doit se déplacer comme sur les miens ; évitement (`HOLSimulationProcessors.cpp`,
+  table locale, centres et lignes gardés par joueur) ; `HOLBuilding.cpp:344` ; scénario d'essai.
+- Processus : boucle 1 trop large pour 15 min ; découpe en boucles plus étroites (2 : cas 7, règle, ordre et clic
+  droit ; 3 : évitement et bâtiments).
+- **Boucle 2** (sous-agent, ~15 min) : (7) `-Parts tests,combat` PASS 253 s avant tout changement (132/132) : pas de
+  régression chacun pour soi. Test `HeroesOfLiberty.Movement.CampsByTeams` (vrais `FHOLMatchConfig` : 1/2/1, sans
+  équipes, slot fermé, deux contre deux, sans config, propriétaire hors slots) vert 133/133 (règle écrite en boucle 1,
+  pas de rouge montré). (3) `hol.Select.Attack slot=S` ; étape `sides fight order` : rouge sur un build avec l'ancienne
+  comparaison (0 refus) puis vert. Clic droit (`OrderAt`) : unité ou bâtiment allié → déplacement ; `FindTargetAt` ne
+  vise plus les alliés (`bHostileOnly`) ; pas de curseur d'attaque au survol (rien à changer) ; `hol.Select.ClickUnit
+  … order` ; étape `sides fight rightclick` rouge (1 attaque, 0 déplacement) puis vert. `-Parts tests,sides,combat`
+  PASS 247 s. Pas testé : ordre d'attaque sur un bâtiment allié (refusé par camp côté serveur).
+- **Boucle 3** (sous-agent, ~12 min) : évitement (`HOLSimulationProcessors.cpp/.h`) : `FHOLCampTable CampTable` construite
+  une fois par exécution dans les deux processeurs ; sens « ennemi » par camp (~487 `FirstContact`, ~502 `IsClear`,
+  ~582, ~620 D293, ~671 front au contact, ~1398 `Touches`, ~1598 pas de poussée entre ennemis) ; sens « mon armée »
+  gardés par joueur (~750 main choisie par les amis, centres, lignes de front : leur « milieu ennemi » inclut les
+  alliés, approximation laissée). `HOLBuilding.cpp:344` : affichage client, pas une recherche d'ennemis : non touché.
+  Revue du reste de `Source/` : seule `HOLUnitOrderProcessor.cpp:2130/2135` (rupture du bloc en mêlée, MV.4.4) a le sens
+  « ennemi » ; `HOLCombatProcessor.cpp:176` à vérifier. Cas `sides avoid` (4 Hommes d'armes traversent un mur de 25
+  Lanciers à l'arrêt, combat coupé ; témoin : mur à moi, puis mur allié) : **encore rouge** après le correctif
+  (mur à moi : tous arrivés à 4 s, 8 déplacés ; mur allié : 1472 cm restants, 5 déplacés). Cause probable : la
+  rupture du bloc compte l'allié immobile comme ennemi.
+- Fusion à prévoir : mycrusader-7d (rochers, Haldir) avance `main` à f6703a9 (touche aussi `HOLUnitOrderProcessor` et
+  `HOLSimulationProcessors`) ; mycrusader-e5 (M6) veut aussi avancer `main`. Fusionner `main` dans `allied-combat` avant
+  l'essai, puis relancer les parties touchées.
+- `main` avancée deux fois pendant la boucle 4 : f6703a9 (rochers) puis 7cacb4c (M6 R1 et R2). G couvre **R6** de
+  `NetPlaytestInProgress.md` (R6.1 règle, R6.2 cibles, R6.3 clic droit ; R6.4 = la ligne retirée d'EtapeDefini au
+  commit) : mycrusader-e5 ne la refait pas et la notera faite à la fusion. Après fusion de `main` : relancer aussi
+  `-Parts net` (la config est répliquée, le combat tourne sur le serveur).
+- **Boucle 4** (sous-agent, ~16 min) : rupture du bloc (`HOLUnitOrderProcessor.cpp` ~1866 table une fois par
+  `AdvanceBlocks`, ~2132-2138 : ennemi par camp ; ami qui ne combat pas, tout le camp ; mon propre ordre par joueur) ;
+  `HOLSimulationProcessors.cpp:750` aussi par camp. **Le cas `avoid` de la boucle 3 mesurait mal** (« slot » de
+  `hol.Units.Orders` = place du pas en cours : 0 unité trouvée, d'où le faux « tous arrivés ») : réécrit avec
+  `hol.Units.Where 0` (distance réelle de mes 4 au but, mur compté sans les miens). Somme à 4 s / déplacés : ancien
+  code mur à moi 3957 / 4, mur allié **817 / 0** (contourné comme un ennemi, jamais poussé) ; nouveau code mur à moi
+  3952 / 4, mur allié 3118-3235 / 10 (bruit ±60) : toujours rouge, écart stable ~770 cm, l'allié traversé **plus
+  vite**. Piste : `OwnerCentres` (centre de l'armée par joueur, inclut mon mur, pas celui de l'allié) : règle par
+  joueur légitime. `-Parts tests,sides,move,bodies,combat` 317 s : tout vert sauf `avoid` (133/133).
+- Décision (session principale) : vérifier la piste avant de toucher au critère (boucle 5).
+- **Boucle 5** (sous-agent, ~9 min, diagnostic) : l'écart venait **du test** : `hol.Units.Spawn … 60` tire les positions
+  au hasard ; le mur à moi (tiré le premier) et le mur allié n'avaient pas la même forme (trous ~400 cm). `OwnerCentres`
+  hors de cause (`SlideAlongFriends` seulement en marche au combat) ; aucune règle « s'écarter pour les miens » par
+  joueur. Même graine pour les deux murs (`hol.Units.SpawnSeed 1234`) : PASS deux fois (4 s : 3774 / 8 contre 3775 / 8) ;
+  même graine et ancien évitement : rouge (3774 / 8 contre 3409 / 0). Graine ajoutée au cas (session principale), seuils
+  inchangés.
+- Session principale : `allied-combat` avancée sur `main` 7cacb4c (aucun commit sur la branche : remise de côté, avance
+  rapide, réapplication ; aucun conflit) ; aucune nouvelle comparaison « ennemi » par joueur venue des rochers.
+  Lancés : build puis `-Parts tests,sides,move,bodies,combat,rocks,net`.
+- Scénario d'essai **`ally_combat`** écrit (Elrond, `Tools/Scenarios/ally_combat.txt/.json`, non commité) : 3 joueurs
+  comme `enemy_select` ; mes 4 Hommes d'armes + 3 Archers collés à 4 Lanciers + 2 Archers alliés ; 6 Lanciers ennemis
+  au loin (> 25 m).
+
+### Reprise exacte (G)
+
+État : tout le code est dans `HeroesOfLiberty-Elrond`, branche `allied-combat` = `main` 7cacb4c + changements **non
+commités** (11 fichiers + scénario `ally_combat`) ; `IN_USE.txt` posé. Sauvegarde des sources avant l'avance sur main :
+scratchpad de la session du 2026-10-23 (`elrond_src_backup`, `elrond_qc_backup.ps1`), inutile si `git status` d'Elrond
+montre les 11 fichiers. Étapes restantes, dans l'ordre (cocher ici au fur et à mesure) :
+1. [x] Build Elrond (PASS 64 s) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\build.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+2. [x] (`net` vert après fusion de M6 R3) `quick_check -Parts tests,sides,move,bodies,combat,rocks,net` (script d'Elrond) : tout vert attendu (tests 133+).
+   Un rouge : regarder s'il est connu (« build site » en enchaînement) ou vient de la fusion avec les rochers.
+3. [x] Répétition hors écran de `ally_combat` (`play.ps1 ally_combat -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`,
+   sans fenêtre) : prêt, 19 unités, aucun coup entre camps alliés sur 20 s (`hol.Combat.Report`), puis les 3 notes.
+4. [x] Essai de l'utilisateur (validé 2026-10-24 : « works ») : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 ally_combat -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+5. [x] Après validation : commit en anglais sur `allied-combat` (sans Co-Authored-By), retirer la ligne « Le combat ignore
+   les équipes » d'`EtapeDefini.md` (même commit, R6.4), fusionner dans `main` (avance rapide si possible), prévenir
+   mycrusader-e5 (M6 : R6 faite, avec le hash), libérer Elrond (`IN_USE.txt` supprimé), clore G ici.
+- Étape 2, 1er passage (645 s) : **tout PASS** (tests 134/134, sides avec `avoid`, move, rocks, bodies, combat et ses
+  sous-parties, orders, camera) **sauf `net 2 clients`** : aucun client ne prend de place. Journal client
+  (`Elrond\Saved_Tests\Logs\quick_net_client1.log`) : Iris « Protocol mismatch » sur `HOLPlayerController` (ensure
+  `NewProtocolId == ProtocolId`), serveur et clients pourtant lancés depuis Elrond. Notre diff de
+  `HOLPlayerController.h` ne touche rien de répliqué. En cours : même `-Parts net` sans nos changements (remis de côté
+  par `git stash`, sauvegarde `scratchpad\elrond_src_backup2`) pour savoir si `main` 7cacb4c casse déjà `net`.
+  **Si la session s'arrête ici** : dans Elrond, `git stash list` ; si « allied-combat wip2 » y est, `git stash pop`
+  avant tout (nos 11 fichiers), puis rebuild.
+- Résultat : **`main` 7cacb4c seul casse déjà `net`** (Elrond sans nos changements, build 125 s, `-Parts net` FAIL
+  104 s, même « Protocol mismatch » sur `HOLPlayerController`). Pas G. Nos changements remis (`git stash pop`, plus de
+  stash), rebuild lancé. mycrusader-e5 (M6) prévenue (rochers f6703a9 ou M6 7cacb4c à départager ; Haldir à f6703a9).
+  Étape 2 considérée **faite pour G** (tout vert hors `net`, rouge venu de `main`) ; à refaire `net` quand `main` sera
+  réparée, avant la fusion de G.
+- **Correction** (mycrusader-e5) : pas un bug de `main` : **collision de port**. La partie `net` lance son serveur sur
+  7777 en dur ; au même moment Arwen (7777) et Glorfindel (7778) faisaient tourner le leur : nos clients allaient chez
+  le serveur d'une autre copie (autre code → « Protocol mismatch »). Le correctif (port libre `$NetPort`) est sur
+  `net-playtest`, entrera dans `main` avec R3. **À faire** : relancer `-Parts net` dans Elrond quand
+  `Get-NetUDPEndpoint -LocalPort 7777` ne montre plus rien (PowerShell), puis cocher l'étape 2.
+- mycrusader-7d avance `main` à ecc0190 (`hol.Units.Remove [Type]` facultatif, rocks hors de `-Full`) : à reprendre
+  dans `allied-combat` avant le commit (avance rapide de la branche comme pour 7cacb4c : `git stash`, `git merge
+  --ff-only main`, `git stash pop`), puis `-Parts sides` (utilise `hol.Units.Remove` sans Type).
+- Étape 3 faite : copie temporaire du scénario (sans notes, + `wait 20`, rapports, `exit`), `-RenderOffScreen`
+  (`-nullrhi` bloque à `waitui`) : prêt en 21,8 s, 19 unités (0=7, 1=6, 2=6), `Combat report` à 0 s et à 20 s :
+  fighting 0, hits 0, kills 0. Fichiers temporaires supprimés. Le clic droit et la traversée sont couverts par
+  `sides` (fight order, fight rightclick, avoid). `main` est passée à ecc0190 puis a74a5d1 (V3, touche aussi
+  `HOLPlayerController`) : à reprendre dans la branche après l'essai, avant le commit (puis `-Parts tests,sides,victory`).
+- mycrusader-e5 avance `main` avec M6 R3 (e8a0e36 + 1) : touche `HOLPlayerController`, `HOLGameState`,
+  `HOLMatchConfig` v2, `quick_check.ps1` (partie `net` : port libre, la collision 7777 réglée). Fusion de `main` dans
+  `allied-combat` après l'essai : conflits probables `HOLPlayerController.cpp/.h`, `quick_check.ps1` ; vérifier que
+  `Slots[].Team` / `GetCamp` sont inchangés (question posée à e5). Ensuite `-Parts tests,sides,combat,move,net,victory`.
+- Réponse de e5 : `main` 174a0f4 ; `HOLVictoryRules` non touchés, `Slots[].Team` inchangé (ajout `PlayerName` en fin
+  de `FHOLMatchSlot`) ; `HOLPlayerController` : garde `IsCheatRefused()` en tête des `ServerCheat*` + surcharge
+  `ServerExecRPC` (conflit improbable avec nos lignes ~470 `hol.Select.Attack slot=`, ~1771-1794, ~2087-2095) ;
+  `quick_check` partie `net` réécrite (port libre), pas `sides`.
+- Étape 5 en cours : `allied-combat` avancée sur `main` 174a0f4 (stash, `--ff-only`, pop : aucun conflit ; sauvegarde
+  `scratchpad\elrond_src_backup3`). Nouveau venu de `main` : `HOLSimulationProcessors.cpp` ~588 `NearPressed` (cache
+  rapide de `FirstContact`, `Owners[Other] != Owner`) passé par camp comme `FirstContact`. Lancés : build puis
+  `-Parts tests,sides,move,bodies,combat,rocks,net,victory`.
+- Après fusion de `main` 174a0f4 : build 57 s, `-Parts tests,sides,move,bodies,combat,rocks,net,victory` **PASS en
+  622 s** (tests 146/146, `net 2 clients` PASS, `victory forum` PASS). Ligne « Le combat ignore les équipes » retirée
+  d'`EtapeDefini.md` (R6.4). Commit sur `allied-combat`, `main` avancée, mycrusader-e5 prévenue (R6 faite), Elrond
+  libérée. **G close.**

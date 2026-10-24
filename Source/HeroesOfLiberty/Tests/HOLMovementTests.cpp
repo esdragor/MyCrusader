@@ -2,6 +2,7 @@
 
 #include "Algo/Reverse.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLVictoryRules.h"
 #include "Misc/AutomationTest.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
@@ -453,6 +454,75 @@ bool FHOLMovementPickSideByTeamsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("no teams: box on slots 1 and 2, all four (enemies all)"), Box(NoTeams, {}, { 10, 20, 11, 21 }, false) == TArray<uint32>({ 10, 20, 11, 21 }));
 	TestTrue(TEXT("no teams: Shift + click on slot 1 with slot 2's selected: added (one side)"), Click(NoTeams, { 20, 21 }, 10, true) == TArray<uint32>({ 20, 21, 10 }));
 	TestTrue(TEXT("no teams: box on mine and slot 2's: mine"), Box(NoTeams, {}, { 20, 1, 21, 2 }, false) == TArray<uint32>({ 1, 2 }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMovementCampsByTeamsTest, "HeroesOfLiberty.Movement.CampsByTeams", UE::HeroesOfLiberty::Tests::Movement::Flags)
+bool FHOLMovementCampsByTeamsTest::RunTest(const FString& Parameters)
+{
+	// Allied combat: who fights whom comes from the match's teams (FHOLCampTable, HOLVictoryRules::AreHostile), never from
+	// the owners compared as is. Real configurations, normalized like the launch's: each slot's state and team.
+	auto MakeConfig = [](const TArray<TPair<EHOLSlotState, int32>>& StatesAndTeams)
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		Config.Slots.Reset();
+		Config.Slots.AddDefaulted(FHOLMatchConfig::MaxSlots);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			Config.Slots[Slot].State = Slot < StatesAndTeams.Num() ? StatesAndTeams[Slot].Key : EHOLSlotState::Closed;
+			Config.Slots[Slot].Team = Slot < StatesAndTeams.Num() ? StatesAndTeams[Slot].Value : 0;
+		}
+		Config.Normalize();
+		return Config;
+	};
+	// Both ways of asking, which must agree (and be symmetric).
+	auto Hostile = [this](const FHOLMatchConfig& Config, const int32 A, const int32 B)
+	{
+		const FHOLCampTable Camps(Config);
+		const bool bTable = Camps.AreHostile(A, B);
+		TestEqual(FString::Printf(TEXT("slots %d and %d: the table and the rules agree"), A, B), HOLVictoryRules::AreHostile(Config, A, B), bTable);
+		TestEqual(FString::Printf(TEXT("slots %d and %d: symmetric"), A, B), Camps.AreHostile(B, A), bTable);
+		return bTable;
+	};
+	using EState = EHOLSlotState;
+
+	// Teams 1 / 2 / 1: slots 0 and 2 allies (the bug: they fought, their owners differing), slot 1 their enemy.
+	const FHOLMatchConfig Teams = MakeConfig({ { EState::Human, 1 }, { EState::AI, 2 }, { EState::AI, 1 } });
+	TestFalse(TEXT("teams 1/2/1: slots 0 and 2 (team 1) do not fight, though their owners differ"), Hostile(Teams, 0, 2));
+	TestTrue(TEXT("teams 1/2/1: slots 0 and 1 fight"), Hostile(Teams, 0, 1));
+	TestTrue(TEXT("teams 1/2/1: slots 2 and 1 fight"), Hostile(Teams, 2, 1));
+	TestFalse(TEXT("teams 1/2/1: a slot is not its own enemy"), Hostile(Teams, 1, 1));
+	TestEqual(TEXT("teams 1/2/1: slot 2's camp is slot 0's"), FHOLCampTable(Teams).Get(2), FHOLCampTable(Teams).Get(0));
+
+	// No teams (all team 0): free for all, everyone hostile.
+	const FHOLMatchConfig NoTeams = MakeConfig({ { EState::Human, 0 }, { EState::AI, 0 }, { EState::AI, 0 } });
+	TestTrue(TEXT("no teams: slots 0 and 2 fight"), Hostile(NoTeams, 0, 2));
+	TestTrue(TEXT("no teams: slots 0 and 1 fight"), Hostile(NoTeams, 0, 1));
+	TestTrue(TEXT("no teams: slots 1 and 2 fight"), Hostile(NoTeams, 1, 2));
+
+	// A closed slot of team 1 between two team-1 slots: the two still allies, the closed one (no units) alone.
+	const FHOLMatchConfig Closed = MakeConfig({ { EState::Human, 1 }, { EState::Closed, 1 }, { EState::AI, 1 }, { EState::AI, 2 } });
+	TestFalse(TEXT("closed slot: slots 0 and 2 (team 1) still allies"), Hostile(Closed, 0, 2));
+	TestTrue(TEXT("closed slot: the closed slot 1 is nobody's ally"), Hostile(Closed, 0, 1) && Hostile(Closed, 2, 1));
+	TestTrue(TEXT("closed slot: slot 3 (team 2) fights slot 2"), Hostile(Closed, 2, 3));
+
+	// Two teams of two: 0 and 3 (team 2), 1 and 2 (team 1); slots 4 and beyond closed.
+	const FHOLMatchConfig TwoByTwo = MakeConfig({ { EState::Human, 2 }, { EState::AI, 1 }, { EState::AI, 1 }, { EState::Human, 2 } });
+	TestFalse(TEXT("two teams of two: 0 and 3 allies"), Hostile(TwoByTwo, 0, 3));
+	TestFalse(TEXT("two teams of two: 1 and 2 allies"), Hostile(TwoByTwo, 1, 2));
+	TestTrue(TEXT("two teams of two: 0 and 1 fight"), Hostile(TwoByTwo, 0, 1));
+	TestTrue(TEXT("two teams of two: 0 and 2 fight"), Hostile(TwoByTwo, 0, 2));
+	TestTrue(TEXT("two teams of two: 3 and 1 fight"), Hostile(TwoByTwo, 3, 1));
+	TestTrue(TEXT("two teams of two: 3 and 2 fight"), Hostile(TwoByTwo, 3, 2));
+
+	// No configuration (tests without a game state): each owner alone, owners beyond the slots too.
+	const FHOLCampTable Alone;
+	TestTrue(TEXT("no configuration: 0 and 2 fight"), Alone.AreHostile(0, 2));
+	TestTrue(TEXT("no configuration: 0 and 1 fight"), Alone.AreHostile(0, 1));
+	TestTrue(TEXT("no configuration: 7 and 200 fight"), Alone.AreHostile(7, 200));
+	TestFalse(TEXT("no configuration: an owner is not its own enemy"), Alone.AreHostile(3, 3));
+	// With teams, an owner beyond the slots (none in a match) stays alone, not taken for a slot's ally.
+	TestTrue(TEXT("teams 1/2/1: owner 9 fights slot 0"), FHOLCampTable(Teams).AreHostile(0, 9));
 	return true;
 }
 

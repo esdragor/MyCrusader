@@ -1,0 +1,34 @@
+# Combat entre alliés : mes unités et celles d'un allié côte à côte ne se battent pas ; clic droit sur un allié = déplacement ; on traverse ses rangs ; l'ennemi est combattu par tous
+# Plain, trois joueurs (ally_combat.json) : moi (slot 0) et le joueur 3 (slot 2) dans l'équipe 1, le joueur 2 (slot 1) dans l'équipe 2.
+# Positions dans le repère du centre du joueur (comme enemy_select). Les alliés sont collés aux miens ; l'ennemi est à plus
+# de 25 m bord à bord de tous (agression : 16 m, Archers 21,3 m) : aucun combat tant qu'on ne l'amène pas.
+hol.Cheat.Resources 5000
+# Mes 4 Hommes d'armes devant le centre, mes 3 Archers derrière eux.
+hol.Camera.FocusNear 4800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Camera.FocusNear 4300 0
+frames 2
+hol.Units.SpawnHere 3 Archer 0 200
+waitunits 7
+# Juste à droite, collés aux miens : l'allié (joueur 3, slot 2), 4 Lanciers et 2 Archers derrière eux.
+hol.Camera.FocusNear 4800 600
+frames 2
+hol.Units.SpawnHere 4 Spearman 2 250
+waitunits 11
+hol.Camera.FocusNear 4300 600
+frames 2
+hol.Units.SpawnHere 2 Archer 2 200
+waitunits 13
+# Au loin devant : l'ennemi (joueur 2, slot 1), 6 Lanciers.
+hol.Camera.FocusNear 8400 300
+frames 2
+hol.Units.SpawnHere 6 Spearman 1 300
+waitunits 19
+hol.Camera.FocusNear 6000 300
+hol.Camera.Zoom -3
+frames 5
+note Mes unités (Hommes d'armes, Archers) et celles de l'allié (à droite, Lanciers et Archers) sont collées : personne ne se bat, même en Tenir ou en attaque-déplacement (A) sur place.
+note Clic droit sur un Lancier allié : mes unités s'y déplacent, sans l'attaquer. Ordre vers un point de l'autre côté du groupe allié : elles le traversent en poussant, comme à travers les miens.
+note Les Lanciers ennemis sont au loin devant : attaque-les, puis ramène le combat près des alliés : les alliés frappent l'ennemi, jamais les miens.
