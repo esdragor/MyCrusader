@@ -211,6 +211,26 @@ protected:
 	 */
 	TArray<int32> AheadPlaces;
 	TArray<int32> AheadPlaceFighters;
+	/**
+	 * Perf (hol.Combat.ParallelSearch): the search of each unit gathered ahead (by its slot), made in parallel on the step's
+	 * state once the arrows have landed: its target and last attacker then, the fighter chosen (INDEX_NONE: none), and the
+	 * candidates whose places it read, with whether they were full. bDone false: not made (no search, its target kept).
+	 */
+	struct FAheadSearch
+	{
+		bool bDone = false;
+		int32 Target = INDEX_NONE;
+		int32 LastAttacker = INDEX_NONE;
+		int32 Chosen = INDEX_NONE;
+		TArray<int32> PlaceFighters;
+		TArray<bool> PlaceFull;
+	};
+	TArray<FAheadSearch> AheadSearches;
+	/**
+	 * Perf (hol.Combat.ParallelSearch): 1 for a fighter whose target, attackers or life the serial pass changed this step
+	 * (what a search reads of a candidate, its position aside): weighed again by a search taking a choice made ahead.
+	 */
+	TArray<uint8> SearchTouched;
 	/** A fighter is a candidate of the current search when its stamp is SearchStamp (in place of a scan of the list). */
 	TArray<uint32> SeenStamp;
 	uint32 SearchStamp = 0;
