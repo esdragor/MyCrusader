@@ -994,7 +994,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.bRanged = HOLCombat::IsRangedAttack(Constants.AttackRange);
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
-			if (HOLCombat::GetSearchRadius(Seeker) <= 0.f || (bFast && Target != INDEX_NONE && Fighters[Target].State->OwnerPlayer != Fighter.State->OwnerPlayer
+			if (HOLCombat::GetSearchRadius(Seeker) <= 0.f || (bFast && Target != INDEX_NONE && Fighters[Target].Camp != Fighter.Camp
 				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange)))
 			{
 				return; // no search, or its target kept (bKeepTarget)
@@ -1035,7 +1035,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 			for (const int32 Extra : { Target, LastAttacker })
 			{
-				if (Extra != INDEX_NONE && !FoundFighters.Contains(Extra) && Fighters[Extra].State->OwnerPlayer != Fighter.State->OwnerPlayer)
+				if (Extra != INDEX_NONE && !FoundFighters.Contains(Extra) && Fighters[Extra].Camp != Fighter.Camp)
 				{
 					Add(Extra);
 				}
@@ -1228,7 +1228,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						}
 						for (const int32 Extra : { Target, LastAttacker })
 						{
-							if (Extra != INDEX_NONE && SearchTouched[Extra] != 0 && Fighters[Extra].State->OwnerPlayer != Fighter.State->OwnerPlayer
+							if (Extra != INDEX_NONE && SearchTouched[Extra] != 0 && Fighters[Extra].Camp != Fighter.Camp
 								&& !CandidateFighters.Contains(Extra))
 							{
 								AddCandidate(Extra);
