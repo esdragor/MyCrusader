@@ -14,7 +14,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Catégorie « Lourd » dans la table : Homme d'armes, bonus de l'Arbalétrier contre Lourd *(D428)*
+- Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité)*
 
 ### Fin de partie
 - Conditions de victoire à coder : messages (V4), vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; chantier `VictoryInProgress.md`)*
