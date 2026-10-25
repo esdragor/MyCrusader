@@ -55,7 +55,7 @@ avant la validation de l'utilisateur. Worktree prévu : `HeroesOfLiberty-Glorfin
 | M6-Q5 | **Liste des salons du PC**, adresse cachée (`servers.json` à côté du jeu), nom du joueur gardé, messages d'échec |
 | M6-Q6 | **Gestionnaire** toujours allumé : un serveur de partie lancé à la demande, éteint quand vide, maximum réglable, serveur planté signalé |
 | M6-Q6b | Gestionnaire en **C# (.NET 8)**, un seul `.exe`, **HTTP**, protocole versionné |
-| M6-Q7 | Fin : **« Retour au salon »** ou **« Quitter vers la liste »** ; mêmes réglages, « Prêt » à zéro, chef au premier revenu, retour d'office après ~60 s |
+| M6-Q7 | Fin : **« Retour au salon »** ou **« Quitter vers la liste »** ; mêmes réglages, « Prêt » à zéro, chef au premier revenu ; ~~retour d'office après ~60 s~~ **revu le 2026-10-25 : aucun retour d'office**, on reste dans la partie finie aussi longtemps qu'on veut (carte, statistiques) |
 | M6-Q8 | **Spectateur** : « Regarder » une partie en cours ; vision complète (D376), sans discussion pour l'instant |
 | M6-Q9 | **Le salon vit dans le gestionnaire** ; un serveur Unreal ne fait qu'**une partie**, lancé avec `-MatchConfig=` (chemin de M2.5), **emplacement donné par le nom**, nom absent = spectateur |
 | R-Q2 | **Tailscale** (partage du PC) ; installation guidée avant l'essai à deux PC |
@@ -63,6 +63,11 @@ avant la validation de l'utilisateur. Worktree prévu : `HeroesOfLiberty-Glorfin
 | R-Q5 | **Fenêtre de D71 (~3 min) puis défaite** ; bandeau à compte à rebours ; retour sous le même nom |
 | R-Q7 | **Development**, triches refusées par le serveur sauf `-HOLCheats` |
 | R-Q8 | **Zip par version**, version affichée, refus d'une version différente ; lanceur en chantier à part |
+| M6-Q10 | **Spectateur** (2026-10-24) : rien de caché, caméra libre, accès aux **statistiques de la partie** pendant la partie ; « Regarder » refusé une fois la partie finie ; serveur éteint quand tout le monde est parti, spectateurs compris (déjà le cas) ; à la fin, même bandeau que les joueurs plus les statistiques, **sans retour d'office** (corrigé le 2026-10-25 : pour les joueurs non plus) |
+| M6-Q11 | **Statistiques « comme AoE »** : à la fin pour tous, pendant la partie pour les spectateurs ; tableaux chiffrés par joueur (ressources, unités produites / tuées / perdues, bâtiments, paliers…) et **courbes dans le temps** (villageois, armée, passages de palier…) |
+| M6-Q12 | **Noms des joueurs** dans le tableau des joueurs en partie (au lieu de « Joueur N ») |
+| M6-Q13 | **Perte de connexion détectée en 20 s** (au lieu de 60 s) ; le retour sous 3 min reste R7 |
+| M6-Q14 | (2026-10-25) Après la fin, un joueur resté dans la partie **n'est plus dans le salon** ; un non-chef ne bloque pas la relance ; **le chef reste chef** même absent (précision du 2026-10-25) : nouveau chef (premier revenu) seulement si le salon est plein sans lui, ou (ajout de la session) s'il a quitté la partie sans revenir ou si le serveur s'est arrêté ; « Retour au salon » rejoint ce salon sous le même nom si possible, sinon (place prise, plein, disparu, relancé) liste Multijoueur et message |
 
 ## Architecture retenue
 
@@ -79,7 +84,7 @@ avant la validation de l'utilisateur. Worktree prévu : `HeroesOfLiberty-Glorfin
         ▲ HTTP (liste, salon, 2 lectures/s)      ▲ HTTP (état du serveur)
         │                                         │
  Jeu des joueurs ── réseau Unreal (Iris) ──► serveur de la partie
- (Multijoueur → liste → salon → partie ?Name=…&Version=…)
+ (Multijoueur → liste → salon → partie ?Name=…?Version=…)
 ```
 
 - Le **salon** (règles, chef, couleurs) est dans le gestionnaire ; le jeu n'en est que l'affichage.
@@ -166,7 +171,7 @@ R8, R9.
 | R4.4 Salon : lecture | `UHOLNewGameScreen` en mode réseau : état lu 2 fois par seconde ; lignes des autres grisées | capture à 2 clients |
 | R4.5 Salon : écriture | ma ligne, « Prêt », réglages du chef, « Lancer », « Quitter le salon » envoyés au gestionnaire | test : un non-chef ne voit pas « Lancer » |
 | R4.6 Salon : colonnes | nom, « Prêt », couronne du chef | capture |
-| R4.7 Vers la partie | salon « en partie » → connexion au port donné avec `?Name=…&Version=…` ; « Regarder » → spectateur | 2 clients dans la partie, chacun à son emplacement |
+| R4.7 Vers la partie | salon « en partie » → connexion au port donné avec `?Name=…?Version=…` ; « Regarder » → spectateur | 2 clients dans la partie, chacun à son emplacement |
 | R4.8 Fin de partie | bandeau de D362 : « Retour au salon » et « Quitter vers la liste » ; retour d'office après ~60 s | capture ; retour au salon vu dans le gestionnaire |
 | R4.9 Erreurs en partie | perte de connexion, serveur arrêté → liste et message | serveur tué pendant un test |
 | R4.10 Traductions (1) | Multijoueur et messages d'échec fr / en / ja | `.po` relus |
@@ -259,8 +264,16 @@ R8, R9.
   (emplacement par le nom, spectateur, test à 2 clients) ; **B3** R3.4 + R3.5 (triches) ; **B4** R3.6 + R3.7 (appels
   HTTP au gestionnaire) ; **B5** R3.8 (fin du serveur) ; **B6** R3.9 + R3.10 (départ ensemble). Puis commit de R3
   (accord des sessions actives, `EtapeDefini.md` dans le même commit), puis R4.
-- **Au 2026-10-24 : R3 fini, non commité** (worktree Glorfindel) ; prochaine étape écrite à la fin du « Suivi »
-  (commit de R3, puis R4).
+- **Au 2026-10-24 : R1, R2, R3 dans `main` (174a0f4).** Glorfindel, branche `net-playtest` = `main` 174a0f4, gardé
+  pour R4. **Découpage de R4 en boucles** (même règle que R3 : un sous-agent ≤ 15 min, minuteur, état noté dans
+  « Suivi » après chaque boucle) : **B1** R4.1 client du gestionnaire (`UHOLManagerClient`, `servers.json`, `/status`
+  et liste ; test contre le gestionnaire publié par `Tools\Manager\build_manager.ps1`) ; **B2** R4.2 écran
+  Multijoueur (liste, Actualiser, Créer, Rejoindre / Regarder, nom gardé ; capture hors écran) ; **B3** R4.3 messages
+  d'échec ; **B4** R4.4 salon en lecture (2 lectures/s) ; **B5** R4.5 + R4.6 salon en écriture et colonnes ; **B6**
+  R4.7 vers la partie (`?Name=…`, port donné, « Regarder ») ; **B7** R4.8 fin de partie (Retour au salon / Quitter
+  vers la liste, ~60 s) ; **B8** R4.9 erreurs en partie ; **B9** R4.10 + R4.11 traductions. Puis R5 (bout à bout,
+  essais E2 et E3).
+- **Au 2026-10-24 soir : R4 fini, non commité** (Glorfindel). R5 découpé : **B1** R5.1 + R5.2 (`lobby_match.ps1`, deux clients) ; **B2** R5.3 (spectateur) ; **B3** R5.4 (partie `lobby` de `quick_check`) ; **B4** R5.5 (mesure) ; puis E2 et E3 (R5.6).
 - **Boucle en cours** : voir la dernière ligne de « Suivi ». Si elle dit « lancée » sans « rendue », la
   boucle a été coupée : regarder `git -C C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel status` et `diff`,
   relancer les tests de la boucle, et la reprendre.
@@ -597,3 +610,360 @@ R8, R9.
   `quick_check -Parts tests,smoke,net,victory` PASS en 137 s (145/145) ; `dotnet test` 158/158. `EtapeDefini.md` :
   ligne M6 (serveur de partie fait), ligne `ServerPause` ajoutée. **Commit de R3 en cours** (accord des sessions
   actives, puis avance rapide de la copie principale ; ensuite `git stash drop` du stash « r3 » dans Glorfindel).
+- 2026-10-24 : **R3 commité sur `net-playtest` : 174a0f4** « M6 R3: dedicated match server for the lobby manager »
+  (`EtapeDefini.md` et ce fichier dedans). Accord demandé à mycrusader-15 et -7d pour l'avance rapide de `main`
+  (en attente). Reprise si coupé : vérifier que `main` est toujours e8a0e36, puis dans la copie principale :
+  sauvegarder `EtapeDefini.md` et `NetPlaytestInProgress.md`, `git checkout -- EtapeDefini.md NetPlaytestInProgress.md`
+  (contenu identique au commit, aux fins de ligne près : vérifier par `diff --strip-trailing-cr`), `git merge
+  --ff-only net-playtest`, recopier la dernière version du journal si elle a bougé.
+- 2026-10-24 : **R3 dans `main` : 174a0f4** (avance rapide après l'accord de mycrusader-15 et -7d ; journaux des
+  autres sessions intacts ; stash « r3 » supprimé). R4 découpé (bloc « Reprise exacte »). **R4 B1 lancée** (R4.1
+  client du gestionnaire).
+- 2026-10-24 : **R4 B1 rendue : R4.1 fait** (non commité). `Net/HOLManagerClientRules.h/.cpp` (module de jeu :
+  `FHOLManagerStatus`, `FHOLLobbySummary`, `FHOLManagerError` (Unreachable / Unreadable / Protocol, code gardé pour
+  R4.3), `ParseStatus`, `ParseLobbies`, `ParseError`, `ParseServers`, `ReadFailure`) ; `HeroesOfLibertyUI/Net/
+  HOLManagerClient.h/.cpp` (`UHOLManagerClient`, sous-système de l'instance de jeu, client seulement ; `GetStatus`,
+  `GetLobbies` asynchrones avec délégués `(résultat, erreur)` ; `IsSameVersion` ; commandes `hol.Manager.Status`,
+  `hol.Manager.Lobbies`) ; `servers.json` : `-ServersFile=`, sinon `ProjectDir` dans l'éditeur, **à côté de
+  `HeroesOfLiberty.exe`** dans un paquet, sinon `http://127.0.0.1:7700` ; `Tools/Manager/servers.example.json`.
+  Tests `HeroesOfLiberty.Net.ManagerClient.Parse` / `.Failure` (exemples de `PROTOCOL.md`) : **rouge** puis **vert
+  147/147**. Vraie chaîne : `Tools/Tests/manager_client.ps1` (gestionnaire publié sur un port libre dès 7790, un
+  salon créé et tenu vivant par lectures, jeu hors écran) **PASS** : « 1 lobbies (same version) », « L1 "Salon R4
+  test" 1/8 lobby ». Gestionnaire injoignable : règle pure seulement. **R4 B2 lancée** (R4.2 écran Multijoueur).
+- 2026-10-24 : **R4 B2 rendue : R4.2 fait** (non commité). `Screens/HOLMultiplayerScreen.h/.cpp` : bouton
+  « Multijoueur » entre « Jouer » et « Réglages » ; titre, « Votre nom » (gardé dans `UHOLGameUserSettings::PlayerName`,
+  par défaut le compte Windows filtré ; règle des noms de `PROTOCOL.md`), liste (nom, « 1/8 », « au salon » /
+  « lancement » / « en partie (N min) », « Rejoindre » ou « Regarder »), « Actualiser », « Créer un salon », « Retour » ;
+  Créer / Rejoindre / Regarder **journalisent seulement** (« Multiplayer: join L1 as baudo ») ; ligne d'état simple.
+  `hol.UI.Open Multiplayer`. `manager_client.ps1 -Screen` : **rouge** (« unknown screen 'Multiplayer' ») puis **PASS**
+  (deux fois) ; capture relue par l'agent (titre doré, nom lisible, une ligne de salon, boutons en bas) ;
+  `tests,smoke` PASS (147/147). Restes : champ de nom au style par défaut (fond clair), manette non essayée,
+  `manager_client.ps1` sans `-Screen` non relancé. **R4 B3 lancée** (R4.3 messages d'échec).
+- 2026-10-24 : **R6 fait par mycrusader-15 et dans `main` : 8fcb0f4** (ligne G d'EtapeDefini : `FHOLCampTable`,
+  `HOLVictoryRules::AreHostile`, combat et évitement par camp, attaque refusée sur un allié, clic droit sur un allié
+  = déplacement ; tests `CampsByTeams`, cas « sides fight » / « sides avoid » ; essai validé par l'utilisateur).
+  R6.1 à R6.4 faits. À fusionner dans `net-playtest` au prochain commit (recoupements probables :
+  `HOLPlayerController`, `quick_check.ps1`).
+- 2026-10-24 : **R4 B3 rendue (~8 min) : R4.3 fait** (non commité). `HeroesOfLibertyUI/Net/HOLManagerErrorText.h/.cpp`
+  (`GetManagerErrorText` : un texte français par code de `PROTOCOL.md`, injoignable, illisible, version « le serveur
+  a X, vous avez Y » lue dans le message du gestionnaire, cas général avec le message ; `MakeVersionMismatchError`) ;
+  écran Multijoueur : `/status` d'abord, erreur en rouge (`HOLUIStyle::Missing`), liste vide ; journal « Multiplayer:
+  error … ». Test `HeroesOfLiberty.UI.ManagerErrorText` (premier test du module d'interface) : **rouge 26/26** puis
+  **vert**, `tests` 148/148. `manager_client.ps1 -Case Off|OtherVersion` (gestionnaire `--GameVersion=`) **PASS** ;
+  sans `-Screen` et `-Screen` **PASS**. Capture `manager_client_version.png` : ligne rouge lisible « Version
+  différente : le serveur a 2026-10-24-other, vous avez dev. ». `lobby_full` / `name_taken` : règle seule (B4).
+  **R4 B4 lancée** (R4.4 : créer / rejoindre un salon et le lire).
+- 2026-10-24 : **R4 B4 rendue à 15 min : R4.4 codé, vérification incomplète.** `HOLManagerClientRules` :
+  `FHOLLobbySlot`, `FHOLLobby` (`GetNumPlayers`, `FindYourSlot`), `ParseLobby`, `ParseJoin` ; `UHOLManagerClient` :
+  `CreateLobby`, `JoinLobby` (version envoyée), `ReadLobby`, `LeaveLobby`, jeton gardé (jeté sur `not_in_lobby` /
+  `lobby_not_found`), `Send` générique ; Multijoueur : Créer (« Salon de <nom> ») / Rejoindre ouvrent
+  `HOLNewGameScreen::EnterLobby` (lecture toutes les 0,5 s, titre = nom du salon, nom et « (chef) » par ligne, état
+  Ouvert / Fermé / Pas prêt / Prêt, lignes des autres grisées, ma couleur et mon équipe actives mais rien envoyé,
+  « Lancer » désactivé ; Retour / Échap = `leave`) ; `-PlayerName=` en ligne de commande pour les tests. Test
+  `HeroesOfLiberty.Net.ManagerClient.Lobby` : **rouge** (25 attentes) puis **vert**. `manager_client.ps1 -Case Lobby`
+  **PASS** (Bob entre, « 2 players (Alice, Bob) … leader Alice », sort ; vérifié côté gestionnaire), mais **capture
+  prise trop tôt** (écran Multijoueur) : script corrigé (`waitui`, `wait 1`), **non relancé**. Non lancés : `-Case
+  NameTaken`, `quick_check -Parts tests,smoke,menu`. Gestionnaire coupé pendant le salon : codé, non testé. La
+  session principale lance les trois.
+- 2026-10-24 : **R4.4 vérifié** (session principale) : `-Case Lobby` **PASS** et capture relue (« Salon R4 test »,
+  « Alice (chef) » Pas prêt, Bob avec couleur Rouge et équipe actives, autres lignes « Ouvert » grisées, « Lancer »
+  grisé) ; `-Case NameTaken` **PASS** (« Ce nom est déjà pris dans ce salon. » en rouge) ; `quick_check -Parts
+  tests,smoke,menu` **PASS** (149/149, menu fr / en / ja). Remarque pour B5 : la note « Grisé : pas encore dans le
+  jeu (IA, factions, équipes, mode et options) » du solo s'affiche aussi dans le salon, à adapter. **R4 B5 lancée**
+  (R4.5 + R4.6 : salon en écriture, colonnes).
+- 2026-10-24 19:10 : **R4 B5 coupée, reprise.** Trouvé dans Glorfindel (rien après 18:57) : R4.5 + R4.6 **codés et
+  compilés** (`UpdateMe`, `UpdateSettings`, `SetSlot`, `StartMatch` du client ; salon : couleur, équipe, « Prêt » /
+  « Plus prêt », carte et options du chef, emplacements ouverts / fermés par le chef, « Lancer » caché au non-chef et
+  actif quand tous sont prêts, refus en rouge, « ♛ » devant le chef, note du salon adaptée) ; `manager_client.ps1
+  -Case Ready|Leader` écrits, **non lancés**. Reprise : compilation, puis ces deux cas, puis `tests,smoke,menu`.
+- 2026-10-24 19:20 : **R4 B5 rendue : R4.5 + R4.6 faits** (non commité). `manager_client.ps1 -Case Ready` **PASS**
+  (Bob prend la couleur 5 et « Prêt », le gestionnaire a les deux, « Lancer » caché pour lui) ; `-Case Leader`
+  **PASS** (Bob crée et mène, ferme l'emplacement 2, Alice prête par HTTP, Bob « Prêt », « Lancer » envoyé : 500
+  `server_start_failed` faute de serveur dans le gestionnaire de test, salon intact) ; captures relues (« ♛ » devant le
+  chef, « Prêt » / « Pas prêt », lignes des autres grisées, « Fermé » choisi, « Lancer » chez le chef seul) ;
+  `quick_check -Parts tests,smoke,menu` **PASS** (150/150). Remarque : les lignes ouvertes montrent une couleur par
+  défaut qui peut être celle d'un joueur (Violet deux fois dans `manager_client_ready.png`), sans effet sur la partie.
+  **R4 B6 lancée** (R4.7 : salon « en partie » → connexion au port donné avec `?Name=…?Version=…`, « Regarder »).
+- 2026-10-24 19:45 : **R4 B6 rendue (~13 min, plus le temps des essais) : R4.7 codé, vraie chaîne bloquée.**
+  `HOLManagerClientRules` : `ParseWatch`, `MakeMatchAddress` (hôte de l'URL du gestionnaire, `:port?Name=…?Version=…`,
+  sans nom pour un spectateur) ; `UHOLManagerClient::WatchLobby`, `OpenMatch` (`SetClientTravel` absolu, jeton du
+  salon gardé pour R4.8) ; salon : « Lancement… » en `starting`, `JoinMatch` une fois en `in_game` (lecture arrêtée,
+  pas de `leave` au voyage) ; Multijoueur : « Regarder » → `/watch` puis connexion sans nom, refus en rouge. Test
+  `HeroesOfLiberty.Net.ManagerClient.Match` **rouge** (8 attentes) puis **vert** ; `-Case Leader` **PASS** ;
+  `quick_check -Parts tests` **PASS** (151/151). `manager_client.ps1 -Case Match` (gestionnaire avec `--ServerExe=`
+  sur le serveur cuit) **FAIL** : le serveur cuit date d'avant R3 (« match.json is invalid (version 2 is newer than
+  this build (1)) »), il n'appelle jamais `listening`. **Séparateur corrigé** : les options d'une URL Unreal se séparent
+  par `?` (`ParseOption` sur `Name=Bob&Version=x` rendrait « Bob&Version=x ») : `?Name=…?Version=…`, `PROTOCOL.md`
+  corrigé (dans Glorfindel) et ce fichier aussi. **Serveur re-cuit** (`net_match.ps1 -Stage`, en cours), puis
+  `-Case Match`. « Regarder » : pas d'essai de bout en bout (R5.3).
+- 2026-10-24 19:35 : **R4.7 vérifié sur la vraie chaîne.** Serveur re-cuit (19:25) ; il lui manquait `Version.txt`
+  (serveur cuit sans ce fichier = « unknown », refuse tout le monde, HOLVersion) : `-Case Match` pose « dev » le temps
+  de l'essai et l'enlève (dans un paquet, `package.ps1` écrit le vrai). Script : attend `Plain` chez le client et
+  « Bob holds slot 0 » dans le `server.log` de la partie ; filtre du journal corrigé (`LogHOLNet: Display: Manager`).
+  `-Case Match` **PASS** (Lancer 202, `in_game`, « joining match … at 127.0.0.1:7778 as Bob », Bob à l'emplacement 0
+  côté serveur) ; `-Case Lobby` **PASS** ; aucun serveur de Glorfindel laissé en marche (un serveur oublié par
+  `net_match.ps1 -Stage` arrêté). À R8 : le serveur lancé par le vrai gestionnaire doit avoir le même `Version.txt` que
+  le zip des joueurs. **R4 B7 lancée** (R4.8 : fin de partie, « Retour au salon » / « Quitter vers la liste », ~60 s).
+- 2026-10-24 19:55 : **R4 B7 rendue (~13 min) : R4.8 fait** (non commité, serveur inchangé). Bandeau de fin d'une partie
+  venue d'un salon : « Continuer à regarder », « Quitter vers la liste », « Retour au salon (n s) », retour d'office à 0
+  (`HOLManagerClientRules::GetReturnCountdown`, 60 s) ; hors salon, bandeau inchangé. Le choix est noté et la partie
+  quittée ; la carte du menu, une fois chargée, ouvre Multijoueur puis rejoint le salon sous le même nom
+  (`HOLMenuPlayerController`) ; « Quitter vers la liste » oublie le salon sans appel (protocole). Fichiers :
+  `HOLManagerClient`, `HOLEndBanner`, `HOLMenuPlayerController`, règles et tests. Test `ManagerClient.Return` **rouge**
+  (5) puis **vert** ; `manager_client.ps1 -Case Return` **PASS** deux fois (Alice ne vient pas, 60 s de R3.9, Bob
+  `hol.Victory.Surrender` ; serveur `finished {"winners":[1]}` ; jeu « Menu: back in lobby L1 as Bob » ; gestionnaire
+  `lobby` avec Bob ; plus de serveur de Glorfindel) ; `tests` **PASS** (152/152). Capture relue
+  (`manager_client_return.png` : « Défaite », trois boutons). Restes : « Quitter vers la liste » et retour d'office non
+  essayés de bout en bout ; retour refusé (plus de 2 min) journalisé seulement, sans message (→ B8) ; le panneau
+  « Triches » du client de l'éditeur s'affiche en partie réseau (le serveur les refuse ; à cacher ?) ; deux clients
+  « Player » d'un `net_match` d'un autre worktree sont arrivés en spectateurs sur le port 7777 d'un serveur de test
+  (ports partagés entre worktrees). **R4 B8 lancée** (R4.9 : erreurs en partie).
+- 2026-10-24 20:10 : **R4 B8 rendue (~12 min) : R4.9 fait** (non commité, serveur inchangé). `HOLManagerErrorText` :
+  `MakeMatchLossError` / `MakeMatchTravelError` (`match_lost`, `match_closed`, `match_version`, `match_full`,
+  `match_refused`, `match_failed`, textes français) ; `UHOLManagerClient` écoute `OnNetworkFailure` / `OnTravelFailure`
+  seulement pour une partie venue d'un salon (`bInMatch`, posé par `OpenMatch`) : salon oublié, perte notée, liste à
+  l'arrivée au menu ; un choix du bandeau de fin déjà fait l'emporte. « Retour au salon » refusé : liste et message en
+  rouge. Test `HeroesOfLiberty.UI.MatchLossText` **rouge** (29) puis **vert** ; `manager_client.ps1 -Case Killed`
+  **PASS** (serveur de la partie tué par PID ; « La connexion à la partie est perdue. » en rouge sur la liste ; capture
+  `manager_client_killed.png` relue ; le gestionnaire remet le salon « au salon ») ; `-Case Return` **PASS** ; `tests`
+  **PASS** (153/153). **Délai mesuré : 60,2 s** entre la mort du serveur et le retour au menu (`ConnectionTimeout`
+  d'Unreal, 60 s) : à décider avec R7 (15-20 s ?). Non essayés de bout en bout : retour refusé après 2 min, refus de
+  connexion (version, pleine), serveur arrêté proprement. **R4 B9 lancée** (R4.10 + R4.11 : traductions).
+- 2026-10-24 20:20 : **R4 B9 rendue (~5 min) : R4.10 + R4.11 faits** (non commité). 57 textes nouveaux traduits en / ja
+  par la chaîne en place (GatherText, table de `Tools/Localization/fill_po.py`, .locres compilés ; `fill_po.py` : « 257
+  texts filled, 0 unknown keys » en et ja). Vocabulaire : salon → lobby / ロビー, chef → lobby leader / リーダー, Prêt →
+  Ready / 準備完了, Regarder → Watch / 観戦, serveur de parties → match server / 対戦サーバー. `quick_check -Parts
+  tests,smoke,menu` **PASS** (153/153, menu fr / en / ja). Captures Multijoueur en / ja relues (aucun français, kana
+  et kanji lisibles). Non vus à l'image en en / ja : salon, bandeau de fin, messages d'erreur. Japonais provisoire
+  comme le reste. **R4 fini (non commité).** Avant le commit : fusionner `main` 8fcb0f4 (R6) dans `net-playtest`.
+  **R5 B1 lancée** (R5.1 + R5.2 : `lobby_match.ps1`, deux clients du jeu, liste → salon → Prêt → partie → fin → retour).
+- 2026-10-24 20:35 : **R5 B1 rendue : R5.1 + R5.2 faits** (non commité, ni code du jeu ni serveur changés).
+  `Tools/Tests/lobby_match.ps1` : gestionnaire de test + serveur cuit + **deux clients du jeu** (Alice, Bob ; Saved et
+  journaux séparés) : Alice crée, Bob rejoint, couleurs 2 et 5, deux « Prêt », Alice lance, les deux en partie
+  (serveur : « Alice holds slot 0 (colour 2) », « Bob holds slot 1 (colour 5) »), Bob abandonne, victoire / défaite,
+  les deux « Retour au salon », salon intact chez le gestionnaire (`lobby`, couleurs 2 et 5, « Prêt » à faux).
+  **PASS du premier coup en 45 s** (pas de rouge : R4 complet ; noté). `-Case Return` **PASS**. Captures relues.
+  Remarques : tableau des joueurs en partie « Joueur 1 / 2 » au lieu des noms ; capture de Bob prise 0,3 s après
+  l'arrivée (centre au bord) ; au retour, le premier revenu (Bob) est chef 0,4 s avant qu'Alice, ancienne cheffe,
+  le redevienne (règle du protocole ; « Lancer » visible un instant). **R5 B2 lancée** (R5.3 spectateur + R5.4
+  partie `lobby` de `quick_check`).
+- 2026-10-24 20:55 : **R5 B2 rendue (~12 min) : R5.3 + R5.4 faits** (non commité ; scripts seulement). `lobby_match.ps1` :
+  troisième client « Carol » à chaque essai, lancé quand le salon passe `in_game` : liste « en partie (0 min) »,
+  « Regarder », arrivée sans nom (serveur : « Carol joined as a spectator »), captures `lobby_match_watchlist`,
+  `_watch`, `_watch_end` ; Bob n'abandonne qu'après l'arrivée de Carol (fichier signal). Rouge : 1er essai FAIL (bug du
+  script : séquence de Carol tronquée), puis **PASS en 74 s** ; `quick_check -Parts lobby` **PASS en 87 s** (partie
+  seulement sur demande, pas dans `-Full` ; FAIL clair sans serveur cuit, vérifié) ; `tests` **PASS** (153/153).
+  **Constats sur le spectateur, à trancher avec l'utilisateur** : (1) pas de bandeau de fin ni de retour à la liste
+  pour lui ; (2) **le serveur reste allumé tant qu'un spectateur reste** (« empty after the match » seulement à son
+  départ) : correction côté serveur, puis re-cuisson ; (3) interface de joueur complète (ressources à 0, « Inactifs »,
+  « Triches ») et caméra sur aucun départ ; (4) tableau des joueurs « Joueur 1 / 2 » au lieu des noms (joueurs aussi).
+  **Arrêt des boucles ici** en attendant l'utilisateur : R5.5 (mesure de deux batailles, maximum de serveurs à fixer
+  avec lui) et les points ci-dessus demandent son avis ; puis commit (fusion de `main` 8fcb0f4 d'abord), puis E2 / E3.
+- 2026-10-24 21:15 : **Réponses de l'utilisateur** : M6-Q10 à M6-Q13 (tableau des décisions) ; R5.5 en fin de R5 ;
+  fusion de `main` puis commit de R4 et R5 accordés une fois ces points faits et vérifiés ; le correctif de version qui
+  casse S5 (`net_match.ps1`, serveur cuit sans `Version.txt`) est laissé à la session perf. **Boucles prévues** :
+  **C1** noms des joueurs, délai de 20 s, « Regarder » refusé après la fin, bandeau du spectateur sans retour d'office
+  (serveur touché : re-cuisson) ; **C2** statistiques côté serveur (compteurs et séries dans le temps, tests) ;
+  **C3** envoi aux clients ; **C4** tableaux chiffrés ; **C5** courbes ; **C6** accès (bouton du spectateur, bandeau
+  de fin pour tous) et captures ; **C7** traductions ; puis R5.5, fusion, commit, E2 / E3. **C1 lancée.**
+- 2026-10-24 21:25 : **S5 cassé sur `main` par R3.3** (signalé par la session perf, mycrusader-f8, à la demande de
+  l'utilisateur) : serveur de `net_match -Stage` sans `Version.txt` = « unknown », refuse tout le monde. Correctif :
+  `net_match.ps1` écrit `Version.txt` = « dev » à côté du stage à chaque lancement (tests seulement ; paquets
+  inchangés). Posé **non commité** dans la copie principale et dans Glorfindel ; vérification (S5 jusqu'au bout)
+  demandée à mycrusader-f8.
+- 2026-10-24 21:45 : **C1 rendue (~17 min) : codée, tests verts, pas vérifiée en partie** (re-cuisson bloquée :
+  « A conflicting instance of AutomationTool is already running », empaquetage de la copie principale en même temps).
+  M6-Q12 : `HOLForumRules` (nom du créneau venu de `LaunchConfig`, sinon « Joueur N » ; « Vous » pour soi), journal
+  `Players table: …` (`HOLGameScreen`). M6-Q13 : `ConnectionTimeout=20.0` (`DefaultEngine.ini`, `IpNetDriver` ;
+  vaut aussi pour le serveur ; `InitialConnectTimeout` 60 inchangé). M6-Q10 : `EHOLEndBanner::MatchOver` pour le
+  spectateur (« Partie terminée », « Continuer à regarder », « Quitter vers la liste », sans compte à rebours,
+  `CountsDownToLobby`), ligne `Detail` « Vainqueur : Alice » (place des statistiques) ; serveur : `PreLogin` refuse un
+  client sans nom après la fin (« The match is over ») ; gestionnaire inchangé (`ServerFinished` remet `lobby`).
+  Tests : **rouge** 151/153 puis **vert** 153/153. **C1b lancée** : contrôles ajoutés à `lobby_match.ps1`, puis, après
+  la re-cuisson (lancée par la session principale à la fin de l'autre empaquetage), `lobby_match`, `-Case Killed`
+  (≈ 20 s attendu), `tests`.
+- 2026-10-24 22:00 : **Correctif S5 vérifié par mycrusader-f8** : S5 va au bout avec `net_match.ps1` corrigé (« Version:
+  dev » des deux côtés ; avec `-Stage`, erreur affichée 24,2 cm PASS ; seule la bande passante échoue, 32 073 B/s pour
+  32 000, question D218 hors de ce correctif). Commit sur `main` laissé à l'utilisateur.
+- 2026-10-24 22:15 : **Correctif S5 commité sur `main` : 6167f5c** (par mycrusader-f8, accord de l'utilisateur ;
+  `net_match.ps1` seul). Le même changement est dans Glorfindel : la fusion de `main` le reprendra sans conflit.
+  Serveur de Glorfindel re-cuit (C1 dedans), rien laissé en marche ; C1b vérifie.
+- 2026-10-24 22:35 : **C1b rendue.** `-Case Killed` **PASS, délai 20,1 s** (était 60,2 s) ; `tests` **PASS**
+  (153/153) ; `lobby_match.ps1` : tous les contrôles C1 passent (tableau : « Vous, Bob » chez Alice, « Alice, Vous »
+  chez Bob, « Alice, Bob » chez Carol ; Carol `MatchOver`, « Vainqueur : Alice », pas de retour au salon) **sauf Dave**
+  (4e client, `open` direct après la fin) **admis** : le moteur envoie toujours le pseudo, le refus « sans nom » ne
+  marchait jamais ; `PreLogin` corrigé (après la fin, refus si le nom ne tient aucune place, `FindSlotForName`),
+  **à re-cuire**. Autre défaut trouvé et corrigé (client) : le bandeau des joueurs d'un salon n'avait plus le retour au
+  salon (`CountsDownToLobby` évalué avant `SetResult`) → `RefreshWayBack()`. Reste : le spectateur venu de
+  « Regarder » a « Quitter vers le menu » (il n'est pas membre du salon) au lieu de « Quitter vers la liste » (M6-Q10) :
+  à corriger. **C1c lancée** (libellé et sortie du spectateur vers la liste, re-cuisson, `lobby_match`).
+- 2026-10-24 22:55 : **C1c rendue : C1 fini et vérifié** (non commité). `EHOLMatchOrigin` (Local / Manager / Lobby,
+  `HOLGameMenuRules`) : compte à rebours seulement pour Lobby, `QuitsToList` pour Manager et Lobby ; le spectateur venu
+  de « Regarder » a « Quitter vers la liste », qui ouvre Multijoueur. Serveur re-cuit (1 min 11 s, `PreLogin` dedans).
+  Tests **rouge** 152/153 puis **vert** 153/153 ; `lobby_match.ps1` **PASS** (79 s : noms, bandeau de Carol, retour
+  de Carol à la liste, Dave refusé « The match is over (spectator) », serveur éteint au départ de Carol) ;
+  `quick_check -Parts tests,lobby` **PASS** ; `-Case Return` **PASS**. Captures relues. Restes : Dave (`open` à la
+  console) revient au titre sans message (sans gravité : « Regarder » disparaît de la liste après la fin) ; perte de
+  connexion du spectateur pas essayée. **C2 lancée** (statistiques côté serveur).
+- 2026-10-24 23:40 : **C2 rendue (au-delà de 15 min, coupure d'usage) : enregistreur fait, vérification partielle.**
+  `Match/HOLMatchStats.h/.cpp` (structures prêtes pour C3, règles pures), `Match/HOLMatchStatsSubsystem` (fin de pas
+  de la simulation, échantillon toutes les 10 s de jeu, `hol.Stats.Dump`) ; branchements : morts avec le tueur
+  (`HOLUnitSubsystem::MarkUnitDying`, `HOLCombatProcessor`), production, bâtiments perdus (`DestroyBuilding`),
+  récolte lue dans `UHOLSourceSubsystem::GetDeposited`. Retenu : tués / perdus (dont péons), bâtiments perdus,
+  récolté par ressource, stock, produits, maxima ; courbes péons, armée, population, bâtiments, récolté, stock.
+  **Manque dans le jeu : passages d'âge (pas encore de passage, seulement des onglets), héros, auteur d'un bâtiment
+  rasé, bâtiments construits, technologies.** S4 : somme de contrôle identique avant / après (`dbf021190616ce7e`) ;
+  temps 5,8 → 6,9 ms/pas (FAIL du seuil 6 ms, autre worktree en test en même temps : à refaire au calme). Test
+  `Match.Stats.Rules` vert **sans rouge vu** ; `smoke` PASS, dump cohérent (3 hommes d'armes tuent un péon). **C2b
+  lancée** : rouge, échantillon du pas 0, événement `Defeated`, essai avec récolte et production, S4 au calme.
+- 2026-10-25 00:10 : **C2b rendue (~11 min) : C2 fini** (non commité). Rouge vu (`RecordUnitDeath` cassé : 1 attente en
+  échec) puis vert 154/154 ; échantillon de t = 0 (la simulation diffuse `StepIndex` déjà incrémenté) ; événements
+  `Defeated` (`DefeatSlot`) et `ForumFell` (`HandleForumFall`) branchés, **pas encore vus en partie** ; dump de la
+  partie `gather` exact (3 produits = 3 « Production … done », récolté F 18 = somme des dépôts, 19 péons) ;
+  `quick_check -Parts tests,smoke,production,gather` **PASS** (54 s). S4 au calme : somme identique partout, ~6,6
+  ms/pas **avec comme sans l'enregistreur** (A/B) : il ne coûte rien de mesurable, la machine est plus lente qu'à 19:50
+  (seuil 6 ms à revoir plus tard, hors C2). **C3 lancée** (envoi aux clients ; `Defeated` / `ForumFell` vus dans une
+  partie `victory`).
+- 2026-10-25 00:40 : **C3 rendue (~14 min) : statistiques envoyées aux clients** (non commité). Demande du client
+  `ServerRequestMatchStats(FromSample, FromEvent)`, contrôle `HOLMatchStats::CanReceiveStats` (spectateur toujours,
+  joueur seulement après la fin, vaincu = joueur), réponse fiable `ClientReceiveMatchStats` par morceaux de 20
+  échantillons par joueur (~9 Ko ; 1 h ≈ 160 Ko en 18 morceaux), fusion côté client ; point d'accès
+  `UHOLMatchStatsSubsystem::GetStats / GetOnStatsUpdated / RequestStats` (solo : lecture directe). Test
+  `Match.Stats.Send` **rouge** puis **vert** ; serveur re-cuit ; `lobby_match.ps1` **PASS** (77 s : Carol reçoit pendant
+  et après, Bob refusé pendant puis servi après, mêmes chiffres que le serveur, événement `Defeated` à 19 s vu par
+  les trois) ; `quick_check -Parts tests,smoke,lobby` **PASS** (155/155, session principale). Restes : découpage en
+  plusieurs morceaux vérifié seulement par le test pur ; horloge à 0 dans le dump d'un client. **C4 lancée** (écran des
+  statistiques, tableaux chiffrés).
+- 2026-10-25 01:05 : **C4 rendue à 15 min, incomplète** (non commité). `Screens/HOLStatsScreen` : onglets Résumé /
+  Militaire / Économie / Chronologie (attente de C5), une ligne par place, résultat Vainqueur / Vaincu / En jeu,
+  demande à l'ouverture, mise à jour sur `GetOnStatsUpdated`, refus « disponibles à la fin de la partie » ; scores
+  `GetMilitaryScore` (10 par tué) et `GetEconomyScore` ((F+B+P+O)/10 + 5 par produit), test `Stats.Scores` **rouge**
+  puis vert ; bouton « Statistiques » du bandeau ; `hol.UI.Open Stats` ; le HUD ne rouvre plus le bandeau sous l'écran.
+  `quick_check` : tests 156/156, smoke, menu PASS ; **victory FAIL** (« Quitter vers le menu: MainMenu loaded » KO après
+  le passage par les stats). Défauts : noms non colorés (style `UCommonTextBlock`), capture à chiffres nuls (victoire
+  immédiate). Décision de la session : **le compte à rebours du retour au salon est gelé** pendant qu'on regarde les
+  stats (il reprend au retour, sans repartir de 60). **C4b lancée.**
+- 2026-10-25 01:30 : **C4b rendue (15 min) : étapes 1 à 3 faites** (non commité). KO de `victory` = vérification du
+  script (section « victory win » coupée par la nouvelle marque « victory stats ») : corrigé, contrôle « stats screen
+  opened, then closed » ajouté. Noms : pastille de couleur devant le nom (comme le salon). Compte à rebours gelé pendant
+  les stats : `FHOLManagerClientRules::GetCountdownSecondsShown` + 4 cas dans `ManagerClient.Return` (**vert sans rouge
+  vu**), bandeau (`bCountdownPaused`, « countdown frozen at N s », « (resumed) »), **pas encore vu en salon réel**.
+  `quick_check -Parts tests,smoke,menu,victory` **PASS** (156/156). Restent : capture avec des chiffres non nuls,
+  capture chez Carol, `lobby`. **C4c lancée.**
+- 2026-10-25 01:45 : utilisateur absent ; consigne : **deux sessions tournent, la dernière à finir met le PC en
+  veille**. Accord proposé à mycrusader-8d (chacun prévient l'autre quand il a fini). Plan de cette session jusque-là :
+  C4c, C5 (courbes), C6 (bouton du spectateur), C7 (traductions) ; pas de commit (accord de l'utilisateur après C1-C4
+  et vérification) ; R5.5 attend l'utilisateur (maximum de serveurs).
+- 2026-10-25 02:05 : **C4c rendue (~9 min)** (non commité). Rouge du gel vu (`GetCountdownSecondsShown` vidé : 4
+  attentes en échec) puis vert 156/156. Captures avec des chiffres en solo (2e match de `victory` : un Paysan produit
+  et récolte, 3 Hommes d'armes tuent 3 Lanciers, défaite de l'IA) relues : Résumé 30 / 6 / 36, Militaire 3 tués, 3
+  perdus et 1 bâtiment perdu chez l'adversaire, Économie nourriture 10, 1 produit = dump exact ; « right screen »
+  vérifie l'écran du dessus (`menu=HOLStatsScreen`). `quick_check -Parts tests,smoke,menu,victory,gather` **PASS**.
+  **Pas lancé** (mycrusader-8d mesure S5 sur le port 7777 ; serveurs dédiés suspendus jusqu'à son « serveurs
+  libres ») : ajouts de `lobby_match.ps1` (stats chez Carol, gel puis reprise du compte à rebours chez Alice).
+  **C5 lancée** (courbes, client seul, sans serveur dédié).
+- 2026-10-25 02:30 : pause complète de ~8 min pour une mesure au calme de mycrusader-8d (C5 suspendue puis reprise).
+  **8d a fini** : cette session est la dernière, elle met le PC en veille à la fin (C5, vérification en salon, C6, C7).
+- 2026-10-25 02:50 : **C5 rendue : courbes faites** (non commité). Règles `EHOLMatchStatsSeries` (Péons, Armée,
+  Population, Bâtiments, Ressources récoltées, Stock), `MakeCurve`, `GetNiceStep` (pas ronds, temps en m:ss),
+  `GetAxisEnd`, `FormatMatchTime` ; widget `Widgets/HOLStatsGraph` (dessiné en code : grille, axes, une courbe par
+  joueur à sa couleur, marques d'événements datées, légende) ; onglet Chronologie avec six boutons de série, mis à
+  jour à chaque réception. Test `Stats.Curves` **rouge** puis **vert** (157/157) ; `quick_check -Parts
+  tests,smoke,menu,victory` **PASS** (77 s) ; captures Péons et Armée relues (courbes, axes 0:00-0:40, marque
+  « Joueur 2 vaincu », légende). Restes : courbes de même valeur superposées (la rouge cachée sous la bleue),
+  étiquettes en italique, pas de détail par ressource. BOM de `quick_check.ps1` remis comme dans HEAD.
+  **C6 lancée** (bouton « Statistiques » du spectateur pendant la partie, vérification en salon réel, courbes
+  superposées).
+- 2026-10-25 03:10 : **C6 rendue (~12 min) : accès du spectateur fait** (non commité, serveur inchangé). Règle
+  `ShowsStatsButton` (spectateur avant la fin), test `GameMenu.StatsButton` **rouge** puis vert ; bouton
+  « Statistiques » à côté de « Menu » (`HOLGameScreen`), écran redemandé toutes les 10 s tant qu'il est ouvert ;
+  courbes décalées de 3 px par joueur (plus de courbe cachée) ; onglet et série revus rétablis à la réouverture
+  (bogue du pool). `lobby_match.ps1` : stats de Carol pendant la partie (envois à 10 s d'écart côté serveur) et après ;
+  **gel vu en salon réel** (« frozen at 59 s », « resumed at 59 s », puis retour au salon) ; 1er essai FAIL (Bob parti
+  avant le retour d'Alice : attente ajoutée), puis **PASS** deux fois ; `quick_check -Parts
+  tests,smoke,menu,victory,lobby` **PASS** (162 s, 158/158). Captures relues. Restes : pas de raccourci clavier
+  (pas de convention), courbe au maximum collée au bord haut. **C7 lancée** (traductions, marge haute de l'axe).
+- 2026-10-25 03:35 : **C7 rendue (~15 min) : traductions et marge de l'axe** (non commité). 44 textes traduits en / ja
+  (`fill_po.py` : 301 textes, 0 clé inconnue ; Summary / Military / Economy / Timeline, 概要 / 軍事 / 経済 /
+  タイムライン ; « Forum » → フォルム à valider) ; `GetAxisEnd(…, bHeadroom)` : au moins un dixième au-dessus du
+  maximum, test `Stats.Curves` **rouge** (157/158) puis **vert** (158/158) ; `quick_check -Parts
+  tests,smoke,menu,victory` **PASS** ; parties `victory` en `en` et `ja` PASS, captures relues (aucun français hors
+  panneau de triches, kanji lisibles, courbe sous le bord haut). **C1 à C7 finis.**
+  **Reprise** : tout est dans Glorfindel, **non commité**. Prochaine séance avec l'utilisateur : (1) relire les
+  captures et décisions (« Forum » en japonais, absence de passages d'âge dans les stats : à ajouter quand le jeu en
+  aura) ; (2) R5.5 (mesure de deux batailles, maximum de serveurs) ; (3) fusion de `main` (8fcb0f4, 6167f5c, a37995c…)
+  dans `net-playtest`, `quick_check` complet + `lobby`, commit de R4, R5, C1-C7 (accord donné, sessions actives à
+  prévenir avant l'avance de `main`) ; (4) essais E2 et E3. Session terminée, PC mis en veille (dernière session).
+- 2026-10-25 : **Correction de l'utilisateur** : « pas de retour d'office après 60 s » valait pour tous, pas seulement
+  le spectateur (mauvaise lecture de la session). M6-Q7 revu : à la fin, joueurs et spectateurs restent dans la
+  partie aussi longtemps qu'ils veulent (carte, statistiques). Conséquence : la réservation de la ligne au salon (2 min
+  après `finished`, PROTOCOL choix 6) doit durer **tant que le serveur de la partie tourne**, puis 2 min. **D1
+  lancée** : compte à rebours retiré, sortie toujours possible depuis le menu de partie, réservation du gestionnaire.
+- 2026-10-25 : accord donné à mycrusader-ea pour avancer `main` vers `victory-v4` (Victory V4, messages de la ruine).
+  À la fusion de `main` dans `net-playtest`, recoupements attendus : `HOLGameState.*`, `HOLPlayerController.*`,
+  `HOLGameScreen.*`, `quick_check.ps1`, `fill_po.py`, .po / .archive / .locres (refaire la collecte après fusion).
+- 2026-10-25 : **D1 rendue (~15 min) : plus de retour d'office** (non commité, serveur inchangé). Compte à rebours
+  retiré (règles `GetReturnCountdown`, `GetCountdownSecondsShown`, `CountsDownToLobby`, gel, test `ManagerClient.Return`
+  supprimés) ; `OffersReturnToLobby` ; « Statistiques » du HUD pour tous après la fin (`ShowsStatsButton`, test
+  **rouge** 156/157 puis vert) ; menu de partie après la fin : « Retour au salon », « Quitter vers la liste » (ou le
+  menu), « Résultat » (rouvre le bandeau). `lobby_match` : Alice reste ~73 s dans la partie finie sans être renvoyée,
+  ferme le bandeau, ouvre les stats, part par le menu ; `quick_check -Parts tests,smoke,menu,victory,lobby` **PASS**
+  (239 s, 157/157) ; `-Case Return` **PASS** ; traductions à jour (0 clé inconnue) ; captures relues. Restes :
+  « Résultat » et « Quitter vers la liste » depuis le menu non exercés de bout en bout. **D2 lancée** (réservation au
+  salon tant que le joueur est dans la partie finie, puis 2 min).
+- 2026-10-25 : **Réponses de l'utilisateur.** (1) **M6-Q14** : un joueur resté dans la partie finie **n'est plus dans
+  le salon** (aucune réservation) ; le chef peut relancer sans lui ; « Retour au salon » = raccourci pour rejoindre ce
+  salon sous le même nom ; place prise, salon plein, disparu ou relancé → renvoyé vers la liste Multijoueur avec un
+  message. D2 réorientée en cours de boucle. (2) « Forum » en japonais : **町の中心** (machi no chūshin) ; fait pour
+  la marque des stats (`fill_po.py`, .locres à régénérer) ; V4 sur `main` dit « フォーラム » (messages de chute) :
+  à aligner à la fusion ; le bâtiment s'appelle « 本拠地 » (Main Center) : à confirmer avec l'utilisateur.
+  (3) R5.5 : go (après D2, machine au calme). (4) Fusion de `main` et commit : go après D2 et R5.5.
+- 2026-10-25 : **D2 rendue (gestionnaire seul) : M6-Q14 fait côté C#** (non commité). Après `finished` : salon `lobby`,
+  réglages gardés, **aucun joueur ni réservation** (ancien jeton `not_in_lobby`) ; « Retour au salon » = `join`
+  ordinaire (refus `name_taken`, `lobby_full`, `lobby_not_found`, `lobby_in_game`) ; premier revenu chef, « Lancer »
+  sur les seuls revenus ; salon vide gardé tant que le serveur de la partie tourne. `server_stopped` (serveur arrêté sans
+  `finished`, joueurs sortis malgré eux) garde la réservation de 2 min (choix de la session). xUnit **rouge** (7) puis
+  **vert** 163/163 ; `PROTOCOL.md` à jour. Première version (route `left`) faite puis retirée ; **le serveur cuit
+  contient encore `SendLeft`** (404 sans effet) : re-cuire. Restes → **D2b** : client (refus du retour → liste et
+  message), `lobby_match`, `-Case Return`, re-cuisson, `quick_check`.
+- 2026-10-25 : **Précision de l'utilisateur sur M6-Q14** : le chef reste chef du salon même resté dans la partie
+  finie ; nouveau chef seulement si le salon est plein et qu'il n'est pas revenu. Ajout de la session (confirmé par l'utilisateur) :
+  aussi s'il quitte la partie sans revenir ou si le serveur s'arrête (route `left` reprise). Consigne passée à D2b
+  en cours.
+- 2026-10-25 : **D2b rendue (15 min)** (non commité). Build et 156 tests verts au départ (rien de perdu). Client :
+  refus du retour → liste et message, `MakeReturnToLobbyError` (`lobby_in_game` → « La partie a été relancée sans
+  vous. »), test `UI.ManagerErrorText.ReturnToLobby` **rouge** puis vert (157/157), traductions (302 textes, 0 clé
+  inconnue). Serveur re-cuit (10:18, sans `SendLeft`). `-Case Return` et `lobby_match` adaptés (chef absent gardé)
+  **mais pas lancés** ; `dotnet test` 163/163. **Règle du chef pas faite côté gestionnaire** → **D3 lancée** (xUnit
+  rouges, route `left`, `SendLeft`, re-cuisson, essais).
+- 2026-10-25 : **D3 rendue : règle du chef faite** (non commité). Gestionnaire : `AwayLeader` / `AwayLeaderUntil` /
+  `LeaderName`, route `POST /matches/{id}/left` (127.0.0.1), nouveau chef si plein, ou 30 s après le `left` du chef
+  ou l'arrêt du serveur (`LeaderReturnGrace` : le client quitte le serveur avant son `join`, sans ce délai le chef qui
+  revient perdrait la main) ; C++ `SendLeft` au `Logout` d'un joueur nommé. xUnit **rouge** (12) puis **vert**
+  173/173 ; serveur re-cuit (10:26) ; `lobby_match` **PASS** (142 s : Bob revient seul, pas chef ; Alice revient par
+  le menu et redevient cheffe) ; `-Case Return` **PASS** ; `quick_check -Parts tests,smoke,menu,victory,lobby`
+  **PASS** (249 s, 157/157). Reste : cas « refus au retour » de bout en bout (couvert par xUnit et la règle client).
+- 2026-10-25 : **R5.5 mesuré** (machine au calme, mycrusader-ea en pause ; S3 1000 contre 1000, 2 clients de l'éditeur
+  par serveur ; `net_match.ps1` gagne `-Port` et `-Tag`, nouveau `Tools/Tests/sample_load.ps1`). Une bataille : 9,70
+  ms/pas moyen (max 19,3), 23,7 Ko/s par client ; **deux batailles en même temps** : 10,19 et 10,37 ms/pas (max 31,9 et
+  38,8), 20,0 et 23,1 Ko/s par client (seuil D450 ≤ 34) ; serveur ~330 Mo, stable ; PC 65 % (max 85 %) de processeur,
+  34,5 Go libres au plus bas, les 4 clients de l'éditeur pèsent 9,4 Go et dominent la charge. Trois batailles non
+  mesurées. **Recommandation `MaxServers = 2`** (défaut) ; décision à l'utilisateur. **Écart à signaler** : la
+  référence d'une seule bataille fait 9,7 ms/pas contre ~6 ms connus (seuil 6 ms) : déjà vu en C2b (6,6 ms avec ou
+  sans l'enregistreur) ; Glorfindel n'a pas encore les commits de perf de `main` (a37995c…) : à remesurer après la
+  fusion, sinon à confier à la session perf. p95 non disponible (seulement moyenne et max).
+- 2026-10-25 : **Commit sur `net-playtest` : 5fd9b87** « M6 R4-R5: lobby screens, lobby to match and back,
+  spectators, match statistics » (tout le travail de R4, R5.1-R5.5, C1-C7, D1-D3). **Fusion de `main` en cours** :
+  conflits de code (`HOLGameState.cpp` : événements des stats + `SendForumEvent` de V4 ; `HOLGameScreen.cpp` :
+  `StatsButtonName` + `AlertPanelName`) résolus en gardant les deux côtés ; localisation à régénérer ; « フォーラム »
+  de V4 remplacé par « 町の中心 » (mycrusader-ea prévenu). Boucle de fin de fusion lancée (localisation, build,
+  re-cuisson, `quick_check -Full` + `lobby`, `dotnet test`). Ensuite : commit de la fusion, accord des sessions,
+  avance rapide de `main`, journal et `EtapeDefini.md`.
+- 2026-10-25 : mycrusader-ea d'accord pour la fusion ; la décision D du terme japonais « 町の中心 » (Forum) est à
+  poser par ce chantier au report au GDD (clôture, R9 / E7), avec M6-Q10 à M6-Q14.
+- 2026-10-25 : **Dans `main` : 3713f76** (avance rapide, accord de mycrusader-ea et -e7 ; 5fd9b87 = R4-R5 et C / D,
+  c2bcfae et 3713f76 = fusions de `main`). Fin de fusion : localisation 311 textes (0 clé inconnue, 町の中心 partout),
+  build, re-cuisson, `quick_check -Full` (FAIL `net 2 clients` dû à la fusion : motifs du bandeau et du tableau
+  corrigés) puis `-Parts net,victory,lobby` **PASS**, `tests,smoke` **PASS** 165/165 après la 2e fusion, `dotnet test`
+  173/173. **Prochaine étape : essais E2 et E3 de l'utilisateur** (consigne à lui donner) ; à décider : `MaxServers`
+  (2 recommandé), « 本拠地 » → « 町の中心 » ? ; à remesurer : 9,7 ms/pas d'une seule bataille S3 (seuil 6).
