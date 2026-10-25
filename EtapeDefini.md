@@ -17,7 +17,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité)*
 
 ### Fin de partie
-- Conditions de victoire à coder : messages (V4, en cours dans Arwen, branche `victory-v4`), vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; V1 à V3 dans `main` ; chantier `VictoryInProgress.md`)*
+- Conditions de victoire à coder : vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; V1 à V4 dans `main` ; chantier `VictoryInProgress.md`)*
 
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
@@ -34,7 +34,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D445 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D450 (§ 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
