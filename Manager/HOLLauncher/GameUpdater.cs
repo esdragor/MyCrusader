@@ -20,13 +20,19 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
             var plan = await Task.Run(() => UpdatePlan.ForGame(gameDir, latest), cancel);
             var tempDir = FileDownloader.TempDirFor(gameDir, plan.Version);
             var downloader = new FileDownloader(http, managerUrl, tempDir);
-            var results = await downloader.DownloadAllAsync(plan, progress, cancel);
+            long received = 0;
+            var results = await downloader.DownloadAllAsync(plan, Relay(progress, p => received = p.BytesReceived), cancel);
             var ready = new List<ReadyFile>();
             foreach (var result in results)
             {
+                // A full file fetched after a failed patch: reported after every file, on top of the bytes so far.
+                var count = plan.Downloads.Count;
+                var before = received;
+                var fallback = Relay(progress, p => received = before + p.BytesReceived,
+                    p => new DownloadProgress(count, count, p.CurrentPath, before + p.BytesReceived));
                 ready.Add(result.Kind == DownloadKind.Full
                     ? new ReadyFile(result.Planned.File, result.LocalPath)
-                    : await PatchOrFullAsync(gameDir, tempDir, downloader, result, cancel));
+                    : await PatchOrFullAsync(gameDir, tempDir, downloader, result, fallback, cancel));
             }
             await Task.Run(() => UpdateApplier.Apply(gameDir, plan, ready), cancel);
             return new UpdateResult(true, $"Le jeu est à jour (version {plan.Version}).");
@@ -50,7 +56,8 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
     }
 
     private async Task<ReadyFile> PatchOrFullAsync(
-        string gameDir, string tempDir, FileDownloader downloader, DownloadResult patch, CancellationToken cancel)
+        string gameDir, string tempDir, FileDownloader downloader, DownloadResult patch,
+        IProgress<DownloadProgress>? progress, CancellationToken cancel)
     {
         var file = patch.Planned.File;
         var relative = file.Path.Replace('/', Path.DirectorySeparatorChar);
@@ -62,7 +69,21 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
             return new ReadyFile(file, output);
         }
         var full = await downloader.DownloadAsync(
-            patch.Planned with { Kind = DownloadKind.Full, RelativeUrl = patch.Planned.FullUrl }, cancel: cancel);
+            patch.Planned with { Kind = DownloadKind.Full, RelativeUrl = patch.Planned.FullUrl }, progress, cancel);
         return new ReadyFile(file, full.LocalPath);
+    }
+
+    /** Passes reports on (mapped) and lets the updater see them as they come; null when nobody listens. */
+    private static IProgress<DownloadProgress>? Relay(IProgress<DownloadProgress>? target, Action<DownloadProgress> seen,
+        Func<DownloadProgress, DownloadProgress>? map = null)
+        => target is null ? null : new SyncProgress(p =>
+        {
+            seen(p);
+            target.Report(map is null ? p : map(p));
+        });
+
+    private sealed class SyncProgress(Action<DownloadProgress> report) : IProgress<DownloadProgress>
+    {
+        public void Report(DownloadProgress value) => report(value);
     }
 }

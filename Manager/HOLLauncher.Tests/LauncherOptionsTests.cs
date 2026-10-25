@@ -28,4 +28,18 @@ public class LauncherOptionsTests
         var e = Assert.Throws<ArgumentException>(() => LauncherOptions.Parse(["--fast"], @"C:\Games\HOL"));
         Assert.Contains("--fast", e.Message);
     }
+
+    [Fact]
+    public void UpdateIsOffByDefault()
+    {
+        Assert.False(LauncherOptions.Parse([], @"C:\Games\HOL").UpdateAtStart);
+    }
+
+    [Fact]
+    public void UpdateOption()
+    {
+        var options = LauncherOptions.Parse(["--update", "--game-dir", @"D:\HOL"], @"C:\Games\HOL");
+        Assert.True(options.UpdateAtStart);
+        Assert.Equal(@"D:\HOL", options.GameDir);
+    }
 }

@@ -98,4 +98,13 @@ public class StatusViewTests
         Assert.True(view.RefreshEnabled);
         Assert.False(view.UpdateGameEnabled || view.UpdateLauncherEnabled || view.PlayEnabled);
     }
+
+    [Fact]
+    public void UpdatingDisablesEveryButtonAndKeepsTheTexts()
+    {
+        var view = StatusView.Updating(StatusView.From(Status("v1", "v2", launcher: "2")));
+        Assert.Equal("Version installée : v1", view.InstalledText);
+        Assert.Equal("Une mise à jour du jeu est disponible (v2).", view.StateText);
+        Assert.False(view.PlayEnabled || view.UpdateGameEnabled || view.UpdateLauncherEnabled || view.RefreshEnabled);
+    }
 }

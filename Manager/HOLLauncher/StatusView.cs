@@ -2,7 +2,7 @@ namespace HOLLauncher;
 
 /**
  * What the window shows, computed from a LauncherStatus (pure, tested): the French texts and which buttons are
- * enabled. The two update buttons only signal that an update exists (they do nothing yet: L6/L7); "Play" is shown but
+ * enabled. "Update the game" runs GameUpdater (L6c); "Update the launcher" does nothing yet (L7); "Play" is shown but
  * disabled until L8.
  */
 public sealed record StatusView(
@@ -43,6 +43,10 @@ public sealed record StatusView(
     public static StatusView Loading(string launcherCurrent = LauncherInfo.Version)
         => new("Version installée : …", "Dernière version : …", "Lecture en cours…", "", LauncherLine(launcherCurrent),
             false, false, false, false);
+
+    /** During a game update: the texts stay, every button is disabled (the update has its own "Cancel"). */
+    public static StatusView Updating(StatusView current)
+        => current with { PlayEnabled = false, UpdateGameEnabled = false, UpdateLauncherEnabled = false, RefreshEnabled = false };
 
     /** servers.json unreadable (InvalidDataException): shown as the state, only "Refresh" enabled. */
     public static StatusView Error(string message, string? installed, string launcherCurrent = LauncherInfo.Version)

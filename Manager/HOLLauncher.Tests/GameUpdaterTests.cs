@@ -148,6 +148,32 @@ public class GameUpdaterTests
     }
 
     [Fact]
+    public async Task FullFileAfterAFailedPatchReportsItsProgress()
+    {
+        using var game = InstalledGame();
+        var published = new Published();
+        published.Patches["Game.exe"] = Text("not a patch at all");
+        var reports = new List<DownloadProgress>();
+
+        var result = await new GameUpdater(published.Client(), HDiffPatchTool.Hpatchz)
+            .UpdateAsync(game.Root, Manager, published.Latest, new ListProgress(reports));
+
+        Assert.True(result.Success, result.Message);
+        // The end of the downloads is the first report with every file done; the full file comes after it.
+        var downloadsDone = reports.FindIndex(r => r.FilesDone == r.FileCount);
+        var fallback = reports.Skip(downloadsDone + 1).ToList();
+        Assert.NotEmpty(fallback);
+        Assert.All(fallback, r => Assert.Equal(("Game.exe", 3, 3), (r.CurrentPath, r.FilesDone, r.FileCount)));
+        Assert.Equal(reports[downloadsDone].BytesReceived + Gzip(NewExe).Length, fallback[^1].BytesReceived);
+    }
+
+    /** Collects reports as they come (Progress<T> would post them later). */
+    private sealed class ListProgress(List<DownloadProgress> reports) : IProgress<DownloadProgress>
+    {
+        public void Report(DownloadProgress value) => reports.Add(value);
+    }
+
+    [Fact]
     public async Task MissingHpatchzFallsBackToFullFile()
     {
         using var game = InstalledGame();
