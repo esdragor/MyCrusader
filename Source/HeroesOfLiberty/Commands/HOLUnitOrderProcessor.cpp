@@ -1026,7 +1026,9 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		EntityIds.Reset();
 		Positions.Reset();
 		float Radius = 0.f;
-		int32 NumRefused = 0;
+		int32 NumRefused = 0; // not its own (D288)
+		int32 NumNoBuildingAttack = 0; // on a building, with no building attack (the King, V5.1)
+		int32 NumOwnCampTarget = 0; // a target of its own camp (a server's order)
 		// An attack (J7b.3, D288): the target must be a unit alive, an enemy of the player who gave it (a client could send
 		// any identifier); a server's own order, an enemy of each unit.
 		FMassEntityHandle AttackTarget;
@@ -1087,12 +1089,12 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			// V5.1 (D345): a unit with no building attack (the King) obeys no order on a building; the others of the group do.
 			if (Order.Kind == EHOLOrderKind::AttackBuilding && EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).BuildingAttack <= 0)
 			{
-				++NumRefused;
+				++NumNoBuildingAttack;
 				continue;
 			}
 			if (TargetOwner != INDEX_NONE && !CampTable.AreHostile(EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, TargetOwner))
 			{
-				++NumRefused;
+				++NumOwnCampTarget;
 				continue;
 			}
 			Entities.Add(Entity);
@@ -1100,9 +1102,19 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			Positions.Add(FVector2D(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation()));
 			Radius = FMath::Max(Radius, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).Radius);
 		}
+		// Each refusal by its reason (EtapeDefini I): the King refused on a building no longer says "not its own".
 		if (NumRefused > 0)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Move order of slot %d: %d units ignored, not its own"), Order.PlayerIndex, NumRefused);
+		}
+		if (NumNoBuildingAttack > 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d on a building: %d units ignored, no building attack"), Order.PlayerIndex, NumNoBuildingAttack);
+		}
+		if (NumOwnCampTarget > 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d on %s: %d units ignored, a target of their own camp"), Order.PlayerIndex,
+				Order.Kind == EHOLOrderKind::AttackBuilding ? TEXT("a building") : *FString::Printf(TEXT("#%u"), Order.TargetUnitId), NumOwnCampTarget);
 		}
 		if (NumStale > 0)
 		{

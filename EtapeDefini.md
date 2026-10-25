@@ -39,13 +39,13 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
+- Unités qui s'empilent au même point en attaquant un bâtiment (groupe d'Hommes d'armes fondu en une masse sur le bord d'une Maison ennemie, essai du 2026-10-25)
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
 - `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo
-- Roi : le refus d'un ordre sur un bâtiment se logue « not its own » (texte commun, trompeur) ; activité « Attaque » qui reste après le départ de son agresseur
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 

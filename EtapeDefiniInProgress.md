@@ -450,3 +450,65 @@ maisons du slot 0 posées par `bodies`). `-Parts build` seul passe.
 - Accord de l'utilisateur (« go commit oui ») : correctif appliqué dans la copie principale et commité sur `main`
   (avec la ligne retirée d'`EtapeDefini.md`, seule notre partie du fichier, et le lanceur : questions tranchées, plan
   L0-L10) ; Elrond remis sur `main`, `IN_USE.txt` retiré. **H close.**
+
+## I — Roi : log du refus et activité « Attaque » qui reste
+
+Ligne d'`EtapeDefini.md` (« Aléas et petits restes ») : « Roi : le refus d'un ordre sur un bâtiment se logue « not its
+own » (texte commun, trompeur) ; activité « Attaque » qui reste après le départ de son agresseur » (vus en V5.5a et
+V5.5b, `VictoryInProgress.md`). Menée le 2026-10-25 par un sous-agent dans Arwen, branche `etape-king-leftovers` =
+`main` a080862, `IN_USE.txt` posé ; l'utilisateur absent : décisions prises et notées ici.
+
+- **(a) Cause** : `HOLUnitOrderProcessor.cpp` (boucle des unités d'un ordre) comptait dans un seul `NumRefused` les
+  trois refus (pas à lui, D288 ; ordre sur un bâtiment sans attaque de bâtiment, le Roi V5.1 ; cible de son propre camp,
+  ordre du serveur sans emplacement) et les loguait tous « Move order of slot %d: %d units ignored, not its own ».
+  **Correctif** : trois compteurs, trois textes. Le texte « not its own » est gardé pour le seul refus de propriété
+  (la partie `net` de `quick_check` le lit, ~l. 4340, inchangée) ; nouveaux : « Attack order of slot %d on a building:
+  %d units ignored, no building attack » et « Attack order of slot %d on a building|#id: %d units ignored, a target of
+  their own camp ». Aucun autre lecteur de l'ancien texte (grep `Source`, `Tools/Tests`, `Tools/Scenarios`).
+- **(b) Cause** : pas dans la riposte. Combat allumé, la cible retirée ou morte est lâchée au pas suivant
+  (`HOLCombatProcessor.cpp`, « Its target, if it still stands » : `bAttacking = false`) et une cible hors de portée
+  aussi. Mais `quick_check` (pas « victory regicide riposte ») retire l'Homme d'armes **et** fait `hol.Combat.Enabled 0`
+  dans la même image : combat éteint, le processeur ne faisait plus que finir les mourants et laissait tout
+  `FHOLCombatFragment` figé, donc `bAttacking` vrai → la vue (`GetUnitView`), le HUD, le geste et les clients montrent
+  « Attacking » tant que le combat reste éteint, sous le bandeau compris (la simulation continue après la fin). Même
+  défaut pour toute unité qui frappait (Hommes d'armes testés), pas propre au Roi. **Correctif** (+3 lignes) : combat
+  éteint, chaque unité perd `bAttacking` (« personne ne frappe ») ; sa cible est gardée, et rallumé, le pas normal la
+  lâche si elle est partie ou reprend le combat (un nouvel élan `StartAttack` : seul changement, sur une commande de
+  test). Rien d'autre du combat ne bouge.
+- **Tests rouges d'abord**, vraie chaîne (file de commandes + `UHOLUnitOrderProcessor`, `UHOLCombatProcessor` lancés
+  dans un monde de test comme `Forum.Builders`) : `HeroesOfLiberty.Victory.Regicide.RefusalLog` (Roi + unité ennemie
+  envoyés par l'emplacement 0 sur une Maison ennemie, puis une unité de l'emplacement 1 par un ordre sans emplacement
+  sur la Maison de son camp) et `…Regicide.RiposteEnds` (riposte du Roi contre un Homme d'armes, retiré combat allumé ;
+  un second retiré dans l'image où le combat s'éteint ; deux Hommes d'armes qui se battent, combat éteint puis rallumé).
+  Le monde de test reste au pas 0 et une unité ne cherche qu'un pas sur 4 selon son identifiant : `PlaceUnit(…, true)`
+  refait naître l'unité jusqu'à un identifiant multiple de 4. **Rouge** (build PASS 30 s, Regicide 6/8) : RefusalLog
+  (les 3 textes attendus absents, lus « 2 units ignored, not its own » et « slot -1: 1 units ignored, not its own »),
+  RiposteEnds (3 KO : Roi « Attacking » combat éteint, les deux Hommes d'armes aussi ; les témoins combat allumé verts).
+  **Vert** après correctif (build PASS 109 s, en file derrière Elrond) : Regicide 8/8, deux fois ; Victory + Combat +
+  Net 68/68.
+- **`quick_check`** (`-Parts victory`) : 3 contrôles ajoutés à « victory regicide » — après le retrait de l'agresseur,
+  le Roi n'est plus « Attacking » (rapport du HUD) ; nouveau pas « mark victory regicide refusal » (Maison ennemie par
+  `hol.Cheat.SpawnBuilding House 1 -1800 -1600`, `hol.Select.Army`, `hol.Select.OrderNear -1800 -1600`, `wait 1`) : ordre
+  « Order: 1 units attack House of slot 1 » et seul refus loggé « no building attack » ; sous le bandeau, pas
+  « Attacking ». **Rouge** rejoué hors jeu sur le `quick_game.log` d'avant (V5.5a) : 3 KO sur 3 (« EHOLUnitActivity::Attacking »
+  deux fois, pas de refus). 1er passage : le refus manquait (`frames 5` trop court, l'ordre part au pas suivant) →
+  `wait 1`. **Vert** : `-Parts victory` PASS en 83 s ; `-Parts victory,net` PASS en 139 s (texte « not its own » du
+  réseau toujours lu).
+- **Scénario** : `Tools/Scenarios/regicide.txt` inchangé (le refus ne se voit qu'au log, le combat n'y est jamais
+  éteint). L'utilisateur peut rejouer `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 regicide -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
+  et regarder, au temps 3, que le bloc du Roi ne garde pas « Attaque » après la mort du Lancier ; au temps 4, que le
+  Roi seul ne bouge pas sur la Maison (le log dit « no building attack »).
+- Fichiers : `Source/HeroesOfLiberty/Commands/HOLUnitOrderProcessor.cpp`, `Source/HeroesOfLiberty/Simulation/HOLCombatProcessor.cpp`,
+  `Source/HeroesOfLiberty/Tests/HOLRegicideTests.cpp`, `Tools/Tests/quick_check.ps1`. Non commité.
+
+### Reprise exacte (I)
+
+État : tout dans `HeroesOfLiberty-Arwen`, branche `etape-king-leftovers` = `main` a080862 + changements **non
+commités** (4 fichiers ci-dessus + ce fichier) ; `IN_USE.txt` posé.
+1. [x] Tests rouges, correctifs, tests verts (Regicide 8/8, Victory + Combat + Net 68/68).
+2. [x] `quick_check -Parts victory` PASS (83 s), `-Parts victory,net` PASS (139 s).
+3. [ ] Essai de l'utilisateur (facultatif, scénario `regicide` ci-dessus) puis son accord.
+4. [ ] Après accord : commit en anglais sur `etape-king-leftovers` (sans Co-Authored-By), retirer la ligne « Roi : le
+   refus… » d'`EtapeDefini.md` dans le même commit, fusionner dans `main`, libérer Arwen (`IN_USE.txt`), clore I ici.
+
+**Clos le 2026-10-25** : essai `regicide` validé par l'utilisateur (temps 3 et 4 conformes), commité et fusionné dans `main`. Vu pendant l'essai, noté dans `EtapeDefini.md` (« Retours d'essai ») : des unités qui attaquent un bâtiment s'empilent au même point.
