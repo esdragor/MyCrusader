@@ -47,7 +47,7 @@ Questions tranchées le 2026-10-25 (à reporter au GDD à la clôture, numéros 
 | Q | Décision |
 |---|---|
 | L-Q1 | Versions **sur le PC de l'utilisateur**, servies en HTTP par le gestionnaire de salons, par Tailscale |
-| L-Q2 | **Liste des fichiers avec empreinte** (SHA-256), seuls les changés téléchargés, **contenu découpé en chunks** |
+| L-Q2 | **Liste des fichiers avec empreinte** (SHA-256), seuls les changés téléchargés ; *revue après L0 (L-Q2 bis = C)* : **pas de chunks pour l'instant**, fichiers **compressés au transfert**, et **correctifs binaires** des fichiers changés (l'exe surtout), le fichier complet en secours |
 | L-Q3 | **C# (.NET 8), WinForms**, un seul `.exe` autonome, code commun avec le gestionnaire |
 | L-Q4 | Versions installée / disponible, progression, **nouveautés**, « Jouer », **« Mettre à jour le jeu »** et **« Mettre à jour le lanceur »** ; pas d'état du serveur (il est dans le jeu) |
 | L-Q5 | **Script de publication** dans `Tools/` (empaqueter, chunks, liste, nouveautés, dossier des versions du gestionnaire) ; le lanceur ne sert qu'aux joueurs |
@@ -61,11 +61,11 @@ après accord de cette session ou après la fusion de ses étapes en cours.
 |---|---|---|
 | L0 Mesure | deux empaquetages successifs (`Tools/Package/package.ps1`), le second après un changement de code seul : quels fichiers changent, leur taille | tableau dans ce journal ; découpage décidé |
 | L1 Bibliothèque commune | `Manager/HOLUpdate` : liste d'un dossier (chemin, taille, SHA-256), différence entre deux listes (à télécharger, à supprimer), lecture / écriture JSON | tests verts |
-| L2 Routes du gestionnaire | `GET /versions/latest` (version, liste, nouveautés, version du lanceur), `GET /versions/{v}/files/{chemin}` (reprise par `Range`), `GET /launcher/latest` ; `PROTOCOL.md` et sa version | tests verts |
-| L3 Chunks | réglage d'empaquetage (`bGenerateChunks`, étiquettes d'assets primaires) selon L0 ; contrôle de fumée du jeu empaqueté | `packaged_smoke` vert, paquets séparés |
-| L4 Publication | `Tools/Package/publish.ps1` : `package.ps1`, liste par `HOLUpdate`, `Nouveautes.txt`, copie dans le dossier des versions, « dernière » marquée, N anciennes gardées ; les nouveaux serveurs de partie partent de la dernière, ceux en cours finissent sur la leur | deux versions publiées de suite |
+| L2 Routes du gestionnaire | `GET /versions/latest` (version, liste, nouveautés, version du lanceur, correctifs disponibles depuis les versions gardées), `GET /versions/{v}/files/{chemin}` (compressé, reprise par `Range`), `GET /versions/{v}/patches/{depuis}/{chemin}`, `GET /launcher/latest` ; `PROTOCOL.md` et sa version | tests verts |
+| L3 Mesures (revue après L0) | (a) un changement de contenu (un asset, une table) : réécrit-il tout le `.ucas` ? (b) correctif binaire de l'exe entre deux versions de code : taille et durée avec `xdelta3`, `msdelta` (Windows, lisible depuis C#) et `HDiffPatch` ; outil choisi. Chunks seulement si (a) le demande | tableau ici, outil choisi |
+| L4 Publication | `Tools/Package/publish.ps1` : `package.ps1`, liste par `HOLUpdate`, `Nouveautes.txt`, copie dans le dossier des versions, « dernière » marquée, N anciennes gardées, **correctifs des fichiers changés depuis chacune** (outil de L3), fichiers compressés ; les nouveaux serveurs de partie partent de la dernière, ceux en cours finissent sur la leur | deux versions publiées de suite, correctif présent |
 | L5 Squelette du lanceur | `Manager/HOLLauncher` (WinForms, un seul exe autonome) : adresse lue dans le `servers.json` du jeu (M6-Q5), fenêtre (versions, nouveautés, « Jouer », deux boutons) | fenêtre qui lit `/versions/latest` |
-| L6 Mise à jour du jeu | différence, téléchargement dans un dossier temporaire, empreinte vérifiée, remplacement, fichiers retirés supprimés, barre de progression, reprise après coupure | tests verts avec `FakeServer` |
+| L6 Mise à jour du jeu | différence, téléchargement dans un dossier temporaire (**correctif si la version installée en a un, sinon fichier complet compressé**), correctif appliqué, empreinte vérifiée (échec : fichier complet), remplacement, fichiers retirés supprimés, barre de progression, reprise après coupure | tests verts avec `FakeServer` (correctif, secours) |
 | L7 Mise à jour du lanceur | nouvel exe téléchargé à côté, exe en cours renommé, relance, ancien supprimé au démarrage suivant | test vert |
 | L8 Jouer | lance le jeu ; jeu en retard : permis, avec l'avertissement « le serveur refusera cette version » | test vert |
 | L9 Première installation | dossier vide : tout télécharger ; consigne en 3 lignes pour les amis | test vert |
@@ -91,3 +91,42 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   jour existe ; « Jouer » reste permis avec un jeu en retard (solo), en prévenant que le serveur le refusera (M6-Q1).
   **L-Q5 = A** (conforme) : script de publication dans `Tools/`. Toutes les questions tranchées ; plan écrit
   (L0-L10). Rien codé.
+- 2026-10-25 : **L0 lancée** (feu vert de l'utilisateur), dans Elrond (`build-site-leftover` = `main` fb462ff,
+  `IN_USE.txt` posé), en sous-agent. Trois empaquetages : `L0-a` (fb462ff), `L0-a2` (même code, rien changé : la
+  cuisson et les `.pak` sont-ils identiques octet pour octet ?), `L0-b` (un changement de code seul, non commité). Pour
+  chacun, liste du dossier joueur `Windows\` (chemin, taille, SHA-256, `.pdb` à part) ; comparaison a/a2 et a/b ici.
+- 2026-10-25 : L0 : empaquetage `L0-a` (fb462ff tel quel) lancé dans Elrond, en tâche de fond (`package.ps1 -Version L0-a`).
+- 2026-10-25 : L0 : `L0-a` PASS en 4,5 min (cuisson déjà faite dans Elrond) : `Windows\` 3188 Mo, `WindowsServer\` 3025 Mo.
+  Liste de `L0-a` en cours, puis `L0-a2` (même code, rien changé).
+- 2026-10-25 : L0 : `L0-a2` PASS en 1,4 min. Listes a et a2 faites (50 fichiers, 620,5 Mo hors `.pdb` ; un `.pdb` de
+  2568 Mo). **a/a2 : 3 fichiers changés** (`Version.txt`, deux `Manifest_*.txt`), 0,25 Mo : `.pak/.ucas/.utoc` et exe
+  identiques octet pour octet. Puis `L0-b` (texte d'un `UE_LOG` de `HeroesOfLibertyGameModeBase.cpp`).
+- 2026-10-25 : L0 : `L0-b` PASS en 3,7 min (changement d'un texte de `UE_LOG`, fichier remis ensuite). Liste faite.
+- 2026-10-25 : **L0 close.** Dossier joueur `Windows\` : 50 fichiers, 620,5 Mo hors `.pdb` (+ `HeroesOfLiberty.pdb`
+  2568 Mo, jamais aux joueurs). Contenu cuit en **IoStore, un seul paquet, pas de chunks** (`bGenerateChunks` éteint) :
+  `HeroesOfLiberty-Windows.ucas` 129,6 Mo, `.utoc` 0,1 Mo, `.pak` 24,7 Mo (fichiers hors IoStore), `global.ucas`
+  3,3 Mo ; soit ~158 Mo de contenu. Le reste : exe du jeu **332 Mo** (Development, monolithique), DLL et redist ~120 Mo.
+
+  | Comparaison | Changés (hors `.pdb`) | À télécharger / total hors `.pdb` |
+  |---|---|---|
+  | a / a2 (rien changé) | 3 : `Version.txt`, `Manifest_NonUFSFiles`, `Manifest_UFSFiles` (dates) | 0,25 / 620,5 Mo (0,04 %) |
+  | a / b (code seul) | 5 : les mêmes + `Manifest_DebugFiles` + `HeroesOfLiberty.exe` | 332,2 / 620,5 Mo (54 %) |
+
+  Cuisson **déterministe** : sans changement, `.pak/.ucas/.utoc` et exe identiques octet pour octet ; un changement de
+  code seul ne touche pas le contenu cuit. Le poids d'une version de code est **l'exe** : il grandit de 1,5 Ko, tout
+  se décale, 97 % de ses blocs de 64 Ko diffèrent (100 % en blocs de 1 Mo) ; compressé (gzip) : 124 Mo.
+  **Proposition pour L3** : découper le contenu en chunks est **inutile pour l'instant** (158 Mo, intact d'une version
+  de code à l'autre, déjà sauté par la liste d'empreintes). À la place : fichiers compressés au transfert (gzip,
+  exe 332 → 124 Mo) dès L2/L6 ; L3 devient une mesure d'un changement de contenu, et les chunks seulement si un petit
+  changement d'asset réécrit tout le `.ucas` (130 Mo). **Incertain** : changement de contenu (non mesuré) ; exe en
+  Shipping (sûrement plus petit, mais tests et journaux à vérifier) ; un delta binaire de l'exe (msdelta, xdelta)
+  serait bien plus petit, non mesuré ; serveur non comparé (exe 313 Mo, `.ucas` 102 Mo, même schéma attendu).
+  Listes JSON et comparaisons dans le scratchpad de la session (`L0\`) ; archives `L0-*` supprimées d'Elrond.
+- 2026-10-25 : Elrond libéré (`IN_USE.txt` retiré, `build-site-leftover` = `main` fb462ff, propre). Question posée à
+  l'utilisateur : suivre la proposition de L0 (pas de chunks pour l'instant, compression au transfert, L3 = mesure
+  d'un changement de contenu) ou garder les chunks de L-Q2.
+- 2026-10-25 : **L-Q2 bis = C** (choix de l'utilisateur ; recommandation A) : pas de chunks pour l'instant,
+  compression au transfert, **et correctifs binaires dès maintenant** (une version de code : quelques Mo au lieu de
+  124 Mo compressés, à confirmer). Plan revu : L2 (routes des correctifs), L3 (mesures : changement de contenu,
+  taille des correctifs de l'exe avec xdelta3 / msdelta / HDiffPatch, outil choisi), L4 (correctifs depuis les N
+  versions gardées), L6 (appliquer, vérifier l'empreinte, fichier complet en secours). Prochaine étape : L1.
