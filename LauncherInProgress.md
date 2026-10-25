@@ -483,3 +483,6 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   ce que montre le lanceur), **D479** (L-Q5, scripts de publication et de kit), **D480** (L-Q6, sa propre mise à jour),
   **D481** (L-Q7, serveur par version, chantier réseau), **D482** (L-Q8, kit seul, box, DuckDNS, clé) ; prochain numéro
   D483. L'utilisateur autorise les commits de L13 sans redemander (« tu peux commit à chaque fois que tu en as besoin »).
+- 2026-10-25 : L13a : fait (Arwen, non commité) - lanceur : « Le jeu est installé (version X). » quand rien n'était installé (`GameUpdater`, `plan.Installed is null`), « à jour » sinon ; tests rouge puis vert (`GameUpdaterTests` : premier jet kit + mise à jour v1→v2) ; `make_kit.ps1` : exe différent sous le même `launcher\<lv>\` = FAIL (« raise LauncherInfo.Version … or pass -Force ») avant toute écriture, sauf `-Force` (en-tête) ; essai à blanc dans le scratchpad : PASS, FAIL (faux exe gardé), `-Force` PASS ; `dotnet test` 444 verts, 0 avertissement.
+- 2026-10-25 : **L13a commitée et fusionnée dans `main`** (relue, `dotnet test` 444 sur la branche puis sur `main`).
+  Arwen libre. Reste L13b (Elrond).
