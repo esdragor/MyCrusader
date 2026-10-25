@@ -967,3 +967,11 @@ R8, R9.
   corrigés) puis `-Parts net,victory,lobby` **PASS**, `tests,smoke` **PASS** 165/165 après la 2e fusion, `dotnet test`
   173/173. **Prochaine étape : essais E2 et E3 de l'utilisateur** (consigne à lui donner) ; à décider : `MaxServers`
   (2 recommandé), « 本拠地 » → « 町の中心 » ? ; à remesurer : 9,7 ms/pas d'une seule bataille S3 (seuil 6).
+- 2026-10-25 : **E2 / E3 prêts (R5.6).** Paquet `HeroesOfLiberty-Glorfindel\Saved\Packages\2026-10-25-3713f76\`
+  (jeu et serveur à la même version, `package.ps1` fait les deux) ; `Manager\` copié dans le paquet (`Gestionnaire.bat`,
+  `appsettings.json` : port 7700, `ServerExe` du paquet, `GameVersion` écrit en dur, **`MaxServers` 2**) ;
+  `Windows\servers.json` ; lanceurs `Joueur_Alice/Bob/Carol/Dan/Eve.bat` (fenêtrés, nom et Saved propres).
+  `packaged_smoke` **PASS** ; variante empaquetée de `lobby_match` (scratchpad) **PASS** en 129 s. Non essayés :
+  deux salons à la fois, gestionnaire par double-clic. À corriger un jour : le gestionnaire cherche `version.txt` à
+  côté de `ServerExe` (dans le paquet il est dans `WindowsServer\HeroesOfLiberty\`) ; `Manager\` et les `.bat` ne sont
+  pas produits par `package.ps1` (option `-Playtest` ?). **Consigne donnée à l'utilisateur ; on attend ses retours.**
