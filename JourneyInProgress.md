@@ -6843,7 +6843,7 @@ d'épée).
   et S4 6,02 ms FAIL au seuil 6 de D342). Cause : valeurs des unités (eb73ead), pas le code. **À trancher avec
   l'utilisateur (demain, pas de mesure avant)** : optimiser le combat (2,3 ms au repos, le plus gros poste de S3) pour
   repasser sous 6 ms, ou revoir le seuil des batailles (D342) avec les nouvelles valeurs. `rest_measures.ps1` adapté
-  (tout sur `main`) et ce journal : non commités. Puis **J7c.5**.
+  (tout sur `main`) et ce journal : commités (3763623). Puis **J7c.5**.
 
 ### 2026-10-21 — Retour d'essai 8 : hit and run de l'Archer
 
@@ -6964,6 +6964,76 @@ d'épée).
   (`hol.Select.TargetMargin 25`) : « est bien » → **marge par défaut 25 px** (`TargetMarginAt1080`, notes de
   `archer_kite`). Recompilé ; ligne retirée d'`EtapeDefini.md`. Suite : commit, fusion de `main` (2 commits de doc de
   J7c.4), `-Parts tests,combat` sur la base à jour, avance de `main`.
+
+### 2026-10-24 — Mesures au repos sur `main` 018c3a2
+
+- (`rest_measures.ps1`, 12,1 min ; processeur 3,8 % au départ, Edge et IMF ouverts) **FAIL** :
+  - S1 **PASS** 1,223 / 1,251 ms, 260 fps ; S2 **PASS de justesse** 2,903 / 3,034 / 2,832 ms (moyenne de 3 : 2,923),
+    252 fps ; S7 **PASS** 2,080 / 2,100 ms, 247 fps.
+  - S3 **FAIL** 6,855 / 6,251 ms (moyenne 6,553, seuil 6 de D342), 233 fps ; S4 **FAIL** 6,676 / 6,530 ms (moyenne
+    6,603), 218 fps. Plus lourds que le 2026-10-22 (6,18 / 6,02 ms) : +0,4 à +0,6 ms.
+  - S5 **FAIL** de peu : bande passante 32 247 o/s par client (seuil 32 000 de D218), erreur affichée 24,5 cm (seuil 25,
+    PASS). S5 combat **PASS** : 21 544 o/s, 12,2 cm.
+  - Résumé : `Saved_Tests\Logs\rest_measures_1024_0859.txt`.
+- **Optimisation sans changer le jeu** (demande de l'utilisateur : « optimise ce que tu peux mais ne casse aucune des
+  features », priorité aux features). Copie **`HeroesOfLiberty-Haldir`**, branche **`perf-combat`** depuis `main`
+  018c3a2, commit **e8a0e36** (non fusionné dans `main`). Règle tenue : même résultat au bit près, vérifié par les
+  empreintes des batailles (S3 `ae2cc906b35b4106`, S4 `673adfc4cc94e1d3`, identiques à chaque passe).
+  - Trace Insights de S3 : combat 2,5 ms (presque tout en série, la recherche de cible), pleine vitesse 1,9 ms (mais
+    22 ms de calcul par pas sur 16 fils : l'évitement, 11 µs par marcheur), séparation 1,0 ms.
+  - Combat (`hol.Combat.ParallelAhead`) : listes de contact des mêlées en marche et places prises autour des ennemis
+    vus par les chercheurs, faites d'avance en parallèle (un compte lu seulement si aucune unité n'est morte depuis) ;
+    distance d'abord dans `CountBodiesAround` ; `ChooseTarget` sur une seule distance au carré ; `IsInRange`,
+    `GetEdgeDistance`, `IsRangedAttack` en ligne.
+  - Évitement (`hol.Units.FastNear`) : cellules et corps hors de portée ou derrière écartés d'abord, table dense des
+    cellules (plafonnée à 8 cellules par unité : sinon S7 perdait 0,13 ms), termes de contact lus une fois,
+    `TimeToContact` en ligne ; balayage du glissement arrière préfiltré.
+  - Séparation : front en parallèle (`hol.Simulation.ParallelFront`), chevauchement testé avant le passage.
+  - Essayés sans gain (retirés) : préchargement des fragments des candidats, mémoire tassée des corps.
+  - **A/B au repos contre `main`** (alterné, Edge ouvert) : **S3 6,48 / 6,29 → 5,72 / 5,76 ms** ; **S4 6,58 / 6,42 →
+    5,98 / 5,95 ms** ; S7 2,20 / 2,17 → 2,09 / 2,10 ms ; S2 inchangé (2,95 / 2,84 contre 2,94 / 2,85).
+  - `quick_check -Full` **PASS** (138/138, 874 s), `-Parts bodies,rocks` **PASS** ; après le plafond,
+    `-Parts tests,combat,move,formation` **PASS**.
+  - **Reste** : S4 passe sous 6 ms de peu (~0,05 ms de marge) ; la recherche de cible du combat (~1,5 ms en série,
+    ~100 candidats par recherche) reste le gros poste. Suite : relecture par l'utilisateur, fusion dans `main`, puis
+    mesures au repos (`rest_measures.ps1`).
+- **Fusion de `perf-combat` dans `main`** (avance rapide, `main` = e8a0e36), puis mesures au repos
+  (`rest_measures.ps1`, 11,8 min ; l'autre agent mis en pause, processeur 1 à 9 % avant chaque passe) **FAIL** à cause
+  de S5 seul :
+  - S1 **PASS** 1,301 / 1,242 ms ; S2 **PASS de justesse** 2,951 / 3,005 / 2,986 ms (moyenne de 3 : 2,981) ; S7
+    **PASS** 2,054 / 2,038 ms.
+  - S3 **PASS** 5,651 / 5,872 ms (moyenne 5,762, seuil 6) ; S4 **PASS de justesse** 5,894 / 6,089 / 6,006 ms (moyenne
+    de 3 : 5,996).
+  - S5 **FAIL** de peu : 32 060 o/s par client (seuil 32 000), erreur affichée 24,2 cm (PASS). S5 combat **PASS** :
+    22 294 o/s, 12,5 cm.
+  - Résumé : `Saved_Tests\Logs\rest_measures_1024_1743.txt`.
+  - **Reste** : S4 et S2 sur le fil (0,004 et 0,02 ms de marge) ; S5 dépasse la bande passante de 0,2 % (non examiné).
+- **Suite de l'optimisation (demande : « vas y » aux pistes proposées)**. Copie `HeroesOfLiberty-Haldir`, branche
+  **`perf-target`** (depuis `main` 174a0f4, `main` 8fcb0f4 fusionné dedans), commits **46e3995** et **a37995c**, non
+  fusionnée dans `main`.
+  - **Recherche de cible en parallèle** (`hol.Combat.ParallelSearch`, 1 par défaut ; 2 = contrôle ; 0 = comme avant) :
+    les recherches des unités prévues sont faites d'avance en parallèle, une fois les flèches tombées ; à son tour, une
+    unité dont la cible et le dernier attaquant n'ont pas changé reprend ce choix, pesé seulement contre les candidats
+    changés depuis (cible, attaquants, mort, places). 92 % des recherches le reprennent ; combat 2,48 → 1,73 ms par pas
+    (trace).
+  - Contrôle : `quick_check -Full` avec le mode 2 par défaut **PASS** (146/146), **0 écart** dans tous les journaux
+    (combats entre alliés compris) ; S3 / S4 en mode 2 : 0 écart, empreintes inchangées.
+  - A/B contre `main` (machine partagée avec d'autres agents, 3 à 17 % de processeur avant les passes, à refaire au
+    repos) : S3 7,31 / 7,09 → **6,01 / 5,37 ms** ; S4 6,29 / 6,56 → **5,84 / 5,88 ms** ; S2 3,04 / 3,04 contre
+    3,94 (passe isolée) / 3,01 ; S7 2,63 / 2,37 contre 2,67 / 2,24. Seul ensuite : S3 5,39, S4 5,94 ms.
+  - **S5, bit « immobile »** (une unité à l'arrêt n'envoie plus sa vitesse nulle, 40 bits au lieu de 57 ; un marcheur
+    inchangé) : **sans gain mesurable** sur S5, qui mesure une marche (32 558 / 32 513 o/s contre 32 433 / 32 347 sans
+    lui). Non commité, gardé dans le stash « moving bit » de Haldir.
+  - **S5 est cassé sur `main` depuis 174a0f4** (M6 R3) : le serveur dédié empaqueté annonce la version « unknown » et
+    refuse les clients de l'éditeur (« dev ») : « Version mismatch: server unknown, client dev ». Mesuré ici avec un
+    contournement temporaire de `HOLVersion.cpp` (retiré, jamais commité). Sur ce code, S5 marche ~32 400 o/s : FAIL.
+  - **À faire** : relire et fusionner `perf-target` ; réparer S5 (version du serveur de test) ; pour S5 sous 32 000 o/s,
+    réduire les bits des marcheurs (un peu de précision perdue) ou revoir D218 : décision de l'utilisateur.
+- **Fusion de `perf-target` dans `main`** (avance rapide, `main` = a37995c), puis mesures au repos sans S5 (cassé,
+  voir plus haut ; `chapter_measures.ps1 -NoS5`, 7,5 min, processeur 2 à 19 % avant les passes, d'autres agents
+  actifs) **PASS** : S1 1,269 / 1,239 ms ; S2 2,874 / 2,963 (moyenne 2,919) ; S7 2,313 / 2,307 ; **S3 5,304 / 5,940
+  (moyenne 5,622)** ; **S4 5,687 / 6,054 / 5,920 (moyenne de 3 : 5,887)**. S7 plus lent qu'au midi (2,05) : à
+  surveiller (l'évitement par camp de 8fcb0f4, ou la charge).
 - (J7c.4, 2026-10-24 soir) **Diagnostic de S5 sans mesure** (relecture des journaux du dernier S5, `-Stage`, 21:23,
   `s5_report.py`) : 32 073 o/s, **1,90 envoi par unité et par seconde** (1,77-1,79 du 2026-10-22 au J6) ; état 57 bits
   inchangé, « le reste » 5,98 Ko/s inchangé. **Les +7 % viennent du nombre d'envois** : la marche est moins prévisible
@@ -6982,3 +7052,15 @@ d'épée).
   Ko/s, comme `main` aujourd'hui** : le dépassement de 0,2-2 % est le niveau réel depuis au moins le 22. Elrond rendue
   (`allied-combat` 8fcb0f4, recompilée). Reste la décision de l'utilisateur : revoir D218 (≈ 33-34 Ko/s), ou gagner
   des bits sur les marcheurs ; le seuil d'envoi (35 cm) ne peut pas monter, l'erreur affichée est déjà à 24-25 cm.
+
+- (J7c.4, 2026-10-25) **Choix de l'utilisateur** (recommandation) : **essai borné puis repli** : vitesse à 10 cm/s sur
+  8 bits (55 bits par état au lieu de 57), gardée si S5 passe sous 32 000 o/s avec l'écart sous 25 cm. Elrond, branche
+  `s5-velocity` depuis `main` 04741b5, compilé (tests et rapport de S5 ajustés). Deux recuissons refusées (« conflicting
+  instance of AutomationTool » : la cuisson de Glorfindel), la troisième passe. **S5** 31 475 o/s, écart 24,4 cm ;
+  **2e S5** 31 163 o/s, **écart 24,9 cm** ; **S5 en combat** 22 269 o/s, 12,5 cm : tout PASS, mais l'écart n'a plus de
+  marge (le problème passe de la bande passante à l'écart, que le joueur voit).
+- (J7c.4, 2026-10-25) **Choix de l'utilisateur** (recommandation) : **revoir D218** → **D450** : bande passante
+  **≤ 34 Ko/s par client** (envoi du serveur ≤ ~272 Ko/s), vitesse inchangée (5 cm/s, 9 bits, 57 bits par état). Essai
+  annulé, branche `s5-velocity` supprimée, Elrond rendue (`allied-combat` 8fcb0f4). `s5_report.py` : budget par défaut
+  34 000. GDD (tableau des seuils, D218, D450, prochain numéro D451) et `EtapeDefini.md` à jour. **J7c.4 close** :
+  S5 à 32,1-32,6 Ko/s passe sous le nouveau seuil. Suite : **J7c.5** (clôture de J7 au GDD).

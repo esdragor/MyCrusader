@@ -6,8 +6,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## À faire
 
 ### Parcours J7c — le tir
-- J7c.4 S5 au-dessus du seuil de bande passante (32 073 o/s pour 32 000, erreur 24,2 cm PASS) *(S3 / S4 repassés sous 6 ms par `perf-combat` et `perf-target` ; pas de régression : le même code du 22/10 donne aussi 32,2-32,6 Ko/s, le 29 924 de ce jour-là n'est pas reproductible ; à trancher : revoir D218 ou gagner des bits sur les marcheurs)*
-- J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6, décisions de J7c.4) *(après J7c.4)*
+- J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6, décisions de J7c.4, D450)
 
 ### Animations
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
@@ -34,7 +33,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D450 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D451 (§ 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
