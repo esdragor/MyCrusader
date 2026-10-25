@@ -404,3 +404,72 @@ chef, Nomade) :
 
 Ce fichier sert aussi de **référence partagée** entre le test C# de R2.8 et le test C++ de R3.1
 (`Manager/HOLManager.Tests/Data/match_v2_reference.json`, créé en R2.8 ; le test C# le compare au JSON produit).
+
+## Versions du jeu (lanceur, L2)
+
+Routes lues par le lanceur (`LauncherInProgress.md`). Elles **s'ajoutent** au protocole sans rien changer
+(`protocolVersion` reste 1) ; la réponse de `/versions/latest` porte son propre `format` (1). Erreurs : même corps
+`{ "error", "message" }` que plus haut.
+
+Dossier des versions : réglage `VersionsDir` (défaut `Versions`, relatif au dossier du gestionnaire), rempli par le
+script de publication (L4) :
+
+```
+<versions>/latest.txt                          nom de la dernière version
+<versions>/<v>/manifest.json                   liste des fichiers (HOLUpdate : chemin, taille, SHA-256)
+<versions>/<v>/notes.txt                       nouveautés (facultatif)
+<versions>/<v>/files/<chemin>.gz               fichier compressé (gzip) à la publication
+<versions>/<v>/patches/<depuis>/<chemin>.patch correctif binaire depuis la version <depuis> (L3/L4)
+<versions>/launcher/latest.txt                 version du lanceur
+<versions>/launcher/<lv>/HOLLauncher.exe
+```
+
+Noms de version (`{v}`, `{depuis}`, contenu des `latest.txt`) : `[A-Za-z0-9._-]+`, sauf `.` et `..`.
+
+### `GET /versions/latest`
+
+```json
+{
+  "format": 1,
+  "version": "2026-10-25-b",
+  "manifest": { "format": 1, "version": "2026-10-25-b",
+                "files": [ { "path": "HeroesOfLiberty.exe", "size": 348127232, "sha256": "3f5a…" } ] },
+  "notes": "Archers plus rapides.",
+  "patchesFrom": [ "2026-10-24", "2026-10-25-a" ],
+  "launcherVersion": "L3"
+}
+```
+
+`version` est le nom du dossier (celui des routes ci-dessous) ; `manifest` est `manifest.json`, relu et vérifié
+(chemins sûrs, empreintes) ; `notes` vide sans `notes.txt` ; `patchesFrom` : les dossiers de `<v>/patches/`, triés ;
+`launcherVersion` vide sans `launcher/latest.txt`.
+
+| `error` | HTTP | Quand |
+|---|---|---|
+| `no_version` | 404 | pas de `latest.txt`, nom illégal, ou dossier absent |
+| `bad_manifest` | 500 | `manifest.json` illisible ou refusé ; `message` dit pourquoi |
+
+### `GET /versions/{v}/files/{chemin}`
+
+Envoie `<v>/files/<chemin>.gz` **tel quel** (`application/gzip`) : le lanceur décompresse puis vérifie l'empreinte de
+la liste. **Reprise** par l'en-tête `Range` (réponse 206). `<chemin>` doit être **exactement** un `path` de la liste
+de `v` (casse comprise) ; le fichier résolu doit en plus rester sous `<versions>/<v>/`.
+
+| `error` | HTTP | Quand |
+|---|---|---|
+| `invalid_version` | 400 | `{v}` hors des règles de nom |
+| `version_not_found` | 404 | pas de `<v>/manifest.json` |
+| `file_not_found` | 404 | chemin hors de la liste, ou `.gz` absent |
+| `bad_manifest` | 500 | liste de `v` illisible |
+
+### `GET /versions/{v}/patches/{depuis}/{chemin}`
+
+Envoie `<v>/patches/<depuis>/<chemin>.patch` (`application/octet-stream`), `Range` comme plus haut. Mêmes
+vérifications (`{depuis}` compris) ; correctif absent → `patch_not_found` (404) : le lanceur prend alors le fichier
+complet.
+
+### `GET /launcher/latest`
+
+Envoie `launcher/<lv>/HOLLauncher.exe` (`application/octet-stream`), `Range` comme plus haut, avec deux en-têtes,
+présents aussi sur une réponse 206 : **`X-Launcher-Version`** (`<lv>`) et **`X-Launcher-Sha256`** (empreinte du
+fichier entier, calculée une fois par fichier). Pas de lanceur publié → `launcher_not_found` (404).
