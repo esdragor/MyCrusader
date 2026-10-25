@@ -29,6 +29,7 @@ public class StatusViewTests
         Assert.Equal("Version installée : v1", view.InstalledText);
         Assert.Equal("Une mise à jour du jeu est disponible (v2).", view.StateText);
         Assert.True(view.UpdateGameEnabled);
+        Assert.Equal("Mettre à jour le jeu", view.UpdateGameText);
     }
 
     [Fact]
@@ -38,6 +39,7 @@ public class StatusViewTests
         Assert.Equal("Version installée : pas installé", view.InstalledText);
         Assert.Equal("Le jeu n'est pas installé ; la version v2 est disponible.", view.StateText);
         Assert.True(view.UpdateGameEnabled);
+        Assert.Equal("Installer le jeu", view.UpdateGameText);
     }
 
     [Fact]
@@ -47,11 +49,13 @@ public class StatusViewTests
         var view = StatusView.From(status);
         Assert.Equal("Version installée : v1", view.InstalledText);
         Assert.Equal("Dernière version : inconnue", view.LatestText);
-        Assert.Equal("Serveur injoignable : connection refused", view.StateText);
+        Assert.Equal("Serveur injoignable : connection refused Vous pouvez jouer en solo.", view.StateText);
         Assert.False(view.UpdateGameEnabled);
         Assert.False(view.UpdateLauncherEnabled);
         Assert.True(view.RefreshEnabled);
         Assert.False(view.NotesVisible);
+        Assert.True(view.PlayEnabled);
+        Assert.Null(view.PlayConfirmation);
     }
 
     [Fact]
@@ -72,10 +76,24 @@ public class StatusViewTests
     }
 
     [Fact]
-    public void PlayDisabledUntilL8()
+    public void PlayFollowsPlayRules()
     {
-        Assert.False(StatusView.From(Status("v2", "v2")).PlayEnabled);
-        Assert.False(StatusView.From(Status("v1", "v2")).PlayEnabled);
+        var upToDate = StatusView.From(Status("v2", "v2"));
+        Assert.True(upToDate.PlayEnabled);
+        Assert.Null(upToDate.PlayConfirmation);
+        var outdated = StatusView.From(Status("v1", "v2"));
+        Assert.True(outdated.PlayEnabled);
+        Assert.Equal("Le jeu n'est pas à jour : le serveur refusera cette version. Jouer quand même (en solo) ?",
+            outdated.PlayConfirmation);
+        Assert.False(StatusView.From(Status(null, "v2")).PlayEnabled);
+    }
+
+    [Fact]
+    public void UnreachableWithoutGameCannotPlay()
+    {
+        var view = StatusView.From(LauncherStatus.Compute(null, new LatestResult(LatestOutcome.Unreachable, null, "x"), "1"));
+        Assert.False(view.PlayEnabled);
+        Assert.Equal("Serveur injoignable : x", view.StateText);
     }
 
     [Fact]

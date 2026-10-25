@@ -100,8 +100,19 @@ public sealed class FileDownloader
         return new DownloadResult(planned, DownloadKind.Full, final);
     }
 
+    /**
+     * Fetches any route of the manager into part, resuming it like the game's files (L7: the launcher itself). answer
+     * sees the successful answer (its headers) and the bytes kept from part (0 when restarting) before the body;
+     * received reports the bytes received by this call. Errors: UpdateDownloadException, the .part kept on a cut.
+     */
+    public Task FetchRouteAsync(string relativeUrl, string part, Action<HttpResponseMessage, long>? answer = null,
+        IProgress<long>? received = null, CancellationToken cancel = default)
+        => FetchAsync(relativeUrl, part, new Counter(received is null ? null : new Relay(received.Report)),
+            allowPatchNotFound: false, cancel, answer);
+
     /** Fetches a route into part, resuming it. false only for a 404 patch_not_found when allowed. */
-    private async Task<bool> FetchAsync(string relativeUrl, string part, Counter counter, bool allowPatchNotFound, CancellationToken cancel)
+    private async Task<bool> FetchAsync(string relativeUrl, string part, Counter counter, bool allowPatchNotFound,
+        CancellationToken cancel, Action<HttpResponseMessage, long>? answer = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(part)!);
         var existing = File.Exists(part) ? new FileInfo(part).Length : 0;
@@ -125,7 +136,7 @@ public sealed class FileDownloader
             {
                 // The .part is not a prefix of this file any more (or already whole): start over.
                 File.Delete(part);
-                return await FetchAsync(relativeUrl, part, counter, allowPatchNotFound, cancel);
+                return await FetchAsync(relativeUrl, part, counter, allowPatchNotFound, cancel, answer);
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -138,6 +149,7 @@ public sealed class FileDownloader
                 throw new UpdateDownloadException($"{relativeUrl}: HTTP {(int)response.StatusCode}{(error is null ? "" : $" {error}")}");
             }
             var append = response.StatusCode == HttpStatusCode.PartialContent && existing > 0;
+            answer?.Invoke(response, append ? existing : 0);
             try
             {
                 await using var source = await response.Content.ReadAsStreamAsync(cancel);
