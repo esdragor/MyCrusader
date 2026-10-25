@@ -1,0 +1,271 @@
+using System.IO.Compression;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using HOLUpdate;
+
+namespace HOLLauncher.Tests;
+
+public class GameUpdaterTests
+{
+    private const string Manager = "http://host:7700";
+
+    private static readonly byte[] OldExe = Content("exe", 1, 20000);
+    private static readonly byte[] NewExe = Content("exe", 2, 20000);
+
+    /** Mostly shared bytes with a seed-dependent part, so hdiffz gives a real, small patch. */
+    private static byte[] Content(string name, int seed, int size)
+    {
+        var bytes = new byte[size];
+        new Random(42).NextBytes(bytes);
+        var tail = Encoding.UTF8.GetBytes($"{name} version {seed}");
+        tail.CopyTo(bytes, size / 2);
+        return bytes;
+    }
+
+    private static byte[] Text(string text) => Encoding.UTF8.GetBytes(text);
+
+    private static FileEntry Entry(string path, byte[] content)
+        => new(path, content.Length, Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant());
+
+    private static byte[] Gzip(byte[] content)
+    {
+        using var memory = new MemoryStream();
+        using (var gzip = new GZipStream(memory, CompressionLevel.Optimal))
+        {
+            gzip.Write(content);
+        }
+        return memory.ToArray();
+    }
+
+    /** A published v2 on a fake manager: full files gzipped, patches from v1; keeps the requested paths. */
+    private sealed class Published
+    {
+        public Dictionary<string, byte[]> Files { get; } = new(StringComparer.Ordinal)
+        {
+            ["Version.txt"] = Text("v2"),
+            ["Game.exe"] = NewExe,
+            ["Data/New.pak"] = Text("new pak"),
+            ["servers.json"] = Text("""{ "managers": [ { "url": "http://127.0.0.1:7700" } ] }"""),
+            ["HOLLauncher.exe"] = Text("launcher v2"),
+        };
+
+        public Dictionary<string, byte[]> Patches { get; } = [];
+        public List<string> Requests { get; } = [];
+
+        public LatestVersion Latest => new("v2", new VersionManifest("v2", Files.Select(f => Entry(f.Key, f.Value))), "", ["v1"], "");
+
+        public HttpClient Client() => new(new FakeHandler(Answer));
+
+        private HttpResponseMessage Answer(HttpRequestMessage request)
+        {
+            var path = Uri.UnescapeDataString(request.RequestUri!.AbsolutePath);
+            Requests.Add(path);
+            byte[]? body = null;
+            if (path.StartsWith("/versions/v2/files/") && Files.TryGetValue(path["/versions/v2/files/".Length..], out var file))
+            {
+                body = Gzip(file);
+            }
+            else if (path.StartsWith("/versions/v2/patches/v1/"))
+            {
+                Patches.TryGetValue(path["/versions/v2/patches/v1/".Length..], out body);
+            }
+            if (body is null)
+            {
+                var error = path.Contains("/patches/") ? "patch_not_found" : "file_not_found";
+                return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    Content = new StringContent($$"""{ "error": "{{error}}", "message": "no" }""", Encoding.UTF8, "application/json"),
+                };
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(body) };
+        }
+    }
+
+    /** An installed v1, from a launcher update (installed.json) unless fromZip. */
+    private static TempDir InstalledGame(bool fromZip = false)
+    {
+        var game = new TempDir();
+        game.Write("Version.txt", "v1");
+        game.Write("Game.exe", OldExe);
+        game.Write("Data/Old.pak", "old pak");
+        game.Write("Stray.txt", "player's file");
+        game.Write("HOLLauncher.exe", "launcher v1");
+        game.Write("hpatchz.exe", "patcher");
+        game.Write("servers.json", """{ "managers": [ { "url": "http://friend:7700" } ] }""");
+        if (!fromZip)
+        {
+            var list = new VersionManifest("v1",
+                [Entry("Version.txt", Text("v1")), Entry("Game.exe", OldExe), Entry("Data/Old.pak", Text("old pak"))]);
+            Directory.CreateDirectory(Path.Combine(game.Root, UpdatePlan.WorkDirName));
+            list.Save(UpdatePlan.InstalledListPath(game.Root));
+        }
+        return game;
+    }
+
+    private static Published WithPatch()
+    {
+        var published = new Published();
+        published.Patches["Game.exe"] = HDiffPatchTool.Diff(OldExe, NewExe);
+        return published;
+    }
+
+    private static Task<UpdateResult> Update(TempDir game, Published published, string? hpatchz = null)
+        => new GameUpdater(published.Client(), hpatchz ?? HDiffPatchTool.Hpatchz).UpdateAsync(game.Root, Manager, published.Latest);
+
+    private static string Read(TempDir game, string path) => File.ReadAllText(Path.Combine(game.Root, path));
+
+    private static bool Exists(TempDir game, string path) => File.Exists(Path.Combine(game.Root, path));
+
+    [Fact]
+    public async Task PatchIsAppliedAndFilesAreReplaced()
+    {
+        using var game = InstalledGame();
+        var published = WithPatch();
+
+        var result = await Update(game, published);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.Contains("/versions/v2/patches/v1/Game.exe", published.Requests);
+        Assert.DoesNotContain("/versions/v2/files/Game.exe", published.Requests);
+        Assert.Equal("v2", Read(game, "Version.txt"));
+        Assert.False(Directory.Exists(FileDownloader.TempDirFor(game.Root, "v2")));
+    }
+
+    [Fact]
+    public async Task CorruptPatchFallsBackToFullFile()
+    {
+        using var game = InstalledGame();
+        var published = new Published();
+        published.Patches["Game.exe"] = Text("not a patch at all");
+
+        var result = await Update(game, published);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.Contains("/versions/v2/files/Game.exe", published.Requests);
+    }
+
+    [Fact]
+    public async Task MissingHpatchzFallsBackToFullFile()
+    {
+        using var game = InstalledGame();
+        var published = WithPatch();
+
+        var result = await Update(game, published, hpatchz: Path.Combine(game.Root, "nowhere", "hpatchz.exe"));
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.Contains("/versions/v2/files/Game.exe", published.Requests);
+    }
+
+    [Fact]
+    public async Task AddedFileIsInstalled()
+    {
+        using var game = InstalledGame();
+
+        var result = await Update(game, WithPatch());
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("new pak", Read(game, "Data/New.pak"));
+    }
+
+    [Fact]
+    public async Task RemovedFileListedInInstalledJsonIsDeleted()
+    {
+        using var game = InstalledGame();
+
+        var result = await Update(game, WithPatch());
+
+        Assert.True(result.Success, result.Message);
+        Assert.False(Exists(game, "Data/Old.pak"));
+    }
+
+    [Fact]
+    public async Task WithoutInstalledJsonNothingIsDeleted()
+    {
+        using var game = InstalledGame(fromZip: true);
+
+        var result = await Update(game, WithPatch());
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("old pak", Read(game, "Data/Old.pak"));
+    }
+
+    [Fact]
+    public async Task UnknownLauncherAndServersFilesAreKept()
+    {
+        using var game = InstalledGame();
+        var published = WithPatch();
+
+        var result = await Update(game, published);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("player's file", Read(game, "Stray.txt"));
+        Assert.Equal("launcher v1", Read(game, "HOLLauncher.exe"));
+        Assert.Equal("patcher", Read(game, "hpatchz.exe"));
+        Assert.Contains("friend", Read(game, "servers.json"));
+        Assert.DoesNotContain("/versions/v2/files/servers.json", published.Requests);
+        Assert.DoesNotContain("/versions/v2/files/HOLLauncher.exe", published.Requests);
+    }
+
+    [Fact]
+    public async Task MissingServersJsonIsInstalled()
+    {
+        using var game = InstalledGame();
+        File.Delete(Path.Combine(game.Root, "servers.json"));
+
+        var result = await Update(game, WithPatch());
+
+        Assert.True(result.Success, result.Message);
+        Assert.Contains("127.0.0.1", Read(game, "servers.json"));
+    }
+
+    [Fact]
+    public async Task InstalledJsonIsWrittenWithoutLauncherFiles()
+    {
+        using var game = InstalledGame();
+
+        var result = await Update(game, WithPatch());
+
+        Assert.True(result.Success, result.Message);
+        var list = VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root));
+        Assert.Equal("v2", list.Version);
+        Assert.Equal(["Data/New.pak", "Game.exe", "Version.txt"], list.Files.Select(f => f.Path));
+    }
+
+    [Fact]
+    public async Task FailureInTheMiddleKeepsOldVersionTxt()
+    {
+        using var game = InstalledGame();
+        game.Write("Sub", "a file where the new version wants a folder");
+        var published = WithPatch();
+        published.Files["Sub/C.txt"] = Text("c");
+
+        var result = await Update(game, published);
+
+        Assert.False(result.Success);
+        Assert.Equal("v1", Read(game, "Version.txt"));
+        Assert.Equal("v1", VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root)).Version);
+    }
+
+    [Fact]
+    public async Task LockedFileGivesErrorAndReplacesNothing()
+    {
+        using var game = InstalledGame();
+        var published = WithPatch();
+        UpdateResult result;
+        using (new FileStream(Path.Combine(game.Root, "Game.exe"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            result = await Update(game, published);
+        }
+
+        Assert.False(result.Success);
+        Assert.Contains("fermez le jeu", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(OldExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.False(Exists(game, "Data/New.pak"));
+        Assert.True(Exists(game, "Data/Old.pak"));
+        Assert.Equal("v1", Read(game, "Version.txt"));
+    }
+}
