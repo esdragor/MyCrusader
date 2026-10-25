@@ -486,3 +486,10 @@ après accord de cette session ou après la fusion de ses étapes en cours.
 - 2026-10-25 : L13a : fait (Arwen, non commité) - lanceur : « Le jeu est installé (version X). » quand rien n'était installé (`GameUpdater`, `plan.Installed is null`), « à jour » sinon ; tests rouge puis vert (`GameUpdaterTests` : premier jet kit + mise à jour v1→v2) ; `make_kit.ps1` : exe différent sous le même `launcher\<lv>\` = FAIL (« raise LauncherInfo.Version … or pass -Force ») avant toute écriture, sauf `-Force` (en-tête) ; essai à blanc dans le scratchpad : PASS, FAIL (faux exe gardé), `-Force` PASS ; `dotnet test` 444 verts, 0 avertissement.
 - 2026-10-25 : **L13a commitée et fusionnée dans `main`** (relue, `dotnet test` 444 sur la branche puis sur `main`).
   Arwen libre. Reste L13b (Elrond).
+- 2026-10-25 : L13b : Elrond (`launcher-l13b`, rien de commité) : règle pure `CanCreateLobbyAfter` (`HOLManagerErrorText.h/.cpp` : faux seulement pour `bad_key`) ; `UHOLMultiplayerScreen::ShowLobbies` grise / rend « Créer un salon » à chaque réponse de la liste (l'écran ne grisait rien pour « injoignable » : celui-ci garde le bouton). Test parent renommé `HeroesOfLiberty.UI.ManagerErrorText.Codes` (+ 4 contrôles de la règle).
+- 2026-10-25 : L13b : éditeur compilé (PASS) ; GatherText + `fill_po.py` (316 textes en / ja, 0 clé inconnue) + GatherText : `HOLManagerErrorText,BadKey` dans les trois `.po` (fr / en « Access key refused: reinstall the game with the kit you received. » / ja) et les `.locres` ; tests verts : `UI.ManagerErrorText.Codes` (lancé pour la 1re fois, vert : pas de défaut caché), `…ReturnToLobby`, `UI.MatchLossText` (3/3).
+- 2026-10-25 : **L13b commitée et fusionnée dans `main`** (e191fb6 ; éditeur compilé, 3 tests UE verts dont le test
+  parent renommé `…ManagerErrorText.Codes`, lancé pour la première fois). Elrond libre. **L13 finie : chantier lanceur
+  clos sauf l'essai avec un ami** (reporté par l'utilisateur ; marche à suivre plus haut). Non vu : le grisage de
+  « Créer un salon » dans le jeu lancé (règle testée seulement) ; cible serveur non recompilée depuis L13b (rien de
+  serveur n'a changé).
