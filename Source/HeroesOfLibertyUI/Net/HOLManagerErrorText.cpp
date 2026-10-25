@@ -4,6 +4,11 @@
 
 #define LOCTEXT_NAMESPACE "HOLManagerErrorText"
 
+bool CanCreateLobbyAfter(const FHOLManagerError& ListError)
+{
+	return !(ListError.IsError() && ListError.Code == TEXT("bad_key"));
+}
+
 namespace UE::HeroesOfLiberty::UI::ManagerError
 {
 	/** "Game version {client}, served {served}." (Manager/HOLManager/LobbyStore.cs) into its two versions. */

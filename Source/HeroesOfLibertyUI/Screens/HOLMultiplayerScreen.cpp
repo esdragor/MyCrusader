@@ -226,6 +226,10 @@ void UHOLMultiplayerScreen::ShowLobbies(const TArray<FHOLLobbySummary>& InLobbie
 	{
 		LobbyList->ClearChildren();
 	}
+	if (CreateButton)
+	{
+		CreateButton->SetIsEnabled(CanCreateLobbyAfter(Error));
+	}
 	if (Error.IsError())
 	{
 		const FText Text = GetManagerErrorText(Error);
