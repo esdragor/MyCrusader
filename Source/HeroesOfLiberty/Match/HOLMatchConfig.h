@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Math/RandomStream.h"
 #include "UObject/SoftObjectPath.h"
 #include "HOLMatchConfig.generated.h"
 
@@ -110,6 +111,12 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 
 	/** Eight slots exactly, colour and team brought back into range, current version. */
 	void Normalize();
+
+	/**
+	 * E2-2: each occupied slot on HOLPlayerColors::RandomColor gets, in slot order, a colour no other occupied slot has
+	 * (chosen or already drawn); a closed one the colour of its index. Before Normalize, which would clamp it.
+	 */
+	void DrawRandomColors(FRandomStream& Stream);
 
 	/** Slots held by a human or an AI. */
 	int32 GetNumOccupiedSlots() const;

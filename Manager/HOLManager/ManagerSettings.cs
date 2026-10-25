@@ -6,7 +6,7 @@ public sealed class ManagerSettings
     /** Version of the protocol in Manager/PROTOCOL.md. */
     public const int ProtocolVersion = 1;
 
-    /** Game version served; empty = read version.txt next to ServerExe, "dev" without it. */
+    /** Game version served; empty = read version.txt next to ServerExe or HeroesOfLiberty\Version.txt below it, "dev" without them. */
     public string GameVersion { get; init; } = "";
 
     /** The dedicated server started for each match (relative paths: from the manager's folder). */
@@ -33,8 +33,15 @@ public sealed class ManagerSettings
         {
             return GameVersion.Trim();
         }
-        var exe = Path.GetFullPath(ServerExe, AppContext.BaseDirectory);
-        var file = Path.Combine(Path.GetDirectoryName(exe) ?? "", "version.txt");
-        return File.Exists(file) && File.ReadAllText(file).Trim() is { Length: > 0 } version ? version : "dev";
+        var dir = Path.GetDirectoryName(Path.GetFullPath(ServerExe, AppContext.BaseDirectory)) ?? "";
+        // A package keeps it in the project folder, where the server reads it (HOLVersion.cpp).
+        foreach (var file in new[] { Path.Combine(dir, "version.txt"), Path.Combine(dir, "HeroesOfLiberty", "Version.txt") })
+        {
+            if (File.Exists(file) && File.ReadAllText(file).Trim() is { Length: > 0 } version)
+            {
+                return version;
+            }
+        }
+        return "dev";
     }
 }

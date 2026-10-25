@@ -13,6 +13,13 @@ namespace HOLPlayerColors
 {
 	constexpr int32 NumColors = 8;
 
+	/**
+	 * "Aléatoire" in the menu (E2-2): the index after the palette, which several slots can hold. Never played: at
+	 * launch it becomes a colour nobody else has (FHOLMatchConfig::DrawRandomColors in single player, the lobby
+	 * manager in a network match).
+	 */
+	constexpr int32 RandomColor = NumColors;
+
 	/** sRGB colour, for the interface. */
 	HEROESOFLIBERTY_API FColor GetColor(int32 ColorIndex);
 

@@ -52,6 +52,37 @@ public class MatchStartTests
     }
 
     [Fact]
+    public void RandomColorsAreDrawnAmongTheFreeOnesAtLaunch()
+    {
+        // E2-2: Bob and Alice chose "Aléatoire", Chloé 5; match.json gets real, distinct colours.
+        var (lobby, bob, alice, _) = ReferenceLobby();
+        store.UpdateMe(lobby.Id, bob, colorIndex: LobbyRules.RandomColor);
+        store.UpdateMe(lobby.Id, alice, colorIndex: LobbyRules.RandomColor);
+        for (var seed = 0; seed < 50; seed++)
+        {
+            var colors = MatchConfig.FromLobby(lobby, store.Maps[0], seed).Slots
+                .Where(s => s.State == MatchSlot.Human).Select(s => s.ColorIndex).ToList();
+            Assert.Equal(5, colors[2]);
+            Assert.All(colors, c => Assert.InRange(c, 0, LobbyRules.ColorCount - 1));
+            Assert.Equal(3, colors.Distinct().Count());
+        }
+        // The lobby keeps the choice.
+        Assert.Equal(LobbyRules.RandomColor, lobby.Slots[0].Player!.ColorIndex);
+    }
+
+    [Fact]
+    public void RandomColorsVaryWithTheSeed()
+    {
+        var (lobby, bob, _, _) = ReferenceLobby();
+        store.UpdateMe(lobby.Id, bob, colorIndex: LobbyRules.RandomColor);
+        var drawn = Enumerable.Range(0, 50).Select(seed => MatchConfig.FromLobby(lobby, store.Maps[0], seed).Slots[0].ColorIndex)
+            .ToHashSet();
+        Assert.True(drawn.Count > 1, string.Join(",", drawn));
+        Assert.DoesNotContain(3, drawn);
+        Assert.DoesNotContain(5, drawn);
+    }
+
+    [Fact]
     public void StartPutsTheLobbyInStartingWithAMatchId()
     {
         var (lobby, bob, _, _) = ReferenceLobby();

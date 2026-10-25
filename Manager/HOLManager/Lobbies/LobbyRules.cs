@@ -17,6 +17,12 @@ public static class LobbyRules
 {
     public const int SlotCount = 8;
     public const int ColorCount = 8;
+
+    /**
+     * E2-2: "Aléatoire", the colour index after the palette. Never taken (several players can choose it); each one
+     * gets at launch a real colour nobody else has (MatchConfig.FromLobby).
+     */
+    public const int RandomColor = ColorCount;
     public const int MaxTeam = 4;
     public const int PlayerNameMaxLength = 16;
     public const int LobbyNameMaxLength = 24;

@@ -11,8 +11,9 @@ R2.2 ; décisions M6-Q1 à M6-Q9 de `NetPlaytestInProgress.md`.
 
 1. **Port du gestionnaire : 7700** (TCP, toutes les adresses, donc joignable par Tailscale) ; serveurs de partie
    **7777 et suivants**. Le pare-feu de Windows demandera l'autorisation au premier lancement.
-2. **Version du jeu servie** : lue dans un fichier `version.txt` (écrit par `package.ps1`, R1.7) à côté du
-   `HeroesOfLibertyServer.exe` que le gestionnaire lance. Pas de fichier → version `"dev"`, et seul un client `"dev"`
+2. **Version du jeu servie** : `GameVersion` de la configuration, sinon lue dans `version.txt` à côté du
+   `HeroesOfLibertyServer.exe` que le gestionnaire lance, ou dans `HeroesOfLiberty\Version.txt` sous lui (là où
+   `package.ps1` l'écrit, R1.7, et où le serveur le lit). Pas de fichier → version `"dev"`, et seul un client `"dev"`
    entre.
 3. **Le joueur garde l'emplacement reçu à l'entrée** (premier emplacement ouvert) : pas de route pour changer
    d'emplacement (= position de départ) dans cette version ; « ma ligne » = couleur, équipe (faction plus tard).
@@ -152,7 +153,8 @@ Réponse `200` :
 ```
 
 Le joueur reçoit le **premier emplacement ouvert libre**, la **première couleur libre** de la palette (0 à 7) et
-l'équipe 0 (aucune). Le premier entré d'un salon est chef. Erreurs : `lobby_not_found`, `version_mismatch`,
+l'équipe 0 (aucune) ; un joueur de la dernière partie finie du salon (même nom, casse ignorée) reprend sa couleur de
+la partie si aucun joueur présent ne l'a (E2-1). Le premier entré d'un salon est chef. Erreurs : `lobby_not_found`, `version_mismatch`,
 `invalid_name`, `name_taken`, `lobby_full`, `lobby_in_game`, `bad_request`.
 
 Ordre des vérifications (la première qui échoue donne l'erreur) : `lobby_not_found`, `bad_request` (champ manquant),
@@ -207,7 +209,8 @@ Champs facultatifs ; seuls ceux présents changent.
 { "colorIndex": 4, "team": 2, "ready": true }
 ```
 
-- `colorIndex` : 0 à 7, unique dans le salon (`color_taken`). `team` : 0 (aucune) à 4.
+- `colorIndex` : 0 à 7, unique dans le salon (`color_taken`), ou 8 = « Aléatoire » (E2-2), que plusieurs joueurs
+  peuvent avoir. `team` : 0 (aucune) à 4.
 - Un changement de couleur ou d'équipe remet **mon** « Prêt » à `false` (choix 4), sauf si `ready` est dans la même
   requête. Une valeur égale à l'actuelle n'est pas un changement.
 - Plus tard : `faction` (`"DawnOrder"`, `"BlackLegions"`).
@@ -276,8 +279,8 @@ liste » = rien (il n'a plus de place dans le salon depuis `finished`).
 ### Retour au salon (choix 6, R2.11)
 
 - Après `finished` (D2) : salon `lobby`, réglages gardés, **plus aucun joueur de la partie** (ancien jeton →
-  `not_in_lobby`). Chaque joueur revient par un `POST /join` ordinaire (nouvel emplacement, couleur et équipe par
-  défaut), refusé comme tout `join`. **Chef** (M6-Q14) : le chef de la partie le reste, absent (`leader` = son nom) ;
+  `not_in_lobby`). Chaque joueur revient par un `POST /join` ordinaire (nouvel emplacement, équipe par défaut,
+  couleur de la partie si elle est libre, E2-1), refusé comme tout `join`. **Chef** (M6-Q14) : le chef de la partie le reste, absent (`leader` = son nom) ;
   ceux revenus avant lui ne règlent ni ne lancent (`not_leader`) ; à son `join`, il reprend la main (devant eux dans
   l'ordre d'arrivée). Le premier revenu (ordre d'arrivée) devient chef, avec `notice: "leader_changed"` s'il n'est pas
   seul, quand : le salon est **plein** sans lui (au `join` qui le remplit ; le chef revenu ensuite a `lobby_full`) ;
@@ -368,7 +371,7 @@ lus sans tenir compte de la casse). **Version 2 = version 1 + `playerName` par e
 | `slots` | 8 objets | position de départ = index |
 | `slots[].state` | `"Closed"`, `"Human"`, `"AI"` | `"Human"` pour chaque joueur du salon ; ouvert vide ou fermé → `"Closed"` (faction `DawnOrder`, couleur = index, équipe 0, comme `Normalize`) |
 | `slots[].faction` | `"DawnOrder"`, `"BlackLegions"`, … | |
-| `slots[].colorIndex` | 0 à 7 | palette D233 |
+| `slots[].colorIndex` | 0 à 7 | palette D233 ; jamais 8 : un joueur sur « Aléatoire » reçoit au lancement, tiré de `seed`, une couleur qu'aucun autre joueur n'a (choisie ou déjà tirée) ; le salon garde « Aléatoire » |
 | `slots[].team` | 0 à 4 | 0 = aucune |
 | `slots[].playerName` | chaîne | **nouveau en version 2** : nom du joueur attendu (tel qu'au salon : sans espaces autour, forme composée) ; `""` pour un emplacement fermé ou une IA |
 | `mode` | `"Standard"` | |

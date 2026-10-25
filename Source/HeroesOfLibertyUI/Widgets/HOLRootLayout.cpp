@@ -10,6 +10,7 @@
 #include "Menu/HOLMenuPlayerController.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
+#include "Widgets/HOLScreenStack.h"
 
 void UHOLRootLayout::NativeOnInitialized()
 {
@@ -26,8 +27,9 @@ void UHOLRootLayout::NativeOnInitialized()
 			Background->SetVisibility(ESlateVisibility::Collapsed);
 			SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		}
-		MenuLayer = WidgetTree->ConstructWidget<UCommonActivatableWidgetStack>(UCommonActivatableWidgetStack::StaticClass(), TEXT("MenuLayer"));
-		ModalLayer = WidgetTree->ConstructWidget<UCommonActivatableWidgetStack>(UCommonActivatableWidgetStack::StaticClass(), TEXT("ModalLayer"));
+		// E2-3: stacks that keep a screen covered by a push while it fades in.
+		MenuLayer = WidgetTree->ConstructWidget<UHOLScreenStack>(UHOLScreenStack::StaticClass(), TEXT("MenuLayer"));
+		ModalLayer = WidgetTree->ConstructWidget<UHOLScreenStack>(UHOLScreenStack::StaticClass(), TEXT("ModalLayer"));
 
 		for (UWidget* Child : { static_cast<UWidget*>(Background), static_cast<UWidget*>(MenuLayer.Get()), static_cast<UWidget*>(ModalLayer.Get()) })
 		{

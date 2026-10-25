@@ -30,19 +30,41 @@ public sealed class MatchConfig
 
     public string ToJson() => JsonSerializer.Serialize(this, Options);
 
-    /** The configuration of a lobby being started: its players by slot, open slots left empty become closed. */
-    public static MatchConfig FromLobby(Lobby lobby, MapInfo map, int seed) => new()
+    /**
+     * The configuration of a lobby being started: its players by slot, open slots left empty become closed. A player
+     * on "Aléatoire" (E2-2) gets a real colour nobody else has, chosen or already drawn, drawn from the seed.
+     */
+    public static MatchConfig FromLobby(Lobby lobby, MapInfo map, int seed)
     {
-        Seed = seed,
-        Map = map.ObjectPath,
-        Slots = lobby.Slots.Select(slot => slot.Player is { } p
-            ? new MatchSlot { State = MatchSlot.Human, Faction = p.Faction, ColorIndex = p.ColorIndex, Team = p.Team, PlayerName = p.Name }
-            // Closed slots get the colour of their index, as FHOLMatchConfig::Normalize gives them.
-            : new MatchSlot { ColorIndex = slot.Index % LobbyRules.ColorCount }).ToList(),
-        Nomad = lobby.Settings.Nomad,
-        Regicide = lobby.Settings.Regicide,
-        Catastrophe = lobby.Settings.Catastrophe,
-    };
+        var colors = DrawRandomColors(lobby.Slots.Select(slot => slot.Player?.ColorIndex).ToList(), new Random(seed));
+        return new()
+        {
+            Seed = seed,
+            Map = map.ObjectPath,
+            Slots = lobby.Slots.Select((slot, position) => slot.Player is { } p
+                ? new MatchSlot { State = MatchSlot.Human, Faction = p.Faction, ColorIndex = colors[position]!.Value, Team = p.Team, PlayerName = p.Name }
+                // Closed slots get the colour of their index, as FHOLMatchConfig::Normalize gives them.
+                : new MatchSlot { ColorIndex = slot.Index % LobbyRules.ColorCount }).ToList(),
+            Nomad = lobby.Settings.Nomad,
+            Regicide = lobby.Settings.Regicide,
+            Catastrophe = lobby.Settings.Catastrophe,
+        };
+    }
+
+    /** Per slot, its colour (null: nobody), RandomColor replaced in slot order by a free one. */
+    private static List<int?> DrawRandomColors(List<int?> colors, Random random)
+    {
+        for (var index = 0; index < colors.Count; index++)
+        {
+            if (colors[index] == LobbyRules.RandomColor)
+            {
+                var free = Enumerable.Range(0, LobbyRules.ColorCount).Where(c => !colors.Contains(c)).ToList();
+                // Eight colours for eight slots: one is always free.
+                colors[index] = free[random.Next(free.Count)];
+            }
+        }
+        return colors;
+    }
 }
 
 public sealed class MatchSlot

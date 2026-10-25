@@ -50,6 +50,17 @@ public class LobbyLineTests
     }
 
     [Fact]
+    public void SeveralPlayersCanChooseRandom()
+    {
+        // E2-2: "Aléatoire" is never taken; a new player still gets the first free real colour.
+        store.UpdateMe(lobby.Id, bob, colorIndex: LobbyRules.RandomColor);
+        store.UpdateMe(lobby.Id, alice, colorIndex: LobbyRules.RandomColor);
+        Assert.Equal((LobbyRules.RandomColor, LobbyRules.RandomColor), (Bob.ColorIndex, Alice.ColorIndex));
+        store.Join(lobby.Id, "Chloé", Version);
+        Assert.Equal(0, lobby.Slots[2].Player!.ColorIndex);
+    }
+
+    [Fact]
     public void SameTeamIsAllowed()
     {
         store.UpdateMe(lobby.Id, bob, team: 2);
@@ -59,7 +70,7 @@ public class LobbyLineTests
 
     [Theory]
     [InlineData(-1, null)]
-    [InlineData(8, null)]
+    [InlineData(9, null)]
     [InlineData(null, -1)]
     [InlineData(null, 5)]
     public void OutOfBoundsLineIsBadRequestAndChangesNothing(int? color, int? team)

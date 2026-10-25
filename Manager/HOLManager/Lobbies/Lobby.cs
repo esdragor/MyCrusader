@@ -125,6 +125,12 @@ public sealed class Lobby
     /** The leader's name of PROTOCOL.md: the away leader's, else the leading player's. */
     public string? LeaderName => AwayLeader ?? Leader?.Name;
 
+    /**
+     * The colors of the last finished match's players, by name (E2-1): one of them coming back by join takes his
+     * color again if no player in the lobby has it.
+     */
+    public Dictionary<string, int> LastMatchColors { get; internal set; } = new(LobbyRules.NameComparer);
+
     /** The match being started or played (state starting or in_game), null at the lobby. */
     public LobbyMatch? Match { get; internal set; }
 

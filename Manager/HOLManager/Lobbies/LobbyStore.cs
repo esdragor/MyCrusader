@@ -139,12 +139,13 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         lock (gate)
         {
             var (lobby, me) = GetPlayer(lobbyId, token);
-            if (colorIndex is < 0 or >= LobbyRules.ColorCount || team is < 0 or > LobbyRules.MaxTeam)
+            if (colorIndex is < 0 or > LobbyRules.RandomColor || team is < 0 or > LobbyRules.MaxTeam)
             {
                 throw new LobbyException(LobbyErrors.BadRequest,
-                    $"Color is 0 to {LobbyRules.ColorCount - 1}, team 0 to {LobbyRules.MaxTeam}.");
+                    $"Color is 0 to {LobbyRules.RandomColor} (random), team 0 to {LobbyRules.MaxTeam}.");
             }
-            if (colorIndex is { } color && lobby.Players.Any(p => p != me && p.ColorIndex == color))
+            // E2-2: "Aléatoire" is never taken.
+            if (colorIndex is { } color && color != LobbyRules.RandomColor && lobby.Players.Any(p => p != me && p.ColorIndex == color))
             {
                 throw new LobbyException(LobbyErrors.ColorTaken, $"Color {color} is taken.");
             }
@@ -300,6 +301,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             // M6-Q14: the leader leads while away, unless he already left the match's server.
             lobby.AwayLeader = lobby.Leader?.Name;
             lobby.AwayLeaderUntil = lobby.AwayLeader != null && match.LeftBeforeEnd.Contains(lobby.AwayLeader) ? clock.UtcNow : null;
+            lobby.LastMatchColors = lobby.Players.ToDictionary(p => p.Name, p => p.ColorIndex, LobbyRules.NameComparer);
             lobby.State = LobbyState.Lobby;
             lobby.Match = null;
             foreach (var slot in lobby.Slots)
@@ -581,7 +583,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             Name = name,
             Token = NewToken(),
             SlotIndex = slot.Index,
-            ColorIndex = Enumerable.Range(0, LobbyRules.ColorCount).First(c => lobby.Players.All(p => p.ColorIndex != c)),
+            // E2-1: back from the last match, his color again if free (E2-2: "Aléatoire" always is); else the first free one.
+            ColorIndex = lobby.LastMatchColors.TryGetValue(name, out var color)
+                    && (color == LobbyRules.RandomColor || lobby.Players.All(p => p.ColorIndex != color))
+                ? color
+                : Enumerable.Range(0, LobbyRules.ColorCount).First(c => lobby.Players.All(p => p.ColorIndex != c)),
             JoinOrder = nextJoinOrder++,
             LastSeen = clock.UtcNow,
         };

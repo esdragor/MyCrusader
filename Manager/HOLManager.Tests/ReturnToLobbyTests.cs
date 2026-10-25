@@ -237,6 +237,57 @@ public class ReturnToLobbyTests
     }
 
     [Fact]
+    public void ThoseBackTakeTheirMatchColorAgain()
+    {
+        // E2-1: Bob 0, Alice 3, Chloé 2 in the match; back in another order, each finds his color again.
+        var (lobby, _, _, _) = Played();
+        store.Join(lobby.Id, "Chloé", Version);
+        store.Join(lobby.Id, "alice", Version);
+        store.Join(lobby.Id, "Bob", Version);
+        Assert.Equal([2, 3, 0], new[] { "Chloé", "alice", "Bob" }.Select(n => Player(lobby, n).ColorIndex));
+        Assert.Equal(0, Player(lobby, "alice").Team);
+    }
+
+    [Fact]
+    public void AMatchColorTakenMeanwhileGivesTheFirstFreeOne()
+    {
+        var (lobby, _, _, _) = Played();
+        var dan = store.Join(lobby.Id, "Dan", Version).Token;
+        Assert.Equal(0, Player(lobby, "Dan").ColorIndex);
+        store.UpdateMe(lobby.Id, dan, colorIndex: 3);
+        store.Join(lobby.Id, "Bob", Version);
+        store.Join(lobby.Id, "Alice", Version);
+        Assert.Equal((0, 1), (Player(lobby, "Bob").ColorIndex, Player(lobby, "Alice").ColorIndex));
+    }
+
+    [Fact]
+    public void ThoseOnRandomFindRandomAgain()
+    {
+        // E2-2: "Aléatoire" is drawn at launch, but the lobby keeps the choice; both on it find it again.
+        var created = store.Create("Salon de Bob", "Bob", Version);
+        var id = created.Lobby.Id;
+        var alice = store.Join(id, "Alice", Version).Token;
+        var chloe = store.Join(id, "Chloé", Version).Token;
+        store.UpdateMe(id, alice, colorIndex: LobbyRules.RandomColor);
+        store.UpdateMe(id, chloe, colorIndex: LobbyRules.RandomColor);
+        foreach (var token in new[] { created.Token, alice, chloe })
+        {
+            store.UpdateMe(id, token, ready: true);
+        }
+        var match = store.Start(id, created.Token);
+        store.ServerListening(match.Id, 7778);
+        clock.UtcNow += TimeSpan.FromMinutes(20);
+        store.ServerFinished(match.Id, [0]);
+
+        store.Join(id, "Chloé", Version);
+        store.Join(id, "Alice", Version);
+        store.Join(id, "Bob", Version);
+        var lobby = created.Lobby;
+        Assert.Equal([LobbyRules.RandomColor, LobbyRules.RandomColor, 0],
+            new[] { "Chloé", "Alice", "Bob" }.Select(n => Player(lobby, n).ColorIndex));
+    }
+
+    [Fact]
     public void AnEmptyLobbyStaysWhileItsFinishedServerRuns()
     {
         var (lobby, _, _, _) = Played();

@@ -64,6 +64,7 @@ TRANSLATIONS = {
     "HOLNewGameScreen,Slot": ("Slot", "スロット"),
     "HOLNewGameScreen,Faction": ("Faction", "勢力"),
     "HOLNewGameScreen,Colour": ("Color", "色"),
+    "HOLNewGameScreen,RandomColour": ("Random", "ランダム"),
     "HOLNewGameScreen,Team": ("Team", "チーム"),
     "HOLNewGameScreen,PlayerN": ("Player {0}", "プレイヤー{0}"),
     "HOLNewGameScreen,You": ("You", "あなた"),

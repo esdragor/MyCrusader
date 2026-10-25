@@ -333,6 +333,13 @@ if ($Parts -contains "menu") {
             Step "waitlog Dropdown SlotColor0: value 1 chosen"
         }
         Back
+        if ($Culture -eq "fr") {
+            # E2-3: a screen pushed while the one before is still fading in (the menu's BeginPlay back from a lobby's
+            # match: title, Multiplayer, then the lobby), then both closed: the title again, not an empty layer.
+            Step "mark menu stack", "hol.UI.Open Multiplayer", "frames 2", "hol.UI.Open NewGame", "waitui"
+            Back; Back
+            Step "capture qc_fr_stackback"
+        }
         for ($Tab = 0; $Tab -lt 4; $Tab++) {
             Open "Settings:$Tab"; Step "capture qc_${Culture}_$($MenuScreens[3 + $Tab])"
         }
@@ -1694,7 +1701,10 @@ Get-ChildItem $Shots -Filter "formation_*.png" -ErrorAction SilentlyContinue | R
 Get-ChildItem $Shots -Filter "combat_*.png" -ErrorAction SilentlyContinue | Remove-Item
 $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100" } else { "-RenderOffScreen -ResX=1600 -ResY=900 -nosound" }
 # The melee off (J7b.2) until the combat part: the parts before it make units of several slots side by side.
-$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
+# The Multiplayer screen of the menu part asks a manager nobody runs (port 7799), never the player's one (7700).
+$TestServers = Join-Path $TestSaved "servers_none.json"
+Set-Content -Path $TestServers -Value '{ "servers": [ { "name": "None", "url": "http://127.0.0.1:7799" } ] }' -Encoding ascii
+$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -1946,7 +1956,7 @@ $SequenceChecks = [ordered]@{}
 $SequenceChecks["game launch ended by itself"] = -not $GameTimedOut
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
-$Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
+$Expected = @{ title = "menu=HOLTitleScreen modal=none"; stackback = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
     newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
     sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
