@@ -467,3 +467,14 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   Arwen libre (`IN_USE.txt` retiré). Reste : essai avec un ami (reporté) ; petits restes sans urgence (traductions,
   « installé » après une première installation, « Créer un salon » sur l'écran de refus, version du lanceur à monter à
   la main, clôture au GDD).
+- 2026-10-25 : **L13 lancée** (« fais les petits restes ») ; **reprise exacte si la session s'arrête** :
+  - **L13a** (Arwen, branche `launcher-l13` = `main`, sous-agent) : lanceur, message « Le jeu est installé (version X) »
+    après une première installation ; `make_kit.ps1` refuse (FAIL) de remplacer `launcher\<lv>\HOLLauncher.exe` par un
+    exe différent sans `-Force` et dit de monter `LauncherInfo.Version`.
+  - **L13b** (Elrond, branche `launcher-l13b` = `main`, sous-agent) : jeu, « Créer un salon » grisé quand la clé est
+    refusée (`bad_key`) ; textes `BadKey` regénérés dans les `.po` / `.locres` (`Tools/Localization`) ; test parent
+    `HeroesOfLiberty.UI.ManagerErrorText` renommé pour qu'il soit lancé.
+  - **L13c** (session principale) : décisions L-Q1 à L-Q8 reportées au GDD (numéros D libres), chantier clos sauf
+    l'essai avec un ami.
+  - Chaque partie finie : relire, `dotnet test` (ou tests UE touchés), **demander l'accord de commit**, fusionner dans
+    `main`, retirer l'`IN_USE.txt`.
