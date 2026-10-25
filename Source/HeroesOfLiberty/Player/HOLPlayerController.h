@@ -93,6 +93,12 @@ public:
 	AHOLRTSCamera* GetRTSCamera() const { return RTSCamera; }
 	AHOLSelectionMarkers* GetSelectionMarkers() const { return SelectionMarkers; }
 
+	/**
+	 * V4.3: puts the camera above a slot's main forum (AHOLGameState::FindPrimaryForum), standing or down; above its start
+	 * (AHOLStartSlot, as hol.Camera.FocusSlot) when it has none. False when neither is found.
+	 */
+	bool FocusCameraOnForum(int32 Slot);
+
 	/** The building under a point of the viewport (0 to 1 each way), on the selection channel, or null. */
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
 	/** The unit drawn under a point of the viewport, the one in front (D288), or 0. */

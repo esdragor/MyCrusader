@@ -3737,6 +3737,27 @@ void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
 #endif
 }
 
+bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
+{
+	if (!RTSCamera || !GetWorld())
+	{
+		return false;
+	}
+	if (const AHOLBuilding* Forum = AHOLGameState::FindPrimaryForum(*GetWorld(), Slot))
+	{
+		RTSCamera->SetFocus(Forum->GetActorLocation());
+		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the forum of slot %d"), Slot);
+		return true;
+	}
+	if (const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot))
+	{
+		RTSCamera->SetFocus(Start->GetMainCentreLocation());
+		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d"), Slot);
+		return true;
+	}
+	return false;
+}
+
 void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
 {
 	ServerCheatFallForum(Slot);

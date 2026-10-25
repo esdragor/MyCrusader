@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Match/HOLGameState.h"
 
@@ -6,6 +6,7 @@
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "EngineUtils.h"
+#include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLForumPresence.h"
 #include "Match/HOLPlayerState.h"
@@ -210,8 +211,11 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 	// As a destruction (V2-Q3): its whole queue refunded; its rally point kept for after the rebuilding.
 	const FHOLResources Refund = UHOLConstructionSubsystem::RefundProductionQueue(Forum);
 	ForumBuilders[Slot] = 0;
+	ForumHoldAnnounced[Slot] = 0;
 	SetForumState(Slot, State);
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d fell, lives %d (queue refunded %s)"), Slot, Lives, *Refund.ToString());
+	// V4.1: sent at once, even from a Mass processor (combat): a reliable call queued, no entity touched.
+	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::Fell, Slot, INDEX_NONE, Lives));
 	if (Lives <= 0)
 	{
 		PendingForumDefeats |= 1 << Slot;
@@ -267,10 +271,14 @@ void AHOLGameState::AdvanceForums()
 		const bool bLookChanged = UE::HeroesOfLiberty::Forums::LookChanged(ForumStates[Slot], State, Tuning);
 		const bool bHoldChanged = Old.Hold != State.Hold || (State.Hold == EHOLForumHold::Holding && Old.HolderSlot != State.HolderSlot);
 		ForumStates[Slot] = State;
+		// V4.2: an attacker new to Holding since the count was at 0 announced once (from None or from Contested).
+		const bool bAnnounceHold = !Result.bRazed && HOLForumMessages::ShouldAnnounceHold(State, ForumHoldAnnounced[Slot]);
 		if (Result.bRazed)
 		{
 			ForumBuilders[Slot] = 0;
+			ForumHoldAnnounced[Slot] = 0;
 			UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d razed, lives %d"), Slot, Result.Lives);
+			SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::Razed, Slot, INDEX_NONE, Result.Lives));
 			SetForumState(Slot, State);
 			if (Result.Lives <= 0)
 			{
@@ -297,6 +305,10 @@ void AHOLGameState::AdvanceForums()
 				UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d no longer held"), Slot);
 				break;
 			}
+		}
+		if (bAnnounceHold)
+		{
+			SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, Slot, State.HolderSlot));
 		}
 		if (!bChanged)
 		{
@@ -426,6 +438,7 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	}
 	SlotDefeats[Slot] = Reason;
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: slot %d defeated (%s)"), Slot, GetReasonName(Reason));
+	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, Slot));
 	CollapseSlot(Slot);
 	OnSlotDefeated.Broadcast(Slot, Reason);
 
@@ -448,6 +461,34 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 void AHOLGameState::OnRep_Victory()
 {
 	OnVictoryChanged.Broadcast();
+}
+
+void AHOLGameState::SendForumEvent(const FHOLForumEvent& Event)
+{
+	if (HasAuthority())
+	{
+		MulticastForumEvent(Event);
+	}
+}
+
+void AHOLGameState::MulticastForumEvent_Implementation(const FHOLForumEvent& Event)
+{
+	const UWorld* World = GetWorld();
+	if (World && World->GetNetMode() != NM_DedicatedServer)
+	{
+		// As this machine's player sees it (the players' table's way); a spectator, or no player, has no slot.
+		int32 ViewerSlot = INDEX_NONE;
+		if (const APlayerController* Controller = World->GetFirstPlayerController())
+		{
+			if (const AHOLPlayerState* PlayerState = Controller->GetPlayerState<AHOLPlayerState>())
+			{
+				ViewerSlot = PlayerState->GetPlayerIndex();
+			}
+		}
+		const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, LaunchConfig, ViewerSlot);
+		UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Message.Shown);
+	}
+	OnForumEvent.Broadcast(Event);
 }
 
 void AHOLGameState::CollapseSlot(const int32 Slot)

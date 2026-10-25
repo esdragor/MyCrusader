@@ -24,6 +24,7 @@
 #include "Components/WrapBoxSlot.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
@@ -31,12 +32,14 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLGameMenuRules.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
+#include "Sound/SoundBase.h"
 #include "Screens/HOLGameMenu.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLGridCell.h"
@@ -226,6 +229,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float GroupRefreshInterval = 0.25f;
 	const FName IdleWorkersName(TEXT("IdleWorkers"));
 	const FName MenuButtonName(TEXT("MenuButton"));
+	const FName AlertPanelName(TEXT("AlertPanel"));
 	/** A control group's slot (J7a.5): its width, and how long it stays lit once its group is selected (s, real time). */
 	constexpr float GroupSlotWidth = 64.f;
 	constexpr double GroupLightSeconds = 0.5;
@@ -452,6 +456,8 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
+	TickMessages();
+	TickAlert();
 	// The player state reaches a client after the HUD is up.
 	AHOLPlayerState* PlayerState = Controller.IsValid() ? Controller->GetHOLPlayerState() : nullptr;
 	if (PlayerState != BoundPlayerState.Get())
@@ -583,16 +589,233 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 	{
 		Previous->OnForumsChanged.Remove(TableForumsHandle);
 		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
+		Previous->OnForumEvent.Remove(TableForumEventHandle);
 	}
 	TableForumsHandle.Reset();
 	TableVictoryHandle.Reset();
+	TableForumEventHandle.Reset();
 	BoundTableState = GameState;
 	if (GameState)
 	{
 		// Every machine: the server at once, a client by its OnReps (D353: public).
 		TableForumsHandle = GameState->OnForumsChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
 		TableVictoryHandle = GameState->OnVictoryChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
+		// V4.2: the events of the ruin, every machine (a reliable multicast).
+		TableForumEventHandle = GameState->OnForumEvent.AddUObject(this, &UHOLGameScreen::HandleForumEvent);
 	}
+}
+
+void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)
+{
+	const AHOLGameState* GameState = BoundTableState.Get();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const UWorld* World = GetWorld();
+	if (!GameState || !World)
+	{
+		return;
+	}
+	// As the players' table: the local player's slot, INDEX_NONE for a spectator.
+	const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, GameState->GetLaunchConfig(), PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE);
+	MessageThread.Add(Message, World->GetRealTimeSeconds(), Event.Slot);
+	RebuildMessages();
+	// V4.3: an alert, the banner and its sound too.
+	ShowAlert(Message, Event.Slot);
+}
+
+namespace UE::HeroesOfLiberty::UI::GameScreen
+{
+	/** V4.2, V4.3: Row filled with Message's pieces, the words in WordsStyle, each name in NamesStyle and its player's colour. */
+	void FillMessageRow(UWidgetTree& Tree, UHorizontalBox& Row, const FHOLForumMessage& Message, const int32 ViewerSlot, const AHOLGameState* GameState,
+		const TSubclassOf<UCommonTextStyle> WordsStyle, const TSubclassOf<UCommonTextStyle> NamesStyle)
+	{
+		Row.ClearChildren();
+		for (const HOLForumMessages::FPiece& Part : HOLForumMessages::SplitNames(Message, ViewerSlot))
+		{
+			const bool bName = Part.Slot != INDEX_NONE;
+			UCommonTextBlock* Text = Tree.ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass());
+			Text->SetStyle(bName ? NamesStyle : WordsStyle);
+			Text->SetText(FText::AsCultureInvariant(Part.Text));
+			UHorizontalBoxSlot* TextSlot = Row.AddChildToHorizontalBox(Text);
+			TextSlot->SetVerticalAlignment(VAlign_Center);
+			// After it joins the row: its style, applied when its widget is built, would put back the style's colour.
+			if (bName && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot))
+			{
+				Text->SetColorAndOpacity(FSlateColor(FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex))));
+			}
+		}
+	}
+}
+
+void UHOLGameScreen::ShowAlert(const FHOLForumMessage& Message, const int32 TouchedSlot)
+{
+	const UWorld* World = GetWorld();
+	bool bMatchOverForMe = false;
+	if (!World || !AlertPanel || !AlertRow || !IsMatchOverForMe(bMatchOverForMe))
+	{
+		return;
+	}
+	// V4.5b: shown now, or waiting for the shown banner's 1.5 s (TickAlert).
+	if (Alert.Show(Message, TouchedSlot, bMatchOverForMe, World->GetRealTimeSeconds()))
+	{
+		PresentAlert();
+	}
+}
+
+bool UHOLGameScreen::IsMatchOverForMe(bool& bOver) const
+{
+	const AHOLGameState* GameState = BoundTableState.Get();
+	if (!GameState)
+	{
+		return false;
+	}
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	// D202: the match over for me, my Victory / Defeat banner holds the screen; the thread's line is enough.
+	bOver = HOLGameMenuRules::GetEndBanner(ViewerSlot, GameState->GetDefeatedMask(), GameState->IsMatchOver(),
+		GameState->GetWinnerMask()) != EHOLEndBanner::None;
+	return true;
+}
+
+void UHOLGameScreen::PresentAlert()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const AHOLGameState* GameState = BoundTableState.Get();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	FillMessageRow(*WidgetTree, *AlertRow, Alert.Message, ViewerSlot, GameState, UHOLTextStyleHUDHeading::StaticClass(), UHOLTextStyleHUDHeading::StaticClass());
+	AlertPanel->SetRenderOpacity(1.f);
+	// Visible: a click on it centres the camera on the touched forum.
+	SetShown(AlertPanel, true, ESlateVisibility::Visible);
+	if (!Alert.bSound)
+	{
+		// V4.5b: one sound for a burst of alerts (less than 1 s apart), played with its first banner.
+		UE_LOG(LogHOLUI, Display, TEXT("Alert: %s (no sound, its burst's played)"), *Alert.Message.Text.ToString());
+		return;
+	}
+	// Provisional, 2D, the alert's only (the thread is silent): the herald's voice will replace it (FHOLForumAlert::SoundPath).
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, FHOLForumAlert::SoundPath);
+	if (Sound)
+	{
+		UGameplayStatics::PlaySound2D(this, Sound);
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("Alert: %s (sound %s%s)"), *Alert.Message.Text.ToString(), FHOLForumAlert::SoundPath, Sound ? TEXT("") : TEXT(", missing"));
+}
+
+void UHOLGameScreen::TickAlert()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const UWorld* World = GetWorld();
+	if (!Alert.bShown || !World || !AlertPanel || !AlertRow)
+	{
+		return;
+	}
+	const double Now = World->GetRealTimeSeconds();
+	// V4.5b: the next waiting alert once the shown one had its 1.5 s.
+	bool bMatchOverForMe = false;
+	if (!Alert.Waiting.IsEmpty() && IsMatchOverForMe(bMatchOverForMe) && Alert.Advance(Now, bMatchOverForMe))
+	{
+		PresentAlert();
+		return;
+	}
+	if (Alert.Expire(Now))
+	{
+		SetShown(AlertPanel, false);
+		return;
+	}
+	AlertPanel->SetRenderOpacity(Alert.GetOpacity(Now));
+}
+
+FEventReply UHOLGameScreen::HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
+{
+	if (!Alert.bShown || MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+	FocusAlertSlot(Alert.Slot);
+	return FEventReply(true);
+}
+
+FEventReply UHOLGameScreen::HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+	// The line under the mouse: only the lines carrying an alert take the clicks (RebuildMessages).
+	for (int32 Index = 0; Index < MessageLines.Num() && MessageThread.Lines.IsValidIndex(Index); ++Index)
+	{
+		if (MessageLines[Index]->IsHovered() && MessageThread.Lines[Index].Message.bAlert)
+		{
+			FocusAlertSlot(MessageThread.Lines[Index].Slot);
+			return FEventReply(true);
+		}
+	}
+	return FEventReply(false);
+}
+
+void UHOLGameScreen::FocusAlertSlot(const int32 TouchedSlot)
+{
+	if (AHOLPlayerController* PlayerController = Controller.Get())
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: alert of slot %d clicked (camera on its forum)"), TouchedSlot);
+		PlayerController->FocusCameraOnForum(TouchedSlot);
+	}
+}
+
+FString UHOLGameScreen::DescribeAlert() const
+{
+	return Alert.Describe();
+}
+
+void UHOLGameScreen::TickMessages()
+{
+	const UWorld* World = GetWorld();
+	if (MessageThread.Lines.IsEmpty() || !World)
+	{
+		return;
+	}
+	const double Now = World->GetRealTimeSeconds();
+	if (MessageThread.Expire(Now))
+	{
+		RebuildMessages();
+	}
+	// The last half second of a line: its fade.
+	for (int32 Index = 0; Index < MessageThread.Lines.Num() && MessageLines.IsValidIndex(Index); ++Index)
+	{
+		MessageLines[Index]->SetRenderOpacity(FHOLForumThread::GetOpacity(MessageThread.Lines[Index], Now));
+	}
+}
+
+void UHOLGameScreen::RebuildMessages()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const AHOLGameState* GameState = BoundTableState.Get();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	// The list lets the clicks through but to the lines carrying an alert (V4.3: a click centres the camera on the forum).
+	SetShown(MessagesList, !MessageThread.Lines.IsEmpty(), ESlateVisibility::SelfHitTestInvisible);
+	for (int32 Index = 0; Index < MessageLines.Num(); ++Index)
+	{
+		const FHOLForumThreadLine* Line = MessageThread.Lines.IsValidIndex(Index) ? &MessageThread.Lines[Index] : nullptr;
+		SetShown(MessageLines[Index], Line != nullptr, Line && Line->Message.bAlert ? ESlateVisibility::Visible : ESlateVisibility::HitTestInvisible);
+		UHorizontalBox* Row = MessageRows[Index];
+		if (!Line)
+		{
+			Row->ClearChildren();
+			continue;
+		}
+		MessageLines[Index]->SetRenderOpacity(1.f);
+		// The plain words in the label's style, each name in its player's colour (the table's style).
+		FillMessageRow(*WidgetTree, *Row, Line->Message, ViewerSlot, GameState, UHOLTextStyleHUDLabel::StaticClass(), UHOLTextStyleHUDPlayerName::StaticClass());
+	}
+}
+
+FString UHOLGameScreen::DescribeMessages() const
+{
+	return MessageThread.Describe();
 }
 
 void UHOLGameScreen::RefreshPlayersTable()
@@ -1772,6 +1995,15 @@ void UHOLGameScreen::HandleMenuClicked()
 
 bool UHOLGameScreen::ClickWidget(const FName Name)
 {
+	if (AlertPanel && Name == UE::HeroesOfLiberty::UI::GameScreen::AlertPanelName)
+	{
+		if (!Alert.bShown)
+		{
+			return false;
+		}
+		FocusAlertSlot(Alert.Slot);
+		return true;
+	}
 	if (MenuButton && Name == UE::HeroesOfLiberty::UI::GameScreen::MenuButtonName)
 	{
 		HandleMenuClicked();
@@ -2114,6 +2346,20 @@ void UHOLGameScreen::BuildLayout()
 	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
 	WaitPanel->SetContent(WaitText);
 
+	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
+	// the thread's lines; a click centres the camera on the touched forum.
+	AlertPanel = MakePanel(AlertPanelName);
+	AlertPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.85f), 4.f));
+	AlertPanel->SetPadding(FMargin(16.f, 6.f));
+	AlertPanel->SetVisibility(ESlateVisibility::Collapsed);
+	AlertPanel->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLGameScreen, HandleAlertMouseDown));
+	UOverlaySlot* AlertSlot = Frame->AddChildToOverlay(AlertPanel);
+	AlertSlot->SetHorizontalAlignment(HAlign_Center);
+	AlertSlot->SetVerticalAlignment(VAlign_Top);
+	AlertSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
+	AlertRow = MakeHorizontalBox(TEXT("AlertRow"));
+	AlertPanel->SetContent(AlertRow);
+
 	// The players' table (V2.4, V2-Q4: AoE2's score), top right under the menu's button (the minimap holds the bottom
 	// right): a row per occupied slot, its name in its colour, its lives, its forum's phase. Small, it lets the clicks through.
 	PlayersPanel = MakePanel(TEXT("PlayersPanel"));
@@ -2121,10 +2367,37 @@ void UHOLGameScreen::BuildLayout()
 	PlayersPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
 	PlayersPanel->SetPadding(FMargin(8.f, 4.f));
 	PlayersPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* PlayersSlot = Frame->AddChildToOverlay(PlayersPanel);
+	// V4.2: the table and, under it, the thread of messages, in one column right aligned (above the minimap's place).
+	UVerticalBox* RightColumn = MakeVerticalBox(TEXT("RightColumn"));
+	RightColumn->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	UOverlaySlot* PlayersSlot = Frame->AddChildToOverlay(RightColumn);
 	PlayersSlot->SetHorizontalAlignment(HAlign_Right);
 	PlayersSlot->SetVerticalAlignment(VAlign_Top);
 	PlayersSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 0.8f + 8.f + 6.f, ScreenMargin, ScreenMargin));
+	RightColumn->AddChildToVerticalBox(PlayersPanel)->SetHorizontalAlignment(HAlign_Right);
+	MessagesList = MakeVerticalBox(TEXT("MessagesList"));
+	MessagesList->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBoxSlot* MessagesSlot = RightColumn->AddChildToVerticalBox(MessagesList);
+	MessagesSlot->SetHorizontalAlignment(HAlign_Right);
+	MessagesSlot->SetPadding(FMargin(0.f, 6.f, 0.f, 0.f));
+	MessageLines.Reset();
+	MessageRows.Reset();
+	for (int32 Index = 0; Index < FHOLForumThread::MaxLines; ++Index)
+	{
+		// A line's own panel, as dark as the table's (the names in a dark colour read on it).
+		UBorder* Line = MakePanel(*FString::Printf(TEXT("MessageLine%d"), Index));
+		Line->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
+		Line->SetPadding(FMargin(8.f, 2.f));
+		Line->SetVisibility(ESlateVisibility::Collapsed);
+		Line->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLGameScreen, HandleMessageLineMouseDown));
+		UHorizontalBox* Row = MakeHorizontalBox(*FString::Printf(TEXT("MessageRow%d"), Index));
+		Line->SetContent(Row);
+		UVerticalBoxSlot* LineSlot = MessagesList->AddChildToVerticalBox(Line);
+		LineSlot->SetHorizontalAlignment(HAlign_Right);
+		LineSlot->SetPadding(FMargin(0.f, Index > 0 ? 2.f : 0.f, 0.f, 0.f));
+		MessageLines.Add(Line);
+		MessageRows.Add(Row);
+	}
 	UVerticalBox* PlayersList = MakeVerticalBox(TEXT("PlayersList"));
 	PlayersPanel->SetContent(PlayersList);
 	PlayerRows.Reset();

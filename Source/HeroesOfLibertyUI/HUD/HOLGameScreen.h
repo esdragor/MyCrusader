@@ -1,8 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
+#include "Components/SlateWrapperTypes.h"
 #include "Input/UIActionBindingHandle.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
 #include "HOLGameScreen.generated.h"
@@ -11,6 +13,7 @@ class AHOLBuilding;
 class AHOLPlayerController;
 class AHOLPlayerState;
 class UBorder;
+class UVerticalBox;
 class USizeBox;
 class UCommonTextBlock;
 class UHOLGridCell;
@@ -65,6 +68,12 @@ public:
 
 	/** A main forum selected (its lives, ruin or rebuilding) and the players' table (V2): the line "HUD forum" of hol.HUD.Report. */
 	FString DescribeForum() const;
+
+	/** V4.2: the thread of messages, oldest first: the line "HUD messages: [<text> | <text>]" of hol.HUD.Report. */
+	FString DescribeMessages() const;
+
+	/** V4.3: the major alert's banner, "<text> (slot N)" or "none": the line "HUD alert" of hol.HUD.Report. */
+	FString DescribeAlert() const;
 
 	/**
 	 * Clicks a cell of the grid (GridCell00 to GridCell11), an item of the queue (QueueItem0 to QueueItem4) or the idle
@@ -403,6 +412,47 @@ private:
 	FDelegateHandle TableForumsHandle;
 	FDelegateHandle TableVictoryHandle;
 	float SinceTableRefresh = 1.f;
+
+	/**
+	 * V4.2 (V4-Q2): the thread of messages under the players' table, right aligned, the newest at the bottom, each line
+	 * 8 s (FHOLForumThread), the names in their players' colours; on every machine, spectators and the defeated included
+	 * (AHOLGameState::OnForumEvent). Silent (the alert is V4.3's).
+	 */
+	void HandleForumEvent(const struct FHOLForumEvent& Event);
+	void TickMessages();
+	void RebuildMessages();
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> MessagesList;
+	/** One line per message at most (FHOLForumThread::MaxLines): its panel, the row of its pieces. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> MessageLines;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHorizontalBox>> MessageRows;
+	FHOLForumThread MessageThread;
+
+	/**
+	 * V4.3 (D353, D202): the major alert, a banner top centre under the resources' bar, the event's text larger than the
+	 * thread's, 4 s then its fade (FHOLForumAlert), a short 2D sound (FHOLForumAlert::SoundPath); none once the match is
+	 * over for the local player (its end banner). A click on it, or on a thread's line carrying an alert, centres the
+	 * camera on the touched slot's forum (AHOLPlayerController::FocusCameraOnForum).
+	 */
+	void ShowAlert(const FHOLForumMessage& Message, int32 TouchedSlot);
+	void TickAlert();
+	/** V4.5b: the banner of Alert's shown message, and its sound if it has one (the first of its burst). */
+	void PresentAlert();
+	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
+	bool IsMatchOverForMe(bool& bOver) const;
+	UFUNCTION()
+	FEventReply HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
+	UFUNCTION()
+	FEventReply HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
+	void FocusAlertSlot(int32 TouchedSlot);
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> AlertPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> AlertRow;
+	FHOLForumAlert Alert;
+	FDelegateHandle TableForumEventHandle;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;
 	/** The missing players last logged by the wait banner (empty: hidden). */
