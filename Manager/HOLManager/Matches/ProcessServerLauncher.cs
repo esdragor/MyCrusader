@@ -9,9 +9,9 @@ namespace HOLManager.Matches;
 /**
  * R2.9: starts HeroesOfLibertyServer.exe for a match with the command line of Manager/PROTOCOL.md, on the first port
  * free in UDP from FirstServerPort. Dispose stops the servers still running. The store follows each server through
- * HasExited and Stop (R2.10).
+ * HasExited and Stop (R2.10). With an access key (L11), the server gets it in -HOLAccessKey=.
  */
-public sealed class ProcessServerLauncher(ManagerSettings settings) : IServerLauncher, IDisposable
+public sealed class ProcessServerLauncher(ManagerSettings settings, string? accessKey = null) : IServerLauncher, IDisposable
 {
     /** Ports tried from FirstServerPort before giving up. */
     private const int PortsTried = 100;
@@ -56,7 +56,7 @@ public sealed class ProcessServerLauncher(ManagerSettings settings) : IServerLau
                 var info = new ProcessStartInfo(exe)
                 {
                     // Built by hand, not with ArgumentList: the quotes go after the "=".
-                    Arguments = BuildArguments(map, port, matchDir, settings.ManagerUrl, matchId),
+                    Arguments = BuildArguments(map, port, matchDir, settings.ManagerUrl, matchId, accessKey),
                     UseShellExecute = false,
                     // The server writes to -abslog; no console mixed with the manager's.
                     CreateNoWindow = true,
@@ -112,10 +112,12 @@ public sealed class ProcessServerLauncher(ManagerSettings settings) : IServerLau
     }
 
     /** The arguments after the exe, built by hand: paths are quoted after the "=", as FParse::Value reads them. */
-    internal static string BuildArguments(MapInfo map, int port, string matchDir, string managerUrl, string matchId) =>
+    internal static string BuildArguments(MapInfo map, int port, string matchDir, string managerUrl, string matchId,
+        string? accessKey = null) =>
         $"{map.PackagePath} -Port={port} -MatchConfig=\"{Path.Combine(matchDir, "match.json")}\""
         + $" -ManagerUrl={managerUrl} -MatchId={matchId} -log -unattended -useperfthreads"
-        + $" -abslog=\"{Path.Combine(matchDir, "server.log")}\"";
+        + $" -abslog=\"{Path.Combine(matchDir, "server.log")}\""
+        + (accessKey != null ? $" -HOLAccessKey={accessKey}" : "");
 
     /** The first port from FirstServerPort free in UDP (Unreal listens in UDP) and not given to a running server. */
     private int FreePort()

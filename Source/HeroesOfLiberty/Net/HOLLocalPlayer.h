@@ -7,7 +7,8 @@
 #include "HOLLocalPlayer.generated.h"
 
 /**
- * Local player of the game: adds ?Version=<game version> to every login URL, so the server can check it (R3.3), and sends
+ * Local player of the game: adds ?Version=<game version> to every login URL, so the server can check it (R3.3), and
+ * ?HOLKey=<key> when the manager called has an access key (launcher L11, HOLAccessKey::GetClientKey); sends
  * the name given at the launch (-PlayerName=) instead of the system's nickname, which would replace the ?Name= of the URL
  * opened (FURL::AddOption): that name gives the slot (R3.2).
  */

@@ -108,6 +108,8 @@ struct FHOLManagerServer
 {
 	FString Name;
 	FString Url;
+	/** The shared access key (launcher L11, HOLAccessKey); empty: none (an open manager). Never logged. */
+	FString Key;
 };
 
 /** The pure rules of the game's client of the lobby manager (R4.1): JSON of the protocol in, structures out. */
@@ -124,7 +126,7 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	static bool ParseJoin(const FString& Json, FString& OutToken, int32& OutSlot, FHOLLobby& OutLobby);
 	/** { "error": "...", "message": "..." } into Code and Message. */
 	static bool ParseError(const FString& Json, FHOLManagerError& Out);
-	/** { "servers": [ { "name": "...", "url": "http://..." } ] }; rows without a url skipped. */
+	/** { "servers": [ { "name": "...", "url": "http://...", "key": "..." } ] } (key optional); rows without a url skipped. */
 	static bool ParseServers(const FString& Json, TArray<FHOLManagerServer>& Out);
 
 	/**

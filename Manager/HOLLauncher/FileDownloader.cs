@@ -45,6 +45,9 @@ public sealed class FileDownloader
 
     public static HttpClient CreateHttpClient() => new() { Timeout = Timeout.InfiniteTimeSpan };
 
+    /** The launcher's, sending the key of <gameDir>/servers.json (L11). */
+    public static HttpClient CreateHttpClient(string gameDir) => AccessKeyHandler.CreateHttpClient(gameDir, Timeout.InfiniteTimeSpan);
+
     /** <game>/.holupdate/<version>: left out of the game's list by UpdatePlan.Excludes. */
     public static string TempDirFor(string gameDir, string version) => Path.Combine(gameDir, UpdatePlan.WorkDirName, version);
 
@@ -145,6 +148,10 @@ public sealed class FileDownloader
                 if (allowPatchNotFound && response.StatusCode == HttpStatusCode.NotFound && error == "patch_not_found")
                 {
                     return false;
+                }
+                if (AccessKeyHandler.IsBadKey((int)response.StatusCode, error))
+                {
+                    throw new UpdateDownloadException(AccessKeyHandler.BadKeyMessage);
                 }
                 throw new UpdateDownloadException($"{relativeUrl}: HTTP {(int)response.StatusCode}{(error is null ? "" : $" {error}")}");
             }

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "HOLVersion.h"
+#include "Net/HOLAccessKey.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -36,6 +37,30 @@ bool FHOLVersionCheckTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("no version, packaged server"), HOLVersion::IsAccepted(Packaged, FString(), &Error));
 	TestEqual(TEXT("missing message"), Error, FString::Printf(TEXT("Version mismatch: server %s, client sent no version"), *Packaged));
 	TestFalse(TEXT("unknown server refuses unknown client"), HOLVersion::IsAccepted(HOLVersion::Unknown, HOLVersion::Unknown));
+	return true;
+}
+
+// Launcher L11: a match server started with -HOLAccessKey= lets in only the clients sending ?HOLKey= with that key.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAccessKeyTest, "HeroesOfLiberty.AccessKey",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAccessKeyTest::RunTest(const FString& Parameters)
+{
+	FString Error;
+	TestTrue(TEXT("no key expected, none sent"), HOLAccessKey::IsAccepted(FString(), FString()));
+	TestTrue(TEXT("no key expected, one sent"), HOLAccessKey::IsAccepted(FString(), TEXT("abc")));
+	TestTrue(TEXT("same key"), HOLAccessKey::IsAccepted(TEXT("Ab-_09"), TEXT("Ab-_09")));
+	TestFalse(TEXT("no key sent"), HOLAccessKey::IsAccepted(TEXT("Ab-_09"), FString(), &Error));
+	TestEqual(TEXT("mismatch message, without the key"), Error, FString(TEXT("Access key mismatch")));
+	TestFalse(TEXT("other key"), HOLAccessKey::IsAccepted(TEXT("Ab-_09"), TEXT("Ab-_08")));
+	TestFalse(TEXT("case matters"), HOLAccessKey::IsAccepted(TEXT("Ab-_09"), TEXT("ab-_09")));
+
+	TestEqual(TEXT("server key from the command line"), HOLAccessKey::ParseServerKey(TEXT("/Game/Maps/Plain -server -HOLAccessKey=Ab-_09 -Port=7778")),
+		FString(TEXT("Ab-_09")));
+	TestEqual(TEXT("no server key"), HOLAccessKey::ParseServerKey(TEXT("/Game/Maps/Plain -server -Port=7778")), FString());
+
+	TestEqual(TEXT("login option"), HOLAccessKey::MakeLoginOption(TEXT("Ab-_09")), FString(TEXT("HOLKey=Ab-_09")));
+	TestEqual(TEXT("login option encoded"), HOLAccessKey::MakeLoginOption(TEXT("a?b=c")), FString(TEXT("HOLKey=a%3Fb%3Dc")));
+	TestEqual(TEXT("no key, no option"), HOLAccessKey::MakeLoginOption(FString()), FString());
 	return true;
 }
 

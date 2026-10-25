@@ -4,11 +4,15 @@
 
 #include "GenericPlatform/GenericPlatformHttp.h"
 #include "HOLVersion.h"
+#include "Net/HOLAccessKey.h"
 #include "Misc/CommandLine.h"
 
 FString UHOLLocalPlayer::GetGameLoginOptions() const
 {
-	return FString::Printf(TEXT("%s=%s"), HOLVersion::UrlOption, *HOLVersion::Get());
+	// One option string for the engine (FURL::AddOption), parsed back as ?Version=...?HOLKey=... by the server.
+	const FString Options = FString::Printf(TEXT("%s=%s"), HOLVersion::UrlOption, *HOLVersion::Get());
+	const FString KeyOption = HOLAccessKey::MakeLoginOption(HOLAccessKey::GetClientKey());
+	return KeyOption.IsEmpty() ? Options : Options + TEXT("?") + KeyOption;
 }
 
 FString UHOLLocalPlayer::GetNickname() const

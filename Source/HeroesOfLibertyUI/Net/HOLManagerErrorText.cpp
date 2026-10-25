@@ -47,6 +47,11 @@ FText GetManagerErrorText(const FHOLManagerError& Error)
 		}
 		return LOCTEXT("OtherVersion", "Version différente de celle du serveur de parties.");
 	}
+	// Launcher L11: the manager's 401 and a match server's PreLogin refusal (HOLAccessKey): the kit's key is not this one.
+	if (Code == TEXT("bad_key") || Code == TEXT("match_key"))
+	{
+		return LOCTEXT("BadKey", "Clé d'accès refusée : réinstallez le jeu avec le kit reçu.");
+	}
 	if (Code == TEXT("protocol_mismatch")) { return LOCTEXT("OtherVersion", "Version différente de celle du serveur de parties."); }
 	if (Code == TEXT("invalid_name")) { return LOCTEXT("InvalidName", "Nom refusé : 1 à 16 lettres, chiffres, espaces, - ou _."); }
 	if (Code == TEXT("lobby_not_found")) { return LOCTEXT("LobbyNotFound", "Ce salon n'existe plus."); }
@@ -105,8 +110,9 @@ FHOLManagerError MakeMatchLossError(const ENetworkFailure::Type Failure, const F
 		Error.Code = TEXT("match_version");
 		break;
 	case ENetworkFailure::PendingConnectionFailure:
-		// The server's PreLogin refusal: HOLVersion's "Version mismatch: ...", the engine's "Server full.".
-		Error.Code = Message.Contains(TEXT("version")) ? TEXT("match_version")
+		// The server's PreLogin refusal: HOLVersion's "Version mismatch: ...", HOLAccessKey's "Access key mismatch", the
+		// engine's "Server full.".
+		Error.Code = Message.Contains(TEXT("Access key")) ? TEXT("match_key") : Message.Contains(TEXT("version")) ? TEXT("match_version")
 			: Message.Contains(TEXT("full")) ? TEXT("match_full") : TEXT("match_refused");
 		break;
 	default:

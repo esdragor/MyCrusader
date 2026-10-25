@@ -17,6 +17,7 @@
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerState.h"
+#include "Net/HOLAccessKey.h"
 #include "Net/HOLManagerLink.h"
 #include "Engine/NetDriver.h"
 #include "Player/HOLPlayerController.h"
@@ -117,6 +118,13 @@ void AHeroesOfLibertyGameModeBase::PreLogin(const FString& Options, const FStrin
 	}
 	const FString ClientVersion = UGameplayStatics::ParseOption(Options, HOLVersion::UrlOption);
 	if (!HOLVersion::IsAccepted(HOLVersion::Get(), ClientVersion, &ErrorMessage))
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("Login refused from %s: %s"), *Address, *ErrorMessage);
+		return;
+	}
+	// Launcher L11: a server started with -HOLAccessKey= lets in only the kit's games (the key never logged).
+	const FString ClientKey = FGenericPlatformHttp::UrlDecode(UGameplayStatics::ParseOption(Options, HOLAccessKey::UrlOption));
+	if (!HOLAccessKey::IsAccepted(HOLAccessKey::GetServerKey(), ClientKey, &ErrorMessage))
 	{
 		UE_LOG(LogHOLMatch, Warning, TEXT("Login refused from %s: %s"), *Address, *ErrorMessage);
 		return;

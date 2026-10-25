@@ -2,12 +2,13 @@ using System.Text.Json;
 
 namespace HOLLauncher;
 
-/** One lobby manager of servers.json (M6-Q5): its address, its name (may be empty). */
-public sealed record ManagerServer(string Name, string Url);
+/** One lobby manager of servers.json (M6-Q5): its address, its name (may be empty), its access key (L11, may be null). */
+public sealed record ManagerServer(string Name, string Url, string? Key = null);
 
 /**
  * Reads the game's servers.json like the game does (FHOLManagerClientRules::ParseServers, UHOLManagerClient): at the
- * game folder's root (FPaths::RootDir of a packaged game), { "servers": [ { "name", "url" } ] }, rows without url
+ * game folder's root (FPaths::RootDir of a packaged game), { "servers": [ { "name", "url", "key" } ] } ("key"
+ * optional, L11), rows without url
  * skipped, the first one kept; no file or no row: the local manager. Unlike the game, an unreadable file is an error
  * (the launcher says so rather than guess).
  */
@@ -37,7 +38,7 @@ public static class GameServers
             {
                 if (row.ValueKind == JsonValueKind.Object && ReadString(row, "url") is { Length: > 0 } url)
                 {
-                    return new ManagerServer(ReadString(row, "name") ?? "", url);
+                    return new ManagerServer(ReadString(row, "name") ?? "", url, ReadString(row, "key") is { Length: > 0 } key ? key : null);
                 }
             }
             return new ManagerServer(DefaultName, DefaultUrl);

@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HOLVersion.h"
+#include "Net/HOLAccessKey.h"
 #include "HeroesOfLibertyLog.h"
 #include "HttpModule.h"
 #include "Net/HOLManagerErrorText.h"
@@ -133,8 +134,11 @@ void UHOLManagerClient::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		Servers.Add({ TEXT("Local"), FHOLManagerClientRules::DefaultUrl });
 	}
+	// The match servers of this manager want its key at login (UHOLLocalPlayer::GetGameLoginOptions).
+	HOLAccessKey::SetClientKey(Servers[0].Key);
 	// The address stays out of the screens (M6-Q5), not out of the log.
-	UE_LOG(LogHOLNet, Log, TEXT("Manager client: %d server(s), first %s"), Servers.Num(), *Servers[0].Name);
+	UE_LOG(LogHOLNet, Log, TEXT("Manager client: %d server(s), first %s (%s)"), Servers.Num(), *Servers[0].Name,
+		Servers[0].Key.IsEmpty() ? TEXT("no access key") : TEXT("access key set"));
 	if (GEngine)
 	{
 		NetworkFailureHandle = GEngine->OnNetworkFailure().AddUObject(this, &UHOLManagerClient::HandleNetworkFailure);
@@ -208,6 +212,11 @@ void UHOLManagerClient::Send(const FString& Verb, const FString& Route, const FS
 	if (!Token.IsEmpty())
 	{
 		Request->SetHeader(TEXT("X-Player-Token"), Token);
+	}
+	// Launcher L11: a wrong or missing key answers 401 bad_key (GetManagerErrorText).
+	if (!Servers[0].Key.IsEmpty())
+	{
+		Request->SetHeader(HOLAccessKey::Header, Servers[0].Key);
 	}
 	Request->SetTimeout(5.f);
 	Request->OnProcessRequestComplete().BindWeakLambda(this, [Done = MoveTemp(Done)](FHttpRequestPtr, const FHttpResponsePtr Response, const bool bConnected)

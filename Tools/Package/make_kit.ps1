@@ -4,13 +4,17 @@
 # launcher\latest.txt: what L7 serves to the launchers already out there), and zipped with hpatchz.exe
 # (Tools\ThirdParty\HDiffPatch\), a servers.json in the game's format aimed at -ServerUrl, and LISEZMOI.txt:
 #   <copy>\Saved\Kit\HOLLauncher-kit.zip (or -Out <file>).
+# The access key (L11, Manager\PROTOCOL.md "Clé d'accès"): <ManagerDir>\access_key.txt, created if missing or empty
+# (32 random bytes, base64url without "="), kept otherwise, and written in the kit's servers.json ("key"): the manager
+# then serves only this kit's launchers and games. The key itself is never printed nor logged.
 # Unpacked in an empty folder, "Installer le jeu" downloads the whole game from that manager (GameUpdater).
 # Separate from publish.ps1 on purpose: the kit does not depend on the game (no package, no archive), and is made
 # again only when the launcher or the address changes.
 # Run from Windows PowerShell:
-#   powershell -ExecutionPolicy Bypass -File Tools\Package\make_kit.ps1 -ServerUrl http://<tailscale address>:7700
-#       [-ServerName <name>] [-Root <copy>] [-VersionsDir <folder>] [-Out <zip>]
+#   powershell -ExecutionPolicy Bypass -File Tools\Package\make_kit.ps1 -ServerUrl http://<public address of the box>:7700
+#       [-ServerName <name>] [-Root <copy>] [-VersionsDir <folder>] [-ManagerDir <folder>] [-Out <zip>]
 # - -VersionsDir: <copy>\Saved\Manager\Versions by default, like publish.ps1;
+# - -ManagerDir: the manager's folder, where access_key.txt lies (AccessKeyFile); the parent of -VersionsDir by default;
 # - LauncherInfo.Version (Manager\HOLLauncher\LauncherInfo.cs) names launcher\<lv>\: raise it by hand before making a
 #   kit with a changed launcher, or the launchers already installed will not see it.
 # Full log: <copy>\Saved\Logs\make_kit.log. Prints one line PASS / FAIL; exit code 0 / 1.
@@ -19,6 +23,7 @@ param(
     [string] $ServerName = "Heroes of Liberty",
     [string] $Root = "",
     [string] $VersionsDir = "",
+    [string] $ManagerDir = "",
     [string] $Out = ""
 )
 
@@ -33,6 +38,8 @@ $ServerUrl = $ServerUrl.TrimEnd('/')
 if ($ServerUrl -notmatch '^https?://[^/\s]+$') { Fail "-ServerUrl wants http://<address>:<port>, not '$ServerUrl'" }
 if (-not $VersionsDir) { $VersionsDir = Join-Path $Project "Saved\Manager\Versions" }
 $VersionsDir = [IO.Path]::GetFullPath($VersionsDir)
+if (-not $ManagerDir) { $ManagerDir = Split-Path $VersionsDir }
+$ManagerDir = [IO.Path]::GetFullPath($ManagerDir)
 if (-not $Out) { $Out = Join-Path $Project "Saved\Kit\HOLLauncher-kit.zip" }
 $Out = [IO.Path]::GetFullPath($Out)
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { Fail "dotnet not found" }
@@ -66,19 +73,33 @@ Move-Item "$Served.tmp" $Served -Force
 [IO.File]::WriteAllText((Join-Path $VersionsDir "launcher\latest.txt"), $LauncherVersion)
 if ($Replaced) { Say "  launcher\$LauncherVersion\HOLLauncher.exe replaced by a different exe: raise LauncherInfo.Version for the launchers already installed" }
 
-# 4. The kit: exe, hpatchz.exe, servers.json (the game's format, GameServers), LISEZMOI.txt (UTF-8 with BOM, CRLF: Notepad).
+# 4. The access key next to the manager: kept if there, else created (no BOM, no line break; the manager trims).
+$KeyFile = Join-Path $ManagerDir "access_key.txt"
+$AccessKey = if (Test-Path $KeyFile) { [IO.File]::ReadAllText($KeyFile).Trim().TrimStart([char]0xFEFF).Trim() } else { "" }
+if ($AccessKey) { $KeyState = "reprise" } else {
+    $Bytes = New-Object byte[] 32
+    $Rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    $Rng.GetBytes($Bytes)
+    $Rng.Dispose()
+    $AccessKey = [Convert]::ToBase64String($Bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+    New-Item -ItemType Directory -Force $ManagerDir | Out-Null
+    [IO.File]::WriteAllText($KeyFile, $AccessKey, (New-Object Text.UTF8Encoding $false))
+    $KeyState = "créée"
+}
+
+# 5. The kit: exe, hpatchz.exe, servers.json (the game's format, GameServers), LISEZMOI.txt (UTF-8 with BOM, CRLF: Notepad).
 $Stage = Join-Path $Project "Saved\Kit\stage"
 if (Test-Path $Stage) { Remove-Item -Recurse -Force $Stage }
 New-Item -ItemType Directory -Force $Stage | Out-Null
 Copy-Item $Exe, $Hpatchz $Stage
-$Servers = [ordered]@{ servers = @([ordered]@{ name = $ServerName; url = $ServerUrl }) } | ConvertTo-Json -Depth 3
+$Servers = [ordered]@{ servers = @([ordered]@{ name = $ServerName; url = $ServerUrl; key = $AccessKey }) } | ConvertTo-Json -Depth 3
 [IO.File]::WriteAllText((Join-Path $Stage "servers.json"), $Servers, (New-Object Text.UTF8Encoding $false))
 $Readme = @(
     "Heroes of Liberty : installation"
     ""
     "1. Dézippez ces fichiers dans un dossier vide (par exemple Documents\HeroesOfLiberty)."
-    "2. Lancez HOLLauncher.exe puis cliquez « Installer le jeu » (plusieurs Go à télécharger, Tailscale connecté)."
-    "3. Ensuite, à chaque fois : lancez HOLLauncher.exe, Tailscale connecté, et cliquez « Jouer »."
+    "2. Lancez HOLLauncher.exe puis cliquez « Installer le jeu » (environ 350 Mo à télécharger)."
+    "3. Ensuite, à chaque fois : lancez HOLLauncher.exe et cliquez « Jouer » (« Mettre à jour le jeu » d'abord s'il le propose)."
     ""
     "Si Windows affiche « Windows a protégé votre ordinateur » : « Informations complémentaires » puis « Exécuter quand même » (le lanceur n'est pas signé)."
 ) -join "`r`n"
@@ -90,5 +111,5 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 Remove-Item -Recurse -Force $Stage
 
 $Size = [math]::Round((Get-Item $Out).Length / 1MB, 1)
-Say "make_kit : PASS ($Out, $Size MB ; launcher $LauncherVersion -> $LauncherDir ; servers.json -> $ServerUrl)"
+Say "make_kit : PASS ($Out, $Size MB ; launcher $LauncherVersion -> $LauncherDir ; servers.json -> $ServerUrl ; clé : $KeyState, $KeyFile)"
 exit 0

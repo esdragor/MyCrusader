@@ -37,6 +37,9 @@ public sealed class VersionsClient
 
     public static HttpClient CreateHttpClient() => new() { Timeout = DefaultTimeout };
 
+    /** The launcher's, sending the key of <gameDir>/servers.json (L11). */
+    public static HttpClient CreateHttpClient(string gameDir) => AccessKeyHandler.CreateHttpClient(gameDir, DefaultTimeout);
+
     public async Task<LatestResult> GetLatestAsync(string managerUrl, CancellationToken cancel = default)
     {
         if (!Uri.TryCreate(managerUrl.TrimEnd('/') + "/versions/latest", UriKind.Absolute, out var uri)
@@ -59,6 +62,10 @@ public sealed class VersionsClient
         catch (OperationCanceledException)
         {
             return Unreachable(cancel.IsCancellationRequested ? "canceled" : $"no answer within {http.Timeout.TotalSeconds:0.#} s");
+        }
+        if (AccessKeyHandler.IsBadKey(code, ReadErrorCode(body)))
+        {
+            return Refused(AccessKeyHandler.BadKeyMessage);
         }
         if (code < 200 || code >= 300)
         {
@@ -120,6 +127,20 @@ public sealed class VersionsClient
         {
         }
         return "";
+    }
+
+    /** The error code of the manager's error body, or null. */
+    private static string? ReadErrorCode(string body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            return document.RootElement.ValueKind == JsonValueKind.Object ? ReadString(document.RootElement, "error") : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? ReadString(JsonElement row, string name)

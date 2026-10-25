@@ -8,8 +8,9 @@ namespace HOLLauncher;
  */
 public sealed class MainForm : Form
 {
-    private readonly HttpClient http = VersionsClient.CreateHttpClient();
-    private readonly HttpClient downloads = FileDownloader.CreateHttpClient();
+    // Both send the key of servers.json to its manager (L11).
+    private readonly HttpClient http;
+    private readonly HttpClient downloads;
     private readonly Label installed = NewLabel();
     private readonly Label latest = NewLabel();
     private readonly Label state = NewLabel();
@@ -42,6 +43,8 @@ public sealed class MainForm : Form
     public MainForm(LauncherOptions options)
     {
         Options = options;
+        http = VersionsClient.CreateHttpClient(options.GameDir);
+        downloads = FileDownloader.CreateHttpClient(options.GameDir);
         autoUpdatePending = options.UpdateAtStart;
         autoLauncherUpdatePending = options.UpdateLauncherAtStart;
         Text = $"Heroes of Liberty - lanceur {LauncherInfo.Version}";

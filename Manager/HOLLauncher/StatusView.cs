@@ -33,6 +33,7 @@ public sealed record StatusView(
             GameState.UpToDate => "Le jeu est à jour.",
             GameState.Outdated => $"Une mise à jour du jeu est disponible ({status.Latest}).",
             GameState.NotInstalled => $"Le jeu n'est pas installé ; la version {status.Latest} est disponible.",
+            _ when status.Message == AccessKeyHandler.BadKeyMessage => status.Message,
             _ => $"Serveur injoignable : {status.Message}",
         };
         var play = PlayRules.Decide(status.State, status.Installed);

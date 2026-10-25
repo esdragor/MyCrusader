@@ -92,6 +92,15 @@ bool FHOLManagerClientFailureTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("server url"), Servers[0].Url, FString(TEXT("http://100.64.0.1:7700")));
 	}
 	TestFalse(TEXT("servers.json not JSON"), FHOLManagerClientRules::ParseServers(TEXT("servers"), Servers));
+	TestTrue(TEXT("servers.json without a key"), FHOLManagerClientRules::ParseServers(
+		TEXT(R"({ "servers": [ { "name": "a", "url": "http://a:7700" } ] })"), Servers) && Servers.Num() == 1 && Servers[0].Key.IsEmpty());
+	// Launcher L11: the kit's servers.json gives each manager its access key.
+	TestTrue(TEXT("servers.json with a key"), FHOLManagerClientRules::ParseServers(
+		TEXT(R"({ "servers": [ { "name": "Ami", "url": "http://90.55.168.58:7700", "key": " Ab-_09xyz " } ] })"), Servers));
+	if (TestEqual(TEXT("one keyed server"), Servers.Num(), 1))
+	{
+		TestEqual(TEXT("key read, trimmed"), Servers[0].Key, FString(TEXT("Ab-_09xyz")));
+	}
 
 	TestEqual(TEXT("url without a slash"), FHOLManagerClientRules::MakeUrl(TEXT("http://127.0.0.1:7700"), TEXT("/status")),
 		FString(TEXT("http://127.0.0.1:7700/status")));
