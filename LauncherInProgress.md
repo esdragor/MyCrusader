@@ -130,3 +130,20 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   124 Mo compressés, à confirmer). Plan revu : L2 (routes des correctifs), L3 (mesures : changement de contenu,
   taille des correctifs de l'exe avec xdelta3 / msdelta / HDiffPatch, outil choisi), L4 (correctifs depuis les N
   versions gardées), L6 (appliquer, vérifier l'empreinte, fichier complet en secours). Prochaine étape : L1.
+- 2026-10-25 : **L1 lancée** (« go »), dans Elrond, branche `launcher-l1` = `main` 520f6ad, `IN_USE.txt` posé, en
+  sous-agent : `Manager/HOLUpdate` (bibliothèque .NET 8 : liste d'un dossier, différence, JSON) et
+  `Manager/HOLUpdate.Tests` (xUnit, rouge d'abord), ajoutés à `HOLManager.sln` ; le gestionnaire n'y est pas encore
+  branché (L2).
+- 2026-10-25 : L1 : projets créés dans Elrond : `Manager/HOLUpdate` (bibliothèque net8.0) et `HOLUpdate.Tests` (xUnit,
+  mêmes paquets que `HOLManager.Tests`), ajoutés à `HOLManager.sln`. Tests rouges en cours d'écriture.
+- 2026-10-25 : L1 : **27 tests rouges** constatés (`dotnet test` sur `HOLUpdate.Tests`, types en `NotImplementedException`) :
+  liste d'un vrai dossier temporaire, `.pdb` exclu, ordre ordinal, JSON aller-retour, différence (casse ignorée).
+- 2026-10-25 : L1 : **vert**, 27/27 (`HOLUpdate.Tests`) et 173/173 (`HOLManager.Tests`), `dotnet test HOLManager.sln` 8 s.
+  **L1 close** (non commitée, branche `launcher-l1` d'Elrond) : `FileEntry`, `VersionManifest`, `ManifestBuilder`, `ManifestDiff`.
+- 2026-10-25 : L1 relue par la session principale : `dotnet test HOLManager.sln` repassé (27/27 + 173/173) ;
+  `HOLManager.sln` ramené à l'ajout des deux projets (+12 lignes, en Any CPU seulement, au lieu des +59 / −3 de
+  `dotnet sln add` qui ajoutait x64 / x86 : moins de conflits avec la session réseau), tests repassés. **L1 faite,
+  non commitée** : attend l'accord de l'utilisateur (absent). Ensuite : L2, à coordonner avec la session réseau
+  (`Manager/HOLManager`).
+- 2026-10-25 : **L1 commitée** (accord de l'utilisateur) : `launcher-l1` rebasée sur `main`, `main` avancée à
+  ad69a0c (avance rapide). L2 : accord demandé à la session réseau (elle travaille dans `Manager/HOLManager`).
