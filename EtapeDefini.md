@@ -49,3 +49,34 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Aléas et petits restes
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
+
+## Fichiers de développement
+
+### Références
+- `GDD.md` : conception du jeu, journal des décisions (§ 21) et point de reprise de la review (§ 22)
+- `UnitStats.md` : tableau des stats des unités, produit par `Tools/Data/make_unit_stats.py` (ne pas modifier à la main)
+- `Manager/PROTOCOL.md` : protocole du gestionnaire de salons (M6)
+- `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
+
+### Chantiers en cours
+- `JourneyInProgress.md` : parcours du joueur (D252), J7c en cours
+- `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
+- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
+- `LauncherInProgress.md` : lanceur, plan L0 à L10, rien codé
+- `MovementInProgress.md` : déplacement, reste les mesures de MV.6
+- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
+
+### En pause
+- `UnitStatsInProgress.md` : stats des unités, reste la charge (D345.3) avec la cavalerie
+- `AnimationsInProgress.md` : chaîne de fabrication et catalogue des animations, resservira à chaque nouvelle unité
+
+### Presque clos (un reste)
+- `ImplementationInProgress.md` : M0 à M2, arrêté le 2026-10-14 (suite dans `JourneyInProgress.md`) ; garde l'écart des mesures de rendu
+- `InterfaceInProgress.md` : grille du Paysan (D340) ; reste la barre trop large
+- `ScenariosInProgress.md` : mécanisme des scénarios, encore cité par les autres journaux (mode d'emploi : `Tools/Scenarios/README.md`)
+- `TileSizeInProgress.md` : case de 4 m et cartes de 220 × 220 (D344) ; reste peut-être une ligne marquée tous les 5 cases
+
+### Archivés (`Docs/Archive/`)
+- `FrontEndInProgress.md` : menu (D240 à D251)
+- `MillInProgress.md` : moulin (D346)
+- `RidgeRockInProgress.md` : rochers (D439 à D444)
