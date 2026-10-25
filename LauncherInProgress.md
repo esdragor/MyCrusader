@@ -430,3 +430,7 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   test` repassé sur `main`. `IN_USE.txt` d'Arwen : `Saved\Manager`, `Saved\Packages\L11-v1`, `Saved\Kit` servent au
   raccourci du bureau et au kit des amis (ne pas supprimer) ; le code d'Arwen est libre. Reste : essai avec un ami ;
   petits restes de L11c.
+- 2026-10-25 : **Essai avec un ami reporté** par l'utilisateur (« un autre jour »). À la reprise : il lance
+  `Desktop\Gestionnaire HOL.bat`, envoie `Arwen\Saved\Kit\HOLLauncher-kit.zip` ; l'ami dézippe, « Installer le jeu »,
+  « Jouer » ; vérifier la partie par UDP 7777 depuis l'extérieur (seul point non vérifié), puis fermer la fenêtre du
+  gestionnaire. Chantier en pause jusque-là ; petits restes de L11c sans urgence.
