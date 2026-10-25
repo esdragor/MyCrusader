@@ -1108,3 +1108,42 @@ R8, R9.
 - 2026-10-25 : **`main` avancée en ff à 298ea5e** (aucune autre session active ; accord de l'utilisateur pour la
   fusion). `main` contient E2-1 à E2-4, `-Playtest`, la version trouvée dans le paquet. Copie principale à recompiler.
   Suite : **R7** (déconnexion, fenêtre de 3 min).
+- 2026-10-25 : **R7 lancé** (« go » de l'utilisateur). Boucle 1 : R7.1 à R7.3 (règle, état gardé, défaite à la fin
+  de la fenêtre), dans le worktree Glorfindel, branche `net-playtest` (= `main` 298ea5e + doc).
+- 2026-10-25 : **R7 boucle 1 (R7.1 à R7.3, côté serveur) faite**, worktree Glorfindel (net-playtest, 298ea5e), non
+  commité. Règle pure `FHOLDisconnectRules` (`Match/HOLDisconnectRules.h/.cpp`) : `KeepsSlot` (configuration nommée,
+  emplacement humain nommé, partie lancée et pas finie, emplacement non vaincu), `IsWindowOver`, `GetSecondsLeft` (pour
+  R7.5), `FindAbsent`, `GetExpired`, `GetStockOnTaking` ; fenêtre par défaut 180 s. `AHOLGameState` (serveur) :
+  `AbsentSlots` (emplacement, nom, heure du départ, stock), `KeepAbsentSlot` (Logout), `KeepMissingSlot` (absents au
+  départ de R3.9 : fenêtre ouverte au départ de la partie avec `StartingResources`), `GiveSlotStock` (PostLogin : stock
+  gardé sinon celui du départ), `DefeatExpiredAbsences` → `DefeatSlot(Slot, Disconnected)` (nouvelle raison, même
+  chemin qu'un abandon : effondrement de V1, règles des camps) ; une défaite pendant l'absence (Roi tué, forum) retire
+  l'absence. Mode de jeu : `Logout` garde l'emplacement, minuterie 1 s `UpdateAbsences` tant qu'il y a des absents ;
+  `PostLogin` passe par `GiveSlotStock` ; réglage `hol.Match.DisconnectWindowSeconds` (console) ou
+  `-HOLDisconnectWindow=<s>` (ligne de commande). Le retour sous le même nom marchait déjà (`FindSlotForName` : la
+  place se libère avec le PlayerState) mais repartait de `StartingResources` ; unités et bâtiments restent (rien ne
+  les retirait). Journaux « Disconnect: slot N (Nom) kept / back / not back within W s ».
+  Tests (`Tests/HOLDisconnectTests.cpp`) : `HeroesOfLiberty.Match.DisconnectRules` (vert d'emblée : la règle a été
+  écrite avec le test) et `HeroesOfLiberty.Match.DisconnectGameState` (Bob 300 bois → départ → retour = 300 bois ;
+  re-départ, fin de fenêtre → vaincu `Disconnected`, plus absent, partie pas finie grâce à l'IA de son camp ; solo :
+  rien gardé) : **rouge** avec l'API en ébauche (173/174), vert après. `Toolsuild.ps1` **PASS** ;
+  `quick_check -Parts tests` **PASS** 174/174.
+  Gestionnaire : `POST /matches/{id}/left` au Logout ne retire personne du salon ni de la partie (`LeftBeforeEnd`,
+  M6-Q14) ; le retour direct au serveur n'est pas gêné. Écart sans changement de protocole : un chef revenu dans la
+  fenêtre reste dans `LeftBeforeEnd`, donc à `finished` il perd la direction comme s'il n'était pas revenu ; à régler
+  par un message « revenu » (`POST /matches/{id}/back`, à décider) — noté, pas fait. Si tous partent, `empty` arrête
+  toujours le serveur (fenêtre perdue) : inchangé.
+  Reste : pas d'essai réseau (net:rejoin = R7.8) ; pendant l'absence les dépôts de ses Paysans et ses remboursements
+  vont à un PlayerState absent (perdus) et sa production ne paie rien : à garder dans `AbsentSlots` ; R7.4 (propriétaire
+  réseau au retour : `AssignBuildingOwners` est déjà appelé dans PostLogin, à vérifier à 2 clients), R7.5 (bandeau :
+  répliquer `AbsentSlots`), R7.6, R7.7 (texte de la raison « déconnecté » si l'écran de fin l'affiche), R7.8, R7.9.
+- 2026-10-25 : **Demande du chantier lanceur (L-Q7, choix de l'utilisateur : « B confié à la session réseau »)** :
+  publier une version doit mettre à jour le **serveur de partie** sans couper les parties en cours. À faire ici, dans le
+  gestionnaire : (1) un dossier serveur par version (`Servers\<v>\`, copié de `<archive>\WindowsServer\` par
+  `Tools/Package/publish.ps1` du lanceur, à étendre) ; (2) la version du jeu relue **à chaque nouveau salon** (plus une
+  fois au démarrage, `Program.cs` / `LobbyStore`), = la dernière publiée (`Versions\latest.txt`, L2) ; (3) chaque
+  partie lancée depuis le dossier serveur de sa version (`ProcessServerLauncher`), celles en cours finissent sur la
+  leur ; (4) **nettoyage** : le dossier serveur d'une ancienne version supprimé quand sa dernière partie se termine
+  (et par `publish.ps1` en filet), un seul serveur de 3 Go en permanence. Détail et contexte : `LauncherInProgress.md`
+  (L2 : dossier des versions, L4 : publication). En attendant : mise à jour du serveur à la main.
+  → Commit **4a88040** sur `net-playtest` (« go » de l'utilisateur). `main` inchangée. Suite : R7.4 et la suite ; deux points à décider (chef revenu, gains des Paysans pendant l'absence).
