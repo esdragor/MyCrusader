@@ -56,7 +56,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7c en cours
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), J8 à planifier
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
 - `LauncherInProgress.md` : lanceur, plan L0 à L10, rien codé
