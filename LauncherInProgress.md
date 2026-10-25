@@ -434,3 +434,6 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   `Desktop\Gestionnaire HOL.bat`, envoie `Arwen\Saved\Kit\HOLLauncher-kit.zip` ; l'ami dézippe, « Installer le jeu »,
   « Jouer » ; vérifier la partie par UDP 7777 depuis l'extérieur (seul point non vérifié), puis fermer la fenêtre du
   gestionnaire. Chantier en pause jusque-là ; petits restes de L11c sans urgence.
+- 2026-10-25 : Elrond libéré (`IN_USE.txt` retiré, propre, `launcher-l5` = d2ae192) ; ses `Saved\Packages\L10-v1/v2`
+  (6 Go chacune) et `Saved\Manager\Versions` (L10) restent, inutiles, à supprimer sur accord. Arwen reste marqué pour
+  ses seuls dossiers `Saved` (raccourci du bureau, kit) ; son code est libre.
