@@ -9,6 +9,7 @@
 #include "HOLVersion.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Screens/HOLConfirmDialog.h"
+#include "Screens/HOLMultiplayerScreen.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
 #include "Style/HOLUIStyles.h"
@@ -28,6 +29,7 @@ void UHOLTitleScreen::BuildLayout()
 	// The game's name is not translated.
 	Title = AddText(Column, TEXT("Title"), INVTEXT("Heroes of Liberty"), UHOLTextStyleTitle::StaticClass(), 48.f);
 	PlayButton = AddButton(Column, TEXT("PlayButton"), LOCTEXT("Play", "Jouer"));
+	MultiplayerButton = AddButton(Column, TEXT("MultiplayerButton"), LOCTEXT("Multiplayer", "Multijoueur"));
 	SettingsButton = AddButton(Column, TEXT("SettingsButton"), LOCTEXT("Settings", "Réglages"));
 	QuitButton = AddButton(Column, TEXT("QuitButton"), LOCTEXT("Quit", "Quitter"));
 
@@ -51,6 +53,10 @@ void UHOLTitleScreen::NativeOnInitialized()
 	{
 		PlayButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandlePlay);
 	}
+	if (MultiplayerButton)
+	{
+		MultiplayerButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleMultiplayer);
+	}
 	if (SettingsButton)
 	{
 		SettingsButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleSettings);
@@ -69,6 +75,11 @@ UWidget* UHOLTitleScreen::NativeGetDesiredFocusTarget() const
 void UHOLTitleScreen::HandlePlay()
 {
 	UHOLNewGameScreen::Open(GetOwningPlayer());
+}
+
+void UHOLTitleScreen::HandleMultiplayer()
+{
+	UHOLMultiplayerScreen::Open(GetOwningPlayer());
 }
 
 void UHOLTitleScreen::HandleSettings()

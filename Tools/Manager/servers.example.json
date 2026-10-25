@@ -1,0 +1,5 @@
+{
+  "servers": [
+    { "name": "PC de Baudouin", "url": "http://100.x.y.z:7700" }
+  ]
+}

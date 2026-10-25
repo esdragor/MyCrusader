@@ -1,5 +1,5 @@
 """S5 report (D273): the unit replication of a dedicated server to its clients, from the logs of net_match.ps1 -Units.
-  python s5_report.py <server log> <client log> [<client log>...] [--budget 32000] [--error 25]
+  python s5_report.py <server log> <client log> [<client log>...] [--budget 34000] [--error 25]
 The stress test is the server's: S2 (the walk, S5) or S3 / S4 (S5 in combat, J7, net_match.ps1 -Test S3); a battle's
 measure begins once the armies are joined (its "measure begins" line), the others' after their warm-up.
 Over the stress test's measure (after its warm-up, until its report):
@@ -68,7 +68,7 @@ def read(path):
 
 
 def main(arguments):
-    budget, error_limit, logs = 32000.0, 25.0, []
+    budget, error_limit, logs = 34000.0, 25.0, []  # D450: 34 Ko/s per client (32, D218, before)
     iterator = iter(arguments)
     for argument in iterator:
         if argument == "--budget":

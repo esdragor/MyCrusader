@@ -113,6 +113,18 @@ public sealed class Lobby
     /** The earliest arrival among the players back (the match's leader keeps his order); none back: the earliest. */
     public LobbyPlayer? Leader => Players.FirstOrDefault(p => p.Back) ?? Players.FirstOrDefault();
 
+    /**
+     * After "finished" (M6-Q14): the match's leader, not back yet, still leads by name and nobody else sets or
+     * starts; null otherwise. Kept, without blocking anybody, while nobody is back.
+     */
+    public string? AwayLeader { get; internal set; }
+
+    /** The away leader left the match's server, or it stopped: he leads until then only (LeaderReturnGrace). */
+    public DateTimeOffset? AwayLeaderUntil { get; internal set; }
+
+    /** The leader's name of PROTOCOL.md: the away leader's, else the leading player's. */
+    public string? LeaderName => AwayLeader ?? Leader?.Name;
+
     /** The match being started or played (state starting or in_game), null at the lobby. */
     public LobbyMatch? Match { get; internal set; }
 
@@ -141,6 +153,9 @@ public sealed class LobbyMatch(string id, HOLManager.Matches.MatchConfig config,
     public bool Finished { get; internal set; }
 
     public IReadOnlyList<int> Winners { get; internal set; } = [];
+
+    /** Names of the players who left the server before "finished" (M6-Q14: such a leader leads no more after it). */
+    public HashSet<string> LeftBeforeEnd { get; } = new(LobbyRules.NameComparer);
 
     /** "empty" received: the server is stopped if it still runs EmptyStopDelay later. */
     public DateTimeOffset? EmptyAt { get; internal set; }

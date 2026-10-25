@@ -42,6 +42,9 @@ public:
 	static UHOLCheatPanel* FindCheatPanel(const APlayerController* PlayerController);
 	static UHOLScenarioPanel* FindScenarioPanel(const APlayerController* PlayerController);
 
+	/** Opens the end banner again, the one closed by « Continuer à regarder » (the in-game menu's « Résultat », M6-Q7 revised). */
+	void ReopenEndBanner();
+
 	virtual void DrawHUD() override;
 
 protected:

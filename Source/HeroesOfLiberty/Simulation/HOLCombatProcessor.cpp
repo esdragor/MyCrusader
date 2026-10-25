@@ -381,7 +381,7 @@ void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
 	Fighter.Combat->bApproaching = false;
 }
 
-void UHOLCombatProcessor::KillUnit(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Victim, const int64 StepIndex) const
+void UHOLCombatProcessor::KillUnit(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Victim, const int64 StepIndex, const int32 KillerPlayer) const
 {
 	// Dying (J7b.4, J7-Q5): stopped dead, out of the fight and of its task, destroyed DyingSteps later.
 	if (World)
@@ -391,8 +391,8 @@ void UHOLCombatProcessor::KillUnit(const UWorld* World, UHOLUnitSubsystem& Units
 	Victim.Combat->Disengage();
 	Victim.Combat->DeathStep = StepIndex;
 	Victim.State->Activity = EHOLUnitActivity::Dying;
-	// Its population places free at once (the user's trial of J7b), not at its destruction.
-	Units.MarkUnitDying(Victim.UnitId);
+	// Its population places free at once (the user's trial of J7b), not at its destruction; a kill of KillerPlayer (C2).
+	Units.MarkUnitDying(Victim.UnitId, KillerPlayer);
 	// V5.2 (Regicide, D355): a King dead defeats its slot at the end of the step (none again for a defeated slot's collapse).
 	if (World && HOLIsKing(Victim.Constants->ArmorCategoryMask))
 	{
@@ -777,7 +777,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	};
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
-	const auto Kill = [&](FFighter& Victim)
+	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer)
 	{
 		bDeathSincePlaces = true;
 		Touch(static_cast<int32>(&Victim - Fighters.GetData()));
@@ -787,7 +787,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			--Fighters[FormerTarget].Combat->AttackerCount;
 			Touch(FormerTarget);
 		}
-		KillUnit(World, *Units, Victim, StepIndex);
+		KillUnit(World, *Units, Victim, StepIndex, KillerPlayer);
 	};
 
 	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).
@@ -892,7 +892,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				++Fighters[Shooter].Combat->Kills;
 			}
-			Kill(Enemy);
+			Kill(Enemy, Arrow.ShooterSlot);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
@@ -1878,7 +1878,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			++Combat.Kills;
 			++TotalKills;
-			Kill(Enemy);
+			Kill(Enemy, Fighter.State->OwnerPlayer);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
 			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.

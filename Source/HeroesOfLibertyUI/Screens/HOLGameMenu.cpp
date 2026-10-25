@@ -10,6 +10,8 @@
 #include "InputMappingContext.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
+#include "HUD/HOLGameHUD.h"
+#include "Net/HOLManagerClient.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLPlayerController.h"
 #include "Screens/HOLConfirmDialog.h"
@@ -99,8 +101,13 @@ void UHOLGameMenu::BuildLayout()
 	Title = AddText(Column, TEXT("Title"), LOCTEXT("Title", "Menu"), UHOLTextStyleHeading::StaticClass(), 16.f);
 	ResumeButton = AddButton(Column, TEXT("ResumeButton"), LOCTEXT("Resume", "Reprendre"));
 	SurrenderButton = AddButton(Column, TEXT("SurrenderButton"), LOCTEXT("Surrender", "Abandonner"));
-	// The end banner's text (same key, already translated).
+	// The end banner's texts (same keys, already translated).
+	ReturnButton = AddButton(Column, TEXT("ReturnButton"), NSLOCTEXT("HOLEndBanner", "ReturnToLobby", "Retour au salon"));
 	QuitButton = AddButton(Column, TEXT("QuitButton"), NSLOCTEXT("HOLEndBanner", "QuitToMenu", "Quitter vers le menu"));
+	ResultButton = AddButton(Column, TEXT("ResultButton"), LOCTEXT("Result", "Résultat"));
+	// Offered once the match is over alone (RefreshSurrender).
+	ReturnButton->SetVisibility(ESlateVisibility::Collapsed);
+	ResultButton->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UHOLGameMenu::NativeOnInitialized()
@@ -117,6 +124,14 @@ void UHOLGameMenu::NativeOnInitialized()
 	if (QuitButton)
 	{
 		QuitButton->OnClicked().AddUObject(this, &UHOLGameMenu::HandleQuitToMenu);
+	}
+	if (ReturnButton)
+	{
+		ReturnButton->OnClicked().AddUObject(this, &UHOLGameMenu::HandleReturnToLobby);
+	}
+	if (ResultButton)
+	{
+		ResultButton->OnClicked().AddUObject(this, &UHOLGameMenu::HandleShowResult);
 	}
 }
 
@@ -152,13 +167,48 @@ void UHOLGameMenu::HandleSurrender()
 
 void UHOLGameMenu::HandleQuitToMenu()
 {
-	UE_LOG(LogHOLUI, Display, TEXT("Game menu: quit to menu"));
+	// From the manager (a lobby's match or a watched one), the list, as the end banner's quit (R4.8, M6-Q10).
+	UHOLManagerClient* Client = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerClient>() : nullptr;
+	if (Client && HOLGameMenuRules::QuitsToList(Client->GetMatchOrigin()))
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("Game menu: quit to list"));
+		Client->ForgetLobby();
+		Client->SetAfterMatch(UHOLManagerClient::EAfterMatch::List);
+	}
+	else
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("Game menu: quit to menu"));
+	}
 	UHOLEndBanner::LeaveMatch(GetOwningPlayer());
+}
+
+void UHOLGameMenu::HandleReturnToLobby()
+{
+	UHOLManagerClient* Client = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerClient>() : nullptr;
+	if (!Client)
+	{
+		return;
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("Game menu: back to lobby"));
+	Client->SetAfterMatch(UHOLManagerClient::EAfterMatch::Lobby);
+	UHOLEndBanner::LeaveMatch(GetOwningPlayer());
+}
+
+void UHOLGameMenu::HandleShowResult()
+{
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (AHOLGameHUD* HUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr)
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("Game menu: result"));
+		// The banner closes this menu as it opens (UHOLEndBanner::Open).
+		HUD->ReopenEndBanner();
+	}
 }
 
 void UHOLGameMenu::RefreshSurrender()
 {
-	// D357: a spectator (or anyone once the match is over) has no « Abandonner » at all, but « Quitter vers le menu ».
+	// D357: a spectator (or anyone once the match is over) has no « Abandonner » at all, but the ways out; once the
+	// match is over, the end banner's (M6-Q7 revised: nobody sent back, everyone leaves when he chooses).
 	bool bDefeated = false;
 	bool bMatchOver = false;
 	const bool bKnown = GetMatchState(bDefeated, bMatchOver);
@@ -168,14 +218,38 @@ void UHOLGameMenu::RefreshSurrender()
 		if (Button && Button->GetVisibility() != Wanted)
 		{
 			Button->SetVisibility(Wanted);
+			return true;
 		}
+		return false;
 	};
+	const UHOLManagerClient* Client = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerClient>() : nullptr;
+	const EHOLMatchOrigin Origin = Client ? Client->GetMatchOrigin() : EHOLMatchOrigin::Local;
+	const AHOLPlayerController* Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+	const AHOLPlayerState* PlayerState = Controller ? Controller->GetHOLPlayerState() : nullptr;
+	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	const EHOLEndBanner Banner = bKnown && PlayerState && GameState ? HOLGameMenuRules::GetEndBanner(PlayerState->GetPlayerIndex(),
+		GameState->GetDefeatedMask(), bMatchOver, GameState->GetWinnerMask()) : EHOLEndBanner::None;
+	const bool bReturns = bKnown && bMatchOver && HOLGameMenuRules::OffersReturnToLobby(Banner, Origin);
 	Show(SurrenderButton, bKnown && HOLGameMenuRules::CanSurrender(bDefeated, bMatchOver));
 	Show(QuitButton, bKnown && HOLGameMenuRules::CanQuitToMenu(bDefeated, bMatchOver));
+	const bool bReturnChanged = Show(ReturnButton, bReturns);
+	const bool bResultChanged = Show(ResultButton, bKnown && bMatchOver);
+	if ((bReturnChanged || bResultChanged) && bMatchOver)
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("Game menu: match over, ways out%s %s, result"), bReturns ? TEXT(" lobby,") : TEXT(""),
+			HOLGameMenuRules::QuitsToList(Origin) ? TEXT("list") : TEXT("menu"));
+	}
 }
 
 void UHOLGameMenu::SetOpen(const bool bOpen)
 {
+	// The quit's way follows the match's origin, the same all the match long.
+	const UHOLManagerClient* Client = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerClient>() : nullptr;
+	if (QuitButton && bOpen)
+	{
+		QuitButton->SetLabel(Client && HOLGameMenuRules::QuitsToList(Client->GetMatchOrigin())
+			? NSLOCTEXT("HOLEndBanner", "QuitToList", "Quitter vers la liste") : NSLOCTEXT("HOLEndBanner", "QuitToMenu", "Quitter vers le menu"));
+	}
 	RefreshSurrender();
 	SetMatchMenuInput(GetOwningPlayer(), bOpen, this);
 }

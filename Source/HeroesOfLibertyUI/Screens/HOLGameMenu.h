@@ -8,7 +8,10 @@
  * The in-game menu (D356, V1-Q1), over the match in the menu layer of AHOLGameHUD: Escape with nothing to undo or the
  * top bar's « Menu » opens it, Back (Escape) and « Reprendre » close it. The match never pauses (a networked RTS): only
  * this player's input goes to the menu. « Abandonner » asks for a confirmation in the modal layer, then surrenders
- * (AHOLPlayerController::RequestSurrender); absent for a defeated player or a match over (D357). Settings come later.
+ * (AHOLPlayerController::RequestSurrender); absent for a defeated player or a match over (D357). Once the match is over,
+ * the end banner's ways out (M6-Q7 revised: nobody is sent back, everyone leaves when he chooses): « Retour au salon »
+ * for a lobby's player, « Quitter vers la liste » for a match from the manager, else « Quitter vers le menu », and
+ * « Résultat » to open the closed banner again. Settings come later.
  */
 UCLASS()
 class HEROESOFLIBERTYUI_API UHOLGameMenu : public UHOLScreen
@@ -49,16 +52,26 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> SurrenderButton;
 
-	/** « Quitter vers le menu », in the place of « Abandonner » for a spectator or a match over (V1 trial). */
+	/** « Quitter vers le menu » (« vers la liste » from the manager), in the place of « Abandonner » for a spectator or a match over (V1 trial). */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> QuitButton;
+
+	/** « Retour au salon », a lobby's player once the match is over (HOLGameMenuRules::OffersReturnToLobby). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UHOLButton> ReturnButton;
+
+	/** « Résultat »: the end banner again, once the match is over (closed by « Continuer à regarder »). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UHOLButton> ResultButton;
 
 private:
 	void HandleSurrender();
 	void HandleQuitToMenu();
+	void HandleReturnToLobby();
+	void HandleShowResult();
 	/** Whether the player is defeated and the match over; false (nothing offered) without a game or player state. */
 	bool GetMatchState(bool& bDefeated, bool& bMatchOver) const;
-	/** « Abandonner » or « Quitter vers le menu », whichever is offered. */
+	/** « Abandonner » or the ways out, whichever are offered. */
 	void RefreshSurrender();
 	/** Tells the controller the menu is open or closed, gives Back its key while open (IMC_UI). */
 	void SetOpen(bool bOpen);

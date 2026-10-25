@@ -5,7 +5,7 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, net; bodies and rocks only when asked, not in -Full). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     formation, combat, bodies, rocks, victory, sides, net, lobby; bodies, rocks and lobby only when asked, not in -Full). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
@@ -370,8 +370,32 @@ if ($Parts -contains "victory") {
     Step "waitlog Game menu: closed", "waitui", "frames 10"
     Key Escape
     Step "waitlog End banner: closed", "waitui", "frames 10"
-    Step "mark victory win", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60",
-        "hol.Victory.Defeat 1", "waitlog End banner: Victory", "waitui", "frames 5", "hol.UI.Focus QuitButton", "frames 3"
+    # C5: a sample every 2 s in this short match (~35 s), so that the timeline's curves have points enough.
+    Step "mark victory win", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "hol.Stats.SampleSeconds 2", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60"
+    # C4c: something to count before the end: a Peasant produced (its rally point on the berries, where it gathers until
+    # a first deposit), then 3 Men-at-arms of slot 0 against 3 Spearmen of slot 1 (the combat part's ground), fought out.
+    Step "hol.Prod.BuildTime 2", "hol.Gather.LogPopups 1", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
+        "waitlog Selection: MainCentre of slot 0 (own)", "hol.Camera.Focus -15000 1600", "frames 3",
+        "hol.Select.OrderSource -15000 2000", "waitlog Rally: slot 0 set the rally point of MainCentre", "hol.Prod.Queue",
+        "waitlog Production: Peasant of slot 0 done", "waitlog Deposit popup: +",
+        "hol.Units.SpawnSeed 122", "hol.Combat.Enabled 1", "hol.Units.Spawn 3 -6300 -5500 0 ManAtArms 150", "hol.Units.Spawn 3 -5700 -5500 1 Spearman 150",
+        "wait 15", "hol.Combat.Report", "hol.Combat.Enabled 0", "hol.Stats.Dump"
+    Step "hol.Victory.Defeat 1", "waitlog End banner: Victory", "waitui", "frames 5", "hol.Stats.Dump"
+    # C4: the statistics screen from the banner's « Statistiques », its tabs captured, Back to the banner.
+    Step "mark victory stats", "hol.UI.Focus StatsButton", "frames 3"
+    Key Enter
+    Step "waitlog Stats screen: row", "waitui", "frames 5", "capture qc_stats_summary", "hol.UI.Focus MilitaryTab", "frames 3"
+    Key Enter
+    Step "frames 5", "capture qc_stats_military", "hol.UI.Focus EconomyTab", "frames 3"
+    Key Enter
+    Step "frames 5", "capture qc_stats_economy", "hol.UI.Focus TimelineTab", "frames 3"
+    Key Enter
+    # C5: the timeline, the workers' curves (its first series) then the army's, the defeat of slot 1 marked.
+    Step "waitlog Stats screen: tab 3", "frames 5", "capture qc_stats_curve_workers", "hol.UI.Focus SeriesMilitary", "frames 3"
+    Key Enter
+    Step "waitlog Stats screen: timeline Military", "frames 5", "capture qc_stats_curve_army", "hol.Stats.SampleSeconds 10"
+    Back
+    Step "waitlog Stats screen: closed", "frames 5", "hol.UI.Focus QuitButton", "frames 3"
     Key Enter
     Step "waitlog End banner: quit to menu", "waitmap MainMenu", "waitui", "mark victory end"
     # V2.5 (D349-D353), a third match: the main forum's lives. Slot 0's forum falls (2 lives -> 1, in ruin): the table and
@@ -763,7 +787,7 @@ if ($Parts -contains "smoke") {
         "hol.Select.BoxGround $($SmokeMenAtArms[0] - 350) $($SmokeMenAtArms[1] - 350) $($SmokeMenAtArms[0] + 350) $($SmokeMenAtArms[1] + 350)",
         "waitlog Selection: 3 units (own): ManAtArms x3", "hol.Combat.Enabled 1", "hol.Select.OrderGround $($SmokeTo -join ' ')",
         "waitlog Peasant of slot 1 killed by", "mark smoke combat", "hol.Units.Where 0", "hol.Combat.Report", "capture qc_smoke_melee",
-        "hol.Combat.Enabled 0", "mark smoke dying", "wait 1.5", "hol.Units.Report 200", "mark smoke end"
+        "hol.Combat.Enabled 0", "mark smoke dying", "wait 1.5", "hol.Units.Report 200", "hol.Stats.Dump", "mark smoke end"
 }
 if ($Parts -contains "camera") {
     # After the smoke part, the match it launched is left for the main menu first.
@@ -894,8 +918,11 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus -9200 6000", "frames 3", "hol.Select.BoxGround -9800 5400 -8600 6600", "waitlog Selection: 5 units (own): Peasant x5", "hol.Select.OrderGround -10800 6000"
             for ($i = 0; $i -lt 16; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
             Step "hol.Units.TurnReport"
-            # Taken away at the end (the parts after see none of them; the two houses stay).
-            Step "mark bodies end", "hol.Select.Click 0.03 0.05", "hol.Units.Remove -9000 0 5000 0", "hol.Units.Remove -9000 3000 2500 1", "hol.Units.Remove -10000 6000 2000 0", "frames 3"
+            # Taken away at the end (the parts after see none of them). The two houses too, destroyed by the cheat (D345.2a):
+            # left standing, they raised slot 0's population cap by 20 for the parts after ("build site" read 30 -> 40).
+            Step "mark bodies end", "hol.Select.Click 0.03 0.05", "hol.Units.Remove -9000 0 5000 0", "hol.Units.Remove -9000 3000 2500 1", "hol.Units.Remove -10000 6000 2000 0",
+                "hol.Cheat.DamageNear 99999 6000 -3400 own melee", "waitlog Building destroyed: House of slot 0 at (-8800, -3200)",
+                "hol.Cheat.DamageNear 99999 6000 -2600 own melee", "waitlog Building destroyed: House of slot 0 at (-8800, -2400)", "frames 3"
         }
         if (($Parts -contains "rocks") -and $Case.Name -eq "2p") {
             # No body may go into a rock, no army stuck at one (the user's trials ridge_army): each case of $RockCases in turn,
@@ -957,7 +984,7 @@ if ($Parts -contains "camera") {
             Step "waitlog Deposit popup: +", "frames 6", "capture gather_popup"
             # A second after the last one stopped (J7a.6): those stopped at the deposit side by side part over a few steps
             # (UHOLGatherProcessor::Stop), the last ones 5 steps before the look stood 70 cm apart.
-            Step "waitidle $($GatherBefore + $GatherBerries + 1)", "wait 1", "frames 2", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report"
+            Step "waitidle $($GatherBefore + $GatherBerries + 1)", "wait 1", "frames 2", "hol.Units.Where 0", "hol.Prod.Report", "hol.HUD.Report", "hol.Stats.Dump"
             # The "." key three times, then a click on the HUD's counter: each time the next idle one, the camera above it.
             Step "mark gather idle", "hol.Camera.FocusSlot 0", "frames 2"
             for ($i = 0; $i -lt 3; $i++) {
@@ -1954,12 +1981,23 @@ $Expected = @{ title = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleSc
     site = "hud=HOLGameScreen"; three = "hud=HOLGameScreen"; finished = "hud=HOLGameScreen"; rally = "hud=HOLGameScreen";
     greyed = "hud=HOLGameScreen"; fr = "hud=HOLGameScreen"; en = "hud=HOLGameScreen"; ja = "hud=HOLGameScreen"; ghost = "hud=HOLGameScreen";
     block = "hud=HOLGameScreen"; popfull = "hud=HOLGameScreen"; f1 = "hud=HOLGameScreen"; f2 = "hud=HOLGameScreen"; next = "hud=HOLGameScreen";
-    stone = "hud=HOLGameScreen"; play = "hud=HOLGameScreen"; melee = "hud=HOLGameScreen" }
+    stone = "hud=HOLGameScreen"; play = "hud=HOLGameScreen"; melee = "hud=HOLGameScreen";
+    summary = "hud=HOLGameScreen menu=HOLStatsScreen"; military = "hud=HOLGameScreen menu=HOLStatsScreen"; economy = "hud=HOLGameScreen menu=HOLStatsScreen";
+    workers = "hud=HOLGameScreen menu=HOLStatsScreen"; army = "hud=HOLGameScreen menu=HOLStatsScreen" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
     if ($Want -and $Shown -ne $Want) { "$Capture shows $Shown" } })
 $SequenceChecks["captures show the right screen ($($WrongScreens -join '; '))"] = $WrongScreens.Count -eq 0
+if ($Parts -contains "victory") {
+    # C5: the timeline's curves of the second match: two players, several points each (a sample every 2 s), the defeat marked.
+    $Timeline = @($Log | Select-String -Pattern "Stats screen: timeline (Workers|Military), (\d+) curves, (\d+) points, (\d+) marks, (.*)$" | ForEach-Object {
+        [pscustomobject]@{ Series = $_.Matches[0].Groups[1].Value; Curves = [int]$_.Matches[0].Groups[2].Value; Points = [int]$_.Matches[0].Groups[3].Value
+            Marks = [int]$_.Matches[0].Groups[4].Value; Axes = $_.Matches[0].Groups[5].Value } })
+    $TimelineShown = @($Timeline | Where-Object { $_.Curves -eq 2 -and $_.Points -ge 12 -and $_.Marks -ge 1 } | ForEach-Object { $_.Series } | Select-Object -Unique)
+    $TimelineText = (@($Timeline | Select-Object -Last 2 | ForEach-Object { "$($_.Series) $($_.Curves) curves $($_.Points) points $($_.Marks) marks, $($_.Axes)" }) -join "; ")
+    $SequenceChecks["C5 timeline: workers and army curves of 2 players, the defeat marked ($TimelineText)"] = $TimelineShown.Count -eq 2
+}
 $SequenceChecks["sequence done (no step timed out)"] = [bool]($Log | Select-String -Pattern "Test mark: end" -Quiet)
 $Errors = @($Log | Select-String -Pattern "LogHOLUI: (Error|Warning)|LogHOLMatch: (Error|Warning)|LogHOLTest: Error" | ForEach-Object { $_.Line })
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
@@ -1984,7 +2022,12 @@ if ($Parts -contains "victory") {
     $Section = Get-Section "victory win"
     $Checks["AI defeated: match over, winners 0"] = [bool]($Section | Select-String -SimpleMatch "Victory: match over, winners 0" -Quiet)
     $Checks["End banner: Victory"] = [bool]($Section | Select-String -SimpleMatch "End banner: Victory" -Quiet)
-    # The menu's map loaded after the click (the section's first LoadMap is the way to the second match).
+    # C4: the statistics screen opened from the banner, closed by Back; the quit to the menu follows in this section
+    # (the "victory win" section ends at this mark).
+    $Section = Get-Section "victory stats"
+    $Checks["Statistiques: the stats screen opened, then closed"] = [bool]($Section | Select-String -SimpleMatch "Stats screen: opened" -Quiet) -and
+        [bool]($Section | Select-String -SimpleMatch "Stats screen: closed" -Quiet)
+    # The menu's map loaded after the click.
     $Quit = @($Section | Select-String -SimpleMatch "End banner: quit to menu" | Select-Object -First 1)
     $After = if ($Quit.Count) { $Section[($Quit[0].LineNumber - 1)..($Section.Count - 1)] } else { @() }
     $Checks["Quitter vers le menu: MainMenu loaded"] = [bool]($After | Select-String -Pattern "LoadMap: /Game/Maps/MainMenu" -Quiet)
@@ -4535,7 +4578,7 @@ if ($Parts -contains "net") {
         $Checks["victory: server, match over, winners $Winner ($($Over -join '; '))"] = ($null -ne $Winner) -and (($Over -join '|') -eq "winners $Winner")
         $Banner = @{}
         foreach ($NetClient in $NetClients) {
-            $Banner[$NetClient.Client] = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "victory" | Select-String -Pattern "End banner: (\w+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Banner[$NetClient.Client] = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "victory" | Select-String -CaseSensitive -Pattern "End banner: (Victory|Defeat|MatchOver)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         }
         $Checks["manager: finished, winners [$Winner]"] = ($null -ne $Winner) -and (@($ManagerCalls | Where-Object { $_ -eq "POST /matches/QC1/finished {`"winners`":[$Winner]}" }).Count -eq 1)
         $Checks["victory: client 1, End banner: Defeat ($($Banner[1] -join ', '))"] = ($Banner[1] -join ',') -eq "Defeat"
@@ -4558,7 +4601,7 @@ if ($Parts -contains "net") {
         $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD forum: .*, players \[([^\]]*)\]" |
             ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
         $LoserRow = @("$Table2" -split " \| " | Where-Object { $_ -match "^slot $Loser " }) | Select-Object -First 1
-        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
+        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser ('[^']*' )?colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
         # V4.5 (D353, D202): the fall's message to each (the server's multicast): client 1 its own with the alert, client 2
         # the named one alone (another camp); the hold the same; client 1's defeat by its surrender, no alert (V4.5b: its own loss).
         $Client1Log = ($NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1).Log
@@ -4594,6 +4637,24 @@ if ($TestsProcess) {
     $Checks["every test started completed ($($Results.Count) of $Started)"] = $Results.Count -eq $Started
     $Checks["all green (failed: $($Failures -join ', '))"] = $Failures.Count -eq 0
     $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
+}
+
+# The "lobby" part (M6 R5.4): lobby_match.ps1 on its own, once the rest is done (its three games and the test manager
+# would share the machine with the others): lobby, Ready, match, a spectator, give-up, Alice staying past 60 s in the finished match, back to the lobby (~150 s). It needs
+# the cooked server of net_match.ps1 -Stage and the test manager of build_manager.ps1.
+if ($Parts -contains "lobby") {
+    $LobbyServer = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
+    $Checks = [ordered]@{}
+    if (-not (Test-Path $LobbyServer)) {
+        $Checks["cooked server $LobbyServer present (run Tools\Tests\net_match.ps1 -Stage)"] = $false
+    }
+    else {
+        $LobbyOutput = @(& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "lobby_match.ps1") -EngineDir $EngineDir 2>&1 | ForEach-Object { "$_" })
+        $LobbyLine = @($LobbyOutput | Where-Object { $_ -match "^lobby_match : " }) | Select-Object -Last 1
+        if ($LASTEXITCODE -ne 0) { $LobbyOutput | Select-Object -Last 40 | ForEach-Object { Write-Host "  | $_" } }
+        $Checks["lobby_match: $LobbyLine"] = ($LASTEXITCODE -eq 0) -and ("$LobbyLine" -match "^lobby_match : PASS")
+    }
+    $AllOk = (Report "lobby" $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"

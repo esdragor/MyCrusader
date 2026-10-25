@@ -32,6 +32,10 @@ param(
     # Extra command-line arguments of the server (e.g. a network trace: -ServerArgs "-trace=net -NetTrace=3 -tracefile=...").
     [string] $ServerArgs = "",
     [switch] $Keep,
+    # Several matches at once (R5.5): the server's port (0 = the engine's 7777) and a tag that keeps each run's logs,
+    # match config and client settings apart (net_server<Tag>.log, Saved_Tests_Net<Tag><N>).
+    [int] $Port = 0,
+    [string] $Tag = "",
     [string] $EngineDir = ""
 )
 if ($Units -gt 0 -and -not $PSBoundParameters.ContainsKey('Map')) { $Map = "/Game/Maps/StressTest" }
@@ -69,18 +73,20 @@ if (-not (Test-Path $Server)) { Write-Host "net_match : no staged server ($Serve
 
 # Two humans in slots 0 and 1, the colours of their slots; the clients take the free human slots in order.
 $Slots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt $Clients) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }
-$Config = Join-Path $TestSaved "net_match.json"
+$Config = Join-Path $TestSaved "net_match$Tag.json"
 "{ `"map`": `"$Map.$(Split-Path $Map -Leaf)`", `"slots`": [ $($Slots -join ', ') ] }" | Set-Content -Encoding ascii $Config
 
-$ServerLog = Join-Path $Logs "net_server.log"
+$ServerLog = Join-Path $Logs "net_server$Tag.log"
 # The logs of the last run go first: the waits below read the new ones.
-Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_client*.log")
+Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_client$Tag*.log")
 # -useperfthreads (J7c.4, S5 in combat): a dedicated server runs every ParallelFor on one thread by the engine's default
 # (FApp::ShouldUseThreadingForPerformance is false there), so the parallel processors of D302 did not run in parallel
 # (server step 14 ms in combat against ~6 ms in the game).
 # -HOLCheats (R3.5, R-Q7): a test server keeps the clients' cheats; the manager's servers refuse them.
 $ServerArguments = "$Map -log -unattended -useperfthreads -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
 if ($ServerArgs) { $ServerArguments += " $ServerArgs" }
+if ($Port -gt 0) { $ServerArguments += " -port=$Port" }
+$Address = if ($Port -gt 0) { "127.0.0.1:$Port" } else { "127.0.0.1" }
 # Commands both sides run at start: reports and samples of S5, network emulation.
 $NetCommands = @()
 if ($Units -gt 0) { $NetCommands += "hol.Net.ReportInterval 5", "hol.Net.Sample 100" }
@@ -112,8 +118,8 @@ $Width = [Math]::Floor(1920 / $Clients)
 $ClientProcesses = @()
 $ClientLogs = @()
 for ($Client = 1; $Client -le $Clients; $Client++) {
-    $ClientLog = Join-Path $Logs "net_client$Client.log"
-    $Sequence = Join-Path $TestSaved "net_client$Client.seq"
+    $ClientLog = Join-Path $Logs "net_client$Tag$Client.log"
+    $Sequence = Join-Path $TestSaved "net_client$Tag$Client.seq"
     if ($Units -gt 0) {
         # The stress test starts once both clients are in: a capture while the units walk (S2) or fight (S3, S4: the
         # armies are joined ~5 s after their birth).
@@ -125,14 +131,14 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
     }
     # Each client its own settings (Saved_Tests_Net<N>): the engine re-centres a window on the display saved in the
     # settings when it applies the resolution, which stacked the clients; with no display saved (-1) it keeps -WinX.
-    $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+    $ClientSettings = Join-Path $Project "Saved_Tests_Net$Tag$Client\Config\WindowsEditor\GameUserSettings.ini"
     New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
     (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
         -replace '^(ResolutionSizeX|LastUserConfirmedResolutionSizeX)=.*', "`$1=$($Width - 20)" `
         -replace '^(ResolutionSizeY|LastUserConfirmedResolutionSizeY)=.*', '$1=1000' `
         -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
     $X = 3840 + ($Client - 1) * $Width
-    $Arguments = "`"$UProject`" 127.0.0.1 -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
+    $Arguments = "`"$UProject`" $Address -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Tag$Client -nosplash -LiveCoding=0 -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
     $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru
     $ClientProcesses += $ClientProcess
     $ClientLogs += $ClientLog

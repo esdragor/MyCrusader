@@ -35,7 +35,7 @@ public static class LobbyViews
         name = lobby.Name,
         state = StateName(lobby.State),
         minutes = Minutes(lobby, store.Now),
-        leader = lobby.Leader?.Name,
+        leader = lobby.LeaderName,
         you,
         settings = new
         {

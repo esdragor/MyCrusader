@@ -5,10 +5,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ## À faire
 
-### Parcours J7c — le tir
-- J7c.4 S5 au-dessus du seuil de bande passante (32 073 o/s pour 32 000, erreur 24,2 cm PASS) *(S3 / S4 repassés sous 6 ms par `perf-combat` et `perf-target` ; pas de régression : le même code du 22/10 donne aussi 32,2-32,6 Ko/s, le 29 924 de ce jour-là n'est pas reproductible ; à trancher : revoir D218 ou gagner des bits sur les marcheurs)*
-- J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6, décisions de J7c.4) *(après J7c.4)*
-
 ### Animations
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
@@ -23,8 +19,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R3 et R6 dans `main` ; R4 écrans et R5 bout à bout faits dans Glorfindel, non commités, finitions en cours ; chantier `NetPlaytestInProgress.md`)*
-- Lanceur : télécharge, met à jour et lance le jeu *(questions L-Q1 à L-Q6 à trancher ; chantier `LauncherInProgress.md`)*
+- M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R6 dans `main` : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef (M6-Q10 à M6-Q14) ; reste les essais E2 et E3 de l'utilisateur ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
+- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10, L0 mesurée ; chantier `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
@@ -34,7 +30,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D450 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D470 (§ 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
@@ -48,6 +44,36 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
-- `quick_check -Parts move,bodies,build` : « build site » rouge (plafond de population +20, laissé par les parties d'avant ; `-Parts build` seul passe)
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
+
+## Fichiers de développement
+
+### Références
+- `GDD.md` : conception du jeu, journal des décisions (§ 21) et point de reprise de la review (§ 22)
+- `UnitStats.md` : tableau des stats des unités, produit par `Tools/Data/make_unit_stats.py` (ne pas modifier à la main)
+- `Manager/PROTOCOL.md` : protocole du gestionnaire de salons (M6)
+- `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
+
+### Chantiers en cours
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), J8 à planifier
+- `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
+- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
+- `LauncherInProgress.md` : lanceur, plan L0 à L10, rien codé
+- `MovementInProgress.md` : déplacement, reste les mesures de MV.6
+- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
+
+### En pause
+- `UnitStatsInProgress.md` : stats des unités, reste la charge (D345.3) avec la cavalerie
+- `AnimationsInProgress.md` : chaîne de fabrication et catalogue des animations, resservira à chaque nouvelle unité
+
+### Presque clos (un reste)
+- `ImplementationInProgress.md` : M0 à M2, arrêté le 2026-10-14 (suite dans `JourneyInProgress.md`) ; garde l'écart des mesures de rendu
+- `InterfaceInProgress.md` : grille du Paysan (D340) ; reste la barre trop large
+- `ScenariosInProgress.md` : mécanisme des scénarios, encore cité par les autres journaux (mode d'emploi : `Tools/Scenarios/README.md`)
+- `TileSizeInProgress.md` : case de 4 m et cartes de 220 × 220 (D344) ; reste peut-être une ligne marquée tous les 5 cases
+
+### Archivés (`Docs/Archive/`)
+- `FrontEndInProgress.md` : menu (D240 à D251)
+- `MillInProgress.md` : moulin (D346)
+- `RidgeRockInProgress.md` : rochers (D439 à D444)

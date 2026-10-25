@@ -678,6 +678,8 @@ bool FHOLNetManagerRoutesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("listening body: the port"), FHOLManagerRules::MakeListeningBody(7778), FString(TEXT("{\"port\":7778}")));
 	TestEqual(TEXT("finished body: the winning slots"), FHOLManagerRules::MakeFinishedBody({ 0, 2 }), FString(TEXT("{\"winners\":[0,2]}")));
 	TestEqual(TEXT("finished body: no winner"), FHOLManagerRules::MakeFinishedBody({}), FString(TEXT("{\"winners\":[]}")));
+	TestEqual(TEXT("left body: the player's name"), FHOLManagerRules::MakeLeftBody(TEXT("Bob")), FString(TEXT("{\"playerName\":\"Bob\"}")));
+	TestEqual(TEXT("left body: quotes escaped"), FHOLManagerRules::MakeLeftBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
 	TestEqual(TEXT("started and empty: an empty object"), FHOLManagerRules::MakeEmptyBody(), FString(TEXT("{}")));
 	return true;
 }

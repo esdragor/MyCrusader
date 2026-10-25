@@ -41,6 +41,11 @@ FString FHOLManagerRules::MakeFinishedBody(const TConstArrayView<int32> Winners)
 		*FString::JoinBy(Winners, TEXT(","), [](const int32 Winner) { return FString::FromInt(Winner); }));
 }
 
+FString FHOLManagerRules::MakeLeftBody(const FString& PlayerName)
+{
+	return FString::Printf(TEXT("{\"playerName\":\"%s\"}"), *PlayerName.ReplaceCharWithEscapedChar());
+}
+
 FHOLManagerRules::EQuit FHOLManagerRules::ShouldQuit(const bool bManaged, const bool bStarted, const int32 PlayersLeft,
 	const double SecondsSinceFinished, const double FinishedDelay)
 {
@@ -117,6 +122,11 @@ void UHOLManagerLink::SendFinished(const TConstArrayView<int32> Winners)
 		FinishedTime = FPlatformTime::Seconds();
 		Send(TEXT("finished"), FHOLManagerRules::MakeFinishedBody(Winners));
 	}
+}
+
+void UHOLManagerLink::SendLeft(const FString& PlayerName)
+{
+	Send(TEXT("left"), FHOLManagerRules::MakeLeftBody(PlayerName));
 }
 
 void UHOLManagerLink::SendEmpty()

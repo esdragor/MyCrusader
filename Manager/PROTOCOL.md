@@ -21,7 +21,16 @@ R2.2 ; décisions M6-Q1 à M6-Q9 de `NetPlaytestInProgress.md`.
    « Prêt » avant « Lancer ».
 5. **Pas d'IA dans les salons** pour l'instant : un emplacement est ouvert, fermé ou tenu par un joueur. Les
    emplacements ouverts restés vides au lancement sont **fermés** dans `match.json`.
-6. **Retour au salon après la partie** (M6-Q7, R2.11) : au retour au salon (`finished`, ou serveur arrêté), chaque
+6. **Retour au salon après la partie** (M6-Q7, R2.11, D2) : après `finished`, le salon repasse `lobby` avec ses
+   réglages mais **sans les joueurs de la partie** : aucune ligne ni aucun nom ne leur est réservé, personne n'est
+   attendu ; « Retour au salon » n'est qu'un raccourci pour `POST /join` sous le même nom (refusé comme tout `join` :
+   `name_taken`, `lobby_full`, `lobby_not_found`, `lobby_in_game` ; le client revient alors à la liste avec le message
+   en rouge, R4.9). **Chef** (M6-Q14) : le chef de la partie **reste chef** tant qu'il n'est pas revenu (`leader` donne
+   son nom) ; pendant son absence, personne d'autre ne règle ni ne lance (`not_leader`) ; revenu par `join` (s'il y a
+   une place), il reprend la main. Le premier revenu devient chef seulement si le salon est plein sans lui, s'il a
+   quitté le serveur de la partie (`left`) ou si ce serveur s'est arrêté, sans être revenu dans les **30 s** (le temps
+   de « Retour au salon », qui quitte le serveur avant le `join`). Le chef peut relancer sans attendre les autres. Le salon, même vide,
+   reste tant que le serveur de sa partie finie tourne. **Serveur arrêté sans `finished`** (`server_stopped`) : chaque
    joueur de la partie **garde sa ligne** (emplacement, couleur, équipe) et les réglages restent ; pendant **2 min**, il
    n'est **pas retiré par le silence** et **son nom lui est réservé** : `POST /join` avec ce nom reprend sa ligne avec
    un **nouveau jeton** (l'ancien ne vaut plus). Il est « revenu » à son premier appel avec un jeton ou à ce `join`.
@@ -261,12 +270,25 @@ gestionnaire, celle de `servers.json`). `playerName` est **le nom à passer tel 
 qui donne l'emplacement (M6-Q9, R3.2). Le serveur vérifie `Version` (R3.3).
 
 Pendant la partie, le client ne lit plus l'état du salon. À la fin, « Retour au salon » (bouton, ou seul ~60 s après
-la fin, R4.8) = `POST /join` avec le même nom, dans les 2 min (choix 6) ; « Quitter vers la liste » = rien (la place
-est libérée 2 min après la fin).
+la fin, R4.8) = `POST /join` avec le même nom, quand il veut, comme un nouveau venu (choix 6, D2) ; « Quitter vers la
+liste » = rien (il n'a plus de place dans le salon depuis `finished`).
 
 ### Retour au salon (choix 6, R2.11)
 
-- Au retour au salon (`finished`, ou serveur arrêté avec `server_stopped`), chaque joueur encore au salon garde sa
+- Après `finished` (D2) : salon `lobby`, réglages gardés, **plus aucun joueur de la partie** (ancien jeton →
+  `not_in_lobby`). Chaque joueur revient par un `POST /join` ordinaire (nouvel emplacement, couleur et équipe par
+  défaut), refusé comme tout `join`. **Chef** (M6-Q14) : le chef de la partie le reste, absent (`leader` = son nom) ;
+  ceux revenus avant lui ne règlent ni ne lancent (`not_leader`) ; à son `join`, il reprend la main (devant eux dans
+  l'ordre d'arrivée). Le premier revenu (ordre d'arrivée) devient chef, avec `notice: "leader_changed"` s'il n'est pas
+  seul, quand : le salon est **plein** sans lui (au `join` qui le remplit ; le chef revenu ensuite a `lobby_full`) ;
+  le chef a **quitté le serveur** de la partie (`left` : « Quitter vers la liste », déconnexion), ou ce **serveur
+  s'est arrêté**, sans `join` du chef dans les **30 s** qui suivent ; le chef parti du serveur **avant** `finished`
+  ne l'est plus après. Personne revenu : pas de nouveau chef, `leader` garde le nom du chef absent ; le premier qui
+  revient est alors chef si le chef ne l'est plus. « Lancer » ne compte que les joueurs
+  revenus. Le salon, même vide, n'est pas supprimé tant que le serveur de la partie tourne (jusqu'à son arrêt, après
+  `empty`) ; ensuite, vide, il est supprimé, et avec quelqu'un revenu, il suit les règles ordinaires.
+- Les points suivants ne valent plus que pour le **serveur arrêté sans `finished`** (`server_stopped`).
+- Au retour au salon (serveur arrêté avec `server_stopped`), chaque joueur encore au salon garde sa
   ligne, « Prêt » à `false`, et est **réservé 2 min** : pas retiré par le silence, nom à lui.
 - `POST /join` avec le nom d'un joueur réservé (casse ignorée) : même ligne, **nouveau jeton**, réponse `200` ;
   l'ancien jeton donne ensuite `not_in_lobby`. Le gestionnaire ne distingue pas deux clients du même nom : c'est le
@@ -313,10 +335,11 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
 |---|---|---|
 | `POST /matches/{matchId}/listening` | `{ "port": 7778 }` | salon `starting` → `in_game` ; `match` rempli pour les clients ; `port` absent ou 0 → port donné au lancement |
 | `POST /matches/{matchId}/started` | `{}` | départ de l'horloge des `minutes` (tous arrivés ou ~60 s passées, R3.9) ; seul le premier appel compte |
-| `POST /matches/{matchId}/finished` | `{ "winners": [0, 2] }` (emplacements) | salon remis `lobby`, sans avis, « Prêt » à zéro, lignes et noms réservés 2 min (choix 6, R2.11) |
+| `POST /matches/{matchId}/finished` | `{ "winners": [0, 2] }` (emplacements) | salon remis `lobby`, sans avis, réglages gardés, **sans les joueurs de la partie** (aucune réservation ; retour = `join`) ; gardé même vide jusqu'à l'arrêt du serveur (choix 6, D2) |
+| `POST /matches/{matchId}/left` | `{ "playerName": "Bob" }` | un joueur nommé a quitté le serveur (`Logout`, après `started`) ; pendant la partie : retenu pour `finished` ; après : si c'est le chef absent, il ne l'est plus que 30 s (M6-Q14) ; autre nom : rien ; `playerName` absent : `bad_request` |
 | `POST /matches/{matchId}/empty` | `{}` | plus aucun client ; le serveur va quitter (R3.8) ; le gestionnaire l'arrête s'il tourne encore 10 s après |
 
-- Ordre des vérifications : `not_local`, `bad_request` (JSON illégal ; un corps vide est accepté), `match_not_found`.
+- Ordre des vérifications : `not_local`, `bad_request` (JSON illégal, ou `playerName` absent pour `left` ; un corps vide est accepté ailleurs), `match_not_found`.
 - Un appel répété, ou `listening` après `finished`, ne change rien (réponse `204`).
 - Un `matchId` est connu de « Lancer » jusqu'à l'arrêt de son serveur (après `finished` aussi) ; ensuite
   `match_not_found`.
@@ -324,9 +347,10 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
 Le gestionnaire **suit le processus** (au début de chaque appel et une fois par seconde, sous le verrou des salons) :
 s'il disparaît sans `finished` (avant `listening` comme en partie), le salon revient à `lobby` avec
 `notice: "server_stopped"` ; un serveur qui n'a pas appelé `listening` dans les 120 s est arrêté, même avis ; un
-serveur arrêté 10 s après `empty` sans `finished` donne le même avis. Au retour au salon (avis ou `finished`), les
+serveur arrêté 10 s après `empty` sans `finished` donne le même avis. Au retour au salon par cet avis, les
 joueurs gardent leur ligne et leur jeton, « Prêt » à zéro, et sont réservés 2 min (« Retour au salon » plus haut) ;
-un salon que tous ont quitté pendant la partie est supprimé. Après `finished`, le serveur reste suivi : il quitte seul
+un salon que tous ont quitté pendant la partie est supprimé. Après `finished` (salon sans les joueurs de la partie,
+gardé jusqu'à l'arrêt du serveur), le serveur reste suivi : il quitte seul
 quand il est vide (`empty`, R3.8) et le gestionnaire l'arrête s'il tourne encore 10 s après.
 
 ## `match.json` (`FHOLMatchConfig` version 2)

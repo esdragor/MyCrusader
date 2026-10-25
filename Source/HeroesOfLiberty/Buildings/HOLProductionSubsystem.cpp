@@ -2,6 +2,8 @@
 
 #include "Buildings/HOLProductionSubsystem.h"
 
+#include "Match/HOLMatchStatsSubsystem.h"
+
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
@@ -313,6 +315,10 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			Request.BuildSite = Building->HasRallyPoint() ? Building->GetRallySite() : nullptr;
 			Units->RequestUnits(Request);
 			++NumBorn;
+			if (UHOLMatchStatsSubsystem* MatchStats = World->GetSubsystem<UHOLMatchStatsSubsystem>())
+			{
+				MatchStats->RecordUnitTrained(Building->GetOwnerPlayer());
+			}
 			UE_LOG(LogHOLCommands, Display, TEXT("Production: %s of slot %d done at step %lld (%d born here)"), *TypeName.ToString(),
 				Building->GetOwnerPlayer(), StepIndex, NumBorn);
 		}

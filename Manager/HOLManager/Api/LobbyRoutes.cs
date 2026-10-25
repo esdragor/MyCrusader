@@ -133,6 +133,8 @@ public static class LobbyRoutes
 
     private sealed record FinishedRequest(List<int>? Winners);
 
+    private sealed record LeftRequest(string? PlayerName);
+
     /** The routes the game server calls (PROTOCOL.md, Routes du serveur Unreal): 127.0.0.1 only, answer 204. */
     public static void MapServerRoutes(this WebApplication app)
     {
@@ -152,6 +154,12 @@ public static class LobbyRoutes
         {
             var body = await LocalBody<FinishedRequest>(request);
             store.ServerFinished(matchId, body?.Winners);
+            return Results.NoContent();
+        });
+        app.MapPost("/matches/{matchId}/left", async (string matchId, HttpRequest request, LobbyStore store) =>
+        {
+            var body = await LocalBody<LeftRequest>(request);
+            store.ServerLeft(matchId, body?.PlayerName);
             return Results.NoContent();
         });
         app.MapPost("/matches/{matchId}/empty", async (string matchId, HttpRequest request, LobbyStore store) =>

@@ -28,6 +28,7 @@
 #include "Map/HOLMapBounds.h"
 #include "Net/HOLCheatRules.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLMatchStatsSubsystem.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Map/HOLStartSlot.h"
@@ -4617,5 +4618,55 @@ void AHOLPlayerController::UpdateDrag()
 	if (DeprojectMousePositionToWorld(Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, Under))
 	{
 		RTSCamera->SetFocus(RTSCamera->GetFocus() + FVector(DragAnchor.X - Under.X, DragAnchor.Y - Under.Y, 0.0));
+	}
+}
+
+void AHOLPlayerController::ServerRequestMatchStats_Implementation(const int32 FromSample, const int32 FromEvent)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	const UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>();
+	const bool bOnlyASpectator = HOLPlayerState && HOLPlayerState->IsOnlyASpectator();
+	const bool bMatchOver = HOLGameState && HOLGameState->IsMatchOver();
+	const FString Name = HOLPlayerState ? HOLPlayerState->GetPlayerName() : FString(TEXT("?"));
+	if (!MatchStats || !HOLMatchStats::CanReceiveStats(bOnlyASpectator, bMatchOver))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Stats: refused to %s (a player during the match, M6-Q11)"), *Name);
+		ClientMatchStatsRefused();
+		return;
+	}
+	const FHOLMatchStatsChunk Chunk = HOLMatchStats::MakeChunk(MatchStats->GetStats(), FMath::Max(FromSample, 0), FMath::Max(FromEvent, 0),
+		MatchStatsChunkSamples);
+	UE_LOG(LogHOLMatch, Display, TEXT("Stats: sent to %s (%s, match %s) from sample %d event %d, %s"), *Name,
+		bOnlyASpectator ? TEXT("spectator") : TEXT("player"), bMatchOver ? TEXT("over") : TEXT("on"), Chunk.FromSample, Chunk.FromEvent,
+		Chunk.bComplete ? TEXT("complete") : TEXT("more to come"));
+	if (Chunk.bComplete)
+	{
+		// The tables the client's copy now holds (its sample count whole), for the tests to compare with its hol.Stats.Dump.
+		for (const FHOLPlayerMatchStats& PlayerStats : MatchStats->GetStats().Players)
+		{
+			if (PlayerStats.PlayerIndex != INDEX_NONE)
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Stats: sent table %s"), *HOLMatchStats::DescribePlayer(PlayerStats));
+			}
+		}
+	}
+	ClientReceiveMatchStats(Chunk);
+}
+
+void AHOLPlayerController::ClientReceiveMatchStats_Implementation(const FHOLMatchStatsChunk& Chunk)
+{
+	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
+	{
+		MatchStats->ReceiveChunk(Chunk);
+	}
+}
+
+void AHOLPlayerController::ClientMatchStatsRefused_Implementation()
+{
+	UE_LOG(LogHOLMatch, Display, TEXT("Stats: the server refused the statistics (a player during the match, M6-Q11)"));
+	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
+	{
+		MatchStats->ReceiveRefusal();
 	}
 }

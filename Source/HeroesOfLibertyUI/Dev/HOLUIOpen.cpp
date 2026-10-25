@@ -6,15 +6,18 @@
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/FileHelper.h"
 #include "Screens/HOLGameMenu.h"
+#include "Screens/HOLMultiplayerScreen.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
+#include "Screens/HOLStatsScreen.h"
 #include "Screens/HOLTitleScreen.h"
+#include "Widgets/HOLDropdown.h"
 #include "Widgets/HOLRootLayout.h"
 
 /**
  * Opens a menu screen or launches a match by the same path as their buttons, for the scripted end-to-end checks
  * (D246).
- *   hol.UI.Open <NewGame|Settings[:Tab]|Quit|GameMenu|Surrender> [DelaySeconds=0]   (Tab: 0 Video, 1 Sound, 2 Controls, 3 Language;
+ *   hol.UI.Open <NewGame|Multiplayer|Settings[:Tab]|Quit|GameMenu|Surrender|Stats> [DelaySeconds=0]   (Tab: 0 Video, 1 Sound, 2 Controls, 3 Language;
  *   GameMenu and Surrender in a match, D356: the in-game menu, then its surrender confirmation over it)
  *   hol.UI.NewGame.Launch [ConfigFile|-] [DelaySeconds=0]   (the file, JSON as for -MatchConfig=, is shown on the screen
  *   first; - launches what the screen shows)
@@ -42,7 +45,7 @@ namespace UE::HeroesOfLiberty::UI
 	{
 		if (Args.IsEmpty())
 		{
-			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Open <NewGame|Settings[:Tab]|Quit|GameMenu|Surrender> [DelaySeconds=0]"));
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Open <NewGame|Multiplayer|Settings[:Tab]|Quit|GameMenu|Surrender|Stats> [DelaySeconds=0]"));
 			return;
 		}
 		const FString Screen = Args[0];
@@ -53,6 +56,10 @@ namespace UE::HeroesOfLiberty::UI
 			if (Screen == TEXT("NewGame"))
 			{
 				UHOLNewGameScreen::Open(PlayerController);
+			}
+			else if (Screen == TEXT("Multiplayer"))
+			{
+				UHOLMultiplayerScreen::Open(PlayerController);
 			}
 			else if (Screen.StartsWith(TEXT("Settings")))
 			{
@@ -75,6 +82,13 @@ namespace UE::HeroesOfLiberty::UI
 				{
 					UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Open: no match to open the in-game menu over"));
 					return;
+				}
+			}
+			else if (Screen == TEXT("Stats"))
+			{
+				if (!UHOLStatsScreen::Open(PlayerController))
+				{
+					UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Open: no match to open the statistics over"));
 				}
 			}
 			else if (Screen == TEXT("Surrender"))
@@ -154,6 +168,24 @@ namespace UE::HeroesOfLiberty::UI
 		});
 	}
 
+	void ChooseValue(const TArray<FString>& Args, UWorld* World)
+	{
+		if (Args.Num() < 2)
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Choose <DropdownName> <Index>"));
+			return;
+		}
+		const UHOLRootLayout* Layout = UHOLRootLayout::Get(GetPlayer(World));
+		const UCommonActivatableWidget* Screen = Layout ? Layout->GetActiveMenu() : nullptr;
+		UHOLDropdown* Dropdown = Screen ? Cast<UHOLDropdown>(Screen->WidgetTree->FindWidget(FName(*Args[0]))) : nullptr;
+		if (!Dropdown)
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Choose: no drop-down list '%s' on the open menu screen"), *Args[0]);
+			return;
+		}
+		Dropdown->Choose(FCString::Atoi(*Args[1]));
+	}
+
 	void SetLanguage(const TArray<FString>& Args)
 	{
 		if (Args.IsEmpty())
@@ -167,7 +199,7 @@ namespace UE::HeroesOfLiberty::UI
 
 	FAutoConsoleCommandWithWorldAndArgs OpenCommand(
 		TEXT("hol.UI.Open"),
-		TEXT("hol.UI.Open <NewGame|Settings[:Tab]|Quit|GameMenu|Surrender> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
+		TEXT("hol.UI.Open <NewGame|Multiplayer|Settings[:Tab]|Quit|GameMenu|Surrender|Stats> [DelaySeconds=0]: opens a menu screen by the same path as its button"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Open));
 
 	FAutoConsoleCommandWithWorldAndArgs LaunchCommand(
@@ -179,6 +211,11 @@ namespace UE::HeroesOfLiberty::UI
 		TEXT("hol.UI.Focus"),
 		TEXT("hol.UI.Focus <WidgetName> [DelaySeconds=0]: gives the focus to a widget of the open menu screen, found by its name"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Focus));
+
+	FAutoConsoleCommandWithWorldAndArgs ChooseCommand(
+		TEXT("hol.UI.Choose"),
+		TEXT("hol.UI.Choose <DropdownName> <Index>: takes a value in a drop-down list of the open menu screen, as a click in its list"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&ChooseValue));
 
 	FAutoConsoleCommand LanguageCommand(
 		TEXT("hol.UI.Language"),

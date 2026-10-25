@@ -2,6 +2,8 @@
 
 #include "Buildings/HOLConstructionSubsystem.h"
 
+#include "Match/HOLMatchStatsSubsystem.h"
+
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionSubsystem.h"
@@ -487,6 +489,10 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 	}
 	// Its footprint reopens at once (the walkers' kept paths across it forgotten), then it leaves the world: everything
 	// that reads the buildings at each step (population, deposits, production, builders, selection) no longer finds it.
+	if (UHOLMatchStatsSubsystem* MatchStats = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
+	{
+		MatchStats->RecordBuildingLost(Building.GetOwnerPlayer());
+	}
 	Building.ReleaseFootprint();
 	Building.Destroy();
 }

@@ -1623,6 +1623,23 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	Rows = HOLForumRules::GetPlayersTable(Duel, Forums, 0, 1, Tuning);
 	TestEqual(TEXT("duel from slot 1: described"), Describe(Rows), FString(TEXT("slot 0 colour 3 lives 2 standing | slot 1 you colour 5 lives 2 standing")));
 
+	// M6-Q12: a match from a lobby, its humans named: the other's name instead of Joueur N, Vous still on one's row;
+	// a spectator (no slot) sees both names. An unnamed slot keeps Joueur N.
+	FHOLMatchConfig Named = Duel;
+	Named.Slots[0].PlayerName = TEXT("Alice");
+	Named.Slots[1].State = EHOLSlotState::Human;
+	Named.Slots[1].PlayerName = TEXT("Bob");
+	Rows = HOLForumRules::GetPlayersTable(Named, Forums, 0, 1, Tuning);
+	TestEqual(TEXT("named: Alice for Bob"), Rows.IsValidIndex(0) ? Rows[0].Name.ToString() : FString(), FString(TEXT("Alice")));
+	TestEqual(TEXT("named: Vous for Bob"), Rows.IsValidIndex(1) ? Rows[1].Name.BuildSourceString() : FString(), FString(TEXT("Vous")));
+	TestEqual(TEXT("named: described"), Describe(Rows), FString(TEXT("slot 0 'Alice' colour 3 lives 2 standing | slot 1 you 'Bob' colour 5 lives 2 standing")));
+	Rows = HOLForumRules::GetPlayersTable(Named, Forums, 0, INDEX_NONE, Tuning);
+	TestEqual(TEXT("named, spectator: Alice"), Rows.IsValidIndex(0) ? Rows[0].Name.ToString() : FString(), FString(TEXT("Alice")));
+	TestEqual(TEXT("named, spectator: Bob"), Rows.IsValidIndex(1) ? Rows[1].Name.ToString() : FString(), FString(TEXT("Bob")));
+	Named.Slots[1].PlayerName = TEXT("  ");
+	Rows = HOLForumRules::GetPlayersTable(Named, Forums, 0, 0, Tuning);
+	TestEqual(TEXT("unnamed: Joueur 2"), Rows.IsValidIndex(1) ? Rows[1].Name.BuildSourceString() : FString(), FString(TEXT("Joueur 2")));
+
 	// Four players in two teams, slots 0 and 2 closed between them: grouped by team, closed slots absent. Slot 1's forum in
 	// ruin (1 life), slot 3's rising again at 40 %, slot 5 defeated (greyed, Vaincu).
 	FHOLMatchConfig Teams;
