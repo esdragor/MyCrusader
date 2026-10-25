@@ -31,6 +31,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLGameMenuRules.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -38,9 +39,11 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 #include "Screens/HOLGameMenu.h"
+#include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLGridCell.h"
 #include "Widgets/HOLQueueItem.h"
+#include "Widgets/HOLRootLayout.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
@@ -226,6 +229,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float GroupRefreshInterval = 0.25f;
 	const FName IdleWorkersName(TEXT("IdleWorkers"));
 	const FName MenuButtonName(TEXT("MenuButton"));
+	const FName StatsButtonName(TEXT("StatsButton"));
 	/** A control group's slot (J7a.5): its width, and how long it stays lit once its group is selected (s, real time). */
 	constexpr float GroupSlotWidth = 64.f;
 	constexpr double GroupLightSeconds = 0.5;
@@ -357,6 +361,13 @@ void UHOLGameScreen::NativeOnInitialized()
 		MenuButton->SetLabel(LOCTEXT("Menu", "Menu"));
 		MenuButton->OnClicked().AddUObject(this, &UHOLGameScreen::HandleMenuClicked);
 	}
+	StatsButton = Cast<UHOLQueueItem>(WidgetTree->FindWidget(StatsButtonName));
+	if (StatsButton)
+	{
+		StatsButton->SetLabel(LOCTEXT("Stats", "Statistiques"));
+		StatsButton->OnClicked().AddUObject(this, &UHOLGameScreen::HandleStatsClicked);
+		StatsButton->SetVisibility(ESlateVisibility::Collapsed);
+	}
 	for (int32 Group = 0; Group < AHOLPlayerController::NumControlGroups; ++Group)
 	{
 		UHOLQueueItem* GroupSlot = Cast<UHOLQueueItem>(WidgetTree->FindWidget(GroupSlotName(Group)));
@@ -402,11 +413,22 @@ void UHOLGameScreen::NativeOnInitialized()
 	ShownAgeTooltips.Init(FString(), HOLCommandGrid::NumAges);
 	ShownAgeLooks.Init(INDEX_NONE, HOLCommandGrid::NumAges);
 
-	// For the scripted checks (hol.Test.Run): the captures of a match name the HUD.
+	// For the scripted checks (hol.Test.Run): the captures of a match name the HUD, and the screen over it if any (C4c:
+	// the statistics screen).
 	const TWeakObjectPtr<UHOLGameScreen> WeakThis(this);
 	HOLTestHooks::DescribeInterface() = [WeakThis]()
 	{
-		return WeakThis.IsValid() ? FString::Printf(TEXT("hud=%s"), *WeakThis->GetClass()->GetName()) : FString(TEXT("no interface"));
+		if (!WeakThis.IsValid())
+		{
+			return FString(TEXT("no interface"));
+		}
+		FString Description = FString::Printf(TEXT("hud=%s"), *WeakThis->GetClass()->GetName());
+		const UHOLRootLayout* Layout = UHOLRootLayout::Get(WeakThis->GetOwningPlayer());
+		if (const UCommonActivatableWidget* Menu = Layout ? Layout->GetActiveMenu() : nullptr)
+		{
+			Description += FString::Printf(TEXT(" menu=%s"), *Menu->GetClass()->GetName());
+		}
+		return Description;
 	};
 }
 
@@ -467,6 +489,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 		RefreshPlayersTable();
 		RefreshWaitBanner();
+		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace.
 		const AHOLBuilding* SelectedBuilding = BoundBuilding.Get();
@@ -617,6 +640,13 @@ void UHOLGameScreen::RefreshPlayersTable()
 	if (Shown == ShownPlayersTable)
 	{
 		return;
+	}
+	// M6-Q12: the names shown, logged when they change (the lobby's names reach the client with the launch configuration).
+	const FString Names = FString::JoinBy(Rows, TEXT(", "), [](const FHOLPlayersTableRow& Row) { return Row.Name.ToString(); });
+	if (Names != ShownPlayerNames)
+	{
+		ShownPlayerNames = Names;
+		UE_LOG(LogHOLUI, Display, TEXT("Players table: %s"), *Names);
 	}
 	ShownPlayersTable = Shown;
 	SetShown(PlayersPanel, !Rows.IsEmpty(), ESlateVisibility::HitTestInvisible);
@@ -1770,11 +1800,39 @@ void UHOLGameScreen::HandleMenuClicked()
 	UHOLGameMenu::Open(GetOwningPlayer());
 }
 
+void UHOLGameScreen::HandleStatsClicked()
+{
+	if (StatsButton && StatsButton->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		UHOLStatsScreen::Open(GetOwningPlayer());
+	}
+}
+
+void UHOLGameScreen::RefreshStatsButton()
+{
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	const bool bShown = PlayerController && HOLGameMenuRules::ShowsStatsButton(PlayerController->IsSpectator(),
+		GameState && GameState->IsMatchOver());
+	UE::HeroesOfLiberty::UI::GameScreen::SetShown(StatsButton, bShown, ESlateVisibility::Visible);
+	// Its box too: collapsed, « Menu » keeps its place alone.
+	UE::HeroesOfLiberty::UI::GameScreen::SetShown(StatsButton ? StatsButton->GetParent() : nullptr, bShown, ESlateVisibility::SelfHitTestInvisible);
+}
+
 bool UHOLGameScreen::ClickWidget(const FName Name)
 {
 	if (MenuButton && Name == UE::HeroesOfLiberty::UI::GameScreen::MenuButtonName)
 	{
 		HandleMenuClicked();
+		return true;
+	}
+	if (StatsButton && Name == UE::HeroesOfLiberty::UI::GameScreen::StatsButtonName)
+	{
+		if (StatsButton->GetVisibility() == ESlateVisibility::Collapsed)
+		{
+			return false;
+		}
+		HandleStatsClicked();
 		return true;
 	}
 	if (IdleWorkers && Name == UE::HeroesOfLiberty::UI::GameScreen::IdleWorkersName)
@@ -2101,7 +2159,17 @@ void UHOLGameScreen::BuildLayout()
 	MenuBox->SetHeightOverride(QueueItemHeight * 0.8f);
 	UHOLQueueItem* Menu = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), MenuButtonName);
 	MenuBox->SetContent(Menu);
-	MenuPanel->SetContent(MenuBox);
+	// M6-Q10 (C6): « Statistiques » left of « Menu », a spectator's alone during the match (collapsed otherwise).
+	UHorizontalBox* MenuRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("MenuRow"));
+	USizeBox* StatsBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("StatsButtonBox"));
+	StatsBox->SetWidthOverride(IdleWorkersWidth * 1.25f);
+	StatsBox->SetHeightOverride(QueueItemHeight * 0.8f);
+	UHOLQueueItem* Stats = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), StatsButtonName);
+	StatsBox->SetContent(Stats);
+	UHorizontalBoxSlot* StatsSlot = MenuRow->AddChildToHorizontalBox(StatsBox);
+	StatsSlot->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
+	MenuRow->AddChildToHorizontalBox(MenuBox);
+	MenuPanel->SetContent(MenuRow);
 
 	// R3.10: the wait banner, top centre under the top bar, while the match waits for its named players.
 	WaitPanel = MakePanel(TEXT("WaitPanel"));

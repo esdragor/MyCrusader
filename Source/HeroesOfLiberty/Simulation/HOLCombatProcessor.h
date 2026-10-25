@@ -83,7 +83,7 @@ protected:
 	 * The dying path (J7b.4, J7-Q5), whatever killed it (a melee hit, an arrow, another way): stopped dead, out of the
 	 * fight and of its task, Dying, its population freed at once, destroyed DyingSteps later.
 	 */
-	void KillUnit(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Victim, int64 StepIndex) const;
+	void KillUnit(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Victim, int64 StepIndex, int32 KillerPlayer = INDEX_NONE) const;
 	/** A unit at 0 health: Dying if it is not yet, into Deaths once Dying for DyingSteps (the combat off too). */
 	void FinishDying(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Fighter, int64 StepIndex);
 

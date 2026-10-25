@@ -16,6 +16,8 @@ struct HEROESOFLIBERTY_API FHOLManagerRules
 	static FString MakeListeningBody(int32 Port);
 	/** { "winners": [0, 2] } (slots) */
 	static FString MakeFinishedBody(TConstArrayView<int32> Winners);
+	/** { "playerName": "Bob" } (left, M6-Q14) */
+	static FString MakeLeftBody(const FString& PlayerName);
 	/** {} (started, empty) */
 	static FString MakeEmptyBody() { return TEXT("{}"); }
 
@@ -47,6 +49,8 @@ public:
 	void SendStarted();
 	void SendFinished(TConstArrayView<int32> Winners);
 	void SendEmpty();
+	/** M6-Q14: a named player left the server (after "started"); each time. */
+	void SendLeft(const FString& PlayerName);
 	bool HasStarted() const { return bStartedSent; }
 
 	/** POST {ManagerUrl}/matches/{MatchId}/{Event} with this JSON body. */

@@ -190,10 +190,12 @@ public class MatchFollowTests
         var match = store.ServerFinished(matchId, [1]);
         Assert.Equal([1], match.Winners);
         AssertBackWithNotice(lobby, null);
-        Assert.Equal(2, store.Read(lobby.Id, alice).Players.Count());
+        // D2: the match's players are out of the lobby; one comes back by joining.
+        LobbyEntryTests.AssertError(LobbyErrors.NotInLobby, () => store.Read(lobby.Id, alice));
+        var back = store.Join(lobby.Id, "Alice", Version).Token;
         // The server quitting afterwards gives no notice.
         launcher.Alive.Remove(matchId);
-        store.Housekeep();
+        store.Read(lobby.Id, back);
         AssertBackWithNotice(lobby, null);
         Assert.Empty(launcher.Stopped);
         LobbyEntryTests.AssertError(LobbyErrors.MatchNotFound, () => store.ServerEmpty(matchId));
@@ -250,6 +252,9 @@ public class MatchFollowTests
         store.Leave(lobby.Id, alice);
         Assert.Same(lobby, store.Find(lobby.Id));
         store.ServerFinished(matchId, []);
+        Assert.Same(lobby, store.Find(lobby.Id));
+        launcher.Alive.Remove(matchId);
+        store.Housekeep();
         Assert.Null(store.Find(lobby.Id));
     }
 

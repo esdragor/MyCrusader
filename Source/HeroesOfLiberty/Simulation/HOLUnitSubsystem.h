@@ -75,9 +75,10 @@ public:
 	void RequestDestroyUnits(TConstArrayView<uint32> UnitIds);
 	/**
 	 * A unit at 0 health (J7b.4): its population places are free from now on (the user's trial of J7b), not when it is
-	 * destroyed DyingSteps later. Once is enough; GetPopulationByOwner skips it.
+	 * destroyed DyingSteps later. Once is enough; GetPopulationByOwner skips it. Its death goes to the match statistics
+	 * (C2), a kill for KillerPlayer (INDEX_NONE: nobody's).
 	 */
-	void MarkUnitDying(uint32 UnitId);
+	void MarkUnitDying(uint32 UnitId, int32 KillerPlayer = INDEX_NONE);
 	void RequestDestroyAllUnits();
 	/**
 	 * D358: a defeated slot collapses. Every living unit of Owner goes to 0 health and Dying (MarkUnitDying): the combat
@@ -111,6 +112,13 @@ public:
 	 * (MarkUnitDying): OutPopulation gets one entry per OwnerPlayer (D233) up to the highest one with a unit.
 	 */
 	void GetPopulationByOwner(TArray<int32>& OutPopulation) const;
+	/**
+	 * Living units of each player (the dying and the births waiting left out), workers (a CarryCapacity) apart from the
+	 * others: one entry per OwnerPlayer up to the highest one with a unit (the match statistics, C2).
+	 */
+	void GetLivingCountsByOwner(TArray<int32>& OutWorkers, TArray<int32>& OutMilitary) const;
+	/** Whether units of this type gather (a CarryCapacity): a worker for the match statistics (C2). */
+	bool IsWorkerType(FName TypeName) const;
 	/** "3 units: #1 Peasant slot 0 at (x, y, z) LOD 0 visible, drawn as instances; ...", the first MaxUnits (hol.Units.Report). */
 	FString DescribeUnits(int32 MaxUnits) const;
 	/** The units simulated here (solo, server), where they are (J4: what the player selects and orders in solo). */

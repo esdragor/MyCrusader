@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Match/HOLMatchStats.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
 #include "Player/HOLUnitPicking.h"
@@ -460,6 +461,23 @@ public:
 	 */
 	UFUNCTION(Client, Unreliable)
 	void ClientShowDepositPopups(const TArray<FHOLDepositPopup>& Popups);
+
+	/**
+	 * C3: asks the server for the match statistics from each player's sample FromSample and from event FromEvent on; the
+	 * server answers by ClientReceiveMatchStats, or ClientMatchStatsRefused for a player during the match (M6-Q11).
+	 */
+	UFUNCTION(Server, Reliable)
+	void ServerRequestMatchStats(int32 FromSample, int32 FromEvent);
+
+	/** A chunk of the statistics (MaxSamples a player at most, ~56 bytes a sample): the client merges it and asks for the rest. */
+	UFUNCTION(Client, Reliable)
+	void ClientReceiveMatchStats(const FHOLMatchStatsChunk& Chunk);
+
+	UFUNCTION(Client, Reliable)
+	void ClientMatchStatsRefused();
+
+	/** Samples a player in one chunk: 8 players x 20 x ~56 bytes, ~9 KB a reliable call; an hour (360 samples) in 18 chunks. */
+	static constexpr int32 MatchStatsChunkSamples = 20;
 
 	/** Swaps the engine's default HUD for the match HUD of the UI module (D281), on the player's machine. */
 	virtual void ClientSetHUD_Implementation(TSubclassOf<AHUD> NewHUDClass) override;

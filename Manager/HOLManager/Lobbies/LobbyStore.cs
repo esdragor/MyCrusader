@@ -113,7 +113,23 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 throw new LobbyException(LobbyErrors.NameTaken, $"The name '{name}' is already in the lobby.");
             }
-            return Enter(lobby, name);
+            var leaderBack = lobby.AwayLeader != null && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name)
+                && !(lobby.AwayLeaderUntil <= clock.UtcNow);
+            var entered = Enter(lobby, name);
+            if (leaderBack)
+            {
+                // M6-Q14: the match's leader takes the lead again, ahead of those back before him.
+                var leader = lobby.Players.Single(p => p.Token == entered.Token);
+                leader.JoinOrder = lobby.Players.Min(p => p.JoinOrder) - 1;
+                ClearAwayLeader(lobby);
+            }
+            else if (lobby.AwayLeader != null
+                && (lobby.AwayLeaderUntil <= clock.UtcNow || !lobby.Slots.Any(s => s.State == SlotState.Open)))
+            {
+                // Gone while nobody was back, or the lobby is full without him: the first back leads.
+                GiveUpAwayLeader(lobby);
+            }
+            return entered;
         }
     }
 
@@ -271,19 +287,54 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
     /** POST /matches/{id}/started: the minutes start (the first call only). */
     public LobbyMatch ServerStarted(string matchId) => OnMatch(matchId, (_, match) => match.StartedAt ??= clock.UtcNow);
 
-    /** POST /matches/{id}/finished: the lobby goes back to the lobby, "Ready" reset (returns by name: R2.11). */
+    /**
+     * POST /matches/{id}/finished (D2): the lobby goes back to the lobby with its settings, without the match's
+     * players (each comes back by a plain join, the first back leads); kept, even empty, while its server runs.
+     */
     public LobbyMatch ServerFinished(string matchId, IReadOnlyList<int>? winners) => OnMatch(matchId, (lobby, match) =>
     {
         if (!match.Finished)
         {
             match.Finished = true;
             match.Winners = winners ?? [];
-            ReturnToLobby(lobby, match, notice: null);
+            // M6-Q14: the leader leads while away, unless he already left the match's server.
+            lobby.AwayLeader = lobby.Leader?.Name;
+            lobby.AwayLeaderUntil = lobby.AwayLeader != null && match.LeftBeforeEnd.Contains(lobby.AwayLeader) ? clock.UtcNow : null;
+            lobby.State = LobbyState.Lobby;
+            lobby.Match = null;
+            foreach (var slot in lobby.Slots)
+            {
+                slot.Player = null;
+            }
         }
     });
 
     /** POST /matches/{id}/empty: the server is stopped if it still runs EmptyStopDelay later. */
     public LobbyMatch ServerEmpty(string matchId) => OnMatch(matchId, (_, match) => match.EmptyAt ??= clock.UtcNow);
+
+    /**
+     * POST /matches/{id}/left (M6-Q14): a named player left the match's server. During the match, remembered for
+     * "finished"; after it, the away leader leads LeaderReturnGrace longer. Any other name changes nothing.
+     */
+    public LobbyMatch ServerLeft(string matchId, string? playerName)
+    {
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            throw new LobbyException(LobbyErrors.BadRequest, "playerName is required.");
+        }
+        var name = LobbyRules.Clean(playerName);
+        return OnMatch(matchId, (lobby, match) =>
+        {
+            if (lobby.Match == match)
+            {
+                match.LeftBeforeEnd.Add(name);
+            }
+            else if (match.Finished && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name))
+            {
+                lobby.AwayLeaderUntil ??= clock.UtcNow + LobbyRules.LeaderReturnGrace;
+            }
+        });
+    }
 
     private LobbyMatch OnMatch(string matchId, Action<Lobby, LobbyMatch> action)
     {
@@ -333,6 +384,10 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             if (lobby.State == LobbyState.Lobby)
             {
                 Remove(lobby, lobby.Players.Where(p => now - p.LastSeen >= LobbyRules.SilenceLimit && !(p.ReservedUntil > now)).ToList());
+                if (lobby.AwayLeaderUntil <= now && lobby.Players.Any())
+                {
+                    GiveUpAwayLeader(lobby);
+                }
             }
         }
     }
@@ -362,11 +417,21 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 ReturnToLobby(lobby, match, LobbyNotices.ServerStopped);
             }
+            else if (lobby.Leader == null && lobby.State == LobbyState.Lobby)
+            {
+                // A finished match's lobby nobody came back to (D2).
+                lobbies.Remove(lobby.Id);
+            }
+            else if (lobby.AwayLeader != null)
+            {
+                // M6-Q14: its leader, not back, leads LeaderReturnGrace longer.
+                lobby.AwayLeaderUntil ??= now + LobbyRules.LeaderReturnGrace;
+            }
         }
     }
 
     /**
-     * The lobby leaves its match (finished or server stopped): "Ready" reset; each player keeps his line, is not
+     * The lobby leaves its match (server stopped; "finished" empties it instead, D2): "Ready" reset; each player keeps his line, is not
      * removed by silence and keeps his name for ReturnReservation (R2.11), and is not back until his next call or
      * join by name. A lobby left by everyone during the match is deleted.
      */
@@ -406,16 +471,34 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         }
         if (lobby.Leader == null)
         {
-            if (lobby.State == LobbyState.Lobby)
+            // A finished match's lobby stays while its server runs (D2): its players may still come back.
+            if (lobby.State == LobbyState.Lobby && !matches.Values.Any(followed => followed.Lobby == lobby))
             {
                 lobbies.Remove(lobby.Id);
             }
         }
-        else if (lobby.Leader != leader)
+        else if (lobby.Leader != leader && lobby.AwayLeader == null)
         {
             lobby.Notice = LobbyNotices.LeaderChanged;
             lobby.NoticeUntil = clock.UtcNow + LobbyRules.NoticeDuration;
         }
+    }
+
+    /** M6-Q14: the away leader leads no more; the first back leads (leader_changed when others are there). */
+    private void GiveUpAwayLeader(Lobby lobby)
+    {
+        ClearAwayLeader(lobby);
+        if (lobby.Players.Count() > 1)
+        {
+            lobby.Notice = LobbyNotices.LeaderChanged;
+            lobby.NoticeUntil = clock.UtcNow + LobbyRules.NoticeDuration;
+        }
+    }
+
+    private static void ClearAwayLeader(Lobby lobby)
+    {
+        lobby.AwayLeader = null;
+        lobby.AwayLeaderUntil = null;
     }
 
     private Lobby Get(string lobbyId) =>
@@ -465,7 +548,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
     private Lobby GetLeaderLobby(string lobbyId, string? token)
     {
         var (lobby, player) = GetPlayer(lobbyId, token);
-        if (player != lobby.Leader)
+        // M6-Q14: while the match's leader is away, nobody else sets or starts.
+        if (player != lobby.Leader || lobby.AwayLeader != null)
         {
             throw new LobbyException(LobbyErrors.NotLeader, "Only the leader changes this.");
         }

@@ -19,6 +19,8 @@
 #include "TimerManager.h"
 #include "Player/HOLPlayerController.h"
 #include "Screens/HOLGameMenu.h"
+#include "Screens/HOLStatsScreen.h"
+#include "Widgets/HOLRootLayout.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLRootLayout.h"
 
@@ -144,6 +146,13 @@ void AHOLGameHUD::WatchVictory()
 	}
 }
 
+void AHOLGameHUD::ReopenEndBanner()
+{
+	UE_LOG(LogHOLUI, Display, TEXT("End banner: reopened"));
+	ClosedEndBanner = EHOLEndBanner::None;
+	RefreshEndBanner();
+}
+
 void AHOLGameHUD::RefreshEndBanner()
 {
 	APlayerController* PlayerController = GetOwningPlayerController();
@@ -156,7 +165,9 @@ void AHOLGameHUD::RefreshEndBanner()
 	}
 	const EHOLEndBanner Due = HOLGameMenuRules::GetEndBanner(PlayerState->GetPlayerIndex(), GameState->GetDefeatedMask(),
 		GameState->IsMatchOver(), GameState->GetWinnerMask());
-	const bool bShown = EndBanner && EndBanner->IsActivated();
+	// The statistics screen opened from the banner (C4) covers it, the banner still there under it.
+	const UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
+	const bool bShown = EndBanner && (EndBanner->IsActivated() || (Layout && Cast<UHOLStatsScreen>(Layout->GetActiveMenu())));
 	if (!HOLGameMenuRules::ShouldOpenEndBanner(Due, bShown ? EndBanner->GetResult() : EHOLEndBanner::None, ClosedEndBanner))
 	{
 		return;
@@ -167,6 +178,21 @@ void AHOLGameHUD::RefreshEndBanner()
 		return;
 	}
 	EndBanner = UHOLEndBanner::Open(PlayerController, Due);
+	if (EndBanner && Due == EHOLEndBanner::MatchOver)
+	{
+		// M6-Q10: the spectator's banner names the winners (the lobby's names, else Joueur N).
+		TArray<FText> Names;
+		for (const int32 Slot : GameState->GetWinners())
+		{
+			const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
+			const FString Name = Slots.IsValidIndex(Slot) ? Slots[Slot].PlayerName.TrimStartAndEnd() : FString();
+			Names.Add(!Name.IsEmpty() ? FText::AsCultureInvariant(Name)
+				: FText::Format(NSLOCTEXT("HOLGameHUD", "PlayerN", "Joueur {0}"), Slot + 1));
+		}
+		EndBanner->SetDetail(Names.IsEmpty() ? NSLOCTEXT("HOLGameHUD", "NoWinner", "Aucun vainqueur")
+			: FText::Format(Names.Num() == 1 ? NSLOCTEXT("HOLGameHUD", "Winner", "Vainqueur : {0}") : NSLOCTEXT("HOLGameHUD", "Winners", "Vainqueurs : {0}"),
+				FText::Join(FText::AsCultureInvariant(TEXT(", ")), Names)));
+	}
 	if (EndBanner)
 	{
 		EndBanner->OnClosedByPlayer.AddWeakLambda(this, [this](const EHOLEndBanner Closed)

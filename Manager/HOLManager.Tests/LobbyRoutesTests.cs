@@ -442,12 +442,18 @@ public sealed class LobbyRoutesTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal(12, (int)(await Json(await client.GetAsync("/lobbies")))["lobbies"]![0]!["minutes"]!);
 
         Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "finished", new { winners = new[] { 0 } })).StatusCode);
-        state = await Json(await Send(HttpMethod.Get, $"/lobbies/{id}", bob));
+        // D2: the match's players are out of the lobby; it stays, read without a token.
+        await AssertError(await Send(HttpMethod.Get, $"/lobbies/{id}", bob), HttpStatusCode.Forbidden, "not_in_lobby");
+        state = await Json(await client.GetAsync($"/lobbies/{id}"));
+        Assert.All(state["slots"]!.AsArray(), slot => Assert.NotEqual("player", (string?)slot!["state"]));
         Assert.Equal("lobby", (string?)state["state"]);
         Assert.Null(state["match"]);
         Assert.Null(state["minutes"]);
         Assert.Null(state["notice"]);
         await AssertError(await client.GetAsync($"/lobbies/{id}/watch"), HttpStatusCode.Conflict, "no_match");
+        // M6-Q14: the match's leader still leads while away, by name.
+        Assert.Equal("Bob", (string?)state["leader"]);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob" })).StatusCode);
 
         // The fake server lingers after "empty": stopped 10 s later.
         Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "empty")).StatusCode);
@@ -467,6 +473,9 @@ public sealed class LobbyRoutesTests : IClassFixture<WebApplicationFactory<Progr
         await AssertError(await Server("M99", "started"), HttpStatusCode.NotFound, "match_not_found");
         await AssertError(await Server("M99", "finished"), HttpStatusCode.NotFound, "match_not_found");
         await AssertError(await Server("M99", "empty"), HttpStatusCode.NotFound, "match_not_found");
+        await AssertError(await Server("M99", "left", new { playerName = "Bob" }), HttpStatusCode.NotFound, "match_not_found");
+        await AssertError(await Server(matchId, "left", new { playerName = "Bob" }, remote: "100.64.0.7"), HttpStatusCode.Forbidden, "not_local");
+        await AssertError(await Server(matchId, "left"), HttpStatusCode.BadRequest, "bad_request");
         await AssertError(await client.PostAsync($"/matches/{matchId}/listening", new StringContent("{ not json", Encoding.UTF8, "application/json")),
             HttpStatusCode.BadRequest, "bad_request");
         await AssertError(await Server(matchId, "listening", new { port = "x" }), HttpStatusCode.BadRequest, "bad_request");

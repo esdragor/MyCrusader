@@ -5,7 +5,7 @@
 #include "HOLTitleScreen.generated.h"
 
 /**
- * Title screen (D240): the game's name and the way into the rest of the menu (Play, Settings, Quit). Root of the
+ * Title screen (D240): the game's name and the way into the rest of the menu (Play, Multiplayer, Settings, Quit). Root of the
  * menu layer: Back does nothing here, Quit asks for a confirmation in the modal layer.
  */
 UCLASS()
@@ -35,6 +35,9 @@ protected:
 	TObjectPtr<class UHOLButton> PlayButton;
 
 	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UHOLButton> MultiplayerButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> SettingsButton;
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -42,6 +45,7 @@ protected:
 
 private:
 	void HandlePlay();
+	void HandleMultiplayer();
 	void HandleSettings();
 	void HandleQuit();
 };

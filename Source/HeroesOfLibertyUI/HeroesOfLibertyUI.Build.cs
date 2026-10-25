@@ -23,6 +23,9 @@ public class HeroesOfLibertyUI : ModuleRules
 			"EnhancedInput",
 			// Common UI's action bindings (FBindUIActionArgs) are keyed by gameplay tags.
 			"GameplayTags",
+			// The lobby manager's client (R4.1).
+			"HTTP",
+			"Json",
 		});
 	}
 }

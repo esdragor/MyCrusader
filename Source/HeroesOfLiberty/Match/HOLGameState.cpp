@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLForumPresence.h"
+#include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -212,6 +213,10 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 	ForumBuilders[Slot] = 0;
 	SetForumState(Slot, State);
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: forum of slot %d fell, lives %d (queue refunded %s)"), Slot, Lives, *Refund.ToString());
+	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
+	{
+		MatchStats->RecordEvent(Slot, EHOLMatchStatsEvent::ForumFell);
+	}
 	if (Lives <= 0)
 	{
 		PendingForumDefeats |= 1 << Slot;
@@ -426,6 +431,10 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	}
 	SlotDefeats[Slot] = Reason;
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: slot %d defeated (%s)"), Slot, GetReasonName(Reason));
+	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
+	{
+		MatchStats->RecordEvent(Slot, EHOLMatchStatsEvent::Defeated);
+	}
 	CollapseSlot(Slot);
 	OnSlotDefeated.Broadcast(Slot, Reason);
 

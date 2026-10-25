@@ -2,9 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLMatchConfig.h"
+#include "Net/HOLManagerClientRules.h"
 #include "Screens/HOLScreen.h"
 #include "HOLNewGameScreen.generated.h"
 
+class UCommonTextBlock;
 class UImage;
 
 /**
@@ -35,9 +37,19 @@ public:
 	/** Gives the configuration to the match subsystem and opens its map (Launch button, hol.UI.NewGame.Launch). */
 	void Launch();
 
+	/**
+	 * The network mode (M6-Q3, R4.4): this screen is the lobby the manager client has just entered. Its state is read
+	 * twice a second (the presence, Manager/PROTOCOL.md) and shown: the map, the options, each slot's player, colour,
+	 * team and state (open, closed, ready or not); the other players' lines are greyed. My colour, team and Ready are
+	 * sent (R4.5); the leader also sends the map, the options, open / closed slots and Launch. Back leaves the lobby; a lobby lost (manager gone, removed) goes back to the list, which says why.
+	 */
+	void EnterLobby(const FHOLLobby& InLobby);
+	bool IsLobby() const { return bLobby; }
+
 protected:
 	virtual void BuildLayout() override;
 	virtual void NativeOnInitialized() override;
+	virtual void NativeOnDeactivated() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 	/** Slot state (with the map and the mode above and below), faction, colour, team (D250). */
 	virtual void GetColumns(TArray<TArray<UWidget*>>& OutColumns) const override;
@@ -68,6 +80,17 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLButton> BackButton;
 
+	/** My Ready (network mode only, a toggle). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHOLButton> ReadyButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> NoteText;
+
+	/** The manager's refusal of my last change, in red (network mode). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> ErrorText;
+
 	/** Per slot, found by name (SlotState1..7, SlotFaction0..7, SlotColor0..7, SlotSwatch0..7, SlotTeam0..7) so that a
 	 *  Blueprint layout can give them. Slot 0 is the player: no state widget. */
 	UPROPERTY(Transient)
@@ -85,11 +108,36 @@ protected:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLDropdown>> SlotTeams;
 
+	/** "Joueur 1".."Joueur 8" (SlotName0..7); the players' names in the network mode. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCommonTextBlock>> SlotNames;
+
+	/** Slot 0's state ("Vous", SlotYou0), slot 0 having no state list. */
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> SlotYou;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> HeadingText;
+
 private:
 	void Refresh();
+	/** Asks the manager for the lobby's state (one call at a time). */
+	void ReadLobby();
+	void ShowLobby(const FHOLLobby& InLobby);
 	void HandleMapChosen(int32 Value);
 	void HandleStateChosen(int32 SlotIndex, int32 Value);
 	void HandleColorChosen(int32 SlotIndex, int32 Value);
+	void HandleTeamChosen(int32 SlotIndex, int32 Value);
+	void HandleOptionChosen(int32 Value);
+	void ToggleReady();
+	/** Network mode: the map and options sent (leader). */
+	void SendSettings();
+	/** Network mode: "Lancer" sent (leader); what follows is B6. */
+	void StartMatch();
+	/** The answer of a change: the state shown, or the refusal in red (the next read shows the truth again). */
+	void HandleWritten(const FHOLLobby& Written, const struct FHOLManagerError& Error, const FString& What);
+	void ShowError(const FText& Text);
+	class UHOLManagerClient* GetClient() const;
 
 	/** A colour held by another occupied slot. */
 	bool IsColorTaken(int32 SlotIndex, int32 ColorIndex) const;
@@ -97,4 +145,13 @@ private:
 	int32 FindFreeColor(int32 SlotIndex, int32 From) const;
 
 	FHOLMatchConfig Config;
+
+	bool bLobby = false;
+	FHOLLobby Lobby;
+	FTimerHandle ReadTimer;
+	bool bReading = false;
+	/** The lobby in_game: opens its server, once (R4.7). */
+	void JoinMatch();
+	/** The players last logged ("Lobby: 2 players ..."), logged again when it changes. */
+	FString LoggedPlayers;
 };

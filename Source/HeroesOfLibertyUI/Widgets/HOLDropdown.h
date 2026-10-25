@@ -54,6 +54,8 @@ public:
 	/** Opens the list (as a click does) or closes it without a choice; for the scripted trials. */
 	void OpenList();
 	void CloseList();
+	/** A value taken in the list (as a click on it does; also hol.UI.Choose for the scripted trials). */
+	void Choose(int32 Index);
 
 	/** The player took a value in the list (a different one from the value shown). */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnSelectionChanged, int32 /*Index*/);
@@ -80,8 +82,6 @@ private:
 	UUserWidget* MakeList();
 	UFUNCTION()
 	void HandleListOpenChanged(bool bIsOpen);
-	/** A value taken in the list. */
-	void Choose(int32 Index);
 
 	TArray<FText> Options;
 	TArray<FLinearColor> Swatches;

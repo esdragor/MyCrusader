@@ -2,6 +2,8 @@
 
 #include "Simulation/HOLUnitSubsystem.h"
 
+#include "Match/HOLMatchStatsSubsystem.h"
+
 #include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Simulation/HOLCombatRules.h"
@@ -712,11 +714,16 @@ void UHOLUnitSubsystem::RequestDestroyUnits(const TConstArrayView<uint32> UnitId
 	PendingDestruction.Append(UnitIds);
 }
 
-void UHOLUnitSubsystem::MarkUnitDying(const uint32 UnitId)
+void UHOLUnitSubsystem::MarkUnitDying(const uint32 UnitId, const int32 KillerPlayer)
 {
-	if (FHOLUnitRecord* Record = Units.Find(UnitId))
+	FHOLUnitRecord* Record = Units.Find(UnitId);
+	if (Record && !Record->bDying)
 	{
 		Record->bDying = true;
+		if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
+		{
+			MatchStats->RecordUnitDeath(Record->OwnerPlayer, IsWorkerType(Record->TypeName), KillerPlayer);
+		}
 	}
 }
 
@@ -742,6 +749,10 @@ int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner)
 			State->Activity = EHOLUnitActivity::Dying;
 			Record.bDying = true;
 			++Killed;
+			if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
+			{
+				MatchStats->RecordUnitDeath(Owner, IsWorkerType(Record.TypeName), INDEX_NONE);
+			}
 		}
 	}
 	return Killed;
@@ -1007,6 +1018,39 @@ FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const
 			State ? *StaticEnum<EHOLUnitActivity>()->GetNameStringByValue(static_cast<int64>(State->Activity)) : TEXT("no state")));
 	}
 	return FString::Printf(TEXT("%d units: %s"), Units.Num(), *FString::Join(Lines, TEXT("; ")));
+}
+
+bool UHOLUnitSubsystem::IsWorkerType(const FName TypeName) const
+{
+	const FHOLUnitTypeRow* Row = FindTypeRow(TypeName);
+	return Row && Row->CarryCapacity > 0;
+}
+
+void UHOLUnitSubsystem::GetLivingCountsByOwner(TArray<int32>& OutWorkers, TArray<int32>& OutMilitary) const
+{
+	OutWorkers.Reset();
+	OutMilitary.Reset();
+	// One table lookup per type, not per unit.
+	TMap<FName, bool> WorkerByType;
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		const FHOLUnitRecord& Record = Unit.Value;
+		if (Record.bDying)
+		{
+			continue;
+		}
+		const bool* bWorker = WorkerByType.Find(Record.TypeName);
+		if (!bWorker)
+		{
+			bWorker = &WorkerByType.Add(Record.TypeName, IsWorkerType(Record.TypeName));
+		}
+		if (OutWorkers.Num() <= Record.OwnerPlayer)
+		{
+			OutWorkers.SetNumZeroed(Record.OwnerPlayer + 1);
+			OutMilitary.SetNumZeroed(Record.OwnerPlayer + 1);
+		}
+		++(*bWorker ? OutWorkers : OutMilitary)[Record.OwnerPlayer];
+	}
 }
 
 void UHOLUnitSubsystem::GetPopulationByOwner(TArray<int32>& OutPopulation) const

@@ -35,6 +35,12 @@ public static class LobbyRules
     /** After a match, its players keep their line this long without reading (choice 6, R2.11). */
     public static readonly TimeSpan ReturnReservation = TimeSpan.FromMinutes(2);
 
+    /**
+     * M6-Q14: the away leader still leads this long after leaving the finished match's server, or after it stopped
+     * ("Retour au salon" leaves the server before the join).
+     */
+    public static readonly TimeSpan LeaderReturnGrace = TimeSpan.FromSeconds(30);
+
     /** A server still running this long after "empty" is stopped. */
     public static readonly TimeSpan EmptyStopDelay = TimeSpan.FromSeconds(10);
 

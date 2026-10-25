@@ -29,7 +29,8 @@ EHOLEndBanner HOLGameMenuRules::GetEndBanner(const int32 MySlot, const uint8 Def
 {
 	if (MySlot < 0 || MySlot >= 8)
 	{
-		return EHOLEndBanner::None;
+		// M6-Q10: a spectator's banner, neutral, once the match is over.
+		return bMatchOver ? EHOLEndBanner::MatchOver : EHOLEndBanner::None;
 	}
 	const uint8 Me = 1 << MySlot;
 	if (bMatchOver)
@@ -40,6 +41,16 @@ EHOLEndBanner HOLGameMenuRules::GetEndBanner(const int32 MySlot, const uint8 Def
 	return (DefeatedMask & Me) ? EHOLEndBanner::Defeat : EHOLEndBanner::None;
 }
 
+bool HOLGameMenuRules::OffersReturnToLobby(const EHOLEndBanner Banner, const EHOLMatchOrigin Origin)
+{
+	return Origin == EHOLMatchOrigin::Lobby && (Banner == EHOLEndBanner::Defeat || Banner == EHOLEndBanner::Victory);
+}
+
+bool HOLGameMenuRules::QuitsToList(const EHOLMatchOrigin Origin)
+{
+	return Origin != EHOLMatchOrigin::Local;
+}
+
 bool HOLGameMenuRules::ShouldOpenEndBanner(const EHOLEndBanner Due, const EHOLEndBanner Shown, const EHOLEndBanner Closed)
 {
 	return Due != EHOLEndBanner::None && Due != Shown && Due != Closed;
@@ -48,4 +59,9 @@ bool HOLGameMenuRules::ShouldOpenEndBanner(const EHOLEndBanner Due, const EHOLEn
 bool HOLGameMenuRules::KeepsMatchMenuInput(const bool bOpening, const bool bOtherScreenOpen)
 {
 	return bOpening || bOtherScreenOpen;
+}
+
+bool HOLGameMenuRules::ShowsStatsButton(const bool bSpectator, const bool bMatchOver)
+{
+	return bSpectator || bMatchOver;
 }

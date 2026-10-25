@@ -48,6 +48,10 @@ public:
 	bool IsEdgeScrollEnabled() const { return bEdgeScroll; }
 	void SetEdgeScrollEnabled(bool bEnabled) { bEdgeScroll = bEnabled; }
 
+	/** The name given to the lobby manager (Multiplayer screen, R4.2); empty until the player gives one. */
+	const FString& GetPlayerName() const { return PlayerName; }
+	void SetPlayerName(const FString& Name) { PlayerName = Name; }
+
 private:
 	float& VolumeRef(EHOLVolume Volume);
 
@@ -69,6 +73,9 @@ private:
 
 	UPROPERTY(Config)
 	bool bEdgeScroll = true;
+
+	UPROPERTY(Config)
+	FString PlayerName;
 
 	/** The mix is pushed once on the audio device, which outlives the maps. */
 	bool bMixPushed = false;

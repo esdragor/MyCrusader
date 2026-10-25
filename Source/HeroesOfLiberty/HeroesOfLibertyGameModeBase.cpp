@@ -80,6 +80,28 @@ void AHeroesOfLibertyGameModeBase::PreLogin(const FString& Options, const FStrin
 	if (!HOLVersion::IsAccepted(HOLVersion::Get(), ClientVersion, &ErrorMessage))
 	{
 		UE_LOG(LogHOLMatch, Warning, TEXT("Login refused from %s: %s"), *Address, *ErrorMessage);
+		return;
+	}
+	// M6-Q10: « Regarder » once the match is over: a spectator is refused, nothing left to watch. Every client sends a
+	// name (the engine adds its nickname to the login), so a spectator is one whose name holds no free slot (M6-Q8).
+	const AHOLGameState* HOLGameState = GetGameState<AHOLGameState>();
+	if (!HOLGameState || !HOLGameState->IsMatchOver())
+	{
+		return;
+	}
+	TArray<int32> TakenSlots;
+	for (const APlayerState* Other : GameState->PlayerArray)
+	{
+		if (const AHOLPlayerState* HOLOther = Cast<AHOLPlayerState>(Other))
+		{
+			TakenSlots.Add(HOLOther->GetPlayerIndex());
+		}
+	}
+	const FString Name = FGenericPlatformHttp::UrlDecode(UGameplayStatics::ParseOption(Options, TEXT("Name"))).TrimStartAndEnd();
+	if (MatchConfig.FindSlotForName(Name, TakenSlots) == INDEX_NONE)
+	{
+		ErrorMessage = TEXT("The match is over");
+		UE_LOG(LogHOLMatch, Warning, TEXT("Login refused from %s: %s (spectator)"), *Address, *ErrorMessage);
 	}
 }
 
@@ -243,6 +265,17 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 	if (!Link || !Link->IsActive() || !Link->HasStarted())
 	{
 		return;
+	}
+	// M6-Q14: a named player gone; the manager gives the lobby a new leader if he was its away leader.
+	const AHOLPlayerState* HOLPlayerState = Exiting ? Exiting->GetPlayerState<AHOLPlayerState>() : nullptr;
+	if (HOLPlayerState && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex()))
+	{
+		const FString PlayerName = MatchConfig.Slots[HOLPlayerState->GetPlayerIndex()].PlayerName.TrimStartAndEnd();
+		if (!PlayerName.IsEmpty())
+		{
+			UE_LOG(LogHOLNet, Log, TEXT("Manager: %s left"), *PlayerName);
+			Link->SendLeft(PlayerName);
+		}
 	}
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{

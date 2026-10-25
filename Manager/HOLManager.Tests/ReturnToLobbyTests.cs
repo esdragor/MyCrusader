@@ -2,7 +2,10 @@ using HOLManager.Lobbies;
 
 namespace HOLManager.Tests;
 
-/** R2.11: back to the lobby after a match (choice 6 of PROTOCOL.md, M6-Q7). */
+/**
+ * R2.11: back to the lobby after a match (choice 6 of PROTOCOL.md, M6-Q7). A stopped server (server_stopped) gives
+ * the 2-min reservation; a finished match gives none (D2): its players are out, "Retour au salon" is a plain join.
+ */
 public class ReturnToLobbyTests
 {
     private const string Version = LobbyEntryTests.Version;
@@ -12,8 +15,14 @@ public class ReturnToLobbyTests
 
     public ReturnToLobbyTests() => store = new LobbyStore(Version, clock, launcher: launcher);
 
-    /** Bob (leader), Alice (color 3, team 2), Chloé; Nomad on; match played and finished. */
-    private (Lobby Lobby, string Bob, string Alice, string Chloe) Finished(bool closeOthers = false)
+    private string matchId = "";
+
+    /** Bob (leader), Alice (color 3, team 2), Chloé; Nomad on; match played, then its server stopped (no "finished"). */
+    private (Lobby Lobby, string Bob, string Alice, string Chloe) Finished(bool closeOthers = false) =>
+        Played(closeOthers, finished: false);
+
+    /** Bob (leader), Alice (color 3, team 2), Chloé; Nomad on; match played; finished, or its server stopped. */
+    private (Lobby Lobby, string Bob, string Alice, string Chloe) Played(bool closeOthers = false, bool finished = true)
     {
         var created = store.Create("Salon de Bob", "Bob", Version);
         var id = created.Lobby.Id;
@@ -35,7 +44,16 @@ public class ReturnToLobbyTests
         var match = store.Start(id, created.Token);
         store.ServerListening(match.Id, 7778);
         clock.UtcNow += TimeSpan.FromMinutes(20);
-        store.ServerFinished(match.Id, [0]);
+        matchId = match.Id;
+        if (finished)
+        {
+            store.ServerFinished(match.Id, [0]);
+        }
+        else
+        {
+            launcher.Alive.Remove(match.Id);
+            store.Housekeep();
+        }
         return (created.Lobby, created.Token, alice, chloe);
     }
 
@@ -172,5 +190,224 @@ public class ReturnToLobbyTests
         var again = store.Join(lobby.Id, "Alice", Version);
         Assert.Equal(1, again.Slot);
         Assert.Equal(0 + 1, Player(lobby, "Alice").ColorIndex);
+    }
+
+    [Fact]
+    public void AfterFinishedItsPlayersAreOutAndTheSettingsStay()
+    {
+        var (lobby, bob, _, _) = Played();
+        Assert.Same(lobby, store.Find(lobby.Id));
+        Assert.Equal(LobbyState.Lobby, lobby.State);
+        Assert.Empty(lobby.Players);
+        Assert.True(lobby.Settings.Nomad);
+        Assert.Null(lobby.Notice);
+        LobbyEntryTests.AssertError(LobbyErrors.NotInLobby, () => store.Read(lobby.Id, bob));
+    }
+
+    [Fact]
+    public void TheLeaderBackStartsWithoutThoseStillInTheMatch()
+    {
+        var (lobby, _, _, _) = Played();
+        var chloe = store.Join(lobby.Id, "Chloé", Version);
+        var bob = store.Join(lobby.Id, "Bob", Version);
+        Assert.Equal("Bob", lobby.LeaderName);
+        store.UpdateMe(lobby.Id, chloe.Token, ready: true);
+        store.UpdateMe(lobby.Id, bob.Token, ready: true);
+        Assert.NotEqual(matchId, store.Start(lobby.Id, bob.Token).Id);
+    }
+
+    [Fact]
+    public void ReturnToTheLobbyIsAPlainJoin()
+    {
+        var (lobby, _, _, _) = Played(closeOthers: true);
+        var bob = store.Join(lobby.Id, "Bob", Version).Token;
+        var alice = store.Join(lobby.Id, "Alice", Version).Token;
+        // Alice's old line is not hers any more: she comes back like anyone else.
+        Assert.Equal(0, Player(lobby, "Alice").Team);
+        LobbyEntryTests.AssertError(LobbyErrors.NameTaken, () => store.Join(lobby.Id, "alice", Version));
+        var chloe = store.Join(lobby.Id, "Chloé", Version).Token;
+        LobbyEntryTests.AssertError(LobbyErrors.LobbyFull, () => store.Join(lobby.Id, "Dan", Version));
+        store.Leave(lobby.Id, alice);
+        foreach (var token in new[] { bob, chloe })
+        {
+            store.UpdateMe(lobby.Id, token, ready: true);
+        }
+        store.Start(lobby.Id, bob);
+        LobbyEntryTests.AssertError(LobbyErrors.LobbyInGame, () => store.Join(lobby.Id, "Alice", Version));
+    }
+
+    [Fact]
+    public void AnEmptyLobbyStaysWhileItsFinishedServerRuns()
+    {
+        var (lobby, _, _, _) = Played();
+        clock.UtcNow += TimeSpan.FromMinutes(30);
+        store.Housekeep();
+        Assert.Same(lobby, store.Find(lobby.Id));
+        launcher.Alive.Remove(matchId);
+        store.Housekeep();
+        Assert.Null(store.Find(lobby.Id));
+    }
+
+    [Fact]
+    public void ALobbySomeoneCameBackToOutlivesItsServer()
+    {
+        var (lobby, _, _, _) = Played();
+        var bob = store.Join(lobby.Id, "Bob", Version).Token;
+        launcher.Alive.Remove(matchId);
+        store.Read(lobby.Id, bob);
+        Assert.Equal(["Bob"], lobby.Players.Select(p => p.Name));
+        clock.UtcNow += LobbyRules.SilenceLimit;
+        store.Housekeep();
+        Assert.Null(store.Find(lobby.Id));
+    }
+
+    /** Bob (the match's leader) away; Chloé, then Alice back. */
+    private (Lobby Lobby, string Chloe, string Alice) BackWithoutTheLeader(bool closeOthers = false)
+    {
+        var (lobby, _, _, _) = Played(closeOthers);
+        var chloe = store.Join(lobby.Id, "Chloé", Version).Token;
+        var alice = store.Join(lobby.Id, "Alice", Version).Token;
+        return (lobby, chloe, alice);
+    }
+
+    [Fact]
+    public void TheLeaderStillInTheFinishedMatchStaysLeader()
+    {
+        var (lobby, _, _, _) = Played();
+        Assert.Equal("Bob", lobby.LeaderName);
+        store.Join(lobby.Id, "Chloé", Version);
+        clock.UtcNow += TimeSpan.FromMinutes(10);
+        Assert.Equal("Bob", store.Read(lobby.Id, null).LeaderName);
+    }
+
+    [Fact]
+    public void ThoseBackCanNeitherSetNorStartWhileTheLeaderIsAway()
+    {
+        var (lobby, chloe, alice) = BackWithoutTheLeader();
+        store.UpdateMe(lobby.Id, chloe, ready: true);
+        store.UpdateMe(lobby.Id, alice, ready: true);
+        foreach (var token in new[] { chloe, alice })
+        {
+            LobbyEntryTests.AssertError(LobbyErrors.NotLeader, () => store.UpdateSettings(lobby.Id, token, regicide: true));
+            LobbyEntryTests.AssertError(LobbyErrors.NotLeader, () => store.SetSlot(lobby.Id, token, 7, open: false));
+            LobbyEntryTests.AssertError(LobbyErrors.NotLeader, () => store.Start(lobby.Id, token));
+        }
+    }
+
+    [Fact]
+    public void TheLeaderBackTakesTheLeadAgain()
+    {
+        var (lobby, chloe, alice) = BackWithoutTheLeader();
+        var bob = store.Join(lobby.Id, "Bob", Version).Token;
+        Assert.Equal("Bob", lobby.LeaderName);
+        Assert.Equal("Bob", lobby.Leader!.Name);
+        store.UpdateSettings(lobby.Id, bob, regicide: true);
+        foreach (var token in new[] { bob, chloe, alice })
+        {
+            store.UpdateMe(lobby.Id, token, ready: true);
+        }
+        store.Start(lobby.Id, bob);
+    }
+
+    [Fact]
+    public void ALobbyFullWithoutTheLeaderGetsANewOne()
+    {
+        var (lobby, _, _) = BackWithoutTheLeader(closeOthers: true);
+        Assert.Equal("Bob", lobby.LeaderName);
+        store.Join(lobby.Id, "Dan", Version);
+        Assert.Equal("Chloé", lobby.LeaderName);
+        Assert.Equal(LobbyNotices.LeaderChanged, lobby.Notice);
+        LobbyEntryTests.AssertError(LobbyErrors.LobbyFull, () => store.Join(lobby.Id, "Bob", Version));
+    }
+
+    [Fact]
+    public void TheLeaderLeavingTheMatchWithoutComingBackGivesANewOne()
+    {
+        var (lobby, chloe, alice) = BackWithoutTheLeader();
+        store.ServerLeft(matchId, " bob ");
+        // He may be on his way back ("Retour au salon" leaves the server first).
+        for (var t = 1; t < LobbyRules.LeaderReturnGrace.TotalSeconds; t++)
+        {
+            clock.UtcNow += TimeSpan.FromSeconds(1);
+            store.Read(lobby.Id, alice);
+            Assert.Equal("Bob", store.Read(lobby.Id, chloe).LeaderName);
+        }
+        clock.UtcNow += TimeSpan.FromSeconds(1);
+        Assert.Equal("Chloé", store.Read(lobby.Id, chloe).LeaderName);
+        store.UpdateSettings(lobby.Id, chloe, regicide: true);
+        // Back later, he is a player like the others.
+        store.Join(lobby.Id, "Bob", Version);
+        Assert.Equal("Chloé", lobby.LeaderName);
+    }
+
+    [Fact]
+    public void TheLeaderLeavingThenComingBackInTimeKeepsTheLead()
+    {
+        var (lobby, _, _) = BackWithoutTheLeader();
+        store.ServerLeft(matchId, "Bob");
+        clock.UtcNow += TimeSpan.FromSeconds(3);
+        var bob = store.Join(lobby.Id, "Bob", Version).Token;
+        for (var t = 0; t < LobbyRules.LeaderReturnGrace.TotalSeconds; t++)
+        {
+            clock.UtcNow += TimeSpan.FromSeconds(1);
+            store.Read(lobby.Id, bob);
+        }
+        Assert.Equal("Bob", store.Read(lobby.Id, bob).LeaderName);
+    }
+
+    [Fact]
+    public void AnotherPlayerLeavingTheMatchChangesNothing()
+    {
+        var (lobby, chloe, alice) = BackWithoutTheLeader();
+        store.ServerLeft(matchId, "Zoé");
+        store.ServerLeft(matchId, "Alice");
+        clock.UtcNow += TimeSpan.FromSeconds(1);
+        store.Read(lobby.Id, alice);
+        Assert.Equal("Bob", store.Read(lobby.Id, chloe).LeaderName);
+    }
+
+    [Fact]
+    public void TheLeaderLeavingDuringTheMatchLeadsNoMoreAfterIt()
+    {
+        var created = store.Create("Salon de Bob", "Bob", Version);
+        var alice = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        store.UpdateMe(created.Lobby.Id, created.Token, ready: true);
+        store.UpdateMe(created.Lobby.Id, alice, ready: true);
+        var match = store.Start(created.Lobby.Id, created.Token);
+        store.ServerListening(match.Id, 7778);
+        store.ServerLeft(match.Id, "Bob");
+        clock.UtcNow += TimeSpan.FromMinutes(10);
+        store.ServerFinished(match.Id, [1]);
+        var back = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        Assert.Equal("Alice", created.Lobby.LeaderName);
+        store.UpdateSettings(created.Lobby.Id, back, regicide: true);
+    }
+
+    [Fact]
+    public void TheServerStoppingWithoutTheLeaderBackGivesANewOne()
+    {
+        var (lobby, chloe, alice) = BackWithoutTheLeader();
+        launcher.Alive.Remove(matchId);
+        store.Read(lobby.Id, alice);
+        for (var t = 1; t < LobbyRules.LeaderReturnGrace.TotalSeconds; t++)
+        {
+            clock.UtcNow += TimeSpan.FromSeconds(1);
+            store.Read(lobby.Id, alice);
+            Assert.Equal("Bob", store.Read(lobby.Id, chloe).LeaderName);
+        }
+        clock.UtcNow += TimeSpan.FromSeconds(1);
+        Assert.Equal("Chloé", store.Read(lobby.Id, chloe).LeaderName);
+    }
+
+    [Fact]
+    public void NobodyBackKeepsTheAwayLeadersNameThenTheFirstBackLeads()
+    {
+        var (lobby, _, _, _) = Played();
+        store.ServerLeft(matchId, "Bob");
+        clock.UtcNow += LobbyRules.LeaderReturnGrace;
+        Assert.Equal("Bob", store.Read(lobby.Id, null).LeaderName);
+        var chloe = store.Join(lobby.Id, "Chloé", Version).Token;
+        Assert.Equal("Chloé", lobby.LeaderName);
+        store.UpdateSettings(lobby.Id, chloe, regicide: true);
     }
 }

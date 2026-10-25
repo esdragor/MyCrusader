@@ -68,7 +68,7 @@ public:
 
 	/**
 	 * Clicks a cell of the grid (GridCell00 to GridCell11), an item of the queue (QueueItem0 to QueueItem4) or the idle
-	 * workers' counter (IdleWorkers) or « Menu » (MenuButton), found by its name, by the same path as the mouse (hol.HUD.Click). False when it is
+	 * workers' counter (IdleWorkers), « Menu » (MenuButton) or « Statistiques » (StatsButton), found by its name, by the same path as the mouse (hol.HUD.Click). False when it is
 	 * hidden or greyed.
 	 */
 	bool ClickWidget(FName Name);
@@ -135,6 +135,10 @@ protected:
 	/** Top right: opens the in-game menu (D356). */
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLQueueItem> MenuButton;
+
+	/** Left of « Menu »: the statistics screen over the match, a spectator's alone during the match (M6-Q10, C6). */
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLQueueItem> StatsButton;
 
 	/** The control groups' bar (J7a.5, D30), bottom left: one slot per group not empty, 1 to 9 then 0. */
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -271,6 +275,9 @@ private:
 	void RefreshIdleWorkers();
 	void HandleIdleWorkersClicked();
 	void HandleMenuClicked();
+	void HandleStatsClicked();
+	/** Shows « Statistiques » for a spectator during the match, for everyone after it (HOLGameMenuRules::ShowsStatsButton). */
+	void RefreshStatsButton();
 	/**
 	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not
 	 * empty, its digit and number, its types in the tooltip; the group just selected lit briefly. Logs « HUD groups: ... »
@@ -405,6 +412,8 @@ private:
 	float SinceTableRefresh = 1.f;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;
+	/** The names of the players table as last logged (M6-Q12). */
+	FString ShownPlayerNames;
 	/** The missing players last logged by the wait banner (empty: hidden). */
 	FString ShownWaitPlayers;
 
