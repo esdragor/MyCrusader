@@ -56,6 +56,7 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 	ForumPresenceOverrides.Reset();
 	ForumPresenceOverrides.SetNum(FHOLMatchConfig::MaxSlots);
 	PendingForumDefeats = 0;
+	AbsentSlots.Reset();
 	CurrentStep = -1;
 	// V3.2: who stands near a forum down, the living units counted by team, on the server.
 	ForumPresenceCounter.Reset();
@@ -462,6 +463,8 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 		return false;
 	}
 	SlotDefeats[Slot] = Reason;
+	// R7: a slot defeated while its player is away is no longer kept for him.
+	AbsentSlots.RemoveAll([Slot](const FHOLAbsentSlot& Absent) { return Absent.Slot == Slot; });
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: slot %d defeated (%s)"), Slot, GetReasonName(Reason));
 	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
 	{
@@ -485,6 +488,53 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	// No OnRep on the server (listen or solo): its own player hears it here.
 	OnVictoryChanged.Broadcast();
 	return true;
+}
+
+bool AHOLGameState::KeepAbsentSlot(const AHOLPlayerState& Leaving, const double Now)
+{
+	return !Leaving.IsOnlyASpectator() && KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now);
+}
+
+bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resources, const double Now)
+{
+	if (!HasAuthority() || IsSlotAbsent(Slot)
+		|| !FHOLDisconnectRules::KeepsSlot(LaunchConfig, Slot, bWaitingForPlayers, bMatchOver, IsSlotDefeated(Slot)))
+	{
+		return false;
+	}
+	const FString Name = LaunchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
+	AbsentSlots.Add({ Slot, Name, Now, Resources });
+	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) kept, F %d W %d S %d G %d"), Slot, *Name, Resources.Food,
+		Resources.Wood, Resources.Stone, Resources.Gold);
+	return true;
+}
+
+void AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting)
+{
+	const int32 Index = FHOLDisconnectRules::FindAbsent(AbsentSlots, Taking.GetPlayerIndex());
+	Taking.SetResources(FHOLDisconnectRules::GetStockOnTaking(AbsentSlots.IsValidIndex(Index) ? &AbsentSlots[Index] : nullptr, Starting));
+	if (AbsentSlots.IsValidIndex(Index))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) back, %s"), AbsentSlots[Index].Slot, *AbsentSlots[Index].Name,
+			*Taking.DescribeEconomy());
+		AbsentSlots.RemoveAt(Index);
+	}
+}
+
+TArray<int32> AHOLGameState::DefeatExpiredAbsences(const double Now, const double WindowSeconds)
+{
+	TArray<int32> Defeated;
+	for (const int32 Slot : FHOLDisconnectRules::GetExpired(AbsentSlots, Now, WindowSeconds))
+	{
+		AbsentSlots.RemoveAt(FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot));
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d not back within %.0f s"), Slot, WindowSeconds);
+		// As a surrender (R-Q5): the collapse of V1 (D358), the camps' rules decide the end.
+		if (DefeatSlot(Slot, EHOLDefeatReason::Disconnected))
+		{
+			Defeated.Add(Slot);
+		}
+	}
+	return Defeated;
 }
 
 void AHOLGameState::OnRep_Victory()
@@ -574,6 +624,7 @@ const TCHAR* AHOLGameState::GetReasonName(const EHOLDefeatReason Reason)
 	case EHOLDefeatReason::Cheat: return TEXT("Cheat");
 	case EHOLDefeatReason::Forum: return TEXT("Forum");
 	case EHOLDefeatReason::King: return TEXT("King");
+	case EHOLDefeatReason::Disconnected: return TEXT("Disconnected");
 	default: return TEXT("None");
 	}
 }

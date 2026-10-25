@@ -34,7 +34,10 @@ public:
 		const FString& Portal) override;
 	/** The slot of the player's name (FHOLMatchConfig::FindSlotForName); none: a spectator (M6-Q8). */
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-	/** The last player gone after the start: "empty" to the lobby manager (R3.7). */
+	/**
+	 * The last player gone after the start: "empty" to the lobby manager (R3.7). R7: a named player gone during the match
+	 * keeps his slot for hol.Match.DisconnectWindowSeconds (AHOLGameState::KeepAbsentSlot).
+	 */
 	virtual void Logout(AController* Exiting) override;
 	/** The server listens by now: "listening" to the lobby manager, with the port listened on (R3.6). */
 	virtual void StartPlay() override;
@@ -67,6 +70,10 @@ private:
 	 * frozen (R3.10); at the start, "started" to the lobby manager. Called at the start of play, at each login and each second.
 	 */
 	void UpdateStartWait();
+
+	/** R7.3: each second while a slot is kept for its player gone, the slots whose window ran out are defeated. */
+	void UpdateAbsences();
+	FTimerHandle AbsenceTimer;
 
 	FTimerHandle StartWaitTimer;
 	/** Game time of the start of the wait. */

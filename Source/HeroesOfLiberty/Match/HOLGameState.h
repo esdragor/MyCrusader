@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLDisconnectRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
@@ -11,6 +12,7 @@
 #include "HOLGameState.generated.h"
 
 class AHOLBuilding;
+class AHOLPlayerState;
 class FHOLForumPresenceCounter;
 
 /** Why a slot lost (D356; the dead King comes with Regicide). None: still in the match. */
@@ -24,6 +26,8 @@ enum class EHOLDefeatReason : uint8
 	Forum,
 	/** V5.2 (Regicide, D355): its King died. */
 	King,
+	/** R7.3 (R-Q5, D71): its player left and did not come back within the window. */
+	Disconnected,
 };
 
 /**
@@ -62,6 +66,28 @@ public:
 	double GetWaitEndSeconds() const { return WaitEndSeconds; }
 	/** Server only, by the game mode. */
 	void SetWaitingForPlayers(bool bWaiting, const TArray<FString>& Missing, double EndSeconds = 0.);
+
+	/**
+	 * R7.2 (R-Q5), server only, by the game mode's Logout: the leaving player's slot kept for the window
+	 * (FHOLDisconnectRules::KeepsSlot), its stock remembered; its units and buildings stay in the world. False: not kept.
+	 * Logs "Disconnect: slot N (Name) kept, window W s".
+	 */
+	bool KeepAbsentSlot(const AHOLPlayerState& Leaving, double Now);
+	/** R7 (R3.9), server only: a named slot whose player missed the start, kept for the window from Now with Resources. */
+	bool KeepMissingSlot(int32 Slot, const FHOLResources& Resources, double Now);
+	/**
+	 * R7.2, server only, by the game mode's PostLogin: the stock of the player taking his slot, the one kept at his
+	 * departure if he comes back within the window (the slot no longer absent), else Starting.
+	 */
+	void GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting);
+	/**
+	 * R7.3, server only, by the game mode each second: the absent slots whose window has run out are defeated
+	 * (reason Disconnected), as by a surrender; those defeated returned.
+	 */
+	TArray<int32> DefeatExpiredAbsences(double Now, double WindowSeconds);
+	bool IsSlotAbsent(int32 Slot) const { return FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot) != INDEX_NONE; }
+	/** Server only: the slots kept for their players gone (R7.5's banner will replicate them). */
+	const TArray<FHOLAbsentSlot>& GetAbsentSlots() const { return AbsentSlots; }
 
 	bool IsSlotDefeated(int32 Slot) const { return GetDefeatReason(Slot) != EHOLDefeatReason::None; }
 	EHOLDefeatReason GetDefeatReason(int32 Slot) const { return SlotDefeats.IsValidIndex(Slot) ? SlotDefeats[Slot] : EHOLDefeatReason::None; }
@@ -216,6 +242,9 @@ private:
 	/** One per slot (MaxSlots), public (D353). */
 	UPROPERTY(ReplicatedUsing = OnRep_Forums)
 	TArray<FHOLForumState> ForumStates;
+
+	/** Server only (R7): the slots kept for their players gone, in the order of the departures. */
+	TArray<FHOLAbsentSlot> AbsentSlots;
 
 	/** Server only: Peasants rebuilding each slot's forum (V2.2). */
 	TArray<int32> ForumBuilders;
