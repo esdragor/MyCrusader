@@ -200,6 +200,16 @@ TRANSLATIONS = {
     "HOLGameScreen,ForumHoldContested": ("Contested — {0} s", "争奪中 — {0}秒"),
     "HOLGameScreen,TableHold": ("{0} · held {1} s", "{0} · 占拠{1}秒"),
     "HOLGameScreen,TableHoldContested": ("{0} · contested {1} s", "{0} · 争奪{1}秒"),
+    # V4.1 (D353): the forum messages of the thread on the right and of the alert at the top.
+    "HOLGameScreen,MessageFell": ("{0}'s forum has fallen — {1}", "{0}の町の中心が陥落 — {1}"),
+    "HOLGameScreen,MessageOwnFell": ("Your forum has fallen — {0}", "あなたの町の中心が陥落 — {0}"),
+    "HOLGameScreen,MessageHeld": ("{0} holds {1}'s ruins", "{0}が{1}の廃墟を占拠"),
+    "HOLGameScreen,MessageOwnHeld": ("{0} holds your ruins", "{0}があなたの廃墟を占拠"),
+    "HOLGameScreen,MessageYouHold": ("You hold {0}'s ruins", "{0}の廃墟を占拠中"),
+    "HOLGameScreen,MessageRazed": ("{0}'s foundations razed — {1}", "{0}の基礎が破壊された — {1}"),
+    "HOLGameScreen,MessageOwnRazed": ("Your foundations are razed — {0}", "あなたの基礎が破壊された — {0}"),
+    "HOLGameScreen,MessageDefeated": ("{0} is defeated", "{0}が敗退"),
+    "HOLGameScreen,MessageOwnDefeated": ("You are defeated", "あなたは敗退しました"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,Cancel": ("Cancel", "キャンセル"),

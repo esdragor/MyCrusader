@@ -54,6 +54,10 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			UE_LOG(LogHOLUI, Display, TEXT("HUD tooltips: %s"), *Screen.DescribeTooltips());
 			// The main forums (V2): the selected one's lives and state, the players' table.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD forum: %s"), *Screen.DescribeForum());
+			// The thread of messages (V4.2), on its own line too.
+			UE_LOG(LogHOLUI, Display, TEXT("HUD messages: %s"), *Screen.DescribeMessages());
+			// The major alert's banner (V4.3), on its own line too.
+			UE_LOG(LogHOLUI, Display, TEXT("HUD alert: %s"), *Screen.DescribeAlert());
 			// On its own line: the checks read the report's line to its end.
 			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
 			{

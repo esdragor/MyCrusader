@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
@@ -167,6 +168,14 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnForumsChanged);
 	FOnForumsChanged OnForumsChanged;
 
+	/**
+	 * V4.1 (V4-Q1): every machine (players and spectators) hears each event of the ruin once (fell, hold started, razed,
+	 * defeated), from MulticastForumEvent; the thread of messages of V4.2 and the alert of V4.3 listen to it
+	 * (HOLForumMessages::GetMessage for its text and its alert).
+	 */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnForumEvent, const FHOLForumEvent& /*Event*/);
+	FOnForumEvent OnForumEvent;
+
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
@@ -174,6 +183,16 @@ private:
 	void OnRep_Forums(const TArray<FHOLForumState>& OldForumStates);
 
 	void OnStepStarted(int64 StepIndex);
+
+	/** V4.1, server only: sends Event to every machine (MulticastForumEvent), at once (reliable, once). */
+	void SendForumEvent(const FHOLForumEvent& Event);
+
+	/**
+	 * V4.1: every machine, the server included (listen or solo): logs "Message: <text> (alert)" as its own player sees it
+	 * (none on a dedicated server), then OnForumEvent. The game state is always relevant: every client receives it.
+	 */
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastForumEvent(const FHOLForumEvent& Event);
 	void OnStepEnded(int64 StepIndex);
 	void UnbindSteps();
 	void SetForumState(int32 Slot, const FHOLForumState& State);
@@ -198,6 +217,9 @@ private:
 
 	/** Server only, bit Slot: its forum fell with no life left, its defeat waits for the end of the step. */
 	uint8 PendingForumDefeats = 0;
+
+	/** Server only (V4.2): per slot's forum, a bit per attacker whose hold was announced (HOLForumMessages::ShouldAnnounceHold). */
+	uint8 ForumHoldAnnounced[FHOLMatchConfig::MaxSlots] = {};
 
 	FDelegateHandle StepStartedHandle;
 	FDelegateHandle StepEndedHandle;

@@ -397,6 +397,10 @@ if ($Parts -contains "victory") {
     Step "mark victory forum fall", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60",
         "hol.Victory.FallForum 0", "waitlog Victory: forum of slot 0 fell", "frames 3",
         "hol.Prod.Queue", "waitlog Production order of slot 0 ignored: its forum is down", "frames 3", "hol.HUD.Report"
+    # V4.5 (D353, D202): the message of its fall with the major alert (banner 4 s, the thread's line 8 s); a click on the
+    # banner: the camera above its forum; after 4.5 s no alert, after 9 s the thread empty.
+    Step "mark victory forum alert", "hol.HUD.Report", "hol.HUD.Click AlertPanel", "waitlog Camera above the forum of slot 0", "frames 3",
+        "wait 4.5", "hol.HUD.Report", "wait 4.5", "hol.HUD.Report"
     # V3.5 (D348), the hold by the real presence (the units alive 12 m from the forum's edge; Plain's slot 0 centre at
     # -14800 0, 16 m wide): 3 Spearmen of slot 1 made 5 m from its edge: held by slot 1; a Peasant of mine in the zone:
     # contested; the Spearmen taken away: released, the count recedes, no longer held; my Peasant taken away after.
@@ -410,6 +414,8 @@ if ($Parts -contains "victory") {
         # The units unselected by hol.Prod.Queue (the centre selected first, its order refused again): the block read.
         "frames 3", "hol.Select.Report", "hol.Prod.Queue", "frames 3", "hol.HUD.Report"
     Step "mark victory forum rebuilt", "hol.Victory.SkipRuin 0", "waitlog Victory: forum of slot 0 rebuilt", "frames 3", "hol.HUD.Report"
+    # V4.5: the AI's forum falls: the message alone for slot 0 (another camp), no alert.
+    Step "mark victory forum other", "hol.Victory.FallForum 1", "waitlog Victory: forum of slot 1 fell", "frames 3", "hol.HUD.Report"
     Step "mark victory forum defeat", "hol.Victory.FallForum 0", "waitlog End banner: Defeat", "waitui", "frames 3", "hol.HUD.Report",
         "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark victory forum end"
 }
@@ -449,6 +455,30 @@ if ($Parts -contains "sides") {
     Step "hol.Select.ClickUnit 0 add slot=2"; SidesReport
     SidesCase "8 ally"; Step "hol.Select.ClickUnit 0 double slot=2"; SidesReport
     SidesCase "8 enemy"; Step "hol.Select.ClickUnit 0 double slot=1"; SidesReport
+    # Allied combat (bug: the camps were ignored): the groups above removed, my 4 Men-at-arms and the ally's 4 Spearmen
+    # side by side before my centre, combat on: nobody fights in Auto, on Hold (mine), on an attack-move of mine onto
+    # the ally's group (each judged by hol.Combat.Report: no hit struck, every body full, no target of the same camp);
+    # then 3 enemy Spearmen come beside them: mine and the ally's fight them (both struck), still no target of the camp.
+    Step "mark sides fight setup", "hol.Units.Remove -9000 0 6000 0", "hol.Units.Remove -9000 0 6000 1", "hol.Units.Remove -9000 0 6000 2", "frames 5",
+        "hol.Units.Spawn 4 -10800 0 0 ManAtArms 200", "hol.Units.Spawn 4 -10250 0 2 Spearman 200", "frames 10", "hol.Combat.Enabled 1", "hol.Combat.Report"
+    Step "mark sides fight auto", "wait 3", "hol.Combat.Report"
+    Step "mark sides fight hold"; SidesBox $MineBox[0] $MineBox[1] -10600 $MineBox[3]; Step "hol.Select.Hold", "wait 2", "hol.Combat.Report"
+    Step "mark sides fight attackmove", "hol.Select.AttackMove -10250 0", "wait 3", "hol.Combat.Report"
+    # Case 3: an attack order of mine on the ally's unit, refused by the server (no hit); case 4: a right click on the
+    # ally's unit, a move as on my own (no attack order sent). Mine boxed with the ally's (mine kept, own first).
+    Step "mark sides fight order"; SidesBox $MineBox[0] $MineBox[1] -9700 $MineBox[3]; Step "hol.Select.Attack slot=2", "wait 3", "hol.Combat.Report"
+    Step "mark sides fight rightclick"; SidesBox $MineBox[0] $MineBox[1] -9700 $MineBox[3]; Step "hol.Select.ClickUnit 0 order slot=2", "wait 3", "hol.Combat.Report"
+    Step "mark sides fight enemy", "hol.Units.Spawn 3 -10500 900 1 Spearman 150", "wait 6", "hol.Combat.Report", "hol.Combat.Enabled 0"
+    # Allied avoidance (the camps ignored by the avoidance and the pushes): my 4 Men-at-arms sent straight through a
+    # standing wall of 25 allied Spearmen, combat off: they pass as through my own (the ally's pushed aside), not round a
+    # wall of enemies: as through a wall of mine (hol.Units.Where 0 after 2 s and 4 s: where my 4 are, the ids last spawned).
+    foreach ($Wall in @(0, 2)) {
+        # Same seed for both walls: the same shape, only the owner changes (the gap between them was the draw).
+        Step "mark sides avoid $Wall", "hol.Units.Remove -9000 0 6000 0", "hol.Units.Remove -9000 0 6000 1", "hol.Units.Remove -9000 0 6000 2", "frames 5", "hol.Units.SpawnSeed 1234",
+            "hol.Units.Spawn 5 -9600 -800 $Wall Spearman 60", "hol.Units.Spawn 5 -9600 -400 $Wall Spearman 60", "hol.Units.Spawn 5 -9600 0 $Wall Spearman 60",
+            "hol.Units.Spawn 5 -9600 400 $Wall Spearman 60", "hol.Units.Spawn 5 -9600 800 $Wall Spearman 60", "hol.Units.Spawn 4 -10800 0 0 ManAtArms 150", "frames 20", "hol.Units.Where $Wall"
+        SidesBox -11100 -450 -10500 450; Step "hol.Select.OrderGround -8400 0", "wait 2", "hol.Units.Where 0", "wait 2", "hol.Units.Where 0", "hol.Units.Where $Wall"
+    }
     Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
@@ -1988,6 +2018,16 @@ if ($Parts -contains "victory") {
     $Hud = ForumHud "victory forum fall"
     $Checks["table: slot 0 you, lives 1, ruin ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 ruin$"
     $Checks["selection block: in ruin, lives 1 ($([regex]::Match($Hud.Line, ', in ruin[^,]*, lives \d+').Value))"] = $Hud.Line -match ", in ruin \d+ s, lives 1"
+    # V4.5 (D353, D202): its own fall, the message with the alert (its camp), the banner, the sound, the thread's line.
+    $OwnFell = "Votre forum est tombé — 1 vie"
+    $Checks["message: $OwnFell (alert)"] = [bool]($Section | Select-String -SimpleMatch "Message: $OwnFell (alert)" -Quiet)
+    $Checks["alert: $OwnFell, with its sound"] = [bool]($Section | Select-String -Pattern "Alert: $([regex]::Escape($OwnFell)) \(sound /Engine/[^,)]+\)" -Quiet)
+    $AlertSection = @(Get-Section "victory forum alert")
+    $Alerts = @($AlertSection | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Threads = @($AlertSection | Select-String -Pattern "HUD messages: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["HUD alert: shown, then none after 4.5 s ($($Alerts -join ' -> '))"] = ($Alerts.Count -eq 3) -and $Alerts[0] -eq "$OwnFell (slot 0)" -and $Alerts[1] -eq "none" -and $Alerts[2] -eq "none"
+    $Checks["HUD messages: the line, still after 4.5 s, then gone after 9 s ($($Threads -join ' -> '))"] = ($Threads.Count -eq 3) -and $Threads[0] -eq "[$OwnFell]" -and $Threads[1] -eq "[$OwnFell]" -and $Threads[2] -eq "[]"
+    $Checks["a click on the alert: the camera above the forum of slot 0"] = [bool]($AlertSection | Select-String -SimpleMatch "Camera above the forum of slot 0" -Quiet)
     # V3.5 (D348): the hold by the real presence; the HUD's table row "... ruin hold N s <state> by slot A".
     $Section = Get-Section "victory forum held"
     $Checks["3 Spearmen of slot 1 at 5 m: held by slot 1"] = [bool]($Section | Select-String -Pattern "Victory: forum of slot 0 held by slot 1 \(\d+ s\)" -Quiet)
@@ -2006,6 +2046,10 @@ if ($Parts -contains "victory") {
     $Checks["then no longer held"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 no longer held" -Quiet)
     $Hud = ForumHud "victory forum released"
     $Checks["table: slot 0 ruin, no hold shown ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 ruin$"
+    # V4.5: the hold announced once (held, contested, released: one hold by slot 1), with the alert.
+    $HeldMessages = @(@(Get-Section "victory forum held") + @(Get-Section "victory forum contested") + @(Get-Section "victory forum released") |
+        Select-String -Pattern "Message: .*tient.*$" | ForEach-Object { $_.Matches[0].Value })
+    $Checks["message once: Joueur 2 tient votre ruine (alert) ($($HeldMessages -join '; '))"] = ($HeldMessages -join '|') -eq "Message: Joueur 2 tient votre ruine (alert)"
     $Section = Get-Section "victory forum build"
     $Checks["SkipRuin 0: ruin -> rebuilding"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 ruin -> rebuilding" -Quiet)
     $AtWork = @($Section | Select-String -Pattern "Construction: slot 0 rebuilds its forum at .*, (\d+) builders at work" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
@@ -2018,7 +2062,19 @@ if ($Parts -contains "victory") {
     $Checks["SkipRuin 0: rebuilt"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 rebuilt" -Quiet)
     $Hud = ForumHud "victory forum rebuilt"
     $Checks["table: slot 0 standing, lives 1 ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives 1 standing$"
+    # V4.5: the AI's fall, the message alone (another camp): no alert.
+    $Section = @(Get-Section "victory forum other")
+    $OtherFell = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de Joueur 2 est tombé — 1 vie"
+    $OtherAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+    $Checks["FallForum 1: no Alert, HUD alert: none ($OtherAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$OtherAlert" -eq "none"
     $Section = Get-Section "victory forum defeat"
+    # V4.5: the message of its defeat; no alert banner under the banner Defeat (neither the defeat's nor its last fall's).
+    # V4.5b: its own loss (its defeat, its last life) is no alert (GetMessage): the thread's lines alone.
+    $Checks["message: Vous êtes vaincu, no (alert)"] = [bool]($Section | Select-String -Pattern "Message: Vous êtes vaincu$" -Quiet)
+    $Checks["message: Votre forum est tombé — 0 vies, no (alert)"] = [bool]($Section | Select-String -Pattern "Message: Votre forum est tombé — 0 vies$" -Quiet)
+    $DefeatAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+    $Checks["no alert of the defeat nor of its last fall (HUD alert: $DefeatAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$DefeatAlert" -eq "none"
     foreach ($Want in "Victory: forum of slot 0 fell, lives 0 ", "Victory: slot 0 defeated (Forum)", "Victory: match over, winners 1", "End banner: Defeat") {
         $Checks["its last life: $($Want.Trim())"] = [bool]($Section | Select-String -SimpleMatch $Want -Quiet)
     }
@@ -2066,6 +2122,57 @@ if ($Parts -contains "sides") {
         }
         $Checks["$Case. $($Want.What) ($Seen)"] = $Ok
     }
+    # Allied combat: each report of a section (its last), "#id Type slot S hp H/M target T ... hits N damage D".
+    function SidesFight([string] $Case) {
+        $Section = Get-Section "sides fight $Case"
+        $Units = @{}; $Head = $null
+        foreach ($Line in $Section) {
+            if ($Line -match "Combat report: step \d+ units \d+ fighting \d+ hits (\d+)") { $Head = [int64]$Matches[1]; $Units = @{} }
+            elseif ($Line -match "  #(\d+) \w+ slot (\d+) hp (\d+)/(\d+) target (\d+) attacking \d+ hits (\d+) damage (\d+)") {
+                $Units[$Matches[1]] = @{ Slot = [int]$Matches[2]; Hp = [int]$Matches[3]; Max = [int]$Matches[4]; Target = $Matches[5]; Hits = [int]$Matches[6]; Damage = [int]$Matches[7] }
+            }
+        }
+        $Camp = @{ 0 = "A"; 2 = "A"; 1 = "B" }
+        $SameCamp = @($Units.Keys | Where-Object { $T = $Units[$_].Target; $T -ne "0" -and $Units.ContainsKey($T) -and $Camp[$Units[$T].Slot] -eq $Camp[$Units[$_].Slot] })
+        $Hurt = @($Units.Keys | Where-Object { $Units[$_].Slot -ne 1 -and $Units[$_].Hp -lt $Units[$_].Max })
+        $Dealt = @{}; foreach ($Id in $Units.Keys) { $Dealt[$Units[$Id].Slot] += $Units[$Id].Damage }
+        return @{ Hits = $Head; SameCamp = $SameCamp.Count; Hurt = $Hurt.Count; Dealt0 = [int]$Dealt[0]; Dealt2 = [int]$Dealt[2]; Units = $Units.Count }
+    }
+    $FightStart = SidesFight "setup"
+    foreach ($Case in @("auto", "hold", "attackmove", "order", "rightclick")) {
+        $F = SidesFight $Case
+        $Checks["fight $Case. me and my ally side by side: nobody fights (hits $($FightStart.Hits) -> $($F.Hits), hurt $($F.Hurt), targets in the camp $($F.SameCamp), units $($F.Units))"] =
+            $F.Hits -eq $FightStart.Hits -and $F.Hurt -eq 0 -and $F.SameCamp -eq 0
+    }
+    $Order = Get-Section "sides fight order"
+    $Refused = @($Order | Select-String -Pattern "Attack order of slot 0 on #\d+ refused").Count
+    $Checks["fight order. an attack order of mine on the ally's unit: refused by the server ($Refused refusal)"] = $Refused -ge 1
+    $Right = Get-Section "sides fight rightclick"
+    $Clicked = @($Right | Select-String -Pattern "Right click on unit #\d+").Count
+    $Attacks = @($Right | Select-String -Pattern "Order: \d+ units attack").Count
+    $Moves = @($Right | Select-String -Pattern "Order: \d+ units to \(").Count
+    $Checks["fight rightclick. a right click on the ally's unit: a move as on mine, no attack (clicks $Clicked, attack orders $Attacks, moves $Moves)"] =
+        $Clicked -eq 1 -and $Attacks -eq 0 -and $Moves -eq 1
+    $F = SidesFight "enemy"
+    $Checks["fight enemy. an enemy comes: mine and the ally's fight it (damage by slot 0 $($F.Dealt0), by slot 2 $($F.Dealt2), targets in the camp $($F.SameCamp))"] =
+        $F.Dealt0 -gt 0 -and $F.Dealt2 -gt 0 -and $F.SameCamp -eq 0
+    # Allied avoidance: my 4's distances to the order's point (the farthest, the sum) after 2 s and 4 s, and the wall's
+    # units moved (mine excluded). The Units where reports: the wall's, mine after 2 s and 4 s, the wall's.
+    function SidesAvoid([int] $Wall) {
+        $Avoid = Get-Section "sides avoid $Wall"
+        $Wheres = @($Avoid | Where-Object { $_ -match "Units where: " })
+        $Left = @(); $Moved = 0
+        if ($Wheres.Count -eq 4) {
+            $Mine = @([regex]::Matches($Wheres[1], "#(\d+) slot 0 at") | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Descending | Select-Object -First 4)
+            $Left = @($Wheres[1], $Wheres[2] | ForEach-Object { $D = @([regex]::Matches($_, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)") | Where-Object { $Mine -contains [int]$_.Groups[1].Value } | ForEach-Object { [int][math]::Sqrt([math]::Pow([double]$_.Groups[2].Value + 8400, 2) + [math]::Pow([double]$_.Groups[3].Value, 2)) }); @{ Max = ($D | Measure-Object -Maximum).Maximum; Sum = ($D | Measure-Object -Sum).Sum; N = $D.Count } })
+            $Before = @{}; foreach ($M in [regex]::Matches($Wheres[0], "#(\d+) slot $Wall at \((-?\d+), (-?\d+)\)")) { $Before[$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
+            foreach ($M in [regex]::Matches($Wheres[3], "#(\d+) slot $Wall at \((-?\d+), (-?\d+)\)")) { $B = $Before[$M.Groups[1].Value]; if ($B -and $Mine -notcontains [int]$M.Groups[1].Value -and [math]::Sqrt([math]::Pow($B[0] - [double]$M.Groups[2].Value, 2) + [math]::Pow($B[1] - [double]$M.Groups[3].Value, 2)) -gt 30) { ++$Moved } }
+        }
+        return @{ Left = $Left; Moved = $Moved; Text = (($Left | ForEach-Object { "max $($_.Max) sum $($_.Sum) of $($_.N)" }) -join " then ") + ", wall moved $Moved" }
+    }
+    $Own = SidesAvoid 0; $Ally = SidesAvoid 2
+    $Checks["avoid. mine sent through a wall of the ally's: as through a wall of mine (mine: $($Own.Text); the ally's: $($Ally.Text))"] =
+        $Own.Left.Count -eq 2 -and $Ally.Left.Count -eq 2 -and $Own.Left[1].N -eq 4 -and $Ally.Left[1].N -eq 4 -and [math]::Abs($Ally.Left[1].Sum - $Own.Left[1].Sum) -le 200 -and [math]::Abs($Ally.Moved - $Own.Moved) -le 2
     $AllOk = (Report "sides" $Checks) -and $AllOk
 }
 
@@ -4406,7 +4513,7 @@ if ($Parts -contains "net") {
         $Checks["victory: server, match over, winners $Winner ($($Over -join '; '))"] = ($null -ne $Winner) -and (($Over -join '|') -eq "winners $Winner")
         $Banner = @{}
         foreach ($NetClient in $NetClients) {
-            $Banner[$NetClient.Client] = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "victory" | Select-String -Pattern "End banner: (\w+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Banner[$NetClient.Client] = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "victory" | Select-String -CaseSensitive -Pattern "End banner: (Victory|Defeat|MatchOver)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         }
         $Checks["manager: finished, winners [$Winner]"] = ($null -ne $Winner) -and (@($ManagerCalls | Where-Object { $_ -eq "POST /matches/QC1/finished {`"winners`":[$Winner]}" }).Count -eq 1)
         $Checks["victory: client 1, End banner: Defeat ($($Banner[1] -join ', '))"] = ($Banner[1] -join ',') -eq "Defeat"
@@ -4421,7 +4528,25 @@ if ($Parts -contains "net") {
         $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD forum: .*, players \[([^\]]*)\]" |
             ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
         $LoserRow = @("$Table2" -split " \| " | Where-Object { $_ -match "^slot $Loser " }) | Select-Object -First 1
-        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
+        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser ('[^']*' )?colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
+        # V4.5 (D353, D202): the fall's message to each (the server's multicast): client 1 its own with the alert, client 2
+        # the named one alone (another camp); the hold the same; client 1's defeat by its surrender, no alert (V4.5b: its own loss).
+        $Client1Log = ($NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1).Log
+        $Messages = @{}
+        foreach ($Pair in @(@(1, $Client1Log), @(2, $Client2Log))) {
+            $Messages[$Pair[0]] = @(Get-ClientSection @(if ($Pair[1]) { Get-Content $Pair[1] -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        }
+        $LoserName = "Joueur $([int]$Loser + 1)"; $WinnerName = "Joueur $([int]$Winner + 1)"
+        $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Vous êtes vaincu"
+        $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|$LoserName est vaincu"
+        $Checks["victory: client 1's messages, with the alert ($($Messages[1] -join '; '))"] = ($null -ne $Loser) -and ($Messages[1] -join '|') -eq $Wanted1
+        $Checks["victory: client 2's messages, without alert ($($Messages[2] -join '; '))"] = ($null -ne $Loser) -and ($Messages[2] -join '|') -eq $Wanted2
+        $Alert1 = @(Get-ClientSection @(if ($Client1Log) { Get-Content $Client1Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1
+        $Alert2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1
+        $Checks["victory: client 1's HUD alert on its forum ($Alert1)"] = "$Alert1" -match "^.+ \(slot $Loser\)$"
+        $Checks["victory: client 2's HUD alert: none ($Alert2)"] = "$Alert2" -eq "none"
+        $DefeatAlerts = @(Get-ClientSection @(if ($Client1Log) { Get-Content $Client1Log -ErrorAction SilentlyContinue }) "victory" | Select-String -CaseSensitive -SimpleMatch "Alert: Vous êtes vaincu")
+        $Checks["victory: client 1, no alert of its defeat ($($DefeatAlerts.Count))"] = $DefeatAlerts.Count -eq 0
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
 }

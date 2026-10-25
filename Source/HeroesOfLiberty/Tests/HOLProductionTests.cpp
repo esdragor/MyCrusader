@@ -147,7 +147,7 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Man-at-arms: 100 food, 20 gold"), ManAtArms->Cost == FHOLResources(100, 0, 0, 20));
 			TestEqual(TEXT("Man-at-arms: one place"), ManAtArms->Population, 1);
 			TestEqual(TEXT("Man-at-arms: 155 health"), ManAtArms->MaxHealth, 155);
-			TestTrue(TEXT("Man-at-arms: heavy infantry only"), ManAtArms->ArmorCategories.Num() == 1 && ManAtArms->HasArmorCategory(EHOLArmorCategory::HeavyInfantry));
+			TestTrue(TEXT("Man-at-arms: heavy infantry and Heavy (D428)"), ManAtArms->ArmorCategories.Num() == 2 && ManAtArms->HasArmorCategory(EHOLArmorCategory::HeavyInfantry) && ManAtArms->HasArmorCategory(EHOLArmorCategory::Heavy));
 			TestEqual(TEXT("Man-at-arms: attack 12"), ManAtArms->Attack, 12);
 			TestEqual(TEXT("Man-at-arms: melee armour 4"), ManAtArms->MeleeArmor, 4);
 			TestEqual(TEXT("Man-at-arms: ranged armour 4"), ManAtArms->RangedArmor, 4);

@@ -37,6 +37,7 @@
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
+#include "Match/HOLVictoryRules.h"
 #include "Resources/HOLSourceField.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -168,12 +169,13 @@ namespace UE::HeroesOfLiberty::Player
 	/** The same on one of the player's own units, wherever it is drawn: a script does not know where units stand on the screen. */
 	FAutoConsoleCommand ClickUnitCommand(
 		TEXT("hol.Select.ClickUnit"),
-		TEXT("hol.Select.ClickUnit <N> [add] [double] [enemy|ally|slot=<S>]: hol.Select.Click at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last); 'enemy': of the other players' units instead, 'ally': of the players' of its team (D.3), 'slot=<S>': of slot S's (D.2)"),
+		TEXT("hol.Select.ClickUnit <N> [add] [double] [order] [enemy|ally|slot=<S>]: hol.Select.Click (order: hol.Select.Order, a right click) at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last); 'enemy': of the other players' units instead, 'ally': of the players' of its team (D.3), 'slot=<S>': of slot S's (D.2)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const int32 Wanted = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
 			const bool bAdd = Args.Contains(TEXT("add"));
 			const bool bDouble = Args.Contains(TEXT("double"));
+			const bool bOrder = Args.Contains(TEXT("order"));
 			const bool bEnemy = Args.Contains(TEXT("enemy"));
 			const bool bAlly = Args.Contains(TEXT("ally"));
 			int32 Slot = INDEX_NONE;
@@ -216,8 +218,13 @@ namespace UE::HeroesOfLiberty::Player
 					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickUnit: no %s unit %d on the screen"), Slot != INDEX_NONE ? TEXT("such") : bAlly ? TEXT("ally") : bEnemy ? TEXT("enemy") : TEXT("own"), N);
 					continue;
 				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Click on unit #%u at (%.3f, %.3f)"), Views[N].UnitId, Middle.X / SizeX, Middle.Y / SizeY);
+				UE_LOG(LogHOLMatch, Display, TEXT("%s on unit #%u at (%.3f, %.3f)"), bOrder ? TEXT("Right click") : TEXT("Click"), Views[N].UnitId, Middle.X / SizeX, Middle.Y / SizeY);
 				const FVector2D Fraction(Middle.X / SizeX, Middle.Y / SizeY);
+				if (bOrder)
+				{
+					Controller->OrderAt(Fraction, false);
+					continue;
+				}
 				bDouble ? Controller->SelectSameTypeAt(Fraction, bAdd) : Controller->SelectAt(Fraction, bAdd);
 			}
 		}));
@@ -460,7 +467,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** The combat orders (J7b.3), without the mouse: the selected own units attack a unit (its identifier). */
 	FAutoConsoleCommand AttackCommand(
 		TEXT("hol.Select.Attack"),
-		TEXT("hol.Select.Attack <UnitId> [shift]: the local player's selected units attack that unit, as a right click on it (the server checks it is an enemy alive)"),
+		TEXT("hol.Select.Attack <UnitId|slot=<S>> [shift]: the local player's selected units attack that unit (slot=<S>: slot S's first unit known here), without the right click's checks (the server checks it is an enemy alive)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 1)
@@ -468,10 +475,22 @@ namespace UE::HeroesOfLiberty::Player
 				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Attack <UnitId> [shift]"));
 				return;
 			}
-			const uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
 			const bool bQueue = Args.Num() > 1 && Args[1].Equals(TEXT("shift"), ESearchCase::IgnoreCase);
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
+				uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+				if (Args[0].StartsWith(TEXT("slot=")))
+				{
+					// A script does not know the identifiers: slot S's first unit (allied combat, quick_check "sides").
+					const int32 Slot = FCString::Atoi(*Args[0].RightChop(5));
+					TArray<FHOLUnitView> Views;
+					HOLUnitView::Gather(*Controller->GetWorld(), Views);
+					TargetId = 0;
+					for (const FHOLUnitView& View : Views)
+					{
+						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
+					}
+				}
 				const TArray<uint32> Own = Controller->GetOwnSelectedUnits();
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u%s"), Own.Num(), TargetId, bQueue ? TEXT(", queued") : TEXT(""));
 				Controller->RequestAttackUnit(Own, TargetId, bQueue);
@@ -1778,14 +1797,14 @@ FVector2D AHOLPlayerController::ToPixels(const FVector2D& ViewportFraction) cons
 }
 
 void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds,
-	const bool bOthersOnly) const
+	const bool bHostileOnly) const
 {
 	using namespace UE::HeroesOfLiberty::Player;
 
 	OutCandidates.Reset();
 	OutUnitIds.Reset();
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	if ((bOwnOnly || bOthersOnly) && !HOLPlayerState)
+	if ((bOwnOnly || bHostileOnly) && !HOLPlayerState)
 	{
 		return;
 	}
@@ -1793,12 +1812,15 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	FRotator CameraRotation;
 	GetPlayerViewPoint(CameraLocation, CameraRotation);
 	const FVector CameraRight = FRotationMatrix(CameraRotation).GetUnitAxis(EAxis::Y);
+	// Allied combat: a target is a unit of another camp (an ally's is not, as my own).
+	const FHOLCampTable Camps = bHostileOnly ? FHOLCampTable::FromWorld(GetWorld()) : FHOLCampTable();
 
 	TArray<FHOLUnitView> Views;
 	HOLUnitView::Gather(*GetWorld(), Views);
 	for (const FHOLUnitView& View : Views)
 	{
-		if ((bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex()) || (bOthersOnly && View.OwnerPlayer == HOLPlayerState->GetPlayerIndex()))
+		if ((bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
+			|| (bHostileOnly && !Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex())))
 		{
 			continue;
 		}
@@ -1874,7 +1896,7 @@ uint32 AHOLPlayerController::FindTargetAt(const FVector2D& ViewportFraction, boo
 	bOutDirect = false;
 	TArray<FHOLPickCandidate> Candidates;
 	TArray<uint32> UnitIds;
-	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds, /*bOthersOnly*/ true);
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds, /*bHostileOnly*/ true);
 	int32 SizeX = 0, SizeY = 0;
 	GetViewportSize(SizeX, SizeY);
 	const double Margin = HOLUnitPicking::GetScaledMargin(FMath::Max(static_cast<double>(TargetMargin), 0.), SizeY);
@@ -2093,13 +2115,15 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		// under it: a click on a body always wins.
 		// D345.2b: an enemy building under the cursor (finished, or a site this machine shows: a bare foundation of the enemy
 		// is never drawn here), struck by the selected units; a unit's body drawn over it still wins.
-		AHOLBuilding* EnemyBuilding = Site && HOLPlayerState && Site->GetOwnerPlayer() != HOLPlayerState->GetPlayerIndex() && Site->IsSeenHere()
+		// Allied combat: an ally's unit or building is taken as my own (a move there, never an attack).
+		const FHOLCampTable Camps = FHOLCampTable::FromWorld(GetWorld());
+		AHOLBuilding* EnemyBuilding = Site && HOLPlayerState && Camps.AreHostile(Site->GetOwnerPlayer(), HOLPlayerState->GetPlayerIndex()) && Site->IsSeenHere()
 			&& !Site->IsFoundation() ? Site : nullptr;
 		bool bDirect = false;
 		const uint32 UnderId = FindTargetAt(ViewportFraction, bDirect);
 		FHOLUnitView Under;
 		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
-			&& Under.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
+			&& Camps.AreHostile(Under.OwnerPlayer, HOLPlayerState->GetPlayerIndex()))
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
 				bShift ? TEXT(", queued") : TEXT(""));
@@ -3712,6 +3736,27 @@ void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
 		UE_LOG(LogHOLMatch, Warning, TEXT("Cheat: slot %d cannot lose (closed, already defeated or the match over)"), Slot);
 	}
 #endif
+}
+
+bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
+{
+	if (!RTSCamera || !GetWorld())
+	{
+		return false;
+	}
+	if (const AHOLBuilding* Forum = AHOLGameState::FindPrimaryForum(*GetWorld(), Slot))
+	{
+		RTSCamera->SetFocus(Forum->GetActorLocation());
+		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the forum of slot %d"), Slot);
+		return true;
+	}
+	if (const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot))
+	{
+		RTSCamera->SetFocus(Start->GetMainCentreLocation());
+		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d"), Slot);
+		return true;
+	}
+	return false;
 }
 
 void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)

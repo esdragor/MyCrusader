@@ -11,7 +11,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Archer | 70 | 5 | +5 contre Infanterie légère, +5 contre Infanterie à poudre | 1,625 s | 36,9 | 3,08 | 12 % (0,195 s) | Distance (tir) | 5 cases (20 m) | 0 | 0 | 0 | 0 | Distance | 5,33 cases (21,33 m) |
 | Paysan | 50 | 3 | — | 3,7 s | 16,2 | 0,81 | 50 % (1,85 s) | Mêlée | 0,29 case (1,16 m) | 0 | 0 | 0 | 0 | Paysan | aucun (seulement sur ordre) |
 | Piquier | 80 | 8 | +17 contre Cavalerie | 1,875 s | 32 | 4,27 | 50 % (0,938 s) | Mêlée | 0,33 case (1,3 m) | 0 | 0 | 0 | 0 | Infanterie légère | 4 cases (16 m) |
-| Homme d'armes | 155 | 12 | — | 1,375 s | 43,6 | 8,73 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 4 | 4 | 0 | 2 | Infanterie lourde | 4 cases (16 m) |
+| Homme d'armes | 155 | 12 | — | 1,375 s | 43,6 | 8,73 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 4 | 4 | 0 | 2 | Infanterie lourde, Lourd | 4 cases (16 m) |
 
 - Dégâts d'un coup = attaque + chaque bonus visant une des catégories de la cible (ils s'additionnent) − armure de la cible du type de l'attaque (mêlée, distance, siège ou héros), 1 au moins.
 - Cadence : temps entre deux coups. Élan : part de la cadence qu'attend le premier coup sur une cible.

@@ -94,6 +94,12 @@ public:
 	AHOLRTSCamera* GetRTSCamera() const { return RTSCamera; }
 	AHOLSelectionMarkers* GetSelectionMarkers() const { return SelectionMarkers; }
 
+	/**
+	 * V4.3: puts the camera above a slot's main forum (AHOLGameState::FindPrimaryForum), standing or down; above its start
+	 * (AHOLStartSlot, as hol.Camera.FocusSlot) when it has none. False when neither is found.
+	 */
+	bool FocusCameraOnForum(int32 Slot);
+
 	/** The building under a point of the viewport (0 to 1 each way), on the selection channel, or null. */
 	AHOLBuilding* FindBuildingAt(const FVector2D& ViewportFraction) const;
 	/** The unit drawn under a point of the viewport, the one in front (D288), or 0. */
@@ -500,10 +506,10 @@ private:
 	/** Pixels of a point of the viewport given in fractions. */
 	FVector2D ToPixels(const FVector2D& ViewportFraction) const;
 	/**
-	 * Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only; with bOthersOnly, the other
-	 * players' only. Ids match the candidates.
+	 * Units known here as drawn on the screen (D288); with bOwnOnly, the player's own only; with bHostileOnly, the units of
+	 * other camps only (not an ally's, D.3). Ids match the candidates.
 	 */
-	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds, bool bOthersOnly = false) const;
+	void GatherPickCandidates(bool bOwnOnly, TArray<FHOLPickCandidate>& OutCandidates, TArray<uint32>& OutUnitIds, bool bHostileOnly = false) const;
 	/**
 	 * Every unit known here by its side for the local player (D.1), and the selected units known here with their first
 	 * side (OutSelectedSide untouched when none is).

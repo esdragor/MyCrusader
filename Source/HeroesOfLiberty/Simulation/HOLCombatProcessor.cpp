@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
 #include "MassEntitySubsystem.h"
@@ -73,6 +74,12 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 ParallelAhead = 1;
 	FAutoConsoleVariableRef CVarParallelAhead(TEXT("hol.Combat.ParallelAhead"), ParallelAhead,
 		TEXT("1 (default): the contact lists of the units walking to fight and the places taken around the enemies the searchers will see, made ahead in parallel (a count read only while no unit has died since); 0: in the serial pass, as before, the same outcome"));
+	/** Perf (2026-10-24): the target searches made ahead in parallel, the serial pass weighing only what changed since (the same outcome). */
+	int32 ParallelSearch = 1;
+	FAutoConsoleVariableRef CVarParallelSearch(TEXT("hol.Combat.ParallelSearch"), ParallelSearch,
+		TEXT("1 (default): the searches of the units gathered ahead made in parallel once the arrows have landed; at its turn, a unit whose target and last attacker are the same takes that choice weighed against the candidates changed since (target, attackers, death, places), else searches as before; 2: both, a warning for each choice that differs (a check); 0: in the serial pass, as before, the same outcome"));
+	/** hol.Combat.ParallelSearch 2: choices made ahead that differed from the serial search's (0 expected). */
+	int64 SearchMismatches = 0;
 	/** J7c.4, trial feedback: a melee out of reach leaves an enemy with no place left around it for one with a place. */
 	int32 PreferFreeTarget = 1;
 	FAutoConsoleVariableRef CVarPreferFreeTarget(TEXT("hol.Combat.PreferFreeTarget"), PreferFreeTarget,
@@ -175,7 +182,7 @@ bool UHOLCombatProcessor::BuildDenseGrid()
 	int32 LastSide = INDEX_NONE;
 	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
 	{
-		const int32 Owner = Fighters[Index].State->OwnerPlayer;
+		const int32 Owner = Fighters[Index].Camp;
 		if (LastSide == INDEX_NONE || Owner != LastOwner)
 		{
 			LastSide = Sides.Find(Owner);
@@ -455,14 +462,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
 	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
 
-	// The step's units, in identifier order (the outcome does not depend on the chunks).
+	// The step's units, in identifier order (the outcome does not depend on the chunks). Each one's camp read once here.
+	const FHOLCampTable CampTable = FHOLCampTable::FromWorld(World);
 	Fighters.Reset();
 	MaxRadius = 1.f;
 	// J7c.4, S2 (hol.Combat.SkipAttackerCount): the counts zeroed here (the attackers' count below starts with it; nothing
 	// reads them before), and whether any unit has a target (none: no attacker to count).
 	const bool bZeroAtGather = bFighting && SkipAttackerCount != 0;
 	bool bAnyTarget = false;
-	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
@@ -482,6 +490,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.Location = Transforms[EntityIt].GetTransform().GetLocation();
 			Fighter.Combat = &Combats[EntityIt];
 			Fighter.State = &States[EntityIt];
+			Fighter.Camp = CampTable.Get(States[EntityIt].OwnerPlayer);
 			Fighter.Order = &Orders[EntityIt];
 			Fighter.MoveTarget = &MoveTargets[EntityIt];
 			Fighter.Movement = &Movements[EntityIt];
@@ -749,14 +758,25 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	}
 	// Perf (hol.Combat.ParallelAhead): a unit died since the places were counted ahead (they may count it).
 	bool bDeathSincePlaces = false;
+	// Perf (hol.Combat.ParallelSearch): a fighter whose target, attackers or life changes, once the searches are made ahead.
+	bool bTouchSearches = false;
+	const auto Touch = [&](const int32 Other)
+	{
+		if (bTouchSearches && Other != INDEX_NONE)
+		{
+			SearchTouched[Other] = 1;
+		}
+	};
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
 	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer)
 	{
 		bDeathSincePlaces = true;
+		Touch(static_cast<int32>(&Victim - Fighters.GetData()));
 		const int32 FormerTarget = FindFighter(Victim.Combat->Target);
 		if (FormerTarget != INDEX_NONE)
 		{
 			--Fighters[FormerTarget].Combat->AttackerCount;
+			Touch(FormerTarget);
 		}
 		KillUnit(World, *Units, Victim, StepIndex, KillerPlayer);
 	};
@@ -775,6 +795,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		Step.Box = Building->GetBodyBounds();
 		Step.Id = Building->GetUniqueID();
 		Step.OwnerPlayer = Building->GetOwnerPlayer();
+		Step.Camp = CampTable.Get(Step.OwnerPlayer);
 	}
 	// A building hit to 0 this step: no longer a target of anyone (true when it is gone).
 	const auto MarkBuildingGone = [this](const AHOLBuilding* Building)
@@ -930,6 +951,104 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		return PlacesTaken[Other];
 	};
 
+	// Perf (hol.Combat.ParallelSearch): the searches of the units gathered ahead, made now in parallel, the arrows landed:
+	// the serial pass's search as it would run if nothing it reads changed before the unit's turn (the same candidates,
+	// read the same way, the place counts it would read now). At its turn, the serial pass weighs against that choice the
+	// candidates changed since (Touch); the others rank as they did, behind it.
+	const bool bSearchAhead = bParallelAhead && ParallelSearch != 0 && AheadFighters.Num() > 0;
+	if (bSearchAhead)
+	{
+		SearchTouched.Init(0, Fighters.Num());
+		if (AheadSearches.Num() < AheadFighters.Num())
+		{
+			AheadSearches.SetNum(AheadFighters.Num());
+		}
+		ParallelFor(TEXT("HOLCombatSearchAhead"), AheadFighters.Num(), 16, [&](const int32 Slot)
+		{
+			FAheadSearch& Search = AheadSearches[Slot];
+			Search.bDone = false;
+			Search.PlaceFighters.Reset();
+			Search.PlaceFull.Reset();
+			const int32 Index = AheadFighters[Slot];
+			const FFighter& Fighter = Fighters[Index];
+			const FHOLCombatFragment& Combat = *Fighter.Combat;
+			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
+			const FVector2D Position(Fighter.Location);
+			// Its target and last attacker as its turn reads them (a dead one: none).
+			int32 Target = FindFighter(Combat.Target);
+			if (Target != INDEX_NONE && Fighters[Target].State->CurrentHealth <= 0)
+			{
+				Target = INDEX_NONE;
+			}
+			int32 LastAttacker = FindFighter(Combat.LastAttacker);
+			if (LastAttacker != INDEX_NONE && Fighters[LastAttacker].State->CurrentHealth <= 0)
+			{
+				LastAttacker = INDEX_NONE;
+			}
+			const FMassEntityHandle LastAttackerEntity = LastAttacker != INDEX_NONE ? Combat.LastAttacker : FMassEntityHandle();
+			HOLCombat::FSeeker Seeker;
+			Seeker.Position = Position;
+			Seeker.Radius = Constants.Radius;
+			Seeker.AttackRange = Constants.AttackRange;
+			Seeker.AggressionRadius = Constants.AggressionRadius;
+			Seeker.bRanged = HOLCombat::IsRangedAttack(Constants.AttackRange);
+			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
+				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
+			if (HOLCombat::GetSearchRadius(Seeker) <= 0.f || (bFast && Target != INDEX_NONE && Fighters[Target].Camp != Fighter.Camp
+				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange)))
+			{
+				return; // no search, or its target kept (bKeepTarget)
+			}
+			const FHOLFrontLine* const ShiftLine = UE::HeroesOfLiberty::Simulation::RearFlank != 0 && UE::HeroesOfLiberty::Simulation::RearTargetMaxShift > 0.f
+				&& bPreferFree && !Seeker.bRanged && Combat.Mode == EHOLCombatMode::AttackMove
+				? UE::HeroesOfLiberty::Simulation::FrontLines.Find(Fighter.State->OwnerPlayer) : nullptr;
+			TArray<HOLCombat::FCandidate, TInlineAllocator<128>> Found;
+			TArray<int32, TInlineAllocator<128>> FoundFighters;
+			const auto Add = [&](const int32 Other)
+			{
+				const FFighter& Enemy = Fighters[Other];
+				HOLCombat::FCandidate& Candidate = Found.AddDefaulted_GetRef();
+				Candidate.Id = Enemy.UnitId;
+				Candidate.Position = FVector2D(Enemy.Location);
+				Candidate.Radius = Enemy.Constants->Radius;
+				Candidate.bAttacksMe = Enemy.Combat->Target == Fighter.Entity || Enemy.Entity == LastAttackerEntity;
+				Candidate.bIsCurrentTarget = Other == Target;
+				Candidate.AttackerCount = Enemy.Combat->AttackerCount - (Other == Target ? 1 : 0);
+				if (bPreferFree && !Seeker.bRanged
+					&& !HOLCombat::IsInRange(Position, Seeker.Radius, Candidate.Position, Candidate.Radius, Seeker.AttackRange))
+				{
+					const bool bFull = (AheadPlaces[Other] >= 0 ? AheadPlaces[Other] : CountBodiesAround(Other, PlaceGap, HOLCombat::MaxAttackers))
+						>= HOLCombat::MaxAttackers;
+					Candidate.bNoPlace = bFull || (ShiftLine && ShiftLine->Count > 0
+						&& FMath::Abs(FVector2D::DotProduct(Candidate.Position - Position, ShiftLine->Axis)) > UE::HeroesOfLiberty::Simulation::RearTargetMaxShift);
+					Search.PlaceFighters.Add(Other);
+					Search.PlaceFull.Add(bFull);
+				}
+				FoundFighters.Add(Other);
+			};
+			for (const int32 Other : AheadLists[Slot])
+			{
+				if (Fighters[Other].State->CurrentHealth > 0)
+				{
+					Add(Other);
+				}
+			}
+			for (const int32 Extra : { Target, LastAttacker })
+			{
+				if (Extra != INDEX_NONE && !FoundFighters.Contains(Extra) && Fighters[Extra].Camp != Fighter.Camp)
+				{
+					Add(Extra);
+				}
+			}
+			const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Found);
+			Search.Chosen = Chosen == INDEX_NONE ? INDEX_NONE : FoundFighters[Chosen];
+			Search.Target = Target;
+			Search.LastAttacker = LastAttacker;
+			Search.bDone = true;
+		});
+		bTouchSearches = true;
+	}
+
 	Deaths.Reset();
 	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
 	{
@@ -976,8 +1095,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				if (Former != INDEX_NONE)
 				{
 					--Fighters[Former].Combat->AttackerCount;
+					Touch(Former);
 				}
 				Combat.Disengage();
+				Touch(Index);
 			}
 			HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
 			continue;
@@ -988,6 +1109,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		bool bLost = false;
 		if (Combat.Target.IsSet() && (Target == INDEX_NONE || Fighters[Target].State->CurrentHealth <= 0))
 		{
+			Touch(Index);
 			Combat.Target = FMassEntityHandle();
 			Combat.bOrderedTarget = false;
 			Combat.bAttacking = false;
@@ -1025,7 +1147,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// give up at its start, and returns at it (in reach and current), the only candidate that can return early, the
 			// ones before it only ranked. So the scan is spared; it changes nothing (the candidates are the step's scratch).
 			const bool bKeepTarget = bFast && Target != INDEX_NONE && SearchRadius > 0.f
-				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].State->OwnerPlayer != Fighter.State->OwnerPlayer
+				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp
 				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange);
 			int32 NewTarget = Target;
 			if (!bKeepTarget)
@@ -1065,7 +1187,66 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						SeenStamp[Other] = SearchStamp;
 					}
 				};
-				if (SearchRadius > 0.f)
+				// Perf (hol.Combat.ParallelSearch): the choice made ahead, its target and last attacker the same (the same
+				// candidates but the dead, read the same way). Those unchanged since rank as they did, behind it; it and those
+				// changed (Touch, or a place count other now) are ranked again, the same way. Its own changed: searched as before.
+				int32 Weighed = INDEX_NONE;
+				bool bWeighed = false;
+				const int32 SearchSlot = bSearchAhead ? AheadSlotOfFighter[Index] : INDEX_NONE;
+				if (SearchSlot != INDEX_NONE && AheadSearches[SearchSlot].bDone && AheadReach[SearchSlot] == SearchRadius + Constants.Radius + MaxRadius
+					&& AheadSearches[SearchSlot].Target == Target && AheadSearches[SearchSlot].LastAttacker == LastAttacker)
+				{
+					const FAheadSearch& Search = AheadSearches[SearchSlot];
+					const int32 Chosen = Search.Chosen;
+					bWeighed = Chosen == INDEX_NONE || (SearchTouched[Chosen] == 0 && Fighters[Chosen].State->CurrentHealth > 0);
+					// The place counts it read, read now (the very calls of the search below, in the same step's counts).
+					for (int32 Read = 0; Read < Search.PlaceFighters.Num() && bWeighed; ++Read)
+					{
+						const int32 Other = Search.PlaceFighters[Read];
+						if (Fighters[Other].State->CurrentHealth > 0 && SearchTouched[Other] == 0
+							&& (PlacesAround(Other) >= HOLCombat::MaxAttackers) != Search.PlaceFull[Read])
+						{
+							bWeighed = Other != Chosen;
+							if (bWeighed)
+							{
+								AddCandidate(Other);
+							}
+						}
+					}
+					if (bWeighed)
+					{
+						if (Chosen != INDEX_NONE)
+						{
+							AddCandidate(Chosen);
+						}
+						for (const int32 Other : AheadLists[SearchSlot])
+						{
+							if (SearchTouched[Other] != 0 && Fighters[Other].State->CurrentHealth > 0)
+							{
+								AddCandidate(Other);
+							}
+						}
+						for (const int32 Extra : { Target, LastAttacker })
+						{
+							if (Extra != INDEX_NONE && SearchTouched[Extra] != 0 && Fighters[Extra].Camp != Fighter.Camp
+								&& !CandidateFighters.Contains(Extra))
+							{
+								AddCandidate(Extra);
+							}
+						}
+						const int32 Best = HOLCombat::ChooseTarget(Seeker, Candidates);
+						Weighed = Best == INDEX_NONE ? INDEX_NONE : CandidateFighters[Best];
+						NewTarget = Weighed;
+					}
+				}
+				// Searched as before (or for the check): the candidates the weighing left taken off.
+				if (Candidates.Num() > 0 && (!bWeighed || ParallelSearch == 2))
+				{
+					Candidates.Reset();
+					CandidateFighters.Reset();
+					++SearchStamp;
+				}
+				if (SearchRadius > 0.f && (!bWeighed || ParallelSearch == 2))
 				{
 					const double Reach = SearchRadius + Constants.Radius + MaxRadius;
 					const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / CellSize), FMath::FloorToInt32((Position.Y - Reach) / CellSize));
@@ -1099,7 +1280,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 							for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 							{
 								const FFighter& Enemy = Fighters[Other];
-								if (Cells[Other] != Cell || Enemy.State->OwnerPlayer == Fighter.State->OwnerPlayer || Enemy.State->CurrentHealth <= 0
+								if (Cells[Other] != Cell || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0
 									|| HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius) > Reach)
 								{
 									continue;
@@ -1112,18 +1293,27 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (const int32 Extra : { Target, LastAttacker })
 					{
 						const bool bListed = Extra != INDEX_NONE && (bFast ? SeenStamp[Extra] == SearchStamp : CandidateFighters.Contains(Extra));
-						if (Extra != INDEX_NONE && !bListed && Fighters[Extra].State->OwnerPlayer != Fighter.State->OwnerPlayer)
+						if (Extra != INDEX_NONE && !bListed && Fighters[Extra].Camp != Fighter.Camp)
 						{
 							AddCandidate(Extra);
 						}
 					}
 				}
-				const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Candidates);
-				NewTarget = Chosen == INDEX_NONE ? INDEX_NONE : CandidateFighters[Chosen];
+				if (!bWeighed || ParallelSearch == 2)
+				{
+					const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Candidates);
+					NewTarget = Chosen == INDEX_NONE ? INDEX_NONE : CandidateFighters[Chosen];
+					if (bWeighed && NewTarget != Weighed)
+					{
+						++SearchMismatches;
+						UE_LOG(LogHOLSimulation, Warning, TEXT("hol.Combat.ParallelSearch: step %lld #%u chose #%u ahead, #%u searching (%lld so far)"), StepIndex, Fighter.UnitId,
+							Weighed == INDEX_NONE ? 0u : Fighters[Weighed].UnitId, NewTarget == INDEX_NONE ? 0u : Fighters[NewTarget].UnitId, SearchMismatches);
+					}
+				}
 				// J7c.4 loop 19 (hol.Combat.RearTargetKeep): out of reach of both, its target alive and not full kept unless the new
 				// one is clearly nearer: the ranks behind no longer turn from one enemy to the next at each search.
 				if (RearTargetKeep > 0.f && bPreferFree && !Seeker.bRanged && Target != INDEX_NONE && NewTarget != INDEX_NONE && NewTarget != Target
-					&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].State->OwnerPlayer != Fighter.State->OwnerPlayer)
+					&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp)
 				{
 					const FVector2D TargetPosition(Fighters[Target].Location);
 					const FVector2D NewPosition(Fighters[NewTarget].Location);
@@ -1155,7 +1345,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				{
 					const FFighter& Near = Fighters[Friend];
 					const FHOLCombatFragment& NearCombat = *Near.Combat;
-					if (Near.State->CurrentHealth <= 0 || Near.State->OwnerPlayer != Fighter.State->OwnerPlayer
+					if (Near.State->CurrentHealth <= 0 || Near.Camp != Fighter.Camp
 						|| !HOLCombat::IsFriendFighting(NearCombat.bAttacking, NearCombat.AttackerCount, NearCombat.LastAttacker.IsSet()))
 					{
 						continue;
@@ -1165,7 +1355,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (const FMassEntityHandle Foe : { NearCombat.Target, NearCombat.LastAttacker })
 					{
 						const int32 Other = FindFighter(Foe);
-						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].State->OwnerPlayer == Fighter.State->OwnerPlayer)
+						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp)
 						{
 							continue;
 						}
@@ -1192,6 +1382,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				{
 					++Fighters[NewTarget].Combat->AttackerCount;
 				}
+				Touch(Target);
+				Touch(NewTarget);
+				Touch(Index);
 				Combat.Target = NewTarget == INDEX_NONE ? FMassEntityHandle() : Fighters[NewTarget].Entity;
 				Combat.bAttacking = false;
 				Target = NewTarget;
@@ -1257,6 +1450,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					--Fighters[Target].Combat->AttackerCount;
 				}
 				++Fighters[Touched].Combat->AttackerCount;
+				Touch(Target);
+				Touch(Touched);
+				Touch(Index);
 				Combat.Target = Fighters[Touched].Entity;
 				Combat.bAttacking = false;
 				Target = Touched;
@@ -1281,7 +1477,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			if (!Combat.TargetBuilding.IsExplicitlyNull())
 			{
 				BuildingIndex = FindStepBuilding(Combat.TargetBuilding.Get());
-				if (BuildingIndex != INDEX_NONE && StepBuildings[BuildingIndex].OwnerPlayer == Fighter.State->OwnerPlayer)
+				if (BuildingIndex != INDEX_NONE && StepBuildings[BuildingIndex].Camp == Fighter.Camp)
 				{
 					BuildingIndex = INDEX_NONE;
 				}
@@ -1306,7 +1502,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (int32 Other = 0; Other < StepBuildings.Num(); ++Other)
 					{
 						const FStepBuilding& Step = StepBuildings[Other];
-						if (!Step.bGone && Step.OwnerPlayer != Fighter.State->OwnerPlayer)
+						if (!Step.bGone && Step.Camp != Fighter.Camp)
 						{
 							HOLCombat::FBuildingCandidate& Candidate = BuildingCandidates.AddDefaulted_GetRef();
 							Candidate.Id = Step.Id;
@@ -1536,6 +1732,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						{
 							--Fighters[Target].Combat->AttackerCount;
 							++Fighters[Free].Combat->AttackerCount;
+							Touch(Target);
+							Touch(Free);
+							Touch(Index);
 							Combat.Target = Fighters[Free].Entity;
 							Target = Free;
 						}
@@ -1662,6 +1861,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
 			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.
+			Touch(Index);
 			Combat.Target = FMassEntityHandle();
 			Combat.bOrderedTarget = false;
 			Combat.bAttacking = false;

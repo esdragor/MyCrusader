@@ -2,6 +2,9 @@
 
 #include "Match/HOLVictoryRules.h"
 
+#include "Engine/World.h"
+#include "Match/HOLGameState.h"
+
 TArray<int32> FHOLVictoryResult::GetWinners() const
 {
 	TArray<int32> Winners;
@@ -23,6 +26,47 @@ int32 HOLVictoryRules::GetCamp(const FHOLMatchConfig& Config, const int32 Slot)
 	}
 	const int32 Team = Config.Slots[Slot].Team;
 	return Team >= 1 && Team <= FHOLMatchConfig::MaxTeams ? Team : FHOLMatchConfig::MaxTeams + 1 + Slot;
+}
+
+FHOLCampTable::FHOLCampTable()
+{
+	for (int32 Owner = 0; Owner < 256; ++Owner)
+	{
+		Camps[Owner] = static_cast<uint8>(Owner);
+	}
+}
+
+FHOLCampTable::FHOLCampTable(const FHOLMatchConfig& Config)
+	: FHOLCampTable()
+{
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		const int32 Camp = HOLVictoryRules::GetCamp(Config, Slot);
+		if (Camp == INDEX_NONE || Camp > FHOLMatchConfig::MaxTeams)
+		{
+			continue;
+		}
+		// The team's first occupied slot stands for it (a slot's own index: no clash with an owner alone).
+		for (int32 First = 0; First <= Slot; ++First)
+		{
+			if (HOLVictoryRules::GetCamp(Config, First) == Camp)
+			{
+				Camps[Slot] = static_cast<uint8>(First);
+				break;
+			}
+		}
+	}
+}
+
+FHOLCampTable FHOLCampTable::FromWorld(const UWorld* World)
+{
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return GameState ? FHOLCampTable(GameState->GetLaunchConfig()) : FHOLCampTable();
+}
+
+bool HOLVictoryRules::AreHostile(const FHOLMatchConfig& Config, const int32 SlotA, const int32 SlotB)
+{
+	return FHOLCampTable(Config).AreHostile(SlotA, SlotB);
 }
 
 FHOLVictoryResult HOLVictoryRules::Evaluate(const FHOLMatchConfig& Config, const uint8 DefeatedMask)

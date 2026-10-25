@@ -39,6 +39,7 @@ CATEGORIES = {
     "Siege": "Siège",
     "Peasant": "Paysan",
     "GunpowderInfantry": "Infanterie à poudre",
+    "Heavy": "Lourd",
 }
 ATTACK_TYPES = {"Melee": "Mêlée", "Ranged": "Distance", "Siege": "Siège", "Hero": "Héros"}
 ARMOR_OF_TYPE = {"Melee": "MeleeArmor", "Ranged": "RangedArmor", "Siege": "SiegeArmor", "Hero": "HeroArmor"}
