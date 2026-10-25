@@ -377,3 +377,56 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   (6 Go chacune) gardées pour l'instant.
 - 2026-10-25 : **L10a commitée** (accord de l'utilisateur), branche `launcher-l10` d'Arwen fusionnée dans `main`,
   `dotnet test` repassé sur `main`. Suivant : L11 (clé partagée), en attente de la réponse de l'utilisateur.
+- 2026-10-25 : **L11 lancée** (« fait le 11 après, oui ») : **clé partagée**, pour que le gestionnaire et les serveurs
+  de partie exposés à Internet ne servent que les lanceurs / jeux du kit. Contrat (fixé ici) :
+  - Clé : `access_key.txt` à côté de `HOLManager.exe` (réglage `AccessKeyFile`, défaut ce nom) ; fichier absent ou
+    vide → pas de clé, tout ouvert comme aujourd'hui (développement). `make_kit.ps1` la crée si absente (32 octets
+    aléatoires en base64url) et l'écrit dans le `servers.json` du kit.
+  - `servers.json` : champ facultatif `"key"` par serveur, `{ "servers": [ { "name", "url", "key" } ] }`.
+  - HTTP : en-tête **`X-HOL-Key`** sur toute requête ; clé fausse ou absente → **401** `{ "error": "bad_key" }`
+    (comparaison à temps constant). **Exemptées** : les requêtes venant du bouclage (127.0.0.1 / ::1), c.-à-d. les
+    serveurs de partie lancés par le gestionnaire et les essais locaux.
+  - Serveur de partie : le gestionnaire lui passe **`-HOLAccessKey=<clé>`** ; le client ajoute l'option d'URL
+    **`HOLKey=<clé>`** (encodée) à sa connexion (`UHOLLocalPlayer::GetGameLoginOptions`) ; `PreLogin` refuse sans
+    elle (« Access key mismatch ») si le serveur en a une.
+  Arwen, branche `launcher-l11` = `main` ; en parallèle **L11a** (C# : gestionnaire, lanceur, kit, `PROTOCOL.md`) et
+  **L11b** (C++ : `ParseServers`, `HOLManagerClient`, option de connexion, `PreLogin`, refus affiché). Le chantier
+  réseau a R7.1-R7.3 commité sur `net-playtest` (4a88040) non fusionné : conflits possibles, petits.
+- 2026-10-25 : L11a : gestionnaire : réglage `AccessKeyFile` (défaut `access_key.txt`, relatif au dossier de l'exe), clé lue au démarrage (rognée, BOM ôté ; absente / vide → pas de clé) ; middleware `UseAccessKey` juste après `UseLobbyErrors`, avant toutes les routes (même inconnues) : hors bouclage (`AccessKey.IsExempt` : 127.0.0.0/8, ::1, ::ffff:127.x), `X-HOL-Key` comparé par `FixedTimeEquals`, sinon 401 `bad_key` (nouveau code de `LobbyErrors`, corps d'erreur habituel) ; `-HOLAccessKey=<clé>` en fin de ligne de commande du serveur ; journal « access key: on/off ». 22 tests xUnit (rouges d'abord), HOLManager.Tests 228.
+- 2026-10-25 : L11a : lanceur : `ManagerServer(Name, Url, Key)` (`key` facultatif, vide = aucune) ; un seul `AccessKeyHandler` (DelegatingHandler) dans les deux `HttpClient` de la fenêtre, qui relit servers.json à chaque requête et n'envoie la clé qu'à l'adresse du serveur (schéma, hôte, port) ; 401 `bad_key` → « Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le. » dans l'état (au lieu de « Serveur injoignable ») et dans les téléchargements (jeu, lanceur). 11 tests, HOLLauncher.Tests 141.
+- 2026-10-25 : L11a : `make_kit.ps1 -ManagerDir` (défaut : parent de `-VersionsDir`) : `access_key.txt` créé s'il manque ou est vide (32 octets `RandomNumberGenerator`, base64url sans `=`, 43 caractères), repris sinon, écrit dans le `servers.json` du kit ; PASS « clé : créée / reprise » ; essai à blanc deux fois dans `scratchpad\L11` : créée puis reprise, même clé, servers.json du zip = la clé, clé absente du journal. `PROTOCOL.md` : section « Clé d'accès (L11) », ligne `bad_key` 401, `[-HOLAccessKey=<clé>]` ; `protocolVersion` inchangé.
+- 2026-10-25 : L11a : `dotnet test` 420/420 (24+27+141+228), 0 avertissement. Essai réel (gestionnaire Arwen port 7714, versions d'Elrond, clé du scratchpad) : « access key: on », clé absente des journaux ; 127.0.0.1 → 200 ; `http://192.168.1.19:7714` sans en-tête → 401 bad_key, mauvaise → 401, bonne → 200 (`/status` et `/versions/latest`) ; lanceur, servers.json vers 192.168.1.19:7714 + bonne clé → « Le jeu n'est pas installé ; la version L10-v2 est disponible. », mauvaise clé → « Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le. ». Tout arrêté, rien n'écoute sur 7714. Rien de commité.
+- 2026-10-25 : L11b : côté jeu fait dans Arwen (`launcher-l11`, rien de commité) : `Net/HOLAccessKey.h/.cpp` (option `HOLKey`, en-tête `X-HOL-Key`, `-HOLAccessKey=`, `IsAccepted` : pas de clé attendue → tout passe, sinon égalité stricte, refus « Access key mismatch ») ; `ParseServers` lit `key` ; `UHOLManagerClient` met `X-HOL-Key` sur toute requête et pose la clé du 1er serveur par `HOLAccessKey::SetClientKey` à la lecture de servers.json ; `UHOLLocalPlayer::GetGameLoginOptions` ajoute `?HOLKey=<clé encodée>` ; `PreLogin` refuse après la vérification de version. Textes : `bad_key` (401) et `match_key` (refus du serveur) → « Clé d'accès refusée : réinstallez le jeu avec le kit reçu. » (+ en/ja dans `fill_po.py`, collecte des .po non relancée).
+- 2026-10-25 : L11b : éditeur compilé (PASS) ; tests verts : `HeroesOfLiberty.AccessKey` (nouveau), `Version`, `VersionCheck`, `Net.ManagerClient.*` (Parse : clé lue), `UI.MatchLossText` (Access key mismatch → match_key ; 401 bad_key). Trouvé : `HeroesOfLiberty.UI.ManagerErrorText` n'est jamais lancé (chemin parent de `…ManagerErrorText.ReturnToLobby`, RunTests ne trouve que l'enfant) : à renommer. Cible serveur non compilée.
+- 2026-10-25 : L11a relue par la session principale (rapport : 420/420 tests, essai réel 401 sans clé / 200 avec,
+  bouclage exempté, lanceur « Clé d'accès refusée » sur mauvaise clé). `LISEZMOI.txt` du kit corrigé à la main (plus
+  de Tailscale depuis L-Q8 ; « environ 350 Mo »). Attente de L11b (C++).
+- 2026-10-25 : L11b relue (rapport : éditeur compilé, tests `AccessKey`, `Version*`, `Net.ManagerClient.*`,
+  `UI.MatchLossText` verts ; cible serveur non compilée ; `.po` non regénérés). Notes : test parent
+  `HeroesOfLiberty.UI.ManagerErrorText` jamais lancé (son chemin est le parent de `…ReturnToLobby` : RunTests ne
+  trouve que l'enfant ; touche aussi `quick_check`) — pour le chantier réseau ; la clé apparaît dans le journal du
+  serveur de partie (ligne moteur `LogNet: Login request`), sur le PC hôte seulement ; textes de refus différents
+  lanceur / jeu, gardés (le lanceur dit de redemander le kit). **L11c lancée** : bout en bout dans Arwen (empaquetage
+  `L11-v1` avec serveur, publication, gestionnaire reconstruit, kit avec clé vers l'adresse publique, installation).
+- 2026-10-25 : L11c : `publish.ps1 -Root Arwen -Version L11-v1` **PASS** (package 5 min, jeu 3192 Mo + serveur 3026 Mo ; HOLPublish 15 s, 50 fichiers, 340,9 Mo) ; `build_manager.ps1` PASS (9 s) ; `make_kit.ps1 -ServerUrl http://90.55.168.58:7700` PASS (63,4 Mo, « clé : créée », `Saved\Manager\access_key.txt`, 43 caractères ; copie `scratchpad\L11\e2e\HOLLauncher-kit.zip`).
+- 2026-10-25 : L11c : gestionnaire d'Arwen sur `0.0.0.0:7700` (`--GameVersion=L11-v1 --ServerExe=Saved\Packages\L11-v1\WindowsServer\HeroesOfLibertyServer.exe`) : « access key: on » ; `/status` par l'adresse publique sans en-tête → **401** `bad_key`, mauvaise clé → 401, bonne clé → 200 ; `127.0.0.1` sans en-tête → 200.
+- 2026-10-25 : L11c : kit dézippé dans `scratchpad\L11\e2e\friend\` (vide), `HOLLauncher.exe --update` : installation complète par l'adresse publique avec la clé en **~8 s** (Version.txt écrit), « Le jeu est à jour (version L11-v1). » puis « Version installée : L11-v1 », « Le jeu est à jour. » (capture `e2e\launcher_installed.png`).
+- 2026-10-25 : L11c : jeu du dossier `friend\` (paquet L11-v1, deux fenêtres Alice / Bob par `-saveddirsuffix`, conduites par `hol.Test.Run`, qui marche dans le paquet Development) : « Manager client: 1 server(s), first Heroes of Liberty (access key set) », liste lue (« 0 salon », aucun `bad_key`), Alice crée le salon, Bob le rejoint, prêts, lancement : le gestionnaire démarre le serveur de L11-v1 avec `-HOLAccessKey=<clé>` (= access_key.txt ; vu sur la ligne de commande du processus, le journal du gestionnaire ne l'écrit pas), les deux clients rejoignent **par 90.55.168.58:7777 (UDP par la box, en boucle)**, le serveur : « Login request … HOLKey=… », « Alice holds slot 0 », « Bob holds slot 1 », « Join succeeded » ×2 ; captures `e2e\l11c_list/lobby/alice/bob.png`.
+- 2026-10-25 : L11c : contre-essai, copie `friend_nokey\` avec un servers.json sans `key` : lanceur « Dernière version : inconnue », « Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le. Vous pouvez jouer en solo. » ; jeu « (no access key) », menu Multijoueur : « Clé d'accès refusée : réinstallez le jeu avec le kit reçu. » (HTTP 401 bad_key ; capture `e2e\l11c_refused.png` ; « Créer un salon » reste actif). **L11c PASS.**
+- 2026-10-25 : L11c : tout arrêté (gestionnaire, 2 processus serveur, jeux, lanceurs) ; rien n'écoute sur 7700 / 7777. Vu dans netstat : 3 adresses inconnues d'Internet (robots de balayage) ont ouvert 7700 pendant les ~4 min d'allumage ; le gestionnaire ne journalise ni les 401 ni les requêtes, donc rien pour dire ce qu'elles ont demandé (401 attendu). Rien de commité.
+- 2026-10-25 : L11c relue : **bout en bout PASS** avec la clé : `L11-v1` publiée depuis Arwen, kit avec clé vers
+  `http://90.55.168.58:7700` (`Arwen\Saved\Kit\HOLLauncher-kit.zip`, clé dans `Arwen\Saved\Manager\access_key.txt`),
+  401 sans clé par l'adresse publique, installation par le kit ~8 s, **partie à deux clients par 90.55.168.58:7777
+  (UDP, via la box)** acceptée par le serveur de partie avec `HOLKey` ; contre-essai sans clé refusé par le lanceur et
+  par le jeu. Vu : 3 robots d'Internet connectés sur 7700 en 4 min (la clé était nécessaire). `dotnet test` repassé
+  dans Arwen. **L11 faite, non commitée** (accord demandé). Petits restes : le gestionnaire ne journalise ni requêtes
+  ni 401 ; « Créer un salon » reste actif sur l'écran de refus ; `.po` à regénérer ; test parent
+  `UI.ManagerErrorText` jamais lancé. Reste de L10 : l'essai avec un vrai ami (le nouveau kit, avec clé).
+- 2026-10-25 : raccourci posé à la demande de l'utilisateur : `C:\Users\baudo\Desktop\Gestionnaire HOL.bat` (lance
+  `Arwen\Saved\Manager\HOLManager.exe` sur 7700 avec la clé, `--GameVersion=L11-v1`, serveur de partie de l'archive
+  `Arwen\Saved\Packages\L11-v1` ; fenêtre fermée = gestionnaire arrêté). Provisoire : chemins d'Arwen, à refaire quand
+  le chantier réseau aura fixé l'emplacement durable du gestionnaire et du serveur par version (L-Q7).
+- 2026-10-25 : **L11 commitée** (accord de l'utilisateur), `launcher-l11` d'Arwen fusionnée dans `main`, `dotnet
+  test` repassé sur `main`. `IN_USE.txt` d'Arwen : `Saved\Manager`, `Saved\Packages\L11-v1`, `Saved\Kit` servent au
+  raccourci du bureau et au kit des amis (ne pas supprimer) ; le code d'Arwen est libre. Reste : essai avec un ami ;
+  petits restes de L11c.

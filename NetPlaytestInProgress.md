@@ -1154,3 +1154,8 @@ R8, R9.
   installent Tailscale ; ils n'auront que le kit du lanceur et joindront le PC par **redirection de ports de la box**
   (TCP 7700, UDP 7777-7799), IP publique 90.55.168.58 (pas de CGNAT), avec un **mot de passe partagé** à concevoir
   (gestionnaire + client du jeu `HOLManagerClient` : à coordonner avec cette session). Détail : `LauncherInProgress.md`.
+- 2026-10-25 : (session lanceur) **L11 dans `main`** : clé d'accès partagée (`X-HOL-Key`, `access_key.txt` du
+  gestionnaire, `key` de `servers.json`, `-HOLAccessKey=` / option `HOLKey` vérifiée dans `PreLogin`), section
+  « Clé d'accès (L11) » de `Manager/PROTOCOL.md`. Touche `HOLManagerClient`, `HOLLocalPlayer`, `GameModeBase::PreLogin`,
+  `ProcessServerLauncher` : conflits possibles avec R7 (4a88040) à la fusion. À savoir : le test parent
+  `HeroesOfLiberty.UI.ManagerErrorText` n'est jamais lancé (chemin parent de `…ReturnToLobby`), `quick_check` compris.
