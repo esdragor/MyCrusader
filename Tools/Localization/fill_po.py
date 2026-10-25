@@ -210,6 +210,9 @@ TRANSLATIONS = {
     "HOLGameScreen,MessageOwnRazed": ("Your foundations are razed — {0}", "あなたの基礎が破壊された — {0}"),
     "HOLGameScreen,MessageDefeated": ("{0} is defeated", "{0}が敗退"),
     "HOLGameScreen,MessageOwnDefeated": ("You are defeated", "あなたは敗退しました"),
+    # V5.2 (Regicide): the death of a King, in the thread and the alert.
+    "HOLGameScreen,MessageKingDied": ("{0}'s King is dead", "{0}の王が死亡"),
+    "HOLGameScreen,MessageOwnKingDied": ("Your King is dead", "あなたの王が死亡"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,Cancel": ("Cancel", "キャンセル"),
@@ -238,6 +241,7 @@ TRANSLATIONS = {
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
     "HOLGameNames,Archer": ("Archer", "弓兵"),
+    "HOLGameNames,King": ("King", "王"),
     "HOLGameNames,Tree": ("Tree", "木"),
     "HOLGameNames,BerryBush": ("Berry Bush", "ベリーの茂み"),
     "HOLGameNames,StoneVein": ("Stone Vein", "石の鉱脈"),

@@ -85,7 +85,8 @@ namespace HOLCombat
 			return Seeker.AttackRange;
 		}
 		float Radius = Seeker.AggressionRadius;
-		if (Radius <= 0.f && Seeker.Mode == ESeekMode::AttackMove)
+		// V5.3: a unit that only ripostes (the King) never takes the attack-move's radius: its attack-move is a plain move.
+		if (Radius <= 0.f && Seeker.Mode == ESeekMode::AttackMove && !Seeker.bRipostes)
 		{
 			Radius = AttackMoveRadius;
 		}
@@ -135,7 +136,10 @@ namespace HOLCombat
 	int32 ChooseTarget(const FSeeker& Seeker, const TConstArrayView<FCandidate> Candidates)
 	{
 		const float SearchRadius = GetSearchRadius(Seeker);
-		if (SearchRadius <= 0.f && Seeker.Mode != ESeekMode::Hold)
+		// V5.1: no search radius but a riposte (the King): only an enemy attacking it, wherever it stands.
+		// V5.3: on hold too (in reach only), never an enemy not attacking it.
+		const bool bRiposteOnly = Seeker.bRipostes && Seeker.AggressionRadius <= 0.f;
+		if (SearchRadius <= 0.f && Seeker.Mode != ESeekMode::Hold && !bRiposteOnly)
 		{
 			return INDEX_NONE;
 		}
@@ -144,6 +148,10 @@ namespace HOLCombat
 		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
 		{
 			const FCandidate& Candidate = Candidates[Index];
+			if (bRiposteOnly && (!Candidate.bAttacksMe || Candidate.bIsBuilding))
+			{
+				continue;
+			}
 			// Perf: IsInRange's and GetEdgeDistance's very sums on one squared distance (the same values, bit for bit).
 			const double DistanceSquared = FVector2D::DistSquared(Seeker.Position, Candidate.Position);
 			const double Radii = static_cast<double>(Seeker.Radius) + static_cast<double>(Candidate.Radius);

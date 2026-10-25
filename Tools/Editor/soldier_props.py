@@ -246,9 +246,36 @@ def make_quiver(light=False):
             "anchor": QUIVER_ANCHOR, "prims": prims}
 
 
+# Crown of the King (V5.3, provisional; user's trial of 2026-10-25: big, floating above his head, all gold): a band
+# closed on top (no inside to show) between two darker rims, five merlons, about 1 m above his head in game. Skinned to
+# the pelvis ("body" frame): it follows his walk and his fight and falls with him (the root would leave it floating 30 s
+# above his body, HOLCorpse::HoldSeconds). 3 times the first one: 85 cm across in the mesh, about 1.3 m in game at
+# MeshScale 1.5, so it reads at the RTS camera's starting height.
+CROWN_ANCHOR = (0.0, 0.0, 245.0)  # bottom of the band, body terms (reference pose): 63 cm above the head in the mesh
+CROWN_RADIUS, CROWN_HEIGHT, CROWN_MERLON = 39.0, 24.0, 18.0
+GOLD = (222, 178, 52)
+
+
+def make_crown(light=False):
+    sides = 8 if light else 12
+    r, h = CROWN_RADIUS, CROWN_HEIGHT
+    prims = [pp.frustum_between((0.0, 0.0, 0.0), (0.0, 0.0, h), (r, r), (r, r), sides, GOLD, caps=("top",)),
+             pp.frustum_between((0.0, 0.0, -1.5), (0.0, 0.0, 4.5), (r + 2.4, r + 2.4), (r + 2.4, r + 2.4), sides, BRASS,
+                                caps=("bottom",)),
+             pp.frustum_between((0.0, 0.0, h - 4.5), (0.0, 0.0, h + 0.9), (r + 1.8, r + 1.8), (r + 1.8, r + 1.8),
+                                sides, BRASS, caps=("top",))]
+    for k in range(5):
+        a = 2.0 * math.pi * k / 5.0
+        centre = (math.cos(a) * (r - 3.0), math.sin(a) * (r - 3.0), h + CROWN_MERLON / 2.0)
+        prims.append(pp.box(centre, (13.5, 13.5, CROWN_MERLON), GOLD,
+                            pp.rotation_z_to((0.0, 0.0, 1.0), (math.cos(a), math.sin(a), 0.0))))
+    return {"id": 7, "name": "crown", "label": "couronne", "bone": "pelvis", "frame": "body", "anchor": CROWN_ANCHOR,
+            "prims": prims}
+
+
 def build_props(sk, light=False):
     props = [make_spear(light), make_sword(light), make_shield(sk, light), make_bow(sk, light), make_arrow(light),
-             make_quiver(light)]
+             make_quiver(light), make_crown(light)]
     return {p["name"]: p for p in props}
 
 
@@ -256,7 +283,9 @@ def build_props(sk, light=False):
 SOLDIER_MESHES = {"SKM_Spearman": ("spear",), "SKM_ManAtArms": ("sword", "shield"),
                   # J7c.1a: the arrow is always in the mesh; the gestures hide it (ik_hand_gun scaled to nothing,
                   # soldier_poses "tool_hidden") outside the draw.
-                  "SKM_Archer": ("bow", "arrow", "quiver")}
+                  "SKM_Archer": ("bow", "arrow", "quiver"),
+                  # V5.3: the King, the Man-at-arms with a crown.
+                  "SKM_King": ("sword", "shield", "crown")}
 
 
 def main():

@@ -21,8 +21,8 @@
 # when units, the simulation or rendering change, and at a closure).
 # Alongside, the "net" part (D273, M2.5.6): a two-client match on a dedicated server, the editor in server mode (D275),
 # each client checking its camera, the two centres in their colours and a click on each.
-# With "victory" (V1.4c, D356-D358), last in the net part (the match is over after it): client 1 gives up
-# (hol.Victory.Surrender in its console, the server's ServerSurrender); the server defeats its slot, collapses it and ends
+# With "victory" (V1.4c, D356-D358), last in the net part (the match is over after it): client 1 loses (its
+# King killed on the server since V5.5a, its surrender before); the server defeats its slot, collapses it and ends
 # the match, client 2's slot the winner; the banner Defeat on client 1, Victory on client 2 (the game state's replication
 # and OnRep); client 2 sees client 1's units go (Units report each second, none left after 5 s).
 # The "sources" part (J5a.2, D297): the wood beside slot 0, forbidden on the navmesh tree by tree; a tree used up
@@ -245,10 +245,18 @@ if ($Parts -contains "net") {
     # them again for the rest (the army's resources) and answers.
     $NetCheatTriedFlag = Join-Path $TestSaved "quick_net_cheat_tried.flag"
     $NetCheatBackFlag = Join-Path $TestSaved "quick_net_cheat_back.flag"
+    $NetKingAskFlag = Join-Path $TestSaved "quick_net_king_ask.flag"
+    $NetKingBornFlag = Join-Path $TestSaved "quick_net_king_born.flag"
+    $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
     @("waitfile $NetCheatTriedFlag 300", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
-        "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") |
+        "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") +
+        # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
+        # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
+        # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
+        @(if ($Parts -contains "victory") { "waitfile $NetKingAskFlag 900", "hol.Victory.SpawnKing 0", "hol.Victory.SpawnKing 1", "wait 1", "signal $NetKingBornFlag",
+            "waitfile $NetKingKillFlag 120", "hol.Victory.KillKing 1" }) |
         Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     # -useperfthreads (J7c.4): a dedicated server, the editor's -server too, runs every ParallelFor on one thread by the
@@ -394,6 +402,20 @@ if ($Parts -contains "victory") {
     Step "mark victory forum other", "hol.Victory.FallForum 1", "waitlog Victory: forum of slot 1 fell", "frames 3", "hol.HUD.Report"
     Step "mark victory forum defeat", "hol.Victory.FallForum 0", "waitlog End banner: Defeat", "waitui", "frames 3", "hol.HUD.Report",
         "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark victory forum end"
+    # V5.5a (Regicide, D206), a fourth match with the option (bRegicide in the configuration): a King born for each slot
+    # (Plain's slot 0 centre at -14800 0, its King 4.5 m beyond its west edge, about -16050 0). Selected (Ctrl + A: it is
+    # no Peasant): its block, its grid the stop alone, the population without it. Combat on: an enemy Peasant 5.5 m off
+    # (no attack of its own): the King does not attack; an enemy Man-at-arms there (it attacks him): the King ripostes.
+    # Then the AI's King killed (hol.Victory.KillKing 1): its death, the message for another camp (no alert), its
+    # defeat (King), the banner Victory.
+    $RegicideConfig = Join-Path $TestSaved "victory_regicide.json"
+    '{ "map": "/Game/Maps/Plain.Plain", "bRegicide": true, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $RegicideConfig
+    Step "mark victory regicide", "hol.UI.NewGame.Launch $RegicideConfig 0", "waitmap Plain", "frames 60", "hol.Select.Army", "frames 3", "hol.HUD.Report"
+    Step "mark victory regicide pass", "hol.Combat.LogHits 1", "hol.Combat.Enabled 1", "hol.Units.Spawn 1 -16600 0 1 Peasant 0", "wait 4", "hol.Units.Remove -16600 0 1500 1", "frames 3"
+    Step "mark victory regicide riposte", "hol.Units.Spawn 1 -16600 0 1 ManAtArms 0", "wait 5", "hol.Units.Remove -16600 0 1500 1", "hol.Combat.Enabled 0",
+        "hol.Combat.LogHits 0", "frames 3", "hol.Select.Army", "frames 3", "hol.HUD.Report"
+    Step "mark victory regicide death", "hol.Victory.KillKing 1", "waitlog End banner: Victory", "waitui", "frames 3", "hol.HUD.Report",
+        "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark victory regicide end"
 }
 
 # The "sides" part (EtapeDefini D.3), in solo on Plain, three players: me (slot 0, team 1), an enemy AI (slot 1, team
@@ -1818,16 +1840,20 @@ if ($NetListening) {
             # table then shows that slot at 1 life, in ruin.
             $ForumFell = Join-Path $TestSaved "quick_net_forum_fell.flag"
             $ForumSeen = Join-Path $TestSaved "quick_net_forum_seen.flag"
+            $KingSeen = Join-Path $TestSaved "quick_net_king_seen2.flag"
             if ($Client -eq 1) {
                 $NetSteps += "mark victory", "waitfile $VictoryReady", "hol.Cheat.DamageNear 99999 0 0 own melee", "wait 0.5",
                     # V3.5: its forum down held by the other slot (the presence fixed on both slots, slots known only once joined:
                     # the standing forum ignores it); client 2 sees the hold in its table too.
                     "hol.Victory.HoldPresence 0 1 0 1", "hol.Victory.HoldPresence 1 1 0 0", "wait 1", "hol.HUD.Report", "signal $ForumFell",
-                    "waitfile $ForumSeen", "hol.Victory.Surrender", "waitlog End banner: Defeat", "waitfile $VictoryDone"
+                    # V5.5a: no surrender any more: the Kings born on the server, client 1 shows the other's (slot 0), then its own
+                    # King killed (the server's KillKing 1): its message without alert (its own loss), its banner Defeat.
+                    "waitfile $ForumSeen", "signal $NetKingAskFlag", "waitfile $NetKingBornFlag 120", "wait 1.5", "hol.Units.Report",
+                    "waitfile $KingSeen 120", "signal $NetKingKillFlag", "waitlog End banner: Defeat", "waitfile $VictoryDone"
             }
             else {
                 $NetSteps += "mark victory", "hol.Units.Report", "signal $VictoryReady", "waitfile $ForumFell", "wait 1", "hol.HUD.Report", "signal $ForumSeen",
-                    "waitlog End banner: Victory"
+                    "waitfile $NetKingBornFlag 300", "wait 1.5", "hol.Units.Report", "signal $KingSeen", "waitlog End banner: Victory"
                 for ($i = 0; $i -lt 5; $i++) { $NetSteps += "wait 1", "hol.Units.Report" }
                 $NetSteps += "signal $VictoryDone"
             }
@@ -2041,6 +2067,37 @@ if ($Parts -contains "victory") {
     $Hud = ForumHud "victory forum defeat"
     $Checks["table: slot 0 defeated ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives \d+ defeated greyed$"
     $AllOk = (Report "victory forum" $Checks) -and $AllOk
+
+    # V5.5a (Regicide): the fourth match, with the option.
+    $Checks = [ordered]@{}
+    $Section = @(Get-Section "victory regicide")
+    foreach ($KingSlot in 0, 1) {
+        $Born = @($Section | Select-String -Pattern "Regicide: king of slot $KingSlot spawned at \((-?\d+), (-?\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value), $($_.Matches[0].Groups[2].Value)" })
+        $Checks["the King of slot $KingSlot born ($($Born -join '; '))"] = $Born.Count -eq 1
+    }
+    $Hud = @($Section | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+    $Checks["selected: King (own), hp 250/250, the stop alone ($([regex]::Match("$Hud", 'selection [^,]*, hp [^,]*, grid [^,]*, orders [^,]*').Value))"] =
+        "$Hud" -match "selection King \(own\), hp 250/250, grid hidden, orders S=Stop,"
+    $Checks["population without the King ($([regex]::Match("$Hud", 'population \d+/\d+').Value))"] = "$Hud" -match "population 0/\d+"
+    $Section = @(Get-Section "victory regicide pass")
+    $KingHits = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits")
+    $Checks["an enemy Peasant 5.5 m off: the King does not attack ($($KingHits.Count) hits)"] = $KingHits.Count -eq 0 -and [bool]($Section | Select-String -SimpleMatch "Spawn: 1 Peasant of slot 1" -Quiet)
+    $Section = @(Get-Section "victory regicide riposte")
+    $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for \d+, (\d+) HP left")
+    $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for (\d+)")
+    $Checks["an enemy Man-at-arms strikes the King ($($Struck.Count) hits), the King ripostes ($($Riposte.Count) hits, $(@($Riposte | ForEach-Object { $_.Matches[0].Groups[1].Value }) -join ', '))"] =
+        $Struck.Count -ge 1 -and $Riposte.Count -ge 1
+    $Section = @(Get-Section "victory regicide death")
+    foreach ($Want in "hol.Victory.KillKing: slot 1, 1 King(s) at 0 health", "Regicide: king of slot 1 died", "Victory: slot 1 defeated (King)", "Victory: match over, winners 0", "End banner: Victory") {
+        $Checks["KillKing 1: $Want"] = [bool]($Section | Select-String -SimpleMatch $Want -Quiet)
+    }
+    $Checks["my King alive (no death of slot 0)"] = -not (@(Get-Section "victory regicide") + @(Get-Section "victory regicide pass") + @(Get-Section "victory regicide riposte") + $Section |
+        Select-String -SimpleMatch "Regicide: king of slot 0 died" -Quiet)
+    $KingMessages = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de Joueur 2 est mort|Joueur 2 est vaincu"
+    $KingAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+    $Checks["no alert (HUD alert: $KingAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$KingAlert" -eq "none"
+    $AllOk = (Report "victory regicide" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "sides") {
@@ -4465,7 +4522,12 @@ if ($Parts -contains "net") {
     if ($Parts -contains "victory") {
         $Loser = $NetHeld[1]; $Winner = $NetHeld[2]
         $ServerLines = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
-        $Checks["victory: server, slot $Loser (client 1) defeated by its surrender"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Victory: slot $Loser defeated (Surrender)" -Quiet)
+        # V5.5a (Regicide): client 1's defeat by its King's death (the server's KillKing 1) in place of its surrender.
+        $Checks["victory: server, a King born for each slot"] = (@(0, 1) | Where-Object { $ServerLines | Select-String -Pattern "Regicide: king of slot $_ spawned at \(-?\d+, -?\d+\)" -Quiet }).Count -eq 2
+        $Checks["victory: server, the King of slot $Loser (client 1) died"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Regicide: king of slot $Loser died" -Quiet) -and
+            -not ($ServerLines | Select-String -SimpleMatch "Regicide: king of slot $Winner died" -Quiet)
+        $Checks["victory: server, slot $Loser (client 1) defeated by its King's death"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Victory: slot $Loser defeated (King)" -Quiet) -and
+            -not ($ServerLines | Select-String -SimpleMatch "Victory: slot $Loser defeated (Surrender)" -Quiet)
         $Collapsed = $ServerLines | Select-String -Pattern "Victory: slot $Loser collapsed \((\d+) units, (\d+) buildings\)" | Select-Object -First 1
         $Checks["victory: server, slot $Loser collapsed ($(if ($Collapsed) { "$($Collapsed.Matches[0].Groups[1].Value) units, $($Collapsed.Matches[0].Groups[2].Value) buildings" }))"] =
             ($null -ne $Collapsed) -and ([int]$Collapsed.Matches[0].Groups[1].Value -ge 1) -and ([int]$Collapsed.Matches[0].Groups[2].Value -ge 1)
@@ -4482,7 +4544,15 @@ if ($Parts -contains "net") {
         $Shown = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Units report: (.*)$" | ForEach-Object {
             $Text = $_.Matches[0].Groups[1].Value
             ([regex]::Matches($Text, "of slot $Loser x(\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Measure-Object -Sum).Sum })
-        $Checks["victory: client 2 sees client 1's units go ($($Shown -join ' -> '))"] = ($Shown.Count -eq 6) -and ($Shown[0] -ge 1) -and ($Shown[-1] -eq 0)
+        # V5.5a: 7 reports: before the forum's fall, the Kings shown, then each second after the banner.
+        $Checks["victory: client 2 sees client 1's units go ($($Shown -join ' -> '))"] = ($Shown.Count -eq 7) -and ($Shown[0] -ge 1) -and ($Shown[-1] -eq 0)
+        # V5.5a: each client shows the other's King (the unit King replicated), and its own.
+        foreach ($Pair in @(@(1, $Client1Log, $Winner), @(2, $Client2Log, $Loser))) {
+            $KingsShown = @(Get-ClientSection @(if ($Pair[1]) { Get-Content $Pair[1] -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Units report: (.*)$" |
+                ForEach-Object { $_.Matches[0].Groups[1].Value } | Where-Object { $_ -match "King of slot" }) | Select-Object -First 1
+            $Checks["victory: client $($Pair[0]) shows the King of the other, slot $($Pair[2]), and its own ($([regex]::Matches("$KingsShown", 'King of slot \d x\d+') -join ', '))"] =
+                ($null -ne $Loser) -and "$KingsShown" -match "King of slot $($Pair[2]) x1" -and "$KingsShown" -match "King of slot $(1 - [int]$Pair[2]) x1"
+        }
         # V2.5 (D353): client 1's forum fell on the server (lives 1); client 2's players' table shows it (the lives public).
         $Checks["victory: server, the forum of slot $Loser (client 1) fell, lives 1"] = ($null -ne $Loser) -and [bool]($ServerLines | Select-String -SimpleMatch "Victory: forum of slot $Loser fell, lives 1 " -Quiet)
         $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD forum: .*, players \[([^\]]*)\]" |
@@ -4497,8 +4567,9 @@ if ($Parts -contains "net") {
             $Messages[$Pair[0]] = @(Get-ClientSection @(if ($Pair[1]) { Get-Content $Pair[1] -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         }
         $LoserName = "Joueur $([int]$Loser + 1)"; $WinnerName = "Joueur $([int]$Winner + 1)"
-        $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Vous êtes vaincu"
-        $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|$LoserName est vaincu"
+        # V5.5a: its King's death before its defeat, no alert for either (its own loss; another camp's for client 2).
+        $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Votre Roi est mort|Vous êtes vaincu"
+        $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|Le Roi de $LoserName est mort|$LoserName est vaincu"
         $Checks["victory: client 1's messages, with the alert ($($Messages[1] -join '; '))"] = ($null -ne $Loser) -and ($Messages[1] -join '|') -eq $Wanted1
         $Checks["victory: client 2's messages, without alert ($($Messages[2] -join '; '))"] = ($null -ne $Loser) -and ($Messages[2] -join '|') -eq $Wanted2
         $Alert1 = @(Get-ClientSection @(if ($Client1Log) { Get-Content $Client1Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1

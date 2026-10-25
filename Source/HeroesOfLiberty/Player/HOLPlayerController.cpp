@@ -2927,6 +2927,8 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 		// and hold for any own units, attack-move with soldiers among them, which hide the builders' grid (« Tous » of a
 		// mixed selection: the Peasants' subgroup has it).
 		const TArray<uint32> Units = GetCommandUnits();
+		bool bAllKings = true;
+		bool bAnyKnown = false;
 		for (const uint32 UnitId : Units)
 		{
 			FHOLUnitView View;
@@ -2934,8 +2936,12 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 			{
 				Context.bBuilders |= View.CarryCapacity > 0;
 				Context.bSoldiers |= View.CarryCapacity == 0;
+				bAllKings &= View.bKing;
+				bAnyKnown = true;
 			}
 		}
+		// V5.3: Kings alone have neither attack-move nor hold (HOLCommandGrid::GetOrder).
+		Context.bOnlyKings = bAnyKnown && bAllKings;
 		if (Context.bBuilders)
 		{
 			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);

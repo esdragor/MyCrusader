@@ -720,9 +720,12 @@ void UHOLUnitSubsystem::MarkUnitDying(const uint32 UnitId)
 	}
 }
 
-int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner)
+int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner, const FName TypeName)
 {
-	BirthQueue.RemoveAll([Owner](const FHOLUnitSpawnRequest& Request) { return Request.OwnerPlayer == Owner; });
+	if (TypeName.IsNone())
+	{
+		BirthQueue.RemoveAll([Owner](const FHOLUnitSpawnRequest& Request) { return Request.OwnerPlayer == Owner; });
+	}
 	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
 	if (!EntitySubsystem)
 	{
@@ -733,7 +736,7 @@ int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner)
 	for (TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
 		FHOLUnitRecord& Record = Unit.Value;
-		FHOLUnitStateFragment* State = Record.OwnerPlayer == Owner && !Record.bDying
+		FHOLUnitStateFragment* State = Record.OwnerPlayer == Owner && !Record.bDying && (TypeName.IsNone() || Record.TypeName == TypeName)
 			? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity) : nullptr;
 		if (State && State->CurrentHealth > 0)
 		{
@@ -938,6 +941,7 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.CarryCapacity = Constants->CarryCapacity;
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
 			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
+			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
 			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
 			OutView.Health = FMath::Max(State->CurrentHealth, 0);
 			OutView.MaxHealth = Constants->MaxHealth;
