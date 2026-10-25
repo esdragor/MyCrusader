@@ -1135,6 +1135,66 @@ Risques connus :
 - **Formation des Paysans** : ne doit pas gêner les allers-retours de récolte (D309), qui ne passent pas par l'ordre au
   sol ; à vérifier dans S7.
 
+## Plan de J8 — le héros (§ 9)
+
+Ouvert **le 2026-10-25**, après la clôture de J7. Ce plan n'écrit que dans cette section ; le GDD (§ 21, § 16.6) ne
+change qu'à la clôture de J8. **Numéros de décision : à attribuer à la clôture** (au 2026-10-25, D470 à D474 sont pris
+par Victory V5 et le numéro suivant du § 22 est **D475**). Ci-dessous, les décisions sont notées **J8-Q1** à **J8-Q6**.
+
+Repères : D10 (un héros unique par faction), D12 et D13 (Paladin-Commandant, Seigneur Damné), D17 (résistance
+héroïque : ~5-6 unités en attaque, dégâts reçus des troupes ×0,3), D26 (aura moyenne, +10 à 15 %, un groupe de
+bataille), D42 (kit débloqué aux niveaux 1, 4, 7, 10), D04 (10 niveaux, paliers aux niveaux 3, 6, 9), D05 et D06
+(répartition de l'XP, XP de civilisation pendant la mort), D25 (retour en 30 s + 8 s × niveau, prix dégressif), D397
+(prix en or, bouton « Ramener le héros »), D201 (bloc du héros dans le HUD), D345 (attaques de type Héros), D62 (aucune
+unité anti-héros), § 16.1 (GAS, attribut `Level`), [Q04] (courbe d'XP à régler en test). Déjà en place : combat maison
+de J7 (D454, D465), PV exacts sur 8 bits (D455), corps au sol (D463), groupes de contrôle (D453), conditions de victoire
+V1 à V5 (Régicide, `VictoryInProgress.md`).
+
+| # | Question | État |
+|---|---|---|
+| Q1 | **Périmètre** de J8. | **tranché (J8-Q1)** : le héros |
+| Q2 | **Découpage** en parties jouables. | **tranché (J8-Q2)** : trois parties, J8a le héros sur le terrain, J8b XP et niveaux, J8c l'aura et les capacités |
+| Q3 | **Quel héros** : générique ou le Paladin-Commandant (pas encore de factions). | **tranché (J8-Q3)** : le Paladin-Commandant pour tous |
+| Q4 | **Modèle technique** : unité de la simulation (Mass, processeur maison) ou acteur avec GAS (§ 16.1). | **reportée** (« on voit son point plus tard », l'utilisateur) |
+| Q5 | **Réseau** : PV, XP, niveau, état de mort et de retour. | attend Q4 |
+| Q6 | **Vérification** : tests, stress tests en fin de chapitre, essais de l'utilisateur. | **tranché (J8-Q6)** : comme J7 |
+
+**Tranché — J8-Q1 Périmètre : le héros** (choix de l'utilisateur, conforme à la recommandation).
+- Un héros apparaît au centre, se contrôle comme une unité, se bat avec la résistance de D17, gagne de l'XP, monte de
+  niveau, meurt et revient (D25, D397). Couvre les tests prioritaires 1 à 3 du § 17.1.
+- Talents, ultime et duel viennent plus tard.
+- Écartés : **la suite de l'armée** (Champ de tir, Écurie, Arbalétrier, Cavalier léger) ; **paliers et technologies** ;
+  **brouillard et mini-carte** (M7).
+
+**Tranché — J8-Q2 Trois parties jouables** (choix de l'utilisateur, conforme à la recommandation), chacune close par
+l'essai de l'utilisateur.
+- **J8a le héros sur le terrain** : il apparaît au centre, se sélectionne (bloc du héros, D201), se bat avec la
+  résistance de D17, meurt puis revient (D25, prix en or dégressif et bouton « Ramener le héros » de D397).
+- **J8b XP et niveaux** : XP de combat, de commandement et de développement, niveaux 1 à 6, statistiques par niveau,
+  paliers marqués sans contenu (les paliers et technologies sont un autre chapitre).
+- **J8c l'aura et les capacités** : aura (D26), capacité 1 au niveau 1, capacité 2 au niveau 4 (D42).
+- Écartés : **deux parties** (J8b trop gros avec l'aura et les capacités) ; **une partie sans capacités**.
+
+**Tranché — J8-Q3 Le Paladin-Commandant pour tous** (choix de l'utilisateur, conforme à la recommandation).
+- Le héros de l'Aube (D12) pour tous les joueurs en J8 : *Aura de l'Aube* et *Serrez les rangs* au niveau 1, *Bannière
+  de l'Aube* au niveau 4 (D52). Données du héros prévues pour un second : le Seigneur Damné arrive avec les Légions.
+- Écartés : **les deux héros selon la faction** (double J8c, factions en jeu plus tôt) ; **un héros générique** (travail
+  refait avec les factions).
+
+**Reportée — J8-Q4 Modèle technique** : l'utilisateur verra ce point plus tard. Constat posé : GAS (§ 16.1, D34)
+n'est utilisé nulle part dans le code ; les unités sont des entités Mass, le combat de J7 (D454) et le Roi de Victory
+V5 (D470 à D474, une unité spéciale de la simulation) sont en code maison. Options présentées : **unité de la
+simulation** (recommandée : sélection, ordres, rangs, combat, réplication et rendu déjà là ; simulation reproductible,
+D468 ; D34 révisée, GAS possible pour le duel), **acteur avec GAS** (conforme à D34, ponts vers Mass partout),
+**hybride** (corps Mass, acteur GAS compagnon pour XP, niveau et capacités). **J8-Q5** (réseau) en dépend. **Aucun code
+de J8 avant de trancher Q4.**
+
+**Tranché — J8-Q6 Vérification comme J7** (choix de l'utilisateur, conforme à la recommandation).
+- Chaque partie : tests automatiques des règles pures (résistance D17, délai et prix du retour, courbe d'XP, aura), un
+  scénario `play.ps1`, un passage dans `quick_check` (solo et 2 clients), puis l'essai de l'utilisateur.
+- Stress tests **à la clôture de J8 seulement** : S3 et S4 avec un héros par camp, et S5.
+- Écartés : **un stress test des héros** (8 héros dans une bataille de 2 000 unités) ; **essais seulement**.
+
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
 | # | Date | Sujet | Décision |
@@ -7074,3 +7134,9 @@ d'épée).
   vitesse nulle des immobiles. Paragraphe « Parcours J7 » au § 16.6, lignes M4 / M5 « fait en J7 », tableau des
   touches du § 7.3 (Ctrl + chiffre retiré), prochain numéro **D470**. Ligne J7c retirée d'`EtapeDefini.md`.
   **J7 est close.**
+- (J8, 2026-10-25) **Plan de J8 ouvert** : **J8-Q1 tranchée**, le périmètre est **le héros** (choix de
+  l'utilisateur, conforme à la recommandation). Questions Q2 à Q6 dans « Plan de J8 ». Prochain numéro du § 22 : D475.
+- (J8, 2026-10-25) **J8-Q2, Q3, Q6 tranchées** (conformes aux recommandations) : trois parties (J8a le héros sur le
+  terrain, J8b XP et niveaux, J8c l'aura et les capacités), le Paladin-Commandant pour tous, vérification comme J7.
+  **J8-Q4 reportée** par l'utilisateur (« on voit son point plus tard » : simulation Mass, acteur GAS ou hybride), Q5
+  en dépend. Aucun code de J8 avant Q4.
