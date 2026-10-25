@@ -160,4 +160,16 @@ public class UpdatePlanTests
 
         Assert.Equal("versions/v2/files/Game.exe", Assert.Single(plan.Downloads).FullUrl);
     }
+
+    [Fact]
+    public void ScanGameIgnoresTheLauncherUpdateFiles()
+    {
+        using var game = new TempDir();
+        game.Write("Version.txt", "v1");
+        game.Write("HOLLauncher.new.exe", "l");
+        game.Write("HOLLauncher.new.exe.part", "l");
+        game.Write("HOLLauncher.old.exe", "l");
+
+        Assert.Equal(["Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
+    }
 }

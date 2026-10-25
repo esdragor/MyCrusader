@@ -35,6 +35,9 @@ public sealed class UpdatePlan
     /** The launcher itself, any name it is given (HOLLauncher.exe, HOLLauncher-2.exe...): replaced by L7 only. */
     public const string LauncherPattern = "HOLLauncher*.exe";
 
+    /** The launcher's own download (LauncherUpdater: HOLLauncher.new.exe.part), not matched by LauncherPattern. */
+    public const string LauncherPartPattern = LauncherPattern + LauncherUpdater.PartSuffix;
+
     /** HDiffPatch's patcher, shipped beside the launcher (L-Q2 bis): the launcher's, not the game's. */
     public const string HpatchzName = "hpatchz.exe";
 
@@ -48,7 +51,7 @@ public sealed class UpdatePlan
      * Files of the launcher or the player, matched on the file name like ManifestBuilder's exclusions: never in the
      * game's list nor in installed.json, never replaced nor deleted; only a missing servers.json is fetched.
      */
-    public static readonly IReadOnlyList<string> LauncherOwned = [LauncherPattern, HpatchzName, ServersName];
+    public static readonly IReadOnlyList<string> LauncherOwned = [LauncherPattern, LauncherPartPattern, HpatchzName, ServersName];
 
     /** ManifestBuilder counts every file under the game folder: the launcher also leaves out its work folder and its own files. */
     public static readonly IReadOnlyList<string> Excludes =

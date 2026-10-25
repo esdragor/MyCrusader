@@ -42,4 +42,11 @@ public class LauncherOptionsTests
         Assert.True(options.UpdateAtStart);
         Assert.Equal(@"D:\HOL", options.GameDir);
     }
+
+    [Fact]
+    public void UpdateLauncherOption()
+    {
+        Assert.False(LauncherOptions.Parse([], @"C:\Games\HOL").UpdateLauncherAtStart);
+        Assert.True(LauncherOptions.Parse(["--update-launcher"], @"C:\Games\HOL").UpdateLauncherAtStart);
+    }
 }

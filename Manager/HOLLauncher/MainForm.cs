@@ -3,7 +3,8 @@ namespace HOLLauncher;
 /**
  * The launcher's window, kept thin: it reads the status in the background (StatusLoader) and shows the StatusView.
  * "Update the game" runs GameUpdater in the background with a progress bar and "Cancel" (ProgressView); "Update the
- * launcher" (L7) and "Play" (L8) do nothing yet.
+ * launcher" runs LauncherUpdater the same way, then starts the new exe with the same arguments and closes (L7);
+ * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) and closes the launcher.
  */
 public sealed class MainForm : Form
 {
@@ -22,7 +23,7 @@ public sealed class MainForm : Form
     };
     private readonly Label launcher = NewLabel();
     private readonly Button play = NewButton("Jouer");
-    private readonly Button updateGame = NewButton("Mettre à jour le jeu");
+    private readonly Button updateGame = NewButton(StatusView.UpdateGameLabel);
     private readonly Button updateLauncher = NewButton("Mettre à jour le lanceur");
     private readonly Button refresh = NewButton("Actualiser");
     private readonly Label progressText = NewLabel();
@@ -36,11 +37,13 @@ public sealed class MainForm : Form
     private ProgressView progressView = ProgressView.Starting();
     private CancellationTokenSource? updating;
     private bool autoUpdatePending;
+    private bool autoLauncherUpdatePending;
 
     public MainForm(LauncherOptions options)
     {
         Options = options;
         autoUpdatePending = options.UpdateAtStart;
+        autoLauncherUpdatePending = options.UpdateLauncherAtStart;
         Text = $"Heroes of Liberty - lanceur {LauncherInfo.Version}";
         ClientSize = new Size(640, 400);
         MinimumSize = new Size(480, 320);
@@ -73,8 +76,9 @@ public sealed class MainForm : Form
         layout.Controls.Add(buttons);
         Controls.Add(layout);
 
+        play.Click += (_, _) => Play();
         updateGame.Click += async (_, _) => await UpdateGameAsync();
-        updateLauncher.Click += (_, _) => Coming("La mise à jour du lanceur est à venir (L7).");
+        updateLauncher.Click += async (_, _) => await UpdateLauncherAsync();
         refresh.Click += async (_, _) => await RefreshStatusAsync();
         cancel.Click += (_, _) => CancelUpdate();
         Shown += async (_, _) => await RefreshStatusAsync();
@@ -115,6 +119,94 @@ public sealed class MainForm : Form
                 await UpdateGameAsync();
             }
         }
+        if (autoLauncherUpdatePending && !IsDisposed)
+        {
+            // --update-launcher: likewise, once.
+            autoLauncherUpdatePending = false;
+            if (current.UpdateLauncherEnabled)
+            {
+                await UpdateLauncherAsync();
+            }
+        }
+    }
+
+    /**
+     * Downloads the new launcher in the background (bar, "Cancel"), swaps it in, then starts it with the same
+     * arguments and closes; a failure is shown and the status read again.
+     */
+    private async Task UpdateLauncherAsync()
+    {
+        if (updating is not null)
+        {
+            return;
+        }
+        var exePath = Environment.ProcessPath;
+        if (exePath is null)
+        {
+            MessageBox.Show(this, "Erreur : chemin du lanceur inconnu.", "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+        using var source = new CancellationTokenSource();
+        updating = source;
+        Display(StatusView.Updating(current));
+        ShowProgress(ProgressView.Starting());
+        progressPanel.Visible = true;
+        var progress = new Progress<LauncherProgress>(p =>
+        {
+            if (!source.IsCancellationRequested && !IsDisposed)
+            {
+                ShowProgress(ProgressView.FromLauncher(p));
+            }
+        });
+        LauncherUpdateResult result;
+        try
+        {
+            result = await Task.Run(() => RunLauncherUpdateAsync(exePath, progress, source.Token));
+        }
+        finally
+        {
+            updating = null;
+        }
+        if (IsDisposed)
+        {
+            return;
+        }
+        progressPanel.Visible = false;
+        if (result.Success)
+        {
+            try
+            {
+                var start = new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = false };
+                foreach (var argument in LauncherUpdater.RestartArguments(Environment.GetCommandLineArgs().Skip(1)))
+                {
+                    start.ArgumentList.Add(argument);
+                }
+                System.Diagnostics.Process.Start(start)?.Dispose();
+                Close();
+                return;
+            }
+            catch (Exception e) when (e is System.ComponentModel.Win32Exception or IOException)
+            {
+                result = new LauncherUpdateResult(false, $"{result.Message} Relancez-le à la main ({e.Message}).");
+            }
+        }
+        MessageBox.Show(this, result.Message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        await RefreshStatusAsync();
+    }
+
+    private async Task<LauncherUpdateResult> RunLauncherUpdateAsync(string exePath, IProgress<LauncherProgress> progress,
+        CancellationToken token)
+    {
+        ManagerServer server;
+        try
+        {
+            server = GameServers.ReadFirst(Options.GameDir);
+        }
+        catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return new LauncherUpdateResult(false, $"Erreur : {e.Message}");
+        }
+        return await new LauncherUpdater(downloads, server.Url, exePath).UpdateAsync(progress, token);
     }
 
     /** Reads servers.json and /versions/latest again (the status may be old), then runs the update in the background. */
@@ -182,6 +274,27 @@ public sealed class MainForm : Form
         return await new GameUpdater(downloads).UpdateAsync(Options.GameDir, server.Url, latest.Latest, progress, token);
     }
 
+    /** Asks the confirmation if any, starts the game, then closes (decision L8); a failure is shown, the launcher stays. */
+    private void Play()
+    {
+        if (updating is not null || !current.PlayEnabled)
+        {
+            return;
+        }
+        if (current.PlayConfirmation is { } question
+            && MessageBox.Show(this, question, "Heroes of Liberty", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+        {
+            return;
+        }
+        var result = GameLauncher.Start(Options.GameDir);
+        if (result.Success)
+        {
+            Close();
+            return;
+        }
+        MessageBox.Show(this, result.Message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    }
+
     private void CancelUpdate()
     {
         updating?.Cancel();
@@ -208,12 +321,10 @@ public sealed class MainForm : Form
         launcher.Text = view.LauncherText;
         play.Enabled = view.PlayEnabled;
         updateGame.Enabled = view.UpdateGameEnabled;
+        updateGame.Text = view.UpdateGameText;
         updateLauncher.Enabled = view.UpdateLauncherEnabled;
         refresh.Enabled = view.RefreshEnabled;
     }
-
-    private void Coming(string message)
-        => MessageBox.Show(this, message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
     private static Label NewLabel(string text = "") => new()
     {

@@ -48,4 +48,21 @@ public class ProgressViewTests
         Assert.Equal(25, view.Percent);
         Assert.False(view.CancelEnabled);
     }
+
+    [Fact]
+    public void LauncherDownloadShowsMegabytesOfTheTotal()
+    {
+        var view = ProgressView.FromLauncher(new LauncherProgress("2", 13_002_342, 75_183_104));
+        Assert.Equal("Lanceur version 2 : 12,4 / 71,7 Mo", view.Text);
+        Assert.Equal(17, view.Percent);
+        Assert.True(view.CancelEnabled);
+    }
+
+    [Fact]
+    public void LauncherDownloadWithoutTotalStaysAtZero()
+    {
+        var view = ProgressView.FromLauncher(new LauncherProgress("2", 1_048_576, null));
+        Assert.Equal("Lanceur version 2 : 1,0 Mo", view.Text);
+        Assert.Equal(0, view.Percent);
+    }
 }

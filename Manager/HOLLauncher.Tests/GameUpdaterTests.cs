@@ -110,8 +110,24 @@ public class GameUpdaterTests
         return published;
     }
 
-    private static Task<UpdateResult> Update(TempDir game, Published published, string? hpatchz = null)
-        => new GameUpdater(published.Client(), hpatchz ?? HDiffPatchTool.Hpatchz).UpdateAsync(game.Root, Manager, published.Latest);
+    private static Task<UpdateResult> Update(TempDir game, Published published, string? hpatchz = null,
+        Func<string, long>? freeSpace = null)
+        => new GameUpdater(published.Client(), hpatchz ?? HDiffPatchTool.Hpatchz, freeSpace ?? (_ => long.MaxValue))
+            .UpdateAsync(game.Root, Manager, published.Latest);
+
+    /** A friend's first install (L9): only the kit (launcher, patcher, servers.json aimed at the user), no Version.txt. */
+    private static TempDir KitOnly()
+    {
+        var game = new TempDir();
+        game.Write("HOLLauncher.exe", "kit launcher");
+        game.Write("hpatchz.exe", "patcher");
+        game.Write("servers.json", """{ "servers": [ { "name": "Ami", "url": "http://friend:7700" } ] }""");
+        return game;
+    }
+
+    /** The bytes a full install of Published needs: the final sizes of what it downloads (servers.json is the kit's). */
+    private static long FinalBytes(Published published)
+        => published.Files.Where(f => !UpdatePlan.IsLauncherOwned(f.Key)).Sum(f => (long)f.Value.Length);
 
     private static string Read(TempDir game, string path) => File.ReadAllText(Path.Combine(game.Root, path));
 
@@ -293,5 +309,81 @@ public class GameUpdaterTests
         Assert.False(Exists(game, "Data/New.pak"));
         Assert.True(Exists(game, "Data/Old.pak"));
         Assert.Equal("v1", Read(game, "Version.txt"));
+    }
+
+    [Fact]
+    public async Task LauncherUpdateFilesAreNeverDeleted()
+    {
+        using var game = InstalledGame();
+        string[] names = ["HOLLauncher.new.exe", "HOLLauncher.new.exe.part", "HOLLauncher.old.exe"];
+        foreach (var name in names)
+        {
+            game.Write(name, name);
+        }
+        // Worst case: an installed.json that lists them (hand-edited, older launcher).
+        var list = VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root));
+        new VersionManifest("v1", [.. list.Files, .. names.Select(n => Entry(n, Text(n)))]).Save(UpdatePlan.InstalledListPath(game.Root));
+
+        var result = await Update(game, WithPatch());
+
+        Assert.True(result.Success, result.Message);
+        Assert.All(names, name => Assert.Equal(name, Read(game, name)));
+    }
+
+    [Fact]
+    public async Task FirstInstallInKitFolderDownloadsEverythingInFull()
+    {
+        using var game = KitOnly();
+        var published = WithPatch();
+
+        var result = await Update(game, published);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("v2", Read(game, "Version.txt"));
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.Equal("new pak", Read(game, "Data/New.pak"));
+        Assert.DoesNotContain(published.Requests, r => r.Contains("/patches/"));
+        Assert.Equal(["/versions/v2/files/Data/New.pak", "/versions/v2/files/Game.exe", "/versions/v2/files/Version.txt"],
+            published.Requests.Order(StringComparer.Ordinal));
+        Assert.Equal("kit launcher", Read(game, "HOLLauncher.exe"));
+        Assert.Equal("patcher", Read(game, "hpatchz.exe"));
+        Assert.Contains("friend", Read(game, "servers.json"));
+        var list = VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root));
+        Assert.Equal("v2", list.Version);
+        Assert.Equal(["Data/New.pak", "Game.exe", "Version.txt"], list.Files.Select(f => f.Path));
+        Assert.False(Directory.Exists(FileDownloader.TempDirFor(game.Root, "v2")));
+    }
+
+    [Fact]
+    public async Task NotEnoughDiskSpaceDownloadsNothing()
+    {
+        using var game = KitOnly();
+        var published = WithPatch();
+        string? asked = null;
+
+        var result = await Update(game, published, freeSpace: dir =>
+        {
+            asked = dir;
+            return FinalBytes(published) + GameUpdater.DiskMargin - 1;
+        });
+
+        Assert.False(result.Success);
+        Assert.StartsWith("Espace disque insuffisant", result.Message);
+        Assert.Equal(game.Root, asked);
+        Assert.Empty(published.Requests);
+        Assert.False(Exists(game, "Version.txt"));
+        Assert.False(Directory.Exists(Path.Combine(game.Root, UpdatePlan.WorkDirName)));
+    }
+
+    [Fact]
+    public async Task JustEnoughDiskSpaceInstalls()
+    {
+        using var game = KitOnly();
+        var published = WithPatch();
+
+        var result = await Update(game, published, freeSpace: _ => FinalBytes(published) + GameUpdater.DiskMargin);
+
+        Assert.True(result.Success, result.Message);
+        Assert.Equal("v2", Read(game, "Version.txt"));
     }
 }

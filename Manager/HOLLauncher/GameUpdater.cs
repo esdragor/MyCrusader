@@ -3,13 +3,24 @@ namespace HOLLauncher;
 /** The end of an update, for the window: success, or an error message for the player. */
 public sealed record UpdateResult(bool Success, string Message);
 
+/** No room on the game folder's disk for an update (L9): said before anything is downloaded. */
+public sealed class NotEnoughSpaceException(string message) : Exception(message);
+
 /**
  * A whole game update (L6b): plan (scan, installed.json, servers.json), downloads into <game>/.holupdate/<v>/, patches
  * applied with hpatchz (a patch that fails: the full file), then UpdateApplier. Never throws to the window: every
  * failure becomes an UpdateResult with a message; what was downloaded stays in the work folder for the next try.
+ * A first install (L9) is the same update from an empty list: every file in full. Before any download, the free space
+ * of the game folder's disk (freeSpace, injected by the tests) must hold the final size of every file to fetch plus
+ * DiskMargin; less: a message, nothing fetched.
  */
-public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
+public sealed class GameUpdater(HttpClient http, string? hpatchz = null, Func<string, long>? freeSpace = null)
 {
+    /** Room kept on top of the files' final sizes (the gzipped downloads, the patches, Windows itself): 200 MB. */
+    public const long DiskMargin = 200L * 1024 * 1024;
+
+    private static readonly System.Globalization.CultureInfo French = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+
     private readonly PatchApplier patcher = new(hpatchz ?? PatchApplier.DefaultHpatchz);
 
     public async Task<UpdateResult> UpdateAsync(string gameDir, string managerUrl, LatestVersion latest,
@@ -18,6 +29,7 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
         try
         {
             var plan = await Task.Run(() => UpdatePlan.ForGame(gameDir, latest), cancel);
+            CheckFreeSpace(gameDir, plan);
             var tempDir = FileDownloader.TempDirFor(gameDir, plan.Version);
             var downloader = new FileDownloader(http, managerUrl, tempDir);
             long received = 0;
@@ -41,6 +53,10 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
         {
             return new UpdateResult(false, "Mise à jour annulée ; elle reprendra où elle s'est arrêtée.");
         }
+        catch (NotEnoughSpaceException e)
+        {
+            return new UpdateResult(false, e.Message);
+        }
         catch (GameLockedException e)
         {
             return new UpdateResult(false, e.Message);
@@ -54,6 +70,34 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null)
             return new UpdateResult(false, $"Mise à jour interrompue : {e.Message} ; relancez-la.");
         }
     }
+
+    /** Every planned file at its final size (a patched file too: it is rebuilt beside the old one), plus DiskMargin. */
+    private void CheckFreeSpace(string gameDir, UpdatePlan plan)
+    {
+        var needed = plan.Downloads.Sum(d => d.File.Size) + DiskMargin;
+        var free = (freeSpace ?? FreeSpace)(gameDir);
+        if (free < needed)
+        {
+            throw new NotEnoughSpaceException(
+                $"Espace disque insuffisant : il faut {Gigabytes(needed)} Go libres pour la version {plan.Version}, " +
+                $"le disque de {gameDir} n'en a que {Gigabytes(free)}. Libérez de la place puis relancez.");
+        }
+    }
+
+    /** The free space of the disk holding the folder; unknown (a network path...): no check. */
+    private static long FreeSpace(string folder)
+    {
+        try
+        {
+            return new DriveInfo(Path.GetPathRoot(Path.GetFullPath(folder))!).AvailableFreeSpace;
+        }
+        catch (Exception e) when (e is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            return long.MaxValue;
+        }
+    }
+
+    private static string Gigabytes(long bytes) => (bytes / (1024.0 * 1024 * 1024)).ToString("0.0", French);
 
     private async Task<ReadyFile> PatchOrFullAsync(
         string gameDir, string tempDir, FileDownloader downloader, DownloadResult patch,
