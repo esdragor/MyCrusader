@@ -22,6 +22,8 @@ enum class EHOLDefeatReason : uint8
 	Cheat,
 	/** V2 (D349): its main forum fell with no life left. */
 	Forum,
+	/** V5.2 (Regicide, D355): its King died. */
+	King,
 };
 
 /**
@@ -123,6 +125,15 @@ public:
 	bool HandleForumFall(AHOLBuilding& Forum);
 
 	/**
+	 * V5.2, server only (Regicide, D355), by the combat processor when a King starts dying (UHOLCombatProcessor::KillUnit):
+	 * the slot's King died (true; false: a slot already defeated, its death already counted, out of the match, or the match
+	 * over: the collapse of a defeated slot kills its King without a second defeat). A KingDied event sent at once, the slot
+	 * defeated (reason King) at the end of the step, as the forum's last fall. A slot without King never loses this way.
+	 * Logs "Regicide: king of slot N died".
+	 */
+	bool HandleKingDeath(int32 Slot);
+
+	/**
 	 * Server only, cheat (hol.Victory.SkipRuin): the slot's forum leaves its phase at once (ruin -> rebuilding, rebuilding ->
 	 * rebuilt). False when it stands.
 	 */
@@ -217,6 +228,8 @@ private:
 
 	/** Server only, bit Slot: its forum fell with no life left, its defeat waits for the end of the step. */
 	uint8 PendingForumDefeats = 0;
+	/** Server only, bit Slot: its King died (V5.2), its defeat waits for the end of the step. */
+	uint8 PendingKingDefeats = 0;
 
 	/** Server only (V4.2): per slot's forum, a bit per attacker whose hold was announced (HOLForumMessages::ShouldAnnounceHold). */
 	uint8 ForumHoldAnnounced[FHOLMatchConfig::MaxSlots] = {};

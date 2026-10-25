@@ -29,12 +29,29 @@ enum class EHOLArmorCategory : uint8
 	/** Cross-cutting tag of the units in heavy armour (D428, AoE4's Heavy), added to their other categories: what the
 	 * Crossbowman's one bonus aims at. */
 	Heavy,
+	/**
+	 * The King of Regicide (V5.1, D206 revised by the user on 2026-10-25): never healed. No healing exists yet; the ones to
+	 * come (the Monk, the auras) skip a unit of this category (HOLCanBeHealed). Aimed at by no bonus for now.
+	 */
+	King,
 };
 
 /** Bit of a category in FHOLUnitTypeConstants::ArmorCategoryMask (D345: a unit has 1 to any number of categories). */
 inline int32 HOLArmorCategoryBit(const EHOLArmorCategory Category)
 {
 	return 1 << static_cast<int32>(Category);
+}
+
+/** Whether a healing may aim at a unit of these categories (V5.1): never the King. Read by the healings to come. */
+inline bool HOLCanBeHealed(const int32 ArmorCategoryMask)
+{
+	return (ArmorCategoryMask & HOLArmorCategoryBit(EHOLArmorCategory::King)) == 0;
+}
+
+/** Whether a unit of these categories is a King (V5.2: its death defeats its slot, AHOLGameState::HandleKingDeath). */
+inline bool HOLIsKing(const int32 ArmorCategoryMask)
+{
+	return (ArmorCategoryMask & HOLArmorCategoryBit(EHOLArmorCategory::King)) != 0;
 }
 
 /**
@@ -319,6 +336,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	float AggressionRadius = 0.f;
 
+	/** With no AggressionRadius, it still takes on the enemy unit hitting it (V5.1, the King), never one by itself. */
+	UPROPERTY()
+	bool bRipostes = false;
+
 	/** Its attack against a building (D345.2b): type, damage (0: it cannot hit buildings), interval (s), reach (cm, its edge to the body's box). */
 	UPROPERTY()
 	EHOLAttackType BuildingAttackType = EHOLAttackType::Melee;
@@ -553,6 +574,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	float AggressionRadius = 0.f;
 
 	/**
+	 * It strikes back at the enemy unit hitting it (column Ripostes). Only read with no AggressionRadius (a unit with one
+	 * ripostes anyway): the King (V5.1) ripostes but never takes on an enemy by itself; the Peasant does neither.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	bool Ripostes = false;
+
+	/**
 	 * Its attack against a building (D345.2b, always this one against a building): its type (the building's armour of that
 	 * type taken off, HOLConstruction::GetBuildingDamage), damage (0: it never attacks a building), interval (s) and reach
 	 * (cm, from its body's edge to the building's body box, D324).
@@ -615,6 +643,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.HeroArmor = HeroArmor;
 	Constants.Bonuses = Bonuses;
 	Constants.AggressionRadius = AggressionRadius;
+	Constants.bRipostes = Ripostes;
 	Constants.BuildingAttackType = BuildingAttackType;
 	Constants.BuildingAttack = BuildingAttack;
 	Constants.BuildingAttackInterval = BuildingAttackInterval;

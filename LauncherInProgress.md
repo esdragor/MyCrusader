@@ -47,7 +47,7 @@ Questions tranchées le 2026-10-25 (à reporter au GDD à la clôture, numéros 
 | Q | Décision |
 |---|---|
 | L-Q1 | Versions **sur le PC de l'utilisateur**, servies en HTTP par le gestionnaire de salons, par Tailscale |
-| L-Q2 | **Liste des fichiers avec empreinte** (SHA-256), seuls les changés téléchargés, **contenu découpé en chunks** |
+| L-Q2 | **Liste des fichiers avec empreinte** (SHA-256), seuls les changés téléchargés ; *revue après L0 (L-Q2 bis = C)* : **pas de chunks pour l'instant**, fichiers **compressés au transfert**, et **correctifs binaires** des fichiers changés (l'exe surtout), le fichier complet en secours ; *outil après L3* : **HDiffPatch** (`hdiffz` à la publication, `hpatchz` livré avec le lanceur ; exe : 8,3 Mo au lieu de 124 Mo gzip) |
 | L-Q3 | **C# (.NET 8), WinForms**, un seul `.exe` autonome, code commun avec le gestionnaire |
 | L-Q4 | Versions installée / disponible, progression, **nouveautés**, « Jouer », **« Mettre à jour le jeu »** et **« Mettre à jour le lanceur »** ; pas d'état du serveur (il est dans le jeu) |
 | L-Q5 | **Script de publication** dans `Tools/` (empaqueter, chunks, liste, nouveautés, dossier des versions du gestionnaire) ; le lanceur ne sert qu'aux joueurs |
@@ -61,11 +61,11 @@ après accord de cette session ou après la fusion de ses étapes en cours.
 |---|---|---|
 | L0 Mesure | deux empaquetages successifs (`Tools/Package/package.ps1`), le second après un changement de code seul : quels fichiers changent, leur taille | tableau dans ce journal ; découpage décidé |
 | L1 Bibliothèque commune | `Manager/HOLUpdate` : liste d'un dossier (chemin, taille, SHA-256), différence entre deux listes (à télécharger, à supprimer), lecture / écriture JSON | tests verts |
-| L2 Routes du gestionnaire | `GET /versions/latest` (version, liste, nouveautés, version du lanceur), `GET /versions/{v}/files/{chemin}` (reprise par `Range`), `GET /launcher/latest` ; `PROTOCOL.md` et sa version | tests verts |
-| L3 Chunks | réglage d'empaquetage (`bGenerateChunks`, étiquettes d'assets primaires) selon L0 ; contrôle de fumée du jeu empaqueté | `packaged_smoke` vert, paquets séparés |
-| L4 Publication | `Tools/Package/publish.ps1` : `package.ps1`, liste par `HOLUpdate`, `Nouveautes.txt`, copie dans le dossier des versions, « dernière » marquée, N anciennes gardées ; les nouveaux serveurs de partie partent de la dernière, ceux en cours finissent sur la leur | deux versions publiées de suite |
+| L2 Routes du gestionnaire | `GET /versions/latest` (version, liste, nouveautés, version du lanceur, correctifs disponibles depuis les versions gardées), `GET /versions/{v}/files/{chemin}` (compressé, reprise par `Range`), `GET /versions/{v}/patches/{depuis}/{chemin}`, `GET /launcher/latest` ; `PROTOCOL.md` et sa version | tests verts |
+| L3 Mesures (revue après L0) | (a) un changement de contenu (un asset, une table) : réécrit-il tout le `.ucas` ? (b) correctif binaire de l'exe entre deux versions de code : taille et durée avec `xdelta3`, `msdelta` (Windows, lisible depuis C#) et `HDiffPatch` ; outil choisi. Chunks seulement si (a) le demande | tableau ici, outil choisi |
+| L4 Publication | `Tools/Package/publish.ps1` : `package.ps1`, liste par `HOLUpdate`, `Nouveautes.txt`, copie dans le dossier des versions, « dernière » marquée, N anciennes gardées, **correctifs des fichiers changés depuis chacune** (outil de L3), fichiers compressés ; les nouveaux serveurs de partie partent de la dernière, ceux en cours finissent sur la leur | deux versions publiées de suite, correctif présent |
 | L5 Squelette du lanceur | `Manager/HOLLauncher` (WinForms, un seul exe autonome) : adresse lue dans le `servers.json` du jeu (M6-Q5), fenêtre (versions, nouveautés, « Jouer », deux boutons) | fenêtre qui lit `/versions/latest` |
-| L6 Mise à jour du jeu | différence, téléchargement dans un dossier temporaire, empreinte vérifiée, remplacement, fichiers retirés supprimés, barre de progression, reprise après coupure | tests verts avec `FakeServer` |
+| L6 Mise à jour du jeu | différence, téléchargement dans un dossier temporaire (**correctif si la version installée en a un, sinon fichier complet compressé**), correctif appliqué, empreinte vérifiée (échec : fichier complet), remplacement, fichiers retirés supprimés, barre de progression, reprise après coupure | tests verts avec `FakeServer` (correctif, secours) |
 | L7 Mise à jour du lanceur | nouvel exe téléchargé à côté, exe en cours renommé, relance, ancien supprimé au démarrage suivant | test vert |
 | L8 Jouer | lance le jeu ; jeu en retard : permis, avec l'avertissement « le serveur refusera cette version » | test vert |
 | L9 Première installation | dossier vide : tout télécharger ; consigne en 3 lignes pour les amis | test vert |
@@ -91,3 +91,121 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   jour existe ; « Jouer » reste permis avec un jeu en retard (solo), en prévenant que le serveur le refusera (M6-Q1).
   **L-Q5 = A** (conforme) : script de publication dans `Tools/`. Toutes les questions tranchées ; plan écrit
   (L0-L10). Rien codé.
+- 2026-10-25 : **L0 lancée** (feu vert de l'utilisateur), dans Elrond (`build-site-leftover` = `main` fb462ff,
+  `IN_USE.txt` posé), en sous-agent. Trois empaquetages : `L0-a` (fb462ff), `L0-a2` (même code, rien changé : la
+  cuisson et les `.pak` sont-ils identiques octet pour octet ?), `L0-b` (un changement de code seul, non commité). Pour
+  chacun, liste du dossier joueur `Windows\` (chemin, taille, SHA-256, `.pdb` à part) ; comparaison a/a2 et a/b ici.
+- 2026-10-25 : L0 : empaquetage `L0-a` (fb462ff tel quel) lancé dans Elrond, en tâche de fond (`package.ps1 -Version L0-a`).
+- 2026-10-25 : L0 : `L0-a` PASS en 4,5 min (cuisson déjà faite dans Elrond) : `Windows\` 3188 Mo, `WindowsServer\` 3025 Mo.
+  Liste de `L0-a` en cours, puis `L0-a2` (même code, rien changé).
+- 2026-10-25 : L0 : `L0-a2` PASS en 1,4 min. Listes a et a2 faites (50 fichiers, 620,5 Mo hors `.pdb` ; un `.pdb` de
+  2568 Mo). **a/a2 : 3 fichiers changés** (`Version.txt`, deux `Manifest_*.txt`), 0,25 Mo : `.pak/.ucas/.utoc` et exe
+  identiques octet pour octet. Puis `L0-b` (texte d'un `UE_LOG` de `HeroesOfLibertyGameModeBase.cpp`).
+- 2026-10-25 : L0 : `L0-b` PASS en 3,7 min (changement d'un texte de `UE_LOG`, fichier remis ensuite). Liste faite.
+- 2026-10-25 : **L0 close.** Dossier joueur `Windows\` : 50 fichiers, 620,5 Mo hors `.pdb` (+ `HeroesOfLiberty.pdb`
+  2568 Mo, jamais aux joueurs). Contenu cuit en **IoStore, un seul paquet, pas de chunks** (`bGenerateChunks` éteint) :
+  `HeroesOfLiberty-Windows.ucas` 129,6 Mo, `.utoc` 0,1 Mo, `.pak` 24,7 Mo (fichiers hors IoStore), `global.ucas`
+  3,3 Mo ; soit ~158 Mo de contenu. Le reste : exe du jeu **332 Mo** (Development, monolithique), DLL et redist ~120 Mo.
+
+  | Comparaison | Changés (hors `.pdb`) | À télécharger / total hors `.pdb` |
+  |---|---|---|
+  | a / a2 (rien changé) | 3 : `Version.txt`, `Manifest_NonUFSFiles`, `Manifest_UFSFiles` (dates) | 0,25 / 620,5 Mo (0,04 %) |
+  | a / b (code seul) | 5 : les mêmes + `Manifest_DebugFiles` + `HeroesOfLiberty.exe` | 332,2 / 620,5 Mo (54 %) |
+
+  Cuisson **déterministe** : sans changement, `.pak/.ucas/.utoc` et exe identiques octet pour octet ; un changement de
+  code seul ne touche pas le contenu cuit. Le poids d'une version de code est **l'exe** : il grandit de 1,5 Ko, tout
+  se décale, 97 % de ses blocs de 64 Ko diffèrent (100 % en blocs de 1 Mo) ; compressé (gzip) : 124 Mo.
+  **Proposition pour L3** : découper le contenu en chunks est **inutile pour l'instant** (158 Mo, intact d'une version
+  de code à l'autre, déjà sauté par la liste d'empreintes). À la place : fichiers compressés au transfert (gzip,
+  exe 332 → 124 Mo) dès L2/L6 ; L3 devient une mesure d'un changement de contenu, et les chunks seulement si un petit
+  changement d'asset réécrit tout le `.ucas` (130 Mo). **Incertain** : changement de contenu (non mesuré) ; exe en
+  Shipping (sûrement plus petit, mais tests et journaux à vérifier) ; un delta binaire de l'exe (msdelta, xdelta)
+  serait bien plus petit, non mesuré ; serveur non comparé (exe 313 Mo, `.ucas` 102 Mo, même schéma attendu).
+  Listes JSON et comparaisons dans le scratchpad de la session (`L0\`) ; archives `L0-*` supprimées d'Elrond.
+- 2026-10-25 : Elrond libéré (`IN_USE.txt` retiré, `build-site-leftover` = `main` fb462ff, propre). Question posée à
+  l'utilisateur : suivre la proposition de L0 (pas de chunks pour l'instant, compression au transfert, L3 = mesure
+  d'un changement de contenu) ou garder les chunks de L-Q2.
+- 2026-10-25 : **L-Q2 bis = C** (choix de l'utilisateur ; recommandation A) : pas de chunks pour l'instant,
+  compression au transfert, **et correctifs binaires dès maintenant** (une version de code : quelques Mo au lieu de
+  124 Mo compressés, à confirmer). Plan revu : L2 (routes des correctifs), L3 (mesures : changement de contenu,
+  taille des correctifs de l'exe avec xdelta3 / msdelta / HDiffPatch, outil choisi), L4 (correctifs depuis les N
+  versions gardées), L6 (appliquer, vérifier l'empreinte, fichier complet en secours). Prochaine étape : L1.
+- 2026-10-25 : **L1 lancée** (« go »), dans Elrond, branche `launcher-l1` = `main` 520f6ad, `IN_USE.txt` posé, en
+  sous-agent : `Manager/HOLUpdate` (bibliothèque .NET 8 : liste d'un dossier, différence, JSON) et
+  `Manager/HOLUpdate.Tests` (xUnit, rouge d'abord), ajoutés à `HOLManager.sln` ; le gestionnaire n'y est pas encore
+  branché (L2).
+- 2026-10-25 : L1 : projets créés dans Elrond : `Manager/HOLUpdate` (bibliothèque net8.0) et `HOLUpdate.Tests` (xUnit,
+  mêmes paquets que `HOLManager.Tests`), ajoutés à `HOLManager.sln`. Tests rouges en cours d'écriture.
+- 2026-10-25 : L1 : **27 tests rouges** constatés (`dotnet test` sur `HOLUpdate.Tests`, types en `NotImplementedException`) :
+  liste d'un vrai dossier temporaire, `.pdb` exclu, ordre ordinal, JSON aller-retour, différence (casse ignorée).
+- 2026-10-25 : L1 : **vert**, 27/27 (`HOLUpdate.Tests`) et 173/173 (`HOLManager.Tests`), `dotnet test HOLManager.sln` 8 s.
+  **L1 close** (non commitée, branche `launcher-l1` d'Elrond) : `FileEntry`, `VersionManifest`, `ManifestBuilder`, `ManifestDiff`.
+- 2026-10-25 : L1 relue par la session principale : `dotnet test HOLManager.sln` repassé (27/27 + 173/173) ;
+  `HOLManager.sln` ramené à l'ajout des deux projets (+12 lignes, en Any CPU seulement, au lieu des +59 / −3 de
+  `dotnet sln add` qui ajoutait x64 / x86 : moins de conflits avec la session réseau), tests repassés. **L1 faite,
+  non commitée** : attend l'accord de l'utilisateur (absent). Ensuite : L2, à coordonner avec la session réseau
+  (`Manager/HOLManager`).
+- 2026-10-25 : **L1 commitée** (accord de l'utilisateur) : `launcher-l1` rebasée sur `main`, `main` avancée à
+  ad69a0c (avance rapide). L2 : accord demandé à la session réseau (elle travaille dans `Manager/HOLManager`).
+- 2026-10-25 : **L2 lancée** (« go » de l'utilisateur). Session réseau fermée (pas d'accord possible) ; son travail non
+  commité dans Glorfindel touche `ManagerSettings.cs`, `PROTOCOL.md`, `Lobbies/`, `Matches/MatchConfig.cs` : L2 se
+  tient à l'écart (routes dans un fichier à part, une ligne dans `Program.cs`, section en fin de `PROTOCOL.md`,
+  réglages à part si possible). Elrond, branche `launcher-l2` = `main` e247f12, `IN_USE.txt` posé, en sous-agent.
+  Disposition du dossier des versions (fixée ici) : `<versions>/latest.txt` (nom de la dernière),
+  `<versions>/<v>/manifest.json` (liste HOLUpdate), `<v>/notes.txt` (nouveautés), `<v>/files/<chemin>.gz` (fichier
+  compressé à la publication, L4 : pas de compression à la volée, la reprise par `Range` porte sur le `.gz`),
+  `<v>/patches/<depuis>/<chemin>.patch` (L3/L4), `<versions>/launcher/latest.txt` et `launcher/<lv>/HOLLauncher.exe`.
+- 2026-10-25 : L2 : référence HOLUpdate ajoutée à HOLManager.csproj ; `VersionRoutesTests` écrit (25 cas, vrai dossier de
+  versions, ManifestBuilder + GZipStream) : **rouge** 20/25 (les 5 « nom invalide » passent déjà : pas de route, 404).
+- 2026-10-25 : L2 : **vert** : `Versions/VersionStore`, `VersionSettings` (VersionsDir), `Api/VersionRoutes` ; 3 lignes dans
+  Program.cs. `dotnet test HOLManager.sln` : 27/27 + 199/199 (26 de L2). Reste : section en fin de PROTOCOL.md.
+- 2026-10-25 : **L2 close** (non commitée, `launcher-l2` d'Elrond) : section « Versions du jeu (lanceur, L2) » en fin de
+  PROTOCOL.md (protocolVersion inchangé, `format` 1 propre à /versions/latest) ; lanceur : en-têtes X-Launcher-Version/-Sha256.
+- 2026-10-25 : L2 relue par la session principale : `dotnet test HOLManager.sln` repassé (27/27 + 199/199) ; garde
+  des chemins vue (entrée exacte de la liste, déjà vérifiée par `FromJson`, puis fichier résolu sous le dossier de la
+  version ; noms de version filtrés) ; existants touchés : `Program.cs` +5, `HOLManager.csproj` +4, `PROTOCOL.md` +69
+  (fin). **L2 faite, non commitée** : attend l'accord de l'utilisateur. Fusion : conflits possibles avec la session
+  réseau sur `Program.cs` / `PROTOCOL.md` (ajouts seulement, faciles). Suivant : L3 (mesures).
+- 2026-10-25 : **L2 commitée** (accord de l'utilisateur), `main` avancée par avance rapide. **L3 lancée** (« go »),
+  Elrond, branche `launcher-l3`, en sous-agent : (a) changement de contenu, (b) correctifs de l'exe (xdelta3, msdelta,
+  HDiffPatch ; outils téléchargés dans un dossier temporaire à part).
+- 2026-10-25 : L3 : outils prêts (xdelta3 3.2.2, HDiffPatch 5.1.3 des releases GitHub ; msdelta.dll par P/Invoke),
+  banc d'essai vérifié sur petits fichiers (SHA-256 identique). `L3-a` (main tel quel) en cours d'empaquetage.
+- 2026-10-25 : L3 : `L3-a` PASS en 4,4 min, liste faite (50 fichiers, 621,6 Mo). (a) : `SourceTypes.csv` Arbre 100 → 101
+  bois, réimport par `Tools/Editor/make_source_types.py` (chemin officiel : CSV → DataTable `.uasset`) en cours.
+- 2026-10-25 : L3 : `L3-b` PASS, liste faite. a/b : 5 fichiers changés : `.ucas` (130,4 Mo, **1 bloc de 64 Ko sur 2087**,
+  1 octet), `.utoc`, `Version.txt`, 2 manifestes ; exe identique. CSV et `.uasset` remis (`git checkout`). `L3-c` lancé.
+- 2026-10-25 : L3 : `L3-c` PASS (texte d'un `UE_LOG` de `HeroesOfLibertyGameModeBase.cpp`, remis ensuite), liste faite ;
+  a/c : exe + 4 petits fichiers. Correctifs de l'exe a → c en cours (xdelta3, msdelta, HDiffPatch).
+- 2026-10-25 : **L3 close.** Empaquetages : `L3-a` 4,4 min, `L3-b` 1,2 min, `L3-c` 4,6 min (tous PASS).
+  **(a) Contenu** : `SourceTypes.csv` Arbre 100 → 101, réimport `make_source_types.py` (commandlet, 0,2 min) :
+
+  | a / b (une valeur d'une table) | Résultat |
+  |---|---|
+  | Fichiers changés | `.ucas` 130,4 Mo, `.utoc` 0,14 Mo, `Version.txt`, 2 manifestes ; exe et `.pak` identiques |
+  | `.ucas` | même taille, **1 octet** différent : 1 bloc de 64 Ko sur 2087 ; gzip inutile (130 → 129 Mo) |
+  | Correctif du `.ucas` | xdelta3 709 octets, HDiffPatch 46 octets (SHA-256 identique) ; msdelta refuse (> 32 Mo) |
+
+  **(b) Exe** a → c (332,3 Mo, un texte de `UE_LOG` ; plein : 332 Mo, gzip 124 Mo) :
+
+  | Outil | Correctif | Création | Application | Mémoire créa. / appl. | SHA-256 |
+  |---|---|---|---|---|---|
+  | xdelta3 3.2.2 `-9 -B 512M` | 28,9 Mo | 39 s | 2,3 s | 1,3 Go / 0,5 Go | identique |
+  | msdelta (Windows) | — : **refuse tout fichier > 32 Mo** (erreur 13, mesuré : 32 Mo OK, 33 Mo non) | | | | |
+  | HDiffPatch 5.1.3 `-m-6 -SD -c-zstd-21-24` | **8,3 Mo** | 38 s | 0,3 s | 1,6 Go / ~30 Mo | identique |
+
+  Sur les 32 premiers Mo de l'exe (seul cas possible pour msdelta) : HDiffPatch 0,26 Mo / 1 s, msdelta 0,89 Mo / 60 s,
+  xdelta3 1,30 Mo / 4 s ; les trois identiques. **Outil recommandé pour L4/L6 : HDiffPatch** (le plus petit partout,
+  application rapide et peu gourmande, vérifiée) : `hdiffz.exe` (1,5 Mo) dans le script de publication, `hpatchz.exe`
+  (0,5 Mo) livré avec le lanceur et appelé en processus depuis C# (licence MIT) ; msdelta, bien qu'intégré à Windows,
+  est exclu (32 Mo max : il faudrait découper l'exe, et il est 3 à 60 fois moins bon). **Chunks : non justifiés** :
+  un changement de table ne touche que quelques octets du `.ucas`, que le correctif binaire réduit à presque rien.
+  Le projet est remis (CSV, `.uasset`, `.cpp` par `git checkout`) ; archives `L3-*` supprimées ; listes, résultats et
+  scripts dans le scratchpad de la session (`L3\lists`, `L3\results`, `L3\scripts`).
+- 2026-10-25 : Elrond libéré (`IN_USE.txt` retiré ; `launcher-l3` = `main` 08cfa75, propre). Proposé à l'utilisateur :
+  **HDiffPatch** comme outil des correctifs (L4 `hdiffz`, L6 `hpatchz` livré avec le lanceur), pas de chunks.
+- 2026-10-25 : **HDiffPatch retenu** (accord de l'utilisateur, « fais les 3 ») ; pas de chunks (L3 : inutile). **L4
+  lancée**, découpée : **L4a** = `Manager/HOLPublish` (outil C# : liste par HOLUpdate, `.gz`, correctifs `hdiffz`
+  depuis les N versions gardées, dossier écrit à part puis renommé, `latest.txt` en dernier, élagage), tests sur de
+  vrais dossiers ; **L4b** = `Tools/Package/publish.ps1` (empaquette ou prend une archive, appelle HOLPublish, dossier
+  serveur du gestionnaire) et essai bout à bout sur deux vrais empaquetages.

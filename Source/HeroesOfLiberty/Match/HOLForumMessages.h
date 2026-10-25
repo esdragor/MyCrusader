@@ -20,6 +20,8 @@ enum class EHOLForumEventKind : uint8
 	Razed,
 	/** A slot defeated, whatever the reason. */
 	Defeated,
+	/** V5.2 (Regicide, D355): a slot's King died; its defeat (reason King) follows at the end of the step. */
+	KingDied,
 };
 
 /** V4.1: one event, sent once by the server to every machine (AHOLGameState::MulticastForumEvent). */

@@ -1,0 +1,50 @@
+# Régicide (V5.5) : ton Roi (couronne d'or, grille « Arrêt » seule), pas de cible d'office, riposte, attaque-déplacement = déplacement pour lui, rien contre un bâtiment, mort du Roi adverse = Victoire
+# Plain, 1 contre 1 IA, option Régicide cochée (regicide.json : "bRegicide": true). Chaque camp n'a que son Roi au départ,
+# né derrière son forum (le mien à (-15935, 0), soit (-1135, 0) dans le repère de mon centre, X vers le milieu de la carte).
+# Positions : hol.Camera.FocusNear / hol.Cheat.SpawnBuilding dans le repère de mon centre (-14800, 0) ; hol.Units.Spawn,
+# hol.Units.Move et hol.Units.Remove en coordonnées du monde (cm). Le panneau du scénario couvre la place du bandeau
+# d'alerte ; aucune alerte ici (la mort du Roi adverse n'est qu'une ligne du fil pour moi).
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear -300 800
+hol.Camera.Zoom -2
+frames 5
+note Ton Roi est derrière ton forum, sous sa couronne d'or (chaque camp n'a que son Roi).
+note Entrée 1 : sélectionne-le : bloc « Roi », grille « Arrêt » seule (ni Q ni V) ; déplace-le d'un clic droit.
+waitkey Sélectionne ton Roi, déplace-le, puis Entrée 2 : des Paysans ennemis tout près
+# 2. Pas de cible d'office : le Roi ramené à sa place, 3 Paysans ennemis à ~3-4 m de lui (un Paysan ne prend jamais de
+# cible), 8 s : il ne bouge pas, personne ne frappe. Puis ils sont retirés.
+hol.Units.Move -15935 0 0
+wait 4
+hol.Units.Spawn 3 -15935 -450 1 Peasant 120
+waitunits 5
+note Entrée 2 : ton Roi est ramené ; 3 Paysans ennemis à 3-4 m de lui, 8 s : il ne bouge pas, ne frappe pas (pas de cible d'office).
+wait 8
+hol.Units.Remove -15935 0 2000 1 Peasant
+wait 1
+waitkey Entrée 3 : un Lancier ennemi frappe ton Roi
+# 3. Riposte : un Lancier ennemi (80 PV, rayon d'agressivité 16 m) né à ~6 m prend le Roi ; le Roi riposte (50 par coup) :
+# le Lancier meurt au 2e coup, le Roi garde ~240 PV.
+hol.Units.Spawn 1 -15935 -600 1 Spearman 10
+waitunits 3
+note Entrée 3 : un Lancier ennemi frappe ton Roi : il riposte et le tue en deux coups (50 d'attaque), sans le poursuivre au loin.
+wait 9
+waitkey Entrée 4 : tes soldats et des Lanciers ennemis, une Maison ennemie
+# 4. Attaque-déplacement d'un groupe mixte : 4 Hommes d'armes à moi à côté du Roi, 4 Lanciers ennemis ~32 m plus loin
+# (au-delà des 16 m d'agressivité), une Maison ennemie à côté du forum (~17 m du Roi). La caméra un peu en avant : le
+# panneau du scénario, qui grandit, laisse voir le Roi et la mêlée.
+hol.Units.Move -15935 0 0
+hol.Units.Spawn 4 -15935 700 0 ManAtArms 250
+hol.Units.Spawn 4 -15935 4000 1 Spearman 300
+waitunits 10
+hol.Cheat.SpawnBuilding House 1 -1800 -1600
+waitlog Cheat: spawned House of slot 1
+hol.Camera.FocusNear -300 1800
+frames 3
+note Entrée 4 : sélectionne ton Roi et tes 4 Hommes d'armes (cadre), Q puis clic au sol au-delà des Lanciers ennemis : les soldats combattent, le Roi marche sans attaquer (s'il est frappé, il riposte).
+note Ensuite le Roi seul, clic droit sur la Maison ennemie (rouge, à gauche de ton forum) : refusé, il ne bouge pas.
+waitkey Q avec le groupe, puis clic droit du Roi sur la Maison, puis Entrée 5 : le Roi adverse meurt
+# 5. Le Roi adverse tué (triche : il est à ~300 m) : « Le Roi de Joueur 2 est mort », « Joueur 2 est vaincu », Victoire.
+hol.Victory.KillKing 1
+waitlog Regicide: king of slot 1 died
+waitlog End banner
+note Entrée 5 : le Roi de Joueur 2 tué (triche) : fil « Le Roi de Joueur 2 est mort » puis « Joueur 2 est vaincu », bandeau Victoire, sans bandeau d'alerte.

@@ -13,14 +13,14 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité)*
 
 ### Fin de partie
-- Conditions de victoire à coder : vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; V1 à V4 dans `main` ; chantier `VictoryInProgress.md`)*
+- Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
 
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R3 et R6 dans `main` ; R4 écrans et R5 bout à bout faits dans Glorfindel, non commités, finitions en cours ; chantier `NetPlaytestInProgress.md`)*
-- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10, L0 mesurée ; chantier `LauncherInProgress.md`)*
+- M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R6 dans `main` : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef (M6-Q10 à M6-Q14) ; reste les essais E2 et E3 de l'utilisateur ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
+- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10, L0 à L2 faites ; chantier `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
@@ -30,7 +30,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D470 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D475 (§ 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
@@ -44,6 +44,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
+- `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo
+- Roi : le refus d'un ordre sur un bâtiment se logue « not its own » (texte commun, trompeur) ; activité « Attaque » qui reste après le départ de son agresseur
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 
@@ -56,7 +58,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), J8 à planifier
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q4 (modèle technique) à trancher
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
 - `LauncherInProgress.md` : lanceur, plan L0 à L10, rien codé

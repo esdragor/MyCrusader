@@ -7,6 +7,8 @@
 #include "Match/HOLMatchConfig.h"
 #include "HeroesOfLibertyGameModeBase.generated.h"
 
+class AHOLBuilding;
+
 /**
  * Game mode of a match: reads the match configuration when the map starts (D243) and gives each joining human
  * the next free human slot (a slot frees itself when its player state leaves PlayerArray). Without a configuration
@@ -42,6 +44,15 @@ public:
 private:
 	/** A main centre on the start of each occupied slot (human or AI), at the slot's colour. */
 	void SpawnMainCentres();
+
+public:
+	/**
+	 * V5.1 (Regicide): a King of the slot born by its main forum (FHOLStartRules::GetKingLocation), outside the population.
+	 * At the start for each occupied slot with the option, or by hol.Victory.SpawnKing. False: no unit system.
+	 */
+	static bool SpawnKing(UWorld& World, int32 Slot, const AHOLBuilding& Forum);
+
+private:
 
 	/**
 	 * The buildings of a slot get its player's controller as network owner, so that their production queue reaches

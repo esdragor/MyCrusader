@@ -228,19 +228,39 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 	return true;
 }
 
+bool AHOLGameState::HandleKingDeath(const int32 Slot)
+{
+	if (!HasAuthority() || bMatchOver || !SlotDefeats.IsValidIndex(Slot) || IsSlotDefeated(Slot)
+		|| (PendingKingDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	{
+		return false;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Regicide: king of slot %d died"), Slot);
+	// As the forum's fall: sent at once, even from a Mass processor; the defeat (its collapse) at the end of the step.
+	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, Slot));
+	PendingKingDefeats |= 1 << Slot;
+	return true;
+}
+
 void AHOLGameState::ApplyPendingDefeats()
 {
-	if (!PendingForumDefeats)
+	if (!PendingForumDefeats && !PendingKingDefeats)
 	{
 		return;
 	}
-	const uint8 Pending = PendingForumDefeats;
+	const uint8 PendingForum = PendingForumDefeats;
+	const uint8 PendingKing = PendingKingDefeats;
 	PendingForumDefeats = 0;
+	PendingKingDefeats = 0;
 	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 	{
-		if (Pending & (1 << Slot))
+		if (PendingForum & (1 << Slot))
 		{
 			DefeatSlot(Slot, EHOLDefeatReason::Forum);
+		}
+		if (PendingKing & (1 << Slot))
+		{
+			DefeatSlot(Slot, EHOLDefeatReason::King);
 		}
 	}
 }
@@ -553,6 +573,7 @@ const TCHAR* AHOLGameState::GetReasonName(const EHOLDefeatReason Reason)
 	case EHOLDefeatReason::Surrender: return TEXT("Surrender");
 	case EHOLDefeatReason::Cheat: return TEXT("Cheat");
 	case EHOLDefeatReason::Forum: return TEXT("Forum");
+	case EHOLDefeatReason::King: return TEXT("King");
 	default: return TEXT("None");
 	}
 }

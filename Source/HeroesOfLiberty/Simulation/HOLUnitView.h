@@ -40,6 +40,8 @@ struct FHOLUnitView
 	/** Its type's class in a group's formation (HOLFormation::GetRowPriority): a shooter (HOLCombat::IsRangedAttack), a siege unit. */
 	bool bRanged = false;
 	bool bSiege = false;
+	/** The King of Regicide (V5.3): moves, stops and attacks on order only, no attack-move nor hold (HOLCommandGrid::GetOrder). */
+	bool bKing = false;
 	/** Unhurt (J7b.4): its health is its type's maximum. */
 	bool bFullHealth = true;
 	/**

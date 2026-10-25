@@ -22,8 +22,47 @@
 #include "Player/HOLPlayerController.h"
 #include "Match/HOLStartRules.h"
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "TimerManager.h"
 #include "HAL/IConsoleManager.h"
+
+/** V5.1: a King for a slot by its main forum, whatever the option (for the trials of Regicide). */
+static FAutoConsoleCommandWithWorldAndArgs CommandSpawnKing(TEXT("hol.Victory.SpawnKing"),
+	TEXT("hol.Victory.SpawnKing [Slot=0]: a King of the slot born by its main forum, server or solo (development only)"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+		if (!World || World->GetNetMode() == NM_Client)
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Victory.SpawnKing: on the server or in solo"));
+			return;
+		}
+		for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+		{
+			if (It->IsPrimaryForum() && It->GetOwnerPlayer() == Slot)
+			{
+				AHeroesOfLibertyGameModeBase::SpawnKing(*World, Slot, **It);
+				return;
+			}
+		}
+		UE_LOG(LogHOLMatch, Warning, TEXT("hol.Victory.SpawnKing: slot %d has no main forum"), Slot);
+	}));
+
+/** V5.2: the slot's King killed by the dying path of the combat (its defeat, reason King, at the end of the step). */
+static FAutoConsoleCommandWithWorldAndArgs CommandKillKing(TEXT("hol.Victory.KillKing"),
+	TEXT("hol.Victory.KillKing [Slot=0]: the slot's King at 0 health, dying as killed in combat, server or solo (development only)"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+		UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+		if (!Units || Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Victory.KillKing: on the server or in solo, a slot 0 to %d"), FHOLMatchConfig::MaxSlots - 1);
+			return;
+		}
+		const int32 Killed = Units->KillUnitsOfOwner(static_cast<uint8>(Slot), FHOLStartRules::KingTypeName);
+		UE_LOG(LogHOLMatch, Display, TEXT("hol.Victory.KillKing: slot %d, %d King(s) at 0 health"), Slot, Killed);
+	}));
 
 static TAutoConsoleVariable<float> CVarStartWaitSeconds(TEXT("hol.Match.StartWaitSeconds"), 60.f,
 	TEXT("R3.9: the longest wait of a match launched by the lobby manager for its named players, in seconds."));
@@ -392,5 +431,26 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		AssignBuildingOwners(Slot);
 		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f), yaw %.0f"), Slot, SlotConfig.ColorIndex,
 			Transform.GetLocation().X, Transform.GetLocation().Y, Transform.Rotator().Yaw);
+		// V5.1 (Regicide, D206): each occupied slot's King, by its main forum.
+		if (FHOLStartRules::ShouldSpawnKing(MatchConfig, Slot))
+		{
+			SpawnKing(*GetWorld(), Slot, *Centre);
+		}
 	}
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnKing(UWorld& World, const int32 Slot, const AHOLBuilding& Forum)
+{
+	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+	if (!Units)
+	{
+		return false;
+	}
+	const FHOLBuildingTypeRow* Type = Forum.GetType();
+	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
+	const FVector Location = FHOLStartRules::GetKingLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
+	// A tiny radius: put on the navmesh right under the point (FHOLUnitSpawnRequest), like a production's birth.
+	Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::KingTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
+	UE_LOG(LogHOLMatch, Display, TEXT("Regicide: king of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
+	return true;
 }

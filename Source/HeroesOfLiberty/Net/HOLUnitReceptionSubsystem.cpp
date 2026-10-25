@@ -491,6 +491,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.CarryCapacity = Row->CarryCapacity;
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);
+		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
+		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
 		// J7b.5: the health received, exact (J7-Q5 revised).
 		OutView.MaxHealth = Row->MaxHealth;
 		OutView.Health = HOLUnitView::GetReceivedHealth(OutView.bFullHealth, Slot.State.Health, Row->MaxHealth);

@@ -435,3 +435,125 @@ Réponses de l'utilisateur :
 - 2026-10-24 : **V4.5c : deux défauts des alertes corrigés** (Arwen, ~7 min, 2 compilations PASS 33 s et 19 s, la première sur une bascule temporaire pour le rouge). (1) **Pas d'alerte pour sa propre perte** : dans `HOLForumMessages::GetMessage` (`Source/HeroesOfLiberty/Match/HOLForumMessages.cpp`), `bAlert` faux quand le spectateur est l'emplacement touché et que l'événement le fait perdre (Defeated de soi ; Fell ou Razed de soi à 0 vie) : ligne du fil seule, log `Message:` sans `(alert)` ; pour un allié l'alerte reste. Règle pure, indépendante de l'ordre multicast / réplication de l'état de fin. (2) **Alertes rapprochées** : `FHOLForumAlert` (pur) garde un bandeau au moins `MinSeconds` 1,5 s ; une alerte arrivée avant attend dans `Waiting` (au plus `MaxWaiting` 2, la plus ancienne en trop jetée, son son éventuel reporté sur la suivante), puis s'affiche ses 4 s (`Advance`) ; `Expire` ne cache pas tant qu'une attend ; un seul son pour des alertes arrivées à moins de `SoundGapSeconds` 1 s l'une de l'autre (`bSound`, joué à l'affichage) ; la file vidée une fois la partie finie pour le joueur. HUD (`Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp`) : `ShowAlert` → `Alert.Show`, `TickAlert` → `Alert.Advance`, `PresentAlert` remplit le bandeau et joue le son si `bSound` (sinon log `Alert: … (no sound, its burst's played)`) ; `HUD alert:` inchangé. Tests `Source/HeroesOfLiberty/Tests/HOLForumMessagesTests.cpp` : Fell / Razed / Defeated de soi à 0 vie sans alerte (allié à 0 vie : alerte), rafale chute + tenue à 40 ms, rafale de 4 (2 en attente, plus ancienne jetée, un son), alerte plus tardive avec son, file vidée à la fin. Rouge 40 OK / 4 KO (`Messages.Alert`, `.Defeated`, `.Fell`, `.Razed`), vert 44 / 44 (`Victory` + `Localization` + `CommandGrid`). `Tools/Tests/quick_check.ps1` : `victory forum defeat` exige `Message: Vous êtes vaincu` et `Message: Votre forum est tombé — 0 vies` sans `(alert)` et aucun `Alert: ` (resserré : ni la défaite ni la dernière chute) ; `net` client 1 attend `Vous êtes vaincu` sans `(alert)`, toujours aucun `Alert: Vous êtes vaincu`. `-Parts victory,net` **PASS en 139 s** (140 s mur ; avant 142 s). Scénario `Tools/Scenarios/forum_messages.txt` : textes seuls ajustés (temps 2 : la tenue 1,5 s après la chute, sans second bip ; temps 6 : sa propre perte n'est jamais une alerte), pas de répétition. Reste : l'essai du scénario par l'utilisateur (temps 2 à revoir à l'œil et à l'oreille) ; panneau du scénario sur le bandeau laissé tel quel ; aucun commit.
 - 2026-10-24 : **prêt pour l'essai de l'utilisateur** : `Tools\Scenarios\play.ps1 forum_messages` depuis Arwen. Ensuite : commit après validation, fusion de `main`, V4.6.
 - 2026-10-25 : **V4 validée** par l'utilisateur (« works »). V4.6 : commit `0389da9`, `main` 48c8387 fusionnée, `-Parts tests,menu,victory,net` PASS 142 s ; GDD D445 à D449 ; `EtapeDefini.md` à jour. Accord de mycrusader-b8 pour avancer `main`.
+
+## V5 — Régicide (questions préparées le 2026-10-25, à poser une à une)
+
+Choix de l'utilisateur (2026-10-25) : **V5 Régicide** avant Nomade. Déjà fixé : D206 (Roi façon AoE2 : né près du
+centre principal, hors population, attaque 1, sa mort fait perdre ; ce n'est pas le héros ; jamais converti, retourné
+ni relevé), D355 (Roi mort **ou** forum à 0 vie = défaite), D365 (garnison dans tout bâtiment à garnison : **plus tard,
+avec la garnison**), D207 (en Nomade, le Roi naît avec un travailleur : avec Nomade). Code : option `bRegicide` au menu
+seulement ; unités par `Tools/Data/UnitTypes.csv` (Paysan 50 PV vitesse 800, Homme d'armes 155 PV vitesse 697) ;
+défaite par `AHOLGameState::DefeatSlot` (raison à ajouter) ; messages de V4 (fil, alerte).
+
+- **V5-Q1 Le Roi en chiffres** : A **fragile et vif** (~75 PV, vitesse d'un Paysan, armure légère : un raid peut le
+  tuer, il doit fuir) — recommandé, comme AoE2 ; B robuste et lent (~200 PV) ; C comme un Homme d'armes (155 PV).
+  → **Réponse de l'utilisateur (2026-10-25)** : ni A, ni B, ni C : **vitesse d'un Lancier** (777), **~250 PV**.
+- **V5-Q2 Ses ordres** : A **déplacement, arrêt, attaque sur ordre** (attaque 1), **ne riposte pas et n'attaque pas
+  d'office**, ni récolte ni construction — recommandé ; B comme un soldat (riposte, attaque d'office) ; C déplacement seul.
+  → **Réponse (2026-10-25)** : **A** (recommandation) : déplacer, arrêter, attaquer sur ordre ; ni riposte ni attaque d'office ; ni récolte ni construction.
+- **V5-Q3 Son aspect** : A **mannequin + couronne** (pièce provisoire à sa couleur, comme les accessoires de récolte)
+  — recommandé ; B mannequin plus grand ; C même mannequin, seul le nom change.
+  → **Réponse (2026-10-25)** : **A** (recommandation) : mannequin + couronne provisoire à sa couleur.
+  → **Nuance de l'utilisateur (révise D206)** : le Roi a **50 d'attaque** (au lieu de 1), « donc peut se défendre », mais **ne peut pas être soigné** (aucun soin ne le vise : Moine, auras, etc., quand ils existeront). Conséquence sur V5-Q2 à reposer : riposte ou non.
+  → **V5-Q2 révisée (2026-10-25)** : **A** (recommandation) : il **riposte quand on le frappe**, ne prend jamais d'office une cible (pas de rayon d'agressivité), ni récolte ni construction ; cadence et portée d'un Homme d'armes par défaut (1,375 s, mêlée).
+- **V5-Q4 Sa mort à l'écran** : A **message « Le Roi de Joueur 2 est mort »** (fil pour tous, alerte pour son camp sauf
+  soi, D447), puis la défaite habituelle — recommandé ; B défaite seule (message « vaincu » de V4) ; C A + son Roi
+  marqué au tableau des joueurs (couronne près du nom).
+  → **V5-Q4 (2026-10-25)** : **A** (recommandation) : message « Le Roi de Joueur 2 est mort » (fil pour tous, alerte
+  pour son camp sauf soi, D447), puis la défaite habituelle.
+  → **Nuance de l'utilisateur** : le Roi **ne peut pas attaquer de bâtiment** (pas d'attaque contre bâtiment, D345).
+
+## Plan de V5 — Régicide (tranché le 2026-10-25)
+
+Le Roi : **250 PV**, **vitesse d'un Lancier** (777), **50 d'attaque** (cadence et portée d'un Homme d'armes, mêlée),
+armure légère (0), **hors population**, **jamais soigné**, **n'attaque pas les bâtiments** ; **riposte** quand on le
+frappe, ne prend **jamais** d'office une cible ; ni récolte ni construction ; ordres : déplacer, arrêter, attaquer
+(unités seulement). Aspect : mannequin + **couronne** provisoire à sa couleur. Né près du forum principal au départ, pour
+chaque emplacement (IA comprise), seulement avec l'option Régicide. Mort = message puis défaite (D355 : en plus du
+forum à 0 vie). Révise D206 (attaque 1 → 50, soins, bâtiments). Garnison (D365) et Nomade (D207) plus tard.
+
+| Étape | Contenu | État |
+|---|---|---|
+| V5.1 Le Roi | Type d'unité (table, chiffres ci-dessus, hors population, drapeau « jamais soigné », pas d'attaque contre bâtiment, riposte sans agressivité, ni récolte ni construction) ; naissance au départ avec `bRegicide` ; test rouge d'abord | fait (2026-10-25, Arwen, sans commit) |
+| V5.2 Mort = défaite | Raison `King` de `DefeatSlot` (différée à la fin du pas : la mort vient du combat), événement `KingDied` et ses textes (fil, alerte), test | fait |
+| V5.3 Aspect | Couronne provisoire à sa couleur, nom « Roi » dans la sélection, grille de commandes réduite | fait (2026-10-25, Arwen, sans commit) |
+| V5.4 Traductions, captures | fr / en / ja, captures hors écran | fait (2026-10-25, Arwen, sans commit) |
+| V5.5 Vérification | `quick_check` (solo, 2 clients), scénario, essai | **fait** : partie `victory regicide` (solo) et mort du Roi à 2 clients (à la place de l'abandon), scénario `regicide`, essai de l'utilisateur **validé** (« tout fonctionne ») |
+| V5.6 Clôture | GDD (D450+), `EtapeDefini.md`, `UnitStats.md`, fusion | **fait** (2026-10-25) : commit `a03d4c8`, `main` 86bf2c5 fusionnée (`b9a7e06` : conflit `HOLCombatProcessor.cpp` réglé en gardant les deux changements, traductions reprises de `main` puis régénérées : 311 → 314, aucune changée) ; `-Parts tests,menu,victory,net,lobby` : tout PASS (171/171) sauf `lobby` (pas de serveur empaqueté dans Arwen, hors V5) ; GDD **D470 à D474** (prochain D475) ; `EtapeDefini.md` à jour |
+
+### Suivi de V5
+
+- 2026-10-25 : questions V5-Q1 à Q4 tranchées (avec trois nuances de l'utilisateur : 250 PV / vitesse de Lancier, 50
+  d'attaque sans soins, pas d'attaque contre bâtiment).
+- 2026-10-25 : **V5.1 Le Roi** fait dans Arwen (`victory-v5`, sans commit). Type `King` dans `Tools/Data/UnitTypes.csv`
+  (250 PV, 777, 50 d'attaque mêlée, 1,375 s, portée 70, armure 0, population 0, coût 0, rayon d'agressivité 0, attaque
+  contre bâtiment 0, mannequin de l'Homme d'armes) et table `/Game/Units/UnitTypes` réimportée ; nouvelle colonne `Ripostes`
+  (vrai pour les soldats, faux pour le Paysan, lue seulement sans rayon d'agressivité) ; catégorie d'armure `King` = « jamais
+  soigné » (`HOLCanBeHealed`, à lire par les futurs soins). Riposte sans agressivité : `FSeeker::bRipostes`, `ChooseTarget`
+  ne garde alors qu'un ennemi qui l'attaque (jamais un bâtiment), le processeur de combat lui donne sa cible et son dernier
+  agresseur comme seuls candidats. Bâtiments : recherche de bâtiment nulle (attaque 0) et ordre sur un bâtiment refusé
+  pour une unité sans attaque contre bâtiment (`HOLUnitOrderProcessor`). Naissance : `FHOLStartRules::ShouldSpawnKing` /
+  `GetKingLocation`, dans `SpawnMainCentres` (log `Regicide: king of slot N spawned at (x, y)`), triche
+  `hol.Victory.SpawnKing <slot>` ; nom « Roi » (`HOLGameNames`, français seul). Tests `HeroesOfLiberty.Victory.Regicide.*`
+  (KingType, Riposte, Birth) : rouges (pas de King dans la table), puis 106 tests verts (Victory, Combat, Production, Match,
+  Buildings, Construction, Animation, Localization, Orders, Gather, CommandGrid). Reste : `UnitStats.md` à régénérer dans
+  `main` à la clôture (V5.6), essai en partie (V5.5).
+- 2026-10-25 : **V5.2 Mort du Roi = défaite** fait dans Arwen (`victory-v5`, sans commit). Détection : au début de la
+  mort d'une unité (`UHOLCombatProcessor::KillUnit`, chemin commun aux coups, aux flèches et aux unités mises à 0 PV
+  autrement, via `FinishDying`), si sa catégorie d'armure porte `King` (`HOLIsKing`), `AHOLGameState::HandleKingDeath(Slot)` :
+  refusé pour un emplacement déjà vaincu, déjà compté, hors partie ou partie finie (l'effondrement de D358 tue le Roi d'un
+  vaincu sans rien redonner) ; sinon log `Regicide: king of slot N died`, événement `KingDied` envoyé à tous tout de suite,
+  et défaite `EHOLDefeatReason::King` à la fin du pas (`PendingKingDefeats`, appliquée par `ApplyPendingDefeats` après
+  celles du forum), d'où `Victory: slot N defeated (King)` puis le « … est vaincu » de V4. Un emplacement sans Roi ne perd
+  jamais par cette voie. Textes (`Match/HOLForumMessages.cpp`, français seul) : « Le Roi de {0} est mort » / « Votre Roi est
+  mort » ; alerte pour son camp, jamais pour soi (perte propre, comme `Defeated`). Triche `hol.Victory.KillKing <slot>` :
+  `UHOLUnitSubsystem::KillUnitsOfOwner(Slot, TypeName)` (nouveau filtre de type) met le Roi à 0 PV, puis le chemin normal.
+  Tests `HeroesOfLiberty.Victory.Regicide.Death` (défaite à la fin du pas, deux Rois de deux emplacements, rien après
+  l'effondrement, fin de partie) et `.Message` (soi, allié, adversaire, spectateur) : rouges (ne compilaient pas : ni
+  `KingDied`, ni `King`, ni `HandleKingDeath`), puis 47 tests verts (Victory, Combat, Localization). Reste : la triche et le
+  chemin du combat non essayés en partie (`quick_check`, scénario de V5.5).
+- 2026-10-25 : **V5.3 Aspect et commandes du Roi** fait dans Arwen (`victory-v5`, sans commit). Couronne : pièce `crown`
+  (id 7) de `Tools/Editor/soldier_props.py`, sur l'os `head` (repère « body », bas du bandeau à 177 cm, sur le front) :
+  bandeau cylindrique fermé dessus, rayon 13 cm, 8 cm de haut, à la couleur du joueur, entre deux filets dorés (laiton),
+  et cinq créneaux de 4,5 x 4,5 x 6 cm à sa couleur ; 28 x 28 x 14 cm dans le maillage, environ 42 cm en jeu (échelle 1,5) ;
+  120 triangles (légère : 8 côtés). Nouveau maillage `/Game/Units/Mannequin/SKM_King` (mannequin + épée + bouclier +
+  couronne) et fournisseur `TP_King` (les gestes de l'Homme d'armes), faits par `Tools/Editor/make_peasant_mesh.py
+  --soldiers --only=SKM_King` ; ligne `King` de `Tools/Data/UnitTypes.csv` dessus, table réimportée
+  (`make_unit_types.py`). Visible chez tous : c'est le maillage du type, pas un état. Commandes : `FHOLUnitView::bKing`
+  (catégorie `King`, serveur et client), `FHOLGridContext::bOnlyKings` (`GetUnitsContext`) : des Rois seuls n'ont que
+  l'arrêt (S) ; ni attaque-déplacement (Q), ni position tenue (V, qui prendrait les ennemis à portée) ; le déplacement et
+  l'attaque d'une unité restent au clic droit. Sélection mixte : les commandes des autres restent ; côté serveur, une
+  attaque-déplacement donne au Roi un simple déplacement (`HOLUnitOrderProcessor`, mode `Normal` pour une unité qui ne
+  fait que riposter) et la règle pure `HOLCombat::GetSearchRadius` ne lui donne plus `AttackMoveRadius` ; en position
+  tenue (groupe mixte), `ChooseTarget` ne lui garde qu'un ennemi qui l'attaque, à portée. Clic droit sur un bâtiment
+  ennemi : refusé pour lui depuis V5.1 (pas d'ordre, il ne bouge pas, rien ne le plante). Test
+  `HeroesOfLiberty.Victory.Regicide.Commands` : rouge (5 échecs : Q et V offerts, rayon 1600 en attaque-déplacement,
+  ennemi pris en passant et en position tenue), puis vert ; 61 tests verts (Victory, Combat, CommandGrid, Orders,
+  Localization). Capture hors écran (Plain, `hol.Victory.SpawnKing 0` et `1`, `Saved_Tests/v53_king.seq`) :
+  `Saved_Tests/Screenshots/WindowsEditor/HOL/v53_king.png` (hauteur de départ), `v53_king_close.png` (15 m, bleu),
+  `v53_king_enemy.png` (rouge) ; rapport `selection King (own), hp 250/250, grid hidden, orders S=Stop`, bloc « Roi »,
+  « Vous », « Points de vie 250 / 250 », rien de récolte. Reste : à la hauteur de départ la couronne se lit mal (une
+  tache) ; à 15 m, filets dorés et créneaux lisibles : à grossir ou à dorer entièrement si l'utilisateur le veut ; le
+  bloc de sélection n'a de ligne d'attaque pour aucune unité (seulement l'activité « Attaque ») ; traductions en / ja en
+  V5.4.
+- 2026-10-25 : **V5.3, couronne refaite** sur le retour de l'utilisateur (« elle est grosse et flotte au dessus du roi »).
+  Couronne flottante : la même pièce `crown` (id 7, `Tools/Editor/soldier_props.py`), trois fois plus grande (bandeau
+  rayon 39 cm, 24 cm de haut, fermé dessus ; deux filets plus sombres ; cinq créneaux de 13,5 x 13,5 x 18 cm), 84 x 85 x 44 cm
+  dans le maillage, environ 1,3 m en jeu (échelle 1,5) ; bas du bandeau à 245 cm du sol dans le maillage (63 cm au-dessus
+  de la tête, environ 95 cm en jeu) ; **entièrement dorée** (or 222/178/52, filets laiton), plus rien à la couleur du
+  joueur (le corps la porte). Os : `pelvis` (repère « body ») : elle suit la marche et le combat, et **tombe avec lui** à la
+  mort (elle bascule près du corps puis disparaît avec lui) ; la racine aurait été plus stable mais l'aurait laissée
+  flotter 30 s au-dessus du corps (`HOLCorpse::HoldSeconds`) ; une pièce de présentation à part était plus lourde pour le
+  même effet. `SKM_King` / `TP_King` refaits (`make_peasant_mesh.py --soldiers --only=SKM_King`). Captures hors écran
+  (`Saved_Tests/v53_king.seq`, `Saved_Tests/v53_king_death.seq`) dans `Saved_Tests/Screenshots/WindowsEditor/HOL/` :
+  `v53_king.png` (hauteur de départ : une couronne d'or nette au-dessus du Roi), `v53_king_close.png` (15 m),
+  `v53_king_walk.png` (en marche : elle suit, penchée avec son bassin), `v53_king_falling.png` et `v53_king_dead.png`
+  (elle bascule et retombe près du corps). Tests Victory + Animation : 42 verts, aucun échec. Reste : en marche elle se penche
+  avec le bassin (ballant d'environ 20 à 30 cm visible) ; la barre de vie, au-dessus de la tête, est en partie cachée par
+  la couronne de près ; l'écran « Défaite » cache le corps sur les captures de mort.
+- 2026-10-25 : retour de l'utilisateur sur la couronne (captures v53) : « elle est grosse et flotte au dessus du roi » → couronne **flottante au-dessus de la tête**, grosse, lisible à la hauteur de jeu ; par défaut dorée (corps déjà à la couleur du joueur), ~3× la taille actuelle, ~1 m au-dessus de la tête ; remplace la couronne posée. À faire après la mesure de charge de mycrusader-b8 (pause demandée, plus rien ne tourne).
+- 2026-10-25 : info de mycrusader-b8 : l'utilisateur a choisi « 町の中心 » pour « Forum » en japonais ; b8 a changé `MessageFell` / `MessageOwnFell` (ja) dans `fill_po.py`, à venir dans `main` avec sa fusion de `net-playtest`. **V5.4** : tout texte japonais qui parle du forum prend « 町の中心 » ; recoupement attendu sur `fill_po.py` à la fusion de V5.
+- 2026-10-25 : **V5.4 Traductions et captures** faite (Arwen, `victory-v5`, sans commit ; ~7 min avant une coupure de quota, puis ~5 min ; 1 compilation PASS pour un commentaire de `HOLGameNames.cpp`). 3 clés en / ja dans `Tools/Localization/fill_po.py` (ordre des arguments vérifié dans `Match/HOLForumMessages.cpp`, un seul argument : le nom) : `HOLGameNames,King` « King » / « 王 », `HOLGameScreen,MessageKingDied` « {0}'s King is dead » / « {0}の王が死亡 », `HOLGameScreen,MessageOwnKingDied` « Your King is dead » / « あなたの王が死亡 » ; aucune ne parle du forum. La raison de défaite `King` n'est pas affichée (`GetReasonName`, `TEXT` de journal) : rien à traduire. GatherText, `fill_po.py` (212 textes, 0 clé inconnue), GatherText : 209 → 212 entrées en / ja / fr, aucune traduction ni source existante changée, aucune retirée (comparaison entrée par entrée des .po ; seul l'ordre des entrées bouge). Captures hors écran 1280×720 dans `Saved_Tests/Screenshots/WindowsEditor/HOL/` (séquences `Saved_Tests/v54_run1_{fr,en,ja}.seq` et `v54_run2_{fr,en,ja}.seq`, config `v42_1v1.json`, `-culture=`) : `v54_a_{fr,en,ja}.png` (Roi sélectionné à la hauteur de départ : bloc « Roi » / « King » / « 王 », grille « Arrêt » / « Stop » / « 停止 » seule, couronne d'or), `v54_enemy.png` (Roi rouge sous le forum adverse, couronne d'or), `v54_b_{fr,en,ja}.png` (`KillKing 1` : fil « Le Roi de Joueur 2 est mort » puis « Joueur 2 est vaincu », nom en rouge, `HUD alert: none`, bandeau Victoire), `v54_c_{fr,en,ja}.png` (`KillKing 0` : fil « Votre Roi est mort » puis « Vous êtes vaincu », `HUD alert: none`, bandeau Défaite, corps et couronne tombée visibles). Relues : japonais complet (pas de carrés), lignes courtes (la plus longue « Player 2's King is dead »), aucun recouvrement. Défauts vus : à la première passe anglaise, la caméra n'était pas sur sa base (`FocusSlot own` sans effet visible, Roi hors champ) ; relancée, elle l'était : aléa non expliqué des captures ; « Triches + » non traduit et « Vous » bleu foncé peu lisible (déjà vus en V4.4) ; sur le Roi rouge, la sélection affichée reste celle de son propre Roi (normal). Victory + Localization : 39/39 verts, aucun échec. Note : la traduction ja de « Forum » (« 町の中心 », mycrusader-b8) n'est pas encore dans Arwen : elle viendra avec `main`.
+- 2026-10-25 : **V5.5a `quick_check` du Roi** fait dans Arwen (`victory-v5`, sans commit, `Tools/Tests/quick_check.ps1` seul). Solo : 4e partie de la partie `victory` (marques `victory regicide`, `… pass`, `… riposte`, `… death`), lancée **avec l'option** (`"bRegicide": true` dans `Saved_Tests/victory_regicide.json`, donc par le vrai chemin de naissance, pas `SpawnKing`) : les deux Rois nés (log `spawned at (-15935, 0)` et `(14065, 0)`) ; Ctrl + A puis `hol.HUD.Report` : `selection King (own), hp 250/250, grid hidden, orders S=Stop`, `population 0/10` (hors population) ; combat allumé : un Paysan ennemi posé à 5,5 m pendant 4 s, aucun coup du Roi ; un Homme d'armes ennemi au même endroit : il frappe (12, 238 PV), le Roi riposte (3 coups de 46 en 5 s) ; `hol.Victory.KillKing 1` : `Regicide: king of slot 1 died`, messages exactement `Le Roi de Joueur 2 est mort|Joueur 2 est vaincu` sans `(alert)`, `HUD alert: none`, `Victory: slot 1 defeated (King)`, `match over, winners 0`, `End banner: Victory`, mon Roi vivant. 2 clients (fin de la partie `net`) : **l'abandon de V1.4c remplacé par la mort du Roi** (une seconde partie à 2 clients coûtait trop ; le Roi avant l'abandon impossible : sa mort finit la partie à 1 contre 1) ; les contrôles de V2-V4 gardés (chute du forum, prise, messages, alerte, effondrement, bandeaux, unités qui partent, gestionnaire) ; l'abandon reste couvert en solo (Échap, menu, « Abandonner »). Après la prise du forum, client 1 le demande, le serveur fait `SpawnKing 0` et `SpawnKing 1` (`quick_net_server.seq`), chaque client montre `King of slot 0 x1, King of slot 1 x1` (`hol.Units.Report`), puis le serveur fait `KillKing 1` (client 1, Bob, emplacement 1) : serveur `defeated (King)` (et plus `Surrender`), client 1 `…|Votre Roi est mort|Vous êtes vaincu` et `Defeat`, client 2 `…|Le Roi de Joueur 2 est mort|Joueur 2 est vaincu` et `Victory` ; 7 rapports d'unités chez client 2 (au lieu de 6). Méthode : rouge rejoué hors jeu sur le `quick_game.log` d'avant (13 contrôles KO sur 14), puis vert : `-Parts victory` PASS en 116 s (la partie Régicide ~12 s ; lancement lent, machine chargée par l'autre agent), `-Parts victory,net` PASS en 140 s. Défauts vus : aucun nouveau ; le rapport du HUD écrit l'activité en `EHOLUnitActivity::Attacking` (format brut, déjà dans la partie `net`) et le Roi reste « Attacking » juste après le retrait de son agresseur et sous le bandeau (activité non remise à zéro, à surveiller) ; chez client 2, le Roi mort est encore montré au premier rapport après le bandeau (comme les autres unités, avant l'effondrement). Reste : V5.5 scénario et essai en partie, l'abandon en réseau (`ServerSurrender`) n'est plus joué par `quick_check`.
+- 2026-10-25 : **V5.5b scénario `regicide` prêt** (Arwen, ~10 min, aucune compilation) : `Tools/Scenarios/regicide.txt` / `.json` (Plain, 1 contre 1 IA, `"bRegicide": true`, lu par `FJsonObjectConverter` : chaque camp n'a que son Roi, le mien né à (-15935, 0), derrière le forum). Déroulé (~2 min, Entrée entre les temps) : (1) Roi sélectionné → bloc « Roi », grille « Arrêt » seule, l'utilisateur le déplace ; (2) **simplifié** : le Roi ramené à sa place (`hol.Units.Move -15935 0 0`), 3 Paysans ennemis nés à 3-5 m de lui, 8 s, il ne bouge pas ni ne frappe, puis retirés (les faire passer était fragile : `hol.Units.Move` d'un emplacement emmène aussi son Roi, à 300 m) ; (3) un Lancier ennemi (rayon d'agressivité 16 m) le frappe : riposte, `Spearman of slot 1 killed by #1 King of slot 0 (2 hits struck)`, Roi à 242 puis 234 / 250 ; (4) 4 Hommes d'armes à moi à côté du Roi, 4 Lanciers ennemis ~32 m plus loin, une Maison ennemie à gauche du forum (`hol.Cheat.SpawnBuilding House 1 -1800 -1600`) : l'utilisateur fait Q avec le groupe (cadre) au-delà des Lanciers, puis clic droit du Roi seul sur la Maison ; (5) `hol.Victory.KillKing 1` → fil « Le Roi de Joueur 2 est mort », « Joueur 2 est vaincu », Victoire. Répétition hors écran deux fois (copie `_dry` avec captures et ordres scriptés : `hol.Select.ClickUnit 0`, `hol.Select.Box`, `hol.Select.AttackMove -15935 5500`, `hol.Select.OrderNear -1800 -1600` ; `-saveddirsuffix=V55r`, `hol.Camera.TestCursor 0.5 0.5`, `hol.Scenario.AutoContinue 1`) : `Regicide: king of slot 0/1 spawned`, aucune frappe au temps 2, riposte au temps 3, `Order: 5 units attack-move` puis les seuls Hommes d'armes tuent les 4 Lanciers (le Roi traverse la mêlée et arrive à (-16001, 5325) sans aucun coup porté), `Order: 1 units attack House of slot 1 (other)` → `Move order of slot 0: 1 units ignored, not its own` (refusé, il ne bouge pas), puis `Regicide: king of slot 1 died`, `Message: Le Roi de Joueur 2 est mort`, `Victory: slot 1 defeated (King)`, `Message: Joueur 2 est vaincu`, `End banner: Victory`, `HUD alert: none`, scénario `ready` (46 s). Captures `v55_*` relues (scratchpad `v55r_captures`, 2e passe dans `run2`) ; la caméra avancée de 8 m à la 2e passe pour que le panneau du scénario, qui grandit, laisse voir le Roi et la mêlée. Copies `_dry` et `Saved_V55r` retirées. **Essai demandé à l'utilisateur** : `Tools\Scenarios\play.ps1 regicide` depuis Arwen ; regarder : la couronne et la grille « Arrêt » seule (temps 1), le Roi immobile à côté des Paysans (2), la riposte sans poursuite (3), le Roi qui marche sans frapper pendant que ses soldats combattent, et le refus sur la Maison (4), le fil et la Victoire (5). Points : le log du refus dit « not its own » (texte commun aux refus, trompeur pour le Roi) ; au temps 4 un Lancier ennemi part seul vers la gauche avec sa ligne d'ordre puis revient mourir (vu aux deux passes, sans gêne) ; si les Lanciers frappent le Roi en passant, il riposte (attendu) ; au temps 5 la mort du Roi adverse est par triche (il est à 300 m).
+- 2026-10-25 : **V5 validée** par l'utilisateur (« tout fonctionne », essai `regicide`). V5.6 : voir le tableau. **V5 close.** Suite du chantier : vies par palier, Nomade, garnison du Roi (chantiers à venir).

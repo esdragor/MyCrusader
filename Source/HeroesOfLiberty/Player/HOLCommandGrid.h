@@ -94,6 +94,12 @@ struct FHOLGridContext
 	 */
 	bool bOwnUnits = false;
 	bool bSoldiers = false;
+	/**
+	 * Every selected unit is a King (V5.3, Regicide): no attack-move nor hold, which would have it take on enemies by itself;
+	 * stop only (the move and the attack on an enemy unit are the right click's). A mixed selection keeps them for the
+	 * others: the server then gives the King a plain move (HOLCombat::GetSearchRadius).
+	 */
+	bool bOnlyKings = false;
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
 	TArray<FHOLBuildable> Buildable;
 	/** The last age the player has reached (HOLCommandGrid::GetReachedAge): the panels after it greyed. */

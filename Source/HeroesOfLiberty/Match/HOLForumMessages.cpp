@@ -33,7 +33,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	Message.bAlert = ViewerSlot != INDEX_NONE && Camp != INDEX_NONE && HOLVictoryRules::GetCamp(Config, ViewerSlot) == Camp;
 	// V4.5b: no alert of its own loss (its defeat, its last life gone by a fall or a razing): its Defeat banner comes, the
 	// thread's line is enough, whatever the order the multicast and the end's state arrive in. An ally's loss stays an alert.
-	const bool bOwnLoss = Event.Kind == EHOLForumEventKind::Defeated
+	const bool bOwnLoss = Event.Kind == EHOLForumEventKind::Defeated || Event.Kind == EHOLForumEventKind::KingDied
 		|| ((Event.Kind == EHOLForumEventKind::Fell || Event.Kind == EHOLForumEventKind::Razed) && Event.Lives <= 0);
 	if (bOwn && bOwnLoss)
 	{
@@ -89,6 +89,17 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 			Message.NamedSlots.Add(Slot);
 		}
 		break;
+	case EHOLForumEventKind::KingDied:
+		if (bOwn)
+		{
+			Message.Text = LOCTEXT("MessageOwnKingDied", "Votre Roi est mort");
+		}
+		else
+		{
+			Message.Text = FText::Format(LOCTEXT("MessageKingDied", "Le Roi de {0} est mort"), Name);
+			Message.NamedSlots.Add(Slot);
+		}
+		break;
 	case EHOLForumEventKind::Defeated:
 	default:
 		if (bOwn)
@@ -116,6 +127,7 @@ const TCHAR* HOLForumMessages::GetKindName(const EHOLForumEventKind Kind)
 	case EHOLForumEventKind::HoldStarted: return TEXT("HoldStarted");
 	case EHOLForumEventKind::Razed: return TEXT("Razed");
 	case EHOLForumEventKind::Defeated: return TEXT("Defeated");
+	case EHOLForumEventKind::KingDied: return TEXT("KingDied");
 	default: return TEXT("?");
 	}
 }

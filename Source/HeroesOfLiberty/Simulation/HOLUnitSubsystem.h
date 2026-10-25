@@ -83,9 +83,10 @@ public:
 	/**
 	 * D358: a defeated slot collapses. Every living unit of Owner goes to 0 health and Dying (MarkUnitDying): the combat
 	 * processor takes it on its dying path at its next step (FinishDying: its fall, then its body kept 30 s), as a unit
-	 * killed in combat; its births waiting are dropped. Returns how many units were killed.
+	 * killed in combat; its births waiting are dropped. Returns how many units were killed. V5.2: with a TypeName, only
+	 * the living units of that type, no birth dropped (hol.Victory.KillKing).
 	 */
-	int32 KillUnitsOfOwner(uint8 Owner);
+	int32 KillUnitsOfOwner(uint8 Owner, FName TypeName = NAME_None);
 	/**
 	 * V3.2: calls Visit(Owner, Location) for every living unit (not dying, health above 0), in one walk of the units; the
 	 * births waiting are not there yet. Returns how many units were walked (the dying included).

@@ -91,6 +91,9 @@ SOLDIERS = {
     # J7c.1a: bow, arrow (hidden by the gestures outside the draw), quiver.
     "SKM_Archer": ("TP_Archer", [PEASANT_ANIMATIONS + "A_Archer_Idle", PEASANT_ANIMATIONS + "A_Archer_Walk",
                                  PEASANT_ANIMATIONS + "A_Archer_Attack", PEASANT_ANIMATIONS + "A_Archer_Fall"]),
+    # V5.3: the King, the Man-at-arms' gestures (sword and shield) with a crown.
+    "SKM_King": ("TP_King", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
+                             PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),
 }
 # First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
 LIGHT_PROPS_LOD = 3

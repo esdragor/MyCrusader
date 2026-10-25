@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-25 16:19\n"
-"PO-Revision-Date: 2026-10-25 16:19\n"
+"POT-Creation-Date: 2026-10-25 16:59\n"
+"PO-Revision-Date: 2026-10-25 16:59\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -13,9 +13,16 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#. Key:	MessageOwnDefeated
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(107)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(107)
+msgctxt "HOLGameScreen,MessageOwnDefeated"
+msgid "Vous êtes vaincu"
+msgstr "You are defeated"
+
 #. Key:	MessageDefeated
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(100)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(100)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(111)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(111)
 msgctxt "HOLGameScreen,MessageDefeated"
 msgid "{0} est vaincu"
 msgstr "{0} is defeated"
@@ -97,12 +104,19 @@ msgctxt "HOLGameScreen,MessageRazed"
 msgid "Fondations de {0} rasées — {1}"
 msgstr "{0}'s foundations razed — {1}"
 
-#. Key:	MessageOwnDefeated
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(96)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(96)
-msgctxt "HOLGameScreen,MessageOwnDefeated"
-msgid "Vous êtes vaincu"
-msgstr "You are defeated"
+#. Key:	MessageOwnKingDied
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(95)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(95)
+msgctxt "HOLGameScreen,MessageOwnKingDied"
+msgid "Votre Roi est mort"
+msgstr "Your King is dead"
+
+#. Key:	MessageKingDied
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(99)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(99)
+msgctxt "HOLGameScreen,MessageKingDied"
+msgid "Le Roi de {0} est mort"
+msgstr "{0}'s King is dead"
 
 #. Key:	ForumRuin
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(406)
@@ -259,99 +273,106 @@ msgid "Vainqueurs : {0}"
 msgstr "Winners: {0}"
 
 #. Key:	Peasant
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(19)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(19)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(20)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(20)
 msgctxt "HOLGameNames,Peasant"
 msgid "Paysan"
 msgstr "Peasant"
 
 #. Key:	Spearman
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(23)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(23)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(24)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(24)
 msgctxt "HOLGameNames,Spearman"
 msgid "Lancier"
 msgstr "Spearman"
 
 #. Key:	ManAtArms
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(27)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(27)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(28)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(28)
 msgctxt "HOLGameNames,ManAtArms"
 msgid "Homme d'armes"
 msgstr "Man-at-Arms"
 
 #. Key:	Archer
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(31)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(31)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(32)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(32)
 msgctxt "HOLGameNames,Archer"
 msgid "Archer"
 msgstr "Archer"
 
+#. Key:	King
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(37)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(37)
+msgctxt "HOLGameNames,King"
+msgid "Roi"
+msgstr "King"
+
 #. Key:	MainCentre
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(44)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(44)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(50)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(50)
 msgctxt "HOLGameNames,MainCentre"
 msgid "Centre principal"
 msgstr "Main Center"
 
 #. Key:	House
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(48)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(48)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(54)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(54)
 msgctxt "HOLGameNames,House"
 msgid "Maison"
 msgstr "House"
 
 #. Key:	LumberCamp
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(52)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(52)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(58)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(58)
 msgctxt "HOLGameNames,LumberCamp"
 msgid "Camp de bûcherons"
 msgstr "Lumber Camp"
 
 #. Key:	MiningCamp
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(56)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(56)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(62)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(62)
 msgctxt "HOLGameNames,MiningCamp"
 msgid "Camp de mineurs"
 msgstr "Mining Camp"
 
 #. Key:	Mill
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(60)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(60)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(66)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(66)
 msgctxt "HOLGameNames,Mill"
 msgid "Moulin"
 msgstr "Mill"
 
 #. Key:	Barracks
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(64)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(64)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(70)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(70)
 msgctxt "HOLGameNames,Barracks"
 msgid "Caserne"
 msgstr "Barracks"
 
 #. Key:	Tree
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(77)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(83)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(83)
 msgctxt "HOLGameNames,Tree"
 msgid "Arbre"
 msgstr "Tree"
 
 #. Key:	BerryBush
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(81)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(87)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(87)
 msgctxt "HOLGameNames,BerryBush"
 msgid "Buisson de baies"
 msgstr "Berry Bush"
 
 #. Key:	StoneVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(91)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(91)
 msgctxt "HOLGameNames,StoneVein"
 msgid "Filon de pierre"
 msgstr "Stone Vein"
 
 #. Key:	GoldVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(89)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(89)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(95)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(95)
 msgctxt "HOLGameNames,GoldVein"
 msgid "Filon d'or"
 msgstr "Gold Vein"
@@ -1561,8 +1582,8 @@ msgid "Aucune"
 msgstr "None"
 
 #. Key:	NoMatchAddress
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(724)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(724)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(735)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(735)
 msgctxt "HOLNewGameScreen,NoMatchAddress"
 msgid "Adresse du serveur de partie introuvable."
 msgstr "Match server address not found."

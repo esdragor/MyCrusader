@@ -44,8 +44,8 @@ namespace HOLCommandGrid
 		FHOLGridCommand Result;
 		if (Context.bOwnUnits && !Context.bOwnBuilding)
 		{
-			Result.Command = Cell == AttackMoveCell && Context.bSoldiers ? EHOLGridCommand::AttackMove
-				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell ? EHOLGridCommand::Hold : EHOLGridCommand::None;
+			Result.Command = Cell == AttackMoveCell && Context.bSoldiers && !Context.bOnlyKings ? EHOLGridCommand::AttackMove
+				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell && !Context.bOnlyKings ? EHOLGridCommand::Hold : EHOLGridCommand::None;
 		}
 		return Result;
 	}

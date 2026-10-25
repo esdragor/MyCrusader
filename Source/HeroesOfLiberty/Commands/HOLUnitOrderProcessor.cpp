@@ -1084,6 +1084,12 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 					continue;
 				}
 			}
+			// V5.1 (D345): a unit with no building attack (the King) obeys no order on a building; the others of the group do.
+			if (Order.Kind == EHOLOrderKind::AttackBuilding && EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).BuildingAttack <= 0)
+			{
+				++NumRefused;
+				continue;
+			}
 			if (TargetOwner != INDEX_NONE && !CampTable.AreHostile(EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, TargetOwner))
 			{
 				++NumRefused;
@@ -1393,7 +1399,10 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			{
 				// Any move lets a hold go (J7b.3); an attack-move's units remember their slot, walked on to after a fight.
 				Combat->Disengage();
-				Combat->Mode = Order.Kind == EHOLOrderKind::AttackMove ? EHOLCombatMode::AttackMove : EHOLCombatMode::Normal;
+				// V5.3: the King (riposte only) is given a plain move by an attack-move: it seeks nobody on its way.
+				const bool bRiposteOnly = EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).bRipostes
+					&& EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).AggressionRadius <= 0.f;
+				Combat->Mode = Order.Kind == EHOLOrderKind::AttackMove && !bRiposteOnly ? EHOLCombatMode::AttackMove : EHOLCombatMode::Normal;
 				Combat->AttackMoveGoal = MoveOrder.Slot;
 			}
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));

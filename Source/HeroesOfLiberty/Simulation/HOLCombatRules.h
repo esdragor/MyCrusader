@@ -123,6 +123,12 @@ namespace HOLCombat
 		ESeekMode Mode = ESeekMode::Auto;
 		/** A shooter (IsRangedAttack, J7c-Q6): no spreading to a less crowded enemy, the nearest, kept while in reach. */
 		bool bRanged = false;
+		/**
+		 * With no aggression radius, it still takes on an enemy attacking it (bAttacksMe), never another (V5.1,
+		 * FHOLUnitTypeConstants::bRipostes: the King), on attack-move too (no AttackMoveRadius, V5.3) and on hold (in reach
+		 * only). Without it, such a unit takes on nobody by itself.
+		 */
+		bool bRipostes = false;
 	};
 
 	/** One enemy the grid found near the seeker (the processor fills them). */
@@ -157,7 +163,7 @@ namespace HOLCombat
 	/**
 	 * The enemy the seeker takes on by itself, as an index into Candidates, INDEX_NONE for none (an ordered target does
 	 * not come through here). Eligible: within the search radius, or attacking the seeker (riposte) when it has a search
-	 * radius at all; on hold, in reach only. The current target, in reach, is kept. Otherwise the best by, in order: a
+	 * radius at all; with none but bRipostes (V5.1, the King), only an enemy attacking it; on hold, in reach only. The current target, in reach, is kept. Otherwise the best by, in order: a
 	 * unit before a building; in reach before out of reach; attacking the seeker before not; (out of reach) fewer than
 	 * MaxAttackers attackers before crowded (not for a shooter, bRanged); nearest by edge distance; smallest Id. Any order of the same candidates
 	 * gives the same enemy.

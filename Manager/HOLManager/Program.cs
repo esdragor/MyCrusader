@@ -5,6 +5,7 @@ using HOLManager;
 using HOLManager.Api;
 using HOLManager.Lobbies;
 using HOLManager.Matches;
+using HOLManager.Versions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,9 @@ builder.Services.AddSingleton<IServerLauncher>(_ => new ProcessServerLauncher(se
 builder.Services.AddSingleton(sp => new LobbyStore(gameVersion, sp.GetRequiredService<IClock>(),
     launcher: sp.GetRequiredService<IServerLauncher>()));
 
+// Versions served to the launcher (L2), with their own settings.
+builder.Services.AddSingleton(new VersionStore((builder.Configuration.Get<VersionSettings>() ?? new VersionSettings()).ResolveDir()));
+
 // Housekeeping every second (R2.10): servers gone, silent or lingering are followed even when no one calls.
 builder.Services.AddHostedService<HousekeepingService>();
 
@@ -52,6 +56,7 @@ app.Lifetime.ApplicationStopping.Register(() => app.Logger.LogInformation("HOLMa
 
 app.MapLobbyRoutes();
 app.MapServerRoutes();
+app.MapVersionRoutes();
 
 // Closing the console window (CTRL_CLOSE, SIGHUP in .NET) kills the process a few seconds later without the usual
 // shutdown: stop the app and wait for it, so that the game servers still running are stopped (R2.12).

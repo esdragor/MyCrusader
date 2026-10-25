@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -392,6 +393,14 @@ void UHOLCombatProcessor::KillUnit(const UWorld* World, UHOLUnitSubsystem& Units
 	Victim.State->Activity = EHOLUnitActivity::Dying;
 	// Its population places free at once (the user's trial of J7b), not at its destruction; a kill of KillerPlayer (C2).
 	Units.MarkUnitDying(Victim.UnitId, KillerPlayer);
+	// V5.2 (Regicide, D355): a King dead defeats its slot at the end of the step (none again for a defeated slot's collapse).
+	if (World && HOLIsKing(Victim.Constants->ArmorCategoryMask))
+	{
+		if (AHOLGameState* GameState = World->GetGameState<AHOLGameState>())
+		{
+			GameState->HandleKingDeath(Victim.State->OwnerPlayer);
+		}
+	}
 }
 
 void UHOLCombatProcessor::FinishDying(const UWorld* World, UHOLUnitSubsystem& Units, FFighter& Fighter, const int64 StepIndex)
@@ -1139,6 +1148,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.AttackRange = Constants.AttackRange;
 			Seeker.AggressionRadius = Constants.AggressionRadius;
 			Seeker.bRanged = HOLCombat::IsRangedAttack(Constants.AttackRange);
+			Seeker.bRipostes = Constants.bRipostes;
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
 			const float SearchRadius = HOLCombat::GetSearchRadius(Seeker);
@@ -1294,6 +1304,17 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					{
 						const bool bListed = Extra != INDEX_NONE && (bFast ? SeenStamp[Extra] == SearchStamp : CandidateFighters.Contains(Extra));
 						if (Extra != INDEX_NONE && !bListed && Fighters[Extra].Camp != Fighter.Camp)
+						{
+							AddCandidate(Extra);
+						}
+					}
+				}
+				else if (SearchRadius <= 0.f && Seeker.bRipostes && Seeker.Mode != HOLCombat::ESeekMode::Hold && (!bWeighed || ParallelSearch == 2))
+				{
+					// V5.1 (the King): no search, only its riposte: its target and its last attacker, ChooseTarget keeping one attacking it.
+					for (const int32 Extra : { Target, LastAttacker })
+					{
+						if (Extra != INDEX_NONE && Fighters[Extra].Camp != Fighter.Camp && !CandidateFighters.Contains(Extra))
 						{
 							AddCandidate(Extra);
 						}
