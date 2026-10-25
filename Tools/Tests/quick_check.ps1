@@ -896,8 +896,11 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus -9200 6000", "frames 3", "hol.Select.BoxGround -9800 5400 -8600 6600", "waitlog Selection: 5 units (own): Peasant x5", "hol.Select.OrderGround -10800 6000"
             for ($i = 0; $i -lt 16; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
             Step "hol.Units.TurnReport"
-            # Taken away at the end (the parts after see none of them; the two houses stay).
-            Step "mark bodies end", "hol.Select.Click 0.03 0.05", "hol.Units.Remove -9000 0 5000 0", "hol.Units.Remove -9000 3000 2500 1", "hol.Units.Remove -10000 6000 2000 0", "frames 3"
+            # Taken away at the end (the parts after see none of them). The two houses too, destroyed by the cheat (D345.2a):
+            # left standing, they raised slot 0's population cap by 20 for the parts after ("build site" read 30 -> 40).
+            Step "mark bodies end", "hol.Select.Click 0.03 0.05", "hol.Units.Remove -9000 0 5000 0", "hol.Units.Remove -9000 3000 2500 1", "hol.Units.Remove -10000 6000 2000 0",
+                "hol.Cheat.DamageNear 99999 6000 -3400 own melee", "waitlog Building destroyed: House of slot 0 at (-8800, -3200)",
+                "hol.Cheat.DamageNear 99999 6000 -2600 own melee", "waitlog Building destroyed: House of slot 0 at (-8800, -2400)", "frames 3"
         }
         if (($Parts -contains "rocks") -and $Case.Name -eq "2p") {
             # No body may go into a rock, no army stuck at one (the user's trials ridge_army): each case of $RockCases in turn,

@@ -7064,3 +7064,13 @@ d'épée).
   annulé, branche `s5-velocity` supprimée, Elrond rendue (`allied-combat` 8fcb0f4). `s5_report.py` : budget par défaut
   34 000. GDD (tableau des seuils, D218, D450, prochain numéro D451) et `EtapeDefini.md` à jour. **J7c.4 close** :
   S5 à 32,1-32,6 Ko/s passe sous le nouveau seuil. Suite : **J7c.5** (clôture de J7 au GDD).
+- (J7c.5, 2026-10-25) **Choix de l'utilisateur** (recommandation) : au § 21, **le plan et les choix majeurs** (pas
+  chaque réglage d'essai). **Clôture de J7 au GDD** : D327 et D328 reportés au tableau (après D326) ; **D451 à D456**
+  = J7-Q1 à Q6 (D453 avec la forme des rangs, Ctrl + chiffre retiré, la flèche du glisser ; D454 avec la portée par
+  arme et la tenue sans riposte ; D455 = J7-Q5 révisée, PV exacts sur 8 bits) ; **D457 à D462** = J7c-Q1 à Q6 (D460
+  avec le lâcher au quart) ; **D463** corps au sol 30 s ; **D464** files en marche, rangs à l'arrivée (retardataires,
+  petits blocs) ; **D465** ligne de front (zone de contrôle, garde côté ennemi, l'ennemi est un mur) ; **D466** S4 en
+  tiers ; **D467** optimisations identiques (empreinte de bataille) ; **D468** simulation reproductible ; **D469**
+  vitesse nulle des immobiles. Paragraphe « Parcours J7 » au § 16.6, lignes M4 / M5 « fait en J7 », tableau des
+  touches du § 7.3 (Ctrl + chiffre retiré), prochain numéro **D470**. Ligne J7c retirée d'`EtapeDefini.md`.
+  **J7 est close.**
