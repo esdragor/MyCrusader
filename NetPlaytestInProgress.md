@@ -1147,3 +1147,10 @@ R8, R9.
   (et par `publish.ps1` en filet), un seul serveur de 3 Go en permanence. Détail et contexte : `LauncherInProgress.md`
   (L2 : dossier des versions, L4 : publication). En attendant : mise à jour du serveur à la main.
   → Commit **4a88040** sur `net-playtest` (« go » de l'utilisateur). `main` inchangée. Suite : R7.4 et la suite ; deux points à décider (chef revenu, gains des Paysans pendant l'absence).
+- 2026-10-25 : (session lanceur, L10) **R8.1 commencée** : Tailscale installé sur le PC de l'utilisateur,
+  `pc-belongfr-03` = **100.123.190.53** ; règles de pare-feu par port (TCP 7700, UDP 7777-7799, profil Privé,
+  limitées à 100.64.0.0/10) demandées à l'utilisateur. Détail : `LauncherInProgress.md`.
+- 2026-10-25 : (session lanceur) **L-Q8 = A, revient sur R-Q2 pour les amis** : l'utilisateur ne veut pas que ses amis
+  installent Tailscale ; ils n'auront que le kit du lanceur et joindront le PC par **redirection de ports de la box**
+  (TCP 7700, UDP 7777-7799), IP publique 90.55.168.58 (pas de CGNAT), avec un **mot de passe partagé** à concevoir
+  (gestionnaire + client du jeu `HOLManagerClient` : à coordonner avec cette session). Détail : `LauncherInProgress.md`.

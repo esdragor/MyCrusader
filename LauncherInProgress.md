@@ -310,3 +310,70 @@ après accord de cette session ou après la fusion de ses étapes en cours.
 - 2026-10-25 : **L7-L9 commitées** (accord de l'utilisateur) : 9b0a990, fusionnée dans `main` (d2ae192), `dotnet test`
   repassé sur `main` (27 + 129 + 24 + 206). Elrond libéré (`IN_USE.txt` retiré, `launcher-l5` = `main`). Suivant :
   **L10** (essai de l'utilisateur), qui attend son adresse Tailscale et le feu vert pour publier deux vraies versions.
+- 2026-10-25 : L10 : l'utilisateur demande d'être guidé pour Tailscale (absent de ce PC). C'est aussi **R8.1** du
+  chantier réseau (`NetPlaytestInProgress.md`) : guidage pas à pas, adresse notée ici et là-bas une fois connue.
+  Ports à ouvrir ensuite sur le PC : gestionnaire 7700 (TCP), serveurs de partie dès 7777 (UDP).
+- 2026-10-25 : L10 / R8.1 : **Tailscale installé** par l'utilisateur ; ce PC = `pc-belongfr-03`, adresse
+  **100.123.190.53** (compte Tailscale de l'utilisateur). Pare-feu vu : les règles existantes (`holmanager.exe`,
+  `heroeslibertyserver.exe`, créées par les invites Windows) ne valent que pour le profil **Public** et des chemins
+  d'exe précis ; l'interface Tailscale est en profil **Privé** : il faut deux règles par port, limitées à
+  `100.64.0.0/10` (TCP 7700, UDP 7777-7799), à créer par l'utilisateur en administrateur.
+- 2026-10-25 : L10 / R8.1 : règles créées par l'utilisateur et vérifiées : « HOL gestionnaire (Tailscale) » TCP 7700
+  et « HOL serveurs de partie (Tailscale) » UDP 7777-7799, entrée, `100.64.0.0/10`, tous profils. Suivant : partage du
+  PC à un ami (R8.2) quand un ami est disponible ; en attendant, moitié locale de L10 (feu vert demandé).
+- 2026-10-25 : **L10, moitié locale lancée** (« fais tout ce qui est possible sans ami »). **Défaut trouvé** : dans un
+  vrai paquet, la version est dans `HeroesOfLiberty\Version.txt` (`package.ps1`, lue par le jeu), pas à la racine du
+  dossier joueur ; le lanceur lit `Version.txt` à la racine (`InstalledVersion`, `UpdatePlan.ScanGame`,
+  `UpdateApplier` « Version.txt en dernier ») : un vrai jeu serait vu « pas installé » et retéléchargé en entier à
+  chaque fois. Les essais L6-L9 avaient un `Version.txt` factice à la racine. En parallèle : **L10a** correction
+  (Arwen, branche `launcher-l10` = `main`), **L10b** empaquetage + publication de `L10-v1` (Elrond,
+  `Saved\Manager\Versions`). Ensuite : kit (`http://100.123.190.53:7700`), installation, `L10-v2`, mise à jour, Jouer.
+- 2026-10-25 : L10b : publish.ps1 -Version L10-v1 lancé (Elrond) ; HOLManager construit (build_manager.ps1 PASS, 8 s, 91,9 Mo, Saved\Manager\) : sans Server\HeroesOfLibertyServer.exe à côté, il annoncera la version de jeu « dev » (ResolveGameVersion) - à régler par GameVersion ou ServerExe avant l'essai.
+- 2026-10-25 : **L-Q8 = A** (choix de l'utilisateur, conforme à la recommandation) : « je veux juste lui donner le
+  launcher, pas qu'il ait à se loguer sur Tailscale ». Les amis n'installent **que le kit** ; ils joignent le PC par
+  **redirection de ports de la box** (TCP 7700, UDP 7777-7799 → ce PC), le kit porte l'adresse publique (nom DynDNS
+  plus tard si elle change) ; **mot de passe partagé** dans le kit pour que le gestionnaire ne réponde qu'aux
+  lanceurs / jeux de l'utilisateur (à concevoir : touche aussi le client du jeu, chantier réseau). Tailscale reste
+  installé sur le PC (accès de l'utilisateur), plus demandé aux amis. Mesuré : IP publique **90.55.168.58**, atteinte
+  en 1 saut (vraie IPv4 de la box, pas de CGNAT) ; box `192.168.1.1` (probablement une Livebox, Orange) ; ce PC
+  `192.168.1.19` en DHCP (à fixer dans la box).
+- 2026-10-25 : L10a : défaut montré par les tests à la forme réelle (`HeroesOfLiberty/Version.txt`, `HeroesOfLiberty.exe` à la racine) : 10 rouges (jeu vu pas installé, tout retéléchargé sans correctif, version posée avant l'échec) ; corrigé par `GameFiles.VersionFile = "HeroesOfLiberty/Version.txt"` (Arwen, `launcher-l10`, non commité) lu par `InstalledVersion` (donc `ScanGame`, `StatusLoader`) et posé en dernier par `UpdateApplier` ; pas de repli sur un `Version.txt` racine (test `VersionAtTheRootIsNotRead`) ; HOLUpdate/HOLPublish inchangés ; `dotnet test Manager/HOLManager.sln` 27 + 130 + 24 + 206 verts, 0 avertissement.
+- 2026-10-25 : L10a relue par la session principale : `dotnet test` repassé dans Arwen (27 + 130 + 24 + 206). Faite,
+  non commitée (`launcher-l10` d'Arwen) ; le kit de l'essai sera fait depuis Arwen (lanceur corrigé). Attente : L10b
+  (v1 publiée) et la redirection des ports par l'utilisateur.
+- 2026-10-25 : L10b : publish L10-v1 **PASS** (5,3 min : empaquetage 5 min, HOLPublish 15 s) ; latest.txt = L10-v1, manifeste 50 fichiers / 621,6 Mo bruts, files\ 340,9 Mo gz, notes.txt en français ; Version.txt en `HeroesOfLiberty/Version.txt` (pas à la racine), pas de servers.json, `HeroesOfLiberty.exe` à la racine (amorce) ; seul le .pdb (2,5 Go) est exclu. Archive `Saved\Packages\L10-v1` laissée (6,07 Go).
+- 2026-10-25 : L10b relue : `L10-v1` publiée (50 fichiers, 340,9 Mo gz), gestionnaire construit
+  (`Elrond\Saved\Manager\HOLManager.exe`), à lancer avec `--GameVersion=L10-v1`. Suite en parallèle : **L10c**
+  (gestionnaire sur 7700, kit depuis Arwen vers `127.0.0.1` pour l'essai local, installation de v1 par le lanceur,
+  « Jouer ») et **L10d** (empaquetage seul de `L10-v2` dans Elrond, un texte d'`UE_LOG` changé puis remis, publié
+  seulement après l'installation de v1).
+- 2026-10-25 : L10d : log changé dans Elrond (InitGame, `Match on %s (L10-v2): ...`, émis à chaque chargement de carte) ; package.ps1 -Version L10-v2 lancé.
+- 2026-10-25 : L10d : package L10-v2 **PASS** (3,1 min ; Saved\Packages\L10-v2 : Windows 3191 Mo, WindowsServer 3026 Mo), non publiée ; .cpp remis (git status propre hors IN_USE.txt) ; v1/v2 Windows : 51 fichiers des deux côtés, diffèrent seulement HeroesOfLiberty.exe (même taille, SHA différent), HeroesOfLiberty/Version.txt, les 3 Manifest_*_Win64.txt et le .pdb (exclu de la publication) ; .pak identiques.
+- 2026-10-25 : L10c : gestionnaire d'Elrond lancé sur 7700 (`--GameVersion=L10-v1`, PID 70828, laissé tourner) ; `/versions/latest` = L10-v1, 50 fichiers ; `make_kit.ps1` depuis Arwen vers `http://127.0.0.1:7700` **PASS** (16 s, kit 63,3 Mo, `launcher\1\` posé dans les versions d'Elrond).
+- 2026-10-25 : L10c : installation par `HOLLauncher.exe --update` dans un dossier vide : **14 s** jusqu'au message « Le jeu est à jour (version L10-v1). », puis « Version installée : L10-v1 » (défaut de L10a corrigé, vu au vrai) ; 50/50 empreintes conformes au manifeste (651,8 Mo bruts), `.holupdate\installed.json` en L10-v1, `HeroesOfLiberty\Version.txt` = L10-v1, les 4 fichiers du kit intacts.
+- 2026-10-25 : L10c : relancé sans option : « Le jeu est à jour. », « Mettre à jour le jeu » grisé ; 2e `--update` : rien fait (par conception, pas de message quand à jour), aucun fichier modifié. (Le gestionnaire ne journalise pas les téléchargements : vérifié par les dates des fichiers.)
+- 2026-10-25 : L10c : « Jouer » : amorce `HeroesOfLiberty.exe` puis `HeroesOfLiberty\Binaries\Win64\HeroesOfLiberty.exe`, lanceur fermé ; menu principal affiché en ~25 s ; journal du jeu : `Version: L10-v1`, `Manager client: 1 server(s), first Heroes of Liberty`, 0 erreur ; jeu fermé. Reste : l'essai depuis l'extérieur (IP publique, ports) et v1 -> v2 (L10d).- 2026-10-25 : L10 : redirection des ports faite par l'utilisateur (Livebox « Nautilus » : bail DHCP statique
+  192.168.1.19, NAT/PAT TCP 7700 et UDP 7777-7799) ; règles du pare-feu ouvertes à toute adresse et renommées
+  « HOL gestionnaire » / « HOL serveurs de partie » (vérifiées). **Port 7700 joignable depuis Internet** (portchecker.io :
+  7700 ouvert, 7701 fermé en témoin ; check-host.net ne rend plus de résultat par API) ; la box renvoie aussi
+  `http://90.55.168.58:7700` depuis le réseau local (boucle locale OK : un kit vers l'adresse publique s'essaie sur ce
+  PC). UDP non vérifiable de l'extérieur sans ami. L10c relue (installation réelle 14,1 s, 50 fichiers justes,
+  « Jouer » → menu). **Attention** : le gestionnaire est exposé sans mot de passe tant que L11 (clé partagée) n'est pas
+  faite : à n'allumer que pendant les essais. **L10e lancée** : publication de `L10-v2`, passage v1 → v2 par le
+  lanceur, kit public (`http://90.55.168.58:7700`) et installation par l'adresse publique.
+- 2026-10-25 : L10e : publish.ps1 L10-v2 (archive, notes « Deuxième version d'essai : passage par correctif. ») **PASS** en 70 s (HOLPublish 66 s ; 50 fichiers, 340,9 Mo compressés ; 4 correctifs depuis L10-v1, 6,3 Mo dont `HeroesOfLiberty.exe.patch` 6 583 085 o pour un exe de 348 Mo, manifestes 42/66/858 o) ; versions gardées L10-v1, L10-v2 (757 Mo).
+- 2026-10-25 : L10e : gestionnaire arrêté proprement (taskkill sans /F : « HOLManager stopping. ») et relancé `--GameVersion=L10-v2` (PID 53652) ; `/versions/latest` = L10-v2, `patchesFrom` = [L10-v1], notes justes.
+- 2026-10-25 : L10e : lanceur sans option sur le jeu v1 : « Version installée : L10-v1 », « Dernière version : L10-v2 », « Une mise à jour du jeu est disponible (L10-v2). », nouveautés affichées, « Mettre à jour le jeu » actif.
+- 2026-10-25 : L10e : `--update` v1 → v2 : **2,3 s** jusqu'à « Le jeu est à jour (version L10-v2). » (progression « Fichier 5/5 … 6,3 Mo ») ; seuls les correctifs ont transité (relevé de `.holupdate` toutes les 100 ms : `L10-v2\patches\` = les 4 .patch, `files\` = les 5 fichiers reconstruits, aucun .gz) ; seuls 5 fichiers modifiés (exe, Version.txt, 3 manifestes) ; 50/50 empreintes = manifeste v2 ; `installed.json` et Version.txt en L10-v2 ; zone de travail vidée ; « Version installée : L10-v2 », « Le jeu est à jour. », bouton grisé.
+- 2026-10-25 : L10e : « Jouer » : lanceur fermé, jeu lancé ; journal `LogHOLNet: Display: Version: L10-v2`, `Manager client: 1 server(s)`, 0 erreur ; jeu fermé.
+- 2026-10-25 : L10e : kit public `make_kit.ps1 -ServerUrl http://90.55.168.58:7700` depuis Arwen **PASS** (8 s, 63,3 Mo) ; dézippé dans un dossier vide, `--update` par l'adresse publique (boucle de la box) : **9,8 s** jusqu'à « Le jeu est à jour (version L10-v2). » (« Fichier 50/50 … 340,9 Mo », que des .gz, aucun correctif) ; 50/50 empreintes = manifeste v2 ; `installed.json` et Version.txt en L10-v2 ; « Version installée : L10-v2 », « Le jeu est à jour. » ; servers.json intact.
+- 2026-10-25 : L10e : gestionnaire arrêté proprement (taskkill sans /F, « HOLManager stopping. ») ; plus aucun HOLManager ni serveur de partie, rien n'écoute sur 7700. **L10e faite, rien n'a cloché.**
+- 2026-10-25 : L10e relue : **moitié locale de L10 réussie**. v1 → v2 par le lanceur en 2,3 s, 6,3 Mo de correctifs
+  (exe 348 Mo → correctif 6,58 Mo), 50/50 empreintes, « Jouer » → jeu en `L10-v2` ; **kit public**
+  (`http://90.55.168.58:7700`, 63,3 Mo, `scratchpad\L10\HOLLauncher-kit.zip`) : installation complète par l'adresse
+  publique en 9,8 s. Gestionnaire arrêté (pas de mot de passe). Reste : commit de L10a (accord demandé) ; **L11** clé
+  partagée (gestionnaire + lanceur + client du jeu, à coordonner avec le chantier réseau) avant de laisser le
+  gestionnaire allumé ; essai avec un ami (UDP des parties non vérifié). Archives `Elrond\Saved\Packages\L10-v1/v2`
+  (6 Go chacune) gardées pour l'instant.
+- 2026-10-25 : **L10a commitée** (accord de l'utilisateur), branche `launcher-l10` d'Arwen fusionnée dans `main`,
+  `dotnet test` repassé sur `main`. Suivant : L11 (clé partagée), en attente de la réponse de l'utilisateur.
