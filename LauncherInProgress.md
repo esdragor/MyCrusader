@@ -443,3 +443,15 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   (dossiers par défaut de `publish.ps1` / `make_kit.ps1` lancés depuis `main`). `Desktop\Gestionnaire HOL.bat` pointe
   là ; vérifié en local (port 7798, bouclage : « access key: on », L11-v1, 50 fichiers, puis arrêté). **Arwen et
   Elrond libres** (sans `IN_USE.txt`).
+- 2026-10-25 : Restes listés à l'utilisateur ; « fais-le si c'est rapide » : **L12** = journal du gestionnaire
+  (requêtes, refus de clé), lancée en sous-agent (Arwen, branche `launcher-l12` = `main`) ; **DynDNS** (l'adresse
+  publique d'une Livebox peut changer) guidé avec l'utilisateur : DuckDNS (gratuit, sans confirmation mensuelle, la
+  Livebox ne le gère pas) tenu à jour par une tâche planifiée du PC (toujours allumé), nom mis dans le kit.
+- 2026-10-25 : **DynDNS fait** : `heroesofliberty.duckdns.org` (compte DuckDNS de l'utilisateur) → 90.55.168.58 ;
+  mise à jour par `MyCrusader\Saved\DuckDNS\update.ps1` (jeton dans `token.txt` à côté, `Saved\` ignoré par git,
+  journal `update.log` 200 lignes) lancée par la tâche planifiée **« HOL DuckDNS »** (toutes les 5 min + à
+  l'ouverture de session ; premier passage « OK »). **Kit refait** vers `http://heroesofliberty.duckdns.org:7700`
+  (`MyCrusader\Saved\Kit\HOLLauncher-kit.zip`, 63,4 Mo, clé reprise). Vérifié, gestionnaire allumé ~1 min : par le nom,
+  401 sans clé, L11-v1 avec ; portchecker.io sur le nom : 7700 ouvert (7701 fermé). Gestionnaire arrêté. Note :
+  `make_kit` a prévenu que `launcher\1\HOLLauncher.exe` a été remplacé par un exe différent (même code, reconstruit) :
+  sans effet tant qu'aucun ami n'a de lanceur installé.
