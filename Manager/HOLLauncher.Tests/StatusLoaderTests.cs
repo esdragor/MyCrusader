@@ -14,7 +14,7 @@ public class StatusLoaderTests
     {
         using var dir = new TempDir();
         dir.Write("servers.json", """{ "servers": [ { "name": "Home", "url": "http://home:7700" } ] }""");
-        dir.Write("Version.txt", "v1");
+        dir.Write("HeroesOfLiberty/Version.txt", "v1");
         var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
 
         var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)));

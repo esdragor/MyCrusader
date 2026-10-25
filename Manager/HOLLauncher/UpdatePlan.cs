@@ -116,7 +116,7 @@ public sealed class UpdatePlan
     public static UpdatePlan ForGame(string gameDir, LatestVersion latest)
         => Create(ScanGame(gameDir), latest, ReadInstalledList(gameDir), File.Exists(Path.Combine(gameDir, ServersName)));
 
-    /** The installed list (hashes every file: slow on the 332 MB exe); Empty when Version.txt is missing or empty. */
+    /** The installed list (hashes every file: slow on the 332 MB exe); Empty when GameFiles.VersionFile is missing or empty. */
     public static VersionManifest ScanGame(string gameDir)
     {
         var version = InstalledVersion.Read(gameDir);

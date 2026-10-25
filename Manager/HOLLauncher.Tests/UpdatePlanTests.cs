@@ -94,15 +94,15 @@ public class UpdatePlanTests
     public void ScanGameIgnoresUpdateFolderAndSymbols()
     {
         using var game = new TempDir();
-        game.Write("Version.txt", "v1");
-        game.Write("Game.exe", "exe");
+        game.Write("HeroesOfLiberty/Version.txt", "v1");
+        game.Write("HeroesOfLiberty.exe", "exe");
         game.Write("Game.pdb", "symbols");
-        game.Write(".holupdate/v2/files/Game.exe", "new");
+        game.Write(".holupdate/v2/files/HeroesOfLiberty.exe", "new");
 
         var manifest = UpdatePlan.ScanGame(game.Root);
 
         Assert.Equal("v1", manifest.Version);
-        Assert.Equal(["Game.exe", "Version.txt"], manifest.Files.Select(f => f.Path));
+        Assert.Equal(["HeroesOfLiberty.exe", "HeroesOfLiberty/Version.txt"], manifest.Files.Select(f => f.Path));
     }
 
     [Fact]
@@ -118,9 +118,9 @@ public class UpdatePlanTests
     public void NothingIsDeletedWithoutPreviousListAndOnlyListedFilesWithOne()
     {
         var installed = new VersionManifest("v1",
-            [new FileEntry("Game.exe", 10, HashA), new FileEntry("Old.txt", 3, HashB), new FileEntry("Mine.txt", 3, HashC)]);
-        var latest = Latest("v2", [new FileEntry("Game.exe", 10, HashA)]);
-        var previous = new VersionManifest("v1", [new FileEntry("Game.exe", 10, HashA), new FileEntry("old.TXT", 3, HashB)]);
+            [new FileEntry("HeroesOfLiberty.exe", 10, HashA), new FileEntry("Old.txt", 3, HashB), new FileEntry("Mine.txt", 3, HashC)]);
+        var latest = Latest("v2", [new FileEntry("HeroesOfLiberty.exe", 10, HashA)]);
+        var previous = new VersionManifest("v1", [new FileEntry("HeroesOfLiberty.exe", 10, HashA), new FileEntry("old.TXT", 3, HashB)]);
 
         Assert.Empty(UpdatePlan.Create(installed, latest).ToDelete);
         Assert.Equal(["Old.txt"], UpdatePlan.Create(installed, latest, previous).ToDelete.Select(f => f.Path));
@@ -129,47 +129,47 @@ public class UpdatePlanTests
     [Fact]
     public void LauncherFilesAreLeftOutAndServersOnlyWhenMissing()
     {
-        var latest = Latest("v2", [new FileEntry("Game.exe", 10, HashA), new FileEntry("HOLLauncher.exe", 4, HashB),
+        var latest = Latest("v2", [new FileEntry("HeroesOfLiberty.exe", 10, HashA), new FileEntry("HOLLauncher.exe", 4, HashB),
             new FileEntry("hpatchz.exe", 4, HashB), new FileEntry("servers.json", 5, HashC)]);
-        var installed = new VersionManifest("v1", [new FileEntry("Game.exe", 10, HashA)]);
+        var installed = new VersionManifest("v1", [new FileEntry("HeroesOfLiberty.exe", 10, HashA)]);
 
         Assert.Empty(UpdatePlan.Create(installed, latest, localServers: true).Downloads);
         var missing = UpdatePlan.Create(installed, latest, localServers: false);
         Assert.Equal(["servers.json"], missing.Downloads.Select(d => d.File.Path));
-        Assert.Equal(["Game.exe"], missing.InstalledList.Files.Select(f => f.Path));
+        Assert.Equal(["HeroesOfLiberty.exe"], missing.InstalledList.Files.Select(f => f.Path));
     }
 
     [Fact]
     public void ScanGameIgnoresLauncherFiles()
     {
         using var game = new TempDir();
-        game.Write("Version.txt", "v1");
+        game.Write("HeroesOfLiberty/Version.txt", "v1");
         game.Write("HOLLauncher.exe", "l");
         game.Write("HOLLauncher-old.exe", "l");
         game.Write("hpatchz.exe", "p");
         game.Write("servers.json", "{}");
 
-        Assert.Equal(["Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
+        Assert.Equal(["HeroesOfLiberty/Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
     }
 
     [Fact]
     public void PatchCarriesTheFullFileUrl()
     {
-        var installed = new VersionManifest("v1", [new FileEntry("Game.exe", 10, HashA)]);
-        var plan = UpdatePlan.Create(installed, Latest("v2", [new FileEntry("Game.exe", 12, HashB)], "v1"));
+        var installed = new VersionManifest("v1", [new FileEntry("HeroesOfLiberty.exe", 10, HashA)]);
+        var plan = UpdatePlan.Create(installed, Latest("v2", [new FileEntry("HeroesOfLiberty.exe", 12, HashB)], "v1"));
 
-        Assert.Equal("versions/v2/files/Game.exe", Assert.Single(plan.Downloads).FullUrl);
+        Assert.Equal("versions/v2/files/HeroesOfLiberty.exe", Assert.Single(plan.Downloads).FullUrl);
     }
 
     [Fact]
     public void ScanGameIgnoresTheLauncherUpdateFiles()
     {
         using var game = new TempDir();
-        game.Write("Version.txt", "v1");
+        game.Write("HeroesOfLiberty/Version.txt", "v1");
         game.Write("HOLLauncher.new.exe", "l");
         game.Write("HOLLauncher.new.exe.part", "l");
         game.Write("HOLLauncher.old.exe", "l");
 
-        Assert.Equal(["Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
+        Assert.Equal(["HeroesOfLiberty/Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
     }
 }

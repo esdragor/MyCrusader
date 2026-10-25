@@ -1,7 +1,8 @@
 namespace HOLLauncher;
 
 /**
- * The reading done at start and on "Refresh": servers.json, then /versions/latest, then Version.txt, then the view.
+ * The reading done at start and on "Refresh": servers.json, then /versions/latest, then the installed version
+ * (InstalledVersion), then the view.
  * An unreadable servers.json (InvalidDataException) becomes an error view instead of an exception.
  */
 public static class StatusLoader

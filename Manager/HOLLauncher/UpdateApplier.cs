@@ -12,16 +12,16 @@ public sealed record ReadyFile(FileEntry File, string LocalPath);
  * Puts an update in place (L6b), once every file is fetched and checked. First every file to replace or delete is
  * opened for exclusive writing: one in use stops everything before any change (GameLockedException). Then each file
  * is moved to its place (folders created, old one replaced), the removed ones deleted (UpdatePlan.ToDelete: only files
- * of the previous installed.json), Version.txt last, then installed.json, then the work folder is removed. If a move
- * fails anyway, Version.txt still names the old version: the next update starts again, and the files already moved
- * are seen as unchanged by the scan.
+ * of the previous installed.json), the version file (GameFiles.VersionFile) last, then installed.json, then the work
+ * folder is removed. If a move fails anyway, the version file still names the old version: the next update starts
+ * again, and the files already moved are seen as unchanged by the scan.
  */
 public static class UpdateApplier
 {
     public static void Apply(string gameDir, UpdatePlan plan, IReadOnlyList<ReadyFile> ready)
     {
         var root = Path.GetFullPath(gameDir);
-        var touched = ready.Select(r => r.File.Path).Concat(plan.ToDelete.Select(f => f.Path)).Append(ManifestBuilder.VersionFile);
+        var touched = ready.Select(r => r.File.Path).Concat(plan.ToDelete.Select(f => f.Path)).Append(GameFiles.VersionFile);
         foreach (var path in touched)
         {
             CheckWritable(GamePath(root, path), path);
@@ -50,7 +50,7 @@ public static class UpdateApplier
         }
     }
 
-    private static bool IsVersionFile(string path) => path.Equals(ManifestBuilder.VersionFile, StringComparison.OrdinalIgnoreCase);
+    private static bool IsVersionFile(string path) => path.Equals(GameFiles.VersionFile, StringComparison.OrdinalIgnoreCase);
 
     private static string GamePath(string root, string path) => Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar));
 

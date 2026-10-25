@@ -43,8 +43,8 @@ public class GameUpdaterTests
     {
         public Dictionary<string, byte[]> Files { get; } = new(StringComparer.Ordinal)
         {
-            ["Version.txt"] = Text("v2"),
-            ["Game.exe"] = NewExe,
+            ["HeroesOfLiberty/Version.txt"] = Text("v2"),
+            ["HeroesOfLiberty.exe"] = NewExe,
             ["Data/New.pak"] = Text("new pak"),
             ["servers.json"] = Text("""{ "managers": [ { "url": "http://127.0.0.1:7700" } ] }"""),
             ["HOLLauncher.exe"] = Text("launcher v2"),
@@ -86,8 +86,8 @@ public class GameUpdaterTests
     private static TempDir InstalledGame(bool fromZip = false)
     {
         var game = new TempDir();
-        game.Write("Version.txt", "v1");
-        game.Write("Game.exe", OldExe);
+        game.Write("HeroesOfLiberty/Version.txt", "v1");
+        game.Write("HeroesOfLiberty.exe", OldExe);
         game.Write("Data/Old.pak", "old pak");
         game.Write("Stray.txt", "player's file");
         game.Write("HOLLauncher.exe", "launcher v1");
@@ -96,7 +96,7 @@ public class GameUpdaterTests
         if (!fromZip)
         {
             var list = new VersionManifest("v1",
-                [Entry("Version.txt", Text("v1")), Entry("Game.exe", OldExe), Entry("Data/Old.pak", Text("old pak"))]);
+                [Entry("HeroesOfLiberty/Version.txt", Text("v1")), Entry("HeroesOfLiberty.exe", OldExe), Entry("Data/Old.pak", Text("old pak"))]);
             Directory.CreateDirectory(Path.Combine(game.Root, UpdatePlan.WorkDirName));
             list.Save(UpdatePlan.InstalledListPath(game.Root));
         }
@@ -106,7 +106,7 @@ public class GameUpdaterTests
     private static Published WithPatch()
     {
         var published = new Published();
-        published.Patches["Game.exe"] = HDiffPatchTool.Diff(OldExe, NewExe);
+        published.Patches["HeroesOfLiberty.exe"] = HDiffPatchTool.Diff(OldExe, NewExe);
         return published;
     }
 
@@ -142,10 +142,10 @@ public class GameUpdaterTests
         var result = await Update(game, published);
 
         Assert.True(result.Success, result.Message);
-        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
-        Assert.Contains("/versions/v2/patches/v1/Game.exe", published.Requests);
-        Assert.DoesNotContain("/versions/v2/files/Game.exe", published.Requests);
-        Assert.Equal("v2", Read(game, "Version.txt"));
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
+        Assert.Contains("/versions/v2/patches/v1/HeroesOfLiberty.exe", published.Requests);
+        Assert.DoesNotContain("/versions/v2/files/HeroesOfLiberty.exe", published.Requests);
+        Assert.Equal("v2", Read(game, "HeroesOfLiberty/Version.txt"));
         Assert.False(Directory.Exists(FileDownloader.TempDirFor(game.Root, "v2")));
     }
 
@@ -154,13 +154,13 @@ public class GameUpdaterTests
     {
         using var game = InstalledGame();
         var published = new Published();
-        published.Patches["Game.exe"] = Text("not a patch at all");
+        published.Patches["HeroesOfLiberty.exe"] = Text("not a patch at all");
 
         var result = await Update(game, published);
 
         Assert.True(result.Success, result.Message);
-        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
-        Assert.Contains("/versions/v2/files/Game.exe", published.Requests);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
+        Assert.Contains("/versions/v2/files/HeroesOfLiberty.exe", published.Requests);
     }
 
     [Fact]
@@ -168,7 +168,7 @@ public class GameUpdaterTests
     {
         using var game = InstalledGame();
         var published = new Published();
-        published.Patches["Game.exe"] = Text("not a patch at all");
+        published.Patches["HeroesOfLiberty.exe"] = Text("not a patch at all");
         var reports = new List<DownloadProgress>();
 
         var result = await new GameUpdater(published.Client(), HDiffPatchTool.Hpatchz)
@@ -179,7 +179,7 @@ public class GameUpdaterTests
         var downloadsDone = reports.FindIndex(r => r.FilesDone == r.FileCount);
         var fallback = reports.Skip(downloadsDone + 1).ToList();
         Assert.NotEmpty(fallback);
-        Assert.All(fallback, r => Assert.Equal(("Game.exe", 3, 3), (r.CurrentPath, r.FilesDone, r.FileCount)));
+        Assert.All(fallback, r => Assert.Equal(("HeroesOfLiberty.exe", 3, 3), (r.CurrentPath, r.FilesDone, r.FileCount)));
         Assert.Equal(reports[downloadsDone].BytesReceived + Gzip(NewExe).Length, fallback[^1].BytesReceived);
     }
 
@@ -198,8 +198,8 @@ public class GameUpdaterTests
         var result = await Update(game, published, hpatchz: Path.Combine(game.Root, "nowhere", "hpatchz.exe"));
 
         Assert.True(result.Success, result.Message);
-        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
-        Assert.Contains("/versions/v2/files/Game.exe", published.Requests);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
+        Assert.Contains("/versions/v2/files/HeroesOfLiberty.exe", published.Requests);
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public class GameUpdaterTests
         Assert.True(result.Success, result.Message);
         var list = VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root));
         Assert.Equal("v2", list.Version);
-        Assert.Equal(["Data/New.pak", "Game.exe", "Version.txt"], list.Files.Select(f => f.Path));
+        Assert.Equal(["Data/New.pak", "HeroesOfLiberty.exe", "HeroesOfLiberty/Version.txt"], list.Files.Select(f => f.Path));
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public class GameUpdaterTests
         var result = await Update(game, published);
 
         Assert.False(result.Success);
-        Assert.Equal("v1", Read(game, "Version.txt"));
+        Assert.Equal("v1", Read(game, "HeroesOfLiberty/Version.txt"));
         Assert.Equal("v1", VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root)).Version);
     }
 
@@ -298,17 +298,17 @@ public class GameUpdaterTests
         using var game = InstalledGame();
         var published = WithPatch();
         UpdateResult result;
-        using (new FileStream(Path.Combine(game.Root, "Game.exe"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        using (new FileStream(Path.Combine(game.Root, "HeroesOfLiberty.exe"), FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             result = await Update(game, published);
         }
 
         Assert.False(result.Success);
         Assert.Contains("fermez le jeu", result.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(OldExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.Equal(OldExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
         Assert.False(Exists(game, "Data/New.pak"));
         Assert.True(Exists(game, "Data/Old.pak"));
-        Assert.Equal("v1", Read(game, "Version.txt"));
+        Assert.Equal("v1", Read(game, "HeroesOfLiberty/Version.txt"));
     }
 
     [Fact]
@@ -339,18 +339,18 @@ public class GameUpdaterTests
         var result = await Update(game, published);
 
         Assert.True(result.Success, result.Message);
-        Assert.Equal("v2", Read(game, "Version.txt"));
-        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "Game.exe")));
+        Assert.Equal("v2", Read(game, "HeroesOfLiberty/Version.txt"));
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
         Assert.Equal("new pak", Read(game, "Data/New.pak"));
         Assert.DoesNotContain(published.Requests, r => r.Contains("/patches/"));
-        Assert.Equal(["/versions/v2/files/Data/New.pak", "/versions/v2/files/Game.exe", "/versions/v2/files/Version.txt"],
+        Assert.Equal(["/versions/v2/files/Data/New.pak", "/versions/v2/files/HeroesOfLiberty.exe", "/versions/v2/files/HeroesOfLiberty/Version.txt"],
             published.Requests.Order(StringComparer.Ordinal));
         Assert.Equal("kit launcher", Read(game, "HOLLauncher.exe"));
         Assert.Equal("patcher", Read(game, "hpatchz.exe"));
         Assert.Contains("friend", Read(game, "servers.json"));
         var list = VersionManifest.Load(UpdatePlan.InstalledListPath(game.Root));
         Assert.Equal("v2", list.Version);
-        Assert.Equal(["Data/New.pak", "Game.exe", "Version.txt"], list.Files.Select(f => f.Path));
+        Assert.Equal(["Data/New.pak", "HeroesOfLiberty.exe", "HeroesOfLiberty/Version.txt"], list.Files.Select(f => f.Path));
         Assert.False(Directory.Exists(FileDownloader.TempDirFor(game.Root, "v2")));
     }
 
@@ -371,7 +371,7 @@ public class GameUpdaterTests
         Assert.StartsWith("Espace disque insuffisant", result.Message);
         Assert.Equal(game.Root, asked);
         Assert.Empty(published.Requests);
-        Assert.False(Exists(game, "Version.txt"));
+        Assert.False(Exists(game, "HeroesOfLiberty/Version.txt"));
         Assert.False(Directory.Exists(Path.Combine(game.Root, UpdatePlan.WorkDirName)));
     }
 
@@ -384,6 +384,6 @@ public class GameUpdaterTests
         var result = await Update(game, published, freeSpace: _ => FinalBytes(published) + GameUpdater.DiskMargin);
 
         Assert.True(result.Success, result.Message);
-        Assert.Equal("v2", Read(game, "Version.txt"));
+        Assert.Equal("v2", Read(game, "HeroesOfLiberty/Version.txt"));
     }
 }
