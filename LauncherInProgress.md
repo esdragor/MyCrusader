@@ -233,3 +233,45 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   par la session réseau avec son journal), `dotnet test` 27 + 24 + 206 PASS, `package.ps1` (`-Playtest` ajouté) garde sa
   ligne PASS ; publication à blanc sur deux archives factices : deux PASS, correctif de l'exe 46 octets, `latest.txt`
   juste ; `main` avancée (ff). Elrond libéré. Suivant : **L5** (squelette du lanceur, `Manager/HOLLauncher`).
+- 2026-10-25 : **L5 lancée** (« continuons le lanceur »), Elrond, branche `launcher-l5` = `main` d285ba3, `IN_USE.txt`
+  posé, en sous-agent. Découpée : **L5a** = `Manager/HOLLauncher` (WinForms, net8.0-windows) et
+  `HOLLauncher.Tests` : lecture du `servers.json` du jeu, client de `/versions/latest`, version installée lue dans
+  le dossier du jeu, état affiché (à jour / en retard / serveur injoignable), tests rouges d'abord ; **L5b** = la
+  fenêtre (versions, nouveautés, « Jouer », deux boutons inactifs) et la publication en un seul exe autonome.
+- 2026-10-25 : L5a : commencée (sous-agent, Elrond) : lecture du plan, de PROTOCOL.md (L2), de ParseServers et de l'emplacement de servers.json en jeu empaqueté (FPaths::RootDir = dossier du jeu, à côté de l'exe d'amorce).
+- 2026-10-25 : L5a : projets HOLLauncher (WinExe net8.0-windows) et HOLLauncher.Tests ajoutés à HOLManager.sln à la main (Any CPU seulement) ; 39 tests écrits, rouges : 38 FAIL (NotImplementedException), 1 PASS (délai court du client, déjà vrai).
+- 2026-10-25 : L5a : verte : `dotnet test Manager/HOLManager.sln` 27 + 39 + 24 + 206 PASS, compilation 0 avertissement ; l'exe démarre (fenêtre vide « Heroes of Liberty - launcher 1 »). Décisions : version du lanceur = constante `LauncherInfo.Version = "1"` (montée à la main à chaque lanceur publié, même nom que `launcher/<lv>/`) ; servers.json illisible = erreur (InvalidDataException), absent ou sans ligne valide = gestionnaire local comme le jeu ; réponse refusée (erreur HTTP, corps refusé) affichée comme « serveur injoignable » avec son message ; Version.txt vide = pas installé ; délai du client 5 s. Rien commité. Suivant : L5b (la fenêtre).
+- 2026-10-25 : L5a relue par la session principale : `dotnet test HOLManager.sln` repassé (27 + 39 + 24 + 206) ;
+  `HOLManager.sln` +12 seul fichier existant touché. Décisions du sous-agent gardées (version du lanceur = constante
+  `LauncherInfo.Version` « 1 », nom du dossier `launcher/<lv>/` ; « en retard » = installée ≠ dernière ; `servers.json`
+  illisible = erreur affichée). **L5b lancée** (même branche, en sous-agent).
+- 2026-10-25 : L5b : commencée (sous-agent, Elrond) : lecture du plan, de LauncherStatus, de la fenêtre vide de L5a.
+- 2026-10-25 : L5b : 12 tests écrits (StatusView 9, StatusLoader 3), rouges : 12 FAIL, 39 PASS.
+- 2026-10-25 : L5b : verte et essayée : StatusView (textes, boutons) + StatusLoader (servers.json → /versions/latest → Version.txt, InvalidDataException → vue « Erreur : … ») ; MainForm mince (TableLayoutPanel à la main, lecture en tâche de fond, boutons de mise à jour → « à venir (L6/L7) », « Jouer » inactif) ; csproj : publication un seul exe autonome compressé, sans trimming, si -r donné. `dotnet test HOLManager.sln` 27 + 51 + 24 + 206 PASS, 0 avertissement. Exe win-x64 71,7 Mo ; démarre : sans servers.json ni gestionnaire « Serveur injoignable : … refused … (127.0.0.1:7700) » ; contre un vrai HOLManager (port 7711, dossier de versions factice v2 + notes + lanceur 2) : installée v1, dernière v2, nouveautés montrées, les deux boutons de mise à jour actifs. Captures dans le scratchpad L5b. Rien commité.
+- 2026-10-25 : L5b relue par la session principale : `dotnet test` repassé (27 + 51 + 24 + 206), capture vue (v1 / v2,
+  nouveautés, lanceur 1 → 2 disponible, deux boutons actifs, « Jouer » grisé). **L5 faite, non commitée** (attend
+  l'accord de l'utilisateur, avec L6 si elle avance d'ici là). Exe autonome 71,7 Mo (compressé, sans trimming).
+  **L6 lancée** sur la même branche, découpée : **L6a** = plan et téléchargement (pour chaque fichier : correctif si
+  `patchesFrom` contient la version installée, sinon `.gz` ; dossier temporaire ; reprise par `Range` ; gunzip ;
+  SHA-256), **L6b** = correctif `hpatchz` appliqué et vérifié (échec : fichier complet), remplacement, fichiers retirés
+  supprimés, `Version.txt` en dernier, **L6c** = fenêtre (bouton, barre de progression) et essai contre le gestionnaire.
+- 2026-10-25 : L6a : commencée (sous-agent, Elrond) : lecture du plan, de PROTOCOL.md (routes des versions), de HOLUpdate et de VersionsClient. ManifestBuilder compte tout sous le dossier du jeu (seul *.pdb exclu) : le dossier temporaire `.holupdate/` y entrerait, le lanceur passera donc ses propres exclusions.
+- 2026-10-25 : L6a : 22 tests écrits (UpdatePlan 9, FileDownloader 13 : complet gunzip + SHA-256/taille, coupure puis reprise par Range, serveur qui ignore Range, correctif gardé tel quel, 404 patch_not_found → complet, progression, annulation), rouges sur bouchons : 22 FAIL, 51 PASS.
+- 2026-10-25 : L6a : **verte** : `UpdatePlan` (ManifestDiff réutilisée ; correctif si `patchesFrom` contient l'installée et fichier changé, sinon complet ; ajouté toujours complet ; FullBytes = tailles des complets seuls ; segments d'URL échappés ; ScanGame = ManifestBuilder avec `*.pdb` + `.holupdate/*` exclus, Version.txt absent → Empty) et `FileDownloader` (dossier `<jeu>/.holupdate/<v>/` : `files/<chemin>` vérifié, `files/<chemin>.gz.part`, `patches/<chemin>.patch(.part)` ; Range 206 → ajout, 200 → zéro, 416 → zéro ; gunzip puis taille + SHA-256, échec → tout supprimé ; complet déjà vérifié non retéléchargé ; 404 patch_not_found → complet ; coupure → UpdateDownloadException, .part gardé ; client sans délai global, ResponseHeadersRead). `dotnet test HOLManager.sln` 27 + 73 + 24 + 206 PASS, 0 avertissement. Aucun fichier existant touché. Rien commité. Suivant : L6b (hpatchz, remplacement, suppressions, Version.txt en dernier).
+- 2026-10-25 : L6a relue par la session principale : `dotnet test` repassé (27 + 73 + 24 + 206). **Risque vu** : le
+  lanceur est posé dans le dossier du jeu, et le plan supprime tout fichier local absent de la version publiée : il
+  effacerait `HOLLauncher.exe`, `hpatchz.exe`, et tout fichier ajouté par le joueur. De plus le paquet publié porte un
+  `servers.json` vers `127.0.0.1` (`add_playtest.ps1`) qui écraserait celui de l'ami. **Corrigé en L6b (par défaut,
+  question posée à l'utilisateur)** : le lanceur garde la liste qu'il a installée (`.holupdate/installed.json`) et ne
+  supprime que les fichiers de cette liste ; `HOLLauncher*.exe`, `hpatchz.exe` et `servers.json` sont hors liste
+  (un `servers.json` local n'est jamais écrasé). Secours d'un correctif : URL du complet portée par le plan (au lieu
+  de la relire dans l'URL du correctif). **L6b lancée** (en sous-agent).
+- 2026-10-25 : **Accord de l'utilisateur** (« tout est bon et tu peux commit ») : règles de L6b gardées (suppression
+  limitée à `installed.json` ; lanceur, `hpatchz.exe`, `servers.json` local jamais touchés) ; commit permis. L6b tourne
+  dans la même branche : commit fait à son retour, après relecture et `dotnet test` (L5 + L6 jusque-là).
+- 2026-10-25 : L6b : plan corrigé (UpdatePlan : installed.json précédent, seuls ses fichiers absents de la nouvelle version supprimés, sans lui rien ; constantes LauncherPattern `HOLLauncher*.exe` / HpatchzName / ServersName dans LauncherOwned, exclus du scan et de la cible ; servers.json téléchargé seulement s'il manque ; PlannedDownload.FullUrl, VersionOf supprimée ; RemovedFiles… passe désormais la liste) ; 15 tests nouveaux (UpdatePlan 4, GameUpdater 11 avec vrais correctifs hdiffz) : 11 FAIL sur bouchon GameUpdater, 77 PASS (les 4 du plan écrits avec le code, verts d'emblée).
+- 2026-10-25 : L6b : **verte** (boucle 1 : points 1 à 4) : PatchApplier (hpatchz -f, chemin à côté de l'exe par défaut, injectable ; taille + SHA-256 ; échec → raison, sortie supprimée), UpdateApplier (vérif d'écriture exclusive de tout fichier à remplacer/supprimer + Version.txt avant tout changement → GameLockedException « … est utilisé : fermez le jeu, puis relancez la mise à jour. » ; déplacements en ordre ordinal, suppressions, Version.txt en dernier, installed.json (écrit en .tmp puis renommé), puis .holupdate/<v> supprimé), GameUpdater.UpdateAsync (plan → téléchargements → correctifs, échec → complet par FullUrl → remplacement ; UpdateResult, annulation/réseau/disque en message, jamais d'exception). `dotnet test HOLManager.sln` 27 + 88 + 24 + 206 PASS, 0 avertissement. Rien commité. Reste : L6c (fenêtre, barre de progression, essai contre le gestionnaire).
+- 2026-10-25 : L6b relue par la session principale : `dotnet test` repassé (27 + 88 + 24 + 206). **L5 + L6a/b
+  commitées** (accord de l'utilisateur) : fba688f sur `launcher-l5`, `main` avancée (ff). (Le message du commit dit
+  « 61 xUnit tests » : c'est 88 pour HOLLauncher.Tests.) **L6c lancée** (fenêtre : bouton « Mettre à jour le jeu »,
+  barre de progression, progression du complet de secours ; essai contre le vrai gestionnaire).
