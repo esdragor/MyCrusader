@@ -478,3 +478,8 @@ après accord de cette session ou après la fusion de ses étapes en cours.
     l'essai avec un ami.
   - Chaque partie finie : relire, `dotnet test` (ou tests UE touchés), **demander l'accord de commit**, fusionner dans
     `main`, retirer l'`IN_USE.txt`.
+- 2026-10-25 : **L13c faite** : décisions du lanceur reportées au GDD (§ 21) : **D475** (L-Q1, versions sur le PC),
+  **D476** (L-Q2 / L-Q2 bis, fichiers changés, compression, HDiffPatch), **D477** (L-Q3, C# WinForms), **D478** (L-Q4,
+  ce que montre le lanceur), **D479** (L-Q5, scripts de publication et de kit), **D480** (L-Q6, sa propre mise à jour),
+  **D481** (L-Q7, serveur par version, chantier réseau), **D482** (L-Q8, kit seul, box, DuckDNS, clé) ; prochain numéro
+  D483. L'utilisateur autorise les commits de L13 sans redemander (« tu peux commit à chaque fois que tu en as besoin »).
