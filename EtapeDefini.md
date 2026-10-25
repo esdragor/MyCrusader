@@ -20,7 +20,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Réseau
 - M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R6 dans `main` : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef (M6-Q10 à M6-Q14) ; reste les essais E2 et E3 de l'utilisateur ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
-- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10, L0 et L1 faites, L2 à coordonner avec le chantier réseau ; chantier `LauncherInProgress.md`)*
+- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10, L0 à L2 faites ; chantier `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA

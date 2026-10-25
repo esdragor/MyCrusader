@@ -147,3 +147,25 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   (`Manager/HOLManager`).
 - 2026-10-25 : **L1 commitée** (accord de l'utilisateur) : `launcher-l1` rebasée sur `main`, `main` avancée à
   ad69a0c (avance rapide). L2 : accord demandé à la session réseau (elle travaille dans `Manager/HOLManager`).
+- 2026-10-25 : **L2 lancée** (« go » de l'utilisateur). Session réseau fermée (pas d'accord possible) ; son travail non
+  commité dans Glorfindel touche `ManagerSettings.cs`, `PROTOCOL.md`, `Lobbies/`, `Matches/MatchConfig.cs` : L2 se
+  tient à l'écart (routes dans un fichier à part, une ligne dans `Program.cs`, section en fin de `PROTOCOL.md`,
+  réglages à part si possible). Elrond, branche `launcher-l2` = `main` e247f12, `IN_USE.txt` posé, en sous-agent.
+  Disposition du dossier des versions (fixée ici) : `<versions>/latest.txt` (nom de la dernière),
+  `<versions>/<v>/manifest.json` (liste HOLUpdate), `<v>/notes.txt` (nouveautés), `<v>/files/<chemin>.gz` (fichier
+  compressé à la publication, L4 : pas de compression à la volée, la reprise par `Range` porte sur le `.gz`),
+  `<v>/patches/<depuis>/<chemin>.patch` (L3/L4), `<versions>/launcher/latest.txt` et `launcher/<lv>/HOLLauncher.exe`.
+- 2026-10-25 : L2 : référence HOLUpdate ajoutée à HOLManager.csproj ; `VersionRoutesTests` écrit (25 cas, vrai dossier de
+  versions, ManifestBuilder + GZipStream) : **rouge** 20/25 (les 5 « nom invalide » passent déjà : pas de route, 404).
+- 2026-10-25 : L2 : **vert** : `Versions/VersionStore`, `VersionSettings` (VersionsDir), `Api/VersionRoutes` ; 3 lignes dans
+  Program.cs. `dotnet test HOLManager.sln` : 27/27 + 199/199 (26 de L2). Reste : section en fin de PROTOCOL.md.
+- 2026-10-25 : **L2 close** (non commitée, `launcher-l2` d'Elrond) : section « Versions du jeu (lanceur, L2) » en fin de
+  PROTOCOL.md (protocolVersion inchangé, `format` 1 propre à /versions/latest) ; lanceur : en-têtes X-Launcher-Version/-Sha256.
+- 2026-10-25 : L2 relue par la session principale : `dotnet test HOLManager.sln` repassé (27/27 + 199/199) ; garde
+  des chemins vue (entrée exacte de la liste, déjà vérifiée par `FromJson`, puis fichier résolu sous le dossier de la
+  version ; noms de version filtrés) ; existants touchés : `Program.cs` +5, `HOLManager.csproj` +4, `PROTOCOL.md` +69
+  (fin). **L2 faite, non commitée** : attend l'accord de l'utilisateur. Fusion : conflits possibles avec la session
+  réseau sur `Program.cs` / `PROTOCOL.md` (ajouts seulement, faciles). Suivant : L3 (mesures).
+- 2026-10-25 : **L2 commitée** (accord de l'utilisateur), `main` avancée par avance rapide. **L3 lancée** (« go »),
+  Elrond, branche `launcher-l3`, en sous-agent : (a) changement de contenu, (b) correctifs de l'exe (xdelta3, msdelta,
+  HDiffPatch ; outils téléchargés dans un dossier temporaire à part).
