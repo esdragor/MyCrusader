@@ -427,3 +427,26 @@ montre les 11 fichiers. Étapes restantes, dans l'ordre (cocher ici au fur et à
   622 s** (tests 146/146, `net 2 clients` PASS, `victory forum` PASS). Ligne « Le combat ignore les équipes » retirée
   d'`EtapeDefini.md` (R6.4). Commit sur `allied-combat`, `main` avancée, mycrusader-e5 prévenue (R6 faite), Elrond
   libérée. **G close.**
+
+## H — `quick_check -Parts move,bodies,build` : « build site » rouge (plafond +20)
+
+Demandé le 2026-10-25 (« go » sur la recommandation : H tout de suite, le lanceur en parallèle). Le plafond de
+population vu par « build site » passe de 30 à 40 au lieu de 10 à 20 : un reste des parties d'avant (sans doute deux
+maisons du slot 0 posées par `bodies`). `-Parts build` seul passe.
+
+- 2026-10-25 : Elrond (libre, `allied-combat` fusionnée) passé sur une nouvelle branche `build-site-leftover` = `main`
+  c9fc0eb, `IN_USE.txt` posé. Sous-agent lancé : rouge (`-Parts move,bodies,build`), cause des +20, correctif dans le
+  script de test (nettoyer l'état plutôt qu'affaiblir les contrôles), vert (`move,bodies,build` puis `build` seul).
+  En parallèle, dans la session principale : questions L-Q1 à L-Q6 du lanceur (`LauncherInProgress.md`).
+- Sous-agent (20 min, dont ~12 min de tests) : **cause** = les deux maisons de la partie `bodies` (`hol.Build.PlaceNear
+  House 6000 -3400` et `6000 -2600`, finies par `hol.Build.Instant 1`, à (-8800, -3200) et (-8800, -2400)), gardées par
+  « mark bodies end » (« the two houses stay ») : +10 de plafond chacune. `move` et `gather` hors de cause.
+  **Correctif** (`quick_check.ps1` ~875-880, +5 −2) : « mark bodies end » les détruit par `hol.Cheat.DamageNear 99999
+  … own melee` et attend `Building destroyed: House of slot 0 at (…)` ; contrôles de « build site » inchangés (absolus).
+  Build PASS 39 s ; **rouge** `-Parts move,bodies,build` (359 s) : build site FAIL (30 → 40, HUD pareil ; « 30 avec A et
+  C » lu 50) ; **vert** `-Parts move,bodies,build` PASS 359 s (toutes sections), `-Parts build` seul PASS 290 s.
+  Non commité ; attend l'accord de l'utilisateur. Au commit : la copie principale a `EtapeDefini.md` modifié par une
+  autre session (J7c.5) : ne stager que notre ligne retirée.
+- Accord de l'utilisateur (« go commit oui ») : correctif appliqué dans la copie principale et commité sur `main`
+  (avec la ligne retirée d'`EtapeDefini.md`, seule notre partie du fichier, et le lanceur : questions tranchées, plan
+  L0-L10) ; Elrond remis sur `main`, `IN_USE.txt` retiré. **H close.**

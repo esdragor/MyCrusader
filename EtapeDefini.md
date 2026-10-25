@@ -23,7 +23,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Réseau
 - M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R3 et R6 dans `main` ; R4 écrans et R5 bout à bout faits dans Glorfindel, non commités, finitions en cours ; chantier `NetPlaytestInProgress.md`)*
-- Lanceur : télécharge, met à jour et lance le jeu *(questions L-Q1 à L-Q6 à trancher ; chantier `LauncherInProgress.md`)*
+- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10 écrit, rien codé ; chantier `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
@@ -47,6 +47,5 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
-- `quick_check -Parts move,bodies,build` : « build site » rouge (plafond de population +20, laissé par les parties d'avant ; `-Parts build` seul passe)
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
