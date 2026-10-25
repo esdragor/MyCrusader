@@ -142,6 +142,7 @@ public class GameUpdaterTests
         var result = await Update(game, published);
 
         Assert.True(result.Success, result.Message);
+        Assert.Equal("Le jeu est à jour (version v2).", result.Message);
         Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
         Assert.Contains("/versions/v2/patches/v1/HeroesOfLiberty.exe", published.Requests);
         Assert.DoesNotContain("/versions/v2/files/HeroesOfLiberty.exe", published.Requests);
@@ -339,6 +340,7 @@ public class GameUpdaterTests
         var result = await Update(game, published);
 
         Assert.True(result.Success, result.Message);
+        Assert.Equal("Le jeu est installé (version v2).", result.Message);
         Assert.Equal("v2", Read(game, "HeroesOfLiberty/Version.txt"));
         Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
         Assert.Equal("new pak", Read(game, "Data/New.pak"));

@@ -12,11 +12,13 @@
 # again only when the launcher or the address changes.
 # Run from Windows PowerShell:
 #   powershell -ExecutionPolicy Bypass -File Tools\Package\make_kit.ps1 -ServerUrl http://<public address of the box>:7700
-#       [-ServerName <name>] [-Root <copy>] [-VersionsDir <folder>] [-ManagerDir <folder>] [-Out <zip>]
+#       [-ServerName <name>] [-Root <copy>] [-VersionsDir <folder>] [-ManagerDir <folder>] [-Out <zip>] [-Force]
 # - -VersionsDir: <copy>\Saved\Manager\Versions by default, like publish.ps1;
 # - -ManagerDir: the manager's folder, where access_key.txt lies (AccessKeyFile); the parent of -VersionsDir by default;
 # - LauncherInfo.Version (Manager\HOLLauncher\LauncherInfo.cs) names launcher\<lv>\: raise it by hand before making a
-#   kit with a changed launcher, or the launchers already installed will not see it.
+#   kit with a changed launcher, or the launchers already installed will not see it;
+# - -Force: replace launcher\<lv>\HOLLauncher.exe even when it holds a different exe (L13a); without it, that is a FAIL
+#   (the launchers already installed would keep the old exe under the same version).
 # Full log: <copy>\Saved\Logs\make_kit.log. Prints one line PASS / FAIL; exit code 0 / 1.
 param(
     [Parameter(Mandatory = $true)] [string] $ServerUrl,
@@ -24,7 +26,8 @@ param(
     [string] $Root = "",
     [string] $VersionsDir = "",
     [string] $ManagerDir = "",
-    [string] $Out = ""
+    [string] $Out = "",
+    [switch] $Force
 )
 
 $Project = if ($Root) { (Resolve-Path $Root).Path } else { (Resolve-Path "$PSScriptRoot\..\..").Path }
@@ -64,14 +67,18 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path $Exe)) {
 }
 
 # 3. The versions folder: launcher\<lv>\HOLLauncher.exe (through a .tmp, never half an exe), latest.txt last.
+#    A different exe already there under the same version: FAIL unless -Force (L13a), before anything is written.
 $LauncherDir = Join-Path $VersionsDir "launcher\$LauncherVersion"
-New-Item -ItemType Directory -Force $LauncherDir | Out-Null
 $Served = Join-Path $LauncherDir "HOLLauncher.exe"
 $Replaced = (Test-Path $Served) -and ((Get-FileHash $Served).Hash -ne (Get-FileHash $Exe).Hash)
+if ($Replaced -and -not $Force) {
+    Fail "launcher\$LauncherVersion\HOLLauncher.exe already holds a different exe: raise LauncherInfo.Version in Manager\HOLLauncher\LauncherInfo.cs, or pass -Force"
+}
+New-Item -ItemType Directory -Force $LauncherDir | Out-Null
 Copy-Item $Exe "$Served.tmp" -Force
 Move-Item "$Served.tmp" $Served -Force
 [IO.File]::WriteAllText((Join-Path $VersionsDir "launcher\latest.txt"), $LauncherVersion)
-if ($Replaced) { Say "  launcher\$LauncherVersion\HOLLauncher.exe replaced by a different exe: raise LauncherInfo.Version for the launchers already installed" }
+if ($Replaced) { Say "  -Force: launcher\$LauncherVersion\HOLLauncher.exe replaced by a different exe (the launchers already installed keep the old one)" }
 
 # 4. The access key next to the manager: kept if there, else created (no BOM, no line break; the manager trims).
 $KeyFile = Join-Path $ManagerDir "access_key.txt"
