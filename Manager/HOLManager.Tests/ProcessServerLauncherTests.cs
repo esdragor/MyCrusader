@@ -44,7 +44,8 @@ public sealed class ProcessServerLauncherTests : IDisposable
         }
     }
 
-    private ProcessServerLauncher Launcher(int maxServers = 2, string? exe = null)
+    private ProcessServerLauncher Launcher(int maxServers = 2, string? exe = null, string? accessKey = null,
+        Microsoft.Extensions.Logging.ILogger? logger = null)
     {
         var launcher = new ProcessServerLauncher(new ManagerSettings
         {
@@ -53,7 +54,7 @@ public sealed class ProcessServerLauncherTests : IDisposable
             FirstServerPort = BasePort,
             MaxServers = maxServers,
             ManagerUrl = "http://127.0.0.1:7700",
-        });
+        }, accessKey, logger);
         launchers.Add(launcher);
         return launcher;
     }
@@ -116,6 +117,29 @@ public sealed class ProcessServerLauncherTests : IDisposable
             "http://127.0.0.1:7700", "M1"), commandLine);
         Assert.Contains($"-MatchConfig=\"{MatchDir("M1")}\\match.json\"", commandLine);
         Assert.Equal(1, launcher.Running);
+    }
+
+    [Fact]
+    public void LaunchLogsTheCommandLineWithTheKeyMasked()
+    {
+        const string key = "k3y-Of_The-Kit";
+        var log = new CapturingLoggerProvider();
+        var port = Launcher(accessKey: key, logger: log.CreateLogger("launcher")).Launch("M1", Plain, Config());
+        var line = Assert.Single(log.Messages("launcher", Microsoft.Extensions.Logging.LogLevel.Information));
+        Assert.DoesNotContain(key, line);
+        Assert.Contains($"\"{FakeExe}\" " + ProcessServerLauncher.BuildArguments(Plain, port, MatchDir("M1"),
+            "http://127.0.0.1:7700", "M1") + " -HOLAccessKey=***", line);
+        // The server itself still gets the key.
+        Assert.EndsWith($" -HOLAccessKey={key}", WaitForFile(Path.Combine(MatchDir("M1"), FakeServerProgram.CommandLineFile)));
+    }
+
+    [Fact]
+    public void MaskedArgumentsHideOnlyTheKey()
+    {
+        var args = ProcessServerLauncher.BuildArguments(Plain, 7778, @"C:\m\M1", "http://127.0.0.1:7700", "M1", "abc");
+        Assert.Equal(ProcessServerLauncher.BuildArguments(Plain, 7778, @"C:\m\M1", "http://127.0.0.1:7700", "M1") + " -HOLAccessKey=***",
+            ProcessServerLauncher.MaskKey(args, "abc"));
+        Assert.Equal("x -y", ProcessServerLauncher.MaskKey("x -y", null));
     }
 
     [Fact]
