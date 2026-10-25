@@ -13,7 +13,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité)*
 
 ### Fin de partie
-- Conditions de victoire à coder : vies par palier, Nomade, Régicide *(D347 à D360, GDD § 14.1 ; V1 à V4 dans `main` ; chantier `VictoryInProgress.md`)*
+- Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
 
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
@@ -30,7 +30,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D470 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D475 (§ 22)
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
@@ -44,6 +44,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
+- `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo
+- Roi : le refus d'un ordre sur un bâtiment se logue « not its own » (texte commun, trompeur) ; activité « Attaque » qui reste après le départ de son agresseur
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 

@@ -30,6 +30,7 @@ NAMES = {
     "Peasant": "Paysan",
     "Spearman": "Piquier",
     "ManAtArms": "Homme d'armes",
+    "King": "Roi",
 }
 CATEGORIES = {
     "LightInfantry": "Infanterie légère",
@@ -40,6 +41,7 @@ CATEGORIES = {
     "Peasant": "Paysan",
     "GunpowderInfantry": "Infanterie à poudre",
     "Heavy": "Lourd",
+    "King": "Roi",
 }
 ATTACK_TYPES = {"Melee": "Mêlée", "Ranged": "Distance", "Siege": "Siège", "Hero": "Héros"}
 ARMOR_OF_TYPE = {"Melee": "MeleeArmor", "Ranged": "RangedArmor", "Siege": "SiegeArmor", "Hero": "HeroArmor"}
@@ -161,7 +163,8 @@ def main():
     rows = []
     for u in units:
         bonus = ", ".join(f"+{num(b)} contre {CATEGORIES[c]}" for c, b in u["Bonuses"] if b > 0) or "—"
-        aggro = metres(u["AggressionRadius"]) if u["AggressionRadius"] > 0 else "aucun (seulement sur ordre)"
+        aggro = metres(u["AggressionRadius"]) if u["AggressionRadius"] > 0 else (
+            "aucun (riposte seulement)" if u.get("Ripostes") == "True" else "aucun (seulement sur ordre)")
         rows.append([
             name(u), num(u["MaxHealth"]), num(u["Attack"]), bonus,
             num(u["AttackInterval"]) + " s", num(round(60.0 / u["AttackInterval"], 1)),
