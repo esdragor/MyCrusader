@@ -455,3 +455,15 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   401 sans clé, L11-v1 avec ; portchecker.io sur le nom : 7700 ouvert (7701 fermé). Gestionnaire arrêté. Note :
   `make_kit` a prévenu que `launcher\1\HOLLauncher.exe` a été remplacé par un exe différent (même code, reconstruit) :
   sans effet tant qu'aucun ami n'a de lanceur installé.
+- 2026-10-25 : L12 : journal du gestionnaire fait dans Arwen (`launcher-l12`, non commité) : nouvel `Api/RequestLog.cs` (refus `bad_key` en Warning sans clé ni en-tête, une ligne par adresse et par minute puis « N more refused from … in the last minute », accepté de l'extérieur en Information, sondages `/status`, `/lobbies`, `/lobbies/{id}`, `/watch` et bouclage en Debug, fichiers servis avec octets et 200/206), ligne de commande du serveur de partie journalisée avec `-HOLAccessKey=***` ; le fichier `Logs\manager-<date>.log` existait déjà (R2.12) ; PROTOCOL.md complété ; 444 tests verts, 0 avertissement ; essai sur 7715 depuis 192.168.1.19 : 1 ligne pour 5 refus, puis « 4 more refused » une minute après, clé absente du journal ; tout arrêté.
+- 2026-10-25 : L12 relue par la session principale : `dotnet test` repassé dans Arwen (27 + 141 + 24 + 252). Refus
+  journalisés (Warning, une ligne par adresse et par minute, puis un compte), requêtes extérieures acceptées en
+  Information, sondages du jeu et bouclage en Debug, fichiers servis, ligne de commande du serveur avec
+  `-HOLAccessKey=***` ; fichier `Logs\manager-AAAA-MM-JJ.log` déjà existant (R2.12). **L12 faite, non commitée**
+  (accord demandé, puis `build_manager.ps1` depuis `main` pour le gestionnaire du raccourci).
+- 2026-10-25 : **L12 commitée** (accord de l'utilisateur, « go ») : 0b9b14a, fusionnée dans `main`, `dotnet test`
+  repassé (27 + 141 + 24 + 252). Gestionnaire du raccourci reconstruit depuis `main` (`build_manager.ps1` PASS ;
+  `access_key.txt` et `Versions\` intacts ; démarrage vérifié sur le bouclage, journal dans `Saved\Manager\Logs\`).
+  Arwen libre (`IN_USE.txt` retiré). Reste : essai avec un ami (reporté) ; petits restes sans urgence (traductions,
+  « installé » après une première installation, « Créer un salon » sur l'écran de refus, version du lanceur à monter à
+  la main, clôture au GDD).
