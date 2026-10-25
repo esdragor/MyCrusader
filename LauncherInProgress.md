@@ -437,3 +437,9 @@ après accord de cette session ou après la fusion de ses étapes en cours.
 - 2026-10-25 : Elrond libéré (`IN_USE.txt` retiré, propre, `launcher-l5` = d2ae192) ; ses `Saved\Packages\L10-v1/v2`
   (6 Go chacune) et `Saved\Manager\Versions` (L10) restent, inutiles, à supprimer sur accord. Arwen reste marqué pour
   ses seuls dossiers `Saved` (raccourci du bureau, kit) ; son code est libre.
+- 2026-10-25 : Rangement (demande de l'utilisateur) : archives `L10-v1/v2` et `Saved\Manager\Versions` d'Elrond
+  supprimées (~13 Go) ; le gestionnaire (avec `access_key.txt` et `Versions\L11-v1`), l'archive `L11-v1` et le kit
+  **déplacés d'Arwen dans le `Saved` de `main`** : `MyCrusader\Saved\Manager`, `Saved\Packages\L11-v1`, `Saved\Kit`
+  (dossiers par défaut de `publish.ps1` / `make_kit.ps1` lancés depuis `main`). `Desktop\Gestionnaire HOL.bat` pointe
+  là ; vérifié en local (port 7798, bouclage : « access key: on », L11-v1, 50 fichiers, puis arrêté). **Arwen et
+  Elrond libres** (sans `IN_USE.txt`).
