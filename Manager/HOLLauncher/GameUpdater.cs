@@ -47,7 +47,10 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null, Func<st
                     : await PatchOrFullAsync(gameDir, tempDir, downloader, result, fallback, cancel));
             }
             await Task.Run(() => UpdateApplier.Apply(gameDir, plan, ready), cancel);
-            return new UpdateResult(true, $"Le jeu est à jour (version {plan.Version}).");
+            // L13a: a first install (nothing installed before) says so.
+            return new UpdateResult(true, plan.Installed is null
+                ? $"Le jeu est installé (version {plan.Version})."
+                : $"Le jeu est à jour (version {plan.Version}).");
         }
         catch (OperationCanceledException)
         {
