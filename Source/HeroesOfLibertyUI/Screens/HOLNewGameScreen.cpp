@@ -592,6 +592,17 @@ void UHOLNewGameScreen::Refresh()
 		{
 			SlotTeams[SlotIndex]->SetSelectedIndex(SlotConfig.Team);
 		}
+		// E2-4: a line nobody holds (closed, or open in a lobby) shows no faction, colour nor team; Hidden keeps the
+		// columns in place and takes the fields out of the keyboard's way. Their values stay, shown again once taken.
+		const ESlateVisibility Fields = bOccupied ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+		for (UWidget* Field : { static_cast<UWidget*>(SlotFactions[SlotIndex].Get()), static_cast<UWidget*>(SlotSwatches[SlotIndex].Get()),
+			static_cast<UWidget*>(SlotColors[SlotIndex].Get()), static_cast<UWidget*>(SlotTeams[SlotIndex].Get()) })
+		{
+			if (Field)
+			{
+				Field->SetVisibility(Fields);
+			}
+		}
 	}
 	if (NomadDropdown)
 	{

@@ -331,6 +331,10 @@ if ($Parts -contains "menu") {
             Step "waitlog Dropdown SlotColor0: list opened", "frames 3", "capture qc_fr_dropdown"
             Key Down; Key Enter
             Step "waitlog Dropdown SlotColor0: value 1 chosen"
+            # E2-4: a line nobody holds (slot 3, closed) shows no faction, swatch, colour nor team; taken (Human), they come back.
+            Step "mark menu emptyrow", "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3 SlotFaction0 SlotSwatch0 SlotColor0 SlotTeam0",
+                "capture qc_fr_emptyrow", "mark menu takenrow", "hol.UI.Choose SlotState3 1", "frames 3",
+                "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3", "capture qc_fr_takenrow", "hol.UI.Choose SlotState3 0", "frames 3"
         }
         Back
         if ($Culture -eq "fr") {
@@ -2233,6 +2237,16 @@ if ($Parts -contains "menu") {
         if ($Culture -eq "fr") {
             $Checks["colour list opened and a value taken"] = (Test-Path (Join-Path $Shots "qc_fr_dropdown.png")) -and
                 [bool]((Get-Section "menu fr") | Select-String -Pattern "SlotColor0: value 1 chosen" -Quiet)
+            # E2-4: a closed line empty (faction, swatch, colour, team hidden), the player's shown; slot 3 taken: shown again.
+            $Empty = Get-Section "menu emptyrow"
+            $Taken = Get-Section "menu takenrow"
+            $Fields = "SlotFaction", "SlotSwatch", "SlotColor", "SlotTeam"
+            $Checks["closed line empty, player's line shown"] = (@($Fields | Where-Object {
+                -not ($Empty | Select-String -SimpleMatch "Shown ${_}3: no" -Quiet) -or -not ($Empty | Select-String -SimpleMatch "Shown ${_}0: yes" -Quiet) }).Count -eq 0) -and
+                (Test-Path (Join-Path $Shots "qc_fr_emptyrow.png"))
+            $Checks["line taken (Human): fields shown again"] = (@($Fields | Where-Object {
+                -not ($Taken | Select-String -SimpleMatch "Shown ${_}3: yes" -Quiet) }).Count -eq 0) -and
+                [bool]($Taken | Select-String -SimpleMatch "SlotState3: value 1 chosen" -Quiet)
         }
         $AllOk = (Report "menu $Culture" $Checks) -and $AllOk
         if (Get-Command python -ErrorAction SilentlyContinue) {

@@ -292,8 +292,8 @@ try {
             $Alice = @($Players | Where-Object { $_.playerName -eq "Alice" })[0]
             $Bob = @($Players | Where-Object { $_.playerName -eq "Bob" })[0]
             if ($Players.Count -ne 2 -or -not $Alice -or -not $Bob) { $Failure = "the lobby has $($Players.Count) player(s), not Alice and Bob" }
-            # M6-Q14: new lines, with the default colours (not the ones picked before the match).
-            elseif ($Alice.colorIndex -eq $Colours.Alice -and $Bob.colorIndex -eq $Colours.Bob) { $Failure = "colours kept (Alice $($Alice.colorIndex), Bob $($Bob.colorIndex)): old lines, not new ones" }
+            # M6-Q14: new lines; E2-1: each one given back the colour of the match (free: Bob 5 back first, then Alice 2).
+            elseif ($Alice.colorIndex -ne $Colours.Alice -or $Bob.colorIndex -ne $Colours.Bob) { $Failure = "colours of the match not given back (Alice $($Alice.colorIndex), Bob $($Bob.colorIndex); E2-1)" }
             elseif ($After.leader -ne "Alice") { $Failure = "leader $($After.leader), not Alice (the leader back from the match)" }
             elseif ($Alice.ready -or $Bob.ready) { $Failure = "still ready after the match (Alice $($Alice.ready), Bob $($Bob.ready))" }
         }
@@ -311,5 +311,5 @@ finally {
 }
 $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
 if ($Failure) { Write-Host "lobby_match : FAIL ($Failure; logs $($GameLogs.Alice), $($GameLogs.Bob); $Took)"; exit 1 }
-Write-Host "lobby_match : PASS (Alice created lobby $($Lobby.id), Bob joined from the list, colours $($Colours.Alice) / $($Colours.Bob), both ready, Launch: both in the match (slots 0 / 1), tables with the names, Carol watched (spectator), Bob gave up, Carol got « Partie terminée / Vainqueur : Alice », Dave refused after the end, Carol back to the list by « Quitter vers la liste », Bob back first alone, not leader (Alice still leader in the match), then Alice by the in-game menu, leader again: both on new lines, not ready; captured; no server left; $Took)"
+Write-Host "lobby_match : PASS (Alice created lobby $($Lobby.id), Bob joined from the list, colours $($Colours.Alice) / $($Colours.Bob), both ready, Launch: both in the match (slots 0 / 1), tables with the names, Carol watched (spectator), Bob gave up, Carol got « Partie terminée / Vainqueur : Alice », Dave refused after the end, Carol back to the list by « Quitter vers la liste », Bob back first alone, not leader (Alice still leader in the match), then Alice by the in-game menu, leader again: both on new lines with their match colours (E2-1), not ready; captured; no server left; $Took)"
 exit 0

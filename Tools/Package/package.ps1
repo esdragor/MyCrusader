@@ -7,7 +7,11 @@
 #   it to end before starting (the build step of UAT would otherwise refuse or collide);
 # - Live Coding open in other copies only: UnrealBuildTool's guard skipped (false alarm, see build.ps1).
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths):
-#   powershell -ExecutionPolicy Bypass -File Tools\Package\package.ps1 [-Root <copy>] [-Config Development] [-Version <name>] [-Force]
+#   powershell -ExecutionPolicy Bypass -File Tools\Package\package.ps1 [-Root <copy>] [-Config Development] [-Version <name>] [-Force] [-Playtest]
+# -Playtest: the package also gets the network playtest on one PC (Tools\Package\add_playtest.ps1, after Version.txt):
+# Manager\ (the published lobby manager, Gestionnaire.bat, appsettings.json on port 7700 starting ..\WindowsServer\),
+# Windows\servers.json (http://127.0.0.1:7700) and Windows\Joueur_Alice/Bob/Carol/Dan/Eve.bat (one window and one
+# Saved folder per player). The files come from Tools\Package\Playtest\; checked by Tools\Tests\playtest_setup.ps1.
 # Full log: <copy>\Saved_Tests\Logs\package.log (UAT's output as it comes, then the result line). Prints one line
 # PASS / FAIL with the first errors; exit code 0 / 1 (2: this copy is busy). 20 to 40 min the first time.
 param(
@@ -16,7 +20,8 @@ param(
     # Version of the package (R1.7), <yyyy-mm-dd>-<short commit> by default: the archive's folder name, and the
     # content of <archive>\<platform>\HeroesOfLiberty\Version.txt, which the game and the server read (HOLVersion.h).
     [string] $Version = "",
-    [switch] $Force
+    [switch] $Force,
+    [switch] $Playtest
 )
 
 $Project = if ($Root) { (Resolve-Path $Root).Path } else { (Resolve-Path "$PSScriptRoot\..\..").Path }
@@ -116,6 +121,13 @@ if ($Code -eq 0) {
     $Games = @(Get-ChildItem $Archive -Directory -ErrorAction SilentlyContinue | ForEach-Object { Join-Path $_.FullName "HeroesOfLiberty" } | Where-Object { Test-Path $_ })
     if (-not $Games.Count) { Say "package : FAIL (${Version}: no <platform>\HeroesOfLiberty folder in $Archive for Version.txt)"; exit 1 }
     foreach ($Game in $Games) { [IO.File]::WriteAllText((Join-Path $Game "Version.txt"), $Version, (New-Object Text.UTF8Encoding $false)) }
+}
+# 6. -Playtest: the manager and the players' launchers beside the game (add_playtest.ps1).
+if ($Code -eq 0 -and $Playtest) {
+    $Setup = @(& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "add_playtest.ps1") -Root $Project -PackageDir $Archive)
+    $SetupCode = $LASTEXITCODE
+    $Setup | ForEach-Object { Say "  $_" }
+    if ($SetupCode -ne 0) { Say "package : FAIL (${Version}: playtest setup, add_playtest exit $SetupCode)"; exit 1 }
 }
 if ($Code -eq 0) {
     $Sizes = @(Get-ChildItem $Archive -Directory -ErrorAction SilentlyContinue | ForEach-Object {
