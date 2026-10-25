@@ -47,7 +47,7 @@ Questions tranchées le 2026-10-25 (à reporter au GDD à la clôture, numéros 
 | Q | Décision |
 |---|---|
 | L-Q1 | Versions **sur le PC de l'utilisateur**, servies en HTTP par le gestionnaire de salons, par Tailscale |
-| L-Q2 | **Liste des fichiers avec empreinte** (SHA-256), seuls les changés téléchargés ; *revue après L0 (L-Q2 bis = C)* : **pas de chunks pour l'instant**, fichiers **compressés au transfert**, et **correctifs binaires** des fichiers changés (l'exe surtout), le fichier complet en secours |
+| L-Q2 | **Liste des fichiers avec empreinte** (SHA-256), seuls les changés téléchargés ; *revue après L0 (L-Q2 bis = C)* : **pas de chunks pour l'instant**, fichiers **compressés au transfert**, et **correctifs binaires** des fichiers changés (l'exe surtout), le fichier complet en secours ; *outil après L3* : **HDiffPatch** (`hdiffz` à la publication, `hpatchz` livré avec le lanceur ; exe : 8,3 Mo au lieu de 124 Mo gzip) |
 | L-Q3 | **C# (.NET 8), WinForms**, un seul `.exe` autonome, code commun avec le gestionnaire |
 | L-Q4 | Versions installée / disponible, progression, **nouveautés**, « Jouer », **« Mettre à jour le jeu »** et **« Mettre à jour le lanceur »** ; pas d'état du serveur (il est dans le jeu) |
 | L-Q5 | **Script de publication** dans `Tools/` (empaqueter, chunks, liste, nouveautés, dossier des versions du gestionnaire) ; le lanceur ne sert qu'aux joueurs |
@@ -169,3 +169,43 @@ après accord de cette session ou après la fusion de ses étapes en cours.
 - 2026-10-25 : **L2 commitée** (accord de l'utilisateur), `main` avancée par avance rapide. **L3 lancée** (« go »),
   Elrond, branche `launcher-l3`, en sous-agent : (a) changement de contenu, (b) correctifs de l'exe (xdelta3, msdelta,
   HDiffPatch ; outils téléchargés dans un dossier temporaire à part).
+- 2026-10-25 : L3 : outils prêts (xdelta3 3.2.2, HDiffPatch 5.1.3 des releases GitHub ; msdelta.dll par P/Invoke),
+  banc d'essai vérifié sur petits fichiers (SHA-256 identique). `L3-a` (main tel quel) en cours d'empaquetage.
+- 2026-10-25 : L3 : `L3-a` PASS en 4,4 min, liste faite (50 fichiers, 621,6 Mo). (a) : `SourceTypes.csv` Arbre 100 → 101
+  bois, réimport par `Tools/Editor/make_source_types.py` (chemin officiel : CSV → DataTable `.uasset`) en cours.
+- 2026-10-25 : L3 : `L3-b` PASS, liste faite. a/b : 5 fichiers changés : `.ucas` (130,4 Mo, **1 bloc de 64 Ko sur 2087**,
+  1 octet), `.utoc`, `Version.txt`, 2 manifestes ; exe identique. CSV et `.uasset` remis (`git checkout`). `L3-c` lancé.
+- 2026-10-25 : L3 : `L3-c` PASS (texte d'un `UE_LOG` de `HeroesOfLibertyGameModeBase.cpp`, remis ensuite), liste faite ;
+  a/c : exe + 4 petits fichiers. Correctifs de l'exe a → c en cours (xdelta3, msdelta, HDiffPatch).
+- 2026-10-25 : **L3 close.** Empaquetages : `L3-a` 4,4 min, `L3-b` 1,2 min, `L3-c` 4,6 min (tous PASS).
+  **(a) Contenu** : `SourceTypes.csv` Arbre 100 → 101, réimport `make_source_types.py` (commandlet, 0,2 min) :
+
+  | a / b (une valeur d'une table) | Résultat |
+  |---|---|
+  | Fichiers changés | `.ucas` 130,4 Mo, `.utoc` 0,14 Mo, `Version.txt`, 2 manifestes ; exe et `.pak` identiques |
+  | `.ucas` | même taille, **1 octet** différent : 1 bloc de 64 Ko sur 2087 ; gzip inutile (130 → 129 Mo) |
+  | Correctif du `.ucas` | xdelta3 709 octets, HDiffPatch 46 octets (SHA-256 identique) ; msdelta refuse (> 32 Mo) |
+
+  **(b) Exe** a → c (332,3 Mo, un texte de `UE_LOG` ; plein : 332 Mo, gzip 124 Mo) :
+
+  | Outil | Correctif | Création | Application | Mémoire créa. / appl. | SHA-256 |
+  |---|---|---|---|---|---|
+  | xdelta3 3.2.2 `-9 -B 512M` | 28,9 Mo | 39 s | 2,3 s | 1,3 Go / 0,5 Go | identique |
+  | msdelta (Windows) | — : **refuse tout fichier > 32 Mo** (erreur 13, mesuré : 32 Mo OK, 33 Mo non) | | | | |
+  | HDiffPatch 5.1.3 `-m-6 -SD -c-zstd-21-24` | **8,3 Mo** | 38 s | 0,3 s | 1,6 Go / ~30 Mo | identique |
+
+  Sur les 32 premiers Mo de l'exe (seul cas possible pour msdelta) : HDiffPatch 0,26 Mo / 1 s, msdelta 0,89 Mo / 60 s,
+  xdelta3 1,30 Mo / 4 s ; les trois identiques. **Outil recommandé pour L4/L6 : HDiffPatch** (le plus petit partout,
+  application rapide et peu gourmande, vérifiée) : `hdiffz.exe` (1,5 Mo) dans le script de publication, `hpatchz.exe`
+  (0,5 Mo) livré avec le lanceur et appelé en processus depuis C# (licence MIT) ; msdelta, bien qu'intégré à Windows,
+  est exclu (32 Mo max : il faudrait découper l'exe, et il est 3 à 60 fois moins bon). **Chunks : non justifiés** :
+  un changement de table ne touche que quelques octets du `.ucas`, que le correctif binaire réduit à presque rien.
+  Le projet est remis (CSV, `.uasset`, `.cpp` par `git checkout`) ; archives `L3-*` supprimées ; listes, résultats et
+  scripts dans le scratchpad de la session (`L3\lists`, `L3\results`, `L3\scripts`).
+- 2026-10-25 : Elrond libéré (`IN_USE.txt` retiré ; `launcher-l3` = `main` 08cfa75, propre). Proposé à l'utilisateur :
+  **HDiffPatch** comme outil des correctifs (L4 `hdiffz`, L6 `hpatchz` livré avec le lanceur), pas de chunks.
+- 2026-10-25 : **HDiffPatch retenu** (accord de l'utilisateur, « fais les 3 ») ; pas de chunks (L3 : inutile). **L4
+  lancée**, découpée : **L4a** = `Manager/HOLPublish` (outil C# : liste par HOLUpdate, `.gz`, correctifs `hdiffz`
+  depuis les N versions gardées, dossier écrit à part puis renommé, `latest.txt` en dernier, élagage), tests sur de
+  vrais dossiers ; **L4b** = `Tools/Package/publish.ps1` (empaquette ou prend une archive, appelle HOLPublish, dossier
+  serveur du gestionnaire) et essai bout à bout sur deux vrais empaquetages.
