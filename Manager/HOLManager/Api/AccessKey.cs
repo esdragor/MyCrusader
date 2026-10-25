@@ -44,6 +44,8 @@ public static class AccessKey
             if (!IsExempt(context.Connection.RemoteIpAddress)
                 && !Matches(key, context.Request.Headers.TryGetValue(Header, out var given) ? given.ToString() : null))
             {
+                // RequestLog writes the line, limited per address (L12).
+                context.Items[RequestLog.RefusedItem] = true;
                 throw new LobbyException(LobbyErrors.BadKey, $"Missing or wrong {Header}: this manager needs the key of its kit.");
             }
             await next(context);

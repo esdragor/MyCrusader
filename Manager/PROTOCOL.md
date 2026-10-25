@@ -348,6 +348,13 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
 - Démarrage avec Windows (R2.12) : `Tools\Manager\install_startup.ps1` met le raccourci « Serveur HeroesOfLiberty »
   (fenêtre réduite, dossier de travail = celui de l'exe) dans le dossier Démarrage ; `uninstall_startup.ps1` l'enlève.
   Journal du gestionnaire : `Logs\manager-<aaaa-mm-jj>.log` à côté de l'exe, un fichier par jour, 14 gardés.
+  Requêtes (L12, catégorie `HOLManager.Requests`) : refus `bad_key` en `Warning` (« Refused GET /lobbies from
+  1.2.3.4: bad_key. », jamais la clé ni les en-têtes), au plus une ligne par adresse et par minute, puis « 12 more
+  refused from 1.2.3.4 in the last minute. » au premier refus suivant la minute ; requête acceptée venant de
+  l'extérieur en `Information` (« GET /versions/latest from 1.2.3.4: 200. »), fichier servi : « Served <chemin> to
+  1.2.3.4: 200|206, <octets> bytes. » ; sondages du jeu (`GET /status`, `/lobbies`, `/lobbies/{id}`,
+  `/lobbies/{id}/watch`) et tout ce qui vient du bouclage en `Debug` (non écrit par défaut). Lancement d'un serveur
+  de partie : sa ligne de commande, avec `-HOLAccessKey=***`.
 
 `<dossier>` = `Saved\Matches\` à côté du gestionnaire. Réglages (`appsettings.json` ou `--Clé=Valeur`) :
 `ServerExe`, `MaxServers` (2), `FirstServerPort` (7777), `MatchesDir` (`Saved\Matches`), `ManagerUrl`

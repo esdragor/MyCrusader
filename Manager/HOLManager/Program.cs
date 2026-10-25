@@ -29,7 +29,8 @@ var accessKey = AccessKey.Read(settings.ResolveAccessKeyFile());
 
 builder.Services.AddSingleton<IClock, SystemClock>();
 // Created by the container, which disposes it at shutdown: the servers still running are stopped.
-builder.Services.AddSingleton<IServerLauncher>(_ => new ProcessServerLauncher(settings, accessKey));
+builder.Services.AddSingleton<IServerLauncher>(sp => new ProcessServerLauncher(settings, accessKey,
+    sp.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessServerLauncher>()));
 builder.Services.AddSingleton(sp => new LobbyStore(gameVersion, sp.GetRequiredService<IClock>(),
     launcher: sp.GetRequiredService<IServerLauncher>()));
 
@@ -40,6 +41,8 @@ builder.Services.AddSingleton(new VersionStore((builder.Configuration.Get<Versio
 builder.Services.AddHostedService<HousekeepingService>();
 
 var app = builder.Build();
+// L12: one line per request from outside, refusals limited per address (PROTOCOL.md, Journal).
+app.UseRequestLog();
 app.UseLobbyErrors();
 app.UseAccessKey(accessKey);
 
