@@ -6964,3 +6964,21 @@ d'épée).
   (`hol.Select.TargetMargin 25`) : « est bien » → **marge par défaut 25 px** (`TargetMarginAt1080`, notes de
   `archer_kite`). Recompilé ; ligne retirée d'`EtapeDefini.md`. Suite : commit, fusion de `main` (2 commits de doc de
   J7c.4), `-Parts tests,combat` sur la base à jour, avance de `main`.
+- (J7c.4, 2026-10-24 soir) **Diagnostic de S5 sans mesure** (relecture des journaux du dernier S5, `-Stage`, 21:23,
+  `s5_report.py`) : 32 073 o/s, **1,90 envoi par unité et par seconde** (1,77-1,79 du 2026-10-22 au J6) ; état 57 bits
+  inchangé, « le reste » 5,98 Ko/s inchangé. **Les +7 % viennent du nombre d'envois** : la marche est moins prévisible
+  (erreur affichée 23,0 → 24,2 cm aussi). S5 était à 29 924 o/s le 2026-10-22 au soir (`rest_measures_1022_2003`), à
+  32 247 le 24 au matin (018c3a2) : la hausse vient d'un commit entre 3763623 et 018c3a2. Suspects (trajectoires des
+  marcheurs) : 6ab675c (MV.4 détour sans contact), 7776dab (renforts, aide aux amis), 67cdb08 et bdd3677 (rochers),
+  dd5a66e (détour vers une emprise), e333332 (keep-out à l'arrêt). Pas de bits à regagner : la cause n'est pas la taille.
+  Question à l'utilisateur : trouver le commit (bissection de S5, ~4 min par cuisson + mesure) et voir si c'est une
+  oscillation à corriger, ou accepter le coût des nouveaux détours et revoir D218.
+- (J7c.4, 2026-10-24 nuit) **Bissection de S5 dans Elrond : pas de régression du code.** Chaque point recompilé et
+  recuit (`net_match.ps1 -Stage -Units 2000`, script de séance `s5_point.ps1`) : **99ee126** 1,91 envoi/unité/s,
+  32 185 o/s ; **3763623** (le code du 29 924 o/s du 22 au soir) 1,91, 32 224 o/s ; le même 3763623 **machine au
+  calme** (b8 en pause, aucun autre Unreal) 1,93, 32 637 o/s. S2 marche toujours en LightInfantry (300 cm/s, inchangée
+  par eb73ead). Le 29 924 du 2026-10-22 n'est pas reproductible (piste non prouvée : serveur cuit plus tôt et repris par
+  `chapter_measures.ps1`, qui ne recuit que si une source est plus récente que l'exe). **S5 sur ce code vaut ~32,2-32,6
+  Ko/s, comme `main` aujourd'hui** : le dépassement de 0,2-2 % est le niveau réel depuis au moins le 22. Elrond rendue
+  (`allied-combat` 8fcb0f4, recompilée). Reste la décision de l'utilisateur : revoir D218 (≈ 33-34 Ko/s), ou gagner
+  des bits sur les marcheurs ; le seuil d'envoi (35 cm) ne peut pas monter, l'erreur affichée est déjà à 24-25 cm.

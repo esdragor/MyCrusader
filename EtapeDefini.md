@@ -6,7 +6,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## À faire
 
 ### Parcours J7c — le tir
-- J7c.4 S5 au-dessus du seuil de bande passante (32 073 o/s pour 32 000, erreur 24,2 cm PASS) *(S3 / S4 repassés sous 6 ms par `perf-combat` et `perf-target` ; à trancher : alléger les bits des marcheurs ou revoir D218)*
+- J7c.4 S5 au-dessus du seuil de bande passante (32 073 o/s pour 32 000, erreur 24,2 cm PASS) *(S3 / S4 repassés sous 6 ms par `perf-combat` et `perf-target` ; pas de régression : le même code du 22/10 donne aussi 32,2-32,6 Ko/s, le 29 924 de ce jour-là n'est pas reproductible ; à trancher : revoir D218 ou gagner des bits sur les marcheurs)*
 - J7c.5 Clôture de J7 au GDD (D327, D328, J7-Q5 révisée, J7-Q1 à Q6, décisions de J7c.4) *(après J7c.4)*
 
 ### Animations
