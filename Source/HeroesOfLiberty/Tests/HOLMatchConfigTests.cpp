@@ -219,4 +219,36 @@ bool FHOLPlayerColorsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// E2-2: "Aléatoire" in the menu; at launch each such slot gets a colour no other occupied slot has, chosen or drawn.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMatchConfigRandomColorsTest, "HeroesOfLiberty.Match.RandomColors", UE::HeroesOfLiberty::Tests::Flags)
+bool FHOLMatchConfigRandomColorsTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Random = HOLPlayerColors::RandomColor;
+	TSet<int32> FirstDrawn;
+	for (int32 Seed = 0; Seed < 50; ++Seed)
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		Config.Slots[0] = { EHOLSlotState::Human, EHOLFaction::DawnOrder, Random, 0 };
+		Config.Slots[1] = { EHOLSlotState::AI, EHOLFaction::DawnOrder, 3, 0 };
+		Config.Slots[2] = { EHOLSlotState::Human, EHOLFaction::DawnOrder, Random, 0 };
+		Config.Slots[4] = { EHOLSlotState::Closed, EHOLFaction::DawnOrder, Random, 0 };
+		FRandomStream Stream(Seed);
+		Config.DrawRandomColors(Stream);
+
+		TSet<int32> Colors;
+		for (int32 Index : { 0, 1, 2 })
+		{
+			const int32 Color = Config.Slots[Index].ColorIndex;
+			TestTrue(FString::Printf(TEXT("seed %d slot %d: a palette colour (%d)"), Seed, Index, Color), Color >= 0 && Color < HOLPlayerColors::NumColors);
+			Colors.Add(Color);
+		}
+		TestEqual(FString::Printf(TEXT("seed %d: distinct colours"), Seed), Colors.Num(), 3);
+		TestEqual(FString::Printf(TEXT("seed %d: a chosen colour is kept"), Seed), Config.Slots[1].ColorIndex, 3);
+		TestEqual(FString::Printf(TEXT("seed %d: a closed slot gets its index"), Seed), Config.Slots[4].ColorIndex, 4);
+		FirstDrawn.Add(Config.Slots[0].ColorIndex);
+	}
+	TestTrue(TEXT("the draw varies with the seed"), FirstDrawn.Num() > 1);
+	return true;
+}
+
 #endif

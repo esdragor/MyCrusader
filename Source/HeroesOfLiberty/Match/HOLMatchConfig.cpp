@@ -5,6 +5,7 @@
 #include "Algo/Count.h"
 #include "Dom/JsonObject.h"
 #include "JsonObjectConverter.h"
+#include "Math/RandomStream.h"
 #include "Match/HOLPlayerColors.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -41,6 +42,33 @@ void FHOLMatchConfig::Normalize()
 		}
 	}
 	Version = CurrentVersion;
+}
+
+void FHOLMatchConfig::DrawRandomColors(FRandomStream& Stream)
+{
+	for (int32 Index = 0; Index < Slots.Num(); ++Index)
+	{
+		FHOLMatchSlot& Slot = Slots[Index];
+		if (Slot.ColorIndex != HOLPlayerColors::RandomColor)
+		{
+			continue;
+		}
+		if (Slot.State == EHOLSlotState::Closed)
+		{
+			Slot.ColorIndex = Index % HOLPlayerColors::NumColors;
+			continue;
+		}
+		TArray<int32, TInlineAllocator<HOLPlayerColors::NumColors>> Free;
+		for (int32 Color = 0; Color < HOLPlayerColors::NumColors; ++Color)
+		{
+			if (!Slots.ContainsByPredicate([Color](const FHOLMatchSlot& Other) { return Other.State != EHOLSlotState::Closed && Other.ColorIndex == Color; }))
+			{
+				Free.Add(Color);
+			}
+		}
+		// Eight colours for eight slots: one is always free.
+		Slot.ColorIndex = Free.IsEmpty() ? 0 : Free[Stream.RandHelper(Free.Num())];
+	}
 }
 
 int32 FHOLMatchConfig::GetNumOccupiedSlots() const

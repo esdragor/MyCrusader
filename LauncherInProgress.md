@@ -209,3 +209,27 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   depuis les N versions gardées, dossier écrit à part puis renommé, `latest.txt` en dernier, élagage), tests sur de
   vrais dossiers ; **L4b** = `Tools/Package/publish.ps1` (empaquette ou prend une archive, appelle HOLPublish, dossier
   serveur du gestionnaire) et essai bout à bout sur deux vrais empaquetages.
+- 2026-10-25 : L4a : HDiffPatch 5.1.3 (hdiffz, hpatchz, LICENSE MIT, README) dans Tools/ThirdParty/HDiffPatch d'Elrond, non exclus.
+- 2026-10-25 : L4a : Manager/HOLPublish (console) + HOLPublish.Tests ajoutés à HOLManager.sln (Any CPU, à la main) ; 24 tests rouges constatés.
+- 2026-10-25 : L4a : vert 24/24 (Publisher, VersionFolder, HDiffPatch, CommandLine) au premier essai ; reste dotnet test HOLManager.sln entier.
+- 2026-10-25 : **L4a close** (non commitée, launcher-l4 d'Elrond) : dotnet test HOLManager.sln 27 + 24 + 199 verts ; essai à la main de l'exe : PASS / FAIL, élagage OK.
+- 2026-10-25 : L4a : ajout à la disposition : <v>/published.txt (date UTC, ordre des versions, non servi) ; sortie en UTF-8 (publish.ps1 : [Console]::OutputEncoding UTF-8).
+- 2026-10-25 : L4a relue par la session principale : `dotnet test` repassé (27 + 24 + 199) ; `hdiffz.exe` / `hpatchz.exe`
+  de `Tools/ThirdParty/HDiffPatch/` identiques (SHA-256) à ceux de la release officielle. Non commitée : L4 sera commitée
+  entière après L4b et l'accord de l'utilisateur. **L4b lancée** (même branche `launcher-l4`, en sous-agent).
+- 2026-10-25 : L4b : Tools/Package/publish.ps1 écrit (Elrond) ; essai sur fausses archives : 2 PASS, correctif, refus -Version / doublon OK.
+- 2026-10-25 : L4b : publish L4-a PASS (empaquetage 3,6 min, HOLPublish 16 s : 50 fichiers, 340,9 Mo gz). Puis L4-c (texte d'UE_LOG).
+- 2026-10-25 : L4b : publish L4-c PASS (2,3 min + HOLPublish 72 s), correctif exe 8,3 Mo ; HOLManager le sert, hpatchz : SHA-256 identique.
+- 2026-10-25 : **L4b close** (non commitée, launcher-l4) : archives L4-* et dossier d'essai supprimés ; serveur de partie : question posée.
+- 2026-10-25 : L4b reçue par la session principale : **L4 faite** (a + b, non commitée, branche `launcher-l4`).
+  Question posée à l'utilisateur (L-Q7) : mise à jour du **serveur de partie** à la publication (le gestionnaire lit
+  la version du jeu une fois, au démarrage) : 1. `publish.ps1 -Server` arrête le gestionnaire, remplace le dossier du
+  serveur, le relance, refuse si des parties tournent ; 2. un dossier serveur par version, les parties en cours
+  finissent sur la leur (code du gestionnaire : session réseau) ; 3. à la main.
+- 2026-10-25 : **L-Q7 = B, confié à la session réseau** (choix de l'utilisateur ; reco devenue B : le serveur d'une
+  ancienne version se nettoie quand sa dernière partie finit, un seul serveur de 3 Go en permanence). Demande écrite
+  dans `NetPlaytestInProgress.md` (fin de « Suivi »). En attendant : serveur mis à jour à la main.
+- 2026-10-25 : **L4 commitée** (accord de l'utilisateur) : rebasée sur `main` 344f08a (la note L-Q7 y est déjà, commitée
+  par la session réseau avec son journal), `dotnet test` 27 + 24 + 206 PASS, `package.ps1` (`-Playtest` ajouté) garde sa
+  ligne PASS ; publication à blanc sur deux archives factices : deux PASS, correctif de l'exe 46 octets, `latest.txt`
+  juste ; `main` avancée (ff). Elrond libéré. Suivant : **L5** (squelette du lanceur, `Manager/HOLLauncher`).

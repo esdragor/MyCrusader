@@ -24,6 +24,7 @@
  *   hol.UI.Focus <WidgetName> [DelaySeconds=0]   (gives the focus to a widget of the open confirmation or menu screen, found by its name,
  *   as the keyboard would; then hol.UI.Key drives it)
  *   hol.UI.Language <fr|en|ja>   (switches the language live and saves it, as Settings > Language does)
+ *   hol.UI.Shown <WidgetName>...   (logs whether each named widget of the open menu screen is shown: "Shown SlotTeam3: no")
  */
 namespace UE::HeroesOfLiberty::UI
 {
@@ -186,6 +187,22 @@ namespace UE::HeroesOfLiberty::UI
 		Dropdown->Choose(FCString::Atoi(*Args[1]));
 	}
 
+	void LogShown(const TArray<FString>& Args, UWorld* World)
+	{
+		if (Args.IsEmpty())
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Shown <WidgetName>..."));
+			return;
+		}
+		const UHOLRootLayout* Layout = UHOLRootLayout::Get(GetPlayer(World));
+		const UCommonActivatableWidget* Screen = Layout ? Layout->GetActiveMenu() : nullptr;
+		for (const FString& Name : Args)
+		{
+			const UWidget* Widget = Screen ? Screen->WidgetTree->FindWidget(FName(*Name)) : nullptr;
+			UE_LOG(LogHOLUI, Display, TEXT("Shown %s: %s"), *Name, !Widget ? TEXT("missing") : Widget->IsVisible() ? TEXT("yes") : TEXT("no"));
+		}
+	}
+
 	void SetLanguage(const TArray<FString>& Args)
 	{
 		if (Args.IsEmpty())
@@ -216,6 +233,11 @@ namespace UE::HeroesOfLiberty::UI
 		TEXT("hol.UI.Choose"),
 		TEXT("hol.UI.Choose <DropdownName> <Index>: takes a value in a drop-down list of the open menu screen, as a click in its list"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&ChooseValue));
+
+	FAutoConsoleCommandWithWorldAndArgs ShownCommand(
+		TEXT("hol.UI.Shown"),
+		TEXT("hol.UI.Shown <WidgetName>...: logs whether each named widget of the open menu screen is shown"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&LogShown));
 
 	FAutoConsoleCommand LanguageCommand(
 		TEXT("hol.UI.Language"),

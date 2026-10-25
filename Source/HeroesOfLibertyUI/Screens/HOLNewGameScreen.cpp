@@ -75,8 +75,13 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 		{
 			Names.Add(HOLPlayerColors::GetColorName(Color));
 		}
+		// E2-2: last, at HOLPlayerColors::RandomColor; drawn at launch.
+		Names.Add(LOCTEXT("RandomColour", "Aléatoire"));
 		return Names;
 	}
+
+	/** The swatch of "Aléatoire" (E2-2): no player colour yet. */
+	const FLinearColor RandomSwatch = HOLUIStyle::TextMuted;
 
 	TArray<FLinearColor> ColorSwatches()
 	{
@@ -85,6 +90,7 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 		{
 			Swatches.Add(FLinearColor(HOLPlayerColors::GetColor(Color)));
 		}
+		Swatches.Add(RandomSwatch);
 		return Swatches;
 	}
 
@@ -428,7 +434,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 		SlotConfig.PlayerName = bPlayer ? Row->PlayerName : FString();
 		if (bPlayer)
 		{
-			SlotConfig.ColorIndex = FMath::Clamp(Row->ColorIndex, 0, HOLPlayerColors::NumColors - 1);
+			SlotConfig.ColorIndex = FMath::Clamp(Row->ColorIndex, 0, HOLPlayerColors::RandomColor);
 			SlotConfig.Team = FMath::Clamp(Row->Team, 0, FHOLMatchConfig::MaxTeams);
 			SlotConfig.Faction = Row->Faction == TEXT("BlackLegions") ? EHOLFaction::BlackLegions : EHOLFaction::DawnOrder;
 			Players.Add(Row->PlayerName);
@@ -577,13 +583,25 @@ void UHOLNewGameScreen::Refresh()
 		}
 		if (SlotSwatches[SlotIndex])
 		{
-			FLinearColor Swatch(HOLPlayerColors::GetColor(SlotConfig.ColorIndex));
+			FLinearColor Swatch = SlotConfig.ColorIndex == HOLPlayerColors::RandomColor ? RandomSwatch
+				: FLinearColor(HOLPlayerColors::GetColor(SlotConfig.ColorIndex));
 			Swatch.A = bOccupied ? 1.f : ClosedSwatchOpacity;
 			SlotSwatches[SlotIndex]->SetColorAndOpacity(Swatch);
 		}
 		if (SlotTeams[SlotIndex])
 		{
 			SlotTeams[SlotIndex]->SetSelectedIndex(SlotConfig.Team);
+		}
+		// E2-4: a line nobody holds (closed, or open in a lobby) shows no faction, colour nor team; Hidden keeps the
+		// columns in place and takes the fields out of the keyboard's way. Their values stay, shown again once taken.
+		const ESlateVisibility Fields = bOccupied ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
+		for (UWidget* Field : { static_cast<UWidget*>(SlotFactions[SlotIndex].Get()), static_cast<UWidget*>(SlotSwatches[SlotIndex].Get()),
+			static_cast<UWidget*>(SlotColors[SlotIndex].Get()), static_cast<UWidget*>(SlotTeams[SlotIndex].Get()) })
+		{
+			if (Field)
+			{
+				Field->SetVisibility(Fields);
+			}
 		}
 	}
 	if (NomadDropdown)
@@ -790,6 +808,11 @@ void UHOLNewGameScreen::HandleColorChosen(const int32 SlotIndex, const int32 Val
 
 bool UHOLNewGameScreen::IsColorTaken(const int32 SlotIndex, const int32 ColorIndex) const
 {
+	// E2-2: several slots can be on "Aléatoire".
+	if (ColorIndex == HOLPlayerColors::RandomColor)
+	{
+		return false;
+	}
 	for (int32 Other = 0; Other < Config.Slots.Num(); ++Other)
 	{
 		if (Other != SlotIndex && Config.Slots[Other].State != EHOLSlotState::Closed && Config.Slots[Other].ColorIndex == ColorIndex)
@@ -822,8 +845,11 @@ void UHOLNewGameScreen::Launch()
 		return;
 	}
 	FHOLMatchConfig Launched = Config;
-	Launched.Normalize();
 	Launched.Seed = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
+	// E2-2: "Aléatoire" becomes a colour nobody else has, before Normalize clamps it.
+	FRandomStream ColorStream(Launched.Seed);
+	Launched.DrawRandomColors(ColorStream);
+	Launched.Normalize();
 
 	UGameInstance* GameInstance = GetGameInstance();
 	UHOLMatchSubsystem* Match = GameInstance ? GameInstance->GetSubsystem<UHOLMatchSubsystem>() : nullptr;

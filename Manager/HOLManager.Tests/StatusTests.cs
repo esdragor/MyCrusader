@@ -28,6 +28,24 @@ public class StatusTests(WebApplicationFactory<Program> factory) : IClassFixture
     }
 
     [Fact]
+    public void VersionIsReadFromThePackagedServer()
+    {
+        // A package: WindowsServer\HeroesOfLibertyServer.exe, its Version.txt in WindowsServer\HeroesOfLiberty\.
+        var dir = Directory.CreateTempSubdirectory("hol-version-").FullName;
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "HeroesOfLiberty"));
+            File.WriteAllText(Path.Combine(dir, "HeroesOfLiberty", "Version.txt"), "2026-10-25-test\r\n");
+            var settings = new ManagerSettings { ServerExe = Path.Combine(dir, "HeroesOfLibertyServer.exe") };
+            Assert.Equal("2026-10-25-test", settings.ResolveGameVersion());
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public async Task StatusCountsTheLobbies()
     {
         var app = factory.WithWebHostBuilder(b => b.UseSetting("GameVersion", "2026-10-23-test"));
