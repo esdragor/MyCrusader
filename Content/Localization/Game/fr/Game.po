@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-25 16:59\n"
-"PO-Revision-Date: 2026-10-25 16:59\n"
+"POT-Creation-Date: 2026-10-25 21:26\n"
+"PO-Revision-Date: 2026-10-25 21:26\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -889,190 +889,197 @@ msgid "+{0} population"
 msgstr "+{0} population"
 
 #. Key:	Unreachable
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(33)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(33)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(38)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(38)
 msgctxt "HOLManagerErrorText,Unreachable"
 msgid "Le serveur de parties ne répond pas."
 msgstr "Le serveur de parties ne répond pas."
 
 #. Key:	Unreadable
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(35)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(35)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(40)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(40)
 msgctxt "HOLManagerErrorText,Unreadable"
 msgid "Réponse illisible du serveur de parties."
 msgstr "Réponse illisible du serveur de parties."
 
 #. Key:	VersionMismatch
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(45)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(45)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(50)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(50)
 msgctxt "HOLManagerErrorText,VersionMismatch"
 msgid "Version différente : le serveur a {0}, vous avez {1}."
 msgstr "Version différente : le serveur a {0}, vous avez {1}."
 
 #. Key:	OtherVersion
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(48)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(48)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(53)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(53)
 msgctxt "HOLManagerErrorText,OtherVersion"
 msgid "Version différente de celle du serveur de parties."
 msgstr "Version différente de celle du serveur de parties."
 
+#. Key:	BadKey
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(58)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(58)
+msgctxt "HOLManagerErrorText,BadKey"
+msgid "Clé d'accès refusée : réinstallez le jeu avec le kit reçu."
+msgstr "Clé d'accès refusée : réinstallez le jeu avec le kit reçu."
+
 #. Key:	InvalidName
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(51)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(51)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(61)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(61)
 msgctxt "HOLManagerErrorText,InvalidName"
 msgid "Nom refusé : 1 à 16 lettres, chiffres, espaces, - ou _."
 msgstr "Nom refusé : 1 à 16 lettres, chiffres, espaces, - ou _."
 
 #. Key:	LobbyNotFound
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(52)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(52)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(62)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(62)
 msgctxt "HOLManagerErrorText,LobbyNotFound"
 msgid "Ce salon n'existe plus."
 msgstr "Ce salon n'existe plus."
 
 #. Key:	NotInLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(53)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(53)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(63)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(63)
 msgctxt "HOLManagerErrorText,NotInLobby"
 msgid "Vous n'êtes plus dans ce salon."
 msgstr "Vous n'êtes plus dans ce salon."
 
 #. Key:	LobbyFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(54)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(54)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(64)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(64)
 msgctxt "HOLManagerErrorText,LobbyFull"
 msgid "Ce salon est plein."
 msgstr "Ce salon est plein."
 
 #. Key:	NameTaken
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(55)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(55)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(65)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(65)
 msgctxt "HOLManagerErrorText,NameTaken"
 msgid "Ce nom est déjà pris dans ce salon."
 msgstr "Ce nom est déjà pris dans ce salon."
 
 #. Key:	LobbyInGame
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(56)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(56)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(66)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(66)
 msgctxt "HOLManagerErrorText,LobbyInGame"
 msgid "Ce salon est en partie : vous pouvez la regarder."
 msgstr "Ce salon est en partie : vous pouvez la regarder."
 
 #. Key:	ColorTaken
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(57)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(57)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(67)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(67)
 msgctxt "HOLManagerErrorText,ColorTaken"
 msgid "Cette couleur est déjà prise."
 msgstr "Cette couleur est déjà prise."
 
 #. Key:	NotLeader
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(58)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(58)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(68)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(68)
 msgctxt "HOLManagerErrorText,NotLeader"
 msgid "Seul le chef du salon peut le faire."
 msgstr "Seul le chef du salon peut le faire."
 
 #. Key:	SlotTaken
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(59)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(59)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(69)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(69)
 msgctxt "HOLManagerErrorText,SlotTaken"
 msgid "Cet emplacement est tenu par un joueur."
 msgstr "Cet emplacement est tenu par un joueur."
 
 #. Key:	NotAllReady
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(60)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(60)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(70)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(70)
 msgctxt "HOLManagerErrorText,NotAllReady"
 msgid "Tous les joueurs ne sont pas prêts."
 msgstr "Tous les joueurs ne sont pas prêts."
 
 #. Key:	NotEnoughPlayers
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(61)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(61)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(71)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(71)
 msgctxt "HOLManagerErrorText,NotEnoughPlayers"
 msgid "Il faut au moins 2 joueurs."
 msgstr "Il faut au moins 2 joueurs."
 
 #. Key:	MaxServers
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(62)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(62)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(72)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(72)
 msgctxt "HOLManagerErrorText,MaxServers"
 msgid "Trop de parties en cours : réessayez plus tard."
 msgstr "Trop de parties en cours : réessayez plus tard."
 
 #. Key:	ServerStartFailed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(63)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(63)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(73)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(73)
 msgctxt "HOLManagerErrorText,ServerStartFailed"
 msgid "Le serveur de la partie n'a pas démarré."
 msgstr "Le serveur de la partie n'a pas démarré."
 
 #. Key:	NoMatch
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(64)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(64)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(74)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(74)
 msgctxt "HOLManagerErrorText,NoMatch"
 msgid "Ce salon n'est pas en partie."
 msgstr "Ce salon n'est pas en partie."
 
 #. Key:	MatchNotFound
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(65)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(65)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(75)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(75)
 msgctxt "HOLManagerErrorText,MatchNotFound"
 msgid "Cette partie n'existe plus."
 msgstr "Cette partie n'existe plus."
 
 #. Key:	MatchLost
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(67)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(67)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(77)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(77)
 msgctxt "HOLManagerErrorText,MatchLost"
 msgid "La connexion à la partie est perdue."
 msgstr "La connexion à la partie est perdue."
 
 #. Key:	MatchClosed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(68)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(68)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(78)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(78)
 msgctxt "HOLManagerErrorText,MatchClosed"
 msgid "La partie a été fermée par son serveur."
 msgstr "La partie a été fermée par son serveur."
 
 #. Key:	MatchVersion
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(69)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(69)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(79)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(79)
 msgctxt "HOLManagerErrorText,MatchVersion"
 msgid "Version différente de celle de la partie."
 msgstr "Version différente de celle de la partie."
 
 #. Key:	MatchFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(70)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(70)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(80)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(80)
 msgctxt "HOLManagerErrorText,MatchFull"
 msgid "La partie est pleine."
 msgstr "La partie est pleine."
 
 #. Key:	MatchRefused
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(71)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(71)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(81)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(81)
 msgctxt "HOLManagerErrorText,MatchRefused"
 msgid "La partie a refusé la connexion."
 msgstr "La partie a refusé la connexion."
 
 #. Key:	LobbyRelaunched
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(73)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(73)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(83)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(83)
 msgctxt "HOLManagerErrorText,LobbyRelaunched"
 msgid "La partie a été relancée sans vous."
 msgstr "La partie a été relancée sans vous."
 
 #. Key:	MatchFailed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(74)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(74)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(84)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(84)
 msgctxt "HOLManagerErrorText,MatchFailed"
 msgid "La connexion à la partie a échoué."
 msgstr "La connexion à la partie a échoué."
 
 #. Key:	General
-#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(76)
-#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(76)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(86)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(86)
 msgctxt "HOLManagerErrorText,General"
 msgid "Erreur du serveur de parties : {0}"
 msgstr "Erreur du serveur de parties : {0}"
@@ -1225,71 +1232,71 @@ msgid "Recherche des salons…"
 msgstr "Recherche des salons…"
 
 #. Key:	NoLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(240)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(240)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(244)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(244)
 msgctxt "HOLMultiplayerScreen,NoLobby"
 msgid "0 salon"
 msgstr "0 salon"
 
 #. Key:	Players
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(274)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(274)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(278)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(278)
 msgctxt "HOLMultiplayerScreen,Players"
 msgid "{0}/{1}"
 msgstr "{0}/{1}"
 
 #. Key:	StateLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(275)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(275)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(279)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(279)
 msgctxt "HOLMultiplayerScreen,StateLobby"
 msgid "au salon"
 msgstr "au salon"
 
 #. Key:	StateStarting
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(276)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(276)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(280)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(280)
 msgctxt "HOLMultiplayerScreen,StateStarting"
 msgid "lancement"
 msgstr "lancement"
 
 #. Key:	StateInGame
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(277)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(277)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(281)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(281)
 msgctxt "HOLMultiplayerScreen,StateInGame"
 msgid "en partie ({0} min)"
 msgstr "en partie ({0} min)"
 
 #. Key:	Join
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(289)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(289)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(293)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(293)
 msgctxt "HOLMultiplayerScreen,Join"
 msgid "Rejoindre"
 msgstr "Rejoindre"
 
 #. Key:	Watch
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(289)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(289)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(293)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(293)
 msgctxt "HOLMultiplayerScreen,Watch"
 msgid "Regarder"
 msgstr "Regarder"
 
 #. Key:	BadName
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(318)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(318)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(322)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(322)
 msgctxt "HOLMultiplayerScreen,BadName"
 msgid "Votre nom : 1 à 16 lettres, chiffres, espaces, - ou _"
 msgstr "Votre nom : 1 à 16 lettres, chiffres, espaces, - ou _"
 
 #. Key:	Entering
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(337)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(337)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(341)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(341)
 msgctxt "HOLMultiplayerScreen,Entering"
 msgid "Entrée dans le salon…"
 msgstr "Entrée dans le salon…"
 
 #. Key:	LobbyOf
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(339)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(339)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(343)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(343)
 msgctxt "HOLMultiplayerScreen,LobbyOf"
 msgid "Salon de {0}"
 msgstr "Salon de {0}"

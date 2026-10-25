@@ -30,3 +30,9 @@ HEROESOFLIBERTYUI_API FHOLManagerError MakeMatchTravelError(const FString& Messa
  * was relaunched without us). Shown over the Multiplayer screen's list.
  */
 HEROESOFLIBERTYUI_API FHOLManagerError MakeReturnToLobbyError(const FHOLManagerError& JoinError);
+
+/**
+ * Launcher L13b: whether "Créer un salon" stays enabled after the list's answer. A refused access key (bad_key) refuses
+ * every call, so the button is greyed; any other failure keeps it (the next refresh may succeed).
+ */
+HEROESOFLIBERTYUI_API bool CanCreateLobbyAfter(const FHOLManagerError& ListError);
