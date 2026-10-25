@@ -133,7 +133,7 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Man-at-arms: ranged armour 4"), ManAtArms.RangedArmor, 4);
 	TestEqual(TEXT("Man-at-arms: siege armour 0"), ManAtArms.SiegeArmor, 0);
 	TestEqual(TEXT("Man-at-arms: hero armour 2 (D345)"), ManAtArms.HeroArmor, 2);
-	TestEqual(TEXT("Man-at-arms: heavy infantry only"), ManAtArms.ArmorCategoryMask, HOLArmorCategoryBit(EHOLArmorCategory::HeavyInfantry));
+	TestEqual(TEXT("Man-at-arms: heavy infantry and Heavy (D428)"), ManAtArms.ArmorCategoryMask, HOLArmorCategoryBit(EHOLArmorCategory::HeavyInfantry) | HOLArmorCategoryBit(EHOLArmorCategory::Heavy));
 	TestEqual(TEXT("Man-at-arms: melee attack"), int32(ManAtArms.AttackType), int32(EHOLAttackType::Melee));
 	TestEqual(TEXT("Man-at-arms: no bonus"), ManAtArms.Bonuses.Num(), 0);
 	TestEqual(TEXT("Peasant: Peasant only"), Peasant.ArmorCategoryMask, HOLArmorCategoryBit(EHOLArmorCategory::Peasant));

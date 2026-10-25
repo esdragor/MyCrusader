@@ -2954,6 +2954,4 @@ Pour la question 3 : avec une rupture immédiate (D370), les unités en garnison
 
 La courbe d'XP (Q04) reste à régler en test.
 
-Restent hors de cette séance : comment l'Arbalétrier vise le Cavalier lourd (hors prototype), l'option *Sites sacrés*, la *Diplomatie* V2, la courbe d'XP (Q04, en test).
-
 Prochain numéro : **D445**.

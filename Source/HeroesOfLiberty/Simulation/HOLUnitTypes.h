@@ -26,6 +26,9 @@ enum class EHOLArmorCategory : uint8
 	Siege,
 	Peasant,
 	GunpowderInfantry,
+	/** Cross-cutting tag of the units in heavy armour (D428, AoE4's Heavy), added to their other categories: what the
+	 * Crossbowman's one bonus aims at. */
+	Heavy,
 };
 
 /** Bit of a category in FHOLUnitTypeConstants::ArmorCategoryMask (D345: a unit has 1 to any number of categories). */
