@@ -523,6 +523,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		Deaths.Reset();
 		for (FFighter& Fighter : Fighters)
 		{
+			// Nobody strikes (EtapeDefini I): a unit caught striking is no longer Attacking (its gesture, the HUD, the clients),
+			// its target kept for when combat is back (then looked up as at any step: gone, it is let go).
+			Fighter.Combat->bAttacking = false;
 			if (Fighter.State->CurrentHealth <= 0)
 			{
 				FinishDying(World, *Units, Fighter, StepIndex);

@@ -85,7 +85,7 @@ scénario, un cas après l'autre, la caméra suit ; le bouton « Relancer » du 
 | MV.3 Immobiles superposées | **sans objet** : accepté par l'utilisateur (2026-10-22) |
 | MV.4 Marcheurs bloqués par des corps | **fait** (2026-10-23) : murs contournés sans contact, renforts, porter secours, rochers, contournement des bâtiments, formation sur place ; « tenir le rang » essayé et refusé ; `main` e28b00b |
 | MV.5 Formation gênée | **fait** (2026-10-22, avancée avant MV.2 / MV.4 à la demande de l'utilisateur) : arrivée et marche, essai de l'utilisateur « 0 problème détecté », `main` e123afc (fusion 5bd8b98) |
-| MV.6 Mesures (S1 à S5), décisions au GDD, clôture | **décisions au GDD faites** (2026-10-23, D405-D415, § 16.6) ; **mesures S1-S5 au repos à faire** (machine pas libre) |
+| MV.6 Mesures (S1 à S5), décisions au GDD, clôture | **fait** : décisions au GDD (2026-10-23, D405-D415, § 16.6) ; mesures au repos du 2026-10-24 (`main` 018c3a2) reportées au § 16.6 le 2026-10-25 |
 
 ## Journal
 
@@ -1079,12 +1079,17 @@ paragraphe « Chantier déplacement » (§ 16.6). « Tenir le rang » essayé et
 `scratchpad\elrond_mv45_holdline_full.patch`, session 0b11c55e). Elrond libre.
 
 Reste :
-1. Mesures S1-S5 au repos (`Tools/Tests/rest_measures.ps1`, mémoire `measures-at-chapter-end`), quand aucune autre
-   session ne compile ni ne joue ; reporter les chiffres au paragraphe du § 16.6 (« Mesures S1 à S5 au repos : à
-   faire ») ; puis le chantier est entièrement clos.
+1. ~~Mesures S1-S5 au repos~~ **faites** : `rest_measures_1024_0859` sur `main` 018c3a2 (qui contient e28b00b),
+   chiffres reportés au § 16.6 le 2026-10-25 (S1, S2, S7 PASS ; S3 / S4 au-dessus de 6 ms à cause des valeurs des
+   unités, réglés par l'optimisation de J7c.4 ; S5 sous le seuil de D450).
 2. (aléa, EtapeDefini) « build site » rouge quand `build` suit `move,bodies` (plafond de population +20).
 Règles : test rouge d'abord (mémoire `red-test-first`) ; boucles de 15 min **avec minuteur lancé dans le même message
 que le sous-agent** ; chemins absolus dans les énoncés ; rien de commité avant l'essai.
 - (2026-10-23, session EtapeDefini) **Retour d'essai de l'utilisateur**, noté pour ce chantier : quand il sélectionne
   des unités au sein d'un groupe et leur donne l'ordre de bouger d'un rien (juste se mettre en formation là où elles
   sont), elles peinent, car elles ne poussent presque pas les autres. Ligne ajoutée à `EtapeDefini.md` (main 9c8e5f4). **Traité** : D415, `main` e28b00b.
+- (2026-10-25) **MV.6 close** : les mesures au repos du 2026-10-24 (`Saved_Tests\Logs\rest_measures_1024_0859.txt`,
+  `main` 018c3a2, tout le chantier compris) servent de mesures de clôture, reportées au § 16.6 du GDD. S1 1,237 ms,
+  S2 2,923 ms, S7 2,090 ms : PASS ; S3 6,553 et S4 6,603 ms : FAIL, à cause des valeurs des unités (A/B de J7c.4),
+  ramenés à 5,622 et 5,887 ms par l'optimisation du combat (a37995c) ; S5 32 247 o/s : sous le seuil de D450
+  (34 000). Chantier clos ; seul reste l'aléa « build site ».

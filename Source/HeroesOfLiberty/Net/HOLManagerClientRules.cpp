@@ -281,6 +281,8 @@ bool FHOLManagerClientRules::ParseServers(const FString& Json, TArray<FHOLManage
 		if (Value.IsValid() && Value->TryGetObject(Row) && (*Row)->TryGetStringField(TEXT("url"), Server.Url) && !Server.Url.IsEmpty())
 		{
 			(*Row)->TryGetStringField(TEXT("name"), Server.Name);
+			(*Row)->TryGetStringField(TEXT("key"), Server.Key);
+			Server.Key.TrimStartAndEndInline();
 			Out.Add(MoveTemp(Server));
 		}
 	}

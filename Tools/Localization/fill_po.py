@@ -310,6 +310,7 @@ TRANSLATIONS = {
     "HOLManagerErrorText,MatchLost": ("The connection to the match is lost.", "対戦との接続が切れました。"),
     "HOLManagerErrorText,MatchClosed": ("The match was closed by its server.", "対戦はサーバーによって終了されました。"),
     "HOLManagerErrorText,MatchVersion": ("Different version from the match.", "対戦とバージョンが異なります。"),
+    "HOLManagerErrorText,BadKey": ("Access key refused: reinstall the game with the kit you received.", "アクセスキーが拒否されました：受け取ったキットでゲームを再インストールしてください。"),
     "HOLManagerErrorText,MatchFull": ("The match is full.", "対戦は満員です。"),
     "HOLManagerErrorText,MatchRefused": ("The match refused the connection.", "対戦への接続が拒否されました。"),
     "HOLManagerErrorText,MatchFailed": ("Connecting to the match failed.", "対戦への接続に失敗しました。"),

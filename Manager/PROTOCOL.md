@@ -93,6 +93,7 @@ sert au journal. Un code inconnu du jeu → message générique avec le `message
 | `no_match` | 409 | « Regarder » un salon qui n'est pas en partie |
 | `not_local` | 403 | route du serveur Unreal appelée depuis une autre machine |
 | `match_not_found` | 404 | `matchId` inconnu ou oublié (serveur arrêté) (route du serveur Unreal) |
+| `bad_key` | 401 | clé d'accès absente ou fausse (en-tête `X-HOL-Key`, voir « Clé d'accès (L11) ») |
 
 Un corps JSON illégal (syntaxe, type de champ faux) est un `bad_request` **vérifié avant tout le reste** ; l'ordre des
 vérifications donné pour chaque route vaut pour un JSON légal.
@@ -100,6 +101,25 @@ vérifications donné pour chaque route vaut pour un JSON légal.
 « **Le serveur de la partie s'est arrêté** » n'est pas une réponse à une requête : c'est un **avis** dans l'état du
 salon (`notice: "server_stopped"`, voir plus bas).
 
+### Clé d'accès (L11)
+
+Le gestionnaire exposé à Internet (redirection de ports de la box) ne sert que les lanceurs et les jeux du kit des
+amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant** (développement).
+
+- **Clé** : `access_key.txt` à côté de `HOLManager.exe` (réglage `AccessKeyFile`, chemin relatif au dossier du
+  gestionnaire), lue au démarrage et rognée ; fichier absent ou vide → pas de clé. Le journal dit « access key: on »
+  ou « off », jamais la clé. `Tools/Package/make_kit.ps1` la crée si elle manque (32 octets aléatoires en base64url
+  sans `=`) et l'écrit dans le `servers.json` du kit.
+- **`servers.json`** : champ facultatif `"key"` par serveur : `{ "servers": [ { "name", "url", "key" } ] }`.
+- **HTTP** : avec une clé, **toute requête** (toutes les routes, même inconnues) porte l'en-tête **`X-HOL-Key: <clé>`**
+  (le lanceur et le jeu ne l'envoient qu'à l'adresse de leur `servers.json`) ; absente ou fausse (comparaison à
+  temps constant) → **401** `{ "error": "bad_key", "message": … }`, avant toute autre vérification.
+- **Exemption** : les requêtes venant du bouclage (`127.0.0.0/8`, `::1`, IPv4 en IPv6 `::ffff:127.0.0.1`) passent
+  sans en-tête : serveurs de partie lancés par le gestionnaire, essais locaux.
+- **Serveur de partie** : le gestionnaire ajoute **`-HOLAccessKey=<clé>`** à sa ligne de commande (voir « Routes du
+  serveur Unreal ») ; le client ajoute l'option d'URL **`HOLKey=<clé>`** (encodée) à sa connexion
+  (`UHOLLocalPlayer::GetGameLoginOptions`) et `PreLogin` refuse sans elle (« Access key mismatch ») si le serveur en
+  a une.
 ## Routes du jeu (clients)
 
 ### `GET /status`
@@ -311,7 +331,7 @@ Le gestionnaire lance chaque serveur ainsi (un serveur neuf par partie, M6-Q9) :
 ```
 HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M20261023-153012-3\match.json"
     -ManagerUrl=http://127.0.0.1:7700 -MatchId=M20261023-153012-3 -log -unattended -useperfthreads
-    -abslog="<dossier>\M20261023-153012-3\server.log"
+    -abslog="<dossier>\M20261023-153012-3\server.log" [-HOLAccessKey=<clé>]
 ```
 
 - Carte en premier argument, en chemin de paquet (`/Game/Maps/<Nom>`) ; dans `match.json`, chemin d'objet
@@ -328,6 +348,13 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
 - Démarrage avec Windows (R2.12) : `Tools\Manager\install_startup.ps1` met le raccourci « Serveur HeroesOfLiberty »
   (fenêtre réduite, dossier de travail = celui de l'exe) dans le dossier Démarrage ; `uninstall_startup.ps1` l'enlève.
   Journal du gestionnaire : `Logs\manager-<aaaa-mm-jj>.log` à côté de l'exe, un fichier par jour, 14 gardés.
+  Requêtes (L12, catégorie `HOLManager.Requests`) : refus `bad_key` en `Warning` (« Refused GET /lobbies from
+  1.2.3.4: bad_key. », jamais la clé ni les en-têtes), au plus une ligne par adresse et par minute, puis « 12 more
+  refused from 1.2.3.4 in the last minute. » au premier refus suivant la minute ; requête acceptée venant de
+  l'extérieur en `Information` (« GET /versions/latest from 1.2.3.4: 200. »), fichier servi : « Served <chemin> to
+  1.2.3.4: 200|206, <octets> bytes. » ; sondages du jeu (`GET /status`, `/lobbies`, `/lobbies/{id}`,
+  `/lobbies/{id}/watch`) et tout ce qui vient du bouclage en `Debug` (non écrit par défaut). Lancement d'un serveur
+  de partie : sa ligne de commande, avec `-HOLAccessKey=***`.
 
 `<dossier>` = `Saved\Matches\` à côté du gestionnaire. Réglages (`appsettings.json` ou `--Clé=Valeur`) :
 `ServerExe`, `MaxServers` (2), `FirstServerPort` (7777), `MatchesDir` (`Saved\Matches`), `ManagerUrl`

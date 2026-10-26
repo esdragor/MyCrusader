@@ -41,6 +41,7 @@ public static class LobbyRoutes
         [LobbyErrors.NoMatch] = 409,
         [LobbyErrors.NotLocal] = 403,
         [LobbyErrors.MatchNotFound] = 404,
+        [LobbyErrors.BadKey] = 401,
     };
 
     public static int StatusOf(string error) => Statuses.GetValueOrDefault(error, 500);

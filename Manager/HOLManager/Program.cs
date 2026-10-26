@@ -24,10 +24,13 @@ if (!string.IsNullOrWhiteSpace(settings.LogDir))
     builder.Logging.AddProvider(new FileLoggerProvider(Path.GetFullPath(settings.LogDir, AppContext.BaseDirectory)));
 }
 var gameVersion = settings.ResolveGameVersion();
+// L11: read once at startup; never logged.
+var accessKey = AccessKey.Read(settings.ResolveAccessKeyFile());
 
 builder.Services.AddSingleton<IClock, SystemClock>();
 // Created by the container, which disposes it at shutdown: the servers still running are stopped.
-builder.Services.AddSingleton<IServerLauncher>(_ => new ProcessServerLauncher(settings));
+builder.Services.AddSingleton<IServerLauncher>(sp => new ProcessServerLauncher(settings, accessKey,
+    sp.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessServerLauncher>()));
 builder.Services.AddSingleton(sp => new LobbyStore(gameVersion, sp.GetRequiredService<IClock>(),
     launcher: sp.GetRequiredService<IServerLauncher>()));
 
@@ -38,7 +41,10 @@ builder.Services.AddSingleton(new VersionStore((builder.Configuration.Get<Versio
 builder.Services.AddHostedService<HousekeepingService>();
 
 var app = builder.Build();
+// L12: one line per request from outside, refusals limited per address (PROTOCOL.md, Journal).
+app.UseRequestLog();
 app.UseLobbyErrors();
+app.UseAccessKey(accessKey);
 
 app.MapGet("/status", (LobbyStore store, IServerLauncher launcher) => new
 {
@@ -50,8 +56,8 @@ app.MapGet("/status", (LobbyStore store, IServerLauncher launcher) => new
 });
 
 app.Lifetime.ApplicationStarted.Register(() => app.Logger.LogInformation(
-    "HOLManager started: game version {GameVersion}, server {ServerExe}, max {MaxServers} servers.",
-    gameVersion, Path.GetFullPath(settings.ServerExe, AppContext.BaseDirectory), settings.MaxServers));
+    "HOLManager started: game version {GameVersion}, server {ServerExe}, max {MaxServers} servers, access key: {AccessKey}.",
+    gameVersion, Path.GetFullPath(settings.ServerExe, AppContext.BaseDirectory), settings.MaxServers, accessKey != null ? "on" : "off"));
 app.Lifetime.ApplicationStopping.Register(() => app.Logger.LogInformation("HOLManager stopping."));
 
 app.MapLobbyRoutes();

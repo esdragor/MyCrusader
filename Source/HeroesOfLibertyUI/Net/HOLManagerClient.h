@@ -18,7 +18,9 @@ DECLARE_DELEGATE_TwoParams(FHOLManagerLobbiesDone,const TArray<FHOLLobbySummary>
 /**
  * The game's client of the lobby manager (M6 R4.1, Manager/PROTOCOL.md): in the interface module, so never on a
  * dedicated server (D247). The managers come from servers.json, never shown (M6-Q5):
- *   { "servers": [ { "name": "PC de Baudouin", "url": "http://100.x.y.z:7700" } ] }
+ *   { "servers": [ { "name": "PC de Baudouin", "url": "http://100.x.y.z:7700", "key": "..." } ] }
+ * The optional key (launcher L11) goes in the X-HOL-Key header of every call and, through HOLAccessKey::SetClientKey, in
+ * the login options of the match servers (?HOLKey=).
  * (Tools\Manager\servers.example.json). Read from the project folder in the editor, beside HeroesOfLiberty.exe in a
  * package (FPaths::RootDir()), or from -ServersFile=<path>; without one, http://127.0.0.1:7700. The first server is
  * the one called. Each call is asynchronous and answers once, with the structures or the error.

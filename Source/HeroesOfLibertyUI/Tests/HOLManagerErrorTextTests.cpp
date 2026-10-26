@@ -19,7 +19,7 @@ namespace
 }
 
 // The text shown for each failure of a call to the lobby manager (R4.3): every code of Manager/PROTOCOL.md.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerErrorTextTest, "HeroesOfLiberty.UI.ManagerErrorText",
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerErrorTextTest, "HeroesOfLiberty.UI.ManagerErrorText.Codes",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FHOLManagerErrorTextTest::RunTest(const FString& Parameters)
 {
@@ -93,6 +93,7 @@ bool FHOLMatchLossTextTest::RunTest(const FString& Parameters)
 		{ ENetworkFailure::OutdatedServer, TEXT(""), TEXT("match_version"), TEXT("Version différente de celle de la partie.") },
 		{ ENetworkFailure::PendingConnectionFailure, TEXT("Server full."), TEXT("match_full"), TEXT("La partie est pleine.") },
 		{ ENetworkFailure::PendingConnectionFailure, TEXT("Something else"), TEXT("match_refused"), TEXT("La partie a refusé la connexion.") },
+		{ ENetworkFailure::PendingConnectionFailure, TEXT("Access key mismatch"), TEXT("match_key"), TEXT("Clé d'accès refusée : réinstallez le jeu avec le kit reçu.") },
 		{ ENetworkFailure::NetDriverCreateFailure, TEXT(""), TEXT("match_failed"), TEXT("La connexion à la partie a échoué.") },
 	};
 	for (const FCase& Case : Cases)
@@ -107,6 +108,15 @@ bool FHOLMatchLossTextTest::RunTest(const FString& Parameters)
 	const FHOLManagerError Travel = MakeMatchTravelError(TEXT("Failed to load package"));
 	TestEqual(TEXT("travel code"), Travel.Code, FString(TEXT("match_failed")));
 	TestEqual(TEXT("travel text"), GetManagerErrorText(Travel).ToString(), FString(TEXT("La connexion à la partie a échoué.")));
+	// Launcher L11: the manager's 401 for a wrong or missing X-HOL-Key.
+	const FHOLManagerError BadKey = FHOLManagerClientRules::ReadFailure(true, 401, TEXT(R"({ "error": "bad_key", "message": "Wrong access key." })"));
+	TestEqual(TEXT("401 bad_key code"), BadKey.Code, FString(TEXT("bad_key")));
+	TestEqual(TEXT("401 bad_key text"), GetManagerErrorText(BadKey).ToString(), FString(TEXT("Clé d'accès refusée : réinstallez le jeu avec le kit reçu.")));
+	// Launcher L13b: a refused key greys "Créer un salon"; no error or any other failure keeps it.
+	TestFalse(TEXT("bad_key greys Create"), CanCreateLobbyAfter(BadKey));
+	TestTrue(TEXT("no error keeps Create"), CanCreateLobbyAfter(FHOLManagerError()));
+	TestTrue(TEXT("unreachable keeps Create"), CanCreateLobbyAfter(FHOLManagerError{ FHOLManagerError::EKind::Unreachable }));
+	TestTrue(TEXT("other code keeps Create"), CanCreateLobbyAfter(MakeProtocolError(TEXT("max_servers"), TEXT("Raw."))));
 	return true;
 }
 

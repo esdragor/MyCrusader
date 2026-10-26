@@ -27,6 +27,11 @@ public sealed class ManagerSettings
     /** Log files manager-<date>.log (relative: from the manager's folder); empty = no log file. */
     public string LogDir { get; init; } = "Logs";
 
+    /** L11: the key shared with the friends' kit (relative: from the manager's folder); absent or empty = no key. */
+    public string AccessKeyFile { get; init; } = "access_key.txt";
+
+    public string ResolveAccessKeyFile() => Path.GetFullPath(AccessKeyFile, AppContext.BaseDirectory);
+
     public string ResolveGameVersion()
     {
         if (!string.IsNullOrWhiteSpace(GameVersion))

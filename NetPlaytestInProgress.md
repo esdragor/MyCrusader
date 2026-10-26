@@ -975,3 +975,187 @@ R8, R9.
   deux salons à la fois, gestionnaire par double-clic. À corriger un jour : le gestionnaire cherche `version.txt` à
   côté de `ServerExe` (dans le paquet il est dans `WindowsServer\HeroesOfLiberty\`) ; `Manager\` et les `.bat` ne sont
   pas produits par `package.ps1` (option `-Playtest` ?). **Consigne donnée à l'utilisateur ; on attend ses retours.**
+- 2026-10-25 : **Version du jeu trouvée dans le paquet.** Test rouge `StatusTests.VersionIsReadFromThePackagedServer`
+  (« dev » au lieu de la version), puis `ManagerSettings.ResolveGameVersion` lit aussi
+  `<dossier du serveur>\HeroesOfLiberty\Version.txt` ; `PROTOCOL.md` à jour ; `dotnet test` **174/174**. Non commité,
+  paquet d'essai inchangé (son `GameVersion` écrit en dur reste valable). Reste : `-Playtest` de `package.ps1`.
+- 2026-10-25 : accord donné à mycrusader-ea pour avancer `main` en ff vers `victory-v5` b9a7e06 (Victory V5, Régicide).
+  Sa partie `lobby` de `quick_check` n'a pas été jouée (pas de serveur empaqueté dans Arwen) : **à jouer ici à la
+  prochaine fusion de `main` dans `net-playtest`** (la partie `net` remplace l'abandon par la mort du Roi).
+  Fait par ea : `main` = b9a7e06 puis doc b7b6350 (GDD D470-D474) ; **prochaine décision libre : D475** (pour la
+  décision « Forum » = 町の中心 et celles de M6 à la clôture).
+- 2026-10-25 : **Retours E2 de l'utilisateur** (paquet 2026-10-25-3713f76) :
+  - **E2-1** : au « Retour au salon », on ne garde pas sa couleur de la partie ;
+  - **E2-2** : il faut un choix de couleur « Aléatoire » ;
+  - **E2-3** : dans le salon, « Quitter le salon » puis « Retour » (liste Multijoueur) → écran sans boutons au lieu de
+    l'écran titre (Solo, Multijoueur, Options…). Piste : après un retour de partie, `HOLMenuPlayerController::BeginPlay`
+    empile titre + Multijoueur + salon d'un coup.
+  Boucles prévues : E2-3, puis E2-1, puis E2-2 ; puis nouveau paquet pour la suite des essais.
+  À vérifier : `dotnet test` affiche « Now listening on: http://0.0.0.0:7700 » (un test démarre-t-il un vrai Kestrel ?
+  conflit possible avec le gestionnaire de l'utilisateur pendant ses essais). → Non : `WebApplicationFactory` (mémoire).
+  Commit **4b03cd1** sur `net-playtest` (« go » de l'utilisateur) : E2-1, E2-2, E2-3, version trouvée dans le paquet.
+- 2026-10-25 : **Essais de l'utilisateur sur le paquet 2026-10-25-3713f76-e2 : « tout fonctionne ».** Demande **E2-4** :
+  pour la lisibilité, les lignes sans personne (Fermé, Ouvert) de l'écran de nouvelle partie / salon affichent des
+  champs vides (pas de faction, couleur, équipe), en solo et en réseau.
+  → Fait (voir plus bas) ; commit **c3f2417** sur `net-playtest` (« commit » de l'utilisateur) : E2-4, `lobby_match`
+  aligné sur E2-1, `package.ps1 -Playtest`. `main` pas encore avancée.
+  Validé par l'utilisateur (« parfait ») : E2-1 = le gestionnaire rend au retour la couleur de la partie si elle est
+  libre ; E2-2 = choix « Aléatoire » dans la liste des couleurs (solo et multijoueur), choisissable par plusieurs,
+  tiré au lancement parmi les couleurs non prises ; un nouvel arrivant garde la couleur donnée aujourd'hui.
+- 2026-10-25 : **E2-3 corrigé (titre perdu sous la liste Multijoueur)**, worktree Glorfindel, non commité.
+  Cause (Common UI, `UCommonActivatableWidgetContainerBase::SetSwitcherIndex`) : quand on empile un écran pendant le
+  fondu d'un autre empilement, l'écran « affiché » (déjà désactivé parce que recouvert) est pris pour un écran fermé
+  par ailleurs et retiré de la pile à l'arrivée du fondu. `BeginPlay` après un « Retour au salon » empile titre puis
+  Multijoueur dans la même image, puis le salon dès la réponse du gestionnaire, encore pendant le fondu : le titre
+  sortait de la pile, « Retour » sur la liste laissait la couche vide (fond seul). Chemin normal (titre → Multijoueur →
+  créer → Quitter → Retour) sain : chaque empilement y attend la fin du fondu (clics bloqués pendant le fondu).
+  Correctif : `UHOLScreenStack` (`Widgets/HOLScreenStack.h/.cpp`), pile des deux couches de `UHOLRootLayout` ; à un
+  empilement, si l'écran affiché est désactivé alors que le fondu monte encore dans la pile (index visé > index
+  actif), il est oublié comme écran affiché et reste dans la pile (log « Screen stack: … kept under … »).
+  Test : partie `menu` de `quick_check` (fr), cas « menu stack » : `hol.UI.Open Multiplayer`, 2 images,
+  `hol.UI.Open NewGame`, Retour, Retour, capture `qc_fr_stackback` attendue `menu=HOLTitleScreen`. **Rouge** avant
+  (`menu=none`), **vert** après (titre et ses quatre boutons sur la capture). Le lancement du `quick_check` passe
+  désormais `-ServersFile` vers un gestionnaire absent (port 7799) pour ne jamais interroger celui de l'utilisateur.
+  `quick_check -Parts menu` **PASS** ; `quick_check` par défaut **PASS** (tests 165/165, smoke). Non essayé :
+  le vrai retour de partie empaqueté (à refaire au prochain paquet).
+- 2026-10-25 : **E2-1 corrigé (couleur de la partie rendue au « Retour au salon »)**, worktree Glorfindel, non commité.
+  Cause : depuis D2, `finished` vide le salon de ses joueurs (`LobbyStore.ServerFinished`) ; « Retour au salon » est un
+  `join` ordinaire, qui donnait la première couleur libre (`LobbyStore.Enter`) : la couleur de la partie était perdue.
+  Correctif (gestionnaire seul) : `Lobby.LastMatchColors` (nom → couleur, casse ignorée), rempli par
+  `ServerFinished` avant de vider les emplacements ; `Enter` donne cette couleur si aucun joueur présent ne l'a, sinon
+  la première libre comme avant (un nouvel arrivant ne change pas). Client C++ vérifié sans changement : il n'envoie
+  `PUT /me` que sur un choix de l'utilisateur (`SetSelectedIndex` ne diffuse pas), rien n'écrase la couleur au retour.
+  PROTOCOL.md (join et « Retour au salon ») mis à jour.
+  Tests (`ReturnToLobbyTests`) : `ThoseBackTakeTheirMatchColorAgain` (retour dans un autre ordre, « alice » en
+  minuscules : 2, 3, 0) **rouge** avant, vert après ; `AMatchColorTakenMeanwhileGivesTheFirstFreeOne` (couleur prise
+  entre-temps → première libre). `dotnet test` **176/176**. Non essayé : le vrai retour de partie empaqueté.
+- 2026-10-25 : **E2-2 fait (couleur « Aléatoire » à l'écran de nouvelle partie, solo et salon)**, worktree Glorfindel,
+  non commité. Représentation : l'index de couleur juste après la palette, 8 = « Aléatoire »
+  (`HOLPlayerColors::RandomColor` = `NumColors`, `LobbyRules.RandomColor` = `ColorCount`) ; dernière option de la liste
+  (LOCTEXT `HOLNewGameScreen,RandomColour`, pastille grise `TextMuted`), jamais grisée ni « prise ».
+  Gestionnaire : `PUT /me` accepte 0 à 8, 8 sans `color_taken` (plusieurs joueurs) ; le tirage fait foi au lancement,
+  dans `MatchConfig.FromLobby` (graine de la partie) : par ordre d'emplacement, une couleur qu'aucun joueur n'a (choisie
+  ou déjà tirée) ; match.json n'a que 0 à 7, le serveur de jeu ne change pas ; le salon garde « Aléatoire » (et
+  `LastMatchColors` aussi : un joueur sur « Aléatoire » le retrouve au retour). Un nouvel arrivant garde la première
+  couleur réelle libre. PROTOCOL.md (`PUT /me`, `slots[].colorIndex`) à jour.
+  Solo : `FHOLMatchConfig::DrawRandomColors(FRandomStream&)`, appelé par `UHOLNewGameScreen::Launch` avec la graine,
+  avant `Normalize` (qui borne toujours à 0-7). Écran : `IsColorTaken` faux pour « Aléatoire », le salon ne borne plus
+  la couleur lue à 7.
+  Tests : xUnit `SeveralPlayersCanChooseRandom` (LobbyLineTests), `RandomColorsAreDrawnAmongTheFreeOnesAtLaunch` et
+  `RandomColorsVaryWithTheSeed` (MatchStartTests) **rouges** (3) avant, verts après ; borne hors limites passée de 8 à 9.
+  `dotnet test` **179/179**. C++ `HeroesOfLiberty.Match.RandomColors` (écrit avant le code ; rouge = ne compilait pas,
+  pas de construction séparée). `Toolsuild.ps1` **PASS** ; `quick_check -Parts tests,menu,lobby` **PASS**
+  (tests 166/166, menu fr/en/ja, lobby).
+  Reste : japonais — entrée ajoutée à `Tools/Localization/fill_po.py` (« Random », « ランダム ») mais pas de
+  rassemblement (gather Game.ini) ni de .locres régénéré ; non vérifié à l'œil (liste de l'écran, pastille grise) ;
+  pas de test xUnit du retour au salon sur « Aléatoire ».
+- 2026-10-25 : **Paquet E2 corrigé prêt** : `HeroesOfLiberty-Glorfindel\Saved\Packages\2026-10-25-3713f76-e2\` (jeu et
+  serveur à la même version, `package.ps1 -Version 2026-10-25-3713f76-e2` : le nom par défaut aurait repris celui du
+  paquet précédent, HEAD toujours 3713f76 ; 3,9 min). Contient E2-1, E2-2, E2-3 et la version lue dans le paquet (non
+  commités). Mise en place comme le précédent (laissé intact) : `Manager\` (`build_manager.ps1`, `Gestionnaire.bat`,
+  `appsettings.json` port 7700, `ServerExe` du paquet, `MaxServers` 2, **`GameVersion` vide**), `Windows\servers.json`,
+  `Joueur_Alice/Bob/Carol/Dan/Eve.bat`.
+  Japonais : GatherText + `fill_po.py` (**312 textes, 0 clé inconnue**, en et ja) + GatherText, .locres recompilés
+  (`HOLNewGameScreen,RandomColour` = « ランダム »). Attention : sous PowerShell 5.1, `-config=Config/Localization/Game.ini`
+  doit être entre guillemets (sinon coupé au point : « Loading Config File ...Game failed »).
+  xUnit : `ReturnToLobbyTests.ThoseOnRandomFindRandomAgain` (Alice et Chloé sur « Aléatoire » le retrouvent, Bob 0) ;
+  `dotnet test` **180/180**. « Now listening on: http://0.0.0.0:7700 » pendant `dotnet test` : simple message, aucun
+  vrai Kestrel (`WebApplicationFactory` = TestServer ; la journalisation reprend l'URL de `Program.cs`) ; vérifié en
+  tenant le port 7700 pendant `dotnet test` : 180/180, pas de conflit possible avec le gestionnaire de l'utilisateur.
+  Essais du paquet : `packaged_smoke` **PASS** ; variante empaquetée de `lobby_match` (scratchpad
+  `packaged_lobby_match_e2.ps1`, contrôle « couleurs neuves » inversé : chacun retrouve la sienne) **PASS** en 113 s :
+  `/status` gameVersion = `2026-10-25-3713f76-e2` avec `GameVersion` vide, Bob revenu le premier retrouve 5, puis
+  Alice 2 ; journaux des clients : « Screen stack: HOLTitleScreen kept under ... (pushed while fading) » au retour
+  (E2-3 vu dans le vrai retour de partie). Captures du jeu empaqueté, liste des couleurs ouverte (scratchpad
+  `colour_list_fr.png` / `colour_list_ja.png`) : « Aléatoire » / « ランダム » en dernier, pastille gris clair, lisible.
+  Reste : commit des correctifs E2 ; option `-Playtest` de `package.ps1` (Manager\ et .bat) ; non essayés : tirage
+  « Aléatoire » dans une vraie partie en salon, deux salons à la fois, gestionnaire par double-clic.
+  **Paquet prêt pour la suite des essais de l'utilisateur.**
+- 2026-10-25 : **-Playtest de `package.ps1` fait (mise en place de l'essai réseau sur un PC)**, worktree Glorfindel
+  (net-playtest, 4b03cd1), non commité. `Tools\Package\add_playtest.ps1 -PackageDir <paquet> [-Root] [-Players]
+  [-NoBuild]` : publie le gestionnaire (`build_manager.ps1`), copie `HOLManager.exe` et
+  `HOLManager.staticwebassets.endpoints.json` dans `Manager\`, écrit `Manager\Gestionnaire.bat`,
+  `Manager\appsettings.json` (0.0.0.0:7700, `..\WindowsServer\HeroesOfLibertyServer.exe`, GameVersion vide, 2 serveurs,
+  port 7777), `Windows\servers.json` (127.0.0.1:7700) et `Windows\Joueur_Alice/Bob/Carol/Dan/Eve.bat` ; modèles dans
+  `Tools\Package\Playtest\` (`{Name}` dans `Joueur.bat`), .bat forcés en CRLF, .json en LF sans saut final.
+  `package.ps1 -Playtest` l'appelle après Version.txt (échec → FAIL). Test `Tools\Tests\playtest_setup.ps1` (rouge
+  d'abord : script absent) : faux paquet dans le scratchpad, contenu octet par octet, gestionnaire publié lancé sur
+  7790 (`--urls`), `/status` gameVersion = Version.txt factice, arrêté par PID → **PASS** (avec et sans -NoBuild).
+  Comparé au paquet E2 : identique octet par octet, sauf `Joueur_Dan/Eve.bat` du paquet fait main en LF (mêmes
+  commandes). Pas essayé : un vrai `package.ps1 -Playtest` (UAT complet).
+- 2026-10-25 : **E2-4 fait (lignes sans personne vides à l'écran de nouvelle partie, solo et salon)**, worktree
+  Glorfindel (net-playtest, 4b03cd1), non commité. `UHOLNewGameScreen::Refresh` : une ligne non occupée (Fermé en solo,
+  Ouvert / Fermé en salon : `Config.Slots[i].State == Closed`) met faction, pastille, couleur et équipe en `Hidden`
+  (la place reste, les colonnes ne bougent pas ; hors de la navigation clavier, qui saute l'invisible) ; Visible dès
+  qu'elle est prise. Valeurs gardées en mémoire ; `IsColorTaken`, couleur par défaut, « Aléatoire » inchangés (une ligne
+  fermée ne comptait déjà pas). Nouvelle commande `hol.UI.Shown <Widget>...` (journal « Shown SlotTeam3: no »).
+  quick_check menu fr : marques `menu emptyrow` (ligne 3 fermée vide, ligne 0 affichée, capture `qc_fr_emptyrow`) puis
+  `menu takenrow` (`hol.UI.Choose SlotState3 1` → champs revenus, capture `qc_fr_takenrow`) : **rouge** avant (« closed
+  line empty » KO), vert après ; captures regardées avant / après, et `lobby_match_lobby.png` (lignes Ouvert vides).
+  `lobby_match.ps1` : le contrôle « colours kept: old lines » contredisait E2-1 (validé) et faisait échouer `lobby` ;
+  inversé (chacun retrouve la couleur de la partie). `Tools\build.ps1` **PASS** ; `quick_check -Parts tests,menu,lobby`
+  **PASS** (tests 166/166, menu fr/en/ja, lobby ; 168 s).
+- 2026-10-25 : **Fusion de main (V5 Régicide) dans net-playtest : 298ea5e**, worktree Glorfindel (main a080862 : V5
+  a03d4c8 / b9a7e06, GDD D470-D474, lanceur L0-L3 ; main non avancé). Code fusionné sans conflit (HOLGameState,
+  HOLCombatProcessor, HOLUnitOrderProcessor, HOLPlayerController, HOLCommandGrid, mode de jeu, UnitTypes,
+  `quick_check.ps1` — partie `net` de ea avec le Roi et 7 rapports + nos cas menu stack / emptyrow / takenrow /
+  servers_none —, `fill_po.py`, PROTOCOL.md). Conflits seulement dans la localisation générée : en-têtes des .po
+  (dates, HEAD gardé), .archive / .locres / manifeste refaits (GatherText, `fill_po.py` **315 textes, 0 clé inconnue**
+  en et ja, GatherText) ; « ランダム », « 町の中心 » et « 王 » dans le .locres ja. `build.ps1` **PASS** ; serveur
+  re-cuit (`net_match.ps1 -Stage` PASS, ses 3 processus arrêtés par PID) ; `quick_check -Parts tests,menu,victory,net,lobby`
+  **PASS** en 283 s (tests 172/172, victory / forum / regicide, menu fr/en/ja, net 2 clients, **lobby**) ;
+  `dotnet test` **206/206** (180 + 26 `VersionRoutesTests` de L2).
+- 2026-10-25 : **`main` avancée en ff à 298ea5e** (aucune autre session active ; accord de l'utilisateur pour la
+  fusion). `main` contient E2-1 à E2-4, `-Playtest`, la version trouvée dans le paquet. Copie principale à recompiler.
+  Suite : **R7** (déconnexion, fenêtre de 3 min).
+- 2026-10-25 : **R7 lancé** (« go » de l'utilisateur). Boucle 1 : R7.1 à R7.3 (règle, état gardé, défaite à la fin
+  de la fenêtre), dans le worktree Glorfindel, branche `net-playtest` (= `main` 298ea5e + doc).
+- 2026-10-25 : **R7 boucle 1 (R7.1 à R7.3, côté serveur) faite**, worktree Glorfindel (net-playtest, 298ea5e), non
+  commité. Règle pure `FHOLDisconnectRules` (`Match/HOLDisconnectRules.h/.cpp`) : `KeepsSlot` (configuration nommée,
+  emplacement humain nommé, partie lancée et pas finie, emplacement non vaincu), `IsWindowOver`, `GetSecondsLeft` (pour
+  R7.5), `FindAbsent`, `GetExpired`, `GetStockOnTaking` ; fenêtre par défaut 180 s. `AHOLGameState` (serveur) :
+  `AbsentSlots` (emplacement, nom, heure du départ, stock), `KeepAbsentSlot` (Logout), `KeepMissingSlot` (absents au
+  départ de R3.9 : fenêtre ouverte au départ de la partie avec `StartingResources`), `GiveSlotStock` (PostLogin : stock
+  gardé sinon celui du départ), `DefeatExpiredAbsences` → `DefeatSlot(Slot, Disconnected)` (nouvelle raison, même
+  chemin qu'un abandon : effondrement de V1, règles des camps) ; une défaite pendant l'absence (Roi tué, forum) retire
+  l'absence. Mode de jeu : `Logout` garde l'emplacement, minuterie 1 s `UpdateAbsences` tant qu'il y a des absents ;
+  `PostLogin` passe par `GiveSlotStock` ; réglage `hol.Match.DisconnectWindowSeconds` (console) ou
+  `-HOLDisconnectWindow=<s>` (ligne de commande). Le retour sous le même nom marchait déjà (`FindSlotForName` : la
+  place se libère avec le PlayerState) mais repartait de `StartingResources` ; unités et bâtiments restent (rien ne
+  les retirait). Journaux « Disconnect: slot N (Nom) kept / back / not back within W s ».
+  Tests (`Tests/HOLDisconnectTests.cpp`) : `HeroesOfLiberty.Match.DisconnectRules` (vert d'emblée : la règle a été
+  écrite avec le test) et `HeroesOfLiberty.Match.DisconnectGameState` (Bob 300 bois → départ → retour = 300 bois ;
+  re-départ, fin de fenêtre → vaincu `Disconnected`, plus absent, partie pas finie grâce à l'IA de son camp ; solo :
+  rien gardé) : **rouge** avec l'API en ébauche (173/174), vert après. `Toolsuild.ps1` **PASS** ;
+  `quick_check -Parts tests` **PASS** 174/174.
+  Gestionnaire : `POST /matches/{id}/left` au Logout ne retire personne du salon ni de la partie (`LeftBeforeEnd`,
+  M6-Q14) ; le retour direct au serveur n'est pas gêné. Écart sans changement de protocole : un chef revenu dans la
+  fenêtre reste dans `LeftBeforeEnd`, donc à `finished` il perd la direction comme s'il n'était pas revenu ; à régler
+  par un message « revenu » (`POST /matches/{id}/back`, à décider) — noté, pas fait. Si tous partent, `empty` arrête
+  toujours le serveur (fenêtre perdue) : inchangé.
+  Reste : pas d'essai réseau (net:rejoin = R7.8) ; pendant l'absence les dépôts de ses Paysans et ses remboursements
+  vont à un PlayerState absent (perdus) et sa production ne paie rien : à garder dans `AbsentSlots` ; R7.4 (propriétaire
+  réseau au retour : `AssignBuildingOwners` est déjà appelé dans PostLogin, à vérifier à 2 clients), R7.5 (bandeau :
+  répliquer `AbsentSlots`), R7.6, R7.7 (texte de la raison « déconnecté » si l'écran de fin l'affiche), R7.8, R7.9.
+- 2026-10-25 : **Demande du chantier lanceur (L-Q7, choix de l'utilisateur : « B confié à la session réseau »)** :
+  publier une version doit mettre à jour le **serveur de partie** sans couper les parties en cours. À faire ici, dans le
+  gestionnaire : (1) un dossier serveur par version (`Servers\<v>\`, copié de `<archive>\WindowsServer\` par
+  `Tools/Package/publish.ps1` du lanceur, à étendre) ; (2) la version du jeu relue **à chaque nouveau salon** (plus une
+  fois au démarrage, `Program.cs` / `LobbyStore`), = la dernière publiée (`Versions\latest.txt`, L2) ; (3) chaque
+  partie lancée depuis le dossier serveur de sa version (`ProcessServerLauncher`), celles en cours finissent sur la
+  leur ; (4) **nettoyage** : le dossier serveur d'une ancienne version supprimé quand sa dernière partie se termine
+  (et par `publish.ps1` en filet), un seul serveur de 3 Go en permanence. Détail et contexte : `LauncherInProgress.md`
+  (L2 : dossier des versions, L4 : publication). En attendant : mise à jour du serveur à la main.
+  → Commit **4a88040** sur `net-playtest` (« go » de l'utilisateur). `main` inchangée. Suite : R7.4 et la suite ; deux points à décider (chef revenu, gains des Paysans pendant l'absence).
+- 2026-10-25 : (session lanceur, L10) **R8.1 commencée** : Tailscale installé sur le PC de l'utilisateur,
+  `pc-belongfr-03` = **100.123.190.53** ; règles de pare-feu par port (TCP 7700, UDP 7777-7799, profil Privé,
+  limitées à 100.64.0.0/10) demandées à l'utilisateur. Détail : `LauncherInProgress.md`.
+- 2026-10-25 : (session lanceur) **L-Q8 = A, revient sur R-Q2 pour les amis** : l'utilisateur ne veut pas que ses amis
+  installent Tailscale ; ils n'auront que le kit du lanceur et joindront le PC par **redirection de ports de la box**
+  (TCP 7700, UDP 7777-7799), IP publique 90.55.168.58 (pas de CGNAT), avec un **mot de passe partagé** à concevoir
+  (gestionnaire + client du jeu `HOLManagerClient` : à coordonner avec cette session). Détail : `LauncherInProgress.md`.
+- 2026-10-25 : (session lanceur) **L11 dans `main`** : clé d'accès partagée (`X-HOL-Key`, `access_key.txt` du
+  gestionnaire, `key` de `servers.json`, `-HOLAccessKey=` / option `HOLKey` vérifiée dans `PreLogin`), section
+  « Clé d'accès (L11) » de `Manager/PROTOCOL.md`. Touche `HOLManagerClient`, `HOLLocalPlayer`, `GameModeBase::PreLogin`,
+  `ProcessServerLauncher` : conflits possibles avec R7 (4a88040) à la fusion. À savoir : le test parent
+  `HeroesOfLiberty.UI.ManagerErrorText` n'est jamais lancé (chemin parent de `…ReturnToLobby`), `quick_check` compris.

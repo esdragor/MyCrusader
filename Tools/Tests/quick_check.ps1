@@ -441,6 +441,8 @@ if ($Parts -contains "victory") {
     # (Plain's slot 0 centre at -14800 0, its King 4.5 m beyond its west edge, about -16050 0). Selected (Ctrl + A: it is
     # no Peasant): its block, its grid the stop alone, the population without it. Combat on: an enemy Peasant 5.5 m off
     # (no attack of its own): the King does not attack; an enemy Man-at-arms there (it attacks him): the King ripostes.
+    # Its aggressor removed (combat turned off at once): no longer Attacking (EtapeDefini I). Sent on an enemy House (right
+    # click): refused, the log saying why (no building attack, not "not its own", EtapeDefini I).
     # Then the AI's King killed (hol.Victory.KillKing 1): its death, the message for another camp (no alert), its
     # defeat (King), the banner Victory.
     $RegicideConfig = Join-Path $TestSaved "victory_regicide.json"
@@ -449,6 +451,8 @@ if ($Parts -contains "victory") {
     Step "mark victory regicide pass", "hol.Combat.LogHits 1", "hol.Combat.Enabled 1", "hol.Units.Spawn 1 -16600 0 1 Peasant 0", "wait 4", "hol.Units.Remove -16600 0 1500 1", "frames 3"
     Step "mark victory regicide riposte", "hol.Units.Spawn 1 -16600 0 1 ManAtArms 0", "wait 5", "hol.Units.Remove -16600 0 1500 1", "hol.Combat.Enabled 0",
         "hol.Combat.LogHits 0", "frames 3", "hol.Select.Army", "frames 3", "hol.HUD.Report"
+    Step "mark victory regicide refusal", "hol.Cheat.SpawnBuilding House 1 -1800 -1600", "waitlog Cheat: spawned House of slot 1", "hol.Camera.FocusNear -1800 -1600",
+        "frames 5", "hol.Select.Army", "frames 3", "hol.Select.OrderNear -1800 -1600", "wait 1"
     Step "mark victory regicide death", "hol.Victory.KillKing 1", "waitlog End banner: Victory", "waitui", "frames 3", "hol.HUD.Report",
         "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark victory regicide end"
 }
@@ -2144,7 +2148,18 @@ if ($Parts -contains "victory") {
     $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for (\d+)")
     $Checks["an enemy Man-at-arms strikes the King ($($Struck.Count) hits), the King ripostes ($($Riposte.Count) hits, $(@($Riposte | ForEach-Object { $_.Matches[0].Groups[1].Value }) -join ', '))"] =
         $Struck.Count -ge 1 -and $Riposte.Count -ge 1
+    # EtapeDefini I: its aggressor removed, the King no longer Attacking (combat turned off in the same frame); under the banner neither.
+    $Hud = @($Section | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+    $Checks["its aggressor removed: the King no longer Attacking ($([regex]::Match("$Hud", 'selection [^,]*, [^,]*').Value))"] =
+        "$Hud" -match "selection King \(own\), hp " -and "$Hud" -notmatch "Attacking"
+    $Section = @(Get-Section "victory regicide refusal")
+    $Refusals = @($Section | Select-String -Pattern "units ignored, .*$" | ForEach-Object { $_.Matches[0].Value })
+    $Checks["sent on an enemy House: refused for its want of building attack ($($Refusals -join '; '))"] =
+        [bool]($Section | Select-String -SimpleMatch "Order: 1 units attack House of slot 1" -Quiet) -and ($Refusals -join '|') -eq "units ignored, no building attack"
     $Section = @(Get-Section "victory regicide death")
+    $Hud = @($Section | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
+    $Checks["under the banner: the King not Attacking ($([regex]::Match("$Hud", 'selection [^,]*, [^,]*').Value))"] =
+        "$Hud" -match "selection King \(own\), hp " -and "$Hud" -notmatch "Attacking"
     foreach ($Want in "hol.Victory.KillKing: slot 1, 1 King(s) at 0 health", "Regicide: king of slot 1 died", "Victory: slot 1 defeated (King)", "Victory: match over, winners 0", "End banner: Victory") {
         $Checks["KillKing 1: $Want"] = [bool]($Section | Select-String -SimpleMatch $Want -Quiet)
     }

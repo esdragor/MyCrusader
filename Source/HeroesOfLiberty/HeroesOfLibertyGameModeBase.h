@@ -27,7 +27,7 @@ public:
 
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void InitGameState() override;
-	/** Refuses a client of another version than the server (R3.3, HOLVersion::IsAccepted). */
+	/** Refuses a client of another version than the server (R3.3, HOLVersion::IsAccepted), or without the server's access key (L11, HOLAccessKey). */
 	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	/** Reads the player's ?Name= (URL-decoded): his PlayerState name and, in PostLogin, his slot (R3.2). */
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options,

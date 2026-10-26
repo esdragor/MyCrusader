@@ -38,6 +38,7 @@ public static class LobbyErrors
     public const string ServerStartFailed = "server_start_failed";
     public const string NotLocal = "not_local";
     public const string MatchNotFound = "match_not_found";
+    public const string BadKey = "bad_key";
 }
 
 /** Notices of the lobby state (PROTOCOL.md, notice): shown once, cleared after 10 s. */
