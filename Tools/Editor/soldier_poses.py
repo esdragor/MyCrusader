@@ -1404,3 +1404,161 @@ CROSSBOW_ATTACK.update({
     "bolt_hidden": [(at(_P, CROSSBOW_SHOT) + 0.01, at(_P, _LIFT_T1))]})
 CROSSBOW_ATTACK["hidden"] = {"bolt": CROSSBOW_ATTACK["bolt_hidden"][0]}
 PROPOSED["crossbow_attack"] = CROSSBOW_ATTACK
+
+# Fall (AR4a, 2026-10-26; proposal, not baked; AR-Q6 precised: forward, face down). 1.0 s, 30 frames, not looped.
+# Struck on his left: the chest knocked first (reversed leads, FALL_LEADS), the crossbow escaping his hands on frame 0
+# (gesture "release": it flies forward-left on its own path, tumbles and lands flat in front of him, a small bounce,
+# the loaded bolt kept in its groove); he twists about a quarter turn to his LEFT, stumbling (the right foot then the
+# left step round, anim_rig "feet"), the legs give, the knees hit (fast in), and he pitches forward onto his belly
+# (fast in, a low rebound). The body is keyed in his turned frame (as if facing forward) and turned about the vertical
+# through the feet's centre by _cbf (positions, palms, elbows, the pelvis twist and the feet's twist), each foot on its
+# own schedule (the stumble); the crossbow is keyed in the final turned frame (_CBF_TURN). Dead face down (the last
+# keys): the chest and the face on the ground, the head turned to his left, the right arm thrown forward beside the
+# head palm down, the left arm along his side palm up, the left leg straight, the right one a little bent, the toes
+# back (foot_rot).
+_CBF_TURN = -80.0
+_CBF_PLACES = {"l": (-21.1, 3.9, 0.0), "r": (23.1, -16.1, 0.0)}  # reference feet + CROSSBOW_STANCE (right, forward)
+
+
+def _cbf_v(v, psi):
+    c, s = math.cos(math.radians(psi)), math.sin(math.radians(psi))
+    return (v[0] * c + v[1] * s, -v[0] * s + v[1] * c, v[2])
+
+
+def _cbf_hand(h, psi):
+    return {"at": _cbf_v(h[0], psi), "palm": normalize(_cbf_v(h[1], psi)), "fingers": normalize(_cbf_v(h[2], psi))}
+
+
+def _cbf(t, psi, pelvis, rot, feet, hands, elbows, tool, flow=0.0, foot_bend=(_ZERO, _ZERO), back=0.0):
+    """A key of the fall in his turned frame: `psi` = (body, left foot, right foot) turns in degrees; `back` (cm)
+    pulls the body, the hands and the feet back toward his start (AR4b: he lies within his cell)."""
+    body, fl, fr = psi
+    bk = (0.0, -back, 0.0)
+    pelvis, feet = add(pelvis, bk), (add(feet[0], bk), add(feet[1], bk))
+    hands = tuple((add(h[0], bk),) + tuple(h[1:]) for h in hands)
+    p0 = (0.0, -1.1, 96.8)
+    pel = sub(_cbf_v(add(p0, pelvis), body), p0)
+    rot = dict(rot, pelvis=(rot["pelvis"][0] + body,) + tuple(rot["pelvis"][1:]))
+    fe = {}
+    for side, psi_f, off in (("l", fl, feet[0]), ("r", fr, feet[1])):
+        place = _CBF_PLACES[side]
+        fe[side] = sub(_cbf_v(add(place, off), psi_f), place)
+    fb = {"l": (foot_bend[0][0] + fl,) + tuple(foot_bend[0][1:]),
+          "r": (foot_bend[1][0] + fr,) + tuple(foot_bend[1][1:])}
+    return {"t": t, "flow": flow, "pelvis": pel, "rot": rot, "feet": fe, "foot_rot": fb,
+            "hands": {"l": _cbf_hand(hands[0], body), "r": _cbf_hand(hands[1], body)},
+            "elbows": {s: normalize(_cbf_v(elbows[s], body)) for s in ("l", "r")}, "tool": tool}
+
+
+def _cbf_mix(a, b, u):
+    """A rotation dict between two others (u = 0..1)."""
+    return {k: tuple(x + (y - x) * u for x, y in zip(a[k], b[k])) for k in a}
+
+
+def _cbf_tool(grip, d, fingers, psi=_CBF_TURN):
+    """The crossbow on its own path, keyed in his final turned frame."""
+    return cb_tool(_cbf_v(grip, psi), _cbf_v(d, psi), _cbf_v(fingers, psi))
+
+
+_CBF_START = cb_key(0.0, CB_READY)
+_CBF_DEAD_PELVIS = (-2.0, 74.0, -83.0)
+_CBF_DEAD_ROT = _body((-6.0, 86.0, -4.0), (0.0, 2.0, 3.0), (-2.0, 2.0, 2.0), (-4.0, 0.0, 0.0), (-24.0, -10.0, 0.0),
+                      (-50.0, -12.0, -4.0), 0.0)
+_CBF_DEAD_FEET = ((-6.0, -24.0, 1.0), (12.0, 2.0, 6.0))
+_CBF_DEAD_FOOT = ((0.0, 125.0, 0.0), (-20.0, 110.0, -30.0))
+_CBF_DEAD_HANDS = (((-30.0, 58.0, 5.0), (-0.2, 0.0, 0.98), (0.0, -1.0, 0.0)),
+                   ((62.0, 126.0, 6.0), (0.0, 0.0, -1.0), (0.4, 0.9, 0.0)))
+_CBF_DEAD_ELBOWS = {"l": (-0.9, -0.4, 0.0), "r": (0.4, -0.8, -0.4)}
+_CBF_STUMBLE_ELBOWS = {"l": (-0.9, -0.2, -0.5), "r": (0.9, -0.3, -0.5)}
+_CBF_BACK = (14.0, 20.0, 32.0, 42.0, 50.0)  # AR4b: pulled back toward his start at 0.43, 0.49, 0.59, 0.67, 0.75+
+_CBF_REST_GRIP, _CBF_REST_DIR = (-70.0, 86.0, 8.5), (0.8, -0.6, 0.0)
+_CBF_REST = _cbf_tool(_CBF_REST_GRIP, _CBF_REST_DIR, DOWN)
+_CBF_ROT_HIT = _body((0.0, 0.0, 2.0), (-4.0, -2.0, 3.0), (-5.0, -3.0, 4.0), (-8.0, -6.0, 5.0), (0.0, -6.0, 0.0),
+                     (6.0, -14.0, -6.0), -6.0)
+_CBF_ROT_OVER = _body((0.0, -2.0, 3.0), (-6.0, -2.0, 4.0), (-6.0, -2.0, 4.0), (-6.0, -4.0, 4.0), (0.0, -2.0, 0.0),
+                      (4.0, -4.0, -4.0), -8.0)
+
+
+def _cbf_bend(pelvis_bend, s, neck, head):
+    return _body((0.0, pelvis_bend, 0.0), (0.0, s, 0.0), (0.0, s, 0.0), (0.0, s + 2.0, 0.0), (0.0, neck, 0.0),
+                 (0.0, head, 0.0), 0.0)
+
+
+_CBF_ZF = (_ZERO, _ZERO)
+CROSSBOW_FALL_KEYS = [
+    dict(_start(_CBF_START, CROSSBOW_ELBOWS), hands=_CBF_START["hands"], foot_rot={"l": _ZERO, "r": _ZERO}),
+    # IMPACT (his left shoulder): the chest knocked back and to his right, the head snapped, the hands flung open.
+    _cbf(0.06, (-4.0, 0.0, 0.0), (-3.0, -2.0, -2.0), _CBF_ROT_HIT, _CBF_ZF,
+         (((-30.0, 30.0, 118.0), (-0.5, -0.8, 0.3), (0.1, 0.3, -0.95)),
+          ((30.0, 14.0, 114.0), (0.5, 0.8, 0.3), (0.1, 0.3, -0.95))), _CBF_STUMBLE_ELBOWS,
+         cb_tool((-26.0, 46.0, 116.0), (0.85, -0.45, -0.25), (0.2, 0.0, -1.0)), flow=(2.2, 0.6)),
+    # Overshoot, turning to his left: the left foot pivots, the right one lifts and steps round.
+    _cbf(0.15, (-18.0, -10.0, -14.0), (-4.0, 2.0, -5.0), _CBF_ROT_OVER, (_ZERO, (0.0, 4.0, 10.0)),
+         (((-42.0, 20.0, 114.0), (-0.2, -0.8, 0.55), (0.0, 0.55, -0.8)),
+          ((38.0, 8.0, 108.0), (0.2, 0.8, 0.55), (0.0, 0.55, -0.8))), _CBF_STUMBLE_ELBOWS,
+         cb_tool((-52.0, 60.0, 110.0), (0.9, -0.2, -0.4), (0.5, 0.0, -0.85)), flow=1.0),
+    # The right foot lands round, the left lifts; the legs start giving.
+    _cbf(0.25, (-42.0, -24.0, -42.0), (-3.0, 10.0, -14.0), _cbf_bend(8.0, 5.0, 6.0, 10.0), ((0.0, 4.0, 8.0), _ZERO),
+         (((-38.0, 30.0, 96.0), (0.62, -0.78, 0.05), (0.38, 0.24, -0.89)),
+          ((36.0, 24.0, 94.0), (-0.62, 0.78, 0.05), (0.3, 0.29, -0.91))), _CBF_STUMBLE_ELBOWS,
+         cb_tool((-74.0, 56.0, 80.0), (0.9, 0.1, -0.4), (0.6, 0.0, -0.8)), flow=1.0),
+    # The knees buckle, the left foot down; he keeps turning.
+    _cbf(0.35, (-64.0, -56.0, -58.0), (-2.0, 24.0, -30.0), _cbf_bend(16.0, 8.0, 8.0, 14.0),
+         ((0.0, -4.0, 2.0), (0.0, -4.0, 2.0)),
+         (((-34.0, 42.0, 74.0), (0.85, 0.0, -0.5), (0.0, 0.5, -0.85)),
+          ((34.0, 40.0, 72.0), (-0.85, 0.0, -0.5), (0.0, 0.5, -0.85))), _CBF_STUMBLE_ELBOWS,
+         _cbf_tool(add(_CBF_REST_GRIP, (6.0, -24.0, 26.0)), (0.85, -0.5, -0.15), (0.2, 0.0, -1.0)), flow=1.4,
+         back=6.0),
+    # The crossbow lands (fast in); THE KNEES HIT (fast in, a jolt), the trunk thrown on, the feet kicked back.
+    _cbf(0.43, (-76.0, -76.0, -72.0), (-1.0, 40.0, -46.0), _cbf_bend(22.0, 10.0, 12.0, 22.0),
+         ((0.0, -10.0, 4.0), (0.0, -10.0, 4.0)),
+         (((-32.0, 50.0, 54.0), (0.9, -0.4, 0.0), (0.0, 0.3, -0.95)),
+          ((30.0, 52.0, 52.0), (-0.9, -0.4, 0.0), (0.0, 0.3, -0.95))), _CBF_STUMBLE_ELBOWS,
+         _cbf_tool(add(_CBF_REST_GRIP, (2.0, -6.0, 0.5)), _CBF_REST_DIR, DOWN), flow=(2.4, 0.3), back=_CBF_BACK[0]),
+    # The rebound off the knees, already pitching on; the crossbow bounces and slides; the right hand turning.
+    _cbf(0.49, (-80.0, -80.0, -76.0), (-1.0, 50.0, -44.0), _cbf_bend(32.0, 12.0, 12.0, 22.0),
+         ((0.0, -12.0, 4.0), (0.0, -12.0, 4.0)),
+         (((-36.0, 54.0, 50.0), (0.85, 0.35, 0.2), (-0.3, 0.5, -0.8)),
+          ((34.0, 56.0, 50.0), (-0.9, -0.4, -0.15), (0.05, 0.4, -0.9))), _CBF_STUMBLE_ELBOWS,
+         _cbf_tool(add(_CBF_REST_GRIP, (1.0, -3.0, 3.0)), _CBF_REST_DIR, DOWN), flow=0.6, back=_CBF_BACK[1]),
+    # Pitching forward, accelerating; the left arm trailing, the right one swinging forward, palm turning down.
+    _cbf(0.59, (-80.0, -80.0, -78.0), (-1.0, 64.0, -62.0), _cbf_bend(58.0, 6.0, 6.0, 10.0),
+         ((-4.0, -14.0, 5.0), (4.0, -20.0, 6.0)),
+         (((-40.0, 68.0, 44.0), (0.81, 0.2, 0.56), (-0.18, 0.0, -0.98)),
+          ((44.0, 80.0, 44.0), (-0.4, 0.0, -0.92), (0.3, 0.9, -0.15))), _CBF_STUMBLE_ELBOWS, _CBF_REST, flow=1.6,
+         foot_bend=((0.0, 20.0, 0.0), (0.0, 20.0, 0.0)), back=_CBF_BACK[2]),
+    # Half-way down: the trunk nearly flat, the head still up, the right hand reaching forward.
+    _cbf(0.67, (-80.0, -80.0, -79.0), (-1.5, 70.0, -73.0),
+         dict(_cbf_mix(_cbf_bend(58.0, 6.0, 6.0, 10.0), _CBF_DEAD_ROT, 0.55), neck_01=(-6.0, -10.0, 0.0),
+              head=(-10.0, -14.0, -2.0)),
+         ((-5.0, -19.0, 12.0), (8.0, -9.0, 11.0)),
+         (((-34.0, 68.0, 26.0), (0.6, 0.0, 0.8), (0.0, -0.5, -0.85)),
+          ((50.0, 100.0, 30.0), (-0.15, 0.2, -0.97), (0.4, 0.9, -0.05))), _CBF_DEAD_ELBOWS, _CBF_REST, flow=1.6,
+         foot_bend=((-2.0, 45.0, -5.0), (0.0, 45.0, 0.0)), back=_CBF_BACK[3]),
+    # CONTACT face down (fast in): the chest and the hips slam, the head still a little up.
+    _cbf(0.75, (-80.0, -80.0, -80.0), _CBF_DEAD_PELVIS,
+         dict(_CBF_DEAD_ROT, neck_01=(-10.0, -14.0, 0.0), head=(-20.0, -18.0, -2.0)),
+         (add(_CBF_DEAD_FEET[0], (0.0, 0.0, 11.0)), add(_CBF_DEAD_FEET[1], (0.0, 0.0, 7.0))),
+         ((add(_CBF_DEAD_HANDS[0][0], (0.0, 0.0, 8.0)), (0.2, 0.0, 0.98), (0.0, -1.0, 0.0)),
+          (add(_CBF_DEAD_HANDS[1][0], (-6.0, -10.0, 12.0)), (0.0, 0.3, -0.95), (0.4, 0.9, 0.0))), _CBF_DEAD_ELBOWS,
+         _CBF_REST, flow=(1.8, 0.3), foot_bend=((-5.0, 70.0, -10.0), (0.0, 70.0, 0.0)), back=_CBF_BACK[4]),
+    # The rebound (3 cm, low), the head hitting a hair later, the arms slapping down.
+    _cbf(0.80, (-80.0, -80.0, -80.0), add(_CBF_DEAD_PELVIS, (0.0, 0.0, 2.0)),
+         dict(_CBF_DEAD_ROT, neck_01=(-20.0, -8.0, 0.0), head=(-46.0, -8.0, -4.0)),
+         (add(_CBF_DEAD_FEET[0], (0.0, 0.0, 4.5)), add(_CBF_DEAD_FEET[1], (0.0, 0.0, 2.5))),
+         ((add(_CBF_DEAD_HANDS[0][0], (0.0, 0.0, 2.0)),) + _CBF_DEAD_HANDS[0][1:],
+          (add(_CBF_DEAD_HANDS[1][0], (0.0, 0.0, 2.0)),) + _CBF_DEAD_HANDS[1][1:]), _CBF_DEAD_ELBOWS,
+         _CBF_REST, flow=0.5, foot_bend=((-15.0, 105.0, -20.0), (0.0, 115.0, 0.0)), back=_CBF_BACK[4]),
+    # Settled, dead.
+    _cbf(0.86, (-80.0, -80.0, -80.0), _CBF_DEAD_PELVIS, _CBF_DEAD_ROT, _CBF_DEAD_FEET, _CBF_DEAD_HANDS,
+         _CBF_DEAD_ELBOWS, _CBF_REST, foot_bend=_CBF_DEAD_FOOT, back=_CBF_BACK[4]),
+]
+CROSSBOW_FALL_KEYS.append(dict(CROSSBOW_FALL_KEYS[-1], t=1.0))
+CROSSBOW_FALL = {"name": "A_Crossbow_Fall", "fps": 30, "tool": CROSSBOW_TOOL,
+                 "props": ("crossbow", "bolt", "bolt_quiver"), "scene": NONE, "elbows": FALL_ELBOWS,
+                 "fist": (55.0, 70.0, 45.0), "stance": CROSSBOW_STANCE, "keys": CROSSBOW_FALL_KEYS,
+                 "curve": "hermite", "release": 0.0,
+                 # The hands and the crossbow on time (the release keyed exactly), the head lagging.
+                 "leads": dict(FALL_LEADS, tool=0.0, hands=0.0),
+                 "preview": {"frames": 12, "zoom_picks": [0, 2, 5, 8, 11, 13, 15, 18, 21, 25, 30]}}
+PROPOSED["crossbow_fall"] = CROSSBOW_FALL
