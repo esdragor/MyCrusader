@@ -304,6 +304,10 @@ CROSSBOW_LEFT_GRIP = 22.0    # stirrup's end to the left hand (the gestures' "kn
 CROSSBOW_HAND_SPACING = 45.0  # left hand to the right hand (the trigger)
 CROSSBOW_TOP = 2.5           # the tiller's top (Y) in front of the butt: the groove
 BOLT_LENGTH = 35.0
+# AR3 (user's choice at the AR2 previews, 2026-10-26): the prod thickened from ~1.7 cm to ~3 cm seen from above (its
+# width along the tiller: 3.6 cm at the centre, 2.25 at the tips; 1.7 cm did not read at the RTS camera) and its steel
+# lighter than the weapons' STEEL, so the bar reads against the wood and the ground.
+CROSSBOW_PROD_STEEL = (204, 208, 214)
 BOLT_QUIVER_ANCHOR = (28.0, -2.0, 70.0)  # bottom of the bolt quiver, body terms (reference pose): his right hip
 BOLT_QUIVER_TOP = (2.0, -4.0, 30.0)      # its opening relative to the anchor: at the belt, leaning back a little
 
@@ -323,13 +327,13 @@ def make_crossbow(light=False):
     ]
     # Steel prod across Z, its drawn tips set back toward the butt (points along it: (x, z, half thickness)).
     px, half, draw = CROSSBOW_PROD_X, CROSSBOW_PROD_HALF, CROSSBOW_PROD_DRAW
-    limb = [(px, 0.0, 1.7), (px + draw * 0.3, half * 0.55, 1.3), (px + draw, half, 0.8)]
+    limb = [(px, 0.0, 2.0), (px + draw * 0.3, half * 0.55, 1.7), (px + draw, half, 1.25)]
     if light:
         limb = [limb[0], limb[2]]
     for sign in (1.0, -1.0):
         for (xa, za, ra), (xb, zb, rb) in zip(limb, limb[1:]):
-            prims.append(pp.frustum_between((xa, 0.0, sign * za), (xb, 0.0, sign * zb), (ra * 0.7, ra),
-                                            (rb * 0.7, rb), sides, STEEL, x_hint=(1.0, 0.0, 0.0)))
+            prims.append(pp.frustum_between((xa, 0.0, sign * za), (xb, 0.0, sign * zb), (ra * 0.9, ra),
+                                            (rb * 0.9, rb), sides, CROSSBOW_PROD_STEEL, x_hint=(1.0, 0.0, 0.0)))
     # The string, straight from each tip to the nut (spanned), on the groove.
     tip = px + draw
     for sign in (1.0, -1.0):

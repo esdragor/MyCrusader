@@ -58,7 +58,10 @@ Key (one dict per key):
   "release" (gesture, optional, seconds of key time; J7c, the Spearman's fall): from that time on the tool leaves the
             hands: its keys ("grip", "dir", "roll") place it on its own path (the tool bone ik_hand_gun keeps its edge
             as the right hand would hold it there), and both hands are free, keyed by "hands" (then on EVERY key, both
-            sides; ignored before the release). A gesture without it is solved exactly as before.
+            sides; ignored before the release). A gesture without it is solved exactly as before. It can also be a
+            list of (start, end) spans of key time (AR3, the Crossbowman's stirrup reload in a loop): released from
+            each start up to (not including) its end, where the hands take the tool again (key them there on the
+            tool's grips, so the hands do not jump); a single number keeps its meaning (released from then on).
   "hands"   instead of a tool, free hands: {"l": {"at": (right, forward, up) cm, "palm": direction the palm faces,
             optional "fingers": direction, optional "swing": share of the same-side foot's travel the hand makes the
             other way (a walking arm, needs a base)}, "r": ...}; fingers default to pointing away from the shoulder.
@@ -398,6 +401,12 @@ class Rig:
 
     # -- key interpolation ----------------------------------------------------------------------------------------
 
+    def _released(self, t):
+        """Has the tool left the hands at key time t? ("release": a time, from then on; or (start, end) spans.)"""
+        if isinstance(self.release, (int, float)):
+            return t >= self.release - 1e-6
+        return any(a - 1e-6 <= t < b - 1e-6 for a, b in self.release)
+
     def sample(self, t):
         """Interpolated key values at time t (seconds from the first key).
 
@@ -471,7 +480,7 @@ class Rig:
         free = ("l", "r") if tool_a is None else tuple(side for side in ("l", "r") if side not in self.tool_hands)
         if self.release is not None:
             free = ("l", "r")
-            out["released"] = t >= self.release - 1e-6
+            out["released"] = self._released(t)
         if free:
             out["hands"] = {}
             for side in free:
@@ -573,7 +582,7 @@ class Rig:
         free = ("l", "r") if tool(a) is None else tuple(side for side in ("l", "r") if side not in self.tool_hands)
         if self.release is not None:
             free = ("l", "r")
-            out["released"] = t >= self.release - 1e-6
+            out["released"] = self._released(t)
         if free:
             out["hands"] = {}
             for side in free:

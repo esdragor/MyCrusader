@@ -1081,3 +1081,326 @@ CROSSBOW_IDLE = crossbow_gesture("A_Crossbow_Idle", IDLE, idle_keys(STAND, CROSS
 CROSSBOW_WALK = crossbow_gesture("A_Crossbow_Walk", UNARMED_WALK, walk_keys(STAND, CROSSBOW_REST, None),
                                  {"steady_chest": 0.5})
 PROPOSED.update({"crossbow_idle": CROSSBOW_IDLE, "crossbow_walk": CROSSBOW_WALK})
+
+# Attack (AR3, 2026-10-26; proposal, not baked): AttackInterval 2.125 s (AR-Q1), the SHOT at 12 % of the loop
+# (AttackWindUpPercent 12, HOLUnitAnimation::GetStrikeHitShare, like the Archer's release: the client launches the
+# visual bolt there). 64 frames at 30 fps (2.133 s, played at 2.133 / 2.125 in the game, like the soldiers), the shot
+# on frame 8 (CROSSBOW_SHOT, 0.125 of the loop, 0.266 s in the game): 0.12 x 64 = 7.68, frame 8 is the nearest one;
+# the 0.005 of a loop between the two (~11 ms in the game) is accepted, as the Archer's (frame 6 of 48). 63 frames
+# would put it at 0.127 (frame 8 of 63), farther. The loop STARTS LOADED, crossbow low (the idle's carry, so it blends
+# from the idle and the walk); AR-Q4:
+#   quick raise to the shoulder (the trunk turning to his right, the left shoulder toward the target, the butt against
+#   the right shoulder under the cheek, the head bowed to the tiller), a short aim -> SHOT (frame 8: the shoulder and
+#   the crossbow kicked back a few cm, the point up a few degrees: flow (0, 2)) -> settle -> the point lowered to the
+#   ground in front, the hands leave the stock (gesture "release" spans, anim_rig: the crossbow on its own path) -> the
+#   RIGHT foot steps forward into the stirrup ("feet": the ball of the foot on the stirrup's bar) -> he bends over,
+#   both hands on the string by the prod, and pulls it up to the nut straightening up -> the foot back, the crossbow
+#   raised low by the left hand on the fore-stock -> the right hand to the bolt quiver on the right hip and back to
+#   the groove (the bolt placed: mimed, no bolt in the hand, AR1) -> the right hand back at the trigger (the release
+#   span ends: both hands on the stock again) -> ready, loaded, to the loop's end. The string is rigid on the crossbow
+#   (always drawn, one bone; accepted). Hermite keys, the pelvis leading the spine, the spine the shoulders, the hands
+#   last; the left foot planted, the right one planted except its step into the stirrup and back.
+# The roll of the crossbow is held by the tool "fingers" of every key: the groove (the tool's Y, its "edge") is the
+# opposite of the hands' fingers squared to the tiller (exact: the edge is fixed in the right hand, read at frame 0
+# where the fingers point straight down and the groove up), so a key says where the groove faces by its fingers.
+# The loaded bolt (ik_hand_r) is hidden from just after the shot to the placing (CROSSBOW_ATTACK["bolt_hidden"]).
+CROSSBOW_PERIOD = 2.125
+CROSSBOW_SHOT = 0.125  # share of the loop at the shot, frame 8 of 64 (AttackWindUpPercent 12 / 100, ~11 ms apart)
+CROSSBOW_STANCE = {"l": (-4.0, 12.0, 0.0), "r": (6.0, -8.0, 0.0)}
+# Free hand's palm per side from its fingers and the tiller (body terms): a hand on the stock seen as a free hand
+# (anim_rig: the palm side is cross(fingers, across) for the right hand, the other way for the left; body terms are
+# mirrored against the component space), and its reference fingers 77 deg from its pinky-to-index axis.
+_CB_PALM_SIGN = {"l": 1.0, "r": -1.0}
+_CB_FINGERS_ALONG = 0.22
+
+
+def _cross_b(a, b):
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+def cb_tool(grip, d, fingers, spacing=None):
+    t = {"grip": grip, "dir": normalize(d), "fingers": normalize(fingers)}
+    if spacing is not None:
+        t["spacing"] = spacing
+    return t
+
+
+def cb_axes(tool):
+    """The crossbow's frame in body terms for a tool key: knob (stirrup's end), X (toward the butt), Y (the groove),
+    Z (across, toward his left when the groove faces up and the butt is behind)."""
+    x = normalize(tool["dir"])
+    f = tool["fingers"]
+    fp = normalize(sub(f, tuple(x[k] * sum(f[j] * x[j] for j in range(3)) for k in range(3))))
+    y = tuple(-c for c in fp)
+    z = normalize(_cross_b(x, y))
+    knob = sub(tool["grip"], tuple(c * sp.CROSSBOW_LEFT_GRIP for c in x))
+    return knob, x, y, z
+
+
+def cb_point(tool, x, y=0.0, z=0.0):
+    knob, ax, ay, az = cb_axes(tool)
+    return tuple(knob[k] + x * ax[k] + y * ay[k] + z * az[k] for k in range(3))
+
+
+def cb_hand(tool, side, x=None):
+    """A hand on the stock as a free hand (palm and fingers of the tool hand there): the left at its grip, the right
+    at the trigger, or at `x` cm from the stirrup's end."""
+    knob, ax, ay, az = cb_axes(tool)
+    if x is None:
+        x = sp.CROSSBOW_LEFT_GRIP + (0.0 if side == "l" else tool.get("spacing", sp.CROSSBOW_HAND_SPACING))
+    fp = tuple(-c for c in ay)
+    palm = normalize(tuple(_CB_PALM_SIGN[side] * c for c in _cross_b(fp, ax)))
+    fingers = normalize(tuple(fp[k] * 0.976 + ax[k] * _CB_FINGERS_ALONG for k in range(3)))
+    return {"at": cb_point(tool, x), "palm": palm, "fingers": fingers}
+
+
+def cb_key(t, pose, flow=0.0):
+    """A key of the attack: on the stock when the pose has no "hands" (both hands keyed on their grips)."""
+    key = merge({"elbows": CROSSBOW_ELBOWS}, pose, {"t": t, "flow": flow})
+    if "hands" not in key:
+        key["hands"] = {side: cb_hand(key["tool"], side) for side in ("l", "r")}
+    return key
+
+
+DOWN = (0.0, 0.0, -1.0)
+# Ready: the idle's carry (CROSSBOW_REST), fingers straight down (the groove up).
+CB_READY = {"pelvis": (0.0, 0.0, -2.0), "rot": hip_turn(8.0, 2.0, 3.0, nod=-2.0),
+            "tool": cb_tool(CROSSBOW_REST["grip"], CROSSBOW_REST["dir"], DOWN)}
+# Aim: level forward, the point up AIM_ELEVATION, the butt in front of the right shoulder.
+AIM_ELEVATION = 3.0
+_AIM_DIR = (0.0, -math.cos(math.radians(AIM_ELEVATION)), -math.sin(math.radians(AIM_ELEVATION)))
+CB_BUTT_AIM = (9.0, -14.0, 151.0)
+
+
+def cb_butt_tool(butt, d, fingers=DOWN):
+    d = normalize(d)
+    return cb_tool(tuple(butt[k] - (sp.CROSSBOW_LENGTH - sp.CROSSBOW_LEFT_GRIP) * d[k] for k in range(3)), d, fingers)
+
+
+def cb_aim_tool(butt, elevation=AIM_ELEVATION, spacing=None):
+    d = (0.0, -math.cos(math.radians(elevation)), -math.sin(math.radians(elevation)))
+    grip = tuple(butt[k] - (sp.CROSSBOW_LENGTH - sp.CROSSBOW_LEFT_GRIP) * d[k] for k in range(3))
+    return cb_tool(grip, d, DOWN, spacing)
+
+
+AIM_ELBOWS = {"l": (-0.6, -0.2, -1.0), "r": (1.0, -0.2, 0.1)}
+CB_RAISE = {"pelvis": (0.0, 0.0, -3.0), "rot": hip_turn(25.0, 1.0, 9.0, nod=0.0),
+            "tool": cb_butt_tool((34.0, -10.0, 118.0), (0.55, -0.83, -0.1)), "elbows": AIM_ELBOWS}
+CB_SHOULDER = {"pelvis": (-0.5, 0.5, -4.0), "rot": merge(hip_turn(58.0, 2.0, 19.0, nod=8.0),
+                                                          {"clavicle_r": (4.0, 0.0, 2.0), "clavicle_l": (14.0, 0.0, 0.0)}),
+               "tool": cb_aim_tool(CB_BUTT_AIM), "elbows": AIM_ELBOWS}
+
+
+def _cb_mix(a, b, s):
+    """a + (b - a) * s, per component (tuples, or dicts of tuples: a missing entry counts as zero)."""
+    if isinstance(a, dict):
+        zero = (0.0, 0.0, 0.0)
+        return {k: _cb_mix(a.get(k, zero), b.get(k, zero), s) for k in set(a) | set(b)}
+    return tuple(x + (y - x) * s for x, y in zip(a, b))
+
+
+def cb_between(a, b, share):
+    """A key `share` of the way from pose a to pose b (the raise's in-between key)."""
+    ta, tb = a["tool"], b["tool"]
+    return {"pelvis": _cb_mix(a["pelvis"], b["pelvis"], share), "rot": _cb_mix(a["rot"], b["rot"], share),
+            "tool": cb_tool(_cb_mix(ta["grip"], tb["grip"], share), _cb_mix(ta["dir"], tb["dir"], share),
+                            _cb_mix(ta["fingers"], tb["fingers"], share)),
+            "elbows": {s: normalize(_cb_mix(a["elbows"][s], b["elbows"][s], share)) for s in ("l", "r")}}
+
+
+CB_RAISE_2 = cb_between(CB_RAISE, CB_SHOULDER, 0.55)
+CB_AIM = dict(CB_SHOULDER, rot=merge(hip_turn(59.0, 2.0, 19.0, nod=8.5), {"clavicle_r": (5.0, 0.0, 2.0), "clavicle_l": (14.0, 0.0, 0.0)}),
+              tool=cb_aim_tool((9.0, -14.5, 151.0)))
+CB_SHOT = dict(CB_AIM, tool=cb_aim_tool((9.0, -15.0, 151.0)))
+CB_KICK = {"pelvis": (-0.5, -1.0, -4.0), "rot": merge(hip_turn(60.0, -1.0, 19.0, nod=6.0),
+                                                       {"clavicle_r": (10.0, 0.0, 1.0), "clavicle_l": (14.0, 0.0, 0.0)}),
+           "tool": cb_aim_tool((9.5, -19.0, 152.5), AIM_ELEVATION + 4.0), "elbows": AIM_ELBOWS}
+# Reload: the stirrup on the ground at CB_STIRRUP, where the ball of the right foot comes (its place + the step
+# CB_STEP: on the stirrup's bar, 2 cm up), the crossbow leaning RELOAD_LEAN forward (the butt away from him, clear of
+# his knee and head), the groove toward him (fingers forward).
+RELOAD_LEAN = 14.0
+_RELOAD_DIR = (0.0, math.sin(math.radians(RELOAD_LEAN)), math.cos(math.radians(RELOAD_LEAN)))
+CB_STEP = (-11.9, 27.6, 2.0)  # right foot's offset in the stirrup (ball at the stirrup's bar)
+CB_STIRRUP = (12.0, 28.0, 0.3)
+FORWARD = (0.0, 1.0, 0.0)
+
+
+def cb_reload_tool(knob=CB_STIRRUP, d=_RELOAD_DIR, fingers=FORWARD):
+    d = normalize(d)
+    return cb_tool(tuple(knob[k] + sp.CROSSBOW_LEFT_GRIP * d[k] for k in range(3)), d, fingers)
+
+
+def on_string(tool, x, y=3.0, z=6.0):
+    """Both hands on the string either side of the stock, `x` cm from the stirrup's end (the left hand to his left),
+    palms toward the stock... seen from him: palms forward-down, fingers hooking the string."""
+    a, b = cb_point(tool, x, y, z), cb_point(tool, x, y, -z)
+    left, right = (a, b) if a[0] < b[0] else (b, a)
+    return {"l": {"at": left, "palm": (0.5, 0.6, -0.6), "fingers": (0.2, 0.3, -0.93)},
+            "r": {"at": right, "palm": (-0.5, 0.6, -0.6), "fingers": (-0.2, 0.3, -0.93)}}
+
+
+def stoop(hip, bend, nod=-12.0, twist=0.0):
+    """Bent over from the hips: the pelvis takes `hip` degrees (hip_turn's pelvis takes only 15 % of a bend, the
+    hinge would sit at the waist), the spine `bend` more."""
+    rot = hip_turn(twist, bend, twist * 0.3, nod=nod)
+    rot["pelvis"] = (rot["pelvis"][0], hip, 0.0)
+    return rot
+
+
+RELOAD_ELBOWS = {"l": (-1.0, -0.2, 0.0), "r": (1.0, -0.2, 0.0)}
+_DOWN_TOOL = cb_reload_tool()
+# The left shoulder forward (clavicle_l) so the left hand reaches its place on the stock (AR3b-2).
+CB_DOWN = {"pelvis": (0.0, -10.0, -14.0), "rot": merge(stoop(30.0, 25.0), {"clavicle_l": (22.0, 0.0, 0.0)}),
+           "tool": _DOWN_TOOL,
+           "hands": {"l": cb_hand(_DOWN_TOOL, "l", 80.0), "r": cb_hand(_DOWN_TOOL, "r", 90.0)},
+           "elbows": RELOAD_ELBOWS}
+# Lowering (AR3b-2): from the aim to the stirrup the crossbow makes the shortest turn, a half-turn about
+# _CB_TURN_AXIS (body terms): halfway the butt is up on his right, the point down to his left, clear of the chest.
+# Both hands stay ON the stock and slide along it (the release starts right after the recoil, the hands keyed free
+# on points of the stock): the left from its grip (22 cm from the stirrup's end) to 80, the right from the trigger
+# (67) to 90, as in CB_DOWN; the stirrup's end travels ~180 cm in 16 frames (~11 cm a frame, the keys evenly spaced
+# along its path, no stop). Each key: the turn (degrees), the left hand's place (body terms), the hands' distances
+# along the stock, the share of the way from the recoil's body to CB_DOWN's (squared for the elbows: the left forearm
+# kept low, under the prod's limb).
+_CB_TURN_AXIS = normalize((0.0, -1.0, 1.0))
+
+
+def _cb_turned(v, deg):
+    """v turned `deg` degrees about _CB_TURN_AXIS (Rodrigues)."""
+    n, c, s = _CB_TURN_AXIS, math.cos(math.radians(deg)), math.sin(math.radians(deg))
+    nv = sum(n[k] * v[k] for k in range(3))
+    nxv = _cross_b(n, v)
+    return tuple(v[k] * c + nxv[k] * s + n[k] * nv * (1.0 - c) for k in range(3))
+
+
+def cb_lowering(turn, left, x_l, x_r, share, start, end=None, elbow_l=None):
+    """A key of the lowering (see above); `elbow_l` overrides the left elbow's mixed direction."""
+    end = end or CB_DOWN
+    d = normalize(_cb_turned(_AIM_DIR, turn))
+    tool = cb_tool(tuple(left[k] - d[k] * (x_l - sp.CROSSBOW_LEFT_GRIP) for k in range(3)), d,
+                   _cb_turned(DOWN, turn))
+    key = {"pelvis": _cb_mix(start["pelvis"], end["pelvis"], share),
+           "rot": _cb_mix(start["rot"], end["rot"], share), "tool": tool,
+           "hands": {"l": cb_hand(tool, "l", x_l), "r": cb_hand(tool, "r", x_r)},
+           "elbows": {s: normalize(_cb_mix(start["elbows"][s], end["elbows"][s], share * share))
+                      for s in ("l", "r")}}
+    if elbow_l is not None:
+        key["elbows"]["l"] = normalize(elbow_l)
+    return key
+
+
+CB_SETTLE = cb_lowering(17.3, (8.5, 52.8, 148.4), 22.0, 67.0, 0.09, CB_KICK, elbow_l=(-0.4, -0.3, -1.0))
+CB_LOWER_1 = cb_lowering(51.8, (16.2, 40.6, 123.7), 37.8, 73.3, 0.27, CB_KICK, elbow_l=(0.05, -0.3, -1.0))
+CB_LOWER_2 = cb_lowering(86.4, (25.5, 39.8, 107.8), 48.4, 77.5, 0.45, CB_KICK)
+CB_LOWER_3 = cb_lowering(120.9, (28.9, 42.7, 99.3), 58.9, 81.6, 0.64, CB_KICK)
+CB_LOWER_4 = cb_lowering(155.5, (20.5, 42.7, 92.5), 69.5, 85.8, 0.82, CB_KICK)
+CB_STEPPING = dict(CB_DOWN, pelvis=(-3.0, -10.0, -14.0), rot=stoop(32.0, 25.0),
+                   feet={"r": (-6.0, 14.0, 11.0)})
+CB_FOOT = dict(CB_DOWN, pelvis=(0.0, -14.0, -18.0), rot=stoop(38.0, 28.0), feet={"r": CB_STEP},
+               hands={"l": cb_hand(_DOWN_TOOL, "l", 64.0), "r": cb_hand(_DOWN_TOOL, "r", 76.0)})
+CB_BENT = {"pelvis": (0.0, -20.0, -34.0), "rot": stoop(65.0, 40.0), "tool": _DOWN_TOOL,
+           "hands": on_string(_DOWN_TOOL, 28.0, 3.0, 7.0), "feet": {"r": CB_STEP}, "elbows": RELOAD_ELBOWS}
+CB_PULLED = {"pelvis": (0.0, -18.0, -28.0), "rot": stoop(55.0, 35.0), "tool": _DOWN_TOOL,
+             "hands": on_string(_DOWN_TOOL, 38.0, 3.5, 4.0), "feet": {"r": CB_STEP}, "elbows": RELOAD_ELBOWS}
+CB_GRAB = dict(CB_PULLED, pelvis=(0.0, -18.0, -28.0), rot=merge(stoop(55.0, 36.0), {"clavicle_l": (22.0, 0.0, 0.0)}),
+               hands={"l": cb_hand(_DOWN_TOOL, "l", 42.0), "r": on_string(_DOWN_TOOL, 39.0, 3.5, 4.0)["r"]})
+# Lift (AR3c): from the grab to the bolt laid in the groove the crossbow goes straight from the stirrup on the ground
+# to the low carry (_CARRY_TOOL), its stirrup's end on a line, its direction on the great circle, evenly in time
+# (_LIFT_N segments, the first and last half as long: the ease out of the grab and into the placing), the left hand
+# ON the stock (keyed on the key's tool, sliding from 42 cm to its grip), the body from the grab's stoop to the
+# placing's carry, the right foot out of the stirrup back to its place in the first half (lifted CB_LIFT_FOOT cm),
+# the right hand off the string to the bolt quiver and the bolt laid in the groove (_cb_right_lift).
+_LIFT_T0, _LIFT_T1, _LIFT_N = 0.665, 0.88, 12
+CB_LIFT_FOOT = 8.0
+CB_LIFT_LAG = 2.0  # the body's share of the way is u ** CB_LIFT_LAG: it straightens up behind the hands (reach)
+_CARRY_TOOL = cb_tool((-22.0, 40.0, 106.0), (0.95, -0.2, -0.2), DOWN)
+_QUIVER_R = {"at": (29.0, -4.0, 110.0), "palm": (-1.0, 0.0, 0.0), "fingers": (0.0, -0.15, -1.0)}
+_PLACE_R = {"at": cb_point(_CARRY_TOOL, 36.0, 5.0), "palm": DOWN, "fingers": normalize((-0.8, 0.5, 0.0))}
+CB_PLACE_BODY = {"pelvis": (0.0, -2.0, -4.0), "rot": hip_turn(10.0, 8.0, 3.0, nod=-10.0)}
+
+
+def _cb_slerp(a, b, s):
+    a, b = normalize(a), normalize(b)
+    w = math.acos(max(-1.0, min(1.0, sum(x * y for x, y in zip(a, b)))))
+    if w < 1e-6:
+        return a
+    return normalize(tuple((x * math.sin((1.0 - s) * w) + y * math.sin(s * w)) / math.sin(w) for x, y in zip(a, b)))
+
+
+def _cb_right_lift(u):
+    """The right hand `u` of the way along its path during the lift (by length, so at the lift's even pace): off the
+    string -> the bolt quiver's mouth (a bolt taken in passing, mimed) -> laid in the groove."""
+    path = [CB_GRAB["hands"]["r"], _QUIVER_R, _PLACE_R]
+    lengths = [math.dist(a["at"], b["at"]) for a, b in zip(path, path[1:])]
+    left = u * sum(lengths)
+    for ha, hb, n in zip(path, path[1:], lengths):
+        if left <= n + 1e-9:
+            s = left / n
+            return {"at": _cb_mix(ha["at"], hb["at"], s), "palm": _cb_slerp(ha["palm"], hb["palm"], s),
+                    "fingers": _cb_slerp(ha["fingers"], hb["fingers"], s)}
+        left -= n
+    return dict(_PLACE_R)
+
+
+def cb_lift(u):
+    """The lift's key `u` of the way (0 the grab, 1 the placing)."""
+    k0, d0 = cb_axes(_DOWN_TOOL)[:2]
+    k1, d1 = cb_axes(_CARRY_TOOL)[:2]
+    d = _cb_slerp(d0, d1, u)
+    knob = _cb_mix(k0, k1, u)
+    tool = cb_tool(tuple(knob[k] + d[k] * sp.CROSSBOW_LEFT_GRIP for k in range(3)), d,
+                   _cb_slerp(_DOWN_TOOL["fingers"], _CARRY_TOOL["fingers"], u))
+    f = min(1.0, u / 0.5)
+    foot = _cb_mix(CB_STEP, (0.0, 0.0, 0.0), f * f * (3.0 - 2.0 * f))
+    b = u ** CB_LIFT_LAG
+    return {"pelvis": _cb_mix(CB_GRAB["pelvis"], CB_PLACE_BODY["pelvis"], b),
+            "rot": _cb_mix(CB_GRAB["rot"], CB_PLACE_BODY["rot"], b), "tool": tool,
+            "hands": {"l": cb_hand(tool, "l", 42.0 + (sp.CROSSBOW_LEFT_GRIP - 42.0) * u), "r": _cb_right_lift(u)},
+            "feet": {"r": (foot[0], foot[1], foot[2] + CB_LIFT_FOOT * math.sin(math.pi * f))},
+            "elbows": {s: normalize(_cb_mix(RELOAD_ELBOWS[s], CROSSBOW_ELBOWS[s], u)) for s in ("l", "r")}}
+
+
+_LIFT_KEYS = [(_LIFT_T0 + i * (_LIFT_T1 - _LIFT_T0) / _LIFT_N, (i - 0.5) / (_LIFT_N - 1)) for i in range(1, _LIFT_N)]
+CB_PLACE = cb_lift(1.0)
+CB_GRASP = {"pelvis": (0.0, -1.0, -3.0), "rot": hip_turn(9.0, 4.0, 3.0, nod=-4.0), "tool": _CARRY_TOOL,
+            "elbows": CROSSBOW_ELBOWS}
+CROSSBOW_LEADS = {"pelvis": 0.04, "rot": {"pelvis": 0.04, "spine_01": 0.03, "spine_02": 0.02, "spine_03": 0.012,
+                                          "neck_01": 0.01, "head": 0.01, "clavicle_r": 0.006},
+                  "elbows": 0.004, "tool": 0.0, "hands": 0.0}
+_P = CROSSBOW_PERIOD
+CROSSBOW_ATTACK = fighting("A_Crossbow_Attack", CROSSBOW_TOOL, ("crossbow", "bolt", "bolt_quiver"), [
+    cb_key(0.0, CB_READY, (0.0, 1.0)),
+    cb_key(at(_P, 0.05), CB_RAISE, 1.0),          # quick raise
+    cb_key(at(_P, 0.075), CB_RAISE_2, 1.0),       # on the way up
+    cb_key(at(_P, 0.1), CB_SHOULDER),             # butt to the shoulder, cheek on the stock
+    cb_key(at(_P, 0.11), CB_AIM),                 # aim, a cm of creep
+    cb_key(at(_P, CROSSBOW_SHOT), CB_SHOT, (0.0, 2.0)),  # SHOT (frame 8 of 64): the bolt leaves
+    cb_key(at(_P, 0.155), CB_KICK, (0.0, 1.0)),   # recoil: shoulder and crossbow kicked back, the point up
+    cb_key(at(_P, 0.18), CB_SETTLE, 1.0),         # settled back: the hands let go of the grips (release)
+    cb_key(at(_P, 0.225), CB_LOWER_1, 1.0),       # lowering: the half-turn, the hands sliding along the stock
+    cb_key(at(_P, 0.27), CB_LOWER_2, 1.0),        # halfway: the butt up on his right, the point to his left
+    cb_key(at(_P, 0.315), CB_LOWER_3, 1.0),
+    cb_key(at(_P, 0.36), CB_LOWER_4, 1.0),        # the point down in front
+    cb_key(at(_P, 0.41), CB_DOWN, (0.6, 0.0)),    # stirrup on the ground, held upright by the stock
+    cb_key(at(_P, 0.45), CB_STEPPING, 0.8),       # the right foot lifted, stepping forward
+    cb_key(at(_P, 0.50), CB_FOOT),                # the foot in the stirrup
+    cb_key(at(_P, 0.57), CB_BENT, 0.4),           # bent over, both hands on the string by the prod
+    cb_key(at(_P, 0.64), CB_PULLED),              # pulled up to the nut, straightening
+    cb_key(at(_P, _LIFT_T0), CB_GRAB),            # the left hand to the fore-stock
+] + [cb_key(at(_P, t), cb_lift(u), 1.0) for t, u in _LIFT_KEYS] + [  # the lift (see above)
+    cb_key(at(_P, _LIFT_T1), CB_PLACE),           # carried low, the bolt laid in the groove: it shows again
+    cb_key(at(_P, 0.94), CB_GRASP, 0.5),          # the right hand back at the trigger (end of the release)
+    cb_key(_P, CB_READY),
+], CROSSBOW_ELBOWS, 30, CROSSBOW_STANCE, [0, 3, 8, 10, 22, 26, 33, 37, 45, 52, 57, 60])
+CROSSBOW_ATTACK.update({
+    "frames": 64, "curve": "hermite", "loop": True, "leads": CROSSBOW_LEADS,
+    "hit_fraction": CROSSBOW_SHOT,  # the baker's readback looks for the shot there
+    # Both hands off the grips from just after the recoil to the right hand back at the trigger (anim_rig "release"
+    # span).
+    "release": [(at(_P, 0.18), at(_P, 0.94))],
+    # The loaded bolt hidden from just after the shot to its placing (seconds). The preview hides the piece by
+    # "hidden"; the BAKER (make_peasant_animations.py, AR6) must scale ik_hand_r (the bolt's bone, never keyed
+    # otherwise) to ~0 in these spans, as it scales ik_hand_gun for "tool_hidden" (which would hide the crossbow).
+    "bolt_hidden": [(at(_P, CROSSBOW_SHOT) + 0.01, at(_P, _LIFT_T1))]})
+CROSSBOW_ATTACK["hidden"] = {"bolt": CROSSBOW_ATTACK["bolt_hidden"][0]}
+PROPOSED["crossbow_attack"] = CROSSBOW_ATTACK
