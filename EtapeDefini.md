@@ -10,7 +10,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité)*
+- Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité ; questions tranchées (Champ de tir créé, l'Archer y passe), plan AR1 à AR11 ; chantier `CrossbowInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
@@ -68,6 +68,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `AngelscriptInProgress.md` : préparation d'Angelscript (D483, D484), rien codé ; servira au premier fichier en script
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
+- `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D428), questions tranchées, plan AR1 à AR11, rien codé
 - `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
 
 ### En pause
