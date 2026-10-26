@@ -63,7 +63,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q4 (modèle technique) à trancher
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 (pièces du héros, sans moteur) puis J8a.1-J8a.6 après le moteur
 - `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 dans `main`, plan d'IA1 écrit
 - `AngelscriptInProgress.md` : préparation d'Angelscript (D483, D484), rien codé ; servira au premier fichier en script
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`

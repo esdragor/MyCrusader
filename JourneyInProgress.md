@@ -1155,8 +1155,8 @@ V1 à V5 (Régicide, `VictoryInProgress.md`).
 | Q1 | **Périmètre** de J8. | **tranché (J8-Q1)** : le héros |
 | Q2 | **Découpage** en parties jouables. | **tranché (J8-Q2)** : trois parties, J8a le héros sur le terrain, J8b XP et niveaux, J8c l'aura et les capacités |
 | Q3 | **Quel héros** : générique ou le Paladin-Commandant (pas encore de factions). | **tranché (J8-Q3)** : le Paladin-Commandant pour tous |
-| Q4 | **Modèle technique** : unité de la simulation (Mass, processeur maison) ou acteur avec GAS (§ 16.1). | **reportée** (« on voit son point plus tard », l'utilisateur) |
-| Q5 | **Réseau** : PV, XP, niveau, état de mort et de retour. | attend Q4 |
+| Q4 | **Modèle technique** : unité de la simulation (Mass, processeur maison) ou acteur avec GAS (§ 16.1). | **tranché (J8-Q4)** : unité de la simulation, gestion de la partie en Angelscript |
+| Q5 | **Réseau** : PV, XP, niveau, état de mort et de retour. | **tranché (J8-Q5)** : corps dans le tableau rapide, fiche du héros à part (publique / au propriétaire) |
 | Q6 | **Vérification** : tests, stress tests en fin de chapitre, essais de l'utilisateur. | **tranché (J8-Q6)** : comme J7 |
 
 **Tranché — J8-Q1 Périmètre : le héros** (choix de l'utilisateur, conforme à la recommandation).
@@ -1181,19 +1181,116 @@ l'essai de l'utilisateur.
 - Écartés : **les deux héros selon la faction** (double J8c, factions en jeu plus tôt) ; **un héros générique** (travail
   refait avec les factions).
 
-**Reportée — J8-Q4 Modèle technique** : l'utilisateur verra ce point plus tard. Constat posé : GAS (§ 16.1, D34)
-n'est utilisé nulle part dans le code ; les unités sont des entités Mass, le combat de J7 (D454) et le Roi de Victory
-V5 (D470 à D474, une unité spéciale de la simulation) sont en code maison. Options présentées : **unité de la
-simulation** (recommandée : sélection, ordres, rangs, combat, réplication et rendu déjà là ; simulation reproductible,
-D468 ; D34 révisée, GAS possible pour le duel), **acteur avec GAS** (conforme à D34, ponts vers Mass partout),
-**hybride** (corps Mass, acteur GAS compagnon pour XP, niveau et capacités). **J8-Q5** (réseau) en dépend. **Aucun code
-de J8 avant de trancher Q4.**
+**Tranché — J8-Q4 Une unité de la simulation, la gestion de la partie en script** (2026-10-26, A, choix de
+l'utilisateur, conforme à la recommandation ; d'abord reportée le 2026-10-25).
+- **Simulation (C++)** : corps, sélection, ordres, rangs, combat, résistance de D17 (×0,3 des troupes), XP, niveau,
+  aura (D26) et effets des capacités vivent dans la simulation, comme le Roi de V5 (D470 à D474) ; règles pures testées
+  en C++ (D484 : ce qui reste en C++ garde ses tests C++).
+- **Angelscript (D483)** : délai et prix du retour (D25, D397), bouton « Ramener le héros », bloc du héros (D201) et
+  déclenchement des capacités ; premier vrai usage du script.
+- **Révise D34** : `Level` et `XP` deviennent des données de la simulation, pas des attributs GAS ; les tags de palier
+  (`Civ.Tier.*`) se décideront avec les paliers. Le duel aura sa propre question : GAS possible alors, sans lien pris
+  maintenant.
+- Motifs : sélection, ordres, rangs, combat, réplication et rendu déjà là ; partie reproductible (D468) ; l'IA lit le
+  héros comme le reste ; S3 / S4 avec un héros par camp sans coût de plus.
+- Écartés : **acteur avec GAS** (conforme à D34, mais ponts vers Mass partout : sélection, ordres, ciblage dans les
+  deux sens, réseau et rendu à part, hors du pas fixe) ; **hybride** (corps Mass, acteur compagnon : état coupé en deux,
+  deux chemins réseau, aura et capacités qui passent la frontière à chaque pas). **J8-Q5** (réseau) se pose maintenant.
+
+**Tranché — J8-Q5 Le corps dans le tableau rapide, une fiche du héros à part** (2026-10-26, A, choix de
+l'utilisateur, conforme à la recommandation).
+- **Corps** : comme toute unité (position, activité, cible ; D269, D455) ; rendu, sélection, rangs inchangés. Sa barre
+  de vie reçoit une **proportion sur 8 bits** (seul cas sans PV exacts : ceux du héros dépasseront 255).
+- **Fiche du héros**, une par joueur (8 au plus), envoyée au changement seulement :
+  **pour tous** : niveau, PV exacts, état (vivant, mort, prêt à revenir) ; **pour le propriétaire seul** (comme le
+  stock, D270) : XP, recharges des capacités, heure de la mort (délai et prix dégressif calculés chez lui par la même
+  règle pure, D25, D397, rien envoyé à chaque seconde).
+- Un héros ennemi sélectionné montre niveau et PV, jamais XP ni recharges ; le brouillard (M7) restreindra plus tard.
+- Écartés : **tout dans le tableau rapide** (XP et recharges envoyées à tous, triche par lecture ; format de S5
+  compliqué pour 8 entités) ; **héros hors du tableau rapide** (second chemin d'affichage, défauts écartés en Q4).
 
 **Tranché — J8-Q6 Vérification comme J7** (choix de l'utilisateur, conforme à la recommandation).
 - Chaque partie : tests automatiques des règles pures (résistance D17, délai et prix du retour, courbe d'XP, aura), un
   scénario `play.ps1`, un passage dans `quick_check` (solo et 2 clients), puis l'essai de l'utilisateur.
 - Stress tests **à la clôture de J8 seulement** : S3 et S4 avec un héros par camp, et S5.
 - Écartés : **un stress test des héros** (8 héros dans une bataille de 2 000 unités) ; **essais seulement**.
+
+### Questions de J8a — le héros sur le terrain
+
+Ouvertes le 2026-10-26 (pendant la recompilation du moteur : rien à compiler). Une à la fois, options A / B / C.
+
+| # | Question | État |
+|---|---|---|
+| J8a-Q1 | **Chiffres** du Paladin-Commandant au niveau 1 (combat, vitesse, bâtiments). | **tranché** : le capitaine solide |
+| J8a-Q2 | **Apparition** : quand, où, population. | **tranché** : dès la première seconde, près du forum, hors population |
+| J8a-Q3 | **Allure provisoire** (lisible à la hauteur de jeu, comme la couronne du Roi). | **tranché** : grand Homme d'armes, cape et étendard de l'Aube |
+| J8a-Q4 | **Contrôle** : touche de sélection, comportement (agressivité, riposte), bloc du héros (D201). | **tranché** : comme un soldat ; F4 (D30) ; bloc du héros |
+| J8a-Q5 | **Mort et retour** au niveau 1 : délai, prix de base et baisse, lieu (D25, D397). | **tranché** : 38 s, puis 150 or qui baissent à 0 en 60 s |
+| J8a-Q6 | **Découpage** de J8a en sous-étapes et vérification. | **tranché** : J8a.0 à J8a.6, un essai à la fin, J8a.0 tout de suite |
+
+**Tranché — J8a-Q1 Le capitaine solide** (2026-10-26, A, choix de l'utilisateur, conforme à la recommandation ; valeurs
+indicatives, à régler en test ; la progression par niveau vient en J8b).
+- **Combat** : **450 PV** ; attaque **30**, type **Héros**, cadence **1,25 s** (~24 dégâts/s, ~5,5 Piquiers, D17) ; mêlée
+  **0,7 m** ; armures **0** (la résistance vient du ×0,3 des troupes, D17, D345) ; rayon d'agressivité **4 cases**.
+- **Déplacement** : **1,74 case/s** (6,97 m/s, l'Homme d'armes : il marche avec l'armée).
+- **Contre les bâtiments** : **10** toutes les **2,1 s** (moitié du Paysan ; D17 : pas de raid solitaire).
+- Repères : 6 Hommes d'armes le tuent en ~29 s, 20 Archers en ~25 s (D17 : 20 à 30 s) ; il tue un Homme d'armes en
+  ~7 s, un Piquier en ~3 s.
+- Écartés : **le cavalier de pointe** (300 PV, 25 par seconde, 2 cases/s : ~19 s sous 6 Hommes d'armes) ; **le rempart**
+  (650 PV, ~16 dégâts/s, 1,5 case/s : ~41 s, presque intouchable, faible en attaque).
+
+**Tranché — J8a-Q2 Dès la première seconde, près du forum, hors population** (2026-10-26, A, choix de l'utilisateur,
+conforme à la recommandation).
+- Il apparaît au lancement avec les 5 Paysans de départ, à côté du forum, gratuit, **sans place de population** (comme
+  le Roi, D206) : son retour n'est jamais bloqué par une population pleine ; son poids passe par ses chiffres et son
+  aura. Lecture de J8-Q1 et D207 (Nomade : il apparaît avec un groupe).
+- Écartés : **5 places de population** (places à garder pendant sa mort, maison plus tôt à l'ouverture) ; **recruté au
+  forum façon BFME** (contredit J8-Q1 et D207, 20 s de retard sans grand gain).
+
+**Tranché — J8a-Q3 Un grand Homme d'armes avec cape et étendard de l'Aube** (2026-10-26, A, choix de l'utilisateur,
+conforme à la recommandation ; provisoire, en attendant un vrai modèle).
+- Mannequin à l'échelle **1,2** (corps à la couleur du joueur), **épée longue**, **bouclier au soleil d'or**, **cape
+  blanche** rigide dans le dos, **étendard blanc et or** sur une hampe qui dépasse d'~1 m au-dessus de la tête :
+  silhouette haute, distincte de la couronne flottante du Roi (D473), annonce la *Bannière de l'Aube*.
+- Gestes de l'Homme d'armes repris (même squelette) : pièces (`soldier_props.py`) et échelle seulement ; faisable en
+  Python sans le moteur (aperçus PNG). **Rayon du corps 0,72 m** (suit l'échelle, au lieu de 0,6).
+- Écartés : **soleil d'or flottant** (deux signes flottants presque pareils en Régicide, pas de démarcation dans la
+  mêlée) ; **disque doré au sol** (confondu avec la sélection et la future aura, décalque à créer).
+
+**Tranché — J8a-Q4 Comme un soldat** (2026-10-26, A, choix de l'utilisateur, conforme à la recommandation).
+- **Comportement** : rayon d'agressivité 4 cases (J8a-Q1), riposte, aide aux alliés proches ; attaque-déplacement,
+  position tenue, arrêt ; dans une sélection mêlée, une place dans les rangs comme un Homme d'armes. Au joueur de le
+  retirer (façon BFME).
+- **Touches** : **F4** le sélectionne, deux fois centre la caméra (D30, déjà tranché).
+- **Bloc du héros** (D201) en J8a : portrait (clic = sélection, double clic = caméra), « Niveau 1 », PV exacts ;
+  pendant la mort : délai, prix qui baisse, bouton « Ramener le héros » (D397) ; XP et capacités grisées (J8b, J8c).
+- Écartés : **riposte seulement, comme le Roi** (D472 : sa force payée en clics) ; **toujours au 2e rang** (règle de
+  formation spéciale ; à reposer avec l'aura en J8c si les essais le demandent).
+
+**Tranché — J8a-Q5 38 s, puis 150 or** (2026-10-26 ; réponse de l'utilisateur « 150 », hors des options proposées :
+A 100 or recommandé, B 50, C 200).
+- **Délai** : 38 s au niveau 1 (D25 : 30 s + 8 s × niveau), sans rachat.
+- **Prix** : **150 or** à la fin du délai (~43 s d'or pour 5 Paysans), **baisse linéaire jusqu'à 0 en 60 s** (à régler
+  en test) ; payé par le bouton « Ramener le héros » (D397) ; retour au plus tard 98 s après la mort.
+- **Retour** : à pleins PV, au forum par défaut, à la ruine au clic (D351) ; alerte mineure quand il est prêt (D202) ;
+  corps au sol 30 s (D463). Le prix par niveau vient en J8b.
+
+**Tranché — J8a-Q6 Sept sous-étapes, un essai à la fin, J8a.0 tout de suite** (2026-10-26, A, choix de l'utilisateur,
+conforme à la recommandation ; calqué sur le Roi de V5).
+
+| Sous-étape | Contenu | Moteur | État |
+|---|---|---|---|
+| J8a.0 Pièces | Cape blanche, étendard blanc et or, bouclier au soleil, épée longue (`soldier_props.py` seul : la session de l'Arbalétrier tient `soldier_poses.py`) ; `SKM_Hero` dans `SOLDIER_MESHES` ; aperçus PNG validés par l'utilisateur | non | à faire |
+| J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | — |
+| J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | — |
+| J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
+| J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
+| J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
+| J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | — |
+
+- Écartés : **deux essais** (scénario de plus, pause au milieu) ; **le retour en Angelscript d'abord** (bouchons partout,
+  le retour n'a de sens qu'avec un héros qui meurt).
+- Numéros de décision : à la clôture de J8 (J8-Q1 à Q6, J8a-Q1 à Q6 ; prochain D485 au 2026-10-26).
 
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
@@ -7140,3 +7237,20 @@ d'épée).
   terrain, J8b XP et niveaux, J8c l'aura et les capacités), le Paladin-Commandant pour tous, vérification comme J7.
   **J8-Q4 reportée** par l'utilisateur (« on voit son point plus tard » : simulation Mass, acteur GAS ou hybride), Q5
   en dépend. Aucun code de J8 avant Q4.
+- (J8, 2026-10-26) **J8-Q4 tranchée** (A, conforme à la recommandation ; ouverte pendant la recompilation du moteur, rien
+  à compiler) : le héros est une unité de la simulation (corps, combat, D17, XP, niveau, aura, effets des capacités en
+  C++) ; retour, prix, bouton, bloc du HUD et déclenchement des capacités en Angelscript ; révise D34. Suivant : J8-Q5.
+- (J8, 2026-10-26) **J8-Q5 tranchée** (A, conforme à la recommandation) : corps dans le tableau rapide (barre en
+  proportion sur 8 bits), fiche du héros à part : niveau, PV exacts, état pour tous ; XP, recharges, heure de la mort
+  au propriétaire seul. **Plan de J8 : Q1 à Q6 tranchées.** Suivant : questions de J8a.
+- (J8a, 2026-10-26) **Questions de J8a ouvertes** (Q1 à Q6, section « Questions de J8a ») ; **J8a-Q1 tranchée** (A) :
+  450 PV, 30 Héros / 1,25 s, mêlée 0,7 m, armures 0, 1,74 case/s, bâtiments 10 / 2,1 s. Suivant : J8a-Q2.
+- (J8a, 2026-10-26) **J8a-Q2 tranchée** (A) : dès la première seconde, près du forum, hors population. Suivant : J8a-Q3.
+- (J8a, 2026-10-26) **J8a-Q3 tranchée** (A) : grand Homme d'armes (×1,2), cape blanche, étendard blanc et or, bouclier au
+  soleil ; gestes de l'Homme d'armes ; rayon 0,72 m. Suivant : J8a-Q4.
+- (J8a, 2026-10-26) **J8a-Q4 tranchée** (A) : comme un soldat ; F4 ; bloc du héros (portrait, niveau, PV, retour). Suivant :
+  J8a-Q5.
+- (J8a, 2026-10-26) **J8a-Q5 tranchée** (« 150 ») : 38 s, puis 150 or qui baissent à 0 en 60 s, retour à pleins PV au
+  forum ou à la ruine. Suivant : J8a-Q6 (découpage).
+- (J8a, 2026-10-26) **J8a-Q6 tranchée** (A) : J8a.0 à J8a.6, un essai à la fin. **Questions de J8a closes.** Suivant :
+  **J8a.0** (pièces en Python, sans moteur) ; J8a.1 et suivantes après la recompilation du moteur.
