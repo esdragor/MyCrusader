@@ -6,6 +6,7 @@
 
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
@@ -102,7 +103,7 @@ namespace UE::HeroesOfLiberty::Dev
 	constexpr double AutoContinueSeconds = 1.0;
 	const TCHAR* const DefaultWaitKeyText = TEXT("Entrée : étape suivante");
 	/**
-	 * On a fixed time step (quick_check's -UseFixedTimeStep -FPS=n, TestSpeedInProgress.md), a frame's game time while the
+	 * On a fixed time step (quick_check's -UseFixedTimeStep -FPS=n, Docs/Archive/TestSpeedInProgress.md), a frame's game time while the
 	 * sequence gives commands, takes captures or counts frames: as short as a frame in real time off screen (~200 a
 	 * second), so that the commands follow each other as they do in real time; the -FPS step only while it waits for the game.
 	 */
@@ -116,6 +117,14 @@ namespace UE::HeroesOfLiberty::Dev
 		return Verb == TEXT("wait") || Verb == TEXT("waitlog") || Verb == TEXT("waitunits") || Verb == TEXT("waitidle")
 			|| Verb == TEXT("waitmap") || Verb == TEXT("waitplayers");
 	}
+
+	TAutoConsoleVariable<int32> CVarTestSkipWaitRendering(
+		TEXT("hol.Test.SkipWaitRendering"),
+		0,
+		TEXT("1: on a fixed time step, the world is not drawn while the sequence waits for the game (quick_check off screen, "
+			 "Docs/Archive/TestSpeedInProgress.md); it is for the commands, the frames and the captures"));
+	/** Frames drawn before a capture once the world is drawn again: the temporal anti-aliasing's history filled. */
+	constexpr int32 CaptureDrawnFrames = 4;
 
 	TAutoConsoleVariable<int32> CVarScenarioAutoContinue(
 		TEXT("hol.Scenario.AutoContinue"),
@@ -233,6 +242,22 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				FApp::SetFixedDeltaTime(CommandFrameSeconds);
 			}
+			SetWorldDrawn(true);
+		}
+
+		/** The world drawn or not (hol.Test.SkipWaitRendering); FramesDrawn counts the frames since it is drawn again. */
+		void SetWorldDrawn(const bool bDrawn)
+		{
+			if (bWorldDrawn == bDrawn)
+			{
+				return;
+			}
+			bWorldDrawn = bDrawn;
+			FramesDrawn = 0;
+			if (UGameViewportClient* Viewport = GEngine ? GEngine->GameViewport : nullptr)
+			{
+				Viewport->bDisableWorldRendering = !bDrawn;
+			}
 		}
 
 		/** True when the current step is done; ends the run on a timeout. */
@@ -290,6 +315,11 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				const TFunction<bool()>& IsBusy = HOLTestHooks::IsInterfaceBusy();
 				bDone = ++FramesWaited > WaitUIMinFrames && !(IsBusy && IsBusy());
+			}
+			else if (Verb == TEXT("capture") && FramesDrawn < CaptureDrawnFrames)
+			{
+				// The world drawn again a few frames first (it was not while the sequence waited).
+				bDone = false;
 			}
 			else if (Verb == TEXT("capture"))
 			{
@@ -380,6 +410,10 @@ namespace UE::HeroesOfLiberty::Dev
 
 		bool Tick(float)
 		{
+			if (bWorldDrawn)
+			{
+				++FramesDrawn;
+			}
 			// One step per frame at most: a command's effect shows on the next frame.
 			if (Steps.IsValidIndex(Next) && IsStepDone(Steps[Next]))
 			{
@@ -388,8 +422,12 @@ namespace UE::HeroesOfLiberty::Dev
 			}
 			else if (WaitFrameSeconds > 0.0 && Steps.IsValidIndex(Next) && IsGameWait(Steps[Next]))
 			{
-				// Waiting for the game: the next frames at the -FPS step.
+				// Waiting for the game: the next frames at the -FPS step, the world not drawn if asked.
 				FApp::SetFixedDeltaTime(WaitFrameSeconds);
+				if (CVarTestSkipWaitRendering.GetValueOnGameThread() > 0)
+				{
+					SetWorldDrawn(false);
+				}
 			}
 			if (!Steps.IsValidIndex(Next) && Ticker.IsValid())
 			{
@@ -431,6 +469,7 @@ namespace UE::HeroesOfLiberty::Dev
 
 		void Finish(const bool bQuit)
 		{
+			SetWorldDrawn(true);
 			if (WaitFrameSeconds > 0.0)
 			{
 				FApp::SetFixedDeltaTime(WaitFrameSeconds);
@@ -463,6 +502,9 @@ namespace UE::HeroesOfLiberty::Dev
 		double WaitStartGame = 0.0;
 		/** The -FPS step of a fixed time step (0: real time); the frames of the other steps take CommandFrameSeconds. */
 		double WaitFrameSeconds = 0.0;
+		/** hol.Test.SkipWaitRendering: the world drawn, and the frames drawn since it is again (a capture waits for some). */
+		bool bWorldDrawn = true;
+		int32 FramesDrawn = CaptureDrawnFrames;
 		int32 FramesWaited = 0;
 		FTSTicker::FDelegateHandle Ticker;
 		/** From Start to Finish: the watcher is in GLog. */

@@ -81,10 +81,10 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LauncherInProgress.md` : lanceur (D475 à D482), clos ; reste l'essai avec un ami
 - `MovementInProgress.md` : déplacement (D405 à D415, mesures faites) ; reste l'aléa « build site » après `move,bodies`
 - `ScenariosInProgress.md` : mécanisme des scénarios, encore cité par les autres journaux (mode d'emploi : `Tools/Scenarios/README.md`)
-- `TestSpeedInProgress.md` : quick_check en pas fixe (temps du jeu accéléré, `-Full` en ~5 min) ; reste peut-être un rendu plus léger hors captures
 - `TileSizeInProgress.md` : case de 4 m et cartes de 220 × 220 (D344) ; reste peut-être une ligne marquée tous les 5 cases
 
 ### Archivés (`Docs/Archive/`)
 - `FrontEndInProgress.md` : menu (D240 à D251)
 - `MillInProgress.md` : moulin (D346)
 - `RidgeRockInProgress.md` : rochers (D439 à D444)
+- `TestSpeedInProgress.md` : quick_check en pas fixe et sans dessin pendant les attentes (`-Full` ~10 min -> ~4 min 20)

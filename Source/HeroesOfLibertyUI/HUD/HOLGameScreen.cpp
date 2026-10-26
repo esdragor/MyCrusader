@@ -477,7 +477,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	// The refresh paces and the message's age in the world's real time: Slate's in a game, the fixed step's in quick_check
-	// (TestSpeedInProgress.md: the game's seconds go by faster than the clock's, the HUD keeps up with them).
+	// (Docs/Archive/TestSpeedInProgress.md: the game's seconds go by faster than the clock's, the HUD keeps up with them).
 	const UWorld* TickWorld = GetWorld();
 	const float FrameSeconds = TickWorld ? TickWorld->DeltaRealTimeSeconds : InDeltaTime;
 

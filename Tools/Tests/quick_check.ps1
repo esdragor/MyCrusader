@@ -88,7 +88,7 @@
 # (-File passes a list as one string: the script splits it at the commas.)
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
-# The solo game runs on a fixed time step (TestSpeedInProgress.md): each frame moves the game on by 1/GameFps s, whatever
+# The solo game runs on a fixed time step (Docs/Archive/TestSpeedInProgress.md): each frame moves the game on by 1/GameFps s, whatever
 # the time it took, so the game's time runs ahead of the clock (the walks, sites and fights of the parts go by faster); the
 # simulation keeps its own 20 Hz steps, the same as in real time, and the sequence's "wait" counts the game's seconds.
 # 20 (the default): one simulation step per frame, as in a real game (never fewer frames than steps); -Parts build 306 s
@@ -103,7 +103,8 @@ param(
     [string] $EngineDir = "",
     [switch] $Visible,
     [double] $GameFps = 20,
-    [switch] $RealTime
+    [switch] $RealTime,
+    [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
@@ -1744,7 +1745,10 @@ $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100"
 $TestServers = Join-Path $TestSaved "servers_none.json"
 Set-Content -Path $TestServers -Value '{ "servers": [ { "name": "None", "url": "http://127.0.0.1:7799" } ] }' -Encoding ascii
 $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
-$GameArguments = "`"$UProject`" -game $Display $TimeStep -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
+# Off screen on a fixed step, the world is not drawn while the sequence waits for the game (each frame ~2 ms cheaper);
+# drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
+if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
+$GameArguments = "`"$UProject`" -game $Display $TimeStep -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -1959,7 +1963,7 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
 }
 
 $Log = if (Test-Path $GameLog) { Get-Content $GameLog } else { @() }
-# The game's time against the clock's (fixed time step, TestSpeedInProgress.md).
+# The game's time against the clock's (fixed time step, Docs/Archive/TestSpeedInProgress.md).
 $SpeedLine = @($Log | Select-String -Pattern "Test sequence: done in .*" | ForEach-Object { $_.Matches[0].Value }) | Select-Object -Last 1
 if ($SpeedLine) { Write-Host "game speed : $SpeedLine" }
 # The log lines of a section, from its mark to the next one.
@@ -4142,7 +4146,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # struck, stays where it is however they crowd it (it strikes back, standing).
     $AttackReports = Get-CombatReports $Attack
     # The Spearman: the one the ordered Peasants target (it may already have walked a few metres from its spawn towards
-    # them: each step of the sequence is a frame of game time on the fixed time step, TestSpeedInProgress.md).
+    # them: each step of the sequence is a frame of game time on the fixed time step, Docs/Archive/TestSpeedInProgress.md).
     $Spear = @(if ($AttackReports.Count -ge 1) {
         $Targets = @($AttackReports | ForEach-Object { $_.Values } | Where-Object { $_.Type -eq "Peasant" -and $_.Slot -eq 0 -and $_.Target -gt 0 } | ForEach-Object { "$($_.Target)" })
         $AttackReports[0].Keys | Where-Object { $AttackReports[0][$_].Type -eq "Spearman" -and $AttackReports[0][$_].Slot -eq 1 -and $Targets -contains "$_" } })

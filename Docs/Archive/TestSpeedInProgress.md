@@ -64,8 +64,25 @@ Demande du 2026-10-26 : « comment on pourrait optimiser les tests ? », puis «
 
 Validé par l'utilisateur le 2026-10-26 (« go ») et fusionné dans `main` ; Elrond libéré.
 
+## Suite : rendu plus léger (demandée le 2026-10-26 soir, « fait optimisation facultative »)
+
+- Elrond, branche `render-light` (depuis `main` 6ff5ae6).
+- Mesures de `-Parts build` (séquence seule) : rendu complet ~51-54 s ; `ShowFlag.Rendering 0` partout 40,1 s ;
+  `r.ScreenPercentage 25` 51,3 s (rien). Le rendu 3D pèse ~2 ms sur ~8 ms par image ; le reste est la logique du jeu
+  et l'interface. Sauter le dessin de Slate saute aussi le Tick des widgets (logique du HUD) : écarté.
+- Fait : `hol.Test.SkipWaitRendering 1` (`HOLTestSequence.cpp`) : en pas fixe, le monde n'est pas dessiné pendant
+  une attente non satisfaite (`GameViewport->bDisableWorldRendering`) ; dessiné pour les commandes, `frames`, `waitui`
+  et les captures ; une capture attend 4 images dessinées (historique de l'anticrénelage temporel). `quick_check`
+  l'active en pas fixe hors écran (pas avec `-Visible` ni `-RealTime`) ; `-GameExec` ajoute des commandes au lancement.
+- Captures : 84 comparées pixel à pixel avec rendu complet : identiques (< 1 d'écart moyen), sauf `cam_8p_*` où la
+  course avec rendu complet avait encore des shaders en préparation.
+- Mesures alternées de `-Parts build` (séquence) : sans dessin pendant les attentes 40,1 / 47,4 / 49,0 / 45,9 s
+  (~46 s) ; rendu complet 51,3 / 50,7 / 53,8 / 62,9 s (~55 s) : ~15-20 % de gain, machine bruitée (autres sessions).
+- **`-Full` : tout PASS en 258 s** (310 s avant), séquence 193,5 s au lieu de 262 s (25 218 images) ; captures de
+  combat vérifiées à l'œil (flèches en vol, corps au sol).
+- Validé par l'utilisateur (« oui, vas y ») et fusionné dans `main` ; Elrond libéré.
+
 ## Reste possible (non demandé)
 
-- Rendu hors écran plus léger hors captures (résolution plus basse, ou `-nullrhi` pour les parties sans capture) :
-  l'image coûte encore ~8 ms.
+- Le reste d'une image (~6 ms) est la logique du jeu et de l'interface : plus rien de gros à gagner côté rendu.
 - Les `wait N` fixes du script (226) restent : en pas fixe ils ne coûtent plus que leur temps de jeu, divisé par ~5.
