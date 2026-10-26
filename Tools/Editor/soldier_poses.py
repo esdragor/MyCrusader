@@ -1054,3 +1054,22 @@ PEASANT_FALL_PROPOSED = {"name": "A_Peasant_Fall", "fps": 30, "tool": PEASANT_KN
 # client holds (30 s, not implemented yet; the server still destroys the body at 1 s).
 GESTURES.update({"spear_fall": SPEAR_FALL_PROPOSED, "maa_fall": MAA_FALL_PROPOSED,
                  "peasant_fall": PEASANT_FALL_PROPOSED})
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Crossbowman (AR1, 2026-10-26; proposal, not baked): first idle, only to see the pieces on the body (AR2 makes the
+# real idle and walk). The stirrup crossbow (soldier_props "crossbow", id 8) is the two-handed tool on ik_hand_gun,
+# lying flat in front of the chest: the left hand under the stock behind the prod, the right hand at the trigger, the
+# prod in front of his left side; the loaded bolt (id 5, ik_hand_r) in the groove, the bolt quiver (id 6) on the
+# right hip.
+CROSSBOW_TOOL = {"kind": "crossbow", "hands": 2, "handle_length": sp.CROSSBOW_LENGTH,
+                 "knob_offset": sp.CROSSBOW_LEFT_GRIP, "hand_spacing": sp.CROSSBOW_HAND_SPACING,
+                 "edge": (0.0, 0.0, 1.0)}  # the groove up: lying flat
+CROSSBOW_ELBOWS = {"l": (-0.6, -0.4, -0.7), "r": (0.6, -0.5, -0.6)}
+CROSSBOW_REST = {"grip": (-10.0, 36.0, 108.0), "dir": normalize((0.7, -0.68, -0.1))}
+CROSSBOW_IDLE = {"name": "A_Crossbow_Idle", "base": IDLE, "hands_frame": "chest", "tool": CROSSBOW_TOOL,
+                 "props": ("crossbow", "bolt", "bolt_quiver"), "scene": NONE, "elbows": CROSSBOW_ELBOWS,
+                 "fist": (55.0, 70.0, 45.0), "steady_spine": 1.0,
+                 "keys": idle_keys(STAND, CROSSBOW_REST, None)}
+for _key in CROSSBOW_IDLE["keys"]:
+    del _key["hands"]
+PROPOSED["crossbow_idle"] = CROSSBOW_IDLE

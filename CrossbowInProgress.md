@@ -120,3 +120,24 @@ arbalète (comme `peasant_props.py`) et leurs **aperçus PNG** (`preview_animati
 - 2026-10-26 : AR-Q4 tranchée (A, tir à 12 %, recharge à l'étrier) ; AR-Q5 posée.
 - 2026-10-26 : AR-Q5 tranchée (A, `SM_Bolt`, même vol) ; AR-Q6 posée.
 - 2026-10-26 : AR-Q6 tranchée (C, chute à lui) ; questions closes, plan écrit.
+- 2026-10-26 : AR1 : pièces dans `Tools/Editor/soldier_props.py` (Python pur, rien fabriqué), versions légères comprises.
+  **`crossbow`** (id 8) : outil des deux mains sur `ik_hand_gun` (repère « tool » : origine au bout de l'étrier, X le
+  long de l'arbrier vers la crosse, Y le dessus (rainure), Z l'arc en travers ; main gauche à 22 cm derrière l'arc
+  (`knob_offset`), main droite 45 cm plus loin à la détente) — l'étrier est le « bout du manche » posé au sol à la
+  recharge, et `release` libère les deux mains sur la corde ; arbrier 85 cm, arc d'acier 70 cm bandé (pointes 7 cm en
+  arrière), corde droite de chaque pointe à la noix (arbalète chargée : un os rigide ne la bouge pas), étrier de fer,
+  noix, détente ; 184 triangles (léger 96). **`bolt`** (id 5) : carreau **chargé** dans la rainure, sur `ik_hand_r`
+  (enfant de `ik_hand_gun` jamais clé : suit l'arbalète exactement), 42 triangles (léger 14) ; à cacher après le tir
+  en clé d'échelle de `ik_hand_r` (AR3 et le baker ; `tool_hidden` cacherait l'arbalète). **Carreau en main** (de la
+  hanche à la rainure) : **pas d'os bon marché** — `ik_hand_l` / `ik_hand_r` suivent `ik_hand_gun`, seuls
+  `ik_foot_l` / `ik_foot_r` sont libres (enfants de `ik_foot_root`) mais demandent une deuxième piste d'outil
+  (`anim_rig`, baker, aperçu) : laissé de côté, le carreau en vol est `SM_Bolt` (AR-Q5). **`bolt_quiver`** (id 6) :
+  hanche droite, sur `pelvis` (repère « body », ancre (28, -2, 70)), bande à la couleur du joueur, 4 bouts de
+  carreaux, 110 triangles (léger 64). Ids réutilisés (5, 6 de l'Archer) : `prop_bit` n'accepte que 1-8, il suffit
+  qu'ils diffèrent dans un maillage. `SKM_Crossbowman` = crossbow, bolt, bolt_quiver. Geste `crossbow_idle`
+  (`A_Crossbow_Idle`) dans `PROPOSED` de `soldier_poses.py`, pour voir les pièces : arbalète couchée devant le buste,
+  pointe en avant à gauche, crosse à la hanche droite ; mains à l'axe 0,000 cm, aucun point du corps dans les pièces.
+  Pièces et gestes existants inchangés (table et primitives identiques à `HEAD`). Aperçus :
+  `Saved/AnimPreview/crossbow_idle_contact_sheet.png`, `crossbow_idle_zoom.png`, `crossbow_idle_light_zoom.png`.
+  Reste : validation de l'utilisateur ; vrais repos et marche en AR2.
+- 2026-10-26 : **AR1 validée** par l'utilisateur (« validé ») ; pas de carreau en main pendant la recharge (geste mimé), épaisseur de l'arc à juger en AR2. Commitée ; AR2 lancée (sous-agent).

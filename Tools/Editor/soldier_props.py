@@ -18,6 +18,26 @@ Archer (J7c, built in J7c.1a; SKM_Archer = mannequin + bow + quiver + arrow):
     keys point it at the bow's grip. Shown only from the nock to the release (see soldier_poses ARCHER_ATTACK
     "hidden"): the visible arrow is the client's projectile after that.
   - quiver (id 6): on the back (spine_03, "body" frame), opening above the right shoulder, five fletchings out.
+Crossbowman (AR1, 2026-10-26; SKM_Crossbowman = mannequin + crossbow + bolt + bolt_quiver). Ids only have to differ
+inside one mesh and stay in 1-8 (peasant_props.prop_bit: the vertex mask is one byte): the crossbow takes the free 8,
+the loaded bolt and the bolt quiver reuse the Archer's 5 and 6 (never in the same mesh).
+  - crossbow (id 8): stirrup crossbow, the hands' TOOL on ik_hand_gun ("tool" frame, keyed by the gestures, child of
+    the ik root: during the stirrup reload it stays point down under the foot while both hands are free on the string).
+    Frame: origin at the stirrup's front end (the "knob": on the ground at the reload), X along the tiller toward the
+    butt, Y the top of the stock (the bolt's groove, the "edge": up when it lies flat), Z = X x Y (the prod's axis,
+    across). Two-handed tool of anim_rig: the left hand at CROSSBOW_LEFT_GRIP behind the prod ("knob_offset"), the right
+    hand CROSSBOW_HAND_SPACING further back, at the wrist of the stock (the trigger). Stirrup x 0-13, steel prod
+    across at x ~13 (drawn: its tips 7 cm toward the butt), tiller x 10-95 (85 cm), the string straight from each tip
+    to the nut (spanned: the crossbow is loaded at rest, in the walk and at the aim; one rigid bone cannot move it),
+    nut at CROSSBOW_NUT, trigger lever under the stock.
+  - bolt (id 5): the LOADED bolt in the groove (nut to 35 cm forward), skinned to ik_hand_r ("bone" frame): a child
+    of ik_hand_gun never keyed by the baker (only ik_hand_gun is), so it follows the crossbow exactly; its frame is
+    the crossbow's (local = ik_hand_r's reference inverse x ik_hand_gun's reference). The gestures can hide it after
+    the shot (preview "hidden"; the baker will have to scale ik_hand_r to 0 there, AR3): scaling ik_hand_gun
+    ("tool_hidden") would hide the crossbow too. The bolt IN THE HAND (from the hip to the groove) has no cheap bone
+    (see CrossbowInProgress.md, AR1): left out; the bolt in flight is the client's SM_Bolt (AR-Q5).
+  - bolt_quiver (id 6): on the right hip, skinned to the pelvis ("body" frame: the thigh would swing it in the walk),
+    opening up, four fletched bolt ends out, a band in the player's colour.
 
 PLAYER COLOUR: primitives with "player": True are drawn in PLAYER_PREVIEW here; the mesh builder must write them like
 the body (vertex alpha 0: the material then shows the player's colour) - the shield's face, the spear's pennant.
@@ -273,9 +293,112 @@ def make_crown(light=False):
             "prims": prims}
 
 
+# Crossbowman (AR1): stirrup crossbow, loaded bolt, bolt quiver on the right hip (see the module's docstring).
+CROSSBOW_LENGTH = 95.0       # stirrup's front end to the butt (the tool's "handle_length")
+CROSSBOW_TILLER = (10.0, 95.0)   # the tiller (stock) along X: 85 cm
+CROSSBOW_PROD_X = 13.0       # the prod's centre on the tiller
+CROSSBOW_PROD_HALF = 35.0    # 70 cm across
+CROSSBOW_PROD_DRAW = 7.0     # the drawn tips' setback toward the butt
+CROSSBOW_NUT = 34.0          # the nut, where the spanned string rests
+CROSSBOW_LEFT_GRIP = 22.0    # stirrup's end to the left hand (the gestures' "knob_offset")
+CROSSBOW_HAND_SPACING = 45.0  # left hand to the right hand (the trigger)
+CROSSBOW_TOP = 2.5           # the tiller's top (Y) in front of the butt: the groove
+BOLT_LENGTH = 35.0
+BOLT_QUIVER_ANCHOR = (28.0, -2.0, 70.0)  # bottom of the bolt quiver, body terms (reference pose): his right hip
+BOLT_QUIVER_TOP = (2.0, -4.0, 30.0)      # its opening relative to the anchor: at the belt, leaning back a little
+
+
+def make_crossbow(light=False):
+    sides = 4 if light else 6
+    x0, x1 = CROSSBOW_TILLER
+    top = CROSSBOW_TOP
+    prims = [
+        # Tiller: a beam in front, the deeper butt behind (prisms in (x, y), 4 cm thick across Z).
+        pp.prism([(x0, -top), (70.0, -top), (70.0, top), (x0, top)], 4.0, (0.0, 0.0, -2.0), pp.IDENTITY, WOOD),
+        pp.prism([(66.0, -3.0), (x1, -8.0), (x1, top), (66.0, top)], 4.4, (0.0, 0.0, -2.2), pp.IDENTITY, pp.WOOD_DARK),
+        # Iron stirrup in front of the prod: two side bars and the foot's bar, in the prod's plane (X, Z).
+        pp.box((0.8, 0.0, 0.0), (1.6, 1.6, 15.0), IRON),
+        pp.box((7.0, 0.0, 6.6), (13.0, 1.4, 1.4), IRON, pp.rotation_xz((13.0, 0.0, -1.5), (0.0, 0.0, 1.0))),
+        pp.box((7.0, 0.0, -6.6), (13.0, 1.4, 1.4), IRON, pp.rotation_xz((13.0, 0.0, 1.5), (0.0, 0.0, 1.0))),
+    ]
+    # Steel prod across Z, its drawn tips set back toward the butt (points along it: (x, z, half thickness)).
+    px, half, draw = CROSSBOW_PROD_X, CROSSBOW_PROD_HALF, CROSSBOW_PROD_DRAW
+    limb = [(px, 0.0, 1.7), (px + draw * 0.3, half * 0.55, 1.3), (px + draw, half, 0.8)]
+    if light:
+        limb = [limb[0], limb[2]]
+    for sign in (1.0, -1.0):
+        for (xa, za, ra), (xb, zb, rb) in zip(limb, limb[1:]):
+            prims.append(pp.frustum_between((xa, 0.0, sign * za), (xb, 0.0, sign * zb), (ra * 0.7, ra),
+                                            (rb * 0.7, rb), sides, STEEL, x_hint=(1.0, 0.0, 0.0)))
+    # The string, straight from each tip to the nut (spanned), on the groove.
+    tip = px + draw
+    for sign in (1.0, -1.0):
+        prims.append(pp.frustum_between((tip, 0.3, sign * half), (CROSSBOW_NUT, top + 0.3, 0.0), (0.35, 0.35),
+                                        (0.35, 0.35), 3, FEATHER, caps=()))
+    if not light:
+        # Nut (across the groove) and the long trigger lever under the stock.
+        prims.append(pp.frustum_between((CROSSBOW_NUT, top - 0.6, -2.4), (CROSSBOW_NUT, top - 0.6, 2.4), (1.6, 1.6),
+                                        (1.6, 1.6), 6, FEATHER))
+        prims.append(pp.box((CROSSBOW_NUT + 14.0, -top - 1.2, 0.0), (24.0, 1.2, 1.4), IRON,
+                            pp.rotation_xz((24.0, -2.0, 0.0), (0.0, 0.0, 1.0))))
+    return {"id": 8, "name": "crossbow", "label": "arbalete", "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
+
+
+def bolt_prims(x0, light, along=1.0):
+    """A bolt from its nock at x0 along +X (along=1) or -X: square head, two vanes in the (X, Z) plane."""
+    def at(d, y=0.0, z=0.0):
+        return (x0 + along * d, y, z)
+    prims = [pp.frustum_between(at(0.0), at(BOLT_LENGTH - 4.0), (0.7, 0.7), (0.7, 0.7), 3 if light else 4, WOOD,
+                                x_hint=pp.FLAT),
+             pp.frustum_between(at(BOLT_LENGTH - 4.5), at(BOLT_LENGTH), (1.2, 1.2), (0.0, 0.0), 4, IRON,
+                                x_hint=pp.FLAT)]
+    if not light:
+        for sign in (1.0, -1.0):
+            prims.append(pp.box(at(4.0, 0.0, sign * 1.4), (6.0, 0.3, 2.2), FEATHER))
+    return prims
+
+
+def bolt_local(sk):
+    """The crossbow's frame (ik_hand_gun's, identity) in ik_hand_r's reference frame: ik_hand_r is a child of
+    ik_hand_gun never keyed, so a piece bound this way follows the crossbow exactly."""
+    gt, gq = sk.ref_world[sk.index["ik_hand_gun"]]
+    rt, rq = sk.ref_world[sk.index["ik_hand_r"]]
+    return (anim_rig.qrot(anim_rig.qconj(rq), anim_rig.sub(gt, rt)), anim_rig.qnormalize(anim_rig.qmul(anim_rig.qconj(rq), gq)))
+
+
+def make_bolt(sk, light=False):
+    """The loaded bolt in the groove: nock at the nut, head forward (toward the stirrup)."""
+    prims = bolt_prims(CROSSBOW_NUT, light, -1.0)
+    for prim in prims:  # lift it onto the groove
+        prim["t"] = anim_rig.add(prim["t"], (0.0, CROSSBOW_TOP + 0.8, 0.0))
+    return {"id": 5, "name": "bolt", "label": "carreau", "bone": "ik_hand_r", "frame": "bone", "local": bolt_local(sk),
+            "prims": prims}
+
+
+def make_bolt_quiver(light=False):
+    sides = 6 if light else 8
+    b = pp.body_to_prop
+    top = b(BOLT_QUIVER_TOP)
+    axis = anim_rig.normalize(top)
+    # Flat against the hip: wider forward (local X toward forward) than out to the side.
+    prims = [pp.frustum_between((0.0, 0.0, 0.0), top, (5.0, 3.6), (6.0, 4.2), sides, LEATHER, caps=("bottom",),
+                                x_hint=(1.0, 0.0, 0.0)),
+             player(pp.frustum_between(anim_rig.scale(top, 0.8), anim_rig.scale(top, 0.9), (6.1, 4.3), (6.2, 4.4),
+                                       sides, PLAYER_PREVIEW, caps=(), x_hint=(1.0, 0.0, 0.0)))]  # band in his colour
+    # Bolt ends standing out of the opening: shafts and two vanes each.
+    for k, (dr, df) in enumerate(((0.0, 2.5), (0.0, -2.5), (1.5, 0.0), (-1.5, 0.5))[:2 if light else 4]):
+        start = anim_rig.add(top, b((dr, df, -4.0)))
+        end = anim_rig.add(anim_rig.add(top, b((dr, df, 0.0))), anim_rig.scale(axis, 6.0 + k % 2 * 1.5))
+        prims.append(pp.box(end, (2.4, 0.4, 5.0), FEATHER, pp.rotation_z_to(axis, (1.0, 0.0, 0.0))))
+        prims.append(pp.frustum_between(start, end, (0.6, 0.6), (0.6, 0.6), 3, WOOD, caps=()))
+    return {"id": 6, "name": "bolt_quiver", "label": "carquois de carreaux", "bone": "pelvis", "frame": "body",
+            "anchor": BOLT_QUIVER_ANCHOR, "prims": prims}
+
+
 def build_props(sk, light=False):
     props = [make_spear(light), make_sword(light), make_shield(sk, light), make_bow(sk, light), make_arrow(light),
-             make_quiver(light), make_crown(light)]
+             make_quiver(light), make_crown(light), make_crossbow(light), make_bolt(sk, light),
+             make_bolt_quiver(light)]
     return {p["name"]: p for p in props}
 
 
@@ -285,7 +408,9 @@ SOLDIER_MESHES = {"SKM_Spearman": ("spear",), "SKM_ManAtArms": ("sword", "shield
                   # soldier_poses "tool_hidden") outside the draw.
                   "SKM_Archer": ("bow", "arrow", "quiver"),
                   # V5.3: the King, the Man-at-arms with a crown.
-                  "SKM_King": ("sword", "shield", "crown")}
+                  "SKM_King": ("sword", "shield", "crown"),
+                  # AR1: the Crossbowman; the loaded bolt is hidden by the gestures after the shot (ik_hand_r).
+                  "SKM_Crossbowman": ("crossbow", "bolt", "bolt_quiver")}
 
 
 def main():
