@@ -20,21 +20,21 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Réseau
 - M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R6 dans `main` : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef (M6-Q10 à M6-Q14) ; reste les essais E2 et E3 de l'utilisateur ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
-- Lanceur : télécharge, met à jour et lance le jeu *(questions tranchées, plan L0 à L10, L0 à L4 faites (publication), serveur par version confié au chantier réseau (L-Q7) ; chantier `LauncherInProgress.md`)*
+- Lanceur : essai avec un ami *(L0 à L13 dans `main`, décisions D475 à D482 au GDD ; kit et DuckDNS prêts ; serveur par version confié au chantier réseau (D481) ; `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
-- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; chantier à découper par système)*
+- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.3 (résumé C++) dans `main`, IA0.2 lancée, IA0.4-IA0.5 attendent le moteur recompilé ; chantier `AIInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D484 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D485 (§ 22)
 
 ### Moteur
 - Moteur Hazelight 5.8.4 avec cible Server : compilation depuis `C:/UE/Src/HZ`, puis remplacer `C:/UE/UE_5.8_AS_3` en entier et recompiler le projet de zéro (serveur compris) *(D483)*
-- Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; à trancher au premier fichier : tests et scripts précompilés)*
+- Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; tests en script et cache précompilé dans le paquet : D484 ; `AngelscriptInProgress.md`)*
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
@@ -48,7 +48,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
-- `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 - Attaque d'un bâtiment : portée de 400 cm, une unité gênée frappe encore du 2e rang *(équilibrage, à trancher ; `EtapeDefiniInProgress.md` J)*
@@ -65,9 +64,10 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Chantiers en cours
 - `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q4 (modèle technique) à trancher
+- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, plan d'IA0, rien codé
+- `AngelscriptInProgress.md` : préparation d'Angelscript (D483, D484), rien codé ; servira au premier fichier en script
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
-- `LauncherInProgress.md` : lanceur, plan L0 à L10, rien codé
 - `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
 
 ### En pause
@@ -77,6 +77,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Presque clos (un reste)
 - `ImplementationInProgress.md` : M0 à M2, arrêté le 2026-10-14 (suite dans `JourneyInProgress.md`) ; garde l'écart des mesures de rendu
 - `InterfaceInProgress.md` : grille du Paysan (D340) ; reste la barre trop large
+- `LauncherInProgress.md` : lanceur (D475 à D482), clos ; reste l'essai avec un ami
 - `MovementInProgress.md` : déplacement (D405 à D415, mesures faites) ; reste l'aléa « build site » après `move,bodies`
 - `ScenariosInProgress.md` : mécanisme des scénarios, encore cité par les autres journaux (mode d'emploi : `Tools/Scenarios/README.md`)
 - `TileSizeInProgress.md` : case de 4 m et cartes de 220 × 220 (D344) ; reste peut-être une ligne marquée tous les 5 cases
