@@ -141,3 +141,19 @@ arbalète (comme `peasant_props.py`) et leurs **aperçus PNG** (`preview_animati
   `Saved/AnimPreview/crossbow_idle_contact_sheet.png`, `crossbow_idle_zoom.png`, `crossbow_idle_light_zoom.png`.
   Reste : validation de l'utilisateur ; vrais repos et marche en AR2.
 - 2026-10-26 : **AR1 validée** par l'utilisateur (« validé ») ; pas de carreau en main pendant la recharge (geste mimé), épaisseur de l'arc à juger en AR2. Commitée ; AR2 lancée (sous-agent).
+- 2026-10-26 : AR2 : `A_Crossbow_Idle` (clé `crossbow_idle`) et `A_Crossbow_Walk` (clé `crossbow_walk`) dans `PROPOSED`
+  de `soldier_poses.py` (rien fabriqué), par `crossbow_gesture()` sur `armed()` comme les soldats : repos sur
+  `A_SW_Idle` (`steady_spine` 1, souffle et balancement de la base), marche sur `A_SW_Unarmed_Walk` (`steady_chest`
+  0,5, jambes de la base : pas de glissement à la bonne cadence), même port dans les deux : arbalète couchée devant le
+  buste, pointe en avant à gauche, main gauche sous le fût derrière l'arc, main droite à la détente devant la hanche
+  droite (prise (-16, 36, 106), direction (0,8, -0,58, -0,1)) ; coude droit rabaissé et serré (indice (0,3, -0,6, -0,8) :
+  coude à droite 21, haut 119 au lieu de 29 et 122). Mains à l'axe 0,000 cm, mains hors cible 0,0 cm, aucun point du
+  corps dans l'arbalète, le carreau ni le carquois (repos et marche) ; la crosse bouge de 3 / 3 / 7 cm en marche (le
+  balancement du corps). **WalkPlayRate de l'Arbalétrier = 720 / 168,2 = 4,28** (pour AR5 ; 2,85 à l'écran après la
+  division par `MeshScale`). L'arc d'acier (1,7 cm) se voit à peine en vue RTS des aperçus et ne se lira sans doute pas
+  au LOD 3 (18 m) : l'épaissir à ~3 cm, ou le laisser, à trancher par l'utilisateur. Gestes et pièces existants
+  inchangés (`GESTURES` identique à `HEAD`, `soldier_props.py` intouché). Aperçus dans `Saved/AnimPreview/` :
+  `crossbow_idle_contact_sheet.png`, `crossbow_idle_zoom.png`, `crossbow_idle_light_zoom.png`,
+  `crossbow_walk_contact_sheet.png`, `crossbow_walk_zoom.png`, `crossbow_walk_archer_walk_spear_walk_compare.png`,
+  `crossbow_walk.gif`, `crossbow_idle.gif`. Reste : validation de l'utilisateur.
+- 2026-10-26 : **AR2 validée** par l'utilisateur (« validé ») ; `WalkPlayRate` 4,28 pour AR5. Arc de l'arbalète : question posée (A épaissir à ~3 cm et éclaircir l'acier / B garder), sans réponse : A retenu par défaut (recommandation), fait avec AR3, réversible. Commitée ; AR3 lancée (nouveau sous-agent, le premier approchait 300k jetons).

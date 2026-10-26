@@ -1056,20 +1056,28 @@ GESTURES.update({"spear_fall": SPEAR_FALL_PROPOSED, "maa_fall": MAA_FALL_PROPOSE
                  "peasant_fall": PEASANT_FALL_PROPOSED})
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Crossbowman (AR1, 2026-10-26; proposal, not baked): first idle, only to see the pieces on the body (AR2 makes the
-# real idle and walk). The stirrup crossbow (soldier_props "crossbow", id 8) is the two-handed tool on ik_hand_gun,
-# lying flat in front of the chest: the left hand under the stock behind the prod, the right hand at the trigger, the
-# prod in front of his left side; the loaded bolt (id 5, ik_hand_r) in the groove, the bolt quiver (id 6) on the
-# right hip.
+# Crossbowman (AR1 pieces, AR2 idle and walk, 2026-10-26; proposals, not baked). The stirrup crossbow (soldier_props
+# "crossbow", id 8) is the two-handed tool on ik_hand_gun, lying flat in front of the chest, its point forward and to
+# his left: the left hand under the fore-stock behind the prod, the right hand at the trigger in front of the right
+# hip, the elbows low and close to the body; the loaded bolt (id 5, ik_hand_r) in the groove, the bolt quiver (id 6) on
+# the right hip. Idle on A_SW_Idle (breathing and sway of the base), walk on A_SW_Unarmed_Walk with the same carry
+# (hands_frame "chest", steady_chest like the soldiers' walks); WalkPlayRate = 720 / 168.2 = 4.28 (UnitTypes.csv, AR5).
 CROSSBOW_TOOL = {"kind": "crossbow", "hands": 2, "handle_length": sp.CROSSBOW_LENGTH,
                  "knob_offset": sp.CROSSBOW_LEFT_GRIP, "hand_spacing": sp.CROSSBOW_HAND_SPACING,
                  "edge": (0.0, 0.0, 1.0)}  # the groove up: lying flat
-CROSSBOW_ELBOWS = {"l": (-0.6, -0.4, -0.7), "r": (0.6, -0.5, -0.6)}
-CROSSBOW_REST = {"grip": (-10.0, 36.0, 108.0), "dir": normalize((0.7, -0.68, -0.1))}
-CROSSBOW_IDLE = {"name": "A_Crossbow_Idle", "base": IDLE, "hands_frame": "chest", "tool": CROSSBOW_TOOL,
-                 "props": ("crossbow", "bolt", "bolt_quiver"), "scene": NONE, "elbows": CROSSBOW_ELBOWS,
-                 "fist": (55.0, 70.0, 45.0), "steady_spine": 1.0,
-                 "keys": idle_keys(STAND, CROSSBOW_REST, None)}
-for _key in CROSSBOW_IDLE["keys"]:
-    del _key["hands"]
-PROPOSED["crossbow_idle"] = CROSSBOW_IDLE
+CROSSBOW_ELBOWS = {"l": (-0.6, -0.4, -0.7), "r": (0.3, -0.6, -0.8)}
+CROSSBOW_REST = {"grip": (-16.0, 36.0, 106.0), "dir": normalize((0.8, -0.58, -0.1))}
+
+
+def crossbow_gesture(name, base, keys, steady):
+    g = armed(name, base, CROSSBOW_TOOL, ("crossbow", "bolt", "bolt_quiver"), keys, CROSSBOW_ELBOWS, steady)
+    for key in g["keys"]:
+        del key["hands"]  # both hands on the crossbow
+    return g
+
+
+CROSSBOW_IDLE = crossbow_gesture("A_Crossbow_Idle", IDLE, idle_keys(STAND, CROSSBOW_REST, None),
+                                 {"steady_spine": 1.0})
+CROSSBOW_WALK = crossbow_gesture("A_Crossbow_Walk", UNARMED_WALK, walk_keys(STAND, CROSSBOW_REST, None),
+                                 {"steady_chest": 0.5})
+PROPOSED.update({"crossbow_idle": CROSSBOW_IDLE, "crossbow_walk": CROSSBOW_WALK})
