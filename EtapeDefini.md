@@ -30,11 +30,11 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D484 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D485 (§ 22)
 
 ### Moteur
 - Moteur Hazelight 5.8.4 avec cible Server : compilation depuis `C:/UE/Src/HZ`, puis remplacer `C:/UE/UE_5.8_AS_3` en entier et recompiler le projet de zéro (serveur compris) *(D483)*
-- Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; à trancher au premier fichier : tests et scripts précompilés)*
+- Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; tests en script et cache précompilé dans le paquet : D484 ; `AngelscriptInProgress.md`)*
 
 ### Questions techniques ouvertes
 *(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
@@ -62,6 +62,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Chantiers en cours
 - `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q4 (modèle technique) à trancher
+- `AngelscriptInProgress.md` : préparation d'Angelscript (D483, D484), rien codé ; servira au premier fichier en script
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
 - `LauncherInProgress.md` : lanceur, plan L0 à L10, rien codé
