@@ -1874,8 +1874,8 @@ if ($NetListening) {
         # landed by now (client 1 signals its end once they have).
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
-        # then signals; client 1 gives up (hol.Victory.Surrender, the server's ServerSurrender), its banner Defeat; client 2's
-        # banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
+        # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
+        # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
         # Client 1 waits for client 2's last report before quitting.
         if ($Parts -contains "victory") {
             $VictoryReady = Join-Path $TestSaved "quick_net_victory_ready.flag"
@@ -4598,7 +4598,8 @@ if ($Parts -contains "net") {
         $OnTree = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place LumberCamp at \(-?\d+, -?\d+\): (.*)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): $($_.Matches[0].Groups[2].Value)" } | Sort-Object)
         $Checks["server: each camp on a tree refused ($($OnTree -join '; '))"] = (@($OnTree | ForEach-Object { $_.Substring(0, 1) }) -join ',') -eq "0,1"
     }
-    # The end of the match (V1.4c, D356-D358), the net part's last: client 1 gave up; the server defeats its slot,
+    # The end of the match (V1.4c, D356-D358), the net part's last: client 1's King died (V5.5a; the surrender over the
+    # network is checked by the "lobby" part); the server defeats its slot,
     # collapses it and ends the match, client 2's slot the winner; the banners Defeat on client 1, Victory on client 2
     # (the game state's replication and OnRep); client 2 sees client 1's units go (none left 5 s after its banner).
     if ($Parts -contains "victory") {

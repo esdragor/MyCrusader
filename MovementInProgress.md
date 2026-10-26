@@ -1082,7 +1082,7 @@ Reste :
 1. ~~Mesures S1-S5 au repos~~ **faites** : `rest_measures_1024_0859` sur `main` 018c3a2 (qui contient e28b00b),
    chiffres reportés au § 16.6 le 2026-10-25 (S1, S2, S7 PASS ; S3 / S4 au-dessus de 6 ms à cause des valeurs des
    unités, réglés par l'optimisation de J7c.4 ; S5 sous le seuil de D450).
-2. (aléa, EtapeDefini) « build site » rouge quand `build` suit `move,bodies` (plafond de population +20).
+2. ~~(aléa, EtapeDefini) « build site » rouge quand `build` suit `move,bodies` (plafond de population +20).~~ **fait** (`fb462ff`).
 Règles : test rouge d'abord (mémoire `red-test-first`) ; boucles de 15 min **avec minuteur lancé dans le même message
 que le sous-agent** ; chemins absolus dans les énoncés ; rien de commité avant l'essai.
 - (2026-10-23, session EtapeDefini) **Retour d'essai de l'utilisateur**, noté pour ce chantier : quand il sélectionne
@@ -1093,3 +1093,5 @@ que le sous-agent** ; chemins absolus dans les énoncés ; rien de commité avan
   S2 2,923 ms, S7 2,090 ms : PASS ; S3 6,553 et S4 6,603 ms : FAIL, à cause des valeurs des unités (A/B de J7c.4),
   ramenés à 5,622 et 5,887 ms par l'optimisation du combat (a37995c) ; S5 32 247 o/s : sous le seuil de D450
   (34 000). Chantier clos ; seul reste l'aléa « build site ».
+- (2026-10-26) **Aléa « build site » clos** : déjà corrigé le 2026-10-25 (`fb462ff`, section H d'`EtapeDefiniInProgress.md` :
+  la partie `bodies` détruit ses deux maisons à la fin). **Chantier entièrement clos.**

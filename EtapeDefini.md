@@ -49,7 +49,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
-- `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 

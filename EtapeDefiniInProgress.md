@@ -512,3 +512,62 @@ commités** (4 fichiers ci-dessus + ce fichier) ; `IN_USE.txt` posé.
    refus… » d'`EtapeDefini.md` dans le même commit, fusionner dans `main`, libérer Arwen (`IN_USE.txt`), clore I ici.
 
 **Clos le 2026-10-25** : essai `regicide` validé par l'utilisateur (temps 3 et 4 conformes), commité et fusionné dans `main`. Vu pendant l'essai, noté dans `EtapeDefini.md` (« Retours d'essai ») : des unités qui attaquent un bâtiment s'empilent au même point.
+
+## K — L'abandon en réseau (`ServerSurrender`) contrôlé par `quick_check`
+
+Ligne d'`EtapeDefini.md` (« Aléas et petits restes ») : « `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est
+plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo ». Prise le 2026-10-26
+(l'utilisateur bientôt absent ; moteur Hazelight en compilation : rien en C++). Arwen, branche `net-surrender-check` =
+`main` 24c7ce5, `IN_USE.txt` posé.
+
+- **Constat** : la partie `lobby` de `quick_check` (`lobby_match.ps1`, R5.4) joue déjà l'abandon en réseau : Bob fait
+  `hol.Victory.Surrender`, donc `RequestSurrender` → RPC `ServerSurrender` vers le serveur dédié (cuit) ; elle ne
+  contrôlait que les bandeaux (Alice Victory, Bob Defeat), pas la raison de la défaite côté serveur. Pas besoin d'une
+  seconde partie à 2 clients dans `net`.
+- **Correctif** (scripts seuls) : `lobby_match.ps1`, après « Bob holds slot 1 », trois contrôles du journal du serveur :
+  aucun « Victory: surrender of slot … refused », « Victory: slot 1 defeated (Surrender) », « Victory: match over,
+  winners 0 ». `quick_check.ps1` : les deux commentaires de la fin de la partie `net` qui parlaient encore de l'abandon
+  de client 1 renvoient à la partie `lobby`.
+- **Rouge** rejoué hors jeu sur le journal d'une vraie partie `lobby` (Glorfindel, `M20261026-094645-1\server.log`) :
+  sans la ligne d'abandon → FAIL « no 'Victory: slot 1 defeated (Surrender)' » ; avec un refus ajouté → FAIL « refused » ;
+  sans la fin de partie → FAIL « no 'match over, winners 0' » ; journal tel quel → PASS.
+- Vert en vrai : compilation d'Arwen (`main` a L13b en plus de son ancien état), `build_manager.ps1`, puis
+  `quick_check -Parts lobby` (lancé en fond).
+- 1er passage : compilation **FAIL** (216 s, erreurs C2440 dans les `.gen.cpp`) : `C:/UE/UE_5.8_AS_3` est déjà le moteur
+  Hazelight 5.8.4 depuis le 2026-10-26 10 h 37 (D483) et l'`Intermediate` d'Arwen venait de l'ancien. 2e passage : Arwen
+  recompilée de zéro (`Intermediate` et `Binaries` effacés), puis la partie `lobby` avec le serveur cuit d'Arwen du
+  2026-10-25 (ancien moteur ; la cible Server du nouveau se compile dans `C:/UE/Src/HZ`). Si les clients 5.8.4 refusent
+  ce serveur : attendre la cible Server, `net_match.ps1 -Stage`, relancer.
+- 2e passage : compilation de zéro PASS (365 s), gestionnaire PASS ; le vieux serveur cuit accepte les clients 5.8.4.
+  `-Parts lobby` **FAIL** (468 s) « Alice : no lobby end banner », mais pas à cause de l'abandon : le journal du serveur
+  a bien « Victory: slot 1 defeated (Surrender) » puis « match over, winners 0 » (nos contrôles passeraient). **Cause** :
+  Alice attend son bandeau par un `waitlog` (60 s au plus, fixé dans `HOLTestSequence.cpp`) dès sa capture en partie,
+  alors que Bob n'abandonne qu'après l'arrivée de Carol (`waitfile … 180`) ; machine chargée (compilation du moteur et
+  d'un autre projet), Carol est arrivée tard : Alice a expiré à 11:34:19 (UTC), Bob a abandonné à 11:34:34. Défaut du
+  test, antérieur à K. **Correctif** (script seul) : Bob fait `signal bob_gives_up.signal` juste avant
+  `hol.Victory.Surrender`, Alice fait `waitfile … 240` avant son `waitlog End banner: lobby match` (un `waitfile` ne
+  déplace pas le point de départ de la recherche des `waitlog` : le bandeau est trouvé même arrivé pendant l'attente).
+  3e passage : **FAIL avant toute partie** (« game launch ended by itself », « no lobby created by Alice ») : au
+  démarrage, le jeu lance UnrealBuildTool (`-Mode=QueryTargets` / `ValidatePlatforms`), bloqué derrière les compilations
+  de ProjectShiva (même moteur, 12 h 24 et 12 h 29) et d'Elrond ; processeur à 100 %. Environnement, pas le test.
+  4e passage : attente qu'aucun UnrealBuildTool ne tourne (45 min au plus) : arrêtée sans test à 13 h 32, le filtre
+  comptait aussi ProjectShiva sur `UE_5.8_AS_2` (autre moteur, ne bloque pas). 5e passage (13 h 33) : filtre limité à
+  `UE_5.8_AS_3`, puis `-Parts lobby` (`scratchpadrwen_lobby_run5.txt` de la session 16edf49a).
+- 5e passage : **Alice et Bob verts** (le correctif du signal tient) ; FAIL plus loin, « Carol : « Quitter vers la liste »
+  not pressed » : Carol attend `dave_done.signal` (150 s) et Dave, lancé à 13 h 36, est resté bloqué au démarrage sur
+  UnrealBuildTool (`-Mode=ValidatePlatforms`) pendant une compilation d'Elrond (13 h 35 min 57 s). Environnement encore.
+  6e passage : jusqu'à 3 essais, chacun après 30 s sans UnrealBuildTool d'`UE_5.8_AS_3` ; nouvel essai seulement si un
+  jeu n'a jamais commencé sa séquence (`scratchpadrwen_lobby_run6.txt`).
+- **Vert** : 6e passage, 1er essai (13 h 41) : `quick_check -Parts lobby` **PASS en 250 s** (Alice, Bob, Carol, Dave,
+  contrôles du serveur dont l'abandon de Bob).
+- Au passage : `MovementInProgress.md` disait encore « seul reste l'aléa « build site » » ; il était corrigé depuis H
+  (`fb462ff`) : noté clos (même commit).
+
+### Reprise exacte (K)
+
+1. [x] Contrôles ajoutés, rouge hors jeu.
+2. [x] `quick_check -Parts lobby` PASS dans Arwen (2026-10-26 13 h 45, 250 s).
+3. [x] Accord de l'utilisateur, puis commit en anglais sur `net-surrender-check` (sans Co-Authored-By) avec la ligne
+   « `quick_check` : l'abandon en réseau… » retirée d'`EtapeDefini.md`, fusion dans `main`, Arwen libérée.
+
+**Clos le 2026-10-26** : accord de l'utilisateur (« go »), commité sur `net-surrender-check` et fusionné dans `main` ; Arwen libérée.
