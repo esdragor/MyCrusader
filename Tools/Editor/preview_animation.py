@@ -23,6 +23,9 @@ Run:
       (every gesture: <name>_contact_sheet.png (12 frames) and <name>_zoom.png (6 frames, zoom 2), plus the
       comparisons A_Peasant_Carry_comparaison.png and A_Peasant_IdleCarry_comparaison.png)
   add --light to any of them to draw the light props (peasant_props.build_props(light=True), the mesh's last LOD).
+  add --mesh M (or M1,M2,... with --compare, one per gesture) to show a soldier mesh's pieces
+      (soldier_props.SOLDIER_MESHES) instead of the gesture's "props", e.g. the Hero with the Man-at-arms' gestures;
+      with --compare, --scales s1,s2,... draws each column at that MeshScale relative to 1.5 (the game's sizes).
 (default output: Saved/AnimPreview/<gesture>_contact_sheet.png, outside git).
 The skeleton, the source walk or idle and the body come from Tools/Editor/Data/, written by
 make_peasant_animations.py.
@@ -318,8 +321,9 @@ def clearance(shared, prop, world, points, free=()):
     return count, deepest
 
 
-def prepare(shared, gesture_name):
-    """Everything a cell of this gesture needs: solved frames, hit, scenery, props; and the checks."""
+def prepare(shared, gesture_name, mesh=None):
+    """Everything a cell of this gesture needs: solved frames, hit, scenery, props; and the checks. `mesh`: show that
+    soldier mesh's pieces instead of the gesture's props."""
     sk = shared.sk
     gesture = ALL_GESTURES[gesture_name]
     rig = anim_rig.Rig(sk, gesture, anim_rig.load_base(gesture, DATA_DIR))
@@ -330,7 +334,8 @@ def prepare(shared, gesture_name):
            "reach": max(max(rig.grip_errors(world, extra).values()) for world, (_, extra) in zip(worlds, poses)),
            "has_tool": rig.has_tool, "scene": gesture.get("scene", {"kind": "trunk" if rig.has_tool else "none"}),
            "hit": None, "summary": "", "scenery": [],
-           "props": [shared.props[name] for name in gesture.get("props", ())], "checks": []}
+           "props": [shared.props[name] for name in (soldier_props.SOLDIER_MESHES[mesh] if mesh
+                                                     else gesture.get("props", ()))], "checks": []}
     traces, scene = ctx["traces"], ctx["scene"]
     if ctx["has_tool"]:
         hit = rig.strike()[0]
@@ -502,10 +507,10 @@ def report(ctx):
     return "\n    ".join(lines + ctx["checks"])
 
 
-def render(shared, gesture_name, frames, out_path, zoom=1.0, ctx=None, picks=None):
+def render(shared, gesture_name, frames, out_path, zoom=1.0, ctx=None, picks=None, mesh=None):
     set_zoom(zoom)
     sk = shared.sk
-    ctx = ctx or prepare(shared, gesture_name)
+    ctx = ctx or prepare(shared, gesture_name, mesh)
     rig = ctx["rig"]
     picks = picks or [int(round(i * (len(rig.times) - 1) / frames)) for i in range(frames)]
     frames = len(picks)
@@ -521,17 +526,23 @@ def render(shared, gesture_name, frames, out_path, zoom=1.0, ctx=None, picks=Non
     return ctx
 
 
-def compare(shared, gesture_names, fraction, out_path, zoom=1.0, contexts=None):
-    """Several gestures side by side at the same point of their loops (`fraction` of the loop, 0-1)."""
+def compare(shared, gesture_names, fraction, out_path, zoom=1.0, contexts=None, meshes=None, scales=None):
+    """Several gestures side by side at the same point of their loops (`fraction` of the loop, 0-1); `meshes`: one
+    soldier mesh (or None) per gesture; `scales`: one MeshScale per gesture (drawn relative to 1.5)."""
+    global PX_PER_CM
     set_zoom(zoom)
     sk = shared.sk
-    contexts = contexts or [prepare(shared, name) for name in gesture_names]
+    meshes = meshes or [None] * len(gesture_names)
+    contexts = contexts or [prepare(shared, name, mesh) for name, mesh in zip(gesture_names, meshes)]
     canvas = Canvas(CELL_W * len(contexts), (CELL_H + LABEL_H) * 3)
+    base = PX_PER_CM
     for row, view in enumerate(views(sk)):
         oy = row * (CELL_H + LABEL_H)
         for col, ctx in enumerate(contexts):
             frame = int(round(fraction * (len(ctx["rig"].times) - 1)))
+            PX_PER_CM = base * (scales[col] / 1.5 if scales else 1.0)
             draw_cell(canvas, shared, ctx, frame, col * CELL_W, oy, view, "%.2fs" % ctx["rig"].times[frame])
+            PX_PER_CM = base
         for col in range(1, len(contexts)):
             canvas.line((col * CELL_W, oy), (col * CELL_W, oy + CELL_H + LABEL_H - 1), (210, 210, 205), 0.4)
     canvas.save(out_path)
@@ -567,6 +578,8 @@ def main():
     together = None
     picks = None
     fraction = 0.25
+    meshes = None
+    scales = None
     i = 0
     light = "--light" in args
     args = [a for a in args if a != "--light"]
@@ -593,6 +606,12 @@ def main():
         elif args[i] == "--at":
             fraction = float(args[i + 1])
             i += 1
+        elif args[i] == "--mesh":
+            meshes = args[i + 1].split(",")
+            i += 1
+        elif args[i] == "--scales":
+            scales = [float(v) for v in args[i + 1].split(",")]
+            i += 1
         else:
             gesture = args[i]
         i += 1
@@ -601,9 +620,9 @@ def main():
         name = "_".join(together) + "_compare" if together else gesture + "_contact_sheet"
         out = os.path.join(OUT_DIR, name + ".png")
     if together:
-        compare(shared, together, fraction, out, zoom)
+        compare(shared, together, fraction, out, zoom, meshes=meshes, scales=scales)
     else:
-        ctx = render(shared, gesture, frames, out, zoom, picks=picks)
+        ctx = render(shared, gesture, frames, out, zoom, picks=picks, mesh=meshes[0] if meshes else None)
         print("  " + report(ctx))
 
 

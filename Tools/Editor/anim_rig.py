@@ -34,6 +34,10 @@ Gesture description (one dict, see peasant_poses.py):
   "hands_frame"   "chest": free hands' positions follow the chest (bob, sway) instead of staying fixed in the mesh;
                   a tool's grip follows it too (position only: the tool keeps its keyed direction, J7a.3).
   "scene"   preview only: what the gesture works on ("trunk", "rock", "bush", "beam").
+  "extra_bones"  optional {bone: track} (J8a.0b, the hero's cape): bones the rig does not solve, keyed from a track,
+            a function track(skeleton, times, worlds, rig) -> one component-space (translation, rotation) per frame
+            of rig.times, given the solved body of every frame (worlds from Skeleton.fk); computed once, then written
+            into every pose (interpolated between frames). A gesture without it is solved exactly as before.
   "preview" preview only: {"frames": N, "zoom_picks": [frame indices]} of the sheets made by --all.
   "props"   preview only: names of the props of peasant_props.py drawn on their bones (what the mesh will show).
 Key (one dict per key):
@@ -374,6 +378,7 @@ class Rig:
         self.has_tool = any("tool" in key or "axe" in key for key in keys)
         self.release = gesture.get("release")
         self._strike = None
+        self._extra = None  # extra bones' frames (computed on the first pose), False while being computed
         if base is not None:
             # The source animation sets the length and the frames; the key times are stretched onto it.
             self.length = base["length"]
@@ -712,7 +717,27 @@ class Rig:
             i = sk.index[TOOL_BONE]
             parent = sk.ref_world[sk.parent[i]]  # ik_hand_root: never keyed, its reference is its pose
             local[i] = (qrot(qconj(parent[1]), sub(frame[0], parent[0])), qnormalize(qmul(qconj(parent[1]), frame[1])))
+        if self.g.get("extra_bones") and self._extra is not False:
+            self._write_extra(local, t)
         return local, axe
+
+    def _write_extra(self, local, t):
+        """Writes the "extra_bones" tracks into a pose (component-space frames turned into locals)."""
+        sk = self.sk
+        if self._extra is None:
+            self._extra = False  # the body alone while the tracks read it
+            worlds = [sk.fk(self.pose(u)[0]) for u in self.times]
+            self._extra = {bone: track(sk, self.times, worlds, self) for bone, track in self.g["extra_bones"].items()}
+        times = self.times
+        k = max(0, min(len(times) - 2, next((j for j in range(len(times) - 1) if t < times[j + 1]), len(times) - 2)))
+        s = max(0.0, min(1.0, (t - times[k]) / (times[k + 1] - times[k])))
+        world = sk.fk(local)
+        for bone, frames in self._extra.items():
+            i = sk.index[bone]
+            (ta, qa), (tb, qb) = frames[k], frames[k + 1]
+            ft, fq = lerp(ta, tb, s), qslerp(qa, qb, s)
+            pt, pq = world[sk.parent[i]]
+            local[i] = (qrot(qconj(pq), sub(ft, pt)), qnormalize(qmul(qconj(pq), fq)))
 
     def strike(self):
         """(hit frame index, striking edge in the right hand's frame) of a tool gesture: the hit is the frame where

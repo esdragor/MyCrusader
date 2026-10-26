@@ -1223,7 +1223,7 @@ Ouvertes le 2026-10-26 (pendant la recompilation du moteur : rien à compiler). 
 |---|---|---|
 | J8a-Q1 | **Chiffres** du Paladin-Commandant au niveau 1 (combat, vitesse, bâtiments). | **tranché** : le capitaine solide |
 | J8a-Q2 | **Apparition** : quand, où, population. | **tranché** : dès la première seconde, près du forum, hors population |
-| J8a-Q3 | **Allure provisoire** (lisible à la hauteur de jeu, comme la couronne du Roi). | **tranché** : grand Homme d'armes, cape et étendard de l'Aube |
+| J8a-Q3 | **Allure provisoire** (lisible à la hauteur de jeu, comme la couronne du Roi). | **tranché, révisée** : grand paladin (tabard au soleil, épaulières dorées, pèlerine, heaume à cimier), sans étendard |
 | J8a-Q4 | **Contrôle** : touche de sélection, comportement (agressivité, riposte), bloc du héros (D201). | **tranché** : comme un soldat ; F4 (D30) ; bloc du héros |
 | J8a-Q5 | **Mort et retour** au niveau 1 : délai, prix de base et baisse, lieu (D25, D397). | **tranché** : 38 s, puis 150 or qui baissent à 0 en 60 s |
 | J8a-Q6 | **Découpage** de J8a en sous-étapes et vérification. | **tranché** : J8a.0 à J8a.6, un essai à la fin, J8a.0 tout de suite |
@@ -1256,6 +1256,14 @@ conforme à la recommandation ; provisoire, en attendant un vrai modèle).
   Python sans le moteur (aperçus PNG). **Rayon du corps 0,72 m** (suit l'échelle, au lieu de 0,6).
 - Écartés : **soleil d'or flottant** (deux signes flottants presque pareils en Régicide, pas de démarcation dans la
   mêlée) ; **disque doré au sol** (confondu avec la sélection et la future aura, décalque à créer).
+- **Révisée le 2026-10-26 après les aperçus de J8a.0 et J8a.0b** (choix de l'utilisateur) : **pas d'étendard** ; la cape
+  longue (rigide sur `spine_03`, puis animée sur `ik_foot_l`) sortait en planche dans la frappe de l'Homme d'armes et
+  se voyait peu de la caméra RTS → **« comme un paladin »**, kit A : **tabard blanc au soleil d'or** devant et dans le
+  dos, bordé d'or, jusqu'à la ceinture ; **grandes épaulières dorées** arrondies ; **courte pèlerine blanche** collée au
+  haut du dos ; **heaume fermé à cimier soleil doré** ; épée longue et bouclier au soleil gardés ; bras et jambes à la
+  couleur du joueur ; échelle ×1,2. Pièces collées au corps, **gestes de l'Homme d'armes tels quels** (pas de gestes
+  propres au héros). Écartés : cape en deux morceaux pliée au rein, pas de cape, tête nue, auréole flottante (rappelle
+  la couronne du Roi).
 
 **Tranché — J8a-Q4 Comme un soldat** (2026-10-26, A, choix de l'utilisateur, conforme à la recommandation).
 - **Comportement** : rayon d'agressivité 4 cases (J8a-Q1), riposte, aide aux alliés proches ; attaque-déplacement,
@@ -1280,7 +1288,7 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 
 | Sous-étape | Contenu | Moteur | État |
 |---|---|---|---|
-| J8a.0 Pièces | Cape blanche, étendard blanc et or, bouclier au soleil, épée longue (`soldier_props.py` seul : la session de l'Arbalétrier tient `soldier_poses.py`) ; `SKM_Hero` dans `SOLDIER_MESHES` ; aperçus PNG validés par l'utilisateur | non | à faire |
+| J8a.0 Pièces | Kit du paladin (J8a-Q3 révisée) : épée longue, bouclier au soleil, tabard, pèlerine, épaulières dorées, heaume à cimier soleil ; `SKM_Hero` dans `SOLDIER_MESHES` ; gestes de l'Homme d'armes ; aperçus PNG validés par l'utilisateur | non | **fait** (2026-10-26, validé ; J8a.0 étendard et cape, J8a.0b cape animée abandonnés) |
 | J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | — |
 | J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | — |
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
@@ -7254,3 +7262,80 @@ d'épée).
   forum ou à la ruine. Suivant : J8a-Q6 (découpage).
 - (J8a, 2026-10-26) **J8a-Q6 tranchée** (A) : J8a.0 à J8a.6, un essai à la fin. **Questions de J8a closes.** Suivant :
   **J8a.0** (pièces en Python, sans moteur) ; J8a.1 et suivantes après la recompilation du moteur.
+- (J8a, 2026-10-26) **J8a.0 proposé, aperçus à valider** (Python seul, rien commité) : dans `soldier_props.py`,
+  `longsword` (112 cm, garde et pommeau d'or, même prise que l'épée), `sun_shield` (bouclier de l'Homme d'armes, soleil
+  d'or : disque et 8 rayons sur la couleur du joueur), `cape` (blanche, rigide, sur `spine_03`, des omoplates à 74 cm,
+  penchée en arrière, ourlet et col d'or) et `banner` (hampe sur `spine_03` derrière la cape, drapeau blanc 34 × 50 cm
+  au soleil d'or sous une traverse d'or, sommet à 59 cm au-dessus de la tête dans le maillage, ~1,05 m en jeu à 1,8) ;
+  `SKM_Hero` = ces quatre pièces dans `SOLDIER_MESHES`. Mesures sur `maa_idle`, `maa_walk`, `maa_attack` : épée longue
+  et bouclier n'entrent jamais dans la cape ni la hampe ; hampe sans aucun point du corps ; cape : col posé sur le dos
+  (0,6 cm), bras droit armé 0,5 cm au plus (haut de la cape réduit à 28 cm de large pour ça). `preview_animation.py` :
+  options `--mesh` (pièces d'un maillage à la place de celles du geste) et `--scales` (comparaison à l'échelle de jeu) ;
+  sorties existantes identiques octet pour octet. Aperçus : `Saved/AnimPreview/Hero_idle_contact_sheet.png`,
+  `Hero_walk_contact_sheet.png`, `Hero_attack_contact_sheet.png`, `Hero_attack_zoom.png`, `Hero_idle_light.png`,
+  `Hero_comparaison_repos.png` et `Hero_comparaison_marche.png` (Homme d'armes, Roi, héros à 1,5 / 1,5 / 1,8).
+  **Défaut à trancher** : dans la frappe, le buste se penche et tourne fort, la cape rigide et l'étendard le suivent
+  (la cape s'écarte derrière, l'étendard penche au-dessus de la tête vers 0,7-0,9 s) ; pistes : les garder ainsi
+  (sashimono réaliste), lier la cape au bassin, ou la raccourcir. Reste : validation de l'utilisateur, puis J8a.1.
+- (J8a, 2026-10-26) **J8a.0b proposé, aperçus à valider** (Python seul, rien commité) : **étendard retiré**, choix de
+  l'utilisateur du 2026-10-26 ; la silhouette se distingue par la taille ×1,2 et la cape blanche (`banner` supprimée de
+  `build_props` et de `SKM_Hero` = `longsword`, `sun_shield`, `cape`). **La cape devient une partie de l'animation** :
+  pièce skinnée à 100 % sur `ik_foot_l` (`CAPE_BONE`, os ik sans sommet du corps ; repère « bone », local identité :
+  origine au haut de la face intérieure, X le long de la cape, Z vers l'arrière), 78 cm. `anim_rig` : clé générique
+  `extra_bones` {os: piste} (fonction calculée une fois sur le corps résolu de chaque image, écrite dans chaque pose) ;
+  un geste sans elle est résolu comme avant. `soldier_poses` : `hero_idle`, `hero_walk`, `hero_attack`, `hero_fall`
+  (`A_Hero_*`, dans `PROPOSED`) = gestes de l'Homme d'armes + pièces de `SKM_Hero` + piste `cape_track` : charnière aux
+  omoplates portée par `spine_03` (tourne avec le buste), ressort-amortisseur hors ligne (pendule de 2/3 de la longueur,
+  amortissement 0,5) vers la direction de la pesanteur moins la moitié de l'accélération de la charnière, plus la traînée
+  de l'air (marche : 168 cm/s) ; bornes : jamais devant un point du corps ni de l'épée ou du bouclier (1 cm), 80° au plus
+  derrière le buste, jamais sous le sol ; boucles : plusieurs cycles simulés, le dernier gardé et refermé. Mesures (angle
+  cape/buste ; corps et armes dans la cape hors col < 6 cm ; pas max de la cape entre deux images ; jonction ; bas de la
+  cape à l'aplomb de la charnière, avant = cape rigide de J8a.0) : attaque 9,7-16,6°, 0,69 cm, 2,2° (3,0 cm au bas),
+  0,000, **40,9 cm / 32° (avant 35,1 cm / 26°)** ; marche 13,5-17,3°, 0,69 cm, 0,7°, 0,000, 21,4 cm / 16° (avant
+  13,1 / 10°) ; repos 9,7-13,4°, 0,66 cm, 0,26°, 0,000, 14,8 cm / 11° (avant 12,7 / 9°) ; chute : 0,69 cm, 3,6°, plus
+  bas point de la cape à 31 cm du sol. **Limite** : la « planche » n'a pas disparu dans la frappe. Une cape rigide
+  repose sur le dos (borne à 9° du buste, la pente du dos) : quand il se penche, elle sort autant qu'avant ; et vers
+  0,7-0,9 s le buste tourne, la cape tourne avec les épaules et paraît large de profil. Pistes : une cape en **deux
+  morceaux** (haut sur `ik_foot_l`, bas sur `ik_foot_r`, qui se plie au rein), ou plus courte, ou une charnière plus
+  basse. Aperçus : `Saved/AnimPreview/Hero_attack_contact_sheet.png`, `Hero_attack_zoom.png`,
+  `Hero_walk_contact_sheet.png`, `Hero_idle_contact_sheet.png`, `Hero_idle_light.png`, `Hero_fall_contact_sheet.png`,
+  `Hero_comparaison_repos.png`, `Hero_comparaison_marche.png` (sans étendard), `hero_attack.gif`, `hero_walk.gif`.
+  Existant identique : planches et rapports de `maa_idle`, `maa_walk`, `maa_attack`, `maa_fall`, `crossbow_attack`,
+  `archer_attack`, `spear_attack`, pièces (sauf `cape`, `banner` retirée), `SOLDIER_MESHES` et `GESTURES` / `PROPOSED`
+  identiques octet pour octet (`cmp`). **À faire en J8a.2** : le fabricant (`make_peasant_animations.py`) doit écrire
+  les os `extra_bones` (`ik_foot_l`) des gestes du héros, et `make_peasant_mesh.py` skinner la cape sur cet os ;
+  `SKM_Hero` ne doit jouer que les gestes `A_Hero_*` (sans clé, la cape irait au pied gauche). Reste : validation de
+  l'utilisateur (dont la piste pour la frappe), puis J8a.1.
+- (J8a, 2026-10-26) **J8a.0c proposé, aperçus à valider** (Python seul, rien commité) : **le héros devient « comme un
+  paladin »** (J8a-Q3 révisée, kit A) ; la cape de J8a.0 / J8a.0b est abandonnée. **Retour sur J8a.0b** :
+  `soldier_poses.py` rendu à `main` (son diff ne contenait que `cape_track` et `hero_*`), pièce `cape` retirée de
+  `soldier_props.py` ; `anim_rig.extra_bones` gardée (générique, sans effet sans la clé). Le héros joue **les gestes
+  de l'Homme d'armes tels quels** (`maa_*`) : plus de gestes `A_Hero_*`, plus d'os à écrire au fabricant. **Pièces**
+  (`soldier_props.py`, toutes en repère « body » ancré à l'origine du corps, 100 % sur un os) : `tabard` (id 1,
+  `spine_02`) panneaux blancs devant et derrière, de la ceinture (104-106 cm) au col, ~0,7 cm de la peau, bordés d'or,
+  soleil d'or sur la poitrine et dans le dos ; `mantle` (id 4, `spine_03`) courte pèlerine blanche du milieu du dos
+  au trapèze, bordée d'or ; `pauldron_l` / `pauldron_r` (ids 5, 6, `clavicle_*`) grands dômes dorés au-dessus de
+  l'épaule (vers l'extérieur et le haut), lèvre plus sombre ; `helm` (id 7, `head`) heaume fermé acier, fente des yeux,
+  croix et bande d'or, cimier soleil d'or (sommet ~207 cm dans le maillage) ; `SKM_Hero` = `longsword`, `sun_shield`
+  + ces cinq pièces. **Mesures** (tous les points du corps, toutes les images ; profondeur dans la pièce) : marche :
+  rien nulle part hors heaume ; repos : tabard 31 points à 0,50 cm (haut du buste, `spine_03`), heaume 89 points à
+  1,64 cm (haut du dos `spine_03` sous la bande d'or) ; attaque : tabard bras/main gauche 0,50 cm et bassin 0,50 cm
+  (0,69 s), pèlerine 0,31 cm (bras droit), **épaulière droite : avant-bras droit jusqu'à 2,4 cm et épée longue 2,36 cm
+  (0,62-0,65 s, le coude passe sous le dôme)**, heaume 2,12 cm (`spine_03`, 0,82 s) ; chute : tabard 0,50 cm (main
+  gauche, `spine_01`, cuisse droite 0,49 cm à 0,37 s), bouclier dans l'épaulière gauche 1,30 cm (0,23 s), heaume
+  2,92 cm (0,87 s). **Tabard contre les cuisses** : rien à la marche ni à la frappe (6 points à 0,49 cm dans la chute
+  seulement). 0,50 cm = la moitié de l'épaisseur du panneau (1 cm) : le tissu affleure, il ne laisse rien passer de
+  loin. Épaule et clavicule dans leur épaulière, tête et cou dans le heaume : voulus (non comptés). **Aperçus** :
+  `Saved/AnimPreview/Hero_attack_contact_sheet.png`, `Hero_walk_contact_sheet.png`, `Hero_idle_contact_sheet.png`,
+  `Hero_fall_contact_sheet.png`, `Hero_comparaison_repos.png` (Homme d'armes, Roi, héros à 1,5 / 1,5 / 1,8) ; anciens
+  `Hero_attack_zoom.png`, `Hero_idle_light.png`, `Hero_comparaison_marche.png`, `hero_attack.gif`, `hero_walk.gif`
+  supprimés (non refaits). **Existant identique** octet pour octet (`cmp`) : planches et rapports de `maa_idle`,
+  `maa_walk`, `maa_attack`, `maa_fall`, `crossbow_attack`, `archer_attack`, `spear_attack`, pièces et maillages autres
+  que ceux du héros. **Restes** : validation de l'utilisateur ; pistes si besoin : épaulière droite plus petite ou plus
+  haute (l'avant-bras et l'épée la traversent dans l'armé), bande du heaume plus étroite derrière (haut du dos) ; GIF
+  non refait ; puis J8a.1.
+- (J8a, 2026-10-26) **J8a.0 validée** par l'utilisateur (« go », aperçus de J8a.0c) ; restes acceptés : avant-bras et épée
+  ~2,4 cm dans l'épaulière droite à l'armé (0,62-0,65 s), bas du heaume 1,6-2,9 cm dans le haut du dos. `extra_bones`
+  (`anim_rig.py`) gardé, inutilisé : prêt pour une pièce animée d'un vrai modèle. Les trois boucles de J8a.0 ont dépassé
+  15 min (31, 18, 21) : pièces, aperçus et mesures dans la même boucle ; la suite découpe plus fin. Commitée. **Suite :
+  J8a.1 après la recompilation du moteur.**
