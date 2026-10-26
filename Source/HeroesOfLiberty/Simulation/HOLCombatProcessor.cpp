@@ -48,8 +48,7 @@ namespace UE::HeroesOfLiberty::Combat
 	/** J7c.4, loop 18: an attacker of the enemy takes a place up to its weapon's reach and this margin (cm), at most MaxPlaceReach. */
 	constexpr double PlaceReachMargin = 20.0;
 	constexpr double MaxPlaceReach = 200.0;
-	/** D345.2b: a unit walking to strike a building aims this far (cm) beyond its radius off the body's box. */
-	constexpr double BuildingApproachGap = 40.0;
+	constexpr double BuildingApproachGap = HOLCombat::BuildingApproachGap;
 
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
@@ -362,6 +361,41 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 		}
 	}
 	return Count;
+}
+
+bool UHOLCombatProcessor::ShiftBuildingPlaces(const int32 Index, const FVector2D& Position, const FStepBuilding& Step)
+{
+	FHOLCombatFragment& Combat = *Fighters[Index].Combat;
+	ChainPlaces.Reset();
+	ChainFighters.Reset();
+	for (int32 Other = 0; Other < Fighters.Num(); ++Other)
+	{
+		const FFighter& Friend = Fighters[Other];
+		if (Other != Index && Friend.Camp == Fighters[Index].Camp && Friend.State->CurrentHealth > 0 && Friend.Combat->PlaceBuilding.IsValid()
+			&& Friend.Combat->PlaceBuilding == Step.Building)
+		{
+			ChainPlaces.Add(Friend.Combat->BuildingPlace);
+			ChainFighters.Add(Other);
+		}
+	}
+	HOLCombat::GetBuildingPlaceChain(Position, Combat.BuildingPlace, ChainPlaces, Step.VisibleBox, Chain);
+	if (Chain.IsEmpty())
+	{
+		return false;
+	}
+	const FVector2D Last = Combat.BuildingPlace;
+	Combat.BuildingPlace = ChainPlaces[Chain[0]];
+	for (int32 Link = 0; Link < Chain.Num(); ++Link)
+	{
+		FHOLCombatFragment& Moved = *Fighters[ChainFighters[Chain[Link]]].Combat;
+		Moved.BuildingPlace = Link + 1 < Chain.Num() ? ChainPlaces[Chain[Link + 1]] : Last;
+		Moved.PlaceBlockedMs = 0;
+		Moved.PlaceBestDistance = MAX_flt;
+		Moved.bAttacking = false;
+		Moved.bApproaching = false;
+	}
+	UE_LOG(LogHOLSimulation, Verbose, TEXT("Unit %u blocked on its way to its place: %d friends shift one place on"), Fighters[Index].UnitId, Chain.Num());
+	return true;
 }
 
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
@@ -805,6 +839,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		FStepBuilding& Step = StepBuildings.AddDefaulted_GetRef();
 		Step.Building = Building;
 		Step.Box = Building->GetBodyBounds();
+		Step.VisibleBox = Building->GetVisibleBodyBounds();
 		Step.Id = Building->GetUniqueID();
 		Step.OwnerPlayer = Building->GetOwnerPlayer();
 		Step.Camp = CampTable.Get(Step.OwnerPlayer);
@@ -1551,7 +1586,50 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				const bool bHold = Combat.Mode == EHOLCombatMode::Hold;
 				const double Edge = HOLCombat::GetEdgeDistanceToBox(Position, Constants.Radius, Step.Box);
 				const bool bWalkEndedShort = Combat.bApproaching && Fighter.Order->Phase == EHOLMovePhase::None;
-				if (!HOLCombat::IsBuildingInReach(Constants, Edge, Combat.bAttacking, bWalkEndedShort, bHold))
+				// EtapeDefini J loop 3: a melee with a place there strikes only once by its place (not from the 2nd rank after a
+				// blocked walk). Loop 4: BuildingPlaceGiveUpMs without getting nearer its place (whatever its walk does), it forgets
+				// it and walks again at once by the rule before (the wall's nearest point), so it always ends up striking.
+				// Loop 5: on giving up, if already in reach as after a walk ended short (its building reach), it stops and
+				// strikes where it stands (no walk against the wall, between units already on their places).
+				bool bByPlace = Combat.PlaceBuilding.IsValid() && Combat.PlaceBuilding == Step.Building && !HOLCombat::IsBuildingShot(Constants)
+					&& !Combat.bAttacking && !bHold;
+				bool bStrikeWhereItStands = false;
+				if (bByPlace)
+				{
+					const double ToPlace = FVector2D::Distance(Position, Combat.BuildingPlace);
+					if (ToPlace + HOLCombat::BuildingPlaceProgress <= Combat.PlaceBestDistance)
+					{
+						Combat.PlaceBestDistance = float(ToPlace);
+						Combat.PlaceBlockedMs = 0;
+					}
+					else if ((Combat.PlaceBlockedMs += StepMs) >= HOLCombat::BuildingPlaceGiveUpMs && !Combat.bPlaceShifted
+						&& ShiftBuildingPlaces(Index, Position, Step))
+					{
+						// Loop 10: blocked by friends on their places between it and its own, it takes the nearest of theirs and
+						// they each move one place on towards its own (HOLCombat::GetBuildingPlaceChain). Once only: blocked again,
+						// it forgets its place as below.
+						Combat.bPlaceShifted = true;
+						Combat.PlaceBlockedMs = 0;
+						Combat.PlaceBestDistance = MAX_flt;
+						Combat.bApproaching = false;
+					}
+					else if (Combat.PlaceBlockedMs >= HOLCombat::BuildingPlaceGiveUpMs)
+					{
+						// Loop 8: remembered, so that its walk there still aims off the visible wall (below).
+						Combat.PlaceGivenUpBuilding = Combat.PlaceBuilding;
+						Combat.PlaceBuilding.Reset();
+						Combat.PlaceBlockedMs = 0;
+						Combat.PlaceBestDistance = MAX_flt;
+						Combat.bApproaching = false;
+						bByPlace = false;
+						bStrikeWhereItStands = HOLCombat::IsBuildingInReach(Constants, Edge, /*bStriking*/ false, /*bWalkEndedShort*/ true, bHold);
+					}
+				}
+				const bool bInReach = bByPlace
+					? FVector2D::Distance(Position, Combat.BuildingPlace) <= HOLCombat::BuildingPlaceReachRadii * Constants.Radius
+						&& Edge <= Constants.BuildingAttackRange
+					: bStrikeWhereItStands || HOLCombat::IsBuildingInReach(Constants, Edge, Combat.bAttacking, bWalkEndedShort, bHold);
+				if (!bInReach)
 				{
 					Combat.bAttacking = false;
 					HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
@@ -1563,7 +1641,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					// A walk beside its wall: the first, or again at the search rate once the last one ended short.
 					if (!Combat.bApproaching || (bSearchStep && Fighter.Order->Phase == EHOLMovePhase::None))
 					{
-						const FVector2D Point = HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.Box, BuildingApproachGap);
+						// EtapeDefini J: its place given with the order, else the wall's point nearest it. Loop 8: its place forgotten,
+						// the visible wall's point nearest it (off it by its radius and BuildingPlaceVisibleGap), never into the House.
+						const bool bHasPlace = Combat.PlaceBuilding.IsValid() && Combat.PlaceBuilding == Step.Building;
+						const bool bGaveUpPlace = !bHasPlace && Combat.PlaceGivenUpBuilding.IsValid() && Combat.PlaceGivenUpBuilding == Step.Building;
+						const FVector2D Point = bHasPlace ? Combat.BuildingPlace
+							: bGaveUpPlace ? HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.VisibleBox, HOLCombat::BuildingPlaceVisibleGap)
+							: HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.Box, BuildingApproachGap);
 						Commands->IssueCombatWalk(Fighter.UnitId, FVector(Point.X, Point.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
 						Combat.ApproachPoint = Point;
 						Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;

@@ -118,6 +118,8 @@ protected:
 	{
 		AHOLBuilding* Building = nullptr;
 		FBox2D Box = FBox2D(ForceInit);
+		/** EtapeDefini J loop 8: its visible wall's box (AHOLBuilding::GetVisibleBodyBounds): the places and the fallback walk keep out of it. */
+		FBox2D VisibleBox = FBox2D(ForceInit);
 		uint32 Id = 0;
 		uint8 OwnerPlayer = 0;
 		/** Its owner's camp (FHOLCampTable): a building of the fighter's camp is never attacked. */
@@ -127,6 +129,15 @@ protected:
 	TArray<FStepBuilding> StepBuildings;
 	TArray<HOLCombat::FBuildingCandidate> BuildingCandidates;
 	TArray<int32> BuildingCandidateIndices;
+	/**
+	 * EtapeDefini J loop 10: Fighters[Index], at Position, blocked on its way to its place by Step: the living friends of its
+	 * camp with a place there between it and its own (HOLCombat::GetBuildingPlaceChain) each take the next one on, it takes
+	 * the nearest, and they walk again. False (nobody between): nothing changed. O(units) once, on giving up only.
+	 */
+	bool ShiftBuildingPlaces(int32 Index, const FVector2D& Position, const FStepBuilding& Step);
+	TArray<FVector2D> ChainPlaces;
+	TArray<int32> ChainFighters;
+	TArray<int32> Chain;
 	/** The step's entry of a building, INDEX_NONE if it is not one of them (gone, a foundation). */
 	int32 FindStepBuilding(const AHOLBuilding* Building) const;
 

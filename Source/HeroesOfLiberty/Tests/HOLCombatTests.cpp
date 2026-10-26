@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Algo/Reverse.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Engine/DataTable.h"
 #include "Math/RandomStream.h"
@@ -672,6 +673,236 @@ bool FHOLCombatBuildingAttackTest::RunTest(const FString& Parameters)
 	// The approach point: off the nearest side by its radius and the gap.
 	const FVector2D Point = HOLCombat::GetBuildingApproachPoint(FVector2D(1000.0, 200.0), 60.f, Box, 40.0);
 	TestTrue(TEXT("Approach point beside the nearest side"), Point.Equals(FVector2D(500.0, 200.0), 0.01));
+	return true;
+}
+
+// EtapeDefini J: one place per unit of a group ordered to strike a building, off the visible wall by a radius and
+// BuildingPlaceVisibleGap. Loop 11b: at contact, a continuous arc centred in front of the group (corners passed without a
+// hole); loop 12: its places 2.2 radii apart (10 % air); a ring full: evenly round, the rest on a second ring. And the chain of places of GetBuildingPlaceChain.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatBuildingPlacesTest, "HeroesOfLiberty.Combat.BuildingPlaces", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatBuildingPlacesTest::RunTest(const FString& Parameters)
+{
+	// The visible wall's box (GetVisibleBodyBounds), a Man-at-arms' radius, the gap of the game.
+	const FBox2D Box(FVector2D(0.0, 0.0), FVector2D(400.0, 400.0));
+	const float Radius = 60.f;
+	const double Gap = HOLCombat::BuildingPlaceVisibleGap;
+	const double D = Radius + Gap;
+	// Loop 12: the arc's places BuildingPlaceArcRadii (2.2) radii apart: 132 cm for a Man-at-arms.
+	const double ArcStep = HOLCombat::BuildingPlaceArcRadii * Radius;
+	const double Arc = 0.5 * UE_DOUBLE_PI * D;
+	const double Length = 4.0 * 400.0 + 4.0 * Arc;
+	const auto MinPair = [](const TArray<FVector2D>& Places)
+	{
+		double Least = TNumericLimits<double>::Max();
+		for (int32 A = 0; A < Places.Num(); ++A)
+		{
+			for (int32 B = A + 1; B < Places.Num(); ++B)
+			{
+				Least = FMath::Min(Least, FVector2D::Distance(Places[A], Places[B]));
+			}
+		}
+		return Least;
+	};
+	// Where a point of the ring (off Box by Ring) lies along it, from the Min corner along +X, quarter arcs at the corners.
+	const auto RingS = [&Box](const FVector2D& P, const double Ring) -> double
+	{
+		const double W = Box.Max.X - Box.Min.X, H = Box.Max.Y - Box.Min.Y, A = 0.5 * UE_DOUBLE_PI * Ring;
+		const bool bLeft = P.X < Box.Min.X, bRight = P.X > Box.Max.X, bDown = P.Y < Box.Min.Y, bUp = P.Y > Box.Max.Y;
+		if (bRight && bDown)
+		{
+			const FVector2D V = P - FVector2D(Box.Max.X, Box.Min.Y);
+			return W + FMath::Atan2(V.X, -V.Y) * Ring;
+		}
+		if (bRight && bUp)
+		{
+			const FVector2D V = P - Box.Max;
+			return W + A + H + FMath::Atan2(V.Y, V.X) * Ring;
+		}
+		if (bLeft && bUp)
+		{
+			const FVector2D V = P - FVector2D(Box.Min.X, Box.Max.Y);
+			return 2.0 * W + 2.0 * A + H + FMath::Atan2(-V.X, V.Y) * Ring;
+		}
+		if (bLeft && bDown)
+		{
+			const FVector2D V = P - Box.Min;
+			return 2.0 * (W + H) + 3.0 * A + FMath::Atan2(-V.Y, -V.X) * Ring;
+		}
+		if (bDown)
+		{
+			return P.X - Box.Min.X;
+		}
+		if (bRight)
+		{
+			return W + A + (P.Y - Box.Min.Y);
+		}
+		if (bUp)
+		{
+			return W + 2.0 * A + H + (Box.Max.X - P.X);
+		}
+		return 2.0 * W + 3.0 * A + H + (Box.Max.Y - P.Y);
+	};
+	// Evenly round the ring: the gaps between places one after the other along it (the last one round to the first) all equal.
+	const auto Even = [&RingS](const TArray<FVector2D>& Places, const double Ring, const double RingLength)
+	{
+		TArray<double> S;
+		for (const FVector2D& Place : Places)
+		{
+			S.Add(RingS(Place, Ring));
+		}
+		S.Sort();
+		bool bEven = S.Num() > 0;
+		for (int32 Index = 0; bEven && Index < S.Num(); ++Index)
+		{
+			const double Next = Index + 1 < S.Num() ? S[Index + 1] : S[0] + RingLength;
+			bEven = FMath::IsNearlyEqual(Next - S[Index], RingLength / S.Num(), 0.5);
+		}
+		return bEven;
+	};
+	const auto OnRing = [&Box, Radius](const FVector2D& Place, const double EdgeGap)
+	{
+		return FMath::IsNearlyEqual(HOLCombat::GetEdgeDistanceToBox(Place, Radius, Box), EdgeGap, 0.5);
+	};
+	// At contact: the places sorted along the ring, each two next ones ArcStep apart in a straight line (within 2 cm: round a
+	// corner the place moves on by 1 cm steps), and the gap that closes the ring (the void) wider: one arc, no hole.
+	const auto Contact = [&RingS, ArcStep](const TArray<FVector2D>& Places, const double Ring, const double RingLength)
+	{
+		TArray<TPair<double, FVector2D>> S;
+		for (const FVector2D& Place : Places)
+		{
+			S.Emplace(RingS(Place, Ring), Place);
+		}
+		S.Sort([](const TPair<double, FVector2D>& A, const TPair<double, FVector2D>& B) { return A.Key < B.Key; });
+		// Start after the widest gap along the ring (the void), then every next one at contact.
+		int32 After = 0;
+		double Widest = -1.0;
+		for (int32 Index = 0; Index < S.Num(); ++Index)
+		{
+			const double Next = Index + 1 < S.Num() ? S[Index + 1].Key : S[0].Key + RingLength;
+			if (Next - S[Index].Key > Widest)
+			{
+				Widest = Next - S[Index].Key;
+				After = (Index + 1) % S.Num();
+			}
+		}
+		bool bContact = S.Num() > 0 && Widest > ArcStep + 2.0;
+		for (int32 Step = 0; bContact && Step + 1 < S.Num(); ++Step)
+		{
+			const double Apart = FVector2D::Distance(S[(After + Step) % S.Num()].Value, S[(After + Step + 1) % S.Num()].Value);
+			bContact = Apart >= ArcStep - 0.5 && Apart <= ArcStep + 2.0;
+		}
+		return bContact;
+	};
+	TArray<FVector2D> Places;
+
+	// A group of 1: the ring's point nearest it, off the visible wall.
+	HOLCombat::GetBuildingPlaces({ FVector2D(1000.0, 200.0) }, { 7u }, Radius, Box, Gap, Places);
+	TestTrue(TEXT("Alone: beside the nearest side, off the visible wall"), Places.Num() == 1 && Places[0].Equals(FVector2D(400.0 + D, 200.0), 0.01));
+
+	// A group of 4 in front of the bottom side (its middle at x = 200): 4 places side by side, 2.2 radii apart, centred in
+	// front of it (x = 2, 134, 266, 398), the units from left to right in the same order (no crossing).
+	TArray<FVector2D> Positions;
+	TArray<uint32> Ids;
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		Positions.Add(FVector2D(20.0 + Index * 120.0, -800.0));
+		Ids.Add(50u + Index);
+	}
+	HOLCombat::GetBuildingPlaces(Positions, Ids, Radius, Box, Gap, Places);
+	bool bFour = Places.Num() == 4;
+	for (int32 Index = 0; bFour && Index < 4; ++Index)
+	{
+		bFour = Places[Index].Equals(FVector2D(2.0 + Index * ArcStep, -D), 0.01);
+	}
+	TestTrue(TEXT("Four: side by side 2.2 radii apart, centred in front of the group, in the units' order"), bFour);
+	TestTrue(TEXT("Four: at contact, one arc"), Contact(Places, D, Length));
+
+	// A tight group of 6 in a bias towards the top right corner, symmetric about its diagonal (middle 980, 980): an arc through
+	// the corner, 3 on each side, no hole there. Loop 12 (2.2 radii): the two by the corner 79 cm along the ring either side
+	// of its middle (the chord across the corner 133 cm), then 211 and 343: on the right side y = 376, 244, 112 (8 would not
+	// fit a 400 cm side any more: the 4th would round the next corner).
+	Positions = { FVector2D(900.0, 900.0), FVector2D(1020.0, 900.0), FVector2D(900.0, 1020.0), FVector2D(1140.0, 900.0), FVector2D(900.0, 1140.0),
+		FVector2D(1020.0, 1020.0) };
+	Ids = { 100u, 101u, 102u, 103u, 104u, 105u };
+	HOLCombat::GetBuildingPlaces(Positions, Ids, Radius, Box, Gap, Places);
+	TestEqual(TEXT("Bias: a place each"), Places.Num(), 6);
+	TestTrue(FString::Printf(TEXT("Bias: 2.2 radii apart (%.0f cm)"), MinPair(Places)), MinPair(Places) >= ArcStep - 0.5);
+	bool bAllOnRing = true;
+	int32 Down = 0, Right = 0, Up = 0, Left = 0;
+	for (const FVector2D& Place : Places)
+	{
+		bAllOnRing &= OnRing(Place, Gap);
+		Down += Place.Y < Box.Min.Y ? 1 : 0;
+		Right += Place.X > Box.Max.X ? 1 : 0;
+		Up += Place.Y > Box.Max.Y ? 1 : 0;
+		Left += Place.X < Box.Min.X ? 1 : 0;
+	}
+	TestTrue(TEXT("Bias: all off the visible wall by a radius and the gap"), bAllOnRing);
+	TestTrue(FString::Printf(TEXT("Bias: through the corner, half on each side (%d down, %d right, %d up, %d left)"), Down, Right, Up, Left),
+		Down == 0 && Left == 0 && Right == 3 && Up == 3);
+	TestTrue(TEXT("Bias: at contact through the corner, one arc"), Contact(Places, D, Length));
+
+	// Stable: the same place for each unit whatever the order of the list, and on every call.
+	TArray<FVector2D> ReversedPositions(Positions);
+	TArray<uint32> ReversedIds(Ids);
+	Algo::Reverse(ReversedPositions);
+	Algo::Reverse(ReversedIds);
+	TArray<FVector2D> Reversed;
+	HOLCombat::GetBuildingPlaces(ReversedPositions, ReversedIds, Radius, Box, Gap, Reversed);
+	bool bStable = Reversed.Num() == Places.Num();
+	for (int32 Index = 0; bStable && Index < Places.Num(); ++Index)
+	{
+		bStable = Reversed[Places.Num() - 1 - Index].Equals(Places[Index], 0.001);
+	}
+	TestTrue(TEXT("Stable: whatever the order of the list"), bStable);
+
+	// All on one spot: ties by Id, still a place each, at contact (the two ends round the bottom corners).
+	TArray<FVector2D> Same;
+	Same.Init(FVector2D(200.0, -800.0), 5);
+	HOLCombat::GetBuildingPlaces(Same, { 5u, 4u, 3u, 2u, 1u }, Radius, Box, Gap, Places);
+	TestTrue(FString::Printf(TEXT("One spot: a place each (%.0f cm apart)"), MinPair(Places)), Places.Num() == 5 && MinPair(Places) >= ArcStep - 0.5);
+	TestTrue(TEXT("One spot: at contact, one arc"), Contact(Places, D, Length));
+
+	// Bigger than the ring (2040 cm round: 16 places along it, 14 for the chords round the corners): the first ring full,
+	// evenly round; the rest on a second ring, 2 radii further, in an arc at contact; never two places nearer than 2 radii.
+	Positions.Reset();
+	Ids.Reset();
+	for (int32 Index = 0; Index < 25; ++Index)
+	{
+		Positions.Add(FVector2D(-200.0 + (Index % 5) * 120.0, -600.0 - (Index / 5) * 120.0));
+		Ids.Add(200u + Index);
+	}
+	HOLCombat::GetBuildingPlaces(Positions, Ids, Radius, Box, Gap, Places);
+	TArray<FVector2D> FirstRing;
+	TArray<FVector2D> SecondRing;
+	for (const FVector2D& Place : Places)
+	{
+		(OnRing(Place, Gap) ? FirstRing : SecondRing).Add(Place);
+	}
+	bool bSecondOnRing = true;
+	for (const FVector2D& Place : SecondRing)
+	{
+		bSecondOnRing &= OnRing(Place, Gap + 2.0 * Radius);
+	}
+	const double SecondD = D + 2.0 * Radius;
+	TestTrue(FString::Printf(TEXT("Full: 13 to 16 on the first ring (%d)"), FirstRing.Num()), FirstRing.Num() >= 13 && FirstRing.Num() <= 16 && SecondRing.Num() > 0);
+	TestTrue(FString::Printf(TEXT("Full: the rest on the second ring, 2 radii further (%d)"), SecondRing.Num()),
+		bSecondOnRing && FirstRing.Num() + SecondRing.Num() == 25);
+	TestTrue(TEXT("Full: the first ring evenly round"), Even(FirstRing, D, Length));
+	TestTrue(TEXT("Full: the second ring at contact, one arc"), Contact(SecondRing, SecondD, 4.0 * 400.0 + 2.0 * UE_DOUBLE_PI * SecondD));
+	TestTrue(FString::Printf(TEXT("Full: 2 radii apart (%.0f cm)"), MinPair(Places)), MinPair(Places) >= 2.0 * Radius - 0.5);
+	TestTrue(TEXT("Full: the second ring's units came from the back"), OnRing(Places[24], Gap + 2.0 * Radius));
+
+	// GetBuildingPlaceChain: a unit at x = 30 below the box, its place at x = 380 on the first ring; three friends' places on
+	// the same ring between (x = 300, 100, 200), one on the second ring and one behind the unit (left side): the chain gives
+	// the three in order along the way, nearest the unit first.
+	const TArray<FVector2D> Others = { FVector2D(300.0, -D), FVector2D(100.0, -D), FVector2D(200.0, -D - 2.0 * Radius), FVector2D(200.0, -D),
+		FVector2D(-D, 200.0) };
+	TArray<int32> Chain;
+	HOLCombat::GetBuildingPlaceChain(FVector2D(30.0, -D - 5.0), FVector2D(380.0, -D), Others, Box, Chain);
+	TestTrue(FString::Printf(TEXT("Chain: the three between, nearest first (%d found)"), Chain.Num()),
+		Chain.Num() == 3 && Chain[0] == 1 && Chain[1] == 3 && Chain[2] == 0);
 	return true;
 }
 

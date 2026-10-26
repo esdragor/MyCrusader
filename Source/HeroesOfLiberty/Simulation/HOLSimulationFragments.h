@@ -453,6 +453,27 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	 */
 	TWeakObjectPtr<AHOLBuilding> OrderedBuilding;
 
+	/**
+	 * EtapeDefini J: its place by the wall of PlaceBuilding, given with the group's order (HOLCombat::GetBuildingPlaces): its
+	 * walks to strike that building aim there, not at the wall's point nearest it. Unset (a building found by itself): none.
+	 */
+	TWeakObjectPtr<AHOLBuilding> PlaceBuilding;
+	FVector2D BuildingPlace = FVector2D::ZeroVector;
+	/**
+	 * EtapeDefini J loop 4: how long (ms, simulation steps) it has not come HOLCombat::BuildingPlaceProgress nearer its place
+	 * than PlaceBestDistance (blocked, pushed, walk ended short or going round in circles); past HOLCombat::BuildingPlaceGiveUpMs
+	 * it forgets its place (the wall's nearest point and the reach after a short walk again, a new walk at once).
+	 */
+	int32 PlaceBlockedMs = 0;
+	float PlaceBestDistance = MAX_flt;
+	/**
+	 * EtapeDefini J loop 8: the building whose place it forgot (PlaceBuilding reset after BuildingPlaceGiveUpMs): its walk
+	 * there still aims off the visible wall, and it is still kept out of that wall while it strikes it.
+	 */
+	TWeakObjectPtr<AHOLBuilding> PlaceGivenUpBuilding;
+	/** EtapeDefini J loop 10: blocked once on its way, it took a nearer place (HOLCombat::GetBuildingPlaceChain); blocked again, it forgets it. */
+	bool bPlaceShifted = false;
+
 	/** Its target was ordered (J7b.3): kept, never replaced by its own choice, until it dies. */
 	bool bOrderedTarget = false;
 
@@ -492,6 +513,11 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 		Target = FMassEntityHandle();
 		TargetBuilding.Reset();
 		OrderedBuilding.Reset();
+		PlaceBuilding.Reset();
+		PlaceGivenUpBuilding.Reset();
+		PlaceBlockedMs = 0;
+		bPlaceShifted = false;
+		PlaceBestDistance = MAX_flt;
 		LastAttacker = FMassEntityHandle();
 		bOrderedTarget = false;
 		bAttacking = false;

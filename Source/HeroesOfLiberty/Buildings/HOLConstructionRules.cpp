@@ -633,37 +633,77 @@ bool HOLConstruction::KeepOutOfVisibleWall(const FVector2D& HalfExtent, const do
 }
 
 bool HOLConstruction::EaseOutOfVisibleWalls(const TConstArrayView<FWallBody> Bodies, const double Radius, const double VisualGap, const double MaxStep,
-	FVector2D& Position)
+	FVector2D& Position, const bool bSquareCorners)
 {
 	const double WallGap = VisualGap + Radius + 1.0;
 	if (VisualGap <= 0.)
 	{
 		return false;
 	}
-	// The way out of Body's wall (world), or false when Point is not in it (or its centre in the body: the guard's).
-	const auto WayOut = [WallGap](const FWallBody& Body, const FVector2D& Point, FVector2D& OutAway, double& OutDistance)
+	// The way out of Body's wall (world) and how far it still is, or false when Point is not in it (or its centre in the
+	// body: the guard's).
+	const auto WayOut = [WallGap, Radius, VisualGap, bSquareCorners](const FWallBody& Body, const FVector2D& Point, FVector2D& OutAway, double& OutRemaining)
 	{
 		const FVector2D Offset = Point - Body.Centre;
 		const FVector2D Local(Offset.X * Body.Cos + Offset.Y * Body.Sin, -Offset.X * Body.Sin + Offset.Y * Body.Cos);
-		const FVector2D Nearest(FMath::Clamp(Local.X, -Body.HalfExtent.X, Body.HalfExtent.X), FMath::Clamp(Local.Y, -Body.HalfExtent.Y, Body.HalfExtent.Y));
-		const FVector2D Away = Local - Nearest;
-		OutDistance = Away.Size();
-		if (OutDistance >= WallGap - UE_KINDA_SMALL_NUMBER)
+		FVector2D Dir = FVector2D::ZeroVector;
+		if (bSquareCorners)
 		{
-			return false;
+			// From the square visible box, its radius + 1 cm: the same on a side, out of the slab's corner too (loop 9).
+			const FVector2D Visible = Body.HalfExtent + FVector2D(VisualGap);
+			const FVector2D Nearest(FMath::Clamp(Local.X, -Visible.X, Visible.X), FMath::Clamp(Local.Y, -Visible.Y, Visible.Y));
+			const FVector2D Away = Local - Nearest;
+			const double Distance = Away.Size();
+			const double Gap = Radius + 1.0;
+			if (Distance >= Gap - UE_KINDA_SMALL_NUMBER)
+			{
+				return false;
+			}
+			OutRemaining = Gap - Distance;
+			if (Distance > UE_KINDA_SMALL_NUMBER)
+			{
+				Dir = Away / Distance;
+			}
+			else if (FMath::Abs(Local.X) > Body.HalfExtent.X || FMath::Abs(Local.Y) > Body.HalfExtent.Y)
+			{
+				// Its centre in the slab, out of the body: out by the slab's nearest side.
+				const double OutsideX = FMath::Abs(Local.X) - Visible.X;
+				const double OutsideY = FMath::Abs(Local.Y) - Visible.Y;
+				if (OutsideX >= OutsideY)
+				{
+					Dir = FVector2D(Local.X >= 0. ? 1. : -1., 0.);
+					OutRemaining = Gap - OutsideX;
+				}
+				else
+				{
+					Dir = FVector2D(0., Local.Y >= 0. ? 1. : -1.);
+					OutRemaining = Gap - OutsideY;
+				}
+			}
 		}
-		const FVector2D Dir = OutDistance > UE_KINDA_SMALL_NUMBER ? Away / OutDistance : FVector2D::ZeroVector;
+		else
+		{
+			const FVector2D Nearest(FMath::Clamp(Local.X, -Body.HalfExtent.X, Body.HalfExtent.X), FMath::Clamp(Local.Y, -Body.HalfExtent.Y, Body.HalfExtent.Y));
+			const FVector2D Away = Local - Nearest;
+			const double Distance = Away.Size();
+			if (Distance >= WallGap - UE_KINDA_SMALL_NUMBER)
+			{
+				return false;
+			}
+			OutRemaining = WallGap - Distance;
+			Dir = Distance > UE_KINDA_SMALL_NUMBER ? Away / Distance : FVector2D::ZeroVector;
+		}
 		OutAway = FVector2D(Dir.X * Body.Cos - Dir.Y * Body.Sin, Dir.X * Body.Sin + Dir.Y * Body.Cos);
 		return true;
 	};
 	int32 InWall = INDEX_NONE;
 	FVector2D Away = FVector2D::ZeroVector;
-	double Distance = 0.;
+	double Remaining = 0.;
 	for (int32 Index = 0; Index < Bodies.Num(); ++Index)
 	{
 		FVector2D BodyAway;
-		double BodyDistance = 0.;
-		if (!WayOut(Bodies[Index], Position, BodyAway, BodyDistance))
+		double BodyRemaining = 0.;
+		if (!WayOut(Bodies[Index], Position, BodyAway, BodyRemaining))
 		{
 			continue;
 		}
@@ -674,16 +714,16 @@ bool HOLConstruction::EaseOutOfVisibleWalls(const TConstArrayView<FWallBody> Bod
 		}
 		InWall = Index;
 		Away = BodyAway;
-		Distance = BodyDistance;
+		Remaining = BodyRemaining;
 	}
 	if (InWall == INDEX_NONE)
 	{
 		return false;
 	}
 	// Its way out (the step and the end) clear of every other wall, or it stays.
-	const double Move = MaxStep > 0. ? FMath::Min(WallGap - Distance, MaxStep) : WallGap - Distance;
+	const double Move = MaxStep > 0. ? FMath::Min(Remaining, MaxStep) : Remaining;
 	const FVector2D Stepped = Position + Away * Move;
-	const FVector2D Out = Position + Away * (WallGap - Distance);
+	const FVector2D Out = Position + Away * Remaining;
 	for (int32 Index = 0; Index < Bodies.Num(); ++Index)
 	{
 		FVector2D Unused;
