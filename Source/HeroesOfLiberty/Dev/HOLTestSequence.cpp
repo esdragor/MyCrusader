@@ -101,6 +101,21 @@ namespace UE::HeroesOfLiberty::Dev
 	/** A waitkey that nobody will answer (scripted check, unattended, auto-continue) goes on after this. */
 	constexpr double AutoContinueSeconds = 1.0;
 	const TCHAR* const DefaultWaitKeyText = TEXT("Entrée : étape suivante");
+	/**
+	 * On a fixed time step (quick_check's -UseFixedTimeStep -FPS=n, TestSpeedInProgress.md), a frame's game time while the
+	 * sequence gives commands, takes captures or counts frames: as short as a frame in real time off screen (~200 a
+	 * second), so that the commands follow each other as they do in real time; the -FPS step only while it waits for the game.
+	 */
+	constexpr double CommandFrameSeconds = 0.005;
+
+	/** The steps that wait for the game to move on (a walk, a fight, a death): the frames go by at the -FPS step. */
+	bool IsGameWait(const FString& Step)
+	{
+		FString Verb = Step;
+		Step.Split(TEXT(" "), &Verb, nullptr);
+		return Verb == TEXT("wait") || Verb == TEXT("waitlog") || Verb == TEXT("waitunits") || Verb == TEXT("waitidle")
+			|| Verb == TEXT("waitmap") || Verb == TEXT("waitplayers");
+	}
 
 	TAutoConsoleVariable<int32> CVarScenarioAutoContinue(
 		TEXT("hol.Scenario.AutoContinue"),
@@ -184,6 +199,9 @@ namespace UE::HeroesOfLiberty::Dev
 			GLog->AddOutputDevice(Watcher.Get());
 			bRunning = true;
 			RunStart = FPlatformTime::Seconds();
+			RunStartGame = FApp::GetCurrentTime();
+			RunStartFrame = GFrameCounter;
+			WaitFrameSeconds = FApp::UseFixedTimeStep() ? FApp::GetFixedDeltaTime() : 0.0;
 			BeginWait();
 			UE_LOG(LogHOLTest, Display, TEXT("Test sequence: %d steps"), Steps.Num());
 			Ticker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FTestSequence::Tick));
@@ -206,8 +224,15 @@ namespace UE::HeroesOfLiberty::Dev
 		void BeginWait()
 		{
 			WaitStart = FPlatformTime::Seconds();
+			WaitStartGame = FApp::GetCurrentTime();
 			FramesWaited = 0;
 			StepTimeout = StepTimeoutSeconds;
+			// The next frame's game time (UEngine::UpdateTimeAndHandleMaxTickRate reads it at the head of the frame): short,
+			// a wait already met (a log line written by the command before it) costs no game time.
+			if (WaitFrameSeconds > 0.0)
+			{
+				FApp::SetFixedDeltaTime(CommandFrameSeconds);
+			}
 		}
 
 		/** True when the current step is done; ends the run on a timeout. */
@@ -227,7 +252,9 @@ namespace UE::HeroesOfLiberty::Dev
 			}
 			else if (Verb == TEXT("wait"))
 			{
-				bDone = Waited >= FCString::Atod(*Rest);
+				// The game's time: with a fixed time step (quick_check's -UseFixedTimeStep -FPS=n) it runs faster than the
+				// clock, and what a wait lets happen (a walk, a fight) happens in the game's seconds.
+				bDone = FApp::GetCurrentTime() - WaitStartGame >= FCString::Atod(*Rest);
 			}
 			else if (Verb == TEXT("waitlog"))
 			{
@@ -359,9 +386,18 @@ namespace UE::HeroesOfLiberty::Dev
 				++Next;
 				BeginWait();
 			}
+			else if (WaitFrameSeconds > 0.0 && Steps.IsValidIndex(Next) && IsGameWait(Steps[Next]))
+			{
+				// Waiting for the game: the next frames at the -FPS step.
+				FApp::SetFixedDeltaTime(WaitFrameSeconds);
+			}
 			if (!Steps.IsValidIndex(Next) && Ticker.IsValid())
 			{
-				UE_LOG(LogHOLTest, Display, TEXT("Test sequence: done in %.1f s"), FPlatformTime::Seconds() - RunStart);
+				const double RealSeconds = FPlatformTime::Seconds() - RunStart;
+				const double GameSeconds = FApp::GetCurrentTime() - RunStartGame;
+				UE_LOG(LogHOLTest, Display, TEXT("Test sequence: done in %.1f s (game time %.1f s, x%.2f, fixed step %s, %llu frames)"), RealSeconds,
+					GameSeconds, RealSeconds > 0.0 ? GameSeconds / RealSeconds : 0.0,
+					WaitFrameSeconds > 0.0 ? *FString::Printf(TEXT("%.4f s"), WaitFrameSeconds) : TEXT("off"), GFrameCounter - RunStartFrame);
 				Finish(/*bQuit*/ false);
 				if (const TFunction<void()> OnDone = MoveTemp(Options.OnDone))
 				{
@@ -395,6 +431,10 @@ namespace UE::HeroesOfLiberty::Dev
 
 		void Finish(const bool bQuit)
 		{
+			if (WaitFrameSeconds > 0.0)
+			{
+				FApp::SetFixedDeltaTime(WaitFrameSeconds);
+			}
 			EndWaitForKey(/*bNotify*/ false);
 			GLog->RemoveOutputDevice(Watcher.Get());
 			bRunning = false;
@@ -415,8 +455,14 @@ namespace UE::HeroesOfLiberty::Dev
 		TUniquePtr<FTestLogWatcher> Watcher;
 		/** Log lines from here on are searched by waitlog: those written since the last command. */
 		int32 LogMark = 0;
+		/** Real time (the timeouts) and the game's time (FApp::GetCurrentTime: the wait steps). */
 		double RunStart = 0.0;
+		double RunStartGame = 0.0;
+		uint64 RunStartFrame = 0;
 		double WaitStart = 0.0;
+		double WaitStartGame = 0.0;
+		/** The -FPS step of a fixed time step (0: real time); the frames of the other steps take CommandFrameSeconds. */
+		double WaitFrameSeconds = 0.0;
 		int32 FramesWaited = 0;
 		FTSTicker::FDelegateHandle Ticker;
 		/** From Start to Finish: the watcher is in GLog. */

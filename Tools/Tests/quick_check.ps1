@@ -84,10 +84,16 @@
 # paths go through the way between them; one Peasant sent across passes through it, on its middle line; two sent together
 # pass one after the other; none put back by a wall, none given a new path, all arrive.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Full | -Parts net,sources,move] [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Full | -Parts net,sources,move] [-EngineDir <dir>] [-Visible] [-GameFps <n> | -RealTime]
 # (-File passes a list as one string: the script splits it at the commas.)
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
+# The solo game runs on a fixed time step (TestSpeedInProgress.md): each frame moves the game on by 1/GameFps s, whatever
+# the time it took, so the game's time runs ahead of the clock (the walks, sites and fights of the parts go by faster); the
+# simulation keeps its own 20 Hz steps, the same as in real time, and the sequence's "wait" counts the game's seconds.
+# 20 (the default): one simulation step per frame, as in a real game (never fewer frames than steps); -Parts build 306 s
+# -> 72 s. 10 (two steps a frame) is faster but breaks "build cut" (house K: the navmesh's rebuild comes late in frames).
+# -RealTime: the clock's time, as before. The net part's server and clients always run in real time.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
@@ -95,7 +101,9 @@ param(
     [string[]] $Parts = @("tests", "smoke"),
     [switch] $Full,
     [string] $EngineDir = "",
-    [switch] $Visible
+    [switch] $Visible,
+    [double] $GameFps = 20,
+    [switch] $RealTime
 )
 # -Full (D327): every part, the default before D327 (~530 s).
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
@@ -425,7 +433,8 @@ if ($Parts -contains "victory") {
     # contested; the Spearmen taken away: released, the count recedes, no longer held; my Peasant taken away after.
     Step "mark victory forum held", "hol.Units.Spawn 3 -14800 1300 1 Spearman 150", "waitlog Victory: forum of slot 0 held by slot 1", "wait 3", "hol.HUD.Report"
     Step "mark victory forum contested", "hol.Units.Spawn 1 -14800 -1300 0 Peasant 0", "waitlog Victory: forum of slot 0 contested", "frames 3", "hol.HUD.Report"
-    Step "mark victory forum released", "hol.Units.Remove -14800 1300 800 1", "waitlog Victory: forum of slot 0 released", "wait 0.4", "hol.HUD.Report",
+    # 0.6 s at ForumHoldDecay 2 s a second: the shown whole seconds always drop by 1 (0.4 s did only when the fraction allowed).
+    Step "mark victory forum released", "hol.Units.Remove -14800 1300 800 1", "waitlog Victory: forum of slot 0 released", "wait 0.6", "hol.HUD.Report",
         "waitlog Victory: forum of slot 0 no longer held", "frames 3", "hol.HUD.Report", "hol.Units.Remove -14800 -1300 800 0", "frames 3", "mark victory forum hold end"
     # The match starts with no unit: 2 Peasants of slot 0 made 20 m beside its centre (Plain's slot 0, -14800 0).
     Step "mark victory forum build", "hol.Units.Spawn 2 -14800 2000 0 Peasant 150", "waitunits 2", "frames 3", "hol.Select.Own", "waitlog Select own: 2 units", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.OrderNear 0 0", "wait 1",
@@ -1734,7 +1743,8 @@ $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100"
 # The Multiplayer screen of the menu part asks a manager nobody runs (port 7799), never the player's one (7700).
 $TestServers = Join-Path $TestSaved "servers_none.json"
 Set-Content -Path $TestServers -Value '{ "servers": [ { "name": "None", "url": "http://127.0.0.1:7799" } ] }' -Encoding ascii
-$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
+$TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
+$GameArguments = "`"$UProject`" -game $Display $TimeStep -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -1949,6 +1959,9 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
 }
 
 $Log = if (Test-Path $GameLog) { Get-Content $GameLog } else { @() }
+# The game's time against the clock's (fixed time step, TestSpeedInProgress.md).
+$SpeedLine = @($Log | Select-String -Pattern "Test sequence: done in .*" | ForEach-Object { $_.Matches[0].Value }) | Select-Object -Last 1
+if ($SpeedLine) { Write-Host "game speed : $SpeedLine" }
 # The log lines of a section, from its mark to the next one.
 function Get-Section([string] $Mark) {
     $Start = -1
@@ -4128,7 +4141,11 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # Two enemies never push each other back (the user's trial of J7b): the Spearman the 4 Peasants were ordered on, once
     # struck, stays where it is however they crowd it (it strikes back, standing).
     $AttackReports = Get-CombatReports $Attack
-    $Spear = @(if ($AttackReports.Count -ge 1) { $AttackReports[0].Keys | Where-Object { $AttackReports[0][$_].Type -eq "Spearman" -and $AttackReports[0][$_].Slot -eq 1 -and [Math]::Abs($AttackReports[0][$_].X - $CombatSpearmen[0]) -le 300 -and [Math]::Abs($AttackReports[0][$_].Y - $CombatSpearmen[1]) -le 300 } })
+    # The Spearman: the one the ordered Peasants target (it may already have walked a few metres from its spawn towards
+    # them: each step of the sequence is a frame of game time on the fixed time step, TestSpeedInProgress.md).
+    $Spear = @(if ($AttackReports.Count -ge 1) {
+        $Targets = @($AttackReports | ForEach-Object { $_.Values } | Where-Object { $_.Type -eq "Peasant" -and $_.Slot -eq 0 -and $_.Target -gt 0 } | ForEach-Object { "$($_.Target)" })
+        $AttackReports[0].Keys | Where-Object { $AttackReports[0][$_].Type -eq "Spearman" -and $AttackReports[0][$_].Slot -eq 1 -and $Targets -contains "$_" } })
     $StruckIndex = [Array]::FindIndex([object[]]$AttackReports, [Predicate[object]]{ param($R) @($R.Values | Where-Object { $_.Type -eq "Peasant" -and $_.Slot -eq 0 -and $_.Hits -ge 1 }).Count -gt 0 })
     if ($Spear.Count -eq 1 -and $StruckIndex -ge 0) {
         $SpearId = $Spear[0]
