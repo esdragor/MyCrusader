@@ -30,7 +30,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D486 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D497 (§ 22)
 
 ### Moteur
 - Moteur Hazelight 5.8.4 avec cible Server : compilation depuis `C:/UE/Src/HZ`, puis remplacer `C:/UE/UE_5.8_AS_3` en entier et recompiler le projet de zéro (serveur compris) *(D483)*
@@ -91,4 +91,5 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `MillInProgress.md` : moulin (D346)
 - `RidgeRockInProgress.md` : rochers (D439 à D444)
 - `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D486 à D489)
+- `MapSizeInProgress.md` : tailles de carte, Plaine de Petite à Immense (D490 à D496)
 - `TestSpeedInProgress.md` : quick_check en pas fixe et sans dessin pendant les attentes (`-Full` ~10 min -> ~4 min 20)
