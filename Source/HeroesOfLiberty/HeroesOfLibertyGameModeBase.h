@@ -87,6 +87,13 @@ private:
 	void UpdateAbsences();
 	FTimerHandle AbsenceTimer;
 
+	/**
+	 * "empty" to the lobby manager once no player is left, checked on the next frame: players leaving on the same frame
+	 * have all sent their "left" by then (a controller already being destroyed made "empty" come first, 2026-10-27).
+	 */
+	void SendEmptyIfNobodyLeft();
+	bool bEmptyCheckQueued = false;
+
 	FTimerHandle StartWaitTimer;
 	/** Game time of the start of the wait. */
 	double StartWaitSince = 0.0;

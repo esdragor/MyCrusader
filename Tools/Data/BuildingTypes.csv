@@ -1,7 +1,8 @@
-Name,DisplayName,Footprint,Height,MaxHealth,RangedArmor,Mesh,PopulationProvided,Produces,MaxQueue,Accepts,Cost,BuildTime,BuildGridSlot,Age,Category
-MainCentre,Centre principal,"(X=1600.0,Y=1600.0)",1000,2400,40,,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)","(Food=0,Wood=0,Stone=0,Gold=0)",0,-1,0,Economic
-House,Maison,"(X=800.0,Y=800.0)",400,600,40,,10,,1,,"(Food=0,Wood=50,Stone=0,Gold=0)",20,0,0,Economic
-LumberCamp,Camp de bûcherons,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Wood)","(Food=0,Wood=100,Stone=0,Gold=0)",25,1,0,Economic
-MiningCamp,Camp de mineurs,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Stone,Gold)","(Food=0,Wood=100,Stone=0,Gold=0)",25,2,0,Economic
-Mill,Moulin,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Food)","(Food=0,Wood=100,Stone=0,Gold=0)",25,3,0,Economic
-Barracks,Caserne,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Spearman"",""ManAtArms"",""Archer"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",40,4,0,Military
+Name,DisplayName,Footprint,Height,MaxHealth,RangedArmor,Mesh,PopulationProvided,Produces,MaxQueue,Accepts,Cost,BuildTime,BuildGridSlot,Age,Category,Shape
+MainCentre,Centre principal,"(X=1600.0,Y=1600.0)",1000,2400,40,,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)","(Food=0,Wood=0,Stone=0,Gold=0)",0,-1,0,Economic,BlockAndTower
+House,Maison,"(X=800.0,Y=800.0)",400,600,40,,10,,1,,"(Food=0,Wood=50,Stone=0,Gold=0)",20,0,0,Economic,BlockAndTower
+LumberCamp,Camp de bûcherons,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Wood)","(Food=0,Wood=100,Stone=0,Gold=0)",25,1,0,Economic,BlockAndTower
+MiningCamp,Camp de mineurs,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Stone,Gold)","(Food=0,Wood=100,Stone=0,Gold=0)",25,2,0,Economic,BlockAndTower
+Mill,Moulin,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Food)","(Food=0,Wood=100,Stone=0,Gold=0)",25,3,0,Economic,BlockAndTower
+Barracks,Caserne,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Spearman"",""ManAtArms"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",40,4,0,Military,BlockAndTower
+ArcheryRange,Champ de tir,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Archer"",""Crossbowman"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",40,5,0,Military,Range

@@ -1,18 +1,21 @@
-# Fin de J7 : caserne finie (A Lancier, Z Homme d'armes, E Archer), armée mixte des deux côtés à ~25 m, 5000 de chaque ressource
+# Fin de J7 : caserne finie (A Lancier, Z Homme d'armes) et Champ de tir fini (A Archer), armée mixte des deux côtés à ~25 m, 5000 de chaque ressource
 # Plain, deux joueurs (j7_army.json). Essai d'ensemble de J7c.3 : formation, mêlée, tir, production d'Archers. Positions
-# dans le repère du centre du joueur, comme archers : la caserne derrière le centre, l'armée devant, au-delà des rochers
+# dans le repère du centre du joueur, comme archers : la caserne derrière le centre, le Champ de tir de l'autre côté (la
+# place de la caserne de building_destroy ; l'Archer s'y produit depuis AR7b), l'armée devant, au-delà des rochers
 # (vers 3000) ; l'ennemi ~25 m plus loin, hors du rayon d'agression (16 m ; 21,3 m pour les Archers) : rien ne part tout seul.
 hol.Cheat.Resources 5000
-# Population 175 : la caserne peut recruter malgré les soldats offerts (hors plafond).
+# Population 175 : les bâtiments peuvent recruter malgré les soldats offerts (hors plafond).
 hol.Cheat.Population 165
 # Les Paysans d'abord (hol.Select.Own ne prend alors qu'eux), au bord des arbres, à côté du centre.
 hol.Camera.FocusNear 115 -1250
 frames 2
 hol.Units.SpawnHere 5 Peasant 0 150
 waitunits 5
-# La caserne : fondation derrière le centre, bâtie d'un coup (hol.Build.Instant) par les cinq.
+# La caserne et le Champ de tir : fondations posées, bâties d'un coup (hol.Build.Instant) par les cinq, l'une après l'autre.
 hol.Build.PlaceNear Barracks -3800 4600
 waitlog Construction: slot 0 placed Barracks foundation
+hol.Build.PlaceNear ArcheryRange -1800 -1400
+waitlog Construction: slot 0 placed ArcheryRange foundation
 hol.Build.Instant 1
 hol.Camera.FocusNear -3800 4600
 frames 5
@@ -21,6 +24,11 @@ waitlog Selection: 5 units (own)
 hol.Select.OrderNear -3800 4600
 waitlog Build order of slot 0: 5 units to Barracks
 waitlog Construction: slot 0 finished Barracks
+hol.Camera.FocusNear -1800 -1400
+frames 5
+hol.Select.OrderNear -1800 -1400
+waitlog Build order of slot 0: 5 units to ArcheryRange
+waitlog Construction: slot 0 finished ArcheryRange
 hol.Build.Instant 0
 # Les Paysans reviennent au bord des arbres.
 hol.Camera.FocusNear 115 -1250
@@ -53,4 +61,4 @@ hol.Select.Army
 note Ton armée (sélectionnée) : 4 Lanciers, 4 Hommes d'armes, 6 Archers ; l'ennemi : 5, 5 et 4 Archers, ~25 m devant.
 note Clic droit sur un ennemi, ou Q puis clic au sol (attaque-déplacement) ; Maj pour enchaîner des ordres.
 note Les Archers tirent à 15 m ; le dégât tombe à l'arrivée de la flèche.
-note Caserne (derrière le centre) : A Lancier, Z Homme d'armes, E Archer (30 nourriture + 50 bois).
+note Caserne (derrière le centre) : A Lancier, Z Homme d'armes. Champ de tir (de l'autre côté du centre) : A Archer (30 nourriture + 50 bois), Z Arbalétrier.

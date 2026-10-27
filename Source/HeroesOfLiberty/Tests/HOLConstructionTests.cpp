@@ -348,6 +348,15 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Barracks: 1 500 health"), Barracks->MaxHealth, 1500);
 		TestEqual(TEXT("Barracks: 6 m high"), Barracks->Height, 600.f);
 	}
+	// AR-Q2a: the Archery range, built like the Barracks, on S of the Peasant's grid (right of the Barracks), no prerequisite.
+	const FHOLBuildingTypeRow* ArcheryRange = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::ArcheryRange);
+	if (TestNotNull(TEXT("Archery range in the building type table"), ArcheryRange))
+	{
+		TestTrue(TEXT("Archery range: built by Peasants"), ArcheryRange->IsBuildable());
+		TestEqual(TEXT("Archery range: S of the Peasant's grid (slot 5, military row)"), ArcheryRange->BuildGridSlot, 5);
+		TestEqual(TEXT("Archery range: 3 x 3 tiles (12 m)"), ArcheryRange->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestEqual(TEXT("Archery range: age I"), ArcheryRange->Age, 0);
+	}
 	return true;
 }
 

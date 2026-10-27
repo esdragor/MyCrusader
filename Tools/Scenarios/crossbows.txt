@@ -1,0 +1,57 @@
+# Arbalétriers : un Champ de tir fini (Z = Arbalétrier) et une Caserne, 6 Arbalétriers devant le centre, 4 Hommes d'armes et 4 Lanciers ennemis à ~30 m, 5000 de chaque ressource
+# Plain, deux joueurs (crossbows.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme
+# archers : le Champ de tir derrière le centre (la place de la caserne d'archers), la Caserne de l'autre côté (celle de
+# building_destroy), l'armée devant, au-delà des rochers (vers 3000) ; les ennemis ~30 m plus loin (bords à ~24 m), hors du
+# rayon d'agression des Arbalétriers (21,3 m) et des Hommes d'armes (16 m) : rien ne part tout seul.
+hol.Cheat.Resources 5000
+# Population 175 : les bâtiments peuvent recruter malgré les soldats offerts (hors plafond).
+hol.Cheat.Population 165
+# Les Paysans d'abord (hol.Select.Own ne prend alors qu'eux), au bord des arbres, à côté du centre.
+hol.Camera.FocusNear 115 -1250
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+# Le Champ de tir et la Caserne : fondations posées, bâties d'un coup (hol.Build.Instant) par les cinq, l'une après l'autre.
+hol.Build.PlaceNear ArcheryRange -3800 4600
+waitlog Construction: slot 0 placed ArcheryRange foundation
+hol.Build.PlaceNear Barracks -1800 -1400
+waitlog Construction: slot 0 placed Barracks foundation
+hol.Build.Instant 1
+hol.Camera.FocusNear -3800 4600
+frames 5
+hol.Select.Own
+waitlog Selection: 5 units (own)
+hol.Select.OrderNear -3800 4600
+waitlog Build order of slot 0: 5 units to ArcheryRange
+waitlog Construction: slot 0 finished ArcheryRange
+hol.Camera.FocusNear -1800 -1400
+frames 5
+hol.Select.OrderNear -1800 -1400
+waitlog Build order of slot 0: 5 units to Barracks
+waitlog Construction: slot 0 finished Barracks
+hol.Build.Instant 0
+# Les Paysans reviennent au bord des arbres.
+hol.Camera.FocusNear 115 -1250
+frames 5
+hol.Select.OrderNear 400 -700
+# Les Arbalétriers devant le centre ; les ennemis ~30 m plus loin, Hommes d'armes et Lanciers côte à côte.
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 6 Crossbowman 0 300
+hol.Camera.FocusNear 7000 -400
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 1 250
+hol.Camera.FocusNear 7000 400
+frames 2
+hol.Units.SpawnHere 4 Spearman 1 250
+waitunits 19
+# La caméra au-dessus des Arbalétriers, un cran de molette en avant pour bien voir l'arbalète et le carquois.
+hol.Camera.FocusNear 5000 0
+hol.Camera.Zoom 1
+frames 5
+hol.Select.Army
+note Repos (Arbalétriers sélectionnés) : arbalète couchée devant le buste, carquois de carreaux à la hanche droite.
+note Clic droit sur un ennemi : il s'approche à 20 m, épaule, tire à 12 % du geste, puis recharge à l'étrier (pied droit dedans, corde tirée, carreau pris à la hanche et posé) ; carreau caché du tir à la pose.
+note Carreau visible en vol (25 m/s, comme la flèche). Dégâts : 18 à l'Homme d'armes (9 carreaux), 12 au Lancier (7). Chute face contre terre, arbalète devant la tête.
+note Un ordre de marche coupe le geste ; la recharge court en marchant (tirer, reculer, tirer : hit and run).
+note Champ de tir (derrière le centre) : A Archer, Z Arbalétrier (80 N + 40 Or, 22 s). Caserne (de l'autre côté) : A Lancier, Z Homme d'armes. Paysan : S = Champ de tir.

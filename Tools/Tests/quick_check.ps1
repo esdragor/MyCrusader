@@ -179,6 +179,10 @@ $RockCases = @(
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 $Project = Resolve-Path "$PSScriptRoot\..\.."
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
+# Every editor or game launched here skips the engine's AutoSDK setup through UnrealBuildTool (-Mode=ValidatePlatforms,
+# 2026-10-27): one at a time on the machine, it queued behind the other sessions' builds for up to 4.5 min, and the net
+# part's server started after its clients had given up. No SDK is needed by these checks (no packaging here).
+$env:UE_SKIP_UBT_SDK_SETUP = "1"
 if (-not $EngineDir) {
     # An installed build registered under its name (HKCU\Software\Epic Games\Unreal Engine\Builds).
     $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation
@@ -278,10 +282,16 @@ if ($Parts -contains "net") {
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     # -useperfthreads (J7c.4): a dedicated server, the editor's -server too, runs every ParallelFor on one thread by the
     # engine's default (FApp::ShouldUseThreadingForPerformance); the parallel processors of D302 run as in the game.
-    # A free UDP port from 7777 (M6): another copy's net part may hold 7777, and the server would fall back to 7778
-    # while the clients joined the other copy's server.
-    $NetPort = 7777
-    while ($NetPort -lt 7877) {
+    # A free UDP port in a range of 10 of this copy's own (M6): copies probing from the same 7777 at the same moment
+    # took the same port, the engine moved one server to 7778 and its clients joined the other copy's server (seen
+    # 2026-10-27, Glorfindel and the main copy). 7800-7899: clear of the lobby manager's servers (7777-7799) and of
+    # lobby_match's (7900 and up).
+    $CopyIndex = @{ "MyCrusader" = 0; "HeroesOfLiberty-Elrond" = 1; "HeroesOfLiberty-Arwen" = 2; "HeroesOfLiberty-Glorfindel" = 3;
+        "HeroesOfLiberty-Haldir" = 4; "HeroesOfLiberty-Galadriel" = 5; "HeroesOfLiberty-Celeborn" = 6 }[(Split-Path -Leaf $Project)]
+    if ($null -eq $CopyIndex) { $CopyIndex = 7; foreach ($Char in (Split-Path -Leaf $Project).ToCharArray()) { $CopyIndex = 7 + ($CopyIndex + [int]$Char) % 3 } }
+    $NetPortFirst = 7800 + 10 * $CopyIndex
+    $NetPort = $NetPortFirst
+    while ($NetPort -lt $NetPortFirst + 10) {
         try { $Probe = New-Object Net.Sockets.UdpClient($NetPort); $Probe.Close(); break } catch { $NetPort++ }
     }
     # The lobby manager (R3.6, R3.7): a test listener on a free TCP port of 127.0.0.1 answers 204 to every call and writes
@@ -1365,7 +1375,8 @@ if ($Parts -contains "camera") {
             Step "waitlog Placement: ended", "hol.Camera.Zoom -12"
             # The barracks (J7a.2). Three Peasants made beside its spot, selected by a box: R on their grid (captured); the key R,
             # the ghost, a click: they build it (4 times as fast). The barracks selected: Lancier on A, Homme d'armes on Z
-            # (captured); its rally point by a right click; A, Z then E (2 s each): all three born, they walk to the rally point
+            # (captured); its rally point by a right click; A, Z then A again (2 s each; the Archer went to the Archery range, AR-Q2):
+            # all three born, they walk to the rally point
             # (captured). All three sent onto the stone vein: they walk there (they do not gather). F1: the barracks selected.
             Step "mark build barracks", "hol.Units.SpawnSeed 115", "hol.Cheat.Wood 300", "hol.Cheat.Food 500", "hol.Cheat.Gold 100", "hol.Cheat.Population 20", "hol.Build.Speed 4",
                 "hol.Units.Spawn 3 $($BarracksSpawn -join ' ') 0 Peasant 150", "wait 0.5", "hol.Camera.Focus $($BarracksSpawn -join ' ')", "frames 3",
@@ -1383,8 +1394,8 @@ if ($Parts -contains "camera") {
             Step "waitlog Production: Spearman of slot 0 done"
             Key Z
             Step "waitlog Production: ManAtArms of slot 0 done"
-            Key E
-            Step "waitlog Production: Archer of slot 0 done", "hol.Prod.BuildTime 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report", "frames 3", "capture build_barracks_soldiers"
+            Key A
+            Step "waitlog Production: Spearman of slot 0 done", "hol.Prod.BuildTime 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report", "frames 3", "capture build_barracks_soldiers"
             Key Escape
             Step "mark build barracks orders", "waitlog Selection: none",
                 "hol.Select.BoxGround $($BarracksRally[0] - 500) $($BarracksRally[1] - 500) $($BarracksRally[0] + 500) $($BarracksRally[1] + 500)", "waitlog Selection: 3 units (own)",
@@ -3090,13 +3101,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudAges = Get-Section "build hud ages"
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
-    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks on Q, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -3336,20 +3347,20 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: Q = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne$") -and
+    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir$") -and
         [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the barracks selected: A Lancier, Z Homme d'armes, E Archer ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
-        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes; E: Archer$")
+    $Checks["the barracks selected: A Lancier, Z Homme d'armes, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
+        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes$")
     # The ground point under the cursor, a few cm off the camera's focus (as the group's rally point of J6a.5).
     $RallyAt = if ([string](& $Value $Barracks "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
     $Checks["its rally point by a right click ($($RallyAt -join ', '))"] = ($RallyAt.Count -eq 2) -and ([Math]::Abs($RallyAt[0] - $BarracksRally[0]) -le 50) -and
         ([Math]::Abs($RallyAt[1] - $BarracksRally[1]) -le 50)
     $Born = @($Barracks | Select-String -Pattern "Production: (Spearman|ManAtArms|Archer) of slot 0 done" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["a Lancier, a Homme d'armes and an Archer born ($($Born -join ', '))"] = ($Born -join ',') -eq "Spearman,ManAtArms,Archer"
+    $Checks["a Lancier, a Homme d'armes and a second Lancier born ($($Born -join ', '))"] = ($Born -join ',') -eq "Spearman,ManAtArms,Spearman"
     $WhereLine = [string]($Barracks | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1)
     $Soldiers = @{}
     foreach ($M in [regex]::Matches([string]$WhereLine, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) { $Soldiers[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
@@ -4537,7 +4548,10 @@ if ($Parts -contains "net") {
     $NetSelectedTrees = @{}
     $NetPopups = @{}
     foreach ($NetClient in $NetClients) {
-        $ClientTimedOut = -not $NetClient.Process.WaitForExit(120000)
+        # Up to 300 s from the client's own launch (2026-10-27): 120 s from here killed a client launched late on a busy
+        # machine (Turnkey slow) while it quit, after a good match.
+        $ClientLeft = [Math]::Max(0, [int]($NetClient.Process.StartTime.AddSeconds(300) - (Get-Date)).TotalMilliseconds)
+        $ClientTimedOut = -not $NetClient.Process.WaitForExit($ClientLeft)
         if ($ClientTimedOut) { $NetClient.Process.Kill() }
         $N = $NetClient.Client
         $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }

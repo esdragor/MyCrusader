@@ -21,11 +21,14 @@ AHOLGameState::AHOLGameState()
 	ForumStates.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
 	ForumBuilders.Init(0, FHOLMatchConfig::MaxSlots);
 	LaunchConfig = FHOLMatchConfig::MakeDefault();
+	HeroSheets.Init(FHOLHeroSheet(), FHOLMatchConfig::MaxSlots);
 }
 
 void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	// J8a.3: the heroes' public sheets (kept apart from the list below, which other work items extend).
+	DOREPLIFETIME(AHOLGameState, HeroSheets);
 	DOREPLIFETIME(AHOLGameState, SlotDefeats);
 	DOREPLIFETIME(AHOLGameState, bMatchOver);
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
@@ -804,4 +807,28 @@ void AHOLGameState::SetFakeAbsentNotice(const FString& Name, const double Second
 		AbsentNotices.Add({ INDEX_NONE, Name, Now + FMath::Max(0., SecondsLeft), SecondsLeft < 0. ? Now : 0., FMath::Max(0., SecondsLeft) });
 	}
 	ForceNetUpdate();
+}
+
+const FHOLHeroSheet& AHOLGameState::GetHeroSheet(const int32 Slot) const
+{
+	static const FHOLHeroSheet NoHero;
+	return HeroSheets.IsValidIndex(Slot) ? HeroSheets[Slot] : NoHero;
+}
+
+bool AHOLGameState::SetHeroSheet(const int32 Slot, const FHOLHeroSheet& Sheet)
+{
+	if (!HeroSheets.IsValidIndex(Slot) || HeroSheets[Slot] == Sheet)
+	{
+		return false;
+	}
+	HeroSheets[Slot] = Sheet;
+	ForceNetUpdate();
+	// No OnRep on the server (listen or solo): its own player hears it here.
+	OnHeroSheetsChanged.Broadcast();
+	return true;
+}
+
+void AHOLGameState::OnRep_HeroSheets()
+{
+	OnHeroSheetsChanged.Broadcast();
 }

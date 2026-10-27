@@ -1701,6 +1701,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						Launch.From = Fighter.Location;
 						Launch.To = FVector(Aim.X, Aim.Y, Fighter.Location.Z);
 						Launch.FlightMs = FlightMs;
+						Launch.ShooterType = Constants.TypeName;
 						ArrowDisplay->Launch(Launch);
 					}
 					continue;
@@ -1934,6 +1935,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Launch.To = Enemy.Location;
 				Launch.Target = Enemy.Entity;
 				Launch.FlightMs = FlightMs;
+				Launch.ShooterType = Constants.TypeName;
 				ArrowDisplay->Launch(Launch);
 			}
 			if (Combat.FirstHitStep < 0)

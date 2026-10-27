@@ -398,9 +398,24 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 			Link->SendLeft(PlayerName);
 		}
 	}
+	if (!bEmptyCheckQueued)
+	{
+		bEmptyCheckQueued = true;
+		GetWorldTimerManager().SetTimerForNextTick(this, &AHeroesOfLibertyGameModeBase::SendEmptyIfNobodyLeft);
+	}
+}
+
+void AHeroesOfLibertyGameModeBase::SendEmptyIfNobodyLeft()
+{
+	bEmptyCheckQueued = false;
+	UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
+	if (!Link || !Link->IsActive() || !Link->HasStarted())
+	{
+		return;
+	}
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		if (It->Get() && It->Get() != Exiting)
+		if (IsValid(It->Get()))
 		{
 			return;
 		}
