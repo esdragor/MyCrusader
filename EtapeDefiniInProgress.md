@@ -1305,3 +1305,50 @@ pose, dépôt). Worktree `HeroesOfLiberty-Elrond`, branche `shift-queue` depuis 
 - 2026-10-27 : **essai de l'utilisateur : « tout m'a l'air bon »** (scénario `shift_queue`). Commit 1245e98 sur
   `shift-queue`, fusion de `main` 07fe108 (R8a, sans code du jeu : tests de M.1 toujours valables), **dans `main` :
   0a45afe** (avance rapide). **Étape M close** ; lignes retirées d'`EtapeDefini.md`.
+
+## N — Point de ralliement en plusieurs étapes
+
+Demande de l'utilisateur (2026-10-27, ligne d'`EtapeDefini.md`) : « Maj + clic droit ajoute des points au ralliement
+d'un bâtiment (chemin de sortie, par exemple pour contourner une zone) ». Worktree `HeroesOfLiberty-Elrond`, branche
+`rally-steps` depuis `main` 715402c.
+
+### Constat (code de `main` 715402c)
+
+- `AHOLBuilding` garde **un seul** point (`RallyPoint`, `bHasRallyPoint`, `RallySource`, `RallySite` côté serveur),
+  posé par l'ordre `FHOLProductionCommand::EKind::Rally` (`UHOLProductionSubsystem`), répliqué au propriétaire
+  (`OnRep_Rally`, drapeau) ; à la naissance, l'unité reçoit un déplacement, une récolte ou un chantier
+  (`Request.MoveTarget` / `GatherSource` / `BuildSite`) sous `FRallyOrderScope` (ligne blanche de chaîne, D328).
+
+### Règles proposées (façon AoE4, à juger à l'essai)
+
+- Clic droit sans Maj : remplace tout le ralliement par ce point (comme aujourd'hui).
+- **Maj + clic droit** : ajoute une étape à la fin (sol, source ou chantier), 8 étapes au plus (au-delà : refusé, log).
+- À la naissance, l'unité reçoit **la même file que si le joueur lui avait donné ces ordres avec Maj** (file des
+  déplacements de L et M) : elle passe par chaque point dans l'ordre, puis fait la dernière étape (récolter, bâtir,
+  ou s'arrêter au point).
+- À l'écran (propriétaire) : le drapeau à la dernière étape, un trait entre les étapes quand le bâtiment est
+  sélectionné.
+
+### Plan (boucles de 15 min, sous-agents)
+
+- **N.1** Tests rouges (`quick_check`, vraie chaîne : ordres du contrôleur sur le bâtiment sélectionné, avec Maj), puis
+  code : étapes répliquées, ordre « ajouter une étape », naissance avec la file, affichage.
+- **N.2** Scénario d'essai `rally_steps`, répétition hors écran, essai de l'utilisateur.
+- **N.3** Commit, fusion dans `main`, ligne retirée d'`EtapeDefini.md`.
+
+### Suivi
+
+- 2026-10-27 : étape ouverte ; N.1 lancée (sous-agent, Elrond `rally-steps`).
+- 2026-10-27 (N.1, sous-agent, Elrond `rally-steps`) : cas `build:rallysteps` **rouges** sur l'ancien binaire (a : point
+  remplacé, Paysan droit à R2 ; b : droit à l'or ; d : aucun refus), puis code : `FHOLRallyWaypoint` et `RallyWaypoints`
+  (répliqués au propriétaire ; chantiers côté serveur), `RallyPoint` garde la dernière étape (drapeau) ; ordre de
+  ralliement avec `bQueue` (Maj) depuis `OrderAt` ; 8 étapes au plus (refus et log) ; naissance du côté de la première
+  étape, puis `HOLIssueSpawnRallySteps` (sol = déplacement, source ou chantier = `IssueQueuedWorkOrder`, camp fini = sa
+  source la plus proche, soldats = marche) sous `FRallyOrderScope` ; trait blanc bâtiment → étapes → drapeau. Verts :
+  `build:rallysteps` PASS en 27 s ; `-Parts tests,production,build,move,gather` PASS (232/232) ; `net` étendu (chaque
+  client voit ses 2 étapes) PASS en 163 s. Scénario `rally_steps` répété hors écran (prêt en 4,2 s, sans erreur).
+  À juger à l'essai : une source au milieu du chemin est récoltée jusqu'à épuisement du bosquet (règle de M) ; courte
+  halte à chaque point. Reste : essai (N.2), puis N.3.
+- 2026-10-27 : **essai de l'utilisateur : « tout est bon »** (scénario `rally_steps`). Commit 1ddc9df sur `rally-steps`,
+  fusion de `main` d1a7dc5 (GDD et EtapeDefini seulement), **dans `main` : 3026278** (avance rapide). **Étape N close** ;
+  ligne retirée d'`EtapeDefini.md`.

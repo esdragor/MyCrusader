@@ -14,7 +14,6 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Point de ralliement en plusieurs étapes : Maj + clic droit ajoute des points au ralliement d'un bâtiment (chemin de sortie, par exemple pour contourner une zone) *(`EtapeDefiniInProgress.md` N : N.1 en cours, tests rouges puis code, Elrond, branche `rally-steps` ; suivant N.2 essai)*
 - Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 fiche réseau (vie du héros en part de 255, fiches publique et privée écrites par le serveur, PV exacts chez le client, contrôle `net hero sheets`), dans `main` ; J8a.4 (mort et retour, premier fichier en Angelscript) en cours dans Celeborn : questions J8a4-Q1 à Q7 tranchées, boucles 1 (règles en script), 2 (ponts C++), 3 (décision du retour en script) et 4 (achat du retour, `hol.Hero.Return`) faites, non commitées, boucle 5 (contrôle réseau dans quick_check) en cours dans Celeborn (hero-j8a3), fusion de main avant le commit ; `JourneyInProgress.md`)*
 
 ### Fin de partie
