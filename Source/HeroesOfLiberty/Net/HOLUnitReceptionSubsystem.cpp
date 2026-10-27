@@ -15,6 +15,7 @@
 #include "MassRepresentationFragments.h"
 #include "MassRepresentationSubsystem.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
@@ -492,14 +493,13 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);
 		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
-		// J7b.5: the health received, exact (J7-Q5 revised); a hero's as a share (J8-Q5, J8a.3), his bar filled from it
-		// and his health points drawn back from it, not exact (his exact health will come by the hero sheet).
+		// J7b.5: the health received, exact (J7-Q5 revised); a hero's as a share (J8-Q5, J8a.3), his bar filled from it,
+		// his health points exact from his slot's public hero sheet once received and alive, drawn back from the share before.
 		static_assert(HOLUnitView::MaxWireHealthShare == FHOLNetUnitState::MaxWireHealth, "a hero's share is read in the wire's own steps");
-		const bool bHealthShare = Row->HasArmorCategory(EHOLArmorCategory::Hero);
-		OutView.MaxHealth = Row->MaxHealth;
-		OutView.Health = HOLUnitView::GetReceivedHealth(OutView.bFullHealth, Slot.State.Health, Row->MaxHealth, bHealthShare);
-		OutView.HealthShare = bHealthShare ? HOLUnitView::GetReceivedHealthShare(OutView.bFullHealth, Slot.State.Health) : -1.f;
-		OutView.bHealthExact = !bHealthShare;
+		const bool bHero = Row->HasArmorCategory(EHOLArmorCategory::Hero);
+		const AHOLGameState* GameState = bHero ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+		HOLUnitView::SetReceivedHealth(OutView, Slot.State.bFullHealth, Slot.State.Health, Row->MaxHealth, bHero,
+			GameState ? &GameState->GetHeroSheet(Slot.OwnerPlayer) : nullptr);
 	}
 	return true;
 }

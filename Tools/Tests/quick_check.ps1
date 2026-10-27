@@ -5,7 +5,8 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, net, lobby; bodies, rocks and lobby only when asked, not in -Full). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby; bodies, rocks and lobby only when asked, not in -Full;
+#     "sizes" (TC4, ~15 s): Plain at its five sizes and a refused configuration, in the menu's game launch). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
@@ -107,7 +108,7 @@ param(
     [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -381,8 +382,15 @@ if ($Parts -contains "menu") {
             Step "waitlog Dropdown SlotColor0: value 1 chosen"
             # E2-4: a line nobody holds (slot 3, closed) shows no faction, swatch, colour nor team; taken (Human), they come back.
             Step "mark menu emptyrow", "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3 SlotFaction0 SlotSwatch0 SlotColor0 SlotTeam0",
-                "capture qc_fr_emptyrow", "mark menu takenrow", "hol.UI.Choose SlotState3 1", "frames 3",
+                "capture qc_fr_emptyrow", "mark menu takenrow", "hol.UI.Choose SizeDropdown 2", "frames 3", "hol.UI.Choose SlotState3 1", "frames 3",
                 "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3", "capture qc_fr_takenrow", "hol.UI.Choose SlotState3 0", "frames 3"
+            # TC3: the size under the map (Small by default for one player, opened above), "Équipes ensemble" beside it;
+            # three players on Medium: Small greyed (not chosen), slot 5 past the 4 places stays closed; back to Small.
+            # TC-Q12: in solo the teams can be chosen (the factions stay greyed), "Équipes ensemble" too.
+            Step "mark menu sizes", "hol.UI.Shown SizeDropdown TeamsTogetherDropdown SlotTeam0 SlotFaction0", "hol.UI.Choose SlotTeam0 1", "frames 2",
+                "hol.UI.Choose SlotTeam0 0", "hol.UI.Choose SlotState1 1", "hol.UI.Choose SlotState2 1",
+                "frames 3", "hol.UI.Choose SizeDropdown 1", "hol.UI.Choose SlotState5 1", "frames 3", "capture qc_fr_sizes",
+                "hol.UI.Choose SlotState1 0", "hol.UI.Choose SlotState2 0", "frames 3", "hol.UI.Choose SizeDropdown 1", "frames 3"
         }
         Back
         if ($Culture -eq "fr") {
@@ -558,6 +566,44 @@ if ($Parts -contains "sides") {
         SidesBox -11100 -450 -10500 450; Step "hol.Select.OrderGround -8400 0", "wait 2", "hol.Units.Where 0", "wait 2", "hol.Units.Where 0", "hol.Units.Where $Wall"
     }
     Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
+}
+
+# The "sizes" part (TC4, map sizes): Plain at each size, opened from a v3 configuration file by hol.Match.Open (as a
+# server given -MatchConfig=: the game mode alone checks it), places drawn from a fixed seed. Each: the map of the size
+# loaded, one main centre per player on its drawn place (the circle of the size, radius 0.75 of the half side, place 0 at
+# 180 degrees, counter-clockwise), the camera above slot 0's centre, then sent past both corners: held on the size's
+# bounds. Large: 4 against 4, "Équipes ensemble" (each team on 4 neighbouring places); Huge: 5 players on 8 places,
+# spread round the circle. Then a refused one: fixed places past the size (slot 2 on the 2 places of Small): "Match
+# config refused", no centre, no crash, back to the menu.
+# Each size: key, side in tiles (Tools/Data/MapSizes.csv), places, slots taken, seed, teams (one per slot, or none), teams together.
+$SizeCases = @(
+    @{ Key = "Small"; Side = 110; Places = 2; Players = 2; Seed = 11; Teams = $null; Together = $true },
+    @{ Key = "Medium"; Side = 154; Places = 4; Players = 4; Seed = 12; Teams = $null; Together = $true },
+    @{ Key = "Normal"; Side = 183; Places = 6; Players = 6; Seed = 13; Teams = $null; Together = $true },
+    @{ Key = "Large"; Side = 202; Places = 8; Players = 8; Seed = 14; Teams = @(1, 2, 1, 2, 1, 2, 1, 2); Together = $true },
+    @{ Key = "Huge"; Side = 220; Places = 8; Players = 5; Seed = 15; Teams = $null; Together = $false }
+)
+function Write-SizeConfig([string] $Path, [string] $Size, [int] $Seed, [bool] $Draw, [bool] $Together, [string[]] $States, $Teams) {
+    $Slots = for ($i = 0; $i -lt 8; $i++) {
+        $Team = if ($Teams) { ", `"team`": $($Teams[$i])" } else { "" }
+        "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Team }"
+    }
+    "{ `"version`": 3, `"seed`": $Seed, `"map`": `"/Game/Maps/Plain.Plain`", `"mapSize`": `"$Size`", `"bDrawPlaces`": $($Draw.ToString().ToLower()), `"bTeamsTogether`": $($Together.ToString().ToLower()), `"slots`": [ $($Slots -join ', ') ] }" |
+        Set-Content -Encoding ascii $Path
+}
+if ($Parts -contains "sizes") {
+    Step "mark sizes start", "hol.Camera.TestCursor 0.5 0.5"
+    foreach ($Size in $SizeCases) {
+        $States = for ($i = 0; $i -lt 8; $i++) { if ($i -eq 0) { "Human" } elseif ($i -lt $Size.Players) { "AI" } else { "Closed" } }
+        $Config = Join-Path $TestSaved "sizes_$($Size.Key).json"
+        Write-SizeConfig $Config $Size.Key $Size.Seed $true $Size.Together $States $Size.Teams
+        Step "mark sizes $($Size.Key)", "hol.Match.Open $Config", "waitmap Plain_$($Size.Key)", "waitlog Camera above the start of slot 0", "frames 5", "hol.Camera.Report",
+            "hol.Camera.Focus 9999999 9999999", "frames 2", "hol.Camera.Report", "hol.Camera.Focus -9999999 -9999999", "frames 2", "hol.Camera.Report"
+    }
+    $Config = Join-Path $TestSaved "sizes_refused.json"
+    Write-SizeConfig $Config "Small" 16 $false $true @("Human", "Closed", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") $null
+    Step "mark sizes refused", "hol.Match.Open $Config", "waitmap Plain_Small", "frames 30",
+        "mark sizes end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark sizes menu"
 }
 
 # Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles; each main
@@ -2266,6 +2312,11 @@ if ($Parts -contains "victory") {
 }
 $SequenceChecks["sequence done (no step timed out)"] = [bool]($Log | Select-String -Pattern "Test mark: end" -Quiet)
 $Errors = @($Log | Select-String -Pattern "LogHOLUI: (Error|Warning)|LogHOLMatch: (Error|Warning)|LogHOLTest: Error" | ForEach-Object { $_.Line })
+# The "sizes" part's refused configuration logs its refusal on purpose (checked by the part itself).
+if ($Parts -contains "sizes") {
+    $Refused = @(Get-Section "sizes refused")
+    $Errors = @($Errors | Where-Object { $Refused -notcontains $_ })
+}
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
 $AllOk = (Report "sequence" $SequenceChecks) -and $AllOk
 $Errors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
@@ -2513,6 +2564,68 @@ if ($Parts -contains "sides") {
     $AllOk = (Report "sides" $Checks) -and $AllOk
 }
 
+if ($Parts -contains "sizes") {
+    foreach ($Size in $SizeCases) {
+        $Section = Get-Section "sizes $($Size.Key)"
+        $Checks = [ordered]@{}
+        $Checks["map Plain_$($Size.Key) loaded, $($Size.Players) players"] = [bool]($Section | Select-String -SimpleMatch "Match on Plain_$($Size.Key): given configuration, $($Size.Players) occupied slots" -Quiet)
+        $Checks["no Match config refused"] = -not ($Section | Select-String -SimpleMatch "Match config refused" -Quiet)
+        # The places drawn: one per player, distinct, on the places of the size.
+        $Drawn = $Section | Select-String -Pattern "Places drawn \(seed $($Size.Seed), teams together \d\): (.*)$" | Select-Object -First 1
+        $Places = if ($Drawn) { @($Drawn.Matches[0].Groups[1].Value -split " " | ForEach-Object { [int]$_ }) } else { @() }
+        $Taken = @($Places | Where-Object { $_ -ge 0 })
+        $Checks["places drawn: $($Size.Players) distinct of $($Size.Places) ($($Places -join ' '))"] = ($Taken.Count -eq $Size.Players) -and
+            (@($Taken | Select-Object -Unique).Count -eq $Size.Players) -and (@($Taken | Where-Object { $_ -ge $Size.Places }).Count -eq 0)
+        # One main centre per player, on its place: the circle of the size (0.75 of the half side), at its place's angle.
+        $Half = $Size.Side * $Tile / 2
+        $Radius = 0.75 * $Half
+        $Centres = @($Section | Select-String -Pattern "Main centre of slot (\d) \(colour \d\) at \((-?\d+), (-?\d+)\), yaw (-?\d+)$" | ForEach-Object {
+            $g = $_.Matches[0].Groups; [pscustomobject]@{ Slot = [int]$g[1].Value; X = [int]$g[2].Value; Y = [int]$g[3].Value } })
+        $Misplaced = @($Centres | Where-Object {
+            $Place = if ($_.Slot -lt $Places.Count) { $Places[$_.Slot] } else { -1 }
+            $Angle = (180 + $Place * 360 / $Size.Places) * [Math]::PI / 180
+            $Want = @(($Radius * [Math]::Cos($Angle)), ($Radius * [Math]::Sin($Angle)))
+            ($Place -lt 0) -or ([Math]::Sqrt([Math]::Pow($_.X - $Want[0], 2) + [Math]::Pow($_.Y - $Want[1], 2)) -gt $Tile * 1.5) } | ForEach-Object { "slot $($_.Slot) at ($($_.X), $($_.Y))" })
+        $Points = @($Centres | ForEach-Object { "$($_.X),$($_.Y)" } | Select-Object -Unique)
+        $Checks["$($Size.Players) main centres on $($Size.Players) distinct points, each on its place (r $([Math]::Round($Radius / 100)) m; $($Centres.Count) centres; off: $($Misplaced -join '; '))"] =
+            ($Centres.Count -eq $Size.Players) -and ($Points.Count -eq $Size.Players) -and ($Misplaced.Count -eq 0)
+        # The camera above slot 0's centre, then held on the bounds of the size past both corners.
+        $Own = @($Centres | Where-Object { $_.Slot -eq 0 }) | Select-Object -First 1
+        $Above = $Section | Select-String -Pattern "Camera above the start of slot 0 \((-?\d+), (-?\d+)\)" | Select-Object -First 1
+        $Reports = @($Section | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\), height (\d+)" | ForEach-Object {
+            $g = $_.Matches[0].Groups; @{ X = [int]$g[1].Value; Y = [int]$g[2].Value } })
+        $Checks["camera above slot 0's centre ($(if ($Reports.Count) { "$($Reports[0].X), $($Reports[0].Y)" }))"] = $Own -and $Above -and ($Reports.Count -ge 1) -and
+            ([int]$Above.Matches[0].Groups[1].Value -eq $Own.X) -and ([int]$Above.Matches[0].Groups[2].Value -eq $Own.Y) -and
+            ([Math]::Abs($Reports[0].X - $Own.X) -le 2) -and ([Math]::Abs($Reports[0].Y - $Own.Y) -le 2)
+        $Corners = if ($Reports.Count -eq 3) { "($($Reports[1].X), $($Reports[1].Y)) ($($Reports[2].X), $($Reports[2].Y))" } else { "$($Reports.Count) reports" }
+        $Checks["camera held on the bounds of the size, +-$([Math]::Round($Half / 100)) m ($Corners)"] = ($Reports.Count -eq 3) -and
+            ([Math]::Abs($Reports[1].X - $Half) -le 1) -and ([Math]::Abs($Reports[1].Y - $Half) -le 1) -and
+            ([Math]::Abs($Reports[2].X + $Half) -le 1) -and ([Math]::Abs($Reports[2].Y + $Half) -le 1)
+        if ($Size.Teams) {
+            # "Équipes ensemble": each team's places one run of neighbours round the circle.
+            foreach ($Team in @($Size.Teams | Select-Object -Unique)) {
+                $Run = @(for ($i = 0; $i -lt $Size.Players; $i++) { if ($Size.Teams[$i] -eq $Team -and $i -lt $Places.Count) { $Places[$i] } })
+                $Together = @(0..($Size.Places - 1) | Where-Object { $From = $_
+                    @(0..($Run.Count - 1) | Where-Object { $Run -contains (($From + $_) % $Size.Places) }).Count -eq $Run.Count })
+                $Checks["team $Team on neighbouring places ($($Run -join ' '))"] = ($Run.Count -eq 4) -and ($Together.Count -ge 1)
+            }
+        }
+        if ($Size.Players -lt $Size.Places) {
+            # Fewer players than places: spread round the circle, never more than one empty place between two neighbours.
+            $Sorted = @($Taken | Sort-Object)
+            $Gaps = @(for ($i = 0; $i -lt $Sorted.Count; $i++) { (($Sorted[($i + 1) % $Sorted.Count] - $Sorted[$i] + $Size.Places - 1) % $Size.Places) + 1 })
+            $Checks["places spread round the circle (gaps $($Gaps -join ' '))"] = ($Gaps.Count -eq $Size.Players) -and (@($Gaps | Where-Object { $_ -gt 2 }).Count -eq 0)
+        }
+        $AllOk = (Report "sizes $($Size.Key)" $Checks) -and $AllOk
+    }
+    $Section = Get-Section "sizes refused"
+    $Checks = [ordered]@{}
+    $Checks["fixed places past the size: Match config refused on Plain_Small"] = [bool]($Section | Select-String -SimpleMatch "Match config refused on Plain_Small" -Quiet)
+    $Checks["no centre, no place drawn"] = -not ($Section | Select-String -Pattern "Main centre of slot|Places drawn" -Quiet)
+    $Checks["no crash: back to the menu"] = [bool]((Get-Section "sizes end") | Select-String -Pattern "Test mark: sizes menu" -Quiet)
+    $AllOk = (Report "sizes refused" $Checks) -and $AllOk
+}
+
 if ($Parts -contains "smoke") {
     $Checks = [ordered]@{}
     $Missing = @("title", "newgame", "play", "melee" | Where-Object { -not (Test-Path (Join-Path $Shots "qc_smoke_$_.png")) })
@@ -2567,6 +2680,20 @@ if ($Parts -contains "menu") {
             $Checks["line taken (Human): fields shown again"] = (@($Fields | Where-Object {
                 -not ($Taken | Select-String -SimpleMatch "Shown ${_}3: yes" -Quiet) }).Count -eq 0) -and
                 [bool]($Taken | Select-String -SimpleMatch "SlotState3: value 1 chosen" -Quiet)
+            # TC3: the size list (Small by default for one player), Medium for slot 3, Small greyed for three players, the
+            # slots past the places closed, Small again for one.
+            $Sizes = Get-Section "menu sizes"
+            $Checks["size: Small by default for one player"] = [bool]((Get-Section "menu fr") | Select-String -SimpleMatch "New game: size Small, 2 places" -Quiet)
+            $Checks["size: Medium chosen before taking slot 3"] = [bool]($Taken | Select-String -SimpleMatch "New game: size Medium, 4 places" -Quiet)
+            $Checks["size and Équipes ensemble shown"] = [bool]($Sizes | Select-String -SimpleMatch "Shown SizeDropdown: yes" -Quiet) -and
+                [bool]($Sizes | Select-String -SimpleMatch "Shown TeamsTogetherDropdown: yes" -Quiet)
+            $SmallLines = @($Sizes | Select-String -SimpleMatch "New game: size Small, 2 places")
+            $Checks["size: Small greyed for three players, chosen again for one ($($SmallLines.Count) time(s))"] = $SmallLines.Count -eq 1 -and
+                @($Sizes | Select-String -SimpleMatch "SizeDropdown: value 1 chosen").Count -eq 1
+            $Checks["teams open in solo, factions greyed (TC-Q12)"] = [bool]($Sizes | Select-String -Pattern "Shown SlotTeam0: yes$" -Quiet) -and
+                [bool]($Sizes | Select-String -SimpleMatch "Shown SlotFaction0: yes, greyed" -Quiet) -and
+                [bool]($Sizes | Select-String -Pattern "Shown TeamsTogetherDropdown: yes$" -Quiet)
+            $Checks["slot 5 past the 4 places of Medium stays closed"] = [bool]($Sizes | Select-String -SimpleMatch "New game: slot 5 stays closed, past the 4 places of the size" -Quiet)
         }
         $AllOk = (Report "menu $Culture" $Checks) -and $AllOk
         if (Get-Command python -ErrorAction SilentlyContinue) {
@@ -5182,11 +5309,10 @@ if ($Parts -contains "net") {
         $HeroServer.Count -eq 2 -and $Wounded -and $Wounded.State -eq "Alive" -and $TrueHp -gt 0 -and $TrueHp -lt $HeroMax -and
         $HeroServer[0].Truth[$AliceSlot].Xp -eq $HeroXp[$AliceSlot] -and $HeroServer[0].Truth[$BobSlot].Xp -eq $HeroXp[$BobSlot] -and $HeroServer[0].Truth[$AliceSlot].State -eq "Alive"
     $HeroChecks["server: Bob's hero dead after hol.Hero.Kill, death step known ($(if ($Fallen) { "$($Fallen.State), death $($Fallen.Death)" }))"] = $Fallen -and $Fallen.State -eq "Dead" -and $Fallen.Death -ge 0
-    # The share sent for the wounded hero (HOLUnitReplication::GetWireHealthShare): ceil(hp * 255 / 450); the client draws
-    # it back to the nearest health points (HOLUnitView::GetReceivedHealth, within 1 and 449), which hol.Units.Where logs:
-    # 450 / 255 > 1, so each share gives its own health points, equal ones mean the same share received.
+    # The share sent for the wounded hero (HOLUnitReplication::GetWireHealthShare): ceil(hp * 255 / 450); with his public
+    # sheet received (loop 4b), the client shows his exact health from it, the share filling his bar: hol.Units.Where logs
+    # both, "hp <sheet>/450 share <received>/255".
     $Share = if ($TrueHp -gt 0) { [int][Math]::Ceiling($TrueHp * 255 / $HeroMax) } else { -1 }
-    $DrawnHp = if ($Share -gt 0) { [Math]::Min([Math]::Max([Math]::Floor((2 * $Share * $HeroMax + 255) / 510), 1), $HeroMax - 1) } else { -1 }
     foreach ($NetClient in $NetClients) {
         $N = $NetClient.Client
         $Own = if ($N -eq 1) { $BobSlot } else { $AliceSlot }
@@ -5199,11 +5325,14 @@ if ($Parts -contains "net") {
         $SheetHp = if ($First -and $First.Sheet[$BobSlot]) { $First.Sheet[$BobSlot].Hp } else { -1 }
         $HeroChecks["client $N : 2 reports ($($Seen.Count)), Bob's hero's sheet hp $SheetHp = the server's $TrueHp, Alive ($(if ($First) { $First.Sheet[$BobSlot].State }))"] =
             $Seen.Count -eq 2 -and $TrueHp -gt 0 -and $SheetHp -eq $TrueHp -and $First.Sheet[$BobSlot].State -eq "Alive"
-        # 2. The share received for the hero unit (Bob's wounded hero, the only slot 1 unit of 450 at most shown wounded).
+        # 2. The hero unit's health (Bob's wounded hero, the only slot 1 unit of 450 at most shown wounded): exact from his
+        # sheet, and the share received.
         $Where = $HeroLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-        $Received = [regex]::Match("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/$HeroMax")
+        $Received = [regex]::Match("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/$HeroMax(?: share (\d+)/255)?")
         $ReceivedHp = if ($Received.Success) { [int]$Received.Groups[1].Value } else { -1 }
-        $HeroChecks["client $N : the hero unit's health received as the share $Share/255 (drawn back $ReceivedHp, expected $DrawnHp)"] = $DrawnHp -gt 0 -and $ReceivedHp -eq $DrawnHp
+        $ReceivedShare = if ($Received.Success -and $Received.Groups[2].Success) { [int]$Received.Groups[2].Value } else { -1 }
+        $HeroChecks["client $N : the hero unit's hp $ReceivedHp = the server's $TrueHp (from his sheet), share $ReceivedShare/255 received (expected $Share)"] =
+            $TrueHp -gt 0 -and $ReceivedHp -eq $TrueHp -and $Share -gt 0 -and $ReceivedShare -eq $Share
         # 3. The XP to its owner only: its own as local, the other's default (COND_OwnerOnly).
         $LocalText = if ($First -and $First.Local) { "slot $($First.Local.Slot) xp $($First.Local.Xp)" } else { "none" }
         $OtherXp = if ($First -and $First.Other[$Foe]) { $First.Other[$Foe].Xp } else { -1 }

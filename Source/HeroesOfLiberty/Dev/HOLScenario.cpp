@@ -103,6 +103,8 @@ namespace UE::HeroesOfLiberty::Dev
 
 		// From the main menu, the New game screen launches it (the match then starts as from its button: game screen,
 		// input in game mode); from inside a match, the map is opened again with the configuration set.
+		// TC3: a configuration with a size plays that size's file (Plain + Small: Plain_Small); without, its map as it is.
+		const FSoftObjectPath MapFile = FHOLMapSizeRules::GetMapFile(Config.Map, Config.MapSize);
 		TArray<FString> Steps;
 		if (World->GetMapName().Contains(TEXT("MainMenu")))
 		{
@@ -110,9 +112,9 @@ namespace UE::HeroesOfLiberty::Dev
 		}
 		else
 		{
-			Steps = { FString::Printf(TEXT("open %s"), *Config.Map.GetLongPackageName()) };
+			Steps = { FString::Printf(TEXT("open %s"), *MapFile.GetLongPackageName()) };
 		}
-		Steps.Add(FString::Printf(TEXT("waitmap %s"), *Config.Map.GetAssetName()));
+		Steps.Add(FString::Printf(TEXT("waitmap %s"), *MapFile.GetAssetName()));
 		Steps.Add(TEXT("waitlog Camera above the start of slot"));
 		Steps.Add(TEXT("frames 5"));
 		Steps.Append(MoveTemp(ScenarioSteps));
@@ -133,6 +135,35 @@ namespace UE::HeroesOfLiberty::Dev
 		};
 		HOLTestSequence::Run(TEXT("Scenario"), MoveTemp(Steps), MoveTemp(Options));
 	}
+
+	/**
+	 * TC4: reads a match configuration file and opens its map at its size, as a server given -MatchConfig= does: no check
+	 * of the New game screen (nor its random seed), the game mode alone accepts or refuses it (quick_check "sizes").
+	 */
+	void OpenMatch(const TArray<FString>& Args)
+	{
+		UWorld* World = GetScenarioWorld();
+		UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+		UHOLMatchSubsystem* Match = GameInstance ? GameInstance->GetSubsystem<UHOLMatchSubsystem>() : nullptr;
+		if (Args.IsEmpty() || !Match)
+		{
+			UE_LOG(LogHOLTest, Error, TEXT("Usage: hol.Match.Open <ConfigFile>, in a game world"));
+			return;
+		}
+		if (!Match->LoadFromFile(Args[0]))
+		{
+			return;
+		}
+		const FHOLMatchConfig Config = Match->GetConfigOrDefault();
+		const FSoftObjectPath MapFile = FHOLMapSizeRules::GetMapFile(Config.Map, Config.MapSize);
+		UE_LOG(LogHOLTest, Display, TEXT("Match open: %s, seed %d"), *MapFile.ToString(), Config.Seed);
+		GEngine->Exec(World, *FString::Printf(TEXT("open %s"), *MapFile.GetLongPackageName()));
+	}
+
+	FAutoConsoleCommand OpenMatchCommand(
+		TEXT("hol.Match.Open"),
+		TEXT("hol.Match.Open <ConfigFile>: opens the map of a match configuration file at its size, the game mode alone checking it (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateStatic(&OpenMatch));
 
 	FAutoConsoleCommand ScenarioCommand(
 		TEXT("hol.Scenario"),

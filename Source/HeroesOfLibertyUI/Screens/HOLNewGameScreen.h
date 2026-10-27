@@ -12,8 +12,8 @@ class UImage;
 /**
  * New game screen (D240, D244): the match configuration of a single-player game, read by the game mode when the
  * map opens, every value chosen in a drop-down list. Acting now: the map, the occupied slots and their colours (no two
- * occupied slots share one: a colour held by another slot is greyed in the list); greyed (D240): AI, factions, teams,
- * mode and options, shown with their values. Launch fills UHOLMatchSubsystem and opens the map (D243).
+ * occupied slots share one: a colour held by another slot is greyed in the list), the teams (TC-Q12); greyed (D240): AI,
+ * factions, mode and options, shown with their values. Launch fills UHOLMatchSubsystem and opens the map (D243).
  */
 UCLASS(Config = Game)
 class HEROESOFLIBERTYUI_API UHOLNewGameScreen : public UHOLScreen
@@ -24,13 +24,27 @@ public:
 	/** The translated name of a map, or its asset name for a map that has none yet. */
 	static FText GetMapName(const FSoftObjectPath& Map);
 
+	/** TC3 (TC-Q8): the translated name of a size with its players, "Petite (2 joueurs)"; "—" for None (a test map). */
+	static FText GetSizeName(EHOLMapSize Size);
+
+	/**
+	 * TC3: a lobby's map with its size, as the list of lobbies shows it: "Plaine — Grande" (the size's name without its
+	 * players); the map alone without a size; empty without a map (an older manager).
+	 */
+	static FText GetLobbyMapName(const FString& Map, const FString& Size);
+
 	/** Opens the screen over the menu of the given player (Play button, hol.UI.Open NewGame). */
 	static UHOLNewGameScreen* Open(APlayerController* PlayerController);
 
 	/** The screen if it is the open menu screen of the given player. */
 	static UHOLNewGameScreen* Find(APlayerController* PlayerController);
 
-	/** Shows a configuration (normalised; a map missing from the list becomes the first one). */
+	/**
+	 * Shows a configuration (normalised). A map missing from the list becomes the first one, at the smallest size that
+	 * holds its players, places drawn (TC3: the menu's own configuration). A configuration of the list's map without a
+	 * size (the test scenarios, quick_check, hol.UI.NewGame.Launch with a file) is launched as it is: that map's own file
+	 * (Plain, the test map, TC-Q11), fixed places; its size shows "—" until one is chosen.
+	 */
 	void SetConfig(const FHOLMatchConfig& InConfig);
 	const FHOLMatchConfig& GetConfig() const { return Config; }
 
@@ -41,7 +55,8 @@ public:
 	 * The network mode (M6-Q3, R4.4): this screen is the lobby the manager client has just entered. Its state is read
 	 * twice a second (the presence, Manager/PROTOCOL.md) and shown: the map, the options, each slot's player, colour,
 	 * team and state (open, closed, ready or not); the other players' lines are greyed. My colour, team and Ready are
-	 * sent (R4.5); the leader also sends the map, the options, open / closed slots and Launch. Back leaves the lobby; a lobby lost (manager gone, removed) goes back to the list, which says why.
+	 * sent (R4.5); the leader also sends the map, its size and "Équipes ensemble" (TC3), the options, open / closed slots
+	 * and Launch. Back leaves the lobby; a lobby lost (manager gone, removed) goes back to the list, which says why.
 	 */
 	void EnterLobby(const FHOLLobby& InLobby);
 	bool IsLobby() const { return bLobby; }
@@ -61,6 +76,14 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLDropdown> MapDropdown;
+
+	/** TC3 (TC-Q3, TC-Q4): the size of the map, under it; the sizes too small for the players greyed. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHOLDropdown> SizeDropdown;
+
+	/** TC3 (TC-Q6): "Équipes ensemble", the allies on neighbouring places when the places are drawn. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHOLDropdown> TeamsTogetherDropdown;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLDropdown> ModeDropdown;
@@ -125,6 +148,13 @@ private:
 	void ReadLobby();
 	void ShowLobby(const FHOLLobby& InLobby);
 	void HandleMapChosen(int32 Value);
+	void HandleSizeChosen(int32 Value);
+	void HandleTeamsTogetherChosen(int32 Value);
+	/**
+	 * TC3: the menu's size (FHOLMapSizeRules::FitSlotsToSize: the slots past its places closed, a player past them moved
+	 * below), places drawn at the launch; false (nothing changed) when the players do not fit it.
+	 */
+	bool ChooseSize(EHOLMapSize Size);
 	void HandleStateChosen(int32 SlotIndex, int32 Value);
 	void HandleColorChosen(int32 SlotIndex, int32 Value);
 	void HandleTeamChosen(int32 SlotIndex, int32 Value);

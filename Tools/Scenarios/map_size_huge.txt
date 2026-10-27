@@ -1,0 +1,5 @@
+# Plaine Immense (8 places, 880 m) : 5 joueurs chacun pour soi, places tirées : 3 places vides, réparties régulièrement
+hol.Camera.Zoom -7
+frames 5
+note Plaine Immense : 880 m de côté, la plus grande carte possible ; 5 joueurs sur 8 places : les bases occupées sont réparties le plus régulièrement possible autour du cercle.
+note Plus de place par joueur que sur la Grande : plus de groupes neutres entre les bases.

@@ -696,7 +696,7 @@ namespace UE::HeroesOfLiberty::Player
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
 				if (Start)
 				{
 					const FVector Point = Start->GetMainCentreLocation() + (Args.Num() >= 2 ? FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.) : FVector::ZeroVector);
@@ -745,7 +745,7 @@ namespace UE::HeroesOfLiberty::Player
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				const int32 Slot = !bOwn ? (Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0])) : PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
-				const AHOLStartSlot* Start = AHOLStartSlot::Find(Controller->GetWorld(), Slot);
+				const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(Controller->GetWorld(), Slot);
 				if (Start && Controller->GetRTSCamera())
 				{
 					Controller->GetRTSCamera()->SetFocus(Start->GetMainCentreLocation());
@@ -877,7 +877,7 @@ namespace UE::HeroesOfLiberty::Player
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
 				if (Start)
 				{
 					const FVector Target = Start->GetMainCentreLocation() + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
@@ -1714,8 +1714,14 @@ void AHOLPlayerController::TryPlaceCamera()
 	{
 		return;
 	}
+	// TC3: a client waits for the configuration of the launch, which gives its slot's place (drawn at the launch).
+	const AHOLGameState* HOLGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	if (GetNetMode() == NM_Client && (!HOLGameState || !HOLGameState->HasStartPlaces()))
+	{
+		return;
+	}
 	bCameraPlaced = true;
-	const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot);
+	const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(GetWorld(), Slot);
 	if (!Start)
 	{
 		UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: the camera stays where it is"), Slot);
@@ -3772,7 +3778,7 @@ bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
 		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the forum of slot %d"), Slot);
 		return true;
 	}
-	if (const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot))
+	if (const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(GetWorld(), Slot))
 	{
 		RTSCamera->SetFocus(Start->GetMainCentreLocation());
 		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d"), Slot);

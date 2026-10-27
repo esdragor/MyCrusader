@@ -13,6 +13,7 @@
 #include "Net/HOLUnitReplicationRules.h"
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroSheet.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
@@ -419,6 +420,74 @@ bool FHOLNetHeroHealthShareTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Man-at-arms 100/155: 100 on the wire"), Troop.Wire, static_cast<uint16>(100));
 	TestEqual(TEXT("Man-at-arms 100/155: received exactly 100"), Troop.Health, 100);
 	TestEqual(TEXT("Man-at-arms 154/155: exact"), SendHealth(*this, *ManAtArms, TEXT("ManAtArms"), 154.f).Health, 154);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetHeroSheetHealthTest, "HeroesOfLiberty.Net.HeroSheetHealth", UE::HeroesOfLiberty::Tests::Net::Flags)
+// J8a.3 loop 4b: a client shows its hero's exact health from his slot's public sheet (HOLHeroSheet::Make, the server's
+// rule), once received and alive; the share received stays the fallback and keeps filling the bar. The real Hero row,
+// the server's SetCombat and Iris' serializer, the client's view as UHOLUnitReceptionSubsystem::MakeView makes it.
+bool FHOLNetHeroSheetHealthTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Hero = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Hero"), TEXT("Net test")) : nullptr;
+	const FHOLUnitTypeRow* ManAtArms = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("ManAtArms"), TEXT("Net test")) : nullptr;
+	if (!TestNotNull(TEXT("Hero row"), Hero) || !TestNotNull(TEXT("ManAtArms row"), ManAtArms))
+	{
+		return false;
+	}
+	const auto SheetAt = [](const float Health)
+	{
+		FHOLHeroFacts Facts;
+		Facts.bPresent = true;
+		Facts.Health = Health;
+		return HOLHeroSheet::Make(Facts, FHOLHeroSheets()).Public;
+	};
+	const auto View = [Hero](const FReceivedHealth& Received, const FHOLHeroSheet* Sheet)
+	{
+		FHOLUnitView Out;
+		HOLUnitView::SetReceivedHealth(Out, Received.bFullHealth, Received.Wire, Hero->MaxHealth, true, Sheet);
+		return Out;
+	};
+
+	// 407 of 450 (quick_check's net hero): 231 on the wire, drawn back 408.
+	const FReceivedHealth Wounded = SendHealth(*this, *Hero, TEXT("Hero"), 407.f);
+	TestEqual(TEXT("407/450: 231 on the wire"), Wounded.Wire, static_cast<uint16>(231));
+	const FHOLHeroSheet Alive = SheetAt(407.f);
+	TestTrue(TEXT("the server's sheet: Alive, 407"), Alive.State == EHOLHeroState::Alive && Alive.Health == 407);
+
+	const FHOLUnitView Exact = View(Wounded, &Alive);
+	TestEqual(TEXT("sheet received: the sheet's exact 407"), Exact.Health, 407);
+	TestTrue(TEXT("... marked exact"), Exact.bHealthExact);
+	TestEqual(TEXT("... the bar still filled by the share 231/255"), Exact.GetHealthShare(), 231.f / 255.f, 0.0001f);
+	TestTrue(TEXT("... wounded, of 450"), !Exact.bFullHealth && Exact.MaxHealth == 450);
+
+	const FHOLUnitView NoSheet = View(Wounded, nullptr);
+	TestEqual(TEXT("no sheet: the share drawn back, 408"), NoSheet.Health, 408);
+	TestFalse(TEXT("... not exact"), NoSheet.bHealthExact);
+	const FHOLHeroSheet NotYet;
+	TestEqual(TEXT("sheet not received yet (None): the share drawn back"), View(Wounded, &NotYet).Health, 408);
+	TestFalse(TEXT("... not exact"), View(Wounded, &NotYet).bHealthExact);
+
+	// Fallen: the sheet Dead, the share (0) as received.
+	FHOLHeroFacts Fell;
+	Fell.bPresent = true;
+	Fell.DeathStep = 300;
+	const FHOLHeroSheet Dead = HOLHeroSheet::Make(Fell, FHOLHeroSheets()).Public;
+	const FHOLUnitView Fallen = View(SendHealth(*this, *Hero, TEXT("Hero"), -5.f), &Dead);
+	TestTrue(TEXT("dead: 0 health, not from a sheet"), Fallen.Health == 0 && !Fallen.bHealthExact);
+
+	// Unhurt with his sheet: 450, exact.
+	const FHOLHeroSheet Full = SheetAt(450.f);
+	const FHOLUnitView Unhurt = View(SendHealth(*this, *Hero, TEXT("Hero"), 450.f), &Full);
+	TestTrue(TEXT("unhurt with his sheet: 450, exact, the bar full"), Unhurt.Health == 450 && Unhurt.bHealthExact && Unhurt.GetHealthShare() == 1.f);
+
+	// A troop: exact, no share, whatever sheet.
+	const FReceivedHealth Troop = SendHealth(*this, *ManAtArms, TEXT("ManAtArms"), 100.f);
+	FHOLUnitView TroopView;
+	HOLUnitView::SetReceivedHealth(TroopView, Troop.bFullHealth, Troop.Wire, ManAtArms->MaxHealth, false, &Alive);
+	TestTrue(TEXT("Man-at-arms 100: exact 100, no share"), TroopView.Health == 100 && TroopView.bHealthExact && TroopView.HealthShare < 0.f);
 	return true;
 }
 

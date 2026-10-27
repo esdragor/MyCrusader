@@ -34,14 +34,26 @@ public:
 	/** The main centre's yaw: the start's, turned to the nearest quarter turn to keep the footprint on the grid. */
 	float GetMainCentreYaw() const;
 
-	/** The start of the given slot, or null if the map has none. */
+	/** The start of the given place of the map (its SlotIndex), or null if the map has none. */
 	static AHOLStartSlot* Find(const UWorld* World, int32 Index);
+
+	/**
+	 * TC3: the start of a slot of the match configuration, at its place (AHOLGameState::GetStartPlace: fixed, slot i at
+	 * place i, or drawn at the launch); null for a slot without a place or a map without that place.
+	 */
+	static AHOLStartSlot* FindForSlot(const UWorld* World, int32 Slot);
 
 	/** Whether the map has start slots, i.e. is a match map. */
 	static bool WorldHasSlots(const UWorld* World);
 
+	/** Tests: the place this start stands for. */
+	void SetSlotIndex(const int32 InSlotIndex) { SlotIndex = InSlotIndex; }
+
 protected:
-	/** Slot of the match configuration, 0 to 7 (FHOLMatchConfig::MaxSlots). */
+	/**
+	 * The place on the map, 0 to 7 (FHOLMatchConfig::MaxSlots), numbered in order around the map's circle: slot i of the
+	 * configuration starts here with fixed places (tests, scenarios), the slot drawn on it otherwise (TC3, FindForSlot).
+	 */
 	UPROPERTY(EditAnywhere, Category = "Match", meta = (ClampMin = 0, ClampMax = 7))
 	int32 SlotIndex = 0;
 };

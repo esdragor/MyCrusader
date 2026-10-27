@@ -140,9 +140,9 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
 ```json
 {
   "lobbies": [
-    { "id": "L7", "name": "Salon de Bob", "players": 3, "maxPlayers": 8, "state": "lobby",
+    { "id": "L7", "name": "Salon de Bob", "map": "Plain", "size": "Large", "players": 3, "maxPlayers": 8, "state": "lobby",
       "minutes": null, "canJoin": true, "canWatch": false, "away": [], "gameVersion": "2026-10-23-b4a8c8c" },
-    { "id": "L8", "name": "2v2", "players": 4, "maxPlayers": 4, "state": "in_game",
+    { "id": "L8", "name": "2v2", "map": "Plain", "size": "Medium", "players": 4, "maxPlayers": 4, "state": "in_game",
       "minutes": 12, "canJoin": false, "canWatch": true, "away": ["Bob"], "gameVersion": "2026-10-23-b4a8c8c" }
   ]
 }
@@ -151,7 +151,10 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
 - `state` : `"lobby"` (au salon), `"starting"` (serveur lancé, pas encore à l'écoute), `"in_game"` (en partie).
 - `minutes` : minutes de partie écoulées depuis « partie lancée » (entier, arrondi vers le bas) ; `0` en partie avant
   « partie lancée » (`started`) ; `null` hors de `in_game` (`starting` compris).
-- `maxPlayers` : emplacements **ouverts ou tenus** (le chef en ferme pour une partie à 4).
+- `map`, `size` : carte et taille du salon (TC3), affichées « Plaine — Grande » ; `size` vaut `""` pour une carte sans
+  tailles.
+- `maxPlayers` : emplacements **ouverts ou tenus** (le chef en ferme pour une partie à 4 ; ceux au-delà des places de
+  la taille sont fermés : Petite → 2 au plus).
 - `canJoin` : au salon et pas plein. `canWatch` : en partie (`"in_game"`).
 - `gameVersion` (D481, ajouté à la version 1) : la version du salon ; un client d'une autre version y est refusé
   (`version_mismatch`).
@@ -170,9 +173,10 @@ Crée le salon **et y entre** : le créateur est chef (pas de salon vide).
 { "name": "Salon de Bob", "playerName": "Bob", "gameVersion": "2026-10-23-b4a8c8c" }
 ```
 
-Réponse `201` : la même que l'entrée (ci-dessous). Réglages de départ : carte par défaut du gestionnaire (`Plain`), 8
-emplacements ouverts, options désactivées. Le salon prend la version servie à ce moment (la dernière publiée, D481) ;
-`gameVersion` doit être celle-là. Erreurs : `invalid_name`, `version_mismatch`, `bad_request`.
+Réponse `201` : la même que l'entrée (ci-dessous). Réglages de départ : carte par défaut du gestionnaire (`Plain`),
+taille **`Large`** (Grande, 8 places, TC3), « Équipes ensemble » cochée, 8 emplacements ouverts, options désactivées.
+Le salon prend la version servie à ce moment (la dernière publiée, D481) ; `gameVersion` doit être celle-là. Erreurs :
+`invalid_name`, `version_mismatch`, `bad_request`.
 
 ### `POST /lobbies/{lobbyId}/join` — entrer avec un nom
 
@@ -213,8 +217,9 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   "minutes": null,
   "leader": "Bob",
   "you": "Alice",
-  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false },
-  "maps": [ { "name": "Plain", "maxPlayers": 8 } ],
+  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false, "size": "Large", "teamsTogether": true },
+  "maps": [ { "name": "Plain", "maxPlayers": 8, "sizes": [ { "key": "Small", "places": 2 }, { "key": "Medium", "places": 4 },
+    { "key": "Normal", "places": 6 }, { "key": "Large", "places": 8 }, { "key": "Huge", "places": 8 } ] } ],
   "slots": [
     { "index": 0, "state": "player", "playerName": "Bob",   "colorIndex": 0, "team": 1, "faction": "DawnOrder", "ready": true },
     { "index": 1, "state": "player", "playerName": "Alice", "colorIndex": 3, "team": 2, "faction": "DawnOrder", "ready": false },
@@ -226,6 +231,11 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
 }
 ```
 
+- `settings.size` (TC3, TC-Q3 / TC-Q4) : clé de la taille (`Small`, `Medium`, `Normal`, `Large`, `Huge` = Petite,
+  Moyenne, Normale, Grande, Immense ; `Tools/Data/MapSizes.csv`), qui fixe le nombre de places ; `""` pour une carte
+  sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage.
+- `maps[].sizes` : les tailles de la carte et leurs places (vide pour une carte sans tailles) ; `maxPlayers` = places
+  de la plus grande. `/Game/Maps/Plain` seule (carte d'essai, TC-Q11) n'est pas servie.
 - `slots` : toujours 8 ; `state` vaut `"open"`, `"closed"` ou `"player"`. `you` : le nom du jeton (`null` sans
   jeton).
 - `faction` : rendue mais pas encore modifiable (D11 : deux factions au prototype).
@@ -254,13 +264,17 @@ Champs facultatifs ; seuls ceux présents changent.
 ### `PUT /lobbies/{lobbyId}/settings` — réglages du chef (en-tête `X-Player-Token`)
 
 ```json
-{ "map": "Plain", "nomad": true, "regicide": false, "catastrophe": false }
+{ "map": "Plain", "nomad": true, "regicide": false, "catastrophe": false, "size": "Small", "teamsTogether": true }
 ```
 
 Champs facultatifs. Un changement (valeur différente de l'actuelle) remet **tous** les « Prêt » à `false`. Une carte
 de moins d'emplacements ferme ceux de trop (refus `slot_taken` s'ils sont tenus) ; une carte plus grande ne les rouvre
-pas (le chef les rouvre). Réponse `200` : l'état du salon. Erreurs : `lobby_not_found`, `not_in_lobby`,
-`lobby_in_game`, `not_leader`, `bad_request` (carte inconnue), `slot_taken` (dans cet ordre).
+pas (le chef les rouvre). **Taille** (TC3, TC-Q4) : les emplacements au-delà de ses places sont fermés ; un joueur
+assis au-delà est **remonté**, avec sa ligne, sur le premier emplacement libre en dessous (comme
+`FHOLMapSizeRules::FitSlotsToSize` à l'écran) ; une taille de **moins de places que de joueurs assis** est refusée
+(`slot_taken` ; grisée à l'écran) ; une taille plus grande **rouvre** les emplacements qu'elle ajoute (ceux fermés par
+le chef en dessous restent fermés). Sans `size`, la taille reste (ou devient celle par défaut d'une autre carte). Réponse `200` : l'état du salon. Erreurs : `lobby_not_found`, `not_in_lobby`,
+`lobby_in_game`, `not_leader`, `bad_request` (carte ou taille inconnue), `slot_taken` (dans cet ordre).
 
 ### `PUT /lobbies/{lobbyId}/slots/{index}` — ouvrir / fermer un emplacement (chef)
 
@@ -270,7 +284,7 @@ pas (le chef les rouvre). Réponse `200` : l'état du salon. Erreurs : `lobby_no
 
 `state` : `"open"` ou `"closed"`. Un changement remet tous les « Prêt » à `false` (ouvrir un emplacement déjà ouvert
 ne change rien). Erreurs : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`, `bad_request` (index
-hors de 0 à 7 ou non entier, `state` absent ou inconnu, ouvrir un emplacement au-delà de la carte), `slot_taken` (emplacement tenu).
+hors de 0 à 7 ou non entier, `state` absent ou inconnu, ouvrir un emplacement au-delà des places de la carte à sa taille), `slot_taken` (emplacement tenu).
 
 ### `POST /lobbies/{lobbyId}/start` — « Lancer » (chef)
 
@@ -356,8 +370,9 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
     -abslog="<dossier>\M20261023-153012-3\server.log" [-HOLAccessKey=<clé>]
 ```
 
-- Carte en premier argument, en chemin de paquet (`/Game/Maps/<Nom>`) ; dans `match.json`, chemin d'objet
-  (`/Game/Maps/<Nom>.<Nom>`).
+- Carte en premier argument, en chemin de paquet : le **fichier de la taille** (TC3, `/Game/Maps/<Nom>_<Taille>`, ex.
+  `/Game/Maps/Plain_Small`, comme `FHOLMapSizeRules::GetMapFile`) ; dans `match.json`, chemin d'objet de la carte
+  (`/Game/Maps/<Nom>.<Nom>`) et sa taille à part (`mapSize`).
 - Les chemins sont entre guillemets **après le `=`** (`-MatchConfig="C: b\match.json"`), pas autour de toute
   l'option : `FParse::Value` d'Unreal lit la valeur après `=` et s'arrête à l'espace si elle ne commence pas par un
   guillemet.
@@ -406,19 +421,23 @@ un salon que tous ont quitté pendant la partie est supprimé. Après `finished`
 gardé jusqu'à l'arrêt du serveur), le serveur reste suivi : il quitte seul
 quand il est vide (`empty`, R3.8) et le gestionnaire l'arrête s'il tourne encore 10 s après.
 
-## `match.json` (`FHOLMatchConfig` version 2)
+## `match.json` (`FHOLMatchConfig` version 3)
 
 Écrit par « Lancer », lu par le serveur avec `-MatchConfig=` (D243, `Source/HeroesOfLiberty/Match/HOLMatchConfig.h`).
 C'est le JSON de `FJsonObjectConverter` (premières lettres en minuscule, énumérations par leur nom, noms de champs
 lus sans tenir compte de la casse). **Version 2 = version 1 + `playerName` par emplacement** (R3.1,
-`FHOLMatchSlot::PlayerName`) :
+`FHOLMatchSlot::PlayerName`) ; **version 3 = version 2 + `mapSize`, `bDrawPlaces`, `bTeamsTogether`** (TC1 / TC3,
+tailles de carte) :
 
 | Champ | Type | Sens |
 |---|---|---|
-| `version` | entier | `2` |
+| `version` | entier | `3` |
 | `seed` | entier | graine de la partie (tirée par le gestionnaire) |
 | `map` | chaîne | chemin d'objet de la carte, ex. `/Game/Maps/Plain.Plain` |
-| `slots` | 8 objets | position de départ = index |
+| `mapSize` | `"None"`, `"Small"` … `"Huge"` | **nouveau en version 3** : taille du salon (`EHOLMapSize`) ; le serveur joue `GetMapFile(map, mapSize)` ; `"None"` (ou absent) = la carte telle quelle |
+| `bDrawPlaces` | booléen | **nouveau en version 3** : `true` depuis un salon : places tirées par le serveur depuis `seed` (TC-Q6) ; absent = places fixes (emplacement i à la place i : scénarios, `quick_check`) |
+| `bTeamsTogether` | booléen | **nouveau en version 3** : « Équipes ensemble » du salon (alliés sur des places voisines) |
+| `slots` | 8 objets | emplacement du salon = index (la place de départ est tirée, `bDrawPlaces`) |
 | `slots[].state` | `"Closed"`, `"Human"`, `"AI"` | `"Human"` pour chaque joueur du salon ; ouvert vide ou fermé → `"Closed"` (faction `DawnOrder`, couleur = index, équipe 0, comme `Normalize`) |
 | `slots[].faction` | `"DawnOrder"`, `"BlackLegions"`, … | |
 | `slots[].colorIndex` | 0 à 7 | palette D233 ; jamais 8 : un joueur sur « Aléatoire » reçoit au lancement, tiré de `seed`, une couleur qu'aucun autre joueur n'a (choisie ou déjà tirée) ; le salon garde « Aléatoire » |
@@ -435,9 +454,12 @@ chef, Nomade) :
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "seed": 184467,
   "map": "/Game/Maps/Plain.Plain",
+  "mapSize": "Large",
+  "bDrawPlaces": true,
+  "bTeamsTogether": true,
   "slots": [
     { "state": "Human", "faction": "DawnOrder", "colorIndex": 0, "team": 1, "playerName": "Bob" },
     { "state": "Closed", "faction": "DawnOrder", "colorIndex": 1, "team": 0, "playerName": "" },
@@ -456,7 +478,9 @@ chef, Nomade) :
 ```
 
 Ce fichier sert aussi de **référence partagée** entre le test C# de R2.8 et le test C++ de R3.1
-(`Manager/HOLManager.Tests/Data/match_v2_reference.json`, créé en R2.8 ; le test C# le compare au JSON produit).
+(`Manager/HOLManager.Tests/Data/match_v3_reference.json` depuis TC3, le test C# le compare au JSON produit ;
+`match_v2_reference.json`, créé en R2.8, reste pour le test C++ de lecture d'un fichier de version 2, lu avec places
+fixes).
 
 ## Versions du jeu (lanceur, L2)
 

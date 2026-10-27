@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Map/HOLMapSizeRules.h"
 
 enum class EHOLMatchOrigin : uint8;
 
@@ -24,6 +25,9 @@ struct FHOLLobbySummary
 {
 	FString Id;
 	FString Name;
+	/** TC3: the lobby's map and size keys ("Plain", "Large"); empty from an older manager. */
+	FString Map;
+	FString Size;
 	int32 Players = 0;
 	int32 MaxPlayers = 0;
 	EHOLLobbyState State = EHOLLobbyState::Lobby;
@@ -80,6 +84,10 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	/** The name of the token; empty without one. */
 	FString You;
 	FString Map;
+	/** TC3 (TC-Q3, TC-Q4): the size's key (Small... Huge, EHOLMapSize by name); empty for a map without sizes. */
+	FString Size;
+	/** TC3 (TC-Q6): "Équipes ensemble"; true when the manager does not say. */
+	bool bTeamsTogether = true;
 	bool bNomad = false;
 	bool bRegicide = false;
 	bool bCatastrophe = false;
@@ -97,6 +105,10 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	FString Notice;
 
 	int32 GetNumPlayers() const;
+	/** TC3: the lobby's size; None without one (an older manager, a map without sizes). */
+	EHOLMapSize GetMapSize() const;
+	/** TC3: the places of the lobby's map at its size; FHOLMatchConfig::MaxSlots without a size. */
+	int32 GetNumPlaces() const;
 	/** The slot of the token's player; INDEX_NONE without one. */
 	int32 FindYourSlot() const;
 
@@ -104,7 +116,7 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	bool IsYouLeader() const;
 	/** A line's colour, team and Ready: only my own line (M6-Q4). */
 	bool CanEditSlot(int32 SlotIndex) const;
-	/** Opening or closing a slot: the leader's, on a slot nobody holds. */
+	/** Opening or closing a slot: the leader's, on a slot nobody holds, within the places of the size (TC3). */
 	bool CanToggleSlot(int32 SlotIndex) const;
 	/** Launch shown active: the leader's, 2 players at least, all Ready (the manager still decides). */
 	bool CanStart() const;
@@ -150,8 +162,12 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 
 	/** PUT /lobbies/{id}/me: only the fields given ({ "colorIndex", "team", "ready" }). */
 	static FString MakeMeBody(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady);
-	/** PUT /lobbies/{id}/settings: { "map", "nomad", "regicide", "catastrophe" }. */
-	static FString MakeSettingsBody(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe);
+	/**
+	 * PUT /lobbies/{id}/settings: { "map", "nomad", "regicide", "catastrophe" }, then (TC3) "size" when Size is not empty and
+	 * "teamsTogether" when given.
+	 */
+	static FString MakeSettingsBody(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, const FString& Size = FString(),
+		TOptional<bool> bTeamsTogether = {});
 	/** PUT /lobbies/{id}/slots/{index}: { "state": "open" | "closed" }. */
 	static FString MakeSlotBody(bool bOpen);
 

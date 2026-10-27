@@ -53,6 +53,7 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 {
 	LaunchConfig = Config;
 	LaunchConfig.Normalize();
+	UpdateStartPlaces();
 	SlotDefeats.Init(EHOLDefeatReason::None, FHOLMatchConfig::MaxSlots);
 	bMatchOver = false;
 	WinnerMask = 0;
@@ -81,6 +82,35 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 		StepStartedHandle = Simulation->GetOnStepStarted().AddUObject(this, &AHOLGameState::OnStepStarted);
 		StepEndedHandle = Simulation->GetOnStepEnded().AddUObject(this, &AHOLGameState::OnStepEnded);
 	}
+}
+
+void AHOLGameState::UpdateStartPlaces()
+{
+	// A configuration refused (FHOLMapSizeRules::CheckPlaces, logged by the game mode): no start for anyone.
+	StartPlaces.Init(INDEX_NONE, FHOLMatchConfig::MaxSlots);
+	if (!FHOLMapSizeRules::CheckPlaces(LaunchConfig))
+	{
+		return;
+	}
+	const TArray<int32> Places = FHOLMapSizeRules::GetPlaces(LaunchConfig);
+	for (int32 Slot = 0; Slot < FMath::Min(Places.Num(), StartPlaces.Num()); ++Slot)
+	{
+		StartPlaces[Slot] = Places[Slot];
+	}
+}
+
+void AHOLGameState::OnRep_LaunchConfig()
+{
+	UpdateStartPlaces();
+}
+
+int32 AHOLGameState::GetStartPlace(const int32 Slot) const
+{
+	if (!HasStartPlaces())
+	{
+		return Slot;
+	}
+	return StartPlaces.IsValidIndex(Slot) ? StartPlaces[Slot] : INDEX_NONE;
 }
 
 void AHOLGameState::EndPlay(const EEndPlayReason::Type EndPlayReason)

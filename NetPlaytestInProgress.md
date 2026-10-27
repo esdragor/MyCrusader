@@ -1468,3 +1468,28 @@ R8, R9.
   prévenues. `EtapeDefini.md` : ligne Réseau (R1-R7 dans `main`), « Joueur 2 est vaincu », ligne UBT retirée (réglé).
   **R7 clos.** Suite : **R7.10** demande de bc (recopier `HeroPrivate` au retour), puis R8 (mise en place chez les amis :
   demande l'utilisateur).
+- 2026-10-27 : **R7.10 lancée** (sous-agent, 15 min, Glorfindel) : fiche privée du héros (`FHOLHeroPrivateSheet` : XP,
+  recharges, heure de mort) dans le nouveau PlayerState au retour. Source : `UHOLHeroSubsystem::Sheets` (serveur),
+  copiée par `WriteCopies` ; test sur la vraie chaîne (`SetXP`, départ, retour) d'abord, puis réécriture au retour si
+  rouge.
+- 2026-10-27 : **R7.10 faite** (sous-agent, 12 min), Glorfindel, **non commitée** (attend l'accord de l'utilisateur).
+  Lu : `WriteCopies` tourne à chaque pas et le sous-système de héros garde `Sheets[Slot]` pendant l'absence ; le
+  PlayerState neuf avait XP 0 jusqu'à la fin du pas suivant. Ajout `UHOLHeroSubsystem::RewriteCopies(Slot)`, appelé par
+  `AHOLGameState::GiveSlotStock` au retour. Test `Match.DisconnectHeroSheet` (`SetXP` 12, départ, retour sans pas) :
+  **rouge** (« expected 12, but it was 0 ») puis vert ×2 ; `-Parts tests` **211/211** ; `lobby_match -Rejoin` **PASS** ;
+  `-Parts net` **PASS** (« net hero sheets » PASS). Recharges : pas encore produites par la chaîne, le test compare la
+  fiche entière. bc prévenue. Suite : commit après accord, avance de `main` (accord des sessions), puis R8.
+- 2026-10-27 soir : outillage, Glorfindel, **non commité** (avec R7.10) : `net_match.ps1 -StageOnly` (cuit le serveur
+  et s'arrête : vérifié, 0 processus laissé) ; `quick_check -Parts lobby` : si `lobby_match` échoue et que le serveur cuit
+  est plus vieux que `UnrealEditor-HeroesOfLiberty*.dll`, ligne KO « cooked server newer than the code … run
+  net_match.ps1 -StageOnly » (chemin d'échec non exercé). `-Parts lobby` **PASS** (216 s) sur le serveur recuit.
+  Accords donnés : IA (mycrusader-1f) avance `main` à ai-ia1 3ae16b3 ; Héros (bc) boucle 4b dans Celeborn, sans
+  recoupement avec R7.10 ; le premier qui avance `main` prévient l'autre.
+  **À la reprise** : demander à l'utilisateur l'accord pour R7.10 + outillage (fichiers : `HOLHeroSubsystem.*`,
+  `HOLGameState.cpp`, `HOLDisconnectTests.cpp`, `net_match.ps1`, `quick_check.ps1`), commit sur `net-playtest`,
+  fusion de `main` (IA1.2 ferme, peut-être héros 4b), recompilation, `-StageOnly`, parties touchées (tests, net, lobby),
+  `-Rejoin`, avance de `main` avec l'accord des sessions ; puis R8 avec l'utilisateur.
+- 2026-10-27 soir : accord de l'utilisateur → **commit 468c701** (R7.10 + `-StageOnly` + ligne « serveur cuit périmé »).
+  Fusion de `main` 6cddb93 (ferme IA1.2) sans conflit : build, recuisson (`-StageOnly`), tests **218/218**, menu,
+  `net` (+ hero sheets), `lobby`, `-Rejoin` **PASS** → a416b75. Accords IA (1f) et Héros (bc) → **`main` avancée à
+  a416b75**. **Suite : R8** (mise en place chez les amis, avec l'utilisateur).

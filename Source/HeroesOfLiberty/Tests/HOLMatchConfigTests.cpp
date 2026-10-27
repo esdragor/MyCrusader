@@ -103,7 +103,9 @@ bool FHOLMatchConfigManagerReferenceTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("version 2"), Read.Version, 2);
+	// A version 2 file, read and upgraded (TC1, version 3): no map size, fixed places.
+	TestEqual(TEXT("version 2 upgraded to the current version"), Read.Version, FHOLMatchConfig::CurrentVersion);
+	TestTrue(TEXT("no map size, fixed places"), Read.MapSize == EHOLMapSize::None && !Read.bDrawPlaces);
 	TestEqual(TEXT("seed"), Read.Seed, 184467);
 	TestEqual(TEXT("map"), Read.Map.ToString(), FString(TEXT("/Game/Maps/Plain.Plain")));
 	TestTrue(TEXT("Standard, nomad only"), Read.Mode == EHOLMatchMode::Standard && Read.bNomad && !Read.bRegicide

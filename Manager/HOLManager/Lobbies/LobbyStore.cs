@@ -82,7 +82,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 Id = $"L{nextLobbyId++}",
                 Name = LobbyRules.Clean(lobbyName),
                 GameVersion = version,
-                Settings = new LobbySettings { Map = maps[0].Name },
+                Settings = new LobbySettings { Map = maps[0].Name, Size = DefaultSize(maps[0]) },
             };
             lobbies.Add(lobby.Id, lobby);
             return Enter(lobby, LobbyRules.Clean(playerName!));
@@ -165,7 +165,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
 
     /** PUT /lobbies/{id}/settings (leader): only the given fields change; a change resets every "Ready". */
     public Lobby UpdateSettings(string lobbyId, string? token, string? map = null, bool? nomad = null, bool? regicide = null,
-        bool? catastrophe = null)
+        bool? catastrophe = null, string? size = null, bool? teamsTogether = null)
     {
         lock (gate)
         {
@@ -173,19 +173,45 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var settings = lobby.Settings;
             var mapInfo = maps.FirstOrDefault(m => m.Name == (map ?? settings.Map))
                 ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown map: '{map}'.");
-            var extraSlots = lobby.Slots.Skip(mapInfo.MaxPlayers).ToList();
-            if (extraSlots.Any(s => s.Player != null))
+            // TC3: the size asked, else the current one if the map has it, else the map's default.
+            var newSize = size != null
+                ? mapInfo.FindSize(size)?.Key ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown size: '{size}'.")
+                : mapInfo.FindSize(settings.Size)?.Key ?? DefaultSize(mapInfo);
+            var oldPlaces = Places(lobby);
+            var places = mapInfo.Places(newSize);
+            var extraSlots = lobby.Slots.Skip(places).ToList();
+            var moving = extraSlots.Where(s => s.Player != null).ToList();
+            // A map without sizes refuses a player past its places; a size (TC-Q4) moves him below, unless the players
+            // are more than its places (such a size is greyed on the screen).
+            if (moving.Count > 0 && (mapInfo.Sizes.Count == 0 || lobby.Players.Count() > places))
             {
-                throw new LobbyException(LobbyErrors.SlotTaken, $"Map {mapInfo.Name} has {mapInfo.MaxPlayers} slots; a player holds one beyond.");
+                throw new LobbyException(LobbyErrors.SlotTaken, $"Map {mapInfo.Name} {newSize} has {places} places; a player holds a slot beyond.");
             }
-            var changed = mapInfo.Name != settings.Map || (nomad ?? settings.Nomad) != settings.Nomad
+            var sizeChanged = newSize != settings.Size;
+            var changed = mapInfo.Name != settings.Map || sizeChanged || (nomad ?? settings.Nomad) != settings.Nomad
                 || (regicide ?? settings.Regicide) != settings.Regicide || (catastrophe ?? settings.Catastrophe) != settings.Catastrophe
-                || extraSlots.Any(s => !s.Closed);
+                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || extraSlots.Any(s => !s.Closed);
             settings.Map = mapInfo.Name;
+            settings.Size = newSize;
             settings.Nomad = nomad ?? settings.Nomad;
             settings.Regicide = regicide ?? settings.Regicide;
             settings.Catastrophe = catastrophe ?? settings.Catastrophe;
+            settings.TeamsTogether = teamsTogether ?? settings.TeamsTogether;
+            // TC3 (FHOLMapSizeRules::FitSlotsToSize): each player past the places onto the first free slot below, in order.
+            foreach (var from in moving)
+            {
+                var to = lobby.Slots.Take(places).First(s => s.Player == null);
+                to.Player = from.Player;
+                to.Closed = false;
+                to.Player!.SlotIndex = to.Index;
+                from.Player = null;
+            }
             extraSlots.ForEach(s => s.Closed = true);
+            // A bigger size opens the slots it adds (closed by the smaller one); a bigger map without sizes does not.
+            if (sizeChanged && mapInfo.Sizes.Count > 0 && places > oldPlaces)
+            {
+                lobby.Slots.Skip(oldPlaces).Take(places - oldPlaces).ToList().ForEach(s => s.Closed = false);
+            }
             if (changed)
             {
                 ResetReady(lobby);
@@ -205,10 +231,10 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 throw new LobbyException(LobbyErrors.BadRequest,
                     $"Slot index is 0 to {LobbyRules.SlotCount - 1}, state \"open\" or \"closed\".");
             }
-            var mapMax = maps.First(m => m.Name == lobby.Settings.Map).MaxPlayers;
+            var mapMax = Places(lobby);
             if (open == true && index >= mapMax)
             {
-                throw new LobbyException(LobbyErrors.BadRequest, $"Map {lobby.Settings.Map} has {mapMax} slots.");
+                throw new LobbyException(LobbyErrors.BadRequest, $"Map {lobby.Settings.Map} {lobby.Settings.Size} has {mapMax} slots.");
             }
             var slot = lobby.Slots[index];
             if (slot.Player != null)
@@ -244,8 +270,9 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var map = maps.First(m => m.Name == lobby.Settings.Map);
             var config = MatchConfig.FromLobby(lobby, map, Random.Shared.Next());
             var matchId = $"M{clock.UtcNow:yyyyMMdd-HHmmss}-{nextMatchId++}";
-            // The launcher throws max_servers or server_start_failed: the lobby is then left as it was.
-            var port = launcher?.Launch(matchId, map, config, lobby.GameVersion) ?? 0;
+            // The launcher throws max_servers or server_start_failed: the lobby is then left as it was. TC3: the server
+            // opens the file of the size (Plain_Small), match.json names the map and its size.
+            var port = launcher?.Launch(matchId, map.File(lobby.Settings.Size), config, lobby.GameVersion) ?? 0;
             lobby.Match = new LobbyMatch(matchId, config, port, clock.UtcNow);
             lobby.State = LobbyState.Starting;
             matches.Add(matchId, (lobby, lobby.Match));
@@ -643,6 +670,13 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         slot.Player = player;
         return new JoinResult(lobby, player.Token, slot.Index);
     }
+
+    /** TC3: the size of a new lobby on a map (DefaultSize, else its biggest); "" for a map without sizes. */
+    private static string DefaultSize(MapInfo map) =>
+        (map.FindSize(LobbyRules.DefaultSize) ?? map.Sizes.LastOrDefault())?.Key ?? "";
+
+    /** The places of the lobby's map at its size. */
+    private int Places(Lobby lobby) => maps.First(m => m.Name == lobby.Settings.Map).Places(lobby.Settings.Size);
 
     private static void ResetReady(Lobby lobby)
     {

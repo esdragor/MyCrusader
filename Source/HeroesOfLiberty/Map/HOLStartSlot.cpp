@@ -6,6 +6,7 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Components/CapsuleComponent.h"
 #include "EngineUtils.h"
+#include "Match/HOLGameState.h"
 
 AHOLStartSlot::AHOLStartSlot(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -46,6 +47,13 @@ AHOLStartSlot* AHOLStartSlot::Find(const UWorld* World, const int32 Index)
 		}
 	}
 	return nullptr;
+}
+
+AHOLStartSlot* AHOLStartSlot::FindForSlot(const UWorld* World, const int32 Slot)
+{
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	const int32 Place = GameState ? GameState->GetStartPlace(Slot) : Slot;
+	return Place != INDEX_NONE ? Find(World, Place) : nullptr;
 }
 
 bool AHOLStartSlot::WorldHasSlots(const UWorld* World)
