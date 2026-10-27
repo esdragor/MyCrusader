@@ -50,7 +50,7 @@ $Steps = @(
 $SequenceFile = Join-Path $TestSaved "packaged_smoke.seq"
 $Steps | Set-Content -Encoding utf8 $SequenceFile
 
-$Arguments = "-RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -culture=$Culture -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
+$Arguments = "-RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -as-exit-on-error -nosplash -culture=$Culture -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $Start = Get-Date
 $Process = Start-Process -FilePath $Client.FullName -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 Write-Host "packaged_smoke : $($Client.FullName) pid $($Process.Id), log $GameLog"

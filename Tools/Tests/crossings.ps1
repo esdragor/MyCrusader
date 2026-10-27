@@ -35,7 +35,7 @@ Remove-Item $Log -ErrorAction SilentlyContinue
     "waitlog Camera above the start of slot", "frames 5", "hol.Test.Crossings $Count $Seed $Units $Type quit"
 ) | Set-Content -Encoding ascii $Sequence
 
-$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
 # A crossing takes ~7 s of game; 30 s each at most, then the game is stopped.
 if (-not $Process.WaitForExit([Math]::Max(120, 60 + 30 * $Count) * 1000)) { $Process.Kill() }

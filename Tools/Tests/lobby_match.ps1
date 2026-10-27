@@ -84,7 +84,7 @@ function Test-Log([string] $Who, [string] $Pattern) { (Test-Path $GameLogs[$Who]
 function Start-Game([string] $Who, [string[]] $Steps) {
     $Sequence = Join-Path $Work "$($Who.ToLower()).seq"
     $Steps | Set-Content -Encoding utf8 $Sequence
-    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -culture=fr " +
+    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr " +
         "-saveddirsuffix=Tests_$Who -PlayerName=$Who -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$($GameLogs[$Who])`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     Write-Host "$Who : pid $($Process.Id), log $($GameLogs[$Who])"
