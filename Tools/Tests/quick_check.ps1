@@ -126,6 +126,7 @@ $SubCaseTable = @{
         shiftwork = @{ Marks = @("shiftwork", "shiftwork order", "shiftwork site", "shiftwork after"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         shiftplace = @{ Marks = @("shiftplace", "shiftplace order"); Setup = @("hol.Cheat.Wood 1000") }
         shiftsite = @{ Marks = @("shiftsite", "shiftsite order", "shiftsite later"); Setup = @("hol.Cheat.Wood 1000") }
+        rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -775,6 +776,14 @@ $ShiftSiteQ2 = @(-14400, -13200)
 $ShiftSiteBerries = @(-12021, -9193)
 $ShiftSiteD = @(-11200, -15600)
 $ShiftSiteQ3 = @(-14400, -16000)
+# A rally point in several steps (EtapeDefini N.1): slot 0's centre selected; R1 20 m north-east of it, R2 28 m north-west
+# of R1 (each ~18 m off the straight way from the centre to the next aim, so a step skipped shows); the gold vein north-east
+# of slot 0 (a source after R1); R3 for a plain right click after the steps; nine points in a row for the limit (8 steps).
+$RallyStepsR1 = @(-13600, 3600)
+$RallyStepsR2 = @(-15600, 5600)
+$RallyStepsGold = @(-11087, 4592)
+$RallyStepsR3 = @(-14000, 5200)
+$RallyStepsRow = @(for ($k = 0; $k -lt 9; $k++) { , @((-15200 + 300 * $k), 6800) })
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
@@ -1707,6 +1716,31 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 40; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
             Step "hol.Units.Remove $($ShiftSiteBerries -join ' ') 1500 0", "hol.Units.Remove $($ShiftSiteQ3 -join ' ') 1000 0", "hol.Units.Remove $($ShiftSiteQ2 -join ' ') 1000 0",
                 "hol.Units.Remove $($ShiftSiteAway -join ' ') 600 0", "hol.Cheat.FastBuild 0", "wait 0.5"
+            # A rally point in several steps (EtapeDefini N.1, AoE4): slot 0's centre selected. (a) a right click at R1, then
+            # Shift + right click at R2: the flag at R2, two segments (centre, R1, R2); a Peasant produced passes R1, then
+            # stops at R2, its chain two white Rally steps. (b) a right click at R1, then Shift + right click on the gold vein:
+            # a Peasant produced passes R1, then mines. (c) a plain right click at R3 after the steps: R3 alone. (d) a right
+            # click then 8 Shift + right clicks in a row: the 9th refused (8 steps at most). The rally point cleared at the end.
+            $RallyStepsWaitRally = "waitlog Rally: slot 0 "
+            Step "mark build rallysteps", "hol.Cheat.Food 1000", "hol.Cheat.Population 50", "hol.Prod.BuildTime 1", "hol.Gather.SpeedScale 1",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "hol.Select.Report", "waitlog Selection report: selected MainCentre of slot 0 (own)",
+                "hol.Camera.Focus $($RallyStepsR1 -join ' ')", "frames 3", "hol.Select.OrderGround $($RallyStepsR1 -join ' ')", $RallyStepsWaitRally,
+                "hol.Camera.Focus $($RallyStepsR2 -join ' ')", "frames 3", "hol.Select.OrderGround $($RallyStepsR2 -join ' ') shift", $RallyStepsWaitRally,
+                "frames 3", "hol.Select.Report", "hol.Prod.Queue Peasant", "waitlog Production: Peasant of slot 0 done", "hol.Units.Where 0", "wait 0.3", "hol.Orders.Chains"
+            for ($i = 0; $i -lt 44; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "mark build rallysteps source", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "hol.Select.Report",
+                "waitlog Selection report: selected MainCentre of slot 0 (own)", "hol.Camera.Focus $($RallyStepsR1 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($RallyStepsR1 -join ' ')", $RallyStepsWaitRally, "hol.Camera.Focus $($RallyStepsGold -join ' ')", "frames 3",
+                "hol.Select.OrderSource $($RallyStepsGold -join ' ') shift", $RallyStepsWaitRally, "frames 3", "hol.Select.Report", "hol.Prod.Queue Peasant",
+                "waitlog Production: Peasant of slot 0 done", "hol.Units.Where 0"
+            for ($i = 0; $i -lt 60; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "mark build rallysteps replace", "hol.Camera.Focus $($RallyStepsR3 -join ' ')", "frames 3", "hol.Select.OrderGround $($RallyStepsR3 -join ' ')", $RallyStepsWaitRally,
+                "frames 3", "hol.Select.Report"
+            Step "mark build rallysteps nine", "hol.Camera.Focus $(-14000) $($RallyStepsRow[0][1])", "frames 3", "hol.Select.OrderGround $($RallyStepsRow[0] -join ' ')", $RallyStepsWaitRally
+            for ($k = 1; $k -lt 9; $k++) { Step "hol.Select.OrderGround $($RallyStepsRow[$k] -join ' ') shift", $RallyStepsWaitRally }
+            Step "frames 3", "hol.Select.Report", "hol.Prod.Rally -15000 0", $RallyStepsWaitRally, "hol.Prod.BuildTime 0", "hol.Units.Remove $($RallyStepsR2 -join ' ') 600 0"
+            Key Escape
+            Step "waitlog Selection: none"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -2120,6 +2154,20 @@ if ($NetListening) {
         # Production (D284): each client has its centre make a Peasant (2 s, the server's hol.Prod.BuildTime), then both
         # Peasants must be shown, and the other player's resources must not have reached this client (D282).
         $NetSteps += "hol.Prod.Queue", "waitunits 2", "wait 1", "hol.Units.Report", "hol.Prod.Report", "capture qcnet_${Client}_peasants"
+        # A rally point in several steps seen by its owner (EtapeDefini N.1): its centre selected, a right click at P1, then
+        # Shift + right click at P2 (16 m toward the map's middle, 24 and 40 m aside): the flag at P2, two segments and a
+        # point at P1, from what the server replicated to this client; then cleared (a right click on the centre).
+        $RallySlot = 2 - $Client
+        $RallyStart = Get-SlotStart $RallySlot
+        $RallySign = if ($RallyStart[0] -lt 0) { 1 } else { -1 }
+        $NetRallyP1 = @(($RallyStart[0] + $RallySign * 1600), ($RallyStart[1] + 2400))
+        $NetRallyP2 = @(($RallyStart[0] + $RallySign * 1600), ($RallyStart[1] + 4000))
+        # (hol.Prod.Queue selected the centre already: emptied first, so that the click logs its selection.)
+        $NetSteps += "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Camera.FocusSlot own", "frames 3", "hol.Select.Click 0.5 0.5",
+            "waitlog Selection: MainCentre of slot $RallySlot (own)",
+            "hol.Camera.Focus $($NetRallyP1[0]) $($NetRallyP1[1] + 800)", "frames 3", "hol.Select.OrderGround $($NetRallyP1 -join ' ')", "wait 1",
+            "hol.Select.OrderGround $($NetRallyP2 -join ' ') shift", "wait 1", "frames 3", "hol.Select.Report", "hol.Camera.FocusSlot own", "frames 3",
+            "hol.Select.OrderGround $($RallyStart -join ' ')", "wait 1", "hol.Select.Click 0.03 0.05", "waitlog Selection: none"
         # Orders (J4, D288, D289): each client sends every unit it knows, the other player's Peasant too, 25 m beside its
         # start; the server moves its own alone; then each client must see both Peasants where their owners sent them.
         if ($Parts -contains "move") {
@@ -3967,6 +4015,62 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["(b) then idle within 3 m of Q3 ($(if ($SlWheres.Count -ge 1) { & $MoveSay $SlWheres[-1].U }), Q3 $(if ($SlWheres.Count -ge 1) { & $DropDist $SlWheres[-1].U $ShiftSiteQ3 }) cm)"] =
         ($SlWheres.Count -ge 3) -and $SlWheres[-1].U -and $SlWheres[-1].U.Activity -eq "Idle" -and (& $DropDist $SlWheres[-1].U $ShiftSiteQ3) -le 300
     $AllOk = (Report "build shiftsite" $Checks) -and $AllOk
+
+    # N.1: a rally point in several steps. The markers' report: the flag's foot, the order lines and points drawn.
+    $RsMarkers = { param($Lines) $M = @($Lines | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }); if ($M.Count) { $M[-1] } else { "" } }
+    $RsFlagAt = { param($Say, $At) ($Say -match "flag 1 at \((-?\d+), (-?\d+)\)") -and ([Math]::Abs([int]$Matches[1] - $At[0]) -le 60) -and ([Math]::Abs([int]$Matches[2] - $At[1]) -le 60) }
+    $RsLines = { param($Say) if ($Say -match "order lines (\d+), order points (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) } }
+    $Checks = [ordered]@{}
+    $RsA = @(Get-Section "build rallysteps" | ForEach-Object { $_ })
+    $RsAE = (& $ReadChain $RsA $RallyStepsR2).Events
+    $RsAW = @($RsAE | Where-Object { $_.Kind -eq "where" })
+    Write-Host "  rallysteps a: $(& $ChainStory $RsAE ([ordered]@{ R1 = $RallyStepsR1; R2 = $RallyStepsR2 }))"
+    Write-Host "  rallysteps a log: $(@($RsA | Select-String -Pattern "Rally: |Queued|queued|Order chain" | ForEach-Object { ($_.Line -replace '^.*?(Rally|Queued|Move|Order chain)', '$1') }) -join ' / ')"
+    $RsASay = & $RsMarkers $RsA
+    $RsALines = & $RsLines $RsASay
+    $Checks["(a) right click R1, Shift + right click R2: the flag at R2, two segments and one step point ($RsASay)"] =
+        (& $RsFlagAt $RsASay $RallyStepsR2) -and ($RsALines[0] -eq 2) -and ($RsALines[1] -eq 1)
+    $RsANear1 = & $ChainNear $RsAE $RallyStepsR1 0
+    $RsANear2 = & $ChainNear $RsAE $RallyStepsR2 0
+    $Checks["(a) the Peasant produced passes within 3 m of R1 (closest $(& $ChainClosest $RsAE $RallyStepsR1) cm), before R2 (first near R1 at $(@($RsANear1)[0]), R2 at $(@($RsANear2)[0]))"] =
+        ($RsANear1.Count -ge 1) -and ($RsANear2.Count -ge 1) -and ($RsANear1[0] -lt $RsANear2[0])
+    $Checks["(a) then idle within 3 m of R2 ($(if ($RsAW.Count) { & $MoveSay $RsAW[-1].U }), R2 $(if ($RsAW.Count) { & $DropDist $RsAW[-1].U $RallyStepsR2 }) cm)"] =
+        ($RsAW.Count -ge 3) -and $RsAW[-1].U -and $RsAW[-1].U.Activity -eq "Idle" -and (& $DropDist $RsAW[-1].U $RallyStepsR2) -le 300
+    $RsAChains = Get-ChainReports $RsA
+    $RsAChain = if ($RsAChains.Count -ge 1) { @($RsAChains[0].Chains | ForEach-Object { $_.Steps }) -join " | " } else { "none" }
+    $RsAChainOk = $false
+    if ($RsAChains.Count -ge 1) { foreach ($C in $RsAChains[0].Chains) {
+        if ($C.Steps -match "^Rally at \((-?\d+), (-?\d+)\) -> Rally at \((-?\d+), (-?\d+)\)$" -and [Math]::Abs([int]$Matches[1] - $RallyStepsR1[0]) -le 300 -and [Math]::Abs([int]$Matches[2] - $RallyStepsR1[1]) -le 300 -and
+            [Math]::Abs([int]$Matches[3] - $RallyStepsR2[0]) -le 300 -and [Math]::Abs([int]$Matches[4] - $RallyStepsR2[1]) -le 300) { $RsAChainOk = $true } } }
+    $Checks["(a) its chain: two white Rally steps, R1 then R2 ($RsAChain)"] = $RsAChainOk
+
+    $RsB = @(Get-Section "build rallysteps source" | ForEach-Object { $_ })
+    $RsBE = (& $ReadChain $RsB $RallyStepsR2).Events
+    Write-Host "  rallysteps b: $(& $ChainStory $RsBE ([ordered]@{ R1 = $RallyStepsR1; Gold = $RallyStepsGold }))"
+    Write-Host "  rallysteps b log: $(@($RsB | Select-String -Pattern "Rally: |Queued|queued|Gather order" | ForEach-Object { ($_.Line -replace '^.*?(Rally|Queued|Move|Gather)', '$1') }) -join ' / ')"
+    $RsBSay = & $RsMarkers $RsB
+    $RsBLines = & $RsLines $RsBSay
+    $Checks["(b) right click R1, Shift + right click on the gold: the flag on the vein, two segments ($RsBSay)"] =
+        (& $RsFlagAt $RsBSay $RallyStepsGold) -and ($RsBLines[0] -eq 2) -and ($RsBLines[1] -eq 1)
+    $RsBNear1 = & $ChainNear $RsBE $RallyStepsR1 0
+    $RsBGold = -1
+    for ($i = 0; $i -lt $RsBE.Count; $i++) { if ($RsBE[$i].Kind -eq "where" -and $RsBE[$i].U -and $RsBE[$i].U.Load -eq "Gold") { $RsBGold = $i; break } }
+    $Checks["(b) the Peasant produced passes within 3 m of R1 (closest $(& $ChainClosest $RsBE $RallyStepsR1) cm; first near at $(@($RsBNear1)[0])), then mines gold (first carried at $RsBGold)"] =
+        ($RsBNear1.Count -ge 1) -and ($RsBGold -gt $RsBNear1[0])
+
+    $RsC = @(Get-Section "build rallysteps replace" | ForEach-Object { $_ })
+    $RsCSay = & $RsMarkers $RsC
+    $RsCLines = & $RsLines $RsCSay
+    $Checks["(c) a plain right click at R3 after the steps: R3 alone, the flag there, one segment ($RsCSay)"] =
+        (& $RsFlagAt $RsCSay $RallyStepsR3) -and ($RsCLines[0] -eq 1) -and ($RsCLines[1] -eq 0)
+
+    $RsD = @(Get-Section "build rallysteps nine" | ForEach-Object { $_ })
+    $RsDSay = & $RsMarkers $RsD
+    $RsDLines = & $RsLines $RsDSay
+    $RsDRefused = @($RsD | Select-String -Pattern "Rally: slot 0 cannot add a step to the rally point of MainCentre \(8 steps at most\)").Count
+    $Checks["(d) a right click then 8 Shift + right clicks: the 9th refused (refusals $RsDRefused), the flag at the 8th, 8 segments ($RsDSay)"] =
+        ($RsDRefused -eq 1) -and (& $RsFlagAt $RsDSay $RallyStepsRow[7]) -and ($RsDLines[0] -eq 8) -and ($RsDLines[1] -eq 7)
+    $AllOk = (Report "build rallysteps" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -4970,6 +5074,14 @@ if ($Parts -contains "net") {
         $Checks["client $N : other player's economy not received"] = [bool]($Production -match "; others \[slot $(1 - $Held) F 0 W 0 S 0 G 0, population 0/0\]$")
         $Shown = $NetLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $Checks["client $N : both Peasants shown ($Shown)"] = $Shown -eq "client, 2 displayed: Peasant of slot 0 x1, Peasant of slot 1 x1"
+        # EtapeDefini N.1: the rally point's two steps replicated to their owner (the flag at P2, two segments, a point at P1).
+        $NetRallyStart = Get-SlotStart $Held
+        $NetRallySign = if ($NetRallyStart[0] -lt 0) { 1 } else { -1 }
+        $NetRallyP2 = @(($NetRallyStart[0] + $NetRallySign * 1600), ($NetRallyStart[1] + 4000))
+        $NetRallySay = @($ClientLines | Select-String -Pattern "Selection markers: (.*flag 1 at .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } |
+            Where-Object { $_ -match "flag 1 at \((-?\d+), (-?\d+)\)" -and [Math]::Abs([int]$Matches[1] - $NetRallyP2[0]) -le 60 -and [Math]::Abs([int]$Matches[2] - $NetRallyP2[1]) -le 60 })
+        $Checks["client $N : its centre's rally point in two steps received (Shift + right click): the flag at P2, two segments, a point at P1 ($(@($NetRallySay)[0]))"] =
+            ($NetRallySay.Count -ge 1) -and [bool]($NetRallySay[0] -match "order lines 2, order points 1")
         $Missing = @("start", "slot0", "slot1", "peasants" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
         $Checks["client $N : captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         if ($Parts -contains "sources") {

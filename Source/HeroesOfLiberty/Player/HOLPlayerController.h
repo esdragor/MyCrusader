@@ -411,7 +411,7 @@ public:
 	 * SourceIndex is one, on one of the player's sites not finished when Site is one (the units born there build it, the
 	 * user's trial of J6a.4), or to clear it (on the building).
 	 */
-	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr);
+	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr, bool bQueue = false);
 
 	/**
 	 * Development cheats for the trials (hol.Cheat.*; never in a Shipping build: no command registers them and the
@@ -621,9 +621,12 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerCancelBuilding(AHOLBuilding* Building);
 
-	/** The building, the ground point, the source there and the site there (the user's trial of J6a.4), both checked. */
+	/**
+	 * The building, the ground point, the source there and the site there (the user's trial of J6a.4), both checked; bQueue
+	 * (Shift, EtapeDefini N.1): a step added at the end of the rally point.
+	 */
 	UFUNCTION(Server, Reliable)
-	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site);
+	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 
 	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
 	UFUNCTION(Server, Reliable)

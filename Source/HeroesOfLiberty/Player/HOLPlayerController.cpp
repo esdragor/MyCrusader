@@ -2217,10 +2217,11 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			&& (Under->NeedsBuilders() || Under->IsCamp()) ? Under : nullptr;
 		const FVector Point = bOnBuilding ? Building->GetActorLocation() : RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
 		const int32 RallySource = !bOnBuilding && !RallySite && Source ? SourceIndex : INDEX_NONE;
-		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s"), *DescribeBuilding(Building), Point.X, Point.Y,
+		// Shift (EtapeDefini N.1, AoE4): a step added at the end of its rally point.
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s%s"), *DescribeBuilding(Building), Point.X, Point.Y,
 			RallySite ? *FString::Printf(TEXT(" on site %s"), *DescribeBuilding(RallySite))
-			: RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""));
-		RequestRallyPoint(Point, RallySource, RallySite);
+			: RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""), bShift ? TEXT(", a step added") : TEXT(""));
+		RequestRallyPoint(Point, RallySource, RallySite, bShift);
 		OnOrderGiven.Broadcast(Point);
 	}
 	else if (HasBuildingGroup())
@@ -2245,7 +2246,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			// Finished or not: one that will produce takes its rally point from its ghost on (the user's request of 2026-10-19).
 			if (Type && !Type->Produces.IsEmpty())
 			{
-				ServerSetRallyPoint(Member, Point, RallySource, RallySite);
+				ServerSetRallyPoint(Member, Point, RallySource, RallySite, bShift);
 				++Rallied;
 			}
 		}
@@ -3327,11 +3328,11 @@ void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> Unit
 	}
 }
 
-void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site)
+void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerSetRallyPoint(Building, Point, SourceIndex, Site);
+		ServerSetRallyPoint(Building, Point, SourceIndex, Site, bQueue);
 	}
 }
 
@@ -4003,7 +4004,7 @@ void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>
 }
 
 void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex,
-	AHOLBuilding* Site)
+	AHOLBuilding* Site, const bool bQueue)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -4020,6 +4021,7 @@ void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Buil
 			? SourceIndex : INDEX_NONE;
 		// Its own site not finished, checked by the production at its step (D288).
 		Command.RallySite = Site;
+		Command.bQueue = bQueue;
 		Commands->IssueProductionOrder(Command);
 	}
 }
