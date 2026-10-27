@@ -31,7 +31,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSizeLobby
 			"match": null, "notice": null })"), Settings);
 	}
 
-	TSharedPtr<FJsonObject> ReadBody(const FString& Body)
+	TSharedPtr<FJsonObject> ReadSizedBody(const FString& Body)
 	{
 		TSharedPtr<FJsonObject> Object;
 		FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Body), Object);
@@ -84,13 +84,13 @@ bool FHOLMapSizeLobbySendTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::MapSizeLobby;
 
-	const TSharedPtr<FJsonObject> Sized = ReadBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, TEXT("Small"), false));
+	const TSharedPtr<FJsonObject> Sized = ReadSizedBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, TEXT("Small"), false));
 	if (TestTrue(TEXT("settings with a size"), Sized.IsValid()))
 	{
 		TestEqual(TEXT("size sent"), Sized->GetStringField(TEXT("size")), FString(TEXT("Small")));
 		TestTrue(TEXT("teams together sent"), Sized->HasField(TEXT("teamsTogether")) && !Sized->GetBoolField(TEXT("teamsTogether")));
 	}
-	const TSharedPtr<FJsonObject> Plain = ReadBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false));
+	const TSharedPtr<FJsonObject> Plain = ReadSizedBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false));
 	TestTrue(TEXT("no size nor teams together unless given"), Plain.IsValid() && !Plain->HasField(TEXT("size")) && !Plain->HasField(TEXT("teamsTogether")));
 	return true;
 }
