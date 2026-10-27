@@ -1219,6 +1219,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** J8a.4, until the interface's button: the local players buy their dead hero's return (the server checks it). */
+	FAutoConsoleCommand HeroReturnCommand(
+		TEXT("hol.Hero.Return"),
+		TEXT("hol.Hero.Return: the local player buys its dead hero's return, at the price of the next step (J8a.4)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestReturnHero();
+			}
+		}));
+
 #if !UE_BUILD_SHIPPING
 	/**
 	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
@@ -3872,6 +3884,27 @@ void AHOLPlayerController::ServerSurrender_Implementation()
 	if (!HOLGameState || Slot == INDEX_NONE || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Surrender))
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Victory: surrender of slot %d refused"), Slot);
+	}
+}
+
+void AHOLPlayerController::RequestReturnHero()
+{
+	if (IsSpectator())
+	{
+		return;
+	}
+	ServerReturnHero();
+}
+
+void AHOLPlayerController::ServerReturnHero_Implementation()
+{
+	// The player's own slot only (D288): the queue refuses a defeated slot (D358), the step checks the rest.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero return order: slot %d queued"), HOLPlayerState->GetPlayerIndex());
+		Commands->IssueHeroReturnOrder(HOLPlayerState->GetPlayerIndex());
 	}
 }
 

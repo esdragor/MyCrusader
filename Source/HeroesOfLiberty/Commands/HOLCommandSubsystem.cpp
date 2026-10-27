@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "NavigationSystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 
@@ -45,6 +46,22 @@ void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
 	PendingProductionOrders.RemoveAll(OfPlayer);
 	PendingConstructionOrders.RemoveAll(OfPlayer);
 	PendingBuildOrders.RemoveAll(OfPlayer);
+	PendingHeroReturnOrders.Remove(PlayerIndex);
+}
+
+void UHOLCommandSubsystem::IssueHeroReturnOrder(const int32 PlayerIndex)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingHeroReturnOrders.Add(PlayerIndex);
+}
+
+void UHOLCommandSubsystem::ConsumeHeroReturnOrders(TArray<int32>& OutPlayerIndices)
+{
+	OutPlayerIndices.Reset();
+	Swap(OutPlayerIndices, PendingHeroReturnOrders);
 }
 
 void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask,

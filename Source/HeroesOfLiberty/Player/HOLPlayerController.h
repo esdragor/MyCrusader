@@ -450,6 +450,13 @@ public:
 	 */
 	void RequestSurrender();
 
+	/**
+	 * J8a.4: the player buys its dead hero's return (hol.Hero.Return until the button of the interface). The order goes
+	 * through the order queue; at the next step the server prices it (HOLHeroReturn::PriceAt at that step), takes the gold
+	 * and has the hero born by its forum, or refuses it with nothing taken (Script/Hero/HOLHeroReturnRule.as).
+	 */
+	void RequestReturnHero();
+
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
 	FOnGameMenuRequested OnGameMenuRequested;
@@ -670,6 +677,10 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerSurrender();
+
+	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. */
+	UFUNCTION(Server, Reliable)
+	void ServerReturnHero();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

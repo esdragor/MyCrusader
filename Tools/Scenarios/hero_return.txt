@@ -1,0 +1,17 @@
+# Mort et retour du héros (J8a.4) : ton héros et celui de l'IA tombent ; délai raccourci à 50 % ; alerte « prêt », achat par hol.Hero.Return, retour seul à prix 0
+# Plain, toi (slot 0) contre une IA (slot 1), hero_return.json (copie de hero_look.json) : 5 Paysans et un héros chacun.
+# hol.Hero.ReturnTimePercent 50 : délai 19 s au lieu de 38 s (niveau 1), prix de 150 à 0 en 30 s au lieu de 60 s.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Hero.ReturnTimePercent 50
+hol.Cheat.Gold 1000
+hol.Camera.FocusNear -900 300
+frames 10
+# Les deux héros tombent (comme tués au combat).
+hol.Hero.Kill 0
+hol.Hero.Kill 1
+wait 1
+hol.Hero.Report
+note Ton héros et celui de l'IA viennent de tomber (délai raccourci à 50 % : prêt dans 19 s).
+note Console (²) : hol.Hero.Return tout de suite = refusé (trop tôt). Une fois « Votre héros est prêt à revenir » dans le fil à droite, hol.Hero.Return : il revient près du forum, l'or baisse du prix (150 → 0 en 30 s).
+note Le héros de l'IA revient seul, gratuitement, 49 s après sa mort. Vraies durées : hol.Hero.ReturnTimePercent 100 puis hol.Hero.Kill 0.

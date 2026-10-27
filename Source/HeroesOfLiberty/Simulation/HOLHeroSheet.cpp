@@ -18,7 +18,8 @@ FHOLHeroSheets HOLHeroSheet::Make(const FHOLHeroFacts& Facts, const FHOLHeroShee
 	Sheets.Public.Level = StartLevel;
 	if (Facts.DeathStep >= 0 || Facts.Health <= 0.f)
 	{
-		Sheets.Public.State = EHOLHeroState::Dead;
+		// J8a.4: ready to return stays so while his body still lies.
+		Sheets.Public.State = Previous.Public.State == EHOLHeroState::ReadyToReturn ? EHOLHeroState::ReadyToReturn : EHOLHeroState::Dead;
 		Sheets.Public.Health = 0;
 		// A fall seen before its step is known keeps the one already noted.
 		Sheets.Private.DeathStep = Facts.DeathStep >= 0 ? static_cast<int32>(Facts.DeathStep) : Previous.Private.DeathStep;

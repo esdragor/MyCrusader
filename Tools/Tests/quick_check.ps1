@@ -266,6 +266,8 @@ if ($Parts -contains "net") {
     $NetArrowsEndFlag = Join-Path $TestSaved "quick_net_arrows_end.flag"
     $NetHeroWoundedFlag = Join-Path $TestSaved "quick_net_hero_wounded.flag"
     $NetHeroKilledFlag = Join-Path $TestSaved "quick_net_hero_killed.flag"
+    $NetHeroReadyFlag = Join-Path $TestSaved "quick_net_hero_ready.flag"
+    $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -282,14 +284,21 @@ if ($Parts -contains "net") {
         # The hero sheets (J8a.3, J8-Q5): a hero for each client's slot (Alice slot 0, Bob slot 1, R3.2), born here (none at
         # the start: bStartingHero off), 40 m apart; their XP set (5, 7); 2 Men-at-arms of slot 0 strike Bob's hero for 10 s,
         # then removed: once still, the server's report, then each client's (its signal); then Bob's hero killed, the
-        # server's report again, then each client's; Alice's hero removed at the end (the next parts as before).
-        @("mark net hero", "hol.Units.Spawn 1 2000 -5000 1 Hero 150", "hol.Units.Spawn 1 6000 -5000 0 Hero 150", "wait 1",
+        # server's report again, then each client's.
+        # The return (J8a.4 loop 5), its times at 20 % (hol.Hero.ReturnTimePercent: ready 152 steps after death, the price
+        # from 150 to 0 in 240 steps): once Bob's hero is ready (Bob's too early order refused meanwhile), Alice's killed,
+        # the clients' signal; Bob's paid return then Alice's by itself at price 0 (the server's own lines), its report,
+        # the clients' signal; both heroes removed at the end, the times back to the rules (the next parts as before).
+        @("mark net hero", "hol.Hero.ReturnTimePercent 20", "hol.Units.Spawn 1 2000 -5000 1 Hero 150", "hol.Units.Spawn 1 6000 -5000 0 Hero 150", "wait 1",
             "hol.Hero.SetXP 0 5", "hol.Hero.SetXP 1 7", "hol.Units.Spawn 2 2600 -5000 0 ManAtArms 150", "wait 10",
             "hol.Units.Remove 2300 -5000 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroWoundedFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_seen1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_seen2.flag") 120",
             "hol.Hero.Kill 1", "wait 2", "hol.Hero.Report", "signal $NetHeroKilledFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_done2.flag") 120",
-            "hol.Units.Remove 6000 -5000 2000 0 Hero") +
+            "waitlog Hero return: slot 1 ready", "mark net hero return", "hol.Hero.Kill 0", "signal $NetHeroReadyFlag",
+            "waitlog Hero return: slot 1 by its main forum", "waitlog Hero return: slot 0 by its main forum", "wait 1", "hol.Hero.Report",
+            "signal $NetHeroBackFlag", "waitfile $(Join-Path $TestSaved "quick_net_hero_back1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_back2.flag") 120",
+            "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
         # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
@@ -2262,9 +2271,21 @@ if ($NetListening) {
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
         # The hero sheets (J8a.3): once the server's heroes are wounded and still, the sheets as this client has them and
         # the units it shows (the wounded hero's health drawn back from the share received); then once Bob's hero is dead.
-        $NetSteps += "mark hero", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where",
-            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120", "wait 1", "hol.Hero.Report",
-            "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")"
+        # The return (J8a.4 loop 5), the times at 20 % on every machine (hol.Hero.ReturnTimePercent): Bob (client 1) orders his
+        # hero's return as soon as it is dead, too early (refused on the server). Once it is ready (the server's signal),
+        # each client asks its own return decision to act (refused: a client decides nothing), reports; Bob's gold to 0,
+        # his order (cannot pay), 1 000 gold, his report, his order (bought), his report; once both heroes are back (the
+        # server's signal), the last report.
+        $NetSteps += "mark hero", "hol.Hero.ReturnTimePercent 20", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where",
+            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120"
+        if ($Client -eq 1) { $NetSteps += "hol.Hero.Return" }
+        $NetSteps += "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")",
+            "mark hero return", "waitfile $NetHeroReadyFlag 120", "wait 1", "hol.Hero.ReturnProbe $(if ($Client -eq 1) { 1 } else { 0 })", "hol.Hero.Report"
+        if ($Client -eq 1) {
+            $NetSteps += "hol.Cheat.Gold -1000000", "wait 1", "hol.Hero.Return", "wait 1", "hol.Cheat.Gold 1000", "wait 1", "hol.Hero.Report",
+                "hol.Hero.Return", "wait 1.5", "hol.Hero.Report"
+        }
+        $NetSteps += "waitfile $NetHeroBackFlag 120", "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_back$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -2328,10 +2349,15 @@ if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $true
-# The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message.
+# The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message. A script
+# test's failed assertion is written "Angelscript: Error: ::<test>" too, its next line "Assert failed ...": not a compile
+# error (the test's own failure says it, J8a.4 loop 5). The script's Log() lines ("Angelscript: Hero return refused ...")
+# never match.
 function Get-ScriptErrors([string] $Path) {
     if (-not (Test-Path $Path)) { return @() }
-    return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
+    return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" -Context 0, 1 |
+        Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert failed") } |
+        ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
 }
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
@@ -5403,9 +5429,12 @@ if ($Parts -contains "net") {
     $ClientCorpses = & $CorpseCount @(if ($Client1Log -and (Test-Path $Client1Log)) { Get-Content $Client1Log })
     $ServerCorpses = & $CorpseCount @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
     $Checks["bodies: client 1 keeps the fight's ($ClientCorpses), the server none ($ServerCorpses)"] = ($null -ne $ClientCorpses) -and $ClientCorpses -ge 1 -and ($null -ne $ServerCorpses) -and $ServerCorpses -eq 0
-    # R3.4: client 1's 500 wood refused by the server (its log), the two army cheats of resources alone granted.
+    # R3.4: client 1's 500 wood refused by the server (its log), the two army cheats of resources alone granted (before the
+    # hero's return: Bob's two gold cheats there are its own, J8a.4 loop 5).
     $CheatRefused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat refused: resources from Bob" }).Count
-    $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" }).Count
+    $ReturnMarkLine = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -SimpleMatch "Test mark: net hero return" | Select-Object -First 1 | ForEach-Object { $_.LineNumber } })
+    $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" |
+        Where-Object { -not $ReturnMarkLine.Count -or $_.LineNumber -lt $ReturnMarkLine[0] } }).Count
     $Checks["server: client 1's cheat refused ($CheatRefused), the army's granted ($CheatGranted of 2)"] = $CheatRefused -eq 1 -and $CheatGranted -eq 2
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
@@ -5548,6 +5577,7 @@ if ($Parts -contains "net") {
             if ($Line -match "Hero report: net mode \d+") { $Current = @{ Sheet = @{}; Local = $null; Other = @{}; Truth = @{} }; [void]$Reports.Add($Current); continue }
             if (-not $Current) { continue }
             if ($Line -match "Hero sheet slot (\d): state (\w+) level \d+ hp (\d+)") { $Current.Sheet[[int]$Matches[1]] = @{ State = $Matches[2]; Hp = [int]$Matches[3] } }
+            elseif ($Line -match "Hero gold slot (\d) local: (-?\d+)") { $Current.Gold = [int]$Matches[2] }
             elseif ($Line -match "Hero private slot (\d) local: xp (\d+) death (-?\d+)") { $Current.Local = @{ Slot = [int]$Matches[1]; Xp = [int]$Matches[2]; Death = [int]$Matches[3] } }
             elseif ($Line -match "Hero private slot (\d) other: xp (\d+) death (-?\d+)") { $Current.Other[[int]$Matches[1]] = @{ Xp = [int]$Matches[2]; Death = [int]$Matches[3] } }
             elseif ($Line -match "Hero true slot (\d): state (\w+) level \d+ hp (\d+) xp (\d+) death (-?\d+)") {
@@ -5610,6 +5640,74 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero sheets" $HeroChecks) -and $AllOk
+    # The hero's return over the network (J8a.4 loop 5), the times at 20 % (hol.Hero.ReturnTimePercent 20 on every machine):
+    # the server's lines (orders taken at the step, the script's refusals, ready, bought, born), the clients' reports
+    # (ready seen, Bob's gold, both back), nothing decided on a client.
+    $ReturnChecks = [ordered]@{}
+    $ServerLines = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $BobLevel = @($ServerLines | Select-String -Pattern "Hero true slot $BobSlot\: state Dead level (\d+)" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $BobLevel = if ($BobLevel.Count) { $BobLevel[0] } else { -1 }
+    $DeathStep = if ($Fallen) { $Fallen.Death } else { -1 }
+    $ReturnDelay = [int][Math]::Floor((30 + 8 * $BobLevel) * 20 * 20 / 100)
+    $ReturnDrop = [int][Math]::Floor(60 * 20 * 20 / 100)
+    $ReadyAt = $DeathStep + $ReturnDelay
+    $BobOrders = @($ServerLines | Select-String -Pattern "Hero return order: slot $BobSlot at step (\d+) (\w+)" | ForEach-Object { @{ Step = [int]$_.Matches[0].Groups[1].Value; Result = $_.Matches[0].Groups[2].Value } })
+    $Early = @($ServerLines | Select-String -Pattern "Hero return refused: slot $BobSlot at step (\d+): not ready \(ready at step (\d+)\)" | ForEach-Object { @{ Step = [int]$_.Matches[0].Groups[1].Value; Ready = [int]$_.Matches[0].Groups[2].Value } }) | Select-Object -First 1
+    $ReturnChecks["server: Bob's first order refused, too early ($(if ($BobOrders.Count) { "step $($BobOrders[0].Step) $($BobOrders[0].Result)" }); $(if ($Early) { "not ready at $($Early.Step), ready at $($Early.Ready)" } else { 'no refusal' })), ready = death $DeathStep + $ReturnDelay (level $BobLevel at 20 %)"] =
+        $BobOrders.Count -ge 1 -and $BobOrders[0].Result -eq "refused" -and $Early -and $Early.Step -eq $BobOrders[0].Step -and $Early.Step -lt $Early.Ready -and $DeathStep -ge 0 -and $BobLevel -ge 1 -and $Early.Ready -eq $ReadyAt
+    $ReadyLine = @($ServerLines | Select-String -Pattern "Hero return: slot $BobSlot ready at step (\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $ReturnChecks["server: Bob's hero ready once, at step $ReadyAt ($($ReadyLine -join ', '))"] = $ReadyLine.Count -eq 1 -and $ReadyLine[0] -eq $ReadyAt
+    $CannotPay = @($ServerLines | Select-String -SimpleMatch "Hero return: slot $BobSlot cannot pay")
+    $ReturnChecks["server: Bob's order without gold refused, cannot pay ($(if ($CannotPay.Count) { $CannotPay[0].Line -replace '^.*Hero return: ', '' } else { 'none' }); orders $(($BobOrders | ForEach-Object { $_.Result }) -join ', '))"] =
+        $CannotPay.Count -eq 1 -and $CannotPay[0].Line -match "\(0 gold\)" -and $BobOrders.Count -eq 3 -and $BobOrders[1].Result -eq "refused" -and $BobOrders[2].Result -eq "bought"
+    $Bought = @($ServerLines | Select-String -Pattern "Hero return: slot $BobSlot bought for (\d+) gold" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $BoughtStep = if ($BobOrders.Count -eq 3) { $BobOrders[2].Step } else { -1 }
+    $SinceReady = $BoughtStep - $ReadyAt
+    $ExpectedPrice = if ($SinceReady -lt 0) { -1 } elseif ($SinceReady -ge $ReturnDrop) { 0 } else { [int][Math]::Floor((150 * ($ReturnDrop - $SinceReady) + $ReturnDrop - 1) / $ReturnDrop) }
+    $ReturnChecks["server: Bob's return bought at step $BoughtStep for $($Bought -join ', ') gold = PriceAt ($ExpectedPrice, $SinceReady steps after ready of $ReturnDrop), 0 < price < 150"] =
+        $Bought.Count -eq 1 -and $Bought[0] -eq $ExpectedPrice -and $ExpectedPrice -gt 0 -and $ExpectedPrice -lt 150
+    $AliceLines = @($ServerLines | Select-String -Pattern "Hero return( order)?: slot $AliceSlot (.*)$" | ForEach-Object { $_.Matches[0].Groups[2].Value })
+    $ReturnChecks["server: Alice's hero back by itself at price 0, no order nor gold ($($AliceLines -join '; '))"] =
+        @($AliceLines | Where-Object { $_ -like "ready at step*" }).Count -eq 1 -and @($AliceLines | Where-Object { $_ -eq "by its main forum" }).Count -eq 1 -and
+        @($ServerLines | Select-String -Pattern "Hero return order: slot $AliceSlot|Hero return: slot $AliceSlot (bought|cannot)").Count -eq 0
+    $HeroBack = & $ReadHeroReports @(Get-ClientSection $ServerLines "net hero return")
+    $BackTruth = if ($HeroBack.Count -ge 1) { $HeroBack[-1].Truth } else { @{} }
+    $ReturnChecks["server: both heroes Alive at full health ($(foreach ($Slot in $AliceSlot, $BobSlot) { if ($BackTruth[$Slot]) { "slot $Slot $($BackTruth[$Slot].State) $($BackTruth[$Slot].Hp)" } }))"] =
+        $BackTruth[$AliceSlot] -and $BackTruth[$BobSlot] -and $BackTruth[$AliceSlot].State -eq "Alive" -and $BackTruth[$BobSlot].State -eq "Alive" -and
+        $BackTruth[$AliceSlot].Hp -eq $HeroMax -and $BackTruth[$BobSlot].Hp -eq $HeroMax
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $ClientLines = @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue)
+        $Seen = & $ReadHeroReports @(Get-ClientSection $ClientLines "hero return")
+        $First = if ($Seen.Count -ge 1) { $Seen[0] } else { $null }
+        $Last = if ($Seen.Count -ge 1) { $Seen[-1] } else { $null }
+        $ReturnChecks["client $N : Bob's hero ReadyToReturn in the public sheet once ready ($(if ($First -and $First.Sheet[$BobSlot]) { $First.Sheet[$BobSlot].State }))"] =
+            $First -and $First.Sheet[$BobSlot] -and $First.Sheet[$BobSlot].State -eq "ReadyToReturn"
+        $ReturnChecks["client $N : both heroes Alive at full health at the end ($(if ($Last) { foreach ($Slot in $AliceSlot, $BobSlot) { if ($Last.Sheet[$Slot]) { "slot $Slot $($Last.Sheet[$Slot].State) $($Last.Sheet[$Slot].Hp) " } } }))"] =
+            $Last -and $Seen.Count -ge 2 -and $Last.Sheet[$AliceSlot].State -eq "Alive" -and $Last.Sheet[$BobSlot].State -eq "Alive" -and $Last.Sheet[$AliceSlot].Hp -eq $HeroMax -and $Last.Sheet[$BobSlot].Hp -eq $HeroMax
+        if ($N -eq 1) {
+            # Bob: his report with 1 000 gold (ready), then after his bought order (Alive, the price taken).
+            $Before = if ($Seen.Count -ge 4) { $Seen[1] } else { $null }
+            $After = if ($Seen.Count -ge 4) { $Seen[2] } else { $null }
+            $Price = if ($Bought.Count -eq 1) { $Bought[0] } else { -1 }
+            $ReturnChecks["client $N : Bob's gold $(if ($Before) { $Before.Gold }) then $(if ($After) { $After.Gold }) (the price $Price taken), his hero $(if ($After -and $After.Sheet[$BobSlot]) { "$($After.Sheet[$BobSlot].State) $($After.Sheet[$BobSlot].Hp)" }) after his order"] =
+                $Before -and $After -and $Before.Gold -eq 1000 -and $Price -gt 0 -and $After.Gold -eq 1000 - $Price -and $After.Sheet[$BobSlot].State -eq "Alive" -and $After.Sheet[$BobSlot].Hp -eq $HeroMax
+        }
+        else {
+            $Golds = @($Seen | ForEach-Object { $_.Gold })
+            $ReturnChecks["client $N : Alice's gold not lowered by her hero's return ($($Golds -join ', '))"] = $Golds.Count -ge 2 -and $null -ne $Golds[0] -and $Golds[-1] -ge $Golds[0]
+        }
+        # J8a.4 loop 6 (D202): the minor alert, its owner alone, once (Bob's hero ready first, Alice's later).
+        $OwnSlot = if ($N -eq 1) { $BobSlot } else { $AliceSlot }
+        $ReadyLines = @($ClientLines | Select-String -Pattern "Hero message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $ReturnChecks["client $N : alert seen once for its own hero only ($($ReadyLines -join '; '))"] =
+            $ReadyLines.Count -eq 1 -and $ReadyLines[0] -ceq "Votre héros est prêt à revenir (slot $OwnSlot)"
+        $Probe = @($ClientLines | Select-String -Pattern "Hero return probe: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Acted = @($ClientLines | Select-String -Pattern "Hero return order:|Hero return: slot|Hero return refused:")
+        $ReturnChecks["client $N : nothing decided here: probe '$($Probe -join '; ')', $($Acted.Count) return line(s)"] =
+            $Probe.Count -eq 1 -and ($Probe[0] -match "^net mode 3, buy refused, decide refused, decisions 0$" -or $Probe[0] -match "^net mode 3, no decision$") -and $Acted.Count -eq 0
+    }
+    $AllOk = (Report "net hero return" $ReturnChecks) -and $AllOk
 }
 
 if ($TestsProcess) {
