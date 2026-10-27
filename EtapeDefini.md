@@ -11,7 +11,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
 - Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, dans `main` ; J8a.3 (fiche réseau du héros) suivante ; `JourneyInProgress.md`)*
-- Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité ; questions tranchées (Champ de tir créé, l'Archer y passe) ; pièces et gestes (AR1 à AR4) validés en aperçu ; AR6 et la suite attendent le moteur recompilé ; chantier `CrossbowInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
@@ -72,7 +71,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
-- `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D428), AR1 à AR4 faites (pièces, gestes), reste la fabrication et le C++ après la recompilation
 - `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
 
 ### En pause
@@ -91,4 +89,5 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `FrontEndInProgress.md` : menu (D240 à D251)
 - `MillInProgress.md` : moulin (D346)
 - `RidgeRockInProgress.md` : rochers (D439 à D444)
+- `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D486 à D489)
 - `TestSpeedInProgress.md` : quick_check en pas fixe et sans dessin pendant les attentes (`-Full` ~10 min -> ~4 min 20)
