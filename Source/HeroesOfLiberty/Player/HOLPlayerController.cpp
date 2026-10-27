@@ -917,7 +917,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Development and scripted checks of the placement (J6a.3, D311), until the Peasant's grid of J6a.5. */
 	FAutoConsoleCommand BuildPlaceCommand(
 		TEXT("hol.Build.Place"),
-		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp|Mill|Barracks>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
+		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp|Mill|Barracks|ArcheryRange>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const FName TypeName(Args.IsEmpty() ? TEXT("House") : *Args[0]);

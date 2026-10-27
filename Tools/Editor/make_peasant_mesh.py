@@ -94,6 +94,9 @@ SOLDIERS = {
     # V5.3: the King, the Man-at-arms' gestures (sword and shield) with a crown.
     "SKM_King": ("TP_King", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
                              PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),
+    # AR6: stirrup crossbow, loaded bolt (on ik_hand_r, hidden by the attack from the shot to the placing), bolt quiver.
+    "SKM_Crossbowman": ("TP_Crossbowman", [PEASANT_ANIMATIONS + "A_Crossbow_Idle", PEASANT_ANIMATIONS + "A_Crossbow_Walk",
+                                           PEASANT_ANIMATIONS + "A_Crossbow_Attack", PEASANT_ANIMATIONS + "A_Crossbow_Fall"]),
 }
 # First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
 LIGHT_PROPS_LOD = 3

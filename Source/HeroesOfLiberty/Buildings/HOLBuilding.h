@@ -232,6 +232,25 @@ public:
 	static constexpr float FoundationStakeHeight = 90.f;
 
 	/**
+	 * The range's provisional shape (AR-Q2b), as fractions of its visible size: the shelter's depth (the block of D261,
+	 * BaseHeightRatio high, no tower), the targets' diameter, their spacing across the yard, their distance from the far side,
+	 * the height of their middle (share of their diameter), their mark's diameter (share of theirs).
+	 */
+	static constexpr float RangeShelterDepthRatio = 0.3f;
+	static constexpr float RangeTargetSizeRatio = 0.17f;
+	static constexpr float RangeTargetSpacingRatio = 0.3f;
+	static constexpr float RangeTargetBackRatio = 0.2f;
+	static constexpr float RangeTargetMiddleRatio = 0.6f;
+	static constexpr float RangeMarkSizeRatio = 0.45f;
+	/** Leaning back (degrees from upright) toward the shelter and the RTS camera, so that the mark reads from above. */
+	static constexpr float RangeTargetTilt = 45.f;
+	/** The range's pieces (cm): the yard's ground, a target's straw and its mark, the post holding it. */
+	static constexpr float RangeGroundHeight = 6.f;
+	static constexpr float RangeTargetThickness = 20.f;
+	static constexpr float RangeMarkThickness = 6.f;
+	static constexpr float RangePostWidth = 15.f;
+
+	/**
 	 * Applies a look marked to be redone (D325), then stops the tick. Called by the tick at the frame; the tests call it to
 	 * see the look without a frame.
 	 */
@@ -299,6 +318,12 @@ private:
 	/** Writes the owner's colour on the pieces that wear it. */
 	void ApplyColors();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
+	/**
+	 * The Archery range's provisional shape (AR-Q2b): the yard's ground, a low shelter along one side (the block of D261, its
+	 * top at a darker tone of the owner's colour, no tower), three straw targets leaning back in the yard, their mark at the
+	 * owner's colour.
+	 */
+	void BuildRangeShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
 	/** A foundation (J6a.3): a low slab over the footprint, a border at the owner's colour, four corner stakes. */
 	void BuildFoundationShape(const FHOLBuildingTypeRow& Type);
@@ -400,6 +425,10 @@ private:
 	/** Unlit, for the owner's colour (D261). */
 	UPROPERTY()
 	TObjectPtr<UMaterialInterface> OwnerPieceMaterial;
+
+	/** The engine's basic cylinder: the range's targets (AR-Q2b). */
+	UPROPERTY()
+	TObjectPtr<UStaticMesh> CylinderMesh;
 
 	/** Materials painted with the owner's colour, and the tone of each. */
 	UPROPERTY(Transient)

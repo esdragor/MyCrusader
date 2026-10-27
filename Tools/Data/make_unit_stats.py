@@ -27,6 +27,7 @@ NAMES = {
     "LightInfantry": "Infanterie légère",
     "LightInfantryNanite": "Infanterie légère (essai Nanite)",
     "Archer": "Archer",
+    "Crossbowman": "Arbalétrier",
     "Peasant": "Paysan",
     "Spearman": "Piquier",
     "ManAtArms": "Homme d'armes",

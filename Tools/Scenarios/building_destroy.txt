@@ -60,16 +60,16 @@ wait 2
 hol.Cheat.DamageNear 1000 -1400 2000
 waitlog Building destroyed: House
 wait 3
-# 4. La caserne : trois unités en file, puis détruite : toute la file remboursée.
+# 4. La caserne : trois unités en file (A Lancier, Z Homme d'armes, A Lancier : elle ne produit plus d'Archer), puis détruite : toute la file remboursée.
 hol.Camera.FocusNear -1800 -1000
 frames 5
 hol.Select.Category Military
 frames 2
 hol.Select.Grid 0
 hol.Select.Grid 1
-hol.Select.Grid 2
+hol.Select.Grid 0
 waitlog Production: slot 0 queued
-note 4. Une caserne produit (3 unités en file) puis est détruite : toute la file est remboursée (regarde les ressources), la sélection se vide.
+note 4. Une caserne produit (3 unités en file : Lancier, Homme d'armes, Lancier) puis est détruite : toute la file est remboursée (regarde les ressources), la sélection se vide.
 wait 3
 hol.Prod.Report
 hol.Cheat.DamageNear 5000 -1800 -1400

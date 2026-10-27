@@ -594,6 +594,14 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float BuildingAttackRange = 400.f;
 
+	/**
+	 * The projectile drawn in flight for its shots (AR9, AR-Q5): SM_Arrow for the Archer, SM_Bolt for the Crossbowman, the
+	 * same flight for both. Read by the arrow display only (UHOLArrowSubsystem, by the shooter's type), never by the
+	 * simulation; empty (the melee types): SM_Arrow.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	TSoftObjectPtr<UStaticMesh> Projectile;
+
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };
 

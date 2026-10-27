@@ -1056,7 +1056,7 @@ GESTURES.update({"spear_fall": SPEAR_FALL_PROPOSED, "maa_fall": MAA_FALL_PROPOSE
                  "peasant_fall": PEASANT_FALL_PROPOSED})
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Crossbowman (AR1 pieces, AR2 idle and walk, 2026-10-26; proposals, not baked). The stirrup crossbow (soldier_props
+# Crossbowman (AR1 pieces, AR2 idle and walk, 2026-10-26; validated, baked in AR6a). The stirrup crossbow (soldier_props
 # "crossbow", id 8) is the two-handed tool on ik_hand_gun, lying flat in front of the chest, its point forward and to
 # his left: the left hand under the fore-stock behind the prod, the right hand at the trigger in front of the right
 # hip, the elbows low and close to the body; the loaded bolt (id 5, ik_hand_r) in the groove, the bolt quiver (id 6) on
@@ -1080,9 +1080,8 @@ CROSSBOW_IDLE = crossbow_gesture("A_Crossbow_Idle", IDLE, idle_keys(STAND, CROSS
                                  {"steady_spine": 1.0})
 CROSSBOW_WALK = crossbow_gesture("A_Crossbow_Walk", UNARMED_WALK, walk_keys(STAND, CROSSBOW_REST, None),
                                  {"steady_chest": 0.5})
-PROPOSED.update({"crossbow_idle": CROSSBOW_IDLE, "crossbow_walk": CROSSBOW_WALK})
 
-# Attack (AR3, 2026-10-26; proposal, not baked): AttackInterval 2.125 s (AR-Q1), the SHOT at 12 % of the loop
+# Attack (AR3, 2026-10-26; validated, baked in AR6a): AttackInterval 2.125 s (AR-Q1), the SHOT at 12 % of the loop
 # (AttackWindUpPercent 12, HOLUnitAnimation::GetStrikeHitShare, like the Archer's release: the client launches the
 # visual bolt there). 64 frames at 30 fps (2.133 s, played at 2.133 / 2.125 in the game, like the soldiers), the shot
 # on frame 8 (CROSSBOW_SHOT, 0.125 of the loop, 0.266 s in the game): 0.12 x 64 = 7.68, frame 8 is the nearest one;
@@ -1403,9 +1402,8 @@ CROSSBOW_ATTACK.update({
     # otherwise) to ~0 in these spans, as it scales ik_hand_gun for "tool_hidden" (which would hide the crossbow).
     "bolt_hidden": [(at(_P, CROSSBOW_SHOT) + 0.01, at(_P, _LIFT_T1))]})
 CROSSBOW_ATTACK["hidden"] = {"bolt": CROSSBOW_ATTACK["bolt_hidden"][0]}
-PROPOSED["crossbow_attack"] = CROSSBOW_ATTACK
 
-# Fall (AR4a, 2026-10-26; proposal, not baked; AR-Q6 precised: forward, face down). 1.0 s, 30 frames, not looped.
+# Fall (AR4a, 2026-10-26; validated, baked in AR6a; AR-Q6 precised: forward, face down). 1.0 s, 30 frames, not looped.
 # Struck on his left: the chest knocked first (reversed leads, FALL_LEADS), the crossbow escaping his hands on frame 0
 # (gesture "release": it flies forward-left on its own path, tumbles and lands flat in front of him, a small bounce,
 # the loaded bolt kept in its groove); he twists about a quarter turn to his LEFT, stumbling (the right foot then the
@@ -1561,4 +1559,10 @@ CROSSBOW_FALL = {"name": "A_Crossbow_Fall", "fps": 30, "tool": CROSSBOW_TOOL,
                  # The hands and the crossbow on time (the release keyed exactly), the head lagging.
                  "leads": dict(FALL_LEADS, tool=0.0, hands=0.0),
                  "preview": {"frames": 12, "zoom_picks": [0, 2, 5, 8, 11, 13, 15, 18, 21, 25, 30]}}
-PROPOSED["crossbow_fall"] = CROSSBOW_FALL
+
+
+# Validated by the user in preview (AR1-AR4, 2026-10-26) and baked (AR6a, --soldiers
+# --only=crossbow_idle,crossbow_walk,crossbow_attack,crossbow_fall). The crossbow stays on ik_hand_gun all the time;
+# the baker scales ik_hand_r (the loaded bolt) to ~0 in the attack's "bolt_hidden" spans.
+GESTURES.update({"crossbow_idle": CROSSBOW_IDLE, "crossbow_walk": CROSSBOW_WALK, "crossbow_attack": CROSSBOW_ATTACK,
+                 "crossbow_fall": CROSSBOW_FALL})
