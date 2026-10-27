@@ -1291,7 +1291,7 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 | J8a.0 Pièces | Kit du paladin (J8a-Q3 révisée) : épée longue, bouclier au soleil, tabard, pèlerine, épaulières dorées, heaume à cimier soleil ; `SKM_Hero` dans `SOLDIER_MESHES` ; gestes de l'Homme d'armes ; aperçus PNG validés par l'utilisateur | non | **fait** (2026-10-26, validé ; J8a.0 étendard et cape, J8a.0b cape animée abandonnés) |
 | J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | **fait** (2026-10-27 ; PV et dégâts en float, choix de l'utilisateur) |
 | J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | **fait** (2026-10-27 ; F4 contrôlé par `build:hero`) |
-| J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
+| J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | **fait** (2026-10-27 ; de72042, 75a0667, 4c8b82b ; recopie au retour par R7.10 a416b75) |
 | J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
 | J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
 | J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | — |
@@ -7511,3 +7511,59 @@ d'épée).
   retirés). `quick_check.ps1` +92/-1 non commité, attend l'accord de l'utilisateur.
 - (J8a.3, 2026-10-27) Boucle 4a commitée (accord de l'utilisateur). Suite : boucle 4b (le client lit la fiche) après
   l'avance de main par net-playtest (port de test propre à chaque copie, 7800 + 10 × n, arrive avec elle).
+- (J8a.3, 2026-10-27 soir) L'utilisateur part (« fais un max »). Boucle 4b lancée dans **Celeborn** (libre, crossbow
+  fusionnée), branche **hero-j8a3** depuis main 75a0667, `IN_USE.txt` à notre nom : le client prend les PV exacts de
+  la fiche publique pour le héros (la part reste en secours et pour la barre), `hol.Units.Where` montre PV et part,
+  contrôle 2 de `net hero sheets` attend les PV exacts. En parallèle, relevé en lecture seule pour le plan de J8a.4.
+- (J8a.3, 2026-10-27 soir) main avancé à **e5af3b7** par NetPlaytest (R7 déconnexion et retour, `-asdebugport=0` sur
+  les lancements de test, port net propre à chaque copie : 7800 + 10 × n, ordre left / empty) ; elle a fusionné
+  75a0667 sans conflit, `net hero sheets` PASS 2/2 chez elle. Recopie de `HeroPrivate` au retour d'un joueur : son
+  étape suivante (Glorfindel). hero-j8a3 (Celeborn) part de 75a0667 : fusionner main après le vert de la boucle 4b.
+- (J8a.4, 2026-10-27 soir) **Relevé et plan de J8a.4 faits** (sous-agent en lecture seule, main c8ec209). Règles
+  (J8a-Q5, D25, D397, D351, D202) : délai 30 + 8 × niveau s (38 s = 760 pas à 20 pas/s), puis prix 150 or qui baisse
+  en ligne droite jusqu'à 0 en 60 s (1 200 pas) ; retour à pleins PV par « Ramener le héros », or pris au serveur au
+  pas de l'ordre ; près du forum, à la ruine s'il est à terre ; alerte mineure au propriétaire quand il est prêt ;
+  état public Dead → ReadyToReturn → Alive ; le prix n'est pas envoyé, chacun le recalcule de `DeathStep` et du pas.
+  Moteur : `UScriptWorldSubsystem` existe dans le fork (créé en Game/PIE et dans le monde des tests en script) ;
+  `GetOnStepEnded` (délégué natif) n'est pas lisible en script → délégué dynamique `OnHeroStep(int32)` diffusé après
+  `UpdateSheets` ; pont `UHOLHeroLibrary` (modèle `AI/HOLAIOrders.h`, accesseurs car `uint16` refusé par Blueprint).
+  **Plan en 6 boucles** : (1) règles en script `Script/Hero/HeroReturn.as` + `HeroReturn_Test.as`, sans compilation ;
+  (2) ponts C++ (`UHOLHeroLibrary`, `OnHeroStep`), tests `Hero.ReturnBirth` / `Hero.ReturnPay` ; (3) décision en script
+  (`UHOLHeroReturnSubsystem`), sans compilation ; (4) RPC `ServerReturnHero` + file d'ordres prise au pas,
+  `hol.Hero.Return`, test `Hero.ReturnOrderQueue` ; (5) `quick_check` : phase `net hero` étendue (payer trop tôt
+  refusé, payer prêt, retour seul à prix 0 ; délai raccourci par cvar) ; (6) alerte (pont HUD `AddMinorMessage`).
+  Risques : IA0.4 (Arwen) fait aussi des ponts `UHOL*Library` et ses premiers .as : aligner la convention.
+  **Questions de J8a.4 (à poser à l'utilisateur, une à la fois)** :
+  - J8a4-Q1 prix tombé à 0 : A retour seul à 98 s (recommandé) ; B attendre un clic gratuit ; C seul si forum debout.
+  - J8a4-Q2 lieu : A le forum quel que soit son état, ruine comprise, sans clic (recommandé) ; B clic sur la ruine
+    obligatoire ; C forum debout seulement.
+  - J8a4-Q3 arrondi du prix : A or entier vers le haut à chaque pas (recommandé) ; B vers le bas ; C paliers de 5.
+  - J8a4-Q4 IA (pas de stock avant IA0.1) : A retour seul à 0, le cerveau d'IA paiera plus tard (recommandé) ;
+    B paiement sans stock ; C pas de retour.
+  - J8a4-Q5 joueur absent (R7) : A retour seul à 0 comme l'IA (recommandé) ; B le héros attend son retour.
+  - J8a4-Q6 où vit la règle : A règle et décision en script, le pas C++ appelle le script (J8-Q4, recommandé) ;
+    B règle en C++ exposée au script, décision seule en script (D483 « règles pures du pas en C++ »).
+  - J8a4-Q7 alerte : A en J8a.4 par un pont du HUD (recommandé) ; B avec le bloc du héros en J8a.5.
+- (J8a.3, 2026-10-27 soir) **Boucle 4b faite** (sous-agent ~16 min, deux compilations 91 et 29 s ; Celeborn, non
+  commitée) : `HOLUnitView::SetReceivedHealth(View, bFull, Wire, Max, bHero, HeroSheet)` : héros dont la fiche est
+  Alive → PV exacts de la fiche, `bHealthExact`, la part garde la barre ; sans fiche / None / Dead → part redonnée en
+  PV, non exact ; `MakeView` (réception) passe `AHOLGameState::GetHeroSheet(OwnerPlayer)` ; `hol.Units.Where` écrit
+  `hp 407/450 share 231/255`. Test `Net.HeroSheetHealth` (vraie chaîne Iris + `HOLHeroSheet::Make`) rouge (408 au lieu
+  de 407) puis vert ; contrôle 2 de `net hero sheets` rouge (408 ≠ 407) puis vert ; `-Parts tests,combat,net` PASS
+  163 s (204/204). main c8ec209 (R7) fusionné en avance rapide sous la boucle (stash / pop, sans conflit) ;
+  recompilation et `-Parts tests,combat,net` relancées dans Celeborn.
+- (J8a.3, 2026-10-27 soir) Celeborn sur c8ec209 + boucle 4b : compilation PASS (178 s), `quick_check -Parts
+  tests,combat,net` **PASS en 162 s** (tests 211/211, net 2 clients, net hero sheets). **J8a.3 complète, attend
+  l'accord de l'utilisateur pour le commit** : code commité sur hero-j8a3 (Celeborn), main avancé dessus dans la copie
+  principale, puis journal, ligne J8a.3 de la table et `EtapeDefini.md`. Ensuite : questions J8a4-Q1 à Q7.
+- (J8a.3, 2026-10-27 nuit) main avancé à 6cddb93 par l'IA (ferme IA1.2) ; fusionné dans Celeborn en avance rapide
+  (stash / pop, sans conflit) : compilation PASS (169 s), `quick_check -Parts tests,combat,net,build` **PASS en 214 s**
+  (tests 218/218, net hero sheets, build farm, build hero). Boucle 4b prête à committer, attend l'accord.
+- (J8a.3, 2026-10-27 nuit) main avancé à b5a2e82 par NetPlaytest (R7.10 : `UHOLHeroSubsystem::RewriteCopies(Slot)`
+  appelée par `GiveSlotStock` au retour d'un joueur, test `Match.DisconnectHeroSheet`) ; refusionné dans Celeborn
+  (sans conflit) : compilation PASS (35 s), `-Parts tests,net` PASS en 145 s (219/219, net hero sheets). Boucle 4b
+  toujours prête, attend l'accord.
+- (J8a.3, 2026-10-27 nuit) **Boucle 4b commitée** (accord de l'utilisateur) : **4c8b82b** sur hero-j8a3 (Celeborn), main
+  avancé dessus en avance rapide. **J8a.3 close** (de72042, 75a0667, 4c8b82b ; recopie au retour par NetPlaytest
+  a416b75). L'aléa « client 1 (Bob) meurt » retiré d'`EtapeDefini.md` (port partagé, corrigé dans main). Suite : J8a.4,
+  questions J8a4-Q1 à Q7 une à une, puis boucle 1 (règles en script). Celeborn reste à nous (hero-j8a3 = main).

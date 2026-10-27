@@ -34,6 +34,9 @@ public:
 	/** Development (hol.Hero.SetXP): the slot's XP set, its copies written at once. False out of range or on a client. */
 	bool SetXP(int32 Slot, int32 XP);
 
+	/** R7.10: the slot's copies written again now (a player back with a new player state). False out of range or on a client. */
+	bool RewriteCopies(int32 Slot);
+
 	/** The slot's AHOLPlayerState in the game state's PlayerArray (as HOLAISummary::ReadStock); nullptr for an AI slot. */
 	static AHOLPlayerState* FindPlayerState(const UWorld& World, int32 Slot);
 

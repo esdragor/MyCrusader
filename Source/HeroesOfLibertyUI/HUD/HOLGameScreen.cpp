@@ -1494,7 +1494,8 @@ void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
 	// Exact for the troops (J7-Q5 revised: a client receives a wounded unit's exact health); a client's hero (J8a.3) is
-	// known by a share of his maximum, drawn back to health points within 2 of his own: " (share)" marks it.
+	// exact from his public sheet, before it arrives known by a share of his maximum, drawn back to health points within 2
+	// of his own: " (share)" marks it.
 	const bool bShown = Unit && Unit->MaxHealth > 0;
 	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (share)"))
 		: FString();

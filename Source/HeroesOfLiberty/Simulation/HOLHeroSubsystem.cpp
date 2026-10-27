@@ -197,6 +197,16 @@ bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
 	return true;
 }
 
+bool UHOLHeroSubsystem::RewriteCopies(const int32 Slot)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	WriteCopies(Slot);
+	return true;
+}
+
 void UHOLHeroSubsystem::WriteCopies(const int32 Slot) const
 {
 	UWorld* World = GetWorld();

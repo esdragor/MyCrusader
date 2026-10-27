@@ -5182,11 +5182,10 @@ if ($Parts -contains "net") {
         $HeroServer.Count -eq 2 -and $Wounded -and $Wounded.State -eq "Alive" -and $TrueHp -gt 0 -and $TrueHp -lt $HeroMax -and
         $HeroServer[0].Truth[$AliceSlot].Xp -eq $HeroXp[$AliceSlot] -and $HeroServer[0].Truth[$BobSlot].Xp -eq $HeroXp[$BobSlot] -and $HeroServer[0].Truth[$AliceSlot].State -eq "Alive"
     $HeroChecks["server: Bob's hero dead after hol.Hero.Kill, death step known ($(if ($Fallen) { "$($Fallen.State), death $($Fallen.Death)" }))"] = $Fallen -and $Fallen.State -eq "Dead" -and $Fallen.Death -ge 0
-    # The share sent for the wounded hero (HOLUnitReplication::GetWireHealthShare): ceil(hp * 255 / 450); the client draws
-    # it back to the nearest health points (HOLUnitView::GetReceivedHealth, within 1 and 449), which hol.Units.Where logs:
-    # 450 / 255 > 1, so each share gives its own health points, equal ones mean the same share received.
+    # The share sent for the wounded hero (HOLUnitReplication::GetWireHealthShare): ceil(hp * 255 / 450); with his public
+    # sheet received (loop 4b), the client shows his exact health from it, the share filling his bar: hol.Units.Where logs
+    # both, "hp <sheet>/450 share <received>/255".
     $Share = if ($TrueHp -gt 0) { [int][Math]::Ceiling($TrueHp * 255 / $HeroMax) } else { -1 }
-    $DrawnHp = if ($Share -gt 0) { [Math]::Min([Math]::Max([Math]::Floor((2 * $Share * $HeroMax + 255) / 510), 1), $HeroMax - 1) } else { -1 }
     foreach ($NetClient in $NetClients) {
         $N = $NetClient.Client
         $Own = if ($N -eq 1) { $BobSlot } else { $AliceSlot }
@@ -5199,11 +5198,14 @@ if ($Parts -contains "net") {
         $SheetHp = if ($First -and $First.Sheet[$BobSlot]) { $First.Sheet[$BobSlot].Hp } else { -1 }
         $HeroChecks["client $N : 2 reports ($($Seen.Count)), Bob's hero's sheet hp $SheetHp = the server's $TrueHp, Alive ($(if ($First) { $First.Sheet[$BobSlot].State }))"] =
             $Seen.Count -eq 2 -and $TrueHp -gt 0 -and $SheetHp -eq $TrueHp -and $First.Sheet[$BobSlot].State -eq "Alive"
-        # 2. The share received for the hero unit (Bob's wounded hero, the only slot 1 unit of 450 at most shown wounded).
+        # 2. The hero unit's health (Bob's wounded hero, the only slot 1 unit of 450 at most shown wounded): exact from his
+        # sheet, and the share received.
         $Where = $HeroLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-        $Received = [regex]::Match("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/$HeroMax")
+        $Received = [regex]::Match("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/$HeroMax(?: share (\d+)/255)?")
         $ReceivedHp = if ($Received.Success) { [int]$Received.Groups[1].Value } else { -1 }
-        $HeroChecks["client $N : the hero unit's health received as the share $Share/255 (drawn back $ReceivedHp, expected $DrawnHp)"] = $DrawnHp -gt 0 -and $ReceivedHp -eq $DrawnHp
+        $ReceivedShare = if ($Received.Success -and $Received.Groups[2].Success) { [int]$Received.Groups[2].Value } else { -1 }
+        $HeroChecks["client $N : the hero unit's hp $ReceivedHp = the server's $TrueHp (from his sheet), share $ReceivedShare/255 received (expected $Share)"] =
+            $TrueHp -gt 0 -and $ReceivedHp -eq $TrueHp -and $Share -gt 0 -and $ReceivedShare -eq $Share
         # 3. The XP to its owner only: its own as local, the other's default (COND_OwnerOnly).
         $LocalText = if ($First -and $First.Local) { "slot $($First.Local.Slot) xp $($First.Local.Xp)" } else { "none" }
         $OtherXp = if ($First -and $First.Other[$Foe]) { $First.Other[$Foe].Xp } else { -1 }
@@ -5259,6 +5261,13 @@ if ($Parts -contains "lobby") {
         $LobbyLine = @($LobbyOutput | Where-Object { $_ -match "^lobby_match : " }) | Select-Object -Last 1
         if ($LASTEXITCODE -ne 0) { $LobbyOutput | Select-Object -Last 40 | ForEach-Object { Write-Host "  | $_" } }
         $Checks["lobby_match: $LobbyLine"] = ($LASTEXITCODE -eq 0) -and ("$LobbyLine" -match "^lobby_match : PASS")
+        # A cooked server older than the code may not replicate as the clients do (Iris "protocol mismatch": Carol never
+        # in the match, 2026-10-27): said only when it fails, as a re-stage takes minutes.
+        $GameModule = Get-ChildItem (Join-Path $Project "Binaries\Win64") -Filter "UnrealEditor-HeroesOfLiberty*.dll" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime | Select-Object -Last 1
+        if (-not $Checks["lobby_match: $LobbyLine"] -and $GameModule -and (Get-Item $LobbyServer).LastWriteTime -lt $GameModule.LastWriteTime) {
+            $Checks["cooked server newer than the code (it is older than $($GameModule.Name): run Tools\Tests\net_match.ps1 -StageOnly)"] = $false
+        }
     }
     $AllOk = (Report "lobby" $Checks) -and $AllOk
 }
