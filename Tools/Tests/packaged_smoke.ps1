@@ -37,7 +37,7 @@ Get-ChildItem $Shots -Filter "smoke_*.png" -ErrorAction SilentlyContinue | Remov
 
 # One human on Plain, nobody else (the format of -MatchConfig=, Tools\Scenarios\README.md).
 $Config = Join-Path $TestSaved "packaged_smoke.json"
-'{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
+'{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
 # The steps (HOLTestSequence.cpp). A Peasant in 2 s, not 20 (hol.Prod.BuildTime, as quick_check's net part).
 $Steps = @(
     "waitmap MainMenu", "waitui", "mark smoke title", "capture smoke_title",

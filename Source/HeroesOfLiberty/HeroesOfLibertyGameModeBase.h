@@ -52,6 +52,12 @@ public:
 	 */
 	static bool SpawnKing(UWorld& World, int32 Slot, const AHOLBuilding& Forum);
 
+	/**
+	 * IA1.1: the slot's Num starting Peasants, born in front of its main forum (FHOLStartRules::GetStartingPeasantLocations),
+	 * at the start of the match. False: no unit system.
+	 */
+	static bool SpawnStartingPeasants(UWorld& World, int32 Slot, const AHOLBuilding& Forum, int32 Num);
+
 private:
 
 	/**

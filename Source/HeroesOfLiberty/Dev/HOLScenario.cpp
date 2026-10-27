@@ -13,6 +13,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSubsystem.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 
 /**
@@ -84,24 +85,18 @@ namespace UE::HeroesOfLiberty::Dev
 		}
 		const FString ConfigFile = FPaths::Combine(GetScenarioDir(), Name + TEXT(".json"));
 		const bool bHasConfigFile = IFileManager::Get().FileExists(*ConfigFile);
-		if (bHasConfigFile)
+		FString Json;
+		if (bHasConfigFile && !FFileHelper::LoadFileToString(Json, *ConfigFile))
 		{
-			if (!Match->LoadFromFile(ConfigFile))
-			{
-				return;
-			}
+			UE_LOG(LogHOLTest, Error, TEXT("hol.Scenario %s: %s not read"), *Name, *ConfigFile);
+			return;
 		}
-		else
+		FHOLMatchConfig Config;
+		FString Error;
+		if (!HOLTestHooks::MakeScenarioConfig(bHasConfigFile ? &Json : nullptr, Config, &Error))
 		{
-			Match->SetConfig(FHOLMatchConfig::MakeDefault());
-		}
-		FHOLMatchConfig Config = Match->GetConfigOrDefault();
-		Config.Normalize();
-		// Without a .json the default configuration names BattleMap, which the New game screen does not offer: Plain,
-		// as for a .json without a map.
-		if (!bHasConfigFile || Config.Map.IsNull())
-		{
-			Config.Map = FSoftObjectPath(TEXT("/Game/Maps/Plain.Plain"));
+			UE_LOG(LogHOLTest, Error, TEXT("hol.Scenario %s: %s: %s"), *Name, *ConfigFile, *Error);
+			return;
 		}
 		Config.Seed = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
 		Match->SetConfig(Config);
@@ -143,6 +138,29 @@ namespace UE::HeroesOfLiberty::Dev
 		TEXT("hol.Scenario"),
 		TEXT("hol.Scenario [Name]: starts a match on the test scenario Tools/Scenarios/<Name>.txt (+ .json, its match configuration); no name: lists them (development only)"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&RunScenario));
+}
+
+bool HOLTestHooks::MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutConfig, FString* OutError)
+{
+	FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+	if (Json && !FHOLMatchConfig::FromJson(*Json, Config, OutError))
+	{
+		return false;
+	}
+	Config.Normalize();
+	// Without a .json the default configuration names BattleMap, which the New game screen does not offer: Plain,
+	// as for a .json without a map.
+	if (!Json || Config.Map.IsNull())
+	{
+		Config.Map = FSoftObjectPath(TEXT("/Game/Maps/Plain.Plain"));
+	}
+	// IA1.1: the scenarios make their own Peasants; a .json asks for the starting ones with "startingPeasants".
+	if (Config.StartingPeasants < 0)
+	{
+		Config.StartingPeasants = 0;
+	}
+	OutConfig = MoveTemp(Config);
+	return true;
 }
 
 #endif

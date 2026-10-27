@@ -28,7 +28,7 @@ $Sequence = Join-Path $Saved "building_crowd.seq"
 $Config = Join-Path $Saved "building_crowd.json"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
 Remove-Item $Log -ErrorAction SilentlyContinue
-'{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $Config
+'{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $Config
 @(
     "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $($Config -replace '\\', '/') 0", "waitmap Plain",
     "waitlog Camera above the start of slot", "frames 5", "hol.Test.BuildingCrowd $Count $Seed $Type quit"

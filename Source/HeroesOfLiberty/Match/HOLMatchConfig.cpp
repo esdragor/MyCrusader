@@ -41,6 +41,7 @@ void FHOLMatchConfig::Normalize()
 			Slot.Team = 0;
 		}
 	}
+	StartingPeasants = FMath::Max(StartingPeasants, -1);
 	Version = CurrentVersion;
 }
 
