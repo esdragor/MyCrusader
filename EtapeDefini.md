@@ -24,7 +24,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
-- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main`, IA0.4 (cerveau en script) après le premier fichier Angelscript (AS1), IA0.1 attend R7 ; IA1 (économie) : IA1.1 (5 Paysans de départ, 0 dans les scénarios) dans `main`, IA1.2 (ferme) suivante ; chantier `AIInProgress.md`)*
+- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main`, IA0.4 (cerveau en script, AS1 dans `main`) et IA0.1 (R7 dans `main`) à faire ; IA1 (économie) : IA1.1 (5 Paysans de départ) et IA1.2 (ferme) dans `main`, IA1.3 suivante ; chantier `AIInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
@@ -69,7 +69,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Chantiers en cours
 - `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 à J8a.2 faites (pièces, type `Hero`, PV en float, naissance, F4), J8a.3 en cours (boucles 1 à 3 dans `main`)
-- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 et IA1.1 dans `main`, plan d'IA1 écrit
+- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3, IA1.1 et IA1.2 (ferme) dans `main`, plan d'IA1 écrit
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
