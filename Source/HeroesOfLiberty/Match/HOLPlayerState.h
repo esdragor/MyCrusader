@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Match/HOLResources.h"
+#include "Simulation/HOLHeroSheet.h"
 #include "Engine/NetSerialization.h"
 #include "HOLPlayerState.generated.h"
 
@@ -111,6 +112,18 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnOrderChainsChanged);
 	FOnOrderChainsChanged OnOrderChainsChanged;
 
+	/**
+	 * J8a.3 (J8-Q5): the private part of the player's hero sheet (XP, cooldowns, death step), set by the server only when
+	 * it changes, replicated to this player only (like the stock, D270).
+	 */
+	const FHOLHeroPrivateSheet& GetHeroPrivate() const { return HeroPrivate; }
+	/** Server only: true when it changed (and is then sent at once). */
+	bool SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate);
+
+	/** The private sheet changed: on the server when set, on the owner's machine when it arrives. */
+	DECLARE_MULTICAST_DELEGATE(FOnHeroPrivateChanged);
+	FOnHeroPrivateChanged OnHeroPrivateChanged;
+
 	/** "F 200 W 200 S 200 G 200, population 0/10": for the logs of the scripted checks. */
 	FString DescribeEconomy() const;
 
@@ -142,4 +155,10 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_OrderChains)
 	TArray<FHOLNetOrderChain> OrderChains;
+
+	UFUNCTION()
+	void OnRep_HeroPrivate();
+
+	UPROPERTY(ReplicatedUsing = OnRep_HeroPrivate)
+	FHOLHeroPrivateSheet HeroPrivate;
 };

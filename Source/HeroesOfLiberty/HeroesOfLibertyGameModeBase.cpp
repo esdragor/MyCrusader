@@ -14,6 +14,7 @@
 #include "Map/HOLMapSizeRules.h"
 #include "Map/HOLStartSlot.h"
 #include "EngineUtils.h"
+#include "Match/HOLDisconnectRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLMatchSubsystem.h"
@@ -66,8 +67,32 @@ static FAutoConsoleCommandWithWorldAndArgs CommandKillKing(TEXT("hol.Victory.Kil
 		UE_LOG(LogHOLMatch, Display, TEXT("hol.Victory.KillKing: slot %d, %d King(s) at 0 health"), Slot, Killed);
 	}));
 
+/** R7.5: the disconnection banner in solo, for a capture and the trial's scenario (no slot kept, no defeat). */
+static FAutoConsoleCommandWithWorldAndArgs CommandFakeAbsent(TEXT("hol.Net.FakeAbsent"),
+	TEXT("hol.Net.FakeAbsent [Name] [Seconds=161]: « Name : connexion perdue — m:ss » in the banner, Seconds before its end; ")
+	TEXT("Seconds < 0: « Name : de retour » for 5 s; no Name: the fake ones cleared. Server or solo (development only)"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		AHOLGameState* HOLGameState = World && World->GetNetMode() != NM_Client ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (!HOLGameState)
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Net.FakeAbsent: on the server or in solo, in a match"));
+			return;
+		}
+		const FString Name = Args.IsEmpty() ? FString() : Args[0];
+		const double Seconds = Args.Num() > 1 ? FCString::Atod(*Args[1]) : 161.;
+		HOLGameState->SetFakeAbsentNotice(Name, Seconds);
+		UE_LOG(LogHOLMatch, Display, TEXT("hol.Net.FakeAbsent: %s"), Name.IsEmpty() ? TEXT("cleared")
+			: *FString::Printf(TEXT("%s, %.0f s"), *Name, Seconds));
+	}));
+
 static TAutoConsoleVariable<float> CVarStartWaitSeconds(TEXT("hol.Match.StartWaitSeconds"), 60.f,
 	TEXT("R3.9: the longest wait of a match launched by the lobby manager for its named players, in seconds."));
+
+static TAutoConsoleVariable<float> CVarDisconnectWindowSeconds(TEXT("hol.Match.DisconnectWindowSeconds"),
+	static_cast<float>(FHOLDisconnectRules::DefaultWindowSeconds),
+	TEXT("R7 (R-Q5): how long a named player gone during the match keeps his slot, in seconds; then his slot loses. ")
+	TEXT("Also -HOLDisconnectWindow=<s> on the command line (tests)."));
 
 AHeroesOfLibertyGameModeBase::AHeroesOfLibertyGameModeBase()
 {
@@ -78,6 +103,14 @@ AHeroesOfLibertyGameModeBase::AHeroesOfLibertyGameModeBase()
 void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
+
+	// R7: a shorter window for the scripted checks (the console variable can also be set by the console).
+	float WindowSeconds = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("HOLDisconnectWindow="), WindowSeconds) && WindowSeconds > 0.f)
+	{
+		CVarDisconnectWindowSeconds->Set(WindowSeconds, ECVF_SetByCommandline);
+		UE_LOG(LogHOLMatch, Log, TEXT("Disconnection window: %.0f s"), WindowSeconds);
+	}
 
 	const UHOLMatchSubsystem* Match = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLMatchSubsystem>() : nullptr;
 	const bool bHasConfig = Match && Match->HasConfig();
@@ -159,7 +192,7 @@ void AHeroesOfLibertyGameModeBase::PreLogin(const FString& Options, const FStrin
 		}
 	}
 	const FString Name = FGenericPlatformHttp::UrlDecode(UGameplayStatics::ParseOption(Options, TEXT("Name"))).TrimStartAndEnd();
-	if (MatchConfig.FindSlotForName(Name, TakenSlots) == INDEX_NONE)
+	if (HOLGameState->FindSlotOnLogin(MatchConfig, Name, TakenSlots, /*bLog*/ false) == INDEX_NONE)
 	{
 		ErrorMessage = TEXT("The match is over");
 		UE_LOG(LogHOLMatch, Warning, TEXT("Login refused from %s: %s (spectator)"), *Address, *ErrorMessage);
@@ -204,10 +237,14 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 
 	FString LoginName;
 	LoginNames.RemoveAndCopyValue(NewPlayer, LoginName);
-	const int32 Slot = MatchConfig.FindSlotForName(LoginName, TakenSlots);
+	// B6b: a defeated slot is never taken again (FindSlotOnLogin), its name watches.
+	const AHOLGameState* LoginGameState = GetGameState<AHOLGameState>();
+	const int32 Slot = LoginGameState ? LoginGameState->FindSlotOnLogin(MatchConfig, LoginName, TakenSlots)
+		: MatchConfig.FindSlotForName(LoginName, TakenSlots);
 	if (Slot == INDEX_NONE)
 	{
-		// M6-Q8: a name absent from the configuration (or held by a player still here), or no human slot left: it watches.
+		// M6-Q8: a name absent from the configuration (or held by a player still here, or its slot defeated), or no human
+		// slot left: it watches.
 		PlayerState->SetIsSpectator(true);
 		PlayerState->SetIsOnlyASpectator(true);
 		UE_LOG(LogHOLMatch, Log, TEXT("%s joined as a spectator (name '%s', %s)"), *PlayerState->GetPlayerName(), *LoginName,
@@ -217,8 +254,26 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	PlayerState->SetMatchSlot(Slot, MatchConfig.Slots[Slot].ColorIndex);
 	UE_LOG(LogHOLMatch, Log, TEXT("%s holds slot %d (colour %d)"), *PlayerState->GetPlayerName(), Slot,
 		MatchConfig.Slots[Slot].ColorIndex);
-	// The stock of the start (D283); the population is counted by the production at each step.
-	PlayerState->SetResources(GetDefault<UHOLMatchSettings>()->StartingResources);
+	// The stock of the start (D283), or the one kept if he comes back within the window (R7.2); the population is
+	// counted by the production at each step.
+	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
+	{
+		if (HOLGameState->GiveSlotStock(*PlayerState, GetDefault<UHOLMatchSettings>()->StartingResources))
+		{
+			// M6-Q15: back within the window, he counts as present for the manager (a leader stays leader).
+			UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
+			const FString PlayerName = MatchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
+			if (Link && Link->IsActive() && Link->HasStarted() && !PlayerName.IsEmpty())
+			{
+				UE_LOG(LogHOLNet, Log, TEXT("Manager: %s back"), *PlayerName);
+				Link->SendBack(PlayerName);
+			}
+		}
+	}
+	else
+	{
+		PlayerState->SetResources(GetDefault<UHOLMatchSettings>()->StartingResources);
+	}
 	AssignBuildingOwners(Slot);
 	if (MatchConfig.HasPlayerNames())
 	{
@@ -280,6 +335,16 @@ void AHeroesOfLibertyGameModeBase::UpdateStartWait()
 		// R7 (R-Q5): the absent players' disconnection window starts here; until then their slots play with no player.
 		UE_LOG(LogHOLMatch, Log, TEXT("Match starts after %.0f s without: %s (simulation step %lld)"), MaxWait,
 			*FString::Join(Missing, TEXT(", ")), Step);
+		for (int32 Slot = 0; Slot < MatchConfig.Slots.Num(); ++Slot)
+		{
+			const FString SlotName = MatchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
+			if (Missing.ContainsByPredicate([&SlotName](const FString& Name) { return Name.Equals(SlotName, ESearchCase::IgnoreCase); })
+				&& HOLGameState->KeepMissingSlot(Slot, GetDefault<UHOLMatchSettings>()->StartingResources, GetWorld()->GetTimeSeconds(),
+					CVarDisconnectWindowSeconds.GetValueOnGameThread()))
+			{
+				GetWorldTimerManager().SetTimer(AbsenceTimer, this, &AHeroesOfLibertyGameModeBase::UpdateAbsences, 1.f, true);
+			}
+		}
 	}
 	UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
 	if (Link && Link->IsActive() && !Link->HasStarted())
@@ -322,6 +387,15 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
 
+	// R7 (R-Q5): his slot, units, buildings and stock kept for the window (named matches only).
+	AHOLGameState* AbsenceState = GetGameState<AHOLGameState>();
+	const AHOLPlayerState* LeavingState = Exiting ? Exiting->GetPlayerState<AHOLPlayerState>() : nullptr;
+	if (AbsenceState && LeavingState && AbsenceState->KeepAbsentSlot(*LeavingState, GetWorld()->GetTimeSeconds(),
+		CVarDisconnectWindowSeconds.GetValueOnGameThread()))
+	{
+		GetWorldTimerManager().SetTimer(AbsenceTimer, this, &AHeroesOfLibertyGameModeBase::UpdateAbsences, 1.f, true);
+	}
+
 	UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
 	if (!Link || !Link->IsActive() || !Link->HasStarted())
 	{
@@ -338,15 +412,45 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 			Link->SendLeft(PlayerName);
 		}
 	}
+	if (!bEmptyCheckQueued)
+	{
+		bEmptyCheckQueued = true;
+		GetWorldTimerManager().SetTimerForNextTick(this, &AHeroesOfLibertyGameModeBase::SendEmptyIfNobodyLeft);
+	}
+}
+
+void AHeroesOfLibertyGameModeBase::SendEmptyIfNobodyLeft()
+{
+	bEmptyCheckQueued = false;
+	UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
+	if (!Link || !Link->IsActive() || !Link->HasStarted())
+	{
+		return;
+	}
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		if (It->Get() && It->Get() != Exiting)
+		if (IsValid(It->Get()))
 		{
 			return;
 		}
 	}
 	UE_LOG(LogHOLNet, Log, TEXT("Manager: last player gone"));
 	Link->SendEmpty();
+}
+
+void AHeroesOfLibertyGameModeBase::UpdateAbsences()
+{
+	AHOLGameState* HOLGameState = GetGameState<AHOLGameState>();
+	if (!HOLGameState)
+	{
+		return;
+	}
+	HOLGameState->DefeatExpiredAbsences(GetWorld()->GetTimeSeconds(), CVarDisconnectWindowSeconds.GetValueOnGameThread());
+	// R7.5: on until the last « de retour » is dropped.
+	if (HOLGameState->GetAbsentSlots().IsEmpty() && HOLGameState->GetAbsentNotices().IsEmpty())
+	{
+		GetWorldTimerManager().ClearTimer(AbsenceTimer);
+	}
 }
 
 void AHeroesOfLibertyGameModeBase::OnMatchOver()

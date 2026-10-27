@@ -1,11 +1,28 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Commands/HOLPlayerOrders.h"
+#include "Commands/HOLUnitOrderProcessor.h"
 #include "Engine/DataTable.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
+#include "MassExecutor.h"
+#include "MassProcessingContext.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
+#include "Resources/HOLSourceLayout.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLGatherRules.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -590,6 +607,31 @@ bool FHOLGatherTablesTest::RunTest(const FString& Parameters)
 			TestEqual(*FString::Printf(TEXT("%s: resource"), *Name), int32(Row->Resource), int32(Source.Resource));
 			TestEqual(*FString::Printf(TEXT("%s: amount (D297)"), *Name), Row->Amount, Source.Amount);
 			TestTrue(*FString::Printf(TEXT("%s: a body"), *Name), Row->Radius > 0.f);
+			// The map's sources keep their behaviour (IA1.2): places all around, own rate, used up, placed by the map.
+			TestEqual(*FString::Printf(TEXT("%s: places all around"), *Name), Row->Places, 0);
+			TestEqual(*FString::Printf(TEXT("%s: rate scale 1"), *Name), Row->RateScale, 1.f);
+			TestFalse(*FString::Printf(TEXT("%s: used up"), *Name), Row->Endless);
+			TestFalse(*FString::Printf(TEXT("%s: not linked"), *Name), Row->Linked);
+		}
+	}
+
+	// The farm's field (IA1.2): food, one place, endless, linked to its building, 0.55/s for the Peasant (his 0.7/s
+	// through the row's GatherRate, the one rate function of the gathering, F3).
+	const FHOLSourceTypeRow* Field = UHOLSourceSettings::FindType(HOLSourceTypeNames::FarmField);
+	if (TestNotNull(TEXT("FarmField in the source type table"), Field))
+	{
+		TestEqual(TEXT("FarmField: resource"), int32(Field->Resource), int32(EHOLResource::Food));
+		TestTrue(TEXT("FarmField: a body"), Field->Radius > 0.f);
+		TestEqual(TEXT("FarmField: one place"), Field->Places, 1);
+		TestTrue(TEXT("FarmField: endless"), Field->Endless);
+		TestTrue(TEXT("FarmField: linked"), Field->Linked);
+		const UDataTable* Units = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+		const FHOLUnitTypeRow* Farmer = Units ? Units->FindRow<FHOLUnitTypeRow>(TEXT("Peasant"), TEXT("Gather test")) : nullptr;
+		if (TestNotNull(TEXT("Peasant for the farm rate"), Farmer))
+		{
+			const FHOLUnitTypeConstants Constants = Farmer->ToConstants(TEXT("Peasant"));
+			TestEqual(TEXT("FarmField: the Peasant gathers 0.55/s, exactly"),
+				Field->GatherRate(Constants.GatherRates[EHOLResource::Food]), 0.55f, 0.f);
 		}
 	}
 
@@ -620,6 +662,360 @@ bool FHOLGatherTablesTest::RunTest(const FString& Parameters)
 			&& MainCentre->AcceptsResource(EHOLResource::Wood) && MainCentre->AcceptsResource(EHOLResource::Stone)
 			&& MainCentre->AcceptsResource(EHOLResource::Gold));
 	}
+	return true;
+}
+
+
+// IA1.2 F2: a farm field on the real source registry, in a test world. Added by code with its owner, it has no shape and
+// no hole in the navmesh (its farm stands for it), the map never places one, gathering never counts it down, and
+// RemoveSource takes it off the map (its index kept, skipped like a used-up source). The map's tree is untouched.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherLinkedSourceTest, "HeroesOfLiberty.Gather.LinkedSource", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherLinkedSourceTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLSourceSubsystem* Registry = World->GetSubsystem<UHOLSourceSubsystem>();
+	AHOLSourceLayout* Layout = World->SpawnActor<AHOLSourceLayout>();
+	const FArrayProperty* LayoutSources = FindFProperty<FArrayProperty>(AHOLSourceLayout::StaticClass(), TEXT("Sources"));
+	if (TestNotNull(TEXT("source registry"), Registry) && TestNotNull(TEXT("map layout"), Layout)
+		&& TestNotNull(TEXT("the layout's source list"), LayoutSources))
+	{
+		// The map asks for a tree and a farm field: only the tree is placed.
+		TArray<FHOLPlacedSource>& Placed = *LayoutSources->ContainerPtrToValuePtr<TArray<FHOLPlacedSource>>(Layout);
+		Placed.Add(FHOLPlacedSource{ HOLSourceTypeNames::Tree, FVector(0.0, 0.0, 0.0) });
+		Placed.Add(FHOLPlacedSource{ HOLSourceTypeNames::FarmField, FVector(600.0, 0.0, 0.0) });
+		Registry->OnWorldBeginPlay(*World);
+		TestEqual(TEXT("the map placed its tree, not its farm field"), Registry->GetSources().Num(), 1);
+		const int32 Tree = 0;
+		const int32 TreeAmount = Registry->GetSources().IsValidIndex(Tree) ? Registry->GetSources()[Tree].Remaining : 0;
+		TestTrue(TEXT("the map's tree belongs to no one"), Registry->GetSources().IsValidIndex(Tree)
+			&& Registry->GetSources()[Tree].OwnerSlot == FHOLSource::NoOwner);
+
+		const int32 Farm = Registry->AddSource(HOLSourceTypeNames::FarmField, FVector(2000.0, 0.0, 0.0), INDEX_NONE, 2);
+		if (TestTrue(TEXT("a farm field added by code"), Registry->GetSources().IsValidIndex(Farm)))
+		{
+			const FHOLSource& Field = Registry->GetSources()[Farm];
+			TestEqual(TEXT("the farm field's owner"), static_cast<int32>(Field.OwnerSlot), 2);
+			TestTrue(TEXT("the farm field stands"), Field.IsStanding());
+			TestEqual(TEXT("two standing"), Registry->GetNumStanding(), 2);
+			const FString Report = Registry->MakeReport();
+			AddInfo(Report);
+			TestTrue(TEXT("the farm field has no shape and no hole: shown 1, navmesh 1 (the tree alone)"),
+				Report.EndsWith(TEXT("; shown 1, navmesh 1")));
+			TestTrue(TEXT("the report says it is endless"), Report.Contains(TEXT("FarmField 1: endless")));
+			TestEqual(TEXT("the food nearest the field: the field"), Registry->FindNearestStanding(FVector(2000.0, 0.0, 0.0), EHOLResource::Food), Farm);
+
+			// Gathering takes from it many times: it gives all that is asked and never goes down.
+			const int32 Before = Field.Remaining;
+			int32 Taken = 0;
+			for (int32 Load = 0; Load < 100; ++Load)
+			{
+				Taken += Registry->Take(Farm, 10);
+			}
+			TestEqual(TEXT("100 loads of 10 taken from the endless field"), Taken, 1000);
+			TestEqual(TEXT("its remaining unchanged"), Registry->GetSources()[Farm].Remaining, Before);
+			TestTrue(TEXT("still standing"), Registry->GetSources()[Farm].IsStanding());
+			TestEqual(TEXT("a huge take given whole, not counted down"), Registry->Take(Farm, MAX_int32), MAX_int32);
+			TestTrue(TEXT("still standing after it"), Registry->GetSources()[Farm].IsStanding());
+
+			// The farm dies: its field leaves the map.
+			TestTrue(TEXT("the field removed"), Registry->RemoveSource(Farm));
+			TestFalse(TEXT("no longer standing"), Registry->GetSources()[Farm].IsStanding());
+			TestEqual(TEXT("its index kept"), Registry->GetSources().Num(), 2);
+			TestEqual(TEXT("one standing: the tree"), Registry->GetNumStanding(), 1);
+			TestEqual(TEXT("no food left near it"), Registry->FindNearestStanding(FVector(2000.0, 0.0, 0.0), EHOLResource::Food), INDEX_NONE);
+			TestEqual(TEXT("the nearest source: the tree"), Registry->FindNearestStanding(FVector(2000.0, 0.0, 0.0)), Tree);
+			TestEqual(TEXT("nothing taken from a removed field"), Registry->Take(Farm, 10), 0);
+			TestFalse(TEXT("removed twice: no"), Registry->RemoveSource(Farm));
+			const FString After = Registry->MakeReport();
+			AddInfo(After);
+			TestTrue(TEXT("the report: one standing of two, the tree still shown"), After.Contains(TEXT(": 1 standing of 2 ("))
+				&& After.EndsWith(TEXT("; shown 1, navmesh 1")) && !After.Contains(TEXT("FarmField")));
+			TestTrue(TEXT("the map's tree untouched"), Registry->GetSources()[Tree].IsStanding()
+				&& Registry->GetSources()[Tree].Remaining == TreeAmount && TreeAmount > 0);
+		}
+		TestFalse(TEXT("nothing removed at a bad index"), Registry->RemoveSource(99));
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// IA1.2 F3: farm fields on the real chain, as a match's server: a test world, the order queue (HOLPlayerOrders, what the
+// controller's RPCs and the AI call), the order processor then the gathering at the fixed step (no movement runs: the
+// Peasants are set down touching their sources).
+namespace UE::HeroesOfLiberty::Tests::GatherFarm
+{
+	const FName Peasant(TEXT("Peasant"));
+
+	/** Steps the gatherers work (10 s at 20 Hz): a Peasant's load of 10 is not full yet, at a field nor at the berries. */
+	constexpr int32 Steps = 200;
+
+	/** The test world: a game state (slot 0 human, slot 1 AI), the subsystems, slot 0's mill and the step's processors. */
+	struct FFarmWorld
+	{
+		UWorld* World = nullptr;
+		UHOLUnitSubsystem* Units = nullptr;
+		UHOLSourceSubsystem* Sources = nullptr;
+		TSharedPtr<FMassEntityManager> EntityManager;
+		UHOLGatherProcessor* Gather = nullptr;
+		UHOLUnitOrderProcessor* Orders = nullptr;
+		AHOLBuilding* Mill = nullptr;
+
+		FFarmWorld()
+		{
+			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+			Context.SetCurrentWorld(World);
+			World->InitializeActorsForPlay(FURL());
+			AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+			Units = World->GetSubsystem<UHOLUnitSubsystem>();
+			Sources = World->GetSubsystem<UHOLSourceSubsystem>();
+			UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+			UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+			if (!State || !Units || !Sources || !Simulation || !EntitySubsystem)
+			{
+				return;
+			}
+			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+			for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+			{
+				Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index == 1 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+			}
+			State->InitVictory(Config);
+			Sources->OnWorldBeginPlay(*World);
+			// Slot 0's deposit of food, finished: its farms' spots face it.
+			Mill = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+			if (Mill)
+			{
+				Mill->Setup(HOLBuildingTypeNames::Mill, 0, 0);
+			}
+			EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+			Gather = NewObject<UHOLGatherProcessor>(Simulation);
+			Gather->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+			Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		}
+
+		~FFarmWorld()
+		{
+			GEngine->DestroyWorldContext(World);
+			World->DestroyWorld(false);
+		}
+
+		bool IsReady() const { return Gather && Orders && Mill; }
+
+		/** One fixed step: the order processor, then the gathering (the pipeline's order). */
+		void RunStep()
+		{
+			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			{
+				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Orders, ProcessingContext);
+			}
+			{
+				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Gather, ProcessingContext);
+			}
+		}
+
+		/** A Peasant born for Owner (far from every source); its identifier, 0 if none was born. */
+		uint32 PlacePeasant(const int32 Owner)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = Peasant;
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = FVector(-20000.0, -20000.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+			return After.Num() == 1 ? After[0] : 0;
+		}
+
+		/** Sets the unit down at Location (its height kept). */
+		void SetDown(const uint32 UnitId, const FVector2D& Location)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+			if (FTransformFragment* Transform = EntityManager->IsEntityValid(Entity) ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr)
+			{
+				const double Z = Transform->GetTransform().GetLocation().Z;
+				Transform->GetMutableTransform().SetLocation(FVector(Location, Z));
+			}
+		}
+
+		const FHOLGatherFragment* GetGather(const uint32 UnitId) const
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+			return EntityManager->IsEntityValid(Entity) ? EntityManager->GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
+		}
+
+		const FHOLUnitTypeConstants* GetConstants(const uint32 UnitId) const
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+			return EntityManager->IsEntityValid(Entity) ? &EntityManager->GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity) : nullptr;
+		}
+
+		/** The unit gathers at SourceIndex now (touching it, taking from it). */
+		bool IsGatheringAt(const uint32 UnitId, const int32 SourceIndex) const
+		{
+			const FHOLGatherFragment* Fragment = GetGather(UnitId);
+			return Fragment && Fragment->Phase == EHOLGatherPhase::Gathering && Fragment->SourceIndex == SourceIndex;
+		}
+
+		/** Food the unit gathered: whole units carried and the share of the next one. */
+		double GetFoodGathered(const uint32 UnitId) const
+		{
+			const FHOLGatherFragment* Fragment = GetGather(UnitId);
+			if (!Fragment)
+			{
+				return 0.0;
+			}
+			const double Whole = Fragment->Load.Resource == EHOLResource::Food ? Fragment->Load.Amount : 0.0;
+			const double Share = Fragment->Load.ProgressResource == EHOLResource::Food ? Fragment->Load.Progress : 0.0;
+			return Whole + Share;
+		}
+	};
+}
+
+// (a) A Peasant of slot 0 sent to its own farm field, by its mill, gathers 0.55 food a second: the field's RateScale times
+// its own rate, both read from the real tables; the endless field never sends it away. (b) A second Peasant sent with it
+// never works the field at the same time (one place): it goes to the free farm 6 m away (its massif); at a farm alone, it
+// stands idle. (c) A Peasant of slot 1 never gathers slot 0's field: its order to it is refused, and the berries of the
+// map it used up do not send it to slot 0's farm beside them. (d) The map's berries keep the Peasant's own rate (0.7).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherFarmFieldTest, "HeroesOfLiberty.Gather.FarmField", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherFarmFieldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GatherFarm;
+	FFarmWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	UWorld& World = *Test.World;
+	UHOLSourceSubsystem& Registry = *Test.Sources;
+	// Every group 70 m or more from the others (beyond a nearby grove's 20 m, D309 point 6).
+	const int32 Farm = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, 0.0, 0.0), INDEX_NONE, 0);
+	const int32 NextFarm = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, 600.0, 0.0), INDEX_NONE, 0);
+	const int32 LoneFarm = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, 8000.0, 0.0), INDEX_NONE, 0);
+	const int32 GuardedFarm = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, -8000.0, 0.0), INDEX_NONE, 0);
+	const int32 LastBerries = Registry.AddSource(HOLSourceTypeNames::BerryBush, FVector(-8000.0, 0.0, 0.0), 1);
+	const int32 FarmByBerries = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(-8000.0, 600.0, 0.0), INDEX_NONE, 0);
+	const int32 Berries = Registry.AddSource(HOLSourceTypeNames::BerryBush, FVector(8000.0, 0.0, 0.0));
+	const TArray<FHOLSource>& Sources = Registry.GetSources();
+	if (!TestTrue(TEXT("five farm fields of slot 0 and two bushes of the map"), Sources.Num() == 7 && Farm != INDEX_NONE && NextFarm != INDEX_NONE
+		&& LoneFarm != INDEX_NONE && GuardedFarm != INDEX_NONE && LastBerries != INDEX_NONE && FarmByBerries != INDEX_NONE && Berries != INDEX_NONE))
+	{
+		return false;
+	}
+	const FHOLSourceTypeRow* FieldRow = Registry.GetType(Sources[Farm].TypeIndex);
+	const FHOLSourceTypeRow* BushRow = Registry.GetType(Sources[Berries].TypeIndex);
+	if (!TestNotNull(TEXT("the farm field's row"), FieldRow) || !TestNotNull(TEXT("the berry bush's row"), BushRow))
+	{
+		return false;
+	}
+
+	// Slot 0: two Peasants for the farm by the mill, two for the lone farm, one for the berries; slot 1: one sent to slot
+	// 0's farm, one to the last berries.
+	const uint32 First = Test.PlacePeasant(0);
+	const uint32 Second = Test.PlacePeasant(0);
+	const uint32 LoneFirst = Test.PlacePeasant(0);
+	const uint32 LoneSecond = Test.PlacePeasant(0);
+	const uint32 Picker = Test.PlacePeasant(0);
+	const uint32 Intruder = Test.PlacePeasant(1);
+	const uint32 Passer = Test.PlacePeasant(1);
+	const FHOLUnitTypeConstants* Constants = Test.GetConstants(First);
+	if (!TestTrue(TEXT("seven Peasants born"), First && Second && LoneFirst && LoneSecond && Picker && Intruder && Passer)
+		|| !TestNotNull(TEXT("the Peasant's constants"), Constants))
+	{
+		return false;
+	}
+	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	const float UnitRate = Constants->GatherRates[EHOLResource::Food];
+	const float FieldRate = FieldRow->GatherRate(UnitRate);
+	const float BushRate = BushRow->GatherRate(UnitRate);
+	TestTrue(TEXT("the field gives less than the Peasant's own rate (RateScale of the table)"), UnitRate > 0.f && FieldRate < UnitRate);
+	TestEqual(TEXT("the berries give the Peasant's own rate"), BushRate, UnitRate);
+	TestEqual(TEXT("one place at a field (the table)"), FieldRow->Places, 1);
+
+	// Each one touching its source (within the contact gap, D296): no walk needed, none is run.
+	const double BodyRadius = Constants->Radius;
+	const auto Touching = [&Sources, BodyRadius](const int32 SourceIndex, const FVector2D& Direction)
+	{
+		return FVector2D(Sources[SourceIndex].Location) + Direction * (Sources[SourceIndex].Radius + BodyRadius + 10.0);
+	};
+	Test.SetDown(First, Touching(Farm, FVector2D(-1.0, 0.0)));         // between the field and the mill
+	Test.SetDown(Second, Touching(Farm, FVector2D(1.0, 0.0)));         // the other side, 3.4 m from the first
+	Test.SetDown(LoneFirst, Touching(LoneFarm, FVector2D(-1.0, 0.0)));
+	Test.SetDown(LoneSecond, Touching(LoneFarm, FVector2D(1.0, 0.0)));
+	Test.SetDown(Picker, Touching(Berries, FVector2D(-1.0, 0.0)));
+	Test.SetDown(Intruder, Touching(GuardedFarm, FVector2D(-1.0, 0.0)));
+	Test.SetDown(Passer, Touching(LastBerries, FVector2D(0.0, -1.0))); // the side away from slot 0's farm
+
+	TestTrue(TEXT("slot 0's order to its farm"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ First, Second }), Farm));
+	TestTrue(TEXT("slot 0's order to its lone farm"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ LoneFirst, LoneSecond }), LoneFarm));
+	TestTrue(TEXT("slot 0's order to the berries"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ Picker }), Berries));
+	TestTrue(TEXT("slot 1's order to slot 0's farm enters the queue (the gathering decides)"),
+		HOLPlayerOrders::Gather(World, 1, TArray<uint32>({ Intruder }), GuardedFarm));
+	TestTrue(TEXT("slot 1's order to the last berries"), HOLPlayerOrders::Gather(World, 1, TArray<uint32>({ Passer }), LastBerries));
+
+	// The first step: the orders applied, each one touching its source starts at once, or looks elsewhere.
+	Test.RunStep();
+	const bool bFirstHolds = Test.IsGatheringAt(First, Farm);
+	const uint32 Holder = bFirstHolds ? First : Second;
+	const uint32 Other = bFirstHolds ? Second : First;
+	TestTrue(TEXT("(a) one Peasant gathers the farm by the mill"), Test.IsGatheringAt(Holder, Farm));
+	TestFalse(TEXT("(b) the other does not gather it with him"), Test.IsGatheringAt(Other, Farm));
+	const FHOLGatherFragment* OtherGather = Test.GetGather(Other);
+	TestTrue(TEXT("(b) the other goes to the free farm of its massif, 6 m away"), OtherGather && OtherGather->IsGathering()
+		&& OtherGather->SourceIndex == NextFarm);
+	const bool bLoneFirstHolds = Test.IsGatheringAt(LoneFirst, LoneFarm);
+	const uint32 LoneOther = bLoneFirstHolds ? LoneSecond : LoneFirst;
+	TestTrue(TEXT("(b) one Peasant gathers the lone farm"), Test.IsGatheringAt(bLoneFirstHolds ? LoneFirst : LoneSecond, LoneFarm));
+	const FHOLGatherFragment* LoneOtherGather = Test.GetGather(LoneOther);
+	TestTrue(TEXT("(b) the other one, no free farm near, stands idle"), LoneOtherGather && !LoneOtherGather->IsGathering());
+	const FHOLGatherFragment* IntruderGather = Test.GetGather(Intruder);
+	TestTrue(TEXT("(c) slot 1's Peasant refused at slot 0's farm: not gathering"), IntruderGather && !IntruderGather->IsGathering());
+
+	// The steps after: at most one at a time on each field; slot 1 never at slot 0's fields.
+	int32 MostOnFarm = 0;
+	int32 MostOnLoneFarm = 0;
+	bool bIntruderGathered = false;
+	bool bPasserToFarm = false;
+	for (int32 Step = 1; Step < Steps; ++Step)
+	{
+		Test.RunStep();
+		MostOnFarm = FMath::Max(MostOnFarm, (Test.IsGatheringAt(First, Farm) ? 1 : 0) + (Test.IsGatheringAt(Second, Farm) ? 1 : 0));
+		MostOnLoneFarm = FMath::Max(MostOnLoneFarm, (Test.IsGatheringAt(LoneFirst, LoneFarm) ? 1 : 0) + (Test.IsGatheringAt(LoneSecond, LoneFarm) ? 1 : 0));
+		const FHOLGatherFragment* Intruding = Test.GetGather(Intruder);
+		bIntruderGathered |= !Intruding || Intruding->IsGathering() || Test.GetFoodGathered(Intruder) > 0.0;
+		const FHOLGatherFragment* Passing = Test.GetGather(Passer);
+		bPasserToFarm |= !Passing || Passing->SourceIndex == FarmByBerries;
+	}
+
+	// (a) 0.55 a second at the field, give or take the first step (spent starting).
+	const double Seconds = Steps * StepSeconds;
+	TestTrue(TEXT("(a) the holder still gathers its field (endless: never used up)"), Test.IsGatheringAt(Holder, Farm));
+	TestEqual(TEXT("(a) food gathered at the field: the field's rate"), Test.GetFoodGathered(Holder), FieldRate * Seconds, FieldRate * StepSeconds + 1e-3);
+	TestTrue(TEXT("(a) the field still stands"), Sources[Farm].IsStanding());
+	// (b)
+	TestEqual(TEXT("(b) never two at once at the farm by the mill"), MostOnFarm, 1);
+	TestEqual(TEXT("(b) never two at once at the lone farm"), MostOnLoneFarm, 1);
+	// (c)
+	TestFalse(TEXT("(c) slot 1's Peasant never gathered slot 0's farm"), bIntruderGathered);
+	TestFalse(TEXT("(c) the last berries used up"), Sources[LastBerries].IsStanding());
+	TestEqual(TEXT("(c) slot 1's Peasant took the last berry"), Test.GetFoodGathered(Passer), 1.0, 1e-3);
+	TestFalse(TEXT("(c) ... and was never sent to slot 0's farm beside them"), bPasserToFarm);
+	// (d)
+	TestTrue(TEXT("(d) the berries' Peasant still gathers"), Test.IsGatheringAt(Picker, Berries));
+	TestEqual(TEXT("(d) food gathered at the berries: the Peasant's own rate"), Test.GetFoodGathered(Picker), BushRate * Seconds, BushRate * StepSeconds + 1e-3);
 	return true;
 }
 

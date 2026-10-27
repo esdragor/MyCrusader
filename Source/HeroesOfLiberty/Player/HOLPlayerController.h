@@ -16,6 +16,7 @@ class AHOLRTSCamera;
 class AHOLSelectionMarkers;
 class UInputAction;
 struct FHOLPickCandidate;
+struct FHOLSourceTypeRow;
 struct FHOLUnitView;
 struct FInputActionValue;
 
@@ -110,8 +111,13 @@ public:
 	 * high, HOLUnitPicking::PickNear); 0 when none.
 	 */
 	uint32 FindTargetAt(const FVector2D& ViewportFraction, bool& bOutDirect) const;
-	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
+	/**
+	 * The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. A
+	 * linked source (a farm field, IA1.2 F7) is never taken: the click falls on its building.
+	 */
 	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
+	/** IA1.2 F7: a source of this type is picked by a click (FindSourceAt); a linked one (a farm field) is not. */
+	static bool IsPickableSource(const FHOLSourceTypeRow& Type);
 	/**
 	 * A left click at a point of the viewport: the unit under it, else the building, else the source, else nothing. With bAdd (Shift), the
 	 * first side of the selection and the unit wins (D.2, HOLUnitPicking::CombineClick): of the selection's side, the unit is added, or
@@ -351,6 +357,11 @@ public:
 	void RequestPlaceBuilding(FName TypeName, const FVector& Point, bool bQueue = false);
 	/** Asks the server to have units build (help) one of the player's sites not finished (J6a.4, D312); bQueue: Shift. */
 	void RequestBuildUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
+	/**
+	 * Asks the server to have units unload at one of the player's finished buildings taking deliveries (D485, EtapeDefini L):
+	 * it sorts them (it alone knows each load): the carriers of a resource it takes unload there, the others walk to Point.
+	 */
+	void RequestDropOffUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue = false);
 	/** Asks the server to cancel one of the player's buildings not yet finished (refunded, D311). */
 	void RequestCancelBuilding(AHOLBuilding* Building);
 
@@ -602,6 +613,10 @@ private:
 	/** The units' identifiers and the site they build (J6a.4, D312). */
 	UFUNCTION(Server, Reliable)
 	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+
+	/** The units' identifiers, the building they unload at and the ground point clicked (D485). */
+	UFUNCTION(Server, Reliable)
+	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelBuilding(AHOLBuilding* Building);

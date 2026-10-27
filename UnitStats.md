@@ -14,6 +14,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Homme d'armes | 155 | 12 | — | 1,375 s | 43,6 | 8,73 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 4 | 4 | 0 | 2 | Infanterie lourde, Lourd | 4 cases (16 m) |
 | Roi | 250 | 50 | — | 1,375 s | 43,6 | 36,36 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Roi | aucun (riposte seulement) |
 | Paladin-Commandant (héros) | 450 | 30 | — | 1,25 s | 48 | 24 | 50 % (0,625 s) | Héros | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Héros | 4 cases (16 m) |
+| Arbalétrier | 80 | 12 | +10 contre Lourd | 2,125 s | 28,2 | 5,65 | 12 % (0,255 s) | Distance (tir) | 5 cases (20 m) | 0 | 0 | 0 | 0 | Distance | 5,33 cases (21,33 m) |
 
 - Dégâts d'un coup = attaque + chaque bonus visant une des catégories de la cible (ils s'additionnent) − armure de la cible du type de l'attaque (mêlée, distance, siège ou héros), 1 au moins.
 - Cadence : temps entre deux coups. Élan : part de la cadence qu'attend le premier coup sur une cible.
@@ -33,6 +34,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Homme d'armes | 20 | Mêlée | 20 | 2,1 s | 9,52 | 1 case (4 m) |
 | Roi | — | — | — | — | — | — |
 | Paladin-Commandant (héros) | 10 | Mêlée | 10 | 2,1 s | 4,76 | 1 case (4 m) |
+| Arbalétrier | 12 | Distance | 1 | 2,125 s | 0,47 | 5 cases (20 m) |
 
 - Contre un bâtiment, l'unité se sert toujours de cette attaque (D345). Les bâtiments ont 40 d'armure distance, rien contre les autres types ; 1 dégât au moins.
 - Cibles : sur ordre (clic droit), en attaque-déplacement quand aucune unité ennemie n'est à portée de recherche, au repos dans le rayon d'agressivité sans unité ennemie (le Paysan seulement sur ordre) ; une unité ennemie qui arrive fait lâcher le bâtiment.
@@ -49,6 +51,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Homme d'armes | 1,74 case/s (6,97 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
 | Roi | 1,94 case/s (7,77 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) |
 | Paladin-Commandant (héros) | 1,74 case/s (6,97 m/s) | 0,18 case (0,72 m) | 0,62 case (2,5 m) |
+| Arbalétrier | 1,8 case/s (7,2 m/s) | 0,13 case (0,52 m) | 0,55 case (2,2 m) |
 
 ## Production et économie
 
@@ -62,19 +65,21 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Homme d'armes | 100 Nourriture + 20 Or | 22 s | 1 | — | — |
 | Roi | — | 1 s | 0 | — | — |
 | Paladin-Commandant (héros) | — | 1 s | 0 | — | — |
+| Arbalétrier | 80 Nourriture + 40 Or | 22 s | 1 | — | — |
 
 ## Affrontements
 
 Ligne = l'attaquant, colonne = la cible. Chaque case : dégâts d'un coup · coups pour tuer · temps pour tuer une cible seule et immobile (élan du premier coup, puis un coup par cadence ; sans le vol de la flèche).
 
-| Attaquant \ Cible | Infanterie légère | Archer | Paysan | Piquier | Homme d'armes | Roi | Paladin-Commandant (héros) |
-|---|---|---|---|---|---|---|---|
-| **Infanterie légère** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s |
-| **Archer** | 10 · 10 · 14,8 s | 5 · 14 · 21,3 s | 5 · 10 · 14,8 s | 10 · 8 · 11,6 s | 1 · 155 · 250,4 s | 5 · 50 · 79,8 s | 1,5 · 300 · 486,1 s |
-| **Paysan** | 3 · 34 · 124 s | 3 · 24 · 87 s | 3 · 17 · 61,1 s | 3 · 27 · 98 s | 1 · 155 · 571,7 s | 3 · 84 · 309 s | 0,9 · 501 · 1851,8 s |
-| **Piquier** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s |
-| **Homme d'armes** | 12 · 9 · 11,7 s | 12 · 6 · 7,6 s | 12 · 5 · 6,2 s | 12 · 7 · 8,9 s | 8 · 20 · 26,8 s | 12 · 21 · 28,2 s | 3,6 · 125 · 171,2 s |
-| **Roi** | 50 · 2 · 2,1 s | 50 · 2 · 2,1 s | 50 · 1 · 0,7 s | 50 · 2 · 2,1 s | 46 · 4 · 4,8 s | 50 · 5 · 6,2 s | 15 · 30 · 40,6 s |
-| **Paladin-Commandant (héros)** | 30 · 4 · 4,4 s | 30 · 3 · 3,1 s | 30 · 2 · 1,9 s | 30 · 3 · 3,1 s | 28 · 6 · 6,9 s | 30 · 9 · 10,6 s | 30 · 15 · 18,1 s |
+| Attaquant \ Cible | Infanterie légère | Archer | Paysan | Piquier | Homme d'armes | Roi | Paladin-Commandant (héros) | Arbalétrier |
+|---|---|---|---|---|---|---|---|---|
+| **Infanterie légère** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s | 8 · 10 · 17,8 s |
+| **Archer** | 10 · 10 · 14,8 s | 5 · 14 · 21,3 s | 5 · 10 · 14,8 s | 10 · 8 · 11,6 s | 1 · 155 · 250,4 s | 5 · 50 · 79,8 s | 1,5 · 300 · 486,1 s | 5 · 16 · 24,6 s |
+| **Paysan** | 3 · 34 · 124 s | 3 · 24 · 87 s | 3 · 17 · 61,1 s | 3 · 27 · 98 s | 1 · 155 · 571,7 s | 3 · 84 · 309 s | 0,9 · 501 · 1851,8 s | 3 · 27 · 98 s |
+| **Piquier** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s | 8 · 10 · 17,8 s |
+| **Homme d'armes** | 12 · 9 · 11,7 s | 12 · 6 · 7,6 s | 12 · 5 · 6,2 s | 12 · 7 · 8,9 s | 8 · 20 · 26,8 s | 12 · 21 · 28,2 s | 3,6 · 125 · 171,2 s | 12 · 7 · 8,9 s |
+| **Roi** | 50 · 2 · 2,1 s | 50 · 2 · 2,1 s | 50 · 1 · 0,7 s | 50 · 2 · 2,1 s | 46 · 4 · 4,8 s | 50 · 5 · 6,2 s | 15 · 30 · 40,6 s | 50 · 2 · 2,1 s |
+| **Paladin-Commandant (héros)** | 30 · 4 · 4,4 s | 30 · 3 · 3,1 s | 30 · 2 · 1,9 s | 30 · 3 · 3,1 s | 28 · 6 · 6,9 s | 30 · 9 · 10,6 s | 30 · 15 · 18,1 s | 30 · 3 · 3,1 s |
+| **Arbalétrier** | 12 · 9 · 17,3 s | 12 · 6 · 10,9 s | 12 · 5 · 8,8 s | 12 · 7 · 13 s | 18 · 9 · 17,3 s | 12 · 21 · 42,8 s | 3,6 · 125 · 263,8 s | 12 · 7 · 13 s |
 
 Les lignes d'essai (Infanterie légère (essai Nanite)) sont laissées de côté : elles se battent comme le type qu'elles copient.

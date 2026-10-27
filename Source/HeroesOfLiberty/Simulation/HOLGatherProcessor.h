@@ -10,6 +10,9 @@
 #include "Simulation/HOLGatherRules.h"
 #include "HOLGatherProcessor.generated.h"
 
+class AHOLBuilding;
+struct FHOLGatherOrder;
+
 class ANavigationData;
 class UHOLCommandSubsystem;
 class UHOLProductionSubsystem;
@@ -52,6 +55,12 @@ public:
 		int64 NearbyGroves = 0;
 	};
 	static const FCounters& GetCounters() { return Counters; }
+
+	/**
+	 * A gatherer of OwnerPlayer unloads Load at a deposit (D296): its owner's stock rises (HOLGather::Deposit). Returns the
+	 * amount deposited; OutStock: the stock after it (zero when the slot has none).
+	 */
+	static int32 DepositLoad(UWorld& World, int32 OwnerPlayer, FHOLGatherLoad& Load, FHOLResources& OutStock);
 
 	/**
 	 * Distance (cm, centre to centre) between two gatherers' spots, at one source or two side by side (hol.Gather.SpotSpacing,
@@ -101,6 +110,8 @@ private:
 		TArray<EHOLResource> Accepts;
 		/** Its building's type, for the log of the unloads (hol.Gather.LogDeposits: at the camp or at the centre, J6b.1). */
 		FName TypeName;
+		/** Its building: the one a player's drop-off order names (D485). */
+		TWeakObjectPtr<AHOLBuilding> Building;
 	};
 
 	/** The gatherer met by the step, and what it needs. */
@@ -177,6 +188,14 @@ private:
 	/** Another gatherer's spot, or idle gatherer's point, within MinSpacing of Spot, whatever its source (Self's old one is left). */
 	bool IsSpotTaken(const FStepContext& Step, const FVector2D& Spot, double MinSpacing, FMassEntityHandle Self);
 	/**
+	 * A source of few places (its type's Places, a farm field: 1, IA1.2) still has one for Self: its other holders walk to
+	 * it, gather there or carry its food to a deposit, and come back. Self's own place there is let go first. A source
+	 * with places all around (Places 0): always true.
+	 */
+	bool HasFreePlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self);
+	/** Self holds one of the few places of SourceIndex (nothing for a source with places all around). */
+	void ClaimPlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self);
+	/**
 	 * The nearest standing source of FromSource's massif with a free spot, from FromSource outward (FromSource itself left
 	 * out), its spot claimed for the gatherer in OutSpot (D309, the user's rule: 175 Peasants sent to a wood surround it);
 	 * the whole massif full, the first one with a free spot in its nearby groves (D309 point 6). INDEX_NONE if they are all
@@ -185,14 +204,24 @@ private:
 	int32 FindMassifSpot(const FStepContext& Step, const FGatherer& Gatherer, int32 FromSource, FVector& OutSpot, int32* OutNearestStanding = nullptr);
 	/** The massifs of the server's sources, linked again only when sources were added (D309). */
 	const FHOLSourceMassifs& GetMassifs(const FStepContext& Step);
-	/** Index in Deposits of the owner's nearest deposit taking Resource, INDEX_NONE if it has none. */
-	int32 FindDeposit(uint8 OwnerPlayer, EHOLResource Resource, const FVector& From) const;
+	/**
+	 * Index in Deposits of the owner's nearest deposit taking Resource, INDEX_NONE if it has none. Target (a player's
+	 * drop-off order, D485) first, while it is still one of the owner's deposits taking Resource.
+	 */
+	int32 FindDeposit(uint8 OwnerPlayer, EHOLResource Resource, const FVector& From, const AHOLBuilding* Target = nullptr) const;
+	/** Applies a drop-off order (D485, EtapeDefini L): its carriers of a resource the building takes walk there to unload. */
+	void ApplyDropOffOrder(const FStepContext& Step, const FHOLGatherOrder& Order);
 	/** The footprint of the owner's deposit nearest Source taking its resource, where its gatherers unload; null if none. */
 	const FHOLGatherDeposit* FindSourceDeposit(uint8 OwnerPlayer, const FHOLSource& Source) const;
 
 	TArray<FDeposit> Deposits;
 	/** The spots held: their gatherers still walk to them or gather there; and the points of the idle ones in front of a full source. */
 	FHOLSpotClaims SpotClaims;
+	/**
+	 * The holders (entities as numbers) of the sources of few places (a farm field, IA1.2), by source index; a holder that
+	 * left its source is dropped when the source is looked at (HasFreePlace).
+	 */
+	TMap<int32, TArray<uint64>> PlaceHolders;
 	/** The sources' massifs: links built once for the sources registered (D309), and their nearby groves (point 6). */
 	FHOLSourceMassifs Massifs;
 	/** The hol.Gather.NearbyMassifRange the massifs were built with (cm). */

@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Map/HOLMapSizeRules.h"
 
+enum class EHOLMatchOrigin : uint8;
+
 /** A lobby's state in GET /lobbies (Manager/PROTOCOL.md). */
 enum class EHOLLobbyState : uint8 { Lobby, Starting, InGame };
 
@@ -33,7 +35,12 @@ struct FHOLLobbySummary
 	int32 Minutes = -1;
 	bool bCanJoin = false;
 	bool bCanWatch = false;
+	/** R7.6: in game, the match's players gone from its server within R7's window (« Revenir »); absent: none. */
+	TArray<FString> Away;
 };
+
+/** The button of a row of the Multiplayer list (R4.2, R7.6). */
+enum class EHOLLobbyAction : uint8 { None, Join, Watch, Rejoin };
 
 /** Why a call to the manager failed: no answer, an answer that is not the protocol's, or its { error, message }. */
 struct FHOLManagerError
@@ -132,6 +139,12 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 
 	static bool ParseStatus(const FString& Json, FHOLManagerStatus& Out);
 	static bool ParseLobbies(const FString& Json, TArray<FHOLLobbySummary>& Out);
+	/**
+	 * The button of a row (R4.2, R7.6): Join on a lobby gathering with room, Rejoin on a match under way that lists
+	 * MyName (trimmed, case ignored, PROTOCOL.md 8) among its players away, Watch on any other match under way, None
+	 * otherwise (full, starting).
+	 */
+	static EHOLLobbyAction ChooseLobbyAction(const FHOLLobbySummary& Lobby, const FString& MyName);
 	/** The lobby's state; false unless its 8 slots are read. */
 	static bool ParseLobby(const FString& Json, FHOLLobby& Out);
 	/** The answer of create and join: { token, slot, lobby }. */
@@ -166,6 +179,14 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	 * a spectator (M6-Q9). Empty without a host or port.
 	 */
 	static FString MakeMatchAddress(const FString& ManagerUrl, int32 Port, const FString& PlayerName, const FString& GameVersion);
+
+	/**
+	 * Where the match now played was opened from (M6-Q10, R7.6): Lobby for a lobby's player, named (bNamed) and either
+	 * holding the lobby's token (bHasToken) or back in its match by the list's « Revenir » (bRejoinedLobby, no token:
+	 * « Retour au salon » joins again by name); Manager for any other match opened from the manager (bInMatch: a
+	 * spectator); Local otherwise.
+	 */
+	static EHOLMatchOrigin GetMatchOrigin(bool bHasToken, bool bRejoinedLobby, bool bNamed, bool bInMatch);
 
 	/** {Url}{Route}, one slash between them. */
 	static FString MakeUrl(const FString& Url, const FString& Route);

@@ -23,6 +23,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationCap, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
 }
 
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
@@ -140,4 +141,22 @@ FString AHOLPlayerState::DescribeEconomy() const
 void AHOLPlayerState::OnRep_Economy()
 {
 	OnEconomyChanged.Broadcast();
+}
+
+bool AHOLPlayerState::SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate)
+{
+	if (HeroPrivate == InHeroPrivate)
+	{
+		return false;
+	}
+	HeroPrivate = InHeroPrivate;
+	OnHeroPrivateChanged.Broadcast();
+	// As the economy: a player state sends once a second by default.
+	ForceNetUpdate();
+	return true;
+}
+
+void AHOLPlayerState::OnRep_HeroPrivate()
+{
+	OnHeroPrivateChanged.Broadcast();
 }

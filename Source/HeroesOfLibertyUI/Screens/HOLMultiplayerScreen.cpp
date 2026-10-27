@@ -286,22 +286,26 @@ void UHOLMultiplayerScreen::AddLobbyRow(const int32 Index, const FHOLLobbySummar
 		: FText::Format(LOCTEXT("StateInGame", "en partie ({0} min)"), FMath::Max(Lobby.Minutes, 0));
 	AddCell(State, StateWidth);
 
-	// Join on a lobby still gathering, Watch on a match under way; nothing otherwise (full, starting).
-	const bool bJoin = Lobby.State == EHOLLobbyState::Lobby && Lobby.bCanJoin;
-	const bool bWatch = !bJoin && Lobby.State == EHOLLobbyState::InGame && Lobby.bCanWatch;
-	if (bJoin || bWatch)
+	// Join on a lobby still gathering, Rejoin on a match I left (R7.6), Watch on another match under way; nothing
+	// otherwise (full, starting).
+	const FString MyName = NameBox ? NameBox->GetText().ToString() : FString();
+	const EHOLLobbyAction Action = FHOLManagerClientRules::ChooseLobbyAction(Lobby, MyName);
+	if (Action != EHOLLobbyAction::None)
 	{
+		const TCHAR* ButtonName = Action == EHOLLobbyAction::Join ? TEXT("JoinButton") : Action == EHOLLobbyAction::Rejoin ? TEXT("RejoinButton") : TEXT("WatchButton");
 		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 		Box->SetWidthOverride(ActionWidth);
-		UHOLButton* Button = WidgetTree->ConstructWidget<UHOLButton>(UHOLButton::StaticClass(),
-			*FString::Printf(TEXT("%s%d"), bJoin ? TEXT("JoinButton") : TEXT("WatchButton"), Index));
-		Button->SetLabel(bJoin ? LOCTEXT("Join", "Rejoindre") : LOCTEXT("Watch", "Regarder"));
-		Button->OnClicked().AddUObject(this, bJoin ? &UHOLMultiplayerScreen::HandleJoin : &UHOLMultiplayerScreen::HandleWatch, Index);
+		UHOLButton* Button = WidgetTree->ConstructWidget<UHOLButton>(UHOLButton::StaticClass(), *FString::Printf(TEXT("%s%d"), ButtonName, Index));
+		Button->SetLabel(Action == EHOLLobbyAction::Join ? LOCTEXT("Join", "Rejoindre")
+			: Action == EHOLLobbyAction::Rejoin ? LOCTEXT("Rejoin", "Revenir") : LOCTEXT("Watch", "Regarder"));
+		Button->OnClicked().AddUObject(this, Action == EHOLLobbyAction::Join ? &UHOLMultiplayerScreen::HandleJoin
+			: Action == EHOLLobbyAction::Rejoin ? &UHOLMultiplayerScreen::HandleRejoin : &UHOLMultiplayerScreen::HandleWatch, Index);
 		Box->SetContent(Button);
 		Row->AddChildToHorizontalBox(Box)->SetVerticalAlignment(VAlign_Center);
 	}
 	UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: lobby %s \"%s\" %s %d/%d %s%s"), *Lobby.Id, *Lobby.Name, *MapText.ToString(), Lobby.Players,
-		Lobby.MaxPlayers, *State.ToString(), bJoin ? TEXT(", join") : bWatch ? TEXT(", watch") : TEXT(""));
+		Lobby.MaxPlayers, *State.ToString(), Action == EHOLLobbyAction::Join ? TEXT(", join") : Action == EHOLLobbyAction::Rejoin ? TEXT(", rejoin")
+		: Action == EHOLLobbyAction::Watch ? TEXT(", watch") : TEXT(""));
 }
 
 void UHOLMultiplayerScreen::SetStatus(const FText& Text, const bool bAlert)
@@ -383,30 +387,49 @@ void UHOLMultiplayerScreen::HandleEntered(const FHOLLobby& Lobby, const FHOLMana
 
 void UHOLMultiplayerScreen::HandleWatch(const int32 Index)
 {
+	OpenMatchOf(Index, false);
+}
+
+void UHOLMultiplayerScreen::HandleRejoin(const int32 Index)
+{
+	OpenMatchOf(Index, true);
+}
+
+void UHOLMultiplayerScreen::OpenMatchOf(const int32 Index, const bool bRejoin)
+{
 	const FString Name = TakePlayerName();
 	if (!Name.IsEmpty() && Lobbies.IsValidIndex(Index))
 	{
 		const FString Id = Lobbies[Index].Id;
-		UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: watch %s as %s"), *Id, *Name);
+		UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: %s %s as %s"), bRejoin ? TEXT("rejoin") : TEXT("watch"), *Id, *Name);
 		const UGameInstance* GameInstance = GetGameInstance();
 		UHOLManagerClient* Client = GameInstance ? GameInstance->GetSubsystem<UHOLManagerClient>() : nullptr;
 		if (!Client)
 		{
 			return;
 		}
-		// A spectator: no Name in the address (M6-Q9).
-		Client->WatchLobby(Id, FHOLManagerWatchDone::CreateWeakLambda(this, [this, Id](const FString& MatchId, const int32 Port, const FHOLManagerError& Error)
+		// The match's port from GET /watch. A spectator: no Name in the address (M6-Q9); back in the match (R7.6): his
+		// name, which gives his slot back within R7's window (as R4.7).
+		Client->WatchLobby(Id, FHOLManagerWatchDone::CreateWeakLambda(this, [this, Id, Name, bRejoin](const FString& MatchId, const int32 Port, const FHOLManagerError& Error)
 		{
 			const UGameInstance* Owner = GetGameInstance();
 			UHOLManagerClient* Manager = Owner ? Owner->GetSubsystem<UHOLManagerClient>() : nullptr;
 			if (Error.IsError() || !Manager)
 			{
-				UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: watch %s refused (HTTP %d %s: %s)"), *Id, Error.HttpCode, *Error.Code, *Error.Message);
+				UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: %s %s refused (HTTP %d %s: %s)"), bRejoin ? TEXT("rejoin") : TEXT("watch"), *Id, Error.HttpCode, *Error.Code, *Error.Message);
 				SetStatus(GetManagerErrorText(Error), true);
 				return;
 			}
-			UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: watching match %s of %s on port %d"), *MatchId, *Id, Port);
-			Manager->OpenMatch(Port, FString(), HOLVersion::Get());
+			UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: %s match %s of %s on port %d"), bRejoin ? TEXT("back in") : TEXT("watching"), *MatchId, *Id, Port);
+			// Back in: the lobby kept without a token, so the end banner offers « Retour au salon » (B6c).
+			if (bRejoin)
+			{
+				Manager->KeepRejoinedLobby(Id);
+			}
+			if (!Manager->OpenMatch(Port, bRejoin ? Name : FString(), HOLVersion::Get()) && bRejoin)
+			{
+				Manager->ForgetLobby();
+			}
 		}));
 	}
 }

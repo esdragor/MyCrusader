@@ -16,10 +16,11 @@ namespace UE::HeroesOfLiberty::Tests::Production
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	const FName Peasant(TEXT("Peasant"));
-	/** The soldiers of the Barracks (J7-Q2; the Archer, J7c.1). */
+	/** The soldiers of the Barracks (J7-Q2), and of the Archery range (AR-Q2: the Archer of J7c.1, the Crossbowman). */
 	const FName SpearmanType(TEXT("Spearman"));
 	const FName ManAtArmsType(TEXT("ManAtArms"));
 	const FName ArcherType(TEXT("Archer"));
+	const FName CrossbowmanType(TEXT("Crossbowman"));
 
 	/** 50 food, 4 steps, 1 place. */
 	FHOLProductionCost MakeCost()
@@ -176,10 +177,24 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
 	{
 		TestEqual(TEXT("Barracks: military (F1, D30)"), int32(Barracks->Category), int32(EHOLBuildingCategory::Military));
-		TestTrue(TEXT("Barracks: produces the Spearman, the Man-at-arms then the Archer"),
-			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType, ArcherType }));
+		TestTrue(TEXT("Barracks: produces the Spearman then the Man-at-arms (the Archer went to the Archery range, AR-Q2)"),
+			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType }));
 		TestEqual(TEXT("Barracks: gives no population"), Barracks->PopulationProvided, 0);
 		TestTrue(TEXT("Barracks: not a deposit"), Barracks->Accepts.IsEmpty());
+	}
+
+	// AR-Q2, AR-Q2a: the Archery range's shooters, A Archer then Z Crossbowman, both in the unit type table.
+	const FHOLBuildingTypeRow* ArcheryRange = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::ArcheryRange);
+	if (TestNotNull(TEXT("Archery range in the building type table"), ArcheryRange))
+	{
+		TestEqual(TEXT("Archery range: military (F1, D30)"), int32(ArcheryRange->Category), int32(EHOLBuildingCategory::Military));
+		TestTrue(TEXT("Archery range: produces the Archer then the Crossbowman"),
+			ArcheryRange->Produces == TArray<FName>({ ArcherType, CrossbowmanType }));
+		for (const FName Produced : ArcheryRange->Produces)
+		{
+			TestTrue(*FString::Printf(TEXT("Archery range: %s in the unit type table"), *Produced.ToString()),
+				UnitTypes && UnitTypes->FindRow<FHOLUnitTypeRow>(Produced, TEXT("Production test"), false) != nullptr);
+		}
 	}
 
 	const FHOLBuildingTypeRow* MainCentre = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);

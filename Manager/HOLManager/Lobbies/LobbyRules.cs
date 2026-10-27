@@ -71,6 +71,12 @@ public static class LobbyRules
     /** A server still running this long after "empty" is stopped. */
     public static readonly TimeSpan EmptyStopDelay = TimeSpan.FromSeconds(10);
 
+    /**
+     * R7.6: a player gone from the match's server is listed as away (« Revenir ») this long, the server's window
+     * (FHOLDisconnectRules::DefaultWindowSeconds): after it, his slot is defeated.
+     */
+    public static readonly TimeSpan DisconnectWindow = TimeSpan.FromSeconds(180);
+
     /** TC1 / TC3: the five named sizes (TC-Q5, TC-Q8), as Tools/Data/MapSizes.csv gives them (checked by a test). */
     public static readonly IReadOnlyList<MapSize> MapSizes =
         [new("Small", 2), new("Medium", 4), new("Normal", 6), new("Large", 8), new("Huge", 8)];

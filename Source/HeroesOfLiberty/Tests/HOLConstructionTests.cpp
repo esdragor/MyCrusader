@@ -4,6 +4,7 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Misc/AutomationTest.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLFormationRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -348,6 +349,53 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Barracks: 1 500 health"), Barracks->MaxHealth, 1500);
 		TestEqual(TEXT("Barracks: 6 m high"), Barracks->Height, 600.f);
 	}
+	// AR-Q2a: the Archery range, built like the Barracks, on S of the Peasant's grid (right of the Barracks), no prerequisite.
+	const FHOLBuildingTypeRow* ArcheryRange = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::ArcheryRange);
+	if (TestNotNull(TEXT("Archery range in the building type table"), ArcheryRange))
+	{
+		TestTrue(TEXT("Archery range: built by Peasants"), ArcheryRange->IsBuildable());
+		TestEqual(TEXT("Archery range: S of the Peasant's grid (slot 5, military row)"), ArcheryRange->BuildGridSlot, 5);
+		TestEqual(TEXT("Archery range: 3 x 3 tiles (12 m)"), ArcheryRange->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestEqual(TEXT("Archery range: age I"), ArcheryRange->Age, 0);
+	}
+
+	// IA1.2 (F4): every building so far blocks the way and has no source of its own.
+	for (const FName Name : { HOLBuildingTypeNames::MainCentre, HOLBuildingTypeNames::House, HOLBuildingTypeNames::LumberCamp,
+		HOLBuildingTypeNames::MiningCamp, HOLBuildingTypeNames::Mill, HOLBuildingTypeNames::Barracks,
+		HOLBuildingTypeNames::ArcheryRange })
+	{
+		const FHOLBuildingTypeRow* Row = UHOLBuildingSettings::FindType(Name);
+		if (TestNotNull(Name.ToString() + TEXT(" in the building type table"), Row))
+		{
+			TestFalse(Name.ToString() + TEXT(": not walkable"), Row->Walkable);
+			TestTrue(Name.ToString() + TEXT(": no source of its own"), Row->Source.IsNone());
+		}
+	}
+
+	// IA1.2 (F4): the Farm, 2 x 2 like the Mill, 75 wood, 15 s, on W of the Peasant's grid (IA1.2-Q1), walked over,
+	// born with its FarmField (a linked source of the source type table); no deposit, no population.
+	const FHOLBuildingTypeRow* Farm = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Farm);
+	if (TestNotNull(TEXT("Farm in the building type table"), Farm))
+	{
+		TestTrue(TEXT("Farm: built by Peasants"), Farm->IsBuildable());
+		TestEqual(TEXT("Farm: W of the Peasant's grid (slot 8, IA1.2-Q1)"), Farm->BuildGridSlot, 8);
+		TestEqual(TEXT("Farm: age I"), Farm->Age, 0);
+		TestEqual(TEXT("Farm: economic"), int32(Farm->Category), int32(EHOLBuildingCategory::Economic));
+		TestEqual(TEXT("Farm: 2 x 2 tiles (8 m)"), Farm->Footprint, FVector2D(2.0 * Grid, 2.0 * Grid));
+		TestTrue(TEXT("Farm: 75 wood"), Farm->Cost == FHOLResources(0, 75, 0, 0));
+		TestEqual(TEXT("Farm: 15 s for one builder"), Farm->BuildTime, 15.f);
+		TestEqual(TEXT("Farm: no population"), Farm->PopulationProvided, 0);
+		TestTrue(TEXT("Farm: takes no resource (no deposit)"), Farm->Accepts.IsEmpty());
+		TestTrue(TEXT("Farm: produces nothing"), Farm->Produces.IsEmpty());
+		TestTrue(TEXT("Farm: walkable"), Farm->Walkable);
+		TestEqual(TEXT("Farm: its source is a FarmField"), Farm->Source, HOLSourceTypeNames::FarmField);
+		const FHOLSourceTypeRow* Field = UHOLSourceSettings::FindType(Farm->Source);
+		if (TestNotNull(TEXT("Farm: its source in the source type table"), Field))
+		{
+			TestTrue(TEXT("Farm: its source is linked"), Field->Linked);
+			TestEqual(TEXT("Farm: its source gives food"), int32(Field->Resource), int32(EHOLResource::Food));
+		}
+	}
 	return true;
 }
 
@@ -565,6 +613,22 @@ bool FHOLConstructionWorkQueueTest::RunTest(const FString& Parameters)
 		HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen) && Queue.Num() == 1 && Queue[0] == FItem::MakeBuild(4));
 	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeGather(32), false);
 	TestTrue(TEXT("a right click without Shift replaces the queue"), Queue == TArray<FItem>({ FItem::MakeGather(32) }));
+
+	// D485 (EtapeDefini L.3): Shift + right click on the finished mill 5 queues an unload there; a finished building is no
+	// open site, yet the deposit waits its turn, and is over only once unloaded.
+	Closed.Add(5);
+	Queue = { FItem::MakeBuild(6) };
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeDeposit(5), true);
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeDeposit(5), true);
+	TestTrue(TEXT("a deposit queued after a site, twice once"), Queue == TArray<FItem>({ FItem::MakeBuild(6), FItem::MakeDeposit(5) }));
+	TestTrue(TEXT("a deposit is neither a site to build nor a gathering"), Queue[1].IsDeposit() && !Queue[1].IsBuild() && !Queue[1].IsGather());
+	TestTrue(TEXT("a site is no deposit"), Queue[0].IsBuild() && !Queue[0].IsDeposit());
+	TestFalse(TEXT("site 5 and deposit 5 differ"), FItem::MakeBuild(5) == FItem::MakeDeposit(5));
+	Closed.Add(6);
+	TestTrue(TEXT("house 6 finished: the unload at the finished mill, not dropped"),
+		HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue.Num() == 1 && Queue[0] == FItem::MakeDeposit(5));
+	TestTrue(TEXT("not unloaded yet: it stays"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue[0] == FItem::MakeDeposit(5));
+	TestFalse(TEXT("unloaded, nothing after it: idle"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen));
 	return true;
 }
 

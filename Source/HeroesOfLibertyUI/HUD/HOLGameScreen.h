@@ -20,6 +20,7 @@ class UHOLGridCell;
 class UHOLQueueItem;
 class UHorizontalBox;
 class UImage;
+class UTexture2D;
 class UProgressBar;
 class UWrapBox;
 struct FHOLUnitTypeRow;
@@ -213,6 +214,13 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> WaitText;
 
+	/** R7.5: « Bob : connexion perdue — 2:41 », a line per player gone, top centre under the alert's place; « Bob : de retour » 5 s. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UBorder> AbsencePanel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> AbsenceText;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
@@ -328,6 +336,12 @@ private:
 	 */
 	void RefreshWaitBanner();
 	/**
+	 * R7.5: the disconnection banner, read from the game state (GetAbsenceBannerLines at the server's time) four times a
+	 * second on every machine, players and spectators. Logs "Absence banner: shown, <lines>" when who is gone or back
+	 * changes, then "Absence banner: hidden".
+	 */
+	void RefreshAbsenceBanner();
+	/**
 	 * One of the player's buildings has a unit waiting for room in the population (D313): when that starts, the message
 	 * « Population maximale — construisez des maisons ».
 	 */
@@ -411,6 +425,17 @@ private:
 	TArray<TObjectPtr<UHorizontalBox>> PlayerRows;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCommonTextBlock>> PlayerNames;
+	/** E4-1: the relation's icon before each name (HOLRelationIcons): an ally's shield, an enemy's swords. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PlayerRelations;
+	/** E4-1: the two icons' textures, loaded with the table (HOLRelationIcons::AllyPath, EnemyPath). */
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> AllyIcon;
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> EnemyIcon;
+	/** E4-2: the thin bar across each name, shown on a defeated player's. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PlayerStrikes;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCommonTextBlock>> PlayerLives;
 	UPROPERTY(Transient)
@@ -466,6 +491,8 @@ private:
 	FString ShownPlayerNames;
 	/** The missing players last logged by the wait banner (empty: hidden). */
 	FString ShownWaitPlayers;
+	/** Who the disconnection banner last logged as gone (-) or back (+) (empty: hidden). */
+	FString ShownAbsence;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;

@@ -7,6 +7,7 @@
 #include "Simulation/HOLSimulationFragments.h"
 
 class UWorld;
+struct FHOLHeroSheet;
 
 /** A unit as this machine knows it (J4): what the player can see, select and order. */
 struct FHOLUnitView
@@ -46,16 +47,24 @@ struct FHOLUnitView
 	bool bFullHealth = true;
 	/**
 	 * Its health points (J7b.5) and its type's maximum (0: type unknown): exact everywhere since J7-Q5 revised (a client
-	 * gets a wounded unit's exact health, HOLUnitView::GetReceivedHealth); bHealthExact false only for a client's unit of
-	 * unknown type. What the selection block and the health bar show.
+	 * gets a wounded unit's exact health, HOLUnitView::GetReceivedHealth); bHealthExact false for a client's unit of
+	 * unknown type, and for a client's hero before his sheet arrives (J8a.3: his health comes as a share, Health is drawn
+	 * back from it; once his public hero sheet is there and alive, Health is the sheet's, exact). What the selection
+	 * block and the health bar show.
 	 */
 	int32 Health = 0;
 	int32 MaxHealth = 0;
 	bool bHealthExact = false;
+	/** The share received, 0 to 1, for a client's hero (HOLUnitView::GetReceivedHealthShare); below 0 otherwise. */
+	float HealthShare = -1.f;
 
-	/** What its health bar shows filled, 0 to 1. */
+	/** What its health bar shows filled, 0 to 1: the share received for a client's hero, Health of MaxHealth otherwise. */
 	float GetHealthShare() const
 	{
+		if (HealthShare >= 0.f)
+		{
+			return FMath::Min(HealthShare, 1.f);
+		}
 		if (MaxHealth > 0)
 		{
 			return FMath::Clamp(static_cast<float>(Health) / static_cast<float>(MaxHealth), 0.f, 1.f);
@@ -68,6 +77,9 @@ struct FHOLUnitView
 
 namespace HOLUnitView
 {
+	/** FHOLNetUnitState::MaxWireHealth, whose header this one does not include: a hero's whole share (J8a.3). */
+	constexpr int32 MaxWireHealthShare = (1 << 8) - 1;
+
 	/**
 	 * The units of a game world: simulated (solo, server) or displayed (client). A unit Dying (J7b.4) cannot be selected,
 	 * ordered or aimed at: it is left out unless bIncludeDying (the scripted checks).
@@ -78,9 +90,28 @@ namespace HOLUnitView
 	/**
 	 * A client's health from the state received (J7-Q5 revised): the exact health points a wounded unit sends
 	 * (HOLUnitReplication::GetWireHealth), MaxHealth when unhurt. Back to levels: the level's health here.
+	 * bHealthShare (a hero, J8a.3): the wire holds a share (HOLUnitReplication::GetWireHealthShare), drawn back to the
+	 * nearest health points, held within 1 and MaxHealth - 1 while wounded and alive.
 	 */
-	inline int32 GetReceivedHealth(const bool bFullHealth, const uint16 WireHealth, const int32 MaxHealth)
+	inline int32 GetReceivedHealth(const bool bFullHealth, const uint16 WireHealth, const int32 MaxHealth, const bool bHealthShare = false)
 	{
-		return bFullHealth ? MaxHealth : static_cast<int32>(WireHealth);
+		if (bFullHealth || !bHealthShare || WireHealth == 0)
+		{
+			return bFullHealth ? MaxHealth : static_cast<int32>(WireHealth);
+		}
+		const int64 Nearest = (2 * static_cast<int64>(WireHealth) * MaxHealth + MaxWireHealthShare) / (2 * MaxWireHealthShare);
+		return static_cast<int32>(FMath::Clamp<int64>(Nearest, 1, FMath::Max(1, MaxHealth - 1)));
 	}
+	/** What a client's hero health bar shows filled (J8a.3), 0 to 1, from the state received with bHealthShare. */
+	inline float GetReceivedHealthShare(const bool bFullHealth, const uint16 WireHealth)
+	{
+		return bFullHealth ? 1.f : FMath::Clamp(static_cast<float>(WireHealth) / static_cast<float>(MaxWireHealthShare), 0.f, 1.f);
+	}
+	/**
+	 * A client's view health from the state received (UHOLUnitReceptionSubsystem): MaxHealth, Health, HealthShare and
+	 * bHealthExact. A troop's exact; a hero's (bHero, J8a.3) share drawn back, the share filling his bar, unless HeroSheet
+	 * (his slot's public sheet, null when not received) is Alive: its exact HP then, the share still filling the bar.
+	 */
+	HEROESOFLIBERTY_API void SetReceivedHealth(FHOLUnitView& View, bool bFullHealth, uint16 WireHealth, int32 MaxHealth, bool bHero,
+		const FHOLHeroSheet* HeroSheet = nullptr);
 }

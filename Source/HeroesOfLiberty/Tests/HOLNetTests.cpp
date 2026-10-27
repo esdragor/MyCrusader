@@ -13,8 +13,10 @@
 #include "Net/HOLUnitReplicationRules.h"
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroSheet.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLUnitView.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -30,6 +32,84 @@ namespace UE::HeroesOfLiberty::Tests::Net
 	FHOLUnitSentRecord Send(const FVector& Position, const FVector& Velocity, const EHOLUnitActivity Activity, const int64 Step)
 	{
 		return { FHOLNetUnitState::Make(Position, Velocity, Activity, Step), Step };
+	}
+
+	/** A state through Iris' quantize, write, read and dequantize, as the element format test does; false if it fails. */
+	bool RoundTrip(FAutomationTestBase& Test, const FHOLNetUnitState& State, FHOLNetUnitState& OutBack)
+	{
+		using namespace UE::Net;
+		const FNetSerializer& Serializer = UE_NET_GET_SERIALIZER(FHOLNetUnitStateNetSerializer);
+		alignas(16) uint8 Quantized[64] = {};
+		alignas(16) uint8 Received[64] = {};
+		if (!Test.TestTrue(TEXT("quantized form fits the test buffer"), Serializer.QuantizedTypeSize <= sizeof(Quantized)))
+		{
+			return false;
+		}
+		FNetSerializationContext Context;
+		FNetQuantizeArgs QuantizeArgs;
+		QuantizeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		QuantizeArgs.Source = NetSerializerValuePointer(&State);
+		QuantizeArgs.Target = NetSerializerValuePointer(Quantized);
+		Serializer.Quantize(Context, QuantizeArgs);
+
+		uint32 Buffer[8] = {};
+		FNetBitStreamWriter Writer;
+		Writer.InitBytes(Buffer, sizeof(Buffer));
+		FNetSerializationContext WriteContext(&Writer);
+		FNetSerializeArgs SerializeArgs;
+		SerializeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
+		Serializer.Serialize(WriteContext, SerializeArgs);
+		Writer.CommitWrites();
+
+		FNetBitStreamReader Reader;
+		Reader.InitBits(Buffer, Writer.GetPosBits());
+		FNetSerializationContext ReadContext(&Reader);
+		FNetDeserializeArgs DeserializeArgs;
+		DeserializeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		DeserializeArgs.Target = NetSerializerValuePointer(Received);
+		Serializer.Deserialize(ReadContext, DeserializeArgs);
+		if (!Test.TestFalse(TEXT("read within the bits written"), Reader.IsOverflown()))
+		{
+			return false;
+		}
+		FNetDequantizeArgs DequantizeArgs;
+		DequantizeArgs.NetSerializerConfig = Serializer.DefaultConfig;
+		DequantizeArgs.Source = NetSerializerValuePointer(Received);
+		DequantizeArgs.Target = NetSerializerValuePointer(&OutBack);
+		Serializer.Dequantize(ReadContext, DequantizeArgs);
+		return true;
+	}
+
+	/** What a client receives of a unit of this row at this simulation health: the server's chain, the wire, the client's. */
+	struct FReceivedHealth
+	{
+		bool bFullHealth = true;
+		uint16 Wire = 0;
+		int32 Health = 0;
+		float Share = 0.f;
+	};
+	FReceivedHealth SendHealth(FAutomationTestBase& Test, const FHOLUnitTypeRow& Row, const FName TypeName, const float SimulationHealth)
+	{
+		// As UHOLUnitReplicationSubsystem sends it.
+		const FHOLUnitTypeConstants Constants = Row.ToConstants(TypeName);
+		FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(700.0, -800.0, 0.0), FVector::ZeroVector,
+			SimulationHealth > 0.f ? EHOLUnitActivity::Idle : EHOLUnitActivity::Dying, 120);
+		State.SetCombat(HOLCombat::GetShownHealth(SimulationHealth), Constants.MaxHealth, 0, false, 0.f, HOLIsHero(Constants.ArmorCategoryMask));
+		FReceivedHealth Out;
+		FHOLNetUnitState Back;
+		if (!RoundTrip(Test, State, Back))
+		{
+			return Out;
+		}
+		Test.TestEqual(TEXT("same state after the trip"), Back, State);
+		// As UHOLUnitReceptionSubsystem reads it.
+		const bool bHero = Row.HasArmorCategory(EHOLArmorCategory::Hero);
+		Out.bFullHealth = Back.bFullHealth;
+		Out.Wire = Back.bFullHealth ? 0 : Back.Health;
+		Out.Health = HOLUnitView::GetReceivedHealth(Back.bFullHealth, Back.Health, Row.MaxHealth, bHero);
+		Out.Share = bHero ? HOLUnitView::GetReceivedHealthShare(Back.bFullHealth, Back.Health) : -1.f;
+		return Out;
 	}
 }
 
@@ -127,9 +207,15 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	{
 		UnitTypes->ForeachRow<FHOLUnitTypeRow>(TEXT("Net test"), [&](const FName& Name, const FHOLUnitTypeRow& Row)
 		{
-			// Not the hero (J8-Q5): his health bar goes as a share, his exact health in the hero sheet (J8a.3).
+			// The hero (J8-Q5, J8a.3): his wounded health goes as a share, whatever his maximum; one point off it, at 1, dead.
 			if (Row.HasArmorCategory(EHOLArmorCategory::Hero))
 			{
+				for (const int32 Health : { Row.MaxHealth - 1, 1, 0 })
+				{
+					FHOLNetUnitState Hero = FHOLNetUnitState::Make(Here, FVector::ZeroVector, Health > 0 ? EHOLUnitActivity::Attacking : EHOLUnitActivity::Dying, 101);
+					Hero.SetCombat(Health, Row.MaxHealth, 7, false, 0.f, true);
+					AllStates.Add(Hero);
+				}
 				return;
 			}
 			TableMaxHealth = FMath::Max(TableMaxHealth, Row.MaxHealth);
@@ -262,6 +348,146 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("front within half a direction"), FMath::Abs(Front.GetFrontYaw() - 90.f) <= 2.9f);
 	TestEqual(TEXT("Building in Gathering's own value (J6a.4)"), HOLUnitReplication::EncodeActivity(EHOLUnitActivity::Building, EHOLResource::Wood),
 		static_cast<uint8>(EHOLUnitActivity::Gathering));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetHeroHealthShareTest, "HeroesOfLiberty.Net.HeroHealthShare", UE::HeroesOfLiberty::Tests::Net::Flags)
+// J8-Q5, J8a.3: the hero's 450 health do not fit the 8 bits of exact health (D455): a wounded hero sends his share in
+// 255ths, rounded up, and a client draws his health back from it; the troops keep their exact health. The real unit
+// type table's rows, the server's SetCombat, Iris' serializer and the client's reading.
+bool FHOLNetHeroHealthShareTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	if (!TestNotNull(TEXT("unit type table"), UnitTypes))
+	{
+		return false;
+	}
+	const FHOLUnitTypeRow* Hero = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Hero"), TEXT("Net test"));
+	const FHOLUnitTypeRow* ManAtArms = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("ManAtArms"), TEXT("Net test"));
+	if (!TestNotNull(TEXT("Hero row"), Hero) || !TestNotNull(TEXT("ManAtArms row"), ManAtArms))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the Hero row is of the Hero category"), Hero->HasArmorCategory(EHOLArmorCategory::Hero));
+	TestEqual(TEXT("the hero's 450 health (J8a-Q1)"), Hero->MaxHealth, 450);
+	TestFalse(TEXT("too many for the exact health bits"), HOLUnitReplication::FitsWireHealth(Hero->MaxHealth));
+
+	const FReceivedHealth Wounded = SendHealth(*this, *Hero, TEXT("Hero"), 300.f);
+	TestFalse(TEXT("300/450: wounded"), Wounded.bFullHealth);
+	TestEqual(TEXT("300/450: 170 on the wire (2/3 of 255), not 255"), Wounded.Wire, static_cast<uint16>(170));
+	TestEqual(TEXT("300/450: received 300"), Wounded.Health, 300);
+	TestEqual(TEXT("300/450: the bar filled at 2/3"), Wounded.Share, 2.f / 3.f, 0.001f);
+	TestEqual(TEXT("299.4 (a float health, J8a.1): shown 300, so 170 too"), SendHealth(*this, *Hero, TEXT("Hero"), 299.4f).Wire, static_cast<uint16>(170));
+
+	const FReceivedHealth Last = SendHealth(*this, *Hero, TEXT("Hero"), 1.f);
+	TestEqual(TEXT("1/450: 1 on the wire, alive"), Last.Wire, static_cast<uint16>(1));
+	TestTrue(TEXT("1/450: received alive and wounded"), !Last.bFullHealth && Last.Health >= 1);
+	TestEqual(TEXT("1/450: received 2 (1 x 450 / 255 = 1.76)"), Last.Health, 2);
+	TestEqual(TEXT("0.2/450 (float): shown 1, so 1 on the wire"), SendHealth(*this, *Hero, TEXT("Hero"), 0.2f).Wire, static_cast<uint16>(1));
+
+	const FReceivedHealth OneOff = SendHealth(*this, *Hero, TEXT("Hero"), 449.f);
+	TestFalse(TEXT("449/450: still wounded, not full"), OneOff.bFullHealth);
+	TestEqual(TEXT("449/450: 255 on the wire"), OneOff.Wire, static_cast<uint16>(255));
+	TestEqual(TEXT("449/450: received 449, never his maximum while wounded"), OneOff.Health, 449);
+
+	const FReceivedHealth Unhurt = SendHealth(*this, *Hero, TEXT("Hero"), 450.f);
+	TestTrue(TEXT("450/450: full health, nothing on the wire"), Unhurt.bFullHealth && Unhurt.Wire == 0);
+	TestEqual(TEXT("450/450: received 450"), Unhurt.Health, 450);
+	TestEqual(TEXT("450/450: the bar full"), Unhurt.Share, 1.f);
+
+	const FReceivedHealth Dead = SendHealth(*this, *Hero, TEXT("Hero"), -12.f);
+	TestTrue(TEXT("dead: wounded at 0 on the wire"), !Dead.bFullHealth && Dead.Wire == 0);
+	TestEqual(TEXT("dead: received 0"), Dead.Health, 0);
+	TestEqual(TEXT("dead: the bar empty"), Dead.Share, 0.f);
+
+	// Every wounded health: within 2 points (450 / 255 = 1.76 a step) and in order, alive and wounded.
+	int32 Worst = 0;
+	bool bOrdered = true;
+	int32 Previous = 0;
+	for (int32 Health = 1; Health < Hero->MaxHealth; ++Health)
+	{
+		const FReceivedHealth Received = SendHealth(*this, *Hero, TEXT("Hero"), static_cast<float>(Health));
+		Worst = FMath::Max(Worst, FMath::Abs(Received.Health - Health));
+		bOrdered &= !Received.bFullHealth && Received.Health >= FMath::Max(1, Previous) && Received.Health < Hero->MaxHealth;
+		Previous = Received.Health;
+	}
+	TestTrue(*FString::Printf(TEXT("every wounded hero received within 2 health points (worst %d)"), Worst), Worst <= 2);
+	TestTrue(TEXT("... alive, wounded, never lower for more health"), bOrdered);
+
+	// The troops keep their exact health (D455).
+	const FReceivedHealth Troop = SendHealth(*this, *ManAtArms, TEXT("ManAtArms"), 100.f);
+	TestEqual(TEXT("Man-at-arms 100/155: 100 on the wire"), Troop.Wire, static_cast<uint16>(100));
+	TestEqual(TEXT("Man-at-arms 100/155: received exactly 100"), Troop.Health, 100);
+	TestEqual(TEXT("Man-at-arms 154/155: exact"), SendHealth(*this, *ManAtArms, TEXT("ManAtArms"), 154.f).Health, 154);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetHeroSheetHealthTest, "HeroesOfLiberty.Net.HeroSheetHealth", UE::HeroesOfLiberty::Tests::Net::Flags)
+// J8a.3 loop 4b: a client shows its hero's exact health from his slot's public sheet (HOLHeroSheet::Make, the server's
+// rule), once received and alive; the share received stays the fallback and keeps filling the bar. The real Hero row,
+// the server's SetCombat and Iris' serializer, the client's view as UHOLUnitReceptionSubsystem::MakeView makes it.
+bool FHOLNetHeroSheetHealthTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Hero = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Hero"), TEXT("Net test")) : nullptr;
+	const FHOLUnitTypeRow* ManAtArms = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("ManAtArms"), TEXT("Net test")) : nullptr;
+	if (!TestNotNull(TEXT("Hero row"), Hero) || !TestNotNull(TEXT("ManAtArms row"), ManAtArms))
+	{
+		return false;
+	}
+	const auto SheetAt = [](const float Health)
+	{
+		FHOLHeroFacts Facts;
+		Facts.bPresent = true;
+		Facts.Health = Health;
+		return HOLHeroSheet::Make(Facts, FHOLHeroSheets()).Public;
+	};
+	const auto View = [Hero](const FReceivedHealth& Received, const FHOLHeroSheet* Sheet)
+	{
+		FHOLUnitView Out;
+		HOLUnitView::SetReceivedHealth(Out, Received.bFullHealth, Received.Wire, Hero->MaxHealth, true, Sheet);
+		return Out;
+	};
+
+	// 407 of 450 (quick_check's net hero): 231 on the wire, drawn back 408.
+	const FReceivedHealth Wounded = SendHealth(*this, *Hero, TEXT("Hero"), 407.f);
+	TestEqual(TEXT("407/450: 231 on the wire"), Wounded.Wire, static_cast<uint16>(231));
+	const FHOLHeroSheet Alive = SheetAt(407.f);
+	TestTrue(TEXT("the server's sheet: Alive, 407"), Alive.State == EHOLHeroState::Alive && Alive.Health == 407);
+
+	const FHOLUnitView Exact = View(Wounded, &Alive);
+	TestEqual(TEXT("sheet received: the sheet's exact 407"), Exact.Health, 407);
+	TestTrue(TEXT("... marked exact"), Exact.bHealthExact);
+	TestEqual(TEXT("... the bar still filled by the share 231/255"), Exact.GetHealthShare(), 231.f / 255.f, 0.0001f);
+	TestTrue(TEXT("... wounded, of 450"), !Exact.bFullHealth && Exact.MaxHealth == 450);
+
+	const FHOLUnitView NoSheet = View(Wounded, nullptr);
+	TestEqual(TEXT("no sheet: the share drawn back, 408"), NoSheet.Health, 408);
+	TestFalse(TEXT("... not exact"), NoSheet.bHealthExact);
+	const FHOLHeroSheet NotYet;
+	TestEqual(TEXT("sheet not received yet (None): the share drawn back"), View(Wounded, &NotYet).Health, 408);
+	TestFalse(TEXT("... not exact"), View(Wounded, &NotYet).bHealthExact);
+
+	// Fallen: the sheet Dead, the share (0) as received.
+	FHOLHeroFacts Fell;
+	Fell.bPresent = true;
+	Fell.DeathStep = 300;
+	const FHOLHeroSheet Dead = HOLHeroSheet::Make(Fell, FHOLHeroSheets()).Public;
+	const FHOLUnitView Fallen = View(SendHealth(*this, *Hero, TEXT("Hero"), -5.f), &Dead);
+	TestTrue(TEXT("dead: 0 health, not from a sheet"), Fallen.Health == 0 && !Fallen.bHealthExact);
+
+	// Unhurt with his sheet: 450, exact.
+	const FHOLHeroSheet Full = SheetAt(450.f);
+	const FHOLUnitView Unhurt = View(SendHealth(*this, *Hero, TEXT("Hero"), 450.f), &Full);
+	TestTrue(TEXT("unhurt with his sheet: 450, exact, the bar full"), Unhurt.Health == 450 && Unhurt.bHealthExact && Unhurt.GetHealthShare() == 1.f);
+
+	// A troop: exact, no share, whatever sheet.
+	const FReceivedHealth Troop = SendHealth(*this, *ManAtArms, TEXT("ManAtArms"), 100.f);
+	FHOLUnitView TroopView;
+	HOLUnitView::SetReceivedHealth(TroopView, Troop.bFullHealth, Troop.Wire, ManAtArms->MaxHealth, false, &Alive);
+	TestTrue(TEXT("Man-at-arms 100: exact 100, no share"), TroopView.Health == 100 && TroopView.bHealthExact && TroopView.HealthShare < 0.f);
 	return true;
 }
 
@@ -685,6 +911,9 @@ bool FHOLNetManagerRoutesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("finished body: no winner"), FHOLManagerRules::MakeFinishedBody({}), FString(TEXT("{\"winners\":[]}")));
 	TestEqual(TEXT("left body: the player's name"), FHOLManagerRules::MakeLeftBody(TEXT("Bob")), FString(TEXT("{\"playerName\":\"Bob\"}")));
 	TestEqual(TEXT("left body: quotes escaped"), FHOLManagerRules::MakeLeftBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
+	TestEqual(TEXT("back route"), FHOLManagerRules::MakeRouteUrl(TEXT("http://127.0.0.1:7700"), TEXT("QC1"), TEXT("back")),
+		FString(TEXT("http://127.0.0.1:7700/matches/QC1/back")));
+	TestEqual(TEXT("back body: the player's name, quotes escaped"), FHOLManagerRules::MakeBackBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
 	TestEqual(TEXT("started and empty: an empty object"), FHOLManagerRules::MakeEmptyBody(), FString(TEXT("{}")));
 	return true;
 }

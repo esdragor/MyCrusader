@@ -969,6 +969,9 @@ bool UHOLUnitOrderProcessor::IsClaimLive(const FMassEntityManager& EntityManager
 void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager, UNavigationSystemV1* NavSystem, const ANavigationData* NavData)
 {
 	using namespace UE::HeroesOfLiberty::Orders;
+	// This step's drop-offs and work (D485, L.5b, L.6): the gathering and the builders apply them after this processor.
+	DroppingNow.Reset();
+	WorkStartedNow.Reset();
 	UWorld* World = EntityManager.GetWorld();
 	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
@@ -1125,6 +1128,68 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		{
 			continue;
 		}
+		// A drop-off (D485, EtapeDefini L.5b): at one of the player's deposits (finished, taking deliveries); not one any more
+		// (gone, lost, ruined): a move to the point clicked.
+		AHOLBuilding* DropOffBuilding = nullptr;
+		const FHOLBuildingTypeRow* DropOffType = nullptr;
+		if (Order.Kind == EHOLOrderKind::DropOff)
+		{
+			AHOLBuilding* Building = Order.TargetBuilding.Get();
+			DropOffType = IsValid(Building) && !Building->IsActorBeingDestroyed() ? Building->GetType() : nullptr;
+			if (DropOffType && !DropOffType->Accepts.IsEmpty() && !Building->NeedsBuilders() && Building->TakesDeliveries()
+				&& (Order.PlayerIndex == INDEX_NONE || Building->GetOwnerPlayer() == Order.PlayerIndex))
+			{
+				DropOffBuilding = Building;
+			}
+			else
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Drop-off order of slot %d: the building takes no deliveries of this slot, %d units walk to (%.0f, %.0f)"),
+					Order.PlayerIndex, Entities.Num(), Order.Target.X, Order.Target.Y);
+				Orders[OrderIndex].Kind = EHOLOrderKind::Move;
+				Orders[OrderIndex].TargetBuilding.Reset();
+			}
+		}
+		// A source or a site with Shift (EtapeDefini L.6): the workers' Shift order to the gathering or the builders, through
+		// this queue so that it waits for their walks (the user's 2nd trial: Shift + Pa then Shift + a tree went to the tree at
+		// once, Pa dropped).
+		const bool bWorkOrder = Order.Kind == EHOLOrderKind::Gather || Order.Kind == EHOLOrderKind::Build;
+		// With Shift, a builder with a queue of work gets the unload (or the source, the site) at the end of that queue (L.3,
+		// the user's trial of build:dropoffshift), as does a unit given work earlier in this pass (Shift + a site then Shift +
+		// a tree at once); the other units get it in their queue of moves, below.
+		if ((DropOffBuilding || bWorkOrder) && Order.bQueue && !Order.bFromTask)
+		{
+			TArray<uint32> Builders;
+			for (int32 Unit = Entities.Num() - 1; Unit >= 0; --Unit)
+			{
+				const FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entities[Unit]);
+				if ((Build && Build->IsBuilding()) || WorkStartedNow.Contains(EntityIds[Unit]))
+				{
+					Builders.Insert(EntityIds[Unit], 0);
+					Entities.RemoveAt(Unit);
+					EntityIds.RemoveAt(Unit);
+					Positions.RemoveAt(Unit);
+				}
+			}
+			if (!Builders.IsEmpty())
+			{
+				if (DropOffBuilding)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Drop-off order of slot %d: %d builders queue an unload at %s (%.0f, %.0f)"), Order.PlayerIndex,
+						Builders.Num(), *DropOffBuilding->GetTypeName().ToString(), DropOffBuilding->GetActorLocation().X, DropOffBuilding->GetActorLocation().Y);
+				}
+				else
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("%s order of slot %d: %d builders queue it in their queue of work (%.0f, %.0f)"),
+						Order.Kind == EHOLOrderKind::Gather ? TEXT("Gather") : TEXT("Build"), Order.PlayerIndex, Builders.Num(), Order.Target.X, Order.Target.Y);
+				}
+				// Their chain drawn as a player's order's (D328).
+				IssueToWorkQueue(*Commands, Order, Builders);
+			}
+			if (Entities.Num() == 0)
+			{
+				continue;
+			}
+		}
 		// Shift (J7a.4): while one of its units still walks a player's move (or waits for queued ones), the whole move
 		// waits in their queues; its places are made when it starts. None walking: it goes at once.
 		if (Order.bQueue && !Order.bFromTask)
@@ -1138,8 +1203,12 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				const FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entities[Unit]);
 				const bool bOnTask = (Gather && Gather->IsGathering()) || (Build && Build->IsBuilding());
 				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entities[Unit]);
+				// A unit on its way to unload by its player's order (D485, L.5b) counts as walking: the move waits for the unload
+				// (not a builder's unload from its queue of work: its queue of moves would be forgotten, StartQueuedMoves).
 				bAnyWalking = MoveQueueOfUnit.Contains(EntityIds[Unit]) || (Combat && (Combat->bOrderedTarget || Combat->OrderedBuilding.IsValid()))
-					|| (!bOnTask && State.Activity == EHOLUnitActivity::Moving && Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning);
+					|| (!bOnTask && State.Activity == EHOLUnitActivity::Moving && Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning)
+					|| (Gather && Gather->IsDroppingOff() && !(Build && Build->IsBuilding())) || DroppingNow.Contains(EntityIds[Unit])
+					|| WorkStartedNow.Contains(EntityIds[Unit]);
 			}
 			if (bAnyWalking)
 			{
@@ -1156,7 +1225,14 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 					const FHOLUnitStateFragment* TargetState = Combat && Combat->bOrderedTarget && EntityManager.IsEntityValid(Combat->Target)
 						? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Combat->Target) : nullptr;
 					const HOLOrderChain::FStep* OrderStep = Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning ? OrderSteps.Find(Move.OrderSerial) : nullptr;
-					if (TargetState)
+					const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entities[Unit]);
+					if (Gather && Gather->IsDroppingOff())
+					{
+						// D485: its unload first (blue, to the deposit).
+						const AHOLBuilding* Deposit = Gather->DepositTarget.Get();
+						ChainHeadOfUnit.Add(UnitId, {HOLOrderChain::FStep::MakeDeposit(Deposit ? Deposit->GetUniqueID() : 0u), StepCount});
+					}
+					else if (TargetState)
 					{
 						ChainHeadOfUnit.Add(UnitId, {HOLOrderChain::FStep::MakeAttack(TargetState->UnitId), StepCount});
 					}
@@ -1184,6 +1260,22 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 					UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d queued (Shift) for %d units on building %s of slot %d"), Order.PlayerIndex,
 						EntityIds.Num(), Building ? *Building->GetTypeName().ToString() : TEXT("?"), Building ? Building->GetOwnerPlayer() : -1);
 				}
+				else if (Order.Kind == EHOLOrderKind::DropOff)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Drop-off order of slot %d queued (Shift) for %d units at %s (%.0f, %.0f)"), Order.PlayerIndex,
+						EntityIds.Num(), *DropOffBuilding->GetTypeName().ToString(), DropOffBuilding->GetActorLocation().X, DropOffBuilding->GetActorLocation().Y);
+				}
+				else if (Order.Kind == EHOLOrderKind::Gather)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d queued (Shift) for %d units on source %d (%.0f, %.0f)"), Order.PlayerIndex,
+						EntityIds.Num(), Order.SourceIndex, Order.Target.X, Order.Target.Y);
+				}
+				else if (Order.Kind == EHOLOrderKind::Build)
+				{
+					const AHOLBuilding* Site = Order.TargetBuilding.Get();
+					UE_LOG(LogHOLSimulation, Display, TEXT("Build order of slot %d queued (Shift) for %d units on %s (%.0f, %.0f)"), Order.PlayerIndex,
+						EntityIds.Num(), Site ? *Site->GetTypeName().ToString() : TEXT("(gone)"), Order.Target.X, Order.Target.Y);
+				}
 				else
 				{
 					UE_LOG(LogHOLSimulation, Display, TEXT("Move order of slot %d queued (Shift) for %d units to (%.0f, %.0f)"), Order.PlayerIndex,
@@ -1198,6 +1290,69 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			for (const uint32 UnitId : EntityIds)
 			{
 				ForgetMoveQueue(UnitId);
+			}
+		}
+		// A source or a site applied (L.6: at once, nothing before it, or its turn come in the queue): no walk of its own, the
+		// gathering or the builders take the units after this processor.
+		if (bWorkOrder)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("%s order of slot %d applied for %d units (%.0f, %.0f)%s"), Order.Kind == EHOLOrderKind::Gather ? TEXT("Gather") : TEXT("Build"),
+				Order.PlayerIndex, EntityIds.Num(), Order.Target.X, Order.Target.Y, OrderIndex < NumStartedQueued ? TEXT(", its turn come") : TEXT(""));
+			ApplyWorkOrder(*Commands, Order, EntityIds);
+			continue;
+		}
+		// A drop-off applied (D485, L.5b: at once, or its turn come in the queue): the units carrying a resource the deposit
+		// takes unload there (the gathering, after this processor in the same step), then stand idle or go on with their
+		// queue; the others walk to the point clicked, as a move.
+		if (DropOffBuilding && Order.Kind == EHOLOrderKind::DropOff)
+		{
+			TArray<uint32> Carriers;
+			for (int32 Unit = Entities.Num() - 1; Unit >= 0; --Unit)
+			{
+				const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entities[Unit]);
+				if (Gather && Gather->Load.Amount > 0 && DropOffType->Accepts.Contains(Gather->Load.Resource))
+				{
+					// A player's order prevails over the fight (as a move's, J7b.2).
+					if (FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entities[Unit]))
+					{
+						Combat->Disengage();
+						Combat->Mode = EHOLCombatMode::Normal;
+					}
+					Carriers.Insert(EntityIds[Unit], 0);
+					Entities.RemoveAt(Unit);
+					EntityIds.RemoveAt(Unit);
+					Positions.RemoveAt(Unit);
+				}
+			}
+			UE_LOG(LogHOLSimulation, Display, TEXT("Drop-off order of slot %d: %d units unload at %s (%.0f, %.0f), %d walk to (%.0f, %.0f)"), Order.PlayerIndex,
+				Carriers.Num(), *DropOffBuilding->GetTypeName().ToString(), DropOffBuilding->GetActorLocation().X, DropOffBuilding->GetActorLocation().Y,
+				Entities.Num(), Order.Target.X, Order.Target.Y);
+			if (!Carriers.IsEmpty())
+			{
+				// Chains (D328): blue to the deposit until unloaded (StartQueuedMoves keeps it while they drop off).
+				if (Order.bChain)
+				{
+					for (const uint32 UnitId : Carriers)
+					{
+						ChainHeadOfUnit.Add(UnitId, {HOLOrderChain::FStep::MakeDeposit(DropOffBuilding->GetUniqueID()), StepCount});
+					}
+				}
+				Commands->IssueDropOffOrder(Carriers, DropOffBuilding, Order.PlayerIndex, /*bQueue*/ false);
+				DroppingNow.Append(Carriers);
+			}
+			Orders[OrderIndex].Kind = EHOLOrderKind::Move;
+			Orders[OrderIndex].TargetBuilding.Reset();
+			if (Entities.Num() == 0)
+			{
+				continue;
+			}
+			// The walkers of a queued one started: their step is now a move (a new one's is made below).
+			if (Order.bChain && OrderIndex < NumStartedQueued)
+			{
+				for (const uint32 UnitId : EntityIds)
+				{
+					ChainHeadOfUnit.Add(UnitId, {MakeChainStep(Order), StepCount});
+				}
 			}
 		}
 		// Chains (D328, the user's trial of J7b.5b): a player's order without Shift (or with Shift, nothing before it) has its
@@ -2887,6 +3042,9 @@ HOLOrderChain::FStep UHOLUnitOrderProcessor::MakeChainStep(const FHOLMoveOrder& 
 	return Order.bRally ? HOLOrderChain::FStep::MakeRally(Order.Target)
 		: Order.Kind == EHOLOrderKind::Attack ? HOLOrderChain::FStep::MakeAttack(Order.TargetUnitId)
 		: Order.Kind == EHOLOrderKind::AttackBuilding ? HOLOrderChain::FStep::MakeAttackBuilding(Order.TargetBuilding.IsValid() ? Order.TargetBuilding->GetUniqueID() : 0u)
+		: Order.Kind == EHOLOrderKind::DropOff ? HOLOrderChain::FStep::MakeDeposit(Order.TargetBuilding.IsValid() ? Order.TargetBuilding->GetUniqueID() : 0u)
+		: Order.Kind == EHOLOrderKind::Gather ? HOLOrderChain::FStep::MakeGather(Order.SourceIndex)
+		: Order.Kind == EHOLOrderKind::Build ? HOLOrderChain::FStep::MakeBuild(Order.TargetBuilding.IsValid() ? Order.TargetBuilding->GetUniqueID() : 0u)
 		: HOLOrderChain::FStep::MakeMove(Order.Target, Order.Kind == EHOLOrderKind::AttackMove);
 }
 
@@ -2935,6 +3093,84 @@ void UHOLUnitOrderProcessor::ForgetMoveQueue(const uint32 UnitId)
 	}
 }
 
+void UHOLUnitOrderProcessor::IssueToWorkQueue(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, const TConstArrayView<uint32> UnitIds)
+{
+	if (UnitIds.IsEmpty())
+	{
+		return;
+	}
+	// Their chain drawn as a player's order's (D328).
+	TOptional<UHOLCommandSubsystem::FPlayerOrderScope> PlayerOrder;
+	if (Order.bChain)
+	{
+		PlayerOrder.Emplace(Commands);
+	}
+	switch (Order.Kind)
+	{
+	case EHOLOrderKind::Gather:
+		Commands.IssueGatherOrder(UnitIds, Order.SourceIndex, Order.PlayerIndex, /*bQueue*/ true);
+		break;
+	case EHOLOrderKind::Build:
+		if (AHOLBuilding* Site = Order.TargetBuilding.Get())
+		{
+			FHOLBuildOrder BuildOrder;
+			BuildOrder.UnitIds.Append(UnitIds.GetData(), UnitIds.Num());
+			BuildOrder.Building = Site;
+			BuildOrder.PlayerIndex = Order.PlayerIndex;
+			BuildOrder.bQueue = true;
+			Commands.IssueBuildOrder(BuildOrder);
+		}
+		break;
+	case EHOLOrderKind::DropOff:
+		Commands.IssueDropOffOrder(UnitIds, Order.TargetBuilding.Get(), Order.PlayerIndex, /*bQueue*/ true);
+		break;
+	default:
+		break;
+	}
+}
+
+void UHOLUnitOrderProcessor::ApplyWorkOrder(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, const TConstArrayView<uint32> UnitIds)
+{
+	// Shift's order of the gathering or the builders (EtapeDefini L.6): a unit with no queue of work starts it at once (as
+	// Shift + a tree or a site did before L.6 for a unit that walked nothing), one with a queue of work gets it after.
+	IssueToWorkQueue(Commands, Order, UnitIds);
+	WorkStartedNow.Append(UnitIds);
+	// The work orders right after it in a unit's queue of moves (Shift + P, Shift + a tree, Shift + a site): to its queue of
+	// work after it, or they would be forgotten with its queue of moves once it works. Each unit's in the order given: the
+	// identifiers of the queued moves grow.
+	TMap<uint32, TArray<uint32>> UnitsOfQueued;
+	for (const uint32 UnitId : UnitIds)
+	{
+		TArray<uint32>* Queue = MoveQueueOfUnit.Find(UnitId);
+		while (Queue && !Queue->IsEmpty())
+		{
+			FQueuedMove* Queued = QueuedMoves.Find((*Queue)[0]);
+			if (!Queued || (Queued->Order.Kind != EHOLOrderKind::Gather && Queued->Order.Kind != EHOLOrderKind::Build
+				&& Queued->Order.Kind != EHOLOrderKind::DropOff))
+			{
+				break;
+			}
+			UnitsOfQueued.FindOrAdd((*Queue)[0]).Add(UnitId);
+			Queued->Members.Remove(UnitId);
+			Queue->RemoveAt(0);
+		}
+		if (Queue && Queue->IsEmpty())
+		{
+			MoveQueueOfUnit.Remove(UnitId);
+		}
+	}
+	UnitsOfQueued.KeySort(TLess<uint32>());
+	for (const TPair<uint32, TArray<uint32>>& Pair : UnitsOfQueued)
+	{
+		if (const FQueuedMove* Queued = QueuedMoves.Find(Pair.Key))
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Queued work handed to the queue of work of %d units (%.0f, %.0f)"), Pair.Value.Num(),
+				Queued->Order.Target.X, Queued->Order.Target.Y);
+			IssueToWorkQueue(Commands, Queued->Order, Pair.Value);
+		}
+	}
+}
+
 namespace
 {
 	/** An attack-move not over yet (the user's trial of J7b): its unit fights all it finds, then walks on to its slot; only
@@ -2958,7 +3194,9 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 	{
 		return;
 	}
-	// A unit gone, or put to work (gathering, building), leaves its moves.
+	// A unit gone, or put to work (gathering, building), leaves its moves; not one on its way to unload by its player's order
+	// (D485, L.5b): its queue goes on after the unload. Nor one given its unload in this step (L.6): still gathering until
+	// the gathering applies it, after this processor (Shift + D then Shift + B at once: B was forgotten).
 	TArray<uint32> Gone;
 	for (const TPair<uint32, TArray<uint32>>& Pair : MoveQueueOfUnit)
 	{
@@ -2966,7 +3204,7 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		const bool bValid = EntityManager.IsEntityValid(Entity);
 		const FHOLGatherFragment* Gather = bValid ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 		const FHOLBuildFragment* Build = bValid ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
-		if (!bValid || (Gather && Gather->IsGathering()) || (Build && Build->IsBuilding()))
+		if (!bValid || (!DroppingNow.Contains(Pair.Key) && ((Gather && Gather->IsGathering() && !Gather->IsDroppingOff()) || (Build && Build->IsBuilding()))))
 		{
 			Gone.Add(Pair.Key);
 		}
@@ -2991,8 +3229,10 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		const FHOLGatherFragment* Gather = Move ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 		const FHOLBuildFragment* Build = Move ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
 		const FHOLUnitStateFragment* State = Move ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
-		const bool bOnTask = (Gather && Gather->IsGathering()) || (Build && Build->IsBuilding()) || !State || State->CurrentHealth <= 0;
-		if ((!bWalking && !bFighting) || bOnTask)
+		// A drop-off its player gave (D485, L.5b) keeps its line until unloaded (given in this step: from the next one).
+		const bool bDroppingOff = (Gather && Gather->IsDroppingOff() && !(Build && Build->IsBuilding())) || DroppingNow.Contains(It.Key());
+		const bool bOnTask = (Gather && Gather->IsGathering() && !bDroppingOff) || (Build && Build->IsBuilding()) || !State || State->CurrentHealth <= 0;
+		if ((!bWalking && !bFighting && !bDroppingOff) || bOnTask)
 		{
 			It.RemoveCurrent();
 		}
@@ -3014,7 +3254,10 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		bool bReady = true;
 		for (const uint32 UnitId : Queued.Members)
 		{
-			if (StartedNow.Contains(UnitId))
+			// Nor one given a drop-off or work in this step (D485, L.6): the gathering and the builders apply it after this
+			// processor; seen standing here, the next move started at once and the gathering's walk then replaced it (the
+			// user's 2nd trial: P, D, B: it went to D and stood there, B never walked).
+			if (StartedNow.Contains(UnitId) || DroppingNow.Contains(UnitId) || WorkStartedNow.Contains(UnitId))
 			{
 				bReady = false;
 				break;
@@ -3023,9 +3266,10 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
 			const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
 			const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+			const FHOLGatherFragment* Gather = Move ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move
 				|| !HOLOrderChain::IsCurrentOrderOver(Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning, Combat && Combat->bOrderedTarget,
-					Combat && Combat->OrderedBuilding.IsValid(), IsAttackMoveOn(Combat)))
+					Combat && Combat->OrderedBuilding.IsValid(), IsAttackMoveOn(Combat), Gather && Gather->IsDroppingOff()))
 			{
 				bReady = false;
 				break;
@@ -3053,6 +3297,22 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			const AHOLBuilding* Building = Started.TargetBuilding.Get();
 			UE_LOG(LogHOLSimulation, Display, TEXT("Queued attack started for %d units on building %s of slot %d"), Started.UnitIds.Num(),
 				Building ? *Building->GetTypeName().ToString() : TEXT("(gone)"), Building ? Building->GetOwnerPlayer() : -1);
+		}
+		else if (Started.Kind == EHOLOrderKind::DropOff)
+		{
+			const AHOLBuilding* Building = Started.TargetBuilding.Get();
+			UE_LOG(LogHOLSimulation, Display, TEXT("Queued drop-off started for %d units at %s"), Started.UnitIds.Num(),
+				Building ? *Building->GetTypeName().ToString() : TEXT("(gone)"));
+		}
+		else if (Started.Kind == EHOLOrderKind::Gather)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Queued gather started for %d units on source %d"), Started.UnitIds.Num(), Started.SourceIndex);
+		}
+		else if (Started.Kind == EHOLOrderKind::Build)
+		{
+			const AHOLBuilding* Site = Started.TargetBuilding.Get();
+			UE_LOG(LogHOLSimulation, Display, TEXT("Queued build started for %d units on %s"), Started.UnitIds.Num(),
+				Site ? *Site->GetTypeName().ToString() : TEXT("(gone)"));
 		}
 		else
 		{
@@ -3628,6 +3888,7 @@ bool UHOLUnitOrderProcessor::LocateChainStep(const UWorld& World, const HOLOrder
 	}
 	case HOLOrderChain::EStepKind::Build:
 	case HOLOrderChain::EStepKind::AttackBuilding: // D345, Shift: to its centre, as an attack to its target's
+	case HOLOrderChain::EStepKind::Deposit: // D485, Shift: to its centre
 	{
 		if (Sites.IsEmpty())
 		{

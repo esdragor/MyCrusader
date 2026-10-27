@@ -5,7 +5,8 @@ Contrat entre le **gestionnaire** (`Manager/HOLManager`, C#, toujours allumé su
 R2.2 ; décisions M6-Q1 à M6-Q9 de `NetPlaytestInProgress.md`.
 
 **Version du protocole : 1.** Toute modification incompatible (route retirée, champ renommé ou de sens changé) passe
-à 2 ; un champ ajouté ne la change pas (les deux côtés ignorent les champs inconnus).
+à 2 ; un champ ajouté ne la change pas (les deux côtés ignorent les champs inconnus), une route ajoutée non plus
+(`back`, M6-Q15 : un serveur qui l'appelle chez un gestionnaire plus ancien reçoit 404 et continue).
 
 ## Choix ouverts (à faire valider par l'utilisateur)
 
@@ -136,9 +137,9 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
 {
   "lobbies": [
     { "id": "L7", "name": "Salon de Bob", "map": "Plain", "size": "Large", "players": 3, "maxPlayers": 8, "state": "lobby",
-      "minutes": null, "canJoin": true, "canWatch": false },
+      "minutes": null, "canJoin": true, "canWatch": false, "away": [] },
     { "id": "L8", "name": "2v2", "map": "Plain", "size": "Medium", "players": 4, "maxPlayers": 4, "state": "in_game",
-      "minutes": 12, "canJoin": false, "canWatch": true }
+      "minutes": 12, "canJoin": false, "canWatch": true, "away": ["Bob"] }
   ]
 }
 ```
@@ -151,6 +152,12 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
 - `maxPlayers` : emplacements **ouverts ou tenus** (le chef en ferme pour une partie à 4 ; ceux au-delà des places de
   la taille sont fermés : Petite → 2 au plus).
 - `canJoin` : au salon et pas plein. `canWatch` : en partie (`"in_game"`).
+- `away` (R7.6, ajouté à la version 1 : un client l'ignore s'il est absent) : en partie, les joueurs de la partie
+  **partis de son serveur et pas revenus** (`left` sans `back`) depuis moins de **180 s** (la fenêtre de R7, après
+  laquelle le serveur déclare leur emplacement vaincu), sous leur nom dans la partie (`match.json`), triés ; `[]` hors
+  de `in_game`. Le client montre « Revenir » au lieu de « Regarder » si son nom (comparé comme au choix 8) y est, et se
+  connecte alors comme au démarrage (`?Name=<nom>&Version=…`, port de `GET /watch`). Un joueur encore connecté n'y
+  est pas ; un départ avant `started` non plus (le serveur n'envoie pas `left` avant).
 
 ### `POST /lobbies` — créer un salon
 
@@ -319,7 +326,8 @@ liste » = rien (il n'a plus de place dans le salon depuis `finished`).
   seul, quand : le salon est **plein** sans lui (au `join` qui le remplit ; le chef revenu ensuite a `lobby_full`) ;
   le chef a **quitté le serveur** de la partie (`left` : « Quitter vers la liste », déconnexion), ou ce **serveur
   s'est arrêté**, sans `join` du chef dans les **30 s** qui suivent ; le chef parti du serveur **avant** `finished`
-  ne l'est plus après. Personne revenu : pas de nouveau chef, `leader` garde le nom du chef absent ; le premier qui
+  ne l'est plus après, sauf s'il y est **revenu** dans la fenêtre de R7 (`back`, M6-Q15 : il compte comme présent et
+  reste chef ; revenu sur le serveur après `finished`, il redevient le chef absent, sans compte des 30 s). Personne revenu : pas de nouveau chef, `leader` garde le nom du chef absent ; le premier qui
   revient est alors chef si le chef ne l'est plus. « Lancer » ne compte que les joueurs
   revenus. Le salon, même vide, n'est pas supprimé tant que le serveur de la partie tourne (jusqu'à son arrêt, après
   `empty`) ; ensuite, vide, il est supprimé, et avec quelqu'un revenu, il suit les règles ordinaires.
@@ -381,9 +389,10 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
 | `POST /matches/{matchId}/started` | `{}` | départ de l'horloge des `minutes` (tous arrivés ou ~60 s passées, R3.9) ; seul le premier appel compte |
 | `POST /matches/{matchId}/finished` | `{ "winners": [0, 2] }` (emplacements) | salon remis `lobby`, sans avis, réglages gardés, **sans les joueurs de la partie** (aucune réservation ; retour = `join`) ; gardé même vide jusqu'à l'arrêt du serveur (choix 6, D2) |
 | `POST /matches/{matchId}/left` | `{ "playerName": "Bob" }` | un joueur nommé a quitté le serveur (`Logout`, après `started`) ; pendant la partie : retenu pour `finished` ; après : si c'est le chef absent, il ne l'est plus que 30 s (M6-Q14) ; autre nom : rien ; `playerName` absent : `bad_request` |
+| `POST /matches/{matchId}/back` | `{ "playerName": "Bob" }` | un joueur nommé est revenu sur le serveur dans la fenêtre de R7 (`PostLogin` qui reprend un emplacement absent, M6-Q15) : il compte comme présent ; pendant la partie : retiré de ce que `left` avait retenu (un chef revenu reste chef après `finished`) ; après : si c'est le chef absent, le compte des 30 s de `left` est annulé (même déjà écoulé) et il redevient le chef absent comme à `finished` ; autre nom : rien ; `playerName` absent : `bad_request` |
 | `POST /matches/{matchId}/empty` | `{}` | plus aucun client ; le serveur va quitter (R3.8) ; le gestionnaire l'arrête s'il tourne encore 10 s après |
 
-- Ordre des vérifications : `not_local`, `bad_request` (JSON illégal, ou `playerName` absent pour `left` ; un corps vide est accepté ailleurs), `match_not_found`.
+- Ordre des vérifications : `not_local`, `bad_request` (JSON illégal, ou `playerName` absent pour `left` et `back` ; un corps vide est accepté ailleurs), `match_not_found`.
 - Un appel répété, ou `listening` après `finished`, ne change rien (réponse `204`).
 - Un `matchId` est connu de « Lancer » jusqu'à l'arrêt de son serveur (après `finished` aussi) ; ensuite
   `match_not_found`.

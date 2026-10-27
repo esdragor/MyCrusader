@@ -143,6 +143,19 @@ struct FHOLForumBlock
 	int32 Lives = 0;
 };
 
+/** E4-1: who a row of the players' table is to the one looking (its icon before the name, B8b). */
+enum class EHOLPlayerRelation : uint8
+{
+	/** Seen by a spectator (no slot): no icon. */
+	None,
+	/** The viewer's own row (« Vous »): no icon for now. */
+	Self,
+	/** Same camp as the viewer (HOLVictoryRules::GetCamp): a green shield. */
+	Ally,
+	/** Another camp: red crossed swords. */
+	Enemy,
+};
+
 /**
  * V2.4 (V2-Q4): a row of the players' table, top right (D353: every slot's lives and forum public, AoE2's score's way).
  */
@@ -159,9 +172,13 @@ struct FHOLPlayersTableRow
 	FText State;
 	/** A defeated slot: its row greyed. */
 	bool bGreyed = false;
+	/** E4-2: a defeated slot: its name struck through. */
+	bool bStruck = false;
+	/** E4-1: the row's slot seen from the viewer (LocalSlot). */
+	EHOLPlayerRelation Relation = EHOLPlayerRelation::None;
 	/** First row of a new team (a gap above it); never on the first row. */
 	bool bNewGroup = false;
-	/** For the tests and the HUD's report: "slot 1 you team 2 colour 1 lives 1 ruin". */
+	/** For the tests and the HUD's report: "slot 1 you team 2 colour 1 lives 1 ruin", "slot 3 enemy colour 3 lives 0 defeated greyed struck". */
 	FString Shown;
 };
 

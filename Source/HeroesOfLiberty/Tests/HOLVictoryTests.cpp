@@ -1391,7 +1391,7 @@ bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("table: held, described"), Rows[0].Shown, FString(TEXT("slot 0 you colour 3 lives 1 ruin hold 35 s holding by slot 1")));
 		TestEqual(TEXT("table: held, its state"), Rows[0].State.BuildSourceString(), FString(TEXT("Ruine · tenue 35 s")));
-		TestEqual(TEXT("table: contested, described"), Rows[1].Shown, FString(TEXT("slot 1 colour 5 lives 1 rebuilding 40% hold 30 s contested by slot 0")));
+		TestEqual(TEXT("table: contested, described"), Rows[1].Shown, FString(TEXT("slot 1 enemy colour 5 lives 1 rebuilding 40% hold 30 s contested by slot 0")));
 		TestEqual(TEXT("table: contested, its state"), Rows[1].State.BuildSourceString(), FString(TEXT("Reconstruction 40 % · contestée 30 s")));
 	}
 
@@ -1609,7 +1609,7 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	Forums.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
 	TArray<FHOLPlayersTableRow> Rows = HOLForumRules::GetPlayersTable(Duel, Forums, 0, 0, Tuning);
 	TestEqual(TEXT("duel: two rows"), Rows.Num(), 2);
-	TestEqual(TEXT("duel: described"), Describe(Rows), FString(TEXT("slot 0 you colour 3 lives 2 standing | slot 1 colour 5 lives 2 standing")));
+	TestEqual(TEXT("duel: described"), Describe(Rows), FString(TEXT("slot 0 you colour 3 lives 2 standing | slot 1 enemy colour 5 lives 2 standing")));
 	if (Rows.Num() == 2)
 	{
 		TestEqual(TEXT("duel: Vous"), Rows[0].Name.BuildSourceString(), FString(TEXT("Vous")));
@@ -1621,7 +1621,7 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	}
 	// Seen from slot 1 (a client): Vous moves.
 	Rows = HOLForumRules::GetPlayersTable(Duel, Forums, 0, 1, Tuning);
-	TestEqual(TEXT("duel from slot 1: described"), Describe(Rows), FString(TEXT("slot 0 colour 3 lives 2 standing | slot 1 you colour 5 lives 2 standing")));
+	TestEqual(TEXT("duel from slot 1: described"), Describe(Rows), FString(TEXT("slot 0 enemy colour 3 lives 2 standing | slot 1 you colour 5 lives 2 standing")));
 
 	// M6-Q12: a match from a lobby, its humans named: the other's name instead of Joueur N, Vous still on one's row;
 	// a spectator (no slot) sees both names. An unnamed slot keeps Joueur N.
@@ -1632,7 +1632,7 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	Rows = HOLForumRules::GetPlayersTable(Named, Forums, 0, 1, Tuning);
 	TestEqual(TEXT("named: Alice for Bob"), Rows.IsValidIndex(0) ? Rows[0].Name.ToString() : FString(), FString(TEXT("Alice")));
 	TestEqual(TEXT("named: Vous for Bob"), Rows.IsValidIndex(1) ? Rows[1].Name.BuildSourceString() : FString(), FString(TEXT("Vous")));
-	TestEqual(TEXT("named: described"), Describe(Rows), FString(TEXT("slot 0 'Alice' colour 3 lives 2 standing | slot 1 you 'Bob' colour 5 lives 2 standing")));
+	TestEqual(TEXT("named: described"), Describe(Rows), FString(TEXT("slot 0 enemy 'Alice' colour 3 lives 2 standing | slot 1 you 'Bob' colour 5 lives 2 standing")));
 	Rows = HOLForumRules::GetPlayersTable(Named, Forums, 0, INDEX_NONE, Tuning);
 	TestEqual(TEXT("named, spectator: Alice"), Rows.IsValidIndex(0) ? Rows[0].Name.ToString() : FString(), FString(TEXT("Alice")));
 	TestEqual(TEXT("named, spectator: Bob"), Rows.IsValidIndex(1) ? Rows[1].Name.ToString() : FString(), FString(TEXT("Bob")));
@@ -1662,8 +1662,8 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	Rows = HOLForumRules::GetPlayersTable(Teams, Forums, 1 << 5, 1, Tuning);
 	TestEqual(TEXT("teams: four rows"), Rows.Num(), 4);
 	TestEqual(TEXT("teams: grouped by team, slot order within"), Describe(Rows), FString(TEXT(
-		"slot 3 team 1 colour 3 lives 1 rebuilding 40% | slot 5 team 1 colour 5 lives 0 defeated greyed"
-		" | slot 1 you team 2 colour 1 lives 1 ruin | slot 4 team 2 colour 4 lives 2 standing")));
+		"slot 3 enemy team 1 colour 3 lives 1 rebuilding 40% | slot 5 enemy team 1 colour 5 lives 0 defeated greyed struck"
+		" | slot 1 you team 2 colour 1 lives 1 ruin | slot 4 ally team 2 colour 4 lives 2 standing")));
 	if (Rows.Num() == 4)
 	{
 		TestEqual(TEXT("teams: Reconstruction 40 %"), Rows[0].State.BuildSourceString(), FString(TEXT("Reconstruction 40 %")));
@@ -1685,7 +1685,49 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("one life left: 1 vie"), Rows.IsValidIndex(0) ? Rows[0].Lives.BuildSourceString() : FString(), FString(TEXT("1 vie")));
 	// The spectator (slot 1 defeated): its own row Vous, greyed, Vaincu.
 	Rows = HOLForumRules::GetPlayersTable(Teams, Forums, (1 << 5) | (1 << 1), 1, Tuning);
-	TestEqual(TEXT("spectator: its row"), Rows.IsValidIndex(2) ? Rows[2].Shown : FString(), FString(TEXT("slot 1 you team 2 colour 1 lives 1 defeated greyed")));
+	TestEqual(TEXT("spectator: its row"), Rows.IsValidIndex(2) ? Rows[2].Shown : FString(), FString(TEXT("slot 1 you team 2 colour 1 lives 1 defeated greyed struck")));
+
+	// E4-1, E4-2 (the user's network trial, Alice and Bob allied against Carol): slots 0 and 1 in one team, slot 2 in
+	// another. Seen by slot 0: itself Self, slot 1 an ally, slot 2 an enemy; slot 2 defeated: its name struck.
+	FHOLMatchConfig Allies;
+	Allies.Normalize();
+	for (int32 Slot = 0; Slot < 3; ++Slot)
+	{
+		Allies.Slots[Slot].State = EHOLSlotState::Human;
+		Allies.Slots[Slot].ColorIndex = Slot;
+		Allies.Slots[Slot].Team = Slot < 2 ? 1 : 2;
+	}
+	Forums.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
+	Forums[2].Falls = 2;
+	Rows = HOLForumRules::GetPlayersTable(Allies, Forums, 1 << 2, 0, Tuning);
+	TestEqual(TEXT("allies: three rows"), Rows.Num(), 3);
+	TestEqual(TEXT("allies: described"), Describe(Rows), FString(TEXT(
+		"slot 0 you team 1 colour 0 lives 2 standing | slot 1 ally team 1 colour 1 lives 2 standing"
+		" | slot 2 enemy team 2 colour 2 lives 0 defeated greyed struck")));
+	if (Rows.Num() == 3)
+	{
+		TestTrue(TEXT("allies: slot 0 Self"), Rows[0].Relation == EHOLPlayerRelation::Self);
+		TestTrue(TEXT("allies: slot 1 Ally"), Rows[1].Relation == EHOLPlayerRelation::Ally);
+		TestTrue(TEXT("allies: slot 2 Enemy"), Rows[2].Relation == EHOLPlayerRelation::Enemy);
+		TestFalse(TEXT("allies: slot 1 standing, not struck"), Rows[1].bStruck);
+		TestTrue(TEXT("allies: slot 2 defeated, struck"), Rows[2].bStruck);
+		TestTrue(TEXT("allies: struck as greyed"), Rows[2].bStruck == Rows[2].bGreyed);
+	}
+	// Seen by slot 2 (the defeated): both others enemies, its own row Self and struck.
+	Rows = HOLForumRules::GetPlayersTable(Allies, Forums, 1 << 2, 2, Tuning);
+	TestEqual(TEXT("allies from slot 2: described"), Describe(Rows), FString(TEXT(
+		"slot 0 enemy team 1 colour 0 lives 2 standing | slot 1 enemy team 1 colour 1 lives 2 standing"
+		" | slot 2 you team 2 colour 2 lives 0 defeated greyed struck")));
+	// A spectator (no slot): no relation (no icon), the defeated still struck.
+	Rows = HOLForumRules::GetPlayersTable(Allies, Forums, 1 << 2, INDEX_NONE, Tuning);
+	TestEqual(TEXT("allies, spectator: described"), Describe(Rows), FString(TEXT(
+		"slot 0 team 1 colour 0 lives 2 standing | slot 1 team 1 colour 1 lives 2 standing"
+		" | slot 2 team 2 colour 2 lives 0 defeated greyed struck")));
+	for (const FHOLPlayersTableRow& Row : Rows)
+	{
+		TestTrue(*FString::Printf(TEXT("allies, spectator: slot %d no relation"), Row.Slot), Row.Relation == EHOLPlayerRelation::None);
+	}
+	TestTrue(TEXT("allies, spectator: slot 2 struck"), Rows.IsValidIndex(2) && Rows[2].bStruck);
 	return true;
 }
 

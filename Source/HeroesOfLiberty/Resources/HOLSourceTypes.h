@@ -46,6 +46,34 @@ struct HEROESOFLIBERTY_API FHOLSourceTypeRow : public FTableRowBase
 	/** Final model; empty = the provisional shape of D297 (trunk and cone, ball of berries, grey or golden blocks). */
 	UPROPERTY(EditAnywhere, Category = "Presentation")
 	TSoftObjectPtr<UStaticMesh> Mesh;
+
+	/**
+	 * How many gatherers work it at once (IA1.2): 0 = as many as the spots around its body (every 100 cm on the circle,
+	 * D297); a farm field takes 1.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Source", meta = (ClampMin = "0"))
+	int32 Places = 0;
+
+	/**
+	 * Scale of the gatherer's own rate on this source (IA1.2): 1 = the unit type's GatherRates. A farm field gives the
+	 * Peasant 0.55/s from his 0.7/s: written 0.7857143 in the CSV, the float product is exactly 0.55.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Source", meta = (ClampMin = "0"))
+	float RateScale = 1.f;
+
+	/** Never used up (IA1.2, a farm field): Amount is not counted down. */
+	UPROPERTY(EditAnywhere, Category = "Source")
+	bool Endless = false;
+
+	/**
+	 * Born of a building (IA1.2, a farm field): never placed by a map, no shape of its own, no hole in the navmesh, not
+	 * clicked (the click falls on the building).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Source")
+	bool Linked = false;
+
+	/** The rate (per second) a gatherer whose own rate for this resource is UnitRate gets on this source. */
+	float GatherRate(float UnitRate) const { return UnitRate * RateScale; }
 };
 
 /** Where the source type table lives (DefaultGame.ini). */
@@ -77,4 +105,6 @@ namespace HOLSourceTypeNames
 	inline const FName BerryBush(TEXT("BerryBush"));
 	inline const FName StoneVein(TEXT("StoneVein"));
 	inline const FName GoldVein(TEXT("GoldVein"));
+	/** The field of a farm (IA1.2): endless, one place, linked to its building. */
+	inline const FName FarmField(TEXT("FarmField"));
 }

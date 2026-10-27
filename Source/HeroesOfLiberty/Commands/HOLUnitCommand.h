@@ -21,6 +21,24 @@ enum class EHOLOrderKind : uint8
 	Hold,
 	/** Strike the enemy building TargetBuilding (D345.2b: finished or a site seen; checked by the server) until it falls. */
 	AttackBuilding,
+	/**
+	 * Unload at TargetBuilding, one of the player's deposits (D485, EtapeDefini L.5b: a right click on it, with Shift or
+	 * not): through the queue of moves, so that Shift waits for the walks before it. When it starts, the units carrying a
+	 * resource it takes get a drop-off (UHOLCommandSubsystem::IssueDropOffOrder, the gathering's), the others walk to
+	 * Target as a Move.
+	 */
+	DropOff,
+	/**
+	 * Gather the source SourceIndex (EtapeDefini L.6: Shift + right click on a resource, for the workers without a queue of
+	 * work): through the queue of moves, so that it waits for the walks before it. When it starts, the units get the
+	 * gathering's Shift order (UHOLCommandSubsystem::IssueGatherOrder, bQueue): with no queue of work, at once.
+	 */
+	Gather,
+	/**
+	 * Build (or help to build) the site TargetBuilding (L.6: Shift + right click on a site, for the workers without a queue
+	 * of work): as Gather, the builders' Shift order when it starts (UHOLCommandSubsystem::IssueBuildOrder, bQueue).
+	 */
+	Build,
 };
 
 /**
@@ -58,8 +76,10 @@ struct FHOLMoveOrder
 	EHOLOrderKind Kind = EHOLOrderKind::Move;
 	/** Attack: the unit to take on. */
 	uint32 TargetUnitId = 0;
-	/** AttackBuilding: the building to strike (D345.2b). */
+	/** AttackBuilding: the building to strike (D345.2b). DropOff: the deposit to unload at (D485). Build: the site (L.6). */
 	TWeakObjectPtr<AHOLBuilding> TargetBuilding;
+	/** Gather: the source (an index of UHOLSourceSubsystem, L.6). */
+	int32 SourceIndex = INDEX_NONE;
 	/**
 	 * A walk the combat gives a unit (J7b.3: its approach to its target, its attack-move resumed): the unit's
 	 * FHOLCombatFragment::EngageSerial when it was given; a newer player order changed it, the walk is dropped. 0: none.
@@ -84,4 +104,9 @@ struct FHOLGatherOrder
 	bool bChain = false;
 	/** With bChain: units just born sent to their building's rally point (D328): their step is a Rally (drawn white). */
 	bool bRally = false;
+	/**
+	 * A drop-off order (D485, EtapeDefini L), SourceIndex INDEX_NONE: the units carrying a resource this building takes
+	 * unload there, then stand idle (lost on the way: the nearest deposit taking their load).
+	 */
+	TWeakObjectPtr<AHOLBuilding> Deposit;
 };

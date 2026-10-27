@@ -18,6 +18,8 @@ struct HEROESOFLIBERTY_API FHOLManagerRules
 	static FString MakeFinishedBody(TConstArrayView<int32> Winners);
 	/** { "playerName": "Bob" } (left, M6-Q14) */
 	static FString MakeLeftBody(const FString& PlayerName);
+	/** { "playerName": "Bob" } (back, M6-Q15) */
+	static FString MakeBackBody(const FString& PlayerName) { return MakeLeftBody(PlayerName); }
 	/** {} (started, empty) */
 	static FString MakeEmptyBody() { return TEXT("{}"); }
 
@@ -51,6 +53,8 @@ public:
 	void SendEmpty();
 	/** M6-Q14: a named player left the server (after "started"); each time. */
 	void SendLeft(const FString& PlayerName);
+	/** M6-Q15: a named player back on the server within R7's window (his absent slot taken again); each time. */
+	void SendBack(const FString& PlayerName);
 	bool HasStarted() const { return bStartedSent; }
 
 	/** POST {ManagerUrl}/matches/{MatchId}/{Event} with this JSON body. */

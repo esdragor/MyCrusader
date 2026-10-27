@@ -152,6 +152,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					Launch.From = Drawn.GetLocation();
 					Launch.To = FVector(Wall.X, Wall.Y, Drawn.GetLocation().Z);
 					Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), Wall, HOLCombat::GetArrowSpeed());
+					Launch.ShooterType = Constants.TypeName;
 					ArrowDisplay->Launch(Launch);
 					continue;
 				}
@@ -164,6 +165,8 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				Launch.To = TargetTransform->GetTransform().GetLocation();
 				Launch.Target = Target;
 				Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), FVector2D(Launch.To), HOLCombat::GetArrowSpeed());
+				// Its type's projectile (AR9): the bolt of a Crossbowman, known here as on the server; nothing more received.
+				Launch.ShooterType = Constants.TypeName;
 				ArrowDisplay->Launch(Launch);
 			}
 			// Its gesture's phase (UHOLInterpolatedInstancesProcessor): its next release, from the clock's present.

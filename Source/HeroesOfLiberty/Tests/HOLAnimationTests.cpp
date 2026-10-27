@@ -457,7 +457,9 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			FArmedSoldier{ TEXT("ManAtArms"), TEXT("SKM_ManAtArms"), TEXT("A_ManAtArms_Idle"), TEXT("A_ManAtArms_Walk"), TEXT("A_ManAtArms_Attack"),
 				TEXT("A_ManAtArms_Fall") },
 			FArmedSoldier{ TEXT("Archer"), TEXT("SKM_Archer"), TEXT("A_Archer_Idle"), TEXT("A_Archer_Walk"), TEXT("A_Archer_Attack"),
-				TEXT("A_Archer_Fall") } })
+				TEXT("A_Archer_Fall") },
+			FArmedSoldier{ TEXT("Crossbowman"), TEXT("SKM_Crossbowman"), TEXT("A_Crossbow_Idle"), TEXT("A_Crossbow_Walk"), TEXT("A_Crossbow_Attack"),
+				TEXT("A_Crossbow_Fall") } })
 	{
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier.Name, TEXT("Animation test"));
 		if (!TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier.Name), Row))

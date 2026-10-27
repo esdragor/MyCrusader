@@ -1,26 +1,26 @@
-# Archers : une caserne finie (E = Archer), 6 Archers devant le centre, 4 Lanciers et 4 Hommes d'armes ennemis à ~25 m, 5000 de chaque ressource
+# Archers : un Champ de tir fini (A = Archer), 6 Archers devant le centre, 4 Lanciers et 4 Hommes d'armes ennemis à ~25 m, 5000 de chaque ressource
 # Plain, deux joueurs (archers.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme
-# order_lines : la caserne derrière le centre (la place de quick_check), l'armée devant, au-delà des rochers (vers 3000) ;
+# order_lines : le Champ de tir derrière le centre (la place de la caserne de quick_check), l'armée devant, au-delà des rochers (vers 3000) ;
 # les ennemis ~30 m plus loin (bords à ~24 m), hors du rayon d'agression des Archers (21,3 m) : rien ne part tout seul.
 hol.Cheat.Resources 5000
-# Population 175 : la caserne peut recruter malgré les soldats offerts (hors plafond).
+# Population 175 : le Champ de tir peut recruter malgré les soldats offerts (hors plafond).
 hol.Cheat.Population 165
 # Les Paysans d'abord (hol.Select.Own ne prend alors qu'eux), au bord des arbres, à côté du centre.
 hol.Camera.FocusNear 115 -1250
 frames 2
 hol.Units.SpawnHere 5 Peasant 0 150
 waitunits 5
-# La caserne : fondation derrière le centre, bâtie d'un coup (hol.Build.Instant) par les cinq.
-hol.Build.PlaceNear Barracks -3800 4600
-waitlog Construction: slot 0 placed Barracks foundation
+# Le Champ de tir : fondation derrière le centre, bâtie d'un coup (hol.Build.Instant) par les cinq.
+hol.Build.PlaceNear ArcheryRange -3800 4600
+waitlog Construction: slot 0 placed ArcheryRange foundation
 hol.Build.Instant 1
-hol.Camera.FocusNear -1500 1500
+hol.Camera.FocusNear -3800 4600
 frames 5
 hol.Select.Own
 waitlog Selection: 5 units (own)
 hol.Select.OrderNear -3800 4600
-waitlog Build order of slot 0: 5 units to Barracks
-waitlog Construction: slot 0 finished Barracks
+waitlog Build order of slot 0: 5 units to ArcheryRange
+waitlog Construction: slot 0 finished ArcheryRange
 hol.Build.Instant 0
 # Les Paysans reviennent au bord des arbres.
 hol.Camera.FocusNear 115 -1250
@@ -45,4 +45,4 @@ hol.Select.Army
 note Au repos : arc penché, carquois dans le dos, pas de flèche en main. En marche : pas de flèche non plus.
 note Clic droit sur un ennemi (ou Q puis clic au sol) : l'Archer tire à 15 m. Flèche cachée du lâcher à la reprise au carquois.
 note Le tir lâche une flèche visible (25 m/s, légère cloche) qui suit sa cible ; le dégât tombe à son arrivée, même sur une cible qui fuit (J7c.2b).
-note Caserne (derrière le centre) : E produit un Archer (30 nourriture + 50 bois, 15 s) ; A Lancier, Z Homme d'armes.
+note Champ de tir (derrière le centre) : A produit un Archer (30 nourriture + 50 bois, 15 s), Z un Arbalétrier. Grille du Paysan : S = Champ de tir, Q = Caserne (A Lancier, Z Homme d'armes).

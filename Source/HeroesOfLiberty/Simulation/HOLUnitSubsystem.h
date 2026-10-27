@@ -99,6 +99,11 @@ public:
 	FMassEntityHandle FindEntity(uint32 UnitId) const;
 	/** Identifier of an entity, 0 when it is not a unit (the reverse table of D223). */
 	uint32 FindUnitId(FMassEntityHandle Entity) const;
+	/**
+	 * J8a.3: the unit identifier of a slot's hero (a unit of the Hero armour category, HOLIsHero), noted at his birth; 0
+	 * before it and once his entity is destroyed (still there while he is dying). The last one born for a slot.
+	 */
+	uint32 FindHeroUnit(int32 Slot) const;
 
 	/** Identifiers of the units of a type, in creation order. */
 	void GetUnitIdsOfType(FName TypeName, TArray<uint32>& OutUnitIds) const;
@@ -164,6 +169,8 @@ private:
 	/** Identifiers and their entities (D223), plus the reverse lookup. */
 	TMap<uint32, FHOLUnitRecord> Units;
 	TMap<FMassEntityHandle, uint32> EntityToId;
+	/** J8a.3: each slot's hero (FindHeroUnit), by OwnerPlayer. */
+	TMap<uint8, uint32> HeroUnitBySlot;
 	uint32 NextUnitId = 1;
 
 	/** Births waiting for their share of the per-step budget, and units to destroy at the end of the step (D224). */

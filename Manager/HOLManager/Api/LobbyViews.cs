@@ -26,6 +26,8 @@ public static class LobbyViews
         minutes = Minutes(lobby, now),
         canJoin = lobby.State == LobbyState.Lobby && lobby.Slots.Any(s => s.State == SlotState.Open),
         canWatch = lobby.State == LobbyState.InGame,
+        // R7.6: in game, the match's players gone from its server within the window (« Revenir »); [] otherwise.
+        away = lobby.State == LobbyState.InGame && lobby.Match is { } match ? match.Away(now).ToList() : [],
     };
 
     /** GET /lobbies/{id}, also the answer of every change. */

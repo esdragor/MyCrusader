@@ -165,6 +165,12 @@ public static class LobbyRoutes
             store.ServerLeft(matchId, body?.PlayerName);
             return Results.NoContent();
         });
+        app.MapPost("/matches/{matchId}/back", async (string matchId, HttpRequest request, LobbyStore store) =>
+        {
+            var body = await LocalBody<LeftRequest>(request);
+            store.ServerBack(matchId, body?.PlayerName);
+            return Results.NoContent();
+        });
         app.MapPost("/matches/{matchId}/empty", async (string matchId, HttpRequest request, LobbyStore store) =>
         {
             await LocalBody<object>(request);

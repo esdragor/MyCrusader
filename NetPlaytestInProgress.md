@@ -68,6 +68,8 @@ avant la validation de l'utilisateur. Worktree prévu : `HeroesOfLiberty-Glorfin
 | M6-Q12 | **Noms des joueurs** dans le tableau des joueurs en partie (au lieu de « Joueur N ») |
 | M6-Q13 | **Perte de connexion détectée en 20 s** (au lieu de 60 s) ; le retour sous 3 min reste R7 |
 | M6-Q14 | (2026-10-25) Après la fin, un joueur resté dans la partie **n'est plus dans le salon** ; un non-chef ne bloque pas la relance ; **le chef reste chef** même absent (précision du 2026-10-25) : nouveau chef (premier revenu) seulement si le salon est plein sans lui, ou (ajout de la session) s'il a quitté la partie sans revenir ou si le serveur s'est arrêté ; « Retour au salon » rejoint ce salon sous le même nom si possible, sinon (place prise, plein, disparu, relancé) liste Multijoueur et message |
+| M6-Q15 | (2026-10-26) **Joueur revenu dans la fenêtre = présent** pour le gestionnaire : le serveur le signale (route « revenu », à ajouter au protocole) ; un chef revenu **reste chef** au retour au salon |
+| M6-Q16 | (2026-10-26) **Gains de l'absent gardés** : dépôts de ses Paysans, remboursements et ce que rapporte sa production pendant l'absence s'ajoutent à son stock gardé ; il les retrouve en revenant |
 
 ## Architecture retenue
 
@@ -274,6 +276,7 @@ R8, R9.
   vers la liste, ~60 s) ; **B8** R4.9 erreurs en partie ; **B9** R4.10 + R4.11 traductions. Puis R5 (bout à bout,
   essais E2 et E3).
 - **Au 2026-10-24 soir : R4 fini, non commité** (Glorfindel). R5 découpé : **B1** R5.1 + R5.2 (`lobby_match.ps1`, deux clients) ; **B2** R5.3 (spectateur) ; **B3** R5.4 (partie `lobby` de `quick_check`) ; **B4** R5.5 (mesure) ; puis E2 et E3 (R5.6).
+- **Au 2026-10-26 : R7 boucle 1 (R7.1-R7.3) sur `net-playtest`, `main` fusionnée (ad3b797).** Suite de R7 en boucles (même règle) : **B2** M6-Q16 (gains de l'absent dans `AbsentSlots` : dépôts, remboursements, production) + R7.4 (bâtiments et file de production rendus au contrôleur revenu, test à 2 clients) ; **B3** M6-Q15 (route « revenu » : `PROTOCOL.md`, gestionnaire + xUnit, appel du serveur au retour) ; **B4** R7.5 + R7.7 (bandeau « X s'est déconnecté, 2:41 » / « X est revenu », `AbsentSlots` répliqué, fr / en / ja) ; **B5** R7.6 (« Revenir » depuis la liste) ; **B6** R7.8 (cas `net:rejoin` de `quick_check`, fenêtre de 10 s) ; puis E4 (R7.9) avec un scénario prêt, puis commit et fusion dans `main` (accord des sessions actives).
 - **Boucle en cours** : voir la dernière ligne de « Suivi ». Si elle dit « lancée » sans « rendue », la
   boucle a été coupée : regarder `git -C C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel status` et `diff`,
   relancer les tests de la boucle, et la reprendre.
@@ -1159,3 +1162,334 @@ R8, R9.
   « Clé d'accès (L11) » de `Manager/PROTOCOL.md`. Touche `HOLManagerClient`, `HOLLocalPlayer`, `GameModeBase::PreLogin`,
   `ProcessServerLauncher` : conflits possibles avec R7 (4a88040) à la fusion. À savoir : le test parent
   `HeroesOfLiberty.UI.ManagerErrorText` n'est jamais lancé (chemin parent de `…ReturnToLobby`), `quick_check` compris.
+- 2026-10-26 : **Reprise de R7.** `main` (a2bf290 : lanceur L4 à L13, clé d'accès L11, MV.6) fusionnée dans
+  `net-playtest` : **ad3b797**, sans conflit de texte (Glorfindel, `IN_USE.txt` à jour). Vérification lancée
+  (sous-agent) : `build.ps1`, `quick_check -Parts tests,net,lobby`, `dotnet test`, cohabitation `PreLogin` (clé L11)
+  / `PostLogin`-`Logout` (fenêtre R7). Questions posées : chef revenu dans la fenêtre ; gains de l'absent.
+  Réponses de l'utilisateur : **M6-Q15** (chef revenu reste chef, route « revenu ») et **M6-Q16** (gains de l'absent
+  gardés), notées dans « Décisions prises ».
+- 2026-10-26 : **En pause** (demande de l'utilisateur). Vérification de la fusion ad3b797 **arrêtée avant son
+  rapport** : résultat inconnu (compilation et tests à relancer tels quels à la reprise). Aucun processus laissé,
+  arbre de Glorfindel propre (`IN_USE.txt` seul). Reprise : relancer la vérification, puis B2.
+- 2026-10-26 : **Reprise après la pause** : vérification de la fusion ad3b797 relancée (sous-agent, minuteur 15 min).
+- 2026-10-26 : **Fusion ad3b797 vérifiée** : `build.ps1` **PASS** au 2e essai — le 1er échouait (150 C2440 dans les
+  `.gen.cpp`) parce que le moteur `C:\UE\UE_5.8_AS_3` a été **réinstallé le 2026-10-26 à 10 h 37** (champ
+  `AngelscriptPropertyFlags` ajouté à `UE_PROPERTY_PARAMS_BASE_FIELDS`) et UHT ne régénérait pas ; remède :
+  supprimer `Intermediate\Build\Win64\UnrealEditor\Inc\HeroesOfLiberty\UHT` puis recompiler. **Elrond, Arwen, Haldir
+  et la copie principale auront la même erreur** (non touchés). `quick_check` : tests **178/178**, lobby **PASS**, net
+  FAIL au 1er passage (Alice lente au départ juste après la recompilation, 69 s) puis **PASS** seul (128 s) ;
+  `dotnet test` **27 + 141 + 24 + 252** verts. Clé L11 et fenêtre R7 cohabitent (la clé est redonnée à chaque
+  connexion par `UHOLLocalPlayer::GetGameLoginOptions`). À savoir : le gestionnaire ne transmet pas
+  `-HOLDisconnectWindow=` (fenêtre par défaut 180 s pour ses serveurs). R7.4 (2 clients) vérifié dans B6 (net:rejoin).
+  **B2 lancée** : M6-Q16 (gains de l'absent gardés) + lecture de R7.4.
+- 2026-10-26 : **R7 B2 faite (M6-Q16, gains de l'absent gardés)**, Glorfindel, non commité (9,5 min). Pas de point
+  central avant : chaque crédit cherchait le PlayerState dans `PlayerArray` (perdu après Logout). Ajouts dans
+  `AHOLGameState` : `GetSlotStock` / `SetSlotStock` / `AddSlotStock` (statiques, stock gardé de `AbsentSlots` d'abord,
+  sinon PlayerState) ; passent par eux : dépôt d'un Paysan (`UHOLGatherProcessor::DepositLoad`, appelé par `Unload`),
+  `RefundProductionQueue` et `DestroyBuilding` (`HOLConstructionSubsystem`, `FindOwnerState` retiré). Pas de dépense
+  automatique (une unité se paie à la mise en file) ; naissances continuent ; effondrement inchangé (D358).
+  Test `HeroesOfLiberty.Match.DisconnectGains` (dépôt de 10 bois, fondation et centre détruits pendant l'absence) :
+  **rouge** (« back with W 300, expected W 360 ») puis vert ×2 ; `quick_check -Parts tests` **179/179**. Filtre
+  rapide : scratchpad `run_filter.ps1 -Filter <préfixe>` (~40 s, quick_check n'a pas de filtre).
+  R7.4 à la lecture : `PostLogin` → `AssignBuildingOwners(Slot)` (GameModeBase.cpp:230, 401-424) ; file et ralliement
+  répliqués au propriétaire (HOLBuilding.cpp:96-98) ; ordres acceptés au même emplacement (HOLProductionSubsystem.cpp:
+  163-165) : à confirmer à 2 clients (B6). Reste : statistiques sans échantillon pendant l'absence (trou dans les
+  courbes, `HOLMatchStatsSubsystem.cpp:122-137`) ; le chemin Logout réel n'est pas dans ce test (vu en B6).
+  **B3 lancée** : M6-Q15 (route « revenu »).
+- 2026-10-26 : **R7 B3 faite (M6-Q15, route « revenu »)**, Glorfindel, non commité. `PROTOCOL.md` : `POST
+  /matches/{id}/back` `{ "playerName" }` (version 1 gardée : une route ajoutée ne la change pas, 404 toléré ; pas de
+  clé, bouclage exempté comme `left`) ; pendant la partie : retiré de `LeftBeforeEnd` ; après `finished` : le chef
+  absent annule le compte des 30 s et reste chef (aussi s'il était parti avant `finished`) ; autre nom : rien.
+  Gestionnaire : `LobbyRoutes.cs`, `LobbyStore.ServerBack`. xUnit : 5 tests de magasin (`ReturnToLobbyTests`) + 1 par
+  HTTP + erreurs dans `ServerRoutesErrors` : **rouge** (7 échecs / 258) puis vert ×2 (**27 + 141 + 24 + 258**).
+  Serveur : `GiveSlotStock` renvoie vrai quand une absence est reprise ; PostLogin → « Manager: X back » +
+  `UHOLManagerLink::SendBack` (mêmes conditions que `left`) ; cas `back` ajoutés à `Net.ManagerRoutes` et
+  `Match.DisconnectGameState` (pas de rouge C++ exécuté : écrits avec le code). `build.ps1` PASS ; tests **179/179**.
+  Essai réel de `back` à 2 clients : B6. **B4 lancée** (bandeau, R7.5).
+- 2026-10-26 : **R7 B4 faite (R7.5, bandeau)**, Glorfindel, non commité. `FHOLAbsentNotice` (emplacement, nom, `EndsAt`,
+  `BackAt`) dans `AHOLGameState::AbsentNotices` répliqué (le stock reste serveur) ; retour = champ `BackAt` (un état,
+  vu aussi par un client arrivé en retard ; pas de multicast), ligne « est revenu » 5 s
+  (`FHOLDisconnectRules::BackNoticeSeconds`) ; `FormatAbsentLine` (m:ss arrondi au-dessus, 0:00 après) /
+  `FormatBackLine` ; `GetAbsenceBannerLines(Now)`. HUD : `UHOLGameScreen::RefreshAbsenceBanner` (4 Hz, style du
+  bandeau d'attente R3.10, haut centre sous l'alerte V4.3, spectateurs compris ; journal « Absence banner: shown /
+  hidden »). Console : `hol.Net.FakeAbsent Bob 161` / `Bob -1` (revenu) / sans argument (efface). Test
+  `HeroesOfLiberty.Match.DisconnectBanner` **rouge** (13 erreurs) puis vert ; tests **180/180**. Textes source fr
+  (`HOLGameScreen,AbsentLine` « {Name} s'est déconnecté — {Time} », `BackLine` « {Name} est revenu ») non rassemblés.
+  Reste : traductions (R7.7), capture, scénario d'essai, essai réseau.
+- 2026-10-26 : **Bandeau neutre** (choix de l'utilisateur ; le jeu ne connaît pas le genre) : « {Name} : connexion
+  perdue — {Time} » / « {Name} : de retour ». Boucles renumérotées : **B5** textes neutres + traductions (R7.7, partie
+  bandeau) + captures fr/en/ja ; **B6** R7.6 (« Revenir » depuis la liste, et sa traduction) ; **B7** R7.8
+  (`net:rejoin`, R7.4 et `back` vérifiés à 2 clients) ; puis E4. **B5 lancée.**
+- 2026-10-26 : **R7 B5 arrêtée au minuteur (15 min), presque finie**, Glorfindel, non commité. Fait : textes neutres
+  (`HOLDisconnectRules.cpp:66/73`), test `DisconnectBanner` mis à jour (vert 4/4 d'après son dernier message),
+  GatherText + `fill_po.py` (entrées en/ja ajoutées) + .locres ; captures hors écran (script scratchpad
+  `banner_capture.ps1`, `hol.Net.FakeAbsent`) regardées par la session principale : `banner_fr_back`, `banner_en_back`,
+  `banner_ja_back`, `banner_fr_alert` justes (« Bob : de retour / Alice : connexion perdue — 0:45 », « Bob: back »,
+  « Bob：接続が切れました — 2:41 » sans carrés, bandeau sous « Votre forum est tombé — 1 vie » sans chevauchement) ;
+  `banner_fr` / `banner_en` vides = capture prise avant le rafraîchissement à 4 Hz (`waitlog` trouve une ligne plus
+  ancienne), pas un défaut du jeu. Pas de scénario solo (l'essai E4 aura son scénario réseau).
+  **Amélioration du processus** : B5 mêlait textes, traductions, captures et scénario ; la règle « un scénario neuf et
+  sa répétition = un sous-agent à part » valait aussi pour les captures. Désormais : captures et scénario toujours dans
+  une boucle à part. Vérification `build` + `quick_check -Parts tests,menu` lancée par la session principale.
+- 2026-10-26 : Vérification après B5 : `build.ps1` **PASS**, `quick_check -Parts tests,menu` **PASS** (tests 180/180,
+  menu fr / en / ja). **B6 lancée** : R7.6 (« Revenir » depuis la liste ; captures et traduction en boucle à part, B6b).
+- 2026-10-26 : **R7 B6 faite (R7.6, « Revenir »)**, Glorfindel, non commité. La liste ne donnait aucun nom : champ
+  **`away`** ajouté à `GET /lobbies` (joueurs de `match.json` partis par `left` sans `back`, depuis moins de 180 s =
+  `LobbyRules.DisconnectWindow` ; `[]` hors partie ; version inchangée ; `PROTOCOL.md:140-157`). Jeu :
+  `EHOLLobbyAction { None, Join, Watch, Rejoin }`, `ChooseLobbyAction(Lobby, MyName)` (casse et espaces ignorés),
+  `away` facultatif à la lecture ; écran Multijoueur : `RejoinButton<i>` « Revenir » (`HOLMultiplayerScreen`),
+  `HandleRejoin` → `GET /watch` pour le port → `OpenMatch(Port, Name, Version)`. Tests : xUnit
+  `TheListNamesThePlayersAwayFromTheMatchWithinTheWindow` rouge puis vert (**27 + 141 + 24 + 259** ×2) ;
+  `HeroesOfLiberty.Net.ManagerClient.LobbyAction` (11 cas) rouge puis vert ; `quick_check -Parts tests,menu` **181/181**,
+  menu fr/en/ja. Encore connecté : pas dans `away` (« Regarder ») ; s'il clique quand même, emplacement tenu →
+  spectateur. **Défauts trouvés** : (1) un nom dont l'emplacement est **vaincu** reprend sa place (`FindSlotForName`
+  ignore la défaite) avec `StartingResources` sur un camp vaincu ; (2) après « Revenir », pas de jeton de salon : le
+  bandeau de fin propose la liste au lieu de « Retour au salon ». Reste aussi : traduction, capture, contrôle à
+  l'écran du bouton dans `lobby_match.ps1` (B7).
+  **B6b lancée** : défauts (1) et (2) + traduction de « Revenir » (sans capture).
+- 2026-10-26 : **R7 B6b : (1) et (3) faits, (2) analysé**, Glorfindel, non commité. (1) `AHOLGameState::FindSlotOnLogin`
+  (après `FindSlotForName` : emplacement vaincu d'une partie nommée → `INDEX_NONE` = spectateur, journal « Disconnect:
+  slot N (Nom) defeated, joins as spectator ») ; PostLogin et PreLogin (partie finie, sans journal) passent par elle ;
+  cas ajouté à `Match.DisconnectGameState` **rouge** (« expected -1, was 1 ») puis vert. (3) `HOLMultiplayerScreen,Rejoin`
+  en « Rejoin », ja « 復帰 » (`fill_po` 319 textes, 0 clé inconnue). `build` PASS ; `quick_check -Parts tests,menu`
+  **181/181**, menu fr/en/ja. (2) cause : `UHOLManagerClient::IsInLobbyMatch()` exige un `LobbyToken` ; « Revenir »
+  n'a ni `LobbyId` ni jeton ; `ReturnToLobby()` n'a besoin que de `LobbyId` + `MatchPlayerName` (refait un `join`).
+  **B6c lancée** : drapeau `bRejoinedLobby` + règle pure de l'origine, test rouge d'abord.
+- 2026-10-26 : **R7 B6c faite (« Revenir » garde le salon)**, Glorfindel, non commité. Règle pure
+  `FHOLManagerClientRules::GetMatchOrigin(bHasToken, bRejoinedLobby, bNamed, bInMatch)` (jeton ou revenu, et nommé →
+  Lobby ; sinon en partie → Manager ; sinon Local) ; `UHOLManagerClient::KeepRejoinedLobby(LobbyId)` /
+  `bRejoinedLobby` (remis à faux à `Enter`, `ReturnToLobby`, `ForgetLobby`, `LeaveLobby`, et si `OpenMatch` échoue) ;
+  `OpenMatchOf` l'appelle pour « Revenir ». Lectures / écritures du salon exigent toujours un jeton (venu du `join` de
+  `ReturnToLobby`). Test `HeroesOfLiberty.Net.ManagerClient.Origin` (10 cas) **rouge** (8/10) puis vert ;
+  `quick_check -Parts tests,menu` **182/182**, menu fr/en/ja. **R7.6 fini dans le code.**
+  Suite découpée : **B7a** cas `net:rejoin` de `quick_check` (client fermé puis relancé : même emplacement, mêmes
+  ressources, bâtiments pilotables, `left`/`back` ; fenêtre 10 s : défaite puis spectateur) ; **B7b** `lobby_match` :
+  « Revenir » visible et cliqué, puis « Retour au salon » ; puis scénario E4 (boucle à part), E4.
+  **B7a lancée.**
+- 2026-10-26 : **R7 B7a arrêtée au minuteur (15 min)**, mais la 1re manche marche de bout en bout (journaux du dernier
+  passage, 11:33-11:34) : `lobby_match.ps1 -Rejoin [-Window <s>]` (Glorfindel, non commité ; le serveur de partie est
+  l'éditeur en mode serveur lancé par le gestionnaire via `Saved_Tests\LobbyMatch\editor_server.cmd` — d'après
+  l'agent, **le moteur réinstallé n'a plus de cible Server** : `Saved\StagedBuilds\WindowsServer` ne peut plus être
+  refait, **à vérifier**, touche R8 et la publication du lanceur). Vu : Bob ferme son jeu → serveur « slot 1 (Bob)
+  kept », « Manager: Bob left » ; Alice « Bob : connexion perdue — 3:01 » ; liste de Bob relancé « …, rejoin » ;
+  « Revenir » → « back in match … of L1 » ; serveur « slot 1 (Bob) back », même stock, « Manager: Bob back » ; Alice
+  « Bob : de retour » ; « Production: slot 1 queued Peasant » (R7.4). Défauts : **3:01** affiché pour une fenêtre de
+  180 s (arrondi au-dessus + écart d'horloge : borner à la fenêtre) ; contrôle du stock faible (200 partout = stock de
+  départ ; le test unitaire de B2 couvre le cas). PASS du script non vu (agent coupé en relançant) : relancé par la
+  session principale. Reste : 2e manche (fenêtre 10 s → défaite → spectateur), 2 passages verts, `-Parts lobby` intact.
+  **Amélioration** : un essai bout à bout neuf = écrire le script (une boucle) puis le répéter (une autre) ; ici
+  écriture + mise au point + 2e manche + répétitions dans une seule boucle.
+  Vérifié (session principale) : le moteur réinstallé a `Engine\Binaries\Win64\UnrealServer.target` mais **aucune ligne
+  `InstalledPlatformConfigurations` de `PlatformType="Server"`** dans `Engine\Config\BaseEngine.ini` (seulement Editor
+  et Game, l. 3999-4003) : la compilation d'un serveur est refusée. Remède probable : remettre ces lignes (Win64
+  Development / Shipping Server) ; touche le moteur, attend l'accord de l'utilisateur.
+  Relance de `lobby_match.ps1 -Rejoin` par la session principale : **FAIL « no lobby created by Alice »** en 184 s ;
+  cause : le jeu d'Alice bloqué au démarrage sur « Launching UnrealBuildTool... -Mode=ValidatePlatforms » (UBT occupé
+  par la recompilation générale d'une autre session : le « verrou » vu par l'agent), pas le code. À relancer quand la
+  machine est libre.
+- 2026-10-26 : **En attente** : consigne sur la cible Server du moteur (lignes `PlatformType="Server"` de
+  `BaseEngine.ini`, sauvegarde, `net_match.ps1 -Stage` dans Glorfindel) **transmise par l'utilisateur à la session
+  qui recompile tout**. Reprise quand elle a fini : relancer `lobby_match.ps1 -Rejoin` (2 passages verts), 2e manche
+  (`-Window 10` : défaite puis spectateur), `quick_check -Parts lobby` intact, borne « 3:01 » → 3:00 ; puis scénario
+  E4 (boucle à part), essai E4, commit et fusion (accord des sessions actives).
+  Message de la session moteur (relayé par l'utilisateur) : le moteur AS_3 sera **remplacé** par une nouvelle
+  fabrication, finie vers la **fin d'après-midi du 2026-10-26** (heure exacte dans son rapport). Au remplacement,
+  **aucun éditeur ni jeu ne doit tourner sur AS_3** ; ensuite **chaque copie se recompile** sur le nouveau moteur
+  (Glorfindel compris ; si C2440 dans les `.gen.cpp` : supprimer `Intermediate\Build\Win64\UnrealEditor\Inc\
+  HeroesOfLiberty\UHT` puis `build.ps1`). Session NetPlaytest : rien de lancé jusque-là.
+- 2026-10-26 14:01 (état) : fabrication du moteur en cours (BuildGraph « Make Installed Build Win64 »,
+  **`-set:WithServer=true`**, sortie `C:/UE/Built`) : la cible Server devrait revenir avec le nouveau moteur. AS_3 pas
+  encore remplacé (revision 1, 0 ligne Server). Glorfindel : rien ne tourne, travail R7 intact.
+- 2026-10-26 19:31 (état) : fabrication du moteur toujours en cours (source `C:\UE\Src\HZ`), à l'étape **UnrealServer
+  Win64 Development** (dernière ligne lue : 708/3656, 7 compilateurs actifs) ; Shipping serveur probablement après.
+  AS_3 pas remplacé ; Glorfindel : rien ne tourne, travail R7 intact.
+- 2026-10-26 20:30 : **Arrêt pour la journée** (demande de l'utilisateur), états toutes les 55 min arrêtés. Fabrication
+  du moteur toujours en cours (UnrealServer Development 2035/3656 à 20:26 ; heures du journal UBA décalées d'1 h).
+  **Reprise demain** : vérifier que AS_3 est remplacé (`.shivaget-engine.json` revision > 1) et a ses lignes
+  `PlatformType="Server"` ; rien sur AS_3 pendant le remplacement ; recompiler Glorfindel (`build.ps1` ; si C2440 :
+  supprimer le dossier UHT) ; `quick_check -Parts tests,menu` ; puis `lobby_match.ps1 -Rejoin` (2 passages verts),
+  2e manche `-Window 10`, borne « 3:01 », `-Parts lobby` intact ; scénario E4 (boucle à part) ; essai E4 ; commit.
+  Travail R7 B2 à B7a **non commité** dans Glorfindel (42 fichiers dans `git status`, `IN_USE.txt` gardé).
+- 2026-10-27 : **Reprise.** AS_3 remplacé (Hazelight 5.8.4, `Build.version` 5.8.4 ; plus de `.shivaget-engine.json`,
+  moteur recompilé depuis les sources) avec **3 lignes `PlatformType="Server"`** (`BaseEngine.ini` l. 4002-4006).
+  Glorfindel déjà recompilé par la session moteur (`build.ps1` PASS en 3 s) ; `quick_check -Parts tests,menu` **PASS**
+  (182/182, menu fr/en/ja, 99 s). `lobby_match.ps1 -Rejoin` : 1er passage **PASS** (128 s, Bob parti, gardé, « Revenir »,
+  même stock, `back`, Paysan accepté) ; 2e passage FAIL : Bob relancé figé au démarrage sur « Launching
+  UnrealBuildTool... -Mode=ValidatePlatforms » (compilation de Celeborn en même temps) = environnement, déjà vu
+  (`EtapeDefiniInProgress.md`). Script : `Version.txt` du serveur cuit n'est plus écrit en `-Rejoin`
+  (`Saved\StagedBuilds` n'existe plus dans Glorfindel : `-Parts lobby` demandera `net_match.ps1 -Stage`).
+  **Borne « 3:01 » faite** : `FHOLAbsentNotice::WindowSeconds` (répliqué, dernier champ) et
+  `FormatAbsentLine(Name, SecondsLeft, WindowSeconds)` borne à la fenêtre ; cas ajouté à `Match.DisconnectBanner`
+  (horloge du client 0,4 s en retard) **rouge** (« was …3:01 ») puis vert ×2 (4 tests `Match.Disconnect`).
+  Suite : 2 passages verts de `-Rejoin` (après 30 s sans UBT d'AS_3), `-Window 10`, `-Parts lobby`, E4.
+- 2026-10-27 : 3e et 4e passages de `-Rejoin` rouges pour une **autre cause** : un 2e « Alice » (entré en spectateur)
+  et un 2e « Bob » dans notre partie = les clients du `quick_check net` d'**Arwen** (session IA) : notre serveur
+  (l'éditeur, lent à démarrer) prenait 7777 juste après la sonde UDP de leur `quick_check` (course, chaque copie sonde
+  à partir de 7777). Remède côté test : `lobby_match.ps1` lance son gestionnaire avec `--FirstServerPort=7900` (hors
+  7777-7876), et compte les `Join succeeded` du serveur (3 attendus, 2 en `-Window`). Leur `net` a pu tomber rouge à
+  cause de nous (non prévenus : session non identifiée). **2e manche écrite** : `-Rejoin -Window <s>` = Bob ne revient
+  pas : « not back within 10 s », « Victory: slot 1 defeated (Disconnected) », Alice « End banner: Victory », Bob relancé
+  sans « Revenir ». À deux joueurs sa défaite finit la partie : le retour en spectateur reste au test
+  `Match.DisconnectGameState` et à l'essai E4 (3 joueurs). Exécuteur scratchpad `rejoin_runs.ps1` (attend 30 s sans
+  UBT d'AS_3, relance si un jeu reste figé au démarrage). **Verts : `-Rejoin` 2/2 (104 s, 103 s), `-Window 10` 2/2
+  (200 s, 106 s)** ; bandeau d'Alice « 0:10 » au départ (la borne tient). Captures regardées : bandeau resté 0,23 s
+  sur l'écran de victoire (capture trop tôt ; la séquence attend maintenant « Absence banner: hidden »).
+  **Défaut vu, hors R7** : alerte « Joueur 2 est vaincu » au lieu de « Bob » (`HOLForumMessages::GetSlotName` ne
+  donne jamais le nom, dans toute partie de salon) : ligne pour `EtapeDefini.md` (V4 messages du chantier victoire).
+  `net_match.ps1 -Stage` refusé (« conflicting instance » d'UBT, une autre copie compilait) : `package.ps1 -Playtest
+  -Version 2026-10-27-r7` lancé à la place (il attend les compilations des autres, cuit jeu et serveur), puis
+  `quick_check -Parts lobby`.
+- 2026-10-27 (après-midi) : paquet d'essai **`Saved\Packages\2026-10-27-r7`** (Glorfindel, `package.ps1 -Playtest`,
+  6,3 min : Manager 92 Mo, Windows 3,3 Go, WindowsServer 3,1 Go ; serveur cuit avec la cible Server du nouveau moteur) ;
+  consigne `Essai_E4.txt` à sa racine (Alice + Bob alliés contre Carol : retour dans les 3 min, triche refusée, alliés,
+  absence > 3 min → vaincu puis spectateur). `-Parts lobby` : rouge plusieurs fois : (1) règle « Carol : Plain not
+  loaded » écrite pour 7777 (Unreal n'écrit pas le port par défaut) : `127\.0\.0\.1(:\d+)?` ; (2) jeux figés au
+  démarrage sur UBT `-Mode=ValidatePlatforms` derrière les compilations des autres copies (Carol 3 min, même après 30 s
+  d'UBT libre). **Remède trouvé** : la variable d'environnement **`UE_SKIP_UBT_SDK_SETUP=1`** (lue par
+  `UnrealEditor-TargetPlatform.dll`) supprime cet appel : jeu démarré et quitté en 19 s contre > 240 s sans elle (UBT
+  occupé). Mise par `lobby_match.ps1` (héritée par jeux, gestionnaire, serveur). `-Parts lobby` **PASS** (232 s, 0 appel
+  à UBT dans les journaux). **À proposer à toutes les copies** : la même ligne dans `quick_check.ps1` et `play.ps1`
+  (touche les scripts des autres sessions : avec leur accord, à la fusion).
+- 2026-10-27 : confirmation sur le script final : `-Parts lobby` **PASS** ×2 (232 s, 246 s), `-Rejoin` **PASS** (174 s),
+  `-Rejoin -Window 10` **PASS** (154 s), `-Parts tests` **182/182**. **Essai E4 donné à l'utilisateur** (paquet
+  `2026-10-27-r7`, `Essai_E4.txt`). Puis : retours, `EtapeDefini.md` (ligne « Joueur 2 est vaincu », ligne R7 du
+  Réseau), fusion de `main` dans `net-playtest`, commit après accord.
+- 2026-10-27 : **Essai E4 réussi** (l'utilisateur, paquet `2026-10-27-r7`, Alice + Bob alliés contre Carol : « sinon
+  tout est bon »). Deux demandes : **E4-1** indicatif d'équipe et/ou d'ennemi devant les noms en partie ; **E4-2** nom
+  rayé d'un joueur éliminé (lignes dans `EtapeDefini.md`, « Retours d'essai »). Le gestionnaire ne s'était pas lancé
+  par `Gestionnaire.bat` depuis l'outil (`Start-Process` d'un .bat) : démarré directement, puis arrêté.
+  **Commit c9eaed1 sur `net-playtest`** (R7.4-R7.8, 41 fichiers, code seulement comme 4a88040). `EtapeDefini.md`
+  (copie principale, non commité) : ligne Réseau, E4-1, E4-2, « Joueur 2 est vaincu », `UE_SKIP_UBT_SDK_SETUP`.
+  Suite : forme de l'indicatif (question posée), E4-1 et E4-2 sur `net-playtest`, puis fusion de `main` (très avancée :
+  J8a, AS1-AS2, IA1.1) dans `net-playtest`, recompilation, parties touchées, fusion dans `main` (accord des sessions).
+- 2026-10-27 : **E4-1 tranché : icône** (choix de l'utilisateur, parmi icône / mot / numéro d'équipe) : petit bouclier
+  vert devant un allié, épées croisées rouges devant un ennemi, dans le tableau des joueurs en partie (haut droite) ;
+  identique en fr/en/ja ; deux petites icônes à dessiner. E4-2 : nom rayé d'un joueur vaincu.
+- 2026-10-27 : E4-1/E4-2 découpés : **B8a** règle (relation Vous / Allié / Ennemi dans `FHOLPlayersTableRow`,
+  `HOLForumRules::GetPlayersTable`) + nom rayé d'un vaincu (test rouge d'abord) ; **B8b** deux icônes (bouclier vert,
+  épées rouges : PNG par script, `Texture2D` importées, cuites dans le paquet) et leur affichage ; **B8c** captures
+  fr/en/ja et scénario (boucle à part). **B8a lancée** (sous-agent, 15 min).
+- 2026-10-27 : **B8a faite** (sous-agent, 15 min), Glorfindel, non commité. `EHOLPlayerRelation { None, Self, Ally,
+  Enemy }` et `bStruck` (= vaincu) dans `FHOLPlayersTableRow` (`HOLForumRules`), relation par
+  `HOLVictoryRules::GetCamp` ; spectateur = `None` (pas d'icône, vaincu rayé quand même) ; « Vous » = `Self`, rien
+  devant. `Shown` : « slot 1 ally … », « slot 2 enemy … defeated greyed struck » (« you » gardé). Test
+  `Victory.Forum.PlayersTable` (Alice/Bob/Carol, vu par 0, 2 et spectateur) **rouge** puis vert ×2 ; `Hold.Display`
+  et deux regex de `quick_check.ps1` (l. 2129, ~4643) adaptées ; `-Parts tests` **182/182**. HUD : barre de 2 px dans
+  un `UOverlay` sur le nom (couleur du nom, opacité 0,45), `UImage PlayerRelation%d` 16 px caché avant le nom
+  (`PlayerRelations`, branché dans `RefreshPlayersTable`, commentaire « E4-1: B8b »). Pas vu à l'écran (B8c).
+  **B8b lancée** : icônes (PNG par PIL, `Texture2D` sous `/Game/UI/Icons` par script éditeur, cuisson par
+  `DirectoriesToAlwaysCook`).
+- 2026-10-27 : **B8b arrêtée au minuteur**, finie par la session principale. `Tools/Editor/make_ui_icons.py` (PNG
+  64 px par PIL, hors éditeur ; import en `Texture2D` `/Game/UI/Icons/T_Icon_Ally`, `T_Icon_Enemy` dans l'éditeur,
+  groupe UI, sans mips), `+DirectoriesToAlwaysCook=(Path="/Game/UI/Icons")`, `HOLRelationIcons::GetIconPath`, test
+  `UI.RelationIcons.Choice` **rouge** (« texture … not null ») puis, après import, rouge encore sur la largeur
+  (`GetSizeX()` = 0 sous `-nullrhi`) → `GetImportedSize()` → vert ×2 ; `-Parts tests` **183/183**.
+  **B8c (captures)** par la session principale : `lobby_match -Rejoin -Window 10` (tableau d'Alice) : épées rouges devant
+  Bob ; rayé d'abord **faux** (pavé de la couleur du nom sur tout « Bob » : l'image prenait la hauteur de la ligne) →
+  barre dans une `USizeBox` de 2 px : trait fin ; « Vous » décalé de ~10 px (place de l'icône perdue sur sa ligne) →
+  icône dans une `USizeBox` 16×16 toujours là sauf pour un spectateur : noms alignés. Scénario `ally_combat` hors écran
+  fr / en / ja : bouclier vert devant « Joueur 3 » (allié), épées devant « Joueur 2 », aligné, sans carrés en japonais.
+  Vérification `quick_check -Parts tests,menu,net,lobby` lancée (B8a a touché deux regex de `quick_check.ps1`).
+- 2026-10-27 : vérification après B8 : `-Parts tests` **183/183**, menu fr/en/ja **PASS**, `lobby` **PASS** ; `net` : FAIL
+  (barre de vie d'une unité intacte, aléa déjà noté), PASS, puis FAIL (client 1 arrêté après « arrows », client 2 en
+  attente de son drapeau) : machine chargée (même aléa noté par la session IA le même jour), sans rapport avec le
+  tableau. Essai proposé à l'utilisateur : `play.ps1 ally_combat -Root Glorfindel`, puis `hol.Victory.Defeat 2` (allié
+  rayé). Captures : scratchpad `ally_zoom.png`, `table_zoom3.png`. Rien commité depuis c9eaed1.
+- 2026-10-27 : E4-1 / E4-2 **validés par l'utilisateur** (« parfait ») : **commit 70f4a00 sur `net-playtest`**.
+  `EtapeDefini.md` (copie principale) : lignes E4 retirées, ligne Réseau à jour. **Suite** : fusion de `main` dans
+  `net-playtest` (main très avancée : J8a, AS1-AS2, IA1.1 ; conflits probables sur `HeroesOfLibertyGameModeBase.cpp`,
+  `quick_check.ps1`), recompilation, parties touchées, puis avance de `main` (accord des sessions actives) et commit DOC
+  (`NetPlaytestInProgress.md`, `EtapeDefini.md`) ; puis R8.
+- 2026-10-27 : **Fusion de `main` (7c48518, 29 commits : J8a, AS1-AS2, rendus, etc.) dans `net-playtest`** en cours
+  (Glorfindel, `merge --no-commit`). Un conflit, `lobby_match.ps1` : gardé les deux côtés (`Bob2` + signal
+  `bob_gives_up` de main ; `-PlayerName=$Name` + `-as-exit-on-error` de main). Gestionnaire non touché par main.
+  `build.ps1` **PASS** (1937 s, machine chargée). Vérification lancée : `-Parts tests,menu,net,lobby`, `-Rejoin`,
+  `-Rejoin -Window 10`. Fusion non commitée tant que ce n'est pas vert.
+- 2026-10-27 : vérification de la fusion : tests **203/203**, menu fr/en/ja **PASS**, `-Rejoin` **PASS**, `-Rejoin -Window
+  10` **PASS**. `lobby` FAIL ×2 « Carol never in the match » : **serveur cuit périmé** (cuit à 11 h, avant la fusion) :
+  ensure Iris « CreateReplicationProtocol Id mismatch … HOLGameState » chez Carol (spectatrice) → recuisson
+  (`net_match -Stage` après 20 s sans UBT) puis `-Parts lobby` lancés. `net` FAIL ×2 : (1) client 2 « Group 1: empty »
+  (Maj relâchée avant « & » sous la charge ; client 1 a réussi la même étape) ; (2) client 1 figé sur « Waiting on
+  static mesh SM_Arrow being ready » après « arrows » (vu aussi à 14:42 avant la fusion ; `net` vert une fois à 14:3x
+  sur le code de B8) : aléa de charge, à relancer au calme.
+- 2026-10-27 : serveur recuit (16:57) ; `net_match -Stage` laisse ensuite deux clients fenêtrés et un serveur ouverts
+  (fermés à la main : son serveur faisait échouer `lobby` par « 1 server(s) of this copy still running »).
+  **Cause des rouges `net` / `lobby` depuis la fusion : le serveur de débogage Angelscript** (AS1 dans `main`) : chaque
+  jeu écoute le port par défaut, les extensions Angelscript de VS Code (une par fenêtre) s'y connectent, et le jeu se
+  fige en boucle sur « Sending debug database took 1.0 seconds » (même numéro d'image) : Alice figée → salon expiré →
+  404 ; serveur de `net` pareil. Seule option du moteur : **`-asdebugport=`** ; `-asdebugport=0` = « listening on
+  0.0.0.0:0 », aucune connexion reçue. Ajouté aux 7 lancements de `quick_check.ps1`, `lobby_match.ps1` (jeux et
+  serveur-éditeur), `net_match.ps1`. Le serveur cuit n'ouvre pas ce port. **À dire à toutes les sessions** (leurs
+  tests depuis AS1 en souffrent). Vérification `-Parts net,lobby` relancée.
+- 2026-10-27 : après `-asdebugport=0` : `-Parts net,lobby` **PASS ×2** (305 s, 333 s, 0 connexion de débogage),
+  `tests,menu` **PASS ×2** (203/203) après un plantage isolé du moteur au démarrage du jeu solo (assertion
+  `InheritedContext.cpp:130`, fil `HttpConnectionPool`, image 0 ; non revu). **Commit de fusion 6608705** sur
+  `net-playtest` (main 7c48518 + `-asdebugport=0` dans les 7 lancements). Sessions prévenues (1b, 15, 99, b8, bc) ;
+  bc le met provisoirement dans `quick_check.ps1` de la copie principale puis le retire.
+  **Avance de `main` arrêtée** : `main` est passée à 15b7664 (D485, dépôt au clic droit) → nouvelle fusion à faire ;
+  et la copie principale a du code non commité d'une autre session (héros : `HOLGameState.*`, `HOLPlayerState.*`,
+  `HOLHeroSheet.*`, `HOLUnitReplication*`, `HOLGameScreen.cpp`, `HOLNetTests.cpp`) qui recoupe la branche
+  (`HOLGameState.*`, `HOLGameScreen.cpp`, `HOLNetTests.cpp`) : une avance rapide dans la copie principale échouerait.
+  Question posée à l'utilisateur.
+- 2026-10-27 : choix de l'utilisateur : **refusionner puis attendre**. `main` 15b7664 (D485) fusionnée dans
+  `net-playtest` (sans conflit ; `HOLGatherProcessor::Unload` garde `DepositLoad`), compilation + `-Parts
+  tests,menu,gather,net,lobby` en cours, non commité. Copie principale : la session **Héros (mycrusader-bc, J8a.3)** y
+  code (fiches de héros) et va committer ses boucles 1-3 ; elle préviendra. L'**Arbalétrier (mycrusader-99)** avance
+  `main` en ce moment (son `quick_check.ps1` : `UE_SKIP_UBT_SDK_SETUP` en tête et attente des clients `net` 300 s : à
+  garder avec `-asdebugport=0` à la prochaine fusion). Ordre : attendre l'Arbalétrier et le commit Héros, refusionner
+  `main` une dernière fois, tests touchés, puis avance rapide de `main` avec l'accord de bc.
+- 2026-10-27 : fusion D485 : build PASS (83 s), tests 203/203, menu fr/en/ja, camera 2p/8p, gather, footprints **PASS** ;
+  `net` FAIL sur un seul point « manager: empty once, last » : Bob et Alice partis dans la même image (452/453), le
+  `Logout` de Bob voit le contrôleur d'Alice déjà en destruction → `empty` avant le `left` d'Alice (code de R3,
+  174a0f4 ; aléa noté dans `EtapeDefini.md` avec le remède : vérifier « plus personne » à l'image suivante) ; `lobby`
+  FAIL : serveur cuit périmé encore (D485 ajoute la RPC `ServerDropOffUnits` : « protocol mismatch »). **À retenir** :
+  toute fusion qui touche une classe répliquée oblige à recuire le serveur avant `-Parts lobby`.
+  L'utilisateur : l'Arbalétrier a fini (main = 5292330), le Héros committe. Fusion D485 non commitée : la prochaine
+  fusion (crossbow + héros) la recouvrira.
+- 2026-10-27 : Héros (bc) a committé **de72042** (J8a.3 boucles 1-3) : accord pour fusionner puis avancer `main`.
+  Fusion de `main` (5292330 crossbow + de72042) dans `net-playtest` : conflits `HOLGameState.cpp` (fonctions du
+  bandeau et des fiches de héros au même endroit : les deux gardées) et localisation (fichiers générés : version de
+  `main` prise, à régénérer : GatherText → `fill_po.py` → GatherText). Compilation en cours.
+  **Demande de bc, à faire après l'avance** (étape à part, test rouge d'abord) : au retour d'un joueur (R7), recopier
+  `AHOLPlayerState::HeroPrivate` (XP, recharges, heure de mort) dans le nouveau PlayerState, comme le stock.
+- 2026-10-27 : fusion crossbow + héros : localisation régénérée (GatherText → `fill_po.py` → GatherText : 322 textes,
+  0 clé inconnue ; attention, `-config=` en chemin absolu entre guillemets sous PowerShell, sinon « Game » sans .ini) ;
+  serveur recuit (18:23) ; tests **210/210**, menu, `lobby` **PASS**, `-Rejoin` et `-Window 10` **PASS**. `net` rouge
+  par collision avec les parties `net` de la session Héros dans la copie principale (toutes les copies sur 7777).
+  Demande de bc faite : **port de `net` propre à chaque copie** dans `quick_check.ps1` (7800 + 10 × n : MyCrusader 0,
+  Elrond 1, Arwen 2, Glorfindel 3, Haldir 4, Galadriel 5, Celeborn 6, autre 7-9). Puis `net` vert, puis rouge
+  « empty once, last » (2e fois) → **corrigé** : `Logout` remet la vérification « plus personne » à l'image suivante
+  (`SendEmptyIfNobodyLeft`, `bEmptyCheckQueued`) ; ligne d'aléa retirée d'`EtapeDefini.md`. Vérification en cours
+  (`net` ×3, `tests,lobby`, `-Rejoin`, `-Window 10`).
+- 2026-10-27 soir : fusion de 75a0667 (héros, phase « net hero » de `quick_check`) sans conflit, `net` ×2 (« net hero
+  sheets » PASS ×2 ; un passage avec l'aléa connu de barre de vie). Accord de bc → **`main` avancée à e5af3b7** (avance
+  rapide, copie principale : R7, retours E4, `-asdebugport=0`, port `net` par copie, ordre left / empty), puis
+  **9724a01** : `play.ps1` (scénarios de l'utilisateur) avec `UE_SKIP_UBT_SDK_SETUP=1` et `-asdebugport=0`. Sessions
+  prévenues. `EtapeDefini.md` : ligne Réseau (R1-R7 dans `main`), « Joueur 2 est vaincu », ligne UBT retirée (réglé).
+  **R7 clos.** Suite : **R7.10** demande de bc (recopier `HeroPrivate` au retour), puis R8 (mise en place chez les amis :
+  demande l'utilisateur).
+- 2026-10-27 : **R7.10 lancée** (sous-agent, 15 min, Glorfindel) : fiche privée du héros (`FHOLHeroPrivateSheet` : XP,
+  recharges, heure de mort) dans le nouveau PlayerState au retour. Source : `UHOLHeroSubsystem::Sheets` (serveur),
+  copiée par `WriteCopies` ; test sur la vraie chaîne (`SetXP`, départ, retour) d'abord, puis réécriture au retour si
+  rouge.
+- 2026-10-27 : **R7.10 faite** (sous-agent, 12 min), Glorfindel, **non commitée** (attend l'accord de l'utilisateur).
+  Lu : `WriteCopies` tourne à chaque pas et le sous-système de héros garde `Sheets[Slot]` pendant l'absence ; le
+  PlayerState neuf avait XP 0 jusqu'à la fin du pas suivant. Ajout `UHOLHeroSubsystem::RewriteCopies(Slot)`, appelé par
+  `AHOLGameState::GiveSlotStock` au retour. Test `Match.DisconnectHeroSheet` (`SetXP` 12, départ, retour sans pas) :
+  **rouge** (« expected 12, but it was 0 ») puis vert ×2 ; `-Parts tests` **211/211** ; `lobby_match -Rejoin` **PASS** ;
+  `-Parts net` **PASS** (« net hero sheets » PASS). Recharges : pas encore produites par la chaîne, le test compare la
+  fiche entière. bc prévenue. Suite : commit après accord, avance de `main` (accord des sessions), puis R8.
+- 2026-10-27 soir : outillage, Glorfindel, **non commité** (avec R7.10) : `net_match.ps1 -StageOnly` (cuit le serveur
+  et s'arrête : vérifié, 0 processus laissé) ; `quick_check -Parts lobby` : si `lobby_match` échoue et que le serveur cuit
+  est plus vieux que `UnrealEditor-HeroesOfLiberty*.dll`, ligne KO « cooked server newer than the code … run
+  net_match.ps1 -StageOnly » (chemin d'échec non exercé). `-Parts lobby` **PASS** (216 s) sur le serveur recuit.
+  Accords donnés : IA (mycrusader-1f) avance `main` à ai-ia1 3ae16b3 ; Héros (bc) boucle 4b dans Celeborn, sans
+  recoupement avec R7.10 ; le premier qui avance `main` prévient l'autre.
+  **À la reprise** : demander à l'utilisateur l'accord pour R7.10 + outillage (fichiers : `HOLHeroSubsystem.*`,
+  `HOLGameState.cpp`, `HOLDisconnectTests.cpp`, `net_match.ps1`, `quick_check.ps1`), commit sur `net-playtest`,
+  fusion de `main` (IA1.2 ferme, peut-être héros 4b), recompilation, `-StageOnly`, parties touchées (tests, net, lobby),
+  `-Rejoin`, avance de `main` avec l'accord des sessions ; puis R8 avec l'utilisateur.
+- 2026-10-27 soir : accord de l'utilisateur → **commit 468c701** (R7.10 + `-StageOnly` + ligne « serveur cuit périmé »).
+  Fusion de `main` 6cddb93 (ferme IA1.2) sans conflit : build, recuisson (`-StageOnly`), tests **218/218**, menu,
+  `net` (+ hero sheets), `lobby`, `-Rejoin` **PASS** → a416b75. Accords IA (1f) et Héros (bc) → **`main` avancée à
+  a416b75**. **Suite : R8** (mise en place chez les amis, avec l'utilisateur).

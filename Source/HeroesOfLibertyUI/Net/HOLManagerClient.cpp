@@ -295,6 +295,7 @@ void UHOLManagerClient::Enter(const FString& Route, const FString& Body, FHOLMan
 		{
 			WeakThis->LobbyId = Lobby.Id;
 			WeakThis->LobbyToken = Token;
+			WeakThis->bRejoinedLobby = false;
 			WeakThis->LobbyLoss = FHOLManagerError();
 			UE_LOG(LogHOLNet, Log, TEXT("Manager: in lobby %s as %s, slot %d"), *Lobby.Id, *Lobby.You, SlotIndex);
 		}
@@ -444,11 +445,20 @@ bool UHOLManagerClient::OpenMatch(const int32 Port, const FString& PlayerName, c
 	return true;
 }
 
+void UHOLManagerClient::KeepRejoinedLobby(const FString& InLobbyId)
+{
+	UE_LOG(LogHOLNet, Display, TEXT("Manager: back in the match of lobby %s, no token"), *InLobbyId);
+	LobbyId = InLobbyId;
+	LobbyToken.Reset();
+	bRejoinedLobby = true;
+}
+
 void UHOLManagerClient::ReturnToLobby(FHOLManagerLobbyDone Done)
 {
 	const FString Id = LobbyId;
 	const FString Name = MatchPlayerName;
 	MatchPlayerName.Reset();
+	bRejoinedLobby = false;
 	UE_LOG(LogHOLNet, Display, TEXT("Manager: back to lobby %s as %s"), *Id, *Name);
 	JoinLobby(Id, Name, MoveTemp(Done));
 }
@@ -457,11 +467,13 @@ void UHOLManagerClient::ForgetLobby()
 {
 	UE_LOG(LogHOLNet, Display, TEXT("Manager: lobby %s forgotten"), *LobbyId);
 	LobbyToken.Reset();
+	bRejoinedLobby = false;
 	MatchPlayerName.Reset();
 }
 
 void UHOLManagerClient::LeaveLobby()
 {
+	bRejoinedLobby = false;
 	if (!IsInLobby())
 	{
 		return;

@@ -339,27 +339,46 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridTablesTest, "HeroesOfLiberty.Com
 bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 {
 	// The builders' grid of the table (D313, the user's 3rd trial of G.1): the panel of age I, one row per category, A house,
-	// Z lumber camp, E mining camp, R mill (economic), Q barracks (military); every type of age 0 for now; the centre is nobody's to build.
+	// Z lumber camp, E mining camp, R mill (economic), Q barracks, S archery range (military, AR-Q2a), W farm (economic,
+	// IA1.2-Q1: the economic row is full); every type of age 0 for now; the centre is nobody's to build.
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("five buildable types"), Context.Buildable.Num(), 5);
+	TestEqual(TEXT("seven buildable types"), Context.Buildable.Num(), 7);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
 	TestTrue(TEXT("R: mill (D346)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 3).TypeName == HOLBuildingTypeNames::Mill);
 	TestTrue(TEXT("Q: barracks"), HOLCommandGrid::GetAgeBuilding(Context, 0, 4).TypeName == HOLBuildingTypeNames::Barracks);
 	TestTrue(TEXT("Q: a build command"), HOLCommandGrid::GetAgeBuilding(Context, 0, 4).Command == EHOLGridCommand::Build);
+	TestTrue(TEXT("S: archery range (AR-Q2a)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 5).TypeName == HOLBuildingTypeNames::ArcheryRange);
+	TestTrue(TEXT("S: a build command"), HOLCommandGrid::GetAgeBuilding(Context, 0, 5).Command == EHOLGridCommand::Build);
+	// IA1.2 (F4): the farm on W, cell 8 (A Z E R / Q S D F / W X C V, make_game_input.py's GRID_KEYS): row 3, column 1.
+	constexpr int32 FarmCell = 8;
+	TestEqual(TEXT("W: row 3"), FarmCell / HOLCommandGrid::GridColumns, 2);
+	TestEqual(TEXT("W: column 1"), FarmCell % HOLCommandGrid::GridColumns, 0);
+	TestTrue(TEXT("W: farm (IA1.2-Q1)"), HOLCommandGrid::GetAgeBuilding(Context, 0, FarmCell).TypeName == HOLBuildingTypeNames::Farm);
+	TestTrue(TEXT("W: a build command, age I reached"), HOLCommandGrid::GetAgeBuilding(Context, 0, FarmCell).Command == EHOLGridCommand::Build
+		&& !HOLCommandGrid::GetAgeBuilding(Context, 0, FarmCell).bGreyed);
+	TestTrue(TEXT("W with age I chosen: builds the farm"), HOLCommandGrid::PressKey(Context, 0, FarmCell).Target == EHOLGridKeyTarget::Build
+		&& HOLCommandGrid::PressKey(Context, 0, FarmCell).TypeName == HOLBuildingTypeNames::Farm);
+	// The other cells of panel I unchanged: D F and X C V empty.
+	for (const int32 Cell : { 6, 7, 9, 10, 11 })
+	{
+		TestTrue(*FString::Printf(TEXT("panel I, cell %d: no building"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 0, Cell).IsNone());
+	}
 	for (const FHOLBuildable& Buildable : Context.Buildable)
 	{
 		TestEqual(*FString::Printf(TEXT("%s: age I"), *Buildable.TypeName.ToString()), Buildable.Age, 0);
-		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology.
+		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology;
+		// the farm alone stands on the third row (IA1.2-Q1: the economic row of age I is full).
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(Buildable.TypeName);
 		if (TestNotNull(*FString::Printf(TEXT("%s in the table"), *Buildable.TypeName.ToString()), Type))
 		{
 			TestTrue(*FString::Printf(TEXT("%s: a cell of the grid"), *Buildable.TypeName.ToString()), Buildable.Cell >= 0 && Buildable.Cell < HOLCommandGrid::NumCells);
-			TestEqual(*FString::Printf(TEXT("%s: the row of its category"), *Buildable.TypeName.ToString()),
-				Buildable.Cell / HOLCommandGrid::GridColumns, HOLCommandGrid::GetCategoryRow(Type->Category));
+			const bool bFarm = Buildable.TypeName == HOLBuildingTypeNames::Farm;
+			TestEqual(*FString::Printf(TEXT("%s: the row of its category%s"), *Buildable.TypeName.ToString(), bFarm ? TEXT(" (but the farm: row 3)") : TEXT("")),
+				Buildable.Cell / HOLCommandGrid::GridColumns, bFarm ? FarmCell / HOLCommandGrid::GridColumns : HOLCommandGrid::GetCategoryRow(Type->Category));
 		}
 	}
 	TestEqual(TEXT("economic: row 1"), HOLCommandGrid::GetCategoryRow(EHOLBuildingCategory::Economic), 0);
@@ -370,7 +389,8 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Context, Cell).IsNone());
 	}
 
-	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms, E Archer (J7c.1) once finished; a site produces nothing, Q cancels it.
+	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms once finished (the Archer of J7c.1 went to the Archery range, AR-Q2);
+	// a site produces nothing, Q cancels it.
 	const FHOLBuildingTypeRow* BarracksType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
 	if (TestNotNull(TEXT("Barracks in the building type table"), BarracksType))
 	{
@@ -380,11 +400,9 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		Barracks.Produces = BarracksType->Produces;
 		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Barracks, 0);
 		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Barracks, 1);
-		const FHOLGridCommand E = HOLCommandGrid::GetCommand(Barracks, 2);
 		TestTrue(TEXT("Barracks, A: produce a Spearman"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Spearman")));
 		TestTrue(TEXT("Barracks, Z: produce a Man-at-arms"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("ManAtArms")));
-		TestTrue(TEXT("Barracks, E: produce an Archer"), E.Command == EHOLGridCommand::Produce && E.TypeName == FName(TEXT("Archer")));
-		for (int32 Cell = 3; Cell < HOLCommandGrid::NumCells; ++Cell)
+		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
 			TestTrue(*FString::Printf(TEXT("Barracks, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Barracks, Cell).IsNone());
 		}
@@ -396,6 +414,27 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		}
 		TestTrue(TEXT("Barracks site: the cancel cell cancels it"),
 			HOLCommandGrid::GetCommand(Barracks, HOLCommandGrid::CancelCell).Command == EHOLGridCommand::CancelConstruction);
+	}
+	// The Archery range's grid (AR-Q2a): A Archer, Z Crossbowman once finished; nothing else, and no Archer left at the Barracks.
+	const FHOLBuildingTypeRow* RangeType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::ArcheryRange);
+	if (TestNotNull(TEXT("Archery range in the building type table"), RangeType))
+	{
+		FHOLGridContext Range;
+		Range.bOwnBuilding = true;
+		Range.bBuildingFinished = true;
+		Range.Produces = RangeType->Produces;
+		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Range, 0);
+		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Range, 1);
+		TestTrue(TEXT("Archery range, A: produce an Archer"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Archer")));
+		TestTrue(TEXT("Archery range, Z: produce a Crossbowman"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("Crossbowman")));
+		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		{
+			TestTrue(*FString::Printf(TEXT("Archery range, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Range, Cell).IsNone());
+		}
+	}
+	if (BarracksType)
+	{
+		TestFalse(TEXT("no Archer at the Barracks any more (AR-Q2)"), BarracksType->Produces.Contains(FName(TEXT("Archer"))));
 	}
 	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const FHOLBuildable& Type)
 	{

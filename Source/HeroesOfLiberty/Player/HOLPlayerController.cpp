@@ -929,7 +929,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Development and scripted checks of the placement (J6a.3, D311), until the Peasant's grid of J6a.5. */
 	FAutoConsoleCommand BuildPlaceCommand(
 		TEXT("hol.Build.Place"),
-		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp|Mill|Barracks>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
+		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp|Mill|Barracks|ArcheryRange>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const FName TypeName(Args.IsEmpty() ? TEXT("House") : *Args[0]);
@@ -1863,6 +1863,12 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	}
 }
 
+bool AHOLPlayerController::IsPickableSource(const FHOLSourceTypeRow& Type)
+{
+	// IA1.2 F7: a linked source (a farm field) has no shape of its own: its building is clicked.
+	return !Type.Linked;
+}
+
 int32 AHOLPlayerController::FindSourceAt(const FVector2D& ViewportFraction) const
 {
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
@@ -1882,7 +1888,8 @@ int32 AHOLPlayerController::FindSourceAt(const FVector2D& ViewportFraction) cons
 	{
 		const FHOLSource& Source = All[Index];
 		const FHOLSourceTypeRow* Type = Source.IsStanding() ? Sources->GetType(Source.TypeIndex) : nullptr;
-		if (!Type)
+		// IA1.2 F7: a farm field is never clicked, its farm is.
+		if (!Type || !IsPickableSource(*Type))
 		{
 			continue;
 		}
@@ -2116,7 +2123,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		return;
 	}
 	// A resource source under the cursor (J5, D298): its ground point, where the brief mark shows.
-	const int32 SourceIndex = FindSourceAt(ViewportFraction);
+	int32 SourceIndex = FindSourceAt(ViewportFraction);
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
 	const TArray<uint32> Own = GetOwnSelectedUnits();
@@ -2130,6 +2137,20 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		RequestBuildUnits(Own, Site, bShift);
 		OnOrderGiven.Broadcast(Site->GetActorLocation());
 		return;
+	}
+	// IA1.2 F7: one of the player's farms finished under the cursor, no source drawn over it: its field is the source
+	// clicked (FindSourceAt never takes it), gathered by the selected units or the rally point of the selected buildings,
+	// as a source. An ally's or an enemy's farm stays a building (a move, an attack).
+	if (!Source && Sources && HOLPlayerState && (!Own.IsEmpty() || GetOwnSelection() || HasBuildingGroup()))
+	{
+		AHOLBuilding* Farm = !Own.IsEmpty() ? Site : FindBuildingAt(ViewportFraction);
+		const int32 Field = Farm && Farm->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() ? Farm->FindLinkedSourceHere() : INDEX_NONE;
+		if (Sources->GetSources().IsValidIndex(Field))
+		{
+			SourceIndex = Field;
+			Source = &Sources->GetSources()[Field];
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: on farm %s: its field, source %d"), *DescribeBuilding(Farm), Field);
+		}
 	}
 	if (!Own.IsEmpty())
 	{
@@ -2159,6 +2180,17 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s%s"), Own.Num(), *DescribeBuilding(EnemyBuilding), bShift ? TEXT(", queued") : TEXT(""));
 			RequestAttackBuilding(Own, EnemyBuilding, bShift);
 			OnAttackOrderGiven.Broadcast(EnemyBuilding->GetActorLocation());
+			return;
+		}
+		// D485 (EtapeDefini L): one of the player's finished buildings taking deliveries (its sites went above): the units
+		// carrying what it takes unload there, the others walk to the ground point; the server sorts them (it knows the loads).
+		const FHOLBuildingTypeRow* SiteType = Site ? Site->GetType() : nullptr;
+		if (Site && SiteType && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->NeedsBuilders()
+			&& Site->TakesDeliveries() && !SiteType->Accepts.IsEmpty())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units drop off at %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
+			RequestDropOffUnits(Own, Site, Ground, bShift);
+			OnOrderGiven.Broadcast(Site->GetActorLocation());
 			return;
 		}
 		if (Source)
@@ -3496,6 +3528,24 @@ void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>&
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::Build(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, const bool bQueue)
+{
+	if (UnitIds.Num() > 0 && Building)
+	{
+		ServerDropOffUnits(TArray<uint32>(UnitIds), Building, Point, bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point,
+	const bool bQueue)
+{
+	// The order names the player: only its own units, at its own building (D288, D485; checked again by the gatherers' step).
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::DropOff(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, Point, bQueue);
 	}
 }
 
