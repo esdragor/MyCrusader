@@ -42,6 +42,7 @@ void FHOLMatchConfig::Normalize()
 		}
 	}
 	StartingPeasants = FMath::Max(StartingPeasants, -1);
+	StartingHero = FMath::Clamp(StartingHero, -1, 1);
 	Version = CurrentVersion;
 }
 

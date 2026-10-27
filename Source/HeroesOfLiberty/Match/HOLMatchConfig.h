@@ -112,6 +112,15 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	UPROPERTY()
 	int32 StartingPeasants = -1;
 
+	/**
+	 * J8a.2 (J8a-Q2): whether each occupied slot gets its hero (the Paladin-Commander) by its main forum at the start; -1
+	 * (no such field in the file, the menu, the lobby) = the rule of the game, UHOLMatchSettings::bStartingHero; 0 none,
+	 * 1 one. The test scenarios (hol.Scenario) read it from their .json ("startingHero": true), none when the field is
+	 * missing. Not shown in the menu.
+	 */
+	UPROPERTY()
+	int32 StartingHero = -1;
+
 	bool operator==(const FHOLMatchConfig&) const = default;
 
 	/** What runs without a configuration (stress test, BattleMap opened directly): one human in slot 0. */

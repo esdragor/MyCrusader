@@ -28,4 +28,12 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Economy", meta = (ClampMin = "0"))
 	int32 StartingPeasants = 5;
+
+	/**
+	 * J8a.2 (J8a-Q2): each occupied slot (human or AI) gets its hero by its main forum at the start of a real match (menu,
+	 * lobby), free and outside the population. A match configuration can ask otherwise (FHOLMatchConfig::StartingHero:
+	 * the test scenarios ask for none unless their .json says otherwise).
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Economy")
+	bool bStartingHero = true;
 };

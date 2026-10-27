@@ -1290,7 +1290,7 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 |---|---|---|---|
 | J8a.0 Pièces | Kit du paladin (J8a-Q3 révisée) : épée longue, bouclier au soleil, tabard, pèlerine, épaulières dorées, heaume à cimier soleil ; `SKM_Hero` dans `SOLDIER_MESHES` ; gestes de l'Homme d'armes ; aperçus PNG validés par l'utilisateur | non | **fait** (2026-10-26, validé ; J8a.0 étendard et cape, J8a.0b cape animée abandonnés) |
 | J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | **fait** (2026-10-27 ; PV et dégâts en float, choix de l'utilisateur) |
-| J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | — |
+| J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | **fait** (2026-10-27 ; F4 contrôlé par `build:hero`) |
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
 | J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
 | J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
@@ -7376,3 +7376,45 @@ d'épée).
   (net seul : Alice, lente au démarrage pendant une compilation, arrivée après Bob, n'a jamais vu le bandeau
   d'attente ; aléa d'ordre d'arrivée, à noter dans `EtapeDefini.md`), 2e passage tel quel **PASS** (194 s, 193/193).
   **J8a.1 faite**, en attente de l'accord de l'utilisateur pour le commit.
+- (J8a.1, 2026-10-27) **Commit e36efe9** sur `main` (accord de l'utilisateur, sans essai : le héros n'apparaît qu'en
+  J8a.2) ; `EtapeDefini.md` : ligne du héros et aléa `net` (client 2 arrivé après le client 1) ; lignes d'une autre
+  session (Récolte, D486) laissées hors du commit. **Suite : J8a.2** (naissance près du forum, comportement de soldat,
+  F4, fabrication de `SKM_Hero` et `TP_Hero` et `WalkPlayRate` à l'échelle 1,8 ; nom du héros dans `HOLGameNames.cpp`).
+- (J8a.2, 2026-10-27) **J8a.2 lancée**, en trois boucles l'une après l'autre : (1) fabrication de `SKM_Hero` et
+  `TP_Hero` (pièces de J8a.0) et ligne `Hero` dessus ; (2) naissance près du forum (comme les Paysans de départ
+  d'IA1.1, réglage à part pour garder les scénarios et `quick_check` sans héros) ; (3) F4 (une fois : sélection, deux
+  fois : caméra). Boucle 1 confiée à un sous-agent (copie principale).
+- (J8a.2, 2026-10-27) **Boucle 1 faite** (sous-agent, non commitée) : `SKM_Hero` (7 pièces, 4 LOD, pièces légères dès
+  le LOD 3) et `TP_Hero` (mêmes 6 séquences que `TP_ManAtArms`, indices 2/3/4/5 gardés) par `make_peasant_mesh.py
+  --soldiers --only=SKM_Hero` (entrée `SKM_Hero` dans `SOLDIERS`) ; ligne `Hero` dessus, `UnitTypes.uasset` réimporté ;
+  `Hero.Type` (vu rouge) charge les deux et compare squelette, LOD et séquences à l'Homme d'armes. `-Parts tests` PASS
+  (193/193, 123 s, machine chargée par Glorfindel). `--soldiers` réenregistre toujours
+  `M_UnitPlayerColorWeapons.uasset` (mêmes nœuds, autres octets) : restauré. Aucun rendu Unreal : allure et pieds à
+  juger quand le héros apparaîtra (boucle 2). Boucle 2 lancée (naissance).
+- (J8a.2, 2026-10-27) **Boucle 2 faite** (sous-agent, ~35 min au lieu de 15 : machine chargée, une compilation de
+  691 s ratée puis 413 s ; non commitée) : réglage `bStartingHero` (vrai dans les vraies parties), `StartingHero` de la
+  configuration (-1 réglage, 0, 1 ; scénarios 0 sauf `"startingHero"` dans le .json) ; `quick_check` (solo et
+  serveur) et `building_crowd` / `crossings` / `packaged_smoke` sans héros ; règle pure `FHOLStartRules::GetHeroLocation`
+  (rangée du Roi, 450 cm du bord du forum côté des naissances, 300 cm du côté du Roi : ni Paysans ni Roi touchés) ;
+  `SpawnStartingHero` après les Paysans ; hors population (vérifié) ; branches du Roi par catégorie, pas par nom ; nom
+  « Paladin-Commandant » (en « Paladin-Commander », ja « 聖騎士団長 » dans `fill_po.py`, **collecte des textes à
+  grouper** avec les autres chantiers). Tests `Match.StartingHero.Location/Count/Spawn` vus rouges ;
+  `-Parts tests,combat` PASS (89 s, 196/196). **Leçon** : sous une machine chargée, une boucle avec deux compilations
+  dépasse 15 min ; séparer ce qui ne compile pas (captures) de ce qui compile. Boucle 3a lancée : captures du héros
+  (rien à compiler), puis 3b : F4.
+- (J8a.2, 2026-10-27) **Boucle 3a faite** (captures hors écran, ~16 min, rien compilé) : scénario `hero_look`
+  (non suivi : 5 Paysans, héros, un Homme d'armes allié, marche de 16 m, 2 Hommes d'armes ennemis ; base de l'essai de
+  J8a.6). Vu : héros devant la rangée de Paysans, bloc de sélection « Paladin-Commandant 450 / 450 » ; de près,
+  épaulières dorées (le plus visible), heaume blanc à cimier doré, tabard blanc, épée longue, bras et jambes à la couleur
+  du joueur, un peu plus grand et bien plus large d'épaules que l'Homme d'armes ; aucune pièce flottante nette ; frappe
+  correcte. À hauteur de jeu : silhouette bleue avec un point doré (12-15 px). **À voir à l'essai** : bouclier presque
+  noir (souvent vu par la tranche), soleils dorés invisibles en 888 × 500, glissement des pieds non jugé (caméra qui
+  dérive après `hol.Camera.Focus`, captures en 888 × 500 malgré `-ResX`). Boucle 3b lancée : F4.
+- (J8a.2, 2026-10-27) **Boucle 3b faite** (sous-agent, ~20 min dont une compilation de 647 s ; non commitée) : F4
+  (`IA_Hero` dans `IMC_Game` par `make_game_input.py`) et `hol.Select.Hero` : 1er appui, le héros vivant du joueur
+  seul (caméra immobile) ; 2e appui quand il est seul sélectionné (par F4 ou autrement), caméra centrée sur lui ; sans
+  héros, rien (journal « Select hero: none », pas de message à l'écran pour l'instant). Contrôle `build:hero` de
+  `quick_check` par la vraie touche (`hol.UI.Key`) : vu rouge (F4 liée à rien), puis PASS (62 s) ; `-Parts tests,build`
+  PASS (163 s, 196/196). **J8a.2 faite**, en attente de l'accord de l'utilisateur pour le commit.
+- (J8a.2, 2026-10-27) **Commit** sur `main` avec l'accord de l'utilisateur (sans essai : l'essai est en J8a.6) ;
+  scénario `hero_look` commité comme base de l'essai. **Suite : J8a.3** (fiche réseau du héros, barre en proportion).
