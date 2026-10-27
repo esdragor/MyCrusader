@@ -72,6 +72,19 @@ Rien n'est tranché ici : les questions sont posées à l'utilisateur une à la 
     blocage pour les autres sessions ce midi. Un paquet complet se lance donc machine calme, ou en prévenant les
     autres sessions. Pour vérifier une étape d'après UAT, la lancer seule sur le paquet existant.
   - Validé par l'utilisateur, commité.
+- 2026-10-27 : AS2 dans main (a365967 ; avance de main faite à la main dans la copie principale : `EtapeDefini.md` et
+  `packaged_smoke.ps1` y portaient des changements non commités d'autres sessions, gardés). **AS-Q3 posée et tranchée :
+  A** (ci-dessous). Chantier en veille : rien à coder ici ; Elrond libéré.
+
+### AS-Q3 — Que fait le chantier après AS1 et AS2 ? (tranchée le 2026-10-27 : **A**)
+
+- **A — Rien à migrer maintenant** : le premier code neuf en script vient d'IA0.4 (cerveau de l'IA, `AIInProgress.md`)
+  et de J8a.4 (mort et retour du héros, `JourneyInProgress.md`) ; un fichier C++ ne passe en script que quand un
+  chantier va beaucoup le toucher (option D de D483), et la recette de migration s'écrit à ce premier cas réel.
+- B — Migrer un petit écran (`HOLEndBanner`, 215 lignes, 2 tests) comme essai : recette de migration d'avance, sans
+  gain pour le jeu.
+- C — Migrer `HOLBuilding` (~1 240 lignes) : vrai cas, mais long et en travers d'IA1 et du héros.
+- **Choix de l'utilisateur : A**, conforme à la recommandation (pas de travail sans usage).
 
 ## Côté projet (relevé du 2026-10-26)
 
