@@ -47,8 +47,6 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ## Bugs remontés
 
 ### Retours d'essai
-- Maj + déplacement puis Maj + **pose** d'un bâtiment : le déplacement est supprimé (la pose ne passe pas par la file des déplacements) *(`EtapeDefiniInProgress.md` M : M.1 en cours, tests rouges puis correctif, Elrond, branche `shift-queue` ; suivant M.2 essai)*
-- Maj + chantier puis Maj + déplacement : le déplacement est oublié, le Paysan bâtit puis s'arrête *(`EtapeDefiniInProgress.md` M)*
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
@@ -76,7 +74,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V5 dans `main` ; paliers après J8b (P-Q1, 2026-10-27)
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a (serveur par version) commitée dans Glorfindel
-- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers, M (file Maj) ouverte
+- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
 
 ### En pause
 - `UnitStatsInProgress.md` : stats des unités, reste la charge (D345.3) avec la cavalerie

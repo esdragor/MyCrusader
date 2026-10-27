@@ -1268,3 +1268,40 @@ inactif ; Maj : en file). Worktree `HeroesOfLiberty-Haldir`, branche `dropoff-cl
   compilations d'autres copies, ProjectShiva) ; aucune session n'a tué de jeu (toutes interrogées). Découpé : `tests`
   196/196, `production`, `move`, `gather` PASS (passage 2), `-Parts build` **PASS en 156 s** (cas `hero` de `main`
   compris), `-Parts formation,combat` **PASS en 114 s** (avec `UE_SKIP_UBT_SDK_SETUP=1`). Commit sur `dropoff-click`.
+
+## M — Maj : pose d'un bâtiment et déplacement après un chantier
+
+Restes de L, remontés au 3e essai de l'utilisateur (2026-10-27, lignes de « Retours d'essai » d'`EtapeDefini.md`) :
+
+1. **Maj + déplacement puis Maj + pose d'un bâtiment** : le déplacement est supprimé (la pose, `Place`, ne passe pas
+   par la file des déplacements). Attendu (AoE4) : le Paysan marche au point, puis va bâtir.
+2. **Maj + chantier puis Maj + déplacement** : le déplacement est oublié, le Paysan bâtit puis s'arrête. Attendu : il
+   bâtit, puis marche au point une fois le bâtiment fini.
+
+Règle : Maj met **tout** en file, dans l'ordre des clics, quel que soit le genre d'ordre (déplacement, source, chantier,
+pose, dépôt). Worktree `HeroesOfLiberty-Elrond`, branche `shift-queue` depuis `main` 6fdb7be.
+
+### Plan (boucles de 15 min, sous-agents)
+
+- **M.1** Tests rouges (`quick_check`, vraie chaîne : ordres du contrôleur avec Maj), un cas par bug, plus les
+  enchaînements voisins (Maj déplacement, Maj pose, Maj déplacement ; Maj chantier, Maj déplacement, Maj source) ;
+  correctif ; cas existants de L (`build:dropoff*`, `build:shiftwork`) toujours verts.
+- **M.2** Scénario d'essai (`dropoff_click` complété ou `shift_queue`), répétition hors écran, essai de l'utilisateur.
+- **M.3** Commit, fusion dans `main`, lignes retirées d'`EtapeDefini.md`.
+
+### Suivi
+
+- 2026-10-27 : étape ouverte (session principale du chantier tailles de carte, Elrond libéré). Rien codé.
+- 2026-10-27 : **M.1 lancée** (sous-agent, Elrond `shift-queue`) : tests rouges des deux enchaînements et de leurs voisins,
+  puis correctif ; rien commité avant l'essai.
+- 2026-10-27 (M.1, sous-agent, Elrond `shift-queue`) : cas `build:shiftplace` et `build:shiftsite` **rouges** sur le
+  binaire de `main` (P jamais approché, chantiers abandonnés), puis correctif : `FHOLBuildFragment::bMovesAfter` ; pose
+  en Maj par `IssueQueuedWorkOrder` (la pose passe par la file des déplacements) ; Maj sur un ouvrier qui a une file de
+  travail = mis en file après elle ; inactif en fin de file de travail si des déplacements suivent ; lignes de chaîne
+  d'un bâtisseur avec ses déplacements après (`AppendQueuedSteps`). Compilation PASS (196 s) ; les deux cas PASS (43 s,
+  puis 26 s) ; `-Parts tests,build,move,gather` **PASS en 114 s** (tests 232/232). Scénario `shift_queue` répété hors
+  écran (prêt, sans erreur). Incertain, à voir à l'essai : Maj arbre puis Maj déplacement attend la fin du bosquet
+  (comme Maj arbre puis Maj chantier, D309) ; une sélection mêlée attend le plus lent. Reste : essai (M.2), puis M.3.
+- 2026-10-27 : **essai de l'utilisateur : « tout m'a l'air bon »** (scénario `shift_queue`). Commit 1245e98 sur
+  `shift-queue`, fusion de `main` 07fe108 (R8a, sans code du jeu : tests de M.1 toujours valables), **dans `main` :
+  0a45afe** (avance rapide). **Étape M close** ; lignes retirées d'`EtapeDefini.md`.
