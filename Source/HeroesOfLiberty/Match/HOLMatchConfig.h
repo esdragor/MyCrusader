@@ -76,6 +76,15 @@ struct HEROESOFLIBERTY_API FHOLMatchSlot
 	UPROPERTY()
 	EHOLAIDifficulty Difficulty = EHOLAIDifficulty::Normal;
 
+	/**
+	 * IA0.4-Q3 (A): whether an AI slot's brain thinks (UHOLAIBrainSubsystem::GetThinkingSlots); off, the slot's units
+	 * only do what they are told (a passive target of a combat scenario or of quick_check). Read from a scenario's .json
+	 * as "aiBrain": false (FromJson; ToJson writes the converter's "bAIBrain", read back as well); missing = true.
+	 * Ignored for a human slot.
+	 */
+	UPROPERTY()
+	bool bAIBrain = true;
+
 	bool operator==(const FHOLMatchSlot&) const = default;
 };
 

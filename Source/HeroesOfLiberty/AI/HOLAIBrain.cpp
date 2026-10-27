@@ -6,6 +6,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 
@@ -76,6 +77,13 @@ void UHOLAIBrainSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
+int64 UHOLAIBrainSubsystem::GetStepIndex() const
+{
+	const UWorld* World = GetWorld();
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	return Simulation ? Simulation->GetStepIndex() : 0;
+}
+
 TArray<int32> UHOLAIBrainSubsystem::GetAISlots() const
 {
 	TArray<int32> Slots;
@@ -97,6 +105,20 @@ TArray<int32> UHOLAIBrainSubsystem::GetAISlots() const
 	return Slots;
 }
 
+TArray<int32> UHOLAIBrainSubsystem::GetThinkingSlots() const
+{
+	TArray<int32> Slots = GetAISlots();
+	const UWorld* World = GetWorld();
+	const AHOLGameState* State = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (State)
+	{
+		// The launch configuration, as the victory reads it (InitVictory, on the server).
+		const FHOLMatchConfig& Config = State->GetLaunchConfig();
+		Slots.RemoveAll([&Config](const int32 Slot) { return Config.Slots.IsValidIndex(Slot) && !Config.Slots[Slot].bAIBrain; });
+	}
+	return Slots;
+}
+
 bool UHOLAIBrainSubsystem::ThinkNow(int32 PlayerIndex)
 {
 	const UWorld* World = GetWorld();
@@ -115,7 +137,8 @@ bool UHOLAIBrainSubsystem::ThinkNow(int32 PlayerIndex)
 void UHOLAIBrainSubsystem::OnStepEnded(int64 StepIndex)
 {
 	const int32 Interval = GetThinkSteps();
-	for (const int32 Slot : GetAISlots())
+	// IA0.4-Q3: the slots whose brain the scenario switched off ("aiBrain": false) never think.
+	for (const int32 Slot : GetThinkingSlots())
 	{
 		// Spread: slot S thinks at the steps where (step + S) is a multiple of the interval.
 		if ((StepIndex + Slot) % Interval != 0)

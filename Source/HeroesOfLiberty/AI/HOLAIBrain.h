@@ -31,9 +31,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
 	int32 GetNumThoughts() const { return NumThoughts; }
 
+	/** The simulation's step index (the step just ended while the brain thinks at its tail); 0 without a simulation. For the decision log. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
+	int64 GetStepIndex() const;
+
 	/** The AI slots of the match (bot player states), by player index; empty without a game state. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
 	TArray<int32> GetAISlots() const;
+
+	/**
+	 * IA0.4 B2b (IA0.4-Q3 A): the AI slots whose brain is on (FHOLMatchSlot::bAIBrain of the game state's launch
+	 * configuration), by player index: the ones the step makes think. Every AI slot without an AHOLGameState.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
+	TArray<int32> GetThinkingSlots() const;
 
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

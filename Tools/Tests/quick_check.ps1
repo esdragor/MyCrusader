@@ -487,7 +487,7 @@ if ($Parts -contains "victory") {
     # Then the AI's King killed (hol.Victory.KillKing 1): its death, the message for another camp (no alert), its
     # defeat (King), the banner Victory.
     $RegicideConfig = Join-Path $TestSaved "victory_regicide.json"
-    '{ "map": "/Game/Maps/Plain.Plain", "bRegicide": true, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $RegicideConfig
+    '{ "map": "/Game/Maps/Plain.Plain", "bRegicide": true, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1, "aiBrain": false } ] }' | Set-Content -Encoding ascii $RegicideConfig
     Step "mark victory regicide", "hol.UI.NewGame.Launch $RegicideConfig 0", "waitmap Plain", "frames 60", "hol.Select.Army", "frames 3", "hol.HUD.Report"
     Step "mark victory regicide pass", "hol.Combat.LogHits 1", "hol.Combat.Enabled 1", "hol.Units.Spawn 1 -16600 0 1 Peasant 0", "wait 4", "hol.Units.Remove -16600 0 1500 1", "frames 3"
     Step "mark victory regicide riposte", "hol.Units.Spawn 1 -16600 0 1 ManAtArms 0", "wait 5", "hol.Units.Remove -16600 0 1500 1", "hol.Combat.Enabled 0",
@@ -2391,6 +2391,10 @@ if ($Parts -contains "victory") {
     $Section = @(Get-Section "victory regicide pass")
     $KingHits = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits")
     $Checks["an enemy Peasant 5.5 m off: the King does not attack ($($KingHits.Count) hits)"] = $KingHits.Count -eq 0 -and [bool]($Section | Select-String -SimpleMatch "Spawn: 1 Peasant of slot 1" -Quiet)
+    # IA0.4 B2b: the Peasant stayed by the King all along (the AI's brain off for this slot, "aiBrain": false), so the case
+    # above was really tested; one sent to gather elsewhere would leave the 15 m and not be removed (a silent false green).
+    $PassRemoved = @($Section | Select-String -Pattern "Remove: (\d+) units of slot 1 within 1500 of \(-16600, 0\)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["the enemy Peasant still there after 4 s, removed ($($PassRemoved -join ', ') units)"] = ($PassRemoved -join ',') -eq "1"
     $Section = @(Get-Section "victory regicide riposte")
     $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for [\d.]+, (-?[\d.]+) HP left")
     $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for ([\d.]+)")
