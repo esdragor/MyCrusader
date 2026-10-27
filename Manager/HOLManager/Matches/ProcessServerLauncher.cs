@@ -35,7 +35,7 @@ public sealed class ProcessServerLauncher(ManagerSettings settings, string? acce
         }
     }
 
-    public int Launch(string matchId, MapInfo map, MatchConfig config)
+    public int Launch(string matchId, MapInfo map, MatchConfig config, string? gameVersion = null)
     {
         lock (gate)
         {
@@ -44,7 +44,8 @@ public sealed class ProcessServerLauncher(ManagerSettings settings, string? acce
             {
                 throw new LobbyException(LobbyErrors.MaxServers, $"{servers.Count} game servers already run (at most {settings.MaxServers}).");
             }
-            var exe = Path.GetFullPath(settings.ServerExe, AppContext.BaseDirectory);
+            // D481: the server of the lobby's version if published there, else ServerExe (logged below).
+            var exe = settings.ResolveServerExe(gameVersion);
             if (!File.Exists(exe))
             {
                 throw new LobbyException(LobbyErrors.ServerStartFailed, $"No server executable: {exe}.");
@@ -56,7 +57,8 @@ public sealed class ProcessServerLauncher(ManagerSettings settings, string? acce
                 Directory.CreateDirectory(matchDir);
                 File.WriteAllText(Path.Combine(matchDir, "match.json"), config.ToJson());
                 var arguments = BuildArguments(map, port, matchDir, settings.ManagerUrl, matchId, accessKey);
-                logger?.LogInformation("Starting the server of {MatchId}: \"{Exe}\" {Arguments}", matchId, exe, MaskKey(arguments, accessKey));
+                logger?.LogInformation("Starting the server of {MatchId} (version {GameVersion}): \"{Exe}\" {Arguments}", matchId,
+                    gameVersion ?? "?", exe, MaskKey(arguments, accessKey));
                 var info = new ProcessStartInfo(exe)
                 {
                     // Built by hand, not with ArgumentList: the quotes go after the "=".

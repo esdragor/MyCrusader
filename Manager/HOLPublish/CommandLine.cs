@@ -1,15 +1,18 @@
 namespace HOLPublish;
 
-/** HOLPublish --game <Windows\> --versions <folder> [--version <name>] [--notes <file>] [--keep <N>] [--hdiffz <path>]. */
+/**
+ * HOLPublish --game <Windows\> --versions <folder> [--version <name>] [--notes <file>] [--keep <N>] [--hdiffz <path>]
+ * [--server <WindowsServer\\> --servers-dir <folder>].
+ */
 public static class CommandLine
 {
     public const string Usage =
         "HOLPublish --game <player folder Windows\\> --versions <versions folder> [--version <name>] [--notes <file>] "
-        + "[--keep <N, default 3>] [--hdiffz <path>]";
+        + "[--keep <N, default 3>] [--hdiffz <path>] [--server <server folder WindowsServer\\> --servers-dir <servers folder>]";
 
     public static PublishOptions Parse(IReadOnlyList<string> args)
     {
-        string? game = null, versions = null, version = null, notes = null, hdiffz = null;
+        string? game = null, versions = null, version = null, notes = null, hdiffz = null, server = null, serversDir = null;
         var keep = 3;
         for (var i = 0; i < args.Count; i += 2)
         {
@@ -26,6 +29,8 @@ public static class CommandLine
                 case "--version": version = value; break;
                 case "--notes": notes = value; break;
                 case "--hdiffz": hdiffz = value; break;
+                case "--server": server = value; break;
+                case "--servers-dir": serversDir = value; break;
                 case "--keep":
                     if (!int.TryParse(value, out keep) || keep < 0)
                     {
@@ -39,6 +44,10 @@ public static class CommandLine
         {
             throw new ArgumentException($"--game and --versions are required. Usage: {Usage}");
         }
-        return new PublishOptions(game, versions, version, notes, keep, hdiffz);
+        if ((server == null) != (serversDir == null))
+        {
+            throw new ArgumentException($"--server and --servers-dir go together. Usage: {Usage}");
+        }
+        return new PublishOptions(game, versions, version, notes, keep, hdiffz, server, serversDir);
     }
 }

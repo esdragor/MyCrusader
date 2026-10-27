@@ -8,7 +8,7 @@ namespace HOLManager.Lobbies;
  * throws LobbyException and changes nothing.
  */
 public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<MapInfo>? maps = null,
-    IServerLauncher? launcher = null)
+    IServerLauncher? launcher = null, Func<string?>? latestVersion = null)
 {
     private readonly object gate = new();
     private readonly Dictionary<string, Lobby> lobbies = [];
@@ -20,7 +20,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
     private long nextJoinOrder = 1;
     private int nextMatchId = 1;
 
-    public string GameVersion => gameVersion;
+    /**
+     * D481: the version a new lobby takes, the latest published (latestVersion, read at each call) or, nothing
+     * published, the starting one.
+     */
+    public string GameVersion => latestVersion?.Invoke() ?? gameVersion;
 
     public IReadOnlyList<MapInfo> Maps => maps;
 
@@ -67,7 +71,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 throw new LobbyException(LobbyErrors.BadRequest, "Missing field: name.");
             }
-            CheckEntry(playerName, clientVersion);
+            var version = GameVersion;
+            CheckEntry(playerName, clientVersion, version);
             if (!LobbyRules.IsValidLobbyName(lobbyName))
             {
                 throw new LobbyException(LobbyErrors.InvalidName, $"Invalid lobby name: '{lobbyName}'.");
@@ -76,6 +81,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 Id = $"L{nextLobbyId++}",
                 Name = LobbyRules.Clean(lobbyName),
+                GameVersion = version,
                 Settings = new LobbySettings { Map = maps[0].Name },
             };
             lobbies.Add(lobby.Id, lobby);
@@ -90,7 +96,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         {
             Sweep();
             var lobby = Get(lobbyId);
-            CheckEntry(playerName, clientVersion);
+            CheckEntry(playerName, clientVersion, lobby.GameVersion);
             var name = LobbyRules.Clean(playerName!);
             if (lobby.State != LobbyState.Lobby)
             {
@@ -239,7 +245,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var config = MatchConfig.FromLobby(lobby, map, Random.Shared.Next());
             var matchId = $"M{clock.UtcNow:yyyyMMdd-HHmmss}-{nextMatchId++}";
             // The launcher throws max_servers or server_start_failed: the lobby is then left as it was.
-            var port = launcher?.Launch(matchId, map, config) ?? 0;
+            var port = launcher?.Launch(matchId, map, config, lobby.GameVersion) ?? 0;
             lobby.Match = new LobbyMatch(matchId, config, port, clock.UtcNow);
             lobby.State = LobbyState.Starting;
             matches.Add(matchId, (lobby, lobby.Match));
@@ -379,6 +385,17 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 : throw new LobbyException(LobbyErrors.MatchNotFound, $"No match {matchId}.");
             action(lobby, match);
             return match;
+        }
+    }
+
+    /** D481: the game versions of the live lobbies and of the followed matches (their server may still run). */
+    public IReadOnlyList<string> VersionsInUse()
+    {
+        lock (gate)
+        {
+            Sweep();
+            return lobbies.Values.Select(l => l.GameVersion).Concat(matches.Values.Select(m => m.Lobby.GameVersion))
+                .Where(v => v.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
     }
 
@@ -590,15 +607,16 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
     }
 
     /** Order of the entry checks once the lobby is found: bad_request, version_mismatch, invalid_name. */
-    private void CheckEntry(string? playerName, string? clientVersion)
+    /** The client's version must be the lobby's (D481), else version_mismatch. */
+    private static void CheckEntry(string? playerName, string? clientVersion, string version)
     {
         if (playerName == null || clientVersion == null)
         {
             throw new LobbyException(LobbyErrors.BadRequest, "Missing field: playerName or gameVersion.");
         }
-        if (clientVersion != gameVersion)
+        if (clientVersion != version)
         {
-            throw new LobbyException(LobbyErrors.VersionMismatch, $"Game version {clientVersion}, served {gameVersion}.");
+            throw new LobbyException(LobbyErrors.VersionMismatch, $"Game version {clientVersion}, served {version}.");
         }
         if (!LobbyRules.IsValidPlayerName(playerName))
         {

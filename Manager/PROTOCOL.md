@@ -15,7 +15,11 @@ R2.2 ; décisions M6-Q1 à M6-Q9 de `NetPlaytestInProgress.md`.
 2. **Version du jeu servie** : `GameVersion` de la configuration, sinon lue dans `version.txt` à côté du
    `HeroesOfLibertyServer.exe` que le gestionnaire lance, ou dans `HeroesOfLiberty\Version.txt` sous lui (là où
    `package.ps1` l'écrit, R1.7, et où le serveur le lit). Pas de fichier → version `"dev"`, et seul un client `"dev"`
-   entre.
+   entre. **Un serveur par version (D481)** : cette version n'est que celle **de départ** ; dès qu'une version est
+   publiée (`latest.txt` du dossier des versions, `VersionsDir`, avec son dossier `<v>\`), **chaque nouveau salon
+   prend la dernière publiée, lue à sa création**, et la garde toute sa vie. Un client entre dans un salon seulement
+   s'il a **la version de ce salon** (sinon `version_mismatch`) ; `GET /status` donne la dernière (celle qu'aurait un
+   nouveau salon). Publier ne coupe donc ni les salons ni les parties en cours : ils finissent sur leur version.
 3. **Le joueur garde l'emplacement reçu à l'entrée** (premier emplacement ouvert) : pas de route pour changer
    d'emplacement (= position de départ) dans cette version ; « ma ligne » = couleur, équipe (faction plus tard).
 4. **« Prêt » remis à zéro** : un changement de **ma** ligne remet **mon** « Prêt » à zéro ; un changement du chef
@@ -137,9 +141,9 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
 {
   "lobbies": [
     { "id": "L7", "name": "Salon de Bob", "players": 3, "maxPlayers": 8, "state": "lobby",
-      "minutes": null, "canJoin": true, "canWatch": false, "away": [] },
+      "minutes": null, "canJoin": true, "canWatch": false, "away": [], "gameVersion": "2026-10-23-b4a8c8c" },
     { "id": "L8", "name": "2v2", "players": 4, "maxPlayers": 4, "state": "in_game",
-      "minutes": 12, "canJoin": false, "canWatch": true, "away": ["Bob"] }
+      "minutes": 12, "canJoin": false, "canWatch": true, "away": ["Bob"], "gameVersion": "2026-10-23-b4a8c8c" }
   ]
 }
 ```
@@ -149,6 +153,8 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
   « partie lancée » (`started`) ; `null` hors de `in_game` (`starting` compris).
 - `maxPlayers` : emplacements **ouverts ou tenus** (le chef en ferme pour une partie à 4).
 - `canJoin` : au salon et pas plein. `canWatch` : en partie (`"in_game"`).
+- `gameVersion` (D481, ajouté à la version 1) : la version du salon ; un client d'une autre version y est refusé
+  (`version_mismatch`).
 - `away` (R7.6, ajouté à la version 1 : un client l'ignore s'il est absent) : en partie, les joueurs de la partie
   **partis de son serveur et pas revenus** (`left` sans `back`) depuis moins de **180 s** (la fenêtre de R7, après
   laquelle le serveur déclare leur emplacement vaincu), sous leur nom dans la partie (`match.json`), triés ; `[]` hors
@@ -165,7 +171,8 @@ Crée le salon **et y entre** : le créateur est chef (pas de salon vide).
 ```
 
 Réponse `201` : la même que l'entrée (ci-dessous). Réglages de départ : carte par défaut du gestionnaire (`Plain`), 8
-emplacements ouverts, options désactivées. Erreurs : `invalid_name`, `version_mismatch`, `bad_request`.
+emplacements ouverts, options désactivées. Le salon prend la version servie à ce moment (la dernière publiée, D481) ;
+`gameVersion` doit être celle-là. Erreurs : `invalid_name`, `version_mismatch`, `bad_request`.
 
 ### `POST /lobbies/{lobbyId}/join` — entrer avec un nom
 
@@ -295,6 +302,8 @@ Quand le serveur annonce qu'il écoute, l'état du salon passe à `"in_game"` et
 "match": { "matchId": "M20261023-153012-3", "port": 7778, "playerName": "Alice", "gameVersion": "2026-10-23-b4a8c8c" }
 ```
 
+`gameVersion` est celle **du salon** (D481).
+
 Le client ouvre alors `<adresse du PC hôte>:<port>?Name=<playerName>&Version=<gameVersion>` (même adresse que le
 gestionnaire, celle de `servers.json`). `playerName` est **le nom à passer tel quel** (encodé pour l'URL) : c'est lui
 qui donne l'emplacement (M6-Q9, R3.2). Le serveur vérifie `Version` (R3.3).
@@ -334,7 +343,12 @@ liste » = rien (il n'a plus de place dans le salon depuis `finished`).
 
 ## Routes du serveur Unreal
 
-Le gestionnaire lance chaque serveur ainsi (un serveur neuf par partie, M6-Q9) :
+Le gestionnaire lance chaque serveur ainsi (un serveur neuf par partie, M6-Q9). L'exe est celui **de la version du
+salon** (D481), `<ServersDir>\<version>\HeroesOfLibertyServer.exe` s'il existe, sinon `ServerExe` (repli : tant que
+rien n'est publié par version) ; `publish.ps1` y copie `WindowsServer\` (sans `.pdb`) avant `latest.txt`. Le
+ménage de chaque seconde supprime `<ServersDir>\<v>\` d'une ancienne version (pas la dernière) quand aucun salon vivant ni
+aucune partie suivie ne l'a depuis 1 min (un échec, exe encore verrouillé, est réessayé). Le journal donne la version
+et l'exe pris :
 
 ```
 HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M20261023-153012-3\match.json"
@@ -365,8 +379,8 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
   de partie : sa ligne de commande, avec `-HOLAccessKey=***`.
 
 `<dossier>` = `Saved\Matches\` à côté du gestionnaire. Réglages (`appsettings.json` ou `--Clé=Valeur`) :
-`ServerExe`, `MaxServers` (2), `FirstServerPort` (7777), `MatchesDir` (`Saved\Matches`), `ManagerUrl`
-(`http://127.0.0.1:7700`), `LogDir` (`Logs` ; vide = pas de fichier). Le serveur appelle (corps JSON, réponse `204`, depuis
+`ServerExe`, `ServersDir` (`Servers` : un dossier `<v>\` par version, D481), `MaxServers` (2), `FirstServerPort`
+(7777), `MatchesDir` (`Saved\Matches`), `ManagerUrl` (`http://127.0.0.1:7700`), `LogDir` (`Logs` ; vide = pas de fichier). Le serveur appelle (corps JSON, réponse `204`, depuis
 `127.0.0.1` seulement ; erreurs `not_local`, `match_not_found`) :
 
 | Route | Corps | Effet dans le gestionnaire |

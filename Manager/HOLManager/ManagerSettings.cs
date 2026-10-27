@@ -12,6 +12,9 @@ public sealed class ManagerSettings
     /** The dedicated server started for each match (relative paths: from the manager's folder). */
     public string ServerExe { get; init; } = @"Server\HeroesOfLibertyServer.exe";
 
+    /** D481: one server per game version in <ServersDir>\<v>\HeroesOfLibertyServer.exe (relative: from the manager's folder). */
+    public string ServersDir { get; init; } = "Servers";
+
     /** Game servers running at once, at most (M6-Q6; measured in R5.5). */
     public int MaxServers { get; init; } = 2;
 
@@ -29,6 +32,20 @@ public sealed class ManagerSettings
 
     /** L11: the key shared with the friends' kit (relative: from the manager's folder); absent or empty = no key. */
     public string AccessKeyFile { get; init; } = "access_key.txt";
+
+    /** D481: the server of that game version, Servers\<v>\HeroesOfLibertyServer.exe, if there; else ServerExe. */
+    public string ResolveServerExe(string? gameVersion)
+    {
+        if (Versions.VersionStore.IsValidName(gameVersion))
+        {
+            var exe = Path.Combine(Path.GetFullPath(ServersDir, AppContext.BaseDirectory), gameVersion!, "HeroesOfLibertyServer.exe");
+            if (File.Exists(exe))
+            {
+                return exe;
+            }
+        }
+        return Path.GetFullPath(ServerExe, AppContext.BaseDirectory);
+    }
 
     public string ResolveAccessKeyFile() => Path.GetFullPath(AccessKeyFile, AppContext.BaseDirectory);
 
