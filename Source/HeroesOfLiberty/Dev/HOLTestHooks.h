@@ -59,7 +59,8 @@ namespace HOLTestHooks
 	/**
 	 * The configuration a test scenario starts with (hol.Scenario, HOLScenario.cpp), from the text of its .json (Json null:
 	 * it has none, the default configuration). Plain when it names no map; IA1.1: no starting Peasants (StartingPeasants 0)
-	 * unless the .json gives the field ("startingPeasants": 5), the scenarios making their own. False on a malformed .json.
+	 * unless the .json gives the field ("startingPeasants": 5), the scenarios making their own; J8a.2: no hero
+	 * (StartingHero 0) unless it asks ("startingHero": true). False on a malformed .json.
 	 * Development builds only.
 	 */
 	HEROESOFLIBERTY_API bool MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutConfig, FString* OutError = nullptr);

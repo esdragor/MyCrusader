@@ -10,8 +10,8 @@
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
 #     "victory", it ends with the end of the match (~10 s more, see below);
-#   - -Parts part:case (EtapeDefini F): only that case of the part, its steps and its checks (build:cut, build:gap; several
-#     with commas: build:cut,build:gap). Only "build" has cases so far ($SubCaseTable): the build cases before it are
+#   - -Parts part:case (EtapeDefini F): only that case of the part, its steps and its checks (build:cut, build:gap,
+#     build:hero; several with commas: build:cut,build:gap). "build" and "formation" have cases ($SubCaseTable): the build cases before it are
 #     skipped (a short set-up instead: its wood, its logs), the camera part only plays its 2-player match (no 8-player).
 # The full run: a single game launch goes through the menu in French, English and Japanese (language switched live), a
 # drop-down list, then a match at 2 and at 8 players with the camera checks of D257 and the selection checks of D264 (own
@@ -118,6 +118,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
+        hero = @{ Marks = @("hero"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -200,8 +201,8 @@ Remove-Item $GameLog, $TestsLog -ErrorAction SilentlyContinue
 
 # 1. Automation tests, in the background (no window).
 # IA1.1: the matches of quick_check make their own Peasants (none at the start, as the scenarios); the automation
-# tests keep the rule of the game (5).
-$NoStartingPeasants = "-ini:Game:[/Script/HeroesOfLiberty.HOLMatchSettings]:StartingPeasants=0"
+# tests keep the rule of the game (5). J8a.2: nor their hero (bStartingHero, the same -ini).
+$NoStartingPeasants = "-ini:Game:[/Script/HeroesOfLiberty.HOLMatchSettings]:StartingPeasants=0,[/Script/HeroesOfLiberty.HOLMatchSettings]:bStartingHero=False"
 $TestsProcess = $null
 if ($Parts -contains "tests") {
     $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty+Angelscript.UnitTests;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -as-exit-on-error -nosound -abslog=`"$TestsLog`""
@@ -602,6 +603,9 @@ $BuildTree = @(-15770, -2400)
 # The construction HUD (J6a.5): house J behind slot 0's centre, away from the others, two Peasants made beside it (south).
 $BuildJ = @(-19200, 2400)
 $BuildJSpawn = @(-19200, 1400)
+# F4 (J8a.2, J8a-Q4): slot 0's hero behind its centre, away from the houses of the build part; slot 1's behind the enemy centre.
+$BuildHero = @(-18800, 3600)
+$BuildEnemyHero = @(18800, 3600)
 # The rally flags of a group (the user's 3rd trial of J6a.5): a right click on the ground behind slot 0's centre.
 $BuildRally = @(-18400, -1600)
 # The animations (J5c.4), solo: house K behind slot 0's centre and its wood, its builders made beside it; each group of
@@ -1385,6 +1389,19 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3", "capture build_barracks_ghost_soldier"
             Key Escape
             Step "waitlog Selection: none"
+            # F4 (D30, J8a-Q4): the player's hero alone. None yet: nothing selected, the camera kept. Then a hero of slot 0
+            # behind its centre and one of slot 1 behind the enemy's: F4 selects slot 0's alone, the camera kept; again,
+            # the camera on him. Both removed after (the parts after count slot 0's units).
+            Step "mark build hero", "hol.Camera.Focus 0 0", "frames 2", "hol.Camera.Report"
+            Key F4
+            Step "waitlog Select hero: none", "frames 2", "hol.Select.Report", "hol.Camera.Report",
+                "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "hol.Units.Spawn 1 $($BuildEnemyHero -join ' ') 1 Hero 100", "wait 0.5"
+            Key F4
+            Step "waitlog Select hero: selected", "frames 3", "hol.Select.Report", "hol.Camera.Report"
+            Key F4
+            Step "waitlog Select hero: camera on", "frames 3", "hol.Camera.Report", "hol.Select.Report"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Units.Remove $($BuildHero -join ' ') 1000 0 Hero", "hol.Units.Remove $($BuildEnemyHero -join ' ') 1000 1 Hero", "wait 0.3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -3242,6 +3259,28 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("rally", "soldier" | Where-Object { -not (Test-Path (Join-Path $Shots "build_barracks_ghost_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build barracks ghost" $Checks) -and $AllOk
+
+    # F4 (D30, J8a-Q4): the player's hero alone, not slot 1's; again, the camera on him.
+    $Hero = @(Get-Section "build hero" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $HeroCams = @($Hero | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | ForEach-Object { $_.Matches[0] })
+    $HeroSel = @($Hero | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["no hero: F4 selects nothing, the camera kept ($($HeroSel | Select-Object -First 1))"] = [bool]($Hero | Select-String -Pattern "Select hero: none" -Quiet) -and
+        ($HeroSel.Count -ge 1) -and ($HeroSel[0] -eq "none") -and ($HeroCams.Count -ge 2) -and ($HeroCams[1].Value -eq $HeroCams[0].Value)
+    $Spawned = @($Hero | Select-String -Pattern "Spawn: 1 Hero of slot (\d) around" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Picked = [regex]::Match("$(& $Value $Hero "(Select hero: selected .*)$")", "#(\d+) at \((-?\d+), (-?\d+)\)")
+    $HeroGap = if ($Picked.Success) { [Math]::Round([Math]::Sqrt([Math]::Pow([int]$Picked.Groups[2].Value - $BuildHero[0], 2) + [Math]::Pow([int]$Picked.Groups[3].Value - $BuildHero[1], 2))) } else { -1 }
+    $Checks["his hero and slot 1's: F4 selects his alone, by his centre ($HeroGap cm from where he was made), the camera kept ($($HeroSel | Select-Object -Skip 1 -First 1))"] =
+        (($Spawned -join ",") -eq "0,1") -and $Picked.Success -and ($HeroGap -ge 0) -and ($HeroGap -le 500) -and
+        ($HeroSel.Count -ge 2) -and ($HeroSel[1] -eq "Hero #$($Picked.Groups[1].Value) of slot 0 (own)") -and
+        [bool]($Hero | Select-String -SimpleMatch -Pattern "Selection: Hero #$($Picked.Groups[1].Value) of slot 0 (own)" -Quiet) -and ($HeroCams.Count -ge 3) -and ($HeroCams[2].Value -eq $HeroCams[0].Value)
+    $Centred = [regex]::Match("$(& $Value $Hero "(Select hero: camera on .*)$")", "#(\d+) at \((-?\d+), (-?\d+)\)")
+    $Checks["F4 again: the camera on him, the selection kept ($(if ($HeroCams.Count -ge 4) { $HeroCams[3].Value }); $($HeroSel | Select-Object -Skip 2 -First 1))"] =
+        $Picked.Success -and $Centred.Success -and ($Centred.Groups[1].Value -eq $Picked.Groups[1].Value) -and ($HeroCams.Count -ge 4) -and
+        ([Math]::Abs([int]$HeroCams[3].Groups[1].Value - [int]$Centred.Groups[2].Value) -le 2) -and ([Math]::Abs([int]$HeroCams[3].Groups[2].Value - [int]$Centred.Groups[3].Value) -le 2) -and
+        ($HeroSel.Count -ge 3) -and ($HeroSel[2] -eq "Hero #$($Picked.Groups[1].Value) of slot 0 (own)")
+    $Checks["both heroes removed after"] = (@($Hero | Select-String -Pattern "Remove: 1 units of slot [01] within").Count -eq 2)
+    $AllOk = (Report "build hero" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

@@ -159,6 +159,11 @@ bool HOLTestHooks::MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutC
 	{
 		Config.StartingPeasants = 0;
 	}
+	// J8a.2: nor a hero, unless the .json asks for him ("startingHero": true).
+	if (Config.StartingHero < 0)
+	{
+		Config.StartingHero = 0;
+	}
 	OutConfig = MoveTemp(Config);
 	return true;
 }

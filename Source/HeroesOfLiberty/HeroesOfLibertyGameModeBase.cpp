@@ -450,6 +450,11 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		{
 			SpawnStartingPeasants(*GetWorld(), Slot, *Centre, NumPeasants);
 		}
+		// J8a.2 (J8a-Q2): each occupied slot's hero, by its main forum (none in the test scenarios).
+		if (FHOLStartRules::ShouldSpawnHero(MatchConfig, Slot, GetDefault<UHOLMatchSettings>()->bStartingHero))
+		{
+			SpawnStartingHero(*GetWorld(), Slot, *Centre);
+		}
 	}
 }
 
@@ -470,6 +475,22 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const in
 		Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::PeasantTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
 	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Starting Peasants of slot %d: %d in front of its main forum"), Slot, Locations.Num());
+	return true;
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnStartingHero(UWorld& World, const int32 Slot, const AHOLBuilding& Forum)
+{
+	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+	if (!Units)
+	{
+		return false;
+	}
+	const FHOLBuildingTypeRow* Type = Forum.GetType();
+	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
+	const FVector Location = FHOLStartRules::GetHeroLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
+	// A tiny radius: put on the navmesh right under the point, like the King.
+	Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::HeroTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
+	UE_LOG(LogHOLMatch, Display, TEXT("Starting hero of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
 	return true;
 }
 

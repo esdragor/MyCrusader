@@ -1,7 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "MassEntitySubsystem.h"
@@ -90,9 +92,33 @@ bool FHOLHeroTypeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Body radius 72 cm (1.2 x 60)"), Hero->Radius, 72.f);
 	TestEqual(TEXT("Mesh scale 1.8 (1.2 x 1.5)"), Hero->MeshScale, 1.8f);
 	TestEqual(TEXT("... the Man-at-arms' times 1.2"), Hero->MeshScale, ManAtArms->MeshScale * 1.2f, 1.e-4f);
-	// Drawn as the Man-at-arms until SKM_Hero is made (J8a.2), with his gestures; the walk slowed by the scale (D234).
-	TestEqual(TEXT("The Man-at-arms' skinned mesh for now"), Hero->SkinnedMesh.ToSoftObjectPath(), ManAtArms->SkinnedMesh.ToSoftObjectPath());
-	TestEqual(TEXT("... and its animations"), Hero->AnimationProvider.ToSoftObjectPath(), ManAtArms->AnimationProvider.ToSoftObjectPath());
+	// His own skinned mesh (J8a.2: SKM_Hero, the paladin pieces of soldier_props.py) and provider (TP_Hero), playing the
+	// Man-at-arms' gestures; the walk slowed by the scale (D234).
+	TestEqual(TEXT("His own skinned mesh"), Hero->SkinnedMesh.ToSoftObjectPath(),
+		FSoftObjectPath(TEXT("/Game/Units/Mannequin/SKM_Hero.SKM_Hero")));
+	TestEqual(TEXT("... and his own animation provider"), Hero->AnimationProvider.ToSoftObjectPath(),
+		FSoftObjectPath(TEXT("/Game/Units/Mannequin/TP_Hero.TP_Hero")));
+	const USkeletalMesh* HeroMesh = Hero->SkinnedMesh.LoadSynchronous();
+	const USkeletalMesh* ManAtArmsMesh = ManAtArms->SkinnedMesh.LoadSynchronous();
+	if (TestNotNull(TEXT("SKM_Hero loads"), HeroMesh) && TestNotNull(TEXT("... SKM_ManAtArms too"), ManAtArmsMesh))
+	{
+		TestEqual(TEXT("SKM_Hero: the Man-at-arms' LODs"), HeroMesh->GetLODNum(), ManAtArmsMesh->GetLODNum());
+		TestEqual(TEXT("... the same skeleton"), HeroMesh->GetSkeleton(), ManAtArmsMesh->GetSkeleton());
+	}
+	const UAnimSequenceTransformProviderData* HeroProvider = Hero->AnimationProvider.LoadSynchronous();
+	const UAnimSequenceTransformProviderData* ManAtArmsProvider = ManAtArms->AnimationProvider.LoadSynchronous();
+	if (TestNotNull(TEXT("TP_Hero loads"), HeroProvider) && TestNotNull(TEXT("... TP_ManAtArms too"), ManAtArmsProvider))
+	{
+		TestTrue(TEXT("TP_Hero drives SKM_Hero"), HeroProvider->GetSkinnedAsset() == HeroMesh);
+		const TArray<FAnimSequenceTransformProviderSequence>& Own = HeroProvider->GetSequences();
+		const TArray<FAnimSequenceTransformProviderSequence>& Theirs = ManAtArmsProvider->GetSequences();
+		bool bSame = Own.Num() == Theirs.Num() && Own.Num() == 6;
+		for (int32 Index = 0; bSame && Index < Own.Num(); ++Index)
+		{
+			bSame = Own[Index].Sequence != nullptr && Own[Index].Sequence == Theirs[Index].Sequence;
+		}
+		TestTrue(TEXT("TP_Hero: the Man-at-arms' 6 sequences, same order"), bSame);
+	}
 	TestTrue(TEXT("... his idle, walk, strike and fall"), Hero->IdleSequence == ManAtArms->IdleSequence
 		&& Hero->WalkSequence == ManAtArms->WalkSequence && Hero->AttackSequence == ManAtArms->AttackSequence
 		&& Hero->FallSequence == ManAtArms->FallSequence);

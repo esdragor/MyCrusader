@@ -6,6 +6,19 @@
 
 const FName FHOLStartRules::KingTypeName(TEXT("King"));
 const FName FHOLStartRules::PeasantTypeName(TEXT("Peasant"));
+const FName FHOLStartRules::HeroTypeName(TEXT("Hero"));
+
+bool FHOLStartRules::ShouldSpawnHero(const FHOLMatchConfig& Config, const int32 Slot, const bool bSetting)
+{
+	const bool bAsked = Config.StartingHero >= 0 ? Config.StartingHero > 0 : bSetting;
+	return bAsked && Config.Slots.IsValidIndex(Slot) && Config.Slots[Slot].State != EHOLSlotState::Closed;
+}
+
+FVector FHOLStartRules::GetHeroLocation(const FVector& CentreLocation, const float HalfBody)
+{
+	// In the King's row, beyond the starting Peasants' row, to his side: clear of both whatever their number.
+	return GetKingLocation(CentreLocation, HalfBody) + FVector(0.0, HeroSideOffset, 0.0);
+}
 
 int32 FHOLStartRules::GetNumStartingPeasants(const FHOLMatchConfig& Config, const int32 Setting)
 {

@@ -29,7 +29,7 @@ $Sequence = Join-Path $Saved "crossings.seq"
 $Config = Join-Path $Saved "crossings.json"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
 Remove-Item $Log -ErrorAction SilentlyContinue
-'{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
+'{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "startingHero": 0, "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
 @(
     "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $($Config -replace '\\', '/') 0", "waitmap Plain",
     "waitlog Camera above the start of slot", "frames 5", "hol.Test.Crossings $Count $Seed $Units $Type quit"

@@ -15,6 +15,7 @@ namespace HOLGameNames
 		static const FName ManAtArms(TEXT("ManAtArms"));
 		static const FName Archer(TEXT("Archer"));
 		static const FName King(TEXT("King"));
+		static const FName Hero(TEXT("Hero"));
 		if (TypeName == Peasant)
 		{
 			return LOCTEXT("Peasant", "Paysan");
@@ -35,6 +36,11 @@ namespace HOLGameNames
 		{
 			// V5.1, translated in V5.4 (Tools/Localization/fill_po.py).
 			return LOCTEXT("King", "Roi");
+		}
+		if (TypeName == Hero)
+		{
+			// J8a.2: the hero (J8a-Q1), translated by Tools/Localization/fill_po.py.
+			return LOCTEXT("Hero", "Paladin-Commandant");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{

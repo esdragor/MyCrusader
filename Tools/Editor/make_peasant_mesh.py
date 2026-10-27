@@ -94,6 +94,9 @@ SOLDIERS = {
     # V5.3: the King, the Man-at-arms' gestures (sword and shield) with a crown.
     "SKM_King": ("TP_King", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
                              PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),
+    # J8a.2: the Hero, the Man-at-arms' gestures unchanged (J8a-Q3) on the paladin pieces (MeshScale 1.8 in game).
+    "SKM_Hero": ("TP_Hero", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
+                             PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),
 }
 # First LOD with the light props (peasant_props.build_props(light=True)); the LODs before it take the full props.
 LIGHT_PROPS_LOD = 3

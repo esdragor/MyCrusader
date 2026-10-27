@@ -243,6 +243,7 @@ TRANSLATIONS = {
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
     "HOLGameNames,Archer": ("Archer", "弓兵"),
     "HOLGameNames,King": ("King", "王"),
+    "HOLGameNames,Hero": ("Paladin-Commander", "聖騎士団長"),
     "HOLGameNames,Tree": ("Tree", "木"),
     "HOLGameNames,BerryBush": ("Berry Bush", "ベリーの茂み"),
     "HOLGameNames,StoneVein": ("Stone Vein", "石の鉱脈"),
