@@ -16,6 +16,7 @@ class AHOLRTSCamera;
 class AHOLSelectionMarkers;
 class UInputAction;
 struct FHOLPickCandidate;
+struct FHOLSourceTypeRow;
 struct FHOLUnitView;
 struct FInputActionValue;
 
@@ -110,8 +111,13 @@ public:
 	 * high, HOLUnitPicking::PickNear); 0 when none.
 	 */
 	uint32 FindTargetAt(const FVector2D& ViewportFraction, bool& bOutDirect) const;
-	/** The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. */
+	/**
+	 * The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. A
+	 * linked source (a farm field, IA1.2 F7) is never taken: the click falls on its building.
+	 */
 	int32 FindSourceAt(const FVector2D& ViewportFraction) const;
+	/** IA1.2 F7: a source of this type is picked by a click (FindSourceAt); a linked one (a farm field) is not. */
+	static bool IsPickableSource(const FHOLSourceTypeRow& Type);
 	/**
 	 * A left click at a point of the viewport: the unit under it, else the building, else the source, else nothing. With bAdd (Shift), the
 	 * first side of the selection and the unit wins (D.2, HOLUnitPicking::CombineClick): of the selection's side, the unit is added, or

@@ -101,8 +101,9 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	float BuildTime = 0.f;
 
 	/**
-	 * Its cell in the construction grid of the builders (D313), in the page of its age tab: the grid of D30 read row by
-	 * row, the page under the tabs (A Z E R) from 4 = Q (the House), 5 = S, 6 = D, 7 = F (the Barracks), 8 = W ... 11 = V.
+	 * Its cell in the construction grid of the builders (D313), in the panel of its age: the grid of D30 read row by row,
+	 * 0 = A ... 3 = R, 4 = Q ... 7 = F, 8 = W ... 11 = V; the row of its category (HOLCommandGrid::GetCategoryRow), but
+	 * the Farm on 8 = W (IA1.2-Q1: the economic row of age I is full).
 	 * -1: nobody builds it (the main centre comes with the map).
 	 */
 	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
@@ -117,6 +118,17 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Its category (D30): the F key that selects it with the others of its kind (F1 military, F2 economic, F3 technological). */
 	UPROPERTY(EditAnywhere, Category = "Display")
 	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
+
+	/** Units walk over it and stop on it, finished or not (IA1.2, the farm, IA1.2-Q3): it never blocks the navmesh. */
+	UPROPERTY(EditAnywhere, Category = "Building")
+	bool Walkable = false;
+
+	/**
+	 * The source it is born with once finished and loses when destroyed (IA1.2): a row of the source type table, linked
+	 * (the farm's FarmField). None: no source of its own.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Gathering")
+	FName Source;
 };
 
 /** A type builders build: its cell in the builders' grid (4 to 11, the page under the tabs) and its age tab (0 to 3). */
@@ -248,4 +260,6 @@ namespace HOLBuildingTypeNames
 	inline const FName Mill(TEXT("Mill"));
 	/** Military (J7-Q2): produces the Spearman and the Man-at-arms; on R of the Peasant's grid (J7a.2). */
 	inline const FName Barracks(TEXT("Barracks"));
+	/** Food (IA1.2): walked over, born with its FarmField; on W of the Peasant's grid (IA1.2-Q1, the economic row is full). */
+	inline const FName Farm(TEXT("Farm"));
 }

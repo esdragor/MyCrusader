@@ -126,6 +126,8 @@ private:
 		double Gap = 0.;
 		int32 Sent = 0;
 		int32 NotSent = 0;
+		/** IA1.2-Q6: a mill with no berries near: its builders sent to free farm fields, one each. */
+		int32 FieldsSent = 0;
 	};
 
 	/** The builder met by the step, and what it needs. */
@@ -164,6 +166,22 @@ private:
 	 * Camp is no camp or no such source is near enough: it goes on as after a house.
 	 */
 	bool GatherForCamp(const FStepContext& Step, FBuilder& Builder, AHOLBuilding& Camp);
+	/**
+	 * IA1.2 F6b: a farm just finished, nothing left in its builder's queue: the builder gathers its farm's field (its one
+	 * place: the first of its builders), else its player's nearest free field within hol.Build.CampGatherRange of the farm
+	 * (IA1.2-Q4, as the massif of F3). False if Farm has no field or none is free: it goes on as after a house.
+	 */
+	bool GatherForFarm(const FStepContext& Step, FBuilder& Builder, const AHOLBuilding& Farm);
+	/**
+	 * IA1.2 F6b: Slot's nearest standing farm field (a linked source) with a free place for Self, its edge within Range (cm)
+	 * of Near (a footprint), INDEX_NONE if none.
+	 */
+	int32 FindFreeFarmField(const FStepContext& Step, uint8 Slot, const FBox2D& Near, double Range, FMassEntityHandle Self) const;
+	/**
+	 * IA1.2 F6b: a source of few places (a farm field: one) still has one for Self: fewer living units than its places, Self
+	 * left out, have it as their gathering task (a builder sent there this step too). A source with places all around: true.
+	 */
+	bool HasFreePlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self) const;
 	/** One line per camp whose builders went on at this step (J6b.1, scripted checks): where they were sent, or why not. */
 	void LogCampSends(const FStepContext& Step);
 	/** Nothing left in its queue (or its site out of reach): it stands idle where it is, its queue forgotten. */

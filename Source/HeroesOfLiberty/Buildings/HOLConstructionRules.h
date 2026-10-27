@@ -222,6 +222,11 @@ namespace HOLConstruction
 
 	/** The building's footprint is a forbidden area of the navmesh (D312: from its first work on, never as a bare foundation). */
 	HEROESOFLIBERTY_API bool BlocksNavigation(EHOLConstructionState State);
+	/**
+	 * The same for a building of a type walked over (FHOLBuildingTypeRow::Walkable, the farm, IA1.2-Q3): never, in any state;
+	 * any other type as above.
+	 */
+	HEROESOFLIBERTY_API bool BlocksNavigation(EHOLConstructionState State, bool bWalkable);
 
 	/** The building serves its owner: population, deposit, production (D312: only once finished). */
 	HEROESOFLIBERTY_API bool IsServing(EHOLConstructionState State);

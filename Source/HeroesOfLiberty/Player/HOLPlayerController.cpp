@@ -1841,6 +1841,12 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	}
 }
 
+bool AHOLPlayerController::IsPickableSource(const FHOLSourceTypeRow& Type)
+{
+	// IA1.2 F7: a linked source (a farm field) has no shape of its own: its building is clicked.
+	return !Type.Linked;
+}
+
 int32 AHOLPlayerController::FindSourceAt(const FVector2D& ViewportFraction) const
 {
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
@@ -1860,7 +1866,8 @@ int32 AHOLPlayerController::FindSourceAt(const FVector2D& ViewportFraction) cons
 	{
 		const FHOLSource& Source = All[Index];
 		const FHOLSourceTypeRow* Type = Source.IsStanding() ? Sources->GetType(Source.TypeIndex) : nullptr;
-		if (!Type)
+		// IA1.2 F7: a farm field is never clicked, its farm is.
+		if (!Type || !IsPickableSource(*Type))
 		{
 			continue;
 		}
@@ -2094,7 +2101,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		return;
 	}
 	// A resource source under the cursor (J5, D298): its ground point, where the brief mark shows.
-	const int32 SourceIndex = FindSourceAt(ViewportFraction);
+	int32 SourceIndex = FindSourceAt(ViewportFraction);
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
 	const TArray<uint32> Own = GetOwnSelectedUnits();
@@ -2108,6 +2115,20 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		RequestBuildUnits(Own, Site, bShift);
 		OnOrderGiven.Broadcast(Site->GetActorLocation());
 		return;
+	}
+	// IA1.2 F7: one of the player's farms finished under the cursor, no source drawn over it: its field is the source
+	// clicked (FindSourceAt never takes it), gathered by the selected units or the rally point of the selected buildings,
+	// as a source. An ally's or an enemy's farm stays a building (a move, an attack).
+	if (!Source && Sources && HOLPlayerState && (!Own.IsEmpty() || GetOwnSelection() || HasBuildingGroup()))
+	{
+		AHOLBuilding* Farm = !Own.IsEmpty() ? Site : FindBuildingAt(ViewportFraction);
+		const int32 Field = Farm && Farm->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() ? Farm->FindLinkedSourceHere() : INDEX_NONE;
+		if (Sources->GetSources().IsValidIndex(Field))
+		{
+			SourceIndex = Field;
+			Source = &Sources->GetSources()[Field];
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: on farm %s: its field, source %d"), *DescribeBuilding(Farm), Field);
+		}
 	}
 	if (!Own.IsEmpty())
 	{

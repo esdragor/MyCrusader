@@ -217,7 +217,10 @@ namespace HOLCommandGrid
 	inline constexpr int32 GridColumns = 4;
 	inline constexpr int32 NumGridRows = NumCells / GridColumns;
 
-	/** The row of the builders' panels where the buildings of Category stand: 0 economic, 1 military, 2 technology. */
+	/**
+	 * The row of the builders' panels where the buildings of Category stand: 0 economic, 1 military, 2 technology. One
+	 * exception, written in the table (BuildGridSlot): the Farm, economic, on W (IA1.2-Q1: the economic row of age I is full).
+	 */
 	HEROESOFLIBERTY_API int32 GetCategoryRow(EHOLBuildingCategory Category);
 	/**
 	 * The units' orders, in the panel left of the grid at AoE4's places (the user's choice of 2026-10-21): Q attack-move

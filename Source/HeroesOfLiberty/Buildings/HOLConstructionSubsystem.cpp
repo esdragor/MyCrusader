@@ -493,6 +493,8 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 	{
 		MatchStats->RecordBuildingLost(Building.GetOwnerPlayer());
 	}
+	// IA1.2 F6a (IA1.2-Q2): a farm's field leaves the map with it; its Peasant goes to a free farm of the massif, or idles.
+	Building.ReleaseLinkedSource();
 	Building.ReleaseFootprint();
 	Building.Destroy();
 }

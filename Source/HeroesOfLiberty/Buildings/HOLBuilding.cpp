@@ -19,6 +19,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NavAreas/NavArea_Null.h"
 #include "Net/UnrealNetwork.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "UObject/ConstructorHelpers.h"
 #if UE_WITH_IRIS
@@ -43,6 +44,10 @@ namespace UE::HeroesOfLiberty::Buildings
 	/** A foundation's slab (packed earth) and its corner stakes (wood). */
 	const FLinearColor FoundationSlabColor(0.40f, 0.33f, 0.24f);
 	const FLinearColor StakeColor(0.20f, 0.13f, 0.07f);
+	/** A field (IA1.2 F8): its tilled soil, its rows of crops (green, then ripe wheat, by turns). */
+	const FLinearColor FieldSoilColor(0.30f, 0.20f, 0.11f);
+	const FLinearColor FieldCropColor(0.30f, 0.48f, 0.14f);
+	const FLinearColor FieldWheatColor(0.72f, 0.60f, 0.26f);
 }
 
 AHOLBuilding::AHOLBuilding()
@@ -118,7 +123,10 @@ bool AHOLBuilding::IsCamp() const
 
 bool AHOLBuilding::BlocksNavigation() const
 {
-	return HOLConstruction::BlocksNavigation(ConstructionState);
+	// A type walked over (the farm, IA1.2-Q3) never does, finished or not: no navmesh obstacle, no keep-out of the bodies,
+	// no body in the way of the paths (every one of them reads this).
+	const FHOLBuildingTypeRow* Type = GetType();
+	return HOLConstruction::BlocksNavigation(ConstructionState, Type && Type->Walkable);
 }
 
 bool AHOLBuilding::HasWorkStarted() const
@@ -194,6 +202,8 @@ void AHOLBuilding::SetConstructionState(const EHOLConstructionState InState)
 	ForceNetUpdate();
 	// The navmesh's forbidden area counts for the simulation, at once; the look waits for the frame (D325).
 	RefreshNavObstacle();
+	// IA1.2 F6a: finished (HOLBuildProcessor, the one place a site ends), a farm's field is born at its centre.
+	UpdateLinkedSource();
 	MarkAppearanceDirty();
 	OnConstructionChanged.Broadcast();
 }
@@ -429,8 +439,78 @@ void AHOLBuilding::Setup(const FName InTypeName, const uint8 InOwnerPlayer, cons
 	if (IsActorInitialized())
 	{
 		RefreshNavObstacle();
+		// IA1.2 F6a: set up finished after its spawn, a farm has its field (a deferred spawn: PostInitializeComponents).
+		UpdateLinkedSource();
 		MarkAppearanceDirty();
 	}
+}
+
+void AHOLBuilding::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	// IA1.2 F6a: the end of a deferred spawn set up finished (the main centres, hol.Cheat.SpawnBuilding of the scenarios, the
+	// stress test): its linked source now, the actor at its place. Nothing for a building not set up yet (SpawnActor, Setup).
+	UpdateLinkedSource();
+}
+
+void AHOLBuilding::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// IA1.2 F6a: destroyed by any other way than DestroyBuilding (which releases it first), its source leaves the map too.
+	if (EndPlayReason == EEndPlayReason::Destroyed)
+	{
+		ReleaseLinkedSource();
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void AHOLBuilding::UpdateLinkedSource()
+{
+	// The server's alone (a client sees the field by the registry's chunks), once the registry takes sources.
+	UWorld* World = GetWorld();
+	UHOLSourceSubsystem* Sources = World && HasAuthority() ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || !Sources->HasAuthority())
+	{
+		return;
+	}
+	const FHOLBuildingTypeRow* Type = GetType();
+	const bool bWanted = Type && !Type->Source.IsNone() && IsFinished();
+	if (bWanted && LinkedSource == INDEX_NONE)
+	{
+		// At its centre, on the ground (its actor's place), its owner's (IA1.2: the farm of another is never gathered).
+		const FVector Centre = GetActorLocation();
+		LinkedSource = Sources->AddSource(Type->Source, Centre, INDEX_NONE, OwnerPlayer);
+		UE_LOG(LogHOLMatch, Log, TEXT("Building %s of slot %d finished: its %s is source %d at (%.0f, %.0f)"), *TypeName.ToString(), OwnerPlayer,
+			*Type->Source.ToString(), LinkedSource, Centre.X, Centre.Y);
+	}
+	else if (!bWanted && LinkedSource != INDEX_NONE)
+	{
+		ReleaseLinkedSource();
+	}
+}
+
+int32 AHOLBuilding::FindLinkedSourceHere() const
+{
+	// IA1.2 F7: finished, of a type with a field: the linked source at its centre, where UpdateLinkedSource put it.
+	const FHOLBuildingTypeRow* Type = GetType();
+	const UWorld* World = GetWorld();
+	const UHOLSourceSubsystem* Sources = World && Type && !Type->Source.IsNone() && IsFinished() ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	return Sources ? Sources->FindLinkedSourceAt(GetActorLocation()) : INDEX_NONE;
+}
+
+void AHOLBuilding::ReleaseLinkedSource()
+{
+	if (LinkedSource == INDEX_NONE)
+	{
+		return;
+	}
+	// Forgotten first: whatever happens, it is taken off the map once.
+	const int32 SourceIndex = LinkedSource;
+	LinkedSource = INDEX_NONE;
+	UWorld* World = GetWorld();
+	UHOLSourceSubsystem* Sources = World && HasAuthority() ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	const bool bRemoved = Sources && Sources->RemoveSource(SourceIndex);
+	UE_LOG(LogHOLMatch, Log, TEXT("Building %s of slot %d gone: its source %d %s"), *TypeName.ToString(), OwnerPlayer, SourceIndex,
+		bRemoved ? TEXT("left the map") : TEXT("was already gone"));
 }
 
 void AHOLBuilding::BeginPlay()
@@ -438,6 +518,8 @@ void AHOLBuilding::BeginPlay()
 	Super::BeginPlay();
 	// At once: a building that appears is seen at the frame it appears.
 	RefreshAppearance();
+	// IA1.2 F6a: spawned finished before the source registry started (it refuses sources before the match): its field now.
+	UpdateLinkedSource();
 	// For the scripted checks (J6a.4): what a client receives, and when (a foundation reaches its owner alone).
 	if (GetNetMode() == NM_Client && !TypeName.IsNone())
 	{
@@ -600,7 +682,12 @@ void AHOLBuilding::RefreshVisuals()
 				BuildFoundationShape(*Type);
 			}
 			PieceParent = RiseRoot;
-			if (Type->Mesh.IsNull())
+			if (Type->Mesh.IsNull() && Type->Walkable)
+			{
+				// Walked over (IA1.2 F8, the farm): a flat field.
+				BuildFieldShape(*Type);
+			}
+			else if (Type->Mesh.IsNull())
 			{
 				BuildProvisionalShape(*Type);
 			}
@@ -660,6 +747,41 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 	AddPiece(CubeMesh, FVector(Footprint, CapThickness), BaseHeight, FLinearColor::White, true, BaseTopTone);
 	AddPiece(CubeMesh, FVector(Footprint * TowerSizeRatio, TowerHeight), 0.f, DarkStoneColor, false);
 	AddPiece(CubeMesh, FVector(Footprint * RoofSizeRatio, CapThickness), TowerHeight, FLinearColor::White, true);
+}
+
+void AHOLBuilding::BuildFieldShape(const FHOLBuildingTypeRow& Type)
+{
+	using namespace UE::HeroesOfLiberty::Buildings;
+
+	// IA1.2 F8: flat, walked over (under FieldMaxHeight): tilled soil over its visible size, a border at the owner's colour
+	// (unlit, what the RTS camera sees, as the other shapes), rows of crops across it. Every piece answers a click (D262).
+	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
+	const FVector2D Half = Footprint * 0.5;
+	const auto Move = [](UStaticMeshComponent* Piece, const FVector2D& Offset)
+	{
+		if (Piece)
+		{
+			Piece->AddRelativeLocation(FVector(Offset, 0.0));
+		}
+	};
+	AddPiece(CubeMesh, FVector(Footprint, FieldSoilHeight), 0.f, FieldSoilColor, false);
+	const double Border = FMath::Min(static_cast<double>(FieldBorderWidth), Footprint.GetMin() * 0.25);
+	const FVector AlongX(Footprint.X, Border, FieldBorderHeight);
+	const FVector AlongY(Border, Footprint.Y - 2.0 * Border, FieldBorderHeight);
+	Move(AddPiece(CubeMesh, AlongX, 0.f, FLinearColor::White, true), FVector2D(0.0, Half.Y - Border * 0.5));
+	Move(AddPiece(CubeMesh, AlongX, 0.f, FLinearColor::White, true), FVector2D(0.0, -Half.Y + Border * 0.5));
+	Move(AddPiece(CubeMesh, AlongY, 0.f, FLinearColor::White, true), FVector2D(Half.X - Border * 0.5, 0.0));
+	Move(AddPiece(CubeMesh, AlongY, 0.f, FLinearColor::White, true), FVector2D(-Half.X + Border * 0.5, 0.0));
+	// The rows along X inside the border, each half its lane wide (the soil seen between them as furrows); the middle one
+	// over the centre (a click there finds the farm, not only its soil).
+	const FVector2D Inner = Footprint - FVector2D(4.0 * Border);
+	const double Lane = Inner.Y / FieldRowCount;
+	for (int32 Row = 0; Row < FieldRowCount; ++Row)
+	{
+		const FLinearColor& Color = Row % 2 == 0 ? FieldCropColor : FieldWheatColor;
+		Move(AddPiece(CubeMesh, FVector(Inner.X, Lane * 0.5, FieldRowHeight), 0.f, Color, false),
+			FVector2D(0.0, -Inner.Y * 0.5 + Lane * (Row + 0.5)));
+	}
 }
 
 void AHOLBuilding::FitNavObstacle(const FHOLBuildingTypeRow& Type)
@@ -728,7 +850,8 @@ void AHOLBuilding::BuildFoundationShape(const FHOLBuildingTypeRow& Type)
 	Move(AddPiece(CubeMesh, AlongX, 0.f, FLinearColor::White, true), FVector2D(0.0, -Half.Y + Border * 0.5));
 	Move(AddPiece(CubeMesh, AlongY, 0.f, FLinearColor::White, true), FVector2D(Half.X - Border * 0.5, 0.0));
 	Move(AddPiece(CubeMesh, AlongY, 0.f, FLinearColor::White, true), FVector2D(-Half.X + Border * 0.5, 0.0));
-	const FVector Stake(FoundationStakeSize, FoundationStakeSize, FoundationStakeHeight);
+	// A walked-over building's stakes as low as its field (IA1.2 F8).
+	const FVector Stake(FoundationStakeSize, FoundationStakeSize, Type.Walkable ? FieldStakeHeight : FoundationStakeHeight);
 	const FVector2D Corner = Half - FVector2D(FoundationStakeSize * 0.5);
 	for (const FVector2D Sign : { FVector2D(1.0, 1.0), FVector2D(1.0, -1.0), FVector2D(-1.0, 1.0), FVector2D(-1.0, -1.0) })
 	{

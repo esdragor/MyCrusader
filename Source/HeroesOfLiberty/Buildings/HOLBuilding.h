@@ -68,7 +68,7 @@ public:
 	bool IsCamp() const;
 	/** A bare foundation: placed and paid, no work yet (D311). */
 	bool IsFoundation() const { return ConstructionState == EHOLConstructionState::Foundation; }
-	/** Its footprint is a forbidden area of the navmesh (D312: not as a bare foundation). */
+	/** Its footprint is a forbidden area of the navmesh (D312: not as a bare foundation; never for a Walkable type, IA1.2). */
 	bool BlocksNavigation() const;
 	/** Work done on it (HOLConstruction::WorkPerBuilder per builder and step, J6a.4); 0 for a foundation. */
 	int64 GetConstructionWork() const { return ConstructionWork; }
@@ -144,6 +144,25 @@ public:
 	 * walkers' paths kept across it are forgotten.
 	 */
 	void ReleaseFootprint();
+
+	/**
+	 * IA1.2 F6a: the index in UHOLSourceSubsystem of the source born of it (its type's Source: a farm's FarmField), INDEX_NONE
+	 * if none. Server only, not replicated (the registry's chunks bring the source to the clients): added at its centre when
+	 * it is finished (SetConstructionState, or born finished: Setup on a spawned building, the end of a deferred spawn),
+	 * taken off the map once when it dies (ReleaseLinkedSource). A farm under construction has none.
+	 */
+	int32 GetLinkedSource() const { return LinkedSource; }
+	/**
+	 * IA1.2 F7: its linked source as every machine sees it (a client has no LinkedSource): finished, of a type with a Source,
+	 * the standing linked source at its centre (UHOLSourceSubsystem::FindLinkedSourceAt); INDEX_NONE otherwise. On the
+	 * server, the same index as GetLinkedSource.
+	 */
+	int32 FindLinkedSourceHere() const;
+	/**
+	 * Server only (IA1.2 F6a, IA1.2-Q2): its linked source leaves the map, once (UHOLConstructionSubsystem::DestroyBuilding, or
+	 * its EndPlay when destroyed otherwise); its gatherers then see it gone, as a used-up source. Nothing without one.
+	 */
+	void ReleaseLinkedSource();
 
 	/** Its footprint on the ground (cm), turned by its yaw: its tiles, the box placements are checked against (D311). */
 	FBox2D GetFootprintBounds() const;
@@ -232,6 +251,19 @@ public:
 	static constexpr float FoundationStakeHeight = 90.f;
 
 	/**
+	 * A walked-over building's look (IA1.2 F8, the farm; cm): a flat field under a unit's knee, its soil, a border at the
+	 * owner's colour, rows of crops; a site's stakes as low.
+	 */
+	static constexpr float FieldSoilHeight = 8.f;
+	static constexpr float FieldBorderWidth = 25.f;
+	static constexpr float FieldBorderHeight = 12.f;
+	static constexpr float FieldRowHeight = 16.f;
+	static constexpr int32 FieldRowCount = 5;
+	static constexpr float FieldStakeHeight = 25.f;
+	/** Under this (cm), whatever its state: a unit walks over it (IA1.2 F8). */
+	static constexpr float FieldMaxHeight = 30.f;
+
+	/**
 	 * Applies a look marked to be redone (D325), then stops the tick. Called by the tick at the frame; the tests call it to
 	 * see the look without a frame.
 	 */
@@ -243,11 +275,22 @@ public:
 	float GetShownRise() const;
 
 	virtual void Tick(float DeltaSeconds) override;
+	/** IA1.2 F6a: a building spawned deferred and finished (main centres, hol.Cheat.SpawnBuilding) gets its linked source. */
+	virtual void PostInitializeComponents() override;
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	/**
+	 * IA1.2 F6a, server only: a finished building of a type with a Source has it standing at its centre (added once, its
+	 * index kept in LinkedSource); otherwise it has none (released). Safe to call again.
+	 */
+	void UpdateLinkedSource();
+	/** See GetLinkedSource. Server only; not a UPROPERTY: nothing to replicate. */
+	int32 LinkedSource = INDEX_NONE;
+
 	UFUNCTION()
 	void OnRep_Setup();
 
@@ -299,6 +342,8 @@ private:
 	/** Writes the owner's colour on the pieces that wear it. */
 	void ApplyColors();
 	void BuildProvisionalShape(const FHOLBuildingTypeRow& Type);
+	/** A walked-over building without a mesh (IA1.2 F8, the farm): a flat field, its soil, an owner's border, rows of crops. */
+	void BuildFieldShape(const FHOLBuildingTypeRow& Type);
 	void BuildFinalMesh(const FHOLBuildingTypeRow& Type);
 	/** A foundation (J6a.3): a low slab over the footprint, a border at the owner's colour, four corner stakes. */
 	void BuildFoundationShape(const FHOLBuildingTypeRow& Type);

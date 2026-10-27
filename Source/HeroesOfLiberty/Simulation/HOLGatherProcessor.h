@@ -177,6 +177,14 @@ private:
 	/** Another gatherer's spot, or idle gatherer's point, within MinSpacing of Spot, whatever its source (Self's old one is left). */
 	bool IsSpotTaken(const FStepContext& Step, const FVector2D& Spot, double MinSpacing, FMassEntityHandle Self);
 	/**
+	 * A source of few places (its type's Places, a farm field: 1, IA1.2) still has one for Self: its other holders walk to
+	 * it, gather there or carry its food to a deposit, and come back. Self's own place there is let go first. A source
+	 * with places all around (Places 0): always true.
+	 */
+	bool HasFreePlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self);
+	/** Self holds one of the few places of SourceIndex (nothing for a source with places all around). */
+	void ClaimPlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self);
+	/**
 	 * The nearest standing source of FromSource's massif with a free spot, from FromSource outward (FromSource itself left
 	 * out), its spot claimed for the gatherer in OutSpot (D309, the user's rule: 175 Peasants sent to a wood surround it);
 	 * the whole massif full, the first one with a free spot in its nearby groves (D309 point 6). INDEX_NONE if they are all
@@ -193,6 +201,11 @@ private:
 	TArray<FDeposit> Deposits;
 	/** The spots held: their gatherers still walk to them or gather there; and the points of the idle ones in front of a full source. */
 	FHOLSpotClaims SpotClaims;
+	/**
+	 * The holders (entities as numbers) of the sources of few places (a farm field, IA1.2), by source index; a holder that
+	 * left its source is dropped when the source is looked at (HasFreePlace).
+	 */
+	TMap<int32, TArray<uint64>> PlaceHolders;
 	/** The sources' massifs: links built once for the sources registered (D309), and their nearby groves (point 6). */
 	FHOLSourceMassifs Massifs;
 	/** The hol.Gather.NearbyMassifRange the massifs were built with (cm). */

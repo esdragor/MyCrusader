@@ -641,6 +641,18 @@ $CampMSpawn = @(-12000, -2600)
 # 0's centre; its two builders made beyond it.
 $CampMill = @(-8400, 13200)
 $CampMillSpawn = @(-7400, 14000)
+# Farms (IA1.2 F9) 16-24 m east of mill Mi (its food deposit; slot 7's berries are west of Mi, beyond the 20 m of a nearby
+# grove): B built first by one Peasant then sent away (its field free), A touching it on the north (centres 8 m apart: one
+# massif) by two; a third Peasant's right click on A; a walker across both, north to south through their centres.
+$FarmA = @(-6000, 13200)
+$FarmB = @(-6000, 12400)
+$FarmBBuilder = @(-4800, 12400)
+$FarmAway = @(-4400, 10800)
+$FarmABuilders = @(-4800, 13600)
+$FarmCSpawn = @(-4800, 14400)
+$FarmClick = @(-5750, 13350)
+$FarmCrossFrom = @(-6000, 15000)
+$FarmCrossTo = @(-6000, 10600)
 $CampFar = @(-19200, -800)
 $CampFarSpawn = @(-19200, -2000)
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
@@ -1384,7 +1396,43 @@ if ($Parts -contains "camera") {
                 "waitlog Production: ManAtArms of slot 0 done", "hol.Cheat.FastBuild 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report",
                 "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3", "capture build_barracks_ghost_soldier"
             Key Escape
-            Step "waitlog Selection: none"
+            # The farm (IA1.2 F9): B built by one Peasant (its field born, it gathers it), then sent away: B's field free.
+            Step "mark build farm", "waitlog Selection: none", "hol.Units.SpawnSeed 142", "hol.Cheat.Wood 150", "hol.Build.Speed 4", "hol.Gather.SpeedScale 5",
+                "hol.Gather.LogDeposits 1", "hol.Units.Spawn 1 $($FarmBBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($FarmBBuilder -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($FarmB -join ' ')", "frames 3", "hol.Build.Place Farm",
+                "waitlog Placement ghost: Farm at ($($FarmB -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 1 units to Farm at ($($FarmB -join ', '))",
+                "waitlog Construction: slot 0 finished Farm at ($($FarmB -join ', '))", "wait 1",
+                # Its builder still selected (a click on it again logs no new selection): sent away.
+                "hol.Camera.Focus $($FarmAway -join ' ')", "frames 3", "hol.Select.OrderGround $($FarmAway -join ' ')", "wait 1"
+            Key Escape
+            # A built by two Peasants: the first gathers its field, the second B's (the free field nearest, F6); both unload
+            # their food at Mi (24 m).
+            Step "mark build farm a", "waitlog Selection: none", "hol.Camera.Focus $($FarmABuilders -join ' ')", "frames 3",
+                # One by one, 3 m apart: two born together overlap and a click on one picks the other.
+                "hol.Units.Spawn 1 $($FarmABuilders -join ' ') 0 Peasant 10", "wait 0.5", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #",
+                "hol.Units.Spawn 1 $($FarmABuilders[0] + 300) $($FarmABuilders[1]) 0 Peasant 10", "wait 0.5", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #",
+                "hol.Select.ClickUnit -2 add", "waitlog Selection: 2 units (own): Peasant x2",
+                "hol.Camera.Focus $($FarmA -join ' ')", "frames 3", "hol.Build.Place Farm", "waitlog Placement ghost: Farm at ($($FarmA -join ', ')) valid",
+                "hol.Build.Click", "waitlog Build order of slot 0: 2 units to Farm at ($($FarmA -join ', '))", "waitlog Construction: slot 0 finished Farm at ($($FarmA -join ', '))",
+                "wait 12", "hol.Units.Where 0", "hol.Camera.Focus $($FarmA -join ' ')", "frames 5", "capture build_farm_gather"
+            Key Escape
+            # A third Peasant, a right click on A (OrderAt): its field ordered; its one place and B's taken, no food within 20 m:
+            # it stands idle in front of it (F3: FindMassifSpot finds nothing, StandBeforeSource).
+            Step "mark build farm click", "waitlog Selection: none", "hol.Units.Spawn 1 $($FarmCSpawn -join ' ') 0 Peasant 10", "wait 0.5",
+                "hol.Camera.Focus $($FarmCSpawn -join ' ')", "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($FarmA -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($FarmClick -join ' ')", "waitlog Order: on farm ", "wait 5", "hol.Units.Where 0", "frames 3", "capture build_farm_click"
+            Key Escape
+            # A walker across both farms (D312: walked over): the navmesh's path straight, no detour, it arrives (44 m, ~5.5 s).
+            Step "mark build farm cross", "waitlog Selection: none", "hol.Units.LogDetours 1", "hol.Nav.Path $($FarmCrossFrom -join ' ') $($FarmCrossTo -join ' ')",
+                "hol.Units.Spawn 1 $($FarmCrossFrom -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($FarmCrossFrom -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Camera.Focus $($FarmA[0]) $($FarmA[1] - 1200)", "frames 3", "hol.Select.OrderGround $($FarmCrossTo -join ' ')", "hol.Units.Where 0"
+            for ($i = 0; $i -lt 8; $i++) { Step "wait 1", "hol.Units.Where 0" }
+            Key Escape
+            # Put back as before: the speeds; the farms' units taken away (the farms stay, their fields with no Peasant).
+            Step "waitlog Selection: none", "hol.Units.LogDetours 0", "hol.Build.Speed 1", "hol.Gather.SpeedScale 1",
+                "hol.Units.Remove $($FarmCrossTo -join ' ') 400 0", "waitlog units of slot 0 within 400 of ($($FarmCrossTo -join ', '))",
+                "hol.Units.Remove $($FarmAway -join ' ') 400 0", "waitlog units of slot 0 within 400 of ($($FarmAway -join ', '))",
+                "hol.Units.Remove $($FarmA[0]) $($FarmA[1] - 400) 1500 0", "waitlog units of slot 0 within 1500 of ($($FarmA[0]), $($FarmA[1] - 400))", "frames 3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -2947,13 +2995,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudAges = Get-Section "build hud ages"
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
-    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks on Q, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+    $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks on Q, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed W=Farm greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I W: Ferme$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes, Archer; I W: Ferme \| W 75 missing; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -3193,7 +3241,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: Q = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne$") -and
+    $Checks["the Peasants' grid: Q = Caserne ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I W: Ferme$") -and
         [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
@@ -3242,6 +3290,53 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("rally", "soldier" | Where-Object { -not (Test-Path (Join-Path $Shots "build_barracks_ghost_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build barracks ghost" $Checks) -and $AllOk
+
+    # IA1.2 F9: the farm. Its field born at its end, its builders on the fields, their food unloaded at Mi, a right click
+    # on A, a walker across both.
+    $FarmB0 = @(Get-Section "build farm" | ForEach-Object { $_ })
+    $FarmA0 = @(Get-Section "build farm a" | ForEach-Object { $_ })
+    $FarmClickLines = @(Get-Section "build farm click" | ForEach-Object { $_ })
+    $FarmCross = @(Get-Section "build farm cross" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $FieldOf = { param($Lines, $At) if ([string](& $Value $Lines "(Building Farm of slot 0 finished: its FarmField is source \d+ at \($($At -join ', ')\))$") -match "is source (\d+) at") { [int]$Matches[1] } else { -1 } }
+    $FieldB = & $FieldOf $FarmB0 $FarmB
+    $FieldA = & $FieldOf $FarmA0 $FarmA
+    $Checks["B built by its Peasant, its field born (source $FieldB), its builder on it, then sent away"] = ($FieldB -ge 0) -and
+        [bool]($FarmB0 | Select-String -Pattern "Build order of slot 0: 1 units to Farm at \($($FarmB -join ', ')\)$" -Quiet) -and
+        [bool]($FarmB0 | Select-String -Pattern "Build: a builder of slot 0 goes on to gather its farm's field \(source $FieldB\)" -Quiet)
+    $SentA = @($FarmA0 | Select-String -Pattern "Build: a builder of slot 0 goes on to gather (its farm's|a free) field \(source (\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+    $Checks["A built by its two Peasants (75 wood each), its field born (source $FieldA); one builder on it, the other on B's free field ($($SentA -join ', '))"] = ($FieldA -ge 0) -and ($FieldA -ne $FieldB) -and
+        [bool]($FarmA0 | Select-String -Pattern "Build order of slot 0: 2 units to Farm at \($($FarmA -join ', ')\)$" -Quiet) -and
+        ($SentA.Count -eq 2) -and ($SentA -contains "its farm's $FieldA") -and ($SentA -contains "a free $FieldB") -and
+        -not ($FarmA0 | Select-String -Pattern "finds its farm's field taken" -Quiet)
+    # Its two builders: the two Peasants clicked before the box (#ids); their food unloaded at Mi (Mi's berry gatherers apart).
+    $FarmBuilderIds = @($FarmA0 | Select-String -Pattern "Selection: Peasant #(\d+) of slot 0 \(own\)" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Select-Object -Unique)
+    $FarmFood = @(& $ReadUnloads $FarmA0 | Where-Object { $_.Resource -eq "Food" -and $FarmBuilderIds -contains $_.Unit })
+    $FarmFoodUnits = @($FarmFood | ForEach-Object { $_.Unit } | Sort-Object -Unique)
+    $Checks["they unload their food at Mi ($($FarmFood.Count) unloads by $($FarmFoodUnits.Count) of #$($FarmBuilderIds -join ', #'): $(($FarmFood | ForEach-Object { "$($_.Amount) at $($_.At)" } | Select-Object -First 4) -join '; '))"] =
+        ($FarmBuilderIds.Count -eq 2) -and ($FarmFoodUnits.Count -eq 2) -and (@($FarmFood | Where-Object { $_.At -ne $AtMill }).Count -eq 0)
+    $OnFarm = & $Value $FarmClickLines "(Order: on farm .*)$"
+    $ClickId = & $Value $FarmClickLines "Selection: Peasant #(\d+) of slot 0 \(own\)"
+    $Checks["a right click on A: its field ordered ($OnFarm)"] = [bool]($OnFarm -match "^Order: on farm Farm of slot 0 \(own\).*: its field, source $FieldA$") -and
+        [bool]($FarmClickLines | Select-String -Pattern "Order: 1 units gather source $FieldA \(" -Quiet) -and
+        [bool]($FarmClickLines | Select-String -Pattern "Gather order of slot 0: 1 units to source $FieldA \(Food\)" -Quiet)
+    # F3: one place; B's taken too, no food within 20 m: no room in the massif, it stands in front of A; it unloads nothing.
+    $NoRoom = & $Value $FarmClickLines "(Gather: slot 0 found no room in its massif, it stands idle in front of it at .*)$"
+    $ClickFood = @(& $ReadUnloads $FarmClickLines | Where-Object { $_.Unit -eq $ClickId })
+    $Checks["one Peasant on a field: the third finds no room and stands in front of A, no unload ($NoRoom; $($ClickFood.Count) unloads by #$ClickId)"] =
+        [bool]$NoRoom -and ($ClickFood.Count -eq 0) -and -not ($FarmClickLines | Select-String -Pattern "found no room in the massif of source $FieldA, sent to" -Quiet)
+    $CrossPath = & $Value $FarmCross "Nav path: (.*)$"
+    $CrossRatio = if ([string]$CrossPath -match "ratio (\d+\.\d+)") { [double]$Matches[1] } else { -1.0 }
+    $Checks["across both farms, the navmesh's path straight ($CrossPath)"] = ($CrossRatio -ge 0) -and ($CrossRatio -le 1.02)
+    $CrossId = & $Value $FarmCross "Selection: Peasant #(\d+) of slot 0 \(own\)"
+    $CrossLast = [string]($FarmCross | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1)
+    $CrossAt = if ($CrossId -and $CrossLast -match "#$CrossId slot 0 at \((-?\d+), (-?\d+)\)") { @([double]$Matches[1], [double]$Matches[2]) } else { $null }
+    $CrossGap = if ($CrossAt) { [Math]::Round([Math]::Sqrt([Math]::Pow($CrossAt[0] - $FarmCrossTo[0], 2) + [Math]::Pow($CrossAt[1] - $FarmCrossTo[1], 2))) } else { -1 }
+    $CrossDetours = @($FarmCross | Select-String -Pattern "Detour: .*" | ForEach-Object { $_.Matches[0].Value })
+    $Checks["a walker across them, no detour, arrived within 4 m in 8 s for 44 m ($CrossGap cm; $($CrossDetours -join '; '))"] = ($CrossGap -ge 0) -and ($CrossGap -le 400) -and ($CrossDetours.Count -eq 0)
+    $Missing = @("gather", "click" | Where-Object { -not (Test-Path (Join-Path $Shots "build_farm_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build farm" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

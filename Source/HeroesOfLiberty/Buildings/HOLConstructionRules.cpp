@@ -343,6 +343,11 @@ bool HOLConstruction::BlocksNavigation(const EHOLConstructionState State)
 	return State != EHOLConstructionState::Foundation;
 }
 
+bool HOLConstruction::BlocksNavigation(const EHOLConstructionState State, const bool bWalkable)
+{
+	return !bWalkable && BlocksNavigation(State);
+}
+
 bool HOLConstruction::IsServing(const EHOLConstructionState State)
 {
 	return State == EHOLConstructionState::Finished;

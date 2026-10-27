@@ -69,6 +69,11 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("Barracks", "Caserne");
 		}
+		if (TypeName == HOLBuildingTypeNames::Farm)
+		{
+			// IA1.2 F8, translated by Tools/Localization/fill_po.py.
+			return LOCTEXT("Farm", "Ferme");
+		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
 			return Row->DisplayName;
@@ -93,6 +98,11 @@ namespace HOLGameNames
 		if (TypeName == HOLSourceTypeNames::GoldVein)
 		{
 			return LOCTEXT("GoldVein", "Filon d'or");
+		}
+		if (TypeName == HOLSourceTypeNames::FarmField)
+		{
+			// A farm's field (IA1.2 F8).
+			return LOCTEXT("FarmField", "Champ");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{

@@ -151,6 +151,13 @@ void UHOLSourceSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	{
 		for (const FHOLPlacedSource& Placed : It->GetSources())
 		{
+			// A linked type (a farm field, IA1.2) is born of its building, never of the map.
+			const int32 PlacedType = TypeNames.IndexOfByKey(Placed.Type);
+			if (PlacedType != INDEX_NONE && TypeRows[PlacedType] && TypeRows[PlacedType]->Linked)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Source %s placed by the map: linked to a building, skipped"), *Placed.Type.ToString());
+				continue;
+			}
 			NumPlaced += AddSource(Placed.Type, Placed.Location) != INDEX_NONE ? 1 : 0;
 		}
 	}
@@ -191,7 +198,7 @@ const FHOLSourceTypeRow* UHOLSourceSubsystem::GetType(const uint8 TypeIndex) con
 	return TypeRows.IsValidIndex(TypeIndex) ? TypeRows[TypeIndex] : nullptr;
 }
 
-int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Location, const int32 Amount)
+int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Location, const int32 Amount, const uint8 OwnerSlot)
 {
 	if (!bStarted || !bAuthority)
 	{
@@ -211,6 +218,7 @@ int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Locati
 	Source.Location = Location;
 	Source.Radius = Type->Radius;
 	Source.Remaining = Amount != INDEX_NONE ? FMath::Max(Amount, 1) : Type->Amount;
+	Source.OwnerSlot = OwnerSlot;
 	const int32 SourceIndex = Sources.Num() - 1;
 	OnSourceAdded(SourceIndex);
 	return SourceIndex;
@@ -223,6 +231,12 @@ int32 UHOLSourceSubsystem::Take(const int32 SourceIndex, const int32 Amount)
 		return 0;
 	}
 	FHOLSource& Source = Sources[SourceIndex];
+	const FHOLSourceTypeRow* Type = GetType(Source.TypeIndex);
+	if (Type && Type->Endless)
+	{
+		// A farm field (IA1.2): it gives what is asked and keeps what it holds.
+		return Amount;
+	}
 	const int32 Taken = FMath::Min(Amount, Source.Remaining);
 	Source.Remaining -= Taken;
 	if (bReplicate)
@@ -236,6 +250,45 @@ int32 UHOLSourceSubsystem::Take(const int32 SourceIndex, const int32 Amount)
 	return Taken;
 }
 
+bool UHOLSourceSubsystem::RemoveSource(const int32 SourceIndex)
+{
+	if (!bAuthority || !Sources.IsValidIndex(SourceIndex) || !Sources[SourceIndex].IsStanding())
+	{
+		return false;
+	}
+	// Like a used-up source: nothing left, the index kept (gatherers and chunks holding it see it gone).
+	FHOLSource& Source = Sources[SourceIndex];
+	Source.Remaining = 0;
+	if (bReplicate)
+	{
+		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetRemaining(SourceIndex % AHOLSourceChunk::NumSlots, 0);
+	}
+	OnSourceUsedUp(SourceIndex);
+	return true;
+}
+
+bool UHOLSourceSubsystem::IsLinked(const int32 SourceIndex) const
+{
+	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? GetType(Sources[SourceIndex].TypeIndex) : nullptr;
+	return Type && Type->Linked;
+}
+
+int32 UHOLSourceSubsystem::FindLinkedSourceAt(const FVector& Location, const float Tolerance) const
+{
+	// IA1.2 F7: a farm field stands at its farm's centre (AHOLBuilding::UpdateLinkedSource); a client holds its place as
+	// floats (FHOLNetSource), hence the tolerance.
+	const double ToleranceSquared = FMath::Square(static_cast<double>(Tolerance));
+	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	{
+		const FHOLSource& Source = Sources[Index];
+		if (Source.IsStanding() && IsLinked(Index) && FVector::DistSquared2D(Source.Location, Location) <= ToleranceSquared)
+		{
+			return Index;
+		}
+	}
+	return INDEX_NONE;
+}
+
 void UHOLSourceSubsystem::OnSourceAdded(const int32 SourceIndex)
 {
 	const FHOLSource& Source = Sources[SourceIndex];
@@ -244,7 +297,8 @@ void UHOLSourceSubsystem::OnSourceAdded(const int32 SourceIndex)
 		return;
 	}
 	++NumStanding;
-	if (Field)
+	// A linked source (a farm field, IA1.2) has no shape and no hole in the navmesh: its building stands for it.
+	if (Field && !IsLinked(SourceIndex))
 	{
 		Field->ShowSource(SourceIndex, Source.TypeIndex, *TypeRows[Source.TypeIndex], Source.Location);
 	}
@@ -258,7 +312,7 @@ void UHOLSourceSubsystem::OnSourceAdded(const int32 SourceIndex)
 void UHOLSourceSubsystem::OnSourceUsedUp(const int32 SourceIndex)
 {
 	--NumStanding;
-	if (Field)
+	if (Field && !IsLinked(SourceIndex))
 	{
 		Field->HideSource(SourceIndex);
 	}
@@ -384,8 +438,11 @@ FString UHOLSourceSubsystem::MakeReport() const
 	{
 		if (StandingPerType[TypeIndex] > 0)
 		{
-			PerType.Add(FString::Printf(TEXT("%s %d: %d left"), *TypeNames[TypeIndex].ToString(), StandingPerType[TypeIndex],
-				LeftPerType[TypeIndex]));
+			const bool bEndless = TypeRows[TypeIndex] && TypeRows[TypeIndex]->Endless;
+			PerType.Add(bEndless
+				? FString::Printf(TEXT("%s %d: endless"), *TypeNames[TypeIndex].ToString(), StandingPerType[TypeIndex])
+				: FString::Printf(TEXT("%s %d: %d left"), *TypeNames[TypeIndex].ToString(), StandingPerType[TypeIndex],
+					LeftPerType[TypeIndex]));
 		}
 	}
 	return FString::Printf(TEXT("Sources (%s): %d standing of %d (%s); shown %d, navmesh %d"),
