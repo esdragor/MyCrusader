@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -9,6 +9,7 @@
 #include "Commands/HOLPlayerOrders.h"
 #include "Commands/HOLProductionCommand.h"
 #include "Commands/HOLUnitOrderProcessor.h"
+#include "Dev/HOLTestHooks.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -17,6 +18,8 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
+#include "Match/HOLForumMessages.h"
+#include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSettings.h"
@@ -231,7 +234,7 @@ bool FHOLAISlotSpawnTest::RunTest(const FString& Parameters)
 			TestEqual(*FString::Printf(TEXT("slot %d: the colour of the configuration"), Slot), PlayerState.GetColorIndex(),
 				Config.Slots[Slot].ColorIndex);
 			TestEqual(*FString::Printf(TEXT("slot %d: its name"), Slot), PlayerState.GetPlayerName(),
-				AHeroesOfLibertyGameModeBase::MakeAIPlayerName(Slot));
+				AHeroesOfLibertyGameModeBase::MakeAIPlayerName(Config, Slot));
 			TestFalse(*FString::Printf(TEXT("slot %d: a name shown"), Slot), PlayerState.GetPlayerName().IsEmpty());
 			TestFalse(*FString::Printf(TEXT("slot %d: not a spectator"), Slot), PlayerState.IsOnlyASpectator());
 			AddInfo(FString::Printf(TEXT("slot %d: '%s', %s"), Slot, *PlayerState.GetPlayerName(), *PlayerState.DescribeEconomy()));
@@ -368,6 +371,105 @@ bool FHOLAISlotEconomyTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("counter-proof: its load emptied"), Load.Amount, 0);
 		TestFalse(TEXT("counter-proof: credited to nobody (lost)"), AHOLGameState::GetSlotStock(World, 1, Stock));
 	}
+	return true;
+}
+
+// IA0.1-Q1 (B, with the level) and Q1b (A): an AI slot is named « IA <level> N » everywhere its name shows: its player state
+// (the real SpawnAIPlayerStates), the thread's messages and their coloured names, the players' table, the banner and the
+// statistics (GetPlayerName); the level a field of each slot, Normal by default, read from a scenario's .json (the real
+// MakeScenarioConfig): "Hard" read, missing Normal, unknown Normal with a warning. A human keeps « Joueur N » or his lobby name.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAISlotNameTest, "HeroesOfLiberty.AI.Slot.Name", UE::HeroesOfLiberty::Tests::AISlot::Flags)
+bool FHOLAISlotNameTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AISlot;
+
+	// Every slot Normal by default.
+	const FHOLMatchConfig Default = FHOLMatchConfig::MakeDefault();
+	for (int32 Slot = 0; Slot < Default.Slots.Num(); ++Slot)
+	{
+		TestTrue(*FString::Printf(TEXT("MakeDefault: slot %d Normal"), Slot), Default.Slots[Slot].Difficulty == EHOLAIDifficulty::Normal);
+	}
+
+	// Slot 1 Hard, slot 3 not given (Normal).
+	FHOLMatchConfig Config = MakeConfig();
+	Config.Slots[1].Difficulty = EHOLAIDifficulty::Hard;
+	const FString Hard2 = TEXT("IA Difficile 2");
+	const FString Normal4 = TEXT("IA Normal 4");
+	TestEqual(TEXT("the level's name"), HOLForumMessages::GetDifficultyName(EHOLAIDifficulty::Hard).ToString(), FString(TEXT("Difficile")));
+	TestEqual(TEXT("GetAIName"), HOLForumMessages::GetAIName(1, EHOLAIDifficulty::Hard).ToString(), Hard2);
+	TestEqual(TEXT("GetAIName, Évolutive"), HOLForumMessages::GetAIName(2, EHOLAIDifficulty::Evolving).ToString(), FString(TEXT("IA Évolutive 3")));
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	if (TestNotNull(TEXT("game state"), State))
+	{
+		State->InitVictory(Config);
+		AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(*World, Config, GetDefault<UHOLMatchSettings>()->StartingResources);
+		for (const AHOLPlayerState* PlayerState : GetPlayerStates(*State))
+		{
+			const FString Expected = PlayerState->GetPlayerIndex() == 1 ? Hard2 : Normal4;
+			TestEqual(*FString::Printf(TEXT("slot %d: player state's name"), PlayerState->GetPlayerIndex()), PlayerState->GetPlayerName(), Expected);
+		}
+		TestEqual(TEXT("two AI player states"), GetPlayerStates(*State).Num(), 2);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+
+	// The thread: slot 1's forum fell, read by slot 0 and by a spectator; its name cut out for its colour.
+	const FHOLForumMessage Fell = HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 1, INDEX_NONE, 1), Config, 0);
+	TestTrue(TEXT("thread: « IA Difficile 2 » named"), Fell.Text.ToString().Contains(Hard2));
+	TestTrue(TEXT("thread, spectator: named"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 3, INDEX_NONE, 1),
+		Config, INDEX_NONE).Text.ToString().Contains(Normal4));
+	const TArray<HOLForumMessages::FPiece> Pieces = HOLForumMessages::SplitNames(Fell, 0, Config);
+	TestTrue(TEXT("thread: the AI's name a piece of slot 1"), Pieces.ContainsByPredicate([&Hard2](const HOLForumMessages::FPiece& Piece)
+	{
+		return Piece.Slot == 1 && Piece.Text == Hard2;
+	}));
+	TestEqual(TEXT("thread: the human still Joueur 1"), HOLForumMessages::GetSlotName(0, 1, Config).ToString(), FString(TEXT("Joueur 1")));
+	TestEqual(TEXT("thread: the viewer Vous"), HOLForumMessages::GetSlotName(1, 1, Config).ToString(), FString(TEXT("Vous")));
+
+	// The players' table (slot 0's view), the banner and the statistics (GetPlayerName).
+	TArray<FHOLForumState> Forums;
+	Forums.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
+	const TArray<FHOLPlayersTableRow> Rows = HOLForumRules::GetPlayersTable(Config, Forums, 0, 0, FHOLForumTuning());
+	for (const FHOLPlayersTableRow& Row : Rows)
+	{
+		const FString Expected = Row.Slot == 0 ? FString(TEXT("Vous")) : Row.Slot == 1 ? Hard2 : Normal4;
+		TestEqual(*FString::Printf(TEXT("table: slot %d"), Row.Slot), Row.Name.ToString(), Expected);
+	}
+	TestEqual(TEXT("table: three rows"), Rows.Num(), 3);
+	TestEqual(TEXT("banner: slot 1"), HOLForumMessages::GetPlayerName(Config, 1, INDEX_NONE).ToString(), Hard2);
+	TestEqual(TEXT("banner: slot 3"), HOLForumMessages::GetPlayerName(Config, 3, INDEX_NONE).ToString(), Normal4);
+	FHOLMatchConfig Named = Config;
+	Named.Slots[0].PlayerName = TEXT("Arthur");
+	TestEqual(TEXT("banner: a lobby's name kept"), HOLForumMessages::GetPlayerName(Named, 0, INDEX_NONE).ToString(), FString(TEXT("Arthur")));
+	TestEqual(TEXT("banner: a human without a name Joueur 1"), HOLForumMessages::GetPlayerName(Config, 0, INDEX_NONE).ToString(), FString(TEXT("Joueur 1")));
+
+	// A scenario's .json (the real MakeScenarioConfig): "Hard" read; missing Normal; unknown Normal, with a warning.
+	const auto Read = [this](const TCHAR* Difficulty, FHOLMatchConfig& Out)
+	{
+		const FString Field = Difficulty ? FString::Printf(TEXT(", \"difficulty\": \"%s\""), Difficulty) : FString();
+		const FString Json = FString::Printf(TEXT("{ \"map\": \"/Game/Maps/Plain.Plain\", \"slots\": [ { \"state\": \"Human\", \"colorIndex\": 0 }, ")
+			TEXT("{ \"state\": \"AI\", \"colorIndex\": 1%s } ] }"), *Field);
+		return HOLTestHooks::MakeScenarioConfig(&Json, Out);
+	};
+	FHOLMatchConfig FromFile;
+	TestTrue(TEXT(".json Hard read"), Read(TEXT("Hard"), FromFile));
+	TestTrue(TEXT(".json Hard: slot 1 Hard"), FromFile.Slots[1].Difficulty == EHOLAIDifficulty::Hard);
+	TestTrue(TEXT(".json Hard: slot 0 Normal"), FromFile.Slots[0].Difficulty == EHOLAIDifficulty::Normal);
+	TestTrue(TEXT(".json without the field read"), Read(nullptr, FromFile));
+	TestTrue(TEXT(".json without the field: Normal"), FromFile.Slots[1].Difficulty == EHOLAIDifficulty::Normal);
+	AddExpectedMessage(TEXT("unknown AI difficulty 'Brutal'"), EAutomationExpectedMessageFlags::Contains, 1);
+	TestTrue(TEXT(".json unknown value read"), Read(TEXT("Brutal"), FromFile));
+	TestTrue(TEXT(".json unknown value: Normal"), FromFile.Slots[1].Difficulty == EHOLAIDifficulty::Normal);
+	TestTrue(TEXT("round trip keeps the level"), [&Config]()
+	{
+		FHOLMatchConfig Back;
+		return FHOLMatchConfig::FromJson(Config.ToJson(), Back) && Back.Slots[1].Difficulty == EHOLAIDifficulty::Hard;
+	}());
 	return true;
 }
 

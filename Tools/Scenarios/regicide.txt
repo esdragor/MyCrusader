@@ -43,8 +43,8 @@ frames 3
 note Entrée 4 : sélectionne ton Roi et tes 4 Hommes d'armes (cadre), Q puis clic au sol au-delà des Lanciers ennemis : les soldats combattent, le Roi marche sans attaquer (s'il est frappé, il riposte).
 note Ensuite le Roi seul, clic droit sur la Maison ennemie (rouge, à gauche de ton forum) : refusé, il ne bouge pas.
 waitkey Q avec le groupe, puis clic droit du Roi sur la Maison, puis Entrée 5 : le Roi adverse meurt
-# 5. Le Roi adverse tué (triche : il est à ~300 m) : « Le Roi de Joueur 2 est mort », « Joueur 2 est vaincu », Victoire.
+# 5. Le Roi adverse tué (triche : il est à ~300 m) : « Le Roi de IA Normal 2 est mort », « IA Normal 2 est vaincu », Victoire.
 hol.Victory.KillKing 1
 waitlog Regicide: king of slot 1 died
 waitlog End banner
-note Entrée 5 : le Roi de Joueur 2 tué (triche) : fil « Le Roi de Joueur 2 est mort » puis « Joueur 2 est vaincu », bandeau Victoire, sans bandeau d'alerte.
+note Entrée 5 : le Roi de IA Normal 2 tué (triche) : fil « Le Roi de IA Normal 2 est mort » puis « IA Normal 2 est vaincu », bandeau Victoire, sans bandeau d'alerte.

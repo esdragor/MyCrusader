@@ -608,7 +608,7 @@ int32 AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(UWorld& World, const FHO
 		// As a human at his login (PostLogin): his slot and its colour, the stock of the start (D283); the population is
 		// counted by the production at each step, the camp read from the configuration (InitVictory).
 		PlayerState->SetIsABot(true);
-		PlayerState->SetPlayerName(MakeAIPlayerName(Slot));
+		PlayerState->SetPlayerName(MakeAIPlayerName(Config, Slot));
 		PlayerState->SetMatchSlot(Slot, SlotConfig.ColorIndex);
 		PlayerState->SetResources(Starting);
 		++Spawned;
@@ -618,10 +618,10 @@ int32 AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(UWorld& World, const FHO
 	return Spawned;
 }
 
-FString AHeroesOfLibertyGameModeBase::MakeAIPlayerName(const int32 Slot)
+FString AHeroesOfLibertyGameModeBase::MakeAIPlayerName(const FHOLMatchConfig& Config, const int32 Slot)
 {
-	// IA0.1-Q1 open: the table of players, the banner and the thread's name of a slot without a lobby name.
-	return HOLForumMessages::GetSlotName(Slot, INDEX_NONE).ToString();
+	// IA0.1-Q1: as the thread and the players' table name it.
+	return HOLForumMessages::GetSlotName(Slot, INDEX_NONE, Config).ToString();
 }
 
 bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const int32 Slot, const AHOLBuilding& Forum, const int32 Num)

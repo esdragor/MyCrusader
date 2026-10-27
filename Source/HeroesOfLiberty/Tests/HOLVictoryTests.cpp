@@ -1613,7 +1613,7 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 	if (Rows.Num() == 2)
 	{
 		TestEqual(TEXT("duel: Vous"), Rows[0].Name.BuildSourceString(), FString(TEXT("Vous")));
-		TestEqual(TEXT("duel: Joueur 2"), Rows[1].Name.BuildSourceString(), FString(TEXT("Joueur 2")));
+		TestEqual(TEXT("duel: the AI's name (IA0.1-Q1)"), Rows[1].Name.BuildSourceString(), FString(TEXT("IA Normal 2")));
 		TestEqual(TEXT("duel: the lives"), Rows[0].Lives.BuildSourceString(), FString(TEXT("2 vies")));
 		TestTrue(TEXT("duel: nothing on a standing forum"), Rows[0].State.IsEmpty());
 		TestFalse(TEXT("duel: not greyed"), Rows[1].bGreyed);
@@ -1670,7 +1670,7 @@ bool FHOLVictoryPlayersTableTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("teams: one life"), Rows[0].Lives.BuildSourceString(), FString(TEXT("1 vie")));
 		TestEqual(TEXT("teams: Vaincu"), Rows[1].State.BuildSourceString(), FString(TEXT("Vaincu")));
 		TestTrue(TEXT("teams: the defeated greyed"), Rows[1].bGreyed);
-		TestEqual(TEXT("teams: the defeated's name"), Rows[1].Name.BuildSourceString(), FString(TEXT("Joueur 6")));
+		TestEqual(TEXT("teams: the defeated's name (an AI, IA0.1-Q1)"), Rows[1].Name.BuildSourceString(), FString(TEXT("IA Normal 6")));
 		// V2.3d: a defeated slot's lives no longer shown, "Vaincu" alone.
 		TestTrue(TEXT("teams: the defeated's lives not shown"), Rows[1].Lives.IsEmpty());
 		TestEqual(TEXT("teams: Ruine"), Rows[2].State.BuildSourceString(), FString(TEXT("Ruine")));

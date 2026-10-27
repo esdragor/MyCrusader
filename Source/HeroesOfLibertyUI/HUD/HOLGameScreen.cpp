@@ -52,6 +52,20 @@
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
+namespace
+{
+	/** The owner of what is selected: Vous, else the slot's name as the players table shows it (an AI's « IA Difficile 3 », IA0.1-Q1). */
+	FText GetOwnerNameIn(const UWorld* World, const int32 Owner, const bool bOwn)
+	{
+		const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (bOwn || !GameState)
+		{
+			return bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Owner + 1);
+		}
+		return HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), Owner, INDEX_NONE);
+	}
+}
+
 namespace UE::HeroesOfLiberty::UI::GameScreen
 {
 	/** At its source or on its round trip (D307): the HUD says « Récolte » for both. */
@@ -659,7 +673,8 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 		const TSubclassOf<UCommonTextStyle> WordsStyle, const TSubclassOf<UCommonTextStyle> NamesStyle)
 	{
 		Row.ClearChildren();
-		for (const HOLForumMessages::FPiece& Part : HOLForumMessages::SplitNames(Message, ViewerSlot))
+		for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Message, ViewerSlot, GameState->GetLaunchConfig())
+			: HOLForumMessages::SplitNames(Message, ViewerSlot))
 		{
 			const bool bName = Part.Slot != INDEX_NONE;
 			UCommonTextBlock* Text = Tree.ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass());
@@ -1127,7 +1142,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	}
 	if (SelectionOwner)
 	{
-		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Building->GetOwnerPlayer() + 1));
+		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Building->GetOwnerPlayer(), bOwn));
 	}
 	ShownHealth.Reset();
 	// A main forum (V2.3b): its lives to anyone (D353); down, its ruin or its rebuilding in place of its health (0 until up).
@@ -1261,7 +1276,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	}
 	if (SelectionOwner)
 	{
-		SelectionOwner->SetText(bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Owner + 1));
+		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Owner, bOwn));
 	}
 	// One unit shows its health, a group does not (D288).
 	RefreshUnitHealth(Views.Num() == 1 ? &Views[0] : nullptr);

@@ -2344,7 +2344,7 @@ if ($Parts -contains "victory") {
     # V4.5: the hold announced once (held, contested, released: one hold by slot 1), with the alert.
     $HeldMessages = @(@(Get-Section "victory forum held") + @(Get-Section "victory forum contested") + @(Get-Section "victory forum released") |
         Select-String -Pattern "Message: .*tient.*$" | ForEach-Object { $_.Matches[0].Value })
-    $Checks["message once: Joueur 2 tient votre ruine (alert) ($($HeldMessages -join '; '))"] = ($HeldMessages -join '|') -eq "Message: Joueur 2 tient votre ruine (alert)"
+    $Checks["message once: IA Normal 2 tient votre ruine (alert) ($($HeldMessages -join '; '))"] = ($HeldMessages -join '|') -eq "Message: IA Normal 2 tient votre ruine (alert)"
     $Section = Get-Section "victory forum build"
     $Checks["SkipRuin 0: ruin -> rebuilding"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 ruin -> rebuilding" -Quiet)
     $AtWork = @($Section | Select-String -Pattern "Construction: slot 0 rebuilds its forum at .*, (\d+) builders at work" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
@@ -2360,7 +2360,7 @@ if ($Parts -contains "victory") {
     # V4.5: the AI's fall, the message alone (another camp): no alert.
     $Section = @(Get-Section "victory forum other")
     $OtherFell = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de Joueur 2 est tombé — 1 vie"
+    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de IA Normal 2 est tombé — 1 vie"
     $OtherAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["FallForum 1: no Alert, HUD alert: none ($OtherAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$OtherAlert" -eq "none"
     $Section = Get-Section "victory forum defeat"
@@ -2414,7 +2414,7 @@ if ($Parts -contains "victory") {
     $Checks["my King alive (no death of slot 0)"] = -not (@(Get-Section "victory regicide") + @(Get-Section "victory regicide pass") + @(Get-Section "victory regicide riposte") + $Section |
         Select-String -SimpleMatch "Regicide: king of slot 0 died" -Quiet)
     $KingMessages = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de Joueur 2 est mort|Joueur 2 est vaincu"
+    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de IA Normal 2 est mort|IA Normal 2 est vaincu"
     $KingAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["no alert (HUD alert: $KingAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$KingAlert" -eq "none"
     $AllOk = (Report "victory regicide" $Checks) -and $AllOk

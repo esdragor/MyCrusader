@@ -75,8 +75,8 @@ public:
 	 */
 	static int32 SpawnAIPlayerStates(UWorld& World, const FHOLMatchConfig& Config, const FHOLResources& Starting);
 
-	/** IA0.1 E1 (IA0.1-Q1 open): an AI slot's player name, for now the one the interface already shows ("Joueur N"). */
-	static FString MakeAIPlayerName(int32 Slot);
+	/** IA0.1-Q1: an AI slot's player name, « IA <level> N » from Config (HOLForumMessages::GetAIName), as the interface shows it. */
+	static FString MakeAIPlayerName(const FHOLMatchConfig& Config, int32 Slot);
 
 private:
 
