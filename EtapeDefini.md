@@ -14,8 +14,8 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Point de ralliement en plusieurs étapes : Maj + clic droit ajoute des points au ralliement d'un bâtiment (chemin de sortie, par exemple pour contourner une zone)
-- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 fiche réseau (vie du héros en part de 255, fiches publique et privée écrites par le serveur, PV exacts chez le client, contrôle `net hero sheets`), dans `main` ; J8a.4 (mort et retour, premier fichier en Angelscript) en cours dans Celeborn : questions J8a4-Q1 à Q7 tranchées, boucles 1 (règles en script), 2 (ponts C++) et 3 (décision du retour en script) faites, non commitées, boucle 4 (achat du retour par le joueur) en cours dans Celeborn (hero-j8a3), fusion de main avant le commit ; `JourneyInProgress.md`)*
+- Point de ralliement en plusieurs étapes : Maj + clic droit ajoute des points au ralliement d'un bâtiment (chemin de sortie, par exemple pour contourner une zone) *(`EtapeDefiniInProgress.md` N : N.1 en cours, tests rouges puis code, Elrond, branche `rally-steps` ; suivant N.2 essai)*
+- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 fiche réseau (vie du héros en part de 255, fiches publique et privée écrites par le serveur, PV exacts chez le client, contrôle `net hero sheets`), dans `main` ; J8a.4 (mort et retour, premier fichier en Angelscript) en cours dans Celeborn : questions J8a4-Q1 à Q7 tranchées, boucles 1 (règles en script), 2 (ponts C++), 3 (décision du retour en script) et 4 (achat du retour, `hol.Hero.Return`) faites, non commitées, boucle 5 (contrôle réseau dans quick_check) en cours dans Celeborn (hero-j8a3), fusion de main avant le commit ; `JourneyInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : vies par palier (avec les paliers : P-Q1 = C, chantier des paliers juste après J8b, XP et niveaux), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
@@ -24,18 +24,18 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : R8 redécoupé (le lanceur remplace R8.1-R8.5) : R8a serveur par version faite et dans `main` (dd1e708, contrôle `server_versions_check`), puis R8b publication à jour (suivante, Glorfindel), R8c mesure à 4 puis 8 clients, R8d essai E5 avec un ami ; partie à X et clôture (R9) *(R1 à R7.10 et R8a dans `main` (dd1e708) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
+- M6 en parallèle : R8 redécoupé (le lanceur remplace R8.1-R8.5) : R8a serveur par version faite et dans `main` (dd1e708, contrôle `server_versions_check`), R8b publication à jour faite (version 2026-10-27-r8 sur le gestionnaire du raccourci, serveur par version), puis R8c mesure à 4 puis 8 clients (script en préparation, lancée par l'utilisateur demain matin), R8d essai E5 avec un ami (reporté) ; partie à X et clôture (R9) *(R1 à R7.10 et R8a dans `main` (dd1e708) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
 - Lanceur : essai avec un ami *(L0 à L13 dans `main`, décisions D475 à D482 au GDD ; kit et DuckDNS prêts ; serveur par version (D481) fait par le chantier réseau (R8a, dans `main` dd1e708) ; `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
-- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main` ; IA0.1 (PlayerState par emplacement IA, nom « IA <Niveau> <N> ») et IA0.4 B1 (cerveau en script qui pense sans agir) commitées dans Arwen (e8cf110, d42b5a8) ; IA0.4-Q1 à Q4 tranchées (A, A, A, A puis C à IA4) ; B2 (la règle) écrite dans Arwen (test GatherIdle + patch), à compiler et tester ; IA1 (économie) : IA1.1 (5 Paysans de départ) et IA1.2 (ferme) dans `main`, IA1.3 suivante ; chantier `AIInProgress.md`)*
+- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main` ; IA0.1 (PlayerState par emplacement IA, nom « IA <Niveau> <N> ») et IA0.4 B1 (cerveau en script qui pense sans agir) commitées dans Arwen (e8cf110, d42b5a8) ; IA0.4-Q1 à Q4 tranchées (A, A, A, A puis C à IA4) ; B2 (le cerveau envoie récolter) et B2b (interrupteur aiBrain) commitées dans Arwen (b988cf0) ; B3 (tests en script) suivante ; IA1 (économie) : IA1.1 (5 Paysans de départ) et IA1.2 (ferme) dans `main`, IA1.3 suivante ; chantier `AIInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D497 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D498 (§ 22)
 
 ### Moteur
 - Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; tests en script et cache précompilé dans le paquet : D484 ; `AngelscriptInProgress.md`)*
@@ -56,7 +56,6 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 - `net 2 clients` : client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (séquence arrêtée, vu une fois)
-- Attaque d'un bâtiment : portée de 400 cm, une unité gênée frappe encore du 2e rang *(équilibrage, à trancher ; `EtapeDefiniInProgress.md` J)*
 - Attaque d'un bâtiment sans ordre direct (attaque-déplacement, recherche automatique, file Maj) : pas de places autour du mur, ancienne règle du point le plus proche *(J)*
 - Unité arrêtée près d'un bâtiment : la garde du mur visible a des coins arrondis, jusqu'à ~35 cm dans le coin du socle *(C.1 ; J l'a corrigé pour les seules unités qui frappent)*
 

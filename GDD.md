@@ -2803,6 +2803,7 @@ Classées par ordre de résolution : les premières conditionnent les suivantes.
 | D494 | 2026-10-27 | Technique — La carte d'essai | **L'ancienne `Plain` (400 m, 8 places fixes) reste la carte des scénarios et des contrôles** (TC-Q11, A). **Nuance de l'utilisateur** : « elle n'est plus accessible dans le salon », ni au menu solo, où « Plaine » ouvre les cinq tailles. Écartés : la supprimer et repointer les scénarios et les contrôles ; la garder comme sixième taille. | § 16.6 |
 | D495 | 2026-10-27 | Interface — L'équipe en solo | **L'équipe se choisit au menu solo** (question de l'utilisateur : « pourquoi on n'a pas les équipes en solo ? », puis « oui »), à condition qu'une IA alliée n'attaque pas ses alliés, ce que les camps de combat garantissent déjà. Le grisé de D240 est levé pour l'équipe ; la faction reste grisée. | § 15 |
 | D496 | 2026-10-27 | Carte — Idées de cartes | **Sept cartes retenues pour plus tard**, chacune avec sa recette appelée par taille : **El Dorado**, **Les Gués**, **La Forêt profonde**, **La Couronne**, **La Steppe**, **Les Cols** et **L'Arrière-pays** (détail au § 8.5). **Les Gués, revue par l'utilisateur** : l'eau ne se traverse pas, sauf aux passages où elle est basse, qui ne ralentissent pas. Au milieu, un pont, détruit par le siège et refait gratuitement par les villageois. Son avantage est d'être **large** : une armée y passe en formation, alors qu'aux gués elle défile en file (choix B de l'utilisateur). C'est un **écart avec D33** (gué étroit qui ralentit), propre à cette carte. Écartée : **Les Ruines**, un point central à tenir, parce que c'était une troisième carte « tout au centre » et qu'elle manquait de diversité. | § 8.1, § 8.5 |
+| D497 | 2026-10-27 | Combat — Portée de la mêlée contre un bâtiment | **La portée contre bâtiment reste propre à chaque unité (colonne `BuildingAttackRange`) et vaut 1 case (400 cm) pour toute la mêlée** (Paysan, Piquier, Homme d'armes, Héros) : autour d'un bâtiment attaqué, les **trois anneaux de places** (bord de l'unité à ~95, ~215 et ~335 cm du corps) frappent, et une unité gênée frappe d'où elle s'arrête (choix de l'utilisateur, **contre la recommandation** « au contact, 160 cm, le 1er rang seul »). La « torche au contact » de D345 se lit donc « à une case ». Écartés : le contact pour toutes, une portée selon l'arme (Piquier au 2e rang). Question restée ouverte à la clôture de l'étape J (places autour du mur). | § 7.2 |
 | D74 | 2026-10-06 | Cohérence — Le moral | **Famille d'effets, sans jauge** (façon AoE4 / BFME) : effets nommés et temporaires (attaque, armure, cadence) regroupés dans une catégorie « moral » (affichage, cumul plafonné, purification par le Moine). Jamais de déroute. Moral de groupe à états : extension possible après le prototype. | § 7.2 |
 
 ---
@@ -3054,4 +3055,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **Chantier tailles de carte (2026-10-27) : D490 à D496.**
 
-Prochain numéro : **D497**.
+**Portée de la mêlée contre un bâtiment (2026-10-27) : D497.**
+
+Prochain numéro : **D498**.
