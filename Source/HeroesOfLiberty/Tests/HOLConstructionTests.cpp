@@ -574,6 +574,22 @@ bool FHOLConstructionWorkQueueTest::RunTest(const FString& Parameters)
 		HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen) && Queue.Num() == 1 && Queue[0] == FItem::MakeBuild(4));
 	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeGather(32), false);
 	TestTrue(TEXT("a right click without Shift replaces the queue"), Queue == TArray<FItem>({ FItem::MakeGather(32) }));
+
+	// D485 (EtapeDefini L.3): Shift + right click on the finished mill 5 queues an unload there; a finished building is no
+	// open site, yet the deposit waits its turn, and is over only once unloaded.
+	Closed.Add(5);
+	Queue = { FItem::MakeBuild(6) };
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeDeposit(5), true);
+	HOLConstruction::AddToBuildQueue(Queue, FItem::MakeDeposit(5), true);
+	TestTrue(TEXT("a deposit queued after a site, twice once"), Queue == TArray<FItem>({ FItem::MakeBuild(6), FItem::MakeDeposit(5) }));
+	TestTrue(TEXT("a deposit is neither a site to build nor a gathering"), Queue[1].IsDeposit() && !Queue[1].IsBuild() && !Queue[1].IsGather());
+	TestTrue(TEXT("a site is no deposit"), Queue[0].IsBuild() && !Queue[0].IsDeposit());
+	TestFalse(TEXT("site 5 and deposit 5 differ"), FItem::MakeBuild(5) == FItem::MakeDeposit(5));
+	Closed.Add(6);
+	TestTrue(TEXT("house 6 finished: the unload at the finished mill, not dropped"),
+		HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue.Num() == 1 && Queue[0] == FItem::MakeDeposit(5));
+	TestTrue(TEXT("not unloaded yet: it stays"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, false, IsOpen) && Queue[0] == FItem::MakeDeposit(5));
+	TestFalse(TEXT("unloaded, nothing after it: idle"), HOLConstruction::AdvanceWorkQueue<int32>(Queue, true, IsOpen));
 	return true;
 }
 

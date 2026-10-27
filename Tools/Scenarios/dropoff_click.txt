@@ -1,0 +1,42 @@
+# Clic droit sur un dépôt (D485) : les Paysans qui portent du bois vont le déposer au camp de bûcheron cliqué, puis restent inactifs ; Maj le met en file
+# Configuration par défaut (un joueur, Plain) : ton forum vers (-14800, 0), son bois au sud dès y = -1800 ; un camp de
+# bûcheron fini à ~45 m au sud-ouest du forum (plus loin que le forum pour les Paysans qui coupent au bord du bois).
+hol.Cheat.Resources 2000
+hol.Cheat.Population 165
+hol.Gather.LogDeposits 1
+hol.Cheat.SpawnBuilding LumberCamp 0 -4400 -3200
+waitlog Cheat: spawned LumberCamp
+# 1. Cinq Paysans coupent l'arbre au bord du bois 5 s : ils portent 2 ou 3 bois chacun.
+hol.Camera.Focus -13700 -1300
+frames 2
+hol.Units.Spawn 5 -13700 -1300 0 Peasant 150
+waitunits 5
+frames 5
+hol.Select.BoxGround -14400 -2000 -13000 -600
+waitlog Selection: 5 units (own): Peasant x5
+hol.Select.OrderSource -14230 -1800
+waitlog Gather order of slot 0: 5 units to source
+wait 5
+hol.Camera.Focus -16500 -2500
+frames 5
+note 1. Cinq Paysans coupent du bois au bord du bois (ils portent 2 ou 3 bois) ; le camp de bûcheron est au sud-ouest.
+note Sélectionne-les, clic droit sur le camp : ils y vont décharger (« +N ») puis restent inactifs devant (même si le forum est plus près).
+note Essaie aussi : clic droit sur le forum ; un Paysan vide (ou qui porte de la nourriture) ne fait que marcher jusque-là.
+waitkey Quand c'est vu, Entrée : la même chose avec Maj
+# 2. Maj : deux Paysans portent du bois ; une maison à bâtir, puis Maj + clic droit sur le camp.
+hol.Camera.Focus -13700 -1300
+frames 2
+hol.Units.Spawn 2 -13700 -1300 0 Peasant 100
+waitunits 7
+frames 5
+hol.Select.BoxGround -14000 -1600 -13400 -1000
+hol.Select.OrderSource -14230 -1800
+waitlog Gather order of slot 0
+wait 5
+hol.Camera.Focus -16500 -2500
+frames 5
+note 2. Deux nouveaux Paysans coupent du bois (sélectionne-les avec un cadre près de l'arbre).
+note Fais-leur placer une maison près du camp, puis Maj + clic droit sur le camp : ligne bleue ; ils bâtissent d'abord, puis vont décharger au camp, puis restent inactifs.
+note Un Paysan vide dans la file passe la décharge et reste inactif après la maison.
+note Et Maj + clic droit au sol, puis Maj + clic droit sur le camp : il passe d'abord par le point, puis va décharger ; et dans l'autre sens (Maj + camp, puis Maj + sol) : il décharge, puis va au point.
+note Et en chaîne : Maj sol, Maj camp, Maj sol (le point, le dépôt, puis l'autre point) ; Maj sol puis Maj + arbre (il passe par le point, puis récolte) ; Maj sol puis Maj + chantier (il passe par le point, puis bâtit).

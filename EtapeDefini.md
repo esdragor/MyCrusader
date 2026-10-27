@@ -31,7 +31,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D485 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D486 (§ 22)
 
 ### Moteur
 - Moteur Hazelight 5.8.4 avec cible Server : compilation depuis `C:/UE/Src/HZ`, puis remplacer `C:/UE/UE_5.8_AS_3` en entier et recompiler le projet de zéro (serveur compris) *(D483)*
@@ -44,6 +44,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
+- Maj + déplacement puis Maj + **pose** d'un bâtiment : le déplacement est supprimé (la pose ne passe pas par la file des déplacements) *(`EtapeDefiniInProgress.md` L)*
+- Maj + chantier puis Maj + déplacement : le déplacement est oublié, le Paysan bâtit puis s'arrête *(`EtapeDefiniInProgress.md` L)*
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*

@@ -2155,6 +2155,17 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			OnAttackOrderGiven.Broadcast(EnemyBuilding->GetActorLocation());
 			return;
 		}
+		// D485 (EtapeDefini L): one of the player's finished buildings taking deliveries (its sites went above): the units
+		// carrying what it takes unload there, the others walk to the ground point; the server sorts them (it knows the loads).
+		const FHOLBuildingTypeRow* SiteType = Site ? Site->GetType() : nullptr;
+		if (Site && SiteType && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->NeedsBuilders()
+			&& Site->TakesDeliveries() && !SiteType->Accepts.IsEmpty())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units drop off at %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
+			RequestDropOffUnits(Own, Site, Ground, bShift);
+			OnOrderGiven.Broadcast(Site->GetActorLocation());
+			return;
+		}
 		if (Source)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)%s"), Own.Num(), SourceIndex,
@@ -3490,6 +3501,24 @@ void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>&
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::Build(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, const bool bQueue)
+{
+	if (UnitIds.Num() > 0 && Building)
+	{
+		ServerDropOffUnits(TArray<uint32>(UnitIds), Building, Point, bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point,
+	const bool bQueue)
+{
+	// The order names the player: only its own units, at its own building (D288, D485; checked again by the gatherers' step).
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::DropOff(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, Point, bQueue);
 	}
 }
 

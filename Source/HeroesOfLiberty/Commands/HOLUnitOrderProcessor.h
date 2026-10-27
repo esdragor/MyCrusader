@@ -315,6 +315,28 @@ protected:
 	uint32 NextQueuedMoveId = 1;
 	/** Queued moves started at the last step: applied first by the next ApplyQueuedOrders, before the new orders. */
 	TArray<FHOLMoveOrder> StartedQueuedMoves;
+	/**
+	 * Units given a drop-off by ApplyQueuedOrders in this step (D485, EtapeDefini L.5b, L.6): the gathering applies it after
+	 * this processor, so StartQueuedMoves sees them neither dropping off nor at work yet. Their current order is not over (the
+	 * next queued move waits: the user's 2nd trial, P, D, B: B started in the same step, then the gathering's walk to D
+	 * replaced it), and their queue of moves is kept (Shift + D then Shift + B at once: B was forgotten as for a gatherer).
+	 */
+	TSet<uint32> DroppingNow;
+	/**
+	 * Units given work (a source, a site) by ApplyQueuedOrders in this step (L.6): the gathering and the builders apply it
+	 * after this processor. Their current order is not over (the next queued move does not start in the same step); a
+	 * further Shift work order of the same step goes to their queue of work, after it.
+	 */
+	TSet<uint32> WorkStartedNow;
+	/**
+	 * A work order (Gather, Build: L.6) applied to Units: each one's Shift order to the gathering or the builders (with no
+	 * queue of work, at once), under its player's scope with bChain; then, for a unit whose queued order started, the work
+	 * orders right after it in its queue of moves go to its queue of work, in the order given (the rest of its queue of
+	 * moves is forgotten once it works, as before).
+	 */
+	void ApplyWorkOrder(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, TConstArrayView<uint32> UnitIds);
+	/** Issues a work order (Gather, Build, DropOff) to the queue of work of UnitIds (Shift), as its player gave it. */
+	static void IssueToWorkQueue(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, TConstArrayView<uint32> UnitIds);
 	/** Its queue of moves forgotten (a new order, gone): taken out of each move it waited for. */
 	void ForgetMoveQueue(uint32 UnitId);
 	/**

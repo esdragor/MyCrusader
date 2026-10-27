@@ -25,6 +25,8 @@ namespace HOLOrderChain
 		Rally,
 		/** An enemy building to strike (D345, Shift): drawn red as an attack, to its centre; TargetId as Build's. */
 		AttackBuilding,
+		/** One of its player's buildings to unload at (D485, Shift): drawn blue as a gathering, to its centre; TargetId as Build's. */
+		Deposit,
 	};
 
 	/**
@@ -64,6 +66,13 @@ namespace HOLOrderChain
 		{
 			FStep Step;
 			Step.Kind = EStepKind::AttackBuilding;
+			Step.TargetId = BuildingId;
+			return Step;
+		}
+		static FStep MakeDeposit(const uint32 BuildingId)
+		{
+			FStep Step;
+			Step.Kind = EStepKind::Deposit;
 			Step.TargetId = BuildingId;
 			return Step;
 		}
@@ -112,11 +121,13 @@ namespace HOLOrderChain
 
 	/**
 	 * A unit's current order is over (J7a.4, D345, Shift): its next queued order (Shift) may start. Not while it walks a player's
-	 * order, keeps an ordered target (a unit until it dies, a building until it falls) or is on an attack-move.
+	 * order, keeps an ordered target (a unit until it dies, a building until it falls), is on an attack-move or carries its
+	 * load to a deposit its player named (D485, EtapeDefini L.5b: until it has unloaded).
 	 */
-	inline bool IsCurrentOrderOver(const bool bWalkingOrder, const bool bOrderedTarget, const bool bOrderedBuilding, const bool bAttackMoveOn)
+	inline bool IsCurrentOrderOver(const bool bWalkingOrder, const bool bOrderedTarget, const bool bOrderedBuilding, const bool bAttackMoveOn,
+		const bool bDroppingOff = false)
 	{
-		return !bWalkingOrder && !bOrderedTarget && !bOrderedBuilding && !bAttackMoveOn;
+		return !bWalkingOrder && !bOrderedTarget && !bOrderedBuilding && !bAttackMoveOn && !bDroppingOff;
 	}
 
 	/**

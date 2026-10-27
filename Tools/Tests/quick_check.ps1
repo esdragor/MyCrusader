@@ -119,6 +119,10 @@ $SubCaseTable = @{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
         hero = @{ Marks = @("hero"); Setup = @() }
+        dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
+        dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
+        dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
+        shiftwork = @{ Marks = @("shiftwork", "shiftwork order", "shiftwork site", "shiftwork after"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -651,6 +655,30 @@ $CampMill = @(-8400, 13200)
 $CampMillSpawn = @(-7400, 14000)
 $CampFar = @(-19200, -800)
 $CampFarSpawn = @(-19200, -2000)
+# A right click on a deposit (L.1, D485): lumber camp D south-west of the forum, clear of the houses of the earlier cases (y = -3200), its builder made east of it; three
+# Peasants made by the tree nearest CampTree (the forum, at (-15000, 0), much nearer them than D), a fourth beside them.
+$DropD = @(-18400, -6000)
+$DropBuilder = @(-17200, -6000)
+$DropGatherers = @(-13700, -1300)
+$DropEmpty = @(-13700, -900)
+# Shift + right click on a deposit (L.3, D485): house S between the wood and D, built by a carrier and an empty Peasant.
+$DropShiftHouse = @(-17600, -4400)
+# Shift + right click on a deposit with Shift moves (L.5, D485): point P south-east of the wood (17 m from its first tree,
+# 9 m off the way from the wood to D), point B 15 m south of D; both on free ground.
+$DropMoveP = @(-13400, -3300)
+$DropMoveB = @(-18400, -7500)
+# Shift + ground then Shift + work (L.6a): (a) a Peasant made 20 m north of Pa, the tree nearest CampTree ~64 m north
+# of Pa; (b) house H, its builder made 8 m east of it and sent 24 m east (Away), the Peasant made 24 m north of H, Pb
+# 24 m east of that Peasant; (c) a Peasant made north-west of H, Q 33 m west of H. All south of D's row, on free ground.
+$ShiftWorkA = @(-15800, -6000)
+$ShiftWorkPa = @(-15800, -8000)
+$ShiftWorkH = @(-15600, -9600)
+$ShiftWorkHBuilder = @(-14800, -9600)
+$ShiftWorkAway = @(-13200, -9600)
+$ShiftWorkB = @(-15600, -7200)
+$ShiftWorkPb = @(-13200, -7200)
+$ShiftWorkC = @(-16400, -7200)
+$ShiftWorkQ = @(-18800, -10400)
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
@@ -1407,6 +1435,104 @@ if ($Parts -contains "camera") {
             Step "waitlog Select hero: camera on", "frames 3", "hol.Camera.Report", "hol.Select.Report"
             Key Escape
             Step "waitlog Selection: none", "hol.Units.Remove $($BuildHero -join ' ') 1000 0 Hero", "hol.Units.Remove $($BuildEnemyHero -join ' ') 1000 1 Hero", "wait 0.3"
+            # A right click on a finished deposit (L.1, D485): lumber camp D built at its first blow; three Peasants gather
+            # the tree nearest CampTree for a few seconds (partly loaded, the forum nearer them than D), a fourth made empty
+            # beside them; the four selected through group 3 (a box near the wood would take the camp case's gatherers too), a right click on D's centre: the three unload their wood at D (not at the
+            # forum), then stand idle in front of it; the empty one walks to the point clicked, idle. Then all removed.
+            # D, shared by the cases dropoff, dropoffshift and dropoffmove (each played alone builds it).
+            Step "mark build dropoff camp", "hol.Units.SpawnSeed 118", "hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 1",
+                "hol.Units.Spawn 1 $($DropBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($DropBuilder -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Build.Place LumberCamp",
+                "waitlog Placement ghost: LumberCamp at ($($DropD -join ', ')) valid", "hol.Build.Click", "waitlog Construction: slot 0 finished LumberCamp at ($($DropD -join ', '))",
+                "hol.Cheat.FastBuild 0"
+            Step "mark build dropoff", "hol.Units.SpawnSeed 118", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 0", "hol.Units.Spawn 3 $($DropGatherers -join ' ') 0 Peasant 100", "wait 0.5", "hol.Camera.Focus $($DropGatherers -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($DropGatherers[0] - 400) $($DropGatherers[1] - 400) $($DropGatherers[0] + 400) $($DropGatherers[1] + 400)", "waitlog Selection: 3 units (own): Peasant x3", "hol.Select.Group Add 3", "waitlog Group 3: created, 3 units",
+                "hol.Select.OrderSource $($CampTree -join ' ')", "waitlog Gather order of slot 0: 3 units to source", "wait 5",
+                "hol.Units.Spawn 1 $($DropEmpty -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($DropGatherers -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Select.Group Add 3", "waitlog Group 3: added, 4 units",
+                "hol.Select.Group Select 3", "waitlog Group 3: selected, 4 units"
+            # The order, then where they are 12 s later (~66 m to walk) and 3 s after that (still idle in front of D).
+            Step "mark build dropoff order", "hol.Units.Where 0", "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Select.OrderGround $($DropD -join ' ')", "wait 12",
+                "hol.Units.Where 0", "wait 3", "hol.Units.Where 0", "hol.Units.Remove $($DropD -join ' ') 1500 0", "wait 0.5"
+            # Shift + right click on D (L.3, D485): a Peasant gathers the tree nearest CampTree for 5 s (partly loaded), a
+            # second made empty beside it; both selected, house S placed (no FastBuild: it lasts), then Shift + right click
+            # on D: the carrier builds S with the other, and only then unloads its wood at D (queued after S), idle there;
+            # the empty one finishes S and is idle (Shift on D for it: queued walk to the point clicked). Then all removed.
+            Step "mark build dropoffshift", "hol.Units.SpawnSeed 119", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 0",
+                "hol.Units.Spawn 1 $($DropGatherers -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($DropGatherers -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Select.Group Add 4", "waitlog Group 4: created, 1 units",
+                "hol.Select.OrderSource $($CampTree -join ' ')", "waitlog Gather order of slot 0: 1 units to source", "wait 5",
+                "hol.Units.Spawn 1 $($DropEmpty -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($DropGatherers -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Select.Group Add 4", "waitlog Group 4: added, 2 units",
+                "hol.Select.Group Select 4", "waitlog Group 4: selected, 2 units"
+            # S placed, Shift + right click on D; where they are at S's first work, when it is finished, then 10 s and 13 s after.
+            Step "mark build dropoffshift order", "hol.Units.Where 0", "hol.Camera.Focus $($DropShiftHouse -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($DropShiftHouse -join ', ')) valid", "hol.Build.Click",
+                "waitlog Build order of slot 0: 2 units to House at ($($DropShiftHouse -join ', '))", "hol.Camera.Focus $($DropD -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($DropD -join ' ') shift", "waitlog Construction: slot 0 first work on House at ($($DropShiftHouse -join ', '))", "wait 1",
+                "hol.Units.Where 0", "waitlog Construction: slot 0 finished House at ($($DropShiftHouse -join ', '))", "hol.Units.Where 0", "wait 10", "hol.Units.Where 0",
+                "wait 3", "hol.Units.Where 0", "hol.Units.Remove $($DropD -join ' ') 1500 0", "hol.Units.Remove $($DropShiftHouse -join ' ') 1500 0", "wait 0.5"
+            # Shift moves round a Shift + right click on D (L.5, D485, the user's trial): a Peasant gathers the tree nearest
+            # CampTree for 5 s (partly loaded), alone in group 5. A: Shift + right click on the ground at P, then Shift +
+            # right click on D: it walks to P first, then unloads at D, idle there. B: it gathers again, then Shift + D, then
+            # Shift + ground at B: it unloads at D first, then walks to B, idle there. Then all removed.
+            Step "mark build dropoffmove", "hol.Units.SpawnSeed 120", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 0",
+                "hol.Units.Spawn 1 $($DropGatherers -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($DropGatherers -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Select.Group Add 5", "waitlog Group 5: created, 1 units",
+                "hol.Select.OrderSource $($CampTree -join ' ')", "waitlog Gather order of slot 0: 1 units to source", "wait 5"
+            # A: where it is before the orders, every 0.25 s for 6 s after them (P is ~3 s away), then 18 s and 21 s after.
+            Step "mark build dropoffmove order", "hol.Units.Where 0", "hol.Camera.Focus $($DropMoveP -join ' ')", "frames 3", "hol.Select.OrderGround $($DropMoveP -join ' ') shift",
+                "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Select.OrderGround $($DropD -join ' ') shift"
+            for ($i = 0; $i -lt 24; $i++) { Step "wait 0.25", "hol.Units.Where 0" }
+            Step "wait 12", "hol.Units.Where 0", "wait 3", "hol.Units.Where 0"
+            # B: back to the tree (~60 m) and 5-8 s of gathering, then Shift + D and Shift + B; where it is every second for
+            # 22 s (D ~60 m away, B 15 m beyond), then 3 s after.
+            Step "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Select.Group Select 5", "waitlog Group 5: selected, 1 units",
+                "hol.Select.OrderSource $($CampTree -join ' ')", "waitlog Gather order of slot 0: 1 units to source", "wait 16",
+                "hol.Units.Where 0", "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Select.OrderGround $($DropD -join ' ') shift",
+                "hol.Camera.Focus $($DropMoveB -join ' ')", "frames 3", "hol.Select.OrderGround $($DropMoveB -join ' ') shift"
+            for ($i = 0; $i -lt 22; $i++) { Step "wait 1", "hol.Units.Where 0" }
+            Step "wait 3", "hol.Units.Where 0"
+            # C (L.6a, the user's 2nd trial): back to the tree (~70 m from B) and a few seconds of gathering, then Shift + P,
+            # Shift + D, Shift + B: it walks to P, unloads at D, then walks to B, idle there. Where it is every 0.25 s for 8 s,
+            # then every second for 26 s (P ~17 m away, D 57 m beyond, B 15 m beyond D), then 3 s after.
+            Step "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Select.Group Select 5", "waitlog Group 5: selected, 1 units",
+                "hol.Select.OrderSource $($CampTree -join ' ')", "waitlog Gather order of slot 0: 1 units to source", "wait 19",
+                "hol.Units.Where 0", "hol.Camera.Focus $($DropMoveP -join ' ')", "frames 3", "hol.Select.OrderGround $($DropMoveP -join ' ') shift",
+                "hol.Camera.Focus $($DropD -join ' ')", "frames 3", "hol.Select.OrderGround $($DropD -join ' ') shift",
+                "hol.Camera.Focus $($DropMoveB -join ' ')", "frames 3", "hol.Select.OrderGround $($DropMoveB -join ' ') shift"
+            for ($i = 0; $i -lt 32; $i++) { Step "wait 0.25", "hol.Units.Where 0" }
+            for ($i = 0; $i -lt 26; $i++) { Step "wait 1", "hol.Units.Where 0" }
+            Step "wait 3", "hol.Units.Where 0", "hol.Units.Remove $($DropD -join ' ') 1500 0", "hol.Units.Remove $($DropMoveB -join ' ') 1500 0",
+                "hol.Units.Remove $($DropMoveP -join ' ') 1500 0", "wait 0.5"
+            # Shift + ground then Shift + work (L.6a, the user's 2nd trial): (a) an empty Peasant, Shift + right click on the
+            # ground at Pa (south), then Shift + right click on the tree nearest CampTree (north): it walks to Pa first, then
+            # gathers. (b) house H placed by a builder sent away at once (H stays unbuilt); an empty Peasant, Shift + ground
+            # at Pb (east), then Shift + right click on H: it walks to Pb first, then builds H. (c) seen only: a third empty
+            # Peasant, Shift + right click on H then Shift + ground at Q: does it build H first or walk to Q at once?
+            Step "mark build shiftwork", "hol.Units.SpawnSeed 121", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 0",
+                "hol.Units.Spawn 1 $($ShiftWorkA -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftWorkA -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #"
+            # (a): where it is before the orders, then every 0.5 s for 24 s (Pa 20 m away, the tree ~64 m beyond).
+            Step "mark build shiftwork order", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftWorkPa -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftWorkPa -join ' ') shift",
+                "hol.Camera.Focus $($CampTree -join ' ')", "frames 3", "hol.Select.OrderSource $($CampTree -join ' ') shift"
+            for ($i = 0; $i -lt 48; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            # (b): H placed by its builder, the builder sent away; the Peasant made, Shift + Pb, Shift + H; every 0.5 s for 22 s.
+            Step "mark build shiftwork site", "hol.Units.Spawn 1 $($ShiftWorkHBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftWorkHBuilder -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($ShiftWorkH -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($ShiftWorkH -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 1 units to House at ($($ShiftWorkH -join ', '))",
+                "hol.Camera.Focus $($ShiftWorkAway -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftWorkAway -join ' ')", "wait 0.5",
+                "hol.Units.Spawn 1 $($ShiftWorkB -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftWorkB -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftWorkPb -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftWorkPb -join ' ') shift",
+                "hol.Camera.Focus $($ShiftWorkH -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftWorkH -join ' ') shift"
+            for ($i = 0; $i -lt 44; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            # (c): seen only; every second for 25 s.
+            Step "mark build shiftwork after", "hol.Units.Spawn 1 $($ShiftWorkC -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftWorkC -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftWorkH -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($ShiftWorkH -join ' ') shift", "hol.Camera.Focus $($ShiftWorkQ -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftWorkQ -join ' ') shift"
+            for ($i = 0; $i -lt 25; $i++) { Step "wait 1", "hol.Units.Where 0" }
+            Step "hol.Units.Remove $($ShiftWorkH -join ' ') 3000 0", "hol.Units.Remove $($ShiftWorkQ -join ' ') 1000 0", "hol.Units.Remove $($ShiftWorkAway -join ' ') 600 0",
+                "hol.Units.Remove $($ShiftWorkPb -join ' ') 1000 0", "wait 0.5"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -3286,6 +3412,169 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($HeroSel.Count -ge 3) -and ($HeroSel[2] -eq "Hero #$($Picked.Groups[1].Value) of slot 0 (own)")
     $Checks["both heroes removed after"] = (@($Hero | Select-String -Pattern "Remove: 1 units of slot [01] within").Count -eq 2)
     $AllOk = (Report "build hero" $Checks) -and $AllOk
+    # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
+    # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
+    $DropOrder = @(Get-Section "build dropoff order" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $ReadWhere = { param($Line) $Units = @{}
+        foreach ($Part in ($Line -replace '^.*Units where: \d+ units: ', '') -split '; ') {
+            if ($Part -match '^#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)(?:, carries (\w+) ([^,]+))?') {
+                $Units[[int]$Matches[1]] = [pscustomobject]@{ X = [int]$Matches[2]; Y = [int]$Matches[3]; Activity = $Matches[4]; Load = $Matches[5]; Amount = $Matches[6] } } }
+        $Units }
+    $Wheres = @($DropOrder | Where-Object { $_ -match "Units where: " } | ForEach-Object { , (& $ReadWhere $_) })
+    $DropUnits = if ($Wheres.Count -ge 1) { @($Wheres[0].Keys | Sort-Object | Select-Object -Last 4) } else { @() }
+    $DropCarriers = @($DropUnits | Select-Object -First 3)
+    $DropEmptyId = @($DropUnits | Select-Object -Last 1)
+    $DropDist = { param($U, $At) if ($U) { [Math]::Round([Math]::Sqrt([Math]::Pow($U.X - $At[0], 2) + [Math]::Pow($U.Y - $At[1], 2))) } else { -1 } }
+    $Before = @($DropCarriers | ForEach-Object { $U = $Wheres[0][$_]; "#$_ $($U.Activity) $($U.Load) $($U.Amount), forum $(& $DropDist $U @(-15000, 0)) cm, D $(& $DropDist $U $DropD) cm" })
+    $Checks["set-up: the three newest carry wood (partly), the forum nearer them than D; the fourth carries nothing ($($Before -join '; '))"] =
+        ($DropUnits.Count -eq 4) -and (@($DropCarriers | Where-Object { $Wheres[0][$_].Load -eq "Wood" -and [int]$Wheres[0][$_].Amount -gt 0 -and [int]$Wheres[0][$_].Amount -lt 10 }).Count -eq 3) -and
+        (@($DropCarriers | Where-Object { (& $DropDist $Wheres[0][$_] @(-15000, 0)) -lt (& $DropDist $Wheres[0][$_] $DropD) }).Count -ge 1) -and
+        (-not $Wheres[0][$DropEmptyId[0]].Load)
+    $AtD = "LumberCamp ($($DropD -join ', '))"
+    $DropUnloads = @($DropOrder | Select-String -Pattern "Gather: slot 0 unloaded (\d+) (\w+) \(stock [^)]*\) at (\w+) \((-?\d+), (-?\d+)\), unit #(\d+)" | ForEach-Object {
+        $G = $_.Matches[0].Groups; [pscustomobject]@{ Amount = [int]$G[1].Value; Resource = $G[2].Value; At = "$($G[3].Value) ($($G[4].Value), $($G[5].Value))"; Unit = [int]$G[6].Value } } |
+        Where-Object { $DropUnits -contains $_.Unit })
+    $AtDUnits = @($DropUnloads | Where-Object { $_.At -eq $AtD -and $_.Resource -eq "Wood" -and $DropCarriers -contains $_.Unit } | ForEach-Object { $_.Unit } | Sort-Object -Unique)
+    $Checks["right click on D: each of the three unloads its wood at D, nowhere else, the empty one nothing ($($DropUnloads.Count) unloads: $(($DropUnloads | ForEach-Object { "#$($_.Unit) $($_.Amount) $($_.Resource) at $($_.At)" }) -join '; '))"] =
+        ($AtDUnits.Count -eq 3) -and (@($DropUnloads | Where-Object { $_.At -ne $AtD -or $DropEmptyId -contains $_.Unit }).Count -eq 0)
+    $After = @(1, 2 | Where-Object { $_ -lt $Wheres.Count } | ForEach-Object { $W = $Wheres[$_]; @($DropUnits | ForEach-Object { $U = $W[$_]; "#$_ $(if ($U) { "$($U.Activity) $($U.Load) $($U.Amount), D $(& $DropDist $U $DropD) cm" } else { 'gone' })" }) -join ', ' })
+    $Checks["then the four idle in front of D (within 12 m), carrying nothing, 12 s and 15 s after the order ($($After -join ' | '))"] =
+        ($Wheres.Count -ge 3) -and ($DropUnits.Count -eq 4) -and (@(1, 2 | ForEach-Object { $W = $Wheres[$_]; $DropUnits | Where-Object { -not $W[$_] -or $W[$_].Activity -ne "Idle" -or $W[$_].Load -or (& $DropDist $W[$_] $DropD) -gt 1200 } }).Count -eq 0)
+    $AllOk = (Report "build dropoff" $Checks) -and $AllOk
+
+    # L.3 (D485): Shift + right click on D, after house S. hol.Units.Where before the order, at S's first work, when S is
+    # finished, 10 s and 13 s after: the two selected are the two newest (the carrier, then the empty one).
+    $ShiftOrder = @(Get-Section "build dropoffshift order" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $ShiftWheres = @($ShiftOrder | Where-Object { $_ -match "Units where: " } | ForEach-Object { , (& $ReadWhere $_) })
+    $ShiftUnits = if ($ShiftWheres.Count -ge 1) { @($ShiftWheres[0].Keys | Sort-Object | Select-Object -Last 2) } else { @() }
+    $ShiftCarrier = if ($ShiftUnits.Count -eq 2) { $ShiftUnits[0] } else { -1 }
+    $ShiftEmpty = if ($ShiftUnits.Count -eq 2) { $ShiftUnits[1] } else { -1 }
+    $ShiftSay = { param($W, $Id) $U = $W[$Id]; if ($U) { "#$Id $($U.Activity) $($U.Load) $($U.Amount), D $(& $DropDist $U $DropD) cm, S $(& $DropDist $U $DropShiftHouse) cm" } else { "#$Id gone" } }
+    $Checks["set-up: the carrier holds some wood, the other nothing ($(if ($ShiftWheres.Count -ge 1) { (& $ShiftSay $ShiftWheres[0] $ShiftCarrier), (& $ShiftSay $ShiftWheres[0] $ShiftEmpty) -join '; ' }))"] =
+        ($ShiftUnits.Count -eq 2) -and $ShiftWheres[0][$ShiftCarrier].Load -eq "Wood" -and [int]$ShiftWheres[0][$ShiftCarrier].Amount -gt 0 -and
+        [int]$ShiftWheres[0][$ShiftCarrier].Amount -lt 10 -and -not $ShiftWheres[0][$ShiftEmpty].Load
+    $ShiftAt = [regex]::Escape("House at ($($DropShiftHouse -join ', '))")
+    $ShiftEvents = @($ShiftOrder | ForEach-Object {
+        if ($_ -match "Construction: slot 0 finished $ShiftAt") { [pscustomobject]@{ Kind = "finished"; Unit = -1; At = "" } }
+        elseif ($_ -match "Gather: slot 0 unloaded (\d+) (\w+) \(stock [^)]*\) at (\w+) \((-?\d+), (-?\d+)\), unit #(\d+)" -and $ShiftUnits -contains [int]$Matches[6]) {
+            [pscustomobject]@{ Kind = "unloaded $($Matches[1]) $($Matches[2])"; Unit = [int]$Matches[6]; At = "$($Matches[3]) ($($Matches[4]), $($Matches[5]))" } } })
+    $ShiftTokens = @($ShiftEvents | ForEach-Object { if ($_.Unit -ge 0) { "#$($_.Unit) $($_.Kind) at $($_.At)" } else { "S finished" } })
+    $FinishedAt = [array]::IndexOf(@($ShiftEvents | ForEach-Object { $_.Kind }), "finished")
+    $EarlyUnloads = @(for ($i = 0; $i -lt $ShiftEvents.Count; $i++) { if ($ShiftEvents[$i].Unit -eq $ShiftCarrier -and ($FinishedAt -lt 0 -or $i -lt $FinishedAt)) { $ShiftEvents[$i] } })
+    $AtWork = if ($ShiftWheres.Count -ge 2) { $ShiftWheres[1] } else { @{} }
+    $Checks["(1) the carrier does not unload before S is finished, and builds S ($($ShiftTokens -join '; ') | at S's first work: $(if ($ShiftWheres.Count -ge 2) { & $ShiftSay $AtWork $ShiftCarrier }))"] =
+        ($FinishedAt -ge 0) -and ($EarlyUnloads.Count -eq 0) -and ($ShiftCarrier -ge 0) -and $AtWork[$ShiftCarrier] -and $AtWork[$ShiftCarrier].Activity -eq "Building"
+    $LateUnloads = @(for ($i = $FinishedAt + 1; $FinishedAt -ge 0 -and $i -lt $ShiftEvents.Count; $i++) { if ($ShiftEvents[$i].Unit -eq $ShiftCarrier) { $ShiftEvents[$i] } })
+    $Checks["(2) after S, the carrier unloads its wood at D, nowhere else"] =
+        ($LateUnloads.Count -ge 1) -and (@($LateUnloads | Where-Object { $_.At -ne $AtD -or $_.Kind -notmatch "Wood$" }).Count -eq 0) -and
+        (@($ShiftEvents | Where-Object { $_.Unit -eq $ShiftCarrier -and $_.At -ne $AtD }).Count -eq 0)
+    $ShiftAfter = @(3, 4 | Where-Object { $_ -lt $ShiftWheres.Count } | ForEach-Object { "$(& $ShiftSay $ShiftWheres[$_] $ShiftCarrier), $(& $ShiftSay $ShiftWheres[$_] $ShiftEmpty)" })
+    $Checks["(3) then the carrier idle in front of D (within 12 m), carrying nothing, 10 s and 13 s after S ($($ShiftAfter -join ' | '))"] =
+        ($ShiftWheres.Count -ge 5) -and (@(3, 4 | Where-Object { $U = $ShiftWheres[$_][$ShiftCarrier]; -not $U -or $U.Activity -ne "Idle" -or $U.Load -or (& $DropDist $U $DropD) -gt 1200 }).Count -eq 0)
+    # It may still walk to S at the carrier's first work (it starts farther): building at that work or at S's end.
+    $AtEnd = if ($ShiftWheres.Count -ge 3) { $ShiftWheres[2] } else { @{} }
+    $Checks["(4) the empty one builds S, unloads nothing, then idle carrying nothing (at S's first work: $(if ($ShiftWheres.Count -ge 2) { & $ShiftSay $AtWork $ShiftEmpty }); at S's end: $(if ($ShiftWheres.Count -ge 3) { & $ShiftSay $AtEnd $ShiftEmpty }))"] =
+        ($ShiftWheres.Count -ge 5) -and (@($AtWork, $AtEnd | Where-Object { $_[$ShiftEmpty] -and $_[$ShiftEmpty].Activity -eq "Building" }).Count -ge 1) -and (@($ShiftEvents | Where-Object { $_.Unit -eq $ShiftEmpty }).Count -eq 0) -and
+        (@(3, 4 | Where-Object { $U = $ShiftWheres[$_][$ShiftEmpty]; -not $U -or $U.Activity -ne "Idle" -or $U.Load }).Count -eq 0)
+    $AllOk = (Report "build dropoffshift" $Checks) -and $AllOk
+
+    # L.5 (D485): Shift moves round a Shift + right click on D. The section's events in order (hol.Units.Where, the unloads
+    # of the Peasant: the newest unit of the first Where), split at "Group 5: selected" into A (P then D) and B (D then B).
+    $MoveOrder = @(Get-Section "build dropoffmove order" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $MoveEvents = New-Object System.Collections.Generic.List[object]
+    $MovePeasant = -1
+    $MovePart = "A"
+    foreach ($Line in $MoveOrder) {
+        if ($Line -match "Group 5: selected") { $MovePart = if ($MovePart -eq "A") { "B" } else { "C" } }
+        elseif ($Line -match "Units where: ") {
+            $W = & $ReadWhere $Line
+            if ($MovePeasant -lt 0 -and $W.Count -gt 0) { $MovePeasant = @($W.Keys | Sort-Object | Select-Object -Last 1)[0] }
+            $MoveEvents.Add([pscustomobject]@{ Part = $MovePart; Kind = "where"; U = $W[$MovePeasant]; At = "" })
+        }
+        elseif ($Line -match "Gather: slot 0 unloaded (\d+) (\w+) \(stock [^)]*\) at (\w+) \((-?\d+), (-?\d+)\), unit #(\d+)" -and [int]$Matches[6] -eq $MovePeasant) {
+            $MoveEvents.Add([pscustomobject]@{ Part = $MovePart; Kind = "unload $($Matches[1]) $($Matches[2])"; U = $null; At = "$($Matches[3]) ($($Matches[4]), $($Matches[5]))" })
+        }
+    }
+    $MoveSay = { param($U) if ($U) { "$($U.Activity) $($U.Load) $($U.Amount) at ($($U.X), $($U.Y))" } else { "gone" } }
+    foreach ($Part in "A", "B", "C") {
+        $To = if ($Part -eq "A") { $DropMoveP } else { $DropMoveB }
+        $PE = @($MoveEvents | Where-Object { $_.Part -eq $Part })
+        $PW = @($PE | Where-Object { $_.Kind -eq "where" })
+        $FirstUnload = -1
+        for ($i = 0; $i -lt $PE.Count; $i++) { if ($PE[$i].Kind -ne "where") { $FirstUnload = $i; break } }
+        $Unloads = @($PE | Where-Object { $_.Kind -ne "where" })
+        $Near = @(for ($i = 0; $i -lt $PE.Count; $i++) { if ($PE[$i].Kind -eq "where" -and $PE[$i].U -and (& $DropDist $PE[$i].U $To) -le 300) { $i } })
+        $Closest = @($PW | Where-Object { $_.U } | ForEach-Object { & $DropDist $_.U $To } | Sort-Object | Select-Object -First 1)
+        $Story = @($PE | ForEach-Object { if ($_.Kind -eq "where") { if ($_.U) { "$($_.U.Activity) $($_.U.Load) $($_.U.Amount) to-$Part $(& $DropDist $_.U $To) D $(& $DropDist $_.U $DropD)" } else { "gone" } } else { "$($_.Kind) at $($_.At)" } })
+        Write-Host "  dropoffmove $Part (#$MovePeasant): $($Story -join ' | ')"
+        $Checks["$Part set-up: the Peasant carries some wood before the orders ($(if ($PW.Count -ge 1) { & $MoveSay $PW[0].U }))"] =
+            ($PW.Count -ge 1) -and $PW[0].U -and $PW[0].U.Load -eq "Wood" -and [int]$PW[0].U.Amount -gt 0 -and [int]$PW[0].U.Amount -lt 10
+        $Checks["$Part it unloads its wood at D, nowhere else ($(($Unloads | ForEach-Object { "$($_.Kind) at $($_.At)" }) -join '; '))"] =
+            ($Unloads.Count -ge 1) -and (@($Unloads | Where-Object { $_.At -ne $AtD -or $_.Kind -notmatch "Wood$" }).Count -eq 0)
+        if ($Part -eq "A") {
+            $Checks["A Shift P then Shift D: it passes within 3 m of P before it unloads (closest $Closest cm; first near at event $(@($Near)[0]), first unload at $FirstUnload)"] =
+                ($Near.Count -ge 1) -and ($FirstUnload -ge 0) -and ($Near[0] -lt $FirstUnload)
+            $Checks["A then idle in front of D (within 12 m), carrying nothing ($(if ($PW.Count -ge 1) { & $MoveSay $PW[-1].U }), D $(if ($PW.Count -ge 1) { & $DropDist $PW[-1].U $DropD }) cm)"] =
+                ($PW.Count -ge 3) -and $PW[-1].U -and $PW[-1].U.Activity -eq "Idle" -and -not $PW[-1].U.Load -and (& $DropDist $PW[-1].U $DropD) -le 1200
+        } elseif ($Part -eq "C") {
+            $NearP = @(for ($i = 0; $i -lt $PE.Count; $i++) { if ($PE[$i].Kind -eq "where" -and $PE[$i].U -and (& $DropDist $PE[$i].U $DropMoveP) -le 300) { $i } })
+            $ClosestP = @($PW | Where-Object { $_.U } | ForEach-Object { & $DropDist $_.U $DropMoveP } | Sort-Object | Select-Object -First 1)
+            $Checks["C Shift P, Shift D, Shift B: it passes within 3 m of P before it unloads (closest $ClosestP cm; first near at event $(@($NearP)[0]), first unload at $FirstUnload)"] =
+                ($NearP.Count -ge 1) -and ($FirstUnload -ge 0) -and ($NearP[0] -lt $FirstUnload)
+            $Checks["C then within 3 m of B after it unloads (closest $Closest cm; first near at event $(@($Near)[0]), first unload at $FirstUnload)"] =
+                ($Near.Count -ge 1) -and ($FirstUnload -ge 0) -and ($Near[0] -gt $FirstUnload)
+            $Checks["C then idle within 3 m of B, carrying nothing ($(if ($PW.Count -ge 1) { & $MoveSay $PW[-1].U }), B $(if ($PW.Count -ge 1) { & $DropDist $PW[-1].U $DropMoveB }) cm)"] =
+                ($PW.Count -ge 3) -and $PW[-1].U -and $PW[-1].U.Activity -eq "Idle" -and -not $PW[-1].U.Load -and (& $DropDist $PW[-1].U $DropMoveB) -le 300
+        } else {
+            $Checks["B Shift D then Shift B: it comes within 3 m of B only after it unloads (closest $Closest cm; first near at event $(@($Near)[0]), first unload at $FirstUnload)"] =
+                ($Near.Count -ge 1) -and ($FirstUnload -ge 0) -and ($Near[0] -gt $FirstUnload)
+            $Checks["B then idle within 3 m of B, carrying nothing ($(if ($PW.Count -ge 1) { & $MoveSay $PW[-1].U }), B $(if ($PW.Count -ge 1) { & $DropDist $PW[-1].U $DropMoveB }) cm)"] =
+                ($PW.Count -ge 3) -and $PW[-1].U -and $PW[-1].U.Activity -eq "Idle" -and -not $PW[-1].U.Load -and (& $DropDist $PW[-1].U $DropMoveB) -le 300
+        }
+    }
+    $AllOk = (Report "build dropoffmove" $Checks) -and $AllOk
+
+    # L.6a: Shift + ground then Shift + work. Each section's Peasant: the newest unit of its first hol.Units.Where.
+    $Checks = [ordered]@{}
+    $SwWheres = @(Get-Section "build shiftwork order" | Where-Object { $_ -match "Units where: " } | ForEach-Object { , (& $ReadWhere $_) })
+    $SwA = if ($SwWheres.Count -ge 1 -and $SwWheres[0].Count -gt 0) { @($SwWheres[0].Keys | Sort-Object | Select-Object -Last 1)[0] } else { -1 }
+    $SwAU = @($SwWheres | ForEach-Object { $_[$SwA] })
+    $SwStory = @($SwAU | ForEach-Object { if ($_) { "$($_.Activity) $($_.Load) $($_.Amount) Pa $(& $DropDist $_ $ShiftWorkPa)" } else { "gone" } })
+    Write-Host "  shiftwork a (#$SwA): $($SwStory -join ' | ')"
+    $SwNear = @(for ($i = 0; $i -lt $SwAU.Count; $i++) { if ($SwAU[$i] -and (& $DropDist $SwAU[$i] $ShiftWorkPa) -le 300) { $i } })
+    $SwChop = -1
+    for ($i = 0; $i -lt $SwAU.Count; $i++) { if ($SwAU[$i] -and $SwAU[$i].Activity -eq "Gathering" -and $SwAU[$i].Load -eq "Wood" -and [int]$SwAU[$i].Amount -gt 0) { $SwChop = $i; break } }
+    $SwClosest = @($SwAU | Where-Object { $_ } | ForEach-Object { & $DropDist $_ $ShiftWorkPa } | Sort-Object | Select-Object -First 1)
+    $Checks["(a) set-up: the Peasant carries nothing before the orders ($(if ($SwAU.Count -ge 1) { & $MoveSay $SwAU[0] }))"] = ($SwAU.Count -ge 1) -and $SwAU[0] -and -not $SwAU[0].Load
+    $Checks["(a) Shift Pa then Shift tree: it passes within 3 m of Pa before it starts gathering (closest $SwClosest cm; first near at sample $(@($SwNear)[0]), first wood at sample $SwChop)"] =
+        ($SwNear.Count -ge 1) -and ($SwChop -ge 0) -and ($SwNear[0] -lt $SwChop)
+    $Checks["(a) then it gathers wood (first wood at sample $SwChop)"] = $SwChop -ge 0
+    $SwSite = @(Get-Section "build shiftwork site" | ForEach-Object { $_ })
+    $SwHAt = [regex]::Escape("House at ($($ShiftWorkH -join ', '))")
+    $SwBWheres = @($SwSite | Where-Object { $_ -match "Units where: " } | ForEach-Object { , (& $ReadWhere $_) })
+    $SwB = if ($SwBWheres.Count -ge 1 -and $SwBWheres[0].Count -gt 0) { @($SwBWheres[0].Keys | Sort-Object | Select-Object -Last 1)[0] } else { -1 }
+    $SwBU = @($SwBWheres | ForEach-Object { $_[$SwB] })
+    $SwBStory = @($SwBU | ForEach-Object { if ($_) { "$($_.Activity) Pb $(& $DropDist $_ $ShiftWorkPb) H $(& $DropDist $_ $ShiftWorkH)" } else { "gone" } })
+    Write-Host "  shiftwork b (#$SwB): $($SwBStory -join ' | ')"
+    Write-Host "  shiftwork b log: $(@($SwSite | Select-String -Pattern "foundation at|first work on $SwHAt|finished $SwHAt|Queued|queued" | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
+    $SwBNear = @(for ($i = 0; $i -lt $SwBU.Count; $i++) { if ($SwBU[$i] -and (& $DropDist $SwBU[$i] $ShiftWorkPb) -le 300) { $i } })
+    $SwBBuild = -1
+    for ($i = 0; $i -lt $SwBU.Count; $i++) { if ($SwBU[$i] -and $SwBU[$i].Activity -eq "Building") { $SwBBuild = $i; break } }
+    $SwBClosest = @($SwBU | Where-Object { $_ } | ForEach-Object { & $DropDist $_ $ShiftWorkPb } | Sort-Object | Select-Object -First 1)
+    $Checks["(b) H placed, unbuilt before the Peasant's orders"] = [bool]($SwSite | Select-String -Pattern "placed House foundation at \($($ShiftWorkH -join ', ')\)" -Quiet)
+    $Checks["(b) Shift Pb then Shift H: it passes within 3 m of Pb before it builds (closest $SwBClosest cm; first near at sample $(@($SwBNear)[0]), first Building at sample $SwBBuild)"] =
+        ($SwBNear.Count -ge 1) -and ($SwBBuild -ge 0) -and ($SwBNear[0] -lt $SwBBuild)
+    $Checks["(b) then it builds H (first Building at sample $SwBBuild)"] = $SwBBuild -ge 0
+    $SwAfter = @(Get-Section "build shiftwork after" | ForEach-Object { $_ })
+    $SwCWheres = @($SwAfter | Where-Object { $_ -match "Units where: " } | ForEach-Object { , (& $ReadWhere $_) })
+    $SwC = if ($SwCWheres.Count -ge 1 -and $SwCWheres[0].Count -gt 0) { @($SwCWheres[0].Keys | Sort-Object | Select-Object -Last 1)[0] } else { -1 }
+    $SwCStory = @($SwCWheres | ForEach-Object { $U = $_[$SwC]; if ($U) { "$($U.Activity) H $(& $DropDist $U $ShiftWorkH) Q $(& $DropDist $U $ShiftWorkQ)" } else { "gone" } })
+    Write-Host "  shiftwork c, seen only (#$SwC, every 1 s): $($SwCStory -join ' | ')"
+    Write-Host "  shiftwork c log: $(@($SwAfter | Select-String -Pattern "finished $SwHAt|Queued|queued" | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
+    $AllOk = (Report "build shiftwork" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

@@ -31,10 +31,11 @@ namespace HOLPlayerOrders
 	/**
 	 * The units that neither gather nor build (CarryCapacity 0: the soldiers, J7a.2) taken out of an order to gather or to
 	 * build: they walk to its point instead (the user's choice, J7a.2), as a move order of the player's (D288). Only
-	 * PlayerIndex's own: another's stay in the list and are refused by the order's processor.
+	 * PlayerIndex's own: another's stay in the list and are refused by the order's processor. bQueue (Shift): their walk
+	 * goes at the end of their queue of orders.
 	 */
 	HEROESOFLIBERTY_API void SendNonWorkersTo(UWorld& World, UHOLCommandSubsystem& Commands, int32 PlayerIndex, TArray<uint32>& InOutUnitIds,
-		const FVector& Point);
+		const FVector& Point, bool bQueue = false);
 
 	/** Go there (D286, D287); FrontLine and bFrontWidth: a drag's arrow (J7a.4). */
 	HEROESOFLIBERTY_API bool Move(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false,
@@ -51,6 +52,16 @@ namespace HOLPlayerOrders
 	HEROESOFLIBERTY_API bool Gather(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue = false);
 	/** Build or repair a building (J6a.4, D312); the soldiers walk to it. */
 	HEROESOFLIBERTY_API bool Build(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
+	/**
+	 * A right click on one of the player's finished buildings that takes deliveries (D485, EtapeDefini L): the units carrying
+	 * a resource it takes unload there, then stand idle; the others (nothing taken carried, soldiers) walk to Point. The
+	 * sorting is the server's: a client does not know each unit's load. Not the player's, or no deposit: all walk to Point.
+	 * With bQueue (Shift, L.3): every worker gets the deposit at the end of its queue (its load judged at its turn): a
+	 * builder with a queue of work in that queue, the others in their queue of moves (L.5b); the soldiers a walk to Point
+	 * at the end of theirs. All go through the queue of moves (EHOLOrderKind::DropOff), sorted there by the server.
+	 */
+	HEROESOFLIBERTY_API bool DropOff(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point,
+		bool bQueue = false);
 	/**
 	 * Place a foundation (J6a.3, D311): the slot pays and owns it; its builders are UnitIds, none above the cap (the
 	 * foundation is placed all the same).
