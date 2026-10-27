@@ -347,8 +347,13 @@ struct HEROESOFLIBERTY_API FHOLUnitStateFragment : public FMassFragment
 	UPROPERTY()
 	uint32 UnitId = 0;
 
+	/**
+	 * Health (J8a.1: a float, so that the hero's x0.3 is exact, D17); dead at 0 or below. Shown and sent rounded up
+	 * (HOLCombat::GetShownHealth). The hits come off it one after another in the combat processor's sequential order
+	 * (D468: never from a parallel loop, the float subtractions would then depend on the threads' order).
+	 */
 	UPROPERTY()
-	int32 CurrentHealth = 0;
+	float CurrentHealth = 0.f;
 
 	UPROPERTY()
 	EHOLUnitActivity Activity = EHOLUnitActivity::Idle;
@@ -427,7 +432,7 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 
 	/** Hits it struck, damage dealt, kills, and the step of its first hit (the combat report); -1: none yet. */
 	int32 Hits = 0;
-	int32 DamageDealt = 0;
+	float DamageDealt = 0.f;
 	int32 Kills = 0;
 	int64 FirstHitStep = -1;
 

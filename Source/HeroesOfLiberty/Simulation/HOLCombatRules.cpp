@@ -19,7 +19,7 @@ namespace HOLCombat
 		}
 	}
 
-	int32 GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender)
+	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender)
 	{
 		int32 Damage = Attacker.Attack;
 		for (const FHOLAttackBonus& Bonus : Attacker.Bonuses)
@@ -30,12 +30,30 @@ namespace HOLCombat
 			}
 		}
 		Damage -= GetArmor(Defender, Attacker.AttackType);
-		return FMath::Max(Damage, 1);
+		const float Hit = static_cast<float>(FMath::Max(Damage, 1));
+		// D17: a hero takes HeroTroopDamageFactor of a troop's hit (any attacker but another hero), unrounded.
+		if (Defender.HasArmorCategory(EHOLArmorCategory::Hero) && !Attacker.HasArmorCategory(EHOLArmorCategory::Hero))
+		{
+			return Hit * HeroTroopDamageFactor;
+		}
+		return Hit;
 	}
 
-	int32 GetHitsToKill(const int32 Health, const int32 Damage)
+	int32 GetHitsToKill(const float Health, const float Damage)
 	{
-		return Health <= 0 ? 0 : FMath::DivideAndRoundUp(Health, FMath::Max(Damage, 1));
+		// Counted by subtraction, as the hits come off (no division: 450 / 3.6 must give the hits the simulation needs). No
+		// damage counts as 1, as before; a hit below 1 (the hero's 0.9, D17) stays as it is.
+		if (Health <= 0.f)
+		{
+			return 0;
+		}
+		const float Hit = Damage > 0.f ? Damage : 1.f;
+		int32 Hits = 0;
+		for (float Left = Health; Left > 0.f; Left -= Hit)
+		{
+			++Hits;
+		}
+		return Hits;
 	}
 
 	int32 ToMilliseconds(const float Seconds)
@@ -212,7 +230,7 @@ namespace HOLCombat
 		return FMath::Max(0, FMath::RoundToInt32(Distance * 1000.0 / Speed));
 	}
 
-	EArrowOutcome ResolveArrow(const bool bTargetStands, int32& Health, const int32 Damage)
+	EArrowOutcome ResolveArrow(const bool bTargetStands, float& Health, const float Damage)
 	{
 		if (!bTargetStands || Health <= 0)
 		{

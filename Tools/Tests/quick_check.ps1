@@ -2172,8 +2172,8 @@ if ($Parts -contains "victory") {
     $KingHits = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits")
     $Checks["an enemy Peasant 5.5 m off: the King does not attack ($($KingHits.Count) hits)"] = $KingHits.Count -eq 0 -and [bool]($Section | Select-String -SimpleMatch "Spawn: 1 Peasant of slot 1" -Quiet)
     $Section = @(Get-Section "victory regicide riposte")
-    $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for \d+, (\d+) HP left")
-    $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for (\d+)")
+    $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for [\d.]+, (-?[\d.]+) HP left")
+    $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for ([\d.]+)")
     $Checks["an enemy Man-at-arms strikes the King ($($Struck.Count) hits), the King ripostes ($($Riposte.Count) hits, $(@($Riposte | ForEach-Object { $_.Matches[0].Groups[1].Value }) -join ', '))"] =
         $Struck.Count -ge 1 -and $Riposte.Count -ge 1
     # EtapeDefini I: its aggressor removed, the King no longer Attacking (combat turned off in the same frame); under the banner neither.
@@ -2245,8 +2245,8 @@ if ($Parts -contains "sides") {
         $Units = @{}; $Head = $null
         foreach ($Line in $Section) {
             if ($Line -match "Combat report: step \d+ units \d+ fighting \d+ hits (\d+)") { $Head = [int64]$Matches[1]; $Units = @{} }
-            elseif ($Line -match "  #(\d+) \w+ slot (\d+) hp (\d+)/(\d+) target (\d+) attacking \d+ hits (\d+) damage (\d+)") {
-                $Units[$Matches[1]] = @{ Slot = [int]$Matches[2]; Hp = [int]$Matches[3]; Max = [int]$Matches[4]; Target = $Matches[5]; Hits = [int]$Matches[6]; Damage = [int]$Matches[7] }
+            elseif ($Line -match "  #(\d+) \w+ slot (\d+) hp (-?[\d.]+)/(\d+) target (\d+) attacking \d+ hits (\d+) damage ([\d.]+)") {
+                $Units[$Matches[1]] = @{ Slot = [int]$Matches[2]; Hp = [double]$Matches[3]; Max = [int]$Matches[4]; Target = $Matches[5]; Hits = [int]$Matches[6]; Damage = [double]$Matches[7] }
             }
         }
         $Camp = @{ 0 = "A"; 2 = "A"; 1 = "B" }
@@ -3784,8 +3784,8 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             $Current = @{ Away = $LineIndex -ge $AwayFrom; Step = [int64]$Matches[1]; Fighting = [int]$Matches[3]; Hits = [int64]$Matches[4]; Kills = [int64]$Matches[5]; Population = @{}; Units = @{} }
             foreach ($Pair in ($Matches[6].Trim() -split " ")) { if ($Pair -match "^(\d+)=(\d+)$") { $Current.Population[[int]$Matches[1]] = [int]$Matches[2] } }
             $Reports += $Current
-        } elseif ($Current -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?\d+)/(\d+) target (\d+) attacking (\d) hits (\d+) damage (\d+) kills (\d+) first (-?\d+) attackers (\d+)(?: at (-?\d+) (-?\d+))?") {
-            $Current.Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [int]$Matches[4]; Target = [int]$Matches[6]; Hits = [int]$Matches[8]; Kills = [int]$Matches[10]; First = [int64]$Matches[11]; X = $(if ($Matches[13]) { [double]$Matches[13] } else { 0.0 }) }
+        } elseif ($Current -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?[\d.]+)/(\d+) target (\d+) attacking (\d) hits (\d+) damage ([\d.]+) kills (\d+) first (-?\d+) attackers (\d+)(?: at (-?\d+) (-?\d+))?") {
+            $Current.Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [double]$Matches[4]; Target = [int]$Matches[6]; Hits = [int]$Matches[8]; Kills = [int]$Matches[10]; First = [int64]$Matches[11]; X = $(if ($Matches[13]) { [double]$Matches[13] } else { 0.0 }) }
         }
     }
     $Checks = [ordered]@{}
@@ -3842,7 +3842,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $HpReports = @()
     foreach ($Line in @(Get-Section "combat")) {
         if ($Line -match "Combat report: step") { $Wounded = @{}; $HpReports += ,@{} }
-        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?\d+)/(\d+) ") { if ($HpReports.Count) { $HpReports[-1][$Matches[1]] = @([Math]::Max([int]$Matches[2], 0), [int]$Matches[3]) }; if ([int]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
+        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?[\d.]+)/(\d+) ") { if ($HpReports.Count) { $HpReports[-1][$Matches[1]] = @([Math]::Max([int][Math]::Ceiling([double]$Matches[2]), 0), [int]$Matches[3]) }; if ([double]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
         elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\), unhurt unselected (\d+)") {
             $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
             $Bars += @{ Count = [int]$Matches[1]; Unhurt = [int]$Matches[3]; Wounded = $Wounded.Clone(); Report = $HpReports.Count - 1;
@@ -3946,7 +3946,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $StepMs = 50; $ArrowSpeed = 3750.0  # HOLCombat::DefaultArrowSpeed (37.5 m/s since the D345 trial)
     $Releases = @{}; $BadFlight = 0
     foreach ($Line in $Shot) {
-        if ($Line -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) \w+: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
+        if ($Line -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) \w+: [\d.]+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
             $Release = [int64]$Matches[1]; $Cm = [double]$Matches[4]; $Ms = [int]$Matches[5]; $Lands = [int64]$Matches[6]
             $Expected = [Math]::Max(1, [Math]::Ceiling($Ms / $StepMs))
             if ([Math]::Abs($Ms - $Cm * 1000.0 / $ArrowSpeed) -gt 1.0 -or ($Lands - $Release) -ne $Expected) { $BadFlight++ }
@@ -3955,7 +3955,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     }
     $Landed = 0; $Lost = 0; $BadLanding = 0; $Delays = @()
     foreach ($Line in $Shot) {
-        if ($Line -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #\d+ \w+ for \d+, -?\d+ HP left \(released step (\d+), (\d+) steps\)") {
+        if ($Line -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #\d+ \w+ for [\d.]+, -?[\d.]+ HP left \(released step (\d+), (\d+) steps\)") {
             $Landed++; $Delays += [int]$Matches[4]
             if (-not $Releases.ContainsKey("$($Matches[2]) $($Matches[3])") -or $Releases["$($Matches[2]) $($Matches[3])"] -ne [int64]$Matches[1]) { $BadLanding++ }
         }
@@ -3983,10 +3983,10 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # (damage at the landing), out of reach by then; none left in flight on the display at the end.
     $Checks = [ordered]@{}
     $Flee = @(Get-Section "combat arrows flee")
-    $FirstRelease = $Flee | Where-Object { $_ -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)" } | Select-Object -First 1
-    if ($FirstRelease -and $FirstRelease -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
+    $FirstRelease = $Flee | Where-Object { $_ -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: [\d.]+ damage, (\d+) cm, (\d+) ms, lands step (\d+)" } | Select-Object -First 1
+    if ($FirstRelease -and $FirstRelease -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: [\d.]+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
         $FleeArcher = $Matches[2]; $FleeTarget = $Matches[3]; $FleeCm = [int]$Matches[4]; $FleeMs = [int]$Matches[5]; $FleeStep = $Matches[1]; $FleeLands = $Matches[6]
-        $FleeLanding = $Flee | Where-Object { $_ -match "Combat: step $FleeLands arrow of #$FleeArcher Archer lands on #$FleeTarget Spearman for (\d+), -?\d+ HP left \(released step $FleeStep," } | Select-Object -First 1
+        $FleeLanding = $Flee | Where-Object { $_ -match "Combat: step $FleeLands arrow of #$FleeArcher Archer lands on #$FleeTarget Spearman for ([\d.]+), -?[\d.]+ HP left \(released step $FleeStep," } | Select-Object -First 1
         # The Spearman's distance to its shooter in each pair of reports after the order (Units where: slot 1, then slot 0).
         $Wheres = @($Flee | Where-Object { $_ -match "Units where: " })
         $Distances = @()
@@ -3998,7 +3998,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             }
         }
         $Checks["first arrow released at $FleeCm cm, $FleeMs ms ($([int]($FleeCm * 10 / [Math]::Max($FleeMs, 1))) m/s apparent), then the Spearman runs: $($Distances -join ', ') cm off"] = $FleeCm -ge 1800 -and $FleeCm -le 2120
-        $Checks["it lands on the fleeing Spearman at its step (damage $(if ($FleeLanding -and $FleeLanding -match 'for (\d+),') { $Matches[1] } else { 'none' }))"] = [bool]$FleeLanding
+        $Checks["it lands on the fleeing Spearman at its step (damage $(if ($FleeLanding -and $FleeLanding -match 'for ([\d.]+),') { $Matches[1] } else { 'none' }))"] = [bool]$FleeLanding
         $Checks["the Spearman out of reach meanwhile (farthest $(if ($Distances.Count) { ($Distances | Measure-Object -Maximum).Maximum } else { '?' }) cm > 2000)"] = $Distances.Count -ge 1 -and ($Distances | Measure-Object -Maximum).Maximum -gt 2000
     }
     else { $Checks["an arrow released at the Spearman"] = $false }
@@ -4060,8 +4060,8 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             if ($Line -match "Combat report: step (\d+)") {
                 $Units = @{}
                 $Result += , $Units
-            } elseif ($null -ne $Units -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?\d+)/\d+ target (\d+) attacking \d hits (\d+) .* at (-?\d+) (-?\d+)") {
-                $Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [int]$Matches[4]; Target = [int]$Matches[5]; Hits = [int]$Matches[6]; X = [double]$Matches[7]; Y = [double]$Matches[8] }
+            } elseif ($null -ne $Units -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?[\d.]+)/\d+ target (\d+) attacking \d hits (\d+) .* at (-?\d+) (-?\d+)") {
+                $Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [double]$Matches[4]; Target = [int]$Matches[5]; Hits = [int]$Matches[6]; X = [double]$Matches[7]; Y = [double]$Matches[8] }
             }
         }
         return , $Result
@@ -4433,10 +4433,10 @@ if ($Parts -contains "net") {
         # The server's hits (hol.Combat.LogHits): id -> the health each hit left it, in order.
         $ServerHp = @{}
         if (Test-Path $NetServerLog) {
-            foreach ($M in (Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ \w+ hits #(\d+) \w+ for \d+, (-?\d+) HP left")) {
+            foreach ($M in (Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ \w+ hits #(\d+) \w+ for [\d.]+, (-?[\d.]+) HP left")) {
                 $Hit = $M.Matches[0].Groups
                 if (-not $ServerHp.ContainsKey($Hit[1].Value)) { $ServerHp[$Hit[1].Value] = @() }
-                $ServerHp[$Hit[1].Value] += [int]$Hit[2].Value
+                $ServerHp[$Hit[1].Value] += [int][Math]::Ceiling([double]$Hit[2].Value)
             }
         }
         $Unhurt = 1000000

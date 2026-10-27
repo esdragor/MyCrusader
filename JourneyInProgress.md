@@ -1289,7 +1289,7 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 | Sous-étape | Contenu | Moteur | État |
 |---|---|---|---|
 | J8a.0 Pièces | Kit du paladin (J8a-Q3 révisée) : épée longue, bouclier au soleil, tabard, pèlerine, épaulières dorées, heaume à cimier soleil ; `SKM_Hero` dans `SOLDIER_MESHES` ; gestes de l'Homme d'armes ; aperçus PNG validés par l'utilisateur | non | **fait** (2026-10-26, validé ; J8a.0 étendard et cape, J8a.0b cape animée abandonnés) |
-| J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | — |
+| J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | **fait** (2026-10-27 ; PV et dégâts en float, choix de l'utilisateur) |
 | J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | — |
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
 | J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
@@ -7339,3 +7339,40 @@ d'épée).
   (`anim_rig.py`) gardé, inutilisé : prêt pour une pièce animée d'un vrai modèle. Les trois boucles de J8a.0 ont dépassé
   15 min (31, 18, 21) : pièces, aperçus et mesures dans la même boucle ; la suite découpe plus fin. Commitée. **Suite :
   J8a.1 après la recompilation du moteur.**
+- (J8a, 2026-10-27) Moteur AS_3 recompilé (Hazelight 5.8.4, cible Server) : **J8a.1 lancée** (sous-agent, copie
+  principale) : ligne `Hero` de `UnitTypes.csv` et ×0,3 des dégâts des troupes (D17), test rouge d'abord.
+- (J8a.1, 2026-10-27) **J8a.1 codée** (sous-agent, ~15 min, non commitée) : ligne `Hero` (« Paladin-Commander »,
+  maillage et gestes de l'Homme d'armes en attendant `SKM_Hero` en J8a.2, `WalkPlayRate` 3,46 = 4,15 / 1,2) et
+  `UnitTypes.uasset` réimporté (à committer avec le CSV) ; catégorie d'armure `Hero` (fin d'enum), `HOLIsHero` ; ×0,3
+  dans `GetDamage` après bonus et armure (`HeroTroopDamagePercent` 30, arrondi au plus proche, 1 au moins ; héros contre
+  héros : plein). PV exacts sur 8 bits : le contrôle au chargement et `HOLNetTests` sautent le héros (J8a.3). Tests
+  `Hero.Type`, `Hero.Resistance`, `Hero.ResistanceInCombat` (vus rouges, mais le 3e pas sur la règle elle-même) ;
+  `quick_check -Parts tests,combat` PASS (54 s, 189/189). **Question ouverte : l'arrondi** (Archer 5 → 2 au lieu de
+  1,5 : 20 Archers tuent le héros en ~18 s au lieu de ~25 s ; 6 Hommes d'armes ~26 s au lieu de ~29 s).
+- (J8a.1, 2026-10-27) **Arrondi tranché par l'utilisateur : « ça devient des floats »** (hors des options : A reste
+  gardé recommandé, B au plus proche, C vers le bas). PV et dégâts de la simulation en virgule flottante, ×0,3 exact
+  (Archer 5 → 1,5), 1 au moins avant le ×0,3 ; le réseau garde des PV entiers (arrondis vers le haut : une unité
+  vivante n'est jamais montrée à 0). Reprise du sous-agent de J8a.1 (relevé de l'usage des PV, puis code).
+- (J8a.1, 2026-10-27) **Relevé des PV en float** (sous-agent, rien codé) : ~18 endroits dans 10 fichiers
+  (`CurrentHealth` et `DamageDealt` en float, `GetDamage` / `GetHitsToKill` / `ResolveArrow`, dégât des flèches,
+  hachages D468 par motif binaire, journaux `%g`, `LeavesCorpse` en float), réseau en `CeilToInt` (au moins 1 si
+  vivant) avant l'envoi, **format sur 8 bits inchangé** ; bâtiments entiers ; HUD, barres, IA, victoire inchangés ;
+  4 expressions de `quick_check.ps1` à ouvrir aux décimales ; ~31 appels dans `HOLCombatTests.cpp`. Coups et flèches
+  appliqués en boucle séquentielle : reproductible (ne pas paralléliser l'application des coups). Conversion lancée.
+- (J8a.1, 2026-10-27) **PV en float, boucle 1 faite** (sous-agent, ~25 min dont ~4 min en file derrière Glorfindel ;
+  non commitée) : `CurrentHealth`, `DamageDealt`, dégât des flèches en float ; `GetDamage` float (×0,3 exact,
+  `HeroTroopDamageFactor`) ; `GetShownHealth` (vers le haut, 1 au moins si vivant) pour la vue et la réplication
+  (8 bits inchangés) ; bâtiments entiers (`RoundToInt` de la flèche sur bâtiment) ; hachages D468 par `BitCast` ;
+  journaux `%g` ; `LeavesCorpse` en float ; commentaire D468 (coups appliqués en séquence). Rouges vus : sur l'arrondi
+  entier, puis sur la règle elle-même (×0,3 coupé : 12 au lieu de 3 par le vrai processeur). `-Parts tests` PASS
+  (191/191, 44 s ; une fois « game launch ended by itself » au démarrage, relancé tel quel : PASS). Reste (boucle 2) :
+  `-Parts tests,combat,net`, expressions de `quick_check.ps1` aux décimales, `make_unit_stats.py` / `UnitStats.md`.
+  La session IA (mycrusader-1b) avance `main` (IA1.1) entre les deux boucles : recompiler avant la boucle 2.
+- (J8a.1, 2026-10-27) **PV en float, boucle 2 faite** (sous-agent, non commitée) : recompilé après l'avance de `main`
+  (60230cd, IA1.1 ; 333 s avec la file) ; 16 lignes de `quick_check.ps1` lisent PV et dégâts en décimales (PV du
+  serveur arrondis vers le haut avant d'être comparés à ceux du client) ; `make_unit_stats.py` en simple précision,
+  `UnitStats.md` régénéré (seule la colonne du héros change : Homme d'armes 3,6 · 125 coups · 171 s, Archer 1,5 · 300 ·
+  486 s, Paysan 0,9 · 501 coups par l'arrondi des floats, comme le jeu). `-Parts tests,combat,net` : 1er passage FAIL
+  (net seul : Alice, lente au démarrage pendant une compilation, arrivée après Bob, n'a jamais vu le bandeau
+  d'attente ; aléa d'ordre d'arrivée, à noter dans `EtapeDefini.md`), 2e passage tel quel **PASS** (194 s, 193/193).
+  **J8a.1 faite**, en attente de l'accord de l'utilisateur pour le commit.

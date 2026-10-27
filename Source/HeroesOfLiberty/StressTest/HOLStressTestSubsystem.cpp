@@ -957,7 +957,7 @@ void UHOLStressTestSubsystem::LogBattleSummary() const
 			Mix(FMath::RoundToInt64(Location.X));
 			Mix(FMath::RoundToInt64(Location.Y));
 			Mix(FMath::RoundToInt64(Location.Z));
-			Mix(State->CurrentHealth);
+			Mix(static_cast<int64>(BitCast<uint32>(State->CurrentHealth)));
 			Mix(TargetId != 0 ? static_cast<int64>(TargetId) : -1);
 			++Hashed;
 		}

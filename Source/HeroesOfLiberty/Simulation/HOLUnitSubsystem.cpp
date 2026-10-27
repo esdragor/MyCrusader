@@ -226,9 +226,10 @@ const UDataTable* UHOLUnitSubsystem::GetTypeTable() const
 		else
 		{
 			// J7-Q5 revised: a wounded unit sends its exact health in FHOLNetUnitState::HealthBits; a larger maximum needs more.
+			// Not the hero (J8-Q5): his health bar goes as a share, his exact health in the hero sheet (J8a.3).
 			CachedTypeTable->ForeachRow<FHOLUnitTypeRow>(TEXT("UnitSubsystem"), [](const FName& Name, const FHOLUnitTypeRow& Row)
 			{
-				ensureMsgf(HOLUnitReplication::FitsWireHealth(Row.MaxHealth), TEXT("Unit type %s: MaxHealth %d does not fit the %d health bits of the wire (FHOLNetUnitState::HealthBits)"),
+				ensureMsgf(Row.HasArmorCategory(EHOLArmorCategory::Hero) || HOLUnitReplication::FitsWireHealth(Row.MaxHealth), TEXT("Unit type %s: MaxHealth %d does not fit the %d health bits of the wire (FHOLNetUnitState::HealthBits)"),
 					*Name.ToString(), Row.MaxHealth, FHOLNetUnitState::HealthBits);
 			});
 		}
@@ -630,7 +631,7 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		const uint32 UnitId = NextUnitId++;
 		FHOLUnitStateFragment& State = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity);
 		State.UnitId = UnitId;
-		State.CurrentHealth = Constants.MaxHealth;
+		State.CurrentHealth = static_cast<float>(Constants.MaxHealth);
 		State.Activity = EHOLUnitActivity::Idle;
 		State.OwnerPlayer = Request.OwnerPlayer;
 
@@ -953,8 +954,8 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
 			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
 			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
-			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
-			OutView.Health = FMath::Max(State->CurrentHealth, 0);
+			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(Constants->MaxHealth);
+			OutView.Health = HOLCombat::GetShownHealth(State->CurrentHealth);
 			OutView.MaxHealth = Constants->MaxHealth;
 			OutView.bHealthExact = true;
 		}
