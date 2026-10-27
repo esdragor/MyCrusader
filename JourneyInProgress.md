@@ -1289,8 +1289,8 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 | Sous-étape | Contenu | Moteur | État |
 |---|---|---|---|
 | J8a.0 Pièces | Kit du paladin (J8a-Q3 révisée) : épée longue, bouclier au soleil, tabard, pèlerine, épaulières dorées, heaume à cimier soleil ; `SKM_Hero` dans `SOLDIER_MESHES` ; gestes de l'Homme d'armes ; aperçus PNG validés par l'utilisateur | non | **fait** (2026-10-26, validé ; J8a.0 étendard et cape, J8a.0b cape animée abandonnés) |
-| J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | — |
-| J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | — |
+| J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | **fait** (2026-10-27 ; PV et dégâts en float, choix de l'utilisateur) |
+| J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | **fait** (2026-10-27 ; F4 contrôlé par `build:hero`) |
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
 | J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
 | J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
@@ -7339,3 +7339,175 @@ d'épée).
   (`anim_rig.py`) gardé, inutilisé : prêt pour une pièce animée d'un vrai modèle. Les trois boucles de J8a.0 ont dépassé
   15 min (31, 18, 21) : pièces, aperçus et mesures dans la même boucle ; la suite découpe plus fin. Commitée. **Suite :
   J8a.1 après la recompilation du moteur.**
+- (J8a, 2026-10-27) Moteur AS_3 recompilé (Hazelight 5.8.4, cible Server) : **J8a.1 lancée** (sous-agent, copie
+  principale) : ligne `Hero` de `UnitTypes.csv` et ×0,3 des dégâts des troupes (D17), test rouge d'abord.
+- (J8a.1, 2026-10-27) **J8a.1 codée** (sous-agent, ~15 min, non commitée) : ligne `Hero` (« Paladin-Commander »,
+  maillage et gestes de l'Homme d'armes en attendant `SKM_Hero` en J8a.2, `WalkPlayRate` 3,46 = 4,15 / 1,2) et
+  `UnitTypes.uasset` réimporté (à committer avec le CSV) ; catégorie d'armure `Hero` (fin d'enum), `HOLIsHero` ; ×0,3
+  dans `GetDamage` après bonus et armure (`HeroTroopDamagePercent` 30, arrondi au plus proche, 1 au moins ; héros contre
+  héros : plein). PV exacts sur 8 bits : le contrôle au chargement et `HOLNetTests` sautent le héros (J8a.3). Tests
+  `Hero.Type`, `Hero.Resistance`, `Hero.ResistanceInCombat` (vus rouges, mais le 3e pas sur la règle elle-même) ;
+  `quick_check -Parts tests,combat` PASS (54 s, 189/189). **Question ouverte : l'arrondi** (Archer 5 → 2 au lieu de
+  1,5 : 20 Archers tuent le héros en ~18 s au lieu de ~25 s ; 6 Hommes d'armes ~26 s au lieu de ~29 s).
+- (J8a.1, 2026-10-27) **Arrondi tranché par l'utilisateur : « ça devient des floats »** (hors des options : A reste
+  gardé recommandé, B au plus proche, C vers le bas). PV et dégâts de la simulation en virgule flottante, ×0,3 exact
+  (Archer 5 → 1,5), 1 au moins avant le ×0,3 ; le réseau garde des PV entiers (arrondis vers le haut : une unité
+  vivante n'est jamais montrée à 0). Reprise du sous-agent de J8a.1 (relevé de l'usage des PV, puis code).
+- (J8a.1, 2026-10-27) **Relevé des PV en float** (sous-agent, rien codé) : ~18 endroits dans 10 fichiers
+  (`CurrentHealth` et `DamageDealt` en float, `GetDamage` / `GetHitsToKill` / `ResolveArrow`, dégât des flèches,
+  hachages D468 par motif binaire, journaux `%g`, `LeavesCorpse` en float), réseau en `CeilToInt` (au moins 1 si
+  vivant) avant l'envoi, **format sur 8 bits inchangé** ; bâtiments entiers ; HUD, barres, IA, victoire inchangés ;
+  4 expressions de `quick_check.ps1` à ouvrir aux décimales ; ~31 appels dans `HOLCombatTests.cpp`. Coups et flèches
+  appliqués en boucle séquentielle : reproductible (ne pas paralléliser l'application des coups). Conversion lancée.
+- (J8a.1, 2026-10-27) **PV en float, boucle 1 faite** (sous-agent, ~25 min dont ~4 min en file derrière Glorfindel ;
+  non commitée) : `CurrentHealth`, `DamageDealt`, dégât des flèches en float ; `GetDamage` float (×0,3 exact,
+  `HeroTroopDamageFactor`) ; `GetShownHealth` (vers le haut, 1 au moins si vivant) pour la vue et la réplication
+  (8 bits inchangés) ; bâtiments entiers (`RoundToInt` de la flèche sur bâtiment) ; hachages D468 par `BitCast` ;
+  journaux `%g` ; `LeavesCorpse` en float ; commentaire D468 (coups appliqués en séquence). Rouges vus : sur l'arrondi
+  entier, puis sur la règle elle-même (×0,3 coupé : 12 au lieu de 3 par le vrai processeur). `-Parts tests` PASS
+  (191/191, 44 s ; une fois « game launch ended by itself » au démarrage, relancé tel quel : PASS). Reste (boucle 2) :
+  `-Parts tests,combat,net`, expressions de `quick_check.ps1` aux décimales, `make_unit_stats.py` / `UnitStats.md`.
+  La session IA (mycrusader-1b) avance `main` (IA1.1) entre les deux boucles : recompiler avant la boucle 2.
+- (J8a.1, 2026-10-27) **PV en float, boucle 2 faite** (sous-agent, non commitée) : recompilé après l'avance de `main`
+  (60230cd, IA1.1 ; 333 s avec la file) ; 16 lignes de `quick_check.ps1` lisent PV et dégâts en décimales (PV du
+  serveur arrondis vers le haut avant d'être comparés à ceux du client) ; `make_unit_stats.py` en simple précision,
+  `UnitStats.md` régénéré (seule la colonne du héros change : Homme d'armes 3,6 · 125 coups · 171 s, Archer 1,5 · 300 ·
+  486 s, Paysan 0,9 · 501 coups par l'arrondi des floats, comme le jeu). `-Parts tests,combat,net` : 1er passage FAIL
+  (net seul : Alice, lente au démarrage pendant une compilation, arrivée après Bob, n'a jamais vu le bandeau
+  d'attente ; aléa d'ordre d'arrivée, à noter dans `EtapeDefini.md`), 2e passage tel quel **PASS** (194 s, 193/193).
+  **J8a.1 faite**, en attente de l'accord de l'utilisateur pour le commit.
+- (J8a.1, 2026-10-27) **Commit e36efe9** sur `main` (accord de l'utilisateur, sans essai : le héros n'apparaît qu'en
+  J8a.2) ; `EtapeDefini.md` : ligne du héros et aléa `net` (client 2 arrivé après le client 1) ; lignes d'une autre
+  session (Récolte, D486) laissées hors du commit. **Suite : J8a.2** (naissance près du forum, comportement de soldat,
+  F4, fabrication de `SKM_Hero` et `TP_Hero` et `WalkPlayRate` à l'échelle 1,8 ; nom du héros dans `HOLGameNames.cpp`).
+- (J8a.2, 2026-10-27) **J8a.2 lancée**, en trois boucles l'une après l'autre : (1) fabrication de `SKM_Hero` et
+  `TP_Hero` (pièces de J8a.0) et ligne `Hero` dessus ; (2) naissance près du forum (comme les Paysans de départ
+  d'IA1.1, réglage à part pour garder les scénarios et `quick_check` sans héros) ; (3) F4 (une fois : sélection, deux
+  fois : caméra). Boucle 1 confiée à un sous-agent (copie principale).
+- (J8a.2, 2026-10-27) **Boucle 1 faite** (sous-agent, non commitée) : `SKM_Hero` (7 pièces, 4 LOD, pièces légères dès
+  le LOD 3) et `TP_Hero` (mêmes 6 séquences que `TP_ManAtArms`, indices 2/3/4/5 gardés) par `make_peasant_mesh.py
+  --soldiers --only=SKM_Hero` (entrée `SKM_Hero` dans `SOLDIERS`) ; ligne `Hero` dessus, `UnitTypes.uasset` réimporté ;
+  `Hero.Type` (vu rouge) charge les deux et compare squelette, LOD et séquences à l'Homme d'armes. `-Parts tests` PASS
+  (193/193, 123 s, machine chargée par Glorfindel). `--soldiers` réenregistre toujours
+  `M_UnitPlayerColorWeapons.uasset` (mêmes nœuds, autres octets) : restauré. Aucun rendu Unreal : allure et pieds à
+  juger quand le héros apparaîtra (boucle 2). Boucle 2 lancée (naissance).
+- (J8a.2, 2026-10-27) **Boucle 2 faite** (sous-agent, ~35 min au lieu de 15 : machine chargée, une compilation de
+  691 s ratée puis 413 s ; non commitée) : réglage `bStartingHero` (vrai dans les vraies parties), `StartingHero` de la
+  configuration (-1 réglage, 0, 1 ; scénarios 0 sauf `"startingHero"` dans le .json) ; `quick_check` (solo et
+  serveur) et `building_crowd` / `crossings` / `packaged_smoke` sans héros ; règle pure `FHOLStartRules::GetHeroLocation`
+  (rangée du Roi, 450 cm du bord du forum côté des naissances, 300 cm du côté du Roi : ni Paysans ni Roi touchés) ;
+  `SpawnStartingHero` après les Paysans ; hors population (vérifié) ; branches du Roi par catégorie, pas par nom ; nom
+  « Paladin-Commandant » (en « Paladin-Commander », ja « 聖騎士団長 » dans `fill_po.py`, **collecte des textes à
+  grouper** avec les autres chantiers). Tests `Match.StartingHero.Location/Count/Spawn` vus rouges ;
+  `-Parts tests,combat` PASS (89 s, 196/196). **Leçon** : sous une machine chargée, une boucle avec deux compilations
+  dépasse 15 min ; séparer ce qui ne compile pas (captures) de ce qui compile. Boucle 3a lancée : captures du héros
+  (rien à compiler), puis 3b : F4.
+- (J8a.2, 2026-10-27) **Boucle 3a faite** (captures hors écran, ~16 min, rien compilé) : scénario `hero_look`
+  (non suivi : 5 Paysans, héros, un Homme d'armes allié, marche de 16 m, 2 Hommes d'armes ennemis ; base de l'essai de
+  J8a.6). Vu : héros devant la rangée de Paysans, bloc de sélection « Paladin-Commandant 450 / 450 » ; de près,
+  épaulières dorées (le plus visible), heaume blanc à cimier doré, tabard blanc, épée longue, bras et jambes à la couleur
+  du joueur, un peu plus grand et bien plus large d'épaules que l'Homme d'armes ; aucune pièce flottante nette ; frappe
+  correcte. À hauteur de jeu : silhouette bleue avec un point doré (12-15 px). **À voir à l'essai** : bouclier presque
+  noir (souvent vu par la tranche), soleils dorés invisibles en 888 × 500, glissement des pieds non jugé (caméra qui
+  dérive après `hol.Camera.Focus`, captures en 888 × 500 malgré `-ResX`). Boucle 3b lancée : F4.
+- (J8a.2, 2026-10-27) **Boucle 3b faite** (sous-agent, ~20 min dont une compilation de 647 s ; non commitée) : F4
+  (`IA_Hero` dans `IMC_Game` par `make_game_input.py`) et `hol.Select.Hero` : 1er appui, le héros vivant du joueur
+  seul (caméra immobile) ; 2e appui quand il est seul sélectionné (par F4 ou autrement), caméra centrée sur lui ; sans
+  héros, rien (journal « Select hero: none », pas de message à l'écran pour l'instant). Contrôle `build:hero` de
+  `quick_check` par la vraie touche (`hol.UI.Key`) : vu rouge (F4 liée à rien), puis PASS (62 s) ; `-Parts tests,build`
+  PASS (163 s, 196/196). **J8a.2 faite**, en attente de l'accord de l'utilisateur pour le commit.
+- (J8a.2, 2026-10-27) **Commit** sur `main` avec l'accord de l'utilisateur (sans essai : l'essai est en J8a.6) ;
+  scénario `hero_look` commité comme base de l'essai. **Suite : J8a.3** (fiche réseau du héros, barre en proportion).
+- (J8a.3, 2026-10-27) J8a.2 commitée (**7c48518**). **J8a.3 lancée** : boucle 1 = relevé du chemin réseau des unités
+  (8 bits, `HOLUnitReplicationSubsystem`), du stock au propriétaire (D270) et de ce que R7 touche dans Glorfindel, puis
+  plan de la fiche du héros (J8-Q5) ; rien compilé.
+- (J8a.3, 2026-10-27) **Relevé et plan faits** (sous-agent en lecture seule). Défaut actuel : `GetWireHealth` plafonne à
+  255 sans regarder le maximum (un héros à 300 / 450 est vu 255 / 450 chez un client). Stock au propriétaire dans
+  `AHOLPlayerState` (`COND_OwnerOnly`, au changement) ; données publiques par emplacement dans `AHOLGameState`
+  (`ForumStates`) ; une IA n'a pas de PlayerState, et avec R7 celui d'un joueur parti disparaît : la vraie fiche vit
+  au serveur, les porteurs n'en reçoivent qu'une copie. Glorfindel (`net-playtest`, 29 commits de retard sur `main`)
+  touche `HOLGameState` (lignes voisines) et touchera la partie `net` de `quick_check` (R7.8) : J8a.3 doit passer avant.
+  Plan en 5 boucles, une compilation chacune : (1) barre en proportion sur 8 bits pour la catégorie Hero ; (2) fiche
+  (`FHOLHeroSheet` publique : niveau, PV, état ; `FHOLHeroPrivateSheet` : XP, recharges, pas de la mort) et ses deux
+  porteurs ; (3) `UHOLHeroSubsystem` au serveur, `hol.Hero.Report` / `SetXP` / `Kill` ; (4a) contrôle `net` dans une
+  fenêtre à part après les flèches ; (4b) le client lit la fiche ; (5) journal. Questions : **J8a3-Q1 où ranger la
+  fiche**, J8a3-Q2 heure de la mort (pas de simulation recommandé).
+- (J8a.3, 2026-10-27) **J8a3-Q1 tranchée : A** (choix de l'utilisateur, conforme à la recommandation) : partie publique
+  dans `AHOLGameState` (tableau de 8, comme `ForumStates`), partie privée dans `AHOLPlayerState` (`COND_OwnerOnly`,
+  comme le stock), vraie fiche dans `UHOLHeroSubsystem` au serveur ; écartés : acteur à part (classe de plus), sur
+  `AHOLUnitReplicator` (absent en solo, D272). Boucle 1 lancée (barre en proportion).
+- (J8a.3, 2026-10-27) **J8a3-Q2 tranchée : A** (choix de l'utilisateur, conforme à la recommandation) : l'heure de la
+  mort part en pas de simulation (`int32`, `Combat.DeathStep`) : reproductible (D468), suit la vitesse de la partie ;
+  écarté : secondes du serveur. Questions de J8a.3 closes.
+- (J8a.3, 2026-10-27) **Boucle 1 faite** (sous-agent, ~30 min dont deux compilations de 138 et 323 s ; non commitée) :
+  `GetWireHealthShare` (0 mort, sinon `clamp(ceil(H*255/Max), 1, 255)`), `SetCombat(..., bHealthShare)` pour la
+  catégorie Hero ; client : `HealthShare` lu en priorité par `GetHealthShare` (barres), PV = `round(W*Max/255)` bornés à
+  [1, Max-1] tant que blessé, `bHealthExact = false` ; doublon `bKing` retiré ; marque du HUD « (share) ». Test
+  `Net.HeroHealthShare` (vrai sérialiseur Iris, vraies lignes Hero et ManAtArms) vu rouge (fil 255 au lieu de 170),
+  puis vert ; balayage 1-449 : 2 PV d'écart au plus, monotone (1 PV vu 2 chez le client : les PV exacts viendront par
+  la fiche, boucle 4b). `-Parts tests` PASS (197/197). `-Parts net` FAIL : Bob démarré ~1 min après Alice (machine
+  chargée par une partie de Haldir), arrivé après l'attente de 30 s ; aucun héros dans cette partie. Relance seule.
+- (J8a.3, 2026-10-27) `-Parts net` relancé seul (186 s) : un seul KO, « client 2 (Alice) above her start before
+  client 1's launch » (pas en place en 60 s ; 4 autres éditeurs Unreal tournaient pour d'autres sessions) ; PV des
+  troupes chez le client conformes au serveur, flèches 18/18 chez chaque client : troupes inchangées. Aléa de démarrage
+  sous charge, comme celui noté le matin. Boucle 2 lancée (fiche et porteurs).
+- (J8a.3, 2026-10-27) **Boucle 2 faite** (sous-agent, ~25 min, deux compilations ; non commitée) : `HOLHeroSheet.h/.cpp`
+  (`EHOLHeroState` None / Alive / Dead / ReadyToReturn ; `FHOLHeroSheet` Level uint8, Health uint16 arrondi vers le haut,
+  State ; `FHOLHeroPrivateSheet` XP int32, `CooldownEndSteps`, `DeathStep` -1 ; règle pure `HOLHeroSheet::Make(Facts,
+  Previous)` : Dead garde son pas après la destruction du corps, XP et recharges reprises, ReadyToReturn jamais posé) ;
+  `AHOLGameState::HeroSheets` (8, `SetHeroSheet` au changement, `OnHeroSheetsChanged`, `DOREPLIFETIME` en tête de liste
+  pour s'écarter de Glorfindel) ; `AHOLPlayerState::HeroPrivate` (`COND_OwnerOnly`, au changement). `Hero.SheetRule` vu
+  rouge (13 erreurs) puis vert ; **`Hero.SheetCarriers` pas vu rouge** (plantage d'abord : indices de réplication à
+  poser par `SetUpRuntimeReplicationData` hors pilote réseau) : à voir rouge dans la compilation rouge de la boucle 3.
+  Tests 199/199 mais `-Parts tests` FAIL : partie solo arrêtée seule à 120 s, encore au démarrage du moteur (machine
+  chargée). **Leçon (3e boucle de suite au-delà de 15 min)** : la charge de la machine (éditeurs d'autres sessions)
+  double les compilations et casse les lancements ; les sous-agents s'arrêtent après la compilation verte et les tests
+  C++ ciblés, la session principale relance `quick_check` en tâche de fond.
+- (J8a.3, 2026-10-27) `-Parts tests` relancé : tests 199/199, partie solo encore arrêtée à 120 s (`$GameTimedOut`) :
+  le journal s'arrête après « Completed SDK detection », d'habitude suivi en 1 s de « DelayedAutoRegister Phase
+  ShaderTypesReady ». Machine chargée : 4 éditeurs ShivaProject (AS_2), une partie de Haldir, le `net` de Celeborn.
+  `quick_check` complet à repasser machine plus calme, avant le commit de J8a.3. Boucle 3 lancée.
+- (J8a.3, 2026-10-27) **Boucle 3 faite** (sous-agent, ~84 min dont ~27 min de démarrage bloqué ; 169k jetons ; non
+  commitée) : `UHOLUnitSubsystem::FindHeroUnit(Slot)` (noté à la naissance, effacé dans `FlushDestructions`) ; nouveau
+  `UHOLHeroSubsystem` (serveur et solo, accroché à `GetOnStepEnded` comme `UHOLMatchStatsSubsystem`, refusé au client) :
+  à chaque fin de pas, faits (présence, PV float, `DeathStep`) → `HOLHeroSheet::Make` → `SetHeroSheet` +
+  `SetHeroPrivate` (une IA sans PlayerState garde sa partie privée au serveur) ; commandes `hol.Hero.Report`,
+  `hol.Hero.SetXP <Slot> <N>`, `hol.Hero.Kill [Slot]` (serveur/solo). Compilation rouge : `Hero.SheetCarriers` **vu
+  rouge** (retours anticipés retirés : 4 « unchanged » faux, échos 4 au lieu de 2) et `Hero.SheetInCombat` rouge
+  (fiche à 0 PV pendant 80 pas, ni Alive ni Dead) ; compilation verte (669 s) ; `HeroesOfLiberty.Hero+Net` 26/26.
+  **Cause des démarrages bloqués** : chaque moteur lance au démarrage `Build.bat -Mode=ValidatePlatforms`, qui attend
+  derrière la compilation en cours de n'importe quelle copie (ici Glorfindel dès 16:02) ; d'où les `$GameTimedOut` à
+  120 s. L'utilisateur ne peut pas fermer les autres éditeurs : `quick_check` relancé vers 17 h 25.
+- (J8a.3, 2026-10-27) main avancé à 15b7664 par Haldir (dépôt par clic droit, D485 ; aucun de nos fichiers). Autre cause
+  des lancements lents, signalée par NetPlaytest : depuis AS1, chaque partie ouvre le serveur de débogage Angelscript
+  (port 27099), l'extension VS Code s'y connecte et fige le jeu (« Sending debug database took 1.28 seconds » dans notre
+  `quick_tests.log`) ; correctif `-asdebugport=0` sur net-playtest, arrive à sa fusion. Ajouté le temps d'un passage :
+  compilation PASS (92 s), `quick_check -Parts tests,combat,net` **PASS en 163 s** (tests 200/200, combat, net 2
+  clients, flèches 16-17) ; `quick_check.ps1` remis à l'identique. Boucle 4a lancée (contrôle réseau des fiches).
+- (J8a.3, 2026-10-27) **Boucle 4a écrite, pas encore vue rouge ni verte** (sous-agent ~20 min, `quick_check.ps1` seul,
+  +92 l.) : phase « net hero » après « net arrows end » (deux héros par `hol.Units.Spawn`, SetXP 0 5 / 1 7, 2 Hommes
+  d'armes 10 s sur le héros de Bob, Report, Kill 1, Report) et ligne `net hero sheets` (points 1-5 ; part reçue lue par
+  `hol.Units.Where` du client). 4 passages de `-Parts net` : **le client de Bob (client 1) meurt en cours de partie**,
+  journal coupé net, sans dossier Crashes : deux fois pendant les flèches (avant les héros), une fois juste à « Test
+  mark: hero » (une fois perdue par ma faute : BOM retiré de quick_check.ps1). Côté serveur et Alice, la chaîne marche
+  (fiche publique hp 411 chez Alice = serveur, XP 5 en `local`, Bob caché). Le passage sans phase héros juste avant
+  (163 s) était vert. Fichier mis en stash (`stash@{0}`) pour l'avance de main par l'Arbalétrier ; à reprendre :
+  pourquoi le client 1 meurt.
+- (J8a.3, 2026-10-27) **Boucles 1 à 3 commitées** (accord de l'utilisateur, pour laisser entrer net-playtest dans main) :
+  recompilées sur main ce7cc76 (Arbalétrier), `quick_check -Parts tests,combat,net` PASS en 158 s (tests 203/203, net 2
+  clients). La boucle 4a (`quick_check.ps1`) reste hors du commit, en `stash@{0}` (« J8a.3 loop 4a quick_check hero
+  sheets ») ; reste de J8a.3 : client 1 qui meurt, rouge/vert de `net hero sheets`, boucle 4b.
+- (J8a.3, 2026-10-27) **Le client 1 ne plante pas** (sous-agent, ~12 min, aucun C++ changé) : sur un port à part (7787),
+  le client 1 va au bout et sort en 0 ; fiche 407 = serveur, XP 7 chez lui, celle d'Alice cachée, pas de mort 2145, PV
+  tirés de la part 408 = attendu. **Cause probable des « morts »** : toutes les copies prennent `$NetPort = 7777` ; si
+  une autre copie y a déjà un serveur, le nôtre passe en silence sur 7778 et nos clients se branchent sur le serveur de
+  l'autre copie (Protocol mismatch Iris, `waitmap Plain` en timeout ; « Bob left » peut venir d'un autre Bob). Signalé
+  à NetPlaytest (port propre à chaque copie, ou échec si « listening on port $NetPort » manque). Lecteur des rapports
+  du stash corrigé (`@(& ...)` emballait deux fois la liste : 1 rapport compté au lieu de 2). Rouge exprès de
+  `net hero sheets` lancé (XP de l'autre attendue visible), port 7787 et `-asdebugport=0` le temps des passages.
+- (J8a.3, 2026-10-27) **Boucle 4a rouge puis verte** : rouge exprès (XP de l'autre attendue visible) → seules les deux
+  lignes « the other's hidden » KO (client 1 slot 0 xp 0, client 2 slot 1 xp 0), tout le reste vert, client 1 au bout ;
+  vert : `net 2 clients` PASS, `net hero sheets` PASS, 161 s (port 7787 et `-asdebugport=0` le temps des passages,
+  retirés). `quick_check.ps1` +92/-1 non commité, attend l'accord de l'utilisateur.
+- (J8a.3, 2026-10-27) Boucle 4a commitée (accord de l'utilisateur). Suite : boucle 4b (le client lit la fiche) après
+  l'avance de main par net-playtest (port de test propre à chaque copie, 7800 + 10 × n, arrive avec elle).

@@ -138,6 +138,14 @@ void UHOLBuildProcessor::GetChains(TArray<FChainOfBuilder>& OutChains) const
 			{
 				Chain.Steps.Add(HOLOrderChain::FStep::MakeGather(Item.SourceIndex));
 			}
+			else if (Item.IsDeposit())
+			{
+				// D485: drawn as a gathering (blue), to the deposit.
+				if (const AHOLBuilding* Deposit = Item.Site.Get())
+				{
+					Chain.Steps.Add(HOLOrderChain::FStep::MakeDeposit(Deposit->GetUniqueID()));
+				}
+			}
 			else if (const AHOLBuilding* Site = Item.Site.Get())
 			{
 				// Born for a rally point on this site (D328): a white step to it until the unit starts building.
@@ -280,6 +288,8 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 		// A source to gather in its turn (Shift + right click on a resource, the user's trial of J6a.4), as a gather order:
 		// a source still standing, only the player's units that gather its resource (D288).
 		const bool bGather = Order.SourceIndex != INDEX_NONE;
+		// Or a deposit to unload at in its turn (Shift + right click on it, D485, EtapeDefini L.3).
+		const bool bDeposit = !bGather && Order.bDeposit;
 		AHOLBuilding* Site = Order.Building.Get();
 		if (bGather && (!Sources.IsValidIndex(Order.SourceIndex) || !Sources[Order.SourceIndex].IsStanding()))
 		{
@@ -288,7 +298,7 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 		}
 		// A camp finished meanwhile (a unit born with its rally point on it a step too late, a right click on a site finishing
 		// at once): the nearest source it accepts, as its builders (D312, J6b.1), by a gather order of its owner's.
-		if (!bGather && Site && !Site->NeedsBuilders() && !Order.bQueue && (Order.PlayerIndex == INDEX_NONE || Site->GetOwnerPlayer() == Order.PlayerIndex))
+		if (!bGather && !bDeposit && Site && !Site->NeedsBuilders() && !Order.bQueue && (Order.PlayerIndex == INDEX_NONE || Site->GetOwnerPlayer() == Order.PlayerIndex))
 		{
 			double Gap = 0.;
 			const int32 CampSource = FindCampSource(*Step.Sources, *Site, &Gap);
@@ -302,15 +312,24 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 				continue;
 			}
 		}
+		// A deposit: only one of the player's finished buildings taking deliveries (D288, D485).
+		const FHOLBuildingTypeRow* DepositType = bDeposit && Site ? Site->GetType() : nullptr;
+		if (bDeposit && (!DepositType || DepositType->Accepts.IsEmpty() || Site->NeedsBuilders() || !Site->TakesDeliveries()
+			|| (Order.PlayerIndex != INDEX_NONE && Site->GetOwnerPlayer() != Order.PlayerIndex)))
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d ignored: not one of its deposits"), Order.PlayerIndex);
+			continue;
+		}
 		// Only the player's own site, not finished yet, or its main forum down (D288, V2.2): a client could name any building.
-		if (!bGather && (!Site || !Site->NeedsBuilders() || (Order.PlayerIndex != INDEX_NONE && Site->GetOwnerPlayer() != Order.PlayerIndex)))
+		if (!bGather && !bDeposit && (!Site || !Site->NeedsBuilders() || (Order.PlayerIndex != INDEX_NONE && Site->GetOwnerPlayer() != Order.PlayerIndex)))
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d ignored: not its site under construction"), Order.PlayerIndex);
 			continue;
 		}
 		const EHOLResource Resource = bGather ? Sources[Order.SourceIndex].Resource : EHOLResource::Food;
-		const FWorkItem Item = bGather ? FWorkItem::MakeGather(Order.SourceIndex) : FWorkItem::MakeBuild(TWeakObjectPtr<AHOLBuilding>(Site));
-		// Whose units obey: the site's owner's; a source's, the player's who gave it.
+		const FWorkItem Item = bGather ? FWorkItem::MakeGather(Order.SourceIndex)
+			: bDeposit ? FWorkItem::MakeDeposit(TWeakObjectPtr<AHOLBuilding>(Site)) : FWorkItem::MakeBuild(TWeakObjectPtr<AHOLBuilding>(Site));
+		// Whose units obey: the site's (or the deposit's) owner's; a source's, the player's who gave it.
 		const int32 Owner = bGather ? Order.PlayerIndex : static_cast<int32>(Site->GetOwnerPlayer());
 		int32 NumBuilders = 0;
 		int32 NumRefused = 0;
@@ -382,8 +401,8 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 			continue;
 		}
 		const FVector Location = Site->GetActorLocation();
-		UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d: %d units to %s at (%.0f, %.0f)%s%s"), Order.PlayerIndex, NumBuilders,
-			*Site->GetTypeName().ToString(), Location.X, Location.Y, Queued, *Refused);
+		UE_LOG(LogHOLCommands, Display, TEXT("Build order of slot %d: %d units to %s%s at (%.0f, %.0f)%s%s"), Order.PlayerIndex, NumBuilders,
+			bDeposit ? TEXT("unload at ") : TEXT(""), *Site->GetTypeName().ToString(), Location.X, Location.Y, Queued, *Refused);
 	}
 }
 
@@ -397,7 +416,8 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 		Stop(Builder, TEXT("no site left"));
 		return;
 	}
-	// A source at the head of its queue: the gathering carries it out until its massif is used up (D309), then the next item.
+	// A source at the head of its queue: the gathering carries it out until its massif is used up (D309), then the next item;
+	// a deposit (D485): until it has unloaded.
 	const bool bGatherHead = Build.Phase == EHOLBuildPhase::Gathering && !Queue->Items.IsEmpty() && Queue->Items[0] == Queue->Current;
 	if (bGatherHead && Builder.Gather.IsGathering())
 	{
@@ -410,8 +430,9 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 	if (!HOLConstruction::AdvanceWorkQueue<TWeakObjectPtr<AHOLBuilding>>(Queue->Items, bGatherHead,
 		[](const TWeakObjectPtr<AHOLBuilding>& Site) { return Site.IsValid() && Site->NeedsBuilders(); }))
 	{
-		// A main forum rebuilt (V2.2) ends as a site finished.
-		AHOLBuilding* Finished = !Before.IsGather() ? Before.Site.Get() : nullptr;
+		// A main forum rebuilt (V2.2) ends as a site finished. A deposit unloaded at is no site finished (D485): idle after it,
+		// neither its camp's source nor a nearby site.
+		AHOLBuilding* Finished = Before.IsBuild() ? Before.Site.Get() : nullptr;
 		const bool bFinished = Finished && !Finished->NeedsBuilders();
 		if (bFinished && (GatherForFarm(Step, Builder, *Finished) || GatherForCamp(Step, Builder, *Finished)))
 		{
@@ -440,12 +461,17 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 			StartGathering(Step, Builder, Queue->Current.SourceIndex);
 			return;
 		}
+		if (Queue->Current.IsDeposit())
+		{
+			StartUnloading(Builder, Queue->Current);
+			return;
+		}
 		Build.Phase = EHOLBuildPhase::ToSite;
 		Build.bWalkIssued = false;
 		Build.Misses = 0;
 	}
 	AHOLBuilding* Site = Queue->Items[0].Site.Get();
-	if (!Site || Build.Phase == EHOLBuildPhase::Gathering)
+	if (!Site || Build.Phase == EHOLBuildPhase::Gathering || Queue->Items[0].IsDeposit())
 	{
 		return;
 	}
@@ -603,6 +629,35 @@ void UHOLBuildProcessor::StartGathering(const FStepContext& Step, FBuilder& Buil
 	UE_LOG(LogHOLSimulation, Display, TEXT("Build: a builder of slot %d goes on to gather source %d (%s) at (%.0f, %.0f)%s"), Builder.State.OwnerPlayer,
 		SourceIndex, *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Source.Resource)), Source.Location.X, Source.Location.Y,
 		Build.bQueueNext ? TEXT(", more queued") : TEXT(""));
+}
+
+void UHOLBuildProcessor::StartUnloading(FBuilder& Builder, const FWorkItem& Item)
+{
+	FHOLBuildFragment& Build = Builder.Build;
+	Build.Phase = EHOLBuildPhase::Gathering;
+	Build.bWalkIssued = false;
+	Build.Misses = 0;
+	FHOLGatherFragment& Gather = Builder.Gather;
+	const AHOLBuilding* Deposit = Item.Site.Get();
+	const FHOLBuildingTypeRow* Type = Deposit ? Deposit->GetType() : nullptr;
+	// Still one of its player's deposits (finished, taking deliveries), and it carries a resource it takes (D485: its load
+	// judged now, at its turn).
+	const bool bDeposit = Type && !Type->Accepts.IsEmpty() && !Deposit->NeedsBuilders() && Deposit->TakesDeliveries()
+		&& Deposit->GetOwnerPlayer() == Builder.State.OwnerPlayer;
+	if (!bDeposit || Gather.Load.Amount <= 0 || !Type->Accepts.Contains(Gather.Load.Resource))
+	{
+		// Nothing to unload there: over at the next step, the next item (idle if none).
+		UE_LOG(LogHOLSimulation, Display, TEXT("Build: a builder of slot %d carries nothing %s takes, it skips the unload%s"), Builder.State.OwnerPlayer,
+			Deposit ? *Deposit->GetTypeName().ToString() : TEXT("(gone)"), Build.bQueueNext ? TEXT(", more queued") : TEXT(""));
+		return;
+	}
+	// As a drop-off order (UHOLGatherProcessor::ApplyDropOffOrder), from the gathering's next step: unloaded, it stops.
+	Gather.StartDropOff(Item.Site);
+	Builder.State.Activity = EHOLUnitActivity::GatherTrip;
+	const FVector Location = Deposit->GetActorLocation();
+	UE_LOG(LogHOLSimulation, Display, TEXT("Build: a builder of slot %d goes on to unload %d %s at %s (%.0f, %.0f)%s"), Builder.State.OwnerPlayer,
+		static_cast<int32>(Gather.Load.Amount), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Gather.Load.Resource)),
+		*Deposit->GetTypeName().ToString(), Location.X, Location.Y, Build.bQueueNext ? TEXT(", more queued") : TEXT(""));
 }
 
 AHOLBuilding* UHOLBuildProcessor::FindNextSite(const FBuilder& Builder, const AHOLBuilding& Finished) const

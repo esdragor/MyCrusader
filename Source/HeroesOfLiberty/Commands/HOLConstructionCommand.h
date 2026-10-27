@@ -55,6 +55,12 @@ struct FHOLBuildOrder
 	 * of UHOLSourceSubsystem), Building left empty: it goes in the same queue as the sites, in the order given.
 	 */
 	int32 SourceIndex = INDEX_NONE;
+	/**
+	 * Or, with bQueue, one of the player's finished buildings taking deliveries to unload at in its turn (Shift + right click
+	 * on it, D485, EtapeDefini L.3): Building is that deposit; at its turn, a worker carrying a resource it takes goes to
+	 * unload there, the others go on to the next item at once.
+	 */
+	bool bDeposit = false;
 	/** A player's order (D328, given through its controller): its builders' chain is drawn, with Shift or not. */
 	bool bChain = false;
 	/** With bChain: units just born sent to their building's rally point, a site (D328): drawn as a Rally until they start building. */

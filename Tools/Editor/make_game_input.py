@@ -1,4 +1,4 @@
-"""Creates the input assets of a match (D255 in J1, D262 in J2, D30 grid in J3, D288 in J4, D30 "." in J5b, F1 F2 F3 and Tab in J6a.5), with Enhanced Input:
+"""Creates the input assets of a match (D255 in J1, D262 in J2, D30 grid in J3, D288 in J4, D30 "." in J5b, F1 F2 F3 and Tab in J6a.5, F4 in J8a.2), with Enhanced Input:
   /Game/Input/IA_Camera_Left, _Right, _Up, _Down   move the RTS camera (arrows; ZQSD belongs to the command grid, D30)
   /Game/Input/IA_Camera_Zoom                       zoom (mouse wheel)
   /Game/Input/IA_Camera_Drag                       drag the ground (middle mouse button)
@@ -9,7 +9,8 @@
   /Game/Input/IA_NextIdle                          select the next idle worker, the camera above it (".", D30, J5b)
   /Game/Input/IA_MilitaryBuildings                 select all the player's military buildings; again, the camera to the next one (F1, D30, J6a.5)
   /Game/Input/IA_EconomicBuildings                 the same for its economic buildings (F2)
-  /Game/Input/IA_TechnologicalBuildings            the same for its technological buildings (F3); F4 (the hero) comes with the heroes
+  /Game/Input/IA_TechnologicalBuildings            the same for its technological buildings (F3)
+  /Game/Input/IA_Hero                              select the player's hero alone; again, the camera on him (F4, D30, J8a-Q4)
   /Game/Input/IA_NextSubgroup                      the next subgroup of a group of buildings (Tab, the user's 2nd trial of J6a.5)
   /Game/Input/IA_Grid_00 to IA_Grid_11             the cells of the command grid, A Z E R / Q S D F / W X C V (D30, J3)
   /Game/Input/IA_Group_0 to IA_Group_9             the control groups (D30, J7a.5): the digit keys of the top row (QWERTY and
@@ -43,6 +44,7 @@ ACTIONS = {
     "IA_MilitaryBuildings": (BOOLEAN, ["F1"]),
     "IA_EconomicBuildings": (BOOLEAN, ["F2"]),
     "IA_TechnologicalBuildings": (BOOLEAN, ["F3"]),
+    "IA_Hero": (BOOLEAN, ["F4"]),
     # A group of buildings: All, then each type, each main centre alone (AoE4's way); Tab is bound to nothing else.
     "IA_NextSubgroup": (BOOLEAN, ["Tab"]),
 }

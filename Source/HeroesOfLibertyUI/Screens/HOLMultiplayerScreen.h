@@ -9,7 +9,8 @@ class UEditableTextBox;
 
 /**
  * Multiplayer screen (M6 R4.2): the player's name (saved, 1 to 16 characters as the manager wants them), the lobbies of
- * the lobby manager (UHOLManagerClient) with Join on a lobby still gathering and Watch on a match under way, Refresh,
+ * the lobby manager (UHOLManagerClient) with Join on a lobby still gathering, Watch on a match under way (Rejoin on the
+ * one I left, R7.6), Refresh,
  * Create a lobby, Back. Create and Join enter the lobby (R4.4) and open it: the New game screen in its network mode
  * (UHOLNewGameScreen::EnterLobby). Watch only logs its intention for now.
  */
@@ -47,7 +48,7 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> StatusText;
 
-	/** One row per lobby (name, players, state, JoinButton<i> or WatchButton<i>). */
+	/** One row per lobby (name, players, state, JoinButton<i>, RejoinButton<i> or WatchButton<i>). */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UVerticalBox> LobbyList;
 
@@ -72,6 +73,10 @@ private:
 	void HandleCreate();
 	void HandleJoin(int32 Index);
 	void HandleWatch(int32 Index);
+	/** R7.6: back in the match I left (my name among its players away): as Watch, but with my name. */
+	void HandleRejoin(int32 Index);
+	/** Watch (no name, a spectator) or Rejoin (my name, my slot): GET /watch for the port, then the match. */
+	void OpenMatchOf(int32 Index, bool bRejoin);
 	/** Create or Join answered: the lobby opened, or why not in the status line. */
 	void HandleEntered(const FHOLLobby& Lobby, const FHOLManagerError& Error);
 

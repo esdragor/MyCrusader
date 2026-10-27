@@ -10,6 +10,9 @@
 #include "Simulation/HOLGatherRules.h"
 #include "HOLGatherProcessor.generated.h"
 
+class AHOLBuilding;
+struct FHOLGatherOrder;
+
 class ANavigationData;
 class UHOLCommandSubsystem;
 class UHOLProductionSubsystem;
@@ -52,6 +55,12 @@ public:
 		int64 NearbyGroves = 0;
 	};
 	static const FCounters& GetCounters() { return Counters; }
+
+	/**
+	 * A gatherer of OwnerPlayer unloads Load at a deposit (D296): its owner's stock rises (HOLGather::Deposit). Returns the
+	 * amount deposited; OutStock: the stock after it (zero when the slot has none).
+	 */
+	static int32 DepositLoad(UWorld& World, int32 OwnerPlayer, FHOLGatherLoad& Load, FHOLResources& OutStock);
 
 	/**
 	 * Distance (cm, centre to centre) between two gatherers' spots, at one source or two side by side (hol.Gather.SpotSpacing,
@@ -101,6 +110,8 @@ private:
 		TArray<EHOLResource> Accepts;
 		/** Its building's type, for the log of the unloads (hol.Gather.LogDeposits: at the camp or at the centre, J6b.1). */
 		FName TypeName;
+		/** Its building: the one a player's drop-off order names (D485). */
+		TWeakObjectPtr<AHOLBuilding> Building;
 	};
 
 	/** The gatherer met by the step, and what it needs. */
@@ -193,8 +204,13 @@ private:
 	int32 FindMassifSpot(const FStepContext& Step, const FGatherer& Gatherer, int32 FromSource, FVector& OutSpot, int32* OutNearestStanding = nullptr);
 	/** The massifs of the server's sources, linked again only when sources were added (D309). */
 	const FHOLSourceMassifs& GetMassifs(const FStepContext& Step);
-	/** Index in Deposits of the owner's nearest deposit taking Resource, INDEX_NONE if it has none. */
-	int32 FindDeposit(uint8 OwnerPlayer, EHOLResource Resource, const FVector& From) const;
+	/**
+	 * Index in Deposits of the owner's nearest deposit taking Resource, INDEX_NONE if it has none. Target (a player's
+	 * drop-off order, D485) first, while it is still one of the owner's deposits taking Resource.
+	 */
+	int32 FindDeposit(uint8 OwnerPlayer, EHOLResource Resource, const FVector& From, const AHOLBuilding* Target = nullptr) const;
+	/** Applies a drop-off order (D485, EtapeDefini L): its carriers of a resource the building takes walk there to unload. */
+	void ApplyDropOffOrder(const FStepContext& Step, const FHOLGatherOrder& Order);
 	/** The footprint of the owner's deposit nearest Source taking its resource, where its gatherers unload; null if none. */
 	const FHOLGatherDeposit* FindSourceDeposit(uint8 OwnerPlayer, const FHOLSource& Source) const;
 

@@ -14,7 +14,9 @@ namespace HOLGameNames
 		static const FName Spearman(TEXT("Spearman"));
 		static const FName ManAtArms(TEXT("ManAtArms"));
 		static const FName Archer(TEXT("Archer"));
+		static const FName Crossbowman(TEXT("Crossbowman"));
 		static const FName King(TEXT("King"));
+		static const FName Hero(TEXT("Hero"));
 		if (TypeName == Peasant)
 		{
 			return LOCTEXT("Peasant", "Paysan");
@@ -31,10 +33,20 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("Archer", "Archer");
 		}
+		if (TypeName == Crossbowman)
+		{
+			// AR8, translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Crossbowman", "Arbalétrier");
+		}
 		if (TypeName == King)
 		{
 			// V5.1, translated in V5.4 (Tools/Localization/fill_po.py).
 			return LOCTEXT("King", "Roi");
+		}
+		if (TypeName == Hero)
+		{
+			// J8a.2: the hero (J8a-Q1), translated by Tools/Localization/fill_po.py.
+			return LOCTEXT("Hero", "Paladin-Commandant");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
@@ -73,6 +85,11 @@ namespace HOLGameNames
 		{
 			// IA1.2 F8, translated by Tools/Localization/fill_po.py.
 			return LOCTEXT("Farm", "Ferme");
+		}
+		if (TypeName == HOLBuildingTypeNames::ArcheryRange)
+		{
+			// AR7b, translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("ArcheryRange", "Champ de tir");
 		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{

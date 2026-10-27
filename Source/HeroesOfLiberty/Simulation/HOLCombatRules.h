@@ -22,14 +22,30 @@ namespace HOLCombat
 	HEROESOFLIBERTY_API int32 GetArmor(const FHOLUnitTypeConstants& Defender, EHOLAttackType AttackType);
 
 	/**
+	 * Heroic resistance (D17, J8a.1): share of a troop's hit a hero (EHOLArmorCategory::Hero) takes, exactly (health is a
+	 * float). A hero's hit on a hero is not cut.
+	 */
+	inline constexpr float HeroTroopDamageFactor = 0.3f;
+
+	/**
 	 * Damage of one hit (D21, D345): Attack, plus each of the attacker's bonuses aimed at one of the defender's armour
 	 * categories (they add up), minus the defender's armour of the attacker's AttackType, 1 at least (a hit always hurts).
-	 * The hero's x0.3 against buildings (D345) has no carrier yet.
+	 * On a hero hit by anyone but a hero, then HeroTroopDamageFactor of that, unrounded (D17: 5 -> 1.5, 3 -> 0.9). The
+	 * hero's own weakness against buildings is his table's BuildingAttack.
 	 */
-	HEROESOFLIBERTY_API int32 GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender);
+	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender);
 
-	/** Hits that take Health down to 0 (0 when Health <= 0). */
-	HEROESOFLIBERTY_API int32 GetHitsToKill(int32 Health, int32 Damage);
+	/**
+	 * Health as shown (HUD, bars) and sent (the wire's exact health, D455): the simulation's float health rounded up, so a
+	 * living unit shows 1 at least; 0 dead (0 or below).
+	 */
+	inline int32 GetShownHealth(const float Health)
+	{
+		return Health > 0.f ? FMath::Max(FMath::CeilToInt(Health), 1) : 0;
+	}
+
+	/** Hits that take Health down to 0 (0 when Health <= 0; a Damage of 0 or less counts as 1). */
+	HEROESOFLIBERTY_API int32 GetHitsToKill(float Health, float Damage);
 
 	// Cadence. The time between two hits is counted in whole milliseconds, not in steps: a cool-down loses the step's
 	// length each step, a hit falls when it reaches 0, then the interval is added back. The average cadence is the
@@ -327,7 +343,7 @@ namespace HOLCombat
 	};
 
 	/** An arrow landing: on a standing target (bTargetStands, Health > 0) Damage comes off Health; Lost otherwise. */
-	HEROESOFLIBERTY_API EArrowOutcome ResolveArrow(bool bTargetStands, int32& Health, int32 Damage);
+	HEROESOFLIBERTY_API EArrowOutcome ResolveArrow(bool bTargetStands, float& Health, float Damage);
 
 	/** hol.Combat.ArrowSpeed (cm/s, 1 at least): not a pure rule, the setting the server and the client both read. */
 	HEROESOFLIBERTY_API float GetArrowSpeed();

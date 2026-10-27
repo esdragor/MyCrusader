@@ -87,8 +87,9 @@ private:
 	using FWorkItem = HOLConstruction::TWorkItem<TWeakObjectPtr<AHOLBuilding>>;
 
 	/**
-	 * A builder's queue (Shift, D311): sites, and sources to gather (the user's trial of J6a.4), the head first; Current,
-	 * the head being carried out (the site its spot was found for, the source handed to the gathering).
+	 * A builder's queue (Shift, D311): sites, sources to gather (the user's trial of J6a.4) and deposits to unload at (D485),
+	 * the head first; Current, the head being carried out (the site its spot was found for, the source or the deposit
+	 * handed to the gathering).
 	 */
 	struct FBuilderQueue
 	{
@@ -155,6 +156,12 @@ private:
 	void StartBuilding(FBuilder& Builder, const FBox2D& Footprint);
 	/** The head of its queue is a source: handed to the gathering (as a gather order would), until its massif is used up. */
 	void StartGathering(const FStepContext& Step, FBuilder& Builder, int32 SourceIndex);
+	/**
+	 * The head of its queue is a deposit (D485, EtapeDefini L.3): carrying a resource it takes, handed to the gathering to
+	 * unload there (as a drop-off order would), until unloaded; otherwise the item is over at once (the next item at the
+	 * next step).
+	 */
+	void StartUnloading(FBuilder& Builder, const FWorkItem& Item);
 	/**
 	 * Its player's nearest site not finished (bare foundations too) within hol.Build.NextSiteRange of Finished, footprint to
 	 * footprint (HOLConstruction::FindNextSite), or null.

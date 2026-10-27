@@ -11,9 +11,12 @@
 #include "MassCommonFragments.h"
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
 
 namespace
 {
+	/** The fallback projectile (AR9): a shooter type whose Projectile column is empty shoots an arrow. */
 	const TCHAR* ArrowMeshPath = TEXT("/Game/Units/Props/SM_Arrow.SM_Arrow");
 	/** Where the arrow leaves the shooter (his drawing shoulder) and reaches its target (its chest), above their feet (cm). */
 	constexpr double ReleaseHeight = 150.0;
@@ -62,40 +65,75 @@ TStatId UHOLArrowSubsystem::GetStatId() const
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UHOLArrowSubsystem, STATGROUP_Tickables);
 }
 
-bool UHOLArrowSubsystem::EnsureComponent()
+UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 {
-	if (Instances)
+	// The shooter type's Projectile column (AR9); the arrow when it is empty or the type unknown.
+	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
+	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
+	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
+	if (Row && !Row->Projectile.IsNull())
 	{
-		return true;
+		if (UStaticMesh* Mesh = Row->Projectile.LoadSynchronous())
+		{
+			return Mesh;
+		}
 	}
-	if (bMeshMissing)
+	return LoadObject<UStaticMesh>(nullptr, ArrowMeshPath);
+}
+
+const UInstancedStaticMeshComponent* UHOLArrowSubsystem::GetInstances(const UStaticMesh* Mesh) const
+{
+	const int32 Group = Meshes.IndexOfByKey(Mesh);
+	return Group != INDEX_NONE ? Instances[Group].Get() : nullptr;
+}
+
+int32 UHOLArrowSubsystem::FindOrAddGroup(const FName ShooterType)
+{
+	if (const int32* Known = GroupByType.Find(ShooterType))
 	{
-		return false;
+		return *Known;
 	}
+	int32& Group = GroupByType.Add(ShooterType, INDEX_NONE);
 	UWorld* World = GetWorld();
-	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, ArrowMeshPath);
+	UStaticMesh* Mesh = GetProjectileMesh(ShooterType);
 	if (!World || !Mesh)
 	{
-		bMeshMissing = true;
-		UE_LOG(LogHOLPresentation, Warning, TEXT("Arrows: no mesh %s, arrows not drawn"), ArrowMeshPath);
-		return false;
+		UE_LOG(LogHOLPresentation, Warning, TEXT("Arrows: no projectile mesh for %s (nor %s), its shots not drawn"), *ShooterType.ToString(), ArrowMeshPath);
+		return INDEX_NONE;
 	}
-	FActorSpawnParameters Parameters;
-	Parameters.ObjectFlags |= RF_Transient;
-	AActor* Owner = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Parameters);
-	if (!Owner)
+	Group = Meshes.IndexOfByKey(Mesh);
+	if (Group != INDEX_NONE)
 	{
-		return false;
+		return Group;
 	}
-	Instances = NewObject<UInstancedStaticMeshComponent>(Owner, TEXT("Arrows"));
-	Instances->SetStaticMesh(Mesh);
-	Instances->SetMobility(EComponentMobility::Movable);
-	Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Instances->SetCastShadow(false);
-	Instances->SetCanEverAffectNavigation(false);
-	Owner->SetRootComponent(Instances);
-	Instances->RegisterComponent();
-	return true;
+	if (!InstancesOwner)
+	{
+		FActorSpawnParameters Parameters;
+		Parameters.ObjectFlags |= RF_Transient;
+		InstancesOwner = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, Parameters);
+		if (!InstancesOwner)
+		{
+			return INDEX_NONE;
+		}
+	}
+	UInstancedStaticMeshComponent* Component = NewObject<UInstancedStaticMeshComponent>(InstancesOwner, *FString::Printf(TEXT("Projectiles_%s"), *Mesh->GetName()));
+	Component->SetStaticMesh(Mesh);
+	Component->SetMobility(EComponentMobility::Movable);
+	Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Component->SetCastShadow(false);
+	Component->SetCanEverAffectNavigation(false);
+	if (!InstancesOwner->GetRootComponent())
+	{
+		InstancesOwner->SetRootComponent(Component);
+	}
+	else
+	{
+		Component->SetupAttachment(InstancesOwner->GetRootComponent());
+	}
+	Component->RegisterComponent();
+	Group = Meshes.Add(Mesh);
+	Instances.Add(Component);
+	return Group;
 }
 
 void UHOLArrowSubsystem::Launch(const FHOLArrowLaunch& Launch)
@@ -114,6 +152,7 @@ void UHOLArrowSubsystem::Launch(const FHOLArrowLaunch& Launch)
 	Arrow.Target = Launch.Target;
 	Arrow.Start = World->GetTimeSeconds();
 	Arrow.Duration = FMath::Max(Launch.FlightMs, 1) / 1000.0;
+	Arrow.Group = FindOrAddGroup(Launch.ShooterType);
 	++Launched;
 }
 
@@ -158,7 +197,10 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	const UWorld* World = GetWorld();
-	if (!World || (Arrows.IsEmpty() && (!Instances || Instances->GetInstanceCount() == 0)))
+	if (!World || (Arrows.IsEmpty() && !Instances.ContainsByPredicate([](const UInstancedStaticMeshComponent* Component)
+		{
+			return Component && Component->GetInstanceCount() > 0;
+		})))
 	{
 		return;
 	}
@@ -173,8 +215,9 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		}
 	}
 
-	TArray<FTransform> Transforms;
-	Transforms.Reserve(Arrows.Num());
+	// Each mesh's instances (AR9), in its group's order.
+	TArray<TArray<FTransform>> GroupTransforms;
+	GroupTransforms.SetNum(Instances.Num());
 	for (int32 Index = Arrows.Num() - 1; Index >= 0; --Index)
 	{
 		FArrow& Arrow = Arrows[Index];
@@ -197,36 +240,45 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 			Arrows.RemoveAtSwap(Index, EAllowShrinking::No);
 			continue;
 		}
+		if (!GroupTransforms.IsValidIndex(Arrow.Group))
+		{
+			continue;
+		}
 		const double T = FMath::Max(Alpha, 0.0);
 		const FVector Span = Arrow.LastTarget - Arrow.From;
 		const double Arc = ArcShare * FVector2D(Span.X, Span.Y).Size();
 		const FVector Position = Arrow.From + Span * T + FVector(0.0, 0.0, Arc * 4.0 * T * (1.0 - T));
 		const FVector Velocity = Span + FVector(0.0, 0.0, Arc * (4.0 - 8.0 * T));
-		Transforms.Emplace(FRotationMatrix::MakeFromX(Velocity.GetSafeNormal()).ToQuat(), Position, ArrowScale);
+		GroupTransforms[Arrow.Group].Emplace(FRotationMatrix::MakeFromX(Velocity.GetSafeNormal()).ToQuat(), Position, ArrowScale);
 	}
 
-	if (!EnsureComponent())
+	for (int32 Group = 0; Group < Instances.Num(); ++Group)
 	{
-		return;
-	}
-	const int32 Have = Instances->GetInstanceCount();
-	if (Have > Transforms.Num())
-	{
-		TArray<int32> Excess;
-		for (int32 Index = Have - 1; Index >= Transforms.Num(); --Index)
+		UInstancedStaticMeshComponent* Component = Instances[Group];
+		const TArray<FTransform>& Transforms = GroupTransforms[Group];
+		if (!Component)
 		{
-			Excess.Add(Index);
+			continue;
 		}
-		Instances->RemoveInstances(Excess);
-	}
-	else if (Have < Transforms.Num())
-	{
-		TArray<FTransform> Added;
-		Added.Init(FTransform::Identity, Transforms.Num() - Have);
-		Instances->AddInstances(Added, false, true);
-	}
-	if (!Transforms.IsEmpty())
-	{
-		Instances->BatchUpdateInstancesTransforms(0, Transforms, true, true, true);
+		const int32 Have = Component->GetInstanceCount();
+		if (Have > Transforms.Num())
+		{
+			TArray<int32> Excess;
+			for (int32 Index = Have - 1; Index >= Transforms.Num(); --Index)
+			{
+				Excess.Add(Index);
+			}
+			Component->RemoveInstances(Excess);
+		}
+		else if (Have < Transforms.Num())
+		{
+			TArray<FTransform> Added;
+			Added.Init(FTransform::Identity, Transforms.Num() - Have);
+			Component->AddInstances(Added, false, true);
+		}
+		if (!Transforms.IsEmpty())
+		{
+			Component->BatchUpdateInstancesTransforms(0, Transforms, true, true, true);
+		}
 	}
 }

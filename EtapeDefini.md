@@ -10,7 +10,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité ; questions tranchées (Champ de tir créé, l'Archer y passe) ; pièces et gestes (AR1 à AR4) validés en aperçu ; AR6 et la suite attendent le moteur recompilé ; chantier `CrossbowInProgress.md`)*
+- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 boucles 1 à 3 (vie du héros en part de 255, fiches publique et privée écrites par le serveur), dans `main` ; reste de J8a.3 : contrôle réseau des fiches dans `quick_check` et lecture par le client ; `JourneyInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
@@ -30,7 +30,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D485 (§ 22)
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D486 (§ 22)
 
 ### Moteur
 - Moteur Hazelight 5.8.4 avec cible Server : compilation depuis `C:/UE/Src/HZ`, puis remplacer `C:/UE/UE_5.8_AS_3` en entier et recompiler le projet de zéro (serveur compris) *(D483)*
@@ -43,6 +43,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
+- Maj + déplacement puis Maj + **pose** d'un bâtiment : le déplacement est supprimé (la pose ne passe pas par la file des déplacements) *(`EtapeDefiniInProgress.md` L)*
+- Maj + chantier puis Maj + déplacement : le déplacement est oublié, le Paysan bâtit puis s'arrête *(`EtapeDefiniInProgress.md` L)*
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
@@ -50,6 +52,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Aléas et petits restes
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
+- `net 2 clients` : client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (séquence arrêtée, vu une fois)
+- `net 2 clients` : le client 1 (Bob) meurt en cours de partie, journal coupé net, sans dossier Crashes (vu 3 fois le 2026-10-27, pendant les flèches ou juste après)
 - Attaque d'un bâtiment : portée de 400 cm, une unité gênée frappe encore du 2e rang *(équilibrage, à trancher ; `EtapeDefiniInProgress.md` J)*
 - Attaque d'un bâtiment sans ordre direct (attaque-déplacement, recherche automatique, file Maj) : pas de places autour du mur, ancienne règle du point le plus proche *(J)*
 - Unité arrêtée près d'un bâtiment : la garde du mur visible a des coins arrondis, jusqu'à ~35 cm dans le coin du socle *(C.1 ; J l'a corrigé pour les seules unités qui frappent)*
@@ -63,12 +67,11 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 (pièces du paladin) faite, J8a.1-J8a.6 après le moteur
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 à J8a.2 faites (pièces, type `Hero`, PV en float, naissance, F4), J8a.3 en cours (boucles 1 à 3 dans `main`)
 - `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 et IA1.1 dans `main`, plan d'IA1 écrit
-- `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 fait (tests en script dans quick_check) ; suite AS2 cache précompilé au paquet, puis le premier vrai fichier en script
+- `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
-- `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D428), AR1 à AR4 faites (pièces, gestes), reste la fabrication et le C++ après la recompilation
 - `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
 
 ### En pause
@@ -87,4 +90,5 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `FrontEndInProgress.md` : menu (D240 à D251)
 - `MillInProgress.md` : moulin (D346)
 - `RidgeRockInProgress.md` : rochers (D439 à D444)
+- `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D486 à D489)
 - `TestSpeedInProgress.md` : quick_check en pas fixe et sans dessin pendant les attentes (`-Full` ~10 min -> ~4 min 20)

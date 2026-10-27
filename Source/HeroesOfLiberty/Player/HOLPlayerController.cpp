@@ -629,6 +629,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** The F4 key (D30, J8a-Q4), without the keyboard. */
+	FAutoConsoleCommand HeroCommand(
+		TEXT("hol.Select.Hero"),
+		TEXT("hol.Select.Hero: selects the local player's hero alone, as F4; again (he alone selected), the camera on him"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectHero();
+			}
+		}));
+
 	/** A cell of the command grid (J6a.5), as its key or a click on the HUD: 0 to 11, A Z E R / Q S D F / W X C V. */
 	FAutoConsoleCommand GridCommand(
 		TEXT("hol.Select.Grid"),
@@ -917,7 +929,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Development and scripted checks of the placement (J6a.3, D311), until the Peasant's grid of J6a.5. */
 	FAutoConsoleCommand BuildPlaceCommand(
 		TEXT("hol.Build.Place"),
-		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp|Mill|Barracks>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
+		TEXT("hol.Build.Place <House|LumberCamp|MiningCamp|Mill|Barracks|ArcheryRange>: placement mode, a ghost under the cursor (left click places, Shift + click places and stays, Escape or right click leave)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const FName TypeName(Args.IsEmpty() ? TEXT("House") : *Args[0]);
@@ -1605,7 +1617,7 @@ void AHOLPlayerController::SetupInputComponent()
 	{
 		Input->BindAction(NextIdle, ETriggerEvent::Started, this, &AHOLPlayerController::HandleNextIdle);
 	}
-	// F1, F2, F3 (D30): the player's military, economic, technological buildings; F4 (the hero) comes with the heroes.
+	// F1, F2, F3 (D30): the player's military, economic, technological buildings; F4: his hero (J8a-Q4).
 	const TPair<const TCHAR*, EHOLBuildingCategory> CategoryKeys[] = { { TEXT("IA_MilitaryBuildings"), EHOLBuildingCategory::Military },
 		{ TEXT("IA_EconomicBuildings"), EHOLBuildingCategory::Economic }, { TEXT("IA_TechnologicalBuildings"), EHOLBuildingCategory::Technological } };
 	for (const TPair<const TCHAR*, EHOLBuildingCategory>& CategoryKey : CategoryKeys)
@@ -1614,6 +1626,10 @@ void AHOLPlayerController::SetupInputComponent()
 		{
 			Input->BindAction(Action, ETriggerEvent::Started, this, &AHOLPlayerController::HandleCategoryKey, CategoryKey.Value);
 		}
+	}
+	if (const UInputAction* HeroKey = LoadAction(TEXT("IA_Hero")))
+	{
+		Input->BindAction(HeroKey, ETriggerEvent::Started, this, &AHOLPlayerController::HandleHeroKey);
 	}
 	// Tab (the user's 2nd trial of J6a.5): the next subgroup of a group of buildings.
 	if (const UInputAction* NextSubgroup = LoadAction(TEXT("IA_NextSubgroup")))
@@ -2158,6 +2174,17 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s%s"), Own.Num(), *DescribeBuilding(EnemyBuilding), bShift ? TEXT(", queued") : TEXT(""));
 			RequestAttackBuilding(Own, EnemyBuilding, bShift);
 			OnAttackOrderGiven.Broadcast(EnemyBuilding->GetActorLocation());
+			return;
+		}
+		// D485 (EtapeDefini L): one of the player's finished buildings taking deliveries (its sites went above): the units
+		// carrying what it takes unload there, the others walk to the ground point; the server sorts them (it knows the loads).
+		const FHOLBuildingTypeRow* SiteType = Site ? Site->GetType() : nullptr;
+		if (Site && SiteType && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && !Site->NeedsBuilders()
+			&& Site->TakesDeliveries() && !SiteType->Accepts.IsEmpty())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units drop off at %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
+			RequestDropOffUnits(Own, Site, Ground, bShift);
+			OnOrderGiven.Broadcast(Site->GetActorLocation());
 			return;
 		}
 		if (Source)
@@ -3498,6 +3525,24 @@ void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>&
 	}
 }
 
+void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, const bool bQueue)
+{
+	if (UnitIds.Num() > 0 && Building)
+	{
+		ServerDropOffUnits(TArray<uint32>(UnitIds), Building, Point, bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point,
+	const bool bQueue)
+{
+	// The order names the player: only its own units, at its own building (D288, D485; checked again by the gatherers' step).
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::DropOff(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, Point, bQueue);
+	}
+}
+
 void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
 {
 	if (IsSpectator())
@@ -4303,6 +4348,11 @@ void AHOLPlayerController::HandleCategoryKey(const EHOLBuildingCategory Category
 	SelectBuildingCategory(Category);
 }
 
+void AHOLPlayerController::HandleHeroKey()
+{
+	SelectHero();
+}
+
 void AHOLPlayerController::HandleSubgroupKey()
 {
 	CycleSubgroup();
@@ -4552,6 +4602,46 @@ void AHOLPlayerController::SelectArmy()
 	{
 		SetUnitSelection(MoveTemp(UnitIds));
 	}
+}
+
+void AHOLPlayerController::SelectHero()
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+	if (!HOLPlayerState || !Units)
+	{
+		return;
+	}
+	// The units known here, a dying one left out (J8a.4: a dead hero cannot be selected). One hero a player (J8a-Q2);
+	// the oldest if a test made more.
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	const FHOLUnitView* Hero = nullptr;
+	for (const FHOLUnitView& View : Views)
+	{
+		const FHOLUnitTypeRow* Row = View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() ? Units->FindTypeRow(View.TypeName) : nullptr;
+		if (Row && Row->HasArmorCategory(EHOLArmorCategory::Hero) && (!Hero || View.UnitId < Hero->UnitId))
+		{
+			Hero = &View;
+		}
+	}
+	if (!Hero)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Select hero: none"));
+		return;
+	}
+	// Pressed again (he alone selected, whatever selected him): the camera on him, as a control group's double press.
+	if (SelectedUnits.Num() == 1 && SelectedUnits[0] == Hero->UnitId)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Select hero: camera on #%u at (%.0f, %.0f)"), Hero->UnitId, Hero->Location.X, Hero->Location.Y);
+		if (RTSCamera)
+		{
+			RTSCamera->SetFocus(Hero->Location);
+		}
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Select hero: selected #%u at (%.0f, %.0f)"), Hero->UnitId, Hero->Location.X, Hero->Location.Y);
+	SetUnitSelection({ Hero->UnitId });
 }
 
 void AHOLPlayerController::UpdateDrag()

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Net/HOLManagerClientRules.h"
+#include "Player/HOLGameMenuRules.h"
 #include "Dom/JsonObject.h"
 #include "Misc/AutomationTest.h"
 #include "Serialization/JsonReader.h"
@@ -31,7 +32,7 @@ bool FHOLManagerClientParseTest::RunTest(const FString& Parameters)
     { "id": "L7", "name": "Salon de Bob", "players": 3, "maxPlayers": 8, "state": "lobby",
       "minutes": null, "canJoin": true, "canWatch": false },
     { "id": "L8", "name": "2v2", "players": 4, "maxPlayers": 4, "state": "in_game",
-      "minutes": 12, "canJoin": false, "canWatch": true }
+      "minutes": 12, "canJoin": false, "canWatch": true, "away": ["Bob"] }
   ]
 })"), Lobbies));
 	if (TestEqual(TEXT("two lobbies"), Lobbies.Num(), 2))
@@ -48,6 +49,8 @@ bool FHOLManagerClientParseTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("minutes"), Lobbies[1].Minutes, 12);
 		TestFalse(TEXT("cannot join"), Lobbies[1].bCanJoin);
 		TestTrue(TEXT("can watch"), Lobbies[1].bCanWatch);
+		TestTrue(TEXT("no away field: nobody away"), Lobbies[0].Away.IsEmpty());
+		TestEqual(TEXT("away"), Lobbies[1].Away, TArray<FString>{ TEXT("Bob") });
 	}
 	TArray<FHOLLobbySummary> Starting;
 	TestTrue(TEXT("starting read"), FHOLManagerClientRules::ParseLobbies(TEXT(R"({ "lobbies": [ { "id": "L9", "name": "x",
@@ -59,6 +62,11 @@ bool FHOLManagerClientParseTest::RunTest(const FString& Parameters)
 		"players": 1, "maxPlayers": 8, "state": "lost", "minutes": null, "canJoin": true, "canWatch": false } ] })"), None));
 	TestFalse(TEXT("lobbies without the list"), FHOLManagerClientRules::ParseLobbies(TEXT("{}"), None));
 
+	TArray<FHOLLobbySummary> Odd;
+	TestTrue(TEXT("away not a list: still read"), FHOLManagerClientRules::ParseLobbies(TEXT(R"({ "lobbies": [ { "id": "L1", "name": "x",
+		"players": 2, "maxPlayers": 8, "state": "in_game", "minutes": 3, "canJoin": false, "canWatch": true, "away": "Bob" } ] })"), Odd)
+		&& Odd.Num() == 1 && Odd[0].Away.IsEmpty());
+
 	FHOLManagerError Error;
 	TestTrue(TEXT("error read"), FHOLManagerClientRules::ParseError(
 		TEXT(R"({ "error": "lobby_full", "message": "The lobby is full (8 players)." })"), Error));
@@ -69,6 +77,41 @@ bool FHOLManagerClientParseTest::RunTest(const FString& Parameters)
 }
 
 // Answers and failures, servers.json and the URLs.
+// R7.6: the button of a row of the Multiplayer list; « Revenir » for my name among the players away from the match.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerClientLobbyActionTest, "HeroesOfLiberty.Net.ManagerClient.LobbyAction",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLManagerClientLobbyActionTest::RunTest(const FString& Parameters)
+{
+	auto Line = [](const EHOLLobbyState State, const bool bCanJoin, const bool bCanWatch, TArray<FString> Away)
+	{
+		FHOLLobbySummary Lobby;
+		Lobby.Id = TEXT("L8");
+		Lobby.State = State;
+		Lobby.bCanJoin = bCanJoin;
+		Lobby.bCanWatch = bCanWatch;
+		Lobby.Away = MoveTemp(Away);
+		return Lobby;
+	};
+	auto Is = [this](const TCHAR* What, const EHOLLobbyAction Actual, const EHOLLobbyAction Expected)
+	{
+		TestEqual(What, static_cast<int32>(Actual), static_cast<int32>(Expected));
+	};
+	using Rules = FHOLManagerClientRules;
+	const FHOLLobbySummary InGame = Line(EHOLLobbyState::InGame, false, true, { TEXT("Alice"), TEXT("Bob") });
+	Is(TEXT("gathering, room: join"), Rules::ChooseLobbyAction(Line(EHOLLobbyState::Lobby, true, false, {}), TEXT("Bob")), EHOLLobbyAction::Join);
+	Is(TEXT("gathering, full: nothing"), Rules::ChooseLobbyAction(Line(EHOLLobbyState::Lobby, false, false, {}), TEXT("Bob")), EHOLLobbyAction::None);
+	Is(TEXT("starting: nothing"), Rules::ChooseLobbyAction(Line(EHOLLobbyState::Starting, false, false, { TEXT("Bob") }), TEXT("Bob")), EHOLLobbyAction::None);
+	Is(TEXT("in game, my name away: rejoin"), Rules::ChooseLobbyAction(InGame, TEXT("Bob")), EHOLLobbyAction::Rejoin);
+	Is(TEXT("case ignored"), Rules::ChooseLobbyAction(InGame, TEXT("bOB")), EHOLLobbyAction::Rejoin);
+	Is(TEXT("spaces around ignored"), Rules::ChooseLobbyAction(InGame, TEXT(" Bob ")), EHOLLobbyAction::Rejoin);
+	Is(TEXT("in game, my name not away: watch"), Rules::ChooseLobbyAction(InGame, TEXT("Chloé")), EHOLLobbyAction::Watch);
+	Is(TEXT("in game, part of a name: watch"), Rules::ChooseLobbyAction(InGame, TEXT("Bo")), EHOLLobbyAction::Watch);
+	Is(TEXT("in game, nobody away: watch"), Rules::ChooseLobbyAction(Line(EHOLLobbyState::InGame, false, true, {}), TEXT("Bob")), EHOLLobbyAction::Watch);
+	Is(TEXT("in game, no name: watch"), Rules::ChooseLobbyAction(InGame, FString()), EHOLLobbyAction::Watch);
+	Is(TEXT("in game, cannot watch: nothing"), Rules::ChooseLobbyAction(Line(EHOLLobbyState::InGame, false, false, { TEXT("Bob") }), TEXT("Bob")), EHOLLobbyAction::None);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerClientFailureTest, "HeroesOfLiberty.Net.ManagerClient.Failure",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FHOLManagerClientFailureTest::RunTest(const FString& Parameters)
@@ -340,6 +383,32 @@ bool FHOLManagerClientMatchTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("watch port"), Port, 7778);
 	TestFalse(TEXT("watch without a port"), FHOLManagerClientRules::ParseWatch(TEXT(R"({ "matchId": "M1" })"), MatchId, Port));
 	TestFalse(TEXT("watch not JSON"), FHOLManagerClientRules::ParseWatch(TEXT("<html>"), MatchId, Port));
+	return true;
+}
+
+// Where a match was opened from (M6-Q10, R7.6, B6c): the list's "Revenir" gives no token, the way back still offered.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerClientOriginTest, "HeroesOfLiberty.Net.ManagerClient.Origin",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLManagerClientOriginTest::RunTest(const FString& Parameters)
+{
+	struct FCase { const TCHAR* What; bool bHasToken; bool bRejoined; bool bNamed; bool bInMatch; EHOLMatchOrigin Expected; };
+	const FCase Cases[] = {
+		{ TEXT("lobby's player: token and name"), true, false, true, true, EHOLMatchOrigin::Lobby },
+		{ TEXT("back by Revenir: no token, name"), false, true, true, true, EHOLMatchOrigin::Lobby },
+		{ TEXT("token and Revenir both"), true, true, true, true, EHOLMatchOrigin::Lobby },
+		{ TEXT("named, not yet travelled"), true, false, true, false, EHOLMatchOrigin::Lobby },
+		{ TEXT("spectator with a token: no name"), true, false, false, true, EHOLMatchOrigin::Manager },
+		{ TEXT("Revenir without a name"), false, true, false, true, EHOLMatchOrigin::Manager },
+		{ TEXT("Regarder: no token, no name"), false, false, false, true, EHOLMatchOrigin::Manager },
+		{ TEXT("named without lobby (no token, no Revenir)"), false, false, true, true, EHOLMatchOrigin::Manager },
+		{ TEXT("nothing: local"), false, false, false, false, EHOLMatchOrigin::Local },
+		{ TEXT("Revenir unnamed, out of match"), false, true, false, false, EHOLMatchOrigin::Local },
+	};
+	for (const FCase& Case : Cases)
+	{
+		TestEqual(Case.What, static_cast<int32>(FHOLManagerClientRules::GetMatchOrigin(Case.bHasToken, Case.bRejoined, Case.bNamed, Case.bInMatch)),
+			static_cast<int32>(Case.Expected));
+	}
 	return true;
 }
 

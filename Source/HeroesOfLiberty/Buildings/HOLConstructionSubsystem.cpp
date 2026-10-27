@@ -397,25 +397,6 @@ int32 UHOLConstructionSubsystem::DamageBuilding(AHOLBuilding& Building, const in
 	return Dealt;
 }
 
-namespace UE::HeroesOfLiberty::Construction
-{
-	AHOLPlayerState* FindOwnerState(const UWorld& World, const int32 PlayerIndex)
-	{
-		if (const AGameStateBase* GameState = World.GetGameState())
-		{
-			for (APlayerState* Each : GameState->PlayerArray)
-			{
-				AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(Each);
-				if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == PlayerIndex)
-				{
-					return HOLPlayerState;
-				}
-			}
-		}
-		return nullptr;
-	}
-}
-
 FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Building)
 {
 	FHOLResources Refund;
@@ -436,12 +417,9 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName) : FHOLProductionCost(), Refund);
 	}
 	Building.NotifyProductionChanged();
-	if (AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Construction::FindOwnerState(*World, Building.GetOwnerPlayer()))
-	{
-		FHOLResources Stock = PlayerState->GetResources();
-		Stock += Refund;
-		PlayerState->SetResources(Stock);
-	}
+	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
+	FHOLResources Stock;
+	AHOLGameState::AddSlotStock(*World, Building.GetOwnerPlayer(), Refund, Stock);
 	return Refund;
 }
 
@@ -453,7 +431,6 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 		return;
 	}
 	// Its owner's stock: every item of its queue back in full (as a cancel, the head too), a site the share not built (D345).
-	AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Construction::FindOwnerState(*World, Building.GetOwnerPlayer());
 	const int32 QueueLength = Building.GetProductionQueue().Num();
 	FHOLResources Refund = RefundProductionQueue(Building);
 	const FHOLBuildingTypeRow* Type = Building.GetType();
@@ -463,18 +440,14 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 		SiteRefund = HOLConstruction::GetCancelRefund(Type->Cost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
 		Refund += SiteRefund;
 	}
+	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
 	FHOLResources Stock;
-	if (PlayerState)
-	{
-		Stock = PlayerState->GetResources();
-		Stock += SiteRefund;
-		PlayerState->SetResources(Stock);
-	}
+	const bool bHasStock = AHOLGameState::AddSlotStock(*World, Building.GetOwnerPlayer(), SiteRefund, Stock);
 	const FVector Location = Building.GetActorLocation();
 	UE_LOG(LogHOLCommands, Display, TEXT("Building destroyed: %s of slot %d at (%.0f, %.0f), %s, queue of %d refunded, refund %s (%s)"),
 		*Building.GetTypeName().ToString(), Building.GetOwnerPlayer(), Location.X, Location.Y,
 		Building.IsFinished() ? TEXT("finished") : Building.IsFoundation() ? TEXT("foundation") : TEXT("under construction"), QueueLength,
-		*Refund.ToString(), PlayerState ? *Stock.ToString() : TEXT("no player state"));
+		*Refund.ToString(), bHasStock ? *Stock.ToString() : TEXT("no stock"));
 
 	// Rubble for 10 s where it stood (D345.2a), seen by everyone; none for a bare foundation, which the others never saw.
 	if (!Building.IsFoundation() && Type)

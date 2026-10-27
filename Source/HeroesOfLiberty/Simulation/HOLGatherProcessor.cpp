@@ -13,6 +13,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -325,6 +326,7 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 		Deposit.OwnerPlayer = It->GetOwnerPlayer();
 		Deposit.Accepts = Type->Accepts;
 		Deposit.TypeName = It->GetTypeName();
+		Deposit.Building = *It;
 	}
 }
 
@@ -352,6 +354,11 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 	FMassEntityManager& EntityManager = *Step.EntityManager;
 	for (const FHOLGatherOrder& Order : Orders)
 	{
+		if (Order.SourceIndex == INDEX_NONE && !Order.Deposit.IsExplicitlyNull())
+		{
+			ApplyDropOffOrder(Step, Order);
+			continue;
+		}
 		const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
 		if (!Sources.IsValidIndex(Order.SourceIndex) || !Sources[Order.SourceIndex].IsStanding())
 		{
@@ -401,6 +408,51 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather order of slot %d: %d units to source %d (%s)%s"), Order.PlayerIndex, NumGatherers,
 			Order.SourceIndex, GetResourceName(Resource), NumRefused > 0 ? *FString::Printf(TEXT(", %d refused"), NumRefused) : TEXT(""));
 	}
+}
+
+void UHOLGatherProcessor::ApplyDropOffOrder(const FStepContext& Step, const FHOLGatherOrder& Order)
+{
+	using namespace UE::HeroesOfLiberty::Gather;
+	AHOLBuilding* Building = Order.Deposit.Get();
+	// Checked again here (D485): still one of the player's deposits (finished, its own, taking deliveries).
+	const FDeposit* Deposit = Deposits.FindByPredicate([Building](const FDeposit& Each) { return Building && Each.Building.Get() == Building; });
+	if (!Deposit || (Order.PlayerIndex != INDEX_NONE && Deposit->OwnerPlayer != Order.PlayerIndex))
+	{
+		UE_LOG(LogHOLSimulation, Display, TEXT("Drop-off order of slot %d: the building takes no deliveries of this slot, ignored"), Order.PlayerIndex);
+		return;
+	}
+	FMassEntityManager& EntityManager = *Step.EntityManager;
+	int32 NumCarriers = 0;
+	int32 NumRefused = 0;
+	for (const uint32 UnitId : Order.UnitIds)
+	{
+		const FMassEntityHandle Entity = Step.Units->FindEntity(UnitId);
+		if (!EntityManager.IsEntityValid(Entity))
+		{
+			continue;
+		}
+		const FHOLUnitStateFragment& State = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity);
+		FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+		// Only the owner's units carrying a resource it takes (the load may have changed since the order was sorted).
+		if (!Gather || State.OwnerPlayer != Deposit->OwnerPlayer || State.CurrentHealth <= 0 || Gather->Load.Amount <= 0
+			|| !Deposit->Accepts.Contains(Gather->Load.Resource))
+		{
+			++NumRefused;
+			continue;
+		}
+		// It stops building, its queue of sites forgotten (as for a gather order, D312).
+		if (FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity))
+		{
+			Build->Clear();
+		}
+		// To this deposit, then idle (no source: the unload stops it, D485).
+		Gather->StartDropOff(Order.Deposit);
+		ChainSources.Remove(UnitId);
+		++NumCarriers;
+	}
+	UE_LOG(LogHOLSimulation, Display, TEXT("Drop-off order of slot %d: %d units unload at %s (%.0f, %.0f)%s"), Order.PlayerIndex, NumCarriers,
+		*Deposit->TypeName.ToString(), Deposit->Footprint.Centre.X, Deposit->Footprint.Centre.Y,
+		NumRefused > 0 ? *FString::Printf(TEXT(", %d refused"), NumRefused) : TEXT(""));
 }
 
 void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
@@ -565,12 +617,15 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		{
 			return;
 		}
-		const int32 DepositIndex = FindDeposit(Gatherer.OwnerPlayer, Gather.Load.Resource, Gatherer.Location);
+		const int32 DepositIndex = FindDeposit(Gatherer.OwnerPlayer, Gather.Load.Resource, Gatherer.Location, Gather.DepositTarget.Get());
 		if (DepositIndex != INDEX_NONE && HOLGather::IsAtDeposit(FVector2D(Gatherer.Location), Gatherer.Constants.Radius, Deposits[DepositIndex].Footprint))
 		{
 			Unload(Step, Gatherer, Deposits[DepositIndex]);
 			++Counters.Unloads;
 			Gather.Misses = 0;
+			Gather.DepositTarget.Reset();
+			// A drop-off order is over once unloaded (D485, L.5b): it stops below (no source), the next item of its queue goes.
+			Gather.bDropOrder = false;
 			if (Source && Source->IsStanding())
 			{
 				Gather.Phase = EHOLGatherPhase::ToSource;
@@ -772,7 +827,8 @@ void UHOLGatherProcessor::WalkToDeposit(const FStepContext& Step, FGatherer& Gat
 	using namespace UE::HeroesOfLiberty::Gather;
 	FHOLGatherFragment& Gather = Gatherer.Gather;
 	Gather.Phase = EHOLGatherPhase::ToDeposit;
-	const int32 DepositIndex = FindDeposit(Gatherer.OwnerPlayer, Gather.Load.Resource, Gatherer.Location);
+	// The deposit its player named (D485), while it still is one; else (lost on the way) the nearest.
+	const int32 DepositIndex = FindDeposit(Gatherer.OwnerPlayer, Gather.Load.Resource, Gatherer.Location, Gather.DepositTarget.Get());
 	if (DepositIndex == INDEX_NONE)
 	{
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d has no deposit for %s, its gatherer stands with its load"), Gatherer.OwnerPlayer,
@@ -828,18 +884,26 @@ void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gath
 	Stop(Gatherer);
 }
 
+int32 UHOLGatherProcessor::DepositLoad(UWorld& World, const int32 OwnerPlayer, FHOLGatherLoad& Load, FHOLResources& OutStock)
+{
+	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
+	const bool bHasStock = AHOLGameState::GetSlotStock(World, OwnerPlayer, OutStock);
+	const int32 Amount = HOLGather::Deposit(Load, OutStock);
+	if (bHasStock && Amount > 0)
+	{
+		AHOLGameState::SetSlotStock(World, OwnerPlayer, OutStock);
+	}
+	return Amount;
+}
+
 void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer, const FDeposit& Deposit)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
 	FHOLGatherFragment& Gather = Gatherer.Gather;
 	const EHOLResource Resource = Gather.Load.Resource;
-	AHOLPlayerState* PlayerState = Step.Production ? Step.Production->FindPlayerState(Gatherer.OwnerPlayer) : nullptr;
-	FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
-	const int32 Amount = HOLGather::Deposit(Gather.Load, Stock);
-	if (PlayerState && Amount > 0)
-	{
-		PlayerState->SetResources(Stock);
-	}
+	FHOLResources Stock;
+	UWorld* World = Step.Production ? Step.Production->GetWorld() : nullptr;
+	const int32 Amount = World ? DepositLoad(*World, Gatherer.OwnerPlayer, Gather.Load, Stock) : 0;
 	Step.Sources->RecordDeposit(Gatherer.OwnerPlayer, Resource, Amount);
 	if (Amount > 0)
 	{
@@ -861,7 +925,7 @@ void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer, 
 	{
 		// Where, and who (J6b.1: a camp's builders unload at the camp, not at the centre).
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d unloaded %d %s (stock %s) at %s (%.0f, %.0f), unit #%u"), Gatherer.OwnerPlayer, Amount,
-			GetResourceName(Resource), PlayerState ? *Stock.ToString() : TEXT("none"), *Deposit.TypeName.ToString(), Deposit.Footprint.Centre.X,
+			GetResourceName(Resource), *Stock.ToString(), *Deposit.TypeName.ToString(), Deposit.Footprint.Centre.X,
 			Deposit.Footprint.Centre.Y, Step.Units->FindUnitId(Gatherer.Entity));
 	}
 }
@@ -954,6 +1018,8 @@ void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 	Gatherer.Gather.SettleSteps = UE::HeroesOfLiberty::Gather::StopSettleMaxSteps;
 	Gatherer.Gather.Phase = EHOLGatherPhase::None;
 	Gatherer.Gather.SourceIndex = INDEX_NONE;
+	Gatherer.Gather.DepositTarget.Reset();
+	Gatherer.Gather.bDropOrder = false;
 	Gatherer.Gather.bWalkIssued = false;
 	Gatherer.Gather.Misses = 0;
 	Gatherer.Gather.UnreachableWalks = 0;
@@ -1209,8 +1275,19 @@ const FHOLSourceMassifs& UHOLGatherProcessor::GetMassifs(const FStepContext& Ste
 	return Massifs;
 }
 
-int32 UHOLGatherProcessor::FindDeposit(const uint8 OwnerPlayer, const EHOLResource Resource, const FVector& From) const
+int32 UHOLGatherProcessor::FindDeposit(const uint8 OwnerPlayer, const EHOLResource Resource, const FVector& From, const AHOLBuilding* Target) const
 {
+	if (Target)
+	{
+		// D485: the building its player named, while it is still one of the owner's deposits taking Resource.
+		for (int32 Index = 0; Index < Deposits.Num(); ++Index)
+		{
+			if (Deposits[Index].Building.Get() == Target && Deposits[Index].OwnerPlayer == OwnerPlayer && Deposits[Index].Accepts.Contains(Resource))
+			{
+				return Index;
+			}
+		}
+	}
 	TArray<FHOLGatherDeposit> Candidates;
 	TArray<int32> Indices;
 	for (int32 Index = 0; Index < Deposits.Num(); ++Index)

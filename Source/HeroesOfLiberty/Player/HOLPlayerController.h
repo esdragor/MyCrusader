@@ -320,6 +320,11 @@ public:
 	bool GetControlGroup(int32 Group, TArray<uint32>& OutUnits, TArray<AHOLBuilding*>& OutBuildings) const;
 	/** Ctrl + A (D30): all the player's soldiers known here (every unit type but the Peasant), no building. */
 	void SelectArmy();
+	/**
+	 * F4 (D30, J8a-Q4): the player's hero alone (a unit of the Hero armour category, alive: a dying one is left out), the
+	 * camera where it is; pressed again while he alone is selected, the camera on him. No hero: nothing changes.
+	 */
+	void SelectHero();
 	/** Two presses of a group's key this close (s, real time): the camera goes to the group. */
 	static constexpr double ControlGroupDoublePress = 0.3;
 	/** The group last selected (its key, a click on its slot or the command), INDEX_NONE before any, and when (real time). */
@@ -352,6 +357,11 @@ public:
 	void RequestPlaceBuilding(FName TypeName, const FVector& Point, bool bQueue = false);
 	/** Asks the server to have units build (help) one of the player's sites not finished (J6a.4, D312); bQueue: Shift. */
 	void RequestBuildUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
+	/**
+	 * Asks the server to have units unload at one of the player's finished buildings taking deliveries (D485, EtapeDefini L):
+	 * it sorts them (it alone knows each load): the carriers of a resource it takes unload there, the others walk to Point.
+	 */
+	void RequestDropOffUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue = false);
 	/** Asks the server to cancel one of the player's buildings not yet finished (refunded, D311). */
 	void RequestCancelBuilding(AHOLBuilding* Building);
 
@@ -547,6 +557,7 @@ private:
 	/** Enter: a test scenario waiting on a waitkey step goes on (HOLTestHooks::PressContinueKey). */
 	void HandleContinueKey();
 	void HandleCategoryKey(EHOLBuildingCategory Category);
+	void HandleHeroKey();
 	void HandleSubgroupKey();
 	/** The group's buildings as the pure rules read them (their type, a main centre alone). */
 	void GetGroupMembers(TConstArrayView<AHOLBuilding*> Group, TArray<FHOLGroupMember>& OutMembers) const;
@@ -602,6 +613,10 @@ private:
 	/** The units' identifiers and the site they build (J6a.4, D312). */
 	UFUNCTION(Server, Reliable)
 	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+
+	/** The units' identifiers, the building they unload at and the ground point clicked (D485). */
+	UFUNCTION(Server, Reliable)
+	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelBuilding(AHOLBuilding* Building);

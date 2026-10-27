@@ -226,9 +226,11 @@ const UDataTable* UHOLUnitSubsystem::GetTypeTable() const
 		else
 		{
 			// J7-Q5 revised: a wounded unit sends its exact health in FHOLNetUnitState::HealthBits; a larger maximum needs more.
+			// Not the hero (J8-Q5, J8a.3): his wounded health goes on the wire as a share of his maximum
+			// (HOLUnitReplication::GetWireHealthShare), whatever that maximum; his exact health will come by the hero sheet.
 			CachedTypeTable->ForeachRow<FHOLUnitTypeRow>(TEXT("UnitSubsystem"), [](const FName& Name, const FHOLUnitTypeRow& Row)
 			{
-				ensureMsgf(HOLUnitReplication::FitsWireHealth(Row.MaxHealth), TEXT("Unit type %s: MaxHealth %d does not fit the %d health bits of the wire (FHOLNetUnitState::HealthBits)"),
+				ensureMsgf(Row.HasArmorCategory(EHOLArmorCategory::Hero) || HOLUnitReplication::FitsWireHealth(Row.MaxHealth), TEXT("Unit type %s: MaxHealth %d does not fit the %d health bits of the wire (FHOLNetUnitState::HealthBits)"),
 					*Name.ToString(), Row.MaxHealth, FHOLNetUnitState::HealthBits);
 			});
 		}
@@ -630,7 +632,7 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		const uint32 UnitId = NextUnitId++;
 		FHOLUnitStateFragment& State = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity);
 		State.UnitId = UnitId;
-		State.CurrentHealth = Constants.MaxHealth;
+		State.CurrentHealth = static_cast<float>(Constants.MaxHealth);
 		State.Activity = EHOLUnitActivity::Idle;
 		State.OwnerPlayer = Request.OwnerPlayer;
 
@@ -647,6 +649,10 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 
 		Units.Add(UnitId, FHOLUnitRecord{Entity, Request.TypeName, Request.OwnerPlayer});
 		EntityToId.Add(Entity, UnitId);
+		if (HOLIsHero(Constants.ArmorCategoryMask))
+		{
+			HeroUnitBySlot.Add(Request.OwnerPlayer, UnitId);
+		}
 	}
 
 	// Born with somewhere to go (a rally point): one order for the units of the request, applied at this step; a rally
@@ -843,6 +849,10 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 			continue;
 		}
 		EntityToId.Remove(Record->Entity);
+		if (const uint32* Hero = HeroUnitBySlot.Find(Record->OwnerPlayer); Hero && *Hero == UnitId)
+		{
+			HeroUnitBySlot.Remove(Record->OwnerPlayer);
+		}
 		Units.Remove(UnitId);
 		CommandBuffer.DestroyEntity(Record->Entity);
 		++NumDestroyed;
@@ -866,6 +876,12 @@ FMassEntityHandle UHOLUnitSubsystem::FindEntity(const uint32 UnitId) const
 uint32 UHOLUnitSubsystem::FindUnitId(const FMassEntityHandle Entity) const
 {
 	const uint32* UnitId = EntityToId.Find(Entity);
+	return UnitId ? *UnitId : 0;
+}
+
+uint32 UHOLUnitSubsystem::FindHeroUnit(const int32 Slot) const
+{
+	const uint32* UnitId = Slot >= 0 && Slot <= MAX_uint8 ? HeroUnitBySlot.Find(static_cast<uint8>(Slot)) : nullptr;
 	return UnitId ? *UnitId : 0;
 }
 
@@ -953,8 +969,8 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
 			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
 			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
-			OutView.bFullHealth = State->CurrentHealth >= Constants->MaxHealth;
-			OutView.Health = FMath::Max(State->CurrentHealth, 0);
+			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(Constants->MaxHealth);
+			OutView.Health = HOLCombat::GetShownHealth(State->CurrentHealth);
 			OutView.MaxHealth = Constants->MaxHealth;
 			OutView.bHealthExact = true;
 		}

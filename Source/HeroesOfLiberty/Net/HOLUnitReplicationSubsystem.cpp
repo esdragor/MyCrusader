@@ -19,6 +19,7 @@
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/HOLUnitReplicationSettings.h"
 #include "Net/HOLUnitReplicator.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -324,8 +325,10 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			}
 			const FHOLGatherLoad& Load = Gathers[EntityIt].Load;
 			FHOLNetUnitState Current = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount, State.GatherResource);
-			Current.SetCombat(State.CurrentHealth, Constants.MaxHealth, TargetSlot, Order.bFacesFront && Order.Phase == EHOLMovePhase::None,
-				Order.FrontYaw);
+			// The wire keeps integer health (D455): the float health rounded up, 1 at least alive (J8a.1); a hero's as a
+			// share of his maximum (J8-Q5, J8a.3).
+			Current.SetCombat(HOLCombat::GetShownHealth(State.CurrentHealth), Constants.MaxHealth, TargetSlot, Order.bFacesFront && Order.Phase == EHOLMovePhase::None,
+				Order.FrontYaw, HOLIsHero(Constants.ArmorCategoryMask));
 			FUnitRecord* Record = Records.Find(State.UnitId);
 			if (Record == nullptr)
 			{

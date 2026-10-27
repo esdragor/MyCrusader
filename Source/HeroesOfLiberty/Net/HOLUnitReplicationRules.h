@@ -61,7 +61,8 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * (sent at once; the healing will come through the same field). A wounded unit has at most MaxHealth - 1, so 8 bits
 	 * carry every maximum up to MaxWireHealth + 1 = 256 (the table's largest: 155, the Man-at-arms); the unit table's
 	 * loading checks it (HOLUnitReplication::FitsWireHealth). Back to levels: HealthBits, GetWireHealth and
-	 * HOLUnitView::GetReceivedHealth.
+	 * HOLUnitView::GetReceivedHealth. The hero (J8-Q5, J8a.3) is larger (450): his wounded health goes as a share of
+	 * MaxWireHealth instead (HOLUnitReplication::GetWireHealthShare), his exact health by the hero sheet.
 	 */
 	static constexpr int32 HealthBits = 8;
 	static constexpr uint16 MaxWireHealth = (1 << HealthBits) - 1;
@@ -141,9 +142,11 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/**
 	 * The fight and facing of the state (J7b.4), after Make: health (InHealth of MaxHealth), the target's slot while
 	 * Attacking, the front (deg) while Idle with bInFacesFront. Values that do not apply are left at their defaults, so
-	 * equal states compare equal.
+	 * equal states compare equal. bHealthShare (a hero, J8a.3): a wounded health is sent as a share
+	 * (HOLUnitReplication::GetWireHealthShare), not as health points.
 	 */
-	void SetCombat(int32 InHealth, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f);
+	void SetCombat(int32 InHealth, int32 MaxHealth, uint16 InTargetSlot, bool bInFacesFront = false, float InFrontYawDegrees = 0.f,
+		bool bHealthShare = false);
 
 	/** Attacking a known target: TargetSlot is a real slot, not InvalidTargetSlot (itself a slot from the 66th chunk on). */
 	bool HasTargetSlot() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot < BuildingTargetSlot; }
@@ -216,6 +219,13 @@ namespace HOLUnitReplication
 	 * MaxWireHealth (never reached by a table that FitsWireHealth).
 	 */
 	HEROESOFLIBERTY_API uint16 GetWireHealth(int32 Health, int32 MaxHealth);
+
+	/**
+	 * Health of a wounded hero as sent (J8-Q5, J8a.3): his share of MaxHealth in MaxWireHealth-ths, rounded up, so 1 at
+	 * least alive (never read as dead) and MaxWireHealth one point off his maximum (bFullHealth tells him wounded); 0 only
+	 * at 0 health or below.
+	 */
+	HEROESOFLIBERTY_API uint16 GetWireHealthShare(int32 Health, int32 MaxHealth);
 
 	/** Every wounded health of a type of this maximum fits the wire (MaxHealth - 1 <= MaxWireHealth). */
 	constexpr bool FitsWireHealth(const int32 MaxHealth) { return MaxHealth - 1 <= FHOLNetUnitState::MaxWireHealth; }

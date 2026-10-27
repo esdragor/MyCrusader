@@ -1,4 +1,4 @@
-﻿#include "HUD/HOLGameScreen.h"
+#include "HUD/HOLGameScreen.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -15,6 +15,7 @@
 #include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
+#include "Components/SizeBoxSlot.h"
 #include "Components/Spacer.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
@@ -25,9 +26,11 @@
 #include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
+#include "HUD/HOLRelationIcons.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
@@ -498,6 +501,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 		RefreshPlayersTable();
 		RefreshWaitBanner();
+		RefreshAbsenceBanner();
 		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace.
@@ -892,7 +896,27 @@ void UHOLGameScreen::RefreshPlayersTable()
 		// The name in the player's colour, the whole row faded once defeated.
 		PlayerRows[Index]->SetRenderOpacity(Row->bGreyed ? 0.45f : 1.f);
 		PlayerNames[Index]->SetText(Row->Name);
-		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(FLinearColor(HOLPlayerColors::GetColor(Row->ColorIndex))));
+		const FLinearColor NameColor(HOLPlayerColors::GetColor(Row->ColorIndex));
+		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(NameColor));
+		// E4-2: a defeated player's name struck through, in the name's colour (faded with the row).
+		PlayerStrikes[Index]->SetColorAndOpacity(NameColor);
+		SetShown(PlayerStrikes[Index], Row->bStruck, ESlateVisibility::HitTestInvisible);
+		// E4-1: an ally's green shield, an enemy's red swords (faded with a defeated row). The viewer's own row keeps the
+		// icon's room empty, so that the names line up; a spectator's table (all None) has no room for it.
+		UTexture2D* Icon = Row->Relation == EHOLPlayerRelation::Ally ? AllyIcon.Get()
+			: Row->Relation == EHOLPlayerRelation::Enemy ? EnemyIcon.Get() : nullptr;
+		if (Icon)
+		{
+			PlayerRelations[Index]->SetBrushFromTexture(Icon);
+			PlayerRelations[Index]->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
+		}
+		const ESlateVisibility RelationVisibility = Icon ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
+		if (PlayerRelations[Index]->GetVisibility() != RelationVisibility)
+		{
+			PlayerRelations[Index]->SetVisibility(RelationVisibility);
+		}
+		// The room itself: on every row of a player's table, none in a spectator's (no relation at all).
+		SetShown(PlayerRelations[Index]->GetParent(), Row->Relation != EHOLPlayerRelation::None, ESlateVisibility::HitTestInvisible);
 		PlayerLives[Index]->SetText(Row->Lives);
 		PlayerStates[Index]->SetText(Row->State);
 	}
@@ -929,6 +953,41 @@ void UHOLGameScreen::RefreshWaitBanner()
 		ShownWaitPlayers = Players;
 		SetShown(WaitPanel, true, ESlateVisibility::HitTestInvisible);
 		UE_LOG(LogHOLUI, Display, TEXT("Wait banner: shown, %s"), *Text.ToString());
+	}
+}
+
+void UHOLGameScreen::RefreshAbsenceBanner()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const AHOLGameState* GameState = BoundTableState.Get();
+	const TArray<FText> Lines = GameState ? GameState->GetAbsenceBannerLines(GameState->GetServerWorldTimeSeconds()) : TArray<FText>();
+	if (Lines.IsEmpty())
+	{
+		if (!ShownAbsence.IsEmpty())
+		{
+			ShownAbsence.Reset();
+			SetShown(AbsencePanel, false);
+			UE_LOG(LogHOLUI, Display, TEXT("Absence banner: hidden"));
+		}
+		return;
+	}
+	const FText Text = FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines);
+	if (AbsenceText)
+	{
+		AbsenceText->SetText(Text);
+	}
+	// Logged when who is gone or back changes, not at each second of the countdown.
+	FString Shown = FString::FromInt(Lines.Num());
+	for (const FHOLAbsentNotice& Notice : GameState->GetAbsentNotices())
+	{
+		Shown += FString::Printf(TEXT(";%s%s"), *Notice.Name, Notice.BackAt > 0. ? TEXT("+") : TEXT("-"));
+	}
+	if (Shown != ShownAbsence)
+	{
+		ShownAbsence = Shown;
+		SetShown(AbsencePanel, true, ESlateVisibility::HitTestInvisible);
+		UE_LOG(LogHOLUI, Display, TEXT("Absence banner: shown, %s"), *Text.ToString().Replace(TEXT("\n"), TEXT(" | ")));
 	}
 }
 
@@ -1434,10 +1493,10 @@ void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
-	// Exact everywhere (J7-Q5 revised: a client receives a wounded unit's exact health); " (level)" would mark a client's
-	// health known only by level, should the levels come back.
+	// Exact for the troops (J7-Q5 revised: a client receives a wounded unit's exact health); a client's hero (J8a.3) is
+	// known by a share of his maximum, drawn back to health points within 2 of his own: " (share)" marks it.
 	const bool bShown = Unit && Unit->MaxHealth > 0;
-	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (level)"))
+	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (share)"))
 		: FString();
 	// Shown or hidden whatever was shown last (the review of J7b): a building selected before left the row shown with an
 	// empty ShownHealth, which a group of units or a unit of unknown type also has.
@@ -2417,6 +2476,19 @@ void UHOLGameScreen::BuildLayout()
 	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
 	WaitPanel->SetContent(WaitText);
 
+	// R7.5: the disconnection banner, top centre under the alert's place (both can show during the match), as the wait
+	// banner; lets the clicks through.
+	AbsencePanel = MakePanel(TEXT("AbsencePanel"));
+	AbsencePanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
+	AbsencePanel->SetVisibility(ESlateVisibility::Collapsed);
+	UOverlaySlot* AbsenceSlot = Frame->AddChildToOverlay(AbsencePanel);
+	AbsenceSlot->SetHorizontalAlignment(HAlign_Center);
+	AbsenceSlot->SetVerticalAlignment(VAlign_Top);
+	AbsenceSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f + 52.f, ScreenMargin, ScreenMargin));
+	AbsenceText = MakeText(TEXT("AbsenceText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
+	AbsenceText->SetJustification(ETextJustify::Center);
+	AbsencePanel->SetContent(AbsenceText);
+
 	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
 	// the thread's lines; a click centres the camera on the touched forum.
 	AlertPanel = MakePanel(AlertPanelName);
@@ -2473,6 +2545,10 @@ void UHOLGameScreen::BuildLayout()
 	PlayersPanel->SetContent(PlayersList);
 	PlayerRows.Reset();
 	PlayerNames.Reset();
+	PlayerRelations.Reset();
+	AllyIcon = LoadObject<UTexture2D>(nullptr, HOLRelationIcons::AllyPath);
+	EnemyIcon = LoadObject<UTexture2D>(nullptr, HOLRelationIcons::EnemyPath);
+	PlayerStrikes.Reset();
 	PlayerLives.Reset();
 	PlayerStates.Reset();
 	for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
@@ -2490,7 +2566,42 @@ void UHOLGameScreen::BuildLayout()
 			return Text;
 		};
 		PlayerRows.Add(Row);
-		PlayerNames.Add(AddCell(TEXT("Name"), UHOLTextStyleHUDPlayerName::StaticClass(), 64.f, 10.f));
+		// E4-1: the relation's icon before the name (an ally's shield, an enemy's swords), set by RefreshPlayersTable.
+		UImage* Relation = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("PlayerRelation%d"), Seat));
+		Relation->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
+		Relation->SetVisibility(ESlateVisibility::Hidden);
+		// A fixed 16 px room, kept on the viewer's own row so that the names line up (a hidden image alone gave none).
+		USizeBox* RelationBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerRelationBox%d"), Seat));
+		RelationBox->SetWidthOverride(16.f);
+		RelationBox->SetHeightOverride(16.f);
+		RelationBox->SetContent(Relation);
+		RelationBox->SetVisibility(ESlateVisibility::Collapsed);
+		AddToRow(Row, RelationBox, 4.f);
+		PlayerRelations.Add(Relation);
+		// E4-2: the name in an overlay with a thin bar across it, its width, shown once defeated (a text has no strike).
+		UCommonTextBlock* Name = MakeText(*FString::Printf(TEXT("PlayerName%d"), Seat), UHOLTextStyleHUDPlayerName::StaticClass(), FText::GetEmpty());
+		UOverlay* NameOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), *FString::Printf(TEXT("PlayerNameOverlay%d"), Seat));
+		NameOverlay->AddChildToOverlay(Name);
+		UImage* Strike = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("PlayerNameStrike%d"), Seat));
+		Strike->SetVisibility(ESlateVisibility::Collapsed);
+		// A size box holds the bar to 2 px: the image alone took the whole line's height (seen in a capture).
+		USizeBox* StrikeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerNameStrikeBox%d"), Seat));
+		StrikeBox->SetHeightOverride(2.f);
+		StrikeBox->SetContent(Strike);
+		UOverlaySlot* StrikeSlot = NameOverlay->AddChildToOverlay(StrikeBox);
+		StrikeSlot->SetHorizontalAlignment(HAlign_Fill);
+		StrikeSlot->SetVerticalAlignment(VAlign_Center);
+		PlayerStrikes.Add(Strike);
+		USizeBox* NameBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerNameBox%d"), Seat));
+		NameBox->SetMinDesiredWidth(64.f);
+		NameBox->SetContent(NameOverlay);
+		// The overlay as wide as the name, not the box (the bar the name's width).
+		if (USizeBoxSlot* NameSlot = Cast<USizeBoxSlot>(NameOverlay->Slot))
+		{
+			NameSlot->SetHorizontalAlignment(HAlign_Left);
+		}
+		AddToRow(Row, NameBox, 10.f);
+		PlayerNames.Add(Name);
 		PlayerLives.Add(AddCell(TEXT("Lives"), UHOLTextStyleHUDLabel::StaticClass(), 44.f, 10.f));
 		PlayerStates.Add(AddCell(TEXT("State"), UHOLTextStyleHUDLabel::StaticClass(), 0.f, 0.f));
 	}

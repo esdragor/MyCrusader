@@ -34,6 +34,8 @@ namespace UE::HeroesOfLiberty::Buildings
 	// The engine's basic cube (1 m, centred), painted by the matte material's "Color" parameter (D265: no
 	// specular highlight; Tools/Editor/make_matte_materials.py).
 	const TCHAR* CubePath = TEXT("/Engine/BasicShapes/Cube.Cube");
+	// Its basic cylinder (1 m across, 1 m high, its axis upright): the range's targets (AR-Q2b).
+	const TCHAR* CylinderPath = TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
 	const TCHAR* ShapeMaterialPath = TEXT("/Game/Rendering/M_MatteColor.M_MatteColor");
 	// The owner's colour is unlit: the same colour on every face, with no darker side (D261).
 	const TCHAR* OwnerMaterialPath = TEXT("/Game/Rendering/M_FlatColor.M_FlatColor");
@@ -48,6 +50,9 @@ namespace UE::HeroesOfLiberty::Buildings
 	const FLinearColor FieldSoilColor(0.30f, 0.20f, 0.11f);
 	const FLinearColor FieldCropColor(0.30f, 0.48f, 0.14f);
 	const FLinearColor FieldWheatColor(0.72f, 0.60f, 0.26f);
+	/** The range's yard (light sand, lighter than a foundation's slab) and its targets (light straw), AR-Q2b. */
+	const FLinearColor RangeGroundColor(0.55f, 0.49f, 0.38f);
+	const FLinearColor StrawColor(0.86f, 0.76f, 0.50f);
 }
 
 AHOLBuilding::AHOLBuilding()
@@ -80,9 +85,11 @@ AHOLBuilding::AHOLBuilding()
 
 	// Hard references, so that the shapes are cooked with the game.
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(UE::HeroesOfLiberty::Buildings::CubePath);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(UE::HeroesOfLiberty::Buildings::CylinderPath);
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ShapeMaterial(UE::HeroesOfLiberty::Buildings::ShapeMaterialPath);
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> OwnerMaterial(UE::HeroesOfLiberty::Buildings::OwnerMaterialPath);
 	CubeMesh = Cube.Object;
+	CylinderMesh = Cylinder.Object;
 	PieceMaterial = ShapeMaterial.Object;
 	OwnerPieceMaterial = OwnerMaterial.Object;
 }
@@ -733,6 +740,12 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 {
 	using namespace UE::HeroesOfLiberty::Buildings;
 
+	if (Type.Shape == EHOLBuildingShape::Range)
+	{
+		BuildRangeShape(Type);
+		return;
+	}
+
 	// D261: a block and a central tower; the top of the block (a darker tone) and the tower's flat roof, a little wider
 	// than the tower, wear the owner's colour, as they are what the RTS camera sees from above; unlit, so that the colour
 	// is the same everywhere (a lit cone showed a dark side, an unlit one read as a flat disc). Its visible size, a little
@@ -781,6 +794,72 @@ void AHOLBuilding::BuildFieldShape(const FHOLBuildingTypeRow& Type)
 		const FLinearColor& Color = Row % 2 == 0 ? FieldCropColor : FieldWheatColor;
 		Move(AddPiece(CubeMesh, FVector(Inner.X, Lane * 0.5, FieldRowHeight), 0.f, Color, false),
 			FVector2D(0.0, -Inner.Y * 0.5 + Lane * (Row + 0.5)));
+	}
+}
+
+void AHOLBuilding::BuildRangeShape(const FHOLBuildingTypeRow& Type)
+{
+	using namespace UE::HeroesOfLiberty::Buildings;
+
+	// AR-Q2b: a low shelter along the -X side, the side nearest the RTS camera (it looks along +X): it hides little of the
+	// yard, and the targets at the far side lean back toward it, so their marks at the owner's colour (unlit, D261) face the
+	// camera. The yard's ground under everything is what a click there hits (D262). Its visible size (D324 refined).
+	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
+	const FVector2D Half = Footprint * 0.5;
+	const float BaseHeight = Type.Height * BaseHeightRatio;
+	const float CapThickness = Type.Height * CapThicknessRatio;
+	const double ShelterDepth = Footprint.X * RangeShelterDepthRatio;
+	const auto Move = [](UStaticMeshComponent* Piece, const FVector2D& Offset)
+	{
+		if (Piece)
+		{
+			Piece->AddRelativeLocation(FVector(Offset, 0.0));
+		}
+	};
+	// A piece of Size centred on Centre, turned by Rotation about its middle.
+	const auto AddTurned = [this](UStaticMesh* Mesh, const FVector& Size, const FVector& Centre, const FRotator& Rotation,
+		const FLinearColor& Color, const bool bOwnerColor)
+	{
+		UStaticMeshComponent* Piece = AddPiece(Mesh, Size, 0.f, Color, bOwnerColor);
+		if (Piece)
+		{
+			const FBoxSphereBounds Bounds = Mesh->GetBounds();
+			const FVector Origin = Bounds.Origin * (Size / (2.0 * Bounds.BoxExtent));
+			Piece->SetRelativeRotation(Rotation);
+			Piece->SetRelativeLocation(Centre - Rotation.RotateVector(Origin));
+		}
+	};
+
+	AddPiece(CubeMesh, FVector(Footprint, RangeGroundHeight), 0.f, RangeGroundColor, false);
+	const FVector2D ShelterOffset(-Half.X + ShelterDepth * 0.5, 0.0);
+	Move(AddPiece(CubeMesh, FVector(ShelterDepth, Footprint.Y, BaseHeight), 0.f, StoneColor, false), ShelterOffset);
+	Move(AddPiece(CubeMesh, FVector(ShelterDepth, Footprint.Y, CapThickness), BaseHeight, FLinearColor::White, true, BaseTopTone),
+		ShelterOffset);
+
+	// Three straw discs across the yard near its far side, leaning back, a mark at the owner's colour on their face, a post
+	// behind each holding it.
+	if (!CylinderMesh)
+	{
+		return;
+	}
+	const double Diameter = Footprint.Y * RangeTargetSizeRatio;
+	const double MarkDiameter = Diameter * RangeMarkSizeRatio;
+	const FRotator Tilt(RangeTargetTilt, 0.f, 0.f);
+	const FVector Face = Tilt.RotateVector(FVector::UpVector);
+	const double TiltRadians = FMath::DegreesToRadians(static_cast<double>(RangeTargetTilt));
+	const double PostBehind = Diameter * 0.2;
+	for (const int32 Column : { -1, 0, 1 })
+	{
+		const FVector Centre(Half.X - Footprint.X * RangeTargetBackRatio, Column * Footprint.Y * RangeTargetSpacingRatio,
+			Diameter * RangeTargetMiddleRatio);
+		AddTurned(CylinderMesh, FVector(Diameter, Diameter, RangeTargetThickness), Centre, Tilt, StrawColor, false);
+		AddTurned(CylinderMesh, FVector(MarkDiameter, MarkDiameter, RangeMarkThickness),
+			Centre + Face * ((RangeTargetThickness + RangeMarkThickness) * 0.5), Tilt, FLinearColor::White, true);
+		// Up to the disc's back face, PostBehind behind its middle.
+		const FVector Back = Centre - Face * (RangeTargetThickness * 0.5);
+		const double PostTop = Back.Z + (Centre.X + PostBehind - Back.X) * FMath::Tan(TiltRadians);
+		Move(AddPiece(CubeMesh, FVector(RangePostWidth, RangePostWidth, PostTop), 0.f, StakeColor, false),
+			FVector2D(Centre.X + PostBehind, Centre.Y));
 	}
 }
 

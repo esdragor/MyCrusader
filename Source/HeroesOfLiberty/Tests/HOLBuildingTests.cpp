@@ -125,6 +125,129 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// AR7a checks (AR-Q2a, AR-Q2b): the Archery range's row of the real table, the Barracks' double, and its provisional
+// shape built from it: a low shelter along one side, no tower, three targets at the owner's colour in the yard. The
+// Barracks keeps the block and tower of D261.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingArcheryRangeTest, "HeroesOfLiberty.Buildings.ArcheryRange", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingArcheryRangeTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Buildings;
+
+	const FHOLBuildingTypeRow* Range = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::ArcheryRange);
+	const FHOLBuildingTypeRow* Barracks = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
+	if (!TestNotNull(TEXT("Archery range in the building type table"), Range) || !TestNotNull(TEXT("Barracks in the table"), Barracks))
+	{
+		return false;
+	}
+	// AR-Q2a: the Barracks' double.
+	TestFalse(TEXT("named"), Range->DisplayName.IsEmpty());
+	TestEqual(TEXT("3 x 3 tiles (12 x 12 m)"), Range->Footprint, FVector2D(1200.0, 1200.0));
+	TestEqual(TEXT("height 600"), Range->Height, 600.f);
+	TestEqual(TEXT("1500 health points"), Range->MaxHealth, 1500);
+	TestEqual(TEXT("ranged armour 40"), Range->RangedArmor, 40);
+	TestEqual(TEXT("150 wood, nothing else"), Range->Cost.ToString(), FHOLResources(0, 150, 0, 0).ToString());
+	TestEqual(TEXT("built in 40 s"), Range->BuildTime, 40.f);
+	TestEqual(TEXT("queue of 5"), Range->MaxQueue, 5);
+	TestTrue(TEXT("military"), Range->Category == EHOLBuildingCategory::Military);
+	TestEqual(TEXT("age 0"), Range->Age, 0);
+	TestEqual(TEXT("no population"), Range->PopulationProvided, 0);
+	TestTrue(TEXT("no deposit"), Range->Accepts.IsEmpty());
+	TestTrue(TEXT("no final mesh: its provisional shape"), Range->Mesh.IsNull());
+	TestTrue(TEXT("its shape: a range (AR-Q2b)"), Range->Shape == EHOLBuildingShape::Range);
+	TestTrue(TEXT("the Barracks keeps the block and tower (D261)"), Barracks->Shape == EHOLBuildingShape::BlockAndTower);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	const auto GetBox = [](const TArray<UStaticMeshComponent*>& Pieces)
+	{
+		FBox Box(ForceInit);
+		for (const UStaticMeshComponent* Piece : Pieces)
+		{
+			Box += Piece->Bounds.GetBox();
+		}
+		return Box;
+	};
+
+	// The finished range, at colour 4.
+	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
+	if (TestNotNull(TEXT("range spawned"), Building))
+	{
+		Building->Setup(HOLBuildingTypeNames::ArcheryRange, 1, 4);
+		Building->ApplyPendingAppearance();
+		TArray<UStaticMeshComponent*> Pieces;
+		Building->GetComponents(Pieces);
+		const FBox Box = GetBox(Pieces);
+		const double Seen = UHOLBuildingSettings::GetVisualSize(Range->Footprint).X;
+		TestTrue(FString::Printf(TEXT("the visible size of its 12 x 12 m (%.0f cm), on the ground, centred"), Seen),
+			FVector2D(Box.GetSize()).Equals(FVector2D(Seen), 1.0) && Box.Min.Equals(FVector(-Seen * 0.5, -Seen * 0.5, 0.0), 1.0));
+
+		// Low: nothing higher than the shelter, the block of D261 without its tower.
+		const double BlockTop = Range->Height * AHOLBuilding::BaseHeightRatio;
+		const double ShelterTop = Range->Height * (AHOLBuilding::BaseHeightRatio + AHOLBuilding::CapThicknessRatio);
+		TestTrue(FString::Printf(TEXT("low, no tower: top at %.0f cm, the shelter's %.0f"), Box.Max.Z, ShelterTop),
+			FMath::IsNearlyEqual(Box.Max.Z, ShelterTop, 1.0));
+		// The pieces reaching the block's height: the shelter and its roof, along one whole side, at most half the depth.
+		int32 Tall = 0;
+		bool bShelterAlongASide = true;
+		FBox Shelter(ForceInit);
+		for (const UStaticMeshComponent* Piece : Pieces)
+		{
+			const FBox PieceBox = Piece->Bounds.GetBox();
+			if (PieceBox.Max.Z >= BlockTop - 1.0)
+			{
+				++Tall;
+				Shelter += PieceBox;
+				bShelterAlongASide &= FMath::IsNearlyEqual(PieceBox.GetSize().Y, Seen, 1.0) && PieceBox.GetSize().X <= Seen * 0.5;
+			}
+		}
+		TestEqual(TEXT("the shelter and its roof alone reach the block's height"), Tall, 2);
+		TestTrue(TEXT("the shelter: one whole side, at most half the depth"), bShelterAlongASide
+			&& (FMath::IsNearlyEqual(Shelter.Min.X, -Seen * 0.5, 1.0) || FMath::IsNearlyEqual(Shelter.Max.X, Seen * 0.5, 1.0)));
+		TestEqual(TEXT("its roof at the darker tone of the owner's colour"), CountPiecesOfColor(*Building, 4, AHOLBuilding::BaseTopTone), 1);
+
+		// Three targets' marks at the owner's colour, in the yard (out of the shelter), seen from above (not edge-on).
+		int32 Targets = 0;
+		int32 InYard = 0;
+		FLinearColor Expected = FLinearColor(HOLPlayerColors::GetLinearColor(4));
+		Expected.A = 1.f;
+		for (const UStaticMeshComponent* Piece : Pieces)
+		{
+			FLinearColor Color;
+			const UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Piece->GetMaterial(0));
+			if (Material && Material->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("Color")), Color) && Color.Equals(Expected, 1.e-4f))
+			{
+				++Targets;
+				const FBox PieceBox = Piece->Bounds.GetBox();
+				const bool bOutOfShelter = PieceBox.Min.X > Shelter.Max.X || PieceBox.Max.X < Shelter.Min.X;
+				const bool bSeenFromAbove = PieceBox.GetSize().X >= 0.5 * PieceBox.GetSize().Y;
+				InYard += bOutOfShelter && bSeenFromAbove ? 1 : 0;
+			}
+		}
+		TestEqual(TEXT("three targets' marks at the owner's colour"), Targets, 3);
+		TestEqual(TEXT("in the yard, facing up"), InYard, 3);
+		Building->Destroy();
+	}
+
+	// The Barracks: still a block and a tower, as high as its type.
+	AHOLBuilding* Other = World->SpawnActor<AHOLBuilding>();
+	if (TestNotNull(TEXT("barracks spawned"), Other))
+	{
+		Other->Setup(HOLBuildingTypeNames::Barracks, 1, 4);
+		Other->ApplyPendingAppearance();
+		TArray<UStaticMeshComponent*> Pieces;
+		Other->GetComponents(Pieces);
+		TestEqual(TEXT("barracks: a block, its top, a tower and its roof"), Pieces.Num(), 4);
+		TestTrue(TEXT("barracks: its tower as high as its type"), FMath::IsNearlyEqual(GetBox(Pieces).Max.Z, static_cast<double>(Barracks->Height), 1.0));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 // J6a.3 checks: a foundation (D311, D312) blocks nothing, is selected like a building; finished, it is a building. J6a.4: a
 // foundation is a ghost its owner alone sees (nothing elsewhere), a site shows its slab and the building rising from it.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingFoundationTest, "HeroesOfLiberty.Buildings.Foundation", UE::HeroesOfLiberty::Tests::Buildings::Flags)

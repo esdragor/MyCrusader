@@ -21,7 +21,9 @@ An arrow hidden ("tool_hidden", J7c.1a: the Archer's arrow, always in SKM_Archer
 True = every frame) where the tool bone is keyed at scale HIDDEN_SCALE, the arrow shrunk to nothing in the hand; a
 gesture without a tool then gets a tool bone track at its reference transform (scale HIDDEN_SCALE); the readback gives
 the scale of that bone frame by frame against the expected one and skips the hidden frames in the hands-on-the-handle
-check.
+check. The same for a piece on a bone never keyed otherwise (HIDDEN_BONES; AR6a: "bolt_hidden", the Crossbowman's loaded
+bolt on ik_hand_r, a child of ik_hand_gun): a track on that bone at its reference transform, at scale HIDDEN_SCALE in
+the spans and 1 elsewhere, read back frame by frame the same way (the crossbow stays shown, the hands check unchanged).
 A gesture with a "base" (the loaded walk) first samples that source animation: local transforms of the pelvis and legs
 at each of its keys, written to Tools/Editor/Data/<source name>.json for the rig and the offline preview; the baked
 sequence keeps the source's length and frame rate, its feet are compared with the source's, and its play rate for the
@@ -300,12 +302,21 @@ HIDDEN_SCALE = 0.001  # the tool bone's scale where the tool is hidden (a 78 cm 
 # degenerate transform for the readback or the normals)
 
 
-def tool_hidden(gesture, times):
-    """Per frame: is the tool hidden ("tool_hidden": True, or spans (start s, end s), as the preview's "hidden")?"""
-    spans = gesture.get("tool_hidden")
+# Gesture key -> bone scaled to HIDDEN_SCALE in its spans: the tool itself (the Archer's arrow), or a piece carried by
+# a bone that is never keyed otherwise (AR6a: the Crossbowman's loaded bolt on ik_hand_r, a child of ik_hand_gun).
+HIDDEN_BONES = (("tool_hidden", anim_rig.TOOL_BONE), ("bolt_hidden", "ik_hand_r"))
+
+
+def hidden_frames(spans, times):
+    """Per frame: is the piece hidden (True, or spans (start s, end s), as the preview's "hidden")?"""
     if spans is True:
         return [True] * len(times)
     return [any(a <= t <= b for a, b in (spans or ())) for t in times]
+
+
+def hidden_bones(gesture, times):
+    """{bone: per frame hidden} for the gesture's hidden pieces (empty for a gesture without any)."""
+    return {bone: hidden_frames(gesture[key], times) for key, bone in HIDDEN_BONES if gesture.get(key)}
 
 
 def bake(sk, gesture):
@@ -320,6 +331,8 @@ def bake(sk, gesture):
     bones += [b for b in (base["bones"] if base else ()) if b not in bones]
     if rig.has_tool or gesture.get("tool_hidden"):
         bones.append(anim_rig.TOOL_BONE)
+    # A hidden piece's bone never keyed otherwise (the bolt's ik_hand_r): a track at its reference transform, scaled.
+    bones += [bone for key, bone in HIDDEN_BONES if gesture.get(key) and bone not in bones]
     locals_by_frame = []
     rig.released_frames = []  # per frame: the tool has left the hands ("release"), for the readback
     worst_grip = 0.0
@@ -333,7 +346,8 @@ def bake(sk, gesture):
     # whole number of frames (the attacks of J7b.5: 1.875 s is 56.25 frames) comes out a little shorter (56 frames,
     # 1.867 s), played at its length / AttackInterval in the game (HOLUnitAnimation::Choose).
     times = [k / float(fps) for k in range(frames + 1)]
-    rig.hidden_frames = tool_hidden(gesture, times)
+    rig.hidden_by_bone = hidden_bones(gesture, times)
+    rig.hidden_frames = rig.hidden_by_bone.get(anim_rig.TOOL_BONE, [False] * len(times))
     sequence = load(path) if assets.does_asset_exist(path) else None
     before = sample_body(sequence, times) if sequence is not None else None
     if sequence is None:
@@ -354,8 +368,8 @@ def bake(sk, gesture):
         positions = [unreal.Vector(*local[i][0]) for local in locals_by_frame]
         rotations = [unreal.Quat(*local[i][1]) for local in locals_by_frame]
         scales = [unreal.Vector(1.0, 1.0, 1.0)] * len(locals_by_frame)
-        if bone == anim_rig.TOOL_BONE:
-            scales = [unreal.Vector(*([HIDDEN_SCALE] * 3 if h else [1.0] * 3)) for h in rig.hidden_frames]
+        if bone in rig.hidden_by_bone:
+            scales = [unreal.Vector(*([HIDDEN_SCALE] * 3 if h else [1.0] * 3)) for h in rig.hidden_by_bone[bone]]
         controller.add_bone_curve(bone, False)
         if not controller.set_bone_track_keys(bone, positions, rotations, scales, False):
             raise RuntimeError("Could not key " + bone)
@@ -397,18 +411,24 @@ def verify(sk, sequence, rig, times, locals_by_frame):
     tracks = [str(n) for n in unreal.AnimationLibrary.get_animation_track_names(sequence)]
     log("relecture : duree %.4f s (attendue %.4f ; geste %.4f s), %d images, pistes : %s"
         % (length, times[-1], rig.length, unreal.AnimationLibrary.get_num_frames(sequence), ", ".join(tracks)))
-    if "root" in tracks or any(t.startswith("ik_") and t != anim_rig.TOOL_BONE for t in tracks):
-        log("ERREUR : piste sur root ou sur un os ik_* autre que l'os porte-outil")
+    allowed = {anim_rig.TOOL_BONE} | set(rig.hidden_by_bone)
+    if "root" in tracks or any(t.startswith("ik_") and t not in allowed for t in tracks):
+        log("ERREUR : piste sur root ou sur un os ik_* autre que l'os porte-outil et les os de pieces cachees")
     wants_tool = rig.has_tool or any(rig.hidden_frames)
     if (anim_rig.TOOL_BONE in tracks) != wants_tool:
         log("ERREUR : piste %s %s" % (anim_rig.TOOL_BONE, "absente" if wants_tool else "en trop"))
+    for bone in rig.hidden_by_bone:
+        if bone not in tracks:
+            log("ERREUR : piste %s absente (piece cachee)" % bone)
     for label, eval_type in (("brute", unreal.AnimDataEvalType.RAW), ("compressee", unreal.AnimDataEvalType.COMPRESSED)):
         options = unreal.AnimPoseEvaluationOptions()
         options.set_editor_property("evaluation_type", eval_type)
         worst, worst_at, root_worst = 0.0, "", 0.0
         tool_worst = tool_angle = hands_worst = 0.0
         first = last = before_last = None
-        scale_worst, shown_hidden = 0.0, []
+        scale_worst = {bone: 0.0 for bone in rig.hidden_by_bone}
+        shown_hidden = {bone: [] for bone in rig.hidden_by_bone}
+        place_worst = {bone: 0.0 for bone in rig.hidden_by_bone}  # its local position read back against offline
         heads_read, heads_offline = [], []
         for k, t in enumerate(times):
             pose = poses.get_anim_pose_at_time(sequence, t, options)
@@ -440,22 +460,32 @@ def verify(sk, sequence, rig, times, locals_by_frame):
                     read[sk.index[bone]] = (vec(h.translation), quat(h.rotation))
                 if not rig.released_frames[k] and not rig.hidden_frames[k]:
                     hands_worst = max(hands_worst, max(rig.handle_distances(read).values()))
-            if any(rig.hidden_frames):
-                scale = vec(poses.get_bone_pose(pose, anim_rig.TOOL_BONE, LOCAL).scale3d)
-                expected = HIDDEN_SCALE if rig.hidden_frames[k] else 1.0
-                scale_worst = max(scale_worst, max(abs(c - expected) for c in scale))
+            for bone, frames in rig.hidden_by_bone.items():
+                read_local = poses.get_bone_pose(pose, bone, LOCAL)
+                place_worst[bone] = max(place_worst[bone], anim_rig.length(anim_rig.sub(
+                    vec(read_local.translation), locals_by_frame[k][sk.index[bone]][0])))
+                scale = vec(read_local.scale3d)
+                expected = HIDDEN_SCALE if frames[k] else 1.0
+                scale_worst[bone] = max(scale_worst[bone], max(abs(c - expected) for c in scale))
                 if max(scale) < 0.5:
-                    shown_hidden.append(k)
+                    shown_hidden[bone].append(k)
             if k == 0:
                 first = here
             before_last, last = last, here
         loop = max(anim_rig.length(anim_rig.sub(first[b], last[b])) for b in WATCHED)
-        if any(rig.hidden_frames):
-            hidden = [k for k, h in enumerate(rig.hidden_frames) if h]
-            log("relecture %s, outil cache (%s a l'echelle %g) : %d images sur %d (%s) ; lues cachees : %s ; ecart "
-                "d'echelle au plus %.4f" % (label, anim_rig.TOOL_BONE, HIDDEN_SCALE, len(hidden), len(times),
+        for bone, frames in rig.hidden_by_bone.items():
+            hidden = [k for k, h in enumerate(frames) if h]
+            same = shown_hidden[bone] == hidden and scale_worst[bone] < 1e-3
+            log("relecture %s, %s (%s a l'echelle %g) : %d images sur %d (%s) ; lues cachees : %s ; ecart "
+                "d'echelle au plus %.4f ; position locale a %.4f cm du hors ligne au plus"
+                % (label, "outil cache" if bone == anim_rig.TOOL_BONE else "piece cachee", bone, HIDDEN_SCALE,
+                                            len(hidden), len(times),
                                             "toutes" if len(hidden) == len(times) else "%d a %d" % (hidden[0], hidden[-1]),
-                                            "identiques" if shown_hidden == hidden else str(shown_hidden), scale_worst))
+                                            "identiques" if shown_hidden[bone] == hidden else str(shown_hidden[bone]),
+                                            scale_worst[bone], place_worst[bone]))
+            if not same:
+                log("ERREUR : %s, echelle de %s lue differente de l'attendue (images cachees %s, lues %s)"
+                    % (label, bone, "%d a %d" % (hidden[0], hidden[-1]) if hidden else "aucune", shown_hidden[bone]))
         fall = rig.g["name"].endswith("_Fall")
         log("relecture %s : ecart max FK hors ligne / Unreal %.3f cm (%s), racine a %.3f cm de l'origine au plus, "
             "premiere / derniere image ecart %.3f cm%s" % (label, worst, worst_at, root_worst, loop,

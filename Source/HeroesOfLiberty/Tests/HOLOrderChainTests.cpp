@@ -121,11 +121,13 @@ namespace UE::HeroesOfLiberty::Tests::OrderChains
 	{
 		bool bWalking = false;
 		bool bOrderedTarget = false;
+		/** On its way to unload by its player's order (D485, L.5b). */
+		bool bDroppingOff = false;
 		FBuildingRef Target;
 		FBuildingRef Ordered;
 		TArray<HOLOrderChain::FStep> Queue;
 
-		bool IsOver() const { return HOLOrderChain::IsCurrentOrderOver(bWalking, bOrderedTarget, !Ordered.IsExplicitlyNull(), false); }
+		bool IsOver() const { return HOLOrderChain::IsCurrentOrderOver(bWalking, bOrderedTarget, !Ordered.IsExplicitlyNull(), false, bDroppingOff); }
 
 		/** It takes on an enemy unit by itself (search, riposte, zone of control), dropping a building it strikes (the combat processor's rule). */
 		bool MaySeek(const bool bAttackMove = false) const { return HOLCombat::MaySeek(bWalking, bAttackMove, bOrderedTarget, !Ordered.IsExplicitlyNull()); }
@@ -143,6 +145,7 @@ namespace UE::HeroesOfLiberty::Tests::OrderChains
 			{
 			case HOLOrderChain::EStepKind::Attack: bOrderedTarget = true; break;
 			case HOLOrderChain::EStepKind::AttackBuilding: Target.Id = Ordered.Id = static_cast<int32>(Next.TargetId); break;
+			case HOLOrderChain::EStepKind::Deposit: bDroppingOff = true; break;
 			default: bWalking = true; break;
 			}
 			return true;
@@ -234,6 +237,22 @@ bool FHOLOrderBuildingQueueTest::RunTest(const FString& Parameters)
 		TArray<FChain> Chains;
 		MakeChains({FUnitSteps{1, {Step}}, FUnitSteps{2, {Step}}, FUnitSteps{3, {FStep::MakeBuild(11)}}}, Chains);
 		TestEqual(TEXT("Step: two chains (attack, build)"), Chains.Num(), 2);
+	}
+	// Shift: a move, a drop-off, a move (D485, EtapeDefini L.5b): the drop-off waits for the first walk, the last move for the
+	// unload (its walk to the deposit is the gathering's, not a player's).
+	{
+		FUnitModel Unit;
+		Unit.bWalking = true;
+		Unit.Queue = {FStep::MakeDeposit(4), FStep::MakeMove(FVector(100., 0., 0.), false)};
+		TestFalse(TEXT("Drop-off: waits while it walks"), Unit.Advance());
+		Unit.bWalking = false;
+		TestTrue(TEXT("Drop-off: starts at the arrival"), Unit.Advance());
+		TestTrue(TEXT("Drop-off: on its way to unload"), Unit.bDroppingOff);
+		TestFalse(TEXT("Drop-off: the next move waits for the unload"), Unit.Advance());
+		Unit.bDroppingOff = false;
+		TestTrue(TEXT("Drop-off: unloaded, the next move starts"), Unit.Advance());
+		TestEqual(TEXT("Drop-off: queue empty"), Unit.Queue.Num(), 0);
+		TestEqual(TEXT("Drop-off: its step's name"), FString(KindName(EStepKind::Deposit)), FString(TEXT("Deposit")));
 	}
 	return true;
 }

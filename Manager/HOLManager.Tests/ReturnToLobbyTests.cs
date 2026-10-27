@@ -435,6 +435,97 @@ public class ReturnToLobbyTests
     }
 
     [Fact]
+    public void TheLeaderBackOnTheServerDuringTheMatchStillLeadsAfterIt()
+    {
+        // M6-Q15: back within R7's window, he counts as present.
+        var created = store.Create("Salon de Bob", "Bob", Version);
+        var alice = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        store.UpdateMe(created.Lobby.Id, created.Token, ready: true);
+        store.UpdateMe(created.Lobby.Id, alice, ready: true);
+        var match = store.Start(created.Lobby.Id, created.Token);
+        store.ServerListening(match.Id, 7778);
+        store.ServerLeft(match.Id, "Bob");
+        clock.UtcNow += TimeSpan.FromMinutes(1);
+        store.ServerBack(match.Id, " bob ");
+        Assert.Empty(match.LeftBeforeEnd);
+        clock.UtcNow += TimeSpan.FromMinutes(10);
+        store.ServerFinished(match.Id, [1]);
+        var back = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        for (var t = 0; t <= LobbyRules.LeaderReturnGrace.TotalSeconds; t++)
+        {
+            clock.UtcNow += TimeSpan.FromSeconds(1);
+            store.Read(created.Lobby.Id, back);
+        }
+        Assert.Equal("Bob", created.Lobby.LeaderName);
+        LobbyEntryTests.AssertError(LobbyErrors.NotLeader, () => store.UpdateSettings(created.Lobby.Id, back, regicide: true));
+        var bob = store.Join(created.Lobby.Id, "Bob", Version).Token;
+        Assert.Equal("Bob", created.Lobby.Leader!.Name);
+        store.UpdateSettings(created.Lobby.Id, bob, regicide: true);
+    }
+
+    [Fact]
+    public void AnotherPlayerBackOnTheServerCountsAsPresent()
+    {
+        var created = store.Create("Salon de Bob", "Bob", Version);
+        var alice = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        store.UpdateMe(created.Lobby.Id, created.Token, ready: true);
+        store.UpdateMe(created.Lobby.Id, alice, ready: true);
+        var match = store.Start(created.Lobby.Id, created.Token);
+        store.ServerListening(match.Id, 7778);
+        store.ServerLeft(match.Id, "Alice");
+        store.ServerLeft(match.Id, "Bob");
+        store.ServerBack(match.Id, "Alice");
+        store.ServerBack(match.Id, "Zoé");
+        Assert.Equal(["Bob"], match.LeftBeforeEnd);
+    }
+
+    [Fact]
+    public void TheAwayLeaderBackOnTheFinishedServerLeadsAgain()
+    {
+        // Left the finished match's server, then back on it: no 30 s count any more.
+        var (lobby, _, _, _) = Played();
+        store.ServerLeft(matchId, "Bob");
+        store.ServerBack(matchId, "Bob");
+        clock.UtcNow += LobbyRules.LeaderReturnGrace + TimeSpan.FromSeconds(1);
+        var chloe = store.Join(lobby.Id, "Chloé", Version).Token;
+        clock.UtcNow += TimeSpan.FromSeconds(1);
+        store.Read(lobby.Id, chloe);
+        Assert.Equal("Bob", lobby.LeaderName);
+        LobbyEntryTests.AssertError(LobbyErrors.NotLeader, () => store.UpdateSettings(lobby.Id, chloe, regicide: true));
+    }
+
+    [Fact]
+    public void TheLeaderLeftDuringTheMatchAndBackAfterItLeadsAgain()
+    {
+        var created = store.Create("Salon de Bob", "Bob", Version);
+        var alice = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        store.UpdateMe(created.Lobby.Id, created.Token, ready: true);
+        store.UpdateMe(created.Lobby.Id, alice, ready: true);
+        var match = store.Start(created.Lobby.Id, created.Token);
+        store.ServerListening(match.Id, 7778);
+        store.ServerLeft(match.Id, "Bob");
+        store.ServerFinished(match.Id, [1]);
+        store.ServerBack(match.Id, "Bob");
+        var back = store.Join(created.Lobby.Id, "Alice", Version).Token;
+        Assert.Equal("Bob", created.Lobby.LeaderName);
+        LobbyEntryTests.AssertError(LobbyErrors.NotLeader, () => store.UpdateSettings(created.Lobby.Id, back, regicide: true));
+    }
+
+    [Fact]
+    public void AnotherPlayerBackOnTheFinishedServerChangesNothing()
+    {
+        var (lobby, _, _, _) = Played();
+        store.ServerLeft(matchId, "Bob");
+        store.ServerBack(matchId, "Alice");
+        clock.UtcNow += LobbyRules.LeaderReturnGrace;
+        Assert.Equal("Bob", store.Read(lobby.Id, null).LeaderName);
+        store.Join(lobby.Id, "Chloé", Version);
+        Assert.Equal("Chloé", lobby.LeaderName);
+        LobbyEntryTests.AssertError(LobbyErrors.BadRequest, () => store.ServerBack(matchId, " "));
+        LobbyEntryTests.AssertError(LobbyErrors.MatchNotFound, () => store.ServerBack("M99", "Bob"));
+    }
+
+    [Fact]
     public void TheServerStoppingWithoutTheLeaderBackGivesANewOne()
     {
         var (lobby, chloe, alice) = BackWithoutTheLeader();

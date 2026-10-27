@@ -330,10 +330,41 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             if (lobby.Match == match)
             {
                 match.LeftBeforeEnd.Add(name);
+                // R7.6: under his name in the match (the list shows it), a name absent from it is nobody.
+                if (match.Config.Slots.FirstOrDefault(slot => LobbyRules.NameComparer.Equals(slot.PlayerName, name)) is { } slot)
+                {
+                    match.AwaySince[slot.PlayerName] = clock.UtcNow;
+                }
             }
             else if (match.Finished && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name))
             {
                 lobby.AwayLeaderUntil ??= clock.UtcNow + LobbyRules.LeaderReturnGrace;
+            }
+        });
+    }
+
+    /**
+     * POST /matches/{id}/back (M6-Q15): a named player came back on the match's server within R7's window, so he counts
+     * as present. During the match, no longer remembered as gone for "finished"; after it, the away leader is back to
+     * leading while away (no LeaderReturnGrace count, even one already over). Any other name changes nothing.
+     */
+    public LobbyMatch ServerBack(string matchId, string? playerName)
+    {
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            throw new LobbyException(LobbyErrors.BadRequest, "playerName is required.");
+        }
+        var name = LobbyRules.Clean(playerName);
+        return OnMatch(matchId, (lobby, match) =>
+        {
+            if (lobby.Match == match)
+            {
+                match.LeftBeforeEnd.Remove(name);
+                match.AwaySince.Remove(name);
+            }
+            else if (match.Finished && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name))
+            {
+                lobby.AwayLeaderUntil = null;
             }
         });
     }
