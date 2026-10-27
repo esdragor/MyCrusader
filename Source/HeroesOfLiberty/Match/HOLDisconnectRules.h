@@ -38,6 +38,17 @@ struct HEROESOFLIBERTY_API FHOLDisconnectRules
 	/** The window has run out (at its end exactly too). */
 	static bool IsWindowOver(double LeftAt, double Now, double WindowSeconds);
 
+	/** R7.5: how long « Bob : de retour » stays in the banner. */
+	static constexpr double BackNoticeSeconds = 5.;
+
+	/**
+	 * R7.5: the banner's line of a player gone, SecondsLeft before his defeat (rounded up): « Bob : connexion perdue — 2:41 »;
+	 * never more than WindowSeconds when given (> 0).
+	 */
+	static FText FormatAbsentLine(const FString& Name, double SecondsLeft, double WindowSeconds = 0.);
+	/** R7.5: the banner's line of a player back: « Bob : de retour ». */
+	static FText FormatBackLine(const FString& Name);
+
 	/** Seconds left in the window, 0 at its end (the banner of R7.5). */
 	static double GetSecondsLeft(double LeftAt, double Now, double WindowSeconds);
 

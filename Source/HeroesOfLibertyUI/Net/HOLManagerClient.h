@@ -66,15 +66,20 @@ public:
 	bool OpenMatch(int32 Port, const FString& PlayerName, const FString& GameVersion);
 	bool IsInLobby() const { return !LobbyToken.IsEmpty(); }
 	/** In a match opened from a lobby with a name (R4.8): its end banner offers the way back. */
-	bool IsInLobbyMatch() const { return IsInLobby() && !MatchPlayerName.IsEmpty(); }
+	bool IsInLobbyMatch() const { return GetMatchOrigin() == EHOLMatchOrigin::Lobby; }
 	/**
 	 * Where the match now played was opened from (M6-Q10): Lobby for a lobby's player, Manager for any other match
 	 * opened by OpenMatch (the list's « Regarder »: no lobby), Local otherwise. Its end banner's way out follows.
 	 */
 	EHOLMatchOrigin GetMatchOrigin() const
 	{
-		return IsInLobbyMatch() ? EHOLMatchOrigin::Lobby : bInMatch ? EHOLMatchOrigin::Manager : EHOLMatchOrigin::Local;
+		return FHOLManagerClientRules::GetMatchOrigin(IsInLobby(), bRejoinedLobby, !MatchPlayerName.IsEmpty(), bInMatch);
 	}
+	/**
+	 * Back in a lobby's match by the list's « Revenir » (R7.6, B6c): no token (the lobby is in game), only its id, kept
+	 * for « Retour au salon » (ReturnToLobby joins again by name). Before OpenMatch.
+	 */
+	void KeepRejoinedLobby(const FString& InLobbyId);
 
 	/** Where the menu goes once the match is left (R4.8): read once by the menu's player controller. */
 	enum class EAfterMatch : uint8 { None, Lobby, List };
@@ -120,6 +125,8 @@ private:
 	FDelegateHandle TravelFailureHandle;
 	FString LobbyId;
 	FString LobbyToken;
+	/** LobbyId kept by KeepRejoinedLobby, without a token: until the lobby is joined again, forgotten or left. */
+	bool bRejoinedLobby = false;
 	/** The name the match was opened with (R4.7), for the way back (R4.8). */
 	FString MatchPlayerName;
 	EAfterMatch AfterMatch = EAfterMatch::None;

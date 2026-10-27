@@ -680,6 +680,9 @@ bool FHOLNetManagerRoutesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("finished body: no winner"), FHOLManagerRules::MakeFinishedBody({}), FString(TEXT("{\"winners\":[]}")));
 	TestEqual(TEXT("left body: the player's name"), FHOLManagerRules::MakeLeftBody(TEXT("Bob")), FString(TEXT("{\"playerName\":\"Bob\"}")));
 	TestEqual(TEXT("left body: quotes escaped"), FHOLManagerRules::MakeLeftBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
+	TestEqual(TEXT("back route"), FHOLManagerRules::MakeRouteUrl(TEXT("http://127.0.0.1:7700"), TEXT("QC1"), TEXT("back")),
+		FString(TEXT("http://127.0.0.1:7700/matches/QC1/back")));
+	TestEqual(TEXT("back body: the player's name, quotes escaped"), FHOLManagerRules::MakeBackBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
 	TestEqual(TEXT("started and empty: an empty object"), FHOLManagerRules::MakeEmptyBody(), FString(TEXT("{}")));
 	return true;
 }

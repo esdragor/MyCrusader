@@ -54,6 +54,12 @@ public:
 	static const FCounters& GetCounters() { return Counters; }
 
 	/**
+	 * A gatherer of OwnerPlayer unloads Load at a deposit (D296): its owner's stock rises (HOLGather::Deposit). Returns the
+	 * amount deposited; OutStock: the stock after it (zero when the slot has none).
+	 */
+	static int32 DepositLoad(UWorld& World, int32 OwnerPlayer, FHOLGatherLoad& Load, FHOLResources& OutStock);
+
+	/**
 	 * Distance (cm, centre to centre) between two gatherers' spots, at one source or two side by side (hol.Gather.SpotSpacing,
 	 * D309): 100 cm, two gatherers' bodies (60 cm radius) at their spots overlap a little (the user's trial, after AoE IV). The
 	 * separation keeps that distance between a gatherer at its source and a unit standing beside it.

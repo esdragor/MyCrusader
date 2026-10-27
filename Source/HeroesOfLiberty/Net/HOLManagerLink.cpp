@@ -129,6 +129,11 @@ void UHOLManagerLink::SendLeft(const FString& PlayerName)
 	Send(TEXT("left"), FHOLManagerRules::MakeLeftBody(PlayerName));
 }
 
+void UHOLManagerLink::SendBack(const FString& PlayerName)
+{
+	Send(TEXT("back"), FHOLManagerRules::MakeBackBody(PlayerName));
+}
+
 void UHOLManagerLink::SendEmpty()
 {
 	if (!bEmptySent)

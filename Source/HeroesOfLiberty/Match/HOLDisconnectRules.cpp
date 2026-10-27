@@ -54,3 +54,27 @@ FHOLResources FHOLDisconnectRules::GetStockOnTaking(const FHOLAbsentSlot* Absent
 {
 	return Absent ? Absent->Resources : Starting;
 }
+
+#define LOCTEXT_NAMESPACE "HOLGameScreen"
+
+FText FHOLDisconnectRules::FormatAbsentLine(const FString& Name, const double SecondsLeft, const double WindowSeconds)
+{
+	int32 Left = FMath::Max(0, FMath::CeilToInt(SecondsLeft));
+	if (WindowSeconds > 0.)
+	{
+		Left = FMath::Min(Left, FMath::FloorToInt(WindowSeconds));
+	}
+	FFormatNamedArguments Arguments;
+	Arguments.Add(TEXT("Name"), FText::AsCultureInvariant(Name));
+	Arguments.Add(TEXT("Time"), FText::AsCultureInvariant(FString::Printf(TEXT("%d:%02d"), Left / 60, Left % 60)));
+	return FText::Format(LOCTEXT("AbsentLine", "{Name} : connexion perdue — {Time}"), Arguments);
+}
+
+FText FHOLDisconnectRules::FormatBackLine(const FString& Name)
+{
+	FFormatNamedArguments Arguments;
+	Arguments.Add(TEXT("Name"), FText::AsCultureInvariant(Name));
+	return FText::Format(LOCTEXT("BackLine", "{Name} : de retour"), Arguments);
+}
+
+#undef LOCTEXT_NAMESPACE

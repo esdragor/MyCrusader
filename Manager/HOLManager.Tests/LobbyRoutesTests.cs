@@ -464,6 +464,51 @@ public sealed class LobbyRoutesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task TheLeaderBackOnTheServerStillLeadsAfterTheMatch()
+    {
+        // M6-Q15: left then back within R7's window, he counts as present at "finished".
+        var (id, _, matchId) = await StartedLobby();
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "listening", new { port = 47900 })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "started")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "back", new { playerName = "Bob" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "finished", new { winners = new[] { 0 } })).StatusCode);
+        await JoinLobby(id, "Alice");
+        Assert.Equal("Bob", (string?)(await Json(await client.GetAsync($"/lobbies/{id}")))["leader"]);
+        await JoinLobby(id, "Bob");
+        Assert.Equal("Bob", (string?)(await Json(await client.GetAsync($"/lobbies/{id}")))["leader"]);
+    }
+
+    [Fact]
+    public async Task TheListNamesThePlayersAwayFromTheMatchWithinTheWindow()
+    {
+        // R7.6: « Revenir » for a player gone from the match's server (left, not back) within R7's 180 s.
+        var (_, _, matchId) = await StartedLobby();
+        async Task<List<string?>> Away() =>
+            (await Json(await client.GetAsync("/lobbies")))["lobbies"]![0]!["away"]!.AsArray().Select(n => (string?)n).ToList();
+        Assert.Empty(await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "listening", new { port = 47900 })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "started")).StatusCode);
+        Assert.Empty(await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "bob" })).StatusCode);
+        Assert.Equal(["Bob"], await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "back", new { playerName = "Bob" })).StatusCode);
+        Assert.Empty(await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob" })).StatusCode);
+        clock.UtcNow += LobbyRules.DisconnectWindow - TimeSpan.FromSeconds(1);
+        Assert.Equal(["Bob"], await Away());
+        // Window over: the server has defeated his slot, nothing to come back to.
+        clock.UtcNow += TimeSpan.FromSeconds(1);
+        Assert.Empty(await Away());
+        // A name absent from the match changes nothing; after "finished", nobody is away.
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Chloé" })).StatusCode);
+        Assert.Empty(await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "finished", new { winners = new[] { 0 } })).StatusCode);
+        Assert.Empty(await Away());
+    }
+
+    [Fact]
     public async Task ServerRoutesErrors()
     {
         var (_, _, matchId) = await StartedLobby();
@@ -476,6 +521,10 @@ public sealed class LobbyRoutesTests : IClassFixture<WebApplicationFactory<Progr
         await AssertError(await Server("M99", "left", new { playerName = "Bob" }), HttpStatusCode.NotFound, "match_not_found");
         await AssertError(await Server(matchId, "left", new { playerName = "Bob" }, remote: "100.64.0.7"), HttpStatusCode.Forbidden, "not_local");
         await AssertError(await Server(matchId, "left"), HttpStatusCode.BadRequest, "bad_request");
+        await AssertError(await Server("M99", "back", new { playerName = "Bob" }), HttpStatusCode.NotFound, "match_not_found");
+        await AssertError(await Server(matchId, "back", new { playerName = "Bob" }, remote: "100.64.0.7"), HttpStatusCode.Forbidden, "not_local");
+        await AssertError(await Server(matchId, "back"), HttpStatusCode.BadRequest, "bad_request");
+        await AssertError(await Server("M99", "back"), HttpStatusCode.BadRequest, "bad_request");
         await AssertError(await client.PostAsync($"/matches/{matchId}/listening", new StringContent("{ not json", Encoding.UTF8, "application/json")),
             HttpStatusCode.BadRequest, "bad_request");
         await AssertError(await Server(matchId, "listening", new { port = "x" }), HttpStatusCode.BadRequest, "bad_request");

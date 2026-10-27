@@ -31,6 +31,35 @@ enum class EHOLDefeatReason : uint8
 };
 
 /**
+ * R7.5: a slot kept for its player gone, as every machine sees it (the disconnection banner); its stock stays on the
+ * server (FHOLAbsentSlot). Kept BackNoticeSeconds after a return, for « Bob : de retour ».
+ */
+USTRUCT()
+struct FHOLAbsentNotice
+{
+	GENERATED_BODY()
+
+	/** INDEX_NONE: a fake one (hol.Net.FakeAbsent). */
+	UPROPERTY()
+	int32 Slot = INDEX_NONE;
+
+	UPROPERTY()
+	FString Name;
+
+	/** Server world time (GetServerWorldTimeSeconds) of the window's end: the defeat if he is not back. */
+	UPROPERTY()
+	double EndsAt = 0.;
+
+	/** Server world time of his return; 0 while away. */
+	UPROPERTY()
+	double BackAt = 0.;
+
+	/** The window's length: the banner never shows more (a client's clock of the server can be a little behind). */
+	UPROPERTY()
+	double WindowSeconds = 0.;
+};
+
+/**
  * The end of the match (D356, D357): which slots are defeated and, once over, who won, replicated to every machine
  * (the end banner and the spectator of V1.3 read it). The server alone writes it, through DefeatSlot; the camps are those
  * of the configuration given at the launch (InitVictory), locked for the match.
@@ -72,22 +101,57 @@ public:
 	 * (FHOLDisconnectRules::KeepsSlot), its stock remembered; its units and buildings stay in the world. False: not kept.
 	 * Logs "Disconnect: slot N (Name) kept, window W s".
 	 */
-	bool KeepAbsentSlot(const AHOLPlayerState& Leaving, double Now);
+	bool KeepAbsentSlot(const AHOLPlayerState& Leaving, double Now, double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds);
 	/** R7 (R3.9), server only: a named slot whose player missed the start, kept for the window from Now with Resources. */
-	bool KeepMissingSlot(int32 Slot, const FHOLResources& Resources, double Now);
+	bool KeepMissingSlot(int32 Slot, const FHOLResources& Resources, double Now,
+		double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds);
 	/**
 	 * R7.2, server only, by the game mode's PostLogin: the stock of the player taking his slot, the one kept at his
-	 * departure if he comes back within the window (the slot no longer absent), else Starting.
+	 * departure if he comes back within the window (the slot no longer absent), else Starting. True when he came back
+	 * (M6-Q15: the game mode tells the manager, "back").
 	 */
-	void GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting);
+	bool GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting);
+	/** The same at the server time Now (the tests): the return noticed at Now (R7.5's « de retour »). */
+	bool GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting, double Now);
 	/**
 	 * R7.3, server only, by the game mode each second: the absent slots whose window has run out are defeated
-	 * (reason Disconnected), as by a surrender; those defeated returned.
+	 * (reason Disconnected), as by a surrender; those defeated returned. R7.5: the notices of a return older than
+	 * BackNoticeSeconds dropped too.
 	 */
 	TArray<int32> DefeatExpiredAbsences(double Now, double WindowSeconds);
 	bool IsSlotAbsent(int32 Slot) const { return FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot) != INDEX_NONE; }
+	/**
+	 * B6b (R7), server only, by the game mode's PreLogin and PostLogin: the slot a login of Name takes
+	 * (FHOLMatchConfig::FindSlotForName), a defeated slot never (its window past, or beaten otherwise): he watches, as a
+	 * name absent from the configuration. With bLog, logs "Disconnect: slot N (Name) defeated, joins as spectator".
+	 */
+	int32 FindSlotOnLogin(const FHOLMatchConfig& Config, const FString& Name, TConstArrayView<int32> TakenSlots, bool bLog = true) const;
+
+	/**
+	 * M6-Q16 (R7): the stock of slot Slot, its player's (AHOLPlayerState) or, while he is away, the one kept for him
+	 * (AbsentSlots): what his Peasants unload and what comes back to him (refunds) goes there and is his on his return.
+	 * False (OutStock zero): the slot has none (no player state, not absent).
+	 */
+	static bool GetSlotStock(const UWorld& World, int32 Slot, FHOLResources& OutStock);
+	/** Server only: writes slot Slot's stock where GetSlotStock reads it. False: nowhere (nothing written). */
+	static bool SetSlotStock(UWorld& World, int32 Slot, const FHOLResources& Stock);
+	/** Server only: adds Gain to slot Slot's stock (a deposit, a refund). False: nowhere (Gain lost); OutStock: after it. */
+	static bool AddSlotStock(UWorld& World, int32 Slot, const FHOLResources& Gain, FHOLResources& OutStock);
 	/** Server only: the slots kept for their players gone (R7.5's banner will replicate them). */
 	const TArray<FHOLAbsentSlot>& GetAbsentSlots() const { return AbsentSlots; }
+
+	/** R7.5, every machine (replicated): the players gone and those just back, for the banner. */
+	const TArray<FHOLAbsentNotice>& GetAbsentNotices() const { return AbsentNotices; }
+	/**
+	 * R7.5: the banner's lines at the server time Now (GetServerWorldTimeSeconds), one per notice, in the order of the
+	 * departures: « Bob : connexion perdue — 2:41 » while away, « Bob : de retour » BackNoticeSeconds after his return.
+	 */
+	TArray<FText> GetAbsenceBannerLines(double Now) const;
+	/**
+	 * Server or solo, development (hol.Net.FakeAbsent): a fake notice for Name, SecondsLeft before its end (no slot, no
+	 * defeat); SecondsLeft < 0: Name back at once. An empty Name clears the fake ones.
+	 */
+	void SetFakeAbsentNotice(const FString& Name, double SecondsLeft);
 
 	bool IsSlotDefeated(int32 Slot) const { return GetDefeatReason(Slot) != EHOLDefeatReason::None; }
 	EHOLDefeatReason GetDefeatReason(int32 Slot) const { return SlotDefeats.IsValidIndex(Slot) ? SlotDefeats[Slot] : EHOLDefeatReason::None; }
@@ -245,6 +309,14 @@ private:
 
 	/** Server only (R7): the slots kept for their players gone, in the order of the departures. */
 	TArray<FHOLAbsentSlot> AbsentSlots;
+	/**
+	 * R7.5: what the banner shows of AbsentSlots, replicated (a state rather than a multicast: a client joining or coming
+	 * back late sees the players gone and those just back as the others do).
+	 */
+	UPROPERTY(Replicated)
+	TArray<FHOLAbsentNotice> AbsentNotices;
+	/** The stock kept for slot Slot while its player is away; nullptr: not absent (or no game state of ours). */
+	static FHOLResources* FindAbsentStock(const UWorld& World, int32 Slot);
 
 	/** Server only: Peasants rebuilding each slot's forum (V2.2). */
 	TArray<int32> ForumBuilders;

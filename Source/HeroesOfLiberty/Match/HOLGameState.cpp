@@ -34,6 +34,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
+	DOREPLIFETIME(AHOLGameState, AbsentNotices);
 }
 
 void AHOLGameState::SetWaitingForPlayers(const bool bWaiting, const TArray<FString>& Missing, const double EndSeconds)
@@ -57,6 +58,7 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 	ForumPresenceOverrides.SetNum(FHOLMatchConfig::MaxSlots);
 	PendingForumDefeats = 0;
 	AbsentSlots.Reset();
+	AbsentNotices.Reset();
 	CurrentStep = -1;
 	// V3.2: who stands near a forum down, the living units counted by team, on the server.
 	ForumPresenceCounter.Reset();
@@ -465,6 +467,7 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	SlotDefeats[Slot] = Reason;
 	// R7: a slot defeated while its player is away is no longer kept for him.
 	AbsentSlots.RemoveAll([Slot](const FHOLAbsentSlot& Absent) { return Absent.Slot == Slot; });
+	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: slot %d defeated (%s)"), Slot, GetReasonName(Reason));
 	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
 	{
@@ -490,12 +493,12 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	return true;
 }
 
-bool AHOLGameState::KeepAbsentSlot(const AHOLPlayerState& Leaving, const double Now)
+bool AHOLGameState::KeepAbsentSlot(const AHOLPlayerState& Leaving, const double Now, const double WindowSeconds)
 {
-	return !Leaving.IsOnlyASpectator() && KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now);
+	return !Leaving.IsOnlyASpectator() && KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now, WindowSeconds);
 }
 
-bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resources, const double Now)
+bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resources, const double Now, const double WindowSeconds)
 {
 	if (!HasAuthority() || IsSlotAbsent(Slot)
 		|| !FHOLDisconnectRules::KeepsSlot(LaunchConfig, Slot, bWaitingForPlayers, bMatchOver, IsSlotDefeated(Slot)))
@@ -504,12 +507,115 @@ bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resou
 	}
 	const FString Name = LaunchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
 	AbsentSlots.Add({ Slot, Name, Now, Resources });
+	// R7.5: the banner of the others (a notice of his last return replaced).
+	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+	AbsentNotices.Add({ Slot, Name, Now + WindowSeconds, 0., WindowSeconds });
+	ForceNetUpdate();
 	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) kept, F %d W %d S %d G %d"), Slot, *Name, Resources.Food,
 		Resources.Wood, Resources.Stone, Resources.Gold);
 	return true;
 }
 
-void AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting)
+FHOLResources* AHOLGameState::FindAbsentStock(const UWorld& World, const int32 Slot)
+{
+	AHOLGameState* HOLGameState = Cast<AHOLGameState>(World.GetGameState());
+	const int32 Index = HOLGameState ? FHOLDisconnectRules::FindAbsent(HOLGameState->AbsentSlots, Slot) : INDEX_NONE;
+	return Index != INDEX_NONE ? &HOLGameState->AbsentSlots[Index].Resources : nullptr;
+}
+
+namespace UE::HeroesOfLiberty::Match
+{
+	AHOLPlayerState* FindSlotPlayerState(const UWorld& World, const int32 Slot)
+	{
+		const AGameStateBase* GameState = World.GetGameState();
+		if (!GameState || Slot == INDEX_NONE)
+		{
+			return nullptr;
+		}
+		for (APlayerState* Each : GameState->PlayerArray)
+		{
+			AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(Each);
+			if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Slot)
+			{
+				return HOLPlayerState;
+			}
+		}
+		return nullptr;
+	}
+}
+
+bool AHOLGameState::GetSlotStock(const UWorld& World, const int32 Slot, FHOLResources& OutStock)
+{
+	// Absent first: between the Logout and its destruction, the leaving player state still holds the slot.
+	if (const FHOLResources* Kept = FindAbsentStock(World, Slot))
+	{
+		OutStock = *Kept;
+		return true;
+	}
+	const AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Match::FindSlotPlayerState(World, Slot);
+	OutStock = PlayerState ? PlayerState->GetResources() : FHOLResources();
+	return PlayerState != nullptr;
+}
+
+bool AHOLGameState::SetSlotStock(UWorld& World, const int32 Slot, const FHOLResources& Stock)
+{
+	if (FHOLResources* Kept = FindAbsentStock(World, Slot))
+	{
+		*Kept = Stock;
+		return true;
+	}
+	AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Match::FindSlotPlayerState(World, Slot);
+	if (PlayerState)
+	{
+		PlayerState->SetResources(Stock);
+	}
+	return PlayerState != nullptr;
+}
+
+bool AHOLGameState::AddSlotStock(UWorld& World, const int32 Slot, const FHOLResources& Gain, FHOLResources& OutStock)
+{
+	if (!GetSlotStock(World, Slot, OutStock))
+	{
+		return false;
+	}
+	OutStock += Gain;
+	return SetSlotStock(World, Slot, OutStock);
+}
+
+int32 AHOLGameState::FindSlotOnLogin(const FHOLMatchConfig& Config, const FString& Name, const TConstArrayView<int32> TakenSlots,
+	const bool bLog) const
+{
+	const int32 Slot = Config.FindSlotForName(Name, TakenSlots);
+	if (Slot == INDEX_NONE || !IsSlotDefeated(Slot))
+	{
+		return Slot;
+	}
+	if (!Config.HasPlayerNames())
+	{
+		// Without names (solo, direct): the next free human slot not defeated, if any.
+		TArray<int32> Unavailable(TakenSlots);
+		for (int32 Index = 0; Index < FHOLMatchConfig::MaxSlots; ++Index)
+		{
+			if (IsSlotDefeated(Index))
+			{
+				Unavailable.AddUnique(Index);
+			}
+		}
+		return Config.FindSlotForName(Name, Unavailable);
+	}
+	if (bLog)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) defeated, joins as spectator"), Slot, *Name.TrimStartAndEnd());
+	}
+	return INDEX_NONE;
+}
+
+bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting)
+{
+	return GiveSlotStock(Taking, Starting, GetServerWorldTimeSeconds());
+}
+
+bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting, const double Now)
 {
 	const int32 Index = FHOLDisconnectRules::FindAbsent(AbsentSlots, Taking.GetPlayerIndex());
 	Taking.SetResources(FHOLDisconnectRules::GetStockOnTaking(AbsentSlots.IsValidIndex(Index) ? &AbsentSlots[Index] : nullptr, Starting));
@@ -517,12 +623,27 @@ void AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) back, %s"), AbsentSlots[Index].Slot, *AbsentSlots[Index].Name,
 			*Taking.DescribeEconomy());
+		const int32 Slot = AbsentSlots[Index].Slot;
 		AbsentSlots.RemoveAt(Index);
+		// R7.5: « Bob : de retour » for BackNoticeSeconds.
+		if (FHOLAbsentNotice* Notice = AbsentNotices.FindByPredicate([Slot](const FHOLAbsentNotice& Each) { return Each.Slot == Slot; }))
+		{
+			Notice->BackAt = Now;
+			ForceNetUpdate();
+		}
+		return true;
 	}
+	return false;
 }
 
 TArray<int32> AHOLGameState::DefeatExpiredAbsences(const double Now, const double WindowSeconds)
 {
+	// R7.5: the returns shown long enough.
+	if (AbsentNotices.RemoveAll([Now](const FHOLAbsentNotice& Notice)
+		{ return Notice.BackAt > 0. && Now >= Notice.BackAt + FHOLDisconnectRules::BackNoticeSeconds; }) > 0)
+	{
+		ForceNetUpdate();
+	}
 	TArray<int32> Defeated;
 	for (const int32 Slot : FHOLDisconnectRules::GetExpired(AbsentSlots, Now, WindowSeconds))
 	{
@@ -640,4 +761,47 @@ uint8 AHOLGameState::GetDefeatedMask() const
 		}
 	}
 	return Mask;
+}
+
+TArray<FText> AHOLGameState::GetAbsenceBannerLines(const double Now) const
+{
+	TArray<FText> Lines;
+	for (const FHOLAbsentNotice& Notice : AbsentNotices)
+	{
+		if (Notice.BackAt <= 0.)
+		{
+			Lines.Add(FHOLDisconnectRules::FormatAbsentLine(Notice.Name, Notice.EndsAt - Now, Notice.WindowSeconds));
+		}
+		// Read by the time: gone at its end on every machine, whenever the server drops it.
+		else if (Now < Notice.BackAt + FHOLDisconnectRules::BackNoticeSeconds)
+		{
+			Lines.Add(FHOLDisconnectRules::FormatBackLine(Notice.Name));
+		}
+	}
+	return Lines;
+}
+
+void AHOLGameState::SetFakeAbsentNotice(const FString& Name, const double SecondsLeft)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	const double Now = GetServerWorldTimeSeconds();
+	if (Name.IsEmpty())
+	{
+		AbsentNotices.RemoveAll([](const FHOLAbsentNotice& Notice) { return Notice.Slot == INDEX_NONE; });
+	}
+	else if (FHOLAbsentNotice* Fake = AbsentNotices.FindByPredicate([&Name](const FHOLAbsentNotice& Notice)
+		{ return Notice.Slot == INDEX_NONE && Notice.Name == Name; }))
+	{
+		Fake->BackAt = SecondsLeft < 0. ? Now : 0.;
+		Fake->EndsAt = SecondsLeft < 0. ? Fake->EndsAt : Now + SecondsLeft;
+		Fake->WindowSeconds = SecondsLeft < 0. ? Fake->WindowSeconds : SecondsLeft;
+	}
+	else
+	{
+		AbsentNotices.Add({ INDEX_NONE, Name, Now + FMath::Max(0., SecondsLeft), SecondsLeft < 0. ? Now : 0., FMath::Max(0., SecondsLeft) });
+	}
+	ForceNetUpdate();
 }

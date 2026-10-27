@@ -164,6 +164,13 @@ public sealed class LobbyMatch(string id, HOLManager.Matches.MatchConfig config,
     /** Names of the players who left the server before "finished" (M6-Q14: such a leader leads no more after it). */
     public HashSet<string> LeftBeforeEnd { get; } = new(LobbyRules.NameComparer);
 
+    /** R7.6: the match's players gone from its server and not back, by their name in the match, with when they left. */
+    public Dictionary<string, DateTimeOffset> AwaySince { get; } = new(LobbyRules.NameComparer);
+
+    /** R7.6: the names of AwaySince still within the server's window (GET /lobbies, « Revenir »). */
+    public IEnumerable<string> Away(DateTimeOffset now) =>
+        AwaySince.Where(p => now - p.Value < LobbyRules.DisconnectWindow).Select(p => p.Key).Order(StringComparer.Ordinal);
+
     /** "empty" received: the server is stopped if it still runs EmptyStopDelay later. */
     public DateTimeOffset? EmptyAt { get; internal set; }
 

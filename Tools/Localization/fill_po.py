@@ -216,6 +216,8 @@ TRANSLATIONS = {
     "HOLGameScreen,MessageOwnKingDied": ("Your King is dead", "あなたの王が死亡"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
+    "HOLGameScreen,AbsentLine": ("{Name}: connection lost — {Time}", "{Name}：接続が切れました — {Time}"),
+    "HOLGameScreen,BackLine": ("{Name}: back", "{Name}：復帰しました"),
     "HOLGameScreen,Cancel": ("Cancel", "キャンセル"),
     "HOLGameScreen,CancelSite": ("Cancel construction", "建設をキャンセル"),
     # The user's trial of J6a.5: F1, F2, F3 while the player has no building of the category.
@@ -256,6 +258,7 @@ TRANSLATIONS = {
     "HOLMultiplayerScreen,BadName": ("Your name: 1 to 16 letters, digits, spaces, - or _",
                                      "名前：1～16文字の英字・数字・スペース・-・_"),
     "HOLMultiplayerScreen,Refresh": ("Refresh", "更新"),
+    "HOLMultiplayerScreen,Rejoin": ("Rejoin", "復帰"),
     "HOLMultiplayerScreen,Create": ("Create a lobby", "ロビーを作成"),
     "HOLMultiplayerScreen,Back": ("Back", "戻る"),
     "HOLMultiplayerScreen,Searching": ("Searching for lobbies…", "ロビーを検索中…"),

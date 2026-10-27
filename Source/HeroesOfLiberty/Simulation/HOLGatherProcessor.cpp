@@ -13,6 +13,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -813,18 +814,26 @@ void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gath
 	Stop(Gatherer);
 }
 
+int32 UHOLGatherProcessor::DepositLoad(UWorld& World, const int32 OwnerPlayer, FHOLGatherLoad& Load, FHOLResources& OutStock)
+{
+	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
+	const bool bHasStock = AHOLGameState::GetSlotStock(World, OwnerPlayer, OutStock);
+	const int32 Amount = HOLGather::Deposit(Load, OutStock);
+	if (bHasStock && Amount > 0)
+	{
+		AHOLGameState::SetSlotStock(World, OwnerPlayer, OutStock);
+	}
+	return Amount;
+}
+
 void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer, const FDeposit& Deposit)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
 	FHOLGatherFragment& Gather = Gatherer.Gather;
 	const EHOLResource Resource = Gather.Load.Resource;
-	AHOLPlayerState* PlayerState = Step.Production ? Step.Production->FindPlayerState(Gatherer.OwnerPlayer) : nullptr;
-	FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
-	const int32 Amount = HOLGather::Deposit(Gather.Load, Stock);
-	if (PlayerState && Amount > 0)
-	{
-		PlayerState->SetResources(Stock);
-	}
+	FHOLResources Stock;
+	UWorld* World = Step.Production ? Step.Production->GetWorld() : nullptr;
+	const int32 Amount = World ? DepositLoad(*World, Gatherer.OwnerPlayer, Gather.Load, Stock) : 0;
 	Step.Sources->RecordDeposit(Gatherer.OwnerPlayer, Resource, Amount);
 	if (Amount > 0)
 	{
@@ -846,7 +855,7 @@ void UHOLGatherProcessor::Unload(const FStepContext& Step, FGatherer& Gatherer, 
 	{
 		// Where, and who (J6b.1: a camp's builders unload at the camp, not at the centre).
 		UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d unloaded %d %s (stock %s) at %s (%.0f, %.0f), unit #%u"), Gatherer.OwnerPlayer, Amount,
-			GetResourceName(Resource), PlayerState ? *Stock.ToString() : TEXT("none"), *Deposit.TypeName.ToString(), Deposit.Footprint.Centre.X,
+			GetResourceName(Resource), *Stock.ToString(), *Deposit.TypeName.ToString(), Deposit.Footprint.Centre.X,
 			Deposit.Footprint.Centre.Y, Step.Units->FindUnitId(Gatherer.Entity));
 	}
 }

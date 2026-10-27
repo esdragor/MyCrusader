@@ -8,6 +8,7 @@
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
+#include "Player/HOLGameMenuRules.h"
 
 const TCHAR* FHOLManagerClientRules::DefaultUrl = TEXT("http://127.0.0.1:7700");
 
@@ -71,9 +72,39 @@ bool FHOLManagerClientRules::ParseLobbies(const FString& Json, TArray<FHOLLobbyS
 		{
 			Lobby.Minutes = -1;
 		}
+		Lobby.Away.Reset();
+		// R7.6, added to protocol 1: absent from an older manager.
+		if (const TArray<TSharedPtr<FJsonValue>>* Away = nullptr; (*Row)->TryGetArrayField(TEXT("away"), Away))
+		{
+			for (const TSharedPtr<FJsonValue>& Name : *Away)
+			{
+				FString Text;
+				if (Name.IsValid() && Name->TryGetString(Text))
+				{
+					Lobby.Away.Add(MoveTemp(Text));
+				}
+			}
+		}
 		Out.Add(MoveTemp(Lobby));
 	}
 	return true;
+}
+
+EHOLLobbyAction FHOLManagerClientRules::ChooseLobbyAction(const FHOLLobbySummary& Lobby, const FString& MyName)
+{
+	if (Lobby.State == EHOLLobbyState::Lobby && Lobby.bCanJoin)
+	{
+		return EHOLLobbyAction::Join;
+	}
+	if (Lobby.State != EHOLLobbyState::InGame || !Lobby.bCanWatch)
+	{
+		return EHOLLobbyAction::None;
+	}
+	// R7.6: the manager's names are the match's (PROTOCOL.md 8: compared case ignored, trimmed).
+	const FString Name = MyName.TrimStartAndEnd();
+	const bool bAway = !Name.IsEmpty() && Lobby.Away.ContainsByPredicate([&Name](const FString& Each)
+		{ return Each.TrimStartAndEnd().Equals(Name, ESearchCase::IgnoreCase); });
+	return bAway ? EHOLLobbyAction::Rejoin : EHOLLobbyAction::Watch;
 }
 
 int32 FHOLLobby::GetNumPlayers() const
@@ -306,6 +337,15 @@ FHOLManagerError FHOLManagerClientRules::ReadFailure(const bool bConnected, cons
 		}
 	}
 	return Error;
+}
+
+EHOLMatchOrigin FHOLManagerClientRules::GetMatchOrigin(const bool bHasToken, const bool bRejoinedLobby, const bool bNamed, const bool bInMatch)
+{
+	if ((bHasToken || bRejoinedLobby) && bNamed)
+	{
+		return EHOLMatchOrigin::Lobby;
+	}
+	return bInMatch ? EHOLMatchOrigin::Manager : EHOLMatchOrigin::Local;
 }
 
 FString FHOLManagerClientRules::MakeUrl(const FString& Url, const FString& Route)
