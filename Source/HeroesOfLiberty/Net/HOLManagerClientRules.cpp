@@ -8,6 +8,7 @@
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
+#include "Match/HOLMatchConfig.h"
 
 const TCHAR* FHOLManagerClientRules::DefaultUrl = TEXT("http://127.0.0.1:7700");
 
@@ -71,6 +72,9 @@ bool FHOLManagerClientRules::ParseLobbies(const FString& Json, TArray<FHOLLobbyS
 		{
 			Lobby.Minutes = -1;
 		}
+		// TC3: absent from an older manager.
+		(*Row)->TryGetStringField(TEXT("map"), Lobby.Map);
+		(*Row)->TryGetStringField(TEXT("size"), Lobby.Size);
 		Out.Add(MoveTemp(Lobby));
 	}
 	return true;
@@ -101,7 +105,8 @@ bool FHOLLobby::CanEditSlot(const int32 SlotIndex) const
 
 bool FHOLLobby::CanToggleSlot(const int32 SlotIndex) const
 {
-	return IsYouLeader() && Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex].State != EHOLLobbySlotState::Player;
+	// TC3: the slots past the places of the lobby's size stay closed (the manager refuses to open them).
+	return IsYouLeader() && Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex].State != EHOLLobbySlotState::Player && SlotIndex < GetNumPlaces();
 }
 
 bool FHOLLobby::CanStart() const
@@ -139,13 +144,34 @@ FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, co
 	return WriteBody(Object);
 }
 
-FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe)
+EHOLMapSize FHOLLobby::GetMapSize() const
+{
+	return FHOLMapSizeRules::FindByKey(Size);
+}
+
+int32 FHOLLobby::GetNumPlaces() const
+{
+	const EHOLMapSize MapSize = GetMapSize();
+	return MapSize == EHOLMapSize::None ? FHOLMatchConfig::MaxSlots : FHOLMapSizeRules::GetNumPlaces(MapSize);
+}
+
+FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe,
+	const FString& Size, const TOptional<bool> bTeamsTogether)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("map"), Map);
 	Object->SetBoolField(TEXT("nomad"), bNomad);
 	Object->SetBoolField(TEXT("regicide"), bRegicide);
 	Object->SetBoolField(TEXT("catastrophe"), bCatastrophe);
+	// TC3: the size and "Équipes ensemble", only when given (an older manager ignores them).
+	if (!Size.IsEmpty())
+	{
+		Object->SetStringField(TEXT("size"), Size);
+	}
+	if (bTeamsTogether.IsSet())
+	{
+		Object->SetBoolField(TEXT("teamsTogether"), bTeamsTogether.GetValue());
+	}
 	return WriteBody(Object);
 }
 
@@ -190,6 +216,9 @@ namespace
 		(*Settings)->TryGetBoolField(TEXT("nomad"), Out.bNomad);
 		(*Settings)->TryGetBoolField(TEXT("regicide"), Out.bRegicide);
 		(*Settings)->TryGetBoolField(TEXT("catastrophe"), Out.bCatastrophe);
+		// TC3: absent from an older manager (no size, teams together).
+		(*Settings)->TryGetStringField(TEXT("size"), Out.Size);
+		(*Settings)->TryGetBoolField(TEXT("teamsTogether"), Out.bTeamsTogether);
 		const TArray<TSharedPtr<FJsonValue>>* Maps = nullptr;
 		if (Object.TryGetArrayField(TEXT("maps"), Maps))
 		{

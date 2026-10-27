@@ -199,7 +199,9 @@ namespace UE::HeroesOfLiberty::UI
 		for (const FString& Name : Args)
 		{
 			const UWidget* Widget = Screen ? Screen->WidgetTree->FindWidget(FName(*Name)) : nullptr;
-			UE_LOG(LogHOLUI, Display, TEXT("Shown %s: %s"), *Name, !Widget ? TEXT("missing") : Widget->IsVisible() ? TEXT("yes") : TEXT("no"));
+			// ", greyed" after it for a widget shown but not enabled (TC-Q12: the teams of the New game screen).
+			UE_LOG(LogHOLUI, Display, TEXT("Shown %s: %s%s"), *Name, !Widget ? TEXT("missing") : Widget->IsVisible() ? TEXT("yes") : TEXT("no"),
+				Widget && !Widget->GetIsEnabled() ? TEXT(", greyed") : TEXT(""));
 		}
 	}
 

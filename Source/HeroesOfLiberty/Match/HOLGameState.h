@@ -101,6 +101,16 @@ public:
 	const FHOLMatchConfig& GetLaunchConfig() const { return LaunchConfig; }
 
 	/**
+	 * TC3 (TC-Q6): the place on the map (AHOLStartSlot's index) of a slot, every machine, from the configuration of the
+	 * launch (FHOLMapSizeRules::GetPlaces: fixed, or drawn from its seed): INDEX_NONE for a closed slot or a configuration
+	 * refused (FHOLMapSizeRules::CheckPlaces); the slot itself while the configuration is not known yet (HasStartPlaces).
+	 */
+	int32 GetStartPlace(int32 Slot) const;
+
+	/** TC3: the places are known (the server from InitVictory on, a client once the configuration has come). */
+	bool HasStartPlaces() const { return !StartPlaces.IsEmpty(); }
+
+	/**
 	 * V2 (D349-D353): each slot's main forum, public (every machine, the players' table of V2.4): its falls, its phase,
 	 * its ruin's steps left, its rebuilding's work. The default (standing, no fall) for a closed slot.
 	 */
@@ -252,8 +262,17 @@ private:
 	 * The configuration of the launch: its occupied slots and teams make the camps (D357). Written by the server alone;
 	 * replicated (D.3) so that each client knows its allies.
 	 */
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_LaunchConfig)
 	FHOLMatchConfig LaunchConfig;
+
+	/** TC3: each slot's place, from LaunchConfig (UpdateStartPlaces), MaxSlots of them once known. */
+	TArray<int32> StartPlaces;
+
+	/** TC3: StartPlaces from LaunchConfig; a configuration refused gives no place to anyone (logged on the server). */
+	void UpdateStartPlaces();
+
+	UFUNCTION()
+	void OnRep_LaunchConfig();
 
 	/** One per slot (MaxSlots). */
 	UPROPERTY(ReplicatedUsing = OnRep_Victory)

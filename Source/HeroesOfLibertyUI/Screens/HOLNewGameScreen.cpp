@@ -37,6 +37,8 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	constexpr float OptionWidth = 200.f;
 	constexpr float ToggleWidth = 120.f;
 	constexpr float OptionLabelWidth = 170.f;
+	/** "Équipes ensemble" over the swatch and colour columns, its value over the team column. */
+	constexpr float TeamsTogetherLabelWidth = SwatchSize + 8.f + ColorWidth;
 	constexpr float ClosedSwatchOpacity = 0.2f;
 
 	/** List values in the order of EHOLSlotState. */
@@ -112,6 +114,55 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	{
 		return FName(FString::Printf(TEXT("%s%d"), Prefix, SlotIndex));
 	}
+
+	/** TC3: the size list, index = EHOLMapSize (0, None, "—": a test map, never chosen). */
+	TArray<FText> SizeNames()
+	{
+		TArray<FText> Names = { UHOLNewGameScreen::GetSizeName(EHOLMapSize::None) };
+		for (const FHOLMapSizeInfo& Info : FHOLMapSizeRules::GetSizes())
+		{
+			Names.Add(UHOLNewGameScreen::GetSizeName(Info.Size));
+		}
+		return Names;
+	}
+}
+
+namespace UE::HeroesOfLiberty::UI::NewGame
+{
+	/** TC-Q8: the name of a size alone ("Petite"); empty for None. */
+	FText GetShortSizeName(const EHOLMapSize Size)
+	{
+		switch (Size)
+		{
+		case EHOLMapSize::Small: return LOCTEXT("Size_Small", "Petite");
+		case EHOLMapSize::Medium: return LOCTEXT("Size_Medium", "Moyenne");
+		case EHOLMapSize::Normal: return LOCTEXT("Size_Normal", "Normale");
+		case EHOLMapSize::Large: return LOCTEXT("Size_Large", "Grande");
+		case EHOLMapSize::Huge: return LOCTEXT("Size_Huge", "Immense");
+		default: return FText::GetEmpty();
+		}
+	}
+}
+
+FText UHOLNewGameScreen::GetSizeName(const EHOLMapSize Size)
+{
+	const FText Name = UE::HeroesOfLiberty::UI::NewGame::GetShortSizeName(Size);
+	if (Name.IsEmpty())
+	{
+		return FText::AsCultureInvariant(TEXT("—"));
+	}
+	return FText::Format(LOCTEXT("SizeWithPlayers", "{0} ({1} joueurs)"), Name, FHOLMapSizeRules::GetNumPlaces(Size));
+}
+
+FText UHOLNewGameScreen::GetLobbyMapName(const FString& Map, const FString& Size)
+{
+	if (Map.IsEmpty())
+	{
+		return FText::GetEmpty();
+	}
+	const FText MapName = GetMapName(FSoftObjectPath(FString::Printf(TEXT("/Game/Maps/%s.%s"), *Map, *Map)));
+	const FText SizeName = UE::HeroesOfLiberty::UI::NewGame::GetShortSizeName(FHOLMapSizeRules::FindByKey(Size));
+	return SizeName.IsEmpty() ? MapName : FText::Format(LOCTEXT("LobbyMapAndSize", "{0} — {1}"), MapName, SizeName);
 }
 
 FText UHOLNewGameScreen::GetMapName(const FSoftObjectPath& Map)
@@ -180,6 +231,13 @@ void UHOLNewGameScreen::BuildLayout()
 	AddCell(MapLine, MakeText(LOCTEXT("Map", "Carte"), UHOLTextStyleBody::StaticClass()), NameWidth);
 	MapDropdown = AddDropdown(MapLine, TEXT("MapDropdown"), MapNames, 0, StateWidth + FactionWidth + 8.f);
 
+	// TC3: the size under the map, then "Équipes ensemble" (the places are drawn at the launch).
+	UHorizontalBox* SizeLine = AddLine(0.f);
+	AddCell(SizeLine, MakeText(LOCTEXT("Size", "Taille"), UHOLTextStyleBody::StaticClass()), NameWidth);
+	SizeDropdown = AddDropdown(SizeLine, TEXT("SizeDropdown"), SizeNames(), 0, StateWidth + FactionWidth + 8.f);
+	AddCell(SizeLine, MakeText(LOCTEXT("TeamsTogether", "Équipes ensemble"), UHOLTextStyleBody::StaticClass()), TeamsTogetherLabelWidth);
+	TeamsTogetherDropdown = AddDropdown(SizeLine, TEXT("TeamsTogetherDropdown"), OffOn(), 1, TeamWidth);
+
 	UHorizontalBox* Headings = AddLine(16.f);
 	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass()), NameWidth);
 	AddCell(Headings, MakeText(LOCTEXT("Slot", "Emplacement"), UHOLTextStyleNote::StaticClass()), StateWidth);
@@ -218,7 +276,7 @@ void UHOLNewGameScreen::BuildLayout()
 	AddCell(Options, MakeText(LOCTEXT("Catastrophe", "Catastrophe"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
 	CatastropheDropdown = AddDropdown(Options, TEXT("CatastropheDropdown"), OffOn(), 0, ToggleWidth);
 
-	NoteText = AddText(Column, TEXT("Note"), LOCTEXT("Greyed", "Grisé : pas encore dans le jeu (IA, factions, équipes, mode et options)."),
+	NoteText = AddText(Column, TEXT("Note"), LOCTEXT("GreyedTeamsOpen", "Grisé : pas encore dans le jeu (IA, factions, mode et options)."),
 		UHOLTextStyleNote::StaticClass(), 4.f);
 	ErrorText = AddText(Column, TEXT("ErrorText"), FText::GetEmpty(), UHOLTextStyleBody::StaticClass(), 4.f);
 	ErrorText->SetColorAndOpacity(HOLUIStyle::Missing);
@@ -270,13 +328,11 @@ void UHOLNewGameScreen::NativeOnInitialized()
 				HandleTeamChosen(SlotIndex, Value);
 			});
 		}
-		// Greyed (D240): factions and teams are not in the game yet.
-		for (UHOLDropdown* Greyed : { SlotFactions[SlotIndex].Get(), SlotTeams[SlotIndex].Get() })
+		// Greyed (D240): factions are not in the game yet. TC-Q12: the teams are (camps of the combat, FHOLCampTable;
+		// victory by team), chosen in solo too.
+		if (SlotFactions[SlotIndex])
 		{
-			if (Greyed)
-			{
-				Greyed->SetIsEnabled(false);
-			}
+			SlotFactions[SlotIndex]->SetIsEnabled(false);
 		}
 	}
 	for (UHOLDropdown* Greyed : { ModeDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
@@ -289,6 +345,14 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	if (MapDropdown)
 	{
 		MapDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleMapChosen);
+	}
+	if (SizeDropdown)
+	{
+		SizeDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleSizeChosen);
+	}
+	if (TeamsTogetherDropdown)
+	{
+		TeamsTogetherDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleTeamsTogetherChosen);
 	}
 	for (UHOLDropdown* Option : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
@@ -424,6 +488,10 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	Config.bNomad = Lobby.bNomad;
 	Config.bRegicide = Lobby.bRegicide;
 	Config.bCatastrophe = Lobby.bCatastrophe;
+	// TC3 loop 2: the lobby's size and "Équipes ensemble", the places drawn by the server at the launch.
+	Config.MapSize = Lobby.GetMapSize();
+	Config.bTeamsTogether = Lobby.bTeamsTogether;
+	Config.bDrawPlaces = true;
 	TArray<FString> Players;
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
 	{
@@ -482,9 +550,10 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 			SlotTeams[SlotIndex]->SetIsEnabled(bMine);
 		}
 	}
-	// The map and the options are the leader's; the mode has one value yet.
+	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
 	const bool bLeader = Lobby.IsYouLeader();
-	for (UHOLDropdown* Setting : { MapDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
+	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(),
+		CatastropheDropdown.Get() })
 	{
 		if (Setting)
 		{
@@ -526,7 +595,8 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	if (Logged != LoggedPlayers)
 	{
 		LoggedPlayers = Logged;
-		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s \"%s\" map %s: %s"), *Lobby.Id, *Lobby.Name, *Lobby.Map, *Logged);
+		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s \"%s\" map %s %s teams together %d: %s"), *Lobby.Id, *Lobby.Name, *Lobby.Map, *Lobby.Size,
+			Lobby.bTeamsTogether, *Logged);
 	}
 }
 
@@ -534,11 +604,15 @@ void UHOLNewGameScreen::GetColumns(TArray<TArray<UWidget*>>& OutColumns) const
 {
 	TArray<UWidget*>& States = OutColumns.AddDefaulted_GetRef();
 	States.Add(MapDropdown);
+	States.Add(SizeDropdown);
 	States.Append(SlotStates);
 	States.Add(ModeDropdown);
 	OutColumns.Emplace(SlotFactions);
 	OutColumns.Emplace(SlotColors);
-	OutColumns.Emplace(SlotTeams);
+	// "Équipes ensemble" stands over the team column.
+	TArray<UWidget*>& Teams = OutColumns.AddDefaulted_GetRef();
+	Teams.Add(TeamsTogetherDropdown);
+	Teams.Append(SlotTeams);
 }
 
 void UHOLNewGameScreen::SetConfig(const FHOLMatchConfig& InConfig)
@@ -548,8 +622,25 @@ void UHOLNewGameScreen::SetConfig(const FHOLMatchConfig& InConfig)
 	if (!Maps.IsEmpty() && !Maps.Contains(Config.Map))
 	{
 		Config.Map = Maps[0];
+		// TC3: the menu's own configuration: the smallest size that holds the players, places drawn.
+		if (Config.MapSize == EHOLMapSize::None)
+		{
+			ChooseSize(FHOLMapSizeRules::GetDefaultSize(Config.GetNumOccupiedSlots()));
+		}
 	}
 	Refresh();
+}
+
+bool UHOLNewGameScreen::ChooseSize(const EHOLMapSize Size)
+{
+	if (Size == EHOLMapSize::None || !FHOLMapSizeRules::FitSlotsToSize(Config.Slots, Size))
+	{
+		return false;
+	}
+	Config.MapSize = Size;
+	Config.bDrawPlaces = true;
+	UE_LOG(LogHOLUI, Display, TEXT("New game: size %s, %d places"), FHOLMapSizeRules::Find(Size)->Key, FHOLMapSizeRules::GetNumPlaces(Size));
+	return true;
 }
 
 void UHOLNewGameScreen::Refresh()
@@ -560,6 +651,23 @@ void UHOLNewGameScreen::Refresh()
 	{
 		MapDropdown->SetSelectedIndex(FMath::Max(0, Maps.IndexOfByKey(Config.Map)));
 	}
+	// TC3 (TC-Q4): the sizes too small for the players greyed, "—" never chosen.
+	const int32 NumPlayers = Config.GetNumOccupiedSlots();
+	if (SizeDropdown)
+	{
+		SizeDropdown->SetSelectedIndex(static_cast<int32>(Config.MapSize));
+		SizeDropdown->SetOptionEnabled(static_cast<int32>(EHOLMapSize::None), false);
+		for (const FHOLMapSizeInfo& Info : FHOLMapSizeRules::GetSizes())
+		{
+			SizeDropdown->SetOptionEnabled(static_cast<int32>(Info.Size), FHOLMapSizeRules::IsAllowed(Info.Size, NumPlayers));
+		}
+	}
+	if (TeamsTogetherDropdown)
+	{
+		TeamsTogetherDropdown->SetSelectedIndex(Config.bTeamsTogether ? 1 : 0);
+	}
+	// TC3 (TC-Q4): the slots past the places of the size are closed, not changeable (the lobby sets its own, loop 2).
+	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
 	{
 		const FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
@@ -567,6 +675,10 @@ void UHOLNewGameScreen::Refresh()
 		if (SlotStates[SlotIndex])
 		{
 			SlotStates[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.State));
+			if (!bLobby)
+			{
+				SlotStates[SlotIndex]->SetIsEnabled(SlotIndex < NumPlaces);
+			}
 		}
 		if (SlotFactions[SlotIndex])
 		{
@@ -624,11 +736,42 @@ void UHOLNewGameScreen::HandleMapChosen(const int32 Value)
 	{
 		Config.Map = Maps[Value];
 	}
+	// TC3: a map chosen in the list is played at a size (a test configuration had none).
+	if (!bLobby && Config.MapSize == EHOLMapSize::None)
+	{
+		ChooseSize(FHOLMapSizeRules::GetDefaultSize(Config.GetNumOccupiedSlots()));
+	}
 	Refresh();
 	if (bLobby)
 	{
 		SendSettings();
 	}
+}
+
+void UHOLNewGameScreen::HandleSizeChosen(const int32 Value)
+{
+	// A size too small is greyed in the list: this one holds the players.
+	if (!bLobby)
+	{
+		ChooseSize(static_cast<EHOLMapSize>(Value));
+	}
+	else if (FHOLMapSizeRules::Find(static_cast<EHOLMapSize>(Value)))
+	{
+		// TC3 loop 2: the leader's size, sent; the manager closes the slots past it (and moves the players below).
+		Config.MapSize = static_cast<EHOLMapSize>(Value);
+		SendSettings();
+	}
+	Refresh();
+}
+
+void UHOLNewGameScreen::HandleTeamsTogetherChosen(const int32 Value)
+{
+	Config.bTeamsTogether = Value == 1;
+	if (bLobby)
+	{
+		SendSettings();
+	}
+	Refresh();
 }
 
 void UHOLNewGameScreen::HandleOptionChosen(int32)
@@ -653,11 +796,15 @@ void UHOLNewGameScreen::SendSettings()
 {
 	if (UHOLManagerClient* Client = GetClient())
 	{
-		const FString What = FString::Printf(TEXT("settings %s nomad %d regicide %d catastrophe %d"), *Config.Map.GetAssetName(), Config.bNomad,
-			Config.bRegicide, Config.bCatastrophe);
+		// TC3: the size by its key (none for a map without sizes), "Équipes ensemble".
+		const FHOLMapSizeInfo* Size = FHOLMapSizeRules::Find(Config.MapSize);
+		const FString SizeKey = Size ? FString(Size->Key) : FString();
+		const FString What = FString::Printf(TEXT("settings %s size %s teams together %d nomad %d regicide %d catastrophe %d"), *Config.Map.GetAssetName(),
+			*SizeKey, Config.bTeamsTogether, Config.bNomad, Config.bRegicide, Config.bCatastrophe);
 		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
 		Client->UpdateSettings(Config.Map.GetAssetName(), Config.bNomad, Config.bRegicide, Config.bCatastrophe,
-			FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error) { HandleWritten(Written, Error, What); }));
+			FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error) { HandleWritten(Written, Error, What); }),
+			SizeKey, Config.bTeamsTogether);
 	}
 }
 
@@ -780,6 +927,14 @@ void UHOLNewGameScreen::HandleStateChosen(const int32 SlotIndex, const int32 Val
 		}
 		return;
 	}
+	// TC3 (TC-Q4): a slot past the places of the size stays closed (its list is greyed).
+	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
+	if (SlotIndex >= NumPlaces)
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("New game: slot %d stays closed, past the %d places of the size"), SlotIndex, NumPlaces);
+		Refresh();
+		return;
+	}
 	// AI is greyed in the list (D240): only Closed and Human come here.
 	FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
 	SlotConfig.State = static_cast<EHOLSlotState>(Value);
@@ -858,8 +1013,18 @@ void UHOLNewGameScreen::Launch()
 		UE_LOG(LogHOLUI, Error, TEXT("New game: no match subsystem or no map, nothing launched"));
 		return;
 	}
+	// TC3: refused here rather than on the map (the list greys what does not fit; a configuration given by a file may not).
+	FString PlacesError;
+	if (!FHOLMapSizeRules::CheckPlaces(Launched, &PlacesError))
+	{
+		UE_LOG(LogHOLUI, Error, TEXT("New game: refused, %s"), *PlacesError);
+		ShowError(LOCTEXT("TooManyPlayers", "Trop de joueurs pour cette taille de carte."));
+		return;
+	}
+	// TC3 (TC-Q3): the file of the map at its size (Plain + Small: Plain_Small); without a size, the map as it is.
+	const FSoftObjectPath MapFile = FHOLMapSizeRules::GetMapFile(Launched.Map, Launched.MapSize);
 	Match->SetConfig(Launched);
-	UE_LOG(LogHOLUI, Display, TEXT("New game: launching %s, %d occupied slots, seed %d"), *Launched.Map.ToString(),
+	UE_LOG(LogHOLUI, Display, TEXT("New game: launching %s, %d occupied slots, seed %d"), *MapFile.ToString(),
 		Launched.GetNumOccupiedSlots(), Launched.Seed);
 
 	// The menu's input config (menu mode) would linger on the viewport once its screens are gone: the match starts in
@@ -868,7 +1033,7 @@ void UHOLNewGameScreen::Launch()
 	{
 		Router->SetActiveUIInputConfig(FUIInputConfig(ECommonInputMode::Game, EMouseCaptureMode::NoCapture), this);
 	}
-	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TSoftObjectPtr<UWorld>(Launched.Map));
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TSoftObjectPtr<UWorld>(MapFile));
 }
 
 #undef LOCTEXT_NAMESPACE

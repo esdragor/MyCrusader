@@ -1,0 +1,22 @@
+{
+  "version": 3,
+  "seed": 184467,
+  "map": "/Game/Maps/Plain.Plain",
+  "mapSize": "Large",
+  "bDrawPlaces": true,
+  "bTeamsTogether": true,
+  "slots": [
+    { "state": "Human", "faction": "DawnOrder", "colorIndex": 0, "team": 1, "playerName": "Bob" },
+    { "state": "Closed", "faction": "DawnOrder", "colorIndex": 1, "team": 0, "playerName": "" },
+    { "state": "Human", "faction": "DawnOrder", "colorIndex": 3, "team": 2, "playerName": "Alice" },
+    { "state": "Human", "faction": "DawnOrder", "colorIndex": 5, "team": 1, "playerName": "Chloé" },
+    { "state": "Closed", "faction": "DawnOrder", "colorIndex": 4, "team": 0, "playerName": "" },
+    { "state": "Closed", "faction": "DawnOrder", "colorIndex": 5, "team": 0, "playerName": "" },
+    { "state": "Closed", "faction": "DawnOrder", "colorIndex": 6, "team": 0, "playerName": "" },
+    { "state": "Closed", "faction": "DawnOrder", "colorIndex": 7, "team": 0, "playerName": "" }
+  ],
+  "mode": "Standard",
+  "bNomad": true,
+  "bRegicide": false,
+  "bCatastrophe": false
+}

@@ -1,0 +1,6 @@
+# Plaine Grande (8 joueurs, 808 m) : 4 contre 4, places tirées, « Équipes ensemble » : mes trois alliés à côté de moi
+hol.Camera.Zoom -7
+frames 5
+note Plaine Grande : 808 m de côté, 8 bases en cercle, ~230 m entre deux voisines. Équipe 1 (moi + joueurs 3, 5, 7) contre équipe 2.
+note « Équipes ensemble » : mes trois alliés sont sur les trois places qui suivent la mienne autour du cercle ; les quatre ennemis en face.
+note Entre deux bases voisines, vers le centre : les groupes neutres (bois, or, pierre) ; au centre, le grand bosquet.

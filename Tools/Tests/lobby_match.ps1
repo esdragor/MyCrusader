@@ -2,7 +2,8 @@
 # Tools\Manager\build_manager.ps1) with the staged dedicated server (net_match.ps1 -Stage) as its ServerExe, as in
 # manager_client.ps1 -Case Match, then two games off screen (-RenderOffScreen), "Alice" and "Bob" (-PlayerName=), each
 # with its own Saved folder (-saveddirsuffix=Tests_Alice / Tests_Bob) and log, driven by sequences (hol.Test.Run):
-# Alice opens Multiplayer and creates a lobby; once the manager lists it, Bob is started, sees the list and joins; each
+# Alice opens Multiplayer and creates a lobby (Grande by default), chooses the size Petite (TC3: 2 places, slots 2 to 7
+# closed, the server opens Plain_Small); once the manager lists it, Bob is started, sees the list ("Plaine — Petite 1/2") and joins; each
 # takes a colour (Alice 2, Bob 5) and presses Ready; Bob captures the lobby with both ready (lobby_match_lobby.png);
 # Alice, the leader, presses Launch; both reach Plain (the server logs "Alice holds slot 0" and "Bob holds slot 1") and
 # capture it (lobby_match_alice.png, lobby_match_bob.png); Bob gives up (hol.Victory.Surrender, no cheat), both get the
@@ -94,7 +95,7 @@ $Press = { param($Button) @("hol.UI.Focus $Button", "frames 3", "hol.UI.Key Ente
 # Both, once the lobby is full: their colour and Ready; in the match: a capture; then the end banner and « Retour au salon ».
 $Pick = { param($Who, $Line) @("waitlog : 2 players (", "waitui", "wait 1", "hol.UI.Choose SlotColor$Line $($Colours[$Who])", "waitlog Lobby: colour $($Colours[$Who]) accepted",
     "wait 0.5") + (& $Press ReadyButton) + @("waitlog Lobby: ready on accepted") }
-$InMatch = { param($Who) @("waitlog Lobby: joining match", "waitmap Plain", "waitlog Camera above the start", "frames 60", "capture lobby_match_$($Who.ToLower())") }
+$InMatch = { param($Who) @("waitlog Lobby: joining match", "waitmap Plain_Small", "waitlog Camera above the start", "frames 60", "capture lobby_match_$($Who.ToLower())") }
 $Back = @("waitlog End banner: lobby match", "wait 1.5") + (& $Press ReturnButton) + @("waitmap MainMenu", "waitlog Menu: back in lobby", "wait 3", "quit")
 # C3: once the match is over, the statistics from the server (hol.Stats.Dump on a client logs the copy once complete),
 # then $Back from its third step.
@@ -142,17 +143,20 @@ try {
     if (-not $Status) { throw "the manager does not answer on $Url" }
 
     $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
-        (& $Press CreateButton) + (& $Pick Alice 0) + @("waitlog 2/2 ready", "wait 3") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") +
+        (& $Press CreateButton) + @("waitlog map Plain Large teams together 1:", "waitui", "hol.UI.Choose SizeDropdown 1",
+        "waitlog settings Plain size Small teams together 1 nomad 0 regicide 0 catastrophe 0 accepted") + (& $Pick Alice 0) + @("waitlog 2/2 ready", "wait 3") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") +
         (& $InMatch Alice) + @("waitfile $BobGivesUp 240") + $StatsAfter + $StayAfterEnd + @("waitfile $BobChecked 240") + $Back[2..($Back.Count - 3)] + @("signal $AliceBack") + $Back[($Back.Count - 2)..($Back.Count - 1)])
     # Bob only once the manager lists Alice's lobby: the list is read once, when the screen opens.
     $Deadline = (Get-Date).AddSeconds(180)
     $Lobby = $null
-    while (-not $Lobby) {
-        if ($Games.Alice.HasExited -or (Get-Date) -gt $Deadline) { throw "no lobby created by Alice" }
+    # TC3: listed once Alice has chosen Petite (2 places).
+    while (-not $Lobby -or $Lobby.size -ne "Small") {
+        if ($Games.Alice.HasExited -or (Get-Date) -gt $Deadline) { throw "no lobby created by Alice on Petite" }
         Start-Sleep -Milliseconds 500
         $Lobby = @((Invoke-RestMethod "${Url}/lobbies" -TimeoutSec 2).lobbies)[0]
     }
-    Write-Host "lobby $($Lobby.id) created by Alice"
+    if ($Lobby.maxPlayers -ne 2) { throw "lobby on Petite with maxPlayers $($Lobby.maxPlayers), 2 wanted" }
+    Write-Host "lobby $($Lobby.id) created by Alice, $($Lobby.map) $($Lobby.size), $($Lobby.maxPlayers) places"
     $Games.Bob = Start-Game Bob (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3") +
         (& $Press JoinButton0) + (& $Pick Bob 1) + @("waitlog 2/2 ready", "wait 0.5", "capture lobby_match_lobby") +
         (& $InMatch Bob) + @("waitfile $CarolIn 180", "hol.Stats.Dump", "waitlog Stats: the server refused", "wait 2", "signal $BobGivesUp", "hol.Victory.Surrender") +
@@ -167,7 +171,7 @@ try {
     }
     Write-Host "lobby $($Lobby.id) in_game: Carol started"
     $Games.Carol = Start-Game Carol (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3",
-        "capture lobby_match_watchlist") + (& $Press WatchButton0) + @("waitlog Multiplayer: watching match", "waitmap Plain", "frames 120", "capture lobby_match_watch") + $StatsLive + @(
+        "capture lobby_match_watchlist") + (& $Press WatchButton0) + @("waitlog Multiplayer: watching match", "waitmap Plain_Small", "frames 120", "capture lobby_match_watch") + $StatsLive + @(
         "hol.Stats.Dump", "waitlog Stats: client copy received", "frames 3", "signal $CarolIn", "waitlog End banner: MatchOver",
         "hol.Stats.Dump", "waitlog Stats: client copy received", "frames 3", "wait 2", "capture lobby_match_watch_end") +
         (& $Press StatsButton) + @("waitlog Stats screen: opened", "frames 5", "capture lobby_match_stats") + (& $Press BackButton) +
@@ -254,7 +258,7 @@ try {
         $L = $Lines.Carol
         if (-not ($L -match "Multiplayer: lobby $([regex]::Escape($Lobby.id)) .* en partie .*, watch")) { $Failure = "Carol : the lobby not shown in a match with « Regarder »" }
         elseif (-not ($L -match "Multiplayer: watching match \S+ of $([regex]::Escape($Lobby.id)) on port \d+")) { $Failure = "Carol : no 'Multiplayer: watching match'" }
-        elseif (-not ($L -match "LoadMap: 127\.0\.0\.1/Game/Maps/Plain\?Version=")) { $Failure = "Carol : Plain not loaded from the server (or with a Name)" }
+        elseif (-not ($L -match "LoadMap: 127\.0\.0\.1/Game/Maps/Plain_Small\?Version=")) { $Failure = "Carol : Plain_Small not loaded from the server (or with a Name)" }
         elseif (-not ($L -match "Test capture: lobby_match_watch \(hud=HOLGameScreen\)")) { $Failure = "Carol : no capture of the match" }
         elseif (-not ($L -match "Players table: Alice, Bob$")) { $Failure = "Carol : the table of players without 'Alice, Bob'" }
         elseif (-not ($L -match "Test capture: lobby_match_stats_live \(hud=HOLGameScreen menu=HOLStatsScreen\)")) { $Failure = "Carol : no capture of the statistics during the match" }
@@ -277,6 +281,7 @@ try {
         elseif ($ServerLog -and -not (Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: (Warning: )?Login refused from .*: The match is over \(spectator\)" -Quiet)) { $Failure = "the server has no 'Login refused ... (spectator)' for Dave" }
         elseif (-not ($Lines.Alice -match "Lobby: start accepted \(HTTP 202\)")) { $Failure = "Alice's Launch not accepted" }
         elseif (-not ($Lines.Bob -match "Test capture: lobby_match_lobby")) { $Failure = "no capture of the lobby at Bob's" }
+        elseif (-not ($Lines.Bob -match "Multiplayer: lobby \S+ .* Plaine .{1,3} Petite 1/2 au salon, join")) { $Failure = "Bob's list without 'Plaine — Petite 1/2' (TC3)" }
         elseif (-not ($Lines.Alice -match "End banner: Victory")) { $Failure = "Alice has no Victory banner" }
         elseif (-not ($Lines.Bob -match "End banner: Defeat")) { $Failure = "Bob has no Defeat banner" }
         elseif (-not $ServerLog) { $Failure = "no server log of the match" }

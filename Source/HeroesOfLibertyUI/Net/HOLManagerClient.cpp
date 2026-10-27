@@ -377,9 +377,10 @@ void UHOLManagerClient::UpdateMe(const TOptional<int32> ColorIndex, const TOptio
 	Write(TEXT("/me"), FHOLManagerClientRules::MakeMeBody(ColorIndex, Team, bReady), MoveTemp(Done));
 }
 
-void UHOLManagerClient::UpdateSettings(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe, FHOLManagerLobbyDone Done)
+void UHOLManagerClient::UpdateSettings(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe, FHOLManagerLobbyDone Done,
+	const FString& Size, const TOptional<bool> bTeamsTogether)
 {
-	Write(TEXT("/settings"), FHOLManagerClientRules::MakeSettingsBody(Map, bNomad, bRegicide, bCatastrophe), MoveTemp(Done));
+	Write(TEXT("/settings"), FHOLManagerClientRules::MakeSettingsBody(Map, bNomad, bRegicide, bCatastrophe, Size, bTeamsTogether), MoveTemp(Done));
 }
 
 void UHOLManagerClient::SetSlot(const int32 SlotIndex, const bool bOpen, FHOLManagerLobbyDone Done)

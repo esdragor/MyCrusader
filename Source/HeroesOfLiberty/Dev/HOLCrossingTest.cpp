@@ -314,7 +314,7 @@ namespace UE::HeroesOfLiberty::Dev::Crossings
 		UWorld* World = GetGameWorld();
 		AHOLPlayerController* Controller = World ? Cast<AHOLPlayerController>(World->GetFirstPlayerController()) : nullptr;
 		const AHOLPlayerState* PlayerState = Controller ? Controller->GetHOLPlayerState() : nullptr;
-		const AHOLStartSlot* StartSlot = PlayerState ? AHOLStartSlot::Find(World, PlayerState->GetPlayerIndex()) : nullptr;
+		const AHOLStartSlot* StartSlot = PlayerState ? AHOLStartSlot::FindForSlot(World, PlayerState->GetPlayerIndex()) : nullptr;
 		if (Args.IsEmpty() || !StartSlot)
 		{
 			UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Test.Crossings <Count> [Seed=1] [Units=50] [Type=ManAtArms] [quit], in a match"));

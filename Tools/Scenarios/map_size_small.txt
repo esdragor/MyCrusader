@@ -1,0 +1,6 @@
+# Plaine Petite (2 joueurs, 440 m) : un contre une IA, places tirées au hasard ; la carte, les bases et les ressources neutres
+hol.Camera.Zoom -7
+frames 5
+note Plaine Petite : 440 m de côté, deux bases face à face à ~330 m. Chaque base : crête de rochers devant, bois de 40 arbres, 6 baies, pierre et or à ~60 m.
+note Entre les deux bases, vers le centre : les ressources neutres (bois, or, pierre) et le bosquet du centre. Dézoome et promène la caméra jusqu'aux limites.
+note Relance le scénario (² puis hol.Scenario map_size_small) : la place tirée peut changer (graine).
