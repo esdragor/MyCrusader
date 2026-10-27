@@ -38,6 +38,40 @@ Rien n'est tranché ici : les questions sont posées à l'utilisateur une à la 
     la machine, rien du script.
   - Attend la validation de l'utilisateur pour committer. Suite : AS2 = cache précompilé au paquet (D484), puis le
     premier vrai fichier en script (question à poser).
+- 2026-10-27 : AS1 validé, commité, dans main (806ae43). **AS2 (cache précompilé au paquet)** en cours dans Elrond :
+  - `Tools/Package/precompile_scripts.ps1 -PackageDir` : lance l'exe du jeu (`Windows\`) puis celui du serveur
+    (`WindowsServer\`) avec `-as-generate-precompiled-data` ; vérifie le `Script\PrecompiledScript.Cache` écrit, sans
+    erreur de script ; retire ce que le lancement laisse (`Saved\` s'il n'existait pas, `AS_JITTED_CODE\`).
+    `package.ps1` l'appelle après `Version.txt` (étape 5b).
+  - `packaged_smoke.ps1` : exige « Using fully precompiled scripts » et aucune `Angelscript: Error:`.
+  - `package.ps1` : UAT relancé toutes les 20 s (60 min au plus) quand UnrealBuildTool est déjà pris
+    (`Failed (ConflictingInstance)`, exit 10, vu deux fois ce matin : la compilation d'Arwen, lancée en chemins
+    relatifs `dotnet ..\..\Engine\...`, échappe à l'attente de l'étape 3). `-ubtargs=-WaitMutex` essayé : sans effet
+    (il va dans chaque cible, le verrou est pris avant).
+  - Ordre prévu : paquet sans cache → `packaged_smoke` rouge (seul défaut : scripts non précompilés) →
+    `precompile_scripts` seul → `packaged_smoke` vert → paquet complet avec l'étape 5b → vert.
+  - Vu (paquet 2026-10-27-806ae43, sans cache, 13 min) : `packaged_smoke` rouge, « scripts not precompiled » ;
+    le jeu compile alors ses scripts au démarrage en ~0,4 ms (un seul petit fichier). `precompile_scripts` seul :
+    jeu et serveur, cache de 0,9 Ko en 7-8 s chacun ; `packaged_smoke` vert (30 s) ; le serveur empaqueté démarre lui
+    aussi sur son cache (« Using fully precompiled scripts », lancé 40 s puis arrêté).
+  - Trouvé en route : (1) le jeu et le serveur empaquetés écrivent au démarrage 12 erreurs de liaison du moteur
+    (`RegisterObjectMethod` sur des délégués de test `FTestDynamicDelegateFloat`… dont le paramètre s'appelle `float` ou
+    `int64`, mots réservés du script), sans effet ; `Tools/Package/script_errors.ps1` ne retient donc que les erreurs
+    des fichiers `.as` (vérifié sur un faux journal : l'erreur d'un `.as` sortie, celles des liaisons ignorées).
+    (2) Le lancement `-as-generate-precompiled-data` sort en code 1 : il quitte pendant le démarrage du moteur et
+    l'arrêt du plugin PCG échoue alors sur un `ensure` (« Attempted to unregister a data class that was not
+    registered »), cache déjà écrit ; le critère est donc « cache écrit, aucune erreur de `.as` ».
+  - main fusionné en avance rapide (e36efe9 : IA1.1, J8a.1) ; paquet complet relancé avec l'étape 5b.
+  - Paquet complet 2026-10-27-e36efe9 : **PASS en 34 min** (10 min d'attente d'UnrealBuildTool pris ailleurs, la
+    relance a marché ; compilation complète 13,6 min après la fusion ; cuisson ~15 min dont 10 au ralenti, machine
+    partagée). Étape 5b : jeu 12 s, serveur 7 s, cache 0,9 Ko chacun. `packaged_smoke` PASS (10 s).
+    `quick_check` sur le code fusionné : tests 193/193 PASS, smoke PASS (relancé : deux départs calés sur le
+    redémarrage de zenserver, arrêté avec la fin du paquet).
+  - **À savoir pour les prochains paquets** : tant que BuildCookRun tourne, il tient le verrou d'AutomationTool, et
+    tout éditeur ou jeu lancé dans une autre copie attend au démarrage (Turnkey `-WaitForUATMutex`) : 30 min de
+    blocage pour les autres sessions ce midi. Un paquet complet se lance donc machine calme, ou en prévenant les
+    autres sessions. Pour vérifier une étape d'après UAT, la lancer seule sur le paquet existant.
+  - Validé par l'utilisateur, commité.
 
 ## Côté projet (relevé du 2026-10-26)
 

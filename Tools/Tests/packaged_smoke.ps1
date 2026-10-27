@@ -94,6 +94,15 @@ if (-not ($Log | Select-String -SimpleMatch "Version: $Version" -Quiet)) {
     $Faults.Add("version line 'Version: $Version' missing$(if ($Said.Count) { " (the game says '$($Said[0])')" })")
 }
 
+# The scripts (D484): the game starts on the package's precompiled cache (Tools\Package\precompile_scripts.ps1, run by
+# package.ps1), without compiling its .as files, and none fails (the engine's own bind errors aside, script_errors.ps1).
+if (-not ($Log | Select-String -SimpleMatch "Using fully precompiled scripts" -Quiet)) {
+    $Faults.Add("scripts not precompiled (no 'Using fully precompiled scripts'; Tools\Package\precompile_scripts.ps1)")
+}
+. (Join-Path $PSScriptRoot "..\Package\script_errors.ps1")
+$ScriptErrors = @(Get-ScriptFileErrors $GameLog)
+if ($ScriptErrors.Count) { $Faults.Add("script errors: $($ScriptErrors -join ' ')") }
+
 # The captures, from the packaged game's own Saved folder (beside it, or in the user's local app data).
 $Found = @(foreach ($Folder in $Package, (Join-Path $env:LOCALAPPDATA "HeroesOfLiberty")) {
     Get-ChildItem $Folder -Recurse -File -Filter "smoke_*.png" -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $Start } })

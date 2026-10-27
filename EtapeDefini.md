@@ -67,7 +67,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Chantiers en cours
 - `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 (pièces du paladin) et J8a.1 (type `Hero`, PV en float) faites, J8a.2 suivante
 - `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 et IA1.1 dans `main`, plan d'IA1 écrit
-- `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 fait (tests en script dans quick_check) ; suite AS2 cache précompilé au paquet, puis le premier vrai fichier en script
+- `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; suite : le premier vrai fichier en script (question à poser)
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
 - `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D428), AR1 à AR4 faites (pièces, gestes), reste la fabrication et le C++ après la recompilation
