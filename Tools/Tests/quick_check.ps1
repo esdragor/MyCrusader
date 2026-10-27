@@ -204,7 +204,7 @@ Remove-Item $GameLog, $TestsLog -ErrorAction SilentlyContinue
 $NoStartingPeasants = "-ini:Game:[/Script/HeroesOfLiberty.HOLMatchSettings]:StartingPeasants=0"
 $TestsProcess = $null
 if ($Parts -contains "tests") {
-    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -nosound -abslog=`"$TestsLog`""
+    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty+Angelscript.UnitTests;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -as-exit-on-error -nosound -abslog=`"$TestsLog`""
     $TestsProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor-Cmd.exe") -ArgumentList $TestsArguments -PassThru -WindowStyle Hidden
 }
 
@@ -300,7 +300,7 @@ if ($Parts -contains "net") {
         }
     }).AddArgument($ManagerListener).AddArgument($ManagerCallsFile)
     $null = $ManagerRunspace.BeginInvoke()
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1$NetSourceCommand`""
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -1751,7 +1751,7 @@ $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
 # Off screen on a fixed step, the world is not drawn while the sequence waits for the game (each frame ~2 ms cheaper);
 # drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
 if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
-$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
+$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -1926,7 +1926,7 @@ if ($NetListening) {
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
-        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
+        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
         Remove-Item $ClientLog -ErrorAction SilentlyContinue
         $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
@@ -1953,6 +1953,11 @@ if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $true
+# The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message.
+function Get-ScriptErrors([string] $Path) {
+    if (-not (Test-Path $Path)) { return @() }
+    return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
+}
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null).
@@ -2008,6 +2013,9 @@ function Format-ChainReport($Report) {
 
 $SequenceChecks = [ordered]@{}
 $SequenceChecks["game launch ended by itself"] = -not $GameTimedOut
+# The game quits at once on a script that does not compile (-as-exit-on-error): its first errors, by name.
+$GameScriptErrors = @(Get-ScriptErrors $GameLog)
+$SequenceChecks["scripts compiled ($(if ($GameScriptErrors.Count) { $GameScriptErrors -join ' ' } else { 'no error' }))"] = $GameScriptErrors.Count -eq 0
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
 $Expected = @{ title = "menu=HOLTitleScreen modal=none"; stackback = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
@@ -4700,6 +4708,12 @@ if ($TestsProcess) {
     $Checks["tests ran ($($Results.Count))"] = (-not $TestsTimedOut) -and $Results.Count -gt 0
     $Checks["every test started completed ($($Results.Count) of $Started)"] = $Results.Count -eq $Started
     $Checks["all green (failed: $($Failures -join ', '))"] = $Failures.Count -eq 0
+    # The scripts (D484): a script that does not compile would drop its tests without failing one (the editor quits at
+    # once on it, -as-exit-on-error, instead of waiting in its "fix the errors" window).
+    $ScriptErrors = @(Get-ScriptErrors $TestsLog)
+    $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    $ScriptTests = @($Results | Where-Object { $_.Groups[2].Value -like "Angelscript.UnitTests.*" }).Count
+    $Checks["script tests ran ($ScriptTests)"] = $ScriptTests -gt 0
     $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
 }
 

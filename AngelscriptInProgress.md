@@ -20,6 +20,24 @@ Rien n'est tranché ici : les questions sont posées à l'utilisateur une à la 
 - 2026-10-26 : **AS-Q2 = B** (choix de l'utilisateur ; recommandation : A puis B). Les deux reportées au GDD en
   **D484** (compteur à D485 ; la session IA travaillait aussi dans GDD.md et EtapeDefini.md de la copie principale).
   Reste : rien à coder avant le premier fichier en script ; à ce moment, le test rouge exprès et l'étape du cache.
+- 2026-10-27 : moteur AS_3 prêt. **AS1 (plomberie des tests en script)** dans le worktree Elrond, branche
+  `angelscript-first` (depuis main 85508be) :
+  - `Script/Tests/HOLScriptSmoke_Test.as` : `Test_SeesProjectClasses` (le script voit `AHOLBuilding`) ;
+  - `quick_check` : filtre `HeroesOfLiberty+Angelscript.UnitTests` ; contrôles « scripts compiled » (3 premières
+    lignes d'erreur `Angelscript: Error:` du journal, tests et jeu) et « script tests ran (N) » > 0 ;
+  - `-as-exit-on-error` sur tous les lancements automatiques de `Tools/Tests/*.ps1` (pas `play.ps1`) : sans lui, un
+    script qui ne compile pas ouvre au démarrage la fenêtre « corrigez les erreurs » et l'éditeur attend (vu : 421 s
+    puis délai dépassé, « tests 0/0 ») ; avec lui, il quitte tout de suite.
+  - Rouges vus avant le vert : assertion fausse exprès → `tests 187/188 FAIL`, le test en script nommé ; fichier qui
+    ne compile pas → `scripts compiled` KO avec fichier, ligne et message, côté tests et côté jeu, `script tests ran
+    (0)` KO. Vert : `quick_check` par défaut PASS en 37 s, tests 187/187 (186 C++ + 1 script).
+  - Notes : `StaticClass()` est déprécié en script (le type sert de valeur : `AHOLBuilding`) ; `FUnitTest` existe hors
+    éditeur, les `*_Test.as` compilent donc aussi dans le jeu empaqueté (assertions inertes) ; l'extension VS Code
+    Angelscript se connecte au port de débogage de chaque éditeur lancé (sans effet sur les tests). Deux départs de
+    jeu calés > 120 s sur `zen.exe service status` pendant que trois autres copies lançaient leurs tests : charge de
+    la machine, rien du script.
+  - Attend la validation de l'utilisateur pour committer. Suite : AS2 = cache précompilé au paquet (D484), puis le
+    premier vrai fichier en script (question à poser).
 
 ## Côté projet (relevé du 2026-10-26)
 
