@@ -7497,3 +7497,17 @@ d'épée).
   recompilées sur main ce7cc76 (Arbalétrier), `quick_check -Parts tests,combat,net` PASS en 158 s (tests 203/203, net 2
   clients). La boucle 4a (`quick_check.ps1`) reste hors du commit, en `stash@{0}` (« J8a.3 loop 4a quick_check hero
   sheets ») ; reste de J8a.3 : client 1 qui meurt, rouge/vert de `net hero sheets`, boucle 4b.
+- (J8a.3, 2026-10-27) **Le client 1 ne plante pas** (sous-agent, ~12 min, aucun C++ changé) : sur un port à part (7787),
+  le client 1 va au bout et sort en 0 ; fiche 407 = serveur, XP 7 chez lui, celle d'Alice cachée, pas de mort 2145, PV
+  tirés de la part 408 = attendu. **Cause probable des « morts »** : toutes les copies prennent `$NetPort = 7777` ; si
+  une autre copie y a déjà un serveur, le nôtre passe en silence sur 7778 et nos clients se branchent sur le serveur de
+  l'autre copie (Protocol mismatch Iris, `waitmap Plain` en timeout ; « Bob left » peut venir d'un autre Bob). Signalé
+  à NetPlaytest (port propre à chaque copie, ou échec si « listening on port $NetPort » manque). Lecteur des rapports
+  du stash corrigé (`@(& ...)` emballait deux fois la liste : 1 rapport compté au lieu de 2). Rouge exprès de
+  `net hero sheets` lancé (XP de l'autre attendue visible), port 7787 et `-asdebugport=0` le temps des passages.
+- (J8a.3, 2026-10-27) **Boucle 4a rouge puis verte** : rouge exprès (XP de l'autre attendue visible) → seules les deux
+  lignes « the other's hidden » KO (client 1 slot 0 xp 0, client 2 slot 1 xp 0), tout le reste vert, client 1 au bout ;
+  vert : `net 2 clients` PASS, `net hero sheets` PASS, 161 s (port 7787 et `-asdebugport=0` le temps des passages,
+  retirés). `quick_check.ps1` +92/-1 non commité, attend l'accord de l'utilisateur.
+- (J8a.3, 2026-10-27) Boucle 4a commitée (accord de l'utilisateur). Suite : boucle 4b (le client lit la fiche) après
+  l'avance de main par net-playtest (port de test propre à chaque copie, 7800 + 10 × n, arrive avec elle).
