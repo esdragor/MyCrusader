@@ -93,6 +93,28 @@ public:
 	 * after its sites, applied by the builders in the order given.
 	 */
 	void IssueGatherOrder(TConstArrayView<uint32> UnitIds, int32 SourceIndex, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
+	/**
+	 * Units to unload what they carry at one of their player's buildings (D485, EtapeDefini L), then stand idle: only those
+	 * carrying a resource it takes obey (checked again by the gatherers' step). Applied at once; with bQueue (Shift, L.3),
+	 * it goes at the end of each worker's queue, among its sites and sources: at its turn, a worker carrying a resource it
+	 * takes unloads there, the others go on to the next item.
+	 */
+	void IssueDropOffOrder(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, int32 PlayerIndex = INDEX_NONE, bool bQueue = false);
+	/**
+	 * A player's drop-off through the queue of moves (D485, EtapeDefini L.5b): EHOLOrderKind::DropOff, Point (the point
+	 * clicked) for the units that carry nothing it takes. With bQueue (Shift), it waits for the units' walks before it
+	 * (UHOLUnitOrderProcessor); its builders with a queue of work get it in that queue instead (IssueDropOffOrder, bQueue).
+	 */
+	void IssueDropOffMoveOrder(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, int32 PlayerIndex = INDEX_NONE,
+		bool bQueue = false);
+	/**
+	 * A player's source (SourceIndex) or site (Building) with Shift through the queue of moves (EtapeDefini L.6):
+	 * EHOLOrderKind::Gather or Build, Location for the logs. It waits for the units' walks before it (UHOLUnitOrderProcessor),
+	 * then gives them the Shift order of the gathering or the builders (IssueGatherOrder, IssueBuildOrder: with no queue of
+	 * work, at once); a worker with a queue of work gets it at the end of that queue at once, as before.
+	 */
+	void IssueQueuedWorkOrder(TConstArrayView<uint32> UnitIds, int32 SourceIndex, AHOLBuilding* Building, const FVector& Location,
+		int32 PlayerIndex = INDEX_NONE);
 	/** Takes the gather orders waiting for the next step (the gathering calls this at each step). */
 	void ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders);
 

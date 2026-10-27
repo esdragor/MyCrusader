@@ -142,6 +142,7 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		case HOLOrderChain::EStepKind::Rally:
 			return OrderBuildColor;
 		case HOLOrderChain::EStepKind::Gather:
+		case HOLOrderChain::EStepKind::Deposit: // D485: an unload, blue as the gathering
 			return OrderGatherColor;
 		default:
 			return OrderMoveColor;
