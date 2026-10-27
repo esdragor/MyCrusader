@@ -19,6 +19,9 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ### Fin de partie
 - Conditions de victoire à coder : vies par palier (avec les paliers : P-Q1 = C, chantier des paliers juste après J8b, XP et niveaux), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
 
+### Cartes
+- Nouvelles cartes : El Dorado, Les Gués, La Forêt profonde, La Couronne, La Steppe, Les Cols, L'Arrière-pays *(après le prototype ; D496, GDD § 8.5 ; chacune sa recette, appelée par taille ; journal `Docs/Archive/MapSizeInProgress.md`)*
+
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
