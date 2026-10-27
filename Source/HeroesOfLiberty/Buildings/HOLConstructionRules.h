@@ -299,16 +299,21 @@ namespace HOLConstruction
 	}
 
 	/**
-	 * One item of a worker's queue (Shift, D311; the user's trial of J6a.4): a site to build, or a source to gather (Shift +
-	 * right click on a resource) once the items before it are done. A gathering lasts until its massif is used up (no
-	 * spot left in it nor in its nearby groves, D309), then the next item comes.
+	 * One item of a worker's queue (Shift, D311; the user's trial of J6a.4): a site to build, a source to gather (Shift +
+	 * right click on a resource) or a deposit to unload at (Shift + right click on one of its finished buildings that take
+	 * deliveries, D485) once the items before it are done. A gathering lasts until its massif is used up (no spot left in
+	 * it nor in its nearby groves, D309), an unloading until it has unloaded (nothing taken carried: at once), then the
+	 * next item comes.
 	 */
 	template<typename SiteType>
 	struct TWorkItem
 	{
+		/** The site to build; with bDeposit, the building to unload at. */
 		SiteType Site = SiteType();
-		/** The source to gather (an index of UHOLSourceSubsystem); INDEX_NONE: a site. */
+		/** The source to gather (an index of UHOLSourceSubsystem); INDEX_NONE: a site or a deposit. */
 		int32 SourceIndex = INDEX_NONE;
+		/** A deposit to unload at (D485): Site is the building, finished; SourceIndex INDEX_NONE. */
+		bool bDeposit = false;
 
 		static TWorkItem MakeBuild(const SiteType& InSite)
 		{
@@ -322,16 +327,29 @@ namespace HOLConstruction
 			Item.SourceIndex = InSourceIndex;
 			return Item;
 		}
+		static TWorkItem MakeDeposit(const SiteType& InBuilding)
+		{
+			TWorkItem Item;
+			Item.Site = InBuilding;
+			Item.bDeposit = true;
+			return Item;
+		}
 		bool IsGather() const { return SourceIndex != INDEX_NONE; }
-		bool operator==(const TWorkItem& Other) const { return Site == Other.Site && SourceIndex == Other.SourceIndex; }
+		bool IsDeposit() const { return bDeposit; }
+		/** A site to build: neither a source nor a deposit. */
+		bool IsBuild() const { return !IsGather() && !IsDeposit(); }
+		bool operator==(const TWorkItem& Other) const
+		{
+			return Site == Other.Site && SourceIndex == Other.SourceIndex && bDeposit == Other.bDeposit;
+		}
 		bool operator!=(const TWorkItem& Other) const { return !(*this == Other); }
 	};
 
 	/**
 	 * A worker's queue moves on (the user's trial of J6a.4): its head done when bHeadDone (a gathering at the head ends only
-	 * when the gathering stops: its massif used up), then the sites no longer open (finished, cancelled) dropped from the
-	 * head as AdvanceBuildQueue does; a gathering waiting its turn stays (its massif is searched when it comes). False when
-	 * nothing is left.
+	 * when the gathering stops: its massif used up; an unloading, once unloaded, D485), then the sites no longer open
+	 * (finished, cancelled) dropped from the head as AdvanceBuildQueue does; a gathering or a deposit waiting its turn stays
+	 * (its massif is searched, its load judged, when it comes). False when nothing is left.
 	 */
 	template<typename SiteType>
 	bool AdvanceWorkQueue(TArray<TWorkItem<SiteType>>& Queue, const bool bHeadDone, TFunctionRef<bool(const SiteType&)> IsSiteOpen)
@@ -342,7 +360,7 @@ namespace HOLConstruction
 		}
 		return AdvanceBuildQueue<TWorkItem<SiteType>>(Queue, [&IsSiteOpen](const TWorkItem<SiteType>& Item)
 		{
-			return Item.IsGather() || IsSiteOpen(Item.Site);
+			return !Item.IsBuild() || IsSiteOpen(Item.Site);
 		});
 	}
 

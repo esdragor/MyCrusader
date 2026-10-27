@@ -166,6 +166,71 @@ void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitId
 	Order.bRally = bRallyOrders;
 }
 
+void UHOLCommandSubsystem::IssueDropOffOrder(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const int32 PlayerIndex, const bool bQueue)
+{
+	if (UnitIds.Num() == 0 || !Building || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	if (bQueue)
+	{
+		// In the workers' queue, among the build orders, as a source with Shift (D485, EtapeDefini L.3): their load is judged
+		// at its turn.
+		FHOLBuildOrder& QueuedOrder = PendingBuildOrders.AddDefaulted_GetRef();
+		QueuedOrder.UnitIds = UnitIds;
+		QueuedOrder.Building = Building;
+		QueuedOrder.bDeposit = true;
+		QueuedOrder.PlayerIndex = PlayerIndex;
+		QueuedOrder.bQueue = true;
+		QueuedOrder.bChain = bPlayerOrders;
+		return;
+	}
+	FHOLGatherOrder& Order = PendingGatherOrders.AddDefaulted_GetRef();
+	Order.UnitIds = UnitIds;
+	Order.Deposit = Building;
+	Order.PlayerIndex = PlayerIndex;
+	Order.bChain = bPlayerOrders;
+}
+
+void UHOLCommandSubsystem::IssueDropOffMoveOrder(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point,
+	const int32 PlayerIndex, const bool bQueue)
+{
+	if (!Building)
+	{
+		return;
+	}
+	// As a move to the point clicked (brought back to the navmesh, D228; refused as a move is), then made a drop-off.
+	const int32 Before = PendingMoveOrders.Num();
+	IssueMoveOrder(UnitIds, Point, PlayerIndex, /*bFromTask*/ false, FVector2D::ZeroVector, /*bFrontWidth*/ false, bQueue);
+	if (PendingMoveOrders.Num() > Before)
+	{
+		PendingMoveOrders.Last().Kind = EHOLOrderKind::DropOff;
+		PendingMoveOrders.Last().TargetBuilding = Building;
+	}
+}
+
+void UHOLCommandSubsystem::IssueQueuedWorkOrder(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, AHOLBuilding* Building,
+	const FVector& Location, const int32 PlayerIndex)
+{
+	if (UnitIds.Num() == 0 || (SourceIndex == INDEX_NONE && !Building) || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	// Not brought back to the navmesh as a move: no walk of its own, the gathering and the builders walk the units.
+	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();
+	Order.UnitIds = UnitIds;
+	Order.Target = Location;
+	Order.PlayerIndex = PlayerIndex;
+	Order.Kind = SourceIndex != INDEX_NONE ? EHOLOrderKind::Gather : EHOLOrderKind::Build;
+	Order.SourceIndex = SourceIndex;
+	if (SourceIndex == INDEX_NONE)
+	{
+		Order.TargetBuilding = Building;
+	}
+	Order.bQueue = true;
+	Order.bChain = bPlayerOrders;
+}
+
 void UHOLCommandSubsystem::ConsumeGatherOrders(TArray<FHOLGatherOrder>& OutOrders)
 {
 	OutOrders.Reset();

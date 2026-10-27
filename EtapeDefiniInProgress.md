@@ -1040,3 +1040,231 @@ plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste v�
    « `quick_check` : l'abandon en réseau… » retirée d'`EtapeDefini.md`, fusion dans `main`, Arwen libérée.
 
 **Clos le 2026-10-26** : accord de l'utilisateur (« go »), commité sur `net-surrender-check` et fusionné dans `main` ; Arwen libérée.
+
+## L — Clic droit sur un dépôt : aller y décharger
+
+Demande de l'utilisateur le 2026-10-27 : « lorsque l'on clique sur le bâtiment de prod de la ressource que l'on porte,
+on va drop ce qu'on a dans la main (bois et camp de bûcheron par exemple) ». Règle : **D485** au GDD (après décharge :
+inactif ; Maj : en file). Worktree `HeroesOfLiberty-Haldir`, branche `dropoff-click` depuis `main` 60230cd
+(`IN_USE.txt` posé ; la branche `perf-target` d'avant reste intacte).
+
+### Constat (code de `main` 60230cd)
+
+- `AHOLPlayerController::OrderAt` : un clic droit sur son bâtiment fini envoie les unités au point du sol (aucun cas
+  « dépôt ») ; chantier à soi → bâtir, bâtiment ennemi → attaque.
+- La récolte (`UHOLGatherProcessor`) a déjà la phase `ToDeposit` : `WalkToDeposit` va au **dépôt le plus proche**
+  (`FindDeposit`), `Unload` décharge ; `SourceIndex == INDEX_NONE` en route → `Stop` (inactif) après la décharge.
+- Maj + source va dans la file des ouvriers (`IssueGatherOrder` bQueue → `FHOLBuildOrder.SourceIndex` →
+  `HOLConstruction::TWorkItem::MakeGather`) ; à son tour, `UHOLBuildProcessor` la confie à la récolte (phase `Gathering`)
+  et passe à la suite quand la récolte s'arrête.
+- Le client ne connaît pas la charge de chaque unité (D303) : le tri porteur / non porteur se fait chez le serveur.
+
+### Plan (boucles de 15 min, sous-agents)
+
+- **L.1** Tests rouges (`quick_check`, vraie chaîne : `hol.Select.OrderGround` sur le bâtiment) : sans Maj, des Paysans
+  qui portent du bois, clic droit sur le camp de bûcheron → déchargent **à ce camp** (même si le forum est plus près
+  pour l'un d'eux), puis inactifs ; un Paysan qui ne porte rien / porte de la nourriture → marche au point ; avec Maj
+  (Paysan qui bâtit, Maj + clic sur le camp) → décharge après son chantier.
+- **L.2** Code sans Maj : ordre `DropOff` (controller → RPC → `HOLPlayerOrders::DropOff` → file des ordres), dépôt visé
+  dans `FHOLGatherFragment`, `FindDeposit` le préfère ; non-porteurs et soldats → ordre de déplacement au point.
+- **L.3** Code Maj : élément de file « dépôt » (`TWorkItem`), confié à la récolte à son tour ; ligne de file bleue.
+- **L.4** Scénario d'essai `Tools/Scenarios/dropoff_click.txt` (`play.ps1`), répétition hors écran, puis essai de
+  l'utilisateur.
+
+### Suivi
+
+- 2026-10-27 : questions tranchées (D485), plan écrit ; Haldir compilé sur la nouvelle branche (PASS, 78 s). L.1 (tests rouges) confiée à un sous-agent.
+- 2026-10-27 (L.1, sous-agent) : cas `build:dropoff` ajouté à `Tools/Tests/quick_check.ps1` (worktree Haldir, dernier cas de
+  la partie build ; marques `build dropoff` et `build dropoff order`) : camp de bûcheron D (-19200, -3200) bâti d'un coup,
+  3 Paysans récoltent 5 s l'arbre près de CampTree (forum plus près qu'eux de D), un 4ᵉ vide ; les 4 choisis
+  (`ClickUnit`), clic droit au centre de D (`OrderGround`) ; `hol.Units.Where 0` avant, +10 s, +13 s ; contrôles : mise en
+  place (3 portent du bois partiel, forum plus près, le 4ᵉ rien), chacun des 3 décharge son bois **à D** et nulle part
+  ailleurs, le vide rien, puis les 4 inactifs à moins de 12 m de D sans charge. (c) Maj pas encore fait.
+- 2026-10-27 (L.1, résultat) : `quick_check.ps1 -Parts build:dropoff` **ROUGE pour la bonne raison** en 43 s (séquence
+  PASS, jeu 24,7 s ; mise en place PASS : 3 Paysans portent 2-3 bois, forum plus près, le 4ᵉ rien) :
+  `[KO] right click on D: each of the three unloads its wood at D ... (0 unloads: )` et `[KO] then the four idle in front
+  of D ... (#2 Idle Wood 3, D 552 cm, #3 Idle Wood 3, ... #5 Idle, D 491 cm)` : ils marchent au point et restent avec leur
+  bois. Sélection par `BoxGround` (le `ClickUnit -N add` basculait la même unité). Reste : (c) Maj, et la tenue du cas
+  dans `-Full` (boîtes près du bois où récoltent les Paysans du cas `build camp`).
+- 2026-10-27 (bilan L.1) : sous-agent arrêté au minuteur de 15 min, en train d'attaquer (c) Maj après le rouge de (a) et
+  (b) ; son diff (`quick_check.ps1`, +54 lignes, cas `build:dropoff`) est cohérent et gardé. **Amélioration** : une
+  boucle = un seul objectif (un cas, ou un changement de code), le sous-agent rend la main dès cet objectif atteint.
+  (c) Maj passe en L.3 (son cas rouge d'abord). Suite : L.2, code sans Maj, jusqu'au vert de `build:dropoff`.
+- 2026-10-27 (L.2, code, Haldir `dropoff-click`) : clic droit des Paysans sur un bâtiment à soi, fini, qui reçoit des
+  ressources → `Order: N units drop off at …`, `RequestDropOffUnits` → RPC `ServerDropOffUnits` →
+  `HOLPlayerOrders::DropOff` : tri chez le serveur (porteurs d'une ressource acceptée → `IssueDropOffOrder`, les autres
+  `IssueMoveOrder` au point) ; `FHOLGatherOrder::Deposit` (ordre de dépôt, SourceIndex INDEX_NONE) ;
+  `UHOLGatherProcessor::ApplyGatherOrders` : chantier oublié, `Phase = ToDeposit`, `SourceIndex = INDEX_NONE`,
+  `FHOLGatherFragment::DepositTarget` ; `FindDeposit` préfère ce bâtiment s'il est encore dépôt du joueur et accepte la
+  charge, sinon le plus proche ; après la décharge, inactif (chemin `Stop` existant).
+- 2026-10-27 (L.2, résultat) : compilation PASS (Haldir, 312 s) ; `quick_check.ps1 -Parts build:dropoff` **VERT** du
+  premier coup en 88 s (séquence PASS, jeu 24,7 s ; `build dropoff : PASS`, ses trois contrôles : mise en place, les 3
+  déchargent leur bois à D et nulle part ailleurs, puis les 4 inactifs devant D sans charge). Rien commité. Reste : L.3
+  (Maj, son cas rouge d'abord), la tenue du cas dans `-Full`, l'essai de l'utilisateur.
+- 2026-10-27 (L.3, cas rouge, Haldir `dropoff-click`) : nouveau sous-cas `build:dropoffshift` (`quick_check.ps1`) ; la
+  construction de D sort du cas `dropoff` dans sa marque `build dropoff camp`, partagée par les deux cas (chacun marche
+  seul, et `dropoffshift` après `dropoff`). Mise en place : un Paysan récolte l'arbre de CampTree 5 s (bois partiel), un
+  second vide ; les deux sélectionnés, maison à (-17600, -4400) sans FastBuild, puis Maj + clic droit sur D. Contrôles :
+  (1) le porteur ne décharge pas avant « finished House » et bâtit ; (2) ensuite il décharge son bois à D ; (3) puis
+  inactif devant D sans charge ; (4) le vide finit la maison, ne décharge rien, inactif (position notée). Attendu ROUGE
+  sur (1) (décharge tout de suite).
+- 2026-10-27 (L.3, résultat) : **pas de verdict**. Le lancement de `quick_check -Parts build:dropoffshift` (12:14) est
+  resté bloqué plus de 7 min avant le jeu : la vérification des SDK (Turnkey `-WaitForUATMutex`) de l'éditeur attend le
+  verrou UAT tenu par le `BuildCookRun` d'Elrond (lancé à 12:06, cuisson Windows+WindowsServer). Lancement arrêté au
+  minuteur. Le cas est écrit (`quick_check.ps1` analysé sans erreur) ; à relancer tel quel quand la cuisson d'Elrond est
+  finie. La place de la maison S (-17600, -4400) n'a pas encore été vue valide.
+- 2026-10-27 (L.3, code, sous-agent, Haldir `dropoff-click`, **ni compilé ni testé**) : Maj + clic droit sur un dépôt =
+  élément de file. `HOLConstruction::TWorkItem` : `bDeposit`, `MakeDeposit(Site)`, `IsDeposit()`, `IsBuild()` ;
+  `operator==` le compare ; `AdvanceWorkQueue` garde un dépôt en attente comme une source (`!IsBuild() || IsSiteOpen`).
+  `FHOLBuildOrder::bDeposit` ; `UHOLCommandSubsystem::IssueDropOffOrder(…, bQueue)` : avec Maj, un `FHOLBuildOrder`
+  bDeposit/bQueue/bChain dans `PendingBuildOrders`. `HOLPlayerOrders::DropOff` avec Maj (dépôt valide) : tous les
+  ouvriers reçoivent le dépôt en file (charge jugée à leur tour), les soldats marchent au point en file
+  (`SendNonWorkersTo` prend un `bQueue`, défaut false : Gather/Build inchangés). `UHOLBuildProcessor::ApplyBuildOrders` :
+  ordre bDeposit accepté si bâtiment du joueur, fini, `TakesDeliveries`, `Accepts` non vide ; sinon « not one of its
+  deposits ». `Advance` : tête dépôt → `StartUnloading` (Build.Phase = Gathering ; porte une ressource acceptée →
+  `FHOLGatherFragment::StartDropOff`, partagé avec `ApplyDropOffOrder`, activité GatherTrip ; sinon élément fini au pas
+  suivant) ; après le dépôt, `Before.IsBuild()` : ni `GatherForCamp` ni `FindNextSite`, inactif si rien après. Chaînes :
+  `HOLOrderChain::EStepKind::Deposit` / `FStep::MakeDeposit(id du bâtiment)`, placé comme Build (`LocateChainStep`),
+  bleu (`HOLSelectionMarkers`), nom « Deposit ». Test pur : 7 contrôles dépôt ajoutés à `Construction.WorkQueue`.
+  Fichiers : `Buildings/HOLConstructionRules.h`, `Commands/HOLConstructionCommand.h`, `Commands/HOLCommandSubsystem.{h,cpp}`,
+  `Commands/HOLPlayerOrders.{h,cpp}`, `Commands/HOLUnitOrderProcessor.cpp`, `Simulation/HOLBuildProcessor.{h,cpp}`,
+  `Simulation/HOLGatherProcessor.cpp`, `Simulation/HOLSimulationFragments.h`, `Simulation/HOLOrderChainRules.{h,cpp}`,
+  `Player/HOLSelectionMarkers.cpp`, `Tests/HOLConstructionTests.cpp`. Incertain : un Paysan qui récolte **hors file** (ou
+  en décharge sans Maj) et reçoit Maj + dépôt n'a pas de file : sa récolte s'arrête et il va décharger tout de suite
+  (comme Maj + source aujourd'hui), au lieu d'attendre ; un élément « rien à décharger » coûte un pas avant la suite ;
+  dépôt perdu en route : le plus proche (chemin L.2).
+- 2026-10-27 (L.3, session principale) : rouge de `build:dropoffshift` vu sur l'ancien binaire (après la fin du paquetage
+  d'Elrond, qui bloquait tout lancement par le verrou UAT) : (1) le porteur décharge tout de suite (« #2 unloaded 3 Wood at
+  LumberCamp » avant la maison), et le Paysan vide part marcher vers D au lieu de bâtir (pas de première frappe sur la
+  maison : la séquence expire). Code L.3b compilé (PASS, 517 s) : `tests` 189/189 PASS, `build:dropoff` PASS ;
+  `build:dropoffshift` : (1)-(3) PASS, (4) KO parce que trop strict sur le moment (le Paysan vide marchait encore vers la
+  maison 1 s après la première frappe du porteur ; il bâtit à la fin, saute la décharge, reste inactif : comportement
+  voulu) ; contrôle (4) corrigé (bâtit à la première frappe **ou** à la fin). Puis `-Parts build:dropoff,build:dropoffshift`
+  **PASS en 40 s**. En cours : `-Parts build,gather` en entier, puis le scénario d'essai (L.4).
+- 2026-10-27 (L.4) : scénario `Tools/Scenarios/dropoff_click.txt` (Haldir) : camp de bûcheron fini à (-19200, -3200),
+  5 Paysans qui portent 2-3 bois (clic droit sur le camp ou le forum), puis 2 autres pour Maj (maison puis Maj + camp).
+  Répétition hors écran (`hol.Scenario.AutoContinue 1`, `-RenderOffScreen`) : 41 étapes, « ready » en 14 s, aucune erreur.
+- 2026-10-27 (tenue dans la partie entière) : `-Parts build,gather` : `gather` et tous les anciens cas de `build` PASS,
+  mais `dropoff` et `dropoffshift` FAIL : (1) D à (-19200, -3200) tombait sur une maison d'un cas d'avant (maisons
+  à y = -3200 : le fantôme était déplacé) → D à (-18400, -6000), son bâtisseur à (-17200, -6000), attente 12 s au lieu
+  de 10 (~66 m) ; (2) le cadre près du bois prenait aussi les récolteurs du cas `camp` → sélection par groupes
+  (3 pour `dropoff`, 4 pour `dropoffshift` : les porteurs juste nés par cadre ou clic, puis le dernier né par
+  `ClickUnit -1`, `Group Add`, `Group Select`). Puis `-Parts build` **PASS en 101 s** (tous les cas, caméra 2p et 8p),
+  et `-Parts build:dropoff,build:dropoffshift` seuls **PASS en 50 s**.
+- **Reprise exacte (L)** : tout est codé et vert dans Haldir (`dropoff-click`, non commité). Reste : essai de
+  l'utilisateur (`play.ps1 dropoff_click -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`), puis, après son
+  accord : fusion de `main` dans la branche, recompilation, `-Parts tests,build,gather` sur la base à jour, commit en
+  anglais (avec la ligne « Récolte » retirée d'`EtapeDefini.md`, D485 au GDD), fusion dans `main` (accord des sessions de
+  la copie principale), `IN_USE.txt` d'Haldir remis à son état d'avant (perf-target).
+- 2026-10-27 (essai de l'utilisateur) : « tout est bon » sauf **Maj + clic déplacement, puis Maj + dépôt : le
+  déplacement est supprimé**. Cause : deux files qui s'ignorent. Le déplacement en Maj va dans la file des déplacements
+  (`UHOLUnitOrderProcessor::QueuedMoves`) ; le dépôt en Maj va dans la file de travail (`UHOLBuildProcessor`), démarre
+  tout de suite (pas de file de travail avant), et `StartQueuedMoves` oublie les déplacements d'une unité « mise au
+  travail ». **Correctif prévu (L.5)** : un ouvrier **sans file de travail** reçoit le dépôt en Maj dans la file des
+  déplacements (nouveau genre d'ordre `DropOff`, comme l'attaque d'un bâtiment) ; quand il démarre, ses porteurs
+  reçoivent l'ordre de dépôt, les autres marchent au point ; une unité **en route pour un dépôt ordonné** compte comme
+  occupée (un déplacement en Maj donné après attend la décharge, et sa file n'est pas oubliée). Un ouvrier qui bâtit
+  garde la file de travail (L.3, validé). L.5a : cas rouge `build:dropoffmove` (Maj déplacement P puis Maj dépôt D : passe
+  près de P avant de décharger à D ; Maj dépôt puis Maj déplacement B : décharge à D puis arrive à B). L.5b : code.
+- 2026-10-27 (L.5a, sous-agent, Haldir) : cas rouge `build:dropoffmove` en cours d'écriture dans `quick_check.ps1` (groupe 5,
+  marques `dropoff camp`, `dropoffmove`, `dropoffmove order`) : un Paysan qui porte du bois partiel ; A : Maj + sol P
+  (-13400, -3300) puis Maj + D : passe à 3 m de P avant de décharger à D, puis inactif devant D ; B : il récolte de
+  nouveau, puis Maj + D puis Maj + sol B (-18400, -7500) : décharge à D, puis arrive à 3 m de B, inactif. Lancement seul
+  (`-Parts build:dropoffmove`, binaire L.4) attendu rouge.
+- 2026-10-27 (L.5b, sous-agent, Haldir) : code écrit, **ni compilé ni essayé**. Tout dépôt du joueur (Maj ou non) passe
+  maintenant par la file des déplacements : nouveau genre `EHOLOrderKind::DropOff` (`TargetBuilding` = le dépôt, `Target`
+  = le point cliqué), émis par `UHOLCommandSubsystem::IssueDropOffMoveOrder` ; `HOLPlayerOrders::DropOff` n'y trie plus
+  rien (soldats en Maj : `SendNonWorkersTo` en file, inchangé). `UHOLUnitOrderProcessor::ApplyQueuedOrders` : dépôt plus
+  valable → déplacement ; en Maj, les ouvriers qui bâtissent (`IsBuilding`) sont sortis et reçoivent la file de travail
+  (`IssueDropOffOrder(..., true)`, sous `FPlayerOrderScope` si `bChain` : chemin L.3 validé) ; le reste se met en file si
+  une unité marche (journal « Drop-off order of slot %d queued (Shift) for %d units at %s ») ; appliqué (tout de suite
+  ou démarré par `StartQueuedMoves`) : porteurs d'une ressource acceptée → `IssueDropOffOrder(..., false)` (la récolte
+  passe après l'ordre dans le même pas), combat désengagé, étape de chaîne `Deposit` ; les autres → `Move` vers le point.
+  `FHOLGatherFragment::bDropOrder` + `IsDroppingOff()` (posé par `StartDropOff`, effacé par `StartTask`, `Stop`, la
+  décharge ; faux si `Phase` None) : `StartQueuedMoves` n'oublie plus la file d'une unité qui dépose, garde sa ligne de
+  chaîne, et l'élément suivant attend (`HOLOrderChain::IsCurrentOrderOver`, 5e paramètre `bDroppingOff`, défaut faux) ;
+  à l'entrée en file, une unité qui dépose (hors bâtisseur) ou reçoit un dépôt dans le même passage compte comme marchant.
+  Champ `FHOLMoveOrder::Deposit` (inutilisé) retiré. Test de règle : cas « Drop-off » ajouté à
+  `HeroesOfLiberty.Orders.BuildingQueue` (HOLOrderChainTests.cpp). Incertain : le dépôt **sans Maj** change de chemin
+  (même effet attendu ; nécessaire, sinon la file gardée pendant un dépôt survivrait à un dépôt sans Maj) et dessine
+  maintenant une ligne bleue vers le dépôt ; `Combat->Disengage()` sur les porteurs ; `TOptional<FPlayerOrderScope>`.
+  Écrit (+190 lignes, non lancé jusqu'au bout) : premier lancement bloqué, le jeu figé 6 min juste après « Completed SDK
+  detection » (0 % CPU), comme le `quick_check` d'Arwen lancé à 13 h 55 (même point, en même temps qu'un UBT de Celeborn
+  et trois éditeurs Shiva) ; laissé tel quel (processus de jeu 65744, non tué) à la limite des 15 min. À relancer quand la machine est libre.
+- 2026-10-27 (L.5, session principale) : sous-agent L.5a arrêté au minuteur (jeu figé au démarrage, machine chargée), son
+  cas `build:dropoffmove` (+190 lignes) gardé. Rouge vu sur l'ancien binaire : A « closest 1963 cm » de P (déplacement
+  supprimé), B « closest 1952 cm » de B (déplacement perdu après la décharge). Code L.5b compilé (PASS, 183 s) :
+  `-Parts tests,build:dropoff,build:dropoffshift,build:dropoffmove` **PASS en 39 s** (tests 189/189), puis
+  `-Parts production,move,gather,build,formation,combat` (toutes les parties qui donnent des ordres en Maj) **PASS en
+  195 s**. Scénario `dropoff_click` : une note de plus (Maj + sol puis Maj + camp, et l'inverse). Nouvel essai de
+  l'utilisateur.
+- 2026-10-27 (2e essai de l'utilisateur) : Maj + déplacement puis Maj + dépôt **marche** ; mais (1) **Maj déplacement,
+  Maj dépôt, Maj déplacement** : il fait le déplacement, va au dépôt, et devant le dépôt **ne fait plus rien** (le
+  dernier déplacement est perdu) ; (2) **Maj déplacement puis Maj + source** : la récolte part tout de suite, le
+  déplacement est supprimé (défaut **d'avant D485**, même cause que L.5 : la source en Maj va dans la file de travail).
+  Même défaut probable pour Maj + chantier après un Maj déplacement. **L.6** : L.6a cas rouges (`dropoffmove` partie C :
+  P, D, B ; nouveau cas `build:shiftwork` : Maj P puis Maj source → passe par P puis récolte ; Maj P puis Maj chantier →
+  passe par P puis bâtit ; et noter ce que fait Maj chantier puis Maj déplacement) ; L.6b code : source et chantier en
+  Maj d'un ouvrier sans file de travail passent par la file des déplacements comme le dépôt, et la cause de (1).
+- 2026-10-27 (L.6a, sous-agent dans Haldir) : `quick_check.ps1` : partie C de `build:dropoffmove` (Maj P, Maj D, Maj B
+  sur un porteur : passe à P, décharge à D, puis à 3 m de B et inactif) ; nouveau cas `build:shiftwork` (marques
+  `shiftwork`, `shiftwork order`, `shiftwork site`, `shiftwork after`, sans groupe : `ClickUnit -1` après chaque
+  apparition) : (a) Maj Pa puis Maj arbre → passe à Pa avant le premier bois ; (b) maison H posée par un bâtisseur
+  renvoyé aussitôt, Maj Pb puis Maj H → passe à Pb avant « Building » ; (c) observation : Maj H puis Maj Q. Points au
+  sud de la rangée de D (Pa (-15800, -8000), H (-15600, -9600), Pb (-13200, -7200), Q (-18800, -10400)). Lancement :
+  `-Parts build:dropoffmove,build:shiftwork`.
+  Résultat (75 s, binaire de Haldir tel quel) : **rouge pour la bonne raison** partout. `dropoffmove` C : passe près de
+  P (334 cm au plus près, échantillons d'1 s, passés depuis à 0,25 s les 8 premières s, non relancé), puis au pas où
+  « Queued drop-off started » paraît, « Queued move started … (-18387, -7500) » paraît **au même pas** ; il marche
+  (« Moving ») jusque devant D et y reste **inactif avec son bois (8)** : ni décharge, ni B. **B aussi rouge** sur ce
+  binaire (décharge à D, puis la file « Move order … queued (Shift) » vers B jamais démarrée ; aucun « Queued move
+  started »), alors que L.5 l'avait vu vert. `shiftwork` (a) : part tout de suite récolter (GatherTrip), Pa jamais
+  approché (1991 cm) ; (b) : va droit à H et bâtit, Pb jamais approché (2389 cm) ; (c) : marche vers H, H fini par
+  l'autre à son arrivée, puis « Queued move started » vers Q, inactif à Q (pas vu bâtir : H finissait trop tôt).
+- 2026-10-27 (L.6b, sous-agent dans Haldir, code seul, **ni compilé ni essayé**) : fichiers `Commands/HOLUnitCommand.h`
+  (genres `EHOLOrderKind::Gather` et `Build`, champ `FHOLMoveOrder::SourceIndex`), `Commands/HOLCommandSubsystem.h/.cpp`
+  (`IssueQueuedWorkOrder` : source ou chantier en Maj dans la file des déplacements, sans projection sur la navmesh),
+  `Commands/HOLPlayerOrders.cpp` (`Gather` et `Build` avec Maj → `IssueQueuedWorkOrder` ; les soldats y marchent **en
+  file** avec Maj, comme pour le dépôt), `Commands/HOLUnitOrderProcessor.h/.cpp`. **Cause de (1) confirmée** (hypothèse
+  juste) : au pas N, `ApplyQueuedOrders` donne le dépôt démarré de la file (`IssueDropOffOrder`), `StartQueuedMoves`
+  tourne avant la récolte et voit l'unité ni en dépôt ni en marche : B démarre au même pas ; au pas N+1, B arrête la
+  récolte puis la marche de tâche vers D (émise au pas N) le remplace : marche à D sans tâche, inactif. **Cause du rouge
+  de B** (Maj D sans rien devant, puis Maj B au même pas, les 3 images entre les deux clics tiennent dans un pas) : D
+  appliqué tout de suite, B mis en file (`DroppingNow`), puis la passe « Gone » de `StartQueuedMoves` voit un ouvrier
+  **encore en récolte** (la récolte n'a pas encore appliqué le dépôt) et oublie sa file : B perdu. Correctif des deux :
+  `DroppingNow` devient un membre (vidé au début de chaque `ApplyQueuedOrders`) ; dans `StartQueuedMoves`, une unité de
+  `DroppingNow` n'est pas « Gone », garde sa ligne de chaîne, et l'élément suivant de sa file ne démarre pas dans ce pas.
+  **(2)** : `Gather`/`Build` en Maj passent par la file des déplacements : les ouvriers **avec file de travail** (ou
+  mis au travail plus tôt dans la même passe, `WorkStartedNow`) le reçoivent au bout de leur file de travail tout de
+  suite (comme avant) ; les autres : en file si l'un marche (journal « Gather/Build order of slot N queued (Shift) … »,
+  « Queued gather/build started … »), sinon appliqué tout de suite (« … order of slot N applied for … »). Appliqué, il
+  émet l'ordre de travail **avec Maj** (`IssueGatherOrder(…, true)` / `IssueBuildOrder` bQueue vrai, sous
+  `FPlayerOrderScope` si bChain) et non sans Maj comme demandé : pour un ouvrier sans file de travail c'est un départ
+  immédiat (le même chemin qu'avant L.6 quand rien ne marchait, donc journaux et cas existants inchangés), et ça garde
+  « Maj source puis Maj chantier » en file de travail. Les ordres de travail qui le suivent **directement** dans la file
+  des déplacements (source, chantier, dépôt) passent dans sa file de travail, dans l'ordre (sinon Maj P, Maj arbre, Maj
+  chantier perdait le chantier) ; le reste de la file des déplacements est oublié une fois au travail, comme avant.
+  `WorkStartedNow` (membre) : l'élément suivant ne démarre pas au même pas. Chaîne (D328) : `MakeChainStep` donne
+  `MakeGather` / `MakeBuild` aux ordres en file. **Incertain** : Maj + pose d'un bâtiment (`Place`, ordre de
+  construction) non touché, garde le défaut (2) ; un ordre de travail **sans** Maj donné au pas exact où un déplacement
+  en file démarre peut encore être écrasé (marche de tâche après l'ordre démarré : rare, non traité) ; Maj chantier
+  puis Maj déplacement dans la même passe : le déplacement est mis en file puis oublié (il bâtit). À vérifier à la
+  compilation : `TOptional<FPlayerOrderScope>` dans la fonction statique `IssueToWorkQueue`, `UnitsOfQueued.KeySort`,
+  `FHOLBuildOrder` vu depuis `HOLUnitOrderProcessor.cpp` (par `HOLCommandSubsystem.h`).
+- 2026-10-27 (L.6, session principale) : sous-agent L.6b arrêté au minuteur en fin de travail (journal écrit, fonctions
+  d'aide présentes). Compilation PASS (551 s). `-Parts tests,build:dropoff,build:dropoffshift,build:dropoffmove,build:shiftwork`
+  **PASS en 107 s** (tests 189/189) ; puis `-Parts production,move,gather,build,formation,combat` **PASS en 522 s**
+  (séquence 282 s, x3,8 ; démarrage lent, 5 éditeurs d'autres copies ; les cas L ajoutent ~80 s de séquence à `build`,
+  à alléger si besoin). Scénario `dropoff_click` : une note de plus (Maj sol, Maj camp, Maj sol ; Maj sol puis Maj arbre ;
+  Maj sol puis Maj chantier). Troisième essai de l'utilisateur. Restes connus (non traités) : Maj + **pose** d'un
+  bâtiment après un Maj déplacement garde le défaut ; Maj chantier puis Maj déplacement : le déplacement est oublié (il bâtit).
+- 2026-10-27 : **3e essai de l'utilisateur : « good »**. Branche `dropoff-click` avancée sur `main` 7c48518 (J8a.2),
+  modifications réappliquées (conflit de `quick_check.ps1` avec le cas `build hero` : les deux gardés), recompilation et
+  `quick_check` sur la base à jour, puis commit et fusion dans `main`. Restes notés dans `EtapeDefini.md` (retours
+  d'essai) : Maj + pose d'un bâtiment après un Maj déplacement ; Maj chantier puis Maj déplacement.
+- 2026-10-27 (avant commit, base `main` 7c48518) : recompilation PASS (679 s) ; `-Parts tests,production,move,gather,build,formation,combat`
+  deux fois FAIL « game launch ended by itself » à des endroits différents : c'est la **limite de 960 s** de `quick_check`
+  pour un lancement de jeu (le jeu tué par son propre lanceur), dépassée par la charge de la machine (85-100 % de CPU,
+  compilations d'autres copies, ProjectShiva) ; aucune session n'a tué de jeu (toutes interrogées). Découpé : `tests`
+  196/196, `production`, `move`, `gather` PASS (passage 2), `-Parts build` **PASS en 156 s** (cas `hero` de `main`
+  compris), `-Parts formation,combat` **PASS en 114 s** (avec `UE_SKIP_UBT_SDK_SETUP=1`). Commit sur `dropoff-click`.

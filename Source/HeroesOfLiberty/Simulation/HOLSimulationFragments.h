@@ -295,6 +295,18 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	/** What it carries; kept by a player's move order, lost when it gathers another resource (D296). */
 	FHOLGatherLoad Load;
 
+	/**
+	 * The deposit its player sent it to unload at (D485, EtapeDefini L: a right click on one of its buildings that takes
+	 * what it carries); null: the nearest one. Cleared once unloaded, stopped, or sent to a source.
+	 */
+	TWeakObjectPtr<AHOLBuilding> DepositTarget;
+
+	/**
+	 * On its way to unload by its player's order (D485, EtapeDefini L.5b): set by StartDropOff, cleared by StartTask, Stop
+	 * and the unload. Not read from DepositTarget, which may be destroyed on the way (it then unloads at the nearest).
+	 */
+	bool bDropOrder = false;
+
 	/** Arrivals in a row that missed their spot (taken, or pushed away). */
 	uint8 Misses = 0;
 
@@ -323,6 +335,12 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	bool IsGathering() const { return Phase != EHOLGatherPhase::None; }
 
 	/**
+	 * Busy with a drop-off its player gave (D485, L.5b): its queue of moves (Shift) waits for the unload, and is kept
+	 * (UHOLUnitOrderProcessor). A player's order that ends its gathering (Phase None) ends it too.
+	 */
+	bool IsDroppingOff() const { return bDropOrder && Phase != EHOLGatherPhase::None; }
+
+	/**
 	 * Sent to gather a source (a gather order, or the head of its queue: the user's trial of J6a.4): its round trip starts
 	 * there; what it carries of another resource is kept until its first unit of this one (D306).
 	 */
@@ -330,7 +348,25 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	{
 		HOLGather::StartGathering(Load, Resource);
 		SourceIndex = InSourceIndex;
+		DepositTarget.Reset();
+		bDropOrder = false;
 		Phase = EHOLGatherPhase::ToSource;
+		bWalkIssued = false;
+		Misses = 0;
+		UnreachableWalks = 0;
+	}
+
+	/**
+	 * Sent to unload at one of its player's deposits (D485, EtapeDefini L: a drop-off order, or the head of its queue with
+	 * Shift): it carries its load there, no source after it (the unload stops it: idle, or the next item of its queue).
+	 * The caller checks that the deposit takes what it carries.
+	 */
+	void StartDropOff(const TWeakObjectPtr<AHOLBuilding>& Building)
+	{
+		SourceIndex = INDEX_NONE;
+		DepositTarget = Building;
+		bDropOrder = true;
+		Phase = EHOLGatherPhase::ToDeposit;
 		bWalkIssued = false;
 		Misses = 0;
 		UnreachableWalks = 0;
