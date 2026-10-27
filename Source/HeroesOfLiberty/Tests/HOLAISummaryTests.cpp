@@ -5,8 +5,10 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "HeroesOfLibertyGameModeBase.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLMatchSettings.h"
 #include "Match/HOLPlayerState.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -227,7 +229,7 @@ bool FHOLAISummaryStockTest::RunTest(const FString& Parameters)
 // The real chain: a test world with real units, buildings and sources, read through the subsystems
 // (UHOLAISummaryLibrary::ReadAISummary, HOLAISummary::Read). Slot 0: a PlayerState with its stock, a finished centre, a
 // lumber camp still a foundation (no deposit, D312), three Peasants and a Spearman. Slot 1: a centre, a Peasant, no
-// PlayerState (an AI slot before IA0.1).
+// PlayerState, then its AI PlayerState born as at the match start (IA0.1 E3).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAISummaryWorldTest, "HeroesOfLiberty.AI.Summary.World", UE::HeroesOfLiberty::Tests::AISummary::Flags)
 bool FHOLAISummaryWorldTest::RunTest(const FString& Parameters)
 {
@@ -301,9 +303,15 @@ bool FHOLAISummaryWorldTest::RunTest(const FString& Parameters)
 
 		const FHOLAISummary Slot1 = HOLAISummary::Read(*World, 1);
 		TestEqual(TEXT("slot 1: its Peasant"), JoinIds(Slot1.IdlePeasants), FString::FromInt(static_cast<int32>(OtherPeasants.IsEmpty() ? 0 : OtherPeasants[0])));
-		TestFalse(TEXT("slot 1: no PlayerState, no stock"), Slot1.bHasStock);
+		TestFalse(TEXT("slot 1: no PlayerState yet, no stock"), Slot1.bHasStock);
 		TestTrue(TEXT("slot 1: its tree first"), Slot1.Wood.Sources.Num() > 0 && Slot1.Wood.Sources[0].SourceIndex == EnemyTree);
 		AddInfo(FString::Printf(TEXT("%s | %s"), *Slot0.ToString(), *Slot1.ToString()));
+
+		// IA0.1 E3: the AI slot's PlayerState, born as at the match start: the summary reads its stock.
+		const FHOLResources Starting = GetDefault<UHOLMatchSettings>()->StartingResources;
+		TestEqual(TEXT("slot 1: one AI player state born"), AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(*World, Config, Starting), 1);
+		const FHOLAISummary Slot1Born = HOLAISummary::Read(*World, 1);
+		TestTrue(TEXT("slot 1: its PlayerState's stock, the starting one"), Slot1Born.bHasStock && Slot1Born.GetStock() == Starting);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

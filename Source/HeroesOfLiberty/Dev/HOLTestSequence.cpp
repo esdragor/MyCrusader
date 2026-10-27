@@ -294,7 +294,16 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				const UWorld* World = GetGameWorld();
 				const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
-				bDone = GameState && GameState->PlayerArray.Num() >= FCString::Atoi(*Rest);
+				// The humans only (IA0.1 E4): an AI slot's PlayerState is there from the start.
+				int32 Humans = 0;
+				if (GameState)
+				{
+					for (const APlayerState* PlayerState : GameState->PlayerArray)
+					{
+						Humans += PlayerState && !PlayerState->IsABot() ? 1 : 0;
+					}
+				}
+				bDone = GameState && Humans >= FCString::Atoi(*Rest);
 			}
 			else if (Verb == TEXT("waitunits"))
 			{

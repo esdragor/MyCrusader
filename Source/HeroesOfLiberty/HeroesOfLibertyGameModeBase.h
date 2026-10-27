@@ -8,6 +8,7 @@
 #include "HeroesOfLibertyGameModeBase.generated.h"
 
 class AHOLBuilding;
+struct FHOLResources;
 
 /**
  * Game mode of a match: reads the match configuration when the map starts (D243) and gives each joining human
@@ -66,6 +67,16 @@ public:
 	 * outside the population (his row's Population 0). False: no unit system.
 	 */
 	static bool SpawnStartingHero(UWorld& World, int32 Slot, const AHOLBuilding& Forum);
+
+	/**
+	 * IA0.1 E1: a player state for each AI slot of Config (a bot, no controller), with the slot's colour and the starting
+	 * stock, so that its economy (deposits, foundations, production) runs as a human's. Server only, at the start, before
+	 * the main centres; a slot already holding a player state is skipped. Returns how many were spawned.
+	 */
+	static int32 SpawnAIPlayerStates(UWorld& World, const FHOLMatchConfig& Config, const FHOLResources& Starting);
+
+	/** IA0.1 E1 (IA0.1-Q1 open): an AI slot's player name, for now the one the interface already shows ("Joueur N"). */
+	static FString MakeAIPlayerName(int32 Slot);
 
 private:
 
