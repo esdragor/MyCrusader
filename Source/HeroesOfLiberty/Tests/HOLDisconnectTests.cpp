@@ -16,6 +16,7 @@
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLGatherRules.h"
+#include "Simulation/HOLHeroSubsystem.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -307,6 +308,58 @@ bool FHOLDisconnectBannerTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("not back by 380: defeated"), State->DefeatExpiredAbsences(380., 180.), TArray<int32>{ 1 });
 		TestEqual(TEXT("defeated: no notice left (the defeat says the rest)"), State->GetAbsentNotices().Num(), 0);
 		TestEqual(TEXT("defeated: no line"), State->GetAbsenceBannerLines(381.).Num(), 0);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+
+// R7.10: back within the window, his hero's private sheet (XP, cooldowns, death step) is in his new player state at once,
+// as his stock: the hero subsystem keeps the true sheet while he is gone, the return writes its copy (no step needed).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectHeroSheetTest, "HeroesOfLiberty.Match.DisconnectHeroSheet",
+	UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectHeroSheetTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("hero subsystem"), Heroes) && TestNotNull(TEXT("player state"), Bob))
+	{
+		State->InitVictory(MakeNamedConfig());
+		const FHOLResources Starting(200, 200, 200, 200);
+		Bob->SetMatchSlot(1, 1);
+		State->GiveSlotStock(*Bob, Starting, 0.);
+
+		// His hero earns XP (hol.Hero.SetXP, the real entry): straight to his player state.
+		TestTrue(TEXT("SetXP(1, 12)"), Heroes->SetXP(1, 12));
+		TestEqual(TEXT("his XP in his player state"), Bob->GetHeroPrivate().XP, 12);
+
+		TestTrue(TEXT("Bob leaves at 10: slot kept"), State->KeepAbsentSlot(*Bob, 10., 180.));
+		Bob->Destroy();
+		TestNull(TEXT("no player state for slot 1 while he is gone"), UHOLHeroSubsystem::FindPlayerState(*World, 1));
+		TestEqual(TEXT("the subsystem keeps his XP while he is gone"), Heroes->GetSheets(1).Private.XP, 12);
+
+		// Back at 100 with a new player state (PostLogin's order: his slot, then the stock); no simulation step.
+		AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("new player state"), BobAgain))
+		{
+			TestEqual(TEXT("a new player state starts empty"), BobAgain->GetHeroPrivate().XP, 0);
+			BobAgain->SetMatchSlot(1, 1);
+			TestTrue(TEXT("back at 100"), State->GiveSlotStock(*BobAgain, Starting, 100.));
+			AddInfo(FString::Printf(TEXT("back: xp %d, death %d, cooldowns %d"), BobAgain->GetHeroPrivate().XP,
+				BobAgain->GetHeroPrivate().DeathStep, BobAgain->GetHeroPrivate().CooldownEndSteps.Num()));
+			TestEqual(TEXT("back: his XP in his new player state at once"), BobAgain->GetHeroPrivate().XP, 12);
+			TestTrue(TEXT("back: his whole private sheet is the subsystem's"), BobAgain->GetHeroPrivate() == Heroes->GetSheets(1).Private);
+		}
 	}
 
 	GEngine->DestroyWorldContext(World);

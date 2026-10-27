@@ -16,8 +16,10 @@
 # are joined, ~5 s after the charge, up to 40 s of warm-up, and lasts -Seconds, 20 by default) or S4 (mixed armies:
 # the arrows are deduced by the clients, no extra bits). S3 and S4 turn the combat on themselves (hol.Combat.Enabled 1).
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Test S2|S3|S4] [-Seconds 40] [-Keep]]
+# -StageOnly: the staging alone (for quick_check's lobby part), no match started afterwards.
 param(
     [switch] $Stage,
+    [switch] $StageOnly,
     [int] $Clients = 2,
     [string] $Map = "/Game/Maps/Plain",
     [int] $Units = 0,
@@ -56,6 +58,7 @@ $TestSaved = Join-Path $Project "Saved_Tests"
 $Logs = Join-Path $TestSaved "Logs"
 New-Item -ItemType Directory -Force $Logs | Out-Null
 
+if ($StageOnly) { $Stage = $true }
 if ($Stage) {
     # Server only, Plain and StressTest (S5); UAT's own log goes to Saved_Tests\Logs\net_stage.log. -pak: the cooked
     # data is staged with the server; without it the server streams it from the Zen server that ran at staging time, and
@@ -70,6 +73,7 @@ if (-not (Test-Path $Server)) { Write-Host "net_match : no staged server ($Serve
 # A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion, R3.3): this test stage serves
 # "dev", as the clients from the editor (package.ps1 writes the real version into a package).
 [IO.File]::WriteAllText((Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"), "dev", (New-Object Text.UTF8Encoding $false))
+if ($StageOnly) { Write-Host "net_match : staged ($Server)"; exit 0 }
 
 # Two humans in slots 0 and 1, the colours of their slots; the clients take the free human slots in order.
 $Slots = for ($i = 0; $i -lt 8; $i++) { "{ `"state`": `"$(if ($i -lt $Clients) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i }" }

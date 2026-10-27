@@ -12,6 +12,7 @@
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -628,6 +629,11 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 			*Taking.DescribeEconomy());
 		const int32 Slot = AbsentSlots[Index].Slot;
 		AbsentSlots.RemoveAt(Index);
+		// R7.10: his hero's private sheet (kept by the hero subsystem) in his new player state at once, as his stock.
+		if (UHOLHeroSubsystem* Heroes = GetWorld() ? GetWorld()->GetSubsystem<UHOLHeroSubsystem>() : nullptr)
+		{
+			Heroes->RewriteCopies(Slot);
+		}
 		// R7.5: « Bob : de retour » for BackNoticeSeconds.
 		if (FHOLAbsentNotice* Notice = AbsentNotices.FindByPredicate([Slot](const FHOLAbsentNotice& Each) { return Each.Slot == Slot; }))
 		{

@@ -5164,6 +5164,13 @@ if ($Parts -contains "lobby") {
         $LobbyLine = @($LobbyOutput | Where-Object { $_ -match "^lobby_match : " }) | Select-Object -Last 1
         if ($LASTEXITCODE -ne 0) { $LobbyOutput | Select-Object -Last 40 | ForEach-Object { Write-Host "  | $_" } }
         $Checks["lobby_match: $LobbyLine"] = ($LASTEXITCODE -eq 0) -and ("$LobbyLine" -match "^lobby_match : PASS")
+        # A cooked server older than the code may not replicate as the clients do (Iris "protocol mismatch": Carol never
+        # in the match, 2026-10-27): said only when it fails, as a re-stage takes minutes.
+        $GameModule = Get-ChildItem (Join-Path $Project "Binaries\Win64") -Filter "UnrealEditor-HeroesOfLiberty*.dll" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime | Select-Object -Last 1
+        if (-not $Checks["lobby_match: $LobbyLine"] -and $GameModule -and (Get-Item $LobbyServer).LastWriteTime -lt $GameModule.LastWriteTime) {
+            $Checks["cooked server newer than the code (it is older than $($GameModule.Name): run Tools\Tests\net_match.ps1 -StageOnly)"] = $false
+        }
     }
     $AllOk = (Report "lobby" $Checks) -and $AllOk
 }
