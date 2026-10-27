@@ -83,7 +83,7 @@ Remove-Item -ErrorAction SilentlyContinue $ServerLog, (Join-Path $Logs "net_clie
 # (FApp::ShouldUseThreadingForPerformance is false there), so the parallel processors of D302 did not run in parallel
 # (server step 14 ms in combat against ~6 ms in the game).
 # -HOLCheats (R3.5, R-Q7): a test server keeps the clients' cheats; the manager's servers refuse them.
-$ServerArguments = "$Map -log -unattended -useperfthreads -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
+$ServerArguments = "$Map -log -unattended -as-exit-on-error -useperfthreads -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$ServerLog`""
 if ($ServerArgs) { $ServerArguments += " $ServerArgs" }
 if ($Port -gt 0) { $ServerArguments += " -port=$Port" }
 $Address = if ($Port -gt 0) { "127.0.0.1:$Port" } else { "127.0.0.1" }
@@ -138,7 +138,7 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
         -replace '^(ResolutionSizeY|LastUserConfirmedResolutionSizeY)=.*', '$1=1000' `
         -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
     $X = 3840 + ($Client - 1) * $Width
-    $Arguments = "`"$UProject`" $Address -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Tag$Client -nosplash -LiveCoding=0 -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
+    $Arguments = "`"$UProject`" $Address -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Tag$Client -nosplash -LiveCoding=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
     $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru
     $ClientProcesses += $ClientProcess
     $ClientLogs += $ClientLog

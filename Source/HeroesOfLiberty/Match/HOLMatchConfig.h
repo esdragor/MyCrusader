@@ -104,6 +104,14 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	UPROPERTY()
 	bool bCatastrophe = false;
 
+	/**
+	 * IA1.1: Peasants each occupied slot gets at the start; -1 (no such field in the file, the menu, the lobby) = the
+	 * rule of the game, UHOLMatchSettings::StartingPeasants. The test scenarios (hol.Scenario) read it from their .json,
+	 * 0 when the field is missing. Not shown in the menu.
+	 */
+	UPROPERTY()
+	int32 StartingPeasants = -1;
+
 	bool operator==(const FHOLMatchConfig&) const = default;
 
 	/** What runs without a configuration (stress test, BattleMap opened directly): one human in slot 0. */

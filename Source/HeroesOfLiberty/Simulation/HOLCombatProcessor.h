@@ -98,7 +98,8 @@ protected:
 		uint32 TargetId = 0;
 		FName ShooterType;
 		int32 ShooterSlot = INDEX_NONE;
-		int32 Damage = 0;
+		/** On a unit, HOLCombat::GetDamage's; on a building (TargetBuilding), the shooter's BuildingAttack, whole. */
+		float Damage = 0.f;
 		int64 ReleaseStep = 0;
 		int64 ArrivalStep = 0;
 		/** D345.2b: an arrow at a building (Target unset): its damage of BuildingAttackType through DamageBuilding when it lands. */

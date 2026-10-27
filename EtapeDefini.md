@@ -10,6 +10,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
+- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces et J8a.1 type `Hero`, ×0,3 exact, PV en float, dans `main` ; J8a.2 (naissance, F4, `SKM_Hero`) suivante ; `JourneyInProgress.md`)*
 - Bonus de l'Arbalétrier contre Lourd *(D428 ; la catégorie existe et l'Homme d'armes la porte, reste l'unité ; questions tranchées (Champ de tir créé, l'Archer y passe) ; pièces et gestes (AR1 à AR4) validés en aperçu ; AR6 et la suite attendent le moteur recompilé ; chantier `CrossbowInProgress.md`)*
 
 ### Fin de partie
@@ -24,7 +25,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
-- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.3 (résumé C++) dans `main`, IA0.2 lancée, IA0.4-IA0.5 attendent le moteur recompilé ; IA1 (économie) tranchée sur papier, ferme et 5 Paysans de départ d'abord (IA1.1, IA1.2) ; chantier `AIInProgress.md`)*
+- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main`, IA0.4 (cerveau en script) après le premier fichier Angelscript (AS1), IA0.1 attend R7 ; IA1 (économie) : IA1.1 (5 Paysans de départ, 0 dans les scénarios) dans `main`, IA1.2 (ferme) suivante ; chantier `AIInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
@@ -50,6 +51,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ### Aléas et petits restes
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
+- `net 2 clients` : client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (séquence arrêtée, vu une fois)
 - Attaque d'un bâtiment : portée de 400 cm, une unité gênée frappe encore du 2e rang *(équilibrage, à trancher ; `EtapeDefiniInProgress.md` J)*
 - Attaque d'un bâtiment sans ordre direct (attaque-déplacement, recherche automatique, file Maj) : pas de places autour du mur, ancienne règle du point le plus proche *(J)*
 - Unité arrêtée près d'un bâtiment : la garde du mur visible a des coins arrondis, jusqu'à ~35 cm dans le coin du socle *(C.1 ; J l'a corrigé pour les seules unités qui frappent)*
@@ -63,9 +65,9 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 (pièces du paladin) faite, J8a.1-J8a.6 après le moteur
-- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 dans `main`, plan d'IA1 écrit
-- `AngelscriptInProgress.md` : préparation d'Angelscript (D483, D484), rien codé ; servira au premier fichier en script
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 (pièces du paladin) et J8a.1 (type `Hero`, PV en float) faites, J8a.2 suivante
+- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 et IA1.1 dans `main`, plan d'IA1 écrit
+- `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
 - `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D428), AR1 à AR4 faites (pièces, gestes), reste la fabrication et le C++ après la recompilation

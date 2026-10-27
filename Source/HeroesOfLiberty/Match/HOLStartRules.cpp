@@ -5,6 +5,26 @@
 #include "Match/HOLMatchConfig.h"
 
 const FName FHOLStartRules::KingTypeName(TEXT("King"));
+const FName FHOLStartRules::PeasantTypeName(TEXT("Peasant"));
+
+int32 FHOLStartRules::GetNumStartingPeasants(const FHOLMatchConfig& Config, const int32 Setting)
+{
+	return Config.StartingPeasants >= 0 ? Config.StartingPeasants : FMath::Max(Setting, 0);
+}
+
+TArray<FVector> FHOLStartRules::GetStartingPeasantLocations(const FVector& CentreLocation, const float HalfBody, const int32 Num)
+{
+	TArray<FVector> Locations;
+	Locations.Reserve(FMath::Max(Num, 0));
+	// One row across, centred on the forum: in front of the King, who stands KingGap from the body's edge.
+	const double X = CentreLocation.X - HalfBody - StartingPeasantGap;
+	for (int32 Index = 0; Index < Num; ++Index)
+	{
+		const double Y = CentreLocation.Y + (Index - 0.5 * (Num - 1)) * StartingPeasantSpacing;
+		Locations.Add(FVector(X, Y, CentreLocation.Z));
+	}
+	return Locations;
+}
 
 bool FHOLStartRules::ShouldSpawnKing(const FHOLMatchConfig& Config, const int32 Slot)
 {

@@ -162,39 +162,39 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Peasant: wind-up 50 %"), Peasant.AttackWindUpPercent, 50);
 
 	// Damage = attack + the bonuses on the target's categories - its armour of the attack's type, 1 at least (D21, D345).
-	TestEqual(TEXT("Spearman on Man-at-arms: 8 - 4"), HOLCombat::GetDamage(Spearman, ManAtArms), 4);
-	TestEqual(TEXT("Man-at-arms on Spearman: 12 - 0"), HOLCombat::GetDamage(ManAtArms, Spearman), 12);
-	TestEqual(TEXT("Spearman on Spearman: no bonus"), HOLCombat::GetDamage(Spearman, Spearman), 8);
+	TestEqual(TEXT("Spearman on Man-at-arms: 8 - 4"), HOLCombat::GetDamage(Spearman, ManAtArms), 4.f);
+	TestEqual(TEXT("Man-at-arms on Spearman: 12 - 0"), HOLCombat::GetDamage(ManAtArms, Spearman), 12.f);
+	TestEqual(TEXT("Spearman on Spearman: no bonus"), HOLCombat::GetDamage(Spearman, Spearman), 8.f);
 	FHOLUnitTypeConstants Horseman;
 	Horseman.ArmorCategoryMask = HOLArmorCategoryBit(EHOLArmorCategory::Cavalry);
 	Horseman.MeleeArmor = 2;
 	Horseman.RangedArmor = 5;
 	Horseman.SiegeArmor = 7;
 	Horseman.HeroArmor = 3;
-	TestEqual(TEXT("Spearman on cavalry: 8 + 17 - 2"), HOLCombat::GetDamage(Spearman, Horseman), 23);
-	TestEqual(TEXT("Peasant on Man-at-arms: 3 - 4, 1 at least"), HOLCombat::GetDamage(Peasant, ManAtArms), 1);
-	TestEqual(TEXT("Archer on Spearman: 5 + 5 (light infantry), ranged armour 0"), HOLCombat::GetDamage(Archer, Spearman), 10);
-	TestEqual(TEXT("Archer on Man-at-arms: 5 - 4 (ranged armour)"), HOLCombat::GetDamage(Archer, ManAtArms), 1);
-	TestEqual(TEXT("Archer on Archer: no bonus on Ranged"), HOLCombat::GetDamage(Archer, Archer), 5);
+	TestEqual(TEXT("Spearman on cavalry: 8 + 17 - 2"), HOLCombat::GetDamage(Spearman, Horseman), 23.f);
+	TestEqual(TEXT("Peasant on Man-at-arms: 3 - 4, 1 at least"), HOLCombat::GetDamage(Peasant, ManAtArms), 1.f);
+	TestEqual(TEXT("Archer on Spearman: 5 + 5 (light infantry), ranged armour 0"), HOLCombat::GetDamage(Archer, Spearman), 10.f);
+	TestEqual(TEXT("Archer on Man-at-arms: 5 - 4 (ranged armour)"), HOLCombat::GetDamage(Archer, ManAtArms), 1.f);
+	TestEqual(TEXT("Archer on Archer: no bonus on Ranged"), HOLCombat::GetDamage(Archer, Archer), 5.f);
 
 	// The armour taken off is the one of the attack's type (D345), whatever the reach.
 	FHOLUnitTypeConstants Typed = Spearman;
-	TestEqual(TEXT("melee hit: melee armour"), HOLCombat::GetDamage(Typed, Horseman), 8 + 17 - 2);
+	TestEqual(TEXT("melee hit: melee armour"), HOLCombat::GetDamage(Typed, Horseman), static_cast<float>(8 + 17 - 2));
 	Typed.AttackType = EHOLAttackType::Ranged;
-	TestEqual(TEXT("ranged hit: ranged armour"), HOLCombat::GetDamage(Typed, Horseman), 8 + 17 - 5);
+	TestEqual(TEXT("ranged hit: ranged armour"), HOLCombat::GetDamage(Typed, Horseman), static_cast<float>(8 + 17 - 5));
 	Typed.AttackType = EHOLAttackType::Siege;
-	TestEqual(TEXT("siege hit: siege armour"), HOLCombat::GetDamage(Typed, Horseman), 8 + 17 - 7);
+	TestEqual(TEXT("siege hit: siege armour"), HOLCombat::GetDamage(Typed, Horseman), static_cast<float>(8 + 17 - 7));
 	Typed.AttackType = EHOLAttackType::Hero;
-	TestEqual(TEXT("hero hit: hero armour"), HOLCombat::GetDamage(Typed, Horseman), 8 + 17 - 3);
-	TestEqual(TEXT("hero hit on a Man-at-arms: 8 - 2 (hero armour 2)"), HOLCombat::GetDamage(Typed, ManAtArms), 6);
+	TestEqual(TEXT("hero hit: hero armour"), HOLCombat::GetDamage(Typed, Horseman), static_cast<float>(8 + 17 - 3));
+	TestEqual(TEXT("hero hit on a Man-at-arms: 8 - 2 (hero armour 2)"), HOLCombat::GetDamage(Typed, ManAtArms), 6.f);
 	TestEqual(TEXT("GetArmor: hero"), HOLCombat::GetArmor(ManAtArms, EHOLAttackType::Hero), 2);
 	TestEqual(TEXT("GetArmor: siege"), HOLCombat::GetArmor(Horseman, EHOLAttackType::Siege), 7);
 	FHOLUnitTypeConstants LongMelee = Spearman;
 	LongMelee.AttackRange = 2000.f;
-	TestEqual(TEXT("a long reach does not make it ranged: melee armour"), HOLCombat::GetDamage(LongMelee, ManAtArms), 4);
+	TestEqual(TEXT("a long reach does not make it ranged: melee armour"), HOLCombat::GetDamage(LongMelee, ManAtArms), 4.f);
 	Typed.Attack = 1;
 	Typed.Bonuses.Reset();
-	TestEqual(TEXT("1 at least against every armour"), HOLCombat::GetDamage(Typed, Horseman), 1);
+	TestEqual(TEXT("1 at least against every armour"), HOLCombat::GetDamage(Typed, Horseman), 1.f);
 
 	// Several categories (D345): every bonus aimed at one of them adds up.
 	FHOLUnitTypeConstants Musketeer;
@@ -202,20 +202,20 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("two categories: light infantry"), Musketeer.HasArmorCategory(EHOLArmorCategory::LightInfantry));
 	TestTrue(TEXT("two categories: gunpowder infantry"), Musketeer.HasArmorCategory(EHOLArmorCategory::GunpowderInfantry));
 	TestFalse(TEXT("two categories: not cavalry"), Musketeer.HasArmorCategory(EHOLArmorCategory::Cavalry));
-	TestEqual(TEXT("Archer on light + gunpowder infantry: 5 + 5 + 5"), HOLCombat::GetDamage(Archer, Musketeer), 15);
+	TestEqual(TEXT("Archer on light + gunpowder infantry: 5 + 5 + 5"), HOLCombat::GetDamage(Archer, Musketeer), 15.f);
 	Musketeer.RangedArmor = 3;
-	TestEqual(TEXT("... minus its ranged armour"), HOLCombat::GetDamage(Archer, Musketeer), 12);
+	TestEqual(TEXT("... minus its ranged armour"), HOLCombat::GetDamage(Archer, Musketeer), 12.f);
 	FHOLUnitTypeConstants Gunner;
 	Gunner.ArmorCategoryMask = HOLArmorCategoryBit(EHOLArmorCategory::Ranged) | HOLArmorCategoryBit(EHOLArmorCategory::GunpowderInfantry);
-	TestEqual(TEXT("Archer on ranged + gunpowder infantry: one bonus"), HOLCombat::GetDamage(Archer, Gunner), 10);
+	TestEqual(TEXT("Archer on ranged + gunpowder infantry: one bonus"), HOLCombat::GetDamage(Archer, Gunner), 10.f);
 	FHOLUnitTypeConstants NoBonus = Spearman;
 	NoBonus.Bonuses.Reset();
-	TestEqual(TEXT("no bonus: no bonus"), HOLCombat::GetDamage(NoBonus, Horseman), 6);
+	TestEqual(TEXT("no bonus: no bonus"), HOLCombat::GetDamage(NoBonus, Horseman), 6.f);
 	if (Spearman.Bonuses.Num() == 1)
 	{
 		FHOLUnitTypeConstants ZeroBonus = Spearman;
 		ZeroBonus.Bonuses[0].Damage = 0;
-		TestEqual(TEXT("a bonus of 0: no bonus"), HOLCombat::GetDamage(ZeroBonus, Horseman), 6);
+		TestEqual(TEXT("a bonus of 0: no bonus"), HOLCombat::GetDamage(ZeroBonus, Horseman), 6.f);
 	}
 
 	// Hits to kill (the matchup the user will see first).
@@ -261,10 +261,10 @@ bool FHOLCombatCrossbowmanTest::RunTest(const FString& Parameters)
 
 	// Damage by the real rule (D21, D345): attack + the bonus on the target's categories - its ranged armour.
 	TestEqual(TEXT("Crossbowman on Man-at-arms: 12 + 10 - its ranged armour"), HOLCombat::GetDamage(Crossbowman, ManAtArms),
-		12 + 10 - ManAtArms.RangedArmor);
-	TestEqual(TEXT("Crossbowman on Man-at-arms: 18"), HOLCombat::GetDamage(Crossbowman, ManAtArms), 18);
-	TestEqual(TEXT("Crossbowman on Spearman: 12 - its ranged armour, no bonus"), HOLCombat::GetDamage(Crossbowman, Spearman), 12 - Spearman.RangedArmor);
-	TestEqual(TEXT("Crossbowman on Crossbowman: 12, no bonus on Ranged"), HOLCombat::GetDamage(Crossbowman, Crossbowman), 12);
+		float(12 + 10 - ManAtArms.RangedArmor));
+	TestEqual(TEXT("Crossbowman on Man-at-arms: 18"), HOLCombat::GetDamage(Crossbowman, ManAtArms), 18.f);
+	TestEqual(TEXT("Crossbowman on Spearman: 12 - its ranged armour, no bonus"), HOLCombat::GetDamage(Crossbowman, Spearman), float(12 - Spearman.RangedArmor));
+	TestEqual(TEXT("Crossbowman on Crossbowman: 12, no bonus on Ranged"), HOLCombat::GetDamage(Crossbowman, Crossbowman), 12.f);
 
 	// Against the buildings: the same attack, 1 left after their ranged armour.
 	TestTrue(TEXT("Crossbowman's building attack: ranged, 12, 2.125 s, its reach"), Crossbowman.BuildingAttackType == EHOLAttackType::Ranged
@@ -656,19 +656,19 @@ bool FHOLCombatArrowTest::RunTest(const FString& Parameters)
 		FVector2D(Archer.AttackRange + Archer.Radius + Spearman.Radius, 0), Speed), Step), FMath::DivideAndRoundUp(FMath::RoundToInt32((Archer.AttackRange + Archer.Radius + Spearman.Radius) * 1000.f / Speed), Step));
 
 	// The landing: always hits a standing target (no dodge, J7c-Q1); lost on a dead or gone one (J7c-Q2).
-	const int32 Damage = HOLCombat::GetDamage(Archer, Spearman);
-	int32 Health = Spearman.MaxHealth;
+	const float Damage = HOLCombat::GetDamage(Archer, Spearman);
+	float Health = static_cast<float>(Spearman.MaxHealth);
 	TestEqual(TEXT("hits a standing target"), HOLCombat::ResolveArrow(true, Health, Damage), HOLCombat::EArrowOutcome::Hit);
-	TestEqual(TEXT("its damage off the health"), Health, Spearman.MaxHealth - Damage);
+	TestEqual(TEXT("its damage off the health"), Health, static_cast<float>(Spearman.MaxHealth) - Damage);
 	Health = Damage;
 	TestEqual(TEXT("kills a target at its damage"), HOLCombat::ResolveArrow(true, Health, Damage), HOLCombat::EArrowOutcome::Kill);
 	TestTrue(TEXT("at 0 or less"), Health <= 0);
-	int32 Dead = 0;
+	float Dead = 0.f;
 	TestEqual(TEXT("lost on a target already at 0 (died in flight)"), HOLCombat::ResolveArrow(true, Dead, Damage), HOLCombat::EArrowOutcome::Lost);
-	TestEqual(TEXT("no damage on it"), Dead, 0);
-	int32 Gone = 40;
+	TestEqual(TEXT("no damage on it"), Dead, 0.f);
+	float Gone = 40.f;
 	TestEqual(TEXT("lost on a target gone (destroyed)"), HOLCombat::ResolveArrow(false, Gone, Damage), HOLCombat::EArrowOutcome::Lost);
-	TestEqual(TEXT("its health untouched"), Gone, 40);
+	TestEqual(TEXT("its health untouched"), Gone, 40.f);
 
 	// The target of a shooter (J7c-Q6): no spreading, the nearest even crowded, the current one kept while in reach.
 	HOLCombat::FSeeker Shooter;

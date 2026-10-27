@@ -52,7 +52,7 @@ namespace HOLCorpse
 	HEROESOFLIBERTY_API bool IsExpired(double Age);
 
 	/** Whether a unit leaves a body: dying (or at 0 health) and its type has a fall to end. */
-	HEROESOFLIBERTY_API bool LeavesCorpse(const FHOLUnitTypeConstants& Type, EHOLUnitActivity Activity, int32 CurrentHealth);
+	HEROESOFLIBERTY_API bool LeavesCorpse(const FHOLUnitTypeConstants& Type, EHOLUnitActivity Activity, float CurrentHealth);
 
 	/**
 	 * Reads the body each of Entities leaves (LeavesCorpse: dying, or at 0 health for a simulated unit), before they are

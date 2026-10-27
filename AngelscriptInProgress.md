@@ -20,6 +20,71 @@ Rien n'est tranché ici : les questions sont posées à l'utilisateur une à la 
 - 2026-10-26 : **AS-Q2 = B** (choix de l'utilisateur ; recommandation : A puis B). Les deux reportées au GDD en
   **D484** (compteur à D485 ; la session IA travaillait aussi dans GDD.md et EtapeDefini.md de la copie principale).
   Reste : rien à coder avant le premier fichier en script ; à ce moment, le test rouge exprès et l'étape du cache.
+- 2026-10-27 : moteur AS_3 prêt. **AS1 (plomberie des tests en script)** dans le worktree Elrond, branche
+  `angelscript-first` (depuis main 85508be) :
+  - `Script/Tests/HOLScriptSmoke_Test.as` : `Test_SeesProjectClasses` (le script voit `AHOLBuilding`) ;
+  - `quick_check` : filtre `HeroesOfLiberty+Angelscript.UnitTests` ; contrôles « scripts compiled » (3 premières
+    lignes d'erreur `Angelscript: Error:` du journal, tests et jeu) et « script tests ran (N) » > 0 ;
+  - `-as-exit-on-error` sur tous les lancements automatiques de `Tools/Tests/*.ps1` (pas `play.ps1`) : sans lui, un
+    script qui ne compile pas ouvre au démarrage la fenêtre « corrigez les erreurs » et l'éditeur attend (vu : 421 s
+    puis délai dépassé, « tests 0/0 ») ; avec lui, il quitte tout de suite.
+  - Rouges vus avant le vert : assertion fausse exprès → `tests 187/188 FAIL`, le test en script nommé ; fichier qui
+    ne compile pas → `scripts compiled` KO avec fichier, ligne et message, côté tests et côté jeu, `script tests ran
+    (0)` KO. Vert : `quick_check` par défaut PASS en 37 s, tests 187/187 (186 C++ + 1 script).
+  - Notes : `StaticClass()` est déprécié en script (le type sert de valeur : `AHOLBuilding`) ; `FUnitTest` existe hors
+    éditeur, les `*_Test.as` compilent donc aussi dans le jeu empaqueté (assertions inertes) ; l'extension VS Code
+    Angelscript se connecte au port de débogage de chaque éditeur lancé (sans effet sur les tests). Deux départs de
+    jeu calés > 120 s sur `zen.exe service status` pendant que trois autres copies lançaient leurs tests : charge de
+    la machine, rien du script.
+  - Attend la validation de l'utilisateur pour committer. Suite : AS2 = cache précompilé au paquet (D484), puis le
+    premier vrai fichier en script (question à poser).
+- 2026-10-27 : AS1 validé, commité, dans main (806ae43). **AS2 (cache précompilé au paquet)** en cours dans Elrond :
+  - `Tools/Package/precompile_scripts.ps1 -PackageDir` : lance l'exe du jeu (`Windows\`) puis celui du serveur
+    (`WindowsServer\`) avec `-as-generate-precompiled-data` ; vérifie le `Script\PrecompiledScript.Cache` écrit, sans
+    erreur de script ; retire ce que le lancement laisse (`Saved\` s'il n'existait pas, `AS_JITTED_CODE\`).
+    `package.ps1` l'appelle après `Version.txt` (étape 5b).
+  - `packaged_smoke.ps1` : exige « Using fully precompiled scripts » et aucune `Angelscript: Error:`.
+  - `package.ps1` : UAT relancé toutes les 20 s (60 min au plus) quand UnrealBuildTool est déjà pris
+    (`Failed (ConflictingInstance)`, exit 10, vu deux fois ce matin : la compilation d'Arwen, lancée en chemins
+    relatifs `dotnet ..\..\Engine\...`, échappe à l'attente de l'étape 3). `-ubtargs=-WaitMutex` essayé : sans effet
+    (il va dans chaque cible, le verrou est pris avant).
+  - Ordre prévu : paquet sans cache → `packaged_smoke` rouge (seul défaut : scripts non précompilés) →
+    `precompile_scripts` seul → `packaged_smoke` vert → paquet complet avec l'étape 5b → vert.
+  - Vu (paquet 2026-10-27-806ae43, sans cache, 13 min) : `packaged_smoke` rouge, « scripts not precompiled » ;
+    le jeu compile alors ses scripts au démarrage en ~0,4 ms (un seul petit fichier). `precompile_scripts` seul :
+    jeu et serveur, cache de 0,9 Ko en 7-8 s chacun ; `packaged_smoke` vert (30 s) ; le serveur empaqueté démarre lui
+    aussi sur son cache (« Using fully precompiled scripts », lancé 40 s puis arrêté).
+  - Trouvé en route : (1) le jeu et le serveur empaquetés écrivent au démarrage 12 erreurs de liaison du moteur
+    (`RegisterObjectMethod` sur des délégués de test `FTestDynamicDelegateFloat`… dont le paramètre s'appelle `float` ou
+    `int64`, mots réservés du script), sans effet ; `Tools/Package/script_errors.ps1` ne retient donc que les erreurs
+    des fichiers `.as` (vérifié sur un faux journal : l'erreur d'un `.as` sortie, celles des liaisons ignorées).
+    (2) Le lancement `-as-generate-precompiled-data` sort en code 1 : il quitte pendant le démarrage du moteur et
+    l'arrêt du plugin PCG échoue alors sur un `ensure` (« Attempted to unregister a data class that was not
+    registered »), cache déjà écrit ; le critère est donc « cache écrit, aucune erreur de `.as` ».
+  - main fusionné en avance rapide (e36efe9 : IA1.1, J8a.1) ; paquet complet relancé avec l'étape 5b.
+  - Paquet complet 2026-10-27-e36efe9 : **PASS en 34 min** (10 min d'attente d'UnrealBuildTool pris ailleurs, la
+    relance a marché ; compilation complète 13,6 min après la fusion ; cuisson ~15 min dont 10 au ralenti, machine
+    partagée). Étape 5b : jeu 12 s, serveur 7 s, cache 0,9 Ko chacun. `packaged_smoke` PASS (10 s).
+    `quick_check` sur le code fusionné : tests 193/193 PASS, smoke PASS (relancé : deux départs calés sur le
+    redémarrage de zenserver, arrêté avec la fin du paquet).
+  - **À savoir pour les prochains paquets** : tant que BuildCookRun tourne, il tient le verrou d'AutomationTool, et
+    tout éditeur ou jeu lancé dans une autre copie attend au démarrage (Turnkey `-WaitForUATMutex`) : 30 min de
+    blocage pour les autres sessions ce midi. Un paquet complet se lance donc machine calme, ou en prévenant les
+    autres sessions. Pour vérifier une étape d'après UAT, la lancer seule sur le paquet existant.
+  - Validé par l'utilisateur, commité.
+- 2026-10-27 : AS2 dans main (a365967 ; avance de main faite à la main dans la copie principale : `EtapeDefini.md` et
+  `packaged_smoke.ps1` y portaient des changements non commités d'autres sessions, gardés). **AS-Q3 posée et tranchée :
+  A** (ci-dessous). Chantier en veille : rien à coder ici ; Elrond libéré.
+
+### AS-Q3 — Que fait le chantier après AS1 et AS2 ? (tranchée le 2026-10-27 : **A**)
+
+- **A — Rien à migrer maintenant** : le premier code neuf en script vient d'IA0.4 (cerveau de l'IA, `AIInProgress.md`)
+  et de J8a.4 (mort et retour du héros, `JourneyInProgress.md`) ; un fichier C++ ne passe en script que quand un
+  chantier va beaucoup le toucher (option D de D483), et la recette de migration s'écrit à ce premier cas réel.
+- B — Migrer un petit écran (`HOLEndBanner`, 215 lignes, 2 tests) comme essai : recette de migration d'avance, sans
+  gain pour le jeu.
+- C — Migrer `HOLBuilding` (~1 240 lignes) : vrai cas, mais long et en travers d'IA1 et du héros.
+- **Choix de l'utilisateur : A**, conforme à la recommandation (pas de travail sans usage).
 
 ## Côté projet (relevé du 2026-10-26)
 

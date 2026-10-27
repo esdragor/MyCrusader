@@ -482,7 +482,7 @@ uint64 UHOLCombatProcessor::HashArrows() const
 		Mix(Arrow.ShooterId);
 		Mix(Arrow.TargetId);
 		Mix(static_cast<uint64>(Arrow.ShooterSlot));
-		Mix(static_cast<uint64>(Arrow.Damage));
+		Mix(static_cast<uint64>(BitCast<uint32>(Arrow.Damage)));
 		Mix(static_cast<uint64>(Arrow.ReleaseStep));
 		Mix(static_cast<uint64>(Arrow.ArrivalStep));
 	}
@@ -876,7 +876,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			if (Building && FindStepBuilding(Building) != INDEX_NONE)
 			{
 				++TotalArrowsLanded;
-				const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Building, Arrow.Damage, static_cast<EHOLAttackType>(Arrow.BuildingAttackType));
+				// A building's arrow carries the shooter's whole BuildingAttack (buildings keep integer health).
+				const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Building, FMath::RoundToInt(Arrow.Damage), static_cast<EHOLAttackType>(Arrow.BuildingAttackType));
 				const int32 Shooter = FindFighter(Arrow.Shooter);
 				if (Shooter != INDEX_NONE)
 				{
@@ -896,7 +897,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			continue;
 		}
 		const int32 Victim = FindFighter(Arrow.Target);
-		int32 Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0;
+		float Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0.f;
 		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Arrow.Damage);
 		if (Outcome == HOLCombat::EArrowOutcome::Lost)
 		{
@@ -919,8 +920,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		if (LogHits != 0)
 		{
-			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s lands on #%u %s for %d, %d HP left (released step %lld, %lld steps)"), StepIndex,
-				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), Arrow.Damage, Health, Arrow.ReleaseStep,
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s lands on #%u %s for %g, %g HP left (released step %lld, %lld steps)"), StepIndex,
+				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Arrow.Damage), static_cast<double>(Health), Arrow.ReleaseStep,
 				StepIndex - Arrow.ReleaseStep);
 		}
 		if (Outcome == HOLCombat::EArrowOutcome::Kill)
@@ -1688,7 +1689,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Arrow.ShooterId = Fighter.UnitId;
 					Arrow.ShooterType = Constants.TypeName;
 					Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
-					Arrow.Damage = Constants.BuildingAttack;
+					Arrow.Damage = static_cast<float>(Constants.BuildingAttack);
 					Arrow.ReleaseStep = StepIndex;
 					Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 					Arrow.TargetBuilding = Step.Building;
@@ -1907,7 +1908,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const int32 Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants);
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants);
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight
@@ -1943,12 +1944,14 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 			if (LogHits != 0)
 			{
-				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s releases an arrow at #%u %s: %d damage, %.0f cm, %d ms, lands step %lld"), StepIndex,
-					Fighter.UnitId, *Constants.TypeName.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), Damage, FVector2D::Distance(Position, EnemyPosition),
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s releases an arrow at #%u %s: %g damage, %.0f cm, %d ms, lands step %lld"), StepIndex,
+					Fighter.UnitId, *Constants.TypeName.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Damage), FVector2D::Distance(Position, EnemyPosition),
 					FlightMs, Arrow.ArrivalStep);
 			}
 			continue;
 		}
+		// D468: the hits come off one after another in the fighters' order (this loop is sequential): with float health the
+		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
 		Enemy.State->CurrentHealth -= Damage;
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		++Combat.Hits;
@@ -1960,8 +1963,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		if (LogHits != 0)
 		{
-			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s hits #%u %s for %d, %d HP left"), StepIndex, Fighter.UnitId, *Constants.TypeName.ToString(),
-				Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), Damage, Enemy.State->CurrentHealth);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s hits #%u %s for %g, %g HP left"), StepIndex, Fighter.UnitId, *Constants.TypeName.ToString(),
+				Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Damage), static_cast<double>(Enemy.State->CurrentHealth));
 		}
 		if (Enemy.State->CurrentHealth <= 0)
 		{
@@ -2020,9 +2023,9 @@ namespace UE::HeroesOfLiberty::Combat
 				const uint32 TargetId = Units->FindUnitId(Combat->Target);
 				const FVector Location = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
 				Fighting += TargetId != 0 ? 1 : 0;
-				Lines.Add(FString::Printf(TEXT("#%u %s slot %d hp %d/%d target %u attacking %d hits %d damage %d kills %d first %lld attackers %d at %.0f %.0f"), UnitId,
-					*Constants.TypeName.ToString(), State->OwnerPlayer, State->CurrentHealth, Constants.MaxHealth, TargetId, Combat->bAttacking ? 1 : 0, Combat->Hits,
-					Combat->DamageDealt, Combat->Kills, Combat->FirstHitStep, Combat->AttackerCount, Location.X, Location.Y));
+				Lines.Add(FString::Printf(TEXT("#%u %s slot %d hp %g/%d target %u attacking %d hits %d damage %g kills %d first %lld attackers %d at %.0f %.0f"), UnitId,
+					*Constants.TypeName.ToString(), State->OwnerPlayer, static_cast<double>(State->CurrentHealth), Constants.MaxHealth, TargetId, Combat->bAttacking ? 1 : 0, Combat->Hits,
+					static_cast<double>(Combat->DamageDealt), Combat->Kills, Combat->FirstHitStep, Combat->AttackerCount, Location.X, Location.Y));
 			}
 			TArray<FString> PopulationText;
 			for (int32 Owner = 0; Owner < Population.Num(); ++Owner)

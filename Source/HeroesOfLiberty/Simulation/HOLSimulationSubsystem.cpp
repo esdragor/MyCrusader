@@ -144,7 +144,7 @@ namespace UE::HeroesOfLiberty::Simulation
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->CooldownMs));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->AttackerCount));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Hits));
-				MixInto(Parts->Combat, static_cast<uint64>(Combat->DamageDealt));
+				MixInto(Parts->Combat, static_cast<uint64>(BitCast<uint32>(Combat->DamageDealt)));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Kills));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Mode));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->DeathStep));
@@ -156,7 +156,7 @@ namespace UE::HeroesOfLiberty::Simulation
 			}
 			if (const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity))
 			{
-				MixInto(Parts->Combat, static_cast<uint64>(State->CurrentHealth));
+				MixInto(Parts->Combat, static_cast<uint64>(BitCast<uint32>(State->CurrentHealth)));
 			}
 			MixInto(Parts->Handles, ((uint64(uint32(Entity.Index)) << 32) | uint32(Entity.SerialNumber)));
 			if (const FMassGhostLocationFragment* Ghost = EntityManager.GetFragmentDataPtr<FMassGhostLocationFragment>(Entity))
