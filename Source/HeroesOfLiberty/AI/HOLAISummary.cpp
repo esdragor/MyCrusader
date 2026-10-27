@@ -54,12 +54,14 @@ namespace HOLAISummary
 		}
 		Summary.IdlePeasants.Sort();
 
-		// Sources: each standing one measured from the slot's nearest deposit taking its resource. A few deposits per slot,
-		// a few hundred sources: every pair is measured (2 to 4 summaries per second and AI slot, IA-Q2).
+		// Sources: each standing one the slot may gather (not another slot's farm field, IA1.2: the gather would refuse it,
+		// IA0.4 B4) measured from the slot's nearest deposit taking its resource. A few deposits per slot, a few hundred
+		// sources: every pair is measured (2 to 4 summaries per second and AI slot, IA-Q2).
 		for (int32 SourceIndex = 0; SourceIndex < Sources.Num(); ++SourceIndex)
 		{
 			const FHOLSource& Source = Sources[SourceIndex];
-			if (!Source.IsStanding())
+			if (!Source.IsStanding() || PlayerIndex < 0 || PlayerIndex > MAX_uint8
+				|| !Source.IsGatherableBy(static_cast<uint8>(PlayerIndex)))
 			{
 				continue;
 			}

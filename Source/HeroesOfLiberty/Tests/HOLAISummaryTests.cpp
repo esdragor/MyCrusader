@@ -318,4 +318,84 @@ bool FHOLAISummaryWorldTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * IA0.4 B4: the summary keeps only the sources its slot may gather (FHOLSource::IsGatherableBy, IA1.2). A world as
+ * AI.Summary.World: slot 0 (human) and slot 1 (AI), each a finished centre; farms set up finished by the real path
+ * (AHOLBuilding::Setup -> its field added to the registry, its owner's, as Buildings.FarmField). Slot 0's farm stands
+ * beside slot 1's centre, nearer than anything; slot 1's own farm and berries farther. Slot 1's food: the berries, then
+ * its own field, never slot 0's; slot 0's food: the berries, then its own field, never slot 1's. Red while Make keeps
+ * every standing source (the enemy field would be slot 1's nearest food: the gather would refuse it, HOLGatherProcessor).
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAISummaryGatherableOnlyTest, "HeroesOfLiberty.AI.Summary.GatherableOnly", UE::HeroesOfLiberty::Tests::AISummary::Flags)
+bool FHOLAISummaryGatherableOnlyTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AISummary;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLSourceSubsystem* SourceSystem = World->GetSubsystem<UHOLSourceSubsystem>();
+	AHOLBuilding* AICentre = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* HumanCentre = World->SpawnActor<AHOLBuilding>(FVector(-10000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	// Slot 0's farm right beside slot 1's centre; slot 1's own farm farther south. Axis-aligned offsets from slot 1's
+	// centre: 1800 (enemy field), 2600 (berries), 3000 (own field): the order holds whatever the centre's body size.
+	AHOLBuilding* EnemyFarm = World->SpawnActor<AHOLBuilding>(FVector(1800.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* OwnFarm = World->SpawnActor<AHOLBuilding>(FVector(0.0, -3000.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("sources"), SourceSystem) && TestNotNull(TEXT("buildings"), AICentre)
+		&& TestNotNull(TEXT("buildings"), HumanCentre) && TestNotNull(TEXT("buildings"), EnemyFarm) && TestNotNull(TEXT("buildings"), OwnFarm))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index == 1 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+		}
+		State->InitVictory(Config);
+		AICentre->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		HumanCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+
+		// As the match starts: the registry takes sources from now on; then the farms, set up finished (their fields).
+		SourceSystem->OnWorldBeginPlay(*World);
+		const int32 Berries = SourceSystem->AddSource(HOLSourceTypeNames::BerryBush, FVector(0.0, 2600.0, 0.0));
+		EnemyFarm->Setup(HOLBuildingTypeNames::Farm, 0, 0);
+		OwnFarm->Setup(HOLBuildingTypeNames::Farm, 1, 1);
+		const int32 EnemyField = EnemyFarm->GetLinkedSource();
+		const int32 OwnField = OwnFarm->GetLinkedSource();
+		const TArray<FHOLSource>& All = SourceSystem->GetSources();
+		if (TestTrue(TEXT("the berries placed"), Berries != INDEX_NONE)
+			&& TestTrue(TEXT("slot 0's farm: its field"), All.IsValidIndex(EnemyField) && All[EnemyField].IsStanding())
+			&& TestTrue(TEXT("slot 1's farm: its field"), All.IsValidIndex(OwnField) && All[OwnField].IsStanding()))
+		{
+			TestEqual(TEXT("slot 0's field is slot 0's"), static_cast<int32>(All[EnemyField].OwnerSlot), 0);
+			TestEqual(TEXT("slot 1's field is slot 1's"), static_cast<int32>(All[OwnField].OwnerSlot), 1);
+			TestFalse(TEXT("slot 1 may not gather slot 0's field"), All[EnemyField].IsGatherableBy(1));
+			TestTrue(TEXT("the berries are everyone's"), All[Berries].IsGatherableBy(0) && All[Berries].IsGatherableBy(1));
+
+			// Slot 1 (AI), read through the library as its brain reads it.
+			const FHOLAISummary Slot1 = UHOLAISummaryLibrary::ReadAISummary(World, 1);
+			const bool bSlot1HasEnemyField = Slot1.Food.Sources.ContainsByPredicate([EnemyField](const FHOLAISourceNear& Near) { return Near.SourceIndex == EnemyField; });
+			TestFalse(TEXT("slot 1's food: slot 0's field left out, though the nearest"), bSlot1HasEnemyField);
+			TestEqual(TEXT("slot 1's food: the berries, then its own field"), JoinSources(Slot1.Food),
+				FString::Printf(TEXT("%d %d"), Berries, OwnField));
+			TestTrue(TEXT("slot 1's nearest food: one it may gather"), Slot1.Food.Sources.Num() > 0
+				&& All.IsValidIndex(Slot1.Food.Sources[0].SourceIndex) && All[Slot1.Food.Sources[0].SourceIndex].IsGatherableBy(1));
+
+			// Slot 0 (human): its own field kept, slot 1's left out.
+			const FHOLAISummary Slot0 = HOLAISummary::Read(*World, 0);
+			const bool bSlot0HasOwnField = Slot0.Food.Sources.ContainsByPredicate([EnemyField](const FHOLAISourceNear& Near) { return Near.SourceIndex == EnemyField; });
+			const bool bSlot0HasAIField = Slot0.Food.Sources.ContainsByPredicate([OwnField](const FHOLAISourceNear& Near) { return Near.SourceIndex == OwnField; });
+			TestTrue(TEXT("slot 0's food: its own field kept"), bSlot0HasOwnField);
+			TestFalse(TEXT("slot 0's food: slot 1's field left out"), bSlot0HasAIField);
+			TestEqual(TEXT("slot 0's food: the berries, then its own field"), JoinSources(Slot0.Food),
+				FString::Printf(TEXT("%d %d"), Berries, EnemyField));
+			AddInfo(FString::Printf(TEXT("%s | %s"), *Slot1.ToString(), *Slot0.ToString()));
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif

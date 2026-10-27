@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AI/HOLAIBrain.h"
+#include "AI/HOLAISummary.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
@@ -345,6 +346,55 @@ bool FHOLAIBrainSwitchTest::RunTest(const FString& Parameters)
 	const TArray<int32> Thinking = Brain->GetThinkingSlots();
 	TestEqual(TEXT("The thinking slots: 2 and 3 (slot 1 switched off)"), FString::JoinBy(Thinking, TEXT(","), [](const int32 Slot) { return FString::FromInt(Slot); }),
 		FString(TEXT("2,3")));
+	return true;
+}
+
+/**
+ * IA0.4 B4: the brain never sends its Peasants to a field it may not gather. The world of AI.Brain.GatherIdle plus slot 0's
+ * (human) farm set up finished by the real path (AHOLBuilding::Setup -> its field, slot 0's) beside slot 1's centre,
+ * nearer than the berries. The starting stock (food first by the tie): one thought of slot 1, one step -> its Peasant on
+ * its way to the berries, not to slot 0's field. Red while the summary keeps the enemy field: the brain picks it as the
+ * nearest food, the gather refuses the order (IsGatherableBy) and the Peasant stays idle, sent again at every thought.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIBrainGatherableOnlyTest, "HeroesOfLiberty.AI.Brain.GatherableOnly", UE::HeroesOfLiberty::Tests::AIBrain::Flags)
+bool FHOLAIBrainGatherableOnlyTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIBrain;
+
+	FBrainWorld Test;
+	if (!TestNotNull(TEXT("A brain in the test world"), Test.Brain) || !TestTrue(TEXT("Test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const UWorld& World = *Test.World;
+	// Slot 0's farm 1400 cm west of slot 1's centre (the berries are 1800 cm north): its field is the nearest food.
+	AHOLBuilding* EnemyFarm = Test.World->SpawnActor<AHOLBuilding>(FVector(-1400.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("Slot 0's farm spawned"), EnemyFarm))
+	{
+		return false;
+	}
+	EnemyFarm->Setup(HOLBuildingTypeNames::Farm, 0, 0);
+	const int32 EnemyField = EnemyFarm->GetLinkedSource();
+	const TArray<FHOLSource>& All = Test.Sources->GetSources();
+	if (!TestTrue(TEXT("Slot 0's farm: its field stands"), All.IsValidIndex(EnemyField) && All[EnemyField].IsStanding()))
+	{
+		return false;
+	}
+	TestFalse(TEXT("Slot 1 may not gather slot 0's field"), All[EnemyField].IsGatherableBy(1));
+
+	// What the brain reads: the berries are slot 1's nearest food, the enemy field left out.
+	const FHOLAISummary Summary = HOLAISummary::Read(World, 1);
+	TestTrue(TEXT("Slot 1's nearest food: the berries"), Summary.Food.Sources.Num() > 0 && Summary.Food.Sources[0].SourceIndex == Test.Berries);
+	TestFalse(TEXT("Slot 1's food: slot 0's field left out"),
+		Summary.Food.Sources.ContainsByPredicate([EnemyField](const FHOLAISourceNear& Near) { return Near.SourceIndex == EnemyField; }));
+
+	AddExpectedMessage(FString::Printf(TEXT("Gather order of slot 1: 1 units to source %d \\(Food\\)"), Test.Berries),
+		EAutomationExpectedMessageFlags::Contains, 1);
+	TestTrue(TEXT("Slot 1 thinks"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	TestEqual(TEXT("Next step: the AI Peasant on its way to food it may gather"), GetActivity(World, Test.AIPeasants[0]),
+		EHOLUnitActivity::GatherTrip);
+	TestEqual(TEXT("The human Peasant got no order, idle"), GetActivity(World, Test.HumanPeasants[0]), EHOLUnitActivity::Idle);
 	return true;
 }
 
