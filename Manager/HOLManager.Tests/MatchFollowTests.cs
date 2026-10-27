@@ -10,9 +10,12 @@ internal sealed class FakeLauncher : IServerLauncher
     public List<string> Stopped { get; } = [];
     public int Running => Alive.Count;
 
-    public int Launch(string matchId, MapInfo map, MatchConfig config)
+    public List<string?> Versions { get; } = [];
+
+    public int Launch(string matchId, MapInfo map, MatchConfig config, string? gameVersion = null)
     {
         Alive.Add(matchId);
+        Versions.Add(gameVersion);
         return 7778;
     }
 

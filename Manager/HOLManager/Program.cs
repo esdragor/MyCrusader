@@ -31,12 +31,17 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 // Created by the container, which disposes it at shutdown: the servers still running are stopped.
 builder.Services.AddSingleton<IServerLauncher>(sp => new ProcessServerLauncher(settings, accessKey,
     sp.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessServerLauncher>()));
-builder.Services.AddSingleton(sp => new LobbyStore(gameVersion, sp.GetRequiredService<IClock>(),
-    launcher: sp.GetRequiredService<IServerLauncher>()));
-
 // Versions served to the launcher (L2), with their own settings.
-builder.Services.AddSingleton(new VersionStore((builder.Configuration.Get<VersionSettings>() ?? new VersionSettings()).ResolveDir()));
+var versionStore = new VersionStore((builder.Configuration.Get<VersionSettings>() ?? new VersionSettings()).ResolveDir());
+builder.Services.AddSingleton(versionStore);
+// D481: each new lobby takes the latest published version (latest.txt), else the starting one.
+builder.Services.AddSingleton(sp => new LobbyStore(gameVersion, sp.GetRequiredService<IClock>(),
+    launcher: sp.GetRequiredService<IServerLauncher>(), latestVersion: versionStore.LatestName));
 
+// D481: servers of old versions deleted once no lobby nor match uses them (run by the housekeeping).
+builder.Services.AddSingleton(sp => new ServerCleaner(Path.GetFullPath(settings.ServersDir, AppContext.BaseDirectory),
+    sp.GetRequiredService<LobbyStore>(), sp.GetRequiredService<IClock>(),
+    sp.GetRequiredService<ILoggerFactory>().CreateLogger<ServerCleaner>()));
 // Housekeeping every second (R2.10): servers gone, silent or lingering are followed even when no one calls.
 builder.Services.AddHostedService<HousekeepingService>();
 
@@ -49,15 +54,17 @@ app.UseAccessKey(accessKey);
 app.MapGet("/status", (LobbyStore store, IServerLauncher launcher) => new
 {
     protocolVersion = ManagerSettings.ProtocolVersion,
-    gameVersion,
+    // D481: the latest version, the one a new lobby would take.
+    gameVersion = store.GameVersion,
     lobbies = store.Count,
     servers = launcher.Running,
     maxServers = settings.MaxServers,
 });
 
 app.Lifetime.ApplicationStarted.Register(() => app.Logger.LogInformation(
-    "HOLManager started: game version {GameVersion}, server {ServerExe}, max {MaxServers} servers, access key: {AccessKey}.",
-    gameVersion, Path.GetFullPath(settings.ServerExe, AppContext.BaseDirectory), settings.MaxServers, accessKey != null ? "on" : "off"));
+    "HOLManager started: game version {GameVersion} (latest published: {Latest}), server {ServerExe}, servers per version in {ServersDir}, max {MaxServers} servers, access key: {AccessKey}.",
+    gameVersion, versionStore.LatestName() ?? "none", Path.GetFullPath(settings.ServerExe, AppContext.BaseDirectory),
+    Path.GetFullPath(settings.ServersDir, AppContext.BaseDirectory), settings.MaxServers, accessKey != null ? "on" : "off"));
 app.Lifetime.ApplicationStopping.Register(() => app.Logger.LogInformation("HOLManager stopping."));
 
 app.MapLobbyRoutes();

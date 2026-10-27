@@ -5,8 +5,9 @@ namespace HOLManager.Matches;
 /**
  * Runs the store's housekeeping every second (R2.10): a server gone, silent 120 s after its launch or lingering
  * 10 s after "empty" is followed even when no client calls. The rules themselves are in LobbyStore, under its lock.
+ * D481: then the servers of old versions no longer used are deleted (ServerCleaner), outside that lock.
  */
-public sealed class HousekeepingService(LobbyStore store) : BackgroundService
+public sealed class HousekeepingService(LobbyStore store, ServerCleaner? cleaner = null) : BackgroundService
 {
     public static readonly TimeSpan Period = TimeSpan.FromSeconds(1);
 
@@ -16,6 +17,7 @@ public sealed class HousekeepingService(LobbyStore store) : BackgroundService
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             store.Housekeep();
+            cleaner?.Clean();
         }
     }
 }

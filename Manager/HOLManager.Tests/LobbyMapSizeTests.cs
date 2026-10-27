@@ -14,7 +14,7 @@ internal sealed class MapLauncher : IServerLauncher
 {
     public MapInfo? Map { get; private set; }
 
-    public int Launch(string matchId, MapInfo map, MatchConfig config)
+    public int Launch(string matchId, MapInfo map, MatchConfig config, string? gameVersion = null)
     {
         Map = map;
         return 7778;

@@ -22,6 +22,22 @@ public class CommandLineTests : IDisposable
         Assert.Equal(3, new PublishOptions("g", "v").Keep);
     }
 
+    [Fact]
+    public void ServerOptionsAreRead()
+    {
+        var options = CommandLine.Parse(["--game", "g", "--versions", "v", "--server", @"C:\A\WindowsServer", "--servers-dir", @"D:\S"]);
+        Assert.Equal(@"C:\A\WindowsServer", options.ServerDir);
+        Assert.Equal(@"D:\S", options.ServersDir);
+    }
+
+    [Theory]
+    [InlineData("--game", "g", "--versions", "v", "--server", "s")]
+    [InlineData("--game", "g", "--versions", "v", "--servers-dir", "d")]
+    public void AServerOptionAloneIsRefused(params string[] args)
+    {
+        Assert.Contains("--server and --servers-dir", Assert.Throws<ArgumentException>(() => CommandLine.Parse(args)).Message);
+    }
+
     [Theory]
     [InlineData("--versions", "v")]
     [InlineData("--game", "g")]

@@ -17,6 +17,8 @@ public static class LobbyViews
     {
         id = lobby.Id,
         name = lobby.Name,
+        // D481: the lobby's game version; a client of another version is refused (version_mismatch).
+        gameVersion = lobby.GameVersion,
         // TC3: the map and its size, shown in the list ("Plaine — Grande").
         map = lobby.Settings.Map,
         size = lobby.Settings.Size,
@@ -56,7 +58,7 @@ public static class LobbyViews
         slots = lobby.Slots.Select(Slot).ToList(),
         // In game: what the client opens (PROTOCOL.md, Démarrage de la partie); playerName null without a token.
         match = lobby.State == LobbyState.InGame && lobby.Match is { } m
-            ? new { matchId = m.Id, port = m.Port, playerName = you, gameVersion = store.GameVersion }
+            ? new { matchId = m.Id, port = m.Port, playerName = you, gameVersion = lobby.GameVersion }
             : null,
         notice = lobby.Notice,
         };

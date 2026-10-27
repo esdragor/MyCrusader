@@ -111,6 +111,9 @@ public sealed class Lobby
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
+
+    /** D481: the game version of the lobby, the latest published at its creation, kept for its whole life. */
+    public string GameVersion { get; init; } = "";
     public LobbyState State { get; internal set; } = LobbyState.Lobby;
     public required LobbySettings Settings { get; init; }
     public IReadOnlyList<LobbySlot> Slots { get; } = Enumerable.Range(0, LobbyRules.SlotCount).Select(i => new LobbySlot(i)).ToArray();

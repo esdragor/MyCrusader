@@ -3,6 +3,10 @@
 Les titres seulement : ce qui a déjà été abordé et peut être fait, et les bugs remontés.
 Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*InProgress.md`.
 
+**Chaque session met ce fichier à jour à chaque avancée** (question tranchée, boucle faite, commit, fusion, bug trouvé
+ou corrigé), en même temps que son journal, dans `C:\Users\baudo\Documents\MyCrusader\EtapeDefini.md` (chemin absolu,
+même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses lignes.
+
 ## À faire
 
 ### Animations
@@ -10,21 +14,22 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 fiche réseau (vie du héros en part de 255, fiches publique et privée écrites par le serveur, PV exacts chez le client, contrôle `net hero sheets`), dans `main` ; J8a.4 (mort et retour, premier fichier en Angelscript) suivante, questions J8a4-Q1 à Q7 à trancher ; `JourneyInProgress.md`)*
+- Point de ralliement en plusieurs étapes : Maj + clic droit ajoute des points au ralliement d'un bâtiment (chemin de sortie, par exemple pour contourner une zone)
+- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 fiche réseau (vie du héros en part de 255, fiches publique et privée écrites par le serveur, PV exacts chez le client, contrôle `net hero sheets`), dans `main` ; J8a.4 (mort et retour, premier fichier en Angelscript) en cours dans Celeborn : questions J8a4-Q1 à Q7 tranchées, boucles 1 (règles en script), 2 (ponts C++) et 3 (décision du retour en script) faites, non commitées, boucle 4 (achat du retour par le joueur) en cours dans Celeborn (hero-j8a3), fusion de main avant le commit ; `JourneyInProgress.md`)*
 
 ### Fin de partie
-- Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
+- Conditions de victoire à coder : vies par palier (avec les paliers : P-Q1 = C, chantier des paliers juste après J8b, XP et niveaux), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
 
 ### Modes de jeu
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R7 dans `main` (e5af3b7) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
-- Lanceur : essai avec un ami *(L0 à L13 dans `main`, décisions D475 à D482 au GDD ; kit et DuckDNS prêts ; serveur par version confié au chantier réseau (D481) ; `LauncherInProgress.md`)*
+- M6 en parallèle : R8 redécoupé (le lanceur remplace R8.1-R8.5) : R8a serveur par version faite et dans `main` (dd1e708, contrôle `server_versions_check`), puis R8b publication à jour (suivante, Glorfindel), R8c mesure à 4 puis 8 clients, R8d essai E5 avec un ami ; partie à X et clôture (R9) *(R1 à R7.10 et R8a dans `main` (dd1e708) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
+- Lanceur : essai avec un ami *(L0 à L13 dans `main`, décisions D475 à D482 au GDD ; kit et DuckDNS prêts ; serveur par version (D481) fait par le chantier réseau (R8a, dans `main` dd1e708) ; `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
 ### IA
-- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main`, IA0.4 (cerveau en script, AS1 dans `main`) et IA0.1 (R7 dans `main`) à faire ; IA1 (économie) : IA1.1 (5 Paysans de départ) et IA1.2 (ferme) dans `main`, IA1.3 suivante ; chantier `AIInProgress.md`)*
+- IA du prototype : simple mais joue chaque système ; trois niveaux et l'évolutive ; duels, build, héros, forum à vies, volcan *(D421 à D427, GDD § 14.4 ; découpage tranché (IA-Q1 à IA-Q4), chaque nouveau système livre sa part IA ; IA0 (socle) en cours : IA0.2-IA0.3 dans `main` ; IA0.1 (PlayerState par emplacement IA, nom « IA <Niveau> <N> ») et IA0.4 B1 (cerveau en script qui pense sans agir) commitées dans Arwen (e8cf110, d42b5a8) ; IA0.4-Q1 à Q4 tranchées (A, A, A, A puis C à IA4) ; B2 (la règle) écrite dans Arwen (test GatherIdle + patch), à compiler et tester ; IA1 (économie) : IA1.1 (5 Paysans de départ) et IA1.2 (ferme) dans `main`, IA1.3 suivante ; chantier `AIInProgress.md`)*
 
 ### Interface
 - Barre du bas trop large sous 1500 px (touche la place de la mini-carte) *(à corriger avec la mini-carte)*
@@ -33,7 +38,6 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro D497 (§ 22)
 
 ### Moteur
-- Moteur Hazelight 5.8.4 avec cible Server : compilation depuis `C:/UE/Src/HZ`, puis remplacer `C:/UE/UE_5.8_AS_3` en entier et recompiler le projet de zéro (serveur compris) *(D483)*
 - Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; tests en script et cache précompilé dans le paquet : D484 ; `AngelscriptInProgress.md`)*
 
 ### Questions techniques ouvertes
@@ -43,8 +47,8 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 ## Bugs remontés
 
 ### Retours d'essai
-- Maj + déplacement puis Maj + **pose** d'un bâtiment : le déplacement est supprimé (la pose ne passe pas par la file des déplacements) *(`EtapeDefiniInProgress.md` L)*
-- Maj + chantier puis Maj + déplacement : le déplacement est oublié, le Paysan bâtit puis s'arrête *(`EtapeDefiniInProgress.md` L)*
+- Maj + déplacement puis Maj + **pose** d'un bâtiment : le déplacement est supprimé (la pose ne passe pas par la file des déplacements) *(`EtapeDefiniInProgress.md` M : M.1 en cours, tests rouges puis correctif, Elrond, branche `shift-queue` ; suivant M.2 essai)*
+- Maj + chantier puis Maj + déplacement : le déplacement est oublié, le Paysan bâtit puis s'arrête *(`EtapeDefiniInProgress.md` M)*
 
 ### Revue de code
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
@@ -67,12 +71,12 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 à J8a.2 faites (pièces, type `Hero`, PV en float, naissance, F4), J8a.3 faite (fiche réseau du héros), plan de J8a.4 et questions J8a4-Q1 à Q7
-- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3, IA1.1 et IA1.2 (ferme) dans `main`, plan d'IA1 écrit
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 à J8a.2 faites (pièces, type `Hero`, PV en float, naissance, F4), J8a.3 faite (fiche réseau du héros), J8a.4 en cours (questions tranchées, boucles 1-3 faites, boucle 4 en cours)
+- `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3, IA1.1 et IA1.2 (ferme) dans `main`, IA0.1, IA0.4 B1 et nom de l'IA commités dans Arwen, plan d'IA1 écrit
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
-- `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`
-- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés)
-- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers
+- `VictoryInProgress.md` : conditions de victoire, V1 à V5 dans `main` ; paliers après J8b (P-Q1, 2026-10-27)
+- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a (serveur par version) commitée dans Glorfindel
+- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers, M (file Maj) ouverte
 
 ### En pause
 - `UnitStatsInProgress.md` : stats des unités, reste la charge (D345.3) avec la cavalerie
