@@ -331,10 +331,13 @@ protected:
 	/**
 	 * A work order (Gather, Build: L.6) applied to Units: each one's Shift order to the gathering or the builders (with no
 	 * queue of work, at once), under its player's scope with bChain; then, for a unit whose queued order started, the work
-	 * orders right after it in its queue of moves go to its queue of work, in the order given (the rest of its queue of
-	 * moves is forgotten once it works, as before).
+	 * orders right after it in its queue of moves go to its queue of work, in the order given; the rest of its queue of moves
+	 * waits for its queue of work (FHOLBuildFragment::bMovesAfter, EtapeDefini M.1).
 	 */
-	void ApplyWorkOrder(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, TConstArrayView<uint32> UnitIds);
+	void ApplyWorkOrder(FMassEntityManager& EntityManager, const class UHOLUnitSubsystem& Units, UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order,
+		TConstArrayView<uint32> UnitIds);
+	/** A unit's queued moves and attacks only (not its current action), appended to OutSteps (after a builder's chain, M.1). */
+	void AppendQueuedSteps(uint32 UnitId, TArray<HOLOrderChain::FStep>& OutSteps) const;
 	/** Issues a work order (Gather, Build, DropOff) to the queue of work of UnitIds (Shift), as its player gave it. */
 	static void IssueToWorkQueue(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, TConstArrayView<uint32> UnitIds);
 	/** Its queue of moves forgotten (a new order, gone): taken out of each move it waited for. */

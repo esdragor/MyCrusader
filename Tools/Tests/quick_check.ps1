@@ -124,6 +124,8 @@ $SubCaseTable = @{
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         shiftwork = @{ Marks = @("shiftwork", "shiftwork order", "shiftwork site", "shiftwork after"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
+        shiftplace = @{ Marks = @("shiftplace", "shiftplace order"); Setup = @("hol.Cheat.Wood 1000") }
+        shiftsite = @{ Marks = @("shiftsite", "shiftsite order", "shiftsite later"); Setup = @("hol.Cheat.Wood 1000") }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -756,6 +758,23 @@ $ShiftWorkB = @(-15600, -7200)
 $ShiftWorkPb = @(-13200, -7200)
 $ShiftWorkC = @(-16400, -7200)
 $ShiftWorkQ = @(-18800, -10400)
+# Shift + ground then Shift + placement (EtapeDefini M.1): a Peasant made at A, P 20 m east of it, house H 20 m south of
+# P, Q 24 m west of H. Shift + site then Shift + ground (M.1): sites S and S2 (their builder made east of S and sent
+# east, Away), (a) a Peasant made north-west of S, Q2 south-west of S, then slot 0's berries; (b) a Peasant made east of
+# S2, Q3 west of S2. All south of the shiftwork row, on free ground.
+$ShiftPlaceA = @(-17200, -12000)
+$ShiftPlaceP = @(-15200, -12000)
+$ShiftPlaceH = @(-15200, -14000)
+$ShiftPlaceQ = @(-17600, -14400)
+$ShiftSiteS = @(-12800, -12000)
+$ShiftSiteS2 = @(-12800, -14800)
+$ShiftSiteBuilder = @(-12000, -12000)
+$ShiftSiteAway = @(-10800, -13200)
+$ShiftSiteC = @(-13600, -10800)
+$ShiftSiteQ2 = @(-14400, -13200)
+$ShiftSiteBerries = @(-12021, -9193)
+$ShiftSiteD = @(-11200, -15600)
+$ShiftSiteQ3 = @(-14400, -16000)
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
@@ -1646,6 +1665,48 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 25; $i++) { Step "wait 1", "hol.Units.Where 0" }
             Step "hol.Units.Remove $($ShiftWorkH -join ' ') 3000 0", "hol.Units.Remove $($ShiftWorkQ -join ' ') 1000 0", "hol.Units.Remove $($ShiftWorkAway -join ' ') 600 0",
                 "hol.Units.Remove $($ShiftWorkPb -join ' ') 1000 0", "wait 0.5"
+            # Shift + ground then Shift + placement (EtapeDefini M.1, the user's 3rd trial of L): an empty Peasant, Shift +
+            # right click on the ground at P, then house H placed with Shift (Escape leaves the placement mode, the
+            # selection kept), then Shift + ground at Q: it walks to P, then builds H (FastBuild: finished at its first
+            # blow), then walks to Q, idle there.
+            Step "mark build shiftplace", "hol.Units.SpawnSeed 122", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 1",
+                "hol.Units.Spawn 1 $($ShiftPlaceA -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftPlaceA -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #"
+            # Where it is before the orders, then every 0.5 s for 26 s (P 20 m away, H 20 m beyond, Q 24 m beyond H).
+            Step "mark build shiftplace order", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftPlaceP -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftPlaceP -join ' ') shift",
+                "hol.Camera.Focus $($ShiftPlaceH -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($ShiftPlaceH -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($ShiftPlaceH -join ', '))"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Camera.Focus $($ShiftPlaceQ -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftPlaceQ -join ' ') shift"
+            for ($i = 0; $i -lt 52; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "hol.Units.Remove $($ShiftPlaceQ -join ' ') 1000 0", "hol.Cheat.FastBuild 0", "wait 0.5"
+            # Shift + site then Shift + ground (EtapeDefini M.1, the user's 3rd trial of L): sites S and S2 placed by a builder
+            # sent away at once (both unbuilt). (a) an empty Peasant, Shift + right click on S, Shift + ground at Q2, Shift +
+            # right click on slot 0's berries: it builds S (FastBuild), then walks to Q2, then gathers food. (b) another,
+            # Shift + right click on S2, then 0.5 s later (on its way to S2) Shift + ground at Q3: it builds S2, then walks
+            # to Q3, idle there.
+            Step "mark build shiftsite", "hol.Units.SpawnSeed 123", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 0",
+                "hol.Units.Spawn 1 $($ShiftSiteBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftSiteBuilder -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($ShiftSiteS -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($ShiftSiteS -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 1 units to House at ($($ShiftSiteS -join ', '))",
+                "hol.Camera.Focus $($ShiftSiteS2 -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($ShiftSiteS2 -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 1 units to House at ($($ShiftSiteS2 -join ', '))",
+                "hol.Camera.Focus $($ShiftSiteAway -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftSiteAway -join ' ')", "wait 0.5", "hol.Cheat.FastBuild 1",
+                "hol.Units.Spawn 1 $($ShiftSiteC -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftSiteC -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #"
+            # (a): where it is before the orders, then every 0.5 s for 30 s (S 13 m away, Q2 18 m beyond, the berries 47 m beyond Q2).
+            Step "mark build shiftsite order", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftSiteS -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftSiteS -join ' ') shift",
+                "hol.Camera.Focus $($ShiftSiteQ2 -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftSiteQ2 -join ' ') shift",
+                "hol.Camera.Focus $($ShiftSiteBerries -join ' ')", "frames 3", "hol.Select.OrderSource $($ShiftSiteBerries -join ' ') shift"
+            for ($i = 0; $i -lt 60; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            # (b): every 0.5 s for 20 s after the second order (S2 ~18 m away, Q3 25 m beyond it).
+            Step "mark build shiftsite later", "hol.Units.Spawn 1 $($ShiftSiteD -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftSiteD -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftSiteS2 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($ShiftSiteS2 -join ' ') shift", "wait 0.5", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftSiteQ3 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($ShiftSiteQ3 -join ' ') shift"
+            for ($i = 0; $i -lt 40; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "hol.Units.Remove $($ShiftSiteBerries -join ' ') 1500 0", "hol.Units.Remove $($ShiftSiteQ3 -join ' ') 1000 0", "hol.Units.Remove $($ShiftSiteQ2 -join ' ') 1000 0",
+                "hol.Units.Remove $($ShiftSiteAway -join ' ') 600 0", "hol.Cheat.FastBuild 0", "wait 0.5"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -3821,6 +3882,91 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     Write-Host "  shiftwork c, seen only (#$SwC, every 1 s): $($SwCStory -join ' | ')"
     Write-Host "  shiftwork c log: $(@($SwAfter | Select-String -Pattern "finished $SwHAt|Queued|queued" | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
     $AllOk = (Report "build shiftwork" $Checks) -and $AllOk
+
+    # M.1: Shift chains with a placement or a site. A section's events in order: its Peasant's hol.Units.Where samples (the
+    # newest unit of the first one), a site's first work and its end.
+    $ReadChain = { param($Lines, $Site)
+        $SiteAt = [regex]::Escape("House at ($($Site -join ', '))")
+        $Id = -1
+        $Events = New-Object System.Collections.Generic.List[object]
+        foreach ($Line in $Lines) {
+            if ($Line -match "Units where: ") {
+                $W = & $ReadWhere $Line
+                if ($Id -lt 0 -and $W.Count -gt 0) { $Id = @($W.Keys | Sort-Object | Select-Object -Last 1)[0] }
+                $Events.Add([pscustomobject]@{ Kind = "where"; U = $W[$Id] })
+            }
+            elseif ($Line -match "Construction: slot 0 first work on $SiteAt") { $Events.Add([pscustomobject]@{ Kind = "first work"; U = $null }) }
+            elseif ($Line -match "Construction: slot 0 finished $SiteAt") { $Events.Add([pscustomobject]@{ Kind = "finished"; U = $null }) }
+        }
+        @{ Id = $Id; Events = $Events.ToArray() } }
+    $ChainIndex = { param($Events, $Kind) for ($i = 0; $i -lt $Events.Count; $i++) { if ($Events[$i].Kind -eq $Kind) { return $i } }; -1 }
+    $ChainNear = { param($Events, $At, $From) @(for ($i = [Math]::Max($From, 0); $i -lt $Events.Count; $i++) { if ($Events[$i].Kind -eq "where" -and $Events[$i].U -and (& $DropDist $Events[$i].U $At) -le 300) { $i } }) }
+    $ChainClosest = { param($Events, $At) @($Events | Where-Object { $_.Kind -eq "where" -and $_.U } | ForEach-Object { & $DropDist $_.U $At } | Sort-Object | Select-Object -First 1) }
+    $ChainStory = { param($Events, $Points) @($Events | ForEach-Object { $E = $_; if ($E.Kind -ne "where") { $E.Kind.ToUpper() } elseif ($E.U) {
+        ("$($E.U.Activity) $($E.U.Load) " + (@($Points.Keys | ForEach-Object { "$_ $(& $DropDist $E.U $Points[$_])" }) -join ' ')) -replace '  ', ' ' } else { "gone" } }) -join ' | ' }
+
+    $Checks = [ordered]@{}
+    $SpLines = @(Get-Section "build shiftplace order" | ForEach-Object { $_ })
+    $Sp = & $ReadChain $SpLines $ShiftPlaceH
+    $SpE = $Sp.Events
+    Write-Host "  shiftplace (#$($Sp.Id)): $(& $ChainStory $SpE ([ordered]@{ P = $ShiftPlaceP; H = $ShiftPlaceH; Q = $ShiftPlaceQ }))"
+    Write-Host "  shiftplace log: $(@($SpLines | Select-String -Pattern "foundation at|Placement|Queued|queued|applied|Build order|Build: " | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop|Placement)', '$1') }) -join ' / ')"
+    $SpWork = & $ChainIndex $SpE "first work"
+    $SpDone = & $ChainIndex $SpE "finished"
+    $SpNearP = & $ChainNear $SpE $ShiftPlaceP 0
+    $SpNearQ = & $ChainNear $SpE $ShiftPlaceQ 0
+    $SpWheres = @($SpE | Where-Object { $_.Kind -eq "where" })
+    $Checks["set-up: the Peasant carries nothing, H placed with Shift ($(if ($SpWheres.Count -ge 1) { & $MoveSay $SpWheres[0].U }))"] =
+        ($SpWheres.Count -ge 1) -and $SpWheres[0].U -and -not $SpWheres[0].U.Load -and [bool]($SpLines | Select-String -Pattern "placed House foundation at \($($ShiftPlaceH -join ', ')\)" -Quiet)
+    $Checks["Shift P then Shift + place H: it passes within 3 m of P before H's first work (closest $(& $ChainClosest $SpE $ShiftPlaceP) cm; first near at event $(@($SpNearP)[0]), first work at event $SpWork)"] =
+        ($SpNearP.Count -ge 1) -and ($SpWork -ge 0) -and ($SpNearP[0] -lt $SpWork)
+    $Checks["then it builds H, finished (event $SpDone)"] = ($SpWork -ge 0) -and ($SpDone -ge $SpWork)
+    $Checks["then Shift Q: within 3 m of Q only after H is finished (closest $(& $ChainClosest $SpE $ShiftPlaceQ) cm; first near at event $(@($SpNearQ)[0]))"] =
+        ($SpNearQ.Count -ge 1) -and ($SpDone -ge 0) -and ($SpNearQ[0] -gt $SpDone)
+    $Checks["then idle within 3 m of Q ($(if ($SpWheres.Count -ge 1) { & $MoveSay $SpWheres[-1].U }), Q $(if ($SpWheres.Count -ge 1) { & $DropDist $SpWheres[-1].U $ShiftPlaceQ }) cm)"] =
+        ($SpWheres.Count -ge 3) -and $SpWheres[-1].U -and $SpWheres[-1].U.Activity -eq "Idle" -and (& $DropDist $SpWheres[-1].U $ShiftPlaceQ) -le 300
+    $AllOk = (Report "build shiftplace" $Checks) -and $AllOk
+
+    $Checks = [ordered]@{}
+    $SsSetup = @(Get-Section "build shiftsite" | ForEach-Object { $_ })
+    $SsLines = @(Get-Section "build shiftsite order" | ForEach-Object { $_ })
+    $Ss = & $ReadChain $SsLines $ShiftSiteS
+    $SsE = $Ss.Events
+    Write-Host "  shiftsite a (#$($Ss.Id)): $(& $ChainStory $SsE ([ordered]@{ S = $ShiftSiteS; Q2 = $ShiftSiteQ2; Berries = $ShiftSiteBerries }))"
+    Write-Host "  shiftsite a log: $(@($SsLines | Select-String -Pattern "Queued|queued|applied|Build order|Build: |Gather order" | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
+    $SsWork = & $ChainIndex $SsE "first work"
+    $SsDone = & $ChainIndex $SsE "finished"
+    $SsNearQ = & $ChainNear $SsE $ShiftSiteQ2 0
+    $SsFood = -1
+    for ($i = [Math]::Max(@($SsNearQ)[0], 0); $SsNearQ.Count -ge 1 -and $i -lt $SsE.Count; $i++) {
+        if ($SsE[$i].Kind -eq "where" -and $SsE[$i].U -and $SsE[$i].U.Activity -eq "Gathering" -and $SsE[$i].U.Load -eq "Food") { $SsFood = $i; break } }
+    $SsAnyFood = @(for ($i = 0; $i -lt $SsE.Count; $i++) { if ($SsE[$i].Kind -eq "where" -and $SsE[$i].U -and $SsE[$i].U.Load -eq "Food") { $i } })
+    $Checks["(a) set-up: S and S2 placed, unbuilt before the orders"] =
+        [bool]($SsSetup | Select-String -Pattern "placed House foundation at \($($ShiftSiteS -join ', ')\)" -Quiet) -and
+        [bool]($SsSetup | Select-String -Pattern "placed House foundation at \($($ShiftSiteS2 -join ', ')\)" -Quiet) -and
+        -not ($SsSetup | Select-String -Pattern "first work on House at \(($($ShiftSiteS -join ', ')|$($ShiftSiteS2 -join ', '))\)" -Quiet)
+    $Checks["(a) Shift S, Shift Q2, Shift berries: it builds S, finished (first work at event $SsWork, finished at $SsDone)"] = ($SsWork -ge 0) -and ($SsDone -ge $SsWork)
+    $Checks["(a) then within 3 m of Q2 only after S is finished (closest $(& $ChainClosest $SsE $ShiftSiteQ2) cm; first near at event $(@($SsNearQ)[0]))"] =
+        ($SsNearQ.Count -ge 1) -and ($SsDone -ge 0) -and ($SsNearQ[0] -gt $SsDone)
+    $Checks["(a) then it gathers food after Q2 (first at event $SsFood; any food at $(@($SsAnyFood)[0]))"] = ($SsFood -ge 0) -and (@($SsAnyFood)[0] -ge $SsFood)
+    $SlLines = @(Get-Section "build shiftsite later" | ForEach-Object { $_ })
+    $Sl = & $ReadChain $SlLines $ShiftSiteS2
+    $SlE = $Sl.Events
+    Write-Host "  shiftsite b (#$($Sl.Id)): $(& $ChainStory $SlE ([ordered]@{ S2 = $ShiftSiteS2; Q3 = $ShiftSiteQ3 }))"
+    Write-Host "  shiftsite b log: $(@($SlLines | Select-String -Pattern "Queued|queued|applied|Build order|Build: " | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
+    $SlWork = & $ChainIndex $SlE "first work"
+    $SlDone = & $ChainIndex $SlE "finished"
+    $SlNearQ = & $ChainNear $SlE $ShiftSiteQ3 0
+    $SlWheres = @($SlE | Where-Object { $_.Kind -eq "where" })
+    $SlOrderLine = [array]::FindIndex([string[]]$SlLines, [Predicate[string]] { param($L) $L -match "Order: \d+ units to \(-?\d+, -?\d+\), queued" })
+    $SlWorkLine = [array]::FindIndex([string[]]$SlLines, [Predicate[string]] { param($L) $L -match "first work on House at \($($ShiftSiteS2 -join ', ')\)" })
+    $Checks["(b) Shift S2, 0.5 s later Shift Q3 on its way (log line $SlOrderLine, before S2's first work at line $SlWorkLine; $(if ($SlWheres.Count -ge 2) { & $MoveSay $SlWheres[1].U })): it builds S2, finished (first work at event $SlWork, finished at $SlDone)"] =
+        ($SlWork -ge 0) -and ($SlDone -ge $SlWork) -and ($SlOrderLine -ge 0) -and ($SlWorkLine -gt $SlOrderLine)
+    $Checks["(b) then within 3 m of Q3 only after S2 is finished (closest $(& $ChainClosest $SlE $ShiftSiteQ3) cm; first near at event $(@($SlNearQ)[0]))"] =
+        ($SlNearQ.Count -ge 1) -and ($SlDone -ge 0) -and ($SlNearQ[0] -gt $SlDone)
+    $Checks["(b) then idle within 3 m of Q3 ($(if ($SlWheres.Count -ge 1) { & $MoveSay $SlWheres[-1].U }), Q3 $(if ($SlWheres.Count -ge 1) { & $DropDist $SlWheres[-1].U $ShiftSiteQ3 }) cm)"] =
+        ($SlWheres.Count -ge 3) -and $SlWheres[-1].U -and $SlWheres[-1].U.Activity -eq "Idle" -and (& $DropDist $SlWheres[-1].U $ShiftSiteQ3) -le 300
+    $AllOk = (Report "build shiftsite" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

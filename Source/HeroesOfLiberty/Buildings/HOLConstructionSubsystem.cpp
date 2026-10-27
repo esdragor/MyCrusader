@@ -338,7 +338,15 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 
 	// The Peasants selected when it was placed go and build it (J6a.4, D312), at the end of their queue with Shift (D311).
 	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
-	if (Commands && !Order.UnitIds.IsEmpty())
+	if (Commands && !Order.UnitIds.IsEmpty() && Order.bQueue)
+	{
+		// With Shift, through the queue of moves as Shift + a site (EtapeDefini M.1, the user's 3rd trial of L: Shift + P then
+		// Shift + a placement went to build at once, P dropped): it waits for their walks; sorted there by each unit's queue
+		// of work (UHOLUnitOrderProcessor). Only a player places a foundation with builders: their chain is drawn (D328).
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueQueuedWorkOrder(Order.UnitIds, INDEX_NONE, Foundation, Foundation->GetActorLocation(), Order.PlayerIndex);
+	}
+	else if (Commands && !Order.UnitIds.IsEmpty())
 	{
 		FHOLBuildOrder BuildOrder;
 		BuildOrder.UnitIds = Order.UnitIds;
