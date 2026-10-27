@@ -260,6 +260,8 @@ if ($Parts -contains "net") {
     $NetFightFlag = Join-Path $TestSaved "quick_net_fight1.flag"
     $NetArrowsFlag = Join-Path $TestSaved "quick_net_arrows1.flag"
     $NetArrowsEndFlag = Join-Path $TestSaved "quick_net_arrows_end.flag"
+    $NetHeroWoundedFlag = Join-Path $TestSaved "quick_net_hero_wounded.flag"
+    $NetHeroKilledFlag = Join-Path $TestSaved "quick_net_hero_killed.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -273,6 +275,17 @@ if ($Parts -contains "net") {
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") +
+        # The hero sheets (J8a.3, J8-Q5): a hero for each client's slot (Alice slot 0, Bob slot 1, R3.2), born here (none at
+        # the start: bStartingHero off), 40 m apart; their XP set (5, 7); 2 Men-at-arms of slot 0 strike Bob's hero for 10 s,
+        # then removed: once still, the server's report, then each client's (its signal); then Bob's hero killed, the
+        # server's report again, then each client's; Alice's hero removed at the end (the next parts as before).
+        @("mark net hero", "hol.Units.Spawn 1 2000 -5000 1 Hero 150", "hol.Units.Spawn 1 6000 -5000 0 Hero 150", "wait 1",
+            "hol.Hero.SetXP 0 5", "hol.Hero.SetXP 1 7", "hol.Units.Spawn 2 2600 -5000 0 ManAtArms 150", "wait 10",
+            "hol.Units.Remove 2300 -5000 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroWoundedFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_seen1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_seen2.flag") 120",
+            "hol.Hero.Kill 1", "wait 2", "hol.Hero.Report", "signal $NetHeroKilledFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_done2.flag") 120",
+            "hol.Units.Remove 6000 -5000 2000 0 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
         # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
@@ -2038,6 +2051,11 @@ if ($NetListening) {
         # The arrows (J7c.2b2): deduced by each client from the Attacking state of the server's Archers (net arrows), all
         # landed by now (client 1 signals its end once they have).
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
+        # The hero sheets (J8a.3): once the server's heroes are wounded and still, the sheets as this client has them and
+        # the units it shows (the wounded hero's health drawn back from the share received); then once Bob's hero is dead.
+        $NetSteps += "mark hero", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where",
+            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120", "wait 1", "hol.Hero.Report",
+            "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -4873,7 +4891,9 @@ if ($Parts -contains "net") {
     $Checks["manager: empty once, last"] = (@($ManagerCalls | Where-Object { $_ -eq "POST /matches/QC1/empty {}" }).Count -eq 1) -and ($ManagerEvents[-1] -eq "empty")
     # The melee on (J7b.2) on the dedicated server: the two armies stand at their own centres, far apart, no one killed;
     # the fight made for client 1 (J7b.4) kills its 2 Spearmen alone.
-    $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | Where-Object { $_.Line -notmatch "by arrow" } | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+    # Before the hero sheets' phase (J8a.3: its own fight, Bob's hero and the Men-at-arms against him).
+    $HeroMarkLine = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -SimpleMatch "Test mark: net hero" }) | Select-Object -First 1
+    $NetKills = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ (\w+ of slot \d) killed by" | Where-Object { $_.Line -notmatch "by arrow" -and (-not $HeroMarkLine -or $_.LineNumber -lt $HeroMarkLine.LineNumber) } | ForEach-Object { $_.Matches[0].Groups[1].Value } })
     # The arrows on the clients (J7c.2b2, Q4: deduced, 0 bit more): 3 Archers of slot 0 shoot 2 Spearmen for 12 s, after
     # client 1's fight window, then all removed; each client launched about as many arrows as the server released (1 more or less per shooter), none
     # left in flight at the end; the gap between a drawn arrow's landing and the health drop received, reported.
@@ -5031,6 +5051,77 @@ if ($Parts -contains "net") {
         $Checks["victory: client 1, no alert of its defeat ($($DefeatAlerts.Count))"] = $DefeatAlerts.Count -eq 0
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
+    # The hero sheets over the network (J8a.3, J8-Q5), the server's heroes of the "net hero" phase (Alice slot 0 xp 5, Bob
+    # slot 1 xp 7, Bob's wounded then killed): each hol.Hero.Report read into its public sheets, its local private sheet,
+    # the other player states' private values as received, and (server) the true sheets.
+    $ReadHeroReports = {
+        param($Lines)
+        $Reports = New-Object System.Collections.ArrayList
+        $Current = $null
+        foreach ($Line in $Lines) {
+            if ($Line -match "Hero report: net mode \d+") { $Current = @{ Sheet = @{}; Local = $null; Other = @{}; Truth = @{} }; [void]$Reports.Add($Current); continue }
+            if (-not $Current) { continue }
+            if ($Line -match "Hero sheet slot (\d): state (\w+) level \d+ hp (\d+)") { $Current.Sheet[[int]$Matches[1]] = @{ State = $Matches[2]; Hp = [int]$Matches[3] } }
+            elseif ($Line -match "Hero private slot (\d) local: xp (\d+) death (-?\d+)") { $Current.Local = @{ Slot = [int]$Matches[1]; Xp = [int]$Matches[2]; Death = [int]$Matches[3] } }
+            elseif ($Line -match "Hero private slot (\d) other: xp (\d+) death (-?\d+)") { $Current.Other[[int]$Matches[1]] = @{ Xp = [int]$Matches[2]; Death = [int]$Matches[3] } }
+            elseif ($Line -match "Hero true slot (\d): state (\w+) level \d+ hp (\d+) xp (\d+) death (-?\d+)") {
+                $Current.Truth[[int]$Matches[1]] = @{ State = $Matches[2]; Hp = [int]$Matches[3]; Xp = [int]$Matches[4]; Death = [int]$Matches[5] } }
+        }
+        , $Reports
+    }
+    $HeroChecks = [ordered]@{}
+    $AliceSlot = 0; $BobSlot = 1; $HeroMax = 450
+    $HeroXp = @{ $AliceSlot = 5; $BobSlot = 7 }
+    $HeroChecks["Bob (client 1) in slot $BobSlot, Alice (client 2) in slot $AliceSlot (held $($NetHeld[1]), $($NetHeld[2]))"] = "$($NetHeld[1])" -eq "$BobSlot" -and "$($NetHeld[2])" -eq "$AliceSlot"
+    $HeroServer = & $ReadHeroReports @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net hero")
+    $Wounded = if ($HeroServer.Count -ge 1) { $HeroServer[0].Truth[$BobSlot] } else { $null }
+    $Fallen = if ($HeroServer.Count -ge 2) { $HeroServer[1].Truth[$BobSlot] } else { $null }
+    $TrueHp = if ($Wounded) { $Wounded.Hp } else { -1 }
+    $HeroChecks["server: 2 reports ($($HeroServer.Count)), Bob's hero wounded and alive (hp $TrueHp of $HeroMax), xp 5 and 7 ($(if ($HeroServer.Count) { "$($HeroServer[0].Truth[$AliceSlot].Xp), $($HeroServer[0].Truth[$BobSlot].Xp)" }))"] =
+        $HeroServer.Count -eq 2 -and $Wounded -and $Wounded.State -eq "Alive" -and $TrueHp -gt 0 -and $TrueHp -lt $HeroMax -and
+        $HeroServer[0].Truth[$AliceSlot].Xp -eq $HeroXp[$AliceSlot] -and $HeroServer[0].Truth[$BobSlot].Xp -eq $HeroXp[$BobSlot] -and $HeroServer[0].Truth[$AliceSlot].State -eq "Alive"
+    $HeroChecks["server: Bob's hero dead after hol.Hero.Kill, death step known ($(if ($Fallen) { "$($Fallen.State), death $($Fallen.Death)" }))"] = $Fallen -and $Fallen.State -eq "Dead" -and $Fallen.Death -ge 0
+    # The share sent for the wounded hero (HOLUnitReplication::GetWireHealthShare): ceil(hp * 255 / 450); the client draws
+    # it back to the nearest health points (HOLUnitView::GetReceivedHealth, within 1 and 449), which hol.Units.Where logs:
+    # 450 / 255 > 1, so each share gives its own health points, equal ones mean the same share received.
+    $Share = if ($TrueHp -gt 0) { [int][Math]::Ceiling($TrueHp * 255 / $HeroMax) } else { -1 }
+    $DrawnHp = if ($Share -gt 0) { [Math]::Min([Math]::Max([Math]::Floor((2 * $Share * $HeroMax + 255) / 510), 1), $HeroMax - 1) } else { -1 }
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $Own = if ($N -eq 1) { $BobSlot } else { $AliceSlot }
+        $Foe = 1 - $Own
+        $HeroLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "hero")
+        $Seen = & $ReadHeroReports $HeroLines
+        $First = if ($Seen.Count -ge 1) { $Seen[0] } else { $null }
+        $Second = if ($Seen.Count -ge 2) { $Seen[1] } else { $null }
+        # 1. The exact health in the public sheet, the server's own (rounded up), while wounded.
+        $SheetHp = if ($First -and $First.Sheet[$BobSlot]) { $First.Sheet[$BobSlot].Hp } else { -1 }
+        $HeroChecks["client $N : 2 reports ($($Seen.Count)), Bob's hero's sheet hp $SheetHp = the server's $TrueHp, Alive ($(if ($First) { $First.Sheet[$BobSlot].State }))"] =
+            $Seen.Count -eq 2 -and $TrueHp -gt 0 -and $SheetHp -eq $TrueHp -and $First.Sheet[$BobSlot].State -eq "Alive"
+        # 2. The share received for the hero unit (Bob's wounded hero, the only slot 1 unit of 450 at most shown wounded).
+        $Where = $HeroLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $Received = [regex]::Match("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/$HeroMax")
+        $ReceivedHp = if ($Received.Success) { [int]$Received.Groups[1].Value } else { -1 }
+        $HeroChecks["client $N : the hero unit's health received as the share $Share/255 (drawn back $ReceivedHp, expected $DrawnHp)"] = $DrawnHp -gt 0 -and $ReceivedHp -eq $DrawnHp
+        # 3. The XP to its owner only: its own as local, the other's default (COND_OwnerOnly).
+        $LocalText = if ($First -and $First.Local) { "slot $($First.Local.Slot) xp $($First.Local.Xp)" } else { "none" }
+        $OtherXp = if ($First -and $First.Other[$Foe]) { $First.Other[$Foe].Xp } else { -1 }
+        $HeroChecks["client $N : its own XP $($HeroXp[$Own]) seen ($LocalText), the other's hidden (slot $Foe xp $OtherXp)"] =
+            $First -and $First.Local -and $First.Local.Slot -eq $Own -and $First.Local.Xp -eq $HeroXp[$Own] -and $OtherXp -eq 0
+        # 4. Dead in the public sheet after the kill, for both.
+        $HeroChecks["client $N : Bob's hero Dead in the public sheet after the kill ($(if ($Second -and $Second.Sheet[$BobSlot]) { "$($Second.Sheet[$BobSlot].State) hp $($Second.Sheet[$BobSlot].Hp)" }))"] =
+            $Second -and $Second.Sheet[$BobSlot] -and $Second.Sheet[$BobSlot].State -eq "Dead" -and $Second.Sheet[$AliceSlot].State -eq "Alive"
+        # 5. The death step to its owner only: Bob's own the server's, Alice's copy of Bob's -1.
+        if ($Own -eq $BobSlot) {
+            $Death = if ($Second -and $Second.Local) { $Second.Local.Death } else { -2 }
+            $HeroChecks["client $N : its hero's death step known ($Death, the server's $(if ($Fallen) { $Fallen.Death }))"] = $Fallen -and $Death -ge 0 -and $Death -eq $Fallen.Death
+        }
+        else {
+            $Death = if ($Second -and $Second.Other[$BobSlot]) { $Second.Other[$BobSlot].Death } else { -2 }
+            $HeroChecks["client $N : the other's death step hidden (slot $BobSlot death $Death)"] = $Death -eq -1
+        }
+    }
+    $AllOk = (Report "net hero sheets" $HeroChecks) -and $AllOk
 }
 
 if ($TestsProcess) {
