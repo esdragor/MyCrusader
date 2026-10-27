@@ -16,6 +16,7 @@
 #include "Match/HOLGameState.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -82,11 +83,15 @@ int32 UHOLBuildProcessor::FindCampSource(const UHOLSourceSubsystem& Sources, con
 		return INDEX_NONE;
 	}
 	// Every source by its index (a camp finished now and then: a copy of a few hundred is nothing).
+	// A farm field (a linked source) is never one (IA1.2-Q6: a mill takes the berries, not a farmer's place); a free field
+	// of their own is its builders' second choice (GatherForCamp).
+	const TArray<FHOLSource>& All = Sources.GetSources();
 	TArray<FHOLCampSource> Candidates;
-	Candidates.Reserve(Sources.GetSources().Num());
-	for (const FHOLSource& Source : Sources.GetSources())
+	Candidates.Reserve(All.Num());
+	for (int32 Index = 0; Index < All.Num(); ++Index)
 	{
-		Candidates.Add({ FVector2D(Source.Location), static_cast<double>(Source.Radius), Source.Resource, Source.IsStanding() });
+		const FHOLSource& Source = All[Index];
+		Candidates.Add({ FVector2D(Source.Location), static_cast<double>(Source.Radius), Source.Resource, Source.IsStanding() && !Sources.IsLinked(Index) });
 	}
 	return HOLConstruction::FindCampSource(Camp.GetBodyBounds(), Camp.GetType()->Accepts, Candidates, Range, OutGap);
 }
@@ -429,7 +434,7 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 		// neither its camp's source nor a nearby site.
 		AHOLBuilding* Finished = Before.IsBuild() ? Before.Site.Get() : nullptr;
 		const bool bFinished = Finished && !Finished->NeedsBuilders();
-		if (bFinished && GatherForCamp(Step, Builder, *Finished))
+		if (bFinished && (GatherForFarm(Step, Builder, *Finished) || GatherForCamp(Step, Builder, *Finished)))
 		{
 			return;
 		}
@@ -688,6 +693,19 @@ bool UHOLBuildProcessor::GatherForCamp(const FStepContext& Step, FBuilder& Build
 		Send->SourceIndex = FindCampSource(*Step.Sources, Camp, &Send->Gap);
 	}
 	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	// IA1.2-Q6: a camp of food (the mill) with no berries near: a free field of its player's, one builder each (one place).
+	const int32 Field = !Sources.IsValidIndex(Send->SourceIndex) && Camp.GetType()->Accepts.Contains(EHOLResource::Food)
+		&& Builder.Constants.GatherRates[EHOLResource::Food] > 0.f
+		? FindFreeFarmField(Step, Builder.State.OwnerPlayer, Camp.GetBodyBounds(), GetCampGatherRange(), Builder.Entity) : INDEX_NONE;
+	if (Field != INDEX_NONE)
+	{
+		Builder.Build.Clear();
+		Queues.Remove(Builder.Entity);
+		Builder.Gather.StartTask(Field, Sources[Field].Resource);
+		Builder.State.Activity = EHOLUnitActivity::GatherTrip;
+		++Send->FieldsSent;
+		return true;
+	}
 	if (!Sources.IsValidIndex(Send->SourceIndex) || Builder.Constants.GatherRates[Sources[Send->SourceIndex].Resource] <= 0.f)
 	{
 		++Send->NotSent;
@@ -705,6 +723,93 @@ bool UHOLBuildProcessor::GatherForCamp(const FStepContext& Step, FBuilder& Build
 	return true;
 }
 
+bool UHOLBuildProcessor::GatherForFarm(const FStepContext& Step, FBuilder& Builder, const AHOLBuilding& Farm)
+{
+	// Its field born when it was finished (F6a, SetConstructionState at the step before: its builders go on at this one).
+	const int32 OwnField = Farm.GetLinkedSource();
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	if (!Sources.IsValidIndex(OwnField) || !Sources[OwnField].IsStanding() || !Sources[OwnField].IsGatherableBy(Builder.State.OwnerPlayer)
+		|| Builder.Constants.GatherRates[Sources[OwnField].Resource] <= 0.f)
+	{
+		return false;
+	}
+	// Its one place to the first of its builders (they all go on at the same step); the others to their player's nearest
+	// free field near it (IA1.2-Q4, as the massif of F3), else as after a house (the nearby site, else idle).
+	const int32 Field = HasFreePlace(Step, OwnField, Builder.Entity) ? OwnField
+		: FindFreeFarmField(Step, Builder.State.OwnerPlayer, Farm.GetBodyBounds(), GetCampGatherRange(), Builder.Entity);
+	if (Field == INDEX_NONE)
+	{
+		UE_LOG(LogHOLSimulation, Display, TEXT("Build: a builder of slot %d finds its farm's field taken and no free one near, goes on as after a house"),
+			Builder.State.OwnerPlayer);
+		return false;
+	}
+	// As a gather order (UHOLGatherProcessor::ApplyGatherOrders): no more building, its queue forgotten.
+	const FHOLSource& Source = Sources[Field];
+	Builder.Build.Clear();
+	Queues.Remove(Builder.Entity);
+	Builder.Gather.StartTask(Field, Source.Resource);
+	Builder.State.Activity = EHOLUnitActivity::GatherTrip;
+	UE_LOG(LogHOLSimulation, Display, TEXT("Build: a builder of slot %d goes on to gather %s field (source %d) at (%.0f, %.0f)"), Builder.State.OwnerPlayer,
+		Field == OwnField ? TEXT("its farm's") : TEXT("a free"), Field, Source.Location.X, Source.Location.Y);
+	return true;
+}
+
+int32 UHOLBuildProcessor::FindFreeFarmField(const FStepContext& Step, const uint8 Slot, const FBox2D& Near, const double Range, const FMassEntityHandle Self) const
+{
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	int32 Found = INDEX_NONE;
+	double Nearest = Range;
+	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	{
+		const FHOLSource& Source = Sources[Index];
+		// A field (a linked source of food) of Slot's own: never another player's (F3).
+		if (!Source.IsStanding() || Source.OwnerSlot != Slot || Source.Resource != EHOLResource::Food || !Step.Sources->IsLinked(Index))
+		{
+			continue;
+		}
+		const double Gap = HOLConstruction::GetSourceGap(Near, FVector2D(Source.Location), static_cast<double>(Source.Radius));
+		// Strictly nearer than the one kept (the first of two as near); its place looked at last (a walk of the units).
+		if (Gap <= Range && (Found == INDEX_NONE || Gap < Nearest) && HasFreePlace(Step, Index, Self))
+		{
+			Found = Index;
+			Nearest = Gap;
+		}
+	}
+	return Found;
+}
+
+bool UHOLBuildProcessor::HasFreePlace(const FStepContext& Step, const int32 SourceIndex, const FMassEntityHandle Self) const
+{
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? Step.Sources->GetType(Sources[SourceIndex].TypeIndex) : nullptr;
+	if (!Type || Type->Places <= 0)
+	{
+		return true;
+	}
+	// As UHOLGatherProcessor::HasFreePlace: a holder keeps its place while its task is this source (on its way, at work, or
+	// carrying its food); the builders sent this step hold theirs already (their task started). A farm finished now and
+	// then: one walk of the units is nothing.
+	const FMassEntityManager& EntityManager = *Step.EntityManager;
+	TArray<uint32> UnitIds;
+	Step.Units->GetAllUnitIds(UnitIds);
+	int32 Holders = 0;
+	for (const uint32 UnitId : UnitIds)
+	{
+		const FMassEntityHandle Entity = Step.Units->FindEntity(UnitId);
+		if (Entity == Self || !EntityManager.IsEntityValid(Entity))
+		{
+			continue;
+		}
+		const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		if (Gather && State && State->CurrentHealth > 0 && Gather->IsGathering() && Gather->SourceIndex == SourceIndex && ++Holders >= Type->Places)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void UHOLBuildProcessor::LogCampSends(const FStepContext& Step)
 {
 	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
@@ -718,6 +823,12 @@ void UHOLBuildProcessor::LogCampSends(const FStepContext& Step)
 		const FCampSend& Send = Pair.Value;
 		const FVector Location = Camp->GetActorLocation();
 		const FString Name = Camp->GetTypeName().ToString();
+		if (!Sources.IsValidIndex(Send.SourceIndex) && Send.FieldsSent > 0)
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d camp %s at (%.0f, %.0f) finished: no berries within %.0f m, %d builders sent to free farm fields, %d go on as after a house"),
+				Camp->GetOwnerPlayer(), *Name, Location.X, Location.Y, GetCampGatherRange() / 100., Send.FieldsSent, Send.NotSent);
+			continue;
+		}
 		if (!Sources.IsValidIndex(Send.SourceIndex))
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d camp %s at (%.0f, %.0f) finished: no accepted source within %.0f m, %d builders go on as after a house"),

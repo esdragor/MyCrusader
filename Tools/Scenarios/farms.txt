@@ -1,0 +1,161 @@
+# Fermes (IA1.2) : un moulin fini, 6 fermes finies en anneau autour (5 récoltées, 1 libre), 2 cases vides à bâtir (W), 5 Paysans libres, une caserne
+# Configuration par défaut (un joueur, Plain). Coordonnées du monde, celles de quick_check (build farm) : terrain libre
+# à l'est du moulin Mi de quick_check. Moulin M (-5200, 12800), 2 x 2 cases ; anneau de 3 x 3 blocs de 8 m, M au milieu :
+#   (-6000, 13600) récoltée   (-5200, 13600) VIDE (à bâtir)  (-4400, 13600) récoltée
+#   (-6000, 12800) récoltée   M                              (-4400, 12800) finie, LIBRE
+#   (-6000, 12000) récoltée   (-5200, 12000) VIDE (à bâtir)  (-4400, 12000) récoltée
+# Placement réel par la grille (fantôme « valid » vérifié), chantiers finis au premier coup (hol.Cheat.FastBuild 1, remis à 0).
+# Curseur tenu au milieu de l'écran le temps des placements (le fantôme vient sous lui, D257), rendu à la fin.
+hol.Camera.TestCursor 0.5 0.5
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Cheat.FastBuild 1
+hol.Gather.LogDeposits 1
+hol.Units.SpawnSeed 142
+# Le moulin, bâti par un Paysan qui bâtit ensuite la caserne (à l'est), puis va attendre au sud : un Paysan libre.
+hol.Units.Spawn 1 -3200 12800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -3200 12800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -5200 12800
+frames 3
+hol.Build.Place Mill
+waitlog Placement ghost: Mill at (-5200, 12800) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Mill at (-5200, 12800)
+waitlog Construction: slot 0 finished Mill at (-5200, 12800)
+wait 0.5
+hol.Camera.Focus -2600 12600
+frames 3
+hol.Build.Place Barracks
+waitlog Placement ghost: Barracks at (-2600, 12600) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Barracks at (-2600, 12600)
+waitlog Construction: slot 0 finished Barracks at (-2600, 12600)
+wait 0.5
+hol.Camera.Focus -3600 10400
+frames 3
+hol.Select.OrderGround -3600 10400
+wait 0.5
+# Les six fermes finies, chacune bâtie par son Paysan, né au sud de l'anneau : il récolte son champ, dépose au moulin.
+hol.Units.Spawn 1 -6400 10800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -6400 10800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -6000 13600
+frames 3
+hol.Build.Place Farm
+waitlog Placement ghost: Farm at (-6000, 13600) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Farm at (-6000, 13600)
+waitlog Construction: slot 0 finished Farm at (-6000, 13600)
+waitlog Building Farm of slot 0 finished: its FarmField is source
+wait 0.5
+hol.Units.Spawn 1 -6000 10800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -6000 10800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -4400 13600
+frames 3
+hol.Build.Place Farm
+waitlog Placement ghost: Farm at (-4400, 13600) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Farm at (-4400, 13600)
+waitlog Construction: slot 0 finished Farm at (-4400, 13600)
+waitlog Building Farm of slot 0 finished: its FarmField is source
+wait 0.5
+hol.Units.Spawn 1 -5600 10800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -5600 10800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -6000 12800
+frames 3
+hol.Build.Place Farm
+waitlog Placement ghost: Farm at (-6000, 12800) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Farm at (-6000, 12800)
+waitlog Construction: slot 0 finished Farm at (-6000, 12800)
+waitlog Building Farm of slot 0 finished: its FarmField is source
+wait 0.5
+hol.Units.Spawn 1 -5200 10800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -5200 10800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -6000 12000
+frames 3
+hol.Build.Place Farm
+waitlog Placement ghost: Farm at (-6000, 12000) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Farm at (-6000, 12000)
+waitlog Construction: slot 0 finished Farm at (-6000, 12000)
+waitlog Building Farm of slot 0 finished: its FarmField is source
+wait 0.5
+hol.Units.Spawn 1 -4800 10800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -4800 10800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -4400 12000
+frames 3
+hol.Build.Place Farm
+waitlog Placement ghost: Farm at (-4400, 12000) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Farm at (-4400, 12000)
+waitlog Construction: slot 0 finished Farm at (-4400, 12000)
+waitlog Building Farm of slot 0 finished: its FarmField is source
+wait 0.5
+hol.Units.Spawn 1 -4400 10800 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -4400 10800
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.Focus -4400 12800
+frames 3
+hol.Build.Place Farm
+waitlog Placement ghost: Farm at (-4400, 12800) valid
+hol.Build.Click
+waitlog Build order of slot 0: 1 units to Farm at (-4400, 12800)
+waitlog Construction: slot 0 finished Farm at (-4400, 12800)
+waitlog Building Farm of slot 0 finished: its FarmField is source
+wait 0.5
+# Le bâtisseur de la ferme de l'est (-4400, 12800) envoyé au sud : son champ libre (clic droit d'essai).
+hol.Camera.Focus -4000 10400
+frames 3
+hol.Select.OrderGround -4000 10400
+wait 0.5
+# Quatre Paysans libres de plus au sud de l'anneau.
+hol.Units.Spawn 4 -5200 10200 0 Peasant 150
+waitunits 11
+hol.Cheat.FastBuild 0
+# Les récolteurs déposent au moulin (récolte accélérée le temps d'un dépôt, puis vitesse normale).
+hol.Gather.SpeedScale 5
+waitlog at Mill (-5200, 12800), unit #
+hol.Gather.SpeedScale 1
+hol.Units.Where 0
+# Rien de sélectionné en rendant la main : un clic au sol, loin de l'anneau.
+hol.Camera.Focus -1000 8000
+frames 5
+hol.Select.Click 0.5 0.5
+frames 2
+hol.Select.Report
+waitlog Selection report: selected none
+hol.Camera.Focus -5200 12000
+frames 10
+capture farms_ring
+hol.Camera.TestCursor off
+note Moulin entouré de fermes : 5 récoltées, 1 libre (au milieu, côté caserne), 2 cases vides à gauche et à droite du moulin. 5 Paysans libres à gauche.
+note Sélectionne des Paysans libres, W (ou la case Ferme) : bâtis une ferme dans une case vide ; ses bâtisseurs la récoltent.
+note Clic droit sur la ferme libre (récolte), puis sur une ferme prise (ferme libre voisine, sinon il attend devant).
+note Marche à travers une ferme ; ralliement de la caserne (en haut) sur une ferme, puis produis un soldat ; regarde les dépôts (+10) au moulin.

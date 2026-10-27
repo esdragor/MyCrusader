@@ -241,6 +241,8 @@ TRANSLATIONS = {
     "HOLGameNames,MiningCamp": ("Mining Camp", "採掘所"),
     "HOLGameNames,Mill": ("Mill", "製粉所"),
     "HOLGameNames,Barracks": ("Barracks", "兵舎"),
+    # IA1.2 F8: the farm and its field.
+    "HOLGameNames,Farm": ("Farm", "農場"),
     "HOLGameNames,ArcheryRange": ("Archery Range", "射撃場"),
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
@@ -252,6 +254,7 @@ TRANSLATIONS = {
     "HOLGameNames,BerryBush": ("Berry Bush", "ベリーの茂み"),
     "HOLGameNames,StoneVein": ("Stone Vein", "石の鉱脈"),
     "HOLGameNames,GoldVein": ("Gold Vein", "金の鉱脈"),
+    "HOLGameNames,FarmField": ("Field", "畑"),
 
     "HOLTitleScreen,Multiplayer": ("Multiplayer", "マルチプレイ"),
 

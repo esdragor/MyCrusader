@@ -21,6 +21,7 @@
 #include "MassExecutionContext.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -376,9 +377,11 @@ void UHOLGatherProcessor::ApplyGatherOrders(const FStepContext& Step)
 			}
 			const FHOLUnitStateFragment& State = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity);
 			const FHOLUnitTypeConstants& Constants = EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity);
-			// Only a player's own units obey it (D288), and only those that gather this resource.
+			// Only a player's own units obey it (D288), only those that gather this resource, and never at another player's
+			// farm field (IA1.2).
 			if ((Order.PlayerIndex != INDEX_NONE && State.OwnerPlayer != Order.PlayerIndex)
-				|| Constants.CarryCapacity <= 0 || Constants.GatherRates[Resource] <= 0.f)
+				|| Constants.CarryCapacity <= 0 || Constants.GatherRates[Resource] <= 0.f
+				|| !Sources[Order.SourceIndex].IsGatherableBy(State.OwnerPlayer))
 			{
 				++NumRefused;
 				continue;
@@ -496,6 +499,13 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			}
 			return;
 		}
+		if (!Source->IsGatherableBy(Gatherer.OwnerPlayer))
+		{
+			// Another player's farm field (IA1.2), given by a builder's queue or a camp (an order is refused before): as
+			// a source gone, the next of its massif it may gather.
+			OnSourceGone(Step, Gatherer);
+			return;
+		}
 		if (HOLGather::IsFullOf(Gather.Load, Source->Resource, Gatherer.Constants.CarryCapacity))
 		{
 			WalkToDeposit(Step, Gatherer);
@@ -566,11 +576,14 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			Gather.bWalkIssued = false;
 			return;
 		}
-		int32 Remaining = Source->Remaining;
+		// Its type's rate (IA1.2: a farm field's RateScale; 1 for the map's sources), and an endless one never runs out.
+		const FHOLSourceTypeRow* Type = Step.Sources->GetType(Source->TypeIndex);
+		int32 Remaining = Type && Type->Endless ? MAX_int32 : Source->Remaining;
 		const EHOLResource Resource = Source->Resource;
 		const EHOLResource Carried = Gather.Load.Resource;
 		int32 Lost = 0;
-		const float Rate = Gatherer.Constants.GatherRates[Resource] * FMath::Clamp(SpeedScale, 0.1f, 10.f);
+		const float UnitRate = Gatherer.Constants.GatherRates[Resource];
+		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f);
 		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Rate, Step.StepSeconds,
 			Gatherer.Constants.CarryCapacity, Remaining, &Lost);
 		if (Taken > 0)
@@ -657,11 +670,13 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 	const float BodyRadius = Gatherer.Constants.Radius;
 
 	// Already touching it (a player ordered it to the tree beside it): no walk.
+	// A source of few places (a farm field, IA1.2) with none free: not here either.
 	if (HOLGather::IsInContact(FVector2D(Gatherer.Location), BodyRadius, FHOLGatherSite{ FVector2D(Source.Location), Source.Radius })
-		&& !IsSpotTaken(Step, FVector2D(Gatherer.Location), GetSpotSpacing(), Gatherer.Entity))
+		&& !IsSpotTaken(Step, FVector2D(Gatherer.Location), GetSpotSpacing(), Gatherer.Entity) && HasFreePlace(Step, Gather.SourceIndex, Gatherer.Entity))
 	{
 		Gather.Spot = Gatherer.Location;
 		SpotClaims.Add(Gatherer.Entity.AsNumber(), Gather.SourceIndex, FVector2D(Gatherer.Location));
+		ClaimPlace(Step, Gather.SourceIndex, Gatherer.Entity);
 		StartGathering(Gatherer);
 		return;
 	}
@@ -1036,6 +1051,11 @@ bool UHOLGatherProcessor::FindSourceSpot(const FStepContext& Step, const int32 S
 	const FMassEntityHandle Self, FVector& OutSpot, const FHOLGatherDeposit* Deposit)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
+	// Its few places all held (a farm field's one, IA1.2): no spot, whatever room is left around it.
+	if (!HasFreePlace(Step, SourceIndex, Self))
+	{
+		return false;
+	}
 	const FHOLSource& Source = Step.Sources->GetSources()[SourceIndex];
 	const FVector2D Centre(Source.Location);
 	const double Distance = Source.Radius + BodyRadius + SpotGap;
@@ -1085,6 +1105,7 @@ bool UHOLGatherProcessor::FindSourceSpot(const FStepContext& Step, const int32 S
 		// The point it walks to and stands on (Gather.Spot): the claim lasts as long as that one (D309; the point off
 		// the navmesh was claimed before, its claim lost once the gatherer's spot differed by more than 1 cm).
 		SpotClaims.Add(Self.AsNumber(), SourceIndex, FVector2D(Found));
+		ClaimPlace(Step, SourceIndex, Self);
 		OutSpot = Found;
 		return true;
 	}
@@ -1117,6 +1138,51 @@ bool UHOLGatherProcessor::IsSpotTaken(const FStepContext& Step, const FVector2D&
 	});
 }
 
+bool UHOLGatherProcessor::HasFreePlace(const FStepContext& Step, const int32 SourceIndex, const FMassEntityHandle Self)
+{
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? Step.Sources->GetType(Sources[SourceIndex].TypeIndex) : nullptr;
+	if (!Type || Type->Places <= 0)
+	{
+		return true;
+	}
+	TArray<uint64>* Holders = PlaceHolders.Find(SourceIndex);
+	if (!Holders)
+	{
+		return true;
+	}
+	// A holder keeps its place while its task is this source, on its way to the deposit too (it comes back to it, as a
+	// farmer in AoE IV); gone, dying, stopped or sent elsewhere, it lets it go. Self's own is let go: it looks again.
+	const FMassEntityManager& EntityManager = *Step.EntityManager;
+	const uint64 SelfNumber = Self.AsNumber();
+	Holders->RemoveAll([&EntityManager, SourceIndex, SelfNumber](const uint64 Owner)
+	{
+		if (Owner == SelfNumber)
+		{
+			return true;
+		}
+		const FMassEntityHandle Entity = FMassEntityHandle::FromNumber(Owner);
+		if (!EntityManager.IsEntityValid(Entity))
+		{
+			return true;
+		}
+		const FHOLGatherFragment* Gather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		return !Gather || !State || State->CurrentHealth <= 0 || Gather->Phase == EHOLGatherPhase::None || Gather->SourceIndex != SourceIndex;
+	});
+	return Holders->Num() < Type->Places;
+}
+
+void UHOLGatherProcessor::ClaimPlace(const FStepContext& Step, const int32 SourceIndex, const FMassEntityHandle Self)
+{
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? Step.Sources->GetType(Sources[SourceIndex].TypeIndex) : nullptr;
+	if (Type && Type->Places > 0)
+	{
+		PlaceHolders.FindOrAdd(SourceIndex).AddUnique(Self.AsNumber());
+	}
+}
+
 int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGatherer& Gatherer, const int32 FromSource, FVector& OutSpot,
 	int32* OutNearestStanding)
 {
@@ -1140,6 +1206,11 @@ int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGathe
 		// A used-up source leads on to the ones beyond it: the massif is not cut.
 		const FHOLSource& Source = Sources[Index];
 		if (!Source.IsStanding())
+		{
+			return false;
+		}
+		// Another player's farm field (IA1.2): never gathered, nor stood in front of.
+		if (!Source.IsGatherableBy(Gatherer.OwnerPlayer))
 		{
 			return false;
 		}

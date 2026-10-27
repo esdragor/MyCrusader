@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-27 17:18\n"
-"PO-Revision-Date: 2026-10-27 17:18\n"
+"POT-Creation-Date: 2026-10-27 18:13\n"
+"PO-Revision-Date: 2026-10-27 18:13\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -287,32 +287,39 @@ msgid "Vainqueurs : {0}"
 msgstr "勝者：{0}"
 
 #. Key:	Tree
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(100)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(100)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(105)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(105)
 msgctxt "HOLGameNames,Tree"
 msgid "Arbre"
 msgstr "木"
 
 #. Key:	BerryBush
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(104)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(104)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(109)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(109)
 msgctxt "HOLGameNames,BerryBush"
 msgid "Buisson de baies"
 msgstr "ベリーの茂み"
 
 #. Key:	StoneVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(108)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(108)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(113)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(113)
 msgctxt "HOLGameNames,StoneVein"
 msgid "Filon de pierre"
 msgstr "石の鉱脈"
 
 #. Key:	GoldVein
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(112)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(112)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(117)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(117)
 msgctxt "HOLGameNames,GoldVein"
 msgid "Filon d'or"
 msgstr "金の鉱脈"
+
+#. Key:	FarmField
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(122)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(122)
+msgctxt "HOLGameNames,FarmField"
+msgid "Champ"
+msgstr "畑"
 
 #. Key:	Peasant
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(22)
@@ -405,9 +412,16 @@ msgctxt "HOLGameNames,Barracks"
 msgid "Caserne"
 msgstr "兵舎"
 
-#. Key:	ArcheryRange
+#. Key:	Farm
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(87)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(87)
+msgctxt "HOLGameNames,Farm"
+msgid "Ferme"
+msgstr "農場"
+
+#. Key:	ArcheryRange
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(92)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(92)
 msgctxt "HOLGameNames,ArcheryRange"
 msgid "Champ de tir"
 msgstr "射撃場"

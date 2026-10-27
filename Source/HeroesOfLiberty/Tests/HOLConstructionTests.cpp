@@ -4,6 +4,7 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Misc/AutomationTest.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLFormationRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -356,6 +357,44 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Archery range: S of the Peasant's grid (slot 5, military row)"), ArcheryRange->BuildGridSlot, 5);
 		TestEqual(TEXT("Archery range: 3 x 3 tiles (12 m)"), ArcheryRange->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
 		TestEqual(TEXT("Archery range: age I"), ArcheryRange->Age, 0);
+	}
+
+	// IA1.2 (F4): every building so far blocks the way and has no source of its own.
+	for (const FName Name : { HOLBuildingTypeNames::MainCentre, HOLBuildingTypeNames::House, HOLBuildingTypeNames::LumberCamp,
+		HOLBuildingTypeNames::MiningCamp, HOLBuildingTypeNames::Mill, HOLBuildingTypeNames::Barracks,
+		HOLBuildingTypeNames::ArcheryRange })
+	{
+		const FHOLBuildingTypeRow* Row = UHOLBuildingSettings::FindType(Name);
+		if (TestNotNull(Name.ToString() + TEXT(" in the building type table"), Row))
+		{
+			TestFalse(Name.ToString() + TEXT(": not walkable"), Row->Walkable);
+			TestTrue(Name.ToString() + TEXT(": no source of its own"), Row->Source.IsNone());
+		}
+	}
+
+	// IA1.2 (F4): the Farm, 2 x 2 like the Mill, 75 wood, 15 s, on W of the Peasant's grid (IA1.2-Q1), walked over,
+	// born with its FarmField (a linked source of the source type table); no deposit, no population.
+	const FHOLBuildingTypeRow* Farm = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Farm);
+	if (TestNotNull(TEXT("Farm in the building type table"), Farm))
+	{
+		TestTrue(TEXT("Farm: built by Peasants"), Farm->IsBuildable());
+		TestEqual(TEXT("Farm: W of the Peasant's grid (slot 8, IA1.2-Q1)"), Farm->BuildGridSlot, 8);
+		TestEqual(TEXT("Farm: age I"), Farm->Age, 0);
+		TestEqual(TEXT("Farm: economic"), int32(Farm->Category), int32(EHOLBuildingCategory::Economic));
+		TestEqual(TEXT("Farm: 2 x 2 tiles (8 m)"), Farm->Footprint, FVector2D(2.0 * Grid, 2.0 * Grid));
+		TestTrue(TEXT("Farm: 75 wood"), Farm->Cost == FHOLResources(0, 75, 0, 0));
+		TestEqual(TEXT("Farm: 15 s for one builder"), Farm->BuildTime, 15.f);
+		TestEqual(TEXT("Farm: no population"), Farm->PopulationProvided, 0);
+		TestTrue(TEXT("Farm: takes no resource (no deposit)"), Farm->Accepts.IsEmpty());
+		TestTrue(TEXT("Farm: produces nothing"), Farm->Produces.IsEmpty());
+		TestTrue(TEXT("Farm: walkable"), Farm->Walkable);
+		TestEqual(TEXT("Farm: its source is a FarmField"), Farm->Source, HOLSourceTypeNames::FarmField);
+		const FHOLSourceTypeRow* Field = UHOLSourceSettings::FindType(Farm->Source);
+		if (TestNotNull(TEXT("Farm: its source in the source type table"), Field))
+		{
+			TestTrue(TEXT("Farm: its source is linked"), Field->Linked);
+			TestEqual(TEXT("Farm: its source gives food"), int32(Field->Resource), int32(EHOLResource::Food));
+		}
 	}
 	return true;
 }

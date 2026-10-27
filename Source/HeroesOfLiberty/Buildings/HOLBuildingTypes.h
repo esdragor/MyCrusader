@@ -117,7 +117,8 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	 * Its cell in the construction grid of the builders (D313), in the panel of its age: the grid of D30 read row by row,
 	 * its row its category's (A Z E R economic, Q S D F military, W X C V technology). In the table: 0 = A (the House),
 	 * 1 = Z (the Lumber camp), 2 = E (the Mining camp), 3 = R (the Mill), 4 = Q (the Barracks), 5 = S (the Archery range);
-	 * 8 = W ... 11 = V. -1: nobody builds it (the main centre comes with the map).
+	 * 8 = W (the Farm, IA1.2-Q1: the economic row of age I is full) ... 11 = V. -1: nobody builds it (the main centre comes
+	 * with the map).
 	 */
 	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
 	int32 BuildGridSlot = INDEX_NONE;
@@ -131,6 +132,17 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Its category (D30): the F key that selects it with the others of its kind (F1 military, F2 economic, F3 technological). */
 	UPROPERTY(EditAnywhere, Category = "Display")
 	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
+
+	/** Units walk over it and stop on it, finished or not (IA1.2, the farm, IA1.2-Q3): it never blocks the navmesh. */
+	UPROPERTY(EditAnywhere, Category = "Building")
+	bool Walkable = false;
+
+	/**
+	 * The source it is born with once finished and loses when destroyed (IA1.2): a row of the source type table, linked
+	 * (the farm's FarmField). None: no source of its own.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Gathering")
+	FName Source;
 
 	/** Its provisional shape while Mesh is empty (AR-Q2b): the block and tower of D261 by default. */
 	UPROPERTY(EditAnywhere, Category = "Presentation")
@@ -266,6 +278,8 @@ namespace HOLBuildingTypeNames
 	inline const FName Mill(TEXT("Mill"));
 	/** Military (J7-Q2): produces the Spearman and the Man-at-arms; on R of the Peasant's grid (J7a.2). */
 	inline const FName Barracks(TEXT("Barracks"));
+	/** Food (IA1.2): walked over, born with its FarmField; on W of the Peasant's grid (IA1.2-Q1, the economic row is full). */
+	inline const FName Farm(TEXT("Farm"));
 	/** Military (AR-Q2a): the Barracks' double, its provisional shape a range (AR-Q2b). */
 	inline const FName ArcheryRange(TEXT("ArcheryRange"));
 }

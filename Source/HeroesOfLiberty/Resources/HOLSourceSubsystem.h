@@ -22,12 +22,21 @@ struct FHOLSource
 	FVector Location = FVector::ZeroVector;
 	/** Body radius (cm), from its type. */
 	float Radius = 0.f;
-	/** What it still holds; 0: used up, it left the map. */
+	/**
+	 * What it still holds; 0: used up or removed, it left the map. An endless source (a farm field, IA1.2) keeps its
+	 * type's amount.
+	 */
 	int32 Remaining = 0;
+	/** Server: the match slot it belongs to (a farm field: its farm's, IA1.2); NoOwner: everyone's (the map's sources). */
+	uint8 OwnerSlot = NoOwner;
 
 	static constexpr uint8 NoType = 0xFF;
+	static constexpr uint8 NoOwner = 0xFF;
 
 	bool IsStanding() const { return TypeIndex != NoType && Remaining > 0; }
+
+	/** A unit of Slot may gather it (IA1.2): the map's sources are everyone's, a farm field its farm owner's alone. */
+	bool IsGatherableBy(const uint8 Slot) const { return OwnerSlot == NoOwner || OwnerSlot == Slot; }
 };
 
 /**
@@ -51,15 +60,31 @@ public:
 
 	/**
 	 * Server: adds a source of the type TypeName on Location (its ground point), holding Amount (the type's amount when
-	 * INDEX_NONE). Its index, INDEX_NONE if the type is unknown.
+	 * INDEX_NONE), belonging to OwnerSlot (FHOLSource::NoOwner: everyone's). Its index, INDEX_NONE if the type is unknown.
+	 * A linked type (a farm field, IA1.2) has no shape and no hole in the navmesh: its building stands for it.
 	 */
-	int32 AddSource(FName TypeName, const FVector& Location, int32 Amount = INDEX_NONE);
+	int32 AddSource(FName TypeName, const FVector& Location, int32 Amount = INDEX_NONE, uint8 OwnerSlot = FHOLSource::NoOwner);
 
 	/**
 	 * Server: takes up to Amount from a standing source; returns what was taken. A source left with nothing is used up:
-	 * it leaves the map (display, navmesh, every client).
+	 * it leaves the map (display, navmesh, every client). An endless source (IA1.2) gives Amount and keeps what it holds.
 	 */
 	int32 Take(int32 SourceIndex, int32 Amount);
+
+	/**
+	 * Server: a standing source leaves the map at once, like a used-up one (a farm field whose farm died, IA1.2): it keeps
+	 * its index with nothing left, so what holds its index (gatherers, chunks) sees it gone. False if it was not standing.
+	 */
+	bool RemoveSource(int32 SourceIndex);
+
+	/** Born of a building (a farm field, IA1.2): no shape, no hole in the navmesh, not clicked. */
+	bool IsLinked(int32 SourceIndex) const;
+
+	/**
+	 * IA1.2 F7: the standing linked source (a farm field) within Tolerance (cm, on the ground plane) of Location, its
+	 * building's centre, INDEX_NONE if none. Server and clients alike (the chunks bring type and place).
+	 */
+	int32 FindLinkedSourceAt(const FVector& Location, float Tolerance = 10.f) const;
 
 	const TArray<FHOLSource>& GetSources() const { return Sources; }
 	int32 GetNumStanding() const { return NumStanding; }

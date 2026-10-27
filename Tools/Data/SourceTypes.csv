@@ -1,5 +1,6 @@
-Name,DisplayName,Resource,Amount,Radius,Height,Mesh
-Tree,Arbre,Wood,100,60,750,
-BerryBush,Buisson de baies,Food,200,110,160,
-StoneVein,Filon de pierre,Stone,2500,300,300,
-GoldVein,Filon d'or,Gold,2500,300,300,
+Name,DisplayName,Resource,Amount,Radius,Height,Mesh,Places,RateScale,Endless,Linked
+Tree,Arbre,Wood,100,60,750,,0,1,False,False
+BerryBush,Buisson de baies,Food,200,110,160,,0,1,False,False
+StoneVein,Filon de pierre,Stone,2500,300,300,,0,1,False,False
+GoldVein,Filon d'or,Gold,2500,300,300,,0,1,False,False
+FarmField,Champ,Food,1,100,20,,1,0.7857143,True,True
