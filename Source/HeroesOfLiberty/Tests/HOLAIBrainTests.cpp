@@ -9,15 +9,18 @@
 #include "Dev/HOLTestHooks.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyGameModeBase.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
+#include "MassSimulationSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLPlayerState.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLGatherProcessor.h"
@@ -181,6 +184,112 @@ namespace UE::HeroesOfLiberty::Tests::AIBrain
 			}
 		}
 	};
+
+	/**
+	 * IA0.4 B5: a match's server (or one of its clients) with the real fixed step, for the brain's cadence. The game state
+	 * gets Config (InitVictory), the AI player states are born by the real SpawnAIPlayerStates, then the two subsystems of
+	 * the cadence begin play as UWorld::BeginPlay makes them (the bare world's other subsystems stay asleep): the
+	 * simulation (its step pipeline emptied for the time of its begin play: the cadence needs no processor, and a bare
+	 * world has no navigation for them) and the brain, whose real OnWorldBeginPlay subscribes it to the step's end. A
+	 * client is a world whose travel URL names a host (UWorld::AttemptDeriveFromURL -> NM_Client), set once the player
+	 * states exist (a client gets them by replication).
+	 */
+	struct FCadenceWorld
+	{
+		UWorld* World = nullptr;
+		AHOLGameState* State = nullptr;
+		UHOLSimulationSubsystem* Simulation = nullptr;
+		UHOLAIBrainSubsystem* Brain = nullptr;
+		int32 NumAIStates = 0;
+		bool bMassSimulation = false;
+
+		FCadenceWorld(const FHOLMatchConfig& Config, const bool bClient)
+		{
+			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+			Context.SetCurrentWorld(World);
+			World->InitializeActorsForPlay(FURL());
+			State = World->SpawnActor<AHOLGameState>();
+			Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+			Brain = UHOLAIBrainSubsystem::Find(World);
+			// The simulation's begin play needs Mass' subsystems (it logs an error without them).
+			bMassSimulation = World->GetSubsystem<UMassSimulationSubsystem>() != nullptr && World->GetSubsystem<UMassEntitySubsystem>() != nullptr;
+			if (!State || !Simulation || !Brain || !bMassSimulation)
+			{
+				return;
+			}
+			State->InitVictory(Config);
+			NumAIStates = AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(*World, Config, GetDefault<UHOLMatchSettings>()->StartingResources);
+			if (bClient)
+			{
+				World->NextURL = TEXT("127.0.0.1");
+				World->NextTravelType = TRAVEL_Absolute;
+			}
+
+			// The simulation's real begin play (protected in UHOLSimulationSubsystem, public in UWorldSubsystem), without processors.
+			UHOLSimulationSettings* Settings = GetMutableDefault<UHOLSimulationSettings>();
+			TArray<TSubclassOf<UMassProcessor>> SavedProcessors = MoveTemp(Settings->SimulationProcessors);
+			Settings->SimulationProcessors.Reset();
+			static_cast<UWorldSubsystem*>(Simulation)->OnWorldBeginPlay(*World);
+			Settings->SimulationProcessors = MoveTemp(SavedProcessors);
+
+			BeginPlayBrain();
+		}
+
+		~FCadenceWorld()
+		{
+			if (World)
+			{
+				World->NextURL.Reset();
+				GEngine->DestroyWorldContext(World);
+				World->DestroyWorld(false);
+			}
+		}
+
+		bool IsReady() const { return State && Simulation && Brain && bMassSimulation; }
+
+		/** The brain's real begin play (its subscription to the step's end). */
+		void BeginPlayBrain() { Brain->OnWorldBeginPlay(*World); }
+
+		/** The steps at which the step made Slot think: "4,9,14,19". */
+		FString StepsOf(const int32 Slot) const
+		{
+			TArray<FString> Steps;
+			for (const FHOLAIStepThought& Thought : Brain->GetStepThoughts())
+			{
+				if (Thought.Slot == Slot)
+				{
+					Steps.Add(FString::Printf(TEXT("%lld"), Thought.Step));
+				}
+			}
+			return FString::Join(Steps, TEXT(","));
+		}
+
+		/** Whether two thoughts fell on the same step (the spread failed, or one slot thought twice). */
+		bool AnyStepShared() const
+		{
+			TSet<int64> Seen;
+			for (const FHOLAIStepThought& Thought : Brain->GetStepThoughts())
+			{
+				bool bAlready = false;
+				Seen.Add(Thought.Step, &bAlready);
+				if (bAlready)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+	};
+
+	/** The cadence's match by the real .json reader: slot 0 human, slots 1 and 3 AI, slot 2 AI switched off ("aiBrain": false). */
+	bool MakeCadenceConfig(FHOLMatchConfig& OutConfig)
+	{
+		const FString Json = TEXT("{ \"map\": \"/Game/Maps/Plain.Plain\", \"slots\": [ { \"state\": \"Human\", \"colorIndex\": 0 }, ")
+			TEXT("{ \"state\": \"AI\", \"colorIndex\": 1 }, { \"state\": \"AI\", \"colorIndex\": 2, \"aiBrain\": false }, ")
+			TEXT("{ \"state\": \"AI\", \"colorIndex\": 3 } ] }");
+		return HOLTestHooks::MakeScenarioConfig(&Json, OutConfig);
+	}
 }
 
 /**
@@ -395,6 +504,102 @@ bool FHOLAIBrainGatherableOnlyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Next step: the AI Peasant on its way to food it may gather"), GetActivity(World, Test.AIPeasants[0]),
 		EHOLUnitActivity::GatherTrip);
 	TestEqual(TEXT("The human Peasant got no order, idle"), GetActivity(World, Test.HumanPeasants[0]), EHOLUnitActivity::Idle);
+	return true;
+}
+
+/**
+ * IA0.4 B5 (IA0.4-Q4 A): the brain thinks at the real step, every hol.AI.ThinkSteps steps, spread by slot. A match's
+ * server (FCadenceWorld: the .json by the real reader, slots 1 and 3 AI, slot 2 AI "aiBrain": false, the player states
+ * by the real SpawnAIPlayerStates, the real begin play of the simulation and of the brain), steps by the real RunStep.
+ * OnStepEnded gives the index already advanced past the step run (1 after the first step), and slot S thinks at the
+ * steps where (step + S) is a multiple of the interval:
+ * - 20 steps at 5: slot 1 at 4, 9, 14, 19, slot 3 at 2, 7, 12, 17 (20 / 5 = 4 thoughts each, never at the same step),
+ *   slot 2 never (it would at 3, 8, 13, 18);
+ * - 20 more steps at hol.AI.ThinkSteps 10: half as many (slot 1 at 29, 39, slot 3 at 27, 37), the value restored after;
+ * - a client: the simulation runs no step there, and even a step's end (broadcast by hand, as the other tests drive
+ *   their steps) makes no slot think; ThinkNow refused.
+ * A second begin play is not tested: UWorldSubsystem::OnWorldBeginPlay forbids it (ensureAlwaysMsgf). Red while the brain
+ * does not record which slot thought at which step (GetStepThoughts empty, GetNumThoughts already right): the cadence
+ * itself dates from B1.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIBrainCadenceTest, "HeroesOfLiberty.AI.Brain.Cadence", UE::HeroesOfLiberty::Tests::AIBrain::Flags)
+bool FHOLAIBrainCadenceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIBrain;
+
+	FHOLMatchConfig Config;
+	if (!TestTrue(TEXT(".json of the cadence read"), MakeCadenceConfig(Config)))
+	{
+		return false;
+	}
+	IConsoleVariable* ThinkSteps = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.AI.ThinkSteps"));
+	if (!TestNotNull(TEXT("hol.AI.ThinkSteps"), ThinkSteps))
+	{
+		return false;
+	}
+	const int32 ThinkStepsBefore = ThinkSteps->GetInt();
+	ON_SCOPE_EXIT
+	{
+		ThinkSteps->Set(ThinkStepsBefore, ECVF_SetByCode);
+	};
+	ThinkSteps->Set(5, ECVF_SetByCode);
+	if (!TestEqual(TEXT("hol.AI.ThinkSteps at 5 (IA0.4-Q4 A)"), UHOLAIBrainSubsystem::GetThinkSteps(), 5))
+	{
+		return false;
+	}
+
+	// The server: 20 steps at 5, then 20 at 10.
+	{
+		FCadenceWorld Test(Config, /*bClient*/ false);
+		if (!TestTrue(TEXT("Server world ready (game state, simulation, Mass, brain)"), Test.IsReady()))
+		{
+			return false;
+		}
+		TestEqual(TEXT("Three AI player states born by SpawnAIPlayerStates"), Test.NumAIStates, 3);
+		TestEqual(TEXT("The thinking slots: 1 and 3 (slot 2 switched off)"),
+			FString::JoinBy(Test.Brain->GetThinkingSlots(), TEXT(","), [](const int32 Slot) { return FString::FromInt(Slot); }), FString(TEXT("1,3")));
+		TestEqual(TEXT("No step before the first"), Test.Simulation->GetStepIndex(), int64(0));
+
+		TestEqual(TEXT("20 real steps run"), Test.Simulation->RunStepsForTests(20), 20);
+		TestEqual(TEXT("Step index after 20 steps"), Test.Simulation->GetStepIndex(), int64(20));
+		TestEqual(TEXT("At 5: slot 1 thinks at steps 4, 9, 14, 19"), Test.StepsOf(1), FString(TEXT("4,9,14,19")));
+		TestEqual(TEXT("At 5: slot 3 thinks at steps 2, 7, 12, 17"), Test.StepsOf(3), FString(TEXT("2,7,12,17")));
+		TestEqual(TEXT("At 5: slot 2 (\"aiBrain\": false) never thinks"), Test.StepsOf(2), FString());
+		TestEqual(TEXT("At 5: slot 0 (human) never thinks"), Test.StepsOf(0), FString());
+		TestFalse(TEXT("At 5: no two thoughts at the same step (spread)"), Test.AnyStepShared());
+		TestEqual(TEXT("At 5: 8 thoughts counted (4 per thinking slot)"), Test.Brain->GetNumThoughts(), 8);
+
+		ThinkSteps->Set(10, ECVF_SetByCode);
+		TestEqual(TEXT("hol.AI.ThinkSteps at 10"), UHOLAIBrainSubsystem::GetThinkSteps(), 10);
+		TestEqual(TEXT("20 more real steps run"), Test.Simulation->RunStepsForTests(20), 20);
+		ThinkSteps->Set(5, ECVF_SetByCode);
+		TestEqual(TEXT("At 10: slot 1 thinks at 29 and 39 (half as often)"), Test.StepsOf(1), FString(TEXT("4,9,14,19,29,39")));
+		TestEqual(TEXT("At 10: slot 3 thinks at 27 and 37 (half as often)"), Test.StepsOf(3), FString(TEXT("2,7,12,17,27,37")));
+		TestEqual(TEXT("At 10: slot 2 still never"), Test.StepsOf(2), FString());
+		TestFalse(TEXT("At 10: no two thoughts at the same step"), Test.AnyStepShared());
+		TestEqual(TEXT("At 10: 12 thoughts in all"), Test.Brain->GetNumThoughts(), 12);
+	}
+
+	// A client: no step, and a step's end makes no slot think.
+	{
+		FCadenceWorld Test(Config, /*bClient*/ true);
+		if (!TestTrue(TEXT("Client world ready"), Test.IsReady()))
+		{
+			return false;
+		}
+		if (!TestEqual(TEXT("The client world is a client (NM_Client)"), static_cast<int32>(Test.World->GetNetMode()), static_cast<int32>(NM_Client)))
+		{
+			return false;
+		}
+		TestEqual(TEXT("Client: the simulation runs no step"), Test.Simulation->RunStepsForTests(20), 0);
+		for (int64 Step = 1; Step <= 20; ++Step)
+		{
+			Test.Simulation->GetOnStepEnded().Broadcast(Step);
+		}
+		TestEqual(TEXT("Client: no thought at the steps' ends"), Test.Brain->GetStepThoughts().Num(), 0);
+		TestFalse(TEXT("Client: ThinkNow refused"), Test.Brain->ThinkNow(1));
+		TestEqual(TEXT("Client: no thought counted"), Test.Brain->GetNumThoughts(), 0);
+	}
 	return true;
 }
 

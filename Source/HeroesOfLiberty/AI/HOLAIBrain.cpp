@@ -12,7 +12,7 @@
 
 namespace UE::HeroesOfLiberty::AI
 {
-	/** IA0.4-Q4 (not settled, 5 kept): steps between two thoughts of one AI slot, 5 = 4 thoughts per second at 20 steps. */
+	/** IA0.4-Q4 A: steps between two thoughts of one AI slot, 5 = 4 thoughts per second at 20 steps (per level at IA4). */
 	int32 ThinkSteps = 5;
 	FAutoConsoleVariableRef CVarThinkSteps(TEXT("hol.AI.ThinkSteps"), ThinkSteps,
 		TEXT("Steps between two thoughts of one AI slot (at least 1; spread over the interval by slot)"));
@@ -146,6 +146,17 @@ void UHOLAIBrainSubsystem::OnStepEnded(int64 StepIndex)
 			continue;
 		}
 		UE_LOG(LogHOLMatch, Verbose, TEXT("AI brain: slot %d thinks (step %lld)"), Slot, StepIndex);
-		ThinkNow(Slot);
+		if (ThinkNow(Slot))
+		{
+			// IA0.4 B5: which slot thought at which step, for the tests of the cadence.
+			FHOLAIStepThought& Thought = StepThoughts.AddDefaulted_GetRef();
+			Thought.Step = StepIndex;
+			Thought.Slot = Slot;
+			if (StepThoughts.Num() > 2 * MaxStepThoughts)
+			{
+				// One shift every MaxStepThoughts thoughts, not one per thought.
+				StepThoughts.RemoveAt(0, StepThoughts.Num() - MaxStepThoughts, EAllowShrinking::No);
+			}
+		}
 	}
 }

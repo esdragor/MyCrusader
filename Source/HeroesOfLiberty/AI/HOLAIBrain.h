@@ -6,6 +6,14 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLAIBrain.generated.h"
 
+/** IA0.4 B5: one thought the step made a slot think (OnStepEnded), read by the tests of the cadence. */
+struct FHOLAIStepThought
+{
+	/** The step index OnStepEnded gave (the simulation's, already advanced past the step just run). */
+	int64 Step = 0;
+	int32 Slot = INDEX_NONE;
+};
+
 /**
  * The AI slots' brain (IA0.4 B1): the C++ part is the cadence and the list of AI slots only; the rule lives in a script
  * subclass (Script/AI/HOLAIBrain.as) that overrides Think. Abstract: only a script subclass is born, in each game or PIE
@@ -31,7 +39,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
 	int32 GetNumThoughts() const { return NumThoughts; }
 
-	/** The simulation's step index (the step just ended while the brain thinks at its tail); 0 without a simulation. For the decision log. */
+	/**
+	 * IA0.4 B5: the thoughts the step ran (not the direct ThinkNow calls), oldest first; the last MaxStepThoughts at least
+	 * are kept. For the tests of the cadence (which slot thought at which step).
+	 */
+	const TArray<FHOLAIStepThought>& GetStepThoughts() const { return StepThoughts; }
+
+	/**
+	 * The simulation's step index; 0 without a simulation. For the decision log. At the step's tail (where the brain
+	 * thinks) it is already advanced: the index OnStepEnded gives, 1 after the first step.
+	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
 	int64 GetStepIndex() const;
 
@@ -67,4 +84,8 @@ private:
 
 	FDelegateHandle StepEndedHandle;
 	int32 NumThoughts = 0;
+
+	/** Bounded record of the step's thoughts: trimmed back to MaxStepThoughts when it doubles. */
+	static constexpr int32 MaxStepThoughts = 256;
+	TArray<FHOLAIStepThought> StepThoughts;
 };
