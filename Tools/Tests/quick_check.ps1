@@ -2126,7 +2126,7 @@ if ($Parts -contains "victory") {
         $Checks["its last life: $($Want.Trim())"] = [bool]($Section | Select-String -SimpleMatch $Want -Quiet)
     }
     $Hud = ForumHud "victory forum defeat"
-    $Checks["table: slot 0 defeated ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives \d+ defeated greyed$"
+    $Checks["table: slot 0 defeated ($($Hud.Row0))"] = $Hud.Row0 -match "^slot 0 you colour \d+ lives \d+ defeated greyed struck$"
     $AllOk = (Report "victory forum" $Checks) -and $AllOk
 
     # V5.5a (Regicide): the fourth match, with the option.
@@ -4640,7 +4640,7 @@ if ($Parts -contains "net") {
         $Table2 = @(Get-ClientSection @(if ($Client2Log) { Get-Content $Client2Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD forum: .*, players \[([^\]]*)\]" |
             ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
         $LoserRow = @("$Table2" -split " \| " | Where-Object { $_ -match "^slot $Loser " }) | Select-Object -First 1
-        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser ('[^']*' )?colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
+        $Checks["victory: client 2's table shows slot $Loser at 1 life, in ruin, held by slot $Winner ($LoserRow)"] = ($null -ne $Loser) -and "$LoserRow" -match "^slot $Loser( ally| enemy)? ('[^']*' )?colour \d+ lives 1 ruin hold \d+ s holding by slot $Winner$"
         # V4.5 (D353, D202): the fall's message to each (the server's multicast): client 1 its own with the alert, client 2
         # the named one alone (another camp); the hold the same; client 1's defeat by its surrender, no alert (V4.5b: its own loss).
         $Client1Log = ($NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1).Log

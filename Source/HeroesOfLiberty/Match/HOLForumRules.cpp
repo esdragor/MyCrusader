@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 
 FHOLForumTuning FHOLForumTuning::FromSettings()
@@ -468,6 +469,14 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		Row.ColorIndex = MatchSlot.ColorIndex;
 		Row.Team = MatchSlot.Team;
 		Row.bGreyed = bDefeated;
+		// E4-2: a defeated slot's name struck through, as its row greyed.
+		Row.bStruck = bDefeated;
+		// E4-1: same camp as the viewer an ally, another an enemy; a spectator (no slot) sees no relation.
+		const int32 ViewerCamp = LocalSlot != INDEX_NONE ? HOLVictoryRules::GetCamp(Config, LocalSlot) : INDEX_NONE;
+		Row.Relation = bLocal ? EHOLPlayerRelation::Self
+			: ViewerCamp == INDEX_NONE ? EHOLPlayerRelation::None
+			: HOLVictoryRules::GetCamp(Config, Slot) == ViewerCamp ? EHOLPlayerRelation::Ally
+			: EHOLPlayerRelation::Enemy;
 		Row.bNewGroup = bTeams && Rows.Num() > 1 && Rows[Rows.Num() - 2].Team != Row.Team;
 		// M6-Q12: the name the lobby gave the slot when it has one (a match from a lobby), else Joueur N.
 		const FString PlayerName = MatchSlot.PlayerName.TrimStartAndEnd();
@@ -480,7 +489,7 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		FString Phase;
 		if (bDefeated)
 		{
-			Phase = TEXT("defeated greyed");
+			Phase = TEXT("defeated greyed struck");
 			Row.State = LOCTEXT("TableDefeated", "Vaincu");
 		}
 		else if (State.Phase == EHOLForumPhase::Ruin)
@@ -506,7 +515,10 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 			Row.State = FText::Format(State.IsContested() ? LOCTEXT("TableHoldContested", "{0} · contestée {1} s") : LOCTEXT("TableHold", "{0} · tenue {1} s"),
 				Row.State, FText::AsNumber(HoldSeconds));
 		}
-		Row.Shown = FString::Printf(TEXT("slot %d%s%s%s colour %d lives %d %s"), Slot, bLocal ? TEXT(" you") : TEXT(""),
+		const TCHAR* const RelationShown = Row.Relation == EHOLPlayerRelation::Self ? TEXT(" you")
+			: Row.Relation == EHOLPlayerRelation::Ally ? TEXT(" ally")
+			: Row.Relation == EHOLPlayerRelation::Enemy ? TEXT(" enemy") : TEXT("");
+		Row.Shown = FString::Printf(TEXT("slot %d%s%s%s colour %d lives %d %s"), Slot, RelationShown,
 			PlayerName.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" '%s'"), *PlayerName),
 			Row.Team > 0 ? *FString::Printf(TEXT(" team %d"), Row.Team) : TEXT(""), Row.ColorIndex, Lives, *Phase);
 	}

@@ -20,6 +20,7 @@ class UHOLGridCell;
 class UHOLQueueItem;
 class UHorizontalBox;
 class UImage;
+class UTexture2D;
 class UProgressBar;
 class UWrapBox;
 struct FHOLUnitTypeRow;
@@ -424,6 +425,17 @@ private:
 	TArray<TObjectPtr<UHorizontalBox>> PlayerRows;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCommonTextBlock>> PlayerNames;
+	/** E4-1: the relation's icon before each name (HOLRelationIcons): an ally's shield, an enemy's swords. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PlayerRelations;
+	/** E4-1: the two icons' textures, loaded with the table (HOLRelationIcons::AllyPath, EnemyPath). */
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> AllyIcon;
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> EnemyIcon;
+	/** E4-2: the thin bar across each name, shown on a defeated player's. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PlayerStrikes;
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCommonTextBlock>> PlayerLives;
 	UPROPERTY(Transient)

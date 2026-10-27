@@ -15,6 +15,7 @@
 #include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
+#include "Components/SizeBoxSlot.h"
 #include "Components/Spacer.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
@@ -25,9 +26,11 @@
 #include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
+#include "HUD/HOLRelationIcons.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
@@ -889,7 +892,27 @@ void UHOLGameScreen::RefreshPlayersTable()
 		// The name in the player's colour, the whole row faded once defeated.
 		PlayerRows[Index]->SetRenderOpacity(Row->bGreyed ? 0.45f : 1.f);
 		PlayerNames[Index]->SetText(Row->Name);
-		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(FLinearColor(HOLPlayerColors::GetColor(Row->ColorIndex))));
+		const FLinearColor NameColor(HOLPlayerColors::GetColor(Row->ColorIndex));
+		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(NameColor));
+		// E4-2: a defeated player's name struck through, in the name's colour (faded with the row).
+		PlayerStrikes[Index]->SetColorAndOpacity(NameColor);
+		SetShown(PlayerStrikes[Index], Row->bStruck, ESlateVisibility::HitTestInvisible);
+		// E4-1: an ally's green shield, an enemy's red swords (faded with a defeated row). The viewer's own row keeps the
+		// icon's room empty, so that the names line up; a spectator's table (all None) has no room for it.
+		UTexture2D* Icon = Row->Relation == EHOLPlayerRelation::Ally ? AllyIcon.Get()
+			: Row->Relation == EHOLPlayerRelation::Enemy ? EnemyIcon.Get() : nullptr;
+		if (Icon)
+		{
+			PlayerRelations[Index]->SetBrushFromTexture(Icon);
+			PlayerRelations[Index]->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
+		}
+		const ESlateVisibility RelationVisibility = Icon ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
+		if (PlayerRelations[Index]->GetVisibility() != RelationVisibility)
+		{
+			PlayerRelations[Index]->SetVisibility(RelationVisibility);
+		}
+		// The room itself: on every row of a player's table, none in a spectator's (no relation at all).
+		SetShown(PlayerRelations[Index]->GetParent(), Row->Relation != EHOLPlayerRelation::None, ESlateVisibility::HitTestInvisible);
 		PlayerLives[Index]->SetText(Row->Lives);
 		PlayerStates[Index]->SetText(Row->State);
 	}
@@ -2518,6 +2541,10 @@ void UHOLGameScreen::BuildLayout()
 	PlayersPanel->SetContent(PlayersList);
 	PlayerRows.Reset();
 	PlayerNames.Reset();
+	PlayerRelations.Reset();
+	AllyIcon = LoadObject<UTexture2D>(nullptr, HOLRelationIcons::AllyPath);
+	EnemyIcon = LoadObject<UTexture2D>(nullptr, HOLRelationIcons::EnemyPath);
+	PlayerStrikes.Reset();
 	PlayerLives.Reset();
 	PlayerStates.Reset();
 	for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
@@ -2535,7 +2562,42 @@ void UHOLGameScreen::BuildLayout()
 			return Text;
 		};
 		PlayerRows.Add(Row);
-		PlayerNames.Add(AddCell(TEXT("Name"), UHOLTextStyleHUDPlayerName::StaticClass(), 64.f, 10.f));
+		// E4-1: the relation's icon before the name (an ally's shield, an enemy's swords), set by RefreshPlayersTable.
+		UImage* Relation = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("PlayerRelation%d"), Seat));
+		Relation->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
+		Relation->SetVisibility(ESlateVisibility::Hidden);
+		// A fixed 16 px room, kept on the viewer's own row so that the names line up (a hidden image alone gave none).
+		USizeBox* RelationBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerRelationBox%d"), Seat));
+		RelationBox->SetWidthOverride(16.f);
+		RelationBox->SetHeightOverride(16.f);
+		RelationBox->SetContent(Relation);
+		RelationBox->SetVisibility(ESlateVisibility::Collapsed);
+		AddToRow(Row, RelationBox, 4.f);
+		PlayerRelations.Add(Relation);
+		// E4-2: the name in an overlay with a thin bar across it, its width, shown once defeated (a text has no strike).
+		UCommonTextBlock* Name = MakeText(*FString::Printf(TEXT("PlayerName%d"), Seat), UHOLTextStyleHUDPlayerName::StaticClass(), FText::GetEmpty());
+		UOverlay* NameOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), *FString::Printf(TEXT("PlayerNameOverlay%d"), Seat));
+		NameOverlay->AddChildToOverlay(Name);
+		UImage* Strike = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("PlayerNameStrike%d"), Seat));
+		Strike->SetVisibility(ESlateVisibility::Collapsed);
+		// A size box holds the bar to 2 px: the image alone took the whole line's height (seen in a capture).
+		USizeBox* StrikeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerNameStrikeBox%d"), Seat));
+		StrikeBox->SetHeightOverride(2.f);
+		StrikeBox->SetContent(Strike);
+		UOverlaySlot* StrikeSlot = NameOverlay->AddChildToOverlay(StrikeBox);
+		StrikeSlot->SetHorizontalAlignment(HAlign_Fill);
+		StrikeSlot->SetVerticalAlignment(VAlign_Center);
+		PlayerStrikes.Add(Strike);
+		USizeBox* NameBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerNameBox%d"), Seat));
+		NameBox->SetMinDesiredWidth(64.f);
+		NameBox->SetContent(NameOverlay);
+		// The overlay as wide as the name, not the box (the bar the name's width).
+		if (USizeBoxSlot* NameSlot = Cast<USizeBoxSlot>(NameOverlay->Slot))
+		{
+			NameSlot->SetHorizontalAlignment(HAlign_Left);
+		}
+		AddToRow(Row, NameBox, 10.f);
+		PlayerNames.Add(Name);
 		PlayerLives.Add(AddCell(TEXT("Lives"), UHOLTextStyleHUDLabel::StaticClass(), 44.f, 10.f));
 		PlayerStates.Add(AddCell(TEXT("State"), UHOLTextStyleHUDLabel::StaticClass(), 0.f, 0.f));
 	}
