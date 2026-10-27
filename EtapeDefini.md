@@ -19,7 +19,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : déconnexion (R7), mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R6 dans `main` : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef (M6-Q10 à M6-Q14) ; reste les essais E2 et E3 de l'utilisateur ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
+- M6 en parallèle : mise en place chez les amis et essai à deux PC (R8), partie à X et clôture (R9) *(R1 à R7 dans `main` (e5af3b7) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
 - Lanceur : essai avec un ami *(L0 à L13 dans `main`, décisions D475 à D482 au GDD ; kit et DuckDNS prêts ; serveur par version confié au chantier réseau (D481) ; `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
@@ -50,6 +50,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
+- Partie de salon : l'alerte dit « Joueur 2 est vaincu » au lieu du nom du joueur (`HOLForumMessages::GetSlotName`) *(V4 messages, `VictoryInProgress.md`)*
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 - `net 2 clients` : client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (séquence arrêtée, vu une fois)
