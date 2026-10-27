@@ -40,4 +40,7 @@ if (-not $EngineDir) {
 }
 $Editor = Join-Path $EngineDir "UnrealEditor.exe"
 Write-Host "play: scenario $Name ($UProject)"
-Start-Process -FilePath $Editor -ArgumentList @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding=0", "-ExecCmds=`"hol.Scenario $Name`"")
+# The game starts without waiting behind another copy's build (UBT's SDK check, up to minutes) and with its Angelscript
+# debug server on a free port, where no VS Code connects (on the default one the game froze, 2026-10-27).
+$env:UE_SKIP_UBT_SDK_SETUP = "1"
+Start-Process -FilePath $Editor -ArgumentList @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding=0", "-asdebugport=0", "-ExecCmds=`"hol.Scenario $Name`"")
