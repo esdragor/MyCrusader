@@ -1434,10 +1434,10 @@ void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
-	// Exact everywhere (J7-Q5 revised: a client receives a wounded unit's exact health); " (level)" would mark a client's
-	// health known only by level, should the levels come back.
+	// Exact for the troops (J7-Q5 revised: a client receives a wounded unit's exact health); a client's hero (J8a.3) is
+	// known by a share of his maximum, drawn back to health points within 2 of his own: " (share)" marks it.
 	const bool bShown = Unit && Unit->MaxHealth > 0;
-	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (level)"))
+	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (share)"))
 		: FString();
 	// Shown or hidden whatever was shown last (the review of J7b): a building selected before left the row shown with an
 	// empty ShownHealth, which a group of units or a unit of unknown type also has.

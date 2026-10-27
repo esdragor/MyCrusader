@@ -33,10 +33,11 @@ FHOLNetUnitState FHOLNetUnitState::Make(const FVector& Position, const FVector& 
 }
 
 void FHOLNetUnitState::SetCombat(const int32 InHealth, const int32 MaxHealth, const uint16 InTargetSlot, const bool bInFacesFront,
-	const float InFrontYawDegrees)
+	const float InFrontYawDegrees, const bool bHealthShare)
 {
 	bFullHealth = InHealth >= MaxHealth;
-	Health = bFullHealth ? 0 : HOLUnitReplication::GetWireHealth(InHealth, MaxHealth);
+	Health = bFullHealth ? 0
+		: bHealthShare ? HOLUnitReplication::GetWireHealthShare(InHealth, MaxHealth) : HOLUnitReplication::GetWireHealth(InHealth, MaxHealth);
 	TargetSlot = Activity == EHOLUnitActivity::Attacking ? FMath::Min<uint16>(InTargetSlot, InvalidTargetSlot) : 0;
 	bFacesFront = bInFacesFront && Activity == EHOLUnitActivity::Idle;
 	constexpr int32 NumDirections = 1 << FrontYawBits;
@@ -53,6 +54,20 @@ uint16 HOLUnitReplication::GetWireHealth(const int32 Health, const int32 MaxHeal
 {
 	(void)MaxHealth; // Exact health points: the maximum only bounds them (FitsWireHealth); a level would scale by it.
 	return Health <= 0 ? 0 : static_cast<uint16>(FMath::Min<int32>(Health, FHOLNetUnitState::MaxWireHealth));
+}
+
+uint16 HOLUnitReplication::GetWireHealthShare(const int32 Health, const int32 MaxHealth)
+{
+	if (Health <= 0)
+	{
+		return 0;
+	}
+	if (MaxHealth <= 0)
+	{
+		return FHOLNetUnitState::MaxWireHealth;
+	}
+	const int64 Share = (static_cast<int64>(Health) * FHOLNetUnitState::MaxWireHealth + MaxHealth - 1) / MaxHealth;
+	return static_cast<uint16>(FMath::Clamp<int64>(Share, 1, FHOLNetUnitState::MaxWireHealth));
 }
 
 bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B)

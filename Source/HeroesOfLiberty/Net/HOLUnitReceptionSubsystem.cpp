@@ -492,11 +492,14 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);
 		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
-		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
-		// J7b.5: the health received, exact (J7-Q5 revised).
+		// J7b.5: the health received, exact (J7-Q5 revised); a hero's as a share (J8-Q5, J8a.3), his bar filled from it
+		// and his health points drawn back from it, not exact (his exact health will come by the hero sheet).
+		static_assert(HOLUnitView::MaxWireHealthShare == FHOLNetUnitState::MaxWireHealth, "a hero's share is read in the wire's own steps");
+		const bool bHealthShare = Row->HasArmorCategory(EHOLArmorCategory::Hero);
 		OutView.MaxHealth = Row->MaxHealth;
-		OutView.Health = HOLUnitView::GetReceivedHealth(OutView.bFullHealth, Slot.State.Health, Row->MaxHealth);
-		OutView.bHealthExact = true;
+		OutView.Health = HOLUnitView::GetReceivedHealth(OutView.bFullHealth, Slot.State.Health, Row->MaxHealth, bHealthShare);
+		OutView.HealthShare = bHealthShare ? HOLUnitView::GetReceivedHealthShare(OutView.bFullHealth, Slot.State.Health) : -1.f;
+		OutView.bHealthExact = !bHealthShare;
 	}
 	return true;
 }

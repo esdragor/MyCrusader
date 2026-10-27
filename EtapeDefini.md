@@ -10,7 +10,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 
 ### Unités
 - Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
-- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, dans `main` ; J8a.3 (fiche réseau du héros) suivante ; `JourneyInProgress.md`)*
+- Héros Paladin-Commandant (J8a) : apparition, contrôle, mort et retour *(J8a.0 pièces, J8a.1 type `Hero` (×0,3 exact, PV en float), J8a.2 naissance près du forum, `SKM_Hero` et F4, J8a.3 boucles 1 à 3 (vie du héros en part de 255, fiches publique et privée écrites par le serveur), dans `main` ; reste de J8a.3 : contrôle réseau des fiches dans `quick_check` et lecture par le client ; `JourneyInProgress.md`)*
 
 ### Fin de partie
 - Conditions de victoire à coder : vies par palier (avec les paliers), Nomade (D354, D207), garnison du Roi (D365, avec la garnison) *(D347 à D360, GDD § 14.1 ; V1 à V5 dans `main` ; chantier `VictoryInProgress.md`)*
@@ -53,6 +53,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 - `net 2 clients` : client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (séquence arrêtée, vu une fois)
+- `net 2 clients` : le client 1 (Bob) meurt en cours de partie, journal coupé net, sans dossier Crashes (vu 3 fois le 2026-10-27, pendant les flèches ou juste après)
 - Attaque d'un bâtiment : portée de 400 cm, une unité gênée frappe encore du 2e rang *(équilibrage, à trancher ; `EtapeDefiniInProgress.md` J)*
 - Attaque d'un bâtiment sans ordre direct (attaque-déplacement, recherche automatique, file Maj) : pas de places autour du mur, ancienne règle du point le plus proche *(J)*
 - Unité arrêtée près d'un bâtiment : la garde du mur visible a des coins arrondis, jusqu'à ~35 cm dans le coin du socle *(C.1 ; J l'a corrigé pour les seules unités qui frappent)*
@@ -66,7 +67,7 @@ Une ligne disparaît dès que c'est fait ou corrigé. Le détail est dans les `*
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
 
 ### Chantiers en cours
-- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 à J8a.2 faites (pièces, type `Hero`, PV en float, naissance, F4), J8a.3 suivante
+- `JourneyInProgress.md` : parcours du joueur (D252), J7 close (D451 à D469), plan de J8 (le héros) en cours, Q1 à Q6 tranchées, questions de J8a tranchées, J8a.0 à J8a.2 faites (pièces, type `Hero`, PV en float, naissance, F4), J8a.3 en cours (boucles 1 à 3 dans `main`)
 - `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3 et IA1.1 dans `main`, plan d'IA1 écrit
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V4 dans `main`

@@ -8,6 +8,7 @@
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
+#include "Simulation/HOLHeroSheet.h"
 #include "HOLGameState.generated.h"
 
 class AHOLBuilding;
@@ -275,4 +276,25 @@ private:
 	/** Bit Slot: that slot won (FHOLVictoryResult). */
 	UPROPERTY(ReplicatedUsing = OnRep_Victory)
 	uint8 WinnerMask = 0;
+
+public:
+	/**
+	 * J8a.3 (J8-Q5, J8a3-Q1 = A): the public part of each slot's hero sheet (level, exact HP, state), on every machine; a
+	 * copy of the true sheet the server keeps. The default (None) for a slot without hero, or before its replication.
+	 */
+	const FHOLHeroSheet& GetHeroSheet(int32 Slot) const;
+	/** Server only: true when the slot's sheet changed (and is then sent at once); false when equal or out of range. */
+	bool SetHeroSheet(int32 Slot, const FHOLHeroSheet& Sheet);
+
+	/** Every machine: a hero sheet changed (server at once, a client by OnRep). For the HUD (J8a.3 loop 4b). */
+	DECLARE_MULTICAST_DELEGATE(FOnHeroSheetsChanged);
+	FOnHeroSheetsChanged OnHeroSheetsChanged;
+
+private:
+	UFUNCTION()
+	void OnRep_HeroSheets();
+
+	/** One per slot (MaxSlots), public (J8-Q5). */
+	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)
+	TArray<FHOLHeroSheet> HeroSheets;
 };
