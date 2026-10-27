@@ -314,6 +314,11 @@ public:
 	bool GetControlGroup(int32 Group, TArray<uint32>& OutUnits, TArray<AHOLBuilding*>& OutBuildings) const;
 	/** Ctrl + A (D30): all the player's soldiers known here (every unit type but the Peasant), no building. */
 	void SelectArmy();
+	/**
+	 * F4 (D30, J8a-Q4): the player's hero alone (a unit of the Hero armour category, alive: a dying one is left out), the
+	 * camera where it is; pressed again while he alone is selected, the camera on him. No hero: nothing changes.
+	 */
+	void SelectHero();
 	/** Two presses of a group's key this close (s, real time): the camera goes to the group. */
 	static constexpr double ControlGroupDoublePress = 0.3;
 	/** The group last selected (its key, a click on its slot or the command), INDEX_NONE before any, and when (real time). */
@@ -541,6 +546,7 @@ private:
 	/** Enter: a test scenario waiting on a waitkey step goes on (HOLTestHooks::PressContinueKey). */
 	void HandleContinueKey();
 	void HandleCategoryKey(EHOLBuildingCategory Category);
+	void HandleHeroKey();
 	void HandleSubgroupKey();
 	/** The group's buildings as the pure rules read them (their type, a main centre alone). */
 	void GetGroupMembers(TConstArrayView<AHOLBuilding*> Group, TArray<FHOLGroupMember>& OutMembers) const;

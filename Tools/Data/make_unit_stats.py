@@ -5,6 +5,7 @@ The combat constants below copy Source/HeroesOfLiberty/Simulation/HOLCombatRules
 """
 import csv
 import math
+import struct
 import re
 from pathlib import Path
 
@@ -31,6 +32,7 @@ NAMES = {
     "Spearman": "Piquier",
     "ManAtArms": "Homme d'armes",
     "King": "Roi",
+    "Hero": "Paladin-Commandant (héros)",
 }
 CATEGORIES = {
     "LightInfantry": "Infanterie légère",
@@ -42,10 +44,12 @@ CATEGORIES = {
     "GunpowderInfantry": "Infanterie à poudre",
     "Heavy": "Lourd",
     "King": "Roi",
+    "Hero": "Héros",
 }
 ATTACK_TYPES = {"Melee": "Mêlée", "Ranged": "Distance", "Siege": "Siège", "Hero": "Héros"}
 ARMOR_OF_TYPE = {"Melee": "MeleeArmor", "Ranged": "RangedArmor", "Siege": "SiegeArmor", "Hero": "HeroArmor"}
 
+HERO_TROOP_DAMAGE_FACTOR = 0.3  # HOLCombat::HeroTroopDamageFactor (D17), a float in the game
 BUILDING_RANGED_ARMOR = 40  # Tools/Data/BuildingTypes.csv RangedArmor (D345)
 
 
@@ -104,19 +108,37 @@ def is_ranged(u):
 
 def damage(att, dfn):
     """HOLCombat::GetDamage (D345): attack + every bonus aimed at one of the target's categories - its armour of the
-    attack's type, 1 at least."""
+    attack's type, 1 at least; on a hero hit by anyone but a hero, HeroTroopDamageFactor of that, unrounded (D17). In
+    single precision, as the game's float."""
     d = att["Attack"]
     for cat, bonus in att["Bonuses"]:
         if bonus > 0 and cat in dfn["ArmorCategories"]:
             d += bonus
     d -= dfn[ARMOR_OF_TYPE[att["AttackType"]]]
-    return max(d, 1)
+    d = max(d, 1)
+    if "Hero" in dfn["ArmorCategories"] and "Hero" not in att["ArmorCategories"]:
+        return f32(f32(d) * f32(HERO_TROOP_DAMAGE_FACTOR))
+    return f32(d)
+
+
+def f32(x):
+    """x rounded to a single-precision float, as the game holds health and damage (J8a.1)."""
+    return struct.unpack("f", struct.pack("f", x))[0]
+
+
+def hits_to_kill(health, hit):
+    """HOLCombat::GetHitsToKill: the hits taken off one after another in single precision, as the simulation does."""
+    left, hits = f32(health), 0
+    while left > 0:
+        left = f32(left - hit)
+        hits += 1
+    return hits
 
 
 def time_to_kill(att, dfn):
     """Seconds from the start of the attack (in reach) to the killing hit: wind-up, then one interval per hit.
     Leaves out the arrow's flight and the 50 ms steps (the game's cadence is exact on average)."""
-    hits = math.ceil(dfn["MaxHealth"] / damage(att, dfn))
+    hits = hits_to_kill(dfn["MaxHealth"], damage(att, dfn))
     windup = att["AttackInterval"] * min(max(att["AttackWindUpPercent"], 1), 100) / 100.0
     return hits, windup + (hits - 1) * att["AttackInterval"]
 

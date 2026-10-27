@@ -363,6 +363,12 @@ FBox2D AHOLBuilding::GetBodyBounds() const
 	return HOLConstruction::GetFootprintBounds(FVector2D(GetActorLocation()), GetBodySize(), static_cast<float>(GetActorRotation().Yaw));
 }
 
+FBox2D AHOLBuilding::GetVisibleBodyBounds() const
+{
+	const double VisualGap = FMath::Max(0., static_cast<double>(UHOLBuildingSettings::GetBodyInset() - UHOLBuildingSettings::GetVisualInset()));
+	return GetBodyBounds().ExpandBy(VisualGap);
+}
+
 void AHOLBuilding::NotifyProductionChanged()
 {
 	// The queue changes a few times a minute: sent at the next update rather than within the second of NetUpdateFrequency.

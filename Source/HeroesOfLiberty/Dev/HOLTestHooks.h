@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+struct FHOLMatchConfig;
+
 /**
  * What the scripted checks (hol.Test.Run) ask of the interface, which lives in a module this one does not depend on
  * (D247): the interface module fills these in when its root layout is built. Unset on a dedicated server.
@@ -53,4 +55,13 @@ namespace HOLTestHooks
 	 * run waiting on a waitkey step goes on. False when none was waiting (the key did nothing).
 	 */
 	HEROESOFLIBERTY_API bool PressContinueKey();
+
+	/**
+	 * The configuration a test scenario starts with (hol.Scenario, HOLScenario.cpp), from the text of its .json (Json null:
+	 * it has none, the default configuration). Plain when it names no map; IA1.1: no starting Peasants (StartingPeasants 0)
+	 * unless the .json gives the field ("startingPeasants": 5), the scenarios making their own; J8a.2: no hero
+	 * (StartingHero 0) unless it asks ("startingHero": true). False on a malformed .json.
+	 * Development builds only.
+	 */
+	HEROESOFLIBERTY_API bool MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutConfig, FString* OutError = nullptr);
 }

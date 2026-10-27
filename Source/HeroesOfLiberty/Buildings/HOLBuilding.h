@@ -153,6 +153,11 @@ public:
 	 */
 	FVector2D GetBodySize() const;
 	FBox2D GetBodyBounds() const;
+	/**
+	 * EtapeDefini J loop 8: its visible wall's box on the ground (D324): GetBodyBounds widened by BodyInset - VisualInset on
+	 * every side, as the visible-wall guard (HOLConstruction::KeepOutOfVisibleWall) reckons it.
+	 */
+	FBox2D GetVisibleBodyBounds() const;
 
 	/**
 	 * Production queue (J3, D282): the head is in production (or waits for population), the others wait their turn.

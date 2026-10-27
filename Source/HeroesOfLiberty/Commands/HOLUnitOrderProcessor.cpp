@@ -2842,7 +2842,37 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 	}
 	if (Order.Kind == EHOLOrderKind::AttackBuilding)
 	{
-		const AHOLBuilding* Building = Order.TargetBuilding.Get();
+		AHOLBuilding* Building = Order.TargetBuilding.Get();
+		// EtapeDefini J: one place per unit along its walls, so the group spreads round it instead of piling on one bit of wall.
+		if (Building)
+		{
+			TArray<FVector2D> Positions;
+			TArray<uint32> Ids;
+			TArray<FHOLCombatFragment*> Combats;
+			float Radius = 0.f;
+			for (const FMassEntityHandle Entity : Entities)
+			{
+				if (FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity))
+				{
+					Combats.Add(Combat);
+					Positions.Add(FVector2D(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation()));
+					Ids.Add(EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).UnitId);
+					Radius = FMath::Max(Radius, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).Radius);
+				}
+			}
+			TArray<FVector2D> Places;
+			// Loop 8: round the visible wall, not the body (the body is 85 cm inside it on a House).
+			HOLCombat::GetBuildingPlaces(Positions, Ids, Radius, Building->GetVisibleBodyBounds(), HOLCombat::BuildingPlaceVisibleGap, Places);
+			for (int32 Index = 0; Index < Combats.Num(); ++Index)
+			{
+				Combats[Index]->PlaceBuilding = Building;
+				Combats[Index]->PlaceGivenUpBuilding.Reset();
+				Combats[Index]->bPlaceShifted = false;
+				Combats[Index]->BuildingPlace = Places[Index];
+				Combats[Index]->PlaceBlockedMs = 0;
+				Combats[Index]->PlaceBestDistance = MAX_flt;
+			}
+		}
 		UE_LOG(LogHOLSimulation, Display, TEXT("Attack order of slot %d for %d units on building %s of slot %d"), Order.PlayerIndex, Entities.Num(),
 			Building ? *Building->GetTypeName().ToString() : TEXT("?"), Building ? Building->GetOwnerPlayer() : -1);
 		return;

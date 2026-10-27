@@ -512,3 +512,531 @@ commités** (4 fichiers ci-dessus + ce fichier) ; `IN_USE.txt` posé.
    refus… » d'`EtapeDefini.md` dans le même commit, fusionner dans `main`, libérer Arwen (`IN_USE.txt`), clore I ici.
 
 **Clos le 2026-10-25** : essai `regicide` validé par l'utilisateur (temps 3 et 4 conformes), commité et fusionné dans `main`. Vu pendant l'essai, noté dans `EtapeDefini.md` (« Retours d'essai ») : des unités qui attaquent un bâtiment s'empilent au même point.
+
+## J — Unités qui s'empilent en attaquant un bâtiment
+
+Ligne d'`EtapeDefini.md` (« Retours d'essai ») : « Unités qui s'empilent au même point en attaquant un bâtiment (groupe
+d'Hommes d'armes fondu en une masse sur le bord d'une Maison ennemie, essai du 2026-10-25) ». Choisie le 2026-10-26
+par l'utilisateur (« le moins de retour de ma part », il part) ; menée en sous-agents dans `HeroesOfLiberty-Elrond`,
+branche `etape-building-crowd` = `main` 24c7ce5, `IN_USE.txt` posé. Décisions prises en son absence : notées ici.
+
+- **Piste de départ** (session principale) : `HOLCombat::GetBuildingApproachPoint` (`Simulation/HOLCombatRules.cpp`)
+  vise le point du mur **le plus proche** de l'unité (+ rayon + écart). Un groupe serré vise donc presque le même point,
+  et un groupe qui arrive en biais vise tous **le coin** (même projection). Appelé par `HOLCombatProcessor.cpp`
+  (~l. 1566) à chaque marche d'approche.
+
+### Plan
+
+1. [x] Boucle 1 : diagnostic confirmé et test rouge sur la vraie chaîne (ordre d'attaque d'un groupe sur une Maison,
+   plusieurs angles dont le biais, graines tirées au hasard), montré en échec.
+2. [x] Boucle 2 : correctif (places réparties le long du mur), test vert, non-régression des tests de combat.
+3. [x] Boucle 3 : `quick_check` des parties touchées.
+4. [x] Boucle 4 : scénario d'essai `building_crowd` et sa répétition hors écran.
+5. [ ] Essai de l'utilisateur, puis commit, fusion dans `main`, ligne retirée d'`EtapeDefini.md`, Elrond libéré.
+
+### Suivi
+
+**2026-10-26 — Boucle 1 (sous-agent) : cause confirmée, test rouge.**
+
+- **Cause.** `HOLCombat::GetBuildingApproachPoint` (`Simulation/HOLCombatRules.cpp`, l. 309-323) : le point visé est le
+  point du mur le plus proche de l'unité, plus rayon + 40 cm. Chaque unité du groupe le calcule seule, depuis sa
+  place (`HOLCombatProcessor.cpp`, l. 1564-1570). Un groupe serré vise donc 2 à 5 m de mur, jamais plus. Rien ne
+  donne une place à chacun.
+- **Ce qui ne bouge plus.** Une unité qui frappe est « du front » : elle est un mur pour ses amis
+  (`HOLSimulationProcessors.cpp`, l. 1441 et 1848, FrontHoldsFriends). Les suivants se rangent derrière, pas à côté.
+- **Portée.** La portée de bâtiment de l'Homme d'armes est de 400 cm (table des unités) : le 3e ou 4e rang frappe
+  encore, à travers les autres. D'où la masse : pas d'empilement (les unités restent à 120 cm = 2 rayons), mais un
+  paquet de 3 ou 4 rangs sur un bout de mur.
+- **Le test.** `hol.Test.BuildingCrowd <Count> [Seed] [Type] [quit]` (`Source/HeroesOfLiberty/Dev/HOLBuildingCrowdTest.cpp`),
+  lancé par `Tools/Tests/building_crowd.ps1` (hors écran, comme `crossings.ps1`). Plain, joueur + IA. À chaque
+  répétition : une Maison de l'IA posée par le chemin de `hol.Cheat.SpawnBuilding`, un groupe de 6 à 12 né à un angle
+  et une distance tirés (12 à 22 m), puis l'ordre du clic droit (`RequestAttackBuilding`). La Maison garde ses PV
+  jusqu'à la mesure. Mesure 2 s après que tous frappent (ou à 25 s). Critères : (1) tous frappent, à portée du mur ;
+  (2) aucune paire à moins de 1,5 rayon ; (3) le bout de mur couvert (périmètre moins le plus grand trou) au moins
+  80 % de 2 rayons par unité (un seul rang).
+- **Rouge (graine 1, 8 répétitions) : 8 sur 8 en échec**, toujours par le critère 3. Mur couvert / besoin (cm) :
+  256/576, 419/768, 190/672, 197/768, 272/480, 538/672, 345/960, 760/864. Paire la plus proche : 120 cm partout.
+  Unité la plus loin du mur : 214 à 379 cm (des rangs derrière). Tous frappent en 4,5 à 9 s.
+- **Commande.** `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Tests\building_crowd.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond -Count 20 -Seed 1`
+  (~10 s de jeu par répétition ; 20 répétitions ≈ 4 min).
+- **Note de compilation.** Après le passage au moteur Hazelight 5.8.4 (D483), les `.gen.cpp` d'Elrond étaient
+  périmés (erreurs C2440) : dossier `Intermediate\Build\Win64\UnrealEditor\Inc\HeroesOfLiberty\UHT` effacé, puis
+  compilation verte. Les autres copies auront sans doute le même souci.
+- **Reste.** Lancer 20 répétitions et d'autres graines (boucle 2, avec le correctif). Peut-être resserrer le
+  critère 1 (frapper depuis le 1er rang : distance au mur ≤ ~1 rayon) si l'on veut aussi chasser les rangs de derrière.
+
+**2026-10-26 — Boucle 2 (sous-agent) : correctif écrit, compilé ; test vert pas encore mesuré (arrêt à 15 min).**
+
+- **Mécanisme.** Une place par unité, donnée une fois à l'ordre d'attaque de bâtiment. `HOLCombat::GetBuildingPlaces`
+  (`Simulation/HOLCombatRules.h/.cpp`, fonction pure, O(n log n)) : un anneau autour de la boîte (rayon + 40 cm, côtés
+  et quarts de cercle aux coins), places à 2 rayons ou un peu plus ; la 1re en face du milieu du groupe, puis de part et
+  d'autre en alternant ; unités rangées par leur projection sur l'anneau (identifiant en cas d'égalité), pas de
+  croisement. Au-delà de la place de l'anneau, les unités les plus loin du mur vont sur un 2e anneau (2 rayons plus loin).
+- **Où.** `UHOLUnitOrderProcessor::ApplyCombatOrder` (`Commands/HOLUnitOrderProcessor.cpp`) calcule les places pour le
+  groupe ; `FHOLCombatFragment` garde `PlaceBuilding` + `BuildingPlace` (effacés par `Disengage`) ; la marche d'approche
+  et ses reprises (`HOLCombatProcessor.cpp`, ~l. 1566) visent la place si elle est pour ce bâtiment, sinon le point le
+  plus proche comme avant. L'écart de 40 cm est passé dans `HOLCombat::BuildingApproachGap` (même valeur). Portée de
+  frappe (400 cm) et valeurs d'équilibrage : inchangées.
+- **Test pur ajouté** (pas encore compilé ni lancé) : `HeroesOfLiberty.Combat.BuildingPlaces` (`Tests/HOLCombatTests.cpp`) :
+  groupe de 1, groupe en biais vers un coin, tous au même point (égalités par identifiant), ordre de la liste inversé,
+  groupe de 25 (18 sur le 1er anneau, 7 sur le 2e).
+- **Fait.** Compilation verte avec le correctif (avant l'ajout du test pur). `building_crowd.ps1 -Count 8 -Seed 1` lancé,
+  **rouge** : 1/8 : 7 Hommes d'armes, mur couvert 319/576 cm, le plus loin à 273 cm du mur ; 2/8 : 9 Hommes d'armes, 8/9 frappent au bout de 25 s, mur couvert 745/768 cm, le plus loin à 257 cm ; puis le jeu s'arrête sans ligne de fin (journal : `Saved_Tests\Logs\building_crowd.log`). Cause probable : une marche bloquée par ceux qui frappent finit court (`bWalkEndedShort`), la portée passe à 400 cm et l'unité frappe depuis le 2e rang, loin de sa place ; à suivre : « à portée » seulement près de sa place quand l'unité en a une.
+- **Reste.** Lire le résultat graine 1, puis graine 2 ; recompiler avec le test pur et lancer `HeroesOfLiberty.Combat` ;
+  `HOLCombatTests.cpp` l. 673 (point d'approche seul) ne change pas : la fonction reste pour les attaques sans place.
+- **Restes notés.** Sans place (attaque-déplacement, recherche automatique, file Shift prise une à une) : comportement
+  d'avant. Place dans un obstacle : la marche finit court (`bWalkEndedShort`), l'unité frappe si elle est à 400 cm ; sinon
+  la reprise vise la même place et peut tourner en rond (avant, le point le plus proche changeait avec sa position) :
+  risque, pas traité.
+- **Bilan de méthode** (session principale) : la boucle 2 a voulu coder, compiler, tester puis recompiler ; à 13 min, le
+  test tournait encore. Désormais une boucle = **un seul changement, une seule compilation, un seul passage** du test
+  (8 répétitions, ~2 min) ; la 2e graine et les tests d'automatisation, une boucle à part.
+
+**2026-10-26 — Boucle 3 (décision de la session principale, utilisateur absent).** Une unité qui a une place ne frappe
+qu'arrivée près de sa place (≈ 1 rayon). Repli contre le blocage : si sa marche finit court plusieurs fois de suite (ou
+après quelques secondes), elle reprend la règle d'avant (portée 400 cm), pour ne jamais tourner en rond. La portée
+elle-même ne change pas.
+- **Boucle 3 arrêtée au minuteur** (15 min) : le code était écrit (repli `BuildingPlaceGiveUpMs` = 4 s, place atteinte à
+  `BuildingPlaceReachRadii` = 1 rayon, `PlaceBlockedMs` dans `FHOLCombatFragment`), mais la compilation n'était pas
+  finie. Cause : machine chargée (compilation du moteur depuis `C:/UE/Src/HZ` depuis 11 h 22, et deux compilations
+  d'un autre projet dans la même file d'UnrealBuildTool). **Bilan de méthode** : avec la machine chargée, la
+  compilation sort de la boucle du sous-agent ; la session principale la lance en tâche de fond, puis un sous-agent ne
+  fait que le test et son diagnostic.
+- **Boucle 3, résultat** (compilation par la session principale : 2179 s, presque tout en file d'attente ; test lancé
+  par la session principale, 189 s) : `building_crowd.ps1 -Count 8 -Seed 1` → **5/8 OK** (avant : 0/8). Un seul rang
+  partout : le plus loin du mur à 87-143 cm (avant 214-379). Échecs : **1/8** mur couvert 528/576 (7 unités, le plus
+  loin à 143 cm) ; **4/8** 1 unité sur 9 ne frappe pas en 25 s (bloquée ?) ; **8/8** mur couvert 846/864 (10 unités,
+  paire la plus proche 107 cm < 2 rayons : des unités pas sur leur place). Test pur `BuildingPlaces` : compilé, pas
+  encore lancé.
+
+**2026-10-26 — Boucle 4 (sous-agent) : 7/8.**
+
+- **Diagnostic (lecture du code).** (a) L'unité qui ne frappe jamais (4/8 de la boucle 3) : le repli ne comptait que
+  si la marche finissait court (`bWalkEndedShort`). Une unité poussée, ou qui marche sans finir, ne comptait jamais :
+  elle gardait sa place sans fin. Et au repli, sa vieille marche vers la place continuait (pas de nouvelle marche).
+  (b) Les manques de mur (1/8, 8/8) : les places étaient espacées de 2 rayons sur l'anneau, quarts de cercle compris.
+  Un quart de cercle (157 cm) ne couvre aucun mur : deux unités autour d'un coin couvraient bien moins de 2 rayons de
+  mur, et leur paire passait sous 120 cm (corde). D'où 107-108 cm et 846/864.
+- **Changement.** (a) `HOLCombatProcessor.cpp` + `FHOLCombatFragment::PlaceBestDistance` : le repli compte le temps
+  sans s'approcher de sa place d'au moins 20 cm (`HOLCombat::BuildingPlaceProgress`) depuis son meilleur, quoi que
+  fasse la marche. À 4 s (inchangé), l'unité oublie sa place et repart tout de suite (`bApproaching` remis à faux)
+  par la règle d'avant. (b) `HOLCombatRules.cpp` (`FBuildingRing`) : plus d'arc aux coins ; les places sont espacées
+  le long du mur lui-même, chacune au large de son côté. Test pur `BuildingPlaces` : 13 + 12 au lieu de 18 + 7 (pas
+  encore lancé). (c) Diagnostic dans le test : pour une répétition en échec, une ligne par unité (position, place,
+  distance, place gardée ou oubliée, temps bloqué, meilleure distance, phase de marche, frappe).
+- **Résultat** (`building_crowd.ps1 -Count 8 -Seed 1`, compilation 286 s, test 143 s) : **7/8 OK** (avant 5/8).
+  1/8 OK (6,5 s, mur 718/576, le plus loin 135 cm) ; 2/8 OK (5,8 s, 946/768) ; **3/8 FAIL** : une paire à 84 cm (< 90) ;
+  4/8 OK (9,4 s, 9/9 frappent, 912/768) ; 5/8 OK (4,5 s, 542/480) ; 6/8 OK (10,7 s, 842/672, le plus loin 174 cm) ;
+  7/8 OK (7,2 s, 1140/960) ; 8/8 OK (10,2 s, 994/864, paire la plus proche 120 cm).
+- **Cause de 3/8 (lignes par unité).** Deux unités sur 8 ont oublié leur place (bloquées 4 s) : l'unité 23 (sa place
+  sur le côté gauche, elle finit sur le haut, à 633 cm de sa place) et l'unité 17 (136 cm de sa place). Par la règle
+  d'avant, elles visent le point du mur le plus proche et frappent collées au mur (1 cm), entre les autres : l'unité 17
+  à 84 cm de l'unité 18 (sur sa place, poussée à 62 cm du mur).
+- **Restes.** Le repli colle une unité contre une autre déjà en place. Piste : au repli, ne pas viser le mur nu mais
+  frapper depuis où elle est (portée 400 cm, donc 2e rang, comme à la boucle 3), ou prendre une place libre. Puis une
+  2e graine, et lancer `HeroesOfLiberty.Combat` (test pur `BuildingPlaces` modifié, pas encore lancé). Case 2 non cochée.
+
+**2026-10-26 — Boucle 5 (sous-agent) : 8/8, Combat 10/10.**
+
+- **Changement.** `HOLCombatProcessor.cpp` : au repli (place oubliée après 4 s sans progrès), si l'unité est déjà à
+  portée comme après une marche finie court (`IsBuildingInReach` avec `bWalkEndedShort` vrai, 400 cm), elle s'arrête
+  et frappe là où elle est. Sinon seulement, règle d'avant (marche vers le point du mur le plus proche). Portée,
+  équilibrage et critères du test : inchangés. Déterministe, rien de nouveau sur le réseau.
+- **Résultat** (`building_crowd.ps1 -Count 8 -Seed 1`, compilation 30 s, test 98 s) : **8/8 OK** (avant 7/8).
+  1/8 (7 unités, 3,8 s, paire 114 cm, le plus loin 89 cm, mur 726/576) ; 2/8 (9, 4,4 s, 118 cm, 98 cm, 949/768) ;
+  3/8 (8, 8,8 s, 114 cm, 119 cm, 762/672) ; 4/8 (9, 9,4 s, 114 cm, 138 cm, 926/768) ; 5/8 (6, 8,3 s, 120 cm, 136 cm,
+  544/480) ; 6/8 (8, 8,8 s, 120 cm, 130 cm, 870/672) ; 7/8 (11, 7,2 s, 120 cm, 140 cm, 1140/960) ; 8/8 (10, 10,2 s,
+  120 cm, 106 cm, 994/864). Tous frappent partout, aucune paire empilée.
+- **Tests d'automatisation** `HeroesOfLiberty.Combat` seuls (ligne de `quick_check`, filtre changé, 34 s) : **10/10**,
+  dont `BuildingPlaces` vert.
+- **Restes.** Une 2e graine (et plus de répétitions). Puis boucle 3 du plan (`quick_check` des parties touchées).
+  Case 2 cochée.
+- **Vérifications après la boucle 5** (session principale) : graine 2, 20 Hommes d'armes → **19/20** (échec 8/20 :
+  une paire à 87 cm, seuil 90 : deux unités voisines arrêtées à ~55 cm de leurs places, l'une vers l'autre ; la marche
+  s'arrête à 50 cm du but, `OrderArrivalTolerance`, et la frappe est permise à 1 rayon = 60 cm de la place) ; graine 3,
+  12 Paysans → **12/12**.
+- **Boucle 6** (session principale, utilisateur absent) : resserrer la marge de 60 cm ne marche pas (la marche s'arrête
+  à 50 cm : presque tous attendraient le repli de 4 s). À la place, quand le groupe est plus petit que le tour du
+  bâtiment, les places s'écartent jusqu'à 2,5 rayons (`BuildingPlaceSpreadRadii`, `GetBuildingPlaces`) au lieu de 2 ;
+  un groupe qui remplit le tour garde 2 rayons. Puis : compilation, `HeroesOfLiberty.Combat`, graines 1, 2 (Hommes
+  d'armes) et 3 (Paysans).
+- **Boucle 6, résultat** : compilation 125 s ; `HeroesOfLiberty.Combat` **10/10** (dont `BuildingPlaces`) ; graine 1
+  **8/8** (paire la plus proche ≥ 120 cm partout) ; graine 3 Paysans **12/12** ; graine 2 **19/20** : l'ancien échec 8/20
+  passe (140 cm), un nouveau 16/20 échoue de justesse (paire à 89,6 cm, seuil 90), rejoué à l'identique (déterministe).
+  Détail : les unités 136 et 137 frappent toutes deux sur leur place, 136 poussée contre le mur (1 cm) à 59 cm de sa
+  place (marge 60) ; deux unités qui frappent ne s'écartent plus l'une de l'autre (« le front tient »), d'où un
+  chevauchement de 30 cm. À suivre : fréquence sur d'autres graines avant de décider.
+- **Vérifications** (session principale) : `quick_check -Parts tests,combat` **PASS** en 232 s (tests 177/177, combat
+  anims, bodies, arrows, arrows flee, reinforce, aid, orders) ; graine 4 **19/20** (14/20 : paire à 82 cm, l'unité 127 a
+  oublié sa place et frappe collée au mur à côté de la 128) ; graine 5 **20/20**. **Bilan Hommes d'armes : 66/68 sur
+  4 graines, Paysans 12/12** (avant : 0/8). Les deux échecs : chevauchement léger (82 et 89,6 cm ; 120 = au contact)
+  de deux voisines qui frappent, l'une poussée. Le seuil n'est pas relâché ; reste noté. Le corriger toucherait au
+  déplacement (deux unités qui frappent ne s'écartent pas, « le front tient ») : décision laissée à l'utilisateur après
+  son essai. Plan : cases 2 et 3 faites.
+
+**2026-10-26 — Boucle scénario (sous-agent) : `building_crowd` prêt, répétition hors écran verte.**
+
+- **Fichiers.** `Tools/Scenarios/building_crowd.txt` et `building_crowd.json` (Plain, joueur + IA, comme
+  `building_attack`). Positions dans le repère du centre du joueur. Au départ : 10 Paysans (groupe 3), 12 Hommes
+  d'armes A (groupe 1) et 12 Hommes d'armes B (groupe 2 = tous moins le groupe 1, par `hol.Select.Group Remove`),
+  trois Maisons ennemies à ~24 m des groupes (hors des 16 m d'agressivité : rien ne part tout seul).
+- **Temps 1** : A face au côté ouest de la Maison 1 ; Entrée = clic droit (`hol.Select.OrderNear`, le chemin du clic
+  droit). **Temps 2** : B en biais (45°) face au coin de la Maison 2, Entrée = clic droit. **Temps 3** : les 10 Paysans
+  sur la Maison 3, devant le centre. **Temps 4** : une Maison neuve à ~25-30 m des deux groupes, le groupe 1
+  sélectionné : l'utilisateur fait lui-même le clic droit (touches 1 et 2 pour les groupes).
+- **Maison debout.** Aucun moyen sans code : pas de commande de PV ni d'invulnérabilité (`hol.Cheat.*` : seulement
+  dégâts, pose, vitesse de marche `UnitSpeed`), pas de vitesse du jeu ; `hol.Combat.Enabled 0` couperait toute
+  l'attaque. D'où une Maison neuve par temps ; la note du temps 1 dit qu'elle tombe ~5 s après les premiers coups.
+- **Commande pour l'utilisateur :**
+  `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 building_crowd -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+- **Répétition hors écran** (`-RenderOffScreen -ResX=1600 -ResY=900 -nosound -LiveCoding=0 -saveddirsuffix=Tests`,
+  `-ExecCmds="hol.Scenario.AutoContinue 1, hol.Scenario building_crowd"` ; journal
+  `Saved_Tests\Logs\building_crowd_scenario.log`). 1er passage : temps 2 en rouge (« hol.Select.OrderNear: the point is
+  not on the screen » : la caméra n'était pas sur la Maison) ; corrigé par un `hol.Camera.FocusNear` sur la Maison
+  juste avant chaque clic. 2e passage : **vert**, `Scenario building_crowd: ready` en 44 s de jeu. Sélections 10 / 12 /
+  24, groupes 3, 1, 2 (12 après retrait) ; 3 Maisons posées ; `Attack order of slot 0 for 12 units on building House
+  of slot 1` (temps 1 et 2), `... for 10 units ...` (temps 3) ; Maisons détruites 8,7 s, 10,5 s et 17,1 s après
+  l'ordre ; Maison du temps 4 posée, aucune attaque d'elle-même ensuite. La répartition elle-même n'est pas mesurée
+  par le scénario (c'est le rôle de `building_crowd.ps1`) : à l'œil de l'utilisateur.
+
+**2026-10-26 — Boucle 7 (sous-agent) : test exigeant écrit ; pas compilé (Visual Studio introuvable).**
+
+- **Diagnostic du point 2 (lecture du code).** Le combat vise la **boîte du corps** : `Step.Box = Building->GetBodyBounds()`
+  (`HOLCombatProcessor.cpp`, l. 806), les tuiles moins `BodyInset` = 115 cm de chaque côté (`DefaultGame.ini`). Maison :
+  tuiles 800 cm, **corps 570 cm**. Le mur visible (socle, forme) : tuiles moins `VisualInset` = 30 cm, **740 cm**. Écart :
+  **85 cm** de chaque côté (`VisualGap`). Le test mesurait aussi depuis le corps (`GetBodyBounds`) : « 1 cm from the wall »
+  = 1 cm du corps = **84 cm dans le mur visible**.
+- **Les places.** L'anneau des places est à rayon + 40 cm du corps (`BuildingApproachGap`) : milieu à 100 cm du corps,
+  bord du corps à 40 cm du corps, donc **45 cm dans le mur visible**. Toutes les places de la boucle 2 sont dans la Maison.
+- **D324 « une épaule ».** Oui, elle laisse entrer : une unité qui attaque est « au travail » (`StandsClearOfVisibleWall`
+  faux dès qu'elle a une cible), la garde ne la tient qu'à rayon + 1 = 61 cm du corps (milieu 24 cm dans le mur visible,
+  bord du corps **84 cm dedans**). Seule une unité arrêtée sort du mur visible (C.1). C'est ce que montrent les captures :
+  cercles centrés sur le bord du socle.
+- **Nouveaux critères** (`Dev/HOLBuildingCrowdTest.cpp`, les trois anciens gardés tels quels) :
+  (4) distance **signée** du bord de chaque corps au mur visible (corps + 85 cm) ≥ **−10 cm** (`VisibleWallSlack`) :
+  la garde laisse 1 cm, une foule pousse de quelques cm ; 10 cm = un sixième de rayon, invisible à la caméra ; le
+  défaut vu est de −45 à −84 cm. Pire valeur loguée à chaque répétition.
+  (5) **tour régulier** : le 1er rang (autant d'unités que le tour en tient au contact, les plus près du mur d'abord)
+  projeté sur le tour = mur visible élargi d'un rayon, quarts de cercle aux coins (Maison, Hommes d'armes :
+  4 × 740 + 2π × 60 = **3337 cm**, 27 places au contact). Part égale = tour / unités. Plus grand trou ≤ **1,5 ×** la
+  part (pas de côté vide, pas de coin vide) **et** plus petit écart ≥ **0,5 ×** la part (pas de 4 unités serrées). Les
+  deux bornes, parce qu'un trou seul ne voit pas un paquet quand le groupe est petit. Mesure le long du tour arrondi, pas
+  du mur nu : un coin compte pour son quart de cercle (94 cm), pas pour un point.
+  Lignes par unité des échecs : distance signée au mur visible et position sur le tour en plus.
+- **Résultat : pas de rouge mesuré.** `Tools\build.ps1` échoue en 5 s : « No valid Visual C++ toolchain was found »
+  (UnrealBuildTool). Cause hors du projet : plus aucune installation de Visual Studio n'est vue (`vswhere` vide, dossier
+  `C:\ProgramData\Microsoft\VisualStudio\Packages` absent), juste après un téléchargement de mise à jour de Visual
+  Studio en arrière-plan (journaux `%TEMP%\dd_BackgroundDownload_20261026150635*`, 15 h 06-15 h 08). À 13 h 59, la même
+  compilation trouvait `CommunityA` 14.44.35222. Les fichiers de MSVC sont toujours sur le disque. Rien touché à la
+  machine. **À faire avant la boucle 8** : réparer ou réenregistrer Visual Studio (Visual Studio Installer, « Réparer »),
+  puis compiler et lancer `building_crowd.ps1 -Count 8 -Seed 1`.
+- **Rouge attendu** (calcul, pas mesuré) : (4) rouge sur **8/8** (toute unité sur sa place est à −45 cm, celles poussées
+  contre le corps à −84) ; (5) rouge là où un côté reste vide (cas de l'essai), à mesurer.
+- **Recommandation pour la boucle 8.** Places depuis la **boîte visible** (corps + 85 cm), plus depuis le corps : anneau
+  à **rayon + 10 cm** du mur visible (milieu à 155 cm du corps ; portée 400 cm et zone interdite du navmesh à 85 cm : bon).
+  Places **régulières sur tout le tour** : pas = longueur du tour / unités (au moins 2 rayons), coins compris (quarts de
+  cercle), la 1re en face du milieu du groupe ; chaque unité prend la plus proche dans l'ordre du tour (sans croisement).
+  Au-delà de 27 (Hommes d'armes), 2e anneau 2 rayons plus loin. Place atteinte : garder 1 rayon, mais **une unité qui
+  frappe un bâtiment depuis sa place doit rester hors du mur visible** (étendre la sortie douce de C.1 aux unités qui
+  frappent un bâtiment, ou ne pas coller au corps quand elle a une place).
+
+**2026-10-26 — Boucle 8 (sous-agent) : correctif écrit, non compilé (Visual Studio en réparation).**
+
+- **Places depuis le mur visible.** Nouveau `AHOLBuilding::GetVisibleBodyBounds()` (`Buildings/HOLBuilding.h/.cpp`) :
+  la boîte du corps élargie de `BodyInset - VisualInset` (85 cm sur une Maison), la même source que la garde du mur
+  visible (`KeepOutOfVisibleWall`) et que le test de charge. `FStepBuilding::VisibleBox` (`HOLCombatProcessor.h`), calculée
+  une fois par pas à côté de `Box`. `ApplyCombatOrder` (`HOLUnitOrderProcessor.cpp`) donne les places autour de la boîte
+  visible, écart `HOLCombat::BuildingPlaceVisibleGap` = **10 cm** (`HOLCombatRules.h`). Milieu de l'unité à 155 cm du
+  corps, bord à 95 cm.
+- **Portée.** Homme d'armes et Paysan : portée de bâtiment 400 cm (`UnitTypes.csv` ; toutes les unités de mêlée aussi).
+  La règle « à portée près de sa place » (`Edge <= BuildingAttackRange`, au corps) reste vraie : 95 cm au 1er anneau,
+  215 cm au 2e, 335 cm au 3e (+ 60 cm de marge de place). Aucune unité n'a une portée plus courte : rien de spécial.
+- **Tour complet régulier** (`HOLCombat::GetBuildingPlaces`, `HOLCombatRules.cpp`). L'anneau a de nouveau ses quarts de
+  cercle aux coins (enlevés à la boucle 4) : une place peut tomber dans un coin. Écart = longueur du tour / unités, pour
+  tout groupe (plus de plafond à 2,5 rayons : `BuildingPlaceSpreadRadii` supprimé). La 1re place en face du milieu du
+  groupe. Au plus ce que le tour tient à 2 rayons ; en plus, **une place de moins tant que deux places sont à moins de
+  2 rayons en ligne droite** (autour d'un coin, la corde est plus courte que le chemin sur l'anneau : à 2 rayons sur
+  l'anneau, 107 cm de corde). Le reste va au 2e anneau, 2 rayons plus loin, même règle. Maison, Hommes d'armes : tour de
+  3400 cm, 28 places à 2 rayons, **24** après la règle des cordes (calcul en Python, pas en jeu).
+- **Affectation.** Sur chaque anneau : unités triées par leur projection sur l'anneau (identifiant en cas d'égalité),
+  places dans le même ordre ; on essaie les n décalages circulaires et on garde la plus petite somme des distances
+  (en ligne droite) unité → place, le plus petit décalage en cas d'égalité. O(n²) par anneau, à l'ordre seulement.
+  La projection sur un coin suit maintenant l'angle autour du coin (avant : le coin entier projeté sur un point).
+- **Repli** (place oubliée après 4 s). Nouveau `FHOLCombatFragment::PlaceGivenUpBuilding` (effacé par `Disengage` et à un
+  nouvel ordre). Une unité qui a oublié sa place pour ce bâtiment marche vers le point du **mur visible** le plus proche,
+  plus rayon + 10 cm (`GetBuildingApproachPoint` sur `Step.VisibleBox`). « Frappe là où elle est » (boucle 5) : inchangé.
+  Les unités sans place (attaque-déplacement, recherche seule, Shift) : inchangées (corps + rayon + 40 cm).
+- **Frapper sans entrer dans le mur visible.** Choix : étendre la sortie douce de C.1 (`HOLSimulationProcessors.cpp`,
+  garde des bâtiments) à une unité qui **frappe** (`bAttacking`) un bâtiment (`TargetBuilding`) dont elle a, ou avait,
+  la place (`PlaceBuilding` ou `PlaceGivenUpBuilding` = ce bâtiment). Même pas de 10 cm, même refus entre deux murs
+  (C.3), même place de formation poussée avec elle. Raisons : c'est le chemin déjà testé (C.1-C.3) ; il ne touche que ces
+  unités ; une unité qui frappe a une portée de 400 cm, la sortir à 146 cm du corps ne lui fait pas perdre sa cible. Les
+  marcheurs, les ouvriers et les autres combattants gardent l'épaule de D324. J'ai inclus les unités qui ont oublié leur
+  place : le critère (4) vaut pour toutes, et « frappe là où elle est » peut la laisser collée au corps.
+- **Test pur** `HeroesOfLiberty.Combat.BuildingPlaces` (`Tests/HOLCombatTests.cpp`), réécrit sur une boîte visible de
+  400 cm, rayon 60, écart 10 : seul (point le plus proche, hors du mur visible) ; **groupe de 4** (les 4 places à un quart
+  de tour l'une de l'autre = les milieux des 4 côtés, dans l'ordre des unités) ; groupe en biais de 8 (tous sur l'anneau,
+  chaque côté pris, une place dans un coin, écarts égaux le long du tour, 2 rayons) ; ordre de la liste inversé ; 5 unités
+  au même point ; 25 unités (13 à 16 sur le 1er anneau, le reste sur le 2e, écarts égaux sur chacun, 2 rayons partout).
+  Vérifié par une copie Python de l'algorithme : seul (470, 200) ; 4 → les 4 milieux ; 8 → dont 4 coins ; 25 → 14 + 11,
+  paire la plus proche 120 cm. Valeurs d'équilibrage et portée de 400 cm : inchangées. Test de charge : pas touché.
+- **À vérifier à la compilation.** (a) `FMath::Atan2(double, double)` et `UE_DOUBLE_PI` (présents dans le moteur
+  5.8 AS 3) ; (b) `TWeakObjectPtr == TWeakObjectPtr` dans la garde (`Combat->PlaceBuilding == Combat->TargetBuilding`) ;
+  (c) `Combat.PlaceGivenUpBuilding == Step.Building` (pointeur faible contre brut, comme `PlaceBuilding` déjà) ;
+  (d) `GetVisibleBodyBounds` utilise `UHOLBuildingSettings` (déjà inclus par `HOLBuilding.cpp`).
+- **À surveiller au test.** (a) La place à 155 cm du corps : la zone interdite du navmesh (corps + `BodyClearance`,
+  érodée du rayon) doit rester en deçà, sinon la marche finit court partout (repli à 4 s). (b) Un groupe de 4 envoie
+  une unité de l'autre côté de la Maison (voulu) : marche plus longue, frappe plus tard ; le critère « tous frappent »
+  a 25 s. (c) Des unités poussées par la sortie douce pendant qu'elles frappent, contre leurs voisines (« le front
+  tient ») : regarder la paire la plus proche. (d) Maison collée à une autre : une place peut tomber dans l'autre
+  bâtiment (risque déjà noté). (e) Lancer `HeroesOfLiberty.Combat`, puis `building_crowd.ps1 -Count 8 -Seed 1` (critères
+  4 et 5 attendus verts), puis graines 2 et 3, puis `quick_check -Parts tests,combat` (la garde des bâtiments a changé).
+
+- **Rouge de la boucle 7, mesuré** (session principale, après la réparation de Visual Studio ; état d'avant la boucle 8
+  sauvé dans `refs/building-crowd/loop7`, boucle 8 dans `refs/building-crowd/loop8`) : compilation 112 s ;
+  `building_crowd.ps1 -Count 8 -Seed 1` **rouge 8/8** sur les deux nouveaux critères : 4 à 7 corps dans le mur visible
+  (pire −34 à −73 cm) et trous du tour de 10,8 à 23,7 m (part égale 3 à 5,6 m). Les 3 anciens critères passaient.
+
+**2026-10-26 — Boucle 9 (sous-agent) : coins du socle ; 8/8 et Paysans 12/12.**
+
+- **Cause.** La garde voyait bien ces unités (`bStrikesByPlace` vrai). Mais elle mesure le mur visible depuis le
+  **corps**, à 85 + rayon + 1 cm, donc avec un **coin arrondi**. Le socle dessiné (et le test) a un **coin carré**
+  (corps élargi de 85 cm). Dans un coin, une unité à 146 cm du coin du corps est « dehors » pour la garde, mais jusqu'à
+  ~35 cm dans le socle. Preuve par les lignes du test : sur un côté, les deux distances diffèrent de 85 cm (unité 2 :
+  86 cm du corps, 1 cm du mur visible) ; pour les unités 6, 11 et 51, l'écart est de 113 à 120 cm : elles sont dans un
+  coin (unité 6 : 92 cm du corps, −21 cm du socle).
+- **Changement.** `HOLConstruction::EaseOutOfVisibleWalls` (`Buildings/HOLConstructionRules.h/.cpp`) : nouveau paramètre
+  `bSquareCorners` (faux par défaut). Vrai : distance mesurée depuis la **boîte visible carrée** (corps + 85 cm), sortie
+  à rayon + 1 cm ; centre dans le socle mais hors du corps : sortie par le côté du socle le plus proche. Sur un côté :
+  le même pas qu'avant. La garde (`HOLSimulationProcessors.cpp`, `PushOut`) le passe **seulement** pour `bStrikesByPlace`
+  (et sa place de formation). Les unités arrêtées (C.1), les ouvriers, le ramassage : inchangés. Portée, équilibrage,
+  tolérance d'arrivée, critères du test : inchangés.
+- **Compilation** 157 s, verte.
+- **Résultats.** `building_crowd.ps1 -Count 8 -Seed 1` (90 s) : **8/8 OK** (avant 5/8). Pire distance au mur visible :
+  1, 1, 1, 1, 1, 5, 1, 1 cm (avant −21, −14, …, −16). Trous du tour (min-max / part égale, cm) : 411-537/477,
+  315-448/371, 395-474/417, 317-425/371, 519-664/556, 344-495/417, 258-352/303, 271-415/334. Paire la plus proche :
+  366, 312, 405, 316, 416, 347, 253, 271 cm. Tous frappent en 4,4 à 7,5 s.
+  `-Count 12 -Seed 3 -Type Peasant` (123 s) : **12/12 OK**, pire 1 à 7 cm du mur visible, paire la plus proche ≥ 221 cm.
+- **Restes.** (a) Les unités arrêtées (C.1) gardent le coin arrondi : jusqu'à ~35 cm dans le coin du socle. Même
+  correctif possible (passer `bSquareCorners` pour `bStill`), mais il touche C.1-C.3 et leurs tests : pas fait. (b) Pas
+  lancé : `HeroesOfLiberty.Combat`, `HeroesOfLiberty.Construction` (la fonction a changé, chemin par défaut identique),
+  graine 2, `quick_check -Parts tests,combat`.
+
+- **Vérifications après la boucle 9** (session principale) : `quick_check -Parts tests,combat` **PASS** (221 s, tests
+  177/177) ; graine 2 **19/20**, graine 4 **19/20** : chaque échec = critère (5), une unité a oublié sa place (à 6-7 m
+  le long du mur, derrière des unités qui frappent déjà) et frappe d'où elle est : un trou, un paquet. Boucle 10 lancée.
+
+- **Boucle 10** (sous-agent arrêté au minuteur de 15 min sans écrire ici ; reconstitué par la session principale depuis
+  le code et le log). **Changement** : une unité bloquée 4 s sur le chemin de sa place, par des alliées déjà sur les
+  leurs le long du tour, prend la place de la plus proche d'entre elles ; chacune de ces alliées avance d'une place vers
+  la sienne (`HOLCombat::GetBuildingPlaceChain`, fonction pure, `HOLCombatRules.cpp` ; `UHOLCombatProcessor::
+  ShiftBuildingPlaces`, `HOLCombatProcessor.cpp`, O(unités) une fois, au blocage seulement ; `bPlaceShifted` dans
+  `FHOLCombatFragment`, remis à zéro à l'ordre et par `Disengage`). Une seule fois par unité : bloquée encore, elle
+  oublie sa place comme avant. Compilé à 16 h 15. **Résultat** : graine 2 **20/20** (avant 19/20), paire la plus proche
+  moyenne 318 cm. Pas de test pur pour `GetBuildingPlaceChain` (à ajouter). **Bilan de méthode** : le sous-agent a
+  lancé son test en tâche de fond puis attendu ; consigne à répéter : test en avant-plan, journal écrit avant le test.
+
+- **Vérifications après la boucle 10** (session principale) : `quick_check -Parts tests,combat` **PASS** (219 s, tests
+  177/177) ; `building_crowd.ps1` : graine 2 **20/20**, graine 4 **20/20**, graine 1 **8/8**, Paysans graine 3
+  **12/12** : **60/60**, les 5 critères (frappent, pas d'empilement, mur couvert, hors du mur visible, tour régulier).
+  Prêt pour le 2e essai de l'utilisateur (même scénario `building_crowd`).
+
+**2026-10-26 — Question de l'utilisateur avant le 2e essai** : « pourquoi les troupes sont aussi distantes l'une de
+l'autre ? » (tour de 33 m réparti : ~4 m d'écart pour 8 Hommes d'armes). **Décision de l'utilisateur : au contact** :
+places à 2 rayons, en un arc continu qui part en face du groupe et passe les coins sans trou ; un grand groupe fait
+tout le tour, puis 2e rang. Remplace « tout le tour régulier ». Boucle 11a : critère (5) adapté, rouge ; 11b : correctif.
+
+**2026-10-26 — Boucle 11a (sous-agent) : critère (5) « arc continu au contact ».**
+
+- **Ce qui change.** Seul le critère (5) de `Dev/HOLBuildingCrowdTest.cpp` ; les critères (1) à (4) et le code du jeu :
+  inchangés. Mêmes outils qu'avant : 1er rang (autant d'unités que le tour en tient à 2 rayons, les plus près du mur
+  d'abord), positions le long du tour arrondi (mur visible élargi d'un rayon, quarts de cercle aux coins), triées.
+- **Nouveau (5).** On prend les écarts entre voisines le long du tour, celui qui ferme le tour compris. Le plus grand =
+  le **vide** hors de l'arc. Tous les autres écarts : entre **0,75 × 2 rayons** et **1,5 × 2 rayons** (Homme d'armes :
+  90 à 180 cm). Et l'**arc** (tour moins le vide) ≤ **1,3 × (unités − 1) × 2 rayons + 2 rayons** (8 Hommes d'armes :
+  1212 cm ; au contact parfait : 840 cm). Si le 1er rang remplit le tour : pas de vide, tous les écarts dans les bornes
+  (le plus grand peut garder en plus le reste du tour, moins de 2 rayons). Ce dernier cas ne sort pas dans ce test
+  (6 à 12 unités, le tour en tient 27).
+- **Pourquoi ces bornes.** Haut 180 cm : une unité peut s'arrêter jusqu'à 50 cm de sa place (`OrderArrivalTolerance`
+  par défaut ; 5 cm dans `DefaultGame.ini`) et la foule pousse de ~10 cm : 120 + 60. Une place vide fait 240 cm : rouge.
+  Bas 90 cm : c'est la borne de l'empilement du critère (2) (1,5 rayon) ; des corps peuvent se presser un peu, pas
+  se monter dessus. Arc 1,3 : écart moyen jusqu'à 156 cm, soit le pire de chaque unité réparti ; + 2 rayons : chaque bout
+  de l'arc peut être à un rayon de sa place. Un groupe étalé sur le tour (code actuel) dépasse de très loin.
+- **Log par répétition** : écarts mini/maxi dans l'arc, longueur de l'arc et son maximum, vide.
+- **Compilation** 37 s, verte.
+- **Résultat** : `building_crowd.ps1 -Count 8 -Seed 1` (89 s) **rouge 8/8**, seulement sur le nouveau (5) ; les
+  critères (1) à (4) passent partout (tous frappent en 4,2 à 7,5 s, 0 paire empilée, pire 1 à 5 cm du mur visible).
+  Par répétition (unités : écarts dans l'arc, arc / maximum, vide, en cm) :
+  1. 7 : 436-489, arc 2767 / 1056, vide 570 ;
+  2. 9 : 327-391, arc 2901 / 1368, vide 436 ;
+  3. 8 : 395-428, arc 2863 / 1212, vide 474 ;
+  4. 9 : 317-407, arc 2911 / 1368, vide 425 ;
+  5. 6 : 519-543, arc 2673 / 900, vide 664 ;
+  6. 8 : 344-458, arc 2842 / 1212, vide 495 ;
+  7. 11 : 257-333, arc 3000 / 1680, vide 337 ;
+  8. 10 : 281-387, arc 2950 / 1524, vide 387.
+  Le critère voit bien le défaut : les écarts sont 2 à 4,5 fois le maximum de 180 cm, l'arc 1,8 à 3 fois son maximum.
+  Aucun écart sous 90 cm. Prêt pour la boucle 11b (correctif : places à 2 rayons en arc depuis la face du groupe).
+
+**2026-10-26 — Boucle 11b (sous-agent) : places au contact, en arc.**
+
+- **Changement.** `HOLCombat::GetBuildingPlaces` (`Simulation/HOLCombatRules.cpp/.h`). Place du 1er anneau (« room ») :
+  comme avant (autant de places régulières que le tour en tient, jamais deux à moins de 2 rayons en ligne droite).
+  Groupe plus petit : **arc continu** de places à 2 rayons le long du tour, centré sur la projection du milieu du groupe
+  (une place là pour un nombre impair, deux de part et d'autre pour un pair), puis une de chaque côté à tour de rôle.
+  Au coin, la place avance par pas de 1 cm jusqu'à être à 2 rayons de la précédente en ligne droite : pas de trou.
+  Unités triées par projection (identifiant en cas d'égalité), places triées le long de l'arc : la n-ième prend la
+  n-ième, sans croisement, sans décalage. Groupe aussi grand que la place ou plus : 1er anneau plein, régulier
+  (tour / places), décalage circulaire gardé ; le reste en arc sur le 2e anneau. Repli : si les deux bouts de l'arc se
+  rejoignent, répartition régulière. Une fois à l'ordre, O(n²) par anneau. `GetBuildingPlaceChain` : inchangé.
+- **Test pur** `HeroesOfLiberty.Combat.BuildingPlaces` : groupe de 4 → x = 20, 140, 260, 380 devant le bas, dans l'ordre ;
+  biais vers le coin haut-droit (8) → 4 à droite + 4 en haut, au contact par le coin ; 5 au même point → arc au contact ;
+  25 → 1er anneau plein régulier (14, copie Python) + 11 en arc au contact sur le 2e ; nouveau cas
+  `GetBuildingPlaceChain` (3 places alliées entre l'unité et la sienne, une sur le 2e anneau, une derrière : la chaîne
+  donne les 3, la plus proche d'abord). Portée, équilibrage, tolérance d'arrivée, test de charge, garde : inchangés.
+- **Compilation** 78 s, verte.
+- **Résultats.** `HeroesOfLiberty.Combat` (113 s) : **10/10**, dont `BuildingPlaces` vert (cas du chaînage compris).
+  `building_crowd.ps1 -Count 8 -Seed 1` (100 s) : **rouge 8/8**. Critères (1), (2), (4) verts partout : tous frappent en
+  3,8 à 12,8 s, 0 paire empilée, paire la plus proche 107 à 120 cm, pire 1 à 23 cm du mur visible. Arc : 565 à
+  1150 cm, toujours sous son maximum (avant : 2673 à 3000). Échecs par répétition (unités : écarts dans l'arc ; mur
+  couvert / besoin, cm) :
+  1. 7 : 80-164 ; 428/576 ;
+  2. 9 : 90-199 ; 660/768 ;
+  3. 8 : 73-145 ; 583/672 ;
+  4. 9 : 61-176 ; 678/768 ;
+  5. 6 : 78-134 ; 361/480 ;
+  6. 8 : 57-145 ; 518/672 ;
+  7. 11 : 77-135 ; 885/960 ;
+  8. 10 : 103-136 ; 779/864.
+- **Lecture.** (a) **Critère (3) rouge 8/8** : il mesure le mur couvert sur le **corps** (2280 cm de tour). Un arc au
+  contact qui passe un coin met 2 à 3 unités en face du coin : sur le corps, elles tombent sur un seul point (le coin
+  du tour compte ~85 + 85 cm de mur visible et 110 cm de quart de cercle). L'ancien critère (3) contredit donc la
+  décision « arc au contact qui passe les coins » : à adapter (boucle de test, comme 11a), pas le code. (b) **Critère (5)
+  rouge 7/8 par l'écart du bas** (57 à 80 cm, seuil 90) et 1/8 par un trou (199 cm, maximum 180). La paire la plus
+  proche reste ≥ 107 cm en ligne droite : ce sont des unités **décalées en profondeur** (une à 1 cm du mur visible,
+  sa voisine à 60-106 cm), donc proches le long du tour. Cause : la frappe est permise à 1 rayon de sa place et la
+  marche finit jusqu'à ~50 cm avant ; quelques unités (46, 47, 52) ont oublié leur place, bloquées par leurs voisines
+  déjà au contact. Le rang n'est pas droit.
+- **Restes.** Décider (3) (le mesurer sur le tour arrondi, ou le retirer : (5) le remplace). Pour (5) : rang plus droit
+  (place atteinte plus près que 1 rayon, ou unité qui frappe ramenée sur sa place), ou bornes de (5) mesurées en ligne
+  droite. Pas lancé : graine 2 (`-Count 20 -Seed 2`), faute de temps.
+
+- **Décisions de la session principale après 11b** (utilisateur présent mais sans question nouvelle ; à lui signaler) :
+  (a) le critère (3) « mur couvert » reste (premier détecteur du tassement) mais se mesure **le long du tour visible**,
+  comme (5) : sur le corps, 2-3 unités en face d'un coin comptent pour un point, ce qui contredit « passer les coins » ;
+  (b) `OrderArrivalTolerance` vaut 5 cm dans `Config/DefaultGame.ini` (D290), pas 50 : la place est donc « atteinte » à
+  ~15 cm (`BuildingPlaceReachRadii` 1 → 0,25), pour un rang droit (fini le zigzag en profondeur) ; (c) places de l'arc
+  à 2,2 rayons (10 % d'air) au lieu de 2, pour qu'une unité se glisse entre deux voisines qui frappent déjà. Boucle 12.
+
+**2026-10-26 — Boucle 12 (sous-agent) : (3) sur le tour, place atteinte à 15 cm, arc à 2,2 rayons.**
+
+- **Test de charge, critère (3)** (`Dev/HOLBuildingCrowdTest.cpp`) : même exigence (80 % de 2 rayons par unité,
+  plafonné au tour), mais mesurée **le long du tour visible** (`RoundCoordinate` / `RoundLength`, ceux de (5)), toutes
+  les unités du groupe. Le log « spread X of Y » donne maintenant le tour (Y) au lieu du périmètre du corps. Code mort
+  retiré (`PerimeterCoordinate`, `Perimeter`). Rien d'autre ne change ; aucun seuil relâché.
+- **Place atteinte plus près** : `BuildingPlaceReachRadii` 1,0 → **0,25** (15 cm pour un rayon de 60). La marche vise
+  la place (`IssueCombatWalk` vers `BuildingPlace`) et s'arrête à `OrderArrivalTolerance` = 5 cm (`DefaultGame.ini` ;
+  `AdvanceUnits`) : une marche finie normalement est dans les 15 cm. Seule exception possible : une marche coupée
+  court (bloquée, `FinalLegStuckSteps`) ; alors le repli à 4 s (chaîne de la boucle 10, puis oubli) reste en place.
+- **Arc à 2,2 rayons** : nouvelle constante `HOLCombat::BuildingPlaceArcRadii = 2.2` (`HOLCombatRules.h`) ;
+  `GetBuildingPlaces` l'utilise pour l'arc (pas, demi-pas du nombre pair, pas au coin, repli si les bouts se
+  rejoignent). Place d'un anneau, anneau plein et écart entre anneaux : 2 rayons, comme avant.
+- **Test pur** `BuildingPlaces` ajusté (calcul à la main, pas = 132 cm) : groupe de 4 → x = 2, 134, 266, 398 ; biais
+  vers le coin haut-droit : **6 unités** symétriques (milieu 980, 980) au lieu de 8 → 3 à droite, 3 en haut (places à
+  79, 211, 343 cm du milieu du coin le long du tour, corde au coin 133 cm ; à 8, la 4e passerait le coin suivant) ;
+  « au contact » = voisines à 132 cm (−0,5/+2) ; écart mini des arcs ≥ 131,5. Anneau plein : inchangé.
+- **Compilation** 500 s (file d'attente de `build.ps1`), verte.
+- **Tests : pas lancés.** La compilation a pris 8 min ; à 13 min de la boucle, la limite de 15 min ne laissait pas la
+  place. À lancer tels quels (pas de recompilation) : `HeroesOfLiberty.Combat`, puis `building_crowd.ps1 -Count 8
+  -Seed 1`, puis `-Count 20 -Seed 2`.
+
+- **Boucle 12, tests** (lancés par la session principale : la compilation du sous-agent a attendu 500 s dans la file) :
+  `HeroesOfLiberty.Combat` **10/10** ; graine 1 **8/8**, graine 2 **20/20** : écarts entre voisines 120 à 153 cm (contact
+  120), arc continu, pire distance au mur visible 1 à 10 cm (dehors), tous frappent en 3,1 à 7,7 s.
+
+- **Vérifications après la boucle 12** (session principale) : `quick_check -Parts tests,combat` **PASS** (221 s, tests
+  177/177) ; graine 4 **20/20**, Paysans graine 3 **12/12** (paire la plus proche moyenne 126-127 cm). Total **60/60**
+  au contact. Prêt pour le 2e essai de l'utilisateur.
+
+### Reprise exacte (J)
+
+État : tout dans `HeroesOfLiberty-Elrond`, branche `etape-building-crowd` = `main` 24c7ce5 + changements **non
+commités** (13 fichiers C++ modifiés, nouveaux : `Dev/HOLBuildingCrowdTest.cpp`, `Tools/Tests/building_crowd.ps1`,
+`Tools/Scenarios/building_crowd.txt/.json`, et ce fichier) ; `IN_USE.txt` posé ; compilé (boucle 10). Photos :
+`refs/building-crowd/loop7` (rouge), `refs/building-crowd/loop8`.
+1. [x] 1er essai de l'utilisateur : coins vides, corps dans la Maison → boucles 7 à 10 ; puis « trop distants » → au contact, boucles 11a à 12.
+2. [x] Rouge (8/8 en échec, deux fois : 7 et 11a) puis vert : 60/60 au contact sur 4 graines, Combat vert,
+   `quick_check -Parts tests,combat` PASS.
+3. [x] 2e essai de l'utilisateur, validé le 2026-10-26 (« très bien ») :
+   `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 building_crowd -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+4. [ ] Questions encore ouvertes : (a) portée de frappe sur bâtiment 400 cm (équilibrage, non touchée) ; (b) attaque-
+   déplacement, recherche automatique, file Shift : ancienne règle (point le plus proche) ; (c) unités arrêtées
+   (C.1) : coins arrondis de la garde, jusqu'à ~35 cm dans le coin du socle.
+5. [ ] Restes avant commit : test pur pour `GetBuildingPlaceChain` ; après accord : avancer sur `main` à jour (section K
+   d'`EtapeDefiniInProgress.md` déjà dans `main` : fusionner les deux), relancer `-Parts tests,combat,build` et
+   `building_crowd.ps1 -Count 8`, commit en anglais (sans Co-Authored-By), retirer la ligne « Unités qui s'empilent… »
+   d'`EtapeDefini.md` dans le même commit, fusionner dans `main`, effacer les refs `refs/building-crowd/*`, libérer
+   Elrond (`IN_USE.txt`), clore J ici.
+
+**Clos le 2026-10-26** : 2e essai validé par l'utilisateur, commité, fusionné dans `main`. Les trois questions ouvertes
+(portée de 400 cm, attaques sans ordre direct, coins arrondis des unités arrêtées) sont devenues des lignes
+d'`EtapeDefini.md` (« Aléas et petits restes »).
+
+## K — L'abandon en réseau (`ServerSurrender`) contrôlé par `quick_check`
+
+Ligne d'`EtapeDefini.md` (« Aléas et petits restes ») : « `quick_check` : l'abandon en réseau (`ServerSurrender`) n'est
+plus joué par la partie `net` (remplacé par la mort du Roi en V5.5) ; reste vérifié en solo ». Prise le 2026-10-26
+(l'utilisateur bientôt absent ; moteur Hazelight en compilation : rien en C++). Arwen, branche `net-surrender-check` =
+`main` 24c7ce5, `IN_USE.txt` posé.
+
+- **Constat** : la partie `lobby` de `quick_check` (`lobby_match.ps1`, R5.4) joue déjà l'abandon en réseau : Bob fait
+  `hol.Victory.Surrender`, donc `RequestSurrender` → RPC `ServerSurrender` vers le serveur dédié (cuit) ; elle ne
+  contrôlait que les bandeaux (Alice Victory, Bob Defeat), pas la raison de la défaite côté serveur. Pas besoin d'une
+  seconde partie à 2 clients dans `net`.
+- **Correctif** (scripts seuls) : `lobby_match.ps1`, après « Bob holds slot 1 », trois contrôles du journal du serveur :
+  aucun « Victory: surrender of slot … refused », « Victory: slot 1 defeated (Surrender) », « Victory: match over,
+  winners 0 ». `quick_check.ps1` : les deux commentaires de la fin de la partie `net` qui parlaient encore de l'abandon
+  de client 1 renvoient à la partie `lobby`.
+- **Rouge** rejoué hors jeu sur le journal d'une vraie partie `lobby` (Glorfindel, `M20261026-094645-1\server.log`) :
+  sans la ligne d'abandon → FAIL « no 'Victory: slot 1 defeated (Surrender)' » ; avec un refus ajouté → FAIL « refused » ;
+  sans la fin de partie → FAIL « no 'match over, winners 0' » ; journal tel quel → PASS.
+- Vert en vrai : compilation d'Arwen (`main` a L13b en plus de son ancien état), `build_manager.ps1`, puis
+  `quick_check -Parts lobby` (lancé en fond).
+- 1er passage : compilation **FAIL** (216 s, erreurs C2440 dans les `.gen.cpp`) : `C:/UE/UE_5.8_AS_3` est déjà le moteur
+  Hazelight 5.8.4 depuis le 2026-10-26 10 h 37 (D483) et l'`Intermediate` d'Arwen venait de l'ancien. 2e passage : Arwen
+  recompilée de zéro (`Intermediate` et `Binaries` effacés), puis la partie `lobby` avec le serveur cuit d'Arwen du
+  2026-10-25 (ancien moteur ; la cible Server du nouveau se compile dans `C:/UE/Src/HZ`). Si les clients 5.8.4 refusent
+  ce serveur : attendre la cible Server, `net_match.ps1 -Stage`, relancer.
+- 2e passage : compilation de zéro PASS (365 s), gestionnaire PASS ; le vieux serveur cuit accepte les clients 5.8.4.
+  `-Parts lobby` **FAIL** (468 s) « Alice : no lobby end banner », mais pas à cause de l'abandon : le journal du serveur
+  a bien « Victory: slot 1 defeated (Surrender) » puis « match over, winners 0 » (nos contrôles passeraient). **Cause** :
+  Alice attend son bandeau par un `waitlog` (60 s au plus, fixé dans `HOLTestSequence.cpp`) dès sa capture en partie,
+  alors que Bob n'abandonne qu'après l'arrivée de Carol (`waitfile … 180`) ; machine chargée (compilation du moteur et
+  d'un autre projet), Carol est arrivée tard : Alice a expiré à 11:34:19 (UTC), Bob a abandonné à 11:34:34. Défaut du
+  test, antérieur à K. **Correctif** (script seul) : Bob fait `signal bob_gives_up.signal` juste avant
+  `hol.Victory.Surrender`, Alice fait `waitfile … 240` avant son `waitlog End banner: lobby match` (un `waitfile` ne
+  déplace pas le point de départ de la recherche des `waitlog` : le bandeau est trouvé même arrivé pendant l'attente).
+  3e passage : **FAIL avant toute partie** (« game launch ended by itself », « no lobby created by Alice ») : au
+  démarrage, le jeu lance UnrealBuildTool (`-Mode=QueryTargets` / `ValidatePlatforms`), bloqué derrière les compilations
+  de ProjectShiva (même moteur, 12 h 24 et 12 h 29) et d'Elrond ; processeur à 100 %. Environnement, pas le test.
+  4e passage : attente qu'aucun UnrealBuildTool ne tourne (45 min au plus) : arrêtée sans test à 13 h 32, le filtre
+  comptait aussi ProjectShiva sur `UE_5.8_AS_2` (autre moteur, ne bloque pas). 5e passage (13 h 33) : filtre limité à
+  `UE_5.8_AS_3`, puis `-Parts lobby` (`scratchpadrwen_lobby_run5.txt` de la session 16edf49a).
+- 5e passage : **Alice et Bob verts** (le correctif du signal tient) ; FAIL plus loin, « Carol : « Quitter vers la liste »
+  not pressed » : Carol attend `dave_done.signal` (150 s) et Dave, lancé à 13 h 36, est resté bloqué au démarrage sur
+  UnrealBuildTool (`-Mode=ValidatePlatforms`) pendant une compilation d'Elrond (13 h 35 min 57 s). Environnement encore.
+  6e passage : jusqu'à 3 essais, chacun après 30 s sans UnrealBuildTool d'`UE_5.8_AS_3` ; nouvel essai seulement si un
+  jeu n'a jamais commencé sa séquence (`scratchpadrwen_lobby_run6.txt`).
+- **Vert** : 6e passage, 1er essai (13 h 41) : `quick_check -Parts lobby` **PASS en 250 s** (Alice, Bob, Carol, Dave,
+  contrôles du serveur dont l'abandon de Bob).
+- Au passage : `MovementInProgress.md` disait encore « seul reste l'aléa « build site » » ; il était corrigé depuis H
+  (`fb462ff`) : noté clos (même commit).
+
+### Reprise exacte (K)
+
+1. [x] Contrôles ajoutés, rouge hors jeu.
+2. [x] `quick_check -Parts lobby` PASS dans Arwen (2026-10-26 13 h 45, 250 s).
+3. [x] Accord de l'utilisateur, puis commit en anglais sur `net-surrender-check` (sans Co-Authored-By) avec la ligne
+   « `quick_check` : l'abandon en réseau… » retirée d'`EtapeDefini.md`, fusion dans `main`, Arwen libérée.
+
+**Clos le 2026-10-26** : accord de l'utilisateur (« go »), commité sur `net-surrender-check` et fusionné dans `main` ; Arwen libérée.

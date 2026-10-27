@@ -444,6 +444,10 @@ namespace HOLConstruction
 	 * EtapeDefini C.3: a unit standing still (out of the bodies) in the visible wall of one of Bodies goes away from it, MaxStep
 	 * a step at most, to VisualGap + Radius + 1 cm, if its way out leaves it clear of every other wall. In two walls at once
 	 * (the passage between two houses side by side), or led into another, it stays: D324's shoulder. True when it moved.
+	 * bSquareCorners (EtapeDefini J loop 9): the visible wall is the body's box widened by VisualGap, square at its corners
+	 * as the slab drawn (the load test's rule), not VisualGap + Radius + 1 cm round the body's corner (which leaves a body
+	 * up to ~35 cm in the slab's corner); the side is the same either way.
 	 */
-	HEROESOFLIBERTY_API bool EaseOutOfVisibleWalls(TConstArrayView<FWallBody> Bodies, double Radius, double VisualGap, double MaxStep, FVector2D& Position);
+	HEROESOFLIBERTY_API bool EaseOutOfVisibleWalls(TConstArrayView<FWallBody> Bodies, double Radius, double VisualGap, double MaxStep, FVector2D& Position,
+		bool bSquareCorners = false);
 }

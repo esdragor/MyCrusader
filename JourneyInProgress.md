@@ -1155,8 +1155,8 @@ V1 à V5 (Régicide, `VictoryInProgress.md`).
 | Q1 | **Périmètre** de J8. | **tranché (J8-Q1)** : le héros |
 | Q2 | **Découpage** en parties jouables. | **tranché (J8-Q2)** : trois parties, J8a le héros sur le terrain, J8b XP et niveaux, J8c l'aura et les capacités |
 | Q3 | **Quel héros** : générique ou le Paladin-Commandant (pas encore de factions). | **tranché (J8-Q3)** : le Paladin-Commandant pour tous |
-| Q4 | **Modèle technique** : unité de la simulation (Mass, processeur maison) ou acteur avec GAS (§ 16.1). | **reportée** (« on voit son point plus tard », l'utilisateur) |
-| Q5 | **Réseau** : PV, XP, niveau, état de mort et de retour. | attend Q4 |
+| Q4 | **Modèle technique** : unité de la simulation (Mass, processeur maison) ou acteur avec GAS (§ 16.1). | **tranché (J8-Q4)** : unité de la simulation, gestion de la partie en Angelscript |
+| Q5 | **Réseau** : PV, XP, niveau, état de mort et de retour. | **tranché (J8-Q5)** : corps dans le tableau rapide, fiche du héros à part (publique / au propriétaire) |
 | Q6 | **Vérification** : tests, stress tests en fin de chapitre, essais de l'utilisateur. | **tranché (J8-Q6)** : comme J7 |
 
 **Tranché — J8-Q1 Périmètre : le héros** (choix de l'utilisateur, conforme à la recommandation).
@@ -1181,19 +1181,124 @@ l'essai de l'utilisateur.
 - Écartés : **les deux héros selon la faction** (double J8c, factions en jeu plus tôt) ; **un héros générique** (travail
   refait avec les factions).
 
-**Reportée — J8-Q4 Modèle technique** : l'utilisateur verra ce point plus tard. Constat posé : GAS (§ 16.1, D34)
-n'est utilisé nulle part dans le code ; les unités sont des entités Mass, le combat de J7 (D454) et le Roi de Victory
-V5 (D470 à D474, une unité spéciale de la simulation) sont en code maison. Options présentées : **unité de la
-simulation** (recommandée : sélection, ordres, rangs, combat, réplication et rendu déjà là ; simulation reproductible,
-D468 ; D34 révisée, GAS possible pour le duel), **acteur avec GAS** (conforme à D34, ponts vers Mass partout),
-**hybride** (corps Mass, acteur GAS compagnon pour XP, niveau et capacités). **J8-Q5** (réseau) en dépend. **Aucun code
-de J8 avant de trancher Q4.**
+**Tranché — J8-Q4 Une unité de la simulation, la gestion de la partie en script** (2026-10-26, A, choix de
+l'utilisateur, conforme à la recommandation ; d'abord reportée le 2026-10-25).
+- **Simulation (C++)** : corps, sélection, ordres, rangs, combat, résistance de D17 (×0,3 des troupes), XP, niveau,
+  aura (D26) et effets des capacités vivent dans la simulation, comme le Roi de V5 (D470 à D474) ; règles pures testées
+  en C++ (D484 : ce qui reste en C++ garde ses tests C++).
+- **Angelscript (D483)** : délai et prix du retour (D25, D397), bouton « Ramener le héros », bloc du héros (D201) et
+  déclenchement des capacités ; premier vrai usage du script.
+- **Révise D34** : `Level` et `XP` deviennent des données de la simulation, pas des attributs GAS ; les tags de palier
+  (`Civ.Tier.*`) se décideront avec les paliers. Le duel aura sa propre question : GAS possible alors, sans lien pris
+  maintenant.
+- Motifs : sélection, ordres, rangs, combat, réplication et rendu déjà là ; partie reproductible (D468) ; l'IA lit le
+  héros comme le reste ; S3 / S4 avec un héros par camp sans coût de plus.
+- Écartés : **acteur avec GAS** (conforme à D34, mais ponts vers Mass partout : sélection, ordres, ciblage dans les
+  deux sens, réseau et rendu à part, hors du pas fixe) ; **hybride** (corps Mass, acteur compagnon : état coupé en deux,
+  deux chemins réseau, aura et capacités qui passent la frontière à chaque pas). **J8-Q5** (réseau) se pose maintenant.
+
+**Tranché — J8-Q5 Le corps dans le tableau rapide, une fiche du héros à part** (2026-10-26, A, choix de
+l'utilisateur, conforme à la recommandation).
+- **Corps** : comme toute unité (position, activité, cible ; D269, D455) ; rendu, sélection, rangs inchangés. Sa barre
+  de vie reçoit une **proportion sur 8 bits** (seul cas sans PV exacts : ceux du héros dépasseront 255).
+- **Fiche du héros**, une par joueur (8 au plus), envoyée au changement seulement :
+  **pour tous** : niveau, PV exacts, état (vivant, mort, prêt à revenir) ; **pour le propriétaire seul** (comme le
+  stock, D270) : XP, recharges des capacités, heure de la mort (délai et prix dégressif calculés chez lui par la même
+  règle pure, D25, D397, rien envoyé à chaque seconde).
+- Un héros ennemi sélectionné montre niveau et PV, jamais XP ni recharges ; le brouillard (M7) restreindra plus tard.
+- Écartés : **tout dans le tableau rapide** (XP et recharges envoyées à tous, triche par lecture ; format de S5
+  compliqué pour 8 entités) ; **héros hors du tableau rapide** (second chemin d'affichage, défauts écartés en Q4).
 
 **Tranché — J8-Q6 Vérification comme J7** (choix de l'utilisateur, conforme à la recommandation).
 - Chaque partie : tests automatiques des règles pures (résistance D17, délai et prix du retour, courbe d'XP, aura), un
   scénario `play.ps1`, un passage dans `quick_check` (solo et 2 clients), puis l'essai de l'utilisateur.
 - Stress tests **à la clôture de J8 seulement** : S3 et S4 avec un héros par camp, et S5.
 - Écartés : **un stress test des héros** (8 héros dans une bataille de 2 000 unités) ; **essais seulement**.
+
+### Questions de J8a — le héros sur le terrain
+
+Ouvertes le 2026-10-26 (pendant la recompilation du moteur : rien à compiler). Une à la fois, options A / B / C.
+
+| # | Question | État |
+|---|---|---|
+| J8a-Q1 | **Chiffres** du Paladin-Commandant au niveau 1 (combat, vitesse, bâtiments). | **tranché** : le capitaine solide |
+| J8a-Q2 | **Apparition** : quand, où, population. | **tranché** : dès la première seconde, près du forum, hors population |
+| J8a-Q3 | **Allure provisoire** (lisible à la hauteur de jeu, comme la couronne du Roi). | **tranché, révisée** : grand paladin (tabard au soleil, épaulières dorées, pèlerine, heaume à cimier), sans étendard |
+| J8a-Q4 | **Contrôle** : touche de sélection, comportement (agressivité, riposte), bloc du héros (D201). | **tranché** : comme un soldat ; F4 (D30) ; bloc du héros |
+| J8a-Q5 | **Mort et retour** au niveau 1 : délai, prix de base et baisse, lieu (D25, D397). | **tranché** : 38 s, puis 150 or qui baissent à 0 en 60 s |
+| J8a-Q6 | **Découpage** de J8a en sous-étapes et vérification. | **tranché** : J8a.0 à J8a.6, un essai à la fin, J8a.0 tout de suite |
+
+**Tranché — J8a-Q1 Le capitaine solide** (2026-10-26, A, choix de l'utilisateur, conforme à la recommandation ; valeurs
+indicatives, à régler en test ; la progression par niveau vient en J8b).
+- **Combat** : **450 PV** ; attaque **30**, type **Héros**, cadence **1,25 s** (~24 dégâts/s, ~5,5 Piquiers, D17) ; mêlée
+  **0,7 m** ; armures **0** (la résistance vient du ×0,3 des troupes, D17, D345) ; rayon d'agressivité **4 cases**.
+- **Déplacement** : **1,74 case/s** (6,97 m/s, l'Homme d'armes : il marche avec l'armée).
+- **Contre les bâtiments** : **10** toutes les **2,1 s** (moitié du Paysan ; D17 : pas de raid solitaire).
+- Repères : 6 Hommes d'armes le tuent en ~29 s, 20 Archers en ~25 s (D17 : 20 à 30 s) ; il tue un Homme d'armes en
+  ~7 s, un Piquier en ~3 s.
+- Écartés : **le cavalier de pointe** (300 PV, 25 par seconde, 2 cases/s : ~19 s sous 6 Hommes d'armes) ; **le rempart**
+  (650 PV, ~16 dégâts/s, 1,5 case/s : ~41 s, presque intouchable, faible en attaque).
+
+**Tranché — J8a-Q2 Dès la première seconde, près du forum, hors population** (2026-10-26, A, choix de l'utilisateur,
+conforme à la recommandation).
+- Il apparaît au lancement avec les 5 Paysans de départ, à côté du forum, gratuit, **sans place de population** (comme
+  le Roi, D206) : son retour n'est jamais bloqué par une population pleine ; son poids passe par ses chiffres et son
+  aura. Lecture de J8-Q1 et D207 (Nomade : il apparaît avec un groupe).
+- Écartés : **5 places de population** (places à garder pendant sa mort, maison plus tôt à l'ouverture) ; **recruté au
+  forum façon BFME** (contredit J8-Q1 et D207, 20 s de retard sans grand gain).
+
+**Tranché — J8a-Q3 Un grand Homme d'armes avec cape et étendard de l'Aube** (2026-10-26, A, choix de l'utilisateur,
+conforme à la recommandation ; provisoire, en attendant un vrai modèle).
+- Mannequin à l'échelle **1,2** (corps à la couleur du joueur), **épée longue**, **bouclier au soleil d'or**, **cape
+  blanche** rigide dans le dos, **étendard blanc et or** sur une hampe qui dépasse d'~1 m au-dessus de la tête :
+  silhouette haute, distincte de la couronne flottante du Roi (D473), annonce la *Bannière de l'Aube*.
+- Gestes de l'Homme d'armes repris (même squelette) : pièces (`soldier_props.py`) et échelle seulement ; faisable en
+  Python sans le moteur (aperçus PNG). **Rayon du corps 0,72 m** (suit l'échelle, au lieu de 0,6).
+- Écartés : **soleil d'or flottant** (deux signes flottants presque pareils en Régicide, pas de démarcation dans la
+  mêlée) ; **disque doré au sol** (confondu avec la sélection et la future aura, décalque à créer).
+- **Révisée le 2026-10-26 après les aperçus de J8a.0 et J8a.0b** (choix de l'utilisateur) : **pas d'étendard** ; la cape
+  longue (rigide sur `spine_03`, puis animée sur `ik_foot_l`) sortait en planche dans la frappe de l'Homme d'armes et
+  se voyait peu de la caméra RTS → **« comme un paladin »**, kit A : **tabard blanc au soleil d'or** devant et dans le
+  dos, bordé d'or, jusqu'à la ceinture ; **grandes épaulières dorées** arrondies ; **courte pèlerine blanche** collée au
+  haut du dos ; **heaume fermé à cimier soleil doré** ; épée longue et bouclier au soleil gardés ; bras et jambes à la
+  couleur du joueur ; échelle ×1,2. Pièces collées au corps, **gestes de l'Homme d'armes tels quels** (pas de gestes
+  propres au héros). Écartés : cape en deux morceaux pliée au rein, pas de cape, tête nue, auréole flottante (rappelle
+  la couronne du Roi).
+
+**Tranché — J8a-Q4 Comme un soldat** (2026-10-26, A, choix de l'utilisateur, conforme à la recommandation).
+- **Comportement** : rayon d'agressivité 4 cases (J8a-Q1), riposte, aide aux alliés proches ; attaque-déplacement,
+  position tenue, arrêt ; dans une sélection mêlée, une place dans les rangs comme un Homme d'armes. Au joueur de le
+  retirer (façon BFME).
+- **Touches** : **F4** le sélectionne, deux fois centre la caméra (D30, déjà tranché).
+- **Bloc du héros** (D201) en J8a : portrait (clic = sélection, double clic = caméra), « Niveau 1 », PV exacts ;
+  pendant la mort : délai, prix qui baisse, bouton « Ramener le héros » (D397) ; XP et capacités grisées (J8b, J8c).
+- Écartés : **riposte seulement, comme le Roi** (D472 : sa force payée en clics) ; **toujours au 2e rang** (règle de
+  formation spéciale ; à reposer avec l'aura en J8c si les essais le demandent).
+
+**Tranché — J8a-Q5 38 s, puis 150 or** (2026-10-26 ; réponse de l'utilisateur « 150 », hors des options proposées :
+A 100 or recommandé, B 50, C 200).
+- **Délai** : 38 s au niveau 1 (D25 : 30 s + 8 s × niveau), sans rachat.
+- **Prix** : **150 or** à la fin du délai (~43 s d'or pour 5 Paysans), **baisse linéaire jusqu'à 0 en 60 s** (à régler
+  en test) ; payé par le bouton « Ramener le héros » (D397) ; retour au plus tard 98 s après la mort.
+- **Retour** : à pleins PV, au forum par défaut, à la ruine au clic (D351) ; alerte mineure quand il est prêt (D202) ;
+  corps au sol 30 s (D463). Le prix par niveau vient en J8b.
+
+**Tranché — J8a-Q6 Sept sous-étapes, un essai à la fin, J8a.0 tout de suite** (2026-10-26, A, choix de l'utilisateur,
+conforme à la recommandation ; calqué sur le Roi de V5).
+
+| Sous-étape | Contenu | Moteur | État |
+|---|---|---|---|
+| J8a.0 Pièces | Kit du paladin (J8a-Q3 révisée) : épée longue, bouclier au soleil, tabard, pèlerine, épaulières dorées, heaume à cimier soleil ; `SKM_Hero` dans `SOLDIER_MESHES` ; gestes de l'Homme d'armes ; aperçus PNG validés par l'utilisateur | non | **fait** (2026-10-26, validé ; J8a.0 étendard et cape, J8a.0b cape animée abandonnés) |
+| J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | **fait** (2026-10-27 ; PV et dégâts en float, choix de l'utilisateur) |
+| J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | **fait** (2026-10-27 ; F4 contrôlé par `build:hero`) |
+| J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | — |
+| J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
+| J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
+| J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | — |
+
+- Écartés : **deux essais** (scénario de plus, pause au milieu) ; **le retour en Angelscript d'abord** (bouchons partout,
+  le retour n'a de sens qu'avec un héros qui meurt).
+- Numéros de décision : à la clôture de J8 (J8-Q1 à Q6, J8a-Q1 à Q6 ; prochain D485 au 2026-10-26).
 
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
@@ -7140,3 +7245,176 @@ d'épée).
   terrain, J8b XP et niveaux, J8c l'aura et les capacités), le Paladin-Commandant pour tous, vérification comme J7.
   **J8-Q4 reportée** par l'utilisateur (« on voit son point plus tard » : simulation Mass, acteur GAS ou hybride), Q5
   en dépend. Aucun code de J8 avant Q4.
+- (J8, 2026-10-26) **J8-Q4 tranchée** (A, conforme à la recommandation ; ouverte pendant la recompilation du moteur, rien
+  à compiler) : le héros est une unité de la simulation (corps, combat, D17, XP, niveau, aura, effets des capacités en
+  C++) ; retour, prix, bouton, bloc du HUD et déclenchement des capacités en Angelscript ; révise D34. Suivant : J8-Q5.
+- (J8, 2026-10-26) **J8-Q5 tranchée** (A, conforme à la recommandation) : corps dans le tableau rapide (barre en
+  proportion sur 8 bits), fiche du héros à part : niveau, PV exacts, état pour tous ; XP, recharges, heure de la mort
+  au propriétaire seul. **Plan de J8 : Q1 à Q6 tranchées.** Suivant : questions de J8a.
+- (J8a, 2026-10-26) **Questions de J8a ouvertes** (Q1 à Q6, section « Questions de J8a ») ; **J8a-Q1 tranchée** (A) :
+  450 PV, 30 Héros / 1,25 s, mêlée 0,7 m, armures 0, 1,74 case/s, bâtiments 10 / 2,1 s. Suivant : J8a-Q2.
+- (J8a, 2026-10-26) **J8a-Q2 tranchée** (A) : dès la première seconde, près du forum, hors population. Suivant : J8a-Q3.
+- (J8a, 2026-10-26) **J8a-Q3 tranchée** (A) : grand Homme d'armes (×1,2), cape blanche, étendard blanc et or, bouclier au
+  soleil ; gestes de l'Homme d'armes ; rayon 0,72 m. Suivant : J8a-Q4.
+- (J8a, 2026-10-26) **J8a-Q4 tranchée** (A) : comme un soldat ; F4 ; bloc du héros (portrait, niveau, PV, retour). Suivant :
+  J8a-Q5.
+- (J8a, 2026-10-26) **J8a-Q5 tranchée** (« 150 ») : 38 s, puis 150 or qui baissent à 0 en 60 s, retour à pleins PV au
+  forum ou à la ruine. Suivant : J8a-Q6 (découpage).
+- (J8a, 2026-10-26) **J8a-Q6 tranchée** (A) : J8a.0 à J8a.6, un essai à la fin. **Questions de J8a closes.** Suivant :
+  **J8a.0** (pièces en Python, sans moteur) ; J8a.1 et suivantes après la recompilation du moteur.
+- (J8a, 2026-10-26) **J8a.0 proposé, aperçus à valider** (Python seul, rien commité) : dans `soldier_props.py`,
+  `longsword` (112 cm, garde et pommeau d'or, même prise que l'épée), `sun_shield` (bouclier de l'Homme d'armes, soleil
+  d'or : disque et 8 rayons sur la couleur du joueur), `cape` (blanche, rigide, sur `spine_03`, des omoplates à 74 cm,
+  penchée en arrière, ourlet et col d'or) et `banner` (hampe sur `spine_03` derrière la cape, drapeau blanc 34 × 50 cm
+  au soleil d'or sous une traverse d'or, sommet à 59 cm au-dessus de la tête dans le maillage, ~1,05 m en jeu à 1,8) ;
+  `SKM_Hero` = ces quatre pièces dans `SOLDIER_MESHES`. Mesures sur `maa_idle`, `maa_walk`, `maa_attack` : épée longue
+  et bouclier n'entrent jamais dans la cape ni la hampe ; hampe sans aucun point du corps ; cape : col posé sur le dos
+  (0,6 cm), bras droit armé 0,5 cm au plus (haut de la cape réduit à 28 cm de large pour ça). `preview_animation.py` :
+  options `--mesh` (pièces d'un maillage à la place de celles du geste) et `--scales` (comparaison à l'échelle de jeu) ;
+  sorties existantes identiques octet pour octet. Aperçus : `Saved/AnimPreview/Hero_idle_contact_sheet.png`,
+  `Hero_walk_contact_sheet.png`, `Hero_attack_contact_sheet.png`, `Hero_attack_zoom.png`, `Hero_idle_light.png`,
+  `Hero_comparaison_repos.png` et `Hero_comparaison_marche.png` (Homme d'armes, Roi, héros à 1,5 / 1,5 / 1,8).
+  **Défaut à trancher** : dans la frappe, le buste se penche et tourne fort, la cape rigide et l'étendard le suivent
+  (la cape s'écarte derrière, l'étendard penche au-dessus de la tête vers 0,7-0,9 s) ; pistes : les garder ainsi
+  (sashimono réaliste), lier la cape au bassin, ou la raccourcir. Reste : validation de l'utilisateur, puis J8a.1.
+- (J8a, 2026-10-26) **J8a.0b proposé, aperçus à valider** (Python seul, rien commité) : **étendard retiré**, choix de
+  l'utilisateur du 2026-10-26 ; la silhouette se distingue par la taille ×1,2 et la cape blanche (`banner` supprimée de
+  `build_props` et de `SKM_Hero` = `longsword`, `sun_shield`, `cape`). **La cape devient une partie de l'animation** :
+  pièce skinnée à 100 % sur `ik_foot_l` (`CAPE_BONE`, os ik sans sommet du corps ; repère « bone », local identité :
+  origine au haut de la face intérieure, X le long de la cape, Z vers l'arrière), 78 cm. `anim_rig` : clé générique
+  `extra_bones` {os: piste} (fonction calculée une fois sur le corps résolu de chaque image, écrite dans chaque pose) ;
+  un geste sans elle est résolu comme avant. `soldier_poses` : `hero_idle`, `hero_walk`, `hero_attack`, `hero_fall`
+  (`A_Hero_*`, dans `PROPOSED`) = gestes de l'Homme d'armes + pièces de `SKM_Hero` + piste `cape_track` : charnière aux
+  omoplates portée par `spine_03` (tourne avec le buste), ressort-amortisseur hors ligne (pendule de 2/3 de la longueur,
+  amortissement 0,5) vers la direction de la pesanteur moins la moitié de l'accélération de la charnière, plus la traînée
+  de l'air (marche : 168 cm/s) ; bornes : jamais devant un point du corps ni de l'épée ou du bouclier (1 cm), 80° au plus
+  derrière le buste, jamais sous le sol ; boucles : plusieurs cycles simulés, le dernier gardé et refermé. Mesures (angle
+  cape/buste ; corps et armes dans la cape hors col < 6 cm ; pas max de la cape entre deux images ; jonction ; bas de la
+  cape à l'aplomb de la charnière, avant = cape rigide de J8a.0) : attaque 9,7-16,6°, 0,69 cm, 2,2° (3,0 cm au bas),
+  0,000, **40,9 cm / 32° (avant 35,1 cm / 26°)** ; marche 13,5-17,3°, 0,69 cm, 0,7°, 0,000, 21,4 cm / 16° (avant
+  13,1 / 10°) ; repos 9,7-13,4°, 0,66 cm, 0,26°, 0,000, 14,8 cm / 11° (avant 12,7 / 9°) ; chute : 0,69 cm, 3,6°, plus
+  bas point de la cape à 31 cm du sol. **Limite** : la « planche » n'a pas disparu dans la frappe. Une cape rigide
+  repose sur le dos (borne à 9° du buste, la pente du dos) : quand il se penche, elle sort autant qu'avant ; et vers
+  0,7-0,9 s le buste tourne, la cape tourne avec les épaules et paraît large de profil. Pistes : une cape en **deux
+  morceaux** (haut sur `ik_foot_l`, bas sur `ik_foot_r`, qui se plie au rein), ou plus courte, ou une charnière plus
+  basse. Aperçus : `Saved/AnimPreview/Hero_attack_contact_sheet.png`, `Hero_attack_zoom.png`,
+  `Hero_walk_contact_sheet.png`, `Hero_idle_contact_sheet.png`, `Hero_idle_light.png`, `Hero_fall_contact_sheet.png`,
+  `Hero_comparaison_repos.png`, `Hero_comparaison_marche.png` (sans étendard), `hero_attack.gif`, `hero_walk.gif`.
+  Existant identique : planches et rapports de `maa_idle`, `maa_walk`, `maa_attack`, `maa_fall`, `crossbow_attack`,
+  `archer_attack`, `spear_attack`, pièces (sauf `cape`, `banner` retirée), `SOLDIER_MESHES` et `GESTURES` / `PROPOSED`
+  identiques octet pour octet (`cmp`). **À faire en J8a.2** : le fabricant (`make_peasant_animations.py`) doit écrire
+  les os `extra_bones` (`ik_foot_l`) des gestes du héros, et `make_peasant_mesh.py` skinner la cape sur cet os ;
+  `SKM_Hero` ne doit jouer que les gestes `A_Hero_*` (sans clé, la cape irait au pied gauche). Reste : validation de
+  l'utilisateur (dont la piste pour la frappe), puis J8a.1.
+- (J8a, 2026-10-26) **J8a.0c proposé, aperçus à valider** (Python seul, rien commité) : **le héros devient « comme un
+  paladin »** (J8a-Q3 révisée, kit A) ; la cape de J8a.0 / J8a.0b est abandonnée. **Retour sur J8a.0b** :
+  `soldier_poses.py` rendu à `main` (son diff ne contenait que `cape_track` et `hero_*`), pièce `cape` retirée de
+  `soldier_props.py` ; `anim_rig.extra_bones` gardée (générique, sans effet sans la clé). Le héros joue **les gestes
+  de l'Homme d'armes tels quels** (`maa_*`) : plus de gestes `A_Hero_*`, plus d'os à écrire au fabricant. **Pièces**
+  (`soldier_props.py`, toutes en repère « body » ancré à l'origine du corps, 100 % sur un os) : `tabard` (id 1,
+  `spine_02`) panneaux blancs devant et derrière, de la ceinture (104-106 cm) au col, ~0,7 cm de la peau, bordés d'or,
+  soleil d'or sur la poitrine et dans le dos ; `mantle` (id 4, `spine_03`) courte pèlerine blanche du milieu du dos
+  au trapèze, bordée d'or ; `pauldron_l` / `pauldron_r` (ids 5, 6, `clavicle_*`) grands dômes dorés au-dessus de
+  l'épaule (vers l'extérieur et le haut), lèvre plus sombre ; `helm` (id 7, `head`) heaume fermé acier, fente des yeux,
+  croix et bande d'or, cimier soleil d'or (sommet ~207 cm dans le maillage) ; `SKM_Hero` = `longsword`, `sun_shield`
+  + ces cinq pièces. **Mesures** (tous les points du corps, toutes les images ; profondeur dans la pièce) : marche :
+  rien nulle part hors heaume ; repos : tabard 31 points à 0,50 cm (haut du buste, `spine_03`), heaume 89 points à
+  1,64 cm (haut du dos `spine_03` sous la bande d'or) ; attaque : tabard bras/main gauche 0,50 cm et bassin 0,50 cm
+  (0,69 s), pèlerine 0,31 cm (bras droit), **épaulière droite : avant-bras droit jusqu'à 2,4 cm et épée longue 2,36 cm
+  (0,62-0,65 s, le coude passe sous le dôme)**, heaume 2,12 cm (`spine_03`, 0,82 s) ; chute : tabard 0,50 cm (main
+  gauche, `spine_01`, cuisse droite 0,49 cm à 0,37 s), bouclier dans l'épaulière gauche 1,30 cm (0,23 s), heaume
+  2,92 cm (0,87 s). **Tabard contre les cuisses** : rien à la marche ni à la frappe (6 points à 0,49 cm dans la chute
+  seulement). 0,50 cm = la moitié de l'épaisseur du panneau (1 cm) : le tissu affleure, il ne laisse rien passer de
+  loin. Épaule et clavicule dans leur épaulière, tête et cou dans le heaume : voulus (non comptés). **Aperçus** :
+  `Saved/AnimPreview/Hero_attack_contact_sheet.png`, `Hero_walk_contact_sheet.png`, `Hero_idle_contact_sheet.png`,
+  `Hero_fall_contact_sheet.png`, `Hero_comparaison_repos.png` (Homme d'armes, Roi, héros à 1,5 / 1,5 / 1,8) ; anciens
+  `Hero_attack_zoom.png`, `Hero_idle_light.png`, `Hero_comparaison_marche.png`, `hero_attack.gif`, `hero_walk.gif`
+  supprimés (non refaits). **Existant identique** octet pour octet (`cmp`) : planches et rapports de `maa_idle`,
+  `maa_walk`, `maa_attack`, `maa_fall`, `crossbow_attack`, `archer_attack`, `spear_attack`, pièces et maillages autres
+  que ceux du héros. **Restes** : validation de l'utilisateur ; pistes si besoin : épaulière droite plus petite ou plus
+  haute (l'avant-bras et l'épée la traversent dans l'armé), bande du heaume plus étroite derrière (haut du dos) ; GIF
+  non refait ; puis J8a.1.
+- (J8a, 2026-10-26) **J8a.0 validée** par l'utilisateur (« go », aperçus de J8a.0c) ; restes acceptés : avant-bras et épée
+  ~2,4 cm dans l'épaulière droite à l'armé (0,62-0,65 s), bas du heaume 1,6-2,9 cm dans le haut du dos. `extra_bones`
+  (`anim_rig.py`) gardé, inutilisé : prêt pour une pièce animée d'un vrai modèle. Les trois boucles de J8a.0 ont dépassé
+  15 min (31, 18, 21) : pièces, aperçus et mesures dans la même boucle ; la suite découpe plus fin. Commitée. **Suite :
+  J8a.1 après la recompilation du moteur.**
+- (J8a, 2026-10-27) Moteur AS_3 recompilé (Hazelight 5.8.4, cible Server) : **J8a.1 lancée** (sous-agent, copie
+  principale) : ligne `Hero` de `UnitTypes.csv` et ×0,3 des dégâts des troupes (D17), test rouge d'abord.
+- (J8a.1, 2026-10-27) **J8a.1 codée** (sous-agent, ~15 min, non commitée) : ligne `Hero` (« Paladin-Commander »,
+  maillage et gestes de l'Homme d'armes en attendant `SKM_Hero` en J8a.2, `WalkPlayRate` 3,46 = 4,15 / 1,2) et
+  `UnitTypes.uasset` réimporté (à committer avec le CSV) ; catégorie d'armure `Hero` (fin d'enum), `HOLIsHero` ; ×0,3
+  dans `GetDamage` après bonus et armure (`HeroTroopDamagePercent` 30, arrondi au plus proche, 1 au moins ; héros contre
+  héros : plein). PV exacts sur 8 bits : le contrôle au chargement et `HOLNetTests` sautent le héros (J8a.3). Tests
+  `Hero.Type`, `Hero.Resistance`, `Hero.ResistanceInCombat` (vus rouges, mais le 3e pas sur la règle elle-même) ;
+  `quick_check -Parts tests,combat` PASS (54 s, 189/189). **Question ouverte : l'arrondi** (Archer 5 → 2 au lieu de
+  1,5 : 20 Archers tuent le héros en ~18 s au lieu de ~25 s ; 6 Hommes d'armes ~26 s au lieu de ~29 s).
+- (J8a.1, 2026-10-27) **Arrondi tranché par l'utilisateur : « ça devient des floats »** (hors des options : A reste
+  gardé recommandé, B au plus proche, C vers le bas). PV et dégâts de la simulation en virgule flottante, ×0,3 exact
+  (Archer 5 → 1,5), 1 au moins avant le ×0,3 ; le réseau garde des PV entiers (arrondis vers le haut : une unité
+  vivante n'est jamais montrée à 0). Reprise du sous-agent de J8a.1 (relevé de l'usage des PV, puis code).
+- (J8a.1, 2026-10-27) **Relevé des PV en float** (sous-agent, rien codé) : ~18 endroits dans 10 fichiers
+  (`CurrentHealth` et `DamageDealt` en float, `GetDamage` / `GetHitsToKill` / `ResolveArrow`, dégât des flèches,
+  hachages D468 par motif binaire, journaux `%g`, `LeavesCorpse` en float), réseau en `CeilToInt` (au moins 1 si
+  vivant) avant l'envoi, **format sur 8 bits inchangé** ; bâtiments entiers ; HUD, barres, IA, victoire inchangés ;
+  4 expressions de `quick_check.ps1` à ouvrir aux décimales ; ~31 appels dans `HOLCombatTests.cpp`. Coups et flèches
+  appliqués en boucle séquentielle : reproductible (ne pas paralléliser l'application des coups). Conversion lancée.
+- (J8a.1, 2026-10-27) **PV en float, boucle 1 faite** (sous-agent, ~25 min dont ~4 min en file derrière Glorfindel ;
+  non commitée) : `CurrentHealth`, `DamageDealt`, dégât des flèches en float ; `GetDamage` float (×0,3 exact,
+  `HeroTroopDamageFactor`) ; `GetShownHealth` (vers le haut, 1 au moins si vivant) pour la vue et la réplication
+  (8 bits inchangés) ; bâtiments entiers (`RoundToInt` de la flèche sur bâtiment) ; hachages D468 par `BitCast` ;
+  journaux `%g` ; `LeavesCorpse` en float ; commentaire D468 (coups appliqués en séquence). Rouges vus : sur l'arrondi
+  entier, puis sur la règle elle-même (×0,3 coupé : 12 au lieu de 3 par le vrai processeur). `-Parts tests` PASS
+  (191/191, 44 s ; une fois « game launch ended by itself » au démarrage, relancé tel quel : PASS). Reste (boucle 2) :
+  `-Parts tests,combat,net`, expressions de `quick_check.ps1` aux décimales, `make_unit_stats.py` / `UnitStats.md`.
+  La session IA (mycrusader-1b) avance `main` (IA1.1) entre les deux boucles : recompiler avant la boucle 2.
+- (J8a.1, 2026-10-27) **PV en float, boucle 2 faite** (sous-agent, non commitée) : recompilé après l'avance de `main`
+  (60230cd, IA1.1 ; 333 s avec la file) ; 16 lignes de `quick_check.ps1` lisent PV et dégâts en décimales (PV du
+  serveur arrondis vers le haut avant d'être comparés à ceux du client) ; `make_unit_stats.py` en simple précision,
+  `UnitStats.md` régénéré (seule la colonne du héros change : Homme d'armes 3,6 · 125 coups · 171 s, Archer 1,5 · 300 ·
+  486 s, Paysan 0,9 · 501 coups par l'arrondi des floats, comme le jeu). `-Parts tests,combat,net` : 1er passage FAIL
+  (net seul : Alice, lente au démarrage pendant une compilation, arrivée après Bob, n'a jamais vu le bandeau
+  d'attente ; aléa d'ordre d'arrivée, à noter dans `EtapeDefini.md`), 2e passage tel quel **PASS** (194 s, 193/193).
+  **J8a.1 faite**, en attente de l'accord de l'utilisateur pour le commit.
+- (J8a.1, 2026-10-27) **Commit e36efe9** sur `main` (accord de l'utilisateur, sans essai : le héros n'apparaît qu'en
+  J8a.2) ; `EtapeDefini.md` : ligne du héros et aléa `net` (client 2 arrivé après le client 1) ; lignes d'une autre
+  session (Récolte, D486) laissées hors du commit. **Suite : J8a.2** (naissance près du forum, comportement de soldat,
+  F4, fabrication de `SKM_Hero` et `TP_Hero` et `WalkPlayRate` à l'échelle 1,8 ; nom du héros dans `HOLGameNames.cpp`).
+- (J8a.2, 2026-10-27) **J8a.2 lancée**, en trois boucles l'une après l'autre : (1) fabrication de `SKM_Hero` et
+  `TP_Hero` (pièces de J8a.0) et ligne `Hero` dessus ; (2) naissance près du forum (comme les Paysans de départ
+  d'IA1.1, réglage à part pour garder les scénarios et `quick_check` sans héros) ; (3) F4 (une fois : sélection, deux
+  fois : caméra). Boucle 1 confiée à un sous-agent (copie principale).
+- (J8a.2, 2026-10-27) **Boucle 1 faite** (sous-agent, non commitée) : `SKM_Hero` (7 pièces, 4 LOD, pièces légères dès
+  le LOD 3) et `TP_Hero` (mêmes 6 séquences que `TP_ManAtArms`, indices 2/3/4/5 gardés) par `make_peasant_mesh.py
+  --soldiers --only=SKM_Hero` (entrée `SKM_Hero` dans `SOLDIERS`) ; ligne `Hero` dessus, `UnitTypes.uasset` réimporté ;
+  `Hero.Type` (vu rouge) charge les deux et compare squelette, LOD et séquences à l'Homme d'armes. `-Parts tests` PASS
+  (193/193, 123 s, machine chargée par Glorfindel). `--soldiers` réenregistre toujours
+  `M_UnitPlayerColorWeapons.uasset` (mêmes nœuds, autres octets) : restauré. Aucun rendu Unreal : allure et pieds à
+  juger quand le héros apparaîtra (boucle 2). Boucle 2 lancée (naissance).
+- (J8a.2, 2026-10-27) **Boucle 2 faite** (sous-agent, ~35 min au lieu de 15 : machine chargée, une compilation de
+  691 s ratée puis 413 s ; non commitée) : réglage `bStartingHero` (vrai dans les vraies parties), `StartingHero` de la
+  configuration (-1 réglage, 0, 1 ; scénarios 0 sauf `"startingHero"` dans le .json) ; `quick_check` (solo et
+  serveur) et `building_crowd` / `crossings` / `packaged_smoke` sans héros ; règle pure `FHOLStartRules::GetHeroLocation`
+  (rangée du Roi, 450 cm du bord du forum côté des naissances, 300 cm du côté du Roi : ni Paysans ni Roi touchés) ;
+  `SpawnStartingHero` après les Paysans ; hors population (vérifié) ; branches du Roi par catégorie, pas par nom ; nom
+  « Paladin-Commandant » (en « Paladin-Commander », ja « 聖騎士団長 » dans `fill_po.py`, **collecte des textes à
+  grouper** avec les autres chantiers). Tests `Match.StartingHero.Location/Count/Spawn` vus rouges ;
+  `-Parts tests,combat` PASS (89 s, 196/196). **Leçon** : sous une machine chargée, une boucle avec deux compilations
+  dépasse 15 min ; séparer ce qui ne compile pas (captures) de ce qui compile. Boucle 3a lancée : captures du héros
+  (rien à compiler), puis 3b : F4.
+- (J8a.2, 2026-10-27) **Boucle 3a faite** (captures hors écran, ~16 min, rien compilé) : scénario `hero_look`
+  (non suivi : 5 Paysans, héros, un Homme d'armes allié, marche de 16 m, 2 Hommes d'armes ennemis ; base de l'essai de
+  J8a.6). Vu : héros devant la rangée de Paysans, bloc de sélection « Paladin-Commandant 450 / 450 » ; de près,
+  épaulières dorées (le plus visible), heaume blanc à cimier doré, tabard blanc, épée longue, bras et jambes à la couleur
+  du joueur, un peu plus grand et bien plus large d'épaules que l'Homme d'armes ; aucune pièce flottante nette ; frappe
+  correcte. À hauteur de jeu : silhouette bleue avec un point doré (12-15 px). **À voir à l'essai** : bouclier presque
+  noir (souvent vu par la tranche), soleils dorés invisibles en 888 × 500, glissement des pieds non jugé (caméra qui
+  dérive après `hol.Camera.Focus`, captures en 888 × 500 malgré `-ResX`). Boucle 3b lancée : F4.
+- (J8a.2, 2026-10-27) **Boucle 3b faite** (sous-agent, ~20 min dont une compilation de 647 s ; non commitée) : F4
+  (`IA_Hero` dans `IMC_Game` par `make_game_input.py`) et `hol.Select.Hero` : 1er appui, le héros vivant du joueur
+  seul (caméra immobile) ; 2e appui quand il est seul sélectionné (par F4 ou autrement), caméra centrée sur lui ; sans
+  héros, rien (journal « Select hero: none », pas de message à l'écran pour l'instant). Contrôle `build:hero` de
+  `quick_check` par la vraie touche (`hol.UI.Key`) : vu rouge (F4 liée à rien), puis PASS (62 s) ; `-Parts tests,build`
+  PASS (163 s, 196/196). **J8a.2 faite**, en attente de l'accord de l'utilisateur pour le commit.
+- (J8a.2, 2026-10-27) **Commit** sur `main` avec l'accord de l'utilisateur (sans essai : l'essai est en J8a.6) ;
+  scénario `hero_look` commité comme base de l'essai. **Suite : J8a.3** (fiche réseau du héros, barre en proportion).

@@ -479,6 +479,10 @@ void UHOLGameScreen::NativeDestruct()
 void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	// The refresh paces and the message's age in the world's real time: Slate's in a game, the fixed step's in quick_check
+	// (Docs/Archive/TestSpeedInProgress.md: the game's seconds go by faster than the clock's, the HUD keeps up with them).
+	const UWorld* TickWorld = GetWorld();
+	const float FrameSeconds = TickWorld ? TickWorld->DeltaRealTimeSeconds : InDeltaTime;
 
 	TickMessages();
 	TickAlert();
@@ -491,7 +495,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	}
 	// The players' table (V2.4): its game state reaches a client after the HUD is up; a rebuilding's percent moves without
 	// telling the server's HUD, the launch configuration reaches a client late: read four times a second.
-	SinceTableRefresh += InDeltaTime;
+	SinceTableRefresh += FrameSeconds;
 	if (SinceTableRefresh >= UE::HeroesOfLiberty::UI::GameScreen::GroupRefreshInterval)
 	{
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
@@ -512,7 +516,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	// followed without their delegates. The other blocks follow their delegates.
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 	const int32 NumSelectedUnits = Controller.IsValid() ? Controller->GetSelectedUnits().Num() : 0;
-	SinceGroupRefresh += InDeltaTime;
+	SinceGroupRefresh += FrameSeconds;
 	if (Controller.IsValid() && Controller->HasBuildingGroup())
 	{
 		if (SinceGroupRefresh >= GroupRefreshInterval)
@@ -546,10 +550,10 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		RefreshAges(BoundPlayerState.Get());
 	}
 	RefreshIdleWorkers();
-	RefreshControlGroups(InDeltaTime);
+	RefreshControlGroups(FrameSeconds);
 	UpdateHead();
 	CheckPopulationBlocked();
-	UpdateMessage(InDeltaTime);
+	UpdateMessage(FrameSeconds);
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)

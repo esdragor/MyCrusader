@@ -92,7 +92,7 @@ try {
         $Sequence = Join-Path $Work "multiplayer_error.seq"
         @("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: error", "frames 10",
             "capture $Shot", "quit") | Set-Content -Encoding utf8 $Sequence
-        $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -culture=fr -saveddirsuffix=Tests " +
+        $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -saveddirsuffix=Tests " +
             "-ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$GameLog`""
         $Game = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
         if (-not $Game.WaitForExit(180000)) { Stop-Process -Id $Game.Id -Force -ErrorAction SilentlyContinue }
@@ -122,7 +122,7 @@ try {
             "hol.UI.Focus ReadyButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog 2/2 ready", "wait 1",
             "capture manager_client_leader", "hol.UI.Focus LaunchButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15",
             "waitlog Lobby: start sent", $(if ($IsMatch) { "waitlog Lobby: joining match" } else { "wait 2" }), $(if ($IsMatch) { "waitmap Plain" } else { "wait 0" }), "wait 3") + $AfterMatch + @("quit") | Set-Content -Encoding utf8 $Sequence
-        $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -culture=fr -saveddirsuffix=Tests " +
+        $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -saveddirsuffix=Tests " +
             "-PlayerName=Bob -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$GameLog`""
         $Game = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
         $Deadline = (Get-Date).AddSeconds($(if ($Case -in @("Return", "Killed")) { 300 } else { 180 }))
@@ -259,7 +259,7 @@ try {
                 $DonePattern = "Test capture: manager_client_name_taken"
                 $GameName = "Alice"
             }
-            $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -culture=fr -saveddirsuffix=Tests " +
+            $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -saveddirsuffix=Tests " +
                 "-PlayerName=$GameName -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$GameLog`""
         }
         elseif ($Screen) {
@@ -267,11 +267,11 @@ try {
             @("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 10",
                 "capture manager_client_multiplayer", "hol.UI.Focus JoinButton0", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15",
                 "waitlog Multiplayer: join", "quit") | Set-Content -Encoding utf8 $Sequence
-            $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -culture=fr -saveddirsuffix=Tests " +
+            $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -saveddirsuffix=Tests " +
                 "-ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$GameLog`""
             $DonePattern = "LogHOLUI: Display: Multiplayer: join"
         } else {
-            $Arguments = "`"$UProject`" -game -nullrhi -nosound -unattended -nosplash -LiveCoding=0 -saveddirsuffix=Tests -ServersFile=`"$Servers`" " +
+            $Arguments = "`"$UProject`" -game -nullrhi -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -saveddirsuffix=Tests -ServersFile=`"$Servers`" " +
                 "-ExecCmds=`"hol.Manager.Status,hol.Manager.Lobbies,hol.Delay 3 quit`" -abslog=`"$GameLog`""
             $DonePattern = "Manager lobbies:"
         }

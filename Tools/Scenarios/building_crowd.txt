@@ -1,0 +1,97 @@
+# Bâtiment attaqué par un groupe (EtapeDefini J) : 12 Hommes d'armes sur une maison ennemie, de face puis en biais vers un coin, des Paysans, puis à toi : chacun sa place le long des murs, un seul rang
+# Plain, deux joueurs (building_crowd.json). Positions dans le repère du centre du joueur (X vers le milieu), comme
+# building_attack. Les maisons ennemies (joueur 2, hol.Cheat.SpawnBuilding) sont à ~24 m des groupes, hors du rayon
+# d'agressivité (16 m) : rien ne part tout seul, chaque attaque vient d'un clic droit (hol.Select.OrderNear, le chemin
+# du clic droit). Aucun moyen de garder une maison debout sans code (pas de commande de PV ni de vitesse du jeu) :
+# chaque temps a sa maison neuve (600 PV, ~5 s sous 12 Hommes d'armes), et le dernier temps laisse faire le clic soi-même.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 200
+# Les Paysans d'abord, seuls : hol.Select.Own ne prend qu'eux, rangés dans le groupe 3 (temps 3).
+hol.Camera.FocusNear -600 0
+frames 2
+hol.Units.SpawnHere 10 Peasant 0 300
+waitunits 10
+hol.Select.Own
+waitlog Selection: 10 units
+hol.Select.Group Add 3
+waitlog Group 3: created, 10 units
+# Groupe A (temps 1) : 12 Hommes d'armes face au côté ouest de la maison 1, ~24 m, rangés dans le groupe 1.
+hol.Camera.FocusNear 4600 -1500
+frames 2
+hol.Units.SpawnHere 12 ManAtArms 0 350
+waitunits 22
+hol.Select.Army
+waitlog Selection: 12 units
+hol.Select.Group Add 1
+waitlog Group 1: created, 12 units
+# Groupe B (temps 2) : 12 Hommes d'armes en biais (45°) vers le coin de la maison 2. Groupe 2 = tous, moins le groupe 1.
+hol.Camera.FocusNear 5300 4200
+frames 2
+hol.Units.SpawnHere 12 ManAtArms 0 350
+waitunits 34
+hol.Select.Army
+waitlog Selection: 24 units
+hol.Select.Group Add 2
+waitlog Group 2: created, 24 units
+hol.Select.Group Select 1
+hol.Select.Group Remove 2
+waitlog Group 2: removed, 12 units
+# Les trois maisons ennemies.
+hol.Cheat.SpawnBuilding House 1 7000 -1500
+waitlog Cheat: spawned House of slot 1
+hol.Cheat.SpawnBuilding House 1 7000 2500
+waitlog Cheat: spawned House of slot 1
+hol.Cheat.SpawnBuilding House 1 1500 0
+waitlog Cheat: spawned House of slot 1
+# Temps 1 : de face.
+hol.Select.Group Select 1
+hol.Camera.FocusNear 6000 -1500
+frames 5
+note 1. Ces 12 Hommes d'armes (sélectionnés) sont face à un côté de la Maison ennemie.
+note    Regarde-les : ils doivent se répartir le long des murs, sur un seul rang, sans se tasser en paquet.
+note    La Maison tombe ~5 s après les premiers coups : regarde surtout l'arrivée et les premiers coups.
+waitkey Entrée : clic droit des 12 sur la Maison (temps 1)
+hol.Select.Group Select 1
+# La caméra sur la maison juste avant le clic : sinon « the point is not on the screen » (vu au temps 2).
+hol.Camera.FocusNear 7000 -1500
+frames 5
+hol.Select.OrderNear 7000 -1500
+waitlog for 12 units on building House of slot 1
+waitlog Building destroyed: House of slot 1
+# Temps 2 : en biais, vers un coin (le cas qui tassait tout sur le coin).
+hol.Select.Group Select 2
+hol.Camera.FocusNear 6300 3300
+frames 5
+note 2. Un autre groupe de 12 arrive en biais, face à un coin de la Maison (avant : tous tassés sur le coin).
+note    Regarde : ils doivent contourner le coin et se répartir sur les deux murs, sur un seul rang.
+waitkey Entrée : clic droit des 12 sur la Maison du coin (temps 2)
+hol.Select.Group Select 2
+# La caméra sur la maison juste avant le clic : sinon « the point is not on the screen » (vu au temps 2).
+hol.Camera.FocusNear 7000 2500
+frames 5
+hol.Select.OrderNear 7000 2500
+waitlog for 12 units on building House of slot 1
+waitlog Building destroyed: House of slot 1
+# Temps 3 : les Paysans (10 par coup, 600 PV : la maison tient ~10 s).
+hol.Select.Group Select 3
+hol.Camera.FocusNear 500 0
+frames 5
+note 3. Dix Paysans (sélectionnés) derrière ton centre, une Maison ennemie devant.
+note    Regarde : ils doivent eux aussi se répartir autour de la Maison, sans se tasser.
+waitkey Entrée : clic droit des Paysans sur la Maison (temps 3)
+hol.Select.Group Select 3
+# La caméra sur la maison juste avant le clic : sinon « the point is not on the screen » (vu au temps 2).
+hol.Camera.FocusNear 1500 0
+frames 5
+hol.Select.OrderNear 1500 0
+waitlog for 10 units on building House of slot 1
+waitlog Building destroyed: House of slot 1
+# Temps 4 : à toi. Une maison neuve à ~30 m des deux groupes (hors des 16 m), le groupe 1 sélectionné.
+waitkey Entrée : une Maison neuve, et c'est toi qui cliques (temps 4)
+hol.Cheat.SpawnBuilding House 1 9500 0
+waitlog Cheat: spawned House of slot 1
+hol.Select.Group Select 1
+hol.Camera.FocusNear 8000 -500
+frames 5
+note 4. À toi : les 12 du temps 1 sont sélectionnés (touche 1 ; touche 2 : ceux du temps 2). Fais toi-même le clic droit sur la nouvelle Maison.
+note    Ils doivent se répartir le long des murs, sur un seul rang. Essaie aussi les deux groupes à la fois (1, puis Maj + 2).

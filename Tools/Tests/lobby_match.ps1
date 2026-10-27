@@ -48,7 +48,7 @@ if ($Rejoin) {
     $ServerExe = Join-Path $Project "Saved_Tests\LobbyMatch\editor_server.cmd"
     New-Item -ItemType Directory -Force (Split-Path $ServerExe) | Out-Null
     $WindowArg = if ($Window -gt 0) { " -HOLDisconnectWindow=$Window" } else { "" }
-    "@`"$EngineDir\UnrealEditor.exe`" `"$UProject`" %* -server -nullrhi -nosound -nosplash -LiveCoding=0 -saveddirsuffix=Tests_LobbySrv$WindowArg" |
+    "@`"$EngineDir\UnrealEditor.exe`" `"$UProject`" %* -server -nullrhi -nosound -nosplash -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests_LobbySrv$WindowArg" |
         Set-Content -Encoding ascii $ServerExe
 }
 if (-not (Test-Path $ServerExe)) { Write-Host "lobby_match : FAIL (no $ServerExe; run Tools\Tests\net_match.ps1 -Stage)"; exit 1 }
@@ -68,7 +68,10 @@ $AliceBack = Join-Path $Work "alice_back.signal"
 # M6-Q14: Bob signals once back; the lobby is read (Bob alone, Alice still leader from the match); only then Alice goes back.
 $BobBack = Join-Path $Work "bob_back.signal"
 $BobChecked = Join-Path $Work "bob_checked.signal"
-Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked -ErrorAction SilentlyContinue
+# Bob gives up only once Carol is in (up to 180 s on a loaded machine): Alice waits for this signal before her end
+# banner, a waitlog lasting 60 s at most (2026-10-26: Alice timed out 15 s before Bob's surrender).
+$BobGivesUp = Join-Path $Work "bob_gives_up.signal"
+Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp -ErrorAction SilentlyContinue
 $Colours = @{ Alice = 2; Bob = 5 }
 
 # A free TCP port from 7790 (another copy's manager may hold 7700).
@@ -99,7 +102,7 @@ function Test-Log([string] $Who, [string] $Pattern) { (Test-Path $GameLogs[$Who]
 function Start-Game([string] $Who, [string[]] $Steps, [string] $Name = $Who) {
     $Sequence = Join-Path $Work "$($Who.ToLower()).seq"
     $Steps | Set-Content -Encoding utf8 $Sequence
-    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -culture=fr " +
+    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr " +
         "-saveddirsuffix=Tests_$Name -PlayerName=$Name -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$($GameLogs[$Who])`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     Write-Host "$Who : pid $($Process.Id), log $($GameLogs[$Who])"
@@ -283,7 +286,7 @@ try {
 
     $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
         (& $Press CreateButton) + (& $Pick Alice 0) + @("waitlog 2/2 ready", "wait 3") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") +
-        (& $InMatch Alice) + $StatsAfter + $StayAfterEnd + @("waitfile $BobChecked 240") + $Back[2..($Back.Count - 3)] + @("signal $AliceBack") + $Back[($Back.Count - 2)..($Back.Count - 1)])
+        (& $InMatch Alice) + @("waitfile $BobGivesUp 240") + $StatsAfter + $StayAfterEnd + @("waitfile $BobChecked 240") + $Back[2..($Back.Count - 3)] + @("signal $AliceBack") + $Back[($Back.Count - 2)..($Back.Count - 1)])
     # Bob only once the manager lists Alice's lobby: the list is read once, when the screen opens.
     $Deadline = (Get-Date).AddSeconds(180)
     $Lobby = $null
@@ -295,7 +298,7 @@ try {
     Write-Host "lobby $($Lobby.id) created by Alice"
     $Games.Bob = Start-Game Bob (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3") +
         (& $Press JoinButton0) + (& $Pick Bob 1) + @("waitlog 2/2 ready", "wait 0.5", "capture lobby_match_lobby") +
-        (& $InMatch Bob) + @("waitfile $CarolIn 180", "hol.Stats.Dump", "waitlog Stats: the server refused", "wait 2", "hol.Victory.Surrender") +
+        (& $InMatch Bob) + @("waitfile $CarolIn 180", "hol.Stats.Dump", "waitlog Stats: the server refused", "wait 2", "signal $BobGivesUp", "hol.Victory.Surrender") +
         $StatsAfter + $Back[2..($Back.Count - 3)] + @("signal $BobBack", "waitfile $AliceBack 240") + $Back[($Back.Count - 2)..($Back.Count - 1)])
 
     # R5.3: Carol, once the match is under way (state "in_game" at the manager), sees the lobby in the list, presses
@@ -422,6 +425,11 @@ try {
         elseif (-not $ServerLog) { $Failure = "no server log of the match" }
         elseif (-not (Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: Alice holds slot 0" -Quiet)) { $Failure = "the server has no 'Alice holds slot 0'" }
         elseif (-not (Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: Bob holds slot 1" -Quiet)) { $Failure = "the server has no 'Bob holds slot 1'" }
+        # The surrender over the network (V1.4c, out of the "net" part since V5.5a): Bob's hol.Victory.Surrender is his
+        # controller's ServerSurrender, accepted by the dedicated server for his own slot, the match then over for Alice.
+        elseif (Select-String -Path $ServerLog.FullName -Pattern "Victory: surrender of slot -?\d+ refused" -Quiet) { $Failure = "the server refused a surrender" }
+        elseif (-not (Select-String -Path $ServerLog.FullName -SimpleMatch "Victory: slot 1 defeated (Surrender)" -Quiet)) { $Failure = "the server has no 'Victory: slot 1 defeated (Surrender)' (Bob's ServerSurrender)" }
+        elseif (-not (Select-String -Path $ServerLog.FullName -SimpleMatch "Victory: match over, winners 0" -Quiet)) { $Failure = "the server has no 'Victory: match over, winners 0' after Bob's surrender" }
         elseif (-not $After) { $Failure = "the manager's lobby not read after the match" }
         elseif ($Failure = Test-Stats $ServerLog.FullName) { }
         elseif (-not $BobFirst) { $Failure = "the lobby not read when Bob came back first" }

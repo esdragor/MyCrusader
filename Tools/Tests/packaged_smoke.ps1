@@ -37,7 +37,7 @@ Get-ChildItem $Shots -Filter "smoke_*.png" -ErrorAction SilentlyContinue | Remov
 
 # One human on Plain, nobody else (the format of -MatchConfig=, Tools\Scenarios\README.md).
 $Config = Join-Path $TestSaved "packaged_smoke.json"
-'{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
+'{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "startingHero": 0, "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
 # The steps (HOLTestSequence.cpp). A Peasant in 2 s, not 20 (hol.Prod.BuildTime, as quick_check's net part).
 $Steps = @(
     "waitmap MainMenu", "waitui", "mark smoke title", "capture smoke_title",
@@ -50,7 +50,7 @@ $Steps = @(
 $SequenceFile = Join-Path $TestSaved "packaged_smoke.seq"
 $Steps | Set-Content -Encoding utf8 $SequenceFile
 
-$Arguments = "-RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -culture=$Culture -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
+$Arguments = "-RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -as-exit-on-error -nosplash -culture=$Culture -abslog=`"$GameLog`" -ExecCmds=`"hol.Test.Run $SequenceFile`""
 $Start = Get-Date
 $Process = Start-Process -FilePath $Client.FullName -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 Write-Host "packaged_smoke : $($Client.FullName) pid $($Process.Id), log $GameLog"
@@ -93,6 +93,15 @@ if (-not ($Log | Select-String -SimpleMatch "Version: $Version" -Quiet)) {
     $Said = @($Log | Select-String -Pattern "LogHOL\w+: (Display: )?Version: \S+" | ForEach-Object { $_.Matches[0].Value } | Select-Object -First 1)
     $Faults.Add("version line 'Version: $Version' missing$(if ($Said.Count) { " (the game says '$($Said[0])')" })")
 }
+
+# The scripts (D484): the game starts on the package's precompiled cache (Tools\Package\precompile_scripts.ps1, run by
+# package.ps1), without compiling its .as files, and none fails (the engine's own bind errors aside, script_errors.ps1).
+if (-not ($Log | Select-String -SimpleMatch "Using fully precompiled scripts" -Quiet)) {
+    $Faults.Add("scripts not precompiled (no 'Using fully precompiled scripts'; Tools\Package\precompile_scripts.ps1)")
+}
+. (Join-Path $PSScriptRoot "..\Package\script_errors.ps1")
+$ScriptErrors = @(Get-ScriptFileErrors $GameLog)
+if ($ScriptErrors.Count) { $Faults.Add("script errors: $($ScriptErrors -join ' ')") }
 
 # The captures, from the packaged game's own Saved folder (beside it, or in the user's local app data).
 $Found = @(foreach ($Folder in $Package, (Join-Path $env:LOCALAPPDATA "HeroesOfLiberty")) {

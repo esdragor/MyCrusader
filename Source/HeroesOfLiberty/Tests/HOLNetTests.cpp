@@ -127,6 +127,11 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	{
 		UnitTypes->ForeachRow<FHOLUnitTypeRow>(TEXT("Net test"), [&](const FName& Name, const FHOLUnitTypeRow& Row)
 		{
+			// Not the hero (J8-Q5): his health bar goes as a share, his exact health in the hero sheet (J8a.3).
+			if (Row.HasArmorCategory(EHOLArmorCategory::Hero))
+			{
+				return;
+			}
 			TableMaxHealth = FMath::Max(TableMaxHealth, Row.MaxHealth);
 			TestTrue(*FString::Printf(TEXT("%s: MaxHealth %d fits the health bits"), *Name.ToString(), Row.MaxHealth), HOLUnitReplication::FitsWireHealth(Row.MaxHealth));
 			AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 99), Row.MaxHealth - 1, Row.MaxHealth, 3, false, 0.f));

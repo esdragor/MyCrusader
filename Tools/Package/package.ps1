@@ -14,6 +14,7 @@
 # Saved folder per player). The files come from Tools\Package\Playtest\; checked by Tools\Tests\playtest_setup.ps1.
 # Full log: <copy>\Saved_Tests\Logs\package.log (UAT's output as it comes, then the result line). Prints one line
 # PASS / FAIL with the first errors; exit code 0 / 1 (2: this copy is busy). 20 to 40 min the first time.
+# After UAT: Version.txt, then the precompiled script cache of each target (precompile_scripts.ps1, D484).
 param(
     [string] $Root = "",
     [string] $Config = "Development",
@@ -102,13 +103,25 @@ $Arguments = @("BuildCookRun", "-project=`"$UProject`"", "-noP4", "-utf8output",
     "-build", "-cook", "-stage", "-pak", "-prereqs", "-archive", "-archivedirectory=`"$Archive`"") + $Extra
 Say "RunUAT $($Arguments -join ' ')"
 $Clock.Restart()
-# Not -Wait: it waits for every descendant, and the cook may start daemons that stay up (zenserver, UnrealTraceServer),
-# which hung the script after a successful UAT. Wait for UAT itself (its handle read first so ExitCode is kept).
-$Uat = Start-Process -FilePath $RunUAT -ArgumentList ($Arguments -join ' ') -NoNewWindow -PassThru `
-    -RedirectStandardOutput $Log -RedirectStandardError $ErrorLog
-$null = $Uat.Handle
-$Uat.WaitForExit()
-$Code = $Uat.ExitCode
+# UnrealBuildTool already running elsewhere when UAT's build starts: UAT fails at once ("Result: Failed
+# (ConflictingInstance)", exit 10), and -WaitMutex in -ubtargs does not help (it goes inside each target, the mutex is
+# checked before). A build can escape step 3 (started with relative paths, "dotnet ..\..\Engine\...", by the engine's
+# batch files) or start just after it (seen 2026-10-27). So UAT starts again, every 20 s, for at most 60 min.
+while ($true) {
+    # Not -Wait: it waits for every descendant, and the cook may start daemons that stay up (zenserver,
+    # UnrealTraceServer), which hung the script after a successful UAT. Wait for UAT itself (its handle read first so
+    # ExitCode is kept).
+    $Uat = Start-Process -FilePath $RunUAT -ArgumentList ($Arguments -join ' ') -NoNewWindow -PassThru `
+        -RedirectStandardOutput $Log -RedirectStandardError $ErrorLog
+    $null = $Uat.Handle
+    $Uat.WaitForExit()
+    $Code = $Uat.ExitCode
+    if ($Code -eq 0 -or -not (Select-String -Path $Log -SimpleMatch "Failed (ConflictingInstance)" -Quiet)) { break }
+    if ($Clock.Elapsed.TotalMinutes -gt 60) { break }
+    $Notes.Add("UnrealBuildTool busy elsewhere at $(Get-Date -Format 'HH:mm:ss'): UAT again in 20 s")
+    Write-Host $Notes[-1]
+    Start-Sleep -Seconds 20
+}
 $Minutes = [math]::Round($Clock.Elapsed.TotalMinutes, 1)
 Add-Content -Path $Log -Value (@("--- package.ps1 ---") + $Notes) -Encoding utf8
 $Errors = @(Get-Content $ErrorLog -Encoding utf8 -ErrorAction SilentlyContinue)
@@ -121,6 +134,14 @@ if ($Code -eq 0) {
     $Games = @(Get-ChildItem $Archive -Directory -ErrorAction SilentlyContinue | ForEach-Object { Join-Path $_.FullName "HeroesOfLiberty" } | Where-Object { Test-Path $_ })
     if (-not $Games.Count) { Say "package : FAIL (${Version}: no <platform>\HeroesOfLiberty folder in $Archive for Version.txt)"; exit 1 }
     foreach ($Game in $Games) { [IO.File]::WriteAllText((Join-Path $Game "Version.txt"), $Version, (New-Object Text.UTF8Encoding $false)) }
+}
+# 5b. The precompiled script cache of the game and of the server (D484, precompile_scripts.ps1): each starts on it
+# instead of compiling its scripts.
+if ($Code -eq 0) {
+    $Precompile = @(& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "precompile_scripts.ps1") -Root $Project -PackageDir $Archive)
+    $PrecompileCode = $LASTEXITCODE
+    $Precompile | ForEach-Object { Say "  $_" }
+    if ($PrecompileCode -ne 0) { Say "package : FAIL (${Version}: precompiled scripts, precompile_scripts exit $PrecompileCode)"; exit 1 }
 }
 # 6. -Playtest: the manager and the players' launchers beside the game (add_playtest.ps1).
 if ($Code -eq 0 -and $Playtest) {

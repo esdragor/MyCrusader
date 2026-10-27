@@ -2127,7 +2127,7 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	// A point put out of the bodies near it (a few passes: two neighbours); then, if no body was put back, a unit standing
 	// still out of their visible walls, one bounded step a step, unless wedged between two (C.3). bPutBack: a body put back (C.2).
 	const auto PushOut = [this, GetCell, VisualGap](FVector2D& Position, const double Radius, const double KeepInside, const double Keep, const bool bStill,
-		bool& bPutBack)
+		bool& bPutBack, const bool bSquareCorners = false)
 	{
 		bool bMoved = false;
 		bPutBack = false;
@@ -2184,7 +2184,7 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 				Near.Add({ Footprint.Centre, Footprint.HalfExtent, Footprint.Cos, Footprint.Sin });
 			}
 		}
-		return HOLConstruction::EaseOutOfVisibleWalls(Near, Radius, VisualGap, KeepOutWallStep, Position);
+		return HOLConstruction::EaseOutOfVisibleWalls(Near, Radius, VisualGap, KeepOutWallStep, Position, bSquareCorners);
 	};
 
 	// One thread: a light loop (S7, 2 000 units and 32 buildings: ~0.11 ms a step, as much as on the workers).
@@ -2236,14 +2236,21 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 			const FHOLCombatFragment* Combat = Combats.Num() > 0 ? &Combats[EntityIt] : nullptr;
 			const bool bFighting = Combat && (Combat->Target.IsSet() || Combat->TargetBuilding.IsValid() || Combat->bAttacking);
 			const bool bStill = HOLConstruction::StandsClearOfVisibleWall(States[EntityIt].Activity, Order.Phase, bFighting);
+			// EtapeDefini J loop 8: a unit striking a building whose place it was given (kept or forgotten) is kept out of the
+			// visible wall too, the same step at a time (the user's trial: units half in the House). Any other fighter, walker
+			// or worker keeps D324's shoulder.
+			const bool bStrikesByPlace = Combat && Combat->bAttacking && Combat->TargetBuilding.IsValid()
+				&& (Combat->PlaceBuilding == Combat->TargetBuilding || Combat->PlaceGivenUpBuilding == Combat->TargetBuilding);
+			const bool bKeptOut = bStill || bStrikesByPlace;
 			bool bPutBack = false;
-			const bool bMoved = PushOut(Position, Radius, KeepInside, Keep, bStill, bPutBack);
+			// Loop 9: those out of the square slab, its corners too (the round rule round the body left them ~30 cm in a corner).
+			const bool bMoved = PushOut(Position, Radius, KeepInside, Keep, bKeptOut, bPutBack, bStrikesByPlace);
 			// Its formation place goes out with it: held in the wall, it would walk back in (C.1).
-			if (bStill && Order.PlaceHold.bHeld)
+			if (bKeptOut && Order.PlaceHold.bHeld)
 			{
 				FVector2D Place(Order.Slot.X, Order.Slot.Y);
 				bool bPlacePutBack = false;
-				if (PushOut(Place, Radius, KeepInside, Keep, true, bPlacePutBack))
+				if (PushOut(Place, Radius, KeepInside, Keep, true, bPlacePutBack, bStrikesByPlace))
 				{
 					Order.Slot = FVector(Place.X, Place.Y, Order.Slot.Z);
 				}

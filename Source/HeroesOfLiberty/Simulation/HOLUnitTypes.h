@@ -34,6 +34,11 @@ enum class EHOLArmorCategory : uint8
 	 * come (the Monk, the auras) skip a unit of this category (HOLCanBeHealed). Aimed at by no bonus for now.
 	 */
 	King,
+	/**
+	 * The hero (J8a.1, D17): the troops' hits on him are cut to HOLCombat::HeroTroopDamagePercent; another hero's are not
+	 * (HOLCombat::GetDamage). Aimed at by no bonus for now.
+	 */
+	Hero,
 };
 
 /** Bit of a category in FHOLUnitTypeConstants::ArmorCategoryMask (D345: a unit has 1 to any number of categories). */
@@ -52,6 +57,12 @@ inline bool HOLCanBeHealed(const int32 ArmorCategoryMask)
 inline bool HOLIsKing(const int32 ArmorCategoryMask)
 {
 	return (ArmorCategoryMask & HOLArmorCategoryBit(EHOLArmorCategory::King)) != 0;
+}
+
+/** Whether a unit of these categories is a hero (J8a.1, D17: the troops' hits on it are reduced, HOLCombat::GetDamage). */
+inline bool HOLIsHero(const int32 ArmorCategoryMask)
+{
+	return (ArmorCategoryMask & HOLArmorCategoryBit(EHOLArmorCategory::Hero)) != 0;
 }
 
 /**

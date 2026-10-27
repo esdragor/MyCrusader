@@ -1,0 +1,67 @@
+# Le héros au départ (J8a.2) : le Paladin-Commandant devant le forum, avec les 5 Paysans et un Homme d'armes à côté pour l'échelle ; il marche, puis frappe un Homme d'armes ennemi
+# Plain, toi (slot 0) contre une IA (slot 1), hero_look.json : "startingPeasants": 5, "startingHero": true.
+# Les lignes capture prennent des images (Saved*/Screenshots/WindowsEditor/HOL/hl_*.png) ; en essai, elles ne gênent pas.
+waitlog Starting hero of slot 0 spawned at
+waitunits 12
+hol.Units.Where 0
+# Le héros, le dernier de tes unités : sélectionné (puis l'Homme d'armes ajouté).
+hol.Camera.FocusNear -900 300
+frames 5
+hol.Select.ClickUnit -1
+frames 2
+hol.Select.Report
+waitlog Selection report
+# Un Homme d'armes à côté de lui, pour l'échelle (le héros naît vers (-15935, 300) sur Plain).
+hol.Units.Spawn 1 -15936 650 0 ManAtArms 1
+waitunits 13
+hol.Camera.Focus -15800 150
+frames 10
+capture hl_start_rts
+hol.Camera.Zoom 14
+hol.Camera.Focus -15850 350
+frames 10
+capture hl_start_close
+hol.Select.ClickUnit -1 add
+frames 2
+hol.Select.Report
+waitlog Selection report
+hol.Units.AnimReport 0
+# La marche : vers le côté (Y), caméra rapprochée au-dessus du chemin (le point visé à l'écran).
+hol.Camera.Focus -15900 1000
+frames 3
+hol.Select.OrderGround -15936 1900
+waitlog Order
+wait 0.6
+hol.Units.Where 0
+capture hl_walk_close_1
+hol.Units.Where 0
+frames 2
+hol.Units.Where 0
+capture hl_walk_close_2
+hol.Units.Where 0
+frames 2
+hol.Units.Where 0
+capture hl_walk_close_3
+hol.Units.Where 0
+frames 2
+hol.Units.Where 0
+capture hl_walk_close_4
+hol.Units.Where 0
+hol.Units.AnimReport 0
+wait 6
+hol.Units.Where 0
+# Le combat : deux Hommes d'armes ennemis apparus à côté du héros arrêté.
+hol.Units.Spawn 2 -15900 2350 1 ManAtArms 50
+wait 2.5
+hol.Camera.Focus -15900 2050
+frames 3
+capture hl_fight_close_1
+wait 0.3
+capture hl_fight_close_2
+wait 0.3
+capture hl_fight_close_3
+wait 0.3
+capture hl_fight_close_4
+hol.Units.AnimReport 0
+hol.Units.Where 0
+note Le héros (Paladin-Commandant) devant ton forum, à côté des 5 Paysans et d'un Homme d'armes : lisible à hauteur de jeu ?

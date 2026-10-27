@@ -1,0 +1,52 @@
+# Paysans de départ (IA1.1) : 5 Paysans en rangée devant le forum de chaque camp, entre le forum et le Roi ; les tiens se sélectionnent, récoltent, un 6e se produit ; ceux de l'IA restent inactifs
+# Plain, toi (slot 0) contre une IA (slot 1), starting_peasants.json : "startingPeasants": 5 (les autres scénarios n'en ont
+# aucun : ils font naître les leurs) et Régicide coché, seulement pour voir le Roi à côté d'eux (sans Régicide, pas de Roi).
+# Le scénario ne fait naître aucun Paysan : il vérifie ceux de la partie, puis rend la main.
+# À regarder :
+#  1. 5 Paysans en rangée devant ton forum, du côté du Roi, entre le forum et lui, sans chevauchement ;
+#  2. un double clic sur l'un d'eux (ou un cadre) : bloc « 5 Paysans » ;
+#  3. clic droit sur des baies ou un arbre : ils vont récolter et déposent au forum ;
+#  4. forum sélectionné, un Paysan produit (50 de nourriture sur les 200 du départ) : 6e Paysan ;
+#  5. Entrée : la base de l'IA : 5 Paysans aussi, immobiles (l'IA ne joue pas encore) ; Entrée : retour chez toi.
+# Vérifications (sans rien lancer avant elles : waitlog lit le journal depuis le lancement de la partie) : la ligne de
+# naissance de chaque camp ; 12 unités (2 Rois + 10 Paysans) ; 6 unités par camp ; sélection par double clic = 5 Paysans.
+waitlog Starting Peasants of slot 0: 5 in front of its main forum
+waitlog Starting Peasants of slot 1: 5 in front of its main forum
+waitunits 12
+hol.Units.Where 0
+waitlog Units where: 6 units
+hol.Units.Where 1
+waitlog Units where: 6 units
+# Le double clic de l'utilisateur, fait par le script : sur ton dernier Paysan (le Roi naît avant eux), puis sur un de l'IA.
+hol.Camera.FocusSlot 1
+frames 5
+hol.Select.ClickUnit -1 double slot=1
+frames 2
+hol.Select.Report
+waitlog 5 units (other): Peasant x5
+hol.Camera.FocusSlot 0
+frames 5
+hol.Select.ClickUnit -1 double
+frames 2
+hol.Select.Report
+waitlog 5 units (own): Peasant x5
+# Rien de sélectionné en rendant la main : un clic au sol, loin de la base.
+hol.Camera.FocusNear 3000 0
+frames 5
+hol.Select.Click 0.5 0.5
+frames 2
+hol.Select.Report
+waitlog Selection report: selected none
+hol.Camera.FocusNear -600 0
+hol.Camera.Zoom 2
+frames 5
+note 5 Paysans en rangée devant ton forum, entre le forum et ton Roi (couronne d'or) : rien ne se chevauche ?
+note Sélectionne-les (double clic ou cadre) : bloc « 5 Paysans » ; envoie-les récolter (clic droit sur des baies ou un arbre).
+note Forum sélectionné : produis un Paysan (50 de nourriture) : le 6e sort.
+waitkey Entrée : la base de l'IA (5 Paysans aussi, immobiles)
+hol.Camera.FocusSlot 1
+frames 2
+note Base de l'IA : 5 Paysans devant son forum, à côté de son Roi, immobiles (l'IA ne joue pas encore).
+waitkey Entrée : retour chez toi
+hol.Camera.FocusSlot 0
+frames 2

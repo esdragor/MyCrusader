@@ -9,6 +9,7 @@
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
 #include "Containers/Ticker.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/Engine.h"
@@ -57,8 +58,8 @@ namespace UE::HeroesOfLiberty::Player
 	const TCHAR* MappingContextPath = TEXT("/Game/Input/IMC_Game.IMC_Game");
 	const TCHAR* ActionFolder = TEXT("/Game/Input/");
 
-	/** Units of one move order at most: a player's whole population (D03), a client could send more. */
-	constexpr int32 MaxOrderedUnits = 200;
+	/** Units of one order at most (D03): the rule of every slot's orders (IA0.2), kept here for the selection and the groups. */
+	constexpr int32 MaxOrderedUnits = HOLPlayerOrders::MaxOrderedUnits;
 
 	/** Height (cm) of a unit's body drawn at scale 1 (the mannequin), and its drawn width over its radius: what a click aims at (D288). */
 	constexpr double PickBodyHeight = 180.0;
@@ -625,6 +626,18 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->SelectBuildingCategory(static_cast<EHOLBuildingCategory>(Value));
+			}
+		}));
+
+	/** The F4 key (D30, J8a-Q4), without the keyboard. */
+	FAutoConsoleCommand HeroCommand(
+		TEXT("hol.Select.Hero"),
+		TEXT("hol.Select.Hero: selects the local player's hero alone, as F4; again (he alone selected), the camera on him"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SelectHero();
 			}
 		}));
 
@@ -1604,7 +1617,7 @@ void AHOLPlayerController::SetupInputComponent()
 	{
 		Input->BindAction(NextIdle, ETriggerEvent::Started, this, &AHOLPlayerController::HandleNextIdle);
 	}
-	// F1, F2, F3 (D30): the player's military, economic, technological buildings; F4 (the hero) comes with the heroes.
+	// F1, F2, F3 (D30): the player's military, economic, technological buildings; F4: his hero (J8a-Q4).
 	const TPair<const TCHAR*, EHOLBuildingCategory> CategoryKeys[] = { { TEXT("IA_MilitaryBuildings"), EHOLBuildingCategory::Military },
 		{ TEXT("IA_EconomicBuildings"), EHOLBuildingCategory::Economic }, { TEXT("IA_TechnologicalBuildings"), EHOLBuildingCategory::Technological } };
 	for (const TPair<const TCHAR*, EHOLBuildingCategory>& CategoryKey : CategoryKeys)
@@ -1613,6 +1626,10 @@ void AHOLPlayerController::SetupInputComponent()
 		{
 			Input->BindAction(Action, ETriggerEvent::Started, this, &AHOLPlayerController::HandleCategoryKey, CategoryKey.Value);
 		}
+	}
+	if (const UInputAction* HeroKey = LoadAction(TEXT("IA_Hero")))
+	{
+		Input->BindAction(HeroKey, ETriggerEvent::Started, this, &AHOLPlayerController::HandleHeroKey);
 	}
 	// Tab (the user's 2nd trial of J6a.5): the next subgroup of a group of buildings.
 	if (const UInputAction* NextSubgroup = LoadAction(TEXT("IA_NextSubgroup")))
@@ -3466,52 +3483,13 @@ void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitI
 	}
 }
 
-namespace
-{
-	/**
-	 * The units that neither gather nor build (CarryCapacity 0: the soldiers, J7a.2) taken out of an order to gather or to
-	 * build: they walk to its point instead (the user's choice, J7a.2), as a move order of the player's (D288).
-	 */
-	void SendNonWorkersTo(UWorld& World, UHOLCommandSubsystem& Commands, const int32 PlayerIndex, TArray<uint32>& InOutUnitIds, const FVector& Point)
-	{
-		TArray<uint32> Walkers;
-		for (int32 Index = InOutUnitIds.Num() - 1; Index >= 0; --Index)
-		{
-			FHOLUnitView View;
-			if (HOLUnitView::Find(World, InOutUnitIds[Index], View) && View.OwnerPlayer == PlayerIndex && View.CarryCapacity <= 0)
-			{
-				Walkers.Add(InOutUnitIds[Index]);
-				InOutUnitIds.RemoveAt(Index);
-			}
-		}
-		if (!Walkers.IsEmpty())
-		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Order of slot %d: %d units that do not work walk to (%.0f, %.0f)"), PlayerIndex, Walkers.Num(), Point.X, Point.Y);
-			Commands.IssueMoveOrder(Walkers, Point, PlayerIndex);
-		}
-	}
-}
-
 void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
-	// The order names the player: only its own units, on its own site (D288; checked again by the builders' step).
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	// The order names the player: only its own units, on its own site (D288; checked again by the builders' step); the
+	// rule of every slot's orders (IA0.2): the cap, the soldiers walking to the site.
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		TArray<uint32> Workers = UnitIds;
-		SendNonWorkersTo(*GetWorld(), *Commands, HOLPlayerState->GetPlayerIndex(), Workers, Building->GetActorLocation());
-		if (Workers.IsEmpty())
-		{
-			return;
-		}
-		FHOLBuildOrder Order;
-		Order.UnitIds = MoveTemp(Workers);
-		Order.Building = Building;
-		Order.PlayerIndex = HOLPlayerState->GetPlayerIndex();
-		Order.bQueue = bQueue;
-		Commands->IssueBuildOrder(Order);
+		HOLPlayerOrders::Build(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, bQueue);
 	}
 }
 
@@ -3532,21 +3510,9 @@ void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeNa
 	const bool bQueue)
 {
 	// The order names the player: it pays and owns the foundation (D288); the server checks everything again.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		FHOLConstructionCommand Command;
-		Command.Kind = FHOLConstructionCommand::EKind::Place;
-		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
-		Command.TypeName = TypeName;
-		Command.Location = Point;
-		if (UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
-		{
-			Command.UnitIds = UnitIds;
-		}
-		Command.bQueue = bQueue;
-		Commands->IssueConstructionOrder(Command);
+		HOLPlayerOrders::Place(*GetWorld(), HOLPlayerState->GetPlayerIndex(), TypeName, Point, UnitIds, bQueue);
 	}
 }
 
@@ -3908,25 +3874,20 @@ void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Sca
 
 void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
-	// The order names the player: the simulation moves only its own units (D288), a client could send any identifier.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	// The order names the player: the simulation moves only its own units (D288), a client could send any identifier; the
+	// rule of every slot's orders (IA0.2, HOLPlayerOrders): its slot, the cap, the chains.
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex(), /*bFromTask*/ false, FVector2D::ZeroVector, /*bFrontWidth*/ false, bQueue);
+		HOLPlayerOrders::Move(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Target, bQueue);
 	}
 }
 
 void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
 {
 	// As ServerMoveUnits (D288): the player's own units alone; the order processor checks the target (an enemy unit alive).
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::Attack, TargetUnitId, HOLPlayerState->GetPlayerIndex(), bQueue);
+		HOLPlayerOrders::Attack(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, TargetUnitId, bQueue);
 	}
 }
 
@@ -3941,34 +3902,25 @@ void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> U
 void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
 	// As ServerAttackUnit (D288): the player's own units alone; the order processor checks the building (an enemy's, standing).
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (Building && HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackBuildingOrder(UnitIds, Building, HOLPlayerState->GetPlayerIndex(), bQueue);
+		HOLPlayerOrders::AttackBuilding(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, bQueue);
 	}
 }
 
 void AHOLPlayerController::ServerAttackMove_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackMoveOrder(UnitIds, Target, HOLPlayerState->GetPlayerIndex(), bQueue);
+		HOLPlayerOrders::AttackMove(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Target, bQueue);
 	}
 }
 
 void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& UnitIds, const bool bHold)
 {
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, HOLPlayerState->GetPlayerIndex());
+		HOLPlayerOrders::Stop(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, bHold);
 	}
 }
 
@@ -3978,33 +3930,19 @@ void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uin
 	// As ServerMoveUnits (D288): the simulation moves only the player's own units. The drag is an arrow (the user's 2nd
 	// trial of J7a.4): its base (Start, where the button was pressed) is the target, the middle of the front row; the
 	// group faces Start -> End, and with Ctrl its length is the front's width.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueMoveOrder(UnitIds, Start, HOLPlayerState->GetPlayerIndex(), /*bFromTask*/ false, FVector2D(End - Start), bWidth, bQueue);
+		HOLPlayerOrders::Move(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Start, bQueue, FVector2D(End - Start), bWidth);
 	}
 }
 
 void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>& UnitIds, const int32 SourceIndex, const bool bQueue)
 {
-	// The order names the player: the gathering sends only its own units (D288), a client could send any identifier.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands && UnitIds.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
+	// The order names the player: the gathering sends only its own units (D288), a client could send any identifier; its
+	// soldiers walk to the source (HOLPlayerOrders::SendNonWorkersTo).
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		TArray<uint32> Workers = UnitIds;
-		const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
-		if (Sources && Sources->GetSources().IsValidIndex(SourceIndex))
-		{
-			SendNonWorkersTo(*GetWorld(), *Commands, HOLPlayerState->GetPlayerIndex(), Workers, Sources->GetSources()[SourceIndex].Location);
-		}
-		if (!Workers.IsEmpty())
-		{
-			Commands->IssueGatherOrder(Workers, SourceIndex, HOLPlayerState->GetPlayerIndex(), bQueue);
-		}
+		HOLPlayerOrders::Gather(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, SourceIndex, bQueue);
 	}
 }
 
@@ -4360,6 +4298,11 @@ void AHOLPlayerController::HandleCategoryKey(const EHOLBuildingCategory Category
 	SelectBuildingCategory(Category);
 }
 
+void AHOLPlayerController::HandleHeroKey()
+{
+	SelectHero();
+}
+
 void AHOLPlayerController::HandleSubgroupKey()
 {
 	CycleSubgroup();
@@ -4609,6 +4552,46 @@ void AHOLPlayerController::SelectArmy()
 	{
 		SetUnitSelection(MoveTemp(UnitIds));
 	}
+}
+
+void AHOLPlayerController::SelectHero()
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
+	if (!HOLPlayerState || !Units)
+	{
+		return;
+	}
+	// The units known here, a dying one left out (J8a.4: a dead hero cannot be selected). One hero a player (J8a-Q2);
+	// the oldest if a test made more.
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*GetWorld(), Views);
+	const FHOLUnitView* Hero = nullptr;
+	for (const FHOLUnitView& View : Views)
+	{
+		const FHOLUnitTypeRow* Row = View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() ? Units->FindTypeRow(View.TypeName) : nullptr;
+		if (Row && Row->HasArmorCategory(EHOLArmorCategory::Hero) && (!Hero || View.UnitId < Hero->UnitId))
+		{
+			Hero = &View;
+		}
+	}
+	if (!Hero)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Select hero: none"));
+		return;
+	}
+	// Pressed again (he alone selected, whatever selected him): the camera on him, as a control group's double press.
+	if (SelectedUnits.Num() == 1 && SelectedUnits[0] == Hero->UnitId)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Select hero: camera on #%u at (%.0f, %.0f)"), Hero->UnitId, Hero->Location.X, Hero->Location.Y);
+		if (RTSCamera)
+		{
+			RTSCamera->SetFocus(Hero->Location);
+		}
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Select hero: selected #%u at (%.0f, %.0f)"), Hero->UnitId, Hero->Location.X, Hero->Location.Y);
+	SetUnitSelection({ Hero->UnitId });
 }
 
 void AHOLPlayerController::UpdateDrag()

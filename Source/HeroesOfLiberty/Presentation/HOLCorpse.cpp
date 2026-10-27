@@ -55,7 +55,7 @@ HOLCorpse::FRemovedStats HOLCorpse::GetRemovedStats(const UWorld& World)
 	return Stats ? *Stats : FRemovedStats();
 }
 
-bool HOLCorpse::LeavesCorpse(const FHOLUnitTypeConstants& Type, const EHOLUnitActivity Activity, const int32 CurrentHealth)
+bool HOLCorpse::LeavesCorpse(const FHOLUnitTypeConstants& Type, const EHOLUnitActivity Activity, const float CurrentHealth)
 {
 	return (Activity == EHOLUnitActivity::Dying || CurrentHealth <= 0) && Type.FallSequence != INDEX_NONE;
 }
@@ -80,7 +80,7 @@ void HOLCorpse::CollectSeeds(const FMassEntityManager& EntityManager, const TCon
 		// A client's display entity holds the received activity (Dying at 0 health, UHOLUnitReplicationSubsystem), not the
 		// health: its CurrentHealth is never set, so only its activity counts.
 		const bool bDisplayEntity = EntityManager.GetFragmentDataPtr<FHOLNetUnitDisplayFragment>(Entity) != nullptr;
-		if (!LeavesCorpse(*Type, State->Activity, bDisplayEntity ? 1 : State->CurrentHealth))
+		if (!LeavesCorpse(*Type, State->Activity, bDisplayEntity ? 1.f : State->CurrentHealth))
 		{
 			continue;
 		}

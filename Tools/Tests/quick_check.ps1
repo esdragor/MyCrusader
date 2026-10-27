@@ -10,8 +10,8 @@
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
 #     "victory", it ends with the end of the match (~10 s more, see below);
-#   - -Parts part:case (EtapeDefini F): only that case of the part, its steps and its checks (build:cut, build:gap; several
-#     with commas: build:cut,build:gap). Only "build" has cases so far ($SubCaseTable): the build cases before it are
+#   - -Parts part:case (EtapeDefini F): only that case of the part, its steps and its checks (build:cut, build:gap,
+#     build:hero; several with commas: build:cut,build:gap). "build" and "formation" have cases ($SubCaseTable): the build cases before it are
 #     skipped (a short set-up instead: its wood, its logs), the camera part only plays its 2-player match (no 8-player).
 # The full run: a single game launch goes through the menu in French, English and Japanese (language switched live), a
 # drop-down list, then a match at 2 and at 8 players with the camera checks of D257 and the selection checks of D264 (own
@@ -84,10 +84,16 @@
 # paths go through the way between them; one Peasant sent across passes through it, on its middle line; two sent together
 # pass one after the other; none put back by a wall, none given a new path, all arrive.
 # Run from Windows PowerShell (never Git Bash: it rewrites /Game/... paths), with no editor of the project open:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Full | -Parts net,sources,move] [-EngineDir <dir>] [-Visible]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\quick_check.ps1 [-Full | -Parts net,sources,move] [-EngineDir <dir>] [-Visible] [-GameFps <n> | -RealTime]
 # (-File passes a list as one string: the script splits it at the commas.)
 # The game renders off screen, with no window (the user works on the machine meanwhile); -Visible shows it on the
 # second screen instead, windowed 1600 x 900, and the two clients side by side under it.
+# The solo game runs on a fixed time step (Docs/Archive/TestSpeedInProgress.md): each frame moves the game on by 1/GameFps s, whatever
+# the time it took, so the game's time runs ahead of the clock (the walks, sites and fights of the parts go by faster); the
+# simulation keeps its own 20 Hz steps, the same as in real time, and the sequence's "wait" counts the game's seconds.
+# 20 (the default): one simulation step per frame, as in a real game (never fewer frames than steps); -Parts build 306 s
+# -> 72 s. 10 (two steps a frame) is faster but breaks "build cut" (house K: the navmesh's rebuild comes late in frames).
+# -RealTime: the clock's time, as before. The net part's server and clients always run in real time.
 # The engine is the project's (EngineAssociation of the .uproject, found in the registry), unless -EngineDir is given.
 # Results: a PASS / FAIL line per part, captures in Saved_Tests\Screenshots\WindowsEditor\HOL (qc_*, cam_*, sel_*),
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
@@ -95,7 +101,10 @@ param(
     [string[]] $Parts = @("tests", "smoke"),
     [switch] $Full,
     [string] $EngineDir = "",
-    [switch] $Visible
+    [switch] $Visible,
+    [double] $GameFps = 20,
+    [switch] $RealTime,
+    [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
@@ -109,6 +118,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
+        hero = @{ Marks = @("hero"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -190,9 +200,12 @@ New-Item -ItemType Directory -Force (Split-Path $GameLog) | Out-Null
 Remove-Item $GameLog, $TestsLog -ErrorAction SilentlyContinue
 
 # 1. Automation tests, in the background (no window).
+# IA1.1: the matches of quick_check make their own Peasants (none at the start, as the scenarios); the automation
+# tests keep the rule of the game (5). J8a.2: nor their hero (bStartingHero, the same -ini).
+$NoStartingPeasants = "-ini:Game:[/Script/HeroesOfLiberty.HOLMatchSettings]:StartingPeasants=0,[/Script/HeroesOfLiberty.HOLMatchSettings]:bStartingHero=False"
 $TestsProcess = $null
 if ($Parts -contains "tests") {
-    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -nosound -abslog=`"$TestsLog`""
+    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty+Angelscript.UnitTests;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -abslog=`"$TestsLog`""
     $TestsProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor-Cmd.exe") -ArgumentList $TestsArguments -PassThru -WindowStyle Hidden
 }
 
@@ -288,7 +301,7 @@ if ($Parts -contains "net") {
         }
     }).AddArgument($ManagerListener).AddArgument($ManagerCallsFile)
     $null = $ManagerRunspace.BeginInvoke()
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1$NetSourceCommand`""
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -425,7 +438,8 @@ if ($Parts -contains "victory") {
     # contested; the Spearmen taken away: released, the count recedes, no longer held; my Peasant taken away after.
     Step "mark victory forum held", "hol.Units.Spawn 3 -14800 1300 1 Spearman 150", "waitlog Victory: forum of slot 0 held by slot 1", "wait 3", "hol.HUD.Report"
     Step "mark victory forum contested", "hol.Units.Spawn 1 -14800 -1300 0 Peasant 0", "waitlog Victory: forum of slot 0 contested", "frames 3", "hol.HUD.Report"
-    Step "mark victory forum released", "hol.Units.Remove -14800 1300 800 1", "waitlog Victory: forum of slot 0 released", "wait 0.4", "hol.HUD.Report",
+    # 0.6 s at ForumHoldDecay 2 s a second: the shown whole seconds always drop by 1 (0.4 s did only when the fraction allowed).
+    Step "mark victory forum released", "hol.Units.Remove -14800 1300 800 1", "waitlog Victory: forum of slot 0 released", "wait 0.6", "hol.HUD.Report",
         "waitlog Victory: forum of slot 0 no longer held", "frames 3", "hol.HUD.Report", "hol.Units.Remove -14800 -1300 800 0", "frames 3", "mark victory forum hold end"
     # The match starts with no unit: 2 Peasants of slot 0 made 20 m beside its centre (Plain's slot 0, -14800 0).
     Step "mark victory forum build", "hol.Units.Spawn 2 -14800 2000 0 Peasant 150", "waitunits 2", "frames 3", "hol.Select.Own", "waitlog Select own: 2 units", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.OrderNear 0 0", "wait 1",
@@ -589,6 +603,9 @@ $BuildTree = @(-15770, -2400)
 # The construction HUD (J6a.5): house J behind slot 0's centre, away from the others, two Peasants made beside it (south).
 $BuildJ = @(-19200, 2400)
 $BuildJSpawn = @(-19200, 1400)
+# F4 (J8a.2, J8a-Q4): slot 0's hero behind its centre, away from the houses of the build part; slot 1's behind the enemy centre.
+$BuildHero = @(-18800, 3600)
+$BuildEnemyHero = @(18800, 3600)
 # The rally flags of a group (the user's 3rd trial of J6a.5): a right click on the ground behind slot 0's centre.
 $BuildRally = @(-18400, -1600)
 # The animations (J5c.4), solo: house K behind slot 0's centre and its wood, its builders made beside it; each group of
@@ -1372,6 +1389,19 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3", "capture build_barracks_ghost_soldier"
             Key Escape
             Step "waitlog Selection: none"
+            # F4 (D30, J8a-Q4): the player's hero alone. None yet: nothing selected, the camera kept. Then a hero of slot 0
+            # behind its centre and one of slot 1 behind the enemy's: F4 selects slot 0's alone, the camera kept; again,
+            # the camera on him. Both removed after (the parts after count slot 0's units).
+            Step "mark build hero", "hol.Camera.Focus 0 0", "frames 2", "hol.Camera.Report"
+            Key F4
+            Step "waitlog Select hero: none", "frames 2", "hol.Select.Report", "hol.Camera.Report",
+                "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "hol.Units.Spawn 1 $($BuildEnemyHero -join ' ') 1 Hero 100", "wait 0.5"
+            Key F4
+            Step "waitlog Select hero: selected", "frames 3", "hol.Select.Report", "hol.Camera.Report"
+            Key F4
+            Step "waitlog Select hero: camera on", "frames 3", "hol.Camera.Report", "hol.Select.Report"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Units.Remove $($BuildHero -join ' ') 1000 0 Hero", "hol.Units.Remove $($BuildEnemyHero -join ' ') 1000 1 Hero", "wait 0.3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -1734,7 +1764,11 @@ $Display = if ($Visible) { "-windowed -ResX=1600 -ResY=900 -WinX=3940 -WinY=100"
 # The Multiplayer screen of the menu part asks a manager nobody runs (port 7799), never the player's one (7700).
 $TestServers = Join-Path $TestSaved "servers_none.json"
 Set-Content -Path $TestServers -Value '{ "servers": [ { "name": "None", "url": "http://127.0.0.1:7799" } ] }' -Encoding ascii
-$GameArguments = "`"$UProject`" -game $Display -saveddirsuffix=Tests -nosplash -LiveCoding=0 -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,hol.Test.Run $SequenceFile`""
+$TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
+# Off screen on a fixed step, the world is not drawn while the sequence waits for the game (each frame ~2 ms cheaper);
+# drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
+if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
+$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -1874,8 +1908,8 @@ if ($NetListening) {
         # landed by now (client 1 signals its end once they have).
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
-        # then signals; client 1 gives up (hol.Victory.Surrender, the server's ServerSurrender), its banner Defeat; client 2's
-        # banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
+        # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
+        # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
         # Client 1 waits for client 2's last report before quitting.
         if ($Parts -contains "victory") {
             $VictoryReady = Join-Path $TestSaved "quick_net_victory_ready.flag"
@@ -1909,7 +1943,7 @@ if ($NetListening) {
         $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
-        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
+        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
         Remove-Item $ClientLog -ErrorAction SilentlyContinue
         $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
@@ -1936,6 +1970,11 @@ if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $true
+# The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message.
+function Get-ScriptErrors([string] $Path) {
+    if (-not (Test-Path $Path)) { return @() }
+    return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
+}
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null).
@@ -1949,6 +1988,9 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
 }
 
 $Log = if (Test-Path $GameLog) { Get-Content $GameLog } else { @() }
+# The game's time against the clock's (fixed time step, Docs/Archive/TestSpeedInProgress.md).
+$SpeedLine = @($Log | Select-String -Pattern "Test sequence: done in .*" | ForEach-Object { $_.Matches[0].Value }) | Select-Object -Last 1
+if ($SpeedLine) { Write-Host "game speed : $SpeedLine" }
 # The log lines of a section, from its mark to the next one.
 function Get-Section([string] $Mark) {
     $Start = -1
@@ -1988,6 +2030,9 @@ function Format-ChainReport($Report) {
 
 $SequenceChecks = [ordered]@{}
 $SequenceChecks["game launch ended by itself"] = -not $GameTimedOut
+# The game quits at once on a script that does not compile (-as-exit-on-error): its first errors, by name.
+$GameScriptErrors = @(Get-ScriptErrors $GameLog)
+$SequenceChecks["scripts compiled ($(if ($GameScriptErrors.Count) { $GameScriptErrors -join ' ' } else { 'no error' }))"] = $GameScriptErrors.Count -eq 0
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
 $Expected = @{ title = "menu=HOLTitleScreen modal=none"; stackback = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
@@ -2144,8 +2189,8 @@ if ($Parts -contains "victory") {
     $KingHits = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits")
     $Checks["an enemy Peasant 5.5 m off: the King does not attack ($($KingHits.Count) hits)"] = $KingHits.Count -eq 0 -and [bool]($Section | Select-String -SimpleMatch "Spawn: 1 Peasant of slot 1" -Quiet)
     $Section = @(Get-Section "victory regicide riposte")
-    $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for \d+, (\d+) HP left")
-    $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for (\d+)")
+    $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for [\d.]+, (-?[\d.]+) HP left")
+    $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for ([\d.]+)")
     $Checks["an enemy Man-at-arms strikes the King ($($Struck.Count) hits), the King ripostes ($($Riposte.Count) hits, $(@($Riposte | ForEach-Object { $_.Matches[0].Groups[1].Value }) -join ', '))"] =
         $Struck.Count -ge 1 -and $Riposte.Count -ge 1
     # EtapeDefini I: its aggressor removed, the King no longer Attacking (combat turned off in the same frame); under the banner neither.
@@ -2217,8 +2262,8 @@ if ($Parts -contains "sides") {
         $Units = @{}; $Head = $null
         foreach ($Line in $Section) {
             if ($Line -match "Combat report: step \d+ units \d+ fighting \d+ hits (\d+)") { $Head = [int64]$Matches[1]; $Units = @{} }
-            elseif ($Line -match "  #(\d+) \w+ slot (\d+) hp (\d+)/(\d+) target (\d+) attacking \d+ hits (\d+) damage (\d+)") {
-                $Units[$Matches[1]] = @{ Slot = [int]$Matches[2]; Hp = [int]$Matches[3]; Max = [int]$Matches[4]; Target = $Matches[5]; Hits = [int]$Matches[6]; Damage = [int]$Matches[7] }
+            elseif ($Line -match "  #(\d+) \w+ slot (\d+) hp (-?[\d.]+)/(\d+) target (\d+) attacking \d+ hits (\d+) damage ([\d.]+)") {
+                $Units[$Matches[1]] = @{ Slot = [int]$Matches[2]; Hp = [double]$Matches[3]; Max = [int]$Matches[4]; Target = $Matches[5]; Hits = [int]$Matches[6]; Damage = [double]$Matches[7] }
             }
         }
         $Camp = @{ 0 = "A"; 2 = "A"; 1 = "B" }
@@ -3214,6 +3259,28 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("rally", "soldier" | Where-Object { -not (Test-Path (Join-Path $Shots "build_barracks_ghost_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build barracks ghost" $Checks) -and $AllOk
+
+    # F4 (D30, J8a-Q4): the player's hero alone, not slot 1's; again, the camera on him.
+    $Hero = @(Get-Section "build hero" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $HeroCams = @($Hero | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | ForEach-Object { $_.Matches[0] })
+    $HeroSel = @($Hero | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["no hero: F4 selects nothing, the camera kept ($($HeroSel | Select-Object -First 1))"] = [bool]($Hero | Select-String -Pattern "Select hero: none" -Quiet) -and
+        ($HeroSel.Count -ge 1) -and ($HeroSel[0] -eq "none") -and ($HeroCams.Count -ge 2) -and ($HeroCams[1].Value -eq $HeroCams[0].Value)
+    $Spawned = @($Hero | Select-String -Pattern "Spawn: 1 Hero of slot (\d) around" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Picked = [regex]::Match("$(& $Value $Hero "(Select hero: selected .*)$")", "#(\d+) at \((-?\d+), (-?\d+)\)")
+    $HeroGap = if ($Picked.Success) { [Math]::Round([Math]::Sqrt([Math]::Pow([int]$Picked.Groups[2].Value - $BuildHero[0], 2) + [Math]::Pow([int]$Picked.Groups[3].Value - $BuildHero[1], 2))) } else { -1 }
+    $Checks["his hero and slot 1's: F4 selects his alone, by his centre ($HeroGap cm from where he was made), the camera kept ($($HeroSel | Select-Object -Skip 1 -First 1))"] =
+        (($Spawned -join ",") -eq "0,1") -and $Picked.Success -and ($HeroGap -ge 0) -and ($HeroGap -le 500) -and
+        ($HeroSel.Count -ge 2) -and ($HeroSel[1] -eq "Hero #$($Picked.Groups[1].Value) of slot 0 (own)") -and
+        [bool]($Hero | Select-String -SimpleMatch -Pattern "Selection: Hero #$($Picked.Groups[1].Value) of slot 0 (own)" -Quiet) -and ($HeroCams.Count -ge 3) -and ($HeroCams[2].Value -eq $HeroCams[0].Value)
+    $Centred = [regex]::Match("$(& $Value $Hero "(Select hero: camera on .*)$")", "#(\d+) at \((-?\d+), (-?\d+)\)")
+    $Checks["F4 again: the camera on him, the selection kept ($(if ($HeroCams.Count -ge 4) { $HeroCams[3].Value }); $($HeroSel | Select-Object -Skip 2 -First 1))"] =
+        $Picked.Success -and $Centred.Success -and ($Centred.Groups[1].Value -eq $Picked.Groups[1].Value) -and ($HeroCams.Count -ge 4) -and
+        ([Math]::Abs([int]$HeroCams[3].Groups[1].Value - [int]$Centred.Groups[2].Value) -le 2) -and ([Math]::Abs([int]$HeroCams[3].Groups[2].Value - [int]$Centred.Groups[3].Value) -le 2) -and
+        ($HeroSel.Count -ge 3) -and ($HeroSel[2] -eq "Hero #$($Picked.Groups[1].Value) of slot 0 (own)")
+    $Checks["both heroes removed after"] = (@($Hero | Select-String -Pattern "Remove: 1 units of slot [01] within").Count -eq 2)
+    $AllOk = (Report "build hero" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -3756,8 +3823,8 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             $Current = @{ Away = $LineIndex -ge $AwayFrom; Step = [int64]$Matches[1]; Fighting = [int]$Matches[3]; Hits = [int64]$Matches[4]; Kills = [int64]$Matches[5]; Population = @{}; Units = @{} }
             foreach ($Pair in ($Matches[6].Trim() -split " ")) { if ($Pair -match "^(\d+)=(\d+)$") { $Current.Population[[int]$Matches[1]] = [int]$Matches[2] } }
             $Reports += $Current
-        } elseif ($Current -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?\d+)/(\d+) target (\d+) attacking (\d) hits (\d+) damage (\d+) kills (\d+) first (-?\d+) attackers (\d+)(?: at (-?\d+) (-?\d+))?") {
-            $Current.Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [int]$Matches[4]; Target = [int]$Matches[6]; Hits = [int]$Matches[8]; Kills = [int]$Matches[10]; First = [int64]$Matches[11]; X = $(if ($Matches[13]) { [double]$Matches[13] } else { 0.0 }) }
+        } elseif ($Current -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?[\d.]+)/(\d+) target (\d+) attacking (\d) hits (\d+) damage ([\d.]+) kills (\d+) first (-?\d+) attackers (\d+)(?: at (-?\d+) (-?\d+))?") {
+            $Current.Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [double]$Matches[4]; Target = [int]$Matches[6]; Hits = [int]$Matches[8]; Kills = [int]$Matches[10]; First = [int64]$Matches[11]; X = $(if ($Matches[13]) { [double]$Matches[13] } else { 0.0 }) }
         }
     }
     $Checks = [ordered]@{}
@@ -3814,7 +3881,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $HpReports = @()
     foreach ($Line in @(Get-Section "combat")) {
         if ($Line -match "Combat report: step") { $Wounded = @{}; $HpReports += ,@{} }
-        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?\d+)/(\d+) ") { if ($HpReports.Count) { $HpReports[-1][$Matches[1]] = @([Math]::Max([int]$Matches[2], 0), [int]$Matches[3]) }; if ([int]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
+        elseif ($Line -match "#(\d+) \w+ slot \d+ hp (-?[\d.]+)/(\d+) ") { if ($HpReports.Count) { $HpReports[-1][$Matches[1]] = @([Math]::Max([int][Math]::Ceiling([double]$Matches[2]), 0), [int]$Matches[3]) }; if ([double]$Matches[2] -lt [int]$Matches[3]) { $Wounded[$Matches[1]] = $true } }
         elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\), unhurt unselected (\d+)") {
             $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
             $Bars += @{ Count = [int]$Matches[1]; Unhurt = [int]$Matches[3]; Wounded = $Wounded.Clone(); Report = $HpReports.Count - 1;
@@ -3918,7 +3985,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $StepMs = 50; $ArrowSpeed = 3750.0  # HOLCombat::DefaultArrowSpeed (37.5 m/s since the D345 trial)
     $Releases = @{}; $BadFlight = 0
     foreach ($Line in $Shot) {
-        if ($Line -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) \w+: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
+        if ($Line -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) \w+: [\d.]+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
             $Release = [int64]$Matches[1]; $Cm = [double]$Matches[4]; $Ms = [int]$Matches[5]; $Lands = [int64]$Matches[6]
             $Expected = [Math]::Max(1, [Math]::Ceiling($Ms / $StepMs))
             if ([Math]::Abs($Ms - $Cm * 1000.0 / $ArrowSpeed) -gt 1.0 -or ($Lands - $Release) -ne $Expected) { $BadFlight++ }
@@ -3927,7 +3994,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     }
     $Landed = 0; $Lost = 0; $BadLanding = 0; $Delays = @()
     foreach ($Line in $Shot) {
-        if ($Line -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #\d+ \w+ for \d+, -?\d+ HP left \(released step (\d+), (\d+) steps\)") {
+        if ($Line -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #\d+ \w+ for [\d.]+, -?[\d.]+ HP left \(released step (\d+), (\d+) steps\)") {
             $Landed++; $Delays += [int]$Matches[4]
             if (-not $Releases.ContainsKey("$($Matches[2]) $($Matches[3])") -or $Releases["$($Matches[2]) $($Matches[3])"] -ne [int64]$Matches[1]) { $BadLanding++ }
         }
@@ -3955,10 +4022,10 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # (damage at the landing), out of reach by then; none left in flight on the display at the end.
     $Checks = [ordered]@{}
     $Flee = @(Get-Section "combat arrows flee")
-    $FirstRelease = $Flee | Where-Object { $_ -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)" } | Select-Object -First 1
-    if ($FirstRelease -and $FirstRelease -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: \d+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
+    $FirstRelease = $Flee | Where-Object { $_ -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: [\d.]+ damage, (\d+) cm, (\d+) ms, lands step (\d+)" } | Select-Object -First 1
+    if ($FirstRelease -and $FirstRelease -match "Combat: step (\d+) #(\d+) Archer releases an arrow at #(\d+) Spearman: [\d.]+ damage, (\d+) cm, (\d+) ms, lands step (\d+)") {
         $FleeArcher = $Matches[2]; $FleeTarget = $Matches[3]; $FleeCm = [int]$Matches[4]; $FleeMs = [int]$Matches[5]; $FleeStep = $Matches[1]; $FleeLands = $Matches[6]
-        $FleeLanding = $Flee | Where-Object { $_ -match "Combat: step $FleeLands arrow of #$FleeArcher Archer lands on #$FleeTarget Spearman for (\d+), -?\d+ HP left \(released step $FleeStep," } | Select-Object -First 1
+        $FleeLanding = $Flee | Where-Object { $_ -match "Combat: step $FleeLands arrow of #$FleeArcher Archer lands on #$FleeTarget Spearman for ([\d.]+), -?[\d.]+ HP left \(released step $FleeStep," } | Select-Object -First 1
         # The Spearman's distance to its shooter in each pair of reports after the order (Units where: slot 1, then slot 0).
         $Wheres = @($Flee | Where-Object { $_ -match "Units where: " })
         $Distances = @()
@@ -3970,7 +4037,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             }
         }
         $Checks["first arrow released at $FleeCm cm, $FleeMs ms ($([int]($FleeCm * 10 / [Math]::Max($FleeMs, 1))) m/s apparent), then the Spearman runs: $($Distances -join ', ') cm off"] = $FleeCm -ge 1800 -and $FleeCm -le 2120
-        $Checks["it lands on the fleeing Spearman at its step (damage $(if ($FleeLanding -and $FleeLanding -match 'for (\d+),') { $Matches[1] } else { 'none' }))"] = [bool]$FleeLanding
+        $Checks["it lands on the fleeing Spearman at its step (damage $(if ($FleeLanding -and $FleeLanding -match 'for ([\d.]+),') { $Matches[1] } else { 'none' }))"] = [bool]$FleeLanding
         $Checks["the Spearman out of reach meanwhile (farthest $(if ($Distances.Count) { ($Distances | Measure-Object -Maximum).Maximum } else { '?' }) cm > 2000)"] = $Distances.Count -ge 1 -and ($Distances | Measure-Object -Maximum).Maximum -gt 2000
     }
     else { $Checks["an arrow released at the Spearman"] = $false }
@@ -4032,8 +4099,8 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
             if ($Line -match "Combat report: step (\d+)") {
                 $Units = @{}
                 $Result += , $Units
-            } elseif ($null -ne $Units -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?\d+)/\d+ target (\d+) attacking \d hits (\d+) .* at (-?\d+) (-?\d+)") {
-                $Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [int]$Matches[4]; Target = [int]$Matches[5]; Hits = [int]$Matches[6]; X = [double]$Matches[7]; Y = [double]$Matches[8] }
+            } elseif ($null -ne $Units -and $Line -match "#(\d+) (\w+) slot (\d+) hp (-?[\d.]+)/\d+ target (\d+) attacking \d hits (\d+) .* at (-?\d+) (-?\d+)") {
+                $Units[[int]$Matches[1]] = @{ Type = $Matches[2]; Slot = [int]$Matches[3]; Hp = [double]$Matches[4]; Target = [int]$Matches[5]; Hits = [int]$Matches[6]; X = [double]$Matches[7]; Y = [double]$Matches[8] }
             }
         }
         return , $Result
@@ -4128,7 +4195,11 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     # Two enemies never push each other back (the user's trial of J7b): the Spearman the 4 Peasants were ordered on, once
     # struck, stays where it is however they crowd it (it strikes back, standing).
     $AttackReports = Get-CombatReports $Attack
-    $Spear = @(if ($AttackReports.Count -ge 1) { $AttackReports[0].Keys | Where-Object { $AttackReports[0][$_].Type -eq "Spearman" -and $AttackReports[0][$_].Slot -eq 1 -and [Math]::Abs($AttackReports[0][$_].X - $CombatSpearmen[0]) -le 300 -and [Math]::Abs($AttackReports[0][$_].Y - $CombatSpearmen[1]) -le 300 } })
+    # The Spearman: the one the ordered Peasants target (it may already have walked a few metres from its spawn towards
+    # them: each step of the sequence is a frame of game time on the fixed time step, Docs/Archive/TestSpeedInProgress.md).
+    $Spear = @(if ($AttackReports.Count -ge 1) {
+        $Targets = @($AttackReports | ForEach-Object { $_.Values } | Where-Object { $_.Type -eq "Peasant" -and $_.Slot -eq 0 -and $_.Target -gt 0 } | ForEach-Object { "$($_.Target)" })
+        $AttackReports[0].Keys | Where-Object { $AttackReports[0][$_].Type -eq "Spearman" -and $AttackReports[0][$_].Slot -eq 1 -and $Targets -contains "$_" } })
     $StruckIndex = [Array]::FindIndex([object[]]$AttackReports, [Predicate[object]]{ param($R) @($R.Values | Where-Object { $_.Type -eq "Peasant" -and $_.Slot -eq 0 -and $_.Hits -ge 1 }).Count -gt 0 })
     if ($Spear.Count -eq 1 -and $StruckIndex -ge 0) {
         $SpearId = $Spear[0]
@@ -4401,10 +4472,10 @@ if ($Parts -contains "net") {
         # The server's hits (hol.Combat.LogHits): id -> the health each hit left it, in order.
         $ServerHp = @{}
         if (Test-Path $NetServerLog) {
-            foreach ($M in (Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ \w+ hits #(\d+) \w+ for \d+, (-?\d+) HP left")) {
+            foreach ($M in (Select-String -Path $NetServerLog -Pattern "Combat: step \d+ #\d+ \w+ hits #(\d+) \w+ for [\d.]+, (-?[\d.]+) HP left")) {
                 $Hit = $M.Matches[0].Groups
                 if (-not $ServerHp.ContainsKey($Hit[1].Value)) { $ServerHp[$Hit[1].Value] = @() }
-                $ServerHp[$Hit[1].Value] += [int]$Hit[2].Value
+                $ServerHp[$Hit[1].Value] += [int][Math]::Ceiling([double]$Hit[2].Value)
             }
         }
         $Unhurt = 1000000
@@ -4598,7 +4669,8 @@ if ($Parts -contains "net") {
         $OnTree = @($ServerLines | Select-String -Pattern "Construction: slot (\d) cannot place LumberCamp at \(-?\d+, -?\d+\): (.*)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value): $($_.Matches[0].Groups[2].Value)" } | Sort-Object)
         $Checks["server: each camp on a tree refused ($($OnTree -join '; '))"] = (@($OnTree | ForEach-Object { $_.Substring(0, 1) }) -join ',') -eq "0,1"
     }
-    # The end of the match (V1.4c, D356-D358), the net part's last: client 1 gave up; the server defeats its slot,
+    # The end of the match (V1.4c, D356-D358), the net part's last: client 1's King died (V5.5a; the surrender over the
+    # network is checked by the "lobby" part); the server defeats its slot,
     # collapses it and ends the match, client 2's slot the winner; the banners Defeat on client 1, Victory on client 2
     # (the game state's replication and OnRep); client 2 sees client 1's units go (none left 5 s after its banner).
     if ($Parts -contains "victory") {
@@ -4675,6 +4747,12 @@ if ($TestsProcess) {
     $Checks["tests ran ($($Results.Count))"] = (-not $TestsTimedOut) -and $Results.Count -gt 0
     $Checks["every test started completed ($($Results.Count) of $Started)"] = $Results.Count -eq $Started
     $Checks["all green (failed: $($Failures -join ', '))"] = $Failures.Count -eq 0
+    # The scripts (D484): a script that does not compile would drop its tests without failing one (the editor quits at
+    # once on it, -as-exit-on-error, instead of waiting in its "fix the errors" window).
+    $ScriptErrors = @(Get-ScriptErrors $TestsLog)
+    $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    $ScriptTests = @($Results | Where-Object { $_.Groups[2].Value -like "Angelscript.UnitTests.*" }).Count
+    $Checks["script tests ran ($ScriptTests)"] = $ScriptTests -gt 0
     $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
 }
 

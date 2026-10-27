@@ -55,6 +55,18 @@ public:
 	 */
 	static bool SpawnKing(UWorld& World, int32 Slot, const AHOLBuilding& Forum);
 
+	/**
+	 * IA1.1: the slot's Num starting Peasants, born in front of its main forum (FHOLStartRules::GetStartingPeasantLocations),
+	 * at the start of the match. False: no unit system.
+	 */
+	static bool SpawnStartingPeasants(UWorld& World, int32 Slot, const AHOLBuilding& Forum, int32 Num);
+
+	/**
+	 * J8a.2 (J8a-Q2): the slot's hero, born by its main forum (FHOLStartRules::GetHeroLocation) at the start of the match,
+	 * outside the population (his row's Population 0). False: no unit system.
+	 */
+	static bool SpawnStartingHero(UWorld& World, int32 Slot, const AHOLBuilding& Forum);
+
 private:
 
 	/**
