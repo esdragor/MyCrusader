@@ -1747,3 +1747,19 @@ R8, R9.
   et équipes corrigé, D514). Prochaine décision libre : **D515**. Suite : vérifs de 3ae44ec après le paquet de l'IA
   (`tests,net`, `-StageOnly`, `lobby`) et avance de `main` ; **P5 pause limitée** (D513) ; remesure de `MaxServers`
   (D502) avec la publication r9 ; R8d / E6 / E7 avec un ami.
+- 2026-10-28 ~13:55 : **fin de séance** (demande de l'utilisateur). **Reprise exacte** (« continue NetPlaytestInProgress ») :
+  (1) Glorfindel, `net-playtest` = **3ae44ec** (75667a7 « serveur gardé tant qu'il y a quelqu'un » + fusion de `main`
+  0adb67a), **pas encore dans `main`** ; build fait. Vérifier que la machine est calme (le paquet de l'IA, Arwen, était en
+  cours vers 13:00), fusionner `main` si elle a avancé, puis `build.ps1`, `quick_check -Parts tests,net` (270 tests
+  attendus ou plus), `net_match.ps1 -StageOnly`, `build_manager.ps1` si `Manager\` a changé, `quick_check -Parts lobby` ;
+  au vert : avance rapide de `main`, prévenir les sessions actives, retirer la ligne « Partie de salon finie … 2 min »
+  d'EtapeDefini, commit de doc. (2) **P5 pause limitée** (D513 au GDD : bouton « Pause » du menu d'Échap, 3 pauses par
+  partie communes à tous, réglable ; partie figée, écran de pause pour tous avec qui l'a mise et minuteur de 60 s ;
+  avant la fin seul celui qui l'a mise relance, après n'importe quel joueur ; pendant la pause ni caméra, ni sélection,
+  ni ordre ; joueurs encore en partie seulement ; solo libre ; la console `pause` reste refusée). En boucles de 15 min :
+  règle pure + tests unitaires (rouges d'abord) ; RPC serveur + état répliqué ; écran de pause et entrées bloquées
+  (fr / en / ja) ; contrôle à 2 clients dans la partie `net` (rouge d'abord) ; essai de l'utilisateur avec un scénario
+  prêt (`Tools\Scenarios`). (3) **Remesure de `MaxServers`** (D502 provisoire : X serveurs en bataille S3, clients
+  -nullrhi, machine calme) et **publication r9** (`publish.ps1 -Root Glorfindel -Version 2026-10-28-r9`, puis
+  `-StageOnly`), au moment choisi par l'utilisateur. (4) R8d / E5, E6, E7 avec un ami. Prochaine décision libre du
+  GDD : D515.
