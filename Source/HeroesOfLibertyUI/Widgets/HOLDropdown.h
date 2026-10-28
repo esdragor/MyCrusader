@@ -49,6 +49,10 @@ public:
 	/** Shows a value, without broadcasting OnSelectionChanged. */
 	void SetSelectedIndex(int32 Index);
 	int32 GetSelectedIndex() const { return SelectedIndex; }
+	/** The text the dropdown shows (its value's, unless the screen shows another one); hol.UI.Text for the scripted trials. */
+	FText GetShownText() const;
+	/** Shows another text than the value's (IA0.6 S2: the slot's name), until the next SetSelectedIndex; the list keeps its values. */
+	void SetShownText(const FText& Text);
 
 	bool IsListOpen() const;
 	/** Opens the list (as a click does) or closes it without a choice; for the scripted trials. */

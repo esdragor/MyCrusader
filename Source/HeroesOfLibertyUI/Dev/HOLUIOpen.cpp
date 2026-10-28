@@ -1,4 +1,5 @@
 #include "Blueprint/WidgetTree.h"
+#include "Components/TextBlock.h"
 #include "Containers/Ticker.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -25,6 +26,7 @@
  *   as the keyboard would; then hol.UI.Key drives it)
  *   hol.UI.Language <fr|en|ja>   (switches the language live and saves it, as Settings > Language does)
  *   hol.UI.Shown <WidgetName>...   (logs whether each named widget of the open menu screen is shown: "Shown SlotTeam3: no")
+ *   hol.UI.Text <WidgetName>...   (logs the text a label or a drop-down list of the open menu screen shows: "Text SlotState1: IA Normal 2")
  */
 namespace UE::HeroesOfLiberty::UI
 {
@@ -205,6 +207,34 @@ namespace UE::HeroesOfLiberty::UI
 		}
 	}
 
+	void LogText(const TArray<FString>& Args, UWorld* World)
+	{
+		if (Args.IsEmpty())
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Text <WidgetName>..."));
+			return;
+		}
+		const UHOLRootLayout* Layout = UHOLRootLayout::Get(GetPlayer(World));
+		const UCommonActivatableWidget* Screen = Layout ? Layout->GetActiveMenu() : nullptr;
+		for (const FString& Name : Args)
+		{
+			const UWidget* Widget = Screen ? Screen->WidgetTree->FindWidget(FName(*Name)) : nullptr;
+			// IA0.6 S2: the merged Player list shows the name the slot will have ("IA Normal 2"), not its value.
+			if (const UHOLDropdown* Dropdown = Cast<UHOLDropdown>(Widget))
+			{
+				UE_LOG(LogHOLUI, Display, TEXT("Text %s: %s"), *Name, *Dropdown->GetShownText().ToString());
+			}
+			else if (const UTextBlock* Label = Cast<UTextBlock>(Widget))
+			{
+				UE_LOG(LogHOLUI, Display, TEXT("Text %s: %s"), *Name, *Label->GetText().ToString());
+			}
+			else
+			{
+				UE_LOG(LogHOLUI, Display, TEXT("Text %s: %s"), *Name, Widget ? TEXT("(no text)") : TEXT("(missing)"));
+			}
+		}
+	}
+
 	void SetLanguage(const TArray<FString>& Args)
 	{
 		if (Args.IsEmpty())
@@ -240,6 +270,11 @@ namespace UE::HeroesOfLiberty::UI
 		TEXT("hol.UI.Shown"),
 		TEXT("hol.UI.Shown <WidgetName>...: logs whether each named widget of the open menu screen is shown"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&LogShown));
+
+	FAutoConsoleCommandWithWorldAndArgs TextCommand(
+		TEXT("hol.UI.Text"),
+		TEXT("hol.UI.Text <WidgetName>...: logs the text a label or a drop-down list of the open menu screen shows"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&LogText));
 
 	FAutoConsoleCommand LanguageCommand(
 		TEXT("hol.UI.Language"),

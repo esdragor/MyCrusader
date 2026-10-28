@@ -15,7 +15,7 @@
 		},
 		{
 			"Name": "HeroesOfLibertyUI",
-			"Type": "ClientOnly",
+			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		}
 	],

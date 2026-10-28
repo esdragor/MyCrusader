@@ -5,7 +5,10 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby; bodies, rocks and lobby only when asked, not in -Full;
+#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver, netai; bodies, rocks and lobby only when asked, not in -Full;
+#     "aiserver" (IA0.5 B1, ~40 s, last): the AI's brain on a dedicated server without client (slot 1 AI, 5 starting Peasants);
+#     "netai" (IA0.5 B2, ~60 s, after "aiserver"): the same server with Alice and Bob joined and the AI in slot 2, its
+#     Peasants seen gathering on each client;
 #     "sizes" (TC4, ~15 s): Plain at its five sizes and a refused configuration, in the menu's game launch). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
@@ -108,7 +111,7 @@ param(
     [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -119,7 +122,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -268,6 +271,7 @@ if ($Parts -contains "net") {
     $NetHeroKilledFlag = Join-Path $TestSaved "quick_net_hero_killed.flag"
     $NetHeroReadyFlag = Join-Path $TestSaved "quick_net_hero_ready.flag"
     $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
+    $NetHeroBornFlag = Join-Path $TestSaved "quick_net_hero_born.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -287,12 +291,15 @@ if ($Parts -contains "net") {
         # the start: bStartingHero off), 40 m apart; their XP set (5, 7); 2 Men-at-arms of slot 0 strike Bob's hero for 10 s,
         # then removed: once still, the server's report, then each client's (its signal); then Bob's hero killed, the
         # server's report again, then each client's.
+        # J8a.5 loop 6: once born (their XP set), the server waits for each client's hero block (its signal) before the strike.
         # The return (J8a.4 loop 5), its times at 20 % (hol.Hero.ReturnTimePercent: ready 152 steps after death, the price
         # from 150 to 0 in 240 steps): once Bob's hero is ready (Bob's too early order refused meanwhile), Alice's killed,
         # the clients' signal; Bob's paid return then Alice's by itself at price 0 (the server's own lines), its report,
         # the clients' signal; both heroes removed at the end, the times back to the rules (the next parts as before).
         @("mark net hero", "hol.Hero.ReturnTimePercent 20", "hol.Units.Spawn 1 2000 -5000 1 Hero 150", "hol.Units.Spawn 1 6000 -5000 0 Hero 150", "wait 1",
-            "hol.Hero.SetXP 0 5", "hol.Hero.SetXP 1 7", "hol.Units.Spawn 2 2600 -5000 0 ManAtArms 150", "wait 10",
+            "hol.Hero.SetXP 0 5", "hol.Hero.SetXP 1 7", "signal $NetHeroBornFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_born1.flag") 180", "waitfile $(Join-Path $TestSaved "quick_net_hero_born2.flag") 180",
+            "hol.Units.Spawn 2 2600 -5000 0 ManAtArms 150", "wait 10",
             "hol.Units.Remove 2300 -5000 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroWoundedFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_seen1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_seen2.flag") 120",
             "hol.Hero.Kill 1", "wait 2", "hol.Hero.Report", "signal $NetHeroKilledFlag",
@@ -405,6 +412,12 @@ if ($Parts -contains "menu") {
                 "hol.UI.Choose SlotTeam0 0", "hol.UI.Choose SlotState1 1", "hol.UI.Choose SlotState2 1",
                 "frames 3", "hol.UI.Choose SizeDropdown 1", "hol.UI.Choose SlotState5 1", "frames 3", "capture qc_fr_sizes",
                 "hol.UI.Choose SlotState1 0", "hol.UI.Choose SlotState2 0", "frames 3", "hol.UI.Choose SizeDropdown 1", "frames 3"
+            # IA0.6 S1: in solo "IA" is open in the state list: slot 1 taken by an AI shows its colour and team; closed again.
+            # IA0.6 S2 (Q1): one "Joueur" column, the list shows the name the slot will have (the game's, GetAIName: "IA Normal 2"
+            # for slot index 1); its level after it, Normal and greyed, on an AI line only (none on the closed slot 2).
+            Step "mark menu ai", "hol.UI.Choose SlotState1 2", "frames 3", "hol.UI.Shown SlotColor1 SlotTeam1", "capture qc_fr_ai",
+                "hol.UI.Choose SlotState2 0", "hol.UI.Text SlotState1 SlotLevel1", "hol.UI.Shown SlotLevel1 SlotName1 SlotLevel2",
+                "hol.UI.Choose SlotState1 0", "frames 3"
         }
         Back
         if ($Culture -eq "fr") {
@@ -1583,14 +1596,47 @@ if ($Parts -contains "camera") {
             # the camera on him. Both removed after (the parts after count slot 0's units).
             Step "mark build hero", "hol.Camera.Focus 0 0", "frames 2", "hol.Camera.Report"
             Key F4
-            Step "waitlog Select hero: none", "frames 2", "hol.Select.Report", "hol.Camera.Report",
+            # J8a.5 loop 2: the hero's block of the game screen in script, hidden without a hero, then his level and HP.
+            Step "waitlog Select hero: none", "frames 2", "hol.Select.Report", "hol.Camera.Report", "hol.HUD.Report",
                 "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "hol.Units.Spawn 1 $($BuildEnemyHero -join ' ') 1 Hero 100", "wait 0.5"
             Key F4
-            Step "waitlog Select hero: selected", "frames 3", "hol.Select.Report", "hol.Camera.Report"
+            Step "waitlog Select hero: selected", "frames 3", "hol.Select.Report", "hol.Camera.Report", "hol.HUD.Report", "frames 3", "capture build_hero_block"
             Key F4
             Step "waitlog Select hero: camera on", "frames 3", "hol.Camera.Report", "hol.Select.Report"
             Key Escape
-            Step "waitlog Selection: none", "hol.Units.Remove $($BuildHero -join ' ') 1000 0 Hero", "hol.Units.Remove $($BuildEnemyHero -join ' ') 1000 1 Hero", "wait 0.3"
+            # J8a.5 loop 4: the block during the death and the return, the times at 20 % (hol.Hero.ReturnTimePercent: ready
+            # 152 steps after a level 1 death, the price from 150 to 0 in 240 steps), the gold set to 500 (hol.Cheat.Gold adds:
+            # -1000000 empties it). Dead: the delay, twice (going down); ready: the price buyable, no gold with the stock
+            # emptied, buyable again; the return's button clicked: back (bought; without the button, by himself at price 0 at
+            # worst 12 s later), the gold lowered by the price the server took (hol.Hero.Report before and after). Then the
+            # portrait clicked: selects him; again: the camera on him (as F4). Both heroes removed (the reborn one by the forum),
+            # the times back to the rules, the centre selected then Escape (a known "Selection: none" for the cases after).
+            Step "waitlog Selection: none", "mark build hero return", "hol.Hero.ReturnTimePercent 20", "hol.Cheat.Gold -1000000", "hol.Cheat.Gold 500",
+                "hol.Hero.Kill 0", "waitlog hol.Hero.Kill: slot 0", "wait 0.5", "hol.HUD.Report", "frames 3", "capture build_hero_dead", "wait 1", "hol.HUD.Report",
+                "waitlog Hero return: slot 0 ready", "frames 3", "hol.HUD.Report", "capture build_hero_ready",
+                "hol.Cheat.Gold -1000000", "frames 3", "hol.HUD.Report", "hol.Cheat.Gold 500", "frames 3", "hol.HUD.Report", "hol.Hero.Report",
+                "hol.HUD.Click HeroReturnButton", "waitlog Hero return: slot 0 by its main forum", "wait 0.5", "hol.HUD.Report", "hol.Hero.Report",
+                "hol.HUD.Click HeroPortrait", "frames 3", "hol.Select.Report", "hol.Camera.Report", "hol.HUD.Click HeroPortrait", "frames 3", "hol.Camera.Report", "hol.Select.Report",
+                "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($BuildEnemyHero -join ' ') 1000 1 Hero", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # J8a.5 loop 7b: the block's texts in English and Japanese (NSLOCTEXT of the script, gathered from Script/ by
+            # GatherText, translated by fill_po.py): his hero again, alive (level, HP) in en then ja; killed (times at 20 %):
+            # the delay in en then ja; ready: the button in en, the gold emptied (its tooltip) in en then ja, given back in ja.
+            # Back to French, the return bought, the hero removed, the centre selected then Escape (as the case before).
+            Step "mark build hero texts", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.UI.Language en", "frames 3", "hol.HUD.Report", "hol.UI.Language ja", "frames 3", "hol.HUD.Report", "capture build_hero_block_ja",
+                "hol.Hero.ReturnTimePercent 20", "hol.Cheat.Gold -1000000", "hol.Cheat.Gold 500", "hol.Hero.Kill 0", "waitlog hol.Hero.Kill: slot 0", "wait 0.5",
+                "hol.UI.Language en", "frames 3", "hol.HUD.Report", "hol.UI.Language ja", "frames 3", "hol.HUD.Report",
+                "waitlog Hero return: slot 0 ready", "hol.UI.Language en", "frames 3", "hol.HUD.Report", "capture build_hero_ready_en",
+                "hol.Cheat.Gold -1000000", "frames 3", "hol.HUD.Report", "hol.UI.Language ja", "frames 3", "hol.HUD.Report",
+                "hol.Cheat.Gold 500", "frames 3", "hol.HUD.Report", "hol.UI.Language fr", "frames 3",
+                "hol.HUD.Click HeroReturnButton", "waitlog Hero return: slot 0 by its main forum", "wait 0.5",
+                "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
             # A right click on a finished deposit (L.1, D485): lumber camp D built at its first blow; three Peasants gather
             # the tree nearest CampTree for a few seconds (partly loaded, the forum nearer them than D), a fourth made empty
             # beside them; the four selected through group 3 (a box near the wood would take the camp case's gatherers too), a right click on D's centre: the three unload their wood at D (not at the
@@ -2283,16 +2329,20 @@ if ($NetListening) {
         # each client asks its own return decision to act (refused: a client decides nothing), reports; Bob's gold to 0,
         # his order (cannot pay), 1 000 gold, his report, his order (bought), his report; once both heroes are back (the
         # server's signal), the last report.
-        $NetSteps += "mark hero", "hol.Hero.ReturnTimePercent 20", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where",
-            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120"
+        # The hero's block (J8a.5 loop 6), hol.HUD.Report at each moment: born (its own hero alive), wounded, Bob's dead (twice,
+        # 1 s apart), ready (Alice's own just killed), Bob without gold (his button greyed: its click sends nothing), with
+        # 1 000 gold (the price shown, then his paid return by the button, in the same frame), after it, both back.
+        $NetSteps += "mark hero", "hol.Hero.ReturnTimePercent 20", "waitfile $NetHeroBornFlag 180", "wait 1", "hol.HUD.Report",
+            "signal $(Join-Path $TestSaved "quick_net_hero_born$Client.flag")", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where", "hol.HUD.Report",
+            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120", "hol.HUD.Report"
         if ($Client -eq 1) { $NetSteps += "hol.Hero.Return" }
-        $NetSteps += "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")",
-            "mark hero return", "waitfile $NetHeroReadyFlag 120", "wait 1", "hol.Hero.ReturnProbe $(if ($Client -eq 1) { 1 } else { 0 })", "hol.Hero.Report"
+        $NetSteps += "wait 1", "hol.Hero.Report", "hol.HUD.Report", "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")",
+            "mark hero return", "waitfile $NetHeroReadyFlag 120", "wait 1", "hol.Hero.ReturnProbe $(if ($Client -eq 1) { 1 } else { 0 })", "hol.Hero.Report", "hol.HUD.Report"
         if ($Client -eq 1) {
-            $NetSteps += "hol.Cheat.Gold -1000000", "wait 1", "hol.Hero.Return", "wait 1", "hol.Cheat.Gold 1000", "wait 1", "hol.Hero.Report",
-                "hol.Hero.Return", "wait 1.5", "hol.Hero.Report"
+            $NetSteps += "hol.Cheat.Gold -1000000", "wait 1", "hol.HUD.Report", "hol.HUD.Click HeroReturnButton", "hol.Hero.Return", "wait 1", "hol.Cheat.Gold 1000", "wait 1", "hol.Hero.Report",
+                "hol.HUD.Report", "hol.HUD.Click HeroReturnButton", "wait 1.5", "hol.Hero.Report", "hol.HUD.Report"
         }
-        $NetSteps += "waitfile $NetHeroBackFlag 120", "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_back$Client.flag")"
+        $NetSteps += "waitfile $NetHeroBackFlag 120", "wait 1", "hol.Hero.Report", "hol.HUD.Report", "signal $(Join-Path $TestSaved "quick_net_hero_back$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -2368,9 +2418,11 @@ function Get-ScriptErrors([string] $Path) {
 }
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
-    # (their checks still read their empty sections: [regex]::Match on "$X", never on null).
+    # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
+    # too ("build hero return" for build:hero).
     foreach ($Played in @($SubCases.Keys)) {
-        if ($Part -match "^$([regex]::Escape($Played))( |$)" -and -not (@($SubCases[$Played] | ForEach-Object { "$Played $_" }) -contains $Part)) { return $true }
+        if ($Part -match "^$([regex]::Escape($Played))( |$)" -and
+            -not @($SubCases[$Played] | Where-Object { $Part -eq "$Played $_" -or $Part.StartsWith("$Played $_ ") }).Count) { return $true }
     }
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
     Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
@@ -2840,6 +2892,18 @@ if ($Parts -contains "menu") {
                 [bool]($Sizes | Select-String -SimpleMatch "Shown SlotFaction0: yes, greyed" -Quiet) -and
                 [bool]($Sizes | Select-String -Pattern "Shown TeamsTogetherDropdown: yes$" -Quiet)
             $Checks["slot 5 past the 4 places of Medium stays closed"] = [bool]($Sizes | Select-String -SimpleMatch "New game: slot 5 stays closed, past the 4 places of the size" -Quiet)
+            # IA0.6 S1: "IA" chosen on slot 1 in solo (a greyed option is ignored by Choose: no "value 2 chosen"), colour and team shown.
+            $AI = Get-Section "menu ai"
+            $Checks["AI open in solo: slot 1 taken by an AI, colour and team shown"] = [bool]($AI | Select-String -SimpleMatch "SlotState1: value 2 chosen" -Quiet) -and
+                [bool]($AI | Select-String -Pattern "Shown SlotColor1: yes$" -Quiet) -and [bool]($AI | Select-String -Pattern "Shown SlotTeam1: yes$" -Quiet)
+            # IA0.6 S2: the name shown, the level (Normal, shown and greyed), no separate name column, no level on a closed line.
+            $SeenName = (@($AI | Select-String -Pattern "Text SlotState1: (.*)$") | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+            $SeenLevel = (@($AI | Select-String -Pattern "Text SlotLevel1: (.*)$") | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+            $LevelShown = [bool]($AI | Select-String -Pattern "Shown SlotLevel1: yes, greyed$" -Quiet)
+            $NameGone = [bool]($AI | Select-String -Pattern "Shown SlotName1: (no|missing)$" -Quiet)
+            $ClosedNoLevel = [bool]($AI | Select-String -Pattern "Shown SlotLevel2: no(, greyed)?$" -Quiet)
+            $Checks["AI line merged (IA0.6 S2): name '$SeenName' (want 'IA Normal 2'), level '$SeenLevel' shown+greyed=$LevelShown (want 'Normal', True), no name column=$NameGone, closed line without level=$ClosedNoLevel"] =
+                $SeenName -eq "IA Normal 2" -and $SeenLevel -eq "Normal" -and $LevelShown -and $NameGone -and $ClosedNoLevel
         }
         $AllOk = (Report "menu $Culture" $Checks) -and $AllOk
         if (Get-Command python -ErrorAction SilentlyContinue) {
@@ -3802,8 +3866,78 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         $Picked.Success -and $Centred.Success -and ($Centred.Groups[1].Value -eq $Picked.Groups[1].Value) -and ($HeroCams.Count -ge 4) -and
         ([Math]::Abs([int]$HeroCams[3].Groups[1].Value - [int]$Centred.Groups[2].Value) -le 2) -and ([Math]::Abs([int]$HeroCams[3].Groups[2].Value - [int]$Centred.Groups[3].Value) -le 2) -and
         ($HeroSel.Count -ge 3) -and ($HeroSel[2] -eq "Hero #$($Picked.Groups[1].Value) of slot 0 (own)")
-    $Checks["both heroes removed after"] = (@($Hero | Select-String -Pattern "Remove: 1 units of slot [01] within").Count -eq 2)
+    # J8a.5 loop 2: the hero's block, written by the game screen in script (Script/UI/HOLGameScreenScript.as).
+    $HeroBlock = @($Hero | Select-String -Pattern "HUD hero: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $Checks["the hero's block in script: hidden without a hero, then alive level 1 hp 450/450 ($($HeroBlock -join '; '))"] =
+        ($HeroBlock.Count -ge 2) -and ($HeroBlock[0] -eq "hidden") -and ($HeroBlock[1] -eq "alive level 1 hp 450/450")
+    $Checks["capture of the hero's block (build_hero_block)"] = Test-Path (Join-Path $Shots "build_hero_block.png")
     $AllOk = (Report "build hero" $Checks) -and $AllOk
+    # J8a.5 loop 4: the block during the death and the return (times at 20 %), the return's button and the portrait.
+    $HeroRet = @(Get-Section "build hero return" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $RetBlock = @($HeroRet | Select-String -Pattern "HUD hero: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    # The delay as the rule says it at level 1 and 20 % (the net check's formula): at most ceil(152 / 20) = 8 s.
+    $RetDelaySteps = [int][Math]::Floor((30 + 8 * 1) * 20 * 20 / 100)
+    $RetDelayMax = [int][Math]::Ceiling($RetDelaySteps / 20)
+    $Dead = @($RetBlock | Where-Object { $_ -match "^dead ready in (\d+) s$" } | ForEach-Object { [int]($_ -replace '^dead ready in (\d+) s$', '$1') })
+    $Checks["dead: ready in S s, 0 < S <= $RetDelayMax, then less a second later ($(($RetBlock | Select-Object -First 2) -join '; '))"] =
+        [bool]($HeroRet | Select-String -SimpleMatch "hol.Hero.Kill: slot 0, 1 hero(es)" -Quiet) -and ($RetBlock.Count -ge 2) -and ($Dead.Count -ge 2) -and
+        ($RetBlock[0] -eq "dead ready in $($Dead[0]) s") -and ($RetBlock[1] -eq "dead ready in $($Dead[1]) s") -and
+        ($Dead[0] -gt 0) -and ($Dead[0] -le $RetDelayMax) -and ($Dead[1] -gt 0) -and ($Dead[1] -lt $Dead[0])
+    $Prices = @(for ($i = 2; $i -lt [Math]::Min($RetBlock.Count, 5); $i++) { if ($RetBlock[$i] -match "^ready price (\d+) (buyable|no gold|no place)$") { [pscustomobject]@{ Price = [int]$Matches[1]; Why = $Matches[2] } } })
+    $Checks["ready (Hero return: slot 0 ready): price P buyable, 0 < P <= 150 ($(if ($RetBlock.Count -ge 3) { $RetBlock[2] }))"] =
+        [bool]($HeroRet | Select-String -SimpleMatch "Hero return: slot 0 ready at step" -Quiet) -and ($Prices.Count -ge 1) -and ($RetBlock[2] -match "^ready price") -and
+        ($Prices[0].Why -eq "buyable") -and ($Prices[0].Price -gt 0) -and ($Prices[0].Price -le 150)
+    $Checks["the gold emptied: no gold; given back: buyable, the price not going up ($(($RetBlock | Select-Object -Skip 3 -First 2) -join '; '))"] =
+        ($Prices.Count -eq 3) -and ($Prices[1].Why -eq "no gold") -and ($Prices[2].Why -eq "buyable") -and
+        ($Prices[1].Price -le $Prices[0].Price) -and ($Prices[2].Price -le $Prices[1].Price)
+    # The price shown just before the click against the one the server took ("bought for X gold"), the gold read by
+    # hol.Hero.Report before the click and after the return.
+    $Shown = if ($Prices.Count -eq 3) { $Prices[2].Price } else { -1 }
+    $Taken = @($HeroRet | Select-String -Pattern "Hero return: slot 0 bought for (\d+) gold" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Golds = @($HeroRet | Select-String -Pattern "Hero gold slot 0 local: (-?\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $ButtonClick = & $Value $HeroRet "HUD click HeroReturnButton: (.*)$"
+    $Checks["the return's button clicked ($ButtonClick): bought for $($Taken -join ', ') gold, shown $Shown just before; gold $($Golds -join ' then '); back $(if ($RetBlock.Count -ge 6) { $RetBlock[5] })"] =
+        ($ButtonClick -eq "done") -and ($Taken.Count -eq 1) -and ($Taken[0] -eq $Shown) -and ($Golds.Count -ge 2) -and ($Golds[0] -eq 500) -and
+        ($Golds[1] -eq $Golds[0] - $Taken[0]) -and ($RetBlock.Count -ge 6) -and ($RetBlock[5] -eq "alive level 1 hp 450/450")
+    # The portrait: as F4, a first click selects him (the camera kept), a second centres the camera on him.
+    $PortraitClicks = @($HeroRet | Select-String -Pattern "HUD click HeroPortrait: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $PortraitPick = [regex]::Match("$(& $Value $HeroRet "(Select hero: selected .*)$")", "#(\d+) at \((-?\d+), (-?\d+)\)")
+    $PortraitCam = [regex]::Match("$(& $Value $HeroRet "(Select hero: camera on .*)$")", "#(\d+) at \((-?\d+), (-?\d+)\)")
+    $RetSel = @($HeroRet | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $RetCams = @($HeroRet | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), " | ForEach-Object { $_.Matches[0] })
+    $Checks["the portrait clicked ($($PortraitClicks -join ', ')): selects him ($($RetSel | Select-Object -First 1)), again the camera on him ($(if ($RetCams.Count -ge 2) { $RetCams[1].Value }))"] =
+        ($PortraitClicks.Count -eq 2) -and ($PortraitClicks[0] -eq "done") -and ($PortraitClicks[1] -eq "done") -and $PortraitPick.Success -and $PortraitCam.Success -and
+        ($PortraitCam.Groups[1].Value -eq $PortraitPick.Groups[1].Value) -and ($RetSel.Count -ge 2) -and ($RetSel[0] -eq "Hero #$($PortraitPick.Groups[1].Value) of slot 0 (own)") -and
+        ($RetCams.Count -ge 2) -and ([Math]::Abs([int]$RetCams[1].Groups[1].Value - [int]$PortraitCam.Groups[2].Value) -le 2) -and
+        ([Math]::Abs([int]$RetCams[1].Groups[2].Value - [int]$PortraitCam.Groups[3].Value) -le 2)
+    $Missing = @("dead", "ready" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $Checks["both heroes removed after"] = (@($HeroRet | Select-String -Pattern "Remove: 1 units of slot [01] within").Count -eq 2)
+    $AllOk = (Report "build hero return" $Checks) -and $AllOk
+    # J8a.5 loop 7b: the block's texts in English and Japanese, as its widgets show them ("HUD hero texts: level | HP |
+    # delay | button | tooltip").
+    $HeroTx = @(Get-Section "build hero texts" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $Tx = @($HeroTx | Select-String -Pattern "HUD hero texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $TxWanted = @(
+        @("alive, en: Level 1, HP 450 / 450", '^Level 1 \| HP 450 / 450 \|$'),
+        @("alive, ja: レベル 1, HP 450 / 450", '^レベル 1 \| HP 450 / 450 \|$'),
+        @("dead, en: Ready in 0:0S", '^Level 1 \| HP 0 / 450 \| Ready in 0:0\d$'),
+        @("dead, ja: 帰還まで 0:0S", '^レベル 1 \| HP 0 / 450 \| 帰還まで 0:0\d$'),
+        @("ready, en: Bring the hero back — P gold", '^Level 1 \| HP 0 / 450 \|  \| Bring the hero back — \d+ gold \|$'),
+        @("no gold, en: Not enough gold", '^Level 1 \| HP 0 / 450 \|  \| Bring the hero back — \d+ gold \| Not enough gold$'),
+        @("no gold, ja: 金が足りません", '^レベル 1 \| HP 0 / 450 \|  \| 英雄を呼び戻す — \d+ 金 \| 金が足りません$'),
+        @("given back, ja: 英雄を呼び戻す — P 金", '^レベル 1 \| HP 0 / 450 \|  \| 英雄を呼び戻す — \d+ 金 \|$'))
+    for ($i = 0; $i -lt $TxWanted.Count; $i++) {
+        $Seen = if ($Tx.Count -gt $i) { $Tx[$i] } else { "none" }
+        $Checks["$($TxWanted[$i][0]) ($Seen)"] = ($Tx.Count -gt $i) -and ($Tx[$i] -match $TxWanted[$i][1])
+    }
+    $Checks["back in French, the return bought, the hero removed"] =
+        [bool]($HeroTx | Select-String -SimpleMatch "Hero return: slot 0 by its main forum" -Quiet) -and [bool]($HeroTx | Select-String -Pattern "Remove: 1 units of slot 0 within" -Quiet)
+    $Missing = @("block_ja", "ready_en" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
+    $AllOk = (Report "build hero texts" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
     $DropOrder = @(Get-Section "build dropoff order" | ForEach-Object { $_ })
@@ -5464,6 +5598,12 @@ if ($Parts -contains "net") {
         [int64]$PauseReports[1].Groups[2].Value -gt [int64]$PauseReports[0].Groups[2].Value
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
+    # The scripts on the dedicated server (J8a5-Q3c, D484): every .as compiles there too (the editor's -server loads
+    # no ClientOnly module: a script naming a class of HeroesOfLibertyUI failed there, "'UHOLGameScreen' is not
+    # declared", and the server quit at once on -as-exit-on-error; the interface module is Runtime since).
+    $ServerScriptErrors = @(Get-ScriptErrors $NetServerLog)
+    $Checks["server: scripts compiled ($(if ($ServerScriptErrors.Count) { $ServerScriptErrors -join ' ' } else { 'no error' }))"] =
+        (Test-Path $NetServerLog) -and $ServerScriptErrors.Count -eq 0
     $Born = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Production: Peasant of slot (\d) done" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
     $Checks["server: one Peasant born per slot ($($Born -join ', '))"] = (($Born | Sort-Object) -join ',') -eq "0,1"
     # R3.9-R3.10: the server waits for the named players (one of them alone missing at some point), then starts all
@@ -5735,6 +5875,57 @@ if ($Parts -contains "net") {
             $Probe.Count -eq 1 -and ($Probe[0] -match "^net mode 3, buy refused, decide refused, decisions 0$" -or $Probe[0] -match "^net mode 3, no decision$") -and $Acted.Count -eq 0
     }
     $AllOk = (Report "net hero return" $ReturnChecks) -and $AllOk
+    # The hero's block on the clients (J8a.5 loop 6): each hol.HUD.Report's "HUD hero:" line in order, in the "hero" section
+    # (born, wounded, Bob's dead, 1 s later) and the "hero return" one (ready; Bob: no gold, 1 000 gold before his click,
+    # after it; back). Its own hero only; never "unknown" once the server's clock is received (the match long started).
+    $BlockChecks = [ordered]@{}
+    $BlockLevel = 1
+    $DelayBound = [int][Math]::Ceiling($ReturnDelay / 20)
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $ClientLines = @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue)
+        $ReadBlock = { param($Mark) @(Get-ClientSection $ClientLines $Mark | Select-String -Pattern "HUD hero: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() }) }
+        $InHero = & $ReadBlock "hero"
+        $InReturn = & $ReadBlock "hero return"
+        $FullBlock = "alive level $BlockLevel hp $HeroMax/$HeroMax"
+        $BlockChecks["client $N : 4 blocks in 'hero' ($($InHero.Count)), its own hero born: $FullBlock ($($InHero[0]))"] = $InHero.Count -eq 4 -and $InHero[0] -eq $FullBlock
+        $Unknown = @($ClientLines | Select-String -SimpleMatch "HUD hero: unknown")
+        $BlockChecks["client $N : never 'unknown' ($($Unknown.Count))"] = $Unknown.Count -eq 0
+        if ($N -eq 1) {
+            # Bob: wounded (the server's health), dead not ready (1 <= S <= the delay's bound, falling), ready (buyable iff
+            # his gold covers the price), no gold (his click greyed), buyable before the click, alive after it, back.
+            $BlockChecks["client $N : wounded, alive level $BlockLevel hp $TrueHp/$HeroMax ($($InHero[1]))"] = $TrueHp -gt 0 -and $InHero[1] -eq "alive level $BlockLevel hp $TrueHp/$HeroMax"
+            $Dead = @($InHero[2..3] | ForEach-Object { if ("$_" -match "^dead ready in (\d+) s$") { [int]$Matches[1] } })
+            $BlockChecks["client $N : dead, ready in S s, 1 <= S <= $DelayBound and falling ($($InHero[2]); $($InHero[3]))"] =
+                $Dead.Count -eq 2 -and $Dead[0] -ge 1 -and $Dead[0] -le $DelayBound -and $Dead[1] -ge 1 -and $Dead[1] -lt $Dead[0]
+            $Seen = & $ReadHeroReports @(Get-ClientSection $ClientLines "hero return")
+            $ReadyGold = if ($Seen.Count -ge 1) { $Seen[0].Gold } else { $null }
+            $ReadyPrice = if ("$($InReturn[0])" -match "^ready price (\d+) (buyable|no gold)$") { [int]$Matches[1] } else { -1 }
+            $ReadyWord = if ($ReadyPrice -ge 0 -and $null -ne $ReadyGold -and $ReadyGold -ge $ReadyPrice) { "buyable" } else { "no gold" }
+            $BlockChecks["client $N : 5 blocks in 'hero return' ($($InReturn.Count)), ready: $($InReturn[0]) (gold $($ReadyGold): $ReadyWord)"] =
+                $InReturn.Count -eq 5 -and $ReadyPrice -gt 0 -and $ReadyPrice -le 150 -and $InReturn[0] -eq "ready price $ReadyPrice $ReadyWord"
+            $NoGold = if ("$($InReturn[1])" -match "^ready price (\d+) no gold$") { [int]$Matches[1] } else { -1 }
+            $Clicks = @(Get-ClientSection $ClientLines "hero return" | Select-String -Pattern "HUD click HeroReturnButton: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+            # The console's order sent in the same frame: the server's price of its refusal (its gap to the shown one, as below:
+            # the order taken a step after the client's estimate floored, the price falling, never above the shown one).
+            $Refused = @($ServerLines | Select-String -Pattern "Hero return: slot $BobSlot cannot pay (\d+) gold" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+            $BlockChecks["client $N : gold 0, $($InReturn[1]) (the server's refusal at $($Refused -join ', ')), its click greyed ($($Clicks[0]))"] =
+                $NoGold -gt 0 -and $NoGold -le $ReadyPrice -and $Refused.Count -eq 1 -and [Math]::Abs($NoGold - $Refused[0]) -le 2 -and $Clicks.Count -eq 2 -and $Clicks[0] -eq "hidden, greyed or unknown"
+            $Shown = if ("$($InReturn[2])" -match "^ready price (\d+) buyable$") { [int]$Matches[1] } else { -1 }
+            $Taken = if ($Bought.Count -eq 1) { $Bought[0] } else { -1 }
+            $BlockChecks["client $N : 1 000 gold, $($InReturn[2]), its click sent ($($Clicks[1])), bought on the server for $Taken (shown $Shown, gap $($Shown - $Taken))"] =
+                $Shown -gt 0 -and $Shown -le $NoGold -and $Clicks.Count -eq 2 -and $Clicks[1] -eq "done" -and $Taken -gt 0 -and [Math]::Abs($Shown - $Taken) -le 2
+            $BlockChecks["client $N : after the click, $FullBlock ($($InReturn[3])), back ($($InReturn[4]))"] = $InReturn[3] -eq $FullBlock -and $InReturn[4] -eq $FullBlock
+        }
+        else {
+            # Alice: her own block, never Bob's: alive while Bob's is dead, hers dead (just killed) once Bob's is ready, back.
+            $BlockChecks["client $N : wounded and Bob's dead, her own alive ($($InHero[1..3] -join '; '))"] = @($InHero[1..3] | Where-Object { $_ -eq $FullBlock }).Count -eq 3
+            $Own = if ("$($InReturn[0])" -match "^dead ready in (\d+) s$") { [int]$Matches[1] } else { -1 }
+            $BlockChecks["client $N : 2 blocks in 'hero return' ($($InReturn.Count)), her own just killed: $($InReturn[0]) (1 <= S <= $DelayBound), back: $($InReturn[1])"] =
+                $InReturn.Count -eq 2 -and $Own -ge 1 -and $Own -le $DelayBound -and $InReturn[1] -eq $FullBlock
+        }
+    }
+    $AllOk = (Report "net hero block" $BlockChecks) -and $AllOk
 }
 
 if ($TestsProcess) {
@@ -5780,6 +5971,160 @@ if ($Parts -contains "lobby") {
         }
     }
     $AllOk = (Report "lobby" $Checks) -and $AllOk
+}
+
+# The "aiserver" part (IA0.5 B1, IA0.5-Q2 B): the AI's brain on a dedicated server, no client. The editor in server mode
+# (as "net", D275) on Plain, slot 0 Human without a name (the match does not wait for it: R3.9 waits only for named
+# players), slot 1 AI, 5 starting Peasants for everyone ("startingPeasants": 5 in the config, so $NoStartingPeasants is
+# not passed). Once the rest is done (alone on the machine, ~30 s). The brain's lines, the births and the first order
+# come before the sequence starts (-ExecCmds runs after the map's BeginPlay, and waitlog reads only what follows it):
+# read from the server's log once it has quit. The sequence waits 5 s of play, asks slot 1's gathering, then quits.
+# A free UDP port in this copy's range of 10 (as "net"), for "aiserver" and "netai" (each one alone on the machine by then).
+function Get-AITestPort {
+    $Index = @{ "MyCrusader" = 0; "HeroesOfLiberty-Elrond" = 1; "HeroesOfLiberty-Arwen" = 2; "HeroesOfLiberty-Glorfindel" = 3;
+        "HeroesOfLiberty-Haldir" = 4; "HeroesOfLiberty-Galadriel" = 5; "HeroesOfLiberty-Celeborn" = 6 }[(Split-Path -Leaf $Project)]
+    if ($null -eq $Index) { $Index = 7 }
+    $Port = 7800 + 10 * $Index
+    while ($Port -lt 7810 + 10 * $Index) {
+        try { $Probe = New-Object Net.Sockets.UdpClient($Port); $Probe.Close(); break } catch { $Port++ }
+    }
+    return $Port
+}
+# The 8 slots of a version 2 match config on Plain: the states given, slots 0 and 1 named when names are given.
+function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @()) {
+    $Slots = for ($i = 0; $i -lt 8; $i++) {
+        $Name = if ($i -lt $Names.Count) { ", `"playerName`": `"$($Names[$i])`"" } else { "" }
+        "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Name }"
+    }
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"startingPeasants`": 5, `"slots`": [ $($Slots -join ', ') ] }" |
+        Set-Content -Encoding ascii $Path
+}
+if ($Parts -contains "aiserver") {
+    $AIServerLog = Join-Path $TestSaved "Logs\quick_aiserver.log"
+    $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
+    $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
+    Remove-Item $AIServerLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
+        Set-Content -Encoding utf8 $AIServerSequence
+    # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
+    $AIPort = Get-AITestPort
+    $AIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$AIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$AIServerConfig`" -abslog=`"$AIServerLog`" -ExecCmds=`"hol.Test.Run $AIServerSequence`""
+    $AIServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $AIServerArguments -PassThru -WindowStyle Hidden
+    $AIServerTimedOut = -not $AIServerProcess.WaitForExit(180000)
+    if ($AIServerTimedOut) { Stop-Process -Id $AIServerProcess.Id -Force -ErrorAction SilentlyContinue }
+    $AILog = if (Test-Path $AIServerLog) { Get-Content $AIServerLog } else { @() }
+    function Find-AILine([string] $Pattern) { @($AILog | Select-String -Pattern $Pattern | ForEach-Object { $_.Line }) | Select-Object -First 1 }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself in 180 s"] = -not $AIServerTimedOut
+    $ScriptErrors = @(Get-ScriptErrors $AIServerLog)
+    $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    $Timeout = Find-AILine "Test sequence: timeout at step .*"
+    $Checks["sequence ran to its end ($(if ($Timeout) { $Timeout.Trim() } else { 'no timeout' }))"] = -not $Timeout
+    $Checks["5 starting Peasants for slot 1"] = [bool](Find-AILine "Starting Peasants of slot 1: 5 in front of its main forum")
+    $Awake = Find-AILine "AI brain \S+ awake, net mode \w+, thinking slots \[[^\]]*\]"
+    $Checks["brain awake on the dedicated server, slot 1 thinking ($(if ($Awake) { ($Awake -replace '^.*(AI brain )', '$1').Trim() } else { 'no awake line' }))"] =
+        [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[1\]"
+    $Checks["AI slot 1 thinks (AI slot 1 step)"] = [bool](Find-AILine "AI slot 1 step \d+:")
+    $Checks["5 idle -> gather"] = [bool](Find-AILine "AI slot 1 step \d+: 5 idle -> gather \w+ #\d+")
+    $Checks["Gather order of slot 1: 5 units to source"] = [bool](Find-AILine "Gather order of slot 1: 5 units to source")
+    # The report after 5 s: the Peasants sent are on their way, gathering or unloading (a starting hero, if any, stays
+    # among the "not gathering").
+    $GatherLine = Find-AILine "Gather: slot 1 to source \d+, gathering \d+, to deposit \d+, not gathering \d+"
+    $Busy = 0
+    if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
+    $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
+    $AllOk = (Report "aiserver" $Checks) -and $AllOk
+}
+
+# The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
+# "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
+# named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).
+# Lighter than "net": no lobby manager, no capture; once the rest is done (alone on the machine, ~60 s). Each client,
+# once both are in, waits 8 s and says where it has slot 2's units (the AI's Peasants on their way or gathering, from
+# what the server replicated), then signals and quits; the server says the same, waits for both signals and quits. The
+# server's lines (the brain, its first order, no order for the humans) read from its log once it has quit.
+if ($Parts -contains "netai") {
+    $NetAIServerLog = Join-Path $TestSaved "Logs\quick_netai_server.log"
+    $NetAIConfig = Join-Path $TestSaved "quick_netai.json"
+    $NetAIServerSequence = Join-Path $TestSaved "quick_netai_server.seq"
+    Remove-Item $NetAIServerLog, (Join-Path $TestSaved "Logs\quick_netai_client*.log"), (Join-Path $TestSaved "quick_netai_*.flag") -ErrorAction SilentlyContinue
+    # The slots: Alice and Bob, the AI in slot 2.
+    $NetAIStates = @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed")
+    Write-AIMatchConfig $NetAIConfig $NetAIStates @("Alice", "Bob")
+    $NetAIDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_netai_done$_.flag" })
+    @("waitplayers 2", "mark netai", "wait 8", "hol.Gather.Report 2", "wait 1", "hol.Units.Where 2", "waitlog Units where:",
+        "waitfile $($NetAIDone[0]) 240", "waitfile $($NetAIDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $NetAIServerSequence
+    $NetAIPort = Get-AITestPort
+    $NetAIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetAIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetAIConfig`" -abslog=`"$NetAIServerLog`" -ExecCmds=`"hol.Test.Run $NetAIServerSequence`""
+    $NetAIServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetAIServerArguments -PassThru -WindowStyle Hidden
+    $NetAIListening = $false
+    $Deadline = (Get-Date).AddSeconds(90)
+    while (-not $NetAIListening -and (Get-Date) -lt $Deadline -and -not $NetAIServer.HasExited) {
+        Start-Sleep -Milliseconds 250
+        $NetAIListening = (Test-Path $NetAIServerLog) -and (Select-String -Path $NetAIServerLog -Pattern "listening on port" -Quiet)
+    }
+    # The clients as in "net" (their saved folders, display, names: Bob by -PlayerName=, Alice in the URL).
+    $NetAIClients = @()
+    if ($NetAIListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_netai_client$Client.seq"
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark netai", "wait 8", "hol.Units.Where 2", "wait 1", "hol.Units.Where 2",
+                "signal $($NetAIDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_netai_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetAIPort} -PlayerName=Bob" } else { "127.0.0.1:${NetAIPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $NetAIClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $NetAIListening
+    foreach ($NetClient in $NetAIClients) {
+        $ClientTimedOut = -not $NetClient.Process.WaitForExit(240000)
+        if ($ClientTimedOut) { Stop-Process -Id $NetClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $N = $NetClient.Client
+        $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+        $Checks["client $N : holds the slot of $(@('Bob', 'Alice')[$N - 1]) ($Held)"] = ($null -ne $Held) -and $Held -eq (2 - $N)
+        # The last "Units where" of slot 2: its 5 Peasants on their gathering's way or at their source (its starting hero
+        # stays idle, the brain only sends Peasants).
+        $Where = $ClientLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $AIUnits = @([regex]::Matches("$Where", "#\d+ slot 2 at \([^)]*\) (\w+)") | ForEach-Object { $_.Groups[1].Value })
+        $AIBusy = @($AIUnits | Where-Object { $_ -in "GatherTrip", "Gathering" }).Count
+        $Checks["client $N : the AI's 5 Peasants seen, at work ($AIBusy of $($AIUnits.Count): $(if ($Where) { $Where } else { 'no report' }))"] = $AIBusy -eq 5
+        $ScriptErrors = @(Get-ScriptErrors $NetClient.Log)
+        $Checks["client $N : scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    }
+    # The server quits once both clients have signalled (killed only as a last resort).
+    $NetAIServerTimedOut = -not $NetAIServer.WaitForExit($(if ($NetAIClients.Count) { 30000 } else { 1000 }))
+    if ($NetAIServerTimedOut) { Stop-Process -Id $NetAIServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $NetAIServerTimedOut
+    $NetAILog = if (Test-Path $NetAIServerLog) { Get-Content $NetAIServerLog } else { @() }
+    function Find-NetAILine([string] $Pattern) { @($NetAILog | Select-String -Pattern $Pattern | ForEach-Object { $_.Line }) | Select-Object -First 1 }
+    $ScriptErrors = @(Get-ScriptErrors $NetAIServerLog)
+    $Checks["server : scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    $Timeout = Find-NetAILine "Test sequence: timeout at step .*"
+    $Checks["server : sequence ran to its end ($(if ($Timeout) { $Timeout.Trim() } else { 'no timeout' }))"] = -not $Timeout
+    $Checks["server : Alice holds slot 0, Bob slot 1"] = [bool](Find-NetAILine "Alice holds slot 0 ") -and [bool](Find-NetAILine "Bob holds slot 1 ")
+    $Checks["server : 5 starting Peasants for slot 2"] = [bool](Find-NetAILine "Starting Peasants of slot 2: 5 in front of its main forum")
+    $Awake = Find-NetAILine "AI brain \S+ awake, net mode \w+, thinking slots \[[^\]]*\]"
+    $Checks["server : brain awake on the dedicated server, slot 2 thinking ($(if ($Awake) { ($Awake -replace '^.*(AI brain )', '$1').Trim() } else { 'no awake line' }))"] =
+        [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[2\]"
+    $Checks["server : AI slot 2 thinks (AI slot 2 step)"] = [bool](Find-NetAILine "AI slot 2 step \d+:")
+    $Checks["server : 5 idle -> gather"] = [bool](Find-NetAILine "AI slot 2 step \d+: 5 idle -> gather \w+ #\d+")
+    $Checks["server : Gather order of slot 2: 5 units to source"] = [bool](Find-NetAILine "Gather order of slot 2: 5 units to source")
+    # The humans' Peasants are theirs: the AI orders none of them.
+    $HumanOrder = Find-NetAILine "Gather order of slot [01]:"
+    $Checks["server : no gather order for the humans' slots ($(if ($HumanOrder) { ($HumanOrder -replace '^.*(Gather order)', '$1').Trim() } else { 'none' }))"] = -not $HumanOrder
+    $AllOk = (Report "netai" $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"

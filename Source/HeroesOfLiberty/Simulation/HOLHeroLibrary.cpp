@@ -11,10 +11,12 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLStartRules.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 
 namespace
 {
@@ -62,6 +64,19 @@ int32 UHOLHeroLibrary::GetHeroLevel(const UObject* WorldContextObject, const int
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Level;
 }
 
+int32 UHOLHeroLibrary::GetHeroHealth(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Health;
+}
+
+int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject)
+{
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(FHOLStartRules::HeroTypeName) : nullptr;
+	return Row ? Row->MaxHealth : 0;
+}
+
 int32 UHOLHeroLibrary::GetHeroDeathStep(const UObject* WorldContextObject, const int32 Slot)
 {
 	const UWorld* World = GetWorldOf(WorldContextObject);
@@ -73,6 +88,24 @@ int32 UHOLHeroLibrary::GetHeroDeathStep(const UObject* WorldContextObject, const
 	const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
 	const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
 	return Local && Local->GetPlayerIndex() == Slot ? Local->GetHeroPrivate().DeathStep : -1;
+}
+
+int32 UHOLHeroLibrary::GetSlotGold(const UObject* WorldContextObject, const int32 Slot)
+{
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	if (!World || Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+	{
+		return -1;
+	}
+	if (World->GetNetMode() == NM_Client)
+	{
+		// A client gets its own stock only (COND_OwnerOnly): the others' reads 0 there, not their gold.
+		const APlayerController* Controller = World->GetFirstPlayerController();
+		const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+		return Local && Local->GetPlayerIndex() == Slot ? Local->GetResources().Gold : -1;
+	}
+	const AHOLPlayerState* PlayerState = UHOLHeroSubsystem::FindPlayerState(*World, Slot);
+	return PlayerState ? PlayerState->GetResources().Gold : -1;
 }
 
 int32 UHOLHeroLibrary::GetSimulationRateHz()

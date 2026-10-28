@@ -31,6 +31,7 @@
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
 #include "HUD/HOLRelationIcons.h"
+#include "HUD/HOLScriptScreen.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerColors.h"
@@ -351,6 +352,21 @@ void UHOLGameScreen::NativeOnInitialized()
 	}
 	Super::NativeOnInitialized();
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
+	// J8a.5: the part in script over the whole frame, last (on top); its panels alone take the clicks. None: nothing.
+	UOverlay* Frame = Cast<UOverlay>(WidgetTree->RootWidget);
+	UClass* ScriptClass = UHOLScriptScreen::FindScriptClass();
+	if (Frame && ScriptClass)
+	{
+		ScriptScreen = CreateWidget<UHOLScriptScreen>(this, ScriptClass, TEXT("ScriptScreen"));
+		if (ScriptScreen)
+		{
+			UOverlaySlot* ScriptSlot = Frame->AddChildToOverlay(ScriptScreen);
+			ScriptSlot->SetHorizontalAlignment(HAlign_Fill);
+			ScriptSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+	}
+	UE_LOG(LogHOLUI, Log, TEXT("Game screen: script part %s"), ScriptScreen ? *ScriptScreen->GetClass()->GetName() : TEXT("none"));
 
 	for (int32 Cell = 0; Cell < AHOLPlayerController::NumGridCells; ++Cell)
 	{
@@ -2133,8 +2149,30 @@ void UHOLGameScreen::RefreshStatsButton()
 	UE::HeroesOfLiberty::UI::GameScreen::SetShown(StatsButton ? StatsButton->GetParent() : nullptr, bShown, ESlateVisibility::SelfHitTestInvisible);
 }
 
+FString UHOLGameScreen::DescribeScript() const
+{
+	if (!ScriptScreen)
+	{
+		return TEXT("script: none");
+	}
+	ScriptScreen->RefreshNow();
+	return ScriptScreen->Describe();
+}
+
+FMargin UHOLGameScreen::GetBottomLeftPlace()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+	// The control groups' bar: its slots (QueueItemHeight * 0.8) and its panel's padding (4 above and below).
+	constexpr float GroupsHeight = QueueItemHeight * 0.8f + 2.f * 4.f;
+	return FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + BarHeight + BarGap + GroupsHeight + BarGap);
+}
+
 bool UHOLGameScreen::ClickWidget(const FName Name)
 {
+	if (ScriptScreen && ScriptScreen->ClickWidget(Name))
+	{
+		return true;
+	}
 	if (AlertPanel && Name == UE::HeroesOfLiberty::UI::GameScreen::AlertPanelName)
 	{
 		if (!Alert.bShown)

@@ -1679,3 +1679,93 @@ R8, R9.
   **publication r9** (`publish.ps1 -Root Glorfindel -Version 2026-10-28-r9`, ~8 min, tient le verrou d'AutomationTool :
   demander le moment à l'utilisateur ; après, recuire le serveur de test par `-StageOnly`), puis **R9.3** (décisions au
   GDD, relues par l'utilisateur), puis R8d / E6 / E7 avec un ami.
+- 2026-10-28 ~11:00 : publication r9 **reportée** par l'utilisateur (« plus tard »). **R9.3 commencée** : sous-agent
+  (15 min) qui écrit un brouillon dans le dossier temporaire de la session (`scratchpad\R9_3_draft.md`), sans toucher
+  au GDD : lignes D499+ pour le § 21 (décisions encore valables, R-Q2 Tailscale et R-Q8 zip remplacées par le lanceur
+  D475-D482), retouches des § 14.4, 15, 16.4, 16.6, précisions de D243 et D268, points à confirmer. Ensuite : relecture
+  par la session principale, présentation à l'utilisateur, report au GDD après accord.
+- 2026-10-28 ~11:15 : **brouillon R9.3 rendu** (sous-agent, 5 min) : D499-D514 (16 lignes), retouches § 14.4, 15, 16.4,
+  16.6, D243, D268, § 22 ; correspondance complète journal → lignes ; R-Q2 et R-Q8 (zip) remplacées par D482 et
+  D475-D481. Relu par la session principale : origine de D502 corrigée (« gardé par l'utilisateur » non sourcé), D515
+  (« Forum » en japonais) retirée (hors M6), § 16.6 « prêt pour l'essai à plusieurs » (pas « jouable »). Tranché par la
+  session : « serveur planté » = signalé (comme le code) ; dates = question d'origine ; écart S5 ×8 pas au GDD avant
+  l'essai à plusieurs PC. **Bug trouvé** : le serveur s'arrête `hol.Net.QuitAfterFinished` = 120 s après la fin même
+  avec des joueurs dedans (`HOLManagerLink.cpp:17`), contraire à M6-Q7 revu (rester dans la partie finie aussi
+  longtemps qu'on veut). Questions à l'utilisateur, une à la fois : (1) ce bug, (2) le hotseat du § 14.4.
+- 2026-10-28 ~11:25 : réponses de l'utilisateur : (1) **le serveur reste tant qu'il y a quelqu'un** (A, conforme à la
+  recommandation) : arrêt à 120 s après la fin retiré ; une partie finie encore ouverte garde sa place parmi les deux de
+  `MaxServers` ; (2) **hotseat retiré** du § 14.4 (A). Brouillon R9.3 mis à jour (D501, § 14.4, points tranchés).
+  **Boucle P4 lancée** (sous-agent, 15 min, Glorfindel) : test unitaire `ShouldQuit` et contrôle de bout à bout dans
+  `lobby_match` (délai court, serveur encore là) rouges d'abord sur le serveur cuit actuel, correction, build, `tests`
+  vert ; recuisson + `-Parts lobby` vert si le temps le permet. En parallèle : l'utilisateur relit le brouillon.
+- 2026-10-28 ~11:45 : **P4 faite** (sous-agent, 13 min), Glorfindel, non commitée. `HOLManagerLink` : `hol.Net.QuitAfterFinished`
+  et `FinishedTime` retirés, `ShouldQuit(bManaged, bStarted, PlayersLeft)` → `Empty` seulement quand vide après le départ
+  (remplace la règle de R3.8 notée plus haut : « sinon quitte 120 s après `finished` ») ; `Net.ServerQuit` réécrit (5 cas).
+  **Rouges** : unitaire « Expected 'managed, finished long ago with players: stays' to be 0, but it was 2 » (268/269) ;
+  bout à bout `lobby_match : FAIL (the server quit after the end of the match with Alice still in (… Server quits: 5 s
+  after the end of the match))` : `lobby_match.ps1` donne au gestionnaire un `staged_server.cmd` (`--ServerExe`) qui ajoute
+  `-ExecCmds="hol.Net.QuitAfterFinished 5"`, et compte les serveurs vivants quand Alice signale (`alice_stayed.signal`)
+  après ~70 s dans la partie finie. Build PASS, `tests` **269/269**. En cours (session principale) : `-StageOnly` puis
+  `-Parts lobby` vert ×2.
+- 2026-10-28 ~12:10 : `-StageOnly` fait ; `-Parts lobby` passe 1 **PASS** (216 s), passe 2 **FAIL** « the lobby has 1
+  player(s), not Alice and Bob » : **course ancienne du script**, pas la correction : Bob quitte le salon 3 s après le
+  signal d'Alice, le script lit le salon 2 s après avoir vu les deux retours (lecture tombée après le départ de Bob,
+  10.02.12 → 10.02.14). Bob reste maintenant 10 s (`lobby_match.ps1`). Deux passes relancées. Session IA (d3) en attente
+  d'un paquet complet : la prévenir à la fin.
+- 2026-10-28 ~12:20 : `-Parts lobby` **PASS ×2** (201 s, 184 s) avec Bob 10 s au salon ; 0 processus laissé. **Le serveur
+  reste tant qu'il y a quelqu'un : fait, non commité** (`HOLManagerLink.h/.cpp`, `HOLNetTests.cpp`, `lobby_match.ps1`).
+  Machine rendue à la session IA (d3) pour son paquet complet : rien de lourd ici avant son signal. Suite : accord de
+  l'utilisateur → commit, avance de `main` ; relecture du brouillon R9.3 par l'utilisateur → report au GDD.
+- 2026-10-28 ~12:30 : accord (« oui ») → **commit 75667a7** (serveur gardé tant qu'il y a quelqu'un) ; fusion de `main`
+  0adb67a (V4 messages côté serveur, retouches de `quick_check`) → 3ae44ec, sans conflit. En cours : build, `tests,net`,
+  `-StageOnly`, `lobby` ; puis avance de `main`. Brouillon R9.3 **pas encore relu** par l'utilisateur.
+- 2026-10-28 ~13:00 : vérifs après fusion (3ae44ec) : build PASS mais **573 s** (machine chargée : tests de c1 dans
+  Haldir, paquet de l'IA qui démarre), `tests` **270/270**, `net` **FAIL entier** : **pas la correction** : client 1 (Bob)
+  parti ~95 s après le serveur (journal de séquence à 11.54.14), Alice expire sur `waitplayers 2` à 11.53.53 et part,
+  serveur vide → « Server quits: empty after the match » (règle normale) ; même aléa que « client 2 lent au démarrage »
+  d'EtapeDefini. Vérification arrêtée avant `-StageOnly` (le paquet de l'IA tient le verrou d'AutomationTool). **À la
+  reprise** (après le signal de fin de paquet de d3) : `tests,net`, `-StageOnly`, `lobby`, puis avance de `main` à
+  3ae44ec ou plus.
+- 2026-10-28 ~13:20 : **relecture R9.3 par l'utilisateur** (lu par lignes résumées) : **D502 à remesurer** (R5.5 faisait
+  tourner les clients sur le PC des serveurs ; en vrai, au pire sa session + le serveur avec X parties) : mesure de X
+  serveurs en bataille avec clients légers (-nullrhi), machine calme, avec la publication r9 ; `MaxServers` 2 en attendant,
+  D502 provisoire. **D513 revue : pause autorisée** (demande de l'utilisateur, revient sur D361) : bouton dans le menu
+  d'Échap, **nombre limité par partie, commun à tous les joueurs (~3)** ; la partie se fige, HUD de pause pour tous et
+  minuteur ; avant la fin du minuteur seul celui qui a mis en pause relance, après n'importe qui. La commande console
+  `pause` reste refusée (c06f1a8), la pause du jeu passera par le serveur. Questions de détail en cours (durée du
+  minuteur, solo, ce qu'on peut faire pendant la pause, qui peut mettre en pause).
+- 2026-10-28 ~13:30 : **pause tranchée** (3 questions) : minuteur **60 s** (recommandé) ; pendant la pause **rien** (ni
+  caméra, ni sélection, ni ordre ; contre la recommandation « regarder seulement ») ; **joueurs encore en partie
+  seulement**, **solo libre** sans limite ni minuteur (recommandé). Brouillon R9.3 : D502 provisoire (à remesurer), D513
+  réécrite, D361 précisée. **Nouvelles étapes** : **P5 pause limitée** (règle pure + RPC serveur, compteur commun 3,
+  minuteur 60 s, écran de pause fr / en / ja, entrées bloquées, test rouge à 2 clients) ; **mesure `MaxServers`** (X
+  serveurs en bataille, clients -nullrhi, machine calme, avec la publication r9). Reste : « ok » de l'utilisateur sur le
+  reste du brouillon → report au GDD.
+- 2026-10-28 ~13:45 : « ok » de l'utilisateur → **R9.3 reportée au GDD** : **D499-D514** au § 21 (après D498), § 14.4
+  (hotseat retiré, multijoueur au prototype ; déconnexion au prototype, D510), § 15 (paragraphe « Multijoueur et salon »),
+  § 16.4 (puce « Serveurs sur le PC de l'utilisateur »), § 16.6 (ligne M6), D243, D268 et D361 précisées, § 22 (combat
+  et équipes corrigé, D514). Prochaine décision libre : **D515**. Suite : vérifs de 3ae44ec après le paquet de l'IA
+  (`tests,net`, `-StageOnly`, `lobby`) et avance de `main` ; **P5 pause limitée** (D513) ; remesure de `MaxServers`
+  (D502) avec la publication r9 ; R8d / E6 / E7 avec un ami.
+- 2026-10-28 ~13:55 : **fin de séance** (demande de l'utilisateur). **Reprise exacte** (« continue NetPlaytestInProgress ») :
+  (1) Glorfindel, `net-playtest` = **3ae44ec** (75667a7 « serveur gardé tant qu'il y a quelqu'un » + fusion de `main`
+  0adb67a), **pas encore dans `main`** ; build fait. Vérifier que la machine est calme (le paquet de l'IA, Arwen, était en
+  cours vers 13:00), fusionner `main` si elle a avancé, puis `build.ps1`, `quick_check -Parts tests,net` (270 tests
+  attendus ou plus), `net_match.ps1 -StageOnly`, `build_manager.ps1` si `Manager\` a changé, `quick_check -Parts lobby` ;
+  au vert : avance rapide de `main`, prévenir les sessions actives, retirer la ligne « Partie de salon finie … 2 min »
+  d'EtapeDefini, commit de doc. (2) **P5 pause limitée** (D513 au GDD : bouton « Pause » du menu d'Échap, 3 pauses par
+  partie communes à tous, réglable ; partie figée, écran de pause pour tous avec qui l'a mise et minuteur de 60 s ;
+  avant la fin seul celui qui l'a mise relance, après n'importe quel joueur ; pendant la pause ni caméra, ni sélection,
+  ni ordre ; joueurs encore en partie seulement ; solo libre ; la console `pause` reste refusée). En boucles de 15 min :
+  règle pure + tests unitaires (rouges d'abord) ; RPC serveur + état répliqué ; écran de pause et entrées bloquées
+  (fr / en / ja) ; contrôle à 2 clients dans la partie `net` (rouge d'abord) ; essai de l'utilisateur avec un scénario
+  prêt (`Tools\Scenarios`). (3) **Remesure de `MaxServers`** (D502 provisoire : X serveurs en bataille S3, clients
+  -nullrhi, machine calme) et **publication r9** (`publish.ps1 -Root Glorfindel -Version 2026-10-28-r9`, puis
+  `-StageOnly`), au moment choisi par l'utilisateur. (4) R8d / E5, E6, E7 avec un ami. Prochaine décision libre du
+  GDD : D515.
+- 2026-10-28 ~14:05 : info de la session Héros (8a) : **`main` avancée à aa0f11f** (J8a.5, bloc du héros) + doc 7bd73ab.
+  Pour le réseau : `HeroesOfLibertyUI` passe de ClientOnly à **Runtime** dans le `.uproject` (le serveur dédié compile
+  des scripts d'interface) ; partie `net` : contrôle « server: scripts compiled » et rapport « net hero block ». **Le
+  serveur cuit (cible Server, cache précompilé WindowsServer) et `-Parts lobby` ne sont pas vérifiés par elle** (verrou
+  d'AutomationTool). À la reprise, l'étape (1) fusionne donc aussi aa0f11f : `-StageOnly` et `lobby` couvrent ce
+  changement ; regarder la taille de `Servers\<v>\` à la publication r9.

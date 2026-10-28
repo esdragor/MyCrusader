@@ -27,6 +27,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroLevel(const UObject* WorldContextObject, int32 Slot);
 
+	/** The slot's hero exact HP (0 dead or without a hero), as GetHeroState reads it (J8a.5: the hero's block). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroHealth(const UObject* WorldContextObject, int32 Slot);
+
+	/** A hero's HP when whole: the Hero type's MaxHealth (450, J8a-Q1); 0 without the unit types (J8a.5: the hero's block). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroMaxHealth(const UObject* WorldContextObject);
+
 	/**
 	 * The step the slot's hero fell at (-1 alive or without a hero): the true sheet on the server; on a client, the local
 	 * player's own private copy, -1 for any other slot (private, D270).
@@ -41,6 +49,13 @@ public:
 	/** The slot is out of the match (AHOLGameState::IsSlotDefeated); false without a game state. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static bool IsSlotDefeated(const UObject* WorldContextObject, int32 Slot);
+
+	/**
+	 * The slot's gold (J8a.5 loop 1b, the return's quote): its stock on the server; on a client, the local player's own,
+	 * -1 for any other slot (its stock replicates to its owner only); -1 without stock (an AI slot, no player state).
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetSlotGold(const UObject* WorldContextObject, int32 Slot);
 
 	/** Simulation steps per second (UHOLSimulationSettings::SimulationRateHz, D217). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")

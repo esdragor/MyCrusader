@@ -19,6 +19,7 @@ class UCommonTextBlock;
 class UHOLGridCell;
 class UHOLQueueItem;
 class UHorizontalBox;
+class UHOLScriptScreen;
 class UImage;
 class UTexture2D;
 class UProgressBar;
@@ -83,6 +84,12 @@ public:
 	 */
 	bool ClickWidget(FName Name);
 
+	/** J8a.5: the lines of the part in script (UHOLScriptScreen::Describe), "hero: ..." each; "script: none" without it. */
+	FString DescribeScript() const;
+
+	/** J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar. */
+	static FMargin GetBottomLeftPlace();
+
 	/** The tooltips of the grid's cells: "A: Maison | W 50 | +10 population; Z: ..." (hol.HUD.Report). */
 	FString DescribeTooltips() const;
 	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
@@ -109,6 +116,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> TopBar;
+
+	/** J8a.5: the part of the screen written in script (UHOLScriptScreen::FindScriptClass), over the frame; null: none. */
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLScriptScreen> ScriptScreen;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> FoodAmount;

@@ -29,7 +29,7 @@ namespace HOLHeroReturn
 	// Steps to wait after death before the return can be bought, at Percent of the rules' times.
 	int DelayStepsAt(int Level, int Percent)
 	{
-		return (BaseDelaySeconds + DelayPerLevelSeconds * Level) * StepsPerSecond * Percent / 100;
+		return Math::IntegerDivisionTrunc((BaseDelaySeconds + DelayPerLevelSeconds * Level) * StepsPerSecond * Percent, 100);
 	}
 
 	// Steps to wait after death before the return can be bought.
@@ -53,7 +53,7 @@ namespace HOLHeroReturn
 	// Steps the price takes to go from StartPrice to 0 at Percent of the rules' times (one at least).
 	int PriceDropStepsAt(int Percent)
 	{
-		return Math::Max(1, PriceDropSeconds * StepsPerSecond * Percent / 100);
+		return Math::Max(1, Math::IntegerDivisionTrunc(PriceDropSeconds * StepsPerSecond * Percent, 100));
 	}
 
 	bool IsReady(int Step, int DeathStep, int Level)
@@ -71,7 +71,7 @@ namespace HOLHeroReturn
 		if (SinceReady >= DropSteps)
 			return 0;
 		// Straight line from StartPrice to 0, rounded up to a whole gold (1 just before the end).
-		return (StartPrice * (DropSteps - SinceReady) + DropSteps - 1) / DropSteps;
+		return Math::IntegerDivisionTrunc(StartPrice * (DropSteps - SinceReady) + DropSteps - 1, DropSteps);
 	}
 
 	// A paid return is allowed only once ready (the price is then whatever PriceAt says).

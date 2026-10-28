@@ -555,6 +555,104 @@ Repli si B1 échoue : délégué `BlueprintAssignable` sur un sous-système C++ 
 - **IA0.4-Q4 Fréquence** : A) 5 pas (4 par seconde), étalée par emplacement ; B) 10 pas (2 par seconde) ; C) réglage par niveau
   dès maintenant. **Recommandation : A**, variable `hol.AI.ThinkSteps`, réglage par niveau à IA4 (D422, « réaction »).
 
+## IA0.5 Serveur dédié : relevé du code (2026-10-28, Arwen `ai-ia1` = `main` 40108a6, lecture seule)
+
+**Constat** : rien ne bloque le cerveau sur un serveur dédié ; jamais vu tourner (tests en monde serveur sans client
+seulement ; `NM_DedicatedServer` est global au processus : il faut l'éditeur en `-server` ou l'exe serveur).
+- Création : `HOLAIBrain.cpp:36-49` (`ShouldCreateSubsystem`, `DoesSupportWorldType` Game/PIE), `:56` et `:125` ne refusent
+  que `NM_Client`. Classe de script dérivée de `UWorldSubsystem` activée par `ActivateExternalSubsystem`
+  (`AngelscriptClassGenerator.cpp:2437-2453, 2592-2596`, hors `WITH_EDITOR`, après `OnPostEngineInit`). Plugin Angelscript
+  `EnabledByDefault`, modules `Runtime` ; UHT de la cible Server présent.
+- Cache précompilé : lu par défaut (`AngelscriptManager.cpp:360-362, 434-460`, identifiant de build seul vérifié,
+  `PrecompiledData.cpp:2609`), journal « Using fully precompiled scripts » ; sinon `.as` compilés au démarrage.
+  `precompile_scripts.ps1` produit déjà le cache de `WindowsServer`. `Script/` copié dans tout build cuisiné
+  (`BaseGame.ini:142`). **Jamais vu** : une classe de script activée en mode précompilé (AS2 n'a vu que le démarrage).
+- Le serveur cuisiné d'Arwen (`Saved/StagedBuilds/WindowsServer`, 2026-10-25) date d'avant AS1 : pas de `Script/` ;
+  le refaire = `net_match.ps1 -Stage` (verrou d'UAT). Dernier paquet (2026-10-27-e36efe9) d'avant IA0.4 : rouge naturel.
+- Le cerveau n'écrit aucune ligne à sa création : rien à lire dans un journal de serveur.
+- Partie réseau : `-MatchConfig=<json>` ; `"state": "AI"` accepté, `SpawnAIPlayerStates` (`GameModeBase.cpp:584-628`) et
+  Paysans de départ (`:565-569`, nombre global `FHOLStartRules::GetNumStartingPeasants`, pas par emplacement) côté serveur ;
+  un client ne prend qu'un `Human` libre (`HOLMatchConfig.cpp:86`) ; partie figée jusqu'à l'arrivée des joueurs nommés
+  (`:495-501`). Stock de l'IA `COND_OwnerOnly`. Salon/gestionnaire C# : pas d'état IA (`Lobby.cs:93`, `MatchConfig.cs:84-87`,
+  `LobbyStore.cs:232`) → IA0.6.
+- Tests : partie `net` de `quick_check` (éditeur `-server`, Alice et Bob, `-as-exit-on-error`, `$NoStartingPeasants`
+  `:217` met 0 partout) ; `net_match.ps1:82-85` n'écrit que Human/Closed ; côté client `hol.Units.Where <slot>`
+  (`HOLUnitView.cpp:79-110`) montre activité et « gathers X ». `packaged_smoke.ps1:27` écarte `WindowsServer`.
+
+### Découpage d'IA0.5 (proposé)
+
+| Boucle | Changement | Test rouge d'abord |
+|---|---|---|
+| B1 | ligne de création « AI brain <classe> awake, net mode …, thinking slots [..] » dans `OnWorldBeginPlay` ; partie `aiserver` de `quick_check` : éditeur `-server` sans client, slot 0 Human sans nom, slot 1 AI, `"startingPeasants": 5`, attentes de `starting_peasants` | « awake, net mode DedicatedServer » (absente), puis « AI slot 1 step », « 5 idle -> gather », « Gather order of slot 1: 5 units », `hol.Gather.Report 1` |
+| B2 | partie `netai` : serveur de B1 + Alice et Bob, IA dans un 3e emplacement (place de départ à vérifier sur Plain) | sur chaque client, `hol.Units.Where <IA>` : 5 Paysans en route ou en récolte ; serveur : lignes de B1, aucun Human commandé |
+| B3 | passage serveur dans `packaged_smoke.ps1` (exe serveur seul, ~20 s) | rouge sur 2026-10-27-e36efe9 ; vert après **un** paquet complet (machine calme, sessions prévenues) : « Using fully precompiled scripts », « awake… DedicatedServer », « -> gather » |
+| B3b (facultative) | `net_match.ps1 -AISlot <n>` + nouvelle cuisson du serveur | « AI slot n step » au journal de `net_server` |
+
+Replis : classe de script non activée en précompilé (B3 rouge, B1 vert) → sous-système C++ concret ou délégué
+`BlueprintAssignable` (repli d'IA0.4 B1) ; script absent côté Server → `ChooseGather` en C++ (~40 lignes, IA-Q2).
+
+### Questions
+
+- IA0.5-Q1 test à deux clients : A) dans `net` ; B) partie `netai` séparée ; C) `net_match.ps1` à la main. Reco B.
+- IA0.5-Q2 Paysans de l'IA : A) `startingPeasants` par emplacement ; B) `"startingPeasants": 5` global dans `aiserver`/`netai` ;
+  C) triche. Reco B.
+- IA0.5-Q3 paquet : A) passage serveur dans `packaged_smoke` ; B) nouveau script ; C) une fois à la main. Reco A.
+- IA0.5-Q4 nouvelle cuisson du serveur de `net_match` : A) maintenant ; B) pas pour IA0.5 (une seule prise du verrou
+  d'UAT : le paquet) ; C) jamais. Reco B.
+- IA0.5-Q5 emplacement IA dans le salon : A) à IA0.6 ; B) dès IA0.5 ; C) après le prototype. Reco A.
+- IA0.5-Q6 essai de l'utilisateur : A) aucun, tout automatique ; B) scénario `net_ai` (client contre l'IA sur serveur
+  dédié, demande B3b) ; C) paquet avec un ami. Reco A.
+
+## IA0.6 Menu : relevé du code (2026-10-28, Arwen `ai-ia1` = 0758f87, lecture seule)
+
+NG = `Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp`, QC = `Tools/Tests/quick_check.ps1`.
+- **Solo** : listes `SlotState1..7` (Fermé / Humain / IA, ordre d'`EHOLSlotState`, NG:45-48), emplacement 0 = « Vous » ;
+  `IA` grisée par `SetOptionEnabled(AI, false)` (NG:310-311, D240) ; `HandleStateChosen` (NG:938-945) et `Refresh`
+  (NG:674, 709-717) traitent déjà une ligne IA comme occupée ; tailles de carte comptent `!= Closed`
+  (`HOLMapSizeRules.cpp:223-244`). `Difficulty` par emplacement existe (Normal), nom par `HOLForumMessages::GetAIName`.
+  `Launch` (NG:995-1037) passe l'IA telle quelle → `SpawnAIPlayerStates`, cerveau, 5 Paysans. Note « Grisé : pas encore dans
+  le jeu (IA, …) » NG:279-280 et `fill_po.py:72`. Tests : partie `menu` (QC:388-426, `hol.UI.Choose`, `hol.UI.Shown`,
+  marques QC:2809-2848) ; rouge naturel : `UHOLDropdown::Choose` ignore une option grisée (`HOLDropdown.cpp:166-175`) ;
+  `smoke` lance par `hol.UI.NewGame.Launch` ; aucun test C++ de l'écran.
+- **Salon** : même écran (`bLobby`). Jeu : `EHOLLobbySlotState { Open, Closed, Player }` (`HOLManagerClientRules.h:60`),
+  `ReadSlotState` refuse le reste (`.cpp:218-224`), `MakeSlotBody` open/closed (`.cpp:209-214`), `CanToggleSlot`
+  (`:137-141`), `CanStart` ≥ 2 joueurs et tous prêts (`:143-147`) ; écran : `LobbyStateNames` (NG:100-103), `ShowLobby`
+  (NG:500-551), ligne de journal « slots o x c3r » (NG:585-600), `HandleStateChosen` salon `Value <= 1` (NG:915-928).
+  Gestionnaire C# : `SlotState`/`LobbySlot` (`Lobby.cs:58-94`), `SetSlot` + `PUT /lobbies/{id}/slots/{index}`
+  (`LobbyStore.cs:224-251`, `LobbyRoutes.cs:106-113`), `color_taken` (`:156`), changement de taille (`:180-214`, une IA
+  au-delà des places serait fermée), vue (`LobbyViews.cs:75-77`), `Start` compte les humains (`LobbyStore.cs:257-279`,
+  `LobbyRules.cs:51` = 2), `MatchConfig.FromLobby` Human/Closed seulement (`MatchConfig.cs:46-94`) ; `match.json` annonce
+  déjà `"AI"` (`PROTOCOL.md:441, 445`), le serveur le lit (B2). Tests : xUnit `Manager/HOLManager.Tests/`
+  (`MatchStartTests.ReferenceLobbyGivesTheReferenceFile`, référence `Data/match_v3_reference.json` relue par le C++
+  `HOLMapSizeLobbyTests.cpp`), `build_manager.ps1 -Test` ; `manager_client.ps1 -Case Leader` ; `lobby_match.ps1`
+  (exige le serveur cuisiné, verrou d'UAT).
+
+### Découpage d'IA0.6 (proposé)
+
+| Boucle | Changement | Test rouge d'abord |
+|---|---|---|
+| S1 | IA ouverte en solo (NG:310-311, commentaire NG:938, note NG:279, `fill_po.py:72`) | `menu ai` : `hol.UI.Choose SlotState1 2` → « value 2 chosen », couleur et équipe montrées (rouge : option grisée ignorée) |
+| S2 | niveau (selon Q1) | `hol.UI.Shown SlotLevel1` sur une ligne IA, absent sur une ligne fermée |
+| S3 | du menu à la partie | IA choisie à la liste, `hol.UI.NewGame.Launch -` → « thinking slots [1] », « idle -> gather » |
+| L1 | gestionnaire : état IA (`PUT slots {"state":"ai"}`, couleur libre, places, Prêt remis à zéro, vue, taille, PROTOCOL.md) | xUnit : IA dans la vue, couleur prise, descend à Petite |
+| L2 | gestionnaire : lancement (`FromLobby` `"AI"`, `difficulty`, couleurs aléatoires, règle de départ Q3) | référence `match_v3_ai_reference.json` (xUnit + `HOLMapSizeLobbyTests.cpp`) |
+| L3 | client C++ : `EHOLLobbySlotState::AI`, lecture, `MakeSlotBody("ai")`, `CanStart` | `HOLManagerClientTests` : salon avec `"ai"` lu, départ chef + IA |
+| L4 | écran du salon : choix « IA » du chef, nom « IA Normal N », couleur/équipe (Q4), « a » dans la ligne `slots` | `manager_client.ps1 -Case AI` |
+| L5 | bout en bout après recuisson du serveur | `lobby_match.ps1 -AI` : « thinking slots [n] », clients voient l'IA (machine calme) |
+| C | clôture : GDD, scénario `Tools/Scenarios/ai_menu.txt`, essai | `-Parts menu,smoke,aiserver` |
+
+### Questions
+
+- IA0.6-Q1 niveau au menu : A) liste « Niveau » grisée sur Normal sur les lignes IA ; B) dans la liste d'état (« IA
+  Facile / Normale / Difficile / Évolutive », AoE4) ; C) caché jusqu'à IA4. Reco A (C si trop large).
+- IA0.6-Q2 partie solo sans humain : A) non ; B) emplacement 0 en IA (spectateur) ; C) plus tard. Reco A.
+- IA0.6-Q3 « au moins 2 joueurs » au salon : A) une IA compte ; B) 2 humains ; C) seulement en salon d'essai. Reco A.
+- IA0.6-Q4 qui règle l'IA au salon : A) le chef (couleur, équipe ; niveau grisé) ; B) tout automatique ; C) couleur seule.
+  Reco A.
+- IA0.6-Q5 nom de l'IA au salon : A) « IA Normal N » ; B) « IA » ; C) « Ordinateur N ». Reco A.
+- IA0.6-Q6 ajouter/retirer une IA remet les Prêt à zéro : A) oui ; B) non. Reco A.
+- IA0.6-Q7 « Humain » sur les emplacements 1-7 en solo : A) gardé ; B) retiré ; C) grisé. Reco A.
+
 ## Suivi
 
 - 2026-10-26 : chantier ouvert (choix de l'utilisateur parmi les tâches faisables sans Unreal). Lecture du GDD faite ;
@@ -1279,3 +1377,128 @@ Repli si B1 échoue : délégué `BlueprintAssignable` sur un sous-système C++ 
   `main` (6fe859f : R8c, scripts de test réseau et doc seulement) refusionnée dans `ai-ia1` (40108a6, sans conflit, pas de
   recompilation). Sessions actives (mycrusader-8a, -8b, -c1) prévenues avant l'avance rapide de `main` vers `ai-ia1`.
   Ensuite : IA0.5 (serveur dédié : le cerveau pense-t-il sur le serveur ?), IA0.7 (journal de décision), puis IA1.3-IA1.9.
+- 2026-10-28 : **relevé d'IA0.5** (sous-agent, lecture seule, ~13 min) écrit plus haut (« IA0.5 Serveur dédié ») : rien
+  ne bloque le cerveau sur serveur dédié, jamais vu tourner ; découpage B1-B3 (+B3b) ; questions IA0.5-Q1 à Q6 posées.
+- 2026-10-28 : **IA0.5 tranchée** : Q6 = A (aucun essai de l'utilisateur, tout automatique), Q3 = A (passage serveur dans
+  `packaged_smoke`, vert après un paquet complet dans IA0.5) par l'utilisateur ; Q1 = B (`netai`), Q2 = B
+  (`"startingPeasants": 5` global), Q4 = B (pas de nouvelle cuisson de `net_match`), Q5 = A (salon à IA0.6) pris sur
+  recommandation (questions techniques). `main` e4884fc (pause refusée en réseau, D361) amenée dans `ai-ia1` (avance
+  rapide). B1 suivante.
+- 2026-10-28 : IA0.5 **B1 rouge puis vert, commitée** dans Arwen (97b12da). Sous-agent (~12 min, écrit sans compiler) :
+  partie **`aiserver`** de `quick_check` (`-Parts aiserver`, et `-Full`) : éditeur en `-server` sans client, Plain,
+  `quick_aiserver.json` (slot 0 Human sans nom, slot 1 AI, `"startingPeasants": 5`), séquence `hol.Gather.Report 1`,
+  `hol.Units.Where 1`, `quit` ; lignes de naissance, du cerveau et du premier ordre lues dans `quick_aiserver.log` après
+  l'arrêt (le `waitlog` ne voit que les lignes écrites après son départ). Patch : ligne « AI brain <classe> awake, net mode
+  …, thinking slots [..] » au **premier `OnStepEnded`** (à `OnWorldBeginPlay`, les PlayerStates IA de `StartPlay`
+  n'existent pas encore), une par monde (`bAwakeLogged`). Session principale : compilation (fusion de `main`) **PASS**
+  (499 s, file d'attente comprise). **Rouge** : `aiserver : FAIL`, seul « no awake line » ; **tout le reste déjà vert** :
+  « AI slot 1 step 4: 5 idle -> gather Food #326 », « Gather order of slot 1: 5 units to source 326 (Food) », rapport
+  « gathering 5 » : **le cerveau en script pense déjà sur un serveur dédié** (éditeur `-server`). Patch appliqué,
+  recompilé (122 s) ; **vert** : `-Parts aiserver,tests` **PASS** (69 s, 269/269), « AI brain HOLAIBrain awake, net mode
+  DedicatedServer, thinking slots [1] ». Suivant : B2 (`netai` : serveur + Alice et Bob, IA dans un 3e emplacement).
+- 2026-10-28 : IA0.5 **B2 rouge puis vert, commitée** dans Arwen (0758f87). Sous-agent (~5 min) : partie **`netai`** de
+  `quick_check` (`-Parts netai`, et `-Full`) : serveur `-server` sur Plain + Alice (slot 0) et Bob (slot 1), IA au slot 2
+  (place à 270°), `"startingPeasants": 5` ; fonctions communes avec `aiserver` (`Get-AITestPort`, `Write-AIMatchConfig`) ;
+  clients : `hol.Units.Where 2` après 8 s ; serveur : lignes de B1 pour le slot 2 et aucun « Gather order of slot 0/1 ».
+  **Rouge** (slot 2 `Closed`, 45 s) : seules les lignes de l'IA KO (serveur et deux clients). **Vert** (slot 2 `AI`) :
+  premier passage FAIL par le test lui-même : 6 unités du slot 2 vues par chaque client, 5 Paysans « Gathering » + **le
+  héros de départ** inactif (`ShouldSpawnHero`, le cerveau ne commande que les Paysans) ; attente corrigée (les 5 Paysans
+  au travail, `$AIBusy -eq 5`, au lieu d'exactement 5 unités). `-Parts netai,tests` **PASS** (79 s, 269/269),
+  `aiserver` PASS. Suivant : B3 (passage serveur dans `packaged_smoke.ps1`, rouge sur le paquet 2026-10-27-e36efe9, vert
+  après un paquet complet, machine calme, sessions prévenues).
+- 2026-10-28 : IA0.5 **B3 rouge** (sous-agent, ~12 min, non commité) : passage serveur dans `Tools/Tests/packaged_smoke.ps1`
+  (+92/−10) : `HeroesOfLibertyServer.exe` du paquet, `-MatchConfig` comme `aiserver`, lecture du journal jusqu'à « Gather
+  order of slot 1 » (30 s au plus, `-ServerTimeoutSeconds`), arrêt par PID ; vérifications : écoute, « Using fully
+  precompiled scripts », « awake … DedicatedServer, thinking slots [1] », « AI slot 1 step », « 5 idle -> gather »,
+  « Gather order of slot 1: 5 units », aucune erreur de fichier de script (les 60 `Angelscript: Error` de liaisons du moteur
+  au démarrage sont connues, `script_errors.ps1`), aucune ligne fatale ; `-SkipServer`, `-ServerOnly`. Aucun paquet dans
+  `Saved\Packages` : le serveur publié R8 (`MyCrusader\Saved\Manager\Servers\2026-10-27-r8`, d'avant IA0.4) copié dans
+  `Arwen\Saved\Packages\2026-10-27-r8\WindowsServer\` (588 Mo, à supprimer après le vrai paquet). **Rouge**
+  (`-ServerOnly`, 36 s) : seules les quatre lignes du cerveau manquent ; « Version: 2026-10-27-r8 », « Using fully
+  precompiled scripts », « listening on port 7820 », 5 Paysans de départ pour les slots 0 et 1 : verts. Suivant : paquet
+  complet depuis Arwen (machine calme, sessions prévenues), puis `packaged_smoke.ps1` sans paramètre.
+- 2026-10-28 : paquet complet de B3 en attente : 8b (Glorfindel, recuisson + passes lobby, ~15 min) préviendra ; 8a (Héros)
+  et c1 d'accord. Info de 8a : dans Celeborn (pas encore dans `main`), `HeroesOfLibertyUI` passe de `ClientOnly` à
+  `Runtime` dans le `.uproject` (scripts d'interface sur le serveur dédié) : à sa fusion, la cible Server liera l'interface
+  et il faudra recuire le serveur ; refaire alors `packaged_smoke.ps1` (passage serveur de B3).
+- 2026-10-28 : c1 (étape O, Haldir) demande aussi d'attendre (O.5b : tests et building_crowd, 30-60 min, puis essai de
+  l'utilisateur) et préviendra ; paquet de B3 lancé quand 8b et c1 auront fini. En attendant : relevé d'IA0.6 (menu)
+  lancé en sous-agent, lecture seule.
+- 2026-10-28 : **relevé d'IA0.6** (sous-agent, lecture seule) écrit plus haut (« IA0.6 Menu ») : solo presque prêt (IA grisée
+  au menu seulement), salon à construire (gestionnaire C#, client, écran) ; découpage S1-S3, L1-L5, C ; questions Q1-Q7.
+- 2026-10-28 : **IA0.6 tranchée** par l'utilisateur : **Q1** = A revue : colonnes « Joueur » et « État » **fusionnées** en
+  une liste qui montre le nom du joueur en partie (« Vous », « IA Normal 1 », « Joueur 2 », « Fermé » ; déroulé Fermé /
+  Humain / IA), plus une liste « Niveau » grisée sur Normal visible sur les lignes IA ; **Q3** = A (une IA compte dans
+  « au moins 2 joueurs ») ; **Q4** = A (le chef règle couleur et équipe de l'IA, niveau grisé). Pris sur recommandation :
+  Q2 = A (pas de partie solo sans humain), Q5 = A (« IA Normal N » au salon), Q6 = A (ajout/retrait d'IA remet les Prêt à
+  zéro), Q7 = A (« Humain » gardé). Découpage : S1 IA ouverte, S2 colonne fusionnée + Niveau, S3 menu → partie, puis
+  L1-L5, C. 8b a fini ; paquet de B3 attend la fin des tests de c1 (30-45 min). S1 lancée en sous-agent.
+- 2026-10-28 : IA0.6 **S1 rouge puis vert, commitée** dans Arwen (95b3009). Sous-agent (~2 min, écrit sans compiler) :
+  marque `menu ai` à la fin du bloc fr de la partie `menu` (`hol.UI.Choose SlotState1 2`, `hol.UI.Shown SlotColor1
+  SlotTeam1`, capture `qc_fr_ai`, emplacement refermé). **Rouge** : `menu fr : FAIL`, seul « AI open in solo » (option
+  grisée ignorée). Patch : `SetOptionEnabled(AI, false)` retiré (le salon remplace ses valeurs par `LobbyStateNames`,
+  aucune IA n'y arrive), commentaire NG:938, note « Grisé : pas encore dans le jeu (factions, mode et options). » (+ en/ja
+  dans `fill_po.py`). Compilation PASS (266 s, file d'attente), collecte → `fill_po.py` (0 clé inconnue) → collecte ;
+  **vert** : `-Parts menu,tests` PASS (fr/en/ja, 269/269, 37 s). **Paquet complet de B3 lancé** depuis Arwen (c1, 8b, 8a
+  prévenus). Suivant : `packaged_smoke.ps1` (client + serveur) sur ce paquet ; S2 (colonne fusionnée + Niveau).
+- 2026-10-28 : **paquet de B3 : FAIL sans avoir commencé** (« still waiting for the build of another project after 60
+  min ») : ProjectShiva (autre projet de l'utilisateur, même moteur AS_3, sessions « playable-* ») compile en continu
+  depuis 11:41 (plusieurs UnrealBuildTool + cl.exe) et tient la file d'UBT. Rien tué (pas notre projet). Paquet relancé
+  (attend la file). Pour ne pas mêler des sources à moitié écrites au paquet, S2 est écrite **en patchs hors de l'arbre**
+  (test + logique), appliqués après le paquet.
+- 2026-10-28 : IA0.6 **S2 écrite en patchs** (sous-agent, ~7 min, Arwen intact) dans `...\scratchpad\ia06s2\` (40c29ea2) :
+  `s2_test.patch` (commande de dev `hol.UI.Text <Widget>` = texte affiché d'une liste ou étiquette,
+  `UHOLDropdown::GetShownText`, `HOLUIOpen.cpp` ; marque `menu ai` étendue : `SlotState1` montre « IA Normal 2 »,
+  `SlotLevel1` « Normal » montrée et grisée, `SlotName1` absente, `SlotLevel2` cachée sur une ligne fermée) ;
+  `s2_logic.patch` (`UHOLDropdown::SetShownText` ; listes `SlotLevel<N>` 140 px grisées sur Normal, libellés de
+  `GetDifficultyName` ; en solo la liste d'état montre `GetAIName` / « Joueur N » / « Fermé », colonne `SlotName` et
+  `HeadName` repliées, en-tête « Joueur » ; salon inchangé (noms et « Emplacement », niveau replié) ; clé
+  `HOLNewGameScreen,Level` en/ja). **Nom** : `GetAIName` numérote par emplacement (« IA {niveau} {Slot+1} », IA0.1-Q1) :
+  l'IA de `SlotState1` = « IA Normal 2 », même nom qu'en partie. Ordre : test → compiler → rouge → logique → `fill_po.py`
+  + collecte → compiler → `-Parts menu,lobby` (+ `manager_client`). En attente : le paquet relancé attend toujours la file
+  d'UBT (ProjectShiva, 14:06) ; les patchs s'appliqueront après lui.
+- 2026-10-28 : 8a a avancé `main` à 7bd73ab (J8a.5) : **`HeroesOfLibertyUI` passe en `Runtime`** (la cible Server compile
+  des scripts d'interface `Script/UI/*.as`) : le paquet serveur doit en tenir compte. Paquet en file arrêté (pas commencé),
+  `packaged_smoke.ps1` (B3, non commité) mis de côté, **`main` fusionnée dans `ai-ia1`** (ccd5187 ; seuls les fichiers de
+  traduction en conflit : pris de `main`, collecte à refaire après le paquet, l'éditeur devant être recompilé), B3 remis,
+  **paquet relancé** (file d'UBT toujours tenue par ProjectShiva). Relance automatique à 15:08 puis toutes les 45 min
+  (demande de l'utilisateur). Après le paquet : `packaged_smoke`, compilation de l'éditeur, collecte, `quick_check -Parts
+  tests,menu,aiserver,netai`, puis S2.
+- 2026-10-28 15:08 : relance automatique : le paquet **a démarré** (file d'UBT libérée ; `RunUAT BuildCookRun`, version
+  `2026-10-28-ccd5187`). Rien relancé ; passage de secours posé à 15:53.
+- 2026-10-28 : **paquet PASS** (`2026-10-28-ccd5187`, Arwen avec `main` J8a.5, 18,6 min dont 746 s de file d'UBT ;
+  `precompile_scripts` PASS, 2 cibles). **IA0.5 B3 vert, commitée** (951b02d) : `packaged_smoke.ps1` **PASS** (client 20 s ;
+  passage serveur ok en 9 s) ; journal du serveur empaqueté : « Version: 2026-10-28-ccd5187 », « Using fully precompiled
+  scripts », « AI brain HOLAIBrain awake, net mode DedicatedServer, thinking slots [1] », « AI slot 1 step 4: 5 idle ->
+  gather Food #326 », « Gather order of slot 1: 5 units to source 326 (Food) » : **la classe de script s'active en mode
+  précompilé, le cerveau pense dans le serveur du paquet** (aucun repli C++ nécessaire). Copie temporaire du serveur R8
+  supprimée. Relance de 15:53 annulée. **IA0.5 : B1-B3 faites** ; reste : contrôles de la fusion ccd5187 (compilation de
+  l'éditeur, collecte, `-Parts tests,menu,aiserver,netai`, en cours), puis avance de `main` et S2 d'IA0.6.
+- 2026-10-28 : contrôles de la fusion ccd5187 : éditeur PASS, collecte → `fill_po.py` (345 textes, 0 clé inconnue) →
+  collecte, `-Parts tests,menu,aiserver,netai` **PASS** (97 s, 285/285) ; traductions commitées. **IA0.5 close dans Arwen**
+  (aucun essai : Q6 = A). `main` **pas encore avancée** : Arwen contient aussi IA0.6 S1 (option IA ouverte au menu), pas
+  encore essayée par l'utilisateur (absent) : lui demander à son retour (avancer `main` avec S1 ou attendre la clôture
+  d'IA0.6). S2 : patch de test appliqué, compilation et rouge en cours.
+- 2026-10-28 : IA0.6 S2 **rouge vu** (compilation du patch de test PASS 66 s ; `menu fr : FAIL`, seul « AI line merged » :
+  nom « IA » au lieu de « IA Normal 2 », niveau absent, colonne de nom encore là). Patch de logique appliqué, puis **pause
+  demandée par l'utilisateur** : chaîne de vérification arrêtée avant la fin de la compilation (aucun processus d'Arwen
+  restant). **Reprise** : Arwen = d3d845d + S2 (test + logique) non commités ; faire : `build.ps1 -Root Arwen`, collecte →
+  `fill_po.py` → collecte, `quick_check -Parts menu,tests`, `manager_client.ps1 -Case Leader`, regarder la capture
+  `qc_fr_ai` (largeur, « Évolutive » dans 140 px), commit S2. Puis demander à l'utilisateur : avancer `main` maintenant
+  (IA0.5 close + IA0.6 S1-S2) ou à la clôture d'IA0.6 ; puis S3, L1-L5.
+- 2026-10-28 : reprise après la pause. IA0.6 **S2 verte, commitée** (fb134e0) : compilation PASS (89 s), collecte (346
+  textes, 0 clé inconnue) ; premier passage `menu fr` FAIL par le test seul (ligne fermée « Shown SlotLevel2: no, greyed » :
+  caché et grisé, le test attendait « no » exactement ; motif corrigé en `no(, greyed)?$`) ; puis `-Parts menu` PASS
+  (fr/en/ja), `tests` 285/285, `manager_client.ps1 -Case Leader` PASS (salon inchangé : « slots c0r c1r x o o o o o »).
+  Capture `qc_fr_ai` relue : colonne « Joueur » fusionnée (Vous, « IA Normal 2 », Fermé…), « Niveau » grisé sur Normal sur
+  la seule ligne IA, largeur tenue. Utilisateur : **avancer `main` après un essai rapide** (IA0.5 + IA0.6 S1-S2).
+  Scénario d'essai **`ai_menu`** (`.txt` + `.json`, non commités) : partie contre une IA lancée par l'écran Nouvelle partie,
+  vérifie « awake », « AI slot 1 step », « Gather order of slot 1: 5 units », notes vers le menu ; hors écran : prêt en
+  34 s. Remarque : le cerveau écrit aussi « awake, net mode Standalone, thinking slots [] » sur la carte du menu principal
+  (sans effet ; à filtrer un jour : ne rien écrire sans emplacement pensant ou hors carte de jeu).
+- 2026-10-28 : **essai `ai_menu` validé** par l'utilisateur (« tout est bon ») ; scénario commité (d30129f) ; **`main`
+  avancée** en avance rapide à d30129f (IA0.5 close : B1-B3 ; IA0.6 S1-S2 ; fusion J8a.5). Séance arrêtée par
+  l'utilisateur (« commit tout et arrête-toi »). **Reprise** (Arwen `ai-ia1` = `main` d30129f, arbre propre) : IA0.6 S3
+  (menu → partie : IA choisie à la liste, `hol.UI.NewGame.Launch -` → « thinking slots [1] », « idle -> gather »), puis
+  salon L1-L5 (gestionnaire C#, client, écran, bout en bout après recuisson du serveur), clôture C (GDD, essai) ; puis
+  IA0.7. Remarque en attente : ligne « awake … thinking slots [] » sur la carte du menu principal (à filtrer).
