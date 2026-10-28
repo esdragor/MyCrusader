@@ -34,6 +34,10 @@ param(
     # Extra command-line arguments of the server (e.g. a network trace: -ServerArgs "-trace=net -NetTrace=3 -tracefile=...").
     [string] $ServerArgs = "",
     [switch] $Keep,
+    # Replication reports (hol.Net.ReportInterval, seconds) also in an ordinary match (-Units 0), e.g. for the upload
+    # measure (upload_measure.ps1); -ReportInterval sets their period (5 s by default, as S5).
+    [switch] $Report,
+    [float] $ReportInterval = 5,
     # Several matches at once (R5.5): the server's port (0 = the engine's 7777) and a tag that keeps each run's logs,
     # match config and client settings apart (net_server<Tag>.log, Saved_Tests_Net<Tag><N>).
     [int] $Port = 0,
@@ -93,7 +97,8 @@ if ($Port -gt 0) { $ServerArguments += " -port=$Port" }
 $Address = if ($Port -gt 0) { "127.0.0.1:$Port" } else { "127.0.0.1" }
 # Commands both sides run at start: reports and samples of S5, network emulation.
 $NetCommands = @()
-if ($Units -gt 0) { $NetCommands += "hol.Net.ReportInterval 5", "hol.Net.Sample 100" }
+if ($Units -gt 0 -or $Report) { $NetCommands += "hol.Net.ReportInterval $ReportInterval" }
+if ($Units -gt 0) { $NetCommands += "hol.Net.Sample 100" }
 if ($Lag -gt 0) { $NetCommands += "NetEmulation.PktLag $Lag" }
 if ($Loss -gt 0) { $NetCommands += "NetEmulation.PktLoss $Loss" }
 $ServerCommands = $NetCommands

@@ -26,7 +26,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - Mode *Battlefield* : salon où l'on choisit ses armées et où l'on apparaît avec *(après le prototype, D416)*
 
 ### Réseau
-- M6 en parallèle : R8 redécoupé (le lanceur remplace R8.1-R8.5) : R8a serveur par version faite et dans `main` (dd1e708, contrôle `server_versions_check`), R8b publication à jour faite (version 2026-10-27-r8 sur le gestionnaire du raccourci, serveur par version), puis R8c mesure à 4 puis 8 clients (script `upload_measure.ps1` prêt et vérifié en court dans Glorfindel, non commité ; lancée par l'utilisateur le 2026-10-28 au matin), R8d essai E5 avec un ami (reporté) ; partie à X et clôture (R9) *(R1 à R7.10 et R8a dans `main` (dd1e708) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
+- M6 en parallèle : R8 redécoupé (le lanceur remplace R8.1-R8.5) : R8a serveur par version faite et dans `main` (dd1e708, contrôle `server_versions_check`), R8b publication à jour faite (version 2026-10-27-r8 sur le gestionnaire du raccourci, serveur par version), puis R8c mesure à 4 puis 8 clients (faite et dans `main` 9364046 le 2026-10-28 : 2,5 Mbit/s montants au pire par partie à 8, box en fibre : pas de limite), R8d essai E5 avec un ami (reporté) ; partie à X et clôture (R9) *(R1 à R7.10 et R8a dans `main` (dd1e708) : salons, spectateurs, statistiques de partie, fin de partie sans retour d'office, règle du chef, déconnexion et retour (« Revenir »), icône allié / ennemi et nom rayé ; essais E2, E3 et E4 réussis ; `MaxServers` 2 recommandé (R5.5) ; chantier `NetPlaytestInProgress.md`)*
 - Lanceur : essai avec un ami *(L0 à L13 dans `main`, décisions D475 à D482 au GDD ; kit et DuckDNS prêts ; serveur par version (D481) fait par le chantier réseau (R8a, dans `main` dd1e708) ; `LauncherInProgress.md`)*
 - Un client peut mettre le serveur en pause (`ServerPause` du moteur, `bPauseable`) *(vu en R3.4 ; `NetPlaytestInProgress.md`)*
 
@@ -75,7 +75,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.2-IA0.3, IA1.1 et IA1.2 (ferme) dans `main`, IA0.1, nom de l'IA et IA0.4 B1-B5 (cerveau qui envoie récolter, interrupteur aiBrain, tests en script, sources récoltables, cadence) commités dans Arwen, plan d'IA1 écrit
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V5 dans `main` ; paliers après J8b (P-Q1, 2026-10-27)
-- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a (serveur par version) commitée dans Glorfindel
+- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a, R8c dans `main` (9364046), R8b publiée ; reste R8d (reporté) et R9
 - `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers ; N (ralliement en plusieurs étapes, Elrond) et O (places pour les attaques de bâtiment sans ordre direct, Haldir) ouvertes
 
 ### En pause
