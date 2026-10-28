@@ -410,9 +410,21 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnHeroSheetsChanged);
 	FOnHeroSheetsChanged OnHeroSheetsChanged;
 
+	/**
+	 * J8a.4 (D397, D202): every machine with a player, its own hero ready to return (its public sheet turned
+	 * ReadyToReturn, FHOLHeroReadyWatch): once per death, its owner alone. Logs "Hero message: <text> (slot N)", then this,
+	 * for the HUD's thread (a minor alert: a line, no banner nor sound).
+	 */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnHeroReadyMessage, const FHOLForumMessage& /*Message*/);
+	FOnHeroReadyMessage OnHeroReadyMessage;
+
 private:
 	UFUNCTION()
 	void OnRep_HeroSheets();
+
+	/** J8a.4: before OnHeroSheetsChanged, the local player's hero ready (OnHeroReadyMessage). */
+	void NoteHeroReady();
+	FHOLHeroReadyWatch HeroReadyWatch;
 
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)

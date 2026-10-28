@@ -226,6 +226,7 @@ TRANSLATIONS = {
     # V5.2 (Regicide): the death of a King, in the thread and the alert.
     "HOLGameScreen,MessageKingDied": ("{0}'s King is dead", "{0}の王が死亡"),
     "HOLGameScreen,MessageOwnKingDied": ("Your King is dead", "あなたの王が死亡"),
+    "HOLGameScreen,MessageHeroReady": ("Your hero is ready to return", "英雄の帰還準備が整った"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,AbsentLine": ("{Name}: connection lost — {Time}", "{Name}：接続が切れました — {Time}"),

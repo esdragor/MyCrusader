@@ -58,13 +58,21 @@ struct HEROESOFLIBERTY_API FHOLBuildFragment : public FMassFragment
 	 */
 	bool bQueueNext = false;
 
+	/**
+	 * Its player queued moves (or other orders of the queue of moves) after its queue of work (Shift, EtapeDefini M.1:
+	 * Shift + a site then Shift + the ground): UHOLUnitOrderProcessor keeps them until its queue of work is done, and the
+	 * builders' step leaves it idle then (no camp's source, no nearby site) so that they start. Written by
+	 * UHOLUnitOrderProcessor; a new head without Shift forgets it.
+	 */
+	bool bMovesAfter = false;
+
 	EHOLBuildPhase Phase = EHOLBuildPhase::None;
 
 	/** It has a queue: building, walking to a site, or gathering at the head of its queue. */
 	bool IsBuilding() const { return Phase != EHOLBuildPhase::None; }
 
-	/** Gathering the source at the head of its queue, with more queued after it. */
-	bool HasQueuedNext() const { return Phase == EHOLBuildPhase::Gathering && bQueueNext; }
+	/** Gathering the source at the head of its queue, with more queued after it (in its queue of work or of moves). */
+	bool HasQueuedNext() const { return Phase == EHOLBuildPhase::Gathering && (bQueueNext || bMovesAfter); }
 
 	/** Stops building, its queue forgotten (a player's order elsewhere, D312). */
 	void Clear()
@@ -72,6 +80,7 @@ struct HEROESOFLIBERTY_API FHOLBuildFragment : public FMassFragment
 		Phase = EHOLBuildPhase::None;
 		bWalkIssued = false;
 		bQueueNext = false;
+		bMovesAfter = false;
 		Misses = 0;
 	}
 };

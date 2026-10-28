@@ -1292,7 +1292,7 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 | J8a.1 Type `Hero` | Ligne de `UnitTypes.csv` (J8a-Q1, hors population, échelle 1,2, rayon 0,72 m) ; ×0,3 des dégâts des troupes (D17) dans `HOLCombatRules`, test rouge d'abord sur la vraie chaîne | oui | **fait** (2026-10-27 ; PV et dégâts en float, choix de l'utilisateur) |
 | J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | **fait** (2026-10-27 ; F4 contrôlé par `build:hero`) |
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | **fait** (2026-10-27 ; de72042, 75a0667, 4c8b82b ; recopie au retour par R7.10 a416b75) |
-| J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | — |
+| J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | **fait** (2026-10-27 ; 7263184 : règles et décision en script, achat `hol.Hero.Return`, `net hero return`, alerte ; essai validé) |
 | J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
 | J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | — |
 
@@ -7567,3 +7567,136 @@ d'épée).
   avancé dessus en avance rapide. **J8a.3 close** (de72042, 75a0667, 4c8b82b ; recopie au retour par NetPlaytest
   a416b75). L'aléa « client 1 (Bob) meurt » retiré d'`EtapeDefini.md` (port partagé, corrigé dans main). Suite : J8a.4,
   questions J8a4-Q1 à Q7 une à une, puis boucle 1 (règles en script). Celeborn reste à nous (hero-j8a3 = main).
+- (J8a.4, 2026-10-27 nuit) **Questions de J8a.4 tranchées** (choix de l'utilisateur) :
+  - J8a4-Q6 = **A** : règle et décision en script (`Script/Hero`), le pas C++ appelle le script par `OnHeroStep` ; le
+    C++ garde le réseau, l'or et la naissance.
+  - J8a4-Q1 = **A** : à prix 0 (98 s au plus tard après la mort au niveau 1), le héros revient seul.
+  - J8a4-Q2 = **autre réponse de l'utilisateur** : le héros revient au **forum principal** s'il est debout ; s'il est
+    à terre, dans **un autre forum** du joueur, **le plus proche du forum principal** ; sans autre forum, **pas de
+    retour**. (Au prototype, aucun second forum ne se construit encore (D384 à venir) : forum principal à terre = pas
+    de retour tant qu'il n'y a pas d'autre forum.)
+  - J8a4-Q3 = **A** : or entier arrondi vers le haut à chaque pas (150, …, 1, puis 0 à la fin des 60 s).
+  - J8a4-Q4 = **A** : l'IA récupère son héros seule à prix 0 (son cerveau paiera plus tard).
+  - J8a4-Q5 = **A** : joueur absent (R7) : retour seul à prix 0, comme l'IA.
+  - J8a4-Q7 = **A** : l'alerte « héros prêt » se fait dans J8a.4 (boucle 6, pont du HUD, texte fr d'abord).
+  Boucle 1 lancée dans Celeborn (règles de temps et de prix en script, sans compilation).
+- (J8a.4, 2026-10-27 nuit) **Boucle 1 faite** (sous-agent, 2 lancements, sans compilation ; Celeborn, non commitée) :
+  `Script/Hero/HOLHeroReturn.as` (namespace `HOLHeroReturn`, entiers : `StepsPerSecond = 20` copié de
+  `SimulationRateHz` en attendant le pont, `DelaySteps`, `ReadyStep`, `IsReady`, `CanBuyReturn`, `ShouldAutoReturn`,
+  `PriceAt` arrondi vers le haut `(150*(1200-e)+1199)/1200`, `ReturnPlace(bMainStanding, MainForum, OtherForums)` →
+  principal / index du plus proche / aucun) ; `Script/Tests/HOLHeroReturn_Test.as` (5 tests). Rouge (prix arrondi vers
+  le bas) : `tests 223/224 FAIL` (3 assertions) ; vert : `tests 224/224 PASS` en 40 s. À savoir : namespaces et
+  fonctions libres vues d'un fichier à l'autre sans import ; `T.AssertEquals` sans int64 ni FIntPoint ; **défaut de
+  quick_check** : un échec d'assertion de script écrit « Angelscript: Error: », compté à tort comme erreur de
+  compilation (`[KO] scripts compiled` en plus du vrai échec). Boucle 2 lancée (ponts C++).
+- (J8a.4, 2026-10-27 nuit) **Reprise pour la prochaine session** : boucle 2 (ponts C++) lancée dans Celeborn
+  (branche hero-j8a3 = main ab6ed0d + boucle 1 non commitée : `Script/Hero/HOLHeroReturn.as`,
+  `Script/Tests/HOLHeroReturn_Test.as`). Prévu : délégué dynamique `OnHeroStep(int32)` sur `UHOLHeroSubsystem` (après
+  `UpdateSheets`), `UHOLHeroLibrary` (lecture état / niveau / pas de mort / pas serveur / forums ; serveur seul :
+  `SetHeroReturnReady`, `TryPayGold`, `RequestHeroReturn`), tests `Hero.ReturnBirth`, `Hero.ReturnPay`,
+  `Hero.ReturnReady`, `Hero.StepEvent` rouges puis verts. Si la session s'est arrêtée avant son bilan : regarder
+  `git -C C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn status --short`, recompiler Celeborn et passer
+  `quick_check -Parts tests` pour savoir où on en est. Rien de J8a.4 n'est commité. Ensuite boucles 3 à 6 (plan
+  ci-dessus) ; commit après accord de l'utilisateur.
+- (J8a.4, 2026-10-27 nuit) **Boucle 2 faite** (sous-agent, deux compilations ; Celeborn, non commitée) :
+  `UHOLHeroSubsystem` : délégué dynamique `OnHeroStep(int32)` après `UpdateSheets` (pas de fin de pas = horloge des
+  pas de mort), `SetReturnReady(Slot)` (Dead ou Ready seulement), `RequestReturn(Slot, PlaceIndex)` (via
+  `SpawnStartingHero` près du forum principal ; refus : client, vaincu, héros ni Dead ni Ready, retour déjà demandé,
+  forum principal absent ou à terre, index ≠ -1 ; masque `PendingReturns` contre la double naissance) ;
+  `EHOLHeroState` en `UENUM(BlueprintType)`, `Make` garde ReadyToReturn aussi corps présent ; nouveau
+  `UHOLHeroLibrary` (en script `HOLHero::`, WorldContext rempli seul : état, niveau, pas de mort, `GetServerStep`
+  (client : horloge de réception), forums, `SetHeroReturnReady`, `TryPayGold` (false sans PlayerState),
+  `RequestHeroReturn`) ; sonde `Dev/HOLHeroStepProbe` ; tests `Hero.ReturnBirth`, `ReturnPay`, `ReturnReady`,
+  `StepEvent` + script `Test_HeroReturnStepsPerSecondFromBridge` (`StepsPerSecond = HOLHero::GetSimulationRateHz()`)
+  : rouges sur bouchons (224/229) puis verts, `quick_check -Parts tests` **229/229 PASS**. À savoir pour la boucle 3 :
+  `UHOLHeroSubsystem::Get()` et `OnHeroStep.AddUFunction` compilent en script mais l'abonnement n'a pas tourné dans un
+  vrai monde ; autre voie, celle d'Arwen (`UCLASS(Abstract)` UWorldSubsystem C++ + `BlueprintNativeEvent` surchargé en
+  script). Non testé : refus chez un client ; délai réel (pas 0 dans le monde de test) → essai. Suite : boucle 3.
+- (J8a.4, 2026-10-27 nuit) Reprise dans une nouvelle session (l'ancienne fermée après le bilan de la boucle 2). main
+  avancé à 6fdb7be (tailles de carte) : Celeborn reste sur ab6ed0d + boucles 1-2, fusion de main avant le commit.
+  **Boucle 3 lancée** (sous-agent, Celeborn) : décision du retour en script (`UHOLHeroReturnSubsystem`), à chaque pas
+  serveur : Dead → ReadyToReturn au pas prêt, retour seul à prix 0 au lieu donné par `ReturnPlace` ; tests rouges
+  d'abord sur la vraie chaîne (délai réel compté sur le pas du serveur).
+- (J8a.4, 2026-10-27 nuit) **Boucle 3 faite** (sous-agent, deux compilations 69 et 53 s ; Celeborn, non commitée) :
+  voie d'Arwen (pas de délégué) : `UHOLHeroReturnSubsystem` C++ `UCLASS(Abstract)` (`Find`, `DecideNow(Step)` refusé
+  chez un client, `GetNumDecisions`, événement `Decide(int32 Step)`) surchargé par `Script/Hero/HOLHeroReturnRule.as`
+  (`UHOLHeroReturnRule` : emplacements non vaincus Dead/Ready → `SetHeroReturnReady` au pas prêt, à prix 0
+  `ReturnPlace` puis `RequestHeroReturn` sauf `PlaceNone`, réessai aux pas suivants) ; appelé par
+  `UHOLHeroSubsystem::OnStepEnded` juste après `UpdateSheets` et `OnHeroStep` (ordre sûr). Pont : `HOLHero::GetNumSlots`,
+  `IsSlotDefeated`. `UHOLSimulationSubsystem::AdvanceStepIndexForTests` (tests seulement) : le monde de test avance le
+  vrai pas avant `OnStepEnded`. Tests `Hero.ReturnStepClock`, `Hero.ReturnByItself` (humain et IA morts au même pas :
+  Dead au pas prêt − 1, Ready à 760 pas, retour seul à 1 960 pas à 450 PV près de son forum, gratuit, un seul héros),
+  `Hero.ReturnForumDown` (forum à terre : pas de retour ; relevé par le chemin de `hol.Victory.SkipRuin` : retour en
+  2 pas) : rouges sans .as puis avec .as bouchon (230/232), verts **232/232**. Non testé : niveau > 1 en monde (pas
+  d'XP), refus chez un client (boucle 5), emplacement vaincu (refus déjà testé en boucle 2). Pour la boucle 4 :
+  choisir un seul pas pour `PriceAt` (mort = index avant incrément, décision = après) et le tester à la limite ;
+  achat = vérifier, prendre l'or, faire naître d'un bloc (ou rendre l'or si refus). Suite : boucle 4.
+- (J8a.4, 2026-10-27 nuit) **Boucle 4 faite** (sous-agent ~15 min, deux compilations 70 et 14 s ; Celeborn, non
+  commitée) : achat du retour. `UHOLCommandSubsystem` : file `PendingHeroReturnOrders` (`IssueHeroReturnOrder(Slot)`,
+  `ConsumeHeroReturnOrders` ; refus hors limites, vaincu, partie en attente ; `DropOrdersOf` la vide).
+  `AHOLPlayerController::ServerReturnHero()` (Server Reliable, slot pris du PlayerState comme `ServerSurrender`),
+  `RequestReturnHero()` (refusé aux spectateurs), console `hol.Hero.Return` (aussi en Shipping). Au pas :
+  `OnStepEnded` → `UpdateSheets` → `OnHeroStep` → ordres de la file → `BuyNow(Slot, Step)` → `DecideNow(Step)` (achat
+  avant retour seul). Script `UHOLHeroReturnRule::Buy` (vaincu, pas mort, `CanBuyReturn`, `ReturnPlace`, `PriceAt`) →
+  `HOLHero::BuyHeroReturn` → `UHOLHeroSubsystem::BuyReturn` d'un bloc (stock vérifié, or pris seulement si la naissance
+  est acceptée ; `PendingReturns` : un seul paiement et une naissance par pas). Prix au pas d'après incrément : ordre
+  envoyé au pas X payé au prix de X+1 (l'interface affichera `PriceAt(GetServerStep()+1, …)`). Tests
+  `Hero.ReturnOrderQueue`, `ReturnOrderReadyStep`, `ReturnOrderPrice` (599 pas après le pas prêt : 76 or),
+  `ReturnOrderGoldShort`, `ReturnOrderRefused` : rouges sur `Buy` bouchon (233/237) puis verts **237/237**, `-Parts
+  tests,net` PASS 158 s. Non testé : le RPC lui-même et la console (pas de contrôleur dans les tests), refus chez un
+  client → boucle 5. Bouton « Ramener le héros » et prix affiché : rien au HUD encore. Suite : boucle 5.
+- (J8a.4, 2026-10-27 nuit) **Boucle 5 faite** (sous-agent ~23 min, au-delà des 15 : trois `quick_check` complets de 3
+  à 4 min ; Celeborn, non commitée) : cvar `hol.Hero.ReturnTimePercent` (cheat, défaut 100 = vraies règles, à régler
+  sur serveur et clients) lue par `HOLHero::GetReturnTimePercent` → `HOLHeroReturn::DelayStepsAt` /
+  `PriceDropStepsAt` (formule du prix inchangée) ; tests `Test_HeroReturnTimePercent` (script) et
+  `Hero.ReturnTimePercent` (vraie chaîne, 20 % : prêt à 152 pas, 113 or à +60 pas, IA seule à 392 pas). Serveur :
+  journal « Hero return: slot N ready at step S », `hol.Hero.Report` donne l'or, commande de dev
+  `hol.Hero.ReturnProbe`. `quick_check` : contrôle **`net hero return`** (Bob trop tôt refusé, prêt une fois, sans or
+  « cannot pay », acheté au prix `PriceAt`, Alice revenue seule à 0 sans or, ReadyToReturn puis Alive 450 chez les
+  deux clients, or de Bob 1000 → 1000 − P chez le client, rien de décidé chez un client) ; « army's granted » ne
+  compte plus les triches d'après la marque ; **défaut (a) corrigé** (« Angelscript: Error: » suivi d'« Assert
+  failed » n'est plus une erreur de compilation ; vraie erreur toujours vue), (b) n'en était pas un. Rouges : pourcentage
+  ignoré (237/239), `Buy` qui refuse tout (4 contrôles réseau + 235/239) ; verts : `-Parts tests,combat,net,build`
+  **PASS 232 s** (239/239). Non testé : place en réseau, niveau > 1, IA et joueur absent en réseau, parties victory et
+  lobby. Leçon : une boucle « réseau » à part (cvar + tests d'un côté, contrôles net de l'autre). Suite : boucle 6
+  (alerte), puis fusion de main, scénario d'essai, essai de l'utilisateur, commit.
+- (J8a.4, 2026-10-27 nuit) **Boucle 6 faite** (sous-agent ~17 min, trois compilations et deux passages réseau ;
+  Celeborn, non commitée) : alerte mineure « Votre héros est prêt à revenir » (en « Your hero is ready to return », ja
+  « 英雄の帰還準備が整った », seulement dans `fill_po.py` : GatherText → `fill_po.py` → GatherText à refaire).
+  Détection en C++ dans `AHOLGameState` (seul endroit qui reçoit la fiche publique partout) : `NoteHeroReady()` dans
+  `SetHeroSheet` (serveur, solo) et `OnRep_HeroSheets` (client), veilleur `FHOLHeroReadyWatch::Update(ViewerSlot,
+  State)` (une fois par passage à ReadyToReturn, jamais pour un spectateur, rien sur serveur dédié), journal « Hero
+  message: … (slot N) » (préfixe distinct de « Message: » des forums), délégué `OnHeroReadyMessage` →
+  `HOLGameScreen::HandleHeroReadyMessage` : une ligne du fil (8 s), ni bannière ni son, `bAlert` false. Test
+  `Hero.ReadyAlert` (vraies fiches, points de vue slot 0, slot 1, spectateur ; pas de doublon ; nouvelle ligne à la
+  seconde mort) et contrôle « client N : alert seen once for its own hero only » dans `net hero return` : rouges sur
+  bouchon (239/240, clients sans ligne) puis verts (`-Parts tests,net,menu` **PASS 190 s**, 240/240, menu fr/en/ja).
+  Non testé : affichage réel dans le widget, solo de bout en bout, spectateur en réseau. **Les 6 boucles sont faites.**
+  Suite : fusion de main dans Celeborn, textes en/ja régénérés, scénario d'essai, essai de l'utilisateur, commit.
+- (J8a.4, 2026-10-27 nuit) **main fusionné et essai prêt** (sous-agent ~14 min ; Celeborn, non commité) : sauvegarde
+  avant fusion dans le scratchpad de la session (`j8a4_before_merge.diff`, `j8a4_backup\`) ; stash, avance rapide de
+  hero-j8a3 à main **3b5436d**, stash repris **sans conflit** (HOLGameState, HOLPlayerController, `fill_po.py`,
+  `quick_check.ps1` fusionnés seuls, relus) ; compilation PASS 61 s ; textes en/ja régénérés sans l'éditeur complet
+  (GatherText → `fill_po.py` → GatherText, `Content/Localization/Game` : 10 fichiers) ; `quick_check -Parts
+  tests,combat,net,build,menu,victory` (+ camera) **PASS 234 s** (tests 253/253, `net hero sheets`, `net hero
+  return`). Défaut vu, sans lien avec J8a.4 : `-Parts …,production,build` sans `-Full` s'arrête (`build` attend une
+  nouvelle sélection du centre que `production` a laissé sélectionné ; noté dans `EtapeDefini.md`).
+  **Scénario `Tools/Scenarios/hero_return.txt` + `.json`** (copie de `hero_look.json` : toi contre une IA, héros au
+  départ) : `hol.Hero.ReturnTimePercent 50`, `hol.Cheat.Gold 1000`, `hol.Hero.Kill 0` et `1`, trois notes (refus trop
+  tôt, alerte puis `hol.Hero.Return`, IA revenue seule à 49 s ; vraies durées : `ReturnTimePercent 100`). Vérifié hors
+  écran (`-RenderOffScreen` ; `-nullrhi` bloque sur `waitui`) : « Scenario hero_return: ready » en 2 s, puis à 18 s
+  « Hero return: slot 0 ready at step 387 », « Hero message: Votre héros est prêt à revenir (slot 0) », slot 1 prêt
+  (les 20 « LogAutomationTest: Error: Condition failed » du démarrage sont les auto-tests du moteur, dans tous les
+  journaux). **Reprise (« continue J8a.4 »)** : essai de l'utilisateur par
+  `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 hero_return -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn` ;
+  s'il valide : refusionner main si elle a bougé (stash, avance rapide, pop, compilation, `quick_check -Parts
+  tests,net,menu`), commit en anglais sur hero-j8a3 (sans Co-Authored-By), main avancé dessus en avance rapide dans la
+  copie principale, puis doc (journal, ligne J8a.4 de la table « Où on en est », `EtapeDefini.md`, et D-numéros des
+  réponses J8a4-Q1 à Q7 au GDD si le chantier les reporte). Restes connus pour J8a.5 : bouton « Ramener le héros » et
+  prix affiché (`PriceAt(GetServerStep()+1, …)`), IA et joueur absent non testés en réseau, niveau > 1 (pas d'XP).
+- (J8a.4, 2026-10-27 nuit) **Essai validé par l'utilisateur** (« ça fonctionne », scénario `hero_return`). main
+  inchangé (3b5436d) : pas de nouvelle fusion. **Commit 7263184** sur hero-j8a3 (Celeborn, 39 fichiers, sans
+  `IN_USE.txt`), main avancé dessus en avance rapide dans la copie principale. **J8a.4 close.** Reporter au GDD les
+  réponses J8a4-Q1 à Q7 (D-numéros) à la clôture de J8a. Suite : J8a.5 (bloc du héros : portrait, niveau, PV, bouton
+  « Ramener le héros » et prix affiché `PriceAt(GetServerStep()+1, …)`) ; restes : IA et joueur absent en réseau,
+  niveau > 1 (pas d'XP). Celeborn reste à la session Héros (hero-j8a3 = main 7263184).

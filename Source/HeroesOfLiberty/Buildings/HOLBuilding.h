@@ -19,6 +19,24 @@ class UStaticMesh;
 class UStaticMeshComponent;
 
 /**
+ * A step of a rally point before its last one (EtapeDefini N.1, AoE4: Shift + right click adds one): its ground point and
+ * the source there (INDEX_NONE: the ground). Replicated to the owner with the rally point; its site is the server's alone.
+ */
+USTRUCT()
+struct FHOLRallyWaypoint
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector_NetQuantize Point = FVector::ZeroVector;
+
+	UPROPERTY()
+	int32 Source = INDEX_NONE;
+
+	bool operator==(const FHOLRallyWaypoint& Other) const { return Point == Other.Point && Source == Other.Source; }
+};
+
+/**
  * A building (D260): a classic replicated actor (§ 16.4, buildings are few), made by the server. It carries its type
  * (a row of the building type table), its owner (the player's slot, a byte like the units' OwnerPlayer, D233) and its
  * owner's colour; every machine builds its look from the type, so only these three values travel. GAS comes with
@@ -205,9 +223,25 @@ public:
 	 * null: the ground or a source. Server only (the flag stands on its middle, as on a source).
 	 */
 	AHOLBuilding* GetRallySite() const { return RallySite.Get(); }
-	/** Server only. */
+	/** Server only: the rally point in one step, its earlier steps forgotten (a right click without Shift). */
 	void SetRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr);
 	void ClearRallyPoint();
+
+	/**
+	 * A rally point in several steps (EtapeDefini N.1, AoE4): Shift + right click adds a step at its end, MaxRallySteps at most.
+	 * The rally point above (GetRallyPoint, GetRallySource, GetRallySite) is always its last step, where the flag stands; the
+	 * steps before it are its waypoints, in order. The units born here pass each step, then do the last one.
+	 */
+	static constexpr int32 MaxRallySteps = 8;
+	int32 GetNumRallySteps() const { return bHasRallyPoint ? RallyWaypoints.Num() + 1 : 0; }
+	/** The steps before the last one (replicated to the owner): for the flag's line. */
+	const TArray<FHOLRallyWaypoint>& GetRallyWaypoints() const { return RallyWaypoints; }
+	/** Where the units born here walk first: the first step (none: the building's own location). */
+	FVector GetRallyFirstPoint() const;
+	/** Server only: the site of a waypoint (null: the ground or a source), as GetRallySite for the last step. */
+	AHOLBuilding* GetRallyWaypointSite(const int32 Index) const { return RallyWaypointSites.IsValidIndex(Index) ? RallyWaypointSites[Index].Get() : nullptr; }
+	/** Server only: one more step at the end (the first one if there was none); false when it has MaxRallySteps already. */
+	bool AddRallyStep(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr);
 	/** True when a ground point is on the building's body (D324; a rally order there clears the rally point). */
 	bool IsOnBody(const FVector& Point) const;
 
@@ -412,6 +446,13 @@ private:
 
 	/** The server's alone: the owner sees the flag at RallyPoint. */
 	TWeakObjectPtr<AHOLBuilding> RallySite;
+
+	/** The rally point's steps before RallyPoint (EtapeDefini N.1), in order. */
+	UPROPERTY(ReplicatedUsing = OnRep_Rally)
+	TArray<FHOLRallyWaypoint> RallyWaypoints;
+
+	/** The server's alone: the site of each waypoint (null: the ground or a source), as RallySite. */
+	TArray<TWeakObjectPtr<AHOLBuilding>> RallyWaypointSites;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Construction)
 	EHOLConstructionState ConstructionState = EHOLConstructionState::Finished;

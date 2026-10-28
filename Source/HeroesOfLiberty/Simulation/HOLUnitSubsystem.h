@@ -27,6 +27,16 @@ enum class EHOLUnitTemplateKind : uint8
 	Corpse,
 };
 
+/** A step of a rally point before its last one (EtapeDefini N.1): the units born pass it first, as a Shift order's step. */
+struct FHOLUnitSpawnWaypoint
+{
+	FVector Point = FVector::ZeroVector;
+	/** A source there (gathered, as a Shift + right click on it would), INDEX_NONE: the ground. */
+	int32 GatherSource = INDEX_NONE;
+	/** A site there (built, or a camp's source gathered), null: the ground or a source. */
+	TWeakObjectPtr<AHOLBuilding> BuildSite;
+};
+
 /** Birth request (D224): "Count units of TypeName, on the navmesh around Center within Radius". */
 struct FHOLUnitSpawnRequest
 {
@@ -43,6 +53,11 @@ struct FHOLUnitSpawnRequest
 	int32 GatherSource = INDEX_NONE;
 	/** ... or build this site there (a rally point on a site, the user's trial of J6a.4), if it is not finished. */
 	TWeakObjectPtr<AHOLBuilding> BuildSite;
+	/**
+	 * The rally point's steps before MoveTarget (EtapeDefini N.1), in order: the units get the queue a player's Shift orders
+	 * would give them, these steps then the last one (MoveTarget, GatherSource, BuildSite).
+	 */
+	TArray<FHOLUnitSpawnWaypoint> Waypoints;
 };
 
 /**

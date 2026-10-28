@@ -1162,7 +1162,8 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			for (int32 Unit = Entities.Num() - 1; Unit >= 0; --Unit)
 			{
 				const FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entities[Unit]);
-				if ((Build && Build->IsBuilding()) || WorkStartedNow.Contains(EntityIds[Unit]))
+				// Not one with moves queued after its work (EtapeDefini M.1): this one comes after them, in its queue of moves.
+				if (((Build && Build->IsBuilding()) || WorkStartedNow.Contains(EntityIds[Unit])) && !MoveQueueOfUnit.Contains(EntityIds[Unit]))
 				{
 					Builders.Insert(EntityIds[Unit], 0);
 					Entities.RemoveAt(Unit);
@@ -1205,13 +1206,25 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entities[Unit]);
 				// A unit on its way to unload by its player's order (D485, L.5b) counts as walking: the move waits for the unload
 				// (not a builder's unload from its queue of work: its queue of moves would be forgotten, StartQueuedMoves).
+				// A unit with a queue of work counts as walking too (EtapeDefini M.1, the user's 3rd trial of L: Shift + a site then
+				// Shift + the ground walked away from the site, or forgot the move): the move waits for its work.
 				bAnyWalking = MoveQueueOfUnit.Contains(EntityIds[Unit]) || (Combat && (Combat->bOrderedTarget || Combat->OrderedBuilding.IsValid()))
 					|| (!bOnTask && State.Activity == EHOLUnitActivity::Moving && Move.Phase != EHOLMovePhase::None && !Move.PlaceHold.bReturning)
 					|| (Gather && Gather->IsDroppingOff() && !(Build && Build->IsBuilding())) || DroppingNow.Contains(EntityIds[Unit])
-					|| WorkStartedNow.Contains(EntityIds[Unit]);
+					|| WorkStartedNow.Contains(EntityIds[Unit]) || (Build && Build->IsBuilding());
 			}
 			if (bAnyWalking)
 			{
+				// Its queue of work first (M.1): the builders' step leaves it idle once that is done, and StartQueuedMoves keeps
+				// its queue of moves until then.
+				for (int32 Unit = 0; Unit < Entities.Num(); ++Unit)
+				{
+					FHOLBuildFragment* Build = EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entities[Unit]);
+					if (Build && (Build->IsBuilding() || WorkStartedNow.Contains(EntityIds[Unit])))
+					{
+						Build->bMovesAfter = true;
+					}
+				}
 				// Chains (D328): a unit's first queued move keeps its current action as the head of its chain.
 				for (int32 Unit = 0; Unit < Entities.Num(); ++Unit)
 				{
@@ -1298,7 +1311,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("%s order of slot %d applied for %d units (%.0f, %.0f)%s"), Order.Kind == EHOLOrderKind::Gather ? TEXT("Gather") : TEXT("Build"),
 				Order.PlayerIndex, EntityIds.Num(), Order.Target.X, Order.Target.Y, OrderIndex < NumStartedQueued ? TEXT(", its turn come") : TEXT(""));
-			ApplyWorkOrder(*Commands, Order, EntityIds);
+			ApplyWorkOrder(EntityManager, *Units, *Commands, Order, EntityIds);
 			continue;
 		}
 		// A drop-off applied (D485, L.5b: at once, or its turn come in the queue): the units carrying a resource the deposit
@@ -3064,6 +3077,11 @@ void UHOLUnitOrderProcessor::GetChainSteps(const uint32 UnitId, TArray<HOLOrderC
 	{
 		OutSteps.Add(Head->Step);
 	}
+	AppendQueuedSteps(UnitId, OutSteps);
+}
+
+void UHOLUnitOrderProcessor::AppendQueuedSteps(const uint32 UnitId, TArray<HOLOrderChain::FStep>& OutSteps) const
+{
 	if (const TArray<uint32>* Queue = MoveQueueOfUnit.Find(UnitId))
 	{
 		for (const uint32 QueuedId : *Queue)
@@ -3129,7 +3147,8 @@ void UHOLUnitOrderProcessor::IssueToWorkQueue(UHOLCommandSubsystem& Commands, co
 	}
 }
 
-void UHOLUnitOrderProcessor::ApplyWorkOrder(UHOLCommandSubsystem& Commands, const FHOLMoveOrder& Order, const TConstArrayView<uint32> UnitIds)
+void UHOLUnitOrderProcessor::ApplyWorkOrder(FMassEntityManager& EntityManager, const UHOLUnitSubsystem& Units, UHOLCommandSubsystem& Commands,
+	const FHOLMoveOrder& Order, const TConstArrayView<uint32> UnitIds)
 {
 	// Shift's order of the gathering or the builders (EtapeDefini L.6): a unit with no queue of work starts it at once (as
 	// Shift + a tree or a site did before L.6 for a unit that walked nothing), one with a queue of work gets it after.
@@ -3157,6 +3176,16 @@ void UHOLUnitOrderProcessor::ApplyWorkOrder(UHOLCommandSubsystem& Commands, cons
 		if (Queue && Queue->IsEmpty())
 		{
 			MoveQueueOfUnit.Remove(UnitId);
+		}
+		// Moves left after that work (Shift + P, Shift + a placement, Shift + Q; EtapeDefini M.1): kept until its queue of
+		// work is done (StartQueuedMoves), and it stands idle then, not on to its camp's source or a nearby site.
+		else if (Queue)
+		{
+			const FMassEntityHandle Entity = Units.FindEntity(UnitId);
+			if (FHOLBuildFragment* Build = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr)
+			{
+				Build->bMovesAfter = true;
+			}
 		}
 	}
 	UnitsOfQueued.KeySort(TLess<uint32>());
@@ -3204,7 +3233,10 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 		const bool bValid = EntityManager.IsEntityValid(Entity);
 		const FHOLGatherFragment* Gather = bValid ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
 		const FHOLBuildFragment* Build = bValid ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
-		if (!bValid || (!DroppingNow.Contains(Pair.Key) && ((Gather && Gather->IsGathering() && !Gather->IsDroppingOff()) || (Build && Build->IsBuilding()))))
+		// Nor one whose moves were queued after its queue of work (Shift, EtapeDefini M.1): they wait for it.
+		const bool bWorkFirst = Build && Build->IsBuilding() && Build->bMovesAfter;
+		if (!bValid || (!DroppingNow.Contains(Pair.Key) && !bWorkFirst
+			&& ((Gather && Gather->IsGathering() && !Gather->IsDroppingOff()) || (Build && Build->IsBuilding()))))
 		{
 			Gone.Add(Pair.Key);
 		}
@@ -3267,7 +3299,9 @@ void UHOLUnitOrderProcessor::StartQueuedMoves(FMassEntityManager& EntityManager)
 			const FHOLMoveOrderFragment* Move = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
 			const FHOLCombatFragment* Combat = Move ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
 			const FHOLGatherFragment* Gather = Move ? EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity) : nullptr;
-			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move
+			// Its queue of work first (M.1): the builders' step leaves it idle once it is done.
+			const FHOLBuildFragment* Build = Move ? EntityManager.GetFragmentDataPtr<FHOLBuildFragment>(Entity) : nullptr;
+			if (!Queue || Queue->IsEmpty() || (*Queue)[0] != It.Key() || !Move || (Build && Build->IsBuilding())
 				|| !HOLOrderChain::IsCurrentOrderOver(Move->Phase != EHOLMovePhase::None && !Move->PlaceHold.bReturning, Combat && Combat->bOrderedTarget,
 					Combat && Combat->OrderedBuilding.IsValid(), IsAttackMoveOn(Combat), Gather && Gather->IsDroppingOff()))
 			{
@@ -3826,7 +3860,12 @@ void UHOLUnitOrderProcessor::CollectChains(const UWorld& World, const UHOLUnitOr
 			if (const FHOLUnitStateFragment* State = StateOfSlot(Chain.Entity))
 			{
 				Builders.Add(State->UnitId);
-				UnitSteps.Add({State->UnitId, MoveTemp(Chain.Steps)});
+				HOLOrderChain::FUnitSteps& Steps = UnitSteps.Add_GetRef({State->UnitId, MoveTemp(Chain.Steps)});
+				// The moves its player queued after its work (Shift, EtapeDefini M.1), after it.
+				if (Orders)
+				{
+					Orders->AppendQueuedSteps(State->UnitId, Steps.Steps);
+				}
 			}
 		}
 	}

@@ -84,6 +84,14 @@ public:
 	/** One run out of this many steps for the throttled processors, override of D220 included. */
 	int32 GetThrottledStepInterval() const;
 
+#if WITH_DEV_AUTOMATION_TESTS
+	/**
+	 * Tests whose world runs its steps by hand (no pipeline, no begin play): the step index moves on as RunStep moves it,
+	 * between the step's processors and OnStepEnded, so the death steps and the server step are the true ones. The new index.
+	 */
+	int64 AdvanceStepIndexForTests() { return ++StepIndex; }
+#endif
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

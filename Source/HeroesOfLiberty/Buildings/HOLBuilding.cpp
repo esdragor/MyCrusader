@@ -109,6 +109,7 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, bHasRallyPoint, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallySource, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyWaypoints, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, BuildersAtWork, COND_OwnerOnly);
 }
 
@@ -404,8 +405,39 @@ void AHOLBuilding::SetRallyPoint(const FVector& Point, const int32 SourceIndex, 
 	RallySource = SourceIndex;
 	RallySite = Site;
 	bHasRallyPoint = true;
+	RallyWaypoints.Reset();
+	RallyWaypointSites.Reset();
 	ForceNetUpdate();
 	OnRallyChanged.Broadcast();
+}
+
+bool AHOLBuilding::AddRallyStep(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site)
+{
+	if (!bHasRallyPoint)
+	{
+		SetRallyPoint(Point, SourceIndex, Site);
+		return true;
+	}
+	if (GetNumRallySteps() >= MaxRallySteps)
+	{
+		return false;
+	}
+	// The last step so far becomes a waypoint; the new one is the rally point, where the flag stands.
+	FHOLRallyWaypoint& Waypoint = RallyWaypoints.AddDefaulted_GetRef();
+	Waypoint.Point = RallyPoint;
+	Waypoint.Source = RallySource;
+	RallyWaypointSites.Add(RallySite);
+	RallyPoint = Point;
+	RallySource = SourceIndex;
+	RallySite = Site;
+	ForceNetUpdate();
+	OnRallyChanged.Broadcast();
+	return true;
+}
+
+FVector AHOLBuilding::GetRallyFirstPoint() const
+{
+	return !bHasRallyPoint ? GetActorLocation() : RallyWaypoints.IsEmpty() ? FVector(RallyPoint) : FVector(RallyWaypoints[0].Point);
 }
 
 void AHOLBuilding::ClearRallyPoint()
@@ -413,6 +445,8 @@ void AHOLBuilding::ClearRallyPoint()
 	bHasRallyPoint = false;
 	RallySource = INDEX_NONE;
 	RallySite.Reset();
+	RallyWaypoints.Reset();
+	RallyWaypointSites.Reset();
 	ForceNetUpdate();
 	OnRallyChanged.Broadcast();
 }

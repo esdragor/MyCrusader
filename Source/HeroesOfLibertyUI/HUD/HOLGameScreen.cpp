@@ -620,10 +620,12 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		Previous->OnForumsChanged.Remove(TableForumsHandle);
 		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
 		Previous->OnForumEvent.Remove(TableForumEventHandle);
+		Previous->OnHeroReadyMessage.Remove(TableHeroReadyHandle);
 	}
 	TableForumsHandle.Reset();
 	TableVictoryHandle.Reset();
 	TableForumEventHandle.Reset();
+	TableHeroReadyHandle.Reset();
 	BoundTableState = GameState;
 	if (GameState)
 	{
@@ -632,6 +634,17 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		TableVictoryHandle = GameState->OnVictoryChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
 		// V4.2: the events of the ruin, every machine (a reliable multicast).
 		TableForumEventHandle = GameState->OnForumEvent.AddUObject(this, &UHOLGameScreen::HandleForumEvent);
+		// J8a.4: the local player's hero ready to return (its owner alone, once per death).
+		TableHeroReadyHandle = GameState->OnHeroReadyMessage.AddUObject(this, &UHOLGameScreen::HandleHeroReadyMessage);
+	}
+}
+
+void UHOLGameScreen::HandleHeroReadyMessage(const FHOLForumMessage& Message)
+{
+	if (const UWorld* World = GetWorld())
+	{
+		MessageThread.Add(Message, World->GetRealTimeSeconds());
+		RebuildMessages();
 	}
 }
 

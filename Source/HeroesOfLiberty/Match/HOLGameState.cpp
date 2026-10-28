@@ -860,11 +860,37 @@ bool AHOLGameState::SetHeroSheet(const int32 Slot, const FHOLHeroSheet& Sheet)
 	HeroSheets[Slot] = Sheet;
 	ForceNetUpdate();
 	// No OnRep on the server (listen or solo): its own player hears it here.
+	NoteHeroReady();
 	OnHeroSheetsChanged.Broadcast();
 	return true;
 }
 
 void AHOLGameState::OnRep_HeroSheets()
 {
+	NoteHeroReady();
 	OnHeroSheetsChanged.Broadcast();
+}
+
+void AHOLGameState::NoteHeroReady()
+{
+	const UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	// This machine's player (a spectator, or no player, has no slot: never).
+	int32 ViewerSlot = INDEX_NONE;
+	if (const APlayerController* Controller = World->GetFirstPlayerController())
+	{
+		if (const AHOLPlayerState* PlayerState = Controller->GetPlayerState<AHOLPlayerState>())
+		{
+			ViewerSlot = PlayerState->GetPlayerIndex();
+		}
+	}
+	if (HeroReadyWatch.Update(ViewerSlot, GetHeroSheet(ViewerSlot).State))
+	{
+		const FHOLForumMessage Message = HOLForumMessages::GetHeroReadyMessage();
+		UE_LOG(LogHOLMatch, Display, TEXT("%s (slot %d)"), *Message.Shown, ViewerSlot);
+		OnHeroReadyMessage.Broadcast(Message);
+	}
 }

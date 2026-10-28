@@ -1,0 +1,33 @@
+# Maj met tout en file, dans l'ordre des clics (étape M) : Maj + sol puis Maj + pose d'une maison ; Maj + chantier puis Maj + sol
+# Configuration par défaut (un joueur, Plain) : ton forum vers (-14800, 0) ; tout se passe au sud, vers y = -12000
+# (les baies de ton départ au nord-est de la scène, vers (-12000, -9200)).
+hol.Cheat.Resources 2000
+hol.Cheat.Population 165
+# Deux chantiers de maison non bâtis, posés par un Paysan renvoyé aussitôt à l'est.
+hol.Camera.Focus -12000 -12000
+frames 2
+hol.Units.Spawn 1 -12000 -12000 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -12000 -12000
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Build.PlaceNear House 2000 -12000
+waitlog Construction: slot 0 placed House foundation
+waitlog Build order of slot 0: 1 units to House
+hol.Build.PlaceNear House 2000 -14800
+waitlog Build order of slot 0: 1 units to House
+hol.Camera.Focus -10800 -13200
+frames 3
+hol.Select.OrderGround -10800 -13200
+wait 0.5
+# Trois Paysans vides à l'ouest des chantiers.
+hol.Units.Spawn 3 -16400 -11600 0 Peasant 150
+wait 0.5
+hol.Camera.Focus -14400 -12800
+frames 5
+note Trois Paysans vides à l'ouest ; deux chantiers de maison non bâtis à l'est (personne n'y travaille).
+note 1. Maj + clic droit au sol, puis Maj + pose d'une maison (Maj + clic gauche, puis Échap ou clic droit pour quitter la pose), puis Maj + clic droit au sol : il passe par le premier point, bâtit la maison, puis va au second point.
+note 2. Maj + clic droit sur un chantier, puis Maj + clic droit au sol : il bâtit, et ne va au point qu'une fois la maison finie (aussi quand le second clic vient pendant qu'il marche vers le chantier).
+note 3. En chaîne : Maj chantier, Maj sol, Maj + baies (au nord-est) : il bâtit, va au point, puis récolte. Les lignes de file suivent l'ordre des clics.
+note Sans Maj, un nouvel ordre oublie toute la file (comme avant).

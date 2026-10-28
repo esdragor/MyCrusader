@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Simulation/HOLHeroSheet.h"
 #include "HOLForumMessages.generated.h"
 
 struct FHOLForumState;
@@ -73,6 +74,9 @@ namespace HOLForumMessages
 	 */
 	HEROESOFLIBERTY_API FHOLForumMessage GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, int32 ViewerSlot);
 
+	/** J8a.4 (D397, D202): the minor alert « Votre héros est prêt à revenir », a thread's line, no banner nor sound. */
+	HEROESOFLIBERTY_API FHOLForumMessage GetHeroReadyMessage();
+
 	HEROESOFLIBERTY_API const TCHAR* GetKindName(EHOLForumEventKind Kind);
 
 	/**
@@ -94,6 +98,18 @@ namespace HOLForumMessages
 	/** V4.2: Message's text cut at the names of its NamedSlots, in their order (as ViewerSlot reads them), for their colours. */
 	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, int32 ViewerSlot);
 }
+
+/**
+ * J8a.4 (D397, D202): when the viewer's own hero is ready to return. Fed with the viewer's public sheet state at each
+ * change: true once when it turns ReadyToReturn (once per death: Alive or Dead in between makes the next one new). A
+ * spectator (INDEX_NONE) never. Pure: the game state feeds it (AHOLGameState::OnHeroReadyMessage).
+ */
+struct HEROESOFLIBERTY_API FHOLHeroReadyWatch
+{
+	EHOLHeroState Seen = EHOLHeroState::None;
+
+	bool Update(int32 ViewerSlot, EHOLHeroState State);
+};
 
 /** V4.2: a line of the thread of messages, and when it came (seconds, the HUD's real time). */
 struct FHOLForumThreadLine

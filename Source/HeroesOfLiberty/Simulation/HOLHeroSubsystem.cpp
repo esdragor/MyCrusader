@@ -2,15 +2,20 @@
 
 #include "Simulation/HOLHeroSubsystem.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
+#include "HeroesOfLibertyGameModeBase.h"
 #include "HeroesOfLibertyLog.h"
 #include "MassEntitySubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
+#include "Simulation/HOLHeroLibrary.h"
+#include "Simulation/HOLHeroReturnSubsystem.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -58,6 +63,9 @@ namespace UE::HeroesOfLiberty::Hero
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Hero private slot %d %s: %s"), HOLPlayerState->GetPlayerIndex(),
 						PlayerState == Local ? TEXT("local") : TEXT("other"), *DescribePrivate(HOLPlayerState->GetHeroPrivate()));
+					// J8a.4 loop 5: the gold as this machine has it (a paid return seen taken on its owner's client).
+					UE_LOG(LogHOLMatch, Display, TEXT("Hero gold slot %d %s: %d"), HOLPlayerState->GetPlayerIndex(),
+						PlayerState == Local ? TEXT("local") : TEXT("other"), HOLPlayerState->GetResources().Gold);
 				}
 			}
 			const UHOLHeroSubsystem* Heroes = NetMode != NM_Client ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
@@ -96,6 +104,25 @@ namespace UE::HeroesOfLiberty::Hero
 			}
 			const int32 Killed = Units->KillUnitsOfOwner(static_cast<uint8>(Slot), FHOLStartRules::HeroTypeName);
 			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.Kill: slot %d, %d hero(es) at 0 health"), Slot, Killed);
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CommandReturnProbe(TEXT("hol.Hero.ReturnProbe"),
+		TEXT("hol.Hero.ReturnProbe [Slot=0]: asks this machine's return decision to buy the slot's return and to decide at the "
+			 "next step, and says what it answered: refused on a client, which decides nothing (J8a.4 loop 5; development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			UHOLHeroReturnSubsystem* Decision = UHOLHeroReturnSubsystem::Find(World);
+			if (!World || !Decision)
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Hero return probe: net mode %d, no decision"), World ? static_cast<int32>(World->GetNetMode()) : -1);
+				return;
+			}
+			const int32 Step = UHOLHeroLibrary::GetServerStep(World) + 1;
+			const bool bBought = Decision->BuyNow(Slot, Step);
+			const bool bDecided = Decision->DecideNow(Step);
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero return probe: net mode %d, buy %s, decide %s, decisions %d"), static_cast<int32>(World->GetNetMode()),
+				bBought ? TEXT("done") : TEXT("refused"), bDecided ? TEXT("done") : TEXT("refused"), Decision->GetNumDecisions());
 		}));
 }
 
@@ -149,6 +176,28 @@ void UHOLHeroSubsystem::UnbindSteps()
 void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 {
 	UpdateSheets();
+	// J8a.4: the script's return rule, the sheets of this step written.
+	OnHeroStep.Broadcast(static_cast<int32>(StepIndex));
+	UHOLHeroReturnSubsystem* Return = UHOLHeroReturnSubsystem::Find(GetWorld());
+	// J8a.4 loop 4: the players' paid returns (ServerReturnHero) taken from the queue at this step, before the returns by
+	// themselves, at the same step as the decision (StepIndex, the step after this one's increment: GetServerStep after it).
+	// The script prices and decides each (no script: dropped, nothing paid).
+	if (UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+	{
+		TArray<int32> Orders;
+		Commands->ConsumeHeroReturnOrders(Orders);
+		for (const int32 Slot : Orders)
+		{
+			const bool bBought = Return && Return->BuyNow(Slot, static_cast<int32>(StepIndex));
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero return order: slot %d at step %d %s"), Slot, static_cast<int32>(StepIndex),
+				bBought ? TEXT("bought") : TEXT("refused"));
+		}
+	}
+	// J8a.4 loop 3: the return decision (script), called here so it always reads the sheets this step wrote.
+	if (Return)
+	{
+		Return->DecideNow(static_cast<int32>(StepIndex));
+	}
 }
 
 const FHOLHeroSheets& UHOLHeroSubsystem::GetSheets(const int32 Slot) const
@@ -184,6 +233,8 @@ void UHOLHeroSubsystem::UpdateSheets()
 		Sheets[Slot] = HOLHeroSheet::Make(Facts, Sheets[Slot]);
 		WriteCopies(Slot);
 	}
+	// J8a.4: the returns asked were born at this step's start (or failed): they may be asked again.
+	PendingReturns = 0;
 }
 
 bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
@@ -237,4 +288,76 @@ AHOLPlayerState* UHOLHeroSubsystem::FindPlayerState(const UWorld& World, const i
 		}
 	}
 	return nullptr;
+}
+
+bool UHOLHeroSubsystem::SetReturnReady(const int32 Slot)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	FHOLHeroSheet& Public = Sheets[Slot].Public;
+	if (Public.State != EHOLHeroState::Dead && Public.State != EHOLHeroState::ReadyToReturn)
+	{
+		return false;
+	}
+	if (Public.State == EHOLHeroState::Dead)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero return: slot %d ready at step %d"), Slot, GetWorld()->GetSubsystem<UHOLSimulationSubsystem>()
+			? static_cast<int32>(GetWorld()->GetSubsystem<UHOLSimulationSubsystem>()->GetStepIndex()) : -1);
+	}
+	Public.State = EHOLHeroState::ReadyToReturn;
+	WriteCopies(Slot);
+	return true;
+}
+
+bool UHOLHeroSubsystem::RequestReturn(const int32 Slot, const int32 PlaceIndex)
+{
+	UWorld* World = GetWorld();
+	if (!Sheets.IsValidIndex(Slot) || !World || World->GetNetMode() == NM_Client || (PendingReturns & (1 << Slot)))
+	{
+		return false;
+	}
+	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+	const EHOLHeroState State = Sheets[Slot].Public.State;
+	if ((GameState && GameState->IsSlotDefeated(Slot)) || (State != EHOLHeroState::Dead && State != EHOLHeroState::ReadyToReturn))
+	{
+		return false;
+	}
+	// The main forum standing; the other forums come with D384 (none before: any other index names no place).
+	const AHOLBuilding* Forum = PlaceIndex == -1 ? AHOLGameState::FindPrimaryForum(*World, Slot) : nullptr;
+	if (!Forum || Forum->IsForumDown() || !AHeroesOfLibertyGameModeBase::SpawnStartingHero(*World, Slot, *Forum))
+	{
+		return false;
+	}
+	// Born at the next step's start: no second return until UpdateSheets has seen that step.
+	PendingReturns |= 1 << Slot;
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero return: slot %d by its main forum"), Slot);
+	return true;
+}
+
+bool UHOLHeroSubsystem::BuyReturn(const int32 Slot, const int32 PlaceIndex, const int32 Price)
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_Client || Price < 0)
+	{
+		return false;
+	}
+	AHOLPlayerState* PlayerState = FindPlayerState(*World, Slot);
+	if (!PlayerState || PlayerState->GetResources().Gold < Price)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero return: slot %d cannot pay %d gold (%s)"), Slot, Price,
+			PlayerState ? *FString::Printf(TEXT("%d gold"), PlayerState->GetResources().Gold) : TEXT("no stock"));
+		return false;
+	}
+	// The birth first: refused, nothing is taken (the gold is never lost).
+	if (!RequestReturn(Slot, PlaceIndex))
+	{
+		return false;
+	}
+	FHOLResources Stock = PlayerState->GetResources();
+	Stock.Gold -= Price;
+	PlayerState->SetResources(Stock);
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero return: slot %d bought for %d gold"), Slot, Price);
+	return true;
 }

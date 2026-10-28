@@ -654,7 +654,19 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 				continue;
 			}
 			const FVector Centre = Building->GetActorLocation();
-			const FVector End = Building->GetRallyPoint();
+			// A rally point in several steps (EtapeDefini N.1): to its first step, then from step to step to the flag, a point
+			// on each step before the last one (as an order chain's).
+			const TArray<FHOLRallyWaypoint>& Waypoints = Building->GetRallyWaypoints();
+			const FVector End = Waypoints.IsEmpty() ? Building->GetRallyPoint() : FVector(Waypoints[0].Point);
+			for (int32 Step = 0; Step < Waypoints.Num(); ++Step)
+			{
+				const FVector From = Waypoints[Step].Point;
+				const FVector To = Step + 1 < Waypoints.Num() ? FVector(Waypoints[Step + 1].Point) : Building->GetRallyPoint();
+				AddLine(From, To, OrderBuildColor);
+				PointTransforms.Add(FTransform(FQuat::Identity, From + FVector(0.0, 0.0, OrderPointOffset),
+					FVector(OrderPointRadius * 2.0 / ShapeSize, OrderPointRadius * 2.0 / ShapeSize, 1.0)));
+				AddCustomData(PointData, OrderBuildColor, 1.0);
+			}
 			const FVector2D Half = UHOLBuildingSettings::GetVisualSize(Type->Footprint) * 0.5;
 			const FVector2D Flat(End.X - Centre.X, End.Y - Centre.Y);
 			// The share of the way to the flag at which the ray leaves the shape (axis-aligned): past 1, the flag is on it.
