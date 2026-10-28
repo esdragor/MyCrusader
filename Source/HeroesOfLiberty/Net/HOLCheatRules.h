@@ -18,4 +18,10 @@ struct HEROESOFLIBERTY_API FHOLCheatRules
 
 	/** The rule for this world, this process's command line and hol.Cheat.Refuse. */
 	static bool AreCheatsAllowed(const UWorld& World);
+
+	/**
+	 * Who may pause (D361: a networked match never pauses): the solo game alone, as the engine does; a server, dedicated
+	 * or listen, refuses every pause, a client's console "pause" included (-HOLCheats or not).
+	 */
+	static bool IsPauseAllowed(ENetMode NetMode);
 };

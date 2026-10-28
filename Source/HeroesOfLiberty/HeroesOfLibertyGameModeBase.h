@@ -41,6 +41,12 @@ public:
 	virtual void Logout(AController* Exiting) override;
 	/** The server listens by now: "listening" to the lobby manager, with the port listened on (R3.6). */
 	virtual void StartPlay() override;
+	/**
+	 * D361: a networked match never pauses (FHOLCheatRules::IsPauseAllowed): the solo game alone keeps the engine's pause.
+	 * The engine asks it for a client's console "pause" (ServerPause, PC its controller: refused and logged) and when it
+	 * clears the pausers (no PC).
+	 */
+	virtual bool AllowPausing(APlayerController* PC = nullptr) override;
 
 	const FHOLMatchConfig& GetMatchConfig() const { return MatchConfig; }
 

@@ -898,6 +898,19 @@ bool FHOLNetCheatRuleTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D361: a networked match never pauses. The solo game alone keeps the engine's pause; a server refuses any (a client's
+// console "pause" reaches AHeroesOfLibertyGameModeBase::AllowPausing through the engine's ServerPause).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetPauseRuleTest, "HeroesOfLiberty.Net.PauseRule", UE::HeroesOfLiberty::Tests::Net::Flags)
+
+bool FHOLNetPauseRuleTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("solo: allowed"), FHOLCheatRules::IsPauseAllowed(NM_Standalone));
+	TestFalse(TEXT("dedicated server: refused"), FHOLCheatRules::IsPauseAllowed(NM_DedicatedServer));
+	TestFalse(TEXT("listen server: refused"), FHOLCheatRules::IsPauseAllowed(NM_ListenServer));
+	TestFalse(TEXT("client: refused"), FHOLCheatRules::IsPauseAllowed(NM_Client));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetManagerRoutesTest, "HeroesOfLiberty.Net.ManagerRoutes", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetManagerRoutesTest::RunTest(const FString& Parameters)
 {

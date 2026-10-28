@@ -20,6 +20,7 @@
 #include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLAccessKey.h"
+#include "Net/HOLCheatRules.h"
 #include "Net/HOLManagerLink.h"
 #include "Engine/NetDriver.h"
 #include "Player/HOLPlayerController.h"
@@ -486,6 +487,21 @@ void AHeroesOfLibertyGameModeBase::AssignBuildingOwners(const int32 Slot)
 			It->SetOwner(Controller);
 		}
 	}
+}
+
+bool AHeroesOfLibertyGameModeBase::AllowPausing(APlayerController* PC)
+{
+	if (FHOLCheatRules::IsPauseAllowed(GetNetMode()))
+	{
+		return Super::AllowPausing(PC);
+	}
+	if (PC)
+	{
+		const AHOLPlayerState* HOLPlayerState = PC->GetPlayerState<AHOLPlayerState>();
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause refused from %s (slot %d)"), HOLPlayerState ? *HOLPlayerState->GetPlayerName() : TEXT("?"),
+			HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE);
+	}
+	return false;
 }
 
 void AHeroesOfLibertyGameModeBase::StartPlay()

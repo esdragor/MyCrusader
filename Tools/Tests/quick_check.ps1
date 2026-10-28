@@ -277,7 +277,9 @@ if ($Parts -contains "net") {
     $NetKingAskFlag = Join-Path $TestSaved "quick_net_king_ask.flag"
     $NetKingBornFlag = Join-Path $TestSaved "quick_net_king_born.flag"
     $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
-    @("waitfile $NetCheatTriedFlag 300", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+    # The refused pause (D361): client 1 has typed "pause" in its console before its signal; the server must not be
+    # paused and its simulation must step on (two reports 1 s apart).
+    @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") +
@@ -2154,7 +2156,8 @@ if ($NetListening) {
         if ($Client -eq 2) { $NetSteps += "waitlog Wait banner: shown", "frames 5", "capture qcnet_${Client}_wait" }
         $NetSteps += "waitplayers 2", "mark net", "frames 30", "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start"
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
-        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
+        # The refused pause (D361): client 1 types "pause" in its console, as a player would (the engine's ServerPause).
+        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "console pause", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
                 "frames 2", "hol.Select.Report", "capture qcnet_${Client}_slot$Slot"
@@ -5436,6 +5439,13 @@ if ($Parts -contains "net") {
     $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" |
         Where-Object { -not $ReturnMarkLine.Count -or $_.LineNumber -lt $ReturnMarkLine[0] } }).Count
     $Checks["server: client 1's cheat refused ($CheatRefused), the army's granted ($CheatGranted of 2)"] = $CheatRefused -eq 1 -and $CheatGranted -eq 2
+    # D361: client 1's console "pause" refused by the server (its log), the server never paused, its simulation stepping on.
+    $PauseRefused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause refused from Bob \(slot 1\)" }).Count
+    $PauseReports = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause report: paused (\d), simulation step (-?\d+)" | ForEach-Object { $_.Matches[0] } })
+    $PauseSays = ($PauseReports | ForEach-Object { "paused $($_.Groups[1].Value) step $($_.Groups[2].Value)" }) -join "; "
+    $Checks["server: client 1's pause refused ($PauseRefused), the match not paused and stepping on ($PauseSays)"] = $PauseRefused -eq 1 -and
+        $PauseReports.Count -eq 2 -and @($PauseReports | Where-Object { $_.Groups[1].Value -ne "0" }).Count -eq 0 -and
+        [int64]$PauseReports[1].Groups[2].Value -gt [int64]$PauseReports[0].Groups[2].Value
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     $Born = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Production: Peasant of slot (\d) done" | ForEach-Object { $_.Matches[0].Groups[1].Value } })

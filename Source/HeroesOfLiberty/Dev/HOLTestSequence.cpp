@@ -52,6 +52,8 @@
  *   waitfile <File> [S]  waits for the file to exist: two clients wait for each other (each one's last report done
  *                        before either quits, quick_check's net part); S: its own timeout in seconds, instead of 60
  *                        (the dedicated server waits for a client's step of the end, J7b.4)
+ *   console <Command>    types Command into the game's console (the local player's, as a player would): the player
+ *                        controller's own commands (the engine's pause) run too, unlike a plain step
  *   anything else        runs as a console command, in the current game world
  * A wait that lasts more than 60 seconds ends the run with an error and quits (a scenario's run: the error is shown on
  * the screen too and the game stays open, HOLTestSequence.h).
@@ -386,6 +388,23 @@ namespace UE::HeroesOfLiberty::Dev
 					File = Rest;
 				}
 				bDone = IFileManager::Get().FileExists(*File);
+			}
+			else if (Verb == TEXT("console"))
+			{
+				// As the game's console does (UConsole::ConsoleCommand): through the local player's controller, its exec
+				// functions first, then the engine's commands.
+				LogMark = Watcher->Num();
+				const UWorld* World = GetGameWorld();
+				if (APlayerController* Player = World ? World->GetFirstPlayerController() : nullptr)
+				{
+					// A trace even when the command does nothing visible (a player's command the server ignores).
+					UE_LOG(LogHOLTest, Display, TEXT("Test sequence: console %s"), *Rest);
+					Player->ConsoleCommand(Rest);
+				}
+				else
+				{
+					UE_LOG(LogHOLTest, Warning, TEXT("Test sequence: no local player for the console command %s"), *Rest);
+				}
 			}
 			else
 			{
