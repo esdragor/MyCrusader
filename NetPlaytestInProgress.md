@@ -1642,3 +1642,40 @@ R8, R9.
   9364046** (avance rapide ; sessions actives 8a, d3, c1 prévenues). **R8c clos, dans `main`.** Reste de R8 : **R8d**
   essai E5 avec un ami (reporté par l'utilisateur). **Suite : R9** (E6 partie à X, retours, décisions au GDD § 21,
   commit) ou R8d quand l'ami est disponible. Glorfindel garde `net-playtest` (= `main` 9364046).
+- 2026-10-28 ~09:25 : **suite choisie par l'utilisateur** : avant E5, fermer le trou de la pause (vu en R3.4) ; puis
+  R9.3 (décisions au GDD, relues à tête reposée). Chemin du moteur (Development) : commande console `pause` du client
+  → `APlayerController::ServerPause` (Validate ne garde qu'en Shipping) → `SetPause` → `AGameModeBase::AllowPausing` =
+  `bPauseable || Standalone`, vrai par défaut : tout client fige le serveur. Règle : **D361, la partie ne se met pas en
+  pause**. **Boucle P1 lancée** (sous-agent, 15 min, Glorfindel) : test rouge sur la vraie chaîne (partie `net`, un
+  client tape `pause`, le serveur doit continuer), `AllowPausing` refusé hors solo dans `AHeroesOfLibertyGameModeBase`
+  avec une ligne de journal « Pause refused … », vert ×2. Ensuite : commit après accord, publication r9, puis R9.3.
+- 2026-10-28 ~09:45 : **P1 rendue au bout du temps (15 min), non finie**, Glorfindel, non commitée. Fait :
+  `FHOLCheatRules::IsPauseAllowed(ENetMode)` (solo seulement) + test `HeroesOfLiberty.Net.PauseRule` (4 cas, pas lancé) ;
+  commande serveur `hol.Match.PauseReport` (« Pause report: paused 0|1, simulation step N ») ; pas `console <cmd>` de
+  `HOLTestSequence` (passe par le `PlayerController`, comme la console du jeu ; `GEngine->Exec` ne touche pas `pause`) ;
+  partie `net` : client 1 `console pause` après sa triche refusée, le serveur fait deux `PauseReport` à 1 s ; contrôle
+  « client 1's pause refused (N), the match not paused and stepping on ». Correction écrite, pas compilée :
+  `AHeroesOfLibertyGameModeBase::AllowPausing` (refus hors solo, « Pause refused from <nom> (slot N) »). **Faux rouge** :
+  premier essai sans la correction, KO seulement faute de ligne de refus (paused 0, pas 49 → 70) : le pas `console`
+  passait alors par le viewport, `pause` n'arrivait pas au serveur. **Leçon** : une boucle ne tient pas deux
+  compilations (~6 min chacune) + trois parties `net` : coupée en **P2** (correction retirée, build, vrai rouge
+  « paused 1 ») et **P3** (correction remise, build, `tests,net` vert ×2). **P2 lancée.**
+- 2026-10-28 ~10:05 : **P2 faite** (sous-agent, ~4 min) : **vrai rouge** sans la correction : « [KO] server: client 1's
+  pause refused (0), the match not paused and stepping on (paused 1 step 16; paused 1 step 16) », serveur figé au pas 16,
+  tout le reste de `net` en échec ensuite ; ligne « Test sequence: console <cmd> » ajoutée au pas `console`. **P3 faite**
+  (session principale) : correction remise (`Saved\P2_fix\fix.patch`), build PASS (24 s), `quick_check -Parts tests,net`
+  **PASS ×2** (177 s, 186 s ; tests 254/254 dont `Net.PauseRule`) ; serveur : « Pause refused from Bob (slot 1) »,
+  « paused 0, step 38 » puis « paused 0, step 58 ». **Trou de la pause fermé, non commité** (7 fichiers : GameModeBase
+  .h/.cpp, `HOLCheatRules` .h/.cpp, `HOLNetTests.cpp`, `HOLTestSequence.cpp`, `quick_check.ps1`). Accord donné à l'IA (d3)
+  pour avancer `main` à ai-ia1. Suite : accord de l'utilisateur → commit, fusion de `main`, vérifs, avance de `main`,
+  publication r9 (machine calme), puis R9.3.
+- 2026-10-28 : `main` avancée par l'IA (d3) à 40108a6 (IA0.1 + IA0.4) + un commit DOC : à fusionner dans `net-playtest`
+  après le commit de la pause (recompiler : nouveaux fichiers `AI\` et `Script\AI\` ; tests attendus 268 + `PauseRule`).
+- 2026-10-28 ~10:30 : accord (« go ») → **commit c06f1a8** (pause refusée en réseau) sur `net-playtest`, fusion de `main`
+  19e8a9d (IA0.1 + IA0.4) sans conflit ; build PASS (46 s), `tests,net` **PASS** (269/269). En cours : `-StageOnly`,
+  `build_manager.ps1`, `-Parts lobby` ; puis avance de `main`, publication r9 (machine calme), R9.3.
+- 2026-10-28 ~10:50 : `-StageOnly` fait, `build_manager.ps1` PASS, `-Parts lobby` **PASS** (218 s) → **`main` avancée à
+  e4884fc** (avance rapide ; sessions 8a, d3, c1 prévenues). **Trou de la pause fermé, dans `main`.** Suite :
+  **publication r9** (`publish.ps1 -Root Glorfindel -Version 2026-10-28-r9`, ~8 min, tient le verrou d'AutomationTool :
+  demander le moment à l'utilisateur ; après, recuire le serveur de test par `-StageOnly`), puis **R9.3** (décisions au
+  GDD, relues par l'utilisateur), puis R8d / E6 / E7 avec un ami.
