@@ -1009,6 +1009,10 @@ if ($Parts -contains "camera") {
             Step "waitlog queued Peasant (3 in", "frames 5", "hol.HUD.Report", "capture prod_queue"
             Step "hol.HUD.Click QueueItem2", "waitlog cancelled Peasant", "waitlog (2 born here)", "frames 10", "hol.HUD.Report", "hol.Prod.Report", "capture prod_done",
                 "hol.Prod.BuildTime 0"
+            # Its centre let go (Escape with it selected: no menu): the next part's click on it logs a new selection, which
+            # a click on the centre already selected never writes (-Parts production,build without -Full stopped there).
+            Key Escape
+            Step "waitlog Selection: none"
         }
         if (($Parts -contains "move") -and $Case.Name -eq "2p") {
             # Paths (J4, D286), on the navmesh of Plain with the centre of slot 0 made at run time: through that
@@ -5360,18 +5364,26 @@ if ($Parts -contains "net") {
         $Checks["client 1 : the HUD shows its selected unit's attack"] = $HudAttack
         # The health bars on client 1 (J7b.5): its selected unit's bar, and others only for units wounded in the Units where
         # just before (health never rises); each bar's health one the server's hits left, or the maximum (J7-Q5 revised).
-        $BarRuns = @(); $WoundedNow = @{}
+        # A unit hit between the Units where and the bars (the hit arrived in between, a few ms) is wounded in the next Units
+        # where: an unselected bar is wrong only for a unit unhurt in both (seen 2026-10-28: #13 hit 10 ms after the report).
+        $BarRuns = @(); $WoundedNow = @{}; $Pending = @()
         foreach ($Line in $FightLines) {
             if ($Line -match "Units where: \d+ units: (.*)$") {
                 $WoundedNow = @{}
                 foreach ($Entry in ($Matches[1] -split "; ")) { if ($Entry -match "^#(\d+) .*, hp \d+/\d+") { $WoundedNow[$Matches[1]] = $true } }
+                foreach ($Wait in $Pending) { $Wait.Run.Wrong += @($Wait.Ids | Where-Object { -not $WoundedNow.ContainsKey($_) }).Count }
+                $Pending = @()
             } elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\)") {
                 $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
-                $Wrong = @($Items | Where-Object { $_ -notmatch " selected$" -and $_ -match "^#(\d+)" -and -not $WoundedNow.ContainsKey($Matches[1]) })
+                $Unsure = @($Items | Where-Object { $_ -notmatch " selected$" -and $_ -match "^#(\d+)" -and -not $WoundedNow.ContainsKey($Matches[1]) } | ForEach-Object { if ($_ -match "^#(\d+)") { $Matches[1] } })
                 $NotSent = @($Items | Where-Object { $_ -match "^#(\d+) (\d+)/(\d+)" -and -not ($Matches[2] -eq $Matches[3] -or (& $IsServerHp $Matches[1] ([int]$Matches[2]))) })
-                $BarRuns += @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = $Wrong.Count; NotSent = $NotSent.Count }
+                $Run = @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = 0; NotSent = $NotSent.Count }
+                $BarRuns += $Run
+                if ($Unsure.Count) { $Pending += @{ Run = $Run; Ids = $Unsure } }
             }
         }
+        # No Units where after them: still unhurt, wrong.
+        foreach ($Wait in $Pending) { $Wait.Run.Wrong += $Wait.Ids.Count }
         $BarsSel = @($BarRuns | Where-Object { $_.Selected -ge 1 }).Count
         $BarsOther = @($BarRuns | Where-Object { $_.Others -ge 1 }).Count
         $BarsWrong = ($BarRuns | ForEach-Object { $_.Wrong } | Measure-Object -Sum).Sum
@@ -5566,7 +5578,8 @@ if ($Parts -contains "net") {
         foreach ($Pair in @(@(1, $Client1Log), @(2, $Client2Log))) {
             $Messages[$Pair[0]] = @(Get-ClientSection @(if ($Pair[1]) { Get-Content $Pair[1] -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         }
-        $LoserName = "Joueur $([int]$Loser + 1)"; $WinnerName = "Joueur $([int]$Winner + 1)"
+        # The names the lobby gave the slots (M6-Q12), as the players' table: Alice, Bob, not Joueur N.
+        $LoserName = if ($null -ne $Loser) { $NetNames[[int]$Loser] } else { "" }; $WinnerName = if ($null -ne $Winner) { $NetNames[[int]$Winner] } else { "" }
         # V5.5a: its King's death before its defeat, no alert for either (its own loss; another camp's for client 2).
         $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Votre Roi est mort|Vous êtes vaincu"
         $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|Le Roi de $LoserName est mort|$LoserName est vaincu"

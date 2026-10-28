@@ -77,7 +77,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	}
 	// The singular for exactly 1, the plural for 0 (as the players' table, V2.3d).
 	const FText Lives = FText::Format(Event.Lives == 1 ? LOCTEXT("TableLife", "{0} vie") : LOCTEXT("TableLives", "{0} vies"), Event.Lives);
-	const FText Name = GetSlotName(Slot, ViewerSlot, Config);
+	const FText Name = GetPlayerName(Config, Slot, ViewerSlot);
 	switch (Event.Kind)
 	{
 	case EHOLForumEventKind::Fell:
@@ -95,7 +95,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	{
 		const int32 Attacker = Event.OtherSlot;
 		const bool bAttacker = ViewerSlot != INDEX_NONE && Attacker == ViewerSlot;
-		const FText AttackerName = GetSlotName(Attacker, ViewerSlot, Config);
+		const FText AttackerName = GetPlayerName(Config, Attacker, ViewerSlot);
 		if (bOwn)
 		{
 			Message.Text = FText::Format(LOCTEXT("MessageOwnHeld", "{0} tient votre ruine"), AttackerName);
@@ -214,7 +214,7 @@ TArray<HOLForumMessages::FPiece> HOLForumMessages::SplitNames(const FHOLForumMes
 	int32 From = 0;
 	for (const int32 Slot : Message.NamedSlots)
 	{
-		const FString Name = GetSlotName(Slot, ViewerSlot, Config).ToString();
+		const FString Name = GetPlayerName(Config, Slot, ViewerSlot).ToString();
 		const int32 At = Name.IsEmpty() ? INDEX_NONE : Text.Find(Name, ESearchCase::CaseSensitive, ESearchDir::FromStart, From);
 		if (At == INDEX_NONE)
 		{
