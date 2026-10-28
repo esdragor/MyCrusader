@@ -29,6 +29,16 @@ enum class EHOLFaction : uint8
 	Templars,		// Templiers
 };
 
+/** An AI slot's level (D422, D329; IA0.1-Q1b): changes nothing in the game yet, only its name ("IA Difficile 3"). */
+UENUM()
+enum class EHOLAIDifficulty : uint8
+{
+	Easy,		// Facile
+	Normal,
+	Hard,		// Difficile
+	Evolving,	// Évolutive (D329)
+};
+
 /** Game modes (§ 14.3): only Standard until the prototype is done (D205). */
 UENUM()
 enum class EHOLMatchMode : uint8
@@ -59,6 +69,22 @@ struct HEROESOFLIBERTY_API FHOLMatchSlot
 	/** Name of the human the lobby manager put in this slot (version 2, R3.1); empty otherwise. */
 	UPROPERTY()
 	FString PlayerName;
+
+	/**
+	 * IA0.1-Q1b: an AI slot's level, read from the .json ("difficulty": "Hard"); a missing or unknown value is Normal
+	 * (FromJson warns of the unknown one). Ignored for a human slot.
+	 */
+	UPROPERTY()
+	EHOLAIDifficulty Difficulty = EHOLAIDifficulty::Normal;
+
+	/**
+	 * IA0.4-Q3 (A): whether an AI slot's brain thinks (UHOLAIBrainSubsystem::GetThinkingSlots); off, the slot's units
+	 * only do what they are told (a passive target of a combat scenario or of quick_check). Read from a scenario's .json
+	 * as "aiBrain": false (FromJson; ToJson writes the converter's "bAIBrain", read back as well); missing = true.
+	 * Ignored for a human slot.
+	 */
+	UPROPERTY()
+	bool bAIBrain = true;
 
 	bool operator==(const FHOLMatchSlot&) const = default;
 };

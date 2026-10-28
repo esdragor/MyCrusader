@@ -12,6 +12,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Components/WidgetSwitcher.h"
 #include "HeroesOfLibertyUILog.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerColors.h"
@@ -251,10 +252,10 @@ void UHOLStatsScreen::RefreshTimeline()
 	const FHOLMatchStats& Stats = Subsystem->GetStats();
 	const EHOLMatchStatsSeries Series = static_cast<EHOLMatchStatsSeries>(SeriesIndex);
 	const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
-	const auto SlotName = [&Slots](const int32 SlotIndex)
+	const auto SlotName = [GameState](const int32 SlotIndex)
 	{
-		const FString Name = Slots.IsValidIndex(SlotIndex) ? Slots[SlotIndex].PlayerName.TrimStartAndEnd() : FString();
-		return !Name.IsEmpty() ? FText::AsCultureInvariant(Name) : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1);
+		// The lobby's name, an AI's « IA Difficile 3 » (IA0.1-Q1), else Joueur N.
+		return HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE);
 	};
 	const auto SlotColor = [&Slots](const int32 SlotIndex)
 	{
@@ -391,8 +392,7 @@ void UHOLStatsScreen::Refresh()
 			continue;
 		}
 		const FHOLPlayerMatchStats Player = Stats->Players.IsValidIndex(SlotIndex) ? Stats->Players[SlotIndex] : FHOLPlayerMatchStats();
-		const FString Name = Slots[SlotIndex].PlayerName.TrimStartAndEnd();
-		const FText NameText = !Name.IsEmpty() ? FText::AsCultureInvariant(Name) : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1);
+		const FText NameText = HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE);
 		const FLinearColor Color(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex));
 		for (int32 Tab = 0; Tab < Timeline; ++Tab)
 		{

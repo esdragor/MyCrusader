@@ -12,6 +12,7 @@
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
 #include "HUD/HOLScenarioPanel.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLGameMenuRules.h"
@@ -180,14 +181,11 @@ void AHOLGameHUD::RefreshEndBanner()
 	EndBanner = UHOLEndBanner::Open(PlayerController, Due);
 	if (EndBanner && Due == EHOLEndBanner::MatchOver)
 	{
-		// M6-Q10: the spectator's banner names the winners (the lobby's names, else Joueur N).
+		// M6-Q10: the spectator's banner names the winners (the lobby's names, an AI's « IA Difficile 3 », else Joueur N).
 		TArray<FText> Names;
 		for (const int32 Slot : GameState->GetWinners())
 		{
-			const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
-			const FString Name = Slots.IsValidIndex(Slot) ? Slots[Slot].PlayerName.TrimStartAndEnd() : FString();
-			Names.Add(!Name.IsEmpty() ? FText::AsCultureInvariant(Name)
-				: FText::Format(NSLOCTEXT("HOLGameHUD", "PlayerN", "Joueur {0}"), Slot + 1));
+			Names.Add(HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), Slot, INDEX_NONE));
 		}
 		EndBanner->SetDetail(Names.IsEmpty() ? NSLOCTEXT("HOLGameHUD", "NoWinner", "Aucun vainqueur")
 			: FText::Format(Names.Num() == 1 ? NSLOCTEXT("HOLGameHUD", "Winner", "Vainqueur : {0}") : NSLOCTEXT("HOLGameHUD", "Winners", "Vainqueurs : {0}"),

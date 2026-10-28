@@ -509,7 +509,7 @@ if ($Parts -contains "victory") {
     # Then the AI's King killed (hol.Victory.KillKing 1): its death, the message for another camp (no alert), its
     # defeat (King), the banner Victory.
     $RegicideConfig = Join-Path $TestSaved "victory_regicide.json"
-    '{ "map": "/Game/Maps/Plain.Plain", "bRegicide": true, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $RegicideConfig
+    '{ "map": "/Game/Maps/Plain.Plain", "bRegicide": true, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1, "aiBrain": false } ] }' | Set-Content -Encoding ascii $RegicideConfig
     Step "mark victory regicide", "hol.UI.NewGame.Launch $RegicideConfig 0", "waitmap Plain", "frames 60", "hol.Select.Army", "frames 3", "hol.HUD.Report"
     Step "mark victory regicide pass", "hol.Combat.LogHits 1", "hol.Combat.Enabled 1", "hol.Units.Spawn 1 -16600 0 1 Peasant 0", "wait 4", "hol.Units.Remove -16600 0 1500 1", "frames 3"
     Step "mark victory regicide riposte", "hol.Units.Spawn 1 -16600 0 1 ManAtArms 0", "wait 5", "hol.Units.Remove -16600 0 1500 1", "hol.Combat.Enabled 0",
@@ -2533,7 +2533,7 @@ if ($Parts -contains "victory") {
     # V4.5: the hold announced once (held, contested, released: one hold by slot 1), with the alert.
     $HeldMessages = @(@(Get-Section "victory forum held") + @(Get-Section "victory forum contested") + @(Get-Section "victory forum released") |
         Select-String -Pattern "Message: .*tient.*$" | ForEach-Object { $_.Matches[0].Value })
-    $Checks["message once: Joueur 2 tient votre ruine (alert) ($($HeldMessages -join '; '))"] = ($HeldMessages -join '|') -eq "Message: Joueur 2 tient votre ruine (alert)"
+    $Checks["message once: IA Normal 2 tient votre ruine (alert) ($($HeldMessages -join '; '))"] = ($HeldMessages -join '|') -eq "Message: IA Normal 2 tient votre ruine (alert)"
     $Section = Get-Section "victory forum build"
     $Checks["SkipRuin 0: ruin -> rebuilding"] = [bool]($Section | Select-String -SimpleMatch "Victory: forum of slot 0 ruin -> rebuilding" -Quiet)
     $AtWork = @($Section | Select-String -Pattern "Construction: slot 0 rebuilds its forum at .*, (\d+) builders at work" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
@@ -2549,7 +2549,7 @@ if ($Parts -contains "victory") {
     # V4.5: the AI's fall, the message alone (another camp): no alert.
     $Section = @(Get-Section "victory forum other")
     $OtherFell = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de Joueur 2 est tombé — 1 vie"
+    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de IA Normal 2 est tombé — 1 vie"
     $OtherAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["FallForum 1: no Alert, HUD alert: none ($OtherAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$OtherAlert" -eq "none"
     $Section = Get-Section "victory forum defeat"
@@ -2580,6 +2580,10 @@ if ($Parts -contains "victory") {
     $Section = @(Get-Section "victory regicide pass")
     $KingHits = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits")
     $Checks["an enemy Peasant 5.5 m off: the King does not attack ($($KingHits.Count) hits)"] = $KingHits.Count -eq 0 -and [bool]($Section | Select-String -SimpleMatch "Spawn: 1 Peasant of slot 1" -Quiet)
+    # IA0.4 B2b: the Peasant stayed by the King all along (the AI's brain off for this slot, "aiBrain": false), so the case
+    # above was really tested; one sent to gather elsewhere would leave the 15 m and not be removed (a silent false green).
+    $PassRemoved = @($Section | Select-String -Pattern "Remove: (\d+) units of slot 1 within 1500 of \(-16600, 0\)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["the enemy Peasant still there after 4 s, removed ($($PassRemoved -join ', ') units)"] = ($PassRemoved -join ',') -eq "1"
     $Section = @(Get-Section "victory regicide riposte")
     $Struck = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ ManAtArms hits #\d+ King for [\d.]+, (-?[\d.]+) HP left")
     $Riposte = @($Section | Select-String -Pattern "Combat: step \d+ #\d+ King hits #\d+ ManAtArms for ([\d.]+)")
@@ -2603,7 +2607,7 @@ if ($Parts -contains "victory") {
     $Checks["my King alive (no death of slot 0)"] = -not (@(Get-Section "victory regicide") + @(Get-Section "victory regicide pass") + @(Get-Section "victory regicide riposte") + $Section |
         Select-String -SimpleMatch "Regicide: king of slot 0 died" -Quiet)
     $KingMessages = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de Joueur 2 est mort|Joueur 2 est vaincu"
+    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de IA Normal 2 est mort|IA Normal 2 est vaincu"
     $KingAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["no alert (HUD alert: $KingAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$KingAlert" -eq "none"
     $AllOk = (Report "victory regicide" $Checks) -and $AllOk

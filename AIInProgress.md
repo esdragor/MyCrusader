@@ -317,6 +317,244 @@ F1-F3 et F4-F5 sont indépendantes ; F6 a besoin des deux.
   ferme comprise. **Recommandation : baies d'abord, ferme libre ensuite** (sinon un moulin bâti au milieu de 8 fermes
   vole la place d'un fermier).
 
+## IA0.1 Emplacement IA : relevé du code (2026-10-27, Arwen `ai-ia1` = `main` 6cddb93, lecture seule)
+
+Chemins sous `Source/HeroesOfLiberty/` sauf mention.
+
+**1. Emplacements**
+- `EHOLSlotState { Closed, Human, AI }` existe déjà (`Match/HOLMatchConfig.h:12-17`) ; `FHOLMatchSlot` (`:40-63`) : état,
+  faction, couleur, équipe, `PlayerName` (humains nommés par le gestionnaire seulement). Pas d'« ouvert » ni de niveau d'IA.
+- Menu « Nouvelle partie » : `AI` grisé (`HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp:252-253`, D240) → IA0.6. Salon :
+  `EHOLLobbySlotState { Open, Closed, Player }` (`Net/HOLManagerClientRules.h:56`), aucun emplacement IA côté gestionnaire.
+- Déjà utilisé : 38 emplacements `"state": "AI"` dans `Tools/Scenarios/*.json` (dont `starting_peasants.json`, IA en 1),
+  `quick_check.ps1:409` (victoire), `:490` (Régicide), `:513` (3 emplacements), `building_crowd.ps1:31`. La partie `net` de
+  `quick_check` (`:227-235`) n'a que 2 humains et des fermés.
+- Un emplacement IA aujourd'hui : **centre, Roi, 5 Paysans, héros nés** (`HeroesOfLibertyGameModeBase.cpp:515-563` saute
+  seulement `Closed` ; `FHOLStartRules` `HOLStartRules.cpp:14,44`), **compte dans la victoire** (`HOLVictoryRules.cpp:23`,
+  `HOLForumRules.cpp:445` : tout non fermé), **jamais de PlayerState, donc pas de stock**. Nom affiché « Joueur N » (table des
+  joueurs et bandeau : `GetLaunchConfig().Slots[...].PlayerName`, sinon « Joueur N » : `Match/HOLForumMessages.cpp:21-23`,
+  `HeroesOfLibertyUI/HUD/HOLGameHUD.cpp:186-189`, `HOLForumRules::GetPlayersTable`).
+
+**2. PlayerState**
+- Classe : `PlayerStateClass = AHOLPlayerState` (`HeroesOfLibertyGameModeBase.cpp:98`). Seul chemin de naissance : la connexion
+  (contrôleur). `PostLogin` (`:205-272`) : emplacements pris = `PlayerArray`, `FindSlotOnLogin` (humains seulement,
+  `HOLMatchConfig.cpp:85,114`), `SetMatchSlot(Slot, Color)` (`Match/HOLPlayerState.cpp:44-48`), stock par
+  `GiveSlotStock` (`HOLGameState.cpp:616-640`) puis `AssignBuildingOwners` (`:452-475`, propriétaire = son contrôleur).
+- Recherche par emplacement : **cinq copies** de la même boucle sur `PlayerArray` (`GetPlayerIndex() == Slot`) :
+  `UE::HeroesOfLiberty::Match::FindSlotPlayerState` (`Match/HOLGameState.cpp:531-547`, sert `GetSlotStock`),
+  `UHOLConstructionSubsystem::FindPlayerState` (`Buildings/HOLConstructionSubsystem.cpp:244-260`),
+  `UHOLProductionSubsystem::FindPlayerState` (`Buildings/HOLProductionSubsystem.cpp:125-141`),
+  `UHOLHeroSubsystem::FindPlayerState` (`Simulation/HOLHeroSubsystem.cpp:214-230`, commentaire `.h:37` « nullptr for an AI
+  slot »), `HOLAISummary::ReadStock` (`AI/HOLAISummary.cpp:130-147`). Un PlayerState IA dans `PlayerArray` est trouvé par
+  toutes, sans retouche.
+- Créer sans contrôleur (Unreal 5.8) : `SpawnActor<AHOLPlayerState>(PlayerStateClass)` sur le serveur ;
+  `APlayerState::PostInitializeComponents` l'inscrit seul (`GameState->AddPlayerState`) ; `Destroyed` l'en retire. Puis
+  `SetIsABot(true)`, `SetPlayerName`, `SetMatchSlot(Slot, Color)`, `SetResources(StartingResources)`. Les tests le font déjà
+  (`Tests/HOLDisconnectTests.cpp:162-198` : `SpawnActor<AHOLPlayerState>` puis présent dans `PlayerArray`).
+- Réplication : `APlayerState` est répliqué et toujours pertinent : le PlayerState IA arrive chez tous les clients
+  (`PlayerIndex`, `ColorIndex` en `DOREPLIFETIME`, `HOLPlayerState.cpp:19-20`, `bIsABot` du moteur) ; ses champs
+  `COND_OwnerOnly` (stock, population, récolteurs, chaînes, héros privé, `:21-26`) ne partent vers personne (sans
+  connexion propriétaire) : l'économie de l'IA reste cachée (D282), rien à ajouter.
+- Où le faire naître : au serveur, **avant** `SpawnMainCentres` dans `StartPlay` (`:489-492`), une fonction statique comme
+  `SpawnKing` (`SpawnAIPlayerStates(UWorld&, const FHOLMatchConfig&, const FHOLResources&)`) pour la tester sans GameMode.
+  `AssignBuildingOwners` sort tôt (pas de contrôleur, `:464`) : bâtiments IA sans `Owner`, comme aujourd'hui.
+
+**3. Stock**
+- Le stock vit dans `AHOLPlayerState::Resources` (`Match/HOLPlayerState.h:145`) ; R7 ajoute le stock gardé d'un absent
+  (`AbsentSlots`) ; accès commun `AHOLGameState::GetSlotStock` / `SetSlotStock` / `AddSlotStock` (`HOLGameState.cpp:550-586`) :
+  absent d'abord, sinon PlayerState, sinon **faux, rien écrit**.
+- Crédit : dépôt de récolte `UHOLGatherProcessor::DepositLoad` (`Simulation/HOLGatherProcessor.cpp:887-897`) : sans
+  PlayerState, la charge est **vidée et perdue** (le Paysan décharge, rien n'est crédité, aucun journal) ; remboursements
+  de destruction / annulation `AddSlotStock` (`HOLConstructionSubsystem.cpp:422,445`) : perdus pareil.
+- Débit : construction `ApplyOrders` (`HOLConstructionSubsystem.cpp:276-282`) : sans PlayerState, **`continue` muet** (ordre
+  jeté sans journal) ; production (`HOLProductionSubsystem.cpp:161-167`) : rejet journalisé « Production order of slot N
+  ignored: not its building » (message trompeur pour l'IA).
+- Tests d'IA0.2 (`Tests/HOLAIOrdersTests.cpp:82-150`, emplacement 1 sans PlayerState) : ils vérifiaient la règle
+  `HOLPlayerOrders` (emplacement 0-7, plafond 200, chaînes, `SendNonWorkersTo`) et le départ en récolte, **pas** le dépôt ;
+  marchaient déjà sans PlayerState : ordres d'unités (déplacement, attaque, récolte, construire un chantier existant), la
+  récolte elle-même. Ne marchaient pas : poser une fondation (`Place` passe par la construction), produire, créditer.
+  IA0.3 : `Tests/HOLAISummaryTests.cpp:208-304` attend « slot 1: no PlayerState, no stock » (`bHasStock` faux) : **à
+  retourner** en IA0.1 (le test `World` monte un emplacement IA sans PlayerState).
+
+**4. Lecteurs de `PlayerArray` (et du contrôleur d'un PlayerState) avec un PlayerState IA**
+- Sans risque (le PlayerState IA y est voulu ou sans effet) : `FindPlayerState` × 5 (ci-dessus) ; population publiée
+  (`HOLProductionSubsystem.cpp:340-360`) ; chaînes d'ordres (`Commands/HOLUnitOrderProcessor.cpp:3970-3985`) ; récolteurs
+  (`HOLGatherProcessor.cpp:977-985`) ; bulles de dépôt (`:998-1001`, contrôleur absent → sautées) ; effondrement D358
+  (`HOLGameState.cpp:721-728`, stock mis à 0 : voulu) ; couleurs (`HOLPlayerState.cpp:29-42`, et
+  `Presentation/HOLInterpolatedInstancesProcessor.cpp:93-100`) : la couleur de l'IA vient alors de la configuration au lieu
+  de l'indice (mieux) ; `PreLogin` / `PostLogin` (`GameModeBase.cpp:173,216`) : l'emplacement IA pris ne gêne pas (les
+  humains n'ont que des emplacements `Human`) ; `SendStartedIfAllHere` (`:351-359`, `Human` seulement) ;
+  `SendEmptyIfNobodyLeft` (`:416`, contrôleurs : l'IA ne retient pas le serveur, voulu) ; `AssignBuildingOwners` (sort tôt) ;
+  déconnexion R7 (`Logout` passe par un contrôleur ; `FHOLDisconnectRules::KeepsSlot` `Match/HOLDisconnectRules.cpp:7-16`
+  = `Human` nommé seulement : l'IA n'est jamais absente) ; spectateur (PlayerState IA jamais `OnlyASpectator`, emplacement
+  0-7 : accepté par `HOLPlayerOrders`) ; HUD (`HeroesOfLibertyUI` ne lit que le PlayerState local et `GetLaunchConfig`).
+- Change ce qu'on voit (voulu, à vérifier) : statistiques (`Match/HOLMatchStatsSubsystem.cpp:122-145`) : l'IA a enfin ses
+  courbes et sa ligne (`HeroesOfLibertyUI/Screens/HOLStatsScreen.cpp:275,393` ; avant : ligne vide) ; rapports
+  « Production report … others [slot N …] » (`Player/HOLPlayerController.cpp:1194-1201`) et « Hero private slot N other »
+  (`HOLHeroSubsystem.cpp:55-60`) : une entrée de plus en solo avec une IA. Les attentes exactes de `quick_check`
+  (`quick_check.ps1:4697,4732,4783,4808`, « others [slot X F 0 …] ») sont dans la partie `net`, sans IA ; à confirmer par
+  `-Parts victory,production` (parties solo avec IA en 1).
+- **Correction minimale** : `UpdateStartWait` (`GameModeBase.cpp:290-297`) ajoute le nom vide de l'IA à `Present` (sans
+  effet, mais sauter `IsABot()`) ; **`waitplayers N`** de `Dev/HOLTestSequence.cpp:293-297` compte tout `PlayerArray` : une
+  partie réseau avec IA passerait trop tôt → ne compter que `!IsABot()`. Les cinq `FindPlayerState` : les remplacer par
+  `FindSlotPlayerState` (un seul endroit) n'est pas nécessaire à IA0.1 (option).
+
+**5. Tests à imiter**
+- Modèle pour IA0.1 : **`HeroesOfLiberty.Match.DisconnectGains`** (`Tests/HOLDisconnectTests.cpp:151-230`) : vrai monde
+  (`UWorld::CreateWorld(Game)` + `InitializeActorsForPlay`), `AHOLGameState` + `AHOLPlayerState` par `SpawnActor`, centre et
+  fondation, `UHOLProductionSubsystem`, vrai dépôt `UHOLGatherProcessor::DepositLoad`, vraie destruction ; avec le monde
+  d'IA0.2 (`HOLAIOrdersTests.cpp:82-150` : processeurs d'ordres et de récolte au pas, emplacement 1 IA) pour faire passer
+  les ordres de construction / production par `UHOLCommandSubsystem` → `ApplyOrders` au pas (vraie chaîne). IA0.3
+  (`HOLAISummaryTests.cpp:231-304`) pour le stock lu par le résumé.
+- Aucun test ne passe par `StartPlay` (relevé d'IA1.1) : la naissance se teste par la fonction statique, la vraie partie par
+  un scénario (`starting_peasants` a déjà l'IA en 1).
+
+### Découpage d'IA0.1 (boucles de 15 min au plus, test rouge d'abord sur la vraie chaîne)
+
+| Boucle | Changement | Test rouge d'abord |
+|---|---|---|
+| E1 | `AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(UWorld&, Config, Starting)` (statique, serveur) : un `AHOLPlayerState` par emplacement `AI`, `SetIsABot`, nom, `SetMatchSlot`, stock de départ ; journal « AI slot N: player state, F … » ; appelée dans `StartPlay` avant `SpawnMainCentres` | `HeroesOfLiberty.AI.Slot.Spawn` (monde de test, `AHOLGameState`) : config humain 0 + IA 1 et 3 + fermé : 2 PlayerStates IA dans `PlayerArray`, `IsABot`, emplacements 1 et 3, couleurs de la config, stock = `StartingResources`, `GetSlotStock` vrai ; rien pour 0 et les fermés ; second appel sans doublon |
+| E2 | rien (ou correctifs révélés) | `HeroesOfLiberty.AI.Slot.Economy` (monde d'IA0.2 + PlayerState IA d'E1) : fondation de maison posée par un ordre de l'emplacement IA (`UHOLAIOrderLibrary` / `HOLPlayerOrders` → construction au pas) et payée ; Paysan produit au centre IA (file, coût débité) ; dépôt de 10 bois crédité (`DepositLoad`) ; sans PlayerState (avant E1) : les trois refusés / perdus |
+| E3 | IA0.3 : attente « slot 1 no stock » retournée (le monde de `Summary.World` reçoit son PlayerState IA) ; `ReadStock` par `GetSlotStock` (option) | `AI.Summary.World` : emplacement IA avec stock |
+| E4 | `waitplayers` ne compte que les humains ; `UpdateStartWait` saute `IsABot` ; rejet de construction sans PlayerState journalisé | test de `HOLTestSequence` si possible, sinon `quick_check -Parts net` inchangé |
+| E5 | vérification en vraie partie | `quick_check -Parts tests,victory,production,gather` ; scénario `starting_peasants` hors écran : ligne « AI slot 1: player state », stock de l'IA dans « others [slot 1 F 200 …] » ; `-Parts net` (pas d'IA, rien ne doit bouger) |
+| E6 | essai de l'utilisateur ? (rien de visible hors statistiques : écran de fin avec la ligne de l'IA) ; commit après validation | — |
+
+E1 d'abord ; E2-E4 indépendantes ensuite. Pas d'essai visible avant IA0.4 : proposer de commiter IA0.1 sur `quick_check` seul.
+
+### Questions de jeu laissées ouvertes par le code
+
+- **IA0.1-Q1 Nom de l'IA** : aujourd'hui « Joueur N » comme un humain sans nom. A) « Joueur N » inchangé ; B) « IA N » /
+  « Ordinateur N » dans la table des joueurs, le bandeau et les statistiques (texte traduit, `PlayerName` vide) ; C) un nom
+  tiré d'une liste (seigneurs médiévaux). **Recommandation : B** (on sait contre qui on joue ; C plus tard avec les niveaux).
+- **IA0.1-Q2 Stock de départ** : A) le même que l'humain (`StartingResources`, 200, D283), comme le plan ; B) un bonus par
+  niveau (IA4). **Recommandation : A** maintenant, B noté pour IA4.
+- **IA0.1-Q3 Emplacements IA des scénarios et de `quick_check`** : les 38 `"AI"` existants (cibles passives, souvent
+  `startingPeasants` 0) auront un PlayerState et un stock, mais **pas de cerveau** tant qu'IA0.4 n'existe pas. A) tous en
+  reçoivent un (rien ne bouge : pas de cerveau) ; B) un champ du `.json` pour couper le futur cerveau (`"aiBrain": false`)
+  dès IA0.4. **Recommandation : A maintenant, B à IA0.4** (sinon chaque scénario de combat aura une IA qui joue).
+- **IA0.1-Q4 Victoire** : l'IA compte déjà (emplacement non fermé : forum à vies, Régicide, effondrement D358). Rien à
+  décider ; **recommandation : la laisser compter** (une IA battue s'effondre comme un humain).
+- **IA0.1-Q5 Couleur** : celle de la configuration (comme un humain) ; aujourd'hui les rapports et la pastille de sélection
+  prennent l'indice de l'emplacement faute de PlayerState (`FindColorIndex`). **Recommandation : la configuration** (vient
+  d'office avec E1).
+
+## IA0.4 Cerveau en script : relevé du code (2026-10-27, Arwen `ai-ia1`, lecture seule)
+
+Chemins sous `Source/HeroesOfLiberty/` sauf mention ; moteur = `C:/UE/UE_5.8_AS_3/Engine/Plugins/Angelscript/Source/AngelscriptCode/` (noté AC).
+
+**1. Script**
+- `Script/` d'Arwen : un seul fichier, `Script/Tests/HOLScriptSmoke_Test.as:5-8` (`Test_SeesProjectClasses`, AS1), plus
+  `Binds.Cache*` (générés). Conventions : test = `void Test_<Nom>(FUnitTest& T)` dans un module `*_Test` ; le type sert de
+  valeur (`AHOLBuilding`, pas `StaticClass()`) ; commentaires en anglais.
+- Monde d'un test en script : chaque `Test_` reçoit un monde neuf de type Game (`InitializeStandalone("UnitTestWorld")`,
+  `InitializeActorsForPlay`, pas de carte ni de `BeginPlay` : AC `Private/Testing/UnitTest.cpp:275-332`) ; nos sous-systèmes
+  y existent, mais **rien d'exposé au script ne fait naître une unité ou une source** : seuls `UHOLAISummaryLibrary` et
+  `UHOLAIOrderLibrary` sont `BlueprintCallable` dans tout le projet. Un test en script ne peut donc tester qu'une règle pure
+  (résumé → ordres) ; la vraie chaîne se teste en C++ (ci-dessous, 6).
+- `quick_check.ps1:216` : `Automation RunTests HeroesOfLiberty+Angelscript.UnitTests` avec `-asdebugport=0
+  -as-exit-on-error` ; `:5240-5244` « script tests ran (N) » > 0 ; `:2176-2179` et `:2236` : trois premières
+  `Angelscript: Error:` du journal (tests et jeu). `Tools/Scenarios/play.ps1:46` : `-asdebugport=0`, sans `-as-exit-on-error`.
+- Naissance d'une classe de script en partie : **une classe de script qui dérive d'un `UWorldSubsystem` C++ est créée
+  d'office** pour chaque monde que la classe de base accepte (AC `ClassGenerator/AngelscriptClassGenerator.cpp:2592-2598`,
+  sous-système « externe », réactivé au rechargement ; `UScriptWorldSubsystem` = même chose avec `BP_Tick` à l'image,
+  `Public/BaseClasses/ScriptWorldSubsystem.h:9-150`). Accès en script : `UMaClasse::Get()` (AC `Binds/Bind_Subsystems.cpp:85-96`).
+  Le projet ne dépend pas d'`AngelscriptCode` (aucun `Build.cs`) : le C++ trouve la classe de script par la classe de base
+  (`World->GetSubsystemArrayCopy<UBase>()`), sans dépendance. Les mondes des tests C++ (`UWorld::CreateWorld(Game)`)
+  reçoivent aussi ce sous-système (les scripts sont compilés au démarrage de l'éditeur des tests).
+- Liaisons générées (`Script/Binds.Cache`) : espaces de noms **`HOLAISummary::ReadAISummary(int PlayerIndex)`** et
+  **`HOLAIOrder::IssueAIGatherOrder(PlayerIndex, UnitIds, SourceIndex, bQueue)`** (préfixe `U` et suffixe `Library`
+  retirés) ; le `WorldContextObject` est rempli par le script appelant (le sous-système lui-même).
+- Leçons d'AS1-AS2 (`AngelscriptInProgress.md` « Suivi ») : `-as-exit-on-error` sinon l'éditeur attend devant « corrigez
+  les erreurs » ; `-asdebugport=0` sinon l'extension VS Code fige le jeu ; `FUnitTest` existe hors éditeur (tests
+  compilés dans le paquet, inertes) ; au rechargement complet une classe devient `<Nom>_REPLACED_N` (ne pas garder de
+  `UClass*`) ; une classe `ClientOnly` (module `HeroesOfLibertyUI`) nommée dans un script casserait le serveur.
+
+**2. Pas de simulation**
+- 20 pas par seconde (`Config/DefaultGame.ini:12`, `Simulation/HOLSimulationSettings.h:102`) : 5 à 10 pas = 4 à 2
+  pensées par seconde. Cadence : `UHOLSimulationSubsystem::OnPrePhysicsPhaseStarted` (`Simulation/HOLSimulationSubsystem.cpp:296-318`,
+  rien pendant l'attente des joueurs R3.10), `RunStep` (`:321-400`) : `OnStepStarted(StepIndex)` en tête (« ce qui est
+  émis ici est appliqué par ce pas »), `Step hash` si `hol.Simulation.StepHashes` (`:35-36`, `:386`), `++StepIndex`,
+  `OnStepEnded` en queue (`:400`). Serveur et solo seulement : `OnWorldBeginPlay` sort sur `NM_Client` (`:203-210`).
+- Les deux délégués sont **natifs** (`DECLARE_MULTICAST_DELEGATE`, `HOLSimulationSubsystem.h:47-51`), invisibles du script.
+  Modèle à copier : `UHOLProductionSubsystem::OnWorldBeginPlay` (`Buildings/HOLProductionSubsystem.cpp:59-70` : sort sur
+  client, `GetOnStepStarted().AddUObject`) ; aussi `HOLConstructionSubsystem.cpp:54`, `Match/HOLGameState.cpp:80-81`.
+- Branchement proposé : classe C++ abstraite `UHOLAIBrainSubsystem : UWorldSubsystem` (`AI/HOLAIBrain.h`, la seule part
+  C++ : cadence et liste des emplacements) ; `OnWorldBeginPlay` hors client → `GetOnStepEnded().AddUObject` ; à chaque pas,
+  pour chaque emplacement IA (PlayerStates `IsABot()` triés par `GetPlayerIndex`) dont `(Step + Slot) % Interval == 0`
+  (étalé), appel d'un `UFUNCTION(BlueprintImplementableEvent) Think(int32 PlayerIndex)` redéfini en script ; fonction
+  publique `ThinkNow(PlayerIndex)` pour les tests. **`OnStepEnded`** plutôt que `OnStepStarted` : le résumé lit l'état du
+  pas fini, l'ordre entre dans la file et s'applique au pas suivant, quel que soit l'ordre des abonnés (la production et
+  la construction lisent leurs files dans `OnStepStarted`).
+- Même file que l'humain : `HOLAIOrder::IssueAIGatherOrder` → `HOLPlayerOrders::Gather` (`AI/HOLAIOrders.cpp:37-42`) →
+  `Commands->IssueGatherOrder` (`Commands/HOLPlayerOrders.cpp:138`), comme les RPC du contrôleur ; refusé sur un client
+  (`HOLAIOrders.cpp:13-22`). Déterminisme : le résumé est trié (`IdlePeasants` croissants, sources par distance puis indice,
+  `AI/HOLAISummary.cpp:49-53`, `:84-94`) ; le cerveau ne lit ni l'heure ni le hasard (un tirage plus tard : `Seed`,
+  `Match/HOLMatchConfig.h:85`) ; pensée au pas, pas à l'image.
+
+**3. Exposition au script**
+- `UHOLAISummaryLibrary::ReadAISummary` (`AI/HOLAISummary.h:149-158`) et `UHOLAIOrderLibrary::IssueAIGatherOrder` /
+  `IssueAIMoveOrder` (`AI/HOLAIOrders.h:14-30`) : `BlueprintCallable`, liés (vu dans `Binds.Cache`). `FHOLAISummary`,
+  `FHOLAIResourceSummary`, `FHOLAISourceNear` : `USTRUCT(BlueprintType)`, champs `UPROPERTY(BlueprintReadOnly)`
+  (`HOLAISummary.h:23-97`) : lisibles en script, **pas écrivables** (AC `Binds/Helper_PropertyBind.h:65-72` ; un test en
+  script ne peut pas bâtir un résumé ; `meta = (ScriptReadWrite)` l'ouvre au script seul, `:29,51-55`). `Get(EHOLResource)`
+  et `GetStock()` ne sont pas des `UFUNCTION` : en script, lire `Food`, `Wood`, `Stone`, `Gold`.
+- Manque pour IA0.4 : (a) l'appel au pas (2) ; (b) la liste des emplacements IA (dans la base C++) ; (c) **le résumé garde
+  les sources qu'on ne peut pas récolter** : `Make` ne teste pas `FHOLSource::IsGatherableBy` (`HOLAISummary.cpp:58-63` ;
+  `Resources/HOLSourceSubsystem.h:31,39`) : un champ de la ferme ennemie près d'un dépôt IA serait choisi, refusé par la
+  récolte (`Simulation/HOLGatherProcessor.cpp:384`), le Paysan resterait inactif et réenvoyé à chaque pensée ; (d) un
+  interrupteur par emplacement (IA0.1-Q3 B : `"aiBrain": false` des scénarios de combat) ; (e) un journal par décision
+  (« AI slot 1 step 40: 3 idle -> gather W #12 ») pour IA0.7. Pas nécessaires à IA0.4 : production et pose dans
+  `UHOLAIOrderLibrary` (IA1.4), Paysans par ressource (IA1.3).
+
+**4. Décision « source utile la plus proche »**
+- Le résumé donne : Paysans inactifs (comme le compteur du HUD, D307 : un récolteur en aller-retour ou un bâtisseur n'est
+  pas inactif, `HOLAISummary.cpp:46-53`), par ressource jusqu'à 8 sources debout reliées à un dépôt fini de l'IA, triées
+  par `DepositDistance` (bord du dépôt le plus proche, `:56-94`), le stock (`bHasStock`). Rien sur l'occupation d'une
+  source (une ferme n'a qu'une place) ni sur les Paysans déjà par ressource (IA1.3).
+- Règle proposée (pure, testable, déterministe) : à chaque pensée, s'il y a des Paysans inactifs : ressource = **la plus
+  basse du stock parmi celles qui ont une source** (égalité : nourriture, bois, pierre, or) ; **un seul ordre** : tous les
+  inactifs à sa source la plus proche (`Sources[0]`) ; aucune source : rien, journal. Un ordre par pensée : les suivants
+  partent aux pensées suivantes, déjà sur la ressource la plus basse après les dépôts. Au départ (200 partout, 5 Paysans) :
+  les 5 vont aux baies.
+
+**5. Serveur dédié (IA0.5, constat)**
+- `AngelscriptCode` est un module `Runtime` (`C:/UE/UE_5.8_AS_3/Engine/Plugins/Angelscript/Angelscript.uplugin`), chargé par
+  la cible Server ; AS2 a vu le serveur empaqueté démarrer sur son cache (« Using fully precompiled scripts »,
+  `Tools/Package/precompile_scripts.ps1` lance l'exe `WindowsServer\`) ; sans cache, il compile les `.as` au démarrage
+  (AC `AngelscriptManager.cpp:433-460`). La partie `net` de `quick_check` lance `UnrealEditor -server` (`:331`) : le
+  script s'y compile depuis les `.as`. Non vérifié : une classe de script qui pense **sur** le serveur (IA0.5).
+
+### Découpage d'IA0.4 (boucles de 15 min au plus, test rouge d'abord sur la vraie chaîne)
+
+| Boucle | Changement | Test rouge d'abord |
+|---|---|---|
+| B1 | `AI/HOLAIBrain.h/.cpp` : `UHOLAIBrainSubsystem` abstrait (Game/PIE, hors client, `OnStepEnded`, intervalle `hol.AI.ThinkSteps` 5, emplacements `IsABot` triés, `ThinkNow`) ; `Script/AI/HOLEconomyBrain.as` vide qui le dérive | `HeroesOfLiberty.AI.Brain.Exists` (C++) : monde de test → un sous-système de script dérivé trouvé par `GetSubsystemArrayCopy` ; rouge sans le `.as` |
+| B2 | `Think` en script : la règle de 4 → `HOLAIOrder::IssueAIGatherOrder` ; journal | `HeroesOfLiberty.AI.Brain.GatherIdle` (C++, monde d'IA0.2 + `SpawnAIPlayerStates` + centre de l'emplacement 1 comme `AI.Summary.World`, arbre et baies) : `ThinkNow(1)` puis `RunStep` → le Paysan IA inactif récolte la source attendue ; Paysan humain intouché ; rien sans Paysan inactif |
+| B3 | règle en fonction pure de script (`HOLAIEconomy::ChooseGather(Summary)`) ; champs du résumé `ScriptReadWrite` (si IA0.4-Q2 = A) | `Script/AI/HOLEconomyBrain_Test.as` : stock le plus bas, égalité dans l'ordre F W S G, aucune source, aucun inactif |
+| B4 | résumé : sources `IsGatherableBy(PlayerIndex)` seulement | `AI.Summary.*` : champ d'une ferme ennemie exclu, celle de l'IA gardée |
+| B5 | cadence au vrai pas (abonnement, étalement par emplacement) ; interrupteur `aiBrain` (IA0.4-Q3) | C++ : N pas simulés par `OnStepEnded` → pensées aux pas attendus, une seule par emplacement et par intervalle, aucune sur un monde client |
+| B6 | vraie partie | scénario `starting_peasants` hors écran : 5 Paysans IA récoltent en moins de 1 s, journal de décision ; `quick_check -Parts tests,victory,production,gather` et `-Parts net` (aucune IA : rien ne bouge) ; deux courses de même `Seed` : mêmes `Step hash` ; puis essai de l'utilisateur (scénario prêt) et commit après validation |
+
+B1 d'abord (il ouvre l'inconnue : sous-système de script créé dans un monde de test) ; B3 et B4 indépendantes.
+Repli si B1 échoue : délégué `BlueprintAssignable` sur un sous-système C++ auquel un `UScriptWorldSubsystem` s'abonne.
+
+### Questions laissées ouvertes par le code
+
+- **IA0.4-Q1 Ressource visée** : A) la plus basse du stock (égalité F W S G), tous les inactifs d'une pensée à sa source la
+  plus proche ; B) la source la plus proche toutes ressources confondues (souvent tout au bois) ; C) répartition fixe
+  (moitié nourriture, moitié bois) : demande les Paysans par ressource (IA1.3). **Recommandation : A** (visible, simple,
+  remplacée par la règle de besoins d'IA1.6).
+- **IA0.4-Q2 Tests du cerveau** : A) un test C++ sur la vraie chaîne (C++ → script → ordre → file → processeurs) plus des tests
+  en script de la règle sur des résumés bâtis en script (`ScriptReadWrite`) ; B) C++ seul ; C) test d'intégration en script
+  sur une carte (`IntegrationTest_`, PIE serveur + client) : lourd, hors `quick_check`. **Recommandation : A** (D484
+  respectée, la règle se teste en script, la chaîne en C++).
+- **IA0.4-Q3 Interrupteur des scénarios** (IA0.1-Q3 B) : A) champ `"aiBrain"` par emplacement du `.json` (défaut vrai, faux
+  dans les scénarios de combat et `quick_check`) ; B) variable `hol.AI.Brain 0/1` pour toute la partie ; C) aucun : les
+  emplacements IA des scénarios jouent. **Recommandation : A** (une IA qui joue et une cible passive dans le même scénario).
+- **IA0.4-Q4 Fréquence** : A) 5 pas (4 par seconde), étalée par emplacement ; B) 10 pas (2 par seconde) ; C) réglage par niveau
+  dès maintenant. **Recommandation : A**, variable `hol.AI.ThinkSteps`, réglage par niveau à IA4 (D422, « réaction »).
+
 ## Suivi
 
 - 2026-10-26 : chantier ouvert (choix de l'utilisateur parmi les tâches faisables sans Unreal). Lecture du GDD faite ;
@@ -659,5 +897,385 @@ F1-F3 et F4-F5 sont indépendantes ; F6 a besoin des deux.
   (324 textes, 0 clé inconnue) ; recompilé ; `quick_check -Parts tests` **217/217**, `build,gather,move` **PASS** (farm,
   hero, dropoff, shiftwork), `production,sources,victory` **PASS**, `net` **PASS** (2 clients, fiches de héros). `main`
   (c8ec209, doc + play.ps1) refusionnée (3ae16b3). Avance rapide de `main` : accord demandé aux sessions mycrusader-bc,
-  -17, -fb, -b8. Trial game left open had locked two .uasset (first merge attempt failed, cleaned): close the trial game
-  before merging. **Prochain : IA1.3** (plan d'IA1).
+  -17, -fb, -b8. Leçon : le jeu d'essai resté ouvert verrouillait deux `.uasset` (première fusion ratée, nettoyée) →
+  fermer le jeu d'essai avant de fusionner.
+- 2026-10-27 : quatre « ok » ; `main` avancée à 3ae16b3 (avance rapide), DOC 6cddb93 (journal + mes deux lignes
+  d'`EtapeDefini.md`, celles des autres sessions laissées non commitées) ; `ai-ia1` = `main` 6cddb93 ; copie principale
+  recompilée. **Prochain : IA0.1** (PlayerState de l'emplacement IA ; R7 est dans `main`), puis IA0.4, IA0.5 (préalables
+  d'IA1.3+ au plan).
+- 2026-10-27 : IA0.1 boucle 1 : relevé en lecture seule fait (section « IA0.1 Emplacement IA : relevé du code ») :
+  `EHOLSlotState::AI` existe (menu grisé, absent du salon), un emplacement IA a déjà centre, Roi, Paysans, héros et compte
+  dans la victoire, mais aucun PlayerState : dépôt perdu sans journal, fondation jetée sans journal, production refusée ;
+  un `AHOLPlayerState` né par `SpawnActor` s'inscrit seul dans `PlayerArray`, est trouvé par les cinq `FindPlayerState` et
+  `GetSlotStock`, et son économie reste cachée aux clients (`COND_OwnerOnly`). Lecteurs de `PlayerArray` : aucun ne casse ;
+  à corriger : `waitplayers` (compter les humains seuls), `UpdateStartWait` (sauter `IsABot`), attente « no stock » du test
+  `AI.Summary.World`. Découpage E1-E6 (E1 naissance statique avant `SpawnMainCentres` ; E2 économie sur la vraie chaîne ;
+  E3 résumé ; E4 correctifs ; E5 `quick_check` + `starting_peasants` ; E6 commit) ; questions IA0.1-Q1 à Q5 à poser (nom de
+  l'IA d'abord : recommandation « IA N »).
+- 2026-10-27 : IA0.1 E1 (sous-agent, Arwen, écrit sans compiler) : test rouge `HeroesOfLiberty.AI.Slot.Spawn`
+  (`Tests/HOLAISlotTests.cpp`, vrai monde + `AHOLGameState`, config humain 0, IA 1 couleur 5 et IA 3 couleur 2, le reste
+  fermé, stock lu de `UHOLMatchSettings::StartingResources`) ; dans l'arbre, **bouchon** `SpawnAIPlayerStates` (rend 0)
+  déclaré dans `HeroesOfLibertyGameModeBase.h` et appelé dans `StartPlay` avant `SpawnMainCentres` (cartes à départs
+  seulement), et `MakeAIPlayerName(Slot)` déjà réel (= `HOLForumMessages::GetSlotName(Slot, INDEX_NONE)`, « Joueur N » :
+  la seule ligne à changer pour IA0.1-Q1). Rouge attendu sur le bouchon : « two spawned », « two player states »,
+  « slot 1/3: a player state » (le reste de la boucle sauté), « still two player states » ; verts : stock de départ non
+  vide, rien pour 0 et 2, « second call: none spawned ». Vraie logique (sauter client et monde sans GameState ; un
+  `AHOLPlayerState` par emplacement `AI` non tenu ; `SetIsABot`, nom, `SetMatchSlot(Slot, couleur)`, `SetResources` ;
+  journal « AI slot N: player state, F 200 … (colour C, 'Joueur N') ») dans
+  `C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\31239e0c-7a0a-4376-8bef-69fe094a906d\scratchpad\e1_logic.patch`
+  (`git apply --check` OK, appliqué puis retiré pour vérifier : CRLF gardé). Humain reproduit : emplacement + couleur
+  (`PostLogin`) et stock de départ ; population comptée par la production à chaque pas, camp lu de la config
+  (`InitVictory`), rien d'autre posé pour un humain. `AI.Summary.World` ne passe pas par `StartPlay` : inchangé (vert).
+- 2026-10-27 : IA0.1 E1 **verte** (session principale) : bouchon compilé (57 s), rouge vu (`AI.Slot.Spawn` : 5 échecs
+  attendus, aucun PlayerState IA), patch appliqué, recompilé, vert ; `quick_check -Parts tests` **PASS 218/218** (35 s),
+  `-Parts victory,production,sides` **PASS** (34 s, emplacements IA de `quick_check` avec leur PlayerState). Nom de l'IA :
+  « Joueur N » en attendant IA0.1-Q1 (une ligne, `MakeAIPlayerName`). Non commitée. E2 lancée (sous-agent).
+- 2026-10-27 : IA0.1 E2 (sous-agent, Arwen, écrit sans compiler) : test `HeroesOfLiberty.AI.Slot.Economy`
+  (`Tests/HOLAISlotTests.cpp`, monde `FEconomyWorld` = celui d'`AI.Orders.*` + construction et production liées au pas par
+  `OnWorldBeginPlay`, centre de l'emplacement 1 à l'origine, PlayerStates IA par le vrai `SpawnAIPlayerStates` d'E1).
+  Avec PlayerState : fondation de maison par `HOLPlayerOrders::Place` (le chemin du cerveau ; pas encore dans
+  `UHOLAIOrderLibrary`) → posée au pas suivant, couleur 5 de la config, stock débité du coût de la table ; Paysan par
+  `IssueProductionOrder` (le contrôleur fait pareil : **aucune fonction de production dans `HOLPlayerOrders` ni
+  `UHOLAIOrderLibrary`**, à ajouter pour IA0.4) → en file, payé, né après `BuildSteps` pas (`ServeBirthRequests`) ;
+  10 bois par `UHOLGatherProcessor::DepositLoad` → crédités (pas de vraie marche : le monde de test n'a pas de
+  déplacement). Contre-épreuve sans PlayerState : fondation et file refusées, 10 bois vidés et perdus (`GetSlotStock`
+  faux). Lecture du code : **les trois passent déjà avec E1** (ni contrôleur exigé, ni navmesh : `bOnNavMesh` vrai par
+  défaut, pas de `AHOLMapBounds`) ; le test est rouge aujourd'hui seulement par les deux journaux attendus de la
+  contre-épreuve (E4) : « Construction order of slot 1 ignored: no player state » (le `continue` muet) et « Production
+  order of slot 1 ignored: no player state » (au lieu du trompeur « not its building »), tous deux `Warning`, dans
+  `C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\31239e0c-7a0a-4376-8bef-69fe094a906d\scratchpad\e2_logic.patch`
+  (`git apply --check` OK). Doutes : `Warning` aussi pour un ordre de production d'un spectateur (emplacement -1,
+  avant « not its building » en `Display`) ; Paysan IA au centre seulement (pas de bâtisseur sur la fondation).
+- 2026-10-27 : IA0.1 E2 **verte** : `AI.Slot.Economy` compilé, rouge vu sur la seule raison attendue (les deux avertissements
+  « Construction / Production order of slot 1 ignored: no player state » absents ; fondation payée, Paysan produit, dépôt
+  crédité déjà verts grâce à E1, contre-épreuve sans PlayerState : tout refusé ou perdu) ; patch appliqué (avertissements à
+  la place du `continue` muet et de « not its building ») ; vert ; `quick_check -Parts tests` **219/219**.
+  Noté pour IA0.4 : aucune fonction de production dans `HOLPlayerOrders` / `UHOLAIOrderLibrary` (le contrôleur appelle
+  `IssueProductionOrder`), ni de pose dans `UHOLAIOrderLibrary` (`HOLPlayerOrders::Place` existe).
+- 2026-10-27 : IA0.1 E3 + E4 (session principale, petites retouches) : `AI.Summary.World` lit le stock de l'emplacement IA
+  après le vrai `SpawnAIPlayerStates` (et aucun avant) ; `waitplayers` ne compte que les humains, `UpdateStartWait` saute
+  `IsABot` (pas de test dédié : sans effet aujourd'hui, vu par `-Parts net`). Les 11 tests `HeroesOfLiberty.AI.*` verts.
+- 2026-10-27 : IA0.1 E5 : `quick_check -Parts tests,victory,production,gather,sides` **PASS** (219/219, 37 s), `-Parts net`
+  **PASS** (2 clients, fiches de héros, 144 s), scénario `starting_peasants` hors écran prêt en 18 s (« AI slot 1: player
+  state, F 200 W 200 S 200 G 200 (colour 1, 'Joueur 2') », 5 Paysans de chaque camp). **IA0.1 finie, non commitée** (rien de
+  visible à essayer avant IA0.4) : attend l'accord de commit de l'utilisateur et **IA0.1-Q1** (nom de l'IA : recommandation
+  B « IA N » / « Ordinateur N » ; aujourd'hui « Joueur N », une ligne dans `MakeAIPlayerName`). Q2-Q5 : recommandations
+  du relevé appliquées d'office (stock de l'humain, emplacements IA des scénarios gardés, l'IA compte dans la victoire,
+  couleur de la config).
+- 2026-10-27 : IA0.4 boucle 1 : relevé en lecture seule fait (sous-agent, Arwen `ai-ia1`) : section « IA0.4 Cerveau en
+  script ». Le résumé et les ordres sont déjà liés au script (`HOLAISummary::ReadAISummary`, `HOLAIOrder::IssueAIGatherOrder`) ;
+  manquent l'appel au pas (délégués natifs) → base C++ abstraite `UHOLAIBrainSubsystem` dérivée en script (créée d'office,
+  pensée sur `OnStepEnded`), la liste des emplacements IA, le filtre `IsGatherableBy` du résumé, un interrupteur par
+  emplacement, un journal de décision. Champs du résumé non écrivables en script (`BlueprintReadOnly`). Découpage B1-B6 ;
+  questions IA0.4-Q1 à Q4 (recommandations : A, A, A, A). Rien codé.
+- 2026-10-27 : IA0.4 B1 (sous-agent, Arwen, écrit sans compiler) : `AI/HOLAIBrain.h/.cpp` : `UHOLAIBrainSubsystem`
+  `UCLASS(Abstract)`, Game/PIE (`DoesSupportWorldType`), `ShouldCreateSubsystem` refuse la classe abstraite et une classe
+  remplacée (`CLASS_NewerVersionExists`, `IsUnreachable` comme `UScriptWorldSubsystem`) ; `OnWorldBeginPlay` hors client →
+  `GetOnStepEnded().AddUObject` (retiré dans `Deinitialize`) ; à chaque pas, emplacements `GetAISlots()` (PlayerStates
+  `IsABot` triés par indice, vide sans GameState) dont `(Step + Slot) % hol.AI.ThinkSteps == 0` (défaut 5, au moins 1) :
+  journal `Verbose` « AI brain: slot N thinks (step S) » (`LogHOLMatch`) puis `ThinkNow(Slot)` ; `ThinkNow` (refusé sur
+  client) appelle `Think` = **`BlueprintNativeEvent` qui rend un `bool`** (C++ : `false`, rien), compte `GetNumThoughts()`
+  quand le script rend vrai ; `Find(World)` = `GetSubsystemArrayCopy<UHOLAIBrainSubsystem>()[0]`. Redéfinition sûre
+  (vérifiée dans le moteur) : même forme que `UScriptWorldSubsystem::BP_ShouldCreateSubsystem` (NativeEvent à retour,
+  redéfini par `UFUNCTION(BlueprintOverride)`) ; AC `Binds/Bind_BlueprintEvent.cpp:461-552` lie tout événement C++,
+  `ClassGenerator/AngelscriptClassGenerator.cpp:457-462` accepte la redéfinition, `:3180-3182` classe de script
+  `CLASS_CompiledFromBlueprint` sans `CLASS_Native` ni `CLASS_Abstract` hérités, `:2592-2596` + `:2437-2453` activée
+  comme sous-système externe (après `PostEngineInit` au premier chargement) ; moteur `SubsystemCollection.cpp:409`
+  saute les classes abstraites. Pas de repli écrit. Test `HeroesOfLiberty.AI.Brain.Exists` (`Tests/HOLAIBrainTests.cpp`,
+  monde nu) : brain trouvé, classe ≠ C++ et non native, aucun emplacement sans GameState, `ThinkNow(1)` vrai, 1 pensée.
+  **Rouge attendu sans le `.as`** (« A brain subsystem in a game world » nul). Script dans le scratchpad (`b1/HOLAIBrain.as`,
+  `class UHOLAIBrain : UHOLAIBrainSubsystem`, `Think` compte et rend vrai) : à copier dans `Script/AI/` après le rouge.
+  À faire : compiler, voir le rouge, copier le `.as`, vert, `-Parts tests` (le sous-système naît dans tous les mondes de test).
+- 2026-10-27 : IA0.4 B1 **verte** (session principale) : compilé (75 s), rouge vu (`AI.Brain.Exists` : aucun sous-système,
+  pas de sous-classe de script), `Script/AI/HOLAIBrain.as` copié, vert sans recompiler (le script se compile au démarrage) :
+  la classe de script `UHOLAIBrain` dérive de `UHOLAIBrainSubsystem` et son `Think` (`BlueprintOverride`) est atteint.
+  `quick_check -Parts tests` **PASS 220/220**, `-Parts victory,production,sides,gather` **PASS** (cerveau présent, pense sans
+  agir). Non commitée (avec IA0.1). **Arrêt ici** : B2 (la règle de `Think`) dépend d'**IA0.4-Q1** (ressource visée) ;
+  questions en attente de l'utilisateur : IA0.1-Q1 (nom de l'IA), IA0.4-Q1 à Q4, accord de commit d'IA0.1 + B1.
+  `main` avancée par NetPlaytest à b5a2e82 (ferme + R7.10) : à fusionner dans `ai-ia1` au prochain commit.
+- 2026-10-27 : IA0.1-Q1 = B avec le niveau (« IA Difficile 3 »), Q1b = A (champ niveau maintenant) ; nom (sous-agent, Arwen,
+  écrit sans compiler) : enum `EHOLAIDifficulty { Easy, Normal, Hard, Evolving }` et champ `FHOLMatchSlot::Difficulty`
+  (Normal par défaut, `"difficulty": "Hard"` dans le `.json`, valeur inconnue = Normal + avertissement `LogHOLMatch`) ;
+  `HOLForumMessages::GetDifficultyName`, `GetAIName` (« IA {0} {1} »), `GetSlotName(Slot, Viewer, Config)` (IA nommée,
+  humain inchangé) et `GetPlayerName(Config, Slot, Viewer)` (Vous / nom du salon / IA / Joueur N) ; `MakeAIPlayerName(Config,
+  Slot)`. Test **`HeroesOfLiberty.AI.Slot.Name`** (`HOLAISlotTests.cpp`) : PlayerState par le vrai `SpawnAIPlayerStates`,
+  fil (`GetMessage`, `SplitNames`), tableau (`GetPlayersTable`), bandeau/stats (`GetPlayerName`), `.json` par
+  `MakeScenarioConfig` (Hard, absent, inconnu), aller-retour `ToJson`/`FromJson`. **Rouge attendu** (bouchons : « Joueur N »,
+  le `.json` ignore le champ). Vraie logique dans le patch du scratchpad `name_logic.patch` (`git apply --check` OK) : noms,
+  lecture du `.json`, tableau, fil coloré (`HOLGameScreen`), bandeau (`HOLGameHUD`), stats (`HOLStatsScreen`).
+  Traductions dans `fill_po.py` (AI Easy/Normal/Hard/Evolving ; ja かんたん / ふつう / むずかしい / 成長型). Restent « Joueur N »
+  pour une IA : le propriétaire de la sélection (`HOLGameScreen` l. 1130, 1264). À faire : compiler, voir le rouge,
+  appliquer le patch, vert, GatherText, `-Parts tests`.
+- 2026-10-27 : **IA0.1 + B1 commitées** dans Arwen (e8cf110, accord de l'utilisateur, « A »), `main` b5a2e82 fusionnée
+  (d7073d4, 222/222). **IA0.1-Q1 = B avec le niveau** (« IA Difficile 3 ») ; **Q1b = A** (champ niveau maintenant).
+  Nom : rouge vu (`AI.Slot.Name`), patch appliqué (+ variable `PlayerName` remise dans `HOLForumRules.cpp`), vert ;
+  propriétaire d'une sélection (`HOLGameScreen.cpp`, `GetOwnerNameIn`) par le même nom ; traductions refaites (327 textes,
+  0 clé inconnue ; ja かんたん / ふつう / むずかしい / 成長型). `quick_check -Parts tests` : 218/223, 5 tests de victoire qui
+  attendaient « Joueur N » pour des emplacements IA → attentes passées à « IA Normal N » (`HOLForumMessagesTests.cpp`,
+  `HOLVictoryTests.cpp` l. 1616 et 1673, `SplitNames(Held, 1, Teams)`), **non recompilé** (séance close par l'utilisateur).
+  **Reprise** : recompiler Arwen, `quick_check -Parts tests`, puis `-Parts victory,sides,build` (noms dans le HUD), puis
+  commit (nom + niveau). Question posée, sans réponse : **IA0.4-Q1** (ressource visée par le cerveau ; recommandation A, la
+  plus basse du stock), puis Q2-Q4 (recommandations A), puis B2.
+- 2026-10-27 (reprise) : Arwen recompilé (53 s), `quick_check -Parts tests` **PASS 223/223** (attentes « IA Normal N » des 5
+  tests de victoire vertes). Désormais une boucle = un sous-agent (15 min / 300k tokens, minuteur dans le même message,
+  demande de l'utilisateur) ; la session principale garde le fil, les questions et les commits. Boucle 2 lancée en
+  sous-agent : `quick_check -Parts victory,sides,build` (noms de l'IA dans le HUD et le tableau des joueurs).
+- 2026-10-27 : boucle 2 (sous-agent, 4 min 17, 74k tokens) : `-Parts victory,sides,build` FAIL sur 3 attentes périmées de
+  `quick_check.ps1` (l. 2347, 2363, 2417 : « Joueur 2 » pour un emplacement IA) ; tout le reste PASS (sides, camera 2p/8p,
+  16 sous-parties de build). Noms vus dans le journal : « Players table: Vous, IA Normal 2 », 8p « IA Normal 1 … IA Normal 7,
+  Vous », « IA Normal 2 tient votre ruine », « Le Roi de IA Normal 2 est mort », stats « row IA Normal 2 » ; « Joueur 2 »
+  restant = emplacement humain (camera_2p), voulu. Corrigé : les 3 attentes et les notes de `regicide.txt` /
+  `forum_messages.txt` (« IA Normal 2/3/4 »). **IA0.4-Q1 = A** (ressource la plus basse du stock, première passe, remplacée
+  par la règle de besoins d'IA1.6 et les niveaux d'IA4). Relance de `-Parts victory` en sous-agent.
+- 2026-10-27 : `-Parts victory` relancé (sous-agent, 56 s) **PASS** (victory, forum, regicide). **Nom de l'IA commité** dans
+  Arwen (d42b5a8 : niveau par emplacement, « IA <Niveau> <N> », traductions, attentes et notes de scénario). En attente :
+  **IA0.4-Q2** (tests du cerveau ; recommandation A), puis Q3-Q4, puis B2.
+- 2026-10-27 : **IA0.4-Q2 = A** (test C++ sur la vraie chaîne + tests en script de la règle, champs du résumé
+  `ScriptReadWrite`). Question suivante : IA0.4-Q3 (interrupteur des scénarios).
+- 2026-10-27 : **IA0.4-Q3 = A** (champ `"aiBrain"` par emplacement du `.json`, défaut vrai, faux dans les scénarios de
+  combat et de `quick_check`). Question suivante : IA0.4-Q4 (fréquence).
+- 2026-10-27 : **IA0.4-Q4 = A, C à terme** (pensée tous les 5 pas, `hol.AI.ThinkSteps`, étalée par emplacement ; réglage
+  par niveau à IA4, D422). Toutes les questions d'IA0.4 tranchées (A, A, A, A). B2 (la règle dans `Think`, test
+  `AI.Brain.GatherIdle`) lancée en sous-agent : écrit sans compiler, logique dans un patch du scratchpad.
+- 2026-10-27 : IA0.4 B2 (sous-agent, Arwen, écrit sans compiler) : test **`HeroesOfLiberty.AI.Brain.GatherIdle`**
+  (`Tests/HOLAIBrainTests.cpp`, monde `FBrainWorld` : `AI.Summary.World` + processeurs d'`AI.Orders.*` ; slot 1 IA par le
+  vrai `SpawnAIPlayerStates` au stock de départ, son centre fini en (0,0), baies (0,1800), arbre (2000,0), un Paysan IA et un
+  Paysan humain inactifs). Cas 1 (stock égal) : `ThinkNow(1)` → rien dans l'image, `RunStep` → Paysan IA `GatherTrip`, message
+  « Gather order of slot 1: 1 units to source <baies> (Food) » une fois ; cas 3 (même monde, plus d'inactif) : `ThinkNow(1)` →
+  file de récolte vide (`ConsumeGatherOrders`) ; cas 2 (second monde, nourriture +100 par `SetResources`) : « … source <arbre>
+  (Wood) » une fois ; Paysan humain inactif partout ; `GetAISlots()` = {1}. Ajout C++ dans l'arbre (ne rend pas vert) :
+  `UHOLAIBrainSubsystem::GetStepIndex()` (`BlueprintPure`, int64, pas de la simulation, 0 sans) pour le journal.
+  **Rouge attendu** : `Think` du script inchangé (compte et rend vrai) → messages attendus absents, Paysan IA `Idle` (cas 1 et
+  2) ; les cas 3 et « humain inactif » passent déjà. Vraie logique dans le patch
+  `C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\9feacf6b-c420-452a-a0ea-a74517f4d9df\scratchpad\b2\b2_logic.patch`
+  (`git apply --check` OK, `Script/AI/HOLAIBrain.as` seul) : `HOLAISummary::ReadAISummary` → plus bas stock parmi les
+  ressources qui ont une source (égalité F W S G) → `HOLAIOrder::IssueAIGatherOrder(Slot, IdlePeasants, Sources[0])` ;
+  journal `Log(n"LogHOLMatch", f"AI slot 1 step 40: 3 idle -> gather Food #12")` (« -> no source », « … refused ») ; rien
+  sans inactif (pas de ligne : 4 pensées par seconde). Non vérifié par compilation : f-string et `n""` (préprocesseur AS vu),
+  passage auto du `WorldContext` depuis le sous-système (relevé).
+  **Risques une fois la règle active** (avant l'interrupteur B5) : tests C++ : aucun (le cerveau ne s'abonne qu'à son
+  `OnWorldBeginPlay`, que les mondes de test n'appellent pas) ; `quick_check` : partie solo et serveur `net` lancés avec
+  `StartingPeasants=0` (pas de Paysans de départ pour l'IA, 8p de `camera` compris) ; seul cas : **`victory` (régicide,
+  l. 492)** `hol.Units.Spawn 1 -16600 0 1 Peasant 0` (Paysan de l'IA à 5,5 m du Roi, `wait 4`, puis `hol.Units.Remove -16600 0
+  1500 1`) : le cerveau l'envoie récolter près de son centre, il peut sortir des 15 m avant le `Remove` et rester sur la carte
+  (rapports `hol.HUD.Report` suivants, coups comptés). Scénarios d'essai (`play.ps1`) avec Paysans IA qui partiront récolter :
+  `blocked_bodies`, `combat_off_dying`, `falls`, `peasant_fight` (`SpawnHere … Peasant 1`), `regicide.txt` (3 Paysans de
+  l'IA), `hero_look` (`startingPeasants` 5) ; `starting_peasants` voulu (B6). À faire : compiler, voir le rouge, appliquer le
+  patch, vert (le script se recompile au démarrage), `-Parts tests`, puis `-Parts victory` (régicide) ; B3-B6 ensuite.
+- 2026-10-27 : IA0.4 B2 boucle « compiler, rouge, patch, vert » (sous-agent, Arwen) : compilation **PASS en 90 s**, sans
+  correction. **Rouge vu, pour la bonne raison** (`AI.Brain.GatherIdle` seul, 87 s) : Paysan IA resté `Idle` aux cas 1, 3 et 2
+  (l. 252, 262, 282 de `HOLAIBrainTests.cpp`), aucune ligne « Gather order of slot 1 … » ; les attentes « pas appliqué dans
+  l'image de la pensée » et « Paysan humain inactif » déjà vertes. **Patch appliqué** (`git apply`, `Script/AI/HOLAIBrain.as`
+  seul) : **vert** du premier coup (27 s), aucune `Angelscript: Error` (f-string, `n""` et `WorldContext` compilent). Journal :
+  « AI slot 1 step 0: 1 idle -> gather Food #0 » puis « Gather order of slot 1: 1 units to source 0 (Food) », et au second
+  monde « AI slot 1 step 0: 1 idle -> gather Wood #1 » / « … source 1 (Wood) » (pas 0 : le test pense avant tout pas).
+  `quick_check -Parts tests` **PASS 224/224** (31 s). Non commité. Reste : `-Parts victory` (régicide, Paysan de l'IA envoyé
+  récolter), puis commit, puis B3-B6.
+- 2026-10-27 : B2 en vraie partie (sous-agent) : `-Parts victory,production,sides,gather` **PASS** (43 s), mais **faux vert
+  silencieux dans le régicide** : `AI slot 1 step 9: 1 idle -> gather Food #326` (pas 760) → le Paysan IA posé au pas 758
+  sort des 15 m avant `hol.Units.Remove` (pas 839 : « Remove: 0 units ») et récolte pendant riposte/refusal/death ; le cas
+  « le Roi n'attaque pas un Paysan proche » n'est plus testé. Ailleurs : IA sans Paysan (`StartingPeasants=0`), aucune
+  pensée. Aucune `Angelscript: Error`. **Décision** : l'interrupteur `"aiBrain"` (part de B5) avancé en **B2b**, commit
+  commun B2 + B2b. B2b lancée en sous-agent (écrit sans compiler) : champ par emplacement, contrôle « Remove: 1 units »
+  dans le régicide de `quick_check` (rouge sur la vraie chaîne), `"aiBrain": false` dans les scénarios hors IA.
+- 2026-10-27 : IA0.4 B2b (sous-agent, Arwen, écrit sans compiler) : interrupteur `"aiBrain"` (IA0.4-Q3 A). **Dans l'arbre** :
+  champ `FHOLMatchSlot::bAIBrain` (vrai par défaut, `Match/HOLMatchConfig.h`) ; `UHOLAIBrainSubsystem::GetThinkingSlots()`
+  (`BlueprintPure`, la boucle du pas `OnStepEnded` passe désormais par elle) en **bouchon** (rend `GetAISlots()`) ; test
+  **`HeroesOfLiberty.AI.Brain.Switch`** (`Tests/HOLAIBrainTests.cpp`) : `.json` par le vrai `MakeScenarioConfig` (emplacement
+  1 `"aiBrain": false`, 2 sans le champ, 3 `"aiBrain": true`), `InitVictory` + vrai `SpawnAIPlayerStates` (3 PlayerStates) →
+  `GetAISlots()` = 1,2,3 et `GetThinkingSlots()` = 2,3 ; défaut vrai (`MakeDefault`, emplacement ajouté par `Normalize`) ;
+  aller-retour `ToJson`/`FromJson` de la config lue et d'un interrupteur posé en code ; contrôle **`quick_check`** (partie
+  `victory`, section « victory regicide pass ») : « Remove: 1 units of slot 1 within 1500 of (-16600, 0) » exactement.
+  **Rouges attendus** : C++ : « slot 1 "aiBrain": false, brain off », l'aller-retour de la config lue et « thinking slots: 2
+  and 3 » (le convertisseur ne connaît que le nom `bAIBrain`, il ignore `"aiBrain"` ; le filtre est absent) ; l'aller-retour
+  d'un interrupteur posé en code passe déjà (le convertisseur écrit et relit `bAIBrain`) ; `quick_check -Parts victory` :
+  « the enemy Peasant still there after 4 s, removed (0 units) » (le cerveau l'envoie récolter, faux vert d'avant).
+  **Vraie logique** dans
+  `C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\9feacf6b-c420-452a-a0ea-a74517f4d9df\scratchpad\b2b\b2b_logic.patch`
+  (`git apply --check` OK sur Arwen avec les bouchons) : `FromJson` recopie `"aiBrain"` d'un emplacement en `bAIBrain` avant
+  le convertisseur (boucle du pré-passage de `"difficulty"` réécrite, même comportement) ; `GetThinkingSlots` retire les
+  emplacements dont `AHOLGameState::GetLaunchConfig().Slots[S].bAIBrain` est faux (la config que la victoire lit, posée par
+  `InitVictory` côté serveur ; sans `AHOLGameState`, tous pensent) ; `ThinkNow` reste sans filtre (les tests forcent une
+  pensée) ; `"aiBrain": false` dans le `.json` du régicide de `quick_check` (`victory_regicide.json`, l. 490, lu par
+  `hol.UI.NewGame.Launch` → `FromJson` → écran Nouvelle partie qui garde la config) et dans les scénarios d'essai
+  `blocked_bodies`, `combat_off_dying`, `falls`, `peasant_fight`, `regicide` (Paysans de l'IA posés par le scénario) et
+  `hero_look` (5 Paysans de départ de l'IA, décor : faux pour garder les captures comme avant ; le seul discutable, une IA
+  active y serait sans gêne). `starting_peasants` garde son IA. Les autres `.json` de `quick_check` avec IA (`victory` l. 409,
+  `sides` l. 513) et les autres scénarios ne donnent aucun Paysan à l'IA : laissés tels quels. `ToJson` écrit `"bAIBrain"`
+  (nom du convertisseur), relu tel quel. À faire : compiler, voir les deux rouges (`AI.Brain.Switch` seul, puis
+  `-Parts victory`), appliquer le patch, verts, `-Parts tests`, puis commit commun B2 + B2b après accord ; B3-B6 ensuite.
+- 2026-10-27 : IA0.4 B2b compilée et verte (sous-agent, Arwen, ~5 min de 22:02 à 22:07). Compilation de l'arbre aux
+  bouchons **PASS** (53 s), aucune correction. **Rouge C++** `HeroesOfLiberty.AI.Brain.Switch` seul (24 s) : exactement les
+  trois attendus (`HOLAIBrainTests.cpp` l. 317 « .json: slot 1 "aiBrain": false, brain off », l. 326 « round trip of the
+  read configuration: slot 1 off, 2 and 3 on », l. 346 « thinking slots: 2 and 3 » reçu "1,2,3") ; l'aller-retour posé en
+  code déjà vert. **Rouge `quick_check -Parts victory`** (29 s) : `victory regicide : FAIL` « the enemy Peasant still there
+  after 4 s, removed (0 units) », sequence, victory et forum PASS. **Patch** `b2b_logic.patch` appliqué (`git apply` sans
+  heurt), recompilation **PASS** (7 s). **Verts** : `AI.Brain.Switch` **Success** (22 s) ; `-Parts victory` **PASS** (27 s),
+  journal : « Remove: 1 units of slot 1 within 1500 of (-16600, 0) », aucune ligne « AI slot 1 step … » (la seule récolte est
+  celle du slot -1) ; `quick_check -Parts tests` **PASS 225/225** (33 s). Aucune `Angelscript: Error`, aucune correction.
+  Journaux dans `...\scratchpad\b2b\` (red.log, green.log, qc_*.txt). Non commité. Reste : commit commun B2 + B2b après
+  accord, puis B3-B6.
+- 2026-10-27 : **B2 + B2b commitées** dans Arwen (b988cf0, principe A : commit sur la foi des tests). La lecture du `.json`
+  ayant changé (`FromJson`), passe de contrôle en sous-agent : `-Parts sides,production,gather,build`. Ensuite B3 (règle en
+  fonction pure + tests en script, champs du résumé `ScriptReadWrite`).
+- 2026-10-27 : contrôle après b988cf0 (sous-agent) : `-Parts sides,production,gather,build` (+ camera, footprints) **PASS**
+  en 112 s, aucun avertissement de lecture de config, aucune `Angelscript: Error`. Aucune pensée « -> gather » (IA sans
+  Paysan, `StartingPeasants=0`) : la branche de récolte se verra en B6 (`starting_peasants`). B3 lancée en sous-agent
+  (écrit sans compiler).
+- 2026-10-27 : IA0.4 B3 (sous-agent, Arwen, écrit sans compiler) : la règle sortie de `Think` en fonction pure, testée en
+  script (IA0.4-Q2 A). **Dans l'arbre** : (1) `AI/HOLAISummary.h` : spécificateur **`ScriptReadWrite`** ajouté à côté de
+  `BlueprintReadOnly` sur `FHOLAISourceNear::SourceIndex`, `FHOLAIResourceSummary::Stock` et `Sources`,
+  `FHOLAISummary::IdlePeasants`, `Food`, `Wood`, `Stone`, `Gold` (+ une phrase au commentaire d'en-tête) ; syntaxe lue dans
+  le moteur : l'UHT Hazelight accepte le spécificateur nu (`UhtPropertyMemberSpecifiers.cs:29-33`, pose la métadonnée
+  `ScriptReadWrite`, comme `meta = (ScriptReadWrite)`), exemple `AC/Private/Binds/UObjectInWorld.h:11`, et
+  `Helper_PropertyBind.h:53-58` le teste avant `CPF_BlueprintReadOnly` (lecture + écriture en script, Blueprint inchangé) :
+  **recompilation C++ nécessaire**. (2) `Script/AI/HOLAIEconomy.as` : struct de script `FHOLAIGatherChoice` (`bGather`,
+  `Resource` 0-3 F W S G ou -1, `ResourceName`, `SourceIndex` ou -1, `Peasants`, `Nothing` = « no idle » / « no source »)
+  et `HOLAIEconomy::ChooseGather(const FHOLAISummary&)` en **bouchon** (rend `Nothing = "not written"`, compile).
+  (3) `Script/AI/HOLAIEconomy_Test.as` (module `*_Test`, aides sans préfixe `Test_`) : `Test_LowestStockChosen` (bois
+  puis or le plus bas), `Test_TieInOrderFoodWoodStoneGold` (tout égal → Food ; bois = or → Wood ; pierre = or → Stone),
+  `Test_LowestWithoutSourceSkipped` (bois le plus bas sans source → Stone), `Test_NoSourceNothing` (« no source »),
+  `Test_NoIdleNothing` (« no idle »), `Test_AllIdleToFirstSource` (3, 7, 9 → source 21 = `Sources[0]` sur 21, 22, 23).
+  `HOLAIBrain.as` (`Think`) **inchangé** dans l'arbre : `AI.Brain.GatherIdle` reste vert pendant la phase rouge.
+  **Rouges attendus** : les 6 `Angelscript.UnitTests.AI.HOLAIEconomy_Test.Test_*` (bouchon : pas d'ordre ; les deux cas
+  « rien » échouent sur la raison, « not written » au lieu de « no source » / « no idle ») ; tests C++ tous verts.
+  **Vraie logique** dans
+  `C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\9feacf6b-c420-452a-a0ea-a74517f4d9df\scratchpad\b3\b3_logic.patch`
+  (`git apply --check` OK sur Arwen avec le bouchon) : corps de `ChooseGather` (la règle de B2 telle quelle) et `Think`
+  qui l'appelle (mêmes lignes de journal, même ordre `IssueAIGatherOrder(Slot, Choice.Peasants, Choice.SourceIndex)`, rien
+  sans inactif). **Non vérifié faute de compilation** : `ScriptReadWrite` combiné à `BlueprintReadOnly` dans l'UHT ;
+  écriture en chaîne `Summary.Food.Sources.Add(...)` / `Summary.Food.Stock = …` sur un struct C++ en script ; struct de
+  script avec valeurs par défaut et `TArray<int>` ; `namespace` de script + import automatique vu d'un autre module (le
+  serveur de débogage force `bAutomaticImports`, `AngelscriptDebugServer.cpp:1375`) ; signatures `FUnitTest`
+  (`AssertEquals` int / FString, `AssertTrue/False`, lues dans `AC/Private/Testing/AngelscriptTest.cpp:185-233`) ;
+  paramètre `Summary` inutilisé du bouchon (avertissement, pas une erreur). À faire : compiler, `quick_check -Parts tests`
+  → 6 rouges script nommés, appliquer le patch, vert (tests script + `AI.Brain.GatherIdle`), puis B4-B6.
+- 2026-10-27 : IA0.4 B3 compilée et verte (sous-agent, Arwen, ~10 min de 22:21 à 22:31). Compilation **PASS** (435 s, dont
+  l'attente de la file de `build.ps1`) : l'UHT accepte `ScriptReadWrite` nu à côté de `BlueprintReadOnly`, pas besoin de
+  `meta = (ScriptReadWrite)`. **Rouge `quick_check -Parts tests`** (34 s) : `tests 225/231 : FAIL`, exactement les 6
+  `Angelscript.UnitTests.AI.HOLAIEconomy_Test.Test_*` rouges, pour la raison du bouchon (assertions « Expected true, got
+  false » sur `bGather` ; `Test_NoIdleNothing` « Expected `no idle` Actual `not written` », `Test_NoSourceNothing`
+  « Expected `no source` Actual `not written` ») ; les 225 autres verts. Le script compile du premier coup (struct de
+  script, `TArray<int>`, `namespace`, écriture `Summary.Food.Sources.Add`, signatures `FUnitTest` : tout bon). À noter :
+  le contrôle `scripts compiled` passe aussi KO pendant un rouge de script, car les assertions ratées s'écrivent
+  `Angelscript: Error: Assertion failed …` (faux KO sans gravité, propre au rouge). **Patch** `b3_logic.patch` appliqué
+  (`git apply` sans heurt, aucune correction, script seul : pas de recompilation). **Verts** : `-Parts tests` **PASS
+  231/231** (34 s), les 6 tests en script **Success**, `AI.Brain.GatherIdle` **Success**, aucune `Angelscript: Error` ;
+  `-Parts victory` **PASS** (29 s : victory, forum, regicide). Journaux dans `...\scratchpad\b3\` (qc_red.txt,
+  red_tests.log, qc_green.txt, green_tests.log, qc_victory.txt). Non commité (Arwen : `HOLAIBrain.as`, `HOLAISummary.h`
+  modifiés ; `HOLAIEconomy.as`, `HOLAIEconomy_Test.as` nouveaux). Reste : commit B3 après accord, puis B4-B6.
+- 2026-10-27 : **B3 commitée** dans Arwen (5168def). Amélioration à noter : pendant
+  un rouge de script, `scripts compiled` de `quick_check` tombe aussi (les `Angelscript: Error: Assertion failed` sont lues
+  comme des erreurs de compilation) : faux KO limité au rouge, à corriger un jour dans `Get-ScriptErrors`. B4 (sources
+  récoltables seulement) lancée en sous-agent (écrit sans compiler).
+- 2026-10-27 : IA0.4 B4 (sous-agent, Arwen, écrit sans compiler). **Tests rouges écrits** (Arwen, non commités) :
+  `HeroesOfLiberty.AI.Summary.GatherableOnly` (`Tests/HOLAISummaryTests.cpp`) : monde comme `AI.Summary.World`, centres
+  finis des emplacements 0 (humain, x −10000) et 1 (IA, origine), baies (0, 2600), ferme de l'emplacement 0 à (1800, 0) et
+  ferme de l'IA à (0, −3000), posées **par le vrai chemin** (`AHOLBuilding::Setup(Farm, …)` fini après
+  `OnWorldBeginPlay` → champ ajouté au registre, propriétaire = la ferme, comme `Buildings.FarmField`) ; attendu :
+  `ReadAISummary(1)` Food = « baies, champ de l'IA », champ ennemi absent ; `Read(0)` Food = « baies, champ de
+  l'emplacement 0 », champ de l'IA absent (décalages sur les axes : l'ordre tient quelle que soit la taille du centre).
+  `HeroesOfLiberty.AI.Brain.GatherableOnly` (`Tests/HOLAIBrainTests.cpp`, + include `AI/HOLAISummary.h`) : monde de
+  `AI.Brain.GatherIdle` + ferme finie de l'emplacement 0 à (−1400, 0), plus près que les baies (0, 1800) ; résumé : baies
+  en tête, champ ennemi absent ; `ThinkNow(1)` + `RunStep` → message « Gather order of slot 1: 1 units to source <baies>
+  (Food) », Paysan IA en `GatherTrip`, Paysan humain inactif. **Rouge attendu** (arbre inchangé, `Make` garde toute source
+  debout) : Summary.GatherableOnly échoue sur « champ ennemi laissé de côté » et les deux listes (IA : « ennemi baies
+  IA » ; emplacement 0 : « baies IA ennemi ») ; Brain.GatherableOnly : le cerveau vise le champ ennemi (nourriture la plus
+  proche), la récolte le refuse (« 0 units … 1 refused »), le Paysan reste inactif, message attendu absent. **Vraie
+  logique** : `C:\Users\baudo\AppData\Local\Temp\claude\c--Users-baudo-Documents-MyCrusader\9feacf6b-c420-452a-a0ea-a74517f4d9df\scratchpad\b4\b4_logic.patch`
+  (`git apply --check` OK sur Arwen) : dans `Make`, `continue` si `PlayerIndex` hors 0-255 ou
+  `!Source.IsGatherableBy(uint8(PlayerIndex))`, commentaire mis à jour. Tests existants : aucun `AI.Summary.*` ni
+  `AI.Brain.*` ne pose de source à propriétaire (`MakeSource` laisse `OwnerSlot = NoOwner`, sources de carte par
+  `AddSource` sans propriétaire) → resteront verts ; les tests en script bâtissent leurs résumés sans `Make`. **Non
+  vérifié faute de compilation** : compilation des deux tests ; le départ du Paysan IA vers son propre champ n'est pas
+  testé (il va aux baies, plus proches) ; la ferme posée sans contrôle d'emprise près du centre (aucun contrôle dans `Setup`).
+  À faire : compiler, `quick_check -Parts tests` → 2 rouges nommés, appliquer le patch, vert, puis commit B4 après accord,
+  puis B5-B6.
+- 2026-10-27 : IA0.4 B4 **rouge puis vert** (sous-agent, Arwen, ~8 min). Compilation des tests : PASS du premier coup
+  (96 s), aucune correction. **Rouge** `quick_check -Parts tests` : FAIL 231/233, exactement les deux tests
+  `GatherableOnly`, pour la bonne raison : `AI.Summary.GatherableOnly` → « champ ennemi laissé de côté » faux des deux
+  côtés, listes IA « 1 0 2 » (attendu « 0 2 ») et emplacement 0 « 0 2 1 » (attendu « 0 1 ») ; `AI.Brain.GatherableOnly`
+  → nourriture la plus proche = champ ennemi, « Gather order of slot 1: 0 units to source 2 (Food), 1 refused », Paysan IA
+  pas en route. Patch `b4_logic.patch` appliqué tel quel (`HOLAISummary.cpp`, +8/−3), recompilé (61 s). **Vert** :
+  `-Parts tests` **PASS 233/233** (34 s ; « Gather order of slot 1: 1 units to source 0 (Food) ») ; `-Parts
+  victory,gather` **PASS** (43 s : victory, forum, regicide, camera 2p/8p, gather, footprints). Journaux dans
+  `...\scratchpad\b4\` (build1.txt, qc_red.txt, red_tests.log, build2.txt, qc_green.txt, green_tests.log,
+  qc_victory_gather.txt). Non commité (Arwen : `AI/HOLAISummary.cpp`, `Tests/HOLAIBrainTests.cpp`,
+  `Tests/HOLAISummaryTests.cpp` modifiés). Reste : commit B4 après accord, puis B5-B6.
+- 2026-10-27 : **B4 commitée** dans Arwen (4b5a3eb). B5 (cadence au vrai pas : pensées aux pas attendus, une
+  par emplacement et par intervalle, étalées, aucune sur un client) lancée en sous-agent (écrit sans compiler).
+- 2026-10-27 : IA0.4 B5 (sous-agent, Arwen, écrit sans compiler) : **arrêté au minuteur de 15 min** alors qu'il retouchait
+  un commentaire, sans journal (entrée écrite par la session principale). Travail complet : test
+  **`HeroesOfLiberty.AI.Brain.Cadence`** (`HOLAIBrainTests.cpp`, +205 lignes) : monde serveur prêt (GameState, simulation,
+  Mass, cerveau), 3 emplacements IA par le vrai `.json` dont le 2 `"aiBrain": false`, 20 vrais pas
+  (`UHOLSimulationSubsystem::RunStepsForTests`, nouveau, tests seulement, `RunStep` avec ses deux délégués, 0 sur un client)
+  → emplacement 1 aux pas 4, 9, 14, 19, emplacement 3 aux pas 2, 7, 12, 17, 2 et humain jamais, aucun pas partagé, 8
+  pensées ; `hol.AI.ThinkSteps` 10 → 20 pas de plus, moitié moins (29, 39 et 27, 37) ; monde client : aucun pas, aucune
+  pensée, `ThinkNow` refusé. Côté C++ : `FHOLAIStepThought` et `GetStepThoughts()` (pensées faites au pas, bornées à 256)
+  dans `HOLAIBrain.h`, commentaire de `ThinkSteps` (Q4 = A). **Bouchon** : la liste n'est jamais remplie → rouge sur les
+  pas attendus. **Patch** `...\scratchpad\b5\b5_logic.patch` (remplit la liste dans `OnStepEnded` quand `ThinkNow` rend
+  vrai ; `apply --check` OK). Aucun défaut de cadence signalé (rapport perdu à l'arrêt). Bilan du dépassement : la tâche
+  « chercher des défauts » s'ajoutait à l'écriture du test ; la prochaine fois, une recherche de défauts = boucle à part.
+  Vérification (compiler, rouge, patch, vert) lancée en sous-agent.
+- 2026-10-27 : IA0.4 B5 **rouge puis vert** (sous-agent, Arwen, ~5 min). Compilation des tests : PASS du premier coup
+  (39 s), aucune correction. **Rouge** `quick_check -Parts tests` : FAIL 233/234, seul `AI.Brain.Cadence`, pour la bonne
+  raison : les quatre listes de pas vides (emplacement 1 attendu « 4,9,14,19 », emplacement 3 « 2,7,12,17 », puis avec
+  `hol.AI.ThinkSteps` 10 « 4,9,14,19,29,39 » et « 2,7,12,17,27,37 ») ; tout le reste du test déjà vert (8 pensées
+  comptées, monde client sans pas ni pensée, `ThinkNow` refusé). Patch `b5_logic.patch` appliqué tel quel
+  (`HOLAIBrain.cpp`), recompilé (12 s). **Vert** : `-Parts tests` **PASS 234/234** (32 s) ; `-Parts victory,gather`
+  **PASS** (33 s : victory, forum, regicide, camera 2p/8p, gather, footprints). Journaux dans `...\scratchpad\b5\`
+  (build1.txt, qc_red.txt, red_tests.log, build2.txt, qc_green.txt, green_tests.log, qc_victory_gather.txt). Non commité
+  (Arwen : `AI/HOLAIBrain.cpp`, `AI/HOLAIBrain.h`, `Simulation/HOLSimulationSubsystem.h`, `Tests/HOLAIBrainTests.cpp`
+  modifiés). Reste : commit B5 après accord, puis B6.
+- 2026-10-27 : **B5 commitée** dans Arwen (998cce4). Séance close par l'utilisateur (« la suite se fera dans une autre
+  session »). **Reprise** (Arwen `ai-ia1`, `IN_USE.txt` posé, rien en cours, arbre propre) :
+  - Commits d'Arwen pas encore dans `main` : e8cf110 (IA0.1 + B1), d7073d4 (fusion de `main` b5a2e82), d42b5a8 (nom
+    « IA <Niveau> <N> »), b988cf0 (B2 + B2b), 5168def (B3), 4b5a3eb (B4), 998cce4 (B5). `main` a avancé depuis (NetPlaytest
+    R8a dd1e708, peut-être d'autres) : fusionner `main` dans `ai-ia1` avant B6 (fermer tout jeu d'Arwen avant), recompiler
+    Arwen, `quick_check -Parts tests` (234 attendus + ceux de `main`).
+  - **B6** (vraie partie), en boucles séparées : (a) sous-agent : scénario `starting_peasants` hors écran (5 Paysans IA
+    récoltent en moins de 1 s, lignes « AI slot 1 step S: 5 idle -> gather Food #N ») ; (b) sous-agent :
+    `quick_check -Parts tests,victory,production,gather` puis `-Parts net` (aucune IA : rien ne bouge) ; (c) deux courses
+    de même `Seed` : mêmes `Step hash` ; (d) essai de l'utilisateur, scénario prêt (`Tools/Scenarios/starting_peasants.txt`
+    lancé par `play.ps1`), commit après validation.
+  - Puis avancer `main` (demander d'abord aux sessions actives, `ListAgents` / `SendMessage`) et commit DOC dans la copie
+    principale : `AIInProgress.md` + seulement les lignes IA d'`EtapeDefini.md` (repérées par leur texte, pas par numéro).
+  - Ensuite IA0.5 (serveur dédié : le cerveau pense-t-il sur le serveur ?), IA0.7 (journal de décision), puis IA1.3-IA1.9.
+  - Améliorations de processus notées : chercher des défauts = boucle à part ; le sous-agent écrit son journal dès le test
+    écrit ; faux KO `scripts compiled` de `quick_check` pendant un rouge de script (`Get-ScriptErrors`, à corriger un jour).
+- 2026-10-28 : reprise. **`main` (20e8f8a, 20 commits) fusionnée dans `ai-ia1`** (Arwen, f4b06dc). Conflits :
+  `HOLSimulationSubsystem.h` (les deux aides de test gardées : `RunStepsForTests` de B5, `AdvanceStepIndexForTests` de
+  `main`) et les fichiers de traduction (pris de `main`, puis collecte → `fill_po.py` (en/ja : 338 textes, 0 clé
+  inconnue) → collecte ; clé `HOLGameScreen,AIName` présente). Compilation **PASS** (133 s), `quick_check -Parts tests`
+  **PASS 268/268** (37 s). `main` a depuis avancé à 9364046 (deux scripts de test réseau seulement : pas besoin de
+  refusionner avant B6). Suivant : B6 (a) scénario `starting_peasants` hors écran.
+- 2026-10-28 : IA0.4 **B6 (a) rouge puis vert** (sous-agent, Arwen, ~8 min). `Tools/Scenarios/starting_peasants.txt` mis à
+  jour (+17/−5, `.json` inchangé) : en-tête, point 5 et notes (les Paysans de l'IA récoltent d'eux-mêmes) ; vérifications
+  ajoutées avant toute commande : `waitlog AI slot 1 step`, `5 idle -> gather`, `Gather order of slot 1: 5 units to
+  source`, `hol.Gather.Report 0` → « not gathering 6 » (aucun Paysan humain commandé ; le Roi compte dans le rapport),
+  `hol.Gather.Report 1` → « not gathering 1 » (le Roi seul), `GatherTrip` dans `hol.Units.Where 1`. Lancement hors écran
+  (`-RenderOffScreen -nosound -unattended -saveddirsuffix=Tests`, `hol.Scenario.AutoContinue 1, hol.Scenario
+  starting_peasants`) par `...\scratchpad\b6a\run_offscreen.ps1` (40c29ea2). **Rouge** (`"aiBrain": false` provisoire) :
+  « Test sequence: timeout at step 9: waitlog AI slot 1 step ». **Vert** : « AI slot 1 step 4: 5 idle -> gather Food #326 »,
+  « Gather order of slot 1: 5 units to source 326 (Food) » : **0,2 s de jeu** après la naissance ; double clic sur les
+  Paysans IA en marche = « 5 units (other): Peasant x5 ». Non commité. Remarques : le Roi compte « not gathering » dans
+  `hol.Gather.Report` (trompeur, sans effet) ; bruit `LogAutomationTest: Error` des tests du moteur au démarrage. Suivant :
+  B6 (b) `quick_check -Parts tests,victory,production,gather` puis `-Parts net`.
+- 2026-10-28 : IA0.4 **B6 (b) PASS** (session principale, Arwen + scénario de B6 (a) non commité) : `quick_check -Parts
+  tests,victory,production,gather` (+ camera) **PASS** en 55 s (268/268, victory/forum/regicide, production, gather,
+  footprints) ; `-Parts net` **PASS** en 191 s (net 2 clients, hero sheets, hero return). Suivant : B6 (c) deux courses de
+  même `Seed`, mêmes `Step hash`.
+- 2026-10-28 : IA0.4 **B6 (c) vert** (sous-agent, Arwen, sans C++). Graine fixée par `hol.Match.Open <json>` (copie de
+  `starting_peasants.json` + `"version": 3, "seed": 4242` ; `hol.Scenario` remplace toujours la graine par l'horloge,
+  `Dev/HOLScenario.cpp:101`), empreintes par `hol.Simulation.StepHashes 1` (position, orientation, vitesse, force, cible,
+  action de chaque unité ; pas l'état de récolte lui-même, vu par le mouvement), `hol.Gather.LogDeposits 1`. Deux courses :
+  **mêmes empreintes sur les 1015 pas communs (0-1014)**, même pensée « AI slot 1 step 4: 5 idle -> gather Food #326 »,
+  10 dépôts du slot 1 chacune (premier au pas 355, même empreinte). Contre-épreuve `"aiBrain": false` (copie dans le
+  scratchpad) : identiques aux pas 0-4, **divergence au pas 5** (juste après la pensée), 612/617 pas différents.
+  Script et journaux : `...\scratchpad\b6c\` (40c29ea2 : run_det.ps1, sp_ai.json, sp_noai.json, det_a/b/noai.log). Idée
+  notée : garder le `seed` du `.json` dans `hol.Scenario` quand il est présent (C++, pas fait). Suivant : B6 (d) essai de
+  l'utilisateur (`play.ps1 starting_peasants -Root Arwen`), commit après validation.
+- 2026-10-28 : **essai de l'utilisateur validé** (« tout est bon ») ; **B6 commitée** dans Arwen (154ac02) : **IA0.4 close**.
+  `main` (6fe859f : R8c, scripts de test réseau et doc seulement) refusionnée dans `ai-ia1` (40108a6, sans conflit, pas de
+  recompilation). Sessions actives (mycrusader-8a, -8b, -c1) prévenues avant l'avance rapide de `main` vers `ai-ia1`.
+  Ensuite : IA0.5 (serveur dédié : le cerveau pense-t-il sur le serveur ?), IA0.7 (journal de décision), puis IA1.3-IA1.9.

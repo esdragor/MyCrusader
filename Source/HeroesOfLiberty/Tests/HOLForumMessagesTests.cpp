@@ -86,12 +86,12 @@ bool FHOLVictoryMessagesHoldTest::RunTest(const FString& Parameters)
 	const FHOLForumEvent Hold = FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 0, 2);
 
 	FHOLForumMessage Message = HOLForumMessages::GetMessage(Hold, Teams, 0);
-	TestEqual(TEXT("own: text"), TextOf(Message), FString(TEXT("Joueur 3 tient votre ruine")));
+	TestEqual(TEXT("own: text"), TextOf(Message), FString(TEXT("IA Normal 3 tient votre ruine")));
 	TestTrue(TEXT("own: alert"), Message.bAlert);
 	TestEqual(TEXT("own: the attacker named"), Message.NamedSlots, TArray<int32>({ 2 }));
 
 	Message = HOLForumMessages::GetMessage(Hold, Teams, 1);
-	TestEqual(TEXT("ally: text"), TextOf(Message), FString(TEXT("Joueur 3 tient la ruine de Joueur 1")));
+	TestEqual(TEXT("ally: text"), TextOf(Message), FString(TEXT("IA Normal 3 tient la ruine de Joueur 1")));
 	TestTrue(TEXT("ally: alert"), Message.bAlert);
 	TestEqual(TEXT("ally: both named, in order"), Message.NamedSlots, TArray<int32>({ 2, 0 }));
 
@@ -100,7 +100,7 @@ bool FHOLVictoryMessagesHoldTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("the attacker: no alert"), Message.bAlert);
 
 	Message = HOLForumMessages::GetMessage(Hold, Teams, INDEX_NONE);
-	TestEqual(TEXT("spectator: text"), TextOf(Message), FString(TEXT("Joueur 3 tient la ruine de Joueur 1")));
+	TestEqual(TEXT("spectator: text"), TextOf(Message), FString(TEXT("IA Normal 3 tient la ruine de Joueur 1")));
 	TestFalse(TEXT("spectator: no alert"), Message.bAlert);
 	return true;
 }
@@ -120,11 +120,11 @@ bool FHOLVictoryMessagesRazedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("own, at 1 life: alert"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Razed, 2, INDEX_NONE, 1), Teams, 2).bAlert);
 
 	Message = HOLForumMessages::GetMessage(Razed, Teams, 0);
-	TestEqual(TEXT("adversary: text"), TextOf(Message), FString(TEXT("Fondations de Joueur 3 rasées — 0 vies")));
+	TestEqual(TEXT("adversary: text"), TextOf(Message), FString(TEXT("Fondations de IA Normal 3 rasées — 0 vies")));
 	TestFalse(TEXT("adversary: no alert"), Message.bAlert);
 
 	Message = HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Razed, 2, INDEX_NONE, 1), Teams, INDEX_NONE);
-	TestEqual(TEXT("spectator: 1 vie"), TextOf(Message), FString(TEXT("Fondations de Joueur 3 rasées — 1 vie")));
+	TestEqual(TEXT("spectator: 1 vie"), TextOf(Message), FString(TEXT("Fondations de IA Normal 3 rasées — 1 vie")));
 	TestFalse(TEXT("spectator: no alert"), Message.bAlert);
 	return true;
 }
@@ -144,11 +144,11 @@ bool FHOLVictoryMessagesDefeatedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("own: nobody else named"), Message.NamedSlots.IsEmpty() || Message.NamedSlots == TArray<int32>({ 1 }));
 
 	Message = HOLForumMessages::GetMessage(Defeated, Teams, 0);
-	TestEqual(TEXT("ally: text"), TextOf(Message), FString(TEXT("Joueur 2 est vaincu")));
+	TestEqual(TEXT("ally: text"), TextOf(Message), FString(TEXT("IA Normal 2 est vaincu")));
 	TestTrue(TEXT("ally: alert"), Message.bAlert);
 
 	Message = HOLForumMessages::GetMessage(Defeated, Teams, 2);
-	TestEqual(TEXT("adversary: text"), TextOf(Message), FString(TEXT("Joueur 2 est vaincu")));
+	TestEqual(TEXT("adversary: text"), TextOf(Message), FString(TEXT("IA Normal 2 est vaincu")));
 	TestFalse(TEXT("adversary: no alert"), Message.bAlert);
 
 	Message = HOLForumMessages::GetMessage(Defeated, Teams, INDEX_NONE);
@@ -209,12 +209,12 @@ bool FHOLVictoryMessagesThreadTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("the newest at the bottom"), Thread.Describe(), FString(TEXT("[Votre forum est tombé — 1 vie | Joueur 2 est vaincu]")));
+	TestEqual(TEXT("the newest at the bottom"), Thread.Describe(), FString(TEXT("[Votre forum est tombé — 1 vie | IA Normal 2 est vaincu]")));
 	TestEqual(TEXT("opaque at first"), FHOLForumThread::GetOpacity(Thread.Lines[0], 10.0), 1.f);
 	TestTrue(TEXT("fading near its end"), FHOLForumThread::GetOpacity(Thread.Lines[0], 17.75) < 1.f && FHOLForumThread::GetOpacity(Thread.Lines[0], 17.75) > 0.f);
 	TestFalse(TEXT("nothing gone before 8 s"), Thread.Expire(17.9));
 	TestTrue(TEXT("the first gone at 8 s"), Thread.Expire(18.0));
-	TestEqual(TEXT("the second left"), Thread.Describe(), FString(TEXT("[Joueur 2 est vaincu]")));
+	TestEqual(TEXT("the second left"), Thread.Describe(), FString(TEXT("[IA Normal 2 est vaincu]")));
 	TestTrue(TEXT("the second gone at 20 s"), Thread.Expire(20.0));
 	TestEqual(TEXT("empty again"), Thread.Lines.Num(), 0);
 
@@ -233,11 +233,11 @@ bool FHOLVictoryMessagesThreadTest::RunTest(const FString& Parameters)
 
 	// The names cut out for their colours.
 	const FHOLForumMessage Held = HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 0, 2), Teams, 1);
-	const TArray<HOLForumMessages::FPiece> Pieces = HOLForumMessages::SplitNames(Held, 1);
+	const TArray<HOLForumMessages::FPiece> Pieces = HOLForumMessages::SplitNames(Held, 1, Teams);
 	TestEqual(TEXT("pieces"), Pieces.Num(), 3);
 	if (Pieces.Num() == 3)
 	{
-		TestEqual(TEXT("attacker"), Pieces[0].Text, FString(TEXT("Joueur 3")));
+		TestEqual(TEXT("attacker"), Pieces[0].Text, FString(TEXT("IA Normal 3")));
 		TestEqual(TEXT("attacker slot"), Pieces[0].Slot, 2);
 		TestEqual(TEXT("words"), Pieces[1].Text, FString(TEXT(" tient la ruine de ")));
 		TestEqual(TEXT("words slot"), Pieces[1].Slot, static_cast<int32>(INDEX_NONE));

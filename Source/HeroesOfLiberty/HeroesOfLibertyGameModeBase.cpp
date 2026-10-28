@@ -15,6 +15,7 @@
 #include "Map/HOLStartSlot.h"
 #include "EngineUtils.h"
 #include "Match/HOLDisconnectRules.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLMatchSubsystem.h"
@@ -305,7 +306,8 @@ void AHeroesOfLibertyGameModeBase::UpdateStartWait()
 	for (const APlayerState* PlayerState : GameState->PlayerArray)
 	{
 		const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
-		if (HOLPlayerState && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex()))
+		// An AI slot's PlayerState (IA0.1) is nobody awaited.
+		if (HOLPlayerState && !HOLPlayerState->IsABot() && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex()))
 		{
 			Present.Add(MatchConfig.Slots[HOLPlayerState->GetPlayerIndex()].PlayerName);
 		}
@@ -518,6 +520,8 @@ void AHeroesOfLibertyGameModeBase::StartPlay()
 
 	if (AHOLStartSlot::WorldHasSlots(GetWorld()))
 	{
+		// IA0.1 E1: the AI slots' player states before their centres (the humans got theirs at their login).
+		SpawnAIPlayerStates(*GetWorld(), MatchConfig, GetDefault<UHOLMatchSettings>()->StartingResources);
 		SpawnMainCentres();
 	}
 
@@ -591,6 +595,64 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 			SpawnStartingHero(*GetWorld(), Slot, *Centre);
 		}
 	}
+}
+
+int32 AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(UWorld& World, const FHOLMatchConfig& Config, const FHOLResources& Starting)
+{
+	if (World.GetNetMode() == NM_Client)
+	{
+		return 0;
+	}
+	// Without a game state the player state would not be listed (APlayerState::PostInitializeComponents).
+	const AGameStateBase* GameState = World.GetGameState();
+	if (!GameState)
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("AI slots: no game state, no player state"));
+		return 0;
+	}
+	int32 Spawned = 0;
+	for (int32 Slot = 0; Slot < Config.Slots.Num(); ++Slot)
+	{
+		const FHOLMatchSlot& SlotConfig = Config.Slots[Slot];
+		if (SlotConfig.State != EHOLSlotState::AI)
+		{
+			continue;
+		}
+		// Called again (a second start): the slot keeps the one it has.
+		const bool bHeld = GameState->PlayerArray.ContainsByPredicate([Slot](const APlayerState* Each)
+		{
+			const AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+			return HOLEach && HOLEach->GetPlayerIndex() == Slot;
+		});
+		if (bHeld)
+		{
+			continue;
+		}
+		// No controller: it lists itself in PlayerArray, its stock replicated to nobody (COND_OwnerOnly, D282).
+		FActorSpawnParameters Parameters;
+		Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AHOLPlayerState* PlayerState = World.SpawnActor<AHOLPlayerState>(AHOLPlayerState::StaticClass(), Parameters);
+		if (!PlayerState)
+		{
+			continue;
+		}
+		// As a human at his login (PostLogin): his slot and its colour, the stock of the start (D283); the population is
+		// counted by the production at each step, the camp read from the configuration (InitVictory).
+		PlayerState->SetIsABot(true);
+		PlayerState->SetPlayerName(MakeAIPlayerName(Config, Slot));
+		PlayerState->SetMatchSlot(Slot, SlotConfig.ColorIndex);
+		PlayerState->SetResources(Starting);
+		++Spawned;
+		UE_LOG(LogHOLMatch, Log, TEXT("AI slot %d: player state, %s (colour %d, '%s')"), Slot, *PlayerState->DescribeEconomy(),
+			SlotConfig.ColorIndex, *PlayerState->GetPlayerName());
+	}
+	return Spawned;
+}
+
+FString AHeroesOfLibertyGameModeBase::MakeAIPlayerName(const FHOLMatchConfig& Config, const int32 Slot)
+{
+	// IA0.1-Q1: as the thread and the players' table name it.
+	return HOLForumMessages::GetSlotName(Slot, INDEX_NONE, Config).ToString();
 }
 
 bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const int32 Slot, const AHOLBuilding& Forum, const int32 Num)

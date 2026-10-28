@@ -3,6 +3,7 @@
 #include "Match/HOLMatchConfig.h"
 
 #include "Algo/Count.h"
+#include "HeroesOfLibertyLog.h"
 #include "Dom/JsonObject.h"
 #include "JsonObjectConverter.h"
 #include "Math/RandomStream.h"
@@ -150,6 +151,32 @@ bool FHOLMatchConfig::FromJson(const FString& Json, FHOLMatchConfig& OutConfig, 
 	if (FileVersion > CurrentVersion)
 	{
 		return Fail(FString::Printf(TEXT("version %d is newer than this build (%d)"), FileVersion, CurrentVersion));
+	}
+
+	const TArray<TSharedPtr<FJsonValue>>* SlotValues = nullptr;
+	if (Object->TryGetArrayField(TEXT("slots"), SlotValues))
+	{
+		for (const TSharedPtr<FJsonValue>& Value : *SlotValues)
+		{
+			const TSharedPtr<FJsonObject>* SlotObject = nullptr;
+			if (!Value.IsValid() || !Value->TryGetObject(SlotObject))
+			{
+				continue;
+			}
+			// IA0.1-Q1b: an unknown level is Normal, with a warning (the converter would fail the whole file).
+			FString Difficulty;
+			if ((*SlotObject)->TryGetStringField(TEXT("difficulty"), Difficulty) && StaticEnum<EHOLAIDifficulty>()->GetValueByNameString(Difficulty) == INDEX_NONE)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Match configuration: unknown AI difficulty '%s', Normal"), *Difficulty);
+				(*SlotObject)->RemoveField(TEXT("difficulty"));
+			}
+			// IA0.4-Q3: a scenario's "aiBrain" is the field bAIBrain, whose name alone the converter knows.
+			bool bBrain = true;
+			if ((*SlotObject)->TryGetBoolField(TEXT("aiBrain"), bBrain))
+			{
+				(*SlotObject)->SetBoolField(TEXT("bAIBrain"), bBrain);
+			}
+		}
 	}
 
 	// Start from a blank configuration so a field missing from an older file keeps its default.
