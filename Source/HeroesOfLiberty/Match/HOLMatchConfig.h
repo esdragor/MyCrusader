@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Math/RandomStream.h"
+#include "Map/HOLMapSizeRules.h"
 #include "UObject/SoftObjectPath.h"
 #include "HOLMatchConfig.generated.h"
 
@@ -99,7 +100,7 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	GENERATED_BODY()
 
 	/** Format version: a file of an older version is read with defaults for its missing fields. */
-	static constexpr int32 CurrentVersion = 2;
+	static constexpr int32 CurrentVersion = 3;
 	static constexpr int32 MaxSlots = 8;
 	static constexpr int32 MaxTeams = 4;
 
@@ -110,8 +111,28 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	UPROPERTY()
 	int32 Seed = 0;
 
+	/** The map chosen (its list "Carte"); with a MapSize, the file loaded is FHOLMapSizeRules::GetMapFile(Map, MapSize). */
 	UPROPERTY()
 	FSoftObjectPath Map;
+
+	/**
+	 * TC1 (version 3, TC-Q3, TC-Q4): the size chosen (its list "Taille"), which sets the places of the map; None (no such
+	 * field in the file) = Map loaded as it is.
+	 */
+	UPROPERTY()
+	EHOLMapSize MapSize = EHOLMapSize::None;
+
+	/**
+	 * TC1 (version 3, TC-Q6): the places drawn at the start from Seed (FHOLMapSizeRules::GetPlaces). False (no such field in
+	 * the file: the test scenarios, quick_check, older files) = fixed places, slot i at place i. The menu and the lobby
+	 * set it (TC3).
+	 */
+	UPROPERTY()
+	bool bDrawPlaces = false;
+
+	/** TC1 (version 3, TC-Q6): with bDrawPlaces, the allies on neighbouring places ("Équipes ensemble", ticked by default). */
+	UPROPERTY()
+	bool bTeamsTogether = true;
 
 	/** Always MaxSlots after Normalize(). */
 	UPROPERTY()

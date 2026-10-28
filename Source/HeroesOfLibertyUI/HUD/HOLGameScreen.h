@@ -451,6 +451,8 @@ private:
 	 * (AHOLGameState::OnForumEvent). Silent (the alert is V4.3's).
 	 */
 	void HandleForumEvent(const struct FHOLForumEvent& Event);
+	/** J8a.4 (D202): the minor alert « Votre héros est prêt à revenir », a thread's line only (no banner nor sound). */
+	void HandleHeroReadyMessage(const struct FHOLForumMessage& Message);
 	void TickMessages();
 	void RebuildMessages();
 	UPROPERTY(Transient)
@@ -485,6 +487,7 @@ private:
 	TObjectPtr<UHorizontalBox> AlertRow;
 	FHOLForumAlert Alert;
 	FDelegateHandle TableForumEventHandle;
+	FDelegateHandle TableHeroReadyHandle;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;
 	/** The names of the players table as last logged (M6-Q12). */

@@ -6,16 +6,25 @@ using HOLManager.Lobbies;
 namespace HOLManager.Matches;
 
 /**
- * match.json, FHOLMatchConfig version 2 (Source/HeroesOfLiberty/Match/HOLMatchConfig.h) as FJsonObjectConverter
+ * match.json, FHOLMatchConfig version 3 (Source/HeroesOfLiberty/Match/HOLMatchConfig.h) as FJsonObjectConverter
  * writes it: first letter in lower case (bool fields keep their "b"), enums by name, the map as an object path.
  */
 public sealed class MatchConfig
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     [JsonPropertyName("version")] public int Version { get; init; } = CurrentVersion;
     [JsonPropertyName("seed")] public int Seed { get; init; }
     [JsonPropertyName("map")] public string Map { get; init; } = "";
+
+    /** Version 3 (TC3, EHOLMapSize by name): the size, the file played being FHOLMapSizeRules::GetMapFile(map, mapSize). */
+    [JsonPropertyName("mapSize")] public string MapSize { get; init; } = "None";
+
+    /** Version 3 (TC-Q6): the places drawn by the server from the seed; always at a lobby (fixed: the test scenarios). */
+    [JsonPropertyName("bDrawPlaces")] public bool DrawPlaces { get; init; } = true;
+
+    /** Version 3 (TC-Q6): "Équipes ensemble". */
+    [JsonPropertyName("bTeamsTogether")] public bool TeamsTogether { get; init; } = true;
     [JsonPropertyName("slots")] public IReadOnlyList<MatchSlot> Slots { get; init; } = [];
     [JsonPropertyName("mode")] public string Mode { get; init; } = "Standard";
     [JsonPropertyName("bNomad")] public bool Nomad { get; init; }
@@ -41,6 +50,9 @@ public sealed class MatchConfig
         {
             Seed = seed,
             Map = map.ObjectPath,
+            MapSize = map.FindSize(lobby.Settings.Size)?.Key ?? "None",
+            DrawPlaces = true,
+            TeamsTogether = lobby.Settings.TeamsTogether,
             Slots = lobby.Slots.Select((slot, position) => slot.Player is { } p
                 ? new MatchSlot { State = MatchSlot.Human, Faction = p.Faction, ColorIndex = colors[position]!.Value, Team = p.Team, PlayerName = p.Name }
                 // Closed slots get the colour of their index, as FHOLMatchConfig::Normalize gives them.

@@ -192,6 +192,16 @@ public:
 	const FHOLMatchConfig& GetLaunchConfig() const { return LaunchConfig; }
 
 	/**
+	 * TC3 (TC-Q6): the place on the map (AHOLStartSlot's index) of a slot, every machine, from the configuration of the
+	 * launch (FHOLMapSizeRules::GetPlaces: fixed, or drawn from its seed): INDEX_NONE for a closed slot or a configuration
+	 * refused (FHOLMapSizeRules::CheckPlaces); the slot itself while the configuration is not known yet (HasStartPlaces).
+	 */
+	int32 GetStartPlace(int32 Slot) const;
+
+	/** TC3: the places are known (the server from InitVictory on, a client once the configuration has come). */
+	bool HasStartPlaces() const { return !StartPlaces.IsEmpty(); }
+
+	/**
 	 * V2 (D349-D353): each slot's main forum, public (every machine, the players' table of V2.4): its falls, its phase,
 	 * its ruin's steps left, its rebuilding's work. The default (standing, no fall) for a closed slot.
 	 */
@@ -354,8 +364,17 @@ private:
 	 * The configuration of the launch: its occupied slots and teams make the camps (D357). Written by the server alone;
 	 * replicated (D.3) so that each client knows its allies.
 	 */
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_LaunchConfig)
 	FHOLMatchConfig LaunchConfig;
+
+	/** TC3: each slot's place, from LaunchConfig (UpdateStartPlaces), MaxSlots of them once known. */
+	TArray<int32> StartPlaces;
+
+	/** TC3: StartPlaces from LaunchConfig; a configuration refused gives no place to anyone (logged on the server). */
+	void UpdateStartPlaces();
+
+	UFUNCTION()
+	void OnRep_LaunchConfig();
 
 	/** One per slot (MaxSlots). */
 	UPROPERTY(ReplicatedUsing = OnRep_Victory)
@@ -391,9 +410,21 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnHeroSheetsChanged);
 	FOnHeroSheetsChanged OnHeroSheetsChanged;
 
+	/**
+	 * J8a.4 (D397, D202): every machine with a player, its own hero ready to return (its public sheet turned
+	 * ReadyToReturn, FHOLHeroReadyWatch): once per death, its owner alone. Logs "Hero message: <text> (slot N)", then this,
+	 * for the HUD's thread (a minor alert: a line, no banner nor sound).
+	 */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnHeroReadyMessage, const FHOLForumMessage& /*Message*/);
+	FOnHeroReadyMessage OnHeroReadyMessage;
+
 private:
 	UFUNCTION()
 	void OnRep_HeroSheets();
+
+	/** J8a.4: before OnHeroSheetsChanged, the local player's hero ready (OnHeroReadyMessage). */
+	void NoteHeroReady();
+	FHOLHeroReadyWatch HeroReadyWatch;
 
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)

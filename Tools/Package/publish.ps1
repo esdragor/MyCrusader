@@ -3,16 +3,20 @@
 # lobby manager (manifest.json, notes.txt, files\<path>.gz, patches\<from>\<path>.patch from the -Keep newest versions,
 # latest.txt last; the versions beyond -Keep removed). A launcher never sees half a version: HOLPublish writes <v>.tmp,
 # renames it, then replaces latest.txt, so the manager may run meanwhile (it caches nothing).
-# The dedicated server (WindowsServer\) is not touched: the manager reads its game version at startup only.
+# D481: the dedicated server <archive>\WindowsServer\ (without its .pdb) is copied by HOLPublish into <ServersDir>\<v>\
+# (<v>.tmp, renamed just before the version's folder and latest.txt): a new lobby never gets a version without its
+# server. Old servers are not removed here: the manager deletes Servers\<v>\ once no lobby nor match uses v. No
+# WindowsServer\HeroesOfLibertyServer.exe in the archive: FAIL, unless -NoServer (matches then use the manager's ServerExe).
 # Run from Windows PowerShell (never Git Bash: package.ps1 would get /Game/... paths rewritten):
 #   powershell -ExecutionPolicy Bypass -File Tools\Package\publish.ps1 [-Root <copy>] [-Archive <copy>\Saved\Packages\<v>]
-#       [-Version <name>] [-Notes <file>] [-Keep 3] [-VersionsDir <folder>]
+#       [-Version <name>] [-Notes <file>] [-Keep 3] [-VersionsDir <folder>] [-ServersDir <folder>] [-NoServer]
 # - no -Archive: package.ps1 -Root <copy> [-Version <name>] first (1.5 to 5 min, more the first time), then its archive;
 # - the version published is the one in <archive>\Windows\HeroesOfLiberty\Version.txt (what the game reads); a -Version
 #   that differs from it is refused;
 # - -Notes: the "what's new" text shown by the launcher (copied as notes.txt; none without it);
 # - -VersionsDir: <copy>\Saved\Manager\Versions by default (the manager built by build_manager.ps1 in Saved\Manager\
-#   reads Versions\ next to its exe, VersionSettings.VersionsDir).
+#   reads Versions\ next to its exe, VersionSettings.VersionsDir);
+# - -ServersDir: <copy>\Saved\Manager\Servers by default (beside Versions\, ManagerSettings.ServersDir).
 # HOLPublish is built (Release) into <copy>\Saved\HOLPublish\, with hdiffz.exe / hpatchz.exe beside it. The archive is
 # kept (remove it by hand once published: 6 GB).
 # Full log: <copy>\Saved\Logs\publish.log. Prints the lines of package.ps1 and HOLPublish, then one line PASS / FAIL;
@@ -23,7 +27,9 @@ param(
     [string] $Version = "",
     [string] $Notes = "",
     [int] $Keep = 3,
-    [string] $VersionsDir = ""
+    [string] $VersionsDir = "",
+    [string] $ServersDir = "",
+    [switch] $NoServer
 )
 
 $Project = if ($Root) { (Resolve-Path $Root).Path } else { (Resolve-Path "$PSScriptRoot\..\..").Path }
@@ -41,6 +47,8 @@ if ($Notes) {
 }
 if (-not $VersionsDir) { $VersionsDir = Join-Path $Project "Saved\Manager\Versions" }
 $VersionsDir = [IO.Path]::GetFullPath($VersionsDir)
+if (-not $ServersDir) { $ServersDir = Join-Path $Project "Saved\Manager\Servers" }
+$ServersDir = [IO.Path]::GetFullPath($ServersDir)
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { Fail "dotnet not found" }
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
@@ -64,6 +72,10 @@ if (-not (Test-Path $Archive -PathType Container)) { Fail "archive not found: $A
 $Archive = (Resolve-Path $Archive).Path
 $Game = Join-Path $Archive "Windows"
 if (-not (Test-Path (Join-Path $Game "HeroesOfLiberty.exe"))) { Fail "no Windows\HeroesOfLiberty.exe in $Archive" }
+$Server = Join-Path $Archive "WindowsServer"
+if (-not $NoServer -and -not (Test-Path (Join-Path $Server "HeroesOfLibertyServer.exe"))) {
+    Fail "no WindowsServer\HeroesOfLibertyServer.exe in $Archive (-NoServer to publish without it)"
+}
 
 # 2. The version: package.ps1 writes it in <platform>\HeroesOfLiberty\Version.txt, not at the root of Windows\ where
 # HOLPublish would look for it without --version: read here and passed.
@@ -91,6 +103,7 @@ foreach ($Tool in "hdiffz.exe", "hpatchz.exe") {
 # UTF-8 while it runs, then put back (it belongs to the console window, which outlives this script).
 $Arguments = @("--game", $Game, "--versions", $VersionsDir, "--version", $GameVersion, "--keep", "$Keep")
 if ($Notes) { $Arguments += @("--notes", $Notes) }
+if (-not $NoServer) { $Arguments += @("--server", $Server, "--servers-dir", $ServersDir) }
 Say "HOLPublish $($Arguments -join ' ')"
 $PublishClock = [Diagnostics.Stopwatch]::StartNew()
 $Encoding = [Console]::OutputEncoding
@@ -112,9 +125,12 @@ if ($PublishCode -ne 0) { Fail "HOLPublish exit $PublishCode after $PublishSecon
 $Latest = (Get-Content (Join-Path $VersionsDir "latest.txt") -Raw -Encoding utf8 -ErrorAction SilentlyContinue)
 if (-not $Latest -or $Latest.Trim() -ne $GameVersion) { Fail "latest.txt says '$Latest', not $GameVersion" }
 if (-not (Test-Path (Join-Path $VersionsDir "$GameVersion\manifest.json"))) { Fail "no $GameVersion\manifest.json in $VersionsDir" }
+if (-not $NoServer -and -not (Test-Path (Join-Path $ServersDir "$GameVersion\HeroesOfLibertyServer.exe"))) {
+    Fail "no $GameVersion\HeroesOfLibertyServer.exe in $ServersDir"
+}
 $Kept = @(Get-ChildItem $VersionsDir -Directory | Where-Object { Test-Path (Join-Path $_.FullName "manifest.json") } | ForEach-Object { $_.Name })
 $Bytes = (Get-ChildItem $VersionsDir -Recurse -File | Measure-Object Length -Sum).Sum
 $Package = if ($null -ne $PackageMinutes) { "package $PackageMinutes min, " } else { "archive given, " }
 Say ("publish : PASS ($GameVersion -> $VersionsDir ; ${Package}HOLPublish $PublishSeconds s; versions kept: " +
-    "$($Kept -join ', '), $([math]::Round($Bytes / 1MB)) MB)")
+    "$($Kept -join ', '), $([math]::Round($Bytes / 1MB)) MB; server: $(if ($NoServer) { 'none (-NoServer)' } else { Join-Path $ServersDir $GameVersion }))")
 exit 0

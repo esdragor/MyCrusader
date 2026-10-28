@@ -10,10 +10,14 @@ namespace HOLPublish;
  * Patches: from each of the `keep` newest versions already published, for each file changed (ManifestDiff), hdiffz on
  * the old file (its .gz unpacked, checked against its list) and the new one; kept only if smaller than the new .gz, and
  * only once hpatchz rebuilt the new file's SHA-256 from it. Then only `keep` versions are kept besides the new one.
+ * D481: with a server folder (WindowsServer\), it is copied without its .pdb into <servers>\<v>.tmp, renamed <v> just
+ * before the version's folder and latest.txt; old servers are never removed here (the manager removes them once no
+ * match runs on them).
  */
 public static class Publisher
 {
     private const string WorkDir = "_work";
+    public const string ServerExe = "HeroesOfLibertyServer.exe";
 
     public static PublishResult Publish(PublishOptions options)
     {
@@ -37,19 +41,44 @@ public static class Publisher
         {
             throw new PublishException($"version {version} already published in {root}");
         }
+        string? server = null, serverFinal = null;
+        if (options.ServerDir != null || options.ServersDir != null)
+        {
+            if (options.ServerDir == null || options.ServersDir == null)
+            {
+                throw new PublishException("a server folder and a servers folder go together");
+            }
+            server = Path.GetFullPath(options.ServerDir);
+            if (!File.Exists(Path.Combine(server, ServerExe)))
+            {
+                throw new PublishException($"no {ServerExe} in the server folder {server}");
+            }
+            serverFinal = Path.Combine(Path.GetFullPath(options.ServersDir), version);
+            if (Directory.Exists(serverFinal) || File.Exists(serverFinal))
+            {
+                throw new PublishException($"server of version {version} already in {Path.GetDirectoryName(serverFinal)}");
+            }
+        }
         Directory.CreateDirectory(root);
         var previous = VersionFolder.Published(root).Take(options.Keep).ToList();
         var hdiff = new HDiffPatch(options.Hdiffz ?? Path.Combine(AppContext.BaseDirectory, "hdiffz.exe"));
         var tmp = final + VersionFolder.TmpSuffix;
         var warnings = new List<string>();
 
+        var serverTmp = serverFinal + VersionFolder.TmpSuffix;
         var moved = false;
+        var serverMoved = false;
         int fileCount, patchCount = 0;
         long compressed = 0, patchBytes = 0;
         try
         {
             DeleteDir(tmp);
             Directory.CreateDirectory(tmp);
+            if (server != null)
+            {
+                DeleteDir(serverTmp);
+                CopyWithoutPdb(server, serverTmp);
+            }
             var manifest = ManifestBuilder.Build(game, version);
             manifest.Save(Path.Combine(tmp, VersionFolder.Manifest));
             if (options.NotesFile != null)
@@ -75,6 +104,12 @@ public static class Publisher
             DeleteDir(work);
             VersionFolder.WritePublishedDate(tmp, DateTime.UtcNow);
 
+            // The server first: a version named by latest.txt always has its server.
+            if (server != null)
+            {
+                Directory.Move(serverTmp, serverFinal!);
+                serverMoved = true;
+            }
             Directory.Move(tmp, final);
             moved = true;
             VersionFolder.WriteLatest(root, version);
@@ -82,6 +117,14 @@ public static class Publisher
         catch (Exception e)
         {
             TryDeleteDir(tmp);
+            if (server != null)
+            {
+                TryDeleteDir(serverTmp);
+            }
+            if (serverMoved)
+            {
+                TryDeleteDir(serverFinal!);
+            }
             if (moved)
             {
                 TryDeleteDir(final);
@@ -167,6 +210,22 @@ public static class Publisher
             throw new PublishException($"no --version and no {ManifestBuilder.VersionFile} in {game}");
         }
         return File.ReadAllText(file).Trim();
+    }
+
+    /** The server folder as it is, minus its symbols (*.pdb: about 3 GB). */
+    private static void CopyWithoutPdb(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            if (file.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            var to = Path.Combine(target, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(file, to);
+        }
     }
 
     private static long Gzip(string source, string target)

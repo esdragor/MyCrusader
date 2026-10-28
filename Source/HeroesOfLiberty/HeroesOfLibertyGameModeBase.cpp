@@ -11,6 +11,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "HOLVersion.h"
 #include "Kismet/GameplayStatics.h"
+#include "Map/HOLMapSizeRules.h"
 #include "Map/HOLStartSlot.h"
 #include "EngineUtils.h"
 #include "Match/HOLDisconnectRules.h"
@@ -117,6 +118,19 @@ void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FStrin
 	MatchConfig = bHasConfig ? Match->GetConfigOrDefault() : FHOLMatchConfig::MakeDefault();
 	UE_LOG(LogHOLMatch, Log, TEXT("Match on %s: %s configuration, %d occupied slots"), *MapName,
 		bHasConfig ? TEXT("given") : TEXT("default"), MatchConfig.GetNumOccupiedSlots());
+	// TC3 (TC-Q6): each occupied slot's place, fixed (slot i at place i: scenarios, quick_check) or drawn from the seed;
+	// a configuration that does not fit its map is refused: nobody gets a start (AHOLGameState::GetStartPlace).
+	FString PlacesError;
+	if (!FHOLMapSizeRules::CheckPlaces(MatchConfig, &PlacesError))
+	{
+		UE_LOG(LogHOLMatch, Error, TEXT("Match config refused on %s: %s; no start for anyone"), *MapName, *PlacesError);
+	}
+	else if (MatchConfig.bDrawPlaces)
+	{
+		const TArray<int32> Places = FHOLMapSizeRules::GetPlaces(MatchConfig);
+		UE_LOG(LogHOLMatch, Log, TEXT("Places drawn (seed %d, teams together %d): %s"), MatchConfig.Seed, MatchConfig.bTeamsTogether,
+			*FString::JoinBy(Places, TEXT(" "), [](const int32 Place) { return FString::FromInt(Place); }));
+	}
 	// The camps of the match are locked now, at the launch (D357).
 	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
 	{
@@ -525,7 +539,8 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		{
 			continue;
 		}
-		const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot);
+		// TC3: at the slot's place (AHOLGameState::GetStartPlace, set by InitVictory).
+		const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(GetWorld(), Slot);
 		if (!Start)
 		{
 			UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: no main centre"), Slot);

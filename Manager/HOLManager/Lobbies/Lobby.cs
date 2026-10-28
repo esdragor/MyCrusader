@@ -67,7 +67,8 @@ public sealed class LobbyPlayer
     public required string Name { get; init; }
     /** Changed when the player comes back by name after a match (R2.11). */
     public string Token { get; internal set; } = "";
-    public required int SlotIndex { get; init; }
+    /** TC3: changed when a smaller size moves the player onto a free slot below its places. */
+    public int SlotIndex { get; internal set; }
     public int ColorIndex { get; internal set; }
     public int Team { get; internal set; }
     public string Faction { get; internal set; } = LobbyRules.DefaultFaction;
@@ -95,6 +96,12 @@ public sealed class LobbySlot(int index)
 public sealed class LobbySettings
 {
     public string Map { get; internal set; } = "";
+
+    /** TC3 (TC-Q3, TC-Q4): the size's key (MapSize.Key), which sets the places; "" for a map without sizes. */
+    public string Size { get; internal set; } = "";
+
+    /** TC3 (TC-Q6): "Équipes ensemble", the allies on neighbouring places when the places are drawn. */
+    public bool TeamsTogether { get; internal set; } = LobbyRules.DefaultTeamsTogether;
     public bool Nomad { get; internal set; }
     public bool Regicide { get; internal set; }
     public bool Catastrophe { get; internal set; }
@@ -104,6 +111,9 @@ public sealed class Lobby
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
+
+    /** D481: the game version of the lobby, the latest published at its creation, kept for its whole life. */
+    public string GameVersion { get; init; } = "";
     public LobbyState State { get; internal set; } = LobbyState.Lobby;
     public required LobbySettings Settings { get; init; }
     public IReadOnlyList<LobbySlot> Slots { get; } = Enumerable.Range(0, LobbyRules.SlotCount).Select(i => new LobbySlot(i)).ToArray();

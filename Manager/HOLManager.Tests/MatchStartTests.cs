@@ -4,7 +4,7 @@ using HOLManager.Matches;
 
 namespace HOLManager.Tests;
 
-/** R2.8: "Start" (leader, everyone ready) and match.json, FHOLMatchConfig version 2. */
+/** R2.8: "Start" (leader, everyone ready) and match.json, FHOLMatchConfig version 3 (TC3). */
 public class MatchStartTests
 {
     private const string Version = LobbyEntryTests.Version;
@@ -13,7 +13,7 @@ public class MatchStartTests
 
     public MatchStartTests() => store = new LobbyStore(Version, clock);
 
-    internal static string ReferencePath => Path.Combine(AppContext.BaseDirectory, "Data", "match_v2_reference.json");
+    internal static string ReferencePath => Path.Combine(AppContext.BaseDirectory, "Data", "match_v3_reference.json");
 
     /** The lobby of the reference file: Bob, slot 1 closed, Alice, Chloé; 2 against 1; Nomad. */
     private (Lobby Lobby, string Bob, string Alice, string Chloe) ReferenceLobby()
@@ -44,7 +44,7 @@ public class MatchStartTests
     {
         var (lobby, _, _, _) = ReferenceLobby();
         var json = JsonNode.Parse(MatchConfig.FromLobby(lobby, store.Maps[0], seed: 1).ToJson())!.AsObject();
-        Assert.Equal(["version", "seed", "map", "slots", "mode", "bNomad", "bRegicide", "bCatastrophe"],
+        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "slots", "mode", "bNomad", "bRegicide", "bCatastrophe"],
             json.Select(p => p.Key));
         Assert.Equal(["state", "faction", "colorIndex", "team", "playerName"],
             json["slots"]![0]!.AsObject().Select(p => p.Key));

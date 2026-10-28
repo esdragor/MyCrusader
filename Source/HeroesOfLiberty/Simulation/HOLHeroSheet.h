@@ -5,8 +5,11 @@
 #include "CoreMinimal.h"
 #include "HOLHeroSheet.generated.h"
 
-/** Where a slot's hero stands (J8-Q5). None: the slot never had one. ReadyToReturn comes with J8a.4 (his return). */
-UENUM()
+/**
+ * Where a slot's hero stands (J8-Q5). None: the slot never had one. ReadyToReturn (J8a.4): dead, his return may be bought
+ * (UHOLHeroSubsystem::SetReturnReady). BlueprintType: the script's return rule reads it (UHOLHeroLibrary::GetHeroState).
+ */
+UENUM(BlueprintType)
 enum class EHOLHeroState : uint8
 {
 	None,
@@ -97,7 +100,7 @@ namespace HOLHeroSheet
 	 * The sheet from what the server knows (pure). Present and not dying: Alive, StartLevel, the shown HP, death step -1.
 	 * Present and dying (a death step, or no health left): Dead, 0 HP, its death step. Absent: Dead stays Dead with its
 	 * death step (the body destroyed after the fall); otherwise None (no hero yet). XP and cooldowns carry over from
-	 * Previous. ReadyToReturn is never set before J8a.4.
+	 * Previous. ReadyToReturn (set by UHOLHeroSubsystem::SetReturnReady, J8a.4) is kept while dead, body there or not.
 	 */
 	HEROESOFLIBERTY_API FHOLHeroSheets Make(const FHOLHeroFacts& Facts, const FHOLHeroSheets& Previous);
 }

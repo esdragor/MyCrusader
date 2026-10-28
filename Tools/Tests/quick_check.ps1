@@ -5,7 +5,8 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, net, lobby; bodies, rocks and lobby only when asked, not in -Full). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby; bodies, rocks and lobby only when asked, not in -Full;
+#     "sizes" (TC4, ~15 s): Plain at its five sizes and a refused configuration, in the menu's game launch). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
@@ -107,7 +108,7 @@ param(
     [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -123,6 +124,9 @@ $SubCaseTable = @{
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         shiftwork = @{ Marks = @("shiftwork", "shiftwork order", "shiftwork site", "shiftwork after"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
+        shiftplace = @{ Marks = @("shiftplace", "shiftplace order"); Setup = @("hol.Cheat.Wood 1000") }
+        shiftsite = @{ Marks = @("shiftsite", "shiftsite order", "shiftsite later"); Setup = @("hol.Cheat.Wood 1000") }
+        rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -262,6 +266,8 @@ if ($Parts -contains "net") {
     $NetArrowsEndFlag = Join-Path $TestSaved "quick_net_arrows_end.flag"
     $NetHeroWoundedFlag = Join-Path $TestSaved "quick_net_hero_wounded.flag"
     $NetHeroKilledFlag = Join-Path $TestSaved "quick_net_hero_killed.flag"
+    $NetHeroReadyFlag = Join-Path $TestSaved "quick_net_hero_ready.flag"
+    $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -278,14 +284,21 @@ if ($Parts -contains "net") {
         # The hero sheets (J8a.3, J8-Q5): a hero for each client's slot (Alice slot 0, Bob slot 1, R3.2), born here (none at
         # the start: bStartingHero off), 40 m apart; their XP set (5, 7); 2 Men-at-arms of slot 0 strike Bob's hero for 10 s,
         # then removed: once still, the server's report, then each client's (its signal); then Bob's hero killed, the
-        # server's report again, then each client's; Alice's hero removed at the end (the next parts as before).
-        @("mark net hero", "hol.Units.Spawn 1 2000 -5000 1 Hero 150", "hol.Units.Spawn 1 6000 -5000 0 Hero 150", "wait 1",
+        # server's report again, then each client's.
+        # The return (J8a.4 loop 5), its times at 20 % (hol.Hero.ReturnTimePercent: ready 152 steps after death, the price
+        # from 150 to 0 in 240 steps): once Bob's hero is ready (Bob's too early order refused meanwhile), Alice's killed,
+        # the clients' signal; Bob's paid return then Alice's by itself at price 0 (the server's own lines), its report,
+        # the clients' signal; both heroes removed at the end, the times back to the rules (the next parts as before).
+        @("mark net hero", "hol.Hero.ReturnTimePercent 20", "hol.Units.Spawn 1 2000 -5000 1 Hero 150", "hol.Units.Spawn 1 6000 -5000 0 Hero 150", "wait 1",
             "hol.Hero.SetXP 0 5", "hol.Hero.SetXP 1 7", "hol.Units.Spawn 2 2600 -5000 0 ManAtArms 150", "wait 10",
             "hol.Units.Remove 2300 -5000 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroWoundedFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_seen1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_seen2.flag") 120",
             "hol.Hero.Kill 1", "wait 2", "hol.Hero.Report", "signal $NetHeroKilledFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_done2.flag") 120",
-            "hol.Units.Remove 6000 -5000 2000 0 Hero") +
+            "waitlog Hero return: slot 1 ready", "mark net hero return", "hol.Hero.Kill 0", "signal $NetHeroReadyFlag",
+            "waitlog Hero return: slot 1 by its main forum", "waitlog Hero return: slot 0 by its main forum", "wait 1", "hol.Hero.Report",
+            "signal $NetHeroBackFlag", "waitfile $(Join-Path $TestSaved "quick_net_hero_back1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_back2.flag") 120",
+            "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
         # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
@@ -381,8 +394,15 @@ if ($Parts -contains "menu") {
             Step "waitlog Dropdown SlotColor0: value 1 chosen"
             # E2-4: a line nobody holds (slot 3, closed) shows no faction, swatch, colour nor team; taken (Human), they come back.
             Step "mark menu emptyrow", "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3 SlotFaction0 SlotSwatch0 SlotColor0 SlotTeam0",
-                "capture qc_fr_emptyrow", "mark menu takenrow", "hol.UI.Choose SlotState3 1", "frames 3",
+                "capture qc_fr_emptyrow", "mark menu takenrow", "hol.UI.Choose SizeDropdown 2", "frames 3", "hol.UI.Choose SlotState3 1", "frames 3",
                 "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3", "capture qc_fr_takenrow", "hol.UI.Choose SlotState3 0", "frames 3"
+            # TC3: the size under the map (Small by default for one player, opened above), "Équipes ensemble" beside it;
+            # three players on Medium: Small greyed (not chosen), slot 5 past the 4 places stays closed; back to Small.
+            # TC-Q12: in solo the teams can be chosen (the factions stay greyed), "Équipes ensemble" too.
+            Step "mark menu sizes", "hol.UI.Shown SizeDropdown TeamsTogetherDropdown SlotTeam0 SlotFaction0", "hol.UI.Choose SlotTeam0 1", "frames 2",
+                "hol.UI.Choose SlotTeam0 0", "hol.UI.Choose SlotState1 1", "hol.UI.Choose SlotState2 1",
+                "frames 3", "hol.UI.Choose SizeDropdown 1", "hol.UI.Choose SlotState5 1", "frames 3", "capture qc_fr_sizes",
+                "hol.UI.Choose SlotState1 0", "hol.UI.Choose SlotState2 0", "frames 3", "hol.UI.Choose SizeDropdown 1", "frames 3"
         }
         Back
         if ($Culture -eq "fr") {
@@ -560,6 +580,44 @@ if ($Parts -contains "sides") {
     Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
+# The "sizes" part (TC4, map sizes): Plain at each size, opened from a v3 configuration file by hol.Match.Open (as a
+# server given -MatchConfig=: the game mode alone checks it), places drawn from a fixed seed. Each: the map of the size
+# loaded, one main centre per player on its drawn place (the circle of the size, radius 0.75 of the half side, place 0 at
+# 180 degrees, counter-clockwise), the camera above slot 0's centre, then sent past both corners: held on the size's
+# bounds. Large: 4 against 4, "Équipes ensemble" (each team on 4 neighbouring places); Huge: 5 players on 8 places,
+# spread round the circle. Then a refused one: fixed places past the size (slot 2 on the 2 places of Small): "Match
+# config refused", no centre, no crash, back to the menu.
+# Each size: key, side in tiles (Tools/Data/MapSizes.csv), places, slots taken, seed, teams (one per slot, or none), teams together.
+$SizeCases = @(
+    @{ Key = "Small"; Side = 110; Places = 2; Players = 2; Seed = 11; Teams = $null; Together = $true },
+    @{ Key = "Medium"; Side = 154; Places = 4; Players = 4; Seed = 12; Teams = $null; Together = $true },
+    @{ Key = "Normal"; Side = 183; Places = 6; Players = 6; Seed = 13; Teams = $null; Together = $true },
+    @{ Key = "Large"; Side = 202; Places = 8; Players = 8; Seed = 14; Teams = @(1, 2, 1, 2, 1, 2, 1, 2); Together = $true },
+    @{ Key = "Huge"; Side = 220; Places = 8; Players = 5; Seed = 15; Teams = $null; Together = $false }
+)
+function Write-SizeConfig([string] $Path, [string] $Size, [int] $Seed, [bool] $Draw, [bool] $Together, [string[]] $States, $Teams) {
+    $Slots = for ($i = 0; $i -lt 8; $i++) {
+        $Team = if ($Teams) { ", `"team`": $($Teams[$i])" } else { "" }
+        "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Team }"
+    }
+    "{ `"version`": 3, `"seed`": $Seed, `"map`": `"/Game/Maps/Plain.Plain`", `"mapSize`": `"$Size`", `"bDrawPlaces`": $($Draw.ToString().ToLower()), `"bTeamsTogether`": $($Together.ToString().ToLower()), `"slots`": [ $($Slots -join ', ') ] }" |
+        Set-Content -Encoding ascii $Path
+}
+if ($Parts -contains "sizes") {
+    Step "mark sizes start", "hol.Camera.TestCursor 0.5 0.5"
+    foreach ($Size in $SizeCases) {
+        $States = for ($i = 0; $i -lt 8; $i++) { if ($i -eq 0) { "Human" } elseif ($i -lt $Size.Players) { "AI" } else { "Closed" } }
+        $Config = Join-Path $TestSaved "sizes_$($Size.Key).json"
+        Write-SizeConfig $Config $Size.Key $Size.Seed $true $Size.Together $States $Size.Teams
+        Step "mark sizes $($Size.Key)", "hol.Match.Open $Config", "waitmap Plain_$($Size.Key)", "waitlog Camera above the start of slot 0", "frames 5", "hol.Camera.Report",
+            "hol.Camera.Focus 9999999 9999999", "frames 2", "hol.Camera.Report", "hol.Camera.Focus -9999999 -9999999", "frames 2", "hol.Camera.Report"
+    }
+    $Config = Join-Path $TestSaved "sizes_refused.json"
+    Write-SizeConfig $Config "Small" 16 $false $true @("Human", "Closed", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") $null
+    Step "mark sizes refused", "hol.Match.Open $Config", "waitmap Plain_Small", "frames 30",
+        "mark sizes end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark sizes menu"
+}
+
 # Start slots of /Game/Maps/Plain (Tools/Editor/create_match_map.py): 150 m from the centre, at these angles; each main
 # centre (4 x 4 tiles, 16 m) stands on the 4 m tile grid (D311, D344), its middle on the grid point nearest its slot,
 # halves rounded up as FMath::RoundToDouble does (slot 0: (-14800, 0), slot 1: (15200, 0); diagonal slots: 1.93 m off on
@@ -710,6 +768,31 @@ $ShiftWorkB = @(-15600, -7200)
 $ShiftWorkPb = @(-13200, -7200)
 $ShiftWorkC = @(-16400, -7200)
 $ShiftWorkQ = @(-18800, -10400)
+# Shift + ground then Shift + placement (EtapeDefini M.1): a Peasant made at A, P 20 m east of it, house H 20 m south of
+# P, Q 24 m west of H. Shift + site then Shift + ground (M.1): sites S and S2 (their builder made east of S and sent
+# east, Away), (a) a Peasant made north-west of S, Q2 south-west of S, then slot 0's berries; (b) a Peasant made east of
+# S2, Q3 west of S2. All south of the shiftwork row, on free ground.
+$ShiftPlaceA = @(-17200, -12000)
+$ShiftPlaceP = @(-15200, -12000)
+$ShiftPlaceH = @(-15200, -14000)
+$ShiftPlaceQ = @(-17600, -14400)
+$ShiftSiteS = @(-12800, -12000)
+$ShiftSiteS2 = @(-12800, -14800)
+$ShiftSiteBuilder = @(-12000, -12000)
+$ShiftSiteAway = @(-10800, -13200)
+$ShiftSiteC = @(-13600, -10800)
+$ShiftSiteQ2 = @(-14400, -13200)
+$ShiftSiteBerries = @(-12021, -9193)
+$ShiftSiteD = @(-11200, -15600)
+$ShiftSiteQ3 = @(-14400, -16000)
+# A rally point in several steps (EtapeDefini N.1): slot 0's centre selected; R1 20 m north-east of it, R2 28 m north-west
+# of R1 (each ~18 m off the straight way from the centre to the next aim, so a step skipped shows); the gold vein north-east
+# of slot 0 (a source after R1); R3 for a plain right click after the steps; nine points in a row for the limit (8 steps).
+$RallyStepsR1 = @(-13600, 3600)
+$RallyStepsR2 = @(-15600, 5600)
+$RallyStepsGold = @(-11087, 4592)
+$RallyStepsR3 = @(-14000, 5200)
+$RallyStepsRow = @(for ($k = 0; $k -lt 9; $k++) { , @((-15200 + 300 * $k), 6800) })
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
@@ -1600,6 +1683,73 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 25; $i++) { Step "wait 1", "hol.Units.Where 0" }
             Step "hol.Units.Remove $($ShiftWorkH -join ' ') 3000 0", "hol.Units.Remove $($ShiftWorkQ -join ' ') 1000 0", "hol.Units.Remove $($ShiftWorkAway -join ' ') 600 0",
                 "hol.Units.Remove $($ShiftWorkPb -join ' ') 1000 0", "wait 0.5"
+            # Shift + ground then Shift + placement (EtapeDefini M.1, the user's 3rd trial of L): an empty Peasant, Shift +
+            # right click on the ground at P, then house H placed with Shift (Escape leaves the placement mode, the
+            # selection kept), then Shift + ground at Q: it walks to P, then builds H (FastBuild: finished at its first
+            # blow), then walks to Q, idle there.
+            Step "mark build shiftplace", "hol.Units.SpawnSeed 122", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 1",
+                "hol.Units.Spawn 1 $($ShiftPlaceA -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftPlaceA -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #"
+            # Where it is before the orders, then every 0.5 s for 26 s (P 20 m away, H 20 m beyond, Q 24 m beyond H).
+            Step "mark build shiftplace order", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftPlaceP -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftPlaceP -join ' ') shift",
+                "hol.Camera.Focus $($ShiftPlaceH -join ' ')", "frames 3", "hol.Build.Place House", "waitlog Placement ghost: House at ($($ShiftPlaceH -join ', ')) valid",
+                "hol.Build.Click shift", "waitlog Construction: slot 0 placed House foundation at ($($ShiftPlaceH -join ', '))"
+            Key Escape
+            Step "waitlog Placement: ended", "hol.Camera.Focus $($ShiftPlaceQ -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftPlaceQ -join ' ') shift"
+            for ($i = 0; $i -lt 52; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "hol.Units.Remove $($ShiftPlaceQ -join ' ') 1000 0", "hol.Cheat.FastBuild 0", "wait 0.5"
+            # Shift + site then Shift + ground (EtapeDefini M.1, the user's 3rd trial of L): sites S and S2 placed by a builder
+            # sent away at once (both unbuilt). (a) an empty Peasant, Shift + right click on S, Shift + ground at Q2, Shift +
+            # right click on slot 0's berries: it builds S (FastBuild), then walks to Q2, then gathers food. (b) another,
+            # Shift + right click on S2, then 0.5 s later (on its way to S2) Shift + ground at Q3: it builds S2, then walks
+            # to Q3, idle there.
+            Step "mark build shiftsite", "hol.Units.SpawnSeed 123", "hol.Gather.SpeedScale 1", "hol.Cheat.FastBuild 0",
+                "hol.Units.Spawn 1 $($ShiftSiteBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftSiteBuilder -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($ShiftSiteS -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($ShiftSiteS -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 1 units to House at ($($ShiftSiteS -join ', '))",
+                "hol.Camera.Focus $($ShiftSiteS2 -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($ShiftSiteS2 -join ', ')) valid", "hol.Build.Click", "waitlog Build order of slot 0: 1 units to House at ($($ShiftSiteS2 -join ', '))",
+                "hol.Camera.Focus $($ShiftSiteAway -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftSiteAway -join ' ')", "wait 0.5", "hol.Cheat.FastBuild 1",
+                "hol.Units.Spawn 1 $($ShiftSiteC -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftSiteC -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #"
+            # (a): where it is before the orders, then every 0.5 s for 30 s (S 13 m away, Q2 18 m beyond, the berries 47 m beyond Q2).
+            Step "mark build shiftsite order", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftSiteS -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftSiteS -join ' ') shift",
+                "hol.Camera.Focus $($ShiftSiteQ2 -join ' ')", "frames 3", "hol.Select.OrderGround $($ShiftSiteQ2 -join ' ') shift",
+                "hol.Camera.Focus $($ShiftSiteBerries -join ' ')", "frames 3", "hol.Select.OrderSource $($ShiftSiteBerries -join ' ') shift"
+            for ($i = 0; $i -lt 60; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            # (b): every 0.5 s for 20 s after the second order (S2 ~18 m away, Q3 25 m beyond it).
+            Step "mark build shiftsite later", "hol.Units.Spawn 1 $($ShiftSiteD -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($ShiftSiteD -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftSiteS2 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($ShiftSiteS2 -join ' ') shift", "wait 0.5", "hol.Units.Where 0", "hol.Camera.Focus $($ShiftSiteQ3 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($ShiftSiteQ3 -join ' ') shift"
+            for ($i = 0; $i -lt 40; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "hol.Units.Remove $($ShiftSiteBerries -join ' ') 1500 0", "hol.Units.Remove $($ShiftSiteQ3 -join ' ') 1000 0", "hol.Units.Remove $($ShiftSiteQ2 -join ' ') 1000 0",
+                "hol.Units.Remove $($ShiftSiteAway -join ' ') 600 0", "hol.Cheat.FastBuild 0", "wait 0.5"
+            # A rally point in several steps (EtapeDefini N.1, AoE4): slot 0's centre selected. (a) a right click at R1, then
+            # Shift + right click at R2: the flag at R2, two segments (centre, R1, R2); a Peasant produced passes R1, then
+            # stops at R2, its chain two white Rally steps. (b) a right click at R1, then Shift + right click on the gold vein:
+            # a Peasant produced passes R1, then mines. (c) a plain right click at R3 after the steps: R3 alone. (d) a right
+            # click then 8 Shift + right clicks in a row: the 9th refused (8 steps at most). The rally point cleared at the end.
+            $RallyStepsWaitRally = "waitlog Rally: slot 0 "
+            Step "mark build rallysteps", "hol.Cheat.Food 1000", "hol.Cheat.Population 50", "hol.Prod.BuildTime 1", "hol.Gather.SpeedScale 1",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "hol.Select.Report", "waitlog Selection report: selected MainCentre of slot 0 (own)",
+                "hol.Camera.Focus $($RallyStepsR1 -join ' ')", "frames 3", "hol.Select.OrderGround $($RallyStepsR1 -join ' ')", $RallyStepsWaitRally,
+                "hol.Camera.Focus $($RallyStepsR2 -join ' ')", "frames 3", "hol.Select.OrderGround $($RallyStepsR2 -join ' ') shift", $RallyStepsWaitRally,
+                "frames 3", "hol.Select.Report", "hol.Prod.Queue Peasant", "waitlog Production: Peasant of slot 0 done", "hol.Units.Where 0", "wait 0.3", "hol.Orders.Chains"
+            for ($i = 0; $i -lt 44; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "mark build rallysteps source", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "hol.Select.Report",
+                "waitlog Selection report: selected MainCentre of slot 0 (own)", "hol.Camera.Focus $($RallyStepsR1 -join ' ')", "frames 3",
+                "hol.Select.OrderGround $($RallyStepsR1 -join ' ')", $RallyStepsWaitRally, "hol.Camera.Focus $($RallyStepsGold -join ' ')", "frames 3",
+                "hol.Select.OrderSource $($RallyStepsGold -join ' ') shift", $RallyStepsWaitRally, "frames 3", "hol.Select.Report", "hol.Prod.Queue Peasant",
+                "waitlog Production: Peasant of slot 0 done", "hol.Units.Where 0"
+            for ($i = 0; $i -lt 60; $i++) { Step "wait 0.5", "hol.Units.Where 0" }
+            Step "mark build rallysteps replace", "hol.Camera.Focus $($RallyStepsR3 -join ' ')", "frames 3", "hol.Select.OrderGround $($RallyStepsR3 -join ' ')", $RallyStepsWaitRally,
+                "frames 3", "hol.Select.Report"
+            Step "mark build rallysteps nine", "hol.Camera.Focus $(-14000) $($RallyStepsRow[0][1])", "frames 3", "hol.Select.OrderGround $($RallyStepsRow[0] -join ' ')", $RallyStepsWaitRally
+            for ($k = 1; $k -lt 9; $k++) { Step "hol.Select.OrderGround $($RallyStepsRow[$k] -join ' ') shift", $RallyStepsWaitRally }
+            Step "frames 3", "hol.Select.Report", "hol.Prod.Rally -15000 0", $RallyStepsWaitRally, "hol.Prod.BuildTime 0", "hol.Units.Remove $($RallyStepsR2 -join ' ') 600 0"
+            Key Escape
+            Step "waitlog Selection: none"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -2013,6 +2163,20 @@ if ($NetListening) {
         # Production (D284): each client has its centre make a Peasant (2 s, the server's hol.Prod.BuildTime), then both
         # Peasants must be shown, and the other player's resources must not have reached this client (D282).
         $NetSteps += "hol.Prod.Queue", "waitunits 2", "wait 1", "hol.Units.Report", "hol.Prod.Report", "capture qcnet_${Client}_peasants"
+        # A rally point in several steps seen by its owner (EtapeDefini N.1): its centre selected, a right click at P1, then
+        # Shift + right click at P2 (16 m toward the map's middle, 24 and 40 m aside): the flag at P2, two segments and a
+        # point at P1, from what the server replicated to this client; then cleared (a right click on the centre).
+        $RallySlot = 2 - $Client
+        $RallyStart = Get-SlotStart $RallySlot
+        $RallySign = if ($RallyStart[0] -lt 0) { 1 } else { -1 }
+        $NetRallyP1 = @(($RallyStart[0] + $RallySign * 1600), ($RallyStart[1] + 2400))
+        $NetRallyP2 = @(($RallyStart[0] + $RallySign * 1600), ($RallyStart[1] + 4000))
+        # (hol.Prod.Queue selected the centre already: emptied first, so that the click logs its selection.)
+        $NetSteps += "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Camera.FocusSlot own", "frames 3", "hol.Select.Click 0.5 0.5",
+            "waitlog Selection: MainCentre of slot $RallySlot (own)",
+            "hol.Camera.Focus $($NetRallyP1[0]) $($NetRallyP1[1] + 800)", "frames 3", "hol.Select.OrderGround $($NetRallyP1 -join ' ')", "wait 1",
+            "hol.Select.OrderGround $($NetRallyP2 -join ' ') shift", "wait 1", "frames 3", "hol.Select.Report", "hol.Camera.FocusSlot own", "frames 3",
+            "hol.Select.OrderGround $($RallyStart -join ' ')", "wait 1", "hol.Select.Click 0.03 0.05", "waitlog Selection: none"
         # Orders (J4, D288, D289): each client sends every unit it knows, the other player's Peasant too, 25 m beside its
         # start; the server moves its own alone; then each client must see both Peasants where their owners sent them.
         if ($Parts -contains "move") {
@@ -2107,9 +2271,21 @@ if ($NetListening) {
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
         # The hero sheets (J8a.3): once the server's heroes are wounded and still, the sheets as this client has them and
         # the units it shows (the wounded hero's health drawn back from the share received); then once Bob's hero is dead.
-        $NetSteps += "mark hero", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where",
-            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120", "wait 1", "hol.Hero.Report",
-            "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")"
+        # The return (J8a.4 loop 5), the times at 20 % on every machine (hol.Hero.ReturnTimePercent): Bob (client 1) orders his
+        # hero's return as soon as it is dead, too early (refused on the server). Once it is ready (the server's signal),
+        # each client asks its own return decision to act (refused: a client decides nothing), reports; Bob's gold to 0,
+        # his order (cannot pay), 1 000 gold, his report, his order (bought), his report; once both heroes are back (the
+        # server's signal), the last report.
+        $NetSteps += "mark hero", "hol.Hero.ReturnTimePercent 20", "waitfile $NetHeroWoundedFlag 180", "wait 1", "hol.Hero.Report", "hol.Units.Where",
+            "signal $(Join-Path $TestSaved "quick_net_hero_seen$Client.flag")", "waitfile $NetHeroKilledFlag 120"
+        if ($Client -eq 1) { $NetSteps += "hol.Hero.Return" }
+        $NetSteps += "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_done$Client.flag")",
+            "mark hero return", "waitfile $NetHeroReadyFlag 120", "wait 1", "hol.Hero.ReturnProbe $(if ($Client -eq 1) { 1 } else { 0 })", "hol.Hero.Report"
+        if ($Client -eq 1) {
+            $NetSteps += "hol.Cheat.Gold -1000000", "wait 1", "hol.Hero.Return", "wait 1", "hol.Cheat.Gold 1000", "wait 1", "hol.Hero.Report",
+                "hol.Hero.Return", "wait 1.5", "hol.Hero.Report"
+        }
+        $NetSteps += "waitfile $NetHeroBackFlag 120", "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_back$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -2173,10 +2349,15 @@ if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $true
-# The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message.
+# The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message. A script
+# test's failed assertion is written "Angelscript: Error: ::<test>" too, its next line "Assert failed ...": not a compile
+# error (the test's own failure says it, J8a.4 loop 5). The script's Log() lines ("Angelscript: Hero return refused ...")
+# never match.
 function Get-ScriptErrors([string] $Path) {
     if (-not (Test-Path $Path)) { return @() }
-    return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
+    return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" -Context 0, 1 |
+        Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert failed") } |
+        ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
 }
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
@@ -2266,6 +2447,11 @@ if ($Parts -contains "victory") {
 }
 $SequenceChecks["sequence done (no step timed out)"] = [bool]($Log | Select-String -Pattern "Test mark: end" -Quiet)
 $Errors = @($Log | Select-String -Pattern "LogHOLUI: (Error|Warning)|LogHOLMatch: (Error|Warning)|LogHOLTest: Error" | ForEach-Object { $_.Line })
+# The "sizes" part's refused configuration logs its refusal on purpose (checked by the part itself).
+if ($Parts -contains "sizes") {
+    $Refused = @(Get-Section "sizes refused")
+    $Errors = @($Errors | Where-Object { $Refused -notcontains $_ })
+}
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
 $AllOk = (Report "sequence" $SequenceChecks) -and $AllOk
 $Errors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
@@ -2517,6 +2703,68 @@ if ($Parts -contains "sides") {
     $AllOk = (Report "sides" $Checks) -and $AllOk
 }
 
+if ($Parts -contains "sizes") {
+    foreach ($Size in $SizeCases) {
+        $Section = Get-Section "sizes $($Size.Key)"
+        $Checks = [ordered]@{}
+        $Checks["map Plain_$($Size.Key) loaded, $($Size.Players) players"] = [bool]($Section | Select-String -SimpleMatch "Match on Plain_$($Size.Key): given configuration, $($Size.Players) occupied slots" -Quiet)
+        $Checks["no Match config refused"] = -not ($Section | Select-String -SimpleMatch "Match config refused" -Quiet)
+        # The places drawn: one per player, distinct, on the places of the size.
+        $Drawn = $Section | Select-String -Pattern "Places drawn \(seed $($Size.Seed), teams together \d\): (.*)$" | Select-Object -First 1
+        $Places = if ($Drawn) { @($Drawn.Matches[0].Groups[1].Value -split " " | ForEach-Object { [int]$_ }) } else { @() }
+        $Taken = @($Places | Where-Object { $_ -ge 0 })
+        $Checks["places drawn: $($Size.Players) distinct of $($Size.Places) ($($Places -join ' '))"] = ($Taken.Count -eq $Size.Players) -and
+            (@($Taken | Select-Object -Unique).Count -eq $Size.Players) -and (@($Taken | Where-Object { $_ -ge $Size.Places }).Count -eq 0)
+        # One main centre per player, on its place: the circle of the size (0.75 of the half side), at its place's angle.
+        $Half = $Size.Side * $Tile / 2
+        $Radius = 0.75 * $Half
+        $Centres = @($Section | Select-String -Pattern "Main centre of slot (\d) \(colour \d\) at \((-?\d+), (-?\d+)\), yaw (-?\d+)$" | ForEach-Object {
+            $g = $_.Matches[0].Groups; [pscustomobject]@{ Slot = [int]$g[1].Value; X = [int]$g[2].Value; Y = [int]$g[3].Value } })
+        $Misplaced = @($Centres | Where-Object {
+            $Place = if ($_.Slot -lt $Places.Count) { $Places[$_.Slot] } else { -1 }
+            $Angle = (180 + $Place * 360 / $Size.Places) * [Math]::PI / 180
+            $Want = @(($Radius * [Math]::Cos($Angle)), ($Radius * [Math]::Sin($Angle)))
+            ($Place -lt 0) -or ([Math]::Sqrt([Math]::Pow($_.X - $Want[0], 2) + [Math]::Pow($_.Y - $Want[1], 2)) -gt $Tile * 1.5) } | ForEach-Object { "slot $($_.Slot) at ($($_.X), $($_.Y))" })
+        $Points = @($Centres | ForEach-Object { "$($_.X),$($_.Y)" } | Select-Object -Unique)
+        $Checks["$($Size.Players) main centres on $($Size.Players) distinct points, each on its place (r $([Math]::Round($Radius / 100)) m; $($Centres.Count) centres; off: $($Misplaced -join '; '))"] =
+            ($Centres.Count -eq $Size.Players) -and ($Points.Count -eq $Size.Players) -and ($Misplaced.Count -eq 0)
+        # The camera above slot 0's centre, then held on the bounds of the size past both corners.
+        $Own = @($Centres | Where-Object { $_.Slot -eq 0 }) | Select-Object -First 1
+        $Above = $Section | Select-String -Pattern "Camera above the start of slot 0 \((-?\d+), (-?\d+)\)" | Select-Object -First 1
+        $Reports = @($Section | Select-String -Pattern "Camera: focus \((-?\d+), (-?\d+), (-?\d+)\), height (\d+)" | ForEach-Object {
+            $g = $_.Matches[0].Groups; @{ X = [int]$g[1].Value; Y = [int]$g[2].Value } })
+        $Checks["camera above slot 0's centre ($(if ($Reports.Count) { "$($Reports[0].X), $($Reports[0].Y)" }))"] = $Own -and $Above -and ($Reports.Count -ge 1) -and
+            ([int]$Above.Matches[0].Groups[1].Value -eq $Own.X) -and ([int]$Above.Matches[0].Groups[2].Value -eq $Own.Y) -and
+            ([Math]::Abs($Reports[0].X - $Own.X) -le 2) -and ([Math]::Abs($Reports[0].Y - $Own.Y) -le 2)
+        $Corners = if ($Reports.Count -eq 3) { "($($Reports[1].X), $($Reports[1].Y)) ($($Reports[2].X), $($Reports[2].Y))" } else { "$($Reports.Count) reports" }
+        $Checks["camera held on the bounds of the size, +-$([Math]::Round($Half / 100)) m ($Corners)"] = ($Reports.Count -eq 3) -and
+            ([Math]::Abs($Reports[1].X - $Half) -le 1) -and ([Math]::Abs($Reports[1].Y - $Half) -le 1) -and
+            ([Math]::Abs($Reports[2].X + $Half) -le 1) -and ([Math]::Abs($Reports[2].Y + $Half) -le 1)
+        if ($Size.Teams) {
+            # "Équipes ensemble": each team's places one run of neighbours round the circle.
+            foreach ($Team in @($Size.Teams | Select-Object -Unique)) {
+                $Run = @(for ($i = 0; $i -lt $Size.Players; $i++) { if ($Size.Teams[$i] -eq $Team -and $i -lt $Places.Count) { $Places[$i] } })
+                $Together = @(0..($Size.Places - 1) | Where-Object { $From = $_
+                    @(0..($Run.Count - 1) | Where-Object { $Run -contains (($From + $_) % $Size.Places) }).Count -eq $Run.Count })
+                $Checks["team $Team on neighbouring places ($($Run -join ' '))"] = ($Run.Count -eq 4) -and ($Together.Count -ge 1)
+            }
+        }
+        if ($Size.Players -lt $Size.Places) {
+            # Fewer players than places: spread round the circle, never more than one empty place between two neighbours.
+            $Sorted = @($Taken | Sort-Object)
+            $Gaps = @(for ($i = 0; $i -lt $Sorted.Count; $i++) { (($Sorted[($i + 1) % $Sorted.Count] - $Sorted[$i] + $Size.Places - 1) % $Size.Places) + 1 })
+            $Checks["places spread round the circle (gaps $($Gaps -join ' '))"] = ($Gaps.Count -eq $Size.Players) -and (@($Gaps | Where-Object { $_ -gt 2 }).Count -eq 0)
+        }
+        $AllOk = (Report "sizes $($Size.Key)" $Checks) -and $AllOk
+    }
+    $Section = Get-Section "sizes refused"
+    $Checks = [ordered]@{}
+    $Checks["fixed places past the size: Match config refused on Plain_Small"] = [bool]($Section | Select-String -SimpleMatch "Match config refused on Plain_Small" -Quiet)
+    $Checks["no centre, no place drawn"] = -not ($Section | Select-String -Pattern "Main centre of slot|Places drawn" -Quiet)
+    $Checks["no crash: back to the menu"] = [bool]((Get-Section "sizes end") | Select-String -Pattern "Test mark: sizes menu" -Quiet)
+    $AllOk = (Report "sizes refused" $Checks) -and $AllOk
+}
+
 if ($Parts -contains "smoke") {
     $Checks = [ordered]@{}
     $Missing = @("title", "newgame", "play", "melee" | Where-Object { -not (Test-Path (Join-Path $Shots "qc_smoke_$_.png")) })
@@ -2571,6 +2819,20 @@ if ($Parts -contains "menu") {
             $Checks["line taken (Human): fields shown again"] = (@($Fields | Where-Object {
                 -not ($Taken | Select-String -SimpleMatch "Shown ${_}3: yes" -Quiet) }).Count -eq 0) -and
                 [bool]($Taken | Select-String -SimpleMatch "SlotState3: value 1 chosen" -Quiet)
+            # TC3: the size list (Small by default for one player), Medium for slot 3, Small greyed for three players, the
+            # slots past the places closed, Small again for one.
+            $Sizes = Get-Section "menu sizes"
+            $Checks["size: Small by default for one player"] = [bool]((Get-Section "menu fr") | Select-String -SimpleMatch "New game: size Small, 2 places" -Quiet)
+            $Checks["size: Medium chosen before taking slot 3"] = [bool]($Taken | Select-String -SimpleMatch "New game: size Medium, 4 places" -Quiet)
+            $Checks["size and Équipes ensemble shown"] = [bool]($Sizes | Select-String -SimpleMatch "Shown SizeDropdown: yes" -Quiet) -and
+                [bool]($Sizes | Select-String -SimpleMatch "Shown TeamsTogetherDropdown: yes" -Quiet)
+            $SmallLines = @($Sizes | Select-String -SimpleMatch "New game: size Small, 2 places")
+            $Checks["size: Small greyed for three players, chosen again for one ($($SmallLines.Count) time(s))"] = $SmallLines.Count -eq 1 -and
+                @($Sizes | Select-String -SimpleMatch "SizeDropdown: value 1 chosen").Count -eq 1
+            $Checks["teams open in solo, factions greyed (TC-Q12)"] = [bool]($Sizes | Select-String -Pattern "Shown SlotTeam0: yes$" -Quiet) -and
+                [bool]($Sizes | Select-String -SimpleMatch "Shown SlotFaction0: yes, greyed" -Quiet) -and
+                [bool]($Sizes | Select-String -Pattern "Shown TeamsTogetherDropdown: yes$" -Quiet)
+            $Checks["slot 5 past the 4 places of Medium stays closed"] = [bool]($Sizes | Select-String -SimpleMatch "New game: slot 5 stays closed, past the 4 places of the size" -Quiet)
         }
         $AllOk = (Report "menu $Culture" $Checks) -and $AllOk
         if (Get-Command python -ErrorAction SilentlyContinue) {
@@ -3698,6 +3960,147 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     Write-Host "  shiftwork c, seen only (#$SwC, every 1 s): $($SwCStory -join ' | ')"
     Write-Host "  shiftwork c log: $(@($SwAfter | Select-String -Pattern "finished $SwHAt|Queued|queued" | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
     $AllOk = (Report "build shiftwork" $Checks) -and $AllOk
+
+    # M.1: Shift chains with a placement or a site. A section's events in order: its Peasant's hol.Units.Where samples (the
+    # newest unit of the first one), a site's first work and its end.
+    $ReadChain = { param($Lines, $Site)
+        $SiteAt = [regex]::Escape("House at ($($Site -join ', '))")
+        $Id = -1
+        $Events = New-Object System.Collections.Generic.List[object]
+        foreach ($Line in $Lines) {
+            if ($Line -match "Units where: ") {
+                $W = & $ReadWhere $Line
+                if ($Id -lt 0 -and $W.Count -gt 0) { $Id = @($W.Keys | Sort-Object | Select-Object -Last 1)[0] }
+                $Events.Add([pscustomobject]@{ Kind = "where"; U = $W[$Id] })
+            }
+            elseif ($Line -match "Construction: slot 0 first work on $SiteAt") { $Events.Add([pscustomobject]@{ Kind = "first work"; U = $null }) }
+            elseif ($Line -match "Construction: slot 0 finished $SiteAt") { $Events.Add([pscustomobject]@{ Kind = "finished"; U = $null }) }
+        }
+        @{ Id = $Id; Events = $Events.ToArray() } }
+    $ChainIndex = { param($Events, $Kind) for ($i = 0; $i -lt $Events.Count; $i++) { if ($Events[$i].Kind -eq $Kind) { return $i } }; -1 }
+    $ChainNear = { param($Events, $At, $From) @(for ($i = [Math]::Max($From, 0); $i -lt $Events.Count; $i++) { if ($Events[$i].Kind -eq "where" -and $Events[$i].U -and (& $DropDist $Events[$i].U $At) -le 300) { $i } }) }
+    $ChainClosest = { param($Events, $At) @($Events | Where-Object { $_.Kind -eq "where" -and $_.U } | ForEach-Object { & $DropDist $_.U $At } | Sort-Object | Select-Object -First 1) }
+    $ChainStory = { param($Events, $Points) @($Events | ForEach-Object { $E = $_; if ($E.Kind -ne "where") { $E.Kind.ToUpper() } elseif ($E.U) {
+        ("$($E.U.Activity) $($E.U.Load) " + (@($Points.Keys | ForEach-Object { "$_ $(& $DropDist $E.U $Points[$_])" }) -join ' ')) -replace '  ', ' ' } else { "gone" } }) -join ' | ' }
+
+    $Checks = [ordered]@{}
+    $SpLines = @(Get-Section "build shiftplace order" | ForEach-Object { $_ })
+    $Sp = & $ReadChain $SpLines $ShiftPlaceH
+    $SpE = $Sp.Events
+    Write-Host "  shiftplace (#$($Sp.Id)): $(& $ChainStory $SpE ([ordered]@{ P = $ShiftPlaceP; H = $ShiftPlaceH; Q = $ShiftPlaceQ }))"
+    Write-Host "  shiftplace log: $(@($SpLines | Select-String -Pattern "foundation at|Placement|Queued|queued|applied|Build order|Build: " | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop|Placement)', '$1') }) -join ' / ')"
+    $SpWork = & $ChainIndex $SpE "first work"
+    $SpDone = & $ChainIndex $SpE "finished"
+    $SpNearP = & $ChainNear $SpE $ShiftPlaceP 0
+    $SpNearQ = & $ChainNear $SpE $ShiftPlaceQ 0
+    $SpWheres = @($SpE | Where-Object { $_.Kind -eq "where" })
+    $Checks["set-up: the Peasant carries nothing, H placed with Shift ($(if ($SpWheres.Count -ge 1) { & $MoveSay $SpWheres[0].U }))"] =
+        ($SpWheres.Count -ge 1) -and $SpWheres[0].U -and -not $SpWheres[0].U.Load -and [bool]($SpLines | Select-String -Pattern "placed House foundation at \($($ShiftPlaceH -join ', ')\)" -Quiet)
+    $Checks["Shift P then Shift + place H: it passes within 3 m of P before H's first work (closest $(& $ChainClosest $SpE $ShiftPlaceP) cm; first near at event $(@($SpNearP)[0]), first work at event $SpWork)"] =
+        ($SpNearP.Count -ge 1) -and ($SpWork -ge 0) -and ($SpNearP[0] -lt $SpWork)
+    $Checks["then it builds H, finished (event $SpDone)"] = ($SpWork -ge 0) -and ($SpDone -ge $SpWork)
+    $Checks["then Shift Q: within 3 m of Q only after H is finished (closest $(& $ChainClosest $SpE $ShiftPlaceQ) cm; first near at event $(@($SpNearQ)[0]))"] =
+        ($SpNearQ.Count -ge 1) -and ($SpDone -ge 0) -and ($SpNearQ[0] -gt $SpDone)
+    $Checks["then idle within 3 m of Q ($(if ($SpWheres.Count -ge 1) { & $MoveSay $SpWheres[-1].U }), Q $(if ($SpWheres.Count -ge 1) { & $DropDist $SpWheres[-1].U $ShiftPlaceQ }) cm)"] =
+        ($SpWheres.Count -ge 3) -and $SpWheres[-1].U -and $SpWheres[-1].U.Activity -eq "Idle" -and (& $DropDist $SpWheres[-1].U $ShiftPlaceQ) -le 300
+    $AllOk = (Report "build shiftplace" $Checks) -and $AllOk
+
+    $Checks = [ordered]@{}
+    $SsSetup = @(Get-Section "build shiftsite" | ForEach-Object { $_ })
+    $SsLines = @(Get-Section "build shiftsite order" | ForEach-Object { $_ })
+    $Ss = & $ReadChain $SsLines $ShiftSiteS
+    $SsE = $Ss.Events
+    Write-Host "  shiftsite a (#$($Ss.Id)): $(& $ChainStory $SsE ([ordered]@{ S = $ShiftSiteS; Q2 = $ShiftSiteQ2; Berries = $ShiftSiteBerries }))"
+    Write-Host "  shiftsite a log: $(@($SsLines | Select-String -Pattern "Queued|queued|applied|Build order|Build: |Gather order" | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
+    $SsWork = & $ChainIndex $SsE "first work"
+    $SsDone = & $ChainIndex $SsE "finished"
+    $SsNearQ = & $ChainNear $SsE $ShiftSiteQ2 0
+    $SsFood = -1
+    for ($i = [Math]::Max(@($SsNearQ)[0], 0); $SsNearQ.Count -ge 1 -and $i -lt $SsE.Count; $i++) {
+        if ($SsE[$i].Kind -eq "where" -and $SsE[$i].U -and $SsE[$i].U.Activity -eq "Gathering" -and $SsE[$i].U.Load -eq "Food") { $SsFood = $i; break } }
+    $SsAnyFood = @(for ($i = 0; $i -lt $SsE.Count; $i++) { if ($SsE[$i].Kind -eq "where" -and $SsE[$i].U -and $SsE[$i].U.Load -eq "Food") { $i } })
+    $Checks["(a) set-up: S and S2 placed, unbuilt before the orders"] =
+        [bool]($SsSetup | Select-String -Pattern "placed House foundation at \($($ShiftSiteS -join ', ')\)" -Quiet) -and
+        [bool]($SsSetup | Select-String -Pattern "placed House foundation at \($($ShiftSiteS2 -join ', ')\)" -Quiet) -and
+        -not ($SsSetup | Select-String -Pattern "first work on House at \(($($ShiftSiteS -join ', ')|$($ShiftSiteS2 -join ', '))\)" -Quiet)
+    $Checks["(a) Shift S, Shift Q2, Shift berries: it builds S, finished (first work at event $SsWork, finished at $SsDone)"] = ($SsWork -ge 0) -and ($SsDone -ge $SsWork)
+    $Checks["(a) then within 3 m of Q2 only after S is finished (closest $(& $ChainClosest $SsE $ShiftSiteQ2) cm; first near at event $(@($SsNearQ)[0]))"] =
+        ($SsNearQ.Count -ge 1) -and ($SsDone -ge 0) -and ($SsNearQ[0] -gt $SsDone)
+    $Checks["(a) then it gathers food after Q2 (first at event $SsFood; any food at $(@($SsAnyFood)[0]))"] = ($SsFood -ge 0) -and (@($SsAnyFood)[0] -ge $SsFood)
+    $SlLines = @(Get-Section "build shiftsite later" | ForEach-Object { $_ })
+    $Sl = & $ReadChain $SlLines $ShiftSiteS2
+    $SlE = $Sl.Events
+    Write-Host "  shiftsite b (#$($Sl.Id)): $(& $ChainStory $SlE ([ordered]@{ S2 = $ShiftSiteS2; Q3 = $ShiftSiteQ3 }))"
+    Write-Host "  shiftsite b log: $(@($SlLines | Select-String -Pattern "Queued|queued|applied|Build order|Build: " | ForEach-Object { ($_.Line -replace '^.*?(Construction|Queued|Move|Build|Gather|Drop)', '$1') }) -join ' / ')"
+    $SlWork = & $ChainIndex $SlE "first work"
+    $SlDone = & $ChainIndex $SlE "finished"
+    $SlNearQ = & $ChainNear $SlE $ShiftSiteQ3 0
+    $SlWheres = @($SlE | Where-Object { $_.Kind -eq "where" })
+    $SlOrderLine = [array]::FindIndex([string[]]$SlLines, [Predicate[string]] { param($L) $L -match "Order: \d+ units to \(-?\d+, -?\d+\), queued" })
+    $SlWorkLine = [array]::FindIndex([string[]]$SlLines, [Predicate[string]] { param($L) $L -match "first work on House at \($($ShiftSiteS2 -join ', ')\)" })
+    $Checks["(b) Shift S2, 0.5 s later Shift Q3 on its way (log line $SlOrderLine, before S2's first work at line $SlWorkLine; $(if ($SlWheres.Count -ge 2) { & $MoveSay $SlWheres[1].U })): it builds S2, finished (first work at event $SlWork, finished at $SlDone)"] =
+        ($SlWork -ge 0) -and ($SlDone -ge $SlWork) -and ($SlOrderLine -ge 0) -and ($SlWorkLine -gt $SlOrderLine)
+    $Checks["(b) then within 3 m of Q3 only after S2 is finished (closest $(& $ChainClosest $SlE $ShiftSiteQ3) cm; first near at event $(@($SlNearQ)[0]))"] =
+        ($SlNearQ.Count -ge 1) -and ($SlDone -ge 0) -and ($SlNearQ[0] -gt $SlDone)
+    $Checks["(b) then idle within 3 m of Q3 ($(if ($SlWheres.Count -ge 1) { & $MoveSay $SlWheres[-1].U }), Q3 $(if ($SlWheres.Count -ge 1) { & $DropDist $SlWheres[-1].U $ShiftSiteQ3 }) cm)"] =
+        ($SlWheres.Count -ge 3) -and $SlWheres[-1].U -and $SlWheres[-1].U.Activity -eq "Idle" -and (& $DropDist $SlWheres[-1].U $ShiftSiteQ3) -le 300
+    $AllOk = (Report "build shiftsite" $Checks) -and $AllOk
+
+    # N.1: a rally point in several steps. The markers' report: the flag's foot, the order lines and points drawn.
+    $RsMarkers = { param($Lines) $M = @($Lines | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }); if ($M.Count) { $M[-1] } else { "" } }
+    $RsFlagAt = { param($Say, $At) ($Say -match "flag 1 at \((-?\d+), (-?\d+)\)") -and ([Math]::Abs([int]$Matches[1] - $At[0]) -le 60) -and ([Math]::Abs([int]$Matches[2] - $At[1]) -le 60) }
+    $RsLines = { param($Say) if ($Say -match "order lines (\d+), order points (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) } }
+    $Checks = [ordered]@{}
+    $RsA = @(Get-Section "build rallysteps" | ForEach-Object { $_ })
+    $RsAE = (& $ReadChain $RsA $RallyStepsR2).Events
+    $RsAW = @($RsAE | Where-Object { $_.Kind -eq "where" })
+    Write-Host "  rallysteps a: $(& $ChainStory $RsAE ([ordered]@{ R1 = $RallyStepsR1; R2 = $RallyStepsR2 }))"
+    Write-Host "  rallysteps a log: $(@($RsA | Select-String -Pattern "Rally: |Queued|queued|Order chain" | ForEach-Object { ($_.Line -replace '^.*?(Rally|Queued|Move|Order chain)', '$1') }) -join ' / ')"
+    $RsASay = & $RsMarkers $RsA
+    $RsALines = & $RsLines $RsASay
+    $Checks["(a) right click R1, Shift + right click R2: the flag at R2, two segments and one step point ($RsASay)"] =
+        (& $RsFlagAt $RsASay $RallyStepsR2) -and ($RsALines[0] -eq 2) -and ($RsALines[1] -eq 1)
+    $RsANear1 = & $ChainNear $RsAE $RallyStepsR1 0
+    $RsANear2 = & $ChainNear $RsAE $RallyStepsR2 0
+    $Checks["(a) the Peasant produced passes within 3 m of R1 (closest $(& $ChainClosest $RsAE $RallyStepsR1) cm), before R2 (first near R1 at $(@($RsANear1)[0]), R2 at $(@($RsANear2)[0]))"] =
+        ($RsANear1.Count -ge 1) -and ($RsANear2.Count -ge 1) -and ($RsANear1[0] -lt $RsANear2[0])
+    $Checks["(a) then idle within 3 m of R2 ($(if ($RsAW.Count) { & $MoveSay $RsAW[-1].U }), R2 $(if ($RsAW.Count) { & $DropDist $RsAW[-1].U $RallyStepsR2 }) cm)"] =
+        ($RsAW.Count -ge 3) -and $RsAW[-1].U -and $RsAW[-1].U.Activity -eq "Idle" -and (& $DropDist $RsAW[-1].U $RallyStepsR2) -le 300
+    $RsAChains = Get-ChainReports $RsA
+    $RsAChain = if ($RsAChains.Count -ge 1) { @($RsAChains[0].Chains | ForEach-Object { $_.Steps }) -join " | " } else { "none" }
+    $RsAChainOk = $false
+    if ($RsAChains.Count -ge 1) { foreach ($C in $RsAChains[0].Chains) {
+        if ($C.Steps -match "^Rally at \((-?\d+), (-?\d+)\) -> Rally at \((-?\d+), (-?\d+)\)$" -and [Math]::Abs([int]$Matches[1] - $RallyStepsR1[0]) -le 300 -and [Math]::Abs([int]$Matches[2] - $RallyStepsR1[1]) -le 300 -and
+            [Math]::Abs([int]$Matches[3] - $RallyStepsR2[0]) -le 300 -and [Math]::Abs([int]$Matches[4] - $RallyStepsR2[1]) -le 300) { $RsAChainOk = $true } } }
+    $Checks["(a) its chain: two white Rally steps, R1 then R2 ($RsAChain)"] = $RsAChainOk
+
+    $RsB = @(Get-Section "build rallysteps source" | ForEach-Object { $_ })
+    $RsBE = (& $ReadChain $RsB $RallyStepsR2).Events
+    Write-Host "  rallysteps b: $(& $ChainStory $RsBE ([ordered]@{ R1 = $RallyStepsR1; Gold = $RallyStepsGold }))"
+    Write-Host "  rallysteps b log: $(@($RsB | Select-String -Pattern "Rally: |Queued|queued|Gather order" | ForEach-Object { ($_.Line -replace '^.*?(Rally|Queued|Move|Gather)', '$1') }) -join ' / ')"
+    $RsBSay = & $RsMarkers $RsB
+    $RsBLines = & $RsLines $RsBSay
+    $Checks["(b) right click R1, Shift + right click on the gold: the flag on the vein, two segments ($RsBSay)"] =
+        (& $RsFlagAt $RsBSay $RallyStepsGold) -and ($RsBLines[0] -eq 2) -and ($RsBLines[1] -eq 1)
+    $RsBNear1 = & $ChainNear $RsBE $RallyStepsR1 0
+    $RsBGold = -1
+    for ($i = 0; $i -lt $RsBE.Count; $i++) { if ($RsBE[$i].Kind -eq "where" -and $RsBE[$i].U -and $RsBE[$i].U.Load -eq "Gold") { $RsBGold = $i; break } }
+    $Checks["(b) the Peasant produced passes within 3 m of R1 (closest $(& $ChainClosest $RsBE $RallyStepsR1) cm; first near at $(@($RsBNear1)[0])), then mines gold (first carried at $RsBGold)"] =
+        ($RsBNear1.Count -ge 1) -and ($RsBGold -gt $RsBNear1[0])
+
+    $RsC = @(Get-Section "build rallysteps replace" | ForEach-Object { $_ })
+    $RsCSay = & $RsMarkers $RsC
+    $RsCLines = & $RsLines $RsCSay
+    $Checks["(c) a plain right click at R3 after the steps: R3 alone, the flag there, one segment ($RsCSay)"] =
+        (& $RsFlagAt $RsCSay $RallyStepsR3) -and ($RsCLines[0] -eq 1) -and ($RsCLines[1] -eq 0)
+
+    $RsD = @(Get-Section "build rallysteps nine" | ForEach-Object { $_ })
+    $RsDSay = & $RsMarkers $RsD
+    $RsDLines = & $RsLines $RsDSay
+    $RsDRefused = @($RsD | Select-String -Pattern "Rally: slot 0 cannot add a step to the rally point of MainCentre \(8 steps at most\)").Count
+    $Checks["(d) a right click then 8 Shift + right clicks: the 9th refused (refusals $RsDRefused), the flag at the 8th, 8 segments ($RsDSay)"] =
+        ($RsDRefused -eq 1) -and (& $RsFlagAt $RsDSay $RallyStepsRow[7]) -and ($RsDLines[0] -eq 8) -and ($RsDLines[1] -eq 7)
+    $AllOk = (Report "build rallysteps" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -4701,6 +5104,14 @@ if ($Parts -contains "net") {
         $Checks["client $N : other player's economy not received"] = [bool]($Production -match "; others \[slot $(1 - $Held) F 0 W 0 S 0 G 0, population 0/0\]$")
         $Shown = $NetLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $Checks["client $N : both Peasants shown ($Shown)"] = $Shown -eq "client, 2 displayed: Peasant of slot 0 x1, Peasant of slot 1 x1"
+        # EtapeDefini N.1: the rally point's two steps replicated to their owner (the flag at P2, two segments, a point at P1).
+        $NetRallyStart = Get-SlotStart $Held
+        $NetRallySign = if ($NetRallyStart[0] -lt 0) { 1 } else { -1 }
+        $NetRallyP2 = @(($NetRallyStart[0] + $NetRallySign * 1600), ($NetRallyStart[1] + 4000))
+        $NetRallySay = @($ClientLines | Select-String -Pattern "Selection markers: (.*flag 1 at .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } |
+            Where-Object { $_ -match "flag 1 at \((-?\d+), (-?\d+)\)" -and [Math]::Abs([int]$Matches[1] - $NetRallyP2[0]) -le 60 -and [Math]::Abs([int]$Matches[2] - $NetRallyP2[1]) -le 60 })
+        $Checks["client $N : its centre's rally point in two steps received (Shift + right click): the flag at P2, two segments, a point at P1 ($(@($NetRallySay)[0]))"] =
+            ($NetRallySay.Count -ge 1) -and [bool]($NetRallySay[0] -match "order lines 2, order points 1")
         $Missing = @("start", "slot0", "slot1", "peasants" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "qcnet_${N}_$_.png")) })
         $Checks["client $N : captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         if ($Parts -contains "sources") {
@@ -5022,9 +5433,12 @@ if ($Parts -contains "net") {
     $ClientCorpses = & $CorpseCount @(if ($Client1Log -and (Test-Path $Client1Log)) { Get-Content $Client1Log })
     $ServerCorpses = & $CorpseCount @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
     $Checks["bodies: client 1 keeps the fight's ($ClientCorpses), the server none ($ServerCorpses)"] = ($null -ne $ClientCorpses) -and $ClientCorpses -ge 1 -and ($null -ne $ServerCorpses) -and $ServerCorpses -eq 0
-    # R3.4: client 1's 500 wood refused by the server (its log), the two army cheats of resources alone granted.
+    # R3.4: client 1's 500 wood refused by the server (its log), the two army cheats of resources alone granted (before the
+    # hero's return: Bob's two gold cheats there are its own, J8a.4 loop 5).
     $CheatRefused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat refused: resources from Bob" }).Count
-    $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" }).Count
+    $ReturnMarkLine = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -SimpleMatch "Test mark: net hero return" | Select-Object -First 1 | ForEach-Object { $_.LineNumber } })
+    $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" |
+        Where-Object { -not $ReturnMarkLine.Count -or $_.LineNumber -lt $ReturnMarkLine[0] } }).Count
     $Checks["server: client 1's cheat refused ($CheatRefused), the army's granted ($CheatGranted of 2)"] = $CheatRefused -eq 1 -and $CheatGranted -eq 2
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
@@ -5167,6 +5581,7 @@ if ($Parts -contains "net") {
             if ($Line -match "Hero report: net mode \d+") { $Current = @{ Sheet = @{}; Local = $null; Other = @{}; Truth = @{} }; [void]$Reports.Add($Current); continue }
             if (-not $Current) { continue }
             if ($Line -match "Hero sheet slot (\d): state (\w+) level \d+ hp (\d+)") { $Current.Sheet[[int]$Matches[1]] = @{ State = $Matches[2]; Hp = [int]$Matches[3] } }
+            elseif ($Line -match "Hero gold slot (\d) local: (-?\d+)") { $Current.Gold = [int]$Matches[2] }
             elseif ($Line -match "Hero private slot (\d) local: xp (\d+) death (-?\d+)") { $Current.Local = @{ Slot = [int]$Matches[1]; Xp = [int]$Matches[2]; Death = [int]$Matches[3] } }
             elseif ($Line -match "Hero private slot (\d) other: xp (\d+) death (-?\d+)") { $Current.Other[[int]$Matches[1]] = @{ Xp = [int]$Matches[2]; Death = [int]$Matches[3] } }
             elseif ($Line -match "Hero true slot (\d): state (\w+) level \d+ hp (\d+) xp (\d+) death (-?\d+)") {
@@ -5229,6 +5644,74 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero sheets" $HeroChecks) -and $AllOk
+    # The hero's return over the network (J8a.4 loop 5), the times at 20 % (hol.Hero.ReturnTimePercent 20 on every machine):
+    # the server's lines (orders taken at the step, the script's refusals, ready, bought, born), the clients' reports
+    # (ready seen, Bob's gold, both back), nothing decided on a client.
+    $ReturnChecks = [ordered]@{}
+    $ServerLines = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $BobLevel = @($ServerLines | Select-String -Pattern "Hero true slot $BobSlot\: state Dead level (\d+)" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $BobLevel = if ($BobLevel.Count) { $BobLevel[0] } else { -1 }
+    $DeathStep = if ($Fallen) { $Fallen.Death } else { -1 }
+    $ReturnDelay = [int][Math]::Floor((30 + 8 * $BobLevel) * 20 * 20 / 100)
+    $ReturnDrop = [int][Math]::Floor(60 * 20 * 20 / 100)
+    $ReadyAt = $DeathStep + $ReturnDelay
+    $BobOrders = @($ServerLines | Select-String -Pattern "Hero return order: slot $BobSlot at step (\d+) (\w+)" | ForEach-Object { @{ Step = [int]$_.Matches[0].Groups[1].Value; Result = $_.Matches[0].Groups[2].Value } })
+    $Early = @($ServerLines | Select-String -Pattern "Hero return refused: slot $BobSlot at step (\d+): not ready \(ready at step (\d+)\)" | ForEach-Object { @{ Step = [int]$_.Matches[0].Groups[1].Value; Ready = [int]$_.Matches[0].Groups[2].Value } }) | Select-Object -First 1
+    $ReturnChecks["server: Bob's first order refused, too early ($(if ($BobOrders.Count) { "step $($BobOrders[0].Step) $($BobOrders[0].Result)" }); $(if ($Early) { "not ready at $($Early.Step), ready at $($Early.Ready)" } else { 'no refusal' })), ready = death $DeathStep + $ReturnDelay (level $BobLevel at 20 %)"] =
+        $BobOrders.Count -ge 1 -and $BobOrders[0].Result -eq "refused" -and $Early -and $Early.Step -eq $BobOrders[0].Step -and $Early.Step -lt $Early.Ready -and $DeathStep -ge 0 -and $BobLevel -ge 1 -and $Early.Ready -eq $ReadyAt
+    $ReadyLine = @($ServerLines | Select-String -Pattern "Hero return: slot $BobSlot ready at step (\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $ReturnChecks["server: Bob's hero ready once, at step $ReadyAt ($($ReadyLine -join ', '))"] = $ReadyLine.Count -eq 1 -and $ReadyLine[0] -eq $ReadyAt
+    $CannotPay = @($ServerLines | Select-String -SimpleMatch "Hero return: slot $BobSlot cannot pay")
+    $ReturnChecks["server: Bob's order without gold refused, cannot pay ($(if ($CannotPay.Count) { $CannotPay[0].Line -replace '^.*Hero return: ', '' } else { 'none' }); orders $(($BobOrders | ForEach-Object { $_.Result }) -join ', '))"] =
+        $CannotPay.Count -eq 1 -and $CannotPay[0].Line -match "\(0 gold\)" -and $BobOrders.Count -eq 3 -and $BobOrders[1].Result -eq "refused" -and $BobOrders[2].Result -eq "bought"
+    $Bought = @($ServerLines | Select-String -Pattern "Hero return: slot $BobSlot bought for (\d+) gold" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $BoughtStep = if ($BobOrders.Count -eq 3) { $BobOrders[2].Step } else { -1 }
+    $SinceReady = $BoughtStep - $ReadyAt
+    $ExpectedPrice = if ($SinceReady -lt 0) { -1 } elseif ($SinceReady -ge $ReturnDrop) { 0 } else { [int][Math]::Floor((150 * ($ReturnDrop - $SinceReady) + $ReturnDrop - 1) / $ReturnDrop) }
+    $ReturnChecks["server: Bob's return bought at step $BoughtStep for $($Bought -join ', ') gold = PriceAt ($ExpectedPrice, $SinceReady steps after ready of $ReturnDrop), 0 < price < 150"] =
+        $Bought.Count -eq 1 -and $Bought[0] -eq $ExpectedPrice -and $ExpectedPrice -gt 0 -and $ExpectedPrice -lt 150
+    $AliceLines = @($ServerLines | Select-String -Pattern "Hero return( order)?: slot $AliceSlot (.*)$" | ForEach-Object { $_.Matches[0].Groups[2].Value })
+    $ReturnChecks["server: Alice's hero back by itself at price 0, no order nor gold ($($AliceLines -join '; '))"] =
+        @($AliceLines | Where-Object { $_ -like "ready at step*" }).Count -eq 1 -and @($AliceLines | Where-Object { $_ -eq "by its main forum" }).Count -eq 1 -and
+        @($ServerLines | Select-String -Pattern "Hero return order: slot $AliceSlot|Hero return: slot $AliceSlot (bought|cannot)").Count -eq 0
+    $HeroBack = & $ReadHeroReports @(Get-ClientSection $ServerLines "net hero return")
+    $BackTruth = if ($HeroBack.Count -ge 1) { $HeroBack[-1].Truth } else { @{} }
+    $ReturnChecks["server: both heroes Alive at full health ($(foreach ($Slot in $AliceSlot, $BobSlot) { if ($BackTruth[$Slot]) { "slot $Slot $($BackTruth[$Slot].State) $($BackTruth[$Slot].Hp)" } }))"] =
+        $BackTruth[$AliceSlot] -and $BackTruth[$BobSlot] -and $BackTruth[$AliceSlot].State -eq "Alive" -and $BackTruth[$BobSlot].State -eq "Alive" -and
+        $BackTruth[$AliceSlot].Hp -eq $HeroMax -and $BackTruth[$BobSlot].Hp -eq $HeroMax
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $ClientLines = @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue)
+        $Seen = & $ReadHeroReports @(Get-ClientSection $ClientLines "hero return")
+        $First = if ($Seen.Count -ge 1) { $Seen[0] } else { $null }
+        $Last = if ($Seen.Count -ge 1) { $Seen[-1] } else { $null }
+        $ReturnChecks["client $N : Bob's hero ReadyToReturn in the public sheet once ready ($(if ($First -and $First.Sheet[$BobSlot]) { $First.Sheet[$BobSlot].State }))"] =
+            $First -and $First.Sheet[$BobSlot] -and $First.Sheet[$BobSlot].State -eq "ReadyToReturn"
+        $ReturnChecks["client $N : both heroes Alive at full health at the end ($(if ($Last) { foreach ($Slot in $AliceSlot, $BobSlot) { if ($Last.Sheet[$Slot]) { "slot $Slot $($Last.Sheet[$Slot].State) $($Last.Sheet[$Slot].Hp) " } } }))"] =
+            $Last -and $Seen.Count -ge 2 -and $Last.Sheet[$AliceSlot].State -eq "Alive" -and $Last.Sheet[$BobSlot].State -eq "Alive" -and $Last.Sheet[$AliceSlot].Hp -eq $HeroMax -and $Last.Sheet[$BobSlot].Hp -eq $HeroMax
+        if ($N -eq 1) {
+            # Bob: his report with 1 000 gold (ready), then after his bought order (Alive, the price taken).
+            $Before = if ($Seen.Count -ge 4) { $Seen[1] } else { $null }
+            $After = if ($Seen.Count -ge 4) { $Seen[2] } else { $null }
+            $Price = if ($Bought.Count -eq 1) { $Bought[0] } else { -1 }
+            $ReturnChecks["client $N : Bob's gold $(if ($Before) { $Before.Gold }) then $(if ($After) { $After.Gold }) (the price $Price taken), his hero $(if ($After -and $After.Sheet[$BobSlot]) { "$($After.Sheet[$BobSlot].State) $($After.Sheet[$BobSlot].Hp)" }) after his order"] =
+                $Before -and $After -and $Before.Gold -eq 1000 -and $Price -gt 0 -and $After.Gold -eq 1000 - $Price -and $After.Sheet[$BobSlot].State -eq "Alive" -and $After.Sheet[$BobSlot].Hp -eq $HeroMax
+        }
+        else {
+            $Golds = @($Seen | ForEach-Object { $_.Gold })
+            $ReturnChecks["client $N : Alice's gold not lowered by her hero's return ($($Golds -join ', '))"] = $Golds.Count -ge 2 -and $null -ne $Golds[0] -and $Golds[-1] -ge $Golds[0]
+        }
+        # J8a.4 loop 6 (D202): the minor alert, its owner alone, once (Bob's hero ready first, Alice's later).
+        $OwnSlot = if ($N -eq 1) { $BobSlot } else { $AliceSlot }
+        $ReadyLines = @($ClientLines | Select-String -Pattern "Hero message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $ReturnChecks["client $N : alert seen once for its own hero only ($($ReadyLines -join '; '))"] =
+            $ReadyLines.Count -eq 1 -and $ReadyLines[0] -ceq "Votre héros est prêt à revenir (slot $OwnSlot)"
+        $Probe = @($ClientLines | Select-String -Pattern "Hero return probe: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Acted = @($ClientLines | Select-String -Pattern "Hero return order:|Hero return: slot|Hero return refused:")
+        $ReturnChecks["client $N : nothing decided here: probe '$($Probe -join '; ')', $($Acted.Count) return line(s)"] =
+            $Probe.Count -eq 1 -and ($Probe[0] -match "^net mode 3, buy refused, decide refused, decisions 0$" -or $Probe[0] -match "^net mode 3, no decision$") -and $Acted.Count -eq 0
+    }
+    $AllOk = (Report "net hero return" $ReturnChecks) -and $AllOk
 }
 
 if ($TestsProcess) {

@@ -153,7 +153,24 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	return Message;
 }
 
+FHOLForumMessage HOLForumMessages::GetHeroReadyMessage()
+{
+	FHOLForumMessage Message;
+	Message.Text = LOCTEXT("MessageHeroReady", "Votre héros est prêt à revenir");
+	Message.Shown = FString::Printf(TEXT("Hero message: %s"), *Message.Text.ToString());
+	return Message;
+}
+
 #undef LOCTEXT_NAMESPACE
+
+bool FHOLHeroReadyWatch::Update(const int32 ViewerSlot, const EHOLHeroState State)
+{
+	// A spectator has no hero: never (its Seen forgotten).
+	const EHOLHeroState Now = ViewerSlot == INDEX_NONE ? EHOLHeroState::None : State;
+	const bool bNewlyReady = Now == EHOLHeroState::ReadyToReturn && Seen != EHOLHeroState::ReadyToReturn;
+	Seen = Now;
+	return bNewlyReady;
+}
 
 const TCHAR* HOLForumMessages::GetKindName(const EHOLForumEventKind Kind)
 {

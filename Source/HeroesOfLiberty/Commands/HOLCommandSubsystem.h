@@ -149,6 +149,15 @@ public:
 	/** Takes the footprints blocked since the last step (the order processor calls this at each step). */
 	void ConsumeBlockedFootprints(TArray<FHOLBlockedFootprint>& OutFootprints);
 
+	/**
+	 * J8a.4: PlayerIndex's player buys its dead hero's return (ServerReturnHero, hol.Hero.Return), applied at the end of the
+	 * next step by the hero subsystem: the price of that step, the gold taken and the birth decided there (script).
+	 * Refused here for no player's slot (INDEX_NONE, out of range), a defeated slot (D358) and while the match waits.
+	 */
+	void IssueHeroReturnOrder(int32 PlayerIndex);
+	/** Takes the hero return orders waiting (UHOLHeroSubsystem calls this at the end of each step), in the order given. */
+	void ConsumeHeroReturnOrders(TArray<int32>& OutPlayerIndices);
+
 	/** D358: drops every order of PlayerIndex still waiting (a slot just defeated). */
 	void DropOrdersOf(int32 PlayerIndex);
 
@@ -172,6 +181,8 @@ private:
 	TArray<FHOLProductionCommand> PendingProductionOrders;
 	TArray<FHOLConstructionCommand> PendingConstructionOrders;
 	TArray<FHOLBuildOrder> PendingBuildOrders;
+	/** J8a.4: the slots that asked their hero's return, in the order given. */
+	TArray<int32> PendingHeroReturnOrders;
 	TArray<FBox> PendingNavigationChanges;
 	TArray<FHOLBlockedFootprint> PendingBlockedFootprints;
 };

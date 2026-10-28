@@ -387,6 +387,11 @@ void UHOLBuildProcessor::ApplyBuildOrders(const FStepContext& Step)
 				Build->Misses = 0;
 				Queue.Current = FWorkItem();
 			}
+			// A new head without Shift: the moves its player queued after its work are forgotten with it (EtapeDefini M.1).
+			if (!Order.bQueue)
+			{
+				Build->bMovesAfter = false;
+			}
 			Build->bQueueNext = Queue.Items.Num() > 1;
 			++NumBuilders;
 		}
@@ -432,6 +437,12 @@ void UHOLBuildProcessor::Advance(const FStepContext& Step, FBuilder& Builder)
 	{
 		// A main forum rebuilt (V2.2) ends as a site finished. A deposit unloaded at is no site finished (D485): idle after it,
 		// neither its camp's source nor a nearby site.
+		// Moves its player queued after its work (Shift, EtapeDefini M.1): idle, so that they start (UHOLUnitOrderProcessor).
+		if (Build.bMovesAfter)
+		{
+			Stop(Builder, TEXT("its queue done, moves queued after it"));
+			return;
+		}
 		AHOLBuilding* Finished = Before.IsBuild() ? Before.Site.Get() : nullptr;
 		const bool bFinished = Finished && !Finished->NeedsBuilders();
 		if (bFinished && (GatherForFarm(Step, Builder, *Finished) || GatherForCamp(Step, Builder, *Finished)))

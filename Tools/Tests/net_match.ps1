@@ -60,12 +60,12 @@ New-Item -ItemType Directory -Force $Logs | Out-Null
 
 if ($StageOnly) { $Stage = $true }
 if ($Stage) {
-    # Server only, Plain and StressTest (S5); UAT's own log goes to Saved_Tests\Logs\net_stage.log. -pak: the cooked
+    # Server only, Plain, its five sizes (TC3: a lobby plays Plain_<Size>) and StressTest (S5); UAT's own log goes to Saved_Tests\Logs\net_stage.log. -pak: the cooked
     # data is staged with the server; without it the server streams it from the Zen server that ran at staging time, and
     # waits forever once another Zen instance has replaced it (another editor started).
     $StageLog = Join-Path $Logs "net_stage.log"
     & (Join-Path $EngineDir "Build\BatchFiles\RunUAT.bat") BuildCookRun -project="$UProject" -noP4 -server -serverplatform=Win64 `
-        -noclient -build -cook -stage -pak -map=/Game/Maps/Plain+/Game/Maps/StressTest -serverconfig=Development -unattended -utf8output *> $StageLog
+        -noclient -build -cook -stage -pak -map=/Game/Maps/Plain+/Game/Maps/Plain_Small+/Game/Maps/Plain_Medium+/Game/Maps/Plain_Normal+/Game/Maps/Plain_Large+/Game/Maps/Plain_Huge+/Game/Maps/StressTest -serverconfig=Development -unattended -utf8output *> $StageLog
     if ($LASTEXITCODE -ne 0) { Write-Host "net_match : staging FAILED (see $StageLog)"; exit 1 }
 }
 $Server = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Binaries\Win64\HeroesOfLibertyServer.exe"

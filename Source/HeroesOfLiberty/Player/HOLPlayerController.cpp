@@ -696,7 +696,7 @@ namespace UE::HeroesOfLiberty::Player
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
 				if (Start)
 				{
 					const FVector Point = Start->GetMainCentreLocation() + (Args.Num() >= 2 ? FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.) : FVector::ZeroVector);
@@ -745,7 +745,7 @@ namespace UE::HeroesOfLiberty::Player
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				const int32 Slot = !bOwn ? (Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0])) : PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
-				const AHOLStartSlot* Start = AHOLStartSlot::Find(Controller->GetWorld(), Slot);
+				const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(Controller->GetWorld(), Slot);
 				if (Start && Controller->GetRTSCamera())
 				{
 					Controller->GetRTSCamera()->SetFocus(Start->GetMainCentreLocation());
@@ -877,7 +877,7 @@ namespace UE::HeroesOfLiberty::Player
 			for (const AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::Find(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
 				if (Start)
 				{
 					const FVector Target = Start->GetMainCentreLocation() + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
@@ -1216,6 +1216,18 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->RequestSurrender();
+			}
+		}));
+
+	/** J8a.4, until the interface's button: the local players buy their dead hero's return (the server checks it). */
+	FAutoConsoleCommand HeroReturnCommand(
+		TEXT("hol.Hero.Return"),
+		TEXT("hol.Hero.Return: the local player buys its dead hero's return, at the price of the next step (J8a.4)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestReturnHero();
 			}
 		}));
 
@@ -1714,8 +1726,14 @@ void AHOLPlayerController::TryPlaceCamera()
 	{
 		return;
 	}
+	// TC3: a client waits for the configuration of the launch, which gives its slot's place (drawn at the launch).
+	const AHOLGameState* HOLGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	if (GetNetMode() == NM_Client && (!HOLGameState || !HOLGameState->HasStartPlaces()))
+	{
+		return;
+	}
 	bCameraPlaced = true;
-	const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot);
+	const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(GetWorld(), Slot);
 	if (!Start)
 	{
 		UE_LOG(LogHOLMatch, Warning, TEXT("No start for slot %d in this map: the camera stays where it is"), Slot);
@@ -2211,10 +2229,11 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			&& (Under->NeedsBuilders() || Under->IsCamp()) ? Under : nullptr;
 		const FVector Point = bOnBuilding ? Building->GetActorLocation() : RallySite ? RallySite->GetActorLocation() : Source ? Source->Location : Ground;
 		const int32 RallySource = !bOnBuilding && !RallySite && Source ? SourceIndex : INDEX_NONE;
-		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s"), *DescribeBuilding(Building), Point.X, Point.Y,
+		// Shift (EtapeDefini N.1, AoE4): a step added at the end of its rally point.
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f)%s%s"), *DescribeBuilding(Building), Point.X, Point.Y,
 			RallySite ? *FString::Printf(TEXT(" on site %s"), *DescribeBuilding(RallySite))
-			: RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""));
-		RequestRallyPoint(Point, RallySource, RallySite);
+			: RallySource != INDEX_NONE ? *FString::Printf(TEXT(" on source %d"), RallySource) : TEXT(""), bShift ? TEXT(", a step added") : TEXT(""));
+		RequestRallyPoint(Point, RallySource, RallySite, bShift);
 		OnOrderGiven.Broadcast(Point);
 	}
 	else if (HasBuildingGroup())
@@ -2239,7 +2258,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			// Finished or not: one that will produce takes its rally point from its ghost on (the user's request of 2026-10-19).
 			if (Type && !Type->Produces.IsEmpty())
 			{
-				ServerSetRallyPoint(Member, Point, RallySource, RallySite);
+				ServerSetRallyPoint(Member, Point, RallySource, RallySite, bShift);
 				++Rallied;
 			}
 		}
@@ -3321,11 +3340,11 @@ void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> Unit
 	}
 }
 
-void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site)
+void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerSetRallyPoint(Building, Point, SourceIndex, Site);
+		ServerSetRallyPoint(Building, Point, SourceIndex, Site, bQueue);
 	}
 }
 
@@ -3772,7 +3791,7 @@ bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
 		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the forum of slot %d"), Slot);
 		return true;
 	}
-	if (const AHOLStartSlot* Start = AHOLStartSlot::Find(GetWorld(), Slot))
+	if (const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(GetWorld(), Slot))
 	{
 		RTSCamera->SetFocus(Start->GetMainCentreLocation());
 		UE_LOG(LogHOLMatch, Display, TEXT("Camera above the start of slot %d"), Slot);
@@ -3865,6 +3884,27 @@ void AHOLPlayerController::ServerSurrender_Implementation()
 	if (!HOLGameState || Slot == INDEX_NONE || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Surrender))
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Victory: surrender of slot %d refused"), Slot);
+	}
+}
+
+void AHOLPlayerController::RequestReturnHero()
+{
+	if (IsSpectator())
+	{
+		return;
+	}
+	ServerReturnHero();
+}
+
+void AHOLPlayerController::ServerReturnHero_Implementation()
+{
+	// The player's own slot only (D288): the queue refuses a defeated slot (D358), the step checks the rest.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero return order: slot %d queued"), HOLPlayerState->GetPlayerIndex());
+		Commands->IssueHeroReturnOrder(HOLPlayerState->GetPlayerIndex());
 	}
 }
 
@@ -3997,7 +4037,7 @@ void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>
 }
 
 void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex,
-	AHOLBuilding* Site)
+	AHOLBuilding* Site, const bool bQueue)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -4014,6 +4054,7 @@ void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Buil
 			? SourceIndex : INDEX_NONE;
 		// Its own site not finished, checked by the production at its step (D288).
 		Command.RallySite = Site;
+		Command.bQueue = bQueue;
 		Commands->IssueProductionOrder(Command);
 	}
 }

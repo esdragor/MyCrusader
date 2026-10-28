@@ -1,0 +1,35 @@
+# Point de ralliement en plusieurs étapes (étape N) : Maj + clic droit ajoute une étape au ralliement d'un bâtiment
+# Configuration par défaut (un joueur, Plain) : ton forum vers (-14800, 0) ; une caserne finie au nord-ouest du forum ;
+# un chantier de maison non bâti au nord-est (vers (-13200, 4800)) ; le filon d'or plus loin à l'est (-11087, 4592).
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.Prod.BuildTime 3
+hol.Cheat.SpawnBuilding Barracks 0 -3800 4800
+waitlog Cheat: spawned Barracks
+# Un chantier de maison non bâti, posé par un Paysan renvoyé aussitôt vers le forum.
+hol.Camera.Focus -13200 3600
+frames 2
+hol.Units.Spawn 1 -13200 3600 0 Peasant 10
+wait 0.5
+hol.Camera.Focus -13200 3600
+frames 3
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Build.PlaceNear House 1600 4800
+waitlog Construction: slot 0 placed House foundation
+waitlog Build order of slot 0: 1 units to House
+hol.Select.OrderGround -13200 1600
+wait 0.5
+hol.Camera.FocusSlot 0
+frames 3
+hol.Select.Click 0.5 0.5
+waitlog Selection: MainCentre of slot 0 (own)
+hol.Camera.Focus -14800 2400
+frames 5
+note Le forum est sélectionné (production en 3 s, ressources à volonté). Caserne au nord-ouest, chantier de maison au nord-est.
+note 1. Clic droit au sol (le drapeau), puis Maj + clic droit à d'autres endroits : un trait blanc relie le forum et les étapes, un point sur chacune, le drapeau à la dernière. Produis des Paysans : ils passent par chaque point dans l'ordre, puis s'arrêtent au dernier (ligne blanche de leur file s'ils sont sélectionnés).
+note 2. Dernière étape sur un arbre, les baies ou le filon d'or (Maj + clic droit dessus) : ils passent par les points puis récoltent. Sur le chantier de maison : ils le bâtissent.
+note 3. Clic droit sans Maj : le ralliement redevient un seul point. Clic droit sur le forum lui-même : plus de ralliement (Maj + clic sur le forum ne change rien).
+note 4. Huit étapes au plus : la neuvième est refusée, rien ne change.
+note 5. La caserne : la même chose avec des soldats (sur une source ou un chantier, ils marchent jusqu'au point).
+note 6. À juger : une source au milieu du chemin se comporte comme un ordre Maj d'un joueur (règle M) : ils y récoltent jusqu'à épuisement du bosquet avant les points suivants.

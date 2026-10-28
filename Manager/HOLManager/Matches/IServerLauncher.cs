@@ -12,7 +12,7 @@ public interface IServerLauncher
      * Writes match.json and starts the server of the match on a free port, which it returns. Throws LobbyException
      * max_servers (MaxServers already running) or server_start_failed.
      */
-    int Launch(string matchId, MapInfo map, MatchConfig config);
+    int Launch(string matchId, MapInfo map, MatchConfig config, string? gameVersion = null);
 
     /** True once the match's server has stopped (or for a match it never started). */
     bool HasExited(string matchId);

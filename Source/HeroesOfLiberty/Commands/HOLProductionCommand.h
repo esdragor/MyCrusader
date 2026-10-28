@@ -37,4 +37,6 @@ struct FHOLProductionCommand
 	 * null: the ground or a source.
 	 */
 	TWeakObjectPtr<AHOLBuilding> RallySite;
+	/** Rally with Shift (EtapeDefini N.1): a step added at the end of the rally point, not the rally point replaced. */
+	bool bQueue = false;
 };

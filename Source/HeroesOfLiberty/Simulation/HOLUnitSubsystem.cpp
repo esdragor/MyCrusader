@@ -555,6 +555,47 @@ int32 UHOLUnitSubsystem::ServeBirthRequests()
 	return NumCreated;
 }
 
+/**
+ * A rally point in several steps (EtapeDefini N.1, AoE4): the units just born get the queue a player's Shift orders would
+ * give them, each step in order through the queue of moves (L.6, M.1): a ground step a move (the first one at once, the
+ * others with Shift), a source a Shift gather, a site not finished a Shift build, a camp finished the nearest source it
+ * accepts; soldiers walk to each step's point. Under the caller's FRallyOrderScope (the chain drawn, D328).
+ */
+static void HOLIssueSpawnRallySteps(UHOLCommandSubsystem& Commands, const UWorld& World, const FHOLUnitSpawnRequest& Request,
+	const TConstArrayView<uint32> BornIds, const bool bWorker)
+{
+	const UHOLSourceSubsystem* Sources = World.GetSubsystem<UHOLSourceSubsystem>();
+	TArray<FHOLUnitSpawnWaypoint> Steps = Request.Waypoints;
+	FHOLUnitSpawnWaypoint& Last = Steps.AddDefaulted_GetRef();
+	Last.Point = Request.MoveTarget;
+	Last.GatherSource = Request.GatherSource;
+	Last.BuildSite = Request.BuildSite;
+	for (int32 StepIndex = 0; StepIndex < Steps.Num(); ++StepIndex)
+	{
+		const FHOLUnitSpawnWaypoint& Step = Steps[StepIndex];
+		AHOLBuilding* Site = bWorker ? Step.BuildSite.Get() : nullptr;
+		const int32 CampSource = Site && !Site->NeedsBuilders() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site) : INDEX_NONE;
+		const bool bSource = bWorker && Sources && Sources->GetSources().IsValidIndex(Step.GatherSource) && Sources->GetSources()[Step.GatherSource].IsStanding();
+		if (Site && Site->NeedsBuilders())
+		{
+			Commands.IssueQueuedWorkOrder(BornIds, INDEX_NONE, Site, Site->GetActorLocation());
+		}
+		else if (CampSource != INDEX_NONE)
+		{
+			Commands.IssueQueuedWorkOrder(BornIds, CampSource, nullptr, Sources->GetSources()[CampSource].Location);
+		}
+		else if (bSource)
+		{
+			Commands.IssueQueuedWorkOrder(BornIds, Step.GatherSource, nullptr, Sources->GetSources()[Step.GatherSource].Location);
+		}
+		else
+		{
+			Commands.IssueMoveOrder(BornIds, Step.Point, INDEX_NONE, /*bFromTask*/ false, FVector2D::ZeroVector, /*bFrontWidth*/ false, /*bQueue*/ StepIndex > 0);
+		}
+	}
+	UE_LOG(LogHOLSimulation, Display, TEXT("Rally: %d units of slot %d born with a rally point in %d steps"), BornIds.Num(), Request.OwnerPlayer, Steps.Num());
+}
+
 void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, const FMassEntityTemplate& Template, const int32 Count)
 {
 	UWorld* World = GetWorld();
@@ -673,32 +714,39 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 			// gather the nearest source it accepts, as its builders (D312, J6b.1); another site finished (or cancelled) by
 			// then, they walk to its ground point as to any other. Soldiers (who carry nothing: no worker, J7a.2) only walk there.
 			const bool bWorker = Constants.CarryCapacity > 0;
-			AHOLBuilding* Site = bWorker ? Request.BuildSite.Get() : nullptr;
-			double CampGap = 0.;
-			// Its main forum down: they rebuild it, as a site (V2.3a).
-			const int32 CampSource = Site && !Site->NeedsBuilders() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site, &CampGap) : INDEX_NONE;
-			if (Site && Site->NeedsBuilders())
+			if (!Request.Waypoints.IsEmpty())
 			{
-				FHOLBuildOrder Order;
-				Order.UnitIds = BornIds;
-				Order.Building = Site;
-				Commands->IssueBuildOrder(Order);
-			}
-			else if (CampSource != INDEX_NONE)
-			{
-				Commands->IssueGatherOrder(BornIds, CampSource, Request.OwnerPlayer);
-				const FVector Location = Site->GetActorLocation();
-				UE_LOG(LogHOLSimulation, Display, TEXT("Rally: %d units of slot %d born for the finished camp %s at (%.0f, %.0f) sent to gather %s (source %d, %.1f m)"),
-					BornIds.Num(), Request.OwnerPlayer, *Site->GetTypeName().ToString(), Location.X, Location.Y,
-					*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Sources->GetSources()[CampSource].Resource)), CampSource, CampGap / 100.);
-			}
-			else if (bWorker && Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
-			{
-				Commands->IssueGatherOrder(BornIds, Request.GatherSource);
+				HOLIssueSpawnRallySteps(*Commands, *World, Request, BornIds, bWorker);
 			}
 			else
 			{
-				Commands->IssueMoveOrder(BornIds, Request.MoveTarget);
+				AHOLBuilding* Site = bWorker ? Request.BuildSite.Get() : nullptr;
+				double CampGap = 0.;
+				// Its main forum down: they rebuild it, as a site (V2.3a).
+				const int32 CampSource = Site && !Site->NeedsBuilders() && Sources ? UHOLBuildProcessor::FindCampSource(*Sources, *Site, &CampGap) : INDEX_NONE;
+				if (Site && Site->NeedsBuilders())
+				{
+					FHOLBuildOrder Order;
+					Order.UnitIds = BornIds;
+					Order.Building = Site;
+					Commands->IssueBuildOrder(Order);
+				}
+				else if (CampSource != INDEX_NONE)
+				{
+					Commands->IssueGatherOrder(BornIds, CampSource, Request.OwnerPlayer);
+					const FVector Location = Site->GetActorLocation();
+					UE_LOG(LogHOLSimulation, Display, TEXT("Rally: %d units of slot %d born for the finished camp %s at (%.0f, %.0f) sent to gather %s (source %d, %.1f m)"),
+						BornIds.Num(), Request.OwnerPlayer, *Site->GetTypeName().ToString(), Location.X, Location.Y,
+						*StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Sources->GetSources()[CampSource].Resource)), CampSource, CampGap / 100.);
+				}
+				else if (bWorker && Sources && Sources->GetSources().IsValidIndex(Request.GatherSource) && Sources->GetSources()[Request.GatherSource].IsStanding())
+				{
+					Commands->IssueGatherOrder(BornIds, Request.GatherSource);
+				}
+				else
+				{
+					Commands->IssueMoveOrder(BornIds, Request.MoveTarget);
+				}
 			}
 		}
 	}

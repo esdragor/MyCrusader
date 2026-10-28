@@ -27,6 +27,8 @@ namespace UE::HeroesOfLiberty::UI::Multiplayer
 {
 	constexpr int32 MaxNameLength = 16;
 	constexpr float NameWidth = 340.f;
+	/** TC3: "Plaine — Immense", the longest in French. */
+	constexpr float MapWidth = 240.f;
 	constexpr float PlayersWidth = 90.f;
 	constexpr float StateWidth = 220.f;
 	constexpr float ActionWidth = 200.f;
@@ -104,7 +106,7 @@ void UHOLMultiplayerScreen::BuildLayout()
 
 	// The list, with a fixed width so that the columns line up.
 	USizeBox* ListSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-	ListSize->SetWidthOverride(NameWidth + PlayersWidth + StateWidth + ActionWidth + 32.f);
+	ListSize->SetWidthOverride(NameWidth + MapWidth + PlayersWidth + StateWidth + ActionWidth + 40.f);
 	ListSize->SetMinDesiredHeight(240.f);
 	LobbyList = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("LobbyList"));
 	ListSize->SetContent(LobbyList);
@@ -275,6 +277,9 @@ void UHOLMultiplayerScreen::AddLobbyRow(const int32 Index, const FHOLLobbySummar
 		CellSlot->SetPadding(FMargin(8.f, 0.f));
 	};
 	AddCell(FText::FromString(Lobby.Name), NameWidth);
+	// TC3: the map and its size, "Plaine — Grande" (nothing from an older manager).
+	const FText MapText = UHOLNewGameScreen::GetLobbyMapName(Lobby.Map, Lobby.Size);
+	AddCell(MapText, MapWidth);
 	AddCell(FText::Format(LOCTEXT("Players", "{0}/{1}"), Lobby.Players, Lobby.MaxPlayers), PlayersWidth);
 	const FText State = Lobby.State == EHOLLobbyState::Lobby ? LOCTEXT("StateLobby", "au salon")
 		: Lobby.State == EHOLLobbyState::Starting ? LOCTEXT("StateStarting", "lancement")
@@ -298,8 +303,8 @@ void UHOLMultiplayerScreen::AddLobbyRow(const int32 Index, const FHOLLobbySummar
 		Box->SetContent(Button);
 		Row->AddChildToHorizontalBox(Box)->SetVerticalAlignment(VAlign_Center);
 	}
-	UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: lobby %s \"%s\" %d/%d %s%s"), *Lobby.Id, *Lobby.Name, Lobby.Players, Lobby.MaxPlayers,
-		*State.ToString(), Action == EHOLLobbyAction::Join ? TEXT(", join") : Action == EHOLLobbyAction::Rejoin ? TEXT(", rejoin")
+	UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: lobby %s \"%s\" %s %d/%d %s%s"), *Lobby.Id, *Lobby.Name, *MapText.ToString(), Lobby.Players,
+		Lobby.MaxPlayers, *State.ToString(), Action == EHOLLobbyAction::Join ? TEXT(", join") : Action == EHOLLobbyAction::Rejoin ? TEXT(", rejoin")
 		: Action == EHOLLobbyAction::Watch ? TEXT(", watch") : TEXT(""));
 }
 

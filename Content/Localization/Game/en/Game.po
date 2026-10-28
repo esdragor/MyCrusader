@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-27 20:15\n"
-"PO-Revision-Date: 2026-10-27 20:15\n"
+"POT-Creation-Date: 2026-10-28 08:32\n"
+"PO-Revision-Date: 2026-10-28 08:32\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -89,6 +89,13 @@ msgstr "You are defeated"
 msgctxt "HOLGameScreen,MessageDefeated"
 msgid "{0} est vaincu"
 msgstr "{0} is defeated"
+
+#. Key:	MessageHeroReady
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(159)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(159)
+msgctxt "HOLGameScreen,MessageHeroReady"
+msgid "Votre héros est prêt à revenir"
+msgstr "Your hero is ready to return"
 
 #. Key:	PlayerN
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(23)
@@ -455,32 +462,11 @@ msgid "Champ de tir"
 msgstr "Archery Range"
 
 #. Key:	GathererCount
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1091)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1091)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1104)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1104)
 msgctxt "HOLGameScreen,GathererCount"
 msgid "({0})"
 msgstr "({0})"
-
-#. Key:	FoundationName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1127)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1127)
-msgctxt "HOLGameScreen,FoundationName"
-msgid "Fondation : {0}"
-msgstr "Foundation: {0}"
-
-#. Key:	SiteName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1128)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1128)
-msgctxt "HOLGameScreen,SiteName"
-msgid "Chantier : {0}"
-msgstr "Construction site: {0}"
-
-#. Key:	ProgressPercent
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1136)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1136)
-msgctxt "HOLGameScreen,ProgressPercent"
-msgid "{0} %"
-msgstr "{0}%"
 
 #. Key:	PopulationEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(114)
@@ -488,6 +474,27 @@ msgstr "{0}%"
 msgctxt "HOLGameScreen,PopulationEffect"
 msgid "+{0} population"
 msgstr "+{0} population"
+
+#. Key:	FoundationName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1140)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1140)
+msgctxt "HOLGameScreen,FoundationName"
+msgid "Fondation : {0}"
+msgstr "Foundation: {0}"
+
+#. Key:	SiteName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1141)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1141)
+msgctxt "HOLGameScreen,SiteName"
+msgid "Chantier : {0}"
+msgstr "Construction site: {0}"
+
+#. Key:	ProgressPercent
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1149)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1149)
+msgctxt "HOLGameScreen,ProgressPercent"
+msgid "{0} %"
+msgstr "{0}%"
 
 #. Key:	DepositEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(123)
@@ -504,39 +511,18 @@ msgid ", "
 msgstr ", "
 
 #. Key:	SubgroupAll
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1255)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1255)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1268)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1268)
 msgctxt "HOLGameScreen,SubgroupAll"
 msgid "Tous ({0})"
 msgstr "All ({0})"
 
 #. Key:	GroupGathering
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1317)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1317)
 msgctxt "HOLGameScreen,GroupGathering"
 msgid "{0} en récolte"
 msgstr "{0} gathering"
-
-#. Key:	GroupBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1308)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1308)
-msgctxt "HOLGameScreen,GroupBuilding"
-msgid "{0} en construction"
-msgstr "{0} building"
-
-#. Key:	GroupFighting
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1312)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1312)
-msgctxt "HOLGameScreen,GroupFighting"
-msgid "{0} au combat"
-msgstr "{0} fighting"
-
-#. Key:	GroupMoving
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1316)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1316)
-msgctxt "HOLGameScreen,GroupMoving"
-msgid "{0} en marche"
-msgstr "{0} walking"
 
 #. Key:	ProducesEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(132)
@@ -545,9 +531,30 @@ msgctxt "HOLGameScreen,ProducesEffect"
 msgid "Produit : {0}"
 msgstr "Produces: {0}"
 
+#. Key:	GroupBuilding
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1321)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1321)
+msgctxt "HOLGameScreen,GroupBuilding"
+msgid "{0} en construction"
+msgstr "{0} building"
+
+#. Key:	GroupFighting
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1325)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1325)
+msgctxt "HOLGameScreen,GroupFighting"
+msgid "{0} au combat"
+msgstr "{0} fighting"
+
+#. Key:	GroupMoving
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1329)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1329)
+msgctxt "HOLGameScreen,GroupMoving"
+msgid "{0} en marche"
+msgstr "{0} walking"
+
 #. Key:	GroupIdle
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1320)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1320)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1333)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1333)
 msgctxt "HOLGameScreen,GroupIdle"
 msgid "{0} {0}|plural(one=inactif,other=inactifs)"
 msgstr "{0} idle"
@@ -560,78 +567,78 @@ msgid "Récolte et bâtit"
 msgstr "Gathers and builds"
 
 #. Key:	SourceRemaining
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1479)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1479)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1492)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1492)
 msgctxt "HOLGameScreen,SourceRemaining"
 msgid "Reste : {0}"
 msgstr "Left: {0}"
 
 #. Key:	ActivityGathering
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1497)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1497)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1510)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1510)
 msgctxt "HOLGameScreen,ActivityGathering"
 msgid "Récolte"
 msgstr "Gathering"
 
 #. Key:	ActivityBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1498)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1498)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1511)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1511)
 msgctxt "HOLGameScreen,ActivityBuilding"
 msgid "Construction"
 msgstr "Building"
 
 #. Key:	ActivityAttacking
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1499)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1499)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1512)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1512)
 msgctxt "HOLGameScreen,ActivityAttacking"
 msgid "Attaque"
 msgstr "Attacking"
 
 #. Key:	ActivityIdle
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1500)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1500)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1513)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1513)
 msgctxt "HOLGameScreen,ActivityIdle"
 msgid "Inactif"
 msgstr "Idle"
 
 #. Key:	ActivityMoving
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1500)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1500)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1513)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1513)
 msgctxt "HOLGameScreen,ActivityMoving"
 msgid "En marche"
 msgstr "Walking"
 
 #. Key:	ActivityWithLoad
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1502)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1502)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1515)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1515)
 msgctxt "HOLGameScreen,ActivityWithLoad"
 msgid "{0} — {1} {2}/{3}"
 msgstr "{0} — {1} {2}/{3}"
 
 #. Key:	IdleWorkers
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1557)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1557)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1570)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1570)
 msgctxt "HOLGameScreen,IdleWorkers"
 msgid "Inactifs : {0}"
 msgstr "Idle: {0}"
 
 #. Key:	ControlGroupSlot
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1640)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1640)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1653)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1653)
 msgctxt "HOLGameScreen,ControlGroupSlot"
 msgid "{0} · {1}"
 msgstr "{0} · {1}"
 
 #. Key:	ControlGroupTooltip
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1664)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1664)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1677)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1677)
 msgctxt "HOLGameScreen,ControlGroupTooltip"
 msgid "Groupe {0}"
 msgstr "Group {0}"
 
 #. Key:	UnitCount
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1669)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1669)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1682)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1682)
 msgctxt "HOLGameScreen,UnitCount"
 msgid "{0} × {1}"
 msgstr "{0} × {1}"
@@ -643,41 +650,6 @@ msgctxt "HOLGameScreen,NotEnoughWood"
 msgid "Pas assez de bois"
 msgstr "Not enough wood"
 
-#. Key:	Cancel
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1771)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1771)
-msgctxt "HOLGameScreen,Cancel"
-msgid "Annuler"
-msgstr "Cancel"
-
-#. Key:	CancelSite
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1772)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1772)
-msgctxt "HOLGameScreen,CancelSite"
-msgid "Annuler la construction"
-msgstr "Cancel construction"
-
-#. Key:	AttackMove
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1776)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1776)
-msgctxt "HOLGameScreen,AttackMove"
-msgid "Attaque"
-msgstr "Attack"
-
-#. Key:	AttackMoveName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1777)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1777)
-msgctxt "HOLGameScreen,AttackMoveName"
-msgid "Attaque-déplacement"
-msgstr "Attack-move"
-
-#. Key:	AttackMoveEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1778)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1778)
-msgctxt "HOLGameScreen,AttackMoveEffect"
-msgid "Puis clic au sol : attaque les ennemis en chemin"
-msgstr "Then click the ground: attacks the enemies on the way"
-
 #. Key:	NotEnoughStone
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(178)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(178)
@@ -685,47 +657,26 @@ msgctxt "HOLGameScreen,NotEnoughStone"
 msgid "Pas assez de pierre"
 msgstr "Not enough stone"
 
-#. Key:	Stop
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1781)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1781)
-msgctxt "HOLGameScreen,Stop"
-msgid "Arrêt"
-msgstr "Stop"
+#. Key:	Cancel
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1784)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1784)
+msgctxt "HOLGameScreen,Cancel"
+msgid "Annuler"
+msgstr "Cancel"
 
-#. Key:	StopEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1782)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1782)
-msgctxt "HOLGameScreen,StopEffect"
-msgid "Annule les ordres et le combat"
-msgstr "Cancels the orders and the fight"
-
-#. Key:	StopName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1782)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1782)
-msgctxt "HOLGameScreen,StopName"
-msgid "Arrêt"
-msgstr "Stop"
-
-#. Key:	Hold
+#. Key:	CancelSite
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1785)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1785)
-msgctxt "HOLGameScreen,Hold"
-msgid "Tenir"
-msgstr "Hold"
+msgctxt "HOLGameScreen,CancelSite"
+msgid "Annuler la construction"
+msgstr "Cancel construction"
 
-#. Key:	HoldName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1786)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1786)
-msgctxt "HOLGameScreen,HoldName"
-msgid "Tenir la position"
-msgstr "Hold position"
-
-#. Key:	HoldEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1787)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1787)
-msgctxt "HOLGameScreen,HoldEffect"
-msgid "N'attaque qu'à portée, ne poursuit pas"
-msgstr "Attacks only in range, never chases"
+#. Key:	AttackMove
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1789)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1789)
+msgctxt "HOLGameScreen,AttackMove"
+msgid "Attaque"
+msgstr "Attack"
 
 #. Key:	NotEnoughGold
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(179)
@@ -734,12 +685,68 @@ msgctxt "HOLGameScreen,NotEnoughGold"
 msgid "Pas assez d'or"
 msgstr "Not enough gold"
 
+#. Key:	AttackMoveName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1790)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1790)
+msgctxt "HOLGameScreen,AttackMoveName"
+msgid "Attaque-déplacement"
+msgstr "Attack-move"
+
+#. Key:	AttackMoveEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1791)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1791)
+msgctxt "HOLGameScreen,AttackMoveEffect"
+msgid "Puis clic au sol : attaque les ennemis en chemin"
+msgstr "Then click the ground: attacks the enemies on the way"
+
+#. Key:	Stop
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1794)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1794)
+msgctxt "HOLGameScreen,Stop"
+msgid "Arrêt"
+msgstr "Stop"
+
+#. Key:	StopEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1795)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1795)
+msgctxt "HOLGameScreen,StopEffect"
+msgid "Annule les ordres et le combat"
+msgstr "Cancels the orders and the fight"
+
+#. Key:	StopName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1795)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1795)
+msgctxt "HOLGameScreen,StopName"
+msgid "Arrêt"
+msgstr "Stop"
+
+#. Key:	Hold
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1798)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1798)
+msgctxt "HOLGameScreen,Hold"
+msgid "Tenir"
+msgstr "Hold"
+
+#. Key:	HoldName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1799)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1799)
+msgctxt "HOLGameScreen,HoldName"
+msgid "Tenir la position"
+msgstr "Hold position"
+
 #. Key:	NotEnoughFood
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(180)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(180)
 msgctxt "HOLGameScreen,NotEnoughFood"
 msgid "Pas assez de nourriture"
 msgstr "Not enough food"
+
+#. Key:	HoldEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1800)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1800)
+msgctxt "HOLGameScreen,HoldEffect"
+msgid "N'attaque qu'à portée, ne poursuit pas"
+msgstr "Attacks only in range, never chases"
 
 #. Key:	QueueFull
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(182)
@@ -756,15 +763,15 @@ msgid "Population maximale — construisez des maisons"
 msgstr "Population limit reached — build houses"
 
 #. Key:	AgeHeaderName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1840)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1840)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1853)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1853)
 msgctxt "HOLGameScreen,AgeHeaderName"
 msgid "Palier {0} — {1}"
 msgstr "Tier {0} — {1}"
 
 #. Key:	AgeLocked
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1841)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1841)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1854)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1854)
 msgctxt "HOLGameScreen,AgeLocked"
 msgid "Palier non atteint"
 msgstr "Tier not reached"
@@ -819,8 +826,8 @@ msgid "Emplacement occupé"
 msgstr "Space occupied"
 
 #. Key:	Population
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2450)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2450)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2463)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2463)
 msgctxt "HOLGameScreen,Population"
 msgid "Population"
 msgstr "Population"
@@ -833,15 +840,15 @@ msgid "{0} ({1})"
 msgstr "{0} ({1})"
 
 #. Key:	Health
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2716)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2716)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2729)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2729)
 msgctxt "HOLGameScreen,Health"
 msgid "Points de vie"
 msgstr "Health"
 
 #. Key:	ForumLivesLabel
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2743)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2743)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2756)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2756)
 msgctxt "HOLGameScreen,ForumLivesLabel"
 msgid "Vies"
 msgstr "Lives"
@@ -875,15 +882,15 @@ msgid "Légende"
 msgstr "Legend"
 
 #. Key:	PopulationFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2807)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2807)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2820)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2820)
 msgctxt "HOLGameScreen,PopulationFull"
 msgid "Population pleine"
 msgstr "Population full"
 
 #. Key:	CancelHint
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2813)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2813)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2826)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2826)
 msgctxt "HOLGameScreen,CancelHint"
 msgid "Clic : annuler"
 msgstr "Click: cancel"
@@ -951,19 +958,19 @@ msgctxt "HOLGameScreen,GoldInText"
 msgid "or"
 msgstr "gold"
 
-#. Key:	WaitingFor
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(961)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(961)
-msgctxt "HOLGameScreen,WaitingFor"
-msgid "En attente de {Players} ({Time})"
-msgstr "Waiting for {Players} ({Time})"
-
 #. Key:	FoodInText
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(97)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(97)
 msgctxt "HOLGameScreen,FoodInText"
 msgid "nourriture"
 msgstr "food"
+
+#. Key:	WaitingFor
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(974)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(974)
+msgctxt "HOLGameScreen,WaitingFor"
+msgid "En attente de {Players} ({Time})"
+msgstr "Waiting for {Players} ({Time})"
 
 #. Key:	Unreachable
 #. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(38)
@@ -1274,417 +1281,487 @@ msgid "Abandonner la partie ?"
 msgstr "Surrender the match?"
 
 #. Key:	NameHint
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(101)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(101)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(103)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(103)
 msgctxt "HOLMultiplayerScreen,NameHint"
 msgid "1 à 16 caractères"
 msgstr "1 to 16 characters"
 
 #. Key:	Refresh
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(116)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(116)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(118)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(118)
 msgctxt "HOLMultiplayerScreen,Refresh"
 msgid "Actualiser"
 msgstr "Refresh"
 
 #. Key:	Create
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(117)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(117)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(119)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(119)
 msgctxt "HOLMultiplayerScreen,Create"
 msgid "Créer un salon"
 msgstr "Create a lobby"
 
 #. Key:	Back
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(118)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(118)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(120)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(120)
 msgctxt "HOLMultiplayerScreen,Back"
 msgid "Retour"
 msgstr "Back"
 
 #. Key:	Searching
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(190)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(190)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(192)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(192)
 msgctxt "HOLMultiplayerScreen,Searching"
 msgid "Recherche des salons…"
 msgstr "Searching for lobbies…"
 
 #. Key:	NoLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(244)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(244)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(246)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(246)
 msgctxt "HOLMultiplayerScreen,NoLobby"
 msgid "0 salon"
 msgstr "No lobbies"
 
 #. Key:	Players
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(278)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(278)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(283)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(283)
 msgctxt "HOLMultiplayerScreen,Players"
 msgid "{0}/{1}"
 msgstr "{0}/{1}"
 
 #. Key:	StateLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(279)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(279)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(284)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(284)
 msgctxt "HOLMultiplayerScreen,StateLobby"
 msgid "au salon"
 msgstr "in lobby"
 
 #. Key:	StateStarting
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(280)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(280)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(285)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(285)
 msgctxt "HOLMultiplayerScreen,StateStarting"
 msgid "lancement"
 msgstr "starting"
 
 #. Key:	StateInGame
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(281)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(281)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(286)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(286)
 msgctxt "HOLMultiplayerScreen,StateInGame"
 msgid "en partie ({0} min)"
 msgstr "in game ({0} min)"
 
 #. Key:	Join
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(294)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(294)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(299)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(299)
 msgctxt "HOLMultiplayerScreen,Join"
 msgid "Rejoindre"
 msgstr "Join"
 
 #. Key:	Rejoin
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(295)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(295)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(300)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(300)
 msgctxt "HOLMultiplayerScreen,Rejoin"
 msgid "Revenir"
 msgstr "Rejoin"
 
 #. Key:	Watch
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(295)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(295)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(300)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(300)
 msgctxt "HOLMultiplayerScreen,Watch"
 msgid "Regarder"
 msgstr "Watch"
 
 #. Key:	BadName
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(326)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(326)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(331)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(331)
 msgctxt "HOLMultiplayerScreen,BadName"
 msgid "Votre nom : 1 à 16 lettres, chiffres, espaces, - ou _"
 msgstr "Your name: 1 to 16 letters, digits, spaces, - or _"
 
 #. Key:	Entering
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(345)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(345)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(350)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(350)
 msgctxt "HOLMultiplayerScreen,Entering"
 msgid "Entrée dans le salon…"
 msgstr "Entering the lobby…"
 
 #. Key:	LobbyOf
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(347)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(347)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(352)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(352)
 msgctxt "HOLMultiplayerScreen,LobbyOf"
 msgid "Salon de {0}"
 msgstr "{0}'s lobby"
 
 #. Key:	Title
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(83)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(83)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(85)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(85)
 msgctxt "HOLMultiplayerScreen,Title"
 msgid "Multijoueur"
 msgstr "Multiplayer"
 
 #. Key:	NameLabel
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(92)
-#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(92)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(94)
+#: Source/HeroesOfLibertyUI/Screens/HOLMultiplayerScreen.cpp(94)
 msgctxt "HOLMultiplayerScreen,NameLabel"
 msgid "Votre nom"
 msgstr "Your name"
 
 #. Key:	NotReady
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(100)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(100)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(102)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(102)
 msgctxt "HOLNewGameScreen,NotReady"
 msgid "Pas prêt"
 msgstr "Not ready"
 
 #. Key:	Open
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(100)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(100)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(102)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(102)
 msgctxt "HOLNewGameScreen,Open"
 msgid "Ouvert"
 msgstr "Open"
 
 #. Key:	Ready
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(100)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(100)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(102)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(102)
 msgctxt "HOLNewGameScreen,Ready"
 msgid "Prêt"
 msgstr "Ready"
 
+#. Key:	TooManyPlayers
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1021)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1021)
+msgctxt "HOLNewGameScreen,TooManyPlayers"
+msgid "Trop de joueurs pour cette taille de carte."
+msgstr "Too many players for this map size."
+
 #. Key:	Off
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(108)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(108)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(110)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(110)
 msgctxt "HOLNewGameScreen,Off"
 msgid "Non"
 msgstr "Off"
 
 #. Key:	On
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(108)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(108)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(110)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(110)
 msgctxt "HOLNewGameScreen,On"
 msgid "Oui"
 msgstr "On"
 
+#. Key:	Size_Small
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(137)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(137)
+msgctxt "HOLNewGameScreen,Size_Small"
+msgid "Petite"
+msgstr "Small"
+
+#. Key:	Size_Medium
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(138)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(138)
+msgctxt "HOLNewGameScreen,Size_Medium"
+msgid "Moyenne"
+msgstr "Medium"
+
+#. Key:	Size_Normal
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(139)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(139)
+msgctxt "HOLNewGameScreen,Size_Normal"
+msgid "Normale"
+msgstr "Normal"
+
+#. Key:	Size_Large
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(140)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(140)
+msgctxt "HOLNewGameScreen,Size_Large"
+msgid "Grande"
+msgstr "Large"
+
+#. Key:	Size_Huge
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(141)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(141)
+msgctxt "HOLNewGameScreen,Size_Huge"
+msgid "Immense"
+msgstr "Huge"
+
+#. Key:	SizeWithPlayers
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(154)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(154)
+msgctxt "HOLNewGameScreen,SizeWithPlayers"
+msgid "{0} ({1} joueurs)"
+msgstr "{0} ({1} players)"
+
+#. Key:	LobbyMapAndSize
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(165)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(165)
+msgctxt "HOLNewGameScreen,LobbyMapAndSize"
+msgid "{0} — {1}"
+msgstr "{0} — {1}"
+
 #. Key:	Map_Plain
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(123)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(123)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(174)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(174)
 msgctxt "HOLNewGameScreen,Map_Plain"
 msgid "Plaine"
 msgstr "Plain"
 
 #. Key:	Heading
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(145)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(145)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(196)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(196)
 msgctxt "HOLNewGameScreen,Heading"
 msgid "Nouvelle partie"
 msgstr "New Game"
 
 #. Key:	Map
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(180)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(180)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(231)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(231)
 msgctxt "HOLNewGameScreen,Map"
 msgid "Carte"
 msgstr "Map"
 
+#. Key:	Size
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(236)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(236)
+msgctxt "HOLNewGameScreen,Size"
+msgid "Taille"
+msgstr "Size"
+
+#. Key:	TeamsTogether
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(238)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(238)
+msgctxt "HOLNewGameScreen,TeamsTogether"
+msgid "Équipes ensemble"
+msgstr "Teams together"
+
 #. Key:	Player
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(184)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(184)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(242)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(242)
 msgctxt "HOLNewGameScreen,Player"
 msgid "Joueur"
 msgstr "Player"
 
 #. Key:	Slot
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(185)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(185)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(243)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(243)
 msgctxt "HOLNewGameScreen,Slot"
 msgid "Emplacement"
 msgstr "Slot"
 
 #. Key:	Faction
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(186)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(186)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(244)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(244)
 msgctxt "HOLNewGameScreen,Faction"
 msgid "Faction"
 msgstr "Faction"
 
 #. Key:	Colour
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(187)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(187)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(245)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(245)
 msgctxt "HOLNewGameScreen,Colour"
 msgid "Couleur"
 msgstr "Color"
 
 #. Key:	Team
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(188)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(188)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(246)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(246)
 msgctxt "HOLNewGameScreen,Team"
 msgid "Équipe"
 msgstr "Team"
 
 #. Key:	PlayerN
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(193)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(193)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(251)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(251)
 msgctxt "HOLNewGameScreen,PlayerN"
 msgid "Joueur {0}"
 msgstr "Player {0}"
 
 #. Key:	You
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(197)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(197)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(255)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(255)
 msgctxt "HOLNewGameScreen,You"
 msgid "Vous"
 msgstr "You"
 
 #. Key:	Mode
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(212)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(212)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(270)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(270)
 msgctxt "HOLNewGameScreen,Mode"
 msgid "Mode"
 msgstr "Mode"
 
 #. Key:	Standard
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(213)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(213)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(271)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(271)
 msgctxt "HOLNewGameScreen,Standard"
 msgid "Standard"
 msgstr "Standard"
 
 #. Key:	Nomad
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(214)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(214)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(272)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(272)
 msgctxt "HOLNewGameScreen,Nomad"
 msgid "Nomade"
 msgstr "Nomad"
 
 #. Key:	Regicide
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(216)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(216)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(274)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(274)
 msgctxt "HOLNewGameScreen,Regicide"
 msgid "Régicide"
 msgstr "Regicide"
 
 #. Key:	Catastrophe
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(218)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(218)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(276)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(276)
 msgctxt "HOLNewGameScreen,Catastrophe"
 msgid "Catastrophe"
 msgstr "Catastrophe"
 
-#. Key:	Greyed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(221)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(221)
-msgctxt "HOLNewGameScreen,Greyed"
-msgid "Grisé : pas encore dans le jeu (IA, factions, équipes, mode et options)."
-msgstr "Greyed out: not in the game yet (AI, factions, teams, mode and options)."
+#. Key:	GreyedTeamsOpen
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(279)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(279)
+msgctxt "HOLNewGameScreen,GreyedTeamsOpen"
+msgid "Grisé : pas encore dans le jeu (IA, factions, mode et options)."
+msgstr "Greyed out: not in the game yet (AI, factions, mode and options)."
 
 #. Key:	Back
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(228)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(228)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(286)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(286)
 msgctxt "HOLNewGameScreen,Back"
 msgid "Retour"
 msgstr "Back"
 
 #. Key:	ReadyAction
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(229)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(229)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(287)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(287)
 msgctxt "HOLNewGameScreen,ReadyAction"
 msgid "Prêt"
 msgstr "Ready"
 
 #. Key:	Launch
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(231)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(231)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(289)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(289)
 msgctxt "HOLNewGameScreen,Launch"
 msgid "Lancer"
 msgstr "Start"
 
 #. Key:	LeaveLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(360)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(360)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(424)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(424)
 msgctxt "HOLNewGameScreen,LeaveLobby"
 msgid "Quitter le salon"
 msgstr "Leave the lobby"
 
 #. Key:	LobbyGreyed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(368)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(368)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(432)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(432)
 msgctxt "HOLNewGameScreen,LobbyGreyed"
 msgid "Grisé : pas encore dans le jeu (factions, mode) ; seul le chef règle la carte, les options et les emplacements."
 msgstr "Greyed out: not in the game yet (factions, mode); only the lobby leader sets the map, the options and the slots."
 
 #. Key:	AI
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(45)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(45)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(47)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(47)
 msgctxt "HOLNewGameScreen,AI"
 msgid "IA"
 msgstr "AI"
 
 #. Key:	Closed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(45)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(45)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(47)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(47)
 msgctxt "HOLNewGameScreen,Closed"
 msgid "Fermé"
 msgstr "Closed"
 
 #. Key:	Human
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(45)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(45)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(47)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(47)
 msgctxt "HOLNewGameScreen,Human"
 msgid "Humain"
 msgstr "Human"
 
 #. Key:	Leader
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(458)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(458)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(526)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(526)
 msgctxt "HOLNewGameScreen,Leader"
 msgid "♛ {0}"
 msgstr "♛ {0}"
 
-#. Key:	NotReadyAction
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(497)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(497)
-msgctxt "HOLNewGameScreen,NotReadyAction"
-msgid "Plus prêt"
-msgstr "Not ready"
-
-#. Key:	Starting
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(508)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(508)
-msgctxt "HOLNewGameScreen,Starting"
-msgid "Lancement…"
-msgstr "Starting…"
-
 #. Key:	DawnOrder
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(52)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(52)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(54)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(54)
 msgctxt "HOLNewGameScreen,DawnOrder"
 msgid "Ordre de l'Aube"
 msgstr "Order of the Dawn"
 
 #. Key:	BlackLegions
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(53)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(53)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(55)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(55)
 msgctxt "HOLNewGameScreen,BlackLegions"
 msgid "Légions Noires"
 msgstr "Black Legions"
 
 #. Key:	DragonChildren
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(54)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(54)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(56)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(56)
 msgctxt "HOLNewGameScreen,DragonChildren"
 msgid "Enfants du Dragon"
 msgstr "Children of the Dragon"
 
+#. Key:	NotReadyAction
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(566)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(566)
+msgctxt "HOLNewGameScreen,NotReadyAction"
+msgid "Plus prêt"
+msgstr "Not ready"
+
 #. Key:	ShadowCircle
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(55)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(55)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(57)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(57)
 msgctxt "HOLNewGameScreen,ShadowCircle"
 msgid "Cercle de l'Ombre"
 msgstr "Circle of Shadow"
 
+#. Key:	Starting
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(577)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(577)
+msgctxt "HOLNewGameScreen,Starting"
+msgid "Lancement…"
+msgstr "Starting…"
+
 #. Key:	FireHeirs
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(56)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(56)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(58)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(58)
 msgctxt "HOLNewGameScreen,FireHeirs"
 msgid "Héritiers du Feu"
 msgstr "Heirs of Fire"
 
 #. Key:	Templars
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(57)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(57)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(59)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(59)
 msgctxt "HOLNewGameScreen,Templars"
 msgid "Templiers"
 msgstr "Templars"
 
 #. Key:	NoTeam
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(63)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(63)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(65)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(65)
 msgctxt "HOLNewGameScreen,NoTeam"
 msgid "Aucune"
 msgstr "None"
 
-#. Key:	NoMatchAddress
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(735)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(735)
-msgctxt "HOLNewGameScreen,NoMatchAddress"
-msgid "Adresse du serveur de partie introuvable."
-msgstr "Match server address not found."
-
 #. Key:	RandomColour
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(79)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(79)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(81)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(81)
 msgctxt "HOLNewGameScreen,RandomColour"
 msgid "Aléatoire"
 msgstr "Random"
+
+#. Key:	NoMatchAddress
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(882)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(882)
+msgctxt "HOLNewGameScreen,NoMatchAddress"
+msgid "Adresse du serveur de partie introuvable."
+msgstr "Match server address not found."
 
 #. Key:	ColumnHint
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLScreen.cpp(105)

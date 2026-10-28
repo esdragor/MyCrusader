@@ -39,6 +39,10 @@ public sealed partial class VersionStore(string root)
     public static bool IsValidName(string? name) =>
         name != null && NamePattern().IsMatch(name) && name.Trim('.').Length > 0;
 
+    /** D481: the name in latest.txt if that version's folder is there, else null (nothing published). */
+    public string? LatestName() =>
+        ReadName(Path.Combine(Root, "latest.txt")) is { } version && Directory.Exists(Path.Combine(Root, version)) ? version : null;
+
     public LatestVersion Latest()
     {
         var version = ReadName(Path.Combine(Root, "latest.txt"));

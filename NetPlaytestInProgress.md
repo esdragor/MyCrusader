@@ -1493,3 +1493,89 @@ R8, R9.
   Fusion de `main` 6cddb93 (ferme IA1.2) sans conflit : build, recuisson (`-StageOnly`), tests **218/218**, menu,
   `net` (+ hero sheets), `lobby`, `-Rejoin` **PASS** → a416b75. Accords IA (1f) et Héros (bc) → **`main` avancée à
   a416b75**. **Suite : R8** (mise en place chez les amis, avec l'utilisateur).
+- 2026-10-27 : **R8 redécoupé** (« go » de l'utilisateur) : le lanceur (D475-D482) remplace R8.1-R8.5 (amis par le kit,
+  la box, DuckDNS et la clé ; plus de Tailscale ni de zip pour eux). Reste : **R8a serveur par version** (D481, confié
+  ici) ; **R8b** publication d'une version à jour (moteur Hazelight + R7) ; **R8c** mesure à 4 puis 8 clients (débit
+  montant, au repos) ; **R8d essai E5** avec un ami par la box (avec l'utilisateur). R8a en boucles : **B1** gestionnaire
+  (version relue à chaque nouveau salon depuis `Versions\latest.txt`, partie lancée depuis `Servers\<v>\`, repli sur
+  `ServerExe`) ; **B2** `publish.ps1` copie `WindowsServer\` dans `Servers\<v>\` + nettoyage d'une ancienne version à la
+  fin de sa dernière partie ; **B3** bout à bout (deux versions, partie en cours sur l'ancienne, nouvelle sur la
+  nouvelle). **B1 lancée.**
+- 2026-10-27 ~20:55 : **passage à une autre session** (demande de l'utilisateur). **R8a B1 lancée vers 20:51** (sous-agent,
+  Glorfindel, non commitée) : peut être coupée en route. **Reprise exacte** : (1) `git -C
+  C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel status` et `diff` (fichiers attendus sous `Manager\` : réglage
+  `ServersDir`, version par salon lue dans `Versions\latest.txt` à la création, refus d'un client d'une autre version que
+  celle du salon, partie lancée depuis `Servers\<v>\HeroesOfLibertyServer.exe` sinon `ServerExe`, `PROTOCOL.md`, tests
+  xUnit (a)-(e)) ; (2) `dotnet test` des projets `Manager` (≈ 27 + 141 + 24 + 259) deux fois ; (3) finir B1 si besoin
+  (test rouge d'abord), puis B2 (`publish.ps1` copie `WindowsServer\` dans `Servers\<v>\` ; nettoyage d'une ancienne
+  version à la fin de sa dernière partie) et B3 (bout à bout) ; (4) `main` a avancé à ab6ed0d (héros 4b, `net hero
+  sheets` aux PV exacts) : la fusionner dans `net-playtest` avant le commit de R8a ; commit après accord de
+  l'utilisateur, avance de `main` avec l'accord des sessions actives (Héros mycrusader-bc dans Celeborn, IA
+  mycrusader-1f dans Arwen). Ensuite R8b (publication), R8c (mesure 4 / 8 clients, au repos), R8d (essai E5 avec un ami).
+  Rappels de test : `-asdebugport=0` et `UE_SKIP_UBT_SDK_SETUP=1` sur tout Unreal lancé à la main ; après une fusion
+  qui touche une classe répliquée, `net_match.ps1 -StageOnly` avant `quick_check -Parts lobby`.
+- 2026-10-27 ~21:05 : **R8a B1 faite** (sous-agent, 13 min), Glorfindel, **non commitée**. `ManagerSettings.ServersDir`
+  (défaut `Servers`) et `ResolveServerExe(v)` (`<ServersDir>\<v>\HeroesOfLibertyServer.exe` s'il existe et que le nom
+  est valide, sinon `ServerExe`) ; `VersionStore.LatestName()` (`latest.txt`, si `<v>\` existe) ; `LobbyStore(...,
+  Func<string?>? latestVersion)` : `GameVersion` = dernière publiée sinon version de départ, relue à chaque appel ;
+  `Lobby.GameVersion` fixée à la création ; création contrôlée contre la dernière, entrée contre celle du salon
+  (`version_mismatch`) ; `IServerLauncher.Launch(..., gameVersion)`, journal « Starting the server of M (version v):
+  exe » ; `/status` = dernière ; `GET /lobbies` + `gameVersion` par salon (ajout, protocole 1) ; `PROTOCOL.md` à jour.
+  Tests `ServerPerVersionTests` (6) **rouges** (« Game version v1, served 2026-10-23-test », chemin, version vide,
+  `Expected "v1"`) puis vert ×2 : **265 + 141 + 24 + 27**. Fichiers : `ManagerSettings.cs`, `Program.cs`, `Lobby.cs`,
+  `LobbyStore.cs`, `LobbyViews.cs`, `IServerLauncher.cs`, `ProcessServerLauncher.cs`, `VersionStore.cs`,
+  `PROTOCOL.md`, `MatchFollowTests.cs`, `ServerPerVersionTests.cs` (nouveau).
+  **B2 (prochaine)** : nettoyage dans `LobbyStore.Sweep()` (~l. 445-454 : partie retirée quand `HasExited`) ou
+  `Housekeep()` : supprimer `Servers\<v>\` quand `v` n'est plus la dernière, qu'aucune partie suivie ni aucun salon vivant
+  n'a `v` (`LobbyStore.VersionsInUse()` sous le verrou) ; `publish.ps1` / `HOLPublish` copie `WindowsServer\` dans
+  `Servers\<v>\` **avant** d'écrire `latest.txt`. Puis B3, fusion de `main` (ab6ed0d), commit après accord.
+- 2026-10-27 ~21:15 : **R8a B2 lancée** (sous-agent, 15 min, Glorfindel, non commitée) : `HOLPublish` / `publish.ps1`
+  copie `WindowsServer\` dans `Servers\<v>\` avant d'écrire `latest.txt` ; le gestionnaire supprime `Servers\<v>\` d'une
+  ancienne version quand plus aucune partie suivie ni aucun salon vivant ne l'utilise. Tests rouges d'abord (xUnit).
+- 2026-10-27 ~21:30 : **R8a B2 faite** (sous-agent, 11 min), Glorfindel, **non commitée**. HOLPublish : `--server
+  <WindowsServer\>` + `--servers-dir` (ensemble ou pas du tout), contrôles d'abord (exe du serveur présent, `Servers\<v>`
+  absent), copie sans `.pdb` dans `Servers\<v>.tmp`, renommée juste avant le dossier de version puis `latest.txt` ;
+  nettoyée si échec ; `Prune` ne touche jamais `Servers\`. `publish.ps1` : `-ServersDir` (défaut
+  `Saved\Manager\Servers`), `-NoServer` (sinon FAIL sans `WindowsServer\`), PASS nomme le serveur. Gestionnaire :
+  `ServerCleaner` (nouveau) appelé par `HousekeepingService` hors du verrou ; `LobbyStore.VersionsInUse()` ; supprime
+  `Servers\<v>\` d'une version ni dernière ni utilisée depuis 1 min (`RetireDelay`, contre la course renommage /
+  `latest.txt`) ; jamais la dernière, ni `*.tmp`, ni un nom invalide ; échec (exe verrouillé) : un avertissement, nouvel
+  essai. Tests `ServerCopyTests` (6), `CommandLineTests` (+3), `ServerCleanupTests` (5) rouges puis verts ; vérifié par la
+  session principale : **270 + 141 + 33 + 27**. **B3 lancée** (sous-agent, 15 min) : bout à bout sans empaquetage, deux
+  fausses archives (`FakeServer` en `HeroesOfLibertyServer.exe`), `publish.ps1 -Archive`, gestionnaire publié par
+  `build_manager.ps1` sur un port et un dossier à part.
+- 2026-10-27 ~21:50 : **R8a B3 faite** (sous-agent, ~14 min), Glorfindel, **non commitée**, aucun bug, aucun code changé.
+  Vrai `HOLManager.exe` (port 7791, dossier à part), vrai `publish.ps1 -Archive`, deux fausses archives (`FakeServer` en
+  `HeroesOfLibertyServer.exe`, faux `.pdb`), `ServerExe` sur un leurre. Vu : `Servers\b3-v1\` sans `.pdb` ; `/status` =
+  `latest.txt` ; partie v1 lancée depuis `Servers\b3-v1\` ; v2 publiée pendant la partie v1 : `/status` v2, client v1
+  refusé (`409 version_mismatch`), partie v2 depuis `Servers\b3-v2\` ; v2 republiée : refus propre ; `Servers\b3-v1\` gardé
+  tant que sa partie et son salon vivent, supprimé 61 s après (« ServerCleaner: Server of version b3-v1 deleted »),
+  `Servers\b3-v2\` gardé. Script gardé : `Tools\Manager\server_versions_check.ps1` (~4 min, PASS / FAIL, `-NoBuild`,
+  `-Port`, arrête ses processus par pid). 0 processus laissé. **R8a fini, non commité.** Suite : accord de l'utilisateur →
+  commit sur `net-playtest`, fusion de `main` (ab6ed0d, héros 4b), build, `-StageOnly`, parties touchées (tests, net,
+  lobby), `-Rejoin`, avance de `main` avec l'accord des sessions ; puis R8b (publication réelle).
+- 2026-10-27 ~22:05 : accord de l'utilisateur (« go ») → **commit fbe2862** (R8a B1-B3) sur `net-playtest` ; contrôle
+  `server_versions_check.ps1` relancé par la session principale : **PASS** (`Servers\b3-v1` supprimé après 62 s). Fusion
+  de `main` 6fdb7be (héros 4b + **tailles de carte**, Elrond, qui touche aussi le gestionnaire) : conflits
+  `LobbyViews.cs` (`gameVersion` + `map` / `size` gardés), `LobbyStore.cs` (`GameVersion` + `Size` ;
+  `Launch(matchId, map.File(size), config, lobby.GameVersion)`), `PROTOCOL.md` (les deux) ; faux lanceur de
+  `LobbyMapSizeTests` mis à la signature avec version. C# **280 + 141 + 33 + 27** ×2. En cours (non commité) : build,
+  `-StageOnly`, `quick_check -Parts tests,sizes,net,lobby`, `lobby_match -Rejoin`, `server_versions_check`.
+- 2026-10-27 ~21:38 : vérifs après fusion : build PASS, `-StageOnly` PASS, `tests` **232/232**, `net` + `net hero sheets`
+  **PASS** ; `lobby` FAIL (« no lobby created by Alice on Petite ») et `-Rejoin` FAIL (« waitlog map Plain Large teams
+  together ») : **gestionnaire publié périmé** (`Saved\Manager\HOLManager.exe` construit par B3 avant la fusion, sans les
+  tailles de carte ; `lobby_match` le prend tel quel). Reconstruit à 21:36 par `server_versions_check` ; `lobby` et
+  `-Rejoin` à relancer. Idée : `-Parts lobby` signale un gestionnaire plus vieux que `Manager\HOLManager\*.cs`, comme le
+  serveur cuit.
+- 2026-10-27 ~22:00 : `lobby` **PASS** (190 s) et `lobby_match -Rejoin` **PASS** avec le gestionnaire reconstruit,
+  `server_versions_check` **PASS** sur le code fusionné → **commit de fusion e60baee**, puis fusion de `main` 41ffc86
+  (doc : `CLAUDE.md` du projet, EtapeDefini à chaque avancée) → **dd1e708** ; `main` est ancêtre (avance rapide possible,
+  22 fichiers : `Manager\`, `publish.ps1`, `server_versions_check.ps1`). Accord demandé aux sessions actives
+  (mycrusader-7f, -52, -fc, -b8). Suite : avance de `main`, puis R8b (publication réelle, demande la machine calme).
+- 2026-10-27 ~22:10 : accords des quatre sessions actives (victoire 7f, tailles de carte / étape M b8, IA fc, Héros 52)
+  → **`main` avancée à dd1e708** (avance rapide, copie principale). **R8a clos, dans `main`.** Glorfindel garde
+  `net-playtest` (= `main`) pour R8b. **Suite : R8b** publication réelle d'une version à jour (moteur Hazelight + R7 +
+  R8a : `publish.ps1` sans `-Archive`, donc `package.ps1`, 1,5 à 5 min, tient le verrou d'AutomationTool : machine calme,
+  demander le moment à l'utilisateur ; vérifier `Servers\<v>\` et sa taille, `/status`, un salon ouvert sur la version).
+  Puis R8c (mesure 4 / 8 clients, au repos), R8d (essai E5 avec un ami). À retenir : reconstruire le gestionnaire
+  (`build_manager.ps1`) avant `-Parts lobby` après toute fusion qui touche `Manager\`.

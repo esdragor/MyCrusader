@@ -195,8 +195,14 @@ void UHOLProductionSubsystem::ApplyOrders()
 
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
-			// On the building itself: no rally point any more (the units are born at its foot, D283).
-			if (Building->IsOnBody(Order.Location))
+			// On the building itself: no rally point any more (the units are born at its foot, D283); with Shift (a step added,
+			// EtapeDefini N.1), nothing.
+			if (Order.bQueue && Building->HasRallyPoint() && Building->IsOnBody(Order.Location))
+			{
+				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d added no step to the rally point of %s: on the building itself"), Order.PlayerIndex,
+					*Building->GetTypeName().ToString());
+			}
+			else if (Building->IsOnBody(Order.Location))
 			{
 				Building->ClearRallyPoint();
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d cleared the rally point of %s"), Order.PlayerIndex, *Building->GetTypeName().ToString());
@@ -214,11 +220,29 @@ void UHOLProductionSubsystem::ApplyOrders()
 				}
 				const FVector Point = Site ? Site->GetActorLocation() : Order.Location;
 				const int32 SourceIndex = Site ? INDEX_NONE : Order.SourceIndex;
-				Building->SetRallyPoint(Point, SourceIndex, Site);
-				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d set the rally point of %s at (%.0f, %.0f)%s"), Order.PlayerIndex,
-					*Building->GetTypeName().ToString(), Point.X, Point.Y,
-					Site ? *FString::Printf(TEXT(", on site %s"), *Site->GetTypeName().ToString())
-					: SourceIndex != INDEX_NONE ? *FString::Printf(TEXT(", on source %d"), SourceIndex) : TEXT(""));
+				const FString OnWhat = Site ? FString::Printf(TEXT(", on site %s"), *Site->GetTypeName().ToString())
+					: SourceIndex != INDEX_NONE ? FString::Printf(TEXT(", on source %d"), SourceIndex) : FString();
+				// Shift (EtapeDefini N.1, AoE4): a step at the end of the rally point, MaxRallySteps at most; the first one is the
+				// rally point itself.
+				if (Order.bQueue && Building->HasRallyPoint())
+				{
+					if (Building->AddRallyStep(Point, SourceIndex, Site))
+					{
+						UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d added step %d to the rally point of %s at (%.0f, %.0f)%s"), Order.PlayerIndex,
+							Building->GetNumRallySteps(), *Building->GetTypeName().ToString(), Point.X, Point.Y, *OnWhat);
+					}
+					else
+					{
+						UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d cannot add a step to the rally point of %s (%d steps at most)"), Order.PlayerIndex,
+							*Building->GetTypeName().ToString(), AHOLBuilding::MaxRallySteps);
+					}
+				}
+				else
+				{
+					Building->SetRallyPoint(Point, SourceIndex, Site);
+					UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d set the rally point of %s at (%.0f, %.0f)%s"), Order.PlayerIndex,
+						*Building->GetTypeName().ToString(), Point.X, Point.Y, *OnWhat);
+				}
 			}
 			continue;
 		}
@@ -319,6 +343,14 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			Request.MoveTarget = Building->GetRallyPoint();
 			Request.GatherSource = Building->HasRallyPoint() ? Building->GetRallySource() : INDEX_NONE;
 			Request.BuildSite = Building->HasRallyPoint() ? Building->GetRallySite() : nullptr;
+			// Its steps before the last one (EtapeDefini N.1): passed first, in order.
+			for (int32 Step = 0; Building->HasRallyPoint() && Step < Building->GetRallyWaypoints().Num(); ++Step)
+			{
+				FHOLUnitSpawnWaypoint& Waypoint = Request.Waypoints.AddDefaulted_GetRef();
+				Waypoint.Point = Building->GetRallyWaypoints()[Step].Point;
+				Waypoint.GatherSource = Building->GetRallyWaypoints()[Step].Source;
+				Waypoint.BuildSite = Building->GetRallyWaypointSite(Step);
+			}
 			Units->RequestUnits(Request);
 			++NumBorn;
 			if (UHOLMatchStatsSubsystem* MatchStats = World->GetSubsystem<UHOLMatchStatsSubsystem>())
@@ -378,7 +410,8 @@ FVector UHOLProductionSubsystem::GetBirthLocation(const AHOLBuilding& Building, 
 	// Without one, below the building on the screen: the camera never turns and looks along +X for every player (D254),
 	// so this side is never hidden behind the building (user's choice in J3).
 	FVector Forward(-1.0, 0.0, 0.0);
-	const FVector ToRally = (Building.GetRallyPoint() - Origin) * FVector(1.0, 1.0, 0.0);
+	// Its first step, for a rally point in several (EtapeDefini N.1).
+	const FVector ToRally = (Building.GetRallyFirstPoint() - Origin) * FVector(1.0, 1.0, 0.0);
 	const bool bTowardRally = Building.HasRallyPoint() && ToRally.Size() > HalfFootprint;
 	if (bTowardRally)
 	{
