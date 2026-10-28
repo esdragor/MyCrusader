@@ -55,6 +55,15 @@ if ($Rejoin) {
 if (-not (Test-Path $ServerExe)) { Write-Host "lobby_match : FAIL (no $ServerExe; run Tools\Tests\net_match.ps1 -Stage)"; exit 1 }
 $TestSaved = Join-Path $Project "Saved_Tests"
 $Work = Join-Path $TestSaved "LobbyMatch"
+# 2026-10-28: after the end, the players stay in the finished match as long as they want; the server quits only once
+# empty. The staged server is started through a .cmd (the manager takes no extra server arguments) that sets the old
+# "quit N s after the end" cvar to 5 s, if it still exists: Alice, staying ~70 s, must still find the server running.
+if (-not $Rejoin) {
+    $StagedServerExe = $ServerExe
+    $ServerExe = Join-Path $Work "staged_server.cmd"
+    New-Item -ItemType Directory -Force $Work | Out-Null
+    "@`"$StagedServerExe`" %* -ExecCmds=`"hol.Net.QuitAfterFinished 5`"" | Set-Content -Encoding ascii $ServerExe
+}
 $Logs = Join-Path $TestSaved "Logs"
 New-Item -ItemType Directory -Force $Work, $Logs | Out-Null
 $ManagerLog = Join-Path $Work "manager.log"
@@ -72,7 +81,9 @@ $BobChecked = Join-Path $Work "bob_checked.signal"
 # Bob gives up only once Carol is in (up to 180 s on a loaded machine): Alice waits for this signal before her end
 # banner, a waitlog lasting 60 s at most (2026-10-26: Alice timed out 15 s before Bob's surrender).
 $BobGivesUp = Join-Path $Work "bob_gives_up.signal"
-Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp -ErrorAction SilentlyContinue
+# 2026-10-28: Alice signals once she has stayed ~70 s in the finished match (still connected): the server must still run.
+$AliceStayed = Join-Path $Work "alice_stayed.signal"
+Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp, $AliceStayed -ErrorAction SilentlyContinue
 $Colours = @{ Alice = 2; Bob = 5 }
 
 # A free TCP port from 7790 (another copy's manager may hold 7700).
@@ -125,7 +136,7 @@ $StatsAfter = @("waitlog End banner: lobby match", "hol.Stats.Dump", "waitlog St
 # nobody keeps a slot after the end, M6-Q14; she goes back once Bob is back and checked), the banner still there with no countdown; she closes it
 # (« Continuer à regarder »), opens the statistics from the game screen's « Statistiques », closes them, then opens the
 # in-game menu (« Menu ») and goes back by its « Retour au salon » ($Back from its third step).
-$StayAfterEnd = @("wait 35", "wait 36", "frames 3", "capture lobby_match_end_late") + (& $Press ContinueButton) + @("waitlog End banner: closed", "frames 3",
+$StayAfterEnd = @("wait 35", "wait 36", "signal $AliceStayed", "frames 3", "capture lobby_match_end_late") + (& $Press ContinueButton) + @("waitlog End banner: closed", "frames 3",
     "hol.HUD.Click StatsButton", "waitlog Stats screen: opened", "frames 5") + (& $Press BackButton) + @("waitlog Stats screen: closed", "frames 3",
     "hol.HUD.Click MenuButton", "waitlog Game menu: opened", "waitui", "frames 3", "capture lobby_match_game_menu_end")
 
@@ -305,7 +316,8 @@ try {
     $Games.Bob = Start-Game Bob (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3") +
         (& $Press JoinButton0) + (& $Pick Bob 1) + @("waitlog 2/2 ready", "wait 0.5", "capture lobby_match_lobby") +
         (& $InMatch Bob) + @("waitfile $CarolIn 180", "hol.Stats.Dump", "waitlog Stats: the server refused", "wait 2", "signal $BobGivesUp", "hol.Victory.Surrender") +
-        $StatsAfter + $Back[2..($Back.Count - 3)] + @("signal $BobBack", "waitfile $AliceBack 240") + $Back[($Back.Count - 2)..($Back.Count - 1)])
+        # 2026-10-28: Bob stays 10 s in the lobby once Alice is back (3 s raced the read of the lobby below, 2 s after both are back).
+        $StatsAfter + $Back[2..($Back.Count - 3)] + @("signal $BobBack", "waitfile $AliceBack 240", "wait 10", "quit"))
 
     # R5.3: Carol, once the match is under way (state "in_game" at the manager), sees the lobby in the list, presses
     # « Regarder », reaches the match as a spectator and captures it; she stays until well after the end (what she gets is noted).
@@ -337,8 +349,14 @@ try {
     $Deadline = (Get-Date).AddSeconds(420)
     $After = $null
     $BobFirst = $null
+    $ServersAfterStay = $null
     while ((Get-Date) -lt $Deadline) {
         Start-Sleep -Seconds 1
+        # 2026-10-28: Alice still in the finished match ~70 s after its end (past the old 5 s set by staged_server.cmd).
+        if ($null -eq $ServersAfterStay -and (Test-Path $AliceStayed)) {
+            $ServersAfterStay = (Get-OurServers).Count
+            Write-Host "  Alice stayed in the finished match: $ServersAfterStay server(s) of this copy running"
+        }
         if (-not (Test-Path $MatchOver) -and (Test-Log Carol "End banner: MatchOver")) { "over" | Set-Content -Encoding ascii $MatchOver }
         # M6-Q14: Bob back first, Alice (the leader) still in the finished match: Bob alone, no line kept for Alice, Alice still leader.
         if (-not $BobFirst -and (Test-Path $BobBack)) {
@@ -367,6 +385,10 @@ try {
     if ($ServerLog) { Write-Host "  server log $($ServerLog.FullName):"; Select-String -Path $ServerLog.FullName -Pattern "LogHOL\w+: .*(Bob|Alice|holds slot|spectator|Surrender|finished|winner|quit|empty|refused)" | Select-Object -Last 20 | ForEach-Object { Write-Host "    $($_.Line)" } }
     if ($After) { $After.slots | Where-Object { $_.playerName } | ForEach-Object { Write-Host "  manager after: $($_.playerName) colour $($_.colorIndex) ready $($_.ready)" }; Write-Host "  manager after: state $($After.state)" }
 
+    # 2026-10-28: the server quits only once empty, never N s after the end with players still in.
+    if ($ServerLog -and (Select-String -Path $ServerLog.FullName -Pattern "Server quits: .*after the end of the match" -Quiet)) { $Failure = "the server quit after the end of the match with Alice still in ('" + (Select-String -Path $ServerLog.FullName -Pattern "Server quits: " | Select-Object -First 1).Line + "')" }
+    elseif ($null -eq $ServersAfterStay) { $Failure = "Alice never signalled her stay in the finished match" }
+    elseif ($ServersAfterStay -lt 1) { $Failure = "no server running once Alice stayed ~70 s in the finished match (still connected)" }
     foreach ($Who in "Alice", "Bob") {
         if ($Failure) { break }
         $L = $Lines[$Who]

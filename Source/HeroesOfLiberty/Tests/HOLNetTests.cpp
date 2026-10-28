@@ -937,14 +937,13 @@ bool FHOLNetServerQuitTest::RunTest(const FString& Parameters)
 	// R3.8 (M6-Q9): one match per server; a server launched by the manager quits by itself.
 	using EQuit = FHOLManagerRules::EQuit;
 	auto Check = [this](const TCHAR* What, const EQuit Got, const EQuit Expected) { TestEqual(What, (int32)Got, (int32)Expected); };
-	Check(TEXT("managed, empty after the start: quits"), FHOLManagerRules::ShouldQuit(true, true, 0, -1.0, 120.0), EQuit::Empty);
-	Check(TEXT("managed, empty before the start (waiting for players): stays"), FHOLManagerRules::ShouldQuit(true, false, 0, -1.0, 120.0), EQuit::None);
-	Check(TEXT("managed, players in the match: stays"), FHOLManagerRules::ShouldQuit(true, true, 2, -1.0, 120.0), EQuit::None);
-	Check(TEXT("managed, finished 60 s ago with players: stays"), FHOLManagerRules::ShouldQuit(true, true, 2, 60.0, 120.0), EQuit::None);
-	Check(TEXT("managed, finished 120 s ago with players: quits"), FHOLManagerRules::ShouldQuit(true, true, 2, 120.0, 120.0), EQuit::Finished);
-	Check(TEXT("managed, finished and empty: quits at once"), FHOLManagerRules::ShouldQuit(true, true, 0, 5.0, 120.0), EQuit::Empty);
-	Check(TEXT("not managed (solo, tests, net_match.ps1), empty after the start: stays"), FHOLManagerRules::ShouldQuit(false, true, 0, -1.0, 120.0), EQuit::None);
-	Check(TEXT("not managed, finished long ago: stays"), FHOLManagerRules::ShouldQuit(false, true, 2, 600.0, 120.0), EQuit::None);
+	// 2026-10-28: only once empty; after the end, the players stay in the finished match as long as they want.
+	Check(TEXT("managed, empty after the start: quits"), FHOLManagerRules::ShouldQuit(true, true, 0), EQuit::Empty);
+	Check(TEXT("managed, empty before the start (waiting for players): stays"), FHOLManagerRules::ShouldQuit(true, false, 0), EQuit::None);
+	Check(TEXT("managed, players in the match or in the finished match, however long: stays"), FHOLManagerRules::ShouldQuit(true, true, 2), EQuit::None);
+	Check(TEXT("managed, one player left: stays"), FHOLManagerRules::ShouldQuit(true, true, 1), EQuit::None);
+	Check(TEXT("not managed (solo, tests, net_match.ps1), empty after the start: stays"), FHOLManagerRules::ShouldQuit(false, true, 0), EQuit::None);
+	Check(TEXT("not managed, players: stays"), FHOLManagerRules::ShouldQuit(false, true, 2), EQuit::None);
 	return true;
 }
 
