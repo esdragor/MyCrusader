@@ -1009,6 +1009,10 @@ if ($Parts -contains "camera") {
             Step "waitlog queued Peasant (3 in", "frames 5", "hol.HUD.Report", "capture prod_queue"
             Step "hol.HUD.Click QueueItem2", "waitlog cancelled Peasant", "waitlog (2 born here)", "frames 10", "hol.HUD.Report", "hol.Prod.Report", "capture prod_done",
                 "hol.Prod.BuildTime 0"
+            # Its centre let go (Escape with it selected: no menu): the next part's click on it logs a new selection, which
+            # a click on the centre already selected never writes (-Parts production,build without -Full stopped there).
+            Key Escape
+            Step "waitlog Selection: none"
         }
         if (($Parts -contains "move") -and $Case.Name -eq "2p") {
             # Paths (J4, D286), on the navmesh of Plain with the centre of slot 0 made at run time: through that
