@@ -1293,7 +1293,7 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 | J8a.2 Naissance et contrôle | Un par joueur au lancement près du forum (J8a-Q2) ; comportement de soldat (J8a-Q4) ; F4 (deux fois : caméra) ; fabrication Unreal (`SKM_Hero`, gestes de l'Homme d'armes) | oui | **fait** (2026-10-27 ; F4 contrôlé par `build:hero`) |
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | **fait** (2026-10-27 ; de72042, 75a0667, 4c8b82b ; recopie au retour par R7.10 a416b75) |
 | J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | **fait** (2026-10-27 ; 7263184 : règles et décision en script, achat `hol.Hero.Return`, `net hero return`, alerte ; essai validé) |
-| J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | — |
+| J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | **fait** (2026-10-28 ; aa0f11f : écran de jeu en script `UHOLScriptScreen`, module d’interface Runtime, bloc en bas à gauche, `NSLOCTEXT` en script ; essai validé) |
 | J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | — |
 
 - Écartés : **deux essais** (scénario de plus, pause au milieu) ; **le retour en Angelscript d'abord** (bouchons partout,
@@ -7700,3 +7700,240 @@ d'épée).
   réponses J8a4-Q1 à Q7 (D-numéros) à la clôture de J8a. Suite : J8a.5 (bloc du héros : portrait, niveau, PV, bouton
   « Ramener le héros » et prix affiché `PriceAt(GetServerStep()+1, …)`) ; restes : IA et joueur absent en réseau,
   niveau > 1 (pas d'XP). Celeborn reste à la session Héros (hero-j8a3 = main 7263184).
+- (J8a.5, 2026-10-28) **J8a.5 ouverte** (bloc du héros : portrait, niveau, PV, délai et prix pendant la mort, bouton
+  « Ramener le héros », XP et capacités grisées ; textes fr / en / ja ; captures hors écran). Celeborn toujours à la
+  session Héros (hero-j8a3 = main 20e8f8a). Relevé du HUD et plan en boucles lancés (sous-agent en lecture seule) ;
+  ensuite questions J8a5-Q* une à une.
+- (J8a.5, 2026-10-28) main avancé à 9364046 par NetPlaytest (deux scripts de test seulement : `upload_measure.ps1`,
+  `net_match.ps1 -Report`) ; Celeborn la fusionnera avant le code de J8a.5.
+- (J8a.5, 2026-10-28) **Relevé du HUD et plan de J8a.5 faits** (sous-agent en lecture seule, Celeborn 20e8f8a). HUD en
+  C++ construit en code (`UHOLGameScreen::BuildLayout`, `HOLGameScreen.cpp:2368-2899`) ; **pas de mini-carte**, seule
+  sa place `MinimapPlace` 240 × 240 en bas à droite (`:2885`) ; rafraîchi par délégués et `NativeTick` (4 fois/s) ;
+  `AHOLGameState::OnHeroSheetsChanged` existe, personne ne l'écoute ; `hol.HUD.Report` / `hol.HUD.Click` (ClickWidget)
+  pour tester ; aucun portrait ni icône d'unité (seules `T_Icon_Ally/Enemy` par `make_ui_icons.py`) ; clic portrait =
+  `AHOLPlayerController::SelectHero()` (F4) ; PV max du héros = ligne `Hero` (450) ; `PriceAt` en script, pas appelable
+  du C++ → `UHOLHeroReturnSubsystem::QuoteReturn(Slot, Step)` (BlueprintNativeEvent surchargé en script, permis chez
+  le client). **Obstacle** : `HeroesOfLibertyUI` est ClientOnly, le préprocesseur Angelscript n'a pas de drapeau
+  client : un `.as` qui nomme une classe d'UI casse le serveur dédié. Largeur : bloc au-dessus de la mini-carte (240 px)
+  n'élargit pas la barre ; à gauche il faudrait ~1 750 px.
+  **Plan en 6 boucles** : (1) devis `QuoteReturn` en script + tests `Test_QuoteMatchesPriceAt`, `Hero.ReturnQuote` ;
+  (2) règle pure `HOLHeroBlock::Make(...)` → vue (caché / vivant / mort / prêt) + `HOLHeroBlockTests.cpp` ; (3) contrôles
+  rouges dans `quick_check` (`build:hero` étendu : « HUD hero: … », clic portrait, mort, prix, achat, captures) ;
+  (4) widgets dans `BuildLayout`, `DescribeHero` dans `hol.HUD.Report`, clics `HeroPortrait` / `HeroReturnButton` ;
+  (5) réseau (`net hero return` lit le bloc chez les clients) ; (6) portrait, textes fr/en/ja, scénario
+  `hero_block`, fusion de main, essai. Risques : horloge du client (prix affiché ±1 or), `DeathStep` privé en retard
+  sur la fiche publique, conflits dans `HOLGameScreen.cpp` (autres chantiers), 720p (colonne de droite chevauche).
+  **Questions de J8a.5 (une à la fois)** :
+  - J8a5-Q1 place : A au-dessus de la mini-carte, 240 px, colonne de droite (recommandé) ; B à gauche de la mini-carte ;
+    C en haut à gauche sous les ressources.
+  - J8a5-Q2 portrait provisoire : A emblème PIL (bouclier au soleil d'or) sur la couleur du joueur (recommandé) ;
+    B rendu du buste de `SKM_Hero` ; C case texte « Héros ».
+  - J8a5-Q3 langage : A bloc en C++, prix et délai en script par `QuoteReturn` (recommandé) ; B widget en script ;
+    C migrer d'abord `HOLGameScreen` en script.
+  - J8a5-Q4 pendant la mort : A portrait assombri, barre vide, « Prêt dans 0:23 », puis bouton « Ramener le héros —
+    76 or » qui baisse (recommandé) ; B anneau sur le portrait ; C bouton grisé seul, délai dans son texte.
+  - J8a5-Q5 bouton : A un clic, grisé si or manquant ou forum à terre, avec infobulle (recommandé) ; B confirmation ;
+    C toujours cliquable, refus après coup.
+  - J8a5-Q6 clics du portrait : A comme F4 (recommandé) ; B vrai double clic < 0,3 s ; C un clic = sélection +
+    caméra ; mort : A rien (recommandé), B caméra sur le forum du retour.
+  - J8a5-Q7 sans héros : A bloc caché (spectateur, vaincu, jamais né) (recommandé) ; B grisé « Aucun héros » ;
+    C spectateur voit le joueur suivi.
+  - J8a5-Q8 XP et capacités : A barre d'XP vide + 3 cases grisées (recommandé) ; B barre d'XP seule ; C rien.
+- (J8a.5, 2026-10-28) **J8a5-Q1 tranchée, autre réponse de l'utilisateur** : le bloc du héros va **tout en bas à
+  gauche, au-dessus du bloc de sélection** (pas près de la mini-carte comme le dit le § 15 : à reporter au GDD à la
+  clôture de J8a). À régler en boucle 4 avec le panneau des groupes (`GroupsPanel`, en bas à gauche aussi).
+- (J8a.5, 2026-10-28) **J8a5-Q2 = A** : emblème dessiné en PIL (bouclier au soleil d'or) sur fond à la couleur du
+  joueur, par la chaîne de `make_ui_icons.py`. **J8a5-Q3 = C** (choix de l'utilisateur, contre la recommandation A) :
+  **migrer d'abord l'écran de jeu en Angelscript**, puis y faire le bloc du héros. Taille : `HOLGameScreen.cpp` 2 901
+  lignes (+ `.h` 25 Ko) ; dossier HUD 4 061 lignes ; module d'interface ~10 200 lignes (menu compris). À trancher
+  ensuite : étendue de la migration, puis serveur dédié (module d'interface ClientOnly).
+- (J8a.5, 2026-10-28) **J8a5-Q3b = C** (choix de l'utilisateur) : **squelette d'abord, puis au fil de l'eau** : un écran
+  de jeu en script qui héberge d'abord le seul bloc du héros ; le reste du HUD C++ y passe bloc par bloc au fil des
+  chantiers suivants (option D de D483). À trancher : serveur dédié (J8a5-Q3c). main avancé à 40108a6 par l'IA
+  (IA0.1 + IA0.4, cerveau d'IA en script ; clés `HOLGameScreen,AI*` dans `fill_po.py`) : à fusionner dans Celeborn.
+- (J8a.5, 2026-10-28) **Questions de J8a.5 tranchées** (choix de l'utilisateur) :
+  - J8a5-Q1 = autre réponse : **en bas à gauche, au-dessus du bloc de sélection**.
+  - J8a5-Q2 = A : emblème PIL (bouclier au soleil d'or) sur la couleur du joueur.
+  - J8a5-Q3 = C, Q3b = C : **écran de jeu en script, en squelette** qui héberge d'abord le seul bloc du héros ; le HUD
+    C++ y migre bloc par bloc au fil des chantiers suivants.
+  - J8a5-Q3c = A : **module d'interface chargé partout** (`HeroesOfLibertyUI` ClientOnly → Runtime dans le
+    `.uproject`) ; le serveur dédié compile les scripts d'interface sans jamais les afficher ; à vérifier sur le
+    serveur dédié.
+  - J8a5-Q4 = A : mort = portrait assombri, barre vide, « Prêt dans 0:23 » ; prêt = bouton « Ramener le héros — 76 or »
+    dont le prix baisse à vue.
+  - J8a5-Q5 = A : un clic paie ; grisé, prix en rouge et infobulle « Pas assez d'or » sans or ; grisé « Aucun forum
+    pour revenir » si pas de lieu.
+  - J8a5-Q6 = A : clics du portrait exactement comme F4 (`SelectHero`) ; mort : rien.
+  - J8a5-Q7 = C : caché pour un vaincu ou sans héros ; le **spectateur verra le héros du joueur suivi** quand le suivi
+    existera (caché pour lui d'ici là).
+  - J8a5-Q8 = A : barre d'XP vide et 3 cases de capacités grisées dès maintenant.
+  **Plan revu (script)** : (0) fusion de main e4884fc (pause refusée en réseau, IA0.4) dans Celeborn, compilation,
+  `-Parts tests` ; (1) module d'interface Runtime + vérification du serveur dédié (démarre, compile les scripts) ;
+  devis `QuoteReturn` (BlueprintNativeEvent surchargé en script) + tests ; (2) squelette : classe C++ abstraite
+  d'écran en script (module d'interface) créée par le HUD par nom de classe, posée en bas à gauche au-dessus de la
+  sélection, ligne `HUD hero:` de `hol.HUD.Report` écrite par le script ; (3) règle pure du bloc en script + tests en
+  script ; (4) contrôles rouges `quick_check` (`build:hero` étendu) ; (5) widgets en script (portrait, niveau, PV, XP,
+  3 cases, mort, bouton) ; (6) réseau (`net hero return` lit le bloc chez les clients) ; (7) emblème, textes fr/en/ja,
+  scénario `hero_block`, essai. Risques en plus : textes en script et GatherText (les `.as` à ajouter à la collecte ?),
+  widget en script dans Common UI, module d'interface sur le serveur (dépendances client).
+- (J8a.5, 2026-10-28) main à e4884fc (NetPlaytest : pause refusée en réseau, D361). **Boucles 0 et 1a lancées**
+  (sous-agent, Celeborn) : avance rapide de hero-j8a3 sur main, compilation, `-Parts tests` ; puis sonde en script qui
+  nomme une classe d'interface : rouge sur le serveur dédié (module ClientOnly), vert avec le module en Runtime,
+  `-Parts tests,net`.
+- (J8a.5, 2026-10-28) **Boucles 0 et 1a faites** (sous-agent ~27 min, au-delà des 15 : 5 min d'attente dans la file de
+  compilation ; Celeborn, non commitées). Boucle 0 : hero-j8a3 en avance rapide 20e8f8a → **06bc3ec** (main), compilation
+  PASS, `-Parts tests` **269/269**. Boucle 1a : le serveur de `quick_check` est l'éditeur en `-server
+  -as-exit-on-error` (ClientOnly non chargé) ; sonde `Script/UI/HOLUIProbe.as` (fonction qui renvoie `UHOLGameScreen`)
+  : **rouge** (« 'UHOLGameScreen' is not declared », le serveur quitte en 3 s, partie `net` rouge) ; nouveau contrôle
+  « server: scripts compiled » (partie `net`, `Get-ScriptErrors` sur le journal du serveur) ; **vert** :
+  `HeroesOfLibertyUI` en `"Type": "Runtime"` (`.uproject`, commentaire du `.Build.cs` ; aucune dépendance à changer),
+  serveur sans erreur de script, `-Parts tests,net` 224 s : 269/269, `net hero sheets`, `net hero return` PASS, **un
+  point rouge** « manager: empty once, last » (« empty » reçu avant « left Alice » : course de deux requêtes HTTP du
+  serveur vers le gestionnaire, famille d'aléa de NetPlaytest du 2026-10-27, a priori sans lien). Sonde gardée jusqu'au
+  vrai écran en script. À vérifier plus tard, machine calme : serveur empaqueté (cible Server qui lie maintenant
+  l'interface, `precompile_scripts.ps1` WindowsServer, `-Parts lobby` après recuisson). Avertissements de VS Code sur
+  `HOLHeroReturn.as` (divisions entières l. 32, 56, 74 : `Math::IntegerDivisionTrunc` à mettre).
+- (J8a.5, 2026-10-28) **Boucle 1b lancée** (sous-agent, Celeborn) : devis du retour en script (état, temps avant
+  prêt, prix au pas +1 comme l'achat, achat possible ou non, « inconnu » chez un client sans `DeathStep` ni pas
+  serveur), tests rouges puis verts ; `Math::IntegerDivisionTrunc` dans `HOLHeroReturn.as` ; relance de `-Parts net`
+  pour l'aléa « manager: empty once, last ».
+- (J8a.5, 2026-10-28) **Boucle 1b faite** (sous-agent ~14 min, deux compilations 59 et 36 s ; Celeborn, non commitée) :
+  devis du retour `Script/Hero/HOLHeroReturnQuote.as` (namespace `HOLHeroReturnQuote` : `Compute` pur, `Read(Slot,
+  Step)`, `ReadNow(Slot)`, `PlaceOf(Slot)` repris par `Buy` et `DecideSlot`) → `FHOLHeroReturnQuote` (C++ : état
+  `EHOLHeroReturnQuoteState` Unknown / Alive / Waiting / Ready, `TakeStep` = pas + 1 comme l'achat, `StepsToReady`,
+  `SecondsToReady` arrondi vers le haut, `Price` (-1 pas prêt), `Gold`, `bHasPlace`, `bCanBuy`) ; Unknown si le pas de
+  mort ou le pas serveur manque (jamais de prix inventé). Pont `HOLHero::GetSlotGold` (-1 inconnu : autre joueur chez
+  un client, IA sans stock). BlueprintNativeEvent `UHOLHeroReturnSubsystem::Quote` / `QuoteNow` (permis chez un
+  client) seulement pour le test C++ `Hero.ReturnQuote` (vraie chaîne : vivant, attente, prêt 150, devis 76 = prix
+  payé à 598 pas après le pas prêt, or court, IA sans stock, forum tombé). 5 tests en script
+  (`HOLHeroReturnQuote_Test.as`). Rouge (bouchons) 270/275, vert **275/275** (35 s). Divisions de `HOLHeroReturn.as`
+  en `Math::IntegerDivisionTrunc` (arrondi gardé). `-Parts net` PASS 207 s (l'aléa du gestionnaire ne revient pas).
+  À savoir : « prêt » du devis = un ordre envoyé maintenant serait accepté (un pas avant la fiche ReadyToReturn) ; cas
+  client réel non testé (à faire avec le bloc en `net`).
+- (J8a.5, 2026-10-28) **Boucle 2 lancée** (sous-agent, Celeborn) : squelette de l'écran de jeu en script (classe C++
+  de base abstraite dans le module d'interface, créée par `UHOLGameScreen`, script `Script/UI/…` avec un bloc du héros
+  minimal en bas à gauche au-dessus de la sélection, ligne `HUD hero:` de `hol.HUD.Report` écrite par le script) ;
+  rouge puis vert dans `build:hero`, puis `net` ; sonde `HOLUIProbe.as` retirée.
+- (J8a.5, 2026-10-28) **Boucle 2 faite** (sous-agent ~22 min, au-delà des 15 ; compilations 60, 26, 22 s ; Celeborn,
+  non commitée) : widget en script possible sans bricolage (`Bind_UUserWidget` : `ConstructWidget`, `SetRootWidget`…
+  dans `BlueprintOverride OnInitialized`). Nouvelle base C++ **`UHOLScriptScreen`** (`HUD/HOLScriptScreen.h/.cpp`,
+  `UUserWidget` abstrait) : `Describe()` et `ClickWidget(FName)` surchargeables, `Refresh()` 4 fois/s + `RefreshNow()`,
+  `GetLocalSlot()` (-1 spectateur), `MakePanel`, `MakeText`, `GetBottomLeftPlace()`, `FindScriptClass()` ;
+  `UHOLGameScreen` la crée en fin de `NativeOnInitialized`, en dernier dans `Frame`, traversable aux clics (journal
+  « Game screen: script part <classe|none> », rien ne change sans script), `ClickWidget` passe d'abord au script,
+  `DescribeScript()` ; `hol.HUD.Report` écrit une ligne `HUD <ligne>` par bloc du script. Ponts `HOLHero::GetHeroHealth`,
+  `GetHeroMaxHealth` (450). **`Script/UI/HOLGameScreenScript.as`** (`UHOLGameScreenScript`) : panneau « Niveau N / PV h
+  / m » en bas à gauche, au-dessus de la place des groupes, elle-même au-dessus de la sélection ; `hero: hidden / alive
+  level L hp H/M / dead / ready` ; caché pour spectateur, vaincu, état None. Sonde retirée. `build:hero` : rouge (aucune
+  ligne), puis `hidden` → `alive level 1 hp 450/450` (le rapport appelle `RefreshNow()` : pas d'image dessinée pendant
+  les attentes) ; `-Parts tests,build:hero` PASS 42 s (275/275), `-Parts net` PASS 197 s (clients avec l'écran en
+  script, serveur sans erreur de script). Capture `build_hero_block` vue par le sous-agent (rien ne chevauche), effacée
+  par le passage `net` d'après. Limites : pas de texte localisé littéral en script (`FText::FromString`,
+  `FromStringTable` seulement : textes en français en dur pour l'instant → table de chaînes en boucle 7) ;
+  `OnHeroSheetsChanged` pas visible du script (tick 4 fois/s gardé) ; statiques UFUNCTION d'une classe pas appelables
+  comme fonctions libres.
+  **Boucle 3 lancée** : vue pure du bloc en script (`HOLHeroBlock`) + tests en script ; `Describe` étendu (mort, prêt,
+  prix, achetable).
+- (J8a.5, 2026-10-28) **Boucle 3 faite** (sous-agent, sans compilation ; Celeborn, non commitée) :
+  `Script/UI/HOLHeroBlock.as` : `FHOLHeroBlockView` (visible, portrait assombri, niveau, PV et fraction, XP grisée,
+  3 capacités grisées, délai m:ss, bouton visible / actif, texte, prix, prix rouge, infobulle, `Describe`) et
+  `HOLHeroBlock::Make(bSpectator, bDefeated, State, Level, Health, MaxHealth, XP, Quote)` pure ; clés de texte
+  `HOLHeroBlockText` (`HeroBlock.Level`, `.Health`, `.ReadyIn`, `.Unknown`, `.Return`, `.NoGold`, `.NoPlace`, texte
+  français dans `Pattern(Key)` en attendant la table de chaînes). États : `hidden`, `alive level L hp H/M`, `dead ready
+  in S s`, `ready price P buyable / no gold / no place`, `unknown` (« … ») ; état tiré du devis, pas de lieu avant pas
+  d'or (prix pas rouge alors), or inconnu = pas d'or. `HOLGameScreenScript.as` s'en sert (3e ligne `HeroStatus` : délai,
+  « … » ou « Ramener le héros — P or », avec infobulle). 8 tests en script (`HOLHeroBlock_Test.as`, devis du vrai
+  `Compute`) : rouge 276/283, vert **283/283**, `-Parts tests,build:hero` PASS 44 s. Pas de pont XP. Non contrôlés en
+  partie : mort et prêt → boucle 4.
+- (J8a.5, 2026-10-28) **Boucle 4 faite, rouge comme prévu** (sous-agent ; `quick_check.ps1` seul ; Celeborn, non
+  commitée) : section `mark build hero return` jouée par le cas `build:hero` (Marks `hero`, `hero return`) :
+  `ReturnTimePercent 20`, or fixé à 500, `Kill 0`, rapports et captures `build_hero_dead` / `build_hero_ready`, or à 0
+  puis rendu, clic `HeroReturnButton`, deux clics `HeroPortrait`, nettoyage (100 %, héros retirés). Rapport « build
+  hero return » (le contrôle « both heroes removed » y passe). **Déjà vert** : `dead ready in 8 s` → `6 s` (borne de la
+  règle), mort au pas 91, prêt au pas 243 (= 91 + 152, exact), `ready price 149 buyable` → `no gold` → `buyable`.
+  **Rouge** : bouton (« bought for  gold, shown 149 ») et portrait (« selects him (none) ») : pas encore de widgets.
+  Égalité stricte codée entre prix affiché juste avant le clic et « bought for X » (à constater en boucle 5 avant toute
+  tolérance). Passage ~30 s.
+- (J8a.5, 2026-10-28) **Boucle 5 arrêtée au temps limite** (~20 min ; Celeborn, non commitée) : code écrit, rien de
+  vert. Base C++ `UHOLScriptScreen` : `MakeButton(Name)` (style `UHOLHUDButtonStyle`, jamais focusable, arrête les
+  clics), `SetButtonGreyed` (look grisé, bouton laissé actif, le script ignore le clic), `MakeBar(Name, Couleur)`,
+  `GetLocalColor()`, couleurs de texte ; `AHOLPlayerController::SelectHero()` et `RequestReturnHero()` en
+  `UFUNCTION(BlueprintCallable)`. `HOLGameScreenScript.as` réécrit : portrait `HeroPortrait` (carré 64 px à la couleur
+  du joueur, « H », 30 % et grisé mort), « Niveau N », barre de PV, « PV h / m », barre d'XP grisée, 3 cases grisées,
+  `HeroStatus`, bouton `HeroReturnButton` (libellé + prix, rouge sans or, infobulle) ; `OnClicked` et `ClickWidget`
+  par les mêmes `ClickPortrait()` / `ClickReturn()`. Seule compilation : 830 s, presque toute en file derrière une
+  autre copie, échec (`UButton::SetIsFocusable` inconnu → `InitIsFocusable(false)`, corrigé, pas recompilé).
+  **Leçon** : la compilation (file d'attente imprévisible) se lance par la session principale avant le sous-agent ;
+  le sous-agent part d'une compilation verte. Compilation relancée par la session principale.
+- (J8a.5, 2026-10-28) Compilation de la boucle 5 par la session principale : `InitIsFocusable` protégé aussi → `Button->
+  IsFocusable = false` entre `PRAGMA_DISABLE/ENABLE_DEPRECATION_WARNINGS` (avant la construction du widget Slate),
+  **PASS**. Boucle 5b lancée (sous-agent : script, `-Parts tests,build:hero`, captures, `net`).
+- (J8a.5, 2026-10-28) **Boucle 5 faite** (5b : sous-agent ~11 min, sans compilation ; Celeborn, non commitée) : erreurs
+  de script = statiques de `UHOLScriptScreen` à appeler `UHOLScriptScreen::X()` (classe sans suffixe « Library » →
+  espace de noms de la classe) ; liaisons jugées fragiles toutes bonnes ; avertissements retirés (`X::StaticClass()` →
+  `X`, noms masqués). `-Parts tests,build:hero` **PASS 36 s** (283/283, `build hero`, `build hero return`) : **prix
+  affiché 149 = prix pris 149** (« bought for 149 gold »), portrait : sélection puis caméra. `-Parts net` PASS 190 s.
+  Captures `build_hero_block / dead / ready` (`Saved_Tests\Screenshots\WindowsEditor\HOL\`) : rien ne chevauche ;
+  bouton plus large que les barres corrigé (barres 240 px, texte du bouton en style étiquette, panneau de la largeur
+  de la sélection). Barre d'XP grisée à peine visible (voulu). Reste : réseau (boucle 6), emblème, textes, essai.
+  **Boucle 6 lancée** (réseau : `net hero return` lit le bloc chez les clients).
+- (J8a.5, 2026-10-28) **Boucle 6 faite** (sous-agent ~14 min, `quick_check.ps1` seul, sans C++ ; Celeborn, non
+  commitée) : le serveur attend que les deux clients aient vu les héros nés (`quick_net_hero_born*.flag`) ; rapports
+  `hol.HUD.Report` des clients à chaque moment ; Bob achète par **`hol.HUD.Click HeroReturnButton`** (clic grisé sans
+  or : rien d'envoyé ; la console garde le refus « cannot pay »). Nouveau rapport **`net hero block`** : chaque client
+  voit son héros (`alive level 1 hp 450/450`, jamais `unknown`), Bob blessé 407/450 (PV du serveur), mort `dead ready
+  in 6 s` → `5 s` (1 ≤ S ≤ 8, décroissant), prêt `135 buyable`, sans or `123 no gold`, avec or `97 buyable` → « bought
+  for 97 », retour 450/450 ; Alice ne voit que son héros. Rouge exprès (niveau 2 attendu, 6 KO) puis vert (`-Parts
+  net` 203 s) ; `-Parts tests,build:hero` PASS 57 s. Bug de test corrigé au passage (`$Full` masquait le paramètre
+  `-Full` ; une autre affectation de `$Full` existe l. 2677, non touchée). **Prix affiché chez le client vs pris** :
+  95/95, 97/97, sans or 123/122 : écart de 0 à 1 or, en faveur du joueur (le client cote au pas estimé + 1, le serveur
+  prend à + 1 ou + 2) ; contrôle à |écart| ≤ 2. Piste non appliquée (C++) : l'ordre porte le prix vu, le serveur prend le
+  plus petit. → **J8a5-Q9** à poser : garantir « jamais plus cher que l'affiché » ?
+- (J8a.5, 2026-10-28) **J8a5-Q9 = B** (choix de l'utilisateur) : prix réseau laissé à 1 or près (rien à faire ; le
+  contrôle garde |écart| ≤ 2). **Boucle 7a lancée** : emblème du portrait (PIL, import, script).
+- (J8a.5, 2026-10-28) **Boucle 7a faite** (sous-agent ~16 min, sans C++ ; Celeborn, non commitée) : emblème
+  `T_Icon_HeroEmblem` (128 px, fond transparent, bouclier « heater » bord sombre, liseré d'or, champ blanc cassé,
+  soleil d'or à 12 rayons) ajouté à `Tools/Editor/make_ui_icons.py`, importé par l'éditeur sans fenêtre
+  (`Content/UI/Icons/T_Icon_HeroEmblem.uasset` ; Ally / Enemy réimportés sans changement remis par `git checkout`) ;
+  `/Game/UI/Icons` déjà cuit (`DefaultGame.ini:136`). Script : `HOLHeroBlock::LoadEmblem()` (`LoadObject` du plugin),
+  `UImage` `HeroPortraitEmblem` sur la couleur du joueur, mort ×0,3. Test `Test_HeroBlockEmblem` (pas vu rouge : asset
+  déjà importé). `-Parts tests,build:hero` PASS 49 s (284/284). Captures vues (emblème lisible, assombri mort).
+  **Boucle 7b lancée** : textes du bloc fr / en / ja.
+- (J8a.5, 2026-10-28) **Boucle 7b faite** (sous-agent ~24 min dont attentes ; sans C++ ; Celeborn, non commitée) :
+  **`NSLOCTEXT` marche en script** (`Bind_FText.cpp` : `NSLOCTEXT`, `FText::Format`, `FromStringTable`) et GatherText lit
+  les `.as` comme du C++ : `Config/Localization/Game.ini` + `SearchDirectoryPaths=Script/`, `FileNameFilters=*.as`
+  (`*/Tests/*` exclu). `HOLHeroBlockText::PatternText(Key)` → `NSLOCTEXT("HOLHeroBlock", …)` (7 clés, {0}/{1} remplacés
+  à la main : pas de groupement des nombres) ; `fill_po.py` : en « Level {0} », « HP {0} / {1} », « Ready in {0} »,
+  « Bring the hero back — {0} gold », « Not enough gold », « No Forum to return to » ; ja 「レベル {0}」「HP {0} / {1}」
+  「帰還まで {0}」「英雄を呼び戻す — {0} 金」「金が足りません」「帰還できる町の中心がありません」 (vocabulaire des .po). Collecte
+  sans éditeur : `UnrealEditor-Cmd.exe <uproject> -run=GatherText -config=<Celeborn>\Config\Localization\Game.ini
+  -unattended -nop4 -nosplash -nullrhi -LiveCoding=0 -asdebugport=0` (~2 min, ×2 autour de `fill_po.py`), 345 textes.
+  `hol.HUD.Report` : `HUD hero texts: …` ; cas `mark build hero texts` (`build:hero`, en / ja, 8 textes, captures
+  `build_hero_block_ja`, `build_hero_ready_en`) : rouge (tout en français) puis `-Parts tests,build:hero,menu` **PASS 56
+  s** (284/284). Défauts antérieurs vus : une ligne du fil garde sa langue d'origine si on change de langue en partie ;
+  « Triches + » non traduit (panneau de dev). Voie à suivre pour les prochains blocs en script : `NSLOCTEXT` littéraux.
+- (J8a.5, 2026-10-28) **main 0adb67a fusionné dans Celeborn** par la session principale (diff de sauvegarde
+  `j8a5_before_merge.diff` dans le scratchpad, stash, avance rapide 06bc3ec → 0adb67a, pop **sans conflit**, dont
+  `quick_check.ps1`) ; compilation en cours. Ensuite : `quick_check -Parts tests,build:hero,menu,net`, scénario
+  `hero_block`, essai.
+- (J8a.5, 2026-10-28) **Après fusion de main 0adb67a** : compilation PASS ; `quick_check -Parts tests,build:hero,menu,net`
+  **PASS en 291 s** (tests 285/285, menu fr/en/ja, `build hero`, `build hero return`, `build hero texts`, `net 2
+  clients`, `net hero sheets`, `net hero return`, `net hero block`). **Scénario `Tools/Scenarios/hero_block.txt` +
+  `.json`** (copie de `hero_return.json`) : `ReturnTimePercent 50`, or 1000, notes (bloc vivant, clics du portrait),
+  `wait 20`, `hol.Hero.Kill 0`, notes (mort, bouton, sans or par `hol.Cheat.Gold -100000`, langues par
+  `hol.UI.Language en/ja/fr`). Vérifié hors écran : « Game screen: script part HOLGameScreenScript », 7 notes, « Scenario
+  hero_block: ready » à 23 s, « Hero return: slot 0 ready » et l'alerte 18 s plus tard. **Essai de l'utilisateur
+  demandé** : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 hero_block -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`.
+  S'il valide : commit en anglais sur hero-j8a3 (sans `IN_USE.txt`), main avancé dessus, doc (ligne J8a.5 de la table,
+  `EtapeDefini.md`) ; J8a5-Q1 (place du bloc, contre le § 15) et Q3 (écran en script) à reporter au GDD à la clôture de
+  J8a ; noter dans `AngelscriptInProgress.md` : module d'interface Runtime, `UHOLScriptScreen`, `NSLOCTEXT` en script.
+- (J8a.5, 2026-10-28) **Essai validé par l'utilisateur** (« tout est bon », scénario `hero_block`). main avancé à
+  1de9f4c entre-temps par de la doc seule (GDD D499-D514, NetPlaytest) : pas de nouvelle fusion de code. **Commit
+  aa0f11f** sur hero-j8a3 (Celeborn, 37 fichiers, sans `IN_USE.txt`), rebasé sur main puis main avancé dessus en avance
+  rapide. **J8a.5 close.** À reporter au GDD à la clôture de J8a : J8a4-Q1 à Q7, J8a5-Q1 (bloc en bas à gauche au-dessus
+  de la sélection, au lieu de « près de la mini-carte », § 15), J8a5-Q3 (écran de jeu en script, migration au fil des
+  chantiers ; module d'interface chargé par le serveur), Q4 à Q9. Suite : **J8a.6 Vérification** (partie `hero` de
+  `quick_check` en solo et 2 clients, scénario `hero`, essai de l'utilisateur). Restes connus : serveur empaqueté à
+  recuire et vérifier (cible Server qui lie l'interface, `precompile_scripts.ps1` WindowsServer, `-Parts lobby`) ; IA et
+  joueur absent en réseau ; niveau > 1 (pas d'XP) ; ligne du fil qui garde sa langue ; « Triches + » non traduit.
+  Celeborn reste à la session Héros (hero-j8a3 = main aa0f11f).

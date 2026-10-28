@@ -1,7 +1,8 @@
 using UnrealBuildTool;
 
-// Interface module (D247): Common UI, styles and screens. ClientOnly in the .uproject, so a dedicated server (D231)
-// neither builds nor loads it. Depends on HeroesOfLiberty, never the other way round.
+// Interface module (D247): Common UI, styles and screens. Runtime in the .uproject (J8a5-Q3c): a dedicated server (D231)
+// builds and loads it without showing it, so the scripts naming its classes compile there too. Depends on
+// HeroesOfLiberty, never the other way round.
 public class HeroesOfLibertyUI : ModuleRules
 {
 	public HeroesOfLibertyUI(ReadOnlyTargetRules Target) : base(Target)

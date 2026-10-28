@@ -244,8 +244,42 @@ bool FHOLVictoryMessagesThreadTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("owner"), Pieces[2].Text, FString(TEXT("Joueur 1")));
 		TestEqual(TEXT("owner slot"), Pieces[2].Slot, 0);
 	}
-	const TArray<HOLForumMessages::FPiece> Own = HOLForumMessages::SplitNames(Fell, 0);
+	const TArray<HOLForumMessages::FPiece> Own = HOLForumMessages::SplitNames(Fell, 0, Teams);
 	TestTrue(TEXT("no name: one piece"), Own.Num() == 1 && Own[0].Slot == INDEX_NONE);
+	return true;
+}
+
+// A match from a lobby (M6-Q12): the names the lobby gave the slots, as the players' table, not « Joueur N ».
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryMessagesLobbyNamesTest, "HeroesOfLiberty.Victory.Messages.LobbyNames", UE::HeroesOfLiberty::Tests::ForumMessages::Flags)
+bool FHOLVictoryMessagesLobbyNamesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ForumMessages;
+	FHOLMatchConfig Lobby = MakeTeams();
+	Lobby.Slots[0].PlayerName = TEXT("Aragorn");
+	Lobby.Slots[1].State = EHOLSlotState::Human;
+	Lobby.Slots[1].PlayerName = TEXT(" Boromir ");
+	// Slot 2 left without a name (an AI): its AI name (IA0.1-Q1); slot 3 a human without a name: Joueur 4.
+	Lobby.Slots[3].State = EHOLSlotState::Human;
+
+	TestEqual(TEXT("defeated, named"), TextOf(HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, 1), Lobby, 2)),
+		FString(TEXT("Boromir est vaincu")));
+	TestEqual(TEXT("fell, named"), TextOf(HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 0, INDEX_NONE, 1), Lobby, 1)),
+		FString(TEXT("Le forum de Aragorn est tombé — 1 vie")));
+	TestEqual(TEXT("own: still Vous"), TextOf(HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 0, 1), Lobby, 1)),
+		FString(TEXT("Vous tenez la ruine de Aragorn")));
+	TestEqual(TEXT("an AI: its AI name"), TextOf(HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, 2), Lobby, 0)).StartsWith(TEXT("IA ")), true);
+	TestEqual(TEXT("a human without a name: Joueur N"), TextOf(HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, 3), Lobby, 0)),
+		FString(TEXT("Joueur 4 est vaincu")));
+
+	const FHOLForumMessage Held = HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 1, 2), Lobby, 0);
+	const TArray<HOLForumMessages::FPiece> Pieces = HOLForumMessages::SplitNames(Held, 0, Lobby);
+	TestEqual(TEXT("pieces"), Pieces.Num(), 3);
+	if (Pieces.Num() == 3)
+	{
+		TestEqual(TEXT("attacker slot"), Pieces[0].Slot, 2);
+		TestEqual(TEXT("owner, named"), Pieces[2].Text, FString(TEXT("Boromir")));
+		TestEqual(TEXT("owner slot"), Pieces[2].Slot, 1);
+	}
 	return true;
 }
 

@@ -1,7 +1,9 @@
 """Creates the icons of the interface (E4-1, players' table):
   /Game/UI/Icons/T_Icon_Ally    a green shield, before an ally's name
   /Game/UI/Icons/T_Icon_Enemy   red crossed swords, before an enemy's name
-The PNGs (64x64, transparent) are drawn here with PIL at 256 px then reduced, into Tools/Editor/Data/Icons, then
+  /Game/UI/Icons/T_Icon_HeroEmblem   the hero's portrait for now (J8a.5 loop 7): a white shield edged in gold with a gold
+                                     sun (the paladin's kit), over the player's colour (the portrait button's background)
+The PNGs (64x64, the emblem 128x128, transparent) are drawn here with PIL at 256 px then reduced, into Tools/Editor/Data/Icons, then
 imported as interface textures (UI group, no mipmaps, UserInterface2D compression, sRGB).
 Two steps (the editor's Python has no PIL):
   python Tools/Editor/make_ui_icons.py            draws the PNGs (kept in git)
@@ -11,7 +13,6 @@ import math
 import os
 
 
-SIZE = 64
 BIG = 256
 HERE = os.path.dirname(os.path.abspath(__file__))
 PNG_FOLDER = os.path.join(HERE, "Data", "Icons")
@@ -22,6 +23,13 @@ GREEN_DARK = (16, 70, 28, 255)
 GREEN_LIGHT = (150, 235, 160, 255)
 RED = (230, 60, 50, 255)
 RED_DARK = (80, 10, 8, 255)
+# The emblem: a dark edge around it reads on every player's colour (yellow included), the gold rim and sun inside.
+EMBLEM_EDGE = (28, 20, 10, 255)
+GOLD = (232, 182, 48, 255)
+GOLD_DARK = (150, 100, 20, 255)
+WHITE = (244, 240, 228, 255)
+# Each icon's size in the PNG (and the texture).
+SIZES = {"T_Icon_Ally": 64, "T_Icon_Enemy": 64, "T_Icon_HeroEmblem": 128}
 
 
 def shield_points(inset):
@@ -85,19 +93,47 @@ def draw_enemy():
     return image
 
 
+def sun_points(centre, inner, outer, rays):
+    """A sun's star: `rays` sharp rays from radius `inner` to `outer` around `centre`, one pointing up."""
+    points = []
+    for step in range(rays * 2):
+        angle = math.pi * step / rays - math.pi / 2
+        radius = outer if step % 2 == 0 else inner
+        points.append((centre[0] + radius * math.cos(angle), centre[1] + radius * math.sin(angle)))
+    return points
+
+
+def draw_hero_emblem():
+    """The paladin's shield: dark edge, gold rim, white field, a gold sun of 12 rays (dark gold edged) a bit above the
+    middle, the room around it left transparent for the player's colour."""
+    from PIL import Image, ImageDraw
+    image = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.polygon(shield_points(0), fill=EMBLEM_EDGE)
+    draw.polygon(shield_points(8), fill=GOLD)
+    draw.polygon(shield_points(22), fill=WHITE)
+    centre = (128, 112)
+    draw.polygon(sun_points(centre, 38, 72, 12), fill=GOLD_DARK)
+    draw.polygon(sun_points(centre, 32, 62, 12), fill=GOLD)
+    draw.ellipse((centre[0] - 32, centre[1] - 32, centre[0] + 32, centre[1] + 32), fill=GOLD_DARK)
+    draw.ellipse((centre[0] - 26, centre[1] - 26, centre[0] + 26, centre[1] + 26), fill=GOLD)
+    return image
+
+
 def write_pngs():
     from PIL import Image
     os.makedirs(PNG_FOLDER, exist_ok=True)
     paths = {}
-    for name, image in (("T_Icon_Ally", draw_ally()), ("T_Icon_Enemy", draw_enemy())):
+    for name, image in (("T_Icon_Ally", draw_ally()), ("T_Icon_Enemy", draw_enemy()),
+                        ("T_Icon_HeroEmblem", draw_hero_emblem())):
         path = os.path.join(PNG_FOLDER, name + ".png")
-        image.resize((SIZE, SIZE), Image.LANCZOS).save(path)
+        image.resize((SIZES[name], SIZES[name]), Image.LANCZOS).save(path)
         paths[name] = path
     return paths
 
 
 def png_paths():
-    return {name: os.path.join(PNG_FOLDER, name + ".png") for name in ("T_Icon_Ally", "T_Icon_Enemy")}
+    return {name: os.path.join(PNG_FOLDER, name + ".png") for name in SIZES}
 
 
 def import_textures(paths):

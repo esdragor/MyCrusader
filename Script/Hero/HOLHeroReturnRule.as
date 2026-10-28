@@ -33,14 +33,21 @@ class UHOLHeroReturnRule : UHOLHeroReturnSubsystem
 		const int Level = HOLHero::GetHeroLevel(Slot);
 		if (!HOLHeroReturn::CanBuyReturn(Step, DeathStep, Level))
 			return Refuse(Slot, Step, "not ready (ready at step " + HOLHeroReturn::ReadyStep(DeathStep, Level) + ")");
-		const int Place = HOLHeroReturn::ReturnPlace(HOLHero::IsMainForumStanding(Slot), HOLHero::GetMainForumPosition(Slot),
-			HOLHero::GetOtherForumPositions(Slot));
+		const int Place = HOLHeroReturnQuote::PlaceOf(Slot);
 		if (Place == HOLHeroReturn::PlaceNone)
 			return Refuse(Slot, Step, "no forum to come back to");
 		const int Price = HOLHeroReturn::PriceAt(Step, DeathStep, Level);
 		if (!HOLHero::BuyHeroReturn(Slot, Place, Price))
 			return Refuse(Slot, Step, "not paid or not born (price " + Price + ")");
 		return true;
+	}
+
+	// J8a.5 loop 1b: the quote for C++ (UHOLHeroReturnSubsystem::QuoteNow, the automation tests); the HUD reads
+	// HOLHeroReturnQuote::Read directly.
+	UFUNCTION(BlueprintOverride)
+	FHOLHeroReturnQuote Quote(int Slot, int Step)
+	{
+		return HOLHeroReturnQuote::Read(Slot, Step);
 	}
 
 	bool Refuse(int Slot, int Step, FString Reason)
@@ -66,8 +73,7 @@ class UHOLHeroReturnRule : UHOLHeroReturnSubsystem
 
 		if (!HOLHeroReturn::ShouldAutoReturn(Step, DeathStep, Level))
 			return;
-		const int Place = HOLHeroReturn::ReturnPlace(HOLHero::IsMainForumStanding(Slot), HOLHero::GetMainForumPosition(Slot),
-			HOLHero::GetOtherForumPositions(Slot));
+		const int Place = HOLHeroReturnQuote::PlaceOf(Slot);
 		if (Place == HOLHeroReturn::PlaceNone)
 			return;
 		HOLHero::RequestHeroReturn(Slot, Place);

@@ -1,0 +1,19 @@
+# Bloc du héros (J8a.5) : en bas à gauche, emblème, niveau, PV, XP et capacités grisées ; mort : délai puis bouton « Ramener le héros » au prix qui baisse
+# Plain, toi (slot 0) contre une IA (slot 1), hero_block.json (copie de hero_return.json) : 5 Paysans et un héros chacun.
+# hol.Hero.ReturnTimePercent 50 : délai 19 s au lieu de 38 s (niveau 1), prix de 150 à 0 en 30 s au lieu de 60 s.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Hero.ReturnTimePercent 50
+hol.Cheat.Gold 1000
+hol.Camera.FocusNear -900 300
+frames 10
+note Bloc du héros en bas à gauche, au-dessus de la sélection : emblème sur ta couleur, « Niveau 1 », barre de PV, « PV 450 / 450 », barre d'XP et 3 cases de capacités grisées.
+note Clic sur le portrait = comme F4 : sélectionne le héros ; un 2e clic (lui seul sélectionné) centre la caméra sur lui.
+note Dans 20 s ton héros tombe (délai raccourci à 50 %).
+wait 20
+hol.Hero.Kill 0
+wait 1
+note Ton héros est tombé : portrait assombri, « PV 0 / 450 », « Prêt dans 0:19 » qui décompte ; un clic sur le portrait ne fait rien.
+note Une fois prêt : bouton « Ramener le héros — 150 or » dont le prix baisse ; un clic paie et il revient près du forum.
+note Bouton grisé, prix en rouge, infobulle « Pas assez d'or » : console (²) hol.Cheat.Gold -100000 avant de cliquer, puis hol.Cheat.Gold 1000.
+note Textes en anglais ou japonais : console (²) hol.UI.Language en, hol.UI.Language ja, puis hol.UI.Language fr. Encore une mort : hol.Hero.Kill 0 (vraies durées : hol.Hero.ReturnTimePercent 100).

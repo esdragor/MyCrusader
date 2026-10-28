@@ -878,4 +878,90 @@ bool FHOLHeroReturnTimePercentTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroReturnQuoteTest, "HeroesOfLiberty.Hero.ReturnQuote", UE::HeroesOfLiberty::Tests::HeroReturn::Flags)
+
+// J8a.5 loop 1b: the quote (the script's HOLHeroReturnQuote::Read through UHOLHeroReturnSubsystem::QuoteNow) on the real
+// chain, at the server step an order is sent: alive; waiting two steps before the ready step (one step left, no price);
+// ready one step before it (an order sent then is taken at the ready step: 150); 598 steps after it the quoted price is
+// the gold the order really takes at the next step (76); 50 gold for 150: not buyable; the main forum down: no place, not
+// buyable; an AI slot (no stock): gold unknown, not buyable.
+bool FHOLHeroReturnQuoteTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::HeroReturn;
+	FWorld W(*this);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	UHOLHeroReturnSubsystem* Rule = UHOLHeroReturnSubsystem::Find(W.World);
+	if (!TestNotNull(TEXT("The script's return rule in the world"), Rule))
+	{
+		return false;
+	}
+	auto QuoteNow = [&W, Rule](const int32 Slot) { return Rule->QuoteNow(Slot, UHOLHeroLibrary::GetServerStep(W.World)); };
+	auto QuoteState = [](const FHOLHeroReturnQuote& Quote) { return static_cast<int32>(Quote.State); };
+
+	W.Player->SetResources(FHOLResources(0, 0, 0, 500));
+	AHOLBuilding* AIForum = W.PlaceForum(1, FVector(-5000.0, 0.0, 0.0));
+	TestTrue(TEXT("Slot 0's hero born"), W.PlaceHero(0, FVector(0.0, 0.0, 0.0)) != 0);
+	TestTrue(TEXT("Slot 1's hero born"), W.PlaceHero(1, FVector(-3000.0, 0.0, 0.0)) != 0);
+	W.RunStepsTo(10);
+	TestEqual(TEXT("The bridge reads slot 0's gold (500)"), UHOLHeroLibrary::GetSlotGold(W.World, 0), 500);
+	TestEqual(TEXT("... and none for slot 1 (AI, no stock)"), UHOLHeroLibrary::GetSlotGold(W.World, 1), -1);
+	const FHOLHeroReturnQuote Alive = QuoteNow(0);
+	TestEqual(TEXT("Alive"), QuoteState(Alive), static_cast<int32>(EHOLHeroReturnQuoteState::Alive));
+	TestEqual(TEXT("... no price"), Alive.Price, -1);
+	TestFalse(TEXT("... not buyable"), Alive.bCanBuy);
+
+	W.Units->KillUnitsOfOwner(1, FHOLStartRules::HeroTypeName);
+	W.KillHero(0, /*bDestroyBody*/ false);
+	const int64 ReadyStep = UHOLHeroLibrary::GetHeroDeathStep(W.World, 0) + DelaySteps(1);
+	W.RunStepsTo(ReadyStep - 2);
+	const FHOLHeroReturnQuote Waiting = QuoteNow(0);
+	TestEqual(TEXT("Two steps before the ready step: waiting"), QuoteState(Waiting), static_cast<int32>(EHOLHeroReturnQuoteState::Waiting));
+	TestEqual(TEXT("... taken at the next step"), Waiting.TakeStep, static_cast<int32>(ReadyStep - 1));
+	TestEqual(TEXT("... one step left"), Waiting.StepsToReady, 1);
+	TestEqual(TEXT("... one second (rounded up)"), Waiting.SecondsToReady, 1);
+	TestEqual(TEXT("... no price"), Waiting.Price, -1);
+	TestFalse(TEXT("... not buyable"), Waiting.bCanBuy);
+	TestEqual(TEXT("... 500 gold"), Waiting.Gold, 500);
+	TestTrue(TEXT("... a place (the main forum)"), Waiting.bHasPlace);
+
+	W.RunStep();
+	const FHOLHeroReturnQuote First = QuoteNow(0);
+	TestEqual(TEXT("One step before the ready step: ready (an order is taken at the ready step)"), QuoteState(First), static_cast<int32>(EHOLHeroReturnQuoteState::Ready));
+	TestEqual(TEXT("... 0 step left"), First.StepsToReady, 0);
+	TestEqual(TEXT("... 150 gold"), First.Price, 150);
+	TestTrue(TEXT("... buyable"), First.bCanBuy);
+
+	const FHOLHeroReturnQuote AIQuote = QuoteNow(1);
+	TestEqual(TEXT("Slot 1 (AI): ready too"), QuoteState(AIQuote), static_cast<int32>(EHOLHeroReturnQuoteState::Ready));
+	TestEqual(TEXT("... gold unknown (no stock)"), AIQuote.Gold, -1);
+	TestFalse(TEXT("... not buyable"), AIQuote.bCanBuy);
+	TestTrue(TEXT("... a place (its forum)"), AIQuote.bHasPlace && AIForum != nullptr);
+
+	W.Player->SetResources(FHOLResources(0, 0, 0, 50));
+	const FHOLHeroReturnQuote Short = QuoteNow(0);
+	TestEqual(TEXT("50 gold for 150: still 150"), Short.Price, 150);
+	TestFalse(TEXT("... not buyable"), Short.bCanBuy);
+	W.Player->SetResources(FHOLResources(0, 0, 0, 500));
+
+	W.RunStepsTo(ReadyStep + 598);
+	const FHOLHeroReturnQuote Later = QuoteNow(0);
+	TestEqual(TEXT("598 steps after the ready step: 76 quoted (the price at the next step, 75.125 rounded up)"), Later.Price, 76);
+	TestTrue(TEXT("... buyable"), Later.bCanBuy);
+	W.OrderReturn(0);
+	W.RunStep();
+	TestEqual(TEXT("The order sent then takes the quoted price"), 500 - W.Gold(), Later.Price);
+	W.RunStep();
+	TestEqual(TEXT("... one hero"), W.NumHeroes(0), 1);
+	TestEqual(TEXT("... the quote: alive"), QuoteState(QuoteNow(0)), static_cast<int32>(EHOLHeroReturnQuoteState::Alive));
+
+	TestTrue(TEXT("Slot 1's forum falls (in ruin)"), AIForum && W.GameState->HandleForumFall(*AIForum));
+	const FHOLHeroReturnQuote NoPlace = QuoteNow(1);
+	TestFalse(TEXT("Slot 1's forum down: no place"), NoPlace.bHasPlace);
+	TestFalse(TEXT("... not buyable"), NoPlace.bCanBuy);
+	return true;
+}
+
 #endif
