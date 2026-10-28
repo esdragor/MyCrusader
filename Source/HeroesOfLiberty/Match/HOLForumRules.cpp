@@ -5,6 +5,7 @@
 #include "Algo/StableSort.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -480,9 +481,7 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		Row.bNewGroup = bTeams && Rows.Num() > 1 && Rows[Rows.Num() - 2].Team != Row.Team;
 		// M6-Q12: the name the lobby gave the slot when it has one (a match from a lobby), else Joueur N.
 		const FString PlayerName = MatchSlot.PlayerName.TrimStartAndEnd();
-		Row.Name = bLocal ? LOCTEXT("You", "Vous")
-			: !PlayerName.IsEmpty() ? FText::AsCultureInvariant(PlayerName)
-			: FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Slot + 1);
+		Row.Name = HOLForumMessages::GetSlotName(Config, Slot, LocalSlot);
 		// The singular for exactly 1, the plural for 0 (V2.3d); a defeated slot's lives not shown, « Vaincu » alone.
 		Row.Lives = bDefeated ? FText::GetEmpty()
 			: FText::Format(Lives == 1 ? LOCTEXT("TableLife", "{0} vie") : LOCTEXT("TableLives", "{0} vies"), Lives);

@@ -18,9 +18,15 @@ FHOLForumEvent FHOLForumEvent::Make(const EHOLForumEventKind Kind, const int32 S
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
-FText HOLForumMessages::GetSlotName(const int32 Slot, const int32 ViewerSlot)
+FText HOLForumMessages::GetSlotName(const FHOLMatchConfig& Config, const int32 Slot, const int32 ViewerSlot)
 {
-	return Slot == ViewerSlot ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Slot + 1);
+	if (Slot == ViewerSlot)
+	{
+		return LOCTEXT("You", "Vous");
+	}
+	// M6-Q12: the name the lobby gave the slot when it has one (a match from a lobby), else Joueur N.
+	const FString PlayerName = Config.Slots.IsValidIndex(Slot) ? Config.Slots[Slot].PlayerName.TrimStartAndEnd() : FString();
+	return !PlayerName.IsEmpty() ? FText::AsCultureInvariant(PlayerName) : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Slot + 1);
 }
 
 FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, const int32 ViewerSlot)
@@ -41,7 +47,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	}
 	// The singular for exactly 1, the plural for 0 (as the players' table, V2.3d).
 	const FText Lives = FText::Format(Event.Lives == 1 ? LOCTEXT("TableLife", "{0} vie") : LOCTEXT("TableLives", "{0} vies"), Event.Lives);
-	const FText Name = GetSlotName(Slot, ViewerSlot);
+	const FText Name = GetSlotName(Config, Slot, ViewerSlot);
 	switch (Event.Kind)
 	{
 	case EHOLForumEventKind::Fell:
@@ -59,7 +65,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	{
 		const int32 Attacker = Event.OtherSlot;
 		const bool bAttacker = ViewerSlot != INDEX_NONE && Attacker == ViewerSlot;
-		const FText AttackerName = GetSlotName(Attacker, ViewerSlot);
+		const FText AttackerName = GetSlotName(Config, Attacker, ViewerSlot);
 		if (bOwn)
 		{
 			Message.Text = FText::Format(LOCTEXT("MessageOwnHeld", "{0} tient votre ruine"), AttackerName);
@@ -166,14 +172,14 @@ bool HOLForumMessages::ShouldAnnounceHold(const FHOLForumState& State, uint8& An
 	return true;
 }
 
-TArray<HOLForumMessages::FPiece> HOLForumMessages::SplitNames(const FHOLForumMessage& Message, const int32 ViewerSlot)
+TArray<HOLForumMessages::FPiece> HOLForumMessages::SplitNames(const FHOLForumMessage& Message, const FHOLMatchConfig& Config, const int32 ViewerSlot)
 {
 	TArray<FPiece> Pieces;
 	const FString Text = Message.Text.ToString();
 	int32 From = 0;
 	for (const int32 Slot : Message.NamedSlots)
 	{
-		const FString Name = GetSlotName(Slot, ViewerSlot).ToString();
+		const FString Name = GetSlotName(Config, Slot, ViewerSlot).ToString();
 		const int32 At = Name.IsEmpty() ? INDEX_NONE : Text.Find(Name, ESearchCase::CaseSensitive, ESearchDir::FromStart, From);
 		if (At == INDEX_NONE)
 		{

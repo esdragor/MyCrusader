@@ -65,8 +65,11 @@ struct FHOLForumMessage
 /** V4.1: the messages of the ruin, pure: no world, no actor. */
 namespace HOLForumMessages
 {
-	/** « Vous » for the viewer's own slot, « Joueur N » otherwise (as the players' table, HOLForumRules::GetPlayersTable). */
-	HEROESOFLIBERTY_API FText GetSlotName(int32 Slot, int32 ViewerSlot);
+	/**
+	 * « Vous » for the viewer's own slot, else the name the lobby gave the slot in Config (M6-Q12), else « Joueur N »: the
+	 * one rule of the players' table (HOLForumRules::GetPlayersTable), the messages and the selection's owner.
+	 */
+	HEROESOFLIBERTY_API FText GetSlotName(const FHOLMatchConfig& Config, int32 Slot, int32 ViewerSlot);
 
 	/**
 	 * The message of Event for the viewer at ViewerSlot (INDEX_NONE: a spectator, never alerted); the camps from Config
@@ -96,7 +99,7 @@ namespace HOLForumMessages
 	};
 
 	/** V4.2: Message's text cut at the names of its NamedSlots, in their order (as ViewerSlot reads them), for their colours. */
-	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, int32 ViewerSlot);
+	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, const FHOLMatchConfig& Config, int32 ViewerSlot);
 }
 
 /**
