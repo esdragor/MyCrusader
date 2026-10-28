@@ -5364,18 +5364,26 @@ if ($Parts -contains "net") {
         $Checks["client 1 : the HUD shows its selected unit's attack"] = $HudAttack
         # The health bars on client 1 (J7b.5): its selected unit's bar, and others only for units wounded in the Units where
         # just before (health never rises); each bar's health one the server's hits left, or the maximum (J7-Q5 revised).
-        $BarRuns = @(); $WoundedNow = @{}
+        # A unit hit between the Units where and the bars (the hit arrived in between, a few ms) is wounded in the next Units
+        # where: an unselected bar is wrong only for a unit unhurt in both (seen 2026-10-28: #13 hit 10 ms after the report).
+        $BarRuns = @(); $WoundedNow = @{}; $Pending = @()
         foreach ($Line in $FightLines) {
             if ($Line -match "Units where: \d+ units: (.*)$") {
                 $WoundedNow = @{}
                 foreach ($Entry in ($Matches[1] -split "; ")) { if ($Entry -match "^#(\d+) .*, hp \d+/\d+") { $WoundedNow[$Matches[1]] = $true } }
+                foreach ($Wait in $Pending) { $Wait.Run.Wrong += @($Wait.Ids | Where-Object { -not $WoundedNow.ContainsKey($_) }).Count }
+                $Pending = @()
             } elseif ($Line -match "Health bars: bars (\d+) \(([^)]*)\)") {
                 $Items = @(if ($Matches[2]) { $Matches[2] -split ", " })
-                $Wrong = @($Items | Where-Object { $_ -notmatch " selected$" -and $_ -match "^#(\d+)" -and -not $WoundedNow.ContainsKey($Matches[1]) })
+                $Unsure = @($Items | Where-Object { $_ -notmatch " selected$" -and $_ -match "^#(\d+)" -and -not $WoundedNow.ContainsKey($Matches[1]) } | ForEach-Object { if ($_ -match "^#(\d+)") { $Matches[1] } })
                 $NotSent = @($Items | Where-Object { $_ -match "^#(\d+) (\d+)/(\d+)" -and -not ($Matches[2] -eq $Matches[3] -or (& $IsServerHp $Matches[1] ([int]$Matches[2]))) })
-                $BarRuns += @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = $Wrong.Count; NotSent = $NotSent.Count }
+                $Run = @{ Selected = @($Items | Where-Object { $_ -match " selected$" }).Count; Others = $Items.Count - @($Items | Where-Object { $_ -match " selected$" }).Count; Wrong = 0; NotSent = $NotSent.Count }
+                $BarRuns += $Run
+                if ($Unsure.Count) { $Pending += @{ Run = $Run; Ids = $Unsure } }
             }
         }
+        # No Units where after them: still unhurt, wrong.
+        foreach ($Wait in $Pending) { $Wait.Run.Wrong += $Wait.Ids.Count }
         $BarsSel = @($BarRuns | Where-Object { $_.Selected -ge 1 }).Count
         $BarsOther = @($BarRuns | Where-Object { $_.Others -ge 1 }).Count
         $BarsWrong = ($BarRuns | ForEach-Object { $_.Wrong } | Measure-Object -Sum).Sum
