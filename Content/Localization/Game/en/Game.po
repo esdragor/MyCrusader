@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-28 08:32\n"
-"PO-Revision-Date: 2026-10-28 08:32\n"
+"POT-Creation-Date: 2026-10-28 11:55\n"
+"PO-Revision-Date: 2026-10-28 11:55\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -1428,8 +1428,8 @@ msgid "Prêt"
 msgstr "Ready"
 
 #. Key:	TooManyPlayers
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1021)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1021)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1020)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1020)
 msgctxt "HOLNewGameScreen,TooManyPlayers"
 msgid "Trop de joueurs pour cette taille de carte."
 msgstr "Too many players for this map size."
@@ -1620,8 +1620,8 @@ msgstr "Catastrophe"
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(279)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(279)
 msgctxt "HOLNewGameScreen,GreyedTeamsOpen"
-msgid "Grisé : pas encore dans le jeu (IA, factions, mode et options)."
-msgstr "Greyed out: not in the game yet (AI, factions, mode and options)."
+msgid "Grisé : pas encore dans le jeu (factions, mode et options)."
+msgstr "Greyed out: not in the game yet (factions, mode and options)."
 
 #. Key:	Back
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(286)
@@ -1645,15 +1645,15 @@ msgid "Lancer"
 msgstr "Start"
 
 #. Key:	LeaveLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(424)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(424)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(423)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(423)
 msgctxt "HOLNewGameScreen,LeaveLobby"
 msgid "Quitter le salon"
 msgstr "Leave the lobby"
 
 #. Key:	LobbyGreyed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(432)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(432)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(431)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(431)
 msgctxt "HOLNewGameScreen,LobbyGreyed"
 msgid "Grisé : pas encore dans le jeu (factions, mode) ; seul le chef règle la carte, les options et les emplacements."
 msgstr "Greyed out: not in the game yet (factions, mode); only the lobby leader sets the map, the options and the slots."
@@ -1680,8 +1680,8 @@ msgid "Humain"
 msgstr "Human"
 
 #. Key:	Leader
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(526)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(526)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(525)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(525)
 msgctxt "HOLNewGameScreen,Leader"
 msgid "♛ {0}"
 msgstr "♛ {0}"
@@ -1708,8 +1708,8 @@ msgid "Enfants du Dragon"
 msgstr "Children of the Dragon"
 
 #. Key:	NotReadyAction
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(566)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(566)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(565)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(565)
 msgctxt "HOLNewGameScreen,NotReadyAction"
 msgid "Plus prêt"
 msgstr "Not ready"
@@ -1722,8 +1722,8 @@ msgid "Cercle de l'Ombre"
 msgstr "Circle of Shadow"
 
 #. Key:	Starting
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(577)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(577)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(576)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(576)
 msgctxt "HOLNewGameScreen,Starting"
 msgid "Lancement…"
 msgstr "Starting…"
@@ -1757,8 +1757,8 @@ msgid "Aléatoire"
 msgstr "Random"
 
 #. Key:	NoMatchAddress
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(882)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(882)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(881)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(881)
 msgctxt "HOLNewGameScreen,NoMatchAddress"
 msgid "Adresse du serveur de partie introuvable."
 msgstr "Match server address not found."

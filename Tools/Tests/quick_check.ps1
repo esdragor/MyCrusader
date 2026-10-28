@@ -408,6 +408,9 @@ if ($Parts -contains "menu") {
                 "hol.UI.Choose SlotTeam0 0", "hol.UI.Choose SlotState1 1", "hol.UI.Choose SlotState2 1",
                 "frames 3", "hol.UI.Choose SizeDropdown 1", "hol.UI.Choose SlotState5 1", "frames 3", "capture qc_fr_sizes",
                 "hol.UI.Choose SlotState1 0", "hol.UI.Choose SlotState2 0", "frames 3", "hol.UI.Choose SizeDropdown 1", "frames 3"
+            # IA0.6 S1: in solo "IA" is open in the state list: slot 1 taken by an AI shows its colour and team; closed again.
+            Step "mark menu ai", "hol.UI.Choose SlotState1 2", "frames 3", "hol.UI.Shown SlotColor1 SlotTeam1", "capture qc_fr_ai",
+                "hol.UI.Choose SlotState1 0", "frames 3"
         }
         Back
         if ($Culture -eq "fr") {
@@ -2839,6 +2842,10 @@ if ($Parts -contains "menu") {
                 [bool]($Sizes | Select-String -SimpleMatch "Shown SlotFaction0: yes, greyed" -Quiet) -and
                 [bool]($Sizes | Select-String -Pattern "Shown TeamsTogetherDropdown: yes$" -Quiet)
             $Checks["slot 5 past the 4 places of Medium stays closed"] = [bool]($Sizes | Select-String -SimpleMatch "New game: slot 5 stays closed, past the 4 places of the size" -Quiet)
+            # IA0.6 S1: "IA" chosen on slot 1 in solo (a greyed option is ignored by Choose: no "value 2 chosen"), colour and team shown.
+            $AI = Get-Section "menu ai"
+            $Checks["AI open in solo: slot 1 taken by an AI, colour and team shown"] = [bool]($AI | Select-String -SimpleMatch "SlotState1: value 2 chosen" -Quiet) -and
+                [bool]($AI | Select-String -Pattern "Shown SlotColor1: yes$" -Quiet) -and [bool]($AI | Select-String -Pattern "Shown SlotTeam1: yes$" -Quiet)
         }
         $AllOk = (Report "menu $Culture" $Checks) -and $AllOk
         if (Get-Command python -ErrorAction SilentlyContinue) {

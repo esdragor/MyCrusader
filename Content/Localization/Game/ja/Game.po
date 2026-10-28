@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-28 08:32\n"
-"PO-Revision-Date: 2026-10-28 08:32\n"
+"POT-Creation-Date: 2026-10-28 11:55\n"
+"PO-Revision-Date: 2026-10-28 11:55\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -1428,8 +1428,8 @@ msgid "Prêt"
 msgstr "準備完了"
 
 #. Key:	TooManyPlayers
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1021)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1021)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1020)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(1020)
 msgctxt "HOLNewGameScreen,TooManyPlayers"
 msgid "Trop de joueurs pour cette taille de carte."
 msgstr "このマップサイズにはプレイヤーが多すぎます。"
@@ -1620,8 +1620,8 @@ msgstr "カタストロフィ"
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(279)
 #: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(279)
 msgctxt "HOLNewGameScreen,GreyedTeamsOpen"
-msgid "Grisé : pas encore dans le jeu (IA, factions, mode et options)."
-msgstr "グレー表示：まだゲームにありません（AI、勢力、モード、オプション）。"
+msgid "Grisé : pas encore dans le jeu (factions, mode et options)."
+msgstr "グレー表示：まだゲームにありません（勢力、モード、オプション）。"
 
 #. Key:	Back
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(286)
@@ -1645,15 +1645,15 @@ msgid "Lancer"
 msgstr "開始"
 
 #. Key:	LeaveLobby
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(424)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(424)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(423)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(423)
 msgctxt "HOLNewGameScreen,LeaveLobby"
 msgid "Quitter le salon"
 msgstr "ロビーを退出"
 
 #. Key:	LobbyGreyed
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(432)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(432)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(431)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(431)
 msgctxt "HOLNewGameScreen,LobbyGreyed"
 msgid "Grisé : pas encore dans le jeu (factions, mode) ; seul le chef règle la carte, les options et les emplacements."
 msgstr "グレー表示：まだゲームにありません（勢力、モード）。マップ・オプション・スロットはロビーのリーダーのみ設定できます。"
@@ -1680,8 +1680,8 @@ msgid "Humain"
 msgstr "人間"
 
 #. Key:	Leader
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(526)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(526)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(525)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(525)
 msgctxt "HOLNewGameScreen,Leader"
 msgid "♛ {0}"
 msgstr "♛ {0}"
@@ -1708,8 +1708,8 @@ msgid "Enfants du Dragon"
 msgstr "竜の子ら"
 
 #. Key:	NotReadyAction
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(566)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(566)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(565)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(565)
 msgctxt "HOLNewGameScreen,NotReadyAction"
 msgid "Plus prêt"
 msgstr "準備解除"
@@ -1722,8 +1722,8 @@ msgid "Cercle de l'Ombre"
 msgstr "影の結社"
 
 #. Key:	Starting
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(577)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(577)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(576)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(576)
 msgctxt "HOLNewGameScreen,Starting"
 msgid "Lancement…"
 msgstr "開始中…"
@@ -1757,8 +1757,8 @@ msgid "Aléatoire"
 msgstr "ランダム"
 
 #. Key:	NoMatchAddress
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(882)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(882)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(881)
+#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(881)
 msgctxt "HOLNewGameScreen,NoMatchAddress"
 msgid "Adresse du serveur de partie introuvable."
 msgstr "対戦サーバーのアドレスが見つかりません。"

@@ -276,7 +276,7 @@ void UHOLNewGameScreen::BuildLayout()
 	AddCell(Options, MakeText(LOCTEXT("Catastrophe", "Catastrophe"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
 	CatastropheDropdown = AddDropdown(Options, TEXT("CatastropheDropdown"), OffOn(), 0, ToggleWidth);
 
-	NoteText = AddText(Column, TEXT("Note"), LOCTEXT("GreyedTeamsOpen", "Grisé : pas encore dans le jeu (IA, factions, mode et options)."),
+	NoteText = AddText(Column, TEXT("Note"), LOCTEXT("GreyedTeamsOpen", "Grisé : pas encore dans le jeu (factions, mode et options)."),
 		UHOLTextStyleNote::StaticClass(), 4.f);
 	ErrorText = AddText(Column, TEXT("ErrorText"), FText::GetEmpty(), UHOLTextStyleBody::StaticClass(), 4.f);
 	ErrorText->SetColorAndOpacity(HOLUIStyle::Missing);
@@ -307,8 +307,7 @@ void UHOLNewGameScreen::NativeOnInitialized()
 
 		if (SlotStates[SlotIndex])
 		{
-			// Greyed in the list (D240): AI players are not in the game yet.
-			SlotStates[SlotIndex]->SetOptionEnabled(static_cast<int32>(EHOLSlotState::AI), false);
+			// IA0.6: "IA" is open in solo (the lobby has its own list, LobbyStateNames, without AI for now).
 			SlotStates[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
 			{
 				HandleStateChosen(SlotIndex, Value);
@@ -935,7 +934,7 @@ void UHOLNewGameScreen::HandleStateChosen(const int32 SlotIndex, const int32 Val
 		Refresh();
 		return;
 	}
-	// AI is greyed in the list (D240): only Closed and Human come here.
+	// Closed, Human or AI (IA0.6): an AI holds its slot like a human (colour, team).
 	FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
 	SlotConfig.State = static_cast<EHOLSlotState>(Value);
 	if (SlotConfig.State != EHOLSlotState::Closed && IsColorTaken(SlotIndex, SlotConfig.ColorIndex))
