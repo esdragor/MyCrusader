@@ -324,6 +324,7 @@ public:
 	 * F4 (D30, J8a-Q4): the player's hero alone (a unit of the Hero armour category, alive: a dying one is left out), the
 	 * camera where it is; pressed again while he alone is selected, the camera on him. No hero: nothing changes.
 	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void SelectHero();
 	/** Two presses of a group's key this close (s, real time): the camera goes to the group. */
 	static constexpr double ControlGroupDoublePress = 0.3;
@@ -455,6 +456,7 @@ public:
 	 * through the order queue; at the next step the server prices it (HOLHeroReturn::PriceAt at that step), takes the gold
 	 * and has the hero born by its forum, or refuses it with nothing taken (Script/Hero/HOLHeroReturnRule.as).
 	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestReturnHero();
 
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */

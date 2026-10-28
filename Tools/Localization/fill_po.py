@@ -232,6 +232,15 @@ TRANSLATIONS = {
     "HOLGameScreen,MessageKingDied": ("{0}'s King is dead", "{0}の王が死亡"),
     "HOLGameScreen,MessageOwnKingDied": ("Your King is dead", "あなたの王が死亡"),
     "HOLGameScreen,MessageHeroReady": ("Your hero is ready to return", "英雄の帰還準備が整った"),
+
+    # The hero's block, in script (Script/UI/HOLHeroBlock.as, J8a.5): {0} {1} numbers, the delay m:ss.
+    "HOLHeroBlock,Level": ("Level {0}", "レベル {0}"),
+    "HOLHeroBlock,Health": ("HP {0} / {1}", "HP {0} / {1}"),
+    "HOLHeroBlock,ReadyIn": ("Ready in {0}", "帰還まで {0}"),
+    "HOLHeroBlock,Unknown": ("…", "…"),
+    "HOLHeroBlock,Return": ("Bring the hero back — {0} gold", "英雄を呼び戻す — {0} 金"),
+    "HOLHeroBlock,NoGold": ("Not enough gold", "金が足りません"),
+    "HOLHeroBlock,NoPlace": ("No Forum to return to", "帰還できる町の中心がありません"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,AbsentLine": ("{Name}: connection lost — {Time}", "{Name}：接続が切れました — {Time}"),

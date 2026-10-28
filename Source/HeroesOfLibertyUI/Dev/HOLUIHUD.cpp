@@ -58,6 +58,13 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			UE_LOG(LogHOLUI, Display, TEXT("HUD messages: %s"), *Screen.DescribeMessages());
 			// The major alert's banner (V4.3), on its own line too.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD alert: %s"), *Screen.DescribeAlert());
+			// J8a.5: the part in script, a line per block ("HUD hero: ...").
+			TArray<FString> ScriptLines;
+			Screen.DescribeScript().ParseIntoArray(ScriptLines, TEXT("\n"));
+			for (const FString& Line : ScriptLines)
+			{
+				UE_LOG(LogHOLUI, Display, TEXT("HUD %s"), *Line);
+			}
 			// On its own line: the checks read the report's line to its end.
 			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
 			{
