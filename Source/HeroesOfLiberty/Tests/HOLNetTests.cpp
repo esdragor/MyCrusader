@@ -10,6 +10,7 @@
 #include "Net/HOLManagerLink.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
+#include "Net/HOLPauseRules.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLCombatRules.h"
@@ -908,6 +909,58 @@ bool FHOLNetPauseRuleTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("dedicated server: refused"), FHOLCheatRules::IsPauseAllowed(NM_DedicatedServer));
 	TestFalse(TEXT("listen server: refused"), FHOLCheatRules::IsPauseAllowed(NM_ListenServer));
 	TestFalse(TEXT("client: refused"), FHOLCheatRules::IsPauseAllowed(NM_Client));
+	return true;
+}
+
+// D513: the limited pause, shared by the match (3 in all, 60 s timer, players still in the match; solo free).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetPauseLimitsTest, "HeroesOfLiberty.Net.PauseLimits", UE::HeroesOfLiberty::Tests::Net::Flags)
+
+bool FHOLNetPauseLimitsTest::RunTest(const FString& Parameters)
+{
+	using FRules = FHOLPauseRules;
+	using EAnswer = FRules::EAnswer;
+	auto Check = [this](const TCHAR* What, const EAnswer Got, const EAnswer Expected)
+	{
+		TestEqual(What, FString(FRules::ToString(Got)), FString(FRules::ToString(Expected)));
+	};
+
+	FRules::FState State;
+	TestEqual(TEXT("3 pauses per match by default"), State.PausesLeft, 3);
+	Check(TEXT("a player in the match pauses"), FRules::CanPause(NM_DedicatedServer, State, true), EAnswer::Allowed);
+	Check(TEXT("a defeated player or a spectator does not"), FRules::CanPause(NM_DedicatedServer, State, false), EAnswer::NotInMatch);
+	Check(TEXT("nothing to resume while the match runs"), FRules::CanResume(NM_DedicatedServer, State, 0, true, 10.0), EAnswer::NotPaused);
+
+	FRules::Pause(NM_DedicatedServer, State, 1, 100.0);
+	TestTrue(TEXT("paused"), State.IsPaused());
+	TestEqual(TEXT("paused by slot 1"), State.PausedBySlot, 1);
+	TestEqual(TEXT("one pause used, shared by all"), State.PausesLeft, 2);
+	TestEqual(TEXT("timer: 60 s at the start"), FRules::TimerLeft(State, 100.0), 60.0);
+	TestEqual(TEXT("timer: 15 s left after 45 s"), FRules::TimerLeft(State, 145.0), 15.0);
+	TestEqual(TEXT("timer: 0 once over"), FRules::TimerLeft(State, 200.0), 0.0);
+	Check(TEXT("no second pause on a paused match"), FRules::CanPause(NM_DedicatedServer, State, true), EAnswer::AlreadyPaused);
+	Check(TEXT("the one who paused resumes at once"), FRules::CanResume(NM_DedicatedServer, State, 1, true, 101.0), EAnswer::Allowed);
+	Check(TEXT("another player waits for the timer"), FRules::CanResume(NM_DedicatedServer, State, 0, true, 159.0), EAnswer::TimerRunning);
+	Check(TEXT("another player resumes once it is over"), FRules::CanResume(NM_DedicatedServer, State, 0, true, 160.0), EAnswer::Allowed);
+	Check(TEXT("a spectator never resumes"), FRules::CanResume(NM_DedicatedServer, State, 2, false, 500.0), EAnswer::NotInMatch);
+	Check(TEXT("the one who paused, once defeated, does not either"), FRules::CanResume(NM_DedicatedServer, State, 1, false, 101.0), EAnswer::NotInMatch);
+
+	FRules::Resume(State);
+	TestFalse(TEXT("resumed"), State.IsPaused());
+	TestEqual(TEXT("timer: 0 when not paused"), FRules::TimerLeft(State, 120.0), 0.0);
+	FRules::Pause(NM_DedicatedServer, State, 0, 200.0);
+	FRules::Resume(State);
+	FRules::Pause(NM_DedicatedServer, State, 0, 300.0);
+	FRules::Resume(State);
+	TestEqual(TEXT("3 pauses used"), State.PausesLeft, 0);
+	Check(TEXT("no fourth pause"), FRules::CanPause(NM_DedicatedServer, State, true), EAnswer::NoPauseLeft);
+	Check(TEXT("a listen server counts the same"), FRules::CanPause(NM_ListenServer, State, true), EAnswer::NoPauseLeft);
+
+	FRules::FState Solo;
+	Solo.PausesLeft = 0;
+	Check(TEXT("solo: no limit"), FRules::CanPause(NM_Standalone, Solo, true), EAnswer::Allowed);
+	FRules::Pause(NM_Standalone, Solo, 0, 10.0);
+	TestEqual(TEXT("solo: nothing counted"), Solo.PausesLeft, 0);
+	Check(TEXT("solo: no timer"), FRules::CanResume(NM_Standalone, Solo, 0, true, 11.0), EAnswer::Allowed);
 	return true;
 }
 

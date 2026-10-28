@@ -7,6 +7,7 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/WorldSettings.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLForumPresence.h"
 #include "Match/HOLMatchStatsSubsystem.h"
@@ -15,6 +16,14 @@
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+
+namespace
+{
+	/** P5 (D513): the pauses of a match, shared by all its players (« réglable »). */
+	int32 PausesPerMatch = FHOLPauseRules::DefaultPausesPerMatch;
+	FAutoConsoleVariableRef CVarPausesPerMatch(TEXT("hol.Match.PausesPerMatch"), PausesPerMatch,
+		TEXT("hol.Match.PausesPerMatch N: the pauses of a networked match, shared by all its players (D513, default 3); read at its start"));
+}
 
 AHOLGameState::AHOLGameState()
 {
@@ -39,6 +48,10 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
 	DOREPLIFETIME(AHOLGameState, AbsentNotices);
+	DOREPLIFETIME(AHOLGameState, PausesLeft);
+	DOREPLIFETIME(AHOLGameState, PausedBySlot);
+	DOREPLIFETIME(AHOLGameState, PausedByName);
+	DOREPLIFETIME(AHOLGameState, PausedAtSeconds);
 }
 
 void AHOLGameState::SetWaitingForPlayers(const bool bWaiting, const TArray<FString>& Missing, const double EndSeconds)
@@ -64,6 +77,9 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 	PendingForumDefeats = 0;
 	AbsentSlots.Reset();
 	AbsentNotices.Reset();
+	PausesLeft = FMath::Max(PausesPerMatch, 0);
+	PausedBySlot = INDEX_NONE;
+	PausedByName.Reset();
 	CurrentStep = -1;
 	// V3.2: who stands near a forum down, the living units counted by team, on the server.
 	ForumPresenceCounter.Reset();
@@ -893,4 +909,97 @@ void AHOLGameState::NoteHeroReady()
 		UE_LOG(LogHOLMatch, Display, TEXT("%s (slot %d)"), *Message.Shown, ViewerSlot);
 		OnHeroReadyMessage.Broadcast(Message);
 	}
+}
+
+double AHOLGameState::GetPauseTimerLeft(const double Now) const
+{
+	if (IsPauseFree() || !IsMatchPaused())
+	{
+		return 0.;
+	}
+	if (GetNetMode() == NM_Client)
+	{
+		return FMath::Max(FHOLPauseRules::DefaultTimerSeconds - (FPlatformTime::Seconds() - PauseRealStartSeconds), 0.);
+	}
+	FHOLPauseRules::FState State;
+	State.PausedBySlot = PausedBySlot;
+	State.PausedAtSeconds = PausedAtSeconds;
+	return FHOLPauseRules::TimerLeft(State, Now);
+}
+
+void AHOLGameState::NotifyPauseChanged()
+{
+	UWorld* World = GetWorld();
+	if (World && GetNetMode() != NM_DedicatedServer && IsMatchPaused() != bLocalPauseApplied)
+	{
+		bLocalPauseApplied = IsMatchPaused();
+		if (GetNetMode() == NM_Client && IsMatchPaused())
+		{
+			// Before the local pause: the server's clock as known now, less what has run since the pause.
+			PauseRealStartSeconds = FPlatformTime::Seconds() - FMath::Max(GetServerWorldTimeSeconds() - PausedAtSeconds, 0.);
+		}
+		const APlayerController* Local = World->GetFirstPlayerController();
+		if (AWorldSettings* Settings = World->GetWorldSettings(); Settings && Local)
+		{
+			Settings->SetPauserPlayerState(IsMatchPaused() ? Local->PlayerState : nullptr);
+			UE_LOG(LogHOLMatch, Display, TEXT("Pause: this machine's world %s"), World->IsPaused() ? TEXT("paused") : TEXT("running"));
+		}
+	}
+	OnPauseChanged.Broadcast();
+}
+
+bool AHOLGameState::IsInMatch(const AHOLPlayerState& Requester) const
+{
+	const int32 Slot = Requester.GetPlayerIndex();
+	return Slot != INDEX_NONE && !Requester.IsOnlyASpectator() && !IsSlotDefeated(Slot) && !bMatchOver;
+}
+
+bool AHOLGameState::RequestPause(const AHOLPlayerState& Requester, const double Now)
+{
+	FHOLPauseRules::FState State;
+	State.PausesLeft = PausesLeft;
+	State.PausedBySlot = PausedBySlot;
+	State.PausedAtSeconds = PausedAtSeconds;
+	const int32 Slot = Requester.GetPlayerIndex();
+	const FHOLPauseRules::EAnswer Answer = FHOLPauseRules::CanPause(GetNetMode(), State, IsInMatch(Requester));
+	if (Answer != FHOLPauseRules::EAnswer::Allowed)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
+		return false;
+	}
+	FHOLPauseRules::Pause(GetNetMode(), State, Slot, Now);
+	PausesLeft = State.PausesLeft;
+	PausedBySlot = State.PausedBySlot;
+	PausedAtSeconds = State.PausedAtSeconds;
+	PausedByName = Requester.GetPlayerName();
+	UE_LOG(LogHOLMatch, Display, TEXT("Pause: slot %d (%s) paused, %d left"), Slot, *PausedByName, PausesLeft);
+	ForceNetUpdate();
+	NotifyPauseChanged();
+	return true;
+}
+
+bool AHOLGameState::RequestResume(const AHOLPlayerState& Requester, const double Now)
+{
+	FHOLPauseRules::FState State;
+	State.PausesLeft = PausesLeft;
+	State.PausedBySlot = PausedBySlot;
+	State.PausedAtSeconds = PausedAtSeconds;
+	const int32 Slot = Requester.GetPlayerIndex();
+	const FHOLPauseRules::EAnswer Answer = FHOLPauseRules::CanResume(GetNetMode(), State, Slot, IsInMatch(Requester), Now);
+	if (Answer != FHOLPauseRules::EAnswer::Allowed)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
+		return false;
+	}
+	PausedBySlot = INDEX_NONE;
+	PausedByName.Reset();
+	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resumed by %s (slot %d), %d left"), *Requester.GetPlayerName(), Slot, PausesLeft);
+	ForceNetUpdate();
+	NotifyPauseChanged();
+	return true;
+}
+
+void AHOLGameState::OnRep_Pause()
+{
+	NotifyPauseChanged();
 }

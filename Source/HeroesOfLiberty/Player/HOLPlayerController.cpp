@@ -147,6 +147,29 @@ namespace UE::HeroesOfLiberty::Player
 		return Controllers;
 	}
 
+	/** P5 (D513): the Pause button's request, for the scripted checks (a client asks its server, as the button does). */
+	FAutoConsoleCommand PauseCommand(
+		TEXT("hol.Match.Pause"),
+		TEXT("hol.Match.Pause: asks the server to pause the match, as the Escape menu's Pause button (D513)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestPause();
+			}
+		}));
+
+	FAutoConsoleCommand ResumeCommand(
+		TEXT("hol.Match.Resume"),
+		TEXT("hol.Match.Resume: asks the server to resume the paused match (D513: its author at once, anyone after the timer)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestResume();
+			}
+		}));
+
 	/** Scripted checks (D264, D289): a left click at a point of the viewport, without the desktop's mouse. */
 	FAutoConsoleCommand ClickCommand(
 		TEXT("hol.Select.Click"),
@@ -1692,7 +1715,12 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 	{
 		TryPlaceCamera();
 	}
-	if (bDragging)
+	if (IsInputFrozen())
+	{
+		// P5 (D513): the camera holds still while the match is paused (neither drag, keys nor the screen's edge).
+		bDragging = false;
+	}
+	else if (bDragging)
 	{
 		UpdateDrag();
 	}
@@ -1784,11 +1812,19 @@ FVector2D AHOLPlayerController::GetEdgeScroll() const
 
 void AHOLPlayerController::HandlePan(const FInputActionValue& Value, const FVector2D Direction)
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	KeyPan += Direction;
 }
 
 void AHOLPlayerController::HandleZoom(const FInputActionValue& Value)
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	if (RTSCamera)
 	{
 		RTSCamera->Zoom(Value.Get<float>());
@@ -1797,6 +1833,10 @@ void AHOLPlayerController::HandleZoom(const FInputActionValue& Value)
 
 void AHOLPlayerController::HandleDragStarted()
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	FVector Origin, Direction;
 	bDragging = RTSCamera && DeprojectMousePositionToWorld(Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, DragAnchor);
 }
@@ -4164,6 +4204,11 @@ FString AHOLPlayerController::DescribeSelection() const
 
 void AHOLPlayerController::HandleSelectStarted()
 {
+	if (IsInputFrozen())
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause: selection ignored (match paused)"));
+		return;
+	}
 	// D357: defeated with a mode armed, the mode is left and the click only selects (to watch).
 	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || ChosenAge != INDEX_NONE))
 	{
@@ -4228,6 +4273,11 @@ void AHOLPlayerController::HandleSelectAdd(const bool bHeld)
 
 void AHOLPlayerController::HandleOrder()
 {
+	if (IsInputFrozen())
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause: order ignored (match paused)"));
+		return;
+	}
 	if (IsSpectator())
 	{
 		bOrderPressed = false;
@@ -4381,26 +4431,46 @@ void AHOLPlayerController::HandleContinueKey()
 
 void AHOLPlayerController::HandleNextIdle()
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	SelectNextIdleWorker();
 }
 
 void AHOLPlayerController::HandleCategoryKey(const EHOLBuildingCategory Category)
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	SelectBuildingCategory(Category);
 }
 
 void AHOLPlayerController::HandleHeroKey()
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	SelectHero();
 }
 
 void AHOLPlayerController::HandleSubgroupKey()
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	CycleSubgroup();
 }
 
 void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const int32 Cell)
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	// Ctrl + A (D30): the whole army; Ctrl with another key of the grid does nothing (no production by mistake).
 	if (IsCtrlHeld())
 	{
@@ -4415,6 +4485,10 @@ void AHOLPlayerController::HandleGridKey(const FInputActionValue& Value, const i
 
 void AHOLPlayerController::HandleGroupKey(const FInputActionValue& Value, const int32 Group)
 {
+	if (IsInputFrozen())
+	{
+		return;
+	}
 	// The modifiers are read from the keys held: on AZERTY, Shift + the key gives the digit, the key's name stays the same.
 	const bool bCtrl = IsCtrlHeld();
 	const bool bShift = IsShiftHeld();
@@ -4692,6 +4766,42 @@ void AHOLPlayerController::UpdateDrag()
 	if (DeprojectMousePositionToWorld(Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, Under))
 	{
 		RTSCamera->SetFocus(RTSCamera->GetFocus() + FVector(DragAnchor.X - Under.X, DragAnchor.Y - Under.Y, 0.0));
+	}
+}
+
+void AHOLPlayerController::RequestPause()
+{
+	UE_LOG(LogHOLMatch, Display, TEXT("Pause: pause asked by this player"));
+	ServerRequestPause();
+}
+
+void AHOLPlayerController::RequestResume()
+{
+	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resume asked by this player"));
+	ServerRequestResume();
+}
+
+bool AHOLPlayerController::IsInputFrozen() const
+{
+	const AHOLGameState* HOLGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	return HOLGameState && HOLGameState->IsMatchPaused();
+}
+
+void AHOLPlayerController::ServerRequestPause_Implementation()
+{
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState(); HOLGameState && HOLPlayerState)
+	{
+		HOLGameState->RequestPause(*HOLPlayerState, HOLGameState->GetServerWorldTimeSeconds());
+	}
+}
+
+void AHOLPlayerController::ServerRequestResume_Implementation()
+{
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState(); HOLGameState && HOLPlayerState)
+	{
+		HOLGameState->RequestResume(*HOLPlayerState, HOLGameState->GetServerWorldTimeSeconds());
 	}
 }
 

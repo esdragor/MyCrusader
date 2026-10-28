@@ -278,12 +278,22 @@ if ($Parts -contains "net") {
     # them again for the rest (the army's resources) and answers.
     $NetCheatTriedFlag = Join-Path $TestSaved "quick_net_cheat_tried.flag"
     $NetCheatBackFlag = Join-Path $TestSaved "quick_net_cheat_back.flag"
+    # The limited pause (D513, P5): Bob (client 1) pauses; Alice (client 2) asks to resume, refused while the timer runs;
+    # Bob asks a second pause, refused (already paused); the server reports twice 1 s apart (paused by slot 1, 2 left, the
+    # step unchanged); Bob resumes at once (his own pause); the server reports twice again (running, stepping on).
+    $NetPausedFlag = Join-Path $TestSaved "quick_net_paused.flag"
+    $NetAliceResumeTriedFlag = Join-Path $TestSaved "quick_net_alice_resume_tried.flag"
+    $NetPauseCheckFlag = Join-Path $TestSaved "quick_net_pause_check.flag"
+    $NetPauseCheckedFlag = Join-Path $TestSaved "quick_net_pause_checked.flag"
+    $NetResumedFlag = Join-Path $TestSaved "quick_net_resumed.flag"
     $NetKingAskFlag = Join-Path $TestSaved "quick_net_king_ask.flag"
     $NetKingBornFlag = Join-Path $TestSaved "quick_net_king_born.flag"
     $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
     # The refused pause (D361): client 1 has typed "pause" in its console before its signal; the server must not be
     # paused and its simulation must step on (two reports 1 s apart).
-    @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+    @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
+        "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
+        "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") +
@@ -2208,6 +2218,13 @@ if ($NetListening) {
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
         # The refused pause (D361): client 1 types "pause" in its console, as a player would (the engine's ServerPause).
         if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "console pause", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
+        # The limited pause (D513): Bob pauses, Alice's resume is refused (timer running), Bob's second pause too.
+        if ($Client -eq 1) {
+            $NetSteps += "hol.Match.Pause", "wait 1", "hol.HUD.Report", "capture qcnet_1_paused", "signal $NetPausedFlag", "waitfile $NetAliceResumeTriedFlag 60", "hol.Match.Pause", "wait 1",
+                "signal $NetPauseCheckFlag", "waitfile $NetPauseCheckedFlag 60", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "signal $NetResumedFlag"
+        } else {
+            $NetSteps += "waitfile $NetPausedFlag 300", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "capture qcnet_2_paused", "signal $NetAliceResumeTriedFlag", "waitfile $NetResumedFlag 120"
+        }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
                 "frames 2", "hol.Select.Report", "capture qcnet_${Client}_slot$Slot"
@@ -5594,8 +5611,41 @@ if ($Parts -contains "net") {
     $PauseReports = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause report: paused (\d), simulation step (-?\d+)" | ForEach-Object { $_.Matches[0] } })
     $PauseSays = ($PauseReports | ForEach-Object { "paused $($_.Groups[1].Value) step $($_.Groups[2].Value)" }) -join "; "
     $Checks["server: client 1's pause refused ($PauseRefused), the match not paused and stepping on ($PauseSays)"] = $PauseRefused -eq 1 -and
-        $PauseReports.Count -eq 2 -and @($PauseReports | Where-Object { $_.Groups[1].Value -ne "0" }).Count -eq 0 -and
+        $PauseReports.Count -ge 2 -and @($PauseReports | Where-Object { $_.Groups[1].Value -ne "0" }).Count -eq 0 -and
         [int64]$PauseReports[1].Groups[2].Value -gt [int64]$PauseReports[0].Groups[2].Value
+    # D513 (P5): the limited pause, decided by the server: Bob's pause, Alice's early resume and Bob's second pause refused,
+    # the match frozen while paused (the step unchanged 1 s apart), Bob's resume, the match stepping on.
+    $MatchPauses = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause report: .*, simulation step (-?\d+), match paused (\d) by slot (-?\d+), (-?\d+) left" | ForEach-Object { $_.Matches[0] } })
+    $MatchPauseSays = ($MatchPauses | ForEach-Object { "step $($_.Groups[1].Value) paused $($_.Groups[2].Value) by $($_.Groups[3].Value) left $($_.Groups[4].Value)" }) -join "; "
+    $PauseLines = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause: " | ForEach-Object { $_.Line -replace '^.*Pause: ', '' } })
+    $PauseLinesSay = $PauseLines -join " | "
+    $Checks["server: Bob's pause, Alice's early resume and Bob's second pause refused, Bob's resume ($PauseLinesSay)"] =
+        @($PauseLines | Where-Object { $_ -eq "slot 1 (Bob) paused, 2 left" }).Count -eq 1 -and
+        @($PauseLines | Where-Object { $_ -eq "refused to Alice (slot 0): timer running" }).Count -eq 1 -and
+        @($PauseLines | Where-Object { $_ -eq "refused to Bob (slot 1): already paused" }).Count -eq 1 -and
+        @($PauseLines | Where-Object { $_ -eq "resumed by Bob (slot 1), 2 left" }).Count -eq 1
+    $Checks["server: the match frozen while paused, stepping on once resumed ($MatchPauseSays)"] = $MatchPauses.Count -eq 6 -and
+        $MatchPauses[2].Groups[2].Value -eq "1" -and $MatchPauses[2].Groups[3].Value -eq "1" -and $MatchPauses[2].Groups[4].Value -eq "2" -and
+        $MatchPauses[3].Groups[2].Value -eq "1" -and $MatchPauses[3].Groups[1].Value -eq $MatchPauses[2].Groups[1].Value -and
+        $MatchPauses[4].Groups[2].Value -eq "0" -and $MatchPauses[5].Groups[2].Value -eq "0" -and
+        [int64]$MatchPauses[5].Groups[1].Value -gt [int64]$MatchPauses[4].Groups[1].Value
+    # The pause screen (P5.3) on each client: Bob's (« Reprendre » his, at once), then hidden once resumed; Alice's
+    # (« Reprendre » greyed while the timer runs, 1 to 60 s).
+    foreach ($N in 1, 2) {
+        $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$N.log"
+        $Screens = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "HUD pause: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
+        $Texts = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "HUD pause texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
+        $Says = ($Screens -join "; ") + " / " + ($Texts -join "; ")
+        $Resume = if ($N -eq 1) { "yes" } else { "no" }
+        $Wanted = "^paused by Bob, (\d+) s, 2 left, resume $Resume$"
+        $Shown = @($Screens | Where-Object { $_ -match $Wanted -and [int]$Matches[1] -ge 1 -and [int]$Matches[1] -le 60 })
+        $Hidden = if ($N -eq 1) { $Screens.Count -ge 2 -and $Screens[-1] -eq "hidden" } else { $true }
+        # Its own world paused while the match is (the units' animations, falls, arrows and bodies stand still), then running.
+        $WorldLines = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "Pause: this machine's world (paused|running)" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+        $Checks["client $N : its world paused then running ($($WorldLines -join ', '))"] = ($WorldLines -join ",") -eq "paused,running"
+        $Checks["client $N : the pause screen, resume $Resume, then hidden once resumed ($Says)"] = $Shown.Count -ge 1 -and $Hidden -and
+            @($Texts | Where-Object { $_ -match "^Partie en pause \| Mise en pause par Bob \| Tout le monde pourra reprendre dans \d:\d\d \| Pauses restantes : 2 \| Reprendre$" }).Count -ge 1
+    }
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     # The scripts on the dedicated server (J8a5-Q3c, D484): every .as compiles there too (the editor's -server loads
