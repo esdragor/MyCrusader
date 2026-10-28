@@ -5,8 +5,10 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver; bodies, rocks and lobby only when asked, not in -Full;
+#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver, netai; bodies, rocks and lobby only when asked, not in -Full;
 #     "aiserver" (IA0.5 B1, ~40 s, last): the AI's brain on a dedicated server without client (slot 1 AI, 5 starting Peasants);
+#     "netai" (IA0.5 B2, ~60 s, after "aiserver"): the same server with Alice and Bob joined and the AI in slot 2, its
+#     Peasants seen gathering on each client;
 #     "sizes" (TC4, ~15 s): Plain at its five sizes and a refused configuration, in the menu's game launch). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
@@ -109,7 +111,7 @@ param(
     [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -5776,26 +5778,36 @@ if ($Parts -contains "lobby") {
 # not passed). Once the rest is done (alone on the machine, ~30 s). The brain's lines, the births and the first order
 # come before the sequence starts (-ExecCmds runs after the map's BeginPlay, and waitlog reads only what follows it):
 # read from the server's log once it has quit. The sequence waits 5 s of play, asks slot 1's gathering, then quits.
+# A free UDP port in this copy's range of 10 (as "net"), for "aiserver" and "netai" (each one alone on the machine by then).
+function Get-AITestPort {
+    $Index = @{ "MyCrusader" = 0; "HeroesOfLiberty-Elrond" = 1; "HeroesOfLiberty-Arwen" = 2; "HeroesOfLiberty-Glorfindel" = 3;
+        "HeroesOfLiberty-Haldir" = 4; "HeroesOfLiberty-Galadriel" = 5; "HeroesOfLiberty-Celeborn" = 6 }[(Split-Path -Leaf $Project)]
+    if ($null -eq $Index) { $Index = 7 }
+    $Port = 7800 + 10 * $Index
+    while ($Port -lt 7810 + 10 * $Index) {
+        try { $Probe = New-Object Net.Sockets.UdpClient($Port); $Probe.Close(); break } catch { $Port++ }
+    }
+    return $Port
+}
+# The 8 slots of a version 2 match config on Plain: the states given, slots 0 and 1 named when names are given.
+function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @()) {
+    $Slots = for ($i = 0; $i -lt 8; $i++) {
+        $Name = if ($i -lt $Names.Count) { ", `"playerName`": `"$($Names[$i])`"" } else { "" }
+        "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Name }"
+    }
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"startingPeasants`": 5, `"slots`": [ $($Slots -join ', ') ] }" |
+        Set-Content -Encoding ascii $Path
+}
 if ($Parts -contains "aiserver") {
     $AIServerLog = Join-Path $TestSaved "Logs\quick_aiserver.log"
     $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
     $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
     Remove-Item $AIServerLog -ErrorAction SilentlyContinue
-    $AISlots = for ($i = 0; $i -lt 8; $i++) {
-        "{ `"state`": `"$(if ($i -eq 0) { 'Human' } elseif ($i -eq 1) { 'AI' } else { 'Closed' })`", `"colorIndex`": $i }"
-    }
-    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"startingPeasants`": 5, `"slots`": [ $($AISlots -join ', ') ] }" |
-        Set-Content -Encoding ascii $AIServerConfig
+    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
     @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
         Set-Content -Encoding utf8 $AIServerSequence
     # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
-    $AICopyIndex = @{ "MyCrusader" = 0; "HeroesOfLiberty-Elrond" = 1; "HeroesOfLiberty-Arwen" = 2; "HeroesOfLiberty-Glorfindel" = 3;
-        "HeroesOfLiberty-Haldir" = 4; "HeroesOfLiberty-Galadriel" = 5; "HeroesOfLiberty-Celeborn" = 6 }[(Split-Path -Leaf $Project)]
-    if ($null -eq $AICopyIndex) { $AICopyIndex = 7 }
-    $AIPort = 7800 + 10 * $AICopyIndex
-    while ($AIPort -lt 7810 + 10 * $AICopyIndex) {
-        try { $Probe = New-Object Net.Sockets.UdpClient($AIPort); $Probe.Close(); break } catch { $AIPort++ }
-    }
+    $AIPort = Get-AITestPort
     $AIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$AIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$AIServerConfig`" -abslog=`"$AIServerLog`" -ExecCmds=`"hol.Test.Run $AIServerSequence`""
     $AIServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $AIServerArguments -PassThru -WindowStyle Hidden
     $AIServerTimedOut = -not $AIServerProcess.WaitForExit(180000)
@@ -5822,6 +5834,96 @@ if ($Parts -contains "aiserver") {
     if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
     $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
     $AllOk = (Report "aiserver" $Checks) -and $AllOk
+}
+
+# The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
+# "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
+# named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).
+# Lighter than "net": no lobby manager, no capture; once the rest is done (alone on the machine, ~60 s). Each client,
+# once both are in, waits 8 s and says where it has slot 2's units (the AI's Peasants on their way or gathering, from
+# what the server replicated), then signals and quits; the server says the same, waits for both signals and quits. The
+# server's lines (the brain, its first order, no order for the humans) read from its log once it has quit.
+if ($Parts -contains "netai") {
+    $NetAIServerLog = Join-Path $TestSaved "Logs\quick_netai_server.log"
+    $NetAIConfig = Join-Path $TestSaved "quick_netai.json"
+    $NetAIServerSequence = Join-Path $TestSaved "quick_netai_server.seq"
+    Remove-Item $NetAIServerLog, (Join-Path $TestSaved "Logs\quick_netai_client*.log"), (Join-Path $TestSaved "quick_netai_*.flag") -ErrorAction SilentlyContinue
+    # The slots: Alice and Bob, the AI in slot 2.
+    $NetAIStates = @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed")
+    Write-AIMatchConfig $NetAIConfig $NetAIStates @("Alice", "Bob")
+    $NetAIDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_netai_done$_.flag" })
+    @("waitplayers 2", "mark netai", "wait 8", "hol.Gather.Report 2", "wait 1", "hol.Units.Where 2", "waitlog Units where:",
+        "waitfile $($NetAIDone[0]) 240", "waitfile $($NetAIDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $NetAIServerSequence
+    $NetAIPort = Get-AITestPort
+    $NetAIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetAIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetAIConfig`" -abslog=`"$NetAIServerLog`" -ExecCmds=`"hol.Test.Run $NetAIServerSequence`""
+    $NetAIServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetAIServerArguments -PassThru -WindowStyle Hidden
+    $NetAIListening = $false
+    $Deadline = (Get-Date).AddSeconds(90)
+    while (-not $NetAIListening -and (Get-Date) -lt $Deadline -and -not $NetAIServer.HasExited) {
+        Start-Sleep -Milliseconds 250
+        $NetAIListening = (Test-Path $NetAIServerLog) -and (Select-String -Path $NetAIServerLog -Pattern "listening on port" -Quiet)
+    }
+    # The clients as in "net" (their saved folders, display, names: Bob by -PlayerName=, Alice in the URL).
+    $NetAIClients = @()
+    if ($NetAIListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_netai_client$Client.seq"
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark netai", "wait 8", "hol.Units.Where 2", "wait 1", "hol.Units.Where 2",
+                "signal $($NetAIDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_netai_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetAIPort} -PlayerName=Bob" } else { "127.0.0.1:${NetAIPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $NetAIClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $NetAIListening
+    foreach ($NetClient in $NetAIClients) {
+        $ClientTimedOut = -not $NetClient.Process.WaitForExit(240000)
+        if ($ClientTimedOut) { Stop-Process -Id $NetClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $N = $NetClient.Client
+        $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+        $Checks["client $N : holds the slot of $(@('Bob', 'Alice')[$N - 1]) ($Held)"] = ($null -ne $Held) -and $Held -eq (2 - $N)
+        # The last "Units where" of slot 2: its 5 Peasants on their gathering's way or at their source (its starting hero
+        # stays idle, the brain only sends Peasants).
+        $Where = $ClientLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $AIUnits = @([regex]::Matches("$Where", "#\d+ slot 2 at \([^)]*\) (\w+)") | ForEach-Object { $_.Groups[1].Value })
+        $AIBusy = @($AIUnits | Where-Object { $_ -in "GatherTrip", "Gathering" }).Count
+        $Checks["client $N : the AI's 5 Peasants seen, at work ($AIBusy of $($AIUnits.Count): $(if ($Where) { $Where } else { 'no report' }))"] = $AIBusy -eq 5
+        $ScriptErrors = @(Get-ScriptErrors $NetClient.Log)
+        $Checks["client $N : scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    }
+    # The server quits once both clients have signalled (killed only as a last resort).
+    $NetAIServerTimedOut = -not $NetAIServer.WaitForExit($(if ($NetAIClients.Count) { 30000 } else { 1000 }))
+    if ($NetAIServerTimedOut) { Stop-Process -Id $NetAIServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $NetAIServerTimedOut
+    $NetAILog = if (Test-Path $NetAIServerLog) { Get-Content $NetAIServerLog } else { @() }
+    function Find-NetAILine([string] $Pattern) { @($NetAILog | Select-String -Pattern $Pattern | ForEach-Object { $_.Line }) | Select-Object -First 1 }
+    $ScriptErrors = @(Get-ScriptErrors $NetAIServerLog)
+    $Checks["server : scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    $Timeout = Find-NetAILine "Test sequence: timeout at step .*"
+    $Checks["server : sequence ran to its end ($(if ($Timeout) { $Timeout.Trim() } else { 'no timeout' }))"] = -not $Timeout
+    $Checks["server : Alice holds slot 0, Bob slot 1"] = [bool](Find-NetAILine "Alice holds slot 0 ") -and [bool](Find-NetAILine "Bob holds slot 1 ")
+    $Checks["server : 5 starting Peasants for slot 2"] = [bool](Find-NetAILine "Starting Peasants of slot 2: 5 in front of its main forum")
+    $Awake = Find-NetAILine "AI brain \S+ awake, net mode \w+, thinking slots \[[^\]]*\]"
+    $Checks["server : brain awake on the dedicated server, slot 2 thinking ($(if ($Awake) { ($Awake -replace '^.*(AI brain )', '$1').Trim() } else { 'no awake line' }))"] =
+        [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[2\]"
+    $Checks["server : AI slot 2 thinks (AI slot 2 step)"] = [bool](Find-NetAILine "AI slot 2 step \d+:")
+    $Checks["server : 5 idle -> gather"] = [bool](Find-NetAILine "AI slot 2 step \d+: 5 idle -> gather \w+ #\d+")
+    $Checks["server : Gather order of slot 2: 5 units to source"] = [bool](Find-NetAILine "Gather order of slot 2: 5 units to source")
+    # The humans' Peasants are theirs: the AI orders none of them.
+    $HumanOrder = Find-NetAILine "Gather order of slot [01]:"
+    $Checks["server : no gather order for the humans' slots ($(if ($HumanOrder) { ($HumanOrder -replace '^.*(Gather order)', '$1').Trim() } else { 'none' }))"] = -not $HumanOrder
+    $AllOk = (Report "netai" $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
