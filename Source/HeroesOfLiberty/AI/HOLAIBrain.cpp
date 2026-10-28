@@ -137,8 +137,27 @@ bool UHOLAIBrainSubsystem::ThinkNow(int32 PlayerIndex)
 void UHOLAIBrainSubsystem::OnStepEnded(int64 StepIndex)
 {
 	const int32 Interval = GetThinkSteps();
+	const TArray<int32> ThinkingSlots = GetThinkingSlots();
+	// IA0.5 B1: one line per world, at its first step and not at OnWorldBeginPlay (UWorld::BeginPlay wakes the
+	// subsystems before the game mode's StartPlay, where the AI PlayerStates are made: no thinking slot known there).
+	if (!bAwakeLogged)
+	{
+		bAwakeLogged = true;
+		const UWorld* World = GetWorld();
+		const ENetMode NetMode = World ? World->GetNetMode() : NM_Standalone;
+		const TCHAR* NetModeName = NetMode == NM_DedicatedServer ? TEXT("DedicatedServer")
+			: NetMode == NM_ListenServer ? TEXT("ListenServer")
+			: NetMode == NM_Client ? TEXT("Client") : TEXT("Standalone");
+		TArray<FString> SlotNames;
+		for (const int32 Slot : ThinkingSlots)
+		{
+			SlotNames.Add(FString::FromInt(Slot));
+		}
+		UE_LOG(LogHOLMatch, Log, TEXT("AI brain %s awake, net mode %s, thinking slots [%s]"), *GetClass()->GetName(), NetModeName,
+			*FString::Join(SlotNames, TEXT(",")));
+	}
 	// IA0.4-Q3: the slots whose brain the scenario switched off ("aiBrain": false) never think.
-	for (const int32 Slot : GetThinkingSlots())
+	for (const int32 Slot : ThinkingSlots)
 	{
 		// Spread: slot S thinks at the steps where (step + S) is a multiple of the interval.
 		if ((StepIndex + Slot) % Interval != 0)

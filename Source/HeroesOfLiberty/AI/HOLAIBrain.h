@@ -84,6 +84,8 @@ private:
 
 	FDelegateHandle StepEndedHandle;
 	int32 NumThoughts = 0;
+	/** IA0.5 B1: the "awake" line written once per world, at the first step (the AI PlayerStates exist from StartPlay). */
+	bool bAwakeLogged = false;
 
 	/** Bounded record of the step's thoughts: trimmed back to MaxStepThoughts when it doubles. */
 	static constexpr int32 MaxStepThoughts = 256;

@@ -5,7 +5,8 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby; bodies, rocks and lobby only when asked, not in -Full;
+#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver; bodies, rocks and lobby only when asked, not in -Full;
+#     "aiserver" (IA0.5 B1, ~40 s, last): the AI's brain on a dedicated server without client (slot 1 AI, 5 starting Peasants);
 #     "sizes" (TC4, ~15 s): Plain at its five sizes and a refused configuration, in the menu's game launch). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
@@ -108,7 +109,7 @@ param(
     [string] $GameExec = ""
 )
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
@@ -5767,6 +5768,60 @@ if ($Parts -contains "lobby") {
         }
     }
     $AllOk = (Report "lobby" $Checks) -and $AllOk
+}
+
+# The "aiserver" part (IA0.5 B1, IA0.5-Q2 B): the AI's brain on a dedicated server, no client. The editor in server mode
+# (as "net", D275) on Plain, slot 0 Human without a name (the match does not wait for it: R3.9 waits only for named
+# players), slot 1 AI, 5 starting Peasants for everyone ("startingPeasants": 5 in the config, so $NoStartingPeasants is
+# not passed). Once the rest is done (alone on the machine, ~30 s). The brain's lines, the births and the first order
+# come before the sequence starts (-ExecCmds runs after the map's BeginPlay, and waitlog reads only what follows it):
+# read from the server's log once it has quit. The sequence waits 5 s of play, asks slot 1's gathering, then quits.
+if ($Parts -contains "aiserver") {
+    $AIServerLog = Join-Path $TestSaved "Logs\quick_aiserver.log"
+    $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
+    $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
+    Remove-Item $AIServerLog -ErrorAction SilentlyContinue
+    $AISlots = for ($i = 0; $i -lt 8; $i++) {
+        "{ `"state`": `"$(if ($i -eq 0) { 'Human' } elseif ($i -eq 1) { 'AI' } else { 'Closed' })`", `"colorIndex`": $i }"
+    }
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"startingPeasants`": 5, `"slots`": [ $($AISlots -join ', ') ] }" |
+        Set-Content -Encoding ascii $AIServerConfig
+    @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
+        Set-Content -Encoding utf8 $AIServerSequence
+    # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
+    $AICopyIndex = @{ "MyCrusader" = 0; "HeroesOfLiberty-Elrond" = 1; "HeroesOfLiberty-Arwen" = 2; "HeroesOfLiberty-Glorfindel" = 3;
+        "HeroesOfLiberty-Haldir" = 4; "HeroesOfLiberty-Galadriel" = 5; "HeroesOfLiberty-Celeborn" = 6 }[(Split-Path -Leaf $Project)]
+    if ($null -eq $AICopyIndex) { $AICopyIndex = 7 }
+    $AIPort = 7800 + 10 * $AICopyIndex
+    while ($AIPort -lt 7810 + 10 * $AICopyIndex) {
+        try { $Probe = New-Object Net.Sockets.UdpClient($AIPort); $Probe.Close(); break } catch { $AIPort++ }
+    }
+    $AIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$AIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$AIServerConfig`" -abslog=`"$AIServerLog`" -ExecCmds=`"hol.Test.Run $AIServerSequence`""
+    $AIServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $AIServerArguments -PassThru -WindowStyle Hidden
+    $AIServerTimedOut = -not $AIServerProcess.WaitForExit(180000)
+    if ($AIServerTimedOut) { Stop-Process -Id $AIServerProcess.Id -Force -ErrorAction SilentlyContinue }
+    $AILog = if (Test-Path $AIServerLog) { Get-Content $AIServerLog } else { @() }
+    function Find-AILine([string] $Pattern) { @($AILog | Select-String -Pattern $Pattern | ForEach-Object { $_.Line }) | Select-Object -First 1 }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself in 180 s"] = -not $AIServerTimedOut
+    $ScriptErrors = @(Get-ScriptErrors $AIServerLog)
+    $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
+    $Timeout = Find-AILine "Test sequence: timeout at step .*"
+    $Checks["sequence ran to its end ($(if ($Timeout) { $Timeout.Trim() } else { 'no timeout' }))"] = -not $Timeout
+    $Checks["5 starting Peasants for slot 1"] = [bool](Find-AILine "Starting Peasants of slot 1: 5 in front of its main forum")
+    $Awake = Find-AILine "AI brain \S+ awake, net mode \w+, thinking slots \[[^\]]*\]"
+    $Checks["brain awake on the dedicated server, slot 1 thinking ($(if ($Awake) { ($Awake -replace '^.*(AI brain )', '$1').Trim() } else { 'no awake line' }))"] =
+        [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[1\]"
+    $Checks["AI slot 1 thinks (AI slot 1 step)"] = [bool](Find-AILine "AI slot 1 step \d+:")
+    $Checks["5 idle -> gather"] = [bool](Find-AILine "AI slot 1 step \d+: 5 idle -> gather \w+ #\d+")
+    $Checks["Gather order of slot 1: 5 units to source"] = [bool](Find-AILine "Gather order of slot 1: 5 units to source")
+    # The report after 5 s: the Peasants sent are on their way, gathering or unloading (a starting hero, if any, stays
+    # among the "not gathering").
+    $GatherLine = Find-AILine "Gather: slot 1 to source \d+, gathering \d+, to deposit \d+, not gathering \d+"
+    $Busy = 0
+    if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
+    $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
+    $AllOk = (Report "aiserver" $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
