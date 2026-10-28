@@ -1,4 +1,4 @@
-# Paysans de départ (IA1.1) : 5 Paysans en rangée devant le forum de chaque camp, entre le forum et le Roi ; les tiens se sélectionnent, récoltent, un 6e se produit ; ceux de l'IA restent inactifs
+# Paysans de départ (IA1.1, IA0.4 B6) : 5 Paysans en rangée devant le forum de chaque camp, entre le forum et le Roi ; les tiens se sélectionnent, récoltent, un 6e se produit ; ceux de l'IA partent récolter d'eux-mêmes (cerveau de l'IA)
 # Plain, toi (slot 0) contre une IA (slot 1), starting_peasants.json : "startingPeasants": 5 (les autres scénarios n'en ont
 # aucun : ils font naître les leurs) et Régicide coché, seulement pour voir le Roi à côté d'eux (sans Régicide, pas de Roi).
 # Le scénario ne fait naître aucun Paysan : il vérifie ceux de la partie, puis rend la main.
@@ -7,16 +7,28 @@
 #  2. un double clic sur l'un d'eux (ou un cadre) : bloc « 5 Paysans » ;
 #  3. clic droit sur des baies ou un arbre : ils vont récolter et déposent au forum ;
 #  4. forum sélectionné, un Paysan produit (50 de nourriture sur les 200 du départ) : 6e Paysan ;
-#  5. Entrée : la base de l'IA : 5 Paysans aussi, immobiles (l'IA ne joue pas encore) ; Entrée : retour chez toi.
+#  5. Entrée : la base de l'IA : ses 5 Paysans récoltent déjà (le cerveau les a envoyés dès le début) ; Entrée : retour chez toi.
 # Vérifications (sans rien lancer avant elles : waitlog lit le journal depuis le lancement de la partie) : la ligne de
-# naissance de chaque camp ; 12 unités (2 Rois + 10 Paysans) ; 6 unités par camp ; sélection par double clic = 5 Paysans.
+# naissance de chaque camp ; la pensée de l'IA (slot 1 : « 5 idle -> gather ») et son ordre de récolte pour ses 5 Paysans
+# (IA0.4, dès sa première pensée, moins de 1 s de jeu après leur naissance : le pas est dans la ligne) ; aucun Paysan
+# du slot 0 en récolte (l'IA ne commande que les siens) ; 12 unités (2 Rois + 10 Paysans) ; 6 unités par camp, ceux de
+# l'IA en route vers leur source ; sélection par double clic = 5 Paysans de chaque camp.
 waitlog Starting Peasants of slot 0: 5 in front of its main forum
 waitlog Starting Peasants of slot 1: 5 in front of its main forum
+waitlog AI slot 1 step
+waitlog 5 idle -> gather
+waitlog Gather order of slot 1: 5 units to source
 waitunits 12
+# Le Roi compte dans le rapport de récolte (6 par camp) : slot 0, 6 sans récolte ; slot 1, le Roi seul sans récolte.
+hol.Gather.Report 0
+waitlog Gather: slot 0 to source 0, gathering 0, to deposit 0, not gathering 6 (0 with a load)
+hol.Gather.Report 1
+waitlog not gathering 1 (0 with a load)
 hol.Units.Where 0
 waitlog Units where: 6 units
 hol.Units.Where 1
 waitlog Units where: 6 units
+waitlog GatherTrip
 # Le double clic de l'utilisateur, fait par le script : sur ton dernier Paysan (le Roi naît avant eux), puis sur un de l'IA.
 hol.Camera.FocusSlot 1
 frames 5
@@ -43,10 +55,10 @@ frames 5
 note 5 Paysans en rangée devant ton forum, entre le forum et ton Roi (couronne d'or) : rien ne se chevauche ?
 note Sélectionne-les (double clic ou cadre) : bloc « 5 Paysans » ; envoie-les récolter (clic droit sur des baies ou un arbre).
 note Forum sélectionné : produis un Paysan (50 de nourriture) : le 6e sort.
-waitkey Entrée : la base de l'IA (5 Paysans aussi, immobiles)
+waitkey Entrée : la base de l'IA (ses 5 Paysans récoltent)
 hol.Camera.FocusSlot 1
 frames 2
-note Base de l'IA : 5 Paysans devant son forum, à côté de son Roi, immobiles (l'IA ne joue pas encore).
+note Base de l'IA : ses 5 Paysans sont partis récolter d'eux-mêmes dès le début (cerveau de l'IA), son Roi reste devant le forum.
 waitkey Entrée : retour chez toi
 hol.Camera.FocusSlot 0
 frames 2
