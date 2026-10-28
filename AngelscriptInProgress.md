@@ -75,6 +75,17 @@ Rien n'est tranché ici : les questions sont posées à l'utilisateur une à la 
 - 2026-10-27 : AS2 dans main (a365967 ; avance de main faite à la main dans la copie principale : `EtapeDefini.md` et
   `packaged_smoke.ps1` y portaient des changements non commités d'autres sessions, gardés). **AS-Q3 posée et tranchée :
   A** (ci-dessous). Chantier en veille : rien à coder ici ; Elrond libéré.
+- 2026-10-28 (par J8a.5, aa0f11f, `JourneyInProgress.md`) : **premier écran d'interface en script**, recette pour la
+  migration du HUD au fil des chantiers (choix de l'utilisateur J8a5-Q3 = C, Q3b = C). (1) **`HeroesOfLibertyUI` en
+  Runtime** (était ClientOnly) : le serveur dédié compile tous les scripts au démarrage (`-as-exit-on-error`) et ne
+  connaissait pas les classes d'interface ; contrôle « server: scripts compiled » dans la partie `net`. (2) Base C++
+  **`UHOLScriptScreen`** (`HUD/HOLScriptScreen.h`, `UUserWidget` abstrait : `Describe`, `ClickWidget`, `Refresh`,
+  `MakePanel`, `MakeText`, `MakeButton`, `MakeBar`, couleurs), créée par `UHOLGameScreen` au-dessus de son cadre ; un
+  widget en script construit son arbre dans `OnInitialized` (`ConstructWidget`, `SetRootWidget`). (3) Statiques d'une
+  classe sans suffixe « Library » : `UHOLScriptScreen::X()` en script. (4) **Textes : `NSLOCTEXT` littéraux en
+  script**, GatherText lit `Script/*.as` (`Config/Localization/Game.ini`), puis `fill_po.py` comme pour le C++. (5)
+  `LoadObject(nullptr, Chemin)` pour une texture. À vérifier au prochain paquet : cible Server qui lie l'interface,
+  cache précompilé WindowsServer.
 
 ### AS-Q3 — Que fait le chantier après AS1 et AS2 ? (tranchée le 2026-10-27 : **A**)
 
