@@ -413,7 +413,10 @@ if ($Parts -contains "menu") {
                 "frames 3", "hol.UI.Choose SizeDropdown 1", "hol.UI.Choose SlotState5 1", "frames 3", "capture qc_fr_sizes",
                 "hol.UI.Choose SlotState1 0", "hol.UI.Choose SlotState2 0", "frames 3", "hol.UI.Choose SizeDropdown 1", "frames 3"
             # IA0.6 S1: in solo "IA" is open in the state list: slot 1 taken by an AI shows its colour and team; closed again.
+            # IA0.6 S2 (Q1): one "Joueur" column, the list shows the name the slot will have (the game's, GetAIName: "IA Normal 2"
+            # for slot index 1); its level after it, Normal and greyed, on an AI line only (none on the closed slot 2).
             Step "mark menu ai", "hol.UI.Choose SlotState1 2", "frames 3", "hol.UI.Shown SlotColor1 SlotTeam1", "capture qc_fr_ai",
+                "hol.UI.Choose SlotState2 0", "hol.UI.Text SlotState1 SlotLevel1", "hol.UI.Shown SlotLevel1 SlotName1 SlotLevel2",
                 "hol.UI.Choose SlotState1 0", "frames 3"
         }
         Back
@@ -2893,6 +2896,14 @@ if ($Parts -contains "menu") {
             $AI = Get-Section "menu ai"
             $Checks["AI open in solo: slot 1 taken by an AI, colour and team shown"] = [bool]($AI | Select-String -SimpleMatch "SlotState1: value 2 chosen" -Quiet) -and
                 [bool]($AI | Select-String -Pattern "Shown SlotColor1: yes$" -Quiet) -and [bool]($AI | Select-String -Pattern "Shown SlotTeam1: yes$" -Quiet)
+            # IA0.6 S2: the name shown, the level (Normal, shown and greyed), no separate name column, no level on a closed line.
+            $SeenName = (@($AI | Select-String -Pattern "Text SlotState1: (.*)$") | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+            $SeenLevel = (@($AI | Select-String -Pattern "Text SlotLevel1: (.*)$") | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+            $LevelShown = [bool]($AI | Select-String -Pattern "Shown SlotLevel1: yes, greyed$" -Quiet)
+            $NameGone = [bool]($AI | Select-String -Pattern "Shown SlotName1: (no|missing)$" -Quiet)
+            $ClosedNoLevel = [bool]($AI | Select-String -Pattern "Shown SlotLevel2: no(, greyed)?$" -Quiet)
+            $Checks["AI line merged (IA0.6 S2): name '$SeenName' (want 'IA Normal 2'), level '$SeenLevel' shown+greyed=$LevelShown (want 'Normal', True), no name column=$NameGone, closed line without level=$ClosedNoLevel"] =
+                $SeenName -eq "IA Normal 2" -and $SeenLevel -eq "Normal" -and $LevelShown -and $NameGone -and $ClosedNoLevel
         }
         $AllOk = (Report "menu $Culture" $Checks) -and $AllOk
         if (Get-Command python -ErrorAction SilentlyContinue) {

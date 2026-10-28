@@ -74,6 +74,7 @@ TRANSLATIONS = {
     "HOLNewGameScreen,TooManyPlayers": ("Too many players for this map size.", "このマップサイズにはプレイヤーが多すぎます。"),
     "HOLNewGameScreen,Player": ("Player", "プレイヤー"),
     "HOLNewGameScreen,Slot": ("Slot", "スロット"),
+    "HOLNewGameScreen,Level": ("Level", "レベル"),
     "HOLNewGameScreen,Faction": ("Faction", "勢力"),
     "HOLNewGameScreen,Colour": ("Color", "色"),
     "HOLNewGameScreen,RandomColour": ("Random", "ランダム"),

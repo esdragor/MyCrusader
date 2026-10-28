@@ -131,9 +131,23 @@ protected:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLDropdown>> SlotTeams;
 
-	/** "Joueur 1".."Joueur 8" (SlotName0..7); the players' names in the network mode. */
+	/** "Joueur 1".."Joueur 8" (SlotName0..7); the players' names in the network mode (IA0.6 S2: shown in a lobby only). */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UCommonTextBlock>> SlotNames;
+
+	/** IA0.6 S2: an AI slot's level (SlotLevel0..7), Normal and greyed, shown on an AI line in solo only. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHOLDropdown>> SlotLevels;
+
+	/** IA0.6 S2: the headings the solo and the lobby change: the name column (lobby), the slot column's, the level's (solo). */
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> HeadName;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> HeadSlot;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> HeadLevel;
 
 	/** Slot 0's state ("Vous", SlotYou0), slot 0 having no state list. */
 	UPROPERTY(Transient)

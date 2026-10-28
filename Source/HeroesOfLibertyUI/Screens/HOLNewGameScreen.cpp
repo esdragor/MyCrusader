@@ -14,6 +14,8 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Input/CommonUIActionRouterBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "Match/HOLForumMessages.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerColors.h"
 #include "Net/HOLManagerClient.h"
@@ -34,6 +36,8 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	constexpr float SwatchSize = 28.f;
 	constexpr float ColorWidth = 200.f;
 	constexpr float TeamWidth = 160.f;
+	/** IA0.6 S2: the AI level, in the place the name column leaves in solo (the grid keeps its width). */
+	constexpr float LevelWidth = NameWidth;
 	constexpr float OptionWidth = 200.f;
 	constexpr float ToggleWidth = 120.f;
 	constexpr float OptionLabelWidth = 170.f;
@@ -45,6 +49,28 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	TArray<FText> StateNames()
 	{
 		return { LOCTEXT("Closed", "Fermé"), LOCTEXT("Human", "Humain"), LOCTEXT("AI", "IA") };
+	}
+
+	/** List values in the order of EHOLAIDifficulty, the names the game gives them (« IA Normal 2 »). */
+	TArray<FText> LevelNames()
+	{
+		return { HOLForumMessages::GetDifficultyName(EHOLAIDifficulty::Easy), HOLForumMessages::GetDifficultyName(EHOLAIDifficulty::Normal),
+			HOLForumMessages::GetDifficultyName(EHOLAIDifficulty::Hard), HOLForumMessages::GetDifficultyName(EHOLAIDifficulty::Evolving) };
+	}
+
+	/** IA0.6 S2: shows or takes out a widget and its cell, the cell keeping its width when bKeepPlace (Hidden) or not (Collapsed). */
+	void ShowCell(UWidget* Widget, const bool bShown, const bool bKeepPlace)
+	{
+		if (!Widget)
+		{
+			return;
+		}
+		const ESlateVisibility Visibility = bShown ? ESlateVisibility::Visible : bKeepPlace ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed;
+		Widget->SetVisibility(Visibility);
+		if (USizeBox* Cell = Cast<USizeBox>(Widget->GetParent()))
+		{
+			Cell->SetVisibility(bShown || bKeepPlace ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		}
 	}
 
 	/** List values in the order of EHOLFaction (§ 13). */
@@ -239,8 +265,11 @@ void UHOLNewGameScreen::BuildLayout()
 	TeamsTogetherDropdown = AddDropdown(SizeLine, TEXT("TeamsTogetherDropdown"), OffOn(), 1, TeamWidth);
 
 	UHorizontalBox* Headings = AddLine(16.f);
-	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass()), NameWidth);
-	AddCell(Headings, MakeText(LOCTEXT("Slot", "Emplacement"), UHOLTextStyleNote::StaticClass()), StateWidth);
+	// IA0.6 S2 (Q1): in solo one "Joueur" column, its list showing the name the slot will have, then the AI's level; the
+	// lobby keeps its name column and "Emplacement" (Refresh shows the one or the other).
+	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass(), TEXT("HeadName")), NameWidth);
+	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass(), TEXT("HeadSlot")), StateWidth);
+	AddCell(Headings, MakeText(LOCTEXT("Level", "Niveau"), UHOLTextStyleNote::StaticClass(), TEXT("HeadLevel")), LevelWidth);
 	AddCell(Headings, MakeText(LOCTEXT("Faction", "Faction"), UHOLTextStyleNote::StaticClass()), FactionWidth);
 	AddCell(Headings, MakeText(LOCTEXT("Colour", "Couleur"), UHOLTextStyleNote::StaticClass()), SwatchSize + 8.f + ColorWidth);
 	AddCell(Headings, MakeText(LOCTEXT("Team", "Équipe"), UHOLTextStyleNote::StaticClass()), TeamWidth);
@@ -258,6 +287,7 @@ void UHOLNewGameScreen::BuildLayout()
 		{
 			AddDropdown(Row, SlotWidgetName(TEXT("SlotState"), SlotIndex), StateNames(), 0, StateWidth);
 		}
+		AddDropdown(Row, SlotWidgetName(TEXT("SlotLevel"), SlotIndex), LevelNames(), static_cast<int32>(EHOLAIDifficulty::Normal), LevelWidth);
 		AddDropdown(Row, SlotWidgetName(TEXT("SlotFaction"), SlotIndex), FactionNames(), 0, FactionWidth);
 		UImage* Swatch = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), SlotWidgetName(TEXT("SlotSwatch"), SlotIndex));
 		Swatch->SetDesiredSizeOverride(FVector2D(SwatchSize, SwatchSize));
@@ -296,6 +326,9 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	Super::NativeOnInitialized();
 
 	SlotYou = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("SlotYou0")));
+	HeadName = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("HeadName")));
+	HeadSlot = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("HeadSlot")));
+	HeadLevel = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("HeadLevel")));
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
 	{
 		SlotStates.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotState"), SlotIndex))));
@@ -304,6 +337,12 @@ void UHOLNewGameScreen::NativeOnInitialized()
 		SlotSwatches.Add(Cast<UImage>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotSwatch"), SlotIndex))));
 		SlotTeams.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotTeam"), SlotIndex))));
 		SlotNames.Add(Cast<UCommonTextBlock>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotName"), SlotIndex))));
+		SlotLevels.Add(Cast<UHOLDropdown>(WidgetTree->FindWidget(SlotWidgetName(TEXT("SlotLevel"), SlotIndex))));
+		// IA0.6 S2 (Q1): the level is shown, not chosen yet (Normal).
+		if (SlotLevels[SlotIndex])
+		{
+			SlotLevels[SlotIndex]->SetIsEnabled(false);
+		}
 
 		if (SlotStates[SlotIndex])
 		{
@@ -667,17 +706,40 @@ void UHOLNewGameScreen::Refresh()
 	}
 	// TC3 (TC-Q4): the slots past the places of the size are closed, not changeable (the lobby sets its own, loop 2).
 	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
+	// IA0.6 S2: the name column and "Emplacement" in a lobby only; the level column in solo only.
+	ShowCell(HeadName, bLobby, false);
+	ShowCell(HeadLevel, !bLobby, false);
+	if (HeadSlot)
+	{
+		HeadSlot->SetText(bLobby ? LOCTEXT("Slot", "Emplacement") : LOCTEXT("Player", "Joueur"));
+	}
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
 	{
 		const FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
 		const bool bOccupied = SlotConfig.State != EHOLSlotState::Closed;
+		const bool bAI = SlotConfig.State == EHOLSlotState::AI;
 		if (SlotStates[SlotIndex])
 		{
 			SlotStates[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.State));
 			if (!bLobby)
 			{
 				SlotStates[SlotIndex]->SetIsEnabled(SlotIndex < NumPlaces);
+				// IA0.6 S2 (Q1): the name the slot will have, as the game names it (GetAIName, GetSlotName); "Fermé" stays.
+				if (bAI)
+				{
+					SlotStates[SlotIndex]->SetShownText(HOLForumMessages::GetAIName(SlotIndex, SlotConfig.Difficulty));
+				}
+				else if (bOccupied)
+				{
+					SlotStates[SlotIndex]->SetShownText(FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1));
+				}
 			}
+		}
+		ShowCell(SlotNames[SlotIndex], bLobby, false);
+		if (SlotLevels[SlotIndex])
+		{
+			SlotLevels[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.Difficulty));
+			ShowCell(SlotLevels[SlotIndex], !bLobby && bAI, !bLobby);
 		}
 		if (SlotFactions[SlotIndex])
 		{

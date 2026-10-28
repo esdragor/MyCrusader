@@ -118,6 +118,19 @@ void UHOLDropdown::SetSelectedIndex(const int32 Index)
 	}
 }
 
+FText UHOLDropdown::GetShownText() const
+{
+	return ValueText ? ValueText->GetText() : Options.IsValidIndex(SelectedIndex) ? Options[SelectedIndex] : FText::GetEmpty();
+}
+
+void UHOLDropdown::SetShownText(const FText& Text)
+{
+	if (ValueText)
+	{
+		ValueText->SetText(Text);
+	}
+}
+
 bool UHOLDropdown::IsListOpen() const
 {
 	return Anchor && Anchor->IsOpen();
