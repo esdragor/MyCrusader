@@ -1,0 +1,19 @@
+# IA au menu (IA0.6 S1-S2) : une partie contre une IA lancée par l'écran Nouvelle partie, puis le menu à regarder toi-même
+# Plain, toi (slot 0) contre une IA (slot 1, « IA Normal 2 »), 5 Paysans de départ. Le scénario passe par l'écran Nouvelle
+# partie et son bouton Lancer (comme tout scénario lancé depuis le menu), vérifie que le cerveau de l'IA pense, puis rend
+# la main.
+# À regarder :
+#  1. en partie : l'IA s'appelle « IA Normal 2 » (tableau des joueurs) ; ses 5 Paysans partent récolter d'eux-mêmes ;
+#  2. Échap, Menu, quitter vers le menu, puis Nouvelle partie : une seule colonne « Joueur » (Vous, puis une liste par
+#     ligne) ; la liste de la 2e ligne montre « IA Normal 2 » ; « Niveau » grisé sur Normal sur la seule ligne IA ;
+#  3. mets une IA sur une autre ligne (taille plus grande si besoin) : elle prend le nom « IA Normal <N° de ligne> »,
+#     une couleur et une équipe ; repasse-la en Fermé : le niveau disparaît ;
+#  4. Lancer : les IA de la partie envoient leurs Paysans récolter.
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1: 5 units to source
+hol.Camera.FocusSlot 0
+frames 2
+note L'IA « IA Normal 2 » joue : ses 5 Paysans sont partis récolter (console ² : hol.Camera.FocusSlot 1 pour les voir).
+note Puis Échap > Menu > quitter vers le menu > Nouvelle partie : colonne « Joueur » unique, « IA Normal 2 », Niveau grisé sur Normal.
+note Mets une IA sur une autre ligne puis Lancer : chaque IA envoie ses Paysans récolter.
