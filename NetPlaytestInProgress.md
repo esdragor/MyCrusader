@@ -1579,3 +1579,66 @@ R8, R9.
   demander le moment à l'utilisateur ; vérifier `Servers\<v>\` et sa taille, `/status`, un salon ouvert sur la version).
   Puis R8c (mesure 4 / 8 clients, au repos), R8d (essai E5 avec un ami). À retenir : reconstruire le gestionnaire
   (`build_manager.ps1`) avant `-Parts lobby` après toute fusion qui touche `Manager\`.
+- 2026-10-27 ~22:20 : **R8b lancée** (« go maintenant ») : `publish.ps1 -Root Glorfindel -Version 2026-10-27-r8` vers le
+  vrai gestionnaire (`MyCrusader\Saved\Manager\Versions` et `\Servers`, celui du raccourci `Gestionnaire HOL.bat`,
+  arrêté ; dernière publiée jusque-là L11-v1) ; notes : déconnexion / retour, héros, arbalétrier, ferme, dépôt, tailles
+  de carte, serveur par version. Ensuite : `build_manager.ps1 -Root MyCrusader` (le gestionnaire du raccourci date
+  d'avant R8a), vérifier `Servers\2026-10-27-r8\` et sa taille, `/status`, un salon sur la version.
+- 2026-10-27 ~22:35 : **R8b faite**. `publish.ps1` **PASS** : paquet 4,6 min (jeu 3265 Mo, serveur 3101 Mo, archive
+  `Glorfindel\Saved\Packages\2026-10-27-r8`), HOLPublish 204 s (55 fichiers, 347,1 Mo compressés, 10 correctifs depuis
+  L11-v1, 32,1 Mo) ; versions gardées 2026-10-27-r8 et L11-v1 (789 Mo) ; **`Servers\2026-10-27-r8\` 589 Mo, 0 `.pdb`**.
+  `precompile_scripts` « exit 1 » connu (PCG à l'arrêt, cache écrit). Gestionnaire du raccourci reconstruit depuis
+  `main` (`build_manager.ps1 -Root MyCrusader` PASS, 92 Mo). Essai local (127.0.0.1:7798, mêmes arguments que
+  `Gestionnaire HOL.bat`, `--GameVersion=L11-v1`) : `/status` = **2026-10-27-r8** (latest.txt l'emporte), salon créé en
+  2026-10-27-r8 / Plain / Large, client L11-v1 refusé 409, `/versions/latest` = r8 avec les notes et le correctif depuis
+  L11-v1 ; arrêté. Le `.bat` garde `--ServerExe` = serveur L11-v1 : simple repli, jamais pris tant que
+  `Servers\<v>\` existe. **Suite : R8c** (mesure à 4 puis 8 clients, débit montant, au repos : machine calme) et
+  **R8d** (essai E5 avec un ami par la box : l'ami met à jour par son lanceur → r8). Rangement possible sur accord :
+  archives `Glorfindel\Saved\Packages\2026-10-27-r7` et `-r8` (~6 Go chacune), `MyCrusader\Saved\Packages\L11-v1`.
+- 2026-10-27 ~22:50 : demandes de l'utilisateur : (1) **rangement fait** : archives `Glorfindel\Saved\Packages\2026-10-27-r7`,
+  `-r8` et `MyCrusader\Saved\Packages\L11-v1` supprimées (~19 Go ; 342 Go libres) ; `Versions\L11-v1` gardé (source du
+  correctif). `Desktop\Gestionnaire HOL.bat` : `--GameVersion` et `--ServerExe` (vers l'archive L11-v1 supprimée) retirés,
+  la version vient de `latest.txt` et le serveur de `Servers\<v>\` ; vérifié en local (r8, salon, L11-v1 refusé ; arrêté).
+  (2) **R8d (essai avec un ami) reporté** par l'utilisateur. (3) **R8c à préparer pour demain matin** (l'utilisateur la
+  lance) : sous-agent lancé (15 min, Glorfindel) : `Tools\Tests\upload_measure.ps1` (machine calme, serveur cuit à jour,
+  ordinaire et S5 à 4 puis 8 clients, débit montant du serveur, rapport `Saved_Tests\Logs\upload_measure_<date>.txt`,
+  `-DryRun`, `-Quick`).
+- 2026-10-27 ~23:05 : **R8c préparée** (sous-agent, 8 min), Glorfindel, **non commitée** : `Tools\Tests\upload_measure.ps1`
+  (machine calme sinon refus, `-Force` ; serveur cuit recuit s'il est plus vieux que les DLL ; ordinaire ×4 Plain_Large, S5
+  ×4 2000 unités, ordinaire ×8 Plain_Huge, S5 ×8 ; rapport `Saved_Tests\Logs\upload_measure_<date>.txt` ; `-DryRun`,
+  `-Quick`) ; `net_match.ps1` + `-Report` / `-ReportInterval` (rapports réseau en partie ordinaire aussi). Débit = octets
+  envoyés par connexion du serveur (`OutTotalBytes`, rapport toutes les 2 s) + 28 o d'en-têtes IP/UDP par paquet pour
+  la ligne « box upload needed » (pic sur 2 s, estimation haute) ; pas de compteur système (bouclage invisible). `-Quick
+  -Force` (machine chargée) : ordinaire ×2 PASS (1,2 Ko/s par client, 2,5 Ko/s au total ; clients disent recevoir 2,1 :
+  écart à regarder dans le vrai rapport) ; S5 FAIL « Failed to enter /Game/Maps/StressTest » : **le serveur cuit de test
+  (`Saved\StagedBuilds`) a été écrasé par l'empaquetage de R8b**, qui ne cuit pas StressTest (reprise automatique
+  ajoutée). Session principale : `-StageOnly` puis `-Quick -Force` relancés pour vérifier S5. Durée complète ~13 min.
+  **À retenir** : après `package.ps1` / `publish.ps1` dans une copie, recuire son serveur de test (`net_match -StageOnly`).
+- 2026-10-27 ~23:20 : serveur de test recuit (`-StageOnly`, avec StressTest) puis `upload_measure -Quick -Force` **PASS**
+  (1,9 min, machine chargée : processeur 99,8 %, 4 UnrealEditor) : ordinaire ×2 PASS (1,2 Ko/s par client), S5 ×2 200
+  unités PASS (2,8 Ko/s par client, `s5_report` PASS) ; 0 processus laissé. **R8c prête, non commitée** (script +
+  `net_match -Report`), commit après la mesure de l'utilisateur. **Reprise exacte (demain matin)** : l'utilisateur lance
+  `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Tests\upload_measure.ps1`
+  (machine calme : Unreal fermés, sessions inactives, Discord / Edge / Opera / ShivaGet / IMF fermés ; ~13 min ; fenêtres
+  sur le 2e écran) ; puis lire `Glorfindel\Saved_Tests\Logs\upload_measure_<date>.txt`, comparer la ligne « box upload
+  needed » au débit montant de la box (à demander à l'utilisateur ou mesurer), noter ici et fixer `MaxServers` / le
+  nombre de joueurs si besoin ; commit (script, `net_match.ps1`) après accord ; puis R8d (ami, reporté) et R9.
+- 2026-10-28 ~08:52 : **R8c mesure faite** par l'utilisateur (`upload_measure.ps1`, Glorfindel, machine calme : 13,5 %
+  au départ, 7,3 min) ; rapport `Glorfindel\Saved_Tests\Logs\upload_measure_1028_0845.txt`. Envoi du serveur, pic sur 2 s
+  avec en-têtes IP/UDP : ordinaire ×4 (Plain_Large) **7,7 Ko/s** (1,3 par client) ; S5 ×4 (2 000 unités) **147,3 Ko/s**
+  (31 par client, `S5 : PASS`) ; ordinaire ×8 (Plain_Huge) **16,9 Ko/s** (1,5 par client) ; S5 ×8 **309 Ko/s**
+  (30,9 par client). **Besoin de la box : 1,18 Mbit/s à 4 joueurs, 2,47 Mbit/s à 8, par partie, pire cas.** Le débit
+  par client ne grandit pas avec le nombre de joueurs (~31 Ko/s à 2 000 unités, seuil D218 34 Ko/s PASS). S5 ×8 :
+  `S5 : FAIL` sur la seule erreur affichée (28,6 cm, seuil D273 25 cm) : les 8 clients et le serveur sur ce PC (clients
+  ~43 i/s, 1 % bas 2,5 ; pas du serveur 18,9 ms en moyenne, max 211 ms) : effet de la machine, pas du réseau ; à
+  revoir à l'essai à plusieurs PC (E5 / E6). Défaut d'affichage corrigé : « units replicated 0 » en S5 (le dernier
+  rapport tombe après le retrait des unités du test) → le maximum des rapports (non commité, `upload_measure.ps1`).
+  **Suite** : comparer au débit montant de la box (demandé à l'utilisateur), fixer `MaxServers` / joueurs si besoin,
+  commit (`upload_measure.ps1`, `net_match.ps1 -Report`) après accord ; puis R8d (reporté) et R9.
+- 2026-10-28 ~09:10 : box de l'utilisateur en **fibre (≥ 100 Mbit/s montants)** : le débit montant ne limite rien
+  (pire cas 2,47 Mbit/s par partie à 8) ; `MaxServers` reste à 2, limité par le processeur (R5.5). Accord (« go ») →
+  **commit be914d8** (R8c : `upload_measure.ps1`, `net_match -Report`, maximum des unités) sur `net-playtest`, fusion de
+  `main` 20e8f8a sans conflit (9364046 ; différence avec `main` : les deux scripts seulement) → **`main` avancée à
+  9364046** (avance rapide ; sessions actives 8a, d3, c1 prévenues). **R8c clos, dans `main`.** Reste de R8 : **R8d**
+  essai E5 avec un ami (reporté par l'utilisateur). **Suite : R9** (E6 partie à X, retours, décisions au GDD § 21,
+  commit) ou R8d quand l'ami est disponible. Glorfindel garde `net-playtest` (= `main` 9364046).
