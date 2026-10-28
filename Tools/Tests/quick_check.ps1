@@ -5566,7 +5566,8 @@ if ($Parts -contains "net") {
         foreach ($Pair in @(@(1, $Client1Log), @(2, $Client2Log))) {
             $Messages[$Pair[0]] = @(Get-ClientSection @(if ($Pair[1]) { Get-Content $Pair[1] -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         }
-        $LoserName = "Joueur $([int]$Loser + 1)"; $WinnerName = "Joueur $([int]$Winner + 1)"
+        # The names the lobby gave the slots (M6-Q12), as the players' table: Alice, Bob, not Joueur N.
+        $LoserName = if ($null -ne $Loser) { $NetNames[[int]$Loser] } else { "" }; $WinnerName = if ($null -ne $Winner) { $NetNames[[int]$Winner] } else { "" }
         # V5.5a: its King's death before its defeat, no alert for either (its own loss; another camp's for client 2).
         $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Votre Roi est mort|Vous êtes vaincu"
         $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|Le Roi de $LoserName est mort|$LoserName est vaincu"

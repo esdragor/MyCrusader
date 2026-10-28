@@ -75,11 +75,11 @@ namespace HOLForumMessages
 	/** IA0.1-Q1: an AI slot's name, « IA <level> N » (N = Slot + 1), ex. « IA Difficile 3 ». */
 	HEROESOFLIBERTY_API FText GetAIName(int32 Slot, EHOLAIDifficulty Difficulty);
 
-	/** As GetSlotName, an AI slot of Config named by GetAIName (the thread's messages, an AI's player state). */
+	/** As GetSlotName, an AI slot of Config named by GetAIName (an AI's player state). */
 	HEROESOFLIBERTY_API FText GetSlotName(int32 Slot, int32 ViewerSlot, const FHOLMatchConfig& Config);
 
 	/**
-	 * A slot's name where a player reads it (players' table, end banner, statistics): « Vous » for ViewerSlot, the lobby's
+	 * A slot's name where a player reads it (players' table, end banner, statistics, the thread's messages): « Vous » for ViewerSlot, the lobby's
 	 * name when the slot has one (M6-Q12), else GetSlotName with Config (an AI's « IA Difficile 3 »).
 	 */
 	HEROESOFLIBERTY_API FText GetPlayerName(const FHOLMatchConfig& Config, int32 Slot, int32 ViewerSlot);
@@ -114,7 +114,7 @@ namespace HOLForumMessages
 	/** V4.2: Message's text cut at the names of its NamedSlots, in their order (as ViewerSlot reads them), for their colours. */
 	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, int32 ViewerSlot);
 
-	/** As SplitNames, Config's AI slots named as GetMessage writes them (IA0.1-Q1). */
+	/** As SplitNames, Config's lobby names and AI slots named as GetMessage writes them (GetPlayerName). */
 	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, int32 ViewerSlot, const FHOLMatchConfig& Config);
 }
 
