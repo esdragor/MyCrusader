@@ -52,6 +52,20 @@
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
+namespace
+{
+	/** The owner of what is selected: Vous, else the slot's name as the players table shows it (an AI's « IA Difficile 3 », IA0.1-Q1). */
+	FText GetOwnerNameIn(const UWorld* World, const int32 Owner, const bool bOwn)
+	{
+		const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (bOwn || !GameState)
+		{
+			return bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Owner + 1);
+		}
+		return HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), Owner, INDEX_NONE);
+	}
+}
+
 namespace UE::HeroesOfLiberty::UI::GameScreen
 {
 	/** At its source or on its round trip (D307): the HUD says « Récolte » for both. */
@@ -667,21 +681,13 @@ void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)
 
 namespace UE::HeroesOfLiberty::UI::GameScreen
 {
-	/** The selection's owner: « Vous », else its lobby name or « Joueur N », as the players' table (HOLForumMessages::GetSlotName). */
-	FText GetOwnerName(const UWorld* World, const int32 Owner, const bool bOwn)
-	{
-		static const FHOLMatchConfig NoConfig;
-		const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
-		return bOwn ? LOCTEXT("You", "Vous") : HOLForumMessages::GetSlotName(GameState ? GameState->GetLaunchConfig() : NoConfig, Owner, INDEX_NONE);
-	}
-
 	/** V4.2, V4.3: Row filled with Message's pieces, the words in WordsStyle, each name in NamesStyle and its player's colour. */
 	void FillMessageRow(UWidgetTree& Tree, UHorizontalBox& Row, const FHOLForumMessage& Message, const int32 ViewerSlot, const AHOLGameState* GameState,
 		const TSubclassOf<UCommonTextStyle> WordsStyle, const TSubclassOf<UCommonTextStyle> NamesStyle)
 	{
 		Row.ClearChildren();
-		static const FHOLMatchConfig NoConfig;
-		for (const HOLForumMessages::FPiece& Part : HOLForumMessages::SplitNames(Message, GameState ? GameState->GetLaunchConfig() : NoConfig, ViewerSlot))
+		for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Message, ViewerSlot, GameState->GetLaunchConfig())
+			: HOLForumMessages::SplitNames(Message, ViewerSlot))
 		{
 			const bool bName = Part.Slot != INDEX_NONE;
 			UCommonTextBlock* Text = Tree.ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass());
@@ -1149,7 +1155,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	}
 	if (SelectionOwner)
 	{
-		SelectionOwner->SetText(UE::HeroesOfLiberty::UI::GameScreen::GetOwnerName(GetWorld(), Building->GetOwnerPlayer(), bOwn));
+		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Building->GetOwnerPlayer(), bOwn));
 	}
 	ShownHealth.Reset();
 	// A main forum (V2.3b): its lives to anyone (D353); down, its ruin or its rebuilding in place of its health (0 until up).
@@ -1283,7 +1289,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	}
 	if (SelectionOwner)
 	{
-		SelectionOwner->SetText(UE::HeroesOfLiberty::UI::GameScreen::GetOwnerName(GetWorld(), Owner, bOwn));
+		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Owner, bOwn));
 	}
 	// One unit shows its health, a group does not (D288).
 	RefreshUnitHealth(Views.Num() == 1 ? &Views[0] : nullptr);

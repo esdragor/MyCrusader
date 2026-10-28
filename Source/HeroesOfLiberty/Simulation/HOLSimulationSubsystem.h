@@ -84,6 +84,24 @@ public:
 	/** One run out of this many steps for the throttled processors, override of D220 included. */
 	int32 GetThrottledStepInterval() const;
 
+	/**
+	 * Tests only (IA0.4 B5): runs NumSteps real fixed steps now (RunStep, both delegates included), as the PrePhysics
+	 * phases of a few frames would. The steps run: 0 where the simulation does not run (a client, or before
+	 * OnWorldBeginPlay).
+	 */
+	int32 RunStepsForTests(const int32 NumSteps)
+	{
+		if (!EntityManager.IsValid())
+		{
+			return 0;
+		}
+		for (int32 Index = 0; Index < NumSteps; ++Index)
+		{
+			RunStep();
+		}
+		return FMath::Max(0, NumSteps);
+	}
+
 #if WITH_DEV_AUTOMATION_TESTS
 	/**
 	 * Tests whose world runs its steps by hand (no pipeline, no begin play): the step index moves on as RunStep moves it,

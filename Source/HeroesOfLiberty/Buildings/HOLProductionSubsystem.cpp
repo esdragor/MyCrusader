@@ -161,8 +161,14 @@ void UHOLProductionSubsystem::ApplyOrders()
 	{
 		AHOLBuilding* Building = Order.Building.Get();
 		AHOLPlayerState* PlayerState = FindPlayerState(Order.PlayerIndex);
+		// IA0.1 E2/E4: no stock to pay with (an AI slot before IA0.1), not "not its building".
+		if (!PlayerState)
+		{
+			UE_LOG(LogHOLCommands, Warning, TEXT("Production order of slot %d ignored: no player state"), Order.PlayerIndex);
+			continue;
+		}
 		// Only the owner gives its buildings orders: a client could send anything.
-		if (!Building || !PlayerState || Building->GetOwnerPlayer() != Order.PlayerIndex)
+		if (!Building || Building->GetOwnerPlayer() != Order.PlayerIndex)
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: not its building"), Order.PlayerIndex);
 			continue;

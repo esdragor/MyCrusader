@@ -1,23 +1,23 @@
 ﻿# Messages (V4.5) : fil à droite sous le tableau (chute, tenue, vaincu ; ~8 s par ligne, noms colorés) et alerte en haut au centre pour son camp (bandeau 4 s, son, clic = caméra sur le forum)
-# Plain, quatre joueurs (forum_messages.json) : moi (slot 0) et Joueur 3 (slot 2, IA alliée) dans l'équipe 1 ; Joueur 2
-# (slot 1) et Joueur 4 (slot 3), IA adverses, dans l'équipe 2. Message d'un adversaire : ligne du fil seule ; de soi ou de
+# Plain, quatre joueurs (forum_messages.json) : moi (slot 0) et IA Normal 3 (slot 2, IA alliée) dans l'équipe 1 ; IA Normal 2
+# (slot 1) et IA Normal 4 (slot 3), IA adverses, dans l'équipe 2. Message d'un adversaire : ligne du fil seule ; de soi ou de
 # l'allié : ligne + bandeau + son. Le panneau du scénario recouvre la place du bandeau d'alerte (même endroit, en haut au
 # centre) : tout le déroulé est donné au départ, puis l'utilisateur ferme le panneau (×) ; la touche Entrée marche encore.
 # Positions dans le repère du centre du joueur (X vers le milieu de la carte), comme forum_hold. Les Piquiers ennemis sont
-# retirés 4 s après le début de la tenue (rasé à 60 s sinon) ; la 2e tenue (Joueur 4) est fixée par triche 6 s, pour le
+# retirés 4 s après le début de la tenue (rasé à 60 s sinon) ; la 2e tenue (IA Normal 4) est fixée par triche 6 s, pour le
 # clic sur le bandeau.
 hol.Cheat.Resources 5000
 hol.Camera.FocusNear 1500 0
 hol.Camera.Zoom -3
 frames 5
-note Fil à droite sous le tableau (8 s par ligne) ; alerte = bandeau en haut au centre + son, pour ton camp (toi et Joueur 3, allié) seulement.
+note Fil à droite sous le tableau (8 s par ligne) ; alerte = bandeau en haut au centre + son, pour ton camp (toi et IA Normal 3, allié) seulement.
 note Ce panneau cache le bandeau : lis la suite, ferme-le (×), puis Entrée à chaque temps :
-note Entrée 1 : le forum de Joueur 2 (adversaire) tombe : ligne du fil seule, ni bandeau ni son.
-note Entrée 2 : des Piquiers de Joueur 2 frappent ton forum, il tombe : bandeau + son, puis 1,5 s après « Joueur 2 tient votre ruine » (sans second bip). Piquiers retirés 4 s après.
-note Entrée 3 (éloigne d'abord ta caméra) : « Joueur 4 tient votre ruine » : clique le bandeau dans les 4 s : caméra sur ton forum.
-note Entrée 4 (éloigne ta caméra) : le forum de Joueur 3 (allié) tombe : bandeau + son ; clique-le : caméra sur son forum.
-note Entrée 5 : « Joueur 2 est vaincu » (fil seul). Entrée 6 : « Vous êtes vaincu » dans le fil, bandeau Défaite, pas d'alerte.
-waitkey Ferme ce panneau (×), puis Entrée 1 : le forum de Joueur 2 tombe
+note Entrée 1 : le forum de IA Normal 2 (adversaire) tombe : ligne du fil seule, ni bandeau ni son.
+note Entrée 2 : des Piquiers de IA Normal 2 frappent ton forum, il tombe : bandeau + son, puis 1,5 s après « IA Normal 2 tient votre ruine » (sans second bip). Piquiers retirés 4 s après.
+note Entrée 3 (éloigne d'abord ta caméra) : « IA Normal 4 tient votre ruine » : clique le bandeau dans les 4 s : caméra sur ton forum.
+note Entrée 4 (éloigne ta caméra) : le forum de IA Normal 3 (allié) tombe : bandeau + son ; clique-le : caméra sur son forum.
+note Entrée 5 : « IA Normal 2 est vaincu » (fil seul). Entrée 6 : « Vous êtes vaincu » dans le fil, bandeau Défaite, pas d'alerte.
+waitkey Ferme ce panneau (×), puis Entrée 1 : le forum de IA Normal 2 tombe
 # 1. Adversaire : ligne du fil seule, ni bandeau ni son.
 hol.Victory.FallForum 1
 waitlog Message:
@@ -37,16 +37,16 @@ waitlog tient votre ruine
 wait 4
 hol.Units.Remove 0 0 1000000 1
 waitkey Éloigne ta caméra du forum, puis Entrée 3 : clique tout de suite le bandeau (4 s)
-# 3. Une 2e tenue, par Joueur 4 (triche, 6 s) : un nouveau bandeau à cliquer, la caméra revient sur mon forum.
+# 3. Une 2e tenue, par IA Normal 4 (triche, 6 s) : un nouveau bandeau à cliquer, la caméra revient sur mon forum.
 hol.Victory.HoldPresence 0 1 0 3
 waitlog Alert:
 wait 6
 hol.Victory.HoldPresence 0 off
-waitkey Éloigne ta caméra, puis Entrée 4 : le forum de Joueur 3 (allié) tombe ; clique le bandeau
+waitkey Éloigne ta caméra, puis Entrée 4 : le forum de IA Normal 3 (allié) tombe ; clique le bandeau
 # 4. L'allié : bandeau et son aussi ; le clic mène à son forum.
 hol.Victory.FallForum 2
 waitlog Alert:
-waitkey Entrée 5 : Joueur 2 est vaincu
+waitkey Entrée 5 : IA Normal 2 est vaincu
 # 5. Un adversaire vaincu : ligne seule.
 hol.Victory.Defeat 1
 waitlog Message:

@@ -278,6 +278,8 @@ void UHOLConstructionSubsystem::ApplyOrders()
 		AHOLPlayerState* PlayerState = FindPlayerState(Order.PlayerIndex);
 		if (!PlayerState)
 		{
+			// IA0.1 E2/E4: no stock to pay with (an AI slot before IA0.1): dropped, no longer silently.
+			UE_LOG(LogHOLCommands, Warning, TEXT("Construction order of slot %d ignored: no player state"), Order.PlayerIndex);
 			continue;
 		}
 		if (Order.Kind == FHOLConstructionCommand::EKind::Place)

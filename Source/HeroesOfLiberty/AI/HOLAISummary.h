@@ -17,6 +17,8 @@ struct FHOLUnitView;
  * here, not in script), read by the decisions (Angelscript, IA0.4). Made of three parts so far: the idle Peasants, the
  * sources near the slot's deposits, the stock. To come with their tranches: armies and their composition (IA2), threats
  * near the base (IA2), forums (IA3); with M7, the reading goes through the slot's vision.
+ * The fields the brain's rule reads are ScriptReadWrite (IA0.4-Q2 A): the script tests build summaries by hand
+ * (Script/AI/HOLAIEconomy_Test.as); Blueprint still only reads them.
  */
 
 /** A source near the slot's deposits (IA0.3): where its Peasants may gather. */
@@ -26,7 +28,7 @@ struct HEROESOFLIBERTY_API FHOLAISourceNear
 	GENERATED_BODY()
 
 	/** Its index in UHOLSourceSubsystem::GetSources: what UHOLCommandSubsystem::IssueGatherOrder takes. */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	int32 SourceIndex = INDEX_NONE;
 
 	/** Its ground point (cm). */
@@ -52,14 +54,14 @@ struct HEROESOFLIBERTY_API FHOLAIResourceSummary
 	GENERATED_BODY()
 
 	/** The slot's stock of this resource (0 without a stock, see FHOLAISummary::bHasStock). */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	int32 Stock = 0;
 
 	/**
 	 * The standing sources of this resource, nearest a deposit of the slot taking it first (a tie: the lower index), at
 	 * most HOLAISummary::DefaultMaxSourcesPerResource. Empty when the slot has no finished deposit taking it.
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<FHOLAISourceNear> Sources;
 };
 
@@ -77,19 +79,19 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	 * nothing to do, as the HUD's idle worker count (D307): a gatherer on its round trip or a builder is not idle. Unit
 	 * identifiers are uint32 in C++; they fit an int32 (Blueprint and script have no uint32).
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<int32> IdlePeasants;
 
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Food;
 
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Wood;
 
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Stone;
 
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Gold;
 
 	/** A stock was found for the slot (HOLAISummary::ReadStock: its PlayerState); without one, every Stock is 0. */

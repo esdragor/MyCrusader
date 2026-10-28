@@ -8,6 +8,7 @@
 
 struct FHOLForumState;
 struct FHOLMatchConfig;
+enum class EHOLAIDifficulty : uint8;
 
 /** V4.1 (V4-Q1): the events of the ruin every player hears. */
 UENUM()
@@ -65,11 +66,23 @@ struct FHOLForumMessage
 /** V4.1: the messages of the ruin, pure: no world, no actor. */
 namespace HOLForumMessages
 {
+	/** « Vous » for the viewer's own slot, « Joueur N » otherwise (as the players' table, HOLForumRules::GetPlayersTable). */
+	HEROESOFLIBERTY_API FText GetSlotName(int32 Slot, int32 ViewerSlot);
+
+	/** IA0.1-Q1: a level's name, « Facile », « Normal », « Difficile », « Évolutive » (D422, D329). */
+	HEROESOFLIBERTY_API FText GetDifficultyName(EHOLAIDifficulty Difficulty);
+
+	/** IA0.1-Q1: an AI slot's name, « IA <level> N » (N = Slot + 1), ex. « IA Difficile 3 ». */
+	HEROESOFLIBERTY_API FText GetAIName(int32 Slot, EHOLAIDifficulty Difficulty);
+
+	/** As GetSlotName, an AI slot of Config named by GetAIName (an AI's player state). */
+	HEROESOFLIBERTY_API FText GetSlotName(int32 Slot, int32 ViewerSlot, const FHOLMatchConfig& Config);
+
 	/**
-	 * « Vous » for the viewer's own slot, else the name the lobby gave the slot in Config (M6-Q12), else « Joueur N »: the
-	 * one rule of the players' table (HOLForumRules::GetPlayersTable), the messages and the selection's owner.
+	 * A slot's name where a player reads it (players' table, end banner, statistics, the thread's messages): « Vous » for ViewerSlot, the lobby's
+	 * name when the slot has one (M6-Q12), else GetSlotName with Config (an AI's « IA Difficile 3 »).
 	 */
-	HEROESOFLIBERTY_API FText GetSlotName(const FHOLMatchConfig& Config, int32 Slot, int32 ViewerSlot);
+	HEROESOFLIBERTY_API FText GetPlayerName(const FHOLMatchConfig& Config, int32 Slot, int32 ViewerSlot);
 
 	/**
 	 * The message of Event for the viewer at ViewerSlot (INDEX_NONE: a spectator, never alerted); the camps from Config
@@ -99,7 +112,10 @@ namespace HOLForumMessages
 	};
 
 	/** V4.2: Message's text cut at the names of its NamedSlots, in their order (as ViewerSlot reads them), for their colours. */
-	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, const FHOLMatchConfig& Config, int32 ViewerSlot);
+	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, int32 ViewerSlot);
+
+	/** As SplitNames, Config's lobby names and AI slots named as GetMessage writes them (GetPlayerName). */
+	HEROESOFLIBERTY_API TArray<FPiece> SplitNames(const FHOLForumMessage& Message, int32 ViewerSlot, const FHOLMatchConfig& Config);
 }
 
 /**
