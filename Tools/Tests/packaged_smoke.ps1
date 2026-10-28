@@ -8,12 +8,24 @@
 # Without -Package: the newest folder of <copy>\Saved\Packages. Log: <copy>\Saved_Tests\Logs\packaged_smoke.log; the
 # captures smoke_*.png are copied to <copy>\Saved_Tests\Screenshots\Smoke. Prints one line PASS / FAIL with the first
 # faults; exit code 0 / 1.
+# Then the server pass (IA0.5 B3, IA0.5-Q3 A, ~20 s): the package's dedicated server (WindowsServer\...\
+# HeroesOfLibertyServer.exe) alone, no client, on Plain with slot 0 Human without a name (the match does not wait for it)
+# and slot 1 AI, 5 starting Peasants (quick_check's "aiserver" part). Its log (<copy>\Saved_Tests\Logs\
+# packaged_smoke_server.log) must show it listening, the precompiled scripts, the AI's brain awake on the dedicated
+# server thinking for slot 1, its first step (5 idle -> gather) and the gather order of its 5 Peasants, no script error
+# (Get-ScriptFileErrors: the engine's own bind errors aside) and no fatal line; then the server is stopped.
+# -SkipServer: no server pass (said on the result line), for a package without a server; -ServerOnly: the server pass
+# alone (no client run, said on the result line).
 param(
     [string] $Root = "",
     [string] $Package = "",
     [string] $Culture = "fr",
-    [int] $TimeoutSeconds = 300
+    [int] $TimeoutSeconds = 300,
+    [switch] $SkipServer,
+    [switch] $ServerOnly,
+    [int] $ServerTimeoutSeconds = 30
 )
+if ($SkipServer -and $ServerOnly) { Write-Host "packaged_smoke : FAIL (-SkipServer and -ServerOnly together: nothing to check)"; exit 1 }
 
 $Project = if ($Root) { (Resolve-Path $Root).Path } else { (Resolve-Path "$PSScriptRoot\..\..").Path }
 if (-not $Package) {
@@ -22,15 +34,20 @@ if (-not $Package) {
     $Package = $Newest.FullName
 }
 $Package = (Resolve-Path $Package).Path
-# The client: the game itself (not the bootstrap exe at the top, which starts it), in Windows\ or WindowsClient\.
-$Client = Get-ChildItem $Package -Recurse -File -Include "HeroesOfLiberty.exe", "HeroesOfLibertyClient.exe" -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -match '\\Binaries\\Win64\\' -and $_.FullName -notmatch '\\WindowsServer\\' } | Select-Object -First 1
-if (-not $Client) { Write-Host "packaged_smoke : FAIL (no game client exe in $Package)"; exit 1 }
-
 $TestSaved = Join-Path $Project "Saved_Tests"
 $Logs = Join-Path $TestSaved "Logs"
 $Shots = Join-Path $TestSaved "Screenshots\Smoke"
 New-Item -ItemType Directory -Force $Logs, $Shots | Out-Null
+. (Join-Path $PSScriptRoot "..\Package\script_errors.ps1")
+$Faults = New-Object Collections.Generic.List[string]
+$Missing = @(); $Fatal = @(); $Errors = @(); $Found = @(); $Seconds = 0; $ServerSeconds = 0
+
+if (-not $ServerOnly) {
+# The client: the game itself (not the bootstrap exe at the top, which starts it), in Windows\ or WindowsClient\.
+$Client = Get-ChildItem $Package -Recurse -File -Include "HeroesOfLiberty.exe", "HeroesOfLibertyClient.exe" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match '\\Binaries\\Win64\\' -and $_.FullName -notmatch '\\WindowsServer\\' } | Select-Object -First 1
+if (-not $Client) { Write-Host "packaged_smoke : FAIL (no game client exe in $Package; -ServerOnly checks its server alone)"; exit 1 }
+
 $GameLog = Join-Path $Logs "packaged_smoke.log"
 Remove-Item -ErrorAction SilentlyContinue $GameLog
 Get-ChildItem $Shots -Filter "smoke_*.png" -ErrorAction SilentlyContinue | Remove-Item
@@ -59,7 +76,6 @@ if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContin
 $Seconds = [math]::Round(((Get-Date) - $Start).TotalSeconds)
 
 $Log = @(Get-Content $GameLog -Encoding utf8 -ErrorAction SilentlyContinue)
-$Faults = New-Object Collections.Generic.List[string]
 if (-not $Log.Count) { $Faults.Add("no log written") }
 if ($TimedOut) { $Faults.Add("the game did not quit within $TimeoutSeconds s (killed)") }
 
@@ -99,7 +115,6 @@ if (-not ($Log | Select-String -SimpleMatch "Version: $Version" -Quiet)) {
 if (-not ($Log | Select-String -SimpleMatch "Using fully precompiled scripts" -Quiet)) {
     $Faults.Add("scripts not precompiled (no 'Using fully precompiled scripts'; Tools\Package\precompile_scripts.ps1)")
 }
-. (Join-Path $PSScriptRoot "..\Package\script_errors.ps1")
 $ScriptErrors = @(Get-ScriptFileErrors $GameLog)
 if ($ScriptErrors.Count) { $Faults.Add("script errors: $($ScriptErrors -join ' ')") }
 
@@ -107,11 +122,78 @@ if ($ScriptErrors.Count) { $Faults.Add("script errors: $($ScriptErrors -join ' '
 $Found = @(foreach ($Folder in $Package, (Join-Path $env:LOCALAPPDATA "HeroesOfLiberty")) {
     Get-ChildItem $Folder -Recurse -File -Filter "smoke_*.png" -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $Start } })
 $Found | ForEach-Object { Copy-Item $_.FullName $Shots -Force }
+}
+
+# The server pass (IA0.5 B3): the AI's brain in the packaged dedicated server, on its precompiled scripts.
+$ServerSaid = "server pass SKIPPED (-SkipServer)"
+if (-not $SkipServer) {
+    $Server = Get-ChildItem $Package -Recurse -File -Filter "HeroesOfLibertyServer.exe" -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match '\\Binaries\\Win64\\' } | Select-Object -First 1
+    if (-not $Server) {
+        $Faults.Add("server: no HeroesOfLibertyServer.exe in $Package (-SkipServer for a package without a server)")
+        $ServerSaid = "server pass FAIL (no server exe)"
+    } else {
+        $ServerLog = Join-Path $Logs "packaged_smoke_server.log"
+        Remove-Item -ErrorAction SilentlyContinue $ServerLog
+        # Slot 0 Human without a name, slot 1 AI, the rest closed, 5 starting Peasants (quick_check's Write-AIMatchConfig).
+        $ServerConfig = Join-Path $TestSaved "packaged_smoke_server.json"
+        $Slots = for ($i = 0; $i -lt 8; $i++) {
+            $State = if ($i -eq 0) { "Human" } elseif ($i -eq 1) { "AI" } else { "Closed" }
+            "{ `"state`": `"$State`", `"colorIndex`": $i }"
+        }
+        "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"startingPeasants`": 5, `"slots`": [ $($Slots -join ', ') ] }" |
+            Set-Content -Encoding ascii $ServerConfig
+        # A free UDP port in this copy's range of 10 (quick_check's Get-AITestPort; nobody joins).
+        $Index = @{ "MyCrusader" = 0; "HeroesOfLiberty-Elrond" = 1; "HeroesOfLiberty-Arwen" = 2; "HeroesOfLiberty-Glorfindel" = 3;
+            "HeroesOfLiberty-Haldir" = 4; "HeroesOfLiberty-Galadriel" = 5; "HeroesOfLiberty-Celeborn" = 6 }[(Split-Path -Leaf $Project)]
+        if ($null -eq $Index) { $Index = 7 }
+        $Port = 7800 + 10 * $Index
+        while ($Port -lt 7810 + 10 * $Index) { try { $Probe = New-Object Net.Sockets.UdpClient($Port); $Probe.Close(); break } catch { $Port++ } }
+        $ServerArguments = "/Game/Maps/Plain -log -unattended -nosound -Port=$Port -MatchConfig=`"$ServerConfig`" -abslog=`"$ServerLog`""
+        $ServerStart = Get-Date
+        $ServerProcess = Start-Process -FilePath $Server.FullName -ArgumentList $ServerArguments -PassThru -WindowStyle Hidden
+        Write-Host "packaged_smoke : $($Server.FullName) pid $($ServerProcess.Id), port $Port, log $ServerLog"
+        # The lines come in the first seconds of the match: read the log until the gather order (no test sequence).
+        $Deadline = $ServerStart.AddSeconds($ServerTimeoutSeconds)
+        while ((Get-Date) -lt $Deadline -and -not $ServerProcess.HasExited) {
+            if ((Test-Path $ServerLog) -and (Select-String -Path $ServerLog -SimpleMatch "Gather order of slot 1: 5 units to source" -Quiet)) { break }
+            Start-Sleep -Milliseconds 500
+        }
+        $ServerExited = $ServerProcess.HasExited
+        $ServerSeconds = [math]::Round(((Get-Date) - $ServerStart).TotalSeconds)
+        # Stopped: its console closed first (the engine's own exit), then by its id.
+        if (-not $ServerExited) {
+            $null = $ServerProcess.CloseMainWindow()
+            if (-not $ServerProcess.WaitForExit(5000)) { Stop-Process -Id $ServerProcess.Id -Force -ErrorAction SilentlyContinue; $null = $ServerProcess.WaitForExit(5000) }
+        }
+        $ServerLines = @(Get-Content $ServerLog -Encoding utf8 -ErrorAction SilentlyContinue)
+        function Find-ServerLine([string] $Pattern) { @($ServerLines | Select-String -Pattern $Pattern | ForEach-Object { $_.Line.Trim() }) | Select-Object -First 1 }
+        $ServerFaults = New-Object Collections.Generic.List[string]
+        if (-not $ServerLines.Count) { $ServerFaults.Add("no log written") }
+        if ($ServerExited) { $ServerFaults.Add("quit by itself after $ServerSeconds s (exit code $($ServerProcess.ExitCode))") }
+        if (-not (Find-ServerLine "listening on port|Listening on port")) { $ServerFaults.Add("not listening (no 'listening on port')") }
+        if (-not ($ServerLines | Select-String -SimpleMatch "Using fully precompiled scripts" -Quiet)) { $ServerFaults.Add("scripts not precompiled (no 'Using fully precompiled scripts')") }
+        $Awake = Find-ServerLine "AI brain \S+ awake, net mode \w+, thinking slots \[[^\]]*\]"
+        if (-not $Awake) { $ServerFaults.Add("no 'AI brain ... awake' line") }
+        elseif ($Awake -notmatch "net mode DedicatedServer, thinking slots \[1\]") { $ServerFaults.Add("brain not thinking for slot 1 on the dedicated server ('$($Awake -replace '^.*(AI brain )', '$1')')") }
+        if (-not (Find-ServerLine "AI slot 1 step \d+:")) { $ServerFaults.Add("no 'AI slot 1 step'") }
+        if (-not (Find-ServerLine "AI slot 1 step \d+: 5 idle -> gather \w+ #\d+")) { $ServerFaults.Add("no '5 idle -> gather'") }
+        if (-not (Find-ServerLine "Gather order of slot 1: 5 units to source")) { $ServerFaults.Add("no 'Gather order of slot 1: 5 units to source'") }
+        $ServerScriptErrors = @(Get-ScriptFileErrors $ServerLog)
+        if ($ServerScriptErrors.Count) { $ServerFaults.Add("script errors: $($ServerScriptErrors -join ' ')") }
+        $ServerFatal = @($ServerLines | Select-String -Pattern "Fatal error|Unhandled Exception|Assertion failed|=== Critical error ===" | ForEach-Object { $_.Line.Trim() })
+        if ($ServerFatal.Count) { $ServerFaults.Add("$($ServerFatal.Count) fatal lines") }
+        $ServerFaults | ForEach-Object { $Faults.Add("server: $_") }
+        $ServerSaid = "server pass $(if ($ServerFaults.Count) { 'FAIL' } else { 'ok' }) in $ServerSeconds s, log $ServerLog"
+    }
+}
+$Seconds += $ServerSeconds
+$ClientSaid = if ($ServerOnly) { "client SKIPPED (-ServerOnly)" } else { "client log $GameLog" }
 
 if (-not $Faults.Count) {
-    Write-Host "packaged_smoke : PASS ($Seconds s, $($Found.Count) captures in $Shots)"
+    Write-Host "packaged_smoke : PASS ($Seconds s, $(if ($ServerOnly) { $ClientSaid } else { "$($Found.Count) captures in $Shots" }); $ServerSaid)"
     exit 0
 }
-Write-Host "packaged_smoke : FAIL ($Seconds s, $($Faults -join '; '); log $GameLog)"
+Write-Host "packaged_smoke : FAIL ($Seconds s, $($Faults -join '; '); $ClientSaid; $ServerSaid)"
 @($Missing | Select-Object -First 10) + @($Fatal | Select-Object -First 5) + @($Errors | Select-Object -First 5) | ForEach-Object { Write-Host "  $_" }
 exit 1
