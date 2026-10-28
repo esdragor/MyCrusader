@@ -53,6 +53,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `LastAttacker` n'expire jamais (riposte à travers la carte) *(avec le brouillard de guerre, M7 : l'oublier quand il sort de la vue)*
 
 ### Aléas et petits restes
+- Partie de salon finie : le serveur s'arrête 2 min après la fin même avec des joueurs dedans (`hol.Net.QuitAfterFinished`), contre « rester aussi longtemps qu'on veut » (M6-Q7 revu) *(vu en R9.3 ; corrigé dans Glorfindel le 2026-10-28 : le serveur reste tant qu'il y a quelqu'un, rouge puis vert ×2, non commité ; `NetPlaytestInProgress.md`)*
 - `quick_check -Parts …,production,build` sans `-Full` : `build` attend une nouvelle « Selection: MainCentre » alors que `production` laisse le centre sélectionné (séquence arrêtée ; passe avec `-Full`) *(vu en J8a.4)*
 - Partie de salon : l'alerte dit « Joueur 2 est vaincu » au lieu du nom du joueur (`HOLForumMessages::GetSlotName`) *(V4 messages, `VictoryInProgress.md`)*
 - `net 2 clients` : barre de vie sur une unité intacte non sélectionnée (vu une fois)
@@ -74,7 +75,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `AIInProgress.md` : IA du prototype (D421 à D427), découpage tranché, IA0.1-IA0.4 (PlayerState par emplacement, nom de l'IA, cerveau en script qui envoie récolter), IA1.1 et IA1.2 (ferme) dans `main` (40108a6), IA0.5 suivante, plan d'IA1 écrit
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4 et de J8a.4
 - `VictoryInProgress.md` : conditions de victoire, V1 à V5 dans `main` ; paliers après J8b (P-Q1, 2026-10-27)
-- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a, R8c dans `main` (9364046), R8b publiée, pause refusée en réseau (e4884fc) ; suite publication r9, R9.3 ; R8d reporté
+- `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a, R8c dans `main` (9364046), R8b publiée, pause refusée en réseau (e4884fc) ; R9.3 au GDD (D499-D514), puis pause limitée (D513 revue : 3 par partie, 60 s), remesure de `MaxServers` et publication r9 ; R8d reporté
 - `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers ; N (ralliement en plusieurs étapes, Elrond) et O (places pour les attaques de bâtiment sans ordre direct, Haldir) ouvertes
 
 ### En pause
