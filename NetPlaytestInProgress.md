@@ -1763,3 +1763,9 @@ R8, R9.
   -nullrhi, machine calme) et **publication r9** (`publish.ps1 -Root Glorfindel -Version 2026-10-28-r9`, puis
   `-StageOnly`), au moment choisi par l'utilisateur. (4) R8d / E5, E6, E7 avec un ami. Prochaine décision libre du
   GDD : D515.
+- 2026-10-28 ~14:05 : info de la session Héros (8a) : **`main` avancée à aa0f11f** (J8a.5, bloc du héros) + doc 7bd73ab.
+  Pour le réseau : `HeroesOfLibertyUI` passe de ClientOnly à **Runtime** dans le `.uproject` (le serveur dédié compile
+  des scripts d'interface) ; partie `net` : contrôle « server: scripts compiled » et rapport « net hero block ». **Le
+  serveur cuit (cible Server, cache précompilé WindowsServer) et `-Parts lobby` ne sont pas vérifiés par elle** (verrou
+  d'AutomationTool). À la reprise, l'étape (1) fusionne donc aussi aa0f11f : `-StageOnly` et `lobby` couvrent ce
+  changement ; regarder la taille de `Servers\<v>\` à la publication r9.
