@@ -57,6 +57,16 @@ namespace HOLAISummary
 		}
 		Summary.IdlePeasants.Sort();
 
+		// IA1.5: all its Peasants, idle or not (the dying left out).
+		for (const FHOLUnitView& Unit : Units)
+		{
+			if (Unit.OwnerPlayer == PlayerIndex && Unit.CarryCapacity > 0 && Unit.Activity != EHOLUnitActivity::Dying)
+			{
+				Summary.PeasantIds.Add(static_cast<int32>(Unit.UnitId));
+			}
+		}
+		Summary.PeasantIds.Sort();
+
 		// Sources: each standing one the slot may gather (not another slot's farm field, IA1.2: the gather would refuse it,
 		// IA0.4 B4) measured from the slot's nearest deposit taking its resource. A few deposits per slot, a few hundred
 		// sources: every pair is measured (2 to 4 summaries per second and AI slot, IA-Q2).

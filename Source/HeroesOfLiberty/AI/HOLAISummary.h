@@ -35,18 +35,18 @@ struct HEROESOFLIBERTY_API FHOLAISourceNear
 	int32 SourceIndex = INDEX_NONE;
 
 	/** Its ground point (cm). */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FVector Location = FVector::ZeroVector;
 
 	/** What it still holds. */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	int32 Remaining = 0;
 
 	/**
 	 * Distance (cm) from its ground point to the footprint of the slot's nearest deposit taking its resource
 	 * (HOLGather::GetDepositDistance): the length of a Peasant's round trip, give or take the bodies.
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	float DepositDistance = 0.f;
 };
 
@@ -123,6 +123,13 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	 */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<int32> IdlePeasants;
+
+	/**
+	 * All its Peasants (IA1.5: the workers, idle or not, the dying left out), by identifier (ascending): the opening takes
+	 * its builders from them when none stands idle.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<int32> PeasantIds;
 
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Food;

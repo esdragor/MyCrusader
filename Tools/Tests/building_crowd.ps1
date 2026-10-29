@@ -3,13 +3,19 @@
 # player's ridge); each time a group of 6 to 12 born at a random angle and distance, ordered on the House as a right
 # click does (hol.Test.BuildingCrowd, Source/HeroesOfLiberty/Dev/HOLBuildingCrowdTest.cpp). Checked once all strike: in
 # reach of the wall, no two closer than 1.5 radii, spread along the wall.
+# -Mode (EtapeDefini O): Order = the right click (default); AttackMove, Idle (at rest near it), Shift (queued after
+# another House): the group takes the House on without a direct order, groups of 12 to 20.
+# -Group N (EtapeDefini O.7): every group of N units (30 to 40: the crowd overflows round the sides). Checks since O.7: a
+# crowd (strikes as soon as in reach, no detour, packed against the wall, 3 rows deep at most), see the .cpp.
 # Off screen, no window. Run from Windows PowerShell:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\building_crowd.ps1 [-Count 20] [-Seed 1] [-Type ManAtArms] [-Root <copy>]
-# Prints each failed run, then one line PASS / FAIL; exit code 0 / 1. Log: <copy>\Saved_Tests\Logs\building_crowd.log
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\building_crowd.ps1 [-Count 20] [-Seed 1] [-Type ManAtArms] [-Mode Order|AttackMove|Idle|Shift] [-Group N] [-Root <copy>]
+# Prints each failed run, then one line PASS / FAIL; exit code 0 / 1. Log: <copy>\Saved_Tests\Logs\building_crowd_<Mode>_<Seed>[_g<Group>].log
 param(
     [int] $Count = 20,
     [int] $Seed = 1,
     [string] $Type = "ManAtArms",
+    [ValidateSet("Order", "AttackMove", "Idle", "Shift")] [string] $Mode = "Order",
+    [int] $Group = 0,
     [string] $Root = "",
     [string] $EngineDir = ""
 )
@@ -23,7 +29,7 @@ if (-not $EngineDir) {
     $EngineDir = Join-Path $EngineRoot "Engine\Binaries\Win64"
 }
 $Saved = Join-Path $Project "Saved_Tests"
-$Log = Join-Path $Saved "Logs\building_crowd.log"
+$Log = Join-Path $Saved "Logs\building_crowd_$($Mode)_$Seed$(if ($Group -gt 0) { "_g$Group" }).log" # one per mode and seed: a run never hides the one before
 $Sequence = Join-Path $Saved "building_crowd.seq"
 $Config = Join-Path $Saved "building_crowd.json"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
@@ -31,7 +37,7 @@ Remove-Item $Log -ErrorAction SilentlyContinue
 '{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "startingHero": 0, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $Config
 @(
     "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $($Config -replace '\\', '/') 0", "waitmap Plain",
-    "waitlog Camera above the start of slot", "frames 5", "hol.Test.BuildingCrowd $Count $Seed $Type quit"
+    "waitlog Camera above the start of slot", "frames 5", "hol.Test.BuildingCrowd $Count $Seed $Type $Mode$(if ($Group -gt 0) { " group=$Group" }) quit"
 ) | Set-Content -Encoding ascii $Sequence
 
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
@@ -44,5 +50,5 @@ $Lines | Select-String -Pattern "BuildingCrowd \d+/\d+: .*" | ForEach-Object { W
 $Done = $Lines | Select-String -Pattern "BuildingCrowd: done, (\d+) runs, (\d+) failed" | Select-Object -Last 1
 if (-not $Done) { Write-Host "building_crowd : FAIL (no end line; log $Log)"; exit 1 }
 $Failed = [int]$Done.Matches[0].Groups[2].Value
-Write-Host "building_crowd : $(if ($Failed -eq 0) { 'PASS' } else { 'FAIL' }) ($($Done.Matches[0].Groups[1].Value) runs, $Failed failed, seed $Seed, $Type)"
+Write-Host "building_crowd : $(if ($Failed -eq 0) { 'PASS' } else { 'FAIL' }) ($($Done.Matches[0].Groups[1].Value) runs, $Failed failed, seed $Seed, $Type, $Mode)"
 exit $(if ($Failed -eq 0) { 0 } else { 1 })
