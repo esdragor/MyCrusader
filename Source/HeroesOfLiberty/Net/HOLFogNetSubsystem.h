@@ -45,6 +45,8 @@ public:
 
 private:
 	void OnStepEnded(int64 StepIndex);
+	/** F6c: each building in the group of the camps that see it (its owner's always), the ones gone forgotten. */
+	void PlaceBuildings();
 	UReplicationSystem* GetReplicationSystem() const;
 
 #if UE_WITH_IRIS

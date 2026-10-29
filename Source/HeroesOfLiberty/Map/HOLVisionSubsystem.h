@@ -59,6 +59,9 @@ public:
 	/** F5: some cell of an area (a building's footprint, Extent its half size) in sight of Slot's camp. */
 	bool IsAreaVisible(int32 Slot, const FVector& Center, const FVector2D& Extent) const;
 
+	/** F6c: the camps (a bit each, HOLVisionRules) with some cell of the area in sight; Disabled: every camp. */
+	uint32 GetCampsSeeing(const FVector& Center, const FVector2D& Extent) const;
+
 	const FHOLVisionMap& GetMap() const { return Map; }
 
 	/**

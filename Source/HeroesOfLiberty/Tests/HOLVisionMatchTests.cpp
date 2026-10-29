@@ -291,6 +291,49 @@ bool FHOLVisionMatchGhostsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchCampsSeeingTest, "HeroesOfLiberty.Vision.Match.CampsSeeing", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchCampsSeeingTest::RunTest(const FString& Parameters)
+{
+	// F6c (D518): the camps that see a building, the set the server sends it to (an Iris group, UHOLFogNetSubsystem).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector HousePlace(30000., 0., 0.);
+	AHOLBuilding* House = Match.World->SpawnActor<AHOLBuilding>(HousePlace, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the enemy's house"), House))
+	{
+		return false;
+	}
+	House->Setup(HOLBuildingTypeNames::House, 2, 2);
+	const FHOLBuildingTypeRow* Row = House->GetType();
+	if (!TestNotNull(TEXT("its row"), Row))
+	{
+		return false;
+	}
+	const FVector2D Half = 0.5 * Row->Footprint;
+	const uint32 Owner = 1u << Match.Vision->GetCampIndex(2);
+	const uint32 Team = 1u << Match.Vision->GetCampIndex(0);
+	Match.Vision->Update();
+	TestEqual(TEXT("seen by its owner's camp only"), Match.Vision->GetCampsSeeing(HousePlace, Half), Owner);
+	const uint32 Scout = Match.Place(Peasant, 0, HousePlace + FVector(-1600., 0., 0.));
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	TestEqual(TEXT("a scout beside it: seen by both"), Match.Vision->GetCampsSeeing(HousePlace, Half), Owner | Team);
+	Match.Move(Scout, FVector(-30000., 0., 0.));
+	Match.Vision->Update();
+	TestEqual(TEXT("the scout gone: its owner's again"), Match.Vision->GetCampsSeeing(HousePlace, Half), Owner);
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestEqual(TEXT("no fog: every camp"), Match.Vision->GetCampsSeeing(HousePlace, Half), HOLVisionRules::AllCamps);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchOrdersTest, "HeroesOfLiberty.Vision.Match.Orders", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
 bool FHOLVisionMatchOrdersTest::RunTest(const FString& Parameters)
 {

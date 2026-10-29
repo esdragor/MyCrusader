@@ -6620,5 +6620,80 @@ if ($Parts -contains "netai") {
     $AllOk = (Report "netai" $Checks) -and $AllOk
 }
 
+# The "netfog" part (F6c, D518) and its control "netfogoff": the server (the editor in server mode, as "netai") with Alice
+# (slot 0) and Bob (slot 1), the fog set by hol.Fog.Mode before the match starts (Normal for "netfog", Disabled for the
+# control). The starts are 300 m apart, further than any sight (D523): in Normal, each client must hold its own centre and
+# NOT the other's (the server leaves it out of the client's connection, F6a groups); in the control, both. Each client,
+# once both are in, waits 6 s and reports its buildings, signals, quits; the server reports its fog and quits.
+function Get-MarkedLines($Lines, [string] $Mark) {
+    $Inside = $false
+    foreach ($Line in $Lines) {
+        if ($Line -match "Test mark: (.*)$") { $Inside = $Matches[1] -eq $Mark; continue }
+        if ($Inside) { $Line }
+    }
+}
+foreach ($NetFogPart in "netfog", "netfogoff") {
+    if (-not ($Parts -contains $NetFogPart)) { continue }
+    $NetFogOn = $NetFogPart -eq "netfog"
+    $NetFogServerLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_server.log"
+    $NetFogConfig = Join-Path $TestSaved "quick_$NetFogPart.json"
+    $NetFogServerSequence = Join-Path $TestSaved "quick_${NetFogPart}_server.seq"
+    Remove-Item $NetFogServerLog, (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client*.log"), (Join-Path $TestSaved "quick_${NetFogPart}_*.flag") -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $NetFogConfig @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
+    @("waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
+        Set-Content -Encoding utf8 $NetFogServerSequence
+    $NetFogPort = Get-AITestPort
+    $NetFogServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetFogPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetFogConfig`" -abslog=`"$NetFogServerLog`" -ExecCmds=`"hol.Fog.Mode $(if ($NetFogOn) { 2 } else { 0 }),hol.Test.Run $NetFogServerSequence`""
+    $NetFogServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetFogServerArguments -PassThru -WindowStyle Hidden
+    $NetFogListening = $false
+    $Deadline = (Get-Date).AddSeconds(90)
+    while (-not $NetFogListening -and (Get-Date) -lt $Deadline -and -not $NetFogServer.HasExited) {
+        Start-Sleep -Milliseconds 250
+        $NetFogListening = (Test-Path $NetFogServerLog) -and (Select-String -Path $NetFogServerLog -Pattern "listening on port" -Quiet)
+    }
+    $NetFogClients = @()
+    if ($NetFogListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_${NetFogPart}_client$Client.seq"
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "wait 1",
+                "signal $($NetFogDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetFogPort} -PlayerName=Bob" } else { "127.0.0.1:${NetFogPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $NetFogClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $NetFogListening
+    foreach ($NetClient in $NetFogClients) {
+        $ClientTimedOut = -not $NetClient.Process.WaitForExit(240000)
+        if ($ClientTimedOut) { Stop-Process -Id $NetClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $N = $NetClient.Client
+        $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+        $Checks["client $N : holds the slot of $(@('Bob', 'Alice')[$N - 1]) ($Held)"] = ($null -ne $Held) -and $Held -eq (2 - $N)
+        # The buildings it holds (after its mark): its own centre; the other's too only without fog.
+        $Seen = @(Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Building report: (MainCentre of slot \d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Wanted = if ($NetFogOn) { @("MainCentre of slot $Held") } else { @("MainCentre of slot 0", "MainCentre of slot 1") }
+        $Checks["client $N : holds $($Wanted -join ' and ') ($($Seen -join '; '))"] = (($Seen | Sort-Object) -join '|') -eq (($Wanted | Sort-Object) -join '|')
+    }
+    $NetFogServerTimedOut = -not $NetFogServer.WaitForExit($(if ($NetFogClients.Count) { 30000 } else { 1000 }))
+    if ($NetFogServerTimedOut) { Stop-Process -Id $NetFogServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $NetFogServerTimedOut
+    $NetFogLog = if (Test-Path $NetFogServerLog) { Get-Content $NetFogServerLog } else { @() }
+    $FogNet = $NetFogLog | Select-String -Pattern "Fog net: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+    $Checks["server : fog net $(if ($NetFogOn) { 'active, a group per set of camps' } else { 'off' }) ($FogNet)"] = [bool]$FogNet -and $(if ($NetFogOn) { $FogNet -match "^active, groups [1-9]" } else { $FogNet -match "^off" })
+    $AllOk = (Report $NetFogPart $Checks) -and $AllOk
+}
+
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
 if (-not $AllOk) { exit 1 }

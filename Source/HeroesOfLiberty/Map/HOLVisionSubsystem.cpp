@@ -289,6 +289,33 @@ bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center,
 	return false;
 }
 
+uint32 UHOLVisionSubsystem::GetCampsSeeing(const FVector& Center, const FVector2D& Extent) const
+{
+	if (Mode == EHOLFogMode::Disabled)
+	{
+		return HOLVisionRules::AllCamps;
+	}
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	const FIntPoint Low = Grid.ToCell(FVector2D(Center) - Extent);
+	const FIntPoint High = Grid.ToCell(FVector2D(Center) + Extent);
+	uint32 Camps = 0u;
+	for (int32 Camp = 0; Camp < Map.GetNumCamps() && Camp < 32; ++Camp)
+	{
+		for (int32 Y = Low.Y; Y <= High.Y && !(Camps & (1u << Camp)); ++Y)
+		{
+			for (int32 X = Low.X; X <= High.X; ++X)
+			{
+				if (Map.GetCount(Camp, FIntPoint(X, Y)) > 0)
+				{
+					Camps |= 1u << Camp;
+					break;
+				}
+			}
+		}
+	}
+	return Camps;
+}
+
 FString UHOLVisionSubsystem::MakeReport() const
 {
 	FString Report = FString::Printf(TEXT("Fog: mode %s, camps %d, observers %d"), GetModeName(Mode), Map.GetNumCamps(), Map.GetNumObservers());

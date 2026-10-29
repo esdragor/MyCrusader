@@ -2,8 +2,11 @@
 
 #include "Net/HOLFogNetSubsystem.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/NetConnection.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLVisionRules.h"
@@ -68,6 +71,37 @@ void UHOLFogNetSubsystem::OnStepEnded(const int64 StepIndex)
 	if (IsActive())
 	{
 		RefreshConnections();
+		PlaceBuildings();
+	}
+}
+
+void UHOLFogNetSubsystem::PlaceBuildings()
+{
+	const UWorld* World = GetWorld();
+	const UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	if (!Vision)
+	{
+		return;
+	}
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		AHOLBuilding* Building = *It;
+		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;
+		if (!Type)
+		{
+			continue;
+		}
+		// Its owner's camp always receives it (a ruin sees nothing, its owner keeps the ghost of it, F6e).
+		const int32 OwnerCamp = Vision->GetCampIndex(Building->GetOwnerPlayer());
+		const uint32 Camps = Vision->GetCampsSeeing(Building->GetActorLocation(), 0.5 * Type->Footprint) | (OwnerCamp == INDEX_NONE ? 0u : 1u << OwnerCamp);
+		SetObjectCamps(Building, Camps);
+	}
+	for (auto It = Objects.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid())
+		{
+			It.RemoveCurrent();
+		}
 	}
 }
 
