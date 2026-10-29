@@ -293,9 +293,9 @@ void UHOLSimulationSubsystem::Deinitialize()
 
 void UHOLSimulationSubsystem::OnPrePhysicsPhaseStarted(const float DeltaSeconds)
 {
-	// R3.10: no step (movement, combat, production) while the match waits for its named players.
+	// R3.10: no step (movement, combat, production) while the match waits for its named players; P5 (D513): nor paused.
 	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-	if (GameState && GameState->IsWaitingForPlayers())
+	if (GameState && (GameState->IsWaitingForPlayers() || GameState->IsMatchPaused()))
 	{
 		Accumulator = 0.f;
 		return;

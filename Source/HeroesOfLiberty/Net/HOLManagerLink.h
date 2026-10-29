@@ -23,12 +23,12 @@ struct HEROESOFLIBERTY_API FHOLManagerRules
 	/** {} (started, empty) */
 	static FString MakeEmptyBody() { return TEXT("{}"); }
 
-	enum class EQuit : uint8 { None, Empty, Finished };
+	enum class EQuit : uint8 { None, Empty };
 	/**
-	 * R3.8 (M6-Q9: one match per server): a server launched by the manager quits once empty after the match began, or
-	 * FinishedDelay seconds after the match's end even with players left. SecondsSinceFinished < 0: not finished.
+	 * R3.8 (M6-Q9: one match per server): a server launched by the manager quits only once empty after the match began;
+	 * after the end, the players stay in the finished match as long as they want (2026-10-28: no quit N s after the end).
 	 */
-	static EQuit ShouldQuit(bool bManaged, bool bStarted, int32 PlayersLeft, double SecondsSinceFinished, double FinishedDelay);
+	static EQuit ShouldQuit(bool bManaged, bool bStarted, int32 PlayersLeft);
 };
 
 /**
@@ -72,6 +72,5 @@ private:
 	bool bEmptyAnswered = false;
 	bool bQuitting = false;
 	double EmptySentTime = -1.0;
-	double FinishedTime = -1.0;
 	FTSTicker::FDelegateHandle QuitTicker;
 };

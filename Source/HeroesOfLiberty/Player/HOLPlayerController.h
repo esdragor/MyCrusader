@@ -507,6 +507,27 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientMatchStatsRefused();
 
+	/**
+	 * P5 (D513): the Pause button of the Escape menu (and hol.Match.Pause / hol.Match.Resume): the server's game state
+	 * decides (AHOLGameState::RequestPause, RequestResume), every machine sees the result by replication.
+	 */
+	UFUNCTION(Server, Reliable)
+	void ServerRequestPause();
+	UFUNCTION(Server, Reliable)
+	void ServerRequestResume();
+
+	/** P5: the Escape menu's « Pause » and the pause screen's « Reprendre » (the server decides). Logs "Pause: asked by this player". */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Match")
+	void RequestPause();
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Match")
+	void RequestResume();
+
+	/**
+	 * P5 (D513): the match is paused: nothing from this player's keys and mouse, no camera, no selection, no order (the
+	 * server refuses the orders too); Escape still opens the menu, the pause screen's « Reprendre » still answers.
+	 */
+	bool IsInputFrozen() const;
+
 	/** Samples a player in one chunk: 8 players x 20 x ~56 bytes, ~9 KB a reliable call; an hour (360 samples) in 18 chunks. */
 	static constexpr int32 MatchStatsChunkSamples = 20;
 

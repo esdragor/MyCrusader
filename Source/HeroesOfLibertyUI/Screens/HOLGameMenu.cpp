@@ -9,6 +9,7 @@
 #include "Input/HOLUIInputData.h"
 #include "InputMappingContext.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLPauseLibrary.h"
 #include "Match/HOLPlayerState.h"
 #include "HUD/HOLGameHUD.h"
 #include "Net/HOLManagerClient.h"
@@ -100,6 +101,8 @@ void UHOLGameMenu::BuildLayout()
 	UVerticalBox* Column = MakeDialogColumn();
 	Title = AddText(Column, TEXT("Title"), LOCTEXT("Title", "Menu"), UHOLTextStyleHeading::StaticClass(), 16.f);
 	ResumeButton = AddButton(Column, TEXT("ResumeButton"), LOCTEXT("Resume", "Reprendre"));
+	PauseButton = AddButton(Column, TEXT("PauseButton"), LOCTEXT("Pause", "Pause"));
+	PauseButton->SetVisibility(ESlateVisibility::Collapsed);
 	SurrenderButton = AddButton(Column, TEXT("SurrenderButton"), LOCTEXT("Surrender", "Abandonner"));
 	// The end banner's texts (same keys, already translated).
 	ReturnButton = AddButton(Column, TEXT("ReturnButton"), NSLOCTEXT("HOLEndBanner", "ReturnToLobby", "Retour au salon"));
@@ -116,6 +119,10 @@ void UHOLGameMenu::NativeOnInitialized()
 	if (ResumeButton)
 	{
 		ResumeButton->OnClicked().AddUObject(this, &UHOLGameMenu::Close);
+	}
+	if (PauseButton)
+	{
+		PauseButton->OnClicked().AddUObject(this, &UHOLGameMenu::HandlePause);
 	}
 	if (SurrenderButton)
 	{
@@ -163,6 +170,47 @@ UWidget* UHOLGameMenu::NativeGetDesiredFocusTarget() const
 void UHOLGameMenu::HandleSurrender()
 {
 	AskToSurrender(GetOwningPlayer());
+}
+
+void UHOLGameMenu::HandlePause()
+{
+	AHOLPlayerController* Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+	const AHOLPlayerState* PlayerState = Controller ? Controller->GetHOLPlayerState() : nullptr;
+	if (!Controller || !PlayerState || !UHOLPauseLibrary::CanPauseNow(this, PlayerState->GetPlayerIndex()))
+	{
+		return;
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("Game menu: Pause"));
+	// The menu closes: the pause screen comes over the match once the server has paused it.
+	Close();
+	Controller->RequestPause();
+}
+
+void UHOLGameMenu::RefreshPause()
+{
+	if (!PauseButton)
+	{
+		return;
+	}
+	const AHOLPlayerController* Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+	const AHOLPlayerState* PlayerState = Controller ? Controller->GetHOLPlayerState() : nullptr;
+	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	const int32 PlayerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	// A player still in the match while it runs (D513): neither a spectator, a defeated player nor a match over.
+	const bool bShown = GameState && PlayerSlot != INDEX_NONE && !GameState->IsSlotDefeated(PlayerSlot) &&!GameState->IsMatchOver() && !GameState->IsMatchPaused();
+	const ESlateVisibility Wanted = bShown ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+	if (PauseButton->GetVisibility() != Wanted)
+	{
+		PauseButton->SetVisibility(Wanted);
+	}
+	if (!bShown)
+	{
+		return;
+	}
+	const bool bFree = GameState->IsPauseFree();
+	PauseButton->SetLabel(bFree ? LOCTEXT("Pause", "Pause")
+		: FText::Format(LOCTEXT("PauseLeft", "Pause ({0})"), FText::AsNumber(GameState->GetPausesLeft())));
+	PauseButton->SetIsEnabled(UHOLPauseLibrary::CanPauseNow(this, PlayerSlot));
 }
 
 void UHOLGameMenu::HandleQuitToMenu()
@@ -230,6 +278,7 @@ void UHOLGameMenu::RefreshSurrender()
 	const EHOLEndBanner Banner = bKnown && PlayerState && GameState ? HOLGameMenuRules::GetEndBanner(PlayerState->GetPlayerIndex(),
 		GameState->GetDefeatedMask(), bMatchOver, GameState->GetWinnerMask()) : EHOLEndBanner::None;
 	const bool bReturns = bKnown && bMatchOver && HOLGameMenuRules::OffersReturnToLobby(Banner, Origin);
+	RefreshPause();
 	Show(SurrenderButton, bKnown && HOLGameMenuRules::CanSurrender(bDefeated, bMatchOver));
 	Show(QuitButton, bKnown && HOLGameMenuRules::CanQuitToMenu(bDefeated, bMatchOver));
 	const bool bReturnChanged = Show(ReturnButton, bReturns);

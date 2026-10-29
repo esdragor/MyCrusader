@@ -9,6 +9,7 @@
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
+#include "Net/HOLPauseRules.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "HOLGameState.generated.h"
 
@@ -429,4 +430,69 @@ private:
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)
 	TArray<FHOLHeroSheet> HeroSheets;
+
+public:
+	/**
+	 * P5 (D513), every machine: the match is paused (FHOLPauseRules): no simulation step and no order, as while waiting
+	 * for the players (UHOLSimulationSubsystem, UHOLCommandSubsystem::IsRefused read it).
+	 */
+	bool IsMatchPaused() const { return PausedBySlot != INDEX_NONE; }
+	int32 GetPausedBySlot() const { return PausedBySlot; }
+	const FString& GetPausedByName() const { return PausedByName; }
+	int32 GetPausesLeft() const { return PausesLeft; }
+	/** Server world time of the pause (the timer's start). */
+	double GetPausedAtSeconds() const { return PausedAtSeconds; }
+	/**
+	 * The pause's timer at the server time Now (GetServerWorldTimeSeconds): seconds left, 0 once over (anyone resumes). A
+	 * client counts it in real time from the pause's arrival (its world is paused meanwhile: its clock stands still).
+	 */
+	double GetPauseTimerLeft(double Now) const;
+	/** Solo pauses freely (no limit, no timer). */
+	bool IsPauseFree() const { return GetNetMode() == NM_Standalone; }
+
+	/**
+	 * P5, server only, by the controller's ServerRequestPause / ServerRequestResume: the rule decides (a player still in
+	 * the match, a pause left, the timer). Logs "Pause: slot N (Name) paused, P left", "Pause: resumed by Name (slot N)"
+	 * or "Pause: refused to Name (slot N): <reason>". True when done.
+	 */
+	bool RequestPause(const AHOLPlayerState& Requester, double Now);
+	bool RequestResume(const AHOLPlayerState& Requester, double Now);
+
+	/** Every machine: paused, resumed or the count changed (server at once, a client by OnRep). For the pause screen. */
+	DECLARE_MULTICAST_DELEGATE(FOnPauseChanged);
+	FOnPauseChanged OnPauseChanged;
+
+private:
+	UFUNCTION()
+	void OnRep_Pause();
+
+	/**
+	 * Every machine, on each change: a displaying one (solo, client) pauses its own world while the match is paused (the
+	 * engine's pause, local: its clock stops, so do the units' animations, the falls, the arrows and the bodies, all drawn
+	 * on it); the dedicated server keeps its clock (the timer). Then OnPauseChanged.
+	 */
+	void NotifyPauseChanged();
+
+	/** A client: FPlatformTime::Seconds() at which its timer started (the pause's arrival less what had already run). */
+	double PauseRealStartSeconds = 0.;
+	/** This machine's world paused for the match's pause (a change applied once: each replicated property calls OnRep_Pause). */
+	bool bLocalPauseApplied = false;
+
+	/** A slot still in the match (not defeated, the match not over): a player who may pause or resume. */
+	bool IsInMatch(const AHOLPlayerState& Requester) const;
+
+	/** P5 (D513): shared by every player of the match; set from hol.Match.PausesPerMatch at InitVictory. */
+	UPROPERTY(ReplicatedUsing = OnRep_Pause)
+	int32 PausesLeft = FHOLPauseRules::DefaultPausesPerMatch;
+
+	/** INDEX_NONE while the match runs. */
+	UPROPERTY(ReplicatedUsing = OnRep_Pause)
+	int32 PausedBySlot = INDEX_NONE;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Pause)
+	FString PausedByName;
+
+	/** Server world time (GetServerWorldTimeSeconds) of the pause: the timer's start. */
+	UPROPERTY(ReplicatedUsing = OnRep_Pause)
+	double PausedAtSeconds = 0.;
 };
