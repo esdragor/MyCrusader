@@ -62,6 +62,13 @@ struct HEROESOFLIBERTY_API FHOLAISourceNear
 	 */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	int32 Occupants = 0;
+
+	/**
+	 * A Peasant sent to it stood idle in front of it, no spot free, a few seconds ago (IA2.6b: what a player sees as workers
+	 * standing round a vein): the brain sends no one there until it has room again.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bFull = false;
 };
 
 /** One resource of the summary (IA0.3): the slot's stock of it and its sources near the slot's deposits. */
@@ -280,6 +287,7 @@ struct FHOLAISourceUse
 {
 	int32 Places = 0;
 	int32 Occupants = 0;
+	bool bFull = false;
 };
 
 namespace HOLAISummary

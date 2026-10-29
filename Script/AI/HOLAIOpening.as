@@ -865,15 +865,16 @@ namespace HOLAIOpening
 		return Choice;
 	}
 
-	// A part without the sources whose places are all held (IA1.7b: a farm field has one): a Peasant sent there would stand idle
-	// in front of it. The sources with places all around (Places 0) are never held.
+	// A part without the sources whose places are all held (IA1.7b: a farm field has one) and those a Peasant has just stood idle
+	// in front of for want of a spot (IA2.6b, bFull: a vein of a few spots): a Peasant sent there would stand idle in front of
+	// them. The sources with places all around (Places 0) are held only when full.
 	FHOLAIResourceSummary OpenPartOf(const FHOLAIResourceSummary& Part)
 	{
 		FHOLAIResourceSummary Open = Part;
 		Open.Sources.Empty();
 		for (int Index = 0; Index < Part.Sources.Num(); Index++)
 		{
-			if (Part.Sources[Index].Places <= 0 || Part.Sources[Index].Occupants < Part.Sources[Index].Places)
+			if (!Part.Sources[Index].bFull && (Part.Sources[Index].Places <= 0 || Part.Sources[Index].Occupants < Part.Sources[Index].Places))
 			{
 				Open.Sources.Add(Part.Sources[Index]);
 			}

@@ -635,3 +635,38 @@ void Test_RallySkipsHeldFields(FUnitTest& T)
 	Choice = HOLAIOpening::ChooseProduction(Summary, HOLAIOpening::DefaultData());
 	T.AssertEquals(-1, Choice.RallyResource, "every field held: no rally");
 }
+
+// IA2.6b: a source that has just turned a Peasant away for want of room (a vein with every spot taken, bFull) is not sent to
+// again: with the food held and the wood used up, the five idle Peasants get no order instead of the same one every thought.
+void Test_FullVeinGetsNoPeasant(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	Summary.Wood.Sources.Empty();
+	Summary.Gold.Stock = 100;
+	FHOLAISourceNear Vein = OpeningSource(30, FVector(2000, 0, 0));
+	Vein.bFull = true;
+	Summary.Gold.Sources.Add(Vein);
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants);
+	T.AssertEquals(0, Groups.Num(), "no order to a full vein, nowhere else with room");
+}
+
+// The same vein not full takes them; full, the Peasants go to the wood that has room.
+void Test_FullVeinSendsThemToTheWood(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Gold.Stock = 100;
+	FHOLAISourceNear Vein = OpeningSource(30, FVector(2000, 0, 0));
+	Summary.Gold.Sources.Add(Vein);
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	FHOLAISummary NoWood = Summary;
+	NoWood.Wood.Sources.Empty();
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(NoWood, HOLAIOpening::DefaultData(), NoWood.IdlePeasants);
+	T.AssertTrue(SentTo(Groups, 30) > 0, "the open vein, the only room, takes Peasants");
+	Summary.Gold.Sources[0].bFull = true;
+	Groups = HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants);
+	T.AssertEquals(0, SentTo(Groups, 30), "none to the full vein");
+	T.AssertEquals(5, SentTo(Groups, 11), "all five to the wood");
+}

@@ -146,6 +146,7 @@ namespace HOLAISummary
 			{
 				Near.Places = Uses[SourceIndex].Places;
 				Near.Occupants = Uses[SourceIndex].Occupants;
+				Near.bFull = Uses[SourceIndex].bFull;
 			}
 		}
 		for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
@@ -357,6 +358,7 @@ namespace HOLAISummary
 				const FHOLSourceTypeRow* Type = SourceSystem->GetType(Sources[Index].TypeIndex);
 				Uses[Index].Places = Type ? Type->Places : 0;
 				Uses[Index].Occupants = Uses[Index].Places > 0 ? SourceSystem->GetOccupants(Index) : 0;
+				Uses[Index].bFull = SourceSystem->IsFull(Index);
 			}
 		}
 		TArray<FHOLUnitView> Enemies;
