@@ -93,10 +93,13 @@ public static class LobbyRules
     public const bool DefaultTeamsTogether = true;
 
     /**
-     * Maps served; the first one is the default of a new lobby. TC-Q11: Plaine in its five sizes; /Game/Maps/Plain itself,
-     * the test map, is not offered.
+     * C0.2 (Cartes): the match maps, in the order of Tools/Data/Maps.csv (checked by a test, as FHOLMapRules in the game),
+     * each in the five sizes (TC-Q11: the map itself, /Game/Maps/Plain, is the test map, not offered).
      */
-    public static readonly IReadOnlyList<MapInfo> DefaultMaps = [new("Plain", SlotCount) { Sizes = MapSizes }];
+    public static readonly IReadOnlyList<MapInfo> Maps = [new("Plain", SlotCount) { Sizes = MapSizes }, new("Steppe", SlotCount) { Sizes = MapSizes }];
+
+    /** Maps served; the first one is the default of a new lobby. */
+    public static readonly IReadOnlyList<MapInfo> DefaultMaps = Maps;
 
     /** Player and lobby names are compared without case. */
     public static readonly StringComparer NameComparer = StringComparer.OrdinalIgnoreCase;

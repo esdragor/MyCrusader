@@ -189,6 +189,11 @@ bool FHOLManagerClientLobbyTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("regicide"), Lobby.bRegicide);
 	TestFalse(TEXT("catastrophe"), Lobby.bCatastrophe);
 	TestTrue(TEXT("maps"), Lobby.Maps.Num() == 1 && Lobby.Maps[0] == TEXT("Plain"));
+	// C0.2 (Cartes): several maps served (Tools/Data/Maps.csv), kept in the manager's order.
+	FHOLLobby TwoMaps;
+	TestTrue(TEXT("two maps read"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("maps": [ { "name": "Plain", "maxPlayers": 8 } ])"),
+		TEXT(R"("maps": [ { "name": "Plain", "maxPlayers": 8 }, { "name": "Desert", "maxPlayers": 8 } ])")), TwoMaps));
+	TestTrue(TEXT("two maps in order"), TwoMaps.Maps.Num() == 2 && TwoMaps.Maps[0] == TEXT("Plain") && TwoMaps.Maps[1] == TEXT("Desert"));
 	if (TestEqual(TEXT("8 slots"), Lobby.Slots.Num(), 8))
 	{
 		const FHOLLobbySlot& Alice = Lobby.Slots[1];

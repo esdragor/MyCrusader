@@ -1,0 +1,8 @@
+# La Steppe Grande (8 joueurs, 808 m) : 4 contre 4, places tirées ; plaine ouverte, petits gisements partout, rien au centre
+hol.Camera.Zoom -7
+frames 5
+note La Steppe Grande : 808 m de côté, 8 bases en cercle. Équipe 1 (moi + joueurs 3, 5, 7) contre équipe 2, comme map_size_large mais sur la Steppe.
+note Chez moi : un petit bois irrégulier (20 arbres, plus de grille), un petit tas de 6 baies, la crête de rochers devant. Pas de pierre ni d'or à la maison : le plus proche est vers 110-125 m.
+note Autour, sur TOUT le carré, coins compris : une vingtaine de petits gisements par joueur, posés au hasard (graine 1) et non plus en suite régulière : bois en taches irrégulières (ovales, en haricot, avec clairière ou sentier de 3 m, quelques arbres isolés autour) de 8 à 24 arbres, tas de 3 à 5 buissons en grappe, filons seuls ; densité variable (des coins aérés, des endroits où 2 ou 3 gisements se serrent). Chaque joueur a la même chose autour de sa base (jusqu'à 75 m, et ses 3 premiers filons), le reste du terrain diffère d'un joueur à l'autre. Budget par joueur : 150 arbres, 4 ors, 2 pierres, 15 buissons au moins. Aucun trou de plus de 90 m.
+note Le sol est varié (herbe, paille, terre ocre) et semé de touffes, cailloux, buissons secs et souches : décor sans collision, les unités passent au travers. Au centre : rien, aucun point à tenir.
+note À regarder : les bois ont-ils encore l'air carrés ? un motif régulier se voit-il de loin ? les sentiers des bois laissent-ils passer les unités ? Et : assez de ressources de tout ? coins vivants ? sol et décor lisibles sans gêner les cercles de sélection ? gisements trop près ou trop loin ? l'IA s'étend-elle ? Relance (² puis hol.Scenario map_steppe) : la place tirée change.

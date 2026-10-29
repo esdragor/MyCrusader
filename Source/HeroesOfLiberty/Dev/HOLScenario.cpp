@@ -11,6 +11,7 @@
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLMapRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSubsystem.h"
 #include "Misc/FileHelper.h"
@@ -179,11 +180,11 @@ bool HOLTestHooks::MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutC
 		return false;
 	}
 	Config.Normalize();
-	// Without a .json the default configuration names BattleMap, which the New game screen does not offer: Plain,
-	// as for a .json without a map.
+	// Without a .json the default configuration names BattleMap, which the New game screen does not offer: the first
+	// map of the table (Plain, C0.1), as for a .json without a map.
 	if (!Json || Config.Map.IsNull())
 	{
-		Config.Map = FSoftObjectPath(TEXT("/Game/Maps/Plain.Plain"));
+		Config.Map = FHOLMapRules::GetAssetPath(FHOLMapRules::GetMaps()[0].Key);
 	}
 	// IA1.1: the scenarios make their own Peasants; a .json asks for the starting ones with "startingPeasants".
 	if (Config.StartingPeasants < 0)

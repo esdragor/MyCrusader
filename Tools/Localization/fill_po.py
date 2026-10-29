@@ -58,7 +58,8 @@ TRANSLATIONS = {
     "HOLScreen,ColumnHint": ("LB / RB: change column", "LB / RB：列を切り替え"),
 
     "HOLNewGameScreen,Heading": ("New Game", "新しいゲーム"),
-    "HOLNewGameScreen,Map_Plain": ("Plain", "平原"),
+    "HOLMaps,Map_Plain": ("Plain", "平原"),
+    "HOLMaps,Map_Steppe": ("The Steppe", "ステップ"),
     "HOLNewGameScreen,Map": ("Map", "マップ"),
     "HOLNewGameScreen,Size": ("Size", "サイズ"),
     "HOLNewGameScreen,Size_Small": ("Small", "小"),

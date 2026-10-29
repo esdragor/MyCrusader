@@ -14,6 +14,7 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Input/CommonUIActionRouterBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "Map/HOLMapRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSubsystem.h"
@@ -189,20 +190,15 @@ FText UHOLNewGameScreen::GetLobbyMapName(const FString& Map, const FString& Size
 	{
 		return FText::GetEmpty();
 	}
-	const FText MapName = GetMapName(FSoftObjectPath(FString::Printf(TEXT("/Game/Maps/%s.%s"), *Map, *Map)));
+	const FText MapName = GetMapName(FHOLMapRules::GetAssetPath(*Map));
 	const FText SizeName = UE::HeroesOfLiberty::UI::NewGame::GetShortSizeName(FHOLMapSizeRules::FindByKey(Size));
 	return SizeName.IsEmpty() ? MapName : FText::Format(LOCTEXT("LobbyMapAndSize", "{0} — {1}"), MapName, SizeName);
 }
 
 FText UHOLNewGameScreen::GetMapName(const FSoftObjectPath& Map)
 {
-	// One line per map of the list; the names are provisional, the GDD names no map yet.
-	const FString Asset = Map.GetAssetName();
-	if (Asset == TEXT("Plain"))
-	{
-		return LOCTEXT("Map_Plain", "Plaine");
-	}
-	return FText::AsCultureInvariant(Asset);
+	// C0.1: the table's name (Tools/Data/Maps.csv), the asset name for a map it does not know (a test map).
+	return FHOLMapRules::GetDisplayName(Map);
 }
 
 UHOLNewGameScreen* UHOLNewGameScreen::Open(APlayerController* PlayerController)
@@ -326,6 +322,12 @@ void UHOLNewGameScreen::NativeOnInitialized()
 {
 	using namespace UE::HeroesOfLiberty::UI::NewGame;
 
+	// C0.1: the maps of the table, in its order (the first one is the default), before the layout lists them.
+	Maps.Reset();
+	for (const FHOLMapInfo& Map : FHOLMapRules::GetMaps())
+	{
+		Maps.Add(FHOLMapRules::GetAssetPath(Map.Key));
+	}
 	Super::NativeOnInitialized();
 
 	SlotYou = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("SlotYou0")));

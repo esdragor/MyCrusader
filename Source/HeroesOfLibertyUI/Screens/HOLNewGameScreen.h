@@ -15,7 +15,7 @@ class UImage;
  * occupied slots share one: a colour held by another slot is greyed in the list), the teams (TC-Q12); greyed (D240): AI,
  * factions, mode and options, shown with their values. Launch fills UHOLMatchSubsystem and opens the map (D243).
  */
-UCLASS(Config = Game)
+UCLASS()
 class HEROESOFLIBERTYUI_API UHOLNewGameScreen : public UHOLScreen
 {
 	GENERATED_BODY()
@@ -69,9 +69,9 @@ protected:
 	/** Slot state (with the map and the mode above and below), faction, colour, team (D250). */
 	virtual void GetColumns(TArray<TArray<UWidget*>>& OutColumns) const override;
 
-	/** Maps offered by the screen ([/Script/HeroesOfLibertyUI.HOLNewGameScreen] in DefaultGame.ini), shown by their
-	 *  name (GetMapName). */
-	UPROPERTY(Config)
+	/** Maps offered by the screen: the files of the table (C0.1, FHOLMapRules, Tools/Data/Maps.csv), in its order, shown
+	 *  by their name (GetMapName). */
+	UPROPERTY(Transient)
 	TArray<FSoftObjectPath> Maps;
 
 	UPROPERTY(meta = (BindWidgetOptional))

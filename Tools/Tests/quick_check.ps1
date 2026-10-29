@@ -10,7 +10,9 @@
 #     "aiserver" (IA0.5 B1, ~40 s, last): the AI's brain on a dedicated server without client (slot 1 AI, 5 starting Peasants);
 #     "netai" (IA0.5 B2, ~60 s, after "aiserver"): the same server with Alice and Bob joined and the AI in slot 2, its
 #     Peasants seen gathering on each client;
-#     "sizes" (TC4, ~15 s): Plain at its five sizes and a refused configuration, in the menu's game launch). The solo parts (production to combat) run in the camera part's 2-player match, so the
+#     "sizes" (TC4, ~15 s): <Map> (-Map, Plain by default) at its five sizes and a refused configuration, in the menu's game launch;
+#     "aiduel" (IA0.7, ~5 min): two AI slots against each other, twice, on Plain (the fixed test map) or, with -Map <Key>, on that
+#     map's Small file; -Map <Key> takes a map of Tools/Data/Maps.csv (C0.5), an unknown one stops with a FAIL line). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
 #     alone (~95 s: its camera, centres, production, army and fight); with "move", "sources" or "build" its clients also
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
@@ -104,6 +106,8 @@
 # contact sheets qc_<culture>.png (Python with Pillow), logs Saved_Tests\Logs\quick_game.log and quick_tests.log.
 param(
     [string[]] $Parts = @("tests", "smoke"),
+    # C0.5: the map the "sizes" and "aiduel" parts play, a key of the first column of Tools/Data/Maps.csv (case ignored).
+    [string] $Map = "Plain",
     [switch] $Full,
     [string] $EngineDir = "",
     [switch] $Visible,
@@ -111,6 +115,11 @@ param(
     [switch] $RealTime,
     [string] $GameExec = ""
 )
+# C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
+# itself is reused by the parts below as a local variable.
+$MapKeys = @(Import-Csv (Join-Path $PSScriptRoot "..\Data\Maps.csv") | ForEach-Object { $_.Name })
+$MapKey = $MapKeys | Where-Object { $_ -ieq $Map.Trim() } | Select-Object -First 1
+if (-not $MapKey) { Write-Host "quick_check : FAIL (unknown map '$Map'; Tools\Data\Maps.csv has: $($MapKeys -join ', '))"; exit 1 }
 # -Full (D327): every part, the default before D327 (~530 s).
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
@@ -166,7 +175,7 @@ if (@($Parts | Where-Object { $_ -in "production", "move", "bodies", "rocks", "s
 Write-Host "parts: $($Parts -join ', ')"
 
 # The army round the ridge (the part "rocks", the user's trials ridge_army): cases from every side of slot 0's ridge (three
-# boulders welded together at world x -12000, y -1000 to +1000, a no-navmesh zone 1 m round them, create_match_map.py) to
+# boulders welded together at world x -12000, y -1000 to +1000, a no-navmesh zone 1 m round them, maps/plain.py) to
 # its other side, in world coordinates (slot 0's centre at -15000, 0; the veins at y +-4592 and the houses of "bodies"
 # at x -9000 kept clear). Each: Name, Count, Type, spawn X, Y, Radius, target X, Y.
 $RockCases = @(
@@ -187,7 +196,7 @@ $RockCases = @(
     @{ Name = "chain to front right"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -10300; Y = 1500; R = 1200; TX = -13300; TY = 800 },
     @{ Name = "chain to back left"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -13300; Y = 800; R = 1200; TX = -10000; TY = -1200 },
     @{ Name = "chain to front"; Count = 50; Type = "ManAtArms"; Chain = $true; X = -10000; Y = -1200; R = 1200; TX = -13600; TY = 0 },
-    # Through the grove at the map's middle (12 trunks on a disc of 14 m, create_match_map.py): Zone, where a unit off the
+    # Through the grove at the map's middle (12 trunks on a disc of 14 m, maps/plain.py): Zone, where a unit off the
     # navmesh is in a trunk (the ridge's otherwise).
     @{ Name = "grove west to east"; Count = 50; Type = "ManAtArms"; X = -2600; Y = 0; R = 600; TX = 2600; TY = 0; Zone = @(-1700, 1700, -1700, 1700) },
     @{ Name = "grove south to north"; Count = 30; Type = "Spearman"; X = 300; Y = -2600; R = 500; TX = -300; TY = 2600; Zone = @(-1700, 1700, -1700, 1700) }
@@ -625,7 +634,7 @@ if ($Parts -contains "sides") {
     Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
-# The "sizes" part (TC4, map sizes): Plain at each size, opened from a v3 configuration file by hol.Match.Open (as a
+# The "sizes" part (TC4, map sizes): $MapKey (-Map, Plain by default) at each size, opened from a v3 configuration file by hol.Match.Open (as a
 # server given -MatchConfig=: the game mode alone checks it), places drawn from a fixed seed. Each: the map of the size
 # loaded, one main centre per player on its drawn place (the circle of the size, radius 0.75 of the half side, place 0 at
 # 180 degrees, counter-clockwise), the camera above slot 0's centre, then sent past both corners: held on the size's
@@ -645,7 +654,7 @@ function Write-SizeConfig([string] $Path, [string] $Size, [int] $Seed, [bool] $D
         $Team = if ($Teams) { ", `"team`": $($Teams[$i])" } else { "" }
         "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Team }"
     }
-    "{ `"version`": 3, `"seed`": $Seed, `"map`": `"/Game/Maps/Plain.Plain`", `"mapSize`": `"$Size`", `"bDrawPlaces`": $($Draw.ToString().ToLower()), `"bTeamsTogether`": $($Together.ToString().ToLower()), `"slots`": [ $($Slots -join ', ') ] }" |
+    "{ `"version`": 3, `"seed`": $Seed, `"map`": `"/Game/Maps/$MapKey.$MapKey`", `"mapSize`": `"$Size`", `"bDrawPlaces`": $($Draw.ToString().ToLower()), `"bTeamsTogether`": $($Together.ToString().ToLower()), `"slots`": [ $($Slots -join ', ') ] }" |
         Set-Content -Encoding ascii $Path
 }
 if ($Parts -contains "sizes") {
@@ -654,12 +663,12 @@ if ($Parts -contains "sizes") {
         $States = for ($i = 0; $i -lt 8; $i++) { if ($i -eq 0) { "Human" } elseif ($i -lt $Size.Players) { "AI" } else { "Closed" } }
         $Config = Join-Path $TestSaved "sizes_$($Size.Key).json"
         Write-SizeConfig $Config $Size.Key $Size.Seed $true $Size.Together $States $Size.Teams
-        Step "mark sizes $($Size.Key)", "hol.Match.Open $Config", "waitmap Plain_$($Size.Key)", "waitlog Camera above the start of slot 0", "frames 5", "hol.Camera.Report",
+        Step "mark sizes $($Size.Key)", "hol.Match.Open $Config", "waitmap ${MapKey}_$($Size.Key)", "waitlog Camera above the start of slot 0", "frames 5", "hol.Camera.Report",
             "hol.Camera.Focus 9999999 9999999", "frames 2", "hol.Camera.Report", "hol.Camera.Focus -9999999 -9999999", "frames 2", "hol.Camera.Report"
     }
     $Config = Join-Path $TestSaved "sizes_refused.json"
     Write-SizeConfig $Config "Small" 16 $false $true @("Human", "Closed", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") $null
-    Step "mark sizes refused", "hol.Match.Open $Config", "waitmap Plain_Small", "frames 30",
+    Step "mark sizes refused", "hol.Match.Open $Config", "waitmap ${MapKey}_Small", "frames 30",
         "mark sizes end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "mark sizes menu"
 }
 
@@ -996,7 +1005,7 @@ $LinesFrom = @(-5500, 6000)
 $LinesL1 = @(-5500, 7000)
 $LinesL2 = @(-4500, 7000)
 $LinesL3 = @(-4500, 6000)
-# Born on a rock (EtapeDefini, the user's trial melee_reinforce): the middle boulder of slot 0's ridge (create_match_map.py:
+# Born on a rock (EtapeDefini, the user's trial melee_reinforce): the middle boulder of slot 0's ridge (maps/plain.py:
 # 8 x 5 x 3.6 m, half buried, its long side across), a Man-at-arms sent from it 17 m towards the middle, beside its axis.
 $RockAt = @(-12000, 0)
 $RockGoal = @(-10300, -1500)
@@ -1180,7 +1189,7 @@ if ($Parts -contains "camera") {
             Step "frames 3"
         }
         if (($Parts -contains "sources") -and $Case.Name -eq "2p") {
-            # Resource sources (J5a.2, D297): the 376 sources placed by the map (create_match_map.py: 40 trees beside each slot,
+            # Resource sources (J5a.2, D297): the 376 sources placed by the map (maps/common.py: 40 trees beside each slot,
             # then 6 berry bushes on its other side and 8 veins between neighbours, J5b.1), the
             # first one of slot 0's wood at (-14221, -1816) and the one behind it at (-14217, -2023). A standing tree is
             # forbidden on the navmesh; used up (hol.Sources.Take, a development tool until the gathering of J5a.3), it
@@ -2837,7 +2846,7 @@ if ($Parts -contains "sizes") {
     foreach ($Size in $SizeCases) {
         $Section = Get-Section "sizes $($Size.Key)"
         $Checks = [ordered]@{}
-        $Checks["map Plain_$($Size.Key) loaded, $($Size.Players) players"] = [bool]($Section | Select-String -SimpleMatch "Match on Plain_$($Size.Key): given configuration, $($Size.Players) occupied slots" -Quiet)
+        $Checks["map ${MapKey}_$($Size.Key) loaded, $($Size.Players) players"] = [bool]($Section | Select-String -SimpleMatch "Match on ${MapKey}_$($Size.Key): given configuration, $($Size.Players) occupied slots" -Quiet)
         $Checks["no Match config refused"] = -not ($Section | Select-String -SimpleMatch "Match config refused" -Quiet)
         # The places drawn: one per player, distinct, on the places of the size.
         $Drawn = $Section | Select-String -Pattern "Places drawn \(seed $($Size.Seed), teams together \d\): (.*)$" | Select-Object -First 1
@@ -2889,7 +2898,7 @@ if ($Parts -contains "sizes") {
     }
     $Section = Get-Section "sizes refused"
     $Checks = [ordered]@{}
-    $Checks["fixed places past the size: Match config refused on Plain_Small"] = [bool]($Section | Select-String -SimpleMatch "Match config refused on Plain_Small" -Quiet)
+    $Checks["fixed places past the size: Match config refused on ${MapKey}_Small"] = [bool]($Section | Select-String -SimpleMatch "Match config refused on ${MapKey}_Small" -Quiet)
     $Checks["no centre, no place drawn"] = -not ($Section | Select-String -Pattern "Main centre of slot|Places drawn" -Quiet)
     $Checks["no crash: back to the menu"] = [bool]((Get-Section "sizes end") | Select-String -Pattern "Test mark: sizes menu" -Quiet)
     $AllOk = (Report "sizes refused" $Checks) -and $AllOk
@@ -6147,12 +6156,15 @@ function Get-AITestPort {
     return $Port
 }
 # The 8 slots of a version 2 match config on Plain: the states given, slots 0 and 1 named when names are given.
-function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @()) {
+# C0.5: with -Size (a map other than the test map Plain, whose files are sized) the version 3 form: the map's file of that size,
+# fixed places (slot i at place i).
+function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "") {
     $Slots = for ($i = 0; $i -lt 8; $i++) {
         $Name = if ($i -lt $Names.Count) { ", `"playerName`": `"$($Names[$i])`"" } else { "" }
         "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Name }"
     }
-    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"startingPeasants`": 5, `"slots`": [ $($Slots -join ', ') ] }" |
+    $Head = if ($Size) { "`"version`": 3, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`", `"mapSize`": `"$Size`", `"bDrawPlaces`": false" } else { "`"version`": 2, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`"" }
+    "{ $Head, `"startingPeasants`": 5, `"slots`": [ $($Slots -join ', ') ] }" |
         Set-Content -Encoding ascii $Path
 }
 if ($Parts -contains "aiserver") {
@@ -6200,18 +6212,27 @@ if ($Parts -contains "aiserver") {
 # gather report every 2 s; run twice, with hol.Simulation.StepHashes 1. Checks: no Peasant of an AI slot idle (phase
 # None, in the report) for more than 10 s; the two runs' step hashes the same (the match is reproducible: places fixed
 # on Plain, the brain reads its summary in a fixed order); the wall time of the 2 min of game (the speed measured).
+# C0.5: on the fixed test map Plain, as always, unless -Map names another map of Tools/Data/Maps.csv: then the Small file
+# of that map (the first size that holds 2 players), /Game/Maps/<Map>_Small, with a configuration carrying mapSize Small.
 function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
     $Log = Join-Path $TestSaved "Logs\quick_aiduel_$Tag.log"
     $Config = Join-Path $TestSaved "quick_aiduel.json"
     $Sequence = Join-Path $TestSaved "quick_aiduel_$Tag.seq"
     Remove-Item $Log -ErrorAction SilentlyContinue
-    Write-AIMatchConfig $Config @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    $DuelStates = @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    if ($MapKey -eq "Plain") {
+        $DuelMap = "/Game/Maps/Plain"
+        Write-AIMatchConfig $Config $DuelStates
+    } else {
+        $DuelMap = "/Game/Maps/${MapKey}_Small"
+        Write-AIMatchConfig $Config $DuelStates @() $MapKey "Small"
+    }
     $Lines = @("hol.Simulation.StepHashes 1")
     for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence
     $Port = Get-AITestPort
-    $Arguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+    $Arguments = "`"$UProject`" $DuelMap -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     $TimedOut = -not $Process.WaitForExit(420000)
     if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }

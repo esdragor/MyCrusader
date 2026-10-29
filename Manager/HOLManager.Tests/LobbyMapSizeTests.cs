@@ -68,7 +68,8 @@ public class LobbyMapSizeTests
     [Fact]
     public void DefaultMapIsPlainInTheSizesOfMapSizesCsv()
     {
-        var plain = Assert.Single(LobbyRules.DefaultMaps);
+        // Plain, the first map of Maps.csv and the default of a new lobby (La Steppe is the second, see LobbyMapsTests).
+        var plain = LobbyRules.DefaultMaps[0];
         Assert.Equal("Plain", plain.Name);
         var csv = File.ReadAllLines(MapSizesCsv()).Skip(1).Where(l => l.Trim() != "").Select(l => l.Split(','))
             .Select(c => (c[0], int.Parse(c[2]))).ToList();

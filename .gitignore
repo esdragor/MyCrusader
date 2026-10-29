@@ -32,3 +32,6 @@ Build/*/FileOpenOrder/
 # Manager (C#, M6 R2): build outputs
 Manager/**/bin/
 Manager/**/obj/
+
+# Python caches of the editor scripts (Tools/Editor/maps, run by the editor)
+__pycache__/

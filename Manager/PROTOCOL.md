@@ -237,6 +237,8 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
 - `settings.size` (TC3, TC-Q3 / TC-Q4) : clé de la taille (`Small`, `Medium`, `Normal`, `Large`, `Huge` = Petite,
   Moyenne, Normale, Grande, Immense ; `Tools/Data/MapSizes.csv`), qui fixe le nombre de places ; `""` pour une carte
   sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage.
+- `maps` : les cartes de la partie, dans l'ordre de `Tools/Data/Maps.csv` (la table unique des cartes, C0.2 ; la
+  première est celle d'un nouveau salon), `LobbyRules.Maps` dans le gestionnaire et `FHOLMapRules` dans le jeu.
 - `maps[].sizes` : les tailles de la carte et leurs places (vide pour une carte sans tailles) ; `maxPlayers` = places
   de la plus grande. `/Game/Maps/Plain` seule (carte d'essai, TC-Q11) n'est pas servie.
 - `slots` : toujours 8 ; `state` vaut `"open"`, `"closed"`, `"player"` ou `"ai"`. `you` : le nom du jeton (`null` sans
