@@ -1,0 +1,16 @@
+# IA1.8 : toi contre une IA, son économie complète : Paysans en continu, maisons, camps, moulin et 8 fermes
+# Plain, toi (slot 0) contre une IA (slot 1, « IA Normal 2 »), 5 Paysans de départ chacun. L'IA ne fait pas d'armée (IA2) :
+# elle bâtit et récolte seule. Joue ta propre économie à côté, 8 à 10 min.
+# À regarder (console ² : hol.Camera.FocusSlot 1 pour suivre l'IA, FocusSlot 0 pour revenir ; hol.Gather.Report 1) :
+#  1. ses Paysans partent récolter tout de suite : 2 nourriture, 2 bois, un bâtisseur pour le camp de bois ;
+#  2. elle produit un Paysan toutes les 20 s environ, sa population monte au-delà de 20 (maisons posées avant le plafond) ;
+#  3. camp de bois, moulin puis un bloc de 8 fermes autour d'un moulin quand les baies baissent ;
+#  4. aucun Paysan planté sans rien faire plus de 10 s (ferme pleine : il va ailleurs) ; ses stocks peuvent monter : normal ;
+#  5. à 5 et 10 min, note ses Paysans (référence pour IA4).
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1: 
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Normal 2 » : économie seule (Paysans, maisons, camps, moulin, fermes), pas d'armée. Laisse tourner 8 à 10 min.
+note Vérifie : population > 20, 8 fermes, aucun Paysan inactif plus de 10 s. Suis-la avec ² hol.Camera.FocusSlot 1.
