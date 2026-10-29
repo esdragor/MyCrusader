@@ -125,6 +125,11 @@ int32 UHOLHeroLibrary::GetHeroAbilityUnlockLevel(const EHOLHeroAbility Ability)
 	return HOLHeroAbility::GetUnlockLevel(Ability);
 }
 
+int32 UHOLHeroLibrary::GetHeroAbilityCooldownSeconds(const EHOLHeroAbility Ability)
+{
+	return HOLHeroAbility::GetCooldownMs(Ability) / 1000;
+}
+
 int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int32 Slot)
 {
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Cries;

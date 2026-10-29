@@ -105,6 +105,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static int32 GetHeroAbilityUnlockLevel(EHOLHeroAbility Ability);
 
+	/** J8c.4: the whole cool-down of the hero's Ability, in seconds (the cry 60, the banner 120; the aura 0). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static int32 GetHeroAbilityCooldownSeconds(EHOLHeroAbility Ability);
+
 	/** J8c.3: the slot's hero's cries so far (public sheet, wraps at 256): one more, the cry is shown. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroCries(const UObject* WorldContextObject, int32 Slot);

@@ -564,6 +564,8 @@ private:
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
 	bool bOrdersShown = false;
+	/** The hero's abilities on the grid (J8c.4): their cool-downs and level move with time alone, read four times a second. */
+	bool bHeroCellsShown = false;
 	TArray<FName> ShownOrderTypes;
 	/** The builders' age panels, for Report: their buildings (NumAges x NumAgeCells), the ages reached, the chosen one. */
 	bool bAgesShown = false;

@@ -1765,12 +1765,14 @@ if ($Parts -contains "camera") {
             # J8c.4 loop 1: the hero's abilities from the grid (J8c-Q4), as the keys. His hero again, selected (F4): Z refused
             # by the grid at level 1 (the banner opens at 4), A cries, A again refused by the grid (its cool-down, seconds
             # told); at level 4 Z then a left click 10 m from him plants the banner (hol.Select.Banner). Then removed, his
-            # abilities reset, his XP back to 0, the centre selected then Escape.
+            # abilities reset, his XP back to 0, the centre selected then Escape. J8c.4 loop 2: the HUD read (hol.HUD.Report) once
+            # he is selected, after the cry, at level 4 and once the banner is planted: the grid's A and Z cells, their
+            # tooltips, the hero's block's three boxes.
             Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
-                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #",
-                "hol.Select.Grid 1", "hol.Select.Grid 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Select.Grid 0",
-                "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
-                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #", "wait 0.3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "hol.Select.Grid 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
+                "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
+                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -4251,6 +4253,24 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["level 4: Z then a left click 10 m from him plants the banner there (at $($Planted -join ', '), 30 cm at most off)"] =
         [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner, click on the ground" -Quiet) -and ($null -ne $Planted) -and
         ([Math]::Abs($Planted[0] - ($BuildHero[0] + 1000)) -le 30) -and ([Math]::Abs($Planted[1] - $BuildHero[1]) -le 30)
+    # J8c.4 loop 2: the HUD at the four reports (selected, after the cry, level 4, banner planted).
+    $GridReports = @($GridCase | Select-String -SimpleMatch "HUD report:" | ForEach-Object { $_.Line })
+    $GridCells = @($GridCase | Select-String -SimpleMatch "HUD cells:" | ForEach-Object { $_.Line })
+    $GridTips = @($GridCase | Select-String -SimpleMatch "HUD tooltips:" | ForEach-Object { $_.Line })
+    $GridBoxes = @($GridCase | Select-String -SimpleMatch "HUD hero abilities:" | ForEach-Object { $_.Line -replace '^.*HUD hero abilities: ', '' })
+    $Checks["4 reports ($($GridReports.Count), block lines $($GridBoxes.Count))"] = $GridReports.Count -eq 4 -and $GridBoxes.Count -eq 4
+    if ($GridReports.Count -eq 4 -and $GridBoxes.Count -eq 4) {
+        $Checks["selected, level 1: grid A=CloseRanks enabled Z=Banner greyed, the banner's tooltip 'Niveau 4 requis'; block '$($GridBoxes[0])'"] =
+            $GridReports[0].Contains("A=CloseRanks enabled Z=Banner greyed") -and $GridTips[0].Contains("Bannière de l'Aube") -and
+            $GridTips[0].Contains("Niveau 4 requis") -and $GridBoxes[0].StartsWith("aura on, cry ready, banner locked 4 | Serrez les rangs (A) / ")
+        $Checks["after the cry: A greyed, 'Rangs 59/60 s' on it; block '$($GridBoxes[1])'"] =
+            $GridReports[1].Contains("A=CloseRanks greyed") -and ($GridCells[1] -match "A: Rangs (59|60) s") -and
+            ($GridBoxes[1] -match "^aura on, cry (59|60) s, banner locked 4 \| Serrez les rangs \(A\) / .+ / Prête dans (59|60) s$")
+        $Checks["level 4: Z=Banner enabled; block '$($GridBoxes[2])'"] =
+            $GridReports[2].Contains("Z=Banner enabled") -and ($GridBoxes[2] -match "^aura on, cry \d+ s, banner ready")
+        $Checks["banner planted: Z greyed; block '$($GridBoxes[3])'"] =
+            $GridReports[3].Contains("Z=Banner greyed") -and ($GridBoxes[3] -match "^aura on, cry \d+ s, banner (119|120) s")
+    }
     $AllOk = (Report "build hero grid" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
