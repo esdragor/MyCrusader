@@ -1273,6 +1273,14 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				Combats[EntityIt].SlideShutSeconds = 0.f;
 				Combats[EntityIt].SlideFreeSeconds = 0.f;
 			}
+			// EtapeDefini O.7b loop 5: a melee striking a building while it closes in to its wall moves only along its way in
+			// (building_crowd (4b): steering round the bodies ahead, it walked 60-170 cm along the crowd once striking); a body in
+			// its way stalls it, and the combat stops its walk (barred by a striking friend, or BuildingCloseInStopMs).
+			if (!Combats.IsEmpty() && Combats[EntityIt].bAttacking && Combats[EntityIt].bApproaching && !Combats[EntityIt].BuildingInward.IsZero())
+			{
+				const FVector Inward(Combats[EntityIt].BuildingInward.X, Combats[EntityIt].BuildingInward.Y, 0.);
+				Direction = Inward * FMath::Max(0., FVector::DotProduct(Direction, Inward));
+			}
 			Velocity = Direction * Speed;
 			CountTurn(LastVelocities[EntityIt].Value, Velocity);
 		}
@@ -1403,6 +1411,8 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 	Soldiers.Reset();
 	UnitIds.Reset();
 	Front.Reset();
+	PushIn.Reset();
+	PushInRoom.Reset();
 	Engaged.Reset();
 	float MaxRadius = 1.f;
 	bool bAnyWalking = false;
@@ -1438,7 +1448,14 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			Owners.Add(States[EntityIt].OwnerPlayer);
 			AtSource.Add(States[EntityIt].Activity == EHOLUnitActivity::Gathering);
 			UnitIds.Add(States[EntityIt].UnitId);
-			Front.Add(!Combats.IsEmpty() && Combats[EntityIt].bAttacking); // the contacts are added once the grid is built
+			// EtapeDefini O.7: a melee striking a building, standing or still closing in to its wall (O.7b loop 2: one closing in
+			// was of the front, shoving the standing strikers sideways, and shoved sideways by them), is not of the front (a
+			// wall to its friends): pushed in by them, only along its way in (PushIn).
+			const bool bPushedIn = !Combats.IsEmpty() && !bGhost && Combats[EntityIt].bAttacking && !Combats[EntityIt].Target.IsSet()
+				&& !Combats[EntityIt].BuildingInward.IsZero();
+			PushIn.Add(bPushedIn ? FVector2D(Combats[EntityIt].BuildingInward.X, Combats[EntityIt].BuildingInward.Y) : FVector2D::ZeroVector);
+			PushInRoom.Add(bPushedIn ? static_cast<double>(Combats[EntityIt].BuildingRoom) : 0.);
+			Front.Add(!Combats.IsEmpty() && Combats[EntityIt].bAttacking && !bPushedIn); // the contacts are added once the grid is built
 			bool bEngaged = false;
 			if (!Combats.IsEmpty() && !bGhost)
 			{
@@ -1501,6 +1518,8 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		Permute(AtSource);
 		Permute(Soldiers);
 		Permute(Front);
+		Permute(PushIn);
+		Permute(PushInRoom);
 		Permute(Engaged);
 	}
 
@@ -1849,6 +1868,63 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		{
 			Share = Front[Other] ? 1. : 0.;
 		}
+		// EtapeDefini O.7 (a crowd, AoE4: "les personnes derrière le poussent vers le bâtiment"): a melee striking a building
+		// (PushIn) is moved by a friend only along its way in, never outwards nor sideways, and no farther in than the room it
+		// has left this step (to the wall); the friend takes the rest, so the two still part by the whole overlap. Two of them:
+		// each one's outward part dropped and its inward part bounded by its room; what that leaves of the overlap (O.7b loop 2:
+		// the one at the wall has no room, the one behind may not go out: the pair stayed at 20-51 cm) goes to the one farther
+		// from the wall, whichever way, so no two bodies are left overlapping.
+		if (!bEnemies && !Front[Index] && !Front[Other] && (!PushIn[Index].IsZero() || !PushIn[Other].IsZero()))
+		{
+			const auto Allowed = [this](const int32 Unit, const FVector2D& Move, const bool bSideways)
+			{
+				const double RoomLeft = FMath::Max(0., PushInRoom[Unit] - FVector2D::DotProduct(Corrections[Unit] - Positions[Unit], PushIn[Unit]));
+				const double In = FVector2D::DotProduct(Move, PushIn[Unit]);
+				const FVector2D Sideways = bSideways ? Move - PushIn[Unit] * In : FVector2D::ZeroVector;
+				return PushIn[Unit] * FMath::Clamp(In, 0., RoomLeft) + Sideways;
+			};
+			const FVector2D Apart = Normal * Overlap; // Index's move less Other's
+			FVector2D IndexMove = Normal * (Overlap * Share);
+			FVector2D OtherMove = IndexMove - Apart;
+			if (PushIn[Index].IsZero())
+			{
+				OtherMove = Allowed(Other, OtherMove, false);
+				IndexMove = OtherMove + Apart;
+			}
+			else if (PushIn[Other].IsZero())
+			{
+				IndexMove = Allowed(Index, IndexMove, false);
+				OtherMove = IndexMove - Apart;
+			}
+			else
+			{
+				IndexMove = Allowed(Index, IndexMove, true);
+				OtherMove = Allowed(Other, OtherMove, true);
+				const FVector2D Left = Apart - (IndexMove - OtherMove);
+				if (!Left.IsNearlyZero())
+				{
+					if (PushInRoom[Index] >= PushInRoom[Other])
+					{
+						IndexMove += Left;
+					}
+					else
+					{
+						OtherMove -= Left;
+					}
+				}
+			}
+			Corrections[Index] += IndexMove;
+			if (!OtherMove.IsNearlyZero())
+			{
+				Corrections[Other] += OtherMove;
+				if (!Queued[Other])
+				{
+					Queued[Other] = true;
+					ToLook.Add(Other);
+				}
+			}
+			return;
+		}
 		if (Share > 0.)
 		{
 			Corrections[Index] += Normal * (Overlap * Share);
@@ -1922,6 +1998,20 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			if (Move.SizeSquared() > FMath::Square(MaxStep))
 			{
 				Corrections[Index] = Positions[Index] + Move.GetSafeNormal() * MaxStep;
+			}
+		}
+	}
+
+	// EtapeDefini O.7: a unit pushed in towards a building's wall goes no farther in than its room (never into the visible wall:
+	// the keep-out eases a body out of it only a step at a time).
+	for (int32 Index = 0; Index < Positions.Num(); ++Index)
+	{
+		if (!PushIn[Index].IsZero())
+		{
+			const double In = FVector2D::DotProduct(Corrections[Index] - Positions[Index], PushIn[Index]);
+			if (In > PushInRoom[Index])
+			{
+				Corrections[Index] -= PushIn[Index] * (In - PushInRoom[Index]);
 			}
 		}
 	}
@@ -2236,11 +2326,11 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 			const FHOLCombatFragment* Combat = Combats.Num() > 0 ? &Combats[EntityIt] : nullptr;
 			const bool bFighting = Combat && (Combat->Target.IsSet() || Combat->TargetBuilding.IsValid() || Combat->bAttacking);
 			const bool bStill = HOLConstruction::StandsClearOfVisibleWall(States[EntityIt].Activity, Order.Phase, bFighting);
-			// EtapeDefini J loop 8: a unit striking a building whose place it was given (kept or forgotten) is kept out of the
-			// visible wall too, the same step at a time (the user's trial: units half in the House). Any other fighter, walker
-			// or worker keeps D324's shoulder.
-			const bool bStrikesByPlace = Combat && Combat->bAttacking && Combat->TargetBuilding.IsValid()
-				&& (Combat->PlaceBuilding == Combat->TargetBuilding || Combat->PlaceGivenUpBuilding == Combat->TargetBuilding);
+			// EtapeDefini J loop 8: a unit striking a building is kept out of the visible wall too, the same step at a time (the
+			// user's trial: units half in the House); O.7: any melee striking one (its friends push it in, BuildingInward). Any
+			// other fighter, walker or worker keeps D324's shoulder.
+			const bool bStrikesByPlace = Combat && Combat->bAttacking && Combat->TargetBuilding.IsValid() && !Combat->Target.IsSet()
+				&& !Combat->BuildingInward.IsZero();
 			const bool bKeptOut = bStill || bStrikesByPlace;
 			bool bPutBack = false;
 			// Loop 9: those out of the square slab, its corners too (the round rule round the body left them ~30 cm in a corner).
