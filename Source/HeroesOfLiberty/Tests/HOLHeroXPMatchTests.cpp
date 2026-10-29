@@ -11,6 +11,7 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
@@ -292,6 +293,43 @@ bool FHOLHeroXPBuildingTest::RunTest(const FString& Parameters)
 	Instant->Set(InstantBefore, ECVF_SetByCode);
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPLevelAlertsTest, "HeroesOfLiberty.HeroXP.LevelAlerts", UE::HeroesOfLiberty::Tests::HeroXPMatch::Flags)
+
+// J8b.4 (J8b-Q4): the alerts of a level up, in French (the source), and when a machine sees a hero go up.
+bool FHOLHeroXPLevelAlertsTest::RunTest(const FString& Parameters)
+{
+	const auto Lines = [](const int32 OldLevel, const int32 NewLevel)
+	{
+		TArray<FString> Out;
+		for (const FHOLForumMessage& Message : HOLForumMessages::GetHeroLevelMessages(OldLevel, NewLevel))
+		{
+			Out.Add(Message.Shown);
+		}
+		return FString::Join(Out, TEXT(" | "));
+	};
+	TestEqual(TEXT("1 -> 2: his level"), Lines(1, 2), FString(TEXT("Hero message: Paladin-Commandant : niveau 2")));
+	TestEqual(TEXT("2 -> 3: his level, then tier 1"), Lines(2, 3),
+		FString(TEXT("Hero message: Paladin-Commandant : niveau 3 | Hero message: Palier 1 atteint")));
+	TestEqual(TEXT("2 -> 6 at once: level 6, both tiers"), Lines(2, 6),
+		FString(TEXT("Hero message: Paladin-Commandant : niveau 6 | Hero message: Palier 1 atteint | Hero message: Palier 2 atteint")));
+	TestEqual(TEXT("3 -> 4: no tier"), Lines(3, 4), FString(TEXT("Hero message: Paladin-Commandant : niveau 4")));
+	TestEqual(TEXT("5 -> 6: tier 2"), Lines(5, 6), FString(TEXT("Hero message: Paladin-Commandant : niveau 6 | Hero message: Palier 2 atteint")));
+	TestEqual(TEXT("Not up: none"), Lines(3, 3), FString());
+	TestEqual(TEXT("Down: none"), Lines(4, 2), FString());
+
+	FHOLHeroLevelWatch Watch;
+	TestEqual(TEXT("first seen at level 1: no level up"), Watch.Update(0, 1), 0);
+	TestEqual(TEXT("1 -> 2: up from 1"), Watch.Update(0, 2), 1);
+	TestEqual(TEXT("2 again: nothing"), Watch.Update(0, 2), 0);
+	TestEqual(TEXT("another slot first seen at 3: nothing"), Watch.Update(5, 3), 0);
+	TestEqual(TEXT("down to 1 (a cheat): nothing"), Watch.Update(0, 1), 0);
+	TestEqual(TEXT("1 -> 3: up from 1"), Watch.Update(0, 3), 1);
+	TestEqual(TEXT("no hero (level 0): nothing"), Watch.Update(0, 0), 0);
+	TestEqual(TEXT("born again seen at 2: first seen, nothing"), Watch.Update(0, 2), 0);
+	TestEqual(TEXT("a slot out of range: nothing"), Watch.Update(-1, 4), 0);
 	return true;
 }
 

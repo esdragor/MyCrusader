@@ -418,6 +418,14 @@ public:
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnHeroReadyMessage, const FHOLForumMessage& /*Message*/);
 	FOnHeroReadyMessage OnHeroReadyMessage;
 
+	/**
+	 * J8b.4 (J8b-Q4): every machine with a player, a slot's hero gone up from OldLevel to NewLevel in its public sheet
+	 * (FHOLHeroLevelWatch: not the first level seen). Logs "Hero level up: slot N level A -> B", then this: his golden flash
+	 * for all, the alerts for his owner (the HUD).
+	 */
+	DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnHeroLevelUp, int32 /*Slot*/, int32 /*OldLevel*/, int32 /*NewLevel*/);
+	FOnHeroLevelUp OnHeroLevelUp;
+
 private:
 	UFUNCTION()
 	void OnRep_HeroSheets();
@@ -425,6 +433,10 @@ private:
 	/** J8a.4: before OnHeroSheetsChanged, the local player's hero ready (OnHeroReadyMessage). */
 	void NoteHeroReady();
 	FHOLHeroReadyWatch HeroReadyWatch;
+
+	/** J8b.4: before OnHeroSheetsChanged, the heroes gone up (OnHeroLevelUp). */
+	void NoteHeroLevels();
+	FHOLHeroLevelWatch HeroLevelWatch;
 
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)

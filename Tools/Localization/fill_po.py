@@ -233,6 +233,8 @@ TRANSLATIONS = {
     "HOLGameScreen,MessageKingDied": ("{0}'s King is dead", "{0}の王が死亡"),
     "HOLGameScreen,MessageOwnKingDied": ("Your King is dead", "あなたの王が死亡"),
     "HOLGameScreen,MessageHeroReady": ("Your hero is ready to return", "英雄の帰還準備が整った"),
+    "HOLGameScreen,MessageHeroLevel": ("Paladin-Commander: level {0}", "聖騎士団長：レベル {0}"),
+    "HOLGameScreen,MessageHeroTier": ("Tier {0} reached", "段階{0}に到達"),
 
     # The hero's block, in script (Script/UI/HOLHeroBlock.as, J8a.5): {0} {1} numbers, the delay m:ss.
     "HOLHeroBlock,Level": ("Level {0}", "レベル {0}"),

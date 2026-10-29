@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Match/HOLForumMessages.h"
 #include "Simulation/HOLUnitView.h"
 #include "HOLSelectionMarkers.generated.h"
 
@@ -158,4 +159,14 @@ private:
 	/** The last order's point, and the seconds since it was given (the ring shows while under PingSeconds). */
 	FVector PingPoint = FVector::ZeroVector;
 	float PingAge = TNumericLimits<float>::Max();
+
+	/**
+	 * J8b.4 (J8b-Q4): the heroes gone up, as this machine sees their public sheets (every player, spectators too): a slot's
+	 * golden flash on its hero, the seconds since it started (HeroFlashSeconds).
+	 */
+	void UpdateHeroFlashes(float DeltaSeconds);
+	FHOLHeroLevelWatch HeroLevelWatch;
+	TMap<int32, float> HeroFlashes;
+	/** The flash's rings drawn this frame (not counted as rings in Describe). */
+	int32 HeroFlashRings = 0;
 };

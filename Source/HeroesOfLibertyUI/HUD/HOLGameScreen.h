@@ -464,6 +464,11 @@ private:
 	void HandleForumEvent(const struct FHOLForumEvent& Event);
 	/** J8a.4 (D202): the minor alert « Votre héros est prêt à revenir », a thread's line only (no banner nor sound). */
 	void HandleHeroReadyMessage(const struct FHOLForumMessage& Message);
+	/**
+	 * J8b.4 (J8b-Q4, D202): the local player's hero gone up: the minor alerts « Paladin-Commandant : niveau N » and, at
+	 * levels 3 and 6, « Palier 1 / 2 atteint » (HOLForumMessages::GetHeroLevelMessages), thread's lines with one sound.
+	 */
+	void HandleHeroLevelUp(int32 HeroSlot, int32 OldLevel, int32 NewLevel);
 	void TickMessages();
 	void RebuildMessages();
 	UPROPERTY(Transient)
@@ -499,6 +504,7 @@ private:
 	FHOLForumAlert Alert;
 	FDelegateHandle TableForumEventHandle;
 	FDelegateHandle TableHeroReadyHandle;
+	FDelegateHandle TableHeroLevelHandle;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;
 	/** The names of the players table as last logged (M6-Q12). */

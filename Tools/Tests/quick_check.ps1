@@ -1664,15 +1664,23 @@ if ($Parts -contains "camera") {
             # ready 184 steps after a level 2 death), a House finished meanwhile by a Peasant (FastBuild): development +25 though
             # dead (D06). The return bought: back at level 2, full health (486). Then the hero and the builder removed, his XP
             # back to 0, the times and the combat as before, the centre selected then Escape (as the cases before).
-            Step "mark build hero xp", "hol.Combat.Enabled 1", "hol.Cheat.Wood 1000", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
-                "hol.Hero.SetXP 0 150", "hol.Units.Spawn 1 $($BuildHero[0] + 200) $($BuildHero[1]) 1 Peasant 10", "waitlog Hero level: slot 0 level 1 -> 2", "wait 0.3", "hol.Hero.Report",
+            # J8b.4: the camera on him, his golden flash captured at his level up, the HUD's reports (his XP's bar, the thread's
+            # alerts); once back, his XP to 600: level 3, the alert of tier 1, captured.
+            Step "mark build hero xp", "hol.Combat.Enabled 1", "hol.Cheat.Wood 1000", "hol.Camera.Focus $($BuildHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Hero.SetXP 0 150", "hol.Units.Spawn 1 $($BuildHero[0] + 200) $($BuildHero[1]) 1 Peasant 10", "waitlog Hero level: slot 0 level 1 -> 2",
+                "waitlog Hero flash: slot 0 level 1 -> 2", "wait 0.25", "capture build_hero_flash", "wait 0.3", "hol.Hero.Report", "hol.HUD.Report",
                 "hol.Hero.ReturnTimePercent 20", "hol.Cheat.Gold -1000000", "hol.Cheat.Gold 500", "hol.Hero.Kill 0", "waitlog hol.Hero.Kill: slot 0", "wait 0.5",
                 "hol.Cheat.FastBuild 1", "hol.Units.Spawn 1 $($HeroXPBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($HeroXPBuilder -join ' ')", "frames 3",
                 "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($HeroXPHouse -join ' ')", "frames 3", "hol.Build.Place House",
                 "waitlog Placement ghost: House at ($($HeroXPHouse -join ', ')) valid", "hol.Build.Click", "waitlog Construction: slot 0 finished House at ($($HeroXPHouse -join ', '))",
                 "hol.Cheat.FastBuild 0", "wait 0.3", "hol.Hero.Report",
                 "waitlog Hero return: slot 0 ready", "hol.HUD.Click HeroReturnButton", "waitlog Hero return: slot 0 by its main forum", "wait 0.5", "hol.Hero.Report",
-                "hol.HUD.Report", "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($HeroXPHouse -join ' ') 1500 0", "hol.Hero.SetXP 0 0",
+                "hol.HUD.Report", "hol.Hero.SetXP 0 600", "waitlog Hero flash: slot 0 level 2 -> 3", "wait 0.5", "hol.HUD.Report", "frames 3", "capture build_hero_tier",
+                "hol.UI.Language en", "hol.Hero.SetXP 0 1300", "waitlog Hero flash: slot 0 level 3 -> 4", "wait 0.3", "hol.HUD.Report",
+                "hol.UI.Language ja", "hol.Hero.SetXP 0 3300", "waitlog Hero flash: slot 0 level 4 -> 6", "wait 0.3", "hol.HUD.Report", "frames 3", "capture build_hero_tier_ja",
+                "hol.UI.Language fr", "frames 3",
+                "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($HeroXPHouse -join ' ') 1500 0", "hol.Hero.SetXP 0 0",
                 "hol.Combat.Enabled 0", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
@@ -3998,13 +4006,27 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         [bool]($HeroXP | Select-String -SimpleMatch "hol.Hero.Kill: slot 0, 1 hero(es)" -Quiet) -and ($Gains.Count -eq 2) -and ($Gains[1] -eq "+25 development = 225") -and
         ($XPSheets.Count -ge 2) -and ($XPSheets[1] -match "^state (Dead|ReadyToReturn) level 2 hp 0 xp 225$")
     $Checks["back by the forum: level 2 at full health ($($Levels | Select-Object -Skip 1 -First 1); $($XPSheets | Select-Object -Skip 2 -First 1))"] =
-        [bool]($HeroXP | Select-String -SimpleMatch "Hero return: slot 0 by its main forum" -Quiet) -and ($Levels.Count -eq 2) -and ($Levels[1] -eq "level 1 -> 2, hp 486 / 486") -and
+        [bool]($HeroXP | Select-String -SimpleMatch "Hero return: slot 0 by its main forum" -Quiet) -and ($Levels.Count -ge 2) -and ($Levels[1] -eq "level 1 -> 2, hp 486 / 486") -and
         ($XPSheets.Count -ge 3) -and ($XPSheets[2] -eq "state Alive level 2 hp 486 xp 225")
     # J8b.3: the return at level 2 dearer (100 + 50 x 2 = 200 at the ready step, bought just after), his block at level 2.
     $XPPrice = @($HeroXP | Select-String -Pattern "Hero return: slot 0 bought for (\d+) gold" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
-    $XPBlock = "$($HeroXP | Select-String -Pattern "HUD hero: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })"
+    $XPBlock = "$($HeroXP | Select-String -Pattern "HUD hero: (.*)$" | Select-Object -Skip 1 -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })"
     $Checks["the return at level 2 bought for $($XPPrice -join ', ') gold (150 < P <= 200), his block back: $XPBlock"] =
         ($XPPrice.Count -eq 1) -and ($XPPrice[0] -gt 150) -and ($XPPrice[0] -le 200) -and ($XPBlock -eq "alive level 2 hp 486/486")
+    # J8b.4 (J8b-Q4): the XP's bar (after his kill, back, at 600), the alerts (his level, tier 1 at level 3; one sound each
+    # time), his golden flash at each level up of his sheet (none at his return: the same level), the captures.
+    $XPBars = @($HeroXP | Select-String -Pattern "HUD hero xp: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $Checks["his XP's bar: xp 200/600 bar 0%, xp 225/600 bar 6%, xp 600/1300 bar 0%, xp 1300/2200 bar 0%, xp 3300 max bar 100% ($($XPBars -join '; '))"] =
+        (($XPBars -join ";") -eq "xp 200/600 bar 0%;xp 225/600 bar 6%;xp 600/1300 bar 0%;xp 1300/2200 bar 0%;xp 3300 max bar 100%")
+    $XPAlerts = @($HeroXP | Select-String -Pattern "Hero message: (.*) \(slot 0\)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Where-Object { $_ -notmatch "prêt" })
+    $XPSounds = @($HeroXP | Select-String -Pattern "Hero level alert: slot 0 level (\d -> \d) \(sound\)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["the alerts: niveau 2, niveau 3 and Palier 1 atteint, in English level 4, in Japanese level 6 and tier 2, a sound each time ($($XPAlerts -join '; '); sounds $($XPSounds -join ', '))"] =
+        (($XPAlerts -join ";") -eq "Paladin-Commandant : niveau 2;Paladin-Commandant : niveau 3;Palier 1 atteint;Paladin-Commander: level 4;聖騎士団長：レベル 6;段階2に到達") -and
+        (($XPSounds -join ",") -eq "1 -> 2,2 -> 3,3 -> 4,4 -> 6")
+    $XPFlashes = @($HeroXP | Select-String -Pattern "Hero flash: slot (\d) level (\d -> \d)" | ForEach-Object { "slot $($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+    $Checks["his golden flash at each level up, none at his return ($($XPFlashes -join '; '))"] = (($XPFlashes -join ";") -eq "slot 0 1 -> 2;slot 0 2 -> 3;slot 0 3 -> 4;slot 0 4 -> 6")
+    $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
+    $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hero xp" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
@@ -5948,7 +5970,8 @@ if ($Parts -contains "net") {
         }
         # J8a.4 loop 6 (D202): the minor alert, its owner alone, once (Bob's hero ready first, Alice's later).
         $OwnSlot = if ($N -eq 1) { $BobSlot } else { $AliceSlot }
-        $ReadyLines = @($ClientLines | Select-String -Pattern "Hero message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        # J8b.4: the level alerts (also "Hero message: ...") checked in "net hero xp".
+        $ReadyLines = @($ClientLines | Select-String -Pattern "Hero message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Where-Object { $_ -notmatch "^(Paladin|Palier)" })
         $ReturnChecks["client $N : alert seen once for its own hero only ($($ReadyLines -join '; '))"] =
             $ReadyLines.Count -eq 1 -and $ReadyLines[0] -ceq "Votre héros est prêt à revenir (slot $OwnSlot)"
         $Probe = @($ClientLines | Select-String -Pattern "Hero return probe: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
@@ -6039,6 +6062,19 @@ if ($Parts -contains "net") {
         $BobHero = @([regex]::Matches("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/(\d+)") | Where-Object { [int]$_.Groups[2].Value -gt 400 })
         $XPChecks["client $N : Bob's wounded hero shown at $XPHp / 486 ($(@($BobHero | ForEach-Object { "$($_.Groups[1].Value)/$($_.Groups[2].Value)" }) -join ', '))"] =
             ($BobHero.Count -eq 1) -and ($BobHero[0].Groups[1].Value -eq "$XPHp") -and ($BobHero[0].Groups[2].Value -eq "486")
+        # J8b.4: his golden flash on both clients, the alerts and his XP's bar on Bob's alone.
+        $Flashes = @($XPLines | Select-String -Pattern "Hero flash: slot (\d) level (\d -> \d)" | ForEach-Object { "slot $($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+        $XPChecks["client $N : Bob's hero's golden flash ($($Flashes -join '; '))"] = (($Flashes -join ";") -eq "slot $BobSlot 1 -> 2")
+        $Alerts = @($XPLines | Select-String -Pattern "Hero message: (Paladin.*|Palier.*) \(slot (\d)\)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) (slot $($_.Matches[0].Groups[2].Value))" })
+        $Sounds = @($XPLines | Select-String -Pattern "Hero level alert: slot (\d) level (\d -> \d) \(sound\)" | ForEach-Object { "slot $($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+        if ($N -eq 1) {
+            $Bar = "$($XPLines | Select-String -Pattern "HUD hero xp: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })"
+            $XPChecks["client $N (Bob): his alert and its sound ($($Alerts -join '; '); $($Sounds -join '; ')), his XP's bar ($Bar)"] =
+                (($Alerts -join ";") -eq "Paladin-Commandant : niveau 2 (slot $BobSlot)") -and (($Sounds -join ";") -eq "slot $BobSlot 1 -> 2") -and ($Bar -eq "xp 220/600 bar 5%")
+        }
+        else {
+            $XPChecks["client $N (Alice): no alert for Bob's hero ($($Alerts -join '; ')$($Sounds -join '; '))"] = ($Alerts.Count -eq 0) -and ($Sounds.Count -eq 0)
+        }
     }
     $AllOk = (Report "net hero xp" $XPChecks) -and $AllOk
 }

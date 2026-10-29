@@ -93,6 +93,16 @@ namespace HOLForumMessages
 	/** J8a.4 (D397, D202): the minor alert « Votre héros est prêt à revenir », a thread's line, no banner nor sound. */
 	HEROESOFLIBERTY_API FHOLForumMessage GetHeroReadyMessage();
 
+	/**
+	 * J8b.4 (J8b-Q4, D202): the minor alerts of the viewer's hero going up from OldLevel to NewLevel, in their order:
+	 * « Paladin-Commandant : niveau N », then « Palier 1 atteint » when level 3 is reached or passed, « Palier 2 atteint »
+	 * for level 6 (the tiers' content is another chapter). None when he does not go up.
+	 */
+	HEROESOFLIBERTY_API TArray<FHOLForumMessage> GetHeroLevelMessages(int32 OldLevel, int32 NewLevel);
+
+	/** J8b.4: the levels opening a tier (D04: 3 and 6). */
+	constexpr int32 HeroTierLevels[] = { 3, 6 };
+
 	HEROESOFLIBERTY_API const TCHAR* GetKindName(EHOLForumEventKind Kind);
 
 	/**
@@ -128,6 +138,18 @@ struct HEROESOFLIBERTY_API FHOLHeroReadyWatch
 	EHOLHeroState Seen = EHOLHeroState::None;
 
 	bool Update(int32 ViewerSlot, EHOLHeroState State);
+};
+
+/**
+ * J8b.4 (J8b-Q4): the heroes' levels as a machine saw them, slot by slot. Update gives the level a slot's hero had before
+ * when it went up (his golden flash, his owner's alerts), 0 otherwise: the first level seen (a hero born, a machine
+ * arriving: level 0 before) is no level up, nor a level going down (development cheats). Pure.
+ */
+struct HEROESOFLIBERTY_API FHOLHeroLevelWatch
+{
+	TArray<int32> Seen;
+
+	int32 Update(int32 Slot, int32 Level);
 };
 
 /** V4.2: a line of the thread of messages, and when it came (seconds, the HUD's real time). */

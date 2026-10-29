@@ -651,11 +651,13 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
 		Previous->OnForumEvent.Remove(TableForumEventHandle);
 		Previous->OnHeroReadyMessage.Remove(TableHeroReadyHandle);
+		Previous->OnHeroLevelUp.Remove(TableHeroLevelHandle);
 	}
 	TableForumsHandle.Reset();
 	TableVictoryHandle.Reset();
 	TableForumEventHandle.Reset();
 	TableHeroReadyHandle.Reset();
+	TableHeroLevelHandle.Reset();
 	BoundTableState = GameState;
 	if (GameState)
 	{
@@ -666,6 +668,8 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		TableForumEventHandle = GameState->OnForumEvent.AddUObject(this, &UHOLGameScreen::HandleForumEvent);
 		// J8a.4: the local player's hero ready to return (its owner alone, once per death).
 		TableHeroReadyHandle = GameState->OnHeroReadyMessage.AddUObject(this, &UHOLGameScreen::HandleHeroReadyMessage);
+		// J8b.4: a hero gone up (every machine): the alerts for its owner alone.
+		TableHeroLevelHandle = GameState->OnHeroLevelUp.AddUObject(this, &UHOLGameScreen::HandleHeroLevelUp);
 	}
 }
 
@@ -676,6 +680,29 @@ void UHOLGameScreen::HandleHeroReadyMessage(const FHOLForumMessage& Message)
 		MessageThread.Add(Message, World->GetRealTimeSeconds());
 		RebuildMessages();
 	}
+}
+
+void UHOLGameScreen::HandleHeroLevelUp(const int32 HeroSlot, const int32 OldLevel, const int32 NewLevel)
+{
+	const UWorld* World = GetWorld();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	if (!World || !PlayerState || PlayerState->GetPlayerIndex() != HeroSlot)
+	{
+		return;
+	}
+	for (const FHOLForumMessage& Message : HOLForumMessages::GetHeroLevelMessages(OldLevel, NewLevel))
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("%s (slot %d)"), *Message.Shown, HeroSlot);
+		MessageThread.Add(Message, World->GetRealTimeSeconds());
+	}
+	RebuildMessages();
+	// A minor alert with its sound (J8b-Q4), once for its lines; provisional, as the alerts' (FHOLForumAlert::SoundPath).
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, FHOLForumAlert::SoundPath);
+	if (Sound)
+	{
+		UGameplayStatics::PlaySound2D(this, Sound);
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("Hero level alert: slot %d level %d -> %d (sound%s)"), HeroSlot, OldLevel, NewLevel, Sound ? TEXT("") : TEXT(" missing"));
 }
 
 void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)
