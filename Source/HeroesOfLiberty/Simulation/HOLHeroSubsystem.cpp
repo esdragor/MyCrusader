@@ -120,6 +120,16 @@ namespace UE::HeroesOfLiberty::Hero
 				: TEXT("refused (client, <Slot> <X> <Y>, no living hero, below level 4, not ready, or farther than 16 m)"));
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs CommandResetAbilities(TEXT("hol.Hero.ResetAbilities"),
+		TEXT("hol.Hero.ResetAbilities [Slot=0]: the slot's hero cool-downs over, his banner gone, server or solo (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLHeroSubsystem* Heroes = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+			const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.ResetAbilities: slot %d %s"), Slot, Heroes && Heroes->ResetAbilities(Slot) ? TEXT("reset")
+				: TEXT("refused (client or no such slot)"));
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs CommandKill(TEXT("hol.Hero.Kill"),
 		TEXT("hol.Hero.Kill [Slot=0]: the slot's hero at 0 health, dying as killed in combat, server or solo (development only)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -498,6 +508,16 @@ int32 UHOLHeroSubsystem::GetCooldownMs(const int32 Slot, const EHOLHeroAbility A
 	case EHOLHeroAbility::Banner: return Abilities[Slot].BannerCooldownMs;
 	default: return 0;
 	}
+}
+
+bool UHOLHeroSubsystem::ResetAbilities(const int32 Slot)
+{
+	if (!Abilities.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	Abilities[Slot] = FAbilities();
+	return true;
 }
 
 void UHOLHeroSubsystem::TickAbilities()

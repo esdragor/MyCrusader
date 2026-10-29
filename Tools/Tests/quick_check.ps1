@@ -132,7 +132,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -1723,6 +1723,34 @@ if ($Parts -contains "camera") {
                 "hol.UI.Language fr", "frames 3",
                 "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($HeroXPHouse -join ' ') 1500 0", "hol.Hero.SetXP 0 0",
                 "hol.Combat.Enabled 0", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # J8c.2 loop 2: the hero's aura, cry and banner in a match (J8c-Q1 to Q3), the hits logged (hol.Combat.LogHits). His
+            # hero again, a Spearman of slot 0 6 m from him, a Man-at-arms of slot 1 beside it and an Archer of slot 1 15 m off
+            # (21 m from him): -15 %, the Man-at-arms' 12 on the Spearman 10.2 (on the hero, D17, 3.06), the Archer's 10 on it
+            # (5 and its bonus against light infantry) 8.5. Those gone, a new Spearman cried over with him (Serrez les rangs),
+            # the cry refused again (its cool-down), then hit: -40 %, 7.2 (on the hero 2.16) and arrows of 6. His XP to
+            # level 4, his banner refused 17 m from him, planted 16 m away; a Spearman 6 m beyond it (22 m from him) hit by a
+            # Man-at-arms: 10.2. Then all removed, his abilities reset (the banner gone), his XP back to 0, the centre selected
+            # then Escape (as the cases before).
+            $AuraHero = $BuildHero
+            $AuraSpot = @($AuraHero[0], ($AuraHero[1] + 600))
+            Step "mark build hero aura", "hol.Combat.Enabled 1", "hol.Combat.LogHits 1", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($AuraSpot[0] + 150) $($AuraSpot[1]) 1 ManAtArms 10",
+                "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
+                "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
+                "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "wait 0.3", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,",
+                "hol.Hero.CloseRanks 0", "hol.Units.Spawn 1 $($AuraSpot[0] + 150) $($AuraSpot[1]) 1 ManAtArms 10",
+                "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
+                "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
+                "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
+                "hol.Hero.Banner 0 $($AuraHero[0] + 1700) $($AuraHero[1])", "hol.Hero.Banner 0 $($AuraHero[0] + 1600) $($AuraHero[1])", "waitlog plants his banner",
+                "hol.Units.Spawn 1 $($AuraHero[0] + 2200) $($AuraHero[1]) 0 Spearman 10", "hol.Units.Spawn 1 $($AuraHero[0] + 2350) $($AuraHero[1]) 1 ManAtArms 10",
+                "waitlog Spearman for 10.2", "wait 0.5",
+                "hol.Units.Remove $($AuraHero -join ' ') 5000 1", "hol.Units.Remove $($AuraHero -join ' ') 5000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "hol.Combat.LogHits 0", "hol.Combat.Enabled 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
             # A right click on a finished deposit (L.1, D485): lumber camp D built at its first blow; three Peasants gather
@@ -4150,6 +4178,39 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hero xp" $Checks) -and $AllOk
+    # J8c.2 loop 2: the aura, the cry and the banner in a match, read from the hits (hol.Combat.LogHits: "... ManAtArms hits
+    # #N Spearman for D", "arrow of #N Archer lands on #N Spearman for D"), in three phases: before the cry, from the cry to
+    # level 4, after it (the banner).
+    $Aura = @(Get-Section "build hero aura" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $CryAt = -1; $BannerAt = -1
+    for ($i = 0; $i -lt $Aura.Count; $i++) {
+        if ($CryAt -lt 0 -and $Aura[$i] -match "slot 0 cries Serrez les rangs, ") { $CryAt = $i }
+        if ($BannerAt -lt 0 -and $Aura[$i] -match "Hero level: slot 0 level 1 -> 4") { $BannerAt = $i }
+    }
+    $AuraPhases = @(
+        , @(if ($CryAt -gt 0) { $Aura[0..($CryAt - 1)] })
+        , @(if ($CryAt -ge 0 -and $BannerAt -gt $CryAt) { $Aura[$CryAt..($BannerAt - 1)] })
+        , @(if ($BannerAt -ge 0) { $Aura[$BannerAt..($Aura.Count - 1)] }))
+    $AuraHits = @($AuraPhases | ForEach-Object { , @($_ | Select-String -Pattern "ManAtArms hits #\d+ (Spearman|Hero) for ([\d.]+)," | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" }) })
+    $AuraArrows = @($AuraPhases | ForEach-Object { , @($_ | Select-String -Pattern "Archer lands on #\d+ Spearman for ([\d.]+)," | ForEach-Object { $_.Matches[0].Groups[1].Value }) })
+    $Checks["in his aura: the Man-at-arms' hits Spearman 10.2 or Hero 3.06, the arrows 8.5 (hits $($AuraHits[0] -join ', '); arrows $($AuraArrows[0] -join ', '))"] =
+        ($AuraHits[0].Count -ge 1) -and (@($AuraHits[0] | Where-Object { $_ -notin @("Spearman 10.2", "Hero 3.06") }).Count -eq 0) -and
+        ($AuraArrows[0].Count -ge 1) -and (@($AuraArrows[0] | Where-Object { $_ -ne "8.5" }).Count -eq 0)
+    $Cried = if ($CryAt -ge 0 -and $Aura[$CryAt] -match "cries Serrez les rangs, (\d+) unit") { [int]$Matches[1] } else { -1 }
+    $Checks["the cry: him and the Spearman under it ($Cried units), refused again during its cool-down"] =
+        ($Cried -ge 2) -and (@($Aura | Select-String -SimpleMatch "Hero ability: slot 0 cries Serrez les rangs").Count -eq 1) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.CloseRanks: slot 0 refused" -Quiet)
+    $Checks["under aura and cry: hits Spearman 7.2 or Hero 2.16, arrows 6 (hits $($AuraHits[1] -join ', '); arrows $($AuraArrows[1] -join ', '))"] =
+        ($AuraHits[1].Count -ge 1) -and (@($AuraHits[1] | Where-Object { $_ -notin @("Spearman 7.2", "Hero 2.16") }).Count -eq 0) -and
+        ($AuraArrows[1].Count -ge 1) -and (@($AuraArrows[1] | Where-Object { $_ -ne "6" }).Count -eq 0)
+    $Checks["level 4: the banner refused 17 m away, planted 16 m away"] =
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1700), $($BuildHero[1])) refused" -Quiet) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1600), $($BuildHero[1])) planted" -Quiet)
+    $Checks["22 m from him, 6 m from his banner: hits 10.2 ($($AuraHits[2] -join ', ')); the abilities reset at the end"] =
+        ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
+    $AllOk = (Report "build hero aura" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
     $DropOrder = @(Get-Section "build dropoff order" | ForEach-Object { $_ })

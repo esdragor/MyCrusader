@@ -103,6 +103,9 @@ public:
 	/** J8c.2: milliseconds before the slot's hero can cast Ability again (0: ready; the aura: 0). */
 	int32 GetCooldownMs(int32 Slot, EHOLHeroAbility Ability) const;
 
+	/** J8c.2 (hol.Hero.ResetAbilities, tests): the slot's cool-downs over, its banner and a pending cry gone. False out of range or on a client. */
+	bool ResetAbilities(int32 Slot);
+
 	/** The slot's AHOLPlayerState in the game state's PlayerArray (as HOLAISummary::ReadStock); nullptr for an AI slot. */
 	static AHOLPlayerState* FindPlayerState(const UWorld& World, int32 Slot);
 
