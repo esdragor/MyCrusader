@@ -1767,12 +1767,17 @@ if ($Parts -contains "camera") {
             # told); at level 4 Z then a left click 10 m from him plants the banner (hol.Select.Banner). Then removed, his
             # abilities reset, his XP back to 0, the centre selected then Escape. J8c.4 loop 2: the HUD read (hol.HUD.Report) once
             # he is selected, after the cry, at level 4 and once the banner is planted: the grid's A and Z cells, their
-            # tooltips, the hero's block's three boxes.
+            # tooltips, the hero's block's three boxes. J8c.4 loop 3: the aura circles drawn for the player (hol.Select.Report,
+            # "Aura rings:"): his hero's once selected; at level 4 the banner aimed (Z) with the test cursor 10 m from him (its
+            # reach and its aura there, in reach), then 18 m (out of reach); once planted, the hero's and the banner's.
             Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #", "wait 0.3", "hol.HUD.Report",
+                "hol.Select.Report",
                 "hol.Select.Grid 1", "hol.Select.Grid 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
-                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report",
+                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "hol.Camera.TestCursor off",
+                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -4270,6 +4275,18 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
             $GridReports[2].Contains("Z=Banner enabled") -and ($GridBoxes[2] -match "^aura on, cry \d+ s, banner ready")
         $Checks["banner planted: Z greyed; block '$($GridBoxes[3])'"] =
             $GridReports[3].Contains("Z=Banner greyed") -and ($GridBoxes[3] -match "^aura on, cry \d+ s, banner (119|120) s")
+    }
+    # J8c.4 loop 3: the aura circles, the player's alone (hol.Select.Report's "Aura rings:" at the 4 points).
+    $AuraRings = @($GridCase | Select-String -SimpleMatch "Aura rings:" | ForEach-Object { $_.Line -replace '^.*Aura rings: ', '' })
+    $Checks["4 aura ring lines ($($AuraRings.Count))"] = $AuraRings.Count -eq 4
+    if ($AuraRings.Count -eq 4) {
+        $Checks["selected: his hero's circle of 12 m ('$($AuraRings[0])')"] = $AuraRings[0] -match "^hero \(-?\d+, -?\d+\) 1200$"
+        $Checks["aimed 10 m away: the reach of 16 m, the aura there in reach ('$($AuraRings[1])')"] =
+            $AuraRings[1] -match "^hero \(-?\d+, -?\d+\) 1200, reach 1600, aim \(-?\d+, -?\d+\) ok$"
+        $Checks["aimed 18 m away: out of reach ('$($AuraRings[2])')"] =
+            $AuraRings[2] -match "^hero \(-?\d+, -?\d+\) 1200, reach 1600, aim \(-?\d+, -?\d+\) out of reach$"
+        $Checks["planted: the hero's and the banner's circles, the aim gone ('$($AuraRings[3])')"] =
+            $AuraRings[3] -match "^hero \(-?\d+, -?\d+\) 1200, banner \(-?\d+, -?\d+\) 1200$"
     }
     $AllOk = (Report "build hero grid" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s

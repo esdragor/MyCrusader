@@ -72,6 +72,12 @@ private:
 	void UpdateOrderLines();
 	/** V3.3 (V3-Q5): the hold's ring around each main forum down (HOLForumRules::GetRing), from the replicated state. */
 	void UpdateForumRings();
+	/**
+	 * J8c.4 (J8c-Q4): the player's own auras on the ground, to him alone: a light golden circle of 12 m around his living
+	 * hero and around his standing banner; while the banner is aimed, the 16 m of its reach around the hero and its aura
+	 * under the cursor (golden within reach, red beyond). Circles of strips, each at the ground's height (hills).
+	 */
+	void UpdateAuraRings();
 	/** A pole and its cloth more for the flags (one per building with a rally point), made the first time needed. */
 	void AddFlag();
 
@@ -169,4 +175,13 @@ private:
 	TMap<int32, float> HeroFlashes;
 	/** The flash's rings drawn this frame (not counted as rings in Describe). */
 	int32 HeroFlashRings = 0;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> AuraRings;
+	/** "hero (x, y) 1200, banner (x, y) 1200, reach 1600, aim (x, y) ok" or "none": what UpdateAuraRings drew last. */
+	FString AuraRingsDescription = TEXT("none");
+
+public:
+	/** The player's aura circles drawn (hol.Select.Report's "Aura rings:" line). */
+	const FString& DescribeAuraRings() const { return AuraRingsDescription; }
 };

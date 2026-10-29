@@ -527,6 +527,31 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** J8c.4: the test cursor (hol.Camera.TestCursor) where a ground point (cm) is drawn: the banner's aim read there. */
+	FAutoConsoleCommand TestCursorGroundCommand(
+		TEXT("hol.Camera.TestCursorGround"),
+		TEXT("hol.Camera.TestCursorGround <X> <Y>: hol.Camera.TestCursor where that ground point (cm) is drawn (hol.Camera.TestCursor off to leave it)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Camera.TestCursorGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Camera.TestCursorGround: the point is not on the screen"));
+					continue;
+				}
+				// As typed in the console: a value set there before (hol.Camera.TestCursor) would win over a lower priority.
+				CVarTestCursor.AsVariable()->Set(*FString::Printf(TEXT("%.4f %.4f"), Fraction.X, Fraction.Y), ECVF_SetByConsole);
+				UE_LOG(LogHOLMatch, Display, TEXT("Test cursor on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
+			}
+		}));
+
 	/** J8c.4: the grid's Z with the hero commanded, then a left click where that ground point (cm) is drawn. */
 	FAutoConsoleCommand BannerCommand(
 		TEXT("hol.Select.Banner"),
@@ -768,6 +793,7 @@ namespace UE::HeroesOfLiberty::Player
 				if (const AHOLSelectionMarkers* Markers = Controller->GetSelectionMarkers())
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Selection markers: %s"), *Markers->Describe());
+					UE_LOG(LogHOLMatch, Display, TEXT("Aura rings: %s"), *Markers->DescribeAuraRings());
 				}
 			}
 		}));
@@ -3501,6 +3527,18 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 	UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move to (%.0f, %.0f)%s"), Soldiers.Num(), Ground.X, Ground.Y, bQueue ? TEXT(", queued") : TEXT(""));
 	RequestAttackMove(Soldiers, Ground, bQueue);
 	OnAttackOrderGiven.Broadcast(Ground);
+}
+
+bool AHOLPlayerController::GetCursorGroundPoint(FVector& OutPoint) const
+{
+	FVector2D Fraction;
+	FVector Origin, Direction;
+	if (!RTSCamera || !GetCursorFraction(Fraction))
+	{
+		return false;
+	}
+	const FVector2D Pixels = ToPixels(Fraction);
+	return DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, OutPoint);
 }
 
 void AHOLPlayerController::PlantBannerAt(const FVector2D& ViewportFraction)

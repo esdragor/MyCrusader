@@ -403,6 +403,8 @@ public:
 	void PlantBannerAt(const FVector2D& ViewportFraction);
 	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
 	uint32 GetCommandHero() const;
+	/** The ground point under the cursor (the test cursor when set): the banner's aim draws its aura there (J8c.4). */
+	bool GetCursorGroundPoint(FVector& OutPoint) const;
 	/** The selected units that are the player's own (an order moves only them). */
 	TArray<uint32> GetOwnSelectedUnits() const;
 	/** The player's own soldiers among the selection (every type but those that gather). */
