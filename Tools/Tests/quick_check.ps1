@@ -131,7 +131,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -718,6 +718,9 @@ $BuildJSpawn = @(-19200, 1400)
 # F4 (J8a.2, J8a-Q4): slot 0's hero behind its centre, away from the houses of the build part; slot 1's behind the enemy centre.
 $BuildHero = @(-18800, 3600)
 $BuildEnemyHero = @(18800, 3600)
+# J8b.2 loop 3: the House finished while the hero is dead, north of his place, and its builder made east of it.
+$HeroXPHouse = @(-17600, 5200)
+$HeroXPBuilder = @(-16400, 5200)
 # The rally flags of a group (the user's 3rd trial of J6a.5): a right click on the ground behind slot 0's centre.
 $BuildRally = @(-18400, -1600)
 # The animations (J5c.4), solo: house K behind slot 0's centre and its wood, its builders made beside it; each group of
@@ -1647,6 +1650,23 @@ if ($Parts -contains "camera") {
                 "hol.HUD.Click HeroReturnButton", "waitlog Hero return: slot 0 by its main forum", "wait 0.5",
                 "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # J8b.2 loop 3: the hero's XP in a match (J8b-Q1, Q2, Q5). His hero again at 150 XP (hol.Hero.SetXP), a Peasant of
+            # slot 1 made beside him: killed by him (combat +50, 200), level 2, the HP gained added. Killed (times at 20 %:
+            # ready 184 steps after a level 2 death), a House finished meanwhile by a Peasant (FastBuild): development +25 though
+            # dead (D06). The return bought: back at level 2, full health (486). Then the hero and the builder removed, his XP
+            # back to 0, the times and the combat as before, the centre selected then Escape (as the cases before).
+            Step "mark build hero xp", "hol.Combat.Enabled 1", "hol.Cheat.Wood 1000", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Hero.SetXP 0 150", "hol.Units.Spawn 1 $($BuildHero[0] + 200) $($BuildHero[1]) 1 Peasant 10", "waitlog Hero level: slot 0 level 1 -> 2", "wait 0.3", "hol.Hero.Report",
+                "hol.Hero.ReturnTimePercent 20", "hol.Cheat.Gold -1000000", "hol.Cheat.Gold 500", "hol.Hero.Kill 0", "waitlog hol.Hero.Kill: slot 0", "wait 0.5",
+                "hol.Cheat.FastBuild 1", "hol.Units.Spawn 1 $($HeroXPBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($HeroXPBuilder -join ' ')", "frames 3",
+                "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($HeroXPHouse -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($HeroXPHouse -join ', ')) valid", "hol.Build.Click", "waitlog Construction: slot 0 finished House at ($($HeroXPHouse -join ', '))",
+                "hol.Cheat.FastBuild 0", "wait 0.3", "hol.Hero.Report",
+                "waitlog Hero return: slot 0 ready", "hol.HUD.Click HeroReturnButton", "waitlog Hero return: slot 0 by its main forum", "wait 0.5", "hol.Hero.Report",
+                "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($HeroXPHouse -join ' ') 1500 0", "hol.Hero.SetXP 0 0",
+                "hol.Combat.Enabled 0", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
             # A right click on a finished deposit (L.1, D485): lumber camp D built at its first blow; three Peasants gather
@@ -3953,6 +3973,24 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("block_ja", "ready_en" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hero texts" $Checks) -and $AllOk
+    # J8b.2 loop 3: the hero's XP in a match, as the simulation writes it ("Hero XP: slot 0 +X (source), xp T", "Hero
+    # level: ...", hol.Hero.Report's "Hero true slot 0: state S level L hp H xp T ...").
+    $HeroXP = @(Get-Section "build hero xp" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $Gains = @($HeroXP | Select-String -Pattern "Hero XP: slot 0 \+(\d+) \((\w+)\), xp (\d+)" | ForEach-Object { "+$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value) = $($_.Matches[0].Groups[3].Value)" })
+    $Levels = @($HeroXP | Select-String -Pattern "Hero level: slot 0 (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $XPSheets = @($HeroXP | Select-String -Pattern "Hero true slot 0: (state \w+ level \d+ hp \d+ xp \d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $LevelUp = [regex]::Match("$($Levels | Select-Object -First 1)", "^level 1 -> 2, hp (\d+) / 486$")
+    $Checks["his Peasant kill: combat +50 = 200, level 2, the 36 HP gained added ($(($Gains | Select-Object -First 1)); $($Levels | Select-Object -First 1); $($XPSheets | Select-Object -First 1))"] =
+        ($Gains.Count -ge 1) -and ($Gains[0] -eq "+50 combat = 200") -and $LevelUp.Success -and ([int]$LevelUp.Groups[1].Value -ge 36) -and
+        ($XPSheets.Count -ge 1) -and ($XPSheets[0] -match "^state Alive level 2 hp \d+ xp 200$")
+    $Checks["dead, a House finished: development +25 = 225, the sheet still level 2 ($(($Gains | Select-Object -Skip 1 -First 1)); $($XPSheets | Select-Object -Skip 1 -First 1))"] =
+        [bool]($HeroXP | Select-String -SimpleMatch "hol.Hero.Kill: slot 0, 1 hero(es)" -Quiet) -and ($Gains.Count -eq 2) -and ($Gains[1] -eq "+25 development = 225") -and
+        ($XPSheets.Count -ge 2) -and ($XPSheets[1] -match "^state (Dead|ReadyToReturn) level 2 hp 0 xp 225$")
+    $Checks["back by the forum: level 2 at full health ($($Levels | Select-Object -Skip 1 -First 1); $($XPSheets | Select-Object -Skip 2 -First 1))"] =
+        [bool]($HeroXP | Select-String -SimpleMatch "Hero return: slot 0 by its main forum" -Quiet) -and ($Levels.Count -eq 2) -and ($Levels[1] -eq "level 1 -> 2, hp 486 / 486") -and
+        ($XPSheets.Count -ge 3) -and ($XPSheets[2] -eq "state Alive level 2 hp 486 xp 225")
+    $AllOk = (Report "build hero xp" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
     $DropOrder = @(Get-Section "build dropoff order" | ForEach-Object { $_ })
