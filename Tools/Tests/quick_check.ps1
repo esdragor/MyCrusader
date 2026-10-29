@@ -373,7 +373,7 @@ if ($Parts -contains "net") {
         }
     }).AddArgument($ManagerListener).AddArgument($ManagerCallsFile)
     $null = $ManagerRunspace.BeginInvoke()
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1$NetSourceCommand`""
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1,hol.Match.StartWaitSeconds 120$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -2246,7 +2246,12 @@ if ($NetServerProcess) {
 }
 if ($NetListening) {
     Remove-Item (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
-    # R3.10: Alice (client 2) first, Bob (client 1) once she is above her start: she alone waits, for Bob.
+    # R3.10: Alice (client 2) first, Bob (client 1) once she has captured her wait banner (her signal below): she alone
+    # waits, for Bob. Step U (2026-10-29): her "Camera above the start" line gated Bob's launch, for 60 s at most, then Bob
+    # was launched anyway: an Alice slow to start (another copy's compilation holds every launch) came in after him and
+    # never saw the banner (her waitlog timed out, her sequence stopped). Now the gate is her capture itself and lasts
+    # 120 s (the server's wait, hol.Match.StartWaitSeconds 120 in its -ExecCmds, lasts as long: a banner for her up to
+    # ~115 s after the server's start); past it, Bob is launched anyway and the check below says so.
     $NetAliceReady = $false
     foreach ($Client in 2, 1) {
         $ClientSaved = Join-Path $Project "Saved_Tests_Net$Client"
@@ -2262,10 +2267,12 @@ if ($NetListening) {
         # waitlog reads the lines since the last command: nothing between waitmap and it. The cursor is held in the middle
         # from the start (-ExecCmds below), or the camera scrolls at the edge before the first step. Each client waits for
         # the other one (a client done and gone frees its slot for the one still joining).
-        # R3.10: Alice, here first, captures her wait banner before waiting for Bob (Bob waits for nobody).
+        # R3.10: Alice, here first, captures her wait banner before waiting for Bob (Bob waits for nobody), then signals it:
+        # the script launches Bob on that signal (the banner cannot be missed whatever her start takes).
         $NetSteps = @("waitmap Plain", "waitlog Camera above the start")
-        if ($Client -eq 2) { $NetSteps += "waitlog Wait banner: shown", "frames 5", "capture qcnet_${Client}_wait" }
+        if ($Client -eq 2) { $NetSteps += "waitlog Wait banner: shown", "frames 5", "capture qcnet_${Client}_wait", "signal $NetAliceWaitFlag" }
         $NetSteps += "waitplayers 2", "mark net", "frames 30", "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start"
+    $NetAliceWaitFlag = Join-Path $TestSaved "quick_net_alice_wait.flag"
         # "hero" alone (J8a.6): the steps from here to the "done" signal dropped below.
         $NetStartSteps = $NetSteps.Count
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
@@ -2334,10 +2341,11 @@ if ($NetListening) {
         # refused by the server (anti-rush radius, D22).
         $Other = 3 - $Client
         if ($Parts -contains "build") {
-            $NetSteps += "mark build", "hol.Units.OrderNear 1500 2500", "wait 3", "hol.Prod.Report", "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear House $($NetHouseNear -join ' ')",
+            $NetSteps += "mark build", "hol.Units.OrderNear 1500 2500", "wait 3", "hol.Prod.Report", "hol.Select.Own", "waitlog Select own: 1 units",
+                "signal $(Join-Path $TestSaved "quick_net_placing$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_placing$Other.flag")", "hol.Build.PlaceNear House $($NetHouseNear -join ' ')",
                 "signal $(Join-Path $TestSaved "quick_net_placed$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_placed$Other.flag")", "wait 2",
-                "hol.Build.Report", "hol.Prod.Report", "hol.Camera.FocusSlot 0", "frames 5", "capture qcnet_${Client}_build0", "hol.Camera.FocusSlot 1", "frames 5",
-                "capture qcnet_${Client}_build1", "waitlog Building arrived: House of slot", "wait 1", "hol.Build.Report", "hol.Camera.FocusSlot 0", "frames 5",
+                "hol.Camera.FocusSlot 0", "frames 5", "capture qcnet_${Client}_build0", "hol.Camera.FocusSlot 1", "frames 5", "capture qcnet_${Client}_build1",
+                "hol.Build.Report", "hol.Prod.Report", "waitlog Building arrived: House of slot", "wait 1", "hol.Build.Report", "hol.Camera.FocusSlot 0", "frames 5",
                 "capture qcnet_${Client}_site0", "hol.Camera.FocusSlot 1", "frames 5", "capture qcnet_${Client}_site1", "hol.Build.PlaceNear House $($NetEnemyNear -join ' ') enemy", "wait 2", "hol.Build.Report", "hol.Prod.Report"
             # The camps (J6b.3, D312): once both houses are seen, its Peasant places a lumber camp 2 to 6 m off the wood beside its
             # centre ($NetCampNear: slot 0's 6 m off, 4 m farther out than the solo part's L; slot 1's, the same offset in its frame, 2 m off: the centres are not mirrors on the 4 m grid) and builds it (hol.Build.Speed 4 on the server); once
@@ -2350,6 +2358,11 @@ if ($NetListening) {
                 "hol.Build.PlaceAtSource LumberCamp $($CampTree -join ' ')", "wait 2", "hol.Build.Report", "hol.Prod.Report"
         }
         # The army (J7a.6): resources, places and fast building cheated (every player); its Peasant places a barracks behind
+        # Step U (2026-10-29): the two clients place within a frame of each other (the "placing" flags: until then the
+        # phases since the pause ran unsynchronised, one client's Peasant could be seconds ahead on its 39 m walk), and
+        # "waitlog Building arrived" comes right after the reports it must follow (waitlog reads the lines since the last
+        # command: with the two captures between them, an arrival during the first capture was missed and the sequence
+        # stopped). The captures before the reports show the same state (the other's house not there yet).
         # its centre (the solo part's spot, in its frame; its own foundation arrives at once, the other's when finished, at its
         # first blow); once the other's has arrived here and both clients have seen theirs, 2 Spearmen and 2 Men-at-arms
         # queued there; once all 10 units are shown, the other's army framed: its type, mesh and colour logged (Units looks).
@@ -2455,12 +2468,13 @@ if ($NetListening) {
         $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
         if ($Client -eq 2) {
-            $Deadline = (Get-Date).AddSeconds(60)
+            # Her wait banner captured (its signal), 120 s at most (the server waits for her as long): Bob's launch waits for it.
+            $Deadline = (Get-Date).AddSeconds(120)
             while (-not $NetAliceReady -and (Get-Date) -lt $Deadline -and -not $ClientProcess.HasExited) {
                 Start-Sleep -Milliseconds 250
-                $NetAliceReady = (Test-Path $ClientLog) -and (Select-String -Path $ClientLog -Pattern "Camera above the start" -Quiet)
+                $NetAliceReady = Test-Path $NetAliceWaitFlag
             }
-            if (-not $NetAliceReady) { Write-Host "net: client 2 (Alice) not above her start within 60 s; client 1 (Bob) launched anyway" }
+            if (-not $NetAliceReady) { Write-Host "net: client 2 (Alice) has not captured her wait banner within 120 s; client 1 (Bob) launched anyway" }
         }
     }
     # Client 1 first again for the reports below.
@@ -5760,9 +5774,10 @@ if ($Parts -contains "net") {
     $ProdBefore = @(if ($StartLines.Count -eq 1) { Select-String -Path $NetServerLog -Pattern "Production: " | Where-Object { $_.LineNumber -lt $StartLines[0].LineNumber } })
     $Checks["server: waits for the absent ($(($WaitOne | ForEach-Object { $_.Matches[0].Groups[1].Value }) -join ', ')), then starts all here ($($StartLines.Count)) at step $StartStep, $($ProdBefore.Count) production lines before"] =
         $WaitOne.Count -ge 1 -and $StartLines.Count -eq 1 -and $StartStep -eq 0 -and $ProdBefore.Count -eq 0
-    # R3.10: client 2 (Alice), launched first, shows « En attente de Bob (0:SS) » before its capture during the wait,
-    # then hides it once the match starts.
-    $Checks["client 2 (Alice) above her start before client 1's launch"] = $NetAliceReady
+    # R3.10: client 2 (Alice), launched first, shows « En attente de Bob (M:SS) » before its capture during the wait,
+    # then hides it once the match starts. The time left is under the server's wait of this test (hol.Match.StartWaitSeconds
+    # 120: 1:SS, or 0:SS once her start took more than a minute).
+    $Checks["client 2 (Alice) has captured her wait banner before client 1's launch"] = $NetAliceReady
     $AliceClient = @($NetClients | Where-Object { $_.Client -eq 2 })
     $WaitShown = ""; $WaitCaptured = $false; $WaitHidden = $false
     if ($AliceClient.Count -eq 1) {
@@ -5778,7 +5793,7 @@ if ($Parts -contains "net") {
         $WaitHidden = $HiddenAt -ge 0
     }
     $Checks["client 2's wait banner ($WaitShown), captured while shown, hidden at the start ($WaitHidden)"] = $WaitCaptured -and
-        ($WaitShown -match "^En attente de Bob \((0:[0-5]\d|1:00)\)$")
+        ($WaitShown -match "^En attente de Bob \(([01]:[0-5]\d|2:00)\)$")
     if ($Parts -contains "sources") {
         $Unloaded = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Gather: slot (\d) unloaded 10 Wood" | ForEach-Object { $_.Matches[0].Groups[1].Value } | Sort-Object -Unique })
         $Checks["server: each player's Peasant unloaded 10 wood at its centre ($($Unloaded -join ', '))"] = ($Unloaded -join ',') -eq "0,1"
