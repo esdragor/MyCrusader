@@ -129,7 +129,13 @@ FLinearColor UHOLScriptScreen::GetMissingColor()
 
 FMargin UHOLScriptScreen::GetBottomLeftPlace() const
 {
-	return UHOLGameScreen::GetBottomLeftPlace();
+	// The game screen made this widget (CreateWidget: its widget tree is the outer); EtapeDefini T: the place follows the
+	// bar's scale, so the script reads it on every refresh. Without it: the places at scale 1.
+	if (const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		return GameScreen->GetBottomLeftPlace();
+	}
+	return GetDefault<UHOLGameScreen>()->GetBottomLeftPlace();
 }
 
 UClass* UHOLScriptScreen::FindScriptClass()

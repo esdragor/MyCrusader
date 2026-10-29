@@ -9,6 +9,8 @@
 class UHOLGameScreenScript : UHOLScriptScreen
 {
 	UBorder HeroPanel;
+	// Its place (EtapeDefini T): read anew on every refresh, the bottom bar's scale may change with the window.
+	UOverlaySlot HeroPanelSlot;
 	UButton HeroPortrait;
 	UBorder HeroPortraitFill;
 	UImage HeroPortraitEmblem;
@@ -97,10 +99,10 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	{
 		HeroPanel = MakePanel(n"HeroPanel");
 		HeroPanel.SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(HeroPanel);
-		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
-		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
-		PanelSlot.SetPadding(GetBottomLeftPlace());
+		HeroPanelSlot = Frame.AddChildToOverlay(HeroPanel);
+		HeroPanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		HeroPanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 
 		UHorizontalBox Row = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroRow"));
 		HeroPanel.SetContent(Row);
@@ -191,6 +193,9 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	UFUNCTION(BlueprintOverride)
 	void Refresh()
 	{
+		// The block's place follows the bottom bar's scale (EtapeDefini T).
+		if (HeroPanelSlot != nullptr)
+			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
 		RefreshPause();
 	}

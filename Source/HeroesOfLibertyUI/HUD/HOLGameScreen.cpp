@@ -1,5 +1,6 @@
 #include "HUD/HOLGameScreen.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Buildings/HOLBuilding.h"
@@ -14,6 +15,8 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
+#include "Components/ScaleBox.h"
+#include "Components/ScaleBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/SizeBoxSlot.h"
 #include "Components/Spacer.h"
@@ -2159,12 +2162,48 @@ FString UHOLGameScreen::DescribeScript() const
 	return ScriptScreen->Describe();
 }
 
-FMargin UHOLGameScreen::GetBottomLeftPlace()
+FString UHOLGameScreen::DescribeLayout() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-	// The control groups' bar: its slots (QueueItemHeight * 0.8) and its panel's padding (4 above and below).
+	if (!BottomBar || !MinimapPlace)
+	{
+		return TEXT("none");
+	}
+	// The window's size in pixels and its DPI scale (the shortest side's curve): the HUD's widths are in Slate units.
+	const FVector2D Viewport = UWidgetLayoutLibrary::GetViewportSize(this);
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	const FGeometry& BarGeometry = BottomBar->GetCachedGeometry();
+	const FGeometry& PlaceGeometry = MinimapPlace->GetCachedGeometry();
+	const float BarDesired = BottomBar->GetDesiredSize().X;
+	const float BarShown = BarGeometry.GetAbsoluteSize().X / Dpi;
+	const float BarRight = (BarGeometry.GetAbsolutePosition().X + BarGeometry.GetAbsoluteSize().X) / Dpi;
+	const float PlaceLeft = PlaceGeometry.GetAbsolutePosition().X / Dpi;
+	return FString::Printf(TEXT("viewport %dx%d, dpi %.3f, width %d, bar %d shown %d (scale %.2f) right %d, minimap %d left %d, gap %d"),
+		FMath::RoundToInt(Viewport.X), FMath::RoundToInt(Viewport.Y), Dpi, FMath::RoundToInt(Viewport.X / Dpi),
+		FMath::RoundToInt(BarDesired), FMath::RoundToInt(BarShown), BarDesired > 0.f ? BarShown / BarDesired : 1.f, FMath::RoundToInt(BarRight),
+		FMath::RoundToInt(MinimapSize), FMath::RoundToInt(PlaceLeft), FMath::RoundToInt(PlaceLeft - BarRight));
+}
+
+float UHOLGameScreen::GetBottomScale() const
+{
+	if (!BottomBar)
+	{
+		return 1.f;
+	}
+	// The bar's layout scale over the window's DPI scale: the scale box's share; 1 before the first layout.
+	const FGeometry& BarGeometry = BottomBar->GetCachedGeometry();
+	const float Dpi = UWidgetLayoutLibrary::GetViewportScale(this);
+	const float Scale = BarGeometry.GetAccumulatedLayoutTransform().GetScale();
+	return BarGeometry.GetLocalSize().X > 0.f && Dpi > UE_KINDA_SMALL_NUMBER && Scale > UE_KINDA_SMALL_NUMBER ? FMath::Min(Scale / Dpi, 1.f) : 1.f;
+}
+
+FMargin UHOLGameScreen::GetBottomLeftPlace() const
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+	// The control groups' bar: its slots (QueueItemHeight * 0.8) and its panel's padding (4 above and below); the column
+	// (bar, gap, groups) at the scale it is drawn at (EtapeDefini T).
 	constexpr float GroupsHeight = QueueItemHeight * 0.8f + 2.f * 4.f;
-	return FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + BarHeight + BarGap + GroupsHeight + BarGap);
+	return FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + GetBottomScale() * (BarHeight + BarGap + GroupsHeight) + BarGap);
 }
 
 bool UHOLGameScreen::ClickWidget(const FName Name)
@@ -2675,13 +2714,32 @@ void UHOLGameScreen::BuildLayout()
 
 	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
 	// a slot per group not empty, « 1 · 9 », in the keys' order.
+	// EtapeDefini T: the groups' bar and the bottom bar under it, one column in a scale box given the width left of the
+	// minimap's place: too wide for the window (1500 px at 1080 high, a 4:3 window), the column is drawn smaller, as one,
+	// down only (never larger); from 1920x1080, and at 1600x900, its scale is 1 (the look validated at G.1). The box and
+	// the column let the clicks through where they are empty.
+	BottomScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("BottomScale"));
+	BottomScale->SetStretch(EStretch::ScaleToFitX);
+	BottomScale->SetStretchDirection(EStretchDirection::DownOnly);
+	BottomScale->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	UOverlaySlot* BottomScaleSlot = Frame->AddChildToOverlay(BottomScale);
+	BottomScaleSlot->SetHorizontalAlignment(HAlign_Fill);
+	BottomScaleSlot->SetVerticalAlignment(VAlign_Bottom);
+	BottomScaleSlot->SetPadding(FMargin(ScreenMargin, 0.f, ScreenMargin + MinimapSize + BarGap, ScreenMargin));
+	UVerticalBox* BottomLeft = MakeVerticalBox(TEXT("BottomLeft"));
+	BottomLeft->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	if (UScaleBoxSlot* ColumnSlot = Cast<UScaleBoxSlot>(BottomScale->AddChild(BottomLeft)))
+	{
+		ColumnSlot->SetHorizontalAlignment(HAlign_Left);
+		ColumnSlot->SetVerticalAlignment(VAlign_Bottom);
+	}
+
 	GroupsPanel = MakePanel(TEXT("GroupsPanel"));
 	GroupsPanel->SetPadding(FMargin(6.f, 4.f));
 	GroupsPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* GroupsSlot = Frame->AddChildToOverlay(GroupsPanel);
+	UVerticalBoxSlot* GroupsSlot = BottomLeft->AddChildToVerticalBox(GroupsPanel);
 	GroupsSlot->SetHorizontalAlignment(HAlign_Left);
-	GroupsSlot->SetVerticalAlignment(VAlign_Bottom);
-	GroupsSlot->SetPadding(FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + BarHeight + BarGap));
+	GroupsSlot->SetPadding(FMargin(0.f, 0.f, 0.f, BarGap));
 	UHorizontalBox* GroupsRow = MakeHorizontalBox(TEXT("GroupsRow"));
 	GroupsPanel->SetContent(GroupsRow);
 	for (int32 Index = 1; Index <= AHOLPlayerController::NumControlGroups; ++Index)
@@ -2699,14 +2757,11 @@ void UHOLGameScreen::BuildLayout()
 
 	// The bottom bar, bottom left (the user's 2nd trial of G.1, AoE4's way, D201): the selection's block, the command
 	// panel, the builders' age panels, each at a fixed place whatever the selection (a block hidden keeps its place).
-	UHorizontalBox* BottomBar = MakeHorizontalBox(TEXT("BottomBar"));
-	UOverlaySlot* BottomBarSlot = Frame->AddChildToOverlay(BottomBar);
-	BottomBarSlot->SetHorizontalAlignment(HAlign_Left);
-	BottomBarSlot->SetVerticalAlignment(VAlign_Bottom);
-	BottomBarSlot->SetPadding(FMargin(ScreenMargin));
-	const auto AddToBar = [BottomBar](UWidget* Widget, const float LeftPadding)
+	BottomBar = MakeHorizontalBox(TEXT("BottomBar"));
+	BottomLeft->AddChildToVerticalBox(BottomBar)->SetHorizontalAlignment(HAlign_Left);
+	const auto AddToBar = [Bar = BottomBar.Get()](UWidget* Widget, const float LeftPadding)
 	{
-		UHorizontalBoxSlot* WidgetSlot = BottomBar->AddChildToHorizontalBox(Widget);
+		UHorizontalBoxSlot* WidgetSlot = Bar->AddChildToHorizontalBox(Widget);
 		WidgetSlot->SetVerticalAlignment(VAlign_Bottom);
 		WidgetSlot->SetPadding(FMargin(LeftPadding, 0.f, 0.f, 0.f));
 	};
@@ -2936,7 +2991,7 @@ void UHOLGameScreen::BuildLayout()
 	}
 
 	// The minimap's place, bottom right (D201): no minimap yet; nothing else goes there.
-	USizeBox* MinimapPlace = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MinimapPlace"));
+	MinimapPlace = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MinimapPlace"));
 	MinimapPlace->SetWidthOverride(MinimapSize);
 	MinimapPlace->SetHeightOverride(MinimapSize);
 	MinimapPlace->SetVisibility(ESlateVisibility::HitTestInvisible);

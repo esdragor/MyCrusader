@@ -140,6 +140,7 @@ $SubCaseTable = @{
         shiftsite = @{ Marks = @("shiftsite", "shiftsite order", "shiftsite later"); Setup = @("hol.Cheat.Wood 1000") }
         rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
+        barwidth = @{ Marks = @("barwidth"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -844,6 +845,9 @@ $RallyStepsRow = @(for ($k = 0; $k -lt 9; $k++) { , @((-15200 + 300 * $k), 6800)
 # made 8.5 m beyond each of its corners on the diagonal (the signs of the four corners), sent to the diagonal beyond that corner.
 $CornerHouse = @(-16400, 9600)
 $CornerBuilder = @(-15400, 9600)
+# The window sizes the bottom bar must fit at (EtapeDefini T, build:barwidth): the common 16:9 and 16:10 ones, a 4:3 one, and
+# 1500 wide at 1080 high (the HUD's scale 1, where it fell short before).
+$HudSizes = @("1280x720", "1280x1024", "1366x768", "1440x900", "1500x1080", "1920x1080")
 $CornerSigns = @(@{ X = -1; Y = -1 }, @{ X = 1; Y = -1 }, @{ X = -1; Y = 1 }, @{ X = 1; Y = 1 })
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
@@ -1863,6 +1867,20 @@ if ($Parts -contains "camera") {
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
+            # The bottom bar's width (EtapeDefini T): a Peasant selected (the widest bar: selection, commands, the four age
+            # panels), the window set to each size (r.SetRes: the HUD's DPI scale follows the shortest side), the layout
+            # reported (bar against the minimap's place); captured at 1366x768, 1500x1080 (the bar drawn smaller) and 1920x1080;
+            # the window back to its size.
+            Step "mark build barwidth", "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')",
+                "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "frames 3"
+            foreach ($Size in $HudSizes) {
+                Step "r.SetRes ${Size}w", "frames 8", "hol.HUD.Report"
+                if ($Size -in @("1366x768", "1500x1080", "1920x1080")) { Step "capture qc_hud_$(($Size -split 'x')[0])" }
+            }
+            Step "r.SetRes 1600x900w", "frames 8", "hol.HUD.Report", "hol.Units.Remove $($CornerBuilder -join ' ') 600 0 Peasant",
+                "waitlog units of slot 0 within 600 of ($($CornerBuilder -join ', '))"
+            Key Escape
+            Step "waitlog Selection: none"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -2253,6 +2271,7 @@ if ($NetListening) {
     # 120 s (the server's wait, hol.Match.StartWaitSeconds 120 in its -ExecCmds, lasts as long: a banner for her up to
     # ~115 s after the server's start); past it, Bob is launched anyway and the check below says so.
     $NetAliceReady = $false
+    $NetAliceWaitFlag = Join-Path $TestSaved "quick_net_alice_wait.flag"
     foreach ($Client in 2, 1) {
         $ClientSaved = Join-Path $Project "Saved_Tests_Net$Client"
         $ClientShots = Join-Path $ClientSaved "Screenshots\WindowsEditor\HOL"
@@ -2272,7 +2291,6 @@ if ($NetListening) {
         $NetSteps = @("waitmap Plain", "waitlog Camera above the start")
         if ($Client -eq 2) { $NetSteps += "waitlog Wait banner: shown", "frames 5", "capture qcnet_${Client}_wait", "signal $NetAliceWaitFlag" }
         $NetSteps += "waitplayers 2", "mark net", "frames 30", "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start"
-    $NetAliceWaitFlag = Join-Path $TestSaved "quick_net_alice_wait.flag"
         # "hero" alone (J8a.6): the steps from here to the "done" signal dropped below.
         $NetStartSteps = $NetSteps.Count
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
@@ -2339,6 +2357,11 @@ if ($NetListening) {
         # and not the other's (a ghost for its owner alone until its first work), its own wood 50 less, the other's stock
         # never received; then the other's site arrives at its first work (captured); a house 32 m behind the enemy centre,
         # refused by the server (anti-rush radius, D22).
+        # Step U (2026-10-29): the two clients place within a frame of each other (the "placing" flags: until then the
+        # phases since the pause ran unsynchronised, one client's Peasant could be seconds ahead on its 39 m walk), and
+        # "waitlog Building arrived" comes right after the reports it must follow (waitlog reads the lines since the last
+        # command: with the two captures between them, an arrival during the first capture was missed and the sequence
+        # stopped). The captures before the reports show the same state (the other's house not there yet).
         $Other = 3 - $Client
         if ($Parts -contains "build") {
             $NetSteps += "mark build", "hol.Units.OrderNear 1500 2500", "wait 3", "hol.Prod.Report", "hol.Select.Own", "waitlog Select own: 1 units",
@@ -2358,11 +2381,6 @@ if ($NetListening) {
                 "hol.Build.PlaceAtSource LumberCamp $($CampTree -join ' ')", "wait 2", "hol.Build.Report", "hol.Prod.Report"
         }
         # The army (J7a.6): resources, places and fast building cheated (every player); its Peasant places a barracks behind
-        # Step U (2026-10-29): the two clients place within a frame of each other (the "placing" flags: until then the
-        # phases since the pause ran unsynchronised, one client's Peasant could be seconds ahead on its 39 m walk), and
-        # "waitlog Building arrived" comes right after the reports it must follow (waitlog reads the lines since the last
-        # command: with the two captures between them, an arrival during the first capture was missed and the sequence
-        # stopped). The captures before the reports show the same state (the other's house not there yet).
         # its centre (the solo part's spot, in its frame; its own foundation arrives at once, the other's when finished, at its
         # first blow); once the other's has arrived here and both clients have seen theirs, 2 Spearmen and 2 Men-at-arms
         # queued there; once all 10 units are shown, the other's army framed: its type, mesh and colour logged (Units looks).
@@ -4369,6 +4387,24 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["the four removed, the house destroyed after"] = [bool]($Corner | Select-String -Pattern "Remove: 4 units of slot 0 within 1500" -Quiet) -and
         [bool]($Corner | Select-String -SimpleMatch "Building destroyed: House of slot 0 at ($CornerX, $CornerY)" -Quiet)
     $AllOk = (Report "build corner" $Checks) -and $AllOk
+    # EtapeDefini T, the bottom bar's width: one "HUD layout" line per window size (plus the one back at 1600x900), the bar
+    # (its right edge) left of the minimap's place at each (gap >= 0); the bar at its full size (scale 1) from 1920x1080
+    # and at 1600x900 (the look validated at G.1 kept).
+    $HudWidth = @(Get-Section "build barwidth" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $HudLayouts = @(foreach ($Line in $HudWidth) {
+        if ($Line -match "HUD layout: viewport (\d+x\d+), dpi ([\d.]+), width (\d+), bar (\d+) shown (\d+) \(scale ([\d.]+)\) right (\d+), minimap (\d+) left (\d+), gap (-?\d+)") {
+            [pscustomobject]@{ Size = $Matches[1]; Width = [int]$Matches[3]; Bar = [int]$Matches[4]; Shown = [int]$Matches[5]; Scale = [double]$Matches[6]; Gap = [int]$Matches[10] }
+        }
+    })
+    $HudSay = @($HudLayouts | ForEach-Object { "$($_.Size): width $($_.Width) bar $($_.Bar) shown $($_.Shown) gap $($_.Gap)" }) -join ', '
+    $Checks["a layout line at each of the $($HudSizes.Count) sizes and back at 1600x900 ($HudSay)"] =
+        ($HudLayouts.Count -eq $HudSizes.Count + 1) -and (@(Compare-Object ($HudSizes + "1600x900") @($HudLayouts | ForEach-Object { $_.Size }) -SyncWindow 0).Count -eq 0)
+    $Checks["the bar left of the minimap's place at every size (gap >= 0)"] = ($HudLayouts.Count -gt 0) -and (@($HudLayouts | Where-Object { $_.Gap -lt 0 }).Count -eq 0)
+    $Checks["the bar at its full size at 1920x1080 and 1600x900 (scale 1)"] =
+        (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") }).Count -eq 2) -and
+        (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") -and ($_.Scale -lt 0.995 -or $_.Shown -ne $_.Bar) }).Count -eq 0)
+    $AllOk = (Report "build barwidth" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
