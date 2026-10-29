@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "AI/HOLAISummary.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
@@ -399,6 +400,45 @@ bool FHOLVisionMatchAutoTargetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("no fog: they shoot each other"), ArchersShoot(*this, EHOLFogMode::Disabled));
 	TestFalse(TEXT("the fog: the wood hides them, nobody shoots"), ArchersShoot(*this, EHOLFogMode::Normal));
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchAISourcesTest, "HeroesOfLiberty.Vision.Match.AISources", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchAISourcesTest::RunTest(const FString& Parameters)
+{
+	// F-Q11 = B: the AI's economy knows only the sources of the cells its camp explored, as a player (D519).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	AHOLBuilding* Centre = Match.World->SpawnActor<AHOLBuilding>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the AI's centre"), Centre))
+	{
+		return false;
+	}
+	Centre->Setup(HOLBuildingTypeNames::MainCentre, 2, 2);
+	const int32 Near = Match.Sources->AddSource(HOLSourceTypeNames::Tree, FVector(3000., 0., 0.));
+	const int32 Far = Match.Sources->AddSource(HOLSourceTypeNames::Tree, FVector(30000., 0., 0.));
+	const auto Knows = [&Match](const int32 SourceIndex)
+	{
+		const FHOLAISummary Summary = HOLAISummary::Read(*Match.World, 2);
+		return Summary.Wood.Sources.ContainsByPredicate([SourceIndex](const FHOLAISourceNear& Source) { return Source.SourceIndex == SourceIndex; });
+	};
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestTrue(TEXT("no fog: the near tree known"), Knows(Near));
+	TestTrue(TEXT("no fog: the far tree known"), Knows(Far));
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	Match.Vision->Update();
+	TestTrue(TEXT("the fog: the tree its centre sees known"), Knows(Near));
+	TestFalse(TEXT("the fog: the tree never seen unknown"), Knows(Far));
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Explored);
+	Match.Vision->Update();
+	TestTrue(TEXT("explored map: the far tree known"), Knows(Far));
 	return true;
 }
 

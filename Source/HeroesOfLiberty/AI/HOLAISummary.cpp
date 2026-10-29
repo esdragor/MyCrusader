@@ -9,6 +9,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/GameStateBase.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -256,7 +257,23 @@ namespace HOLAISummary
 		TArray<FHOLAIDeposit> Deposits;
 		GatherDeposits(World, Deposits);
 		const UHOLSourceSubsystem* SourceSystem = World.GetSubsystem<UHOLSourceSubsystem>();
-		const TConstArrayView<FHOLSource> Sources = SourceSystem ? TConstArrayView<FHOLSource>(SourceSystem->GetSources()) : TConstArrayView<FHOLSource>();
+		TConstArrayView<FHOLSource> Sources = SourceSystem ? TConstArrayView<FHOLSource>(SourceSystem->GetSources()) : TConstArrayView<FHOLSource>();
+		// F-Q11 = B (D519): under the fog, the AI knows only the sources of the cells its camp explored, as a player; the
+		// others count as used up here (their indices kept).
+		TArray<FHOLSource> Known;
+		const UHOLVisionSubsystem* Vision = World.GetSubsystem<UHOLVisionSubsystem>();
+		if (Vision && Vision->IsStarted() && Vision->GetMode() != EHOLFogMode::Disabled)
+		{
+			Known = Sources;
+			for (FHOLSource& Source : Known)
+			{
+				if (Vision->GetVision(PlayerIndex, Source.Location) == EHOLCellVision::Unexplored)
+				{
+					Source.Remaining = 0;
+				}
+			}
+			Sources = Known;
+		}
 		TArray<FHOLAIBuilding> Buildings;
 		GatherBuildings(World, Buildings);
 		// IA1.7b: the places of each source of few places and the ones held (the processor's, published at each step).
