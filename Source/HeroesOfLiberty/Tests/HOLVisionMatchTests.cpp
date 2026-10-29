@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Map/HOLVisionSubsystem.h"
@@ -164,6 +166,49 @@ bool FHOLVisionMatchUnitsTest::RunTest(const FString& Parameters)
 	// D389: the map explored, nothing in sight without an observer.
 	Match.Vision->Start(Teams, EHOLFogMode::Explored);
 	TestEqual(TEXT("explored map: grey from the start"), Match.Vision->GetVision(2, FVector(30000., -30000., 0.)), EHOLCellVision::Explored);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchBuildingsTest, "HeroesOfLiberty.Vision.Match.Buildings", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchBuildingsTest::RunTest(const FString& Parameters)
+{
+	// F3.2: the buildings see too, a site half as far (their sight from the real table).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const UDataTable* Types = GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous();
+	const FHOLBuildingTypeRow* HouseRow = Types ? Types->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("Vision test")) : nullptr;
+	const FHOLBuildingTypeRow* BarracksRow = Types ? Types->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::Barracks, TEXT("Vision test")) : nullptr;
+	if (!TestNotNull(TEXT("the house's row"), HouseRow) || !TestNotNull(TEXT("the barracks' row"), BarracksRow))
+	{
+		return false;
+	}
+	AHOLBuilding* House = Match.World->SpawnActor<AHOLBuilding>(FVector::ZeroVector, FRotator::ZeroRotator);
+	AHOLBuilding* Site = Match.World->SpawnActor<AHOLBuilding>(FVector(30000., 0., 0.), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the house"), House) || !TestNotNull(TEXT("the site"), Site))
+	{
+		return false;
+	}
+	House->Setup(HOLBuildingTypeNames::House, 0, 0);
+	Site->Setup(HOLBuildingTypeNames::Barracks, 2, 2, EHOLConstructionState::Foundation);
+	Match.Vision->Update();
+	const double Tile = UHOLBuildingSettings::GetTileSize();
+	TestTrue(TEXT("the house sees around it"), Match.Vision->IsVisible(0, FVector(HouseRow->SightRadius - Tile, 0., 0.)));
+	TestTrue(TEXT("its owner's ally too"), Match.Vision->IsVisible(1, FVector(HouseRow->SightRadius - Tile, 0., 0.)));
+	TestFalse(TEXT("the enemy does not"), Match.Vision->IsVisible(2, FVector::ZeroVector));
+	TestFalse(TEXT("not beyond its sight"), Match.Vision->IsVisible(0, FVector(HouseRow->SightRadius + Tile, 0., 0.)));
+	const double Half = 0.5 * BarracksRow->SightRadius;
+	TestTrue(TEXT("a site sees half as far"), Match.Vision->IsVisible(2, FVector(30000. + Half - Tile, 0., 0.)));
+	TestFalse(TEXT("a site: not beyond the half"), Match.Vision->IsVisible(2, FVector(30000. + Half + Tile, 0., 0.)));
+
+	House->Destroy();
+	Match.Vision->Update();
+	TestFalse(TEXT("destroyed: no more sight"), Match.Vision->IsVisible(0, FVector::ZeroVector));
+	TestEqual(TEXT("destroyed: what it saw stays explored"), Match.Vision->GetVision(0, FVector::ZeroVector), EHOLCellVision::Explored);
 	return true;
 }
 

@@ -2,13 +2,16 @@
 
 #include "Map/HOLVisionSubsystem.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "EngineUtils.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformTime.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLMapBounds.h"
+#include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
@@ -75,6 +78,7 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 {
 	Mode = InMode;
 	UnitObservers.Reset();
+	BuildingObservers.Reset();
 	Stamp = 0;
 
 	// A camp per team, or per slot alone (HOLVictoryRules::GetCamp), packed: Map's camps are only the match's.
@@ -147,13 +151,46 @@ void UHOLVisionSubsystem::Update()
 			UnitObservers.Add(UnitId, FTracked{ Map.AddObserver(Camp, Position, GetUnitSight(TypeName)), Stamp });
 		}
 	});
-	// Dead or gone since the last step: their cells counted off, still explored.
-	for (auto It = UnitObservers.CreateIterator(); It; ++It)
+	// F3.2: the buildings, a site half as far, a forum in ruin blind (its sight counted again only when it changes).
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
-		if (It.Value().Stamp != Stamp)
+		const AHOLBuilding* Building = *It;
+		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;
+		const int32 Camp = Type ? GetCampIndex(Building->GetOwnerPlayer()) : INDEX_NONE;
+		if (Camp == INDEX_NONE)
 		{
-			Map.RemoveObserver(It.Value().Handle);
-			It.RemoveCurrent();
+			continue;
+		}
+		EHOLBuildingSight State = Building->IsFinished() ? EHOLBuildingSight::Standing : EHOLBuildingSight::Site;
+		if (Building->IsPrimaryForum() && Building->IsForumDown())
+		{
+			State = Building->GetShownLook() == EHOLForumLook::Rubble ? EHOLBuildingSight::Rubble : EHOLBuildingSight::Site;
+		}
+		const double Radius = HOLVisionRules::GetBuildingSight(Type->SightRadius, State);
+		if (FTracked* Tracked = BuildingObservers.Find(Building->GetUniqueID()))
+		{
+			if (Tracked->Radius != Radius)
+			{
+				Map.SetObserverRadius(Tracked->Handle, Radius);
+				Tracked->Radius = Radius;
+			}
+			Tracked->Stamp = Stamp;
+		}
+		else
+		{
+			BuildingObservers.Add(Building->GetUniqueID(), FTracked{ Map.AddObserver(Camp, FVector2D(Building->GetActorLocation()), Radius), Stamp, Radius });
+		}
+	}
+	// Dead, destroyed or gone since the last step: their cells counted off, still explored.
+	for (TMap<uint32, FTracked>* Observers : { &UnitObservers, &BuildingObservers })
+	{
+		for (auto It = Observers->CreateIterator(); It; ++It)
+		{
+			if (It.Value().Stamp != Stamp)
+			{
+				Map.RemoveObserver(It.Value().Handle);
+				It.RemoveCurrent();
+			}
 		}
 	}
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;

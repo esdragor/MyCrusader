@@ -72,6 +72,7 @@ private:
 	{
 		int32 Handle = INDEX_NONE;
 		uint32 Stamp = 0;
+		double Radius = 0.;
 	};
 
 	FHOLVisionMap Map;
@@ -81,6 +82,8 @@ private:
 	TArray<int32> CampOfSlot;
 	/** The living units seen as observers, by identifier; Stamp: the last Update that walked them. */
 	TMap<uint32, FTracked> UnitObservers;
+	/** F3.2: the buildings, by actor (UObject's unique identifier); Radius: their sight at the last Update. */
+	TMap<uint32, FTracked> BuildingObservers;
 	TMap<FName, double> UnitSights;
 	uint32 Stamp = 0;
 	double LastUpdateMs = 0.;

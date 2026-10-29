@@ -353,4 +353,14 @@ bool FHOLVisionSourceFeedTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionBuildingSightTest, "HeroesOfLiberty.Vision.BuildingSight", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionBuildingSightTest::RunTest(const FString& Parameters)
+{
+	// F3.2 (D523): a building sees its whole sight finished, half as a site, nothing in ruin.
+	TestEqual(TEXT("standing: whole"), HOLVisionRules::GetBuildingSight(6400., EHOLBuildingSight::Standing), 6400.);
+	TestEqual(TEXT("a site: half"), HOLVisionRules::GetBuildingSight(6400., EHOLBuildingSight::Site), 3200.);
+	TestEqual(TEXT("rubble: nothing"), HOLVisionRules::GetBuildingSight(6400., EHOLBuildingSight::Rubble), 0.);
+	return true;
+}
+
 #endif

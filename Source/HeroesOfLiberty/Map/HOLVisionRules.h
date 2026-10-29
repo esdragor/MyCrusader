@@ -62,8 +62,22 @@ struct HEROESOFLIBERTY_API FHOLVisionTuning
 	int32 ForestTrees = 2;
 };
 
+/** F3.2 (D523): what a building is, for its sight. */
+enum class EHOLBuildingSight : uint8
+{
+	/** Finished (a main forum standing): its type's sight. */
+	Standing,
+	/** A site (a foundation, under construction, a forum rising again): half of it. */
+	Site,
+	/** A main forum in ruin: none; what it saw stays explored. */
+	Rubble,
+};
+
 namespace HOLVisionRules
 {
+	/** F3.2 (D523): a building's sight from its type's SightRadius: whole standing, half a site, none in ruin. */
+	HEROESOFLIBERTY_API double GetBuildingSight(double SightRadius, EHOLBuildingSight State);
+
 	/** D383: an observer's sight (cm): its type's SightRadius plus the height bonus of Height cm above the ground (never below 0). */
 	HEROESOFLIBERTY_API double GetSightRadius(double BaseRadius, double Height, const FHOLVisionTuning& Tuning);
 

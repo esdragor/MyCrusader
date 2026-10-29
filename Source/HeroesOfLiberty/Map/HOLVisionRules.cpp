@@ -28,6 +28,16 @@ double HOLVisionRules::GetSightRadius(const double BaseRadius, const double Heig
 	return FMath::Max(0., BaseRadius + Bonus);
 }
 
+double HOLVisionRules::GetBuildingSight(const double SightRadius, const EHOLBuildingSight State)
+{
+	switch (State)
+	{
+	case EHOLBuildingSight::Standing: return FMath::Max(0., SightRadius);
+	case EHOLBuildingSight::Site: return 0.5 * FMath::Max(0., SightRadius);
+	default: return 0.;
+	}
+}
+
 TArray<FIntPoint> HOLVisionRules::GetDisc(const FHOLVisionGrid& Grid, const FIntPoint& Cell, const double Radius)
 {
 	TArray<FIntPoint> Disc;
