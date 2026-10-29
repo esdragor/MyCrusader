@@ -19,6 +19,18 @@ class HEROESOFLIBERTY_API UHOLLocalPlayer : public ULocalPlayer
 
 public:
 	virtual FString GetGameLoginOptions() const override;
-	/** -PlayerName= of the command line, URL-encoded; else empty: the ?Name= of the URL opened is kept (none: a spectator). */
+	/**
+	 * The name chosen on the Multiplayer screen (SetChosenName), else -PlayerName= of the command line, URL-encoded;
+	 * else empty: the ?Name= of the URL opened is kept (none: a spectator).
+	 */
 	virtual FString GetNickname() const override;
+
+	/**
+	 * The name the player took on the Multiplayer screen (its lobby name): it goes over -PlayerName= at the login, or a
+	 * player renamed there would join his match under the launch name, as a spectator (2026-10-29 trial).
+	 */
+	void SetChosenName(const FString& Name) { ChosenName = Name.TrimStartAndEnd(); }
+
+private:
+	FString ChosenName;
 };

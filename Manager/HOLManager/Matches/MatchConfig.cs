@@ -40,12 +40,13 @@ public sealed class MatchConfig
     public string ToJson() => JsonSerializer.Serialize(this, Options);
 
     /**
-     * The configuration of a lobby being started: its players by slot, open slots left empty become closed. A player
-     * on "Aléatoire" (E2-2) gets a real colour nobody else has, chosen or already drawn, drawn from the seed.
+     * The configuration of a lobby being started: its players and AIs by slot, open slots left empty become closed. A
+     * player or an AI on "Aléatoire" (E2-2) gets a real colour nobody else has, chosen or already drawn, drawn from the
+     * seed in slot order. IA0.6 L2: an AI slot is "AI" with its level ("difficulty", FHOLMatchSlot::Difficulty).
      */
     public static MatchConfig FromLobby(Lobby lobby, MapInfo map, int seed)
     {
-        var colors = DrawRandomColors(lobby.Slots.Select(slot => slot.Player?.ColorIndex).ToList(), new Random(seed));
+        var colors = DrawRandomColors(lobby.Slots.Select(slot => slot.ColorIndex).ToList(), new Random(seed));
         return new()
         {
             Seed = seed,
@@ -55,6 +56,8 @@ public sealed class MatchConfig
             TeamsTogether = lobby.Settings.TeamsTogether,
             Slots = lobby.Slots.Select((slot, position) => slot.Player is { } p
                 ? new MatchSlot { State = MatchSlot.Human, Faction = p.Faction, ColorIndex = colors[position]!.Value, Team = p.Team, PlayerName = p.Name }
+                : slot.AI is { } ai
+                ? new MatchSlot { State = MatchSlot.AI, Faction = ai.Faction, ColorIndex = colors[position]!.Value, Team = ai.Team, Difficulty = ai.Level }
                 // Closed slots get the colour of their index, as FHOLMatchConfig::Normalize gives them.
                 : new MatchSlot { ColorIndex = slot.Index % LobbyRules.ColorCount }).ToList(),
             Nomad = lobby.Settings.Nomad,
@@ -63,7 +66,7 @@ public sealed class MatchConfig
         };
     }
 
-    /** Per slot, its colour (null: nobody), RandomColor replaced in slot order by a free one. */
+    /** Per slot, its player's or AI's colour (null: nobody), RandomColor replaced in slot order by a free one. */
     private static List<int?> DrawRandomColors(List<int?> colors, Random random)
     {
         for (var index = 0; index < colors.Count; index++)
@@ -83,6 +86,7 @@ public sealed class MatchSlot
 {
     public const string Closed = "Closed";
     public const string Human = "Human";
+    public const string AI = "AI";
 
     [JsonPropertyName("state")] public string State { get; init; } = Closed;
     [JsonPropertyName("faction")] public string Faction { get; init; } = LobbyRules.DefaultFaction;
@@ -91,4 +95,12 @@ public sealed class MatchSlot
 
     /** Version 2 (R3.1, FHOLMatchSlot::PlayerName): the expected player; "" for a closed slot or an AI. */
     [JsonPropertyName("playerName")] public string PlayerName { get; init; } = "";
+
+    /**
+     * IA0.6 L2 (FHOLMatchSlot::Difficulty, EHOLAIDifficulty by name): an AI slot's level; not written for a human or
+     * closed slot (the game reads a missing one as Normal), so a lobby without AIs writes the file it wrote before.
+     */
+    [JsonPropertyName("difficulty")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Difficulty { get; init; }
 }

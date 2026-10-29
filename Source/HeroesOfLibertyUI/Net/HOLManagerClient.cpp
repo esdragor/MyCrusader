@@ -389,6 +389,11 @@ void UHOLManagerClient::SetSlot(const int32 SlotIndex, const bool bOpen, FHOLMan
 	Write(FString::Printf(TEXT("/slots/%d"), SlotIndex), FHOLManagerClientRules::MakeSlotBody(bOpen), MoveTemp(Done));
 }
 
+void UHOLManagerClient::SetSlotAI(const int32 SlotIndex, const TOptional<int32> ColorIndex, const TOptional<int32> Team, FHOLManagerLobbyDone Done)
+{
+	Write(FString::Printf(TEXT("/slots/%d"), SlotIndex), FHOLManagerClientRules::MakeAISlotBody(ColorIndex, Team), MoveTemp(Done));
+}
+
 void UHOLManagerClient::StartMatch(FHOLManagerStartDone Done)
 {
 	if (!IsInLobby())

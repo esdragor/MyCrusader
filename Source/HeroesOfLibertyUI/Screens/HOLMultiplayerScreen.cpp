@@ -14,6 +14,7 @@
 #include "HOLVersion.h"
 #include "Misc/CommandLine.h"
 #include "Net/HOLManagerClient.h"
+#include "Net/HOLLocalPlayer.h"
 #include "Net/HOLManagerErrorText.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Settings/HOLGameUserSettings.h"
@@ -335,6 +336,11 @@ FString UHOLMultiplayerScreen::TakePlayerName()
 	{
 		Settings->SetPlayerName(Name);
 		Settings->SaveSettings();
+	}
+	// The lobby name is the login name too, over -PlayerName= (2026-10-29: renamed here, the player joined as a spectator).
+	if (UHOLLocalPlayer* LocalPlayer = Cast<UHOLLocalPlayer>(GetOwningLocalPlayer()))
+	{
+		LocalPlayer->SetChosenName(Name);
 	}
 	return Name;
 }

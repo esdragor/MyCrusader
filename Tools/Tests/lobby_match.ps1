@@ -26,7 +26,9 @@
 # (by PID; never another worktree's).
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\lobby_match.ps1 [-EngineDir <...\Engine\Binaries\Win64>]
 #   -Rejoin (R7.8): Alice and Bob in a lobby match, Bob closes his game and comes back by « Revenir » (see below).
-param([string] $EngineDir = "", [switch] $Rejoin, [int] $Window = 0)
+#   -AI (IA0.6 L5): Alice alone on Petite with an AI put by her slot list, the editor as the server (as -Rejoin); the
+#     server's brain thinks for slot 1 and sends its 5 Peasants to gather; Alice gives up (see below).
+param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [int] $Window = 0)
 $Began = Get-Date
 # Every Unreal started from here (games, the editor as a server) skips the SDK check at start (UnrealBuildTool
 # -Mode=ValidatePlatforms): it waits behind any build of another copy on this engine, up to minutes (games stuck at
@@ -44,8 +46,8 @@ $Exe = Join-Path $Project "Saved\Manager\HOLManager.exe"
 if (-not (Test-Path $Exe)) { Write-Host "lobby_match : FAIL (no $Exe; run Tools\Manager\build_manager.ps1)"; exit 1 }
 $ServerExe = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
 # R7.8: -Rejoin has the manager start the editor in server mode through a .cmd (CreateProcess runs it): the code of
-# this copy as built, with no staging (net_match.ps1 -Stage takes minutes).
-if ($Rejoin) {
+# this copy as built, with no staging (net_match.ps1 -Stage takes minutes). IA0.6 L5: -AI the same.
+if ($Rejoin -or $AI) {
     $ServerExe = Join-Path $Project "Saved_Tests\LobbyMatch\editor_server.cmd"
     New-Item -ItemType Directory -Force (Split-Path $ServerExe) | Out-Null
     $WindowArg = if ($Window -gt 0) { " -HOLDisconnectWindow=$Window" } else { "" }
@@ -94,8 +96,8 @@ while ($Port -lt 7890) {
 $Url = "http://127.0.0.1:${Port}"
 # A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion): "dev" for the time of the test.
 $ServerVersion = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"
-# -Rejoin runs the editor as the server: no staged server to mark.
-$ServerVersionMade = (-not $Rejoin) -and -not (Test-Path $ServerVersion)
+# -Rejoin and -AI run the editor as the server: no staged server to mark.
+$ServerVersionMade = (-not $Rejoin) -and (-not $AI) -and -not (Test-Path $ServerVersion)
 if ($ServerVersionMade) { [IO.File]::WriteAllText($ServerVersion, "dev", (New-Object Text.UTF8Encoding $false)) }
 # Servers from UDP 7900: out of quick_check's net range (7777-7876), whose clients would join a server of ours still
 # starting on 7777 (seen 2026-10-27: a second « Alice » and « Bob » from another copy in the match).
@@ -165,6 +167,77 @@ function Test-Stats([string] $ServerFile) {
     }
     if (-not (@(Get-Content $GameLogs.Bob) -match "Stats: the server refused")) { return "Bob : no refusal in his log" }
     return ""
+}
+
+# IA0.6 L5 (-AI): a lobby match against an AI, end to end. Alice (launched as -PlayerName=Alice) types "Alicia" in the
+# name box of the Multiplayer screen (the user's trial, 2026-10-29: the typed name must win at the login), creates the lobby, turns it to Petite (2 places), takes
+# the colour 2, puts an AI on slot 1 by its list (hol.UI.Choose SlotState1 4: "IA Normal 2"; an AI counts in the 2
+# players, IA0.6-Q3 A), presses Ready (1/1) and Launch; she reaches Plain_Small, the AI's Peasants seen at work from her
+# side (hol.Units.Where 1); she gives up (hol.Victory.Surrender), gets her end banner and quits; the server quits once
+# empty. The server (the editor, as -Rejoin): match.json with slot 1 "AI" Normal, the brain thinking for slot 1, its 5
+# starting Peasants sent to gather. Captures lobby_match_ai_lobby / _start / _match / _end (Saved_Tests_Alice).
+if ($AI) {
+    try {
+        $Status = $null
+        for ($i = 0; $i -lt 40 -and -not $Status; $i++) { try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 } }
+        if (-not $Status) { throw "the manager does not answer on $Url" }
+        $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3", "hol.UI.Type NameBox Alicia", "frames 2") +
+            (& $Press CreateButton) + $ToSmall + @("waitui", "wait 1", "hol.UI.Choose SlotColor0 $($Colours.Alice)", "waitlog Lobby: colour $($Colours.Alice) accepted", "wait 0.5",
+            "hol.UI.Choose SlotState1 4", "waitlog Lobby: slot 1 ai accepted", "wait 0.5", "hol.UI.Text SlotState1", "frames 2") +
+            (& $Press ReadyButton) + @("waitlog Lobby: ready on accepted", "waitlog 1/1 ready", "wait 1", "capture lobby_match_ai_lobby") +
+            (& $Press LaunchButton) + @("waitlog Lobby: start sent", "waitlog Lobby: joining match", "waitmap Plain_Small", "waitlog Camera above the start", "frames 60",
+            "capture lobby_match_ai_start", "wait 20", "hol.Units.Where 1", "waitlog Units where:", "frames 3", "capture lobby_match_ai_match",
+            "hol.Victory.Surrender", "waitlog End banner: lobby match", "wait 1.5", "capture lobby_match_ai_end", "wait 1", "quit"))
+        if (-not $Games.Alice.WaitForExit(360000)) { throw "Alice still there after 360 s" }
+    }
+    catch { $Failure = "$_" }
+    finally {
+        foreach ($Game in $Games.Values) { if ($Game -and -not $Game.HasExited) { Stop-Process -Id $Game.Id -Force -ErrorAction SilentlyContinue } }
+        # The server quits by itself once empty (R3.8); left after 30 s, it is stopped (and the test fails).
+        for ($i = 0; $i -lt 30 -and (Get-OurServers).Count; $i++) { Start-Sleep 1 }
+        $Left = Get-OurServers
+        if ($Left.Count) { $Left | ForEach-Object { Write-Host "  stopping server PID $($_.Id)"; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }; if (-not $Failure) { $Failure = "$($Left.Count) server(s) of this copy still running (after Alice left, the AI alone)" } }
+        if ($Manager) { Stop-Process -Id $Manager.Id -Force -ErrorAction SilentlyContinue }
+    }
+    $ServerLog = Get-ChildItem $Matches0 -Recurse -Filter server.log -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $Began } | Sort-Object LastWriteTime | Select-Object -Last 1
+    $S = if ($ServerLog) { @(Get-Content $ServerLog.FullName) } else { @() }
+    $MatchJson = if ($ServerLog) { Get-Content (Join-Path $ServerLog.DirectoryName "match.json") -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json } else { $null }
+    $AISlot = if ($MatchJson) { $MatchJson.slots[1] } else { $null }
+    $Start = @(Get-Content $ManagerLog -ErrorAction SilentlyContinue | Select-String -Pattern "Starting the server of" | ForEach-Object { $_.Line }) | Select-Object -First 1
+    $L = if (Test-Path $GameLogs.Alice) { @(Get-Content $GameLogs.Alice -Encoding utf8) } else { @() }
+    if ($ServerLog) { Write-Host "  server log $($ServerLog.FullName):"; $S -match "Match on |AI brain|AI slot 1 step|Gather order of slot 1|Starting Peasants|holds slot|Victory: (slot|match)|empty" | Select-Object -First 25 | ForEach-Object { Write-Host "    $_" } }
+    Write-Host "  match.json slot 1: $(if ($AISlot) { "$($AISlot.state) $($AISlot.difficulty) colour $($AISlot.colorIndex)" } else { 'not read' }); size $($MatchJson.mapSize)"
+    Write-Host "  manager: $Start"
+    Write-Host "  Alice :"; $L -match "Lobby: (slot|colour|ready|start|joining)|ready, launch|Text SlotState1|Players table|Units where|End banner|Test capture|Test sequence: timeout" | ForEach-Object { Write-Host "    $_" }
+    $Where = @($L | ForEach-Object { if ($_ -match "Units where: (.*)$") { $Matches[1] } }) | Select-Object -Last 1
+    $AIBusy = @([regex]::Matches("$Where", "#\d+ slot 1 at \([^)]*\) (\w+)") | Where-Object { $_.Groups[1].Value -in "GatherTrip", "Gathering", "DepositTrip", "Depositing" }).Count
+    if (-not $Failure) {
+        if (-not ($L -match "LogHOLUI: Display: Lobby: slot 1 ai accepted")) { $Failure = "Alice : no 'Lobby: slot 1 ai accepted'" }
+        elseif (-not ($L -match "Text SlotState1: IA Normal 2$")) { $Failure = "Alice : the slot list does not show 'IA Normal 2'" }
+        elseif (-not ($L -match "1 players \(Alicia\), you Alicia, leader Alicia, 1/1 ready, launch shown, slots c$($Colours.Alice)r a\d x x x x x x$")) { $Failure = "Alice : no lobby line '1 players (Alicia) ... 1/1 ready ... slots c$($Colours.Alice)r a<n> x x x x x x'" }
+        elseif (-not ($L -match "Lobby: start accepted \(HTTP 202\)")) { $Failure = "Alice's Launch not accepted" }
+        elseif (-not ($L -match "LogHOLUI: Display: Lobby: joining match \S+ at 127\.0\.0\.1:\d+ as Alicia")) { $Failure = "Alice : no 'Lobby: joining match ... as Alicia'" }
+        elseif (-not ($L -match "Players table: Vous, IA Normal 2$")) { $Failure = "Alice : the table of players is not 'Vous, IA Normal 2'" }
+        elseif (-not ($L -match "Test capture: lobby_match_ai_match")) { $Failure = "Alice : no capture in the match" }
+        elseif ($AIBusy -lt 5) { $Failure = "Alice : $AIBusy of the AI's Peasants seen at work, 5 wanted ($Where)" }
+        elseif (-not ($L -match "End banner: Defeat")) { $Failure = "Alice : no Defeat banner after her surrender" }
+        elseif (-not ($L -match "End banner: lobby match")) { $Failure = "Alice : no lobby end banner" }
+        elseif ($L -match "Test sequence: timeout") { $Failure = "Alice : her sequence timed out" }
+        elseif (-not $ServerLog) { $Failure = "no server log of the match" }
+        elseif (-not $AISlot -or $AISlot.state -ne "AI" -or $AISlot.difficulty -ne "Normal") { $Failure = "match.json without slot 1 'AI' Normal" }
+        elseif ($Start -match "StartingPeasants") { $Failure = "the server started with StartingPeasants on its command line" }
+        elseif (-not ($S -match "Match on \S+: given configuration, 2 occupied slots")) { $Failure = "the server has no 'given configuration, 2 occupied slots'" }
+        elseif (-not ($S -match "AI brain \S+ awake, net mode DedicatedServer, thinking slots \[1\]")) { $Failure = "the server has no 'AI brain ... DedicatedServer, thinking slots [1]'" }
+        elseif (-not ($S -match "AI slot 1 step \d+: 5 idle -> gather")) { $Failure = "the server has no 'AI slot 1 step N: 5 idle -> gather'" }
+        elseif (-not ($S -match "Gather order of slot 1: 5 units to source")) { $Failure = "the server has no 'Gather order of slot 1: 5 units to source'" }
+        elseif (-not ($S -match "LogHOLMatch: Alicia holds slot 0")) { $Failure = "the server has no 'Alicia holds slot 0' (the name typed on the Multiplayer screen, over -PlayerName=Alice$(if ($S -match 'joined as a spectator') { '; she joined as a spectator' }))" }
+        elseif (-not ($S -match [regex]::Escape("Victory: slot 0 defeated (Surrender)"))) { $Failure = "the server has no 'Victory: slot 0 defeated (Surrender)'" }
+        elseif (@($S -match "LogNet: Join succeeded: ").Count -ne 1) { $Failure = "$(@($S -match 'LogNet: Join succeeded: ').Count) joins on the server, 1 expected" }
+    }
+    $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
+    if ($Failure) { Write-Host "lobby_match : FAIL (ai: $Failure; log $($GameLogs.Alice); $Took)"; exit 1 }
+    Write-Host "lobby_match : PASS (ai: Alice, renamed Alicia on the screen, created a Petite lobby, put an AI on slot 1 (IA Normal 2), 1/1 ready, Launch; match.json slot 1 AI Normal; the server's brain thought for slot 1 and sent its 5 Peasants to gather, seen at work by Alice ($AIBusy); table 'Vous, IA Normal 2'; Alice gave up, Defeat banner; no server left; $Took)"
+    exit 0
 }
 
 # R7.8 (-Rejoin): Alice creates, Bob joins, both ready, Launch; Bob closes his game ("quit"); Alice gets « Bob : connexion

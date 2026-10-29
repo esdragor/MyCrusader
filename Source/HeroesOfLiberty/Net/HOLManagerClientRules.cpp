@@ -116,6 +116,11 @@ int32 FHOLLobby::GetNumPlayers() const
 	return Slots.FilterByPredicate([](const FHOLLobbySlot& Slot) { return Slot.State == EHOLLobbySlotState::Player; }).Num();
 }
 
+int32 FHOLLobby::GetNumAIs() const
+{
+	return Slots.FilterByPredicate([](const FHOLLobbySlot& Slot) { return Slot.State == EHOLLobbySlotState::AI; }).Num();
+}
+
 int32 FHOLLobby::FindYourSlot() const
 {
 	return You.IsEmpty() ? INDEX_NONE : Slots.IndexOfByPredicate([this](const FHOLLobbySlot& Slot)
@@ -137,12 +142,19 @@ bool FHOLLobby::CanEditSlot(const int32 SlotIndex) const
 bool FHOLLobby::CanToggleSlot(const int32 SlotIndex) const
 {
 	// TC3: the slots past the places of the lobby's size stay closed (the manager refuses to open them).
+	// IA0.6: an AI's slot is the leader's too (open or closed takes the AI away, ai changes it).
 	return IsYouLeader() && Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex].State != EHOLLobbySlotState::Player && SlotIndex < GetNumPlaces();
+}
+
+bool FHOLLobby::CanEditAISlot(const int32 SlotIndex) const
+{
+	return IsYouLeader() && Slots.IsValidIndex(SlotIndex) && Slots[SlotIndex].State == EHOLLobbySlotState::AI;
 }
 
 bool FHOLLobby::CanStart() const
 {
-	return IsYouLeader() && GetNumPlayers() >= 2
+	// IA0.6 (Q3 = A): an AI counts in the 2 at least; it has no Ready, only the players must be ready.
+	return IsYouLeader() && GetNumPlayers() + GetNumAIs() >= 2
 		&& !Slots.ContainsByPredicate([](const FHOLLobbySlot& Slot) { return Slot.State == EHOLLobbySlotState::Player && !Slot.bReady; });
 }
 
@@ -213,6 +225,21 @@ FString FHOLManagerClientRules::MakeSlotBody(const bool bOpen)
 	return WriteBody(Object);
 }
 
+FString FHOLManagerClientRules::MakeAISlotBody(const TOptional<int32> ColorIndex, const TOptional<int32> Team)
+{
+	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
+	Object->SetStringField(TEXT("state"), TEXT("ai"));
+	if (ColorIndex.IsSet())
+	{
+		Object->SetNumberField(TEXT("colorIndex"), ColorIndex.GetValue());
+	}
+	if (Team.IsSet())
+	{
+		Object->SetNumberField(TEXT("team"), Team.GetValue());
+	}
+	return WriteBody(Object);
+}
+
 namespace
 {
 	bool ReadSlotState(const FString& Text, EHOLLobbySlotState& Out)
@@ -220,7 +247,17 @@ namespace
 		if (Text == TEXT("open")) { Out = EHOLLobbySlotState::Open; return true; }
 		if (Text == TEXT("closed")) { Out = EHOLLobbySlotState::Closed; return true; }
 		if (Text == TEXT("player")) { Out = EHOLLobbySlotState::Player; return true; }
+		if (Text == TEXT("ai")) { Out = EHOLLobbySlotState::AI; return true; }
 		return false;
+	}
+
+	/** IA0.6: an AI's level by name (EHOLAIDifficulty); absent or unknown: Normal, the lobby's only level (Q4). */
+	EHOLAIDifficulty ReadAILevel(const FString& Text)
+	{
+		if (Text == TEXT("Easy")) { return EHOLAIDifficulty::Easy; }
+		if (Text == TEXT("Hard")) { return EHOLAIDifficulty::Hard; }
+		if (Text == TEXT("Evolving")) { return EHOLAIDifficulty::Evolving; }
+		return EHOLAIDifficulty::Normal;
 	}
 
 	bool ReadLobbyObject(const FJsonObject& Object, FHOLLobby& Out)
@@ -277,6 +314,17 @@ namespace
 					|| !(*Row)->TryGetNumberField(TEXT("team"), Slot.Team) || !(*Row)->TryGetBoolField(TEXT("ready"), Slot.bReady)))
 			{
 				return false;
+			}
+			// IA0.6: an AI has a colour and a team, no name nor Ready.
+			if (Slot.State == EHOLLobbySlotState::AI)
+			{
+				FString Level;
+				if (!(*Row)->TryGetNumberField(TEXT("colorIndex"), Slot.ColorIndex) || !(*Row)->TryGetNumberField(TEXT("team"), Slot.Team))
+				{
+					return false;
+				}
+				(*Row)->TryGetStringField(TEXT("level"), Level);
+				Slot.Level = ReadAILevel(Level);
 			}
 			(*Row)->TryGetStringField(TEXT("faction"), Slot.Faction);
 			Out.Slots.Add(MoveTemp(Slot));

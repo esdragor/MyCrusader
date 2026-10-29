@@ -60,6 +60,9 @@ public enum SlotState
     Open,
     Closed,
     Player,
+
+    /** IA0.6 (Q4): an AI put by the leader. */
+    AI,
 }
 
 public sealed class LobbyPlayer
@@ -85,12 +88,33 @@ public sealed class LobbyPlayer
     public bool Back { get; internal set; } = true;
 }
 
+/**
+ * IA0.6 (Q4, Q5): an AI on a slot of the lobby, its colour and team set by the leader; its level is Normal only. Its
+ * name, « IA Normal N » (HOLForumMessages::GetAIName, N = slot + 1), is made by the client.
+ */
+public sealed class LobbyAI
+{
+    public int ColorIndex { get; internal set; }
+    public int Team { get; internal set; }
+    public string Faction { get; internal set; } = LobbyRules.DefaultFaction;
+
+    /** EHOLAIDifficulty by name. */
+    public string Level { get; internal set; } = LobbyRules.DefaultAILevel;
+}
+
 public sealed class LobbySlot(int index)
 {
     public int Index { get; } = index;
     public bool Closed { get; internal set; }
     public LobbyPlayer? Player { get; internal set; }
-    public SlotState State => Player != null ? SlotState.Player : Closed ? SlotState.Closed : SlotState.Open;
+
+    /** IA0.6: the slot's AI, never with a player; null otherwise. */
+    public LobbyAI? AI { get; internal set; }
+
+    public SlotState State => Player != null ? SlotState.Player : AI != null ? SlotState.AI : Closed ? SlotState.Closed : SlotState.Open;
+
+    /** The colour of the slot's player or AI, null for an empty slot. */
+    public int? ColorIndex => Player?.ColorIndex ?? AI?.ColorIndex;
 }
 
 public sealed class LobbySettings

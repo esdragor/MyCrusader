@@ -72,7 +72,10 @@ public static class LobbyViews
     private static int? Minutes(Lobby lobby, DateTimeOffset now) =>
         lobby.State == LobbyState.InGame ? lobby.Match?.Minutes(now) : null;
 
+    /** IA0.6 (Q5): an AI's slot gives its level, the client names it « IA Normal N » (N = index + 1). */
     private static object Slot(LobbySlot slot) => slot.Player is { } p
-        ? (object)new { index = slot.Index, state = "player", playerName = p.Name, colorIndex = p.ColorIndex, team = p.Team, faction = p.Faction, ready = p.Ready }
-        : new { index = slot.Index, state = slot.State == SlotState.Closed ? "closed" : "open" };
+        ? new { index = slot.Index, state = "player", playerName = p.Name, colorIndex = p.ColorIndex, team = p.Team, faction = p.Faction, ready = p.Ready }
+        : slot.AI is { } ai
+        ? new { index = slot.Index, state = "ai", level = ai.Level, colorIndex = ai.ColorIndex, team = ai.Team, faction = ai.Faction }
+        : (object)new { index = slot.Index, state = slot.State == SlotState.Closed ? "closed" : "open" };
 }
