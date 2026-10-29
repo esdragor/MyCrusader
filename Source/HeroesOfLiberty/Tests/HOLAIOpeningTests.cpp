@@ -530,6 +530,69 @@ bool FHOLAIArmyDefenceWeakTest::RunTest(const FString& Parameters)
 }
 
 /**
+ * IA2.6, the attack wave on the real chain: nine Spearmen of slot 1 stand idle at the assembly point (1500 cm from the centre toward
+ * the enemy centre, at -X), the game time is past 450 s (the step index moved on), the enemy centre is known (at -20000) and one
+ * enemy Spearman is seen far away: the thought sends all nine on an attack-move toward the enemy centre. A second world with
+ * twelve Men-at-arms seen: the army is far behind the 1.5 margin and nobody is sent.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIArmyAttackTest, "HeroesOfLiberty.AI.Army.Attack", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIArmyAttackTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	const FVector EnemyCentre(-20000.0, 0.0, 0.0);
+	{
+		FWorld Test;
+		if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+		{
+			return false;
+		}
+		const TArray<uint32> Soldiers = PlaceSoldiers(Test, FName(TEXT("Spearman")), 1, FVector(-1500.0, 0.0, 0.0), 9);
+		const TArray<uint32> Enemy = PlaceSoldiers(Test, FName(TEXT("Spearman")), 0, FVector(-18000.0, 0.0, 0.0), 1);
+		if (!TestTrue(TEXT("nine Spearmen of slot 1, one of slot 0"), Soldiers.Num() == 9 && Enemy.Num() == 1))
+		{
+			return false;
+		}
+		UHOLSimulationSubsystem* Simulation = Test.World->GetSubsystem<UHOLSimulationSubsystem>();
+		for (int32 Count = 0; Count < 9100; ++Count)
+		{
+			Simulation->AdvanceStepIndexForTests();
+		}
+		TArray<FHOLMoveOrder> Discard;
+		Test.Commands->ConsumeMoveOrders(Discard);
+		TestTrue(TEXT("thought"), Test.Brain->ThinkNow(1));
+		const TArray<FHOLMoveOrder> Orders = TakeAttackMoves(Test);
+		TestEqual(TEXT("wave: the nine Spearmen are ordered"), CountOrdered(Orders, Soldiers), 9);
+		for (const FHOLMoveOrder& Order : Orders)
+		{
+			TestTrue(TEXT("wave: toward the enemy centre"), FVector::Dist2D(Order.Target, EnemyCentre) < 500.0);
+		}
+	}
+	{
+		FWorld Test;
+		if (!TestTrue(TEXT("second test world ready"), Test.IsReady()))
+		{
+			return false;
+		}
+		const TArray<uint32> Soldiers = PlaceSoldiers(Test, FName(TEXT("Spearman")), 1, FVector(-1500.0, 0.0, 0.0), 9);
+		const TArray<uint32> Enemy = PlaceSoldiers(Test, FName(TEXT("ManAtArms")), 0, FVector(-18000.0, 0.0, 0.0), 12);
+		if (!TestTrue(TEXT("nine Spearmen of slot 1, twelve Men-at-arms of slot 0"), Soldiers.Num() == 9 && Enemy.Num() == 12))
+		{
+			return false;
+		}
+		UHOLSimulationSubsystem* Simulation = Test.World->GetSubsystem<UHOLSimulationSubsystem>();
+		for (int32 Count = 0; Count < 9100; ++Count)
+		{
+			Simulation->AdvanceStepIndexForTests();
+		}
+		TArray<FHOLMoveOrder> Discard;
+		Test.Commands->ConsumeMoveOrders(Discard);
+		TestTrue(TEXT("thought"), Test.Brain->ThinkNow(1));
+		TestEqual(TEXT("a strong enemy army seen: no wave"), TakeAttackMoves(Test).Num(), 0);
+	}
+	return true;
+}
+
+/**
  * IA1.6, the figures: the brain's costs come from the type tables (UHOLAIOrderLibrary::ReadAIUnitFigures / ReadAIBuildingFigures),
  * not from numbers copied into the script. The Peasant and the House as the tables have them; an unknown type is refused.
  */

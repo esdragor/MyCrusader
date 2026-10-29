@@ -6497,7 +6497,8 @@ if ($Parts -contains "aiduel") {
                 $Soldiers = 0
                 if ($ArmyOf.ContainsKey($Slot) -and $ArmyOf[$Slot].Count -gt 0) { $At = [int][Math]::Floor($ReportIndex * 2 / 5); $Soldiers = [Math]::Max($ArmyOf[$Slot][[Math]::Min($At, $ArmyOf[$Slot].Count - 1)], $ArmyOf[$Slot][[Math]::Min($At + 1, $ArmyOf[$Slot].Count - 1)]) }
                 $ReportIndex++
-                $Streak = if (($NotGathering - $Soldiers) -gt $Heroes) { $Streak + 1 } else { 0 }
+                # IA2.6: two units of slack: a soldier born between two status lines (5 s) is not yet in the army read, and the idle Peasants it hides are few; a real idle group (the gold mine with no room) is bigger and lasts.
+                $Streak = if (($NotGathering - $Soldiers) -gt ($Heroes + 2)) { $Streak + 1 } else { 0 }
                 $Run.MaxIdle = [Math]::Max($Run.MaxIdle, 2.0 * $Streak)
             }
         }

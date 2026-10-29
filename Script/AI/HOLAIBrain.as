@@ -39,6 +39,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, int> RegroupCounts;
 	TMap<int, int> DefenceCounts;
 
+	// The attack wave of each slot (IA2.6: home, out or back, the soldiers it launched, the cooldown).
+	TMap<int, FHOLAIWave> Waves;
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -212,26 +215,61 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Rallied.Add(PlayerIndex, Memory);
 	}
 
-	// The army's orders (IA2.5). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers within the
-	// defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent again every
-	// few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight on the way).
+	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
+	// within the defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent
+	// again every few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight
+	// on the way). The attack wave (HOLAIArmy::UpdateWave) goes out when the rules allow and the army is ahead, and falls back to the
+	// point (a move, not an attack-move) when the ratio near it collapses; while it is out the defence and the regrouping order the
+	// soldiers at home only, unless the threat is strong (AttackRecallCount enemies): then the wave is called back.
 	void ThinkArmy(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
 		const float Now = Data.GameSeconds;
 		FHOLAIDefence State;
 		Defences.Find(PlayerIndex, State);
+		FHOLAIWave Wave;
+		Waves.Find(PlayerIndex, Wave);
 		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
-		const FHOLAIThreat Threat = HOLAIArmy::Threat(Summary, Data.Army);
+		const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data.Army);
+		const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Wave);
+		const FHOLAIThreat Threat = HOLAIArmy::Threat(Rest, Data.Army);
 		const bool bWas = State.bDefending;
-		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Summary, Data.Army, Threat, Assembly), Now, Data.Army);
+		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly), Now, Data.Army);
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Change} ({Threat.Count} enemies, ratio {Threat.Ratio})");
 		}
+
+		// The wave: launched, kept on its way, called back or over.
+		const bool bRecall = Whole.bThreatened && Whole.Count >= Data.Army.AttackRecallCount;
+		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
+		if (Wave_.bLaunched)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: attack launched with {Wave_.Left} soldiers, ratio {Wave_.Ratio}");
+		}
+		if (Wave_.bRetreat)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: retreat: ratio {Wave_.Ratio}, {Wave_.Left} left");
+		}
+		if (Wave_.bOver || Wave_.bHome)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: wave over, home");
+		}
+		if (Wave_.AttackIds.Num() > 0 && !HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Wave_.AttackIds, Wave_.AttackTarget))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: wave order refused");
+		}
+		if (Wave_.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Wave_.MoveIds, Assembly))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: retreat order refused");
+		}
+		Waves.Add(PlayerIndex, Wave);
+
+		// The soldiers at home (the whole army when no wave is out).
+		const FHOLAISummary Home = HOLAIArmy::WithoutWave(Summary, Wave);
 		if (State.bDefending)
 		{
-			const TArray<int> Ids = HOLAIArmy::DefenceOrders(State, Summary, Data.Army, Threat, Now);
+			const TArray<int> Ids = HOLAIArmy::DefenceOrders(State, Home, Data.Army, Threat, Now);
 			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Threat.Location))
 			{
 				int Count = 0;
@@ -242,7 +280,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		else
 		{
-			const TArray<int> Ids = HOLAIArmy::RegroupOrders(State, Summary, Data.Army, Assembly, Now);
+			const TArray<int> Ids = HOLAIArmy::RegroupOrders(State, Home, Data.Army, Assembly, Now);
 			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Assembly))
 			{
 				int Count = 0;
@@ -342,7 +380,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		int Meetings = 0;
 		DefenceCounts.Find(PlayerIndex, Meetings);
 		const FString Stance = Defence.bDefending ? "defend" : "home";
-		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms} army S{Spears} M{Men} A{Archers} C{Crossbows} barracks {Barracks} q{BarracksQueue} range {Ranges} q{RangeQueue} {Stance} regroups {Regroups} defences {Meetings}");
+		FHOLAIWave Wave;
+		Waves.Find(PlayerIndex, Wave);
+		const FString WaveState = Wave.Phase == EHOLAIWavePhase::Out ? "out" : (Wave.Phase == EHOLAIWavePhase::Back ? "back" : "off");
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms} army S{Spears} M{Men} A{Archers} C{Crossbows} barracks {Barracks} q{BarracksQueue} range {Ranges} q{RangeQueue} {Stance} regroups {Regroups} defences {Meetings} wave {WaveState} size {HOLAIArmy::WaveSize(Wave, Summary)}");
 	}
 
 	// The soldiers of a type alive (the army of the summary: those of the slot that do not gather).

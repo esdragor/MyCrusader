@@ -73,6 +73,80 @@ struct FHOLAIArmyData
 
 	// Below this power ratio of our army over the threatening enemies, the army does not go to meet them (it holds the assembly point).
 	float DefenceMinRatio = 0.3f;
+
+	// Attack wave and retreat (IA2.6), provisional (IA4 'Normal' curve).
+	// No wave before this game time when enemy soldiers have been seen (s); and when none has been seen (s).
+	float AttackMinSeconds = 420.f;
+	float AttackMinSecondsUnseen = 300.f;
+
+	// A wave needs at least this many soldiers.
+	int AttackMinSoldiers = 8;
+
+	// Our power ratio over the enemy soldiers seen needed to launch a wave (the margin), and the ratio under which the wave falls back
+	// (lower than the launch ratio: hysteresis).
+	float AttackLaunchRatio = 1.5f;
+	float AttackRetreatRatio = 0.6f;
+
+	// The wave falls back when it has lost more than this share of its size.
+	float AttackLossShare = 0.6f;
+
+	// The enemy soldiers within this of the wave's centroid are the ones the wave fights (cm).
+	float AttackRetreatRadius = 3000.f;
+
+	// No new wave within this long after a launch or the end of a wave (s); twice as long after a retreat.
+	float AttackCooldown = 90.f;
+
+	// The wave's idle soldiers are ordered again at most this often (s).
+	float AttackReissue = 5.f;
+
+	// A retreat ends when most of the wave has reached the assembly point, or after this long (s).
+	float AttackRetreatMax = 40.f;
+
+	// A defence against at least this many enemy soldiers near the base calls the wave back.
+	int AttackRecallCount = 3;
+}
+
+// Where the attack wave is (HOLAIArmy::UpdateWave).
+enum EHOLAIWavePhase
+{
+	Home,
+	Out,
+	Back
+}
+
+// What the attack wave remembers between two thoughts of a slot (the brain keeps one per slot).
+struct FHOLAIWave
+{
+	EHOLAIWavePhase Phase = EHOLAIWavePhase::Home;
+
+	// The soldiers launched with the wave, and how many there were.
+	TArray<int> Ids;
+	int LaunchedSize = 0;
+
+	// No wave launches before this game time (s).
+	float NextLaunch = 0.f;
+
+	// Game time the phase began (s), and of the last order given to the wave (s).
+	float PhaseStart = 0.f;
+	float LastOrder = -1000.f;
+}
+
+// What the wave does now (HOLAIArmy::UpdateWave): the orders to send and what changed, for the brain's orders and log.
+struct FHOLAIWaveStep
+{
+	bool bLaunched = false;
+	bool bRetreat = false;
+	bool bOver = false;
+	bool bHome = false;
+
+	// The soldiers to attack-move to AttackTarget, and the soldiers to move (not attack-move) to the assembly point.
+	TArray<int> AttackIds;
+	FVector AttackTarget;
+	TArray<int> MoveIds;
+
+	// The ratio that decided (launch ratio or the wave's own ratio) and the wave soldiers alive.
+	float Ratio = 0.f;
+	int Left = 0;
 }
 
 // What threatens the base now (HOLAIArmy::Threat).
@@ -624,5 +698,238 @@ namespace HOLAIArmy
 			}
 		}
 		return Ids;
+	}
+
+	// ---------------------------------------------------------------------------------------------------------------------------
+	// Attack wave and retreat (IA2.6). The brain keeps one FHOLAIWave per slot and asks, each thought, UpdateWave (home -> out ->
+	// back -> home): it launches a wave when the rules allow (CanLaunch), keeps its idle soldiers on the way, calls it back when the
+	// ratio near it collapses (AttackRetreatRatio, under the launch ratio: hysteresis) or when it has lost too much, and ends it when
+	// nothing is left to attack. The defence has priority: no wave launches while defending, and a defence against AttackRecallCount
+	// enemy soldiers or more near the base calls the wave back; a weaker threat is left to the soldiers at home (WithoutWave).
+
+	// The ids of the slot's soldiers (the army of the summary without any Peasant), alive.
+	TArray<int> SoldierIds(const FHOLAISummary& Summary)
+	{
+		TArray<int> Ids;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			if (Summary.Army[Index].Type != n"Peasant" && Summary.Army[Index].Health > 0)
+			{
+				Ids.Add(Summary.Army[Index].Id);
+			}
+		}
+		return Ids;
+	}
+
+	// The soldiers of the wave still alive (in the summary's army).
+	TArray<FHOLAIUnit> WaveUnits(const FHOLAIWave& Wave, const FHOLAISummary& Summary)
+	{
+		TArray<FHOLAIUnit> Units;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			if (Summary.Army[Index].Type != n"Peasant" && Summary.Army[Index].Health > 0 && Wave.Ids.Contains(Summary.Army[Index].Id))
+			{
+				Units.Add(Summary.Army[Index]);
+			}
+		}
+		return Units;
+	}
+
+	// The wave soldiers alive.
+	int WaveSize(const FHOLAIWave& Wave, const FHOLAISummary& Summary)
+	{
+		return WaveUnits(Wave, Summary).Num();
+	}
+
+	// The summary without the soldiers of a wave that is out (the defence and the regrouping order the soldiers at home only); the same
+	// summary when no wave is out.
+	FHOLAISummary WithoutWave(const FHOLAISummary& Summary, const FHOLAIWave& Wave)
+	{
+		if (Wave.Phase != EHOLAIWavePhase::Out)
+		{
+			return Summary;
+		}
+		FHOLAISummary Rest = Summary;
+		Rest.Army.Empty();
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			if (!Wave.Ids.Contains(Summary.Army[Index].Id))
+			{
+				Rest.Army.Add(Summary.Army[Index]);
+			}
+		}
+		return Rest;
+	}
+
+	// The centre of a list of units (the origin without any).
+	FVector CentroidOf(const TArray<FHOLAIUnit>& Units)
+	{
+		FVector Sum = FVector(0, 0, 0);
+		for (int Index = 0; Index < Units.Num(); Index++)
+		{
+			Sum += Units[Index].Location;
+		}
+		if (Units.Num() == 0)
+		{
+			return Sum;
+		}
+		return Sum / float(Units.Num());
+	}
+
+	// Whether a wave may be launched now: at home, not defending, the cooldown over, an enemy centre to go to, enough soldiers, late
+	// enough (earlier when no enemy soldier has been seen: the ratio is then the large value) and our army ahead by the margin.
+	bool CanLaunch(const FHOLAIWave& Wave, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, bool bDefending, float Now)
+	{
+		if (Wave.Phase != EHOLAIWavePhase::Home || bDefending || Now < Wave.NextLaunch || !Summary.bHasEnemyCentre)
+		{
+			return false;
+		}
+		if (SoldierIds(Summary).Num() < Data.AttackMinSoldiers)
+		{
+			return false;
+		}
+		const bool bSeen = EnemyValue(Data, Summary) > 0.f;
+		if (Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
+		{
+			return false;
+		}
+		return PowerRatio(Data, Summary) >= Data.AttackLaunchRatio;
+	}
+
+	// The power ratio of the wave's soldiers over the enemy soldiers within AttackRetreatRadius of their centroid (the large value when
+	// none is near).
+	float WaveRatio(const FHOLAIWave& Wave, const FHOLAISummary& Summary, const FHOLAIArmyData& Data)
+	{
+		FHOLAISummary Local;
+		Local.Army = WaveUnits(Wave, Summary);
+		const FVector Centre = CentroidOf(Local.Army);
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (IsThreatening(Summary.Enemies[Index]) && FlatDistance(Summary.Enemies[Index].Location, Centre) <= Data.AttackRetreatRadius)
+			{
+				Local.Enemies.Add(Summary.Enemies[Index]);
+			}
+		}
+		return PowerRatio(Data, Local);
+	}
+
+	// Where the wave's idle soldiers go: the enemy centre, or when it is gone the enemy unit nearest to the wave (bFound false without).
+	FVector WaveTarget(const FHOLAISummary& Summary, FVector From, bool& bFound)
+	{
+		bFound = true;
+		if (Summary.bHasEnemyCentre)
+		{
+			return Summary.EnemyCentreLocation;
+		}
+		int Nearest = -1;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (Summary.Enemies[Index].Health > 0 && (Nearest < 0 || FlatDistance(Summary.Enemies[Index].Location, From) < FlatDistance(Summary.Enemies[Nearest].Location, From)))
+			{
+				Nearest = Index;
+			}
+		}
+		bFound = Nearest >= 0;
+		return Nearest >= 0 ? Summary.Enemies[Nearest].Location : From;
+	}
+
+	// One thought of the wave: launches it, orders its idle soldiers again, falls it back or ends it, and reports what to order.
+	// bRecall: the defence has a strong threat at home (the wave goes back to help).
+	FHOLAIWaveStep UpdateWave(FHOLAIWave& Wave, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, bool bDefending, bool bRecall, FVector AssemblyPoint, float Now)
+	{
+		FHOLAIWaveStep Step;
+		if (Wave.Phase == EHOLAIWavePhase::Home)
+		{
+			if (CanLaunch(Wave, Summary, Data, bDefending, Now))
+			{
+				Wave.Phase = EHOLAIWavePhase::Out;
+				Wave.Ids = SoldierIds(Summary);
+				Wave.LaunchedSize = Wave.Ids.Num();
+				Wave.PhaseStart = Now;
+				Wave.LastOrder = Now;
+				Wave.NextLaunch = Now + Data.AttackCooldown;
+				Step.bLaunched = true;
+				Step.AttackIds = Wave.Ids;
+				Step.AttackTarget = Summary.EnemyCentreLocation;
+				Step.Ratio = PowerRatio(Data, Summary);
+				Step.Left = Wave.Ids.Num();
+			}
+			return Step;
+		}
+		const TArray<FHOLAIUnit> Alive = WaveUnits(Wave, Summary);
+		Step.Left = Alive.Num();
+		if (Wave.Phase == EHOLAIWavePhase::Out)
+		{
+			const int Lost = Wave.LaunchedSize - Alive.Num();
+			const bool bLosses = float(Lost) > Data.AttackLossShare * float(Wave.LaunchedSize) + 0.001f;
+			Step.Ratio = WaveRatio(Wave, Summary, Data);
+			if (bRecall || bLosses || Step.Ratio < Data.AttackRetreatRatio)
+			{
+				Wave.Phase = EHOLAIWavePhase::Back;
+				Wave.PhaseStart = Now;
+				Wave.LastOrder = Now;
+				Step.bRetreat = true;
+				for (int Index = 0; Index < Alive.Num(); Index++)
+				{
+					Step.MoveIds.Add(Alive[Index].Id);
+				}
+			}
+			else if (!Summary.bHasEnemyCentre && Summary.Enemies.Num() == 0)
+			{
+				Wave.Phase = EHOLAIWavePhase::Home;
+				Wave.Ids.Empty();
+				Wave.LaunchedSize = 0;
+				Wave.NextLaunch = Now + Data.AttackCooldown;
+				Step.bOver = true;
+			}
+			else if (Now - Wave.LastOrder >= Data.AttackReissue)
+			{
+				bool bFound = false;
+				const FVector Target = WaveTarget(Summary, CentroidOf(Alive), bFound);
+				for (int Index = 0; bFound && Index < Alive.Num(); Index++)
+				{
+					if (Alive[Index].bIdle && Alive[Index].TargetId < 0)
+					{
+						Step.AttackIds.Add(Alive[Index].Id);
+					}
+				}
+				if (Step.AttackIds.Num() > 0)
+				{
+					Step.AttackTarget = Target;
+					Wave.LastOrder = Now;
+				}
+			}
+			return Step;
+		}
+		// Back: home when most of the wave stands at the assembly point, or after AttackRetreatMax seconds; until then the soldiers
+		// that stopped on the way are sent again.
+		int Near = 0;
+		for (int Index = 0; Index < Alive.Num(); Index++)
+		{
+			Near += FlatDistance(Alive[Index].Location, AssemblyPoint) <= Data.AssemblyRadius ? 1 : 0;
+		}
+		if (2 * Near >= Alive.Num() || Now - Wave.PhaseStart >= Data.AttackRetreatMax)
+		{
+			Wave.Phase = EHOLAIWavePhase::Home;
+			Wave.Ids.Empty();
+			Wave.LaunchedSize = 0;
+			Wave.NextLaunch = Now + 2.f * Data.AttackCooldown;
+			Step.bHome = true;
+		}
+		else if (Now - Wave.LastOrder >= Data.AttackReissue)
+		{
+			for (int Index = 0; Index < Alive.Num(); Index++)
+			{
+				if (Alive[Index].bIdle && Alive[Index].TargetId < 0 && FlatDistance(Alive[Index].Location, AssemblyPoint) > Data.AssemblyRadius)
+				{
+					Step.MoveIds.Add(Alive[Index].Id);
+				}
+			}
+			if (Step.MoveIds.Num() > 0)
+			{
+				Wave.LastOrder = Now;
+			}
+		}
+		return Step;
 	}
 }
