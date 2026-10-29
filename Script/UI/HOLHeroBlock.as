@@ -10,10 +10,15 @@ struct FHOLHeroBlockView
 	int Health = 0;
 	int MaxHealth = 0;
 	float HealthFraction = 0.0;
-	// The XP: -1 unknown; its bar empty and greyed until the levels have thresholds.
+	// The XP (J8b.4, J8b-Q4), to its owner alone: -1 unknown, its bar empty and greyed. Its bar filled within the level
+	// (from its threshold to the next one's, full at the last level); XPText its tooltip ("420 / 600", "3400" at the last
+	// level); XPDescribe the stable line ("xp 420/600", "xp 3400 max", "xp unknown").
 	int XP = -1;
 	float XPFraction = 0.0;
 	bool bXPGreyed = true;
+	int XPNext = -1;
+	FString XPText;
+	FString XPDescribe = "xp unknown";
 	int NumAbilities = 3;
 	bool bAbilitiesGreyed = true;
 	// HOLHeroBlockText::ReadyIn ("Prêt dans m:ss", DelayClock the m:ss), Unknown ("…"), "" none.
@@ -55,7 +60,7 @@ namespace HOLHeroBlock
 		View.bVisible = true;
 		View.Level = Level;
 		View.MaxHealth = Math::Max(0, MaxHealth);
-		View.XP = XP;
+		SetXP(View, Level, XP);
 		if (State == EHOLHeroState::Alive)
 		{
 			View.Health = Math::Clamp(Health, 0, View.MaxHealth);
@@ -100,6 +105,27 @@ namespace HOLHeroBlock
 			View.Describe = "unknown";
 		}
 		return View;
+	}
+
+	// The XP's bar of a hero of Level with XP (-1 unknown), alive or dead (development goes on while dead, D06).
+	void SetXP(FHOLHeroBlockView& View, int Level, int XP)
+	{
+		View.XP = XP;
+		if (XP < 0)
+			return;
+		View.bXPGreyed = false;
+		if (Level >= HOLHero::GetMaxLevel())
+		{
+			View.XPFraction = 1.0;
+			View.XPText = f"{XP}";
+			View.XPDescribe = f"xp {XP} max";
+			return;
+		}
+		const int Start = HOLHero::GetLevelXP(Level);
+		View.XPNext = HOLHero::GetLevelXP(Level + 1);
+		View.XPFraction = View.XPNext > Start ? Math::Clamp(float(XP - Start) / float(View.XPNext - Start), 0.0, 1.0) : 0.0;
+		View.XPText = f"{XP} / {View.XPNext}";
+		View.XPDescribe = f"xp {XP}/{View.XPNext}";
 	}
 
 	// Seconds as m:ss (0:23, 1:01, 12:05).

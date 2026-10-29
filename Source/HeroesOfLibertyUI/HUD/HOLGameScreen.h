@@ -23,6 +23,7 @@ class UHOLScriptScreen;
 class UImage;
 class UTexture2D;
 class UProgressBar;
+class UScaleBox;
 class UWrapBox;
 struct FHOLUnitTypeRow;
 
@@ -87,8 +88,20 @@ public:
 	/** J8a.5: the lines of the part in script (UHOLScriptScreen::Describe), "hero: ..." each; "script: none" without it. */
 	FString DescribeScript() const;
 
-	/** J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar. */
-	static FMargin GetBottomLeftPlace();
+	/**
+	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
+	 * follows the bar's scale (GetBottomScale), read anew on every refresh of the block.
+	 */
+	FMargin GetBottomLeftPlace() const;
+	/** EtapeDefini T: the scale the bottom bar is drawn at (1 unless the window is too narrow), from its live geometry. */
+	float GetBottomScale() const;
+
+	/**
+	 * EtapeDefini T: the bottom bar against the minimap's place, from the live geometry (Slate units, the window's DPI
+	 * scale taken out): "viewport 1600x900, dpi 0.833, width 1920, bar 1224 shown 1224 (scale 1.00) right 1240,
+	 * minimap 240 left 1664, gap 424" (the line "HUD layout" of hol.HUD.Report; a negative gap: the bar over the place).
+	 */
+	FString DescribeLayout() const;
 
 	/** The tooltips of the grid's cells: "A: Maison | W 50 | +10 population; Z: ..." (hol.HUD.Report). */
 	FString DescribeTooltips() const;
@@ -164,6 +177,18 @@ protected:
 	/** The control groups' bar (J7a.5, D30), bottom left: one slot per group not empty, 1 to 9 then 0. */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> GroupsPanel;
+
+	/**
+	 * EtapeDefini T: the bottom bar (selection, commands, ages) and the minimap's place, measured by DescribeLayout; the
+	 * scale box holding the groups' bar and the bottom bar in the width left of the minimap's place (drawn smaller, down
+	 * only, when the window is too narrow: 1500 px wide at 1080 high, 4:3 windows).
+	 */
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> BottomBar;
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> MinimapPlace;
+	UPROPERTY(Transient)
+	TObjectPtr<UScaleBox> BottomScale;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> SelectionPanel;
@@ -464,6 +489,11 @@ private:
 	void HandleForumEvent(const struct FHOLForumEvent& Event);
 	/** J8a.4 (D202): the minor alert « Votre héros est prêt à revenir », a thread's line only (no banner nor sound). */
 	void HandleHeroReadyMessage(const struct FHOLForumMessage& Message);
+	/**
+	 * J8b.4 (J8b-Q4, D202): the local player's hero gone up: the minor alerts « Paladin-Commandant : niveau N » and, at
+	 * levels 3 and 6, « Palier 1 / 2 atteint » (HOLForumMessages::GetHeroLevelMessages), thread's lines with one sound.
+	 */
+	void HandleHeroLevelUp(int32 HeroSlot, int32 OldLevel, int32 NewLevel);
 	void TickMessages();
 	void RebuildMessages();
 	UPROPERTY(Transient)
@@ -499,6 +529,7 @@ private:
 	FHOLForumAlert Alert;
 	FDelegateHandle TableForumEventHandle;
 	FDelegateHandle TableHeroReadyHandle;
+	FDelegateHandle TableHeroLevelHandle;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;
 	/** The names of the players table as last logged (M6-Q12). */

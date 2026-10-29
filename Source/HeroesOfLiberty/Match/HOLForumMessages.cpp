@@ -161,7 +161,49 @@ FHOLForumMessage HOLForumMessages::GetHeroReadyMessage()
 	return Message;
 }
 
+TArray<FHOLForumMessage> HOLForumMessages::GetHeroLevelMessages(const int32 OldLevel, const int32 NewLevel)
+{
+	TArray<FHOLForumMessage> Messages;
+	if (NewLevel <= OldLevel)
+	{
+		return Messages;
+	}
+	FHOLForumMessage Level;
+	Level.Text = FText::Format(LOCTEXT("MessageHeroLevel", "Paladin-Commandant : niveau {0}"), FText::AsNumber(NewLevel));
+	Messages.Add(Level);
+	for (int32 Tier = 0; Tier < UE_ARRAY_COUNT(HeroTierLevels); ++Tier)
+	{
+		if (OldLevel < HeroTierLevels[Tier] && NewLevel >= HeroTierLevels[Tier])
+		{
+			FHOLForumMessage Reached;
+			Reached.Text = FText::Format(LOCTEXT("MessageHeroTier", "Palier {0} atteint"), FText::AsNumber(Tier + 1));
+			Messages.Add(Reached);
+		}
+	}
+	for (FHOLForumMessage& Message : Messages)
+	{
+		Message.Shown = FString::Printf(TEXT("Hero message: %s"), *Message.Text.ToString());
+	}
+	return Messages;
+}
+
 #undef LOCTEXT_NAMESPACE
+
+int32 FHOLHeroLevelWatch::Update(const int32 Slot, const int32 Level)
+{
+	if (Slot < 0)
+	{
+		return 0;
+	}
+	if (!Seen.IsValidIndex(Slot))
+	{
+		Seen.SetNumZeroed(Slot + 1);
+	}
+	const int32 Before = Seen[Slot];
+	Seen[Slot] = Level;
+	// Up from a level seen (1 at least); the first one seen, or none (0), is no level up.
+	return Before >= 1 && Level > Before ? Before : 0;
+}
 
 bool FHOLHeroReadyWatch::Update(const int32 ViewerSlot, const EHOLHeroState State)
 {

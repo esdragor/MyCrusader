@@ -8,6 +8,10 @@
 #include "HOLHeroSubsystem.generated.h"
 
 class AHOLPlayerState;
+enum class EHOLXPSource : uint8;
+struct FHOLCombatFragment;
+struct FHOLUnitStateFragment;
+struct FHOLUnitTypeConstants;
 
 /** J8a.4: a simulation step's end, the hero sheets already written (Step: UHOLSimulationSubsystem::GetStepIndex). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHOLOnHeroStep, int32, Step);
@@ -33,6 +37,12 @@ public:
 
 	/** Makes every slot's sheet from its hero now and writes the copies that changed (the end of each step). */
 	void UpdateSheets();
+
+	/**
+	 * J8b.2: XP earned by the slot's side (a kill, a building finished; HOLHeroXP), added to his true sheet; the copies and
+	 * his body's level follow at the step's end (UpdateSheets). Nothing out of range, on a client, or for XP <= 0.
+	 */
+	void AddXP(int32 Slot, int32 XP, EHOLXPSource Source);
 
 	/** Development (hol.Hero.SetXP): the slot's XP set, its copies written at once. False out of range or on a client. */
 	bool SetXP(int32 Slot, int32 XP);
@@ -81,6 +91,8 @@ private:
 	void OnStepEnded(int64 StepIndex);
 	/** The slot's copies (game state, player state), each written only when it changed. */
 	void WriteCopies(int32 Slot) const;
+	/** J8b.2: his body brought to the level of his XP (attack, max health; the HP gained added), alive only. */
+	void ApplyLevel(int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const;
 	void UnbindSteps();
 
 	/** One per slot (FHOLMatchConfig::MaxSlots). */

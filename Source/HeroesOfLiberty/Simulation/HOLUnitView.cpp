@@ -8,6 +8,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLHeroSheet.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
 namespace HOLUnitView
@@ -49,9 +50,15 @@ namespace HOLUnitView
 		return bFound && (bIncludeDying || OutUnit.Activity != EHOLUnitActivity::Dying);
 	}
 
-	void SetReceivedHealth(FHOLUnitView& View, const bool bFullHealth, const uint16 WireHealth, const int32 MaxHealth, const bool bHero,
+	void SetReceivedHealth(FHOLUnitView& View, const bool bFullHealth, const uint16 WireHealth, int32 MaxHealth, const bool bHero,
 		const FHOLHeroSheet* HeroSheet)
 	{
+		// J8b.3: a hero's maximum at the level of his public sheet (J8b-Q3; the server sends his share of it), MaxHealth (the
+		// table's, level 1) before the sheet is received.
+		if (bHero && HeroSheet && HeroSheet->Level > 1)
+		{
+			MaxHealth = FMath::RoundToInt(HOLHeroXP::GetLevelStat(static_cast<float>(MaxHealth), HeroSheet->Level));
+		}
 		View.bFullHealth = bFullHealth;
 		View.MaxHealth = MaxHealth;
 		View.Health = GetReceivedHealth(bFullHealth, WireHealth, MaxHealth, bHero);

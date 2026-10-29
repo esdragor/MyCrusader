@@ -14,11 +14,14 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLHeroReturnSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 
 namespace UE::HeroesOfLiberty::Hero
 {
@@ -210,24 +213,25 @@ void UHOLHeroSubsystem::UpdateSheets()
 {
 	UWorld* World = GetWorld();
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
-	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
 	if (!Units || !EntitySubsystem || World->GetNetMode() == NM_Client)
 	{
 		return;
 	}
-	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
 	for (int32 Slot = 0; Slot < Sheets.Num(); ++Slot)
 	{
 		FHOLHeroFacts Facts;
 		const uint32 HeroId = Units->FindHeroUnit(Slot);
 		const FMassEntityHandle Entity = HeroId != 0 ? Units->FindEntity(HeroId) : FMassEntityHandle();
-		const FHOLUnitStateFragment* State = Entity.IsSet() && EntityManager.IsEntityValid(Entity)
+		FHOLUnitStateFragment* State = Entity.IsSet() && EntityManager.IsEntityValid(Entity)
 			? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
 		if (State)
 		{
+			FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+			ApplyLevel(Slot, State, Combat, EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity));
 			Facts.bPresent = true;
 			Facts.Health = State->CurrentHealth;
-			const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
 			Facts.DeathStep = Combat ? Combat->DeathStep : -1;
 		}
 		Sheets[Slot] = HOLHeroSheet::Make(Facts, Sheets[Slot]);
@@ -235,6 +239,35 @@ void UHOLHeroSubsystem::UpdateSheets()
 	}
 	// J8a.4: the returns asked were born at this step's start (or failed): they may be asked again.
 	PendingReturns = 0;
+}
+
+void UHOLHeroSubsystem::ApplyLevel(const int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const
+{
+	// J8b.2: the level of his XP on his body, alive only (a dying one keeps his; born again at level 1 and full health, he
+	// rises here at once to full health at his level: the max HP gained added, J8b-Q3).
+	const int32 Level = HOLHeroXP::GetLevel(Sheets[Slot].Private.XP);
+	if (!State || !Combat || !Constants || State->CurrentHealth <= 0.f || Combat->DeathStep >= 0 || Combat->Level == Level)
+	{
+		return;
+	}
+	const int32 OldLevel = Combat->Level;
+	State->CurrentHealth = HOLHeroXP::GetHealthAfterLevelUp(State->CurrentHealth, static_cast<float>(Constants->MaxHealth), OldLevel, Level);
+	Combat->Level = static_cast<uint8>(Level);
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero level: slot %d level %d -> %d, hp %d / %d"), Slot, OldLevel, Level,
+		HOLCombat::GetShownHealth(State->CurrentHealth), HOLCombat::GetMaxHealth(*Constants, Level));
+}
+
+void UHOLHeroSubsystem::AddXP(const int32 Slot, const int32 XP, const EHOLXPSource Source)
+{
+	if (!Sheets.IsValidIndex(Slot) || XP <= 0 || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	static const TCHAR* const SourceNames[] = { TEXT("combat"), TEXT("command"), TEXT("development"), TEXT("exploration") };
+	const int32 SourceIndex = static_cast<int32>(Source);
+	Sheets[Slot].Private.XP += XP;
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero XP: slot %d +%d (%s), xp %d"), Slot, XP,
+		SourceIndex < UE_ARRAY_COUNT(SourceNames) ? SourceNames[SourceIndex] : TEXT("?"), Sheets[Slot].Private.XP);
 }
 
 bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)

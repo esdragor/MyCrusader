@@ -9,6 +9,8 @@
 class UHOLGameScreenScript : UHOLScriptScreen
 {
 	UBorder HeroPanel;
+	// Its place (EtapeDefini T): read anew on every refresh, the bottom bar's scale may change with the window.
+	UOverlaySlot HeroPanelSlot;
 	UButton HeroPortrait;
 	UBorder HeroPortraitFill;
 	UImage HeroPortraitEmblem;
@@ -97,10 +99,10 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	{
 		HeroPanel = MakePanel(n"HeroPanel");
 		HeroPanel.SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(HeroPanel);
-		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
-		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
-		PanelSlot.SetPadding(GetBottomLeftPlace());
+		HeroPanelSlot = Frame.AddChildToOverlay(HeroPanel);
+		HeroPanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		HeroPanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 
 		UHorizontalBox Row = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroRow"));
 		HeroPanel.SetContent(Row);
@@ -142,8 +144,8 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		Column.AddChildToVerticalBox(SizedBar(n"HeroHealthBarBox", HeroHealthBar, 8.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 1.0));
 		HeroHealthText = MakeText(n"HeroHealth", UHOLTextStyleHUDLabel);
 		Column.AddChildToVerticalBox(HeroHealthText);
-		// The XP: empty and greyed until the levels have thresholds.
-		HeroXPBar = MakeBar(n"HeroXPBar", UHOLScriptScreen::GetMutedColor());
+		// The XP (J8b.4): gold, filled within the level, its numbers on hover; greyed while unknown.
+		HeroXPBar = MakeBar(n"HeroXPBar", FLinearColor(0.85, 0.65, 0.15, 1.0));
 		HeroXPBar.SetRenderOpacity(0.5);
 		Column.AddChildToVerticalBox(SizedBar(n"HeroXPBarBox", HeroXPBar, 5.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 3.0));
 		// Three abilities' boxes, greyed, no text yet.
@@ -191,6 +193,9 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	UFUNCTION(BlueprintOverride)
 	void Refresh()
 	{
+		// The block's place follows the bottom bar's scale (EtapeDefini T).
+		if (HeroPanelSlot != nullptr)
+			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
 		RefreshPause();
 	}
@@ -252,7 +257,7 @@ class UHOLGameScreenScript : UHOLScriptScreen
 			View = HOLHeroBlock::Make(true, false, EHOLHeroState::None, 0, 0, 0, -1, FHOLHeroReturnQuote());
 		else
 			View = HOLHeroBlock::Make(false, HOLHero::IsSlotDefeated(PlayerSlot), HOLHero::GetHeroState(PlayerSlot), HOLHero::GetHeroLevel(PlayerSlot),
-				HOLHero::GetHeroHealth(PlayerSlot), HOLHero::GetHeroMaxHealth(), -1, HOLHeroReturnQuote::ReadNow(PlayerSlot));
+				HOLHero::GetHeroHealth(PlayerSlot), HOLHero::GetHeroMaxHealth(PlayerSlot), HOLHero::GetHeroXP(PlayerSlot), HOLHeroReturnQuote::ReadNow(PlayerSlot));
 		ShowHero(View);
 	}
 
@@ -276,6 +281,7 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		HeroHealthText.SetText(FText::FromString(HOLHeroBlockText::HealthText(View)));
 		HeroXPBar.SetPercent(View.XPFraction);
 		HeroXPBar.SetRenderOpacity(View.bXPGreyed ? 0.5 : 1.0);
+		HeroXPBar.SetToolTipText(FText::FromString(View.XPText));
 		for (int Index = 0; Index < HeroAbilities.Num(); ++Index)
 		{
 			HeroAbilities[Index].SetVisibility(Index < View.NumAbilities ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
@@ -362,6 +368,7 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	FString Describe() const
 	{
 		return "hero: " + HeroView.Describe + (HeroTexts.IsEmpty() ? "" : "\nhero texts: " + HeroTexts)
+			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

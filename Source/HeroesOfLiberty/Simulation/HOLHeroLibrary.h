@@ -31,9 +31,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroHealth(const UObject* WorldContextObject, int32 Slot);
 
-	/** A hero's HP when whole: the Hero type's MaxHealth (450, J8a-Q1); 0 without the unit types (J8a.5: the hero's block). */
+	/**
+	 * A hero's HP when whole: the Hero type's MaxHealth (450, J8a-Q1) at the level of the slot's public sheet (J8b-Q3: 486
+	 * at level 2; level 1 for Slot -1 or no level yet); 0 without the unit types (J8a.5: the hero's block).
+	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
-	static int32 GetHeroMaxHealth(const UObject* WorldContextObject);
+	static int32 GetHeroMaxHealth(const UObject* WorldContextObject, int32 Slot = -1);
 
 	/**
 	 * The step the slot's hero fell at (-1 alive or without a hero): the true sheet on the server; on a client, the local
@@ -41,6 +44,21 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroDeathStep(const UObject* WorldContextObject, int32 Slot);
+
+	/**
+	 * J8b.4: the slot's hero XP where it is known (J8-Q5: to its owner alone): the true sheet on the server or in solo; on a
+	 * client, the local player's own private copy, -1 for any other slot.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroXP(const UObject* WorldContextObject, int32 Slot);
+
+	/** J8b.4: the total XP to reach Level (HOLHeroXP::GetLevelXP: 0, 200, 600, 1 300, 2 200, 3 300; clamped to 1..6). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static int32 GetLevelXP(int32 Level);
+
+	/** J8b.4: the prototype's last level (HOLHeroXP::MaxLevel, 6). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static int32 GetMaxLevel();
 
 	/** Slots of a match (FHOLMatchConfig::MaxSlots): the slots run 0 to this less one. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")

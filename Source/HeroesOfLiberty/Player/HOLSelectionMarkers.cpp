@@ -16,6 +16,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLStartRules.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -62,6 +63,18 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double PingEndRadius = 25.0;
 	constexpr double PingStroke = 8.0;
 	const FLinearColor PingColor(0.9f, 0.9f, 0.9f);
+	/**
+	 * J8b.4 (J8b-Q4): a hero's level up, a golden flash ~1 s on him, seen by all: a ring at his feet, bright then gone at
+	 * half the time, and a wider one going out from him and thinning.
+	 */
+	constexpr float HeroFlashSeconds = 1.0f;
+	const FLinearColor HeroFlashColor(1.0f, 0.75f, 0.15f);
+	constexpr double HeroFlashInnerFactor = 1.8;
+	constexpr double HeroFlashInnerStroke = 32.0;
+	constexpr double HeroFlashStartFactor = 2.0;
+	constexpr double HeroFlashEndFactor = 7.0;
+	constexpr double HeroFlashStartStroke = 40.0;
+	constexpr double HeroFlashEndStroke = 8.0;
 	/** An attack order's ping (J7b.3): on its target, or an attack-move's point. */
 	const FLinearColor AttackPingColor(0.9f, 0.08f, 0.05f);
 	/** The places of a right-button drag's formation (J7a.4): thin rings, smaller than a unit's, in the ping's white. */
@@ -355,6 +368,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	{
 		HOLUnitView::Gather(*World, Views);
 	}
+	UpdateHeroFlashes(DeltaSeconds);
 	UpdateRings();
 	UpdateHealthBars();
 	UpdateOrderLines();
@@ -442,6 +456,31 @@ void AHOLSelectionMarkers::UpdateRings()
 		Transforms.Add(MarkerTransform(Source.Location, Radius * 2.0, Radius * 2.0));
 		AddCustomData(CustomData, SelectionColor, SourceRingStroke / Radius);
 	}
+	// J8b.4: the heroes' golden flashes, on their bodies as drawn.
+	HeroFlashRings = 0;
+	for (const TPair<int32, float>& Flash : HeroFlashes)
+	{
+		for (const FHOLUnitView& View : Views)
+		{
+			if (View.OwnerPlayer != Flash.Key || View.TypeName != FHOLStartRules::HeroTypeName)
+			{
+				continue;
+			}
+			const double Share = FMath::Clamp(static_cast<double>(Flash.Value / HeroFlashSeconds), 0.0, 1.0);
+			if (Share < 0.5)
+			{
+				const double Inner = View.Radius * HeroFlashInnerFactor;
+				Transforms.Add(MarkerTransform(View.Location, Inner * 2.0, Inner * 2.0));
+				AddCustomData(CustomData, HeroFlashColor, HeroFlashInnerStroke / Inner);
+				++HeroFlashRings;
+			}
+			const double Out = 1.0 - FMath::Square(1.0 - Share);
+			const double Radius = View.Radius * FMath::Lerp(HeroFlashStartFactor, HeroFlashEndFactor, Out);
+			Transforms.Add(MarkerTransform(View.Location, Radius * 2.0, Radius * 2.0));
+			AddCustomData(CustomData, HeroFlashColor, FMath::Lerp(HeroFlashStartStroke, HeroFlashEndStroke, Share) / Radius);
+			++HeroFlashRings;
+		}
+	}
 	if (PingAge < PingSeconds)
 	{
 		const double Radius = FMath::Lerp(PingStartRadius, PingEndRadius, static_cast<double>(PingAge / PingSeconds));
@@ -449,6 +488,31 @@ void AHOLSelectionMarkers::UpdateRings()
 		AddCustomData(CustomData, bAttackPing ? AttackPingColor : PingColor, PingStroke / Radius);
 	}
 	SetInstances(*Rings, Transforms, CustomData);
+}
+
+void AHOLSelectionMarkers::UpdateHeroFlashes(const float DeltaSeconds)
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+	for (auto It = HeroFlashes.CreateIterator(); It; ++It)
+	{
+		It.Value() += DeltaSeconds;
+		if (It.Value() >= HeroFlashSeconds)
+		{
+			It.RemoveCurrent();
+		}
+	}
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	for (int32 Slot = 0; GameState && Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		const int32 Level = GameState->GetHeroSheet(Slot).Level;
+		const int32 OldLevel = HeroLevelWatch.Update(Slot, Level);
+		if (OldLevel > 0)
+		{
+			HeroFlashes.Add(Slot, 0.f);
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero flash: slot %d level %d -> %d"), Slot, OldLevel, Level);
+		}
+	}
 }
 
 bool AHOLSelectionMarkers::ShowsHealthBar(const bool bSelected, const bool bFullHealth)
@@ -895,7 +959,7 @@ FString AHOLSelectionMarkers::Describe() const
 		Flags += FString::Printf(TEXT("%s(%.0f, %.0f)"), Index == 0 ? TEXT(" at ") : TEXT(" "), FlagFeet[Index].X, FlagFeet[Index].Y);
 	}
 	// The order lines drawn (D328): their segments and step points (quick_check's move part counts them).
-	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings,
+	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings - HeroFlashRings,
 		Frames->GetInstanceCount(), *Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"),
 		OrderLines->GetInstanceCount(), OrderPoints->GetInstanceCount(), DimmedFrames);
 }
