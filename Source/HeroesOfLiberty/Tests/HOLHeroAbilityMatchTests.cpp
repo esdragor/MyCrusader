@@ -7,6 +7,8 @@
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Misc/AutomationTest.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Presentation/HOLBannerSubsystem.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -194,6 +196,20 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 			TestFalse(TEXT("no banner 16.5 m away"), Heroes->PlantBanner(0, FVector(1650.0, 0.0, 0.0)));
 			TestTrue(TEXT("a banner 16 m away"), Heroes->PlantBanner(0, FVector(1600.0, 0.0, 0.0)));
 			TestFalse(TEXT("... not another during its cool-down"), Heroes->PlantBanner(0, FVector(-1600.0, 0.0, 0.0)));
+			// Its standard drawn for all (J8c.4 loop 4): one instance of SM_Banner, no shadow, at the place planted, from the next frame.
+			UHOLBannerSubsystem* BannerDisplay = World->GetSubsystem<UHOLBannerSubsystem>();
+			if (TestNotNull(TEXT("the banner display in a game world"), BannerDisplay))
+			{
+				BannerDisplay->Tick(0.01f);
+				if (TestEqual(TEXT("one banner drawn once planted"), BannerDisplay->GetShown().Num(), 1))
+				{
+					TestEqual(TEXT("... of slot 0"), BannerDisplay->GetShown()[0].Slot, 0);
+					TestEqual(TEXT("... planted 16 m away: x"), BannerDisplay->GetShown()[0].Location.X, 1600.0, 1.0);
+					TestEqual(TEXT("... y"), BannerDisplay->GetShown()[0].Location.Y, 0.0, 1.0);
+				}
+				const UInstancedStaticMeshComponent* BannerInstances = BannerDisplay->GetInstances();
+				TestTrue(TEXT("one instance, without shadow"), BannerInstances && BannerInstances->GetInstanceCount() == 1 && !BannerInstances->CastShadow);
+			}
 			TestEqual(TEXT("26 m from the hero, 10 m from the banner: aura, 10.2"), FirstHit(FVector(2600.0, 0.0, 0.0)), 10.2f, Tolerance);
 			TestEqual(TEXT("11 m from both: one aura, 10.2"), FirstHit(FVector(800.0, 800.0, 0.0)), 10.2f, Tolerance);
 
@@ -211,6 +227,17 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 			}
 			FVector BannerLocation;
 			TestFalse(TEXT("the banner gone after 45 s"), Heroes->GetBanner(0, BannerLocation));
+			if (UHOLBannerSubsystem* FallenDisplay = World->GetSubsystem<UHOLBannerSubsystem>())
+			{
+				// The display reads the simulation's step index, which this test's RunStep does not advance: caught up with its own count.
+				while (Simulation->GetStepIndex() < Step)
+				{
+					Simulation->AdvanceStepIndexForTests();
+				}
+				FallenDisplay->Tick(0.01f);
+				TestEqual(TEXT("no banner drawn once it fell"), FallenDisplay->GetShown().Num(), 0);
+				TestTrue(TEXT("... no instance left"), !FallenDisplay->GetInstances() || FallenDisplay->GetInstances()->GetInstanceCount() == 0);
+			}
 			TestEqual(TEXT("... 10 m from where it stood: the whole 12"), FirstHit(FVector(2600.0, 0.0, 0.0)), 12.f, Tolerance);
 		}
 	}

@@ -1777,7 +1777,7 @@ if ($Parts -contains "camera") {
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
                 "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor off",
-                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "capture build_hero_banner_rings",
+                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "hol.Hero.BannerDisplay", "capture build_hero_banner_rings", "hol.Camera.Focus $($AuraHero[0] + 1000) $($AuraHero[1])", "hol.Camera.Zoom 12", "frames 3", "capture build_hero_banner", "hol.Camera.Zoom -12", "hol.Camera.Focus $($AuraHero -join ' ')",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -2568,7 +2568,7 @@ if ($NetListening) {
         $NetSteps += "mark hero abilities", "waitfile $NetHeroAbilitiesFlag 120"
         if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
             "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
-        $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
+        $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "hol.Hero.BannerDisplay", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -4288,6 +4288,10 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         $Checks["planted: the hero's and the banner's circles, the aim gone ('$($AuraRings[3])')"] =
             $AuraRings[3] -match "^hero \(-?\d+, -?\d+\) 1200, banner \(-?\d+, -?\d+\) 1200$"
     }
+    # J8c.4 loop 4: his planted banner drawn (hol.Hero.BannerDisplay), one standard of slot 0 10 m from his hero.
+    $BannerShown = "$($GridCase | Select-String -Pattern "Banner display: (1 shown, slot 0 \(-?\d+, -?\d+, -?\d+\))" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+    $Checks["planted: one banner drawn at the place ('$BannerShown')"] =
+        ($BannerShown -match "^1 shown, slot 0 \((-?\d+), (-?\d+), -?\d+\)$") -and ([math]::Abs([int]$Matches[1] - ($AuraHero[0] + 1000)) -le 20) -and ([math]::Abs([int]$Matches[2] - $AuraHero[1]) -le 20)
     $AllOk = (Report "build hero grid" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
@@ -6469,6 +6473,8 @@ if ($Parts -contains "net") {
         $AbLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "hero abilities")
         $AbSheet = "$($AbLines | Select-String -Pattern "Hero sheet slot ${BobSlot}: .* (cries \d+ banner \S+ \S+ until -?\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $AbChecks["client $N : Bob's cries and banner as the server's ($AbSheet)"] = ($AbSheet -ne "") -and ($AbSheet -eq $AbTrueSheet)
+        $AbShown = "$($AbLines | Select-String -Pattern "Banner display: (1 shown, slot ${BobSlot} \(14665, 299, -?\d+\))" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $AbChecks["client $N : Bob's banner drawn where it stands ($AbShown)"] = $AbShown -ne ""
         if ($N -eq 1) {
             $AbLocal = "$($AbLines | Select-String -Pattern "Hero private slot $BobSlot local: .* ready (\S+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
             $AbChecks["client $N (Bob): his ready steps as the server's ($AbLocal)"] = ($AbLocal -ne "") -and ($AbLocal -eq $AbTrueReady)
