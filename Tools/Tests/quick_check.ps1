@@ -6130,6 +6130,81 @@ if ($Parts -contains "aiserver") {
     $AllOk = (Report "aiserver" $Checks) -and $AllOk
 }
 
+# The "aiduel" part (IA0.7, IA-Q3): two AI slots against each other, no client, no window (the editor in server mode
+# as "aiserver", on a fixed time step: the game's seconds go by faster than the clock). 2 min of the game's time, a
+# gather report every 2 s; run twice, with hol.Simulation.StepHashes 1. Checks: no Peasant of an AI slot idle (phase
+# None, in the report) for more than 10 s; the two runs' step hashes the same (the match is reproducible: places fixed
+# on Plain, the brain reads its summary in a fixed order); the wall time of the 2 min of game (the speed measured).
+function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
+    $Log = Join-Path $TestSaved "Logs\quick_aiduel_$Tag.log"
+    $Config = Join-Path $TestSaved "quick_aiduel.json"
+    $Sequence = Join-Path $TestSaved "quick_aiduel_$Tag.seq"
+    Remove-Item $Log -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $Config @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    $Lines = @("hol.Simulation.StepHashes 1")
+    for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
+    $Lines += @("hol.Gather.Report", "quit")
+    $Lines | Set-Content -Encoding utf8 $Sequence
+    $Port = Get-AITestPort
+    $Arguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+    $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
+    $TimedOut = -not $Process.WaitForExit(420000)
+    if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }
+    return @{ Log = $Log; TimedOut = $TimedOut; Sequence = $Sequence }
+}
+if ($Parts -contains "aiduel") {
+    $DuelSeconds = 120
+    $DuelFps = 20
+    $DuelRuns = @()
+    foreach ($Tag in "a", "b") {
+        $Watch = [Diagnostics.Stopwatch]::StartNew()
+        $Run = Invoke-AIDuelRun $Tag $DuelSeconds $DuelFps
+        $Run.WallSeconds = $Watch.Elapsed.TotalSeconds
+        $DuelRuns += $Run
+    }
+    $Checks = [ordered]@{}
+    $Hashes = @()
+    foreach ($Run in $DuelRuns) {
+        $Text = if (Test-Path $Run.Log) { Get-Content $Run.Log } else { @() }
+        $Checks["run $($Run.Log | Split-Path -Leaf): the server quit by itself"] = -not $Run.TimedOut
+        $ScriptErrors = @(Get-ScriptErrors $Run.Log)
+        $Checks["run $($Run.Log | Split-Path -Leaf): scripts compiled"] = $ScriptErrors.Count -eq 0
+        $Timeout = $Text | Select-String -Pattern "Test sequence: timeout at step" | Select-Object -First 1
+        $Checks["run $($Run.Log | Split-Path -Leaf): sequence ran to its end"] = -not $Timeout
+        $Checks["run $($Run.Log | Split-Path -Leaf): thinking slots [0, 1]"] = [bool]($Text | Select-String -Pattern "thinking slots \[0, ?1\]" -Quiet)
+        $Run.Hashes = @($Text | Select-String -Pattern "Step hash: step (\d+) ([0-9a-f]{16})" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+        # The idle time: the reports are 2 s of game apart; per slot, the longest run of reports with a Peasant idle.
+        $Reports = @{}
+        foreach ($Match in ($Text | Select-String -Pattern "Gather: slot (\d+) to source \d+, gathering \d+, to deposit \d+, not gathering (\d+)")) {
+            $Slot = [int]$Match.Matches[0].Groups[1].Value
+            if (-not $Reports.ContainsKey($Slot)) { $Reports[$Slot] = @() }
+            $Reports[$Slot] += [int]$Match.Matches[0].Groups[2].Value
+        }
+        $Run.MaxIdle = 0.0
+        $Run.NumReports = 0
+        foreach ($Slot in $Reports.Keys) {
+            $Run.NumReports = [Math]::Max($Run.NumReports, $Reports[$Slot].Count)
+            $Streak = 0
+            # The starting hero is among the "not gathering": the Peasants idle are the ones above it.
+            $Heroes = @($Text | Select-String -Pattern "Starting hero of slot $Slot spawned").Count
+            foreach ($NotGathering in $Reports[$Slot]) {
+                $Streak = if ($NotGathering -gt $Heroes) { $Streak + 1 } else { 0 }
+                $Run.MaxIdle = [Math]::Max($Run.MaxIdle, 2.0 * $Streak)
+            }
+        }
+    }
+    $First = $DuelRuns[0]
+    $Checks["gather reports taken ($($First.NumReports), one per 2 s)"] = $First.NumReports -ge ($DuelSeconds / 2)
+    $Checks["no AI Peasant idle more than 10 s (longest $($First.MaxIdle) s and $($DuelRuns[1].MaxIdle) s)"] = $First.MaxIdle -le 10 -and $DuelRuns[1].MaxIdle -le 10
+    $LastStep = if ($First.Hashes.Count) { ($First.Hashes[-1] -split ' ')[0] } else { "none" }
+    $Checks["step hashes: $($First.Hashes.Count) steps (last $LastStep), 2 min of game = 2400 steps at least"] = $First.Hashes.Count -ge ($DuelSeconds * 20)
+    $Same = ($First.Hashes.Count -gt 0) -and ($First.Hashes.Count -eq $DuelRuns[1].Hashes.Count) -and -not (Compare-Object $First.Hashes $DuelRuns[1].Hashes)
+    $Checks["the two runs' step hashes are the same"] = $Same
+    $Speed = if ($First.WallSeconds -gt 0) { [Math]::Round($DuelSeconds / $First.WallSeconds, 2) } else { 0 }
+    $Checks["speed: $DuelSeconds s of game in $([Math]::Round($First.WallSeconds, 1)) s of wall (x$Speed, with the engine's start) and $([Math]::Round($DuelRuns[1].WallSeconds, 1)) s"] = $true
+    $AllOk = (Report "aiduel" $Checks) -and $AllOk
+}
+
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
 # "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
 # named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).
