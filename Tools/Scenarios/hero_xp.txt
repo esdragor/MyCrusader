@@ -1,0 +1,62 @@
+# L'XP du héros de bout en bout (J8b.5, essai de J8b) : bâtir, combattre, commander, monter de niveau (barre, alertes, éclat doré), mourir, bâtir mort, revenir plus tard et plus cher
+# Plain, toi (slot 0) contre une IA (slot 1), hero_xp.json (copie de hero.json) : 5 Paysans et un héros chacun.
+# hol.Hero.ReturnTimePercent 50 : délais et baisse du prix deux fois plus courts. hol.Cheat.FastBuild pour les deux Maisons.
+# XP (J8b-Q2) : Maison 50 bois = +25 (développement ×0,5) ; Homme d'armes tué par le héros +120 (combat), par une troupe
+# à 12 m du héros vivant +90 (commandement ×0,75) ; seuils 200 / 600 / 1 300 / 2 200 / 3 300.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Hero.ReturnTimePercent 50
+hol.Cheat.Resources 1000
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Bloc du héros (en bas à gauche) : « Niveau 1 », barre d'XP dorée vide ; au survol « 0 / 200 ».
+wait 6
+note 2. Bâtir : un Paysan bâtit une Maison (bâtie vite) ; finie, +25 XP de développement : la barre bouge à peine (25 / 200).
+hol.Cheat.FastBuild 1
+hol.Units.Spawn 1 -14000 1200 0 Peasant 10
+wait 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Build.PlaceNear House 2000 2400
+waitlog Construction: slot 0 placed House
+hol.Select.OrderNear 2000 2400
+waitlog Construction: slot 0 finished House
+waitlog Hero XP: slot 0 +25 (development)
+hol.Cheat.FastBuild 0
+hol.Camera.FocusNear -900 300
+frames 3
+wait 4
+note 3. Combattre : 2 Hommes d'armes ennemis arrivent à côté de lui ; chaque mort +120 (combat). Au 2e : niveau 2.
+hol.Units.Spawn 2 -16500 300 1 ManAtArms 150
+waitlog Hero level: slot 0 level 1 -> 2
+note Niveau 2 : alerte « Paladin-Commandant : niveau 2 » dans le fil avec un son, deux anneaux dorés au sol autour de lui (vus de tous), « Niveau 2 » et PV max 486 dans le bloc.
+wait 8
+note 4. Commander : 6 de tes Hommes d'armes à côté de lui, puis 5 ennemis ; un ennemi tué par eux près du héros vivant (12 m) +90 (commandement). Vers 600 : niveau 3, palier 1.
+hol.Units.Spawn 6 -15900 900 0 ManAtArms 250
+wait 3
+hol.Units.Spawn 5 -16700 300 1 ManAtArms 200
+waitlog Hero level: slot 0 level 2 -> 3
+note Niveau 3 : « niveau 3 » puis « Palier 1 atteint » dans le fil, éclat doré ; barre recommencée de 600 à 1 300.
+wait 10
+note 5. Mourir : le héros tombe (hol.Hero.Kill 0). Mort, il gagne encore l'XP de développement (pas le combat ni le commandement).
+hol.Hero.Kill 0
+waitlog hol.Hero.Kill: slot 0
+wait 2
+note 6. Bâtir mort : une 2e Maison, +25 XP pendant la mort (barre du bloc, montrée grisée ou non, D06).
+hol.Cheat.FastBuild 1
+hol.Units.Spawn 1 -14000 1200 0 Peasant 10
+wait 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Build.PlaceNear House 6000 0
+waitlog Construction: slot 0 placed House
+hol.Select.OrderNear 6000 0
+waitlog Construction: slot 0 finished House
+waitlog Hero XP: slot 0 +25 (development)
+hol.Cheat.FastBuild 0
+hol.Camera.FocusNear -900 300
+frames 3
+note 7. Revenir plus tard et plus cher : au niveau 3, prêt 27 s après la mort (19 s au niveau 1), à 250 or (150 au niveau 1), prix qui baisse en 30 s.
+waitlog Hero return: slot 0 ready
+note Prêt : alerte « Votre héros est prêt à revenir », bouton « Ramener le héros — 250 or » qui baisse. Clic : il revient près du forum, niveau 3, PV 522 / 522.
+note Ensuite, console (²) : hol.Hero.SetXP 0 3300 : niveau 6, « Palier 2 atteint », barre pleine. Langues : hol.UI.Language en / ja / fr. Vraies durées : hol.Hero.ReturnTimePercent 100.
