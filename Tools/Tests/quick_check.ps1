@@ -433,6 +433,13 @@ if ($Parts -contains "menu") {
         Back
     }
     Step "hol.UI.Language fr", "waitui"
+    # IA0.6 S3: from the menu to the match, no file: "IA" chosen in the list of slot 1, Launch (what the screen shows);
+    # the brain thinks for slot 1 and sends its 5 Peasants to gather. quick_check runs without starting Peasants
+    # ($NoStartingPeasants, the game's rule is 5): the AI's 5 are made once its centre is down. Back to the main menu.
+    Open NewGame
+    Step "mark menu ailaunch", "hol.UI.Choose SlotState1 2", "frames 3", "hol.UI.NewGame.Launch - 0", "waitlog Main centre of slot 1",
+        "hol.Units.Spawn 5 0 0 1 Peasant", "waitlog AI slot 1 step",
+        "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
 # The "victory" part (V1.4a, D356-D358), in solo on Plain, a human (slot 0) against an AI (slot 1): the surrender by
@@ -2910,6 +2917,17 @@ if ($Parts -contains "menu") {
             python (Join-Path $PSScriptRoot "make_sheet.py") $Shots "qc_$Culture" $MenuScreens | Out-Null
         }
     }
+    # IA0.6 S3: the AI chosen in the list goes to the match: an AI slot in the given configuration, the brain thinking
+    # for slot 1 (not the main menu's "thinking slots []"), its 5 starting Peasants sent to gather.
+    $Checks = [ordered]@{}
+    $Launch = Get-Section "menu ailaunch"
+    $Checks["IA chosen in the list of slot 1"] = [bool]($Launch | Select-String -SimpleMatch "SlotState1: value 2 chosen" -Quiet)
+    $Checks["launched from the screen (given configuration, 2 occupied slots)"] = [bool]($Launch | Select-String -Pattern "Match on \w+: given configuration, 2 occupied slots" -Quiet)
+    $Checks["brain thinking for slot 1"] = [bool]($Launch | Select-String -SimpleMatch "thinking slots [1]" -Quiet)
+    $Gather = @($Launch | Select-String -Pattern "AI slot 1 step \d+: (\d+) idle -> gather \w+ #\d+$") | Select-Object -First 1
+    $Idle = if ($Gather) { [int]$Gather.Matches[0].Groups[1].Value } else { 0 }
+    $Checks["its 5 Peasants sent to gather ($Idle)"] = $Idle -eq 5
+    $AllOk = (Report "menu ailaunch" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "camera") {
