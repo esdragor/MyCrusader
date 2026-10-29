@@ -93,6 +93,8 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 		}
 	}
 	Map.Init(FHOLVisionGrid::MakeCentered(AHOLMapBounds::MaxSideTiles, UHOLBuildingSettings::GetTileSize()), Camps.Num());
+	Ghosts.Reset();
+	Ghosts.SetNum(Camps.Num());
 	if (Mode == EHOLFogMode::Explored)
 	{
 		for (int32 Camp = 0; Camp < Camps.Num(); ++Camp)
@@ -118,6 +120,23 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 			}
 			SourceHandle = Sources->OnSourceStanding.AddUObject(this, &UHOLVisionSubsystem::OnSourceStanding);
 		}
+		// D389: the resources revealed from the start, remembered as they are now.
+		if (Mode == EHOLFogMode::Explored)
+		{
+			for (int32 Index = 0; Index < Sources->GetSources().Num(); ++Index)
+			{
+				const FHOLSource& Source = Sources->GetSources()[Index];
+				if (Source.IsStanding() && !Sources->IsLinked(Index))
+				{
+					const FHOLGhost Ghost{ HOLVisionRules::MakeGhostKey(true, Index), Sources->GetTypeNames()[Source.TypeIndex], FHOLSource::NoOwner,
+						FVector2D(Source.Location), EHOLBuildingSight::Standing, Source.Remaining };
+					for (TMap<uint64, FHOLGhost>& Memory : Ghosts)
+					{
+						Memory.Add(Ghost.Key, Ghost);
+					}
+				}
+			}
+		}
 	}
 	bStarted = true;
 	UE_LOG(LogHOLMatch, Log, TEXT("Fog: started, mode %s, camps %d, grid %d x %d cells of %.0f cm"), GetModeName(Mode), Camps.Num(),
@@ -133,6 +152,7 @@ void UHOLVisionSubsystem::Update()
 	}
 	const double StartSeconds = FPlatformTime::Seconds();
 	++Stamp;
+	Present.Reset();
 	Units->ForEachLivingUnitWithType([this](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
 	{
 		const int32 Camp = GetCampIndex(Owner);
@@ -167,6 +187,8 @@ void UHOLVisionSubsystem::Update()
 			State = Building->GetShownLook() == EHOLForumLook::Rubble ? EHOLBuildingSight::Rubble : EHOLBuildingSight::Site;
 		}
 		const double Radius = HOLVisionRules::GetBuildingSight(Type->SightRadius, State);
+		Present.Add(FHOLGhost{ HOLVisionRules::MakeGhostKey(false, Building->GetUniqueID()), Building->GetTypeName(), Building->GetOwnerPlayer(),
+			FVector2D(Building->GetActorLocation()), State, 0 });
 		if (FTracked* Tracked = BuildingObservers.Find(Building->GetUniqueID()))
 		{
 			if (Tracked->Radius != Radius)
@@ -193,7 +215,31 @@ void UHOLVisionSubsystem::Update()
 			}
 		}
 	}
+	// F4: each camp's memory of the buildings and sources (a farm's field stands with its farm, not on its own).
+	if (const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>())
+	{
+		for (int32 Index = 0; Index < Sources->GetSources().Num(); ++Index)
+		{
+			const FHOLSource& Source = Sources->GetSources()[Index];
+			if (Source.IsStanding() && !Sources->IsLinked(Index))
+			{
+				Present.Add(FHOLGhost{ HOLVisionRules::MakeGhostKey(true, Index), Sources->GetTypeNames()[Source.TypeIndex], FHOLSource::NoOwner,
+					FVector2D(Source.Location), EHOLBuildingSight::Standing, Source.Remaining });
+			}
+		}
+	}
+	for (int32 Camp = 0; Camp < Ghosts.Num(); ++Camp)
+	{
+		HOLVisionRules::UpdateGhosts(Ghosts[Camp], Present,
+			[this, Camp](const FVector2D& Position) { return Map.GetCount(Camp, Map.GetGrid().ToCell(Position)) > 0; });
+	}
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
+}
+
+const TMap<uint64, FHOLGhost>* UHOLVisionSubsystem::GetGhosts(const int32 Slot) const
+{
+	const int32 Camp = Mode == EHOLFogMode::Disabled ? INDEX_NONE : GetCampIndex(Slot);
+	return Ghosts.IsValidIndex(Camp) ? &Ghosts[Camp] : nullptr;
 }
 
 int32 UHOLVisionSubsystem::GetCampIndex(const int32 Slot) const
@@ -224,8 +270,8 @@ FString UHOLVisionSubsystem::MakeReport() const
 				Slots.Add(FString::FromInt(Slot));
 			}
 		}
-		Report += FString::Printf(TEXT(", camp %d (slots %s) visible %d explored %d"), Camp, *FString::Join(Slots, TEXT(" ")),
-			Map.CountVisible(Camp), Map.CountExplored(Camp));
+		Report += FString::Printf(TEXT(", camp %d (slots %s) visible %d explored %d ghosts %d"), Camp, *FString::Join(Slots, TEXT(" ")),
+			Map.CountVisible(Camp), Map.CountExplored(Camp), Ghosts.IsValidIndex(Camp) ? Ghosts[Camp].Num() : 0);
 	}
 	return Report + FString::Printf(TEXT("; step %.3f ms"), LastUpdateMs);
 }

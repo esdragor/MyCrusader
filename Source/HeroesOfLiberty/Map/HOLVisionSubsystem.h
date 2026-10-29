@@ -58,6 +58,12 @@ public:
 
 	const FHOLVisionMap& GetMap() const { return Map; }
 
+	/**
+	 * F4 (D382, D520): what Slot's camp remembers of the buildings and sources it saw (HOLVisionRules::UpdateGhosts), kept
+	 * by the server for the reconnection (F6e); null for a slot with no camp, or no fog.
+	 */
+	const TMap<uint64, FHOLGhost>* GetGhosts(int32 Slot) const;
+
 	/** "Fog: mode Normal, camps 2, observers 12, camp 0 (slots 0) visible 812 explored 1650, ...; step 0.08 ms". */
 	FString MakeReport() const;
 
@@ -85,6 +91,10 @@ private:
 	/** F3.2: the buildings, by actor (UObject's unique identifier); Radius: their sight at the last Update. */
 	TMap<uint32, FTracked> BuildingObservers;
 	TMap<FName, double> UnitSights;
+	/** F4: per camp of Map, its memory. */
+	TArray<TMap<uint64, FHOLGhost>> Ghosts;
+	/** F4: the buildings and sources standing this step, as they are (gathered by Update). */
+	TArray<FHOLGhost> Present;
 	uint32 Stamp = 0;
 	double LastUpdateMs = 0.;
 	FDelegateHandle SourceHandle;

@@ -212,4 +212,55 @@ bool FHOLVisionMatchBuildingsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchGhostsTest, "HeroesOfLiberty.Vision.Match.Ghosts", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchGhostsTest::RunTest(const FString& Parameters)
+{
+	// F4 (D382, D520): the server remembers per camp the enemy's buildings seen, never its units.
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector Far(-30000., 0., 0.);
+	const FVector HousePlace(30000., 0., 0.);
+	AHOLBuilding* House = Match.World->SpawnActor<AHOLBuilding>(HousePlace, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the enemy's house"), House))
+	{
+		return false;
+	}
+	House->Setup(HOLBuildingTypeNames::House, 2, 2);
+	const uint64 HouseKey = HOLVisionRules::MakeGhostKey(false, House->GetUniqueID());
+	const uint32 Enemy = Match.Place(Peasant, 2, HousePlace + FVector(0., 1200., 0.));
+	const uint32 Scout = Match.Place(Peasant, 0, HousePlace + FVector(-1600., 0., 0.));
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u) || !TestNotEqual(TEXT("the enemy's Peasant"), Enemy, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	const TMap<uint64, FHOLGhost>* Seen = Match.Vision->GetGhosts(0);
+	if (!TestNotNull(TEXT("its camp's memory"), Seen))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the house seen: remembered"), Seen->Contains(HouseKey));
+	TestEqual(TEXT("only the house (no unit, no source here)"), Seen->Num(), 1);
+	TestTrue(TEXT("its ally remembers it too"), Match.Vision->GetGhosts(1) && Match.Vision->GetGhosts(1)->Contains(HouseKey));
+
+	Match.Move(Scout, Far);
+	Match.Vision->Update();
+	House->Destroy();
+	Match.Vision->Update();
+	TestTrue(TEXT("destroyed out of sight: still remembered"), Match.Vision->GetGhosts(0)->Contains(HouseKey));
+
+	Match.Move(Scout, HousePlace + FVector(-1600., 0., 0.));
+	Match.Vision->Update();
+	TestFalse(TEXT("back there: forgotten"), Match.Vision->GetGhosts(0)->Contains(HouseKey));
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestNull(TEXT("no fog: no memory"), Match.Vision->GetGhosts(0));
+	return true;
+}
+
 #endif

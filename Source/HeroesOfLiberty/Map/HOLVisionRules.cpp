@@ -38,6 +38,36 @@ double HOLVisionRules::GetBuildingSight(const double SightRadius, const EHOLBuil
 	}
 }
 
+bool HOLVisionRules::UpdateGhosts(TMap<uint64, FHOLGhost>& Ghosts, TConstArrayView<FHOLGhost> Present, TFunctionRef<bool(const FVector2D&)> IsVisible)
+{
+	bool bChanged = false;
+	TSet<uint64> Standing;
+	Standing.Reserve(Present.Num());
+	for (const FHOLGhost& Thing : Present)
+	{
+		Standing.Add(Thing.Key);
+		if (IsVisible(Thing.Position))
+		{
+			FHOLGhost* Ghost = Ghosts.Find(Thing.Key);
+			if (!Ghost || !(*Ghost == Thing))
+			{
+				Ghosts.Add(Thing.Key, Thing);
+				bChanged = true;
+			}
+		}
+	}
+	// Gone: forgotten only where its place is in sight again (D382).
+	for (auto It = Ghosts.CreateIterator(); It; ++It)
+	{
+		if (!Standing.Contains(It.Key()) && IsVisible(It.Value().Position))
+		{
+			It.RemoveCurrent();
+			bChanged = true;
+		}
+	}
+	return bChanged;
+}
+
 TArray<FIntPoint> HOLVisionRules::GetDisc(const FHOLVisionGrid& Grid, const FIntPoint& Cell, const double Radius)
 {
 	TArray<FIntPoint> Disc;

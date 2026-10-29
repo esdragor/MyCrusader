@@ -363,4 +363,38 @@ bool FHOLVisionBuildingSightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionGhostsTest, "HeroesOfLiberty.Vision.Ghosts", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionGhostsTest::RunTest(const FString& Parameters)
+{
+	// F4 (D382): a ghost keeps the last look; a destruction out of sight is learned only by going back.
+	const FHOLGhost House{ HOLVisionRules::MakeGhostKey(false, 7), TEXT("House"), 2, FVector2D(1000., 0.), EHOLBuildingSight::Standing, 0 };
+	const FHOLGhost Tree{ HOLVisionRules::MakeGhostKey(true, 7), TEXT("Tree"), 0xFF, FVector2D(-1000., 0.), EHOLBuildingSight::Standing, 100 };
+	TestNotEqual(TEXT("a building's and a source's keys apart"), House.Key, Tree.Key);
+	TMap<uint64, FHOLGhost> Ghosts;
+	bool bInSight = true;
+	const auto Sight = [&bInSight](const FVector2D&) { return bInSight; };
+
+	TestTrue(TEXT("seen: remembered"), HOLVisionRules::UpdateGhosts(Ghosts, { House, Tree }, Sight));
+	TestEqual(TEXT("both remembered"), Ghosts.Num(), 2);
+	TestFalse(TEXT("seen again unchanged: nothing new"), HOLVisionRules::UpdateGhosts(Ghosts, { House, Tree }, Sight));
+
+	bInSight = false;
+	FHOLGhost Site = House;
+	Site.State = EHOLBuildingSight::Site;
+	FHOLGhost Cut = Tree;
+	Cut.Remaining = 40;
+	HOLVisionRules::UpdateGhosts(Ghosts, { Site, Cut }, Sight);
+	TestTrue(TEXT("out of sight: the house remembered"), Ghosts.Contains(House.Key) && Ghosts.Contains(Tree.Key));
+	TestEqual(TEXT("out of sight: its last look"), Ghosts.FindRef(House.Key).State, EHOLBuildingSight::Standing);
+	TestEqual(TEXT("out of sight: the wood it held"), Ghosts.FindRef(Tree.Key).Remaining, 100);
+	HOLVisionRules::UpdateGhosts(Ghosts, {}, Sight);
+	TestEqual(TEXT("destroyed out of sight: still remembered"), Ghosts.Num(), 2);
+
+	bInSight = true;
+	TestTrue(TEXT("back in sight"), HOLVisionRules::UpdateGhosts(Ghosts, { Cut }, Sight));
+	TestFalse(TEXT("gone, seen again: forgotten"), Ghosts.Contains(House.Key));
+	TestEqual(TEXT("still there: its look now"), Ghosts.FindRef(Tree.Key).Remaining, 40);
+	return true;
+}
+
 #endif

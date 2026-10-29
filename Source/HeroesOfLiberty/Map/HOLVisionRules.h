@@ -73,8 +73,43 @@ enum class EHOLBuildingSight : uint8
 	Rubble,
 };
 
+/**
+ * F4 (D382, D520): what a camp remembers of a building or a source it saw, as at its last look: shown in the fog (grey),
+ * sometimes already gone. Never a unit.
+ */
+struct FHOLGhost
+{
+	/** HOLVisionRules::MakeGhostKey: a building's or a source's, never both. */
+	uint64 Key = 0;
+	FName TypeName;
+	/** The building's owner slot; FHOLSource::NoOwner (0xFF) for a source. */
+	uint8 Owner = 0xFF;
+	FVector2D Position = FVector2D::ZeroVector;
+	/** A building: standing, a site, in ruin. */
+	EHOLBuildingSight State = EHOLBuildingSight::Standing;
+	/** A source: what it held. */
+	int32 Remaining = 0;
+
+	bool operator==(const FHOLGhost& Other) const
+	{
+		return Key == Other.Key && TypeName == Other.TypeName && Owner == Other.Owner && Position == Other.Position && State == Other.State
+			&& Remaining == Other.Remaining;
+	}
+};
+
 namespace HOLVisionRules
 {
+	/** F4: a ghost's key, a building's (its actor's unique identifier) or a source's (its index), apart. */
+	inline uint64 MakeGhostKey(const bool bSource, const uint32 Id) { return (static_cast<uint64>(bSource ? 1 : 0) << 32) | Id; }
+
+	/**
+	 * F4 (D382): one step of a camp's memory. Present: the buildings and sources standing now, as they are. Each one in
+	 * sight (IsVisible at its position) is remembered as it is; out of sight its ghost keeps its last look (a fire, a ruin,
+	 * a tree cut: not learned). A ghost whose thing is gone is forgotten only once its place is in sight again (D382: a
+	 * destruction is learned by going back). Returns true when the memory changed.
+	 */
+	HEROESOFLIBERTY_API bool UpdateGhosts(TMap<uint64, FHOLGhost>& Ghosts, TConstArrayView<FHOLGhost> Present, TFunctionRef<bool(const FVector2D&)> IsVisible);
+
 	/** F3.2 (D523): a building's sight from its type's SightRadius: whole standing, half a site, none in ruin. */
 	HEROESOFLIBERTY_API double GetBuildingSight(double SightRadius, EHOLBuildingSight State);
 
