@@ -648,11 +648,13 @@ namespace HOLAIOpening
 		Choice.bProduce = true;
 		Choice.Centre = Centre.Location;
 		TArray<int> Counts = GatherersOf(Summary);
-		const FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
+		// IA1.7b: the sources whose places are all held are left out (a new Peasant would stand idle in front of them).
+		const FHOLAISummary Open = WithoutHeldSources(Summary);
+		const FHOLAINeeds Needs = HOLAINeeds::Compute(Open, Data);
 		const int Resource = HOLAINeeds::MostLacking(Needs, Counts, SumOf(Counts) + 1);
 		if (Resource >= 0)
 		{
-			const FHOLAISourceNear Source = PartOf(Summary, Resource).Sources[0];
+			const FHOLAISourceNear Source = PartOf(Open, Resource).Sources[0];
 			Choice.RallyResource = Resource;
 			Choice.RallySource = Source.SourceIndex;
 			Choice.RallyPoint = Source.Location;
@@ -660,82 +662,157 @@ namespace HOLAIOpening
 		return Choice;
 	}
 
-	// Adds the group of a resource when it has Peasants: the resource's nearest source.
-	void AddGroup(TArray<FHOLAIGatherGroup>& Groups, const FHOLAISummary& Summary, int Resource, const FHOLAIGatherGroup& Per)
+	// A part without the sources whose places are all held (IA1.7b: a farm field has one): a Peasant sent there would stand idle
+	// in front of it. The sources with places all around (Places 0) are never held.
+	FHOLAIResourceSummary OpenPartOf(const FHOLAIResourceSummary& Part)
 	{
-		if (Per.Peasants.Num() == 0)
+		FHOLAIResourceSummary Open = Part;
+		Open.Sources.Empty();
+		for (int Index = 0; Index < Part.Sources.Num(); Index++)
 		{
-			return;
+			if (Part.Sources[Index].Places <= 0 || Part.Sources[Index].Occupants < Part.Sources[Index].Places)
+			{
+				Open.Sources.Add(Part.Sources[Index]);
+			}
+		}
+		return Open;
+	}
+
+	// The summary as the Peasants to send see it: the held sources left out.
+	FHOLAISummary WithoutHeldSources(const FHOLAISummary& Summary)
+	{
+		FHOLAISummary Open = Summary;
+		Open.Food = OpenPartOf(Summary.Food);
+		Open.Wood = OpenPartOf(Summary.Wood);
+		Open.Stone = OpenPartOf(Summary.Stone);
+		Open.Gold = OpenPartOf(Summary.Gold);
+		return Open;
+	}
+
+	// How many of the Peasants sent in this thought (Taken: the source of each) go to SourceIndex.
+	int TakenOf(const TArray<int>& Taken, int SourceIndex)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Taken.Num(); Index++)
+		{
+			if (Taken[Index] == SourceIndex)
+			{
+				Count++;
+			}
+		}
+		return Count;
+	}
+
+	// The first source of the part (nearest first) with a place for one more Peasant, those Taken counted; -1 when all are held.
+	int FreeSourceOf(const FHOLAIResourceSummary& Part, const TArray<int>& Taken)
+	{
+		for (int Index = 0; Index < Part.Sources.Num(); Index++)
+		{
+			const FHOLAISourceNear Source = Part.Sources[Index];
+			if (Source.Places <= 0 || Source.Occupants + TakenOf(Taken, Source.SourceIndex) < Source.Places)
+			{
+				return Index;
+			}
+		}
+		return -1;
+	}
+
+	// The needs with the share of a resource put to 0 when its sources have no place left for one more Peasant.
+	FHOLAINeeds WithRoom(const FHOLAINeeds& Needs, const FHOLAISummary& Summary, const TArray<int>& Taken)
+	{
+		FHOLAINeeds Roomy = Needs;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			if (FreeSourceOf(PartOf(Summary, Resource), Taken) < 0)
+			{
+				Roomy.Share[Resource] = 0.f;
+			}
+		}
+		return Roomy;
+	}
+
+	// The resource with a place free and the lowest stock (a tie: food, wood, stone, gold), -1 when none (the IA0.4 rule).
+	int LowestStockWithRoom(const FHOLAISummary& Summary, const TArray<int>& Taken)
+	{
+		int Best = -1;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			if (FreeSourceOf(PartOf(Summary, Resource), Taken) < 0)
+			{
+				continue;
+			}
+			if (Best < 0 || PartOf(Summary, Resource).Stock < PartOf(Summary, Best).Stock)
+			{
+				Best = Resource;
+			}
+		}
+		return Best;
+	}
+
+	// Adds a Peasant to the group of its source (made when there is none yet).
+	void AddToGroup(TArray<FHOLAIGatherGroup>& Groups, int Resource, int SourceIndex, int Peasant)
+	{
+		for (int Index = 0; Index < Groups.Num(); Index++)
+		{
+			if (Groups[Index].SourceIndex == SourceIndex)
+			{
+				Groups[Index].Peasants.Add(Peasant);
+				return;
+			}
 		}
 		FHOLAIGatherGroup Group;
 		Group.Resource = Resource;
 		Group.ResourceName = NameOf(Resource);
-		Group.SourceIndex = PartOf(Summary, Resource).Sources[0].SourceIndex;
-		Group.Peasants = Per.Peasants;
+		Group.SourceIndex = SourceIndex;
+		Group.Peasants.Add(Peasant);
 		Groups.Add(Group);
 	}
 
 	// The Peasants Free spread by the needs (HOLAINeeds.as): each goes, in order, to the resource that lacks Peasants most
-	// against its share (those already gathering and those sent before it counted), one group per resource with the nearest
-	// source. A source used up has left the summary: its Peasants, idle, come here and go to what is left. Without a share on
-	// any resource that has a source, all go to the lowest stock among those with one (the IA0.4 rule).
+	// against its share (those already gathering and those sent before it counted), to the nearest source of that resource with
+	// a place for it (IA1.7b: a farm field has one; the held ones are left out, and a resource whose places are all taken has no
+	// share left). One group per source, in the order food, wood, stone, gold. A source used up has left the summary: its
+	// Peasants, idle, come here and go to what is left. Without a share on any resource with room, each goes to the lowest stock
+	// among those with room (the IA0.4 rule); with no room anywhere, it is not sent.
 	TArray<FHOLAIGatherGroup> SplitGather(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, const TArray<int>& Free)
 	{
+		TArray<FHOLAIGatherGroup> Found;
 		TArray<FHOLAIGatherGroup> Groups;
 		if (Free.Num() == 0)
 		{
 			return Groups;
 		}
+		const FHOLAISummary Open = WithoutHeldSources(Summary);
 		TArray<int> Counts = GatherersOf(Summary);
 		const int Total = SumOf(Counts) + Free.Num();
-		const FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
-		if (HOLAINeeds::MostLacking(Needs, Counts, Total) < 0)
-		{
-			FHOLAISummary Alone = Summary;
-			Alone.IdlePeasants = Free;
-			FHOLAIGatherChoice Choice = HOLAIEconomy::ChooseGather(Alone);
-			if (Choice.bGather)
-			{
-				FHOLAIGatherGroup Group;
-				Group.Resource = Choice.Resource;
-				Group.ResourceName = Choice.ResourceName;
-				Group.SourceIndex = Choice.SourceIndex;
-				Group.Peasants = Choice.Peasants;
-				Groups.Add(Group);
-			}
-			return Groups;
-		}
-
-		// Script has no nested containers: a struct holds the four lists.
-		FHOLAIGatherGroup Per0;
-		FHOLAIGatherGroup Per1;
-		FHOLAIGatherGroup Per2;
-		FHOLAIGatherGroup Per3;
+		const FHOLAINeeds Needs = HOLAINeeds::Compute(Open, Data);
+		TArray<int> Taken;
 		for (int Index = 0; Index < Free.Num(); Index++)
 		{
-			const int Resource = HOLAINeeds::MostLacking(Needs, Counts, Total);
+			int Resource = HOLAINeeds::MostLacking(WithRoom(Needs, Open, Taken), Counts, Total);
+			if (Resource < 0)
+			{
+				Resource = LowestStockWithRoom(Open, Taken);
+			}
+			if (Resource < 0)
+			{
+				continue;
+			}
 			Counts[Resource] = Counts[Resource] + 1;
-			if (Resource == 0)
+			const int SourceIndex = PartOf(Open, Resource).Sources[FreeSourceOf(PartOf(Open, Resource), Taken)].SourceIndex;
+			Taken.Add(SourceIndex);
+			AddToGroup(Found, Resource, SourceIndex, Free[Index]);
+		}
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			for (int Index = 0; Index < Found.Num(); Index++)
 			{
-				Per0.Peasants.Add(Free[Index]);
-			}
-			else if (Resource == 1)
-			{
-				Per1.Peasants.Add(Free[Index]);
-			}
-			else if (Resource == 2)
-			{
-				Per2.Peasants.Add(Free[Index]);
-			}
-			else
-			{
-				Per3.Peasants.Add(Free[Index]);
+				if (Found[Index].Resource == Resource)
+				{
+					Groups.Add(Found[Index]);
+				}
 			}
 		}
-		AddGroup(Groups, Summary, 0, Per0);
-		AddGroup(Groups, Summary, 1, Per1);
-		AddGroup(Groups, Summary, 2, Per2);
-		AddGroup(Groups, Summary, 3, Per3);
 		return Groups;
 	}
 }

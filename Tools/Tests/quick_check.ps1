@@ -6264,7 +6264,8 @@ if ($Parts -contains "aiduel") {
     $Checks["gather reports taken ($($First.NumReports), one per 2 s)"] = $First.NumReports -ge ($DuelSeconds / 2)
     $Checks["no AI Peasant idle more than 10 s (longest $($First.MaxIdle) s and $($DuelRuns[1].MaxIdle) s)"] = $First.MaxIdle -le 10 -and $DuelRuns[1].MaxIdle -le 10
     # IA1.7: the status line of the brain (every 5 s per slot): the population rises past 20 (the houses come before the cap),
-    # no queue stays blocked at the cap more than 10 s, no stock goes over 400.
+    # no queue stays blocked at the cap more than 10 s. (No cap on a stock: the user abolished it, 2026-10-29: the AI has
+    # nothing to buy before IA2.)
     $FirstText = if (Test-Path $First.Log) { Get-Content $First.Log } else { @() }
     $Status = @{}
     foreach ($Match in ($FirstText | Select-String -Pattern "AI slot (\d+) step (\d+): status pop (\d+)/(\d+) queued (\d+) stock (\d+) (\d+) (\d+) (\d+) peasants (\d+) houses (\d+) camps (\d+) mills (\d+) farms (\d+)")) {
@@ -6278,7 +6279,6 @@ if ($Parts -contains "aiduel") {
     foreach ($Slot in ($Status.Keys | Sort-Object)) {
         $Rows = $Status[$Slot]
         $MaxUsed = ($Rows | Measure-Object -Property Used -Maximum).Maximum
-        $MaxStock = [Math]::Max([Math]::Max(($Rows | Measure-Object -Property Food -Maximum).Maximum, ($Rows | Measure-Object -Property Wood -Maximum).Maximum), [Math]::Max(($Rows | Measure-Object -Property Stone -Maximum).Maximum, ($Rows | Measure-Object -Property Gold -Maximum).Maximum))
         $Streak = 0; $MaxBlocked = 0
         foreach ($Row in $Rows) {
             $Streak = if ($Row.Used -ge $Row.Cap -and $Row.Queued -gt 0) { $Streak + 1 } else { 0 }
@@ -6287,7 +6287,6 @@ if ($Parts -contains "aiduel") {
         $Last = $Rows[-1]
         if ($DuelSeconds -ge 300) { $Checks["slot $Slot : population past 20 (max $MaxUsed of cap $($Last.Cap), $($Last.Houses) houses, $($Last.Peasants) Peasants)"] = $MaxUsed -gt 20 }
         $Checks["slot $Slot : no queue blocked at the cap more than 10 s (longest $MaxBlocked s)"] = $MaxBlocked -le 10
-        $Checks["slot $Slot : no stock over 400 (highest $MaxStock)"] = $MaxStock -le 400
         Write-Host "  slot $Slot at the end: pop $($Last.Used)/$($Last.Cap), $($Last.Peasants) Peasants, stock F$($Last.Food) W$($Last.Wood) S$($Last.Stone) G$($Last.Gold), $($Last.Houses) houses, $($Last.Mills) mills, $($Last.Farms) farms"
     }
     $LastStep = if ($First.Hashes.Count) { ($First.Hashes[-1] -split ' ')[0] } else { "none" }

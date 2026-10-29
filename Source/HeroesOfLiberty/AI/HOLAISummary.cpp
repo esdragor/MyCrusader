@@ -11,6 +11,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Match/HOLPlayerState.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLUnitView.h"
 
 FHOLAIResourceSummary& FHOLAISummary::Get(const EHOLResource Resource)
@@ -42,7 +43,7 @@ namespace HOLAISummary
 {
 	FHOLAISummary Make(const int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, const int32 MaxSourcesPerResource,
-		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures)
+		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses)
 	{
 		FHOLAISummary Summary;
 		Summary.PlayerIndex = PlayerIndex;
@@ -96,6 +97,11 @@ namespace HOLAISummary
 			Near.Location = Source.Location;
 			Near.Remaining = Source.Remaining;
 			Near.DepositDistance = static_cast<float>(Nearest);
+			if (Uses.IsValidIndex(SourceIndex))
+			{
+				Near.Places = Uses[SourceIndex].Places;
+				Near.Occupants = Uses[SourceIndex].Occupants;
+			}
 		}
 		for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
 		{
@@ -253,8 +259,20 @@ namespace HOLAISummary
 		const TConstArrayView<FHOLSource> Sources = SourceSystem ? TConstArrayView<FHOLSource>(SourceSystem->GetSources()) : TConstArrayView<FHOLSource>();
 		TArray<FHOLAIBuilding> Buildings;
 		GatherBuildings(World, Buildings);
+		// IA1.7b: the places of each source of few places and the ones held (the processor's, published at each step).
+		TArray<FHOLAISourceUse> Uses;
+		if (SourceSystem)
+		{
+			Uses.SetNum(Sources.Num());
+			for (int32 Index = 0; Index < Sources.Num(); ++Index)
+			{
+				const FHOLSourceTypeRow* Type = SourceSystem->GetType(Sources[Index].TypeIndex);
+				Uses[Index].Places = Type ? Type->Places : 0;
+				Uses[Index].Occupants = Uses[Index].Places > 0 ? SourceSystem->GetOccupants(Index) : 0;
+			}
+		}
 		return Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
-			ReadFigures(World, PlayerIndex));
+			ReadFigures(World, PlayerIndex), Uses);
 	}
 }
 

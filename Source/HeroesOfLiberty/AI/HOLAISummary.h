@@ -48,6 +48,20 @@ struct HEROESOFLIBERTY_API FHOLAISourceNear
 	 */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	float DepositDistance = 0.f;
+
+	/**
+	 * Its places (IA1.7b): how many gatherers it takes at once (a farm field: 1); 0 = places all around (a tree, a bush, a
+	 * vein: as many as the room allows).
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Places = 0;
+
+	/**
+	 * The places held now (IA1.7b): the gatherers on their way to it, at work or unloading (what a player sees as a worker
+	 * on the field). 0 for a source with places all around.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Occupants = 0;
 };
 
 /** One resource of the summary (IA0.3): the slot's stock of it and its sources near the slot's deposits. */
@@ -200,6 +214,13 @@ struct FHOLAIPlayerFigures
 	FHOLResources Gatherers;
 };
 
+/** What a source of few places holds (IA1.7b), by source index: Make reads it beside the sources. */
+struct FHOLAISourceUse
+{
+	int32 Places = 0;
+	int32 Occupants = 0;
+};
+
 namespace HOLAISummary
 {
 	/** Sources kept per resource: enough to spread the Peasants, few enough for a script to walk at each thought. */
@@ -212,7 +233,8 @@ namespace HOLAISummary
 	 */
 	HEROESOFLIBERTY_API FHOLAISummary Make(int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, int32 MaxSourcesPerResource = DefaultMaxSourcesPerResource,
-		TConstArrayView<FHOLAIBuilding> Buildings = {}, const TOptional<FHOLAIPlayerFigures>& Figures = {});
+		TConstArrayView<FHOLAIBuilding> Buildings = {}, const TOptional<FHOLAIPlayerFigures>& Figures = {},
+		TConstArrayView<FHOLAISourceUse> Uses = {});
 
 	/**
 	 * The deposits of the world: the buildings that take deliveries (finished, a forum not down, D312, D351) and accept a

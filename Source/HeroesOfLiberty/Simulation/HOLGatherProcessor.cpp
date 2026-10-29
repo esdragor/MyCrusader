@@ -243,6 +243,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	});
 	PublishGathererCounts(Step);
+	PublishOccupants(Step);
 	SendDepositPopups(Step);
 }
 
@@ -1152,11 +1153,17 @@ bool UHOLGatherProcessor::HasFreePlace(const FStepContext& Step, const int32 Sou
 	{
 		return true;
 	}
+	// Self's own is let go: it looks again.
+	PruneHolders(Step, SourceIndex, *Holders, Self.AsNumber());
+	return Holders->Num() < Type->Places;
+}
+
+void UHOLGatherProcessor::PruneHolders(const FStepContext& Step, const int32 SourceIndex, TArray<uint64>& Holders, const uint64 SelfNumber)
+{
 	// A holder keeps its place while its task is this source, on its way to the deposit too (it comes back to it, as a
-	// farmer in AoE IV); gone, dying, stopped or sent elsewhere, it lets it go. Self's own is let go: it looks again.
+	// farmer in AoE IV); gone, dying, stopped or sent elsewhere, it lets it go.
 	const FMassEntityManager& EntityManager = *Step.EntityManager;
-	const uint64 SelfNumber = Self.AsNumber();
-	Holders->RemoveAll([&EntityManager, SourceIndex, SelfNumber](const uint64 Owner)
+	Holders.RemoveAll([&EntityManager, SourceIndex, SelfNumber](const uint64 Owner)
 	{
 		if (Owner == SelfNumber)
 		{
@@ -1171,7 +1178,22 @@ bool UHOLGatherProcessor::HasFreePlace(const FStepContext& Step, const int32 Sou
 		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
 		return !Gather || !State || State->CurrentHealth <= 0 || Gather->Phase == EHOLGatherPhase::None || Gather->SourceIndex != SourceIndex;
 	});
-	return Holders->Num() < Type->Places;
+}
+
+void UHOLGatherProcessor::PublishOccupants(const FStepContext& Step)
+{
+	// IA1.7b: what the AI's summary shows of a farm field: the places held (a player sees a worker on it).
+	TArray<uint8> Occupants;
+	Occupants.SetNumZeroed(Step.Sources->GetSources().Num());
+	for (TPair<int32, TArray<uint64>>& Pair : PlaceHolders)
+	{
+		PruneHolders(Step, Pair.Key, Pair.Value, 0);
+		if (Occupants.IsValidIndex(Pair.Key))
+		{
+			Occupants[Pair.Key] = static_cast<uint8>(FMath::Min(Pair.Value.Num(), 255));
+		}
+	}
+	Step.Sources->SetOccupants(MoveTemp(Occupants));
 }
 
 void UHOLGatherProcessor::ClaimPlace(const FStepContext& Step, const int32 SourceIndex, const FMassEntityHandle Self)

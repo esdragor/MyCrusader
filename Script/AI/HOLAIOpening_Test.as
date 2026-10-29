@@ -548,3 +548,90 @@ void Test_NobodyBuildsWithTooFewPeasants(FUnitTest& T)
 	Summary.PeasantIds.Add(2);
 	T.AssertTrue(HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps()).bBuild, "two Peasants: the house");
 }
+
+// IA1.7b: a farm field has one place (Places 1). A field source of the food, its place held or free.
+FHOLAISourceNear OpeningField(int SourceIndex, FVector Where, int Occupants)
+{
+	FHOLAISourceNear Field = OpeningSource(SourceIndex, Where);
+	Field.Places = 1;
+	Field.Occupants = Occupants;
+	return Field;
+}
+
+// How many Peasants the groups send to a source, and how many in all.
+int SentTo(const TArray<FHOLAIGatherGroup>& Groups, int SourceIndex)
+{
+	int Sent = 0;
+	for (int Index = 0; Index < Groups.Num(); Index++)
+	{
+		if (Groups[Index].SourceIndex == SourceIndex)
+		{
+			Sent += Groups[Index].Peasants.Num();
+		}
+	}
+	return Sent;
+}
+
+int SentInAll(const TArray<FHOLAIGatherGroup>& Groups)
+{
+	int Sent = 0;
+	for (int Index = 0; Index < Groups.Num(); Index++)
+	{
+		Sent += Groups[Index].Peasants.Num();
+	}
+	return Sent;
+}
+
+// Idle Peasants on a food of fields (one place each): none to a field already held, one at most to each free one, the rest
+// to what has room (the wood); every Peasant sent once.
+void Test_IdlePeasantsSpreadOverFreeFields(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	Summary.Food.Sources.Add(OpeningField(21, FVector(1000, 300, 0), 0));
+	Summary.Food.Sources.Add(OpeningField(22, FVector(1000, 600, 0), 0));
+	Summary.Food.Peasants = 1;
+	Summary.PeasantIds.Add(6);
+	TArray<int> Free;
+	for (int Id = 1; Id <= 4; Id++)
+	{
+		Free.Add(Id);
+	}
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Free);
+	T.AssertEquals(0, SentTo(Groups, 20), "none to the field already held");
+	T.AssertTrue(SentTo(Groups, 21) <= 1 && SentTo(Groups, 22) <= 1, "one place, one Peasant at most");
+	T.AssertTrue(SentTo(Groups, 21) + SentTo(Groups, 22) >= 1, "the free fields are used");
+	T.AssertEquals(4, SentInAll(Groups), "every Peasant sent once");
+}
+
+// Every field held: the food has no room, the Peasants go to the wood.
+void Test_FullFieldsSendThePeasantsToTheWood(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	Summary.Food.Sources.Add(OpeningField(21, FVector(1000, 300, 0), 1));
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants);
+	T.AssertEquals(0, SentTo(Groups, 20) + SentTo(Groups, 21), "none to a held field");
+	T.AssertEquals(5, SentTo(Groups, 11), "all five to the wood");
+}
+
+// The rally of the new Peasants aims at a field with its place free, and nowhere on the food when all are held.
+void Test_RallySkipsHeldFields(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.IdlePeasants.Empty();
+	Summary.Wood.Sources.Empty();
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	Summary.Food.Sources.Add(OpeningField(21, FVector(1000, 300, 0), 0));
+	FHOLAIProduceChoice Choice = HOLAIOpening::ChooseProduction(Summary, HOLAIOpening::DefaultData());
+	T.AssertTrue(Choice.bProduce, "a Peasant is queued");
+	T.AssertEquals(21, Choice.RallySource, "the rally on the free field");
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	Summary.Food.Sources.Add(OpeningField(21, FVector(1000, 300, 0), 1));
+	Choice = HOLAIOpening::ChooseProduction(Summary, HOLAIOpening::DefaultData());
+	T.AssertEquals(-1, Choice.RallyResource, "every field held: no rally");
+}
