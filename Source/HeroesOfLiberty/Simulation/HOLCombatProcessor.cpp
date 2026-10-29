@@ -916,6 +916,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		if (Shooter != INDEX_NONE)
 		{
 			Enemy.Combat->LastAttacker = Arrow.Shooter;
+			Enemy.Combat->LastHitStep = StepIndex;
 			Fighters[Shooter].Combat->DamageDealt += Arrow.Damage;
 		}
 		if (LogHits != 0)
@@ -1022,14 +1023,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 			const FVector2D Position(Fighter.Location);
-			// Its target and last attacker as its turn reads them (a dead one: none).
+			// Its target and last attacker as its turn reads them (a dead one: none; EtapeDefini S: a last attacker whose hit is
+			// HOLCombat::LastAttackerMemoryMs old, none).
 			int32 Target = FindFighter(Combat.Target);
 			if (Target != INDEX_NONE && Fighters[Target].State->CurrentHealth <= 0)
 			{
 				Target = INDEX_NONE;
 			}
 			int32 LastAttacker = FindFighter(Combat.LastAttacker);
-			if (LastAttacker != INDEX_NONE && Fighters[LastAttacker].State->CurrentHealth <= 0)
+			if (LastAttacker != INDEX_NONE && (Fighters[LastAttacker].State->CurrentHealth <= 0 || !HOLCombat::KeepsLastAttacker(StepIndex, Combat.LastHitStep, StepMs)))
 			{
 				LastAttacker = INDEX_NONE;
 			}
@@ -1164,11 +1166,14 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Target = INDEX_NONE;
 			bLost = true;
 		}
-		// Looked up once (J7c.4, S3): nothing below changes it before the search reads it.
+		// Looked up once (J7c.4, S3): nothing below changes it before the search reads it. Dead or gone, or its hit
+		// HOLCombat::LastAttackerMemoryMs old (EtapeDefini S: an attacker that walked off out of the search radius is no
+		// longer chased across the map, and this unit no longer counts as fighting): forgotten.
 		int32 LastAttacker = FindFighter(Combat.LastAttacker);
-		if (LastAttacker == INDEX_NONE || Fighters[LastAttacker].State->CurrentHealth <= 0)
+		if (LastAttacker == INDEX_NONE || Fighters[LastAttacker].State->CurrentHealth <= 0 || !HOLCombat::KeepsLastAttacker(StepIndex, Combat.LastHitStep, StepMs))
 		{
 			Combat.LastAttacker = FMassEntityHandle();
+			Combat.LastHitStep = -1;
 			LastAttacker = INDEX_NONE;
 		}
 
@@ -1954,6 +1959,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
 		Enemy.State->CurrentHealth -= Damage;
 		Enemy.Combat->LastAttacker = Fighter.Entity;
+		Enemy.Combat->LastHitStep = StepIndex;
 		++Combat.Hits;
 		Combat.DamageDealt += Damage;
 		++TotalHits;

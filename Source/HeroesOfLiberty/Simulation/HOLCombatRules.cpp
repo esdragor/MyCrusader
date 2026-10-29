@@ -217,6 +217,11 @@ namespace HOLCombat
 		return bAttacking || AttackerCount > 0 || bHasLastAttacker;
 	}
 
+	bool KeepsLastAttacker(const int64 StepIndex, const int64 LastHitStep, const int32 StepMs)
+	{
+		return LastHitStep >= 0 && (StepIndex - LastHitStep) * static_cast<int64>(FMath::Max(StepMs, 1)) < static_cast<int64>(LastAttackerMemoryMs);
+	}
+
 	bool ShouldComeToAid(const ESeekMode Mode, const bool bRanged, const float AggressionRadius, const bool bHasTarget, const double FightingFriendDistance, const float AidRadius)
 	{
 		return Mode == ESeekMode::Auto && !bRanged && AggressionRadius > 0.f && !bHasTarget && AidRadius > 0.f

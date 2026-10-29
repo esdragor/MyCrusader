@@ -105,6 +105,25 @@ bool FHOLCombatComeToAidTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatLastAttackerTest, "HeroesOfLiberty.Combat.LastAttacker", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatLastAttackerTest::RunTest(const FString& Parameters)
+{
+	// EtapeDefini S: the last enemy that hit a unit is remembered LastAttackerMemoryMs (5 s) past its last hit, no longer.
+	constexpr int32 StepMs = 50;
+	constexpr int64 Memory = HOLCombat::LastAttackerMemoryMs / StepMs; // 100 steps at 20 Hz
+	TestFalse(TEXT("never hit: nothing to remember"), HOLCombat::KeepsLastAttacker(1000, -1, StepMs));
+	TestTrue(TEXT("hit at this very step: remembered"), HOLCombat::KeepsLastAttacker(1000, 1000, StepMs));
+	TestTrue(TEXT("hit a step ago: remembered"), HOLCombat::KeepsLastAttacker(1001, 1000, StepMs));
+	TestTrue(TEXT("hit 4.95 s ago (99 steps): still remembered"), HOLCombat::KeepsLastAttacker(1000 + Memory - 1, 1000, StepMs));
+	TestFalse(TEXT("hit 5 s ago (100 steps): forgotten"), HOLCombat::KeepsLastAttacker(1000 + Memory, 1000, StepMs));
+	TestFalse(TEXT("hit long ago: forgotten"), HOLCombat::KeepsLastAttacker(1000 + 10 * Memory, 1000, StepMs));
+	TestTrue(TEXT("a new hit renews the memory"), HOLCombat::KeepsLastAttacker(1000 + Memory + 10, 1000 + Memory, StepMs));
+	TestFalse(TEXT("at 10 Hz (100 ms steps), 50 steps: forgotten"), HOLCombat::KeepsLastAttacker(1050, 1000, 100));
+	TestTrue(TEXT("at 10 Hz, 49 steps: remembered"), HOLCombat::KeepsLastAttacker(1049, 1000, 100));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatDamageTest, "HeroesOfLiberty.Combat.Damage", UE::HeroesOfLiberty::Tests::Combat::Flags)
 
 bool FHOLCombatDamageTest::RunTest(const FString& Parameters)

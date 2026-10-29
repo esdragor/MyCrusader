@@ -16,7 +16,7 @@
 #     go through their orders, gathering, houses and camps (the server's commands for those come with them); with
 #     "victory", it ends with the end of the match (~10 s more, see below);
 #   - -Parts part:case (EtapeDefini F): only that case of the part, its steps and its checks (build:cut, build:gap,
-#     build:hero; several with commas: build:cut,build:gap). "build" and "formation" have cases ($SubCaseTable): the build cases before it are
+#     build:hero; several with commas: build:cut,build:gap). "build", "formation" and "combat" have cases ($SubCaseTable): the build cases before it are
 #     skipped (a short set-up instead: its wood, its logs), the camera part only plays its 2-player match (no 8-player).
 # The full run: a single game launch goes through the menu in French, English and Japanese (language switched live), a
 # drop-down list, then a match at 2 and at 8 players with the camera checks of D257 and the selection checks of D264 (own
@@ -144,6 +144,10 @@ $SubCaseTable = @{
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
             "regroup formed spear", "regroup formed spear end", "regroup formed centre", "regroup formed centre end"); Setup = @() }
+    }
+    # The melee is off until "mark combat" (hol.Combat.Enabled 0 at the launch): a combat case alone turns it on.
+    combat = [ordered]@{
+        forget = @{ Marks = @("forget", "forget end"); Setup = @("hol.Combat.Enabled 1") }
     }
 }
 $SubCases = @{}
@@ -957,6 +961,13 @@ $ArrowPeasants = @(-1300, -4300)
 $FleeArchers = @(-2000, -5000)
 $FleeSpearman = @(-2000, -3000)
 $FleeTo = @(-2000, 2000)
+# The last attacker forgotten (EtapeDefini S): a Man-at-arms of slot 0 on clear ground south of the shot's, an Archer of slot 1
+# 19 m south of it (within its 20 m reach, beyond the Man-at-arms' 16 m aggression), sent 51 m further south once its arrow
+# has landed; the ground cleared at the end (3600 cm around ForgetGround: short of the reinforcements at MeetTo, 42 m off).
+$ForgetManAtArms = @(-2000, -6000)
+$ForgetArcher = @(-2000, -7900)
+$ForgetTo = @(-2000, -13000)
+$ForgetGround = @(-2000, -9500)
 $GapP = @(-6000, 0)
 $GapQ = @(-6000, 800)
 $GapBuilders = @(-6000, -1500)
@@ -2069,6 +2080,7 @@ if ($Parts -contains "camera") {
             Stop-CaseFilter
         }
         if (($Parts -contains "combat") -and $Case.Name -eq "2p") {
+            Start-CaseFilter "combat"
             # The melee (J7b.2), solo: 3 Men-at-arms of slot 0 and 3 Spearmen of slot 1 made 6 m apart on the formation's
             # first ground (left by then): they take each other on by themselves (aggression 16 m), walk into reach and strike.
             Step "mark combat", "hol.Units.SpawnSeed 122", "hol.Combat.Enabled 1", "hol.Combat.Report", "hol.Units.Spawn 3 $($CombatMenAtArms -join ' ') 0 ManAtArms 150", "hol.Units.Spawn 3 $($CombatSpearmen -join ' ') 1 Spearman 150",
@@ -2203,6 +2215,16 @@ if ($Parts -contains "camera") {
             Step "mark combat reinforce end"
             Key Escape
             Step "waitlog Selection: none", "hol.Units.Remove $($MeetTo -join ' ') 4000 0", "hol.Units.Remove $($MeetTo -join ' ') 4000 1", "wait 0.3"
+            # The last attacker forgotten (EtapeDefini S): a Man-at-arms hit once by an Archer which then walks away (a move order
+            # on slot 1; 7.8 m/s against 7 m/s: never caught up with), out of its 16 m aggression. It ripostes (chases) for 5 s
+            # after the hit, then forgets it: no target, standing still, idle (no chase across the map). The hit's step from the
+            # arrow's landing line (hol.Combat.LogHits), then a combat report and the units' places every 0.5 s for 11 s.
+            Step "mark combat forget", "hol.Units.SpawnSeed 142", "hol.Combat.LogHits 1", "hol.Camera.Focus $($ForgetArcher -join ' ')", "frames 2",
+                "hol.Units.Spawn 1 $($ForgetManAtArms -join ' ') 0 ManAtArms 10", "hol.Units.Spawn 1 $($ForgetArcher -join ' ') 1 Archer 10", "wait 0.2", "hol.Units.Where",
+                "waitlog Archer lands on #", "hol.Units.Move $($ForgetTo -join ' ') 1", "waitlog Move order: ", "hol.Combat.Report", "hol.Units.Where"
+            for ($i = 0; $i -lt 22; $i++) { Step "wait 0.5", "hol.Combat.Report", "hol.Units.Where" }
+            Step "mark combat forget end", "hol.Combat.LogHits 0", "hol.Units.Remove $($ForgetGround -join ' ') 3600 0", "hol.Units.Remove $($ForgetGround -join ' ') 3600 1", "wait 0.3"
+            Stop-CaseFilter
         }
     }
 }
@@ -5119,6 +5141,37 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $Checks["none in flight on the display at the end ($(if ($FleeReports.Count) { $FleeReports[-1] } else { 'no report' }))"] = $FleeReports.Count -ge 1 -and $FleeReports[-1] -eq 0
     $AllOk = (Report "combat arrows flee" $Checks) -and $AllOk
 
+    # The last attacker forgotten (EtapeDefini S): the hit's step from the Archer's landing line, then the Man-at-arms in each
+    # combat report (its target, its place) and its activity in the "Units where" that follows each report (the first landing: chased
+    # across the map, it is shot again once the Archer has arrived). Within 4 s of the hit
+    # (80 steps) it takes the Archer on (the riposte kept); from 5.5 s on (110 steps: the 5 s memory and a search) it has no
+    # target, stands still (less than 30 cm walked over the reports left) and is idle.
+    $Checks = [ordered]@{}
+    $Forget = @(Get-Section "combat forget")
+    $Landing = $Forget | Where-Object { $_ -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #(\d+) ManAtArms for" } | Select-Object -First 1
+    if ($Landing -and $Landing -match "Combat: step (\d+) arrow of #(\d+) Archer lands on #(\d+) ManAtArms for") {
+        $HitStep = [int64]$Matches[1]; $ForgetArcherId = [int]$Matches[2]; $ForgetManId = $Matches[3]
+        $Checks["the Archer's arrow lands on the Man-at-arms (step $HitStep), then the Archer is sent away"] = [bool]($Forget | Select-String -Pattern "Move order: \d+ units to \(")
+        $Rows = @(); $ReportStep = -1
+        foreach ($Line in $Forget) {
+            if ($Line -match "Combat report: step (\d+) units") { $ReportStep = [int64]$Matches[1] }
+            elseif ($ReportStep -ge 0 -and $Line -match "#$ForgetManId ManAtArms slot 0 hp [\d.]+/\d+ target (\d+) attacking \d+ .* at (-?\d+) (-?\d+)") {
+                $Rows += [pscustomobject]@{ Step = $ReportStep; Target = [int]$Matches[1]; X = [double]$Matches[2]; Y = [double]$Matches[3]; Activity = "?" }
+            }
+            elseif ($Rows.Count -gt 0 -and $Line -match "Units where: .*#$ForgetManId slot 0 at \(-?\d+, -?\d+\) (\w+)") { $Rows[-1].Activity = $Matches[1] }
+        }
+        $Within = @($Rows | Where-Object { $_.Step -gt $HitStep -and $_.Step -le $HitStep + 80 })
+        $After = @($Rows | Where-Object { $_.Step -ge $HitStep + 110 })
+        $Riposting = @($Within | Where-Object { $_.Target -eq $ForgetArcherId }).Count
+        $Checks["within 4 s of the hit it takes the Archer on (riposte: target #$ForgetArcherId in $Riposting/$($Within.Count) reports)"] = $Within.Count -ge 1 -and $Riposting -ge 1
+        $Checks["from 5.5 s after the hit it has no target ($(($After | ForEach-Object { "+$($_.Step - $HitStep) target $($_.Target)" }) -join ', '))"] = $After.Count -ge 4 -and @($After | Where-Object { $_.Target -ne 0 }).Count -eq 0
+        $Walked = if ($After.Count -ge 2) { [int][Math]::Sqrt([Math]::Pow($After[-1].X - $After[0].X, 2) + [Math]::Pow($After[-1].Y - $After[0].Y, 2)) } else { -1 }
+        $Checks["and stands still (walked $Walked cm from 5.5 s to the end, at ($(if ($After.Count) { "$($After[-1].X), $($After[-1].Y)" } else { '?' })))"] = $After.Count -ge 2 -and $Walked -le 30
+        $Checks["and is idle ($(($After | ForEach-Object { $_.Activity }) -join ', '))"] = $After.Count -ge 1 -and @($After | Where-Object { $_.Activity -ne "Idle" }).Count -eq 0
+    }
+    else { $Checks["an arrow of the Archer lands on the Man-at-arms"] = $false }
+    $AllOk = (Report "combat forget" $Checks) -and $AllOk
+
     # Reinforcements behind their friends in the fight (MV.4): the 6 sent by a plain move on the ground.
     # Coming to aid (MV.4, choice C): from 12 s after the order (walked there), no idle melee of slot 0 stays within 20 m of a
     # fighting friend (hol.Combat.AidReport each second, with the ids). One that just killed its target is idle until its next
@@ -5140,7 +5193,7 @@ if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
     $AllOk = (Report "combat aid" $Checks) -and $AllOk
 }
 
-if (($Parts -contains "combat") -and ($Parts -contains "camera")) {
+if (($Parts -contains "combat") -and ($Parts -contains "camera") -and -not $SubCases.ContainsKey("combat")) {
     # The orders (J7b.3): Peasants ordered on a Spearman strike it; the stop clears their targets and their hits stay.
     $Checks = [ordered]@{}
     $Attack = @(Get-Section "orders attack")
