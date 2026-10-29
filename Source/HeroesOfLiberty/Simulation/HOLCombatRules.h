@@ -292,6 +292,21 @@ namespace HOLCombat
 	HEROESOFLIBERTY_API bool IsFriendFighting(bool bAttacking, int32 AttackerCount, bool bHasLastAttacker);
 
 	/**
+	 * How long (ms, simulation steps) a unit remembers the last enemy that hit it (FHOLCombatFragment::LastAttacker: the
+	 * riposte beyond its search radius) without a new hit (EtapeDefini S): past it, an attacker that walked off out of its
+	 * search radius is forgotten (no chase across the map, no "fighting" friend for the aid). The fog (M7) will add the
+	 * oblivion out of sight.
+	 */
+	inline constexpr int32 LastAttackerMemoryMs = 5000;
+
+	/**
+	 * Whether the last attacker is still remembered at StepIndex: its last hit (LastHitStep; -1: none) less than
+	 * LastAttackerMemoryMs ago, in whole steps of StepMs (100 steps at 20 Hz: forgotten at the 100th). A dead or gone
+	 * attacker is forgotten at once by the processor, whatever this says.
+	 */
+	HEROESOFLIBERTY_API bool KeepsLastAttacker(int64 StepIndex, int64 LastHitStep, int32 StepMs);
+
+	/**
 	 * Coming to a friend's aid (MV.4, choice C, AoE4): a melee soldier free to seek by itself (Auto: not on Hold nor an
 	 * attack-move; a Peasant has no aggression), with no target found, goes to help a friend fighting within AidRadius
 	 * (FightingFriendDistance, edge to edge; negative: none). AidRadius 0: off.

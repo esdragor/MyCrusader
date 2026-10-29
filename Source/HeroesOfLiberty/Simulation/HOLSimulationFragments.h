@@ -448,6 +448,9 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	/** The last enemy that hit it: taken on by a riposte (HOLCombat::FCandidate::bAttacksMe) even beyond its search radius. */
 	FMassEntityHandle LastAttacker;
 
+	/** Step of the last hit it took (LastAttacker set then): forgotten HOLCombat::LastAttackerMemoryMs later without a new one (EtapeDefini S); -1: none. */
+	int64 LastHitStep = -1;
+
 	/** Where its target stood when it last walked towards it: a new walk once the target moved away from there. */
 	FVector2D ApproachPoint = FVector2D::ZeroVector;
 
@@ -552,6 +555,7 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 		CloseInBest = MAX_flt;
 		BuildingInward = FVector2f::ZeroVector;
 		LastAttacker = FMassEntityHandle();
+		LastHitStep = -1;
 		bOrderedTarget = false;
 		bAttacking = false;
 		bApproaching = false;
