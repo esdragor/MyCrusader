@@ -300,10 +300,42 @@ namespace HOLAIArmy
 		return Count;
 	}
 
+	// The building types that make the candidates, each once (in the order of the candidates).
+	TArray<FName> BuildingsOf(const FHOLAIArmyData& Data)
+	{
+		TArray<FName> Found;
+		for (int Index = 0; Index < Data.CandidateBuildings.Num(); Index++)
+		{
+			if (!Found.Contains(Data.CandidateBuildings[Index]))
+			{
+				Found.Add(Data.CandidateBuildings[Index]);
+			}
+		}
+		return Found;
+	}
+
+	// The figures of a type of the data (empty when it has none).
+	FHOLAITypeFigures FiguresOf(const FHOLAIArmyData& Data, FName Type)
+	{
+		const int At = TypeIndex(Data, Type);
+		FHOLAITypeFigures Figures;
+		if (At >= 0)
+		{
+			Figures = Data.Figures[At];
+		}
+		return Figures;
+	}
+
 	// The unit type to queue next. With an enemy army in view: the candidate whose capped matchup against the enemy's types, weighted
 	// by each type's value in the enemy army, is the highest per unit of cost. Without: the candidate the most below its share of
 	// the fixed mix (units alive + queued over the ratio; a tie: the first of the list).
 	FHOLAIComposition ChooseComposition(const FHOLAISummary& Summary, const FHOLAIArmyData& Data)
+	{
+		return ChooseComposition(Summary, Data, NAME_None);
+	}
+
+	// The same, among the candidates the building OnlyBuilding makes (NAME_None: all of them; the brain asks per military building).
+	FHOLAIComposition ChooseComposition(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, FName OnlyBuilding)
 	{
 		FHOLAIComposition Choice;
 		const TArray<float> Theirs = ValueByType(Data, Summary.Enemies);
@@ -312,6 +344,10 @@ namespace HOLAIArmy
 		float BestScore = 0.f;
 		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
 		{
+			if (OnlyBuilding != NAME_None && (Index >= Data.CandidateBuildings.Num() || Data.CandidateBuildings[Index] != OnlyBuilding))
+			{
+				continue;
+			}
 			float Score = 0.f;
 			if (TheirTotal > 0.f)
 			{

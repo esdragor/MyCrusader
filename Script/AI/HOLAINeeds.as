@@ -122,7 +122,97 @@ namespace HOLAINeeds
 			const int Missing = Math::Max(0, Data.FarmCount - HOLAIOpening::CountBuildings(Summary, n"Farm"));
 			Spend[1] = Spend[1] + float(Missing * Data.Farm.CostWood);
 		}
+		AddArmySpend(Spend, Summary, Data);
 		return Spend;
+	}
+
+	// The economy is established (IA2.4): enough Peasants, alive and queued, for the army to take a share of the spending.
+	bool ArmyEstablished(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.bHasCentre && PeasantsCounted(Summary) >= Data.ArmyMinPeasants;
+	}
+
+	// The army's share of the spending (IA2.4): 0 until the economy is established, then the base rising linearly with the game's time to
+	// the max, plus the bump while the enemy's army seen is stronger than ours (PowerRatio under 1); never over the cap.
+	float ArmyShareOf(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (!ArmyEstablished(Summary, Data))
+		{
+			return 0.f;
+		}
+		float Ramp = 1.f;
+		if (Data.ArmyRampSeconds > 0.f)
+		{
+			Ramp = Math::Clamp(Data.GameSeconds / Data.ArmyRampSeconds, 0.f, 1.f);
+		}
+		float Share = Data.ArmyShareBase + (Data.ArmyShareMax - Data.ArmyShareBase) * Ramp;
+		if (Summary.Enemies.Num() > 0 && HOLAIArmy::PowerRatio(Data.Army, Summary) < 1.f)
+		{
+			Share += Data.ArmyThreatBump;
+		}
+		return Math::Min(Share, Data.ArmyShareCap);
+	}
+
+	// What the slot's Peasants bring over the window: their number times the mean net rate of the resources that have a source.
+	float IncomeOf(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		float Sum = 0.f;
+		int Counted = 0;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			const float Net = NetRate(Data, Summary, Resource);
+			if (Net > 0.f)
+			{
+				Sum += Net;
+				Counted++;
+			}
+		}
+		if (Counted == 0)
+		{
+			return 0.f;
+		}
+		return float(Summary.PeasantIds.Num()) * Sum / float(Counted) * Data.WindowSeconds;
+	}
+
+	// The army's part of the spending (IA2.4): its share of the income over the window, split between the military buildings; each
+	// building spends it on the unit the composition would queue there (HOLAIArmy::ChooseComposition restricted to it), so the resources
+	// asked of the Peasants follow the units (gold for the Man-at-arms and the Crossbowman), within what the buildings can make in the window.
+	void AddArmySpend(TArray<float>& Spend, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		const float Share = ArmyShareOf(Summary, Data);
+		if (Share <= 0.f)
+		{
+			return;
+		}
+		const TArray<FName> Buildings = HOLAIArmy::BuildingsOf(Data.Army);
+		if (Buildings.Num() == 0)
+		{
+			return;
+		}
+		const float Budget = Share * IncomeOf(Summary, Data) / float(Buildings.Num());
+		for (int Index = 0; Index < Buildings.Num(); Index++)
+		{
+			const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data.Army, Buildings[Index]);
+			if (!Choice.bValid)
+			{
+				continue;
+			}
+			const FHOLAITypeFigures Unit = HOLAIArmy::FiguresOf(Data.Army, Choice.Type);
+			const float Cost = float(Unit.CostFood + Unit.CostWood + Unit.CostStone + Unit.CostGold);
+			if (Cost <= 0.f)
+			{
+				continue;
+			}
+			float Units = Budget / Cost;
+			if (Unit.BuildTime > 0.f)
+			{
+				Units = Math::Min(Units, Data.WindowSeconds / Unit.BuildTime * float(Math::Max(1, HOLAIOpening::CountBuildings(Summary, Buildings[Index]))));
+			}
+			Spend[0] = Spend[0] + Units * float(Unit.CostFood);
+			Spend[1] = Spend[1] + Units * float(Unit.CostWood);
+			Spend[2] = Spend[2] + Units * float(Unit.CostStone);
+			Spend[3] = Spend[3] + Units * float(Unit.CostGold);
+		}
 	}
 
 	// The needs of the slot: spending, demand, Peasants wanted and shares.

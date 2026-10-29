@@ -6477,6 +6477,14 @@ if ($Parts -contains "aiduel") {
             # IA1.5: a Peasant on a building site is not idle (the opening's house, camp and mill).
             $Reports[$Slot] += [int]$Match.Matches[0].Groups[2].Value - [int]$Match.Matches[0].Groups[3].Value
         }
+        # IA2.4: the soldiers do not gather either: per slot, the army alive at each status line (every 5 s), taken for the reports 2 s apart (the larger of the two lines around it: a soldier born between two lines is not an idle Peasant).
+        $ArmyOf = @{}
+        foreach ($Match in ($Text | Select-String -Pattern "AI slot (\d+) step \d+: status .* army S(\d+) M(\d+) A(\d+) C(\d+)")) {
+            $G = $Match.Matches[0].Groups
+            $Slot = [int]$G[1].Value
+            if (-not $ArmyOf.ContainsKey($Slot)) { $ArmyOf[$Slot] = @() }
+            $ArmyOf[$Slot] += [int]$G[2].Value + [int]$G[3].Value + [int]$G[4].Value + [int]$G[5].Value
+        }
         $Run.MaxIdle = 0.0
         $Run.NumReports = 0
         foreach ($Slot in $Reports.Keys) {
@@ -6484,8 +6492,12 @@ if ($Parts -contains "aiduel") {
             $Streak = 0
             # The starting hero is among the "not gathering": the Peasants idle are the ones above it.
             $Heroes = @($Text | Select-String -Pattern "Starting hero of slot $Slot spawned").Count
+            $ReportIndex = 0
             foreach ($NotGathering in $Reports[$Slot]) {
-                $Streak = if ($NotGathering -gt $Heroes) { $Streak + 1 } else { 0 }
+                $Soldiers = 0
+                if ($ArmyOf.ContainsKey($Slot) -and $ArmyOf[$Slot].Count -gt 0) { $At = [int][Math]::Floor($ReportIndex * 2 / 5); $Soldiers = [Math]::Max($ArmyOf[$Slot][[Math]::Min($At, $ArmyOf[$Slot].Count - 1)], $ArmyOf[$Slot][[Math]::Min($At + 1, $ArmyOf[$Slot].Count - 1)]) }
+                $ReportIndex++
+                $Streak = if (($NotGathering - $Soldiers) -gt $Heroes) { $Streak + 1 } else { 0 }
                 $Run.MaxIdle = [Math]::Max($Run.MaxIdle, 2.0 * $Streak)
             }
         }

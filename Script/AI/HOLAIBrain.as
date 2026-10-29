@@ -11,6 +11,13 @@ struct FHOLAIBuilders
 	TArray<int> Ids;
 }
 
+// The military buildings of a slot whose rally was set (IA2.4), and the point it was set to (sent again when the point moves).
+struct FHOLAIRallied
+{
+	TArray<FVector> Buildings;
+	FVector Point;
+}
+
 class UHOLAIBrain : UHOLAIBrainSubsystem
 {
 	// Thoughts this brain ran, all slots together.
@@ -22,6 +29,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The farm block each slot is building (IA1.7: the spots of FindAIFarmBlock), and the builders it has sent to sites.
 	TMap<int, FHOLAIFarmPlan> FarmPlans;
 	TMap<int, FHOLAIBuilders> SentBuilders;
+
+	// The rally each slot's military buildings were last given.
+	TMap<int, FHOLAIRallied> Rallied;
 
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
@@ -37,6 +47,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
 		ReadFigures(Data);
 		const int64 Step = GetStepIndex();
+		Data.GameSeconds = float(Step) / 20.f;
 		LogStatus(PlayerIndex, Step, Summary);
 		const int NumIdle = Summary.IdlePeasants.Num();
 		TArray<int> Free = Summary.IdlePeasants;
@@ -115,7 +126,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 
-		// 3. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
+		// 3. The military buildings (IA2.4): a unit queued in each that can take one, their soldiers' rally on a point toward the enemy.
+		ThinkMilitary(PlayerIndex, Step, Summary, Data, Produce.bProduce ? 1 : 0);
+
+		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
 		{
 			return true;
@@ -146,6 +160,47 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		return true;
+	}
+
+	// The orders of HOLAIOpening::ChooseMilitary: the unit queued in each building, the rally set once per building (again when the point moves).
+	void ThinkMilitary(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, int Reserved)
+	{
+		const FHOLAIMilitaryChoice Military = HOLAIOpening::ChooseMilitary(Summary, Data, Reserved);
+		if (Military.Orders.Num() == 0)
+		{
+			return;
+		}
+		FHOLAIRallied Memory;
+		Rallied.Find(PlayerIndex, Memory);
+		FVector Moved = Memory.Point - Military.RallyPoint;
+		Moved.Z = 0;
+		if (Moved.Size() > 100.0)
+		{
+			Memory.Buildings.Empty();
+			Memory.Point = Military.RallyPoint;
+		}
+		for (int Index = 0; Index < Military.Orders.Num(); Index++)
+		{
+			const FHOLAIMilitaryOrder Order = Military.Orders[Index];
+			bool bKnown = false;
+			for (int Each = 0; Each < Memory.Buildings.Num(); Each++)
+			{
+				FVector Away = Memory.Buildings[Each] - Order.Location;
+				Away.Z = 0;
+				bKnown = bKnown || Away.Size() < 100.0;
+			}
+			if (!bKnown && HOLAIOrder::IssueAISetRallyOrder(PlayerIndex, Order.Location, Military.RallyPoint, -1))
+			{
+				Memory.Buildings.Add(Order.Location);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: rally of {Order.Building} on ({Military.RallyPoint.X}, {Military.RallyPoint.Y})");
+			}
+			if (Order.bQueue && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, Order.Location, Order.Unit))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: queue a {Order.Unit} at {Order.Building}");
+			}
+		}
+		Memory.Point = Military.RallyPoint;
+		Rallied.Add(PlayerIndex, Memory);
 	}
 
 	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
@@ -191,6 +246,14 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				Data.Steps[Index].WoodCost = Figures.CostWood;
 			}
 		}
+		for (int Index = 0; Index < Data.ArmySteps.Num(); Index++)
+		{
+			if (HOLAIOrder::ReadAIBuildingFigures(Data.ArmySteps[Index].Type, Figures))
+			{
+				Data.ArmySteps[Index].WoodCost = Figures.CostWood;
+			}
+		}
+		HOLAIArmy::LoadFigures(Data.Army);
 	}
 
 	// One line every 100 steps (5 s) per slot for the tests of the AI games (quick_check aiduel reads it): population, the queue
@@ -213,7 +276,40 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int Camps = HOLAIOpening::CountBuildings(Summary, n"LumberCamp");
 		const int Mills = HOLAIOpening::CountBuildings(Summary, n"Mill");
 		const int Farms = HOLAIOpening::CountBuildings(Summary, n"Farm");
-		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms}");
+		const int Spears = CountOfType(Summary, n"Spearman");
+		const int Men = CountOfType(Summary, n"ManAtArms");
+		const int Archers = CountOfType(Summary, n"Archer");
+		const int Crossbows = CountOfType(Summary, n"Crossbowman");
+		const int Barracks = HOLAIOpening::CountBuildings(Summary, n"Barracks");
+		const int Ranges = HOLAIOpening::CountBuildings(Summary, n"ArcheryRange");
+		const int BarracksQueue = QueueOf(Summary, n"Barracks");
+		const int RangeQueue = QueueOf(Summary, n"ArcheryRange");
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms} army S{Spears} M{Men} A{Archers} C{Crossbows} barracks {Barracks} q{BarracksQueue} range {Ranges} q{RangeQueue}");
+	}
+
+	// The soldiers of a type alive (the army of the summary: those of the slot that do not gather).
+	int CountOfType(const FHOLAISummary& Summary, FName Type)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			Count += Summary.Army[Index].Type == Type ? 1 : 0;
+		}
+		return Count;
+	}
+
+	// The units waiting in the queues of the buildings of a type (the one in production included).
+	int QueueOf(const FHOLAISummary& Summary, FName Type)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == Type)
+			{
+				Count += Summary.Buildings[Index].Queue.Num();
+			}
+		}
+		return Count;
 	}
 
 	// Writes the reason unless it is the one just written for this slot (the thought comes every few steps).

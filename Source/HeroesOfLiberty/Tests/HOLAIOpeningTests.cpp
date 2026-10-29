@@ -334,6 +334,75 @@ bool FHOLAIBuildingsFarmBlockTest::RunTest(const FString& Parameters)
 }
 
 /**
+ * IA2.4, the army's production on the real chain: 20 Peasants (the economy stands), a Barracks and an Archery Range finished, the
+ * stock in plenty. The thought queues one unit per building, of a type that building makes (the composition restricted to the
+ * building: a Spearman at the Barracks, an Archer at the Range, the mix's first), sets both buildings' rally on a point 1500 cm
+ * from the centre toward the enemy centre (a point, not a source), and the next thought queues a second unit per building but
+ * not a third. Red while the brain queues no soldier and sets no military rally.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIArmyProductionTest, "HeroesOfLiberty.AI.Army.Production", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIArmyProductionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	UHOLUnitSubsystem* Units = Test.World->GetSubsystem<UHOLUnitSubsystem>();
+	FHOLUnitSpawnRequest More;
+	More.TypeName = FName(TEXT("Peasant"));
+	More.Count = 15;
+	More.OwnerPlayer = 1;
+	More.Center = FVector(1000.0, -1000.0, 0.0);
+	Units->RequestUnits(More);
+	Units->ServeBirthRequests();
+	AHOLBuilding* Barracks = Test.World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Range = Test.World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 3000.0, 0.0), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the Barracks"), Barracks) || !TestNotNull(TEXT("the Archery Range"), Range))
+	{
+		return false;
+	}
+	Barracks->Setup(HOLBuildingTypeNames::Barracks, 1, 1);
+	Range->Setup(HOLBuildingTypeNames::ArcheryRange, 1, 1);
+	Test.AIState->SetPopulation(25, 100);
+	Test.AIState->SetResources(FHOLResources(1000, 1000, 500, 500));
+
+	TestTrue(TEXT("thought 1"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	if (TestEqual(TEXT("one unit in the Barracks' queue"), Barracks->GetProductionQueue().Num(), 1))
+	{
+		TestEqual(TEXT("a Spearman (the mix's first, a unit of the Barracks)"), Barracks->GetProductionQueue()[0].TypeName, FName(TEXT("Spearman")));
+	}
+	if (TestEqual(TEXT("one unit in the Range's queue"), Range->GetProductionQueue().Num(), 1))
+	{
+		TestEqual(TEXT("an Archer (a unit of the Range)"), Range->GetProductionQueue()[0].TypeName, FName(TEXT("Archer")));
+	}
+
+	// The rally: a point 1500 cm from the centre toward the enemy centre (at -X), no source.
+	for (const AHOLBuilding* Each : { Barracks, Range })
+	{
+		if (TestTrue(TEXT("a rally point"), Each->HasRallyPoint()))
+		{
+			TestTrue(TEXT("1500 cm toward the enemy centre"), FVector::Dist2D(Each->GetRallyPoint(), FVector(-1500.0, 0.0, 0.0)) < 100.0);
+			TestEqual(TEXT("a point, not a source"), Each->GetRallySource(), static_cast<int32>(INDEX_NONE));
+		}
+	}
+
+	// Two at most per building: the second thought adds one, the third none. (The production step recounts the population in this world: set again.)
+	Test.AIState->SetPopulation(26, 100);
+	TestTrue(TEXT("thought 2"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	TestEqual(TEXT("two in the Barracks' queue"), Barracks->GetProductionQueue().Num(), 2);
+	Test.AIState->SetPopulation(28, 100);
+	TestTrue(TEXT("thought 3"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	TestEqual(TEXT("still two in the Barracks' queue"), Barracks->GetProductionQueue().Num(), 2);
+	TestEqual(TEXT("still two in the Range's queue"), Range->GetProductionQueue().Num(), 2);
+	return true;
+}
+
+/**
  * IA1.6, the figures: the brain's costs come from the type tables (UHOLAIOrderLibrary::ReadAIUnitFigures / ReadAIBuildingFigures),
  * not from numbers copied into the script. The Peasant and the House as the tables have them; an unknown type is refused.
  */

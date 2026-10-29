@@ -90,6 +90,57 @@ struct FHOLAIOpeningData
 	// Farms in the block, and the Farm as the table gives it (the brain reads it; DefaultData holds the fallback).
 	int FarmCount = 8;
 	FHOLAITypeFigures Farm;
+
+	// The army (IA2.4). The rules and figures of HOLAIArmy.as (the brain loads the figures from the tables).
+	FHOLAIArmyData Army;
+
+	// The game's seconds, set by the brain each thought (the summary has no clock): the army share rises with it.
+	float GameSeconds = 0.f;
+
+	// Peasants (alive and queued) from which the military buildings are built, and from which the army spends and produces: the economy is
+	// established. Below, the army share is 0.
+	int ArmyBuildPeasants = 16;
+	int ArmyMinPeasants = 20;
+
+	// Share of the total spending (economy + army) that goes to the army once established: the base, rising linearly over ArmyRampSeconds of
+	// game to the max; plus the bump while the enemy's army seen is stronger than ours (HOLAIArmy::PowerRatio under 1); never over the cap.
+	float ArmyShareBase = 0.15f;
+	float ArmyShareMax = 0.45f;
+	float ArmyRampSeconds = 600.f;
+	float ArmyThreatBump = 0.15f;
+	float ArmyShareCap = 0.6f;
+
+	// Units waiting in one military building's queue at most (the one in production counts).
+	int MilitaryQueue = 2;
+
+	// Distances (cm) from the centre, toward the enemy centre (or +X when unknown): where the military buildings' spot search starts,
+	// and the rally point of the soldiers (a point, not a source).
+	float MilitaryDistance = 1500.f;
+	float RallyDistance = 1500.f;
+
+	// The military buildings, with their wood cost (the brain reads the tables; DefaultData holds the fallback). Their NearResource is unused.
+	TArray<FHOLAIOpeningStep> ArmySteps;
+}
+
+// What to do with one finished military building (IA2.4): the unit to queue (if any) and where its soldiers gather.
+struct FHOLAIMilitaryOrder
+{
+	// The building (its type name and its ground point, which names it to the order library).
+	FName Building;
+	FVector Location;
+
+	// A unit to queue (Unit), or not.
+	bool bQueue = false;
+	FName Unit;
+}
+
+// The military buildings' orders of one thought.
+struct FHOLAIMilitaryChoice
+{
+	TArray<FHOLAIMilitaryOrder> Orders;
+
+	// The soldiers' rally point (RallyPointOf).
+	FVector RallyPoint;
 }
 
 // The farm block the slot builds (IA1.7): the spots FindAIFarmBlock gave, kept by the brain from one thought to the next.
@@ -173,6 +224,15 @@ namespace HOLAIOpening
 		Mill.WoodCost = 100;
 		Mill.NearResource = 0;
 		Data.Steps.Add(Mill);
+		Data.Army = HOLAIArmy::DefaultData();
+		FHOLAIOpeningStep Barracks;
+		Barracks.Type = n"Barracks";
+		Barracks.WoodCost = 150;
+		Data.ArmySteps.Add(Barracks);
+		FHOLAIOpeningStep Range;
+		Range.Type = n"ArcheryRange";
+		Range.WoodCost = 150;
+		Data.ArmySteps.Add(Range);
 		return Data;
 	}
 
@@ -346,6 +406,18 @@ namespace HOLAIOpening
 				Producers++;
 			}
 		}
+		// The military buildings fill places like the centre does, once the economy stands (IA2.4): a finished one not producing now counts.
+		if (HOLAINeeds::ArmyEstablished(Summary, Data))
+		{
+			for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+			{
+				if (!Summary.Buildings[Index].bProducing && Summary.Buildings[Index].State == EHOLConstructionState::Finished
+					&& IsMilitaryType(Data, Summary.Buildings[Index].TypeName))
+				{
+					Producers++;
+				}
+			}
+		}
 		if (Producers == 0 && Summary.bHasCentre)
 		{
 			Producers = 1;
@@ -417,6 +489,13 @@ namespace HOLAIOpening
 			if (Data.Steps[Index].Type == Type)
 			{
 				return Data.Steps[Index].WoodCost;
+			}
+		}
+		for (int Index = 0; Index < Data.ArmySteps.Num(); Index++)
+		{
+			if (Data.ArmySteps[Index].Type == Type)
+			{
+				return Data.ArmySteps[Index].WoodCost;
 			}
 		}
 		return 0;
@@ -542,6 +621,18 @@ namespace HOLAIOpening
 			return OrderOf(Summary, Data, Step.Type, Part.Sources[0].Location, false, Busy);
 		}
 
+		// 2b. The military building the composition calls for (IA2.4: Barracks for Spearmen and Men-at-arms, Archery Range for Archers and
+		// Crossbowmen), on the enemy side of the centre, once the economy is far enough along and the wood is there; else the ranks below.
+		const FName Military = MilitaryBuildingWanted(Summary, Data);
+		if (Military != NAME_None && Summary.Wood.Stock >= WoodCostOf(Data, Military))
+		{
+			const FHOLAIBuildChoice Ordered = OrderOf(Summary, Data, Military, MilitaryAnchor(Summary, Data), false, Busy);
+			if (Ordered.bBuild)
+			{
+				return Ordered;
+			}
+		}
+
 		// 3. A camp again where the massif is cut: wood, stone and gold when the needs ask for them; one camp at a time.
 		FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
 		for (int Resource = 1; Resource < 4; Resource++)
@@ -602,6 +693,118 @@ namespace HOLAIOpening
 		FHOLAIFarmPlan NoPlan;
 		TArray<int> NoBusy;
 		return ChooseBuild(Summary, Data, NoPlan, NoBusy);
+	}
+
+	// The direction from the centre toward the enemy centre on the ground (+X when the enemy centre is unknown).
+	FVector TowardEnemy(const FHOLAISummary& Summary)
+	{
+		FVector Toward = FVector(1, 0, 0);
+		if (Summary.bHasEnemyCentre)
+		{
+			FVector Line = Summary.EnemyCentreLocation - Summary.CentreLocation;
+			Line.Z = 0;
+			if (Line.Size() > 1.0)
+			{
+				Toward = Line.GetSafeNormal();
+			}
+		}
+		return Toward;
+	}
+
+	// The soldiers' rally point (IA2.4): the centre plus RallyDistance toward the enemy centre (+X when unknown); a point, not a source.
+	FVector RallyPointOf(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.CentreLocation + TowardEnemy(Summary) * Data.RallyDistance;
+	}
+
+	// Where the search for a military building's spot starts: on the enemy side of the centre.
+	FVector MilitaryAnchor(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.CentreLocation + TowardEnemy(Summary) * Data.MilitaryDistance;
+	}
+
+	bool IsMilitaryType(const FHOLAIOpeningData& Data, FName Type)
+	{
+		return HOLAIArmy::BuildingsOf(Data.Army).Contains(Type);
+	}
+
+	// The military building the composition calls for that the slot has none of (any state): none (NAME_None) when it has it or the
+	// economy is not yet far enough along (ArmyBuildPeasants) or the first house, camp and mill are not all there.
+	FName MilitaryBuildingWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (PeasantsCountedOf(Summary) < Data.ArmyBuildPeasants || CountBuildings(Summary, n"House") < 1)
+		{
+			return NAME_None;
+		}
+		for (int Index = 0; Index < Data.Steps.Num(); Index++)
+		{
+			if (!HasBuilding(Summary, Data.Steps[Index].Type) && PartOf(Summary, Data.Steps[Index].NearResource).Sources.Num() > 0)
+			{
+				return NAME_None;
+			}
+		}
+		const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data.Army);
+		if (!Choice.bValid || Choice.Building == NAME_None || HasBuilding(Summary, Choice.Building))
+		{
+			return NAME_None;
+		}
+		return Choice.Building;
+	}
+
+	int PeasantsCountedOf(const FHOLAISummary& Summary)
+	{
+		return HOLAINeeds::PeasantsCounted(Summary);
+	}
+
+	// The orders of the finished military buildings (IA2.4), in the order of the summary: each gets its rally (the brain sends it when it
+	// is new) and, once the economy stands, a unit to queue when its queue is under MilitaryQueue, the composition restricted to it
+	// picks one, the stock pays it after the units chosen before in this thought, a place is left (Reserved: places taken by orders
+	// the brain gave in this thought before) and, a house being wanted, the wood left still pays it.
+	FHOLAIMilitaryChoice ChooseMilitary(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, int Reserved)
+	{
+		FHOLAIMilitaryChoice Choice;
+		Choice.RallyPoint = RallyPointOf(Summary, Data);
+		const bool bEstablished = HOLAINeeds::ArmyEstablished(Summary, Data);
+		const bool bHouse = HouseWanted(Summary, Data);
+		int Places = PlacesLeft(Summary) - Reserved;
+		int Food = Summary.Food.Stock;
+		int Wood = Summary.Wood.Stock;
+		int Stone = Summary.Stone.Stock;
+		int Gold = Summary.Gold.Stock;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Building = Summary.Buildings[Index];
+			if (Building.State != EHOLConstructionState::Finished || !IsMilitaryType(Data, Building.TypeName))
+			{
+				continue;
+			}
+			FHOLAIMilitaryOrder Order;
+			Order.Building = Building.TypeName;
+			Order.Location = Building.Location;
+			if (bEstablished && Building.Queue.Num() < Data.MilitaryQueue && Places > 0)
+			{
+				const FHOLAIComposition Pick = HOLAIArmy::ChooseComposition(Summary, Data.Army, Building.TypeName);
+				const FHOLAITypeFigures Unit = HOLAIArmy::FiguresOf(Data.Army, Pick.Type);
+				const bool bKnown = Pick.bValid && HOLAIArmy::TypeIndex(Data.Army, Pick.Type) >= 0;
+				bool bPays = bKnown && Food >= Unit.CostFood && Wood >= Unit.CostWood && Stone >= Unit.CostStone && Gold >= Unit.CostGold;
+				if (bPays && bHouse && Wood - Unit.CostWood < Data.House.CostWood)
+				{
+					bPays = false;
+				}
+				if (bPays)
+				{
+					Order.bQueue = true;
+					Order.Unit = Pick.Type;
+					Food -= Unit.CostFood;
+					Wood -= Unit.CostWood;
+					Stone -= Unit.CostStone;
+					Gold -= Unit.CostGold;
+					Places -= Math::Max(1, Unit.Population);
+				}
+			}
+			Choice.Orders.Add(Order);
+		}
+		return Choice;
 	}
 
 	// A Peasant at the centre while its queue, the population and the food allow, and the Peasants are under the target; the
