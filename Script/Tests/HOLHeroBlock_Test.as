@@ -153,3 +153,34 @@ void Test_HeroBlockEmblem(FUnitTest& T)
 	T.AssertTrue(Emblem != nullptr, f"the emblem at {HOLHeroBlock::EmblemPath}");
 	T.AssertEquals("T_Icon_HeroEmblem", Emblem != nullptr ? Emblem.GetName().ToString() : "", "named T_Icon_HeroEmblem");
 }
+
+// J8b.4 (J8b-Q4): the XP's bar within the level, from the real thresholds (HOLHero::GetLevelXP: 200, 600, ... 3 300).
+void Test_HeroBlockXP(FUnitTest& T)
+{
+	const FHOLHeroReturnQuote Alive = HOLHeroReturnQuote::Compute(500, EHOLHeroState::Alive, -1, 1, 500, true, false);
+	const FHOLHeroBlockView Start = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 1, 450, 450, 0, Alive);
+	T.AssertFalse(Start.bXPGreyed, "known: not greyed");
+	T.AssertTrue(Start.XPFraction == 0.0, "0 of 200: empty");
+	T.AssertEquals("0 / 200", Start.XPText, "0 / 200");
+	T.AssertEquals("xp 0/200", Start.XPDescribe, "described");
+	const FHOLHeroBlockView Half = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 1, 450, 450, 100, Alive);
+	T.AssertTrue(Math::Abs(Half.XPFraction - 0.5) < 0.001, "100 of 200: half");
+	// Level 3 from 600 to 1 300: 420 XP more is 0.6 of it.
+	const FHOLHeroBlockView Three = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 3, 500, 518, 1020, Alive);
+	T.AssertTrue(Math::Abs(Three.XPFraction - 0.6) < 0.001, "level 3, 1 020: 0.6 of the way to 1 300");
+	T.AssertEquals(1300, Three.XPNext, "next at 1 300");
+	T.AssertEquals("1020 / 1300", Three.XPText, "1020 / 1300");
+	// The last level: full, no next.
+	const FHOLHeroBlockView Last = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 6, 630, 630, 3400, Alive);
+	T.AssertTrue(Last.XPFraction == 1.0, "level 6: full");
+	T.AssertEquals(-1, Last.XPNext, "no next");
+	T.AssertEquals("3400", Last.XPText, "3400");
+	T.AssertEquals("xp 3400 max", Last.XPDescribe, "described");
+	// Dead: the bar still shown (development goes on, D06).
+	const FHOLHeroBlockView Dead = HOLHeroBlock::Make(false, false, EHOLHeroState::Dead, 2, 0, 486, 300, HeroBlockQuote(1299, EHOLHeroState::Dead, 500, true));
+	T.AssertTrue(Math::Abs(Dead.XPFraction - 0.25) < 0.001, "dead, level 2, 300: a quarter of the way to 600");
+	// Unknown (another's hero): greyed and empty.
+	const FHOLHeroBlockView Unknown = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 2, 486, 486, -1, Alive);
+	T.AssertTrue(Unknown.bXPGreyed && Unknown.XPFraction == 0.0, "unknown: greyed, empty");
+	T.AssertEquals("xp unknown", Unknown.XPDescribe, "described");
+}

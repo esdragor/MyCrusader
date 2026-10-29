@@ -83,6 +83,29 @@ int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject, const
 	return FMath::RoundToInt(HOLHeroXP::GetLevelStat(static_cast<float>(Row->MaxHealth), Level));
 }
 
+int32 UHOLHeroLibrary::GetHeroXP(const UObject* WorldContextObject, const int32 Slot)
+{
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	if (const UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(World))
+	{
+		return Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? Heroes->GetSheets(Slot).Private.XP : -1;
+	}
+	// A client knows its own private sheet only.
+	const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+	const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+	return Local && Local->GetPlayerIndex() == Slot ? Local->GetHeroPrivate().XP : -1;
+}
+
+int32 UHOLHeroLibrary::GetLevelXP(const int32 Level)
+{
+	return HOLHeroXP::GetLevelXP(Level);
+}
+
+int32 UHOLHeroLibrary::GetMaxLevel()
+{
+	return HOLHeroXP::MaxLevel;
+}
+
 int32 UHOLHeroLibrary::GetHeroDeathStep(const UObject* WorldContextObject, const int32 Slot)
 {
 	const UWorld* World = GetWorldOf(WorldContextObject);
