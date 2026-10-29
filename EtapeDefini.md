@@ -42,10 +42,6 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - Moteur propre à HeroesOfLiberty avec cible Server : AS_3 appartient désormais à ProjectShiva (réinstallé à la demande de l'utilisateur le 2026-10-28, sans Server) ; moteur fabriqué (2026-10-29 03:43) et installé sous `C:\UE\UE_5.8_HOL` (« UE 5.8 HOL »), `.uproject` repointé, dans `main` (e6f1467) ; 7 copies recompilées, paquet complet et `packaged_smoke` PASS (2026-10-29 04:05) : **le serveur dédié cuit de nouveau** ; serveur de test cuit depuis `main` 8ea1b8e (2026-10-29 11:25) et copié dans MyCrusader, Arwen, Celeborn, Elrond, Galadriel ; partie `lobby` PASS avec lui dans Elrond ; défaut d'outil (ports des tests de salon en course entre copies) corrigé le 2026-10-29 (`copy_ports.ps1`, plages par copie, `main` c3d315f) ; serveur gardé et pause P5 dans `main` (2c02f5c), serveur de test recuit depuis ce code et copié dans MyCrusader seulement *(`NetPlaytestInProgress.md`)*
 - Angelscript au fil des chantiers : le neuf en script, un fichier migrable passe en script quand un chantier va beaucoup le toucher *(D483 ; tests en script et cache précompilé dans le paquet : D484 ; `AngelscriptInProgress.md`)*
 
-### Questions techniques ouvertes
-*(les points de déplacement, ici et dans « Retours d'essai » : chantier `MovementInProgress.md`, après la clôture de J7)*
-- Écart inexpliqué des mesures de rendu *(145-170 i/s le 2026-10-11 contre 247-258 le 12, mêmes conditions ; depuis, 218 à 277 i/s à chaque mesure au repos ; `ImplementationInProgress.md`)*
-
 ## Bugs remontés
 
 ### Retours d'essai
@@ -58,7 +54,6 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `net 2 clients` : maison de l’autre arrivée avant le `waitlog` du client 1 (séquence arrêtée, vu une fois)
 - `net 2 clients` : client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (séquence arrêtée, vu une fois)
 - Attaque d'un bâtiment sans ordre direct (attaque-déplacement, recherche automatique, file Maj) : pas de places autour du mur, ancienne règle du point le plus proche *(`EtapeDefiniInProgress.md` O : O.1 rouge montré ; O.2 faite (O.2a places aux nouveaux venus, O.2b l'arc tenu grandit par ses bouts : quatre modes verts, graines 1 et 7) ; O.3 faite le 2026-10-28 (scénario `attack_places`, contrôles verts) ; essai : la règle change (3 rangs face à l'arrivée, l'arc s'élargit avec le nombre, tous les ordres, bâtiments seuls, futur D499) ; O.5a faite (tests rouges montrés) ; O.5b faite (building_crowd 32/32, 4 modes x graines 1 et 7) ; O.5 faite (blocs de 3 rangs, verts) ; 2e essai : trop d'allers-retours, la règle devient une foule à la AoE4 (frappe à portée, ceux de derrière poussent, débordement sur les côtés ; GIF de l'utilisateur) ; O.7a faite (critères de foule rouges sur les blocs : détours, frappe tardive) ; O.7b repris le 2026-10-28 (foule codée, places retirées ; `main` 9e72bf4 fusionnée, compilé ; 2e boucle faite : corps serrés réglés, départs après la frappe 12-17 → 1-5 ; 3e boucle faite : ceux de derrière contournent, plus de 4e rang ; reste : un soldat à portée marche encore le long de la foule ; 4e boucle reprise le 2026-10-29 : code relu complet, `main` 4f5c297 fusionnée, compilation puis contrôles en cours), Haldir, branche `attack-places`, non commité)*
-- Unité arrêtée près d'un bâtiment : la garde du mur visible a des coins arrondis, jusqu'à ~35 cm dans le coin du socle *(C.1 ; J l'a corrigé pour les seules unités qui frappent ; **R** dans `EtapeDefiniInProgress.md`, Elrond, branche `idle-wall-corners` : test rouge sur la vraie chaîne (sous-cas `build:corner` de quick_check) en cours)*
 
 ## Fichiers de développement
 
@@ -74,23 +69,23 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `AngelscriptInProgress.md` : Angelscript (D483, D484) ; AS1 (tests en script dans quick_check) et AS2 (cache précompilé au paquet) faits ; en veille (AS-Q3 = A) : le code en script vient d'IA0.4, de J8a.4 et de J8a.5 (écran de jeu en script `UHOLScriptScreen`, `NSLOCTEXT` en script)
 - `VictoryInProgress.md` : conditions de victoire, V1 à V5 dans `main` ; paliers après J8b (P-Q1, 2026-10-27) ; noms de salon dans les messages dans `main` (e53b39a)
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés), R8a, R8c dans `main` (9364046), R8b publiée, pause refusée en réseau (e4884fc) ; R9.3 au GDD (D499-D514) ; serveur gardé tant qu'il y a quelqu'un dans Glorfindel (f59902d avec `main` a959e0e : build et `tests,net` verts, reste `-StageOnly` et `lobby` avant `main`, **bloqués** : moteur AS_3 réinstallé le 2026-10-28 à 15:40 par l'outil de ProjectShiva sans cible Server ; moteur « UE 5.8 HOL » prêt le 2026-10-29, chantier repris : `main` 8ea1b8e fusionnée dans `net-playtest` (f95c4e8), `tests,net`, `-StageOnly` et `lobby` verts, puis `main` 4f5c297 et b032f0f refusionnées (eba5dc1, 2c02f5c), build, cuisson, `tests,net` et `lobby` verts : **`main` avancée à 2c02f5c le 2026-10-29**) ; pause limitée (D513 : 3 par partie, 60 s) faite, essayée par l'utilisateur et commitée (5dd83fd, `net-playtest`) ; ports des tests de salon par copie (`copy_ports.ps1`) et attente du verrou de compilation par la cuisson (`net_match.ps1 -ubtargs=-WaitMutex`) dans `main` (c3d315f, validé le 2026-10-29) ; puis remesure de `MaxServers` et publication r9 ; R8d reporté
-- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers ; O (places pour les attaques de bâtiment sans ordre direct, Haldir) ouverte, O.7b en cours (4e boucle reprise le 2026-10-29) ; N close (main 3026278) ; P close (main e9cc592) ; Q close (main 0adb67a) ; R (coins carrés de la garde du mur visible pour les unités arrêtées, Elrond, `idle-wall-corners`) ouverte le 2026-10-29, test rouge en cours
+- `EtapeDefiniInProgress.md` : lignes d'EtapeDefini prises hors des grands chantiers ; O (places pour les attaques de bâtiment sans ordre direct, Haldir) ouverte, O.7b en cours (4e boucle reprise le 2026-10-29) ; N close (main 3026278) ; P close (main e9cc592) ; Q close (main 0adb67a) ; R close (coins carrés de la garde du mur visible pour les unités arrêtées, code 09860a9, `main` a9e5636, 2026-10-29)
 
 ### En pause
 - `UnitStatsInProgress.md` : stats des unités, reste la charge (D345.3) avec la cavalerie
 - `AnimationsInProgress.md` : chaîne de fabrication et catalogue des animations, resservira à chaque nouvelle unité
 
 ### Presque clos (un reste)
-- `ImplementationInProgress.md` : M0 à M2, arrêté le 2026-10-14 (suite dans `JourneyInProgress.md`) ; garde l'écart des mesures de rendu
 - `InterfaceInProgress.md` : grille du Paysan (D340) ; reste la barre trop large
 - `LauncherInProgress.md` : lanceur (D475 à D482), clos ; reste l'essai avec un ami
-- `MovementInProgress.md` : déplacement (D405 à D415, mesures faites), clos (l'aléa « build site » après `move,bodies` était corrigé par H le 2026-10-25, noté clos dans le journal le 2026-10-26) : à archiver au prochain commit
 - `ScenariosInProgress.md` : mécanisme des scénarios, encore cité par les autres journaux (mode d'emploi : `Tools/Scenarios/README.md`)
-- `TileSizeInProgress.md` : case de 4 m et cartes de 220 × 220 (D344) ; reste peut-être une ligne marquée tous les 5 cases
+- `TileSizeInProgress.md` : case de 4 m et cartes de 220 × 220 (D344) ; reste S5 (positions sur 13 bits) à mesurer à la prochaine série de mesures ; la ligne plus marquée tous les 5 cases abandonnée le 2026-10-29
 
 ### Archivés (`Docs/Archive/`)
 - `FrontEndInProgress.md` : menu (D240 à D251)
 - `MillInProgress.md` : moulin (D346)
+- `ImplementationInProgress.md` : M0 à M2 (suite dans `JourneyInProgress.md`) ; l'écart des mesures de rendu du 2026-10-11 clos le 2026-10-29, non reproduit (218 à 277 i/s à chaque mesure au repos depuis)
+- `MovementInProgress.md` : déplacement (D405 à D415, mesures faites), clos le 2026-10-26
 - `RidgeRockInProgress.md` : rochers (D439 à D444)
 - `CrossbowInProgress.md` : l'Arbalétrier et le Champ de tir (D486 à D489)
 - `MapSizeInProgress.md` : tailles de carte, Plaine de Petite à Immense (D490 à D496)
