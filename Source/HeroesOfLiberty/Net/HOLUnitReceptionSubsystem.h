@@ -103,6 +103,8 @@ private:
 	TArray<FSlot> Slots;
 	/** F6b: the slot that draws each unit when several slots hold it (every camp's family received, D518). */
 	FHOLDisplayOwners DisplayOwners;
+	/** F6b: indices of the chunks removed since the last reading, whose units are released. */
+	TArray<int32> RemovedChunks;
 	int32 NumDisplayed = 0;
 	uint32 WatchedUnitId = 0;
 	EHOLResource WatchedResource = EHOLResource::Food;

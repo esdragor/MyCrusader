@@ -58,6 +58,7 @@ void UHOLUnitReceptionSubsystem::Deinitialize()
 	bActive = false;
 	Slots.Reset();
 	DisplayOwners.Reset();
+	RemovedChunks.Reset();
 	Chunks.Reset();
 	NumDisplayed = 0;
 	Super::Deinitialize();
@@ -122,10 +123,12 @@ void UHOLUnitReceptionSubsystem::AddChunk(AHOLUnitChunk* Chunk)
 
 void UHOLUnitReceptionSubsystem::RemoveChunk(const AHOLUnitChunk* Chunk)
 {
-	// Its units stay displayed with their last state until the slots are read again (a chunk leaves with the match).
+	// F6b: a chunk the server stops sending (a connection that no longer receives its camp) takes its units with it: they
+	// are released at the next reading. At the end of the match nothing reads any more.
 	if (Chunks.IsValidIndex(Chunk->GetChunkIndex()) && Chunks[Chunk->GetChunkIndex()] == Chunk)
 	{
 		Chunks[Chunk->GetChunkIndex()] = nullptr;
+		RemovedChunks.AddUnique(Chunk->GetChunkIndex());
 	}
 }
 
@@ -221,6 +224,29 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 
 	TArray<int32> Arrivals;
 	TArray<FMassEntityHandle> Departures;
+	for (const int32 ChunkIndex : RemovedChunks)
+	{
+		const int32 FirstRemoved = ChunkIndex * AHOLUnitChunk::NumSlots;
+		for (int32 Index = FirstRemoved; Index < FMath::Min(FirstRemoved + AHOLUnitChunk::NumSlots, Slots.Num()); ++Index)
+		{
+			FSlot& Slot = Slots[Index];
+			if (Slot.UnitId == 0)
+			{
+				continue;
+			}
+			if (Slot.Entity.IsSet())
+			{
+				Departures.Add(Slot.Entity);
+			}
+			const int32 Promoted = DisplayOwners.Leave(Slot.UnitId, Index);
+			if (Promoted != INDEX_NONE)
+			{
+				Arrivals.AddUnique(Promoted);
+			}
+			Slot = FSlot();
+		}
+	}
+	RemovedChunks.Reset();
 	for (const TWeakObjectPtr<AHOLUnitChunk>& ChunkPtr : Chunks)
 	{
 		const AHOLUnitChunk* Chunk = ChunkPtr.Get();
